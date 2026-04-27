@@ -27,6 +27,15 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from pathlib import Path
 
+# Windows'ta cp1254 default; UTF-8'e zorla ki Turkce karakter ve
+# emoji icermesi muhtemel print/log mesajlari Unicode hatasi vermesin.
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = REPO_ROOT / ".secrets" / "smtp.json"
@@ -173,7 +182,7 @@ def main() -> int:
     except Exception as e:
         sys.exit(f"Gönderim hatası: {type(e).__name__}: {e}")
 
-    print(f"✓ Mail gönderildi: {', '.join(all_rcpts)}")
+    print(f"[OK] Mail gonderildi: {', '.join(all_rcpts)}")
     return 0
 
 
