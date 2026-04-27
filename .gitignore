@@ -11,3 +11,7 @@ dist/
 .cache/
 Pazartesi-Brifingi-*.html
 Pazartesi-Brifingi-*.txt
+
+# Paralel oturum lock dosyalari (ADR-002)
+.claude/locks/*.lock
+.claude/locks/.current
