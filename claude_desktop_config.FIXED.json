@@ -20,6 +20,20 @@
         "MSSQL_DATABASE": "master",
         "ALLOWED_DATABASES": "master,DerinSISBkm,DerinSISBkmCrm,DerinSISBkmWeb,BKMDATA,EncoreMerkez,BKM"
       }
+    },
+    "portalhub": {
+      "command": "node",
+      "args": [
+        "D:\\Dev\\sqlserver-mcp-server\\dist\\index.js"
+      ],
+      "cwd": "D:\\Dev\\sqlserver-mcp-server",
+      "env": {
+        "MSSQL_HOST": "BT-FIKRI\\SQLEXPRESS",
+        "MSSQL_USER": "sa",
+        "MSSQL_PASSWORD": "fe9610578+*",
+        "MSSQL_DATABASE": "PortalHUB",
+        "ALLOWED_DATABASES": "master,PortalHUB"
+      }
     }
   },
   "preferences": {
@@ -31,7 +45,8 @@
     "coworkOnboardingResumeStep": null,
     "chicagoEnabled": false,
     "localAgentModeTrustedFolders": [
-      "D:\\Dev\\sqlserver-mcp-server"
+      "D:\\Dev\\sqlserver-mcp-server",
+      "D:\\Dev\\reporthub"
     ]
   }
 }

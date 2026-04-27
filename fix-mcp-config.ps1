@@ -1,7 +1,8 @@
 # MCP Config Fix Script
-# Cowork/Claude Desktop'ın sqlserver MCP bağlantısını düzeltir
-# Çalıştırma: PowerShell'i AÇIK olarak çalıştır, bu dosyaya sürükle-bırak
-# Veya: sağ tık → "Run with PowerShell"
+# Cowork/Claude Desktop'in sqlserver + portalhub MCP baglantilarini kurar.
+# Calistirma: PowerShell'i ACIK olarak calistir, bu dosyaya surukle-birak
+# Veya: sag tik -> "Run with PowerShell"
+# Veya: fix-mcp-config.bat ile cift tikla (sessiz exit'e karsi guvenli)
 
 $ErrorActionPreference = "Stop"
 
@@ -22,7 +23,7 @@ Write-Host "==> Yedek olusturuldu: $backupPath" -ForegroundColor Green
 
 # Yeni config
 $newConfig = @{
-    mcpServers = @{
+    mcpServers = [ordered]@{
         atlasops = @{
             command = "dotnet"
             args = @("D:\Dev\AtlasOPS\src\AtlasOps.Mcp\bin\Debug\net10.0\AtlasOps.Mcp.dll")
@@ -31,7 +32,7 @@ $newConfig = @{
             command = "node"
             args = @("D:\Dev\sqlserver-mcp-server\dist\index.js")
             cwd = "D:\Dev\sqlserver-mcp-server"
-            env = @{
+            env = [ordered]@{
                 MSSQL_HOST = "192.168.40.201"
                 MSSQL_PORT = "1433"
                 MSSQL_USER = "sa"
@@ -40,8 +41,20 @@ $newConfig = @{
                 ALLOWED_DATABASES = "master,DerinSISBkm,DerinSISBkmCrm,DerinSISBkmWeb,BKMDATA,EncoreMerkez,BKM"
             }
         }
+        portalhub = @{
+            command = "node"
+            args = @("D:\Dev\sqlserver-mcp-server\dist\index.js")
+            cwd = "D:\Dev\sqlserver-mcp-server"
+            env = [ordered]@{
+                MSSQL_HOST = "BT-FIKRI\SQLEXPRESS"
+                MSSQL_USER = "sa"
+                MSSQL_PASSWORD = "fe9610578+*"
+                MSSQL_DATABASE = "PortalHUB"
+                ALLOWED_DATABASES = "master,PortalHUB"
+            }
+        }
     }
-    preferences = @{
+    preferences = [ordered]@{
         coworkScheduledTasksEnabled = $true
         ccdScheduledTasksEnabled = $true
         sidebarMode = "task"
@@ -49,7 +62,10 @@ $newConfig = @{
         keepAwakeEnabled = $true
         coworkOnboardingResumeStep = $null
         chicagoEnabled = $false
-        localAgentModeTrustedFolders = @("D:\Dev\sqlserver-mcp-server")
+        localAgentModeTrustedFolders = @(
+            "D:\Dev\sqlserver-mcp-server",
+            "D:\Dev\reporthub"
+        )
     }
 }
 
@@ -59,9 +75,21 @@ $json = $newConfig | ConvertTo-Json -Depth 10
 
 Write-Host "==> Config guncellendi." -ForegroundColor Green
 Write-Host ""
+Write-Host "EKLENEN MCP SUNUCULAR:" -ForegroundColor Cyan
+Write-Host "  - sqlserver  -> 192.168.40.201 (BKM/ERP)"
+Write-Host "  - portalhub  -> BT-FIKRI\SQLEXPRESS (PortalHUB DB)"
+Write-Host ""
+Write-Host "EKLENEN GUVENILIR KLASORLER:" -ForegroundColor Cyan
+Write-Host "  - D:\Dev\sqlserver-mcp-server"
+Write-Host "  - D:\Dev\reporthub"
+Write-Host ""
 Write-Host "SIMDI YAPILACAK:" -ForegroundColor Yellow
-Write-Host "  1. Sistem tepsisinden Claude Desktop'a sag tikla -> Quit" -ForegroundColor Yellow
-Write-Host "  2. Claude Desktop'i tekrar ac" -ForegroundColor Yellow
-Write-Host "  3. Cowork moduna don, devam et" -ForegroundColor Yellow
+Write-Host "  1. (Eger ilk kez calistirilyorsa veya kod degistiyse)" -ForegroundColor Yellow
+Write-Host "     cd D:\Dev\sqlserver-mcp-server" -ForegroundColor Yellow
+Write-Host "     npm install" -ForegroundColor Yellow
+Write-Host "     npm run build" -ForegroundColor Yellow
+Write-Host "  2. Sistem tepsisinden Claude Desktop'a sag tikla -> Quit" -ForegroundColor Yellow
+Write-Host "  3. Claude Desktop'i tekrar ac" -ForegroundColor Yellow
+Write-Host "  4. Cowork moduna don, devam et" -ForegroundColor Yellow
 Write-Host ""
 Read-Host "Devam etmek icin Enter'a bas"
