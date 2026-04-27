@@ -15,3 +15,12 @@ Pazartesi-Brifingi-*.txt
 # Paralel oturum lock dosyalari (ADR-002)
 .claude/locks/*.lock
 .claude/locks/.current
+
+# Security: plaintext credentials icerebilir (ADR-002 paralel oturum uyarisi)
+claude_desktop_config*.json
+fix-mcp-config.*
+
+# Geçici handoff scriptleri ve içerik dosyaları
+_*.ps1
+_*.sh
+_plan-first-content.md
