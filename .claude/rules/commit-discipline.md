@@ -41,3 +41,21 @@ _Her projede aynen uygulanır. `paths:` yok._
 
 - post-commit (journal): `docs/journal/<proje>/YYYY-MM-DD.md`'ye commit özeti.
 - Proje tespiti: scope → `feat(bkm):` → `bkm/`. Yoksa `_crossproject/`.
+
+
+## Plan-First Referansı (ADR-003)
+
+Tier 3 commit'lerde plan referansı zorunlu:
+
+```
+feat(bkm): Mayıs %50 kampanya tahmini (plan: 03)
+```
+
+Tier 1 ve Tier 2 commit'lerde plan referansı gereksiz.
+
+Tier tespiti için: `.claude/rules/plan-first.md` Tier sinyalleri.
+
+Plan yoksa ama Tier 3 sinyali varsa:
+- Kullanıcıya sor (mini-plan veya bypass)
+- BYPASS: commit message'a `(plan: BYPASS-<tarih>)` + retro plan archive'a
+
