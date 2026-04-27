@@ -1,7 +1,7 @@
 @echo off
 REM BKM Kitap - Pazartesi Brifingi SMTP gonderim tetikleyicisi
-REM v3 - python yolu gercekten var mi diye dogrular, py launcher'in stale
-REM kaydini (C:\Python313\python.exe yok) atlatir.
+REM v4 - Tarih DINAMIK: bugunun tarihine en yakin Pazartesi'yi bulur.
+REM      Boylece Windows Task Scheduler ile her Pazartesi otomatik calisir.
 
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
@@ -9,6 +9,31 @@ cd /d "%~dp0"
 set LOGFILE=%~dp0send_brief.log
 echo [%date% %time%] Basladi > "%LOGFILE%"
 echo [%date% %time%] CWD: %CD% >> "%LOGFILE%"
+
+REM ===========================================================
+REM Bugunun tarihinden bu haftanin Pazartesi'sini hesapla.
+REM PowerShell ile: (Get-Date).AddDays(-((Get-Date).DayOfWeek - 1))
+REM Format: YYYY-MM-DD ve DD.MM.YYYY
+REM ===========================================================
+
+for /f "usebackq delims=" %%D in (`powershell -NoProfile -Command "(Get-Date).AddDays(-( ([int](Get-Date).DayOfWeek + 6) %% 7 )).ToString('yyyy-MM-dd')"`) do set "MONDAY_ISO=%%D"
+for /f "usebackq delims=" %%D in (`powershell -NoProfile -Command "(Get-Date).AddDays(-( ([int](Get-Date).DayOfWeek + 6) %% 7 )).ToString('dd.MM.yyyy')"`) do set "MONDAY_DMY=%%D"
+
+echo [%date% %time%] Pazartesi tarihi: %MONDAY_ISO% (%MONDAY_DMY%) >> "%LOGFILE%"
+
+set "BRIEF_DIR=briefings\%MONDAY_ISO%"
+set "BRIEF_HTML=%BRIEF_DIR%\brief.html"
+set "BRIEF_TXT=%BRIEF_DIR%\brief.txt"
+
+if not exist "%BRIEF_HTML%" (
+    echo [HATA] Brief HTML bulunamadi: %BRIEF_HTML% >> "%LOGFILE%"
+    echo [HATA] Bu haftanin briefingi henuz uretilmemis. >> "%LOGFILE%"
+    exit /b 3
+)
+
+REM ===========================================================
+REM Python bul
+REM ===========================================================
 
 set "PYCMD="
 
@@ -67,7 +92,15 @@ if not defined PYCMD (
 echo [%date% %time%] Kullanilacak: "%PYCMD%" >> "%LOGFILE%"
 "%PYCMD%" --version >> "%LOGFILE%" 2>&1
 
-"%PYCMD%" scripts\send_mail.py --to fikrieren@gmail.com fikri.eren@bkmkitap.com --subject "BKM Kitap - Pazartesi Brifingi - 20.04.2026" --html briefings\2026-04-20\brief.html --text briefings\2026-04-20\brief.txt --config .secrets\smtp.json >> "%LOGFILE%" 2>&1
+REM ===========================================================
+REM Mail gonder
+REM ===========================================================
+
+if exist "%BRIEF_TXT%" (
+    "%PYCMD%" scripts\send_mail.py --to fikrieren@gmail.com fikri.eren@bkmkitap.com --subject "BKM Kitap - Pazartesi Brifingi - %MONDAY_DMY%" --html "%BRIEF_HTML%" --text "%BRIEF_TXT%" --config .secrets\smtp.json >> "%LOGFILE%" 2>&1
+) else (
+    "%PYCMD%" scripts\send_mail.py --to fikrieren@gmail.com fikri.eren@bkmkitap.com --subject "BKM Kitap - Pazartesi Brifingi - %MONDAY_DMY%" --html "%BRIEF_HTML%" --config .secrets\smtp.json >> "%LOGFILE%" 2>&1
+)
 
 set RC=%ERRORLEVEL%
 echo [%date% %time%] ExitCode=%RC% >> "%LOGFILE%"
