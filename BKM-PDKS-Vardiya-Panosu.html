@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>BKM Kitap · PDKS + Vardiya Panosu · 15.04.2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 13px/1.4 -apple-system, Segoe UI, Roboto, sans-serif; background: #0f1419; color: #e6e6e6; padding: 20px; }
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #233; }
+  .hdr h1 { font-size: 18px; font-weight: 600; }
+  .hdr .sub { color: #7a8a96; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .card { background: #1a2028; border: 1px solid #2a323c; border-radius: 8px; padding: 16px; }
+  .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #7a8a96; margin-bottom: 10px; font-weight: 600; display:flex; justify-content:space-between; align-items:center;}
+  .card h3 .hint { font-size:9px; color:#556; text-transform:none; letter-spacing:0; font-weight:400;}
+  .kpi { font-size: 30px; font-weight: 700; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: #7a8a96; margin-top: 4px; }
+  .ok  { color: #4ade80; } .warn { color: #fbbf24; } .bad { color: #f87171; }
+  .info { color: #38bdf8; } .mute { color: #7a8a96; }
+  .span-2 { grid-column: span 2; } .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #2a323c; }
+  th { color: #7a8a96; font-weight: 500; text-transform: uppercase; font-size: 10px; letter-spacing: .3px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.clickable { cursor: pointer; transition: background .12s; }
+  tr.clickable:hover { background: #232c36; }
+  tr.clickable td:first-child::before { content: "▸ "; color: #4a5563; }
+  .bar-wrap { position: relative; background: #0f1419; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 2px; }
+  .bar { height: 100%; background: linear-gradient(90deg,#4ade80,#22d3ee); }
+  .bar.mid { background: linear-gradient(90deg,#fbbf24,#fb923c); }
+  .bar.low { background: linear-gradient(90deg,#f87171,#dc2626); }
+  canvas { max-height: 200px !important; }
+  .legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11px; color: #7a8a96; flex-wrap:wrap;}
+  .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .pill { display:inline-block; padding:2px 7px; border-radius:10px; font-size:10px; font-weight:600;}
+  .pill.ok { background:rgba(74,222,128,.15); color:#4ade80;}
+  .pill.warn { background:rgba(251,191,36,.15); color:#fbbf24;}
+  .pill.bad { background:rgba(248,113,113,.15); color:#f87171;}
+  .pill.info { background:rgba(56,189,248,.15); color:#38bdf8;}
+  .pill.mute { background:#2a323c; color:#7a8a96;}
+  .footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid #233; color: #556; font-size: 11px; text-align: center; }
+
+  /* Modal */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:100; align-items:center; justify-content:center; padding:30px;}
+  .modal-bg.open { display:flex; }
+  .modal { background:#1a2028; border:1px solid #2a323c; border-radius:10px; max-width:960px; width:100%; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;}
+  .modal-hdr { padding:16px 20px; border-bottom:1px solid #2a323c; display:flex; justify-content:space-between; align-items:center;}
+  .modal-hdr h2 { font-size:16px; font-weight:600;}
+  .modal-hdr .close { background:none; border:none; color:#7a8a96; font-size:22px; cursor:pointer; line-height:1;}
+  .modal-hdr .close:hover { color:#fff;}
+  .modal-body { padding:16px 20px; overflow:auto;}
+  .modal-body table th { position:sticky; top:0; background:#1a2028; }
+  .summary-row { display:flex; gap:20px; padding:10px 0; margin-bottom:12px; border-bottom:1px solid #2a323c; font-size:12px;}
+  .summary-row > div { display:flex; flex-direction:column;}
+  .summary-row > div span:first-child { color:#7a8a96; font-size:10px; text-transform:uppercase; letter-spacing:.3px;}
+  .summary-row > div span:last-child { font-size:18px; font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>PDKS + Vardiya Panosu <span class="mute" style="font-size:12px; font-weight:400;">· Plan vs Fiili</span></h1>
+    <div class="sub">BKM Kitap · GecoTime + BKM.vrd · 15 Nisan 2026, Çarşamba</div>
+  </div>
+  <div class="sub">Mağaza odaklı görünüm · Satırlara tıklayarak detay görebilirsiniz</div>
+</div>
+
+<div class="grid">
+
+  <!-- ÜST KPI -->
+  <div class="card">
+    <h3>Plan (Bugün)</h3>
+    <div class="kpi info">155</div>
+    <div class="kpi-sub">7 mağaza · vardiya planı var</div>
+  </div>
+  <div class="card">
+    <h3>Plana Göre Geldi</h3>
+    <div class="kpi ok">129</div>
+    <div class="kpi-sub">%83,2 katılım</div>
+  </div>
+  <div class="card">
+    <h3>Planda Var, Gelmedi</h3>
+    <div class="kpi bad">23</div>
+    <div class="kpi-sub">Mazeret yok · kritik</div>
+  </div>
+  <div class="card">
+    <h3>İzinli / Mazeretli</h3>
+    <div class="kpi warn">3</div>
+    <div class="kpi-sub">Planlanmıştı · izin/rapor</div>
+  </div>
+
+  <!-- Mağaza tablosu -->
+  <div class="card span-2">
+    <h3>Mağaza Plan-Fiili Eşleşmesi <span class="hint">satıra tıkla → kişi detayı</span></h3>
+    <table id="subeTbl"></table>
+  </div>
+
+  <!-- Donut -->
+  <div class="card span-2">
+    <h3>Bugünün Dağılımı</h3>
+    <canvas id="donut"></canvas>
+    <div class="legend">
+      <div><span style="background:#4ade80"></span>Geldi · 129</div>
+      <div><span style="background:#f87171"></span>Gelmedi · 23</div>
+      <div><span style="background:#fbbf24"></span>İzinli · 3</div>
+      <div><span style="background:#7a8a96"></span>Plansız (Merkez/diğer) · 94</div>
+    </div>
+    <p class="mute" style="font-size:10px; margin-top:12px; line-height:1.6;">
+      <b>Not:</b> GecoTime yemek molasını (60 dk) otomatik kırar; 2×15 dk çay molası brüt içinde kalır.
+      Fazla mesai <code>TTagZei.TZe_ZeitArt='FM1'</code> segmentlerinden hesaplanır — brüt farkı değil.
+    </p>
+  </div>
+
+  <!-- Risk listesi -->
+  <div class="card span-2">
+    <h3>Risk Listesi — Plan Var, Giriş Yok <span class="hint">satıra tıkla → detay</span></h3>
+    <table>
+      <thead><tr><th>Mağaza</th><th>Bölüm</th><th>Personel</th><th>Plan</th></tr></thead>
+      <tbody id="riskTbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Geç kalma / erken çıkma -->
+  <div class="card span-2">
+    <h3>Bugün Plana Sapma TOP 10 <span class="hint">tıkla → detay</span></h3>
+    <table>
+      <thead><tr><th>Mağaza</th><th>Personel</th><th>Plan</th><th>Fiili</th><th class="num">Sapma</th></tr></thead>
+      <tbody id="sapmaTbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Fazla mesai -->
+  <div class="card span-2">
+    <h3>Fazla Mesai TOP 10 — Ay Başı → Bugün <span class="hint">FM1 segmenti</span></h3>
+    <table>
+      <thead><tr><th>Sicil</th><th>Ad Soyad</th><th>Bölüm</th><th class="num">Gün</th><th class="num">Saat</th></tr></thead>
+      <tbody id="mesaiTbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Hala içeride -->
+  <div class="card span-2">
+    <h3>Şu An Mağazada <span class="hint">giriş yapılmış, çıkış yapılmamış</span></h3>
+    <table>
+      <thead><tr><th>Mağaza</th><th>Personel</th><th>Giriş</th><th>Plan Bitiş</th></tr></thead>
+      <tbody id="iceriTbl"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal" onclick="if(event.target.id==='modal')closeModal()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2 id="modalTitle">Detay</h2>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="footer">BKM Kitap / Mali İşler · wtimserv (GecoTime) + BKM.vrd · DMY tarih, TC Kimlik köprüsü</div>
+
+<script>
+// ============ VERİ ============
+// Per-person detail: [Sube, Bolum, Personel, PlanBas, PlanBit, FiiliGiris, FiiliCikis, Brut, Mazeret]
+const D = [
+["FSM","AKADEMİ","HİLAL NUR BASAR","11:00","19:30","11:03","19:44",8.41,""],
+["FSM","AKADEMİ","SİNAN GÖKMEN","13:30","22:00","13:15","22:00",8.45,""],
+["FSM","ÇOCUK","GÜLAY BEYAZÇİZMELİ","11:30","20:00","12:07","22:01",9.54,""],
+["FSM","ÇOCUK","MERVE SUDE BULDU","10:00","18:30",null,null,null,""],
+["FSM","ÇOCUK","RÜMEYSA SENA SAĞGÜL","09:30","18:00","09:26","18:00",8.34,""],
+["FSM","ÇOCUK","SUDENAZ ÖZÜN","10:00","18:30","09:46","19:51",10.05,""],
+["FSM","ÇOCUK","ŞEYMA UZAR","13:30","22:00",null,null,null,""],
+["FSM","İDARİ İŞLER","MERYEM AVŞAR","09:30","18:00","09:25","18:00",8.35,""],
+["FSM","KASA","ASLI ABBASOĞLU","13:30","22:00","12:23",null,null,""],
+["FSM","KASA","BEYZA ARSLAN","11:30","20:00","11:22","20:13",8.51,""],
+["FSM","KASA","MELİS DURMAZ","09:30","18:00","09:21","18:15",8.54,""],
+["FSM","KASA","SEHER DEMİR","13:30","22:00","13:18",null,null,""],
+["FSM","KIRTASİYE","BARIŞ GÖK","10:00","18:30","10:03","18:35",8.32,""],
+["FSM","KIRTASİYE","EBUBEKİR KIRAÇ","13:30","22:00","13:19","22:00",8.41,""],
+["FSM","KIRTASİYE","MAHMUD ESAD KAYA","13:30","22:00",null,null,null,"HASTA"],
+["FSM","KIRTASİYE","ŞERİFENUR TURAN","13:30","22:00","13:29","22:03",8.34,""],
+["FSM","KÜLTÜR","ENVER CAN","10:00","18:30",null,null,null,""],
+["FSM","KÜLTÜR","GÖKTÜRK AKBAŞ","13:30","22:00","13:12","22:03",8.51,""],
+["FSM","KÜLTÜR","NEFİSE YILDIRIM","10:00","18:30",null,null,null,""],
+["FSM","MAĞAZA","MEHMET KELEŞ","10:00","18:30",null,null,null,""],
+["FSM","MAĞAZA","NECMETTİN ÇELİK","14:30","23:00",null,null,null,""],
+["FSM","MAL KABUL","MELİK TOPCU","11:00","19:30","11:58","20:38",8.40,""],
+["FSM","MAL KABUL","MUHAMMED EMSEN","10:00","18:30","09:50","18:53",9.03,""],
+["FSM","OYUNCAK","DUDU SELİN DİKİCİ","10:00","18:30","09:52","18:31",8.39,""],
+["FSM","OYUNCAK","EMRECAN SENER","13:30","22:00","14:20","22:03",7.43,""],
+["FSM","OYUNCAK","OZAN AÇIKGÖZ","12:30","21:00","12:19","21:07",8.48,""],
+["FSM","YARDIMCI KİTAP","ALPEREN YENİ","12:30","21:00","12:16","21:00",8.44,""],
+["FSM","YARDIMCI KİTAP","FİKRET EFE DAŞDEMİR","10:00","18:30","09:50","18:34",8.44,""],
+["FSM","YARDIMCI KİTAP","YILDIRAY KARADERE","13:30","22:00","13:17","22:01",8.44,""],
+["FSM KAFE","KAFE","ALEV YAĞCI","09:30","18:00","09:20","18:00",8.40,""],
+["FSM KAFE","KAFE","ARDA ÇALIŞKAN","14:30","23:00","14:28",null,null,""],
+["FSM KAFE","KAFE","BARAN GEZER","12:00","23:00","11:23",null,null,""],
+["FSM KAFE","KAFE","BURAK TAŞÇI","11:00","19:30","10:46","21:55",11.09,""],
+["FSM KAFE","KAFE","İLAYDA AKKÜÇ","09:30","18:00","09:35","18:06",8.31,""],
+["FSM KAFE","KAFE","KEREM TEMEL","09:30","18:00","09:35","18:07",8.32,""],
+["FSM KAFE","KAFE","METİN ALTUN","14:30","23:00","14:35",null,null,""],
+["FSM KAFE","KAFE","SONER GÖKYER","14:30","23:00","12:09",null,null,""],
+["FSM KAFE","KASA","AYŞE DEMİR","12:00","23:00",null,null,null,""],
+["FSM KAFE","MUTFAK","FAHRİYE ÖZDEMİR","12:00","22:00","12:15",null,null,""],
+["FSM KAFE","MUTFAK","GAMZE KALKAN","09:30","18:00","09:28","17:54",8.26,""],
+["FSM KAFE","MUTFAK","YUNUS EMRE ACIKAYA","11:00","21:00","10:28","21:14",10.46,""],
+["HEYKEL","AKADEMİ","FURKAN ALKAN","09:00","17:30","08:59","17:39",8.40,""],
+["HEYKEL","AKADEMİ","MUSTAFA ELÇİOĞLU","11:00","19:30","10:54","19:31",8.37,""],
+["HEYKEL","AKADEMİ","TANJU DEMİREL","13:00","21:30","12:47","21:32",8.45,""],
+["HEYKEL","ÇOCUK","ALİ CAN AKYIL","09:00","17:30","09:00","16:34",7.34,""],
+["HEYKEL","ÇOCUK","EMRE KALFA","—","—",null,null,null,""],
+["HEYKEL","ÇOCUK","UĞUR ZAFER EREM","13:00","21:30","12:56","21:30",8.34,""],
+["HEYKEL","ÇOCUK","VEYSEL ÇETİN","13:00","21:30","12:58","21:31",8.33,""],
+["HEYKEL","KIRTASİYE","AHMET NUHOĞLU","09:00","17:30","08:49","17:45",8.56,""],
+["HEYKEL","KIRTASİYE","ANIL BERKAN AYTEKİN","13:00","21:30","13:00","21:30",8.30,""],
+["HEYKEL","KIRTASİYE","KADİR BEDİR","10:00","18:30","10:06","18:07",8.01,""],
+["HEYKEL","KIRTASİYE","SERHAT KELEŞ","13:00","21:30","12:58","21:30",8.32,""],
+["HEYKEL","KIRTASİYE","YÜCEL YANGEL","10:00","18:30","09:54","18:32",8.38,""],
+["HEYKEL","KÜLTÜR","ABDUSAMET KARAKURT","11:00","19:30","10:48","19:31",8.43,""],
+["HEYKEL","KÜLTÜR","BERKE UZGİDİŞ","09:00","17:30","08:54","17:32",8.38,""],
+["HEYKEL","KÜLTÜR","EMRAH KAYA","13:00","21:30","12:55","21:30",8.35,""],
+["HEYKEL","MAĞAZA","MUHAMMED ENES KILIÇ","13:00","21:30",null,null,null,""],
+["HEYKEL","MAĞAZA","RECEP ÖZCAN","09:00","17:30",null,null,null,""],
+["HEYKEL","MAL KABUL","MUHAMMED KAYA","09:00","17:30",null,null,null,""],
+["HEYKEL","YARDIMCI KİTAP","BERKAN AYDİN","09:00","17:30","08:49","17:38",8.49,""],
+["HEYKEL","YARDIMCI KİTAP","CEMALEDDİN SAYILGAN","09:00","17:30","08:49","17:45",8.56,""],
+["HEYKEL","YARDIMCI KİTAP","DENİZ YILDIZ","13:00","21:30","12:58","21:30",8.32,""],
+["HEYKEL","YARDIMCI KİTAP","HÜSEYİN EFE TETİK","13:00","21:30","12:58","21:30",8.32,""],
+["HEYKEL","YARDIMCI KİTAP","POLAT SÜLEYMANOĞLU","11:30","20:00","11:31","20:00",8.29,""],
+["HEYKEL","YARDIMCI KİTAP","YUSUF ALUNİ","11:30","20:00","11:30","20:04",8.34,""],
+["İST. YOLU","AKADEMİ","ALPER ŞENGÜN","13:30","22:00","14:20","21:55",7.35,""],
+["İST. YOLU","AKADEMİ","ÖMER FARUK KIRMACI","09:45","18:15","17:15",null,null,""],
+["İST. YOLU","ÇOCUK","BATUHAN DERELİ","09:45","18:15","09:25","18:03",8.38,""],
+["İST. YOLU","ÇOCUK","DUYGU BAKAR","10:00","19:30",null,null,null,""],
+["İST. YOLU","ÇOCUK","NİSA NUR ELDEMİR","09:45","18:15","09:58","18:32",8.34,""],
+["İST. YOLU","ÇOCUK","SİBEL TOMBAŞ","13:30","22:00","13:30","21:53",8.23,""],
+["İST. YOLU","ÇOCUK","YILDIZ AKPINAR","12:30","21:00","12:16","21:53",9.37,""],
+["İST. YOLU","ETKİNLİK","ESRA ÇALIŞKAN","09:45","18:15","09:25","18:13",8.48,""],
+["İST. YOLU","İDARİ İŞLER","AYFER BİÇER","08:00","16:30","07:40","16:36",8.56,""],
+["İST. YOLU","İDARİ İŞLER","MEDİNE SOYSAL","08:00","16:30","07:51","16:34",8.43,""],
+["İST. YOLU","KASA","BUSE AYDIN","13:30","22:00","13:31",null,null,""],
+["İST. YOLU","KASA","CEREN NUR ŞENGÖNÜL","09:45","18:15","08:33","17:35",9.02,""],
+["İST. YOLU","KASA","GÜLİSTAN ALKAN","12:30","21:00","12:20",null,null,""],
+["İST. YOLU","KASA","YÖREM BORAN","10:00","19:30",null,null,null,""],
+["İST. YOLU","KIRTASİYE","EMRAH ENGİNOĞLU","13:30","22:00","13:24","22:00",8.36,""],
+["İST. YOLU","KIRTASİYE","EMRE BALKAYA","09:45","18:15","13:28","22:00",8.32,""],
+["İST. YOLU","KIRTASİYE","FATMA ATEŞ","09:45","18:15","09:40","18:26",8.46,""],
+["İST. YOLU","KIRTASİYE","MERVE YILMAZ","13:30","22:00","13:31",null,null,""],
+["İST. YOLU","KIRTASİYE","YİĞİT AYDIN","13:30","22:00",null,null,null,""],
+["İST. YOLU","KÜLTÜR","EBRU DEDEYURT","13:30","22:00","13:30","22:02",8.32,""],
+["İST. YOLU","KÜLTÜR","MELEK PENEK","09:45","18:15","09:33","18:48",9.15,""],
+["İST. YOLU","KÜLTÜR","MERVE GÖKLER","10:00","19:30",null,null,null,""],
+["İST. YOLU","MAĞAZA","EREN BORAN","13:30","22:00",null,null,null,""],
+["İST. YOLU","MAL KABUL","İSKENDER KANDEMİR","09:45","18:15","09:54","18:30",8.36,""],
+["İST. YOLU","MAL KABUL","ÖMER YILDIZ","09:45","18:15","09:54","18:30",8.36,""],
+["İST. YOLU","OYUNCAK","AYŞE KARATAŞ","13:30","22:00","13:38","22:04",8.26,""],
+["İST. YOLU","OYUNCAK","ÖMER ÇAĞRI TOKMAK","09:45","18:15","09:45","18:11",8.26,""],
+["İST. YOLU","YARDIMCI KİTAP","HÜSEYİN ÖZCAN","13:30","22:00","13:18",null,null,""],
+["İST. YOLU","YARDIMCI KİTAP","SEFA ELİK","09:45","18:15","09:48","19:00",9.12,""],
+["İST. YOLU KAFE","KAFE","EMİN İLGÜZ","11:00","19:30","10:57","20:28",9.31,""],
+["İST. YOLU KAFE","KAFE","HÜSEYİN YİĞİT","13:30","22:00","13:17","21:53",8.36,""],
+["İST. YOLU KAFE","KAFE","KADRİYE KAHRAMAN","09:30","18:00","09:30","18:04",8.34,""],
+["İST. YOLU KAFE","KAFE","NİLAY IŞIK","13:30","22:00","13:28","22:00",8.32,""],
+["İST. YOLU KAFE","KAFE","ÖMER FARUK BURKAY","13:30","22:00","13:10","22:09",8.59,""],
+["İST. YOLU KAFE","KAFE","SAMET IŞIK","09:30","18:00","09:39","17:57",8.18,""],
+["İST. YOLU KAFE","KASA","SILA KESKİN","12:00","22:00","11:58","22:00",10.02,""],
+["İST. YOLU KAFE","MUTFAK","MEHMET MİRKAN TOLUOĞLU","13:00","21:30","21:29",null,null,""],
+["İST. YOLU KAFE","MUTFAK","MUHAMMET AHMET AYDIN","11:00","19:30","10:57","19:35",8.38,""],
+["İST. YOLU KAFE","MUTFAK","SEVGİ KIRMIZI","12:30","21:00","12:30","21:05",8.35,""],
+["İST. YOLU KAFE","MUTFAK","ZİLAN YALÇIN","09:30","18:00","09:18","18:01",8.43,""],
+["ÖZLÜCE","ÇOCUK","KEVSER KAHRAMAN","10:00","18:30","09:55","18:53",8.58,""],
+["ÖZLÜCE","ÇOCUK","PINAR TAŞCİ","13:30","22:00","13:30","22:10",8.40,""],
+["ÖZLÜCE","ÇOCUK","ZEHRA HACIAHMET","13:30","22:00","13:25","22:09",8.44,""],
+["ÖZLÜCE","ÇOCUK","ZEYNEP İÇEL","—","—",null,null,null,""],
+["ÖZLÜCE","ETKİNLİK","YÜCELNUR ÇAKIR","09:30","18:00","09:24","18:18",8.54,""],
+["ÖZLÜCE","İDARİ İŞLER","MERYEM YUMRUKTAY","08:00","16:30","07:33","18:03",10.30,""],
+["ÖZLÜCE","KASA","AYŞE CANEKİN","13:30","22:00","13:30",null,null,""],
+["ÖZLÜCE","KASA","DİLARA ERCAN","13:30","22:00","13:30",null,null,""],
+["ÖZLÜCE","KASA","ÖZDEN SÖĞÜT","10:00","18:30","09:56","18:12",8.16,""],
+["ÖZLÜCE","KASA","SAADET DİŞARI","13:30","22:00","13:26",null,null,""],
+["ÖZLÜCE","KASA","SUDE NAZ NASIR","11:30","20:00","11:22","20:08",8.46,""],
+["ÖZLÜCE","KIRTASİYE","FERHAT AKMAN","13:30","22:00","13:24","22:08",8.44,""],
+["ÖZLÜCE","KIRTASİYE","MURAT POLAT","09:00","17:30","08:59","17:50",8.51,""],
+["ÖZLÜCE","KIRTASİYE","RABİA ESMER","10:00","18:30","10:00","18:30",8.30,""],
+["ÖZLÜCE","KIRTASİYE","UMUT ÇETİNKAYA","11:30","20:00",null,null,null,""],
+["ÖZLÜCE","KIRTASİYE","YAYLA MUTLUER","13:30","22:00",null,null,null,""],
+["ÖZLÜCE","KIRTASİYE","YİĞİT HALİL ÇINKIL","13:30","22:00","15:39","22:08",6.29,""],
+["ÖZLÜCE","KÜLTÜR","AYŞE BAYRAKTAR","13:30","22:00","13:30",null,null,""],
+["ÖZLÜCE","KÜLTÜR","BURAK DOĞUKAN FEYZİOĞLU","13:30","22:00","13:28",null,null,""],
+["ÖZLÜCE","KÜLTÜR","ÇAĞLA UYSAL","13:30","22:00","08:59",null,null,""],
+["ÖZLÜCE","KÜLTÜR","HATİCE KÜBRA BOZDOĞAN","—","—",null,null,null,""],
+["ÖZLÜCE","KÜLTÜR","MERVE MEŞHURTÜRK","08:00","18:30","07:57","19:06",11.09,""],
+["ÖZLÜCE","MAĞAZA","ABDURRAHMAN UĞURLU","11:00","23:00",null,null,null,""],
+["ÖZLÜCE","MAL KABUL","ERCAN ULUDAĞ","09:00","17:30","08:48","17:42",8.54,""],
+["ÖZLÜCE","MAL KABUL","MUSTAFA ÖZDEMİR","10:00","18:30","09:15","17:30",8.15,""],
+["ÖZLÜCE","OYUNCAK","CENNET HORUZ","13:30","22:00","13:17","22:09",8.52,""],
+["ÖZLÜCE","OYUNCAK","MEHMET BAYRAM","10:00","18:30","09:49","18:31",8.42,""],
+["ÖZLÜCE","OYUNCAK","TUNGA ÖZSUBAŞI","13:30","22:00","13:25","22:09",8.44,""],
+["ÖZLÜCE","YARDIMCI KİTAP","HİLAL USTA","10:00","18:30","09:53","18:36",8.43,""],
+["ÖZLÜCE","YARDIMCI KİTAP","MAHMUT SAMİ AYDINLI","10:00","18:30","09:55","18:30",8.35,""],
+["ÖZLÜCE","YARDIMCI KİTAP","MEHMET KAYA","13:30","22:00","13:30","22:10",8.40,""],
+["ÖZLÜCE","YARDIMCI KİTAP","ÖZGÜ TUANA YAMAN","13:30","22:00","13:31","22:08",8.37,""],
+["ÖZLÜCE KAFE","İDARİ İŞLER","LALE YÜKSEL","09:00","17:30","07:00","17:00",10.00,""],
+["ÖZLÜCE KAFE","KAFE","MUHAMMED BEKTAŞ","09:30","18:00","09:26",null,null,""],
+["ÖZLÜCE KAFE","KAFE","SUDE NAZİFE KAYA","14:30","23:00","14:29","22:08",7.39,""],
+["ÖZLÜCE KAFE","KASA","İREM ÇİNAR","14:30","23:00",null,null,null,"HASTA"],
+["ÖZLÜCE KAFE","KASA","TÜLAY ŞEHİR","09:30","18:00","09:34","18:07",8.33,""],
+["ÖZLÜCE KAFE","MUTFAK","AYŞE ÇELİK","12:30","21:00","12:30","21:02",8.32,""],
+["ÖZLÜCE KAFE","MUTFAK","ECENUR SAÇINTI","14:00","22:30","13:55",null,null,""],
+["ÖZLÜCE KAFE","MUTFAK","HASAN BUĞDAYCI","14:00","22:30","13:58",null,null,""],
+["ÖZLÜCE KAFE","MUTFAK","MAHMUT ÇEVİK","09:30","18:00","09:27","17:55",8.28,""],
+["ÖZLÜCE KAFE","MUTFAK","SÜMEYRA BÖYÜK","09:30","18:00","09:27","17:55",8.28,""],
+["ÖZLÜCE KAFE","MUTFAK","TÜLAY SÜSLÜ","12:30","21:00","12:01","20:59",8.58,""]
+];
+
+// Fazla mesai (ay başı → bugün, FM1 segmentleri)
+const MESAI = [
+  [2116,"EMİN İLGÜZ","İST.YOLU",13,43.00],
+  [470,"İLKAY KIRIMŞELİOĞLU","HEYKEL",12,41.00],
+  [2035,"VEYSEL ÇETİN","HEYKEL",11,37.50],
+  [189,"ÖZDEN SÖĞÜT","ÖZLÜCE",12,37.00],
+  [3128,"MİRCAN ÜNAL","ÖZLÜCE",10,36.00],
+  [208,"SİNAN GÖKMEN","FSM",13,32.50],
+  [151,"MEHMET KAYA","ÖZLÜCE",11,31.00],
+  [488,"YUSUF ALUNİ","HEYKEL",13,26.00],
+  [2953,"LALE YÜKSEL","ÖZLÜCE",13,26.00],
+  [2483,"ÇAĞLA UYSAL","ÖZLÜCE",7,24.00]
+];
+
+// ============ MANTIK ============
+// zaman → dakika (ör "09:45" → 585)
+function t2m(t){ if(!t||t==="—")return null; const[h,m]=t.split(":").map(Number); return h*60+m; }
+function m2t(m){ if(m==null)return "—"; const s=m<0?"-":""; m=Math.abs(m); return s+Math.floor(m/60)+"sa "+(m%60)+"dk"; }
+
+// Durum: !FG && !Mz → GELMEDI ; Mz → IZINLI ; FG && !FC → ICERIDE ; else TAMAM (GECIKME/ERKENCIK altlabel)
+function durum(r){
+  const [,,,pb,pe,fg,fc,,mz]=r;
+  if(mz) return "IZINLI";
+  if(!fg) return "GELMEDI";
+  if(!fc) return "ICERIDE";
+  return "TAMAM";
+}
+function sapma(r){
+  const [,,,pb,pe,fg,fc]=r;
+  const dg = (fg && pb!=="—") ? (t2m(fg)-t2m(pb)) : null;  // + geç, - erken
+  const dc = (fc && pe!=="—") ? (t2m(fc)-t2m(pe)) : null;
+  return {dg,dc};
+}
+
+const SUBE_LIST = [...new Set(D.map(r=>r[0]))].sort();
+
+function subeOzet(){
+  return SUBE_LIST.map(s=>{
+    const rows = D.filter(r=>r[0]===s);
+    const plan = rows.length;
+    const geldi = rows.filter(r=>durum(r)==="TAMAM"||durum(r)==="ICERIDE").length;
+    const gelmedi = rows.filter(r=>durum(r)==="GELMEDI").length;
+    const izinli = rows.filter(r=>durum(r)==="IZINLI").length;
+    const iceride = rows.filter(r=>durum(r)==="ICERIDE").length;
+    return {s, plan, geldi, gelmedi, izinli, iceride};
+  });
+}
+
+// ============ TABLOLAR ============
+function renderSube(){
+  const ozet = subeOzet();
+  const tb = document.getElementById('subeTbl');
+  tb.innerHTML = `<thead><tr><th>Mağaza</th><th class="num">Plan</th><th class="num">Geldi</th><th class="num">Gelmedi</th><th class="num">İzinli</th><th>Doluluk</th></tr></thead><tbody>` +
+    ozet.map(o=>{
+      const p = Math.round(100*o.geldi/o.plan);
+      const cls = p<80?'low':p<95?'mid':'';
+      return `<tr class="clickable" onclick="showSube('${o.s.replace(/'/g,"\\'")}')">
+        <td><b>${o.s}</b></td>
+        <td class="num">${o.plan}</td>
+        <td class="num ok">${o.geldi}</td>
+        <td class="num ${o.gelmedi>0?'bad':'mute'}">${o.gelmedi}</td>
+        <td class="num ${o.izinli>0?'warn':'mute'}">${o.izinli}</td>
+        <td><div class="bar-wrap"><div class="bar ${cls}" style="width:${p}%"></div></div>
+            <span class="mute" style="font-size:10px">%${p}</span></td>
+      </tr>`;
+    }).join('') + `</tbody>`;
+}
+
+function renderRisk(){
+  const risk = D.filter(r=>durum(r)==="GELMEDI");
+  document.getElementById('riskTbl').innerHTML = risk.map(r=>
+    `<tr class="clickable" onclick='showKisi(${JSON.stringify(r)})'>
+       <td class="mute">${r[0]}</td><td class="mute">${r[1]}</td>
+       <td>${r[2]}</td><td>${r[3]==='—'?'<span class="mute">ÖZEL</span>':r[3]+'-'+r[4]}</td>
+     </tr>`).join('');
+}
+
+function renderSapma(){
+  const sapList = D.filter(r=>r[5]).map(r=>{
+    const {dg,dc} = sapma(r);
+    const worst = (dg!=null?Math.abs(dg):0) + (dc!=null?Math.abs(dc):0);
+    return {r, dg, dc, worst};
+  }).filter(x=>x.worst>20).sort((a,b)=>b.worst-a.worst).slice(0,10);
+
+  document.getElementById('sapmaTbl').innerHTML = sapList.map(x=>{
+    const r=x.r, cls = x.dg>15?'bad':x.dg<-15?'info':'mute';
+    const sapText = (x.dg>15?`+${x.dg}dk geç`:x.dg<-15?`${x.dg}dk erken`: x.dc>15?`+${x.dc}dk fazla`: `${x.dc}dk eksik`);
+    return `<tr class="clickable" onclick='showKisi(${JSON.stringify(r)})'>
+      <td class="mute">${r[0]}</td><td>${r[2]}</td>
+      <td class="mute">${r[3]}-${r[4]}</td>
+      <td>${r[5]||'—'}-${r[6]||'—'}</td>
+      <td class="num ${cls}">${sapText}</td></tr>`;
+  }).join('');
+}
+
+function renderMesai(){
+  document.getElementById('mesaiTbl').innerHTML = MESAI.map(r=>
+    `<tr><td class="mute">${r[0]}</td><td>${r[1]}</td><td class="mute">${r[2]}</td>
+     <td class="num">${r[3]}</td><td class="num ok">${r[4].toFixed(2)}</td></tr>`).join('');
+}
+
+function renderIceri(){
+  const list = D.filter(r=>durum(r)==="ICERIDE").sort((a,b)=>a[0].localeCompare(b[0]));
+  document.getElementById('iceriTbl').innerHTML = list.map(r=>
+    `<tr class="clickable" onclick='showKisi(${JSON.stringify(r)})'>
+       <td class="mute">${r[0]}</td><td>${r[2]}</td>
+       <td class="ok">${r[5]}</td><td class="mute">${r[4]}</td></tr>`).join('');
+}
+
+// ============ MODAL ============
+function showSube(s){
+  const rows = D.filter(r=>r[0]===s);
+  const geldi = rows.filter(r=>durum(r)==="TAMAM"||durum(r)==="ICERIDE").length;
+  const gelmedi = rows.filter(r=>durum(r)==="GELMEDI").length;
+  const izinli = rows.filter(r=>durum(r)==="IZINLI").length;
+  const iceride = rows.filter(r=>durum(r)==="ICERIDE").length;
+  document.getElementById('modalTitle').textContent = s + " · Personel Detayı";
+  document.getElementById('modalBody').innerHTML = `
+    <div class="summary-row">
+      <div><span>Plan</span><span>${rows.length}</span></div>
+      <div><span>Geldi</span><span class="ok">${geldi}</span></div>
+      <div><span>Gelmedi</span><span class="${gelmedi>0?'bad':'mute'}">${gelmedi}</span></div>
+      <div><span>İzinli</span><span class="${izinli>0?'warn':'mute'}">${izinli}</span></div>
+      <div><span>Şu an içeride</span><span class="info">${iceride}</span></div>
+    </div>
+    <table><thead><tr>
+      <th>Bölüm</th><th>Personel</th><th>Plan</th><th>Giriş</th><th>Çıkış</th><th class="num">Brüt</th><th>Durum</th><th class="num">Sapma</th>
+    </tr></thead><tbody>
+    ${rows.map(r=>{
+      const d=durum(r), {dg,dc}=sapma(r);
+      let pill = d==="GELMEDI"?'<span class="pill bad">GELMEDİ</span>':
+                 d==="IZINLI"?`<span class="pill warn">${r[8]}</span>`:
+                 d==="ICERIDE"?'<span class="pill info">İÇERİDE</span>':
+                 '<span class="pill ok">TAMAM</span>';
+      const sapText = (dg!=null && Math.abs(dg)>5) ? (dg>0?`+${dg}dk geç`:`${dg}dk erken`) : '';
+      const sapCls = dg>15?'bad':dg<-5?'info':'mute';
+      return `<tr>
+        <td class="mute">${r[1]}</td><td>${r[2]}</td>
+        <td class="mute">${r[3]}-${r[4]}</td>
+        <td>${r[5]||'—'}</td><td>${r[6]||'—'}</td>
+        <td class="num">${r[7]?r[7].toFixed(2):'—'}</td>
+        <td>${pill}</td>
+        <td class="num ${sapCls}">${sapText}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function showKisi(r){
+  const d = durum(r), {dg,dc} = sapma(r);
+  const pill = d==="GELMEDI"?'<span class="pill bad">GELMEDİ</span>':
+               d==="IZINLI"?`<span class="pill warn">İZİNLİ · ${r[8]}</span>`:
+               d==="ICERIDE"?'<span class="pill info">ŞU AN İÇERİDE</span>':
+               '<span class="pill ok">TAMAMLANDI</span>';
+  document.getElementById('modalTitle').textContent = r[2];
+  document.getElementById('modalBody').innerHTML = `
+    <div class="summary-row">
+      <div><span>Mağaza</span><span style="font-size:14px">${r[0]}</span></div>
+      <div><span>Bölüm</span><span style="font-size:14px">${r[1]}</span></div>
+      <div><span>Durum</span><span>${pill}</span></div>
+    </div>
+    <table><tbody>
+      <tr><td class="mute">Planlı Vardiya</td><td><b>${r[3]==='—'?'ÖZEL DURUM':r[3]+' – '+r[4]}</b></td></tr>
+      <tr><td class="mute">Fiili Giriş</td><td>${r[5]||'<span class="bad">—</span>'} ${dg!=null?`<span class="mute">(${dg>0?'+':''}${dg}dk)</span>`:''}</td></tr>
+      <tr><td class="mute">Fiili Çıkış</td><td>${r[6]||'<span class="info">(hala içeride)</span>'} ${dc!=null?`<span class="mute">(${dc>0?'+':''}${dc}dk)</span>`:''}</td></tr>
+      <tr><td class="mute">Brüt Süre</td><td>${r[7]?r[7].toFixed(2)+' <span class="mute">(saat.dk formatı)</span>':'—'}</td></tr>
+      <tr><td class="mute">Mazeret</td><td>${r[8]||'<span class="mute">yok</span>'}</td></tr>
+    </tbody></table>
+    <p class="mute" style="font-size:10px; margin-top:14px; line-height:1.6;">
+      Brüt süre = ilk giriş − son çıkış (yemek molası GecoTime tarafından otomatik düşülür, çay moları brüt içindedir).
+      Net çalışma için <code>TTagZei.ZeitArt='NCAL'</code> segmentleri toplamı alınmalıdır.
+    </p>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+// ============ CHART ============
+new Chart(document.getElementById('donut'), {
+  type: 'doughnut',
+  data: { labels: ['Geldi','Gelmedi','İzinli','Plansız/Merkez'], datasets: [{ data: [129,23,3,94], backgroundColor: ['#4ade80','#f87171','#fbbf24','#7a8a96'], borderWidth: 0 }] },
+  options: { plugins: { legend: { display: false } }, cutout: '62%' }
+});
+
+// ============ INIT ============
+renderSube(); renderRisk(); renderSapma(); renderMesai(); renderIceri();
+</script>
+</body>
+</html>

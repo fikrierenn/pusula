@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>BKM Kitap — E-ticaret Trend Raporu / 15. Hafta</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --navy:#0A2540; --accent:#E85D2A; --green:#2E7D5B; --gray:#475569;
+  --bg:#FCFCFD; --panel:#F4F6FA; --warn:#B91C1C; --warn-bg:#FEE2E2;
+  --good-bg:#DCFCE7; --note-bg:#FEF3C7; --line:#E2E8F0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:#1F2937;font-family:'Charter','Georgia','Iowan Old Style',serif;font-size:16px;line-height:1.65}
+.wrap{display:grid;grid-template-columns:240px minmax(0,1fr);max-width:1280px;margin:0 auto}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:32px 18px;border-right:1px solid var(--line);font-family:'Inter','Segoe UI',sans-serif;font-size:13px;background:var(--panel)}
+nav.toc .brand{font-size:11px;letter-spacing:0.18em;color:var(--accent);font-weight:700;margin-bottom:6px}
+nav.toc .title{font-size:15px;color:var(--navy);font-weight:700;line-height:1.3;margin-bottom:18px}
+nav.toc ol{list-style:none;padding:0;margin:0;counter-reset:tocnum}
+nav.toc li{counter-increment:tocnum;margin:6px 0}
+nav.toc a{color:var(--gray);text-decoration:none;display:block;padding:5px 8px;border-radius:4px;line-height:1.35}
+nav.toc a:before{content:counter(tocnum) ".";color:var(--accent);font-weight:700;margin-right:6px;font-variant-numeric:tabular-nums}
+nav.toc a:hover{background:#fff;color:var(--navy)}
+main{padding:48px 56px 80px;min-width:0}
+header.cover{padding-bottom:28px;border-bottom:3px solid var(--navy);margin-bottom:32px}
+header.cover .eyebrow{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.22em;color:var(--accent);font-weight:700}
+header.cover h1{font-family:'Inter',sans-serif;color:var(--navy);font-size:2.4em;line-height:1.15;margin:8px 0 6px;letter-spacing:-0.02em}
+header.cover .meta{font-family:'Inter',sans-serif;color:var(--gray);font-size:14px;margin-top:10px}
+h2{font-family:'Inter',sans-serif;color:var(--navy);font-size:1.55em;margin:48px 0 14px;letter-spacing:-0.01em;border-top:1px solid var(--line);padding-top:32px}
+h2:first-of-type{border-top:none;padding-top:0;margin-top:24px}
+h2 .num{color:var(--accent);font-weight:700;margin-right:10px;font-variant-numeric:tabular-nums}
+h3{font-family:'Inter',sans-serif;color:var(--navy);font-size:1.15em;margin:28px 0 10px;font-weight:700}
+p{margin:0.8em 0}
+strong,b{color:var(--navy)}
+em{color:#374151}
+table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:13.5px;margin:14px 0 22px;background:#fff;border:1px solid var(--line)}
+th{background:var(--navy);color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:12.5px;letter-spacing:0.01em}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:#FAFBFC}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.callout{background:var(--note-bg);border-left:4px solid #D97706;padding:14px 18px;margin:18px 0;border-radius:0 6px 6px 0;font-size:0.96em}
+.callout.warn{background:var(--warn-bg);border-left-color:var(--warn)}
+.callout.good{background:var(--good-bg);border-left-color:var(--green)}
+.callout.note{background:#EFF6FF;border-left-color:#1D4ED8}
+.callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+.callout .lbl{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--warn);font-weight:700;display:block;margin-bottom:4px}
+.callout.good .lbl{color:var(--green)} .callout.note .lbl{color:#1D4ED8} .callout:not(.warn):not(.good):not(.note) .lbl{color:#92400E}
+blockquote{border-left:3px solid var(--gray);background:var(--panel);margin:14px 0;padding:12px 18px;font-style:italic;color:#374151;border-radius:0 4px 4px 0;font-size:0.96em}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 24px}
+.kpi{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);padding:14px 16px;border-radius:0 6px 6px 0;font-family:'Inter',sans-serif}
+.kpi .lbl{font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray);font-weight:600}
+.kpi .val{font-size:1.7em;font-weight:800;color:var(--navy);line-height:1.1;display:block;margin:4px 0 4px}
+.kpi .sub{font-size:11.5px;color:var(--gray)}
+.kpi .sub .down{color:var(--warn);font-weight:700}
+.kpi .sub .up{color:var(--green);font-weight:700}
+.hyp{background:#fff;border:1px solid var(--line);border-radius:6px;padding:18px 22px;margin:14px 0}
+.hyp .head{display:flex;align-items:baseline;gap:14px;font-family:'Inter',sans-serif;margin-bottom:8px}
+.hyp .head .tag{background:var(--navy);color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:0.06em}
+.hyp .head .title{font-weight:700;color:var(--navy);font-size:1.05em}
+.hyp .head .prob{margin-left:auto;font-family:'Inter',sans-serif;font-size:12px;color:var(--gray)}
+.hyp .head .prob b{color:var(--accent)}
+.hyp.high{border-left:4px solid var(--warn)}
+.hyp.mid{border-left:4px solid #D97706}
+.hyp.low{border-left:4px solid var(--green)}
+.actions{display:grid;gap:8px;font-family:'Inter',sans-serif}
+.actions .grp{margin:18px 0 6px;font-size:11px;letter-spacing:0.18em;color:var(--accent);font-weight:700}
+.actions .item{background:#fff;border:1px solid var(--line);border-left:3px solid var(--navy);padding:10px 14px;border-radius:0 4px 4px 0;font-size:14px;line-height:1.45}
+.actions .item b{color:var(--navy)}
+ul{padding-left:24px;margin:0.6em 0}
+li{margin:0.3em 0}
+hr{border:none;border-top:1px solid var(--line);margin:32px 0}
+code{font-family:'JetBrains Mono','Consolas',monospace;font-size:0.86em;background:#F1F5F9;padding:1.5px 6px;border-radius:3px;color:#0F172A}
+.muted{color:var(--gray);font-size:0.9em}
+footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--line);font-family:'Inter',sans-serif;font-size:13px;color:var(--gray)}
+@media print{nav.toc{display:none}.wrap{grid-template-columns:1fr}main{padding:24px 0}}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:24px}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <div class="brand">BKM KİTAP</div>
+  <div class="title">E-ticaret Trend Raporu<br><span style="font-weight:400;font-size:12px;color:var(--gray)">15. hafta · 6–12 Nis 2026</span></div>
+  <ol>
+    <li><a href="#s1">Yönetici özeti</a></li>
+    <li><a href="#s2">15 haftalık seyir</a></li>
+    <li><a href="#s3">Günlük nabız</a></li>
+    <li><a href="#s4">Kanal kırılımı</a></li>
+    <li><a href="#s5">Echo of Silence vakası</a></li>
+    <li><a href="#s6">Top 20 organik yıldızlar</a></li>
+    <li><a href="#s7">En hızlı yükselenler</a></li>
+    <li><a href="#s8">Kategori kırılımı</a></li>
+    <li><a href="#s9">Yayınevi TOP 15</a></li>
+    <li><a href="#s10">Sipariş durumu</a></li>
+    <li><a href="#s10b">Dış sinyal — Grok</a></li>
+    <li><a href="#s11">Risk &amp; fırsat matrisi</a></li>
+    <li><a href="#s12">Aksiyon planı</a></li>
+    <li><a href="#s13">Metodoloji</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="cover">
+  <div class="eyebrow">BKM KİTAP · E-TİCARET TREND RAPORU</div>
+  <h1>15. hafta — 6–12 Nisan 2026</h1>
+  <div class="meta">Fikri Eren · 14 Nisan 2026 · ISO Pzt-Paz · ODAKJOKER canlı veri</div>
+</header>
+
+<section id="s1">
+<h2><span class="num">1.</span>Yönetici özeti</h2>
+
+<div class="kpis">
+  <div class="kpi"><span class="lbl">Sipariş</span><span class="val">18.267</span><span class="sub"><span class="down">▼ %6,5</span> vs H14 <span style="opacity:0.6">(19.541)</span></span></div>
+  <div class="kpi"><span class="lbl">Adet</span><span class="val">78.503</span><span class="sub"><span class="down">▼ %2,1</span> vs H14 <span style="opacity:0.6">(80.211)</span></span></div>
+  <div class="kpi"><span class="lbl">Ciro</span><span class="val">17,13 M ₺</span><span class="sub"><span class="down">▼ %2,1</span> vs H14 <span style="opacity:0.6">(17,49 M)</span></span></div>
+  <div class="kpi"><span class="lbl">Ortalama sepet</span><span class="val">938 ₺</span><span class="sub"><span class="up">▲ %4,8</span> vs H14 <span style="opacity:0.6">(895 ₺)</span></span></div>
+</div>
+
+<p class="muted" style="margin-top:-12px">Not: İptaller geriye dönük işlendiği için H15 net rakamı önümüzdeki günlerde aşağı revize olabilir; bu erken bir okumadır, kesin yorum H17'de kapanır.</p>
+
+<p>H15'te e-ticaret tarafı <b>18.267 sipariş / 78.503 adet / 17,13 M TL</b> ile kapandı. H14'e göre sipariş -%6,5, adet -%2,1, ciro -%2,1. Sepet sayısı düştü ama <b>ortalama sepet 895 TL'den 938 TL'ye çıktı</b> — yani yeni müşteri akışı zayıflarken mevcut müşteri daha derin sepet yapıyor. Yorum tarafında iki ayrı hikâye var:</p>
+
+<p>Birincisi, görünür <b>mevsimsel yavaşlama</b>. Ramazan sonrası + okul tatili yorgunluğu + 23 Nisan ve Anneler Günü kampanyalarından önceki "ölü pencere". 13 haftalık ortalama ~105K adet/hafta; H15 bu ortalamanın %25 altında ama paniklenecek bir tablo değil, tipik takvim hareketi.</p>
+
+<p>İkincisi, <b>kanal kaymasının bir önceki haftadan farklı davranması</b>. Mobil Site hâlâ hacim lideri (sipariş bazında %43), ama sepet başı değerde <b>Web Sitesi 1.201 TL</b> ile liderliği sürdürüyor ve H15'te büyüyen tek kanal o. Android ile iOS arasındaki sepet farkı (973 vs 1.059 TL) büyük — iOS kullanıcısı premium segment, ayrı pazarlanmalı.</p>
+
+<p>Ama esas <b>kritik bulgu</b> 5 numaralı bölümde: Haftanın lideri görünen <b>"Echo of Silence / Sessizliğin Yankısı"</b> (301 adet, 4,9x yükseliş) veri örüntüsüne bakılınca <b>organik değil</b>. Tüm siparişler aynı gün içinde ardışık müşteri ID'lerinden, sadece Web Sitesi'nden, 10/50/93/100 adet gibi tüketici dışı miktarlarla geldi. Stok <b>tüm depolarda sıfır</b>, tedarikçi üzerinden karşılanacak. Bu bir "bestseller listesi manipülasyonu" sinyali — raporun forensik bölümünde delilleri sıraladık ve süreç önerisi çıkardık.</p>
+
+<p>Bu haftanın gerçek organik hikâyeleri: <b>23 Nisan ön dalgası</b> (Atatürk/Nutuk temalı çocuk kitapları bir arada yükselişte), <b>KPSS momentum'u</b> (Benim Hocam 5 SKU ile Top 20'de), <b>Ramazan sonrası Yasin/Hediye dalgası</b> ve <b>BKM Puzzle</b> markamızın üç SKU ile birlikte ivmelenmesi.</p>
+</section>
+
+<section id="s2">
+<h2><span class="num">2.</span>15 haftalık seyir (2026 H1–H15)</h2>
+
+<div class="callout note"><span class="lbl">Hafta tanımı</span>ISO Pazartesi-Pazar (DATEFIRST 1 / <code>DATEPART(ISO_WEEK,…)</code>). Önceki taslakta varsayılan Pazar-başlangıçlı <code>DATEPART(WEEK,…)</code> kullanılmıştı, düzeltildi — tüm rakamlar yeniden hesaplandı.</div>
+
+<table>
+<thead><tr><th>Hafta</th><th>Başlangıç</th><th class="r">Sipariş</th><th class="r">Adet</th><th class="r">Ciro (M ₺)</th><th class="r">İptal</th></tr></thead>
+<tbody>
+<tr><td>H01</td><td>29 Ara'25</td><td class="r">13.552</td><td class="r">58.141</td><td class="r">11,42</td><td class="r">%0,98</td></tr>
+<tr><td>H02</td><td>05 Oca</td><td class="r">26.257</td><td class="r">111.816</td><td class="r">22,45</td><td class="r">%1,64</td></tr>
+<tr><td>H03</td><td>12 Oca</td><td class="r">27.827</td><td class="r">112.863</td><td class="r">23,48</td><td class="r">%1,52</td></tr>
+<tr><td>H04</td><td>19 Oca</td><td class="r">25.198</td><td class="r">104.005</td><td class="r">21,81</td><td class="r">%1,18</td></tr>
+<tr><td>H05</td><td>26 Oca</td><td class="r">22.324</td><td class="r">91.676</td><td class="r">19,53</td><td class="r">%1,41</td></tr>
+<tr><td>H06</td><td>02 Şub</td><td class="r">30.343</td><td class="r">117.679</td><td class="r">25,57</td><td class="r">%1,46</td></tr>
+<tr><td>H07</td><td>09 Şub</td><td class="r">31.751</td><td class="r">123.225</td><td class="r">26,67</td><td class="r">%1,82</td></tr>
+<tr style="background:#FEF3C7"><td><b>H08</b></td><td><b>16 Şub</b></td><td class="r"><b>33.291</b></td><td class="r"><b>125.035</b></td><td class="r"><b>27,35</b></td><td class="r">%1,53</td></tr>
+<tr><td>H09</td><td>23 Şub</td><td class="r">28.045</td><td class="r">105.291</td><td class="r">23,11</td><td class="r">%1,49</td></tr>
+<tr><td>H10</td><td>02 Mar</td><td class="r">26.426</td><td class="r">96.929</td><td class="r">21,54</td><td class="r">%1,64</td></tr>
+<tr><td>H11</td><td>09 Mar</td><td class="r">20.787</td><td class="r">80.020</td><td class="r">17,65</td><td class="r">%1,27</td></tr>
+<tr><td>H12</td><td>16 Mar</td><td class="r">19.899</td><td class="r">78.657</td><td class="r">18,59</td><td class="r">%1,23</td></tr>
+<tr><td>H13</td><td>23 Mar</td><td class="r">26.036</td><td class="r">102.839</td><td class="r">23,73</td><td class="r">%1,55</td></tr>
+<tr><td>H14</td><td>30 Mar</td><td class="r">19.541</td><td class="r">80.211</td><td class="r">17,49</td><td class="r">%1,10</td></tr>
+<tr style="background:#DCFCE7"><td><b>H15</b></td><td><b>06 Nis</b></td><td class="r"><b>18.267</b></td><td class="r"><b>78.503</b></td><td class="r"><b>17,13</b></td><td class="r"><b>%0,89</b></td></tr>
+</tbody></table>
+
+<p>Grafikte okuması zor olan şey şu: Yılın zirvesi H08 (125K adet), Ramazan'ın başladığı H11'de %37 çakılma ve H12 dibi. H13'te Ramazan ortası hediye dalgasıyla 102K'ya toparlanma, sonra bayram öncesi H14'te yine çekilme. H15 yapısal bir sorun değil — <b>bayram sonrası ve 23 Nisan öncesi ara pencere</b>.</p>
+
+<div class="callout good"><span class="lbl">İptal tarafında iyi haber (ihtiyatlı)</span>H15'te iptal oranı %0,89 — son 15 haftanın en düşüğü görünüyor. Bu, siparişleri alan müşterinin kalitesinin yükseldiğine işaret edebilir; ama iptaller geriye dönük işlendiği için bu oran önümüzdeki günlerde yukarı revize olabilir.</div>
+
+<p><b>Önde kalmak için:</b> H16-H17 için baseline 20K sipariş / 80K adet. 23 Nisan Çarşamba (22 Nisan). Çocuk ve sınav kategorilerinde bu pencereye özel vitrin kurgusu yapılmalı.</p>
+
+<h3>2.1 Yıl-yıl (YoY) karşılaştırma — 2025 aynı dönem</h3>
+
+<table>
+<thead><tr><th>Dönem</th><th class="r">Sipariş</th><th class="r">Adet</th><th class="r">Ciro (M ₺)</th></tr></thead>
+<tbody>
+<tr><td>2025 H15 (07 Nis)</td><td class="r">24.619</td><td class="r">99.669</td><td class="r">16,88</td></tr>
+<tr><td>2025 H16 (14 Nis)</td><td class="r">20.162</td><td class="r">83.466</td><td class="r">13,97</td></tr>
+<tr><td>2025 H17 (21 Nis — 23 Nisan haftası)</td><td class="r" style="color:var(--warn);font-weight:700">18.621</td><td class="r" style="color:var(--warn);font-weight:700">71.546</td><td class="r">12,15</td></tr>
+<tr><td>2025 H18 (28 Nis)</td><td class="r">19.734</td><td class="r">76.683</td><td class="r">12,64</td></tr>
+<tr style="background:#FEF3C7"><td><b>2026 H15 (06 Nis)</b></td><td class="r"><b>18.267</b></td><td class="r"><b>78.503</b></td><td class="r"><b>17,13</b></td></tr>
+</tbody></table>
+
+<div class="callout warn"><span class="lbl">Uyarı — görünmeyen daralma</span>2026 H15 sipariş YoY <b>-%25,8</b>, adet <b>-%21,2</b>. Ciro enflasyon sayesinde korundu (+%1,5) ama <b>hacim gerçekten daralıyor</b>. Müşteri tabanı büyümüyor — aynı ciroyu daha az müşteriyle üretiyoruz.</div>
+
+<p><em>2025'te 23 Nisan haftası (H17) yılın zayıf bir haftası oldu</em> — tatiller, kargolama durakları, aileler tatile çıkıyor. Satış H15-H16'ya kaydı. Bu 2026 için kritik takvim: kampanya ve vitrin <b>17 Nisan Cuma akşamına kadar yayında olmalı</b>, 23 Nisan sonrasına bırakılırsa dalga kaçar.</p>
+
+<p><b>Aksiyon:</b> Bu YoY daralma, yönetim paneline KPI olarak çıkmalı ("Hafta Sipariş YoY %" — baseline tetikleyicisi).</p>
+</section>
+
+<section id="s3">
+<h2><span class="num">3.</span>Günlük nabız (29 Mart – 13 Nisan)</h2>
+
+<table>
+<thead><tr><th>Gün</th><th>Gün adı</th><th class="r">Sipariş</th><th class="r">Adet</th><th class="r">Ciro (TL)</th></tr></thead>
+<tbody>
+<tr><td>29 Mar</td><td>Pazar</td><td class="r">3.301</td><td class="r">13.134</td><td class="r">2.946.533</td></tr>
+<tr><td>30 Mar</td><td>Pazartesi</td><td class="r">3.339</td><td class="r">13.198</td><td class="r">2.930.512</td></tr>
+<tr><td>31 Mar</td><td>Salı</td><td class="r">2.920</td><td class="r">11.947</td><td class="r">2.627.142</td></tr>
+<tr><td>01 Nis</td><td>Çarşamba</td><td class="r">2.971</td><td class="r">12.958</td><td class="r">2.599.904</td></tr>
+<tr><td>02 Nis</td><td>Perşembe</td><td class="r">2.935</td><td class="r">11.670</td><td class="r">2.531.257</td></tr>
+<tr><td>03 Nis</td><td>Cuma</td><td class="r">2.429</td><td class="r">10.052</td><td class="r">2.208.677</td></tr>
+<tr><td>04 Nis</td><td>Cumartesi</td><td class="r">2.381</td><td class="r">9.687</td><td class="r">2.180.366</td></tr>
+<tr><td>05 Nis</td><td>Pazar</td><td class="r">2.566</td><td class="r">10.699</td><td class="r">2.412.794</td></tr>
+<tr style="background:#EFF6FF"><td>06 Nis</td><td>Pazartesi <small style="color:var(--accent)">(H15 başı)</small></td><td class="r">2.936</td><td class="r">12.736</td><td class="r">2.811.699</td></tr>
+<tr><td>07 Nis</td><td>Salı</td><td class="r">2.699</td><td class="r">11.334</td><td class="r">2.470.817</td></tr>
+<tr><td>08 Nis</td><td>Çarşamba</td><td class="r">2.829</td><td class="r">12.168</td><td class="r">2.683.907</td></tr>
+<tr><td>09 Nis</td><td>Perşembe</td><td class="r">2.551</td><td class="r">10.543</td><td class="r">2.303.019</td></tr>
+<tr><td>10 Nis</td><td>Cuma</td><td class="r">2.400</td><td class="r">10.691</td><td class="r">2.297.781</td></tr>
+<tr><td>11 Nis</td><td>Cumartesi</td><td class="r">2.342</td><td class="r">10.238</td><td class="r">2.224.084</td></tr>
+<tr><td>12 Nis</td><td>Pazar</td><td class="r">2.512</td><td class="r">10.798</td><td class="r">2.341.028</td></tr>
+<tr><td>13 Nis</td><td>Pazartesi</td><td class="r">2.802</td><td class="r">11.334</td><td class="r">2.547.445</td></tr>
+</tbody></table>
+
+<p>Pattern yeni değil: <b>Pazartesi haftanın motoru, Cuma-Cumartesi ölü çiftlik.</b> Pazartesi-Cumartesi ciro farkı yaklaşık %30. Bu Türkiye e-ticaretinin genel davranışıyla örtüşmüyor (çoğu e-ticaret sitesi hafta sonu güçlüdür); bizim özelimizde okumaya açıklaması şu: kitap alımı "Pazartesi iş başı, mail gelenkutusu, sipariş verme" davranışıyla korelasyonlu — ev/ofis oturmuş kullanıcı. Hafta sonu kullanıcı dışarıda, rakipler promosyonda.</p>
+
+<div class="callout"><span class="lbl">Eylem tetikleyicisi</span>Cumartesi bir kez %15 sepet indirimi + 150 TL üzeri ücretsiz kargo pilot edilmeli. Hipotez: Cumartesi sipariş 2.400 → 2.900 (+%20). Başarı kriteri: net katkı (kupon maliyeti düşülünce) pozitif ise seri program.</div>
+</section>
+
+<section id="s4">
+<h2><span class="num">4.</span>Kanal kırılımı (H15)</h2>
+
+<table>
+<thead><tr><th>Kanal</th><th class="r">Sipariş</th><th class="r">Adet</th><th class="r">Ciro (TL)</th><th class="r">Ciro payı</th><th class="r">Ort. sepet</th></tr></thead>
+<tbody>
+<tr><td>Mobil Site</td><td class="r">7.944</td><td class="r">28.453</td><td class="r">6.231.440</td><td class="r">%36,2</td><td class="r">785 ₺</td></tr>
+<tr><td>Mobil Uygulama (Android)</td><td class="r">4.787</td><td class="r">21.276</td><td class="r">4.657.812</td><td class="r">%27,1</td><td class="r">973 ₺</td></tr>
+<tr><td>Web Sitesi</td><td class="r">2.772</td><td class="r">15.773</td><td class="r">3.328.792</td><td class="r">%19,3</td><td class="r"><b>1.201 ₺</b></td></tr>
+<tr><td>Mobil Uygulama (iOS)</td><td class="r">2.821</td><td class="r">12.910</td><td class="r">2.986.754</td><td class="r">%17,4</td><td class="r">1.059 ₺</td></tr>
+</tbody></table>
+
+<p>Bu tablo bize üç net hikâye anlatıyor.</p>
+
+<p><b>Birincisi, hacim-değer ayrışması.</b> Mobil Site en çok sipariş üretiyor ama sepet başı değeri en düşük (785 TL). Web Sitesi tersine — en az sipariş, en yüksek sepet (1.201 TL). Yani e-ticaretin ucuz ucu mobilde, premium ucu web'de. Marjın nerede olduğu da bu yüzden kritik; stratejik karar matrisinde web müşterisini "büyüterek koru", mobil müşteriyi "sıklığı artırarak büyüt" diye ayırmalıyız.</p>
+
+<p><b>İkincisi, iOS–Android makası.</b> iOS sepeti Android'den %9 yüksek (1.059 vs 973 TL). Bu, Türkiye'de tipik bir sinyal — iOS ortalama gelir/harcama kapasitesi daha yüksek. Ama sipariş sayısında iOS (2.821) neredeyse Android'e (4.787) %60 oranında. Yani iOS <b>az sayıda, değerli</b> müşteri. Segment pazarlama buradan başlamalı: iOS kullanıcısına premium koleksiyon, imzalı baskı, özel basım.</p>
+
+<p><b>Üçüncüsü, mobil site app'e çevrilmeli.</b> 7.944 sipariş/hafta mobil site'den geliyor. Bu trafiğin %10'unu app'e taşıyabilirsek haftalık +800 app sipariş + LTV katkısı (push bildirim + kupon hedefleme). Kaldıraç büyük ve bitti olmayan bir çalışma. Onboarding akışında "app'te %5 indirim kodu" stratejik hamle.</p>
+</section>
+
+<section id="s5">
+<h2><span class="num">5.</span>Echo of Silence vakası — üç hipotez, bir karar ağacı</h2>
+
+<p>Haftanın en çok satanı olarak görünen <b>Echo of Silence — Sessizliğin Yankısı</b> (Cihan Karasöğüt / İkinci Adam Yayınları, barkod 9786258529494) H14'te 62 adetten H15'te <b>301 adete</b> fırladı. Yüzeysel okumada "viral organik ivme" derdik ve işi kapatırdık. Ama verinin ve bağlamın söylediği şey, üç farklı senaryodan en az birinin masada olması gerektiğidir. Hipotezleri tek tek deliyorum.</p>
+
+<div class="callout note"><span class="lbl">Kitabın bağlamı</span>
+<ul style="margin:6px 0 0 18px">
+  <li>Barkod oluşturma 26.09.2025, güncel site bilgisi 06.01.2026 → <b>site'de 3,5 ay ön sipariş açık durmuş</b>, ilk satış 07.01.2026.</li>
+  <li>Yazar <b>Cihan Karasöğüt</b> sistemimizde <b>başka kitabı olmayan</b> bir yazar (tek SKU). "Yazar popülerse yeni kitabı popüler olur" fenomeni için gereken eski satış geçmişi yok.</li>
+  <li>Fiyat: liste 300 TL, satış 180 TL (%40 kalıcı iskonto).</li>
+  <li>Stok tüm depolarda sıfır, siparişlerin çoğu tedarikçi üzerinden karşılanıyor.</li>
+  <li>07.01 → 10.04 arası satış eğrisi: <b>7 → 1 → 1 → 5 → 70 → 10 → 62 → 301</b>. Düz değil, kademeli olarak patlayan dalga.</li>
+</ul>
+</div>
+
+<div class="hyp low">
+  <div class="head"><span class="tag">A</span><span class="title">Organik viral / BookTok</span><span class="prob">Olasılık <b>~%10</b> (düşük)</span></div>
+  <p><b>Gerektirdiği kanıt:</b> Sosyal medyada (TikTok/Instagram/Twitter) kitap etrafında konuşulma, influencer postları, Goodreads/1000Kitap yorumları.</p>
+  <p><b>Mevcut kanıt:</b> Google + X + Instagram taramaları bu kitap için <b>organik iz bulamadı</b>. Yalnızca perakendeci listelerinde mevcut. Organik viral olsaydı Mobil Uygulama / Mobil Site kanalında da satış gelirdi — gelmedi.</p>
+</div>
+
+<div class="hyp mid">
+  <div class="head"><span class="tag">B</span><span class="title">Ön sipariş / fan kampanyası (yazar mobilizasyonu)</span><span class="prob">Olasılık <b>~%20</b> (orta-düşük)</span></div>
+  <p><b>Gerektirdiği kanıt:</b> Yazarın kendi topluluğunu (sosyal medya / mailing list) belli bir tarihe yönlendirmesi. Ön sipariş mekaniğinde tipik bir "lansman günü tek patlama" + sonra düşüş gözlenir.</p>
+  <p><b>Mevcut kanıt:</b> Eğri lansman günü tek patlama paterni ile uyuşmuyor — 07 Ocak → 12 Mart → 10 Nisan şeklinde <b>büyüyen üç dalga</b> var. Yazarın sistemde eski kitabı ve dolayısıyla "mevcut fan tabanı satış izi" yok. Web sosyal izi de boş. Fan kampanyası mümkün ama literatürdeki davranışa birebir oturmuyor.</p>
+</div>
+
+<div class="hyp high">
+  <div class="head"><span class="tag" style="background:var(--warn)">C</span><span class="title">Yayınevi / yazar toplu alım kampanyası ("bestseller mühendisliği")</span><span class="prob">Olasılık <b>~%65–70</b> (yüksek)</span></div>
+  <p><b>Mevcut kanıtlar:</b></p>
+  <ul>
+    <li><b>Kanal tekilliği.</b> 02 Nisan sonrası tüm satışlar yalnızca <b>Web Sitesi</b> üzerinden — mobil site ve uygulamalarda tek satış yok.</li>
+    <li><b>Ardışık müşteri ID'leri.</b> 10 Nisan'ın 5 siparişi: 39344408 / 39344420 / 39344472 / 39344494 / 39344501. 02 Nisan'ın 7 siparişi: 39322987 – 39323263 aralığında ardışık. Aynı gün içinde açılmış hesaplar.</li>
+    <li><b>Adet yapısı.</b> 10 – 10 – 10 – 10 – 50 – 93 – 100 – 100. Tüketici sepetinde görülmeyecek miktarlar.</li>
+    <li><b>Stok sıfır + STATUS 3006</b> (Odak — Tedarik Edilecek). Satış, ürünü bizde bulmadan, tedarikçi üstünden karşılanıyor.</li>
+    <li><b>Erken iade sinyali.</b> 02 Nisan siparişlerinden biri (müşteri 39322997, 10 adet) zaten "Sipariş İade Geldi" durumunda — yani o dalganın bir parçası iade olarak geri dönmüş.</li>
+    <li><b>Sosyal iz yok</b> — organik görünürlüğe geçmeyen bir "çok satan" sinyali.</li>
+  </ul>
+</div>
+
+<div class="hyp low">
+  <div class="head"><span class="tag">D</span><span class="title">Kurumsal / toptan alım (kitap kulübü, okul, STK, kurumsal hediye)</span><span class="prob">Olasılık <b>~%5</b> (düşük)</span></div>
+  <p>B2B tarafında genelde tek fatura / tek müşteri / büyük adet. Bizde her sipariş <b>ayrı müşteri ID</b> taşıyor — bu B2B değil.</p>
+</div>
+
+<h3>Karar ağacı ve aksiyon</h3>
+
+<blockquote>"H15'in lideri olarak görünen bu kitap için üç senaryo masada. Veri şu an için en güçlü olarak <b>toplu-alım senaryosunu</b> destekliyor; ancak bu kesin ilan edilmeden önce 14 günlük iade/iptal davranışının ve yayınevi iletişiminin gözlenmesi gerekir."</blockquote>
+
+<div class="actions">
+  <div class="grp">ÖNERİLER (HEMEN, SIRALI)</div>
+  <div class="item"><b>1. İzleme kiti aç.</b> 17 siparişin günlük iade/iptal/tedarik durumu özel panelde, 14 gün.</div>
+  <div class="item"><b>2. Bestseller panel filtresi.</b> Müşteriye gösterilen "Çok Satanlar" sayfasında "tek siparişte 50+ adet" satırları, henüz organik teyit yokken, vitrinden <b>ilk 14 gün için</b> dışlansın. Yanlış sinyal müşteri davranışını saptırır.</div>
+  <div class="item"><b>3. Fraud/şüpheli örüntü kuralı.</b> "Aynı 24 saat içinde açılan ardışık müşteri ID'leri, aynı ürün için 50+ adet, tek kanal (Web Sitesi)" kriteri günlük uyarı olarak kurulsun.</div>
+  <div class="item"><b>4. Yayınevi iletişimi.</b> İkinci Adam Yayınları ile tedarik durumu + bilinçli bir kampanya olup olmadığı açık konuşulsun.</div>
+  <div class="item"><b>5. Sosyal izleme.</b> Önümüzdeki 7 gün TikTok / 1000Kitap / Instagram'da kitap adı + yazar adı için manuel tarama. Organik çıkarsa B güçlenir, çıkmazsa C güçlenir.</div>
+</div>
+</section>
+
+<section id="s6">
+<h2><span class="num">6.</span>Gerçek organik yıldızlar (H15 Top 20)</h2>
+
+<table>
+<thead><tr><th class="r">#</th><th>Kitap</th><th>Yayınevi</th><th>Kategori</th><th class="r">Adet</th><th class="r">Ciro (TL)</th></tr></thead>
+<tbody>
+<tr style="background:#FEE2E2"><td class="r">1</td><td><em>Echo of Silence (şüpheli — bkz. §5)</em></td><td>İkinci Adam</td><td>Edebiyat</td><td class="r">301</td><td class="r">54.180</td></tr>
+<tr><td class="r">2</td><td>Çocuk, Köstebek, Tilki ve At</td><td>Mundi</td><td>Çocuk</td><td class="r">262</td><td class="r">133.594</td></tr>
+<tr><td class="r">3</td><td>2026 KPSS Tarih Tamamı Çözümlü SB</td><td>Benim Hocam</td><td>Sınav</td><td class="r">225</td><td class="r">78.854</td></tr>
+<tr><td class="r">4</td><td>Dünyayı Okuyan Çocuk</td><td>Timaş Çocuk</td><td>Çocuk</td><td class="r">225</td><td class="r">19.670</td></tr>
+<tr><td class="r">5</td><td>The Edd Sticker Book (500 Etiket)</td><td>The Edd</td><td>Kırtasiye</td><td class="r">219</td><td class="r">10.098</td></tr>
+<tr><td class="r">6</td><td>Kendimden Özür Dilerim</td><td>İndigo</td><td>Edebiyat</td><td class="r">194</td><td class="r">39.266</td></tr>
+<tr><td class="r">7</td><td>Üzüm Buğusu</td><td>İndigo</td><td>Edebiyat</td><td class="r">192</td><td class="r">70.064</td></tr>
+<tr><td class="r">8</td><td>2026 KPSS Tarih Ders Notları</td><td>Benim Hocam</td><td>Sınav</td><td class="r">184</td><td class="r">38.325</td></tr>
+<tr><td class="r">9</td><td>Led Işıklı Kitap Okuma Gözlüğü</td><td>Hobi Ürün</td><td>Aksesuar</td><td class="r">181</td><td class="r">10.549</td></tr>
+<tr><td class="r">10</td><td>Yasin-i Şerif Cüzü (Fihristli)</td><td>Hayrat Neşriyat</td><td>İslam</td><td class="r">170</td><td class="r">3.075</td></tr>
+<tr><td class="r">11</td><td>Çocuklar Soruyor, İlber Hoca Cevaplıyor (Atatürk)</td><td>Kronik Çocuk</td><td>Çocuk</td><td class="r">169</td><td class="r">17.739</td></tr>
+<tr><td class="r">12</td><td>2026 KPSS Coğrafya SB</td><td>Benim Hocam</td><td>Sınav</td><td class="r">159</td><td class="r">45.129</td></tr>
+<tr><td class="r">13</td><td>Algernon'a Çiçekler</td><td>Koridor</td><td>Edebiyat</td><td class="r">145</td><td class="r">30.334</td></tr>
+<tr><td class="r">14</td><td>KPSS AGS Tekerrür Tarih</td><td>Benim Hocam</td><td>Sınav</td><td class="r">137</td><td class="r">25.537</td></tr>
+<tr><td class="r">15</td><td>Küçük Şeylerin Tanrısı</td><td>Can Yayınları</td><td>Edebiyat</td><td class="r">127</td><td class="r">42.672</td></tr>
+<tr><td class="r">16</td><td>Soygun</td><td>Kapı</td><td>Edebiyat</td><td class="r">125</td><td class="r">26.353</td></tr>
+<tr><td class="r">17</td><td>2026 KPSS Genel Kültür Coğrafya SB</td><td>Yargı</td><td>Sınav</td><td class="r">122</td><td class="r">33.509</td></tr>
+<tr><td class="r">18</td><td>Telefon Melefon Yok!</td><td>Kronik Çocuk</td><td>Çocuk</td><td class="r">122</td><td class="r">21.549</td></tr>
+<tr><td class="r">19</td><td>Martin Eden</td><td>İş Bankası Kültür</td><td>Edebiyat</td><td class="r">118</td><td class="r">15.997</td></tr>
+<tr><td class="r">20</td><td>Yaşamak</td><td>Jaguar</td><td>Edebiyat</td><td class="r">115</td><td class="r">20.033</td></tr>
+</tbody></table>
+
+<p>Echo of Silence çıkarıldığında tablonun doğal hikâyesi <b>Edebiyat-Sınav-Çocuk üçlü dengesi</b>. Top 20'de 8 edebiyat, 5 sınav, 4 çocuk. Edebiyat tarafında <b>İndigo</b> iki başlıkla (Kendimden Özür Dilerim + Üzüm Buğusu) görünüyor — yayınevi seviyesinde momentum var, ayrıca vitrin fırsatı. Klasikler (Martin Eden, Algernon'a Çiçekler, Yaşamak, Küçük Şeylerin Tanrısı) dört başlıkla listede — bu okul müfredatı + sosyal medya önerisi birleşiminin tipik işareti.</p>
+
+<p><b>Çocuk tarafında</b> Mundi'nin "Çocuk, Köstebek, Tilki ve At" kitabı ciro bazında listede 2. (133.594 TL, tek başına). 262 adet + yüksek fiyat = premium hediye konumlanmış başlık. Bu yıl Anneler Günü öncesinde özel vitrin hak ediyor.</p>
+
+<p><b>Sınav tarafında</b> Benim Hocam'ın KPSS 2026 serisi listenin 3-8-12-14 numaralarında — dört SKU, tek yayınevi. Haziran sınavına 60 gün kala doğal hızlanma. "KPSS 2026 Paketi" birleştirilmiş vitrin (3 SKU + hazırlık kitabı kombinasyonu), hem ortalama sepeti hem dönüşümü artırır.</p>
+
+<p><b>Hayrat Neşriyat'ın Yasin-i Şerif'i</b> 170 adet, ciro sadece 3.075 TL (18 TL birim). Bayram hediye/mevlit ürünü olarak hacim veriyor; marjı düşük ama sepete eklenen ürün olarak değerli.</p>
+</section>
+
+<section id="s7">
+<h2><span class="num">7.</span>En hızlı yükselenler (H14 → H15)</h2>
+
+<table>
+<thead><tr><th>Kitap</th><th>Yayınevi</th><th class="r">H14</th><th class="r">H15</th><th class="r">Δ</th><th>Yorum</th></tr></thead>
+<tbody>
+<tr style="background:#FEE2E2"><td><em>Echo of Silence (bkz. §5)</em></td><td>İkinci Adam</td><td class="r">62</td><td class="r">301</td><td class="r"><b>+239</b></td><td>Şüpheli</td></tr>
+<tr><td>Dünyayı Okuyan Çocuk</td><td>Timaş Çocuk</td><td class="r">12</td><td class="r">225</td><td class="r">+213</td><td>18× — yeni çıkış</td></tr>
+<tr><td>Yasin-i Şerif Cüzü</td><td>Hayrat Neşriyat</td><td class="r">1</td><td class="r">170</td><td class="r">+169</td><td>Bayram hediyesi</td></tr>
+<tr><td>Briçten Belagata</td><td>İşaret</td><td class="r">2</td><td class="r">99</td><td class="r">+97</td><td>Niş</td></tr>
+<tr><td>Martaval - 2</td><td>Artemis</td><td class="r">0</td><td class="r">91</td><td class="r">+91</td><td>Yeni giriş</td></tr>
+<tr><td>Sessiz</td><td>Doğan Solibri</td><td class="r">0</td><td class="r">90</td><td class="r">+90</td><td>Yeni giriş</td></tr>
+<tr><td>NTT Küçük Prens Defter Seti</td><td>Note The Time</td><td class="r">0</td><td class="r">76</td><td class="r">+76</td><td>Hediyelik</td></tr>
+<tr style="background:#DCFCE7"><td>1000 Parça Puzzle İnci Küpeli Kız</td><td><b>BKM Kitap</b></td><td class="r">17</td><td class="r">92</td><td class="r">+75</td><td>Kendi markamız</td></tr>
+<tr><td>Barutla Yazılan Tarih</td><td>İkinci Adam</td><td class="r">0</td><td class="r">70</td><td class="r">+70</td><td>Aynı yayınevinden 2. giriş</td></tr>
+<tr style="background:#DCFCE7"><td>1000 Parça Puzzle Nature</td><td><b>BKM Kitap</b></td><td class="r">11</td><td class="r">77</td><td class="r">+66</td><td>Kendi markamız</td></tr>
+<tr style="background:#DCFCE7"><td>1000 Parça Puzzle Village</td><td><b>BKM Kitap</b></td><td class="r">6</td><td class="r">68</td><td class="r">+62</td><td>Kendi markamız</td></tr>
+<tr><td>Çok Kolay Okunabilen Yasin</td><td>Seda</td><td class="r">0</td><td class="r">62</td><td class="r">+62</td><td>Bayram</td></tr>
+<tr><td>Çocuklar İçin Nutuk</td><td>Dokuz</td><td class="r">0</td><td class="r">60</td><td class="r">+60</td><td>23 Nisan</td></tr>
+<tr><td>Telefon Melefon Yok!</td><td>Kronik Çocuk</td><td class="r">66</td><td class="r">122</td><td class="r">+56</td><td>Sürekli güçleniyor</td></tr>
+<tr><td>Çalıkuşu (Gençler İçin)</td><td>İnkılap</td><td class="r">29</td><td class="r">85</td><td class="r">+56</td><td>Klasik + okul</td></tr>
+<tr><td>Küçük Prens (İş Bankası)</td><td>İş Bankası Kültür</td><td class="r">4</td><td class="r">53</td><td class="r">+49</td><td>Klasik dönüşü</td></tr>
+<tr><td>Peygamber'in Aynaları</td><td>Şule</td><td class="r">4</td><td class="r">52</td><td class="r">+48</td><td>İslam kategorisi</td></tr>
+<tr><td>Mila ve Gizemli Çay Tarifi</td><td>Pulsera</td><td class="r">0</td><td class="r">46</td><td class="r">+46</td><td>Çocuk yeni</td></tr>
+<tr><td>Büyük Atatürk'ten Küçük Öyküler -1</td><td>Can Çocuk</td><td class="r">5</td><td class="r">51</td><td class="r">+46</td><td>23 Nisan</td></tr>
+</tbody></table>
+
+<h3>Haftanın beş teması</h3>
+
+<p><b>1. 23 Nisan ön dalgası (3-4 hafta öncesi start):</b> Çocuklar İçin Nutuk, İlber Hoca – Atatürk Soruları, Büyük Atatürk Öyküler, Çalıkuşu Gençler için birlikte hareket ediyor. Atatürk ve Millî Mücadele temalı çocuk vitrini yapılmalı; vitrin kapağı "23 Nisan'ı çocuğunuzla birlikte okuyun" net mesajıyla. <b>Bu akış en geç 17 Nisan'a kadar yayına girmeli.</b></p>
+
+<p><b>2. Ramazan sonrası din/hediyelik:</b> Yasin-i Şerif Cüzü (Hayrat) + Çok Kolay Okunabilen Yasin (Seda) + Peygamber'in Aynaları (Şule). Bayram sonrası mevlit ve hayır hediyesi talebi. Birim fiyat düşük ama sepette çok görülecek ürünler — kargo eşiği altı sepetlerde upsell kalıbı olarak düşünülmeli.</p>
+
+<p><b>3. BKM Puzzle üçlüsü (kendi markamız!):</b> İnci Küpeli Kız + Nature + Village tek hafta içinde toplam +203 adet delta. Kendi markamız olduğu için marj avantajlı. Sosyal medyada "Bu hafta BKM Puzzle" tematik üç hafta serisi + paket fırsat + hediye paketi kombinasyonu.</p>
+
+<p><b>4. Klasikler dönüşü:</b> Küçük Prens (İş Bankası), Martin Eden, Algernon'a Çiçekler, Küçük Şeylerin Tanrısı. Okul projeleri + sosyal medya önerileri birleşimi. İş Bankası Kültür yayınevi H15 adet sıralamasında yayınevi birincisi — 4.419 adet.</p>
+
+<p><b>5. "Yeni giriş" patlaması:</b> Martaval-2, Sessiz, Mila ve Gizemli Çay Tarifi. 0'dan +90 civarına çıkan 5+ yeni başlık. Bu tipik yeni çıkış + yayınevi kampanyası kalıbı. İzlenecek: 2. haftada nasıl devam ettikleri.</p>
+</section>
+
+<section id="s8">
+<h2><span class="num">8.</span>Kategori kırılımı (H15)</h2>
+
+<div class="callout note"><span class="lbl">Veri yöntemi</span>Join: <code>J_ORDER_DETAILS.ITEMREF = J_ITEMS.LOGICALREF</code> (referans bütünlüğü, %100 eşleşme). Kategori alanı: <code>J_ITEMS.GROUPCODE</code> (eşi <code>DERINSIS_LOGOGRUP</code>) — %99,3 dolu. <code>ANAKATEGORI</code> sadece %33 dolu olduğu için kullanılmadı.</div>
+
+<table>
+<thead><tr><th class="r">#</th><th>Kategori</th><th class="r">Adet</th><th class="r">Sipariş</th><th class="r">Ciro (TL)</th><th class="r">Pay</th></tr></thead>
+<tbody>
+<tr><td class="r">1</td><td>Edebiyat Kitapları</td><td class="r">35.659</td><td class="r">10.659</td><td class="r">8.660.311</td><td class="r"><b>%50,3</b></td></tr>
+<tr><td class="r">2</td><td>Eğitim - Sınavlara Hazırlık - Okula Yardımcı</td><td class="r">11.174</td><td class="r">3.317</td><td class="r">2.574.844</td><td class="r">%15,0</td></tr>
+<tr><td class="r">3</td><td>Çocuk Kitapları</td><td class="r">12.290</td><td class="r">3.028</td><td class="r">1.898.164</td><td class="r">%11,0</td></tr>
+<tr><td class="r">4</td><td>İslam Kitapları</td><td class="r">2.935</td><td class="r">1.177</td><td class="r">632.871</td><td class="r">%3,7</td></tr>
+<tr><td class="r">5</td><td>Tarih Kitapları</td><td class="r">1.718</td><td class="r">929</td><td class="r">467.966</td><td class="r">%2,7</td></tr>
+<tr><td class="r">6</td><td>İnsan ve Toplum</td><td class="r">2.053</td><td class="r">1.300</td><td class="r">460.320</td><td class="r">%2,7</td></tr>
+<tr><td class="r">7</td><td>Psikolojik Kitaplar</td><td class="r">1.334</td><td class="r">876</td><td class="r">347.803</td><td class="r">%2,0</td></tr>
+<tr><td class="r">8</td><td>Eğitim ve Okula Yardımcı</td><td class="r">1.238</td><td class="r">649</td><td class="r">268.768</td><td class="r">%1,6</td></tr>
+<tr><td class="r">9</td><td>Kırtasiye</td><td class="r">2.677</td><td class="r">1.039</td><td class="r">230.376</td><td class="r">%1,3</td></tr>
+<tr><td class="r">10</td><td>Felsefe Kitapları</td><td class="r">929</td><td class="r">594</td><td class="r">167.316</td><td class="r">%1,0</td></tr>
+<tr><td class="r">11</td><td>Sınavlara Hazırlık</td><td class="r">719</td><td class="r">498</td><td class="r">165.553</td><td class="r">%1,0</td></tr>
+<tr><td class="r">12</td><td>Genel Konular</td><td class="r">522</td><td class="r">410</td><td class="r">142.152</td><td class="r">%0,8</td></tr>
+<tr><td class="r">13</td><td>Politika Siyaset</td><td class="r">605</td><td class="r">421</td><td class="r">141.627</td><td class="r">%0,8</td></tr>
+<tr><td class="r">14</td><td>Sosyoloji</td><td class="r">450</td><td class="r">271</td><td class="r">119.133</td><td class="r">%0,7</td></tr>
+<tr><td class="r">15</td><td>Akademik</td><td class="r">325</td><td class="r">248</td><td class="r">114.833</td><td class="r">%0,7</td></tr>
+<tr><td>—</td><td>Diğer (15+ kategori)</td><td class="r">~5.000</td><td class="r">~3.500</td><td class="r">~830.000</td><td class="r">%4,5</td></tr>
+</tbody></table>
+
+<p><em>Edebiyat tek başına portföyün yarısı (%50,3 ciro, 35K adet).</em> Bu BKM'in DNA'sıdır ve doğru. Edebiyat'ı kaybetmek aslında her şeyi kaybetmek demek; bu kategorinin haftalık trendi her dashboard'da ana göstergedir.</p>
+
+<p><em>Çocuk Kitapları %11 ciro ile üçüncü.</em> Adet bazında ciro payından daha güçlü — yani birim fiyatı düşük ama hacim üretiyor. 23 Nisan + Anneler Günü öncesinde bu kategorinin haftalık delta'sı yakından izlenmeli.</p>
+
+<p><em>Eğitim/sınav tarafında bir taksonomi sorunu var.</em> Aynı konsept dört farklı GROUPCODE altında dağılmış: "Eğitim - Sınavlara Hazırlık - Okula Yardımcı" (11.174), "Eğitim ve Okula Yardımcı Kitaplar" (1.238), "Sınavlara Hazırlık Kitapları" (719). Toplamda ~13.100 adet, ama üç ayrı isim altında. BI dashboard için "Eğitim grubu büyüdü mü?" sorusunu cevaplamayı zorlaştırıyor.</p>
+
+<div class="callout"><span class="lbl">Aksiyon</span>GROUPCODE değer sözlüğü (canonical taksonomi) tanımlanmalı. Hedef: 39 farklı isim → ~15 ana kategori. Ürün ekibi ile 1 haftalık sprint, mapping tablosu BI'a entegre. Eski kayıtların yeniden etiketlenmesi 2. faz.</div>
+</section>
+
+<section id="s9">
+<h2><span class="num">9.</span>Yayınevi TOP 15 (H15)</h2>
+
+<table>
+<thead><tr><th>Yayınevi</th><th class="r">Adet</th><th class="r">Sipariş</th><th class="r">Ciro (TL)</th></tr></thead>
+<tbody>
+<tr><td>İş Bankası Kültür</td><td class="r"><b>4.419</b></td><td class="r">1.560</td><td class="r">383.195</td></tr>
+<tr><td>Ephesus</td><td class="r">3.066</td><td class="r">1.536</td><td class="r"><b>1.067.690</b></td></tr>
+<tr><td>İndigo Kitap</td><td class="r">2.458</td><td class="r">1.638</td><td class="r">844.655</td></tr>
+<tr><td>Benim Hocam</td><td class="r">2.379</td><td class="r">1.081</td><td class="r">594.278</td></tr>
+<tr><td>Can Yayınları</td><td class="r">1.894</td><td class="r">1.164</td><td class="r">375.961</td></tr>
+<tr><td>Yapı Kredi</td><td class="r">1.693</td><td class="r">973</td><td class="r">351.044</td></tr>
+<tr><td>Martı</td><td class="r">1.504</td><td class="r">779</td><td class="r">267.878</td></tr>
+<tr><td>Yediiklim</td><td class="r">1.345</td><td class="r">703</td><td class="r">255.254</td></tr>
+<tr><td>Pukka</td><td class="r">1.335</td><td class="r">814</td><td class="r">402.723</td></tr>
+<tr><td>Yargı</td><td class="r">1.142</td><td class="r">657</td><td class="r">239.802</td></tr>
+<tr><td>Timaş Çocuk</td><td class="r">1.124</td><td class="r">392</td><td class="r">135.358</td></tr>
+<tr><td>Pegasus</td><td class="r">1.099</td><td class="r">687</td><td class="r">302.626</td></tr>
+<tr><td>Artemis</td><td class="r">1.011</td><td class="r">684</td><td class="r">283.638</td></tr>
+<tr><td>Epsilon</td><td class="r">934</td><td class="r">568</td><td class="r">294.896</td></tr>
+<tr><td>TÜBİTAK</td><td class="r">904</td><td class="r">147</td><td class="r">39.863</td></tr>
+</tbody></table>
+
+<p>Üç kategoriye göre okunuyor:</p>
+
+<p><em>Klasik yayınevleri (düşük birim fiyat, yüksek adet):</em> İş Bankası Kültür, Can, Yapı Kredi, İndigo. Birim fiyat 150–350 TL aralığında. Bu dört yayınevi toplamda 10.5K adet ile pazarın en büyük hacim kaynağı.</p>
+
+<p><em>Premium/özel segmentli:</em> Ephesus (3.066 adet, 1.07 M TL ciro — <b>birim fiyat 348 TL</b>, listenin en değerlisi). Timaş Çocuk (çocuk premium). TÜBİTAK (147 sipariş ama 904 adet — yani sipariş başı 6+ kitap, setler).</p>
+
+<p><em>Sınav yayınevleri:</em> Benim Hocam, Yediiklim, Yargı, Pegasus. Dördü birden 5.965 adet. KPSS Haziran sınavının yaklaşmasıyla ivme sürüyor. <b>Eğitim yayınevi koleksiyonu tek vitrin altına alınmalı.</b></p>
+
+<div class="callout"><span class="lbl">Görünmeyen boşluk</span>TOP 15'te <b>İthaki / Doğan Kitap / Alfa</b> yok. Bu yayınevlerinin H15'te biraz gerilemiş olma ihtimali var — gelecek haftaya kadar onların gerilemesi yapısal mı takvimsel mi takip edilmeli.</div>
+</section>
+
+<section id="s10">
+<h2><span class="num">10.</span>Sipariş durumu dağılımı (H15)</h2>
+
+<table>
+<thead><tr><th>Durum</th><th class="r">Sipariş</th><th class="r">Oran</th><th class="r">Ciro (TL)</th></tr></thead>
+<tbody>
+<tr><td>Sipariş Kargoya Verildi</td><td class="r">15.701</td><td class="r"><b>%85,7</b></td><td class="r">15.271.811</td></tr>
+<tr><td>Odak — Sipariş Hazırlanıyor</td><td class="r">1.558</td><td class="r">%8,5</td><td class="r">2.103.399</td></tr>
+<tr style="background:#FEF3C7"><td>Odak — Tedarik Edilecek</td><td class="r">980</td><td class="r"><b>%5,3</b></td><td class="r">1.642.167</td></tr>
+<tr><td>Sipariş İptal Edildi</td><td class="r">258</td><td class="r">%1,4</td><td class="r">236.416</td></tr>
+<tr><td>Sipariş İade Geldi</td><td class="r">26</td><td class="r">%0,1</td><td class="r">20.380</td></tr>
+</tbody></table>
+
+<p><b>%85,7 kargoya verildi</b> — operasyonel olarak iyi. Ama <b>%5,3'ü ("Odak — Tedarik Edilecek") hâlâ bizde stok yok</b>, tedarikçiden gelecek. Bu sipariş tutarı 1,64 M TL, yani H15 cironun <b>%9,5'u stoksuz satış</b>. Yapısal bir risk: tedarikçi teslim etmezse iptal + müşteri memnuniyetsizliği; tedarik maliyeti artarsa marj sıkışması; kargoya çıkış süresi uzuyor (standart 1–2 gün, tedarikli 3–7 gün).</p>
+
+<div class="callout warn"><span class="lbl">Echo of Silence ile bağlantı</span>O kitabın <b>tamamı</b> "Odak — Tedarik Edilecek" statüsünde. Yani 17 siparişten 3'ü (toplam 293 adet) %29'luk tedarik oranının tek başına büyük bir kısmını oluşturuyor.</div>
+
+<p><b>İptal %1,4, iade %0,1</b> — sağlıklı seviyeler (Türkiye kitap e-ticaretinde tipik bant %2-4). Ama <em>iptaller geriye dönük işlendiği için</em> kesin yorum H17'de kapanır.</p>
+
+<p><b>Dashboard önerisi:</b> STATUS 3006 ("Tedarik Edilecek") toplam ciro payı ve 7 günlük tedarik süre dağılımı ana panelde olmalı.</p>
+</section>
+
+<section id="s10b">
+<h2><span class="num">10b.</span>Dış sinyal — sosyal dinleme (Grok / X)</h2>
+
+<p><b>Kaynak:</b> Grok analizi, X (Twitter) Türkçe organik okur konuşmaları, 7–14 Nisan 2026. ~1.200 yüksek etkileşimli tweet tarandı (min_faves:30, organik filtre). ~45 tweet / ~35 hesap analize alındı. Tam dosya: <code>Grok-Sosyal-Dinleme-Raporu.md</code>.</p>
+
+<p><b>Not:</b> Bu bölüm iç satış verisinin dışındaki <em>ikinci bir bakış açısıdır</em>. Satışta görünmeyen trope bazlı okur ilgisini ve henüz rafımızda olmayan talebi görünür kılar.</p>
+
+<h3>Öne çıkan bulgular — iç veriyle eşleştirme</h3>
+
+<table>
+<thead><tr><th>Dış sinyal</th><th>İç satışta karşılığı</th><th>Aksiyon</th></tr></thead>
+<tbody>
+<tr><td><b>Enemies-to-lovers / anlaşmalı evlilik trope talebi</b> — okur flood'ları, 20–35 yaş kadın, 180–300 tweet</td><td>Trope'lar satışta dağınık — tek vitrin yok</td><td>Yeni koleksiyon: <b>"Enemies to Lovers &amp; Anlaşmalı Evlilik Seçkisi"</b> (6–8 kitap)</td></tr>
+<tr><td><b>Grangé</b> (Kızıl Nehirler, Leyleklerin Uçuşu, Kızıl Karma) organik sadakat — "tüm eserlerini okudum" yorumları</td><td>H15 Top 20'de Grangé yok; seri toplam satışı takip edilmiyor</td><td>Yazar sayfası + Grangé serisi vitrin; ürün sayfasına okur yorum alıntısı</td></tr>
+<tr><td><b>Lilith'in Gözyaşları, Sahte Güz, Yazgı Paradoksu, Düşten Farksız</b> — yerli romantik kurgu flood'ları</td><td>Satışta görünürlükleri düşük, organik ilgiyle uyumsuz</td><td>Anasayfa "Okur önerisi" köşesi — 5 kitaplık vitrin</td></tr>
+<tr><td><b>Wattpad → basılı geçiş</b> (Sahil Kafesi vb.)</td><td>Bu geçiş kanalını takip etmiyoruz</td><td>Satın alma için Wattpad çıkışlı yayınlarda erken listeleme kuralı</td></tr>
+<tr><td><b>Rakip boşluğu:</b> kitapyurdu indirim odaklı, idefix sadece müşteri hizmetleri — <b>hiçbiri trope bazlı vitrin kurmuyor</b></td><td>BKM'nin fark yaratabileceği boş alan</td><td>Trope bazlı koleksiyonu <b>ilk yapan olmak</b> — marka konumu kazanımı</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+<b>Grok'un önerdiği 5 anasayfa kitabı:</b> Lilith'in Gözyaşları · Sahte Güz · Kızıl Nehirler · Yazgı Paradoksu · Düşten Farksız. <b>Editör seçimi 3:</b> Leyleklerin Uçuşu · Kızıl Karma · Grangé serisi. <b>İki yeni koleksiyon:</b> <i>Enemies to Lovers &amp; Anlaşmalı Evlilik</i>, <i>Gerilim ve Polisiye Favoriler</i>.
+</div>
+
+<p><b>Açık kalan — çapraz kontrol:</b> Grok'ta konuşulan kitapların BKM satışındaki performansı sorgulandı; sorgu timeout oldu, küçük parçalara bölünüp bir sonraki iterasyonda tamamlanacak. Şu anki netlik: <b>trope bazlı talep ile rafımız arasında senkron kopuk</b>.</p>
+</section>
+
+<section id="s11">
+<h2><span class="num">11.</span>Risk ve fırsat matrisi</h2>
+
+<table>
+<thead><tr><th>Alan</th><th>Risk</th><th>Fırsat</th></tr></thead>
+<tbody>
+<tr><td>Echo of Silence manipülasyon sinyali</td><td>İade patlaması, marj erozyonu, bestseller panel kirliliği</td><td>Fraud kuralı kurulması, veri kalitesi paneline giriş</td></tr>
+<tr><td>Kategori taksonomi karmaşası</td><td>Raporlama güveni, BI dashboard zayıflığı</td><td>Master data temizliği, kategori bazlı pazarlama için zemin</td></tr>
+<tr><td>Hafta sonu sipariş düşüşü</td><td>Sürekli ciro kaybı</td><td>Cumartesi kampanyası pilot, LTV artışı</td></tr>
+<tr><td>Mobil Site / App makası</td><td>App penetrasyonu zayıf, LTV sızıntısı</td><td>%10 geçiş = haftalık +800 app sipariş</td></tr>
+<tr><td>Web Sitesi premium segment</td><td>Az kullanıcı</td><td>Sepet başı 1.201 TL — sadakat pilotu</td></tr>
+<tr><td>BKM Puzzle kendi markamız</td><td>—</td><td>Yüksek marj, bu hafta üç SKU ivmelendi</td></tr>
+<tr><td>23 Nisan takvimi</td><td>Vitrin geç kalırsa dalgayı kaçırırız</td><td>7 gün içinde kitap + sadakat + sosyal medya tam set</td></tr>
+<tr><td>KPSS Haziran sınavı</td><td>—</td><td>60 gün kala koleksiyon vitrini büyük iş</td></tr>
+</tbody></table>
+</section>
+
+<section id="s12">
+<h2><span class="num">12.</span>Aksiyon planı (önceliklendirilmiş)</h2>
+
+<div class="actions">
+  <div class="grp">HEMEN — 24 SAAT</div>
+  <div class="item"><b>1. Echo of Silence tedarik + iade izleme:</b> 17 siparişin durumu günlük takip. İade/iptal olursa pazarlama vitrininden kaldırma akışı hazır.</div>
+  <div class="item"><b>2. Fraud / manipülasyon alarm kuralı:</b> "Aynı gün açılan, ardışık ID'li, aynı ürün için 50+ adet sipariş veren hesaplar" için günlük uyarı. Risk + e-ticaret müdürü bilgilendirilmesi.</div>
+  <div class="item"><b>3. Bestseller panel filtresi:</b> "Tek siparişte 50+ adet" siparişler bestseller sıralamasına girmesin. Ürün ekibi ile bugün oturum.</div>
+
+  <div class="grp">BU HAFTA</div>
+  <div class="item"><b>4. 23 Nisan vitrini yayında:</b> Nutuk + İlber Hoca + Büyük Atatürk Öyküler + Çalıkuşu paketi. Ana sayfa slider, kategori banner, e-posta, sosyal medya. Deadline <b>17 Nisan Cuma</b>.</div>
+  <div class="item"><b>5. KPSS 2026 Paketi:</b> Benim Hocam + Yargı + Yediiklim + Pegasus birleşik vitrin. Arama filtresi + "60 gün kaldı" countdown.</div>
+  <div class="item"><b>6. Kategori master data temizlik sprinti:</b> İlk hedef Top 100 ciro SKU'sunun GROUPCODE alanı %100 standart canonical isimde.</div>
+
+  <div class="grp">ÖNÜMÜZDEKİ 2 HAFTA</div>
+  <div class="item"><b>7. Cumartesi kampanyası pilotu:</b> 19 Nisan Cumartesi 24 saat sepet %15 + 150 TL üstü ücretsiz kargo. Hedef Cumartesi sipariş 2.400 → 2.900.</div>
+  <div class="item"><b>8. Mobil Site → App geçiş kampanyası:</b> Mobil site kullanıcısına app indirme + ilk sipariş %10 indirim kodu. Hedef %5 geçiş ilk hafta.</div>
+  <div class="item"><b>9. BKM Puzzle üç SKU itmesi:</b> "Bu hafta puzzle" sosyal medya serisi + hediye paketi + kombo fiyat. Marjlı kendi markamız, organik momentum var.</div>
+
+  <div class="grp">ÖNÜMÜZDEKİ AY</div>
+  <div class="item"><b>10. Web Sitesi premium sadakat programı pilotu:</b> Sepet başı 1.201 TL'lik segmenti sadakatlendirmek için tier sistem + premium koleksiyon + imzalı baskı pilotu.</div>
+  <div class="item"><b>11. iOS segment pazarlama:</b> iOS kullanıcısına özel koleksiyon + push kampanyası.</div>
+  <div class="item"><b>12. Dashboard yayına alma:</b> Günlük sipariş/ciro/kanal, haftalık kategori/yayınevi, aylık segment. Echo vakası tetiklediği için "şüpheli örüntü" alarmı dashboard'a girmeli.</div>
+</div>
+</section>
+
+<section id="s13">
+<h2><span class="num">13.</span>Metodoloji</h2>
+
+<p><b>Sipariş tanımı:</b> <code>J_ORDERS</code> header + <code>J_ORDER_DETAILS</code> satır. Satır bazlı iptal filtresi <code>IPTALNO IS NULL OR IPTALNO = 0</code>. Sipariş bazlı iptal <code>J_ORDER_STATUS</code> üzerinden görülür (STATUS 1007 = İptal Edildi, 1006 = İade Geldi).</p>
+
+<p><b>Ciro:</b> <code>SUM(QUANTITY × SELLINGPRICE)</code> — satır bazlı (brüt). Net ciro için iade/iptal sonrası mahsup ayrı hesap.</p>
+
+<p><b>Hafta tanımı:</b> ISO Pazartesi-Pazar (DATEFIRST 1 / <code>DATEPART(ISO_WEEK,…)</code>). H15 = 6–12 Nisan 2026.</p>
+
+<p><b>Ürün eşleme:</b> <code>J_ORDER_DETAILS.ITEMREF = J_ITEMS.LOGICALREF</code> (referans bütünlüğü, %100 eşleşme — H15'te 69.785/69.785 satır). Önceki taslakta kullanılan <code>BARCODE = CODE</code> string-join yerine referans-key tercih edildi; alternate barkodlu SKU'larda da sıfır kayıp.</p>
+
+<p><b>Kanonik barkod tablosu:</b> <code>J_ITEMSBARCODE</code> (865.996 barkod / 842.405 distinct ürün, ortalama 1.028 barkod/ürün). Çok-barkodlu (alternate ISBN/EAN) ürünler için <code>BARCODE → J_ITEMSBARCODE → J_ITEMS</code> zinciri kullanılabilir; H15 verisinde direkt <code>ITEMREF</code> join'i zaten %100 yakaladığı için ek satır kurtarmıyor. Müşteri-yazdığı barkod ile sipariş veya iade taraması senaryolarında devreye girer.</p>
+
+<p><b>Kategori alanı:</b> <code>J_ITEMS.GROUPCODE</code> (eşi <code>DERINSIS_LOGOGRUP</code>) — %99,3 dolu. <code>ANAKATEGORI</code> alanı %33 dolu olduğu için kullanılmadı.</p>
+
+<p><b>Kanal:</b> <code>J_ORDERS.APPLICATION</code> (Mobil Site / Android / iOS / Web Sitesi). <b>Durum:</b> <code>J_ORDER_STATUS.NAME</code> — 1005 (Kargoya Verildi), 3006 (Tedarik Edilecek), 1006 (İade), 1007 (İptal).</p>
+
+<p><b>Açık kalan işler:</b></p>
+<ul>
+  <li><code>J_ORDER_DELIVERY_ADDRESS</code> kolonları netleştirilip şehir kırılımı eklenecek.</li>
+  <li>Haftalık kategori / yayınevi delta analizi için materialize edilmiş haftalık tablo (timeout sorunu).</li>
+  <li>İade + iptal sonrası net ciro hesabı standart hale getirilecek.</li>
+  <li>Fraud / şüpheli örüntü kuralı tanımı bu raporun çıktısı.</li>
+</ul>
+
+<footer>
+Bir sonraki rapor: 20 Nisan 2026 Pazartesi — H16 kapanışı + 23 Nisan vitrin sonuçları.
+</footer>
+</section>
+
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>BKM Kitap · PDKS Yönetim Panosu · 15.04.2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 13px/1.4 -apple-system, Segoe UI, Roboto, sans-serif; background: #0f1419; color: #e6e6e6; padding: 20px; }
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #233; }
+  .hdr h1 { font-size: 18px; font-weight: 600; }
+  .hdr .sub { color: #7a8a96; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .card { background: #1a2028; border: 1px solid #2a323c; border-radius: 8px; padding: 16px; }
+  .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #7a8a96; margin-bottom: 10px; font-weight: 600; }
+  .kpi { font-size: 34px; font-weight: 700; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: #7a8a96; margin-top: 4px; }
+  .ok  { color: #4ade80; }
+  .warn { color: #fbbf24; }
+  .bad { color: #f87171; }
+  .mute { color: #7a8a96; }
+  .span-2 { grid-column: span 2; }
+  .span-4 { grid-column: span 4; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #2a323c; }
+  th { color: #7a8a96; font-weight: 500; text-transform: uppercase; font-size: 10px; letter-spacing: .3px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar-wrap { position: relative; background: #0f1419; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 3px; }
+  .bar { height: 100%; background: linear-gradient(90deg,#4ade80,#22d3ee); }
+  .bar.low { background: linear-gradient(90deg,#fbbf24,#f87171); }
+  canvas { max-height: 220px !important; }
+  .legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11px; color: #7a8a96; }
+  .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid #233; color: #556; font-size: 11px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>PDKS Yönetim Panosu</h1>
+    <div class="sub">BKM Kitap · GecoTime · 15 Nisan 2026, Çarşamba</div>
+  </div>
+  <div class="sub">Veri kaynağı: <b>wtimserv</b> @ 192.168.40.66\SQLEXPRESS · Snapshot</div>
+</div>
+
+<div class="grid">
+
+  <!-- KPI'lar -->
+  <div class="card">
+    <h3>Toplam Kadro</h3>
+    <div class="kpi">249</div>
+    <div class="kpi-sub">Aktif personel</div>
+  </div>
+  <div class="card">
+    <h3>Gelen</h3>
+    <div class="kpi ok">189</div>
+    <div class="kpi-sub">%75,9 katılım</div>
+  </div>
+  <div class="card">
+    <h3>İzinli</h3>
+    <div class="kpi warn">7</div>
+    <div class="kpi-sub">Rapor/yıllık/mazeret</div>
+  </div>
+  <div class="card">
+    <h3>Gelmeyen</h3>
+    <div class="kpi bad">52</div>
+    <div class="kpi-sub">Okutma yok, mazeret yok</div>
+  </div>
+
+  <!-- Bölüm bazlı doluluk -->
+  <div class="card span-2">
+    <h3>Bölüm Bazlı Doluluk — Bugün</h3>
+    <table id="bolumTbl"></table>
+  </div>
+
+  <!-- Anlık -->
+  <div class="card span-2">
+    <h3>Anlık Durum</h3>
+    <canvas id="anlikChart"></canvas>
+    <div class="legend">
+      <div><span style="background:#4ade80"></span>İçeride · 72</div>
+      <div><span style="background:#7a8a96"></span>Çıktı · 117</div>
+      <div><span style="background:#fbbf24"></span>İzinli · 7</div>
+      <div><span style="background:#f87171"></span>Gelmedi · 52</div>
+    </div>
+  </div>
+
+  <!-- Trend -->
+  <div class="card span-4">
+    <h3>Son 15 Günlük Katılım Trendi</h3>
+    <canvas id="trendChart"></canvas>
+  </div>
+
+  <!-- Geç kalma -->
+  <div class="card span-2">
+    <h3>Geç Kalma TOP 10 — Ay Başından Bugüne</h3>
+    <table>
+      <thead><tr><th>Sicil</th><th>Ad Soyad</th><th>Bölüm</th><th class="num">Gün</th><th class="num">Toplam Dk</th></tr></thead>
+      <tbody id="gecTbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Fazla mesai -->
+  <div class="card span-2">
+    <h3>Fazla Mesai TOP 10 — Ay Başından Bugüne</h3>
+    <table>
+      <thead><tr><th>Sicil</th><th>Ad Soyad</th><th>Bölüm</th><th class="num">Gün</th><th class="num">Saat</th></tr></thead>
+      <tbody id="mesaiTbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Eksik okutma -->
+  <div class="card span-4">
+    <h3>Eksik Okutma — Dün (14.04.2026) Çıkış Yapmadan Giden</h3>
+    <table>
+      <thead><tr><th>Sicil</th><th>Ad Soyad</th><th>Bölüm</th><th class="num">Giriş</th><th class="num">Çıkış</th></tr></thead>
+      <tbody id="eksikTbl"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="footer">Snapshot · Canlı yenileme için: SQL Agent job → dashboard.json → HTML fetch döngüsü kurulmalı · BKM Kitap / Mali İşler</div>
+
+<script>
+// ---------- VERİ (SQL sonuçlarından statik) ----------
+const bolum = [
+  {b:"ÖZLÜCE", k:60, g:43, i:2, x:14},
+  {b:"İST.YOLU", k:49, g:35, i:2, x:12},
+  {b:"FSM", k:47, g:33, i:1, x:13},
+  {b:"HEYKEL", k:28, g:20, i:0, x:8},
+  {b:"PAZARLAMA", k:15, g:14, i:0, x:1},
+  {b:"MALİ İŞLER", k:10, g:10, i:0, x:0},
+  {b:"MERKEZ DEPO", k:10, g:10, i:0, x:0},
+  {b:"ŞURA", k:9, g:7, i:1, x:1},
+  {b:"İDARİ İŞLER", k:6, g:4, i:0, x:2},
+  {b:"MÜŞTERİ İLİŞKİLERİ", k:5, g:4, i:1, x:0},
+  {b:"SATINALMA", k:5, g:4, i:0, x:1},
+  {b:"İK", k:2, g:2, i:0, x:0},
+  {b:"MERKEZ", k:1, g:1, i:0, x:0}
+];
+
+const trend = [
+  ["01.04",198,6],["02.04",189,5],["03.04",210,6],["04.04",190,7],["05.04",167,3],
+  ["06.04",191,6],["07.04",199,6],["08.04",194,8],["09.04",193,10],["10.04",207,10],
+  ["11.04",196,5],["12.04",178,3],["13.04",199,3],["14.04",204,6],["15.04",189,7]
+];
+
+const gec = [
+  [2959,"METİN ALTUN","FSM",13,4345],
+  [3201,"ARDA ÇALIŞKAN","FSM",13,4009],
+  [1175,"YILDIRAY KARADERE","FSM",13,3809],
+  [2921,"AYŞE KARATAŞ","İST.YOLU",14,3803],
+  [3294,"BEYZA SÜMEYYE YOLDAŞ","FSM",13,3686],
+  [3295,"EMRE BALKAYA","İST.YOLU",14,3599],
+  [3262,"ÖZGÜ TUANA YAMAN","ÖZLÜCE",13,3580],
+  [3114,"ERDEM GÖRÜCÜ","ÖZLÜCE",12,3492],
+  [3251,"İLKER ARDIÇ","ÖZLÜCE",14,3465],
+  [3272,"YAYLA MUTLUER","ÖZLÜCE",12,3301]
+];
+
+// Kaynak: TTagZei · TZe_ZeitArt = 'FM1' (gerçek fazla mesai segmentleri)
+// Yemek molası (60 dk) GecoTime tarafından otomatik kırılır; 2x15 dk çay molası brüt içinde kalır ama FM1 segmentine karışmaz.
+const mesai = [
+  [2116,"EMİN İLGÜZ","İST.YOLU",13,43.00],
+  [470,"İLKAY KIRIMŞELİOĞLU","HEYKEL",12,41.00],
+  [2035,"VEYSEL ÇETİN","HEYKEL",11,37.50],
+  [189,"ÖZDEN SÖĞÜT","ÖZLÜCE",12,37.00],
+  [3128,"MİRCAN ÜNAL","ÖZLÜCE",10,36.00],
+  [208,"SİNAN GÖKMEN","FSM",13,32.50],
+  [151,"MEHMET KAYA","ÖZLÜCE",11,31.00],
+  [488,"YUSUF ALUNİ","HEYKEL",13,26.00],
+  [2953,"LALE YÜKSEL","ÖZLÜCE",13,26.00],
+  [2483,"ÇAĞLA UYSAL","ÖZLÜCE",7,24.00]
+];
+
+const eksik = [
+  [3289,"METEHAN ÇAMLICA","İST.YOLU","13:24","—"],
+  [2249,"SERKAN AKDEMİR","MERKEZ DEPO","08:16","—"],
+  [2194,"SERHAT BERAT AKTAŞ","ŞURA","09:20","—"]
+];
+
+// ---------- BÖLÜM TABLO ----------
+const bt = document.getElementById('bolumTbl');
+bt.innerHTML = '<thead><tr><th>Bölüm</th><th class="num">Kadro</th><th class="num">Gelen</th><th>Doluluk</th></tr></thead><tbody>'
+  + bolum.map(r => {
+      const p = Math.round(100 * r.g / r.k);
+      const cls = p < 70 ? 'low' : '';
+      return `<tr><td>${r.b}</td><td class="num">${r.k}</td><td class="num">${r.g}</td>
+              <td><div class="bar-wrap"><div class="bar ${cls}" style="width:${p}%"></div></div>
+              <span class="mute" style="font-size:10px">%${p}</span></td></tr>`;
+    }).join('') + '</tbody>';
+
+// ---------- ANLIK DONUT ----------
+new Chart(document.getElementById('anlikChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['İçeride','Çıktı','İzinli','Gelmedi'],
+    datasets: [{ data: [72,117,7,52], backgroundColor: ['#4ade80','#7a8a96','#fbbf24','#f87171'], borderWidth: 0 }]
+  },
+  options: { plugins: { legend: { display: false } }, cutout: '65%' }
+});
+
+// ---------- TREND ----------
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: trend.map(r => r[0]),
+    datasets: [
+      { label: 'Gelen', data: trend.map(r => r[1]), borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,.15)', fill: true, tension: .3, pointRadius: 3 },
+      { label: 'İzinli', data: trend.map(r => r[2]), borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,.12)', fill: true, tension: .3, pointRadius: 3 }
+    ]
+  },
+  options: {
+    plugins: { legend: { labels: { color: '#7a8a96' } } },
+    scales: {
+      x: { ticks: { color: '#7a8a96' }, grid: { color: '#2a323c' } },
+      y: { ticks: { color: '#7a8a96' }, grid: { color: '#2a323c' } }
+    }
+  }
+});
+
+// ---------- TABLO: GEÇ KALMA ----------
+document.getElementById('gecTbl').innerHTML = gec.map(r =>
+  `<tr><td class="mute">${r[0]}</td><td>${r[1]}</td><td class="mute">${r[2]}</td>
+   <td class="num">${r[3]}</td><td class="num bad">${r[4]}</td></tr>`).join('');
+
+// ---------- TABLO: FAZLA MESAİ ----------
+document.getElementById('mesaiTbl').innerHTML = mesai.map(r =>
+  `<tr><td class="mute">${r[0]}</td><td>${r[1]}</td><td class="mute">${r[2]}</td>
+   <td class="num">${r[3]}</td><td class="num ok">${r[4].toFixed(2)}</td></tr>`).join('');
+
+// ---------- TABLO: EKSİK OKUTMA ----------
+document.getElementById('eksikTbl').innerHTML = eksik.map(r =>
+  `<tr><td class="mute">${r[0]}</td><td>${r[1]}</td><td class="mute">${r[2]}</td>
+   <td class="num">${r[3]}</td><td class="num bad">${r[4]}</td></tr>`).join('');
+</script>
+</body>
+</html>

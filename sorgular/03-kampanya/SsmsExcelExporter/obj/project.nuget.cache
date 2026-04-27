@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "dgSpecHash": "xLpYq2bVh14=",
+  "success": true,
+  "projectFilePath": "D:\\Dev\\sqlserver-mcp-server\\sorgular\\03-kampanya\\SsmsExcelExporter\\SsmsExcelExporter.csproj",
+  "expectedPackageFiles": [
+    "D:\\NuGet\\packages\\closedxml\\0.104.2\\closedxml.0.104.2.nupkg.sha512",
+    "D:\\NuGet\\packages\\closedxml.parser\\1.2.0\\closedxml.parser.1.2.0.nupkg.sha512",
+    "D:\\NuGet\\packages\\documentformat.openxml\\3.1.1\\documentformat.openxml.3.1.1.nupkg.sha512",
+    "D:\\NuGet\\packages\\documentformat.openxml.framework\\3.1.1\\documentformat.openxml.framework.3.1.1.nupkg.sha512",
+    "D:\\NuGet\\packages\\excelnumberformat\\1.1.0\\excelnumberformat.1.1.0.nupkg.sha512",
+    "D:\\NuGet\\packages\\microsoft.net.illink.tasks\\8.0.22\\microsoft.net.illink.tasks.8.0.22.nupkg.sha512",
+    "D:\\NuGet\\packages\\rbush\\4.0.0\\rbush.4.0.0.nupkg.sha512",
+    "D:\\NuGet\\packages\\sixlabors.fonts\\1.0.0\\sixlabors.fonts.1.0.0.nupkg.sha512",
+    "D:\\NuGet\\packages\\system.io.packaging\\8.0.1\\system.io.packaging.8.0.1.nupkg.sha512",
+    "D:\\NuGet\\packages\\microsoft.netcore.app.ref\\8.0.22\\microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
+    "D:\\NuGet\\packages\\microsoft.windowsdesktop.app.ref\\8.0.22\\microsoft.windowsdesktop.app.ref.8.0.22.nupkg.sha512",
+    "D:\\NuGet\\packages\\microsoft.aspnetcore.app.ref\\8.0.22\\microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512",
+    "D:\\NuGet\\packages\\microsoft.netcore.app.host.win-x64\\8.0.22\\microsoft.netcore.app.host.win-x64.8.0.22.nupkg.sha512"
+  ],
+  "logs": []
+}

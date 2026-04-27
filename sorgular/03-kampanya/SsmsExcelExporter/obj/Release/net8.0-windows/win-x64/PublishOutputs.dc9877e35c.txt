@@ -1,0 +1,2 @@
+D:\Dev\sqlserver-mcp-server\sorgular\03-kampanya\SsmsExcelExporter\bin\Release\net8.0-windows\win-x64\publish\SsmsExcelExporter.pdb
+D:\Dev\sqlserver-mcp-server\sorgular\03-kampanya\SsmsExcelExporter\bin\Release\net8.0-windows\win-x64\publish\SsmsExcelExporter.exe

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>BKM Kitap — Mobil App Baremli Rapor</title>
+<style>
+:root{--navy:#0A2540;--accent:#E85D2A;--green:#2E7D5B;--gray:#475569;--line:#CBD5E1;--panel:#F8FAFC;--warn:#D97706;--bad:#991B1B}
+*{box-sizing:border-box}
+body{font-family:'Charter','Georgia',serif;color:#1F2937;line-height:1.55;max-width:1180px;margin:0 auto;padding:40px 28px;background:#fff;font-size:15.5px}
+h1{font-family:'Inter','Segoe UI',sans-serif;color:var(--navy);font-size:2.1em;margin:0 0 4px;letter-spacing:-0.02em;line-height:1.15}
+.sub{color:var(--accent);font-family:'Inter',sans-serif;font-size:12px;letter-spacing:0.14em;font-weight:700;text-transform:uppercase}
+.meta{color:var(--gray);font-size:13px;margin-top:4px;margin-bottom:22px;padding-bottom:18px;border-bottom:3px solid var(--navy)}
+h2{font-family:'Inter',sans-serif;color:var(--navy);font-size:1.5em;margin:42px 0 12px;padding-top:26px;border-top:1px solid var(--line)}
+h3{font-family:'Inter',sans-serif;color:var(--navy);font-size:1.08em;margin:24px 0 8px}
+p{margin:10px 0}
+b,strong{color:var(--navy)}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;font-family:'Inter',sans-serif}
+th{background:var(--navy);color:#fff;text-align:left;padding:8px 10px;font-weight:600;font-size:12px;letter-spacing:0.02em}
+td{padding:7px 10px;border-bottom:1px solid var(--line)}
+td.r{text-align:right;font-variant-numeric:tabular-nums}
+th.r{text-align:right}
+tr.strong td{background:#F1F5F9;font-weight:700;color:var(--navy)}
+tr.peak td{color:var(--accent);font-weight:700}
+tr.now td{background:#FEF3C7;font-weight:700;color:var(--navy)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 22px}
+.kpi{background:var(--panel);border-left:3px solid var(--accent);padding:12px 14px;border-radius:0 5px 5px 0;font-family:'Inter',sans-serif}
+.kpi .lbl{font-size:10.5px;letter-spacing:0.1em;color:var(--gray);font-weight:700;text-transform:uppercase}
+.kpi .val{font-size:1.55em;font-weight:800;color:var(--navy);line-height:1.1;display:block;margin:5px 0 2px}
+.kpi .sub2{font-size:11.5px;color:var(--gray)}
+.callout{background:var(--panel);border-left:4px solid var(--navy);padding:12px 16px;margin:14px 0;border-radius:0 5px 5px 0;font-size:14.5px}
+.callout b{color:var(--navy)}
+.callout.good{border-left-color:var(--green);background:#F0FDF4}
+.callout.warn{border-left-color:var(--warn);background:#FFFBEB}
+ul{margin:10px 0;padding-left:22px}
+ul li{margin:5px 0}
+.badge{display:inline-block;padding:2px 8px;border-radius:11px;font-size:10.5px;font-weight:700;font-family:'Inter',sans-serif;letter-spacing:0.04em}
+.badge.high{background:#FECACA;color:#991B1B}
+.badge.mid{background:#FEF3C7;color:#92400E}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}body{padding:22px 14px}}
+@media print{body{padding:20px}.kpis{break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<div class="sub">BKM Kitap · Mobil App Analizi</div>
+<h1>Mobil App Kullanım — Baremli Rapor</h1>
+<div class="meta">H15 (6–12 Nisan 2026) · Son 90 gün frekans · 15 haftalık seyir &nbsp;·&nbsp; Fikri Eren · 14 Nisan 2026</div>
+
+<h2>H15 tek bakış</h2>
+<div class="kpis">
+  <div class="kpi"><span class="lbl">App sipariş</span><span class="val">7.672</span><span class="sub2">Android 4.805 · iOS 2.867</span></div>
+  <div class="kpi"><span class="lbl">App ciro</span><span class="val">8,51 M ₺</span><span class="sub2">toplam cironun %49,7'si</span></div>
+  <div class="kpi"><span class="lbl">App payı (sipariş)</span><span class="val">%41,6</span><span class="sub2">Mobil Site %43 · Web %15</span></div>
+  <div class="kpi"><span class="lbl">App ort sepet</span><span class="val">1.110 ₺</span><span class="sub2">Mobil Site 890 ₺ · Web 1.277 ₺</span></div>
+</div>
+
+<table>
+<thead><tr><th>Kanal</th><th class="r">Sipariş</th><th class="r">Pay</th><th class="r">Ciro</th><th class="r">Ciro Payı</th><th class="r">Ort Sepet</th></tr></thead>
+<tbody>
+<tr><td>Mobil Uygulama (Android)</td><td class="r">4.805</td><td class="r">%26,0</td><td class="r">5.161.935 ₺</td><td class="r">%30,1</td><td class="r">1.074 ₺</td></tr>
+<tr><td>Mobil Uygulama (iOS)</td><td class="r">2.867</td><td class="r">%15,5</td><td class="r">3.349.377 ₺</td><td class="r">%19,6</td><td class="r">1.168 ₺</td></tr>
+<tr class="strong"><td>MOBİL APP TOPLAM</td><td class="r">7.672</td><td class="r">%41,6</td><td class="r">8.511.312 ₺</td><td class="r">%49,7</td><td class="r">1.110 ₺</td></tr>
+<tr><td>Mobil Site</td><td class="r">8.017</td><td class="r">%43,4</td><td class="r">7.132.841 ₺</td><td class="r">%41,6</td><td class="r">890 ₺</td></tr>
+<tr><td>Web Sitesi</td><td class="r">2.770</td><td class="r">%15,0</td><td class="r">3.536.700 ₺</td><td class="r">%20,7</td><td class="r">1.277 ₺</td></tr>
+<tr class="strong"><td>Genel</td><td class="r">18.459</td><td class="r">%100</td><td class="r">19.180.853 ₺</td><td class="r">%100</td><td class="r">1.039 ₺</td></tr>
+</tbody>
+</table>
+
+<div class="callout good">
+<b>Tek cümle:</b> App, siparişin %41,6'sını taşıyor ama cironun <b>%49,7'sini</b>. App müşterisi Mobil Site'tan ort %25 daha yüksek sepet bırakıyor (1.110 ₺ vs 890 ₺). iOS sepet, Android sepete göre %9 daha yüksek.
+</div>
+
+<h2>1. Kullanıcı sıklık baremi — App, son 90 gün (15 Oca – 14 Nis)</h2>
+<p><b>Tanım:</b> J_ORDERS.CLIENTREF → J_CLCARD.CUSTOMERREF ile master müşteri. 90 günde App kanalında (Android + iOS) sipariş veren benzersiz kullanıcı.</p>
+<table>
+<thead><tr><th>Barem</th><th class="r">Kullanıcı</th><th class="r">Pay</th><th class="r">Sipariş</th><th class="r">Sip Payı</th><th class="r">Ciro</th><th class="r">Ciro Payı</th><th class="r">Ort Sip/Kul</th><th class="r">Ort Sepet</th></tr></thead>
+<tbody>
+<tr><td>1 | Tek sipariş</td><td class="r">79.230</td><td class="r">%76,3</td><td class="r">79.230</td><td class="r">%55,7</td><td class="r">77.807.058 ₺</td><td class="r">%54,6</td><td class="r">1,00</td><td class="r">982 ₺</td></tr>
+<tr><td>2 | 2–3 sipariş</td><td class="r">21.754</td><td class="r">%20,9</td><td class="r">48.263</td><td class="r">%33,9</td><td class="r">48.554.583 ₺</td><td class="r">%34,1</td><td class="r">2,22</td><td class="r">1.006 ₺</td></tr>
+<tr><td>3 | 4–6 sipariş</td><td class="r">2.539</td><td class="r">%2,44</td><td class="r">11.337</td><td class="r">%7,97</td><td class="r">11.766.609 ₺</td><td class="r">%8,26</td><td class="r">4,47</td><td class="r">1.038 ₺</td></tr>
+<tr><td>4 | 7–12 sipariş</td><td class="r">310</td><td class="r">%0,30</td><td class="r">2.511</td><td class="r">%1,76</td><td class="r">2.783.340 ₺</td><td class="r">%1,95</td><td class="r">8,10</td><td class="r">1.108 ₺</td></tr>
+<tr class="peak"><td>5 | 13+ sipariş</td><td class="r">52</td><td class="r">%0,05</td><td class="r">965</td><td class="r">%0,68</td><td class="r">1.526.575 ₺</td><td class="r">%1,07</td><td class="r">18,56</td><td class="r">1.582 ₺</td></tr>
+<tr class="strong"><td>Toplam</td><td class="r">103.885</td><td class="r">%100</td><td class="r">142.306</td><td class="r">%100</td><td class="r">142.438.165 ₺</td><td class="r">%100</td><td class="r">1,37</td><td class="r">1.001 ₺</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+<ul>
+<li><b>%76 tek siparişlik:</b> App'i indirip 1 kez alışveriş yapıp dönmeyen kütle — re-engagement push birincil hedef.</li>
+<li><b>4+ sipariş:</b> 2.901 kullanıcı (%2,8) → App cirosunun %11,3'ü. İnce ama değerli sadakat segmenti.</li>
+<li><b>13+ sipariş "süper kullanıcı":</b> 52 kişi, 90 günde ort. 18,6 sipariş · 1.582 ₺ sepet (+%61). VIP pilotunun ilk halkası.</li>
+<li><b>Sıklıkla birlikte sepet büyüyor:</b> tek sipariş 982 ₺ → 13+ 1.582 ₺. Sadık müşteri = büyük sepet.</li>
+</ul>
+</div>
+
+<h2>2. Sepet tutarı baremi — H15 App siparişleri</h2>
+<table>
+<thead><tr><th>Barem</th><th class="r">Sipariş</th><th class="r">Pay</th><th class="r">Ciro</th><th class="r">Ciro Payı</th><th class="r">Ort Sepet</th><th class="r">Android</th><th class="r">iOS</th><th class="r">iOS %</th></tr></thead>
+<tbody>
+<tr><td>1 | 0–200 TL</td><td class="r">72</td><td class="r">%0,9</td><td class="r">11.891 ₺</td><td class="r">%0,1</td><td class="r">165 ₺</td><td class="r">44</td><td class="r">28</td><td class="r">%39</td></tr>
+<tr><td>2 | 200–500 TL</td><td class="r">1.853</td><td class="r">%24,2</td><td class="r">698.204 ₺</td><td class="r">%8,2</td><td class="r">377 ₺</td><td class="r">1.204</td><td class="r">649</td><td class="r">%35</td></tr>
+<tr><td>3 | 500–1000 TL</td><td class="r">2.646</td><td class="r">%34,5</td><td class="r">1.894.561 ₺</td><td class="r">%22,3</td><td class="r">716 ₺</td><td class="r">1.683</td><td class="r">963</td><td class="r">%36</td></tr>
+<tr><td>4 | 1000–2000 TL</td><td class="r">2.218</td><td class="r">%28,9</td><td class="r">3.084.129 ₺</td><td class="r">%36,2</td><td class="r">1.391 ₺</td><td class="r">1.351</td><td class="r">867</td><td class="r">%39</td></tr>
+<tr><td>5 | 2000–5000 TL</td><td class="r">809</td><td class="r">%10,5</td><td class="r">2.239.008 ₺</td><td class="r">%26,3</td><td class="r">2.768 ₺</td><td class="r">488</td><td class="r">321</td><td class="r">%40</td></tr>
+<tr class="peak"><td>6 | 5000+ TL</td><td class="r">74</td><td class="r">%1,0</td><td class="r">583.519 ₺</td><td class="r">%6,9</td><td class="r">7.885 ₺</td><td class="r">35</td><td class="r">39</td><td class="r"><b>%53</b></td></tr>
+<tr class="strong"><td>Toplam</td><td class="r">7.672</td><td class="r">%100</td><td class="r">8.511.312 ₺</td><td class="r">%100</td><td class="r">1.110 ₺</td><td class="r">4.805</td><td class="r">2.867</td><td class="r">%37</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+<ul>
+<li><b>Ana gövde 500–2000 TL:</b> siparişlerin %63'ü, cironun %58'i. Free-shipping eşiği + upsell kampanyalarının odak dilimi.</li>
+<li><b>200–500 TL entry-level:</b> siparişlerin %24'ü, cironun %8'i — "500'e tamamla ücretsiz kargo" ile sepet büyütme fırsatı.</li>
+<li><b>5000+ TL dilim:</b> 74 sipariş → cironun %7'si. B2B / koleksiyoner. Bu dilimde <b>iOS payı %53</b> (geneldeki %37'ye karşı) — iOS premium ağırlığı net.</li>
+<li><b>0–200 TL çok düşük:</b> 72 sipariş — ücretsiz kargo eşiği altı nedeniyle doğal baraj. Sağlıklı sinyal.</li>
+</ul>
+</div>
+
+<h2>3. 15 haftalık App kullanım seyri (ISO Pzt–Paz, 2026 H01–H15)</h2>
+<table>
+<thead><tr><th>Hafta</th><th class="r">Android</th><th class="r">iOS</th><th class="r">App Toplam</th><th class="r">Mobil Site</th><th class="r">Web</th><th class="r">Genel</th><th class="r">App Payı</th><th class="r">App Ciro</th></tr></thead>
+<tbody>
+<tr><td>H01</td><td class="r">6.533</td><td class="r">3.683</td><td class="r">10.216</td><td class="r">9.878</td><td class="r">3.128</td><td class="r">23.222</td><td class="r">%44,0</td><td class="r">10.043.983 ₺</td></tr>
+<tr><td>H02</td><td class="r">6.920</td><td class="r">4.317</td><td class="r">11.237</td><td class="r">11.505</td><td class="r">3.873</td><td class="r">26.615</td><td class="r">%42,2</td><td class="r">11.005.211 ₺</td></tr>
+<tr><td>H03</td><td class="r">7.727</td><td class="r">4.666</td><td class="r">12.393</td><td class="r">11.907</td><td class="r">3.915</td><td class="r">28.215</td><td class="r">%43,9</td><td class="r">11.913.156 ₺</td></tr>
+<tr><td>H04</td><td class="r">7.044</td><td class="r">4.218</td><td class="r">11.262</td><td class="r">10.705</td><td class="r">3.496</td><td class="r">25.463</td><td class="r">%44,2</td><td class="r">10.859.021 ₺</td></tr>
+<tr><td>H05</td><td class="r">6.222</td><td class="r">3.711</td><td class="r">9.933</td><td class="r">9.637</td><td class="r">2.996</td><td class="r">22.566</td><td class="r">%44,0</td><td class="r">9.823.390 ₺</td></tr>
+<tr><td>H06</td><td class="r">8.550</td><td class="r">5.001</td><td class="r">13.551</td><td class="r">13.376</td><td class="r">3.825</td><td class="r">30.752</td><td class="r">%44,1</td><td class="r">13.115.026 ₺</td></tr>
+<tr><td>H07</td><td class="r">8.519</td><td class="r">5.071</td><td class="r">13.590</td><td class="r">14.416</td><td class="r">4.209</td><td class="r">32.215</td><td class="r">%42,2</td><td class="r">13.384.428 ₺</td></tr>
+<tr class="peak"><td>H08</td><td class="r">8.629</td><td class="r">5.543</td><td class="r">14.172</td><td class="r">15.407</td><td class="r">4.143</td><td class="r">33.722</td><td class="r">%42,0</td><td class="r">13.411.022 ₺</td></tr>
+<tr><td>H09</td><td class="r">7.407</td><td class="r">4.602</td><td class="r">12.009</td><td class="r">12.684</td><td class="r">3.748</td><td class="r">28.441</td><td class="r">%42,2</td><td class="r">11.391.384 ₺</td></tr>
+<tr><td>H10</td><td class="r">7.516</td><td class="r">4.590</td><td class="r">12.106</td><td class="r">11.418</td><td class="r">3.318</td><td class="r">26.842</td><td class="r">%45,1</td><td class="r">11.199.522 ₺</td></tr>
+<tr><td>H11</td><td class="r">5.663</td><td class="r">3.368</td><td class="r">9.031</td><td class="r">9.148</td><td class="r">2.834</td><td class="r">21.013</td><td class="r">%43,0</td><td class="r">9.103.164 ₺</td></tr>
+<tr><td>H12</td><td class="r">6.810</td><td class="r">3.603</td><td class="r">10.413</td><td class="r">7.565</td><td class="r">2.148</td><td class="r">20.126</td><td class="r">%51,7</td><td class="r">11.377.590 ₺</td></tr>
+<tr><td>H13</td><td class="r">7.357</td><td class="r">3.995</td><td class="r">11.352</td><td class="r">11.440</td><td class="r">3.639</td><td class="r">26.431</td><td class="r">%42,9</td><td class="r">12.529.368 ₺</td></tr>
+<tr><td>H14</td><td class="r">5.000</td><td class="r">2.877</td><td class="r">7.877</td><td class="r">8.958</td><td class="r">2.904</td><td class="r">19.739</td><td class="r">%39,9</td><td class="r">8.603.465 ₺</td></tr>
+<tr class="now"><td>H15</td><td class="r">4.805</td><td class="r">2.867</td><td class="r">7.672</td><td class="r">8.017</td><td class="r">2.770</td><td class="r">18.459</td><td class="r">%41,6</td><td class="r">8.511.312 ₺</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+<ul>
+<li><b>Zirve H08</b> (16–22 Şub): 14.172 App sipariş, 13,4 M ₺ App ciro — Ramazan öncesi kitap-yığma haftası.</li>
+<li><b>H15 → zirveden -%46 düşüş.</b> Bayram sonrası doğal yumuşama + genel pazar daralması.</li>
+<li><b>App payı oynamıyor:</b> %42 bandında stabil. Toplam pazar küçülse bile App kendi payını koruyor.</li>
+<li><b>H12 "ters ciro" sinyali:</b> Sipariş düştü ama App_Ciro 11,4 M — Ramazan bayramı öncesi hazırlık, büyük sepet haftası.</li>
+<li><b>H14 → H15:</b> Android -%3,9, iOS -%0,3, <b>Mobil Site -%10,5</b>. App diğer kanallardan daha dayanıklı.</li>
+</ul>
+</div>
+
+<h2>Kritik bulgular — tek bakışta</h2>
+<ol>
+<li>App payı H15 sipariş <b>%41,6</b> / ciro <b>%49,7</b> — App, BKM'nin <b>en değerli kanalı</b> (sepet başına).</li>
+<li><b>iOS premium:</b> 5000+ TL diliminde iOS payı %53 (genelde %37). iOS'a özel koleksiyoner kampanya pilotu hazır.</li>
+<li><b>Heavy user havuzu ince:</b> Son 90 gün App kullanıcılarının %0,35'i (362 kişi) 7+ sipariş. Sadakat programı büyütülmesi gereken alan.</li>
+<li><b>Tek-sipariş kütlesi dev:</b> 79.230 kullanıcı, 90 günde 1 sipariş sonrası dönmemiş. Re-engagement en yüksek ROI hedefi.</li>
+<li><b>App &gt; Mobil Site dayanıklılık:</b> H14→H15'te Mobil Site -%10,5, App -%2,7.</li>
+</ol>
+
+<h2>Aksiyon planı</h2>
+<table>
+<thead><tr><th>#</th><th>Segment</th><th>Aksiyon</th><th>Zaman</th><th>Etki</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Tek-sipariş kütlesi (79K)</td><td>İlk siparişten türetilen tür/yazar önerisi + 30 TL hediye puan kişiselleştirilmiş push</td><td>2 hafta</td><td><span class="badge high">YÜKSEK</span></td></tr>
+<tr><td>2</td><td>Tekrar eden (22K · 2–3 sip)</td><td>4. sipariş = ücretsiz kargo + puan x2 habit-loop</td><td>Bu ay</td><td><span class="badge high">YÜKSEK</span></td></tr>
+<tr><td>3</td><td>Süper kullanıcı (362)</td><td>VIP sadakat pilotu: stok öncelik, yeni yazar önerisi, 3 ayda 1 hediye paketi</td><td>4 hafta</td><td><span class="badge mid">ORTA</span></td></tr>
+<tr><td>4</td><td>200–500 TL sepet dilimi</td><td>Kasada "500'e tamamla ücretsiz kargo" + cross-sell bannerı</td><td>24 saat</td><td><span class="badge high">YÜKSEK</span></td></tr>
+<tr><td>5</td><td>Mobil Site → App geçişi</td><td>Checkout sonrası "App'te al %10 kupon" bannerı. %10 geçiş = +800 App sip/hafta</td><td>Bu hafta</td><td><span class="badge high">YÜKSEK</span></td></tr>
+<tr><td>6</td><td>iOS premium (5000+ TL)</td><td>iOS'a özel koleksiyon setleri / imzalı baskı kampanyası testi</td><td>Bu ay</td><td><span class="badge mid">ORTA</span></td></tr>
+<tr><td>7</td><td>Yönetim dashboard'u</td><td>Haftalık App/Mobil Site/Web ciro + sepet + yeni-kullanıcı paneli, Pazartesi 09:00</td><td>2 hafta</td><td><span class="badge mid">ORTA</span></td></tr>
+</tbody>
+</table>
+
+<div style="margin-top:40px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--gray);font-family:'Inter',sans-serif;">
+<b>Kaynak:</b> ODAKJOKER.JOKER — J_ORDERS (APPLICATION, CLIENTREF, TOTALPRICE, ORDERDATE), J_CLCARD (CUSTOMERREF master müşteri eşlemesi). ISO hafta: Pzt–Paz. Tarih formatı: YYYYMMDD ISO.<br>
+<b>Fikri Eren · 14 Nisan 2026</b>
+</div>
+
+</body>
+</html>

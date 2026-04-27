@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3 Al 2 Öde Kampanya Performans Raporu — BKM Kitap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #1a1a2e;
+    background: #f8f9fc;
+    line-height: 1.6;
+    padding: 0;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white;
+    padding: 48px 48px 40px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .header .subtitle {
+    font-size: 15px;
+    color: #94a3b8;
+    font-weight: 400;
+  }
+  .header .date {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #64748b;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 12px;
+  }
+
+  /* Content */
+  .content { padding: 40px 48px 60px; }
+
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 36px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  h2:first-child { margin-top: 0; }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #334155;
+    margin: 24px 0 10px;
+  }
+
+  p {
+    font-size: 14px;
+    color: #475569;
+    margin-bottom: 12px;
+  }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 20px 0 28px;
+  }
+  .kpi-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  .kpi-card .value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0f3460;
+  }
+  .kpi-card .value.red { color: #dc2626; }
+  .kpi-card .value.green { color: #16a34a; }
+  .kpi-card .label {
+    font-size: 11px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  /* Comparison Cards */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0 24px;
+  }
+  .compare-card {
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .compare-card.kampanyali {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #93c5fd;
+  }
+  .compare-card.kampanyasiz {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+  .compare-card .tag {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .compare-card.kampanyali .tag { color: #1d4ed8; }
+  .compare-card.kampanyasiz .tag { color: #64748b; }
+  .compare-card .big-num {
+    font-size: 36px;
+    font-weight: 700;
+  }
+  .compare-card.kampanyali .big-num { color: #1d4ed8; }
+  .compare-card.kampanyasiz .big-num { color: #475569; }
+  .compare-card .desc {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .compare-card .sub-stats {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+  .compare-card .sub-stat .val {
+    font-size: 16px;
+    font-weight: 600;
+    color: #334155;
+  }
+  .compare-card .sub-stat .lbl {
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 13px;
+  }
+  thead th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  thead th.right { text-align: right; }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+  }
+  tbody td.right { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody td.bold { font-weight: 600; }
+  tbody tr:hover { background: #fafbfd; }
+  tbody tr.highlight { background: #fffbeb; }
+
+  /* Bar chart (CSS only) */
+  .bar-chart { margin: 16px 0 24px; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .bar-label {
+    width: 70px;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    background: #f1f5f9;
+    border-radius: 4px;
+    height: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    font-size: 11px;
+    color: white;
+    font-weight: 600;
+    min-width: 60px;
+  }
+  .bar-fill.sep { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .bar-val {
+    width: 90px;
+    text-align: right;
+    font-size: 12px;
+    color: #475569;
+    font-weight: 500;
+    flex-shrink: 0;
+    padding-left: 8px;
+  }
+
+  /* Insight box */
+  .insight {
+    background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+    border-left: 4px solid #3b82f6;
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .insight .title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d4ed8;
+    margin-bottom: 6px;
+  }
+  .insight p {
+    font-size: 13px;
+    color: #334155;
+    margin: 0;
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid #e2e8f0;
+    padding: 20px 48px;
+    font-size: 11px;
+    color: #94a3b8;
+    text-align: center;
+  }
+
+  @media print {
+    body { background: white; }
+    .page { box-shadow: none; }
+    .kpi-grid { break-inside: avoid; }
+    table { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>3 Al 2 Öde — Kampanya Performans Raporu</h1>
+    <div class="subtitle">BKM Kitap Mağazaları &middot; Encore POS Merkez Verileri</div>
+    <div class="date">Rapor Tarihi: 13 Nisan 2026 &nbsp;|&nbsp; Veri Aralığı: Temmuz 2025 – 13 Nisan 2026</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ÖZET KPI -->
+    <h2>Genel Bakış</h2>
+    <p>3 Al 2 Öde kampanyası (eski Id=1 + güncel Id=12 birleşik), BKM Kitap'ın en büyük ve en uzun süreli promosyonudur. Temmuz 2025'ten bu yana kesintisiz aktiftir ve 3 mağazanın tamamında uygulanmaktadır.</p>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="value">212.795</div>
+        <div class="label">Toplam Fiş</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value">868.233</div>
+        <div class="label">Ürün Satırı</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value red">67.6M ₺</div>
+        <div class="label">Toplam İndirim</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value">~77 ₺</div>
+        <div class="label">Ort. İndirim / Ürün</div>
+      </div>
+    </div>
+
+    <!-- SEPET ETKİSİ -->
+    <h2>Sepet Büyüklüğü Etkisi <span style="font-size:13px;color:#94a3b8;font-weight:400">(Son 30 Gün)</span></h2>
+    <p>Kampanyalı fişlerde müşteriler ortalama 2 kat daha fazla ürün alıyor. Bu, kampanyanın en belirgin davranış değiştirici etkisi.</p>
+
+    <div class="compare-grid">
+      <div class="compare-card kampanyali">
+        <div class="tag">Kampanyalı Fişler</div>
+        <div class="big-num">7.2</div>
+        <div class="desc">Ortalama ürün adedi / fiş</div>
+        <div class="sub-stats">
+          <div class="sub-stat">
+            <div class="val">21.153</div>
+            <div class="lbl">Fiş Sayısı</div>
+          </div>
+          <div class="sub-stat">
+            <div class="val">%22</div>
+            <div class="lbl">Fiş Payı</div>
+          </div>
+        </div>
+      </div>
+      <div class="compare-card kampanyasiz">
+        <div class="tag">Kampanyasız Fişler</div>
+        <div class="big-num">3.5</div>
+        <div class="desc">Ortalama ürün adedi / fiş</div>
+        <div class="sub-stats">
+          <div class="sub-stat">
+            <div class="val">74.124</div>
+            <div class="lbl">Fiş Sayısı</div>
+          </div>
+          <div class="sub-stat">
+            <div class="val">%78</div>
+            <div class="lbl">Fiş Payı</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="title">Temel Bulgu</div>
+      <p>Her 5 fişten 1'inde 3 Al 2 Öde kampanyası devreye giriyor. Bu fişlerde sepet büyüklüğü 2 katına çıkıyor — yani kampanya müşterileri fazladan ürün almaya yönlendirmede çok etkili.</p>
+    </div>
+
+    <!-- AYLIK TREND -->
+    <h2>Aylık Trend</h2>
+
+    <div class="bar-chart">
+      <div class="bar-row">
+        <div class="bar-label">Tem '25</div>
+        <div class="bar-track"><div class="bar-fill" style="width:11.6%">5.3K</div></div>
+        <div class="bar-val">1.6M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Ağu '25</div>
+        <div class="bar-track"><div class="bar-fill" style="width:48.7%">18.7K</div></div>
+        <div class="bar-val">6.0M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Eyl '25</div>
+        <div class="bar-track"><div class="bar-fill sep" style="width:100%">38.5K</div></div>
+        <div class="bar-val">13.5M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Eki '25</div>
+        <div class="bar-track"><div class="bar-fill" style="width:74.3%">28.6K</div></div>
+        <div class="bar-val">9.2M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Kas '25</div>
+        <div class="bar-track"><div class="bar-fill" style="width:59%">22.7K</div></div>
+        <div class="bar-val">6.9M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Ara '25</div>
+        <div class="bar-track"><div class="bar-fill" style="width:57.5%">22.1K</div></div>
+        <div class="bar-val">6.5M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Oca '26</div>
+        <div class="bar-track"><div class="bar-fill sep" style="width:68.3%">26.3K</div></div>
+        <div class="bar-val">8.1M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Şub '26</div>
+        <div class="bar-track"><div class="bar-fill" style="width:54.6%">21.0K</div></div>
+        <div class="bar-val">6.6M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Mar '26</div>
+        <div class="bar-track"><div class="bar-fill" style="width:55.4%">21.3K</div></div>
+        <div class="bar-val">6.8M ₺</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Nis '26</div>
+        <div class="bar-track"><div class="bar-fill" style="width:21.7%">8.3K*</div></div>
+        <div class="bar-val">2.6M ₺</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#94a3b8">* Nisan ayı 13. gün itibarıyla devam ediyor. Ay sonu tahmini: ~19K fiş, ~6M ₺</p>
+
+    <div class="insight">
+      <div class="title">Sezonsal Etkiler</div>
+      <p><strong>Eylül 2025</strong> — Okul sezonu açılışı ile rekor ay (38.5K fiş, 13.5M ₺ indirim). <strong>Ocak 2026</strong> — Yarıyıl tatili etkisi ile ikinci zirve (26.3K fiş). Kasım–Aralık dönemi nispeten durgun.</p>
+    </div>
+
+    <!-- MAĞAZA BAZLI -->
+    <h2>Mağaza Bazlı Performans</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Mağaza</th>
+          <th class="right">Fiş Sayısı</th>
+          <th class="right">Ürün Satırı</th>
+          <th class="right">Toplam İndirim</th>
+          <th class="right">Ort. İndirim / Ürün</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td class="bold">ÖZLÜCE</td>
+          <td class="right">88.716</td>
+          <td class="right">361.175</td>
+          <td class="right bold">28.6M ₺</td>
+          <td class="right">79,09 ₺</td>
+        </tr>
+        <tr>
+          <td class="bold">FSM Mağaza</td>
+          <td class="right">63.463</td>
+          <td class="right">251.744</td>
+          <td class="right bold">19.9M ₺</td>
+          <td class="right">79,14 ₺</td>
+        </tr>
+        <tr>
+          <td class="bold">IST YOLU MGZ</td>
+          <td class="right">60.616</td>
+          <td class="right">255.314</td>
+          <td class="right bold">19.2M ₺</td>
+          <td class="right">75,02 ₺</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="insight">
+      <div class="title">Mağaza Notu</div>
+      <p>Özlüce mağazası tek başına toplam kampanya indiriminin %42'sini oluşturuyor (28.6M / 67.6M). Fiş başına ürün ortalaması da en yüksek bu mağazada. İstanbul Yolu'nda ürün başı indirim ~4 TL daha düşük — bu mağazada nispeten daha uygun fiyatlı kitaplar kampanyaya giriyor olabilir.</p>
+    </div>
+
+    <!-- EN ÇOK SATAN -->
+    <h2>En Çok Satan 10 Ürün <span style="font-size:13px;color:#94a3b8;font-weight:400">(Kampanya Kapsamında)</span></h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Ürün</th>
+          <th class="right">Satış Adedi</th>
+          <th class="right">Toplam İndirim</th>
+          <th class="right">Ort. İndirim</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td class="bold">Temalı Çorap Serisi</td>
+          <td class="right">2.194</td>
+          <td class="right">53.492 ₺</td>
+          <td class="right">24 ₺</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td class="bold">Telefon Melefon Yok!</td>
+          <td class="right">1.161</td>
+          <td class="right">101.484 ₺</td>
+          <td class="right">87 ₺</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td class="bold">Uçan Anne Terliği</td>
+          <td class="right">911</td>
+          <td class="right">48.994 ₺</td>
+          <td class="right">54 ₺</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td class="bold">Altı Harfli Bir Tatlı</td>
+          <td class="right">910</td>
+          <td class="right">85.800 ₺</td>
+          <td class="right">94 ₺</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td class="bold">Şifayı Kaptık Hastanesi</td>
+          <td class="right">902</td>
+          <td class="right">54.330 ₺</td>
+          <td class="right">60 ₺</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td class="bold">Annemin Uyurgezer Geceleri</td>
+          <td class="right">867</td>
+          <td class="right">62.497 ₺</td>
+          <td class="right">72 ₺</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td class="bold">Anne Terliği</td>
+          <td class="right">866</td>
+          <td class="right">50.828 ₺</td>
+          <td class="right">59 ₺</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td class="bold">Bahçıvan ve Ölüm</td>
+          <td class="right">822</td>
+          <td class="right">63.991 ₺</td>
+          <td class="right">78 ₺</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td class="bold">Gece Yarısı Kütüphanesi</td>
+          <td class="right">722</td>
+          <td class="right">75.525 ₺</td>
+          <td class="right">105 ₺</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td class="bold">Bugün Kalan Hayatımın İlk Günü</td>
+          <td class="right">684</td>
+          <td class="right">68.139 ₺</td>
+          <td class="right">100 ₺</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="insight">
+      <div class="title">Ürün Notu</div>
+      <p>"Temalı Çorap Serisi" adet olarak açık ara lider ancak düşük birim fiyatlı bir ürün (ort. 24 ₺ indirim). Birim indirim bazında en pahalı ürünler "Gece Yarısı Kütüphanesi" (105 ₺) ve "Bugün Kalan Hayatımın İlk Günü" (100 ₺) — bu kitaplar kampanyayla birlikte yüksek indirim maliyeti oluşturuyor.</p>
+    </div>
+
+    <!-- DİĞER KAMPANYALAR -->
+    <h2>Diğer Aktif BuyN Kampanyaları</h2>
+    <p>3 Al 2 Öde dışında çeşitli 2 Al 1 Öde kampanyaları da aktif:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Kampanya</th>
+          <th class="right">Başlangıç</th>
+          <th class="right">Fiş</th>
+          <th class="right">Ürün Satırı</th>
+          <th class="right">Toplam İndirim</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="bold">Puzzle 2 Al 1 Öde</td>
+          <td class="right">11.02.2026</td>
+          <td class="right">2.964</td>
+          <td class="right">7.120</td>
+          <td class="right">329K ₺</td>
+        </tr>
+        <tr>
+          <td class="bold">2 al 1 Öde Touch Marker(K)</td>
+          <td class="right">03.04.2026</td>
+          <td class="right">467</td>
+          <td class="right">1.964</td>
+          <td class="right">19K ₺</td>
+        </tr>
+        <tr>
+          <td class="bold">2 Al 1 Öde The Edd Mini(K)</td>
+          <td class="right">03.04.2026</td>
+          <td class="right">528</td>
+          <td class="right">1.621</td>
+          <td class="right">12K ₺</td>
+        </tr>
+        <tr>
+          <td class="bold">YENİYIL TEMALI ÇORAP 3 AL 2 ÖDE</td>
+          <td class="right">03.01.2026</td>
+          <td class="right">128</td>
+          <td class="right">279</td>
+          <td class="right">7K ₺</td>
+        </tr>
+        <tr>
+          <td class="bold">2 Al 1 Ödeme Rüzgal Gülü(K)</td>
+          <td class="right">06.04.2026</td>
+          <td class="right">55</td>
+          <td class="right">118</td>
+          <td class="right">6K ₺</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <div class="footer">
+    BKM Kitap — Encore POS Merkez Veritabanı &middot; Otomatik oluşturulmuş rapor &middot; 13.04.2026
+  </div>
+
+</div>
+</body>
+</html>

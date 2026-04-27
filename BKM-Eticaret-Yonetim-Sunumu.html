@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>BKM Kitap — E-ticaret Trend Raporu / Yönetim Sunumu</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+:root {
+  --bkm-navy:#0A2540;
+  --bkm-accent:#E85D2A;
+  --bkm-green:#2E7D5B;
+  --bkm-gray:#475569;
+  --bkm-bg:#F8FAFC;
+  --bkm-warn:#B91C1C;
+}
+.reveal { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1F2937; }
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 { font-family: 'Segoe UI', sans-serif; color: var(--bkm-navy); text-transform: none; letter-spacing: -0.01em; font-weight: 700;}
+.reveal h1 { font-size: 2.2em; }
+.reveal h2 { font-size: 1.7em; }
+.reveal h3 { font-size: 1.25em; }
+.reveal section { text-align: left; }
+.reveal .slide-number { font-size: 16px; }
+.reveal table { font-size: 0.62em; margin: 0.3em 0; border-collapse: collapse; width: 100%; }
+.reveal table th { background: var(--bkm-navy); color: white; padding: 6px 8px; text-align: left; font-weight: 600;}
+.reveal table td { padding: 5px 8px; border-bottom: 1px solid #E2E8F0; }
+.reveal table tr:nth-child(even) td { background: #F8FAFC; }
+.reveal .hl { color: var(--bkm-accent); font-weight: 700; }
+.reveal .good { color: var(--bkm-green); font-weight: 700; }
+.reveal .warn { color: var(--bkm-warn); font-weight: 700; }
+.reveal .muted { color: var(--bkm-gray); font-size: 0.85em; }
+.reveal .kpi-row { display: flex; gap: 14px; margin: 16px 0; }
+.reveal .kpi { flex: 1; background: var(--bkm-bg); border-left: 4px solid var(--bkm-accent); padding: 14px 16px; border-radius: 4px; }
+.reveal .kpi .val { font-size: 1.8em; font-weight: 800; color: var(--bkm-navy); display: block; line-height: 1.1;}
+.reveal .kpi .lbl { font-size: 0.55em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--bkm-gray); font-weight: 600;}
+.reveal .kpi .sub { font-size: 0.7em; color: var(--bkm-gray); margin-top: 4px; }
+.reveal .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.reveal .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.reveal .hero { background: linear-gradient(135deg, var(--bkm-navy) 0%, #1E3A8A 100%); color: white; padding: 60px 60px; margin: -40px -40px; min-height: 100%; }
+.reveal .hero h1 { color: white; font-size: 2.6em; margin-bottom: 0.3em;}
+.reveal .hero .subtitle { font-size: 1.1em; opacity: 0.85; }
+.reveal .hero .meta { margin-top: 2em; font-size: 0.8em; opacity: 0.75; }
+.reveal .callout { background: #FEF3C7; border-left: 4px solid #D97706; padding: 12px 16px; border-radius: 4px; margin: 12px 0; font-size: 0.9em;}
+.reveal .callout-danger { background: #FEE2E2; border-left-color: var(--bkm-warn); }
+.reveal .callout-good { background: #DCFCE7; border-left-color: var(--bkm-green); }
+.reveal ul { margin: 0.3em 0 0.6em 1.2em; }
+.reveal ul li { margin: 0.35em 0; font-size: 0.85em; line-height: 1.45;}
+.reveal .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.7em; font-weight: 600; background: var(--bkm-navy); color: white; margin-right: 6px;}
+.reveal .badge-warn { background: var(--bkm-warn); }
+.reveal .badge-good { background: var(--bkm-green); }
+.reveal .badge-accent { background: var(--bkm-accent); }
+.reveal .footer { position: absolute; bottom: 12px; left: 40px; right: 40px; font-size: 0.55em; color: var(--bkm-gray); display: flex; justify-content: space-between; }
+.reveal .timeline { border-left: 3px solid var(--bkm-navy); margin-left: 12px; padding-left: 18px;}
+.reveal .timeline .item { margin-bottom: 10px; font-size: 0.82em;}
+.reveal .timeline .item b { color: var(--bkm-accent); }
+.reveal .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
+.reveal .matrix .cell { padding: 10px 14px; border-radius: 6px; font-size: 0.8em;}
+.reveal .matrix .risk { background: #FEE2E2; }
+.reveal .matrix .opp { background: #DCFCE7; }
+.reveal section.center { text-align: center; }
+.reveal section.center h1 { color: var(--bkm-navy); }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<!-- 1. KAPAK -->
+<section data-background-color="#0A2540">
+  <div class="hero">
+    <div style="font-size:0.7em; opacity:0.7; letter-spacing:0.2em; margin-bottom:1em;">BKM KİTAP — YÖNETİM SUNUMU</div>
+    <h1>E-ticaret Trend Raporu</h1>
+    <div class="subtitle">15. Hafta (6–12 Nisan 2026) · ISO Pzt–Paz · Veriyle yönetim masasına gelen soru ve kararlar</div>
+    <div class="meta">Fikri Eren · 14 Nisan 2026</div>
+  </div>
+</section>
+
+<!-- 2. GÜNDEM -->
+<section>
+  <h2>Bugün ne konuşuyoruz?</h2>
+  <ol style="font-size:0.9em; line-height:1.6;">
+    <li><b>Durum fotoğrafı</b> — H15 nerede duruyor, geçen yıla göre nasıl?</li>
+    <li><b>Kanal &amp; kategori portresi</b> — değer nerede, hacim nerede?</li>
+    <li><b>Haftanın lideri Echo of Silence: viral mi, kampanya mı, manipülasyon mu?</b></li>
+    <li><b>Risk &amp; fırsat matrisi</b> — nerede para var, nerede sızıntı?</li>
+    <li><b>Aksiyon planı</b> — bugün, bu hafta, önümüzdeki ay</li>
+    <li><b>Gelinecek nokta</b> — veri → karar sistemimiz ne hale gelmeli?</li>
+  </ol>
+  <div class="callout" style="margin-top:1.2em;">
+    <b>Amaç:</b> Bu rapor artık "ayda bir bakılan Excel" olmaktan çıksın. Haftalık ritim + alarm sistemi + yönetim dashboard'ı olarak kurgulansın.
+  </div>
+</section>
+
+<!-- 3. H15 ÖZET -->
+<section>
+  <h2>H15 bir bakışta</h2>
+  <div class="kpi-row">
+    <div class="kpi"><span class="lbl">Sipariş</span><span class="val">18.267</span><span class="sub"><span class="warn">▼ %6,5</span> vs H14 <span style="opacity:0.65;">(19.541)</span></span></div>
+    <div class="kpi"><span class="lbl">Adet</span><span class="val">78.503</span><span class="sub"><span class="warn">▼ %2,1</span> vs H14 <span style="opacity:0.65;">(80.211)</span></span></div>
+    <div class="kpi"><span class="lbl">Ciro</span><span class="val">17,13 M ₺</span><span class="sub"><span class="warn">▼ %2,1</span> vs H14 <span style="opacity:0.65;">(17,49 M)</span></span></div>
+    <div class="kpi"><span class="lbl">Ortalama sepet</span><span class="val">938 ₺</span><span class="sub"><span class="good">▲ %4,8</span> vs H14 <span style="opacity:0.65;">(895 ₺)</span></span></div>
+  </div>
+  <div class="callout">
+    <b>Hikâye iki katmanlı:</b> Sepet sayısı düşüyor ama kalan sepetler büyüyor. <b>Yeni müşteri akışı zayıflıyor, mevcut müşteri daha derin sepet yapıyor.</b>
+  </div>
+  <p class="muted" style="font-size:0.7em; margin-top:0.4em;"><b>Not:</b> İptaller geriye dönük işlendiği için H15 net rakamı önümüzdeki günlerde aşağı revize olabilir; bu erken bir okumadır, kesin yorum H17'de kapanır.</p>
+  <div class="callout callout-good">
+    <b>İyi haber (ihtiyatlı):</b> İptal oranı %0,89 — son 15 haftanın en düşüğü görünüyor. Geriye dönük iptal mahsubu sonrası bu oran yukarı çıkabilir.
+  </div>
+</section>
+
+<!-- 4. 15 HAFTALIK SEYİR -->
+<section>
+  <h2>15 haftalık eğri — Ramazan/Bayram etkisi net</h2>
+  <table>
+    <thead><tr><th>Hafta</th><th>Başl.</th><th>Sipariş</th><th>Adet</th><th>Ciro (M ₺)</th><th>Not</th></tr></thead>
+    <tbody>
+      <tr><td>H08</td><td>16 Şub</td><td>33.291</td><td><b>125.035</b></td><td>27,35</td><td class="good">Yıl zirvesi — sömestr sonu + İKF</td></tr>
+      <tr><td>H11</td><td>09 Mar</td><td>20.787</td><td>80.020</td><td>17,65</td><td>Ramazan başı — hızlı çakılma</td></tr>
+      <tr><td>H12</td><td>16 Mar</td><td><b>19.899</b></td><td><b>78.657</b></td><td>18,59</td><td class="warn">Dip</td></tr>
+      <tr><td>H13</td><td>23 Mar</td><td>26.036</td><td>102.839</td><td>23,73</td><td class="good">Bayram öncesi hediye dalgası</td></tr>
+      <tr><td>H14</td><td>30 Mar</td><td>19.541</td><td>80.211</td><td>17,49</td><td>Bayram yorgunluğu</td></tr>
+      <tr><td><b>H15</b></td><td><b>06 Nis</b></td><td><b>18.267</b></td><td><b>78.503</b></td><td><b>17,13</b></td><td>23 Nisan öncesi ara pencere</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:0.8em;">13 haftalık ortalama ~105K adet/hafta. H15 bu ortalamanın <b>%25 altında</b> — yapısal değil, takvimsel.</p>
+</section>
+
+<!-- 5. YoY KARŞILAŞTIRMA -->
+<section>
+  <h2>Yıl-yıl (YoY): görünmeyen daralma</h2>
+  <table>
+    <thead><tr><th>Dönem</th><th>Sipariş</th><th>Adet</th><th>Ciro (M ₺)</th></tr></thead>
+    <tbody>
+      <tr><td>2025 H15 (07 Nis)</td><td>24.619</td><td>99.669</td><td>16,88</td></tr>
+      <tr><td>2025 H16 (14 Nis)</td><td>20.162</td><td>83.466</td><td>13,97</td></tr>
+      <tr><td>2025 H17 (21 Nis — 23 Nisan haftası)</td><td class="warn">18.621</td><td class="warn">71.546</td><td>12,15</td></tr>
+      <tr><td>2025 H18 (28 Nis)</td><td>19.734</td><td>76.683</td><td>12,64</td></tr>
+      <tr style="background:#FEF3C7;"><td><b>2026 H15 (06 Nis)</b></td><td><b>18.267</b></td><td><b>78.503</b></td><td><b>17,13</b></td></tr>
+    </tbody>
+  </table>
+  <div class="two-col" style="margin-top:1em;">
+    <div class="callout callout-danger">
+      <b>Uyarı:</b> 2026 H15 sipariş YoY <span class="warn">-%25,8</span>, adet <span class="warn">-%21,2</span>. Ciro enflasyon sayesinde korundu (+%1,5) ama <b>hacim gerçekten daralıyor</b>.
+    </div>
+    <div class="callout">
+      <b>Takvim dersi:</b> 2025'te 23 Nisan haftası yılın zayıf haftasıydı. <b>23 Nisan kampanyası H16-H17'ye değil, H15-H16'ya hizalanmalı</b> — vitrin 17 Nisan Cuma akşamına kadar yayında.
+    </div>
+  </div>
+</section>
+
+<!-- 6. KANAL KIRILIMI -->
+<section>
+  <h2>Kanal portresi — hacim mobilde, değer web + iOS'ta</h2>
+  <table>
+    <thead><tr><th>Kanal</th><th>Sipariş</th><th>Ciro payı</th><th>Ort. sepet</th><th>Okuma</th></tr></thead>
+    <tbody>
+      <tr><td>Mobil Site</td><td>7.944</td><td>%36,2</td><td>785 ₺</td><td>Hacim motoru</td></tr>
+      <tr><td>Mobil App Android</td><td>4.787</td><td>%27,1</td><td>973 ₺</td><td>Orta segment</td></tr>
+      <tr><td><b>Web Sitesi</b></td><td>2.772</td><td>%19,3</td><td><b>1.201 ₺</b></td><td class="good">Premium segment</td></tr>
+      <tr><td><b>Mobil App iOS</b></td><td>2.821</td><td>%17,4</td><td><b>1.059 ₺</b></td><td class="good">Yüksek gelir segmenti</td></tr>
+    </tbody>
+  </table>
+  <div class="three-col" style="margin-top:1em;">
+    <div class="callout"><b>Mobil Site → App</b> %10 geçiş = +800 app sipariş/hafta. Onboarding'e kupon</div>
+    <div class="callout"><b>Web = premium.</b> Sepet 1.201 ₺. Sadakat programı pilotu önce burada</div>
+    <div class="callout"><b>iOS ≠ Android.</b> Ayrı premium koleksiyon, ayrı push</div>
+  </div>
+</section>
+
+<!-- 7. KATEGORİ & YAYINEVİ -->
+<section>
+  <h2>Kategori &amp; yayınevi portresi (H15)</h2>
+  <div class="two-col">
+    <div>
+      <h3 style="font-size:0.95em;">Kategori (GROUPCODE — %94,8 dolu)</h3>
+      <table>
+        <thead><tr><th>Kategori</th><th>Adet</th><th>Ciro payı</th></tr></thead>
+        <tbody>
+          <tr><td>Edebiyat</td><td>35.076</td><td><b>%49,3</b></td></tr>
+          <tr><td>Eğitim/Sınav (4 alt grup)</td><td>12.700</td><td>%17,4</td></tr>
+          <tr><td>Çocuk</td><td>12.191</td><td>%10,8</td></tr>
+          <tr><td>İslam</td><td>2.850</td><td>%3,5</td></tr>
+          <tr><td>Tarih</td><td>1.711</td><td>%2,7</td></tr>
+          <tr><td>İnsan ve Toplum</td><td>2.006</td><td>%2,6</td></tr>
+          <tr><td>Psikoloji</td><td>1.314</td><td>%2,0</td></tr>
+          <tr><td>Diğer 25+ kategori</td><td>~7.700</td><td>%8,5</td></tr>
+          <tr><td class="muted">Eşlenmedi</td><td class="muted">4.168</td><td class="muted">%3,2</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" style="font-size:0.75em;">
+        <b>Taksonomi tutarsızlığı:</b> Eğitim/sınav 4 farklı GROUPCODE altında dağılmış. "Eğitim grubu büyüdü mü?" sorusu için kanonik mapping gerek (39 isim → ~15 ana kategori).
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:0.95em;">Yayınevi TOP 10 — adet</h3>
+      <table>
+        <thead><tr><th>Yayınevi</th><th>Adet</th><th>Ciro (₺)</th></tr></thead>
+        <tbody>
+          <tr><td>İş Bankası Kültür</td><td>4.419</td><td>383.195</td></tr>
+          <tr><td>Ephesus <span class="badge badge-good">premium</span></td><td>3.066</td><td><b>1.067.690</b></td></tr>
+          <tr><td>İndigo Kitap</td><td>2.458</td><td>844.655</td></tr>
+          <tr><td>Benim Hocam <span class="badge badge-accent">KPSS</span></td><td>2.379</td><td>594.278</td></tr>
+          <tr><td>Can Yayınları</td><td>1.894</td><td>375.961</td></tr>
+          <tr><td>Yapı Kredi</td><td>1.693</td><td>351.044</td></tr>
+          <tr><td>Martı</td><td>1.504</td><td>267.878</td></tr>
+          <tr><td>Yediiklim</td><td>1.345</td><td>255.254</td></tr>
+          <tr><td>Pukka</td><td>1.335</td><td>402.723</td></tr>
+          <tr><td>Yargı</td><td>1.142</td><td>239.802</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 8. YÜKSELENLER & TEMALAR -->
+<section>
+  <h2>Haftanın gerçek organik temaları</h2>
+  <div class="two-col">
+    <div>
+      <div class="callout callout-good"><b>🇹🇷 23 Nisan ön dalgası</b><br>
+      Çocuklar İçin Nutuk (+60) · İlber Hoca – Atatürk (169) · Büyük Atatürk Öyküler (+46) · Çalıkuşu Gençler (+56)</div>
+      <div class="callout callout-good"><b>📚 KPSS momentumu</b><br>
+      Benim Hocam Top 20'de 5 SKU · Haziran sınavına 60 gün · Koleksiyon vitrini fırsatı</div>
+      <div class="callout callout-good"><b>🧩 BKM Puzzle (kendi markamız)</b><br>
+      3 SKU üst üste yükseldi (+203 delta). İnci Küpeli Kız, Nature, Village. Marj avantajı burada.</div>
+    </div>
+    <div>
+      <div class="callout callout-good"><b>🕌 Ramazan sonrası hediyelik</b><br>
+      Yasin-i Şerif (+169) · Çok Kolay Okunabilen Yasin (+62) · Peygamber'in Aynaları (+48)</div>
+      <div class="callout callout-good"><b>📖 Klasikler dönüşü</b><br>
+      Martin Eden · Küçük Prens (İş Bankası) · Algernon · Küçük Şeylerin Tanrısı · Yaşamak. İş Bankası Kültür H15 yayınevi 1.'si.</div>
+      <div class="callout"><b>🆕 Yeni giriş patlaması</b><br>
+      Martaval-2, Sessiz, Mila ve Gizemli Çay Tarifi — 0'dan +90'a. 2. hafta teyidi izlenecek.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 9. ECHO OF SILENCE — GİRİŞ -->
+<section data-background-color="#FEF3C7">
+  <h2>Haftanın lideri mi, kırmızı bayrak mı?</h2>
+  <div style="text-align:center; margin: 1em 0;">
+    <div style="font-size:1.1em;">Echo of Silence — Sessizliğin Yankısı</div>
+    <div style="font-size:0.8em; color:#475569;">Cihan Karasöğüt · İkinci Adam Yayınları · 9786258529494</div>
+    <div style="margin-top:1em; font-size:3em; font-weight:800; color:#0A2540;">62 → <span class="hl">301</span></div>
+    <div class="muted">H14 → H15 adet · <b>4,9x</b></div>
+  </div>
+  <div class="callout callout-danger" style="margin-top:1em;">
+    <b>Yüzey:</b> Haftanın lideri. &nbsp; <b>Veri:</b> Üç alternatif hipotez var ve en güçlüsü "toplu alım kampanyası".
+  </div>
+</section>
+
+<!-- 10. HİPOTEZLER -->
+<section>
+  <h2>Üç hipotez — hangisi?</h2>
+  <table>
+    <thead><tr><th>Hipotez</th><th>Ne beklerdik?</th><th>Veri ne diyor?</th><th>Olasılık</th></tr></thead>
+    <tbody>
+      <tr><td><b>A. Organik viral / BookTok</b></td><td>Mobil kanallarda dağılım, sosyal iz, influencer postu</td><td class="warn">Tüm satış Web Sitesi'nde. Google/X/BookTok'ta iz yok.</td><td class="warn">~%10</td></tr>
+      <tr><td><b>B. Yazar / fan mobilizasyonu</b></td><td>Lansman gününde tek patlama, sonra düşüş</td><td>Eğri 3 ay kademeli büyüyor. Yazarın sistemde eski kitabı yok.</td><td>~%20</td></tr>
+      <tr style="background:#FEE2E2;"><td><b>C. Toplu alım / bestseller mühendisliği</b></td><td>Ardışık yeni hesaplar, tek kanal, stoksuz, büyük adetli siparişler</td><td class="warn">Tüm kriterler karşılanıyor (bkz. sonraki sayfa)</td><td class="warn"><b>~%65–70</b></td></tr>
+      <tr><td><b>D. Kurumsal / B2B toptan</b></td><td>Tek fatura / tek müşteri</td><td>Siparişler farklı müşteri ID'lerinde — B2B değil</td><td>~%5</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 11. DELİL ZİNCİRİ -->
+<section>
+  <h2>Delil zinciri — 6 kanıt</h2>
+  <ul>
+    <li><span class="badge badge-warn">1</span> <b>Kanal tekilliği:</b> 02 Nisan sonrası satışların %100'ü Web Sitesi. Mobil ve uygulamalarda sıfır.</li>
+    <li><span class="badge badge-warn">2</span> <b>Ardışık müşteri ID'leri:</b> 10 Nis → 39344408/420/472/494/501 · 02 Nis → 39322987 – 39323263. Aynı gün açılan yeni hesaplar.</li>
+    <li><span class="badge badge-warn">3</span> <b>Adet yapısı:</b> 10 – 10 – 10 – 10 – 50 – 93 – 100 – 100. Tüketici sepetinde görülmeyen miktarlar.</li>
+    <li><span class="badge badge-warn">4</span> <b>Stok sıfır + STATUS 3006:</b> Satışların büyük kısmı "Odak - Tedarik Edilecek". Ürün bizde yok, tedarikçiden çekilecek.</li>
+    <li><span class="badge badge-warn">5</span> <b>Erken iade:</b> 02 Nisan siparişlerinden biri (müş. 39322997, 10 adet) zaten "İade Geldi" durumunda.</li>
+    <li><span class="badge badge-warn">6</span> <b>Sosyal iz yok:</b> Google/X/TikTok/1000Kitap taramasında hiç organik içerik yok. Yayınevi dışında "konuşulmuyor".</li>
+  </ul>
+  <div class="callout callout-danger">
+    <b>Dürüst pozisyon:</b> Henüz "manipülasyon" ilan etmiyoruz. <b>14 gün izleme</b> + iade davranışı + yayınevi iletişimi sonrasında karar netleşir.
+  </div>
+</section>
+
+<!-- 11b. DIŞ SİNYAL: GROK -->
+<section>
+  <h2>Dış sinyal — okur X'te ne konuşuyor?</h2>
+  <p style="font-size:0.82em; color:#475569; margin-bottom:1em;">
+    Kaynak: Grok / X sosyal dinleme · 7–14 Nisan 2026 · ~1.200 tweet tarandı, ~45 organik tweet analize alındı.
+  </p>
+  <div class="two-col">
+    <div class="callout callout-good">
+      <b>🔥 Okurun patlayan talebi</b><br><br>
+      <b>Enemies-to-lovers</b> trope flood'u · 20–35 yaş kadın · 180–300 tweet<br>
+      <b>Grangé</b> sadakati · "tüm eserlerini okudum" yorumları<br>
+      <b>Yerli romantik kurgu:</b> Lilith'in Gözyaşları · Sahte Güz · Yazgı Paradoksu · Düşten Farksız
+    </div>
+    <div class="callout" style="background:#FEF3C7; border-left-color:#D97706;">
+      <b>⚠️ Senkron kopuk</b><br><br>
+      H15 Top 20'de bu kitaplar <b>yok</b>.<br>
+      Okur konuşuyor, rafımız sessiz.<br>
+      Rakiplerin hiçbiri trope vitrini kurmuyor — <b>boş alan</b>.
+    </div>
+  </div>
+  <div class="callout" style="margin-top:1em;">
+    <b>Aksiyon:</b> 2 yeni koleksiyon (1) <i>Enemies to Lovers &amp; Anlaşmalı Evlilik Seçkisi</i>, (2) <i>Gerilim &amp; Polisiye Favoriler — Grangé özel</i>. Anasayfada 5 kitap öne çıkar. Satın alma enemies ve Grangé devamı için 7–10 günlük hızlı temin.
+  </div>
+</section>
+
+<!-- 12. RİSK & FIRSAT MATRİSİ -->
+<section>
+  <h2>Risk &amp; fırsat matrisi</h2>
+  <div class="matrix">
+    <div class="cell risk"><b>🚩 Echo of Silence örüntüsü</b><br>İade patlaması, marj erozyonu, bestseller panel kirliliği</div>
+    <div class="cell opp"><b>✅ Fraud alarm sistemi</b><br>Günlük uyarı kuralı + dashboard alarmı</div>
+    <div class="cell risk"><b>🚩 Kategori taksonomi tutarsızlığı</b><br>GROUPCODE %94,8 dolu ama 39 farklı isim — eğitim/sınav 4 ayrı grupta</div>
+    <div class="cell opp"><b>✅ Kanonik mapping sprinti</b><br>39 → ~15 ana kategori, BI'a entegre · 1 hafta</div>
+    <div class="cell risk"><b>🚩 YoY sipariş -%26</b><br>Yeni müşteri akışı zayıflıyor, hacim daralıyor</div>
+    <div class="cell opp"><b>✅ Mobil Site → App geçişi</b><br>%10 = +800 sipariş/hafta</div>
+    <div class="cell risk"><b>🚩 Cuma-Cumartesi ölü pencere</b><br>Hafta sonu ciro %30 aşağıda</div>
+    <div class="cell opp"><b>✅ Cumartesi kampanyası pilotu</b><br>%15 sepet + ücretsiz kargo</div>
+    <div class="cell risk"><b>🚩 23 Nisan takvimi</b><br>Vitrin geç kalırsa dalga kaçar</div>
+    <div class="cell opp"><b>✅ Web premium sadakat pilotu</b><br>Sepet 1.201 ₺ segmentine tier sistem</div>
+  </div>
+</section>
+
+<!-- 13. AKSİYON PLANI -->
+<section>
+  <h2>Aksiyon planı — ne zaman, kim?</h2>
+  <div class="timeline">
+    <div class="item"><b>24 SAAT:</b> Echo of Silence günlük iade izleme paneli · Bestseller vitrin filtresi (50+ adet satırlar dışı) · Fraud alarm kuralının teknik tanımı</div>
+    <div class="item"><b>BU HAFTA:</b> 23 Nisan vitrini yayında (17 Nis Cuma) · KPSS 2026 Paketi · Kategori master data sprint 1 (Top 100 SKU) · Yayınevi iletişimi</div>
+    <div class="item"><b>2 HAFTA:</b> Cumartesi kampanya pilotu (19 Nis) · Mobil Site → App geçiş kampanyası · BKM Puzzle tematik seri</div>
+    <div class="item"><b>BU AY:</b> Web premium sadakat pilotu · iOS segment pazarlama · Yönetim dashboard'ı yayında (alarm sistemi dahil)</div>
+  </div>
+  <div class="two-col" style="margin-top:1.2em;">
+    <div class="callout">
+      <b>Sorumlu haritası:</b> E-ticaret ekibi (vitrin + kampanya) · Veri ekibi (dashboard + alarm) · Ürün ekibi (kategori master data) · Finans (marj + iade raporu)
+    </div>
+    <div class="callout">
+      <b>Takip ritmi:</b> Haftalık Pazartesi rapor · Günlük alarm paneli · Aylık yönetim brifingi
+    </div>
+  </div>
+</section>
+
+<!-- 14. YAPI VE KURGU -->
+<section>
+  <h2>Gelinecek nokta — veri → karar sistemi</h2>
+  <div class="three-col">
+    <div class="callout" style="background:#F1F5F9; border-left-color:var(--bkm-navy);">
+      <b>🔄 Bugün</b><br><br>
+      <span class="muted">Ayda bir manuel Excel · Gecikmeli görünüm · Alarm yok · Kategori boşlukları · Bestseller'da ham data</span>
+    </div>
+    <div class="callout" style="background:#FEF3C7; border-left-color:#D97706;">
+      <b>⚙️ 2 hafta sonra</b><br><br>
+      Haftalık ritim (Pazartesi 09:00) · Günlük alarm paneli · Fraud kuralı canlı · İlk kategori temizlik sprintinin sonucu · Cumartesi pilot sonucu
+    </div>
+    <div class="callout callout-good">
+      <b>🎯 3 ay sonra</b><br><br>
+      Yönetim dashboard'ı canlı · Manipülasyon/şüpheli örüntü alarmları otomatik · Kategori %90 temiz · Kanal bazlı LTV segmentasyonu · YoY hafta-hafta otomatik
+    </div>
+  </div>
+  <div class="callout" style="margin-top:1em;">
+    <b>Ana fikir:</b> Rapor bir çıktı değil, bir <b>ritim</b>. Yönetim masasına gelen her rakamın (a) öncesi, (b) bağlamı, (c) aksiyonu olsun. Echo of Silence vakası bu sistemi kurmamızın hem gerekçesi, hem ilk testi.
+  </div>
+</section>
+
+<!-- 15. GEREKEN DESTEK -->
+<section>
+  <h2>Masaya getirdiğim 6 karar</h2>
+  <ul style="font-size:0.95em; line-height:1.7;">
+    <li><b>Bestseller vitrin filtresi — ONAY:</b> Tek siparişte 50+ adet satırları organik teyit olmadan vitrine çıkmaz.</li>
+    <li><b>Fraud alarm kuralı — ONAY:</b> Ardışık yeni hesap + tek kanal + büyük adet → günlük uyarı.</li>
+    <li><b>Kategori master data sprint — KAYNAK:</b> Ürün ekibinden 1 kişi, 2 hafta, Top 100 SKU %100 dolu.</li>
+    <li><b>23 Nisan bütçesi — KARAR:</b> Çocuk vitrin + sosyal + push için ek kalem açılıyor mu?</li>
+    <li><b>Yayınevi iletişimi — SAHİPLİK:</b> İkinci Adam Yayınları görüşmesini ticari yönetici yürütür.</li>
+    <li><b>Cumartesi pilot — YÖN:</b> 19 Nisan, %15 sepet + ücretsiz kargo, 24 saat. Finans marjı çalışır, onay bekler.</li>
+  </ul>
+</section>
+
+<!-- 16. SONUÇ -->
+<section class="center">
+  <h2>Hafta tek cümleyle</h2>
+  <p style="font-size:1.45em; line-height:1.7; text-align:center; margin: 1.2em 0; font-weight:600;">
+    <span class="warn">1 şüpheli örüntü.</span><br>
+    <span class="warn">1 sessiz YoY daralma.</span><br>
+    <span class="good">3 gerçek fırsat.</span>
+  </p>
+  <p style="font-size:1.1em; text-align:center; margin-top:1.5em;">
+    Bu hafta aksiyon alınırsa H16–H18 baseline'a döner.<br>
+    Alınmazsa, aynı grafiği bir hafta sonra tekrar konuşuruz.
+  </p>
+  <div style="margin-top:2em; font-size:0.8em; color:#475569; text-align:center;">
+    Fikri Eren · 14 Nisan 2026
+  </div>
+</section>
+
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'slide',
+  width: 1280,
+  height: 760,
+  margin: 0.06,
+  controls: true,
+  progress: true,
+});
+</script>
+</body>
+</html>

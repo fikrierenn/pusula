@@ -1,0 +1,16 @@
+[Pzt 20.04.2026 11:19:33,58] Basladi 
+[Pzt 20.04.2026 11:19:33,59] CWD: D:\Dev\sqlserver-mcp-server 
+[Pzt 20.04.2026 11:19:33,61] PATH python: C:\Program Files\Python312\python.exe 
+[Pzt 20.04.2026 11:19:34,19] Kullanilacak: "C:\Program Files\Python312\python.exe" 
+Python 3.12.10
+Traceback (most recent call last):
+  File "D:\Dev\sqlserver-mcp-server\scripts\send_mail.py", line 181, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "D:\Dev\sqlserver-mcp-server\scripts\send_mail.py", line 176, in main
+    print(f"\u2713 Mail gönderildi: {', '.join(all_rcpts)}")
+  File "C:\Program Files\Python312\Lib\encodings\cp1254.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 0: character maps to <undefined>
+[Pzt 20.04.2026 11:19:38,63] ExitCode=1 

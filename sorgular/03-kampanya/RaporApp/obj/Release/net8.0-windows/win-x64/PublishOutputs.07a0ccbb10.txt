@@ -1,0 +1,2 @@
+D:\Dev\sqlserver-mcp-server\sorgular\03-kampanya\RaporApp\bin\Release\net8.0-windows\win-x64\publish\RaporApp.pdb
+D:\Dev\sqlserver-mcp-server\sorgular\03-kampanya\RaporApp\bin\Release\net8.0-windows\win-x64\publish\RaporApp.exe

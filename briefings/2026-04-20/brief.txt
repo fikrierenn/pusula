@@ -1,0 +1,152 @@
+BKM KİTAP — PAZARTESİ BRİFİNGİ · 20.04.2026
+Hafta 16 · 13-19 Nis kapanışı · 20-26 Nis öngörüsü (23 Nis tatil)
+=================================================================
+
+ÖZET
+----
+Fiziksel hafta       : 13,43 M ₺ (WoW −%1,6 · YoY +%52,5 · 21.451 fiş)
+E-ticaret JOKER      : 18,51 M ₺ (YoY +%26 · 18.088 sipariş · 139 iptal)
+E-ticaret KITAPSEPETI: 0,69 M ₺ (YoY −%29 · 686 sipariş · 6 iptal) ← reel daralma
+E-ticaret TOPLAM     : 19,21 M ₺ (2 kanal)
+MTD (01-19 Nis)      : 90,49 M ₺ · Şirket hedef MTD 122,5 M → %73,9
+Nisan projeksiyon    : 142,9 M ₺ · 5 ölçülen kanal hedefi 154,5 M → %92,5
+
+Ana mesaj: Hafta yatay (−%1,6 WoW), fiziksel YoY güçlü (+%52).
+JOKER son 3 ayın düşüşünü kırdı ama Oca-Şub seviyesinden %25 geride.
+KITAPSEPETI kanalı ciddi yapısal daralmada: sipariş YoY −%55, ciro YoY −%33
+(enflasyon dahil → reel −%50+). Bu kanalda arıza var, inceleme şart.
+Nisan ayı hedefin %7-8 altında kapanıyor; 23 Nis tatili açığı büyütebilir.
+
+1) FİZİKSEL MAĞAZA — HAFTA
+---------------------------
+Özlüce       5.954.705   8.454 fiş  sepet 704   hedef %95,9
+İst.Yolu     3.642.486   5.617 fiş  sepet 648   hedef %94,2
+FSM          3.836.680   7.380 fiş  sepet 520   hedef %87,3  ← zayıf
+TOPLAM      13.433.871  21.451 fiş  sepet 626   hedef %92,9
+
+2) E-TİCARET (JOKER) — HAFTA
+-----------------------------
+Pzt 13: 2.819 sip / 2.793.257 TL   sepet 991
+Sal 14: 2.568 sip / 2.689.520 TL   sepet 1.047
+Çar 15: 2.754 sip / 2.953.991 TL   sepet 1.073 ← zirve
+Per 16: 2.603 sip / 2.632.793 TL   sepet 1.011
+Cum 17: 2.394 sip / 2.489.484 TL   sepet 1.040
+Cmt 18: 2.379 sip / 2.383.912 TL   sepet 1.002
+Paz 19: 2.571 sip / 2.570.976 TL   sepet 1.000
+TOP:   18.088 sip / 18.513.933 TL  sepet 1.023
+
+YoY sipariş −%11 ama ciro +%26 → sepet büyüdü, trafik daraldı.
+
+2b) E-TİCARET (KITAPSEPETI) — HAFTA
+------------------------------------
+Pzt 13:    96 sip / 107.287 TL   sepet 1.118
+Sal 14:    96 sip /  96.250 TL   sepet 1.003
+Çar 15:   119 sip / 111.438 TL   sepet  937 ← zirve adet
+Per 16:   109 sip / 103.854 TL   sepet  953
+Cum 17:    92 sip /  93.434 TL   sepet 1.016
+Cmt 18:    92 sip / 100.615 TL   sepet 1.094
+Paz 19:    82 sip /  81.667 TL   sepet  996
+TOP:     686 sip / 694.545 TL    sepet 1.012
+
+YoY hafta: 2025'te 1.517 sipariş / 982.881 TL → sip −%55, ciro −%29.
+Reel olarak (enflasyon sonrası) -%50+ daralma. Kanal küçülüyor.
+
+MTD YoY: 2026 → 1.843 sip / 1,80 M; 2025 → 4.246 sip / 2,71 M
+  sipariş −%57, ciro −%33 (tam ay projeksiyonu ~2,85 M).
+
+3) ŞEHİR KIRILIMI (E-Tic hafta)
+-------------------------------
+İstanbul    3.771 sip / 3,80 M (%20,5)
+Ankara      1.619 sip / 1,64 M (%8,8)
+İzmir         950 sip / 1,03 M (%5,5)
+BURSA         925 sip / 0,92 M (%4,9)  ← iç pazar
+Kocaeli       527 sip / 0,58 M
+Antalya       544 sip / 0,54 M
+Diğer       9.602 sip / 10,01 M
+
+4) DÖNEMSEL (01-19 NİS)
+------------------------
+                   Fiziksel   E-ticaret   Toplam
+2026 MTD           38,30 M    50,39 M     88,68 M
+2026 Mart MTD      36,33 M    ~59,6 M*    ~95,9 M
+2025 MTD           27,43 M    45,41 M     72,84 M
+Δ MoM              +%5,4      ~−%15       ~−%7,5
+Δ YoY              +%39,6     +%11,0      +%21,8
+
+5) NİSAN HEDEF vs PROJEKSİYON
+------------------------------
+Özlüce         26,5 M hedef  → 27,0 M  %101,9
+İst.Yolu       16,0 M hedef  → 16,4 M  %102,2
+FSM            19,0 M hedef  → 17,1 M  %90,1  ← zayıf
+E-tic JOKER    90,0 M hedef  → 79,6 M  %88,4  ← en büyük açık
+E-tic KITAPSEP  3,0 M hedef  →  2,85M  %95,0  (resmi hedef, tahmin degil)
+----------------------------------------------
+Alt toplam    154,5 M hedef  → 142,9 M  %92,5
+Heykel (56)    16,0 M hedef  → olculmuyor (ayrı POS)
+3 Kafe top.    10,5 M hedef  → olculmuyor (ayrı sistem)
+----------------------------------------------
+Şirket Top.   181,0 M hedef  → 154,5 M olculuyor (%85)
+
+Not: Sınav Okulları HEDEF_MEKAN'da ayrı mekanID olarak YOK.
+Hedefler BKMDATA.dbo.Hedef + HEDEF_MEKAN'dan cekildi (dogrulandi).
+Kafelerin ciro akisi kurulursa brifing kapsami 181 M'e cikar.
+
+6) ÖNÜMÜZDEKİ HAFTA (20-26 NİS) · 23 NİSAN KÖPRÜSÜ
+---------------------------------------------------
+Per 23 Nis = ulusal tatil (Çocuk Bayramı)
+Cu 24 Nis  = köprü (izin yoğun)
+Hafta sonu = 4 günlük blok
+
+Günlük hedef:
+  20 Pzt  5,15 M   baz
+  21 Sal  4,89 M   baz
+  22 Çar  4,45 M   tatil arifesi, fiziksel hafif↑, e-tic ↓
+  23 Per  5,49 M   TATİL — fiziksel −50/−70%, e-tic −%20
+  24 Cu   4,77 M   köprü — fiziksel −%15/−25, e-tic −%10
+  25 Cmt  6,32 M   dönüş günü, toparlanma
+  26 Paz  6,66 M   yoğun
+TOPLAM    37,72 M   realist beklenti 32-35 M (%85-93)
+
+BURSA TRAFİĞİ:
+- Çıkış: Bursalı → İstanbul/Uludağ/Antalya/Ege → Özlüce+İst.Yolu −
+- Giriş: İstanbullu/Ankaralı → Bursa/İznik/Cumalıkızık → FSM +
+- Net: 23-24 Nis çıkış hakim (−), 25-26 Nis giriş hakim (+)
+  Hafta toplamı fiziksel −%8 ila −%12
+
+HAVA FAKTÖRÜ:
+- Nisan sonu genellikle yağışlı/serin (15-20°C)
+- Yağışlı gün → fiziksel −%10/−15, e-ticaret +%5-8
+- Güneşli uzun hafta sonu → Uludağ/İznik kaçış yoğun → fiziksel daha çok etkilenir
+- 21 Nis kesin tahmine göre plan güncellensin
+
+7) AKSİYON LİSTESİ
+-------------------
+1. Pzt-Çar son 10 gün kampanyası (JOKER e-tic 10,4 M açık) — 23 Nis Çocuk temalı
+2. FSM sepet takviyesi — kasa yanı + 2 al 1 öde
+3. 23 Nis mağaza saatleri bugün duyurulmalı (9:00)
+4. Kargo 22 Nis öncesi teslim garanti vurgusu
+5. Hava tahmini 21 Nis — riskliyse e-tic stok/kargo +%20 ön yükleme
+6. Heykel (mekanID 56) IT entegrasyonu — posOzet'e aksın
+7. JOKER sipariş adet −%11 soruşturması — ROAS raporu Pzt gündemi
+8. *** KITAPSEPETI kanal inceleme — YoY sip −%55 / ciro −%33.
+   Olası sebep: rakip platform fiyatlama, komisyon artışı, ürün listeleme,
+   marketplace algoritma değişikliği, stok/kargo SLA sorunu. Hafta içinde
+   kanal sorumlusu ile 1 saatlik teşhis toplantısı şart.
+
+8) KAPSAM UYARILARI
+--------------------
+- Heykel (mekanID 56) posOzet'e akmiyor, Nisan hedefi 16,0 M var
+- 3 Kafe (Ozluce 4,13 + FSM 3,67 + Ist.Yolu 2,70) = 10,5 M hedef,
+  kafe ciro akisi ayri sistem, brifingte yok
+- Sinav Okullari HEDEF_MEKAN'da ayri mekanID olarak YOK,
+  181 M icindeki temsili belirsiz — sorulmali
+- Olculmeyen toplam: 26,5 M (sirket hedefinin %15'i)
+- E-tic ciro net = iptal (1001, 3000) + iade (1006) haric
+- Projeksiyon lineer, tatil/kopru etkisi dahil degil
+- Hava tahmini 21 Nis'te netleşecek
+- KITAPSEPETI Nisan hedefi 3,0 M = tahmin degil, BKMDATA.dbo.Hedef'ten resmi
+
+---
+BKM Kitap · Otomatik Pazartesi Brifingi
+Veri kesim: 20 Nis 2026 09:00
+Kaynak: DerinSISBkm + ODAKJOKER.JOKER + KITAPSEPETI.JOKER

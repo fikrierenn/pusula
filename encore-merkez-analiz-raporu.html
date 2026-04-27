@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EncoreMerkez Veritabanı Analiz Raporu — BKM Kitap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a2e; background: #f0f2f5; line-height: 1.6; }
+
+  .page { max-width: 960px; margin: 0 auto; background: white; }
+
+  /* Cover */
+  .cover {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #334155 100%);
+    color: white;
+    padding: 80px 56px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .cover .badge {
+    display: inline-block;
+    background: rgba(59,130,246,0.2);
+    border: 1px solid rgba(59,130,246,0.3);
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+  .cover .sub {
+    font-size: 17px;
+    color: #94a3b8;
+    font-weight: 400;
+    margin-bottom: 32px;
+  }
+  .cover-meta {
+    display: flex;
+    gap: 32px;
+    font-size: 13px;
+    color: #64748b;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 20px;
+  }
+  .cover-meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* TOC */
+  .toc {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 32px 56px;
+  }
+  .toc h2 { font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .toc-list { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toc-list li a {
+    font-size: 14px;
+    color: #334155;
+    text-decoration: none;
+    padding: 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toc-list li a:hover { color: #2563eb; }
+  .toc-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    flex-shrink: 0;
+  }
+
+  /* Content */
+  .content { padding: 40px 56px 60px; }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 44px 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  h2:first-child { margin-top: 0; }
+  h3 { font-size: 15px; font-weight: 600; color: #334155; margin: 24px 0 10px; }
+  p { font-size: 14px; color: #475569; margin-bottom: 12px; }
+  ul { margin: 8px 0 16px 20px; }
+  li { font-size: 14px; color: #475569; margin-bottom: 4px; }
+
+  /* KPI */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0 24px; }
+  .kpi-grid.col3 { grid-template-columns: repeat(3, 1fr); }
+  .kpi { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 14px; text-align: center; }
+  .kpi .v { font-size: 22px; font-weight: 700; color: #0f3460; }
+  .kpi .v.sm { font-size: 18px; }
+  .kpi .v.red { color: #dc2626; }
+  .kpi .v.green { color: #16a34a; }
+  .kpi .v.blue { color: #2563eb; }
+  .kpi .l { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+  thead th {
+    background: #f1f5f9; color: #475569; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.3px; padding: 10px 12px;
+    text-align: left; border-bottom: 2px solid #e2e8f0;
+  }
+  thead th.r { text-align: right; }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody td.b { font-weight: 600; }
+  tbody td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  tbody tr:hover { background: #fafbfd; }
+  tbody tr.hl { background: #fffbeb; }
+
+  /* Bar chart */
+  .bar-chart { margin: 16px 0 24px; }
+  .bar-row { display: flex; align-items: center; margin-bottom: 7px; }
+  .bar-label { width: 120px; font-size: 12px; color: #64748b; font-weight: 500; flex-shrink: 0; }
+  .bar-label.w80 { width: 80px; }
+  .bar-track { flex: 1; background: #f1f5f9; border-radius: 4px; height: 26px; overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 8px; font-size: 11px; color: white; font-weight: 600; min-width: 50px;
+  }
+  .bar-fill.orange { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .bar-fill.teal { background: linear-gradient(90deg, #14b8a6, #0d9488); }
+  .bar-fill.red { background: linear-gradient(90deg, #f87171, #dc2626); }
+  .bar-val { width: 90px; text-align: right; font-size: 12px; color: #475569; font-weight: 500; flex-shrink: 0; padding-left: 8px; }
+
+  /* Compare cards */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0 24px; }
+  .ccard { border-radius: 10px; padding: 20px; text-align: center; }
+  .ccard.blue { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; }
+  .ccard.gray { background: #f8fafc; border: 1px solid #e2e8f0; }
+  .ccard .tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .ccard.blue .tag { color: #1d4ed8; }
+  .ccard.gray .tag { color: #64748b; }
+  .ccard .big { font-size: 36px; font-weight: 700; }
+  .ccard.blue .big { color: #1d4ed8; }
+  .ccard.gray .big { color: #475569; }
+  .ccard .desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .ccard .subs { margin-top: 12px; display: flex; justify-content: center; gap: 24px; }
+  .ccard .sv { font-size: 16px; font-weight: 600; color: #334155; }
+  .ccard .sl { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+
+  /* Insight */
+  .insight { background: linear-gradient(135deg, #eff6ff, #f0f9ff); border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 18px 0; }
+  .insight.warn { background: linear-gradient(135deg, #fffbeb, #fef3c7); border-left-color: #f59e0b; }
+  .insight.green { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-left-color: #16a34a; }
+  .insight .t { font-size: 13px; font-weight: 600; color: #1d4ed8; margin-bottom: 4px; }
+  .insight.warn .t { color: #b45309; }
+  .insight.green .t { color: #15803d; }
+  .insight p { font-size: 13px; color: #334155; margin: 0; }
+
+  /* Schema diagram */
+  .schema-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0 20px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #334155;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .schema-box .pk { color: #dc2626; font-weight: 600; }
+  .schema-box .fk { color: #2563eb; }
+  .schema-box .tbl { color: #0f172a; font-weight: 700; }
+
+  /* Section divider */
+  .divider {
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+    margin: 48px 0 0;
+    border-radius: 2px;
+  }
+
+  /* Footer */
+  .footer { border-top: 1px solid #e2e8f0; padding: 20px 56px; font-size: 11px; color: #94a3b8; text-align: center; }
+
+  @media print {
+    body { background: white; }
+    .page { box-shadow: none; }
+    .kpi-grid, table, .bar-chart { break-inside: avoid; }
+    .cover { break-after: page; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ========== COVER ========== -->
+<div class="cover">
+  <div class="badge">Veritabanı Analiz Raporu</div>
+  <h1>EncoreMerkez<br>Tam Sistem Analizi</h1>
+  <div class="sub">BKM Kitap POS Veritabanı Keşif, Şema Dokümantasyonu ve Kampanya Performans Analizi</div>
+  <div class="cover-meta">
+    <span>Rapor: 13 Nisan 2026</span>
+    <span>Veri: Temmuz 2025 – Nisan 2026</span>
+    <span>Sistem: Encore POS Merkez</span>
+    <span>3 Mağaza &middot; 19 Kasa</span>
+  </div>
+</div>
+
+<!-- ========== TOC ========== -->
+<div class="toc">
+  <h2>İçindekiler</h2>
+  <ul class="toc-list">
+    <li><a href="#s1"><span class="toc-num">1</span> Sistem Profili</a></li>
+    <li><a href="#s2"><span class="toc-num">2</span> Veritabanı Mimarisi</a></li>
+    <li><a href="#s3"><span class="toc-num">3</span> Çekirdek Tablo Yapıları</a></li>
+    <li><a href="#s4"><span class="toc-num">4</span> İlişki Haritası</a></li>
+    <li><a href="#s5"><span class="toc-num">5</span> View ve Entegrasyon Katmanı</a></li>
+    <li><a href="#s6"><span class="toc-num">6</span> Ciro ve Satış Analizi</a></li>
+    <li><a href="#s7"><span class="toc-num">7</span> Kampanya Performans Analizi</a></li>
+    <li><a href="#s8"><span class="toc-num">8</span> Mağaza Bazlı Analiz</a></li>
+    <li><a href="#s9"><span class="toc-num">9</span> MCP Altyapı ve Yapılanlar</a></li>
+  </ul>
+</div>
+
+<div class="content">
+
+<!-- ========== 1. SİSTEM PROFİLİ ========== -->
+<h2 id="s1">1. Sistem Profili</h2>
+
+<p>EncoreMerkez, BKM Kitap mağazalarının tamamında kullanılan Encore POS kasiyeri sisteminin merkez sunucu veritabanıdır. .NET / Entity Framework Core tabanlı bir uygulama olup SQL Server 2012 uyumluluk seviyesinde (level 110) çalışmaktadır.</p>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="v">3</div>
+    <div class="l">Aktif Mağaza</div>
+  </div>
+  <div class="kpi">
+    <div class="v">19</div>
+    <div class="l">Aktif Kasa</div>
+  </div>
+  <div class="kpi">
+    <div class="v blue">786.496</div>
+    <div class="l">Aktif Ürün</div>
+  </div>
+  <div class="kpi">
+    <div class="v">883.148</div>
+    <div class="l">Toplam Satış</div>
+  </div>
+</div>
+
+<h3>Mağaza Yapısı</h3>
+<table>
+  <thead><tr><th>ID</th><th>Kod</th><th>Mağaza Adı</th><th class="r">Kasa Sayısı</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td class="b">M03</td><td>İstanbul Yolu Mağaza</td><td class="r">5+</td></tr>
+    <tr><td>2</td><td class="b">M01</td><td>FSM Mağaza</td><td class="r">5+</td></tr>
+    <tr><td>3</td><td class="b">M02</td><td>Özlüce Mağaza</td><td class="r">5+</td></tr>
+  </tbody>
+</table>
+
+<div class="insight">
+  <div class="t">Mağaza Kodu Uyumu</div>
+  <p>Mağaza kodları (M01, M02, M03) DerinSIS ERP sistemiyle ortaktır. FSM ve Özlüce aynı fiziksel mağazalardır.</p>
+</div>
+
+<!-- ========== 2. VERİTABANI MİMARİSİ ========== -->
+<div class="divider"></div>
+<h2 id="s2">2. Veritabanı Mimarisi</h2>
+
+<p>EncoreMerkez 8 şema ve 196 obje (tablo + view) barındırmaktadır. Veritabanı boyutu yaklaşık 5+ GB'dır.</p>
+
+<h3>Şema Yapısı</h3>
+<table>
+  <thead><tr><th>Şema</th><th>Amaç</th><th class="r">Obje Sayısı</th></tr></thead>
+  <tbody>
+    <tr class="hl"><td class="b">dbo</td><td>Ana tablolar — ürün, satış, mağaza, kampanya, ödeme</td><td class="r">~100+</td></tr>
+    <tr><td class="b">akt</td><td>Aktarım view'ları — DerinSIS entegrasyonu</td><td class="r">4</td></tr>
+    <tr><td class="b">crm</td><td>CRM entegrasyon view'ları — ürün, mağaza, kategori</td><td class="r">18</td></tr>
+    <tr><td class="b">kmpy</td><td>Kampanya view'ları — detay, mix-match, ürün</td><td class="r">3</td></tr>
+    <tr><td class="b">log</td><td>Audit ve log tabloları</td><td class="r">~5</td></tr>
+    <tr><td class="b">publish</td><td>Yayınlanmış kampanya verileri (kasalara dağıtım)</td><td class="r">~10</td></tr>
+    <tr><td class="b">snd</td><td>Transfer / sevkiyat tabloları</td><td class="r">~5</td></tr>
+    <tr><td class="b">tmp</td><td>Batch import staging — toplu veri yükleme</td><td class="r">~10</td></tr>
+  </tbody>
+</table>
+
+<h3>Büyük Tablolar (Boyut Sıralaması)</h3>
+<div class="bar-chart">
+  <div class="bar-row">
+    <div class="bar-label">Sales</div>
+    <div class="bar-track"><div class="bar-fill orange" style="width:100%">1.8 GB</div></div>
+    <div class="bar-val">883K satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">SalesPayments</div>
+    <div class="bar-track"><div class="bar-fill" style="width:48%">860 MB</div></div>
+    <div class="bar-val">1.08M satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">SalesProducts</div>
+    <div class="bar-track"><div class="bar-fill teal" style="width:40%">712 MB</div></div>
+    <div class="bar-val">4.18M satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">StorePrice</div>
+    <div class="bar-track"><div class="bar-fill" style="width:25%">~450 MB</div></div>
+    <div class="bar-val">2.5M satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">SalesProdCampaigns</div>
+    <div class="bar-track"><div class="bar-fill" style="width:18%">~300 MB</div></div>
+    <div class="bar-val">1.9M satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">EInvoiceCustomers</div>
+    <div class="bar-track"><div class="bar-fill" style="width:15%">~250 MB</div></div>
+    <div class="bar-val">2M satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Barcodes</div>
+    <div class="bar-track"><div class="bar-fill" style="width:10%">~150 MB</div></div>
+    <div class="bar-val">865K satır</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Products</div>
+    <div class="bar-track"><div class="bar-fill" style="width:8%">~120 MB</div></div>
+    <div class="bar-val">841K satır</div>
+  </div>
+</div>
+
+<!-- ========== 3. TABLO YAPILARI ========== -->
+<div class="divider"></div>
+<h2 id="s3">3. Çekirdek Tablo Yapıları</h2>
+
+<h3>3.1 Products — Ürün Ana Kartı (42 kolon)</h3>
+<table>
+  <thead><tr><th>Kolon</th><th>Tip</th><th>FK / Açıklama</th></tr></thead>
+  <tbody>
+    <tr><td class="b">Id</td><td class="mono">int PK</td><td>Ürün ID</td></tr>
+    <tr><td>Code</td><td class="mono">nvarchar(50)</td><td>Ürün kodu</td></tr>
+    <tr><td>Name</td><td class="mono">nvarchar(100)</td><td>Tam ürün adı</td></tr>
+    <tr><td>ShortName</td><td class="mono">nvarchar(30)</td><td>Kısa ad (kasa ekranı)</td></tr>
+    <tr><td>CategoryId</td><td class="mono">int FK</td><td>→ ProductCategory</td></tr>
+    <tr><td>BrandId</td><td class="mono">int FK</td><td>→ ProductBrand (yayınevi)</td></tr>
+    <tr><td>SupplierId</td><td class="mono">int FK</td><td>→ ProductSupplier</td></tr>
+    <tr><td>ProductCode1Id..5Id</td><td class="mono">int FK ×5</td><td>→ ProductCode1..5 (sınıflandırma)</td></tr>
+    <tr><td>VatPercent / BuyingVatPercent</td><td class="mono">tinyint</td><td>Satış / Alış KDV oranı</td></tr>
+    <tr><td>Unit</td><td class="mono">nvarchar(5)</td><td>Birim (AD, KG)</td></tr>
+    <tr><td>ProductType, PriceType, ReturnType</td><td class="mono">tinyint</td><td>Tip enum'ları</td></tr>
+    <tr><td>IsActive, IsDeleted</td><td class="mono">bit</td><td>Durum flag'leri</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 Sales — Satış Başlık (35 kolon)</h3>
+<table>
+  <thead><tr><th>Kolon</th><th>Tip</th><th>FK / Açıklama</th></tr></thead>
+  <tbody>
+    <tr><td class="b">Id</td><td class="mono">bigint PK IDENTITY</td><td>Satış ID</td></tr>
+    <tr><td>DocumentsTypeId</td><td class="mono">int FK</td><td>→ Documents (1=Fiş, 2=Fatura, 3=İade, 4=İade-Değişim)</td></tr>
+    <tr><td>StoresId</td><td class="mono">int FK</td><td>→ Stores</td></tr>
+    <tr><td>PosId</td><td class="mono">int FK</td><td>→ Pos</td></tr>
+    <tr><td>UsersId</td><td class="mono">int FK</td><td>→ Users (kasiyer)</td></tr>
+    <tr><td>Date / StartDate</td><td class="mono">datetime</td><td>Satış tarihi / başlangıç</td></tr>
+    <tr><td>GrossTotal</td><td class="mono">decimal(18,2)</td><td>Brüt toplam</td></tr>
+    <tr><td>DiscountTotal</td><td class="mono">decimal(18,2)</td><td>İndirim toplamı</td></tr>
+    <tr><td>VatTotal</td><td class="mono">decimal(18,2)</td><td>KDV toplamı</td></tr>
+    <tr><td>TotalAmount</td><td class="mono">decimal(18,3)</td><td>Net toplam (tahsilat)</td></tr>
+    <tr><td>CustomersId</td><td class="mono">bigint</td><td>Müşteri (0 = anonim)</td></tr>
+    <tr><td>TransferStatus</td><td class="mono">tinyint</td><td>Merkeze aktarım durumu</td></tr>
+    <tr><td>LinkedDocumentId/No</td><td class="mono">bigint / nvarchar</td><td>İade bağlantısı</td></tr>
+    <tr><td>CustomerData, Details, Audits</td><td class="mono">nvarchar(max)</td><td>JSON alanları</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 SalesProducts — Satış Satır (22 kolon)</h3>
+<table>
+  <thead><tr><th>Kolon</th><th>Tip</th><th>Açıklama</th></tr></thead>
+  <tbody>
+    <tr><td class="b">Id</td><td class="mono">bigint PK</td><td>Satır ID</td></tr>
+    <tr><td>SalesId</td><td class="mono">bigint FK</td><td>→ Sales</td></tr>
+    <tr><td>ProductsId</td><td class="mono">int FK</td><td>→ Products</td></tr>
+    <tr><td>BarcodeNo</td><td class="mono">nvarchar(50)</td><td>Okunan barkod</td></tr>
+    <tr><td>Amount</td><td class="mono">decimal(18)</td><td>Miktar</td></tr>
+    <tr><td>TotalPrice</td><td class="mono">decimal(18)</td><td>Toplam fiyat (KDV dahil)</td></tr>
+    <tr><td>DiscountTotalDirect</td><td class="mono">decimal(18)</td><td>Doğrudan indirim</td></tr>
+    <tr><td>DiscountTotalCampaign</td><td class="mono">decimal(18)</td><td>Kampanya indirimi</td></tr>
+    <tr><td>IsValid</td><td class="mono">bit</td><td>Geçerli satır (false = iptal)</td></tr>
+  </tbody>
+</table>
+
+<h3>3.4 SalesPayments — Ödeme (15 kolon)</h3>
+<table>
+  <thead><tr><th>Kolon</th><th>Tip</th><th>Açıklama</th></tr></thead>
+  <tbody>
+    <tr><td class="b">Id</td><td class="mono">bigint PK</td><td>Ödeme ID</td></tr>
+    <tr><td>SalesId</td><td class="mono">bigint FK</td><td>→ Sales</td></tr>
+    <tr><td>PaymentTypesId</td><td class="mono">int FK</td><td>→ PaymentTypes (1=Nakit, 2-9=Banka KK, 10-13=Özel)</td></tr>
+    <tr><td>Amount</td><td class="mono">decimal(18)</td><td>Ödeme tutarı</td></tr>
+    <tr><td>IsChangeAmount</td><td class="mono">tinyint</td><td>Para üstü flag (1 = para üstü)</td></tr>
+    <tr><td>CreditCard*</td><td class="mono">çeşitli</td><td>BatchNo, StanNo, TerminalId, InstallmentCount, CardNo</td></tr>
+  </tbody>
+</table>
+
+<h3>3.5 StorePrice — Mağaza Fiyat (16 kolon)</h3>
+<table>
+  <thead><tr><th>Kolon</th><th>Tip</th><th>Açıklama</th></tr></thead>
+  <tbody>
+    <tr><td class="b">Id</td><td class="mono">bigint PK</td><td>Fiyat kaydı</td></tr>
+    <tr><td>StoresId / ProductsId</td><td class="mono">int FK</td><td>→ Stores / Products (bileşik anahtar)</td></tr>
+    <tr><td>Price1..Price5</td><td class="mono">decimal ×5</td><td>5 fiyat listesi</td></tr>
+    <tr><td>IsChanged</td><td class="mono">bit</td><td>Kasaya henüz iletilmemiş değişiklik</td></tr>
+    <tr><td>NextPrices</td><td class="mono">nvarchar(max)</td><td>Gelecek fiyat JSON</td></tr>
+  </tbody>
+</table>
+
+<h3>3.6 Campaign — Kampanya Ana (53 kolon)</h3>
+<p>Encore POS'un en karmaşık tablosu. BuyN-PayN, yüzde indirim, tutar indirimi, kademeli kampanya ve mix-match tiplerini destekler. 6 farklı CampaignTypeId, 7 gün flag'i (Day1..Day7), saat aralığı (BeginHour/EndHour), mağaza kısıtlama ve versiyon kontrolü içerir.</p>
+
+<!-- ========== 4. İLİŞKİ HARİTASI ========== -->
+<div class="divider"></div>
+<h2 id="s4">4. İlişki Haritası</h2>
+
+<p>Veritabanında 145 foreign key ilişkisi tanımlıdır. Ana veri akışı:</p>
+
+<div class="schema-box"><span class="tbl">Products</span> ←FK── <span class="tbl">Barcodes</span> (ProductsId)
+    │
+    ├──FK→ <span class="tbl">ProductCategory</span> (CategoryId)
+    ├──FK→ <span class="tbl">ProductBrand</span> (BrandId)
+    ├──FK→ <span class="tbl">ProductSupplier</span> (SupplierId)
+    └──FK→ <span class="tbl">ProductCode1..5</span> (ProductCode1Id..5Id)
+
+<span class="tbl">Sales</span> ←FK── <span class="tbl">SalesProducts</span> (SalesId)
+    │        └──FK→ Products (ProductsId)
+    │
+    ├──FK── <span class="tbl">SalesPayments</span> (SalesId)
+    │        └──FK→ PaymentTypes (PaymentTypesId)
+    │
+    ├──FK── <span class="tbl">SalesProductCampaigns</span> (SalesId)
+    │        └── CampaignId → Campaign
+    │
+    ├──FK→ <span class="tbl">Stores</span> (StoresId)
+    ├──FK→ <span class="tbl">Pos</span> (PosId) → Stores (StoreId)
+    ├──FK→ <span class="tbl">Users</span> (UsersId)
+    └──FK→ <span class="tbl">Documents</span> (DocumentsTypeId)
+
+<span class="tbl">StorePrice</span> → Stores (StoresId), Products (ProductsId)
+
+<span class="tbl">Campaign</span> ←── CampaignProduct, CampaignStores,
+              CampaignPayment, CampaignScale, CampaignSegment</div>
+
+<!-- ========== 5. VIEW KATMANI ========== -->
+<div class="divider"></div>
+<h2 id="s5">5. View ve Entegrasyon Katmanı</h2>
+
+<p>Toplam 41 view tespit edilmiştir. Bu view'lar dış sistem entegrasyonları ve operasyonel raporlama için kullanılmaktadır.</p>
+
+<table>
+  <thead><tr><th>Şema</th><th>View</th><th>Amaç</th></tr></thead>
+  <tbody>
+    <tr><td class="b" rowspan="6">dbo</td><td>ANLIK_CIRO</td><td>Anlık ciro takibi (canlı)</td></tr>
+    <tr><td>GUNLUK_CIRO_GDSIZ</td><td>Günlük ciro (gün sonu hariç)</td></tr>
+    <tr><td>GUNLUK_CIRO_KATEGORI_GDSIZ</td><td>Günlük ciro — kategori bazlı</td></tr>
+    <tr><td>Sales_vw / SalesProducts_vw / SalesPayments_vw</td><td>Satış detay view'ları</td></tr>
+    <tr><td>CancelledSales_vw / CancelledSalesProducts_vw</td><td>İptal satışlar</td></tr>
+    <tr><td>vatNumbers_vw</td><td>VKN listesi</td></tr>
+    <tr><td class="b" rowspan="2">akt</td><td>barkod_vw / sakMrk_vw</td><td>DerinSIS'e barkod ve stok aktarımı</td></tr>
+    <tr><td>salesInformationsId_vw / salesMessagesId_vw</td><td>Satış bilgi transfer ID'leri</td></tr>
+    <tr><td class="b">crm</td><td>product_vw, productBrand_vw, store_vw vb. (18 view)</td><td>CRM entegrasyon katmanı</td></tr>
+    <tr><td class="b">kmpy</td><td>kampanya_vw, kampanyaMixMatchDetay_vw, kampanyaUrunDetay_vw</td><td>Kampanya yönetim paneli</td></tr>
+    <tr><td class="b">log</td><td>PriceQueryHistory_vw</td><td>Fiyat sorgulama geçmişi</td></tr>
+    <tr><td class="b">tmp</td><td>batchMonitor_vw / salesErrorMonitor_vw</td><td>Batch import ve hata izleme</td></tr>
+  </tbody>
+</table>
+
+<!-- ========== 6. CİRO ANALİZİ ========== -->
+<div class="divider"></div>
+<h2 id="s6">6. Ciro ve Satış Analizi</h2>
+
+<p>Temmuz 2025'ten Nisan 2026'ya kadar toplam brüt ciro 714.7M ₺, toplam indirim 126.1M ₺ olarak gerçekleşmiştir. 844.069 fiş kesilmiştir.</p>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="v blue">714.7M ₺</div>
+    <div class="l">Brüt Ciro</div>
+  </div>
+  <div class="kpi">
+    <div class="v red">126.1M ₺</div>
+    <div class="l">Toplam İndirim</div>
+  </div>
+  <div class="kpi">
+    <div class="v green">588.6M ₺</div>
+    <div class="l">Net Ciro</div>
+  </div>
+  <div class="kpi">
+    <div class="v">844.069</div>
+    <div class="l">Toplam Fiş</div>
+  </div>
+</div>
+
+<h3>Aylık Ciro Trendi</h3>
+<table>
+  <thead>
+    <tr><th>Ay</th><th class="r">Fiş</th><th class="r">Brüt Ciro</th><th class="r">İndirim</th><th class="r">Net Ciro</th><th class="r">KDV</th><th class="r">3AL2ÖDE Fiş</th><th class="r">Kamp. Oranı</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="b">Tem '25</td><td class="r">22.660</td><td class="r">15.8M</td><td class="r">2.8M</td><td class="r">13.0M</td><td class="r">865K</td><td class="r">5.313</td><td class="r">%23</td></tr>
+    <tr><td class="b">Ağu '25</td><td class="r">68.368</td><td class="r">61.2M</td><td class="r">9.9M</td><td class="r">51.3M</td><td class="r">3.8M</td><td class="r">16.231</td><td class="r">%24</td></tr>
+    <tr class="hl"><td class="b">Eyl '25</td><td class="r">118.479</td><td class="r b">138.0M</td><td class="r">23.3M</td><td class="r b">114.6M</td><td class="r">6.8M</td><td class="r">33.930</td><td class="r">%29</td></tr>
+    <tr><td class="b">Eki '25</td><td class="r">105.424</td><td class="r">85.8M</td><td class="r">15.3M</td><td class="r">70.6M</td><td class="r">3.5M</td><td class="r">27.865</td><td class="r">%26</td></tr>
+    <tr><td class="b">Kas '25</td><td class="r">94.230</td><td class="r">69.4M</td><td class="r">12.4M</td><td class="r">57.1M</td><td class="r">3.5M</td><td class="r">22.300</td><td class="r">%24</td></tr>
+    <tr><td class="b">Ara '25</td><td class="r">102.118</td><td class="r">78.2M</td><td class="r">13.4M</td><td class="r">64.8M</td><td class="r">4.8M</td><td class="r">21.692</td><td class="r">%21</td></tr>
+    <tr class="hl"><td class="b">Oca '26</td><td class="r">107.438</td><td class="r b">86.0M</td><td class="r">15.8M</td><td class="r b">70.2M</td><td class="r">4.9M</td><td class="r">25.900</td><td class="r">%24</td></tr>
+    <tr><td class="b">Şub '26</td><td class="r">91.211</td><td class="r">72.7M</td><td class="r">13.2M</td><td class="r">59.5M</td><td class="r">3.9M</td><td class="r">20.602</td><td class="r">%23</td></tr>
+    <tr><td class="b">Mar '26</td><td class="r">94.859</td><td class="r">76.7M</td><td class="r">14.3M</td><td class="r">62.4M</td><td class="r">4.4M</td><td class="r">20.958</td><td class="r">%22</td></tr>
+    <tr><td class="b">Nis '26*</td><td class="r">39.282</td><td class="r">30.8M</td><td class="r">5.7M</td><td class="r">25.1M</td><td class="r">1.8M</td><td class="r">8.207</td><td class="r">%21</td></tr>
+  </tbody>
+</table>
+<p style="font-size:11px;color:#94a3b8">* Nisan henüz 13. gün itibarıyla</p>
+
+<div class="insight">
+  <div class="t">Ciro Trendleri</div>
+  <p>Eylül 2025 rekor ay: 138M ₺ brüt ciro (okul sezonu). İndirim oranı genel ortalama %17.6 seviyesinde seyrediyor. 3 Al 2 Öde kampanyası fişlerin %21-29'unda uygulanıyor — Eylül'de bu oran %29'a çıkmış.</p>
+</div>
+
+<h3>Mağaza Bazlı Toplam Ciro</h3>
+<table>
+  <thead><tr><th>Mağaza</th><th class="r">Fiş</th><th class="r">Brüt Ciro</th><th class="r">İndirim</th><th class="r">Net Ciro</th><th class="r">İnd. Oranı</th></tr></thead>
+  <tbody>
+    <tr class="hl"><td class="b">ÖZLÜCE</td><td class="r">335.667</td><td class="r b">303.5M ₺</td><td class="r">51.9M</td><td class="r b">251.5M ₺</td><td class="r">%17.1</td></tr>
+    <tr><td class="b">FSM Mağaza</td><td class="r">291.606</td><td class="r b">214.3M ₺</td><td class="r">38.8M</td><td class="r b">175.5M ₺</td><td class="r">%18.1</td></tr>
+    <tr><td class="b">İstanbul Yolu</td><td class="r">216.796</td><td class="r b">196.9M ₺</td><td class="r">35.3M</td><td class="r b">161.6M ₺</td><td class="r">%17.9</td></tr>
+  </tbody>
+</table>
+
+<h3>Ödeme Tipi Dağılımı</h3>
+<div class="bar-chart">
+  <div class="bar-row">
+    <div class="bar-label">Anadolubank KK</div>
+    <div class="bar-track"><div class="bar-fill" style="width:100%">188.6M ₺</div></div>
+    <div class="bar-val">%32</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Garanti KK</div>
+    <div class="bar-track"><div class="bar-fill" style="width:78%">147.9M ₺</div></div>
+    <div class="bar-val">%25</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Nakit (TL)</div>
+    <div class="bar-track"><div class="bar-fill teal" style="width:48%">91.3M ₺</div></div>
+    <div class="bar-val">%15</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Halkbank KK</div>
+    <div class="bar-track"><div class="bar-fill" style="width:45%">84.9M ₺</div></div>
+    <div class="bar-val">%14</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Vakıfbank KK</div>
+    <div class="bar-track"><div class="bar-fill" style="width:18%">33.6M ₺</div></div>
+    <div class="bar-val">%6</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Diğer</div>
+    <div class="bar-track"><div class="bar-fill red" style="width:14%">49.6M ₺</div></div>
+    <div class="bar-val">%8</div>
+  </div>
+</div>
+
+<div class="insight warn">
+  <div class="t">Ödeme Notu</div>
+  <p>Kredi kartı ödemeler toplam cirosunun %85'ini oluşturuyor. Anadolubank ve Garanti Bankası tek başına %57'lik pay alıyor. Nakit ödeme oranı sadece %15 seviyesinde.</p>
+</div>
+
+<!-- ========== 7. KAMPANYA ANALİZİ ========== -->
+<div class="divider"></div>
+<h2 id="s7">7. Kampanya Performans Analizi</h2>
+
+<p>Encore POS'ta toplamda 24 kampanya tanımı bulunmaktadır (11 aktif). Kampanyalar 4 ana tipte çalışır: BuyN PayN (3 al 2 öde vb.), Yüzdesel İndirim, Sabit Fiyat ve Hediye kampanyaları.</p>
+
+<h3>Tüm Kampanyalar — Performans Özeti</h3>
+<table>
+  <thead><tr><th>Kampanya</th><th>Tip</th><th class="r">Fiş</th><th class="r">Ürün Satırı</th><th class="r">Toplam İndirim</th><th>Durum</th></tr></thead>
+  <tbody>
+    <tr style="background:#fff7ed"><td class="b" colspan="2">Kampanya ID'siz indirimler</td><td class="r">91.957</td><td class="r">362.313</td><td class="r b">389.4M ₺</td><td style="color:#94a3b8">—</td></tr>
+    <tr class="hl"><td class="b">3AL2ÖDE (eski)</td><td>BuyN PayN</td><td class="r">119.937</td><td class="r">497.099</td><td class="r b">39.0M ₺</td><td style="color:#dc2626">Pasif</td></tr>
+    <tr class="hl"><td class="b">3AL2ÖDE(K) (güncel)</td><td>BuyN PayN</td><td class="r">92.862</td><td class="r">371.172</td><td class="r b">28.7M ₺</td><td style="color:#16a34a">Aktif</td></tr>
+    <tr><td class="b">SABİT FİYAT(K)</td><td>Sabit Fiyat</td><td class="r">146.183</td><td class="r">245.923</td><td class="r b">14.3M ₺</td><td style="color:#16a34a">Aktif</td></tr>
+    <tr><td class="b">YÜZDESEL İNDİRİM (eski)</td><td>Yüzdesel</td><td class="r">48.410</td><td class="r">74.817</td><td class="r b">12.2M ₺</td><td style="color:#dc2626">Pasif</td></tr>
+    <tr><td class="b">SABİT FİYAT (eski)</td><td>Sabit Fiyat</td><td class="r">137.887</td><td class="r">239.090</td><td class="r b">11.9M ₺</td><td style="color:#dc2626">Pasif</td></tr>
+    <tr><td class="b">YÜZDESEL İNDİRİM(K)</td><td>Yüzdesel</td><td class="r">58.235</td><td class="r">91.872</td><td class="r b">10.7M ₺</td><td style="color:#16a34a">Aktif</td></tr>
+    <tr><td class="b">LETS 1000TL HEDİYE (eski)</td><td>Hediye</td><td class="r">16.039</td><td class="r">16.273</td><td class="r">627K ₺</td><td style="color:#dc2626">Pasif</td></tr>
+    <tr><td class="b">Puzzle 2 Al 1 Öde</td><td>BuyN PayN</td><td class="r">2.964</td><td class="r">7.120</td><td class="r">329K ₺</td><td style="color:#16a34a">Aktif</td></tr>
+    <tr><td class="b">KESKIN COLOR 500→100</td><td>Tutar</td><td class="r">1.085</td><td class="r">6.289</td><td class="r">107K ₺</td><td style="color:#dc2626">Pasif</td></tr>
+    <tr><td class="b">LETS 1000TL HEDİYE(K)</td><td>Hediye</td><td class="r">2.133</td><td class="r">2.177</td><td class="r">83K ₺</td><td style="color:#16a34a">Aktif</td></tr>
+    <tr><td class="b">2. YÜZDE 50 İNDİRİM(K)</td><td>Yüzde 50</td><td class="r">147</td><td class="r">308</td><td class="r">28K ₺</td><td style="color:#16a34a">Aktif</td></tr>
+    <tr><td class="b">Touch Marker / Edd Mini / Rüzgar Gülü</td><td>BuyN PayN</td><td class="r">1.050</td><td class="r">3.703</td><td class="r">37K ₺</td><td style="color:#16a34a">Aktif</td></tr>
+  </tbody>
+</table>
+
+<div class="insight warn">
+  <div class="t">CampaignId = NULL Kayıtları</div>
+  <p>91.957 fişte kampanya ID'si olmadan 389.4M ₺ indirim kaydedilmiş. Bu muhtemelen doğrudan ürün bazlı fiyat indirimi olarak uygulanan, Sabit Fiyat veya Yüzdesel kampanya kurallarıyla eşleşen ama satış anında kampanya ID'si yazılmayan kayıtlardır.</p>
+</div>
+
+<h3>Kampanya Tipi Bazlı Dağılım</h3>
+<div class="kpi-grid col3">
+  <div class="kpi">
+    <div class="v red">67.6M ₺</div>
+    <div class="l">BuyN PayN (3al2öde vb.)</div>
+  </div>
+  <div class="kpi">
+    <div class="v red">49.1M ₺</div>
+    <div class="l">Sabit Fiyat + Yüzdesel</div>
+  </div>
+  <div class="kpi">
+    <div class="v">710K ₺</div>
+    <div class="l">Hediye + Tutar + Diğer</div>
+  </div>
+</div>
+
+<h3>3 Al 2 Öde — Detaylı Analiz</h3>
+
+<p>3 Al 2 Öde (eski Id=1 + güncel Id=12 birleşik), BKM Kitap'ın en büyük promosyonudur. Temmuz 2025'ten bu yana kesintisiz aktiftir.</p>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="v">212.795</div>
+    <div class="l">Toplam Fiş</div>
+  </div>
+  <div class="kpi">
+    <div class="v">868.233</div>
+    <div class="l">Ürün Satırı</div>
+  </div>
+  <div class="kpi">
+    <div class="v red">67.6M ₺</div>
+    <div class="l">Toplam İndirim</div>
+  </div>
+  <div class="kpi">
+    <div class="v">~77 ₺</div>
+    <div class="l">Ort. İndirim / Ürün</div>
+  </div>
+</div>
+
+<h3>Sepet Büyüklüğü Etkisi (Son 30 Gün)</h3>
+
+<div class="compare-grid">
+  <div class="ccard blue">
+    <div class="tag">Kampanyalı Fişler</div>
+    <div class="big">7.2</div>
+    <div class="desc">Ort. ürün adedi / fiş</div>
+    <div class="subs">
+      <div><div class="sv">21.153</div><div class="sl">Fiş Sayısı</div></div>
+      <div><div class="sv">%22</div><div class="sl">Fiş Payı</div></div>
+    </div>
+  </div>
+  <div class="ccard gray">
+    <div class="tag">Kampanyasız Fişler</div>
+    <div class="big">3.5</div>
+    <div class="desc">Ort. ürün adedi / fiş</div>
+    <div class="subs">
+      <div><div class="sv">74.124</div><div class="sl">Fiş Sayısı</div></div>
+      <div><div class="sv">%78</div><div class="sl">Fiş Payı</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="insight green">
+  <div class="t">Temel Bulgu</div>
+  <p>Kampanyalı fişlerde sepet büyüklüğü 2 katına çıkıyor (7.2 vs 3.5 ürün). Her 5 fişten 1'inde 3 Al 2 Öde kampanyası devreye giriyor.</p>
+</div>
+
+<h3>Aylık Trend</h3>
+<div class="bar-chart">
+  <div class="bar-row">
+    <div class="bar-label w80">Tem '25</div>
+    <div class="bar-track"><div class="bar-fill" style="width:11.6%">5.3K</div></div>
+    <div class="bar-val">1.6M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Ağu '25</div>
+    <div class="bar-track"><div class="bar-fill" style="width:48.7%">18.7K</div></div>
+    <div class="bar-val">6.0M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Eyl '25</div>
+    <div class="bar-track"><div class="bar-fill orange" style="width:100%">38.5K</div></div>
+    <div class="bar-val">13.5M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Eki '25</div>
+    <div class="bar-track"><div class="bar-fill" style="width:74.3%">28.6K</div></div>
+    <div class="bar-val">9.2M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Kas '25</div>
+    <div class="bar-track"><div class="bar-fill" style="width:59%">22.7K</div></div>
+    <div class="bar-val">6.9M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Ara '25</div>
+    <div class="bar-track"><div class="bar-fill" style="width:57.5%">22.1K</div></div>
+    <div class="bar-val">6.5M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Oca '26</div>
+    <div class="bar-track"><div class="bar-fill orange" style="width:68.3%">26.3K</div></div>
+    <div class="bar-val">8.1M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Şub '26</div>
+    <div class="bar-track"><div class="bar-fill" style="width:54.6%">21.0K</div></div>
+    <div class="bar-val">6.6M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Mar '26</div>
+    <div class="bar-track"><div class="bar-fill" style="width:55.4%">21.3K</div></div>
+    <div class="bar-val">6.8M ₺</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label w80">Nis '26*</div>
+    <div class="bar-track"><div class="bar-fill" style="width:21.7%">8.3K</div></div>
+    <div class="bar-val">2.6M ₺</div>
+  </div>
+</div>
+<p style="font-size:11px;color:#94a3b8">* Nisan henüz 13. gün itibarıyla. Ay sonu tahmini: ~19K fiş</p>
+
+<div class="insight warn">
+  <div class="t">Sezonsal Etki</div>
+  <p><strong>Eylül 2025</strong> — Okul sezonu açılışıyla rekor ay (38.5K fiş, 13.5M ₺). <strong>Ocak 2026</strong> — Yarıyıl tatili etkisiyle ikinci zirve (26.3K fiş, 8.1M ₺). Kasım–Aralık dönemi nispeten durgun.</p>
+</div>
+
+<h3>En Çok Satan 10 Ürün (Kampanya Kapsamında)</h3>
+<table>
+  <thead><tr><th>#</th><th>Ürün</th><th class="r">Adet</th><th class="r">Toplam İndirim</th><th class="r">Ort. İndirim</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td class="b">Temalı Çorap Serisi</td><td class="r">2.194</td><td class="r">53.492 ₺</td><td class="r">24 ₺</td></tr>
+    <tr><td>2</td><td class="b">Telefon Melefon Yok!</td><td class="r">1.161</td><td class="r">101.484 ₺</td><td class="r">87 ₺</td></tr>
+    <tr><td>3</td><td class="b">Uçan Anne Terliği</td><td class="r">911</td><td class="r">48.994 ₺</td><td class="r">54 ₺</td></tr>
+    <tr><td>4</td><td class="b">Altı Harfli Bir Tatlı</td><td class="r">910</td><td class="r">85.800 ₺</td><td class="r">94 ₺</td></tr>
+    <tr><td>5</td><td class="b">Şifayı Kaptık Hastanesi</td><td class="r">902</td><td class="r">54.330 ₺</td><td class="r">60 ₺</td></tr>
+    <tr><td>6</td><td class="b">Annemin Uyurgezer Geceleri</td><td class="r">867</td><td class="r">62.497 ₺</td><td class="r">72 ₺</td></tr>
+    <tr><td>7</td><td class="b">Anne Terliği</td><td class="r">866</td><td class="r">50.828 ₺</td><td class="r">59 ₺</td></tr>
+    <tr><td>8</td><td class="b">Bahçıvan ve Ölüm</td><td class="r">822</td><td class="r">63.991 ₺</td><td class="r">78 ₺</td></tr>
+    <tr><td>9</td><td class="b">Gece Yarısı Kütüphanesi</td><td class="r">722</td><td class="r">75.525 ₺</td><td class="r">105 ₺</td></tr>
+    <tr><td>10</td><td class="b">Bugün Kalan Hayatımın İlk Günü</td><td class="r">684</td><td class="r">68.139 ₺</td><td class="r">100 ₺</td></tr>
+  </tbody>
+</table>
+
+<h3>Diğer Aktif BuyN Kampanyaları</h3>
+<table>
+  <thead><tr><th>Kampanya</th><th>Formül</th><th class="r">Başlangıç</th><th class="r">Fiş</th><th class="r">İndirim</th></tr></thead>
+  <tbody>
+    <tr><td class="b">Puzzle 2 Al 1 Öde</td><td>2→1</td><td class="r">11.02.2026</td><td class="r">2.964</td><td class="r">329K ₺</td></tr>
+    <tr><td class="b">Touch Marker 2 Al 1 Öde</td><td>2→1</td><td class="r">03.04.2026</td><td class="r">467</td><td class="r">19K ₺</td></tr>
+    <tr><td class="b">The Edd Mini 2 Al 1 Öde</td><td>2→1</td><td class="r">03.04.2026</td><td class="r">528</td><td class="r">12K ₺</td></tr>
+    <tr><td class="b">Yılbaşı Çorap 3 Al 2 Öde</td><td>3→2</td><td class="r">03.01.2026</td><td class="r">128</td><td class="r">7K ₺</td></tr>
+    <tr><td class="b">Rüzgar Gülü 2 Al 1 Öde</td><td>2→1</td><td class="r">06.04.2026</td><td class="r">55</td><td class="r">6K ₺</td></tr>
+  </tbody>
+</table>
+
+<!-- ========== 7. MAĞAZA BAZLI ========== -->
+<div class="divider"></div>
+<h2 id="s8">8. Mağaza Bazlı Analiz</h2>
+
+<h3>3 Al 2 Öde — Mağaza Performansı</h3>
+<table>
+  <thead><tr><th>Mağaza</th><th class="r">Fiş Sayısı</th><th class="r">Ürün Satırı</th><th class="r">Toplam İndirim</th><th class="r">Ort. İndirim/Ürün</th><th class="r">Pay</th></tr></thead>
+  <tbody>
+    <tr class="hl">
+      <td class="b">ÖZLÜCE</td><td class="r">88.716</td><td class="r">361.175</td><td class="r b">28.6M ₺</td><td class="r">79,09 ₺</td><td class="r b">%42</td>
+    </tr>
+    <tr>
+      <td class="b">FSM Mağaza</td><td class="r">63.463</td><td class="r">251.744</td><td class="r b">19.9M ₺</td><td class="r">79,14 ₺</td><td class="r">%30</td>
+    </tr>
+    <tr>
+      <td class="b">İstanbul Yolu</td><td class="r">60.616</td><td class="r">255.314</td><td class="r b">19.2M ₺</td><td class="r">75,02 ₺</td><td class="r">%28</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="insight">
+  <div class="t">Mağaza Notu</div>
+  <p>Özlüce mağazası tek başına toplam kampanya indiriminin %42'sini oluşturuyor. İstanbul Yolu'nda ürün başı indirim ~4 ₺ daha düşük — bu mağazada nispeten daha uygun fiyatlı kitaplar kampanyaya giriyor olabilir.</p>
+</div>
+
+<!-- ========== 8. MCP ALTYAPI ========== -->
+<div class="divider"></div>
+<h2 id="s9">9. MCP Altyapı ve Yapılan Geliştirmeler</h2>
+
+<p>Bu analiz sürecinde SQL Server MCP (Model Context Protocol) sunucusu geliştirilmiş ve EncoreMerkez veritabanına tam erişim sağlanmıştır.</p>
+
+<h3>Yapılan İşler</h3>
+<table>
+  <thead><tr><th>İş</th><th>Detay</th><th>Durum</th></tr></thead>
+  <tbody>
+    <tr><td class="b">MCP Server Kurulumu</td><td>Node.js/TypeScript — Claude Desktop'a entegre, otomatik başlatma</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+    <tr><td class="b">3 Yeni Discovery Tool</td><td>sql_search_columns, sql_relationships, sql_sample_data</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+    <tr><td class="b">SQL 2012 Uyumluluk Fix</td><td>sql_describe_table — STRING_AGG → STUFF+FOR XML PATH</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+    <tr><td class="b">EncoreMerkez Skill Dosyası</td><td>skills/encore-merkez/SKILL.md — tam şema dokümantasyonu</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+    <tr><td class="b">BKM Kitap Operasyon Skill</td><td>skills/bkm-kitap-operasyon/SKILL.md</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+    <tr><td class="b">BKM Kitap Data Skill</td><td>skills/bkm-kitap-data/SKILL.md</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+    <tr><td class="b">Claude Desktop Config</td><td>claude_desktop_config.json — MCP server + 6 DB erişimi</td><td class="b" style="color:#16a34a">Tamamlandı</td></tr>
+  </tbody>
+</table>
+
+<h3>Erişilebilir Veritabanları</h3>
+<div class="kpi-grid" style="grid-template-columns: repeat(6, 1fr);">
+  <div class="kpi"><div class="v sm">master</div><div class="l">Sistem</div></div>
+  <div class="kpi"><div class="v sm blue">EncoreMerkez</div><div class="l">POS</div></div>
+  <div class="kpi"><div class="v sm">DerinSISBkm</div><div class="l">ERP</div></div>
+  <div class="kpi"><div class="v sm">DerinSISBkmCrm</div><div class="l">CRM</div></div>
+  <div class="kpi"><div class="v sm">DerinSISBkmWeb</div><div class="l">Web</div></div>
+  <div class="kpi"><div class="v sm">BKMDATA</div><div class="l">Data</div></div>
+</div>
+
+<h3>SQL Kuralları (EncoreMerkez)</h3>
+<table>
+  <thead><tr><th>#</th><th>Kural</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Compatibility Level 110 — STRING_AGG, TRIM, IIF çalışmaz. STUFF+FOR XML PATH kullan.</td></tr>
+    <tr><td>2</td><td>Soft Delete — Her ana tabloda <code>IsDeleted = 0</code> filtresi şart.</td></tr>
+    <tr><td>3</td><td>SalesProducts.IsValid — İptal satırlar <code>IsValid = 0</code>. Raporlarda filtrele.</td></tr>
+    <tr><td>4</td><td>Belge Tipi — Ciro: DocumentsTypeId IN (1,2). İade: (3,4) ayrı tut.</td></tr>
+    <tr><td>5</td><td>Para Üstü — SalesPayments.IsChangeAmount = 1 → ödeme toplamına dahil etme.</td></tr>
+    <tr><td>6</td><td>Tarih — DMY formatı: CONVERT(varchar, tarih, 104)</td></tr>
+    <tr><td>7</td><td>Fiyat — StorePrice'ta Price1..5; hangisi aktif PriceId ile belirlenir.</td></tr>
+    <tr><td>8</td><td>JSON Alanlar — Sales.CustomerData, Details, Audits hep nvarchar(max) JSON.</td></tr>
+  </tbody>
+</table>
+
+</div>
+
+<!-- ========== 10. SORGU KÜTÜPHANESİ ========== -->
+<div class="divider"></div>
+<h2 id="s10">10. Hazır Sorgu Kütüphanesi</h2>
+<p>Aşağıdaki sorgular EncoreMerkez veritabanında doğrudan çalıştırılabilir. MCP üzerinden <code>sql_query</code> aracıyla veya SSMS'ten kullanılabilir. Tüm sorgular SQL Server 2012 (compat level 110) uyumludur.</p>
+
+<p style="background:#f0f9ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0;font-size:13px;">
+<strong>Kural Hatırlatması:</strong> IsDeleted=0, IsValid=1, DocumentsTypeId IN (1,2) ciro için, IsChangeAmount=0 ödeme için, tarih CONVERT 104 formatında.
+</p>
+
+<!-- ===== 10.1 ===== -->
+<h3>10.1 — Günlük Ciro + Kampanya Kırılımı</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Son 7 gün, mağaza bazlı günlük ciro + kampanya kırılımı (3AL2ÖDE dahil)</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp <span style="color:#93c5fd">ON</span> spc.SalesId = sp.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId
+)
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104) <span style="color:#93c5fd">AS</span> Tarih,
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> s.Id) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.DiscountTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.TotalAmount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_all.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> s.Id <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> KampanyaliFis,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> s.Id <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> [3Al2Ode_Fis],
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> s.StoresId = st.Id
+<span style="color:#93c5fd">LEFT JOIN</span> (<span style="color:#93c5fd">SELECT DISTINCT</span> SalesId <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns) spc_all <span style="color:#93c5fd">ON</span> s.Id = spc_all.SalesId
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> s.Id = spc_3al.SalesId
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -7, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104), st.Name
+<span style="color:#93c5fd">ORDER BY</span> Tarih <span style="color:#93c5fd">DESC</span>, Magaza
+</pre>
+
+<!-- ===== 10.2 ===== -->
+<h3>10.2 — Aylık Ciro Trend</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Aylık brüt/net ciro, indirim oranı, fiş sayısı + 3AL2ÖDE kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp <span style="color:#93c5fd">ON</span> spc.SalesId = sp.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId
+)
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>(7), s.Date, 126) <span style="color:#93c5fd">AS</span> Ay,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.DiscountTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.TotalAmount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.VatTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamKDV,
+    <span style="color:#93c5fd">CASE WHEN</span> <span style="color:#fbbf24">SUM</span>(s.GrossTotal) > 0
+         <span style="color:#93c5fd">THEN</span> <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.DiscountTotal) * 100.0 / <span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(5,1))
+         <span style="color:#93c5fd">ELSE</span> 0 <span style="color:#93c5fd">END AS</span> IndirimOrani,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> s.Id <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> [3Al2Ode_Fis],
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> s.Id = spc_3al.SalesId
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>(7), s.Date, 126)
+<span style="color:#93c5fd">ORDER BY</span> Ay
+</pre>
+
+<!-- ===== 10.3 ===== -->
+<h3>10.3 — Mağaza Bazlı Ciro Karşılaştırması</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Tüm dönem mağaza bazlı ciro, ortalama sepet + 3AL2ÖDE kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp <span style="color:#93c5fd">ON</span> spc.SalesId = sp.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId
+)
+<span style="color:#93c5fd">SELECT</span>
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.DiscountTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.TotalAmount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+    <span style="color:#93c5fd">CASE WHEN</span> <span style="color:#fbbf24">SUM</span>(s.GrossTotal) > 0
+         <span style="color:#93c5fd">THEN</span> <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.DiscountTotal) * 100.0 / <span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(5,1))
+         <span style="color:#93c5fd">ELSE</span> 0 <span style="color:#93c5fd">END AS</span> IndirimOrani,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtSepet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(<span style="color:#fbbf24">CAST</span>(s.LineCount <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(5,1)) <span style="color:#93c5fd">AS</span> OrtUrunAdet,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> s.Id <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> [3Al2Ode_Fis],
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> s.StoresId = st.Id
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> s.Id = spc_3al.SalesId
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+<span style="color:#93c5fd">GROUP BY</span> st.Name
+<span style="color:#93c5fd">ORDER BY</span> BrutCiro <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.4 ===== -->
+<h3>10.4 — Ödeme Tipi Dağılımı</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Tüm dönem veya tarih aralığı ile ödeme tipi dağılımı</span>
+<span style="color:#93c5fd">SELECT</span>
+    pt.Name <span style="color:#93c5fd">AS</span> OdemeTipi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> IslemSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.Amount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Tutar,
+    <span style="color:#93c5fd">CASE WHEN</span> (<span style="color:#93c5fd">SELECT</span> <span style="color:#fbbf24">SUM</span>(sp2.Amount) <span style="color:#93c5fd">FROM</span> dbo.SalesPayments sp2
+          <span style="color:#93c5fd">JOIN</span> dbo.Sales s2 <span style="color:#93c5fd">ON</span> sp2.SalesId = s2.Id
+          <span style="color:#93c5fd">WHERE</span> s2.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2) <span style="color:#93c5fd">AND</span> sp2.IsChangeAmount = 0) > 0
+         <span style="color:#93c5fd">THEN</span> <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.Amount) * 100.0 /
+              (<span style="color:#93c5fd">SELECT</span> <span style="color:#fbbf24">SUM</span>(sp2.Amount) <span style="color:#93c5fd">FROM</span> dbo.SalesPayments sp2
+               <span style="color:#93c5fd">JOIN</span> dbo.Sales s2 <span style="color:#93c5fd">ON</span> sp2.SalesId = s2.Id
+               <span style="color:#93c5fd">WHERE</span> s2.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2) <span style="color:#93c5fd">AND</span> sp2.IsChangeAmount = 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(5,1))
+         <span style="color:#93c5fd">ELSE</span> 0 <span style="color:#93c5fd">END AS</span> YuzdePay
+<span style="color:#93c5fd">FROM</span> dbo.SalesPayments sp
+<span style="color:#93c5fd">JOIN</span> dbo.PaymentTypes pt <span style="color:#93c5fd">ON</span> sp.PaymentTypesId = pt.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> sp.SalesId = s.Id
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2) <span style="color:#93c5fd">AND</span> sp.IsChangeAmount = 0
+<span style="color:#93c5fd">GROUP BY</span> pt.Name
+<span style="color:#93c5fd">ORDER BY</span> Tutar <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.5 ===== -->
+<h3>10.5 — Tüm Kampanyalar — Performans Özeti</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Tüm kampanyaların toplam performansı (aktif/pasif bilgisiyle)</span>
+<span style="color:#93c5fd">SELECT</span>
+    spc.CampaignId,
+    <span style="color:#fbbf24">ISNULL</span>(spc.CampaignName, c.Name) <span style="color:#93c5fd">AS</span> KampanyaAd,
+    c.CampaignTypeId <span style="color:#93c5fd">AS</span> TipId,
+    <span style="color:#93c5fd">CASE</span> c.CampaignTypeId
+        <span style="color:#93c5fd">WHEN</span> 1 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'BuyN PayN'</span>
+        <span style="color:#93c5fd">WHEN</span> 2 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Yuzdesel/SabitFiyat'</span>
+        <span style="color:#93c5fd">WHEN</span> 5 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Tutar'</span>
+        <span style="color:#93c5fd">ELSE</span> <span style="color:#a5f3fc">'Diger'</span>
+    <span style="color:#93c5fd">END AS</span> KampanyaTipi,
+    <span style="color:#93c5fd">CASE WHEN</span> c.IsActive = 1 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Aktif'</span> <span style="color:#93c5fd">ELSE</span> <span style="color:#a5f3fc">'Pasif'</span> <span style="color:#93c5fd">END AS</span> Durum,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSatiri,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIndirimPerUrun
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.Campaign c <span style="color:#93c5fd">ON</span> spc.CampaignId = c.Id
+<span style="color:#93c5fd">GROUP BY</span> spc.CampaignId, <span style="color:#fbbf24">ISNULL</span>(spc.CampaignName, c.Name), c.CampaignTypeId, c.IsActive
+<span style="color:#93c5fd">ORDER BY</span> ToplamIndirim <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.6 ===== -->
+<h3>10.6 — Kampanya Tipi Bazlı Dağılım</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Kampanya tiplerinin toplam performansı</span>
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#93c5fd">CASE</span> c.CampaignTypeId
+        <span style="color:#93c5fd">WHEN</span> 1 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'BuyN PayN (3al2ode vb.)'</span>
+        <span style="color:#93c5fd">WHEN</span> 2 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Yuzdesel / Sabit Fiyat'</span>
+        <span style="color:#93c5fd">WHEN</span> 5 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Tutar Indirimi'</span>
+        <span style="color:#93c5fd">ELSE</span> <span style="color:#a5f3fc">'Diger (Hediye vb.)'</span>
+    <span style="color:#93c5fd">END AS</span> KampanyaTipi,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.CampaignId) <span style="color:#93c5fd">AS</span> KampanyaSayisi,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSatiri,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Campaign c <span style="color:#93c5fd">ON</span> spc.CampaignId = c.Id
+<span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IS NOT NULL</span>
+<span style="color:#93c5fd">GROUP BY</span> c.CampaignTypeId
+<span style="color:#93c5fd">ORDER BY</span> ToplamIndirim <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.7 ===== -->
+<h3>10.7 — 3 Al 2 Öde Birleşik Detay (Eski + Güncel)</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- 3AL2ÖDE eski (Id=1) + güncel (Id=12) birleşik performans</span>
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#93c5fd">CASE WHEN</span> spc.CampaignId = 1 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'3AL2ODE (eski)'</span>
+         <span style="color:#93c5fd">WHEN</span> spc.CampaignId = 12 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'3AL2ODE(K) (guncel)'</span>
+    <span style="color:#93c5fd">END AS</span> Versiyon,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSatiri,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIndirimPerUrun,
+    <span style="color:#fbbf24">MIN</span>(<span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104)) <span style="color:#93c5fd">AS</span> IlkSatis,
+    <span style="color:#fbbf24">MAX</span>(<span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104)) <span style="color:#93c5fd">AS</span> SonSatis
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> spc.SalesId = s.Id
+<span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12)
+<span style="color:#93c5fd">GROUP BY</span> spc.CampaignId
+
+<span style="color:#94a3b8">-- BİRLEŞİK TOPLAM:</span>
+<span style="color:#93c5fd">UNION ALL</span>
+
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#a5f3fc">'TOPLAM 3AL2ODE'</span> <span style="color:#93c5fd">AS</span> Versiyon,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId),
+    <span style="color:#fbbf24">COUNT</span>(*),
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)),
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)),
+    <span style="color:#fbbf24">MIN</span>(<span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104)),
+    <span style="color:#fbbf24">MAX</span>(<span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104))
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> spc.SalesId = s.Id
+<span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12)
+</pre>
+
+<!-- ===== 10.8 ===== -->
+<h3>10.8 — Belirli Kampanya — Aylık Trend</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- @kampanyaId değiştir: 1=3AL2ÖDE(eski), 12=3AL2ÖDE(K), 17=SABİT FİYAT(K), 16=YÜZDESEL(K)</span>
+<span style="color:#93c5fd">DECLARE</span> @kampanyaId <span style="color:#86efac">bigint</span> = 12
+
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>(7), s.Date, 126) <span style="color:#93c5fd">AS</span> Ay,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSatiri,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIndirim
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> spc.SalesId = s.Id
+<span style="color:#93c5fd">WHERE</span> spc.CampaignId = @kampanyaId
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>(7), s.Date, 126)
+<span style="color:#93c5fd">ORDER BY</span> Ay
+</pre>
+
+<!-- ===== 10.9 ===== -->
+<h3>10.9 — Mağaza Bazlı Kampanya Performansı</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Her mağazada kampanyaların ne kadar etki ettiği</span>
+<span style="color:#93c5fd">SELECT</span>
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    <span style="color:#fbbf24">ISNULL</span>(c.Name, <span style="color:#a5f3fc">'(Kampanya ID yok)'</span>) <span style="color:#93c5fd">AS</span> KampanyaAd,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSatiri,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIndirimPerUrun
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> spc.SalesId = s.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> s.StoresId = st.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.Campaign c <span style="color:#93c5fd">ON</span> spc.CampaignId = c.Id
+<span style="color:#93c5fd">GROUP BY</span> st.Name, <span style="color:#fbbf24">ISNULL</span>(c.Name, <span style="color:#a5f3fc">'(Kampanya ID yok)'</span>)
+<span style="color:#93c5fd">ORDER BY</span> Magaza, ToplamIndirim <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.10 ===== -->
+<h3>10.10 — Kampanyalı vs Kampanyasız Sepet Karşılaştırması</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Son 30 gün: kampanyasız / herhangi kampanya / 3AL2ÖDE sepet karşılaştırması</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span> <span style="color:#93c5fd">DISTINCT</span> SalesId <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns <span style="color:#93c5fd">WHERE</span> CampaignId <span style="color:#93c5fd">IN</span> (1, 12)
+)
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#93c5fd">CASE</span>
+        <span style="color:#93c5fd">WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> <span style="color:#a5f3fc">'3Al2Ode'</span>
+        <span style="color:#93c5fd">WHEN</span> spc_all.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> <span style="color:#a5f3fc">'DigerKampanya'</span>
+        <span style="color:#93c5fd">ELSE</span> <span style="color:#a5f3fc">'Kampanyasiz'</span>
+    <span style="color:#93c5fd">END AS</span> Grup,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> s.Id) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtBrutSepet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(<span style="color:#fbbf24">CAST</span>(s.LineCount <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,1)) <span style="color:#93c5fd">AS</span> OrtUrunAdet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamBrutCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.TotalAmount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamNetCiro
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">LEFT JOIN</span> (<span style="color:#93c5fd">SELECT DISTINCT</span> SalesId <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns) spc_all <span style="color:#93c5fd">ON</span> s.Id = spc_all.SalesId
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> s.Id = spc_3al.SalesId
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -30, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#93c5fd">CASE</span>
+    <span style="color:#93c5fd">WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> <span style="color:#a5f3fc">'3Al2Ode'</span>
+    <span style="color:#93c5fd">WHEN</span> spc_all.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> <span style="color:#a5f3fc">'DigerKampanya'</span>
+    <span style="color:#93c5fd">ELSE</span> <span style="color:#a5f3fc">'Kampanyasiz'</span> <span style="color:#93c5fd">END</span>
+</pre>
+
+<!-- ===== 10.11 ===== -->
+<h3>10.11 — Kampanya Bazlı En Çok Satan Ürünler</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- @kampanyaId değiştir: 1=3AL2ÖDE(eski), 12=3AL2ÖDE(K), 17=SABİT FİYAT(K), 16=YÜZDESEL(K)</span>
+<span style="color:#93c5fd">DECLARE</span> @kampanyaId <span style="color:#86efac">bigint</span> = 12
+
+<span style="color:#93c5fd">SELECT TOP</span> 20
+    p.Code, p.Name,
+    pc.Name <span style="color:#93c5fd">AS</span> Kategori,
+    pb.Name <span style="color:#93c5fd">AS</span> Marka,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> Adet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIndirim
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> spc.SalesId = s.Id
+<span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp <span style="color:#93c5fd">ON</span> spc.SalesId = sp.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp.Sequence
+<span style="color:#93c5fd">JOIN</span> dbo.Products p <span style="color:#93c5fd">ON</span> sp.ProductsId = p.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductCategory pc <span style="color:#93c5fd">ON</span> p.CategoryId = pc.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductBrand pb <span style="color:#93c5fd">ON</span> p.BrandId = pb.Id
+<span style="color:#93c5fd">WHERE</span> spc.CampaignId = @kampanyaId
+<span style="color:#93c5fd">GROUP BY</span> p.Code, p.Name, pc.Name, pb.Name
+<span style="color:#93c5fd">ORDER BY</span> Adet <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.12 ===== -->
+<h3>10.12 — Kategori Bazlı Satış Analizi</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Kategorilere göre satış hacmi, ciro, kampanya + 3AL2ÖDE indirim kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId, spc.ProductSequence,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp2.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp2.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp2 <span style="color:#93c5fd">ON</span> spc.SalesId = sp2.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp2.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp2.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId, spc.ProductSequence
+)
+<span style="color:#93c5fd">SELECT</span>
+    pc.Name <span style="color:#93c5fd">AS</span> Kategori,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> sp.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.Amount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,0)) <span style="color:#93c5fd">AS</span> ToplamAdet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamTutar,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.DiscountTotalCampaign) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> KampanyaIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.DiscountTotalDirect) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> DogruIndirim,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> sp.SalesId <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> [3Al2Ode_Fis],
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.SalesProducts sp
+<span style="color:#93c5fd">JOIN</span> dbo.Products p <span style="color:#93c5fd">ON</span> sp.ProductsId = p.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductCategory pc <span style="color:#93c5fd">ON</span> p.CategoryId = pc.Id
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> sp.SalesId = spc_3al.SalesId <span style="color:#93c5fd">AND</span> sp.Sequence = spc_3al.ProductSequence
+<span style="color:#93c5fd">WHERE</span> sp.IsValid = 1
+<span style="color:#93c5fd">GROUP BY</span> pc.Name
+<span style="color:#93c5fd">ORDER BY</span> ToplamTutar <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.13 ===== -->
+<h3>10.13 — Marka (Yayınevi) Bazlı Satış</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- En çok satan 30 yayınevi/marka + 3AL2ÖDE kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId, spc.ProductSequence,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp2.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp2.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp2 <span style="color:#93c5fd">ON</span> spc.SalesId = sp2.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp2.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp2.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId, spc.ProductSequence
+)
+<span style="color:#93c5fd">SELECT TOP</span> 30
+    pb.Name <span style="color:#93c5fd">AS</span> Marka,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> sp.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.Amount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,0)) <span style="color:#93c5fd">AS</span> ToplamAdet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamTutar,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.DiscountTotalCampaign) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> KampanyaIndirim,
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.SalesProducts sp
+<span style="color:#93c5fd">JOIN</span> dbo.Products p <span style="color:#93c5fd">ON</span> sp.ProductsId = p.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductBrand pb <span style="color:#93c5fd">ON</span> p.BrandId = pb.Id
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> sp.SalesId = spc_3al.SalesId <span style="color:#93c5fd">AND</span> sp.Sequence = spc_3al.ProductSequence
+<span style="color:#93c5fd">WHERE</span> sp.IsValid = 1
+<span style="color:#93c5fd">GROUP BY</span> pb.Name
+<span style="color:#93c5fd">ORDER BY</span> ToplamTutar <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.14 ===== -->
+<h3>10.14 — İade Analizi (Mağaza + Belge Tipi)</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Son 30 gün mağaza ve belge tipi bazlı iade analizi</span>
+<span style="color:#93c5fd">SELECT</span>
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    d.Name <span style="color:#93c5fd">AS</span> BelgeTipi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> IadeSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> IadeTutari,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIadeTutar
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> s.StoresId = st.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Documents d <span style="color:#93c5fd">ON</span> s.DocumentsTypeId = d.Id
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (3,4)  <span style="color:#94a3b8">-- 3=İade, 4=İade-Değişim</span>
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -30, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> st.Name, d.Name
+<span style="color:#93c5fd">ORDER BY</span> Magaza, BelgeTipi
+</pre>
+
+<!-- ===== 10.15 ===== -->
+<h3>10.15 — CampaignId NULL İndirim Analizi</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Kampanya ID'si olmadan kaydedilen indirimlerin analizi</span>
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>(7), s.Date, 126) <span style="color:#93c5fd">AS</span> Ay,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> spc.SalesId) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSatiri,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamIndirim,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(spc.TotalDiscount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtIndirim,
+    spc.CampaignName <span style="color:#93c5fd">AS</span> KampanyaAd
+<span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> spc.SalesId = s.Id
+<span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IS NULL</span>
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>(7), s.Date, 126), spc.CampaignName
+<span style="color:#93c5fd">ORDER BY</span> Ay, ToplamIndirim <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.16 ===== -->
+<h3>10.16 — Kasiyer Performansı</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Kasiyer bazlı fiş, ciro, sepet + 3AL2ÖDE kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp <span style="color:#93c5fd">ON</span> spc.SalesId = sp.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId
+)
+<span style="color:#93c5fd">SELECT</span>
+    u.Name <span style="color:#93c5fd">AS</span> Kasiyer,
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtSepet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(<span style="color:#fbbf24">CAST</span>(s.LineCount <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(5,1)) <span style="color:#93c5fd">AS</span> OrtUrunAdet,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> s.Id <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> [3Al2Ode_Fis],
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">JOIN</span> dbo.Users u <span style="color:#93c5fd">ON</span> s.UsersId = u.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> s.StoresId = st.Id
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> s.Id = spc_3al.SalesId
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -30, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> u.Name, st.Name
+<span style="color:#93c5fd">ORDER BY</span> BrutCiro <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.17 ===== -->
+<h3>10.17 — Saat Bazlı Satış Dağılımı</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Saat bazlı yoğunluk + 3AL2ÖDE kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp <span style="color:#93c5fd">ON</span> spc.SalesId = sp.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId
+)
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#fbbf24">DATEPART</span>(HOUR, s.Date) <span style="color:#93c5fd">AS</span> Saat,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(s.GrossTotal) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> OrtSepet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">AVG</span>(<span style="color:#fbbf24">CAST</span>(s.LineCount <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(5,1)) <span style="color:#93c5fd">AS</span> OrtUrunAdet,
+    <span style="color:#fbbf24">COUNT</span>(<span style="color:#93c5fd">DISTINCT</span> <span style="color:#93c5fd">CASE WHEN</span> spc_3al.SalesId <span style="color:#93c5fd">IS NOT NULL THEN</span> s.Id <span style="color:#93c5fd">END</span>) <span style="color:#93c5fd">AS</span> [3Al2Ode_Fis],
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> s.Id = spc_3al.SalesId
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -30, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#fbbf24">DATEPART</span>(HOUR, s.Date)
+<span style="color:#93c5fd">ORDER BY</span> Saat
+</pre>
+
+<!-- ===== 10.18 ===== -->
+<h3>10.18 — Gün Sonu Kapanış Kontrolü</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Son 7 gün gün sonu kapanış takibi (kasa + mağaza bazlı)</span>
+<span style="color:#93c5fd">SELECT</span>
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104) <span style="color:#93c5fd">AS</span> Tarih,
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    pos.Name <span style="color:#93c5fd">AS</span> Kasa,
+    s.ClosureNo <span style="color:#93c5fd">AS</span> KapanisNo,
+    <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> FisSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(s.TotalAmount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro
+<span style="color:#93c5fd">FROM</span> dbo.Sales s
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> s.StoresId = st.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Pos pos <span style="color:#93c5fd">ON</span> s.PosId = pos.Id
+<span style="color:#93c5fd">WHERE</span> s.DocumentsTypeId <span style="color:#93c5fd">IN</span> (1,2)
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -7, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, s.Date, 104), st.Name, pos.Name, s.ClosureNo
+<span style="color:#93c5fd">ORDER BY</span> Tarih <span style="color:#93c5fd">DESC</span>, Magaza, Kasa
+</pre>
+
+<!-- ===== 10.19 ===== -->
+<h3>10.19 — Mağaza Fiyat Kontrolü (Barkod / Ürün Kodu)</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Barkod veya ürün koduyla tüm mağazalardaki fiyatı sorgulama</span>
+<span style="color:#93c5fd">DECLARE</span> @ara <span style="color:#86efac">nvarchar</span>(50) = <span style="color:#a5f3fc">'URUN_KODU_VEYA_BARKOD'</span>
+
+<span style="color:#93c5fd">SELECT</span>
+    st.Name <span style="color:#93c5fd">AS</span> Magaza,
+    p.Code, p.Name,
+    b.BarcodeNo,
+    sp.Price1, sp.Price2, sp.Price3,
+    sp.IsOnSale, sp.IsChanged,
+    pc.Name <span style="color:#93c5fd">AS</span> Kategori,
+    pb.Name <span style="color:#93c5fd">AS</span> Marka
+<span style="color:#93c5fd">FROM</span> dbo.StorePrice sp
+<span style="color:#93c5fd">JOIN</span> dbo.Products p <span style="color:#93c5fd">ON</span> sp.ProductsId = p.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Stores st <span style="color:#93c5fd">ON</span> sp.StoresId = st.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.Barcodes b <span style="color:#93c5fd">ON</span> p.Id = b.ProductsId
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductCategory pc <span style="color:#93c5fd">ON</span> p.CategoryId = pc.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductBrand pb <span style="color:#93c5fd">ON</span> p.BrandId = pb.Id
+<span style="color:#93c5fd">WHERE</span> (p.Code = @ara <span style="color:#93c5fd">OR</span> b.BarcodeNo = @ara <span style="color:#93c5fd">OR</span> p.Name <span style="color:#93c5fd">LIKE</span> <span style="color:#a5f3fc">'%'</span> + @ara + <span style="color:#a5f3fc">'%'</span>)
+  <span style="color:#93c5fd">AND</span> sp.IsActive = 1 <span style="color:#93c5fd">AND</span> p.IsDeleted = 0
+</pre>
+
+<!-- ===== 10.20 ===== -->
+<h3>10.20 — Sistem İstatistikleri (Tablo Boyutları)</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Veritabanındaki tüm tabloların satır sayısı ve boyutu</span>
+<span style="color:#93c5fd">SELECT</span>
+    s.name <span style="color:#93c5fd">AS</span> Sema,
+    t.name <span style="color:#93c5fd">AS</span> Tablo,
+    p.rows <span style="color:#93c5fd">AS</span> SatirSayisi,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(a.total_pages) * 8.0 / 1024 <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(10,1)) <span style="color:#93c5fd">AS</span> BoyutMB,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(a.used_pages) * 8.0 / 1024 <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(10,1)) <span style="color:#93c5fd">AS</span> KullanilanMB
+<span style="color:#93c5fd">FROM</span> sys.tables t
+<span style="color:#93c5fd">JOIN</span> sys.schemas s <span style="color:#93c5fd">ON</span> t.schema_id = s.schema_id
+<span style="color:#93c5fd">JOIN</span> sys.indexes i <span style="color:#93c5fd">ON</span> t.object_id = i.object_id <span style="color:#93c5fd">AND</span> i.index_id <span style="color:#93c5fd">IN</span> (0,1)
+<span style="color:#93c5fd">JOIN</span> sys.partitions p <span style="color:#93c5fd">ON</span> i.object_id = p.object_id <span style="color:#93c5fd">AND</span> i.index_id = p.index_id
+<span style="color:#93c5fd">JOIN</span> sys.allocation_units a <span style="color:#93c5fd">ON</span> p.partition_id = a.container_id
+<span style="color:#93c5fd">GROUP BY</span> s.name, t.name, p.rows
+<span style="color:#93c5fd">ORDER BY</span> p.rows <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.21 ===== -->
+<h3>10.21 — En Çok Satan 20 Ürün (Genel)</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- En çok satan ürünler (son 30 gün) + 3AL2ÖDE kırılımı</span>
+<span style="color:#93c5fd">;</span><span style="color:#93c5fd">WITH</span> cte_3al2ode <span style="color:#93c5fd">AS</span> (
+    <span style="color:#93c5fd">SELECT</span>
+        spc.SalesId, spc.ProductSequence,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp2.TotalPrice + <span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> BrutCiro,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(<span style="color:#fbbf24">ABS</span>(spc.DistributedAmount)) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> Indirim,
+        <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp2.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> NetCiro,
+        <span style="color:#fbbf24">COUNT</span>(*) <span style="color:#93c5fd">AS</span> UrunSayisi
+    <span style="color:#93c5fd">FROM</span> dbo.SalesProductCampaigns spc
+    <span style="color:#93c5fd">JOIN</span> dbo.SalesProducts sp2 <span style="color:#93c5fd">ON</span> spc.SalesId = sp2.SalesId <span style="color:#93c5fd">AND</span> spc.ProductSequence = sp2.Sequence
+    <span style="color:#93c5fd">WHERE</span> spc.CampaignId <span style="color:#93c5fd">IN</span> (1, 12) <span style="color:#93c5fd">AND</span> sp2.IsValid = 1
+    <span style="color:#93c5fd">GROUP BY</span> spc.SalesId, spc.ProductSequence
+)
+<span style="color:#93c5fd">SELECT TOP</span> 20
+    p.Code, p.Name,
+    pc.Name <span style="color:#93c5fd">AS</span> Kategori,
+    pb.Name <span style="color:#93c5fd">AS</span> Marka,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.Amount) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,0)) <span style="color:#93c5fd">AS</span> ToplamAdet,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.TotalPrice) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> ToplamTutar,
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">SUM</span>(sp.DiscountTotalCampaign) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> KampanyaIndirim,
+    <span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.UrunSayisi), 0) <span style="color:#93c5fd">AS</span> [3Al2Ode_Urun],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.BrutCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_BrutCiro],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.Indirim), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_Indirim],
+    <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">ISNULL</span>(<span style="color:#fbbf24">SUM</span>(spc_3al.NetCiro), 0) <span style="color:#93c5fd">AS</span> <span style="color:#86efac">decimal</span>(18,2)) <span style="color:#93c5fd">AS</span> [3Al2Ode_NetCiro]
+<span style="color:#93c5fd">FROM</span> dbo.SalesProducts sp
+<span style="color:#93c5fd">JOIN</span> dbo.Products p <span style="color:#93c5fd">ON</span> sp.ProductsId = p.Id
+<span style="color:#93c5fd">JOIN</span> dbo.Sales s <span style="color:#93c5fd">ON</span> sp.SalesId = s.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductCategory pc <span style="color:#93c5fd">ON</span> p.CategoryId = pc.Id
+<span style="color:#93c5fd">LEFT JOIN</span> dbo.ProductBrand pb <span style="color:#93c5fd">ON</span> p.BrandId = pb.Id
+<span style="color:#93c5fd">LEFT JOIN</span> cte_3al2ode spc_3al <span style="color:#93c5fd">ON</span> sp.SalesId = spc_3al.SalesId <span style="color:#93c5fd">AND</span> sp.Sequence = spc_3al.ProductSequence
+<span style="color:#93c5fd">WHERE</span> sp.IsValid = 1
+  <span style="color:#93c5fd">AND</span> <span style="color:#fbbf24">CAST</span>(s.Date <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>) >= <span style="color:#fbbf24">DATEADD</span>(DAY, -30, <span style="color:#fbbf24">CAST</span>(<span style="color:#fbbf24">GETDATE</span>() <span style="color:#93c5fd">AS</span> <span style="color:#86efac">date</span>))
+<span style="color:#93c5fd">GROUP BY</span> p.Code, p.Name, pc.Name, pb.Name
+<span style="color:#93c5fd">ORDER BY</span> ToplamAdet <span style="color:#93c5fd">DESC</span>
+</pre>
+
+<!-- ===== 10.22 ===== -->
+<h3>10.22 — Kampanya Tanımları (Aktif Liste)</h3>
+<pre style="background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;font-size:12px;line-height:1.7;overflow-x:auto;margin:10px 0 20px">
+<span style="color:#94a3b8">-- Aktif kampanya tanımları ve kuralları</span>
+<span style="color:#93c5fd">SELECT</span>
+    c.Id,
+    c.Name <span style="color:#93c5fd">AS</span> KampanyaAd,
+    c.CampaignTypeId <span style="color:#93c5fd">AS</span> TipId,
+    <span style="color:#93c5fd">CASE</span> c.CampaignTypeId
+        <span style="color:#93c5fd">WHEN</span> 1 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'BuyN PayN'</span>
+        <span style="color:#93c5fd">WHEN</span> 2 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Yuzdesel/SabitFiyat'</span>
+        <span style="color:#93c5fd">WHEN</span> 5 <span style="color:#93c5fd">THEN</span> <span style="color:#a5f3fc">'Tutar'</span>
+        <span style="color:#93c5fd">ELSE</span> <span style="color:#a5f3fc">'Diger'</span>
+    <span style="color:#93c5fd">END AS</span> KampanyaTipi,
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, c.BeginDate, 104) <span style="color:#93c5fd">AS</span> Baslangic,
+    <span style="color:#fbbf24">CONVERT</span>(<span style="color:#86efac">varchar</span>, c.EndDate, 104) <span style="color:#93c5fd">AS</span> Bitis,
+    c.BuyNPayN_1ConditionNum <span style="color:#93c5fd">AS</span> AlimKosul,
+    c.BuyNPayN_1PayNum <span style="color:#93c5fd">AS</span> OdemeKosul,
+    c.ConditionAmount <span style="color:#93c5fd">AS</span> KosulTutar,
+    c.ConditionQuantity <span style="color:#93c5fd">AS</span> KosulAdet,
+    c.Sequence <span style="color:#93c5fd">AS</span> Oncelik,
+    c.ValidForAllStores <span style="color:#93c5fd">AS</span> TumMagazalar,
+    c.IsActive
+<span style="color:#93c5fd">FROM</span> dbo.Campaign c
+<span style="color:#93c5fd">WHERE</span> c.IsActive = 1
+<span style="color:#93c5fd">ORDER BY</span> c.Sequence, c.Name
+</pre>
+
+</div>
+
+<div class="footer">
+  BKM Kitap — EncoreMerkez Veritabanı Analiz Raporu &middot; Otomatik oluşturuldu &middot; 13 Nisan 2026
+</div>
+
+</div>
+</body>
+</html>

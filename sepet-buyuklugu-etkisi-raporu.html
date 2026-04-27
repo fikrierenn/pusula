@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sepet Büyüklüğü Etkisi — BKM Kitap EncoreMerkez</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6;
+    --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --c3al: #3b82f6; --cother: #f59e0b; --cnone: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .header { text-align: center; padding: 40px 0 30px; border-bottom: 1px solid var(--surface2); margin-bottom: 30px; }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .header .subtitle { color: var(--muted); font-size: 14px; }
+  .header .date { color: var(--accent); font-size: 13px; margin-top: 4px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .kpi-card { background: var(--surface); border-radius: 12px; padding: 18px; text-align: center; border: 1px solid var(--surface2); }
+  .kpi-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .kpi-card .value { font-size: 24px; font-weight: 700; }
+  .kpi-card .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .blue .value { color: var(--c3al); }
+  .amber .value { color: var(--cother); }
+  .gray .value { color: var(--cnone); }
+  .green .value { color: var(--green); }
+  .section { margin-bottom: 36px; }
+  .section h2 { font-size: 20px; font-weight: 600; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--surface2); }
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+  .chart-box { background: var(--surface); border-radius: 12px; padding: 18px; border: 1px solid var(--surface2); }
+  .chart-box h3 { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-align: center; }
+  .chart-full { grid-column: 1 / -1; }
+  .legend { display: flex; gap: 24px; justify-content: center; margin: 14px 0; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .insight { background: rgba(59,130,246,0.08); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; font-size: 13px; line-height: 1.7; }
+  .insight strong { color: var(--accent); }
+  .month-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .month-card { background: var(--surface); border-radius: 12px; padding: 14px; border: 1px solid var(--surface2); }
+  .month-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--surface2); padding: 6px 8px; text-align: right; font-weight: 600; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  th:first-child { text-align: left; border-radius: 6px 0 0 0; }
+  th:last-child { border-radius: 0 6px 0 0; }
+  td { padding: 5px 8px; text-align: right; border-bottom: 1px solid rgba(148,163,184,0.08); }
+  td:first-child { text-align: left; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .r3 td:first-child { color: var(--c3al); }
+  .rd td:first-child { color: var(--cother); }
+  .rn td:first-child { color: var(--cnone); }
+  .footer { text-align: center; padding: 20px 0; color: var(--muted); font-size: 12px; border-top: 1px solid var(--surface2); margin-top: 40px; }
+  pre.sql { background:var(--surface);color:var(--text);padding:16px 20px;border-radius:8px;font-size:11px;line-height:1.7;overflow-x:auto;border:1px solid var(--surface2); }
+  @media (max-width: 900px) { .chart-grid, .month-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>Sepet Büyüklüğü Etkisi Raporu</h1>
+  <div class="subtitle">3AL2ÖDE Kampanyasının Sepet Büyüklüğüne Etkisi — Aylık Kırılım</div>
+  <div class="date">BKM Kitap • EncoreMerkez • Temmuz 2025 – Nisan 2026</div>
+</div>
+
+<!-- KPI ROW 1: Sepet Ortalamaları -->
+<div class="kpi-row">
+  <div class="kpi-card blue">
+    <div class="label">3AL2ÖDE Ort. Brüt Sepet</div>
+    <div class="value">₺1.594</div>
+    <div class="sub">İndirim: ₺380 • Net: ₺1.213</div>
+  </div>
+  <div class="kpi-card amber">
+    <div class="label">Diğer Kamp. Ort. Brüt Sepet</div>
+    <div class="value">₺757</div>
+    <div class="sub">İndirim: ₺145 • Net: ₺611</div>
+  </div>
+  <div class="kpi-card gray">
+    <div class="label">Kampanyasız Ort. Brüt Sepet</div>
+    <div class="value">₺421</div>
+    <div class="sub">İndirim: ₺0 • Net: ₺421</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="label">3AL2ÖDE Sepet Çarpanı</div>
+    <div class="value">3.8x</div>
+    <div class="sub">Kampanyasıza göre brüt</div>
+  </div>
+  <div class="kpi-card blue">
+    <div class="label">3AL2ÖDE Ort. Ürün/Fiş</div>
+    <div class="value">7.3</div>
+    <div class="sub">Kampanyasız: 2.3 ürün</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="label">3AL2ÖDE Net Sepet Çarpanı</div>
+    <div class="value">2.9x</div>
+    <div class="sub">Kampanyasıza göre net</div>
+  </div>
+</div>
+
+<div class="insight">
+  <strong>Temel Bulgu:</strong> 3AL2ÖDE sepet brüt tutarı kampanyasız fişlerin <strong>3.8 katı</strong> (₺1.594 vs ₺421). İndirim sonrası net sepet bile <strong>2.9 kat</strong> daha yüksek (₺1.213 vs ₺421). Fiş başına ürün adedi 2.3'ten 7.3'e çıkıyor. İndirim oranı %24 ile sabit ve tahmin edilebilir. Eylül 2025 okul sezonu zirvesinde brüt sepet ₺1.924'e ulaşmış.
+</div>
+
+<!-- TREND CHARTS -->
+<div class="section">
+  <h2>Trend Grafikleri</h2>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c3al)"></div> 3AL2ÖDE</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cother)"></div> Diğer Kampanya</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cnone)"></div> Kampanyasız</div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-box"><h3>Ortalama Brüt Sepet (₺)</h3><canvas id="cBrut"></canvas></div>
+    <div class="chart-box"><h3>Ortalama Net Sepet (₺)</h3><canvas id="cNet"></canvas></div>
+    <div class="chart-box"><h3>Ortalama Ürün Adedi / Fiş</h3><canvas id="cUrun"></canvas></div>
+    <div class="chart-box"><h3>İndirim Oranı (%)</h3><canvas id="cInd"></canvas></div>
+    <div class="chart-box"><h3>Fiş Sayısı Dağılımı</h3><canvas id="cFis"></canvas></div>
+    <div class="chart-box"><h3>Ortalama İndirim Tutarı (₺/Fiş)</h3><canvas id="cIndTutar"></canvas></div>
+    <div class="chart-box chart-full"><h3>Aylık Brüt / İndirim / Net Ciro — 3AL2ÖDE</h3><canvas id="cCiroTrio"></canvas></div>
+    <div class="chart-box chart-full"><h3>Aylık Toplam Net Ciro — Grup Karşılaştırması</h3><canvas id="cNetCiro"></canvas></div>
+  </div>
+</div>
+
+<!-- MONTHLY TABLES -->
+<div class="section">
+  <h2>Aylık Detay Tabloları</h2>
+  <div class="month-grid" id="mt"></div>
+</div>
+
+<!-- SQL -->
+<div class="section">
+  <h2>Kullanılan Sorgu</h2>
+  <pre class="sql">;WITH cte_3al2ode AS (
+    SELECT DISTINCT SalesId FROM dbo.SalesProductCampaigns WHERE CampaignId IN (1, 12)
+),
+cte_any_campaign AS (
+    SELECT DISTINCT SalesId FROM dbo.SalesProductCampaigns
+)
+SELECT
+    CONVERT(varchar(7), s.Date, 126) AS Ay,
+    CASE
+        WHEN c3.SalesId IS NOT NULL THEN '3Al2Ode'
+        WHEN ca.SalesId IS NOT NULL THEN 'DigerKampanya'
+        ELSE 'Kampanyasiz'
+    END AS Grup,
+    COUNT(*) AS FisSayisi,
+    CAST(AVG(s.GrossTotal) AS decimal(18,2)) AS OrtBrutSepet,
+    CAST(AVG(ABS(s.DiscountTotal)) AS decimal(18,2)) AS OrtIndirimTutar,
+    CAST(AVG(s.GrossTotal - ABS(s.DiscountTotal)) AS decimal(18,2)) AS OrtNetSepet,
+    CAST(AVG(CAST(s.LineCount AS decimal)) AS decimal(18,1)) AS OrtUrunAdet,
+    CASE WHEN SUM(s.GrossTotal) > 0
+         THEN CAST(SUM(ABS(s.DiscountTotal)) * 100.0 / SUM(s.GrossTotal) AS decimal(5,1))
+         ELSE 0 END AS IndirimOrani,
+    CAST(SUM(s.GrossTotal) AS decimal(18,2)) AS ToplamBrutCiro,
+    CAST(SUM(ABS(s.DiscountTotal)) AS decimal(18,2)) AS ToplamIndirim,
+    CAST(SUM(s.GrossTotal - ABS(s.DiscountTotal)) AS decimal(18,2)) AS ToplamNetCiro
+FROM dbo.Sales s
+LEFT JOIN cte_3al2ode c3 ON s.Id = c3.SalesId
+LEFT JOIN cte_any_campaign ca ON s.Id = ca.SalesId
+WHERE s.DocumentsTypeId IN (1,2)
+GROUP BY CONVERT(varchar(7), s.Date, 126),
+    CASE WHEN c3.SalesId IS NOT NULL THEN '3Al2Ode'
+         WHEN ca.SalesId IS NOT NULL THEN 'DigerKampanya'
+         ELSE 'Kampanyasiz' END
+ORDER BY Ay, Grup</pre>
+</div>
+
+<div class="footer">BKM Kitap — EncoreMerkez Veri Analizi • 13 Nisan 2026 • Veri: Temmuz 2025 – Nisan 2026</div>
+</div>
+
+<script>
+const D=[
+{ay:"Tem 25",g:"3",fis:5313,brut:1411.90,ind:338.39,net:1073.51,urun:7.1,pct:24.0,tBrut:7501427,tInd:1797859,tNet:5703568},
+{ay:"Tem 25",g:"D",fis:7940,brut:604.25,ind:127.82,net:476.43,urun:3.8,pct:21.2,tBrut:4797728,tInd:1014876,tNet:3782853},
+{ay:"Tem 25",g:"K",fis:9407,brut:374.85,ind:0,net:374.85,urun:2.2,pct:0,tBrut:3526169,tInd:0,tNet:3526169},
+{ay:"Ağu 25",g:"3",fis:16231,brut:1640.68,ind:380.62,net:1260.06,urun:7.9,pct:23.2,tBrut:26629950,tInd:6177898,tNet:20452052},
+{ay:"Ağu 25",g:"D",fis:23485,brut:939.02,ind:157.75,net:781.27,urun:5.5,pct:16.8,tBrut:22052787,tInd:3704678,tNet:18348109},
+{ay:"Ağu 25",g:"K",fis:28652,brut:436.60,ind:0,net:436.60,urun:2.4,pct:0,tBrut:12509517,tInd:0,tNet:12509517},
+{ay:"Eyl 25",g:"3",fis:33930,brut:1923.79,ind:438.66,net:1485.13,urun:8.5,pct:22.8,tBrut:65274123,tInd:14883571,tNet:50390552},
+{ay:"Eyl 25",g:"D",fis:42360,brut:1191.56,ind:199.60,net:991.95,urun:7.3,pct:16.8,tBrut:50474397,tInd:8455224,tNet:42019173},
+{ay:"Eyl 25",g:"K",fis:42189,brut:527.15,ind:0,net:527.15,urun:2.9,pct:0,tBrut:22240070,tInd:0,tNet:22240070},
+{ay:"Eki 25",g:"3",fis:27865,brut:1583.22,ind:384.49,net:1198.73,urun:7.3,pct:24.3,tBrut:44116376,tInd:10713720,tNet:33402656},
+{ay:"Eki 25",g:"D",fis:37391,brut:701.43,ind:122.31,net:579.13,urun:4.5,pct:17.4,tBrut:26227227,tInd:4573110,tNet:21654117},
+{ay:"Eki 25",g:"K",fis:40168,brut:385.81,ind:0,net:385.81,urun:2.3,pct:0,tBrut:15497054,tInd:0,tNet:15497054},
+{ay:"Kas 25",g:"3",fis:22300,brut:1494.93,ind:363.58,net:1131.35,urun:7.2,pct:24.3,tBrut:33337040,tInd:8107865,tNet:25229175},
+{ay:"Kas 25",g:"D",fis:33948,brut:652.98,ind:125.13,net:527.85,urun:4.4,pct:19.2,tBrut:22167441,tInd:4247918,tNet:17919523},
+{ay:"Kas 25",g:"K",fis:37982,brut:366.85,ind:0,net:366.85,urun:2.3,pct:0,tBrut:13933840,tInd:0,tNet:13933840},
+{ay:"Ara 25",g:"3",fis:21692,brut:1509.59,ind:357.31,net:1152.28,urun:7.0,pct:23.7,tBrut:32746018,tInd:7750732,tNet:24995286},
+{ay:"Ara 25",g:"D",fis:39289,brut:728.24,ind:144.99,net:583.25,urun:4.4,pct:19.9,tBrut:28611745,tInd:5696522,tNet:22915223},
+{ay:"Ara 25",g:"K",fis:41137,brut:409.49,ind:0,net:409.49,urun:2.4,pct:0,tBrut:16845153,tInd:0,tNet:16845153},
+{ay:"Oca 26",g:"3",fis:25900,brut:1582.14,ind:376.81,net:1205.33,urun:7.4,pct:23.8,tBrut:40977343,tInd:9759274,tNet:31218069},
+{ay:"Oca 26",g:"D",fis:42463,brut:683.67,ind:141.61,net:542.06,urun:4.3,pct:20.7,tBrut:29030682,tInd:6013094,tNet:23017587},
+{ay:"Oca 26",g:"K",fis:39075,brut:409.59,ind:0,net:409.59,urun:2.3,pct:0,tBrut:16004580,tInd:0,tNet:16004580},
+{ay:"Şub 26",g:"3",fis:20602,brut:1577.80,ind:380.45,net:1197.34,urun:7.0,pct:24.1,tBrut:32505735,tInd:7838084,tNet:24667651},
+{ay:"Şub 26",g:"D",fis:36909,brut:694.20,ind:146.15,net:548.05,urun:4.3,pct:21.1,tBrut:25622219,tInd:5394407,tNet:20227812},
+{ay:"Şub 26",g:"K",fis:33700,brut:432.59,ind:0,net:432.59,urun:2.4,pct:0,tBrut:14578266,tInd:0,tNet:14578266},
+{ay:"Mar 26",g:"3",fis:20958,brut:1613.42,ind:393.21,net:1220.21,urun:7.1,pct:24.4,tBrut:33814101,tInd:8240945,tNet:25573156},
+{ay:"Mar 26",g:"D",fis:41089,brut:692.83,ind:146.87,net:545.95,urun:4.4,pct:21.2,tBrut:28467587,tInd:6034844,tNet:22432743},
+{ay:"Mar 26",g:"K",fis:32812,brut:439.46,ind:0,net:439.46,urun:2.3,pct:0,tBrut:14419463,tInd:0,tNet:14419463},
+{ay:"Nis 26",g:"3",fis:8467,brut:1597.58,ind:388.38,net:1209.20,urun:7.1,pct:24.3,tBrut:13526737,tInd:3288430,tNet:10238307},
+{ay:"Nis 26",g:"D",fis:18073,brut:680.27,ind:144.95,net:535.32,urun:4.4,pct:21.3,tBrut:12294594,tInd:2619727,tNet:9674867},
+{ay:"Nis 26",g:"K",fis:14230,brut:427.84,ind:0,net:427.84,urun:2.3,pct:0,tBrut:6088197,tInd:0,tNet:6088197}
+];
+
+const M=[...new Set(D.map(d=>d.ay))];
+const f=(g,k)=>D.filter(d=>d.g===g).map(d=>d[k]);
+const C={'3':'#3b82f6','D':'#f59e0b','K':'#64748b'};
+const L={'3':'3AL2ÖDE','D':'Diğer Kampanya','K':'Kampanyasız'};
+
+Chart.defaults.color='#94a3b8';
+Chart.defaults.borderColor='rgba(148,163,184,0.12)';
+Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+Chart.defaults.font.size=11;
+
+function ds(key,fill=false){
+  return ['3','D','K'].map(g=>({label:L[g],data:f(g,key),borderColor:C[g],backgroundColor:fill?C[g]+'99':C[g]+'15',borderWidth:2.5,pointRadius:3,pointHoverRadius:5,tension:0.3,fill:false}));
+}
+const lo=(fmt)=>({responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}});
+const tl=v=>'₺'+v.toLocaleString('tr-TR');
+const n1=v=>v.toLocaleString('tr-TR',{maximumFractionDigits:1});
+const pc=v=>'%'+v.toFixed(1);
+
+new Chart(document.getElementById('cBrut'),{type:'line',data:{labels:M,datasets:ds('brut')},options:lo(tl)});
+new Chart(document.getElementById('cNet'),{type:'line',data:{labels:M,datasets:ds('net')},options:lo(tl)});
+new Chart(document.getElementById('cUrun'),{type:'line',data:{labels:M,datasets:ds('urun')},options:lo(n1)});
+new Chart(document.getElementById('cInd'),{type:'line',data:{labels:M,datasets:ds('pct')},options:lo(pc)});
+new Chart(document.getElementById('cFis'),{type:'line',data:{labels:M,datasets:ds('fis')},options:lo(v=>v.toLocaleString('tr-TR'))});
+new Chart(document.getElementById('cIndTutar'),{type:'line',data:{labels:M,datasets:ds('ind')},options:lo(tl)});
+
+// 3AL2ÖDE Brüt/İndirim/Net Ciro stacked
+new Chart(document.getElementById('cCiroTrio'),{
+  type:'bar',
+  data:{labels:M,datasets:[
+    {label:'Net Ciro',data:f('3','tNet'),backgroundColor:'#3b82f6cc',borderColor:'#3b82f6',borderWidth:1},
+    {label:'İndirim',data:f('3','tInd'),backgroundColor:'#ef4444aa',borderColor:'#ef4444',borderWidth:1}
+  ]},
+  options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'bottom',labels:{usePointStyle:true,padding:14}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${tl(c.parsed.y)}`}}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>'₺'+(v/1e6).toFixed(0)+'M'}}}}
+});
+
+// Toplam Net Ciro karşılaştırma
+new Chart(document.getElementById('cNetCiro'),{
+  type:'bar',
+  data:{labels:M,datasets:['3','D','K'].map(g=>({label:L[g],data:f(g,'tNet'),backgroundColor:C[g]+'cc',borderColor:C[g],borderWidth:1}))},
+  options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'bottom',labels:{usePointStyle:true,padding:14}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${tl(c.parsed.y)}`}}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>'₺'+(v/1e6).toFixed(0)+'M'}}}}
+});
+
+// Monthly tables
+const MF={'Tem 25':'Temmuz 2025','Ağu 25':'Ağustos 2025','Eyl 25':'Eylül 2025','Eki 25':'Ekim 2025','Kas 25':'Kasım 2025','Ara 25':'Aralık 2025','Oca 26':'Ocak 2026','Şub 26':'Şubat 2026','Mar 26':'Mart 2026','Nis 26':'Nisan 2026'};
+const GL={'3':'3AL2ÖDE','D':'Diğer Kamp.','K':'Kampanyasız'};
+const GC={'3':'r3','D':'rd','K':'rn'};
+const mt=document.getElementById('mt');
+
+M.forEach(m=>{
+  const rows=D.filter(d=>d.ay===m);
+  const tF=rows.reduce((s,r)=>s+r.fis,0);
+  const tB=rows.reduce((s,r)=>s+r.tBrut,0);
+  const tI=rows.reduce((s,r)=>s+r.tInd,0);
+  const tN=rows.reduce((s,r)=>s+r.tNet,0);
+
+  let h=`<div class="month-card"><h3>${MF[m]}</h3><table>
+<thead><tr><th style="text-align:left">Grup</th><th>Fiş</th><th>Ort.Brüt</th><th>Ort.İnd.</th><th>Ort.Net</th><th>Ürün</th><th>İnd.%</th><th>Brüt Ciro</th><th>İndirim</th><th>Net Ciro</th></tr></thead><tbody>`;
+
+  rows.forEach(r=>{
+    h+=`<tr class="${GC[r.g]}">
+<td>${GL[r.g]}</td>
+<td>${r.fis.toLocaleString('tr-TR')}</td>
+<td>₺${r.brut.toLocaleString('tr-TR',{maximumFractionDigits:0})}</td>
+<td>₺${r.ind.toLocaleString('tr-TR',{maximumFractionDigits:0})}</td>
+<td>₺${r.net.toLocaleString('tr-TR',{maximumFractionDigits:0})}</td>
+<td>${r.urun}</td>
+<td>%${r.pct}</td>
+<td>₺${(r.tBrut/1e6).toFixed(1)}M</td>
+<td>₺${r.tInd>0?(r.tInd/1e6).toFixed(1)+'M':'0'}</td>
+<td>₺${(r.tNet/1e6).toFixed(1)}M</td>
+</tr>`;
+  });
+
+  const aB=tB/tF,aI=tI/tF,aN=tN/tF;
+  h+=`<tr style="font-weight:700;border-top:2px solid var(--surface2)">
+<td style="color:var(--text)">TOPLAM</td>
+<td>${tF.toLocaleString('tr-TR')}</td>
+<td>₺${aB.toLocaleString('tr-TR',{maximumFractionDigits:0})}</td>
+<td>₺${aI.toLocaleString('tr-TR',{maximumFractionDigits:0})}</td>
+<td>₺${aN.toLocaleString('tr-TR',{maximumFractionDigits:0})}</td>
+<td>—</td><td>—</td>
+<td>₺${(tB/1e6).toFixed(1)}M</td>
+<td>₺${(tI/1e6).toFixed(1)}M</td>
+<td>₺${(tN/1e6).toFixed(1)}M</td>
+</tr></tbody></table></div>`;
+  mt.innerHTML+=h;
+});
+</script>
+</body>
+</html>

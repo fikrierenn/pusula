@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3 Al 2 Öde — FSM Mağaza — 1 Nisan 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a2e; background: #f8f9fc; line-height: 1.6; }
+  .page { max-width: 900px; margin: 0 auto; background: white; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 48px 48px 40px; }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+  .header .subtitle { font-size: 15px; color: #94a3b8; }
+  .header .date { margin-top: 16px; font-size: 13px; color: #64748b; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; }
+
+  .content { padding: 40px 48px 60px; }
+  h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; margin: 36px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  h2:first-child { margin-top: 0; }
+  p { font-size: 14px; color: #475569; margin-bottom: 12px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0 28px; }
+  .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 16px; text-align: center; }
+  .kpi-card .value { font-size: 22px; font-weight: 700; color: #0f3460; }
+  .kpi-card .value.red { color: #dc2626; }
+  .kpi-card .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0 24px; }
+  .compare-card { border-radius: 10px; padding: 20px; text-align: center; }
+  .compare-card.kampanyali { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; }
+  .compare-card.diger { background: linear-gradient(135deg, #fefce8, #fef9c3); border: 1px solid #fde047; }
+  .compare-card.kampanyasiz { background: #f8fafc; border: 1px solid #e2e8f0; }
+  .compare-card .tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .compare-card.kampanyali .tag { color: #1d4ed8; }
+  .compare-card.diger .tag { color: #a16207; }
+  .compare-card.kampanyasiz .tag { color: #64748b; }
+  .compare-card .big-num { font-size: 36px; font-weight: 700; }
+  .compare-card.kampanyali .big-num { color: #1d4ed8; }
+  .compare-card.diger .big-num { color: #a16207; }
+  .compare-card.kampanyasiz .big-num { color: #475569; }
+  .compare-card .desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .compare-card .sub-stats { margin-top: 12px; display: flex; justify-content: center; gap: 20px; }
+  .compare-card .sub-stat .val { font-size: 15px; font-weight: 600; color: #334155; }
+  .compare-card .sub-stat .lbl { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+  thead th { background: #f1f5f9; color: #475569; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+  thead th.right { text-align: right; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  tbody td.right { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody td.bold { font-weight: 600; }
+  tbody tr:hover { background: #fafbfd; }
+
+  .insight { background: linear-gradient(135deg, #eff6ff, #f0f9ff); border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 20px 0; }
+  .insight .title { font-size: 13px; font-weight: 600; color: #1d4ed8; margin-bottom: 6px; }
+  .insight p { font-size: 13px; color: #334155; margin: 0; }
+
+  .odeme-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; margin: 12px 0 8px; }
+  .odeme-bar .seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: white; min-width: 30px; }
+  .odeme-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; font-size: 12px; color: #475569; }
+  .odeme-legend .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+  .footer { border-top: 1px solid #e2e8f0; padding: 20px 48px; font-size: 11px; color: #94a3b8; text-align: center; }
+  @media print { body { background: white; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>3 Al 2 Öde — Günlük Performans Raporu</h1>
+    <div class="subtitle">FSM Mağaza (M01) &middot; Encore POS</div>
+    <div class="date">Tarih: 1 Nisan 2026 Çarşamba</div>
+  </div>
+
+  <div class="content">
+
+    <!-- KPI -->
+    <h2>Günün Özeti — FSM</h2>
+    <p>FSM mağazasında 1 Nisan 2026'da toplam 907 fiş kesildi. Bunların 149'u (%16) 3 Al 2 Öde kampanyalı.</p>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="value">907</div>
+        <div class="label">Toplam Fiş</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value">149</div>
+        <div class="label">3Al2Öde Fiş</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value">547</div>
+        <div class="label">3Al2Öde Ürün</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value red">45.111 ₺</div>
+        <div class="label">3Al2Öde İndirim</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="value">560.357 ₺</div>
+        <div class="label">Brüt Ciro</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value red">100.667 ₺</div>
+        <div class="label">Toplam İndirim</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value">~82 ₺</div>
+        <div class="label">Ort. İnd./Ürün</div>
+      </div>
+      <div class="kpi-card">
+        <div class="value">3.7</div>
+        <div class="label">Ort. Ürün/Fiş</div>
+      </div>
+    </div>
+
+    <!-- SEPET -->
+    <h2>Sepet Karşılaştırması</h2>
+
+    <div class="compare-grid">
+      <div class="compare-card kampanyali">
+        <div class="tag">3 Al 2 Öde</div>
+        <div class="big-num">5.8</div>
+        <div class="desc">Ort. ürün / fiş</div>
+        <div class="sub-stats">
+          <div class="sub-stat">
+            <div class="val">1.315 ₺</div>
+            <div class="lbl">Ort. Sepet</div>
+          </div>
+          <div class="sub-stat">
+            <div class="val">149</div>
+            <div class="lbl">Fiş</div>
+          </div>
+        </div>
+      </div>
+      <div class="compare-card diger">
+        <div class="tag">Diğer Kampanya</div>
+        <div class="big-num">4.2</div>
+        <div class="desc">Ort. ürün / fiş</div>
+        <div class="sub-stats">
+          <div class="sub-stat">
+            <div class="val">624 ₺</div>
+            <div class="lbl">Ort. Sepet</div>
+          </div>
+          <div class="sub-stat">
+            <div class="val">368</div>
+            <div class="lbl">Fiş</div>
+          </div>
+        </div>
+      </div>
+      <div class="compare-card kampanyasiz">
+        <div class="tag">Kampanyasız</div>
+        <div class="big-num">2.1</div>
+        <div class="desc">Ort. ürün / fiş</div>
+        <div class="sub-stats">
+          <div class="sub-stat">
+            <div class="val">346 ₺</div>
+            <div class="lbl">Ort. Sepet</div>
+          </div>
+          <div class="sub-stat">
+            <div class="val">390</div>
+            <div class="lbl">Fiş</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="title">Sepet Etkisi</div>
+      <p>3Al2Öde fişleri kampanyasızın <strong>2,8 katı</strong> ürün taşıyor (5,8 vs 2,1). Sepet tutarı farkı daha da belirgin: 1.315 ₺ vs 346 ₺ = <strong>3,8 kat</strong>. 3Al2Öde fişlerin %16'sı ama brüt cironun %35'i (196K / 560K ₺).</p>
+    </div>
+
+    <!-- EN ÇOK SATAN -->
+    <h2>Günün En Çok Satan Ürünleri <span style="font-size:13px;color:#94a3b8;font-weight:400">(3Al2Öde)</span></h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Ürün</th>
+          <th class="right">Adet</th>
+          <th class="right">Top. İndirim</th>
+          <th class="right">Ort. İndirim</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td class="bold">8. Sınıf Fen Bilimleri 15 Deneme</td>
+          <td class="right">4</td>
+          <td class="right">698 ₺</td>
+          <td class="right">175 ₺</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td class="bold">8. Sınıf Matematik 15 Deneme</td>
+          <td class="right">4</td>
+          <td class="right">0 ₺</td>
+          <td class="right">—</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td class="bold">8. Sınıf T.C. İnkılap Tarihi ve Atatürkçülük</td>
+          <td class="right">4</td>
+          <td class="right">747 ₺</td>
+          <td class="right">187 ₺</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td class="bold">İbadetlerin Ruhu</td>
+          <td class="right">4</td>
+          <td class="right">380 ₺</td>
+          <td class="right">95 ₺</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td class="bold">2025 AYT Fizik 20'li Deneme</td>
+          <td class="right">3</td>
+          <td class="right">0 ₺</td>
+          <td class="right">—</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td class="bold">8. Sınıf LGS Fen Bilimleri Klon 13 Deneme</td>
+          <td class="right">3</td>
+          <td class="right">279 ₺</td>
+          <td class="right">93 ₺</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td class="bold">8. Sınıf LGS Matematik Klon 13 Deneme</td>
+          <td class="right">3</td>
+          <td class="right">279 ₺</td>
+          <td class="right">93 ₺</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td class="bold">8. Sınıf LGS T.C. İnkılap Tarihi ve Atatürkçülük</td>
+          <td class="right">3</td>
+          <td class="right">248 ₺</td>
+          <td class="right">83 ₺</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td class="bold">8. Sınıf Türkçe 15 Deneme</td>
+          <td class="right">3</td>
+          <td class="right">349 ₺</td>
+          <td class="right">116 ₺</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td class="bold">AYT Fen Bilimleri 10'lu Deneme</td>
+          <td class="right">3</td>
+          <td class="right">419 ₺</td>
+          <td class="right">140 ₺</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="insight">
+      <div class="title">Ürün Notu</div>
+      <p>Günün listesine LGS ve AYT sınav hazırlık kitapları hakim — 10 üründen 8'i sınav kategorisi. İndirim=0 olan satırlar kampanyadaki "bedava verilen" 3. ürünler (indirim diğer ürünlere dağıtılmış). Ürün başı indirim 83–187 ₺ arası — sınav kitaplarının fiyat aralığını yansıtıyor.</p>
+    </div>
+
+    <!-- ÖDEME -->
+    <h2>Ödeme Dağılımı</h2>
+
+    <div class="odeme-bar">
+      <div class="seg" style="width:37.7%;background:#f59e0b">Halk %38</div>
+      <div class="seg" style="width:26.6%;background:#1d4ed8">Anadolu %27</div>
+      <div class="seg" style="width:26.1%;background:#10b981">Nakit %26</div>
+      <div class="seg" style="width:5.3%;background:#6366f1">Vakıf %5</div>
+      <div class="seg" style="width:4.3%;background:#94a3b8">Diğer</div>
+    </div>
+    <div class="odeme-legend">
+      <span><span class="dot" style="background:#f59e0b"></span>Halk Bankası 181.194 ₺ (335 fiş)</span>
+      <span><span class="dot" style="background:#1d4ed8"></span>Anadolubank 128.217 ₺ (193 fiş)</span>
+      <span><span class="dot" style="background:#10b981"></span>Nakit 125.820 ₺ (310 fiş)</span>
+      <span><span class="dot" style="background:#6366f1"></span>Vakıflar 25.605 ₺ (46 fiş)</span>
+      <span><span class="dot" style="background:#94a3b8"></span>İş Bankası 14.603 ₺ + Diğer</span>
+    </div>
+
+    <div class="insight">
+      <div class="title">Ödeme Notu</div>
+      <p>FSM'de Halk Bankası %38 ile lider — fişte de en yüksek (335). Nakit kullanım %26 ile makul. Garanti Bankası bu gün FSM'de hiç işlem yok — muhtemelen POS terminali aktif değil veya anlaşma değişikliği var.</p>
+    </div>
+
+    <!-- DOĞRULAMA KONTROL NOKTALARI -->
+    <h2>Doğrulama Kontrol Noktaları</h2>
+    <p style="font-size:13px;color:#64748b">Bu raporu fiş detay sorgusuyla karşılaştırmak için:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Metrik</th>
+          <th class="right">Rapor Değeri</th>
+          <th>Kontrol Yöntemi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Toplam fiş</td>
+          <td class="right bold">907</td>
+          <td>COUNT(DISTINCT FisId) WHERE MagazaKod='M01'</td>
+        </tr>
+        <tr>
+          <td>3Al2Öde fiş</td>
+          <td class="right bold">149</td>
+          <td>COUNT(DISTINCT FisId) WHERE KampanyaId IN (1,12)</td>
+        </tr>
+        <tr>
+          <td>3Al2Öde ürün satırı</td>
+          <td class="right bold">547</td>
+          <td>COUNT(*) WHERE KampanyaId IN (1,12)</td>
+        </tr>
+        <tr>
+          <td>3Al2Öde toplam indirim</td>
+          <td class="right bold">45.111 ₺</td>
+          <td>SUM(ABS(KampanyaTotalIndirim)) WHERE KampanyaId IN (1,12)</td>
+        </tr>
+        <tr>
+          <td>Brüt ciro</td>
+          <td class="right bold">560.357 ₺</td>
+          <td>SUM(FisBrut) — her fiş sadece 1 kez (DISTINCT)</td>
+        </tr>
+        <tr>
+          <td>Ort. ürün/fiş</td>
+          <td class="right bold">5.8 (3Al2Öde)</td>
+          <td>547 ürün / 149 fiş ≈ 3.67 → LineCount avg</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <div class="footer">
+    BKM Kitap — FSM Mağaza (M01, StoresId=2) &middot; 1 Nisan 2026 &middot; DocumentsTypeId IN (1,2) &middot; CampaignId IN (1,12)
+  </div>
+
+</div>
+</body>
+</html>
