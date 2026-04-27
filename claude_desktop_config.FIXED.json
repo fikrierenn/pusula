@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "atlasops": {
+      "command": "dotnet",
+      "args": [
+        "D:\\Dev\\AtlasOPS\\src\\AtlasOps.Mcp\\bin\\Debug\\net10.0\\AtlasOps.Mcp.dll"
+      ]
+    },
+    "sqlserver": {
+      "command": "node",
+      "args": [
+        "D:\\Dev\\sqlserver-mcp-server\\dist\\index.js"
+      ],
+      "cwd": "D:\\Dev\\sqlserver-mcp-server",
+      "env": {
+        "MSSQL_HOST": "192.168.40.201",
+        "MSSQL_PORT": "1433",
+        "MSSQL_USER": "sa",
+        "MSSQL_PASSWORD": "H33451959*",
+        "MSSQL_DATABASE": "master",
+        "ALLOWED_DATABASES": "master,DerinSISBkm,DerinSISBkmCrm,DerinSISBkmWeb,BKMDATA,EncoreMerkez,BKM"
+      }
+    }
+  },
+  "preferences": {
+    "coworkScheduledTasksEnabled": true,
+    "ccdScheduledTasksEnabled": true,
+    "sidebarMode": "task",
+    "coworkWebSearchEnabled": true,
+    "keepAwakeEnabled": true,
+    "coworkOnboardingResumeStep": null,
+    "chicagoEnabled": false,
+    "localAgentModeTrustedFolders": [
+      "D:\\Dev\\sqlserver-mcp-server"
+    ]
+  }
+}
