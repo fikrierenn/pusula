@@ -2,6 +2,7 @@ import sql from "mssql";
 
 interface DbConfig {
   host: string;
+  instance?: string; // Named instance (e.g. SQLEXPRESS). When set, port is ignored — SQL Browser resolves dynamic port.
   port: number;
   user: string;
   password: string;
@@ -14,8 +15,23 @@ interface DbConfig {
 const pools = new Map<string, sql.ConnectionPool>();
 
 function getBaseConfig(): DbConfig {
+  // Named instance support: MSSQL_HOST="HOST\\INSTANCE" → split into host + instance.
+  // For named instances, omit explicit port and let SQL Browser resolve via UDP 1434.
+  const rawHost = process.env.MSSQL_HOST || "localhost";
+  let host = rawHost;
+  let instance: string | undefined;
+  if (rawHost.includes("\\")) {
+    const parts = rawHost.split("\\");
+    host = parts[0];
+    instance = parts[1];
+  }
+  // Explicit MSSQL_INSTANCE env var overrides parsing
+  if (process.env.MSSQL_INSTANCE) {
+    instance = process.env.MSSQL_INSTANCE;
+  }
   return {
-    host: process.env.MSSQL_HOST || "localhost",
+    host,
+    instance,
     port: parseInt(process.env.MSSQL_PORT || "1433"),
     user: process.env.MSSQL_USER || "sa",
     password: process.env.MSSQL_PASSWORD || "",
@@ -60,11 +76,12 @@ export async function getPool(database?: string): Promise<sql.ConnectionPool> {
 
   const poolConfig: sql.config = {
     server: cfg.host,
-    port: cfg.port,
     database: dbName,
     options: {
       trustServerCertificate: cfg.trustServerCertificate,
       encrypt: false,
+      // Named instance: tedious uses SQL Browser (UDP 1434) to resolve dynamic port
+      ...(cfg.instance ? { instanceName: cfg.instance } : {}),
     },
     requestTimeout: cfg.requestTimeout,
     pool: {
@@ -73,6 +90,11 @@ export async function getPool(database?: string): Promise<sql.ConnectionPool> {
       idleTimeoutMillis: 60000,
     },
   };
+  // Only set explicit port when NOT using a named instance.
+  // If both port and instanceName are set, mssql/tedious uses port and skips instance discovery.
+  if (!cfg.instance) {
+    poolConfig.port = cfg.port;
+  }
 
   // Windows Authentication veya SQL Auth
   if (cfg.trustedConnection) {
