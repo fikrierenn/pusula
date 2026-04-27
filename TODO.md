@@ -11,7 +11,16 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
-### 2026-04-27 — atlasops session/memory yapısı adaptasyonu (crossproject)
+### 2026-04-27 — Oturum 2: B-01/03/04 + 3 commit + handoff
+- ✅ İlk 3 commit atıldı: `7fed866 feat(mcp)`, `7f90d3b chore(crossproject)`, `4c61365 docs(bkm)` — 261 dosya total.
+- ✅ **B-01** `scripts/send_mail.py` UnicodeEncodeError fix (UTF-8 stdout + `✓` → `[OK]`).
+- ✅ **B-03** `send_brief.bat` dinamik tarih (her hafta Pazartesi'sini PowerShell ile hesaplıyor).
+- ✅ **B-04** `scripts/register-scheduled-task.ps1` yazıldı (kullanıcı tarafından çalıştırılacak).
+- ✅ Hook fix: `_archive*.md` skip + LF satır sonu + `.gitattributes`.
+- ❌ **B-02** brief.html üretimi: SQL bağlantısı kapalı (Cowork sandbox→localhost:1433), sonraki Pazartesi'ye ertelendi.
+- Detay: `docs/journal/_crossproject/2026-04-27.md` (Oturum 2 bölümü).
+
+### 2026-04-27 — Oturum 1: atlasops session/memory yapısı adaptasyonu (crossproject)
 - Multi-project iskelet kuruldu (`.claude/` + `docs/journal/<proje>/` + handoff skill + hooks).
 - SESSION_LOG.md tarihli journal'lara parçalandı (6 dosya), orijinal arşive taşındı.
 - TODO.md (bu dosya) Faz yapısıyla başlatıldı.
@@ -36,12 +45,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ### BKM — BIRLESIK ONCELIK SIRASI
 
 #### Faz 0 — Bugün (blocker'ları kaldır — 1-3 saat)
-- [ ] **B-01** `scripts/send_mail.py` UnicodeEncodeError düzelt (✓ → "OK"). Geçen Pazartesi briefing mailinin gerçekten gittiğini Gmail "Sent" klasöründen doğrula.
-- [ ] **B-02** Bu Pazartesi (27.04.2026) `briefings/2026-04-27/brief.html` + `brief.txt` üret. Geçen haftanın şablonunu güncelle.
-- [ ] **B-03** `send_brief.bat` içindeki tarih hard-code'unu (`20.04.2026`) bugüne güncelle. Sonra elle tetikle, log'a "✓ Mail gönderildi" satırı düşmeli.
+- [x] ~~**B-01** `scripts/send_mail.py` UnicodeEncodeError düzelt~~ — ✅ `[OK]` + `sys.stdout.reconfigure(encoding="utf-8")`. Gmail "Sent" doğrulaması: kullanıcı kontrol edecek (geçen hafta 20.04 11:19 mail muhtemelen gitti — hata print'teydi).
+- [ ] **B-02** ~~Bu Pazartesi (27.04.2026)~~ **Sonraki Pazartesi (04.05.2026)** `briefings/2026-05-04/brief.html` + `brief.txt` üret — SQL bağlantısı erişilebilir bir oturumdan. (Bu hafta atlandı, SQL kapalı.)
+- [x] ~~**B-03** `send_brief.bat` tarih güncelle~~ — ✅ DİNAMİK yapıldı, her Pazartesi'yi otomatik hesaplıyor (PowerShell `(Get-Date).AddDays(...)`). Bir daha güncelleme gerekmez.
 
 #### Faz 1 — Bu hafta (yüksek öncelik — ~5 gün)
-- [ ] **B-04** `send_brief.bat`'ı **Windows Task Scheduler** ile her Pazartesi 09:00'a kur. Her hafta otomatik tetiklensin (bir daha unutmayalım).
+- [ ] **B-04** `scripts/register-scheduled-task.ps1` çalıştır → Task Scheduler kaydı (her Pazartesi 09:00). **(YENİ — script hazır, sadece çalıştırılacak)**
 - [ ] **B-05** SsmsExcelExporter build & test (`dotnet publish -c Release -r win-x64`) — Ctrl+Shift+E + Ctrl+Shift+W çalışmalı.
 - [ ] **B-06** `CampaignId = NULL` 389,4M ₺ indirim kaynak araştırması (Session 2'den beri açık).
 - [ ] **B-07** Ürün bazlı maliyet/marj analizi — 3Al2Öde'nin gerçek kârlılık etkisi.
@@ -112,6 +121,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ### Disiplin
 - [ ] **C-10** Aylık `/consolidate-memory` çağrısı — eski journal'ları arşive taşı (3 ay sonra).
 - [ ] **C-11** `pre-commit-antipattern.sh` hook ekle (şu an pasif) — ihtiyaç hissedilince.
+- [ ] **C-13** Build artifact'ları `.gitignore`'a taşı: `sorgular/03-kampanya/RaporApp/bin/Release/`, `obj/Release/`, `*.dll`, `*.exe`, `*.pdb`. 3. commit'te yığıldı (220 dosyanın çoğu bunlar). `git rm --cached -r ...` + yeni commit. **(YENİ)**
 
 ### Dokümantasyon
 - [ ] **C-12** README.md'ye multi-project yapı eklemesi (mevcut sadece MCP server kurulum).
