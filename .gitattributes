@@ -1,0 +1,5 @@
+# Bash hook script'leri her zaman LF
+*.sh text eol=lf
+
+# Default: auto
+* text=auto

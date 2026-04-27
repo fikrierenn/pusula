@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+*.js.map
+
+# Secrets (SMTP credentials, API keys)
+.secrets/
+*.secret.json
+
+# Local cache & generated artefacts
+.cache/
+Pazartesi-Brifingi-*.html
+Pazartesi-Brifingi-*.txt
