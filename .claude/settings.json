@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash D:/Dev/sqlserver-mcp-server/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash D:/Dev/sqlserver-mcp-server/.claude/hooks/post-commit-journal.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
