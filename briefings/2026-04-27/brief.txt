@@ -1,0 +1,140 @@
+BKM KITAP — PAZARTESI BRIFINGI · 27.04.2026
+Hafta 17 · 20-26 Nis kapanisi · 27 Nis - 3 May ongorusu (1 May Cuma Emek Bayrami)
+Veri kesim: 26 Nis 2026 23:59 · Kaynak: EncoreMerkez (3 Bursa magazasi: FSM + Ozluce + Ist.Yolu)
+=================================================================================
+
+OZET
+----
+Fiziksel hafta : 13,27 M TL  (WoW -%1,5 yatay · 21.394 fis · sepet 620 TL · 87.407 urun)
+Iade           :    205 K TL (%1,5)
+MTD (01-26 Nis): 51,40 M TL  (82.000 fis, 343.457 urun)
+Mart MTD ayni donem: 35,71 M (kullanilan baseline 19 gun) - bu donem 26 gun
+Nisan tam ay projeksiyon (extrapolasyon): 60-62 M TL bandinda
+
+Ana mesaj: Hafta yatay (-%1,5 WoW), iki haftadir ayni bantta.
+23 Nis (Cocuk Bayrami) tatili surpriz iyi geldi - tek gunde 3,4M, en yuksek
+ikinci gun. Cocuk Bayrami'nda magazalar acik kaldi ve trafik patladi.
+Bu deneyim 1 May Cuma (Emek Bayrami) icin onemli sinyal.
+
+NOT: Bu rapor SQL bagantisinin onceki oturum gec gelmesi nedeniyle 28 Nis Sali
+sabahi retroaktif uretildi. Normal hafta cikis 27 Nis Pazartesi 09:00 olacak
+sonraki haftalardan itibaren (Task Scheduler kuruldu).
+
+
+1) FIZIKSEL MAGAZA — HAFTA 17 (20-26 NIS)
+------------------------------------------
+                BrutCiro    Iade      NetCiro     Fis      Urun     Sepet
+Ozluce          5.962.881   82.087    5.880.794   8.568    36.550   686 TL
+Ist.Yolu        3.581.909   63.735    3.518.174   5.560    25.202   633 TL
+FSM             3.928.299   58.816    3.869.484   7.266    25.655   533 TL
+TOPLAM         13.473.090  204.638   13.268.452  21.394    87.407   620 TL
+
+Yorum:
+- Ozluce hala lider sepet tutariyla (686 TL) - premium musteri profili
+- FSM sepet 533 TL ile en dusuk - iki haftadir bu pattern (gecen hafta 512 TL)
+- Ist.Yolu ile FSM net ciro neredeyse esit (3,52M vs 3,87M) ama Ist.Yolu fis basina
+  daha cok kazaniyor (633 vs 533 TL sepet)
+
+
+2) GUNLUK SEYIR — H17 (3 magaza toplam)
+----------------------------------------
+20 Pzt    1.363.877  2.326 fis   sepet 586 TL  zayif baslangic
+21 Sal    1.285.186  2.238 fis   sepet 574 TL  hala dusuk
+22 Car    1.317.561  2.326 fis   sepet 566 TL  yatay
+23 Per    3.398.594  4.775 fis   sepet 712 TL  TATIL - patlama
+24 Cum    1.535.612  2.669 fis   sepet 575 TL  donus dusuk
+25 Cmt    2.233.567  3.685 fis   sepet 606 TL  hafta sonu normal
+26 Pzr    2.134.054  3.375 fis   sepet 632 TL  Pazar iyi
+TOPLAM   13.268.452 21.394 fis   sepet 620 TL
+
+23 NISAN COCUK BAYRAMI (Persembe):
+Tek gunde 3,4M TL - haftanin en yuksek ikinci gunu.
+Ozluce 1,57M (tek gun!), Ist.Yolu 957K, FSM 875K.
+Tatil gunu magazalar acik kaldi, "Bursa'da gun gecirme" trafigi cok iyi cevap verdi.
+*** SINYAL: 1 May Cuma (Emek Bayrami) icin ayni stratejiyi uygula. ***
+
+
+3) WoW KARSILASTIRMA — H17 vs H16
+----------------------------------
+                  H17 Net      H16 Net      Delta
+Ozluce            5,88 M       6,00 M       -%2,0
+Ist.Yolu          3,52 M       3,65 M       -%3,6
+FSM               3,87 M       3,82 M       +%1,2
+TOPLAM           13,27 M      13,47 M       -%1,5
+
+Fis adedi: 21.394 vs 21.517 (-%0,6)
+Iade: 205K vs 214K (-%4,4) - kucuk iyilesme
+Sepet ortalama: 620 vs 626 (-%1,0)
+
+Yorum: Hafta yatay. FSM bu hafta ufak bir iyilesme gosterdi (+%1,2),
+ama hala dusuk sepet sorunu surdurdu. Iki hafta ust uste benzer bant.
+
+
+4) MTD NISAN (01-26 NIS, 26 GUN)
+---------------------------------
+                  Net Ciro     Fis        Urun       Sepet
+Ozluce            22,90 M      32.690     143.542    700 TL
+Ist.Yolu          13,82 M      22.076     100.711    626 TL
+FSM               14,69 M      27.234      99.204    539 TL
+TOPLAM            51,40 M      82.000     343.457    627 TL
+
+Tam ay projeksiyonu: kalan 4 gun (27-30 Nis) ortalama 1.9M/gun varsayimiyla
+~59 M TL. Mevsim baseline'iyla uyumlu, hedef +%5 sapma riski makul bantta.
+
+
+5) ONUMUZDEKI HAFTA (27 NIS - 3 MAY) · 1 MAY EMEK BAYRAMI
+----------------------------------------------------------
+27 Pzt   normal  baseline                   tah. 1.6-1.8 M
+28 Sal   normal  baseline                   tah. 1.5-1.7 M
+29 Car   normal  baseline                   tah. 1.5-1.7 M
+30 Per   normal  baseline                   tah. 1.5-1.7 M
+01 Cum   TATIL   1 Mayis Emek Bayrami        tah. 2.5-3.5 M (23 Nis dersi)
+02 Cmt   normal  hafta sonu                 tah. 2.0-2.2 M
+03 Pzr   normal  hafta sonu                 tah. 1.9-2.1 M
+TOPLAM (tah.)                                12,5-14,2 M
+
+KRITIK:
+- 1 May Cuma Emek Bayrami - 23 Nis ornegi gosteriyor ki tatil gunu
+  "Bursa'da gun gecirme" trafigi cok iyi calisiyor. Magazalar acik kalmali,
+  personel takviyesi alinmali.
+- 1-3 May 3 gunluk hafta sonu blogu - planli kampanya icin firsat
+
+
+6) AKSIYON LISTESI
+-------------------
+1. *** 1 MAY CUMA - magazalar acik plan + personel takviye + trafik kampanyasi
+   (23 Nis ornegi calisti, 3,4M tek gun)
+2. FSM sepet sorunu (iki haftadir 533 TL) - urun karisimi/kategori incelemesi
+3. Cocuk Bayrami patlamasinin gerekcesi - hava mi, etkinlik mi, organik mi?
+   Tekrarlanabilirligin formulu cikariltasi
+4. Nisan tam ay projeksiyonu 59-62 M - hedefin altinda mi ustunde mi (hedef
+   verisi bu raporda yok, ekleme gerekiyor)
+5. Bu rapor sadece fiziksel - JOKER e-ticaret + kitapsepeti.com + Heykel +
+   3 Kafe yok. Tam tablo icin ayri sorgu gerekli.
+
+
+7) KAPSAM UYARILARI
+--------------------
+- Heykel magaza (mekanID 56 ?) bu raporda YOK - ayri POS sistemi olabilir
+- bkmkitap.com (JOKER linked server) - ayri sorgu disiplini gerekli, bu
+  raporda yok
+- kitapsepeti.com - ayni
+- 3 Kafe (Ozluce + FSM + Ist.Yolu) - ayri sistem, raporda yok
+- Hedef vs gerceklesme - BKMDATA.dbo.Hedef tablosu cekilmedi bu raporda
+  (zaman kisitli retro uretim)
+- Iade sign isleme: DocumentsTypeId=3 satirlar pozitif iade tutari, net
+  ciro hesabinda Brut'tan dusuldu
+- Personel ve kafe satislari (DocumentsTypeId=6,7) dahildir Brut'a
+
+NOT (uretim notu):
+- 27 Nis Pazartesi otomatik mail tetiklenmedi (Task Scheduler henuz kurulu
+  degildi, brief icin SQL bagantisi yoktu - MCP CWD bug paralel oturumda
+  fix edildi)
+- 28 Nis Sali sabahi retroaktif uretim
+- Sonraki Pazartesi (4 May) icin: register-scheduled-task.ps1 calistirilacak,
+  her hafta 09:00 otomatik tetiklenecek
+
+---
+BKM Kitap · Pazartesi Brifingi (retroaktif - 28 Nis 2026 sabah)
+Veri kesim: 26 Nis 2026 23:59
+Kaynak: EncoreMerkez Sales tablosu (3 Bursa magazasi)
