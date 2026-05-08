@@ -51,9 +51,20 @@ ALLOWED_DATABASES=BKM,Belinza,YonetIQ
 MAX_ROWS=1000
 QUERY_TIMEOUT_MS=30000
 ALLOW_WRITE=false
+ALLOW_MULTI_STATEMENT=false
 ```
 
 > **Windows Auth kullanmak için:** `MSSQL_TRUSTED=true` ekle
+
+### Güvenlik katmanları (varsayılanlar)
+
+1. **`ALLOWED_DATABASES`** whitelist — listede olmayan DB sorgu reddedilir.
+2. **`ALLOW_WRITE=false`** (default) — INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/TRUNCATE/EXEC/MERGE/GRANT/REVOKE/DENY/BACKUP/RESTORE keyword'leri reddedilir.
+3. **`ALLOW_MULTI_STATEMENT=false`** (default) — `SELECT 1; UPDATE Foo` gibi çoklu statement reddedilir; `SELECT 1; WAITFOR DELAY ...` DOS bypass'larını kapatır.
+4. **Multi-statement parser** yorum + string literal aware (`SELECT 'a;b'` tek statement sayılır, `SELECT 1 /* foo;bar */` tek sayılır).
+5. **`sanitizeError`** — bağlantı hatalarındaki password/host sızıntısını `[REDACTED]` ile maskeler.
+6. **Server-side TOP wrap** (`MAX_ROWS`) — milyon satırlık SELECT'ler Node heap'ine değil SQL Server'da kesilir.
+7. **Request-level timeout** (`QUERY_TIMEOUT_MS`) — süre dolarsa request iptal edilir, hung connection bırakmaz.
 
 ### 4. Build et
 

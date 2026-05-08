@@ -153,6 +153,71 @@ export function isWriteQuery(queryText: string): boolean {
   });
 }
 
+/**
+ * T-SQL batch'i statement'lara böler. Yorum + string literal aware.
+ * Multi-statement guard tarafından kullanılır: birden fazla statement
+ * varsa sql_query reddeder (DOS / state pollution / `SELECT 1; WAITFOR ...`
+ * gibi keyword listesinde olmayan tehlikeli bypass'ları kapatır).
+ *
+ * Edge case: bracket-quoted identifier içinde `;` (örn. `[Order;Detail]`)
+ * yanlış split eder — gerçek dünyada nadir, kabul edilir.
+ */
+export function splitStatements(queryText: string): string[] {
+  // 1. Yorumları temizle (-- single line, /* */ block)
+  const noComments = queryText
+    .replace(/--.*$/gm, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // 2. String literal'ları (single-quoted, '' escape destekli) placeholder ile değiştir
+  //    böylece içlerindeki `;` split'i bozmasın.
+  const masked = noComments.replace(/'(?:''|[^'])*'/g, (m) => "_".repeat(m.length));
+
+  // 3. ; ile split, trim, boşları çıkar
+  return masked
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Çoklu statement (`SELECT 1; SELECT 2`) reddedilmeli mi?
+ * Default: true. ALLOW_MULTI_STATEMENT=true ile devre dışı (önerilmez).
+ */
+export function isMultiStatementAllowed(): boolean {
+  return process.env.ALLOW_MULTI_STATEMENT === "true";
+}
+
+/**
+ * Connection error mesajlarındaki hassas bilgi (password, server host)
+ * sızıntısını engelle. mssql/tedious bazen `Login failed for user 'sa'`
+ * gibi mesajlarda credentials gösterir.
+ */
+export function sanitizeError(err: unknown): Error {
+  const original = err instanceof Error ? err : new Error(String(err));
+  const password = process.env.MSSQL_PASSWORD || "";
+  const host = process.env.MSSQL_HOST || "";
+
+  let msg = original.message;
+  if (password.length > 0) {
+    msg = msg.split(password).join("[REDACTED-PASSWORD]");
+  }
+  if (host.length > 0) {
+    msg = msg.split(host).join("[REDACTED-HOST]");
+  }
+  // mssql ConnectionError originalError chain'i de tara
+  const cause = (original as unknown as { originalError?: { message?: string } }).originalError;
+  if (cause?.message) {
+    let causeMsg = cause.message;
+    if (password.length > 0) causeMsg = causeMsg.split(password).join("[REDACTED-PASSWORD]");
+    if (host.length > 0) causeMsg = causeMsg.split(host).join("[REDACTED-HOST]");
+    msg += ` (cause: ${causeMsg})`;
+  }
+
+  const sanitized = new Error(msg);
+  sanitized.stack = original.stack; // stack trace string'inde de password olabilir ama dev-only log
+  return sanitized;
+}
+
 export function getQueryTimeoutMs(): number {
   return parseInt(process.env.QUERY_TIMEOUT_MS || "30000");
 }

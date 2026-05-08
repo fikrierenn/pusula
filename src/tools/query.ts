@@ -5,6 +5,9 @@ import {
   getMaxRows,
   runQueryWithTimeout,
   getQueryTimeoutMs,
+  splitStatements,
+  isMultiStatementAllowed,
+  sanitizeError,
 } from "../services/database.js";
 
 interface QueryResult {
@@ -62,7 +65,18 @@ export async function executeQuery(
   database?: string,
   maxRows?: number
 ): Promise<QueryResult> {
-  // Güvenlik kontrolü
+  // Güvenlik 1: Multi-statement reject (`SELECT 1; WAITFOR ...` veya
+  // `SELECT 1; UPDATE Foo` bypass'larını kapatır). Default: tek statement.
+  const stmts = splitStatements(query);
+  if (stmts.length > 1 && !isMultiStatementAllowed()) {
+    throw new Error(
+      `Birden fazla statement reddedildi (${stmts.length} bulundu). ` +
+        "Tek bir statement gönderin. ALLOW_MULTI_STATEMENT=true ile " +
+        "açılabilir (önerilmez — DOS/state pollution riski)."
+    );
+  }
+
+  // Güvenlik 2: Yazma keyword'leri (INSERT/UPDATE/DELETE/...) reddet
   if (isWriteQuery(query) && !isWriteAllowed()) {
     throw new Error(
       "Yazma sorguları devre dışı. ALLOW_WRITE=true ayarı gerekiyor. " +
@@ -71,12 +85,22 @@ export async function executeQuery(
   }
 
   const limit = maxRows || getMaxRows();
-  const pool = await getPool(database);
+  let pool;
+  try {
+    pool = await getPool(database);
+  } catch (err) {
+    throw sanitizeError(err);
+  }
   const start = Date.now();
 
   const { sql: finalSql, wrapped } = wrapWithTopIfSafe(query, limit);
 
-  const result = await runQueryWithTimeout(pool, finalSql, getQueryTimeoutMs());
+  let result;
+  try {
+    result = await runQueryWithTimeout(pool, finalSql, getQueryTimeoutMs());
+  } catch (err) {
+    throw sanitizeError(err);
+  }
 
   const elapsed = Date.now() - start;
   const recordset = (result.recordset || []) as Record<string, unknown>[];
