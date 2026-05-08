@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { wrapWithTopIfSafe } from "./query.js";
 
 const ENV_KEYS = ["ALLOW_WRITE", "ALLOW_MULTI_STATEMENT"];
@@ -19,43 +20,43 @@ afterEach(() => {
 describe("wrapWithTopIfSafe", () => {
   it("Basit SELECT'i TOP ile sarar", () => {
     const r = wrapWithTopIfSafe("SELECT * FROM Foo", 100);
-    expect(r.wrapped).toBe(true);
-    expect(r.sql).toMatch(/SELECT TOP \(100\)/);
-    expect(r.sql).toMatch(/__mcp_wrap/);
+    assert.equal(r.wrapped, true);
+    assert.match(r.sql, /SELECT TOP \(100\)/);
+    assert.match(r.sql, /__mcp_wrap/);
   });
 
   it("WITH (CTE) ile başlayan sorgu da sarılır", () => {
     const r = wrapWithTopIfSafe("WITH cte AS (SELECT 1 AS x) SELECT * FROM cte", 50);
-    expect(r.wrapped).toBe(true);
+    assert.equal(r.wrapped, true);
   });
 
   it("Yazma keyword'ü varsa dokunmaz", () => {
     const r = wrapWithTopIfSafe("UPDATE Foo SET x=1", 100);
-    expect(r.wrapped).toBe(false);
-    expect(r.sql).toBe("UPDATE Foo SET x=1");
+    assert.equal(r.wrapped, false);
+    assert.equal(r.sql, "UPDATE Foo SET x=1");
   });
 
   it("Birden fazla statement varsa dokunmaz", () => {
     const r = wrapWithTopIfSafe("SELECT 1; SELECT 2", 100);
-    expect(r.wrapped).toBe(false);
+    assert.equal(r.wrapped, false);
   });
 
   it("Kullanıcı zaten TOP yazmışsa dokunmaz", () => {
     const r = wrapWithTopIfSafe("SELECT TOP 10 * FROM Foo", 100);
-    expect(r.wrapped).toBe(false);
+    assert.equal(r.wrapped, false);
     const r2 = wrapWithTopIfSafe("SELECT TOP (10) * FROM Foo", 100);
-    expect(r2.wrapped).toBe(false);
+    assert.equal(r2.wrapped, false);
   });
 
   it("DECLARE/SET/WAITFOR ile başlayan dokunmaz", () => {
-    expect(wrapWithTopIfSafe("DECLARE @x INT", 100).wrapped).toBe(false);
-    expect(wrapWithTopIfSafe("SET LOCK_TIMEOUT 1000", 100).wrapped).toBe(false);
-    expect(wrapWithTopIfSafe("WAITFOR DELAY '00:00:01'", 100).wrapped).toBe(false);
+    assert.equal(wrapWithTopIfSafe("DECLARE @x INT", 100).wrapped, false);
+    assert.equal(wrapWithTopIfSafe("SET LOCK_TIMEOUT 1000", 100).wrapped, false);
+    assert.equal(wrapWithTopIfSafe("WAITFOR DELAY '00:00:01'", 100).wrapped, false);
   });
 
   it("Trailing semicolon temizlenir", () => {
     const r = wrapWithTopIfSafe("SELECT * FROM Foo;", 100);
-    expect(r.wrapped).toBe(true);
-    expect(r.sql).not.toMatch(/;\s*\)/);
+    assert.equal(r.wrapped, true);
+    assert.doesNotMatch(r.sql, /;\s*\)/);
   });
 });
