@@ -1,6 +1,12 @@
 # Windows Task Scheduler'a "BKM-Kitap-Pazartesi-Brifingi" gorevini kayit eder.
 # Her Pazartesi sabah 09:00'da send_brief.bat tetiklenir.
 #
+# TEK GOREV MIMARISI (v2): send_brief.bat v5 self-healing -> brief.html yoksa
+# once generate_brief.py ile URETIR, sonra gonderir. Bu yuzden ayri
+# "BKM-Brief-Generator" gorevine artik gerek yok; eski iki-gorevli kurulumda
+# uretici ile gonderici yarisip mail gitmeyebiliyordu. Bu script eski
+# generator gorevini de kaldirir (yaris kosulu temizligi).
+#
 # Kullanim (yonetici PowerShell gerekmez):
 #   cd D:\Dev\sqlserver-mcp-server
 #   .\scripts\register-scheduled-task.ps1
@@ -22,6 +28,15 @@ $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Host "Mevcut gorev bulundu, kaldiriliyor..." -ForegroundColor Yellow
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+}
+
+# Eski iki-gorevli kurulumun kalintisi: "BKM-Brief-Generator" artik gereksiz.
+# send_brief.bat v5 brief'i kendisi uretebiliyor -> tek gorev yeterli.
+# Birakirsak Pazartesi sabahi ikisi birden tetiklenip yarisir (mail gitmeyebilir).
+$oldGen = Get-ScheduledTask -TaskName "BKM-Brief-Generator" -ErrorAction SilentlyContinue
+if ($oldGen) {
+    Write-Host "Eski 'BKM-Brief-Generator' gorevi bulundu, kaldiriliyor (artik gereksiz)..." -ForegroundColor Yellow
+    Unregister-ScheduledTask -TaskName "BKM-Brief-Generator" -Confirm:$false
 }
 
 # Action: bat dosyasini calistir

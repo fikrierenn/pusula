@@ -1,7 +1,8 @@
 @echo off
 REM BKM Kitap - Pazartesi Brifingi SMTP gonderim tetikleyicisi
-REM v4 - Tarih DINAMIK: bugunun tarihine en yakin Pazartesi'yi bulur.
-REM      Boylece Windows Task Scheduler ile her Pazartesi otomatik calisir.
+REM v5 - Tarih DINAMIK + self-healing: brief.html yoksa once URETIR, sonra gonderir.
+REM      v4'te uretici ile gonderici yarisirsa gonderici "uretilmemis" diye cikiyordu.
+REM      v5'te gonderici eksik brief'i kendisi uretir -> yaris kosulu biter.
 
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
@@ -25,14 +26,8 @@ set "BRIEF_DIR=briefings\%MONDAY_ISO%"
 set "BRIEF_HTML=%BRIEF_DIR%\brief.html"
 set "BRIEF_TXT=%BRIEF_DIR%\brief.txt"
 
-if not exist "%BRIEF_HTML%" (
-    echo [HATA] Brief HTML bulunamadi: %BRIEF_HTML% >> "%LOGFILE%"
-    echo [HATA] Bu haftanin briefingi henuz uretilmemis. >> "%LOGFILE%"
-    exit /b 3
-)
-
 REM ===========================================================
-REM Python bul
+REM Python bul (gonderim VE gerekirse uretim icin lazim)
 REM ===========================================================
 
 set "PYCMD="
@@ -91,6 +86,24 @@ if not defined PYCMD (
 
 echo [%date% %time%] Kullanilacak: "%PYCMD%" >> "%LOGFILE%"
 "%PYCMD%" --version >> "%LOGFILE%" 2>&1
+
+REM ===========================================================
+REM Brief HTML yoksa: uretici ile yaris kaybedilmis demektir.
+REM Gonderici eksigi kendisi tamamlar (self-healing).
+REM ===========================================================
+
+if not exist "%BRIEF_HTML%" (
+    echo [%date% %time%] Brief HTML yok, generate_brief.py ile uretiliyor: %MONDAY_ISO% >> "%LOGFILE%"
+    "%PYCMD%" scripts\generate_brief.py --date %MONDAY_ISO% >> "%LOGFILE%" 2>&1
+    set GENRC=!ERRORLEVEL!
+    echo [%date% %time%] generate_brief.py ExitCode=!GENRC! >> "%LOGFILE%"
+)
+
+if not exist "%BRIEF_HTML%" (
+    echo [HATA] Brief HTML hala bulunamadi: %BRIEF_HTML% >> "%LOGFILE%"
+    echo [HATA] Uretim de basarisiz oldu - SQL baglantisi / generate_brief.py log'una bak. >> "%LOGFILE%"
+    exit /b 3
+)
 
 REM ===========================================================
 REM Mail gonder
