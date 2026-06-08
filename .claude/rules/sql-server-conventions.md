@@ -8,6 +8,15 @@ _BKM Kitap projesinde T-SQL yazımı için kalıcı kurallar._
 - Linked server (ODAKJOKER.JOKER): ISO. `'YYYYMMDD'`. DMY burada sessiz hata.
 - `yyyy-MM-dd` HİÇBİR yerde kullanılmaz.
 
+## stkKod ≠ Barkod — HER ZAMAN stkID (KRİTİK)
+
+- **`urn.stkKod` BARKOD DEĞİL.** EncoreMerkez `SalesProducts.BarcodeNo` ↔ `urn.stkKod` join **YANLIŞ** — bazı kategorileri (ör. Oyuncak) sessizce kaçırır → ciro undercount, sahte "ölü stok".
+- **Kural:** Ürün/kategori/marka eşleşmesi **her zaman stkID üstünden**.
+  - DerinSIS-içi: `irsHrk.ehstkID = urn.stkID` (en temiz; satış ehTip 4/100).
+  - Barkod gerekiyorsa: `SalesProducts.BarcodeNo = urnBrkd.urnBarkod` → `urnBrkd.urnBrkdStkID = urn.stkID` (`urnBrkdOnce=0`). **stkKod ile join etme.**
+- Kategori/marka ciro raporlarını mümkünse **irsHrk** (stkID) üzerinden al → envanter/devir ile tek kaynak, tutarlı.
+- ⚠️ Bilinen hatalı dosyalar (stkKod=BarcodeNo, düzeltilecek): `scripts/generate_brief.py` SQL_CATEGORY, `sorgular/gm-rapor/gunluk/G4-kategori-magaza.sql`, `sorgular/gm-rapor/merchandising/A6-marka-yayinevi.sql`. (Dashboard `gm_dashboard.py` 09.06 düzeltildi → irsHrk.)
+
 ## Field Adlandırma
 
 - DerinSIS: `urn.stkAd` / `urn.stkID` (urnAd/urnID HATA)
