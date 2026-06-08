@@ -1,123 +1,94 @@
-# Oturum ProtokolÃ¼
+# Oturum Protokolü
 
-_Her Claude oturumunun baÅŸÄ± / ortasÄ± / sonu ritÃ¼elleri. Bu kural evrensel._
+_Her Claude oturumunun başı / ortası / sonu ritüelleri. Bu kural evrensel — her projede aynı._
 
-## Oturum BaÅŸÄ± â€” Ä°lk yanÄ±ttan Ã¶nce ZORUNLU
+## Neden bu dosya var
 
-### AdÄ±m 1 â€” Hook'u KOÅULSUZ Ã§alÄ±ÅŸtÄ±r
+Deneyim: SessionStart hook bazen fire etmeyebiliyor (Cowork, farklı başlatma yolları). Daha kötüsü, fire ettiğinde Claude "çıktıyı context'te gördüm, hook çalıştı, yeterli" varsayımı yapıp `bash` ile tekrar çalıştırmayı atlıyor. O varsayım **iki ayrı hata** üretti: stale context + yanlış cevap. Kural bu sebeple **koşulsuz** hale getirildi.
+
+## Oturum Başı — İlk yanıttan önce ZORUNLU
+
+### Adım 1 — Hook'u KOŞULSUZ çalıştır
 
 ```bash
 bash .claude/hooks/session-start.sh
 ```
 
-Her oturumda, istisnasÄ±z.
+**Her oturumda, istisnasız.** Context'te hook çıktısı görünüyor olsa bile tekrar çalıştır. Fresh çıktı context'tekinden farklı olabilir, context stale olabilir. **"Hook fire etti, atla" varsayımı yasak.**
 
-### AdÄ±m 2 â€” Ä°lgili projenin son 2 journal dosyasÄ±nÄ± oku
+Çıktı: son 3 gün commit'ler, uncommitted sayısı, 15-eşik uyarısı, aktif TODO başlıkları, son journal'ın son 40 satırı.
+
+### Adım 2 — Son 2 journal dosyasını oku
 
 ```bash
-ls -t docs/journal/<proje>/*.md | head -2
+ls -t docs/journal/*.md | head -2
 ```
 
-### AdÄ±m 3 â€” TODO.md aktif Ã¶ncelikleri oku
+Her ikisini de `Read` et. Özellikle bak:
+- **Tamamlananlar** — son oturumda ne bitti
+- **Yarım kalan işler** — nereden devam edilecek
+- **Düzeltme notları** — tekrarlanmaması gereken hata
 
-`TODO.md` â†’ "BIRLESIK ONCELIK SIRASI" â†’ her proje altÄ±nda Faz 0 + Faz 1 ilk 3 madde.
+### Adım 3 — TODO.md aktif öncelikleri oku
 
-### AdÄ±m 4 â€” Uncommitted durumu bil
+`TODO.md` → **"BIRLESIK ONCELIK SIRASI"** bölümü. En az Faz 0 (bugün) + Faz 1'in ilk 3 maddesi. Aktif bug başlıkları.
 
-`git status --porcelain | wc -l` â€” 15 Ã¼stÃ¼yse yeni iÅŸ yasak.
+### Adım 4 — Uncommitted durumu bil
 
-### KullanÄ±cÄ±ya cevap
+`git status --porcelain | wc -l` — 15 üstüyse **yeni iş yasak**, önce commit-split.
 
-4 adÄ±m sessizce yapÄ±lÄ±r.
+### Kullanıcıya cevap
+
+Yukarıdaki 4 adım **sessizce** yapılır. Kullanıcıya "şunu okudum şunu okudum" demeye gerek yok. Cevap bu okumalara dayanır, hafızaya veya context'teki hook çıktısına değil.
 
 ---
 
-## Oturum OrtasÄ±
+## Oturum Ortası
 
-- 15 dosya eÅŸiÄŸi â†’ yeni iÅŸ yasak.
-- 3 paralel feature eÅŸiÄŸi.
-- Kural deÄŸiÅŸikliÄŸi â†’ `.claude/rules/*.md`'ye yaz.
-- Mimari karar â†’ `docs/ADR/NNN-konu.md`.
-- Proje deÄŸiÅŸimi â†’ yeni klasÃ¶rÃ¼n son journal'Ä±nÄ± oku.
+### 15 dosya eşiği
+`git status` ile uncommitted > 15 → **yeni iş yasak**, önce commit-discipline kurallarına göre böl (commit-splitter subagent çağır).
+
+### 3 paralel feature eşiği
+Aynı anda 3'ten fazla feature branch açıksa birini bitirmeden yenisine geçme. Context kayar, bağlam dağılır.
+
+### Kural değişikliği → dosyaya yaz
+Kullanıcı yeni bir kural söylüyorsa konuşmada kalmaz, hemen ilgili `.claude/rules/*.md` dosyasına eklenir. "Aklında tut" demez — konuşma hafızasından kural çekilmez.
+
+### Mimari karar → ADR
+Mimari karar alındıysa `docs/ADR/NNN-konu.md` yaz (veya en azından TODO'ya "ADR-X yaz" kaydı düş).
 
 ---
 
 ## Oturum Sonu
 
-Tetikler: "iyi geceler" / "/handoff" / "kaydet ve kapat" / "devam edeceÄŸiz" â†’ session-handoff skill.
+### Tetikler
+Kullanıcı "iyi geceler" / "handoff" / "kaydet ve kapat" / "/handoff" / "devam edeceğiz" → `.claude/skills/session-handoff/SKILL.md` devreye girer.
 
-Skill `docs/journal/<proje>/YYYY-MM-DD.md`'ye append eder. Ã‡oklu proje deÄŸiÅŸti â†’ her proje iÃ§in ayrÄ± journal.
+### Ne yapar
+`docs/journal/YYYY-MM-DD.md`'ye append eder:
+- Ana konu, tamamlananlar (dosya:line referanslı), build/test durumu, commit durumu, yarım kalan işler, kararlar, dikkat edilmesi gerekenler, yarına başlangıç noktası.
 
-CLAUDE.md'ye session log YAZILMAZ.
+### CLAUDE.md'ye session log yazma
+Session log **CLAUDE.md'ye yazılmaz** (200 satır eşiği + 3 katman ayrımı kuralı). Sadece journal'a.
 
----
-
-## RitÃ¼el atlandÄ±ÄŸÄ±nda
-
-1. Kabul et. Mazeret yok.
-2. Hook'u manuel Ã§alÄ±ÅŸtÄ±r.
-3. Ã–nlemini dosyaya yaz.
-4. Journal'a sÃ¼reÃ§ notu dÃ¼ÅŸ.
+### Commit kararı
+Skill commit **etmez**. Kullanıcı açıkça isteyene kadar commit yok.
 
 ---
 
-## Ä°liÅŸkili Dosyalar
+## Ritüel atlandığında
 
-- `docs/CONTEXT_MANAGEMENT.md`
-- `.claude/hooks/session-start.sh`
-- `.claude/skills/session-handoff/SKILL.md`
-- `.claude/rules/commit-discipline.md`
-- `docs/journal/`
+1. **Kabul et.** "Hook fire etmedi" / "context'te vardı" mazeret değil — elle okuma sorumluluğu vardır.
+2. **Anında kapat.** Hook'u manuel çalıştır, journal'i oku, TODO'yu gözden geçir.
+3. **Önlemini dosyaya yaz.** Aynı tür hata tekrar olmasın diye kural güçlendir (bu dosya örneği).
+4. **Journal'a süreç notu düş.** "Süreç hatası: X atladı. Önlem: Y eklendi."
 
 ---
 
-## Paralel Oturum Disiplini (ADR-002)
+## İlişkili Dosyalar
 
-`session-start.sh` her oturum basinda `.claude/locks/<session-id>.lock` yaratir
-ve hook ciktisinin en ustunde `>>> BU OTURUMUN ID'SI: <id> <<<` basligi ile gosterir.
-
-### Adim 1.5 â€” Oturum ID'sini context'te tut (ZORUNLU)
-
-Hook ciktisindan kendi ID'ni oku ve **handoff'a kadar context'te tut**.
-
-```
->>> BU OTURUMUN ID'SI: 20260427-143022-a3f1 <<<
-```
-
-- Bu ID handoff'ta lock silmek icin lazim.
-- /compact yaparsan ID'yi YENI context'e mutlaka tasi (kuralin merkezinde).
-- /clear veya yeni oturum aciliyorsa eski ID gecersiz, hook yenisini yaratir.
-- ID kaybolduysa fallback: `.claude/locks/.current` (ama paralel oturumda guvensiz)
-  veya `ls -t .claude/locks/*.lock | head -1` (en son yaratilan).
-
-### Aktif lock varsa (paralel oturum)
-
-Hook stderr/stdout'a uyari yazar:
-
-```
-UYARI: <N> PARALEL AKTIF OTURUM
-  Diger oturum(lar):
-    - <id1> (basladi: ...)
-    - <id2> (basladi: ...)
-```
-
-Bu durumda:
-- TODO.md veya ayni proje journal yazimi oncesi: `git fetch && git status` kontrol.
-- Conflict olasiligi varsa kullaniciya sor (overwrite/merge/iptal).
-- Kendi journal'in farkli proje/dosyada ise sorun yok (multi-project ayrimi yarisi cozer).
-
-### Lock disiplini
-
-- Oturum sonu `session-handoff` skill kendi `<session-id>.lock`'unu siler.
-- 4 saatten eski lock'lar otomatik temizlenir (stale cleanup, hook'ta).
-- Lock dosyalari `.gitignore`'da; klasor (`.claude/locks/`) `.gitkeep` ile kalici.
-- `.current` dosyasi paralel oturumda son acilana yazar â€” bu yuzden ID'yi context'te
-  tutmak ZORUNLU (sadece `.current`'a guvenme).
-
-### Pre-handoff git check (handoff skill icinde)
-
-- Commit'ten once `git fetch` (origin varsa, timeout dusuk).
-- Local son commit hash'i ile remote farkliysa uyari.
-- Kullanici onayi olmadan auto-merge yapma.
-
-Detay: `docs/ADR/002-paralel-oturum-koruma.md`.
+- `docs/CONTEXT_MANAGEMENT.md` — bağlam yönetimi anayasası (ilkeler bütünü).
+- `.claude/hooks/session-start.sh` — oturum başı bilgi toplayıcı.
+- `.claude/skills/session-handoff/SKILL.md` — oturum sonu journal yazar.
+- `.claude/rules/commit-discipline.md` — 15 dosya eşiği, branch-per-ask.
+- `docs/journal/` — tarihli oturum kayıtları.

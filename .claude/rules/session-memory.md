@@ -10,25 +10,14 @@ _Bağlam yönetimi anayasasının pratik kuralları. Detay: `docs/CONTEXT_MANAGE
 | Davranış kuralı (kalıcı) | `.claude/rules/<konu>.md` |
 | Aktif plan / backlog | `TODO.md` |
 | Büyük mimari karar | `docs/ADR/NNN-<slug>.md` |
-| Oturum notu / günlük | `docs/journal/<proje>/YYYY-MM-DD.md` |
+| Oturum notu / günlük | `docs/journal/YYYY-MM-DD.md` |
 | Tek seferlik scratch | auto-memory (machine-local) |
 
 **Aynı bilgi iki yerde yaşamaz.**
 
-## Multi-Project Notu
-
-Bu repo birden fazla SQL Server bağlantısına köprü kuran bir MCP server. Journal yapısı buna göre:
-
-- `docs/journal/bkm/` — BKM Kitap işleri (DerinSIS, EncoreMerkez, JOKER e-ticaret)
-- `docs/journal/belinza/` — Belinza işleri (boş başlangıç)
-- `docs/journal/yonetiq/` — YonetIQ işleri (boş başlangıç)
-- `docs/journal/_crossproject/` — MCP server kodu, infra, multi-proje işler
-
-Yeni oturumda hangi projeye odaklanılıyorsa o klasör altına yaz. Belirsizse `_crossproject/`.
-
 ## Oturum Başı Ritüeli
 
-Otomatik (SessionStart hook): git log + TODO + uncommitted + tüm projelerin son journal'ı.
+Otomatik (SessionStart hook): git log + TODO + uncommitted + son journal.
 
 Elle yapılabilecek:
 - `/memory` ile auto-memory temizle (stale 30+ gün)
@@ -36,7 +25,7 @@ Elle yapılabilecek:
 
 ## Oturum Sonu Ritüeli
 
-1. **`/handoff` skill** → `docs/journal/<proje>/YYYY-MM-DD.md`
+1. **`/handoff` skill** → `docs/journal/YYYY-MM-DD.md`
 2. **Commit kontrol** — bu oturumun işini commit et
 3. **TODO.md güncelle**
 

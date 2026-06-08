@@ -12,7 +12,7 @@ _Her projede aynen uygulanır. `paths:` yok — compact sonrası survive._
 |---|---|---|---|
 | **1 — Trivial** | <30 satır, 1-2 dosya, sıfır yeni pattern, geri alınması kolay | **YOK** | Typo, version bump, config tarihi güncelle, comment ekle |
 | **2 — Standard** | <5 dosya, mevcut pattern, küçük feature/fix | **TODO satırı yeterli** | send_mail.py UnicodeError fix, hook'a satır ekleme, dinamik tarih |
-| **3 — Substantial** | 3+ dosya yeni pattern, schema/security/UX/harici bağımlılık, kullanıcı-görünür değişiklik | **TAM PLAN ZORUNLU** (`plans/NN-<slug>.md`) | Atlasops adaptasyonu, Mayıs %50 kampanya tahmini, Lock mekanizması, ADR yazımı |
+| **3 — Substantial** | 3+ dosya yeni pattern, schema/security/UX/harici bağımlılık, kullanıcı-görünür değişiklik | **TAM PLAN ZORUNLU** (`plans/NN-<slug>.md`) | Yeni servis modülü, schema migration, auth/lock mekanizması, ADR yazımı |
 
 ## Tier 3 sinyalleri
 
@@ -49,7 +49,7 @@ Doldur: Problem, Scope, Alternatifler (en az 2 reddedilen), Riskler, Done criter
 Kullanıcıya göster, geri bildirim al, düzeltme yap. **Onay olmadan implement etme.**
 
 ### 4. Implementation
-- Her commit message'da plan referansı: `feat(bkm): X (plan: 03)`
+- Her commit message'da plan referansı: `feat: X (plan: 03)`
 - TODO.md'de plan adımları (Faz X altında)
 
 ### 5. Tamamlanma

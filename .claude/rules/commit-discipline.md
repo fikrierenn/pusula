@@ -1,61 +1,56 @@
 # Git / Commit Disiplini
 
-_Her projede aynen uygulanır. `paths:` yok._
+_Her projede aynen uygulanır. `paths:` yok — compact sonrası survive._
 
 ## Commit Kuralları
 
-1. Kullanıcı açıkça istemedikçe commit etme.
-   - İstisna: `session-handoff` skill journal+TODO commit'ler.
-2. Bir commit = bir konu.
-3. Save-point commit. Test yeşil → hemen commit.
-4. 15 dosya eşiği. Aşıldı → yeni iş yasak.
-5. Commit mesajı:
+1. **Kullanıcı açıkça istemedikçe commit etme.** "commit et", "commit'le", "git commit" net komut olmadan commit yok.
+   - **İstisna:** `session-handoff` skill'i, yalnızca `docs/journal/YYYY-MM-DD.md` dosyasını otomatik commit eder (başka path'e dokunmaz). Gerekçe: handoff artifactı dosyaya yazılıp bırakılırsa her oturum başında uncommitted olarak görünür ve pre-commit hook gürültü yapar.
+2. **Bir commit = bir konu.** AI 3 katman birden çıkarırsa → 3 ayrı commit.
+3. **Save-point commit.** Test yeşil → hemen commit (iş yarım olsa bile, `WIP:` prefix).
+4. **15 dosya eşiği.** `git status` uncommitted > 15 → **yeni iş yasak**, önce commit-split.
+5. **Commit mesajı:**
    ```
-   <tip>(<proje>): <kısa özet>
+   <tip>: <kısa özet>
+
+   <detay — opsiyonel>
    ```
    Tipler: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `style`, `build`.
-   Multi-project: `feat(bkm):`, `docs(belinza):`, `chore(mcp):`, `docs(crossproject):`.
 
 ## Branch Stratejisi
 
-- main → production.
-- feature branch → bir talep = bir branch.
-- Squash-merge.
+- **main** → production.
+- **feature branch** → bir kullanıcı talebi = bir branch (`feature/xyz`, `fix/abc`).
+- İş bitince squash-merge main'e.
+- **Branch-per-ask:** Yeni talep → yeni branch.
 
-## Zararlı Komutlar (AÇIK ONAY GEREKİR)
+## Zararlı Komutlar (AÇIK ONAY olmadan YASAK)
 
-- `git push --force` / `-f`
-- `git reset --hard`
-- `git clean -fd`
-- `git rebase -i`
-- `git checkout .` / `git restore .`
+- `git push --force` / `-f` — history yeniden yaz.
+- `git reset --hard` — uncommitted iş uçar.
+- `git clean -fd` — untracked siler.
+- `git rebase -i` — interaktif, otomatik olmaz.
+- `git checkout .` / `git restore .` — tüm değişiklikleri at.
 
-## Multi-Project Commit
+Gerekirse sor: "Bu komutu çalıştırmam emin misin? Mevcut N dosya değişikliği kaybolacak."
 
-- BKM dosyaları (`docs/journal/bkm/`, `sorgular/`, `briefings/`) ayrı commit.
-- MCP server (`src/`, `package.json`) ayrı commit.
-- Bir commit yalnızca tek proje değiştirir.
-- Karışmış değişiklik → commit-splitter.
+## Commit-Split Pattern
 
-## Git Hook'ları
-
-- post-commit (journal): `docs/journal/<proje>/YYYY-MM-DD.md`'ye commit özeti.
-- Proje tespiti: scope → `feat(bkm):` → `bkm/`. Yoksa `_crossproject/`.
-
-
-## Plan-First Referansı (ADR-003)
-
-Tier 3 commit'lerde plan referansı zorunlu:
-
-```
-feat(bkm): Mayıs %50 kampanya tahmini (plan: 03)
+Uncommitted > 15 olunca:
+```bash
+git status                           # ne değişmiş
+git diff --stat                      # kaç satır
+# Bucket'lara ayır, konu başına:
+git add <file1> <file2>
+git commit -m "feat: <konu>"
+git log --oneline -10
 ```
 
-Tier 1 ve Tier 2 commit'lerde plan referansı gereksiz.
+Otomasyon: `commit-splitter` subagent (her projeye eklenebilir).
 
-Tier tespiti için: `.claude/rules/plan-first.md` Tier sinyalleri.
+## Git Hook'ları (opsiyonel)
 
-Plan yoksa ama Tier 3 sinyali varsa:
-- Kullanıcıya sor (mini-plan veya bypass)
-- BYPASS: commit message'a `(plan: BYPASS-<tarih>)` + retro plan archive'a
+- **pre-commit (antipattern scan):** stack-bağımlı (ör. .NET: `DateTime.Now`, `async void`, `new HttpClient()`).
+- **post-commit (journal):** `docs/journal/YYYY-MM-DD.md`'ye commit özeti.
 
+Kurulacak: `.claude/hooks/` altına, `.claude/settings.json`'da kayıtlı.
