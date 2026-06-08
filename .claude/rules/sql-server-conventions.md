@@ -70,6 +70,12 @@ CROSS APPLY (
 - `sqlserver` (192.168.40.201) → BKM/ERP varsayılan.
 - `sqlserver-express` (192.168.40.66\SQLEXPRESS) → "Express'te", "66'da".
 
+## MCP sql_query Limitleri (gotcha)
+
+- **CTE çalışmaz.** `mcp__sqlserver__sql_query` sorguyu auto-TOP wrap edip `(WITH...)` parantezler → `Incorrect syntax near ')'`. MCP için **tek SELECT, CTE'siz** yaz. CTE'li tam sorgular SSMS içindir.
+- **ORDER BY top-level olmaz.** Wrapper derived table yapar → `ORDER BY ... unless TOP/OFFSET/FOR XML`. MCP'de ORDER BY'ı çıkar veya `TOP` ekle.
+- **Multi-statement reddedilir.** `DECLARE @x; SELECT...` → "Birden fazla statement". MCP'de değişkenleri inline literal yap. SSMS'te DECLARE serbest.
+
 ## E-ticaret Müşteri Zinciri
 
 `J_ORDERS.CLIENTREF → J_ORDER_CLIENTS.LOGICALREF → CUSTOMERREF`. J_ORDER_CLIENTS standart. CUSTOMERREF=0/NULL = misafir.
