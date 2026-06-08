@@ -1,0 +1,86 @@
+BKM KITAP — PAZARTESI BRIFINGI · 04.05.2026
+*** AY DONUSUMU — Nisan 2026 KAPANISI ***
+Hafta 19 (27.04 - 03.05)
+Veri kesim: 03.05.2026 23:59 · Kaynak: EncoreMerkez (3 Bursa)
+==================================================================
+
+UYARILAR:
+- Bu ay (Mayıs 2026) için hedef tablosunda kayıt yok — gerçekleşme % gösterilmiyor.
+
+
+
+AY DONUSUMU OZETI
+-----------------
+Nisan 2026 kapanisi : 56.840.418 TL
+Hedef                            : 61.500.000 TL
+Gerceklesme                      : %92.4 (-4.659.582 ₺)
+
+
+1) Nisan 2026 TAM AY — MAGAZA x HEDEF
+--------------------------------------------------
+Özlüce        Net:     25.316.558 TL  Hedef:     26.500.000 TL  Gerc: % 95.5  Acik:     -1.183.442 TL
+İst.Yolu      Net:     15.071.768 TL  Hedef:     16.000.000 TL  Gerc: % 94.2  Acik:       -928.231 TL
+FSM           Net:     16.452.092 TL  Hedef:     19.000.000 TL  Gerc: % 86.6  Acik:     -2.547.908 TL
+TOPLAM        Net:     56.840.418 TL  Hedef:     61.500.000 TL  Gerc: % 92.4  Acik:     -4.659.582 TL
+
+
+2) Nisan 2026 — KATEGORI BAZLI (Top 10)
+---------------------------------------------------------------------
+Kategori                         FSM        Ozluce      Ist.Yolu          TOPLAM  Pay
+Kitap                      3.081.163     4.264.978     2.665.272      10.011.413  %29,2
+Hazırlık Kitapları         3.208.095     3.584.048     1.765.407       8.557.550  %24,9
+Çocuk Kitabı               1.889.719     3.430.002     2.534.684       7.854.404  %22,9
+Kırtasiye                  1.191.856     1.999.504     1.097.388       4.288.748  %12,5
+Akademi                      821.594       852.103       486.476       2.160.173  %6,3
+Oyuncak                      227.594       347.059       183.674         758.326  %2,2
+Sınav Kıyafet                    147           490       331.898         332.535  %1,0
+Dergi                        100.828        88.368        34.821         224.017  %0,7
+Hediyelik                     12.103        21.478        41.554          75.135  %0,2
+Elektronik                    30.693        20.461        15.352          66.507  %0,2
+Diger/Eslesmeyen                                 (barkod-urn eslesme: %60.6)      22.417.717  %39.4
+
+
+3) BU HAFTA — HAFTA 19
+--------------------------------------
+Özlüce              Fis:   8508  Net:      6.044.746 TL  Sepet:  710 TL  WoW +%2,8
+İst.Yolu            Fis:   5715  Net:      3.805.472 TL  Sepet:  665 TL  WoW +%8,1
+FSM                 Fis:   6987  Net:      3.884.777 TL  Sepet:  556 TL  WoW +%0,4
+TOPLAM              Fis:  21210  Net:     13.734.995 TL  Sepet:  647 TL  WoW +%3,5
+
+
+4) GUNLUK SEYIR — BU HAFTA
+---------------------------
+27.04 Pzt                  Net:      1.230.422 TL  Fis:  2311
+28.04 Sal                  Net:      1.314.280 TL  Fis:  2424
+29.04 Çar                  Net:      1.452.427 TL  Fis:  2425
+30.04 Per                  Net:      1.417.151 TL  Fis:  2365
+01.05 Cum                  Net:      2.823.369 TL  Fis:  3853  *** Emek Bayramı 🌹 ***
+02.05 Cmt                  Net:      2.811.669 TL  Fis:  4004
+03.05 Pzr                  Net:      2.685.678 TL  Fis:  3828
+
+
+5) YENI AY MTD (Mayıs 2026)
+---------------------------------
+Henuz az veri (ay basi).
+Özlüce        Net:      3.632.927 TL  (hedef yok)
+İst.Yolu      Net:      2.553.594 TL  (hedef yok)
+FSM           Net:      2.134.195 TL  (hedef yok)
+TOPLAM        Net:      8.320.717 TL  
+
+
+6) ONUMUZDEKI HAFTA — HAFTA 20
+---------------------------------------------------
+Hafta 20 (10.05.2026 kapanışı). Özel gün(ler): Pzr 10.05 — Anneler Günü 👩
+
+
+KAPSAM UYARILARI
+-----------------
+- Kapsam: 3 Bursa fiziksel magaza
+- Geri donusum fisleri (BarcodeNo='1001') haric
+- Kategori sayim: barkod-urn eslesmesine bagli (eslesme: %60.6)
+- Hedef: BKMDATA.dbo.Hedef (mekan x tarih x kategori bazinda gunluk)
+
+---
+BKM Kitap · Pazartesi Brifingi (otomatik - ay donusumu) · 04.05.2026 10:03
+scripts/generate_brief.py v1.0.0
+Sonraki brief: 11.05.2026 09:00

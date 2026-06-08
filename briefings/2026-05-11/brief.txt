@@ -1,0 +1,61 @@
+BKM KITAP — PAZARTESI BRIFINGI · 11.05.2026
+Hafta 20 · 04.05 - 10.05 kapanisi
+Veri kesim: 10.05.2026 23:59 · Kaynak: EncoreMerkez (3 Bursa)
+==================================================================
+
+UYARILAR:
+- Bu ay (Mayıs 2026) için hedef tablosunda kayıt yok — gerçekleşme % gösterilmiyor.
+
+
+OZET
+----
+Hafta net ciro    : 14.160.914 TL  (WoW +%3,1)
+Fiş adedi         : 23.223  (+%9,5)
+Sepet ortalaması  : 610 TL
+Ay MTD (Mayıs 2026): 22.481.631 TL
+
+
+1) MAGAZA OZETI — HAFTA 20
+------------------------------------------
+Özlüce              Fis:   9144  Net:      6.477.489 TL  Sepet:  708 TL  WoW +%7,2
+İst.Yolu            Fis:   6105  Net:      3.423.411 TL  Sepet:  560 TL  WoW %-10,0
+FSM                 Fis:   7974  Net:      4.260.015 TL  Sepet:  534 TL  WoW +%9,7
+TOPLAM              Fis:  23223  Net:     14.160.914 TL  Sepet:  609 TL  WoW +%3,1
+
+
+2) GUNLUK SEYIR
+----------------
+04.05 Pzt                  Net:      1.320.606 TL  Fis:  2515  Sepet:  525 TL
+05.05 Sal                  Net:      1.517.346 TL  Fis:  2656  Sepet:  571 TL
+06.05 Çar                  Net:      1.436.941 TL  Fis:  2808  Sepet:  511 TL
+07.05 Per                  Net:      1.751.724 TL  Fis:  3110  Sepet:  563 TL
+08.05 Cum                  Net:      2.030.703 TL  Fis:  3351  Sepet:  605 TL
+09.05 Cmt                  Net:      3.315.196 TL  Fis:  4669  Sepet:  710 TL
+10.05 Pzr                  Net:      2.788.398 TL  Fis:  4114  Sepet:  677 TL  *** Anneler Günü 👩 ***
+TOPLAM                     Net:     14.160.914 TL  Fis: 23223  Sepet:  609 TL
+
+
+3) AY MTD (Mayıs 2026)
+---------------------------
+Özlüce              Net:     10.110.416 TL  Hedef:              — TL  Gerceklesme: —
+İst.Yolu            Net:      5.977.005 TL  Hedef:              — TL  Gerceklesme: —
+FSM                 Net:      6.394.210 TL  Hedef:              — TL  Gerceklesme: —
+TOPLAM              Net:     22.481.631 TL  Hedef:              — TL  Gerceklesme: —
+
+
+4) ONUMUZDEKI HAFTA — HAFTA 21
+--------------------------------------------------
+Hafta 21 (17.05.2026 kapanışı). Özel gün yok, baseline beklenir.
+
+
+KAPSAM UYARILARI
+-----------------
+- Kapsam: 3 Bursa fiziksel magaza (FSM, Ozluce, Ist.Yolu)
+- Heykel, JOKER e-ticaret, kitapsepeti, kafeler dahil degil
+- Geri donusum fisleri (BarcodeNo='1001') haric
+- Iade fisleri sign'li (negatif) ciroya dahil
+
+---
+BKM Kitap · Pazartesi Brifingi (otomatik) · 11.05.2026 09:12
+scripts/generate_brief.py v1.0.0
+Sonraki brief: 18.05.2026 09:00

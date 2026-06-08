@@ -1,0 +1,58 @@
+BKM KITAP — PAZARTESI BRIFINGI · 08.06.2026
+Hafta 24 · 01.06 - 07.06 kapanisi
+Veri kesim: 07.06.2026 23:59 · Kaynak: EncoreMerkez (3 Bursa)
+==================================================================
+
+
+OZET
+----
+Hafta net ciro    : 10.135.341 TL  (WoW %-9,8)
+Fiş adedi         : 16.967  (+%7,3)
+Sepet ortalaması  : 597 TL
+Ay MTD (Haziran 2026): 10.135.341 TL  (gerçekleşme %98.8)
+
+
+1) MAGAZA OZETI — HAFTA 24
+------------------------------------------
+Özlüce              Fis:   6762  Net:      4.637.851 TL  Sepet:  685 TL  WoW +%0,8
+İst.Yolu            Fis:   4309  Net:      2.472.625 TL  Sepet:  573 TL  WoW %-32,5
+FSM                 Fis:   5896  Net:      3.024.865 TL  Sepet:  513 TL  WoW +%2,0
+TOPLAM              Fis:  16967  Net:     10.135.341 TL  Sepet:  597 TL  WoW %-9,8
+
+
+2) GUNLUK SEYIR
+----------------
+01.06 Pzt                  Net:      1.194.022 TL  Fis:  2079  Sepet:  574 TL
+02.06 Sal                  Net:      1.182.002 TL  Fis:  2026  Sepet:  583 TL
+03.06 Çar                  Net:      1.157.532 TL  Fis:  2225  Sepet:  520 TL
+04.06 Per                  Net:      1.171.289 TL  Fis:  2124  Sepet:  551 TL
+05.06 Cum                  Net:      1.250.069 TL  Fis:  2126  Sepet:  587 TL
+06.06 Cmt                  Net:      2.246.990 TL  Fis:  3327  Sepet:  675 TL
+07.06 Pzr                  Net:      1.933.437 TL  Fis:  3060  Sepet:  631 TL
+TOPLAM                     Net:     10.135.341 TL  Fis: 16967  Sepet:  597 TL
+
+
+3) AY MTD (Haziran 2026)
+---------------------------
+Özlüce              Net:      4.637.851 TL  Hedef:      4.563.130 TL  Gerceklesme: %101.6
+İst.Yolu            Net:      2.472.625 TL  Hedef:      2.628.444 TL  Gerceklesme: %94.1
+FSM                 Net:      3.024.865 TL  Hedef:      3.065.878 TL  Gerceklesme: %98.7
+TOPLAM              Net:     10.135.341 TL  Hedef:     10.257.452 TL  Gerceklesme: %98.8
+
+
+4) ONUMUZDEKI HAFTA — HAFTA 25
+--------------------------------------------------
+Hafta 25 (14.06.2026 kapanışı). Özel gün yok, baseline beklenir.
+
+
+KAPSAM UYARILARI
+-----------------
+- Kapsam: 3 Bursa fiziksel magaza (FSM, Ozluce, Ist.Yolu)
+- Heykel, JOKER e-ticaret, kitapsepeti, kafeler dahil degil
+- Geri donusum fisleri (BarcodeNo='1001') haric
+- Iade fisleri sign'li (negatif) ciroya dahil
+
+---
+BKM Kitap · Pazartesi Brifingi (otomatik) · 08.06.2026 09:09
+scripts/generate_brief.py v1.0.0
+Sonraki brief: 15.06.2026 09:00

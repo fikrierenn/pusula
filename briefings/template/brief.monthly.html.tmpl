@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>BKM Kitap — Pazartesi Brifingi · {{ monday_dmy }} (Ay Dönüşümü — {{ prev_month_label }})</title>
+</head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.5;color:#222;max-width:780px;margin:0 auto;padding:20px;">
+
+<div style="border-bottom:3px solid #c0392b;padding-bottom:12px;margin-bottom:20px;">
+  <h1 style="color:#c0392b;margin:0 0 6px 0;font-size:24px;">BKM Kitap — Pazartesi Brifingi 📅</h1>
+  <div style="color:#666;font-size:14px;">
+    <strong>{{ monday_dmy }} · AY DÖNÜŞÜMÜ — {{ prev_month_label }} kapanışı</strong><br>
+    Hafta {{ week_number }} ({{ week_start }}–{{ week_end }}) kapanışı + {{ prev_month_label }} tam ay değerlendirme<br>
+    Veri kesim: {{ data_cutoff }} · Kaynak: EncoreMerkez (3 Bursa mağazası)<br>
+    <em>Otomatik üretim: {{ generated_at }} (script v{{ script_version }})</em>
+  </div>
+</div>
+
+{% if has_warnings %}
+<div style="background:#fff8e1;border-left:4px solid #f39c12;padding:10px 14px;margin-bottom:20px;font-size:13px;">
+<strong>Uyarılar:</strong>
+<ul style="margin:6px 0;">
+{% for w in warnings %}<li>{{ w }}</li>{% endfor %}
+</ul>
+</div>
+{% endif %}
+
+<div style="background:#e8f5e9;border-left:4px solid #27ae60;padding:12px 16px;margin-bottom:20px;font-size:14px;">
+<strong>Ay Dönüşümü Özeti:</strong> {{ prev_month_label }} kapanışı <strong>{{ prev_month.net_ciro_fmt }} ₺</strong> · Hedef <strong>{{ prev_month.hedef_fmt }} ₺</strong> · Gerçekleşme <strong style="color:{{ prev_month.pct_color }};">%{{ prev_month.gerceklesme_pct }}</strong> ({{ prev_month.delta_str }})
+</div>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">📅 1) {{ prev_month_label }} Tam Ay — Mağaza × Hedef</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+<thead><tr style="background:#f5f5f5;">
+<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">Mağaza</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Net Ciro</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Hedef</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Gerçek %</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Açık</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Fiş</th>
+</tr></thead>
+<tbody>
+{% for m in prev_month_stores %}
+<tr><td style="padding:8px;border-bottom:1px solid #eee;"><strong>{{ m.name }}</strong></td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ m.net_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ m.hedef_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:{{ m.pct_color }};"><strong>%{{ m.gerceklesme_pct }}</strong></td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:{% if m.delta < 0 %}#c0392b{% else %}#27ae60{% endif %};">{{ m.delta_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ m.fis_fmt }}</td></tr>
+{% endfor %}
+<tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:8px;">TOPLAM</td><td style="text-align:right;padding:8px;">{{ prev_month.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;">{{ prev_month.hedef_fmt }}</td><td style="text-align:right;padding:8px;color:{{ prev_month.pct_color }};">%{{ prev_month.gerceklesme_pct }}</td><td style="text-align:right;padding:8px;color:{% if prev_month.delta < 0 %}#c0392b{% else %}#27ae60{% endif %};">{{ prev_month.delta_fmt }}</td><td style="text-align:right;padding:8px;">{{ prev_month.fis_fmt }}</td></tr>
+</tbody>
+</table>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">📊 2) {{ prev_month_label }} — Kategori Bazlı (Top {{ category_top_n }})</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;">
+<thead><tr style="background:#f5f5f5;">
+<th style="padding:6px;text-align:left;border-bottom:2px solid #ddd;">Kategori</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">FSM</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Özlüce</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">İst.Yolu</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">TOPLAM</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Hedef</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Gerç %</th>
+<th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Pay %</th>
+</tr></thead>
+<tbody>
+{% for c in categories %}
+<tr><td style="padding:5px 6px;border-bottom:1px solid #eee;"><strong>{{ c.kategori }}</strong></td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;">{{ c.fsm_fmt }}</td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;">{{ c.ozluce_fmt }}</td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;">{{ c.istyolu_fmt }}</td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;"><strong>{{ c.toplam_fmt }}</strong></td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;color:#666;">{{ c.hedef_fmt }}</td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;color:{{ c.pct_color }};"><strong>{{ c.gerc_pct_str }}</strong></td><td style="text-align:right;padding:5px 6px;border-bottom:1px solid #eee;color:#888;">%{{ c.pay_pct }}</td></tr>
+{% endfor %}
+<tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:6px;">Diğer / Eşleşmeyen</td><td colspan="3" style="text-align:right;padding:6px;color:#888;font-style:italic;">(barkod-urn eşleşme: %{{ category_match_pct }})</td><td style="text-align:right;padding:6px;">{{ category_other_fmt }}</td><td colspan="2" style="text-align:right;padding:6px;color:#888;">—</td><td style="text-align:right;padding:6px;color:#888;">%{{ category_other_pct }}</td></tr>
+</tbody>
+</table>
+
+<p style="font-size:12px;color:#888;font-style:italic;">Kategori kaynağı: DerinSIS urn × urnKtgr2 (köprü: SalesProducts.BarcodeNo = urn.stkKod). Eşleşmeyen barkodlar "Diğer" altında.</p>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">3) Bu Hafta — Hafta {{ week_number }}</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+<thead><tr style="background:#f5f5f5;">
+<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">Mağaza</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Fiş</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Net Ciro</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Sepet</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">WoW</th>
+</tr></thead>
+<tbody>
+{% for s in stores %}
+<tr><td style="padding:8px;border-bottom:1px solid #eee;">{{ s.name }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ s.fis_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ s.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ s.sepet_fmt }} ₺</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:{% if s.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ s.wow_str }}</td></tr>
+{% endfor %}
+<tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:8px;">TOPLAM</td><td style="text-align:right;padding:8px;">{{ week.fis_fmt }}</td><td style="text-align:right;padding:8px;">{{ week.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;">{{ week.sepet_fmt }} ₺</td><td style="text-align:right;padding:8px;color:{% if week.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ week.wow_str }}</td></tr>
+</tbody>
+</table>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">4) Günlük Seyir — Bu Hafta</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+<thead><tr style="background:#f5f5f5;"><th style="padding:6px;text-align:left;border-bottom:2px solid #ddd;">Gün</th><th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Net Ciro</th><th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Fiş</th></tr></thead>
+<tbody>
+{% for d in daily %}
+<tr {% if d.is_special %}style="background:#fff3cd;"{% endif %}><td style="padding:6px;border-bottom:1px solid #eee;">{{ d.gun_label }}{% if d.special_note %} — <strong>{{ d.special_note }}</strong>{% endif %}</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;">{{ d.net_ciro_fmt }}</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;">{{ d.fis_fmt }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">5) Yeni Ay MTD ({{ mtd_label }})</h2>
+<p style="font-size:13px;color:#666;">Henüz az veri (ay başı). Trend bir sonraki Pazartesi netleşecek.</p>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+{% for m in mtd_stores %}
+<tr><td style="padding:6px;border-bottom:1px solid #eee;">{{ m.name }}</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;">{{ m.net_fmt }} ₺</td><td style="padding:6px;border-bottom:1px solid #eee;color:#666;">{% if m.hedef %}hedef {{ m.hedef_fmt }} → %{{ m.gerceklesme_pct }}{% else %}hedef tabloda yok{% endif %}</td></tr>
+{% endfor %}
+<tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:6px;">TOPLAM</td><td style="text-align:right;padding:6px;">{{ mtd.net_ciro_fmt }} ₺</td><td style="padding:6px;color:#666;">{% if mtd.hedef %}hedef {{ mtd.hedef_fmt }} → %{{ mtd.gerceklesme_pct }}{% else %}—{% endif %}</td></tr>
+</table>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">6) Önümüzdeki Hafta — Hafta {{ next_week_number }}</h2>
+<p style="font-size:13px;color:#555;">{{ next_week_note }}</p>
+
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">Kapsam Uyarıları</h2>
+<ul style="font-size:13px;color:#555;line-height:1.6;">
+<li>Kapsam: 3 Bursa fiziksel mağaza — Heykel, JOKER e-ticaret, kitapsepeti, kafeler dahil değil</li>
+<li>Geri dönüşüm fişleri (BarcodeNo='1001') hariç</li>
+<li>Kategori bazlı sayım: ürün barkod-urn eşleşmesine bağlı (eşleşme oranı %{{ category_match_pct }})</li>
+<li>Hedef tablosu: BKMDATA.dbo.Hedef (mekan × tarih × kategori bazında günlük)</li>
+</ul>
+
+<hr style="margin:30px 0;border:none;border-top:1px solid #ddd;">
+<p style="font-size:11px;color:#999;text-align:center;">
+BKM Kitap · Pazartesi Brifingi (otomatik — ay dönüşümü versiyonu) · {{ generated_at }}<br>
+Veri kesim: {{ data_cutoff }} · scripts/generate_brief.py v{{ script_version }}<br>
+Sonraki brief: {{ next_monday_dmy }} 09:00
+</p>
+
+</body>
+</html>

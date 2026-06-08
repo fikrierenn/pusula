@@ -1,0 +1,85 @@
+BKM KITAP — PAZARTESI BRIFINGI · 01.06.2026
+*** AY DONUSUMU — Mayıs 2026 KAPANISI ***
+Hafta 23 (25.05 - 31.05)
+Veri kesim: 31.05.2026 23:59 · Kaynak: EncoreMerkez (3 Bursa)
+==================================================================
+
+UYARILAR:
+- Bu ay (Haziran 2026) için hedef tablosunda kayıt yok — gerçekleşme % gösterilmiyor.
+
+
+
+AY DONUSUMU OZETI
+-----------------
+Mayıs 2026 kapanisi : 57.566.699 TL
+Hedef                            : 50.704.515 TL
+Gerceklesme                      : %113.5 (6.862.184 ₺)
+
+
+1) Mayıs 2026 TAM AY — MAGAZA x HEDEF
+--------------------------------------------------
+Özlüce        Net:     25.343.182 TL  Hedef:     22.477.904 TL  Gerc: %112.7  Acik:      2.865.279 TL
+İst.Yolu      Net:     15.872.863 TL  Hedef:     13.056.159 TL  Gerc: %121.6  Acik:      2.816.705 TL
+FSM           Net:     16.350.653 TL  Hedef:     15.170.452 TL  Gerc: %107.8  Acik:      1.180.201 TL
+TOPLAM        Net:     57.566.699 TL  Hedef:     50.704.515 TL  Gerc: %113.5  Acik:      6.862.184 TL
+
+
+2) Mayıs 2026 — KATEGORI BAZLI (Top 10)
+---------------------------------------------------------------------
+Kategori                         FSM        Ozluce      Ist.Yolu          TOPLAM           Hedef    Gerc %  Pay
+Kitap                      3.636.768     5.380.235     3.631.055      12.648.058      11.118.050    %113,8  %35,9
+Çocuk Kitabı               1.961.051     3.465.769     2.837.815       8.264.635       7.191.399    %114,9  %23,4
+Hazırlık Kitapları         2.910.998     3.152.165     1.464.544       7.527.707       9.336.326     %80,6  %21,3
+Kırtasiye                    996.321     1.602.028       934.949       3.533.299      10.307.957     %34,3  %10,0
+Akademi                      761.503       797.066       518.799       2.077.368       1.355.900    %153,2  %5,9
+Oyuncak                      178.557       284.095       226.975         689.626       7.994.908      %8,6  %2,0
+Dergi                        103.634        98.160        30.986         232.781         201.665    %115,4  %0,7
+Sınav Kıyafet                     98           147       180.384         180.629         395.415     %45,7  %0,5
+Hediyelik                      9.051        40.414        14.302          63.767       1.205.111      %5,3  %0,2
+Gıda                          10.340        30.913         9.471          50.724         870.310      %5,8  %0,1
+Diger/Eslesmeyen                                 (barkod-urn eslesme: %61.4)      22.231.491               —         —  %38.6
+
+
+3) BU HAFTA — HAFTA 23
+--------------------------------------
+Özlüce              Fis:   5870  Net:      4.603.241 TL  Sepet:  784 TL  WoW %-11,6
+İst.Yolu            Fis:   4877  Net:      3.662.823 TL  Sepet:  751 TL  WoW +%24,6
+FSM                 Fis:   5059  Net:      2.965.957 TL  Sepet:  586 TL  WoW %-14,1
+TOPLAM              Fis:  15806  Net:     11.232.021 TL  Sepet:  710 TL  WoW %-3,2
+
+
+4) GUNLUK SEYIR — BU HAFTA
+---------------------------
+25.05 Pzt                  Net:      1.949.244 TL  Fis:  2862
+26.05 Sal                  Net:      1.611.732 TL  Fis:  2242
+28.05 Per                  Net:      1.529.840 TL  Fis:  1989
+29.05 Cum                  Net:      2.199.951 TL  Fis:  2975
+30.05 Cmt                  Net:      1.997.993 TL  Fis:  2844
+31.05 Pzr                  Net:      1.943.260 TL  Fis:  2894
+
+
+5) YENI AY MTD (Haziran 2026)
+---------------------------------
+Henuz az veri (ay basi).
+Özlüce        Net:              0 TL  (hedef yok)
+İst.Yolu      Net:              0 TL  (hedef yok)
+FSM           Net:              0 TL  (hedef yok)
+TOPLAM        Net:              0 TL  
+
+
+6) ONUMUZDEKI HAFTA — HAFTA 24
+---------------------------------------------------
+Hafta 24 (07.06.2026 kapanışı). Özel gün yok, baseline beklenir.
+
+
+KAPSAM UYARILARI
+-----------------
+- Kapsam: 3 Bursa fiziksel magaza
+- Geri donusum fisleri (BarcodeNo='1001') haric
+- Kategori sayim: barkod-urn eslesmesine bagli (eslesme: %61.4)
+- Hedef: BKMDATA.dbo.Hedef (mekan x tarih x kategori bazinda gunluk)
+
+---
+BKM Kitap · Pazartesi Brifingi (otomatik - ay donusumu) · 01.06.2026 09:12
+scripts/generate_brief.py v1.0.0
+Sonraki brief: 08.06.2026 09:00

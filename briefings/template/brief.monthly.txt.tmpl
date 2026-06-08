@@ -1,0 +1,66 @@
+BKM KITAP — PAZARTESI BRIFINGI · {{ monday_dmy }}
+*** AY DONUSUMU — {{ prev_month_label }} KAPANISI ***
+Hafta {{ week_number }} ({{ week_start }} - {{ week_end }})
+Veri kesim: {{ data_cutoff }} · Kaynak: EncoreMerkez (3 Bursa)
+==================================================================
+
+{% if has_warnings -%}
+UYARILAR:
+{% for w in warnings %}- {{ w }}
+{% endfor %}
+{% endif %}
+
+AY DONUSUMU OZETI
+-----------------
+{{ prev_month_label }} kapanisi : {{ prev_month.net_ciro_fmt }} TL
+Hedef                            : {{ prev_month.hedef_fmt }} TL
+Gerceklesme                      : %{{ prev_month.gerceklesme_pct }} ({{ prev_month.delta_str }})
+
+
+1) {{ prev_month_label }} TAM AY — MAGAZA x HEDEF
+--------------------------------------------------
+{% for m in prev_month_stores %}{{ "%-12s"|format(m.name) }}  Net: {{ "%14s"|format(m.net_fmt) }} TL  Hedef: {{ "%14s"|format(m.hedef_fmt) }} TL  Gerc: %{{ "%5.1f"|format(m.gerceklesme_pct) }}  Acik: {{ "%14s"|format(m.delta_fmt) }} TL
+{% endfor %}{{ "%-12s"|format("TOPLAM") }}  Net: {{ "%14s"|format(prev_month.net_ciro_fmt) }} TL  Hedef: {{ "%14s"|format(prev_month.hedef_fmt) }} TL  Gerc: %{{ "%5.1f"|format(prev_month.gerceklesme_pct) }}  Acik: {{ "%14s"|format(prev_month.delta_fmt) }} TL
+
+
+2) {{ prev_month_label }} — KATEGORI BAZLI (Top {{ category_top_n }})
+---------------------------------------------------------------------
+{{ "%-22s"|format("Kategori") }}  {{ "%12s"|format("FSM") }}  {{ "%12s"|format("Ozluce") }}  {{ "%12s"|format("Ist.Yolu") }}  {{ "%14s"|format("TOPLAM") }}  {{ "%14s"|format("Hedef") }}  {{ "%8s"|format("Gerc %") }}  Pay
+{% for c in categories %}{{ "%-22s"|format(c.kategori) }}  {{ "%12s"|format(c.fsm_fmt) }}  {{ "%12s"|format(c.ozluce_fmt) }}  {{ "%12s"|format(c.istyolu_fmt) }}  {{ "%14s"|format(c.toplam_fmt) }}  {{ "%14s"|format(c.hedef_fmt) }}  {{ "%8s"|format(c.gerc_pct_str) }}  %{{ c.pay_pct }}
+{% endfor %}{{ "%-22s"|format("Diger/Eslesmeyen") }}  {{ "%52s"|format("(barkod-urn eslesme: %"+category_match_pct|string+")") }}  {{ "%14s"|format(category_other_fmt) }}  {{ "%14s"|format("—") }}  {{ "%8s"|format("—") }}  %{{ category_other_pct }}
+
+
+3) BU HAFTA — HAFTA {{ week_number }}
+--------------------------------------
+{% for s in stores %}{{ "%-18s"|format(s.name) }}  Fis: {{ "%6d"|format(s.fis_int) }}  Net: {{ "%14s"|format(s.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(s.sepet_int) }} TL  WoW {{ s.wow_str }}
+{% endfor %}{{ "%-18s"|format("TOPLAM") }}  Fis: {{ "%6d"|format(week.fis_int) }}  Net: {{ "%14s"|format(week.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(week.sepet_int) }} TL  WoW {{ week.wow_str }}
+
+
+4) GUNLUK SEYIR — BU HAFTA
+---------------------------
+{% for d in daily %}{{ "%-25s"|format(d.gun_label) }}  Net: {{ "%14s"|format(d.net_ciro_fmt) }} TL  Fis: {{ "%5d"|format(d.fis_int) }}{% if d.special_note %}  *** {{ d.special_note }} ***{% endif %}
+{% endfor %}
+
+5) YENI AY MTD ({{ mtd_label }})
+---------------------------------
+Henuz az veri (ay basi).
+{% for m in mtd_stores %}{{ "%-12s"|format(m.name) }}  Net: {{ "%14s"|format(m.net_fmt) }} TL  {% if m.hedef %}Hedef: {{ m.hedef_fmt }} TL  Gerc: %{{ m.gerceklesme_pct }}{% else %}(hedef yok){% endif %}
+{% endfor %}{{ "%-12s"|format("TOPLAM") }}  Net: {{ "%14s"|format(mtd.net_ciro_fmt) }} TL  {% if mtd.hedef %}Hedef: {{ mtd.hedef_fmt }} TL  Gerc: %{{ mtd.gerceklesme_pct }}{% endif %}
+
+
+6) ONUMUZDEKI HAFTA — HAFTA {{ next_week_number }}
+---------------------------------------------------
+{{ next_week_note }}
+
+
+KAPSAM UYARILARI
+-----------------
+- Kapsam: 3 Bursa fiziksel magaza
+- Geri donusum fisleri (BarcodeNo='1001') haric
+- Kategori sayim: barkod-urn eslesmesine bagli (eslesme: %{{ category_match_pct }})
+- Hedef: BKMDATA.dbo.Hedef (mekan x tarih x kategori bazinda gunluk)
+
+---
+BKM Kitap · Pazartesi Brifingi (otomatik - ay donusumu) · {{ generated_at }}
+scripts/generate_brief.py v{{ script_version }}
+Sonraki brief: {{ next_monday_dmy }} 09:00
