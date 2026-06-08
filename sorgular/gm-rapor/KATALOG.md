@@ -19,6 +19,7 @@ Amaç: operasyonel nabız. 5 dakikada "dün ne oldu, anormal bir şey var mı".
 | G5 | Saat bazlı yoğunluk (dün) | Saatlik fiş + net ciro — kasiyer/vardiya planı | `sorgular/gm-rapor/gunluk/G5-saat-bazli.sql` | ✅ doğrulandı (pik 16:00) |
 | G6 | Anomali bayrağı (dün) | Sıfır/neg fiyat · kampanyasız (manuel) indirim | `sorgular/gm-rapor/gunluk/G6-anomali.sql` | ✅ doğrulandı (07.06 temiz) |
 | G7 | E-ticaret (JOKER) dün | Sipariş · ciro · sepet · kanal (App/Mobil/Web) | `sorgular/gm-rapor/gunluk/G7-eticaret-kanal.sql` | ✅ doğrulandı (ISO tarih) |
+| G8 | **Dönüşüm oranı** (FSM kapı sayıcı) | Giriş · Fiş · Dönüşüm % · ₺/ziyaret | `scripts/donusum_orani.py` (kapı sayıcı CSV + POS) | ✅ FSM (%51) — diğer 2 mağaza sayıcı bekliyor |
 
 **Asgari günlük set:** G1 + G2 + G3. Gerisi sinyal varsa drill-down.
 
@@ -105,7 +106,8 @@ Kaynak taraması (6 açı, 27 kaynak, 16 doğrulanmış iddia). Perakende KPI be
 |---|---|---|---|---|
 | **ATV** (sepet ort) | Net ciro / Fiş | günlük | Çapraz satış / fiyat | ✅ G1'de var |
 | **UPT** (sepet adedi) | Net adet / Fiş | günlük | Sepet derinliği; 3al2öde etkisi | ✅ G1'e eklendi |
-| **Dönüşüm oranı** | İşlem / Trafik | günlük | Erken uyarı (ciro düşmeden önce) | ⛔ B-22 kapı sayıcı bekliyor |
+| **Dönüşüm oranı** | Fiş / Giriş | günlük | Erken uyarı (ciro düşmeden önce) | ✅ G8 (FSM, `scripts/donusum_orani.py`) — Özlüce/İst.Yolu sayıcı bekliyor |
+| **Ziyaretçi başına ciro** | Net ciro / Giriş | günlük | Trafik kalitesi | ✅ G8 (FSM) |
 | **YoY** | dönem / geçen yıl aynı dönem | günlük/haftalık | Mevsimsellik (sınav/okula dönüş) | ⏳ G1'de, ~11.07.2026'da aktif |
 | **Stok devir hızı** | Satılan adet / Ort. stok adet ×12 | aylık | Stok→nakit hızı; ölü stok | ✅ E4 `gm-rapor/envanter/E4-E6-devir-sellthrough.sql` |
 | **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 `gm-rapor/envanter/E5-gmroi.sql` (SSMS, pay=karzarar) |

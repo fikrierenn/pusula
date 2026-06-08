@@ -11,6 +11,7 @@ Extracted from: encore-merkez-analiz-raporu.html
 | Set | Raporlar | Klasör |
 |---|---|---|
 | Günlük (G0-G7) | birleşik toplam, GM panosu, ödeme, iade, kategori, saat, anomali, e-ticaret | `gm-rapor/gunluk/` |
+| Günlük (G8) | dönüşüm oranı (FSM kapı sayıcı × POS) | `scripts/donusum_orani.py` + `sayiyo/` |
 | Envanter (E1-E8) | snapshot, devir, weeks-of-supply, sell-through, GMROI, stockout | `gm-rapor/envanter/` |
 | Merchandising (A5-A6) | ABC (Pareto 80/20), marka/yayınevi | `gm-rapor/merchandising/` |
 | Müşteri (C1) | RFM omnichannel (e-ticaret + yazarkasa) | `gm-rapor/musteri/` |
