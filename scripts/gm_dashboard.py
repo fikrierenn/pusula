@@ -59,24 +59,19 @@ def period_data(cur, start, end, traf, hedef=None):
     etic = Q(cur, """SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END K,
         COUNT(*) Sip, SUM(o.TOTALPRICE) Ciro FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s
         GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END""", (giso, g2iso))
-    kat = Q(cur, """SELECT TOP 8 CAST(ktg.ktgrAd AS nvarchar(50)) K, CAST(SUM(sp.TotalPrice) AS decimal(18,0)) Ciro
-      FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
-      JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
-      JOIN DerinSISBkm.dbo.urnKtgr2 ktg ON ktg.ktgrID=u.urnKtgr2ID
-      WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=%s AND s.Date<%s AND ktg.ktgrAd<>N'Sınav Okulları'
-      GROUP BY CAST(ktg.ktgrAd AS nvarchar(50)) ORDER BY Ciro DESC""", (start, end))
+    # kategori mix — irsHrk (stkID üstünden; stkKod≠barkod, EncoreMerkez join kategori kaçırıyordu)
+    kat = Q(cur, """SELECT TOP 8 CAST(k.ktgrAd AS nvarchar(50)) K, CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
+      FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+      WHERE h.ehTrhS>=%s AND h.ehTrhS<%s AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) AND k.ktgrAd<>N'Sınav Okulları'
+      GROUP BY CAST(k.ktgrAd AS nvarchar(50)) ORDER BY Ciro DESC""", (start, end))
     ode = Q(cur, """SELECT CAST(pt.Name AS nvarchar(40)) K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
       JOIN EncoreMerkez.dbo.PaymentTypes pt ON pt.Id=sp.PaymentTypesId JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND sp.IsChangeAmount=0 AND s.Date>=%s AND s.Date<%s GROUP BY CAST(pt.Name AS nvarchar(40))""", (start, end))
-    # mağaza × kategori (drill-down)
-    skat = Q(cur, """SELECT MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50)) K, CAST(SUM(sp.TotalPrice) AS decimal(18,0)) Ciro
-      FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
-      JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-      JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
-      JOIN DerinSISBkm.dbo.urnKtgr2 ktg ON ktg.ktgrID=u.urnKtgr2ID
-      WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=%s AND s.Date<%s AND ktg.ktgrAd<>N'Sınav Okulları'
-      GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50))""", (start, end))
+    # mağaza × kategori (drill) — irsHrk (stkID)
+    skat = Q(cur, """SELECT h.ehMekan mekanID, CAST(k.ktgrAd AS nvarchar(50)) K, CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
+      FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+      WHERE h.ehTrhS>=%s AND h.ehTrhS<%s AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) AND k.ktgrAd<>N'Sınav Okulları'
+      GROUP BY h.ehMekan, CAST(k.ktgrAd AS nvarchar(50))""", (start, end))
     skat_map = {}
     for r in skat:
         skat_map.setdefault(r["mekanID"], []).append([r["K"], int(r["Ciro"])])
@@ -181,11 +176,24 @@ def main():
     rfm_et = rfm_q("""SELECT seg.S, COUNT(*) N, SUM(c.Mon) C FROM (SELECT oc.CUSTOMERREF, DATEDIFF(DAY,MAX(o.ORDERDATE),%s) Rec, COUNT(*) Frq, SUM(o.TOTALPRICE) Mon
         FROM ODAKJOKER.JOKER.dbo.J_ORDERS o JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s AND oc.CUSTOMERREF>0 GROUP BY oc.CUSTOMERREF) c
       CROSS APPLY (SELECT CAST(CASE WHEN Frq>=5 AND Rec<=30 THEN N'1-Şampiyon' WHEN Frq>=3 AND Rec<=90 THEN N'2-Sadık' WHEN Frq<=2 AND Rec<=30 THEN N'3-Yeni' WHEN Rec BETWEEN 91 AND 180 THEN N'4-Risk' WHEN Rec>180 THEN N'5-Kayıp' ELSE N'6-Diğer' END AS nvarchar(20)) S) seg GROUP BY seg.S""", (dun, bas365, g2iso))
-    # marka top 20
-    marka = [[r["M"], int(r["Ciro"]), int(r["Adet"]), int(r["Cesit"])] for r in Q(cur, """SELECT TOP 20 CAST(mrk.mrkAd AS nvarchar(80)) M, CAST(SUM(sp.TotalPrice) AS decimal(18,0)) Ciro, CAST(SUM(sp.Amount) AS int) Adet, COUNT(DISTINCT sp.ProductsId) Cesit FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
-      JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
-      JOIN DerinSISBkm.dbo.urnMrk mrk ON mrk.mrkID=u.urnMrkID WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>='2026-05-01' AND s.Date<'2026-06-01' AND s.DocumentsTypeId IN (1,2,6,7,8)
+    # marka top 20 — irsHrk (stkID)
+    marka = [[r["M"], int(r["Ciro"] or 0), int(r["Adet"] or 0), int(r["Cesit"])] for r in Q(cur, """SELECT TOP 20 CAST(mrk.mrkAd AS nvarchar(80)) M,
+        CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro,
+        CAST(-SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehAdetN ELSE 0 END) AS int) Adet, COUNT(DISTINCT h.ehstkID) Cesit
+      FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnMrk mrk ON mrk.mrkID=u.urnMrkID
+      WHERE h.ehTrhS>='2026-05-01' AND h.ehTrhS<'2026-06-01' AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100)
       GROUP BY CAST(mrk.mrkAd AS nvarchar(80)) ORDER BY Ciro DESC""")]
+    # ÜRÜN detayı (kategori başına top 50, irsHrk stkID) — embed → drill server'sız çalışır
+    urunler = {}
+    for r in Q(cur, f"""SELECT kat, kod, ad, sat, ciro FROM (
+        SELECT CAST(k.ktgrAd AS nvarchar(50)) kat, u.stkKod kod, CAST(u.stkAd AS nvarchar(70)) ad,
+          -SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehAdetN ELSE 0 END) sat,
+          CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) ciro,
+          ROW_NUMBER() OVER(PARTITION BY CAST(k.ktgrAd AS nvarchar(50)) ORDER BY -SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehAdetN ELSE 0 END) DESC) rn
+        FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+        WHERE h.ehTrhS>='2026-05-01' AND h.ehTrhS<'2026-06-01' AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) AND k.ktgrAd NOT IN {EXC}
+        GROUP BY CAST(k.ktgrAd AS nvarchar(50)), u.stkKod, CAST(u.stkAd AS nvarchar(70))) x WHERE rn<=50 AND sat>0"""):
+        urunler.setdefault(r["kat"], []).append([r["kod"], r["ad"], int(r["sat"]), int(r["ciro"] or 0)])
     # envanter per-lokasyon (değer güncel + Mayıs ort. adet) — kategori
     LOCS = ["FSM", "Özlüce", "İst.Yolu", "WMS Depo", "Odak Depo"]
     valq = Q(cur, f"""SELECT CAST(KTGR3 AS nvarchar(50)) K,
@@ -206,8 +214,17 @@ def main():
         v = [float(r[c] or 0) for c in ("L0", "L1", "L2", "L3", "L4")]
         av = [round((ab.get(k, [0]*5)[i] + ae.get(k, [0]*5)[i]) / 2) for i in range(5)]
         envkat.append(dict(k=k, sat=satmap.get(k, 0), v=[round(x) for x in v], a=av))
+    # ciro vs envanter payı (kategori, Mayıs 3 mağaza) — CIRO irsHrk'tan (envanterle AYNI kaynak/eşleşme;
+    # EncoreMerkez SalesProducts.BarcodeNo↔urn.stkKod join bazı kategorileri (Oyuncak) kaçırıyordu).
+    cve_ciro = {r["K"]: int(r["Ciro"] or 0) for r in Q(cur, f"""SELECT CAST(k.ktgrAd AS nvarchar(50)) K,
+        CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
+      FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+      WHERE h.ehTrhS>='2026-05-01' AND h.ehTrhS<'2026-06-01' AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) AND k.ktgrAd NOT IN {EXC}
+      GROUP BY CAST(k.ktgrAd AS nvarchar(50))""")}
+    cve = [dict(k=ek["k"], ciro=cve_ciro.get(ek["k"], 0), env=ek["v"][0]+ek["v"][1]+ek["v"][2]) for ek in envkat]
+    cve = [c for c in cve if c["env"] > 0 or c["ciro"] > 0]
     cur.close(); conn.close()
-    REF = dict(everim=everim, abc=abc, rfm_yk=rfm_yk, rfm_et=rfm_et, marka=marka, envkat=envkat, locs=LOCS)
+    REF = dict(everim=everim, abc=abc, rfm_yk=rfm_yk, rfm_et=rfm_et, marka=marka, envkat=envkat, locs=LOCS, cve=cve, urunler=urunler)
     render(dun, DATA, trend, int(env or 0), REF)
 
 
@@ -427,6 +444,11 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
   <div class="panel clk" onclick="detayRfm()"><h3>RFM — Yazarkasa (365g) &#9656;</h3><table>__RFM__</table></div>
   <div class="panel clk" onclick="detayMarka()"><h3>Top Marka / Yayınevi (Mayıs) &#9656;</h3><table>__MARKA__</table></div>
 </div>
+<div class=row>
+  <div class="panel clk" onclick="detayCve()" style="grid-column:1/-1"><h3>Ciro Payı vs Envanter Payı — Kategori (Mayıs) &#9656;</h3>
+    <canvas id=ch_cve height=90></canvas>
+    <div style="font-size:11px;color:#64748b;margin-top:6px">Köşegen (gri) <b>üstü</b> = ciro payı > envanter payı (sermaye-verimli) · <b>altı</b> = fazla stok / ölü sermaye. ▸ tıkla → tablo + ürün.</div></div>
+</div>
 
 <details style="margin-top:18px;background:#fff;border-radius:13px;padding:14px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
 <summary style="cursor:pointer;font-weight:700;color:__KIRMIZI__;font-size:14px">ℹ️ Terimler & Nasıl Yorumlanır?</summary>
@@ -453,9 +475,10 @@ const KP='__KIRMIZI__';
 const fnum=n=>Math.round(n).toLocaleString('tr-TR');
 async function api(p){const r=await fetch('/api/'+p);return await r.json();}
 function loading(t){openModal('<h2>'+t+'</h2><div style="padding:20px;color:#64748b">yükleniyor…</div>');}
-async function detayUrun(katEnc){loading('Ürün Detayı');let kat=decodeURIComponent(katEnc);let d=await api('urun?kat='+katEnc);
-  let rows=d.map(x=>'<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right">'+fnum(x.bak)+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>').join('');
-  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px">Mayıs · satılan adet sıralı (top 100)</div><table style="margin-top:10px"><tr><td><b>Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satılan</b></td><td style="text-align:right"><b>Bakiye</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+rows+'</table>');}
+function detayUrun(katEnc){let kat=decodeURIComponent(katEnc);let d=(REF.urunler&&REF.urunler[kat])||[];
+  if(!d.length){openModal('<h2>'+kat+' — Ürünler</h2><div style="padding:16px;color:#64748b">Bu kategoride satış kaydı yok.</div>');return;}
+  let rows=d.map(x=>'<tr><td>'+x[0]+'</td><td>'+x[1]+'</td><td style="text-align:right">'+fnum(x[2])+'</td><td style="text-align:right">'+tl(x[3])+'</td></tr>').join('');
+  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px">Mayıs · satılan adet sıralı (top 50) · stkID bazlı</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satılan</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+rows+'</table>');}
 async function detayMusteri(kanal,segEnc){loading('Müşteri Listesi');let seg=decodeURIComponent(segEnc);let d=await api('musteri?kanal='+kanal+'&seg='+segEnc);
   let rows=d.map(x=>'<tr style="cursor:pointer" onclick="detaySiparis(\''+kanal+'\',\''+x.id+'\',\''+encodeURIComponent(x.ad)+'\')"><td>'+x.ad+' &#9656;</td><td>'+(x.tel||'')+'</td><td style="text-align:right">'+fnum(x.frq)+'</td><td style="text-align:right">'+tl(x.mon)+'</td><td style="text-align:right">'+x.rec+' gün</td></tr>').join('');
   openModal('<h2>'+seg+' — '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+'</h2><div style="color:#64748b;font-size:12px">365 gün · monetary sıralı (top 100) · ▸ tıkla → sipariş/fiş</div><table style="margin-top:10px"><tr><td><b>Müşteri</b></td><td><b>Tel</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Son</b></td></tr>'+rows+'</table>');}
@@ -535,6 +558,17 @@ function detayRfm(){function t(arr,kanal){return arr.map(x=>'<tr style="cursor:p
    '<h3 style="font-size:13px;margin:14px 0 4px">E-ticaret (JOKER)</h3><table><tr><td><b>Segment</b></td><td style="text-align:right"><b>Müşteri</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+t(REF.rfm_et,'et')+'</table>');}
 function detayMarka(){let rows=REF.marka.map((x,i)=>'<tr><td>'+(i+1)+'. '+x[0]+'</td><td style="text-align:right">'+tl(x[1])+'</td><td style="text-align:right">'+fnum(x[2])+'</td><td style="text-align:right">'+fnum(x[3])+'</td><td style="text-align:right">'+tl(x[1]/x[3])+'</td></tr>').join('');
   openModal('<h2>Marka / Yayınevi — Top 20</h2><div style="color:#64748b;font-size:12px">Mayıs · ciro/çeşit = yoğunluk (dar+güçlü vs geniş+uzun kuyruk)</div><table style="margin-top:10px"><tr><td><b>Marka</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Çeşit</b></td><td style="text-align:right"><b>₺/Çeşit</b></td></tr>'+rows+'</table>');}
+function detayCve(){let T=REF.cve.map(c=>Object.assign({},c));let tc=T.reduce((a,b)=>a+b.ciro,0),te=T.reduce((a,b)=>a+b.env,0);
+  T.forEach(c=>{c.cp=tc?100*c.ciro/tc:0;c.ep=te?100*c.env/te:0;c.oran=c.env?c.ciro/c.env:0;});
+  T.sort((a,b)=>b.oran-a.oran);
+  let rows=T.map(c=>'<tr><td>'+c.k+'</td><td style="text-align:right">'+tl(c.ciro)+'</td><td style="text-align:right">%'+c.cp.toFixed(1)+'</td><td style="text-align:right">'+tl(c.env)+'</td><td style="text-align:right">%'+c.ep.toFixed(1)+'</td><td style="text-align:right;color:'+(c.oran>=0.2?'#16a34a':(c.oran<0.05?'#dc2626':'#64748b'))+'">'+c.oran.toFixed(2)+'</td><td style="text-align:center;color:'+KP+';cursor:pointer" onclick="detayUrun(\''+encodeURIComponent(c.k)+'\')">&#9656;</td></tr>').join('');
+  openModal('<h2>Ciro Payı vs Envanter Payı</h2><div style="color:#64748b;font-size:12px">Mayıs · <b>Ciro/Env</b> = aylık ciro ÷ envanter değeri (yeşil ≥0,2 verimli · kırmızı &lt;0,05 fazla stok) · ▸ ürün</div><table style="margin-top:10px"><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Ciro %</b></td><td style="text-align:right"><b>Envanter</b></td><td style="text-align:right"><b>Env %</b></td><td style="text-align:right"><b>Ciro/Env</b></td><td></td></tr>'+rows+'</table>');}
+(function(){let T=REF.cve;let tc=T.reduce((a,b)=>a+b.ciro,0),te=T.reduce((a,b)=>a+b.env,0);if(!tc||!te)return;
+  let pts=T.map(c=>({x:100*c.env/te,y:100*c.ciro/tc,k:c.k}));let mx=Math.max(...pts.map(p=>Math.max(p.x,p.y)))*1.1;
+  new Chart(document.getElementById('ch_cve'),{data:{datasets:[
+    {type:'scatter',data:pts,backgroundColor:KP,pointRadius:6,pointHoverRadius:8},
+    {type:'line',data:[{x:0,y:0},{x:mx,y:mx}],borderColor:'#cbd5e1',borderDash:[6,5],pointRadius:0,fill:false}
+  ]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.k?c.raw.k+' — ciro %'+c.raw.y.toFixed(1)+' / env %'+c.raw.x.toFixed(1):''}}},scales:{x:{title:{display:true,text:'Envanter Payı %'},min:0,max:mx},y:{title:{display:true,text:'Ciro Payı %'},min:0,max:mx}}}});})();
 render('gunluk'); renderEnv();
 </script></body></html>"""
 
