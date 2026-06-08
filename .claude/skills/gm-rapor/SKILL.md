@@ -102,13 +102,15 @@ SELECT [Maliyet Tipi] AS Baz,
            +[Merkez Depo Stok Maliyet]+[Odak Depo Stok Maliyet]) AS decimal(18,2)) AS Toplam
 FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
 WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
+  AND KTGR3 <> N'Sınav Okulları'   -- hayalet stok hariç (her zaman)
 GROUP BY [Maliyet Tipi];
 ```
-`database: DerinSISBkm` parametresi ver.
+`database: DerinSISBkm` parametresi ver. Doğrulama (08.06, Sınav hariç): Ort.Maliyet toplam 1.198M ₺.
 
-### Adım 2 — Anomali bayrağı (E2) — ZORUNLU uyarı
-- **İst.Yolu ÜstFiyat negatifse** → "⚠️ İst.Yolu ÜstFiyat bazı hayalet negatif (Sınav Okulları süreli yayın paketleri, urnKtgr2ID=19). Gerçek envanter için **Ort.Maliyet** bazını kullan." Detay: `sorgular/tum_stoklar_anomali_taramasi.md`.
+### Adım 2 — Anomali bayrağı (E2)
+- **Sınav Okulları artık ENVANTER DIŞI** (sorguda filtreli) — İst.Yolu'ndaki ±sahte değer (ÜstFiyat −190M / Ort.Maliyet +149M) temizlendi. Retail envanteri değil, Sınav Okulu operasyonu.
 - GM'e **Ort.Maliyet** bazını birincil göster, ÜstFiyat'ı ikincil.
+- Başka kategori negatif/aşırı çıkarsa raporla (yeni anomali): `sorgular/tum_stoklar_anomali_taramasi.md`.
 
 ### Adım 3 — Drill
 - Kategori bazlı: E1 sorgusundaki yorumlu kategori bloğu (`08-envanter/envanter-snapshot-ozet.sql`).

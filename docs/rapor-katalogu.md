@@ -49,10 +49,10 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 | # | Rapor | KPI | Kaynak sorgu | Durum |
 |---|---|---|---|---|
 | E1 | **Envanter snapshot özet** | Mağaza+depo toplam değer · 2 maliyet bazı (ÜstFiyat/Ort.Maliyet) | `sorgular/08-envanter/envanter-snapshot-ozet.sql` | ✅ YENİ |
-| E2 | Hayalet negatif bayrağı | İst.Yolu ÜstFiyat negatifi = Sınav Okulları paket anomalisi | `sorgular/tum_stoklar_anomali_taramasi.md` + E1 | mevcut |
+| E2 | Hayalet stok filtresi | Sınav Okulları (urnKtgr2ID=19) E1'de DIŞLANDI — İst.Yolu ±sahte değer temizlendi | `sorgular/tum_stoklar_anomali_taramasi.md` + E1 | ✅ filtreli |
 | E3 | Anlık/derin envanter (SSMS) | Ürün bazlı stok × maliyet, WMS+Odak dahil | `sorgular/envanter_raporu_job_sorgusu.sql` | mevcut (ağır) |
 
-**Kritik kural:** GM'e **Ort.Maliyet** bazı birincil gösterilir — ÜstFiyat bazı İst.Yolu'nda −23M TL hayalet negatif içerir (urnKtgr2ID=19 süreli yayın paketleri). Doğrulama (08.06.2026): Ort.Maliyet toplam ≈ **1,32 milyar TL**.
+**Kritik kural:** Sınav Okulları (urnKtgr2ID=19) **envanter dışı** (E1/E4/E6 hepsinde filtreli) — paket-koduyla-giriş/parça-koduyla-çıkış İst.Yolu'nu bozuyordu (ÜstFiyat −190M sahte negatif, Ort.Maliyet +149M sahte pozitif). GM'e **Ort.Maliyet** bazı birincil. Doğrulama (08.06.2026, Sınav hariç): Ort.Maliyet toplam **1,20 milyar TL**, İst.Yolu 70,1M (önce 216,8M görünüyordu).
 
 **Frekans:** E1 günlük bakılabilir (snapshot her gece tazelenir), E2 her gün kontrol, E3 haftalık/aylık derin analiz.
 
