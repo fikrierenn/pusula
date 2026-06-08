@@ -4,7 +4,7 @@
     {
       "name": "gm-dash",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8000", "--directory", "briefings/gm-dashboard"],
+      "runtimeArgs": ["scripts/gm_dashboard.py", "--serve", "--port", "8000"],
       "port": 8000
     }
   ]

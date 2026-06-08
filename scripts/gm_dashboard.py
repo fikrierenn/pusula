@@ -114,7 +114,9 @@ def period_data(cur, start, end, traf, hedef=None):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--ref-date"); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("--ref-date"); ap.add_argument("--serve", action="store_true"); ap.add_argument("--port", type=int, default=8000); a = ap.parse_args()
+    if a.serve:   # özeti yeniden HESAPLAMA — mevcut index.html'i sun + API canlı (anında başlar)
+        return serve(a.port)
     dun = a.ref_date or (date.today() - timedelta(days=1)).isoformat()
     d = date.fromisoformat(dun)
     g2 = (d + timedelta(days=1)).isoformat()
@@ -184,8 +186,28 @@ def main():
       JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
       JOIN DerinSISBkm.dbo.urnMrk mrk ON mrk.mrkID=u.urnMrkID WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>='2026-05-01' AND s.Date<'2026-06-01' AND s.DocumentsTypeId IN (1,2,6,7,8)
       GROUP BY CAST(mrk.mrkAd AS nvarchar(80)) ORDER BY Ciro DESC""")]
+    # envanter per-lokasyon (değer güncel + Mayıs ort. adet) — kategori
+    LOCS = ["FSM", "Özlüce", "İst.Yolu", "WMS Depo", "Odak Depo"]
+    valq = Q(cur, f"""SELECT CAST(KTGR3 AS nvarchar(50)) K,
+        CAST(SUM([FSM Stok Maliyet]) AS decimal(18,0)) L0, CAST(SUM([Özlüce Stok Maliyet]) AS decimal(18,0)) L1, CAST(SUM([İst.Yolu Stok Maliyet]) AS decimal(18,0)) L2,
+        CAST(SUM([Merkez Depo Stok Maliyet]) AS decimal(18,0)) L3, CAST(SUM([Odak Depo Stok Maliyet]) AS decimal(18,0)) L4
+      FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK) WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC} GROUP BY CAST(KTGR3 AS nvarchar(50))""")
+
+    def adetq(dt):
+        return {r["K"]: [float(r[c] or 0) for c in ("L0", "L1", "L2", "L3", "L4")] for r in Q(cur, f"""SELECT CAST(KTGR3 AS nvarchar(50)) K,
+            SUM(ISNULL([Fsm Stok Adet],0)) L0, SUM(ISNULL([Özlüce Stok Adet],0)) L1, SUM(ISNULL([İst.Yolu Stok Adet],0)) L2,
+            SUM(ISNULL([Merkez Depo Stok Adet],0)) L3, SUM(ISNULL([Odak Depo Stok Adet],0)) L4
+          FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK) WHERE CAST(Tarih AS date)=%s AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC} GROUP BY CAST(KTGR3 AS nvarchar(50))""", (dt,))}
+    ab, ae = adetq("2026-05-01"), adetq("2026-05-31")
+    satmap = {e["k"]: e["sat"] for e in everim}
+    envkat = []
+    for r in valq:
+        k = r["K"]
+        v = [float(r[c] or 0) for c in ("L0", "L1", "L2", "L3", "L4")]
+        av = [round((ab.get(k, [0]*5)[i] + ae.get(k, [0]*5)[i]) / 2) for i in range(5)]
+        envkat.append(dict(k=k, sat=satmap.get(k, 0), v=[round(x) for x in v], a=av))
     cur.close(); conn.close()
-    REF = dict(everim=everim, abc=abc, rfm_yk=rfm_yk, rfm_et=rfm_et, marka=marka)
+    REF = dict(everim=everim, abc=abc, rfm_yk=rfm_yk, rfm_et=rfm_et, marka=marka, envkat=envkat, locs=LOCS)
     render(dun, DATA, trend, int(env or 0), REF)
 
 
@@ -220,6 +242,117 @@ def render(dun, DATA, trend, env, REF):
     g = DATA["gunluk"]
     print(f"Dashboard: {OUT/'index.html'}")
     print(f"  Günlük toplam {fnum(g['toplam'])} ₺ (online %{round(100*g['etc']/g['toplam']) if g['toplam'] else 0}) · FSM dönüşüm %{g['donus']}")
+    return tmpl
+
+
+# ============ DEEP DRILL API (canlı sorgu) ============
+URUN_SQL = """SELECT TOP 100 u.stkKod kod, CAST(u.stkAd AS nvarchar(80)) ad,
+    -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) sat,
+    CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) ciro,
+    CAST(SUM(h.ehAdetN) AS int) bak
+  FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+  JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+  WHERE k.ktgrAd=%s AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0
+    AND h.ehTrhS<'2026-06-01' AND h.ehstkID IS NOT NULL
+  GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
+  HAVING -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END)>0
+  ORDER BY sat DESC"""
+
+HAR_YK = """SELECT TOP 100 CONVERT(varchar,s.Date,104) tarih, CAST(s.Id AS varchar) kod,
+    (SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) WHERE sp.SalesId=s.Id AND sp.IsValid=1) adet,
+    CAST(s.GrossTotal-s.DiscountTotal AS decimal(18,0)) tutar
+  FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.CustomersId=%s AND s.Date>=DATEADD(DAY,-365,GETDATE())
+  ORDER BY s.Date DESC"""
+
+
+def MUS_YK(seg):
+    cond = {"1-Şampiyon": "COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=30",
+            "2-Sadık": "COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=90",
+            "3-Yeni": "COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=30",
+            "4-Risk": "DATEDIFF(DAY,MAX(s.Date),%(d)s) BETWEEN 91 AND 180",
+            "5-Kayıp": "DATEDIFF(DAY,MAX(s.Date),%(d)s)>180"}.get(seg, "1=0")
+    return """SELECT TOP 100 s.CustomersId id, MAX(CAST(s.CustomerCardNo AS nvarchar(40))) ad, NULL tel,
+        COUNT(*) frq, CAST(SUM(s.GrossTotal-s.DiscountTotal) AS decimal(18,0)) mon, DATEDIFF(DAY,MAX(s.Date),%(d)s) rec
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+      WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,%(d)s) AND s.Date<DATEADD(DAY,1,%(d)s)
+      GROUP BY s.CustomersId HAVING """ + cond + " ORDER BY mon DESC"
+
+
+def api_query(sql, params):
+    c = cfg()
+    conn = pymssql.connect(server=c["server"], user=c["user"], password=c["password"], database=c.get("database", "master"), charset="UTF-8", login_timeout=15, timeout=60)
+    cur = conn.cursor(as_dict=True)
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return rows
+
+
+def serve(port=8000):
+    import urllib.parse
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    html = (OUT / "index.html").read_text(encoding="utf-8")  # önceden üretilmiş — anında sun
+    today = date.today().isoformat()
+    g2 = (date.today() + timedelta(days=1)).isoformat()
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _send(self, body, ct="application/json"):
+            b = body.encode("utf-8") if isinstance(body, str) else body
+            self.send_response(200); self.send_header("Content-Type", ct + "; charset=utf-8")
+            self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+
+        def do_GET(self):
+            u = urllib.parse.urlparse(self.path); qs = urllib.parse.parse_qs(u.query)
+            try:
+                if u.path == "/" or u.path == "/index.html":
+                    return self._send(html, "text/html")
+                if u.path == "/api/urun":
+                    kat = qs.get("kat", [""])[0]
+                    rows = api_query(URUN_SQL, (kat,))
+                    return self._send(json.dumps([dict(kod=str(r["kod"]), ad=str(r["ad"] or ""), sat=int(r["sat"] or 0), bak=int(r["bak"] or 0), ciro=int(r["ciro"] or 0)) for r in rows], ensure_ascii=False))
+                if u.path == "/api/musteri":
+                    kanal = qs.get("kanal", ["yk"])[0]; seg = qs.get("seg", [""])[0]
+                    if kanal == "yk":
+                        rows = api_query(MUS_YK(seg), {"d": today})
+                    else:
+                        rows = api_query(MUS_ET(seg), {"d": today, "b": (date.today()-timedelta(days=365)).isoformat().replace("-", ""), "g": g2.replace("-", "")})
+                    return self._send(json.dumps([dict(id=r["id"], ad=str(r.get("ad") or r["id"]), tel=str(r.get("tel") or ""), frq=int(r["frq"]), mon=int(r["mon"] or 0), rec=int(r["rec"])) for r in rows], ensure_ascii=False))
+                if u.path == "/api/hareket":
+                    kanal = qs.get("kanal", ["yk"])[0]; cid = qs.get("id", ["0"])[0]
+                    if kanal == "yk":
+                        rows = api_query(HAR_YK, (int(cid),))
+                    else:
+                        rows = api_query(HAR_ET, (int(cid),))
+                    return self._send(json.dumps([dict(tarih=r["tarih"], kod=str(r.get("kod") or ""), adet=int(r.get("adet") or 0), tutar=int(r["tutar"] or 0)) for r in rows], ensure_ascii=False))
+                self.send_response(404); self.end_headers()
+            except Exception as e:
+                self._send(json.dumps({"err": str(e)}))
+
+    srv = ThreadingHTTPServer(("0.0.0.0", port), H)
+    print(f"GM Dashboard sunucusu: http://localhost:{port}  (Ctrl+C ile durdur)")
+    srv.serve_forever()
+
+
+def MUS_ET(seg):
+    cond = {"1-Şampiyon": "COUNT(*)>=5 AND DATEDIFF(DAY,MAX(o.ORDERDATE),%(d)s)<=30",
+            "2-Sadık": "COUNT(*)>=3 AND DATEDIFF(DAY,MAX(o.ORDERDATE),%(d)s)<=90",
+            "3-Yeni": "COUNT(*)<=2 AND DATEDIFF(DAY,MAX(o.ORDERDATE),%(d)s)<=30",
+            "4-Risk": "DATEDIFF(DAY,MAX(o.ORDERDATE),%(d)s) BETWEEN 91 AND 180",
+            "5-Kayıp": "DATEDIFF(DAY,MAX(o.ORDERDATE),%(d)s)>180"}.get(seg, "1=0")
+    return """SELECT TOP 100 oc.CUSTOMERREF id, MAX(CAST(oc.CMAIL AS nvarchar(80))) ad, MAX(CAST(oc.CPHONE AS nvarchar(30))) tel,
+        COUNT(*) frq, CAST(SUM(o.TOTALPRICE) AS decimal(18,0)) mon, DATEDIFF(DAY,MAX(o.ORDERDATE),%(d)s) rec
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+      WHERE o.ORDERDATE>=%(b)s AND o.ORDERDATE<%(g)s AND oc.CUSTOMERREF>0
+      GROUP BY oc.CUSTOMERREF HAVING """ + cond + " ORDER BY mon DESC"
+
+
+HAR_ET = """SELECT TOP 100 CONVERT(varchar,o.ORDERDATE,104) tarih, o.ORDERCODE kod, NULL adet,
+    CAST(o.TOTALPRICE AS decimal(18,0)) tutar
+  FROM ODAKJOKER.JOKER.dbo.J_ORDERS o JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+  WHERE oc.CUSTOMERREF=%s ORDER BY o.ORDERDATE DESC"""
 
 
 TEMPLATE = r"""<!doctype html><html lang=tr><head><meta charset=utf-8>
@@ -282,22 +415,53 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
 </div>
 
 <div class=sec>Referans — Envanter & Müşteri & Merchandising (aylık/güncel)</div>
+<div id=locbar style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13px">
+  <b style="color:#64748b">Lokasyon:</b></div>
 <div class=grid>
-  <div class="card kpi"><div class=ct>Envanter Değeri (Ort.Maliyet)</div><div class=cv>__ENV__ ₺</div><div class=cm>Dergi/Sınav hariç</div></div>
+  <div class="card kpi clk" onclick="detayOlu()"><div class=ct>Envanter Değeri (Ort.Maliyet) &#9656;</div><div class=cv id=env_cv>__ENV__ ₺</div><div class=cm id=env_cm>seçili lokasyon · Dergi/Sınav hariç</div></div>
 </div>
 <div class=row>
-  <div class="panel clk" onclick="detayDevir()"><h3>Devir Hızı — Hızlı (yıllık) &#9656;</h3><table>__DEVIR__</table></div>
-  <div class="panel clk" onclick="detayOlu()"><h3>Ölü Sermaye — kilitli stok ₺ &#9656;</h3><table><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Devir</b></td></tr>__DEVIRSLOW__</table></div>
+  <div class="panel clk" onclick="detayDevir()"><h3>Devir Hızı — Hızlı (yıllık) &#9656;</h3><table id=tbl_devir>__DEVIR__</table></div>
+  <div class="panel clk" onclick="detayOlu()"><h3>Ölü Sermaye — kilitli stok ₺ &#9656;</h3><table id=tbl_olu><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Devir</b></td></tr>__DEVIRSLOW__</table></div>
   <div class="panel clk" onclick="detayAbc()"><h3>ABC Analizi (Pareto) &#9656;</h3><table><tr><td><b>Sınıf</b></td><td style="text-align:right"><b>Ürün</b></td><td style="text-align:right"><b>Ciro</b></td></tr>__ABC__</table></div>
   <div class="panel clk" onclick="detayRfm()"><h3>RFM — Yazarkasa (365g) &#9656;</h3><table>__RFM__</table></div>
   <div class="panel clk" onclick="detayMarka()"><h3>Top Marka / Yayınevi (Mayıs) &#9656;</h3><table>__MARKA__</table></div>
 </div>
 
-<div class=foot>BKM Kitap · GM Dashboard (otomatik) · scripts/gm_dashboard.py</div>
+<details style="margin-top:18px;background:#fff;border-radius:13px;padding:14px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+<summary style="cursor:pointer;font-weight:700;color:__KIRMIZI__;font-size:14px">ℹ️ Terimler & Nasıl Yorumlanır?</summary>
+<div style="font-size:13px;line-height:1.9;margin-top:10px;color:#334155">
+<b>Dönüşüm Oranı</b> = Fiş ÷ Giriş — mağazaya girenin yüzde kaçı alışveriş yaptı. <i>Yüksek iyi</i> (FSM ~%51 sağlıklı).<br>
+<b>Sepet Ort (ATV)</b> = Ciro ÷ Fiş — ortalama fiş tutarı.<br>
+<b>UPT</b> = Ürün ÷ Fiş — bir fişte ortalama kaç ürün (sepet derinliği). <i>Düşük = sığ sepet.</i><br>
+<b>Devir Hızı</b> = yılda kaç kez stok satılıp yenilendi. <i>Yüksek = hızlı dönen (Dergi/Gıda); düşük = yavaş, sermaye kilitli (Kitap 1,5x).</i><br>
+<b>WoS (Weeks of Supply)</b> = mevcut stok kaç haftalık satışa yeter. <i>Yüksek = fazla stok / ölü sermaye</i> (Kitap ~36 hafta).<br>
+<b>Sell-through</b> = gelen malın yüzde kaçı satıldı (reorder/indirim kararı). <i>Düşük = yavaş eriyen.</i><br>
+<b>GMROI</b> = Brüt marj ÷ Ort. envanter — envantere yatan 1 TL kaç TL marj getirdi. <i>>1 sağlıklı; Kitap 0,03/ay düşük.</i><br>
+<b>Ölü Sermaye</b> = yüksek stok değeri + düşük devir = nakde dönmeyen kilitli para (210M ₺'nin %30'u Kitap'ta).<br>
+<b>ABC (Pareto)</b> = ürünleri ciroya göre sınıfla: <b>A</b> ilk %80 ciroyu yapan az ürün · <b>C</b> uzun kuyruk (%5 ciro, clearance adayı).<br>
+<b>RFM</b> = Recency (son alış ne kadar yeni) · Frequency (ne sıklıkla alıyor) · Monetary (ne kadar harcıyor) — müşteri sadakat segmenti.<br>
+<b>SPLH</b> = Ciro ÷ çalışılan saat — işgücü verimi (Özlüce 3.786 ₺/saat).<br>
+<b>İade Oranı</b> = İade ÷ Satış — yüksek = kalite/operasyon sinyali.<br>
+<b>MTD</b> = Month-to-Date (ay başından bugüne kümülatif) · <b>WoW</b> = geçen haftaya göre · <b>YoY</b> = geçen yıla göre.
+</div></details>
+<div class=foot>BKM Kitap · GM Dashboard (otomatik) · scripts/gm_dashboard.py · veriyi yenile: python gm_dashboard.py · sunucu: --serve</div>
 <script>
 const DATA=__DATA__;
 const REF=__REF__;
+const KP='__KIRMIZI__';
 const fnum=n=>Math.round(n).toLocaleString('tr-TR');
+async function api(p){const r=await fetch('/api/'+p);return await r.json();}
+function loading(t){openModal('<h2>'+t+'</h2><div style="padding:20px;color:#64748b">yükleniyor…</div>');}
+async function detayUrun(katEnc){loading('Ürün Detayı');let kat=decodeURIComponent(katEnc);let d=await api('urun?kat='+katEnc);
+  let rows=d.map(x=>'<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right">'+fnum(x.bak)+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>').join('');
+  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px">Mayıs · satılan adet sıralı (top 100)</div><table style="margin-top:10px"><tr><td><b>Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satılan</b></td><td style="text-align:right"><b>Bakiye</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+rows+'</table>');}
+async function detayMusteri(kanal,segEnc){loading('Müşteri Listesi');let seg=decodeURIComponent(segEnc);let d=await api('musteri?kanal='+kanal+'&seg='+segEnc);
+  let rows=d.map(x=>'<tr style="cursor:pointer" onclick="detaySiparis(\''+kanal+'\',\''+x.id+'\',\''+encodeURIComponent(x.ad)+'\')"><td>'+x.ad+' &#9656;</td><td>'+(x.tel||'')+'</td><td style="text-align:right">'+fnum(x.frq)+'</td><td style="text-align:right">'+tl(x.mon)+'</td><td style="text-align:right">'+x.rec+' gün</td></tr>').join('');
+  openModal('<h2>'+seg+' — '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+'</h2><div style="color:#64748b;font-size:12px">365 gün · monetary sıralı (top 100) · ▸ tıkla → sipariş/fiş</div><table style="margin-top:10px"><tr><td><b>Müşteri</b></td><td><b>Tel</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Son</b></td></tr>'+rows+'</table>');}
+async function detaySiparis(kanal,id,adEnc){loading('Hareketler');let ad=decodeURIComponent(adEnc);let d=await api('hareket?kanal='+kanal+'&id='+id);
+  let rows=d.map(x=>'<tr><td>'+x.tarih+'</td><td>'+(x.kod||'')+'</td><td style="text-align:right">'+fnum(x.adet)+'</td><td style="text-align:right">'+tl(x.tutar)+'</td></tr>').join('');
+  openModal('<h2>'+ad+'</h2><div style="color:#64748b;font-size:12px">'+(kanal=='yk'?'fiş':'sipariş')+' geçmişi (365 gün, top 100)</div><table style="margin-top:10px"><tr><td><b>Tarih</b></td><td><b>'+(kanal=='yk'?'Fiş':'Sipariş')+'</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Tutar</b></td></tr>'+rows+'</table>');}
 const tl=n=>fnum(n)+' ₺';
 let chKat,chEtic,chTrend;
 function render(p){
@@ -336,22 +500,42 @@ function detayStore(i){const s=DATA[window.CUR].stores[i];
 function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
   let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
   openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
-function detayDevir(){let e=[...REF.everim].sort((a,b)=>b.devir-a.devir);
-  let rows=e.map(x=>'<tr><td>'+x.k+'</td><td style="text-align:right">'+x.devir.toFixed(2)+'x</td><td style="text-align:right">'+(x.wos?x.wos.toFixed(0)+' hf':'—')+'</td><td style="text-align:right">'+(x.st!=null?'%'+x.st:'—')+'</td><td style="text-align:right">'+tl(x.stoktl)+'</td></tr>').join('');
-  openModal('<h2>Envanter Verim — Kategori</h2><div style="color:#64748b;font-size:12px">Mayıs 2026 · devir / weeks-of-supply / sell-through / stok değeri</div><table style="margin-top:10px"><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>WoS</b></td><td style="text-align:right"><b>Sell-thr.</b></td><td style="text-align:right"><b>Stok ₺</b></td></tr>'+rows+'</table>');}
-function detayOlu(){let e=[...REF.everim].sort((a,b)=>b.stoktl-a.stoktl);let tot=e.reduce((a,b)=>a+b.stoktl,0);
-  let rows=e.map(x=>'<tr><td>'+x.k+'</td><td style="text-align:right">'+tl(x.stoktl)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.stoktl/tot).toFixed(0):0)+'</td><td style="text-align:right;color:'+(x.devir<1.5?'#dc2626':'#16a34a')+'">'+x.devir.toFixed(2)+'x</td><td style="text-align:right">'+(x.wos?x.wos.toFixed(0)+' hf':'—')+'</td></tr>').join('');
-  openModal('<h2>Ölü Sermaye — Kilitli Stok</h2><div style="color:#64748b;font-size:12px">Stok değeri yüksek + devir düşük = ölü sermaye (kırmızı devir &lt;1,5x). Toplam '+tl(tot)+'</div><table style="margin-top:10px"><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Pay</b></td><td style="text-align:right"><b>Devir</b></td><td style="text-align:right"><b>WoS</b></td></tr>'+rows+'</table>');}
+let SEL=[true,true,true,true,true];
+const STMAP={}; REF.everim.forEach(e=>STMAP[e.k]=e.st);
+function sumSel(arr){let s=0;for(let i=0;i<5;i++)if(SEL[i])s+=arr[i];return s;}
+function envCats(){return REF.envkat.map(c=>{let v=sumSel(c.v),a=sumSel(c.a);return {k:c.k,v:v,a:a,sat:c.sat,devir:a>0?12*c.sat/a:0,wos:(a>0&&c.sat)?a*52/12/c.sat:null,st:STMAP[c.k]};});}
+function locLabel(){return SEL.map((b,i)=>b?REF.locs[i]:null).filter(x=>x).join(', ')||'(hiç)';}
+function renderEnv(){let cats=envCats();let tot=cats.reduce((x,y)=>x+y.v,0);
+  document.getElementById('env_cv').textContent=tl(tot)+' ₺';
+  document.getElementById('env_cm').textContent=locLabel()+' · Dergi/Sınav hariç';
+  let dv=cats.filter(c=>c.a>0).sort((a,b)=>b.devir-a.devir);
+  document.getElementById('tbl_devir').innerHTML=dv.slice(0,5).map(c=>'<tr><td>'+c.k+'</td><td style="text-align:right">'+c.devir.toFixed(2)+'x</td></tr>').join('');
+  let ol=cats.slice().sort((a,b)=>b.v-a.v);
+  document.getElementById('tbl_olu').innerHTML='<tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Devir</b></td></tr>'+ol.slice(0,5).map(c=>'<tr><td>'+c.k+'</td><td style="text-align:right">'+tl(c.v)+'</td><td style="text-align:right;color:'+(c.devir<1.5?'#dc2626':'#16a34a')+'">'+c.devir.toFixed(2)+'x</td></tr>').join('');}
+(function(){let h='<b style="color:#64748b">Lokasyon:</b>';REF.locs.forEach((l,i)=>{h+=' <label style="cursor:pointer"><input type=checkbox checked onchange="SEL['+i+']=this.checked;renderEnv()"> '+l+'</label>';});document.getElementById('locbar').innerHTML=h;})();
+function detayDevir(){let e=envCats().filter(c=>c.a>0).sort((a,b)=>b.devir-a.devir);
+  let rows=e.map(x=>'<tr><td>'+x.k+'</td><td style="text-align:right">'+x.devir.toFixed(2)+'x</td><td style="text-align:right">'+(x.wos?x.wos.toFixed(0)+' hf':'—')+'</td><td style="text-align:right">'+(x.st!=null?'%'+x.st:'—')+'</td><td style="text-align:right">'+tl(x.v)+'</td><td style="text-align:center;color:'+KP+';cursor:pointer" onclick="detayUrun(\''+encodeURIComponent(x.k)+'\')">&#9656;</td></tr>').join('');
+  openModal('<h2>Envanter Verim — Kategori</h2><div style="color:#64748b;font-size:12px">Mayıs · '+locLabel()+' · ▸ tıkla → ürün detayı</div><table style="margin-top:10px"><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>WoS</b></td><td style="text-align:right"><b>Sell-thr.</b></td><td style="text-align:right"><b>Stok ₺</b></td><td></td></tr>'+rows+'</table>');}
+function detayOlu(){let e=envCats().sort((a,b)=>b.v-a.v);let tot=e.reduce((a,b)=>a+b.v,0);
+  let rows=e.map(x=>'<tr><td>'+x.k+'</td><td style="text-align:right">'+tl(x.v)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.v/tot).toFixed(0):0)+'</td><td style="text-align:right;color:'+(x.devir<1.5?'#dc2626':'#16a34a')+'">'+x.devir.toFixed(2)+'x</td><td style="text-align:center;color:'+KP+';cursor:pointer" onclick="detayUrun(\''+encodeURIComponent(x.k)+'\')">&#9656;</td></tr>').join('');
+  openModal('<h2>Ölü Sermaye — Kilitli Stok</h2><div style="color:#64748b;font-size:12px">'+locLabel()+' · devir &lt;1,5x kırmızı · ▸ ürün. Toplam '+tl(tot)+' ₺</div><table style="margin-top:10px"><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Pay</b></td><td style="text-align:right"><b>Devir</b></td><td></td></tr>'+rows+'</table>');}
 function detayAbc(){let a=REF.abc;let tn=0,tc=0;for(const k of['A','B','C'])if(a[k]){tn+=a[k].n;tc+=a[k].ciro;}
   let rows=['A','B','C'].filter(k=>a[k]).map(k=>'<tr><td><b>'+k+'</b></td><td style="text-align:right">'+fnum(a[k].n)+'</td><td style="text-align:right">%'+(100*a[k].n/tn).toFixed(0)+'</td><td style="text-align:right">'+tl(a[k].ciro)+'</td><td style="text-align:right">%'+(100*a[k].ciro/tc).toFixed(0)+'</td></tr>').join('');
   openModal('<h2>ABC Analizi (Pareto 80/20)</h2><div style="color:#64748b;font-size:12px">Mayıs · A=ilk %80 ciro · C=uzun kuyruk (clearance adayı)</div><table style="margin-top:10px"><tr><td><b>Sınıf</b></td><td style="text-align:right"><b>Ürün</b></td><td style="text-align:right"><b>SKU %</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Ciro %</b></td></tr>'+rows+'</table>');}
-function detayRfm(){function t(arr,frqL){return arr.map(x=>'<tr><td>'+x[0]+'</td><td style="text-align:right">'+fnum(x[1])+'</td><td style="text-align:right">'+tl(x[2])+'</td></tr>').join('');}
-  openModal('<h2>RFM Müşteri Segmentasyonu</h2><div style="color:#64748b;font-size:12px">365 gün · iki ayrı evren (kimlik köprüsü yok)</div>'+
-   '<h3 style="font-size:13px;margin:10px 0 4px">Yazarkasa (sadakat kartı)</h3><table><tr><td><b>Segment</b></td><td style="text-align:right"><b>Müşteri</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+t(REF.rfm_yk)+'</table>'+
-   '<h3 style="font-size:13px;margin:14px 0 4px">E-ticaret (JOKER)</h3><table><tr><td><b>Segment</b></td><td style="text-align:right"><b>Müşteri</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+t(REF.rfm_et)+'</table>');}
+function detayRfm(){function t(arr,kanal){return arr.map(x=>'<tr style="cursor:pointer" onclick="detayMusteri(\''+kanal+'\',\''+encodeURIComponent(x[0])+'\')"><td>'+x[0]+' &#9656;</td><td style="text-align:right">'+fnum(x[1])+'</td><td style="text-align:right">'+tl(x[2])+'</td></tr>').join('');}
+  let kosul='<div style="background:#f8fafc;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:12px;line-height:1.7">'+
+    '<b>Segment koşulları</b> (R=son alıştan bu yana gün, F=alışveriş sayısı):<br>'+
+    '🏆 <b>Şampiyon</b>: çok sık + çok yeni (yazarkasa F≥8 & R≤30 gün · e-ticaret F≥5 & R≤30)<br>'+
+    '💚 <b>Sadık</b>: sık + yakın (yazarkasa F≥4 & R≤90 · e-ticaret F≥3 & R≤90)<br>'+
+    '🌱 <b>Yeni/Gelişen</b>: az alışveriş ama çok yeni (F≤2 & R≤30)<br>'+
+    '⚠️ <b>Risk Altında</b>: 91-180 gündür gelmemiş (kaçmak üzere)<br>'+
+    '💀 <b>Kayıp</b>: 180+ gündür gelmemiş (reaktivasyon hedefi)</div>';
+  openModal('<h2>RFM Müşteri Segmentasyonu</h2><div style="color:#64748b;font-size:12px">RFM = <b>R</b>ecency (son alış) · <b>F</b>requency (sıklık) · <b>M</b>onetary (harcama). 365 gün · iki ayrı evren · ▸ segment tıkla → müşteri → fiş/sipariş</div>'+kosul+
+   '<h3 style="font-size:13px;margin:10px 0 4px">Yazarkasa (sadakat kartı)</h3><table><tr><td><b>Segment</b></td><td style="text-align:right"><b>Müşteri</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+t(REF.rfm_yk,'yk')+'</table>'+
+   '<h3 style="font-size:13px;margin:14px 0 4px">E-ticaret (JOKER)</h3><table><tr><td><b>Segment</b></td><td style="text-align:right"><b>Müşteri</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+t(REF.rfm_et,'et')+'</table>');}
 function detayMarka(){let rows=REF.marka.map((x,i)=>'<tr><td>'+(i+1)+'. '+x[0]+'</td><td style="text-align:right">'+tl(x[1])+'</td><td style="text-align:right">'+fnum(x[2])+'</td><td style="text-align:right">'+fnum(x[3])+'</td><td style="text-align:right">'+tl(x[1]/x[3])+'</td></tr>').join('');
   openModal('<h2>Marka / Yayınevi — Top 20</h2><div style="color:#64748b;font-size:12px">Mayıs · ciro/çeşit = yoğunluk (dar+güçlü vs geniş+uzun kuyruk)</div><table style="margin-top:10px"><tr><td><b>Marka</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Çeşit</b></td><td style="text-align:right"><b>₺/Çeşit</b></td></tr>'+rows+'</table>');}
-render('gunluk');
+render('gunluk'); renderEnv();
 </script></body></html>"""
 
 
