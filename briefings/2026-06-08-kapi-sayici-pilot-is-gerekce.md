@@ -69,5 +69,30 @@ Bu iki soru, **doğru yatırım yönünü** belirler (Özlüce'yi büyüt? İst.
 
 ---
 
-**Kaynak:** `scripts/kapi_sayici_analiz.py` (FSM trafik `sayiyo/` + EncoreMerkez POS). Tekrar üretilebilir.
-**Sonraki veri:** Özlüce/İst.Yolu sayıcısı geldiğinde script çoklu-mağaza genişler.
+## 8. İŞGÜCÜ BOYUTU — sayıcı + PDKS + POS üçgeni (en güçlü kart)
+
+Kapı sayıcı tek başına trafik verir. **PDKS işgücü saati + POS satışı eklenince** perakendenin en pahalı 2. kalemi olan **işgücü optimize edilir.** FSM 60 gün:
+
+| İlişki | Katsayı | Anlam |
+|---|--:|---|
+| İşgücü-saat ↔ trafik | **+0,69** | Personel trafiğe ayarlanıyor (planlama çalışıyor) ama **mükemmel değil** — boşluklar var |
+| Yük (giriş/işgücü-saat) ↔ dönüşüm | **+0,01** | Kalabalık dönüşümü bozmuyor → kapasite var |
+| İşgücü-saat ↔ dönüşüm | **−0,20** | Ekstra personel dönüşüm GETİRMİYOR (doygun) → "çok personel = çok satış" yanlış; mesele **doğru güne doğru personel** |
+
+**Misallocation — gerçek örnekler:**
+- 🔴 **23.04 Çocuk Bayramı: yük 14,4** (2.658 giriş, sadece 185 saat) — pik trafikte personel artmamış = **eksik personel, kaçırılan satış.** Özel-gün kadro planı yok.
+- 🔵 **02.06 Salı: yük 7,5** (1.539 giriş, 204 saat) — düşük trafikte yüksek personel = **atıl işgücü maliyeti.**
+- **Cumartesi** sürekli yüksek yük (11,4) + en yüksek SPLH (3.363) → doğru kadrolanmış, model gün.
+
+**Aksiyon:** Atıl günlerin (Salı/Çar düşük-yük) personelini pik günlere (özel gün, Cmt/Pzr) kaydır. Aynı toplam işgücü, daha iyi dağılım → eksik-personel günlerinde dönüşüm artar, atıl maliyeti düşer. **Bu optimizasyon yalnızca üç kaynak (sayıcı+PDKS+POS) birlikteyken mümkün.**
+
+> Özlüce/İst.Yolu sayıcısı gelince: o mağazaların işgücü zaten PDKS'te (Per_Grp2). Sadece **trafik eksik** → sayıcı yatırımı bütün üçgeni 3 mağazaya açar.
+
+---
+
+**Kaynaklar (tekrar üretilebilir):**
+- `scripts/kapi_sayici_analiz.py` — dönüşüm + fırsat (trafik + POS)
+- `scripts/isgucu_trafik_ucgen.py` — işgücü üçgeni (trafik + PDKS + POS), 60 gün doğrulandı
+- `scripts/saatlik_personel_trafik.py` — saatlik içeride-personel × trafik (saatlik export + DB bekliyor)
+
+**Sonraki veri:** Özlüce/İst.Yolu sayıcısı → script'ler çoklu-mağaza genişler. Saatlik sayıcı export → saat-bazlı vardiya optimizasyonu.
