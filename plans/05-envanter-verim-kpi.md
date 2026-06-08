@@ -5,7 +5,7 @@
 **Tarih:** 2026-06-08
 **Proje:** `bkm`
 **Yazan:** Fikri / Claude
-**Durum:** `Tamamlandı` (E-SCHEMA + E4 + E6 ✅ MCP-doğrulandı · E5 ✅ SSMS assembly, karzarar-bağımlı)
+**Durum:** `Tamamlandı` (E-SCHEMA + E4 + E6 + E5 ✅ tümü doğrulandı · E5 08.06 pymssql ile koşuldu)
 
 ---
 

@@ -95,7 +95,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-23d** v3: Stored procedure'a sarma (`bkm.sp_GunlukKitapKarZarar`).
 - [ ] **B-25** CLAUDE.md veya `.claude/rules/session-protocol.md`'ye ekle: oturum başı ritüelinde **`sorgular/SEMANTIK_KATMAN.md`** zorunlu okuma listesine eklensin (ehTip kod sözlüğü, mekanID'ler, `ehTutarN = ehTutar - ehIndirim` mantığı bu dosyada). 07.05.2026 oturumunda atlandı, kullanıcı uyardı. **(YENİ)**
 - [ ] **B-24** ADR-004 yaz: "DerinSIS alış faturası convention'ı: ehAdet NEGATİF + ehMaliyet=0" — bu kritik kural sql-server-conventions.md'ye eklendi mi kontrol et. **(YENİ)**
-- [ ] **B-26** ⚡ **E5 GMROI SSMS doğrulaması** — tek doğrulanmamış GM parçası. karzarar v7 (@AyBas/@AySon) çalıştır → ÇIKTI3 Marj_TL'yi KTGR3'e topla → `sorgular/gm-rapor/envanter/E5-gmroi.sql` `#MARJ`'a doldur → çalıştır. Pay (marj) tarafı MCP'de hiç koşmadı. **(YENİ)**
+- [x] ~~**B-26** E5 GMROI doğrulaması~~ — ✅ 08.06 karzarar v7 pymssql ile koşuldu (SET DATEFORMAT dmy). Mayıs aylık GMROI: Gıda 0,23 · Kitap/Akademi 0,03 · TOPLAM 0,07/ay. Kitap kategorileri ölü sermaye (E4/ABC ile tutarlı). Tüm GM KPI sözlüğü artık doğrulandı.
 - [ ] **B-27** G1 panosu (`10_00_gunluk-gm-panosu.sql`) 12 sn sürüyor — UPT için fiş-başı CROSS APPLY ağır. Günlük otomatik mail'e bağlanırsa UPT'yi ön-hesaplı/materialized tut. **(YENİ)**
 
 #### Faz 2 — Bu ay (orta öncelik — ~10 gün)

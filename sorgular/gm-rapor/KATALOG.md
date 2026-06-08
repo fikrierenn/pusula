@@ -110,7 +110,7 @@ Kaynak taraması (6 açı, 27 kaynak, 16 doğrulanmış iddia). Perakende KPI be
 | **Ziyaretçi başına ciro** | Net ciro / Giriş | günlük | Trafik kalitesi | ✅ G8 (FSM) |
 | **YoY** | dönem / geçen yıl aynı dönem | günlük/haftalık | Mevsimsellik (sınav/okula dönüş) | ⏳ G1'de, ~11.07.2026'da aktif |
 | **Stok devir hızı** | Satılan adet / Ort. stok adet ×12 | aylık | Stok→nakit hızı; ölü stok | ✅ E4 `gm-rapor/envanter/E4-E6-devir-sellthrough.sql` |
-| **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 `gm-rapor/envanter/E5-gmroi.sql` (SSMS, pay=karzarar) |
+| **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 doğrulandı (Mayıs: Gıda 0,23 · Kitap 0,03 · TOPLAM 0,07/ay) |
 | **Sell-through** | Satılan adet / (Açılış stok + Gelen adet) | haftalık/aylık | Reorder/clearance kararı | ✅ E6 (aynı dosya) |
 | **Weeks of Supply** | Ort. stok / haftalık satış | aylık | Kaç haftalık stok; yüksek=ölü sermaye | ✅ E7 (E4-E6 dosyasında kolon) |
 | **RFM** | Recency/Frequency/Monetary | aylık | Müşteri segmenti; reaktivasyon | ✅ C1 (e-ticaret) |

@@ -3,6 +3,14 @@
 -- GMROI = Brüt marj (TL) / Ort. envanter maliyeti (TL)
 --   > 1.0 = envantere yatan her 1 TL'den fazla marj kazanıldı (sağlıklı)
 -- =====================================================================
+-- ✅ DOĞRULANDI (08.06.2026, Mayıs 2026, 3 mağaza, Dergi/Sınav hariç) —
+--    karzarar v7 motoru pymssql ile koşuldu (SET DATEFORMAT dmy + #MALIYET'ten
+--    SUM(tutar-maliyet) KTGR3'e toplandı / ENVANTER ort. maliyet):
+--    AYLIK GMROI: Gıda 0,23 · Hediyelik/Kişisel Bakım 0,14 · Oyuncak/Elektronik 0,11 ·
+--    Kırtasiye/Hazırlık 0,10 · Çocuk Kitabı 0,05 · Kitap/Akademi 0,03 · TOPLAM 0,07/ay (~0,84 yıllık).
+--    İÇGÖRÜ: Kitap/Akademi devasa sermaye + düşük GMROI = ölü sermaye (E4 devir + ABC C ile tutarlı).
+--    Çalıştırma: karzarar motorunu @TARIH ile koş → #MALIYET → aşağıdaki #MARJ doldur.
+-- =====================================================================
 -- İKİ GİRDİ:
 --   PAY   (Marj_TL)  → karzarar v7 motoru (SSMS-only, prod-parity COGS)
 --                      04-karzarar/2026-05-07-karzarar-v7-prodparity.sql
