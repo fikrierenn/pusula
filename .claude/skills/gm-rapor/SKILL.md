@@ -28,8 +28,11 @@ Genel Müdür gözüyle "her gün" + "her Pazartesi" + "envanter" raporlarını 
 
 ## GÜNLÜK MOD
 
+### Adım 0 — Birleşik toplam (G0, ÖNCE göster)
+GERÇEK günlük resim fiziksel + online. `00-gunluk-pano/10_00b_birlesik-gunluk-toplam.sql`. E-ticaret (JOKER, ISO tarih) genelde cironun **%50+**'si — yalnız fizikseli göstermek yanıltıcı. İki kaynak MCP'de ayrı çalıştırılıp toplanır (cross-source).
+
 ### Adım 1 — Gün belirle
-Argümanda tarih yoksa **dün** = `CAST(DATEADD(DAY,-1,GETDATE()) AS date)`. Kullanıcı "5 Haziran" derse `CONVERT(date,'05.06.2026',104)`.
+Argümanda tarih yoksa **dün** = `CAST(DATEADD(DAY,-1,GETDATE()) AS date)`. Kullanıcı "5 Haziran" derse `CONVERT(date,'05.06.2026',104)`. E-ticaret tarafı ISO `'YYYYMMDD'` (JOKER linked server).
 
 ### Adım 2 — G1 mağaza panosu (MCP-hazır, dün için)
 ```sql

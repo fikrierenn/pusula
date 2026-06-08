@@ -11,7 +11,8 @@ Amaç: operasyonel nabız. 5 dakikada "dün ne oldu, anormal bir şey var mı".
 
 | # | Rapor | KPI | Kaynak sorgu | Durum |
 |---|---|---|---|---|
-| G1 | **Günlük GM panosu** — mağaza kırılımı | Net ciro · Fiş · Sepet ort · WoW (geçen hafta aynı gün) · MTD hedef gerçekleşme | `sorgular/00-gunluk-pano/10_00_gunluk-gm-panosu.sql` | ✅ YENİ |
+| **G0** | **Birleşik günlük toplam** (fiziksel + online) | Toplam ciro · kanal payı — GERÇEK günlük resim | `sorgular/00-gunluk-pano/10_00b_birlesik-gunluk-toplam.sql` | ✅ doğrulandı (online %61) |
+| G1 | **Günlük GM panosu** — mağaza kırılımı | Net ciro · Fiş · Sepet ort · UPT · WoW · YoY · MTD hedef gerçekleşme | `sorgular/00-gunluk-pano/10_00_gunluk-gm-panosu.sql` | ✅ doğrulandı |
 | G2 | Ödeme tipi dağılımı (dün) | Nakit / Kredi / çek % — kasa mutabakat | `sorgular/02-odeme/gunluk-odeme-mix.sql` | ✅ doğrulandı (nakit ~%17) |
 | G3 | İade kontrolü (dün) | İade fiş adedi · iade tutarı · iade oranı % | `sorgular/05-iade/gunluk-iade.sql` | ✅ doğrulandı (İst.Yolu %3,5) |
 | G4 | Kategori mix (dün, mağaza kırılımlı) | Kategori payı — hangi mağaza nerede zayıf | `sorgular/04-urun/gunluk-kategori-magaza.sql` | ✅ doğrulandı (kategori=DerinSIS KTGR3) |
