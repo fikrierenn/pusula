@@ -113,8 +113,8 @@ Kaynak taraması (6 açı, 27 kaynak, 16 doğrulanmış iddia). Perakende KPI be
 | **Weeks of Supply** | Ort. stok / haftalık satış | aylık | Kaç haftalık stok; yüksek=ölü sermaye | ✅ E7 (E4-E6 dosyasında kolon) |
 | **RFM** | Recency/Frequency/Monetary | aylık | Müşteri segmenti; reaktivasyon | ✅ C1 (e-ticaret) |
 | **Marka/yayınevi** | ciro + ciro/çeşit | aylık | Tedarikçi karnesi | ✅ A6 |
-| **Stokta yokluk** | SKU stok=0 / satışı olan | günlük | Fiziksel <%5 hedef; kayıp satış | 🔲 B-33 (SKU-level, ağır) |
-| **SPLH** | Net ciro / çalışılan saat | haftalık | İşgücü verimi (PDKS OPENQUERY) | 🔲 B-34 (PDKS linked, ağır) |
+| **Stokta yokluk** | SKU stok≤0 / satışı olan | günlük/aylık | Fiziksel <%5 hedef; kayıp satış | ✅ E8 `gm-rapor/envanter/E8-stockout.sql` |
+| **SPLH** | Net ciro / çalışılan saat | aylık | İşgücü verimi (PDKS) | ✅ S1 `gm-rapor/operasyon/S1-splh-isgucu-verimi.sql` |
 
 Kaynaklar: [Umbrex Retail KPI Playbook](https://umbrex.com/resources/retail-industry-playbooks/retail-kpi-dashboard-weekly-business-review-playbook/retail-kpi-architecture-and-metric-definitions/), [ICSC 6 Inventory Metrics](https://www.icsc.com/news-and-views/icsc-exchange/6-inventory-metrics-you-should-track-and-how-to-do-it), [frekansdenetim.com.tr (TR)](https://frekansdenetim.com.tr/perakende-sektoru-performans-metrikleri/), [Slimstock](https://www.slimstock.com/blog/inventory-turnover/).
 

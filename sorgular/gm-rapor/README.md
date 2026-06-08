@@ -18,15 +18,18 @@ gm-rapor/
 │   ├── G5-saat-bazli.sql            saatlik yoğunluk — vardiya planı
 │   ├── G6-anomali.sql               sıfır/neg fiyat + manuel indirim
 │   └── G7-eticaret-kanal.sql        JOKER kanal (App/Mobil/Web), ISO tarih
-├── envanter/          ← aylık verim (E1-E7)
+├── envanter/          ← aylık verim (E1-E8)
 │   ├── E1-snapshot-ozet.sql         envanter değeri (Sınav Okulları hariç)
 │   ├── E4-E6-devir-sellthrough.sql  devir + weeks-of-supply (E7) + sell-through
-│   └── E5-gmroi.sql                 GMROI (SSMS, karzarar bağımlı)
+│   ├── E5-gmroi.sql                 GMROI (SSMS, karzarar bağımlı)
+│   └── E8-stockout.sql              stokta yokluk (SKU-level, <%5 hedef)
 ├── merchandising/
 │   ├── A5-abc-analizi.sql           Pareto 80/20
 │   └── A6-marka-yayinevi.sql        marka/yayınevi performansı (tedarikçi karnesi)
-└── musteri/
-    └── C1-rfm-segmentasyon.sql      RFM omnichannel (e-ticaret JOKER + yazarkasa kart)
+├── musteri/
+│   └── C1-rfm-segmentasyon.sql      RFM omnichannel (e-ticaret JOKER + yazarkasa kart)
+└── operasyon/
+    └── S1-splh-isgucu-verimi.sql    SPLH (ciro/çalışılan saat, PDKS) + fiş/saat
 ```
 
 ## Kullanım

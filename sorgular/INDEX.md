@@ -11,9 +11,10 @@ Extracted from: encore-merkez-analiz-raporu.html
 | Set | Raporlar | Klasör |
 |---|---|---|
 | Günlük (G0-G7) | birleşik toplam, GM panosu, ödeme, iade, kategori, saat, anomali, e-ticaret | `gm-rapor/gunluk/` |
-| Envanter (E1-E7) | snapshot, devir, weeks-of-supply, sell-through, GMROI | `gm-rapor/envanter/` |
+| Envanter (E1-E8) | snapshot, devir, weeks-of-supply, sell-through, GMROI, stockout | `gm-rapor/envanter/` |
 | Merchandising (A5-A6) | ABC (Pareto 80/20), marka/yayınevi | `gm-rapor/merchandising/` |
-| Müşteri (C1) | RFM segmentasyon (e-ticaret) | `gm-rapor/musteri/` |
+| Müşteri (C1) | RFM omnichannel (e-ticaret + yazarkasa) | `gm-rapor/musteri/` |
+| Operasyon (S1) | SPLH işgücü verimi (PDKS) | `gm-rapor/operasyon/` |
 
 Tümü MCP-doğrulandı. Ortak bağımlılıklar (karzarar maliyet motoru, envanter job, brief otomasyon, conventions) GM klasöründe DEĞİL — `gm-rapor/README.md` § Ortak bağımlılıklar.
 
