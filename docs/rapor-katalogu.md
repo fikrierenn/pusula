@@ -13,10 +13,10 @@ Amaç: operasyonel nabız. 5 dakikada "dün ne oldu, anormal bir şey var mı".
 |---|---|---|---|---|
 | G1 | **Günlük GM panosu** — mağaza kırılımı | Net ciro · Fiş · Sepet ort · WoW (geçen hafta aynı gün) · MTD hedef gerçekleşme | `sorgular/00-gunluk-pano/10_00_gunluk-gm-panosu.sql` | ✅ YENİ |
 | G2 | Ödeme tipi dağılımı (dün) | Nakit / Kredi / çek % — kasa mutabakat | `sorgular/02-odeme/gunluk-odeme-mix.sql` | ✅ doğrulandı (nakit ~%17) |
-| G3 | İade kontrolü (dün) | İade fiş adedi · iade tutarı · iade oranı % | `sorgular/05-iade/10_14_iade-analizi.sql` | mevcut |
+| G3 | İade kontrolü (dün) | İade fiş adedi · iade tutarı · iade oranı % | `sorgular/05-iade/gunluk-iade.sql` | ✅ doğrulandı (İst.Yolu %3,5) |
 | G4 | Kategori mix (dün, mağaza kırılımlı) | Kategori payı — hangi mağaza nerede zayıf | `sorgular/04-urun/gunluk-kategori-magaza.sql` | ✅ doğrulandı (kategori=DerinSIS KTGR3) |
-| G5 | Saat bazlı yoğunluk (dün) | Saatlik fiş — kasiyer/vardiya planı | `sorgular/06-operasyon/10_17_saat-bazli.sql` | mevcut |
-| G6 | Anomali bayrağı (dün) | Negatif satır · fiyat hatası · CampaignId NULL büyük indirim | `06-operasyon/10_19_fiyat-kontrol.sql` · `05-iade/10_15_campaignid-null.sql` | mevcut |
+| G5 | Saat bazlı yoğunluk (dün) | Saatlik fiş + net ciro — kasiyer/vardiya planı | `sorgular/06-operasyon/gunluk-saat-bazli.sql` | ✅ doğrulandı (pik 16:00) |
+| G6 | Anomali bayrağı (dün) | Sıfır/neg fiyat · kampanyasız (manuel) indirim | `sorgular/06-operasyon/gunluk-anomali.sql` | ✅ doğrulandı (07.06 temiz) |
 | G7 | E-ticaret (JOKER) dün | Sipariş adedi · ciro · kanal (mobil/web) | `sorgular/2026-04-14-mobil-app-baremli-rapor.sql` (tarih → dün) | mevcut, tarih daralt |
 
 **Asgari günlük set:** G1 + G2 + G3. Gerisi sinyal varsa drill-down.
