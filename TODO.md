@@ -11,6 +11,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-08/09 — Oturum 3: Kapı sayıcı + işgücü + GM Dashboard
+- ✅ Kapı sayıcı (FSM) → dönüşüm %51, işgücü üçgeni (trafik×PDKS×dönüşüm), yatırım gerekçesi (~3M ₺ fırsat). `scripts/kapi_sayici_analiz.py`, `isgucu_trafik_ucgen.py`, pitch raporu.
+- ✅ E5 GMROI doğrulandı (karzarar pymssql).
+- ✅ **GM Dashboard** `scripts/gm_dashboard.py` — tek sayfa, dönem seçici, her panelde drill (ürün embed, müşteri/sipariş --serve), lokasyon çoklu-seçim, terim sözlüğü, ciro-vs-envanter scatter. Canlı server.
+- 🔑 **KÖK DÜZELTME:** stkKod≠barkod → kategori/marka/ciro-env hepsi irsHrk.ehstkID. Oyuncak "ölü stok" yanlış alarmı düzeldi (gerçek ciro 9,14M). Kalıcı kural yazıldı.
+- 10 commit. Detay: `docs/journal/bkm/2026-06-08.md` (Oturum 3).
+
 ### 2026-06-08 — GM rapor sistemi (günlük pano G0-G7 + envanter E1-E6 + ABC + skill)
 - ✅ **Günlük pano G0-G7** kuruldu, tümü MCP-doğrulandı (07.06.2026). Birleşik toplam, GM panosu (UPT/WoW/YoY/MTD), ödeme, iade, kategori, saat, anomali, e-ticaret. Harita: `sorgular/INDEX.md`.
 - ✅ **Envanter verim E1-E6** (Plan 05 tamamlandı): snapshot + devir hızı + sell-through (adet bazlı, COGS gerekmez) + E5 GMROI (SSMS, karzarar). Sınav Okulları hayalet tüm raporlardan dışlandı.
@@ -68,7 +75,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-21** Sonraki Pazartesi (04.05.2026) brief.html üret + Task Scheduler ile otomatik tetiklenmesini sağla. Hedef tablosu (BKMDATA.dbo.Hedef) + JOKER e-ticaret + kitapsepeti + Heykel + kafeler dahil edilmeli (Bu hafta retroaktiv'de yoktu).
 - [~] **B-22** FSM kapı sayıcı entegrasyonu — **KISMEN ÇÖZÜLDÜ 08.06.2026.** Veri geldi (`sayiyo/sayiyo_*.xlsx`, geniş format, FSM 08.04→güncel günlük giriş). Tidy: `sayiyo/fsm_gunluk_trafik.csv`. **G8 dönüşüm çalışıyor** (`scripts/donusum_orani.py`: CSV giriş + EncoreMerkez fiş → günlük dönüşüm % + ₺/ziyaret). Doğrulama: 02-08.06 %51,0 (dashboard 10.738 ile birebir). FSM ~%50 sağlıklı. **KALAN:** (1) Özlüce + İst.Yolu sayıcı verisi yok, (2) trafiği SQL tabloya yükle (`bkm.MagazaTrafik`) → native join + brief KPI kolonu, (3) saat bazlı kırılım. **(GÜNCEL)**
 - [x] ~~**B-03** `send_brief.bat` tarih güncelle~~ — ✅ DİNAMİK yapıldı, her Pazartesi'yi otomatik hesaplıyor (PowerShell `(Get-Date).AddDays(...)`). Bir daha güncelleme gerekmez.
-- [ ] **B-NEW-00 ⚡ ÜST ÖNCELİK (restart sonrası ilk iş):** SQL bağlantı testi `mcp__sqlserver__sql_query SELECT @@SERVERNAME, GETDATE()`. OK ise B-NEW-01'e geç.
+- [ ] **B-35 ⚡ SABAH İLK İŞ:** EncoreMerkez'de stkID köprüsü var mı kontrol — `SalesProducts.ProductsId`/`Products` → DerinSIS `urn.stkID` (LinkedProductId / kod eşleşmesi?). Varsa barcode-join hiç gerekmez, EncoreMerkez tarafı da stkID ile bağlanır. (stkKod≠barkod kuralı.) **(YENİ)**
+- [ ] **B-36** Dashboard ölü sermaye/devir detayında **hesap göster** — 0,15x nereden: satılan adet ÷ ort stok adet ×12, ara değerler (satılan, açılış+kapanış stok, ort stok) modalda. Şu an sadece sonuç. **(YENİ)**
+- [ ] **B-37** stkKod→stkID düzeltmesini rapor dosyalarına yay: `G4-kategori-magaza.sql`, `A6-marka-yayinevi.sql`, `scripts/generate_brief.py` SQL_CATEGORY (dashboard düzeldi, bunlar kaldı). **(YENİ)**
+- [ ] **B-NEW-00 ⚡ (restart sonrası):** SQL bağlantı testi `mcp__sqlserver__sql_query SELECT @@SERVERNAME, GETDATE()`. OK ise B-NEW-01'e geç.
 
 #### Faz 0.5 — Mayıs %50 kitap kampanyası tahmini (TAM SCOPE'LANDI, sırayla yürüt)
 
