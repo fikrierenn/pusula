@@ -15,7 +15,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - ✅ **Günlük pano G0-G7** kuruldu, tümü MCP-doğrulandı (07.06.2026). Birleşik toplam, GM panosu (UPT/WoW/YoY/MTD), ödeme, iade, kategori, saat, anomali, e-ticaret. Harita: `sorgular/INDEX.md`.
 - ✅ **Envanter verim E1-E6** (Plan 05 tamamlandı): snapshot + devir hızı + sell-through (adet bazlı, COGS gerekmez) + E5 GMROI (SSMS, karzarar). Sınav Okulları hayalet tüm raporlardan dışlandı.
 - ✅ **ABC analizi (A5)** Pareto 80/20: A %25 SKU→%80 ciro, C %40 SKU→%5.
-- ✅ `/gm-rapor` skill + `docs/rapor-katalogu.md` iş haritası + deep-research (perakende KPI best-practice, 16 doğrulanmış iddia).
+- ✅ `/gm-rapor` skill + `sorgular/gm-rapor/KATALOG.md` iş haritası + deep-research (perakende KPI best-practice, 16 doğrulanmış iddia).
 - ✅ MCP CTE/ORDER BY limitleri `.claude/rules/sql-server-conventions.md`'e kalıcı kural.
 - 🔑 **Bulgu:** E-ticaret cironun %61'i (07.06: online 3,02M > fiziksel 1,93M) — brief sadece fizikseli gösteriyor. İst.Yolu zayıf (WoW −%18,8, iade %3,5, Hazırlık Kit. yarı). FSM UPT 3,38 (düşük sepet).
 - 22 commit. Detay: `docs/journal/bkm/2026-06-08.md`.
@@ -95,13 +95,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-23d** v3: Stored procedure'a sarma (`bkm.sp_GunlukKitapKarZarar`).
 - [ ] **B-25** CLAUDE.md veya `.claude/rules/session-protocol.md`'ye ekle: oturum başı ritüelinde **`sorgular/SEMANTIK_KATMAN.md`** zorunlu okuma listesine eklensin (ehTip kod sözlüğü, mekanID'ler, `ehTutarN = ehTutar - ehIndirim` mantığı bu dosyada). 07.05.2026 oturumunda atlandı, kullanıcı uyardı. **(YENİ)**
 - [ ] **B-24** ADR-004 yaz: "DerinSIS alış faturası convention'ı: ehAdet NEGATİF + ehMaliyet=0" — bu kritik kural sql-server-conventions.md'ye eklendi mi kontrol et. **(YENİ)**
-- [ ] **B-26** ⚡ **E5 GMROI SSMS doğrulaması** — tek doğrulanmamış GM parçası. karzarar v7 (@AyBas/@AySon) çalıştır → ÇIKTI3 Marj_TL'yi KTGR3'e topla → `sorgular/08-envanter/e5-gmroi.sql` `#MARJ`'a doldur → çalıştır. Pay (marj) tarafı MCP'de hiç koşmadı. **(YENİ)**
+- [ ] **B-26** ⚡ **E5 GMROI SSMS doğrulaması** — tek doğrulanmamış GM parçası. karzarar v7 (@AyBas/@AySon) çalıştır → ÇIKTI3 Marj_TL'yi KTGR3'e topla → `sorgular/gm-rapor/envanter/E5-gmroi.sql` `#MARJ`'a doldur → çalıştır. Pay (marj) tarafı MCP'de hiç koşmadı. **(YENİ)**
 - [ ] **B-27** G1 panosu (`10_00_gunluk-gm-panosu.sql`) 12 sn sürüyor — UPT için fiş-başı CROSS APPLY ağır. Günlük otomatik mail'e bağlanırsa UPT'yi ön-hesaplı/materialized tut. **(YENİ)**
 
 #### Faz 2 — Bu ay (orta öncelik — ~10 gün)
 - [ ] **B-28** RFM müşteri segmentasyonu (JOKER `J_ORDER_CLIENTS` → CUSTOMERREF). Recency/Frequency/Monetary, sadık/kayıp/yeni segment. deep-research'te flagged, henüz yok. **(YENİ)**
 - [ ] **B-29** Birleşik fiziksel+online **haftalık** brief — G0 mantığını generate_brief.py'ye taşı (e-ticaret cironun %61'i, brief'te yok). B-21 ile birleşik. **(YENİ)**
-- [ ] **B-30** Haftalık P2-P8 verified-wire (kategori trend, kâr/zarar, kampanya, kasiyer, PDKS) — `docs/rapor-katalogu.md` § B mevcut sorgulara tarih daralt + canlı doğrula. **(YENİ)**
+- [ ] **B-30** Haftalık P2-P8 verified-wire (kategori trend, kâr/zarar, kampanya, kasiyer, PDKS) — `sorgular/gm-rapor/KATALOG.md` § B mevcut sorgulara tarih daralt + canlı doğrula. **(YENİ)**
 - [ ] **B-08** EncoreMerkez Products tablosu → DerinSIS urn kategori mapping (urn.stkID köprüsü).
 - [ ] **B-09** Sales → fat/irsHrk bağlantısı (LinkedDocumentNo / ClosureNo / TransferHistory).
 - [ ] **B-10** `bkm.HareketKanal_vw` view tasarımı — Sınav vs Perakende ayrımı.

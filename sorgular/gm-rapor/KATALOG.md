@@ -11,14 +11,14 @@ Amaç: operasyonel nabız. 5 dakikada "dün ne oldu, anormal bir şey var mı".
 
 | # | Rapor | KPI | Kaynak sorgu | Durum |
 |---|---|---|---|---|
-| **G0** | **Birleşik günlük toplam** (fiziksel + online) | Toplam ciro · kanal payı — GERÇEK günlük resim | `sorgular/00-gunluk-pano/10_00b_birlesik-gunluk-toplam.sql` | ✅ doğrulandı (online %61) |
-| G1 | **Günlük GM panosu** — mağaza kırılımı | Net ciro · Fiş · Sepet ort · UPT · WoW · YoY · MTD hedef gerçekleşme | `sorgular/00-gunluk-pano/10_00_gunluk-gm-panosu.sql` | ✅ doğrulandı |
-| G2 | Ödeme tipi dağılımı (dün) | Nakit / Kredi / çek % — kasa mutabakat | `sorgular/02-odeme/gunluk-odeme-mix.sql` | ✅ doğrulandı (nakit ~%17) |
-| G3 | İade kontrolü (dün) | İade fiş adedi · iade tutarı · iade oranı % | `sorgular/05-iade/gunluk-iade.sql` | ✅ doğrulandı (İst.Yolu %3,5) |
-| G4 | Kategori mix (dün, mağaza kırılımlı) | Kategori payı — hangi mağaza nerede zayıf | `sorgular/04-urun/gunluk-kategori-magaza.sql` | ✅ doğrulandı (kategori=DerinSIS KTGR3) |
-| G5 | Saat bazlı yoğunluk (dün) | Saatlik fiş + net ciro — kasiyer/vardiya planı | `sorgular/06-operasyon/gunluk-saat-bazli.sql` | ✅ doğrulandı (pik 16:00) |
-| G6 | Anomali bayrağı (dün) | Sıfır/neg fiyat · kampanyasız (manuel) indirim | `sorgular/06-operasyon/gunluk-anomali.sql` | ✅ doğrulandı (07.06 temiz) |
-| G7 | E-ticaret (JOKER) dün | Sipariş · ciro · sepet · kanal (App/Mobil/Web) | `sorgular/09-eticaret/gunluk-eticaret-kanal.sql` | ✅ doğrulandı (ISO tarih) |
+| **G0** | **Birleşik günlük toplam** (fiziksel + online) | Toplam ciro · kanal payı — GERÇEK günlük resim | `sorgular/gm-rapor/gunluk/G0-birlesik-toplam.sql` | ✅ doğrulandı (online %61) |
+| G1 | **Günlük GM panosu** — mağaza kırılımı | Net ciro · Fiş · Sepet ort · UPT · WoW · YoY · MTD hedef gerçekleşme | `sorgular/gm-rapor/gunluk/G1-gm-panosu.sql` | ✅ doğrulandı |
+| G2 | Ödeme tipi dağılımı (dün) | Nakit / Kredi / çek % — kasa mutabakat | `sorgular/gm-rapor/gunluk/G2-odeme-mix.sql` | ✅ doğrulandı (nakit ~%17) |
+| G3 | İade kontrolü (dün) | İade fiş adedi · iade tutarı · iade oranı % | `sorgular/gm-rapor/gunluk/G3-iade.sql` | ✅ doğrulandı (İst.Yolu %3,5) |
+| G4 | Kategori mix (dün, mağaza kırılımlı) | Kategori payı — hangi mağaza nerede zayıf | `sorgular/gm-rapor/gunluk/G4-kategori-magaza.sql` | ✅ doğrulandı (kategori=DerinSIS KTGR3) |
+| G5 | Saat bazlı yoğunluk (dün) | Saatlik fiş + net ciro — kasiyer/vardiya planı | `sorgular/gm-rapor/gunluk/G5-saat-bazli.sql` | ✅ doğrulandı (pik 16:00) |
+| G6 | Anomali bayrağı (dün) | Sıfır/neg fiyat · kampanyasız (manuel) indirim | `sorgular/gm-rapor/gunluk/G6-anomali.sql` | ✅ doğrulandı (07.06 temiz) |
+| G7 | E-ticaret (JOKER) dün | Sipariş · ciro · sepet · kanal (App/Mobil/Web) | `sorgular/gm-rapor/gunluk/G7-eticaret-kanal.sql` | ✅ doğrulandı (ISO tarih) |
 
 **Asgari günlük set:** G1 + G2 + G3. Gerisi sinyal varsa drill-down.
 
@@ -51,7 +51,7 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 
 | # | Rapor | KPI | Kaynak sorgu | Durum |
 |---|---|---|---|---|
-| E1 | **Envanter snapshot özet** | Mağaza+depo toplam değer · 2 maliyet bazı (ÜstFiyat/Ort.Maliyet) | `sorgular/08-envanter/envanter-snapshot-ozet.sql` | ✅ YENİ |
+| E1 | **Envanter snapshot özet** | Mağaza+depo toplam değer · 2 maliyet bazı (ÜstFiyat/Ort.Maliyet) | `sorgular/gm-rapor/envanter/E1-snapshot-ozet.sql` | ✅ YENİ |
 | E2 | Hayalet stok filtresi | Sınav Okulları (urnKtgr2ID=19) E1'de DIŞLANDI — İst.Yolu ±sahte değer temizlendi | `sorgular/tum_stoklar_anomali_taramasi.md` + E1 | ✅ filtreli |
 | E3 | Anlık/derin envanter (SSMS) | Ürün bazlı stok × maliyet, WMS+Odak dahil | `sorgular/envanter_raporu_job_sorgusu.sql` | mevcut (ağır) |
 
@@ -69,7 +69,7 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 | A2 | Kampanya aylık trend | `03-kampanya/10_08_kampanya-aylik-trend.sql` |
 | A3 | Bordro / headcount / devir hızı | `sorgular/2026-06-03-*.sql` |
 | A4 | Envanter anomali | `sorgular/envanter_raporu_job_sorgusu.sql` |
-| A5 | **ABC analizi (Pareto 80/20)** ✅ | `sorgular/04-urun/abc-analizi.sql` — A %25 SKU→%80 ciro · C %40 SKU→%5 (clearance) |
+| A5 | **ABC analizi (Pareto 80/20)** ✅ | `sorgular/gm-rapor/merchandising/A5-abc-analizi.sql` — A %25 SKU→%80 ciro · C %40 SKU→%5 (clearance) |
 
 ---
 
@@ -93,8 +93,8 @@ Kaynak taraması (6 açı, 27 kaynak, 16 doğrulanmış iddia). Perakende KPI be
 | **UPT** (sepet adedi) | Net adet / Fiş | günlük | Sepet derinliği; 3al2öde etkisi | ✅ G1'e eklendi |
 | **Dönüşüm oranı** | İşlem / Trafik | günlük | Erken uyarı (ciro düşmeden önce) | ⛔ B-22 kapı sayıcı bekliyor |
 | **YoY** | dönem / geçen yıl aynı dönem | günlük/haftalık | Mevsimsellik (sınav/okula dönüş) | ⏳ G1'de, ~11.07.2026'da aktif |
-| **Stok devir hızı** | Satılan adet / Ort. stok adet ×12 | aylık | Stok→nakit hızı; ölü stok | ✅ E4 `08-envanter/envanter-verim-devir-sellthrough.sql` |
-| **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 `08-envanter/e5-gmroi.sql` (SSMS, pay=karzarar) |
+| **Stok devir hızı** | Satılan adet / Ort. stok adet ×12 | aylık | Stok→nakit hızı; ölü stok | ✅ E4 `gm-rapor/envanter/E4-E6-devir-sellthrough.sql` |
+| **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 `gm-rapor/envanter/E5-gmroi.sql` (SSMS, pay=karzarar) |
 | **Sell-through** | Satılan adet / (Açılış stok + Gelen adet) | haftalık/aylık | Reorder/clearance kararı | ✅ E6 (aynı dosya) |
 | **Stokta yokluk** | yok-gün / toplam | günlük | Fiziksel <%5 hedef; kayıp satış | 🔲 (yapılacak) |
 | **SPLH** | Net ciro / çalışılan saat | haftalık | İşgücü verimi (PDKS köprüsü) | 🔲 (P7 türevi) |
@@ -116,6 +116,6 @@ Kaynaklar: [Umbrex Retail KPI Playbook](https://umbrex.com/resources/retail-indu
 RFM segmentasyon, tekrar alım, CLV, sadakat (müşteri açısı) + yayıncı/tedarikçi karnesi, başlık bazlı iade (merchandising) — doğrulama turunu geçemedi, formül seçimi dikkatli yapılmalı. JOKER `J_ORDER_CLIENTS` müşteri zinciri RFM için başlangıç noktası. **ABC analizi ✅ kuruldu** (A5).
 
 ### E4-E6 Durum (Plan 05 — 08.06.2026)
-- **E4 Devir + E6 Sell-through ✅ KURULDU + doğrulandı** (`08-envanter/envanter-verim-devir-sellthrough.sql`). Kilit içgörü: adet-bazlı devirde birim maliyet sadeleşir → **COGS motoru gerekmez**, üstelik enflasyondan etkilenmez. Hareket tipleri: satış 4/100, gelen 10 (alış)+13 (depo transfer), Sınav Okulları hayalet hariç.
-- **E5 GMROI ✅ kuruldu** (`08-envanter/e5-gmroi.sql`) — pay=karzarar v7 Marj_TL (SSMS, prod-parity COGS), payda=ENVANTER ort. maliyet (MCP-doğrulandı). Tek-tablo ORT_ALIS kısayolu reddedildi (kapsam zayıf, COGS eksik). Pay SSMS-only doğrulanır.
+- **E4 Devir + E6 Sell-through ✅ KURULDU + doğrulandı** (`gm-rapor/envanter/E4-E6-devir-sellthrough.sql`). Kilit içgörü: adet-bazlı devirde birim maliyet sadeleşir → **COGS motoru gerekmez**, üstelik enflasyondan etkilenmez. Hareket tipleri: satış 4/100, gelen 10 (alış)+13 (depo transfer), Sınav Okulları hayalet hariç.
+- **E5 GMROI ✅ kuruldu** (`gm-rapor/envanter/E5-gmroi.sql`) — pay=karzarar v7 Marj_TL (SSMS, prod-parity COGS), payda=ENVANTER ort. maliyet (MCP-doğrulandı). Tek-tablo ORT_ALIS kısayolu reddedildi (kapsam zayıf, COGS eksik). Pay SSMS-only doğrulanır.
 - Doğrulama (May 2026): devir Dergi 8,53x · Kitap 1,46x · Kırtasiye 1,32x; sell-through Gıda %32,5 · Kitap %10,7.

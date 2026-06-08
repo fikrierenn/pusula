@@ -29,9 +29,9 @@ GM panosu envanterin **değerini** (TL) gösteriyor ama **verimini** göstermiyo
 - Otomatik mail (ayrı).
 
 ### Etkilenen dosyalar (tahmin)
-- `sorgular/08-envanter/envanter-devir-gmroi.sql` — YENİ (E4+E5, SSMS)
-- `sorgular/08-envanter/sell-through.sql` — YENİ (E6, SSMS)
-- `docs/rapor-katalogu.md` — E4-E6 durum güncelle
+- `sorgular/gm-rapor/envanter/E4-E6-devir-sellthrough.sql` — E4+E6 (devir+sell-through)
+- `sorgular/gm-rapor/envanter/E5-gmroi.sql` — E5 GMROI (SSMS)
+- `sorgular/gm-rapor/KATALOG.md` — E4-E6 durum güncelle
 - `.claude/skills/gm-rapor/SKILL.md` — envanter mod E4-E6 ekle
 
 **Tahmini boyut:** 2 yeni .sql + 2 doküman güncelle (~4 dosya).
@@ -78,7 +78,7 @@ GM panosu envanterin **değerini** (TL) gösteriyor ama **verimini** göstermiyo
 
 1. [x] ✅ **E-SCHEMA** ehTip keşfi: **13** = Ana Depo (firma 12) şube transfer-in · **10** = dış tedarikçi alış mal kabulü. Gelen = 10+13. ENVANTER snapshot 2026'da near-daily + ay-sonu mevcut. Kategori anahtarı KTGR3=ktgrAd doğrulandı.
 2. [x] ✅ **E4** Devir hızı — **adet bazlı** (birim maliyet sadeleşti → COGS motoru GEREKMEDİ). MCP doğrulandı (May 2026 mantıklı).
-3. [x] ✅ **E5** GMROI — `08-envanter/e5-gmroi.sql`. PAY=karzarar v7 Marj_TL (SSMS), PAYDA=ENVANTER ort. maliyet (MCP-doğrulandı). ORT_ALIS-tek-tablo kısayolu DENENDİ+REDDEDİLDİ (kapsam zayıf: Kitap satılan adedinin %53'ünde ORT_ALIS NULL → COGS eksik). Gerçek COGS karzarar 3-fallback gerektirir.
+3. [x] ✅ **E5** GMROI — `gm-rapor/envanter/E5-gmroi.sql`. PAY=karzarar v7 Marj_TL (SSMS), PAYDA=ENVANTER ort. maliyet (MCP-doğrulandı). ORT_ALIS-tek-tablo kısayolu DENENDİ+REDDEDİLDİ (kapsam zayıf: Kitap satılan adedinin %53'ünde ORT_ALIS NULL → COGS eksik). Gerçek COGS karzarar 3-fallback gerektirir.
 4. [x] ✅ **E6** Sell-through — satılan/(açılış stok+gelen). Naif satılan/gelen >%100 verdiği için açılış-stok paydası eklendi. MCP doğrulandı.
 5. [~] **E-VERIFY** E4/E6 mantık kontrolü ✅ (devir perakende sezgisiyle uyumlu). Toplam COGS kıyas E5'te yapılacak.
 6. [x] ✅ **E-DOC** Katalog § E + Plan 05 güncel. Skill envanter mod E4/E6 → (sırada).
@@ -89,8 +89,8 @@ GM panosu envanterin **değerini** (TL) gösteriyor ama **verimini** göstermiyo
 
 - Önceki plan: `plans/04-gunluk-kar-zarar-maliyet-karsilastirma.md`
 - Maliyet motoru: `sorgular/04-karzarar/2026-05-07-karzarar-v7-prodparity.sql`
-- Envanter snapshot: `sorgular/08-envanter/envanter-snapshot-ozet.sql`
-- Katalog: `docs/rapor-katalogu.md` § E (KPI sözlüğü + caveat)
+- Envanter snapshot: `sorgular/gm-rapor/envanter/E1-snapshot-ozet.sql`
+- Katalog: `sorgular/gm-rapor/KATALOG.md` § E (KPI sözlüğü + caveat)
 - Araştırma: deep-research 08.06.2026 (16 doğrulanmış iddia)
 
 ## 9. Onay

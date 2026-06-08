@@ -8,7 +8,7 @@
 --   Net ciro = SUM(IIF(DocumentsTypeId=3,-1,1)*(GrossTotal-DiscountTotal))
 --   Mağaza   = Pos -> Stores -> posMagaza.mekanID (1=FSM, 4477=Özlüce, 4478=İst.Yolu)
 --   Geri dönüşüm fişi (SalesProducts.BarcodeNo='1001') anti-join ile hariç
--- KPI sözlük (deep-research 2026-06-08, docs/rapor-katalogu.md § Genişletme):
+-- KPI sözlük (deep-research 2026-06-08, sorgular/gm-rapor/KATALOG.md § Genişletme):
 --   ATV (sepet ort) = Net ciro / Fiş   ·   UPT = Net adet / Fiş   ·   WoW/YoY erken uyarı
 -- DOĞRULAMA: @Gun=07.06.2026 → TOPLAM 1.933.437 TL / 3060 fiş = haftalık brief ile birebir.
 --            UPT: FSM 3,38 · Özlüce 4,05 · İst.Yolu 4,33 (FSM düşük sepet = adet sorunu).

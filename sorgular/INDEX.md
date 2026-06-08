@@ -4,36 +4,17 @@ Extracted from: encore-merkez-analiz-raporu.html
 
 ---
 
-## 🎯 GM RAPOR SİSTEMİ (08.06.2026 — tek harita)
+## 🎯 GM RAPOR SİSTEMİ → self-contained klasör: [`gm-rapor/`](gm-rapor/)
 
-> İş haritası (KPI + neden): [`../docs/rapor-katalogu.md`](../docs/rapor-katalogu.md) · Skill: `/gm-rapor` · Plan: [`../plans/05-envanter-verim-kpi.md`](../plans/05-envanter-verim-kpi.md)
-> Dosyalar 7 klasöre dağılmış ama mantıksal set burada. Tümü MCP-doğrulandı.
+> Tüm GM raporları kendi modülünde toplandı (08.06.2026 reorg). Giriş + harita: [`gm-rapor/README.md`](gm-rapor/README.md) · İş haritası: [`gm-rapor/KATALOG.md`](gm-rapor/KATALOG.md) · Skill: `/gm-rapor` · Plan: [`../plans/05-envanter-verim-kpi.md`](../plans/05-envanter-verim-kpi.md)
 
-### Günlük Pano (G0-G7)
-| ID | Rapor | Dosya |
+| Set | Raporlar | Klasör |
 |---|---|---|
-| G0 | Birleşik günlük toplam (fiziksel+online) | `00-gunluk-pano/10_00b_birlesik-gunluk-toplam.sql` |
-| G1 | Günlük GM panosu (net+UPT+WoW+YoY+MTD) | `00-gunluk-pano/10_00_gunluk-gm-panosu.sql` |
-| G2 | Ödeme mix (kasa mutabakat) | `02-odeme/gunluk-odeme-mix.sql` |
-| G3 | İade kontrolü | `05-iade/gunluk-iade.sql` |
-| G4 | Kategori mix (mağaza kırılımlı) | `04-urun/gunluk-kategori-magaza.sql` |
-| G5 | Saat bazlı yoğunluk | `06-operasyon/gunluk-saat-bazli.sql` |
-| G6 | Anomali bayrağı | `06-operasyon/gunluk-anomali.sql` |
-| G7 | E-ticaret kanal (JOKER) | `09-eticaret/gunluk-eticaret-kanal.sql` |
+| Günlük (G0-G7) | birleşik toplam, GM panosu, ödeme, iade, kategori, saat, anomali, e-ticaret | `gm-rapor/gunluk/` |
+| Envanter (E1-E6) | snapshot, devir, sell-through, GMROI | `gm-rapor/envanter/` |
+| Merchandising (A5) | ABC (Pareto 80/20) | `gm-rapor/merchandising/` |
 
-### Envanter Verim (E1-E6)
-| ID | Rapor | Dosya |
-|---|---|---|
-| E1 | Envanter snapshot özet (Sınav hariç) | `08-envanter/envanter-snapshot-ozet.sql` |
-| E4+E6 | Devir hızı + Sell-through | `08-envanter/envanter-verim-devir-sellthrough.sql` |
-| E5 | GMROI (SSMS, karzarar bağımlı) | `08-envanter/e5-gmroi.sql` |
-
-### Merchandising
-| ID | Rapor | Dosya |
-|---|---|---|
-| A5 | ABC analizi (Pareto 80/20) | `04-urun/abc-analizi.sql` |
-
-> **Açık iş (TODO):** Bu 12 dosyayı fiziksel `sorgular/gm-rapor/` klasörüne taşımak — referans güncellemesi gerektirir (skill/katalog/plan/INDEX), Tier 3 plan-first. Şimdilik bu harita yeterli.
+Tümü MCP-doğrulandı. Ortak bağımlılıklar (karzarar maliyet motoru, envanter job, brief otomasyon, conventions) GM klasöründe DEĞİL — `gm-rapor/README.md` § Ortak bağımlılıklar.
 
 ---
 

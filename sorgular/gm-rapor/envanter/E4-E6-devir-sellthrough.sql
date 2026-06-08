@@ -2,7 +2,7 @@
 -- 08.02 — ENVANTER VERİM: Devir Hızı (E4) + Sell-Through (E6) — kategori bazlı
 -- Amaç: Stok ne hızla nakde dönüyor (devir) + gelen mal ne hızla eriyor (sell-through).
 -- Kaynak: irsHrk (satış/gelen hareket) + bkm.ENVANTER_RAPORU (açılış/kapanış stok adet)
--- KPI (deep-research 08.06.2026, docs/rapor-katalogu.md § E):
+-- KPI (deep-research 08.06.2026, sorgular/gm-rapor/KATALOG.md § E):
 --   Devir (adet bazlı) = Satılan adet / Ort. stok adet   [birim maliyet sadeleşir → COGS motoru gerekmez]
 --      Yıllık devir = Aylık devir × 12
 --   Sell-through = Satılan adet / (Açılış stok + Gelen adet) × 100

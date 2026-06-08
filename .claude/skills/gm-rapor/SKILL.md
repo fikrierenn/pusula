@@ -1,6 +1,6 @@
 ---
 name: gm-rapor
-description: Genel Müdür rapor panosu. "günlük rapor", "dün ne oldu", "GM panosu", "haftalık özet", "envanter durumu", "stok raporu", "bugünkü rapor" gibi ifadelerde veya /gm-rapor çağrısında devreye girer. docs/rapor-katalogu.md'deki raporları MCP üzerinden çalıştırıp Türkçe formatlı özet basar. Mod: günlük (G1-G7) / haftalık (P1-P8) / envanter (E1-E3). Anomali bayraklarını otomatik işaretler.
+description: Genel Müdür rapor panosu. "günlük rapor", "dün ne oldu", "GM panosu", "haftalık özet", "envanter durumu", "stok raporu", "bugünkü rapor" gibi ifadelerde veya /gm-rapor çağrısında devreye girer. sorgular/gm-rapor/KATALOG.md'deki raporları MCP üzerinden çalıştırıp Türkçe formatlı özet basar. Mod: günlük (G1-G7) / haftalık (P1-P8) / envanter (E1-E3). Anomali bayraklarını otomatik işaretler.
 allowed-tools: Read, Bash, Grep, Glob, mcp__sqlserver__sql_query
 user-invocable: true
 model: inherit
@@ -9,7 +9,7 @@ model: inherit
 # GM Rapor Skill
 
 ## Amaç
-Genel Müdür gözüyle "her gün" + "her Pazartesi" + "envanter" raporlarını tek komutla çalıştırıp Türkçe özet basar. Kaynak haritası: [`docs/rapor-katalogu.md`](../../../docs/rapor-katalogu.md).
+Genel Müdür gözüyle "her gün" + "her Pazartesi" + "envanter" raporlarını tek komutla çalıştırıp Türkçe özet basar. Kaynak haritası: [`sorgular/gm-rapor/KATALOG.md`](../../../sorgular/gm-rapor/KATALOG.md).
 
 ## Modlar
 
@@ -29,7 +29,7 @@ Genel Müdür gözüyle "her gün" + "her Pazartesi" + "envanter" raporlarını 
 ## GÜNLÜK MOD
 
 ### Adım 0 — Birleşik toplam (G0, ÖNCE göster)
-GERÇEK günlük resim fiziksel + online. `00-gunluk-pano/10_00b_birlesik-gunluk-toplam.sql`. E-ticaret (JOKER, ISO tarih) genelde cironun **%50+**'si — yalnız fizikseli göstermek yanıltıcı. İki kaynak MCP'de ayrı çalıştırılıp toplanır (cross-source).
+GERÇEK günlük resim fiziksel + online. `gm-rapor/gunluk/G0-birlesik-toplam.sql`. E-ticaret (JOKER, ISO tarih) genelde cironun **%50+**'si — yalnız fizikseli göstermek yanıltıcı. İki kaynak MCP'de ayrı çalıştırılıp toplanır (cross-source).
 
 ### Adım 1 — Gün belirle
 Argümanda tarih yoksa **dün** = `CAST(DATEADD(DAY,-1,GETDATE()) AS date)`. Kullanıcı "5 Haziran" derse `CONVERT(date,'05.06.2026',104)`. E-ticaret tarafı ISO `'YYYYMMDD'` (JOKER linked server).
@@ -53,7 +53,7 @@ GROUP BY MG.mekanID;
 ```
 `YYYYMMDD` = hedef gün, `YYYYMMDD+1` = ertesi gün (ISO literal, ör. `'20260607'` / `'20260608'`).
 
-WoW + MTD hedef için aynı pattern'i geçen hafta aynı gün ve ay-başı→gün aralığıyla 2 kez daha çalıştır, veya tam tablo `sorgular/00-gunluk-pano/10_00_gunluk-gm-panosu.sql`'i SSMS'te aç.
+WoW + MTD hedef için aynı pattern'i geçen hafta aynı gün ve ay-başı→gün aralığıyla 2 kez daha çalıştır, veya tam tablo `sorgular/gm-rapor/gunluk/G1-gm-panosu.sql`'i SSMS'te aç.
 
 ### Adım 3 — Çıktı formatı (Türkçe)
 ```
@@ -116,11 +116,11 @@ GROUP BY [Maliyet Tipi];
 - Başka kategori negatif/aşırı çıkarsa raporla (yeni anomali): `sorgular/tum_stoklar_anomali_taramasi.md`.
 
 ### Adım 3 — Drill
-- Kategori bazlı: E1 sorgusundaki yorumlu kategori bloğu (`08-envanter/envanter-snapshot-ozet.sql`).
+- Kategori bazlı: E1 sorgusundaki yorumlu kategori bloğu (`gm-rapor/envanter/E1-snapshot-ozet.sql`).
 - Canlı/anlık (gece snapshot değil): `sorgular/envanter_raporu_job_sorgusu.sql` (ağır, SSMS).
 
 ### Adım 4 — Verim KPI (E4 Devir + E6 Sell-through)
-Kullanıcı "devir", "sell-through", "ölü stok", "verim" derse → `08-envanter/envanter-verim-devir-sellthrough.sql` (kategori bazlı, aylık). MCP'de de çalışır (derived table, CTE değil). `@AyBas`/`@AySon` ay sınırı ver.
+Kullanıcı "devir", "sell-through", "ölü stok", "verim" derse → `gm-rapor/envanter/E4-E6-devir-sellthrough.sql` (kategori bazlı, aylık). MCP'de de çalışır (derived table, CTE değil). `@AyBas`/`@AySon` ay sınırı ver.
 - **Devir (adet bazlı)** = Satılan / Ort. stok adet ×12. Düşük (Kitap ~1,5x) = derin katalog; yüksek (Dergi ~8,5x) = hızlı tüketim. **Enflasyondan etkilenmez.**
 - **Sell-through** = Satılan / (Açılış stok + Gelen). Düşük = yavaş eriyen → clearance adayı.
 - Hareket tipi: satış 4/100, gelen 10 (alış)+13 (depo transfer). Sınav Okulları hayalet hariç.
@@ -129,7 +129,7 @@ Kullanıcı "devir", "sell-through", "ölü stok", "verim" derse → `08-envante
 ---
 
 ## Kaynak Sorgu Haritası
-Tüm eşleşmeler [`docs/rapor-katalogu.md`](../../../docs/rapor-katalogu.md)'de. Rapor ID (G1/P4/E1...) → `.sql` dosyası.
+Tüm eşleşmeler [`sorgular/gm-rapor/KATALOG.md`](../../../sorgular/gm-rapor/KATALOG.md)'de. Rapor ID (G1/P4/E1...) → `.sql` dosyası.
 
 ## Dikkat
 1. MCP'de CTE çalışmaz — yukarıdaki tek-SELECT blokları kullan. Tam analiz SSMS'te `.sql` dosyası.
@@ -140,8 +140,8 @@ Tüm eşleşmeler [`docs/rapor-katalogu.md`](../../../docs/rapor-katalogu.md)'de
 6. "Bitti" demeden önce sayıyı bilinen referansla kıyasla (brief satırı / önceki gün).
 
 ## İlişkili Dosyalar
-- `docs/rapor-katalogu.md` — rapor → sorgu haritası
-- `sorgular/00-gunluk-pano/10_00_gunluk-gm-panosu.sql` — G1 tam (SSMS)
-- `sorgular/08-envanter/envanter-snapshot-ozet.sql` — E1 tam
+- `sorgular/gm-rapor/KATALOG.md` — rapor → sorgu haritası
+- `sorgular/gm-rapor/gunluk/G1-gm-panosu.sql` — G1 tam (SSMS)
+- `sorgular/gm-rapor/envanter/E1-snapshot-ozet.sql` — E1 tam
 - `scripts/generate_brief.py` — P1 haftalık otomatik
 - `.claude/rules/sql-server-conventions.md` — T-SQL kuralları
