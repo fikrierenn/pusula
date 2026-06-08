@@ -4,9 +4,10 @@
 --        oranı. Kayıp satış sinyali. Hedef: fiziksel mağaza <%5.
 -- Kaynak: DerinSISBkm.irsHrk (per-SKU bakiye = SUM(ehAdetN), mağaza stokları).
 --   Talep = son 30 gün satış (ehTip 4,100). Bakiye ≤0 = stoksuz (negatif=hayalet/oversold dahil).
--- DOĞRULAMA (08.06.2026): Dergi %23,3 (süreli yayın, tükenir) · Akademi %8,7 ·
---   Elektronik %6,5 · Oyuncak %5,7 · Kitap %5,2 · Çocuk/Kırtasiye %3 (sağlıklı).
--- YORUM: <%5 hedef. Üstündekiler (Dergi/Akademi/Kitap) reorder açığı = kayıp satış.
+-- DOĞRULAMA (08.06.2026): Akademi %8,7 · Elektronik %6,5 · Oyuncak %5,7 ·
+--   Kitap %5,2 · Hediyelik %5,2 · Çocuk/Kırtasiye %3 (sağlıklı).
+-- YORUM: <%5 hedef. Üstündekiler (Akademi/Elektronik/Oyuncak/Kitap) reorder açığı = kayıp satış.
+-- ⚠️ DERGİ HARİÇ: süreli yayın, stok takibi anlamsız (sürekli tükenir/yenilenir) — devre dışı.
 -- ⚠️ Bakiye tüm-zaman SUM (snapshot değil, anlık hesap) — ~1,7sn. CROSS APPLY per-SKU.
 -- NOT: MCP-safe (CTE'siz). @GunSayisi talep penceresi.
 -- =====================================================================
@@ -31,7 +32,7 @@ FROM (
         FROM DerinSISBkm.dbo.irsHrk b WITH(NOLOCK)
         WHERE b.ehstkID = sold.stkID AND b.ehMekan IN (1,4477,4478) AND b.ehAltDepo=0
     ) bal
-    WHERE k.ktgrAd NOT IN (N'Sınav Okulları',N'Genel',N'Tanımsız',N'Etkinlik',N'Hediye Çeki')
+    WHERE k.ktgrAd NOT IN (N'Sınav Okulları',N'Dergi',N'Genel',N'Tanımsız',N'Etkinlik',N'Hediye Çeki')
 ) x
 GROUP BY x.Kategori
 ORDER BY [Stockout %] DESC;

@@ -14,9 +14,10 @@
 -- ANOMALİ: Sınav Okulları (paket koduyla giriş, parça koduyla çıkış) → hariç tutuldu.
 -- Mağaza eşleşme: ENVANTER_RAPORU.KTGR3 = urnKtgr2.ktgrAd (doğrulandı).
 -- ENVANTER.Tarih DATETIME (00:05) → CAST(... AS date) ile eşle.
+-- DERGİ HARİÇ: süreli yayın, stok takibi anlamsız (sürekli tükenir/yenilenir) — devre dışı.
 -- DOĞRULAMA (MCP, Mayıs 2026, 3 mağaza):
---   Devir yıllık: Dergi 8,53x · Gıda 5,63x · Oyuncak 3,49x · Kitap 1,46x · Kırtasiye 1,32x · Akademi 1,17x
---   Sell-through: Gıda %32,5 · Dergi %37,4 · Kitap %10,7 · Kırtasiye %10,0 · Sınav Kıyafet %2,8
+--   Devir yıllık: Gıda 5,63x · Oyuncak 3,49x · Kitap 1,46x · Kırtasiye 1,32x · Akademi 1,17x
+--   Sell-through: Gıda %32,5 · Kitap %10,7 · Kırtasiye %10,0 · Sınav Kıyafet %2,8
 -- CAVEAT: Yüksek enflasyon ort. envanteri (TL) şişirir; adet-bazlı devir bundan ETKİLENMEZ (avantaj).
 --         Benchmark hedef sayısı YOK — kendi tarihsel baseline'ınla kıyasla.
 -- NOT: SSMS/pymssql. MCP CTE wrap eder; bu sorgu CTE'siz (derived table) — MCP'de de çalışır.
@@ -68,7 +69,7 @@ LEFT JOIN (
     WHERE CAST(Tarih AS date) = @AySon AND [Maliyet Tipi] = 'Ort.Maliyet'
     GROUP BY KTGR3
 ) e ON e.Kategori COLLATE Turkish_CI_AS = m.Kategori COLLATE Turkish_CI_AS
-WHERE m.Kategori NOT IN ('Sınav Okulları','Sınav Kayıt','Genel','Tanımsız','Etkinlik','Hediye Çeki')
+WHERE m.Kategori NOT IN ('Sınav Okulları','Sınav Kayıt','Dergi','Genel','Tanımsız','Etkinlik','Hediye Çeki')
 ORDER BY YillikDevir DESC;
 
 -- =====================================================================

@@ -105,7 +105,7 @@ SELECT [Maliyet Tipi] AS Baz,
            +[Merkez Depo Stok Maliyet]+[Odak Depo Stok Maliyet]) AS decimal(18,2)) AS Toplam
 FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
 WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
-  AND KTGR3 <> N'Sınav Okulları'   -- hayalet stok hariç (her zaman)
+  AND KTGR3 NOT IN (N'Sınav Okulları', N'Dergi')   -- hayalet stok hariç (her zaman)
 GROUP BY [Maliyet Tipi];
 ```
 `database: DerinSISBkm` parametresi ver. Doğrulama (08.06, Sınav hariç): Ort.Maliyet toplam 1.198M ₺.

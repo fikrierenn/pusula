@@ -23,7 +23,7 @@ SELECT
            + [Merkez Depo Stok Maliyet] + [Odak Depo Stok Maliyet]) AS decimal(18,2)) AS [TOPLAM ₺]
 FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
 WHERE Tarih = (SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
-  AND KTGR3 <> N'Sınav Okulları'   -- hayalet stok hariç
+  AND KTGR3 NOT IN (N'Sınav Okulları', N'Dergi')   -- hayalet stok hariç
 GROUP BY [Maliyet Tipi];
 
 -- ---------------------------------------------------------------------
@@ -35,5 +35,5 @@ GROUP BY [Maliyet Tipi];
 -- FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
 -- WHERE Tarih = (SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
 --   AND [Maliyet Tipi] = 'Ort.Maliyet'
---   AND KTGR3 <> N'Sınav Okulları'
+--   AND KTGR3 NOT IN (N'Sınav Okulları', N'Dergi')
 -- GROUP BY KTGR3 ORDER BY Toplam_TL DESC;

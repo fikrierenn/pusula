@@ -135,4 +135,5 @@ RFM segmentasyon, tekrar alım, CLV, sadakat (müşteri açısı) + yayıncı/te
 ### E4-E6 Durum (Plan 05 — 08.06.2026)
 - **E4 Devir + E6 Sell-through ✅ KURULDU + doğrulandı** (`gm-rapor/envanter/E4-E6-devir-sellthrough.sql`). Kilit içgörü: adet-bazlı devirde birim maliyet sadeleşir → **COGS motoru gerekmez**, üstelik enflasyondan etkilenmez. Hareket tipleri: satış 4/100, gelen 10 (alış)+13 (depo transfer), Sınav Okulları hayalet hariç.
 - **E5 GMROI ✅ kuruldu** (`gm-rapor/envanter/E5-gmroi.sql`) — pay=karzarar v7 Marj_TL (SSMS, prod-parity COGS), payda=ENVANTER ort. maliyet (MCP-doğrulandı). Tek-tablo ORT_ALIS kısayolu reddedildi (kapsam zayıf, COGS eksik). Pay SSMS-only doğrulanır.
-- Doğrulama (May 2026): devir Dergi 8,53x · Kitap 1,46x · Kırtasiye 1,32x; sell-through Gıda %32,5 · Kitap %10,7.
+- Doğrulama (May 2026): devir Gıda 5,63x · Kitap 1,46x · Kırtasiye 1,32x; sell-through Gıda %32,5 · Kitap %10,7.
+- **Dergi stok raporlarından HARİÇ** (E1/E4-E8): süreli yayın, stok takibi anlamsız (sürekli tükenir/yenilenir). Satış raporlarında (G4/A5/A6) kalır.

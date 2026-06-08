@@ -47,11 +47,11 @@ CREATE TABLE #MARJ (KTGR3 nvarchar(50) PRIMARY KEY, Marj_TL decimal(18,2));
     FROM (SELECT KTGR3,
             SUM(ISNULL([FSM Stok Maliyet],0)+ISNULL([Özlüce Stok Maliyet],0)+ISNULL([İst.Yolu Stok Maliyet],0)) AS Maliyet
           FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
-          WHERE CAST(Tarih AS date)=@AyBas AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3<>N'Sınav Okulları' GROUP BY KTGR3) b
+          WHERE CAST(Tarih AS date)=@AyBas AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN (N'Sınav Okulları',N'Dergi') GROUP BY KTGR3) b
     JOIN (SELECT KTGR3,
             SUM(ISNULL([FSM Stok Maliyet],0)+ISNULL([Özlüce Stok Maliyet],0)+ISNULL([İst.Yolu Stok Maliyet],0)) AS Maliyet
           FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
-          WHERE CAST(Tarih AS date)=@AySon AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3<>N'Sınav Okulları' GROUP BY KTGR3) e
+          WHERE CAST(Tarih AS date)=@AySon AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN (N'Sınav Okulları',N'Dergi') GROUP BY KTGR3) e
       ON e.KTGR3 = b.KTGR3
 )
 SELECT
