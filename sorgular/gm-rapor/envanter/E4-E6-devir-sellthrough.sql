@@ -1,6 +1,7 @@
 -- =====================================================================
--- 08.02 — ENVANTER VERİM: Devir Hızı (E4) + Sell-Through (E6) — kategori bazlı
--- Amaç: Stok ne hızla nakde dönüyor (devir) + gelen mal ne hızla eriyor (sell-through).
+-- 08.02 — ENVANTER VERİM: Devir (E4) + Weeks-of-Supply (E7) + Sell-Through (E6) — kategori
+-- Amaç: Stok ne hızla nakde dönüyor (devir) + kaç haftalık stok var (WoS) + gelen mal
+--        ne hızla eriyor (sell-through). WoS yüksek (Kitap ~36 hafta) = ölü sermaye sinyali.
 -- Kaynak: irsHrk (satış/gelen hareket) + bkm.ENVANTER_RAPORU (açılış/kapanış stok adet)
 -- KPI (deep-research 08.06.2026, sorgular/gm-rapor/KATALOG.md § E):
 --   Devir (adet bazlı) = Satılan adet / Ort. stok adet   [birim maliyet sadeleşir → COGS motoru gerekmez]
@@ -36,6 +37,9 @@ SELECT
     -- E4 Devir
     CAST(1.0 * m.SatilanAdet / NULLIF((b.AcilisStok + e.KapanisStok) / 2.0, 0) AS decimal(10,3)) AS DonemDevir,
     CAST((12.0 / @AySayisi) * m.SatilanAdet / NULLIF((b.AcilisStok + e.KapanisStok) / 2.0, 0) AS decimal(10,2)) AS YillikDevir,
+    -- E7 Weeks of Supply (kaç haftalık stok var = devir'in tersi). Yüksek = fazla stok/ölü sermaye.
+    CAST(((b.AcilisStok + e.KapanisStok) / 2.0) * (@AySayisi * 52.0 / 12.0)
+       / NULLIF(m.SatilanAdet, 0) AS decimal(10,1))                                        AS HaftalikStok_WoS,
     -- E6 Sell-through
     CAST(100.0 * m.SatilanAdet / NULLIF(b.AcilisStok + m.GelenAdet, 0) AS decimal(10,1))    AS SellThroughYuzde
 FROM (

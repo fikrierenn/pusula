@@ -99,7 +99,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-27** G1 panosu (`10_00_gunluk-gm-panosu.sql`) 12 sn sürüyor — UPT için fiş-başı CROSS APPLY ağır. Günlük otomatik mail'e bağlanırsa UPT'yi ön-hesaplı/materialized tut. **(YENİ)**
 
 #### Faz 2 — Bu ay (orta öncelik — ~10 gün)
-- [ ] **B-28** RFM müşteri segmentasyonu (JOKER `J_ORDER_CLIENTS` → CUSTOMERREF). Recency/Frequency/Monetary, sadık/kayıp/yeni segment. deep-research'te flagged, henüz yok. **(YENİ)**
+- [x] ~~**B-28** RFM müşteri segmentasyonu~~ — ✅ 08.06.2026 `sorgular/gm-rapor/musteri/C1-rfm-segmentasyon.sql`. Şampiyon 8.923 (11K ₺/9,2 sip.) · Kayıp 335.512 (353M, reaktivasyon). + A6 marka/yayınevi + E7 weeks-of-supply kuruldu.
+- [ ] **B-33** Stokta yokluk (stockout) — SKU-level (ENVANTER kategori-bazlı yetmiyor). irsHrk bakiye=0 ama satışı olan ürün oranı, kategori bazlı. Ağır (per-SKU bakiye). **(YENİ)**
+- [ ] **B-34** SPLH (işgücü verimi) — net ciro / çalışılan saat. PDKS `OPENQUERY([PDKS])` linked server'dan worked-hours hesabı + mağaza ciro. Ağır/kırılgan (tarih-hardcoded OPENQUERY). **(YENİ)**
 - [ ] **B-29** Birleşik fiziksel+online **haftalık** brief — G0 mantığını generate_brief.py'ye taşı (e-ticaret cironun %61'i, brief'te yok). B-21 ile birleşik. **(YENİ)**
 - [ ] **B-30** Haftalık P2-P8 verified-wire (kategori trend, kâr/zarar, kampanya, kasiyer, PDKS) — `sorgular/gm-rapor/KATALOG.md` § B mevcut sorgulara tarih daralt + canlı doğrula. **(YENİ)**
 - [ ] **B-08** EncoreMerkez Products tablosu → DerinSIS urn kategori mapping (urn.stkID köprüsü).

@@ -70,6 +70,20 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 | A3 | Bordro / headcount / devir hızı | `sorgular/2026-06-03-*.sql` |
 | A4 | Envanter anomali | `sorgular/envanter_raporu_job_sorgusu.sql` |
 | A5 | **ABC analizi (Pareto 80/20)** ✅ | `sorgular/gm-rapor/merchandising/A5-abc-analizi.sql` — A %25 SKU→%80 ciro · C %40 SKU→%5 (clearance) |
+| A6 | **Marka/yayınevi performansı** ✅ | `sorgular/gm-rapor/merchandising/A6-marka-yayinevi.sql` — top yayınevi + ciro/çeşit verimi |
+
+---
+
+## C2. MÜŞTERİ (omnichannel)
+
+| # | Rapor | KPI | Kaynak | Durum |
+|---|---|---|---|---|
+| C1 | **RFM segmentasyonu** (e-ticaret + yazarkasa) | Recency/Frequency/Monetary → Şampiyon/Sadık/Yeni/Risk/Kayıp | `sorgular/gm-rapor/musteri/C1-rfm-segmentasyon.sql` | ✅ doğrulandı |
+
+İki ayrı müşteri evreni (kimlik köprüsü yok — JOKER CUSTOMERREF ≠ EncoreMerkez CustomersId):
+- **E-ticaret** (JOKER): Şampiyon 8.923 (11K ₺, 9,2 sip.) · Kayıp 335.512 (353M = reaktivasyon) · yüksek sepet.
+- **Yazarkasa** (sadakat kartı, %50 fiş penetrasyonu, DocType=1): Şampiyon 4.082 (12,6K ₺, **19,9 fiş/yıl** ≈ haftada bir!) · Sadık 21.347 · yüksek frekans.
+- Kurumsal/Sınav tek-seferlik dev alımlar yazarkasada DocType=1 ile hariç (Kayıp şişmesini önler).
 
 ---
 
@@ -96,8 +110,11 @@ Kaynak taraması (6 açı, 27 kaynak, 16 doğrulanmış iddia). Perakende KPI be
 | **Stok devir hızı** | Satılan adet / Ort. stok adet ×12 | aylık | Stok→nakit hızı; ölü stok | ✅ E4 `gm-rapor/envanter/E4-E6-devir-sellthrough.sql` |
 | **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 `gm-rapor/envanter/E5-gmroi.sql` (SSMS, pay=karzarar) |
 | **Sell-through** | Satılan adet / (Açılış stok + Gelen adet) | haftalık/aylık | Reorder/clearance kararı | ✅ E6 (aynı dosya) |
-| **Stokta yokluk** | yok-gün / toplam | günlük | Fiziksel <%5 hedef; kayıp satış | 🔲 (yapılacak) |
-| **SPLH** | Net ciro / çalışılan saat | haftalık | İşgücü verimi (PDKS köprüsü) | 🔲 (P7 türevi) |
+| **Weeks of Supply** | Ort. stok / haftalık satış | aylık | Kaç haftalık stok; yüksek=ölü sermaye | ✅ E7 (E4-E6 dosyasında kolon) |
+| **RFM** | Recency/Frequency/Monetary | aylık | Müşteri segmenti; reaktivasyon | ✅ C1 (e-ticaret) |
+| **Marka/yayınevi** | ciro + ciro/çeşit | aylık | Tedarikçi karnesi | ✅ A6 |
+| **Stokta yokluk** | SKU stok=0 / satışı olan | günlük | Fiziksel <%5 hedef; kayıp satış | 🔲 B-33 (SKU-level, ağır) |
+| **SPLH** | Net ciro / çalışılan saat | haftalık | İşgücü verimi (PDKS OPENQUERY) | 🔲 B-34 (PDKS linked, ağır) |
 
 Kaynaklar: [Umbrex Retail KPI Playbook](https://umbrex.com/resources/retail-industry-playbooks/retail-kpi-dashboard-weekly-business-review-playbook/retail-kpi-architecture-and-metric-definitions/), [ICSC 6 Inventory Metrics](https://www.icsc.com/news-and-views/icsc-exchange/6-inventory-metrics-you-should-track-and-how-to-do-it), [frekansdenetim.com.tr (TR)](https://frekansdenetim.com.tr/perakende-sektoru-performans-metrikleri/), [Slimstock](https://www.slimstock.com/blog/inventory-turnover/).
 
