@@ -1,16 +1,18 @@
 """
-GM DASHBOARD — tek sayfa HTML (canlı veri).
+GM DASHBOARD — tek sayfa, tüm raporlar + dönem seçici (canlı veri).
 
-GM rapor sisteminin görsel panosu: birleşik günlük ciro (fiziksel+online),
-mağaza kartları, e-ticaret kanal, FSM dönüşüm (kapı sayıcı), envanter, 7-gün trend.
+Dönem-duyarlı paneller (ciro, mağaza, e-ticaret, kategori, ödeme, iade, dönüşüm)
+3 dönem için ön-hesaplanır (Günlük=dün / Haftalık=son 7g / Aylık=MTD); HTML'deki
+<select> ile anında değişir. Referans paneller (envanter, devir, stockout, RFM,
+ABC, marka, işgücü üçgeni) sabit.
+
 Çıktı: briefings/gm-dashboard/index.html (self-contained, Chart.js CDN).
-
-Kullanım: python gm_dashboard.py [--date YYYY-MM-DD]   (default: dün)
-DB: .env / .secrets/db.json (generate_brief.py ile aynı).
+Kullanım: python gm_dashboard.py [--ref-date YYYY-MM-DD]   (default: dün)
+DB: .env / .secrets/db.json.
 """
-import sys, csv, json, os, argparse
+import sys, csv, json, os, argparse, re
 from pathlib import Path
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
@@ -21,6 +23,7 @@ R = Path(__file__).resolve().parent.parent
 OUT = R / "briefings" / "gm-dashboard"
 KIRMIZI = "#E30622"
 MEKAN = {1: "FSM", 4477: "Özlüce", 4478: "İst.Yolu"}
+EXC = "(N'Sınav Okulları',N'Dergi',N'Genel',N'Tanımsız',N'Etkinlik',N'Hediye Çeki',N'Sınav Kayıt')"
 
 
 def cfg():
@@ -36,167 +39,254 @@ def cfg():
     return json.loads((R / ".secrets" / "db.json").read_text(encoding="utf-8"))
 
 
-def tl(n):
-    return f"{n:,.0f}".replace(",", ".") + " ₺"
-
-
-def q(cur, sql, p=None):
+def Q(cur, sql, p=None):
     cur.execute(sql, p or ())
     return cur.fetchall()
 
 
+def fnum(n): return f"{n:,.0f}".replace(",", ".")
+
+
+def period_data(cur, start, end, traf, hedef=None):
+    """Dönem-duyarlı veri (start,end ISO date, end exclusive). Döner: dict."""
+    giso, g2iso = start.replace("-", ""), end.replace("-", "")
+    store = Q(cur, """SELECT MG.mekanID, SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) Net, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis,
+        SUM(IIF(s.DocumentsTypeId=3,s.GrossTotal,0)) Iade
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+      LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=%s AND s.Date<%s GROUP BY MG.mekanID""", (start, end))
+    etic = Q(cur, """SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END K,
+        COUNT(*) Sip, SUM(o.TOTALPRICE) Ciro FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s
+        GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END""", (giso, g2iso))
+    kat = Q(cur, """SELECT TOP 8 CAST(ktg.ktgrAd AS nvarchar(50)) K, CAST(SUM(sp.TotalPrice) AS decimal(18,0)) Ciro
+      FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
+      JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
+      JOIN DerinSISBkm.dbo.urnKtgr2 ktg ON ktg.ktgrID=u.urnKtgr2ID
+      WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=%s AND s.Date<%s AND ktg.ktgrAd<>N'Sınav Okulları'
+      GROUP BY CAST(ktg.ktgrAd AS nvarchar(50)) ORDER BY Ciro DESC""", (start, end))
+    ode = Q(cur, """SELECT pt.Name K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
+      JOIN EncoreMerkez.dbo.PaymentTypes pt ON pt.Id=sp.PaymentTypesId JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND sp.IsChangeAmount=0 AND s.Date>=%s AND s.Date<%s GROUP BY pt.Name""", (start, end))
+    smap = {s["mekanID"]: s for s in store}
+    fiz = sum(float(s["Net"] or 0) for s in store); fis = sum(int(s["Fis"]) for s in store)
+    iade = sum(float(s["Iade"] or 0) for s in store)
+    etc = sum(float(e["Ciro"] or 0) for e in etic); esip = sum(int(e["Sip"]) for e in etic)
+    # FSM dönüşüm: bu dönemdeki giriş toplamı
+    d0 = date.fromisoformat(start); d1 = date.fromisoformat(end)
+    gir = sum(traf.get((d0+timedelta(days=i)).isoformat(), 0) for i in range((d1-d0).days))
+    fsmfis = int(smap[1]["Fis"]) if 1 in smap else 0
+    donus = round(100*fsmfis/gir, 1) if gir else None
+    # mağaza kartları
+    stc = []
+    for mid in (4477, 1, 4478):
+        s = smap.get(mid)
+        net = float(s["Net"] or 0) if s else 0; f = int(s["Fis"]) if s else 0
+        ger = None
+        if hedef and hedef.get(mid):
+            ger = round(100*net/hedef[mid], 1)
+        stc.append(dict(ad=MEKAN[mid], net=net, fis=f, atv=round(net/f) if f else 0, ger=ger))
+    odemap = sorted(([o["K"], float(o["Tutar"] or 0)] for o in ode), key=lambda x: -x[1])
+    nakit = sum(v for k, v in odemap if k == "TÜRK LİRASI")
+    odetop = sum(v for k, v in odemap)
+    return dict(fiz=round(fiz), fis=fis, iade=round(iade), etc=round(etc), esip=esip, toplam=round(fiz+etc),
+                donus=donus, gir=gir, stores=stc,
+                etic=sorted([[e["K"].replace("Mobil Uygulama ", "").replace("(", "").replace(")", ""), round(float(e["Ciro"] or 0)), int(e["Sip"])] for e in etic], key=lambda x: -x[1]),
+                kat=[[k["K"], int(k["Ciro"])] for k in kat],
+                nakit_pct=round(100*nakit/odetop, 1) if odetop else 0,
+                iade_pct=round(100*iade/fiz, 2) if fiz else 0)
+
+
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--date")
-    a = ap.parse_args()
-    gun = a.date or (date.today() - timedelta(days=1)).isoformat()
-    g2 = (date.fromisoformat(gun) + timedelta(days=1)).isoformat()
-    giso = gun.replace("-", "")
-    g2iso = g2.replace("-", "")
-    c = cfg()
-    conn = pymssql.connect(server=c["server"], user=c["user"], password=c["password"],
-                           database=c.get("database", "master"), login_timeout=20, timeout=90)
-    cur = conn.cursor(as_dict=True)
-
-    # mağaza günlük (G1) + MTD
-    aybas = gun[:8] + "01"
-    store = q(cur, """SELECT MG.mekanID,
-        SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) NetCiro,
-        SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis
-      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-      JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-      LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=%s AND s.Date<%s
-      GROUP BY MG.mekanID""", (gun, g2))
-    mtd = q(cur, """SELECT MG.mekanID, SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) Net
-      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-      JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-      LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=%s AND s.Date<%s
-      GROUP BY MG.mekanID""", (aybas, g2))
-    hedef = q(cur, "SELECT mekanId, SUM(hedef) H FROM BKMDATA.dbo.Hedef WITH(NOLOCK) WHERE mekanId IN (1,4477,4478) AND tarih>=%s AND tarih<%s GROUP BY mekanId", (aybas, g2))
-    # 7 gün trend (fiziksel)
-    trend = q(cur, """SELECT CONVERT(varchar,s.Date,23) T, SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) Net
-      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-      LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=DATEADD(DAY,-6,%s) AND s.Date<%s
-      GROUP BY CONVERT(varchar,s.Date,23)""", (gun, g2))
-    # e-ticaret kanal
-    eticaret = q(cur, "SELECT o.APPLICATION K, COUNT(*) Sip, SUM(o.TOTALPRICE) Ciro FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s GROUP BY o.APPLICATION", (giso, g2iso))
-    # envanter (Ort.Maliyet, Dergi/Sınav hariç)
-    env = q(cur, """SELECT CAST(SUM([FSM Stok Maliyet]+[Özlüce Stok Maliyet]+[İst.Yolu Stok Maliyet]+[Merkez Depo Stok Maliyet]+[Odak Depo Stok Maliyet]) AS decimal(18,0)) T
-      FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
-      WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN (N'Sınav Okulları',N'Dergi')""")
-    cur.close(); conn.close()
-
-    # FSM dönüşüm (kapı sayıcı CSV)
+    ap = argparse.ArgumentParser(); ap.add_argument("--ref-date"); a = ap.parse_args()
+    dun = a.ref_date or (date.today() - timedelta(days=1)).isoformat()
+    d = date.fromisoformat(dun)
+    g2 = (d + timedelta(days=1)).isoformat()
+    hafta_bas = (d - timedelta(days=6)).isoformat()
+    ay_bas = d.replace(day=1).isoformat()
+    # trafik
     traf = {}
     tp = R / "sayiyo" / "fsm_gunluk_trafik.csv"
     if tp.exists():
         for r in csv.DictReader(open(tp, encoding="utf-8")):
             traf[r["Tarih"]] = int(r["Giris"])
-    fsm_fis = next((int(s["Fis"]) for s in store if s["mekanID"] == 1), 0)
-    giris = traf.get(gun)
-    donusum = (100 * fsm_fis / giris) if giris else None
+    c = cfg()
+    conn = pymssql.connect(server=c["server"], user=c["user"], password=c["password"], database=c.get("database", "master"), charset="UTF-8", login_timeout=20, timeout=240)
+    cur = conn.cursor(as_dict=True)
+    # hedef (MTD)
+    hed = {h["mekanId"]: float(h["H"] or 0) for h in Q(cur, "SELECT mekanId, SUM(hedef) H FROM BKMDATA.dbo.Hedef WITH(NOLOCK) WHERE mekanId IN (1,4477,4478) AND tarih>=%s AND tarih<%s GROUP BY mekanId", (ay_bas, g2))}
+    print("dönem verileri...")
+    DATA = {
+        "gunluk": period_data(cur, dun, g2, traf),
+        "haftalik": period_data(cur, hafta_bas, g2, traf),
+        "ay": period_data(cur, ay_bas, g2, traf, hed),
+    }
+    # trend (son 14 gün fiziksel)
+    trend = Q(cur, """SELECT CONVERT(varchar,s.Date,23) T, SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) Net
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=DATEADD(DAY,-13,%s) AND s.Date<%s GROUP BY CONVERT(varchar,s.Date,23)""", (dun, g2))
+    trend = sorted(trend, key=lambda x: x["T"])
+    print("referans paneller...")
+    # envanter
+    env = Q(cur, f"""SELECT CAST(SUM([FSM Stok Maliyet]+[Özlüce Stok Maliyet]+[İst.Yolu Stok Maliyet]+[Merkez Depo Stok Maliyet]+[Odak Depo Stok Maliyet]) AS decimal(18,0)) T
+      FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK) WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC}""")[0]["T"]
+    # devir (E4) — kategori
+    devir = Q(cur, f"""SELECT m.K, CAST(12.0*m.Sat/NULLIF((b.A+e.K2)/2.0,0) AS decimal(10,2)) Devir
+      FROM (SELECT CAST(k.ktgrAd AS nvarchar(50)) K, -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) Sat FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+        JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+        WHERE h.ehTrhS>='2026-05-01' AND h.ehTrhS<'2026-06-01' AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) GROUP BY CAST(k.ktgrAd AS nvarchar(50))) m
+      LEFT JOIN (SELECT KTGR3 K,SUM(ISNULL([Fsm Stok Adet],0)+ISNULL([Özlüce Stok Adet],0)+ISNULL([İst.Yolu Stok Adet],0)) A FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK) WHERE CAST(Tarih AS date)='2026-05-01' AND [Maliyet Tipi]='Ort.Maliyet' GROUP BY KTGR3) b ON b.K COLLATE Turkish_CI_AS=m.K COLLATE Turkish_CI_AS
+      LEFT JOIN (SELECT KTGR3 K,SUM(ISNULL([Fsm Stok Adet],0)+ISNULL([Özlüce Stok Adet],0)+ISNULL([İst.Yolu Stok Adet],0)) K2 FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK) WHERE CAST(Tarih AS date)='2026-05-31' AND [Maliyet Tipi]='Ort.Maliyet' GROUP BY KTGR3) e ON e.K COLLATE Turkish_CI_AS=m.K COLLATE Turkish_CI_AS
+      WHERE m.K NOT IN {EXC}""")
+    devir = sorted([[r["K"], float(r["Devir"])] for r in devir if r["Devir"] is not None], key=lambda x: -x[1])
+    # ABC
+    abc = Q(cur, """SELECT Sinif, COUNT(*) N, CAST(SUM(Ciro) AS decimal(18,0)) Ciro FROM (
+        SELECT ProductsId, Ciro, 100.0*SUM(Ciro) OVER(ORDER BY Ciro DESC ROWS UNBOUNDED PRECEDING)/SUM(Ciro) OVER() KP FROM (
+          SELECT sp.ProductsId, SUM(sp.TotalPrice) Ciro FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
+          WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>='2026-05-01' AND s.Date<'2026-06-01' AND s.DocumentsTypeId IN (1,2,6,7,8) GROUP BY sp.ProductsId HAVING SUM(sp.TotalPrice)>0) p) r
+      CROSS APPLY (SELECT CASE WHEN KP<=80 THEN 'A' WHEN KP<=95 THEN 'B' ELSE 'C' END Sinif) x GROUP BY Sinif""")
+    abc = {r["Sinif"]: dict(n=int(r["N"]), ciro=int(r["Ciro"])) for r in abc}
+    # RFM yazarkasa
+    rfm = Q(cur, """SELECT seg.S, COUNT(*) N FROM (SELECT s.CustomersId, DATEDIFF(DAY,MAX(s.Date),%s) Rec, COUNT(*) Frq
+        FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,%s) AND s.Date<%s GROUP BY s.CustomersId) c
+      CROSS APPLY (SELECT CAST(CASE WHEN Frq>=8 AND Rec<=30 THEN N'1-Şampiyon' WHEN Frq>=4 AND Rec<=90 THEN N'2-Sadık' WHEN Frq<=2 AND Rec<=30 THEN N'3-Yeni' WHEN Rec BETWEEN 91 AND 180 THEN N'4-Risk' WHEN Rec>180 THEN N'5-Kayıp' ELSE N'6-Diğer' END AS nvarchar(20)) S) seg
+      GROUP BY seg.S""", (dun, dun, g2))
+    rfm = sorted([[r["S"], int(r["N"])] for r in rfm])
+    # marka top
+    marka = Q(cur, """SELECT TOP 6 CAST(mrk.mrkAd AS nvarchar(80)) M, CAST(SUM(sp.TotalPrice) AS decimal(18,0)) Ciro FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
+      JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
+      JOIN DerinSISBkm.dbo.urnMrk mrk ON mrk.mrkID=u.urnMrkID WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>='2026-05-01' AND s.Date<'2026-06-01' AND s.DocumentsTypeId IN (1,2,6,7,8)
+      GROUP BY CAST(mrk.mrkAd AS nvarchar(80)) ORDER BY Ciro DESC""")
+    marka = [[r["M"], int(r["Ciro"])] for r in marka]
+    cur.close(); conn.close()
 
-    # hesap
-    smap = {s["mekanID"]: s for s in store}
-    mmap = {m["mekanID"]: float(m["Net"] or 0) for m in mtd}
-    hmap = {h["mekanId"]: float(h["H"] or 0) for h in hedef}
-    fiz_net = sum(float(s["NetCiro"] or 0) for s in store)
-    fiz_fis = sum(int(s["Fis"]) for s in store)
-    et_ciro = sum(float(e["Ciro"] or 0) for e in eticaret)
-    et_sip = sum(int(e["Sip"]) for e in eticaret)
-    toplam = fiz_net + et_ciro
-    env_tl = float(env[0]["T"]) if env and env[0]["T"] else 0
+    render(dun, DATA, trend, int(env or 0), devir, abc, rfm, marka)
 
-    GUN_TR = {0:"Pzt",1:"Sal",2:"Çar",3:"Per",4:"Cum",5:"Cmt",6:"Pzr"}
-    dt = date.fromisoformat(gun)
-    baslik_tarih = dt.strftime("%d.%m.%Y") + " " + GUN_TR[dt.weekday()]
 
-    # kartlar
-    store_cards = ""
-    for mid in (4477, 1, 4478):
-        s = smap.get(mid);
-        if not s: continue
-        net = float(s["NetCiro"] or 0); fis = int(s["Fis"]); atv = net/fis if fis else 0
-        ger = 100*mmap.get(mid,0)/hmap[mid] if hmap.get(mid) else 0
-        renk = "#16a34a" if ger>=100 else ("#dc2626" if ger<95 else "#64748b")
-        store_cards += f"""<div class=card><div class=ct>{MEKAN[mid]}</div>
-          <div class=cv>{tl(net)}</div>
-          <div class=cm>{fis:,} fiş · sepet {atv:,.0f} ₺</div>
-          <div class=cm>MTD hedef <b style="color:{renk}">%{ger:.1f}</b></div></div>""".replace(",", ".")
+def render(dun, DATA, trend, env, devir, abc, rfm, marka):
+    d = date.fromisoformat(dun)
+    GUN_TR = {0: "Pzt", 1: "Sal", 2: "Çar", 3: "Per", 4: "Cum", 5: "Cmt", 6: "Pzr"}
+    bas = d.strftime("%d.%m.%Y") + " " + GUN_TR[d.weekday()]
+    trend_lbl = [t["T"][5:] for t in trend]
+    trend_val = [round(float(t["Net"] or 0)) for t in trend]
+    devir_top = devir[:5]; devir_bot = devir[-4:]
+    abc_rows = "".join(f"<tr><td>{k}</td><td style='text-align:right'>{fnum(abc[k]['n'])}</td><td style='text-align:right'>{fnum(abc[k]['ciro'])} ₺</td></tr>" for k in ('A','B','C') if k in abc)
+    rfm_rows = "".join(f"<tr><td>{s}</td><td style='text-align:right'>{fnum(n)}</td></tr>" for s, n in rfm)
+    marka_rows = "".join(f"<tr><td>{m}</td><td style='text-align:right'>{fnum(c)} ₺</td></tr>" for m, c in marka)
+    devir_rows = "".join(f"<tr><td>{k}</td><td style='text-align:right'>{v:.2f}x</td></tr>" for k, v in devir_top)
+    devir_slow = "".join(f"<tr><td>{k}</td><td style='text-align:right;color:#dc2626'>{v:.2f}x</td></tr>" for k, v in devir_bot)
 
-    et_rows = "".join(f"<tr><td>{e['K']}</td><td style='text-align:right'>{int(e['Sip']):,}</td><td style='text-align:right'>{tl(float(e['Ciro'] or 0))}</td></tr>".replace(",",".") for e in sorted(eticaret,key=lambda x:-float(x['Ciro'] or 0)))
-    trend_s = sorted(trend, key=lambda x: x["T"])
-    trend_lbl = json.dumps([t["T"][5:] for t in trend_s])
-    trend_val = json.dumps([round(float(t["Net"] or 0)) for t in trend_s])
-    et_lbl = json.dumps([e["K"].replace("Mobil Uygulama ","").replace("(","").replace(")","") for e in sorted(eticaret,key=lambda x:-float(x['Ciro'] or 0))])
-    et_val = json.dumps([round(float(e["Ciro"] or 0)) for e in sorted(eticaret,key=lambda x:-float(x['Ciro'] or 0))])
-    don_txt = f"%{donusum:.1f}" if donusum else "—"
+    tmpl = TEMPLATE
+    repl = {
+        "__KIRMIZI__": KIRMIZI, "__BAS__": bas, "__ENV__": fnum(env),
+        "__DATA__": json.dumps(DATA, ensure_ascii=False),
+        "__TRENDLBL__": json.dumps(trend_lbl), "__TRENDVAL__": json.dumps(trend_val),
+        "__ABC__": abc_rows, "__RFM__": rfm_rows, "__MARKA__": marka_rows,
+        "__DEVIR__": devir_rows, "__DEVIRSLOW__": devir_slow,
+    }
+    for k, v in repl.items():
+        tmpl = tmpl.replace(k, v)
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "index.html").write_text(tmpl, encoding="utf-8")
+    g = DATA["gunluk"]
+    print(f"Dashboard: {OUT/'index.html'}")
+    print(f"  Günlük toplam {fnum(g['toplam'])} ₺ (online %{round(100*g['etc']/g['toplam']) if g['toplam'] else 0}) · FSM dönüşüm %{g['donus']}")
 
-    html = f"""<!doctype html><html lang=tr><head><meta charset=utf-8>
+
+TEMPLATE = r"""<!doctype html><html lang=tr><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>BKM GM Dashboard — {baslik_tarih}</title>
+<title>BKM GM Dashboard — __BAS__</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-*{{box-sizing:border-box;margin:0;font-family:'Segoe UI',system-ui,sans-serif}}
-body{{background:#f1f5f9;color:#0f172a;padding:20px}}
-.hd{{display:flex;align-items:center;gap:14px;margin-bottom:18px}}
-.hd .logo{{background:{KIRMIZI};color:#fff;font-weight:800;padding:8px 14px;border-radius:10px;font-size:20px;letter-spacing:1px}}
-.hd h1{{font-size:20px}} .hd .tar{{margin-left:auto;color:#64748b;font-size:14px}}
-.big{{background:linear-gradient(135deg,{KIRMIZI},#b00518);color:#fff;border-radius:16px;padding:22px 26px;display:flex;gap:40px;align-items:center;flex-wrap:wrap;margin-bottom:16px;box-shadow:0 6px 20px rgba(227,6,34,.25)}}
-.big .lbl{{opacity:.85;font-size:13px;text-transform:uppercase;letter-spacing:1px}}
-.big .num{{font-size:38px;font-weight:800;line-height:1.1}}
-.big .sub{{font-size:14px;opacity:.9}}
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:16px}}
-.card{{background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}}
-.card.kpi{{border-left:5px solid {KIRMIZI}}}
-.ct{{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;font-weight:700}}
-.cv{{font-size:26px;font-weight:800;margin:4px 0}} .cm{{font-size:13px;color:#475569}}
-.row{{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
-@media(max-width:780px){{.row{{grid-template-columns:1fr}}}}
-.panel{{background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}}
-.panel h3{{font-size:14px;margin-bottom:12px;color:#334155}}
-table{{width:100%;border-collapse:collapse;font-size:14px}} td{{padding:6px 4px;border-bottom:1px solid #f1f5f9}}
-.foot{{color:#94a3b8;font-size:12px;text-align:center;margin-top:18px}}
-.gauge{{font-size:34px;font-weight:800;color:{KIRMIZI}}}
+*{box-sizing:border-box;margin:0;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:#f1f5f9;color:#0f172a;padding:18px;max-width:1280px;margin:auto}
+.hd{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.logo{background:__KIRMIZI__;color:#fff;font-weight:800;padding:8px 14px;border-radius:10px;font-size:19px;letter-spacing:1px}
+.hd h1{font-size:19px} .tar{color:#64748b;font-size:13px}
+select{margin-left:auto;padding:8px 12px;border-radius:9px;border:2px solid __KIRMIZI__;font-size:14px;font-weight:700;color:__KIRMIZI__;background:#fff;cursor:pointer}
+.big{background:linear-gradient(135deg,__KIRMIZI__,#b00518);color:#fff;border-radius:16px;padding:20px 24px;display:flex;gap:36px;align-items:center;flex-wrap:wrap;margin-bottom:14px;box-shadow:0 6px 20px rgba(227,6,34,.25)}
+.big .lbl{opacity:.85;font-size:12px;text-transform:uppercase;letter-spacing:1px}
+.big .num{font-size:34px;font-weight:800;line-height:1.1} .big .sub{font-size:13px;opacity:.9}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:14px}
+.card{background:#fff;border-radius:13px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card.kpi{border-left:5px solid __KIRMIZI__}
+.ct{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.cv{font-size:23px;font-weight:800;margin:4px 0} .cm{font-size:12.5px;color:#475569}
+.sec{font-size:12px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:18px 0 8px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.panel{background:#fff;border-radius:13px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.panel h3{font-size:13px;margin-bottom:10px;color:#334155}
+table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;border-bottom:1px solid #f1f5f9}
+.foot{color:#94a3b8;font-size:11px;text-align:center;margin-top:16px}
 </style></head><body>
-<div class=hd><span class=logo>bkmkitap</span><h1>Genel Müdür Panosu</h1><span class=tar>{baslik_tarih} · kapanış</span></div>
+<div class=hd><span class=logo>bkmkitap</span><h1>Genel Müdür Panosu</h1><span class=tar id=tar></span>
+  <select id=dsel onchange="render(this.value)">
+    <option value=gunluk>Günlük (dün)</option>
+    <option value=haftalik>Haftalık (son 7 gün)</option>
+    <option value=ay>Aylık (ay başı→bugün)</option>
+  </select></div>
 
 <div class=big>
-  <div><div class=lbl>Toplam Ciro (fiziksel + online)</div><div class=num>{tl(toplam)}</div>
-    <div class=sub>Fiziksel {tl(fiz_net)} · E-ticaret {tl(et_ciro)} (%{100*et_ciro/toplam if toplam else 0:.0f})</div></div>
-  <div><div class=lbl>İşlem</div><div class=num>{fiz_fis+et_sip:,}</div><div class=sub>{fiz_fis:,} fiş · {et_sip:,} sipariş</div></div>
-  <div><div class=lbl>FSM Dönüşüm (kapı sayıcı)</div><div class=num>{don_txt}</div><div class=sub>{(str(giris)+' giriş') if giris else 'veri yok'}</div></div>
+  <div><div class=lbl>Toplam Ciro (fiziksel + online)</div><div class=num id=b_toplam></div><div class=sub id=b_alt></div></div>
+  <div><div class=lbl>İşlem</div><div class=num id=b_islem></div><div class=sub id=b_islemalt></div></div>
+  <div><div class=lbl>FSM Dönüşüm (kapı sayıcı)</div><div class=num id=b_donus></div><div class=sub id=b_donusalt></div></div>
+  <div><div class=lbl>İade Oranı</div><div class=num id=b_iade></div><div class=sub>nakit ödeme <span id=b_nakit></span></div></div>
 </div>
 
-<div class=grid>{store_cards}
-  <div class="card kpi"><div class=ct>Envanter Değeri (Ort.Maliyet)</div><div class=cv>{tl(env_tl)}</div><div class=cm>Dergi/Sınav hariç</div></div>
-</div>
+<div class=grid id=stores></div>
 
 <div class=row>
-  <div class=panel><h3>Son 7 Gün — Fiziksel Net Ciro</h3><canvas id=trend height=140></canvas></div>
-  <div class=panel><h3>E-ticaret Kanal Dağılımı</h3><canvas id=etc height=140></canvas>
-    <table style="margin-top:10px"><tr><td><b>Kanal</b></td><td style="text-align:right"><b>Sipariş</b></td><td style="text-align:right"><b>Ciro</b></td></tr>{et_rows}</table></div>
+  <div class=panel><h3>Mağaza Kategori Mix (dönem)</h3><canvas id=ch_kat height=150></canvas></div>
+  <div class=panel><h3>E-ticaret Kanal (dönem)</h3><canvas id=ch_etic height=150></canvas></div>
+  <div class=panel><h3>Son 14 Gün — Fiziksel Net Ciro</h3><canvas id=ch_trend height=150></canvas></div>
 </div>
 
-<div class=foot>BKM Kitap · GM Dashboard (otomatik) · scripts/gm_dashboard.py · {datetime_now()}</div>
+<div class=sec>Referans — Envanter & Müşteri & Merchandising (aylık/güncel)</div>
+<div class=grid>
+  <div class="card kpi"><div class=ct>Envanter Değeri (Ort.Maliyet)</div><div class=cv>__ENV__ ₺</div><div class=cm>Dergi/Sınav hariç</div></div>
+</div>
+<div class=row>
+  <div class=panel><h3>Devir Hızı — Hızlı (yıllık)</h3><table>__DEVIR__</table></div>
+  <div class=panel><h3>Devir — Yavaş (ölü sermaye)</h3><table>__DEVIRSLOW__</table></div>
+  <div class=panel><h3>ABC Analizi (Pareto)</h3><table><tr><td><b>Sınıf</b></td><td style="text-align:right"><b>Ürün</b></td><td style="text-align:right"><b>Ciro</b></td></tr>__ABC__</table></div>
+  <div class=panel><h3>RFM — Yazarkasa (365g)</h3><table>__RFM__</table></div>
+  <div class=panel><h3>Top Marka / Yayınevi (Mayıs)</h3><table>__MARKA__</table></div>
+</div>
+
+<div class=foot>BKM Kitap · GM Dashboard (otomatik) · scripts/gm_dashboard.py</div>
 <script>
-new Chart(document.getElementById('trend'),{{type:'line',data:{{labels:{trend_lbl},datasets:[{{data:{trend_val},borderColor:'{KIRMIZI}',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}}]}},options:{{plugins:{{legend:{{display:false}}}},scales:{{y:{{ticks:{{callback:v=>(v/1000000).toFixed(1)+'M'}}}}}}}}}});
-new Chart(document.getElementById('etc'),{{type:'doughnut',data:{{labels:{et_lbl},datasets:[{{data:{et_val},backgroundColor:['{KIRMIZI}','#f59e0b','#0ea5e9','#64748b']}}]}},options:{{plugins:{{legend:{{position:'right'}}}}}}}});
+const DATA=__DATA__;
+const fnum=n=>Math.round(n).toLocaleString('tr-TR');
+const tl=n=>fnum(n)+' ₺';
+let chKat,chEtic,chTrend;
+function render(p){
+  const x=DATA[p];
+  document.getElementById('tar').textContent='__BAS__ · '+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[p]);
+  document.getElementById('b_toplam').textContent=tl(x.toplam);
+  document.getElementById('b_alt').innerHTML='Fiziksel '+tl(x.fiz)+' · E-ticaret '+tl(x.etc)+' (%'+(x.toplam?Math.round(100*x.etc/x.toplam):0)+')';
+  document.getElementById('b_islem').textContent=fnum(x.fis+x.esip);
+  document.getElementById('b_islemalt').textContent=fnum(x.fis)+' fiş · '+fnum(x.esip)+' sipariş';
+  document.getElementById('b_donus').textContent=x.donus?('%'+x.donus):'—';
+  document.getElementById('b_donusalt').textContent=x.gir?(fnum(x.gir)+' giriş (FSM)'):'veri yok';
+  document.getElementById('b_iade').textContent='%'+x.iade_pct;
+  document.getElementById('b_nakit').textContent='%'+x.nakit_pct;
+  // mağaza kartları
+  let h='';
+  for(const s of x.stores){
+    let g=s.ger!=null?('<div class=cm>MTD hedef <b style="color:'+(s.ger>=100?'#16a34a':(s.ger<95?'#dc2626':'#64748b'))+'">%'+s.ger+'</b></div>'):'';
+    h+='<div class=card><div class=ct>'+s.ad+'</div><div class=cv>'+tl(s.net)+'</div><div class=cm>'+fnum(s.fis)+' fiş · sepet '+fnum(s.atv)+' ₺</div>'+g+'</div>';
+  }
+  document.getElementById('stores').innerHTML=h;
+  // grafikler
+  const kpi='__KIRMIZI__';
+  if(chKat)chKat.destroy();
+  chKat=new Chart(document.getElementById('ch_kat'),{type:'bar',data:{labels:x.kat.map(k=>k[0]),datasets:[{data:x.kat.map(k=>k[1]),backgroundColor:kpi}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
+  if(chEtic)chEtic.destroy();
+  chEtic=new Chart(document.getElementById('ch_etic'),{type:'doughnut',data:{labels:x.etic.map(e=>e[0]),datasets:[{data:x.etic.map(e=>e[1]),backgroundColor:[kpi,'#f59e0b','#0ea5e9','#64748b']}]},options:{plugins:{legend:{position:'right'}}}});
+}
+chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:__TRENDLBL__,datasets:[{data:__TRENDVAL__,borderColor:'__KIRMIZI__',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
+render('gunluk');
 </script></body></html>"""
-
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "index.html").write_text(html, encoding="utf-8")
-    print(f"Dashboard: {OUT/'index.html'}")
-    print(f"  Toplam {tl(toplam)} (fiziksel {tl(fiz_net)} + online {tl(et_ciro)}) · FSM dönüşüm {don_txt}")
-
-
-def datetime_now():
-    return datetime.now().strftime("%d.%m.%Y %H:%M") if False else "üretildi"
 
 
 if __name__ == "__main__":
