@@ -5,7 +5,7 @@
 **Tarih:** 2026-06-08
 **Proje:** `bkm`
 **Yazan:** Fikri / Claude
-**Durum:** `Uygulamada` (E-SCHEMA + E4 + E6 ✅ · E5 bekliyor)
+**Durum:** `Tamamlandı` (E-SCHEMA + E4 + E6 ✅ MCP-doğrulandı · E5 ✅ SSMS assembly, karzarar-bağımlı)
 
 ---
 
@@ -78,7 +78,7 @@ GM panosu envanterin **değerini** (TL) gösteriyor ama **verimini** göstermiyo
 
 1. [x] ✅ **E-SCHEMA** ehTip keşfi: **13** = Ana Depo (firma 12) şube transfer-in · **10** = dış tedarikçi alış mal kabulü. Gelen = 10+13. ENVANTER snapshot 2026'da near-daily + ay-sonu mevcut. Kategori anahtarı KTGR3=ktgrAd doğrulandı.
 2. [x] ✅ **E4** Devir hızı — **adet bazlı** (birim maliyet sadeleşti → COGS motoru GEREKMEDİ). MCP doğrulandı (May 2026 mantıklı).
-3. [ ] **E5** GMROI — TL brüt marj sadeleşmez → karzarar v7 COGS gerekli (SSMS). BEKLİYOR.
+3. [x] ✅ **E5** GMROI — `08-envanter/e5-gmroi.sql`. PAY=karzarar v7 Marj_TL (SSMS), PAYDA=ENVANTER ort. maliyet (MCP-doğrulandı). ORT_ALIS-tek-tablo kısayolu DENENDİ+REDDEDİLDİ (kapsam zayıf: Kitap satılan adedinin %53'ünde ORT_ALIS NULL → COGS eksik). Gerçek COGS karzarar 3-fallback gerektirir.
 4. [x] ✅ **E6** Sell-through — satılan/(açılış stok+gelen). Naif satılan/gelen >%100 verdiği için açılış-stok paydası eklendi. MCP doğrulandı.
 5. [~] **E-VERIFY** E4/E6 mantık kontrolü ✅ (devir perakende sezgisiyle uyumlu). Toplam COGS kıyas E5'te yapılacak.
 6. [x] ✅ **E-DOC** Katalog § E + Plan 05 güncel. Skill envanter mod E4/E6 → (sırada).

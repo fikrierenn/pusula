@@ -90,7 +90,7 @@ Kaynak taraması (6 açı, 27 kaynak, 16 doğrulanmış iddia). Perakende KPI be
 | **Dönüşüm oranı** | İşlem / Trafik | günlük | Erken uyarı (ciro düşmeden önce) | ⛔ B-22 kapı sayıcı bekliyor |
 | **YoY** | dönem / geçen yıl aynı dönem | günlük/haftalık | Mevsimsellik (sınav/okula dönüş) | ⏳ G1'de, ~11.07.2026'da aktif |
 | **Stok devir hızı** | Satılan adet / Ort. stok adet ×12 | aylık | Stok→nakit hızı; ölü stok | ✅ E4 `08-envanter/envanter-verim-devir-sellthrough.sql` |
-| **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | 🔲 E5 (karzarar bağımlı, SSMS) |
+| **GMROI** | Brüt marj / Ort. stok maliyeti | aylık | Envantere yatan 1 TL'nin marj getirisi | ✅ E5 `08-envanter/e5-gmroi.sql` (SSMS, pay=karzarar) |
 | **Sell-through** | Satılan adet / (Açılış stok + Gelen adet) | haftalık/aylık | Reorder/clearance kararı | ✅ E6 (aynı dosya) |
 | **Stokta yokluk** | yok-gün / toplam | günlük | Fiziksel <%5 hedef; kayıp satış | 🔲 (yapılacak) |
 | **SPLH** | Net ciro / çalışılan saat | haftalık | İşgücü verimi (PDKS köprüsü) | 🔲 (P7 türevi) |
@@ -113,5 +113,5 @@ RFM segmentasyon, tekrar alım, CLV, sadakat (müşteri açısı) + ABC analizi,
 
 ### E4-E6 Durum (Plan 05 — 08.06.2026)
 - **E4 Devir + E6 Sell-through ✅ KURULDU + doğrulandı** (`08-envanter/envanter-verim-devir-sellthrough.sql`). Kilit içgörü: adet-bazlı devirde birim maliyet sadeleşir → **COGS motoru gerekmez**, üstelik enflasyondan etkilenmez. Hareket tipleri: satış 4/100, gelen 10 (alış)+13 (depo transfer), Sınav Okulları hayalet hariç.
-- **E5 GMROI 🔲 bekliyor** — TL brüt marj gerektirir (marj adet gibi sadeleşmez) → `04-karzarar/...v7` maliyet motoru (SSMS-only). Plan 05 adım E5.
+- **E5 GMROI ✅ kuruldu** (`08-envanter/e5-gmroi.sql`) — pay=karzarar v7 Marj_TL (SSMS, prod-parity COGS), payda=ENVANTER ort. maliyet (MCP-doğrulandı). Tek-tablo ORT_ALIS kısayolu reddedildi (kapsam zayıf, COGS eksik). Pay SSMS-only doğrulanır.
 - Doğrulama (May 2026): devir Dergi 8,53x · Kitap 1,46x · Kırtasiye 1,32x; sell-through Gıda %32,5 · Kitap %10,7.
