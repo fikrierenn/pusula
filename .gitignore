@@ -24,3 +24,12 @@ fix-mcp-config.*
 _*.ps1
 _*.sh
 _plan-first-content.md
+
+# --- Claude Code (template bootstrap) ---
+.claude/worktrees/
+.claude/settings.local.json
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
