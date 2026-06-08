@@ -69,6 +69,7 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 | A2 | Kampanya aylık trend | `03-kampanya/10_08_kampanya-aylik-trend.sql` |
 | A3 | Bordro / headcount / devir hızı | `sorgular/2026-06-03-*.sql` |
 | A4 | Envanter anomali | `sorgular/envanter_raporu_job_sorgusu.sql` |
+| A5 | **ABC analizi (Pareto 80/20)** ✅ | `sorgular/04-urun/abc-analizi.sql` — A %25 SKU→%80 ciro · C %40 SKU→%5 (clearance) |
 
 ---
 
@@ -112,7 +113,7 @@ Kaynaklar: [Umbrex Retail KPI Playbook](https://umbrex.com/resources/retail-indu
 4. **Stockout <%5 fiziksel mağaza için**; e-ticaret %8-12 normal — kanal ayrı hedefle.
 
 ### Doğrulanamayan (ileride araştır)
-RFM segmentasyon, tekrar alım, CLV, sadakat (müşteri açısı) + ABC analizi, yayıncı/tedarikçi karnesi, başlık bazlı iade (merchandising) — doğrulama turunu geçemedi, formül seçimi dikkatli yapılmalı. JOKER `J_ORDER_CLIENTS` müşteri zinciri RFM için başlangıç noktası.
+RFM segmentasyon, tekrar alım, CLV, sadakat (müşteri açısı) + yayıncı/tedarikçi karnesi, başlık bazlı iade (merchandising) — doğrulama turunu geçemedi, formül seçimi dikkatli yapılmalı. JOKER `J_ORDER_CLIENTS` müşteri zinciri RFM için başlangıç noktası. **ABC analizi ✅ kuruldu** (A5).
 
 ### E4-E6 Durum (Plan 05 — 08.06.2026)
 - **E4 Devir + E6 Sell-through ✅ KURULDU + doğrulandı** (`08-envanter/envanter-verim-devir-sellthrough.sql`). Kilit içgörü: adet-bazlı devirde birim maliyet sadeleşir → **COGS motoru gerekmez**, üstelik enflasyondan etkilenmez. Hareket tipleri: satış 4/100, gelen 10 (alış)+13 (depo transfer), Sınav Okulları hayalet hariç.
