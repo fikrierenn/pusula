@@ -17,9 +17,11 @@ Amaç: operasyonel nabız. 5 dakikada "dün ne oldu, anormal bir şey var mı".
 | G4 | Kategori mix (dün, mağaza kırılımlı) | Kategori payı — hangi mağaza nerede zayıf | `sorgular/04-urun/gunluk-kategori-magaza.sql` | ✅ doğrulandı (kategori=DerinSIS KTGR3) |
 | G5 | Saat bazlı yoğunluk (dün) | Saatlik fiş + net ciro — kasiyer/vardiya planı | `sorgular/06-operasyon/gunluk-saat-bazli.sql` | ✅ doğrulandı (pik 16:00) |
 | G6 | Anomali bayrağı (dün) | Sıfır/neg fiyat · kampanyasız (manuel) indirim | `sorgular/06-operasyon/gunluk-anomali.sql` | ✅ doğrulandı (07.06 temiz) |
-| G7 | E-ticaret (JOKER) dün | Sipariş adedi · ciro · kanal (mobil/web) | `sorgular/2026-04-14-mobil-app-baremli-rapor.sql` (tarih → dün) | mevcut, tarih daralt |
+| G7 | E-ticaret (JOKER) dün | Sipariş · ciro · sepet · kanal (App/Mobil/Web) | `sorgular/09-eticaret/gunluk-eticaret-kanal.sql` | ✅ doğrulandı (ISO tarih) |
 
 **Asgari günlük set:** G1 + G2 + G3. Gerisi sinyal varsa drill-down.
+
+> ⚡ **Kritik içgörü (07.06.2026):** E-ticaret günlük ciro **3,02M ₺** = 3 fiziksel mağaza toplamından (1,93M) **BÜYÜK**. App (Android+iOS) ciro %57,5, sepet 1.208-1.268 ₺ (mağaza ATV 555-677 ₺'nin ~2 katı). GM panosu yalnız fizikseli gösterirse cironun yarısından fazlası görünmüyor. Birleşik (fiziksel+online) günlük toplam KPI gerekli — B-21 ile bağlantılı.
 
 ---
 
