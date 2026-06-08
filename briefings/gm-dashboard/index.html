@@ -23,7 +23,18 @@ select{margin-left:auto;padding:8px 12px;border-radius:9px;border:2px solid #E30
 .panel h3{font-size:13px;margin-bottom:10px;color:#334155}
 table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;border-bottom:1px solid #f1f5f9}
 .foot{color:#94a3b8;font-size:11px;text-align:center;margin-top:16px}
+.clk{cursor:pointer;transition:transform .1s,box-shadow .1s}
+.clk:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(227,6,34,.22)}
+.big .clk:hover{opacity:.85}
+.ovl{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;align-items:center;justify-content:center;padding:20px}
+.ovl.on{display:flex}
+.modal{background:#fff;border-radius:16px;padding:22px 24px;max-width:560px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal h2{font-size:18px;color:#E30622;margin-bottom:4px}
+.modal .x{float:right;cursor:pointer;font-size:22px;color:#94a3b8;line-height:1}
+.modal .kpis{display:flex;gap:18px;margin:12px 0;flex-wrap:wrap}
+.modal .kpis div span{display:block;font-size:11px;color:#64748b} .modal .kpis div b{font-size:18px}
 </style></head><body>
+<div class=ovl id=ovl onclick="if(event.target===this)this.classList.remove('on')"><div class=modal id=modal></div></div>
 <div class=hd><span class=logo>bkmkitap</span><h1>Genel Müdür Panosu</h1><span class=tar id=tar></span>
   <select id=dsel onchange="render(this.value)">
     <option value=gunluk>Günlük (dün)</option>
@@ -35,7 +46,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
   <div><div class=lbl>Toplam Ciro (fiziksel + online)</div><div class=num id=b_toplam></div><div class=sub id=b_alt></div></div>
   <div><div class=lbl>İşlem</div><div class=num id=b_islem></div><div class=sub id=b_islemalt></div></div>
   <div><div class=lbl>FSM Dönüşüm (kapı sayıcı)</div><div class=num id=b_donus></div><div class=sub id=b_donusalt></div></div>
-  <div><div class=lbl>İade Oranı</div><div class=num id=b_iade></div><div class=sub>nakit ödeme <span id=b_nakit></span></div></div>
+  <div class=clk onclick="detayOdeme()"><div class=lbl>İade / Ödeme &#9656;</div><div class=num id=b_iade></div><div class=sub>nakit ödeme <span id=b_nakit></span></div></div>
 </div>
 
 <div class=grid id=stores></div>
@@ -60,11 +71,12 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
 
 <div class=foot>BKM Kitap · GM Dashboard (otomatik) · scripts/gm_dashboard.py</div>
 <script>
-const DATA={"gunluk": {"fiz": 1933437, "fis": 3060, "iade": 51214, "etc": 3022333, "esip": 2647, "toplam": 4955771, "donus": 53.5, "gir": 1860, "stores": [{"ad": "Özlüce", "net": 820601.25, "fis": 1213, "atv": 677, "ger": null}, {"ad": "FSM", "net": 552416.18, "fis": 996, "atv": 555, "ger": null}, {"ad": "İst.Yolu", "net": 560419.84, "fis": 851, "atv": 659, "ger": null}], "etic": [["Android", 1073817, 889], ["Mobil Site", 946752, 983], ["iOS", 663232, 523], ["Web Sitesi", 338532, 252]], "kat": [["Kitap", 366353], ["Çocuk Kitabı", 272614], ["Hazırlık Kitapları", 196827], ["Kırtasiye", 130652], ["Akademi", 66211], ["Oyuncak", 24118], ["Sınav Kıyafet", 18248], ["Dergi", 7758]], "nakit_pct": 16.6, "iade_pct": 2.65}, "haftalik": {"fiz": 10135341, "fis": 16967, "iade": 213137, "etc": 20844716, "esip": 19657, "toplam": 30980057, "donus": 51.1, "gir": 11535, "stores": [{"ad": "Özlüce", "net": 4637851.2, "fis": 6762, "atv": 686, "ger": null}, {"ad": "FSM", "net": 3024864.82, "fis": 5896, "atv": 513, "ger": null}, {"ad": "İst.Yolu", "net": 2472624.98, "fis": 4309, "atv": 574, "ger": null}], "etic": [["Android", 6981169, 6142], ["Mobil Site", 6735498, 7434], ["iOS", 4195259, 3643], ["Web Sitesi", 2932408, 2437], ["Diğer", 383, 1]], "kat": [["Kitap", 1981706], ["Çocuk Kitabı", 1381583], ["Hazırlık Kitapları", 1107464], ["Kırtasiye", 663458], ["Akademi", 490952], ["Oyuncak", 145542], ["Sınav Kıyafet", 63426], ["Dergi", 38521]], "nakit_pct": 20.5, "iade_pct": 2.1}, "ay": {"fiz": 10135341, "fis": 16967, "iade": 213137, "etc": 20844716, "esip": 19657, "toplam": 30980057, "donus": 51.1, "gir": 11535, "stores": [{"ad": "Özlüce", "net": 4637851.2, "fis": 6762, "atv": 686, "ger": 101.6}, {"ad": "FSM", "net": 3024864.82, "fis": 5896, "atv": 513, "ger": 98.7}, {"ad": "İst.Yolu", "net": 2472624.98, "fis": 4309, "atv": 574, "ger": 94.1}], "etic": [["Android", 6981169, 6142], ["Mobil Site", 6735498, 7434], ["iOS", 4195259, 3643], ["Web Sitesi", 2932408, 2437], ["Diğer", 383, 1]], "kat": [["Kitap", 1981706], ["Çocuk Kitabı", 1381583], ["Hazırlık Kitapları", 1107464], ["Kırtasiye", 663458], ["Akademi", 490952], ["Oyuncak", 145542], ["Sınav Kıyafet", 63426], ["Dergi", 38521]], "nakit_pct": 20.5, "iade_pct": 2.1}};
+const DATA={"gunluk": {"fiz": 1933437, "fis": 3060, "iade": 51214, "etc": 3022333, "esip": 2647, "toplam": 4955771, "donus": 53.5, "gir": 1860, "stores": [{"mid": 4477, "ad": "Özlüce", "net": 820601.25, "fis": 1213, "atv": 677, "ger": null, "iade": 13510, "kat": [["Kitap", 155085], ["Çocuk Kitabı", 95359], ["Hazırlık Kitapları", 78370], ["Kırtasiye", 64307], ["Akademi", 16712], ["Oyuncak", 10388], ["Dergi", 2302]]}, {"mid": 1, "ad": "FSM", "net": 552416.18, "fis": 996, "atv": 555, "ger": null, "iade": 12782, "kat": [["Kitap", 96992], ["Hazırlık Kitapları", 78535], ["Çocuk Kitabı", 71118], ["Kırtasiye", 30449], ["Akademi", 27975], ["Oyuncak", 10202], ["Dergi", 3905]]}, {"mid": 4478, "ad": "İst.Yolu", "net": 560419.84, "fis": 851, "atv": 659, "ger": null, "iade": 24923, "kat": [["Kitap", 114277], ["Çocuk Kitabı", 106137], ["Hazırlık Kitapları", 39922], ["Kırtasiye", 35896], ["Akademi", 21524], ["Sınav Kıyafet", 18199], ["Oyuncak", 3528]]}], "odeme": [["HALK BANKASI", 1094280], ["TÜRK LİRASI", 342092], ["ANADOLUBANK", 229915], ["İŞ BANKASI", 226195], ["AKBANK", 96368], ["T.VAKIFLAR BANK", 36430], ["İADE ÇEKİ", 23797], ["HEDİYE ÇEKİ", 8200], ["DENİZBANK", 3710]], "etic": [["Android", 1073817, 889], ["Mobil Site", 946752, 983], ["iOS", 663232, 523], ["Web Sitesi", 338532, 252]], "kat": [["Kitap", 366353], ["Çocuk Kitabı", 272614], ["Hazırlık Kitapları", 196827], ["Kırtasiye", 130652], ["Akademi", 66211], ["Oyuncak", 24118], ["Sınav Kıyafet", 18248], ["Dergi", 7758]], "nakit_pct": 16.6, "iade_pct": 2.65}, "haftalik": {"fiz": 10135341, "fis": 16967, "iade": 213137, "etc": 20844716, "esip": 19657, "toplam": 30980057, "donus": 51.1, "gir": 11535, "stores": [{"mid": 4477, "ad": "Özlüce", "net": 4637851.2, "fis": 6762, "atv": 686, "ger": null, "iade": 86280, "kat": [["Kitap", 872540], ["Çocuk Kitabı", 600123], ["Hazırlık Kitapları", 446304], ["Kırtasiye", 319943], ["Akademi", 174003], ["Oyuncak", 60962], ["Dergi", 14957]]}, {"mid": 1, "ad": "FSM", "net": 3024864.82, "fis": 5896, "atv": 513, "ger": null, "iade": 58269, "kat": [["Kitap", 607226], ["Hazırlık Kitapları", 478580], ["Çocuk Kitabı", 321894], ["Akademi", 210049], ["Kırtasiye", 189899], ["Oyuncak", 46372], ["Dergi", 18460]]}, {"mid": 4478, "ad": "İst.Yolu", "net": 2472624.98, "fis": 4309, "atv": 574, "ger": null, "iade": 68587, "kat": [["Kitap", 501940], ["Çocuk Kitabı", 459566], ["Hazırlık Kitapları", 182579], ["Kırtasiye", 153616], ["Akademi", 106900], ["Sınav Kıyafet", 63083], ["Oyuncak", 38208]]}], "odeme": [["HALK BANKASI", 5735885], ["TÜRK LİRASI", 2190518], ["İŞ BANKASI", 976956], ["ANADOLUBANK", 885362], ["AKBANK", 518819], ["T.VAKIFLAR BANK", 246146], ["İADE ÇEKİ", 87138], ["HEDİYE ÇEKİ", 27111], ["DENİZBANK", 20968], ["BANKA HAVALE", 12822], ["QNB BANK", 580]], "etic": [["Android", 6981169, 6142], ["Mobil Site", 6735498, 7434], ["iOS", 4195259, 3643], ["Web Sitesi", 2932408, 2437], ["Diğer", 383, 1]], "kat": [["Kitap", 1981706], ["Çocuk Kitabı", 1381583], ["Hazırlık Kitapları", 1107464], ["Kırtasiye", 663458], ["Akademi", 490952], ["Oyuncak", 145542], ["Sınav Kıyafet", 63426], ["Dergi", 38521]], "nakit_pct": 20.5, "iade_pct": 2.1}, "ay": {"fiz": 10135341, "fis": 16967, "iade": 213137, "etc": 20844716, "esip": 19657, "toplam": 30980057, "donus": 51.1, "gir": 11535, "stores": [{"mid": 4477, "ad": "Özlüce", "net": 4637851.2, "fis": 6762, "atv": 686, "ger": 101.6, "iade": 86280, "kat": [["Kitap", 872540], ["Çocuk Kitabı", 600123], ["Hazırlık Kitapları", 446304], ["Kırtasiye", 319943], ["Akademi", 174003], ["Oyuncak", 60962], ["Dergi", 14957]]}, {"mid": 1, "ad": "FSM", "net": 3024864.82, "fis": 5896, "atv": 513, "ger": 98.7, "iade": 58269, "kat": [["Kitap", 607226], ["Hazırlık Kitapları", 478580], ["Çocuk Kitabı", 321894], ["Akademi", 210049], ["Kırtasiye", 189899], ["Oyuncak", 46372], ["Dergi", 18460]]}, {"mid": 4478, "ad": "İst.Yolu", "net": 2472624.98, "fis": 4309, "atv": 574, "ger": 94.1, "iade": 68587, "kat": [["Kitap", 501940], ["Çocuk Kitabı", 459566], ["Hazırlık Kitapları", 182579], ["Kırtasiye", 153616], ["Akademi", 106900], ["Sınav Kıyafet", 63083], ["Oyuncak", 38208]]}], "odeme": [["HALK BANKASI", 5735885], ["TÜRK LİRASI", 2190518], ["İŞ BANKASI", 976956], ["ANADOLUBANK", 885362], ["AKBANK", 518819], ["T.VAKIFLAR BANK", 246146], ["İADE ÇEKİ", 87138], ["HEDİYE ÇEKİ", 27111], ["DENİZBANK", 20968], ["BANKA HAVALE", 12822], ["QNB BANK", 580]], "etic": [["Android", 6981169, 6142], ["Mobil Site", 6735498, 7434], ["iOS", 4195259, 3643], ["Web Sitesi", 2932408, 2437], ["Diğer", 383, 1]], "kat": [["Kitap", 1981706], ["Çocuk Kitabı", 1381583], ["Hazırlık Kitapları", 1107464], ["Kırtasiye", 663458], ["Akademi", 490952], ["Oyuncak", 145542], ["Sınav Kıyafet", 63426], ["Dergi", 38521]], "nakit_pct": 20.5, "iade_pct": 2.1}};
 const fnum=n=>Math.round(n).toLocaleString('tr-TR');
 const tl=n=>fnum(n)+' ₺';
 let chKat,chEtic,chTrend;
 function render(p){
+  window.CUR=p;
   const x=DATA[p];
   document.getElementById('tar').textContent='07.06.2026 Pzr · '+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[p]);
   document.getElementById('b_toplam').textContent=tl(x.toplam);
@@ -77,9 +89,9 @@ function render(p){
   document.getElementById('b_nakit').textContent='%'+x.nakit_pct;
   // mağaza kartları
   let h='';
-  for(const s of x.stores){
+  for(let i=0;i<x.stores.length;i++){const s=x.stores[i];
     let g=s.ger!=null?('<div class=cm>MTD hedef <b style="color:'+(s.ger>=100?'#16a34a':(s.ger<95?'#dc2626':'#64748b'))+'">%'+s.ger+'</b></div>'):'';
-    h+='<div class=card><div class=ct>'+s.ad+'</div><div class=cv>'+tl(s.net)+'</div><div class=cm>'+fnum(s.fis)+' fiş · sepet '+fnum(s.atv)+' ₺</div>'+g+'</div>';
+    h+='<div class="card clk" onclick="detayStore('+i+')"><div class=ct>'+s.ad+' &#9656;</div><div class=cv>'+tl(s.net)+'</div><div class=cm>'+fnum(s.fis)+' fiş · sepet '+fnum(s.atv)+' ₺</div>'+g+'</div>';
   }
   document.getElementById('stores').innerHTML=h;
   // grafikler
@@ -90,5 +102,14 @@ function render(p){
   chEtic=new Chart(document.getElementById('ch_etic'),{type:'doughnut',data:{labels:x.etic.map(e=>e[0]),datasets:[{data:x.etic.map(e=>e[1]),backgroundColor:[kpi,'#f59e0b','#0ea5e9','#64748b']}]},options:{plugins:{legend:{position:'right'}}}});
 }
 chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:["05-25", "05-26", "05-28", "05-29", "05-30", "05-31", "06-01", "06-02", "06-03", "06-04", "06-05", "06-06", "06-07"],datasets:[{data:[1949244, 1611732, 1529840, 2199951, 1997993, 1943260, 1194022, 1182002, 1157532, 1171289, 1250069, 2246990, 1933437],borderColor:'#E30622',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
+function openModal(html){document.getElementById('modal').innerHTML='<span class=x onclick="document.getElementById(\'ovl\').classList.remove(\'on\')">&times;</span>'+html;document.getElementById('ovl').classList.add('on');}
+function detayStore(i){const s=DATA[window.CUR].stores[i];
+  let rows=s.kat.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td></tr>').join('');
+  openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay</div>'+
+   '<div class=kpis><div><span>Net Ciro</span><b>'+tl(s.net)+'</b></div><div><span>Fiş</span><b>'+fnum(s.fis)+'</b></div><div><span>Sepet Ort</span><b>'+fnum(s.atv)+' ₺</b></div><div><span>İade</span><b>'+tl(s.iade)+'</b></div>'+(s.ger!=null?'<div><span>MTD Hedef</span><b>%'+s.ger+'</b></div>':'')+'</div>'+
+   '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı</h3><table>'+rows+'</table>');}
+function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
+  let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
+  openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
 render('gunluk');
 </script></body></html>

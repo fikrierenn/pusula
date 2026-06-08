@@ -65,9 +65,23 @@ def period_data(cur, start, end, traf, hedef=None):
       JOIN DerinSISBkm.dbo.urnKtgr2 ktg ON ktg.ktgrID=u.urnKtgr2ID
       WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=%s AND s.Date<%s AND ktg.ktgrAd<>N'Sınav Okulları'
       GROUP BY CAST(ktg.ktgrAd AS nvarchar(50)) ORDER BY Ciro DESC""", (start, end))
-    ode = Q(cur, """SELECT pt.Name K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
+    ode = Q(cur, """SELECT CAST(pt.Name AS nvarchar(40)) K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
       JOIN EncoreMerkez.dbo.PaymentTypes pt ON pt.Id=sp.PaymentTypesId JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
-      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND sp.IsChangeAmount=0 AND s.Date>=%s AND s.Date<%s GROUP BY pt.Name""", (start, end))
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND sp.IsChangeAmount=0 AND s.Date>=%s AND s.Date<%s GROUP BY CAST(pt.Name AS nvarchar(40))""", (start, end))
+    # mağaza × kategori (drill-down)
+    skat = Q(cur, """SELECT MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50)) K, CAST(SUM(sp.TotalPrice) AS decimal(18,0)) Ciro
+      FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
+      JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+      JOIN DerinSISBkm.dbo.urn u ON u.stkKod COLLATE Turkish_CI_AS=sp.BarcodeNo COLLATE Turkish_CI_AS
+      JOIN DerinSISBkm.dbo.urnKtgr2 ktg ON ktg.ktgrID=u.urnKtgr2ID
+      WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=%s AND s.Date<%s AND ktg.ktgrAd<>N'Sınav Okulları'
+      GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50))""", (start, end))
+    skat_map = {}
+    for r in skat:
+        skat_map.setdefault(r["mekanID"], []).append([r["K"], int(r["Ciro"])])
+    for mid in skat_map:
+        skat_map[mid] = sorted(skat_map[mid], key=lambda x: -x[1])[:7]
     smap = {s["mekanID"]: s for s in store}
     fiz = sum(float(s["Net"] or 0) for s in store); fis = sum(int(s["Fis"]) for s in store)
     iade = sum(float(s["Iade"] or 0) for s in store)
@@ -82,15 +96,17 @@ def period_data(cur, start, end, traf, hedef=None):
     for mid in (4477, 1, 4478):
         s = smap.get(mid)
         net = float(s["Net"] or 0) if s else 0; f = int(s["Fis"]) if s else 0
+        sia = float(s["Iade"] or 0) if s else 0
         ger = None
         if hedef and hedef.get(mid):
             ger = round(100*net/hedef[mid], 1)
-        stc.append(dict(ad=MEKAN[mid], net=net, fis=f, atv=round(net/f) if f else 0, ger=ger))
-    odemap = sorted(([o["K"], float(o["Tutar"] or 0)] for o in ode), key=lambda x: -x[1])
+        stc.append(dict(mid=mid, ad=MEKAN[mid], net=net, fis=f, atv=round(net/f) if f else 0, ger=ger,
+                        iade=round(sia), kat=skat_map.get(mid, [])))
+    odemap = sorted(([o["K"], round(float(o["Tutar"] or 0))] for o in ode), key=lambda x: -x[1])
     nakit = sum(v for k, v in odemap if k == "TÜRK LİRASI")
     odetop = sum(v for k, v in odemap)
     return dict(fiz=round(fiz), fis=fis, iade=round(iade), etc=round(etc), esip=esip, toplam=round(fiz+etc),
-                donus=donus, gir=gir, stores=stc,
+                donus=donus, gir=gir, stores=stc, odeme=odemap,
                 etic=sorted([[e["K"].replace("Mobil Uygulama ", "").replace("(", "").replace(")", ""), round(float(e["Ciro"] or 0)), int(e["Sip"])] for e in etic], key=lambda x: -x[1]),
                 kat=[[k["K"], int(k["Ciro"])] for k in kat],
                 nakit_pct=round(100*nakit/odetop, 1) if odetop else 0,
@@ -218,7 +234,18 @@ select{margin-left:auto;padding:8px 12px;border-radius:9px;border:2px solid __KI
 .panel h3{font-size:13px;margin-bottom:10px;color:#334155}
 table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;border-bottom:1px solid #f1f5f9}
 .foot{color:#94a3b8;font-size:11px;text-align:center;margin-top:16px}
+.clk{cursor:pointer;transition:transform .1s,box-shadow .1s}
+.clk:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(227,6,34,.22)}
+.big .clk:hover{opacity:.85}
+.ovl{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;align-items:center;justify-content:center;padding:20px}
+.ovl.on{display:flex}
+.modal{background:#fff;border-radius:16px;padding:22px 24px;max-width:560px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal h2{font-size:18px;color:__KIRMIZI__;margin-bottom:4px}
+.modal .x{float:right;cursor:pointer;font-size:22px;color:#94a3b8;line-height:1}
+.modal .kpis{display:flex;gap:18px;margin:12px 0;flex-wrap:wrap}
+.modal .kpis div span{display:block;font-size:11px;color:#64748b} .modal .kpis div b{font-size:18px}
 </style></head><body>
+<div class=ovl id=ovl onclick="if(event.target===this)this.classList.remove('on')"><div class=modal id=modal></div></div>
 <div class=hd><span class=logo>bkmkitap</span><h1>Genel Müdür Panosu</h1><span class=tar id=tar></span>
   <select id=dsel onchange="render(this.value)">
     <option value=gunluk>Günlük (dün)</option>
@@ -230,7 +257,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
   <div><div class=lbl>Toplam Ciro (fiziksel + online)</div><div class=num id=b_toplam></div><div class=sub id=b_alt></div></div>
   <div><div class=lbl>İşlem</div><div class=num id=b_islem></div><div class=sub id=b_islemalt></div></div>
   <div><div class=lbl>FSM Dönüşüm (kapı sayıcı)</div><div class=num id=b_donus></div><div class=sub id=b_donusalt></div></div>
-  <div><div class=lbl>İade Oranı</div><div class=num id=b_iade></div><div class=sub>nakit ödeme <span id=b_nakit></span></div></div>
+  <div class=clk onclick="detayOdeme()"><div class=lbl>İade / Ödeme &#9656;</div><div class=num id=b_iade></div><div class=sub>nakit ödeme <span id=b_nakit></span></div></div>
 </div>
 
 <div class=grid id=stores></div>
@@ -260,6 +287,7 @@ const fnum=n=>Math.round(n).toLocaleString('tr-TR');
 const tl=n=>fnum(n)+' ₺';
 let chKat,chEtic,chTrend;
 function render(p){
+  window.CUR=p;
   const x=DATA[p];
   document.getElementById('tar').textContent='__BAS__ · '+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[p]);
   document.getElementById('b_toplam').textContent=tl(x.toplam);
@@ -272,9 +300,9 @@ function render(p){
   document.getElementById('b_nakit').textContent='%'+x.nakit_pct;
   // mağaza kartları
   let h='';
-  for(const s of x.stores){
+  for(let i=0;i<x.stores.length;i++){const s=x.stores[i];
     let g=s.ger!=null?('<div class=cm>MTD hedef <b style="color:'+(s.ger>=100?'#16a34a':(s.ger<95?'#dc2626':'#64748b'))+'">%'+s.ger+'</b></div>'):'';
-    h+='<div class=card><div class=ct>'+s.ad+'</div><div class=cv>'+tl(s.net)+'</div><div class=cm>'+fnum(s.fis)+' fiş · sepet '+fnum(s.atv)+' ₺</div>'+g+'</div>';
+    h+='<div class="card clk" onclick="detayStore('+i+')"><div class=ct>'+s.ad+' &#9656;</div><div class=cv>'+tl(s.net)+'</div><div class=cm>'+fnum(s.fis)+' fiş · sepet '+fnum(s.atv)+' ₺</div>'+g+'</div>';
   }
   document.getElementById('stores').innerHTML=h;
   // grafikler
@@ -285,6 +313,15 @@ function render(p){
   chEtic=new Chart(document.getElementById('ch_etic'),{type:'doughnut',data:{labels:x.etic.map(e=>e[0]),datasets:[{data:x.etic.map(e=>e[1]),backgroundColor:[kpi,'#f59e0b','#0ea5e9','#64748b']}]},options:{plugins:{legend:{position:'right'}}}});
 }
 chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:__TRENDLBL__,datasets:[{data:__TRENDVAL__,borderColor:'__KIRMIZI__',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
+function openModal(html){document.getElementById('modal').innerHTML='<span class=x onclick="document.getElementById(\'ovl\').classList.remove(\'on\')">&times;</span>'+html;document.getElementById('ovl').classList.add('on');}
+function detayStore(i){const s=DATA[window.CUR].stores[i];
+  let rows=s.kat.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td></tr>').join('');
+  openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay</div>'+
+   '<div class=kpis><div><span>Net Ciro</span><b>'+tl(s.net)+'</b></div><div><span>Fiş</span><b>'+fnum(s.fis)+'</b></div><div><span>Sepet Ort</span><b>'+fnum(s.atv)+' ₺</b></div><div><span>İade</span><b>'+tl(s.iade)+'</b></div>'+(s.ger!=null?'<div><span>MTD Hedef</span><b>%'+s.ger+'</b></div>':'')+'</div>'+
+   '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı</h3><table>'+rows+'</table>');}
+function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
+  let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
+  openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
 render('gunluk');
 </script></body></html>"""
 
