@@ -582,10 +582,14 @@ function openModal(html,replace){if(LOAD){HIST[HIST.length-1]=html;LOAD=false;}e
 function panelBack(){HIST.pop();if(!HIST.length){closePanel();return;}renderPanel();}
 function closePanel(){HIST=[];LOAD=false;document.getElementById('ovl').classList.remove('on');}
 function detayStore(i){const s=DATA[window.CUR].stores[i];
-  let rows=s.kat.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td></tr>').join('');
-  openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay</div>'+
-   '<div class=kpis><div><span>Net Ciro</span><b>'+tl(s.net)+'</b></div><div><span>Fiş</span><b>'+fnum(s.fis)+'</b></div><div><span>Sepet Ort</span><b>'+fnum(s.atv)+' ₺</b></div><div><span>İade</span><b>'+tl(s.iade)+'</b></div>'+(s.ger!=null?'<div><span>MTD Hedef</span><b>%'+s.ger+'</b></div>':'')+'</div>'+
-   '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı</h3><table>'+rows+'</table>');}
+  let katTot=s.kat.reduce((a,k)=>a+k[1],0);
+  let tumNet=DATA[window.CUR].stores.reduce((a,x)=>a+x.net,0);
+  let pay=tumNet?100*s.net/tumNet:0;
+  let rows=s.kat.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(katTot?(100*k[1]/katTot).toFixed(1):0)+'</td></tr>').join('');
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM</td><td style="text-align:right">'+tl(katTot)+'</td><td style="text-align:right">%100</td></tr>';
+  openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay · <b style="color:'+KP+'">tüm mağazaların %'+pay.toFixed(1)+'’i</b></div>'+
+   '<div class=kpis><div><span>Net Ciro</span><b>'+tl(s.net)+'</b></div><div><span>Toplam İçindeki Pay</span><b>%'+pay.toFixed(1)+'</b></div><div><span>Fiş</span><b>'+fnum(s.fis)+'</b></div><div><span>Sepet Ort</span><b>'+fnum(s.atv)+' ₺</b></div><div><span>İade</span><b>'+tl(s.iade)+'</b></div>'+(s.ger!=null?'<div><span>MTD Hedef</span><b>%'+s.ger+'</b></div>':'')+'</div>'+
+   '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı (pay = kategori toplamı içinde)</h3><table><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');}
 function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
   let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
   openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
