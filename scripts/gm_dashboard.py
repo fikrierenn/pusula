@@ -620,10 +620,13 @@ function detayStore(i){const s=DATA[window.CUR].stores[i];
   window._stCh=new Chart(document.getElementById('stCh'),{type:'bar',data:{labels:kl.map(k=>k[0]),datasets:[{data:kl.map(k=>k[1]),backgroundColor:kl.map(k=>k[0].indexOf('Diğer')==0?'#cbd5e1':KP),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>tl(c.raw)+' (%'+(base?(100*c.raw/base).toFixed(1):0)+')'}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
 async function detayStok(kod,adEnc){loading('Stok Lokasyon');let ad=decodeURIComponent(adEnc);let d=await api('stok?kod='+encodeURIComponent(kod));
   if(!d.length){openModal('<h2>Stok — '+ad+'</h2><div style="padding:16px;color:#64748b">Lokasyon stok kaydı yok.</div>');return;}
+  let MG=['FSM','Özlüce','İst.Yolu'];
   let tot=d.reduce((a,b)=>a+b.adet,0);
-  let rows=d.map(x=>'<tr><td>'+x.yer+'</td><td style="text-align:right;color:'+(x.adet<0?'#dc2626':'#0f172a')+'">'+fnum(x.adet)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.adet/tot).toFixed(0):0)+'</td></tr>').join('');
-  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>TOPLAM</td><td style="text-align:right">'+fnum(tot)+'</td><td style="text-align:right">%100</td></tr>';
-  openModal('<h2>Stok — '+ad+'</h2><div style="color:#64748b;font-size:12px">stok kodu '+kod+' · lokasyon bazlı net bakiye (adet) · negatif = düzeltme/iade fazlası</div><table style="margin-top:10px"><tr><td><b>Lokasyon</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');}
+  let mgTot=d.filter(x=>MG.indexOf(x.yer)>=0).reduce((a,b)=>a+b.adet,0);
+  let rows=d.map(x=>{let isMg=MG.indexOf(x.yer)>=0;
+    return '<tr><td>'+x.yer+(isMg?'':' <span style="color:#94a3b8;font-size:11px">(depo)</span>')+'</td><td style="text-align:right;color:'+(x.adet<0?'#dc2626':'#0f172a')+'">'+fnum(x.adet)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.adet/tot).toFixed(0):0)+'</td><td style="text-align:right;font-weight:600">'+(isMg&&mgTot>0?'%'+(100*x.adet/mgTot).toFixed(0):'—')+'</td></tr>';}).join('');
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>TOPLAM (Mağaza '+fnum(mgTot)+')</td><td style="text-align:right">'+fnum(tot)+'</td><td style="text-align:right">%100</td><td style="text-align:right">%100</td></tr>';
+  openModal('<h2>Stok — '+ad+'</h2><div style="color:#64748b;font-size:12px">stok kodu '+kod+' · net bakiye adet · <b>Mağaza Payı</b> = 3 mağaza arası dağılım (depo hariç) · negatif = düzeltme</div><table style="margin-top:10px"><tr><td><b>Lokasyon</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Genel Pay</b></td><td style="text-align:right"><b>Mağaza Payı</b></td></tr>'+rows+foot+'</table>');}
 function detayToplam(){let st=DATA[window.CUR].stores;
   let cats={};st.forEach(s=>s.kat.forEach(k=>{cats[k[0]]=(cats[k[0]]||0)+k[1];}));
   let smap=st.map(s=>{let m={};s.kat.forEach(k=>m[k[0]]=k[1]);let matched=s.kat.reduce((a,k)=>a+k[1],0);return {ad:s.ad,net:s.net,m:m,diger:Math.round(s.net-matched)};});
