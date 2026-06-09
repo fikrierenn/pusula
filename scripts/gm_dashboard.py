@@ -337,6 +337,20 @@ def serve(port=8000):
     html = (OUT / "index.html").read_text(encoding="utf-8")  # önceden üretilmiş — anında sun
     today = date.today().isoformat()
     g2 = (date.today() + timedelta(days=1)).isoformat()
+    traf = {}
+    tp = R / "sayiyo" / "fsm_gunluk_trafik.csv"
+    if tp.exists():
+        for r in csv.DictReader(open(tp, encoding="utf-8")):
+            traf[r["Tarih"]] = int(r["Giris"])
+
+    def period_json(start, end_excl):
+        c = cfg()
+        conn = pymssql.connect(server=c["server"], user=c["user"], password=c["password"], database=c.get("database", "master"), charset="UTF-8", login_timeout=15, timeout=180)
+        cur = conn.cursor(as_dict=True)
+        try:
+            return period_data(cur, start, end_excl, traf)
+        finally:
+            cur.close(); conn.close()
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -374,6 +388,10 @@ def serve(port=8000):
                     kanal = qs.get("kanal", ["yk"])[0]; fis = qs.get("fis", ["0"])[0]
                     rows = api_query(FIS_YK if kanal == "yk" else FIS_ET, (int(fis),))
                     return self._send(json.dumps([dict(ad=str(r["ad"] or ""), adet=float(r["adet"] or 0), birim=float(r["birim"] or 0), brut=float(r["brut"] or 0), indirim=float(r["indirim"] or 0), net=float(r["net"] or 0)) for r in rows], ensure_ascii=False))
+                if u.path == "/api/period":
+                    st = qs.get("start", [""])[0]; en = qs.get("end", [""])[0]
+                    en2 = (date.fromisoformat(en) + timedelta(days=1)).isoformat()
+                    return self._send(json.dumps(period_json(st, en2), ensure_ascii=False))
                 if u.path == "/api/stok":
                     kod = qs.get("kod", [""])[0]
                     rows = api_query(STOK_SQL, (kod,))
@@ -477,7 +495,14 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
     <option value=gunluk>Günlük (dün)</option>
     <option value=haftalik>Haftalık (son 7 gün)</option>
     <option value=ay>Aylık (ay başı→bugün)</option>
-  </select></div>
+    <option value=ozel hidden>Özel aralık</option>
+  </select>
+  <span style="display:flex;gap:5px;align-items:center;margin-left:8px;font-size:13px">
+    <input type=date id=d1 style="padding:5px;border:1.5px solid #cbd5e1;border-radius:7px">
+    <span style="color:#94a3b8">–</span>
+    <input type=date id=d2 style="padding:5px;border:1.5px solid #cbd5e1;border-radius:7px">
+    <button onclick="getOzel()" style="padding:6px 13px;border:none;border-radius:7px;background:__KIRMIZI__;color:#fff;font-weight:700;cursor:pointer">Getir</button>
+  </span></div>
 
 <div class=big>
   <div><div class=lbl>Toplam Ciro (fiziksel + online)</div><div class=num id=b_toplam></div><div class=sub id=b_alt></div></div>
@@ -567,10 +592,20 @@ async function detayFis(kanal,ref,tarih){loading('Fiş İçeriği');let d=await 
   openModal('<h2>'+(kanal=='yk'?'Fiş':'Sipariş')+' #'+ref+'</h2><div style="color:#64748b;font-size:12px">'+tarih+' · '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+' · birim fiyat × adet = tutar, indirim sonrası net</div><table style="margin-top:10px"><tr><td><b>Ürün</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Birim ₺</b></td><td style="text-align:right"><b>Tutar ₺</b></td><td style="text-align:right"><b>İndirim</b></td><td style="text-align:right"><b>Net ₺</b></td></tr>'+rows+foot+'</table>');}
 const tl=n=>fnum(n)+' ₺';
 let chKat,chEtic,chTrend;
+async function getOzel(){let s=document.getElementById('d1').value,e=document.getElementById('d2').value;
+  if(!s||!e){alert('Başlangıç ve bitiş tarihi seç');return;}
+  if(s>e){let t=s;s=e;e=t;document.getElementById('d1').value=s;document.getElementById('d2').value=e;}
+  let tEl=document.getElementById('tar');tEl.textContent='hesaplanıyor…';
+  try{let d=await api('period?start='+s+'&end='+e);
+    if(d.err){tEl.textContent='hata';alert('Hata: '+d.err);return;}
+    DATA.ozel=d;window.OZELLBL=s.split('-').reverse().join('.')+'–'+e.split('-').reverse().join('.');
+    let o=document.querySelector('#dsel option[value=ozel]');o.hidden=false;document.getElementById('dsel').value='ozel';
+    render('ozel');tEl.textContent='📅 '+window.OZELLBL+' (özel)';
+  }catch(x){tEl.textContent='hata';alert('İstek başarısız (sunucu açık mı?)');}}
 function render(p){
   window.CUR=p;
   const x=DATA[p];
-  document.getElementById('tar').textContent='__BAS__ · '+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[p]);
+  document.getElementById('tar').textContent='__BAS__ · '+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)',ozel:(window.OZELLBL||'özel aralık')}[p]);
   document.getElementById('b_toplam').textContent=tl(x.toplam);
   document.getElementById('b_alt').innerHTML='Fiziksel '+tl(x.fiz)+' · E-ticaret '+tl(x.etc)+' (%'+(x.toplam?Math.round(100*x.etc/x.toplam):0)+')';
   document.getElementById('b_islem').textContent=fnum(x.fis+x.esip);
@@ -611,7 +646,7 @@ function detayStore(i){const s=DATA[window.CUR].stores[i];
   let pay=tumNet?100*s.net/tumNet:0;let base=s.net||matched;
   let rows=kl.map(k=>{let d=k[0].indexOf('Diğer')==0;return '<tr'+(d?' style="color:#94a3b8"':'')+'><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(base?(100*k[1]/base).toFixed(1):0)+'</td></tr>';}).join('');
   let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM (= Net Ciro)</td><td style="text-align:right">'+tl(s.net)+'</td><td style="text-align:right">%100</td></tr>';
-  openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay · <b style="color:'+KP+'">tüm mağazaların %'+pay.toFixed(1)+'’i</b></div>'+
+  openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)',ozel:(window.OZELLBL||'özel aralık')}[window.CUR])+' detay · <b style="color:'+KP+'">tüm mağazaların %'+pay.toFixed(1)+'’i</b></div>'+
    '<div class=kpis><div><span>Net Ciro</span><b>'+tl(s.net)+'</b></div><div><span>Toplam İçindeki Pay</span><b>%'+pay.toFixed(1)+'</b></div><div><span>Fiş</span><b>'+fnum(s.fis)+'</b></div><div><span>Sepet Ort</span><b>'+fnum(s.atv)+' ₺</b></div><div><span>İade</span><b>'+tl(s.iade)+'</b></div>'+(s.ger!=null?'<div><span>MTD Hedef</span><b>%'+s.ger+'</b></div>':'')+'</div>'+
    '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı (kategori toplamı = net ciro · pay net içinde)</h3>'+
    '<div style="height:'+Math.max(160,kl.length*34)+'px;margin:6px 0 14px"><canvas id=stCh></canvas></div>'+
@@ -636,14 +671,14 @@ function detayToplam(){let st=DATA[window.CUR].stores;
   let digerRow='<tr style="color:#94a3b8"><td>Diğer / eşleşmeyen</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.diger)+' <span style="font-size:10px">%'+(s.net?(100*s.diger/s.net).toFixed(0):0)+'</span></td>').join('')+'<td style="text-align:right">'+tl(Math.round(digerTot))+'</td><td style="text-align:right">%'+(tNet?(100*digerTot/tNet).toFixed(1):0)+'</td></tr>';
   let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM (Net)</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.net)+' <span style="font-size:10px;color:#fff;background:'+KP+';padding:1px 4px;border-radius:3px">%100</span></td>').join('')+'<td style="text-align:right">'+tl(tNet)+'</td><td style="text-align:right">%100</td></tr>';
   let cols=['#e30622','#2563eb','#16a34a'];
-  openModal('<h2>Kategori × Mağaza</h2><div style="color:#64748b;font-size:12px">'+({gunluk:"günlük",haftalik:"haftalık",ay:"aylık (MTD)"}[window.CUR])+' · tüm mağazalar yan yana · mağaza hücresindeki küçük % = <b>o mağazanın kendi içindeki kategori payı</b> · sağdaki Pay = genel toplam içinde</div>'+
+  openModal('<h2>Kategori × Mağaza</h2><div style="color:#64748b;font-size:12px">'+({gunluk:"günlük",haftalik:"haftalık",ay:"aylık (MTD)",ozel:(window.OZELLBL||"özel aralık")}[window.CUR])+' · tüm mağazalar yan yana · mağaza hücresindeki küçük % = <b>o mağazanın kendi içindeki kategori payı</b> · sağdaki Pay = genel toplam içinde</div>'+
    '<div style="height:'+Math.max(200,catList.length*30)+'px;margin:8px 0 14px"><canvas id=tCh></canvas></div>'+
    '<table style="margin-top:6px">'+hdr+rows+digerRow+foot+'</table>');
   if(window._tCh)window._tCh.destroy();
   window._tCh=new Chart(document.getElementById('tCh'),{type:'bar',data:{labels:catList,datasets:smap.map((s,i)=>({label:s.ad,data:catList.map(c=>s.m[c]||0),backgroundColor:cols[i%3]}))},options:{indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+tl(c.raw)}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
 function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
   let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
-  openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
+  openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)',ozel:(window.OZELLBL||'özel aralık')}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
 let SEL=[true,true,true,true,true];
 const STMAP={}; REF.everim.forEach(e=>STMAP[e.k]=e.st);
 function sumSel(arr){let s=0;for(let i=0;i<5;i++)if(SEL[i])s+=arr[i];return s;}
