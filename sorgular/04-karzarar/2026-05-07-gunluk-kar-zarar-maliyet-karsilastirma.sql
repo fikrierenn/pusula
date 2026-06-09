@@ -88,10 +88,10 @@ SatisHam AS (
         sp.DiscountTotalDirect,
         sp.VatPercent,
         sp.VatTotal,
-        COALESCE(u_b.stkID, u_c.stkID)       AS stkID,
-        COALESCE(u_b.stkKod, u_c.stkKod)     AS stkKod,
-        COALESCE(u_b.stkAd, u_c.stkAd)       AS stkAd,
-        COALESCE(u_b.urnKtgr2ID, u_c.urnKtgr2ID) AS urnKtgr2ID
+        u_b.stkID                            AS stkID,
+        u_b.stkKod                           AS stkKod,
+        u_b.stkAd                            AS stkAd,
+        u_b.urnKtgr2ID                       AS urnKtgr2ID
     FROM dbo.SalesProducts sp WITH (NOLOCK)
     INNER JOIN dbo.Sales s WITH (NOLOCK)
         ON s.Id = sp.SalesId
@@ -100,10 +100,6 @@ SatisHam AS (
     LEFT JOIN DerinSISBkm.dbo.urn u_b WITH (NOLOCK)
         ON u_b.stkID = CONVERT(int, p.Code) AND ISNUMERIC(p.Code) = 1   -- 09.06: Products.Code=stkID köprüsü (stkKod≠barkod)
        AND u_b.urnKtgr2ID IN (SELECT id FROM @KategoriID)
-    LEFT JOIN DerinSISBkm.dbo.urn u_c WITH (NOLOCK)
-        ON u_c.stkKod COLLATE Turkish_CI_AS = p.Code COLLATE Turkish_CI_AS
-       AND u_c.urnKtgr2ID IN (SELECT id FROM @KategoriID)
-       AND u_b.stkID IS NULL
     WHERE sp.IsValid = 1
       AND s.[Date] >= @BasTarih
       AND s.[Date] <  @BitTarih
@@ -212,7 +208,7 @@ KitapUrun AS (
 ),
 SatisHam AS (
     SELECT s.DocumentsTypeId, sp.Amount, sp.TotalPrice, sp.DiscountTotalDirect,
-           COALESCE(u_b.stkID, u_c.stkID) AS stkID,
+           u_b.stkID AS stkID,
            CASE WHEN s.DocumentsTypeId = 3 THEN -1 ELSE 1 END AS IadeSign
     FROM dbo.SalesProducts sp WITH (NOLOCK)
     INNER JOIN dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
@@ -220,10 +216,6 @@ SatisHam AS (
     LEFT JOIN DerinSISBkm.dbo.urn u_b WITH (NOLOCK)
         ON u_b.stkID = CONVERT(int, p.Code) AND ISNUMERIC(p.Code) = 1   -- 09.06: Products.Code=stkID köprüsü (stkKod≠barkod)
        AND u_b.urnKtgr2ID IN (2,8,15,24)
-    LEFT JOIN DerinSISBkm.dbo.urn u_c WITH (NOLOCK)
-        ON u_c.stkKod COLLATE Turkish_CI_AS = p.Code COLLATE Turkish_CI_AS
-       AND u_c.urnKtgr2ID IN (2,8,15,24)
-       AND u_b.stkID IS NULL
     WHERE sp.IsValid = 1
       AND s.[Date] >= CONVERT(DATE,'06.05.2026',104)
       AND s.[Date] <  CONVERT(DATE,'08.05.2026',104)
@@ -281,17 +273,14 @@ ORDER BY SUM(u.NetSatis) DESC;
 ;WITH BridgeStats AS (
     SELECT
         COUNT(*) AS toplam_satir,
-        COUNT(CASE WHEN COALESCE(u_b.stkID, u_c.stkID) IS NOT NULL THEN 1 END) AS eslesen,
-        COUNT(CASE WHEN COALESCE(u_b.stkID, u_c.stkID) IS NULL THEN 1 END) AS eslesmeyen,
-        COUNT(CASE WHEN u_b.urnKtgr2ID IN (2,8,15,24) OR u_c.urnKtgr2ID IN (2,8,15,24) THEN 1 END) AS kitap_eslesen
+        COUNT(CASE WHEN u_b.stkID IS NOT NULL THEN 1 END) AS eslesen,
+        COUNT(CASE WHEN u_b.stkID IS NULL THEN 1 END) AS eslesmeyen,
+        COUNT(CASE WHEN u_b.urnKtgr2ID IN (2,8,15,24) THEN 1 END) AS kitap_eslesen
     FROM dbo.SalesProducts sp WITH (NOLOCK)
     INNER JOIN dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
     INNER JOIN dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
     LEFT JOIN DerinSISBkm.dbo.urn u_b WITH (NOLOCK)
         ON u_b.stkID = CONVERT(int, p.Code) AND ISNUMERIC(p.Code) = 1   -- 09.06: Products.Code=stkID köprüsü (stkKod≠barkod)
-    LEFT JOIN DerinSISBkm.dbo.urn u_c WITH (NOLOCK)
-        ON u_c.stkKod COLLATE Turkish_CI_AS = p.Code COLLATE Turkish_CI_AS
-       AND u_b.stkID IS NULL
     WHERE sp.IsValid = 1
       AND s.[Date] >= CONVERT(DATE,'06.05.2026',104)
       AND s.[Date] <  CONVERT(DATE,'08.05.2026',104)
