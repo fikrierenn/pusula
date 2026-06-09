@@ -67,16 +67,24 @@ def period_data(cur, start, end, traf, hedef=None):
     ode = Q(cur, """SELECT CAST(pt.Name AS nvarchar(40)) K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
       JOIN EncoreMerkez.dbo.PaymentTypes pt ON pt.Id=sp.PaymentTypesId JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND sp.IsChangeAmount=0 AND s.Date>=%s AND s.Date<%s GROUP BY CAST(pt.Name AS nvarchar(40))""", (start, end))
-    # mağaza × kategori (drill) — irsHrk (stkID)
-    skat = Q(cur, """SELECT h.ehMekan mekanID, CAST(k.ktgrAd AS nvarchar(50)) K, CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
-      FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-      WHERE h.ehTrhS>=%s AND h.ehTrhS<%s AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) AND k.ktgrAd<>N'Sınav Okulları'
-      GROUP BY h.ehMekan, CAST(k.ktgrAd AS nvarchar(50))""", (start, end))
+    # mağaza × kategori (drill) — EncoreMerkez kaynağı (net ile aynı: İade sign, Products.Code=stkID)
+    # → kategori toplamı net ciroyla tutarlı; eşleşmeyen kalan "Diğer" olarak net'e denkleştirilir (JS)
+    skat = Q(cur, """SELECT MG.mekanID mekanID, CAST(ktg.ktgrAd AS nvarchar(50)) K,
+        CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) Ciro
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+      JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+      JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
+      JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
+      JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=CONVERT(int,pr.Code)
+      JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID=u.urnKtgr2ID
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=%s AND s.Date<%s
+      GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50))""", (start, end))
     skat_map = {}
     for r in skat:
         skat_map.setdefault(r["mekanID"], []).append([r["K"], int(r["Ciro"])])
     for mid in skat_map:
-        skat_map[mid] = sorted(skat_map[mid], key=lambda x: -x[1])[:7]
+        skat_map[mid] = sorted(skat_map[mid], key=lambda x: -x[1])[:12]
     smap = {s["mekanID"]: s for s in store}
     fiz = sum(float(s["Net"] or 0) for s in store); fis = sum(int(s["Fis"]) for s in store)
     iade = sum(float(s["Iade"] or 0) for s in store)
@@ -582,14 +590,21 @@ function openModal(html,replace){if(LOAD){HIST[HIST.length-1]=html;LOAD=false;}e
 function panelBack(){HIST.pop();if(!HIST.length){closePanel();return;}renderPanel();}
 function closePanel(){HIST=[];LOAD=false;document.getElementById('ovl').classList.remove('on');}
 function detayStore(i){const s=DATA[window.CUR].stores[i];
-  let katTot=s.kat.reduce((a,k)=>a+k[1],0);
+  let matched=s.kat.reduce((a,k)=>a+k[1],0);
+  let diger=Math.round(s.net-matched);
+  let kl=s.kat.slice();
+  if(Math.abs(diger)>=Math.max(1,s.net*0.002))kl.push(['Diğer / eşleşmeyen',diger]);
   let tumNet=DATA[window.CUR].stores.reduce((a,x)=>a+x.net,0);
-  let pay=tumNet?100*s.net/tumNet:0;
-  let rows=s.kat.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(katTot?(100*k[1]/katTot).toFixed(1):0)+'</td></tr>').join('');
-  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM</td><td style="text-align:right">'+tl(katTot)+'</td><td style="text-align:right">%100</td></tr>';
+  let pay=tumNet?100*s.net/tumNet:0;let base=s.net||matched;
+  let rows=kl.map(k=>{let d=k[0].indexOf('Diğer')==0;return '<tr'+(d?' style="color:#94a3b8"':'')+'><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(base?(100*k[1]/base).toFixed(1):0)+'</td></tr>';}).join('');
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM (= Net Ciro)</td><td style="text-align:right">'+tl(s.net)+'</td><td style="text-align:right">%100</td></tr>';
   openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay · <b style="color:'+KP+'">tüm mağazaların %'+pay.toFixed(1)+'’i</b></div>'+
    '<div class=kpis><div><span>Net Ciro</span><b>'+tl(s.net)+'</b></div><div><span>Toplam İçindeki Pay</span><b>%'+pay.toFixed(1)+'</b></div><div><span>Fiş</span><b>'+fnum(s.fis)+'</b></div><div><span>Sepet Ort</span><b>'+fnum(s.atv)+' ₺</b></div><div><span>İade</span><b>'+tl(s.iade)+'</b></div>'+(s.ger!=null?'<div><span>MTD Hedef</span><b>%'+s.ger+'</b></div>':'')+'</div>'+
-   '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı (pay = kategori toplamı içinde)</h3><table><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');}
+   '<h3 style="font-size:13px;margin:8px 0">Kategori Kırılımı (kategori toplamı = net ciro · pay net içinde)</h3>'+
+   '<div style="height:'+Math.max(160,kl.length*34)+'px;margin:6px 0 14px"><canvas id=stCh></canvas></div>'+
+   '<table><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');
+  if(window._stCh)window._stCh.destroy();
+  window._stCh=new Chart(document.getElementById('stCh'),{type:'bar',data:{labels:kl.map(k=>k[0]),datasets:[{data:kl.map(k=>k[1]),backgroundColor:kl.map(k=>k[0].indexOf('Diğer')==0?'#cbd5e1':KP),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>tl(c.raw)+' (%'+(base?(100*c.raw/base).toFixed(1):0)+')'}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
 function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
   let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
   openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
