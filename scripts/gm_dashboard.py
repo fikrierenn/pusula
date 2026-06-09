@@ -427,15 +427,20 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
 .clk{cursor:pointer;transition:transform .1s,box-shadow .1s}
 .clk:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(227,6,34,.22)}
 .big .clk:hover{opacity:.85}
-.ovl{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;align-items:center;justify-content:center;padding:20px}
+.ovl{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;justify-content:flex-end}
 .ovl.on{display:flex}
-.modal{background:#fff;border-radius:16px;padding:22px 24px;max-width:560px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal{background:#fff;padding:0 24px 24px;max-width:680px;width:100%;height:100vh;overflow:auto;box-shadow:-12px 0 40px rgba(0,0,0,.25);animation:slin .18s ease}
+@keyframes slin{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
 .modal h2{font-size:18px;color:__KIRMIZI__;margin-bottom:4px}
-.modal .x{float:right;cursor:pointer;font-size:22px;color:#94a3b8;line-height:1}
+.mtop{position:sticky;top:0;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;border-bottom:1px solid #eef2f7;margin-bottom:8px;z-index:2}
+.mtop .bk{cursor:pointer;font-size:14px;font-weight:700;color:__KIRMIZI__;padding:5px 12px;border:1.5px solid __KIRMIZI__;border-radius:8px}
+.mtop .bk:hover{background:__KIRMIZI__;color:#fff} .mtop .bk.off{visibility:hidden}
+.modal .x{cursor:pointer;font-size:24px;color:#94a3b8;line-height:1}
 .modal .kpis{display:flex;gap:18px;margin:12px 0;flex-wrap:wrap}
 .modal .kpis div span{display:block;font-size:11px;color:#64748b} .modal .kpis div b{font-size:18px}
+.bcrumb{font-size:11px;color:#94a3b8;margin-bottom:8px}
 </style></head><body>
-<div class=ovl id=ovl onclick="if(event.target===this)this.classList.remove('on')"><div class=modal id=modal></div></div>
+<div class=ovl id=ovl onclick="if(event.target===this)closePanel()"><div class=modal id=modal></div></div>
 <div class=hd><span class=logo>bkmkitap</span><h1>Genel Müdür Panosu</h1><span class=tar id=tar></span>
   <select id=dsel onchange="render(this.value)">
     <option value=gunluk>Günlük (dün)</option>
@@ -501,7 +506,7 @@ const REF=__REF__;
 const KP='__KIRMIZI__';
 const fnum=n=>Math.round(n).toLocaleString('tr-TR');
 async function api(p){const r=await fetch('/api/'+p);return await r.json();}
-function loading(t){openModal('<h2>'+t+'</h2><div style="padding:20px;color:#64748b">yükleniyor…</div>');}
+function loading(t){if(!panelOn())HIST=[];HIST.push('<h2>'+t+'</h2><div style="padding:20px;color:#64748b">yükleniyor…</div>');LOAD=true;renderPanel();}
 function detayUrun(katEnc){let kat=decodeURIComponent(katEnc);let d=(REF.urunler&&REF.urunler[kat])||[];
   if(!d.length){openModal('<h2>'+kat+' — Ürünler</h2><div style="padding:16px;color:#64748b">Bu kategoride satış kaydı yok.</div>');return;}
   let rows=d.map(x=>{let dev=x[5]||0,st=x[4]||0;let dc=dev<=0?'#94a3b8':(dev<1.5?'#dc2626':(dev>=4?'#16a34a':'#0f172a'));
@@ -550,7 +555,12 @@ function render(p){
   chEtic=new Chart(document.getElementById('ch_etic'),{type:'doughnut',data:{labels:x.etic.map(e=>e[0]),datasets:[{data:x.etic.map(e=>e[1]),backgroundColor:[kpi,'#f59e0b','#0ea5e9','#64748b']}]},options:{plugins:{legend:{position:'right'}}}});
 }
 chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:__TRENDLBL__,datasets:[{data:__TRENDVAL__,borderColor:'__KIRMIZI__',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
-function openModal(html){document.getElementById('modal').innerHTML='<span class=x onclick="document.getElementById(\'ovl\').classList.remove(\'on\')">&times;</span>'+html;document.getElementById('ovl').classList.add('on');}
+let HIST=[],LOAD=false;
+function panelOn(){return document.getElementById('ovl').classList.contains('on');}
+function renderPanel(){var bk=HIST.length>1?'<span class=bk onclick="panelBack()">&#8249; geri</span>':'<span class="bk off">&#8249;</span>';var m=document.getElementById('modal');m.innerHTML='<div class=mtop>'+bk+'<span class=x onclick="closePanel()">&times;</span></div>'+(HIST[HIST.length-1]||'');document.getElementById('ovl').classList.add('on');m.scrollTop=0;}
+function openModal(html){if(LOAD){HIST[HIST.length-1]=html;LOAD=false;}else{if(!panelOn())HIST=[];HIST.push(html);}renderPanel();}
+function panelBack(){HIST.pop();if(!HIST.length){closePanel();return;}renderPanel();}
+function closePanel(){HIST=[];LOAD=false;document.getElementById('ovl').classList.remove('on');}
 function detayStore(i){const s=DATA[window.CUR].stores[i];
   let rows=s.kat.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td></tr>').join('');
   openModal('<h2>'+s.ad+'</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' detay</div>'+
