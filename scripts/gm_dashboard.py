@@ -201,17 +201,17 @@ def main():
           ROW_NUMBER() OVER(PARTITION BY g.kat ORDER BY CASE WHEN g.stok>=20 AND g.s360>0 THEN 1.0*g.s360/g.stok ELSE 99999 END ASC) rn_dead
         FROM (
           SELECT CAST(k.ktgrAd AS nvarchar(50)) kat, u.stkKod kod, CAST(u.stkAd AS nvarchar(70)) ad,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s30,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s90,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s180,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s360,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s30,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s90,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s180,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s360,
             CAST(SUM(h.ehAdetN) AS int) stok,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c30,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c90,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c180,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c360
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c30,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c90,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c180,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c360
           FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-          WHERE h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND k.ktgrAd NOT IN {EXC}
+          WHERE h.ehMekan IN (1,4477,4478,12) AND h.ehAltDepo=0 AND k.ktgrAd NOT IN {EXC}
           GROUP BY CAST(k.ktgrAd AS nvarchar(50)), u.stkKod, CAST(u.stkAd AS nvarchar(70))) g
         WHERE g.s360>0) x
       WHERE rn_sat<=45 OR (rn_dead<=25 AND stok>=20)"""):
@@ -455,28 +455,29 @@ STOK_SQL = """SELECT h.ehMekan mekan, CAST(SUM(h.ehAdetN) AS int) adet
 
 
 def urunler_query_sql(meks):
-    """Kategori ürünleri — seçili şube(ler) için satış pencereleri + stok + ciro (şube filtreli ürün detayı)."""
+    """Kategori ürünleri — seçili şube(ler). Satış/ciro = seçili şubeler; stok = şubeler + Ana Depo(12), Odak hariç."""
     inlist = ",".join(str(int(m)) for m in meks if str(m).strip().lstrip("-").isdigit()) or "1,4477,4478"
-    return ("""SELECT kod, ad, s30, s90, s180, s360, stok, c30, c90, c180, c360 FROM (
+    stoklist = inlist + ",12"  # stok şube + Ana Depo (12); Odak depo dahil değil
+    return f"""SELECT kod, ad, s30, s90, s180, s360, stok, c30, c90, c180, c360 FROM (
         SELECT g.*,
           ROW_NUMBER() OVER(ORDER BY g.s360 DESC) rn_sat,
           ROW_NUMBER() OVER(ORDER BY CASE WHEN g.stok>=20 AND g.s360>0 THEN 1.0*g.s360/g.stok ELSE 99999 END ASC) rn_dead
         FROM (
           SELECT u.stkKod kod, CAST(u.stkAd AS nvarchar(70)) ad,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s30,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s90,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s180,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s360,
-            CAST(SUM(h.ehAdetN) AS int) stok,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c30,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c90,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c180,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c360
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s30,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s90,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s180,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s360,
+            CAST(SUM(CASE WHEN h.ehMekan IN ({stoklist}) THEN h.ehAdetN ELSE 0 END) AS int) stok,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c30,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c90,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c180,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehMekan IN ({inlist}) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) c360
           FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-          WHERE h.ehMekan IN (%s) AND h.ehAltDepo=0 AND k.ktgrAd=%%s
+          WHERE h.ehMekan IN ({stoklist}) AND h.ehAltDepo=0 AND k.ktgrAd=%s
           GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(70))) g
         WHERE g.s360>0) x
-      WHERE rn_sat<=45 OR (rn_dead<=25 AND stok>=20)""" % inlist)
+      WHERE rn_sat<=45 OR (rn_dead<=25 AND stok>=20)"""
 
 
 TEMPLATE = r"""<!doctype html><html lang=tr><head><meta charset=utf-8>
@@ -609,14 +610,14 @@ function renderUrun(rerender){let kat=window._uk;let d=window._ud||(REF.urunler&
   let mekLbl=(window._umek.length>=3||window._umek.length==0)?'tüm mağazalar':window._umek.map(id=>(MEKL.find(m=>m[0]==id)||[,'?'])[1]).join(', ');
   if(!d.length){openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px;margin-bottom:6px">Şube: '+msel+'</div><div style="padding:16px;color:#64748b">Seçili şubede ('+mekLbl+') satış kaydı yok.</div>',rerender);return;}
   let w=window._uw,s=window._us;let widx={30:2,90:3,180:4,360:5}[w];let cidx={30:7,90:8,180:9,360:10}[w];let yf=365.0/w;
-  let g=d.map(x=>{let sat=x[widx],st=x[6];return {kod:x[0],ad:x[1],sat:sat,st:st,ciro:x[cidx],dev:(st>0?sat*yf/st:0)};});
+  let g=d.map(x=>{let sat=x[widx],st=x[6];return {kod:x[0],ad:x[1],sat:sat,st:st,ciro:x[cidx],dev:(st>0?sat*yf/st:0),tuk:(sat>0?st*w/sat:1e9)};});
   if(s=='devir')g.sort((a,b)=>a.dev-b.dev);else if(s=='satis')g.sort((a,b)=>b.sat-a.sat);else if(s=='stok')g.sort((a,b)=>b.st-a.st);else g.sort((a,b)=>b.ciro-a.ciro);
   let nOlu=g.filter(x=>x.dev>0&&x.dev<1.5).length;
   let rows=g.map(x=>{let dc=x.dev<=0?'#94a3b8':(x.dev<1.5?'#dc2626':(x.dev>=4?'#16a34a':'#0f172a'));
-    return '<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right"><span style="cursor:pointer;color:'+KP+';border-bottom:1px dotted" onclick="detayStok(\''+x.kod+'\',\''+encodeURIComponent(x.ad)+'\')">'+fnum(x.st)+' &#9656;</span></td><td style="text-align:right;color:#64748b;font-size:11px">'+fnum(x.sat)+'×'+(yf).toFixed(1)+'÷'+fnum(x.st)+'</td><td style="text-align:right;font-weight:bold;color:'+dc+'">'+(x.dev>0?x.dev.toFixed(2)+'x':'—')+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>';}).join('');
+    return '<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right"><span style="cursor:pointer;color:'+KP+';border-bottom:1px dotted" onclick="detayStok(\''+x.kod+'\',\''+encodeURIComponent(x.ad)+'\')">'+fnum(x.st)+' &#9656;</span></td><td style="text-align:right;font-weight:600;color:'+(x.sat<=0?'#dc2626':(x.tuk>240?'#dc2626':(x.tuk<=90?'#16a34a':'#0f172a')))+'">'+(x.sat<=0?'∞':(x.tuk>=365?(x.tuk/30).toFixed(0)+' ay':Math.round(x.tuk)+' gün'))+'</td><td style="text-align:right;color:'+dc+'">'+(x.dev>0?x.dev.toFixed(2)+'x':'—')+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>';}).join('');
   let psel='<select onchange="window._uw=+this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[30,90,180,360].map(p=>'<option value='+p+(p==w?' selected':'')+'>son '+p+' gün</option>').join('')+'</select>';
   let ssel='<select onchange="window._us=this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[['devir','Ölü stok (devir ↑)'],['satis','Çok satan'],['stok','Yüksek stok'],['ciro','Ciro']].map(o=>'<option value='+o[0]+(o[0]==s?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
-  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px;margin-bottom:6px">Şube: '+msel+'<b style="color:'+KP+'">'+mekLbl+'</b></div><div style="color:#64748b;font-size:12px;margin-bottom:6px">Satış: '+psel+' &nbsp; Sırala: '+ssel+'</div><div style="color:#64748b;font-size:12px">Devir/yıl = satış('+w+'g) × '+yf.toFixed(1)+' ÷ stok · <span style="color:#dc2626">kırmızı &lt;1,5x = ölü stok</span> ('+nOlu+' adet)</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satış '+w+'g</b></td><td style="text-align:right"><b>Stok</b></td><td style="text-align:right"><b>Hesap</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>Ciro '+w+'g</b></td></tr>'+rows+'</table>',rerender);}
+  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px;margin-bottom:6px">Şube: '+msel+'<b style="color:'+KP+'">'+mekLbl+'</b></div><div style="color:#64748b;font-size:12px;margin-bottom:6px">Satış: '+psel+' &nbsp; Sırala: '+ssel+'</div><div style="color:#64748b;font-size:12px"><b>Tükenme</b> = stok ÷ günlük satış (bu hızda stok kaç günde biter) · <b>Devir/yıl</b> = 365÷tükenme · <span style="color:#dc2626">∞/uzun = ölü stok</span> ('+nOlu+' adet &lt;1,5x) · stok = şube + Ana Depo (Odak hariç), satış = şube</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satış '+w+'g</b></td><td style="text-align:right"><b>Stok</b></td><td style="text-align:right"><b>Tükenme</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>Ciro '+w+'g</b></td></tr>'+rows+'</table>',rerender);}
 async function detayMusteri(kanal,segEnc){loading('Müşteri Listesi');let seg=decodeURIComponent(segEnc);let d=await api('musteri?kanal='+kanal+'&seg='+segEnc);
   let rows=d.map(x=>'<tr style="cursor:pointer" onclick="detaySiparis(\''+kanal+'\',\''+x.id+'\',\''+encodeURIComponent(x.ad)+'\')"><td>'+x.ad+' &#9656;</td><td>'+(x.tel||'')+'</td><td style="text-align:right">'+fnum(x.frq)+'</td><td style="text-align:right">'+tl(x.mon)+'</td><td style="text-align:right">'+x.rec+' gün</td></tr>').join('');
   openModal('<h2>'+seg+' — '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+'</h2><div style="color:#64748b;font-size:12px">365 gün · monetary sıralı (top 100) · ▸ tıkla → sipariş/fiş</div><table style="margin-top:10px"><tr><td><b>Müşteri</b></td><td><b>Tel</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Son</b></td></tr>'+rows+'</table>');}
@@ -720,7 +721,7 @@ function detayToplam(){let st=DATA[window.CUR].stores;
 function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
   let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
   openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)',ozel:(window.OZELLBL||'özel aralık')}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
-let SEL=[true,true,true,true,true];
+let SEL=[true,true,true,true,false];  // Odak Depo (index 4) varsayılan KAPALI — hiçbir rakama dahil değil
 const STMAP={}; REF.everim.forEach(e=>STMAP[e.k]=e.st);
 function sumSel(arr){let s=0;for(let i=0;i<5;i++)if(SEL[i])s+=arr[i];return s;}
 function envCats(){return REF.envkat.map(c=>{let v=sumSel(c.v),a=sumSel(c.a);return {k:c.k,v:v,a:a,sat:c.sat,devir:a>0?12*c.sat/a:0,wos:(a>0&&c.sat)?a*52/12/c.sat:null,st:STMAP[c.k]};});}
@@ -732,7 +733,7 @@ function renderEnv(){let cats=envCats();let tot=cats.reduce((x,y)=>x+y.v,0);
   document.getElementById('tbl_devir').innerHTML=dv.slice(0,5).map(c=>'<tr><td>'+c.k+'</td><td style="text-align:right">'+c.devir.toFixed(2)+'x</td></tr>').join('');
   let ol=cats.slice().sort((a,b)=>b.v-a.v);
   document.getElementById('tbl_olu').innerHTML='<tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Devir</b></td></tr>'+ol.slice(0,5).map(c=>'<tr><td>'+c.k+'</td><td style="text-align:right">'+tl(c.v)+'</td><td style="text-align:right;color:'+(c.devir<1.5?'#dc2626':'#16a34a')+'">'+c.devir.toFixed(2)+'x</td></tr>').join('');}
-(function(){let h='<b style="color:#64748b">Lokasyon:</b>';REF.locs.forEach((l,i)=>{h+=' <label style="cursor:pointer"><input type=checkbox checked onchange="SEL['+i+']=this.checked;renderEnv()"> '+l+'</label>';});document.getElementById('locbar').innerHTML=h;})();
+(function(){let h='<b style="color:#64748b">Lokasyon:</b>';REF.locs.forEach((l,i)=>{h+=' <label style="cursor:pointer"><input type=checkbox '+(SEL[i]?'checked':'')+' onchange="SEL['+i+']=this.checked;renderEnv()"> '+l+'</label>';});document.getElementById('locbar').innerHTML=h;})();
 function detayDevir(){let e=envCats().filter(c=>c.a>0).sort((a,b)=>b.devir-a.devir);
   let rows=e.map(x=>'<tr><td>'+x.k+'</td><td style="text-align:right">'+fnum(Math.round(x.sat))+'</td><td style="text-align:right">'+fnum(Math.round(x.a))+'</td><td style="text-align:right;color:#64748b;font-size:11px">12×'+fnum(Math.round(x.sat))+'÷'+fnum(Math.round(x.a))+'</td><td style="text-align:right;font-weight:bold;color:'+(x.devir<1.5?'#dc2626':'#16a34a')+'">'+x.devir.toFixed(2)+'x</td><td style="text-align:right">'+(x.wos?x.wos.toFixed(0)+' hf':'—')+'</td><td style="text-align:right">'+(x.st!=null?'%'+x.st:'—')+'</td><td style="text-align:right">'+tl(x.v)+'</td><td style="text-align:center;color:'+KP+';cursor:pointer" onclick="detayUrun(\''+encodeURIComponent(x.k)+'\')">&#9656;</td></tr>').join('');
   openModal('<h2>Envanter Verim — Kategori</h2><div style="color:#64748b;font-size:12px">Mayıs · '+locLabel()+' · <b>Devir = 12 × Satılan(ay) ÷ Ort Stok adet</b> · ▸ → ürün detayı</div><table style="margin-top:10px"><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Satılan/ay</b></td><td style="text-align:right"><b>Ort Stok adet</b></td><td style="text-align:right"><b>Hesap</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>WoS</b></td><td style="text-align:right"><b>Sell-thr.</b></td><td style="text-align:right"><b>Stok ₺</b></td><td></td></tr>'+rows+'</table>');}
