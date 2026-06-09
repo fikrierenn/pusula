@@ -574,6 +574,8 @@ function render(p){
     let g=s.ger!=null?('<div class=cm>MTD hedef <b style="color:'+(s.ger>=100?'#16a34a':(s.ger<95?'#dc2626':'#64748b'))+'">%'+s.ger+'</b></div>'):'';
     h+='<div class="card clk" onclick="detayStore('+i+')"><div class=ct>'+s.ad+' &#9656;</div><div class=cv>'+tl(s.net)+'</div><div class=cm>'+fnum(s.fis)+' fiş · sepet '+fnum(s.atv)+' ₺</div>'+g+'</div>';
   }
+  let tNet=x.stores.reduce((a,s)=>a+s.net,0),tFis=x.stores.reduce((a,s)=>a+s.fis,0);
+  h+='<div class="card clk" style="border-left:5px solid #0f172a;background:#f8fafc" onclick="detayToplam()"><div class=ct>TOPLAM — 3 Mağaza &#9656;</div><div class=cv>'+tl(tNet)+'</div><div class=cm>'+fnum(tFis)+' fiş · sepet '+fnum(tFis?Math.round(tNet/tFis):0)+' ₺ · kategori × mağaza</div></div>';
   document.getElementById('stores').innerHTML=h;
   // grafikler
   const kpi='__KIRMIZI__';
@@ -605,6 +607,23 @@ function detayStore(i){const s=DATA[window.CUR].stores[i];
    '<table><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');
   if(window._stCh)window._stCh.destroy();
   window._stCh=new Chart(document.getElementById('stCh'),{type:'bar',data:{labels:kl.map(k=>k[0]),datasets:[{data:kl.map(k=>k[1]),backgroundColor:kl.map(k=>k[0].indexOf('Diğer')==0?'#cbd5e1':KP),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>tl(c.raw)+' (%'+(base?(100*c.raw/base).toFixed(1):0)+')'}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
+function detayToplam(){let st=DATA[window.CUR].stores;
+  let cats={};st.forEach(s=>s.kat.forEach(k=>{cats[k[0]]=(cats[k[0]]||0)+k[1];}));
+  let smap=st.map(s=>{let m={};s.kat.forEach(k=>m[k[0]]=k[1]);let matched=s.kat.reduce((a,k)=>a+k[1],0);return {ad:s.ad,net:s.net,m:m,diger:Math.round(s.net-matched)};});
+  let catList=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]);
+  let tNet=st.reduce((a,s)=>a+s.net,0);
+  let hdr='<tr><td><b>Kategori</b></td>'+smap.map(s=>'<td style="text-align:right"><b>'+s.ad+'</b></td>').join('')+'<td style="text-align:right"><b>TOPLAM</b></td><td style="text-align:right"><b>Pay</b></td></tr>';
+  let rows=catList.map(c=>{let cells=smap.map(s=>'<td style="text-align:right">'+(s.m[c]?tl(s.m[c]):'<span style=color:#cbd5e1>—</span>')+'</td>').join('');
+    return '<tr><td>'+c+'</td>'+cells+'<td style="text-align:right;font-weight:600">'+tl(cats[c])+'</td><td style="text-align:right;color:#64748b">%'+(tNet?(100*cats[c]/tNet).toFixed(1):0)+'</td></tr>';}).join('');
+  let digerTot=smap.reduce((a,s)=>a+s.diger,0);
+  let digerRow='<tr style="color:#94a3b8"><td>Diğer / eşleşmeyen</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.diger)+'</td>').join('')+'<td style="text-align:right">'+tl(Math.round(digerTot))+'</td><td style="text-align:right">%'+(tNet?(100*digerTot/tNet).toFixed(1):0)+'</td></tr>';
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM (Net)</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.net)+'</td>').join('')+'<td style="text-align:right">'+tl(tNet)+'</td><td style="text-align:right">%100</td></tr>';
+  let cols=['#e30622','#2563eb','#16a34a'];
+  openModal('<h2>Kategori × Mağaza</h2><div style="color:#64748b;font-size:12px">'+({gunluk:"günlük",haftalik:"haftalık",ay:"aylık (MTD)"}[window.CUR])+' · tüm mağazalar yan yana · net ile denkleştirilmiş</div>'+
+   '<div style="height:'+Math.max(200,catList.length*30)+'px;margin:8px 0 14px"><canvas id=tCh></canvas></div>'+
+   '<table style="margin-top:6px">'+hdr+rows+digerRow+foot+'</table>');
+  if(window._tCh)window._tCh.destroy();
+  window._tCh=new Chart(document.getElementById('tCh'),{type:'bar',data:{labels:catList,datasets:smap.map((s,i)=>({label:s.ad,data:catList.map(c=>s.m[c]||0),backgroundColor:cols[i%3]}))},options:{indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+tl(c.raw)}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
 function detayOdeme(){const o=DATA[window.CUR].odeme;const top=o.reduce((a,b)=>a+b[1],0);
   let rows=o.map(k=>'<tr><td>'+k[0]+'</td><td style="text-align:right">'+tl(k[1])+'</td><td style="text-align:right;color:#64748b">%'+(top?(100*k[1]/top).toFixed(1):0)+'</td></tr>').join('');
   openModal('<h2>Ödeme Dağılımı</h2><div style="color:#64748b;font-size:12px">'+({gunluk:'günlük',haftalik:'haftalık',ay:'aylık (MTD)'}[window.CUR])+' · kasa mutabakat</div><table style="margin-top:10px"><tr><td><b>Tip</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+'</table>');}
