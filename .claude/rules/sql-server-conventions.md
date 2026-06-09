@@ -96,6 +96,18 @@ CROSS APPLY (
 
 `J_ORDERS.CLIENTREF → J_ORDER_CLIENTS.LOGICALREF → CUSTOMERREF`. J_ORDER_CLIENTS standart. CUSTOMERREF=0/NULL = misafir.
 
+## E-ticaret Sipariş Satırı + stkID Köprüsü (09.06 — KESİN)
+
+- **Sipariş satırları:** `J_ORDER_DETAILS.ORDERREF = J_ORDERS.ORDERID` (LOGICALREF DEĞİL! ORDERID = "TS...30323794" kodundaki sayı).
+- **Ürün adı:** `J_ORDER_DETAILS.ITEMREF = J_ITEMS.LOGICALREF` → `J_ITEMS.NAME`.
+- **E-ticaret stkID köprüsü:** `J_ITEMS.DERINSIS_ID = urn.stkID` (DerinSIS ürün bağı; kategori için `bkm.UrunBilgi.StkID`/`KatAna` — JOKER'den `DERINSIS` linked server ile erişilir).
+- **Fiyat:** `SELLINGPRICE` = BİRİM net fiyat (satır tutarı = `QUANTITY*SELLINGPRICE`). `SELLINGPRICEWITHOUTDISCOUNT` = birim brüt; indirim = `QUANTITY*(WITHOUTDISCOUNT-SELLINGPRICE)`. Kargo `J_ORDERS.CARGOPRICE`, kapıda ödeme `SERVICEPRICE`.
+
+## Müşteri İsmi (Yazarkasa) — kart sistemi uyumsuz (09.06)
+
+- İsim CRM'de: `DerinSISBkmCrm.dbo.mst.mAd` (+ `mKartno`, `Tel1/Tel2`). Ek kart `mstEkkart.EkkrtNo`.
+- ⚠️ **EncoreMerkez sadakat kartı (`Sales.CustomerCardNo`, "2025…" 10 hane) CRM kartıyla (`mst.mKartno`, "T…" 8 hane) DOĞRUDAN EŞLEŞMİYOR** — mstEkkart'ta da yok. Yazarkasa müşteri adı için ayrı eşleştirme tablosu/anahtarı gerekiyor (backlog). Dashboard şimdilik kart no gösteriyor.
+
 ## Kanal Değerleri (J_ORDERS.APPLICATION)
 
 `'Mobil Uygulama (Android)'`, `'Mobil Uygulama (iOS)'`, `'Mobil Site'`, `'Web Sitesi'`.
