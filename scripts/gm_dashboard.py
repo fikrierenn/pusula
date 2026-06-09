@@ -374,6 +374,11 @@ def serve(port=8000):
                     kanal = qs.get("kanal", ["yk"])[0]; fis = qs.get("fis", ["0"])[0]
                     rows = api_query(FIS_YK if kanal == "yk" else FIS_ET, (int(fis),))
                     return self._send(json.dumps([dict(ad=str(r["ad"] or ""), adet=float(r["adet"] or 0), birim=float(r["birim"] or 0), brut=float(r["brut"] or 0), indirim=float(r["indirim"] or 0), net=float(r["net"] or 0)) for r in rows], ensure_ascii=False))
+                if u.path == "/api/stok":
+                    kod = qs.get("kod", [""])[0]
+                    rows = api_query(STOK_SQL, (kod,))
+                    nm = {1: "FSM", 4477: "Özlüce", 4478: "İst.Yolu", 12: "Ana Depo"}
+                    return self._send(json.dumps([dict(yer=nm.get(r["mekan"], "Mekan " + str(r["mekan"])), adet=int(r["adet"] or 0)) for r in sorted(rows, key=lambda r: -int(r["adet"] or 0))], ensure_ascii=False))
                 self.send_response(404); self.end_headers()
             except Exception as e:
                 self._send(json.dumps({"err": str(e)}))
@@ -416,6 +421,12 @@ FIS_ET = """SELECT TOP 200 CAST(it.NAME AS nvarchar(60)) ad, d.QUANTITY adet,
     CAST(d.QUANTITY*d.SELLINGPRICE AS decimal(18,2)) net
   FROM ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS d JOIN ODAKJOKER.JOKER.dbo.J_ITEMS it ON it.LOGICALREF=d.ITEMREF
   WHERE d.ORDERREF=%s"""
+
+# Ürün stoğu lokasyon bazlı (net bakiye = SUM ehAdetN, per mekan)
+STOK_SQL = """SELECT h.ehMekan mekan, CAST(SUM(h.ehAdetN) AS int) adet
+  FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID
+  WHERE u.stkKod=%s AND h.ehAltDepo=0
+  GROUP BY h.ehMekan HAVING SUM(h.ehAdetN)<>0"""
 
 
 TEMPLATE = r"""<!doctype html><html lang=tr><head><meta charset=utf-8>
@@ -536,7 +547,7 @@ function renderUrun(rerender){let kat=window._uk;let d=(REF.urunler&&REF.urunler
   if(s=='devir')g.sort((a,b)=>a.dev-b.dev);else if(s=='satis')g.sort((a,b)=>b.sat-a.sat);else if(s=='stok')g.sort((a,b)=>b.st-a.st);else g.sort((a,b)=>b.ciro-a.ciro);
   let nOlu=g.filter(x=>x.dev>0&&x.dev<1.5).length;
   let rows=g.map(x=>{let dc=x.dev<=0?'#94a3b8':(x.dev<1.5?'#dc2626':(x.dev>=4?'#16a34a':'#0f172a'));
-    return '<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right">'+fnum(x.st)+'</td><td style="text-align:right;color:#64748b;font-size:11px">'+fnum(x.sat)+'×'+(yf).toFixed(1)+'÷'+fnum(x.st)+'</td><td style="text-align:right;font-weight:bold;color:'+dc+'">'+(x.dev>0?x.dev.toFixed(2)+'x':'—')+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>';}).join('');
+    return '<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right"><span style="cursor:pointer;color:'+KP+';border-bottom:1px dotted" onclick="detayStok(\''+x.kod+'\',\''+encodeURIComponent(x.ad)+'\')">'+fnum(x.st)+' &#9656;</span></td><td style="text-align:right;color:#64748b;font-size:11px">'+fnum(x.sat)+'×'+(yf).toFixed(1)+'÷'+fnum(x.st)+'</td><td style="text-align:right;font-weight:bold;color:'+dc+'">'+(x.dev>0?x.dev.toFixed(2)+'x':'—')+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>';}).join('');
   let psel='<select onchange="window._uw=+this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[30,90,180,360].map(p=>'<option value='+p+(p==w?' selected':'')+'>son '+p+' gün</option>').join('')+'</select>';
   let ssel='<select onchange="window._us=this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[['devir','Ölü stok (devir ↑)'],['satis','Çok satan'],['stok','Yüksek stok'],['ciro','Ciro']].map(o=>'<option value='+o[0]+(o[0]==s?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
   openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px;margin-bottom:6px">Satış: '+psel+' &nbsp; Sırala: '+ssel+'</div><div style="color:#64748b;font-size:12px">Devir/yıl = satış('+w+'g) × '+yf.toFixed(1)+' ÷ stok · <span style="color:#dc2626">kırmızı &lt;1,5x = ölü stok</span> ('+nOlu+' adet)</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satış '+w+'g</b></td><td style="text-align:right"><b>Stok</b></td><td style="text-align:right"><b>Hesap</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>Ciro '+w+'g</b></td></tr>'+rows+'</table>',rerender);}
@@ -607,6 +618,12 @@ function detayStore(i){const s=DATA[window.CUR].stores[i];
    '<table><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Tutar</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');
   if(window._stCh)window._stCh.destroy();
   window._stCh=new Chart(document.getElementById('stCh'),{type:'bar',data:{labels:kl.map(k=>k[0]),datasets:[{data:kl.map(k=>k[1]),backgroundColor:kl.map(k=>k[0].indexOf('Diğer')==0?'#cbd5e1':KP),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>tl(c.raw)+' (%'+(base?(100*c.raw/base).toFixed(1):0)+')'}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
+async function detayStok(kod,adEnc){loading('Stok Lokasyon');let ad=decodeURIComponent(adEnc);let d=await api('stok?kod='+encodeURIComponent(kod));
+  if(!d.length){openModal('<h2>Stok — '+ad+'</h2><div style="padding:16px;color:#64748b">Lokasyon stok kaydı yok.</div>');return;}
+  let tot=d.reduce((a,b)=>a+b.adet,0);
+  let rows=d.map(x=>'<tr><td>'+x.yer+'</td><td style="text-align:right;color:'+(x.adet<0?'#dc2626':'#0f172a')+'">'+fnum(x.adet)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.adet/tot).toFixed(0):0)+'</td></tr>').join('');
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>TOPLAM</td><td style="text-align:right">'+fnum(tot)+'</td><td style="text-align:right">%100</td></tr>';
+  openModal('<h2>Stok — '+ad+'</h2><div style="color:#64748b;font-size:12px">stok kodu '+kod+' · lokasyon bazlı net bakiye (adet) · negatif = düzeltme/iade fazlası</div><table style="margin-top:10px"><tr><td><b>Lokasyon</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');}
 function detayToplam(){let st=DATA[window.CUR].stores;
   let cats={};st.forEach(s=>s.kat.forEach(k=>{cats[k[0]]=(cats[k[0]]||0)+k[1];}));
   let smap=st.map(s=>{let m={};s.kat.forEach(k=>m[k[0]]=k[1]);let matched=s.kat.reduce((a,k)=>a+k[1],0);return {ad:s.ad,net:s.net,m:m,diger:Math.round(s.net-matched)};});
