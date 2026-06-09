@@ -304,12 +304,15 @@ HAR_YK = """SELECT TOP 100 CONVERT(varchar,s.Date,104) tarih, CAST(s.Id AS varch
   ORDER BY s.Date DESC"""
 
 
-def MUS_YK(seg):
+def MUS_YK(seg, ic=False):
     cond = {"1-Şampiyon": "COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=30",
             "2-Sadık": "COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=90",
             "3-Yeni": "COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=30",
             "4-Risk": "DATEDIFF(DAY,MAX(s.Date),%(d)s) BETWEEN 91 AND 180",
             "5-Kayıp": "DATEDIFF(DAY,MAX(s.Date),%(d)s)>180"}.get(seg, "1=0")
+    # ic=True → iç/mağaza kartları (599/699 telefon + Mağaza/Kumbara) DAHİL; default ayıklanır
+    ickart = "" if ic else """ AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'
+             AND ISNULL(c.PhoneNumber,'') NOT LIKE '599%' AND ISNULL(c.PhoneNumber,'') NOT LIKE '699%'))"""
     # Müşteri adı + telefon: DerinCrm.Customer.Id = Sales.CustomersId (temiz köprü); yoksa kart no
     return """SELECT TOP 100 s.CustomersId id,
         MAX(CAST(ISNULL(c.Name, s.CustomerCardNo) AS nvarchar(60))) ad,
@@ -317,9 +320,7 @@ def MUS_YK(seg):
         COUNT(*) frq, CAST(SUM(s.GrossTotal-s.DiscountTotal) AS decimal(18,0)) mon, DATEDIFF(DAY,MAX(s.Date),%(d)s) rec
       FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
       LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
-      WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,%(d)s) AND s.Date<DATEADD(DAY,1,%(d)s)
-        AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'
-             AND ISNULL(c.PhoneNumber,'') NOT LIKE '599%' AND ISNULL(c.PhoneNumber,'') NOT LIKE '699%'))
+      WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,%(d)s) AND s.Date<DATEADD(DAY,1,%(d)s)""" + ickart + """
       GROUP BY s.CustomersId HAVING """ + cond + " ORDER BY mon DESC"
 
 
@@ -373,9 +374,9 @@ def serve(port=8000):
                     rows = api_query(URUN_SQL, (kat,))
                     return self._send(json.dumps([dict(kod=str(r["kod"]), ad=str(r["ad"] or ""), sat=int(r["sat"] or 0), bak=int(r["bak"] or 0), ciro=int(r["ciro"] or 0)) for r in rows], ensure_ascii=False))
                 if u.path == "/api/musteri":
-                    kanal = qs.get("kanal", ["yk"])[0]; seg = qs.get("seg", [""])[0]
+                    kanal = qs.get("kanal", ["yk"])[0]; seg = qs.get("seg", [""])[0]; ic = qs.get("ic", ["0"])[0] == "1"
                     if kanal == "yk":
-                        rows = api_query(MUS_YK(seg), {"d": today})
+                        rows = api_query(MUS_YK(seg, ic), {"d": today})
                     else:
                         rows = api_query(MUS_ET(seg), {"d": today, "b": (date.today()-timedelta(days=365)).isoformat().replace("-", ""), "g": g2.replace("-", "")})
                     return self._send(json.dumps([dict(id=r["id"], ad=str(r.get("ad") or r["id"]), tel=str(r.get("tel") or ""), frq=int(r["frq"]), mon=int(r["mon"] or 0), rec=int(r["rec"])) for r in rows], ensure_ascii=False))
@@ -618,9 +619,10 @@ function renderUrun(rerender){let kat=window._uk;let d=window._ud||(REF.urunler&
   let psel='<select onchange="window._uw=+this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[30,90,180,360].map(p=>'<option value='+p+(p==w?' selected':'')+'>son '+p+' gün</option>').join('')+'</select>';
   let ssel='<select onchange="window._us=this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[['devir','Ölü stok (devir ↑)'],['satis','Çok satan'],['stok','Yüksek stok'],['ciro','Ciro']].map(o=>'<option value='+o[0]+(o[0]==s?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
   openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px;margin-bottom:6px">Şube: '+msel+'<b style="color:'+KP+'">'+mekLbl+'</b></div><div style="color:#64748b;font-size:12px;margin-bottom:6px">Satış: '+psel+' &nbsp; Sırala: '+ssel+'</div><div style="color:#64748b;font-size:12px"><b>Tükenme</b> = stok ÷ günlük satış (bu hızda stok kaç günde biter) · <b>Devir/yıl</b> = 365÷tükenme · <span style="color:#dc2626">∞/uzun = ölü stok</span> ('+nOlu+' adet &lt;1,5x) · stok = şube + Ana Depo (Odak hariç), satış = şube</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satış '+w+'g</b></td><td style="text-align:right"><b>Stok</b></td><td style="text-align:right"><b>Tükenme</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>Ciro '+w+'g</b></td></tr>'+rows+'</table>',rerender);}
-async function detayMusteri(kanal,segEnc){loading('Müşteri Listesi');let seg=decodeURIComponent(segEnc);let d=await api('musteri?kanal='+kanal+'&seg='+segEnc);
+async function detayMusteri(kanal,segEnc,ic){ic=ic?1:0;loading('Müşteri Listesi');let seg=decodeURIComponent(segEnc);let d=await api('musteri?kanal='+kanal+'&seg='+segEnc+(kanal=='yk'?'&ic='+ic:''));
   let rows=d.map(x=>'<tr style="cursor:pointer" onclick="detaySiparis(\''+kanal+'\',\''+x.id+'\',\''+encodeURIComponent(x.ad)+'\')"><td>'+x.ad+' &#9656;</td><td>'+(x.tel||'')+'</td><td style="text-align:right">'+fnum(x.frq)+'</td><td style="text-align:right">'+tl(x.mon)+'</td><td style="text-align:right">'+x.rec+' gün</td></tr>').join('');
-  openModal('<h2>'+seg+' — '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+'</h2><div style="color:#64748b;font-size:12px">365 gün · monetary sıralı (top 100) · ▸ tıkla → sipariş/fiş</div><table style="margin-top:10px"><tr><td><b>Müşteri</b></td><td><b>Tel</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Son</b></td></tr>'+rows+'</table>');}
+  let icbox=kanal=='yk'?'<label style="cursor:pointer;font-size:12px"><input type=checkbox '+(ic?'checked':'')+' onchange="detayMusteri(\''+kanal+'\',\''+segEnc+'\',this.checked?1:0)"> iç/mağaza kartlarını göster</label>':'';
+  openModal('<h2>'+seg+' — '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+'</h2><div style="color:#64748b;font-size:12px">365 gün · monetary sıralı (top 100) · ▸ tıkla → sipariş/fiş &nbsp; '+icbox+'</div><table style="margin-top:10px"><tr><td><b>Müşteri</b></td><td><b>Tel</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Son</b></td></tr>'+rows+'</table>',ic?true:false);}
 async function detaySiparis(kanal,id,adEnc){loading('Hareketler');let ad=decodeURIComponent(adEnc);let d=await api('hareket?kanal='+kanal+'&id='+id);
   let rows=d.map(x=>'<tr style="cursor:pointer" onclick="detayFis(\''+kanal+'\',\''+x.ref+'\',\''+x.tarih+'\')"><td>'+x.tarih+'</td><td>'+(x.kod||'')+' &#9656;</td><td style="text-align:right">'+fnum(x.adet)+'</td><td style="text-align:right">'+tl(x.tutar)+'</td></tr>').join('');
   openModal('<h2>'+ad+'</h2><div style="color:#64748b;font-size:12px">'+(kanal=='yk'?'fiş':'sipariş')+' geçmişi (365 gün, top 100) · ▸ tıkla → fiş içeriği</div><table style="margin-top:10px"><tr><td><b>Tarih</b></td><td><b>'+(kanal=='yk'?'Fiş':'Sipariş')+'</b></td><td style="text-align:right"><b>Kalem</b></td><td style="text-align:right"><b>Tutar</b></td></tr>'+rows+'</table>');}
