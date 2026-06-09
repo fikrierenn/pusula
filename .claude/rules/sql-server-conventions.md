@@ -17,6 +17,13 @@ _BKM Kitap projesinde T-SQL yazımı için kalıcı kurallar._
 - Kategori/marka ciro raporlarını mümkünse **irsHrk** (stkID) üzerinden al → envanter/devir ile tek kaynak, tutarlı.
 - ⚠️ Bilinen hatalı dosyalar (stkKod=BarcodeNo, düzeltilecek): `scripts/generate_brief.py` SQL_CATEGORY, `sorgular/gm-rapor/gunluk/G4-kategori-magaza.sql`, `sorgular/gm-rapor/merchandising/A6-marka-yayinevi.sql`. (Dashboard `gm_dashboard.py` 09.06 düzeltildi → irsHrk.)
 
+### EncoreMerkez ↔ DerinSIS KÖPRÜSÜ = Products.Code (09.06 keşif — KESİN)
+
+- **`EncoreMerkez.Products.Code` (int) = `DerinSIS.urn.stkID`** — %99,98 eşleşme (798.349/798.527). `Code` stkKod DEĞİL (%9), barkod hiç değil.
+- **Doğru POS join:** `SalesProducts.ProductsId → Products.Id`, sonra `urn.stkID = CONVERT(int, Products.Code)` (EncoreMerkez compat 110 → `TRY_CONVERT` yok; `ISNUMERIC(p.Code)=1` guard + `CONVERT(int,p.Code)`).
+- Bu, EncoreMerkez POS verisini (per-mağaza, per-fiş) **doğru kategori/marka**ya bağlar — barkod join'in kaçırdığını çözer (Oyuncak ciro 700K→10,96M doğrulandı 09.06).
+- Saf DerinSIS analizlerde hâlâ `irsHrk.ehstkID=urn.stkID` en temiz; POS-özel (EncoreMerkez Sales/SalesProducts) gerekince Products.Code köprüsünü kullan.
+
 ## Field Adlandırma
 
 - DerinSIS: `urn.stkAd` / `urn.stkID` (urnAd/urnID HATA)
