@@ -291,9 +291,13 @@ def MUS_YK(seg):
             "3-Yeni": "COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),%(d)s)<=30",
             "4-Risk": "DATEDIFF(DAY,MAX(s.Date),%(d)s) BETWEEN 91 AND 180",
             "5-Kayıp": "DATEDIFF(DAY,MAX(s.Date),%(d)s)>180"}.get(seg, "1=0")
-    return """SELECT TOP 100 s.CustomersId id, MAX(CAST(s.CustomerCardNo AS nvarchar(40))) ad, NULL tel,
+    # Müşteri adı + telefon: DerinCrm.Customer.Id = Sales.CustomersId (temiz köprü); yoksa kart no
+    return """SELECT TOP 100 s.CustomersId id,
+        MAX(CAST(ISNULL(c.Name, s.CustomerCardNo) AS nvarchar(60))) ad,
+        MAX(CAST(c.PhoneNumber AS nvarchar(15))) tel,
         COUNT(*) frq, CAST(SUM(s.GrossTotal-s.DiscountTotal) AS decimal(18,0)) mon, DATEDIFF(DAY,MAX(s.Date),%(d)s) rec
       FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+      LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
       WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,%(d)s) AND s.Date<DATEADD(DAY,1,%(d)s)
       GROUP BY s.CustomersId HAVING """ + cond + " ORDER BY mon DESC"
 

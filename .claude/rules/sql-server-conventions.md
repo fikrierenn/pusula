@@ -103,10 +103,12 @@ CROSS APPLY (
 - **E-ticaret stkID köprüsü:** `J_ITEMS.DERINSIS_ID = urn.stkID` (DerinSIS ürün bağı; kategori için `bkm.UrunBilgi.StkID`/`KatAna` — JOKER'den `DERINSIS` linked server ile erişilir).
 - **Fiyat:** `SELLINGPRICE` = BİRİM net fiyat (satır tutarı = `QUANTITY*SELLINGPRICE`). `SELLINGPRICEWITHOUTDISCOUNT` = birim brüt; indirim = `QUANTITY*(WITHOUTDISCOUNT-SELLINGPRICE)`. Kargo `J_ORDERS.CARGOPRICE`, kapıda ödeme `SERVICEPRICE`.
 
-## Müşteri İsmi (Yazarkasa) — kart sistemi uyumsuz (09.06)
+## Müşteri İsmi (Yazarkasa) = DerinCrm.Customer (09.06 — ÇÖZÜLDÜ)
 
-- İsim CRM'de: `DerinSISBkmCrm.dbo.mst.mAd` (+ `mKartno`, `Tel1/Tel2`). Ek kart `mstEkkart.EkkrtNo`.
-- ⚠️ **EncoreMerkez sadakat kartı (`Sales.CustomerCardNo`, "2025…" 10 hane) CRM kartıyla (`mst.mKartno`, "T…" 8 hane) DOĞRUDAN EŞLEŞMİYOR** — mstEkkart'ta da yok. Yazarkasa müşteri adı için ayrı eşleştirme tablosu/anahtarı gerekiyor (backlog). Dashboard şimdilik kart no gösteriyor.
+- **`DerinCrm.dbo.Customer.Id = EncoreMerkez.Sales.CustomersId`** (int, temiz 1:1 köprü). `Customer.Name` = ad, `Customer.PhoneNumber` = tel, `Customer.CardNumber` = "2025…" sadakat kartı.
+- Join: `LEFT JOIN DerinCrm.dbo.Customer c ON c.Id=s.CustomersId` → `ISNULL(c.Name, s.CustomerCardNo)`.
+- ⚠️ Yanlış izler: `DerinSISBkmCrm.dbo.mst` (kart "T…" formatı — EncoreMerkez "2025…" ile EŞLEŞMEZ, ayrı sistem). `EncoreMerkezCrm.Customer` BOŞ (tek "Genel"). `Sales.CustomerData` JSON'unda da var (`"Name"`/`"MobilePhone"`) ama JSON-parse yerine DerinCrm join temiz.
+- Not: En yüksek-frekanslı "müşteriler" mağaza iç kartları (İstanbulyolu Mağaza, Kumbara) — gerçek müşteri değil, RFM yorumunda dikkat.
 
 ## Kanal Değerleri (J_ORDERS.APPLICATION)
 
