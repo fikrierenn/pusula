@@ -2,8 +2,9 @@
 -- G4 — GÜNLÜK KATEGORİ MİX (mağaza kırılımlı) — merchandising drill
 -- Amaç: Dün kategori dağılımı, mağaza bazlı. Hangi mağaza hangi kategoride zayıf?
 -- Veritabanı: EncoreMerkez satış + DerinSIS kategori (KTGR3 = urnKtgr2.ktgrAd)
--- KATEGORİ KAYNAĞI: EncoreMerkez.ProductCategory KULLANMA (Name = birleşik hiyerarşi çöpü).
---   Doğru kaynak: SalesProducts.BarcodeNo → urn.stkKod → urnKtgr2.ktgrAd (brief pattern).
+-- KATEGORİ KAYNAĞI (09.06 düzeltildi): Products.Code = urn.stkID köprüsü (stkKod≠barkod!).
+--   SalesProducts.ProductsId → Products.Code (int) = urn.stkID → urnKtgr2.ktgrAd.
+--   (Eski stkKod=BarcodeNo join YANLIŞTI — Oyuncak gibi kategorileri kaçırıyordu.)
 -- Filtre: IsValid=1, geri dönüşüm (BarcodeNo='1001') + Sınav Okulları hayalet hariç.
 -- NOT: SalesProducts.TotalPrice = satır net (kategori-eşleşen alt küme; G1 net ciroya eşit DEĞİL,
 --      mix sinyali için kullanılır). Amount = adet.
@@ -25,10 +26,10 @@ JOIN EncoreMerkez.dbo.Pos p WITH(NOLOCK) ON p.Id = s.PosId
 JOIN EncoreMerkez.dbo.Stores st WITH(NOLOCK) ON st.Id = p.StoreId
 JOIN DerinSISBkm.dbo.posMagaza MG WITH(NOLOCK)
     ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
-JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK)
-    ON u.stkKod COLLATE Turkish_CI_AS = sp.BarcodeNo COLLATE Turkish_CI_AS
+JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id = sp.ProductsId
+JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = CONVERT(int, pr.Code)
 JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID = u.urnKtgr2ID
-WHERE sp.IsValid = 1 AND sp.BarcodeNo <> '1001'
+WHERE sp.IsValid = 1 AND sp.BarcodeNo <> '1001' AND ISNUMERIC(pr.Code) = 1
   AND s.Date >= @Gun AND s.Date < @GunBitis
   AND ktg.ktgrAd <> N'Sınav Okulları'
 GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(40))

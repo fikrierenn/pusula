@@ -77,7 +77,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-03** `send_brief.bat` tarih güncelle~~ — ✅ DİNAMİK yapıldı, her Pazartesi'yi otomatik hesaplıyor (PowerShell `(Get-Date).AddDays(...)`). Bir daha güncelleme gerekmez.
 - [x] ~~**B-35** EncoreMerkez stkID köprüsü~~ — ✅ 09.06 BULUNDU: `Products.Code`(int)=`urn.stkID` (%99,98). Join: SalesProducts.ProductsId→Products.Code=stkID→urn. Oyuncak 700K→10,96M doğrulandı. Kural yazıldı.
 - [ ] **B-36** Dashboard ölü sermaye/devir detayında **hesap göster** — 0,15x nereden: satılan adet ÷ ort stok adet ×12, ara değerler (satılan, açılış+kapanış stok, ort stok) modalda. Şu an sadece sonuç. **(YENİ)**
-- [ ] **B-37** stkKod→stkID düzeltmesini rapor dosyalarına yay: `G4-kategori-magaza.sql`, `A6-marka-yayinevi.sql`, `scripts/generate_brief.py` SQL_CATEGORY (dashboard düzeldi, bunlar kaldı). **(YENİ)**
+- [x] ~~**B-37** stkID düzeltmesi rapor dosyalarına~~ — ✅ 09.06 G4-kategori-magaza.sql + A6-marka-yayinevi.sql + generate_brief.py SQL_CATEGORY/TOTAL → Products.Code=urn.stkID köprüsü. G4 doğrulandı (Oyuncak 07.06 3,5k→491k, 140× düzelme).
 - [ ] **B-NEW-00 ⚡ (restart sonrası):** SQL bağlantı testi `mcp__sqlserver__sql_query SELECT @@SERVERNAME, GETDATE()`. OK ise B-NEW-01'e geç.
 
 #### Faz 0.5 — Mayıs %50 kitap kampanyası tahmini (TAM SCOPE'LANDI, sırayla yürüt)

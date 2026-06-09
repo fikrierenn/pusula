@@ -192,10 +192,10 @@ JOIN DerinSISBkm.dbo.posMagaza MG WITH(NOLOCK)
     ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
 JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
     ON sp.SalesId = s.Id AND sp.IsValid = 1 AND sp.BarcodeNo <> '1001'
-JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK)
-    ON u.stkKod COLLATE Turkish_CI_AS = sp.BarcodeNo COLLATE Turkish_CI_AS
+JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id = sp.ProductsId
+JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = CONVERT(int, pr.Code)
 JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID = u.urnKtgr2ID
-WHERE s.Date >= %(start)s AND s.Date < %(end)s
+WHERE s.Date >= %(start)s AND s.Date < %(end)s AND ISNUMERIC(pr.Code) = 1
 GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50))
 """
 
@@ -221,9 +221,9 @@ SELECT
 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
 JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
     ON sp.SalesId = s.Id AND sp.IsValid = 1 AND sp.BarcodeNo <> '1001'
-JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK)
-    ON u.stkKod COLLATE Turkish_CI_AS = sp.BarcodeNo COLLATE Turkish_CI_AS
-WHERE s.Date >= %(start)s AND s.Date < %(end)s
+JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id = sp.ProductsId
+JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = CONVERT(int, pr.Code)
+WHERE s.Date >= %(start)s AND s.Date < %(end)s AND ISNUMERIC(pr.Code) = 1
 """
 
 SQL_CATEGORY_HEDEF = """
