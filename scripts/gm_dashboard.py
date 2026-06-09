@@ -185,24 +185,26 @@ def main():
       GROUP BY CAST(mrk.mrkAd AS nvarchar(80)) ORDER BY Ciro DESC""")]
     # ÜRÜN detayı (kategori başına top 50, irsHrk stkID) — embed → drill server'sız çalışır
     urunler = {}
-    # sat=Mayıs satış adet · stok=tüm-zaman net bakiye · devir=12×sat/stok
-    # top 45 satan (hızlı) + en yavaş 25 ölü stok adayı (devir<1,5 & stok>=20) → kırmızılar da görünsün
-    for r in Q(cur, f"""SELECT kat, kod, ad, sat, ciro, stok FROM (
+    # stok=tüm-zaman net bakiye · s30/s90/s180/s360=son N gün satış adedi · ciro=son 360g
+    # devir (client) = satış(pencere)×(365/N)÷stok. top 45 satan + en yavaş 25 ölü stok (360g devir<1,5 & stok>=20)
+    for r in Q(cur, f"""SELECT kat, kod, ad, s30, s90, s180, s360, stok, ciro FROM (
         SELECT g.*,
-          ROW_NUMBER() OVER(PARTITION BY g.kat ORDER BY g.sat DESC) rn_sat,
-          ROW_NUMBER() OVER(PARTITION BY g.kat ORDER BY CASE WHEN g.stok>=20 THEN 12.0*g.sat/g.stok ELSE 99999 END ASC) rn_dead
+          ROW_NUMBER() OVER(PARTITION BY g.kat ORDER BY g.s360 DESC) rn_sat,
+          ROW_NUMBER() OVER(PARTITION BY g.kat ORDER BY CASE WHEN g.stok>=20 AND g.s360>0 THEN 1.0*g.s360/g.stok ELSE 99999 END ASC) rn_dead
         FROM (
           SELECT CAST(k.ktgrAd AS nvarchar(50)) kat, u.stkKod kod, CAST(u.stkAd AS nvarchar(70)) ad,
-            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>='2026-05-01' AND h.ehTrhS<'2026-06-01' THEN h.ehAdetN ELSE 0 END) sat,
-            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>='2026-05-01' AND h.ehTrhS<'2026-06-01' THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) ciro,
-            CAST(SUM(h.ehAdetN) AS int) stok
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-30,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s30,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-90,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s90,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-180,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s180,
+            -SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehAdetN ELSE 0 END) s360,
+            CAST(SUM(h.ehAdetN) AS int) stok,
+            CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) AND h.ehTrhS>=DATEADD(DAY,-360,CAST(GETDATE() AS date)) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) ciro
           FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
           WHERE h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND k.ktgrAd NOT IN {EXC}
           GROUP BY CAST(k.ktgrAd AS nvarchar(50)), u.stkKod, CAST(u.stkAd AS nvarchar(70))) g
-        WHERE g.sat>0) x
+        WHERE g.s360>0) x
       WHERE rn_sat<=45 OR (rn_dead<=25 AND stok>=20)"""):
-        sat = int(r["sat"]); stok = int(r["stok"] or 0); devir = round(12*sat/stok, 2) if stok > 0 else 0
-        urunler.setdefault(r["kat"], []).append([r["kod"], r["ad"], sat, int(r["ciro"] or 0), stok, devir])
+        urunler.setdefault(r["kat"], []).append([r["kod"], r["ad"], int(r["s30"]), int(r["s90"]), int(r["s180"]), int(r["s360"]), int(r["stok"] or 0), int(r["ciro"] or 0)])
     # envanter per-lokasyon (değer güncel + Mayıs ort. adet) — kategori
     LOCS = ["FSM", "Özlüce", "İst.Yolu", "WMS Depo", "Odak Depo"]
     valq = Q(cur, f"""SELECT CAST(KTGR3 AS nvarchar(50)) K,
@@ -514,13 +516,19 @@ const KP='__KIRMIZI__';
 const fnum=n=>Math.round(n).toLocaleString('tr-TR');
 async function api(p){const r=await fetch('/api/'+p);return await r.json();}
 function loading(t){if(!panelOn())HIST=[];HIST.push('<h2>'+t+'</h2><div style="padding:20px;color:#64748b">yükleniyor…</div>');LOAD=true;renderPanel();}
-function detayUrun(katEnc){let kat=decodeURIComponent(katEnc);let d=(REF.urunler&&REF.urunler[kat])||[];
-  if(!d.length){openModal('<h2>'+kat+' — Ürünler</h2><div style="padding:16px;color:#64748b">Bu kategoride satış kaydı yok.</div>');return;}
-  d=d.slice().sort((a,b)=>(a[5]||99999)-(b[5]||99999));  // devir artan: ölü stok (kırmızı) üstte
-  let nOlu=d.filter(x=>x[5]>0&&x[5]<1.5).length;
-  let rows=d.map(x=>{let dev=x[5]||0,st=x[4]||0;let dc=dev<=0?'#94a3b8':(dev<1.5?'#dc2626':(dev>=4?'#16a34a':'#0f172a'));
-    return '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td><td style="text-align:right">'+fnum(x[2])+'</td><td style="text-align:right">'+fnum(st)+'</td><td style="text-align:right;color:#64748b;font-size:11px">12×'+fnum(x[2])+'÷'+fnum(st)+'</td><td style="text-align:right;font-weight:bold;color:'+dc+'">'+(dev>0?dev.toFixed(2)+'x':'—')+'</td><td style="text-align:right">'+tl(x[3])+'</td></tr>';}).join('');
-  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px">Mayıs · <b style="color:#dc2626">devir artan sıralı → ölü stok (kırmızı) üstte</b>, hızlı altta · '+nOlu+' ölü stok adayı (&lt;1,5x) · Devir = 12 × Satılan(ay) ÷ Stok</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satılan/ay</b></td><td style="text-align:right"><b>Stok</b></td><td style="text-align:right"><b>Hesap</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>Ciro</b></td></tr>'+rows+'</table>');}
+// urunler kayıt: [kod,ad,s30,s90,s180,s360,stok,ciro360]
+function detayUrun(katEnc){window._uk=decodeURIComponent(katEnc);if(!window._uw)window._uw=90;if(!window._us)window._us='devir';renderUrun(false);}
+function renderUrun(rerender){let kat=window._uk;let d=(REF.urunler&&REF.urunler[kat])||[];
+  if(!d.length){openModal('<h2>'+kat+' — Ürünler</h2><div style="padding:16px;color:#64748b">Bu kategoride satış kaydı yok.</div>',rerender);return;}
+  let w=window._uw,s=window._us;let widx={30:2,90:3,180:4,360:5}[w];let yf=365.0/w;
+  let g=d.map(x=>{let sat=x[widx],st=x[6];return {kod:x[0],ad:x[1],sat:sat,st:st,ciro:x[7],dev:(st>0?sat*yf/st:0)};});
+  if(s=='devir')g.sort((a,b)=>a.dev-b.dev);else if(s=='satis')g.sort((a,b)=>b.sat-a.sat);else if(s=='stok')g.sort((a,b)=>b.st-a.st);else g.sort((a,b)=>b.ciro-a.ciro);
+  let nOlu=g.filter(x=>x.dev>0&&x.dev<1.5).length;
+  let rows=g.map(x=>{let dc=x.dev<=0?'#94a3b8':(x.dev<1.5?'#dc2626':(x.dev>=4?'#16a34a':'#0f172a'));
+    return '<tr><td>'+x.kod+'</td><td>'+x.ad+'</td><td style="text-align:right">'+fnum(x.sat)+'</td><td style="text-align:right">'+fnum(x.st)+'</td><td style="text-align:right;color:#64748b;font-size:11px">'+fnum(x.sat)+'×'+(yf).toFixed(1)+'÷'+fnum(x.st)+'</td><td style="text-align:right;font-weight:bold;color:'+dc+'">'+(x.dev>0?x.dev.toFixed(2)+'x':'—')+'</td><td style="text-align:right">'+tl(x.ciro)+'</td></tr>';}).join('');
+  let psel='<select onchange="window._uw=+this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[30,90,180,360].map(p=>'<option value='+p+(p==w?' selected':'')+'>son '+p+' gün</option>').join('')+'</select>';
+  let ssel='<select onchange="window._us=this.value;renderUrun(true)" style="padding:3px 6px;border-radius:6px;border:1.5px solid '+KP+';color:'+KP+';font-weight:700">'+[['devir','Ölü stok (devir ↑)'],['satis','Çok satan'],['stok','Yüksek stok'],['ciro','Ciro']].map(o=>'<option value='+o[0]+(o[0]==s?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
+  openModal('<h2>'+kat+' — Ürünler</h2><div style="color:#64748b;font-size:12px;margin-bottom:6px">Satış: '+psel+' &nbsp; Sırala: '+ssel+'</div><div style="color:#64748b;font-size:12px">Devir/yıl = satış('+w+'g) × '+yf.toFixed(1)+' ÷ stok · <span style="color:#dc2626">kırmızı &lt;1,5x = ölü stok</span> ('+nOlu+' adet)</div><table style="margin-top:10px"><tr><td><b>Stok Kod</b></td><td><b>Ürün</b></td><td style="text-align:right"><b>Satış '+w+'g</b></td><td style="text-align:right"><b>Stok</b></td><td style="text-align:right"><b>Hesap</b></td><td style="text-align:right"><b>Devir/yıl</b></td><td style="text-align:right"><b>Ciro 360g</b></td></tr>'+rows+'</table>',rerender);}
 async function detayMusteri(kanal,segEnc){loading('Müşteri Listesi');let seg=decodeURIComponent(segEnc);let d=await api('musteri?kanal='+kanal+'&seg='+segEnc);
   let rows=d.map(x=>'<tr style="cursor:pointer" onclick="detaySiparis(\''+kanal+'\',\''+x.id+'\',\''+encodeURIComponent(x.ad)+'\')"><td>'+x.ad+' &#9656;</td><td>'+(x.tel||'')+'</td><td style="text-align:right">'+fnum(x.frq)+'</td><td style="text-align:right">'+tl(x.mon)+'</td><td style="text-align:right">'+x.rec+' gün</td></tr>').join('');
   openModal('<h2>'+seg+' — '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+'</h2><div style="color:#64748b;font-size:12px">365 gün · monetary sıralı (top 100) · ▸ tıkla → sipariş/fiş</div><table style="margin-top:10px"><tr><td><b>Müşteri</b></td><td><b>Tel</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Ciro</b></td><td style="text-align:right"><b>Son</b></td></tr>'+rows+'</table>');}
@@ -567,7 +575,7 @@ chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:
 let HIST=[],LOAD=false;
 function panelOn(){return document.getElementById('ovl').classList.contains('on');}
 function renderPanel(){var bk=HIST.length>1?'<span class=bk onclick="panelBack()">&#8249; geri</span>':'<span class="bk off">&#8249;</span>';var m=document.getElementById('modal');m.innerHTML='<div class=mtop>'+bk+'<span class=x onclick="closePanel()">&times;</span></div>'+(HIST[HIST.length-1]||'');document.getElementById('ovl').classList.add('on');m.scrollTop=0;}
-function openModal(html){if(LOAD){HIST[HIST.length-1]=html;LOAD=false;}else{if(!panelOn())HIST=[];HIST.push(html);}renderPanel();}
+function openModal(html,replace){if(LOAD){HIST[HIST.length-1]=html;LOAD=false;}else if(replace&&HIST.length){HIST[HIST.length-1]=html;}else{if(!panelOn())HIST=[];HIST.push(html);}renderPanel();}
 function panelBack(){HIST.pop();if(!HIST.length){closePanel();return;}renderPanel();}
 function closePanel(){HIST=[];LOAD=false;document.getElementById('ovl').classList.remove('on');}
 function detayStore(i){const s=DATA[window.CUR].stores[i];
