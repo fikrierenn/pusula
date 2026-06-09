@@ -15,7 +15,7 @@ _BKM Kitap projesinde T-SQL yazımı için kalıcı kurallar._
   - DerinSIS-içi: `irsHrk.ehstkID = urn.stkID` (en temiz; satış ehTip 4/100).
   - Barkod gerekiyorsa: `SalesProducts.BarcodeNo = urnBrkd.urnBarkod` → `urnBrkd.urnBrkdStkID = urn.stkID` (`urnBrkdOnce=0`). **stkKod ile join etme.**
 - Kategori/marka ciro raporlarını mümkünse **irsHrk** (stkID) üzerinden al → envanter/devir ile tek kaynak, tutarlı.
-- ⚠️ Bilinen hatalı dosyalar (stkKod=BarcodeNo, düzeltilecek): `scripts/generate_brief.py` SQL_CATEGORY, `sorgular/gm-rapor/gunluk/G4-kategori-magaza.sql`, `sorgular/gm-rapor/merchandising/A6-marka-yayinevi.sql`. (Dashboard `gm_dashboard.py` 09.06 düzeltildi → irsHrk.)
+- ✅ Tüm stkKod=BarcodeNo hataları düzeltildi (09.06): `generate_brief.py` (SQL_CATEGORY+TOTAL), `G4-kategori-magaza.sql`, `A6-marka-yayinevi.sql`, `04-karzarar/2026-05-07-...maliyet-karsilastirma.sql` (u_b) → hepsi Products.Code=stkID. Dashboard `gm_dashboard.py` → irsHrk. (Eski `briefings/*/brief.html` çıktıları tarihsel, regenerate ile düzelir.)
 
 ### EncoreMerkez ↔ DerinSIS KÖPRÜSÜ = Products.Code (09.06 keşif — KESİN)
 

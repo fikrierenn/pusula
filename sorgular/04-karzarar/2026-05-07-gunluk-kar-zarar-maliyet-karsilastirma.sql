@@ -98,7 +98,7 @@ SatisHam AS (
     INNER JOIN dbo.Products p WITH (NOLOCK)
         ON p.Id = sp.ProductsId
     LEFT JOIN DerinSISBkm.dbo.urn u_b WITH (NOLOCK)
-        ON u_b.stkKod COLLATE Turkish_CI_AS = sp.BarcodeNo COLLATE Turkish_CI_AS
+        ON u_b.stkID = CONVERT(int, p.Code) AND ISNUMERIC(p.Code) = 1   -- 09.06: Products.Code=stkID köprüsü (stkKod≠barkod)
        AND u_b.urnKtgr2ID IN (SELECT id FROM @KategoriID)
     LEFT JOIN DerinSISBkm.dbo.urn u_c WITH (NOLOCK)
         ON u_c.stkKod COLLATE Turkish_CI_AS = p.Code COLLATE Turkish_CI_AS
@@ -218,7 +218,7 @@ SatisHam AS (
     INNER JOIN dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
     INNER JOIN dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
     LEFT JOIN DerinSISBkm.dbo.urn u_b WITH (NOLOCK)
-        ON u_b.stkKod COLLATE Turkish_CI_AS = sp.BarcodeNo COLLATE Turkish_CI_AS
+        ON u_b.stkID = CONVERT(int, p.Code) AND ISNUMERIC(p.Code) = 1   -- 09.06: Products.Code=stkID köprüsü (stkKod≠barkod)
        AND u_b.urnKtgr2ID IN (2,8,15,24)
     LEFT JOIN DerinSISBkm.dbo.urn u_c WITH (NOLOCK)
         ON u_c.stkKod COLLATE Turkish_CI_AS = p.Code COLLATE Turkish_CI_AS
@@ -288,7 +288,7 @@ ORDER BY SUM(u.NetSatis) DESC;
     INNER JOIN dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
     INNER JOIN dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
     LEFT JOIN DerinSISBkm.dbo.urn u_b WITH (NOLOCK)
-        ON u_b.stkKod COLLATE Turkish_CI_AS = sp.BarcodeNo COLLATE Turkish_CI_AS
+        ON u_b.stkID = CONVERT(int, p.Code) AND ISNUMERIC(p.Code) = 1   -- 09.06: Products.Code=stkID köprüsü (stkKod≠barkod)
     LEFT JOIN DerinSISBkm.dbo.urn u_c WITH (NOLOCK)
         ON u_c.stkKod COLLATE Turkish_CI_AS = p.Code COLLATE Turkish_CI_AS
        AND u_b.stkID IS NULL
