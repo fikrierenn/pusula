@@ -620,26 +620,23 @@ function detayStore(i){const s=DATA[window.CUR].stores[i];
   window._stCh=new Chart(document.getElementById('stCh'),{type:'bar',data:{labels:kl.map(k=>k[0]),datasets:[{data:kl.map(k=>k[1]),backgroundColor:kl.map(k=>k[0].indexOf('Diğer')==0?'#cbd5e1':KP),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>tl(c.raw)+' (%'+(base?(100*c.raw/base).toFixed(1):0)+')'}}},scales:{x:{ticks:{callback:v=>fnum(v)}}},responsive:true,maintainAspectRatio:false}});}
 async function detayStok(kod,adEnc){loading('Stok Lokasyon');let ad=decodeURIComponent(adEnc);let d=await api('stok?kod='+encodeURIComponent(kod));
   if(!d.length){openModal('<h2>Stok — '+ad+'</h2><div style="padding:16px;color:#64748b">Lokasyon stok kaydı yok.</div>');return;}
-  let MG=['FSM','Özlüce','İst.Yolu'];
   let tot=d.reduce((a,b)=>a+b.adet,0);
-  let mgTot=d.filter(x=>MG.indexOf(x.yer)>=0).reduce((a,b)=>a+b.adet,0);
-  let rows=d.map(x=>{let isMg=MG.indexOf(x.yer)>=0;
-    return '<tr><td>'+x.yer+(isMg?'':' <span style="color:#94a3b8;font-size:11px">(depo)</span>')+'</td><td style="text-align:right;color:'+(x.adet<0?'#dc2626':'#0f172a')+'">'+fnum(x.adet)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.adet/tot).toFixed(0):0)+'</td><td style="text-align:right;font-weight:600">'+(isMg&&mgTot>0?'%'+(100*x.adet/mgTot).toFixed(0):'—')+'</td></tr>';}).join('');
-  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>TOPLAM (Mağaza '+fnum(mgTot)+')</td><td style="text-align:right">'+fnum(tot)+'</td><td style="text-align:right">%100</td><td style="text-align:right">%100</td></tr>';
-  openModal('<h2>Stok — '+ad+'</h2><div style="color:#64748b;font-size:12px">stok kodu '+kod+' · net bakiye adet · <b>Mağaza Payı</b> = 3 mağaza arası dağılım (depo hariç) · negatif = düzeltme</div><table style="margin-top:10px"><tr><td><b>Lokasyon</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Genel Pay</b></td><td style="text-align:right"><b>Mağaza Payı</b></td></tr>'+rows+foot+'</table>');}
+  let rows=d.map(x=>'<tr><td>'+x.yer+'</td><td style="text-align:right;color:'+(x.adet<0?'#dc2626':'#0f172a')+'">'+fnum(x.adet)+'</td><td style="text-align:right;color:#64748b">%'+(tot?(100*x.adet/tot).toFixed(0):0)+'</td></tr>').join('');
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>TOPLAM</td><td style="text-align:right">'+fnum(tot)+'</td><td style="text-align:right">%100</td></tr>';
+  openModal('<h2>Stok — '+ad+'</h2><div style="color:#64748b;font-size:12px">stok kodu '+kod+' · lokasyon bazlı net bakiye (adet) · negatif = düzeltme/iade fazlası</div><table style="margin-top:10px"><tr><td><b>Lokasyon</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Pay</b></td></tr>'+rows+foot+'</table>');}
 function detayToplam(){let st=DATA[window.CUR].stores;
   let cats={};st.forEach(s=>s.kat.forEach(k=>{cats[k[0]]=(cats[k[0]]||0)+k[1];}));
   let smap=st.map(s=>{let m={};s.kat.forEach(k=>m[k[0]]=k[1]);let matched=s.kat.reduce((a,k)=>a+k[1],0);return {ad:s.ad,net:s.net,m:m,diger:Math.round(s.net-matched)};});
   let catList=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]);
   let tNet=st.reduce((a,s)=>a+s.net,0);
   let hdr='<tr><td><b>Kategori</b></td>'+smap.map(s=>'<td style="text-align:right"><b>'+s.ad+'</b></td>').join('')+'<td style="text-align:right"><b>TOPLAM</b></td><td style="text-align:right"><b>Pay</b></td></tr>';
-  let rows=catList.map(c=>{let cells=smap.map(s=>'<td style="text-align:right">'+(s.m[c]?tl(s.m[c]):'<span style=color:#cbd5e1>—</span>')+'</td>').join('');
+  let rows=catList.map(c=>{let cells=smap.map(s=>{let v=s.m[c]||0;return '<td style="text-align:right">'+(v?tl(v)+' <span style="color:#94a3b8;font-size:10px">%'+(s.net?(100*v/s.net).toFixed(0):0)+'</span>':'<span style="color:#cbd5e1">—</span>')+'</td>';}).join('');
     return '<tr><td>'+c+'</td>'+cells+'<td style="text-align:right;font-weight:600">'+tl(cats[c])+'</td><td style="text-align:right;color:#64748b">%'+(tNet?(100*cats[c]/tNet).toFixed(1):0)+'</td></tr>';}).join('');
   let digerTot=smap.reduce((a,s)=>a+s.diger,0);
-  let digerRow='<tr style="color:#94a3b8"><td>Diğer / eşleşmeyen</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.diger)+'</td>').join('')+'<td style="text-align:right">'+tl(Math.round(digerTot))+'</td><td style="text-align:right">%'+(tNet?(100*digerTot/tNet).toFixed(1):0)+'</td></tr>';
-  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM (Net)</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.net)+'</td>').join('')+'<td style="text-align:right">'+tl(tNet)+'</td><td style="text-align:right">%100</td></tr>';
+  let digerRow='<tr style="color:#94a3b8"><td>Diğer / eşleşmeyen</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.diger)+' <span style="font-size:10px">%'+(s.net?(100*s.diger/s.net).toFixed(0):0)+'</span></td>').join('')+'<td style="text-align:right">'+tl(Math.round(digerTot))+'</td><td style="text-align:right">%'+(tNet?(100*digerTot/tNet).toFixed(1):0)+'</td></tr>';
+  let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td>DİP TOPLAM (Net)</td>'+smap.map(s=>'<td style="text-align:right">'+tl(s.net)+' <span style="font-size:10px;color:#fff;background:'+KP+';padding:1px 4px;border-radius:3px">%100</span></td>').join('')+'<td style="text-align:right">'+tl(tNet)+'</td><td style="text-align:right">%100</td></tr>';
   let cols=['#e30622','#2563eb','#16a34a'];
-  openModal('<h2>Kategori × Mağaza</h2><div style="color:#64748b;font-size:12px">'+({gunluk:"günlük",haftalik:"haftalık",ay:"aylık (MTD)"}[window.CUR])+' · tüm mağazalar yan yana · net ile denkleştirilmiş</div>'+
+  openModal('<h2>Kategori × Mağaza</h2><div style="color:#64748b;font-size:12px">'+({gunluk:"günlük",haftalik:"haftalık",ay:"aylık (MTD)"}[window.CUR])+' · tüm mağazalar yan yana · mağaza hücresindeki küçük % = <b>o mağazanın kendi içindeki kategori payı</b> · sağdaki Pay = genel toplam içinde</div>'+
    '<div style="height:'+Math.max(200,catList.length*30)+'px;margin:8px 0 14px"><canvas id=tCh></canvas></div>'+
    '<table style="margin-top:6px">'+hdr+rows+digerRow+foot+'</table>');
   if(window._tCh)window._tCh.destroy();
