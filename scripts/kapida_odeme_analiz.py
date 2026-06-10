@@ -103,8 +103,9 @@ def build(gun, olgungun, kargo):
     pc = profil.get("COD", {}); po = profil.get("Online", {})
     service = float(pc.get("ServiceGelir") or 0)
     iade_zarar = cod_iade * kargo
-    # kâr/zarar: service fee geliri (teslim) vs iade kargo zararı (operasyonel, ürün marjı hariç)
-    net = service - iade_zarar
+    # service fee = PASS-THROUGH (müşteriden alınan ≈ kargo/tahsilat firmasına ödenen) → kâr DEĞİL, nötr.
+    # COD gerçek operasyonel maliyet = iade kargo zararı (iadede gidiş+dönüş yutulur, tahsil yok).
+    net = -iade_zarar
 
     # ---- Yönetici Özeti ----
     ws = wb.active; ws.title = "Yönetici Özeti"
@@ -117,9 +118,10 @@ def build(gun, olgungun, kargo):
         ws.cell(4, 1 + i * 2, k).font = Font(size=9, color="64748B")
         ws.cell(5, 1 + i * 2, v).font = Font(bold=True, size=13, color=KIRMIZI)
     lines = ["", "KÂR / ZARAR MODELİ (operasyonel, ürün marjı hariç)",
-             f"• Service (kapıda ödeme) ücreti geliri: +{tl(service)} ₺",
-             f"• İade kargo zararı ({cod_iade} iade × {kargo}₺ gidiş-dönüş): −{tl(iade_zarar)} ₺",
-             f"• NET operasyonel katkı: {'+' if net>=0 else ''}{tl(net)} ₺",
+             f"• Service (kapıda ödeme) ücreti: müşteriden +{tl(service)} ₺ ≈ kargo/tahsilat firmasına ödenen → NÖTR (pass-through, KÂR DEĞİL).",
+             f"• İade kargo zararı ({cod_iade} iade × {kargo}₺ gidiş-dönüş): −{tl(iade_zarar)} ₺ (iadede tahsil de yok).",
+             f"• COD NET OPERASYONEL MALİYET: −{tl(iade_zarar)} ₺ (sadece iade zararı).",
+             "• COD'un değeri finansal kârda değil → kartı olmayan/güvenmeyen müşteriye SATIŞ + büyük sepet (enablement). İade düştükçe maliyet düşer.",
              "", "BULGULAR",
              f"• COD iade (kapıda red) oranı %{cod_iadeP} — online %{on_iadeP}. COD ~{round(cod_iadeP/on_iadeP) if on_iadeP else 0}× daha riskli teslimde.".replace(".", ",", 2),
              f"• COD ort. sepet {tl(float(pc.get('AOV') or 0))}₺ > online {tl(float(po.get('AOV') or 0))}₺ → büyük sepet ama teslim riski yüksek.",
@@ -189,7 +191,7 @@ def build(gun, olgungun, kargo):
     out = R / "briefings" / "kapida-odeme-analiz.xlsx"
     wb.save(out)
     print(f"Excel: {out}")
-    print(f"  COD {tl(float(pc.get('Ciro') or 0))}₺ · iade %{cod_iadeP} (online %{on_iadeP}) · service +{tl(service)} − iade {tl(iade_zarar)} = net {tl(net)}₺ · kara liste {len(kara)} ({sum(1 for k in kara if int(k['Teslim'])==0)} hiç-almayan)")
+    print(f"  COD {tl(float(pc.get('Ciro') or 0))}₺ · iade %{cod_iadeP} (online %{on_iadeP}) · service {tl(service)} NÖTR(pass-through) · iade zararı {tl(iade_zarar)}₺ · kara liste {len(kara)} ({sum(1 for k in kara if int(k['Teslim'])==0)} hiç-almayan)")
 
 
 if __name__ == "__main__":
