@@ -84,12 +84,16 @@ def fetch(gun, olgungun, kargo):
       HAVING SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END)>=2
       ORDER BY SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) DESC, SUM(o.TOTALPRICE) DESC""")
     kara = cur.fetchall()
+    # 5) İade gerçek kargo (tek yön) — gidiş-dönüş zararı = 2× bu (firmaya ödenir, müşteriden tahsil yok)
+    cur.execute(f"""SELECT CAST(SUM(o.CARGOPRICE) AS decimal(18,0)) IadeKargo
+      FROM {D}.J_ORDERS o WHERE {olw} AND o.PAYDEFREF={COD} AND o.CARGODELIVERYSTATUS=2""")
+    iade_kargo = float((cur.fetchone() or {}).get("IadeKargo") or 0)
     cur.close(); conn.close()
-    return teslim, profil, trend, kara
+    return teslim, profil, trend, kara, iade_kargo
 
 
 def build(gun, olgungun, kargo):
-    teslim, profil, trend, kara = fetch(gun, olgungun, kargo)
+    teslim, profil, trend, kara, iade_kargo = fetch(gun, olgungun, kargo)
     wb = Workbook()
     red = PatternFill("solid", fgColor=KIRMIZI); white = Font(color="FFFFFF", bold=True)
     thin = Border(*[Side(style="thin", color="E2E8F0")] * 4)
@@ -102,9 +106,10 @@ def build(gun, olgungun, kargo):
     on_iadeP = round(100 * on_iade / (on_teslim + on_iade), 1) if (on_teslim + on_iade) else 0
     pc = profil.get("COD", {}); po = profil.get("Online", {})
     service = float(pc.get("ServiceGelir") or 0)
-    iade_zarar = cod_iade * kargo
+    # İade zararı = gerçek CARGOPRICE × 2 (gidiş + geri getirme); müşteriden tahsil yok, BKM yutar.
+    # kargo param sadece CARGOPRICE yoksa fallback (tek yön).
+    iade_zarar = round(iade_kargo * 2) if iade_kargo > 0 else cod_iade * kargo
     # service fee = PASS-THROUGH (müşteriden alınan ≈ kargo/tahsilat firmasına ödenen) → kâr DEĞİL, nötr.
-    # COD gerçek operasyonel maliyet = iade kargo zararı (iadede gidiş+dönüş yutulur, tahsil yok).
     net = -iade_zarar
 
     # ---- Yönetici Özeti ----
@@ -119,7 +124,7 @@ def build(gun, olgungun, kargo):
         ws.cell(5, 1 + i * 2, v).font = Font(bold=True, size=13, color=KIRMIZI)
     lines = ["", "KÂR / ZARAR MODELİ (operasyonel, ürün marjı hariç)",
              f"• Service (kapıda ödeme) ücreti: müşteriden +{tl(service)} ₺ ≈ kargo/tahsilat firmasına ödenen → NÖTR (pass-through, KÂR DEĞİL).",
-             f"• İade kargo zararı ({cod_iade} iade × {kargo}₺ gidiş-dönüş): −{tl(iade_zarar)} ₺ (iadede tahsil de yok).",
+             f"• İade kargo zararı ({cod_iade} iade × gerçek kargo × 2 gidiş-dönüş = {tl(iade_kargo)}×2): −{tl(iade_zarar)} ₺ (iadede tahsil yok, müşteri ödemez).",
              f"• COD NET OPERASYONEL MALİYET: −{tl(iade_zarar)} ₺ (sadece iade zararı).",
              "• COD'un değeri finansal kârda değil → kartı olmayan/güvenmeyen müşteriye SATIŞ + büyük sepet (enablement). İade düştükçe maliyet düşer.",
              "", "BULGULAR",
