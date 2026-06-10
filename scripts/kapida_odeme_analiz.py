@@ -84,16 +84,37 @@ def fetch(gun, olgungun, kargo):
       HAVING SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END)>=2
       ORDER BY SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) DESC, SUM(o.TOTALPRICE) DESC""")
     kara = cur.fetchall()
+    # 5b) İl bazında COD iade (coğrafya etkisi)
+    cur.execute(f"""SELECT CAST(a.DCITY AS nvarchar(30)) Il,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=1 THEN 1 ELSE 0 END) Teslim,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) Iade
+      FROM {D}.J_ORDERS o JOIN {D}.J_ORDER_DELIVERY_ADDRESS a ON a.LOGICALREF=o.DELIVERYREF
+      WHERE {olw} AND o.PAYDEFREF={COD}
+      GROUP BY CAST(a.DCITY AS nvarchar(30))
+      HAVING SUM(CASE WHEN o.CARGODELIVERYSTATUS IN (1,2) THEN 1 ELSE 0 END)>=40
+      ORDER BY 100.0*SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN o.CARGODELIVERYSTATUS IN (1,2) THEN 1 ELSE 0 END),0) DESC""")
+    il = cur.fetchall()
+    # 5c) Kargo firması: genel iade% + İSTANBUL-içi iade% (coğrafyadan arındırılmış adil kıyas)
+    cur.execute(f"""SELECT CAST(cg.CNAME AS nvarchar(25)) Kargo,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=1 THEN 1 ELSE 0 END) Teslim,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) Iade,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=1 AND a.DCITY=N'İstanbul' THEN 1 ELSE 0 END) IstTeslim,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 AND a.DCITY=N'İstanbul' THEN 1 ELSE 0 END) IstIade
+      FROM {D}.J_ORDERS o JOIN {D}.J_CARGO cg ON cg.ID=o.CARGOREF
+      LEFT JOIN {D}.J_ORDER_DELIVERY_ADDRESS a ON a.LOGICALREF=o.DELIVERYREF
+      WHERE {olw} AND o.PAYDEFREF={COD}
+      GROUP BY CAST(cg.CNAME AS nvarchar(25))""")
+    firma = cur.fetchall()
     # 5) İade gerçek kargo (tek yön) — gidiş-dönüş zararı = 2× bu (firmaya ödenir, müşteriden tahsil yok)
     cur.execute(f"""SELECT CAST(SUM(o.CARGOPRICE) AS decimal(18,0)) IadeKargo
       FROM {D}.J_ORDERS o WHERE {olw} AND o.PAYDEFREF={COD} AND o.CARGODELIVERYSTATUS=2""")
     iade_kargo = float((cur.fetchone() or {}).get("IadeKargo") or 0)
     cur.close(); conn.close()
-    return teslim, profil, trend, kara, iade_kargo
+    return teslim, profil, trend, kara, iade_kargo, il, firma
 
 
 def build(gun, olgungun, kargo):
-    teslim, profil, trend, kara, iade_kargo = fetch(gun, olgungun, kargo)
+    teslim, profil, trend, kara, iade_kargo, il, firma = fetch(gun, olgungun, kargo)
     wb = Workbook()
     red = PatternFill("solid", fgColor=KIRMIZI); white = Font(color="FFFFFF", bold=True)
     thin = Border(*[Side(style="thin", color="E2E8F0")] * 4)
@@ -131,7 +152,9 @@ def build(gun, olgungun, kargo):
              f"• COD iade (kapıda red) oranı %{cod_iadeP} — online %{on_iadeP}. COD ~{round(cod_iadeP/on_iadeP) if on_iadeP else 0}× daha riskli teslimde.".replace(".", ",", 2),
              f"• COD ort. sepet {tl(float(pc.get('AOV') or 0))}₺ > online {tl(float(po.get('AOV') or 0))}₺ → büyük sepet ama teslim riski yüksek.",
              f"• Tekrar kapıda-red eden {len(kara)} müşteri (kara liste sayfası); {sum(1 for k in kara if int(k['Teslim'])==0)}'i hiç teslim almamış.",
+             "• İade ağırlıkla COĞRAFYA kaynaklı (Doğu/GD/Karadeniz illeri %15-21, Batı %3-6) — firma DEĞİL. İstanbul-içi PTT≈HEPSIJET (Kargo Firma sayfası).",
              "", "AKSİYON",
+             "• Yüksek-iade illerde (İl İade sayfası, %13+) COD'a ön-arama/SMS teyit veya ön-ödeme teşvik (firma kaydırma çözüm değil — HEPSIJET o illere gitmiyor).",
              "• Hiç teslim almayan (Teslim=0) müşterilere COD KAPAT (sadece ön ödeme).",
              "• ≥2 iadeli müşteriye SMS teyit zorunlu + COD limiti; 3. iadede otomatik blok.",
              "• Misafir COD'u kısıtla (üyeye aç) — misafir takip edilemiyor.",
@@ -192,6 +215,36 @@ def build(gun, olgungun, kargo):
             for j in range(1, 10): kl.cell(i, j).fill = PatternFill("solid", fgColor="FEE2E2")
     kl.freeze_panes = "A2"
     for j, w in enumerate([12, 34, 15, 8, 8, 11, 8, 12, 24], 1): kl.column_dimensions[get_column_letter(j)].width = w
+
+    # ---- İl İade (coğrafya) ----
+    ilw = wb.create_sheet("İl İade")
+    for j, h in enumerate(["İl", "Teslim", "İade", "İade %", "Risk / Öneri"], 1):
+        cc = ilw.cell(1, j, h); cc.fill = red; cc.font = white; cc.border = thin
+    for i, r in enumerate(il, 2):
+        te = int(r["Teslim"]); ia = int(r["Iade"]); ip = round(100 * ia / (te + ia), 1) if (te + ia) else 0
+        risk = "YÜKSEK — COD'a ön-arama/SMS teyit veya ön-ödeme teşvik" if ip >= 13 else ("ORTA — izle" if ip >= 9 else "düşük — serbest")
+        for j, v in enumerate([r["Il"], te, ia, ip, risk], 1):
+            cc = ilw.cell(i, j, v); cc.border = thin
+            if j in (2, 3): cc.number_format = "#,##0"
+            if j == 4: cc.number_format = "0.0"
+        if ip >= 13:
+            for j in range(1, 6): ilw.cell(i, j).fill = PatternFill("solid", fgColor="FEE2E2")
+    for j, w in enumerate([16, 9, 8, 8, 48], 1): ilw.column_dimensions[get_column_letter(j)].width = w
+    ilw.freeze_panes = "A2"
+
+    # ---- Kargo Firma (il-içi adil kıyas) ----
+    fw = wb.create_sheet("Kargo Firma")
+    for j, h in enumerate(["Kargo", "Teslim", "İade", "Genel İade %", "İstanbul Teslim", "İstanbul İade", "İstanbul İade % (adil)"], 1):
+        cc = fw.cell(1, j, h); cc.fill = red; cc.font = white; cc.border = thin
+    for i, r in enumerate(firma, 2):
+        te = int(r["Teslim"]); ia = int(r["Iade"]); ip = round(100 * ia / (te + ia), 1) if (te + ia) else 0
+        ite = int(r["IstTeslim"]); iia = int(r["IstIade"]); iip = round(100 * iia / (ite + iia), 1) if (ite + iia) else 0
+        for j, v in enumerate([r["Kargo"], te, ia, ip, ite, iia, iip], 1):
+            cc = fw.cell(i, j, v); cc.border = thin
+            if j in (2, 3, 5, 6): cc.number_format = "#,##0"
+            if j in (4, 7): cc.number_format = "0.0"
+    fw.cell(len(firma) + 3, 1, "NOT: Genel iade% yanıltıcı (PTT/MNG zor illere de gider). İstanbul-içi % adil kıyas → firma farkı küçük; iade ağırlıkla COĞRAFYA.").font = Font(italic=True, size=9, color="64748B")
+    for j, w in enumerate([18, 9, 8, 12, 14, 13, 20], 1): fw.column_dimensions[get_column_letter(j)].width = w
 
     out = R / "briefings" / "kapida-odeme-analiz.xlsx"
     wb.save(out)
