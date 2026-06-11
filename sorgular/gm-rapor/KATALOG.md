@@ -34,15 +34,17 @@ Amaç: stratejik review. Otomatik mail zaten gidiyor (`scripts/generate_brief.py
 | # | Rapor | KPI | Kaynak | Durum |
 |---|---|---|---|---|
 | P1 | **Haftalık brief** (otomatik mail) | Net ciro · WoW · fiş · sepet · mağaza + MTD hedef · günlük seyir | `scripts/generate_brief.py` → `briefings/YYYY-MM-DD/brief.html` | ✅ otomatik |
-| P2 | Kategori/marka haftalık trend | KİTAP vs DİĞER ara toplam · kategori payı · birim fiyat Δ | `01-ciro/2026-05-08-ciro-magaza-kategori-aratoplamli.sql` (tarih → hafta) | mevcut |
-| P3 | Kampanya performansı (hafta) | 3Al2Öde fiş/ürün/indirim · %50 kampanya · kampanyalı fiş payı | `03-kampanya/10_07_3al2ode-detay.sql` · `10_10_sepet-karsilastirmasi.sql` | mevcut |
-| P4 | Kâr/zarar — maliyet karşılaştırma (hafta) | Brüt marj · maliyet · net kâr (mağazalı) | `04-karzarar/2026-05-07-karzarar-v7-prodparity.sql` | mevcut |
-| P5 | İade analizi (hafta) | İade oranı trend · top iade ürün/sebep | `05-iade/10_14_iade-analizi.sql` | mevcut |
-| P6 | Operasyon — kasiyer (hafta) | Kasiyer fiş/ciro · gün sonu mutabakat | `06-operasyon/10_16_kasiyer.sql` · `10_18_gun-sonu.sql` | mevcut |
-| P7 | Personel / PDKS (hafta) | Fazla mesai · devamsızlık · vardiya plan vs fiili | `sorgular/pdks/sp_PdksPano.sql` | mevcut |
+| P2 | Kategori/marka haftalık trend | KİTAP vs DİĞER ara toplam · kategori payı · birim fiyat Δ | `haftalik/P2-kategori-trend-hafta.sql` (tam CTE: `01-ciro/...aratoplamli.sql`) | ✅ MCP 11.06 |
+| P3 | Kampanya performansı (hafta) | 3Al2Öde vs diğer vs kampanyasız · sepet · net ciro | `haftalik/P3-kampanya-hafta.sql` | ✅ MCP 11.06 |
+| P4 | Kâr/zarar — maliyet karşılaştırma (hafta) | Brüt marj · maliyet · net kâr (mağazalı) | `haftalik/P4-karzarar-hafta.sql` → v7 (SSMS/pymssql) | mevcut (SSMS) |
+| P5 | İade analizi (hafta) | İade sayı/tutar mağaza+belge tipi | `haftalik/P5-iade-hafta.sql` | ✅ MCP 11.06 |
+| P6 | Operasyon — kasiyer + gün sonu (hafta) | Kasiyer fiş/ciro/sepet/iade · kapanış no mutabakat | `haftalik/P6-kasiyer-gunsonu-hafta.sql` (10_16 içeriği yanlıştı — sıfırdan) | ✅ MCP 11.06 |
+| P7 | Personel / PDKS (hafta) | Fazla mesai · devamsızlık · vardiya plan vs fiili | `haftalik/P7-pdks-hafta.sql` → `pdks/sp_PdksPano.sql` (SSMS) | mevcut (SSMS) |
 | P8 | Önümüzdeki hafta | Özel gün · aksiyon önerisi | brief P1 §4 (manuel takvim) | brief'te |
 
-**Brief'te eksik (B-21 backlog):** Heykel, JOKER e-ticaret, kitapsepeti, kafeler haftalık brief'e dahil değil — kapsam genişletme bekliyor.
+Dinamik hafta kalıbı (tüm P dosyalarında): `DATEADD(WEEK, DATEDIFF(WEEK,0,GETDATE())-1, 0)` = geçen Pazartesi (epoch 1900-01-01 Pzt, DATEFIRST'ten bağımsız).
+
+**Brief'te eksik (B-21 backlog):** Heykel, kitapsepeti, kafeler haftalık brief'e dahil değil. ~~JOKER e-ticaret~~ ✅ 11.06 brief v1.1.0 (B-29).
 
 ---
 

@@ -92,6 +92,13 @@ bridges:
     scope: cross-db
     confidence: 0.9
     note: "Barkod GEREKİYORSA bu zincir; urn.stkKod ile join YASAK (stkKod≠barkod). Tercih: products-code-stkid köprüsü."
+  - id: sales-users-kasiyer
+    from: EncoreMerkez.dbo.Sales.UsersId
+    to: EncoreMerkez.dbo.Users.Id
+    scope: encoremerkez
+    confidence: 1.0
+    note: "Kasiyer adı = Users.Name. P6 haftalık kasiyer performans köprüsü."
+    evidence: "11.06 — hafta 01-07.06: 16 kasiyer, fiş toplamı brief ile tutarlı"
   - id: sales-customer-name
     from: EncoreMerkez.dbo.Sales.CustomersId
     to: DerinCrm.dbo.Customer.Id

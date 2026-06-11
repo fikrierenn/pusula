@@ -1,0 +1,10 @@
+-- =====================================================================
+-- P7 — HAFTALIK PERSONEL / PDKS (fazla mesai, devamsızlık, plan vs fiili)
+-- ⚠️ SSMS-ONLY: TAM SORGU sorgular/pdks/sp_PdksPano.sql (423 satır SP/multi-statement).
+-- PDKS erişimi: OPENQUERY, Per_Grp1='MAĞAZALAR', Per_Grp2 = mağaza adı eşleşmesi
+--   (vrd.Vardiya tabloları GEREKMEZ — sema/entities.yaml pdks).
+-- OPENQUERY iç literaller çift-tek tırnak (''..'') ister; pymssql'de SET DATEFORMAT dmy.
+-- Haftalık pencere: geçen Pzt = DATEADD(WEEK, DATEDIFF(WEEK,0,GETDATE())-1, 0).
+-- İlgili hazır python: scripts/isgucu_trafik_ucgen.py (trafik×işgücü×dönüşüm 60 gün).
+-- =====================================================================
+-- (Bu dosya pointer — SP parametrelerini sp_PdksPano.sql içinde haftalık tarihlerle çalıştır.)
