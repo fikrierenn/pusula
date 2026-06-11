@@ -1,0 +1,131 @@
+# BKM Semantik Katman — KÖPRÜLER (cross-table / cross-db join tanımları)
+# Canonical, makine-okunur. Her köprü canlı şemada doğrulandı.
+# Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
+# İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
+version: 1
+updated: 2026-06-10
+
+bridges:
+  # --- ERP iç (DerinSISBkm) ---
+  - id: irshrk-stk
+    from: dbo.irsHrk.ehstkID
+    to: dbo.urn.stkID
+    scope: derinsis
+    confidence: 1.0
+    note: "Satış/stok hareketi → ürün. En temiz ürün/kategori köprüsü. ehTip 1/4/100 satış."
+    evidence: "kalıcı"
+  - id: irshrk-mekan
+    from: dbo.irsHrk.ehMekan
+    to: dbo.mekan_vw.mekanID
+    scope: derinsis
+    confidence: 1.0
+  - id: irs-irsayr
+    from: dbo.irsAyr.ehID
+    to: dbo.irs.eID
+    scope: derinsis
+    confidence: 1.0
+    note: "Evrak satır → başlık. irsHrk birleşik hareket (ehID+ehstkID+ehTip grup)."
+  - id: fat-fatayr
+    from: dbo.fatAyr.ehID
+    to: dbo.fat.eID
+    scope: derinsis
+    confidence: 1.0
+  - id: irs-firma
+    from: dbo.irs.eFirma
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 1.0
+    note: "Evrak → cari/firma. Mağaza frmID=1/4477/4478, GENEL=0, tedarikçi=diğer."
+
+  # --- WMS / depo (10.06 keşif) ---
+  - id: palet-irs
+    from: depo.paletIcHrk.piIrsID
+    to: dbo.irs.eID
+    scope: derinsis
+    confidence: 0.95
+    note: "İç hareket → irsaliye (tip+firma için). pGC 0=giriş 1=çıkış."
+    evidence: "10.06"
+  - id: emirayr-emir
+    from: depo.emirAyr.emPaletID
+    to: depo.emirSat.satPID
+    then:
+      from: depo.emirSat.satEmirID
+      to: depo.emir.emID
+    scope: derinsis
+    confidence: 0.9
+    note: "Toplama operasyonu (emirAyr) → emir → emTip (görev). emirSat sadece [satPID,satEmirID] köprü."
+    evidence: "10.06"
+
+  # --- EncoreMerkez POS ↔ DerinSIS ERP ---
+  - id: products-code-stkid
+    from: EncoreMerkez.dbo.Products.Code
+    to: DerinSISBkm.dbo.urn.stkID
+    join_type: INNER
+    join_sql: "u.stkID = CONVERT(int, p.Code)"
+    guard: "ISNUMERIC(p.Code)=1"      # compat 110 — TRY_CONVERT yok
+    match: "%99.98 (798.349/798.527)"
+    scope: cross-db
+    confidence: 0.99
+    note: "Code stkKod DEĞİL (~%9), barkod hiç değil. POS per-fiş/per-mağaza → doğru kategori/marka."
+    evidence: "09.06 — Oyuncak ciro 700K→10,96M doğrulandı"
+  - id: salesproducts-products
+    from: EncoreMerkez.dbo.SalesProducts.ProductsId
+    to: EncoreMerkez.dbo.Products.Id
+    scope: encoremerkez
+    confidence: 1.0
+    note: "SalesProducts WHERE IsValid=1 ZORUNLU."
+  - id: sales-customer-name
+    from: EncoreMerkez.dbo.Sales.CustomersId
+    to: DerinCrm.dbo.Customer.Id
+    scope: cross-db
+    confidence: 1.0
+    note: "Yazarkasa müşteri adı. Customer.Name/PhoneNumber/CardNumber. Group1Id=2=personel müşteri."
+    evidence: "09.06 — DerinSISBkmCrm.mst (T…) EŞLEŞMEZ, EncoreMerkezCrm BOŞ."
+
+  # --- E-ticaret (ODAKJOKER.JOKER) ---
+  - id: orderdetails-orders
+    from: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.ORDERREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
+    scope: joker
+    confidence: 1.0
+    note: "ORDERID (LOGICALREF DEĞİL!). ORDERID = 'TS…' kodundaki sayı."
+    evidence: "09.06"
+  - id: orderdetails-items
+    from: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.ITEMREF
+    to: ODAKJOKER.JOKER.dbo.J_ITEMS.LOGICALREF
+    scope: joker
+    confidence: 1.0
+  - id: items-derinsis
+    from: ODAKJOKER.JOKER.dbo.J_ITEMS.DERINSIS_ID
+    to: DerinSISBkm.dbo.urn.stkID
+    scope: cross-db
+    confidence: 1.0
+    note: "E-ticaret ürün → DerinSIS kategori. Marka direkt J_ITEMS.BRAND."
+  - id: orders-paytype
+    from: ODAKJOKER.JOKER.dbo.J_ORDERS.PAYDEFREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES.ID
+    scope: joker
+    confidence: 1.0
+    note: "ID ile (LOGICALREF değil). Kapıda Ödeme=-3, iyzico=-13, Havale=-1."
+  - id: orders-cargo
+    from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGOREF
+    to: ODAKJOKER.JOKER.dbo.J_CARGO.ID
+    scope: joker
+    confidence: 1.0
+  - id: orders-cargostatus
+    from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGODELIVERYSTATUS
+    to: ODAKJOKER.JOKER.dbo.J_ORDER_CARGO_STATUS.STATUS
+    scope: joker
+    confidence: 1.0
+  - id: orders-delivery
+    from: ODAKJOKER.JOKER.dbo.J_ORDERS.DELIVERYREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS.LOGICALREF
+    scope: joker
+    confidence: 1.0
+    note: "DCITY (il), DTOWN (ilçe). ORDERCODE kolonu BOŞ."
+  - id: orders-client
+    from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.LOGICALREF
+    scope: joker
+    confidence: 1.0
+    note: "→ CUSTOMERREF (0/NULL=misafir). J_ORDER_CLIENTS standart (J_CLCARD değil)."

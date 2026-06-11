@@ -1,0 +1,82 @@
+# BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
+# Canlı doğrulanmış. Yeni kod öğrenilince ekle.
+version: 1
+updated: 2026-06-10
+
+codes:
+  irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
+    lookup: dbo.irsTip_vw
+    satis_gross: [1, 4, 100]
+    iade: [3, 5, 101]
+    net_ciro: "SUM(gross) - SUM(iade); ehTutarN daima pozitif"
+    values:
+      0: Alış
+      1: Satış
+      2: Alış İade
+      3: Satış İade
+      4: Mağaza Satış
+      5: Mağaza Satış İade
+      6: Hizmet
+      7: Gider
+      8: Mağaza Mağaza (mağazalar arası transfer)
+      9: Mağaza Depo
+      10: Yerel Alım (tedarikçi giriş)
+      11: Depo Depo
+      12: Alış Mağaza İade
+      13: Depo Mağaza (sipariş; eTarih≠eTarihS olabilir)
+      14: İade ve İmha
+      16: Stok EKLE
+      17: Merkezi Düzeltme
+      99: Sayım (geriye dönük yazılır, max 189 gün)
+      100: POS Satış (yazar kasa perakende)
+      101: POS Satış İade
+
+  fat.eTip:            # dbo.fatTip_vw — fat SADECE faturalar (perakende kasa YOK → irsHrk 100)
+    lookup: dbo.fatTip_vw
+    values: {0: Alış, 1: Satış (B2B), 2: Alış İade, 3: Satış İade, 4: Mağaza Satış, 5: Mağaza Satış İade}
+
+  depo.emir.emTip:     # depo.emTip — WMS iş emri = GÖREV
+    lookup: depo.emTip
+    values:
+      0: YERLEŞTİRME EMRİ (Raflama / putaway)
+      1: BESLEME EMRİ (replenishment)
+      2: TOPLAMA EMRİ (picking)
+      3: ARAÇ PLANLAMA EMRİ (şoför / sevkiyat planı)
+      4: HAVUZ EMRİ
+
+  depo.paletIcHrk.pHrkTip:
+    note: "0=raflama/yerleştirme ana hareket, 1=toplama paleti, 2=besleme. pGC: 0=giriş 1=çıkış."
+  depo.paletIcHrkTip:
+    values: {0: KULLANICI, 1: EMİR, 2: SAYIM, 3: GERİ AL}
+  depo.paletTip:
+    values: {0: PALET, 1: KASA, 2: ROT, 3: ÇIKIŞ KASASI}
+
+  joker.J_ORDER_PAY_TYPES:    # PAYDEFREF=ID
+    lookup: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES
+    values:
+      -1: Havale/EFT
+      -3: Kapıda Ödeme (COD)
+      -13: iyzico (tüm online kart, ~%94)
+  joker.J_ORDER_CARGO_STATUS: # CARGODELIVERYSTATUS
+    values:
+      0: İşlem görmemiş
+      1: TESLİM EDİLDİ
+      2: İADE GELDİ
+      3: KAYIP KARGO
+      4: HAREKET GÖRÜYOR
+  joker.J_ORDERS.STATUS:
+    values: {1001: bekliyor, 1005: tamamlandı, 1006: iptal, 3004: iade, 3006: iade}
+  joker.J_ORDERS.APPLICATION:
+    values: ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi"]
+
+  mekanID:
+    values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo}
+  frmID_onemli:
+    values:
+      0: GENEL
+      1: FSM Mğz
+      4477: ÖZLÜCE Mğz
+      4478: İST YOLU Mğz
+      56: BURSA KÜLTÜR (Heykel — aktif cari, alış)
+      60398: HEYKEL TRANSFER DEPOSU (mekan/firma)
+      60400: Heykel Transfer

@@ -1,0 +1,60 @@
+# BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
+# Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
+version: 1
+updated: 2026-06-10
+
+databases:
+  DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
+  EncoreMerkez:
+    rol: "POS (yazar kasa)"
+    compat:
+      sql_compat_level: 110
+      unavailable: [STRING_AGG, TRIM, IIF, TRY_CONVERT]
+      alternatives: {STRING_AGG: "STUFF + FOR XML PATH", TRIM: "LTRIM(RTRIM())", IIF: "CASE WHEN", TRY_CONVERT: "ISNUMERIC + CONVERT"}
+  DerinCrm: {rol: "yeni sadakat CRM (müşteri adı)"}
+  ODAKJOKER.JOKER: {rol: "e-ticaret (linked server)", tarih: "YYYYMMDD ISO — DMY burada SESSİZ HATA"}
+  BKMDATA: {rol: "Hedef tablosu + veri ambarı"}
+  BKMMaliyet: {rol: "maliyet/marj"}
+
+ai_hints:   # sorgu üretirken her zaman geçerli
+  - "yyyy-MM-dd tarih formatı HİÇBİR yerde kullanılmaz."
+  - "Cross-db string join → COLLATE Turkish_CI_AS."
+  - "Canlı sorguda WITH(NOLOCK) (özellikle irsHrk, depo.*)."
+  - "MCP sql_query: CTE yok, top-level ORDER BY yok, multi-statement yok — tek SELECT yaz."
+  - "urn.stkKod BARKOD DEĞİL — ürün eşleşmesi daima stkID üstünden."
+
+entities:
+  # ERP çekirdek
+  dbo.urn: {pk: stkID, key: [stkKod, stkAd, urnMrkID, urnKtgr2ID, urnTip], note: "stkKod barkod DEĞİL → eşleme stkID üstünden"}
+  bkm.Urunbilgi: {tip: view, note: "en pratik ürün lookup: stkID, BarkodAna, mrkAd, Kategori3, SatisFiyat"}
+  dbo.irsHrk:
+    pk: ehID
+    grain: "birleşik hareket (ehID+ehstkID+ehTip)"
+    note: "ciro/stok ana kaynağı"
+    columns:
+      ehTrhS: {label: "İş tarihi", description: "Stok/ciro DAIMA bu tarih (=irs.eTarihS). hrkTarih=audit log."}
+      ehTip: {label: "Hareket tipi", description: "1/4/100=satış, 3/5/101=iade → codes.yaml"}
+      ehAdetN: {label: "Adet (net)", description: "Çıkışta NEGATİF (satış/iade)"}
+      ehTutarN: {label: "Tutar KDV hariç", description: "= ehTutar−ehIndirim. DAIMA POZİTİF — iade sign'ı CASE ile çevir"}
+      ehAltDepo: {label: "Alt depo", description: "ehAltDepo=0 filtresi ZORUNLU (raporlarda)"}
+  dbo.irs: {pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık"}
+  dbo.frm: {pk: frmID, key: [frmKod, frmAd, frmTip]}
+  dbo.mekan_vw: {tip: view, key: [mekanID, mekanAd, mekanTip]}
+
+  # POS
+  EncoreMerkez.dbo.Sales: {pk: Id, key: [CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotalDirect, IsValid]}
+  EncoreMerkez.dbo.SalesProducts: {key: [SalesId, ProductsId, BarcodeNo, IsValid], filter: "IsValid=1 ZORUNLU"}
+  EncoreMerkez.dbo.Products: {pk: Id, key: [Code], note: "Code=urn.stkID köprüsü"}
+  DerinCrm.dbo.Customer: {pk: Id, key: [Name, PhoneNumber, CardNumber, Group1Id], note: "Id=Sales.CustomersId; Group1Id=2 personel"}
+
+  # WMS / depo (10.06)
+  depo.emir: {pk: emID, key: [emTip, emBhTip, kTarih, emDepoID], note: "iş emri; emTip=görev (depo.emTip lookup)"}
+  depo.emirAyr: {pk: emAyrID, key: [emPaletID, emAdet, emTamam, emKisi, emTarih], grain: "TOPLAMA operasyonu (picking)", note: "emKisi=gerçek operatör"}
+  depo.emirSat: {key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)"}
+  depo.paletIcHrk: {key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör"}
+  depo.paletSevkLog: {key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)"}
+
+  # E-ticaret
+  ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS]}
+  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT], note: "ORDERREF=J_ORDERS.ORDERID"}
+  ODAKJOKER.JOKER.dbo.J_ITEMS: {pk: LOGICALREF, key: [NAME, BRAND, DERINSIS_ID], note: "BRAND direkt marka; DERINSIS_ID=urn.stkID"}

@@ -1,0 +1,136 @@
+# BKM Semantik Katman — DOĞRULANMIŞ SORGU KATALOĞU (saved queries / golden SQL)
+# Pattern: Vanna.ai question+verified_sql + dbt saved_queries.
+# Her kayıt: soru (doğal dil) + canlı doğrulanmış SQL + tarih. LLM yeni sorgu yazarken örnek alır.
+# MCP kısıtı: CTE/top-level ORDER BY/multi-statement YOK → mcp_safe: true olanlar MCP'de direkt çalışır.
+version: 1
+updated: 2026-06-10
+
+queries:
+  - id: aylik-magaza-net-ciro
+    question: "Mağaza bazında aylık net ciro (KDV hariç)"
+    metrics: [net_ciro]
+    mcp_safe: false   # FORMAT+GROUP BY ok ama ORDER BY'sız yaz
+    verified_sql: |
+      SELECT FORMAT(H.ehTrhS,'yyyy-MM') ay, M.mekanAd,
+             SUM(CASE WHEN H.ehTip IN (1,4,100) THEN H.ehTutarN ELSE 0 END)
+           - SUM(CASE WHEN H.ehTip IN (3,5,101) THEN H.ehTutarN ELSE 0 END) AS net_ciro
+      FROM dbo.irsHrk H WITH(NOLOCK)
+      JOIN dbo.mekan_vw M ON M.mekanID=H.ehMekan
+      WHERE H.ehTrhS >= CONVERT(date,'01.01.2026',104)
+        AND H.ehAltDepo=0 AND H.ehTip IN (1,3,4,5,100,101)
+      GROUP BY FORMAT(H.ehTrhS,'yyyy-MM'), M.mekanAd
+    last_verified: 2026-04-15
+    source: "SEMANTIK_KATMAN.md şablonu"
+
+  - id: encore-pos-gunluk-ciro
+    question: "EncoreMerkez POS günlük ciro (iade düşülmüş, indirim Direct)"
+    mcp_safe: true
+    verified_sql: |
+      SELECT CONVERT(date, s.SaleDate) gun,
+             SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.GrossTotal ELSE s.GrossTotal END) brut,
+             SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.DiscountTotalDirect ELSE s.DiscountTotalDirect END) indirim
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
+        AND s.SaleDate >= CONVERT(date,'01.06.2026',104)
+      GROUP BY CONVERT(date, s.SaleDate)
+    last_verified: 2026-06-08
+
+  - id: pos-urun-kategori-koprusu
+    question: "POS satışını DerinSIS kategorisine bağla (Products.Code=stkID)"
+    bridges: [products-code-stkid, salesproducts-products]
+    mcp_safe: true
+    verified_sql: |
+      SELECT ub.KatAna, SUM(sp.Quantity) adet, SUM(sp.RowTotal) ciro
+      FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
+      JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id=sp.SalesId
+      JOIN EncoreMerkez.dbo.Products p WITH(NOLOCK) ON p.Id=sp.ProductsId
+      JOIN DerinSISBkm.bkm.Urunbilgi ub ON ub.stkID = CONVERT(int, p.Code)
+      WHERE sp.IsValid=1 AND s.DocumentsTypeId IN (1,2,3,6,7,8)
+        AND ISNUMERIC(p.Code)=1
+        AND s.SaleDate >= CONVERT(date,'01.06.2026',104)
+      GROUP BY ub.KatAna
+    last_verified: 2026-06-09
+    note: "compat 110: TRY_CONVERT yok → ISNUMERIC guard. Oyuncak ciro 700K→10,96M bu köprüyle düzeldi."
+
+  - id: eticaret-marka-satis
+    question: "E-ticaret marka/yayınevi bazında satış (dönem)"
+    bridges: [orderdetails-orders, orderdetails-items]
+    mcp_safe: true
+    verified_sql: |
+      SELECT it.BRAND, SUM(d.QUANTITY) adet,
+             CAST(SUM(d.QUANTITY*d.SELLINGPRICE) AS decimal(18,0)) net
+      FROM ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS d
+      JOIN ODAKJOKER.JOKER.dbo.J_ITEMS it ON it.LOGICALREF=d.ITEMREF
+      WHERE d.ORDERDATE >= '20260601' AND d.ORDERDATE < '20260608'
+      GROUP BY it.BRAND
+    last_verified: 2026-06-09
+    note: "Linked server tarih = YYYYMMDD ISO (DMY sessiz hata!)."
+
+  - id: cod-teslim-performans
+    question: "Kapıda ödeme teslim/iade performansı (olgun pencere)"
+    metrics: [cod_ekonomi]
+    mcp_safe: true
+    verified_sql: |
+      SELECT cs.STATUS durum, COUNT(*) siparis, CAST(SUM(o.TOTALPRICE) AS decimal(18,0)) tutar
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CARGO_STATUS cs ON cs.STATUS=o.CARGODELIVERYSTATUS
+      WHERE o.PAYDEFREF=-3
+        AND o.ORDERDATE >= '20260210' AND o.ORDERDATE < '20260526'
+      GROUP BY cs.STATUS
+    last_verified: 2026-06-09
+    note: "Olgun pencere: son 15 gün hariç (kargo süreci bitmemiş olur)."
+
+  - id: depo-hareket-kategori
+    question: "Merkez depo hareket kategorileri (Mal Kabul/Heykel/İade/Sevk) yıl bazında"
+    metrics: [depo_hareket_kategori]
+    bridges: [palet-irs, irs-firma]
+    mcp_safe: true
+    verified_sql: |
+      SELECT YEAR(p.pikTarih) Yil,
+        CASE WHEN p.pGC=0 AND i.eFirma=56 THEN 'Heykel'
+             WHEN p.pGC=0 AND i.eTip=0  THEN 'MalKabul'
+             WHEN p.pGC=0 AND i.eTip=9  THEN 'IadeKabul'
+             WHEN p.pGC=0 AND i.eTip=16 THEN 'GenelGiris'
+             WHEN p.pGC=1 AND i.eTip=13 THEN 'MagazaSevk'
+             WHEN p.pGC=1 AND i.eTip IN (90,99) THEN 'IadeSevk'
+             ELSE 'Diger' END Kat,
+        CAST(SUM(ABS(p.piAdet)) AS bigint) Adet
+      FROM DerinSISBkm.depo.paletIcHrk p WITH(NOLOCK)
+      JOIN DerinSISBkm.dbo.irs i WITH(NOLOCK) ON i.eID=p.piIrsID
+      WHERE MONTH(p.pikTarih) BETWEEN 1 AND 5 AND YEAR(p.pikTarih) IN (2024,2025,2026)
+      GROUP BY YEAR(p.pikTarih),
+        CASE WHEN p.pGC=0 AND i.eFirma=56 THEN 'Heykel'
+             WHEN p.pGC=0 AND i.eTip=0  THEN 'MalKabul'
+             WHEN p.pGC=0 AND i.eTip=9  THEN 'IadeKabul'
+             WHEN p.pGC=0 AND i.eTip=16 THEN 'GenelGiris'
+             WHEN p.pGC=1 AND i.eTip=13 THEN 'MagazaSevk'
+             WHEN p.pGC=1 AND i.eTip IN (90,99) THEN 'IadeSevk'
+             ELSE 'Diger' END
+    last_verified: 2026-06-10
+    source: "scripts/depo_isgucu_raporu.py"
+
+  - id: depo-toplama-verim
+    question: "Depo toplama (picking) işgücü verimi — gerçek operatör"
+    metrics: [depo_isgucu]
+    mcp_safe: true
+    verified_sql: |
+      SELECT YEAR(emTarih) Yil, COUNT(DISTINCT emKisi) Personel,
+             COUNT(*) Islem, CAST(SUM(emAdet) AS bigint) Adet
+      FROM DerinSISBkm.depo.emirAyr WITH(NOLOCK)
+      WHERE emTamam=1 AND MONTH(emTarih) BETWEEN 1 AND 5
+        AND YEAR(emTarih) IN (2024,2025,2026)
+      GROUP BY YEAR(emTarih)
+    last_verified: 2026-06-10
+    sample_result: {2024: "10p/1.02M", 2025: "9p/1.38M", 2026: "8p/2.82M (+%245 verim)"}
+
+  - id: musteri-adi-yazarkasa
+    question: "Yazarkasa fişindeki müşteri adı/telefonu"
+    bridges: [sales-customer-name]
+    mcp_safe: true
+    verified_sql: |
+      SELECT TOP 100 s.Id, ISNULL(c.Name, s.CustomerCardNo) musteri, c.PhoneNumber
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+      LEFT JOIN DerinCrm.dbo.Customer c ON c.Id=s.CustomersId
+      WHERE s.SaleDate >= CONVERT(date,'01.06.2026',104)
+    last_verified: 2026-06-09
+    note: "Group1Id=2 = personel müşteri. İç kartlar (Mağaza/Kumbara/599-699 tel) RFM'de filtrele."

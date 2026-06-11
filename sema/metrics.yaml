@@ -1,0 +1,50 @@
+# BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
+# İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
+version: 1
+updated: 2026-06-10
+
+metrics:
+  net_ciro:
+    source: dbo.irsHrk
+    grain: "ehTrhS (=irs.eTarihS) — stok/ciro daima bu tarih"
+    formula: "SUM(CASE WHEN ehTip IN (1,4,100) THEN ehTutarN END) - SUM(CASE WHEN ehTip IN (3,5,101) THEN ehTutarN END)"
+    filters: ["ehAltDepo=0", "WITH(NOLOCK)"]
+    note: "ehTutarN KDV hariç, = ehTutar-ehIndirim. Tüm tutarlar KDV hariç."
+
+  encore_ciro:
+    source: EncoreMerkez.dbo.Sales
+    filters: ["SalesProducts WHERE IsValid=1", "DocumentsTypeId IN (1,2,3,6,7,8)"]
+    iade_sign: "CASE WHEN DocumentsTypeId=3 THEN -GrossTotal ELSE GrossTotal END"
+    indirim: "DiscountTotalDirect (sadece bu; Campaign alt küme, toplama çift sayar)"
+    linecount: "KULLANMA → CROSS APPLY COUNT(*) FROM SalesProducts WHERE SalesId=s.Id AND IsValid=1"
+    compat110: "STRING_AGG/TRIM/IIF/TRY_CONVERT YOK"
+
+  depo_hareket_kategori:    # 10.06 — merkez depo (mekan 12) hareket sınıflaması
+    source: "depo.paletIcHrk p JOIN dbo.irs i ON i.eID=p.piIrsID"
+    grain: "p.pikTarih, p.pGC (0=giriş 1=çıkış), i.eTip, i.eFirma"
+    adet: "SUM(ABS(p.piAdet))"
+    kategoriler:
+      Mal Kabul:        {pGC: 0, eTip: 0, firma: "tedarikçi (≠56, ≠mağaza, ≠0)"}
+      Heykel (Bursa Kültür alış): {pGC: 0, firma: 56, note: "BKM Bursa Kültür'den mal alıyor (giriş). Heykel'e SEVK merkez depodan değil — mağaza kaynaklı (SevkiyatHareketBaslik.HedefMekanId=60398)."}
+      İade Kabul:       {pGC: 0, eTip: 9, firma: mağaza}
+      GENEL Giriş:      {pGC: 0, eTip: 16, firma: 0, status: "teyit bekliyor (e-tic iade/merkez intake?)"}
+      Mağaza Sevk:      {pGC: 1, eTip: 13, firma: mağaza}
+      İade-GENEL Sevk:  {pGC: 1, eTip: [90, 99], firma: 0}
+    deger_2026_ocamay: {Mal Kabul: 1923096, Heykel: 330663, İade Kabul: 61330, GENEL Giriş: 330593, Mağaza Sevk: 1412174, İade-GENEL Sevk: 136055}
+
+  depo_isgucu:              # gerçek operatör verimi
+    gorevler:
+      Raflama:  {source: "depo.paletIcHrk pHrkTip=0 pGC=0", personel: "COUNT(DISTINCT pikKisi)", adet: "SUM(piAdet)"}
+      Toplama:  {source: "depo.emirAyr emTamam=1", personel: "COUNT(DISTINCT emKisi)", adet: "SUM(emAdet)", note: "%99.97 emTip=2 picking"}
+    kisi_basi: "adet / personel"
+    toplama_verim_ocamay: {2024: "10p/1.02M=102.339", 2025: "9p/1.38M=152.816", 2026: "8p/2.82M=352.701 (+%245)"}
+    uyari: "paletSevkLog.kKisi tek sistem-kullanıcısı (operatör DEĞİL → emirAyr.emKisi/paletIcHrk.pikKisi kullan)"
+    rapor: scripts/depo_isgucu_raporu.py
+
+  cod_ekonomi:              # kapıda ödeme
+    cod_filter: "PAYDEFREF=-3"
+    service_fee: "SERVICEPRICE = pass-through (firmaya ödenir, kâr DEĞİL)"
+    iade_maliyet: "2 × CARGOPRICE (gidiş+geri getirme), teslim edilmeyen sipariş → BKM yutar"
+    iade_orani: "COD ~%9-10 (online ~%0.5) — COĞRAFYA kaynaklı (Doğu/GD %15-21, Batı %3-6), firma değil"
+    voucher: "VOUCHERCODE dolu = hediye çeki → satır indirimi olarak yansır"
+    rapor: scripts/kapida_odeme_analiz.py
