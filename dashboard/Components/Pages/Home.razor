@@ -70,14 +70,9 @@ else if (_data is not null)
 
     <div class="row">
         <div class="panel"><h3>Mağaza Kategori Mix (dönem)</h3><div class="chart-box"><canvas id="ch_kat"></canvas></div></div>
-        <div class="panel"><h3>E-ticaret Kanal — NET (dönem)</h3><div class="chart-box"><canvas id="ch_etic"></canvas></div></div>
         <div class="panel"><h3>Son 14 Gün — Fiziksel Net Ciro</h3><div class="chart-box"><canvas id="ch_trend"></canvas></div></div>
-    </div>
-    <div class="row">
         <div class="panel"><h3>Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="chart-box"><canvas id="ch_alis"></canvas></div>
             <div class="muted" style="font-size:11px">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
-        <div class="panel"><h3>E-ticaret Kargo Firma (dönem)</h3><div class="chart-box"><canvas id="ch_kargo"></canvas></div></div>
-        <div class="panel"><h3>E-ticaret İl Dağılımı — Top 12 (dönem)</h3><div class="chart-box"><canvas id="ch_il"></canvas></div></div>
     </div>
 
     <Modal @bind-Open="_modalTot" Title="TOPLAM — Kategori Dağılımı (3 mağaza)">
@@ -232,16 +227,10 @@ else if (_data is not null)
             _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
             await _charts.InvokeVoidAsync("bar", "ch_kat",
                 _data.Kategori.Select(k => k.Ad), _data.Kategori.Select(k => k.Ciro), true);
-            await _charts.InvokeVoidAsync("donut", "ch_etic",
-                _data.Etic.Select(e => e.Ad), _data.Etic.Select(e => e.Ciro));
             await _charts.InvokeVoidAsync("area", "ch_trend",
                 _trend.Select(t => t.Tarih[5..]), _trend.Select(t => t.Net));
             await _charts.InvokeVoidAsync("area", "ch_alis",
                 _alis.Select(t => t.Tarih[5..]), _alis.Select(t => t.Net));
-            await _charts.InvokeVoidAsync("donut", "ch_kargo",
-                _data.Kargo.Select(k => k.Ad), _data.Kargo.Select(k => k.Adet));
-            await _charts.InvokeVoidAsync("bar", "ch_il",
-                _data.Il.Select(x => x.Ad), _data.Il.Select(x => x.Adet), true);
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }
