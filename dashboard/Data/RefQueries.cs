@@ -146,6 +146,125 @@ public sealed class RefQueries(Db db)
         return new InventoryData(toplam, devir.OrderByDescending(d => d.Devir).ToList(), abc, marka, stockout);
     }
 
+    // Segment whitelist (RFM drill) — yalnız bu değerler SQL HAVING koşuluna map'lenir (injection yok)
+    static readonly Dictionary<string, string> YkCond = new()
+    {
+        ["1-Şampiyon"] = "COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),@dun)<=30",
+        ["2-Sadık"] = "COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),@dun)<=90",
+        ["3-Yeni"] = "COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),@dun)<=30",
+        ["4-Risk"] = "DATEDIFF(DAY,MAX(s.Date),@dun) BETWEEN 91 AND 180",
+        ["5-Kayıp"] = "DATEDIFF(DAY,MAX(s.Date),@dun)>180",
+    };
+    static readonly Dictionary<string, string> EtCond = new()
+    {
+        ["1-Şampiyon"] = "COUNT(*)>=5 AND DATEDIFF(DAY,MAX(o.ORDERDATE),@dun)<=30",
+        ["2-Sadık"] = "COUNT(*)>=3 AND DATEDIFF(DAY,MAX(o.ORDERDATE),@dun)<=90",
+        ["3-Yeni"] = "COUNT(*)<=2 AND DATEDIFF(DAY,MAX(o.ORDERDATE),@dun)<=30",
+        ["4-Risk"] = "DATEDIFF(DAY,MAX(o.ORDERDATE),@dun) BETWEEN 91 AND 180",
+        ["5-Kayıp"] = "DATEDIFF(DAY,MAX(o.ORDERDATE),@dun)>180",
+    };
+
+    /// <summary>RFM drill (yazarkasa) — segment → top 100 müşteri. ic=true → iç/mağaza kartları dahil.</summary>
+    public async Task<IReadOnlyList<CustomerRow>> GetYkCustomersAsync(string seg, DateOnly dun, bool ic = false)
+    {
+        if (!YkCond.TryGetValue(seg, out var cond)) return [];
+        await using var conn = await db.OpenAsync();
+        // ic=false → 599/699 telefonlu + Mağaza/Kumbara iç kartlarını ayıkla (MUS_YK port)
+        var ickart = ic ? "" : """
+             AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'
+                  AND ISNULL(c.PhoneNumber,'') NOT LIKE '599%' AND ISNULL(c.PhoneNumber,'') NOT LIKE '699%'))
+            """;
+        var sql = $"""
+            SELECT TOP 100 s.CustomersId AS Id,
+                MAX(CAST(ISNULL(c.Name, s.CustomerCardNo) AS nvarchar(60))) AS Ad,
+                MAX(CAST(c.PhoneNumber AS nvarchar(15))) AS Tel,
+                COUNT(*) AS Frq, CAST(SUM(s.GrossTotal-s.DiscountTotal) AS decimal(18,0)) AS Mon,
+                DATEDIFF(DAY,MAX(s.Date),@dun) AS Rec
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
+            WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<DATEADD(DAY,1,@dun){ickart}
+            GROUP BY s.CustomersId HAVING {cond} ORDER BY Mon DESC;
+            """;
+        return (await conn.QueryAsync<CustomerRow>(sql, new { dun = dun.ToDateTime(TimeOnly.MinValue) })).ToList();
+    }
+
+    /// <summary>RFM drill (e-ticaret JOKER) — segment → top 100 müşteri. ISO tarih.</summary>
+    public async Task<IReadOnlyList<CustomerRow>> GetEtCustomersAsync(string seg, DateOnly dun)
+    {
+        if (!EtCond.TryGetValue(seg, out var cond)) return [];
+        await using var conn = await db.OpenAsync();
+        var sql = $"""
+            SELECT TOP 100 oc.CUSTOMERREF AS Id, MAX(CAST(oc.CMAIL AS nvarchar(80))) AS Ad,
+                MAX(CAST(oc.CPHONE AS nvarchar(30))) AS Tel,
+                COUNT(*) AS Frq, CAST(SUM(o.TOTALPRICE) AS decimal(18,0)) AS Mon,
+                DATEDIFF(DAY,MAX(o.ORDERDATE),@dun) AS Rec
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+            WHERE o.ORDERDATE>=@bas AND o.ORDERDATE<@g2 AND oc.CUSTOMERREF>0
+            GROUP BY oc.CUSTOMERREF HAVING {cond} ORDER BY Mon DESC;
+            """;
+        return (await conn.QueryAsync<CustomerRow>(sql,
+            new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") })).ToList();
+    }
+
+    /// <summary>Kategori → ürün drill (URUN_SQL port). irsHrk stkID, tüm geçmiş satış (ehTrhS&lt;2026-06-01).</summary>
+    public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
+                CAST(-SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) AS int) AS Satis,
+                CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) AS Ciro,
+                CAST(SUM(h.ehAdetN) AS int) AS Bakiye
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID
+            JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+            WHERE k.ktgrAd=@kat AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0
+                AND h.ehTrhS<'2026-06-01' AND h.ehstkID IS NOT NULL
+            GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
+            HAVING -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END)>0
+            ORDER BY Satis DESC;
+            """;
+        return (await conn.QueryAsync<UrunRow>(sql, new { kat = kategori })).ToList();
+    }
+
+    /// <summary>Ciro-vs-envanter scatter (cve port). Kategori: Mayıs irsHrk ciro vs ENVANTER_RAPORU 3 mağaza değer.</summary>
+    public async Task<IReadOnlyList<CveRow>> GetCveAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        var ayBas = new DateOnly(dun.Year, dun.Month, 1).AddMonths(-1);
+        var aySon = new DateOnly(dun.Year, dun.Month, 1);
+        var p = new { ayBas = ayBas.ToDateTime(TimeOnly.MinValue), aySon = aySon.ToDateTime(TimeOnly.MinValue) };
+
+        // Ciro (irsHrk, geçen ay, 3 mağaza) — envanterle aynı stkID kaynağı
+        var ciro = (await conn.QueryAsync<(string K, decimal Ciro)>($"""
+            SELECT CAST(k.ktgrAd AS nvarchar(50)) K,
+                   CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
+            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100)
+                  AND k.ktgrAd NOT IN {EXC}
+            GROUP BY CAST(k.ktgrAd AS nvarchar(50));
+            """, p)).ToDictionary(x => x.K, x => x.Ciro, StringComparer.OrdinalIgnoreCase);
+
+        // Envanter değeri (son snapshot, 3 mağaza)
+        var env = (await conn.QueryAsync<(string K, decimal V)>($"""
+            SELECT CAST(KTGR3 AS nvarchar(50)) K,
+                   CAST(SUM([FSM Stok Maliyet]+[Özlüce Stok Maliyet]+[İst.Yolu Stok Maliyet]) AS decimal(18,0)) V
+            FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
+            WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC}
+            GROUP BY CAST(KTGR3 AS nvarchar(50));
+            """)).ToList();
+
+        var rows = new List<CveRow>();
+        foreach (var e in env)
+        {
+            var c = ciro.GetValueOrDefault(e.K, 0m);
+            if (e.V > 0 || c > 0) rows.Add(new CveRow(e.K, c, e.V));
+        }
+        return rows.OrderByDescending(r => r.Ciro).ToList();
+    }
+
     /// <summary>Operasyon ek: SPLH (PDKS OPENQUERY, son 30g) + COD (olgun 60g pencere).</summary>
     public async Task<OpsData> GetOpsAsync(DateOnly dun)
     {

@@ -44,6 +44,26 @@ export function area(id, labels, data) {
     });
 }
 
+export function scatter(id, labels, x, y) {
+    const lab = Array.from(labels), xs = Array.from(x), ys = Array.from(y);
+    const pts = xs.map((v, i) => ({ x: v, y: ys[i], k: lab[i] }));
+    draw(id, {
+        type: 'scatter',
+        data: { datasets: [{ data: pts, backgroundColor: KP, pointRadius: 5, pointHoverRadius: 7 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `${c.raw.k}: ciro ${fmtM(c.raw.x)} · stok ${fmtM(c.raw.y)}` } }
+            },
+            scales: {
+                x: { title: { display: true, text: 'Aylık ciro' }, ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } },
+                y: { title: { display: true, text: 'Stok değeri' }, ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } }
+            }
+        }
+    });
+}
+
 export function barDual(id, labels, fis, net) {
     draw(id, {
         type: 'bar',

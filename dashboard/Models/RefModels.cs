@@ -3,6 +3,15 @@ namespace GmDashboard.Models;
 /// <summary>RFM müşteri segmenti (yazarkasa veya e-ticaret kanalı).</summary>
 public record RfmSegment(string Segment, int Musteri, decimal Ciro);
 
+/// <summary>Drill: segmentteki tekil müşteri (ad/telefon + RFM metrikleri).</summary>
+public record CustomerRow(long Id, string Ad, string Tel, int Frq, decimal Mon, int Rec);
+
+/// <summary>Drill: kategorideki tekil ürün (kod/ad + satış/ciro/bakiye).</summary>
+public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye);
+
+/// <summary>Ciro-vs-envanter scatter noktası (kategori).</summary>
+public record CveRow(string Kategori, decimal Ciro, decimal Env);
+
 /// <summary>Kategori devir/verim satırı (envanter).</summary>
 public record DevirRow(string Kategori, decimal Devir, decimal? Wos, decimal? SellThrough, decimal StokTl, int Satilan);
 
