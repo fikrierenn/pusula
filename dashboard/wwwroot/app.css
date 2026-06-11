@@ -94,3 +94,8 @@ body { background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,
 /* Marka 2 sütun (envanter) */
 .marka2 { display:grid; grid-template-columns:1fr 1fr; gap:0 28px; }
 @media (max-width:768px){ .marka2{ grid-template-columns:1fr; } }
+
+/* Tarih aralığı + toplam satır/kart */
+.tar { color:#64748b; font-size:13px; font-weight:600; }
+.card-tot { border-left-color:#0f172a; background:#f8fafc; }
+.panel tr.tot td { font-weight:700; border-top:2px solid #cbd5e1; background:#f8fafc; }

@@ -10,6 +10,7 @@
 
 <div class="hd">
     <h1>Operasyon</h1>
+    <span class="tar">@_aralik</span>
     <select class="period" @bind="_period" @bind:after="LoadAsync">
         <option value="gunluk">Günlük (dün)</option>
         <option value="haftalik">Haftalık (son 7 gün)</option>
@@ -44,6 +45,8 @@ else if (_data is not null)
                     }
                     <tr><td>@k.Ad</td><td class="r">@Num(k.Fis)</td><td class="r"><b>@Tl(k.Net)</b></td><td class="r">@Num(k.Atv) ₺</td><td class="r">@k.Iade</td></tr>
                 }
+                <tr class="tot"><td>TOPLAM (@_data.Kasiyer.Count kasiyer)</td><td class="r">@Num(_data.Kasiyer.Sum(k => k.Fis))</td>
+                    <td class="r"><b>@Tl(_data.Kasiyer.Sum(k => k.Net))</b></td><td class="r"></td><td class="r">@_data.Kasiyer.Sum(k => k.Iade)</td></tr>
             </table>
         </div>
     </div>
@@ -116,6 +119,7 @@ else if (_data is not null)
     private string? _error;
     private PeriodSummary? _data;
     private OpsData? _ops;
+    private string _aralik = "";
     private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync()
@@ -139,6 +143,8 @@ else if (_data is not null)
                 "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
                 _ => (dun, g2),
             };
+            var son = endExcl.AddDays(-1);
+            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
             _data = await Queries.GetPeriodAsync(start, endExcl);
         }
         catch (Exception ex) { _error = ex.Message; }
