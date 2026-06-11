@@ -20,14 +20,43 @@ else
     <div class="row">
         <div class="panel">
             <h3>Yazarkasa — Sadakat Kartı (son 365 gün)</h3>
-            @RfmTable(_yk)
+            @RfmTable(_yk, "yk")
         </div>
         <div class="panel">
             <h3>E-ticaret — JOKER (son 365 gün)</h3>
-            @RfmTable(_et)
+            @RfmTable(_et, "et")
         </div>
     </div>
-    <p class="muted" style="font-size:12px">RFM = Recency (son alış) · Frequency (sıklık) · Monetary (harcama). İki ayrı evren — kimlik köprüsü yok, birleştirilmez.</p>
+    <p class="muted" style="font-size:12px">RFM = Recency (son alış) · Frequency (sıklık) · Monetary (harcama). İki ayrı evren — kimlik köprüsü yok, birleştirilmez. Segment satırına tıkla → ilk 100 müşteri.</p>
+
+    <Modal @bind-Open="_modalOpen" Title="@(_selSeg + " — Müşteri Listesi (ilk 100, harcamaya göre)")">
+        @if (_selKanal == "yk")
+        {
+            <label class="muted" style="font-size:12px;display:block;margin-bottom:8px">
+                <input type="checkbox" @bind="_icKart" @bind:after="ReloadCustomersAsync" /> İç/mağaza kartlarını dahil et (599/699, Mağaza, Kumbara)
+            </label>
+        }
+        @if (_drillLoading)
+        {
+            <p class="muted">Yükleniyor…</p>
+        }
+        else
+        {
+            <table>
+                <tr><td><b>#</b></td><td><b>Müşteri</b></td><td><b>Telefon</b></td><td class="r"><b>Sıklık</b></td><td class="r"><b>Harcama</b></td><td class="r"><b>Son (gün)</b></td></tr>
+                @{ var i = 1; }
+                @foreach (var c in _drill)
+                {
+                    <tr><td style="color:#94a3b8">@i</td><td>@c.Ad</td><td>@c.Tel</td><td class="r">@Num(c.Frq)</td><td class="r">@Tl(c.Mon)</td><td class="r">@c.Rec</td></tr>
+                    i++;
+                }
+                @if (_drill.Count == 0)
+                {
+                    <tr><td colspan="6" class="muted">Bu segmentte kayıt yok.</td></tr>
+                }
+            </table>
+        }
+    </Modal>
 }
 
 @code {
@@ -35,23 +64,54 @@ else
     private string? _error;
     private IReadOnlyList<RfmSegment> _yk = [];
     private IReadOnlyList<RfmSegment> _et = [];
+    private DateOnly _dun;
+
+    private bool _modalOpen;
+    private bool _drillLoading;
+    private bool _icKart;
+    private string _selKanal = "yk";
+    private string _selSeg = "";
+    private IReadOnlyList<CustomerRow> _drill = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
-            (_yk, _et) = await Ref.GetRfmAsync(dun);
+            _dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            (_yk, _et) = await Ref.GetRfmAsync(_dun);
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; }
     }
 
-    private RenderFragment RfmTable(IReadOnlyList<RfmSegment> rows) => @<table>
+    private async Task OpenDrill(string kanal, string seg)
+    {
+        // Yalnız gerçek RFM segmentleri drill açar (6-Diğer vb. atlanır)
+        if (seg.StartsWith("6")) return;
+        _selKanal = kanal; _selSeg = seg; _icKart = false;
+        _modalOpen = true;
+        await ReloadCustomersAsync();
+    }
+
+    private async Task ReloadCustomersAsync()
+    {
+        _drillLoading = true; _drill = []; StateHasChanged();
+        try
+        {
+            _drill = _selKanal == "yk"
+                ? await Ref.GetYkCustomersAsync(_selSeg, _dun, _icKart)
+                : await Ref.GetEtCustomersAsync(_selSeg, _dun);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _drillLoading = false; StateHasChanged(); }
+    }
+
+    private RenderFragment RfmTable(IReadOnlyList<RfmSegment> rows, string kanal) => @<table>
         <tr><td><b>Segment</b></td><td class="r"><b>Müşteri</b></td><td class="r"><b>Ciro (365g)</b></td></tr>
         @foreach (var r in rows)
         {
-            <tr><td>@r.Segment</td><td class="r">@Num(r.Musteri)</td><td class="r">@Tl(r.Ciro)</td></tr>
+            <tr class="@(r.Segment.StartsWith("6") ? "" : "clk")" @onclick="() => OpenDrill(kanal, r.Segment)">
+                <td>@r.Segment @(r.Segment.StartsWith("6") ? "" : "▸")</td><td class="r">@Num(r.Musteri)</td><td class="r">@Tl(r.Ciro)</td></tr>
         }
     </table>;
 
