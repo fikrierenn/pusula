@@ -142,4 +142,20 @@ public sealed class Queries(Db db)
         var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
         return (await conn.QueryAsync<TrendPoint>(sql, new { bas, son })).OrderBy(t => t.Tarih).ToList();
     }
+
+    /// <summary>Son 14 gün net alış (mal kabul) trend. ehTip 0=Alış + 10=Yerel Alım − 2=Alış İade (irsHrk).</summary>
+    public async Task<IReadOnlyList<TrendPoint>> GetAlisTrendAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT CONVERT(varchar,h.ehTrhS,23) AS Tarih,
+                   CAST(SUM(CASE WHEN h.ehTip IN (0,10) THEN h.ehTutarN WHEN h.ehTip=2 THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS Net
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            WHERE h.ehTrhS>=@bas AND h.ehTrhS<@son AND h.ehAltDepo=0 AND h.ehTip IN (0,2,10)
+            GROUP BY CONVERT(varchar,h.ehTrhS,23);
+            """;
+        var bas = dun.AddDays(-13).ToDateTime(TimeOnly.MinValue);
+        var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        return (await conn.QueryAsync<TrendPoint>(sql, new { bas, son })).OrderBy(t => t.Tarih).ToList();
+    }
 }

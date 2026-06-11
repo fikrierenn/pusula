@@ -66,6 +66,32 @@ else if (_data is not null)
                 <p class="muted" style="font-size:12px">PDKS verisi alınamadı (linked server).</p>
             }
         </div>
+        <div class="panel"><h3>Kayıp İşgücü Potansiyeli (SPLH benchmark, 30g)</h3>
+            @if (_ops is not null && _ops.Splh.Count > 1)
+            {
+                var bench = _ops.Splh.Where(s => s.Saat > 0).Max(s => s.NetCiro / s.Saat);
+                var benchAd = _ops.Splh.First(s => s.Saat > 0 && s.NetCiro / s.Saat == bench).Magaza;
+                decimal toplamKayip = 0;
+                <table>
+                    <tr><td><b>Mağaza</b></td><td class="r"><b>₺/saat</b></td><td class="r"><b>Fark</b></td><td class="r"><b>Kayıp Potansiyel</b></td></tr>
+                    @foreach (var s in _ops.Splh.Where(x => x.Saat > 0))
+                    {
+                        var verim = s.NetCiro / s.Saat;
+                        var kayip = (bench - verim) * s.Saat;
+                        toplamKayip += kayip;
+                        <tr><td>@s.Magaza</td><td class="r">@Num((int)Math.Round(verim))</td>
+                            <td class="r">@(verim == bench ? "★ benchmark" : "−" + Num((int)Math.Round(bench - verim)))</td>
+                            <td class="r" style="color:@(kayip > 0 ? "#dc2626" : "#16a34a")">@(kayip > 0 ? Tl(kayip) : "—")</td></tr>
+                    }
+                    <tr><td colspan="3" style="font-size:12px">@benchAd seviyesine çıkılsa (30g):</td><td class="r" style="color:#dc2626"><b>@Tl(toplamKayip)</b></td></tr>
+                </table>
+                <div class="muted" style="font-size:11px">En verimli mağaza (@benchAd) ₺/saat referans; diğerleri o seviyede çalışsa kazanılacak ek ciro. Atıl saat + devamsızlık boyutu PDKS plan keşfi sonrası eklenecek.</div>
+            }
+            else
+            {
+                <p class="muted" style="font-size:12px">SPLH verisi yok (PDKS).</p>
+            }
+        </div>
         <div class="panel"><h3>Kapıda Ödeme — Teslim/İade (olgun 60g)</h3>
             @if (_ops is not null)
             {

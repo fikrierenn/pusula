@@ -55,6 +55,10 @@ else if (_data is not null)
         <div class="panel"><h3>E-ticaret Kanal — NET (dönem)</h3><div class="chart-box"><canvas id="ch_etic"></canvas></div></div>
         <div class="panel"><h3>Son 14 Gün — Fiziksel Net Ciro</h3><div class="chart-box"><canvas id="ch_trend"></canvas></div></div>
     </div>
+    <div class="row">
+        <div class="panel"><h3>Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="chart-box"><canvas id="ch_alis"></canvas></div>
+            <div class="muted" style="font-size:11px">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
+    </div>
 }
 
 @code {
@@ -63,6 +67,7 @@ else if (_data is not null)
     private string? _error;
     private PeriodSummary? _data;
     private IReadOnlyList<TrendPoint> _trend = [];
+    private IReadOnlyList<TrendPoint> _alis = [];
     private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -83,6 +88,7 @@ else if (_data is not null)
             };
             _data = await Queries.GetPeriodAsync(start, endExcl);
             _trend = await Queries.GetTrendAsync(dun);
+            _alis = await Queries.GetAlisTrendAsync(dun);
         }
         catch (Exception ex)
         {
@@ -108,6 +114,8 @@ else if (_data is not null)
                 _data.Etic.Select(e => e.Ad), _data.Etic.Select(e => e.Ciro));
             await _charts.InvokeVoidAsync("area", "ch_trend",
                 _trend.Select(t => t.Tarih[5..]), _trend.Select(t => t.Net));
+            await _charts.InvokeVoidAsync("area", "ch_alis",
+                _alis.Select(t => t.Tarih[5..]), _alis.Select(t => t.Net));
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }
