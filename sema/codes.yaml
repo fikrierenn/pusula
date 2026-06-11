@@ -81,6 +81,13 @@ codes:
   #   1xxx = Sipariş BAŞLIK (J_ORDERS.STATUS)   ·  2xxx = Sipariş DETAY (J_ORDER_DETAILS.STATUS)
   #   3xxx = Odak BAŞLIK (J_ORDERS.STATUS)      ·  4xxx = Odak DETAY (J_ORDER_DETAILS.STATUS)
   #   → J_ORDERS.STATUS ∈ {1xxx, 3xxx} (başlık) · J_ORDER_DETAILS.STATUS ∈ {2xxx, 4xxx} (detay)
+  #
+  # 📦 SİPARİŞ YAŞAM DÖNGÜSÜ (iş akışı — 12.06 kullanıcı):
+  #   Sipariş gelir → ODAK'a aktarılır (WMSAKTARMA=1) → Odak lojistik operasyon yapar (durum SÜREKLİ güncellenir)
+  #   • 3xxx/4xxx = ODAK OPERASYON ARASI (geçici ara durum — sipariş hâlâ İŞLENİYOR, yaşıyor)
+  #   • 1xxx/2xxx = NİHAİ DURUM (iş bitti — kargoya verildi 1005 / iptal 1001 / iade 1006)
+  #   → BU YÜZDEN 3004/3006 İADE DEĞİL: Odak'ın ara işlem aşaması (Hazırlanıyor/Tedarik), sipariş geçerli.
+  #     Gerçek iptal/iade SADECE nihai (1001,1006,1007) + Odak-iptal ara (3000,4000). NET = bunlar HARİÇ.
   joker.J_ORDERS.STATUS:    # lookup J_ORDER_STATUS.LOGICALREF=NAME. 1xxx=Sipariş başlık, 3xxx=Odak başlık
     lookup: ODAKJOKER.JOKER.dbo.J_ORDER_STATUS
     # ⚠️ 11.06 KESİN DÜZELTME (önceki harita TAMAMEN YANLIŞTI → e-ticaret cirosunu %70 eksik veriyordu):
