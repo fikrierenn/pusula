@@ -53,6 +53,17 @@ entities:
   depo.emirSat: {key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)"}
   depo.paletIcHrk: {key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör"}
   depo.paletSevkLog: {key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)"}
+  # WMS palet-stok (12.06 — gerçek üretim sorguları D:\Belgelerim\sql\)
+  depo.paletUrnTnm: {key: [pUStkID, pUBarkod, pUAdetN, pUID], grain: "palet × ürün satırı", note: "pUStkID=urn.stkID, pUAdetN>0=dolu, pUID=palet ref (paletTnm.pID). Depo anlık raf/havuz stoğu kaynağı."}
+  depo.paletTnm: {pk: pID, key: [pSonPozID], note: "palet başlık; pSonPozID=adres.adrsID (paletin son konumu)"}
+  depo.adres: {pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')"}
+  depo.stok_adres_palet_vw: {tip: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)"}
+  ent.JokerCKStok_vw: {tip: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view"}
+  stokSonAltDepo_vw: {tip: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ehMekan depo: 12/4480/4835, mağaza: 1/4477/4478. Envanter/cari özet kaynağı."}
+  # JOKER WMS toplama (bekleyen sipariş raflama)
+  ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK: {key: [ORDERREF], note: "depoda toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID)"}
+  ODAKJOKER.JOKER.dbo.J_DETAIL_BOXES: {key: [ITEMREF, DETAILREF, LOGICALREF], note: "raflanmış koli; COUNT=raflanmış adet. İhtiyaç = sipariş − raflanmış."}
+  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS_COMP: {key: [DETAILREF, COMPITEMREF, COMPBARCODE, QUANTITY], note: "kompozit/set ürün açılımı (J_ORDER_DETAILS.LOGICALREF=DETAILREF)"}
 
   # Hedef / veri ambarı
   BKMDATA.dbo.Hedef: {key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}

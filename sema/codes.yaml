@@ -99,8 +99,29 @@ codes:
   joker.J_ORDERS.APPLICATION:
     values: ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi"]
 
+  depo.adres.adrsAlanTipID:    # WMS lokasyon alan tipi (12.06 — gerçek üretim sorguları)
+    values:
+      0: RAF (raf stoğu — toplanabilir)
+      1: "GR (Giriş Rampası / Mal Kabul)"
+      5: "Özel alan — adrsAd ayırır: 'JokerHavuz' (havuz), 'TRNS' (transfer), 'CK01' (çıkış kasası)"
+    note: "Depo stok dağılımı: SUM PIVOT adrsAlanTip × pUStkID. Raf/Mal Kabul/Joker Havuz/Transfer kovaları."
+
+  joker.J_ORDER_DETAILS.STATUS:   # ürün/detay satır aşaması (ISDETAIL seviyesi — J_ORDER_STATUS 2xxx)
+    bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi
+    values:
+      2000: Tedarik Bekleniyor
+      2002: Ürün Tedariğe Gönderildi
+      2003: Ürünlerin Hepsi Rafta
+      2005: Ürün İptal Edildi
+      2007: Ürünün Tedarikçiden Siparişi Verilmiş
+      2009: Ürün Kargoya Verildi
+      2010: Ürün İade Geldi
+    note: "Satır seviye (J_ORDERS.STATUS ana sipariş; bu DETAY). Bekleyen toplama: WMSAKTARMA=1 AND ORDERS.STATUS=1000 AND DETAILS.STATUS IN (2000,2002,2003,2007)."
+
   mekanID:
-    values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo}
+    values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: Ek Depo, 4835: Ek Depo}
+    depo_grubu: [12, 4480, 4835]    # cari/envanter sorgularında "Depo"
+    magaza_grubu: [1, 4477, 4478]   # "Mağaza"
   frmID_onemli:
     values:
       0: GENEL

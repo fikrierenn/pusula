@@ -175,3 +175,33 @@ bridges:
     confidence: 0.95
     note: "Kampanya satır → satış başlığı. TotalDiscount NEGATİF=indirim → SUM(-TotalDiscount)=indirim TL. Gün sayısı=COUNT(DISTINCT satış günü). CampaignName='' = manuel/set indirimi. M2 kampanya mağaza raporu."
     evidence: "2026-06-12 — MCP: FSM 01→12 Haz 9 kampanya/1,11M indirim/5.024 fiş; 3AL2ÖDE(K) 427K, SABİT FİYAT(K) 297K."
+
+  # --- WMS palet-stok zinciri (12.06 — gerçek üretim sorguları) ---
+  - id: palet-urn-adres
+    from: depo.paletUrnTnm.pUID
+    to: depo.paletTnm.pID
+    then:
+      from: depo.paletTnm.pSonPozID
+      to: depo.adres.adrsID
+    scope: derinsis
+    confidence: 1.0
+    note: "Palet ürün → palet → son konum adresi → alan tipi (adrsAlanTipID). Depo raf/havuz/transfer stok dağılımı. pUAdetN>0, adrsAlanTipID IN (0,1,5)."
+    evidence: "DEPO ÖZET DURUM.sql + BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql (yıllardır prod)"
+  - id: paleturn-stk
+    from: depo.paletUrnTnm.pUStkID
+    to: dbo.urn.stkID
+    scope: derinsis
+    confidence: 1.0
+    note: "Palet ürün → DerinSIS ürün. pUBarkod da var (ürünün palet barkodu)."
+  - id: stoksonaltdepo-stk
+    from: stokSonAltDepo_vw.ehstkID
+    to: dbo.urn.stkID
+    scope: derinsis
+    confidence: 1.0
+    note: "Anlık stok view → ürün. ehAltDepo=0 ZORUNLU. ehMekan ile depo(12,4480,4835)/mağaza(1,4477,4478) ayrımı. Envanter+cari özet."
+  - id: depotoplanacak-orders
+    from: ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK.ORDERREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
+    scope: joker
+    confidence: 1.0
+    note: "Toplanacak sipariş → sipariş. WMS bekleyen raflama. J_DETAIL_BOXES (raflanmış) ile ihtiyaç=sipariş−raflanmış."
