@@ -65,9 +65,21 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ---
 
+### 2026-06-12 — Blazor GM Dashboard sıfırdan + e-ticaret status FIX + rapor skill L/M/K
+- Blazor Server + Dapper dashboard 5 sayfa (Genel Bakış/E-ticaret/Operasyon/Envanter/Müşteri), tüm panel Python birebir, drill modal + Chart.js. (~30 commit)
+- **KRİTİK FIX (712f440):** e-ticaret NET status filtresi yanlıştı (%70 eksik). 3004/3006 normal aşama, iade DEĞİL. Doğru: NOT IN (1001,1006,1007,3000,4000). Dashboard+brief+Python+sema düzeltildi.
+- gm-rapor skill L/M/K modları (kargo/bekleyen/hedef/kampanya/kafe) + sema 4 yeni köprü.
+- Kalan: B-40 mağaza 5 panel · B-41 JOKER kargo SQL entegre · B-42 Python pano emekli · B-43 kafe POS.
+
 ## Devam Eden (aktif)
 
 ### BKM — BIRLESIK ONCELIK SIRASI
+
+#### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
+- [ ] **B-40** Mağaza 5 panel (Genel Bakış sığ): ödeme mix · iade analizi · kampanya yükü · UPT/sepet derinliği · dönüşüm (FSM kapı sayıcı). Veri hazır (G2/P3/P5/G8). Agent prompt 12.06 transcript'te hazır. **(YENİ)**
+- [ ] **B-41** 7 JOKER kargo SQL entegre (`D:\Belgelerim\sql\_JOKER\`): kargo gün detay · kargoya verilme süreleri v2 · ay bazlı ortalama · çıkış-teslim süreleri · kargo+kapıda ödeme bedelleri · kapıda ödeme rapor · il teslimat perf. **Kullanıcının gerçek üretim sorguları — agent L1-L3'ten daha doğru.** L1-L3 + dashboard E-ticaret kargo panellerini bunlarla güçlendir. **(YENİ)**
+- [ ] **B-42** Eski Python pano (`scripts/gm_dashboard.py`) emekli kararı — Blazor canlı (`dashboard/`, port 5112). Paralel mi dursun? briefings/* eski çıktılar yanlış e-tic rakamıyla → regenerate/temizle. **(YENİ)**
+- [ ] **B-43** Kafe POS DB erişimi araştır — EncoreMerkez'de kafe yok, xlsx kanonik. Kafe ayrı POS sistemi nerede? **(YENİ)**
 
 #### Faz 0 — Bugün (blocker'ları kaldır — 1-3 saat)
 - [x] ~~**B-01** `scripts/send_mail.py` UnicodeEncodeError düzelt~~ — ✅ `[OK]` + `sys.stdout.reconfigure(encoding="utf-8")`. Gmail "Sent" doğrulaması: kullanıcı kontrol edecek (geçen hafta 20.04 11:19 mail muhtemelen gitti — hata print'teydi).
