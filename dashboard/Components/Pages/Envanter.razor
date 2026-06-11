@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Envanter — BKM GM</PageTitle>
@@ -28,7 +29,7 @@ else if (_d is not null)
                 <tr><td><b>Kategori</b></td><td class="r"><b>Devir</b></td></tr>
                 @foreach (var d in _d.Devir.Take(6))
                 {
-                    <tr><td>@d.Kategori</td><td class="r">@d.Devir.ToString("0.0")x</td></tr>
+                    <tr class="clk" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="r">@d.Devir.ToString("0.0")x</td></tr>
                 }
             </table>
         </div>
@@ -37,7 +38,7 @@ else if (_d is not null)
                 <tr><td><b>Kategori</b></td><td class="r"><b>Stok ₺</b></td><td class="r"><b>Devir</b></td></tr>
                 @foreach (var d in _d.Devir.OrderByDescending(x => x.StokTl).Take(6))
                 {
-                    <tr><td>@d.Kategori</td><td class="r">@Tl(d.StokTl)</td>
+                    <tr class="clk" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="r">@Tl(d.StokTl)</td>
                         <td class="r" style="color:@(d.Devir < 1.5m ? "#dc2626" : "#16a34a")">@d.Devir.ToString("0.0")x</td></tr>
                 }
             </table>
@@ -56,10 +57,17 @@ else if (_d is not null)
                 <tr><td><b>Kategori</b></td><td class="r"><b>Çeşit</b></td><td class="r"><b>Yok</b></td><td class="r"><b>%</b></td></tr>
                 @foreach (var s in _d.Stockout.Take(7))
                 {
-                    <tr><td>@s.Kategori</td><td class="r">@Num(s.Cesit)</td><td class="r">@Num(s.Yok)</td>
+                    <tr class="clk" @onclick="() => OpenUrun(s.Kategori)"><td>@s.Kategori ▸</td><td class="r">@Num(s.Cesit)</td><td class="r">@Num(s.Yok)</td>
                         <td class="r" style="color:@(s.Pct > 5 ? "#dc2626" : "#16a34a")">%@s.Pct.ToString("0.0")</td></tr>
                 }
             </table>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="panel panel-wide"><h3>Ciro ↔ Envanter Dengesi (kategori, geçen ay ciro vs güncel stok değeri)</h3>
+            <div class="chart-box"><canvas id="ch_cve"></canvas></div>
+            <div class="muted" style="font-size:11px">X = aylık ciro, Y = stok değeri (3 mağaza). Sağ-alt = çok satan/az stok (iyi); sol-üst = az satan/çok stok (ölü sermaye riski).</div>
         </div>
     </div>
 
@@ -71,12 +79,43 @@ else if (_d is not null)
             </div>
         </div>
     </div>
+
+    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
+        @if (_urunLoading)
+        {
+            <p class="muted">Yükleniyor…</p>
+        }
+        else
+        {
+            <table>
+                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="r"><b>Satış (adet)</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Bakiye</b></td></tr>
+                @{ var i = 1; }
+                @foreach (var u in _urunler)
+                {
+                    <tr><td style="color:#94a3b8">@i</td><td>@u.Kod</td><td>@u.Ad</td><td class="r">@Num(u.Satis)</td><td class="r">@Tl(u.Ciro)</td>
+                        <td class="r" style="color:@(u.Bakiye <= 0 ? "#dc2626" : "inherit")">@Num(u.Bakiye)</td></tr>
+                    i++;
+                }
+                @if (_urunler.Count == 0)
+                {
+                    <tr><td colspan="6" class="muted">Ürün bulunamadı.</td></tr>
+                }
+            </table>
+        }
+    </Modal>
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
     private InventoryData? _d;
+    private IReadOnlyList<CveRow> _cve = [];
+    private IJSObjectReference? _charts;
+
+    private bool _modalUrun;
+    private bool _urunLoading;
+    private string _selKat = "";
+    private IReadOnlyList<UrunRow> _urunler = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,9 +123,35 @@ else if (_d is not null)
         {
             var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
             _d = await Ref.GetInventoryAsync(dun);
+            _cve = await Ref.GetCveAsync(dun);
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; }
+        finally { _loading = false; StateHasChanged(); await DrawAsync(); }
+    }
+
+    private async Task DrawAsync()
+    {
+        if (_cve.Count == 0) return;
+        try
+        {
+            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _charts.InvokeVoidAsync("scatter", "ch_cve",
+                _cve.Select(c => c.Kategori), _cve.Select(c => c.Ciro), _cve.Select(c => c.Env));
+        }
+        catch { /* ilk prerender — sonraki render'da çizilir */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _d is not null) await DrawAsync();
+    }
+
+    private async Task OpenUrun(string kategori)
+    {
+        _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
+        try { _urunler = await Ref.GetUrunlerAsync(kategori); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _urunLoading = false; StateHasChanged(); }
     }
 
     private RenderFragment MarkaTbl(IEnumerable<MarkaRow> rows, int start) => @<table>
