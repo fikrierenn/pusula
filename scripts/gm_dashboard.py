@@ -131,7 +131,7 @@ def period_data(cur, start, end, traf, hedef=None):
                 donus=donus, gir=gir, stores=stc, odeme=odemap,
                 etic=sorted([[e["K"].replace("Mobil Uygulama ", "").replace("(", "").replace(")", ""), round(float(e["Ciro"] or 0)), int(e["Sip"])] for e in etic], key=lambda x: -x[1]),
                 saat=sorted([[int(r["H"]), int(r["Fis"] or 0), int(r["Net"] or 0)] for r in saat]),
-                kasiyer=sorted([[r["M"], r["K"] or "?", int(r["Fis"]), int(r["Net"] or 0), int(r["Iade"])] for r in kas], key=lambda x: -x[3])[:15],
+                kasiyer=sorted([[r["M"], r["K"] or "?", int(r["Fis"]), int(r["Net"] or 0), int(r["Iade"])] for r in kas], key=lambda x: (x[0], -x[3])),
                 kat=[[k, v] for k, v in kat],
                 nakit_pct=round(100*nakit/odetop, 1) if odetop else 0,
                 iade_pct=round(100*iade/fiz, 2) if fiz else 0)
@@ -771,8 +771,13 @@ function render(p){
   document.getElementById('etic_alt').textContent='net = iptal/iade hariç · '+fnum(x.esip)+' sipariş · '+fnum(x.eipt||0)+' iptal/iade';
   if(chSaat)chSaat.destroy();
   chSaat=new Chart(document.getElementById('ch_saat'),{type:'bar',data:{labels:x.saat.map(s=>s[0]+':00'),datasets:[{label:'Fiş',data:x.saat.map(s=>s[1]),backgroundColor:kpi,yAxisID:'y'},{label:'Net ₺',data:x.saat.map(s=>s[2]),type:'line',borderColor:'#0ea5e9',yAxisID:'y2',tension:.3}]},options:{plugins:{legend:{display:true,position:'bottom'}},scales:{y:{position:'left'},y2:{position:'right',grid:{display:false},ticks:{callback:v=>(v/1000).toFixed(0)+'k'}}}}});
-  let kh='<tr><td><b>Kasiyer</b></td><td><b>Mağaza</b></td><td style="text-align:right"><b>Fiş</b></td><td style="text-align:right"><b>Net Ciro</b></td><td style="text-align:right"><b>Sepet</b></td><td style="text-align:right"><b>İade</b></td></tr>';
-  for(const k of (x.kasiyer||[]))kh+='<tr><td>'+k[1]+'</td><td style="color:#64748b">'+k[0]+'</td><td style="text-align:right">'+fnum(k[2])+'</td><td style="text-align:right"><b>'+tl(k[3])+'</b></td><td style="text-align:right">'+fnum(k[2]?Math.round(k[3]/k[2]):0)+' ₺</td><td style="text-align:right">'+k[4]+'</td></tr>';
+  let kh='<tr><td><b>Kasiyer</b></td><td style="text-align:right"><b>Fiş</b></td><td style="text-align:right"><b>Net Ciro</b></td><td style="text-align:right"><b>Sepet</b></td><td style="text-align:right"><b>İade</b></td></tr>';
+  let kc=(x.kasiyer||[]),curM=null;
+  for(const k of kc){
+    if(k[0]!==curM){curM=k[0];kh+='<tr style="background:#f1f5f9"><td colspan=5 style="font-weight:700;color:'+KP+';padding-top:6px">'+curM+'</td></tr>';}
+    kh+='<tr><td>'+k[1]+'</td><td style="text-align:right">'+fnum(k[2])+'</td><td style="text-align:right"><b>'+tl(k[3])+'</b></td><td style="text-align:right">'+fnum(k[2]?Math.round(k[3]/k[2]):0)+' ₺</td><td style="text-align:right">'+k[4]+'</td></tr>';
+  }
+  kh+='<tr style="border-top:2px solid #cbd5e1;font-size:11px;color:#64748b"><td colspan=5>'+kc.length+' kasiyer · mağaza grubu içinde net ciro azalan</td></tr>';
   document.getElementById('tbl_kas').innerHTML=kh;
 }
 chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:__TRENDLBL__,datasets:[{data:__TRENDVAL__,borderColor:'__KIRMIZI__',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
