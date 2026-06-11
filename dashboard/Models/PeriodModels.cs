@@ -22,6 +22,9 @@ public record KasiyerRow(string Magaza, string Ad, int Fis, decimal Net, int Atv
 /// <summary>14 gün trend noktası (fiziksel net, tarih).</summary>
 public record TrendPoint(string Tarih, decimal Net);
 
+/// <summary>E-ticaret kargo firma / il dağılımı (ad + sipariş adedi).</summary>
+public record NameCount(string Ad, int Adet);
+
 /// <summary>Dönem özeti (tüm üst paneller).</summary>
 public record PeriodSummary(
     decimal Fiziksel, int Fis, decimal Iade, decimal Eticaret, int ESip, decimal Toplam,
@@ -29,4 +32,6 @@ public record PeriodSummary(
     IReadOnlyList<CategorySlice> Kategori,
     IReadOnlyList<EticChannel> Etic,
     IReadOnlyList<HourBar> Saat,
-    IReadOnlyList<KasiyerRow> Kasiyer);
+    IReadOnlyList<KasiyerRow> Kasiyer,
+    IReadOnlyList<NameCount> Kargo,
+    IReadOnlyList<NameCount> Il);
