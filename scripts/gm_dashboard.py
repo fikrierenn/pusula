@@ -59,11 +59,8 @@ def period_data(cur, start, end, traf, hedef=None):
     etic = Q(cur, """SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END K,
         COUNT(*) Sip, SUM(o.TOTALPRICE) Ciro FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s
         GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END""", (giso, g2iso))
-    # kategori mix — irsHrk (stkID üstünden; stkKod≠barkod, EncoreMerkez join kategori kaçırıyordu)
-    kat = Q(cur, """SELECT TOP 8 CAST(k.ktgrAd AS nvarchar(50)) K, CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
-      FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-      WHERE h.ehTrhS>=%s AND h.ehTrhS<%s AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100) AND k.ktgrAd<>N'Sınav Okulları'
-      GROUP BY CAST(k.ktgrAd AS nvarchar(50)) ORDER BY Ciro DESC""", (start, end))
+    # kategori mix — skat (mağaza drill) aggregate'inden üretilir (aşağıda) → iki panel TEK kaynak,
+    # toplamlar birebir (eskiden irsHrk KDV-hariç/iadesiz idi → drill ile tutmuyordu, 11.06 fix)
     ode = Q(cur, """SELECT CAST(pt.Name AS nvarchar(40)) K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
       JOIN EncoreMerkez.dbo.PaymentTypes pt ON pt.Id=sp.PaymentTypesId JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND sp.IsChangeAmount=0 AND s.Date>=%s AND s.Date<%s GROUP BY CAST(pt.Name AS nvarchar(40))""", (start, end))
@@ -81,10 +78,13 @@ def period_data(cur, start, end, traf, hedef=None):
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=%s AND s.Date<%s
       GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50))""", (start, end))
     skat_map = {}
+    kat_tot = {}
     for r in skat:
         skat_map.setdefault(r["mekanID"], []).append([r["K"], int(r["Ciro"])])
+        kat_tot[r["K"]] = kat_tot.get(r["K"], 0) + int(r["Ciro"])
     for mid in skat_map:
         skat_map[mid] = sorted(skat_map[mid], key=lambda x: -x[1])[:12]
+    kat = sorted(kat_tot.items(), key=lambda x: -x[1])[:8]
     smap = {s["mekanID"]: s for s in store}
     fiz = sum(float(s["Net"] or 0) for s in store); fis = sum(int(s["Fis"]) for s in store)
     iade = sum(float(s["Iade"] or 0) for s in store)
@@ -111,7 +111,7 @@ def period_data(cur, start, end, traf, hedef=None):
     return dict(fiz=round(fiz), fis=fis, iade=round(iade), etc=round(etc), esip=esip, toplam=round(fiz+etc),
                 donus=donus, gir=gir, stores=stc, odeme=odemap,
                 etic=sorted([[e["K"].replace("Mobil Uygulama ", "").replace("(", "").replace(")", ""), round(float(e["Ciro"] or 0)), int(e["Sip"])] for e in etic], key=lambda x: -x[1]),
-                kat=[[k["K"], int(k["Ciro"])] for k in kat],
+                kat=[[k, v] for k, v in kat],
                 nakit_pct=round(100*nakit/odetop, 1) if odetop else 0,
                 iade_pct=round(100*iade/fiz, 2) if fiz else 0)
 
