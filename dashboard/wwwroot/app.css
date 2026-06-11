@@ -112,3 +112,5 @@ body { background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,
 .modal .x { cursor:pointer; font-size:26px; color:#94a3b8; line-height:1; }
 .modal table { width:100%; border-collapse:collapse; font-size:13px; }
 .modal td { padding:6px 4px; border-bottom:1px solid #f1f5f9; }
+
+.card-etic { border-left-color:#0ea5e9; background:#f0f9ff; }
