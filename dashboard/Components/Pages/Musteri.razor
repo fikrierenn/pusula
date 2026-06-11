@@ -1,4 +1,60 @@
 @page "/musteri"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject RefQueries Ref
+@rendermode InteractiveServer
+
 <PageTitle>Müşteri — BKM GM</PageTitle>
-<div class="hd"><h1>Müşteri</h1></div>
-<p class="muted">Aşama 3'te: RFM segmentasyon (yazarkasa + e-ticaret) · drill müşteri/sipariş.</p>
+<div class="hd"><h1>Müşteri Segmenti (RFM)</h1></div>
+
+@if (_loading)
+{
+    <p class="muted">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="err">Veri alınamadı: @_error</p>
+}
+else
+{
+    <div class="row">
+        <div class="panel">
+            <h3>Yazarkasa — Sadakat Kartı (son 365 gün)</h3>
+            @RfmTable(_yk)
+        </div>
+        <div class="panel">
+            <h3>E-ticaret — JOKER (son 365 gün)</h3>
+            @RfmTable(_et)
+        </div>
+    </div>
+    <p class="muted" style="font-size:12px">RFM = Recency (son alış) · Frequency (sıklık) · Monetary (harcama). İki ayrı evren — kimlik köprüsü yok, birleştirilmez.</p>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private IReadOnlyList<RfmSegment> _yk = [];
+    private IReadOnlyList<RfmSegment> _et = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            (_yk, _et) = await Ref.GetRfmAsync(dun);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private RenderFragment RfmTable(IReadOnlyList<RfmSegment> rows) => @<table>
+        <tr><td><b>Segment</b></td><td class="r"><b>Müşteri</b></td><td class="r"><b>Ciro (365g)</b></td></tr>
+        @foreach (var r in rows)
+        {
+            <tr><td>@r.Segment</td><td class="r">@Num(r.Musteri)</td><td class="r">@Tl(r.Ciro)</td></tr>
+        }
+    </table>;
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}

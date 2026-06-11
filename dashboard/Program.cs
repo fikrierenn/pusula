@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<Queries>();
+builder.Services.AddScoped<RefQueries>();
 
 var app = builder.Build();
 
