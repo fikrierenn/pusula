@@ -68,6 +68,44 @@ else if (_data is not null)
         </div>
     </div>
 
+    @if (_period == "ay" && _hedefMag is not null)
+    {
+        <div class="row">
+            <div class="panel"><h3>Hedef-Gerçekleşen — Mağaza (MTD)</h3>
+                <table>
+                    <tr><td><b>Mağaza</b></td><td class="r"><b>MTD Net</b></td><td class="r"><b>Hedef</b></td><td class="r"><b>Gerçekleşme</b></td></tr>
+                    @{ decimal tNet = 0, tHed = 0; }
+                    @foreach (var m in _hedefMag)
+                    {
+                        tNet += m.Net; tHed += m.Hedef;
+                        <tr><td>@m.Ad</td><td class="r">@Tl(m.Net)</td><td class="r">@Tl(m.Hedef)</td>
+                            <td class="r" style="color:@GerRenk(m.GerPct);font-weight:600">@(m.GerPct is null ? "—" : $"%{m.GerPct}")</td></tr>
+                    }
+                    @{ decimal? tGer = tHed > 0 ? Math.Round(100 * tNet / tHed, 1) : null; }
+                    <tr class="tot"><td><b>TOPLAM</b></td><td class="r"><b>@Tl(tNet)</b></td><td class="r"><b>@Tl(tHed)</b></td>
+                        <td class="r" style="color:@GerRenk(tGer);font-weight:700">@(tGer is null ? "—" : $"%{tGer}")</td></tr>
+                </table>
+                <div class="chart-box"><canvas id="ch_hedef"></canvas></div>
+                <div class="muted" style="font-size:11px">Renk: ≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı. Hedef: BKMDATA.Hedef (aylık).</div>
+            </div>
+            <div class="panel"><h3>Hedef-Gerçekleşen — Kategori (MTD, en sapan)</h3>
+                <table>
+                    <tr><td><b>Kategori</b></td><td class="r"><b>MTD Net</b></td><td class="r"><b>Hedef</b></td><td class="r"><b>Gerçekleşme</b></td></tr>
+                    @foreach (var k in _hedefKat)
+                    {
+                        <tr><td>@k.Ad</td><td class="r">@Tl(k.Net)</td><td class="r">@Tl(k.Hedef)</td>
+                            <td class="r" style="color:@GerRenk(k.GerPct);font-weight:600">@(k.GerPct is null ? "—" : $"%{k.GerPct}")</td></tr>
+                    }
+                    @if (_hedefKat.Count == 0)
+                    {
+                        <tr><td colspan="4" class="muted">Kategori hedefi bulunamadı.</td></tr>
+                    }
+                </table>
+                <div class="muted" style="font-size:11px">Köprü: Hedef.ktgId = urnKtgr2.ktgrID. Gerçekleşme artan (en sapan üstte).</div>
+            </div>
+        </div>
+    }
+
     <div class="row">
         <div class="panel"><h3>Mağaza Kategori Mix (dönem)</h3><div class="chart-box"><canvas id="ch_kat"></canvas></div></div>
         <div class="panel"><h3>Son 14 Gün — Fiziksel Net Ciro</h3><div class="chart-box"><canvas id="ch_trend"></canvas></div></div>
@@ -155,6 +193,8 @@ else if (_data is not null)
     private PeriodSummary? _data;
     private IReadOnlyList<TrendPoint> _trend = [];
     private IReadOnlyList<TrendPoint> _alis = [];
+    private IReadOnlyList<HedefMagaza>? _hedefMag;
+    private IReadOnlyList<HedefKategori> _hedefKat = [];
     private IJSObjectReference? _charts;
     private bool _modalOpen;
     private bool _modalEtic;
@@ -206,6 +246,9 @@ else if (_data is not null)
             _data = await Queries.GetPeriodAsync(start, endExcl);
             _trend = await Queries.GetTrendAsync(dun);
             _alis = await Queries.GetAlisTrendAsync(dun);
+            if (_period == "ay")
+                (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(start, endExcl);
+            else { _hedefMag = null; _hedefKat = []; }
         }
         catch (Exception ex)
         {
@@ -231,6 +274,9 @@ else if (_data is not null)
                 _trend.Select(t => t.Tarih[5..]), _trend.Select(t => t.Net));
             await _charts.InvokeVoidAsync("area", "ch_alis",
                 _alis.Select(t => t.Tarih[5..]), _alis.Select(t => t.Net));
+            if (_period == "ay" && _hedefMag is not null)
+                await _charts.InvokeVoidAsync("bar", "ch_hedef",
+                    _hedefMag.Select(m => m.Ad), _hedefMag.Select(m => m.GerPct ?? 0), false);
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }
@@ -239,6 +285,10 @@ else if (_data is not null)
     {
         if (firstRender && _data is not null) await DrawChartsAsync();
     }
+
+    // Hedef gerçekleşme renk eşiği: ≥%95 yeşil, %85-95 sarı, <%85 kırmızı
+    private static string GerRenk(decimal? pct) => pct is null ? "#94a3b8"
+        : pct >= 95 ? "#16a34a" : pct >= 85 ? "#f59e0b" : "#dc2626";
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));

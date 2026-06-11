@@ -168,6 +168,85 @@ public sealed class Queries(Db db)
         return new PeriodSummary(fiz, fisTop, iadeTop, eCiro, eSip, fiz + eCiro, cards, kategori, eticKanal, saat, kasiyer, kargo, il);
     }
 
+    /// <summary>
+    /// Hedef-gerçekleşen (sadece aylık MTD): mağaza × MTD net × aylık hedef × gerçekleşme %,
+    /// ve kategori × hedef × gerçekleşme % (en sapan ilk N). Köprü: Hedef.ktgId=urnKtgr2.ktgrID.
+    /// </summary>
+    public async Task<(IReadOnlyList<HedefMagaza> Magaza, IReadOnlyList<HedefKategori> Kategori)> GetHedefAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        var ayBas = new DateOnly(start.Year, start.Month, 1);
+        var par = new
+        {
+            start = start.ToDateTime(TimeOnly.MinValue),
+            end = endExcl.ToDateTime(TimeOnly.MinValue),
+            a = ayBas.ToDateTime(TimeOnly.MinValue),
+            b = endExcl.ToDateTime(TimeOnly.MinValue),
+        };
+
+        // Mağaza MTD net (geri dönüşüm fişi hariç)
+        const string netSql = """
+            SELECT MG.mekanID AS MekanId,
+                   SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS Net
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+            LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@start AND s.Date<@end
+            GROUP BY MG.mekanID;
+            """;
+        var net = (await conn.QueryAsync<(int MekanId, decimal Net)>(netSql, par))
+            .ToDictionary(x => x.MekanId, x => x.Net);
+
+        const string hMagSql = "SELECT mekanId, SUM(hedef) H FROM BKMDATA.dbo.Hedef WITH(NOLOCK) WHERE mekanId IN (1,4477,4478) AND tarih>=@a AND tarih<@b GROUP BY mekanId;";
+        var hMag = (await conn.QueryAsync<(int mekanId, decimal H)>(hMagSql, par)).ToDictionary(x => x.mekanId, x => x.H);
+
+        var magaza = new List<HedefMagaza>();
+        foreach (var mid in new[] { 4477, 1, 4478 })
+        {
+            var n = net.GetValueOrDefault(mid, 0);
+            var h = hMag.GetValueOrDefault(mid, 0);
+            magaza.Add(new HedefMagaza(mid, Mekan[mid], n, h, h > 0 ? Math.Round(100 * n / h, 1) : null));
+        }
+
+        // Kategori MTD net (Products.Code=stkID köprüsü; tüm mağazalar toplam)
+        const string katNetSql = """
+            SELECT u.urnKtgr2ID AS KtgId, CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Net
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
+            JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
+            JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=CONVERT(int,pr.Code)
+            JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID=u.urnKtgr2ID
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=@start AND s.Date<@end
+            GROUP BY u.urnKtgr2ID, CAST(ktg.ktgrAd AS nvarchar(50));
+            """;
+        var katNet = (await conn.QueryAsync<(int KtgId, string Ad, decimal Net)>(katNetSql, par))
+            .ToDictionary(x => x.KtgId, x => (x.Ad, x.Net));
+
+        const string katHedSql = """
+            SELECT h.ktgId AS KtgId, CAST(MAX(k.ktgrAd) AS nvarchar(50)) AS Ad, SUM(h.hedef) AS H
+            FROM BKMDATA.dbo.Hedef h WITH(NOLOCK)
+            LEFT JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=h.ktgId
+            WHERE h.mekanId IN (1,4477,4478) AND h.tarih>=@a AND h.tarih<@b
+            GROUP BY h.ktgId;
+            """;
+        var katHed = (await conn.QueryAsync<(int KtgId, string Ad, decimal H)>(katHedSql, par)).ToList();
+
+        var kategori = katHed
+            .Where(x => x.H > 0)
+            .Select(x =>
+            {
+                var nv = katNet.TryGetValue(x.KtgId, out var v) ? v : (Ad: x.Ad, Net: 0m);
+                return new HedefKategori(nv.Ad ?? x.Ad, nv.Net, x.H, x.H > 0 ? Math.Round(100 * nv.Net / x.H, 1) : null);
+            })
+            .OrderBy(x => x.GerPct ?? 0)   // en sapan (en düşük gerçekleşme) önce
+            .ToList();
+
+        return (magaza, kategori);
+    }
+
     /// <summary>Son 14 gün fiziksel net ciro (trend area). dun = referans (dahil).</summary>
     public async Task<IReadOnlyList<TrendPoint>> GetTrendAsync(DateOnly dun)
     {

@@ -31,6 +31,15 @@ public record KargoPerf(string Kargo, int Adet, decimal? CikisGun, decimal? Tesl
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 
+/// <summary>Mağaza hedef-gerçekleşen satırı (MTD net × aylık hedef × gerçekleşme %).</summary>
+public record HedefMagaza(int MekanId, string Ad, decimal Net, decimal Hedef, decimal? GerPct);
+
+/// <summary>Kategori hedef-gerçekleşen satırı (MTD net × aylık hedef × gerçekleşme %).</summary>
+public record HedefKategori(string Ad, decimal Net, decimal Hedef, decimal? GerPct);
+
+/// <summary>Günlük kargo çıkış dağılımı (sipariş→kargo gün farkı × paket adedi).</summary>
+public record KargoGun(int Gun, int Adet);
+
 /// <summary>Dönem özeti (tüm üst paneller).</summary>
 public record PeriodSummary(
     decimal Fiziksel, int Fis, decimal Iade, decimal Eticaret, int ESip, decimal Toplam,
