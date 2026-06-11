@@ -53,6 +53,26 @@ public sealed class Queries(Db db)
             new { a = ayBas.ToDateTime(TimeOnly.MinValue), b = endExcl.ToDateTime(TimeOnly.MinValue) }))
             .ToDictionary(x => x.mekanId, x => x.H);
 
+        // Mağaza × kategori (drill — mağaza kartı tıkla → kategori dağılımı)
+        var katPar = new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) };
+        const string skatSql = """
+            SELECT MG.mekanID AS MekanId, CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Ciro
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+            JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
+            JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
+            JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=CONVERT(int,pr.Code)
+            JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID=u.urnKtgr2ID
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=@start AND s.Date<@end
+            GROUP BY MG.mekanID, CAST(ktg.ktgrAd AS nvarchar(50));
+            """;
+        var skat = (await conn.QueryAsync<(int MekanId, string Ad, decimal Ciro)>(skatSql, katPar)).ToList();
+        var skatMap = skat.GroupBy(r => r.MekanId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<CategorySlice>)g.OrderByDescending(x => x.Ciro)
+                .Select(x => new CategorySlice(x.Ad, x.Ciro)).ToList());
+
         var cards = new List<StoreCard>();
         foreach (var mid in new[] { 4477, 1, 4478 })
         {
@@ -60,7 +80,8 @@ public sealed class Queries(Db db)
             var net = r?.Net ?? 0;
             var fis = r?.Fis ?? 0;
             decimal? ger = hedef.TryGetValue(mid, out var h) && h > 0 ? Math.Round(100 * net / h, 1) : null;
-            cards.Add(new StoreCard(mid, Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0, ger, r?.Iade ?? 0));
+            cards.Add(new StoreCard(mid, Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0, ger, r?.Iade ?? 0,
+                skatMap.GetValueOrDefault(mid, [])));
         }
 
         // E-ticaret kanal kırılımı (donut)
@@ -91,7 +112,6 @@ public sealed class Queries(Db db)
             WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=@start AND s.Date<@end
             GROUP BY CAST(ktg.ktgrAd AS nvarchar(50));
             """;
-        var katPar = new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) };
         var kategori = (await conn.QueryAsync<CategorySlice>(katSql, katPar))
             .OrderByDescending(k => k.Ciro).Take(8).ToList();
 

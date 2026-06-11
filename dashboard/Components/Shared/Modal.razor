@@ -1,0 +1,22 @@
+@* Reusable drill modal — sağdan açılır panel. Açık olunca arka plan karartılır. *@
+@if (Open)
+{
+    <div class="ovl on" @onclick="Close">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="mtop">
+                <h2>@Title</h2>
+                <span class="x" @onclick="Close">&times;</span>
+            </div>
+            @ChildContent
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task Close() => await OpenChanged.InvokeAsync(false);
+}
