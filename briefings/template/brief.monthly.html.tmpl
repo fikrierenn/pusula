@@ -86,6 +86,28 @@
 </tbody>
 </table>
 
+{% if has_eticaret %}
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">3b) E-ticaret (JOKER) — Hafta {{ week_number }}</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+<thead><tr style="background:#f5f5f5;">
+<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">Kanal</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Sipariş</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">İptal/İade</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Net Ciro</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Sepet</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">WoW Net</th>
+</tr></thead>
+<tbody>
+{% for k in etic_kanallar %}
+<tr><td style="padding:8px;border-bottom:1px solid #eee;">{{ k.name }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ k.siparis_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:#999;">{{ k.iptal_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ k.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ k.sepet_int }} ₺</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:{% if k.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ k.wow_str }}</td></tr>
+{% endfor %}
+<tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:8px;">TOPLAM</td><td style="text-align:right;padding:8px;">{{ eticaret.siparis_fmt }}</td><td style="text-align:right;padding:8px;color:#999;">{{ eticaret.iptal_fmt }}</td><td style="text-align:right;padding:8px;">{{ eticaret.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;">{{ eticaret.sepet_int }} ₺</td><td style="text-align:right;padding:8px;color:{% if eticaret.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ eticaret.wow_str }}</td></tr>
+<tr style="background:#f0f7ff;font-weight:bold;"><td style="padding:8px;">BİRLEŞİK (mağaza + online)</td><td colspan="2"></td><td style="text-align:right;padding:8px;">{{ birlesik.net_ciro_fmt }}</td><td colspan="2" style="padding:8px;color:#666;font-weight:normal;">mağaza %{{ birlesik.fiziksel_pay }} · online %{{ birlesik.online_pay }}</td></tr>
+</tbody>
+</table>
+<p style="font-size:11px;color:#999;margin-top:-14px;">Net = iptal (1006) + iade (3004/3006) hariç sipariş tutarı (TOTALPRICE, kargo dahil). Kaynak: JOKER J_ORDERS.</p>
+{% endif %}
+
 <h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">4) Günlük Seyir — Bu Hafta</h2>
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
 <thead><tr style="background:#f5f5f5;"><th style="padding:6px;text-align:left;border-bottom:2px solid #ddd;">Gün</th><th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Net Ciro</th><th style="padding:6px;text-align:right;border-bottom:2px solid #ddd;">Fiş</th></tr></thead>

@@ -134,3 +134,21 @@ queries:
       WHERE s.SaleDate >= CONVERT(date,'01.06.2026',104)
     last_verified: 2026-06-09
     note: "Group1Id=2 = personel müşteri. İç kartlar (Mağaza/Kumbara/599-699 tel) RFM'de filtrele."
+
+  - id: eticaret-haftalik-net-kanal
+    question: "E-ticaret haftalık net ciro, kanal kırılımı (iptal/iade hariç)"
+    codes: [joker.J_ORDERS.STATUS, joker.J_ORDERS.APPLICATION]
+    mcp_safe: true
+    verified_sql: |
+      SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)',
+                  'Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END Kanal,
+             SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) NetSiparis,
+             SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) NetCiro
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      WHERE o.ORDERDATE >= '20260601' AND o.ORDERDATE < '20260608'
+      GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)',
+                    'Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END
+    last_verified: 2026-06-11
+    sample_result: "Hafta 01-07.06.2026: net 19,1M ₺ / 18.741 sipariş (fiziksel 10,1M'nin ~2 katı)"
+    source: "scripts/generate_brief.py SQL_ETICARET (brief v1.1.0)"
+    note: "Tarih ISO YYYYMMDD zorunlu. Net = STATUS 1006 (iptal) + 3004/3006 (iade) hariç. TOTALPRICE kargo dahil brüt sipariş — POS net'iyle birebir kıyaslanamaz."

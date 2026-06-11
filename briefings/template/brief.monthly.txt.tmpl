@@ -36,6 +36,16 @@ Gerceklesme                      : %{{ prev_month.gerceklesme_pct }} ({{ prev_mo
 {% endfor %}{{ "%-18s"|format("TOPLAM") }}  Fis: {{ "%6d"|format(week.fis_int) }}  Net: {{ "%14s"|format(week.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(week.sepet_int) }} TL  WoW {{ week.wow_str }}
 
 
+{% if has_eticaret -%}
+3b) E-TICARET (JOKER) — HAFTA {{ week_number }}
+------------------------------------------------
+{% for k in etic_kanallar %}{{ "%-26s"|format(k.name) }}  Sip: {{ "%6s"|format(k.siparis_fmt) }}  Net: {{ "%14s"|format(k.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(k.sepet_int) }} TL  WoW {{ k.wow_str }}
+{% endfor %}{{ "%-26s"|format("TOPLAM") }}  Sip: {{ "%6s"|format(eticaret.siparis_fmt) }}  Net: {{ "%14s"|format(eticaret.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(eticaret.sepet_int) }} TL  WoW {{ eticaret.wow_str }}
+BIRLESIK (magaza+online): {{ birlesik.net_ciro_fmt }} TL  (magaza %{{ birlesik.fiziksel_pay }} / online %{{ birlesik.online_pay }})
+(Net = iptal/iade haric, kargo dahil TOTALPRICE)
+
+
+{% endif -%}
 4) GUNLUK SEYIR — BU HAFTA
 ---------------------------
 {% for d in daily %}{{ "%-25s"|format(d.gun_label) }}  Net: {{ "%14s"|format(d.net_ciro_fmt) }} TL  Fis: {{ "%5d"|format(d.fis_int) }}{% if d.special_note %}  *** {{ d.special_note }} ***{% endif %}

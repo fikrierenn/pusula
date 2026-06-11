@@ -29,7 +29,11 @@
 <tr><td style="padding:6px;border-bottom:1px solid #eee;"><strong>Hafta net ciro</strong></td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;"><strong>{{ week.net_ciro_fmt }} ₺</strong></td><td style="padding:6px;border-bottom:1px solid #eee;color:{% if week.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">WoW {{ week.wow_str }}</td></tr>
 <tr><td style="padding:6px;border-bottom:1px solid #eee;">Fiş adedi</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;">{{ week.fis_fmt }}</td><td style="padding:6px;border-bottom:1px solid #eee;color:#666;">{{ week.fis_wow_str }}</td></tr>
 <tr><td style="padding:6px;border-bottom:1px solid #eee;">Sepet ortalaması</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;">{{ week.sepet_fmt }} ₺</td><td style="padding:6px;border-bottom:1px solid #eee;color:#666;">{{ week.sepet_wow_str }}</td></tr>
-<tr><td style="padding:6px;">Ay MTD ({{ mtd_label }})</td><td style="text-align:right;padding:6px;"><strong>{{ mtd.net_ciro_fmt }} ₺</strong></td><td style="padding:6px;color:#666;">{% if mtd.gerceklesme_pct %}gerçekleşme %{{ mtd.gerceklesme_pct }}{% else %}hedef yok{% endif %}</td></tr>
+<tr><td style="padding:6px;border-bottom:1px solid #eee;">Ay MTD ({{ mtd_label }})</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;"><strong>{{ mtd.net_ciro_fmt }} ₺</strong></td><td style="padding:6px;border-bottom:1px solid #eee;color:#666;">{% if mtd.gerceklesme_pct %}gerçekleşme %{{ mtd.gerceklesme_pct }}{% else %}hedef yok{% endif %}</td></tr>
+{% if has_eticaret %}
+<tr><td style="padding:6px;border-bottom:1px solid #eee;">E-ticaret net ciro</td><td style="text-align:right;padding:6px;border-bottom:1px solid #eee;"><strong>{{ eticaret.net_ciro_fmt }} ₺</strong></td><td style="padding:6px;border-bottom:1px solid #eee;color:{% if eticaret.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">WoW {{ eticaret.wow_str }}</td></tr>
+<tr style="background:#f0f7ff;"><td style="padding:6px;"><strong>BİRLEŞİK (mağaza + online)</strong></td><td style="text-align:right;padding:6px;"><strong>{{ birlesik.net_ciro_fmt }} ₺</strong></td><td style="padding:6px;color:#666;">mağaza %{{ birlesik.fiziksel_pay }} · online %{{ birlesik.online_pay }}</td></tr>
+{% endif %}
 </table>
 
 <h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">1) Mağaza Özeti — Hafta {{ week_number }}</h2>
@@ -48,6 +52,27 @@
 <tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:8px;">TOPLAM</td><td style="text-align:right;padding:8px;">{{ week.fis_fmt }}</td><td style="text-align:right;padding:8px;">{{ week.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;">{{ week.sepet_fmt }} ₺</td><td style="text-align:right;padding:8px;color:{% if week.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ week.wow_str }}</td></tr>
 </tbody>
 </table>
+
+{% if has_eticaret %}
+<h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">1b) E-ticaret (JOKER) — Hafta {{ week_number }}</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+<thead><tr style="background:#f5f5f5;">
+<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">Kanal</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Sipariş</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">İptal/İade</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Net Ciro</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">Sepet</th>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">WoW Net</th>
+</tr></thead>
+<tbody>
+{% for k in etic_kanallar %}
+<tr><td style="padding:8px;border-bottom:1px solid #eee;">{{ k.name }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ k.siparis_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:#999;">{{ k.iptal_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ k.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">{{ k.sepet_int }} ₺</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:{% if k.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ k.wow_str }}</td></tr>
+{% endfor %}
+<tr style="background:#f9f9f9;font-weight:bold;"><td style="padding:8px;">TOPLAM</td><td style="text-align:right;padding:8px;">{{ eticaret.siparis_fmt }}</td><td style="text-align:right;padding:8px;color:#999;">{{ eticaret.iptal_fmt }}</td><td style="text-align:right;padding:8px;">{{ eticaret.net_ciro_fmt }}</td><td style="text-align:right;padding:8px;">{{ eticaret.sepet_int }} ₺</td><td style="text-align:right;padding:8px;color:{% if eticaret.wow_pct > 0 %}#27ae60{% else %}#c0392b{% endif %};">{{ eticaret.wow_str }}</td></tr>
+</tbody>
+</table>
+<p style="font-size:11px;color:#999;margin-top:-14px;">Net = iptal (1006) + iade (3004/3006) hariç sipariş tutarı (TOTALPRICE, kargo dahil). Kaynak: JOKER J_ORDERS.</p>
+{% endif %}
 
 <h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">2) Günlük Seyir</h2>
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
@@ -86,7 +111,8 @@
 
 <h2 style="color:#2c3e50;border-bottom:1px solid #ddd;padding-bottom:4px;">Kapsam Uyarıları</h2>
 <ul style="font-size:13px;color:#555;line-height:1.6;">
-<li>Kapsam: 3 Bursa fiziksel mağaza (FSM, Özlüce, İst.Yolu) — Heykel, JOKER e-ticaret, kitapsepeti, kafeler dahil değil</li>
+<li>Kapsam: 3 Bursa fiziksel mağaza (FSM, Özlüce, İst.Yolu){% if has_eticaret %} + JOKER e-ticaret (bkmkitap.com){% endif %} — Heykel, kitapsepeti, kafeler dahil değil</li>
+{% if has_eticaret %}<li>E-ticaret neti sipariş bazlı (TOTALPRICE, kargo dahil) — fiziksel POS neti ile birebir kıyaslanamaz</li>{% endif %}
 <li>Geri dönüşüm fişleri (BarcodeNo='1001') hariç</li>
 <li>İade fişleri sign'lı (negatif) ciroya dahil</li>
 <li>AI yorumu opsiyonel — bu rapor ham veridir, derinlemesine analiz için Claude oturumda ek yorum eklenebilir</li>

@@ -40,7 +40,7 @@ try:
 except ImportError as e:
     sys.exit(f"Eksik paket: {e}. Yükle: pip install pymssql jinja2")
 
-SCRIPT_VERSION = "1.0.0"
+SCRIPT_VERSION = "1.1.0"  # 1.1.0: e-ticaret (JOKER) haftalık kanal kırılımı + birleşik toplam
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = REPO_ROOT / "briefings" / "template"
 BRIEFINGS_DIR = REPO_ROOT / "briefings"
@@ -236,6 +236,25 @@ WHERE h.mekanId IN (1, 4477, 4478)
 GROUP BY ktg.ktgrID, CAST(ktg.ktgrAd AS nvarchar(50))
 """
 
+# E-ticaret (JOKER linked server). ⚠️ ORDERDATE param = ISO 'YYYYMMDD' string (DMY sessiz hata!).
+# Net = iptal/iade hariç (J_ORDERS.STATUS 1006=iptal, 3004/3006=iade — sema/codes.yaml).
+# Çöp kanal (admin girişleri) → 'Diğer'. Doğrulama 11.06.2026: hafta 01-07.06 net 19,1M ₺.
+SQL_ETICARET = """
+SELECT
+    CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)', 'Mobil Uygulama (iOS)',
+                                'Mobil Site', 'Web Sitesi')
+         THEN o.APPLICATION ELSE 'Diğer' END AS Kanal,
+    COUNT(*) AS Siparis,
+    SUM(CASE WHEN o.STATUS NOT IN (1006, 3004, 3006) THEN 1 ELSE 0 END) AS NetSiparis,
+    SUM(CASE WHEN o.STATUS IN (1006, 3004, 3006) THEN 1 ELSE 0 END) AS IptalIade,
+    SUM(CASE WHEN o.STATUS NOT IN (1006, 3004, 3006) THEN o.TOTALPRICE ELSE 0 END) AS NetCiro
+FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+WHERE o.ORDERDATE >= %(start)s AND o.ORDERDATE < %(end)s
+GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)', 'Mobil Uygulama (iOS)',
+                                     'Mobil Site', 'Web Sitesi')
+              THEN o.APPLICATION ELSE 'Diğer' END
+"""
+
 
 # ----------------------------------------------------------------
 # Data builders
@@ -424,6 +443,46 @@ def build_categories(rows, hedef_rows=None, top_n=10):
 # Main
 # ----------------------------------------------------------------
 
+KANAL_SIRA = ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi", "Diğer"]
+
+
+def build_eticaret(rows, prev_rows=None):
+    """JOKER kanal satırları → kanallar listesi + toplam. WoW prev_rows ile."""
+    prev_net = {}
+    if prev_rows:
+        prev_net = {r["Kanal"]: float(r["NetCiro"] or 0) for r in prev_rows}
+
+    kanallar = []
+    for r in sorted(rows, key=lambda r: KANAL_SIRA.index(r["Kanal"]) if r["Kanal"] in KANAL_SIRA else 99):
+        net = float(r["NetCiro"] or 0)
+        net_sip = int(r["NetSiparis"] or 0)
+        wow_str, wow_pct = fmt_pct(net, prev_net.get(r["Kanal"]))
+        kanallar.append({
+            "name": r["Kanal"],
+            "siparis_fmt": fmt_int(net_sip),
+            "iptal_fmt": fmt_int(r["IptalIade"] or 0),
+            "net_ciro": net,
+            "net_ciro_fmt": fmt_money(net),
+            "sepet_int": int(net / net_sip) if net_sip else 0,
+            "wow_str": wow_str, "wow_pct": wow_pct,
+        })
+
+    top_net = sum(k["net_ciro"] for k in kanallar)
+    top_sip = sum(int(r["NetSiparis"] or 0) for r in rows)
+    top_iptal = sum(int(r["IptalIade"] or 0) for r in rows)
+    prev_top = sum(prev_net.values()) if prev_net else None
+    wow_str, wow_pct = fmt_pct(top_net, prev_top)
+    toplam = {
+        "siparis_fmt": fmt_int(top_sip),
+        "iptal_fmt": fmt_int(top_iptal),
+        "net_ciro": top_net,
+        "net_ciro_fmt": fmt_money(top_net),
+        "sepet_int": int(top_net / top_sip) if top_sip else 0,
+        "wow_str": wow_str, "wow_pct": wow_pct,
+    }
+    return kanallar, toplam
+
+
 def main():
     parser = argparse.ArgumentParser(description="Pazartesi Brief Üretici")
     parser.add_argument("--date", help="Pazartesi tarihi (YYYY-MM-DD), default bu hafta")
@@ -471,6 +530,16 @@ def main():
         mtd_rows = query(conn, SQL_PERIOD, start=mtd_start, end=mtd_end)
         mtd_hedef_rows = query(conn, SQL_HEDEF, start=mtd_start, end=mtd_end)
 
+        # E-ticaret (JOKER) — linked server düşerse brief yine üretilsin
+        etic_rows = etic_prev_rows = None
+        try:
+            iso = lambda d: d.strftime("%Y%m%d")  # JOKER ORDERDATE ISO zorunlu
+            etic_rows = query(conn, SQL_ETICARET, start=iso(week_start), end=iso(week_end))
+            etic_prev_rows = query(conn, SQL_ETICARET, start=iso(prev_week_start), end=iso(prev_week_end))
+        except Exception as e:
+            print(f"[warn] E-ticaret (ODAKJOKER) sorgusu basarisiz: {e}", file=sys.stderr)
+            warnings.append("E-ticaret verisi alınamadı (ODAKJOKER linked server) — bu hafta brief sadece fiziksel mağazaları kapsıyor.")
+
         if is_monthly:
             pm_rows = query(conn, SQL_PERIOD, start=prev_month_start, end=prev_month_end)
             pm_hedef_rows = query(conn, SQL_HEDEF, start=prev_month_start, end=prev_month_end)
@@ -487,6 +556,18 @@ def main():
 
     daily = build_daily(daily_rows)
     mtd, mtd_stores = build_period_summary(mtd_rows, mtd_hedef_rows)
+
+    # E-ticaret + birleşik toplam
+    has_eticaret = bool(etic_rows)
+    etic_kanallar, eticaret = (build_eticaret(etic_rows, etic_prev_rows) if has_eticaret else ([], None))
+    birlesik = None
+    if has_eticaret:
+        b_net = week["net_ciro"] + eticaret["net_ciro"]
+        birlesik = {
+            "net_ciro_fmt": fmt_money(b_net),
+            "fiziksel_pay": round(week["net_ciro"] / b_net * 100) if b_net else 0,
+            "online_pay": round(eticaret["net_ciro"] / b_net * 100) if b_net else 0,
+        }
     if not mtd_hedef_rows:
         warnings.append(f"Bu ay ({TR_AY[monday.month]} {monday.year}) için hedef tablosunda kayıt yok — gerçekleşme % gösterilmiyor.")
 
@@ -528,6 +609,10 @@ def main():
         "daily": daily,
         "mtd": mtd,
         "mtd_stores": mtd_stores,
+        "has_eticaret": has_eticaret,
+        "etic_kanallar": etic_kanallar,
+        "eticaret": eticaret,
+        "birlesik": birlesik,
     }
 
     if is_monthly:

@@ -14,6 +14,10 @@ Hafta net ciro    : {{ week.net_ciro_fmt }} TL  (WoW {{ week.wow_str }})
 Fiş adedi         : {{ week.fis_fmt }}  ({{ week.fis_wow_str }})
 Sepet ortalaması  : {{ week.sepet_fmt }} TL
 Ay MTD ({{ mtd_label }}): {{ mtd.net_ciro_fmt }} TL{% if mtd.gerceklesme_pct %}  (gerçekleşme %{{ mtd.gerceklesme_pct }}){% endif %}
+{% if has_eticaret -%}
+E-ticaret net     : {{ eticaret.net_ciro_fmt }} TL  (WoW {{ eticaret.wow_str }})
+BIRLESIK          : {{ birlesik.net_ciro_fmt }} TL  (magaza %{{ birlesik.fiziksel_pay }} / online %{{ birlesik.online_pay }})
+{%- endif %}
 
 
 1) MAGAZA OZETI — HAFTA {{ week_number }}
@@ -22,6 +26,15 @@ Ay MTD ({{ mtd_label }}): {{ mtd.net_ciro_fmt }} TL{% if mtd.gerceklesme_pct %} 
 {% endfor %}{{ "%-18s"|format("TOPLAM") }}  Fis: {{ "%6d"|format(week.fis_int) }}  Net: {{ "%14s"|format(week.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(week.sepet_int) }} TL  WoW {{ week.wow_str }}
 
 
+{% if has_eticaret -%}
+1b) E-TICARET (JOKER) — HAFTA {{ week_number }}
+------------------------------------------------
+{% for k in etic_kanallar %}{{ "%-26s"|format(k.name) }}  Sip: {{ "%6s"|format(k.siparis_fmt) }}  Net: {{ "%14s"|format(k.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(k.sepet_int) }} TL  WoW {{ k.wow_str }}
+{% endfor %}{{ "%-26s"|format("TOPLAM") }}  Sip: {{ "%6s"|format(eticaret.siparis_fmt) }}  Net: {{ "%14s"|format(eticaret.net_ciro_fmt) }} TL  Sepet: {{ "%4d"|format(eticaret.sepet_int) }} TL  WoW {{ eticaret.wow_str }}
+(Net = iptal/iade haric, kargo dahil TOTALPRICE)
+
+
+{% endif -%}
 2) GUNLUK SEYIR
 ----------------
 {% for d in daily %}{{ "%-25s"|format(d.gun_label) }}  Net: {{ "%14s"|format(d.net_ciro_fmt) }} TL  Fis: {{ "%5d"|format(d.fis_int) }}  Sepet: {{ "%4d"|format(d.sepet_int) }} TL{% if d.special_note %}  *** {{ d.special_note }} ***{% endif %}
