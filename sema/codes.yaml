@@ -1,7 +1,7 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-06-10
+updated: 2026-06-12
 
 codes:
   irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
@@ -77,8 +77,25 @@ codes:
       2: İADE GELDİ
       3: KAYIP KARGO
       4: HAREKET GÖRÜYOR
-  joker.J_ORDERS.STATUS:
-    values: {1001: bekliyor, 1005: tamamlandı, 1006: iptal, 3004: iade, 3006: iade}
+  joker.J_ORDERS.STATUS:    # lookup J_ORDER_STATUS.LOGICALREF=NAME (45 değer). ISDETAIL: 0=ana, 1/2=detay satır, 3/4=Odak aşama
+    lookup: ODAKJOKER.JOKER.dbo.J_ORDER_STATUS
+    # ⚠️ 11.06 KESİN DÜZELTME (önceki harita TAMAMEN YANLIŞTI → e-ticaret cirosunu %70 eksik veriyordu):
+    #   3004/3006 İADE DEĞİL — normal Odak sipariş aşaması (Hazırlanıyor/Tedarik Edilecek). Ciroda KALIR.
+    net_iptal_iade: [1001, 1006, 1007, 3000, 4000]   # NET ciro = TOPLAM − bu kodlar (gerçek iptal/iade/kayıp)
+    values:
+      1000: Sipariş Alındı (normal)
+      1001: Sipariş İptal Edildi (İPTAL)
+      1005: Sipariş Kargoya Verildi (ana hacim, normal)
+      1006: Sipariş İade Geldi (İADE)
+      1007: Kayıp Kargo (iade say)
+      3000: "Odak - İptal (İPTAL)"
+      3001: "Odak - Sipariş Alındı/Yeni (normal)"
+      3003: "Odak - Onay Bekliyor (normal)"
+      3004: "Odak - Sipariş Hazırlanıyor (NORMAL — iade DEĞİL!)"
+      3006: "Odak - Tedarik Edilecek (NORMAL — iade DEĞİL!)"
+      3009: "Odak - Kargoya Verildi (normal)"
+      4000: "Odak - İptal (satır, İPTAL)"
+    note: "J_ORDERS.STATUS ana sipariş statüsü. Net = SUM(TOTALPRICE WHERE STATUS NOT IN (1001,1006,1007,3000,4000)). 3004/3006 normal aşama — DÜŞÜRME. Eski {1006,3004,3006} filtresi yanlıştı (B-29/dashboard/brief etkilendi, 11.06 düzeltildi)."
   joker.J_ORDERS.APPLICATION:
     values: ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi"]
 

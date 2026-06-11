@@ -1,7 +1,7 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-10
+updated: 2026-06-12
 
 metrics:
   net_ciro:
@@ -53,7 +53,7 @@ metrics:
 
   eticaret_net:             # haftalık brief + G7 net tanımı
     source: ODAKJOKER.JOKER.dbo.J_ORDERS
-    formula: "SUM(CASE WHEN STATUS NOT IN (1006,3004,3006) THEN TOTALPRICE END)"
+    formula: "SUM(CASE WHEN STATUS NOT IN (1001,1006,1007,3000,4000) THEN TOTALPRICE END)"
     grain: "ORDERDATE (ISO YYYYMMDD param!)"
     note: "TOTALPRICE kargo dahil brüt sipariş başlığı — POS net'iyle birebir kıyaslanamaz. Kanal=APPLICATION (çöp admin girişleri → Diğer)."
     rapor: "scripts/generate_brief.py SQL_ETICARET (v1.1.0)"

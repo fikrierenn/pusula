@@ -35,10 +35,10 @@ public sealed class Queries(Db db)
         var stores = (await conn.QueryAsync<StoreRow>(storeSql,
             new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) })).ToList();
 
-        // E-ticaret NET (iptal 1006 + iade 3004/3006 hariç) — JOKER linked server, ISO tarih
+        // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — JOKER, ISO tarih
         const string eticSql = """
-            SELECT SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) AS Ciro
+            SELECT SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN o.TOTALPRICE ELSE 0 END) AS Ciro
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso;
             """;
@@ -88,9 +88,9 @@ public sealed class Queries(Db db)
         const string eticKanalSql = """
             SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')
                         THEN o.APPLICATION ELSE 'Diğer' END AS Ad,
-                   SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS IN (1006,3004,3006) THEN 1 ELSE 0 END) AS Ipt,
-                   SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) AS Ciro
+                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Ipt,
+                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN o.TOTALPRICE ELSE 0 END) AS Ciro
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
             GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')

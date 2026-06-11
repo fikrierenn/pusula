@@ -142,8 +142,8 @@ queries:
     verified_sql: |
       SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)',
                   'Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END Kanal,
-             SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) NetSiparis,
-             SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) NetCiro
+             SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) NetSiparis,
+             SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN o.TOTALPRICE ELSE 0 END) NetCiro
       FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
       WHERE o.ORDERDATE >= '20260601' AND o.ORDERDATE < '20260608'
       GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)',

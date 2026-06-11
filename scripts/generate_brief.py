@@ -237,7 +237,7 @@ GROUP BY ktg.ktgrID, CAST(ktg.ktgrAd AS nvarchar(50))
 """
 
 # E-ticaret (JOKER linked server). ⚠️ ORDERDATE param = ISO 'YYYYMMDD' string (DMY sessiz hata!).
-# Net = iptal/iade hariç (J_ORDERS.STATUS 1006=iptal, 3004/3006=iade — sema/codes.yaml).
+# Net = gerçek iptal/iade hariç (STATUS 1001 İptal, 1006 İade, 1007 Kayıp, 3000/4000 Odak-İptal; 3004/3006 NORMAL — sema/codes.yaml).
 # Çöp kanal (admin girişleri) → 'Diğer'. Doğrulama 11.06.2026: hafta 01-07.06 net 19,1M ₺.
 SQL_ETICARET = """
 SELECT
@@ -245,9 +245,9 @@ SELECT
                                 'Mobil Site', 'Web Sitesi')
          THEN o.APPLICATION ELSE 'Diğer' END AS Kanal,
     COUNT(*) AS Siparis,
-    SUM(CASE WHEN o.STATUS NOT IN (1006, 3004, 3006) THEN 1 ELSE 0 END) AS NetSiparis,
-    SUM(CASE WHEN o.STATUS IN (1006, 3004, 3006) THEN 1 ELSE 0 END) AS IptalIade,
-    SUM(CASE WHEN o.STATUS NOT IN (1006, 3004, 3006) THEN o.TOTALPRICE ELSE 0 END) AS NetCiro
+    SUM(CASE WHEN o.STATUS NOT IN (1001, 1006, 1007, 3000, 4000) THEN 1 ELSE 0 END) AS NetSiparis,
+    SUM(CASE WHEN o.STATUS IN (1001, 1006, 1007, 3000, 4000) THEN 1 ELSE 0 END) AS IptalIade,
+    SUM(CASE WHEN o.STATUS NOT IN (1001, 1006, 1007, 3000, 4000) THEN o.TOTALPRICE ELSE 0 END) AS NetCiro
 FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
 WHERE o.ORDERDATE >= %(start)s AND o.ORDERDATE < %(end)s
 GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)', 'Mobil Uygulama (iOS)',

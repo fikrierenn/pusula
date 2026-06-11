@@ -56,11 +56,11 @@ def period_data(cur, start, end, traf, hedef=None):
       JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
       LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=%s AND s.Date<%s GROUP BY MG.mekanID""", (start, end))
-    # e-ticaret NET (iptal 1006 + iade 3004/3006 hariç — brief v1.1.0 ile aynı tanım)
+    # e-ticaret NET (gerçek iptal/iade: 1001,1006,1007,3000,4000 HARİÇ; 3004/3006 normal aşama — 11.06 düzeltildi)
     etic = Q(cur, """SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END K,
-        SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) Sip,
-        SUM(CASE WHEN o.STATUS IN (1006,3004,3006) THEN 1 ELSE 0 END) Ipt,
-        SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) Ciro
+        SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) Sip,
+        SUM(CASE WHEN o.STATUS IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) Ipt,
+        SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN o.TOTALPRICE ELSE 0 END) Ciro
         FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s
         GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END""", (giso, g2iso))
     # saat bazlı yoğunluk (dönem)
