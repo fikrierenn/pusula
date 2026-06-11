@@ -54,6 +54,12 @@ entities:
   depo.paletIcHrk: {key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör"}
   depo.paletSevkLog: {key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)"}
 
+  # Hedef / veri ambarı
+  BKMDATA.dbo.Hedef: {key: [mekanId, ktgId, tarih, hedef], grain: "mekan × kategori × tarih", note: "mekanId IN (1,4477,4478); aylık gerçekleşme % paydası"}
+
+  # PDKS (işgücü — OPENQUERY)
+  pdks: {tip: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
+
   # E-ticaret
   ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS]}
   ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT], note: "ORDERREF=J_ORDERS.ORDERID"}

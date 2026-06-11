@@ -41,6 +41,23 @@ metrics:
     uyari: "paletSevkLog.kKisi tek sistem-kullanıcısı (operatör DEĞİL → emirAyr.emKisi/paletIcHrk.pikKisi kullan)"
     rapor: scripts/depo_isgucu_raporu.py
 
+  envanter_exclusions:      # stok/envanter raporlarında ZORUNLU dışlamalar
+    sinav_okullari:
+      filter: "urnKtgr2ID=19 HARİÇ"
+      neden: "paket-koduyla-giriş / parça-koduyla-çıkış → İst.Yolu'nda sahte ÜstFiyat −190M, Ort.Maliyet +149M"
+      evidence: "08.06"
+    dergi:
+      filter: "stok raporlarında (E1/E4-E8) Dergi HARİÇ — satış raporları (G4/A5/A6) etkilenmez"
+      neden: "süreli yayın; devir 8,5x / stockout %23 = gürültü, stok takibi anlamsız"
+      evidence: "08.06 — kullanıcı kararı"
+
+  eticaret_net:             # haftalık brief + G7 net tanımı
+    source: ODAKJOKER.JOKER.dbo.J_ORDERS
+    formula: "SUM(CASE WHEN STATUS NOT IN (1006,3004,3006) THEN TOTALPRICE END)"
+    grain: "ORDERDATE (ISO YYYYMMDD param!)"
+    note: "TOTALPRICE kargo dahil brüt sipariş başlığı — POS net'iyle birebir kıyaslanamaz. Kanal=APPLICATION (çöp admin girişleri → Diğer)."
+    rapor: "scripts/generate_brief.py SQL_ETICARET (v1.1.0)"
+
   cod_ekonomi:              # kapıda ödeme
     cod_filter: "PAYDEFREF=-3"
     service_fee: "SERVICEPRICE = pass-through (firmaya ödenir, kâr DEĞİL)"

@@ -51,6 +51,19 @@ codes:
   depo.paletTip:
     values: {0: PALET, 1: KASA, 2: ROT, 3: ÇIKIŞ KASASI}
 
+  encore.Sales.DocumentsTypeId:   # POS belge tipi — rapor filtresi IN (1,2,3,6,7,8)
+    values:
+      1: Fiş
+      2: Fatura
+      3: "Satış İade (negatif sign: CASE WHEN =3 THEN -GrossTotal)"
+      6: Personel Fiş
+      7: Personel Fatura
+      8: Sınav Okulları
+    note: "SUM'da iade sign'lı düşülür; AVG'da iade hariç (DocumentsTypeId<>3)."
+
+  encore.SalesProducts.BarcodeNo_1001:
+    note: "BarcodeNo='1001' = GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ tut (sp.BarcodeNo<>'1001'). Fiş-düzeyi dışlama: LEFT JOIN spb ON BarcodeNo='1001' ... WHERE spb.Id IS NULL."
+
   joker.J_ORDER_PAY_TYPES:    # PAYDEFREF=ID
     lookup: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES
     values:

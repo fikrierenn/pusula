@@ -74,6 +74,24 @@ bridges:
     scope: encoremerkez
     confidence: 1.0
     note: "SalesProducts WHERE IsValid=1 ZORUNLU."
+  - id: stores-posmagaza
+    from: EncoreMerkez.dbo.Stores.Code
+    to: DerinSISBkm.dbo.posMagaza.mekanKod
+    join_sql: "MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS"
+    scope: cross-db
+    confidence: 1.0
+    note: "POS mağaza → mekanID. Zincir: Sales.PosId→Pos.StoreId→Stores.Code→posMagaza.mekanID. Her POS-mağaza raporunun standart join'i."
+    evidence: "generate_brief.py + G4 ile sürekli kullanımda"
+  - id: urnbrkd-barkod
+    from: EncoreMerkez.dbo.SalesProducts.BarcodeNo
+    to: DerinSISBkm.dbo.urnBrkd.urnBarkod
+    then:
+      from: dbo.urnBrkd.urnBrkdStkID
+      to: dbo.urn.stkID
+    guard: "urnBrkdOnce=0"
+    scope: cross-db
+    confidence: 0.9
+    note: "Barkod GEREKİYORSA bu zincir; urn.stkKod ile join YASAK (stkKod≠barkod). Tercih: products-code-stkid köprüsü."
   - id: sales-customer-name
     from: EncoreMerkez.dbo.Sales.CustomersId
     to: DerinCrm.dbo.Customer.Id
