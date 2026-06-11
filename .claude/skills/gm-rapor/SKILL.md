@@ -1,6 +1,6 @@
 ---
 name: gm-rapor
-description: Genel Müdür rapor panosu. "günlük rapor", "dün ne oldu", "GM panosu", "haftalık özet", "envanter durumu", "stok raporu", "bugünkü rapor" gibi ifadelerde veya /gm-rapor çağrısında devreye girer. sorgular/gm-rapor/KATALOG.md'deki raporları MCP üzerinden çalıştırıp Türkçe formatlı özet basar. Mod: günlük (G1-G7) / haftalık (P1-P8) / envanter (E1-E3). Anomali bayraklarını otomatik işaretler.
+description: Genel Müdür rapor panosu. "günlük rapor", "dün ne oldu", "GM panosu", "haftalık özet", "envanter durumu", "stok raporu", "bugünkü rapor", "kargo", "bekleyen sipariş", "hedef gerçekleşen", "kampanya raporu", "kafe satış" gibi ifadelerde veya /gm-rapor çağrısında devreye girer. sorgular/gm-rapor/KATALOG.md'deki raporları MCP üzerinden çalıştırıp Türkçe formatlı özet basar. Mod: günlük (G) / haftalık (P) / envanter (E) / e-ticaret-lojistik (L) / mağaza hedef-kampanya (M) / kafe (K). Anomali bayraklarını otomatik işaretler.
 allowed-tools: Read, Bash, Grep, Glob, mcp__sqlserver__sql_query
 user-invocable: true
 model: inherit
@@ -18,6 +18,9 @@ Genel Müdür gözüyle "her gün" + "her Pazartesi" + "envanter" raporlarını 
 | "günlük", "dün ne oldu", "bugünkü rapor", argümansız | **GÜNLÜK** | G1 (zorunlu) + G2/G3 (anomali varsa drill) |
 | "haftalık", "pazartesi", "hafta özeti" | **HAFTALIK** | P1 mevcut brief'i göster + P2/P4 drill |
 | "envanter", "stok", "depo değeri" | **ENVANTER** | E1 snapshot + E2 anomali |
+| "kargo", "lojistik", "bekleyen sipariş", "kargo firma" | **E-TİCARET/LOJİSTİK** | L1 kargo firma + L2 günlük çıkış + L3 bekleyen |
+| "hedef", "gerçekleşme", "kampanya raporu", "mağaza kategori hedef" | **MAĞAZA** | M1 hedef/gerçekleşen + M2 kampanya |
+| "kafe", "kafe satış", "günlük kafe" | **KAFE** | K1 xlsx parse (DB yok) |
 | "tam", "full", "hepsi" | **TÜM** | Günlük + Envanter anomali bir arada |
 
 ## ÖNEMLİ — MCP CTE limiti
@@ -128,13 +131,40 @@ Kullanıcı "devir", "sell-through", "ölü stok", "verim" derse → `gm-rapor/e
 
 ---
 
+## E-TİCARET / LOJİSTİK MOD (L)
+
+Kaynak: `ODAKJOKER.JOKER` linked server — tarih **ISO `'YYYYMMDD'`**, NET filtre `STATUS NOT IN (1001,1006,1007,3000,4000)` (3004/3006 normal aşama). Tüm L sorguları MCP-uyumlu (TOP + ORDER BY), `eticaret/L*.sql`.
+
+- **L1 Kargo firma** (`eticaret/L1-kargo-firma-performans.sql`): firma × paket × ort. çıkış günü (ORDERDATE→SENDDATE) × ort. teslim günü (SENDDATE→CARGODELIVERYDATE). Teslim edilmişler (her iki tarih dolu).
+- **L2 Günlük çıkış** (`eticaret/L2-gunluk-kargo-cikis.sql`): SENDDATE günü × paket × kitap (`J_ORDER_DETAILS.ORDERREF=ORDERID`, SUM QUANTITY) × tutar (QUANTITY×SELLINGPRICE).
+- **L3 Bekleyen** (`eticaret/L3-bekleyen-siparis.sql`, **anlık — tarih filtresi yok**): il (`J_ORDER_CLIENTS.CCITY`) × bekleyen × toplanma(1000) × önsipariş-hazırlanan(3001/3003/3004) × temin(3006). SENDDATE NULL.
+
+Çıktı: TR sayı formatı. L3'te "Temin bekleyen yüksek → tedarik baskısı" uyar.
+
+---
+
+## MAĞAZA MOD (M) — hedef/kampanya
+
+Net: EncoreMerkez Sales → `Products.Code=urn.stkID` → kategori. Mağaza: `posMagaza.mekanKod=Stores.Code`. MCP'de tek mağaza/tek SELECT bloğu, 3-mağaza birleşik SSMS.
+
+- **M1 Hedef/Gerçekleşen** (`magaza/M1-hedef-gerceklesen.sql`): hedef `BKMDATA.dbo.Hedef` (ay=SUM hedef), köprü `Hedef.ktgId=urnKtgr2.ktgrID=urn.urnKtgrID2`. MTD net vs ay hedefi × gerçekleşme %. Haziran hedef: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M.
+- **M2 Kampanya** (`magaza/M2-kampanya-magaza.sql`): `SalesProductCampaigns` × mağaza/kampanya × gün sayısı × indirim (SUM −TotalDiscount) × fiş. CampaignName='' = manuel set indirimi.
+
+---
+
+## KAFE MOD (K)
+
+Kaynak **xlsx** (`D:\Temp\GÜNLÜK KAFE SATIŞ RAPORU.xlsx`) — kafe ayrı POS, erişilebilir DB'de YOK. Dosyayı Bash + python (openpyxl/pandas, `data_only=True`) ile parse et, "Kasa Satış Raporu" + "Kategori Satış Raporu" sheet'lerinden özet bas. Yapı + doğrulanan rakamlar: `kafe/K1-gunluk-kafe-KAYNAK.md`. 3 şube: FSM/İstanbulyolu/Özlüce. Şube kolonları yatay gruplu; "Total/Toplam" satırını yakala. (B-21: kafe haftalık brief'e dahil edilecek.)
+
+---
+
 ## Kaynak Sorgu Haritası
 Tüm eşleşmeler [`sorgular/gm-rapor/KATALOG.md`](../../../sorgular/gm-rapor/KATALOG.md)'de. Rapor ID (G1/P4/E1...) → `.sql` dosyası.
 
 ## Dikkat
 1. MCP'de CTE çalışmaz — yukarıdaki tek-SELECT blokları kullan. Tam analiz SSMS'te `.sql` dosyası.
 2. Sayı formatı TR (1.234.567,89). Mağaza adları: FSM / Özlüce / İst.Yolu.
-3. Kapsam: 3 fiziksel Bursa mağazası. E-ticaret/Heykel/kafe dahil değil (B-21).
+3. Kapsam: 3 fiziksel Bursa mağazası (G/P/M/E) + e-ticaret/lojistik (L, JOKER) + kafe (K, xlsx). Heykel + haftalık brief'e kafe/kitapsepeti entegrasyonu hâlâ B-21.
 4. Envanter: Ort.Maliyet birincil, ÜstFiyat hayalet negatif içerir.
 5. Geri dönüşüm fişi (BarcodeNo='1001') hariç tutulur.
 6. "Bitti" demeden önce sayıyı bilinen referansla kıyasla (brief satırı / önceki gün).

@@ -64,6 +64,55 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 
 ---
 
+## L. E-TİCARET / LOJİSTİK (JOKER)
+
+Amaç: kargo operasyon nabzı + bekleyen sipariş baskısı. Kaynak: `ODAKJOKER.JOKER` linked server, tarih **ISO YYYYMMDD**. NET filtre = `STATUS NOT IN (1001,1006,1007,3000,4000)` (3004/3006 normal Odak aşaması, iade DEĞİL).
+
+| # | Rapor | KPI | Kaynak sorgu | Durum |
+|---|---|---|---|---|
+| L1 | **Kargo firma performansı** | Firma × paket adedi × ort. çıkış günü × ort. teslim günü | `eticaret/L1-kargo-firma-performans.sql` | ✅ doğrulandı |
+| L2 | **Günlük kargo (çıkış)** | Çıkış günü × paket × kitap sayısı × paket/kitap × toplam tutar | `eticaret/L2-gunluk-kargo-cikis.sql` | ✅ doğrulandı |
+| L3 | **Bekleyen sipariş** (anlık) | İl × bekleyen toplam × toplanma × önsipariş/hazırlanan × temin bekleyen | `eticaret/L3-bekleyen-siparis.sql` | ✅ doğrulandı (CCITY proxy) |
+
+**Doğrulanan rakamlar (2026-06):**
+- **L1** (01→12 Haz teslim edilenler): HEPSIJET 10.286 paket (çıkış 2g/teslim 1g) · PTT 6.863 (2/2) · MNG 3.206 (2/1) · Bir Günde Kargo 2.102 (2/1).
+- **L2** (çıkış 11.06): 3.373 paket · 19.539 kitap · 4,51M ₺. (Hafta içi pik 04/08.06 ~6.500-7.000 paket, 5,8-6,9M ₺.) `ORDERREF=ORDERID` (LOGICALREF değil).
+- **L3** (12.06 anlık): İstanbul 1.492 (334 hazırlanan + 1.157 temin) · Ankara 630 · İzmir 343 · Bursa 238. Toplam bekleyen ~5.874 (3006 Temin Edilecek = ana baskı).
+
+> ⚠️ **L3 il kaynağı:** Teslimat ili `J_ORDER_DELIVERY_ADDRESS.DCITY` Odak-bekleyen siparişlerde DOLU DEĞİL (kargoya verilmemiş) → müşteri ili `J_ORDER_CLIENTS.CCITY` (CLIENTREF=LOGICALREF) proxy kullanıldı. Aşama→sütun: 1000=Toplanma · 3001/3003/3004=Önsipariş-Hazırlanan · 3006=Temin Bekleyen.
+
+---
+
+## M. MAĞAZA — HEDEF / KAMPANYA (EncoreMerkez + DerinSIS)
+
+Amaç: hedef takibi + kampanya yükü. Net: EncoreMerkez Sales → `Products.Code=urn.stkID` köprüsü → kategori. Mağaza: `posMagaza.mekanKod=Stores.Code`.
+
+| # | Rapor | KPI | Kaynak sorgu | Durum |
+|---|---|---|---|---|
+| M1 | **Hedef/Gerçekleşen** (MTD) | Mağaza × kategori × MTD net × ay hedef × gerçekleşme % | `magaza/M1-hedef-gerceklesen.sql` | ✅ doğrulandı |
+| M2 | **Kampanya mağaza raporu** | Mağaza × kampanya × gün sayısı × indirim × fiş | `magaza/M2-kampanya-magaza.sql` | ✅ doğrulandı |
+
+**Köprüler (doğrulandı):**
+- **Hedef:** `BKMDATA.dbo.Hedef` (mekanId, yil, ay, gun, ktgId, hedef — günlük satır, ay için SUM). Haziran 2026: FSM 14,25M · Özlüce 23,5M · İst.Yolu 13M · Depo(mekanId=12) 77M.
+- **Kategori köprüsü:** `Hedef.ktgId = urnKtgr2.ktgrID = urn.urnKtgrID2` (KTGR2 seviyesi — 15=Kitap, 8=Hazırlık Kitapları, 12=Kırtasiye, 2=Çocuk Kitabı).
+- **Kampanya:** `SalesProductCampaigns` (SalesId, CampaignId, CampaignName, TotalDiscount [negatif]). Gün sayısı = COUNT(DISTINCT satış günü).
+
+**Doğrulanan (FSM, 01→12 Haz):** M1 net MTD ~2,2M (top: Tanımsız 349K · Dergi 328K · Çocuk Kitabı 287K · Elektronik 195K). M2: 9 kampanya/1,11M ₺ indirim/5.024 fiş — 3AL2ÖDE(K) 427K, SABİT FİYAT(K) 297K, YÜZDESEL İND.(K) 233K.
+
+---
+
+## K. KAFE (dış kaynak — xlsx)
+
+Amaç: kafe günlük satış nabzı. **Kafe ayrı POS sistemi** — EncoreMerkez'de yok, erişilebilir DB'lerden üretilemez. Kaynak: `D:\Temp\GÜNLÜK KAFE SATIŞ RAPORU.xlsx` (3 şube: FSM/İstanbulyolu/Özlüce).
+
+| # | Rapor | KPI | Kaynak | Durum |
+|---|---|---|---|---|
+| K1 | **Günlük kafe satış** | Şube × gün × ciro × müşteri × sepet ort. × satılan miktar | `kafe/K1-gunluk-kafe-KAYNAK.md` (xlsx parse) | ✅ xlsx parse, DB yok |
+
+5 sheet: Kasa Satış Raporu · Kategori Satış Raporu · Kasa İptalleri · İptal Süresi Analizi · Ödeme Tipi Raporu. **Doğrulanan (01-10 Haz Total):** FSM 934K ₺/2.248 müşteri/sepet 416 ₺ · İst.Yolu 718K/1.731/415 ₺ · Özlüce 1,18M/3.082/383 ₺. Detay + parse notu KAYNAK.md'de. Açık iş: kafe POS DB erişimi araştır (B-21).
+
+---
+
 ## C. AYLIK (ay kapanışı — referans)
 
 | # | Rapor | Kaynak |
