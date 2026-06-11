@@ -332,7 +332,11 @@ def render(dun, DATA, trend, env, REF):
     ABC_AD = {"A": "A — çok satan (ilk %80 ciro)", "B": "B — orta (%80-95)", "C": "C — uzun kuyruk (son %5)"}
     abc_rows = "<tr><td><b>Sınıf</b></td><td style='text-align:right'><b>Ürün çeşidi</b></td><td style='text-align:right'><b>Ciro</b></td></tr>" + "".join(f"<tr><td>{ABC_AD.get(k, k)}</td><td style='text-align:right'>{fnum(abc[k]['n'])}</td><td style='text-align:right'>{fnum(abc[k]['ciro'])} ₺</td></tr>" for k in ('A', 'B', 'C') if k in abc)
     rfm_rows = "<tr><td><b>Segment</b></td><td style='text-align:right'><b>Müşteri</b></td><td style='text-align:right'><b>Ciro (365g)</b></td></tr>" + "".join(f"<tr><td>{s}</td><td style='text-align:right'>{fnum(n)}</td><td style='text-align:right'>{fnum(c)} ₺</td></tr>" for s, n, c in REF["rfm_yk"][:6])
-    marka_rows = "<tr><td><b>Marka / Yayınevi</b></td><td style='text-align:right'><b>Ciro</b></td><td style='text-align:right'><b>Çeşit</b></td><td style='text-align:right'><b>Ciro/Çeşit</b></td></tr>" + "".join(f"<tr><td>{m}</td><td style='text-align:right'>{fnum(c)} ₺</td><td style='text-align:right'>{fnum(ce)}</td><td style='text-align:right'>{fnum(c // ce) if ce else 0} ₺</td></tr>" for m, c, ad, ce in marka[:8])
+    def _mtbl(rows, start):
+        head = "<tr><td><b>#</b></td><td><b>Marka / Yayınevi</b></td><td style='text-align:right'><b>Ciro</b></td><td style='text-align:right'><b>Çeşit</b></td><td style='text-align:right'><b>Ciro/Çeşit</b></td></tr>"
+        body = "".join(f"<tr><td style='color:#94a3b8'>{start+i}</td><td>{m}</td><td style='text-align:right'>{fnum(c)} ₺</td><td style='text-align:right'>{fnum(ce)}</td><td style='text-align:right'>{fnum(c // ce) if ce else 0} ₺</td></tr>" for i, (m, c, ad, ce) in enumerate(rows, 1))
+        return f"<table>{head}{body}</table>"
+    marka_rows = _mtbl(marka[:10], 0) + _mtbl(marka[10:20], 10)
     devir_rows = "<tr><td><b>Kategori</b></td><td style='text-align:right'><b>Devir (yıllık)</b></td></tr>" + "".join(f"<tr><td>{k}</td><td style='text-align:right'>{v:.2f}x</td></tr>" for k, v in devir[:5])
     olu_rows = "".join(f"<tr><td>{e['k']}</td><td style='text-align:right'>{fnum(e['stoktl'])} ₺</td><td style='text-align:right;color:#dc2626'>{e['devir']:.2f}x</td></tr>" for e in olu[:5])
     stk_rows = "<tr><td><b>Kategori</b></td><td style='text-align:right'><b>Çeşit</b></td><td style='text-align:right'><b>Yok</b></td><td style='text-align:right'><b>%</b></td></tr>" + "".join(
@@ -655,7 +659,10 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
   <div class="panel clk" onclick="detayOlu()"><h3>Ölü Sermaye — Kilitli Stok (en yüksek ₺) &#9656;</h3><table id=tbl_olu><tr><td><b>Kategori</b></td><td style="text-align:right"><b>Stok ₺</b></td><td style="text-align:right"><b>Devir</b></td></tr>__DEVIRSLOW__</table></div>
   <div class="panel clk" onclick="detayAbc()"><h3>ABC — Ciro Yoğunluğu (Pareto 80/20) &#9656;</h3><table>__ABC__</table></div>
   <div class="panel clk" onclick="detayRfm()"><h3>Müşteri Segmenti (RFM) — Yazarkasa, 365 gün &#9656;</h3><table>__RFM__</table></div>
-  <div class="panel clk" onclick="detayMarka()"><h3>En Çok Satan Marka / Yayınevi (Mayıs) &#9656;</h3><table>__MARKA__</table></div>
+</div>
+<div class=row>
+  <div class="panel clk" onclick="detayMarka()" style="grid-column:1/-1"><h3>En Çok Satan Marka / Yayınevi — Top 20 (Mayıs) &#9656;</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 28px">__MARKA__</div></div>
 </div>
 <div class=row>
   <div class=panel><h3>Stokta Yokluk — Son 30g Satılan Ürünlerde (hedef &lt;%5)</h3><table>__STOCKOUT__</table></div>
