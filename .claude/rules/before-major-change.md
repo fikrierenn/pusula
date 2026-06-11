@@ -60,3 +60,19 @@ Soru kalıbı: **"X hâlâ kullanılıyor mu? Silersem Y kırılır — onaylıy
 2. `git revert` veya manuel restore.
 3. Bu dosyaya örnek anti-pattern olarak ekle.
 4. Memory'e `feedback_*.md` yaz: aynı hatayı tekrarlamamak için.
+
+---
+
+## İlk Dokunuş Kuralı — Fact-Force Gate (ECC pattern, BKM uyarlaması)
+
+**1. Bilinmeyen tabloya ilk sorgu öncesi:**
+- `sema/entities.yaml` + `bridges.yaml` + `codes.yaml`'a bak — tanımlıysa oradaki join/filtre/kodu kullan.
+- Tanımlı değilse: önce kolonları keşfet (sys.columns / describe), 3-5 satır örnek veri çek, SONRA analitik sorgu yaz.
+- Keşif yeni gerçek üretirse → `sema-ogren` ile kaydet.
+
+**2. Bir scripti bu oturumda İLK KEZ değiştirmeden önce (Edit/Write):**
+- Dosyayı OKU (değiştireceğin bölge + çevre 50 satır).
+- Benzer script'teki kalıbı taklit et (cfg(), charset, except düzeni) — kendi stilini dayatma.
+- SQL içeriyorsa: tarih formatı (DMY/ISO), compat 110, IsValid kurallarını `sql-server-conventions.md` ile doğrula.
+
+**Gerekçe:** Okumadan/keşfetmeden yapılan ilk dokunuş sessiz yanlış rakam üretir (stkKod=barkod vakası, depo TOPLAM key-mismatch vakası). "Tablo adı tanıdık, direkt sorgularım" istisna değildir.

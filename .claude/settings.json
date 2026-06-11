@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash D:/Dev/sqlserver-mcp-server/.claude/hooks/session-start.sh"
+            "command": "bash D:/Dev/pusula/.claude/hooks/session-start.sh"
           }
         ]
       }
@@ -16,7 +16,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash D:/Dev/sqlserver-mcp-server/.claude/hooks/post-commit-journal.sh"
+            "command": "bash D:/Dev/pusula/.claude/hooks/post-commit-journal.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash D:/Dev/pusula/.claude/hooks/pre-compact.sh"
           }
         ]
       }

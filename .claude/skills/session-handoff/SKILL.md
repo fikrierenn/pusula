@@ -40,6 +40,10 @@ Her oturum sonunda gun icinde olanlari kalici bir journal dosyasina yazar ve jou
 ### Üst öncelik
 - ...
 
+## İşe YARAMAYANLAR (denenen ama başarısız yaklaşımlar)
+> ECC save-session "What Did NOT Work" pattern'i. Aynı çıkmaz sokağa yarın tekrar girilmesin.
+- <yaklaşım> → <neden başarısız> (örn. "stkKod=BarcodeNo join → Oyuncak kategorisi sessizce kayıp")
+
 ## Kararlar
 ### Reddedilenler
 - ~~A~~ — sebep

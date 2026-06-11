@@ -22,13 +22,17 @@ _Ana ajanın işleri alt-ajanlara (subagent) NASIL dağıtacağını ve hangi mo
 |---|---|---|
 | "X nerede / Y referansı / keşif" | `code-explorer` | haiku |
 | Yeni feature/modül mimari blueprint | `code-architect` | sonnet |
-| Uncommitted'i commit'lere böl | `commit-splitter` | haiku |
+| **Tier 3 plan dokümanı (plans/NN-slug.md)** | `planner` ✅ | opus |
+| Uncommitted'i commit'lere böl | `commit-splitter` ✅ | haiku |
 | Güvenlik denetimi (injection/XSS/CSRF/IDOR/secret) | `security-reviewer` | opus |
-| Silent failure / error handling denetimi | `silent-failure-hunter` | opus |
+| Silent failure / sessiz yanlış rakam denetimi | `silent-failure-hunter` ✅ | opus |
+| Python rapor scripti review (pymssql/sema uyum) | `python-reviewer` ✅ | sonnet |
 | Kural-uyum kod review | `code-reviewer` | sonnet |
 | Build derle + hata/uyarı say | `build-validator` | haiku |
 | Test çalıştır + raporla | `test-runner` | haiku |
 | Hiçbiri uymuyor (genel çok-adımlı) | `general-purpose` | işe göre elle ata |
+
+✅ = bu projede mevcut (`.claude/agents/`). Diğerleri şablon — gerekirse ekle.
 
 ## 4. Paralellik ve Fan-out
 
