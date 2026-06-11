@@ -2,13 +2,13 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject Queries Queries
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>BKM GM Dashboard</PageTitle>
 
 <div class="hd">
-    <span class="logo">BKM</span>
-    <h1>GM Dashboard</h1>
+    <h1>Genel Bakış</h1>
     <select class="period" @bind="_period" @bind:after="LoadAsync">
         <option value="gunluk">Günlük (dün)</option>
         <option value="haftalik">Haftalık (son 7 gün)</option>
@@ -49,6 +49,12 @@ else if (_data is not null)
             </div>
         }
     </div>
+
+    <div class="row">
+        <div class="panel"><h3>Mağaza Kategori Mix (dönem)</h3><div class="chart-box"><canvas id="ch_kat"></canvas></div></div>
+        <div class="panel"><h3>E-ticaret Kanal — NET (dönem)</h3><div class="chart-box"><canvas id="ch_etic"></canvas></div></div>
+        <div class="panel"><h3>Son 14 Gün — Fiziksel Net Ciro</h3><div class="chart-box"><canvas id="ch_trend"></canvas></div></div>
+    </div>
 }
 
 @code {
@@ -56,6 +62,8 @@ else if (_data is not null)
     private bool _loading = true;
     private string? _error;
     private PeriodSummary? _data;
+    private IReadOnlyList<TrendPoint> _trend = [];
+    private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -66,7 +74,7 @@ else if (_data is not null)
         {
             var bugun = DateOnly.FromDateTime(DateTime.Today);
             var dun = bugun.AddDays(-1);
-            var g2 = bugun; // exclusive: dün dahil
+            var g2 = bugun;
             (DateOnly start, DateOnly endExcl) = _period switch
             {
                 "haftalik" => (dun.AddDays(-6), g2),
@@ -74,6 +82,7 @@ else if (_data is not null)
                 _ => (dun, g2),
             };
             _data = await Queries.GetPeriodAsync(start, endExcl);
+            _trend = await Queries.GetTrendAsync(dun);
         }
         catch (Exception ex)
         {
@@ -83,7 +92,29 @@ else if (_data is not null)
         {
             _loading = false;
             StateHasChanged();
+            await DrawChartsAsync();
         }
+    }
+
+    private async Task DrawChartsAsync()
+    {
+        if (_data is null) return;
+        try
+        {
+            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _charts.InvokeVoidAsync("bar", "ch_kat",
+                _data.Kategori.Select(k => k.Ad), _data.Kategori.Select(k => k.Ciro), true);
+            await _charts.InvokeVoidAsync("donut", "ch_etic",
+                _data.Etic.Select(e => e.Ad), _data.Etic.Select(e => e.Ciro));
+            await _charts.InvokeVoidAsync("area", "ch_trend",
+                _trend.Select(t => t.Tarih[5..]), _trend.Select(t => t.Net));
+        }
+        catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _data is not null) await DrawChartsAsync();
     }
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";

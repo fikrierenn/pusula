@@ -1,6 +1,15 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<div class="wrap">@Body</div>
+<div class="wrap">
+    <nav class="nav">
+        <span class="logo">BKM</span>
+        <NavLink class="navlink" href="" Match="NavLinkMatch.All">Genel Bakış</NavLink>
+        <NavLink class="navlink" href="operasyon">Operasyon</NavLink>
+        <NavLink class="navlink" href="envanter">Envanter</NavLink>
+        <NavLink class="navlink" href="musteri">Müşteri</NavLink>
+    </nav>
+    @Body
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

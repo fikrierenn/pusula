@@ -63,9 +63,83 @@ public sealed class Queries(Db db)
             cards.Add(new StoreCard(mid, Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0, ger, r?.Iade ?? 0));
         }
 
+        // E-ticaret kanal kırılımı (donut)
+        const string eticKanalSql = """
+            SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')
+                        THEN o.APPLICATION ELSE 'Diğer' END AS Ad,
+                   SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS IN (1006,3004,3006) THEN 1 ELSE 0 END) AS Ipt,
+                   SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) AS Ciro
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
+            GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')
+                          THEN o.APPLICATION ELSE 'Diğer' END;
+            """;
+        var eticKanal = (await conn.QueryAsync<EticChannel>(eticKanalSql, new { giso, g2iso }))
+            .Select(e => e with { Ad = e.Ad.Replace("Mobil Uygulama ", "").Replace("(", "").Replace(")", "") })
+            .OrderByDescending(e => e.Ciro).ToList();
+
+        // Kategori mix (mağaza×kategori → toplam; Products.Code=stkID köprüsü, geri dönüşüm hariç)
+        const string katSql = """
+            SELECT CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Ciro
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
+            JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
+            JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=CONVERT(int,pr.Code)
+            JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID=u.urnKtgr2ID
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=@start AND s.Date<@end
+            GROUP BY CAST(ktg.ktgrAd AS nvarchar(50));
+            """;
+        var katPar = new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) };
+        var kategori = (await conn.QueryAsync<CategorySlice>(katSql, katPar))
+            .OrderByDescending(k => k.Ciro).Take(8).ToList();
+
+        // Saat bazlı yoğunluk
+        const string saatSql = """
+            SELECT DATEPART(HOUR,s.Date) AS Saat, SUM(IIF(s.DocumentsTypeId=3,-1,1)) AS Fis,
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,0)) AS Net
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=@start AND s.Date<@end
+            GROUP BY DATEPART(HOUR,s.Date);
+            """;
+        var saat = (await conn.QueryAsync<HourBar>(saatSql, katPar)).OrderBy(h => h.Saat).ToList();
+
+        // Kasiyer performansı (mağaza gruplu, grup içi net azalan)
+        const string kasSql = """
+            SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, CAST(ISNULL(u.Name,'?') AS nvarchar(30)) AS Ad, COUNT(*) AS Fis,
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-ABS(s.DiscountTotal)) ELSE s.GrossTotal-s.DiscountTotal END) AS decimal(18,0)) AS Net,
+                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN 1 ELSE 0 END) AS Iade
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
+            LEFT JOIN EncoreMerkez.dbo.Users u ON u.Id=s.UsersId
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=@start AND s.Date<@end
+            GROUP BY CAST(st.Name AS nvarchar(30)), CAST(ISNULL(u.Name,'?') AS nvarchar(30));
+            """;
+        var kasiyer = (await conn.QueryAsync<(string Magaza, string Ad, int Fis, decimal Net, int Iade)>(kasSql, katPar))
+            .Select(k => new KasiyerRow(k.Magaza, k.Ad, k.Fis, k.Net, k.Fis > 0 ? (int)Math.Round(k.Net / k.Fis) : 0, k.Iade))
+            .OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
+
         var fiz = stores.Sum(s => s.Net);
         var fisTop = stores.Sum(s => s.Fis);
         var iadeTop = stores.Sum(s => s.Iade);
-        return new PeriodSummary(fiz, fisTop, iadeTop, eCiro, eSip, fiz + eCiro, cards);
+        return new PeriodSummary(fiz, fisTop, iadeTop, eCiro, eSip, fiz + eCiro, cards, kategori, eticKanal, saat, kasiyer);
+    }
+
+    /// <summary>Son 14 gün fiziksel net ciro (trend area). dun = referans (dahil).</summary>
+    public async Task<IReadOnlyList<TrendPoint>> GetTrendAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT CONVERT(varchar,s.Date,23) AS Tarih,
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,0)) AS Net
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@bas AND s.Date<@son
+            GROUP BY CONVERT(varchar,s.Date,23);
+            """;
+        var bas = dun.AddDays(-13).ToDateTime(TimeOnly.MinValue);
+        var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        return (await conn.QueryAsync<TrendPoint>(sql, new { bas, son })).OrderBy(t => t.Tarih).ToList();
     }
 }

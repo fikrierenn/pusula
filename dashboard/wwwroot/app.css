@@ -75,3 +75,18 @@ body { background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,
 .panel table { width:100%; border-collapse:collapse; font-size:13px; }
 .panel td { padding:5px 4px; border-bottom:1px solid #f1f5f9; }
 .panel canvas { max-width:100%; }
+
+/* ===== Grafik kutusu + kasiyer tablo (aşama 2) ===== */
+.chart-box { position:relative; height:220px; }
+.panel-wide { grid-column:span 2; }
+@media (max-width:900px){ .panel-wide{ grid-column:1/-1; } }
+.panel td.r { text-align:right; }
+.panel tr.grp td { font-weight:700; color:var(--kirmizi); background:#f1f5f9; padding-top:6px; }
+
+/* ===== NavMenu (üst sekme) ===== */
+.nav { display:flex; align-items:center; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+.nav .logo { margin-right:10px; }
+.navlink { padding:8px 16px; border-radius:9px; font-size:14px; font-weight:600; color:#475569; text-decoration:none; }
+.navlink:hover { background:#e2e8f0; }
+.navlink.active { background:var(--kirmizi); color:#fff; }
+@media (max-width:480px){ .navlink{ padding:6px 10px; font-size:13px; } }
