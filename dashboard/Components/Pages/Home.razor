@@ -49,8 +49,8 @@ else if (_data is not null)
                 </div>
             </div>
         }
-        <div class="card card-tot">
-            <div class="ct">TOPLAM (3 mağaza)</div>
+        <div class="card card-tot clk" @onclick="() => _modalTot = true">
+            <div class="ct">TOPLAM (3 mağaza) &#9656;</div>
             <div class="cv">@Tl(_data.Fiziksel)</div>
             <div class="cm">@Num(_data.Fis) fiş · sepet @Num(_data.Fis > 0 ? (int)Math.Round(_data.Fiziksel / _data.Fis) : 0) ₺</div>
         </div>
@@ -70,6 +70,23 @@ else if (_data is not null)
         <div class="panel"><h3>Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="chart-box"><canvas id="ch_alis"></canvas></div>
             <div class="muted" style="font-size:11px">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
     </div>
+
+    <Modal @bind-Open="_modalTot" Title="TOPLAM — Kategori Dağılımı (3 mağaza)">
+        @{
+            var birlesik = _data.Stores.SelectMany(s => s.Kategori)
+                .GroupBy(k => k.Ad).Select(g => new { Ad = g.Key, Ciro = g.Sum(x => x.Ciro) })
+                .OrderByDescending(x => x.Ciro).ToList();
+            var totC = birlesik.Sum(x => x.Ciro);
+        }
+        <div class="muted" style="font-size:12px;margin-bottom:8px">@_aralik · net @Tl(_data.Fiziksel) · @Num(_data.Fis) fiş</div>
+        <table>
+            <tr><td><b>Kategori</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Pay</b></td></tr>
+            @foreach (var k in birlesik)
+            {
+                <tr><td>@k.Ad</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</td></tr>
+            }
+        </table>
+    </Modal>
 
     <Modal @bind-Open="_modalEtic" Title="E-ticaret — Kanal Dağılımı">
         <div class="muted" style="font-size:12px;margin-bottom:8px">@_aralik · net @Tl(_data.Eticaret) · @Num(_data.ESip) sipariş</div>
@@ -111,6 +128,7 @@ else if (_data is not null)
     private IJSObjectReference? _charts;
     private bool _modalOpen;
     private bool _modalEtic;
+    private bool _modalTot;
     private StoreCard? _selStore;
 
     private void OpenStore(StoreCard s) { _selStore = s; _modalOpen = true; }
