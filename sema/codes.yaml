@@ -77,7 +77,11 @@ codes:
       2: İADE GELDİ
       3: KAYIP KARGO
       4: HAREKET GÖRÜYOR
-  joker.J_ORDERS.STATUS:    # lookup J_ORDER_STATUS.LOGICALREF=NAME (45 değer). ISDETAIL: 0=ana, 1/2=detay satır, 3/4=Odak aşama
+  # ⚠️ STATUS KOD AİLESİ (12.06 kullanıcı — KESİN): kodun BİN basamağı seviyeyi belirler
+  #   1xxx = Sipariş BAŞLIK (J_ORDERS.STATUS)   ·  2xxx = Sipariş DETAY (J_ORDER_DETAILS.STATUS)
+  #   3xxx = Odak BAŞLIK (J_ORDERS.STATUS)      ·  4xxx = Odak DETAY (J_ORDER_DETAILS.STATUS)
+  #   → J_ORDERS.STATUS ∈ {1xxx, 3xxx} (başlık) · J_ORDER_DETAILS.STATUS ∈ {2xxx, 4xxx} (detay)
+  joker.J_ORDERS.STATUS:    # lookup J_ORDER_STATUS.LOGICALREF=NAME. 1xxx=Sipariş başlık, 3xxx=Odak başlık
     lookup: ODAKJOKER.JOKER.dbo.J_ORDER_STATUS
     # ⚠️ 11.06 KESİN DÜZELTME (önceki harita TAMAMEN YANLIŞTI → e-ticaret cirosunu %70 eksik veriyordu):
     #   3004/3006 İADE DEĞİL — normal Odak sipariş aşaması (Hazırlanıyor/Tedarik Edilecek). Ciroda KALIR.
@@ -106,7 +110,7 @@ codes:
       5: "Özel alan — adrsAd ayırır: 'JokerHavuz' (havuz), 'TRNS' (transfer), 'CK01' (çıkış kasası)"
     note: "Depo stok dağılımı: SUM PIVOT adrsAlanTip × pUStkID. Raf/Mal Kabul/Joker Havuz/Transfer kovaları."
 
-  joker.J_ORDER_DETAILS.STATUS:   # ürün/detay satır aşaması (ISDETAIL seviyesi — J_ORDER_STATUS 2xxx)
+  joker.J_ORDER_DETAILS.STATUS:   # detay satır: 2xxx=Sipariş detay, 4xxx=Odak detay (kod ailesi yukarıda)
     bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi
     values:
       2000: Tedarik Bekleniyor
