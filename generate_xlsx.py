@@ -8,7 +8,7 @@ import sys
 import os
 
 # Ensure we can write to the target directory
-target_dir = r"D:\Dev\sqlserver-mcp-server"
+target_dir = r"D:\Dev\pusula"
 output_file = os.path.join(target_dir, "sepet-buyuklugu-etkisi.xlsx")
 
 try:

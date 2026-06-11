@@ -1,4 +1,6 @@
-# sqlserver-mcp-server
+> ⚠️ **MCP server kodu taşındı (10.06.2026):** Gerçek server kodu artık bağımsız proje **`D:\Dev\sqlserver-mcp`**'de geliştiriliyor (plan: `plans/06-mcp-server-ayiklama.md`). Buradaki `src/` + `dist/` **dondurulmuş kopyadır** — mevcut claude config'leri hâlâ buradaki `dist/index.js`'i çalıştırdığı için duruyor. Config geçişi yapılınca (TODO M-01) buradan silinecek. Bu repo = **BKM analitik çalışma alanı** (raporlar, scriptler, sema/, docs/).
+
+# Pusula — BKM Kitap Analitik Çalışma Alanı
 
 Claude Code Desktop'tan SQL Server veritabanlarına doğrudan erişim sağlayan MCP server.
 

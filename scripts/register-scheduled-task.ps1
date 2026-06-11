@@ -8,15 +8,15 @@
 # generator gorevini de kaldirir (yaris kosulu temizligi).
 #
 # Kullanim (yonetici PowerShell gerekmez):
-#   cd D:\Dev\sqlserver-mcp-server
+#   cd D:\Dev\pusula
 #   .\scripts\register-scheduled-task.ps1
 #
 # Silmek icin:
 #   Unregister-ScheduledTask -TaskName "BKM-Kitap-Pazartesi-Brifingi" -Confirm:$false
 
 $taskName = "BKM-Kitap-Pazartesi-Brifingi"
-$batPath = "D:\Dev\sqlserver-mcp-server\send_brief.bat"
-$workingDir = "D:\Dev\sqlserver-mcp-server"
+$batPath = "D:\Dev\pusula\send_brief.bat"
+$workingDir = "D:\Dev\pusula"
 
 if (-not (Test-Path $batPath)) {
     Write-Host "HATA: $batPath bulunamadi" -ForegroundColor Red

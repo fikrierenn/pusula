@@ -14,4 +14,4 @@ except ImportError:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl", "-q"])
 
 # Şimdi işlemi başlat
-exec(open(r"D:\Dev\sqlserver-mcp-server\create_dashboard_v2.py").read())
+exec(open(r"D:\Dev\pusula\create_dashboard_v2.py").read())

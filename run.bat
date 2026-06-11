@@ -1,3 +1,3 @@
 @echo off
-cd D:\Dev\sqlserver-mcp-server
+cd D:\Dev\pusula
 node process_attendance.mjs

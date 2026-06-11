@@ -341,8 +341,8 @@ for row in range(4, 10):
     ws_dash.row_dimensions[row].height = 24
 
 print("Excel file created successfully!")
-print(f"Saved to: D:\\Dev\\sqlserver-mcp-server\\sepet-buyuklugu-etkisi.xlsx")
+print(f"Saved to: D:\\Dev\\pusula\\sepet-buyuklugu-etkisi.xlsx")
 
 # Save workbook
-wb.save(r"D:\Dev\sqlserver-mcp-server\sepet-buyuklugu-etkisi.xlsx")
+wb.save(r"D:\Dev\pusula\sepet-buyuklugu-etkisi.xlsx")
 print("File saved!")

@@ -1,7 +1,7 @@
 {
-  "name": "sqlserver-mcp-server",
+  "name": "pusula",
   "version": "1.0.0",
-  "description": "MCP server for SQL Server — enables Claude Code to query databases directly",
+  "description": "Pusula — BKM Kitap analitik çalışma alanı (raporlar, sema, GM panosu). MCP server kodu: D:/Dev/sqlserver-mcp",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

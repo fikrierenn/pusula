@@ -20,9 +20,9 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 if os.name == "nt":
-    BASE = Path(r"D:\Dev\sqlserver-mcp-server\briefings")
+    BASE = Path(r"D:\Dev\pusula\briefings")
 else:
-    BASE = Path("/sessions/eloquent-magical-allen/mnt/sqlserver-mcp-server/briefings")
+    BASE = Path("/sessions/eloquent-magical-allen/mnt/pusula/briefings")
 
 CSV_PATH = BASE / "Kampanya_Analiz_2026-05-11.csv"
 OUT_PATH = BASE / "Kampanya_Analiz_2026-05-11.xlsx"

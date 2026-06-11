@@ -322,7 +322,7 @@ for col in range(1, 13):
     ws_dash.column_dimensions[get_column_letter(col)].width = 12
 
 # Save
-output_path = r"D:\Dev\sqlserver-mcp-server\sepet-buyuklugu-etkisi.xlsx"
+output_path = r"D:\Dev\pusula\sepet-buyuklugu-etkisi.xlsx"
 wb.save(output_path)
 
 print(f"Excel file created successfully!")

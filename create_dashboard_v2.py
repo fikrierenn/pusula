@@ -302,7 +302,7 @@ ORDER BY Ay, Grup"""
     # Dosyayı kaydet
     # Olası path'lar:
     paths_to_try = [
-        r"D:\Dev\sqlserver-mcp-server\SepetBuyukluguEtkisi_Dashboard.xlsx",
+        r"D:\Dev\pusula\SepetBuyukluguEtkisi_Dashboard.xlsx",
         r"C:\Users\fikri.eren\AppData\Roaming\Claude\local-agent-mode-sessions\3db87182-3f90-47a8-9b2f-2b06c475fcc8\9ac28963-d4c1-4a35-8039-b4a3f5e60600\local_5a2eaa36-2a54-44b8-bb75-161ebdb6e5c8\outputs\SepetBuyukluguEtkisi_Dashboard.xlsx",
     ]
 
