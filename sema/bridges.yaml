@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-06-10
+updated: 2026-06-12
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -147,10 +147,31 @@ bridges:
     to: ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS.LOGICALREF
     scope: joker
     confidence: 1.0
-    note: "DCITY (il), DTOWN (ilçe). ORDERCODE kolonu BOŞ."
+    note: "DCITY (il), DTOWN (ilçe). ORDERCODE join Odak-bekleyen siparişlerde BOŞ → bekleyen sipariş ili için CCITY proxy (bekleyen-siparis-il)."
   - id: orders-client
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.LOGICALREF
     scope: joker
     confidence: 1.0
-    note: "→ CUSTOMERREF (0/NULL=misafir). J_ORDER_CLIENTS standart (J_CLCARD değil)."
+    note: "→ CUSTOMERREF (0/NULL=misafir). J_ORDER_CLIENTS standart (J_CLCARD değil). Bekleyen sipariş ili için CCITY proxy (bkz. bekleyen-siparis-il)."
+  - id: bekleyen-siparis-il
+    from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.CCITY
+    scope: joker
+    confidence: 0.9
+    note: "Bekleyen sipariş (SENDDATE NULL) İL kaynağı = müşteri ili CCITY. ⚠ Teslimat ili J_ORDER_DELIVERY_ADDRESS.DCITY Odak-bekleyen siparişlerde DOLU DEĞİL (kargoya verilmemiş, ORDERCODE join 0 satır) → CCITY proxy. Aşama: STATUS 1000=Toplanma, 3001/3003/3004=Önsipariş-Hazırlanan, 3006=Temin Bekleyen. L3 raporu."
+    evidence: "2026-06-12 — MCP: DCITY join 0 satır; CCITY join İstanbul 1.492/Ankara 630/İzmir 343/Bursa 238, toplam ~5.874 bekleyen."
+  - id: hedef-kategori
+    from: BKMDATA.dbo.Hedef.ktgId
+    to: DerinSISBkm.dbo.urnKtgr2.ktgrID
+    scope: cross-db
+    confidence: 0.95
+    note: "Hedef kategori köprüsü = KTGR2 seviyesi. Aynı zamanda urn.urnKtgrID2 = urnKtgr2.ktgrID (gerçekleşen net'i kategoriye bağlamak için). ktgId örnek: 15=Kitap, 8=Hazırlık Kitapları, 12=Kırtasiye, 2=Çocuk Kitabı. M1 hedef/gerçekleşen raporu."
+    evidence: "2026-06-12 — MCP: Hedef yil=2026 ay=6 mekanId=1 → urnKtgr2 join Kitap/Hazırlık/Kırtasiye/Çocuk; ay hedefi SUM(hedef) FSM 14,25M doğrulandı."
+  - id: salescampaign-sales
+    from: EncoreMerkez.dbo.SalesProductCampaigns.SalesId
+    to: EncoreMerkez.dbo.Sales.Id
+    scope: encoremerkez
+    confidence: 0.95
+    note: "Kampanya satır → satış başlığı. TotalDiscount NEGATİF=indirim → SUM(-TotalDiscount)=indirim TL. Gün sayısı=COUNT(DISTINCT satış günü). CampaignName='' = manuel/set indirimi. M2 kampanya mağaza raporu."
+    evidence: "2026-06-12 — MCP: FSM 01→12 Haz 9 kampanya/1,11M indirim/5.024 fiş; 3AL2ÖDE(K) 427K, SABİT FİYAT(K) 297K."

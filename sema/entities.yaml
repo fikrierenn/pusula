@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-10
+updated: 2026-06-12
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -55,7 +55,7 @@ entities:
   depo.paletSevkLog: {key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)"}
 
   # Hedef / veri ambarı
-  BKMDATA.dbo.Hedef: {key: [mekanId, ktgId, tarih, hedef], grain: "mekan × kategori × tarih", note: "mekanId IN (1,4477,4478); aylık gerçekleşme % paydası"}
+  BKMDATA.dbo.Hedef: {key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
 
   # PDKS (işgücü — OPENQUERY)
   pdks: {tip: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
@@ -64,3 +64,6 @@ entities:
   ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS]}
   ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT], note: "ORDERREF=J_ORDERS.ORDERID"}
   ODAKJOKER.JOKER.dbo.J_ITEMS: {pk: LOGICALREF, key: [NAME, BRAND, DERINSIS_ID], note: "BRAND direkt marka; DERINSIS_ID=urn.stkID"}
+
+  # EncoreMerkez kampanya
+  EncoreMerkez.dbo.SalesProductCampaigns: {pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
