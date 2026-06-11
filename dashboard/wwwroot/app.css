@@ -90,3 +90,7 @@ body { background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,
 .navlink:hover { background:#e2e8f0; }
 .navlink.active { background:var(--kirmizi); color:#fff; }
 @media (max-width:480px){ .navlink{ padding:6px 10px; font-size:13px; } }
+
+/* Marka 2 sütun (envanter) */
+.marka2 { display:grid; grid-template-columns:1fr 1fr; gap:0 28px; }
+@media (max-width:768px){ .marka2{ grid-template-columns:1fr; } }

@@ -14,3 +14,11 @@ public record MarkaRow(string Ad, decimal Ciro, int Adet, int Cesit);
 
 /// <summary>Stockout kategori satırı.</summary>
 public record StockoutRow(string Kategori, int Cesit, int Yok, decimal Pct);
+
+/// <summary>Envanter sayfası toplu veri.</summary>
+public record InventoryData(
+    decimal ToplamDeger,
+    IReadOnlyList<DevirRow> Devir,
+    IReadOnlyList<AbcClass> Abc,
+    IReadOnlyList<MarkaRow> Marka,
+    IReadOnlyList<StockoutRow> Stockout);
