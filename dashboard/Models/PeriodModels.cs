@@ -25,6 +25,12 @@ public record TrendPoint(string Tarih, decimal Net);
 /// <summary>E-ticaret kargo firma / il dağılımı (ad + sipariş adedi).</summary>
 public record NameCount(string Ad, int Adet);
 
+/// <summary>Kargo performansı: firma × adet × ortalama çıkış günü × ortalama teslim günü (dönem).</summary>
+public record KargoPerf(string Kargo, int Adet, decimal? CikisGun, decimal? TeslimGun);
+
+/// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
+public record BekleyenBucket(string Bucket, int Adet);
+
 /// <summary>Dönem özeti (tüm üst paneller).</summary>
 public record PeriodSummary(
     decimal Fiziksel, int Fis, decimal Iade, decimal Eticaret, int ESip, decimal Toplam,

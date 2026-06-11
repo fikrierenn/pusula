@@ -10,6 +10,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<Queries>();
 builder.Services.AddScoped<RefQueries>();
+builder.Services.AddScoped<EticQueries>();
 
 var app = builder.Build();
 

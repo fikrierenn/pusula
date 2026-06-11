@@ -1,0 +1,152 @@
+@page "/eticaret"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject Queries Queries
+@inject EticQueries Etic
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>E-ticaret — BKM GM</PageTitle>
+
+<div class="hd">
+    <h1>E-ticaret</h1>
+    <span class="tar">@_aralik</span>
+    <select class="period" @bind="_period" @bind:after="LoadAsync">
+        <option value="gunluk">Günlük (dün)</option>
+        <option value="haftalik">Haftalık (son 7 gün)</option>
+        <option value="ay">Aylık (MTD)</option>
+        <option value="ozel">Özel aralık…</option>
+    </select>
+    @if (_period == "ozel")
+    {
+        <input type="date" class="period" @bind="_ozelBas" @bind:after="LoadAsync" />
+        <input type="date" class="period" @bind="_ozelBit" @bind:after="LoadAsync" />
+    }
+</div>
+
+@if (_loading)
+{
+    <p class="muted">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="err">Veri alınamadı: @_error</p>
+}
+else if (_data is not null)
+{
+    <div class="big">
+        <div><div class="lbl">Net Ciro (online)</div><div class="num">@Tl(_data.Eticaret)</div></div>
+        <div><div class="lbl">Net Sipariş</div><div class="num">@Num(_data.ESip)</div></div>
+        <div><div class="lbl">Sepet (ort.)</div><div class="num">@Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div></div>
+    </div>
+
+    <div class="row">
+        <div class="panel"><h3>Kanal — NET (dönem)</h3><div class="chart-box"><canvas id="ch_etic"></canvas></div></div>
+        <div class="panel"><h3>Kargo Firma (dönem)</h3><div class="chart-box"><canvas id="ch_kargo"></canvas></div></div>
+        <div class="panel"><h3>İl Dağılımı — Top 12 (dönem)</h3><div class="chart-box"><canvas id="ch_il"></canvas></div></div>
+    </div>
+
+    <div class="row">
+        <div class="panel panel-wide"><h3>Kargo Performansı (dönem) — @_kargoPerf.Count firma</h3>
+            <table>
+                <tr><td><b>Kargo Firma</b></td><td class="r"><b>Adet</b></td><td class="r"><b>Çıkış (gün)</b></td><td class="r"><b>Teslim (gün)</b></td></tr>
+                @foreach (var k in _kargoPerf)
+                {
+                    <tr><td>@k.Kargo</td><td class="r">@Num(k.Adet)</td>
+                        <td class="r">@(k.CikisGun is null ? "—" : k.CikisGun.Value.ToString("0.0"))</td>
+                        <td class="r">@(k.TeslimGun is null ? "—" : k.TeslimGun.Value.ToString("0.0"))</td></tr>
+                }
+                @if (_kargoPerf.Count == 0)
+                {
+                    <tr><td colspan="4" class="muted">Teslim olmuş sipariş bulunamadı.</td></tr>
+                }
+            </table>
+            <div class="muted" style="font-size:11px">Çıkış = sipariş → kargoya teslim; Teslim = kargo → müşteri. Sadece teslim olmuş siparişler.</div>
+        </div>
+        <div class="panel"><h3>Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
+            @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
+            <table>
+                <tr><td><b>Yaş</b></td><td class="r"><b>Adet</b></td><td class="r"><b>Pay</b></td></tr>
+                @foreach (var b in _bekleyen)
+                {
+                    <tr><td>@b.Bucket</td>
+                        <td class="r" style="color:@(b.Bucket is "4-7g" or "8+g" && b.Adet > 0 ? "#dc2626" : "inherit")">@Num(b.Adet)</td>
+                        <td class="r">%@(bekToplam > 0 ? Math.Round(100m * b.Adet / bekToplam) : 0)</td></tr>
+                }
+                <tr class="tot"><td>TOPLAM bekleyen</td><td class="r"><b>@Num(bekToplam)</b></td><td class="r"></td></tr>
+            </table>
+            <div class="muted" style="font-size:11px">SENDDATE boş + normal statü. Sipariş tarihinden bugüne yaş. 4g+ kırmızı = SLA riski.</div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _period = "gunluk";
+    private DateTime? _ozelBas = DateTime.Today.AddDays(-7);
+    private DateTime? _ozelBit = DateTime.Today.AddDays(-1);
+    private bool _loading = true;
+    private string? _error;
+    private string _aralik = "";
+    private PeriodSummary? _data;
+    private IReadOnlyList<KargoPerf> _kargoPerf = [];
+    private IReadOnlyList<BekleyenBucket> _bekleyen = [];
+    private IJSObjectReference? _charts;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private (DateOnly, DateOnly) OzelAralik()
+    {
+        var b = DateOnly.FromDateTime(_ozelBas ?? DateTime.Today.AddDays(-7));
+        var e = DateOnly.FromDateTime(_ozelBit ?? DateTime.Today.AddDays(-1));
+        if (e < b) e = b;
+        return (b, e.AddDays(1));
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            var g2 = dun.AddDays(1);
+            (DateOnly start, DateOnly endExcl) = _period switch
+            {
+                "haftalik" => (dun.AddDays(-6), g2),
+                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                "ozel" => OzelAralik(),
+                _ => (dun, g2),
+            };
+            var son = endExcl.AddDays(-1);
+            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+            _data = await Queries.GetPeriodAsync(start, endExcl);
+            _kargoPerf = await Etic.GetKargoPerfAsync(start, endExcl);
+            _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; StateHasChanged(); await DrawAsync(); }
+    }
+
+    private async Task DrawAsync()
+    {
+        if (_data is null) return;
+        try
+        {
+            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _charts.InvokeVoidAsync("donut", "ch_etic",
+                _data.Etic.Select(e => e.Ad), _data.Etic.Select(e => e.Ciro));
+            await _charts.InvokeVoidAsync("donut", "ch_kargo",
+                _data.Kargo.Select(k => k.Ad), _data.Kargo.Select(k => k.Adet));
+            await _charts.InvokeVoidAsync("bar", "ch_il",
+                _data.Il.Select(x => x.Ad), _data.Il.Select(x => x.Adet), true);
+        }
+        catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _data is not null) await DrawAsync();
+    }
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
