@@ -1,8 +1,17 @@
-[Sal 28.04.2026  9:38:30,79] Basladi 
-[Sal 28.04.2026  9:38:30,81] CWD: D:\Dev\sqlserver-mcp-server 
-[Sal 28.04.2026  9:38:34,43] Pazartesi tarihi: 2026-04-27 (27.04.2026) 
-[Sal 28.04.2026  9:38:34,45] PATH python: C:\Program Files\Python312\python.exe 
-[Sal 28.04.2026  9:38:35,28] Kullanilacak: "C:\Program Files\Python312\python.exe" 
+[Pzt 08.06.2026  9:09:22,72] Basladi 
+[Pzt 08.06.2026  9:09:22,73] CWD: D:\Dev\sqlserver-mcp-server 
+[Pzt 08.06.2026  9:09:31,57] Pazartesi tarihi: 2026-06-08 (08.06.2026) 
+[Pzt 08.06.2026  9:09:31,61] PATH python: C:\Program Files\Python312\python.exe 
+[Pzt 08.06.2026  9:09:32,90] Kullanilacak: "C:\Program Files\Python312\python.exe" 
 Python 3.12.10
+[Pzt 08.06.2026  9:09:33,23] Brief HTML yok, generate_brief.py ile uretiliyor: 2026-06-08 
+[gen] Pazartesi: 2026-06-08, monthly_kickoff: False
+[gen] Hafta: 2026-06-01 → 2026-06-07
+[gen] MTD: 2026-06-01 → 2026-06-07
+[OK] Brief uretildi: D:\Dev\sqlserver-mcp-server\briefings\2026-06-08
+     - D:\Dev\sqlserver-mcp-server\briefings\2026-06-08\brief.html
+     - D:\Dev\sqlserver-mcp-server\briefings\2026-06-08\brief.txt
+     Tip: weekly
+[Pzt 08.06.2026  9:09:33,23] generate_brief.py ExitCode=0 
 [OK] Mail gonderildi: fikrieren@gmail.com, fikri.eren@bkmkitap.com
-[Sal 28.04.2026  9:38:44,60] ExitCode=0 
+[Pzt 08.06.2026  9:10:06,46] ExitCode=0 

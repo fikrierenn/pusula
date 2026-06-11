@@ -129,7 +129,7 @@ def build(marka, d1, d2):
     # ---- Yönetici Özeti ----
     ws = wb.active; ws.title = "Yönetici Özeti"
     ws["A1"] = f"E-TİCARET KAMPANYA ANALİZİ — {marka}"; ws["A1"].font = Font(bold=True, size=15, color=KIRMIZI)
-    ws["A2"] = f"{L1}  vs  {L2}  ·  marka=J_ITEMS.BRAND · sepet etkisi (halo) + indirim derinliği + kanal/saat/müşteri"; ws["A2"].font = Font(italic=True, color="64748B")
+    ws["A2"] = f"{L1}  vs  {L2}  ·  marka=J_ITEMS.BRAND · sepet etkisi + indirim derinliği + kanal/saat/müşteri"; ws["A2"].font = Font(italic=True, color="64748B")
     rows = [
         ("Net Ciro (marka)", tl(m1["net"]) + " ₺", tl(m2["net"]) + " ₺", delta(m1["net"], m2["net"])),
         ("Satılan Adet", tl(m1["adet"]), tl(m2["adet"]), delta(m1["adet"], m2["adet"])),
@@ -138,10 +138,10 @@ def build(marka, d1, d2):
         ("İndirim Tutarı", tl(m1["indirim"]) + " ₺", tl(m2["indirim"]) + " ₺", delta(m1["indirim"], m2["indirim"])),
         ("Markalı Sipariş", tl(m1["siparis"]), tl(m2["siparis"]), delta(m1["siparis"], m2["siparis"])),
         ("Bu Siparişlerin Cirosu", tl(m1["siparisCiro"]) + " ₺", tl(m2["siparisCiro"]) + " ₺", delta(m1["siparisCiro"], m2["siparisCiro"])),
-        ("Çapraz Satış (halo)", tl(m1["capraz"]) + " ₺", tl(m2["capraz"]) + " ₺", delta(m1["capraz"], m2["capraz"])),
+        ("Çapraz Satış", tl(m1["capraz"]) + " ₺", tl(m2["capraz"]) + " ₺", delta(m1["capraz"], m2["capraz"])),
         ("Çapraz Satış Oranı", f"%{m1['caprazP']}".replace(".", ","), f"%{m2['caprazP']}".replace(".", ","), f"{m2['caprazP']-m1['caprazP']:+.1f} puan".replace(".", ",")),
         ("Ort. Sepet (markalı)", tl(m1["ortSepet"]) + " ₺", tl(m2["ortSepet"]) + " ₺", delta(m1["ortSepet"], m2["ortSepet"])),
-        ("Genel AOV", tl(m1["genelAOV"]) + " ₺", tl(m2["genelAOV"]) + " ₺", delta(m1["genelAOV"], m2["genelAOV"])),
+        ("Genel Ortalama Sepet", tl(m1["genelAOV"]) + " ₺", tl(m2["genelAOV"]) + " ₺", delta(m1["genelAOV"], m2["genelAOV"])),
         ("Sipariş Payı (markalı/tüm)", f"%{m1['payP']}".replace(".", ","), f"%{m2['payP']}".replace(".", ","), f"{m2['payP']-m1['payP']:+.1f} puan".replace(".", ",")),
         ("Üye Sipariş", tl(m1["uye"]), tl(m2["uye"]), delta(m1["uye"], m2["uye"])),
         ("Misafir Sipariş", tl(m1["misafir"]), tl(m2["misafir"]), delta(m1["misafir"], m2["misafir"])),
@@ -160,21 +160,21 @@ def build(marka, d1, d2):
     ins_row = hr + len(rows) + 2
     insights = ["YORUM",
         f"• İndirim {m1['indirimP']}% → {m2['indirimP']}% (derinleşti); adet {delta(m1['adet'],m2['adet'])} → derin indirim hacmi sürdü.",
-        f"• Çapraz satış {tl(m1['capraz'])} → {tl(m2['capraz'])} ₺ ({delta(m1['capraz'],m2['capraz'])}). Sepetin %{m2['caprazP']}'i marka-dışı = halo güçlü; indirim 'maliyetini' çapraz tam-fiyat satış telafi ediyor.",
+        f"• Yanında alınan diğer ürün satışı {tl(m1['capraz'])} → {tl(m2['capraz'])} ₺ ({delta(m1['capraz'],m2['capraz'])}). Sepetin %{m2['caprazP']}'i marka-dışı güçlü; indirim 'maliyetini' çapraz tam-fiyat satış telafi ediyor.",
         f"• Markalı sipariş payı %{m1['payP']} → %{m2['payP']} (e-ticaretin giderek büyüyen kısmı).",
         f"• Müşteri %{round(100*m2['uye']/max(1,m2['siparis']))} üye (CRM yakalama iyi).",
         "• En çok birlikte alınan marka/ürünler ayrı sayfada → bundle/öneri fırsatı.",
         "", "ÖNERİLER",
         "• Bundle: marka + en sık eşleşen 2-3 kitap seti → sepeti büyüt.",
         "• İndirim marj kontrolü (karzarar): net marj + çapraz marj birlikte pozitif mi?",
-        "• Push zamanlaması akşam 18-21 (saat sayfası); App'e ağırlık (yüksek AOV)."]
+        "• Push zamanlaması akşam 18-21 (saat sayfası); App'e ağırlık (yüksek sepet)."]
     for k, ln in enumerate(insights):
         cc = ws.cell(ins_row + k, 1, ln)
         cc.font = Font(bold=True, size=12, color=KIRMIZI) if ln in ("YORUM", "ÖNERİLER") else Font(size=10)
 
     # ---- Kanal ----
     kw = wb.create_sheet("Kanal")
-    for j, h in enumerate(["Kanal (" + L2 + ")", "Sipariş", "AOV ₺", "Ciro ₺"], 1):
+    for j, h in enumerate(["Kanal (" + L2 + ")", "Sipariş", "Ortalama Sepet ₺", "Ciro ₺"], 1):
         cc = kw.cell(1, j, h); cc.fill = red; cc.font = white; cc.border = thin
     for i, r in enumerate(kanal, 2):
         for j, v in enumerate([r["Kanal"], int(r["Sip"]), int(r["AOV"] or 0), int(r["Ciro"] or 0)], 1):
