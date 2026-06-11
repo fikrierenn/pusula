@@ -2,7 +2,7 @@
 
 > Üç farklı Claude oturumunun aynı klasörde biriken çıktılarını harmanlayan merkezi indeks. `CLAUDE.md` sadece özet + yönlendirme. Detaylar burada.
 
-**Son güncelleme:** 15 Nisan 2026
+**Son güncelleme:** 10 Haziran 2026
 
 ---
 
@@ -29,10 +29,16 @@
 | [`07-davranis.md`](07-davranis.md) | Fikri için konuşma tonu, format, DMY kural hatırlatması | Her oturum arka plan |
 | [`08-pos-encore.md`](08-pos-encore.md) | EncoreMerkez POS — kampanya, 3al2öde, sepet, Stores mapping, compat 110 uyarısı | POS/kampanya sorgusu |
 | [`09-raporlar-ve-skills.md`](09-raporlar-ve-skills.md) | Tüm rapor çıktıları + skill dosyaları haritası | Rapor/skill ararken |
+| [`12-depo-wms.md`](12-depo-wms.md) | Merkez depo / WMS (`depo.emir`/`emirAyr`/`paletIcHrk`, emTip görevler, eTip hareket, işgücü/verim) | Depo işgücü / sevk / mal kabul / verim |
 
 ---
 
 ## İlişkili Klasörler
+
+### `sema/` — Structured Semantik Katman (canonical, makine-okunur)
+- [`README.md`](../sema/README.md) — yapı + continuous-learning disiplini
+- `bridges.yaml` (köprüler) · `codes.yaml` (enum) · `entities.yaml` (tablolar) · `metrics.yaml` (iş mantığı) · `queries.yaml` (doğrulanmış SQL kataloğu)
+- Skill: `sema-ogren` · Kural: `.claude/rules/semantic-layer.md` · İnsan özeti: [`SEMANTIK_KATMAN.md`](../sorgular/SEMANTIK_KATMAN.md)
 
 ### `sorgular/` — SQL + derin analizler
 - [`SESSION.md`](../sorgular/SESSION.md) — envanter soruşturması master index (11 bölümlü)

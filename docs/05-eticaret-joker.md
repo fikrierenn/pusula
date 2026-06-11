@@ -39,6 +39,23 @@ BKM Kitap online satışı JOKER platformunda. `sqlserver` üzerinden `ODAKJOKER
 - **Echo of Silence vakası:** "Senin Sessizliğin" (İkinci Adam Yay.) H15 Top 1, 50+ adet tek-siparişler, manipülasyon şüphesi.
 - **YoY:** H15 sipariş −%25,8, adet −%21,2, ciro +%1,5 (enflasyon korumalı hacim daralması)
 
+## 2026-06 Keşif — Sipariş Satır, Marka, Ödeme, Kargo, COD (KESİN)
+
+- **Sipariş satır köprüsü:** `J_ORDER_DETAILS.ORDERREF = J_ORDERS.ORDERID` (**LOGICALREF DEĞİL** — ORDERID = "TS…" kodundaki sayı). Birim fiyat: `SELLINGPRICE` = birim NET, `SELLINGPRICEWITHOUTDISCOUNT` = birim brüt/liste. Satır net = `QUANTITY×SELLINGPRICE`; indirim = `QUANTITY×(WITHOUTDISCOUNT−SELLINGPRICE)`.
+- **Marka/yayınevi:** `J_ITEMS.BRAND` (direkt — ayrı join gerekmez). DerinSIS kategori köprüsü: **`J_ITEMS.DERINSIS_ID = DerinSISBkm.urn.stkID`**.
+- **Ödeme tipi:** `J_ORDER_PAY_TYPES` — `ID` (join: `PAYDEFREF = ID`, LOGICALREF değil), `NAME`. **Kapıda Ödeme ID=−3, iyzico ID=−13** (tüm online kart iyzico'da, %94), Havale/EFT=−1.
+- **Kargo firma:** `J_CARGO` — `ID` (join: `CARGOREF = ID`), `CNAME`, `KAPIDAODEME` (bit). Firmalar: HEPSIJET, MNG, PTT KARGO, KARGOIST, Bir Günde Kargo.
+- **Kargo durumu:** `J_ORDER_CARGO_STATUS` — `STATUS` (0=İşlem görmemiş,1=TESLİM EDİLDİ,2=İADE GELDİ,3=KAYIP,4=HAREKET GÖRÜYOR). Join: `cs.STATUS = o.CARGODELIVERYSTATUS`.
+- **Teslimat ili:** `J_ORDERS.DELIVERYREF = J_ORDER_DELIVERY_ADDRESS.LOGICALREF` (ORDERCODE kolonu BOŞ) → `DCITY` (il, temiz "İstanbul"), `DTOWN` (ilçe).
+- **Hediye çeki:** `J_ORDERS.VOUCHERCODE` dolu = kullanılmış; sistemde **satır indirimi** olarak yansır (SELLINGPRICE düşer; "1₺ kitap" çoğu bu).
+- **Tutarlar:** `CARGOPRICE` ~81-90₺ müşteri kargo, `SERVICEPRICE` = kapıda ödeme bedeli.
+
+### COD (Kapıda Ödeme) ekonomisi
+- COD = `PAYDEFREF=−3`. **SERVICEPRICE pass-through** (firmaya ödenir, kâr DEĞİL).
+- Teslim: müşteri kargo + kapıda bedeli öder. İade (teslim edilmeyen): tahsilat yok, **2× kargo (götürme+geri getirme) BKM yutar** = gerçek COD maliyeti.
+- COD iade ~%9-10 (online ~%0,5) — **coğrafya kaynaklı** (Doğu/GD %15-21, Batı %3-6), firma değil (İstanbul-içi PTT≈HEPSIJET). PTT/MNG her yere gider → genel oranı yüksek görünür.
+- Rapor: `scripts/kapida_odeme_analiz.py` → `briefings/kapida-odeme-analiz.xlsx`.
+
 ## Rapor Çıktıları (root'ta)
 
 - `BKM-Eticaret-Trend-Raporu.md/.html` — H15 tam rapor (13 bölüm + Grok harmanı §10b)

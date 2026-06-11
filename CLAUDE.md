@@ -1,8 +1,8 @@
-# CLAUDE.md — BKM Kitap / DerinSIS Oturum Bağlamı
+# CLAUDE.md — Pusula (BKM Kitap Analitik Çalışma Alanı)
 
 > Kısa iskelet. Detaylar [`docs/00-INDEX.md`](docs/00-INDEX.md) altındadır. **İlk adım:** `docs/00-INDEX.md` → ilgili konu dosyası.
 
-**Son güncelleme:** 21 Nisan 2026
+**Son güncelleme:** 11 Haziran 2026 · **Repo:** `D:\Dev\pusula` (eski adı sqlserver-mcp-server)
 **Kullanıcı:** Fikri (BKM Kitap CFO)
 
 ## Aktif Temalar (beş session harmanlanmış)
@@ -23,6 +23,8 @@ Kronolojik günlük: [`SESSION_LOG.md`](SESSION_LOG.md)
 - **ERP:** DerinSIS · **POS:** EncoreMerkez · **WMS:** depo şeması · **E-ticaret:** JOKER (linked server)
 
 ## Bağlantı (özet)
+
+> **MCP server kodu ayrıldı (10.06):** `src/`+`dist/` dondurulmuş — geliştirme artık `D:\Dev\sqlserver-mcp`'de (kendi CLAUDE.md'si var). Config geçişine kadar buradaki `dist/` canlı çalışır (TODO M-01). Bu repo = BKM analitik çalışma alanı.
 
 İki paralel MCP — detay [`docs/01-baglanti.md`](docs/01-baglanti.md):
 - `mcp__sqlserver__*` → 192.168.40.201 (DerinSISBkm, BKM, EncoreMerkez, +linked ODAKJOKER)
@@ -59,6 +61,8 @@ Kronolojik günlük: [`SESSION_LOG.md`](SESSION_LOG.md)
 | Davranış | [`docs/07-davranis.md`](docs/07-davranis.md) |
 | EncoreMerkez POS / kampanya | [`docs/08-pos-encore.md`](docs/08-pos-encore.md) |
 | Raporlar + skills haritası | [`docs/09-raporlar-ve-skills.md`](docs/09-raporlar-ve-skills.md) |
+| Merkez depo / WMS | [`docs/12-depo-wms.md`](docs/12-depo-wms.md) |
+| **Semantik katman (canonical)** | [`sema/README.md`](sema/README.md) — bridges/codes/entities/metrics/queries.yaml. Sorgu yazmadan ÖNCE bak; yeni keşif → `sema-ogren` |
 
 ## Bekleyen İşler
 
@@ -135,8 +139,13 @@ Kullanıcı "iyi geceler" / "/handoff" / "kaydet ve kapat" derse → `session-ha
 - `.claude/rules/session-protocol.md` — Oturum başı/orta/sonu ritüel.
 - `.claude/rules/commit-discipline.md` — 15 dosya eşiği, scope kullanımı.
 - `.claude/rules/sql-server-conventions.md` — DMY, EncoreMerkez compat, IsValid, J_ORDER_CLIENTS.
-- `.claude/skills/session-handoff/SKILL.md` — Oturum sonu skill.
+- `.claude/rules/semantic-layer.md` — sorgu öncesi `sema/`'ya bak; keşif → sema-ogren (ECC continuous-learning).
+- `.claude/rules/before-major-change.md` § Fact-Force Gate — bilinmeyen tabloya ilk sorgu / scripte ilk edit öncesi keşif zorunlu.
+- `.claude/skills/session-handoff/SKILL.md` — Oturum sonu skill ("İşe YARAMAYANLAR" bölümü dahil).
+- `.claude/skills/sema-ogren/SKILL.md` — şema keşfi → sema/*.yaml.
 - `.claude/agents/commit-splitter.md` — Multi-project bucket'lama.
+- `.claude/agents/planner.md` — Tier 3 plan yazıcı (opus). `python-reviewer.md` + `silent-failure-hunter.md` — script kalite / sessiz hata denetimi.
+- `.claude/commands/learn.md` — /learn: çözülen sorun → kalıcı ders.
 - `docs/CONTEXT_MANAGEMENT.md` — Bağlam yönetimi anayasası (8 ilke).
 - `docs/journal/README.md` — Multi-project journal yapısı.
 - `TODO.md` — Faz yapılı, proje başlıklı backlog.
