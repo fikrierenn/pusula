@@ -15,7 +15,13 @@
         <option value="gunluk">Günlük (dün)</option>
         <option value="haftalik">Haftalık (son 7 gün)</option>
         <option value="ay">Aylık (MTD)</option>
+        <option value="ozel">Özel aralık…</option>
     </select>
+    @if (_period == "ozel")
+    {
+        <input type="date" class="period" @bind="_ozelBas" @bind:after="LoadAsync" />
+        <input type="date" class="period" @bind="_ozelBit" @bind:after="LoadAsync" />
+    }
 </div>
 
 @if (_loading)
@@ -115,6 +121,8 @@ else if (_data is not null)
 
 @code {
     private string _period = "gunluk";
+    private DateTime? _ozelBas = DateTime.Today.AddDays(-7);
+    private DateTime? _ozelBit = DateTime.Today.AddDays(-1);
     private bool _loading = true;
     private string? _error;
     private PeriodSummary? _data;
@@ -130,6 +138,14 @@ else if (_data is not null)
         StateHasChanged();
     }
 
+    private (DateOnly, DateOnly) OzelAralik()
+    {
+        var b = DateOnly.FromDateTime(_ozelBas ?? DateTime.Today.AddDays(-7));
+        var e = DateOnly.FromDateTime(_ozelBit ?? DateTime.Today.AddDays(-1));
+        if (e < b) e = b;
+        return (b, e.AddDays(1));
+    }
+
     private async Task LoadAsync()
     {
         _loading = true; _error = null; StateHasChanged();
@@ -141,6 +157,7 @@ else if (_data is not null)
             {
                 "haftalik" => (dun.AddDays(-6), g2),
                 "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                "ozel" => OzelAralik(),
                 _ => (dun, g2),
             };
             var son = endExcl.AddDays(-1);

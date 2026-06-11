@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject Queries Queries
+@inject RefQueries Ref
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -14,7 +15,13 @@
         <option value="gunluk">Günlük (dün)</option>
         <option value="haftalik">Haftalık (son 7 gün)</option>
         <option value="ay">Aylık (MTD)</option>
+        <option value="ozel">Özel aralık…</option>
     </select>
+    @if (_period == "ozel")
+    {
+        <input type="date" class="period" @bind="_ozelBas" @bind:after="LoadAsync" />
+        <input type="date" class="period" @bind="_ozelBit" @bind:after="LoadAsync" />
+    }
 </div>
 
 @if (_loading)
@@ -83,7 +90,7 @@ else if (_data is not null)
             <tr><td><b>Kategori</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Pay</b></td></tr>
             @foreach (var k in birlesik)
             {
-                <tr><td>@k.Ad</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</td></tr>
+                <tr class="clk" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</td></tr>
             }
         </table>
     </Modal>
@@ -110,7 +117,31 @@ else if (_data is not null)
                 @{ var tot = _selStore.Kategori.Sum(k => k.Ciro); }
                 @foreach (var k in _selStore.Kategori)
                 {
-                    <tr><td>@k.Ad</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
+                    <tr class="clk" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
+                }
+            </table>
+        }
+    </Modal>
+
+    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
+        @if (_urunLoading)
+        {
+            <p class="muted">Yükleniyor…</p>
+        }
+        else
+        {
+            <table>
+                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="r"><b>Satış (adet)</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Bakiye</b></td></tr>
+                @{ var ui = 1; }
+                @foreach (var u in _urunler)
+                {
+                    <tr><td style="color:#94a3b8">@ui</td><td>@u.Kod</td><td>@u.Ad</td><td class="r">@Num(u.Satis)</td><td class="r">@Tl(u.Ciro)</td>
+                        <td class="r" style="color:@(u.Bakiye <= 0 ? "#dc2626" : "inherit")">@Num(u.Bakiye)</td></tr>
+                    ui++;
+                }
+                @if (_urunler.Count == 0)
+                {
+                    <tr><td colspan="6" class="muted">Ürün bulunamadı.</td></tr>
                 }
             </table>
         }
@@ -119,6 +150,8 @@ else if (_data is not null)
 
 @code {
     private string _period = "gunluk";
+    private DateTime? _ozelBas = DateTime.Today.AddDays(-7);
+    private DateTime? _ozelBit = DateTime.Today.AddDays(-1);
     private bool _loading = true;
     private string? _error;
     private string _aralik = "";
@@ -130,8 +163,29 @@ else if (_data is not null)
     private bool _modalEtic;
     private bool _modalTot;
     private StoreCard? _selStore;
+    private bool _modalUrun;
+    private bool _urunLoading;
+    private string _selKat = "";
+    private IReadOnlyList<UrunRow> _urunler = [];
 
     private void OpenStore(StoreCard s) { _selStore = s; _modalOpen = true; }
+
+    private async Task OpenUrun(string kategori)
+    {
+        _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
+        try { _urunler = await Ref.GetUrunlerAsync(kategori); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _urunLoading = false; StateHasChanged(); }
+    }
+
+    // Özel aralık: başlangıç ≤ bitiş güvence, endExcl = bitiş+1 gün
+    private (DateOnly, DateOnly) OzelAralik()
+    {
+        var b = DateOnly.FromDateTime(_ozelBas ?? DateTime.Today.AddDays(-7));
+        var e = DateOnly.FromDateTime(_ozelBit ?? DateTime.Today.AddDays(-1));
+        if (e < b) e = b;
+        return (b, e.AddDays(1));
+    }
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -147,6 +201,7 @@ else if (_data is not null)
             {
                 "haftalik" => (dun.AddDays(-6), g2),
                 "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                "ozel" => OzelAralik(),
                 _ => (dun, g2),
             };
             var son = endExcl.AddDays(-1);
