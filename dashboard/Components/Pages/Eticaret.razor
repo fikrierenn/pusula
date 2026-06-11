@@ -65,6 +65,7 @@ else if (_data is not null)
         </div>
         <div class="panel"><h3>Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
+            <div class="chart-box"><canvas id="ch_bekleyen"></canvas></div>
             <table>
                 <tr><td><b>Yaş</b></td><td class="r"><b>Adet</b></td><td class="r"><b>Pay</b></td></tr>
                 @foreach (var b in _bekleyen)
@@ -76,6 +77,31 @@ else if (_data is not null)
                 <tr class="tot"><td>TOPLAM bekleyen</td><td class="r"><b>@Num(bekToplam)</b></td><td class="r"></td></tr>
             </table>
             <div class="muted" style="font-size:11px">SENDDATE boş + normal statü. Sipariş tarihinden bugüne yaş. 4g+ kırmızı = SLA riski.</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="panel panel-wide"><h3>Günlük Kargo Çıkışı (dönem) — sipariş → kargoya teslim gün</h3>
+            <div class="chart-box"><canvas id="ch_kargogun"></canvas></div>
+            @{ var kgTop = _kargoGun.Sum(k => k.Adet); }
+            <table>
+                <tr><td><b>Çıkış Günü</b></td><td class="r"><b>Paket</b></td><td class="r"><b>Pay</b></td></tr>
+                @foreach (var k in _kargoGun)
+                {
+                    <tr><td>@(k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")</td>
+                        <td class="r" style="color:@(k.Gun >= 4 && k.Adet > 0 ? "#dc2626" : "inherit")">@Num(k.Adet)</td>
+                        <td class="r">%@(kgTop > 0 ? Math.Round(100m * k.Adet / kgTop) : 0)</td></tr>
+                }
+                @if (_kargoGun.Count == 0)
+                {
+                    <tr><td colspan="3" class="muted">Kargoya çıkmış sipariş bulunamadı.</td></tr>
+                }
+                else
+                {
+                    <tr class="tot"><td>TOPLAM çıkan</td><td class="r"><b>@Num(kgTop)</b></td><td class="r"></td></tr>
+                }
+            </table>
+            <div class="muted" style="font-size:11px">DATEDIFF(gün, sipariş, kargoya teslim). 4. gün+ kırmızı = yavaş çıkış.</div>
         </div>
     </div>
 }
@@ -90,6 +116,7 @@ else if (_data is not null)
     private PeriodSummary? _data;
     private IReadOnlyList<KargoPerf> _kargoPerf = [];
     private IReadOnlyList<BekleyenBucket> _bekleyen = [];
+    private IReadOnlyList<KargoGun> _kargoGun = [];
     private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -120,6 +147,7 @@ else if (_data is not null)
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
             _data = await Queries.GetPeriodAsync(start, endExcl);
             _kargoPerf = await Etic.GetKargoPerfAsync(start, endExcl);
+            _kargoGun = await Etic.GetKargoGunAsync(start, endExcl);
             _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -138,6 +166,10 @@ else if (_data is not null)
                 _data.Kargo.Select(k => k.Ad), _data.Kargo.Select(k => k.Adet));
             await _charts.InvokeVoidAsync("bar", "ch_il",
                 _data.Il.Select(x => x.Ad), _data.Il.Select(x => x.Adet), true);
+            await _charts.InvokeVoidAsync("bar", "ch_bekleyen",
+                _bekleyen.Select(b => b.Bucket), _bekleyen.Select(b => b.Adet), false);
+            await _charts.InvokeVoidAsync("bar", "ch_kargogun",
+                _kargoGun.Select(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün"), _kargoGun.Select(k => k.Adet), false);
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }

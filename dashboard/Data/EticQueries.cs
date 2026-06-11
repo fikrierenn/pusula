@@ -28,6 +28,23 @@ public sealed class EticQueries(Db db)
             new { giso = start.ToString("yyyyMMdd"), g2iso = endExcl.ToString("yyyyMMdd") })).ToList();
     }
 
+    /// <summary>Günlük kargo çıkış dağılımı: sipariş→kargoya teslim gün farkı (0,1,2…) × paket adedi (dönem, çıkmış siparişler).</summary>
+    public async Task<IReadOnlyList<KargoGun>> GetKargoGunAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) AS Gun, COUNT(*) AS Adet
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
+              AND o.SENDDATE IS NOT NULL AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
+              AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
+            GROUP BY DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE);
+            """;
+        return (await conn.QueryAsync<KargoGun>(sql,
+                new { giso = start.ToString("yyyyMMdd"), g2iso = endExcl.ToString("yyyyMMdd") }))
+            .OrderBy(x => x.Gun).ToList();
+    }
+
     /// <summary>Bekleyen gün raporu: kargoya çıkmamış (SENDDATE NULL) + normal STATUS siparişlerin yaş dağılımı (anlık, dönemsiz).</summary>
     public async Task<IReadOnlyList<BekleyenBucket>> GetBekleyenAsync()
     {
