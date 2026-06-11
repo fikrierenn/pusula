@@ -33,3 +33,5 @@ _plan-first-content.md
 *.swp
 .DS_Store
 Thumbs.db
+__pycache__/
+*.pyc
