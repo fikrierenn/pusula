@@ -15,6 +15,15 @@ public record MarkaRow(string Ad, decimal Ciro, int Adet, int Cesit);
 /// <summary>Stockout kategori satırı.</summary>
 public record StockoutRow(string Kategori, int Cesit, int Yok, decimal Pct);
 
+/// <summary>SPLH işgücü verimi (mağaza, ₺/saat).</summary>
+public record SplhRow(string Magaza, decimal NetCiro, int Fis, decimal Saat, int Personel);
+
+/// <summary>COD kapıda ödeme satırı.</summary>
+public record CodRow(string Tip, int Siparis, int Teslim, int Iade);
+
+/// <summary>Operasyon ek veri (SPLH + COD).</summary>
+public record OpsData(IReadOnlyList<SplhRow> Splh, IReadOnlyList<CodRow> Cod, decimal CodZarar);
+
 /// <summary>Envanter sayfası toplu veri.</summary>
 public record InventoryData(
     decimal ToplamDeger,

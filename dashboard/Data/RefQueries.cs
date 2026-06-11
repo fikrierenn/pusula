@@ -145,4 +145,59 @@ public sealed class RefQueries(Db db)
 
         return new InventoryData(toplam, devir.OrderByDescending(d => d.Devir).ToList(), abc, marka, stockout);
     }
+
+    /// <summary>Operasyon ek: SPLH (PDKS OPENQUERY, son 30g) + COD (olgun 60g pencere).</summary>
+    public async Task<OpsData> GetOpsAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        var d30 = dun.AddDays(-29).ToString("yyyyMMdd");
+        var g2iso = dun.AddDays(1).ToString("yyyyMMdd");
+
+        // SPLH — PDKS linked server düşerse boş liste (panel "veri yok" gösterir)
+        var splh = new List<SplhRow>();
+        try
+        {
+            var sql = $$"""
+                SELECT lab.Magaza, cir.NetCiro, cir.Fis, lab.CalisilanSaat AS Saat, lab.Personel
+                FROM (SELECT Magaza, CalisilanSaat, Personel FROM OPENQUERY([PDKS], '
+                    SELECT LTRIM(RTRIM(p.Per_Grp2)) AS Magaza,
+                      CAST(SUM(DATEDIFF(MINUTE, z.TZe_VonZeit, z.TZe_BisZeit))/60.0 AS decimal(18,1)) AS CalisilanSaat,
+                      COUNT(DISTINCT z.TZe_PersNr) AS Personel
+                    FROM TTagZei z INNER JOIN TPerTab p ON p.Per_PersNr = z.TZe_PersNr
+                    WHERE z.TZe_Datum >= ''{{d30}}'' AND z.TZe_Datum <= ''{{g2iso}}''
+                      AND p.Per_Grp1 = ''MAĞAZALAR'' AND LTRIM(RTRIM(p.Per_Grp2)) IN (''FSM'',''ÖZLÜCE'',''İST.YOLU'')
+                      AND z.TZe_VonZeit IS NOT NULL AND z.TZe_BisZeit IS NOT NULL
+                    GROUP BY LTRIM(RTRIM(p.Per_Grp2))')) lab
+                JOIN (SELECT CASE MG.mekanID WHEN 1 THEN N'FSM' WHEN 4477 THEN N'ÖZLÜCE' WHEN 4478 THEN N'İST.YOLU' END Magaza,
+                    SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) NetCiro, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis
+                  FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                  JOIN EncoreMerkez.dbo.Pos p WITH(NOLOCK) ON p.Id=s.PosId
+                  JOIN EncoreMerkez.dbo.Stores st WITH(NOLOCK) ON st.Id=p.StoreId
+                  JOIN DerinSISBkm.dbo.posMagaza MG WITH(NOLOCK) ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+                  LEFT JOIN EncoreMerkez.dbo.SalesProducts spb WITH(NOLOCK) ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+                  WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>='{{d30}}' AND s.Date<'{{g2iso}}' AND spb.Id IS NULL
+                  GROUP BY MG.mekanID) cir ON cir.Magaza COLLATE Turkish_CI_AS=lab.Magaza COLLATE Turkish_CI_AS;
+                """;
+            splh = (await conn.QueryAsync<SplhRow>(sql)).OrderByDescending(s => s.Saat > 0 ? s.NetCiro / s.Saat : 0).ToList();
+        }
+        catch { /* PDKS linked server yoksa panel boş */ }
+
+        // COD — olgun pencere (75→15 gün önce; son 15 gün kargo süreci bitmemiş hariç)
+        var codB = dun.AddDays(-75).ToString("yyyyMMdd");
+        var codE = dun.AddDays(-15).ToString("yyyyMMdd");
+        var cod = (await conn.QueryAsync<CodRow>("""
+            SELECT CASE WHEN o.PAYDEFREF=-3 THEN 'COD' ELSE 'Online' END AS Tip, COUNT(*) AS Siparis,
+                   SUM(CASE WHEN o.CARGODELIVERYSTATUS=1 THEN 1 ELSE 0 END) AS Teslim,
+                   SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) AS Iade
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            WHERE o.PAYDEFREF IN (-3,-13) AND o.ORDERDATE>=@b AND o.ORDERDATE<@e
+            GROUP BY CASE WHEN o.PAYDEFREF=-3 THEN 'COD' ELSE 'Online' END;
+            """, new { b = codB, e = codE })).ToList();
+        var zarar = await conn.ExecuteScalarAsync<decimal?>("""
+            SELECT CAST(SUM(o.CARGOPRICE)*2 AS decimal(18,0)) FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            WHERE o.PAYDEFREF=-3 AND o.CARGODELIVERYSTATUS=2 AND o.ORDERDATE>=@b AND o.ORDERDATE<@e;
+            """, new { b = codB, e = codE }) ?? 0m;
+
+        return new OpsData(splh, cod, zarar);
+    }
 }

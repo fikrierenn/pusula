@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject Queries Queries
+@inject RefQueries Ref
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -46,6 +47,41 @@ else if (_data is not null)
             </table>
         </div>
     </div>
+
+    <div class="row">
+        <div class="panel"><h3>İşgücü Verimi — ₺/Çalışılan Saat (SPLH, son 30g)</h3>
+            @if (_ops is not null && _ops.Splh.Count > 0)
+            {
+                <table>
+                    <tr><td><b>Mağaza</b></td><td class="r"><b>₺/saat</b></td><td class="r"><b>Fiş/saat</b></td><td class="r"><b>Personel</b></td></tr>
+                    @foreach (var s in _ops.Splh)
+                    {
+                        <tr><td>@s.Magaza</td><td class="r"><b>@(s.Saat > 0 ? Num((int)Math.Round(s.NetCiro / s.Saat)) : "—")</b></td>
+                            <td class="r">@(s.Saat > 0 ? (s.Fis / s.Saat).ToString("0.0") : "—")</td><td class="r">@s.Personel</td></tr>
+                    }
+                </table>
+            }
+            else
+            {
+                <p class="muted" style="font-size:12px">PDKS verisi alınamadı (linked server).</p>
+            }
+        </div>
+        <div class="panel"><h3>Kapıda Ödeme — Teslim/İade (olgun 60g)</h3>
+            @if (_ops is not null)
+            {
+                <table>
+                    <tr><td><b>Tip</b></td><td class="r"><b>Sipariş</b></td><td class="r"><b>Teslim %</b></td><td class="r"><b>İade %</b></td></tr>
+                    @foreach (var c in _ops.Cod.OrderBy(x => x.Tip == "COD" ? 0 : 1))
+                    {
+                        <tr><td>@c.Tip</td><td class="r">@Num(c.Siparis)</td>
+                            <td class="r">%@(c.Siparis > 0 ? Math.Round(100m * c.Teslim / c.Siparis, 1) : 0)</td>
+                            <td class="r" style="color:@(c.Tip == "COD" ? "#dc2626" : "#16a34a")">%@(c.Siparis > 0 ? Math.Round(100m * c.Iade / c.Siparis, 1) : 0)</td></tr>
+                    }
+                    <tr><td colspan="4" style="color:#dc2626;font-size:12px">COD iade zararı (60g): <b>@Tl(_ops.CodZarar)</b> (kargo ×2)</td></tr>
+                </table>
+            }
+        </div>
+    </div>
 }
 
 @code {
@@ -53,9 +89,16 @@ else if (_data is not null)
     private bool _loading = true;
     private string? _error;
     private PeriodSummary? _data;
+    private OpsData? _ops;
     private IJSObjectReference? _charts;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        try { _ops = await Ref.GetOpsAsync(DateOnly.FromDateTime(DateTime.Today).AddDays(-1)); }
+        catch (Exception ex) { _error ??= ex.Message; }
+        StateHasChanged();
+    }
 
     private async Task LoadAsync()
     {
