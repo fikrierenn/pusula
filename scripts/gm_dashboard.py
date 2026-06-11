@@ -56,9 +56,27 @@ def period_data(cur, start, end, traf, hedef=None):
       JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
       LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=%s AND s.Date<%s GROUP BY MG.mekanID""", (start, end))
+    # e-ticaret NET (iptal 1006 + iade 3004/3006 hariç — brief v1.1.0 ile aynı tanım)
     etic = Q(cur, """SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END K,
-        COUNT(*) Sip, SUM(o.TOTALPRICE) Ciro FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s
+        SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN 1 ELSE 0 END) Sip,
+        SUM(CASE WHEN o.STATUS IN (1006,3004,3006) THEN 1 ELSE 0 END) Ipt,
+        SUM(CASE WHEN o.STATUS NOT IN (1006,3004,3006) THEN o.TOTALPRICE ELSE 0 END) Ciro
+        FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.ORDERDATE>=%s AND o.ORDERDATE<%s
         GROUP BY CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END""", (giso, g2iso))
+    # saat bazlı yoğunluk (dönem)
+    saat = Q(cur, """SELECT DATEPART(HOUR,s.Date) H, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis,
+        CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,0)) Net
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=%s AND s.Date<%s
+      GROUP BY DATEPART(HOUR,s.Date)""", (start, end))
+    # kasiyer performansı (dönem) — Sales.UsersId=Users.Id
+    kas = Q(cur, """SELECT CAST(st.Name AS nvarchar(30)) M, CAST(u.Name AS nvarchar(30)) K, COUNT(*) Fis,
+        CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-ABS(s.DiscountTotal)) ELSE s.GrossTotal-s.DiscountTotal END) AS decimal(18,0)) Net,
+        SUM(CASE WHEN s.DocumentsTypeId=3 THEN 1 ELSE 0 END) Iade
+      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+      JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
+      LEFT JOIN EncoreMerkez.dbo.Users u ON u.Id=s.UsersId
+      WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=%s AND s.Date<%s
+      GROUP BY CAST(st.Name AS nvarchar(30)), CAST(u.Name AS nvarchar(30))""", (start, end))
     # kategori mix — skat (mağaza drill) aggregate'inden üretilir (aşağıda) → iki panel TEK kaynak,
     # toplamlar birebir (eskiden irsHrk KDV-hariç/iadesiz idi → drill ile tutmuyordu, 11.06 fix)
     ode = Q(cur, """SELECT CAST(pt.Name AS nvarchar(40)) K, SUM(sp.Amount) Tutar FROM EncoreMerkez.dbo.SalesPayments sp WITH(NOLOCK)
@@ -89,6 +107,7 @@ def period_data(cur, start, end, traf, hedef=None):
     fiz = sum(float(s["Net"] or 0) for s in store); fis = sum(int(s["Fis"]) for s in store)
     iade = sum(float(s["Iade"] or 0) for s in store)
     etc = sum(float(e["Ciro"] or 0) for e in etic); esip = sum(int(e["Sip"]) for e in etic)
+    eipt = sum(int(e["Ipt"] or 0) for e in etic)
     # FSM dönüşüm: bu dönemdeki giriş toplamı
     d0 = date.fromisoformat(start); d1 = date.fromisoformat(end)
     gir = sum(traf.get((d0+timedelta(days=i)).isoformat(), 0) for i in range((d1-d0).days))
@@ -108,9 +127,11 @@ def period_data(cur, start, end, traf, hedef=None):
     odemap = sorted(([o["K"], round(float(o["Tutar"] or 0))] for o in ode), key=lambda x: -x[1])
     nakit = sum(v for k, v in odemap if k == "TÜRK LİRASI")
     odetop = sum(v for k, v in odemap)
-    return dict(fiz=round(fiz), fis=fis, iade=round(iade), etc=round(etc), esip=esip, toplam=round(fiz+etc),
+    return dict(fiz=round(fiz), fis=fis, iade=round(iade), etc=round(etc), esip=esip, eipt=eipt, toplam=round(fiz+etc),
                 donus=donus, gir=gir, stores=stc, odeme=odemap,
                 etic=sorted([[e["K"].replace("Mobil Uygulama ", "").replace("(", "").replace(")", ""), round(float(e["Ciro"] or 0)), int(e["Sip"])] for e in etic], key=lambda x: -x[1]),
+                saat=sorted([[int(r["H"]), int(r["Fis"] or 0), int(r["Net"] or 0)] for r in saat]),
+                kasiyer=sorted([[r["M"], r["K"] or "?", int(r["Fis"]), int(r["Net"] or 0), int(r["Iade"])] for r in kas], key=lambda x: -x[3])[:15],
                 kat=[[k, v] for k, v in kat],
                 nakit_pct=round(100*nakit/odetop, 1) if odetop else 0,
                 iade_pct=round(100*iade/fiz, 2) if fiz else 0)
@@ -245,8 +266,57 @@ def main():
       GROUP BY CAST(k.ktgrAd AS nvarchar(50))""")}
     cve = [dict(k=ek["k"], ciro=cve_ciro.get(ek["k"], 0), env=ek["v"][0]+ek["v"][1]+ek["v"][2]) for ek in envkat]
     cve = [c for c in cve if c["env"] > 0 or c["ciro"] > 0]
+    # E8 stockout — son 30 gün talepli SKU, bakiye<=0 oranı (kategori)
+    stockout = sorted([[r["K"], int(r["N"]), int(r["Yok"]), float(r["Pct"] or 0)] for r in Q(cur, """SELECT x.Kategori K,
+        COUNT(*) N, SUM(CASE WHEN x.Bakiye<=0 THEN 1 ELSE 0 END) Yok,
+        CAST(100.0*SUM(CASE WHEN x.Bakiye<=0 THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0) AS decimal(10,1)) Pct
+      FROM (SELECT k.ktgrAd Kategori, sold.stkID, bal.Bakiye
+        FROM (SELECT DISTINCT h.ehstkID stkID FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+          WHERE h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-30,GETDATE()) AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0) sold
+        JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=sold.stkID
+        JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID
+        CROSS APPLY (SELECT SUM(b.ehAdetN) Bakiye FROM DerinSISBkm.dbo.irsHrk b WITH(NOLOCK)
+          WHERE b.ehstkID=sold.stkID AND b.ehMekan IN (1,4477,4478) AND b.ehAltDepo=0) bal
+        WHERE k.ktgrAd NOT IN (N'Sınav Okulları',N'Dergi',N'Genel',N'Tanımsız',N'Etkinlik',N'Hediye Çeki')) x
+      GROUP BY x.Kategori""")], key=lambda x: -x[3])
+    # S1 SPLH — son 30 gün, PDKS OPENQUERY (linked server düşerse panel boş + log)
+    d30 = (d - timedelta(days=29)).isoformat().replace("-", "")
+    splh = []
+    try:
+        splh = [[r["Magaza"], int(r["NetCiro"] or 0), int(r["Fis"] or 0), float(r["Saat"] or 0), int(r["Personel"] or 0)] for r in Q(cur, f"""SELECT lab.Magaza, cir.NetCiro, cir.Fis, lab.CalisilanSaat Saat, lab.Personel
+          FROM (SELECT Magaza, CalisilanSaat, Personel FROM OPENQUERY([PDKS], '
+              SELECT LTRIM(RTRIM(p.Per_Grp2)) AS Magaza,
+                CAST(SUM(DATEDIFF(MINUTE, z.TZe_VonZeit, z.TZe_BisZeit))/60.0 AS decimal(18,1)) AS CalisilanSaat,
+                COUNT(DISTINCT z.TZe_PersNr) AS Personel
+              FROM TTagZei z INNER JOIN TPerTab p ON p.Per_PersNr = z.TZe_PersNr
+              WHERE z.TZe_Datum >= ''{d30}'' AND z.TZe_Datum <= ''{g2iso}''
+                AND p.Per_Grp1 = ''MAĞAZALAR'' AND LTRIM(RTRIM(p.Per_Grp2)) IN (''FSM'',''ÖZLÜCE'',''İST.YOLU'')
+                AND z.TZe_VonZeit IS NOT NULL AND z.TZe_BisZeit IS NOT NULL
+              GROUP BY LTRIM(RTRIM(p.Per_Grp2))')) lab
+          JOIN (SELECT CASE MG.mekanID WHEN 1 THEN N'FSM' WHEN 4477 THEN N'ÖZLÜCE' WHEN 4478 THEN N'İST.YOLU' END Magaza,
+              SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) NetCiro, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Pos p WITH(NOLOCK) ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st WITH(NOLOCK) ON st.Id=p.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza MG WITH(NOLOCK) ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+            LEFT JOIN EncoreMerkez.dbo.SalesProducts spb WITH(NOLOCK) ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>='{d30}' AND s.Date<'{g2iso}' AND spb.Id IS NULL
+            GROUP BY MG.mekanID) cir ON cir.Magaza COLLATE Turkish_CI_AS=lab.Magaza COLLATE Turkish_CI_AS""")]
+    except Exception as e:
+        print(f"[warn] SPLH (PDKS OPENQUERY) alinamadi: {e}", file=sys.stderr)
+    # COD — olgun pencere (75→15 gün önce; kargo süreci bitmemiş son 15 gün hariç)
+    cod_b = (d - timedelta(days=75)).isoformat().replace("-", ""); cod_e = (d - timedelta(days=15)).isoformat().replace("-", "")
+    codq = Q(cur, f"""SELECT CASE WHEN o.PAYDEFREF=-3 THEN 'COD' ELSE 'Online' END Tip, COUNT(*) Sip,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=1 THEN 1 ELSE 0 END) Teslim,
+        SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) Iade
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      WHERE o.PAYDEFREF IN (-3,-13) AND o.ORDERDATE>='{cod_b}' AND o.ORDERDATE<'{cod_e}'
+      GROUP BY CASE WHEN o.PAYDEFREF=-3 THEN 'COD' ELSE 'Online' END""")
+    cod_zarar = Q(cur, f"""SELECT CAST(SUM(o.CARGOPRICE)*2 AS decimal(18,0)) Z FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      WHERE o.PAYDEFREF=-3 AND o.CARGODELIVERYSTATUS=2 AND o.ORDERDATE>='{cod_b}' AND o.ORDERDATE<'{cod_e}'""")[0]["Z"]
+    cod = dict(rows=[[r["Tip"], int(r["Sip"]), int(r["Teslim"]), int(r["Iade"])] for r in codq], zarar=int(cod_zarar or 0))
     cur.close(); conn.close()
-    REF = dict(everim=everim, abc=abc, rfm_yk=rfm_yk, rfm_et=rfm_et, marka=marka, envkat=envkat, locs=LOCS, cve=cve, urunler=urunler)
+    REF = dict(everim=everim, abc=abc, rfm_yk=rfm_yk, rfm_et=rfm_et, marka=marka, envkat=envkat, locs=LOCS, cve=cve, urunler=urunler,
+               stockout=stockout, splh=splh, cod=cod)
     render(dun, DATA, trend, int(env or 0), REF)
 
 
@@ -264,6 +334,21 @@ def render(dun, DATA, trend, env, REF):
     marka_rows = "".join(f"<tr><td>{m}</td><td style='text-align:right'>{fnum(c)} ₺</td></tr>" for m, c, ad, ce in marka[:6])
     devir_rows = "".join(f"<tr><td>{k}</td><td style='text-align:right'>{v:.2f}x</td></tr>" for k, v in devir[:5])
     olu_rows = "".join(f"<tr><td>{e['k']}</td><td style='text-align:right'>{fnum(e['stoktl'])} ₺</td><td style='text-align:right;color:#dc2626'>{e['devir']:.2f}x</td></tr>" for e in olu[:5])
+    stk_rows = "<tr><td><b>Kategori</b></td><td style='text-align:right'><b>Çeşit</b></td><td style='text-align:right'><b>Yok</b></td><td style='text-align:right'><b>%</b></td></tr>" + "".join(
+        f"<tr><td>{k}</td><td style='text-align:right'>{fnum(n)}</td><td style='text-align:right'>{fnum(y)}</td><td style='text-align:right;color:{'#dc2626' if p > 5 else '#16a34a'}'>%{str(p).replace('.', ',')}</td></tr>" for k, n, y, p in REF["stockout"][:7])
+    if REF["splh"]:
+        splh_rows = "<tr><td><b>Mağaza</b></td><td style='text-align:right'><b>₺/saat</b></td><td style='text-align:right'><b>Fiş/saat</b></td><td style='text-align:right'><b>Personel</b></td></tr>" + "".join(
+            f"<tr><td>{m}</td><td style='text-align:right'><b>{fnum(net/h) if h else '—'}</b></td><td style='text-align:right'>{(f / h if h else 0):.2f}</td><td style='text-align:right'>{p}</td></tr>"
+            for m, net, f, h, p in sorted(REF["splh"], key=lambda x: -(x[1] / x[3] if x[3] else 0)))
+    else:
+        splh_rows = "<tr><td style='color:#94a3b8'>PDKS verisi alınamadı</td></tr>"
+    codd = {r[0]: r for r in REF["cod"]["rows"]}
+    cod_rows = "<tr><td><b>Tip</b></td><td style='text-align:right'><b>Sipariş</b></td><td style='text-align:right'><b>Teslim %</b></td><td style='text-align:right'><b>İade %</b></td></tr>"
+    for tip in ("COD", "Online"):
+        if tip in codd:
+            _, sip, tes, ia = codd[tip]
+            cod_rows += f"<tr><td>{tip}</td><td style='text-align:right'>{fnum(sip)}</td><td style='text-align:right'>%{round(100*tes/sip,1) if sip else 0}</td><td style='text-align:right;color:{'#dc2626' if tip == 'COD' else '#16a34a'}'>%{round(100*ia/sip,1) if sip else 0}</td></tr>"
+    cod_rows += f"<tr><td colspan=4 style='color:#dc2626;font-size:12px'>COD iade zararı (60g): <b>{fnum(REF['cod']['zarar'])} ₺</b> (kargo ×2)</td></tr>"
 
     tmpl = TEMPLATE
     repl = {
@@ -273,6 +358,7 @@ def render(dun, DATA, trend, env, REF):
         "__TRENDLBL__": json.dumps(trend_lbl), "__TRENDVAL__": json.dumps(trend_val),
         "__ABC__": abc_rows, "__RFM__": rfm_rows, "__MARKA__": marka_rows,
         "__DEVIR__": devir_rows, "__DEVIRSLOW__": olu_rows,
+        "__STOCKOUT__": stk_rows, "__SPLH__": splh_rows, "__COD__": cod_rows,
     }
     for k, v in repl.items():
         tmpl = tmpl.replace(k, v)
@@ -549,8 +635,12 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
 
 <div class=row>
   <div class=panel><h3>Mağaza Kategori Mix (dönem)</h3><canvas id=ch_kat height=150></canvas></div>
-  <div class=panel><h3>E-ticaret Kanal (dönem)</h3><canvas id=ch_etic height=150></canvas></div>
+  <div class=panel><h3>E-ticaret Kanal — NET (dönem)</h3><canvas id=ch_etic height=150></canvas><div style="font-size:11px;color:#64748b" id=etic_alt></div></div>
   <div class=panel><h3>Son 14 Gün — Fiziksel Net Ciro</h3><canvas id=ch_trend height=150></canvas></div>
+</div>
+<div class=row>
+  <div class=panel><h3>Saat Bazlı Yoğunluk (dönem)</h3><canvas id=ch_saat height=150></canvas></div>
+  <div class=panel style="grid-column:span 2"><h3>Kasiyer Performansı (dönem)</h3><table id=tbl_kas></table></div>
 </div>
 
 <div class=sec>Referans — Envanter & Müşteri & Merchandising (aylık/güncel)</div>
@@ -565,6 +655,11 @@ table{width:100%;border-collapse:collapse;font-size:13px} td{padding:5px 4px;bor
   <div class="panel clk" onclick="detayAbc()"><h3>ABC Analizi (Pareto) &#9656;</h3><table><tr><td><b>Sınıf</b></td><td style="text-align:right"><b>Ürün</b></td><td style="text-align:right"><b>Ciro</b></td></tr>__ABC__</table></div>
   <div class="panel clk" onclick="detayRfm()"><h3>RFM — Yazarkasa (365g) &#9656;</h3><table>__RFM__</table></div>
   <div class="panel clk" onclick="detayMarka()"><h3>Top Marka / Yayınevi (Mayıs) &#9656;</h3><table>__MARKA__</table></div>
+</div>
+<div class=row>
+  <div class=panel><h3>Stokta Yokluk — son 30g talepli SKU (hedef &lt;%5)</h3><table>__STOCKOUT__</table></div>
+  <div class=panel><h3>SPLH — İşgücü Verimi (son 30g, PDKS)</h3><table>__SPLH__</table></div>
+  <div class=panel><h3>Kapıda Ödeme — olgun 60g pencere</h3><table>__COD__</table></div>
 </div>
 <div class=row>
   <div class="panel clk" onclick="detayCve()" style="grid-column:1/-1"><h3>Ciro Payı vs Envanter Payı — Kategori (Mayıs) &#9656;</h3>
@@ -635,7 +730,7 @@ async function detayFis(kanal,ref,tarih){loading('Fiş İçeriği');let d=await 
   let foot='<tr style="border-top:2px solid '+KP+';font-weight:700"><td colspan=3>DİP TOPLAM ('+d.length+' kalem)</td><td style="text-align:right">'+mny(bT)+'</td><td style="text-align:right;color:#dc2626">'+(iT>0?'-'+mny(iT):'—')+'</td><td style="text-align:right;font-size:15px;color:'+KP+'">'+mny(nT)+' ₺</td></tr>';
   openModal('<h2>'+(kanal=='yk'?'Fiş':'Sipariş')+' #'+ref+'</h2><div style="color:#64748b;font-size:12px">'+tarih+' · '+(kanal=='yk'?'Yazarkasa':'E-ticaret')+' · birim fiyat × adet = tutar, indirim sonrası net</div><table style="margin-top:10px"><tr><td><b>Ürün</b></td><td style="text-align:right"><b>Adet</b></td><td style="text-align:right"><b>Birim ₺</b></td><td style="text-align:right"><b>Tutar ₺</b></td><td style="text-align:right"><b>İndirim</b></td><td style="text-align:right"><b>Net ₺</b></td></tr>'+rows+foot+'</table>');}
 const tl=n=>fnum(n)+' ₺';
-let chKat,chEtic,chTrend;
+let chKat,chEtic,chTrend,chSaat;
 async function getOzel(){let s=document.getElementById('d1').value,e=document.getElementById('d2').value;
   if(!s||!e){alert('Başlangıç ve bitiş tarihi seç');return;}
   if(s>e){let t=s;s=e;e=t;document.getElementById('d1').value=s;document.getElementById('d2').value=e;}
@@ -673,6 +768,12 @@ function render(p){
   chKat=new Chart(document.getElementById('ch_kat'),{type:'bar',data:{labels:x.kat.map(k=>k[0]),datasets:[{data:x.kat.map(k=>k[1]),backgroundColor:kpi}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
   if(chEtic)chEtic.destroy();
   chEtic=new Chart(document.getElementById('ch_etic'),{type:'doughnut',data:{labels:x.etic.map(e=>e[0]),datasets:[{data:x.etic.map(e=>e[1]),backgroundColor:[kpi,'#f59e0b','#0ea5e9','#64748b']}]},options:{plugins:{legend:{position:'right'}}}});
+  document.getElementById('etic_alt').textContent='net = iptal/iade hariç · '+fnum(x.esip)+' sipariş · '+fnum(x.eipt||0)+' iptal/iade';
+  if(chSaat)chSaat.destroy();
+  chSaat=new Chart(document.getElementById('ch_saat'),{type:'bar',data:{labels:x.saat.map(s=>s[0]+':00'),datasets:[{label:'Fiş',data:x.saat.map(s=>s[1]),backgroundColor:kpi,yAxisID:'y'},{label:'Net ₺',data:x.saat.map(s=>s[2]),type:'line',borderColor:'#0ea5e9',yAxisID:'y2',tension:.3}]},options:{plugins:{legend:{display:true,position:'bottom'}},scales:{y:{position:'left'},y2:{position:'right',grid:{display:false},ticks:{callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  let kh='<tr><td><b>Kasiyer</b></td><td><b>Mağaza</b></td><td style="text-align:right"><b>Fiş</b></td><td style="text-align:right"><b>Net Ciro</b></td><td style="text-align:right"><b>Sepet</b></td><td style="text-align:right"><b>İade</b></td></tr>';
+  for(const k of (x.kasiyer||[]))kh+='<tr><td>'+k[1]+'</td><td style="color:#64748b">'+k[0]+'</td><td style="text-align:right">'+fnum(k[2])+'</td><td style="text-align:right"><b>'+tl(k[3])+'</b></td><td style="text-align:right">'+fnum(k[2]?Math.round(k[3]/k[2]):0)+' ₺</td><td style="text-align:right">'+k[4]+'</td></tr>';
+  document.getElementById('tbl_kas').innerHTML=kh;
 }
 chTrend=new Chart(document.getElementById('ch_trend'),{type:'line',data:{labels:__TRENDLBL__,datasets:[{data:__TRENDVAL__,borderColor:'__KIRMIZI__',backgroundColor:'rgba(227,6,34,.1)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}});
 let HIST=[],LOAD=false;
