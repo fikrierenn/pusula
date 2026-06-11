@@ -1,0 +1,91 @@
+@page "/"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject Queries Queries
+@rendermode InteractiveServer
+
+<PageTitle>BKM GM Dashboard</PageTitle>
+
+<div class="hd">
+    <span class="logo">BKM</span>
+    <h1>GM Dashboard</h1>
+    <select class="period" @bind="_period" @bind:after="LoadAsync">
+        <option value="gunluk">Günlük (dün)</option>
+        <option value="haftalik">Haftalık (son 7 gün)</option>
+        <option value="ay">Aylık (MTD)</option>
+    </select>
+</div>
+
+@if (_loading)
+{
+    <p class="muted">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="err">Veri alınamadı: @_error</p>
+}
+else if (_data is not null)
+{
+    <div class="big">
+        <div><div class="lbl">Toplam Ciro (fiziksel + online)</div><div class="num">@Tl(_data.Toplam)</div>
+            <div class="sub">mağaza @Tl(_data.Fiziksel) · online @Tl(_data.Eticaret)</div></div>
+        <div><div class="lbl">İşlem</div><div class="num">@Num(_data.Fis)</div>
+            <div class="sub">@Num(_data.ESip) online sipariş</div></div>
+        <div><div class="lbl">İade</div><div class="num">@Tl(_data.Iade)</div></div>
+    </div>
+
+    <div class="grid">
+        @foreach (var s in _data.Stores)
+        {
+            <div class="card">
+                <div class="ct">@s.Ad</div>
+                <div class="cv">@Tl(s.Net)</div>
+                <div class="cm">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
+                    @if (s.GerPct is not null)
+                    {
+                        <span> · hedef %@s.GerPct</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string _period = "gunluk";
+    private bool _loading = true;
+    private string? _error;
+    private PeriodSummary? _data;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var bugun = DateOnly.FromDateTime(DateTime.Today);
+            var dun = bugun.AddDays(-1);
+            var g2 = bugun; // exclusive: dün dahil
+            (DateOnly start, DateOnly endExcl) = _period switch
+            {
+                "haftalik" => (dun.AddDays(-6), g2),
+                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                _ => (dun, g2),
+            };
+            _data = await Queries.GetPeriodAsync(start, endExcl);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
