@@ -22,6 +22,25 @@
 
 → Yani: asistan **mail/takvim/görev** odaklı çalışır; CFO arada BKM verisi de sorabilir. BI, 50 yetenekten biri.
 
+### Örnek akış (kullanıcının asıl istediği) — Not → Görev → Ata
+```
+1. CFO Telegram'a kısa not atar:
+   "özlüce vitrin yenilensin, ramazan teması, bütçe ayrılsın"
+2. Asistan notu GELİŞTİRİR (yapılandırır):
+   Başlık: Özlüce vitrin yenileme (Ramazan)
+   Açıklama: ... · Öncelik: orta · Tahmini bütçe sorusu · Kabul kriteri
+   → CFO'ya taslağı gösterir, onay ister
+3. CFO: "bunu Murat'a görev olarak at"
+4. Asistan:
+   • görevi oluşturur (Microsoft Planner/To Do veya görev tablosu)
+   • Murat'a atar (mail + Telegram bildirim)
+   • takibe alır (son tarih hatırlatma, durum sorgusu)
+5. Sonra CFO: "Murat'ın görevleri ne durumda" → asistan özet
+```
+**Gereken parçalar:** ekip/kişi rehberi (Murat=kim, kanalı) · görev sistemi (atama+durum) · onay adımı (taslağı göster, sonra at). Bu "tek-kullanıcı asistan"ı **ekip orkestrasyonuna** çıkarır.
+- **Görev sistemi seçeneği:** Microsoft Planner (Graph — ekip görevi+atama+durback) ⭐ · Todoist (paylaşımlı) · kendi SQL tablo (basit, tam kontrol).
+- **Kişiye ulaşma:** mail (resmi taslak) + Telegram (bildirim) — kişi rehberi (ad→mail/chat_id) gerekir.
+
 **Anahtar:** Kurumsal mail **Microsoft 365/Exchange** ise → **Microsoft Graph API** tek noktadan mail+takvim+görev+kişiler (en güçlü kombo). Kişisel Gmail için Gmail+Calendar API. **n8n** her ikisini orkestre eder (mail trigger → Claude özet → görev/hatırlatma → Telegram, kod yazmadan).
 
 ## 2. Kategori Değerlendirme (BKM uygunluk: .NET stack, self-host, lisans)
