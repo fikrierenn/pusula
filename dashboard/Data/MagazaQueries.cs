@@ -106,7 +106,29 @@ public sealed class MagazaQueries(Db db)
             GROUP BY CASE WHEN LTRIM(RTRIM(spc.CampaignName))='' THEN N'(manuel/kodsuz)' ELSE spc.CampaignName END
             ORDER BY Indirim DESC;
             """;
-        var kampanya = (await conn.QueryAsync<KampanyaRow>(kampSql, par)).ToList();
+        var kampHam = (await conn.QueryAsync<(string Ad, int Gun, decimal Brut, decimal Indirim, decimal Oran, int Fis)>(kampSql, par)).ToList();
+
+        // B) Fiş cirosu: her kampanyaya giren fişlerin TÜM sepeti (yanında alınan diğer ürünler dahil — çapraz satış).
+        // Çift sayım kabul: bir fiş çok kampanyalıysa her kampanyanın etki alanına sayılır.
+        const string fisCiroSql = """
+            SELECT k.Ad, CAST(SUM(sp.TotalPrice) AS decimal(18,2)) AS FisCiro
+            FROM (
+                SELECT DISTINCT CASE WHEN LTRIM(RTRIM(spc.CampaignName))='' THEN N'(manuel/kodsuz)' ELSE spc.CampaignName END AS Ad, spc.SalesId
+                FROM EncoreMerkez.dbo.SalesProductCampaigns spc
+                JOIN EncoreMerkez.dbo.Sales s ON s.Id=spc.SalesId
+                JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+                JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+                JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+                WHERE MG.mekanID=@mid AND s.Date>=@start AND s.Date<@end
+            ) k
+            JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=k.SalesId AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
+            GROUP BY k.Ad;
+            """;
+        var fisCiroMap = (await conn.QueryAsync<(string Ad, decimal FisCiro)>(fisCiroSql, par))
+            .ToDictionary(x => x.Ad, x => x.FisCiro);
+        var kampanya = kampHam
+            .Select(k => new KampanyaRow(k.Ad, k.Gun, k.Brut, k.Indirim, k.Oran, k.Fis, fisCiroMap.GetValueOrDefault(k.Ad, 0)))
+            .ToList();
 
         // Kategori (skat, tek mağaza — ürün drill için)
         const string katSql = """
