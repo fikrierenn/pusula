@@ -1,0 +1,14 @@
+{
+  "name": "bkm-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BKM Yönetim Paneli — Tailwind CSS + DaisyUI build pipeline",
+  "scripts": {
+    "build:css": "tailwindcss -i Styles/app.tailwind.css -o wwwroot/app.css --minify",
+    "watch:css": "tailwindcss -i Styles/app.tailwind.css -o wwwroot/app.css --watch"
+  },
+  "devDependencies": {
+    "daisyui": "4.12.14",
+    "tailwindcss": "3.4.17"
+  }
+}

@@ -2,85 +2,97 @@
 @inject GmDashboard.Data.GorevService Gorevler
 @inject NavigationManager Nav
 
-<div class="shell @(_collapsed ? "collapsed" : "") @(_drawerOpen ? "drawer-open" : "")">
+<div class="drawer lg:drawer-open min-h-screen">
+    <input id="bkm-drawer" type="checkbox" class="drawer-toggle" @bind="_drawerOpen" />
 
-    @* ── Mobil drawer arka karartma ── *@
-    <div class="drawer-ovl" @onclick="CloseDrawer"></div>
+    @* ── ANA İÇERİK TARAFI ── *@
+    <div class="drawer-content flex flex-col min-h-screen bg-base-200">
 
-    @* ── SIDEBAR ── *@
-    <aside class="sidebar">
-        <div class="sb-logo">
-            <span class="logo">BKM</span>
-            <span class="sb-logo-txt">Yönetim Paneli</span>
-        </div>
-
-        <nav class="sb-nav">
-            <div class="navgroup">ANALİTİK</div>
-            <NavLink class="navitem" href="" Match="NavLinkMatch.All" @onclick="CloseDrawer">
-                <i data-lucide="layout-dashboard"></i><span>Genel Bakış</span>
-            </NavLink>
-            <NavLink class="navitem" href="eticaret" @onclick="CloseDrawer">
-                <i data-lucide="shopping-cart"></i><span>E-ticaret</span>
-            </NavLink>
-            <NavLink class="navitem" href="operasyon" @onclick="CloseDrawer">
-                <i data-lucide="store"></i><span>Operasyon</span>
-            </NavLink>
-            <NavLink class="navitem" href="envanter" @onclick="CloseDrawer">
-                <i data-lucide="package"></i><span>Envanter</span>
-            </NavLink>
-            <NavLink class="navitem" href="musteri" @onclick="CloseDrawer">
-                <i data-lucide="users"></i><span>Müşteri</span>
-            </NavLink>
-
-            <div class="navgroup">ASİSTAN</div>
-            <NavLink class="navitem" href="asistan" @onclick="CloseDrawer">
-                <i data-lucide="message-square"></i><span>Asistan</span>
-            </NavLink>
-            <NavLink class="navitem" href="gorevler" @onclick="CloseDrawer">
-                <i data-lucide="check-square"></i><span>Görevler</span>
-                @if (_acikGorev > 0)
-                {
-                    <span class="navbadge">@_acikGorev</span>
-                }
-            </NavLink>
-        </nav>
-
-        <button class="sb-collapse" @onclick="ToggleCollapse" title="Daralt/Genişlet">
-            <i data-lucide="@(_collapsed ? "chevrons-right" : "chevrons-left")"></i>
-            <span>Daralt</span>
-        </button>
-    </aside>
-
-    @* ── ANA ALAN ── *@
-    <div class="main">
-        <header class="topbar">
-            <button class="hamburger" @onclick="OpenDrawer" title="Menü">
+        @* ── Üst bar (navbar) ── *@
+        <header class="navbar sticky top-0 z-30 bg-base-100 shadow-sm px-4 min-h-14">
+            <label for="bkm-drawer" class="btn btn-ghost btn-sm btn-square lg:hidden" title="Menü">
                 <i data-lucide="menu"></i>
-            </button>
-            <span class="topbar-title">BKM Yönetim Paneli</span>
-            <div class="topbar-right">
-                <button class="topbar-bell" @onclick="GoGorevler" title="Açık görevler">
+            </label>
+            <span class="font-bold text-base text-base-content ml-1">BKM Yönetim Paneli</span>
+            <div class="ml-auto flex items-center gap-3">
+                <button class="btn btn-ghost btn-sm btn-square relative" @onclick="GoGorevler" title="Açık görevler">
                     <i data-lucide="bell"></i>
                     @if (_acikGorev > 0)
                     {
-                        <span class="bell-badge">@_acikGorev</span>
+                        <span class="badge badge-primary badge-xs absolute top-1 right-1">@_acikGorev</span>
                     }
                 </button>
-                <span class="topbar-user" title="CFO">
+                <span class="flex items-center gap-1.5 font-semibold text-sm bg-base-200 rounded-lg px-2.5 py-1.5" title="CFO">
                     <i data-lucide="user"></i>
-                    <span class="topbar-user-txt">CFO</span>
+                    <span>CFO</span>
                 </span>
             </div>
         </header>
 
-        <main class="content">
+        <main class="flex-1 p-4 min-w-0">
             @Body
         </main>
 
-        <footer class="appfooter">
+        <footer class="px-5 py-3 text-xs text-base-content/40 border-t border-base-200 bg-base-100">
             BKM Kitap · BKM-Asistan v1 · © 2026
         </footer>
     </div>
+
+    @* ── SIDEBAR (drawer-side) ── *@
+    <aside class="drawer-side z-40">
+        <label for="bkm-drawer" class="drawer-overlay"></label>
+        <div class="w-60 min-h-full bg-neutral text-neutral-content flex flex-col">
+            <div class="flex items-center gap-2.5 px-4 pt-4 pb-3">
+                <span class="badge badge-primary badge-lg font-extrabold tracking-wide">BKM</span>
+                <span class="font-bold text-sm">Yönetim Paneli</span>
+            </div>
+
+            <ul class="menu flex-1 px-3 gap-0.5">
+                <li class="menu-title text-neutral-content/50">ANALİTİK</li>
+                <li>
+                    <NavLink href="" Match="NavLinkMatch.All" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="layout-dashboard"></i><span>Genel Bakış</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="eticaret" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="shopping-cart"></i><span>E-ticaret</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="operasyon" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="store"></i><span>Operasyon</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="envanter" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="package"></i><span>Envanter</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="musteri" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="users"></i><span>Müşteri</span>
+                    </NavLink>
+                </li>
+
+                <li class="menu-title text-neutral-content/50">ASİSTAN</li>
+                <li>
+                    <NavLink href="asistan" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="message-square"></i><span>Asistan</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="gorevler" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="check-square"></i><span>Görevler</span>
+                        @if (_acikGorev > 0)
+                        {
+                            <span class="badge badge-primary badge-sm ml-auto">@_acikGorev</span>
+                        }
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+    </aside>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -90,7 +102,6 @@
 </div>
 
 @code {
-    private bool _collapsed;
     private bool _drawerOpen;
     private int _acikGorev;
 
@@ -100,8 +111,6 @@
         catch { _acikGorev = 0; }
     }
 
-    private void ToggleCollapse() => _collapsed = !_collapsed;
-    private void OpenDrawer() => _drawerOpen = true;
     private void CloseDrawer() => _drawerOpen = false;
     private void GoGorevler() { CloseDrawer(); Nav.NavigateTo("gorevler"); }
 }

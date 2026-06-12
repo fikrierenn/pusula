@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   BKM Yönetim Paneli — Tailwind + DaisyUI kaynak stili
+   Eski custom CSS sınıf adları korunup DaisyUI/Tailwind ile
+   yeniden tanımlandı (mantık/markup'a dokunmadan tema geçişi).
+   Renkler DaisyUI semantic token (primary/base/neutral) — corporate.
+   ============================================================ */
+
+@layer base {
+  body { @apply bg-base-200 text-base-content; font-family: 'Segoe UI', system-ui, sans-serif; }
+  /* Lucide ikon boyutu (i[data-lucide] → svg) */
+  [data-lucide] { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; }
+  .navbar [data-lucide] { width: 1.25rem; height: 1.25rem; }
+}
+
+@layer components {
+
+  /* ── Sayfa başlığı ── */
+  .hd      { @apply flex items-center gap-3 mb-5 flex-wrap; }
+  .hd h1   { @apply text-2xl font-bold tracking-tight text-base-content m-0; }
+  .tar     { @apply text-sm font-semibold text-base-content/50; }
+  .sec     { @apply text-[11px] font-bold uppercase tracking-widest text-base-content/40 mt-6 mb-3; }
+
+  .muted   { @apply text-base-content/50; }
+  .err     { @apply text-error font-semibold; }
+
+  /* ── Dönem seçici / tarih input → DaisyUI select/input ── */
+  .period  { @apply select select-bordered select-sm h-9 min-h-9 ml-auto text-sm font-semibold; }
+  input.period { @apply input input-bordered input-sm h-9 min-h-9 ml-0 text-sm font-semibold; }
+
+  /* ── KPI bandı (.big) → primary hero şeridi ── */
+  .big     { @apply flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5
+             bg-primary text-primary-content shadow-lg; }
+  .big .lbl{ @apply opacity-80 text-xs uppercase tracking-wider; }
+  .big .num{ @apply text-3xl font-extrabold leading-tight tracking-tight; }
+  .big .sub{ @apply text-[13px] opacity-90; }
+
+  /* ── KPI kart grid → Tailwind grid ── */
+  .grid    { @apply gap-3 mb-4;
+             display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  /* ── Kart (.card) → DaisyUI card (base .card markup'ta literal) ── */
+  .card    { @apply bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4
+             transition-all; }
+  .card .ct{ @apply text-[11px] font-bold uppercase tracking-wide text-base-content/50; }
+  .card .cv{ @apply text-[25px] font-extrabold tracking-tight my-1; }
+  .card .cm{ @apply text-[12.5px] text-base-content/60; }
+  .card-tot  { @apply bg-base-200/60; }
+  .card-etic { @apply bg-info/10; }
+
+  /* ── Satır / panel grid ── */
+  .row     { @apply gap-3 mb-3;
+             display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .panel   { @apply bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]
+             min-w-0 transition-all; }
+  .panel:hover { @apply shadow-md; }
+  .panel h3{ @apply text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5; }
+  .panel-wide { grid-column: span 2; }
+  @media (max-width: 900px) { .panel-wide { grid-column: 1 / -1; } }
+
+  /* ── Tablolar → DaisyUI table ── */
+  .panel table,
+  .modal table { @apply table table-sm w-full text-[13px]; }
+  .panel td, .panel th { @apply align-middle; }
+  .panel tbody tr:hover td,
+  .panel table tr:hover > td { @apply bg-base-200/50; }
+  td.r, th.r { @apply text-right; }
+  tr.grp td  { @apply font-bold text-primary bg-base-200; }
+  tr.tot td  { @apply font-bold border-t-2 border-base-300 bg-base-200/60; }
+  tr.clk     { @apply cursor-pointer; }
+  tr.clk:hover td { @apply bg-primary/5; }
+
+  /* ── Tıklanabilir kart hover ── */
+  .clk        { @apply cursor-pointer transition-transform; }
+  .card.clk:hover { @apply -translate-y-0.5 shadow-md; }
+
+  /* ── Marka 2 sütun (envanter) ── */
+  .marka2  { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  @media (max-width: 768px) { .marka2 { grid-template-columns: 1fr; } }
+
+  /* ── Grafik kutusu (Chart.js canvas wrapper — korunmalı) ── */
+  .chart-box { position: relative; height: 220px; }
+  .chart-box canvas, .panel canvas { max-width: 100%; }
+
+  /* ── Butonlar → DaisyUI btn ──
+     btn / btn-primary / btn-ghost DaisyUI'den gelir (markup'ta literal var).
+     Eski .btn küçük varsayılan boyuttaydı → btn-sm normalize. */
+  .btn       { @apply btn-sm; }
+  .btn-ghost { @apply text-error; }
+  .btn-mini  { @apply btn-xs; }
+
+  /* ── Öncelik rozeti → DaisyUI badge ── */
+  .onc   { @apply badge badge-sm font-bold border-0; }
+  .onc-y { @apply badge-error text-error-content; }
+  .onc-o { @apply badge-warning text-warning-content; }
+  .onc-d { @apply badge-success text-success-content; }
+
+  /* ── Durum rozeti (görevler) ── */
+  .durum        { @apply badge badge-sm font-bold border-0; }
+  .durum-acik   { @apply badge-info text-info-content; }
+  .durum-kapali { @apply badge-ghost; }
+
+  /* ── Drill modal (sağdan açılır panel) ── */
+  .ovl   { @apply fixed inset-0 z-50 justify-end; display: none; background: rgba(15,23,42,.45); }
+  .ovl.on{ @apply flex; }
+  .modal { @apply bg-base-100 overflow-auto; padding: 0 28px 28px; width: min(560px, 100%); height: 100vh;
+           animation: slin .15s ease; }
+  @keyframes slin { from { opacity:.5; transform: translateX(20px); } to { opacity:1; transform:none; } }
+  .modal .mtop { @apply sticky top-0 bg-base-100 flex items-center justify-between border-b border-base-200 mb-2;
+                 padding: 16px 0 10px; }
+  .modal h2 { @apply text-lg font-bold text-primary m-0; }
+  .modal .x { @apply cursor-pointer text-2xl text-base-content/40 leading-none; }
+
+  /* ── Asistan sayfası ── */
+  .asis-not   { @apply textarea textarea-bordered w-full text-sm resize-y; }
+  .asis-actions { @apply flex gap-2 items-center mt-2.5 flex-wrap; }
+  .asis-inline  { @apply flex gap-2 mt-2 flex-wrap; }
+  .asis-inp   { @apply input input-bordered input-sm flex-1 min-w-[160px] text-[13px]; }
+  .taslak-kart { @apply card bg-base-200/40 border border-base-200 rounded-xl p-4 mt-3.5; }
+  .taslak-metin{ @apply m-0 whitespace-pre-wrap text-[13.5px] leading-relaxed text-base-content/90;
+                 font-family: inherit; }
+  .asis-ok    { @apply text-success font-semibold mt-3; }
+  .spin       { @apply italic; }
+
+  /* ── Görevler tablosu ── */
+  .filterbar  { @apply flex gap-2.5 flex-wrap items-center mb-3.5; }
+  .filterbar select { @apply select select-bordered select-sm text-[13px]; }
+  .filterbar input  { @apply input input-bordered input-sm text-[13px]; }
+  .gorev-tbl  { @apply table table-zebra w-full text-[13.5px] bg-base-100 rounded-2xl overflow-hidden shadow-sm; }
+  .gorev-tbl th { @apply text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide; }
+  .gorev-tbl tr.clk:hover td { @apply bg-base-200/50; }
+  .gorev-tbl tr.kapali td { @apply opacity-50 line-through; }
+  .gorev-actions { @apply flex gap-1.5; }
+}
+
+/* ── Mobil duyarlılık (KPI/grid) ── */
+@media (max-width: 768px) {
+  .big  { @apply gap-4 p-4; }
+  .big .num { @apply text-2xl; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+@media (max-width: 480px) {
+  .big  { @apply flex-col items-start gap-3; }
+  .grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Blazor varsayılan hata / validasyon UI (korunur) ── */
+.valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
+.invalid { outline: 1px solid #e50000; }
+.validation-message { color: #e50000; }
+#blazor-error-ui {
+  background: lightyellow; bottom: 0; box-shadow: 0 -1px 2px rgba(0,0,0,.2);
+  display: none; left: 0; padding: .6rem 1.25rem 0.7rem 1.25rem; position: fixed; width: 100%; z-index: 1000;
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .75rem; top: .5rem; }
+.blazor-error-boundary { background: #b32121; padding: 1rem; color: white; }
+.blazor-error-boundary::after { content: "An error has occurred."; }
