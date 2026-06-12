@@ -71,4 +71,19 @@ public sealed class GorevService
         using var db = new SqliteConnection(_connStr);
         return db.Execute("UPDATE gorevler SET durum='Kapalı' WHERE id=@id", new { id }) > 0;
     }
+
+    /// <summary>Görev alanlarını güncelle (düzenle modalı).</summary>
+    public bool Guncelle(long id, string baslik, string aciklama, string oncelik, string? atanan, string durum)
+    {
+        using var db = new SqliteConnection(_connStr);
+        return db.Execute(
+            "UPDATE gorevler SET baslik=@baslik, aciklama=@aciklama, oncelik=@oncelik, atanan=@atanan, durum=@durum WHERE id=@id",
+            new { id, baslik, aciklama, oncelik, atanan, durum }) > 0;
+    }
+
+    public bool Sil(long id)
+    {
+        using var db = new SqliteConnection(_connStr);
+        return db.Execute("DELETE FROM gorevler WHERE id=@id", new { id }) > 0;
+    }
 }

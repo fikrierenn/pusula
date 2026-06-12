@@ -1,0 +1,140 @@
+@page "/gorevler"
+@using GmDashboard.Data
+@using GmDashboard.Components.Shared
+@inject GorevService Svc
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>BKM Görevler</PageTitle>
+
+<div class="hd">
+    <h1>Görevler</h1>
+    <span class="tar">@_tumGorevler.Count görev · @AcikSayi açık</span>
+    <button class="btn btn-primary" style="margin-left:auto" @onclick='() => Nav.NavigateTo("asistan")'>+ Asistan'la ekle</button>
+</div>
+
+<div class="filterbar">
+    <select @bind="_fltDurum" @bind:after="Uygula">
+        <option value="">Durum: Hepsi</option>
+        <option value="Açık">Açık</option>
+        <option value="Kapalı">Kapalı</option>
+    </select>
+    <select @bind="_fltOncelik" @bind:after="Uygula">
+        <option value="">Öncelik: Hepsi</option>
+        <option value="Yüksek">Yüksek</option>
+        <option value="Orta">Orta</option>
+        <option value="Düşük">Düşük</option>
+    </select>
+    <input placeholder="Atanan ara…" @bind="_fltAtanan" @bind:event="oninput" @bind:after="Uygula" />
+</div>
+
+<table class="gorev-tbl">
+    <thead>
+        <tr>
+            <th>#</th><th>Başlık</th><th>Öncelik</th><th>Atanan</th><th>Durum</th><th>Oluşturma</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var g in _filtreli)
+        {
+            <tr class="clk @(g.Durum == "Kapalı" ? "kapali" : "")" @onclick="() => Duzenle(g)">
+                <td style="color:#94a3b8">@g.Id</td>
+                <td>@g.Baslik</td>
+                <td><span class="onc onc-@OncSinif(g.Oncelik)">@g.Oncelik</span></td>
+                <td>@(string.IsNullOrEmpty(g.Atanan) ? "—" : g.Atanan)</td>
+                <td><span class="durum @(g.Durum == "Kapalı" ? "durum-kapali" : "durum-acik")">@g.Durum</span></td>
+                <td class="muted">@g.Olusturma</td>
+                <td @onclick:stopPropagation="true">
+                    <div class="gorev-actions">
+                        @if (g.Durum != "Kapalı")
+                        {
+                            <button class="btn btn-mini" @onclick="() => Kapat(g.Id)">Kapat</button>
+                        }
+                        <button class="btn btn-mini btn-ghost" @onclick="() => Sil(g.Id)">Sil</button>
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (_filtreli.Count == 0)
+        {
+            <tr><td colspan="7" class="muted" style="padding:18px;text-align:center">Görev yok.</td></tr>
+        }
+    </tbody>
+</table>
+
+<Modal @bind-Open="_modalAcik" Title="@($"Görev #{_seciliId} düzenle")">
+    <div class="asis-inline" style="flex-direction:column;align-items:stretch;gap:10px">
+        <label class="muted">Başlık</label>
+        <input class="asis-inp" @bind="_eBaslik" />
+        <label class="muted">Açıklama</label>
+        <textarea class="asis-not" rows="3" @bind="_eAciklama"></textarea>
+        <label class="muted">Öncelik</label>
+        <select class="asis-inp" @bind="_eOncelik">
+            <option value="Yüksek">Yüksek</option>
+            <option value="Orta">Orta</option>
+            <option value="Düşük">Düşük</option>
+        </select>
+        <label class="muted">Atanan</label>
+        <input class="asis-inp" @bind="_eAtanan" placeholder="İsim / rol" />
+        <label class="muted">Durum</label>
+        <select class="asis-inp" @bind="_eDurum">
+            <option value="Açık">Açık</option>
+            <option value="Kapalı">Kapalı</option>
+        </select>
+        <div class="asis-actions">
+            <button class="btn btn-primary" @onclick="Kaydet">Kaydet</button>
+            <button class="btn" @onclick='() => _modalAcik = false'>İptal</button>
+        </div>
+    </div>
+</Modal>
+
+@code {
+    private IReadOnlyList<Gorev> _tumGorevler = [];
+    private List<Gorev> _filtreli = [];
+    private string _fltDurum = "", _fltOncelik = "", _fltAtanan = "";
+
+    private bool _modalAcik;
+    private long _seciliId;
+    private string _eBaslik = "", _eAciklama = "", _eOncelik = "Orta", _eAtanan = "", _eDurum = "Açık";
+
+    private int AcikSayi => _tumGorevler.Count(g => g.Durum != "Kapalı");
+
+    protected override void OnInitialized() => Yenile();
+
+    private void Yenile()
+    {
+        _tumGorevler = Svc.Listele(acikOnly: false);
+        Uygula();
+    }
+
+    private void Uygula()
+    {
+        _filtreli = _tumGorevler.Where(g =>
+            (_fltDurum == "" || g.Durum == _fltDurum) &&
+            (_fltOncelik == "" || g.Oncelik.Contains(_fltOncelik)) &&
+            (_fltAtanan == "" || (g.Atanan ?? "").Contains(_fltAtanan, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
+    }
+
+    private void Duzenle(Gorev g)
+    {
+        _seciliId = g.Id;
+        _eBaslik = g.Baslik; _eAciklama = g.Aciklama; _eOncelik = NormOnc(g.Oncelik);
+        _eAtanan = g.Atanan ?? ""; _eDurum = g.Durum;
+        _modalAcik = true;
+    }
+
+    private void Kaydet()
+    {
+        Svc.Guncelle(_seciliId, _eBaslik, _eAciklama, _eOncelik,
+            string.IsNullOrWhiteSpace(_eAtanan) ? null : _eAtanan, _eDurum);
+        _modalAcik = false;
+        Yenile();
+    }
+
+    private void Kapat(long id) { Svc.Kapat(id); Yenile(); }
+    private void Sil(long id) { Svc.Sil(id); Yenile(); }
+
+    private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
+    private static string NormOnc(string o) => o.Contains("Yüksek") ? "Yüksek" : o.Contains("Düşük") ? "Düşük" : "Orta";
+}
