@@ -102,7 +102,7 @@ public sealed class MagazaQueries(Db db)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
             JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-            WHERE MG.mekanID=@mid AND s.Date>=@start AND s.Date<@end
+            WHERE MG.mekanID=@mid AND s.DocumentsTypeId IN (1,2,6,7,8) AND s.Date>=@start AND s.Date<@end
             GROUP BY CASE WHEN LTRIM(RTRIM(spc.CampaignName))='' THEN N'(manuel/kodsuz)' ELSE spc.CampaignName END
             ORDER BY Indirim DESC;
             """;
@@ -117,7 +117,7 @@ public sealed class MagazaQueries(Db db)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
             JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-            WHERE MG.mekanID=@mid AND s.Date>=@start AND s.Date<@end;
+            WHERE MG.mekanID=@mid AND s.DocumentsTypeId IN (1,2,6,7,8) AND s.Date>=@start AND s.Date<@end;
             """;
         var kampToplamFis = await conn.QuerySingleOrDefaultAsync<int>(kampFisSql, par);
         var kampToplamBrut = kampDetay.Sum(k => k.Brut);
