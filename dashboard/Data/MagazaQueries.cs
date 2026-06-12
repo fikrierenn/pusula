@@ -106,35 +106,28 @@ public sealed class MagazaQueries(Db db)
             GROUP BY CASE WHEN LTRIM(RTRIM(spc.CampaignName))='' THEN N'(manuel/kodsuz)' ELSE spc.CampaignName END
             ORDER BY Indirim DESC;
             """;
-        var kampHam = (await conn.QueryAsync<(string Ad, int Gun, decimal Brut, decimal Indirim, decimal Oran, int Fis)>(kampSql, par)).ToList();
+        var kampDetay = (await conn.QueryAsync<KampanyaRow>(kampSql, par)).ToList();
 
-        // B) Fiş cirosu: her kampanyaya giren fişlerin TÜM sepeti (yanında alınan diğer ürünler dahil — çapraz satış).
-        // Çift sayım kabul: bir fiş çok kampanyalıysa her kampanyanın etki alanına sayılır.
-        const string fisCiroSql = """
-            SELECT k.Ad, CAST(SUM(sp.TotalPrice) AS decimal(18,2)) AS FisCiro
-            FROM (
-                SELECT DISTINCT CASE WHEN LTRIM(RTRIM(spc.CampaignName))='' THEN N'(manuel/kodsuz)' ELSE spc.CampaignName END AS Ad, spc.SalesId
-                FROM EncoreMerkez.dbo.SalesProductCampaigns spc
-                JOIN EncoreMerkez.dbo.Sales s ON s.Id=spc.SalesId
-                JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
-                JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-                JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-                WHERE MG.mekanID=@mid AND s.Date>=@start AND s.Date<@end
-            ) k
-            JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=k.SalesId AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
-            GROUP BY k.Ad;
+        // TOPLAM fiş: DISTINCT kampanyalı fiş (kampanyalar arası çift sayımı önler — geçerli kalemli)
+        const string kampFisSql = """
+            SELECT COUNT(DISTINCT spc.SalesId)
+            FROM EncoreMerkez.dbo.SalesProductCampaigns spc
+            JOIN EncoreMerkez.dbo.SalesProducts sp ON sp.SalesId=spc.SalesId AND sp.Sequence=spc.ProductSequence AND sp.IsValid=1
+            JOIN EncoreMerkez.dbo.Sales s ON s.Id=spc.SalesId
+            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+            WHERE MG.mekanID=@mid AND s.Date>=@start AND s.Date<@end;
             """;
-        var fisCiroMap = (await conn.QueryAsync<(string Ad, decimal FisCiro)>(fisCiroSql, par))
-            .ToDictionary(x => x.Ad, x => x.FisCiro);
-        var kampDetay = kampHam
-            .Select(k => new KampanyaRow(k.Ad, k.Gun, k.Brut, k.Indirim, k.Oran, k.Fis, fisCiroMap.GetValueOrDefault(k.Ad, 0)))
-            .ToList();
+        var kampToplamFis = await conn.QuerySingleOrDefaultAsync<int>(kampFisSql, par);
+        var kampToplamBrut = kampDetay.Sum(k => k.Brut);
+        var kampToplamInd = kampDetay.Sum(k => k.Indirim);
 
         // Grupla: 3AL2ÖDE(K) ayrı (ana kampanya) · geri kalan hepsi "Diğer İndirimler" toplu (drill detayında).
         var kampanya = new List<KampanyaGrup>();
         var anaKamp = kampDetay.FirstOrDefault(k => k.Ad == "3AL2ÖDE(K)");
         if (anaKamp is not null)
-            kampanya.Add(new KampanyaGrup("3AL2ÖDE(K)", anaKamp.Brut, anaKamp.Indirim, anaKamp.Oran, anaKamp.FisCiro, anaKamp.Fis, [anaKamp]));
+            kampanya.Add(new KampanyaGrup("3AL2ÖDE(K)", anaKamp.Brut, anaKamp.Indirim, anaKamp.Oran, anaKamp.Fis, [anaKamp]));
         var diger = kampDetay.Where(k => k.Ad != "3AL2ÖDE(K)").ToList();
         if (diger.Count > 0)
         {
@@ -142,7 +135,7 @@ public sealed class MagazaQueries(Db db)
             var dInd = diger.Sum(x => x.Indirim);
             kampanya.Add(new KampanyaGrup("Diğer İndirimler", dBrut, dInd,
                 dBrut > 0 ? Math.Round(100 * dInd / dBrut, 1) : 0,
-                diger.Sum(x => x.FisCiro), diger.Sum(x => x.Fis), diger));
+                diger.Sum(x => x.Fis), diger));
         }
 
         // Kategori (skat, tek mağaza — ürün drill için)
@@ -172,6 +165,7 @@ public sealed class MagazaQueries(Db db)
         decimal? ger = hedef is > 0 ? Math.Round(100 * net / hedef.Value, 1) : null;
 
         return new MagazaDetay(mid, Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0,
-            upt, kpi.Iade ?? 0m, kpi.IadeOran ?? 0m, ger, odeme, kampanya, kategori);
+            upt, kpi.Iade ?? 0m, kpi.IadeOran ?? 0m, ger, odeme, kampanya,
+            kampToplamBrut, kampToplamInd, kampToplamFis, kategori);
     }
 }

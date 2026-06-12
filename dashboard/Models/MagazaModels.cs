@@ -8,13 +8,12 @@ public record OdemeRow(string Tip, int Islem, decimal Tutar, decimal Pay);
 /// <summary>Ödeme üst-grubu (Kredi/Banka Kartı · Nakit · İade Çeki · Hediye Çeki). Detay = bankalar.</summary>
 public record OdemeGrup(string Grup, int Islem, decimal Tutar, decimal Pay, IReadOnlyList<OdemeRow> Detay);
 
-/// <summary>Kampanya yükü (M2). İki bakış:
-/// A) kalem: Brut/Indirim/Oran = sadece kampanyaya giren ürünler (kampanyanın indirim gücü).
-/// B) fiş: FisCiro = o kampanyalı fişlerin TÜM sepeti (yanında alınan diğer ürünler dahil — çapraz satış etkisi).</summary>
-public record KampanyaRow(string Ad, int Gun, decimal Brut, decimal Indirim, decimal Oran, int Fis, decimal FisCiro);
+/// <summary>Kampanya yükü (M2). Brut/Indirim/Oran = kampanyaya giren ürünler (Oran=indirim/brüt).
+/// Fis = bu kampanyaya giren fiş (kampanyalar arası çift sayılabilir — TOPLAM ayrı distinct).</summary>
+public record KampanyaRow(string Ad, int Gun, decimal Brut, decimal Indirim, decimal Oran, int Fis);
 
 /// <summary>Kampanya üst-grubu: 3AL2ÖDE ayrı · Diğer İndirimler toplu (Detay=tek tek kampanyalar).</summary>
-public record KampanyaGrup(string Ad, decimal Brut, decimal Indirim, decimal Oran, decimal FisCiro, int Fis, IReadOnlyList<KampanyaRow> Detay);
+public record KampanyaGrup(string Ad, decimal Brut, decimal Indirim, decimal Oran, int Fis, IReadOnlyList<KampanyaRow> Detay);
 
 /// <summary>Tek mağaza detay: KPI + ödeme/iade/kampanya/UPT + kategori.</summary>
 public record MagazaDetay(
@@ -29,4 +28,7 @@ public record MagazaDetay(
     decimal? GerPct,   // aylık hedef gerçekleşme (sadece ay döneminde)
     IReadOnlyList<OdemeGrup> Odeme,
     IReadOnlyList<KampanyaGrup> Kampanya,
+    decimal KampToplamBrut,     // tüm kampanyalı kalem brüt (TOPLAM oran için)
+    decimal KampToplamIndirim,
+    int KampToplamFis,          // DISTINCT kampanyalı fiş (çift saymaz)
     IReadOnlyList<CategorySlice> Kategori);

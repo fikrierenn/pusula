@@ -76,25 +76,23 @@ else if (_d is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kampanya Yükü</h3>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kampanya</b></td><td class="text-right"><b>Kalem Brüt</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş Net Ciro</b></td><td class="text-right"><b>Fiş</b></td></tr>
-                @{ decimal kTopBrut = 0, kTopInd = 0, kTopFisCiro = 0; int kTopFis = 0; }
+                <tr><td><b>Kampanya</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş</b></td></tr>
                 @foreach (var k in _d.Kampanya)
                 {
-                    kTopBrut += k.Brut; kTopInd += k.Indirim; kTopFisCiro += k.FisCiro; kTopFis += k.Fis;
                     var tikla = k.Detay.Count > 1;
                     <tr class="@(tikla ? "cursor-pointer hover:bg-primary/5" : "")" @onclick="() => OpenKamp(k)">
-                        <td>@k.Ad @(tikla ? "▸" : "")</td><td class="text-right">@Tl(k.Brut)</td><td class="text-right text-error">@Tl(k.Indirim)</td><td class="text-right font-semibold">%@k.Oran</td><td class="text-right text-info">@Tl(k.FisCiro)</td><td class="text-right">@Num(k.Fis)</td></tr>
+                        <td>@k.Ad @(tikla ? "▸" : "")</td><td class="text-right text-error">@Tl(k.Indirim)</td><td class="text-right font-semibold">%@k.Oran</td><td class="text-right">@Num(k.Fis)</td></tr>
                 }
                 @if (_d.Kampanya.Count > 0)
                 {
-                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM</td><td class="text-right">@Tl(kTopBrut)</td><td class="text-right text-error">@Tl(kTopInd)</td><td class="text-right">%@(kTopBrut > 0 ? Math.Round(100 * kTopInd / kTopBrut, 1) : 0)</td><td class="text-right text-info">@Tl(kTopFisCiro)</td><td class="text-right">@Num(kTopFis)</td></tr>
+                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM</td><td class="text-right text-error">@Tl(_d.KampToplamIndirim)</td><td class="text-right">%@(_d.KampToplamBrut > 0 ? Math.Round(100 * _d.KampToplamIndirim / _d.KampToplamBrut, 1) : 0)</td><td class="text-right">@Num(_d.KampToplamFis)</td></tr>
                 }
                 else
                 {
-                    <tr><td colspan="6" class="text-base-content/50">Kampanya yok.</td></tr>
+                    <tr><td colspan="4" class="text-base-content/50">Kampanya yok.</td></tr>
                 }
             </table>
-            <div class="text-[11px] text-base-content/40 mt-2"><b>Kalem Brüt/İndirim/Oran</b> = sadece kampanyaya giren ürünler (indirim öncesi brüt — kampanyanın indirim gücü). <b>Fiş Net Ciro</b> = o kampanyalı fişlerin TÜM sepeti, indirim sonrası net tahsilat (yanında alınan diğer ürünler dahil — çapraz satış). Çok-kampanyalı fiş her kampanyaya sayılır (toplam şişebilir).</div>
+            <div class="text-[11px] text-base-content/40 mt-2">Oran = indirim / kampanyalı kalem brüt satış (3al2öde ~%25-26). TOPLAM Fiş = en az bir kampanyalı tekil fiş (çift saymaz). (manuel/kodsuz) = set indirimi.</div>
         </div>
     </div>
 
@@ -158,12 +156,12 @@ else if (_d is not null)
     <Modal @bind-Open="_modalKamp" Title="@(_selKamp?.Ad + " — Kampanya Detayı")">
         @if (_selKamp is not null)
         {
-            <div class="text-base-content/50 text-xs mb-2">@_aralik · kalem brüt @Tl(_selKamp.Brut) · indirim @Tl(_selKamp.Indirim) · %@_selKamp.Oran</div>
+            <div class="text-base-content/50 text-xs mb-2">@_aralik · indirim @Tl(_selKamp.Indirim) · oran %@_selKamp.Oran</div>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kampanya</b></td><td class="text-right"><b>Kalem Brüt</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş Net Ciro</b></td><td class="text-right"><b>Fiş</b></td></tr>
+                <tr><td><b>Kampanya</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş</b></td></tr>
                 @foreach (var d in _selKamp.Detay)
                 {
-                    <tr><td>@d.Ad</td><td class="text-right">@Tl(d.Brut)</td><td class="text-right text-error">@Tl(d.Indirim)</td><td class="text-right font-semibold">%@d.Oran</td><td class="text-right text-info">@Tl(d.FisCiro)</td><td class="text-right">@Num(d.Fis)</td></tr>
+                    <tr><td>@d.Ad</td><td class="text-right text-error">@Tl(d.Indirim)</td><td class="text-right font-semibold">%@d.Oran</td><td class="text-right">@Num(d.Fis)</td></tr>
                 }
             </table>
         }
