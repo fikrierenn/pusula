@@ -19,6 +19,44 @@ description: BKM-Asistan'ın kullanıcı arayüzünü (Blazor PWA) PRATİK, UI-O
 7. **Affedici.** Yanlış olursa [Düzelt]/[İptal] her zaman görünür. Geri alınabilir.
 8. **Beklemeyi gizle.** Model ilk yükleme ~20sn / inference ~10-30sn → spinner + "düşünüyorum…" (boş ekran değil).
 
+## 1a. ADMIN PANEL SHELL (tüm panel — modern yönetim arayüzü)
+
+> Basit üst-sekme DEĞİL → tam admin panel: **sidebar + header + içerik + footer**. GM BI sayfaları + Asistan hepsi bu shell'de.
+
+```
+┌─────────┬──────────────────────────────────────┐
+│ SIDEBAR │ HEADER (sticky): sayfa başlığı · dönem │
+│ (sol)   │         · 🔔 · 👤 CFO · tema           │
+│         ├──────────────────────────────────────┤
+│ [BKM]   │                                        │
+│         │   İÇERİK (sayfa — kart düzeni)          │
+│ ANALİTİK│                                        │
+│ ▸G.Bakış│                                        │
+│ ▸E-tic  │                                        │
+│ ▸Operas.│                                        │
+│ ▸Envant.│                                        │
+│ ▸Müşteri│                                        │
+│         │                                        │
+│ ASİSTAN │                                        │
+│ ▸Asistan│                                        │
+│ ▸Görevl.│                                        │
+│         ├──────────────────────────────────────┤
+│ [«daralt]│ FOOTER: BKM · v1 · © 2026             │
+└─────────┴──────────────────────────────────────┘
+```
+
+**Sidebar:** sol sabit, koyu (lacivert #0f172a veya BKM koyu) zemin. Logo üstte. Nav GRUPLU başlıklı ("ANALİTİK" / "ASİSTAN"). Her öğe **ikon + metin** (Lucide CDN veya inline SVG). Aktif öğe BKM kırmızı vurgu (sol şerit + arka). [« daralt] → sadece ikon (collapse). **Mobil (<768px):** sidebar gizli, header'da ☰ hamburger → drawer (overlay).
+
+**Header:** üst sticky, beyaz. Sol: ☰ (mobil) + sayfa başlığı. Sağ: dönem seçici (BI sayfalarında) · 🔔 bildirim (bekleyen görev sayısı badge) · 👤 kullanıcı. İnce gölge.
+
+**İçerik:** açık gri (#f1f5f9). Sayfa kartları (.panel/.card) — mevcut korunur. Üst breadcrumb opsiyonel.
+
+**Footer:** ince, gri. "BKM Kitap · BKM-Asistan v1 · scripts/dashboard".
+
+**Modern dokunuş:** yuvarlak köşe (13px), yumuşak gölge, smooth transition (sidebar collapse/hover), ikonlu nav, tutarlı boşluk (16px grid). Tema: BKM kırmızı (#E30622) vurgu/aksiyon · sidebar koyu · içerik açık.
+
+**Teknik:** `MainLayout.razor` yeniden — `<aside class=sidebar>` + `<div class=main><header>+@Body+<footer>`. CSS Grid (sidebar 240px / 1fr). `_sidebarOpen` state (mobil drawer). app.css'e `.sidebar/.navgroup/.navitem/.topbar/.appfooter`. **Mevcut 5 sayfa İÇERİĞİ korunur — sadece shell (layout) değişir.**
+
 ## 1b. İKİ GÖRÜNÜM (chat + normal ekran — tamamlayıcı)
 
 Intent-first: aynı veriyi (görevler) iki kapıdan. Kullanıcı işine göre seçer.
