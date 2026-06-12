@@ -19,7 +19,21 @@ description: BKM-Asistan'ın kullanıcı arayüzünü (Blazor PWA) PRATİK, UI-O
 7. **Affedici.** Yanlış olursa [Düzelt]/[İptal] her zaman görünür. Geri alınabilir.
 8. **Beklemeyi gizle.** Model ilk yükleme ~20sn / inference ~10-30sn → spinner + "düşünüyorum…" (boş ekran değil).
 
-## 2. Ekran Düzeni (/asistan)
+## 1b. İKİ GÖRÜNÜM (chat + normal ekran — tamamlayıcı)
+
+Intent-first: aynı veriyi (görevler) iki kapıdan. Kullanıcı işine göre seçer.
+
+| Görünüm | Route | Ne için | Bileşen |
+|---|---|---|---|
+| **Asistan** | `/asistan` | hızlı GİRİŞ — not→görev, konuş | chat akışı + taslak kartı + aksiyon butonları |
+| **Görevler** | `/gorevler` | YÖNETİM — gör, filtrele, düzenle | tablo/board + filtre + düzenle modal + son tarih |
+
+- **Ortak veri:** ikisi de `GorevService` / `asistan.db`. Chat'te kaydedilen görev anında Görevler ekranında.
+- **Görevler ekranı (klasik GUI):** durum sütunları (Açık/Devam/Kapalı board VEYA tablo) · filtre (öncelik, atanan, durum) · satır tık → düzenle (başlık/açıklama/öncelik/atanan/son tarih) · [Kapat]/[Sil] · son-tarih yaklaşan kırmızı.
+- **Çapraz link:** Asistan'da "Görev #5 kaydedildi → [Görevlerde aç]". Görevler'de [+ Asistan'la ekle] → chat.
+- **Nav:** her ikisi de üst sekmede (Asistan · Görevler), dashboard'ın 5 sayfası yanında.
+
+## 2. Ekran Düzeni (/asistan — chat)
 
 ```
 ┌─ Asistan ──────────────────────────────────┐
