@@ -1,0 +1,182 @@
+@page "/magaza/{Id:int}"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject MagazaQueries Mag
+@inject RefQueries Ref
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>Mağaza Detay — BKM GM</PageTitle>
+
+<div class="flex items-center gap-3 mb-5 flex-wrap">
+    <button class="btn btn-ghost btn-sm" @onclick='() => Nav.NavigateTo("")'>← Genel Bakış</button>
+    <h1 class="text-2xl font-bold tracking-tight m-0">@(_d?.Ad ?? Mekan(Id)) Mağaza</h1>
+    <span class="text-sm font-semibold text-base-content/50">@_aralik</span>
+    <select class="select select-bordered select-sm ml-auto text-sm font-semibold" @bind="_period" @bind:after="LoadAsync">
+        <option value="gunluk">Günlük (dün)</option>
+        <option value="haftalik">Haftalık (son 7 gün)</option>
+        <option value="ay">Aylık (MTD)</option>
+    </select>
+</div>
+
+@if (_loading)
+{
+    <p class="text-base-content/50">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
+}
+else if (_d is not null)
+{
+    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-primary-content shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Ciro</div>
+            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_d.Net)</div>
+            @if (_d.GerPct is not null)
+            {
+                <div class="text-[13px] opacity-90">hedef gerçekleşme %@_d.GerPct</div>
+            }
+        </div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">Fiş</div>
+            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_d.Fis)</div>
+            <div class="text-[13px] opacity-90">sepet @Num(_d.Atv) ₺</div></div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">UPT (sepet adedi)</div>
+            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@_d.Upt.ToString("0.00")</div>
+            <div class="text-[13px] opacity-90">ürün / fiş</div></div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">İade</div>
+            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_d.Iade)</div>
+            <div class="text-[13px] opacity-90">oran %@_d.IadeOran</div></div>
+    </div>
+
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ödeme Tipi Mix</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Tip</b></td><td class="text-right"><b>İşlem</b></td><td class="text-right"><b>Tutar</b></td><td class="text-right"><b>Pay</b></td></tr>
+                @foreach (var o in _d.Odeme)
+                {
+                    <tr><td>@o.Tip</td><td class="text-right">@Num(o.Islem)</td><td class="text-right">@Tl(o.Tutar)</td><td class="text-right">%@o.Pay</td></tr>
+                }
+                @if (_d.Odeme.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-base-content/50">Ödeme kaydı yok.</td></tr>
+                }
+            </table>
+            <div class="text-[11px] text-base-content/40 mt-2">Nakit (TL) oranı kasa mutabakatı için. Para üstü hariç.</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kampanya Yükü</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kampanya</b></td><td class="text-right"><b>Gün</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Fiş</b></td></tr>
+                @{ decimal kTopInd = 0; int kTopFis = 0; }
+                @foreach (var k in _d.Kampanya)
+                {
+                    kTopInd += k.Indirim; kTopFis += k.Fis;
+                    <tr><td>@k.Ad</td><td class="text-right">@k.Gun</td><td class="text-right">@Tl(k.Indirim)</td><td class="text-right">@Num(k.Fis)</td></tr>
+                }
+                @if (_d.Kampanya.Count > 0)
+                {
+                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM</td><td></td><td class="text-right">@Tl(kTopInd)</td><td class="text-right">@Num(kTopFis)</td></tr>
+                }
+                else
+                {
+                    <tr><td colspan="4" class="text-base-content/50">Kampanya yok.</td></tr>
+                }
+            </table>
+            <div class="text-[11px] text-base-content/40 mt-2">İndirim = SUM(-TotalDiscount). (manuel/kodsuz) = set indirimi.</div>
+        </div>
+    </div>
+
+    <div class="text-[11px] font-bold uppercase tracking-widest text-base-content/40 mt-6 mb-3">Kategori Dağılımı (tıkla → ürünler)</div>
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+        <table class="table table-sm w-full text-[13px]">
+            <tr><td><b>Kategori</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Pay</b></td></tr>
+            @{ var tot = _d.Kategori.Sum(k => k.Ciro); }
+            @foreach (var k in _d.Kategori)
+            {
+                <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="text-right">@Tl(k.Ciro)</td><td class="text-right">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
+            }
+            @if (_d.Kategori.Count == 0)
+            {
+                <tr><td colspan="3" class="text-base-content/50">Kategori verisi yok.</td></tr>
+            }
+        </table>
+    </div>
+
+    <p class="text-[11px] text-base-content/40 mt-4">Dönüşüm oranı (G8) kapı sayıcı verisine bağlı — şimdilik yalnız FSM (CSV). Panele eklenecek: B-40 devam.</p>
+
+    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
+        @if (_urunLoading)
+        {
+            <p class="text-base-content/50">Yükleniyor…</p>
+        }
+        else
+        {
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="text-right"><b>Satış</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Bakiye</b></td></tr>
+                @{ var ui = 1; }
+                @foreach (var u in _urunler)
+                {
+                    <tr><td class="text-base-content/40">@ui</td><td>@u.Kod</td><td>@u.Ad</td><td class="text-right">@Num(u.Satis)</td><td class="text-right">@Tl(u.Ciro)</td>
+                        <td class="text-right @(u.Bakiye <= 0 ? "text-error" : "")">@Num(u.Bakiye)</td></tr>
+                    ui++;
+                }
+                @if (_urunler.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-base-content/50">Ürün bulunamadı.</td></tr>
+                }
+            </table>
+        }
+    </Modal>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private string _period = "ay";
+    private bool _loading = true;
+    private string? _error;
+    private string _aralik = "";
+    private MagazaDetay? _d;
+    private bool _modalUrun;
+    private bool _urunLoading;
+    private string _selKat = "";
+    private IReadOnlyList<UrunRow> _urunler = [];
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            var g2 = dun.AddDays(1);
+            (DateOnly start, DateOnly endExcl) = _period switch
+            {
+                "haftalik" => (dun.AddDays(-6), g2),
+                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                _ => (dun, g2),
+            };
+            var son = endExcl.AddDays(-1);
+            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+            _d = await Mag.GetDetayAsync(Id, start, endExcl);
+            if (_d is null) _error = "Geçersiz mağaza.";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task OpenUrun(string kategori)
+    {
+        _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
+        try { _urunler = await Ref.GetUrunlerAsync(kategori); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _urunLoading = false; StateHasChanged(); }
+    }
+
+    private static string Mekan(int id) => id switch { 1 => "FSM", 4477 => "Özlüce", 4478 => "İst.Yolu", _ => "?" };
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}

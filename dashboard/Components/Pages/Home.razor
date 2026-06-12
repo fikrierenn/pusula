@@ -4,6 +4,7 @@
 @inject Queries Queries
 @inject RefQueries Ref
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 
 <PageTitle>BKM GM Dashboard</PageTitle>
@@ -45,7 +46,7 @@ else if (_data is not null)
     <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 mb-4 max-sm:grid-cols-2">
         @foreach (var s in _data.Stores)
         {
-            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick="() => OpenStore(s)">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick='() => Nav.NavigateTo($"magaza/{s.MekanId}")'>
                 <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">@s.Ad &#9656;</div>
                 <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(s.Net)</div>
                 <div class="text-[12.5px] text-base-content/60">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
@@ -143,21 +144,6 @@ else if (_data is not null)
         </table>
     </Modal>
 
-    <Modal @bind-Open="_modalOpen" Title="@(_selStore?.Ad + " — Kategori Dağılımı")">
-        @if (_selStore is not null)
-        {
-            <div class="text-base-content/50 text-xs mb-2">@_aralik · net @Tl(_selStore.Net) · @Num(_selStore.Fis) fiş</div>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kategori</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Pay</b></td></tr>
-                @{ var tot = _selStore.Kategori.Sum(k => k.Ciro); }
-                @foreach (var k in _selStore.Kategori)
-                {
-                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="text-right">@Tl(k.Ciro)</td><td class="text-right">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
-                }
-            </table>
-        }
-    </Modal>
-
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
         @if (_urunLoading)
         {
@@ -196,16 +182,12 @@ else if (_data is not null)
     private IReadOnlyList<HedefMagaza>? _hedefMag;
     private IReadOnlyList<HedefKategori> _hedefKat = [];
     private IJSObjectReference? _charts;
-    private bool _modalOpen;
     private bool _modalEtic;
     private bool _modalTot;
-    private StoreCard? _selStore;
     private bool _modalUrun;
     private bool _urunLoading;
     private string _selKat = "";
     private IReadOnlyList<UrunRow> _urunler = [];
-
-    private void OpenStore(StoreCard s) { _selStore = s; _modalOpen = true; }
 
     private async Task OpenUrun(string kategori)
     {

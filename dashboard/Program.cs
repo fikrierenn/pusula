@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<Queries>();
+builder.Services.AddScoped<MagazaQueries>();
 builder.Services.AddScoped<RefQueries>();
 builder.Services.AddScoped<EticQueries>();
 builder.Services.AddSingleton<LlmService>();      // yerel LLM — model lazy yüklenir (ilk istekte)
