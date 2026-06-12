@@ -135,6 +135,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-14** Grok sinyallerini iç satış verisiyle cross-check (önceki sorgular 30s timeout — başlık-bazlı küçük sorgulara böl).
 
 #### Faz 3 — Çeyrek (düşük öncelik / temizlik — ~15 gün)
+- [ ] **B-45** [FİKİR — TIER 3 plan-first] **BKM-Asistan** (OpenClaw'dan esinlenme, 12.06): minimal AI asistan — Telegram bot + Claude API (tool use) + mevcut sema/Dapper/gm-rapor araçları. CFO telefondan "dün kargo/ciro ne oldu" yazar → Claude SQL/rapor aracıyla Türkçe cevap. Stack C# (.NET, Telegram.Bot + Anthropic SDK), dashboard ile tutarlı. OpenClaw'ın çekirdeği (kanal+agent+tool) — 15 kanal/sandbox/companion GEREKSİZ. Kurmadan önce: güvenlik (tek-kullanıcı auth), API maliyet, mimari plan. **(YENİ — şimdilik fikir, ileride)**
 - [ ] **B-31** [TIER 3 plan-first] GM rapor dosyalarını (12 dosya, 7 klasör) `sorgular/gm-rapor/` altına taşı — skill/katalog/plan/INDEX referansları güncellenmeli. Şimdilik `sorgular/INDEX.md` tek-harita yeterli. **(YENİ)**
 - [ ] **B-32** [TIER 3 plan-first] Günlük otomatik mail (G0-G7) — generate_brief gibi günlük pano, Task Scheduler 08:30. B-27 (UPT performans) önce çözülmeli. **(YENİ)**
 - [ ] **B-15** `BKM-Mobil-App-Baremli-Sorgular.sql` (eski J_CLCARD versiyonu) deprecated → kaldır.
