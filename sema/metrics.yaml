@@ -90,3 +90,11 @@ metrics:
     pivot: "Depo/Mağaza × Alış/Satış × 3 ay (01=son 30g, 02=30-60g, 03=60-90g)"
     note: "stkFirma=570 BKM kendi yayınları. Bakiye bakiye_vw.cKod=frmID (×-1)."
     rapor: "CARİ ÖZET DURUM.sql"
+
+  upt_sepet_adedi:          # UPT = unit per transaction (sepet derinliği) — 12.06 doğrulandı
+    formula: "SUM(SalesProducts.Amount) / COUNT(DISTINCT Sales.Id)"
+    source: "EncoreMerkez.SalesProducts.Amount (decimal 18,3 = SATILAN MİKTAR/adet) · IsValid=1 · BarcodeNo<>'1001'"
+    filter: "Sales.DocumentsTypeId IN (1,2,6,7,8) (iade hariç), tek mağaza mekanID"
+    dogrulama: "FSM 2026-06-11: 3754 adet / 936 fiş = 4.01 UPT (makul)"
+    note: "Amount = miktar kolonu (kesirli olabilir). TotalPrice ≠ adet. UPT 3al2öde etkisini gösterir; ATV (₺/fiş) ile birlikte sepet analizi. Dashboard /magaza/{id} KPI bandında."
+    rapor: "dashboard MagazaQueries.GetDetayAsync · gm-rapor G1"

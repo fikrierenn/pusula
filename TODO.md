@@ -76,7 +76,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ### BKM — BIRLESIK ONCELIK SIRASI
 
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
-- [ ] **B-40** Mağaza 5 panel (Genel Bakış sığ): ödeme mix · iade analizi · kampanya yükü · UPT/sepet derinliği · dönüşüm (FSM kapı sayıcı). Veri hazır (G2/P3/P5/G8). Agent prompt 12.06 transcript'te hazır. **(YENİ)**
+- [~] **B-40** Mağaza detay sayfası `/magaza/{id}` — ✅ 4/5 panel (ödeme mix · iade · kampanya · UPT) commit 12.06. Home kartı→sayfa, ürün drill çalışır, DaisyUI literal. **Kalan:** dönüşüm (G8 kapı sayıcı CSV — FSM-only, Özlüce/İst.Yolu sayıcı bekliyor). UPT metrics.yaml'a yazıldı.
 - [ ] **B-41** 7 JOKER kargo SQL entegre (`D:\Belgelerim\sql\_JOKER\`): kargo gün detay · kargoya verilme süreleri v2 · ay bazlı ortalama · çıkış-teslim süreleri · kargo+kapıda ödeme bedelleri · kapıda ödeme rapor · il teslimat perf. **Kullanıcının gerçek üretim sorguları — agent L1-L3'ten daha doğru.** L1-L3 + dashboard E-ticaret kargo panellerini bunlarla güçlendir. **(YENİ)**
 - [ ] **B-42** Eski Python pano (`scripts/gm_dashboard.py`) emekli kararı — Blazor canlı (`dashboard/`, port 5112). Paralel mi dursun? briefings/* eski çıktılar yanlış e-tic rakamıyla → regenerate/temizle. **(YENİ)**
 - [ ] **B-43** Kafe POS DB erişimi araştır — EncoreMerkez'de kafe yok, xlsx kanonik. Kafe ayrı POS sistemi nerede? **(YENİ)**
