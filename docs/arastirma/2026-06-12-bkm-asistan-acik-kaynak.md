@@ -141,6 +141,21 @@
 
 → "Kendi yapın" = OpenClaw'ı klonlamak DEĞİL, bu 3 eksiği eklemek. Çekirdek bir hafta sonu.
 
+## 5b. Repolardan Esinlenilen Ek Yetenekler (önce atlanmıştı)
+> Taranan projelerin yaptığı ama ilk vizyonda olmayan. **İlk 3 öncelikli** (faza gir), kalanı zamanla.
+
+**ÖNCELİKLİ (vizyona dahil):**
+1. **🎤 Ses/dikte** (OpenClaw voice) — CFO arabada/yürürken "not al → Murat'a görev at", ellersiz. En çok kullanılacak akış. Telegram voice message → transcribe (Whisper) → işle.
+2. **🔒 KVKK/PII maskeleme** (Open WebUI Filters/Valves deseni) — müşteri adı/telefon Claude'a giderken maskele/anonimleştir. **Yasal zorunluluk**, baştan tasarla (sonradan eklemek zor).
+3. **📄 Doküman RAG** (AnythingLLM/LibreChat) — sözleşme/fatura/PDF yükle → içinden sor ("ceza maddesi ne", "KDV kaç"). SQL'in dışındaki belgeler.
+
+**İLERİDE (backlog):**
+- 🏠 Yerel model opsiyonu (Ollama) — hassas finans verisi için bulut yerine yerel LLM
+- 🔗 Çok-adımlı workflow (n8n) — olay→zincir aksiyon (sipariş→stok→tedarikçi mail)
+- 🧠 Geçmiş bellek/arama — "geçen ay ne konuşmuştuk" (embedding arşiv)
+- 👥 Çoklu uzman ajan — finans/lojistik/HR ayrı uzman, yönlendirme
+- 🖼️ Canvas — chat içi grafik/tablo (dashboard'a ek)
+
 ## 6. Önerilen Faz Planı (B-45 detay) — OFİS ÖNCE, BI sonra
 1. **Faz 1 (POC):** Telegram.Bot + Agent Framework + **mail özet** (Graph/Gmail). "Bugün önemli mail var mı" → özet. + hatırlatma. (~2-3 gün)
 2. **Faz 2:** Takvim + görev — toplantı planla, mailden görev üret, To Do/SQL takip.
@@ -150,6 +165,7 @@
 
 > Önce CFO'nun günlük akışı (mail/takvim/görev), sonra BI. BI en kolayı (altyapı hazır) ama vizyonun küçük parçası.
 > **Güvenlik baştan:** tek-kullanıcı (Telegram user_id whitelist), mail/takvim OAuth token güvenli sakla (.env/secret), Claude'a yazma-yetkisi onaylı.
+> **Baştan tasarla (sonradan zor):** KVKK/PII maskeleme (Faz 1'den itibaren müşteri verisi maskeli LLM'e). Ses/dikte (Faz 2). Doküman RAG (Faz 3-4 arası).
 
 ## Kaynaklar (doğrulanmış)
 - LibreChat MIT + MCP client (3-0 / 2-0 vote): github.com/danny-avila/librechat
