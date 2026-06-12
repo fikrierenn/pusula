@@ -1,16 +1,86 @@
 @inherits LayoutComponentBase
+@inject GmDashboard.Data.GorevService Gorevler
+@inject NavigationManager Nav
 
-<div class="wrap">
-    <nav class="nav">
-        <span class="logo">BKM</span>
-        <NavLink class="navlink" href="" Match="NavLinkMatch.All">Genel Bakış</NavLink>
-        <NavLink class="navlink" href="asistan">Asistan</NavLink>
-        <NavLink class="navlink" href="operasyon">Operasyon</NavLink>
-        <NavLink class="navlink" href="eticaret">E-ticaret</NavLink>
-        <NavLink class="navlink" href="envanter">Envanter</NavLink>
-        <NavLink class="navlink" href="musteri">Müşteri</NavLink>
-    </nav>
-    @Body
+<div class="shell @(_collapsed ? "collapsed" : "") @(_drawerOpen ? "drawer-open" : "")">
+
+    @* ── Mobil drawer arka karartma ── *@
+    <div class="drawer-ovl" @onclick="CloseDrawer"></div>
+
+    @* ── SIDEBAR ── *@
+    <aside class="sidebar">
+        <div class="sb-logo">
+            <span class="logo">BKM</span>
+            <span class="sb-logo-txt">Yönetim Paneli</span>
+        </div>
+
+        <nav class="sb-nav">
+            <div class="navgroup">ANALİTİK</div>
+            <NavLink class="navitem" href="" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                <i data-lucide="layout-dashboard"></i><span>Genel Bakış</span>
+            </NavLink>
+            <NavLink class="navitem" href="eticaret" @onclick="CloseDrawer">
+                <i data-lucide="shopping-cart"></i><span>E-ticaret</span>
+            </NavLink>
+            <NavLink class="navitem" href="operasyon" @onclick="CloseDrawer">
+                <i data-lucide="store"></i><span>Operasyon</span>
+            </NavLink>
+            <NavLink class="navitem" href="envanter" @onclick="CloseDrawer">
+                <i data-lucide="package"></i><span>Envanter</span>
+            </NavLink>
+            <NavLink class="navitem" href="musteri" @onclick="CloseDrawer">
+                <i data-lucide="users"></i><span>Müşteri</span>
+            </NavLink>
+
+            <div class="navgroup">ASİSTAN</div>
+            <NavLink class="navitem" href="asistan" @onclick="CloseDrawer">
+                <i data-lucide="message-square"></i><span>Asistan</span>
+            </NavLink>
+            <NavLink class="navitem" href="gorevler" @onclick="CloseDrawer">
+                <i data-lucide="check-square"></i><span>Görevler</span>
+                @if (_acikGorev > 0)
+                {
+                    <span class="navbadge">@_acikGorev</span>
+                }
+            </NavLink>
+        </nav>
+
+        <button class="sb-collapse" @onclick="ToggleCollapse" title="Daralt/Genişlet">
+            <i data-lucide="@(_collapsed ? "chevrons-right" : "chevrons-left")"></i>
+            <span>Daralt</span>
+        </button>
+    </aside>
+
+    @* ── ANA ALAN ── *@
+    <div class="main">
+        <header class="topbar">
+            <button class="hamburger" @onclick="OpenDrawer" title="Menü">
+                <i data-lucide="menu"></i>
+            </button>
+            <span class="topbar-title">BKM Yönetim Paneli</span>
+            <div class="topbar-right">
+                <button class="topbar-bell" @onclick="GoGorevler" title="Açık görevler">
+                    <i data-lucide="bell"></i>
+                    @if (_acikGorev > 0)
+                    {
+                        <span class="bell-badge">@_acikGorev</span>
+                    }
+                </button>
+                <span class="topbar-user" title="CFO">
+                    <i data-lucide="user"></i>
+                    <span class="topbar-user-txt">CFO</span>
+                </span>
+            </div>
+        </header>
+
+        <main class="content">
+            @Body
+        </main>
+
+        <footer class="appfooter">
+            BKM Kitap · BKM-Asistan v1 · © 2026
+        </footer>
+    </div>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -18,3 +88,20 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private bool _collapsed;
+    private bool _drawerOpen;
+    private int _acikGorev;
+
+    protected override void OnInitialized()
+    {
+        try { _acikGorev = Gorevler.Listele(acikOnly: true).Count; }
+        catch { _acikGorev = 0; }
+    }
+
+    private void ToggleCollapse() => _collapsed = !_collapsed;
+    private void OpenDrawer() => _drawerOpen = true;
+    private void CloseDrawer() => _drawerOpen = false;
+    private void GoGorevler() { CloseDrawer(); Nav.NavigateTo("gorevler"); }
+}

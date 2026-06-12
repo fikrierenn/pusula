@@ -16,7 +16,15 @@
     <Routes />
     <ReconnectModal />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        // Lucide ikonlarını her render sonrası yeniden çiz (Blazor interactive DOM değişir)
+        function drawIcons() { if (window.lucide) window.lucide.createIcons(); }
+        drawIcons();
+        const _ico = new MutationObserver(() => { clearTimeout(window.__ico); window.__ico = setTimeout(drawIcons, 60); });
+        _ico.observe(document.body, { childList: true, subtree: true });
+    </script>
 </body>
 
 </html>
