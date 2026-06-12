@@ -142,3 +142,10 @@ codes:
       56: BURSA KÜLTÜR (Heykel — aktif cari, alış)
       60398: HEYKEL TRANSFER DEPOSU (mekan/firma)
       60400: Heykel Transfer
+
+  encore_odeme_grup:        # 12.06 — PaymentTypes.Name → ödeme üst-grubu (dashboard ödeme paneli)
+    "TÜRK LİRASI": Nakit
+    "İADE ÇEKİ": İade Çeki
+    "HEDİYE ÇEKİ": Hediye Çeki
+    _default: Kredi/Banka Kartı   # banka adları (HALK BANKASI, İŞ, AKBANK, ANADOLU, VAKIF, DENİZ, QNB...)
+    note: "FSM 01-12 Haz para üstü hariç: Kredi/Banka %74,7 · Nakit %24,4 · İade Çeki %0,7 · Hediye Çeki %0,1. HALK BANKASI POS hakim (%68,8 kart içi). SalesPayments.IsChangeAmount=0 (para üstü hariç) ZORUNLU."

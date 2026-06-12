@@ -12,6 +12,15 @@ public sealed class MagazaQueries(Db db)
 {
     static readonly Dictionary<int, string> Mekan = new() { [1] = "FSM", [4477] = "Özlüce", [4478] = "İst.Yolu" };
 
+    // Ödeme tipi → üst-grup. TÜRK LİRASI=Nakit, çekler ayrı, geri kalan banka adları=Kredi/Banka Kartı.
+    static string OdemeGrubu(string tip) => tip?.ToUpperInvariant() switch
+    {
+        "TÜRK LİRASI" => "Nakit",
+        "İADE ÇEKİ" => "İade Çeki",
+        "HEDİYE ÇEKİ" => "Hediye Çeki",
+        _ => "Kredi/Banka Kartı",
+    };
+
     public async Task<MagazaDetay?> GetDetayAsync(int mid, DateOnly start, DateOnly endExcl)
     {
         if (!Mekan.ContainsKey(mid)) return null;
@@ -65,7 +74,17 @@ public sealed class MagazaQueries(Db db)
             GROUP BY pt.Name
             ORDER BY Tutar DESC;
             """;
-        var odeme = (await conn.QueryAsync<OdemeRow>(odemeSql, par)).ToList();
+        var odemeHam = (await conn.QueryAsync<OdemeRow>(odemeSql, par)).ToList();
+        // Üst-grupla: TÜRK LİRASI=Nakit · İADE ÇEKİ · HEDİYE ÇEKİ · geri kalan (banka adları)=Kredi/Banka Kartı
+        var toplamOdeme = odemeHam.Sum(o => o.Tutar);
+        var siraDuzen = new Dictionary<string, int> { ["Kredi/Banka Kartı"] = 0, ["Nakit"] = 1, ["İade Çeki"] = 2, ["Hediye Çeki"] = 3 };
+        var odeme = odemeHam
+            .GroupBy(o => OdemeGrubu(o.Tip))
+            .Select(g => new OdemeGrup(g.Key, g.Sum(x => x.Islem), g.Sum(x => x.Tutar),
+                toplamOdeme > 0 ? Math.Round(100 * g.Sum(x => x.Tutar) / toplamOdeme, 1) : 0,
+                g.OrderByDescending(x => x.Tutar).ToList()))
+            .OrderBy(g => siraDuzen.GetValueOrDefault(g.Grup, 9))
+            .ToList();
 
         // Kampanya yükü (M2, tek mağaza; CampaignName boş = manuel set indirimi)
         // Brüt = kampanyalı kalemlerin net satışı (SalesProducts.TotalPrice, Sequence köprü) + indirim.

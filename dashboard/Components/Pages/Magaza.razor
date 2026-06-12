@@ -52,17 +52,25 @@ else if (_d is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ödeme Tipi Mix</h3>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Tip</b></td><td class="text-right"><b>İşlem</b></td><td class="text-right"><b>Tutar</b></td><td class="text-right"><b>Pay</b></td></tr>
+                <tr><td><b>Ödeme</b></td><td class="text-right"><b>İşlem</b></td><td class="text-right"><b>Tutar</b></td><td class="text-right"><b>Pay</b></td></tr>
+                @{ decimal oTopTut = 0; int oTopIsl = 0; }
                 @foreach (var o in _d.Odeme)
                 {
-                    <tr><td>@o.Tip</td><td class="text-right">@Num(o.Islem)</td><td class="text-right">@Tl(o.Tutar)</td><td class="text-right">%@o.Pay</td></tr>
+                    oTopTut += o.Tutar; oTopIsl += o.Islem;
+                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenOdeme(o)">
+                        <td>@o.Grup @(o.Detay.Count > 1 ? "▸" : "")</td>
+                        <td class="text-right">@Num(o.Islem)</td><td class="text-right">@Tl(o.Tutar)</td><td class="text-right">%@o.Pay</td></tr>
                 }
-                @if (_d.Odeme.Count == 0)
+                @if (_d.Odeme.Count > 0)
+                {
+                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM</td><td class="text-right">@Num(oTopIsl)</td><td class="text-right">@Tl(oTopTut)</td><td class="text-right">%100</td></tr>
+                }
+                else
                 {
                     <tr><td colspan="4" class="text-base-content/50">Ödeme kaydı yok.</td></tr>
                 }
             </table>
-            <div class="text-[11px] text-base-content/40 mt-2">Nakit (TL) oranı kasa mutabakatı için. Para üstü hariç.</div>
+            <div class="text-[11px] text-base-content/40 mt-2">Kart grubuna tıkla → banka detayı. Nakit (TL) kasa mutabakatı. Para üstü hariç.</div>
         </div>
 
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
@@ -129,6 +137,21 @@ else if (_d is not null)
             </table>
         }
     </Modal>
+
+    <Modal @bind-Open="_modalOdeme" Title="@(_selOdeme?.Grup + " — Banka / Alt Kalem Detayı")">
+        @if (_selOdeme is not null)
+        {
+            <div class="text-base-content/50 text-xs mb-2">@_aralik · @Tl(_selOdeme.Tutar) · @Num(_selOdeme.Islem) işlem · %@_selOdeme.Pay</div>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kalem</b></td><td class="text-right"><b>İşlem</b></td><td class="text-right"><b>Tutar</b></td><td class="text-right"><b>Grup içi pay</b></td></tr>
+                @foreach (var b in _selOdeme.Detay)
+                {
+                    <tr><td>@b.Tip</td><td class="text-right">@Num(b.Islem)</td><td class="text-right">@Tl(b.Tutar)</td>
+                        <td class="text-right">%@(_selOdeme.Tutar > 0 ? Math.Round(100 * b.Tutar / _selOdeme.Tutar, 1) : 0)</td></tr>
+                }
+            </table>
+        }
+    </Modal>
 }
 
 @code {
@@ -143,6 +166,10 @@ else if (_d is not null)
     private bool _urunLoading;
     private string _selKat = "";
     private IReadOnlyList<UrunRow> _urunler = [];
+    private bool _modalOdeme;
+    private OdemeGrup? _selOdeme;
+
+    private void OpenOdeme(OdemeGrup o) { _selOdeme = o; _modalOdeme = true; }
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
