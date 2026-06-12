@@ -114,3 +114,24 @@ body { background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,
 .modal td { padding:6px 4px; border-bottom:1px solid #f1f5f9; }
 
 .card-etic { border-left-color:#0ea5e9; background:#f0f9ff; }
+
+/* ===== Asistan sayfası ===== */
+.asis-not { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #cbd5e1; border-radius:9px; font-family:inherit; font-size:14px; resize:vertical; }
+.asis-not:focus { outline:none; border-color:var(--kirmizi); }
+.asis-actions { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+.asis-inline { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.asis-inp { flex:1; min-width:160px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; }
+.asis-inp:focus { outline:none; border-color:var(--kirmizi); }
+.btn { padding:8px 14px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; color:#334155; font-size:13px; font-weight:600; cursor:pointer; }
+.btn:hover:not(:disabled) { background:#f1f5f9; }
+.btn:disabled { opacity:.5; cursor:default; }
+.btn-primary { background:var(--kirmizi); border-color:var(--kirmizi); color:#fff; }
+.btn-primary:hover:not(:disabled) { background:#b00518; }
+.btn-ghost { color:#dc2626; }
+.btn-mini { padding:4px 10px; font-size:12px; }
+.taslak-kart { margin-top:14px; background:#fafafa; border:1px solid #e2e8f0; border-left:5px solid var(--kirmizi); border-radius:11px; padding:14px 16px; }
+.taslak-metin { margin:0; white-space:pre-wrap; font-family:inherit; font-size:13.5px; line-height:1.5; color:#1e293b; }
+.asis-ok { color:#16a34a; font-weight:600; margin-top:12px; }
+.spin { font-style:italic; }
+.onc { padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; }
+.onc-y { background:#fee2e2; color:#dc2626; } .onc-o { background:#fef3c7; color:#b45309; } .onc-d { background:#dcfce7; color:#16a34a; }

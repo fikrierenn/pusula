@@ -1,0 +1,160 @@
+@page "/asistan"
+@using GmDashboard.Data
+@inject LlmService Llm
+@inject GorevService Gorevler
+@rendermode InteractiveServer
+
+<PageTitle>BKM Asistan</PageTitle>
+
+<div class="hd">
+    <h1>Asistan</h1>
+    <span class="tar">Not → görev taslağı → kaydet / ata</span>
+</div>
+
+<div class="row">
+    <div class="panel">
+        <h3>Yeni Not</h3>
+        <textarea class="asis-not" rows="3" placeholder="Kısa bir not yaz… (örn: özlüce vitrin yenilensin ramazan teması bütçe ayrılsın)"
+                  @bind="_not" @bind:event="oninput" disabled="@_busy"></textarea>
+        <div class="asis-actions">
+            <button class="btn btn-primary" @onclick="GonderAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_not))">Gönder</button>
+            @if (_busy)
+            {
+                <span class="muted spin">@_busyMesaj</span>
+            }
+        </div>
+        @if (_hata is not null)
+        {
+            <p class="err">@_hata</p>
+        }
+
+        @if (_taslak is not null)
+        {
+            <div class="taslak-kart">
+                <pre class="taslak-metin">@_taslak</pre>
+                <div class="asis-actions">
+                    <button class="btn btn-primary" @onclick="KaydetAsync" disabled="@_busy">✅ Kaydet</button>
+                    <button class="btn" @onclick="() => _ataAcik = !_ataAcik" disabled="@_busy">👤 Kişiye Ata</button>
+                    <button class="btn" @onclick="() => _duzeltAcik = !_duzeltAcik" disabled="@_busy">✏️ Düzelt</button>
+                    <button class="btn btn-ghost" @onclick="Iptal" disabled="@_busy">❌ İptal</button>
+                </div>
+
+                @if (_ataAcik)
+                {
+                    <div class="asis-inline">
+                        <input class="asis-inp" placeholder="İsim / rol" @bind="_atanan" disabled="@_busy" />
+                        <button class="btn btn-primary" @onclick="AtaKaydetAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_atanan))">Kaydet ve Ata</button>
+                    </div>
+                }
+                @if (_duzeltAcik)
+                {
+                    <div class="asis-inline">
+                        <input class="asis-inp" placeholder="Düzeltme (örn: bütçeyi 50 bin TL yap)" @bind="_duzeltme" disabled="@_busy" />
+                        <button class="btn btn-primary" @onclick="DuzeltAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_duzeltme))">Uygula</button>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_sonMesaj is not null)
+        {
+            <p class="asis-ok">@_sonMesaj</p>
+        }
+    </div>
+
+    <div class="panel">
+        <h3>Açık Görevler (@_gorevler.Count)</h3>
+        <table>
+            <tr><td><b>#</b></td><td><b>Başlık</b></td><td><b>Öncelik</b></td><td><b>Atanan</b></td><td></td></tr>
+            @foreach (var g in _gorevler)
+            {
+                <tr>
+                    <td style="color:#94a3b8">@g.Id</td>
+                    <td>@g.Baslik</td>
+                    <td><span class="onc onc-@OncSinif(g.Oncelik)">@g.Oncelik</span></td>
+                    <td>@(string.IsNullOrEmpty(g.Atanan) ? "—" : g.Atanan)</td>
+                    <td class="r"><button class="btn btn-mini" @onclick="() => KapatAsync(g.Id)">Kapat</button></td>
+                </tr>
+            }
+            @if (_gorevler.Count == 0)
+            {
+                <tr><td colspan="5" class="muted">Açık görev yok.</td></tr>
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    private string _not = "";
+    private string? _taslak;
+    private string _atanan = "";
+    private string _duzeltme = "";
+    private bool _ataAcik, _duzeltAcik;
+    private bool _busy;
+    private string _busyMesaj = "";
+    private string? _hata;
+    private string? _sonMesaj;
+    private IReadOnlyList<Gorev> _gorevler = [];
+
+    protected override void OnInitialized() => Yenile();
+
+    private void Yenile() => _gorevler = Gorevler.Listele(acikOnly: true);
+
+    private async Task GonderAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_not)) return;
+        _hata = null; _sonMesaj = null; _ataAcik = false; _duzeltAcik = false;
+        await Uret(_not, null);
+    }
+
+    private async Task DuzeltAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_duzeltme) || _taslak is null) return;
+        var d = _duzeltme; _duzeltAcik = false;
+        await Uret(_not, d);
+        _duzeltme = "";
+    }
+
+    private async Task Uret(string not, string? duzeltme)
+    {
+        _busy = true;
+        _busyMesaj = Llm.Loaded ? "Taslak üretiliyor…" : "Model yükleniyor… (ilk seferde ~20 sn)";
+        StateHasChanged();
+        try
+        {
+            _taslak = await Task.Run(() => Llm.TaslakUret(not, duzeltme));
+        }
+        catch (Exception ex) { _hata = ex.Message; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private async Task KaydetAsync() => await Kaydet(null);
+    private async Task AtaKaydetAsync() { await Kaydet(_atanan); _atanan = ""; _ataAcik = false; }
+
+    private async Task Kaydet(string? atanan)
+    {
+        if (_taslak is null) return;
+        try
+        {
+            var id = await Task.Run(() => Gorevler.Kaydet(_taslak, atanan));
+            _sonMesaj = atanan is null ? $"✅ Görev #{id} kaydedildi." : $"✅ Görev #{id} kaydedildi ve {atanan} kişisine atandı.";
+            _taslak = null; _not = "";
+            Yenile();
+        }
+        catch (Exception ex) { _hata = ex.Message; }
+    }
+
+    private void Iptal()
+    {
+        _taslak = null; _ataAcik = false; _duzeltAcik = false; _sonMesaj = null;
+    }
+
+    private async Task KapatAsync(long id)
+    {
+        await Task.Run(() => Gorevler.Kapat(id));
+        Yenile();
+        StateHasChanged();
+    }
+
+    private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
+}
