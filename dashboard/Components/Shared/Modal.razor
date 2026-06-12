@@ -1,16 +1,14 @@
-@* Reusable drill modal — sağdan açılır panel. Açık olunca arka plan karartılır. *@
-@if (Open)
-{
-    <div class="ovl on" @onclick="Close">
-        <div class="modal" @onclick:stopPropagation="true">
-            <div class="mtop">
-                <h2>@Title</h2>
-                <span class="x" @onclick="Close">&times;</span>
-            </div>
-            @ChildContent
+@* DaisyUI native modal — drill paneli. modal-open ile açılır, backdrop tık kapatır. *@
+<div class="modal @(Open ? "modal-open" : "")" role="dialog">
+    <div class="modal-box max-w-3xl w-full max-h-[85vh]">
+        <div class="flex items-center justify-between sticky top-0 bg-base-100 z-10 pb-3 mb-3 border-b border-base-200 -mx-6 px-6 -mt-6 pt-6">
+            <h3 class="text-lg font-bold text-primary m-0">@Title</h3>
+            <button class="btn btn-sm btn-circle btn-ghost" @onclick="Close" aria-label="Kapat">✕</button>
         </div>
+        @ChildContent
     </div>
-}
+    <div class="modal-backdrop" @onclick="Close"></div>
+</div>
 
 @code {
     [Parameter] public bool Open { get; set; }
