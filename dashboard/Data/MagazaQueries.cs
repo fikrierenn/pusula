@@ -68,12 +68,17 @@ public sealed class MagazaQueries(Db db)
         var odeme = (await conn.QueryAsync<OdemeRow>(odemeSql, par)).ToList();
 
         // Kampanya yükü (M2, tek mağaza; CampaignName boş = manuel set indirimi)
+        // Brüt = kampanyalı kalemlerin net satışı (SalesProducts.TotalPrice, Sequence köprü) + indirim.
+        // İndirim oranı = indirim / brüt (3al2öde ~%25,7 doğrulandı 12.06).
         const string kampSql = """
             SELECT CASE WHEN LTRIM(RTRIM(spc.CampaignName))='' THEN N'(manuel/kodsuz)' ELSE spc.CampaignName END AS Ad,
                    COUNT(DISTINCT CONVERT(date,s.Date)) AS Gun,
+                   CAST(SUM(sp.TotalPrice)+SUM(-spc.TotalDiscount) AS decimal(18,2)) AS Brut,
                    CAST(SUM(-spc.TotalDiscount) AS decimal(18,2)) AS Indirim,
+                   CAST(100.0*SUM(-spc.TotalDiscount)/NULLIF(SUM(sp.TotalPrice)+SUM(-spc.TotalDiscount),0) AS decimal(5,1)) AS Oran,
                    COUNT(DISTINCT spc.SalesId) AS Fis
             FROM EncoreMerkez.dbo.SalesProductCampaigns spc
+            JOIN EncoreMerkez.dbo.SalesProducts sp ON sp.SalesId=spc.SalesId AND sp.Sequence=spc.ProductSequence AND sp.IsValid=1
             JOIN EncoreMerkez.dbo.Sales s ON s.Id=spc.SalesId
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId

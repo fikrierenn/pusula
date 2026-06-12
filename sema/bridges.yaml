@@ -205,3 +205,9 @@ bridges:
     scope: joker
     confidence: 1.0
     note: "Toplanacak sipariş → sipariş. WMS bekleyen raflama. J_DETAIL_BOXES (raflanmış) ile ihtiyaç=sipariş−raflanmış."
+  - id: encore-kampanya-kalem
+    from: EncoreMerkez.SalesProductCampaigns.SalesId+ProductSequence
+    to: EncoreMerkez.SalesProducts.SalesId+Sequence
+    scope: encore
+    confidence: 0.97
+    note: "Kampanya indirim oranı köprüsü (12.06). join: sp.SalesId=spc.SalesId AND sp.Sequence=spc.ProductSequence AND sp.IsValid=1. Grain=kampanyalı kalem. 3AL2ÖDE oran %25,7 doğrulandı (kullanıcı '%24 gibi' ile uyumlu). spc.DistributedAmount=-TotalDiscount (indirimin kendisi, brüt DEĞİL); brüt=sp.TotalPrice(net)+indirim."

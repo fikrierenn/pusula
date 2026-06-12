@@ -98,3 +98,11 @@ metrics:
     dogrulama: "FSM 2026-06-11: 3754 adet / 936 fiş = 4.01 UPT (makul)"
     note: "Amount = miktar kolonu (kesirli olabilir). TotalPrice ≠ adet. UPT 3al2öde etkisini gösterir; ATV (₺/fiş) ile birlikte sepet analizi. Dashboard /magaza/{id} KPI bandında."
     rapor: "dashboard MagazaQueries.GetDetayAsync · gm-rapor G1"
+
+  kampanya_indirim_orani:   # 12.06 — kampanya yükü / efektif indirim
+    formula: "indirim_orani = SUM(-spc.TotalDiscount) / (SUM(sp.TotalPrice) + SUM(-spc.TotalDiscount))"
+    aciklama: "Brüt = kampanyalı kalemlerin net satışı (TotalPrice indirimli) + indirim. Oran = indirim/brüt."
+    kopru: "bridges.yaml encore_kampanya_kalem (spc.SalesId+ProductSequence=sp.Sequence)"
+    dogrulama: "FSM 01-12 Haz: 3AL2ÖDE %25,7 · SABİT FİYAT %40 · YÜZDESEL %41,5 · genel TOPLAM %31,3 (brüt 3,52M / indirim 1,10M / 6.050 fiş)"
+    note: "3al2öde teorik %33 ama karışık fiyatta en ucuz bedava → ~%25-26 efektif. Dashboard /magaza/{id} kampanya panelinde."
+    rapor: "MagazaQueries.GetDetayAsync kampSql · gm-rapor M2"

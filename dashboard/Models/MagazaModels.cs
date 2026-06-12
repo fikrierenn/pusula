@@ -5,8 +5,9 @@ namespace GmDashboard.Models;
 /// <summary>Ödeme tipi dağılımı (G2: nakit / kart / çek).</summary>
 public record OdemeRow(string Tip, int Islem, decimal Tutar, decimal Pay);
 
-/// <summary>Kampanya yükü (M2: 3al2öde vs diğer · indirim · fiş).</summary>
-public record KampanyaRow(string Ad, int Gun, decimal Indirim, int Fis);
+/// <summary>Kampanya yükü (M2: brüt satış · indirim · indirim oranı % · fiş).
+/// Brüt = kampanyalı kalemlerin net satışı + indirim. Oran = indirim / brüt (3al2öde ~%25,7).</summary>
+public record KampanyaRow(string Ad, int Gun, decimal Brut, decimal Indirim, decimal Oran, int Fis);
 
 /// <summary>Tek mağaza detay: KPI + ödeme/iade/kampanya/UPT + kategori.</summary>
 public record MagazaDetay(
