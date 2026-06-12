@@ -13,6 +13,9 @@ public record OdemeGrup(string Grup, int Islem, decimal Tutar, decimal Pay, IRea
 /// B) fiş: FisCiro = o kampanyalı fişlerin TÜM sepeti (yanında alınan diğer ürünler dahil — çapraz satış etkisi).</summary>
 public record KampanyaRow(string Ad, int Gun, decimal Brut, decimal Indirim, decimal Oran, int Fis, decimal FisCiro);
 
+/// <summary>Kampanya üst-grubu: 3AL2ÖDE ayrı · Diğer İndirimler toplu (Detay=tek tek kampanyalar).</summary>
+public record KampanyaGrup(string Ad, decimal Brut, decimal Indirim, decimal Oran, decimal FisCiro, int Fis, IReadOnlyList<KampanyaRow> Detay);
+
 /// <summary>Tek mağaza detay: KPI + ödeme/iade/kampanya/UPT + kategori.</summary>
 public record MagazaDetay(
     int MekanId,
@@ -25,5 +28,5 @@ public record MagazaDetay(
     decimal IadeOran,  // iade brüt / satış brüt %
     decimal? GerPct,   // aylık hedef gerçekleşme (sadece ay döneminde)
     IReadOnlyList<OdemeGrup> Odeme,
-    IReadOnlyList<KampanyaRow> Kampanya,
+    IReadOnlyList<KampanyaGrup> Kampanya,
     IReadOnlyList<CategorySlice> Kategori);

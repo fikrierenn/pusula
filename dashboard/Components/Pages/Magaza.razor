@@ -81,7 +81,9 @@ else if (_d is not null)
                 @foreach (var k in _d.Kampanya)
                 {
                     kTopBrut += k.Brut; kTopInd += k.Indirim; kTopFisCiro += k.FisCiro; kTopFis += k.Fis;
-                    <tr><td>@k.Ad</td><td class="text-right">@Tl(k.Brut)</td><td class="text-right text-error">@Tl(k.Indirim)</td><td class="text-right font-semibold">%@k.Oran</td><td class="text-right text-info">@Tl(k.FisCiro)</td><td class="text-right">@Num(k.Fis)</td></tr>
+                    var tikla = k.Detay.Count > 1;
+                    <tr class="@(tikla ? "cursor-pointer hover:bg-primary/5" : "")" @onclick="() => OpenKamp(k)">
+                        <td>@k.Ad @(tikla ? "▸" : "")</td><td class="text-right">@Tl(k.Brut)</td><td class="text-right text-error">@Tl(k.Indirim)</td><td class="text-right font-semibold">%@k.Oran</td><td class="text-right text-info">@Tl(k.FisCiro)</td><td class="text-right">@Num(k.Fis)</td></tr>
                 }
                 @if (_d.Kampanya.Count > 0)
                 {
@@ -152,6 +154,20 @@ else if (_d is not null)
             </table>
         }
     </Modal>
+
+    <Modal @bind-Open="_modalKamp" Title="@(_selKamp?.Ad + " — Kampanya Detayı")">
+        @if (_selKamp is not null)
+        {
+            <div class="text-base-content/50 text-xs mb-2">@_aralik · kalem brüt @Tl(_selKamp.Brut) · indirim @Tl(_selKamp.Indirim) · %@_selKamp.Oran</div>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kampanya</b></td><td class="text-right"><b>Kalem Brüt</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş Net Ciro</b></td><td class="text-right"><b>Fiş</b></td></tr>
+                @foreach (var d in _selKamp.Detay)
+                {
+                    <tr><td>@d.Ad</td><td class="text-right">@Tl(d.Brut)</td><td class="text-right text-error">@Tl(d.Indirim)</td><td class="text-right font-semibold">%@d.Oran</td><td class="text-right text-info">@Tl(d.FisCiro)</td><td class="text-right">@Num(d.Fis)</td></tr>
+                }
+            </table>
+        }
+    </Modal>
 }
 
 @code {
@@ -168,8 +184,11 @@ else if (_d is not null)
     private IReadOnlyList<UrunRow> _urunler = [];
     private bool _modalOdeme;
     private OdemeGrup? _selOdeme;
+    private bool _modalKamp;
+    private KampanyaGrup? _selKamp;
 
     private void OpenOdeme(OdemeGrup o) { _selOdeme = o; _modalOdeme = true; }
+    private void OpenKamp(KampanyaGrup k) { if (k.Detay.Count > 1) { _selKamp = k; _modalKamp = true; } }
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 

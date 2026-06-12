@@ -126,9 +126,24 @@ public sealed class MagazaQueries(Db db)
             """;
         var fisCiroMap = (await conn.QueryAsync<(string Ad, decimal FisCiro)>(fisCiroSql, par))
             .ToDictionary(x => x.Ad, x => x.FisCiro);
-        var kampanya = kampHam
+        var kampDetay = kampHam
             .Select(k => new KampanyaRow(k.Ad, k.Gun, k.Brut, k.Indirim, k.Oran, k.Fis, fisCiroMap.GetValueOrDefault(k.Ad, 0)))
             .ToList();
+
+        // Grupla: 3AL2ÖDE(K) ayrı (ana kampanya) · geri kalan hepsi "Diğer İndirimler" toplu (drill detayında).
+        var kampanya = new List<KampanyaGrup>();
+        var anaKamp = kampDetay.FirstOrDefault(k => k.Ad == "3AL2ÖDE(K)");
+        if (anaKamp is not null)
+            kampanya.Add(new KampanyaGrup("3AL2ÖDE(K)", anaKamp.Brut, anaKamp.Indirim, anaKamp.Oran, anaKamp.FisCiro, anaKamp.Fis, [anaKamp]));
+        var diger = kampDetay.Where(k => k.Ad != "3AL2ÖDE(K)").ToList();
+        if (diger.Count > 0)
+        {
+            var dBrut = diger.Sum(x => x.Brut);
+            var dInd = diger.Sum(x => x.Indirim);
+            kampanya.Add(new KampanyaGrup("Diğer İndirimler", dBrut, dInd,
+                dBrut > 0 ? Math.Round(100 * dInd / dBrut, 1) : 0,
+                diger.Sum(x => x.FisCiro), diger.Sum(x => x.Fis), diger));
+        }
 
         // Kategori (skat, tek mağaza — ürün drill için)
         const string katSql = """
