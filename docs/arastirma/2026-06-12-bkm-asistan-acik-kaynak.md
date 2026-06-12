@@ -82,8 +82,16 @@
 
 ## 3. Önerilen Mimari (ofis asistanı merkez, BI yan araç)
 
+### Kanal: Telegram + **Blazor PWA** (ikisi de)
+- **Telegram** → hızlı, push bildirim, telefonda her zaman açık (uyarı/hatırlatma için ideal).
+- **Blazor PWA** → kendi app arayüzü (chat + dashboard birleşik), telefona/masaüstüne **kurulabilir** (manifest + service worker), app gibi açılır.
+- **KRİTİK avantaj:** Dashboard ZATEN Blazor (.NET). **Asistan = dashboard'a "Asistan" sekmesi/chat** → tek proje, tek stack, tek deploy. Pano + sohbet + uyarı tek app.
+- Blazor Server + PWA shell (online, SignalR) yeterli; tam offline gerekirse Blazor WASM veya .NET MAUI Hybrid (native).
+
 ```
-┌─ KANAL ── Telegram.Bot (C#, MIT) ← CFO telefondan ─┐
+┌─ KANAL (çift) ──────────────────────────────────────┐
+│  • Telegram.Bot (C#, MIT) — push/hatırlatma         │
+│  • Blazor PWA (dashboard'a Asistan sekmesi) — chat  │
 └──────────────────────┬─────────────────────────────┘
                        ▼
 ┌─ AGENT LOOP ── MS Agent Framework (.NET) + Claude ─┐
@@ -106,6 +114,8 @@
 └────────────────────────────────────────────────────┘
 ```
 **Tek karar noktası:** Kurumsal mail M365 mi? Evet → **Microsoft Graph** (mail+takvim+görev TEK API, .NET SDK var). Hayır → Gmail+Google Calendar.
+
+**Mimari sadeliği:** Dashboard + Asistan + uyarı = TEK Blazor PWA + arka planda Telegram bot servisi. Hepsi .NET, tek repo (`dashboard/`'a Asistan sayfası), tek deploy. PWA telefona kurulunca CFO hem panoya bakar hem asistanla konuşur hem push uyarı alır.
 
 ## 4. Ne Almalı / Ne Atmalı
 
