@@ -6,74 +6,74 @@
 @rendermode InteractiveServer
 
 <PageTitle>Envanter — BKM GM</PageTitle>
-<div class="hd"><h1>Envanter & Merchandising</h1></div>
+<div class="flex items-center gap-3 mb-5 flex-wrap"><h1 class="text-2xl font-bold tracking-tight m-0">Envanter & Merchandising</h1></div>
 
 @if (_loading)
 {
-    <p class="muted">Yükleniyor… (envanter sorguları ağır, birkaç saniye)</p>
+    <p class="text-base-content/50">Yükleniyor… (envanter sorguları ağır, birkaç saniye)</p>
 }
 else if (_error is not null)
 {
-    <p class="err">Veri alınamadı: @_error</p>
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
 }
 else if (_d is not null)
 {
-    <div class="grid">
-        <div class="card"><div class="ct">Envanter Değeri (Ort.Maliyet)</div><div class="cv">@Tl(_d.ToplamDeger)</div>
-            <div class="cm">Dergi/Sınav hariç · son snapshot</div></div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 mb-4 max-sm:grid-cols-2">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4"><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">Envanter Değeri (Ort.Maliyet)</div><div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(_d.ToplamDeger)</div>
+            <div class="text-[12.5px] text-base-content/60">Dergi/Sınav hariç · son snapshot</div></div>
     </div>
 
-    <div class="row">
-        <div class="panel"><h3>En Hızlı Dönen Kategoriler (yıllık devir)</h3>
-            <table>
-                <tr><td><b>Kategori</b></td><td class="r"><b>Devir</b></td></tr>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Hızlı Dönen Kategoriler (yıllık devir)</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kategori</b></td><td class="text-right"><b>Devir</b></td></tr>
                 @foreach (var d in _d.Devir.Take(6))
                 {
-                    <tr class="clk" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="r">@d.Devir.ToString("0.0")x</td></tr>
+                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="text-right">@d.Devir.ToString("0.0")x</td></tr>
                 }
             </table>
         </div>
-        <div class="panel"><h3>Ölü Sermaye — Kilitli Stok (en yüksek ₺)</h3>
-            <table>
-                <tr><td><b>Kategori</b></td><td class="r"><b>Stok ₺</b></td><td class="r"><b>Devir</b></td></tr>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ölü Sermaye — Kilitli Stok (en yüksek ₺)</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kategori</b></td><td class="text-right"><b>Stok ₺</b></td><td class="text-right"><b>Devir</b></td></tr>
                 @foreach (var d in _d.Devir.OrderByDescending(x => x.StokTl).Take(6))
                 {
-                    <tr class="clk" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="r">@Tl(d.StokTl)</td>
-                        <td class="r" style="color:@(d.Devir < 1.5m ? "#dc2626" : "#16a34a")">@d.Devir.ToString("0.0")x</td></tr>
+                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="text-right">@Tl(d.StokTl)</td>
+                        <td class="text-right @(d.Devir < 1.5m ? "text-error" : "text-success")">@d.Devir.ToString("0.0")x</td></tr>
                 }
             </table>
         </div>
-        <div class="panel"><h3>ABC — Ciro Yoğunluğu (Pareto 80/20)</h3>
-            <table>
-                <tr><td><b>Sınıf</b></td><td class="r"><b>Ürün çeşidi</b></td><td class="r"><b>Ciro</b></td></tr>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">ABC — Ciro Yoğunluğu (Pareto 80/20)</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Sınıf</b></td><td class="text-right"><b>Ürün çeşidi</b></td><td class="text-right"><b>Ciro</b></td></tr>
                 @foreach (var a in _d.Abc)
                 {
-                    <tr><td>@AbcAd(a.Sinif)</td><td class="r">@Num(a.Adet)</td><td class="r">@Tl(a.Ciro)</td></tr>
+                    <tr><td>@AbcAd(a.Sinif)</td><td class="text-right">@Num(a.Adet)</td><td class="text-right">@Tl(a.Ciro)</td></tr>
                 }
             </table>
         </div>
-        <div class="panel"><h3>Stokta Yokluk — Son 30g Satılanlarda (hedef &lt;%5)</h3>
-            <table>
-                <tr><td><b>Kategori</b></td><td class="r"><b>Çeşit</b></td><td class="r"><b>Yok</b></td><td class="r"><b>%</b></td></tr>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Stokta Yokluk — Son 30g Satılanlarda (hedef &lt;%5)</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kategori</b></td><td class="text-right"><b>Çeşit</b></td><td class="text-right"><b>Yok</b></td><td class="text-right"><b>%</b></td></tr>
                 @foreach (var s in _d.Stockout.Take(7))
                 {
-                    <tr class="clk" @onclick="() => OpenUrun(s.Kategori)"><td>@s.Kategori ▸</td><td class="r">@Num(s.Cesit)</td><td class="r">@Num(s.Yok)</td>
-                        <td class="r" style="color:@(s.Pct > 5 ? "#dc2626" : "#16a34a")">%@s.Pct.ToString("0.0")</td></tr>
+                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(s.Kategori)"><td>@s.Kategori ▸</td><td class="text-right">@Num(s.Cesit)</td><td class="text-right">@Num(s.Yok)</td>
+                        <td class="text-right @(s.Pct > 5 ? "text-error" : "text-success")">%@s.Pct.ToString("0.0")</td></tr>
                 }
             </table>
         </div>
     </div>
 
-    <div class="row">
-        <div class="panel panel-wide"><h3>Ciro ↔ Envanter Dengesi (kategori, geçen ay ciro vs güncel stok değeri)</h3>
-            <div class="chart-box"><canvas id="ch_cve"></canvas></div>
-            <div class="muted" style="font-size:11px">X = aylık ciro, Y = stok değeri (3 mağaza). Sağ-alt = çok satan/az stok (iyi); sol-üst = az satan/çok stok (ölü sermaye riski).</div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ciro ↔ Envanter Dengesi (kategori, geçen ay ciro vs güncel stok değeri)</h3>
+            <div class="relative h-[220px]"><canvas id="ch_cve"></canvas></div>
+            <div class="text-base-content/50 text-[11px]">X = aylık ciro, Y = stok değeri (3 mağaza). Sağ-alt = çok satan/az stok (iyi); sol-üst = az satan/çok stok (ölü sermaye riski).</div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="panel panel-wide"><h3>En Çok Satan Marka / Yayınevi — Top 20 (geçen ay)</h3>
-            <div class="marka2">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Çok Satan Marka / Yayınevi — Top 20 (geçen ay)</h3>
+            <div class="grid grid-cols-2 max-md:grid-cols-1 gap-x-7">
                 @MarkaTbl(_d.Marka.Take(10), 1)
                 @MarkaTbl(_d.Marka.Skip(10).Take(10), 11)
             </div>
@@ -83,22 +83,22 @@ else if (_d is not null)
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
         @if (_urunLoading)
         {
-            <p class="muted">Yükleniyor…</p>
+            <p class="text-base-content/50">Yükleniyor…</p>
         }
         else
         {
-            <table>
-                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="r"><b>Satış (adet)</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Bakiye</b></td></tr>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="text-right"><b>Satış (adet)</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Bakiye</b></td></tr>
                 @{ var i = 1; }
                 @foreach (var u in _urunler)
                 {
-                    <tr><td style="color:#94a3b8">@i</td><td>@u.Kod</td><td>@u.Ad</td><td class="r">@Num(u.Satis)</td><td class="r">@Tl(u.Ciro)</td>
-                        <td class="r" style="color:@(u.Bakiye <= 0 ? "#dc2626" : "inherit")">@Num(u.Bakiye)</td></tr>
+                    <tr><td class="text-base-content/40">@i</td><td>@u.Kod</td><td>@u.Ad</td><td class="text-right">@Num(u.Satis)</td><td class="text-right">@Tl(u.Ciro)</td>
+                        <td class="text-right @(u.Bakiye <= 0 ? "text-error" : "")">@Num(u.Bakiye)</td></tr>
                     i++;
                 }
                 @if (_urunler.Count == 0)
                 {
-                    <tr><td colspan="6" class="muted">Ürün bulunamadı.</td></tr>
+                    <tr><td colspan="6" class="text-base-content/50">Ürün bulunamadı.</td></tr>
                 }
             </table>
         }
@@ -154,13 +154,13 @@ else if (_d is not null)
         finally { _urunLoading = false; StateHasChanged(); }
     }
 
-    private RenderFragment MarkaTbl(IEnumerable<MarkaRow> rows, int start) => @<table>
-        <tr><td><b>#</b></td><td><b>Marka / Yayınevi</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Çeşit</b></td><td class="r"><b>Ciro/Çeşit</b></td></tr>
+    private RenderFragment MarkaTbl(IEnumerable<MarkaRow> rows, int start) => @<table class="table table-sm w-full text-[13px]">
+        <tr><td><b>#</b></td><td><b>Marka / Yayınevi</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Çeşit</b></td><td class="text-right"><b>Ciro/Çeşit</b></td></tr>
         @{ var i = start; }
         @foreach (var m in rows)
         {
-            <tr><td style="color:#94a3b8">@i</td><td>@m.Ad</td><td class="r">@Tl(m.Ciro)</td><td class="r">@Num(m.Cesit)</td>
-                <td class="r">@Tl(m.Cesit > 0 ? m.Ciro / m.Cesit : 0)</td></tr>
+            <tr><td class="text-base-content/40">@i</td><td>@m.Ad</td><td class="text-right">@Tl(m.Ciro)</td><td class="text-right">@Num(m.Cesit)</td>
+                <td class="text-right">@Tl(m.Cesit > 0 ? m.Ciro / m.Cesit : 0)</td></tr>
             i++;
         }
     </table>;

@@ -8,10 +8,10 @@
 
 <PageTitle>BKM GM Dashboard</PageTitle>
 
-<div class="hd">
-    <h1>Genel Bakış</h1>
-    <span class="tar">@_aralik</span>
-    <select class="period" @bind="_period" @bind:after="LoadAsync">
+<div class="flex items-center gap-3 mb-5 flex-wrap">
+    <h1 class="text-2xl font-bold tracking-tight m-0">Genel Bakış</h1>
+    <span class="text-sm font-semibold text-base-content/50">@_aralik</span>
+    <select class="select select-bordered select-sm ml-auto text-sm font-semibold" @bind="_period" @bind:after="LoadAsync">
         <option value="gunluk">Günlük (dün)</option>
         <option value="haftalik">Haftalık (son 7 gün)</option>
         <option value="ay">Aylık (MTD)</option>
@@ -19,36 +19,36 @@
     </select>
     @if (_period == "ozel")
     {
-        <input type="date" class="period" @bind="_ozelBas" @bind:after="LoadAsync" />
-        <input type="date" class="period" @bind="_ozelBit" @bind:after="LoadAsync" />
+        <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBas" @bind:after="LoadAsync" />
+        <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBit" @bind:after="LoadAsync" />
     }
 </div>
 
 @if (_loading)
 {
-    <p class="muted">Yükleniyor…</p>
+    <p class="text-base-content/50">Yükleniyor…</p>
 }
 else if (_error is not null)
 {
-    <p class="err">Veri alınamadı: @_error</p>
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
 }
 else if (_data is not null)
 {
-    <div class="big">
-        <div><div class="lbl">Toplam Ciro (fiziksel + online)</div><div class="num">@Tl(_data.Toplam)</div>
-            <div class="sub">mağaza @Tl(_data.Fiziksel) · online @Tl(_data.Eticaret)</div></div>
-        <div><div class="lbl">İşlem</div><div class="num">@Num(_data.Fis)</div>
-            <div class="sub">@Num(_data.ESip) online sipariş</div></div>
-        <div><div class="lbl">İade</div><div class="num">@Tl(_data.Iade)</div></div>
+    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-primary-content shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">Toplam Ciro (fiziksel + online)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Toplam)</div>
+            <div class="text-[13px] opacity-90">mağaza @Tl(_data.Fiziksel) · online @Tl(_data.Eticaret)</div></div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">İşlem</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.Fis)</div>
+            <div class="text-[13px] opacity-90">@Num(_data.ESip) online sipariş</div></div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">İade</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Iade)</div></div>
     </div>
 
-    <div class="grid">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 mb-4 max-sm:grid-cols-2">
         @foreach (var s in _data.Stores)
         {
-            <div class="card clk" @onclick="() => OpenStore(s)">
-                <div class="ct">@s.Ad &#9656;</div>
-                <div class="cv">@Tl(s.Net)</div>
-                <div class="cm">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick="() => OpenStore(s)">
+                <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">@s.Ad &#9656;</div>
+                <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(s.Net)</div>
+                <div class="text-[12.5px] text-base-content/60">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
                     @if (s.GerPct is not null)
                     {
                         <span> · hedef %@s.GerPct</span>
@@ -56,61 +56,61 @@ else if (_data is not null)
                 </div>
             </div>
         }
-        <div class="card card-tot clk" @onclick="() => _modalTot = true">
-            <div class="ct">TOPLAM (3 mağaza) &#9656;</div>
-            <div class="cv">@Tl(_data.Fiziksel)</div>
-            <div class="cm">@Num(_data.Fis) fiş · sepet @Num(_data.Fis > 0 ? (int)Math.Round(_data.Fiziksel / _data.Fis) : 0) ₺</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 bg-base-200/60 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalTot = true">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">TOPLAM (3 mağaza) &#9656;</div>
+            <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(_data.Fiziksel)</div>
+            <div class="text-[12.5px] text-base-content/60">@Num(_data.Fis) fiş · sepet @Num(_data.Fis > 0 ? (int)Math.Round(_data.Fiziksel / _data.Fis) : 0) ₺</div>
         </div>
-        <div class="card card-etic clk" @onclick="() => _modalEtic = true">
-            <div class="ct">E-ticaret (online) &#9656;</div>
-            <div class="cv">@Tl(_data.Eticaret)</div>
-            <div class="cm">@Num(_data.ESip) sipariş · sepet @Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 bg-info/10 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalEtic = true">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">E-ticaret (online) &#9656;</div>
+            <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(_data.Eticaret)</div>
+            <div class="text-[12.5px] text-base-content/60">@Num(_data.ESip) sipariş · sepet @Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div>
         </div>
     </div>
 
     @if (_period == "ay" && _hedefMag is not null)
     {
-        <div class="row">
-            <div class="panel"><h3>Hedef-Gerçekleşen — Mağaza (MTD)</h3>
-                <table>
-                    <tr><td><b>Mağaza</b></td><td class="r"><b>MTD Net</b></td><td class="r"><b>Hedef</b></td><td class="r"><b>Gerçekleşme</b></td></tr>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Hedef-Gerçekleşen — Mağaza (MTD)</h3>
+                <table class="table table-sm w-full text-[13px]">
+                    <tr><td><b>Mağaza</b></td><td class="text-right"><b>MTD Net</b></td><td class="text-right"><b>Hedef</b></td><td class="text-right"><b>Gerçekleşme</b></td></tr>
                     @{ decimal tNet = 0, tHed = 0; }
                     @foreach (var m in _hedefMag)
                     {
                         tNet += m.Net; tHed += m.Hedef;
-                        <tr><td>@m.Ad</td><td class="r">@Tl(m.Net)</td><td class="r">@Tl(m.Hedef)</td>
-                            <td class="r" style="color:@GerRenk(m.GerPct);font-weight:600">@(m.GerPct is null ? "—" : $"%{m.GerPct}")</td></tr>
+                        <tr><td>@m.Ad</td><td class="text-right">@Tl(m.Net)</td><td class="text-right">@Tl(m.Hedef)</td>
+                            <td class="text-right font-semibold @GerRenk(m.GerPct)">@(m.GerPct is null ? "—" : $"%{m.GerPct}")</td></tr>
                     }
                     @{ decimal? tGer = tHed > 0 ? Math.Round(100 * tNet / tHed, 1) : null; }
-                    <tr class="tot"><td><b>TOPLAM</b></td><td class="r"><b>@Tl(tNet)</b></td><td class="r"><b>@Tl(tHed)</b></td>
-                        <td class="r" style="color:@GerRenk(tGer);font-weight:700">@(tGer is null ? "—" : $"%{tGer}")</td></tr>
+                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td><b>TOPLAM</b></td><td class="text-right"><b>@Tl(tNet)</b></td><td class="text-right"><b>@Tl(tHed)</b></td>
+                        <td class="text-right font-bold @GerRenk(tGer)">@(tGer is null ? "—" : $"%{tGer}")</td></tr>
                 </table>
-                <div class="chart-box"><canvas id="ch_hedef"></canvas></div>
-                <div class="muted" style="font-size:11px">Renk: ≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı. Hedef: BKMDATA.Hedef (aylık).</div>
+                <div class="relative h-[220px]"><canvas id="ch_hedef"></canvas></div>
+                <div class="text-base-content/50 text-[11px]">Renk: ≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı. Hedef: BKMDATA.Hedef (aylık).</div>
             </div>
-            <div class="panel"><h3>Hedef-Gerçekleşen — Kategori (MTD, en sapan)</h3>
-                <table>
-                    <tr><td><b>Kategori</b></td><td class="r"><b>MTD Net</b></td><td class="r"><b>Hedef</b></td><td class="r"><b>Gerçekleşme</b></td></tr>
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Hedef-Gerçekleşen — Kategori (MTD, en sapan)</h3>
+                <table class="table table-sm w-full text-[13px]">
+                    <tr><td><b>Kategori</b></td><td class="text-right"><b>MTD Net</b></td><td class="text-right"><b>Hedef</b></td><td class="text-right"><b>Gerçekleşme</b></td></tr>
                     @foreach (var k in _hedefKat)
                     {
-                        <tr><td>@k.Ad</td><td class="r">@Tl(k.Net)</td><td class="r">@Tl(k.Hedef)</td>
-                            <td class="r" style="color:@GerRenk(k.GerPct);font-weight:600">@(k.GerPct is null ? "—" : $"%{k.GerPct}")</td></tr>
+                        <tr><td>@k.Ad</td><td class="text-right">@Tl(k.Net)</td><td class="text-right">@Tl(k.Hedef)</td>
+                            <td class="text-right font-semibold @GerRenk(k.GerPct)">@(k.GerPct is null ? "—" : $"%{k.GerPct}")</td></tr>
                     }
                     @if (_hedefKat.Count == 0)
                     {
-                        <tr><td colspan="4" class="muted">Kategori hedefi bulunamadı.</td></tr>
+                        <tr><td colspan="4" class="text-base-content/50">Kategori hedefi bulunamadı.</td></tr>
                     }
                 </table>
-                <div class="muted" style="font-size:11px">Köprü: Hedef.ktgId = urnKtgr2.ktgrID. Gerçekleşme artan (en sapan üstte).</div>
+                <div class="text-base-content/50 text-[11px]">Köprü: Hedef.ktgId = urnKtgr2.ktgrID. Gerçekleşme artan (en sapan üstte).</div>
             </div>
         </div>
     }
 
-    <div class="row">
-        <div class="panel"><h3>Mağaza Kategori Mix (dönem)</h3><div class="chart-box"><canvas id="ch_kat"></canvas></div></div>
-        <div class="panel"><h3>Son 14 Gün — Fiziksel Net Ciro</h3><div class="chart-box"><canvas id="ch_trend"></canvas></div></div>
-        <div class="panel"><h3>Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="chart-box"><canvas id="ch_alis"></canvas></div>
-            <div class="muted" style="font-size:11px">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Mağaza Kategori Mix (dönem)</h3><div class="relative h-[220px]"><canvas id="ch_kat"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Son 14 Gün — Fiziksel Net Ciro</h3><div class="relative h-[220px]"><canvas id="ch_trend"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="relative h-[220px]"><canvas id="ch_alis"></canvas></div>
+            <div class="text-base-content/50 text-[11px]">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
     </div>
 
     <Modal @bind-Open="_modalTot" Title="TOPLAM — Kategori Dağılımı (3 mağaza)">
@@ -120,25 +120,25 @@ else if (_data is not null)
                 .OrderByDescending(x => x.Ciro).ToList();
             var totC = birlesik.Sum(x => x.Ciro);
         }
-        <div class="muted" style="font-size:12px;margin-bottom:8px">@_aralik · net @Tl(_data.Fiziksel) · @Num(_data.Fis) fiş</div>
-        <table>
-            <tr><td><b>Kategori</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Pay</b></td></tr>
+        <div class="text-base-content/50 text-xs mb-2">@_aralik · net @Tl(_data.Fiziksel) · @Num(_data.Fis) fiş</div>
+        <table class="table table-sm w-full text-[13px]">
+            <tr><td><b>Kategori</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Pay</b></td></tr>
             @foreach (var k in birlesik)
             {
-                <tr class="clk" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</td></tr>
+                <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="text-right">@Tl(k.Ciro)</td><td class="text-right">%@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</td></tr>
             }
         </table>
     </Modal>
 
     <Modal @bind-Open="_modalEtic" Title="E-ticaret — Kanal Dağılımı">
-        <div class="muted" style="font-size:12px;margin-bottom:8px">@_aralik · net @Tl(_data.Eticaret) · @Num(_data.ESip) sipariş</div>
-        <table>
-            <tr><td><b>Kanal</b></td><td class="r"><b>Sipariş</b></td><td class="r"><b>Net Ciro</b></td><td class="r"><b>Sepet</b></td><td class="r"><b>Pay</b></td></tr>
+        <div class="text-base-content/50 text-xs mb-2">@_aralik · net @Tl(_data.Eticaret) · @Num(_data.ESip) sipariş</div>
+        <table class="table table-sm w-full text-[13px]">
+            <tr><td><b>Kanal</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Net Ciro</b></td><td class="text-right"><b>Sepet</b></td><td class="text-right"><b>Pay</b></td></tr>
             @foreach (var e in _data.Etic)
             {
-                <tr><td>@e.Ad</td><td class="r">@Num(e.Sip)</td><td class="r">@Tl(e.Ciro)</td>
-                    <td class="r">@Num(e.Sip > 0 ? (int)Math.Round(e.Ciro / e.Sip) : 0) ₺</td>
-                    <td class="r">%@(_data.Eticaret > 0 ? Math.Round(100 * e.Ciro / _data.Eticaret) : 0)</td></tr>
+                <tr><td>@e.Ad</td><td class="text-right">@Num(e.Sip)</td><td class="text-right">@Tl(e.Ciro)</td>
+                    <td class="text-right">@Num(e.Sip > 0 ? (int)Math.Round(e.Ciro / e.Sip) : 0) ₺</td>
+                    <td class="text-right">%@(_data.Eticaret > 0 ? Math.Round(100 * e.Ciro / _data.Eticaret) : 0)</td></tr>
             }
         </table>
     </Modal>
@@ -146,13 +146,13 @@ else if (_data is not null)
     <Modal @bind-Open="_modalOpen" Title="@(_selStore?.Ad + " — Kategori Dağılımı")">
         @if (_selStore is not null)
         {
-            <div class="muted" style="font-size:12px;margin-bottom:8px">@_aralik · net @Tl(_selStore.Net) · @Num(_selStore.Fis) fiş</div>
-            <table>
-                <tr><td><b>Kategori</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Pay</b></td></tr>
+            <div class="text-base-content/50 text-xs mb-2">@_aralik · net @Tl(_selStore.Net) · @Num(_selStore.Fis) fiş</div>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kategori</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Pay</b></td></tr>
                 @{ var tot = _selStore.Kategori.Sum(k => k.Ciro); }
                 @foreach (var k in _selStore.Kategori)
                 {
-                    <tr class="clk" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="r">@Tl(k.Ciro)</td><td class="r">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
+                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="text-right">@Tl(k.Ciro)</td><td class="text-right">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
                 }
             </table>
         }
@@ -161,22 +161,22 @@ else if (_data is not null)
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
         @if (_urunLoading)
         {
-            <p class="muted">Yükleniyor…</p>
+            <p class="text-base-content/50">Yükleniyor…</p>
         }
         else
         {
-            <table>
-                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="r"><b>Satış (adet)</b></td><td class="r"><b>Ciro</b></td><td class="r"><b>Bakiye</b></td></tr>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="text-right"><b>Satış (adet)</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Bakiye</b></td></tr>
                 @{ var ui = 1; }
                 @foreach (var u in _urunler)
                 {
-                    <tr><td style="color:#94a3b8">@ui</td><td>@u.Kod</td><td>@u.Ad</td><td class="r">@Num(u.Satis)</td><td class="r">@Tl(u.Ciro)</td>
-                        <td class="r" style="color:@(u.Bakiye <= 0 ? "#dc2626" : "inherit")">@Num(u.Bakiye)</td></tr>
+                    <tr><td class="text-base-content/40">@ui</td><td>@u.Kod</td><td>@u.Ad</td><td class="text-right">@Num(u.Satis)</td><td class="text-right">@Tl(u.Ciro)</td>
+                        <td class="text-right @(u.Bakiye <= 0 ? "text-error" : "")">@Num(u.Bakiye)</td></tr>
                     ui++;
                 }
                 @if (_urunler.Count == 0)
                 {
-                    <tr><td colspan="6" class="muted">Ürün bulunamadı.</td></tr>
+                    <tr><td colspan="6" class="text-base-content/50">Ürün bulunamadı.</td></tr>
                 }
             </table>
         }
@@ -287,8 +287,8 @@ else if (_data is not null)
     }
 
     // Hedef gerçekleşme renk eşiği: ≥%95 yeşil, %85-95 sarı, <%85 kırmızı
-    private static string GerRenk(decimal? pct) => pct is null ? "#94a3b8"
-        : pct >= 95 ? "#16a34a" : pct >= 85 ? "#f59e0b" : "#dc2626";
+    private static string GerRenk(decimal? pct) => pct is null ? "text-base-content/40"
+        : pct >= 95 ? "text-success" : pct >= 85 ? "text-warning" : "text-error";
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));

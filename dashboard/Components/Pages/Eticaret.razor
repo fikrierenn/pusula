@@ -8,10 +8,10 @@
 
 <PageTitle>E-ticaret — BKM GM</PageTitle>
 
-<div class="hd">
-    <h1>E-ticaret</h1>
-    <span class="tar">@_aralik</span>
-    <select class="period" @bind="_period" @bind:after="LoadAsync">
+<div class="flex items-center gap-3 mb-5 flex-wrap">
+    <h1 class="text-2xl font-bold tracking-tight m-0">E-ticaret</h1>
+    <span class="text-sm font-semibold text-base-content/50">@_aralik</span>
+    <select class="select select-bordered select-sm ml-auto text-sm font-semibold" @bind="_period" @bind:after="LoadAsync">
         <option value="gunluk">Günlük (dün)</option>
         <option value="haftalik">Haftalık (son 7 gün)</option>
         <option value="ay">Aylık (MTD)</option>
@@ -19,89 +19,89 @@
     </select>
     @if (_period == "ozel")
     {
-        <input type="date" class="period" @bind="_ozelBas" @bind:after="LoadAsync" />
-        <input type="date" class="period" @bind="_ozelBit" @bind:after="LoadAsync" />
+        <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBas" @bind:after="LoadAsync" />
+        <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBit" @bind:after="LoadAsync" />
     }
 </div>
 
 @if (_loading)
 {
-    <p class="muted">Yükleniyor…</p>
+    <p class="text-base-content/50">Yükleniyor…</p>
 }
 else if (_error is not null)
 {
-    <p class="err">Veri alınamadı: @_error</p>
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
 }
 else if (_data is not null)
 {
-    <div class="big">
-        <div><div class="lbl">Net Ciro (online)</div><div class="num">@Tl(_data.Eticaret)</div></div>
-        <div><div class="lbl">Net Sipariş</div><div class="num">@Num(_data.ESip)</div></div>
-        <div><div class="lbl">Sepet (ort.)</div><div class="num">@Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div></div>
+    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-primary-content shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Ciro (online)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Eticaret)</div></div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Sipariş</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.ESip)</div></div>
+        <div><div class="opacity-80 text-xs uppercase tracking-wider">Sepet (ort.)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div></div>
     </div>
 
-    <div class="row">
-        <div class="panel"><h3>Kanal — NET (dönem)</h3><div class="chart-box"><canvas id="ch_etic"></canvas></div></div>
-        <div class="panel"><h3>Kargo Firma (dönem)</h3><div class="chart-box"><canvas id="ch_kargo"></canvas></div></div>
-        <div class="panel"><h3>İl Dağılımı — Top 12 (dönem)</h3><div class="chart-box"><canvas id="ch_il"></canvas></div></div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kanal — NET (dönem)</h3><div class="relative h-[220px]"><canvas id="ch_etic"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Firma (dönem)</h3><div class="relative h-[220px]"><canvas id="ch_kargo"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı — Top 12 (dönem)</h3><div class="relative h-[220px]"><canvas id="ch_il"></canvas></div></div>
     </div>
 
-    <div class="row">
-        <div class="panel panel-wide"><h3>Kargo Performansı (dönem) — @_kargoPerf.Count firma</h3>
-            <table>
-                <tr><td><b>Kargo Firma</b></td><td class="r"><b>Adet</b></td><td class="r"><b>Çıkış (gün)</b></td><td class="r"><b>Teslim (gün)</b></td></tr>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Performansı (dönem) — @_kargoPerf.Count firma</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Kargo Firma</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Çıkış (gün)</b></td><td class="text-right"><b>Teslim (gün)</b></td></tr>
                 @foreach (var k in _kargoPerf)
                 {
-                    <tr><td>@k.Kargo</td><td class="r">@Num(k.Adet)</td>
-                        <td class="r">@(k.CikisGun is null ? "—" : k.CikisGun.Value.ToString("0.0"))</td>
-                        <td class="r">@(k.TeslimGun is null ? "—" : k.TeslimGun.Value.ToString("0.0"))</td></tr>
+                    <tr><td>@k.Kargo</td><td class="text-right">@Num(k.Adet)</td>
+                        <td class="text-right">@(k.CikisGun is null ? "—" : k.CikisGun.Value.ToString("0.0"))</td>
+                        <td class="text-right">@(k.TeslimGun is null ? "—" : k.TeslimGun.Value.ToString("0.0"))</td></tr>
                 }
                 @if (_kargoPerf.Count == 0)
                 {
-                    <tr><td colspan="4" class="muted">Teslim olmuş sipariş bulunamadı.</td></tr>
+                    <tr><td colspan="4" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
                 }
             </table>
-            <div class="muted" style="font-size:11px">Çıkış = sipariş → kargoya teslim; Teslim = kargo → müşteri. Sadece teslim olmuş siparişler.</div>
+            <div class="text-base-content/50 text-[11px]">Çıkış = sipariş → kargoya teslim; Teslim = kargo → müşteri. Sadece teslim olmuş siparişler.</div>
         </div>
-        <div class="panel"><h3>Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
-            <div class="chart-box"><canvas id="ch_bekleyen"></canvas></div>
-            <table>
-                <tr><td><b>Yaş</b></td><td class="r"><b>Adet</b></td><td class="r"><b>Pay</b></td></tr>
+            <div class="relative h-[220px]"><canvas id="ch_bekleyen"></canvas></div>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Yaş</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Pay</b></td></tr>
                 @foreach (var b in _bekleyen)
                 {
                     <tr><td>@b.Bucket</td>
-                        <td class="r" style="color:@(b.Bucket is "4-7g" or "8+g" && b.Adet > 0 ? "#dc2626" : "inherit")">@Num(b.Adet)</td>
-                        <td class="r">%@(bekToplam > 0 ? Math.Round(100m * b.Adet / bekToplam) : 0)</td></tr>
+                        <td class="text-right @(b.Bucket is "4-7g" or "8+g" && b.Adet > 0 ? "text-error" : "")">@Num(b.Adet)</td>
+                        <td class="text-right">%@(bekToplam > 0 ? Math.Round(100m * b.Adet / bekToplam) : 0)</td></tr>
                 }
-                <tr class="tot"><td>TOPLAM bekleyen</td><td class="r"><b>@Num(bekToplam)</b></td><td class="r"></td></tr>
+                <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM bekleyen</td><td class="text-right"><b>@Num(bekToplam)</b></td><td class="text-right"></td></tr>
             </table>
-            <div class="muted" style="font-size:11px">SENDDATE boş + normal statü. Sipariş tarihinden bugüne yaş. 4g+ kırmızı = SLA riski.</div>
+            <div class="text-base-content/50 text-[11px]">SENDDATE boş + normal statü. Sipariş tarihinden bugüne yaş. 4g+ kırmızı = SLA riski.</div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="panel panel-wide"><h3>Günlük Kargo Çıkışı (dönem) — sipariş → kargoya teslim gün</h3>
-            <div class="chart-box"><canvas id="ch_kargogun"></canvas></div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Günlük Kargo Çıkışı (dönem) — sipariş → kargoya teslim gün</h3>
+            <div class="relative h-[220px]"><canvas id="ch_kargogun"></canvas></div>
             @{ var kgTop = _kargoGun.Sum(k => k.Adet); }
-            <table>
-                <tr><td><b>Çıkış Günü</b></td><td class="r"><b>Paket</b></td><td class="r"><b>Pay</b></td></tr>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Çıkış Günü</b></td><td class="text-right"><b>Paket</b></td><td class="text-right"><b>Pay</b></td></tr>
                 @foreach (var k in _kargoGun)
                 {
                     <tr><td>@(k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")</td>
-                        <td class="r" style="color:@(k.Gun >= 4 && k.Adet > 0 ? "#dc2626" : "inherit")">@Num(k.Adet)</td>
-                        <td class="r">%@(kgTop > 0 ? Math.Round(100m * k.Adet / kgTop) : 0)</td></tr>
+                        <td class="text-right @(k.Gun >= 4 && k.Adet > 0 ? "text-error" : "")">@Num(k.Adet)</td>
+                        <td class="text-right">%@(kgTop > 0 ? Math.Round(100m * k.Adet / kgTop) : 0)</td></tr>
                 }
                 @if (_kargoGun.Count == 0)
                 {
-                    <tr><td colspan="3" class="muted">Kargoya çıkmış sipariş bulunamadı.</td></tr>
+                    <tr><td colspan="3" class="text-base-content/50">Kargoya çıkmış sipariş bulunamadı.</td></tr>
                 }
                 else
                 {
-                    <tr class="tot"><td>TOPLAM çıkan</td><td class="r"><b>@Num(kgTop)</b></td><td class="r"></td></tr>
+                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM çıkan</td><td class="text-right"><b>@Num(kgTop)</b></td><td class="text-right"></td></tr>
                 }
             </table>
-            <div class="muted" style="font-size:11px">DATEDIFF(gün, sipariş, kargoya teslim). 4. gün+ kırmızı = yavaş çıkış.</div>
+            <div class="text-base-content/50 text-[11px]">DATEDIFF(gün, sipariş, kargoya teslim). 4. gün+ kırmızı = yavaş çıkış.</div>
         </div>
     </div>
 }

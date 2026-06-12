@@ -7,81 +7,87 @@
 
 <PageTitle>BKM Görevler</PageTitle>
 
-<div class="hd">
-    <h1>Görevler</h1>
-    <span class="tar">@_tumGorevler.Count görev · @AcikSayi açık</span>
-    <button class="btn btn-primary" style="margin-left:auto" @onclick='() => Nav.NavigateTo("asistan")'>+ Asistan'la ekle</button>
+<div class="flex items-center gap-3 mb-5 flex-wrap">
+    <h1 class="text-2xl font-bold tracking-tight m-0">Görevler</h1>
+    <span class="text-sm font-semibold text-base-content/50">@_tumGorevler.Count görev · @AcikSayi açık</span>
+    <button class="btn btn-primary ml-auto" @onclick='() => Nav.NavigateTo("asistan")'>+ Asistan'la ekle</button>
 </div>
 
-<div class="filterbar">
-    <select @bind="_fltDurum" @bind:after="Uygula">
+<div class="flex gap-2.5 flex-wrap items-center mb-3.5">
+    <select class="select select-bordered select-sm text-[13px]" @bind="_fltDurum" @bind:after="Uygula">
         <option value="">Durum: Hepsi</option>
         <option value="Açık">Açık</option>
         <option value="Kapalı">Kapalı</option>
     </select>
-    <select @bind="_fltOncelik" @bind:after="Uygula">
+    <select class="select select-bordered select-sm text-[13px]" @bind="_fltOncelik" @bind:after="Uygula">
         <option value="">Öncelik: Hepsi</option>
         <option value="Yüksek">Yüksek</option>
         <option value="Orta">Orta</option>
         <option value="Düşük">Düşük</option>
     </select>
-    <input placeholder="Atanan ara…" @bind="_fltAtanan" @bind:event="oninput" @bind:after="Uygula" />
+    <input class="input input-bordered input-sm text-[13px]" placeholder="Atanan ara…" @bind="_fltAtanan" @bind:event="oninput" @bind:after="Uygula" />
 </div>
 
-<table class="gorev-tbl">
+<table class="table table-zebra w-full text-[13.5px] bg-base-100 rounded-2xl overflow-hidden shadow-sm">
     <thead>
         <tr>
-            <th>#</th><th>Başlık</th><th>Öncelik</th><th>Atanan</th><th>Durum</th><th>Oluşturma</th><th></th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">#</th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Başlık</th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Öncelik</th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Atanan</th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Durum</th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Oluşturma</th>
+            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide"></th>
         </tr>
     </thead>
     <tbody>
         @foreach (var g in _filtreli)
         {
-            <tr class="clk @(g.Durum == "Kapalı" ? "kapali" : "")" @onclick="() => Duzenle(g)">
-                <td style="color:#94a3b8">@g.Id</td>
+            <tr class="cursor-pointer hover:bg-base-200/50 @(g.Durum == "Kapalı" ? "opacity-50 line-through" : "")" @onclick="() => Duzenle(g)">
+                <td class="text-base-content/40">@g.Id</td>
                 <td>@g.Baslik</td>
-                <td><span class="onc onc-@OncSinif(g.Oncelik)">@g.Oncelik</span></td>
+                <td><span class="badge badge-sm font-bold border-0 @OncBadge(g.Oncelik)">@g.Oncelik</span></td>
                 <td>@(string.IsNullOrEmpty(g.Atanan) ? "—" : g.Atanan)</td>
-                <td><span class="durum @(g.Durum == "Kapalı" ? "durum-kapali" : "durum-acik")">@g.Durum</span></td>
-                <td class="muted">@g.Olusturma</td>
+                <td><span class="badge badge-sm font-bold border-0 @(g.Durum == "Kapalı" ? "badge-ghost" : "badge-info")">@g.Durum</span></td>
+                <td class="text-base-content/50">@g.Olusturma</td>
                 <td @onclick:stopPropagation="true">
-                    <div class="gorev-actions">
+                    <div class="flex gap-1.5">
                         @if (g.Durum != "Kapalı")
                         {
-                            <button class="btn btn-mini" @onclick="() => Kapat(g.Id)">Kapat</button>
+                            <button class="btn btn-xs" @onclick="() => Kapat(g.Id)">Kapat</button>
                         }
-                        <button class="btn btn-mini btn-ghost" @onclick="() => Sil(g.Id)">Sil</button>
+                        <button class="btn btn-xs btn-ghost text-error" @onclick="() => Sil(g.Id)">Sil</button>
                     </div>
                 </td>
             </tr>
         }
         @if (_filtreli.Count == 0)
         {
-            <tr><td colspan="7" class="muted" style="padding:18px;text-align:center">Görev yok.</td></tr>
+            <tr><td colspan="7" class="text-base-content/50 p-[18px] text-center">Görev yok.</td></tr>
         }
     </tbody>
 </table>
 
 <Modal @bind-Open="_modalAcik" Title="@($"Görev #{_seciliId} düzenle")">
-    <div class="asis-inline" style="flex-direction:column;align-items:stretch;gap:10px">
-        <label class="muted">Başlık</label>
-        <input class="asis-inp" @bind="_eBaslik" />
-        <label class="muted">Açıklama</label>
-        <textarea class="asis-not" rows="3" @bind="_eAciklama"></textarea>
-        <label class="muted">Öncelik</label>
-        <select class="asis-inp" @bind="_eOncelik">
+    <div class="flex flex-col items-stretch gap-2.5 mt-2">
+        <label class="text-base-content/50">Başlık</label>
+        <input class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eBaslik" />
+        <label class="text-base-content/50">Açıklama</label>
+        <textarea class="textarea textarea-bordered w-full text-sm resize-y" rows="3" @bind="_eAciklama"></textarea>
+        <label class="text-base-content/50">Öncelik</label>
+        <select class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eOncelik">
             <option value="Yüksek">Yüksek</option>
             <option value="Orta">Orta</option>
             <option value="Düşük">Düşük</option>
         </select>
-        <label class="muted">Atanan</label>
-        <input class="asis-inp" @bind="_eAtanan" placeholder="İsim / rol" />
-        <label class="muted">Durum</label>
-        <select class="asis-inp" @bind="_eDurum">
+        <label class="text-base-content/50">Atanan</label>
+        <input class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eAtanan" placeholder="İsim / rol" />
+        <label class="text-base-content/50">Durum</label>
+        <select class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eDurum">
             <option value="Açık">Açık</option>
             <option value="Kapalı">Kapalı</option>
         </select>
-        <div class="asis-actions">
+        <div class="flex gap-2 items-center mt-2.5 flex-wrap">
             <button class="btn btn-primary" @onclick="Kaydet">Kaydet</button>
             <button class="btn" @onclick='() => _modalAcik = false'>İptal</button>
         </div>
@@ -136,5 +142,6 @@
     private void Sil(long id) { Svc.Sil(id); Yenile(); }
 
     private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
+    private static string OncBadge(string o) => o.Contains("Yüksek") ? "badge-error" : o.Contains("Düşük") ? "badge-success" : "badge-warning";
     private static string NormOnc(string o) => o.Contains("Yüksek") ? "Yüksek" : o.Contains("Düşük") ? "Düşük" : "Orta";
 }
