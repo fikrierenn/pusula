@@ -1,6 +1,10 @@
 // Chart.js interop — Blazor'dan canvas grafikleri çizer. Dönem değişince destroy+recreate.
-const KP = '#E30622';
-const PAL = [KP, '#f59e0b', '#0ea5e9', '#64748b', '#16a34a', '#a855f7', '#ec4899', '#14b8a6'];
+// Corporate tema — DaisyUI primary'den oku (yoksa indigo fallback). Kırmızı bırakıldı.
+const KP = (getComputedStyle(document.documentElement).getPropertyValue('--p').trim()
+  ? `oklch(${getComputedStyle(document.documentElement).getPropertyValue('--p').trim()})`
+  : '#4063e6');
+const KP_FILL = 'rgba(64,99,230,.12)';
+const PAL = [KP, '#0ea5e9', '#22c55e', '#f59e0b', '#a855f7', '#64748b', '#ec4899', '#14b8a6'];
 const store = {};
 
 function fmtM(v) { return (v / 1e6).toFixed(1) + 'M'; }
@@ -35,7 +39,7 @@ export function donut(id, labels, data) {
 export function area(id, labels, data) {
     draw(id, {
         type: 'line',
-        data: { labels, datasets: [{ data, borderColor: KP, backgroundColor: 'rgba(227,6,34,.12)', fill: true, tension: .3 }] },
+        data: { labels, datasets: [{ data, borderColor: KP, backgroundColor: KP_FILL, fill: true, tension: .3 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
