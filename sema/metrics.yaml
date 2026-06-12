@@ -105,4 +105,5 @@ metrics:
     kopru: "bridges.yaml encore_kampanya_kalem (spc.SalesId+ProductSequence=sp.Sequence)"
     dogrulama: "FSM 01-12 Haz: 3AL2ÖDE %25,7 · SABİT FİYAT %40 · YÜZDESEL %41,5 · genel TOPLAM %31,3 (brüt 3,52M / indirim 1,10M / 6.050 fiş)"
     note: "3al2öde teorik %33 ama karışık fiyatta en ucuz bedava → ~%25-26 efektif. Dashboard /magaza/{id} kampanya panelinde."
-    rapor: "MagazaQueries.GetDetayAsync kampSql · gm-rapor M2"
+    kritik: "İKİ ZORUNLU FİLTRE (13.06 fiş-detay kontrolünde bulundu): (1) spc indirimi MUTLAKA SalesProducts IsValid=1 köprüsüyle al — IsValid=0 iptal kalemler indirimi şişirir, DiscountTotal'dan fazla çıkar, 'Diğer indirim' negatife düşer. (2) Sales.DocumentsTypeId IN (1,2,6,7,8) — iade (3) belgesi indirim sign'ı ters, dahil edilirse Diğer şişer. Belge listesinde Diğer = DiscountTotal − 3al2öde; iade+IsValid filtresi şart."
+    rapor: "MagazaQueries.GetDetayAsync kampSql/kampFisSql · scripts/build_3al2ode_belge_excel.py · gm-rapor M2"
