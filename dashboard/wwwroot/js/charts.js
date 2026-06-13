@@ -11,7 +11,8 @@ const store = {};
 if (window.Chart && window.ChartDataLabels) Chart.register(window.ChartDataLabels);
 
 function fmtM(v) { return (v / 1e6).toFixed(1) + 'M'; }
-function fmtK(v) { return v >= 1e6 ? fmtM(v) : v >= 1000 ? (v / 1000).toFixed(1) + 'B' : v; }
+// Datalabel: milyon+ kısalt (1,2M), altı binlik ayraçlı tam (4.193). 'B'/'bin' karışıklığı yok.
+function fmtK(v) { return Math.abs(v) >= 1e6 ? fmtM(v) : Number(v).toLocaleString('tr-TR'); }
 
 function draw(id, cfg) {
     const el = document.getElementById(id);
@@ -33,7 +34,7 @@ export function bar(id, labels, data, horizontal) {
                     anchor: 'end', align: 'end', color: '#475569', font: { size: 10, weight: 600 },
                     formatter: v => fmtK(v)
                 },
-                tooltip: { callbacks: { label: c => ` ${c.label}: ${(c.parsed.x ?? c.parsed.y ?? c.parsed).toLocaleString('tr-TR')}` } }
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.raw).toLocaleString('tr-TR')}` } }
             },
             scales: { [horizontal ? 'x' : 'y']: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
         }
