@@ -86,6 +86,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-41** 7 JOKER kargo SQL entegre (`D:\Belgelerim\sql\_JOKER\`): kargo gün detay · kargoya verilme süreleri v2 · ay bazlı ortalama · çıkış-teslim süreleri · kargo+kapıda ödeme bedelleri · kapıda ödeme rapor · il teslimat perf. **Kullanıcının gerçek üretim sorguları — agent L1-L3'ten daha doğru.** L1-L3 + dashboard E-ticaret kargo panellerini bunlarla güçlendir. **(YENİ)**
 - [ ] **B-42** Eski Python pano (`scripts/gm_dashboard.py`) emekli kararı — Blazor canlı (`dashboard/`, port 5112). Paralel mi dursun? briefings/* eski çıktılar yanlış e-tic rakamıyla → regenerate/temizle. **(YENİ)**
 - [ ] **B-43** Kafe POS DB erişimi araştır — EncoreMerkez'de kafe yok, xlsx kanonik. Kafe ayrı POS sistemi nerede? **(YENİ)**
+- [ ] **B-46** `tools/diskscan` native disk tarayıcı: (1) optimize Program.cs rebuild (dosya string-alloc kaldırıldı, henüz derlenmedi), (2) `tools/.gitignore` (bin/obj/publish/*.exe hariç) sonra kaynak commit, (3) C: tara → D'ye taşınabilir klasör öner. MFT yolu makine policy ile kapalı (err 50/err 1300) — dir-walk tavanı. **(YENİ 13.06)**
 
 #### Faz 0 — Bugün (blocker'ları kaldır — 1-3 saat)
 - [x] ~~**B-01** `scripts/send_mail.py` UnicodeEncodeError düzelt~~ — ✅ `[OK]` + `sys.stdout.reconfigure(encoding="utf-8")`. Gmail "Sent" doğrulaması: kullanıcı kontrol edecek (geçen hafta 20.04 11:19 mail muhtemelen gitti — hata print'teydi).
