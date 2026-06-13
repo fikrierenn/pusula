@@ -201,3 +201,20 @@ queries:
     sample_result: "Aralık'25 158K sip → takvim 4,4 / iş günü 3,1 (yılbaşı zirve); Ağustos 62K → 1,6/1,0. Çıkış sipariş hacmiyle korele = kapasite darboğazı."
     source: "dashboard EticQueries.GetAyKargoAsync (B-41)"
     note: "Son 13 tam ay, dönem-bağımsız. CROSS APPLY tatil çıkarır (örnekte kısmi liste). Grafik iş günü serisi."
+
+  - id: cod-iade-maliyet-ozet
+    question: "Kapıda ödeme (COD) iade maliyeti özeti — sipariş/teslim/iade oranı + 2×kargo iade gideri"
+    metrics: [cod_ekonomi]
+    mcp_safe: true
+    verified_sql: |
+      SELECT COUNT(*) AS Siparis,
+             SUM(CASE WHEN o.STATUS=1005 THEN 1 ELSE 0 END) AS Teslim,
+             SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) AS Iade,
+             CAST(SUM(o.SERVICEPRICE) AS decimal(18,0)) AS KapidaBedel,
+             CAST(SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 2*o.CARGOPRICE ELSE 0 END) AS decimal(18,0)) AS IadeMaliyet
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      WHERE o.PAYDEFREF=-3 AND o.SENDDATE>='20260501' AND o.SENDDATE<'20260601' AND o.SENDDATE IS NOT NULL
+    last_verified: 2026-06-13
+    sample_result: "Mayıs'26: 2.690 COD sip · 2.397 teslim · 291 iade (%10,8) · iade maliyeti 52.322₺ · kapıda bedel 228.381₺. Yıllık ~628K₺ iade kargo gideri BKM yutar."
+    source: "dashboard EticQueries.GetCodOzetAsync · KARGO KAPIDA ÖDEME RAPOR.sql (B-41)"
+    note: "İade maliyeti = 2×CARGOPRICE (gidiş+geri getirme, teslim edilmeyen COD). SERVICEPRICE pass-through (firmaya, kâr değil). CARGODELIVERYSTATUS=2=iade. Çıkış (SENDDATE) dönemi — kısmi son ay iade oranını düşük gösterir (iade gecikmeli gelir)."
