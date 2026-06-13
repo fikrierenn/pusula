@@ -124,6 +124,25 @@ else if (_data is not null)
             <div class="text-base-content/50 text-[11px]">Çıkış = sipariş→kargoya veriliş (depo hızı, il-bağımsız). Teslim = kargo→müşteri (kargo firma + mesafe). Çıkış ≥3g kırmızı (depo yavaş), teslim ≤1,5g yeşil. Kargoya çıkış dönemine göre, teslim olmuş (STATUS=1005).</div>
         </div>
     </div>
+
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Aylık Çıkış Trendi — Depo Kargoya-Verme (son 13 ay)</h3>
+            <div class="relative h-[220px]"><canvas id="ch_aykargo"></canvas></div>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Ort. Çıkış (gün)</b></td></tr>
+                @foreach (var a in _ayKargo)
+                {
+                    <tr><td>@a.Ay</td><td class="text-right">@Num(a.Siparis)</td>
+                        <td class="text-right @(a.CikisGun >= 3 ? "text-error" : a.CikisGun <= 2 ? "text-success" : "")">@a.CikisGun.ToString("0.0")</td></tr>
+                }
+                @if (_ayKargo.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-base-content/50">Veri yok.</td></tr>
+                }
+            </table>
+            <div class="text-base-content/50 text-[11px]">Sipariş→kargoya veriliş ort. gün. Yoğun aylarda artar (kapasite darboğazı) — örn. yılbaşı. ≥3g kırmızı, ≤2g yeşil.</div>
+        </div>
+    </div>
 }
 
 @code {
@@ -138,6 +157,7 @@ else if (_data is not null)
     private IReadOnlyList<BekleyenBucket> _bekleyen = [];
     private IReadOnlyList<KargoGun> _kargoGun = [];
     private IReadOnlyList<IlTeslimat> _ilTeslimat = [];
+    private IReadOnlyList<AyKargo> _ayKargo = [];
     private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -170,6 +190,7 @@ else if (_data is not null)
             _kargoPerf = await Etic.GetKargoPerfAsync(start, endExcl);
             _kargoGun = await Etic.GetKargoGunAsync(start, endExcl);
             _ilTeslimat = await Etic.GetIlTeslimatAsync(start, endExcl);
+            _ayKargo = await Etic.GetAyKargoAsync();      // son 13 ay (dönemsiz)
             _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -192,6 +213,8 @@ else if (_data is not null)
                 _bekleyen.Select(b => b.Bucket), _bekleyen.Select(b => b.Adet), false);
             await _charts.InvokeVoidAsync("bar", "ch_kargogun",
                 _kargoGun.Select(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün"), _kargoGun.Select(k => k.Adet), false);
+            await _charts.InvokeVoidAsync("area", "ch_aykargo",
+                _ayKargo.Select(a => a.Ay), _ayKargo.Select(a => a.CikisGun));
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }

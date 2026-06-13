@@ -63,6 +63,29 @@ public sealed class EticQueries(Db db)
             new { giso = start.ToString("yyyyMMdd"), g2iso = endExcl.ToString("yyyyMMdd") })).ToList();
     }
 
+    /// <summary>Aylık çıkış trendi (B-41): son 13 ay × sipariş × ort çıkış gün (sipariş→kargoya veriliş). Dönem-bağımsız (kapasite/yoğunluk trendi).</summary>
+    public async Task<IReadOnlyList<AyKargo>> GetAyKargoAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        // Son 13 tam ay: bu ayın başından 12 ay geri (kısmi son ay dahil edilmez)
+        var ayBas = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-12);
+        var ayBitis = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        const string sql = """
+            SELECT YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE) AS AyKod,
+                   COUNT(DISTINCT o.ORDERID) AS Siparis,
+                   CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisGun
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
+              AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
+            GROUP BY YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE);
+            """;
+        var raw = await conn.QueryAsync<(int AyKod, int Siparis, decimal CikisGun)>(sql,
+            new { giso = ayBas.ToString("yyyyMMdd"), g2iso = ayBitis.ToString("yyyyMMdd") });
+        return raw.OrderBy(r => r.AyKod)
+            .Select(r => new AyKargo($"{r.AyKod % 100:00}.{r.AyKod / 100}", r.Siparis, r.CikisGun))
+            .ToList();
+    }
+
     /// <summary>Bekleyen gün raporu: kargoya çıkmamış (SENDDATE NULL) + normal STATUS siparişlerin yaş dağılımı (anlık, dönemsiz).</summary>
     public async Task<IReadOnlyList<BekleyenBucket>> GetBekleyenAsync()
     {

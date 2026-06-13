@@ -31,6 +31,9 @@ public record KargoPerf(string Kargo, int Adet, decimal? CikisGun, decimal? Tesl
 // İl teslimat performansı (B-41): şehir × adet × ort çıkış/teslim gün. Kargoya çıkış (SENDDATE) dönemine göre.
 public record IlTeslimat(string Sehir, int Adet, decimal CikisGun, decimal TeslimGun);
 
+// Aylık çıkış trendi (B-41): ay × sipariş × ort çıkış gün. Son 13 ay sabit (dönem-bağımsız) — kapasite/yoğunluk etkisi.
+public record AyKargo(string Ay, int Siparis, decimal CikisGun);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 
