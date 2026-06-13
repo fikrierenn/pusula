@@ -22,19 +22,25 @@ function draw(id, cfg) {
 }
 
 export function bar(id, labels, data, horizontal) {
+    const arr = Array.from(data);
+    const tot = arr.reduce((a, b) => a + (b > 0 ? b : 0), 0);
+    const pct = v => tot > 0 ? Math.round(100 * v / tot) : 0;
     draw(id, {
         type: 'bar',
         data: { labels, datasets: [{ data, backgroundColor: KP }] },
         options: {
             indexAxis: horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false,
-            layout: { padding: { right: horizontal ? 38 : 0, top: horizontal ? 0 : 18 } },
+            layout: { padding: { right: horizontal ? 52 : 0, top: horizontal ? 0 : 26 } },
             plugins: {
                 legend: { display: false },
                 datalabels: {
-                    anchor: 'end', align: 'end', color: '#475569', font: { size: 10, weight: 600 },
-                    formatter: v => fmtK(v)
+                    anchor: 'end', align: 'end', color: '#475569', font: { size: horizontal ? 9 : 10, weight: 600 }, clamp: true,
+                    // Yatay (çok kategori, dar): tek satır 'değer %X'. Dikey: iki satır.
+                    formatter: v => tot > 0 && v !== tot
+                        ? (horizontal ? `${fmtK(v)}  %${pct(v)}` : [fmtK(v), '%' + pct(v)])
+                        : fmtK(v)
                 },
-                tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.raw).toLocaleString('tr-TR')}` } }
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.raw).toLocaleString('tr-TR')} (%${pct(c.raw)})` } }
             },
             scales: { [horizontal ? 'x' : 'y']: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
         }
