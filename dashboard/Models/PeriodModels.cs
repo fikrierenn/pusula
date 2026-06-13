@@ -28,6 +28,9 @@ public record NameCount(string Ad, int Adet);
 /// <summary>Kargo performansı: firma × adet × ortalama çıkış günü × ortalama teslim günü (dönem).</summary>
 public record KargoPerf(string Kargo, int Adet, decimal? CikisGun, decimal? TeslimGun);
 
+// İl teslimat performansı (B-41): şehir × adet × ort çıkış/teslim gün. Kargoya çıkış (SENDDATE) dönemine göre.
+public record IlTeslimat(string Sehir, int Adet, decimal CikisGun, decimal TeslimGun);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 

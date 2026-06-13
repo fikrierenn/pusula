@@ -45,6 +45,24 @@ public sealed class EticQueries(Db db)
             .OrderBy(x => x.Gun).ToList();
     }
 
+    /// <summary>İl teslimat performansı (B-41): şehir × adet × ort çıkış/teslim gün. Kargoya çıkış (SENDDATE) dönemi, teslim olmuş (STATUS=1005).</summary>
+    public async Task<IReadOnlyList<IlTeslimat>> GetIlTeslimatAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT TOP 15 mus.DCITY AS Sehir, COUNT(*) AS Adet,
+                   CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisGun,
+                   CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
+            WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso
+              AND o.CARGODELIVERYDATE IS NOT NULL AND o.STATUS=1005 AND mus.DCITY IS NOT NULL
+            GROUP BY mus.DCITY ORDER BY Adet DESC;
+            """;
+        return (await conn.QueryAsync<IlTeslimat>(sql,
+            new { giso = start.ToString("yyyyMMdd"), g2iso = endExcl.ToString("yyyyMMdd") })).ToList();
+    }
+
     /// <summary>Bekleyen gün raporu: kargoya çıkmamış (SENDDATE NULL) + normal STATUS siparişlerin yaş dağılımı (anlık, dönemsiz).</summary>
     public async Task<IReadOnlyList<BekleyenBucket>> GetBekleyenAsync()
     {

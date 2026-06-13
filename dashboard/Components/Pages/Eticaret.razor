@@ -104,6 +104,26 @@ else if (_data is not null)
             <div class="text-base-content/50 text-[11px]">DATEDIFF(gün, sipariş, kargoya teslim). 4. gün+ kırmızı = yavaş çıkış.</div>
         </div>
     </div>
+
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Teslimat Performansı — Top 15 (çıkış @_aralik) — @_ilTeslimat.Count il</h3>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Şehir</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış (gün)</b></td><td class="text-right"><b>Teslim (gün)</b></td><td class="text-right"><b>Toplam (gün)</b></td></tr>
+                @foreach (var i in _ilTeslimat)
+                {
+                    <tr><td>@i.Sehir</td><td class="text-right">@Num(i.Adet)</td>
+                        <td class="text-right @(i.CikisGun >= 3 ? "text-error" : "")">@i.CikisGun.ToString("0.0")</td>
+                        <td class="text-right @(i.TeslimGun >= 3 ? "text-error" : i.TeslimGun <= 1.5m ? "text-success" : "")">@i.TeslimGun.ToString("0.0")</td>
+                        <td class="text-right font-semibold">@((i.CikisGun + i.TeslimGun).ToString("0.0"))</td></tr>
+                }
+                @if (_ilTeslimat.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
+                }
+            </table>
+            <div class="text-base-content/50 text-[11px]">Çıkış = sipariş→kargoya veriliş (depo hızı, il-bağımsız). Teslim = kargo→müşteri (kargo firma + mesafe). Çıkış ≥3g kırmızı (depo yavaş), teslim ≤1,5g yeşil. Kargoya çıkış dönemine göre, teslim olmuş (STATUS=1005).</div>
+        </div>
+    </div>
 }
 
 @code {
@@ -117,6 +137,7 @@ else if (_data is not null)
     private IReadOnlyList<KargoPerf> _kargoPerf = [];
     private IReadOnlyList<BekleyenBucket> _bekleyen = [];
     private IReadOnlyList<KargoGun> _kargoGun = [];
+    private IReadOnlyList<IlTeslimat> _ilTeslimat = [];
     private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -148,6 +169,7 @@ else if (_data is not null)
             _data = await Queries.GetPeriodAsync(start, endExcl);
             _kargoPerf = await Etic.GetKargoPerfAsync(start, endExcl);
             _kargoGun = await Etic.GetKargoGunAsync(start, endExcl);
+            _ilTeslimat = await Etic.GetIlTeslimatAsync(start, endExcl);
             _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
         }
         catch (Exception ex) { _error = ex.Message; }
