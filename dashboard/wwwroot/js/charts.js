@@ -7,7 +7,11 @@ const KP_FILL = 'rgba(64,99,230,.12)';
 const PAL = [KP, '#0ea5e9', '#22c55e', '#f59e0b', '#a855f7', '#64748b', '#ec4899', '#14b8a6'];
 const store = {};
 
+// Datalabels plugin global kayıt (donut %, bar değer). Yoksa sessiz geç.
+if (window.Chart && window.ChartDataLabels) Chart.register(window.ChartDataLabels);
+
 function fmtM(v) { return (v / 1e6).toFixed(1) + 'M'; }
+function fmtK(v) { return v >= 1e6 ? fmtM(v) : v >= 1000 ? (v / 1000).toFixed(1) + 'B' : v; }
 
 function draw(id, cfg) {
     const el = document.getElementById(id);
@@ -22,17 +26,35 @@ export function bar(id, labels, data, horizontal) {
         data: { labels, datasets: [{ data, backgroundColor: KP }] },
         options: {
             indexAxis: horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            layout: { padding: { right: horizontal ? 38 : 0, top: horizontal ? 0 : 18 } },
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    anchor: 'end', align: 'end', color: '#475569', font: { size: 10, weight: 600 },
+                    formatter: v => fmtK(v)
+                }
+            },
             scales: { [horizontal ? 'x' : 'y']: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
         }
     });
 }
 
 export function donut(id, labels, data) {
+    const tot = Array.from(data).reduce((a, b) => a + b, 0);
     draw(id, {
         type: 'doughnut',
         data: { labels, datasets: [{ data, backgroundColor: PAL }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' },
+                datalabels: {
+                    color: '#fff', font: { size: 11, weight: 700 },
+                    formatter: v => tot > 0 && v / tot >= 0.04 ? '%' + Math.round(100 * v / tot) : '',
+                    textStrokeColor: 'rgba(0,0,0,.35)', textStrokeWidth: 3
+                }
+            }
+        }
     });
 }
 
@@ -42,7 +64,10 @@ export function area(id, labels, data) {
         data: { labels, datasets: [{ data, borderColor: KP, backgroundColor: KP_FILL, fill: true, tension: .3 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                datalabels: { align: 'top', color: '#475569', font: { size: 10, weight: 600 }, formatter: v => v }
+            },
             scales: { y: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
         }
     });
@@ -57,7 +82,7 @@ export function scatter(id, labels, x, y) {
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: { display: false }, datalabels: { display: false },
                 tooltip: { callbacks: { label: c => `${c.raw.k}: ciro ${fmtM(c.raw.x)} · stok ${fmtM(c.raw.y)}` } }
             },
             scales: {
@@ -77,6 +102,7 @@ export function barDual(id, labels, fis, net) {
         ]},
         options: {
             responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { display: false } },
             scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
         }
     });
