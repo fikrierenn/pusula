@@ -25,14 +25,14 @@ public record TrendPoint(string Tarih, decimal Net);
 /// <summary>E-ticaret kargo firma / il dağılımı (ad + sipariş adedi).</summary>
 public record NameCount(string Ad, int Adet);
 
-/// <summary>Kargo performansı: firma × adet × ortalama çıkış günü × ortalama teslim günü (dönem).</summary>
-public record KargoPerf(string Kargo, int Adet, decimal? CikisGun, decimal? TeslimGun);
+/// <summary>Kargo performansı: firma × adet × çıkış (takvim+iş günü) × teslim gün (dönem).</summary>
+public record KargoPerf(string Kargo, int Adet, decimal? CikisTakvim, decimal? CikisIsGunu, decimal? TeslimGun);
 
-// İl teslimat performansı (B-41): şehir × adet × ort çıkış/teslim gün. Kargoya çıkış (SENDDATE) dönemine göre.
-public record IlTeslimat(string Sehir, int Adet, decimal CikisGun, decimal TeslimGun);
+// İl teslimat (B-41): şehir × adet × çıkış (CikisTakvim=müşteri algısı, CikisIsGunu=depo gerçek) × teslim. Çıkış (SENDDATE) dönemi.
+public record IlTeslimat(string Sehir, int Adet, decimal CikisTakvim, decimal CikisIsGunu, decimal TeslimGun);
 
-// Aylık çıkış trendi (B-41): ay × sipariş × ort çıkış gün. Son 13 ay sabit (dönem-bağımsız) — kapasite/yoğunluk etkisi.
-public record AyKargo(string Ay, int Siparis, decimal CikisGun);
+// Aylık çıkış trendi (B-41): ay × sipariş × çıkış takvim+iş günü. Son 13 ay sabit.
+public record AyKargo(string Ay, int Siparis, decimal CikisTakvim, decimal CikisIsGunu);
 
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);

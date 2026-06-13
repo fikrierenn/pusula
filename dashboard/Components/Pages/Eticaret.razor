@@ -49,19 +49,20 @@ else if (_data is not null)
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Performansı (@_aralik) — @_kargoPerf.Count firma</h3>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kargo Firma</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Çıkış (iş günü)</b></td><td class="text-right"><b>Teslim (gün)</b></td></tr>
+                <tr><td><b>Kargo Firma</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td><td class="text-right"><b>Teslim</b></td></tr>
                 @foreach (var k in _kargoPerf)
                 {
                     <tr><td>@k.Kargo</td><td class="text-right">@Num(k.Adet)</td>
-                        <td class="text-right">@(k.CikisGun is null ? "—" : k.CikisGun.Value.ToString("0.0"))</td>
+                        <td class="text-right text-base-content/50">@(k.CikisTakvim is null ? "—" : k.CikisTakvim.Value.ToString("0.0"))</td>
+                        <td class="text-right @(k.CikisIsGunu >= 3 ? "text-error" : k.CikisIsGunu <= 2 ? "text-success" : "")">@(k.CikisIsGunu is null ? "—" : k.CikisIsGunu.Value.ToString("0.0"))</td>
                         <td class="text-right">@(k.TeslimGun is null ? "—" : k.TeslimGun.Value.ToString("0.0"))</td></tr>
                 }
                 @if (_kargoPerf.Count == 0)
                 {
-                    <tr><td colspan="4" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
+                    <tr><td colspan="5" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
                 }
             </table>
-            <div class="text-base-content/50 text-[11px]">Çıkış = sipariş→kargoya veriliş (<b>iş günü</b>, hafta sonu+tatil hariç); Teslim = kargo→müşteri (takvim). Sadece teslim olmuş siparişler.</div>
+            <div class="text-base-content/50 text-[11px]"><b>Çıkış Takvim</b> = müşteri algısı (ham gün). <b>Çıkış İş Günü</b> = depo gerçek performansı (hafta sonu+tatil hariç). Teslim = kargo→müşteri (takvim). İş günü ≥3 kırmızı, ≤2 yeşil.</div>
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
@@ -108,20 +109,21 @@ else if (_data is not null)
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Teslimat Performansı — Top 15 (çıkış @_aralik) — @_ilTeslimat.Count il</h3>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Şehir</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış (iş günü)</b></td><td class="text-right"><b>Teslim (gün)</b></td><td class="text-right"><b>Toplam (gün)</b></td></tr>
+                <tr><td><b>Şehir</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td><td class="text-right"><b>Teslim</b></td><td class="text-right"><b>Toplam (algı)</b></td></tr>
                 @foreach (var i in _ilTeslimat)
                 {
                     <tr><td>@i.Sehir</td><td class="text-right">@Num(i.Adet)</td>
-                        <td class="text-right @(i.CikisGun >= 3 ? "text-error" : "")">@i.CikisGun.ToString("0.0")</td>
+                        <td class="text-right text-base-content/50">@i.CikisTakvim.ToString("0.0")</td>
+                        <td class="text-right @(i.CikisIsGunu >= 3 ? "text-error" : i.CikisIsGunu <= 2 ? "text-success" : "")">@i.CikisIsGunu.ToString("0.0")</td>
                         <td class="text-right @(i.TeslimGun >= 3 ? "text-error" : i.TeslimGun <= 1.5m ? "text-success" : "")">@i.TeslimGun.ToString("0.0")</td>
-                        <td class="text-right font-semibold">@((i.CikisGun + i.TeslimGun).ToString("0.0"))</td></tr>
+                        <td class="text-right font-semibold">@((i.CikisTakvim + i.TeslimGun).ToString("0.0"))</td></tr>
                 }
                 @if (_ilTeslimat.Count == 0)
                 {
-                    <tr><td colspan="5" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
+                    <tr><td colspan="6" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
                 }
             </table>
-            <div class="text-base-content/50 text-[11px]"><b>Çıkış = İŞ GÜNÜ</b> (hafta sonu + resmi tatil hariç — depo Pzt-Cuma). Depo hızı, il-bağımsız. Teslim = kargo→müşteri (takvim gün; kargo hafta sonu çalışır), il+mesafe-bağımlı. Çıkış ≥3 iş günü kırmızı, teslim ≤1,5g yeşil. Çıkış dönemine göre, teslim olmuş (STATUS=1005).</div>
+            <div class="text-base-content/50 text-[11px]"><b>Çıkış Takvim</b> = müşteri algısı (ham gün, hafta sonu+tatil dahil). <b>Çıkış İş Günü</b> = depo gerçek performansı (Pzt-Cuma çalışma). Teslim = kargo→müşteri (takvim, il+mesafe). Toplam (algı) = takvim çıkış + teslim = müşterinin beklediği süre. İş günü ≥3 kırmızı / ≤2 yeşil, teslim ≤1,5g yeşil. STATUS=1005 teslim olmuş.</div>
         </div>
     </div>
 
@@ -129,18 +131,19 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Aylık Çıkış Trendi — Depo Kargoya-Verme (son 13 ay)</h3>
             <div class="relative h-[220px]"><canvas id="ch_aykargo"></canvas></div>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Ort. Çıkış (iş günü)</b></td></tr>
+                <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
                 @foreach (var a in _ayKargo)
                 {
                     <tr><td>@a.Ay</td><td class="text-right">@Num(a.Siparis)</td>
-                        <td class="text-right @(a.CikisGun >= 3 ? "text-error" : a.CikisGun <= 2 ? "text-success" : "")">@a.CikisGun.ToString("0.0")</td></tr>
+                        <td class="text-right text-base-content/50">@a.CikisTakvim.ToString("0.0")</td>
+                        <td class="text-right @(a.CikisIsGunu >= 3 ? "text-error" : a.CikisIsGunu <= 2 ? "text-success" : "")">@a.CikisIsGunu.ToString("0.0")</td></tr>
                 }
                 @if (_ayKargo.Count == 0)
                 {
-                    <tr><td colspan="3" class="text-base-content/50">Veri yok.</td></tr>
+                    <tr><td colspan="4" class="text-base-content/50">Veri yok.</td></tr>
                 }
             </table>
-            <div class="text-base-content/50 text-[11px]">Sipariş→kargoya veriliş ort. <b>iş günü</b> (hafta sonu + resmi tatil hariç). Yoğun aylarda artar (kapasite darboğazı) — örn. yılbaşı. ≥3 iş günü kırmızı, ≤2 yeşil.</div>
+            <div class="text-base-content/50 text-[11px]">Grafik = <b>iş günü</b> trend (depo gerçek). Takvim = müşteri algısı. Yoğun aylarda iş günü artar (kapasite darboğazı) — örn. yılbaşı. ≥3 iş günü kırmızı, ≤2 yeşil.</div>
         </div>
     </div>
 }
@@ -214,7 +217,7 @@ else if (_data is not null)
             await _charts.InvokeVoidAsync("bar", "ch_kargogun",
                 _kargoGun.Select(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün"), _kargoGun.Select(k => k.Adet), false);
             await _charts.InvokeVoidAsync("area", "ch_aykargo",
-                _ayKargo.Select(a => a.Ay), _ayKargo.Select(a => a.CikisGun));
+                _ayKargo.Select(a => a.Ay), _ayKargo.Select(a => a.CikisIsGunu));
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }

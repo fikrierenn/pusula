@@ -21,7 +21,10 @@ public sealed class EticQueries(Db db)
         "(CONVERT(date,'20260527')),(CONVERT(date,'20260528')),(CONVERT(date,'20260529')),(CONVERT(date,'20260530'))," +
         "(CONVERT(date,'20260715')),(CONVERT(date,'20260830')),(CONVERT(date,'20261029'))";
 
-    // İş günü çıkış (sipariş→kargoya veriliş): takvim − hafta sonu − araya giren hafta-içi resmi tatil.
+    // Takvim çıkış (müşteri algısı): ham gün farkı, saat hassasiyetli.
+    const string CikisTakvim = "CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24";
+
+    // İş günü çıkış (depo gerçek performansı): takvim − hafta sonu − araya giren hafta-içi resmi tatil.
     // ta.T = CROSS APPLY ile gelen tatil sayısı. o.ORDERDATE/o.SENDDATE alias sabit.
     const string CikisIsGunu =
         "DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) - DATEDIFF(WEEK,o.ORDERDATE,o.SENDDATE)*2 " +
@@ -38,7 +41,8 @@ public sealed class EticQueries(Db db)
         await using var conn = await db.OpenAsync();
         var sql = $"""
             SELECT TOP 10 ISNULL(c.CNAME,'(bilinmiyor)') AS Kargo, COUNT(*) AS Adet,
-                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisGun,
+                   CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu,
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             LEFT JOIN ODAKJOKER.JOKER.dbo.J_CARGO c ON c.ID=o.CARGOREF
@@ -75,7 +79,8 @@ public sealed class EticQueries(Db db)
         await using var conn = await db.OpenAsync();
         var sql = $"""
             SELECT TOP 15 mus.DCITY AS Sehir, COUNT(*) AS Adet,
-                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisGun,
+                   CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu,
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
@@ -98,17 +103,18 @@ public sealed class EticQueries(Db db)
         var sql = $"""
             SELECT YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE) AS AyKod,
                    COUNT(DISTINCT o.ORDERID) AS Siparis,
-                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisGun
+                   CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             {TatilApply()}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
             GROUP BY YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE);
             """;
-        var raw = await conn.QueryAsync<(int AyKod, int Siparis, decimal CikisGun)>(sql,
+        var raw = await conn.QueryAsync<(int AyKod, int Siparis, decimal CikisTakvim, decimal CikisIsGunu)>(sql,
             new { giso = ayBas.ToString("yyyyMMdd"), g2iso = ayBitis.ToString("yyyyMMdd") });
         return raw.OrderBy(r => r.AyKod)
-            .Select(r => new AyKargo($"{r.AyKod % 100:00}.{r.AyKod / 100}", r.Siparis, r.CikisGun))
+            .Select(r => new AyKargo($"{r.AyKod % 100:00}.{r.AyKod / 100}", r.Siparis, r.CikisTakvim, r.CikisIsGunu))
             .ToList();
     }
 
