@@ -127,7 +127,8 @@ metrics:
 
   il_teslimat_perf:         # 13.06 — B-41 il bazlı kargo teslimat hızı
     source: "J_ORDERS o JOIN J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF"
-    formula: "cikis_gun=AVG(DATEDIFF(HOUR,ORDERDATE,SENDDATE)/24) · teslim_gun=AVG(DATEDIFF(HOUR,SENDDATE,CARGODELIVERYDATE)/24)"
+    formula: "cikis_isgunu = takvim − hafta_sonu(DATEDIFF WEEK*2 + Pazar-baş/Cmt-bitiş edge) − araya giren hafta-içi resmi tatil (CROSS APPLY VALUES tatil tablosu) · teslim_gun=AVG(DATEDIFF(HOUR,SENDDATE,CARGODELIVERYDATE)/24) takvim"
     filter: "SENDDATE dönemi, CARGODELIVERYDATE NOT NULL, STATUS=1005, DCITY NOT NULL. GROUP BY DCITY."
-    bulgu: "ÇIKIŞ il-bağımsız sabit (~4,1g MTD Haz) = DEPO kargoya-verme darboğazı (kontrol edilebilir, SLA riski). TESLİM il-bağımlı (İstanbul 1,4g · Doğu 2,7-2,8g) = kargo firma+mesafe. İki sorun AYRI: çıkış=operasyon, teslim=lojistik."
-    rapor: "dashboard EticQueries.GetIlTeslimatAsync · KARGO İL TESLİMAT PERFORMANSLARI.sql"
+    kritik: "ÇIKIŞ süresi İŞ GÜNÜ olmalı (takvim DEĞİL). Depo Pzt-Cuma çalışıyor (13.06: Cmt 5/Paz 0 kargo, veriden kesin). Takvim çıkış İstanbul 4,1g → iş günü 1,8g (2x abartı!). TESLİM takvim kalır (kargo firma hafta sonu dağıtır). Resmi tatil hardcode Holidays sabiti (dini bayram YAKLAŞIK, yıllık güncelle)."
+    bulgu: "ÇIKIŞ il-bağımsız sabit (iş günü ~1,8g, takvim ~4,1g) = DEPO darboğazı (operasyon, kontrol edilebilir). TESLİM il-bağımlı (İstanbul 1,4g · Doğu 2,7-2,8g) = kargo firma+mesafe (lojistik). Aylık çıkış trendi yoğunlukla korele (Aralık yılbaşı iş günü 3,1g zirve) = kapasite."
+    rapor: "dashboard EticQueries.GetIlTeslimatAsync/GetAyKargoAsync/GetKargoPerfAsync (CikisIsGunu+TatilApply) · KARGO İL TESLİMAT PERFORMANSLARI.sql"
