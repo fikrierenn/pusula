@@ -35,10 +35,7 @@ export function bar(id, labels, data, horizontal) {
                 legend: { display: false },
                 datalabels: {
                     anchor: 'end', align: 'end', color: '#475569', font: { size: horizontal ? 9 : 10, weight: 600 }, clamp: true,
-                    // Yatay (çok kategori, dar): tek satır 'değer %X'. Dikey: iki satır.
-                    formatter: v => tot > 0 && v !== tot
-                        ? (horizontal ? `${fmtK(v)}  %${pct(v)}` : [fmtK(v), '%' + pct(v)])
-                        : fmtK(v)
+                    formatter: v => fmtK(v)   // sadece değer; oran hover hint'inde
                 },
                 tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.raw).toLocaleString('tr-TR')} (%${pct(c.raw)})` } }
             },
