@@ -34,6 +34,9 @@ public record IlTeslimat(string Sehir, int Adet, decimal CikisTakvim, decimal Ci
 // Aylık çıkış trendi (B-41): ay × sipariş × çıkış takvim+iş günü. Son 13 ay sabit.
 public record AyKargo(string Ay, int Siparis, decimal CikisTakvim, decimal CikisIsGunu);
 
+// Kapıda ödeme (COD) özeti (B-41): PAYDEFREF=-3. İade maliyeti = 2×kargo (BKM yutar). SENDDATE dönemi.
+public record CodOzet(int Siparis, int Teslim, int Iade, decimal IadeOran, decimal KapidaBedel, decimal IadeMaliyet);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 

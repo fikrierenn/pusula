@@ -146,6 +146,22 @@ else if (_data is not null)
             <div class="text-base-content/50 text-[11px]">Grafik = <b>iş günü</b> trend (depo gerçek). Takvim = müşteri algısı. Yoğun aylarda iş günü artar (kapasite darboğazı) — örn. yılbaşı. ≥3 iş günü kırmızı, ≤2 yeşil.</div>
         </div>
     </div>
+
+    @if (_cod is not null)
+    {
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kapıda Ödeme (COD) — İade Maliyeti (@_aralik)</h3>
+                <div class="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                    <div><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">COD Sipariş</div><div class="text-[22px] font-extrabold tracking-tight">@Num(_cod.Siparis)</div></div>
+                    <div><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">Teslim</div><div class="text-[22px] font-extrabold tracking-tight text-success">@Num(_cod.Teslim)</div></div>
+                    <div><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">İade</div><div class="text-[22px] font-extrabold tracking-tight @(_cod.IadeOran >= 10 ? "text-error" : "text-warning")">@Num(_cod.Iade) · %@_cod.IadeOran</div></div>
+                    <div><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">İade Kargo Maliyeti</div><div class="text-[22px] font-extrabold tracking-tight text-error">@Tl(_cod.IadeMaliyet)</div></div>
+                    <div><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">Kapıda Bedel (pass-through)</div><div class="text-[22px] font-extrabold tracking-tight text-base-content/60">@Tl(_cod.KapidaBedel)</div></div>
+                </div>
+                <div class="text-base-content/50 text-[11px] mt-3">İade maliyeti = <b>2×kargo bedeli</b> (gidiş+geri getirme) — teslim edilmeyen COD sipariş, <b>BKM yutar</b>. Kapıda bedel (SERVICEPRICE) firmaya ödenen pass-through, kâr değil. COD iade oranı coğrafya-bağımlı (Doğu yüksek). PAYDEFREF=-3, çıkış dönemine göre.</div>
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -161,6 +177,7 @@ else if (_data is not null)
     private IReadOnlyList<KargoGun> _kargoGun = [];
     private IReadOnlyList<IlTeslimat> _ilTeslimat = [];
     private IReadOnlyList<AyKargo> _ayKargo = [];
+    private CodOzet? _cod;
     private IJSObjectReference? _charts;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -194,6 +211,7 @@ else if (_data is not null)
             _kargoGun = await Etic.GetKargoGunAsync(start, endExcl);
             _ilTeslimat = await Etic.GetIlTeslimatAsync(start, endExcl);
             _ayKargo = await Etic.GetAyKargoAsync();      // son 13 ay (dönemsiz)
+            _cod = await Etic.GetCodOzetAsync(start, endExcl);
             _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
         }
         catch (Exception ex) { _error = ex.Message; }

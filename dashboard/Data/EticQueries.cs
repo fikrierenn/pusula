@@ -118,6 +118,25 @@ public sealed class EticQueries(Db db)
             .ToList();
     }
 
+    /// <summary>Kapıda ödeme (COD) özeti (B-41): PAYDEFREF=-3. İade=CARGODELIVERYSTATUS=2, iade maliyeti=2×CARGOPRICE (gidiş+geri, BKM yutar). SENDDATE dönemi.</summary>
+    public async Task<CodOzet> GetCodOzetAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT COUNT(*) AS Siparis,
+                   SUM(CASE WHEN o.STATUS=1005 THEN 1 ELSE 0 END) AS Teslim,
+                   SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) AS Iade,
+                   CAST(SUM(o.SERVICEPRICE) AS decimal(18,0)) AS KapidaBedel,
+                   CAST(SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 2*o.CARGOPRICE ELSE 0 END) AS decimal(18,0)) AS IadeMaliyet
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            WHERE o.PAYDEFREF=-3 AND o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL;
+            """;
+        var r = await conn.QuerySingleOrDefaultAsync<(int Siparis, int Teslim, int Iade, decimal KapidaBedel, decimal IadeMaliyet)>(sql,
+            new { giso = start.ToString("yyyyMMdd"), g2iso = endExcl.ToString("yyyyMMdd") });
+        var oran = r.Siparis > 0 ? Math.Round(100m * r.Iade / r.Siparis, 1) : 0;
+        return new CodOzet(r.Siparis, r.Teslim, r.Iade, oran, r.KapidaBedel, r.IadeMaliyet);
+    }
+
     /// <summary>Bekleyen gün raporu: kargoya çıkmamış (SENDDATE NULL) + normal STATUS siparişlerin yaş dağılımı (anlık, dönemsiz).</summary>
     public async Task<IReadOnlyList<BekleyenBucket>> GetBekleyenAsync()
     {
