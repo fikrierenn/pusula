@@ -168,16 +168,17 @@ else if (_data is not null)
         {
             <div class="text-base-content/50 text-xs mb-2">@_selAy.Ay · @Num(_selAy.Siparis) sipariş · çıkış takvim @_selAy.CikisTakvim.ToString("0.0")g / iş günü @_selAy.CikisIsGunu.ToString("0.0")g</div>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Gün</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
+                <tr><td><b>Gün</b></td><td><b>Gün Adı</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
                 @foreach (var g in _gunKargo)
                 {
-                    <tr><td>@g.Gun</td><td class="text-right">@Num(g.Siparis)</td>
+                    var hg = GunAdi(g.Gun);
+                    <tr><td>@g.Gun</td><td class="@(hg is "Cumartesi" or "Pazar" ? "text-base-content/40" : "")">@hg</td><td class="text-right">@Num(g.Siparis)</td>
                         <td class="text-right text-base-content/50">@g.CikisTakvim.ToString("0.0")</td>
                         <td class="text-right @(g.CikisIsGunu >= 3 ? "text-error" : g.CikisIsGunu <= 2 ? "text-success" : "")">@g.CikisIsGunu.ToString("0.0")</td></tr>
                 }
                 @if (_gunKargo.Count == 0)
                 {
-                    <tr><td colspan="4" class="text-base-content/50">Gün verisi yok.</td></tr>
+                    <tr><td colspan="5" class="text-base-content/50">Gün verisi yok.</td></tr>
                 }
             </table>
             <div class="text-base-content/50 text-[11px] mt-2">Çıkış iş günü = hafta sonu + tatil hariç. Düşük-sipariş gün = resmi/dini tatil (depo kapalı).</div>
@@ -276,6 +277,11 @@ else if (_data is not null)
     {
         if (firstRender && _data is not null) await DrawAsync();
     }
+
+    private static readonly string[] _gunler = { "Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi" };
+    private static string GunAdi(string ddMMyyyy) =>
+        DateTime.TryParseExact(ddMMyyyy, "dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var d) ? _gunler[(int)d.DayOfWeek] : "";
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));

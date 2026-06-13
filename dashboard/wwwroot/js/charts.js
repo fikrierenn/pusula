@@ -32,7 +32,8 @@ export function bar(id, labels, data, horizontal) {
                 datalabels: {
                     anchor: 'end', align: 'end', color: '#475569', font: { size: 10, weight: 600 },
                     formatter: v => fmtK(v)
-                }
+                },
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${(c.parsed.x ?? c.parsed.y ?? c.parsed).toLocaleString('tr-TR')}` } }
             },
             scales: { [horizontal ? 'x' : 'y']: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
         }
@@ -52,7 +53,8 @@ export function donut(id, labels, data) {
                     color: '#fff', font: { size: 11, weight: 700 },
                     formatter: v => tot > 0 && v / tot >= 0.04 ? '%' + Math.round(100 * v / tot) : '',
                     textStrokeColor: 'rgba(0,0,0,.35)', textStrokeWidth: 3
-                }
+                },
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${fmtK(c.parsed)} (%${tot > 0 ? (100 * c.parsed / tot).toFixed(1) : 0})` } }
             }
         }
     });
