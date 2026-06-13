@@ -152,3 +152,52 @@ queries:
     sample_result: "Hafta 01-07.06.2026: net 19,1M ₺ / 18.741 sipariş (fiziksel 10,1M'nin ~2 katı)"
     source: "scripts/generate_brief.py SQL_ETICARET (brief v1.1.0)"
     note: "Tarih ISO YYYYMMDD zorunlu. Net = STATUS 1006 (iptal) + 3004/3006 (iade) hariç. TOTALPRICE kargo dahil brüt sipariş — POS net'iyle birebir kıyaslanamaz."
+
+  - id: il-teslimat-perf
+    question: "İl bazında kargo teslimat performansı — çıkış (takvim + iş günü) + teslim süresi"
+    metrics: [il_teslimat_perf]
+    mcp_safe: false   # TOP + ORDER BY + CROSS APPLY — dashboard'da çalışır, MCP'de ORDER BY çıkar
+    verified_sql: |
+      SELECT TOP 15 mus.DCITY AS Sehir, COUNT(*) AS Adet,
+             CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisTakvim,
+             CAST(AVG(CAST(
+               DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) - DATEDIFF(WEEK,o.ORDERDATE,o.SENDDATE)*2
+               - CASE WHEN DATEPART(WEEKDAY,o.ORDERDATE)=1 THEN 1 ELSE 0 END
+               - CASE WHEN DATEPART(WEEKDAY,o.SENDDATE)=7 THEN 1 ELSE 0 END - ta.T AS float)) AS decimal(10,1)) AS CikisIsGunu,
+             CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
+      CROSS APPLY (SELECT COUNT(*) T FROM (VALUES (CONVERT(date,'20260423')),(CONVERT(date,'20260501')),
+        (CONVERT(date,'20260519')),(CONVERT(date,'20260527')),(CONVERT(date,'20260528')),
+        (CONVERT(date,'20260529')),(CONVERT(date,'20260530'))) H(d)
+        WHERE H.d>o.ORDERDATE AND H.d<=o.SENDDATE AND DATEPART(WEEKDAY,H.d) NOT IN (1,7)) ta
+      WHERE o.SENDDATE>='20260601' AND o.SENDDATE<'20260613'
+        AND o.CARGODELIVERYDATE IS NOT NULL AND o.STATUS=1005 AND mus.DCITY IS NOT NULL
+      GROUP BY mus.DCITY ORDER BY Adet DESC
+    last_verified: 2026-06-13
+    sample_result: "MTD Haz İstanbul 9.662 sip · çıkış takvim 4,1g / iş günü 1,8g · teslim 1,4g · toplam algı 5,5g. Çıkış il-bağımsız (depo), teslim il-bağımlı (kargo)."
+    source: "dashboard EticQueries.GetIlTeslimatAsync · KARGO İL TESLİMAT PERFORMANSLARI.sql (B-41)"
+    note: "ÇIKIŞ iş günü olmalı (takvim 2x abartı). Depo Pzt-Cuma (Cmt 5/Paz 0). CROSS APPLY tatil tablosu hafta-içi resmi tatil çıkarır. Teslim takvim (kargo hafta sonu çalışır). Tatil sabiti yıllık güncelle."
+
+  - id: ay-cikis-trend
+    question: "Aylık kargoya çıkış süresi trendi (takvim + iş günü) — kapasite darboğazı"
+    metrics: [il_teslimat_perf]
+    mcp_safe: true
+    verified_sql: |
+      SELECT YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE) AS AyKod,
+             COUNT(DISTINCT o.ORDERID) AS Siparis,
+             CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisTakvim,
+             CAST(AVG(CAST(
+               DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) - DATEDIFF(WEEK,o.ORDERDATE,o.SENDDATE)*2
+               - CASE WHEN DATEPART(WEEKDAY,o.ORDERDATE)=1 THEN 1 ELSE 0 END
+               - CASE WHEN DATEPART(WEEKDAY,o.SENDDATE)=7 THEN 1 ELSE 0 END - ta.T AS float)) AS decimal(10,1)) AS CikisIsGunu
+      FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+      CROSS APPLY (SELECT COUNT(*) T FROM (VALUES (CONVERT(date,'20251029')),(CONVERT(date,'20260101'))) H(d)
+        WHERE H.d>o.ORDERDATE AND H.d<=o.SENDDATE AND DATEPART(WEEKDAY,H.d) NOT IN (1,7)) ta
+      WHERE o.SENDDATE>='20250601' AND o.SENDDATE<'20260601' AND o.SENDDATE IS NOT NULL
+        AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
+      GROUP BY YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE)
+    last_verified: 2026-06-13
+    sample_result: "Aralık'25 158K sip → takvim 4,4 / iş günü 3,1 (yılbaşı zirve); Ağustos 62K → 1,6/1,0. Çıkış sipariş hacmiyle korele = kapasite darboğazı."
+    source: "dashboard EticQueries.GetAyKargoAsync (B-41)"
+    note: "Son 13 tam ay, dönem-bağımsız. CROSS APPLY tatil çıkarır (örnekte kısmi liste). Grafik iş günü serisi."
