@@ -9,16 +9,40 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed class EticQueries(Db db)
 {
+    // Türkiye resmi tatilleri 2025-2026 (depo kapalı). Dini bayram tarihleri YAKLAŞIK — yıllık güncellenmeli.
+    // Kullanım: çıkış süresi (sipariş→kargoya veriliş) iş günü hesabında. Depo Pzt-Cuma çalışıyor (Cmt 5/Paz 0 doğrulandı 13.06).
+    const string Holidays =
+        "(CONVERT(date,'20250101')),(CONVERT(date,'20250330')),(CONVERT(date,'20250331')),(CONVERT(date,'20250401'))," +
+        "(CONVERT(date,'20250423')),(CONVERT(date,'20250501')),(CONVERT(date,'20250519'))," +
+        "(CONVERT(date,'20250606')),(CONVERT(date,'20250607')),(CONVERT(date,'20250608')),(CONVERT(date,'20250609'))," +
+        "(CONVERT(date,'20250715')),(CONVERT(date,'20250830')),(CONVERT(date,'20251029'))," +
+        "(CONVERT(date,'20260101')),(CONVERT(date,'20260320')),(CONVERT(date,'20260321')),(CONVERT(date,'20260322'))," +
+        "(CONVERT(date,'20260423')),(CONVERT(date,'20260501')),(CONVERT(date,'20260519'))," +
+        "(CONVERT(date,'20260527')),(CONVERT(date,'20260528')),(CONVERT(date,'20260529')),(CONVERT(date,'20260530'))," +
+        "(CONVERT(date,'20260715')),(CONVERT(date,'20260830')),(CONVERT(date,'20261029'))";
+
+    // İş günü çıkış (sipariş→kargoya veriliş): takvim − hafta sonu − araya giren hafta-içi resmi tatil.
+    // ta.T = CROSS APPLY ile gelen tatil sayısı. o.ORDERDATE/o.SENDDATE alias sabit.
+    const string CikisIsGunu =
+        "DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) - DATEDIFF(WEEK,o.ORDERDATE,o.SENDDATE)*2 " +
+        "- CASE WHEN DATEPART(WEEKDAY,o.ORDERDATE)=1 THEN 1 ELSE 0 END " +
+        "- CASE WHEN DATEPART(WEEKDAY,o.SENDDATE)=7 THEN 1 ELSE 0 END - ta.T";
+
+    static string TatilApply() =>
+        $"CROSS APPLY (SELECT COUNT(*) T FROM (VALUES {Holidays}) H(d) " +
+        "WHERE H.d>o.ORDERDATE AND H.d<=o.SENDDATE AND DATEPART(WEEKDAY,H.d) NOT IN (1,7)) ta";
+
     /// <summary>Kargo performansı: firma × adet × ort. çıkış günü × ort. teslim günü (dönem-duyarlı, sadece teslim olmuş).</summary>
     public async Task<IReadOnlyList<KargoPerf>> GetKargoPerfAsync(DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenAsync();
-        const string sql = """
+        var sql = $"""
             SELECT TOP 10 ISNULL(c.CNAME,'(bilinmiyor)') AS Kargo, COUNT(*) AS Adet,
-                   CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisGun,
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisGun,
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             LEFT JOIN ODAKJOKER.JOKER.dbo.J_CARGO c ON c.ID=o.CARGOREF
+            {TatilApply()}
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
               AND o.SENDDATE IS NOT NULL AND o.CARGODELIVERYDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
@@ -49,12 +73,13 @@ public sealed class EticQueries(Db db)
     public async Task<IReadOnlyList<IlTeslimat>> GetIlTeslimatAsync(DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenAsync();
-        const string sql = """
+        var sql = $"""
             SELECT TOP 15 mus.DCITY AS Sehir, COUNT(*) AS Adet,
-                   CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisGun,
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisGun,
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
+            {TatilApply()}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso
               AND o.CARGODELIVERYDATE IS NOT NULL AND o.STATUS=1005 AND mus.DCITY IS NOT NULL
             GROUP BY mus.DCITY ORDER BY Adet DESC;
@@ -70,11 +95,12 @@ public sealed class EticQueries(Db db)
         // Son 13 tam ay: bu ayın başından 12 ay geri (kısmi son ay dahil edilmez)
         var ayBas = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-12);
         var ayBitis = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
-        const string sql = """
+        var sql = $"""
             SELECT YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE) AS AyKod,
                    COUNT(DISTINCT o.ORDERID) AS Siparis,
-                   CAST(AVG(CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24) AS decimal(10,1)) AS CikisGun
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            {TatilApply()}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
             GROUP BY YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE);

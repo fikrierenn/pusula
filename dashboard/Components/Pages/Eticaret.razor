@@ -49,7 +49,7 @@ else if (_data is not null)
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Performansı (@_aralik) — @_kargoPerf.Count firma</h3>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kargo Firma</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Çıkış (gün)</b></td><td class="text-right"><b>Teslim (gün)</b></td></tr>
+                <tr><td><b>Kargo Firma</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Çıkış (iş günü)</b></td><td class="text-right"><b>Teslim (gün)</b></td></tr>
                 @foreach (var k in _kargoPerf)
                 {
                     <tr><td>@k.Kargo</td><td class="text-right">@Num(k.Adet)</td>
@@ -61,7 +61,7 @@ else if (_data is not null)
                     <tr><td colspan="4" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
                 }
             </table>
-            <div class="text-base-content/50 text-[11px]">Çıkış = sipariş → kargoya teslim; Teslim = kargo → müşteri. Sadece teslim olmuş siparişler.</div>
+            <div class="text-base-content/50 text-[11px]">Çıkış = sipariş→kargoya veriliş (<b>iş günü</b>, hafta sonu+tatil hariç); Teslim = kargo→müşteri (takvim). Sadece teslim olmuş siparişler.</div>
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
@@ -108,7 +108,7 @@ else if (_data is not null)
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Teslimat Performansı — Top 15 (çıkış @_aralik) — @_ilTeslimat.Count il</h3>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Şehir</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış (gün)</b></td><td class="text-right"><b>Teslim (gün)</b></td><td class="text-right"><b>Toplam (gün)</b></td></tr>
+                <tr><td><b>Şehir</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış (iş günü)</b></td><td class="text-right"><b>Teslim (gün)</b></td><td class="text-right"><b>Toplam (gün)</b></td></tr>
                 @foreach (var i in _ilTeslimat)
                 {
                     <tr><td>@i.Sehir</td><td class="text-right">@Num(i.Adet)</td>
@@ -121,7 +121,7 @@ else if (_data is not null)
                     <tr><td colspan="5" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
                 }
             </table>
-            <div class="text-base-content/50 text-[11px]">Çıkış = sipariş→kargoya veriliş (depo hızı, il-bağımsız). Teslim = kargo→müşteri (kargo firma + mesafe). Çıkış ≥3g kırmızı (depo yavaş), teslim ≤1,5g yeşil. Kargoya çıkış dönemine göre, teslim olmuş (STATUS=1005).</div>
+            <div class="text-base-content/50 text-[11px]"><b>Çıkış = İŞ GÜNÜ</b> (hafta sonu + resmi tatil hariç — depo Pzt-Cuma). Depo hızı, il-bağımsız. Teslim = kargo→müşteri (takvim gün; kargo hafta sonu çalışır), il+mesafe-bağımlı. Çıkış ≥3 iş günü kırmızı, teslim ≤1,5g yeşil. Çıkış dönemine göre, teslim olmuş (STATUS=1005).</div>
         </div>
     </div>
 
@@ -129,7 +129,7 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Aylık Çıkış Trendi — Depo Kargoya-Verme (son 13 ay)</h3>
             <div class="relative h-[220px]"><canvas id="ch_aykargo"></canvas></div>
             <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Ort. Çıkış (gün)</b></td></tr>
+                <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Ort. Çıkış (iş günü)</b></td></tr>
                 @foreach (var a in _ayKargo)
                 {
                     <tr><td>@a.Ay</td><td class="text-right">@Num(a.Siparis)</td>
@@ -140,7 +140,7 @@ else if (_data is not null)
                     <tr><td colspan="3" class="text-base-content/50">Veri yok.</td></tr>
                 }
             </table>
-            <div class="text-base-content/50 text-[11px]">Sipariş→kargoya veriliş ort. gün. Yoğun aylarda artar (kapasite darboğazı) — örn. yılbaşı. ≥3g kırmızı, ≤2g yeşil.</div>
+            <div class="text-base-content/50 text-[11px]">Sipariş→kargoya veriliş ort. <b>iş günü</b> (hafta sonu + resmi tatil hariç). Yoğun aylarda artar (kapasite darboğazı) — örn. yılbaşı. ≥3 iş günü kırmızı, ≤2 yeşil.</div>
         </div>
     </div>
 }
