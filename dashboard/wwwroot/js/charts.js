@@ -30,6 +30,7 @@ export function bar(id, labels, data, horizontal) {
         data: { labels, datasets: [{ data, backgroundColor: KP }] },
         options: {
             indexAxis: horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },   // mobil: tam bar'a basmadan tooltip
             layout: { padding: { right: horizontal ? 52 : 0, top: horizontal ? 0 : 26 } },
             plugins: {
                 legend: { display: false },
@@ -51,6 +52,7 @@ export function donut(id, labels, data) {
         data: { labels, datasets: [{ data, backgroundColor: PAL }] },
         options: {
             responsive: true, maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'nearest' },   // mobil: dilime yakın dokun
             plugins: {
                 legend: { position: 'right' },
                 datalabels: {
@@ -70,6 +72,7 @@ export function area(id, labels, data) {
         data: { labels, datasets: [{ data, borderColor: KP, backgroundColor: KP_FILL, fill: true, tension: .3 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },   // mobil: noktaya yakın dokun
             plugins: {
                 legend: { display: false },
                 datalabels: { align: 'top', color: '#475569', font: { size: 10, weight: 600 }, formatter: v => v }
