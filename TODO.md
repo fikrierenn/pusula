@@ -11,6 +11,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-14 — B-41 kargo çekirdek + grafik UX + PWA/mobil app
+- B-41 çekirdek: il teslimat (takvim+iş günü) · aylık çıkış + gün drill · COD iade maliyeti. Çıkış İŞ GÜNÜ (4,14→2,79g) + **veriden otomatik tatil** (resmi+dini+grev, API/hardcode reddedildi). queries.yaml+sema.
+- Grafik UX: chartjs-plugin-datalabels (donut % / bar değer), oran hover-hint, mobil tooltip intersect:false, '4.2B'→'4.215' fix.
+- **PWA + mobil app**: manifest/ikon/SW + alt tab-bar (btm-nav lg:hidden, masaüstü bozulmaz) + LAN HTTPS (mkcert 192.168.1.61:5443).
+- ⚠️ Açık: mobil HTTPS drill çalışmıyor (güvensiz cert→SignalR yok) → B-47. 18 commit.
+
 ### 2026-06-13 — Dashboard DaisyUI literal + mağaza detay (B-40) + kampanya derinlemesine
 - Tüm 7 sayfa DaisyUI/Tailwind literal (custom köprü sıfır), drill modal DaisyUI native, renk standardı kuralı, panel tarih etiketleri.
 - B-40 mağaza detay `/magaza/{id}`: KPI+UPT+ödeme grup(banka drill)+kampanya(grup drill)+kategori. 13 commit (9eeb470→1f2142a).
@@ -83,7 +89,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
 - [~] **B-40** Mağaza detay sayfası `/magaza/{id}` — ✅ panel + drill commit 13.06 (de4f214…1f2142a). Ödeme üst-grup+banka drill · kampanya 3al2öde-ayrı/Diğer-toplu drill · UPT · iade · kategori→ürün. IsValid+iade fix doğrulandı (dashboard=MCP). **Kalan:** dönüşüm (G8 kapı sayıcı CSV — FSM-only, Özlüce/İst.Yolu sayıcı bekliyor).
-- [ ] **B-41** 7 JOKER kargo SQL entegre (`D:\Belgelerim\sql\_JOKER\`): kargo gün detay · kargoya verilme süreleri v2 · ay bazlı ortalama · çıkış-teslim süreleri · kargo+kapıda ödeme bedelleri · kapıda ödeme rapor · il teslimat perf. **Kullanıcının gerçek üretim sorguları — agent L1-L3'ten daha doğru.** L1-L3 + dashboard E-ticaret kargo panellerini bunlarla güçlendir. **(YENİ)**
+- [~] **B-41** JOKER kargo SQL — ✅ ÇEKİRDEK 14.06 (18 commit): il teslimat (takvim+iş günü) · aylık çıkış trendi + gün drill · COD iade maliyeti. **İş günü** çıkış (takvim 4,14→2,79g) + **veriden otomatik tatil** (resmi+dini+grev, sıfır bakım). queries.yaml+sema. **Kalan:** #5-7 (günlük detay→ay-drill ile karşılandı · v2 · çıkış-teslim→il'de var) düşük değer. Kargo kar/zarar YAPILMAZ (KargoMaliyetiniHesapla remote çağrılamaz).
+- [ ] **B-47 ⚡ DRILL MOBİL FIX** — mkcert güvensiz cert (Android kırmızı X) → WSS/SignalR kurulmuyor → mobil HTTPS'te interaktivite/drill YOK (sayfa SSR açılır, tıklama ölü). Kanıt: HTTP'den (http://192.168.1.61:5112) drill çalışmalı. **Çözüm: Cloudflare tunnel** (gerçek cert → WSS+PWA install+standalone+drill hepsi). Kullanıcı tüneli 2× reddetti ama mkcert Android'de yetmiyor. VEYA iç sunucu+Let's Encrypt. **(YENİ 14.06)**
+- [ ] **B-48** Mağaza kartı drill netleştir — TOPLAM/E-tic = modal(kategori); mağaza kartları = `/magaza/{id}` SAYFA nav (B-40). Kullanıcı "diğerleri açılmıyor" → mobilde sayfa-nav mı SignalR mı teşhis (muhtemelen B-47 cert/SignalR ile aynı kök). **(YENİ 14.06)**
 - [x] ~~**B-42** Eski Python pano emekli~~ — ✅ 13.06: `scripts/gm_dashboard.py` SİLİNDİ (Blazor superset, 14 panel eşleşti + fazlası, cascade yok). briefings/* eski çıktılar GEÇMİŞ hafta (kullanılmaz) → dokunulmadı; gelecek brief generate_brief (status-fix sonrası) doğru üretir.
 - [ ] **B-43** Kafe POS DB erişimi araştır — EncoreMerkez'de kafe yok, xlsx kanonik. Kafe ayrı POS sistemi nerede? **(YENİ)**
 - [x] ~~**B-46** `tools/diskscan` native disk tarayıcı~~ — ✅ 13.06 commit 16f0caf. (1) optimize rebuild (42→37 sn), (2) .gitignore+kaynak commit, (3) C tarandı → cache D'ye yönlendirildi (npm/pip/yarn) + ~8,3 GB temizlendi (C 16→27,7 GB boş). D: 5,3→124 GB. MFT makine policy ile kapalı (err 50/1300) — dir-walk tavanı.
