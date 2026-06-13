@@ -1,7 +1,7 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-12
+updated: 2026-06-13
 
 metrics:
   net_ciro:
@@ -50,6 +50,10 @@ metrics:
       filter: "stok raporlarında (E1/E4-E8) Dergi HARİÇ — satış raporları (G4/A5/A6) etkilenmez"
       neden: "süreli yayın; devir 8,5x / stockout %23 = gürültü, stok takibi anlamsız"
       evidence: "08.06 — kullanıcı kararı"
+    sahaf:
+      filter: "stok/stockout raporlarında (E8) Sahaf HARİÇ — urn.stkAd NOT LIKE N'SHF-%'"
+      neden: "ikinci el tekil kopya; satıldı=devamı yok, reorder edilemez → kalıcı stoksuz, stockout sinyalini şişirir (Dergi gibi)"
+      evidence: "13.06 — kullanıcı kararı + drill-down: Kitap stockout ham %5,3 → sahaf-hariç %2,6. 644 stoksuzun 342'si (%53) sahaf (SHF-)."
 
   eticaret_net:             # haftalık brief + G7 net tanımı
     source: ODAKJOKER.JOKER.dbo.J_ORDERS
@@ -107,3 +111,16 @@ metrics:
     note: "3al2öde teorik %33 ama karışık fiyatta en ucuz bedava → ~%25-26 efektif. Dashboard /magaza/{id} kampanya panelinde."
     kritik: "İKİ ZORUNLU FİLTRE (13.06 fiş-detay kontrolünde bulundu): (1) spc indirimi MUTLAKA SalesProducts IsValid=1 köprüsüyle al — IsValid=0 iptal kalemler indirimi şişirir, DiscountTotal'dan fazla çıkar, 'Diğer indirim' negatife düşer. (2) Sales.DocumentsTypeId IN (1,2,6,7,8) — iade (3) belgesi indirim sign'ı ters, dahil edilirse Diğer şişer. Belge listesinde Diğer = DiscountTotal − 3al2öde; iade+IsValid filtresi şart."
     rapor: "MagazaQueries.GetDetayAsync kampSql/kampFisSql · scripts/build_3al2ode_belge_excel.py · gm-rapor M2"
+
+  stockout_sku:             # 13.06 — SKU-bazlı stockout SİNYAL KALİTESİ (MIMBAL pilot bulgusu)
+    source: "irsHrk per-SKU bakiye≤0 / son 30g satışı olan (E8), kategori bazlı"
+    formula: "100.0 * COUNT(bakiye≤0) / COUNT(satılan çeşit)"
+    caveat: "HAM çeşit-sayısı stockout, reorder edilemeyen kalem barındıran kategorilerde YANILTICI — oranı şişirir, sahte ACT üretir. Önce drill-down, sonra ACT."
+    artefakt_kaynaklari:
+      sahaf: "SHF-% tekil kopya → kalıcı stoksuz. envanter_exclusions.sahaf ile çıkar."
+      spot_mal: "dönen barkod (kulaklık/fan/aksesuar): eski stkID bakiye=0 ama fiziksel stok YENİ barkodda. Kanıt 13.06: 'kulaklık/fan' 499 çeşitten 214'ü stokta (5.795 ad); 'stoksuz' 2 çeşit ölü barkod. Elektronik %8,8 = artefakt."
+      uzun_kuyruk: "ayda 1-2 satan tekil baskı/plak → doğal stockout, reorder sinyali değil."
+    gercek_sinyal: "yeni-ürün (NOT LIKE 'SHF-%') + talep≥3 + bakiye≤0 = reorder edilebilir kayıp. Kitap 13.06: 644 ham stoksuz → 8 gerçek reorder kuyruğu."
+    oneri: "kategori stockout'unu adet-ağırlıklı veya 'talep≥3 yeni-ürün' alt-kümesiyle ölç; ham çeşit-sayısını tek başına ACT eşiği yapma."
+    evidence: "13.06 — MIMBAL pilot Sinyal Kalite Dönemi gün-1 (Elektronik ACT geri çekildi + Kitap drill-down)"
+    rapor: "gm-rapor E8 + MIMBAL docs/pilot/examples/2026-06-13-attention-list.md"

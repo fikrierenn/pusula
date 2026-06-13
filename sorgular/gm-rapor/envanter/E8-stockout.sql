@@ -8,6 +8,10 @@
 --   Kitap %5,2 · Hediyelik %5,2 · Çocuk/Kırtasiye %3 (sağlıklı).
 -- YORUM: <%5 hedef. Üstündekiler (Akademi/Elektronik/Oyuncak/Kitap) reorder açığı = kayıp satış.
 -- ⚠️ DERGİ HARİÇ: süreli yayın, stok takibi anlamsız (sürekli tükenir/yenilenir) — devre dışı.
+-- ⚠️ SAHAF (SHF-%) HARİÇ (13.06): ikinci el tekil kopya, reorder edilemez. Kitap ham %5,3 → sahaf-hariç %2,6.
+-- ⚠️ SİNYAL KALİTESİ (13.06): ham çeşit-sayısı stockout spot-mal (dönen barkod: kulaklık/fan — eski stkID 0,
+--    stok yeni barkodda) + uzun-kuyruk (ayda 1-2 satan plak/baskı) kategorilerde ŞİŞİK. ACT'ten önce drill-down
+--    + 'yeni-ürün & talep≥3' alt-kümesine bak. Detay: sema/metrics.yaml stockout_sku.
 -- ⚠️ Bakiye tüm-zaman SUM (snapshot değil, anlık hesap) — ~1,7sn. CROSS APPLY per-SKU.
 -- NOT: MCP-safe (CTE'siz). @GunSayisi talep penceresi.
 -- =====================================================================
@@ -33,6 +37,7 @@ FROM (
         WHERE b.ehstkID = sold.stkID AND b.ehMekan IN (1,4477,4478) AND b.ehAltDepo=0
     ) bal
     WHERE k.ktgrAd NOT IN (N'Sınav Okulları',N'Dergi',N'Genel',N'Tanımsız',N'Etkinlik',N'Hediye Çeki')
+      AND u.stkAd NOT LIKE N'SHF-%'   -- Sahaf (ikinci el tekil kopya) hariç — reorder edilemez, stockout şişirir (13.06, sema/metrics.yaml envanter_exclusions.sahaf)
 ) x
 GROUP BY x.Kategori
 ORDER BY [Stockout %] DESC;
