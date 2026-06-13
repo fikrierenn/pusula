@@ -10,11 +10,16 @@
 
         @* ── Üst bar (navbar) ── *@
         <header class="navbar sticky top-0 z-30 bg-base-100 shadow-sm px-4 min-h-14">
-            <label for="bkm-drawer" class="btn btn-ghost btn-sm btn-square lg:hidden" title="Menü">
+            @* Hamburger: sadece masaüstünde drawer toggle (mobilde alt nav var, gerek yok) *@
+            <label for="bkm-drawer" class="btn btn-ghost btn-sm btn-square hidden lg:hidden" title="Menü">
                 <i data-lucide="menu"></i>
             </label>
-            <span class="font-bold text-base text-base-content ml-1">BKM Yönetim Paneli</span>
-            <div class="ml-auto flex items-center gap-3">
+            <span class="font-bold text-base text-base-content">BKM Yönetim Paneli</span>
+            <div class="ml-auto flex items-center gap-2">
+                @* Asistan — mobilde alt nav'da yok, üstte ikon *@
+                <button class="btn btn-ghost btn-sm btn-square lg:hidden" @onclick='() => Nav.NavigateTo("asistan")' title="Asistan">
+                    <i data-lucide="message-square"></i>
+                </button>
                 <button class="btn btn-ghost btn-sm btn-square relative" @onclick="GoGorevler" title="Açık görevler">
                     <i data-lucide="bell"></i>
                     @if (_acikGorev > 0)
@@ -38,7 +43,7 @@
         </footer>
 
         @* ── MOBİL ALT NAVİGASYON (app-tarzı tab bar) — sadece mobilde, masaüstü sidebar değişmez ── *@
-        <nav class="btm-nav btm-nav-sm lg:hidden z-40 bg-base-100 border-t border-base-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]">
+        <nav class="btm-nav lg:hidden z-40 bg-base-100 border-t border-base-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]">
             <NavLink href="" Match="NavLinkMatch.All" ActiveClass="active text-primary">
                 <i data-lucide="layout-dashboard"></i><span class="btm-nav-label text-[10px]">Genel</span>
             </NavLink>
