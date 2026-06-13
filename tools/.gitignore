@@ -1,0 +1,12 @@
+# Build çıktıları — sadece kaynak commit'lenir
+bin/
+obj/
+publish/
+*.exe
+*.dll
+*.pdb
+
+# Geçici tarama çıktıları
+*-out.txt
+*-err.txt
+probe.txt
