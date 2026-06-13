@@ -9,36 +9,63 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed class EticQueries(Db db)
 {
-    // Türkiye resmi tatilleri 2025-2026 (depo kapalı). Dini bayram tarihleri YAKLAŞIK — yıllık güncellenmeli.
-    // Kullanım: çıkış süresi (sipariş→kargoya veriliş) iş günü hesabında. Depo Pzt-Cuma çalışıyor (Cmt 5/Paz 0 doğrulandı 13.06).
-    const string Holidays =
-        "(CONVERT(date,'20250101')),(CONVERT(date,'20250330')),(CONVERT(date,'20250331')),(CONVERT(date,'20250401'))," +
-        "(CONVERT(date,'20250423')),(CONVERT(date,'20250501')),(CONVERT(date,'20250519'))," +
-        "(CONVERT(date,'20250606')),(CONVERT(date,'20250607')),(CONVERT(date,'20250608')),(CONVERT(date,'20250609'))," +
-        "(CONVERT(date,'20250715')),(CONVERT(date,'20250830')),(CONVERT(date,'20251029'))," +
-        "(CONVERT(date,'20260101')),(CONVERT(date,'20260320')),(CONVERT(date,'20260321')),(CONVERT(date,'20260322'))," +
-        "(CONVERT(date,'20260423')),(CONVERT(date,'20260501')),(CONVERT(date,'20260519'))," +
-        "(CONVERT(date,'20260527')),(CONVERT(date,'20260528')),(CONVERT(date,'20260529')),(CONVERT(date,'20260530'))," +
-        "(CONVERT(date,'20260715')),(CONVERT(date,'20260830')),(CONVERT(date,'20261029'))";
+    // Tatil günleri VERİDEN otomatik: depo'nun çalışmadığı hafta-içi günler (resmi + dini bayram + idari/grev).
+    // Çalışılan gün = kargo çıkışı (SENDDATE) ≥ eşik. Hafta-içi olup çalışılmayan = tatil (0-kargo dini bayram dahil).
+    // Statik cache (tatil global, request-bağımsız). 6 saatte bir yenilenir.
+    const int CalismaEsigi = 100;                 // günde <100 kargo = depo kapalı (normal 3000+, Cmt/tatil <10)
+    static string? _tatilCache;
+    static DateTime _tatilCacheZaman = DateTime.MinValue;
+    static readonly SemaphoreSlim _tatilLock = new(1, 1);
 
     // Takvim çıkış (müşteri algısı): ham gün farkı, saat hassasiyetli.
     const string CikisTakvim = "CAST(DATEDIFF(HOUR,o.ORDERDATE,o.SENDDATE) AS float)/24";
 
-    // İş günü çıkış (depo gerçek performansı): takvim − hafta sonu − araya giren hafta-içi resmi tatil.
+    // İş günü çıkış (depo gerçek performansı): takvim − hafta sonu − araya giren hafta-içi tatil.
     // ta.T = CROSS APPLY ile gelen tatil sayısı. o.ORDERDATE/o.SENDDATE alias sabit.
     const string CikisIsGunu =
         "DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) - DATEDIFF(WEEK,o.ORDERDATE,o.SENDDATE)*2 " +
         "- CASE WHEN DATEPART(WEEKDAY,o.ORDERDATE)=1 THEN 1 ELSE 0 END " +
         "- CASE WHEN DATEPART(WEEKDAY,o.SENDDATE)=7 THEN 1 ELSE 0 END - ta.T";
 
-    static string TatilApply() =>
-        $"CROSS APPLY (SELECT COUNT(*) T FROM (VALUES {Holidays}) H(d) " +
+    /// <summary>Tatil VALUES string'i (cache). Çalışılan günleri çeker, C#'ta son 18 ay hafta-içi fark = tatil.</summary>
+    async Task<string> TatilValuesAsync(System.Data.Common.DbConnection conn)
+    {
+        if (_tatilCache is not null && (DateTime.UtcNow - _tatilCacheZaman).TotalHours < 6) return _tatilCache;
+        await _tatilLock.WaitAsync();
+        try
+        {
+            if (_tatilCache is not null && (DateTime.UtcNow - _tatilCacheZaman).TotalHours < 6) return _tatilCache;
+            var bas = DateOnly.FromDateTime(DateTime.Today).AddMonths(-18);
+            var son = DateOnly.FromDateTime(DateTime.Today);
+            // Çalışılan günler: kargo çıkışı ≥ eşik
+            var calisilan = (await conn.QueryAsync<DateTime>(
+                "SELECT CONVERT(date,o.SENDDATE) d FROM ODAKJOKER.JOKER.dbo.J_ORDERS o " +
+                "WHERE o.SENDDATE>=@bas AND o.SENDDATE<@son GROUP BY CONVERT(date,o.SENDDATE) HAVING COUNT(*)>=@esik",
+                new { bas = bas.ToString("yyyyMMdd"), son = son.ToString("yyyyMMdd"), esik = CalismaEsigi }))
+                .Select(DateOnly.FromDateTime).ToHashSet();
+            // Hafta-içi olup çalışılmayan = tatil (0-kargo dini bayram dahil)
+            var tatiller = new List<DateOnly>();
+            for (var d = bas; d < son; d = d.AddDays(1))
+                if (d.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday && !calisilan.Contains(d))
+                    tatiller.Add(d);
+            _tatilCache = tatiller.Count > 0
+                ? string.Join(",", tatiller.Select(d => $"(CONVERT(date,'{d:yyyyMMdd}'))"))
+                : "(CONVERT(date,'19000101'))";   // boş liste guard (VALUES boş olamaz)
+            _tatilCacheZaman = DateTime.UtcNow;
+            return _tatilCache;
+        }
+        finally { _tatilLock.Release(); }
+    }
+
+    static string TatilApply(string tatilValues) =>
+        $"CROSS APPLY (SELECT COUNT(*) T FROM (VALUES {tatilValues}) H(d) " +
         "WHERE H.d>o.ORDERDATE AND H.d<=o.SENDDATE AND DATEPART(WEEKDAY,H.d) NOT IN (1,7)) ta";
 
     /// <summary>Kargo performansı: firma × adet × ort. çıkış günü × ort. teslim günü (dönem-duyarlı, sadece teslim olmuş).</summary>
     public async Task<IReadOnlyList<KargoPerf>> GetKargoPerfAsync(DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenAsync();
+        var tatil = await TatilValuesAsync(conn);
         var sql = $"""
             SELECT TOP 10 ISNULL(c.CNAME,'(bilinmiyor)') AS Kargo, COUNT(*) AS Adet,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
@@ -46,7 +73,7 @@ public sealed class EticQueries(Db db)
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             LEFT JOIN ODAKJOKER.JOKER.dbo.J_CARGO c ON c.ID=o.CARGOREF
-            {TatilApply()}
+            {TatilApply(tatil)}
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
               AND o.SENDDATE IS NOT NULL AND o.CARGODELIVERYDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
@@ -77,6 +104,7 @@ public sealed class EticQueries(Db db)
     public async Task<IReadOnlyList<IlTeslimat>> GetIlTeslimatAsync(DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenAsync();
+        var tatil = await TatilValuesAsync(conn);
         var sql = $"""
             SELECT TOP 15 mus.DCITY AS Sehir, COUNT(*) AS Adet,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
@@ -84,7 +112,7 @@ public sealed class EticQueries(Db db)
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
             JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
-            {TatilApply()}
+            {TatilApply(tatil)}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso
               AND o.CARGODELIVERYDATE IS NOT NULL AND o.STATUS=1005 AND mus.DCITY IS NOT NULL
             GROUP BY mus.DCITY ORDER BY Adet DESC;
@@ -100,13 +128,14 @@ public sealed class EticQueries(Db db)
         // Son 13 tam ay: bu ayın başından 12 ay geri (kısmi son ay dahil edilmez)
         var ayBas = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-12);
         var ayBitis = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var tatil = await TatilValuesAsync(conn);
         var sql = $"""
             SELECT YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE) AS AyKod,
                    COUNT(DISTINCT o.ORDERID) AS Siparis,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
                    CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu
             FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            {TatilApply()}
+            {TatilApply(tatil)}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
             GROUP BY YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE);
