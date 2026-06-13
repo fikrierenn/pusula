@@ -25,9 +25,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+// HTTPS redirect KAPALI (dev/mobil): http (5112) + https (5443) paralel.
+// Telefon CA'yı HTTP'den indirir, güvenir, sonra HTTPS'ten standalone açar.
 
 app.UseAntiforgery();
+
+// PWA için CA sertifikası indirme — doğru MIME ile Android "CA yükle" ekranını açar.
+app.MapGet("/ca.crt", (IWebHostEnvironment env) =>
+    Results.File(Path.Combine(env.ContentRootPath, "cert", "bkm-ca.crt"), "application/x-x509-ca-cert", "BKM-Panel-CA.crt"));
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

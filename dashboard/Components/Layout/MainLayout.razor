@@ -29,13 +29,32 @@
             </div>
         </header>
 
-        <main class="flex-1 p-4 min-w-0">
+        <main class="flex-1 p-4 min-w-0 pb-20 lg:pb-4">
             @Body
         </main>
 
-        <footer class="px-5 py-3 text-xs text-base-content/40 border-t border-base-200 bg-base-100">
+        <footer class="px-5 py-3 text-xs text-base-content/40 border-t border-base-200 bg-base-100 hidden lg:block">
             BKM Kitap · BKM-Asistan v1 · © 2026
         </footer>
+
+        @* ── MOBİL ALT NAVİGASYON (app-tarzı tab bar) — sadece mobilde, masaüstü sidebar değişmez ── *@
+        <nav class="btm-nav btm-nav-sm lg:hidden z-40 bg-base-100 border-t border-base-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]">
+            <NavLink href="" Match="NavLinkMatch.All" ActiveClass="active text-primary">
+                <i data-lucide="layout-dashboard"></i><span class="btm-nav-label text-[10px]">Genel</span>
+            </NavLink>
+            <NavLink href="eticaret" ActiveClass="active text-primary">
+                <i data-lucide="shopping-cart"></i><span class="btm-nav-label text-[10px]">E-ticaret</span>
+            </NavLink>
+            <NavLink href="operasyon" ActiveClass="active text-primary">
+                <i data-lucide="store"></i><span class="btm-nav-label text-[10px]">Operasyon</span>
+            </NavLink>
+            <NavLink href="envanter" ActiveClass="active text-primary">
+                <i data-lucide="package"></i><span class="btm-nav-label text-[10px]">Envanter</span>
+            </NavLink>
+            <NavLink href="musteri" ActiveClass="active text-primary">
+                <i data-lucide="users"></i><span class="btm-nav-label text-[10px]">Müşteri</span>
+            </NavLink>
+        </nav>
     </div>
 
     @* ── SIDEBAR (drawer-side) ── *@
