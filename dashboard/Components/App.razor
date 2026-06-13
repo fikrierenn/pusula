@@ -3,11 +3,20 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <base href="/" />
     <ResourcePreloader />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["GmDashboard.styles.css"]" />
+    @* PWA — ana ekrana ekle, standalone app *@
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4063e6" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="BKM Panel" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <ImportMap />
     <HeadOutlet />
 </head>
@@ -25,6 +34,8 @@
         drawIcons();
         const _ico = new MutationObserver(() => { clearTimeout(window.__ico); window.__ico = setTimeout(drawIcons, 60); });
         _ico.observe(document.body, { childList: true, subtree: true });
+        // PWA service worker (install prompt + standalone)
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     </script>
 </body>
 
