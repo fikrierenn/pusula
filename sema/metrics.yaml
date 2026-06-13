@@ -124,3 +124,10 @@ metrics:
     oneri: "kategori stockout'unu adet-ağırlıklı veya 'talep≥3 yeni-ürün' alt-kümesiyle ölç; ham çeşit-sayısını tek başına ACT eşiği yapma."
     evidence: "13.06 — MIMBAL pilot Sinyal Kalite Dönemi gün-1 (Elektronik ACT geri çekildi + Kitap drill-down)"
     rapor: "gm-rapor E8 + MIMBAL docs/pilot/examples/2026-06-13-attention-list.md"
+
+  il_teslimat_perf:         # 13.06 — B-41 il bazlı kargo teslimat hızı
+    source: "J_ORDERS o JOIN J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF"
+    formula: "cikis_gun=AVG(DATEDIFF(HOUR,ORDERDATE,SENDDATE)/24) · teslim_gun=AVG(DATEDIFF(HOUR,SENDDATE,CARGODELIVERYDATE)/24)"
+    filter: "SENDDATE dönemi, CARGODELIVERYDATE NOT NULL, STATUS=1005, DCITY NOT NULL. GROUP BY DCITY."
+    bulgu: "ÇIKIŞ il-bağımsız sabit (~4,1g MTD Haz) = DEPO kargoya-verme darboğazı (kontrol edilebilir, SLA riski). TESLİM il-bağımlı (İstanbul 1,4g · Doğu 2,7-2,8g) = kargo firma+mesafe. İki sorun AYRI: çıkış=operasyon, teslim=lojistik."
+    rapor: "dashboard EticQueries.GetIlTeslimatAsync · KARGO İL TESLİMAT PERFORMANSLARI.sql"
