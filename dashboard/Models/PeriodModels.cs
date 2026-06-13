@@ -31,8 +31,11 @@ public record KargoPerf(string Kargo, int Adet, decimal? CikisTakvim, decimal? C
 // İl teslimat (B-41): şehir × adet × çıkış (CikisTakvim=müşteri algısı, CikisIsGunu=depo gerçek) × teslim. Çıkış (SENDDATE) dönemi.
 public record IlTeslimat(string Sehir, int Adet, decimal CikisTakvim, decimal CikisIsGunu, decimal TeslimGun);
 
-// Aylık çıkış trendi (B-41): ay × sipariş × çıkış takvim+iş günü. Son 13 ay sabit.
-public record AyKargo(string Ay, int Siparis, decimal CikisTakvim, decimal CikisIsGunu);
+// Aylık çıkış trendi (B-41): ay × sipariş × çıkış takvim+iş günü. Son 13 ay sabit. AyKod=YYYYMM (gün drill için).
+public record AyKargo(int AyKod, string Ay, int Siparis, decimal CikisTakvim, decimal CikisIsGunu);
+
+// Gün çıkış detayı (B-41 drill): aya tıkla → o ayın günleri. gün × sipariş × çıkış takvim+iş günü.
+public record GunKargo(string Gun, int Siparis, decimal CikisTakvim, decimal CikisIsGunu);
 
 // Kapıda ödeme (COD) özeti (B-41): PAYDEFREF=-3. İade maliyeti = 2×kargo (BKM yutar). SENDDATE dönemi.
 public record CodOzet(int Siparis, int Teslim, int Iade, decimal IadeOran, decimal KapidaBedel, decimal IadeMaliyet);

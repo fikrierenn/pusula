@@ -134,7 +134,7 @@ else if (_data is not null)
                 <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
                 @foreach (var a in _ayKargo)
                 {
-                    <tr><td>@a.Ay</td><td class="text-right">@Num(a.Siparis)</td>
+                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenAyDetay(a)"><td>@a.Ay ▸</td><td class="text-right">@Num(a.Siparis)</td>
                         <td class="text-right text-base-content/50">@a.CikisTakvim.ToString("0.0")</td>
                         <td class="text-right @(a.CikisIsGunu >= 3 ? "text-error" : a.CikisIsGunu <= 2 ? "text-success" : "")">@a.CikisIsGunu.ToString("0.0")</td></tr>
                 }
@@ -162,6 +162,27 @@ else if (_data is not null)
             </div>
         </div>
     }
+
+    <Modal @bind-Open="_modalGun" Title="@(_selAy?.Ay + " — Günlük Çıkış Detayı")">
+        @if (_selAy is not null)
+        {
+            <div class="text-base-content/50 text-xs mb-2">@_selAy.Ay · @Num(_selAy.Siparis) sipariş · çıkış takvim @_selAy.CikisTakvim.ToString("0.0")g / iş günü @_selAy.CikisIsGunu.ToString("0.0")g</div>
+            <table class="table table-sm w-full text-[13px]">
+                <tr><td><b>Gün</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
+                @foreach (var g in _gunKargo)
+                {
+                    <tr><td>@g.Gun</td><td class="text-right">@Num(g.Siparis)</td>
+                        <td class="text-right text-base-content/50">@g.CikisTakvim.ToString("0.0")</td>
+                        <td class="text-right @(g.CikisIsGunu >= 3 ? "text-error" : g.CikisIsGunu <= 2 ? "text-success" : "")">@g.CikisIsGunu.ToString("0.0")</td></tr>
+                }
+                @if (_gunKargo.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-base-content/50">Gün verisi yok.</td></tr>
+                }
+            </table>
+            <div class="text-base-content/50 text-[11px] mt-2">Çıkış iş günü = hafta sonu + tatil hariç. Düşük-sipariş gün = resmi/dini tatil (depo kapalı).</div>
+        }
+    </Modal>
 }
 
 @code {
@@ -179,6 +200,17 @@ else if (_data is not null)
     private IReadOnlyList<AyKargo> _ayKargo = [];
     private CodOzet? _cod;
     private IJSObjectReference? _charts;
+    private bool _modalGun;
+    private AyKargo? _selAy;
+    private IReadOnlyList<GunKargo> _gunKargo = [];
+
+    private async Task OpenAyDetay(AyKargo a)
+    {
+        _selAy = a; _modalGun = true; _gunKargo = []; StateHasChanged();
+        try { _gunKargo = await Etic.GetGunKargoAsync(a.AyKod); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { StateHasChanged(); }
+    }
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 

@@ -143,8 +143,31 @@ public sealed class EticQueries(Db db)
         var raw = await conn.QueryAsync<(int AyKod, int Siparis, decimal CikisTakvim, decimal CikisIsGunu)>(sql,
             new { giso = ayBas.ToString("yyyyMMdd"), g2iso = ayBitis.ToString("yyyyMMdd") });
         return raw.OrderBy(r => r.AyKod)
-            .Select(r => new AyKargo($"{r.AyKod % 100:00}.{r.AyKod / 100}", r.Siparis, r.CikisTakvim, r.CikisIsGunu))
+            .Select(r => new AyKargo(r.AyKod, $"{r.AyKod % 100:00}.{r.AyKod / 100}", r.Siparis, r.CikisTakvim, r.CikisIsGunu))
             .ToList();
+    }
+
+    /// <summary>Gün çıkış detayı (B-41 drill): bir ayın (YYYYMM) günleri × sipariş × çıkış takvim+iş günü.</summary>
+    public async Task<IReadOnlyList<GunKargo>> GetGunKargoAsync(int ayKod)
+    {
+        await using var conn = await db.OpenAsync();
+        var ayBas = new DateOnly(ayKod / 100, ayKod % 100, 1);
+        var ayBitis = ayBas.AddMonths(1);
+        var tatil = await TatilValuesAsync(conn);
+        var sql = $"""
+            SELECT CONVERT(varchar,o.SENDDATE,104) AS Gun,
+                   COUNT(DISTINCT o.ORDERID) AS Siparis,
+                   CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
+                   CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            {TatilApply(tatil)}
+            WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
+              AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
+            GROUP BY CONVERT(varchar,o.SENDDATE,104), CONVERT(date,o.SENDDATE);
+            """;
+        return (await conn.QueryAsync<(string Gun, int Siparis, decimal CikisTakvim, decimal CikisIsGunu)>(sql,
+                new { giso = ayBas.ToString("yyyyMMdd"), g2iso = ayBitis.ToString("yyyyMMdd") }))
+            .OrderBy(r => r.Gun).Select(r => new GunKargo(r.Gun, r.Siparis, r.CikisTakvim, r.CikisIsGunu)).ToList();
     }
 
     /// <summary>Kapıda ödeme (COD) özeti (B-41): PAYDEFREF=-3. İade=CARGODELIVERYSTATUS=2, iade maliyeti=2×CARGOPRICE (gidiş+geri, BKM yutar). SENDDATE dönemi.</summary>
