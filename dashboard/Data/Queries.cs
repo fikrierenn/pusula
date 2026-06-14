@@ -12,7 +12,9 @@ public sealed class Queries(Db db)
     static readonly Dictionary<int, string> Mekan = new() { [1] = "FSM", [4477] = "Özlüce", [4478] = "İst.Yolu" };
 
     /// <summary>Dönem özeti: mağaza net/fiş/iade + e-ticaret net + hedef gerçekleşme.</summary>
-    public async Task<PeriodSummary> GetPeriodAsync(DateOnly start, DateOnly endExcl)
+    /// <param name="prevStart">Geçen-dönem (WoW) penceresi başı. null → hemen önceki eş-uzunluk.</param>
+    /// <param name="prevEnd">Geçen-dönem penceresi sonu (exclusive). null → start.</param>
+    public async Task<PeriodSummary> GetPeriodAsync(DateOnly start, DateOnly endExcl, DateOnly? prevStart = null, DateOnly? prevEnd = null)
     {
         await using var conn = await db.OpenAsync();
         var giso = start.ToString("yyyyMMdd");
@@ -35,11 +37,13 @@ public sealed class Queries(Db db)
         var stores = (await conn.QueryAsync<StoreRow>(storeSql,
             new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) })).ToList();
 
-        // Geçen dönem (eş uzunluk, hemen öncesi) — hero + mağaza WoW trendi. Aynı storeSql, kaydırılmış tarih.
+        // Geçen dönem penceresi — hero + mağaza WoW trendi. Aylık → geçen ayın aynı günleri (Home verir);
+        // null → hemen önceki eş-uzunluk. Aynı storeSql, kaydırılmış tarih.
         int len = endExcl.DayNumber - start.DayNumber;
-        var prevStart = start.AddDays(-len);
+        var pStart = prevStart ?? start.AddDays(-len);
+        var pEnd = prevEnd ?? start;
         var prevStores = (await conn.QueryAsync<StoreRow>(storeSql,
-            new { start = prevStart.ToDateTime(TimeOnly.MinValue), end = start.ToDateTime(TimeOnly.MinValue) })).ToList();
+            new { start = pStart.ToDateTime(TimeOnly.MinValue), end = pEnd.ToDateTime(TimeOnly.MinValue) })).ToList();
         var prevNetMap = prevStores.ToDictionary(s => s.MekanId, s => s.Net);
 
         // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — JOKER, ISO tarih
@@ -55,7 +59,7 @@ public sealed class Queries(Db db)
 
         // Geçen dönem e-ticaret net (hero online WoW)
         var prevEtic = await conn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql,
-            new { giso = prevStart.ToString("yyyyMMdd"), g2iso = giso });
+            new { giso = pStart.ToString("yyyyMMdd"), g2iso = pEnd.ToString("yyyyMMdd") });
         var prevECiro = prevEtic.Ciro ?? 0m;
         var prevESip = prevEtic.Sip ?? 0;
 

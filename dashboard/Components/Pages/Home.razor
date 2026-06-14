@@ -88,6 +88,9 @@ else if (_data is not null)
             @StoreRow(s.Ad, Tl(s.Net), $"{Num(s.Fis)} fiş · sepet {Num(s.Atv)} ₺", "store", fg, bg, s.Wow, () => Nav.NavigateTo($"magaza/{s.MekanId}"))
         }
     </div>
+    <div class="text-[11px] text-base-content/45 mb-5 px-1 flex items-center gap-1">
+        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Trend oranları @_wowLabel
+    </div>
 
     <!-- E-ticaret özet — gradient info kartı (kategori drill) -->
     <div class="rounded-2xl px-4 py-4 mb-5 bg-gradient-to-br from-info to-info/80 text-white shadow-lg flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md"
@@ -205,6 +208,7 @@ else if (_data is not null)
     private bool _loading = true;
     private string? _error;
     private string _aralik = "";
+    private string _wowLabel = "önceki döneme göre";   // trend rozetlerinin kıyas tabanı (dönem-bağlı)
     private PeriodSummary? _data;
     private IReadOnlyList<TrendPoint> _trend = [];
     private IReadOnlyList<TrendPoint> _alis = [];
@@ -255,7 +259,18 @@ else if (_data is not null)
             };
             var son = endExcl.AddDays(-1);
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
-            _data = await Queries.GetPeriodAsync(start, endExcl);
+            // Geçen-dönem (WoW) penceresi + etiketi. Aylık → geçen ayın AYNI günleri (MTD doğru kıyas);
+            // diğerleri hemen önceki eş-uzunluk.
+            int len = endExcl.DayNumber - start.DayNumber;
+            var (pStart, pEnd, wl) = _period switch
+            {
+                "ay" => ((DateOnly?)start.AddMonths(-1), (DateOnly?)start.AddMonths(-1).AddDays(len), "geçen ayın aynı günlerine göre"),
+                "haftalik" => ((DateOnly?)start.AddDays(-7), (DateOnly?)start, "önceki 7 güne göre"),
+                "gunluk" => ((DateOnly?)start.AddDays(-1), (DateOnly?)start, "önceki güne göre"),
+                _ => ((DateOnly?)null, (DateOnly?)null, "önceki eş döneme göre"),
+            };
+            _wowLabel = wl;
+            _data = await Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
             _trend = await Queries.GetTrendAsync(dun);
             _alis = await Queries.GetAlisTrendAsync(dun);
             if (_period == "ay")
@@ -355,7 +370,7 @@ else if (_data is not null)
                 <div class="opacity-80 text-[11px] uppercase tracking-wider font-semibold">@label</div>
                 @if (wow is not null)
                 {
-                    <span class="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-bold bg-white/20 rounded-full px-2 py-0.5">
+                    <span class="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-bold bg-white/20 rounded-full px-2 py-0.5" title="@_wowLabel">
                         <i data-lucide="@(wow > 0 ? "arrow-up-right" : wow < 0 ? "arrow-down-right" : "minus")" class="w-3 h-3"></i>@Pct(wow.Value)
                     </span>
                 }
@@ -382,7 +397,7 @@ else if (_data is not null)
             @if (wow is not null)
             {
                 var t = TrendIco(wow.Value);
-                <div class="inline-flex items-center gap-0.5 text-[11px] font-bold mt-0.5 @t.cls"><i data-lucide="@t.ico" class="w-3 h-3"></i>@Pct(wow.Value)</div>
+                <div class="inline-flex items-center gap-0.5 text-[11px] font-bold mt-0.5 @t.cls" title="@_wowLabel"><i data-lucide="@t.ico" class="w-3 h-3"></i>@Pct(wow.Value)</div>
             }
         </div>
         <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/30 shrink-0"></i>
