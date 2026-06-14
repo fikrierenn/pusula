@@ -58,14 +58,11 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İşgücü Verimi — ₺/Çalışılan Saat (SPLH, son 30g)</h3>
             @if (_ops is not null && _ops.Splh.Count > 0)
             {
-                <table class="table table-sm w-full text-[13px]">
-                    <tr><td><b>Mağaza</b></td><td class="text-right"><b>₺/saat</b></td><td class="text-right"><b>Fiş/saat</b></td><td class="text-right"><b>Personel</b></td></tr>
-                    @foreach (var s in _ops.Splh)
-                    {
-                        <tr><td>@s.Magaza</td><td class="text-right"><b>@(s.Saat > 0 ? Num((int)Math.Round(s.NetCiro / s.Saat)) : "—")</b></td>
-                            <td class="text-right">@(s.Saat > 0 ? (s.Fis / s.Saat).ToString("0.0") : "—")</td><td class="text-right">@s.Personel</td></tr>
-                    }
-                </table>
+                <AppDataTable TItem="SplhRow" Items="_ops.Splh"
+                              Primary="@(s => s.Magaza)"
+                              MetricMain="@(s => s.Saat > 0 ? Num((int)Math.Round(s.NetCiro / s.Saat)) + " ₺/s" : "—")"
+                              MetricSub="@(s => s.Saat > 0 ? (s.Fis / s.Saat).ToString("0.0") + " fiş/saat" : "—")"
+                              Badge="@(s => ($"👤{s.Personel}", "bg-base-200 text-base-content/50"))" />
             }
             else
             {
@@ -77,21 +74,18 @@ else if (_data is not null)
             {
                 var bench = _ops.Splh.Where(s => s.Saat > 0).Max(s => s.NetCiro / s.Saat);
                 var benchAd = _ops.Splh.First(s => s.Saat > 0 && s.NetCiro / s.Saat == bench).Magaza;
-                decimal toplamKayip = 0;
-                <table class="table table-sm w-full text-[13px]">
-                    <tr><td><b>Mağaza</b></td><td class="text-right"><b>₺/saat</b></td><td class="text-right"><b>Fark</b></td><td class="text-right"><b>Kayıp Potansiyel</b></td></tr>
-                    @foreach (var s in _ops.Splh.Where(x => x.Saat > 0))
-                    {
-                        var verim = s.NetCiro / s.Saat;
-                        var kayip = (bench - verim) * s.Saat;
-                        toplamKayip += kayip;
-                        <tr><td>@s.Magaza</td><td class="text-right">@Num((int)Math.Round(verim))</td>
-                            <td class="text-right">@(verim == bench ? "★ benchmark" : "−" + Num((int)Math.Round(bench - verim)))</td>
-                            <td class="text-right @(kayip > 0 ? "text-error" : "text-success")">@(kayip > 0 ? Tl(kayip) : "—")</td></tr>
-                    }
-                    <tr><td colspan="3" class="text-[13px]">@benchAd seviyesine çıkılsa (30g):</td><td class="text-right text-error"><b>@Tl(toplamKayip)</b></td></tr>
-                </table>
-                <div class="text-base-content/50 text-[11px]">En verimli mağaza (@benchAd) ₺/saat referans; diğerleri o seviyede çalışsa kazanılacak ek ciro. Atıl saat + devamsızlık boyutu PDKS plan keşfi sonrası eklenecek.</div>
+                var splhAktif = _ops.Splh.Where(x => x.Saat > 0).ToList();
+                decimal toplamKayip = splhAktif.Sum(s => (bench - s.NetCiro / s.Saat) * s.Saat);
+                <AppDataTable TItem="SplhRow" Items="splhAktif"
+                              Primary="@(s => s.Magaza)"
+                              MetricMain="@(s => { var k = (bench - s.NetCiro / s.Saat) * s.Saat; return k > 0 ? Tl(k) : "—"; })"
+                              MetricSub="@(s => "verim " + Num((int)Math.Round(s.NetCiro / s.Saat)) + " ₺/s")"
+                              Badge="@(s => { var verim = s.NetCiro / s.Saat; return verim == bench ? ("★ benchmark", "bg-base-200 text-base-content/50") : ("−" + Num((int)Math.Round(bench - verim)), "bg-error/10 text-error"); })" />
+                <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200 text-[13px]">
+                    <span class="font-semibold text-base-content/70">@benchAd seviyesine çıkılsa (30g)</span>
+                    <span class="font-bold tabular-nums text-error">@Tl(toplamKayip)</span>
+                </div>
+                <div class="text-base-content/50 text-[11px] mt-1">En verimli mağaza (@benchAd) ₺/saat referans; diğerleri o seviyede çalışsa kazanılacak ek ciro. Atıl saat + devamsızlık boyutu PDKS plan keşfi sonrası eklenecek.</div>
             }
             else
             {
@@ -101,16 +95,15 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kapıda Ödeme — Teslim/İade (olgun 60g)</h3>
             @if (_ops is not null)
             {
-                <table class="table table-sm w-full text-[13px]">
-                    <tr><td><b>Tip</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Teslim %</b></td><td class="text-right"><b>İade %</b></td></tr>
-                    @foreach (var c in _ops.Cod.OrderBy(x => x.Tip == "COD" ? 0 : 1))
-                    {
-                        <tr><td>@c.Tip</td><td class="text-right">@Num(c.Siparis)</td>
-                            <td class="text-right">%@(c.Siparis > 0 ? Math.Round(100m * c.Teslim / c.Siparis, 1) : 0)</td>
-                            <td class="text-right @(c.Tip == "COD" ? "text-error" : "text-success")">%@(c.Siparis > 0 ? Math.Round(100m * c.Iade / c.Siparis, 1) : 0)</td></tr>
-                    }
-                    <tr><td colspan="4" class="text-[13px] text-error">COD iade zararı (60g): <b>@Tl(_ops.CodZarar)</b> (kargo ×2)</td></tr>
-                </table>
+                <AppDataTable TItem="CodRow" Items="@(_ops.Cod.OrderBy(x => x.Tip == "COD" ? 0 : 1))"
+                              Primary="@(c => c.Tip)"
+                              MetricMain="@(c => Num(c.Siparis))"
+                              MetricSub="@(c => "sipariş")"
+                              Sub="@(c => c.Siparis > 0 ? "teslim %" + Math.Round(100m * c.Teslim / c.Siparis, 1) : "teslim —")"
+                              Badge="@(c => { var iadePct = c.Siparis > 0 ? Math.Round(100m * c.Iade / c.Siparis, 1) : 0; return c.Tip == "COD" ? ($"iade %{iadePct}", "bg-error/10 text-error") : ($"iade %{iadePct}", "bg-success/10 text-success"); })" />
+                <div class="pt-2.5 mt-1 border-t-2 border-base-200 text-[13px] text-error">
+                    COD iade zararı (60g): <span class="font-bold">@Tl(_ops.CodZarar)</span> <span class="text-base-content/50">(kargo ×2)</span>
+                </div>
             }
         </div>
     </div>

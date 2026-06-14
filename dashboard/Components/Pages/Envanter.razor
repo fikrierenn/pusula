@@ -25,42 +25,36 @@ else if (_d is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Hızlı Dönen Kategoriler (yıllık devir)</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kategori</b></td><td class="text-right"><b>Devir</b></td></tr>
-                @foreach (var d in _d.Devir.Take(6))
-                {
-                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="text-right">@d.Devir.ToString("0.0")x</td></tr>
-                }
-            </table>
+            <AppRankBars TItem="DevirRow"
+                         Items="@(_d.Devir.Take(6))"
+                         Label="@(d => d.Kategori)"
+                         Value="@(d => d.Devir)"
+                         ValueText="@(d => $"{d.Devir:0.0}x")"
+                         OnRowClick="@(d => OpenUrun(d.Kategori))" />
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ölü Sermaye — Kilitli Stok (anlık stok, en yüksek ₺)</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kategori</b></td><td class="text-right"><b>Stok ₺</b></td><td class="text-right"><b>Devir</b></td></tr>
-                @foreach (var d in _d.Devir.OrderByDescending(x => x.StokTl).Take(6))
-                {
-                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(d.Kategori)"><td>@d.Kategori ▸</td><td class="text-right">@Tl(d.StokTl)</td>
-                        <td class="text-right @(d.Devir < 1.5m ? "text-error" : "text-success")">@d.Devir.ToString("0.0")x</td></tr>
-                }
-            </table>
+            <AppRankBars TItem="DevirRow"
+                         Items="@(_d.Devir.OrderByDescending(x => x.StokTl).Take(6))"
+                         Label="@(d => d.Kategori)"
+                         Value="@(d => d.StokTl)"
+                         ValueText="@(d => $"{Tl(d.StokTl)} · devir {d.Devir:0.0}x")"
+                         OnRowClick="@(d => OpenUrun(d.Kategori))" />
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">ABC — Ciro Yoğunluğu (Pareto 80/20, geçen ay)</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Sınıf</b></td><td class="text-right"><b>Ürün çeşidi</b></td><td class="text-right"><b>Ciro</b></td></tr>
-                @foreach (var a in _d.Abc)
-                {
-                    <tr><td>@AbcAd(a.Sinif)</td><td class="text-right">@Num(a.Adet)</td><td class="text-right">@Tl(a.Ciro)</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="AbcClass"
+                          Items="@(_d.Abc)"
+                          Primary="@(a => AbcAd(a.Sinif))"
+                          MetricMain="@(a => Tl(a.Ciro))"
+                          MetricSub="@(a => $"{Num(a.Adet)} çeşit")"
+                          Badge="@(a => a.Sinif switch { "A" => ("A", "badge bg-success/20 text-success"), "B" => ("B", "badge bg-warning/20 text-warning"), _ => ("C", "badge bg-base-200 text-base-content/60") })" />
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Stokta Yokluk — Son 30g Satılanlarda (hedef &lt;%5)</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kategori</b></td><td class="text-right"><b>Çeşit</b></td><td class="text-right"><b>Yok</b></td><td class="text-right"><b>%</b></td></tr>
-                @foreach (var s in _d.Stockout.Take(7))
-                {
-                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(s.Kategori)"><td>@s.Kategori ▸</td><td class="text-right">@Num(s.Cesit)</td><td class="text-right">@Num(s.Yok)</td>
-                        <td class="text-right @(s.Pct > 5 ? "text-error" : "text-success")">%@s.Pct.ToString("0.0")</td></tr>
-                }
-            </table>
+            <AppRankBars TItem="StockoutRow"
+                         Items="@(_d.Stockout.Take(7))"
+                         Label="@(s => s.Kategori)"
+                         Value="@(s => s.Pct)"
+                         ValueText="@(s => $"%{s.Pct:0.0} · {Num(s.Yok)}/{Num(s.Cesit)} çeşit")"
+                         OnRowClick="@(s => OpenUrun(s.Kategori))" />
         </div>
     </div>
 
@@ -77,34 +71,29 @@ else if (_d is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Çok Satan Marka / Yayınevi — Top 20 (geçen ay)</h3>
-            <div class="grid grid-cols-2 max-md:grid-cols-1 gap-x-7">
-                @MarkaTbl(_d.Marka.Take(10), 1)
-                @MarkaTbl(_d.Marka.Skip(10).Take(10), 11)
-            </div>
+            @{
+                var markaTopTl = _d.Marka.Sum(m => m.Ciro);
+            }
+            <AppRankBars TItem="MarkaRow"
+                         Items="@(_d.Marka.Take(20))"
+                         Label="@(m => m.Ad)"
+                         Value="@(m => m.Ciro)"
+                         ValueText="@(m => $"{Tl(m.Ciro)} · %{(markaTopTl > 0 ? m.Ciro * 100 / markaTopTl : 0):0.0}")" />
         </div>
     </div>
 
-    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
+    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
+        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · geçen tam ay · satışa göre ilk 100 (stok = güncel)</div>
         @if (_urunLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
         }
         else
         {
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="text-right"><b>Satış (adet)</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Bakiye</b></td></tr>
-                @{ var i = 1; }
-                @foreach (var u in _urunler)
-                {
-                    <tr><td class="text-base-content/40">@i</td><td>@u.Kod</td><td>@u.Ad</td><td class="text-right">@Num(u.Satis)</td><td class="text-right">@Tl(u.Ciro)</td>
-                        <td class="text-right @(u.Bakiye <= 0 ? "text-error" : "")">@Num(u.Bakiye)</td></tr>
-                    i++;
-                }
-                @if (_urunler.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-base-content/50">Ürün bulunamadı.</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="UrunRow" Items="_urunler"
+                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod}")"
+                          MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} adet")"
+                          Badge="@(u => ($"stok {Num(u.Bakiye)}", u.Bakiye <= 0 ? "bg-error/15 text-error" : "bg-base-200 text-base-content/50"))" />
         }
     </Modal>
 }
@@ -141,17 +130,6 @@ else if (_d is not null)
         catch (Exception ex) { _error = ex.Message; }
         finally { _urunLoading = false; StateHasChanged(); }
     }
-
-    private RenderFragment MarkaTbl(IEnumerable<MarkaRow> rows, int start) => @<table class="table table-sm w-full text-[13px]">
-        <tr><td><b>#</b></td><td><b>Marka / Yayınevi</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Çeşit</b></td><td class="text-right"><b>Ciro/Çeşit</b></td></tr>
-        @{ var i = start; }
-        @foreach (var m in rows)
-        {
-            <tr><td class="text-base-content/40">@i</td><td>@m.Ad</td><td class="text-right">@Tl(m.Ciro)</td><td class="text-right">@Num(m.Cesit)</td>
-                <td class="text-right">@Tl(m.Cesit > 0 ? m.Ciro / m.Cesit : 0)</td></tr>
-            i++;
-        }
-    </table>;
 
     private static string AbcAd(string s) => s switch
     {
