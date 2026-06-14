@@ -100,8 +100,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 #### Dashboard İçerik Backlog — dashboard-oneri taraması (14.06). Seçilince `dashboard-icerik` ile uygula.
 
 **🔥 Hızlı kazanım (S — mevcut sorgu varyasyonu, yeni tablo/köprü yok):**
-- [ ] **B-53** Mağaza detay 30-gün ciro trendi (AppAreaChart) — mağazada hiç trend yok. Veri: GetTrendAsync + mekanId filtresi. **(öncelik: yüksek)**
-- [ ] **B-54** Hedef pace-line — "ayın 14'ü %40, iyi mi?" beklenen-ilerleme çizgisi. Veri: C# (`Today.Day / DaysInMonth`), SQL yok. Haftalık görünümde hedef de gösterilsin. **(yüksek)**
+- [x] ~~**B-53** Mağaza detay 30-gün ciro trendi~~ — ✅ 14.06 commit 1719bb9. MagazaQueries.GetTrendAsync (mekanID filtreli) + AppAreaChart. Özlüce 13.06=967.304 doğrulandı.
+- [x] ~~**B-54** Hedef pace-line~~ — ✅ 14.06 commit 7befb53. Dikey çizgi=bugün beklenen %(gün/ay), geride/önde rozet, haftalıkta da hedef. Gün 14/30→%47.
 - [ ] **B-55** Mağaza saat×gün ısı haritası (heatmap 7×14) — personel/kampanya zamanlama. Veri: Sales DATEPART HOUR+WEEKDAY (mevcut saatSql + weekday boyutu). Yeni AppHeatmap bileşeni. **(yüksek)**
 - [ ] **B-56** COD iade il haritası/tablo — Doğu %15-21 risk → coğrafi COD kararı. Veri: GetIlTeslimat join + PAYDEFREF=-3 + CARGODELIVERYSTATUS. **(orta)**
 - [ ] **B-57** Kasiyer aylık sıralama + önceki-ay delta rozeti. Veri: kasSql 2× (cari+önceki dönem) + C# delta. **(orta)**
