@@ -214,13 +214,18 @@ public sealed class RefQueries(Db db)
     public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori, int mekanId, DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenAsync();
-        // Satış/Ciro = EncoreMerkez net KDV-dahil (kategori kartıyla aynı kaynak). Bakiye = irsHrk güncel stok.
+        // Satış/Ciro = seçili dönem (EncoreMerkez net KDV-dahil, kategori kartıyla aynı kaynak). Bakiye = irsHrk güncel stok.
+        // S30/S90/S360 = bugünden geriye trailing pencere satış adedi → kaç-gün-yeter (dönemden bağımsız, stabil).
         const string sql = """
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
-                CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.Amount) AS int) AS Satis,
-                CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Ciro,
-                CAST(MAX(ISNULL(stk.Bakiye,0)) AS int) AS Bakiye
+                CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
+                CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.TotalPrice ELSE 0 END) AS decimal(18,0)) AS Ciro,
+                CAST(MAX(ISNULL(stk.Bakiye,0)) AS int) AS Bakiye,
+                CAST(SUM(CASE WHEN s.Date>=@d30 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S30,
+                CAST(SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S90,
+                CAST(SUM(CASE WHEN s.Date>=@d360 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S360
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            CROSS APPLY (SELECT CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END AS v) sg
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
             JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
@@ -233,17 +238,27 @@ public sealed class RefQueries(Db db)
                        GROUP BY h.ehstkID) stk ON stk.sID=u.stkID
             WHERE MG.mekanID IN (1,4477,4478) AND (@mekan=0 OR MG.mekanID=@mekan)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
-                AND s.Date>=@start AND s.Date<@end
+                AND s.Date>=@minDate AND s.Date<@maxDate
             GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
-            HAVING SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.Amount)>0
+            HAVING SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END)>0
             ORDER BY Satis DESC;
             """;
+        var today = DateTime.Today;
+        var pStart = start.ToDateTime(TimeOnly.MinValue);
+        var pEnd = endExcl.ToDateTime(TimeOnly.MinValue);
+        var d360 = today.AddDays(-360);
+        var tom = today.AddDays(1);
         return (await conn.QueryAsync<UrunRow>(sql, new
         {
             kat = kategori,
             mekan = mekanId,
-            start = start.ToDateTime(TimeOnly.MinValue),
-            end = endExcl.ToDateTime(TimeOnly.MinValue),
+            start = pStart,
+            end = pEnd,
+            d30 = today.AddDays(-30),
+            d90 = today.AddDays(-90),
+            d360,
+            minDate = pStart < d360 ? pStart : d360,   // dönem + trailing 360g'yi kapsa
+            maxDate = pEnd > tom ? pEnd : tom,
         })).ToList();
     }
 

@@ -180,7 +180,7 @@ else if (_data is not null)
     </Modal>
 
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
-        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · ilk 100 · badge: stok · ~kaç gün yeter (≤7g kırmızı)</div>
+        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · ilk 100 · badge = stok · ~90g kaç gün yeter · satıra dokun → 30/90/360g</div>
         @if (_urunLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
@@ -188,9 +188,18 @@ else if (_data is not null)
         else
         {
             <AppDataTable TItem="UrunRow" Items="_urunler"
-                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod} · {UrunOrtSatis(u)}")"
+                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod}")"
                           MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} adet")"
-                          Badge="@(u => UrunStok(u))" />
+                          Badge="@(u => UrunStok(u))">
+                <Details Context="u">
+                    <div class="text-[10px] text-base-content/45 mb-1.5">Ort. günlük satış · stok kaç gün yeter (trailing pencere)</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        @CoverCell("30 gün", u.S30, 30, u.Bakiye)
+                        @CoverCell("90 gün", u.S90, 90, u.Bakiye)
+                        @CoverCell("360 gün", u.S360, 360, u.Bakiye)
+                    </div>
+                </Details>
+            </AppDataTable>
         }
     </Modal>
 
@@ -351,19 +360,27 @@ else if (_data is not null)
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 
-    // Ürün drill: dönem gün sayısı → ort. günlük satış + stok kaç gün yeter (envanter sinyali).
-    private int DonemGun => Math.Max(1, _endExcl.DayNumber - _start.DayNumber);
-    private string UrunOrtSatis(UrunRow u) => (u.Satis / (double)DonemGun).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " adet/gün";
-    // Stok badge: tükendi / "N stok · ~Gg" — gün-yeter düşükse kırmızı (≤7g) / sarı (≤21g).
+    // Ürün drill envanter sinyali — kaç-gün-yeter = stok / (trailing pencere ort. günlük satış). Dönemden bağımsız.
+    // null = pencerede satış yok (ölçülemez); 0 = stok tükendi.
+    private static int? Cover(int bakiye, int satisWin, int days)
+        => bakiye <= 0 ? 0 : satisWin <= 0 ? null : (int)Math.Round(bakiye / (satisWin / (double)days));
+    private static string OrtGun(int satisWin, int days) => (satisWin / (double)days).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    // Badge = 90 günlük pencere (dengeli) kaç-gün-yeter. ≤7g kırmızı (acil), ≤21g sarı.
     private (string Text, string Cls) UrunStok(UrunRow u)
     {
         if (u.Bakiye <= 0) return ("tükendi", "bg-error/15 text-error");
-        var daily = u.Satis / (double)DonemGun;
-        if (daily <= 0) return ($"{Num(u.Bakiye)} stok", "bg-base-200 text-base-content/50");
-        var cover = (int)Math.Round(u.Bakiye / daily);
-        var cls = cover <= 7 ? "bg-error/15 text-error" : cover <= 21 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/55";
-        return ($"{Num(u.Bakiye)} · ~{Num(cover)}g", cls);
+        var c = Cover(u.Bakiye, u.S90, 90);
+        if (c is null) return ($"{Num(u.Bakiye)} stok", "bg-base-200 text-base-content/55");
+        var cls = c <= 7 ? "bg-error/15 text-error" : c <= 21 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/55";
+        return ($"{Num(u.Bakiye)} · ~{Num(c.Value)}g", cls);
     }
+    // Accordion hücresi — bir trailing pencere (30/90/360): ort/gün + kaç gün yeter.
+    private RenderFragment CoverCell(string lbl, int satisWin, int days, int bakiye) => @<div class="bg-base-100 rounded-xl py-2 px-1 text-center">
+        <div class="text-[10px] text-base-content/50">@lbl</div>
+        <div class="text-[12.5px] font-bold tabular-nums">@OrtGun(satisWin, days)<span class="text-[10px] font-normal text-base-content/50">/g</span></div>
+        @{ var c = Cover(bakiye, satisWin, days); }
+        <div class="text-[11px] font-semibold @(c is null ? "text-base-content/40" : c == 0 ? "text-error" : c <= 7 ? "text-error" : c <= 21 ? "text-warning" : "text-success")">@(c is null ? "—" : c == 0 ? "tükendi" : $"~{Num(c.Value)}g")</div>
+    </div>;
 
     // WoW: bir önceki eş-uzunluk döneme göre değişim %. prev=0 → trend yok (null).
     private static decimal? WowOf(decimal cur, decimal prev) => prev > 0 ? Math.Round(100 * (cur - prev) / prev, 1) : null;

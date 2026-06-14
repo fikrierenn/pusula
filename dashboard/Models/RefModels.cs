@@ -6,8 +6,9 @@ public record RfmSegment(string Segment, int Musteri, decimal Ciro);
 /// <summary>Drill: segmentteki tekil müşteri (ad/telefon + RFM metrikleri).</summary>
 public record CustomerRow(long Id, string Ad, string Tel, int Frq, decimal Mon, int Rec);
 
-/// <summary>Drill: kategorideki tekil ürün (kod/ad + satış/ciro/bakiye).</summary>
-public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye);
+/// <summary>Drill: kategorideki tekil ürün. Satis/Ciro = seçili dönem; S30/S90/S360 = bugünden geriye
+/// trailing pencere satış adedi (kaç-gün-yeter hesabı için, dönemden bağımsız).</summary>
+public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye, int S30, int S90, int S360);
 
 /// <summary>Ciro-vs-envanter scatter noktası (kategori).</summary>
 public record CveRow(string Kategori, decimal Ciro, decimal Env);
