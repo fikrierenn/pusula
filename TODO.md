@@ -104,8 +104,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-54** Hedef pace-line~~ — ✅ 14.06 commit 7befb53. Dikey çizgi=bugün beklenen %(gün/ay), geride/önde rozet, haftalıkta da hedef. Gün 14/30→%47.
 - [x] ~~**B-73** Hedef Tahmin kartı (CFO yöntemi: YoY taban × MoM ivme)~~ — ✅ 14.06 commit e390c27. irsHrk net (tam geçmiş), GetTahminAsync + saf-C# Forecast.Hesapla. Geçen yıl aynı ay × son-3-ay YoY ivmesi + senaryo bandı ±σ + MTD pace. Haziran 51,34M (=30,98M×1,657) doğrulandı. Sınav sezonu YoY tabanda korunur. Yöntem hafızada [[bkm-hedef-tahmin-yontemi]].
 - [ ] **B-55** Mağaza saat×gün ısı haritası (heatmap 7×14) — personel/kampanya zamanlama. Veri: Sales DATEPART HOUR+WEEKDAY (mevcut saatSql + weekday boyutu). Yeni AppHeatmap bileşeni. **(yüksek)**
-- [ ] **B-56** COD iade il haritası/tablo — Doğu %15-21 risk → coğrafi COD kararı. Veri: GetIlTeslimat join + PAYDEFREF=-3 + CARGODELIVERYSTATUS. **(orta)**
-- [ ] **B-57** Kasiyer aylık sıralama + önceki-ay delta rozeti. Veri: kasSql 2× (cari+önceki dönem) + C# delta. **(orta)**
+- [x] ~~**B-56** COD iade il haritası~~ — ✅ 14.06 commit 75d55c2. PAYDEFREF=-3+DCITY+CARGODELIVERYSTATUS=2, oran sıralı (HAVING≥20). Doğu illeri ~%17. AppDataTable.
+- [x] ~~**B-57** Kasiyer önceki-döneme delta rozeti~~ — ✅ 14.06 commit 6f8b1de. GetKasiyerDeltaAsync (kasSql 2× + Magaza|Ad eşleşme). Yeşil/kırmızı delta badge.
 - [ ] **B-58** Tekrar satın-alma oranı (yeni vs sadık müşteri) — Frq>1 payı, fiziksel + e-tic. Veri: RFM/ykSql alt sorgu. **(orta)** → B-66 sadakat temasına bağlı.
 
 **Orta (M — yeni sorgu/cross-db join):**
