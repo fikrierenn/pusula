@@ -1,0 +1,57 @@
+@* Mobil-native area sparkline (ApexCharts) — gradient dolgu, gridsiz, yumuşak. plan-08. *@
+@typeparam TItem where TItem : class
+
+<div class="relative" style="height:@(Height)px">
+    <ApexChart TItem="TItem" Options="_opts" Height="@Height">
+        <ApexPointSeries TItem="TItem" Items="Items" Name="@Name" SeriesType="SeriesType.Area"
+                         XValue="XValue" YValue="YValue" />
+    </ApexChart>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter, EditorRequired] public Func<TItem, object> XValue { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, decimal?> YValue { get; set; } = default!;
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Color { get; set; } = "#4063e6";
+    [Parameter] public int Height { get; set; } = 220;
+
+    private ApexChartOptions<TItem> _opts = new();
+
+    // tr-TR + M kısaltma (charts.js fmtK/fmtM eşdeğeri) — ApexCharts JS formatter.
+    private const string NumFmt = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}";
+
+    protected override void OnParametersSet()
+    {
+        _opts = new ApexChartOptions<TItem>
+        {
+            Chart = new Chart
+            {
+                Toolbar = new Toolbar { Show = false },
+                Zoom = new Zoom { Enabled = false },
+            },
+            Colors = new List<string> { string.IsNullOrEmpty(Color) ? "#4063e6" : Color },
+            Stroke = new Stroke { Curve = Curve.Smooth, Width = 2.5 },
+            Fill = new Fill
+            {
+                Type = new List<FillType> { FillType.Gradient },
+                Gradient = new FillGradient { OpacityFrom = 0.28, OpacityTo = 0, ShadeIntensity = 1 },
+            },
+            DataLabels = new DataLabels { Enabled = false },
+            Grid = new Grid { Show = false },
+            Markers = new Markers { Size = 0 },
+            Legend = new Legend { Show = false },
+            Xaxis = new XAxis
+            {
+                AxisBorder = new AxisBorder { Show = false },
+                AxisTicks = new AxisTicks { Show = false },
+                Labels = new XAxisLabels { Style = new AxisLabelStyle { FontSize = "10px" } },
+            },
+            Yaxis = new List<YAxis>
+            {
+                new YAxis { Labels = new YAxisLabels { Style = new AxisLabelStyle { FontSize = "10px" }, Formatter = NumFmt } },
+            },
+            Tooltip = new Tooltip { Y = new TooltipY { Formatter = NumFmt } },
+        };
+    }
+}

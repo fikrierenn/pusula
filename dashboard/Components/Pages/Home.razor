@@ -136,7 +136,9 @@ else if (_data is not null)
     <h2 class="text-lg font-bold tracking-tight mb-3">Analiz</h2>
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-pie" class="w-[18px] h-[18px] text-primary"></i>Mağaza Kategori Mix (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_kat"></canvas></div></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Fiziksel Net Ciro</h3><div class="relative h-[220px]"><canvas id="ch_trend"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Fiziksel Net Ciro</h3>
+            <AppAreaChart TItem="TrendPoint" Items="_trend" Name="Net Ciro" Color="@_pColor"
+                          XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="package" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="relative h-[220px]"><canvas id="ch_alis"></canvas></div>
             <div class="text-base-content/50 text-[11px]">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
     </div>
@@ -209,6 +211,7 @@ else if (_data is not null)
     private IReadOnlyList<HedefMagaza>? _hedefMag;
     private IReadOnlyList<HedefKategori> _hedefKat = [];
     private IJSObjectReference? _charts;
+    private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private bool _modalEtic;
     private bool _modalTot;
     private bool _modalUrun;
@@ -280,8 +283,7 @@ else if (_data is not null)
             await _charts.InvokeVoidAsync("heroDots", "hero", "heroDots");
             await _charts.InvokeVoidAsync("bar", "ch_kat",
                 _data.Kategori.Select(k => k.Ad), _data.Kategori.Select(k => k.Ciro), true);
-            await _charts.InvokeVoidAsync("area", "ch_trend",
-                _trend.Select(t => t.Tarih[5..]), _trend.Select(t => t.Net));
+            // ch_trend → ApexChart (AppAreaChart, plan-08 Adım 2). ch_alis hâlâ Chart.js (Adım 3).
             await _charts.InvokeVoidAsync("area", "ch_alis",
                 _alis.Select(t => t.Tarih[5..]), _alis.Select(t => t.Net));
         }
@@ -290,7 +292,18 @@ else if (_data is not null)
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _data is not null) await DrawChartsAsync();
+        if (firstRender)
+        {
+            // DaisyUI primary'yi grafik rengine köprüle (tema-bağlı, hardcode yok).
+            try
+            {
+                var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+                var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+                if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+            }
+            catch { /* tema okunamazsa component fallback'i kullanır */ }
+            if (_data is not null) await DrawChartsAsync();
+        }
     }
 
     // Hedef gerçekleşme renk eşiği: ≥%95 yeşil, %85-95 sarı, <%85 kırmızı
