@@ -14,7 +14,7 @@
 */
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;font-family:'Segoe UI',system-ui,sans-serif}
-.phone{max-width:380px;width:100%;background:#eef1f6;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,.18);border:1px solid rgba(15,23,42,.06);display:flex;flex-direction:column;min-height:760px}
+.phone{max-width:380px;width:100%;background:#eef1f6;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,.18);border:1px solid rgba(15,23,42,.06);display:flex;flex-direction:column;height:780px;max-height:92vh}
 .statusbar{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 6px;font-size:13px;font-weight:600;color:#0f172a}
 .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 20px 14px}
 .topbar .sub{font-size:12px;color:#64748b;font-weight:500}
@@ -71,6 +71,30 @@ body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;fo
 .nav i{font-size:23px}.nav span{font-size:10px;font-weight:500}
 .nav.on{color:#4063e6}.nav.on span{font-weight:700}
 .nav.on .pill{width:42px;height:30px;border-radius:13px;background:#eef2ff;display:flex;align-items:center;justify-content:center;margin-bottom:-2px}
+/* AI gün yorumu */
+.aicard{margin:0 20px 16px;border-radius:20px;padding:16px;background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;box-shadow:0 8px 22px rgba(15,23,42,.25)}
+.aicard .ahead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.aicard .aic{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#818cf8,#6366f1);display:flex;align-items:center;justify-content:center}
+.aicard .at{font-size:13px;font-weight:700}.aicard .ab{font-size:10px;color:#94a3b8;margin-left:auto;background:rgba(255,255,255,.08);padding:3px 8px;border-radius:7px}
+.aicard p{font-size:12.5px;line-height:1.55;color:#e2e8f0}
+.aicard .hi{color:#fff;font-weight:700}.aicard .up{color:#34d399;font-weight:700}.aicard .dn{color:#fb7185;font-weight:700}
+.aicard .acts{display:flex;gap:8px;margin-top:13px}
+.aicard .act{flex:1;text-align:center;font-size:11.5px;font-weight:600;padding:9px 0;border-radius:11px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
+.aicard .act:active{background:rgba(255,255,255,.2)}
+/* bottom-sheet modal */
+.ov{position:absolute;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;z-index:50}
+.ov.on{display:flex}
+.sheet{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:20px 18px 26px;max-height:78%;overflow-y:auto;animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.sheet .grip{width:40px;height:4px;background:#e2e8f0;border-radius:2px;margin:0 auto 16px}
+.sheet h3{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sheet h3 .cnt{font-size:11px;font-weight:700;background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:8px;margin-left:auto}
+.nrow{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9}
+.nrow:last-child{border:none}
+.ndot{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nrow .nn{font-size:13px;font-weight:700;color:#0f172a}
+.nrow .nd{font-size:11.5px;color:#64748b;line-height:1.4}
+.nrow .ntime{font-size:10px;color:#cbd5e1;margin-left:auto;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -81,7 +105,7 @@ body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;fo
   <div class="topbar">
     <div><div class="sub">İyi günler 👋</div><div class="ttl" id="pgtitle">BKM Genel Bakış</div></div>
     <div style="display:flex;gap:10px;align-items:center">
-      <button class="icbtn"><i class="ti ti-bell" style="font-size:19px;color:#334155"></i><span class="dot-red"></span></button>
+      <button class="icbtn" onclick="openSheet('notif')"><i class="ti ti-bell" style="font-size:19px;color:#334155"></i><span class="dot-red"></span></button>
       <div class="avatar">CFO</div>
     </div>
   </div>
@@ -99,6 +123,11 @@ body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;fo
         <div class="hcard g-error"><div class="top"><span class="lbl">İade</span><span class="chip"><i class="ti ti-trending-down"></i>%0,7</span></div><div class="big">34.661 ₺</div><div class="sub"><div><div class="k">İade fiş</div><div class="v">38</div></div><div><div class="k">Ciroya oran</div><div class="v">%0,7</div></div></div></div>
       </div>
       <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="aicard">
+        <div class="ahead"><span class="aic"><i class="ti ti-sparkles" style="font-size:17px;color:#fff"></i></span><span class="at">Günün Özeti</span><span class="ab">AI · 13.06</span></div>
+        <p>Dün ciro <span class="hi">5,1M ₺</span>, geçen haftaya göre <span class="up">+%8,4</span>. Online güçlü (3,07M ₺, app payı %75). <span class="dn">İst.Yolu −%19</span> düşüş dikkat çekici — kampanya etkisi azalmış olabilir. <span class="up">Özlüce +%12</span> ile zirvede. İade oranı düşük (%0,7), sağlıklı.</p>
+        <div class="acts"><span class="act">📊 Detaylı analiz</span><span class="act">🔍 İst.Yolu incele</span></div>
+      </div>
       <div class="sectitle"><span class="t">Mağazalar</span><span class="a">Tümü →</span></div>
       <div class="list">
         <div class="row"><span class="ricon" style="background:#ecfdf5"><i class="ti ti-building-store" style="font-size:22px;color:#10b981"></i></span><div style="flex:1"><div class="nm">Özlüce</div><div class="mt">1.284 fiş · sepet 753 ₺</div></div><div><div class="amt">967.304 ₺</div><div class="trend t-up"><i class="ti ti-trending-up" style="font-size:13px"></i>%12</div></div><i class="ti ti-chevron-right chev"></i></div>
@@ -216,9 +245,23 @@ body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;fo
     <div class="nav" data-i="4"><i class="ti ti-users"></i><span>Müşteri</span></div>
   </div>
 
+  <!-- BİLDİRİM / UYARI MERKEZİ -->
+  <div class="ov" id="ov-notif" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet">
+      <div class="grip"></div>
+      <h3><i class="ti ti-bell" style="color:#4063e6"></i>Uyarılar<span class="cnt">3 yeni</span></h3>
+      <div class="nrow"><span class="ndot" style="background:#fef2f2"><i class="ti ti-trending-down" style="font-size:18px;color:#ef4444"></i></span><div><div class="nn">İst.Yolu ciro −%19</div><div class="nd">Günlük net hedefin altında. 3 gündür düşüş trendi.</div></div><span class="ntime">2s önce</span></div>
+      <div class="nrow"><span class="ndot" style="background:#fffbeb"><i class="ti ti-package-off" style="font-size:18px;color:#f59e0b"></i></span><div><div class="nn">Stokta yokluk %4,2</div><div class="nd">Eşik %5'e yaklaşıyor. 3.412 SKU etkileniyor.</div></div><span class="ntime">5s önce</span></div>
+      <div class="nrow"><span class="ndot" style="background:#fffbeb"><i class="ti ti-truck-return" style="font-size:18px;color:#f59e0b"></i></span><div><div class="nn">COD iade oranı %22</div><div class="nd">Geçen ay %18'di. Kapıda ödeme zararı artıyor.</div></div><span class="ntime">1g önce</span></div>
+      <div class="nrow"><span class="ndot" style="background:#ecfdf5"><i class="ti ti-target-arrow" style="font-size:18px;color:#10b981"></i></span><div><div class="nn">Özlüce hedefi aştı</div><div class="nd">Günlük hedef %112 gerçekleşme. En iyi performans.</div></div><span class="ntime">1g önce</span></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
+function openSheet(k){ var o=document.getElementById('ov-'+k); if(o)o.classList.add('on'); }
+function closeSheet(){ document.querySelectorAll('.ov.on').forEach(function(o){o.classList.remove('on');}); }
 var pages=document.querySelectorAll('.page'), navs=document.querySelectorAll('#nav .nav'), title=document.getElementById('pgtitle');
 var ICONS=['ti-layout-dashboard','ti-shopping-cart','ti-building-warehouse','ti-package','ti-users'];
 function show(i){

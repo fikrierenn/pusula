@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>BKM Mobil App — Mağaza Detay Mockup (B-51 referans)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.17.0/dist/tabler-icons.min.css">
+<style>
+/*
+  BKM Mobil App — MAĞAZA DETAY (/magaza/{id}) mockup (14.06.2026)
+  Özlüce örnek. KPI swipe + ödeme mix (tıkla→banka modal) + kampanya yükü + kategori (tıkla→ürün modal).
+  ⚠ Net ciro/fiş/sepet GERÇEK (13.06). Ödeme/kampanya/kategori = ÖRNEK (mockbadge).
+  Blazor: Magaza.razor zaten bu yapıda — hardcode hex → DaisyUI token.
+*/
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;font-family:'Segoe UI',system-ui,sans-serif}
+.phone{max-width:380px;width:100%;background:#eef1f6;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,.18);border:1px solid rgba(15,23,42,.06);display:flex;flex-direction:column;height:780px;max-height:92vh;position:relative}
+.statusbar{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 6px;font-size:13px;font-weight:600;color:#0f172a}
+.appbar{display:flex;align-items:center;gap:12px;padding:8px 16px 14px}
+.backbtn{width:40px;height:40px;border-radius:14px;border:none;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(15,23,42,.06)}
+.appbar .ttl{font-size:18px;font-weight:700;color:#0f172a;letter-spacing:-.3px}
+.appbar .mt{font-size:11.5px;color:#64748b;font-weight:500}
+.storeic{width:40px;height:40px;border-radius:14px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;margin-left:auto}
+.seg{display:flex;gap:8px;padding:0 16px 16px}
+.seg span{flex:1;text-align:center;padding:9px 0;border-radius:12px;background:#fff;color:#64748b;font-size:13px;font-weight:500;cursor:pointer}
+.seg span.on{background:#0f172a;color:#fff;font-weight:600}
+.body{flex:1;overflow-y:auto}
+.track{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px 4px;scrollbar-width:none}
+.track::-webkit-scrollbar{display:none}
+.hcard{scroll-snap-align:center;flex:0 0 calc(100% - 32px);box-sizing:border-box;padding:20px;border-radius:22px;color:#fff}
+.hcard .top{display:flex;justify-content:space-between;align-items:flex-start}
+.hcard .lbl{font-size:12px;opacity:.85;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.hcard .chip{font-size:12px;background:rgba(255,255,255,.18);padding:4px 9px;border-radius:9px;font-weight:600;display:flex;align-items:center;gap:3px}
+.hcard .big{font-size:32px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px}
+.hcard .sub{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)}
+.hcard .sub>div{flex:1}.hcard .sub .k{font-size:11px;opacity:.8}.hcard .sub .v{font-size:16px;font-weight:700}
+.g-primary{background:linear-gradient(135deg,#4063e6,#3a4fd0);box-shadow:0 10px 28px rgba(64,99,230,.3)}
+.g-info{background:linear-gradient(135deg,#0ea5e9,#0284c7);box-shadow:0 10px 28px rgba(14,165,233,.3)}
+.g-success{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 10px 28px rgba(16,185,129,.3)}
+.g-error{background:linear-gradient(135deg,#f43f5e,#e11d48);box-shadow:0 10px 28px rgba(244,63,94,.3)}
+.dots{display:flex;justify-content:center;gap:6px;padding:12px 0 16px}
+.dots span{width:6px;height:6px;border-radius:3px;background:#cbd5e1;transition:.3s}
+.dots span.on{width:18px;background:#4063e6}
+.mockbadge{margin:0 16px 12px;font-size:11px;background:#fef9c3;color:#854d0e;padding:6px 12px;border-radius:10px;display:flex;align-items:center;gap:5px;font-weight:600}
+.card{margin:0 16px 14px;background:#fff;border-radius:18px;padding:16px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.card h4{font-size:14px;font-weight:700;color:#0f172a;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.card h4 .hint{font-size:10px;color:#94a3b8;font-weight:500;margin-left:auto}
+.pay{display:flex;align-items:center;gap:11px;padding:9px 0;cursor:pointer;border-bottom:1px solid #f1f5f9}
+.pay:last-child{border:none}.pay:active{opacity:.6}
+.payic{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pay .pn{font-size:13px;font-weight:600;color:#0f172a}
+.pay .pp{font-size:11px;color:#94a3b8}
+.pay .pv{font-size:14px;font-weight:700;color:#0f172a;text-align:right;margin-left:auto}
+.bar{margin-bottom:12px}.bar:last-child{margin:0}
+.bar.clk{cursor:pointer}.bar.clk:active{opacity:.6}
+.bar .bl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.bar .bn{color:#334155;font-weight:600;display:flex;align-items:center;gap:5px}
+.bar .bv{color:#0f172a;font-weight:700}
+.bar .track2{height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;border-radius:4px}
+.banner{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;margin-bottom:14px;font-size:12.5px;font-weight:600}
+.b-warn{background:#fffbeb;color:#92400e}.b-warn i{color:#f59e0b}
+.kamp{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #f1f5f9;cursor:pointer}
+.kamp:last-child{border:none}
+.kbadge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:7px}
+.k-3al{background:#eff6ff;color:#2563eb}.k-dig{background:#f1f5f9;color:#64748b}
+.kamp .kn{font-size:13px;font-weight:600;color:#0f172a}
+.kamp .kd{font-size:11px;color:#94a3b8}
+.kamp .kv{font-size:13px;font-weight:700;color:#ef4444;text-align:right;margin-left:auto}
+.kpill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;display:inline-block}
+.kp-hi{background:#fef2f2;color:#dc2626}.kp-md{background:#fffbeb;color:#d97706}.kp-lo{background:#f1f5f9;color:#64748b}
+/* modal */
+.ov{position:absolute;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;z-index:50}
+.ov.on{display:flex}
+.sheet{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:20px 18px 26px;max-height:78%;overflow-y:auto;animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.sheet .grip{width:40px;height:4px;background:#e2e8f0;border-radius:2px;margin:0 auto 16px}
+.sheet h3{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:4px}
+.sheet .sh-sub{font-size:12px;color:#94a3b8;margin-bottom:16px}
+.drow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.drow:last-child{border:none}
+.drow .dn{color:#334155;font-weight:600}.drow .dsub{font-size:11px;color:#94a3b8}
+.drow .dv{font-weight:700;color:#0f172a}
+.navbar{display:flex;justify-content:space-around;align-items:center;padding:10px 8px 14px;background:#fff;border-top:1px solid rgba(15,23,42,.05)}
+.nav{display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8;flex:1;padding:4px 0}
+.nav i{font-size:23px}.nav span{font-size:10px;font-weight:500}
+.nav.on{color:#4063e6}.nav.on span{font-weight:700}
+.nav.on .pill{width:42px;height:30px;border-radius:13px;background:#eef2ff;display:flex;align-items:center;justify-content:center;margin-bottom:-2px}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="statusbar"><span>09:42</span><span style="display:flex;gap:6px;align-items:center"><i class="ti ti-wifi" style="font-size:15px"></i><i class="ti ti-battery-3" style="font-size:16px"></i></span></div>
+
+  <div class="appbar">
+    <button class="backbtn"><i class="ti ti-arrow-left" style="font-size:21px;color:#334155"></i></button>
+    <div><div class="ttl">Özlüce</div><div class="mt">Mağaza detay · 13.06.2026</div></div>
+    <span class="storeic"><i class="ti ti-building-store" style="font-size:21px;color:#10b981"></i></span>
+  </div>
+
+  <div class="seg"><span class="on">Günlük</span><span>Haftalık</span><span>Aylık</span></div>
+
+  <div class="body">
+    <div class="track">
+      <div class="hcard g-primary"><div class="top"><span class="lbl">Net Ciro</span><span class="chip"><i class="ti ti-trending-up"></i>%12</span></div><div class="big">967.304 ₺</div><div class="sub"><div><div class="k">Dönem</div><div class="v">Günlük</div></div><div><div class="k">Ciro payı</div><div class="v">%47,5</div></div></div></div>
+      <div class="hcard g-info"><div class="top"><span class="lbl">Fiş</span><span class="chip"><i class="ti ti-receipt"></i>1.284</span></div><div class="big">1.284</div><div class="sub"><div><div class="k">Sepet ort.</div><div class="v">753 ₺</div></div><div><div class="k">En yoğun saat</div><div class="v">17:00</div></div></div></div>
+      <div class="hcard g-success"><div class="top"><span class="lbl">UPT</span><span class="chip"><i class="ti ti-package"></i>2,34</span></div><div class="big">2,34</div><div class="sub"><div><div class="k">Ürün / fiş</div><div class="v">2,34 adet</div></div><div><div class="k">Toplam ürün</div><div class="v">3.005</div></div></div></div>
+      <div class="hcard g-error"><div class="top"><span class="lbl">İade</span><span class="chip"><i class="ti ti-trending-down"></i>%0,6</span></div><div class="big">5.804 ₺</div><div class="sub"><div><div class="k">İade fiş</div><div class="v">9</div></div><div><div class="k">Oran</div><div class="v">%0,6</div></div></div></div>
+    </div>
+    <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+
+    <div class="mockbadge"><i class="ti ti-alert-triangle"></i>Net ciro/fiş/sepet gerçek — ödeme/kampanya/kategori örnek</div>
+
+    <!-- ÖDEME TİPİ MIX -->
+    <div class="card">
+      <h4><i class="ti ti-credit-card" style="color:#4063e6"></i>Ödeme Tipi Mix<span class="hint">tıkla → banka</span></h4>
+      <div class="pay" onclick="openSheet('odeme')"><span class="payic" style="background:#eef2ff"><i class="ti ti-credit-card" style="font-size:19px;color:#4063e6"></i></span><div><div class="pn">Kredi Kartı</div><div class="pp">%66 · 848 işlem</div></div><span class="pv">638.420 ₺</span><i class="ti ti-chevron-right" style="font-size:17px;color:#cbd5e1;margin-left:6px"></i></div>
+      <div class="pay"><span class="payic" style="background:#ecfdf5"><i class="ti ti-cash" style="font-size:19px;color:#10b981"></i></span><div><div class="pn">Nakit</div><div class="pp">%23 · 296 işlem</div></div><span class="pv">222.480 ₺</span><i class="ti ti-chevron-right" style="font-size:17px;color:#e2e8f0;margin-left:6px"></i></div>
+      <div class="pay"><span class="payic" style="background:#fff7ed"><i class="ti ti-gift" style="font-size:19px;color:#f59e0b"></i></span><div><div class="pn">Hediye Çeki</div><div class="pp">%7 · 89 işlem</div></div><span class="pv">67.710 ₺</span><i class="ti ti-chevron-right" style="font-size:17px;color:#e2e8f0;margin-left:6px"></i></div>
+      <div class="pay"><span class="payic" style="background:#f1f5f9"><i class="ti ti-device-mobile" style="font-size:19px;color:#64748b"></i></span><div><div class="pn">ÖKC / Diğer</div><div class="pp">%4 · 51 işlem</div></div><span class="pv">38.694 ₺</span></div>
+    </div>
+
+    <!-- KAMPANYA YÜKÜ -->
+    <div class="card">
+      <h4><i class="ti ti-ticket" style="color:#4063e6"></i>Kampanya Yükü<span class="hint">tıkla → detay</span></h4>
+      <div class="banner b-warn"><i class="ti ti-alert-circle" style="font-size:18px"></i>Kampanya yükü %18,6 — dikkat (net ciroya oran)</div>
+      <div class="kamp" onclick="openSheet('kamp')"><span class="kbadge k-3al">3AL2ÖDE</span><div><div class="kn">3 Al 2 Öde</div><div class="kd">412 fiş · derinlik %24,1</div></div><span class="kpill kp-md" style="margin-left:auto">%24</span><span class="kv" style="margin-left:8px">142.180 ₺</span></div>
+      <div class="kamp"><span class="kbadge k-dig">DİĞER</span><div><div class="kn">Diğer İndirimler</div><div class="kd">8 kampanya · toplu</div></div><span class="kpill kp-lo" style="margin-left:auto">%11</span><span class="kv" style="margin-left:8px">37.640 ₺</span></div>
+    </div>
+
+    <!-- KATEGORİ DAĞILIMI -->
+    <div class="card">
+      <h4><i class="ti ti-chart-bar" style="color:#4063e6"></i>Kategori Dağılımı<span class="hint">tıkla → ürün</span></h4>
+      <div class="bar clk" onclick="openSheet('kat')"><div class="bl"><span class="bn">Kitap</span><span class="bv">406.300 ₺ · %42</span></div><div class="track2"><div class="fill" style="width:100%;background:#4063e6"></div></div></div>
+      <div class="bar clk" onclick="openSheet('kat')"><div class="bl"><span class="bn">Kırtasiye</span><span class="bv">290.190 ₺ · %30</span></div><div class="track2"><div class="fill" style="width:71%;background:#0ea5e9"></div></div></div>
+      <div class="bar clk" onclick="openSheet('kat')"><div class="bl"><span class="bn">Oyuncak</span><span class="bv">145.100 ₺ · %15</span></div><div class="track2"><div class="fill" style="width:36%;background:#10b981"></div></div></div>
+      <div class="bar clk" onclick="openSheet('kat')"><div class="bl"><span class="bn">Hediyelik / Diğer</span><span class="bv">125.714 ₺ · %13</span></div><div class="track2"><div class="fill" style="width:31%;background:#f59e0b"></div></div></div>
+    </div>
+
+    <p style="font-size:11px;color:#94a3b8;text-align:center;padding:0 24px 18px">Dönüşüm oranı (G8) kapı sayıcıya bağlı — şimdilik yalnız FSM.</p>
+  </div>
+
+  <div class="navbar">
+    <div class="nav on"><span class="pill"><i class="ti ti-layout-dashboard"></i></span><span>Genel</span></div>
+    <div class="nav"><i class="ti ti-shopping-cart"></i><span>E-ticaret</span></div>
+    <div class="nav"><i class="ti ti-building-warehouse"></i><span>Operasyon</span></div>
+    <div class="nav"><i class="ti ti-package"></i><span>Envanter</span></div>
+    <div class="nav"><i class="ti ti-users"></i><span>Müşteri</span></div>
+  </div>
+
+  <!-- BANKA MODAL -->
+  <div class="ov" id="ov-odeme" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet">
+      <div class="grip"></div>
+      <h3>Kredi Kartı — Banka Detayı</h3>
+      <div class="sh-sub">638.420 ₺ · 848 işlem · Özlüce 13.06</div>
+      <div class="drow"><div><div class="dn">Garanti BBVA</div><div class="dsub">312 işlem</div></div><span class="dv">241.900 ₺</span></div>
+      <div class="drow"><div><div class="dn">İş Bankası</div><div class="dsub">228 işlem</div></div><span class="dv">172.300 ₺</span></div>
+      <div class="drow"><div><div class="dn">Yapı Kredi</div><div class="dsub">164 işlem</div></div><span class="dv">123.700 ₺</span></div>
+      <div class="drow"><div><div class="dn">Akbank</div><div class="dsub">98 işlem</div></div><span class="dv">71.200 ₺</span></div>
+      <div class="drow"><div><div class="dn">Diğer</div><div class="dsub">46 işlem</div></div><span class="dv">29.320 ₺</span></div>
+    </div>
+  </div>
+
+  <!-- KAMPANYA MODAL -->
+  <div class="ov" id="ov-kamp" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet">
+      <div class="grip"></div>
+      <h3>3 Al 2 Öde — Kampanya Detayı</h3>
+      <div class="sh-sub">142.180 ₺ indirim · 412 fiş · derinlik %24,1</div>
+      <div class="drow"><div><div class="dn">Brüt tutar</div><div class="dsub">indirim öncesi</div></div><span class="dv">589.900 ₺</span></div>
+      <div class="drow"><div><div class="dn">3AL2ÖDE indirimi</div><div class="dsub">DiscountTotalDirect</div></div><span class="dv" style="color:#ef4444">−142.180 ₺</span></div>
+      <div class="drow"><div><div class="dn">Net tutar</div><div class="dsub">kampanyalı fişler</div></div><span class="dv">447.720 ₺</span></div>
+      <div class="drow"><div><div class="dn">Etkilenen ürün</div><div class="dsub">IsValid=1 kalem</div></div><span class="dv">1.044 adet</span></div>
+      <div class="drow"><div><div class="dn">Fiş başı ort. indirim</div></div><span class="dv">345 ₺</span></div>
+    </div>
+  </div>
+
+  <!-- KATEGORİ→ÜRÜN MODAL -->
+  <div class="ov" id="ov-kat" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet">
+      <div class="grip"></div>
+      <h3>Kitap — Ürün Listesi</h3>
+      <div class="sh-sub">406.300 ₺ · %42 · net KDV-dahil</div>
+      <div class="drow"><div><div class="dn">Kürk Mantolu Madonna</div><div class="dsub">142 adet</div></div><span class="dv">28.400 ₺</span></div>
+      <div class="drow"><div><div class="dn">Sefiller — Cilt I</div><div class="dsub">98 adet</div></div><span class="dv">24.500 ₺</span></div>
+      <div class="drow"><div><div class="dn">Atomik Alışkanlıklar</div><div class="dsub">87 adet</div></div><span class="dv">21.750 ₺</span></div>
+      <div class="drow"><div><div class="dn">Şeker Portakalı</div><div class="dsub">76 adet</div></div><span class="dv">15.200 ₺</span></div>
+      <div class="drow"><div><div class="dn">Simyacı</div><div class="dsub">64 adet</div></div><span class="dv">12.800 ₺</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function openSheet(k){ document.getElementById('ov-'+k).classList.add('on'); }
+function closeSheet(){ document.querySelectorAll('.ov.on').forEach(function(o){o.classList.remove('on');}); }
+// carousel dots
+document.querySelectorAll('.track').forEach(function(tr){
+  var dw=tr.nextElementSibling; if(!dw||!dw.classList.contains('dots'))return;
+  var ds=dw.querySelectorAll('span');
+  tr.addEventListener('scroll', function(){
+    var i=Math.round(tr.scrollLeft/tr.clientWidth);
+    ds.forEach(function(d,j){ d.classList.toggle('on', j===i); });
+  });
+});
+document.querySelectorAll('.seg span').forEach(function(s){
+  s.addEventListener('click', function(){
+    document.querySelectorAll('.seg span').forEach(function(x){x.classList.remove('on');}); s.classList.add('on');
+  });
+});
+document.querySelector('.backbtn').addEventListener('click', function(){ history.length>1?history.back():alert('Geri → Genel Bakış'); });
+</script>
+</body>
+</html>
