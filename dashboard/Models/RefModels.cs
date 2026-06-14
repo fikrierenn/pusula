@@ -10,7 +10,7 @@ public record CustomerRow(long Id, string Ad, string Tel, int Frq, decimal Mon, 
 /// trailing pencere satış adedi (kaç-gün-yeter). StokFsm/Ozl/Ist/Depo = anlık stok dağılımı (stokSonAltDepo_vw).
 /// Bakiye = seçili kapsamdaki şube stoğu (cover hesabı için).</summary>
 public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye, int S30, int S90, int S360,
-    int StokFsm, int StokOzl, int StokIst, int StokDepo);
+    int StokFsm, int StokOzl, int StokIst, int StokDepo, int StokOdak);
 
 /// <summary>Ciro-vs-envanter scatter noktası (kategori).</summary>
 public record CveRow(string Kategori, decimal Ciro, decimal Env);

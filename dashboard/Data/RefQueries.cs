@@ -228,7 +228,8 @@ public sealed class RefQueries(Db db)
                 CAST(ISNULL(MAX(stk.Fsm),0) AS int) AS StokFsm,
                 CAST(ISNULL(MAX(stk.Ozl),0) AS int) AS StokOzl,
                 CAST(ISNULL(MAX(stk.Ist),0) AS int) AS StokIst,
-                CAST(ISNULL(MAX(stk.Depo),0) AS int) AS StokDepo
+                CAST(ISNULL(MAX(stk.Depo),0) AS int) AS StokDepo,
+                CAST(ISNULL(MAX(od.StokMiktar),0) AS int) AS StokOdak
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             CROSS APPLY (SELECT CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END AS v) sg
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
@@ -246,6 +247,7 @@ public sealed class RefQueries(Db db)
                        FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
                        WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478,12)
                        GROUP BY v.ehstkID) stk ON stk.sID=u.stkID
+            LEFT JOIN DerinSISBkm.ent.odak_depo_Stok od WITH(NOLOCK) ON od.stkID=u.stkID
             WHERE MG.mekanID IN (1,4477,4478) AND (@mekan=0 OR MG.mekanID=@mekan)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
                 AND s.Date>=@minDate AND s.Date<@maxDate

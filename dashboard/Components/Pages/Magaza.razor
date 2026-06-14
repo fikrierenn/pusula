@@ -145,12 +145,13 @@ else if (_d is not null)
                         @CoverCell("90 gün", u.S90, 90, u.Bakiye)
                         @CoverCell("360 gün", u.S360, 360, u.Bakiye)
                     </div>
-                    <div class="text-[10px] text-base-content/45 mt-3 mb-1.5">Stok dağılımı (şube + merkez depo)</div>
-                    <div class="grid grid-cols-4 gap-2">
+                    <div class="text-[10px] text-base-content/45 mt-3 mb-1.5">Stok dağılımı (şube · merkez depo · ODAK e-tic)</div>
+                    <div class="grid grid-cols-5 gap-1.5">
                         @StokCell("FSM", u.StokFsm, vurgu: Id == 1)
                         @StokCell("Özlüce", u.StokOzl, vurgu: Id == 4477)
                         @StokCell("İst.Yolu", u.StokIst, vurgu: Id == 4478)
                         @StokCell("Depo", u.StokDepo, depo: true)
+                        @StokCell("ODAK", u.StokOdak, odak: true)
                     </div>
                 </Details>
             </AppDataTable>
@@ -294,9 +295,9 @@ else if (_d is not null)
         @{ var c = Cover(bakiye, satisWin, days); }
         <div class="text-[11px] font-semibold @(c is null ? "text-base-content/40" : c == 0 ? "text-error" : c <= 7 ? "text-error" : c <= 21 ? "text-warning" : "text-success")">@(c is null ? "—" : c == 0 ? "tükendi" : $"~{Num(c.Value)}g")</div>
     </div>;
-    // Stok konum hücresi (şube / merkez depo). Bu mağaza vurgulu.
-    private RenderFragment StokCell(string lbl, int adet, bool vurgu = false, bool depo = false) => @<div class="@(depo ? "bg-info/10" : vurgu ? "bg-primary/10" : "bg-base-100") rounded-xl py-2 px-1 text-center">
-        <div class="text-[10px] @(vurgu ? "text-primary font-semibold" : "text-base-content/50")">@lbl</div>
-        <div class="text-[12.5px] font-bold tabular-nums @(adet <= 0 ? "text-base-content/35" : depo ? "text-info" : vurgu ? "text-primary" : "")">@Num(adet)</div>
+    // Stok konum hücresi (şube / merkez depo / ODAK e-tic). Bu mağaza primary-vurgulu, ODAK=info.
+    private RenderFragment StokCell(string lbl, int adet, bool vurgu = false, bool depo = false, bool odak = false) => @<div class="@(odak ? "bg-info/10" : depo ? "bg-base-200" : vurgu ? "bg-primary/10" : "bg-base-100") rounded-xl py-2 px-1 text-center">
+        <div class="text-[10px] @(odak ? "text-info font-semibold" : vurgu ? "text-primary font-semibold" : "text-base-content/50")">@lbl</div>
+        <div class="text-[12.5px] font-bold tabular-nums @(adet <= 0 ? "text-base-content/35" : odak ? "text-info" : vurgu ? "text-primary" : "")">@Num(adet)</div>
     </div>;
 }
