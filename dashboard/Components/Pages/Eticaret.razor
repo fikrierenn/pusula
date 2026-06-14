@@ -34,7 +34,7 @@ else if (_error is not null)
 }
 else if (_data is not null)
 {
-    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-primary-content shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
+    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-white shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
         <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Ciro (online)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Eticaret)</div></div>
         <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Sipariş</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.ESip)</div></div>
         <div><div class="opacity-80 text-xs uppercase tracking-wider">Sepet (ort.)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div></div>

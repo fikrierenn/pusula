@@ -29,12 +29,12 @@ else if (_error is not null)
 }
 else if (_d is not null)
 {
-    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-primary-content shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
+    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-white shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
         <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Ciro</div>
             <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_d.Net)</div>
-            @if (_d.GerPct is not null)
+            @if (_period == "ay" && _d.GerPct is not null)
             {
-                <div class="text-[13px] opacity-90">hedef gerçekleşme %@_d.GerPct</div>
+                <div class="text-[13px] opacity-90">hedef gerçekleşme %@_d.GerPct (MTD)</div>
             }
         </div>
         <div><div class="opacity-80 text-xs uppercase tracking-wider">Fiş</div>

@@ -35,37 +35,42 @@ else if (_error is not null)
 }
 else if (_data is not null)
 {
-    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-primary-content shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">Toplam Ciro (fiziksel + online)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Toplam)</div>
-            <div class="text-[13px] opacity-90">mağaza @Tl(_data.Fiziksel) · online @Tl(_data.Eticaret)</div></div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">İşlem</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.Fis)</div>
-            <div class="text-[13px] opacity-90">@Num(_data.ESip) online sipariş</div></div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">İade</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Iade)</div></div>
+    <div class="rounded-2xl px-5 py-4 bg-primary text-white shadow-lg mb-4 lg:flex lg:gap-9 lg:items-center lg:flex-wrap lg:px-6 lg:py-5">
+        <div class="mb-3 lg:mb-0">
+            <div class="opacity-80 text-[11px] uppercase tracking-wider">Toplam Ciro (fiziksel + online)</div>
+            <div class="text-3xl font-extrabold leading-tight tracking-tight whitespace-nowrap">@Tl(_data.Toplam)</div>
+            <div class="text-xs opacity-90">mağaza @Tl(_data.Fiziksel) · online @Tl(_data.Eticaret)</div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 pt-3 border-t border-white/20 lg:flex lg:gap-9 lg:pt-0 lg:border-0">
+            <div><div class="opacity-80 text-[11px] uppercase tracking-wider">İşlem</div><div class="text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight">@Num(_data.Fis)</div>
+                <div class="text-xs opacity-90">@Num(_data.ESip) online</div></div>
+            <div><div class="opacity-80 text-[11px] uppercase tracking-wider">İade</div><div class="text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight whitespace-nowrap">@Tl(_data.Iade)</div></div>
+        </div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 mb-4 max-sm:grid-cols-2">
         @foreach (var s in _data.Stores)
         {
-            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick='() => Nav.NavigateTo($"magaza/{s.MekanId}")'>
-                <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">@s.Ad &#9656;</div>
-                <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(s.Net)</div>
-                <div class="text-[12.5px] text-base-content/60">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
-                    @if (s.GerPct is not null)
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-3.5 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick='() => Nav.NavigateTo($"magaza/{s.MekanId}")'>
+                <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50 flex items-center gap-1">@s.Ad <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></div>
+                <div class="text-[22px] lg:text-[25px] font-extrabold tracking-tight my-0.5 whitespace-nowrap">@Tl(s.Net)</div>
+                <div class="text-xs text-base-content/60">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
+                    @if (_period == "ay" && s.GerPct is not null)
                     {
                         <span> · hedef %@s.GerPct</span>
                     }
                 </div>
             </div>
         }
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 bg-base-200/60 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalTot = true">
-            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">TOPLAM (3 mağaza) &#9656;</div>
-            <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(_data.Fiziksel)</div>
-            <div class="text-[12.5px] text-base-content/60">@Num(_data.Fis) fiş · sepet @Num(_data.Fis > 0 ? (int)Math.Round(_data.Fiziksel / _data.Fis) : 0) ₺</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-3.5 bg-base-200/60 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalTot = true">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50 flex items-center gap-1">TOPLAM (3 mağaza) <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></div>
+            <div class="text-[22px] lg:text-[25px] font-extrabold tracking-tight my-0.5 whitespace-nowrap">@Tl(_data.Fiziksel)</div>
+            <div class="text-xs text-base-content/60">@Num(_data.Fis) fiş · sepet @Num(_data.Fis > 0 ? (int)Math.Round(_data.Fiziksel / _data.Fis) : 0) ₺</div>
         </div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4 bg-info/10 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalEtic = true">
-            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">E-ticaret (online) &#9656;</div>
-            <div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(_data.Eticaret)</div>
-            <div class="text-[12.5px] text-base-content/60">@Num(_data.ESip) sipariş · sepet @Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-3.5 bg-info/10 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalEtic = true">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50 flex items-center gap-1">E-ticaret (online) <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></div>
+            <div class="text-[22px] lg:text-[25px] font-extrabold tracking-tight my-0.5 whitespace-nowrap">@Tl(_data.Eticaret)</div>
+            <div class="text-xs text-base-content/60">@Num(_data.ESip) sipariş · sepet @Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div>
         </div>
     </div>
 
