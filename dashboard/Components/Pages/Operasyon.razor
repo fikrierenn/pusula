@@ -35,7 +35,9 @@ else if (_error is not null)
 else if (_data is not null)
 {
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Saat Bazlı Yoğunluk (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_saat"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Saat Bazlı Yoğunluk (@_aralik)</h3><p class="text-[11px] text-base-content/50 mb-2">fiş yoğunluğu (saat bazlı)</p>
+            <AppBarChart TItem="HourBar" Items="_data.Saat" Name="Fiş" Color="@_pColor" Height="220" Horizontal="false"
+                         XValue="@(h => (object)$"{h.Saat:00}")" YValue="@(h => (decimal?)h.Fis)" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kasiyer Performansı (@_aralik) — @_data.Kasiyer.Count kişi</h3>
             <table class="table table-sm w-full text-[13px]">
                 <tr><td><b>Kasiyer</b></td><td class="text-right"><b>Fiş</b></td><td class="text-right"><b>Net Ciro</b></td><td class="text-right"><b>Sepet</b></td><td class="text-right"><b>İade</b></td></tr>
@@ -128,7 +130,7 @@ else if (_data is not null)
     private PeriodSummary? _data;
     private OpsData? _ops;
     private string _aralik = "";
-    private IJSObjectReference? _charts;
+    private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,24 +167,22 @@ else if (_data is not null)
             _data = await Queries.GetPeriodAsync(start, endExcl);
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); await DrawAsync(); }
-    }
-
-    private async Task DrawAsync()
-    {
-        if (_data is null) return;
-        try
-        {
-            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
-            await _charts.InvokeVoidAsync("barDual", "ch_saat",
-                _data.Saat.Select(h => $"{h.Saat:00}"), _data.Saat.Select(h => h.Fis), _data.Saat.Select(h => h.Net));
-        }
-        catch { }
+        finally { _loading = false; StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _data is not null) await DrawAsync();
+        if (firstRender)
+        {
+            // DaisyUI primary'yi grafik rengine köprüle (tema-bağlı, hardcode yok).
+            try
+            {
+                var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+                var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+                if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+            }
+            catch { /* tema okunamazsa component fallback'i kullanır */ }
+        }
     }
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";

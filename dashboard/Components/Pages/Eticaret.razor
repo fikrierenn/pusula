@@ -41,9 +41,15 @@ else if (_data is not null)
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kanal — NET (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_etic"></canvas></div></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Firma (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_kargo"></canvas></div></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı — Top 12 (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_il"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kanal — NET (@_aralik)</h3>
+            <AppRankBars TItem="EticChannel" Items="_data.Etic"
+                         Label="@(e => e.Ad)" Value="@(e => e.Ciro)" ValueText="@(e => Tl(e.Ciro))" /></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Firma (@_aralik)</h3>
+            <AppRankBars TItem="NameCount" Items="_data.Kargo"
+                         Label="@(k => k.Ad)" Value="@(k => (decimal)k.Adet)" ValueText="@(k => Num(k.Adet))" /></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı — Top 12 (@_aralik)</h3>
+            <AppRankBars TItem="NameCount" Items="_data.Il"
+                         Label="@(x => x.Ad)" Value="@(x => (decimal)x.Adet)" ValueText="@(x => Num(x.Adet))" /></div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -66,7 +72,8 @@ else if (_data is not null)
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
-            <div class="relative h-[220px]"><canvas id="ch_bekleyen"></canvas></div>
+            <AppRankBars TItem="BekleyenBucket" Items="_bekleyen"
+                         Label="@(b => b.Bucket)" Value="@(b => (decimal)b.Adet)" ValueText="@(b => Num(b.Adet))" />
             <table class="table table-sm w-full text-[13px]">
                 <tr><td><b>Yaş</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Pay</b></td></tr>
                 @foreach (var b in _bekleyen)
@@ -83,7 +90,8 @@ else if (_data is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Günlük Kargo Çıkışı (@_aralik) — sipariş → kargoya teslim gün</h3>
-            <div class="relative h-[220px]"><canvas id="ch_kargogun"></canvas></div>
+            <AppRankBars TItem="KargoGun" Items="_kargoGun"
+                         Label="@(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")" Value="@(k => (decimal)k.Adet)" ValueText="@(k => Num(k.Adet))" />
             @{ var kgTop = _kargoGun.Sum(k => k.Adet); }
             <table class="table table-sm w-full text-[13px]">
                 <tr><td><b>Çıkış Günü</b></td><td class="text-right"><b>Paket</b></td><td class="text-right"><b>Pay</b></td></tr>
@@ -129,7 +137,22 @@ else if (_data is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Aylık Çıkış Trendi — Depo Kargoya-Verme (son 13 ay)</h3>
-            <div class="relative h-[220px]"><canvas id="ch_aykargo"></canvas></div>
+            @{
+                var ayLast = _ayKargo.Count > 0 ? _ayKargo[^1].CikisIsGunu : 0m;
+                var ayAvg  = _ayKargo.Count > 0 ? _ayKargo.Average(a => a.CikisIsGunu) : 0m;
+                var ayWow  = WowOf(ayLast, ayAvg);
+            }
+            <div class="flex items-center gap-2 mb-2">
+                <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@ayLast.ToString("0.0") iş günü</div>
+                @if (ayWow is not null)
+                {
+                    var tc = TrendIco(ayWow.Value);
+                    <span class="text-xs font-bold inline-flex items-center gap-0.5 @tc.cls" title="13 ay ortalamasına göre"><i data-lucide="@tc.ico" class="w-3.5 h-3.5"></i>@Pct(ayWow.Value)</span>
+                }
+                <div class="text-[11px] text-base-content/45 ml-auto text-right">son ay · ort @ayAvg.ToString("0.0")</div>
+            </div>
+            <AppAreaChart TItem="AyKargo" Items="_ayKargo" Name="Çıkış İş Günü" Color="@_pColor" Height="110"
+                          XValue="@(a => (object)a.Ay)" YValue="@(a => (decimal?)a.CikisIsGunu)" />
             <table class="table table-sm w-full text-[13px]">
                 <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
                 @foreach (var a in _ayKargo)
@@ -200,7 +223,7 @@ else if (_data is not null)
     private IReadOnlyList<IlTeslimat> _ilTeslimat = [];
     private IReadOnlyList<AyKargo> _ayKargo = [];
     private CodOzet? _cod;
-    private IJSObjectReference? _charts;
+    private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private bool _modalGun;
     private AyKargo? _selAy;
     private IReadOnlyList<GunKargo> _gunKargo = [];
@@ -248,34 +271,22 @@ else if (_data is not null)
             _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); await DrawAsync(); }
-    }
-
-    private async Task DrawAsync()
-    {
-        if (_data is null) return;
-        try
-        {
-            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
-            await _charts.InvokeVoidAsync("donut", "ch_etic",
-                _data.Etic.Select(e => e.Ad), _data.Etic.Select(e => e.Ciro));
-            await _charts.InvokeVoidAsync("donut", "ch_kargo",
-                _data.Kargo.Select(k => k.Ad), _data.Kargo.Select(k => k.Adet));
-            await _charts.InvokeVoidAsync("bar", "ch_il",
-                _data.Il.Select(x => x.Ad), _data.Il.Select(x => x.Adet), true);
-            await _charts.InvokeVoidAsync("bar", "ch_bekleyen",
-                _bekleyen.Select(b => b.Bucket), _bekleyen.Select(b => b.Adet), false);
-            await _charts.InvokeVoidAsync("bar", "ch_kargogun",
-                _kargoGun.Select(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün"), _kargoGun.Select(k => k.Adet), false);
-            await _charts.InvokeVoidAsync("area", "ch_aykargo",
-                _ayKargo.Select(a => a.Ay), _ayKargo.Select(a => a.CikisIsGunu));
-        }
-        catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
+        finally { _loading = false; StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _data is not null) await DrawAsync();
+        if (firstRender)
+        {
+            // DaisyUI primary'yi grafik rengine köprüle (tema-bağlı, hardcode yok).
+            try
+            {
+                var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+                var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+                if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+            }
+            catch { /* tema okunamazsa component fallback'i kullanır */ }
+        }
     }
 
     private static readonly string[] _gunler = { "Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi" };
@@ -285,4 +296,13 @@ else if (_data is not null)
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    // WoW / trend helpers (ch_aykargo başlık rozeti için).
+    private static decimal? WowOf(decimal cur, decimal prev) => prev > 0 ? Math.Round(100 * (cur - prev) / prev, 1) : null;
+    private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
+    private static (string ico, string cls) TrendIco(decimal pct)
+    {
+        if (pct == 0) return ("minus", "text-base-content/40");
+        return pct > 0 ? ("trending-up", "text-success") : ("trending-down", "text-error");
+    }
 }

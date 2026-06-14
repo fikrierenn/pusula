@@ -2,7 +2,6 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
-@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Envanter — BKM GM</PageTitle>
@@ -66,9 +65,13 @@ else if (_d is not null)
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ciro ↔ Envanter Dengesi (kategori, geçen ay ciro vs güncel stok değeri)</h3>
-            <div class="relative h-[220px]"><canvas id="ch_cve"></canvas></div>
-            <div class="text-base-content/50 text-[11px]">X = aylık ciro, Y = stok değeri (3 mağaza). Sağ-alt = çok satan/az stok (iyi); sol-üst = az satan/çok stok (ölü sermaye riski).</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kategori Devir Hızı — düşük = ölü stok riski (geçen ay ciro / güncel stok değeri)</h3>
+            <AppRankBars TItem="CveRow"
+                         Items="@(_cve.OrderBy(c => c.Env > 0 ? c.Ciro / c.Env : 0))"
+                         Label="@(c => c.Kategori)"
+                         Value="@(c => c.Env > 0 ? c.Ciro / c.Env : 0m)"
+                         ValueText="@(c => $"{(c.Env > 0 ? c.Ciro / c.Env : 0m):0.0}x  ({Tl(c.Env)})")" />
+            <div class="text-base-content/50 text-[11px] mt-2">Devir = dönem cirosu / stok değeri. Düşük = yavaş dönen stok. Parantezde güncel stok değeri (3 mağaza).</div>
         </div>
     </div>
 
@@ -111,8 +114,6 @@ else if (_d is not null)
     private string? _error;
     private InventoryData? _d;
     private IReadOnlyList<CveRow> _cve = [];
-    private IJSObjectReference? _charts;
-
     private bool _modalUrun;
     private bool _urunLoading;
     private string _selKat = "";
@@ -127,24 +128,7 @@ else if (_d is not null)
             _cve = await Ref.GetCveAsync(dun);
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); await DrawAsync(); }
-    }
-
-    private async Task DrawAsync()
-    {
-        if (_cve.Count == 0) return;
-        try
-        {
-            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
-            await _charts.InvokeVoidAsync("scatter", "ch_cve",
-                _cve.Select(c => c.Kategori), _cve.Select(c => c.Ciro), _cve.Select(c => c.Env));
-        }
-        catch { /* ilk prerender — sonraki render'da çizilir */ }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && _d is not null) await DrawAsync();
+        finally { _loading = false; StateHasChanged(); }
     }
 
     private async Task OpenUrun(string kategori)
