@@ -65,32 +65,67 @@ else if (_d is not null)
 
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
             <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="ticket-percent" class="w-[18px] h-[18px] text-primary"></i>Kampanya Yükü</h3>
-            @{ decimal kMax = _d.Kampanya.Count > 0 ? _d.Kampanya.Max(k => k.Indirim) : 0; }
+            @{
+                var kYuk = _d.Net > 0 ? Math.Round(100 * _d.KampToplamIndirim / _d.Net, 1) : 0;
+                decimal kMax = _d.Kampanya.Count > 0 ? _d.Kampanya.Max(k => k.Indirim) : 0;
+            }
+            <!-- Yük özeti (inverted pyramid: en kritik sayı tepede) -->
+            <div class="rounded-xl bg-neutral text-neutral-content px-4 py-3">
+                <div class="text-[10px] font-bold uppercase tracking-widest opacity-50">Toplam İndirim Yükü</div>
+                <div class="flex items-end justify-between gap-3 mt-1">
+                    <div>
+                        <div class="text-2xl font-extrabold leading-none">@Tl(_d.KampToplamIndirim)</div>
+                        <div class="text-[10px] opacity-60 mt-1">@Num(_d.KampToplamFis) fişe dokundu · @_aralik</div>
+                    </div>
+                    <div class="flex flex-col items-end gap-0.5 shrink-0">
+                        <span class="text-sm font-extrabold px-2.5 py-1 rounded-xl @KampYukRozet(kYuk)">%@kYuk</span>
+                        <span class="text-[9px] opacity-50">net ciroya oran</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Eşik çubuğu (sağlıklı→dikkat→kritik) -->
+            <div class="h-1.5 rounded-full bg-gradient-to-r from-success via-warning to-error relative mt-2.5 mb-1">
+                <div class="absolute -top-1 h-3.5 w-1 rounded bg-base-content shadow" style="left:@EsikPct(kYuk)"></div>
+            </div>
+            <div class="flex justify-between text-[9px] text-base-content/40 mb-3"><span>sağlıklı &lt;%12</span><span>eşik %15</span><span>kritik &gt;%20</span></div>
+            <!-- Kampanya kırılımı -->
             @foreach (var k in _d.Kampanya)
             {
                 var kc = k; var tikla = k.Detay.Count > 1;
-                <div class="py-2 border-b border-base-200 last:border-b-0 @(tikla ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")" @onclick="@(() => OpenKamp(kc))">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-[13px] font-semibold text-base-content/85 truncate">@k.Ad@(tikla ? " ▸" : "")</span>
-                        <span class="text-[13px] font-bold shrink-0 text-error">@Tl(k.Indirim)</span>
+                <div class="flex items-center gap-2.5 py-2 border-b border-base-200 last:border-b-0 @(tikla ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")" @onclick="@(() => OpenKamp(kc))">
+                    <div class="w-8 h-8 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0"><i data-lucide="tag" class="w-4 h-4"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[13px] font-semibold text-base-content/85 truncate">@k.Ad@(tikla ? " ▸" : "")</div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] text-base-content/50 shrink-0">@Num(k.Fis) fiş</span>
+                            <div class="flex-1 h-[3px] rounded-full bg-base-200 overflow-hidden"><div class="h-full rounded-full bg-error/40" style="width:@PctW(k.Indirim, kMax)"></div></div>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between text-[11px] text-base-content/50 mt-0.5"><span>@Num(k.Fis) fiş</span><span>oran %@k.Oran</span></div>
-                    <div class="h-1.5 rounded-full bg-base-200 mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-error" style="width:@PctW(k.Indirim, kMax)"></div></div>
+                    <div class="flex flex-col items-end gap-0.5 shrink-0">
+                        <span class="text-[13px] font-extrabold text-error">@Tl(k.Indirim)</span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md @KampOranPill(k.Oran)">%@k.Oran</span>
+                    </div>
                 </div>
             }
             @if (_d.Kampanya.Count == 0)
             {
                 <div class="text-base-content/50 text-[13px] py-2">Kampanya yok.</div>
             }
-            <div class="text-[11px] text-base-content/40 mt-3">Oran = indirim / kampanyalı kalem brüt satış (3al2öde ~%25-26). (manuel/kodsuz) = set indirimi.</div>
+            <div class="text-[11px] text-base-content/40 mt-3">Yük = toplam indirim / net ciro. Oran = indirim / kampanyalı kalem brüt (3al2öde ~%25-26). (manuel/kodsuz) = set indirimi.</div>
         </div>
     </div>
 
     <h2 class="text-lg font-bold tracking-tight mb-3 mt-2">Kategori Dağılımı</h2>
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+        @{ var katTot = _d.Kategori.Sum(k => k.Ciro); }
         <AppRankBars TItem="CategorySlice" Items="_d.Kategori"
-                     Label="@(k => k.Ad)" Value="@(k => k.Ciro)" ValueText="@(k => Tl(k.Ciro))"
+                     Label="@(k => k.Ad)" Value="@(k => k.Ciro)"
+                     ValueText="@(k => $"{Tl(k.Ciro)} · %{(katTot > 0 ? Math.Round(100 * k.Ciro / katTot) : 0)}")"
                      OnRowClick="@(k => OpenUrun(k.Ad))" />
+        <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200 text-[13px]">
+            <span class="font-bold">TOPLAM</span>
+            <span class="font-bold tabular-nums">@Tl(katTot)</span>
+        </div>
         <div class="text-[11px] text-base-content/40 mt-2">Kategoriye tıkla → ürün listesi.</div>
     </div>
 
@@ -222,6 +257,13 @@ else if (_d is not null)
         var pct = max > 0 ? Math.Round(100 * v / max, 1) : 0;
         return Math.Min(Math.Max(pct, 0), 100).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
     }
+
+    // Kampanya yükü rozeti (indirim/net ciro): >20 kritik, >15 dikkat, else sağlıklı.
+    private static string KampYukRozet(decimal yuk) => yuk > 20 ? "bg-error text-error-content" : yuk > 15 ? "bg-warning text-warning-content" : "bg-success text-success-content";
+    // Kampanya satır oran pill'i (indirim derinliği): >35 kırmızı, >15 sarı, else nötr.
+    private static string KampOranPill(decimal oran) => oran > 35 ? "bg-error/15 text-error" : oran > 15 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/50";
+    // Eşik çubuğu marker konumu (0-25% ölçek → 2-98 clamp), invariant.
+    private static string EsikPct(decimal yuk) => Math.Min(Math.Max((double)yuk / 25 * 100, 2), 98).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
 
     // Gradient KPI kartı (carousel item) — Home hero dili.
     private RenderFragment KpiCard(string label, string value, string gradient, string sub) => @<div class="carousel-item w-[86%] lg:w-auto">
