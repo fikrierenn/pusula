@@ -75,7 +75,7 @@ else if (_d is not null)
                 <div class="flex items-end justify-between gap-3 mt-1">
                     <div>
                         <div class="text-2xl font-extrabold leading-none">@Tl(_d.KampToplamIndirim)</div>
-                        <div class="text-[10px] opacity-60 mt-1">@Num(_d.KampToplamFis) fişe dokundu · @_aralik</div>
+                        <div class="text-[10px] opacity-60 mt-1">brüt @Tl(_d.KampToplamBrut) → net @Tl(_d.KampToplamBrut - _d.KampToplamIndirim) · @Num(_d.KampToplamFis) fiş</div>
                     </div>
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
                         <span class="text-sm font-extrabold px-2.5 py-1 rounded-xl @KampYukRozet(kYuk)">%@kYuk</span>
@@ -96,13 +96,11 @@ else if (_d is not null)
                     <div class="w-8 h-8 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0"><i data-lucide="tag" class="w-4 h-4"></i></div>
                     <div class="flex-1 min-w-0">
                         <div class="text-[13px] font-semibold text-base-content/85 truncate">@k.Ad@(tikla ? " ▸" : "")</div>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[10px] text-base-content/50 shrink-0">@Num(k.Fis) fiş</span>
-                            <div class="flex-1 h-[3px] rounded-full bg-base-200 overflow-hidden"><div class="h-full rounded-full bg-error/40" style="width:@PctW(k.Indirim, kMax)"></div></div>
-                        </div>
+                        <div class="text-[10px] text-base-content/50 truncate mt-0.5">brüt @Tl(k.Brut) → net @Tl(k.Brut - k.Indirim) · @Num(k.Fis) fiş</div>
+                        <div class="h-[3px] rounded-full bg-base-200 overflow-hidden mt-1"><div class="h-full rounded-full bg-error/40" style="width:@PctW(k.Indirim, kMax)"></div></div>
                     </div>
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
-                        <span class="text-[13px] font-extrabold text-error">@Tl(k.Indirim)</span>
+                        <span class="text-[13px] font-extrabold text-error">−@Tl(k.Indirim)</span>
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md @KampOranPill(k.Oran)">%@k.Oran</span>
                     </div>
                 </div>
@@ -138,20 +136,10 @@ else if (_d is not null)
         }
         else
         {
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="text-right"><b>Satış</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Bakiye</b></td></tr>
-                @{ var ui = 1; }
-                @foreach (var u in _urunler)
-                {
-                    <tr><td class="text-base-content/40">@ui</td><td>@u.Kod</td><td>@u.Ad</td><td class="text-right">@Num(u.Satis)</td><td class="text-right">@Tl(u.Ciro)</td>
-                        <td class="text-right @(u.Bakiye <= 0 ? "text-error" : "")">@Num(u.Bakiye)</td></tr>
-                    ui++;
-                }
-                @if (_urunler.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-base-content/50">Ürün bulunamadı.</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="UrunRow" Items="_urunler"
+                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod}")"
+                          MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} adet")"
+                          Badge="@(u => ($"stok {Num(u.Bakiye)}", u.Bakiye <= 0 ? "bg-error/15 text-error" : "bg-base-200 text-base-content/50"))" />
         }
     </Modal>
 
@@ -159,14 +147,10 @@ else if (_d is not null)
         @if (_selOdeme is not null)
         {
             <div class="text-base-content/50 text-xs mb-2">@_aralik · @Tl(_selOdeme.Tutar) · @Num(_selOdeme.Islem) işlem · %@_selOdeme.Pay</div>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kalem</b></td><td class="text-right"><b>İşlem</b></td><td class="text-right"><b>Tutar</b></td><td class="text-right"><b>Grup içi pay</b></td></tr>
-                @foreach (var b in _selOdeme.Detay)
-                {
-                    <tr><td>@b.Tip</td><td class="text-right">@Num(b.Islem)</td><td class="text-right">@Tl(b.Tutar)</td>
-                        <td class="text-right">%@(_selOdeme.Tutar > 0 ? Math.Round(100 * b.Tutar / _selOdeme.Tutar, 1) : 0)</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="OdemeRow" Items="_selOdeme.Detay"
+                          Primary="@(b => b.Tip)"
+                          MetricMain="@(b => Tl(b.Tutar))" MetricSub="@(b => $"{Num(b.Islem)} işlem")"
+                          Badge="@(b => ($"%{(_selOdeme!.Tutar > 0 ? Math.Round(100 * b.Tutar / _selOdeme.Tutar, 1) : 0)}", "bg-base-200 text-base-content/50"))" />
         }
     </Modal>
 
@@ -174,13 +158,10 @@ else if (_d is not null)
         @if (_selKamp is not null)
         {
             <div class="text-base-content/50 text-xs mb-2">@_aralik · indirim @Tl(_selKamp.Indirim) · oran %@_selKamp.Oran</div>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kampanya</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş</b></td></tr>
-                @foreach (var d in _selKamp.Detay)
-                {
-                    <tr><td>@d.Ad</td><td class="text-right text-error">@Tl(d.Indirim)</td><td class="text-right font-semibold">%@d.Oran</td><td class="text-right">@Num(d.Fis)</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="KampanyaRow" Items="_selKamp.Detay"
+                          Primary="@(d => d.Ad)" Sub="@(d => $"brüt {Tl(d.Brut)} → net {Tl(d.Brut - d.Indirim)} · {Num(d.Fis)} fiş")"
+                          MetricMain="@(d => $"−{Tl(d.Indirim)}")"
+                          Badge="@(d => ($"%{d.Oran}", KampOranPill(d.Oran)))" />
         }
     </Modal>
 }
