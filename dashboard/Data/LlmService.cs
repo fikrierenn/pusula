@@ -96,6 +96,54 @@ Kullanıcı kısa dağınık bir not yazar. Görevin: notu NET, AKSİYON ODAKLI 
         finally { _sem.Release(); }
     }
 
+    /// <summary>
+    /// CFO panosu verisinden 2-3 cümlelik Türkçe günlük özet üret (akıcı paragraf, madde yok).
+    /// veriOzet = anahtar:değer satırları (ciro, WoW, mağaza trendleri, iade). Model uydurmaz, sadece veriyi yorumlar.
+    /// </summary>
+    public async Task<string> GunOzetiUret(string veriOzet)
+    {
+        await EnsureLoaded();
+        if (_executor is null)
+            throw new InvalidOperationException(_loadError ?? "Model yüklenemedi.");
+
+        const string sys = """
+Sen BKM Kitap'ın (kitap+kırtasiye perakende + e-ticaret, 3 mağaza: FSM/Özlüce/İst.Yolu) CFO asistanısın.
+Sana günlük pano verisi verilir. Görevin: 2-3 cümlelik AKICI Türkçe özet yaz.
+KESİN KURALLAR:
+- SADECE verideki sayıları kullan, hiçbir rakam UYDURMA, toplama/çıkarma YAPMA.
+- Yönü ASLA ters çevirme: veride "ARTIŞ" yazan arttı, "DÜŞÜŞ" yazan düştü demektir. Bunu karıştırma.
+- En dikkat çeken artışı/düşüşü ve online kanalın gücünü vurgula.
+- Madde işareti/başlık YOK, tek akıcı paragraf. Kısa, net, yönetici diliyle.
+- Sayıları verideki biçimiyle yaz (₺ ve % ile). Veride olmayan metrik EKLEME.
+""";
+        const string exUser = "Dönem: Dün (12.06.2026)\nToplam ciro: 4.200.000 ₺ (önceki güne göre %5,0 ARTIŞ)\nMağaza cirosu: 1.800.000 ₺ · Online ciro: 2.400.000 ₺ (online payı %57)\nMağaza trendleri (önceki güne göre):\n  - Özlüce: 900.000 ₺, %8,0 ARTIŞ\n  - FSM: 600.000 ₺, %3,0 DÜŞÜŞ\n  - İst.Yolu: 300.000 ₺, %15,0 DÜŞÜŞ\nİade: 30.000 ₺ (ciroya oran %0,7)";
+        const string exAssistant = "Dün ciro 4.200.000 ₺ ile önceki güne göre %5,0 arttı; online kanal 2.400.000 ₺ ve %57 payla büyümeyi taşıyor. İst.Yolu %15,0 düşüşle dikkat çekiyor, Özlüce %8,0 artışla öne çıkıyor. İade oranı %0,7 ile sağlıklı seviyede.";
+
+        var prompt =
+            $"<|im_start|>system\n{sys}<|im_end|>\n" +
+            $"<|im_start|>user\n{exUser}<|im_end|>\n<|im_start|>assistant\n{exAssistant}<|im_end|>\n" +
+            $"<|im_start|>user\n{veriOzet}<|im_end|>\n<|im_start|>assistant\n";
+
+        var inf = new InferenceParams
+        {
+            MaxTokens = 220,
+            AntiPrompts = ["<|im_end|>", "<|im_start|>"],
+            SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.4f },
+        };
+
+        await _sem.WaitAsync();
+        try
+        {
+            var sb = new StringBuilder();
+            await foreach (var tok in _executor.InferAsync(prompt, inf))
+                sb.Append(tok);
+            return sb.ToString()
+                .Replace("<|im_end|>", "").Replace("<|im_start|>", "")
+                .Replace("<think>", "").Replace("</think>", "").Trim();
+        }
+        finally { _sem.Release(); }
+    }
+
     private async Task EnsureLoaded()
     {
         if (_loaded) return;

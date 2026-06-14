@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @inject Queries Queries
 @inject RefQueries Ref
+@inject LlmService Llm
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @rendermode InteractiveServer
@@ -68,8 +69,8 @@ else if (_data is not null)
         </div>
     </div>
 
-    <!-- AI Günün Özeti — koyu kart, otomatik yorum (rapor bakma → tepki) -->
-    @GunOzeti(prevToplam, iadeOran)
+    <!-- AI Günün Özeti — koyu kart, yerel LLM yorumu (rapor bakma → tepki) -->
+    @GunOzeti()
 
     <!-- Mağazalar başlık + tüm kategori drill -->
     <div class="flex items-center justify-between mb-3">
@@ -266,6 +267,10 @@ else if (_data is not null)
     private bool _modalUrun;
     private bool _modalNotif;
     private List<AlertItem> _alerts = new();   // bildirim merkezi (LoadAsync'te dönem verisinden üretilir)
+    private string _ozetMetin = "";            // AI Günün Özeti metni (önce deterministik, sonra LLM)
+    private bool _ozetAI;                       // metin LLM'den mi geldi (rozet "AI" vs "Otomatik")
+    private bool _ozetCalisiyor;                // LLM inference sürüyor (rozette spinner)
+    private int _ozetGen;                        // dönem-değişimi yarışı için kuşak sayacı
 
     private record AlertItem(string Ico, string Tone, string Title, string Desc);
     private bool _urunLoading;
@@ -329,6 +334,11 @@ else if (_data is not null)
                 (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(start, endExcl);
             else { _hedefMag = null; _hedefKat = []; }
             _alerts = BuildAlerts();
+            // AI özet: deterministik metni anında göster, LLM'i arka planda çağır (sayfa beklemez).
+            var prevTop = _data.PrevFiziksel + _data.PrevEticaret;
+            var iadeOr = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
+            _ozetMetin = OzetDeterministik(prevTop, iadeOr); _ozetAI = false;
+            _ = RefreshOzetAsync(prevTop, iadeOr);
         }
         catch (Exception ex)
         {
@@ -449,30 +459,28 @@ else if (_data is not null)
         return list;
     }
 
-    // AI Günün Özeti — koyu kart, otomatik yorum (vurgular: hi=beyaz, up=yeşil, dn=kırmızı).
-    private RenderFragment GunOzeti(decimal prevToplam, decimal iadeOran) => __builder =>
+    // AI Günün Özeti — koyu kart. Metin yerel LLM'den (_ozetMetin), model gelene kadar deterministik
+    // özet anında gösterilir; sayı/yüzde vurguları Highlight ile renklenir (yeşil artış, kırmızı düşüş).
+    private RenderFragment GunOzeti() => __builder =>
     {
         if (_data is null) return;
-        var wow = WowOf(_data.Toplam, prevToplam);
-        var ePay = _data.Toplam > 0 ? (int)Math.Round(100m * _data.Eticaret / _data.Toplam) : 0;
         var dusen = _data.Stores.Where(s => s.Wow is < 0m).OrderBy(s => s.Wow).FirstOrDefault();
-        var artan = _data.Stores.Where(s => s.Wow is > 0m).OrderByDescending(s => s.Wow).FirstOrDefault();
         <div class="rounded-3xl px-5 py-4 mb-5 bg-gradient-to-br from-neutral to-neutral/90 text-neutral-content shadow-lg">
             <div class="flex items-center gap-2 mb-2.5">
                 <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[17px] h-[17px] text-white"></i></span>
                 <span class="text-[13px] font-bold">Günün Özeti</span>
-                <span class="text-[10px] font-semibold ml-auto bg-neutral-content/10 rounded-md px-2 py-0.5">AI · @_aralik</span>
+                <span class="text-[10px] font-semibold ml-auto bg-neutral-content/10 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
+                    @if (_ozetCalisiyor)
+                    {
+                        <span class="loading loading-spinner loading-xs"></span><text>AI yazıyor…</text>
+                    }
+                    else
+                    {
+                        <text>@(_ozetAI ? "AI" : "Otomatik") · @_aralik</text>
+                    }
+                </span>
             </div>
-            <p class="text-[12.5px] leading-relaxed text-neutral-content/85 m-0">
-                @DonemKelime() ciro <span class="font-bold text-neutral-content">@Tl(_data.Toplam)</span>@if (wow is not null)
-                {<text>, @_wowLabel <span class="font-bold @(wow > 0 ? "text-success" : wow < 0 ? "text-error" : "")">@Pct(wow.Value)</span></text>}.
-                Online payı <span class="font-bold text-neutral-content">%@ePay</span> (@Tl(_data.Eticaret)).
-                @if (dusen is not null)
-                {<text> <span class="font-bold text-error">@dusen.Ad @Pct(dusen.Wow!.Value)</span> düşüş dikkat çekici.</text>}
-                @if (artan is not null)
-                {<text> <span class="font-bold text-success">@artan.Ad @Pct(artan.Wow!.Value)</span> ile zirvede.</text>}
-                İade oranı @(iadeOran <= 1 ? "düşük" : "yüksek") (%@iadeOran)@(iadeOran <= 1 ? ", sağlıklı" : "").
-            </p>
+            <p class="text-[12.5px] leading-relaxed text-neutral-content/85 m-0">@Highlight(_ozetMetin)</p>
             <div class="flex gap-2 mt-3">
                 <button class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 transition-colors" @onclick="() => _modalTot = true">📊 Detaylı analiz</button>
                 @if (dusen is not null)
@@ -482,6 +490,85 @@ else if (_data is not null)
             </div>
         </div>
     };
+
+    // Metindeki para (₺) ve yüzde (%) jetonlarını renklendir: +%→yeşil, −%→kırmızı, ₺/düz %→kalın beyaz.
+    private static readonly System.Text.RegularExpressions.Regex _hlRx =
+        new(@"([+\-−]\s?%\s?\d[\d.,]*)|(%\s?\d[\d.,]*)|(\d[\d.,]*\s?₺)", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private RenderFragment Highlight(string text) => __builder =>
+    {
+        int seq = 0, pos = 0;
+        foreach (System.Text.RegularExpressions.Match m in _hlRx.Matches(text ?? ""))
+        {
+            if (m.Index > pos) __builder.AddContent(seq++, text!.Substring(pos, m.Index - pos));
+            var tok = m.Value;
+            var cls = tok.StartsWith('+') ? "font-bold text-success"
+                : (tok.StartsWith('-') || tok.StartsWith('−')) ? "font-bold text-error"
+                : "font-bold text-neutral-content";
+            __builder.OpenElement(seq++, "span");
+            __builder.AddAttribute(seq++, "class", cls);
+            __builder.AddContent(seq++, tok);
+            __builder.CloseElement();
+            pos = m.Index + m.Length;
+        }
+        if (text is not null && pos < text.Length) __builder.AddContent(seq++, text.Substring(pos));
+    };
+
+    // Deterministik özet (model yüklenene kadar / model yoksa kalıcı fallback).
+    private string OzetDeterministik(decimal prevToplam, decimal iadeOran)
+    {
+        if (_data is null) return "";
+        var wow = WowOf(_data.Toplam, prevToplam);
+        var ePay = _data.Toplam > 0 ? (int)Math.Round(100m * _data.Eticaret / _data.Toplam) : 0;
+        var dusen = _data.Stores.Where(s => s.Wow is < 0m).OrderBy(s => s.Wow).FirstOrDefault();
+        var artan = _data.Stores.Where(s => s.Wow is > 0m).OrderByDescending(s => s.Wow).FirstOrDefault();
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"{DonemKelime()} ciro {Tl(_data.Toplam)}");
+        if (wow is not null) sb.Append($", {_wowLabel} {Pct(wow.Value)}");
+        sb.Append($". Online payı %{ePay} ({Tl(_data.Eticaret)}).");
+        if (dusen is not null) sb.Append($" {dusen.Ad} {Pct(dusen.Wow!.Value)} düşüş dikkat çekici.");
+        if (artan is not null) sb.Append($" {artan.Ad} {Pct(artan.Wow!.Value)} ile zirvede.");
+        sb.Append($" İade oranı {(iadeOran <= 2 ? "düşük" : "yüksek")} (%{iadeOran}){(iadeOran <= 2 ? ", sağlıklı" : "")}.");
+        return sb.ToString();
+    }
+
+    // Yön kelimesi — küçük model +/− sembolünü ters okuyor; kelimeyle ver (işaret inversiyonunu engeller).
+    private static string YonPct(decimal? wow)
+    {
+        if (wow is null) return "veri yok";
+        var v = Math.Abs(wow.Value).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        return wow > 0 ? $"%{v} ARTIŞ" : wow < 0 ? $"%{v} DÜŞÜŞ" : "değişim yok";
+    }
+
+    // LLM'e verilecek anahtar:değer veri özeti. Yön artış/düşüş KELİMESİYLE verilir — model uydurmaz, ters çevirmez.
+    private string OzetVeri(decimal prevToplam, decimal iadeOran)
+    {
+        var wow = WowOf(_data!.Toplam, prevToplam);
+        var ePay = _data.Toplam > 0 ? (int)Math.Round(100m * _data.Eticaret / _data.Toplam) : 0;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Dönem: {DonemKelime()} ({_aralik})");
+        sb.AppendLine($"Toplam ciro: {Tl(_data.Toplam)} ({_wowLabel} {YonPct(wow)})");
+        sb.AppendLine($"Mağaza cirosu: {Tl(_data.Fiziksel)} · Online ciro: {Tl(_data.Eticaret)} (online payı %{ePay})");
+        sb.AppendLine("Mağaza trendleri (" + _wowLabel + "):");
+        foreach (var s in _data.Stores.OrderByDescending(s => s.Wow ?? -999))
+            sb.AppendLine($"  - {s.Ad}: {Tl(s.Net)}, {YonPct(s.Wow)}");
+        sb.Append($"İade: {Tl(_data.Iade)} (ciroya oran %{iadeOran})");
+        return sb.ToString();
+    }
+
+    // Yerel LLM'den özet al (arka plan — sayfa beklemez). Dönem değişirse eski sonucu yok say (gen guard).
+    private async Task RefreshOzetAsync(decimal prevToplam, decimal iadeOran)
+    {
+        if (_data is null) return;
+        var gen = ++_ozetGen;
+        _ozetCalisiyor = true; await InvokeAsync(StateHasChanged);
+        try
+        {
+            var txt = await Llm.GunOzetiUret(OzetVeri(prevToplam, iadeOran));
+            if (gen == _ozetGen && !string.IsNullOrWhiteSpace(txt)) { _ozetMetin = txt; _ozetAI = true; }
+        }
+        catch { /* model yoksa/yüklenmezse deterministik metin kalır */ }
+        finally { if (gen == _ozetGen) { _ozetCalisiyor = false; await InvokeAsync(StateHasChanged); } }
+    }
 
     // Hero gradient KPI kartı (carousel item). WoW pill sağ-üst, altta ayraçlı 2-kolon stat.
     private RenderFragment HeroCard(string label, string value, decimal? wow, string gradient, string l1, string v1, string l2, string v2) => @<div class="carousel-item w-[86%] lg:w-auto">
