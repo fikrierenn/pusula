@@ -138,10 +138,10 @@ else if (_data is not null)
 
     <h2 class="text-lg font-bold tracking-tight mb-3">Analiz</h2>
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-pie" class="w-[18px] h-[18px] text-primary"></i>Mağaza Kategori Mix (@_aralik)</h3>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-pie" class="w-[18px] h-[18px] text-primary"></i>Kategori Mix (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">mağaza · online hariç</span></h3>
             <AppRankBars TItem="CategorySlice" Items="_data.Kategori"
                          Label="@(k => k.Ad)" Value="@(k => k.Ciro)" ValueText="@(k => Tl(k.Ciro))" /></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Fiziksel Net Ciro</h3>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Net Ciro<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">mağaza · online hariç</span></h3>
             <div class="flex items-center gap-2 mb-2">
                 <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@Tl(_trend.Count > 0 ? _trend[^1].Net : 0)</div>
                 @{ var avgC = _trend.Count > 0 ? _trend.Average(t => t.Net) : 0; var gwC = _trend.Count > 1 ? WowOf(_trend[^1].Net, avgC) : null; }
