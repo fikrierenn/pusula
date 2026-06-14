@@ -17,6 +17,7 @@ builder.Services.AddScoped<RefQueries>();
 builder.Services.AddScoped<EticQueries>();
 builder.Services.AddSingleton<LlmService>();      // yerel LLM — model lazy yüklenir (ilk istekte)
 builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)
+builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
 
 var app = builder.Build();
 

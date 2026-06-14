@@ -1,5 +1,9 @@
 @inherits LayoutComponentBase
+@using GmDashboard.Components.Shared
+@using GmDashboard.Models
+@implements IDisposable
 @inject GmDashboard.Data.GorevService Gorevler
+@inject GmDashboard.Data.NotifState Notif
 @inject NavigationManager Nav
 
 <div class="drawer lg:drawer-open min-h-screen">
@@ -16,21 +20,32 @@
             </label>
             <span class="font-bold text-base text-base-content">BKM Yönetim Paneli</span>
             <div class="ml-auto flex items-center gap-2">
-                @* Asistan — mobilde alt nav'da yok, üstte ikon *@
-                <button class="btn btn-ghost btn-sm btn-square lg:hidden" @onclick='() => Nav.NavigateTo("asistan")' title="Asistan">
-                    <i data-lucide="message-square"></i>
-                </button>
-                <button class="btn btn-ghost btn-sm btn-square relative" @onclick="GoGorevler" title="Açık görevler">
+                @* Zil = bildirim merkezi (dönem uyarıları — Home üretir). *@
+                <button class="btn btn-ghost btn-sm btn-square relative" @onclick="() => _notifOpen = true" title="Uyarılar">
                     <i data-lucide="bell"></i>
-                    @if (_acikGorev > 0)
+                    @if (Notif.Alerts.Count > 0)
                     {
-                        <span class="badge badge-primary badge-xs absolute top-1 right-1">@_acikGorev</span>
+                        <span class="badge badge-error badge-xs absolute top-1 right-1">@Notif.Alerts.Count</span>
                     }
                 </button>
-                <span class="flex items-center gap-1.5 font-semibold text-sm bg-base-200 rounded-lg px-2.5 py-1.5" title="CFO">
-                    <i data-lucide="user"></i>
-                    <span>CFO</span>
-                </span>
+                @* CFO menüsü — Görevler + Asistan (mobilde alt nav'da yok). *@
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="flex items-center gap-1.5 font-semibold text-sm bg-base-200 rounded-lg px-2.5 py-1.5 cursor-pointer">
+                        <i data-lucide="user"></i><span>CFO</span>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-50 w-48 p-2 shadow-lg border border-base-200 mt-2">
+                        <li>
+                            <a @onclick="GoGorevler">
+                                <i data-lucide="check-square"></i>Görevler
+                                @if (_acikGorev > 0)
+                                {
+                                    <span class="badge badge-primary badge-sm ml-auto">@_acikGorev</span>
+                                }
+                            </a>
+                        </li>
+                        <li><a @onclick='() => Nav.NavigateTo("asistan")'><i data-lucide="message-square"></i>Asistan</a></li>
+                    </ul>
+                </div>
             </div>
         </header>
 
@@ -119,6 +134,27 @@
     </aside>
 </div>
 
+<Modal @bind-Open="_notifOpen" Title="Uyarılar">
+    <div class="text-base-content/50 text-xs mb-3">@Notif.Context · @(Notif.Alerts.Count) uyarı</div>
+    <div class="flex flex-col">
+        @foreach (var a in Notif.Alerts)
+        {
+            var (abg, afg) = AlertTone(a.Tone);
+            <div class="flex items-start gap-3 py-3 border-b border-base-200 last:border-b-0">
+                <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 @abg @afg"><i data-lucide="@a.Ico" class="w-[18px] h-[18px]"></i></span>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-bold text-base-content/90">@a.Title</div>
+                    <div class="text-[11.5px] text-base-content/55 leading-snug">@a.Desc</div>
+                </div>
+            </div>
+        }
+        @if (Notif.Alerts.Count == 0)
+        {
+            <div class="text-base-content/50 text-[13px] py-3 text-center">Aktif uyarı yok — Genel Bakış'ı açınca güncel uyarılar burada.</div>
+        }
+    </div>
+</Modal>
+
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
@@ -127,14 +163,29 @@
 
 @code {
     private bool _drawerOpen;
+    private bool _notifOpen;
     private int _acikGorev;
 
     protected override void OnInitialized()
     {
         try { _acikGorev = Gorevler.Listele(acikOnly: true).Count; }
         catch { _acikGorev = 0; }
+        Notif.Changed += OnNotifChanged;
     }
+
+    // Home uyarıları güncelleyince zil rozetini tazele.
+    private async void OnNotifChanged() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Notif.Changed -= OnNotifChanged;
 
     private void CloseDrawer() => _drawerOpen = false;
     private void GoGorevler() { CloseDrawer(); Nav.NavigateTo("gorevler"); }
+
+    // Bildirim tonu → (bg, fg) DaisyUI token.
+    private static (string Bg, string Fg) AlertTone(string tone) => tone switch
+    {
+        "error" => ("bg-error/10", "text-error"),
+        "success" => ("bg-success/10", "text-success"),
+        _ => ("bg-warning/10", "text-warning"),
+    };
 }

@@ -4,28 +4,17 @@
 @inject Queries Queries
 @inject RefQueries Ref
 @inject LlmService Llm
+@inject NotifState Notif
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 
 <PageTitle>BKM GM Dashboard</PageTitle>
 
-<!-- App-stil başlık: greeting + marka + bildirim + avatar -->
-<div class="flex items-start justify-between gap-3 mb-4">
-    <div class="min-w-0">
-        <div class="text-sm italic text-base-content/50">@Greeting()</div>
-        <h1 class="text-2xl font-bold tracking-tight m-0">BKM Genel Bakış</h1>
-    </div>
-    <div class="flex items-center gap-2 shrink-0">
-        <button class="relative w-10 h-10 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center" @onclick="() => _modalNotif = true" aria-label="Uyarılar">
-            <i data-lucide="bell" class="w-5 h-5"></i>
-            @if (_alerts.Count > 0)
-            {
-                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
-            }
-        </button>
-        <div class="w-10 h-10 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center">CFO</div>
-    </div>
+<!-- App-stil başlık: greeting + marka (zil + CFO global üst bar'da — tekrar yok). -->
+<div class="min-w-0 mb-4">
+    <div class="text-sm italic text-base-content/50">@Greeting()</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">BKM Genel Bakış</h1>
 </div>
 
 <!-- Dönem segment pill (paylaşılan — tüm sayfalar aynı) -->
@@ -191,7 +180,7 @@ else if (_data is not null)
     </Modal>
 
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
-        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · satışa göre ilk 100 (stok = güncel)</div>
+        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · ilk 100 · badge: stok · ~kaç gün yeter (≤7g kırmızı)</div>
         @if (_urunLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
@@ -199,32 +188,12 @@ else if (_data is not null)
         else
         {
             <AppDataTable TItem="UrunRow" Items="_urunler"
-                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod}")"
+                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod} · {UrunOrtSatis(u)}")"
                           MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} adet")"
-                          Badge="@(u => (u.Bakiye <= 0 ? "tükendi" : $"stok {Num(u.Bakiye)}", u.Bakiye <= 0 ? "bg-error/15 text-error" : "bg-base-200 text-base-content/60"))" />
+                          Badge="@(u => UrunStok(u))" />
         }
     </Modal>
 
-    <Modal @bind-Open="_modalNotif" Title="Uyarılar">
-        <div class="text-base-content/50 text-xs mb-3">@_aralik · @(_alerts.Count) uyarı · sinyaller @_wowLabel</div>
-        <div class="flex flex-col">
-            @foreach (var a in _alerts)
-            {
-                var (abg, afg) = AlertTone(a.Tone);
-                <div class="flex items-start gap-3 py-3 border-b border-base-200 last:border-b-0">
-                    <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 @abg @afg"><i data-lucide="@a.Ico" class="w-[18px] h-[18px]"></i></span>
-                    <div class="min-w-0 flex-1">
-                        <div class="text-[13px] font-bold text-base-content/90">@a.Title</div>
-                        <div class="text-[11.5px] text-base-content/55 leading-snug">@a.Desc</div>
-                    </div>
-                </div>
-            }
-            @if (_alerts.Count == 0)
-            {
-                <div class="text-base-content/50 text-[13px] py-3 text-center">Aktif uyarı yok — her şey hedefte.</div>
-            }
-        </div>
-    </Modal>
 }
 
 @code {
@@ -246,14 +215,11 @@ else if (_data is not null)
     private bool _modalEtic;
     private bool _modalTot;
     private bool _modalUrun;
-    private bool _modalNotif;
-    private List<AlertItem> _alerts = new();   // bildirim merkezi (LoadAsync'te dönem verisinden üretilir)
+    private List<AlertItem> _alerts = new();   // bildirim merkezi (LoadAsync'te dönem verisinden üretilir → NotifState)
     private string _ozetMetin = "";            // AI Günün Özeti metni (önce deterministik, sonra LLM)
     private bool _ozetAI;                       // metin LLM'den mi geldi (rozet "AI" vs "Otomatik")
     private bool _ozetCalisiyor;                // LLM inference sürüyor (rozette spinner)
     private int _ozetGen;                        // dönem-değişimi yarışı için kuşak sayacı
-
-    private record AlertItem(string Ico, string Tone, string Title, string Desc);
     private bool _urunLoading;
     private string _selKat = "";
     private IReadOnlyList<UrunRow> _urunler = [];
@@ -315,6 +281,7 @@ else if (_data is not null)
                 (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(start, endExcl);
             else { _hedefMag = null; _hedefKat = []; }
             _alerts = BuildAlerts();
+            Notif.Set(_alerts, _aralik);   // global zile (MainLayout) ilet
             // AI özet: deterministik metni anında göster, LLM'i arka planda çağır (sayfa beklemez).
             var prevTop = _data.PrevFiziksel + _data.PrevEticaret;
             var iadeOr = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
@@ -384,6 +351,20 @@ else if (_data is not null)
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 
+    // Ürün drill: dönem gün sayısı → ort. günlük satış + stok kaç gün yeter (envanter sinyali).
+    private int DonemGun => Math.Max(1, _endExcl.DayNumber - _start.DayNumber);
+    private string UrunOrtSatis(UrunRow u) => (u.Satis / (double)DonemGun).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " adet/gün";
+    // Stok badge: tükendi / "N stok · ~Gg" — gün-yeter düşükse kırmızı (≤7g) / sarı (≤21g).
+    private (string Text, string Cls) UrunStok(UrunRow u)
+    {
+        if (u.Bakiye <= 0) return ("tükendi", "bg-error/15 text-error");
+        var daily = u.Satis / (double)DonemGun;
+        if (daily <= 0) return ($"{Num(u.Bakiye)} stok", "bg-base-200 text-base-content/50");
+        var cover = (int)Math.Round(u.Bakiye / daily);
+        var cls = cover <= 7 ? "bg-error/15 text-error" : cover <= 21 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/55";
+        return ($"{Num(u.Bakiye)} · ~{Num(cover)}g", cls);
+    }
+
     // WoW: bir önceki eş-uzunluk döneme göre değişim %. prev=0 → trend yok (null).
     private static decimal? WowOf(decimal cur, decimal prev) => prev > 0 ? Math.Round(100 * (cur - prev) / prev, 1) : null;
     private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
@@ -404,14 +385,6 @@ else if (_data is not null)
 
     // Dönem kelimesi (AI özet + uyarı metni için).
     private string DonemKelime() => _period switch { "haftalik" => "Bu hafta", "ay" => "Bu ay", "ozel" => "Seçili dönemde", _ => "Dün" };
-
-    // Bildirim tonu → (bg, fg) DaisyUI token. error=kötü, warning=dikkat, success=iyi.
-    private static (string Bg, string Fg) AlertTone(string tone) => tone switch
-    {
-        "error" => ("bg-error/10", "text-error"),
-        "success" => ("bg-success/10", "text-success"),
-        _ => ("bg-warning/10", "text-warning"),
-    };
 
     // Uyarıları dönem verisinden türet (sahte değil — gerçek sinyal: mağaza WoW, iade, hedef).
     private List<AlertItem> BuildAlerts()

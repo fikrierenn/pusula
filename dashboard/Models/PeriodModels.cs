@@ -3,6 +3,9 @@ namespace GmDashboard.Models;
 /// <summary>Gradient hero carousel KPI kartı (AppKpiCarousel). Gradient = DaisyUI token sınıfı (ör. "from-primary to-primary/80").</summary>
 public record KpiCardData(string Label, string Value, string Gradient, string Sub);
 
+/// <summary>Bildirim merkezi uyarısı. Ico=lucide adı; Tone=error|warning|success.</summary>
+public record AlertItem(string Ico, string Tone, string Title, string Desc);
+
 /// <summary>Mağaza dönem satırı (EncoreMerkez Sales → posMagaza). Net = iade sign'lı.</summary>
 public record StoreRow(int MekanId, decimal Net, int Fis, decimal Iade);
 
