@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>BKM Mobil App — 5 Ekran Mockup (B-51 referans)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.17.0/dist/tabler-icons.min.css">
+<style>
+/*
+  BKM Mobil App — 5 EKRAN interaktif mockup (14.06.2026)
+  Alt nav tıkla → sayfa değişir. Hero kartlar yatay swipe + dot.
+  ⚠ Genel + E-ticaret = GERÇEK veri (13.06 günlük). Operasyon/Envanter/Müşteri = ÖRNEK (mockup rozeti).
+  Blazor uyarlamada hardcode hex → DaisyUI token: primary/info/success/error/warning.
+*/
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 12px;font-family:'Segoe UI',system-ui,sans-serif}
+.phone{max-width:380px;width:100%;background:#eef1f6;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,.18);border:1px solid rgba(15,23,42,.06);display:flex;flex-direction:column;min-height:760px}
+.statusbar{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 6px;font-size:13px;font-weight:600;color:#0f172a}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 20px 14px}
+.topbar .sub{font-size:12px;color:#64748b;font-weight:500}
+.topbar .ttl{font-size:19px;font-weight:700;color:#0f172a;letter-spacing:-.3px}
+.icbtn{width:40px;height:40px;border-radius:14px;border:none;background:#fff;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+.avatar{width:40px;height:40px;border-radius:14px;background:#4063e6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.dot-red{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:#ef4444}
+.seg{display:flex;gap:8px;padding:0 20px 16px}
+.seg span{flex:1;text-align:center;padding:9px 0;border-radius:12px;background:#fff;color:#64748b;font-size:13px;font-weight:500;cursor:pointer}
+.seg span.on{background:#0f172a;color:#fff;font-weight:600}
+.body{flex:1;overflow-y:auto}
+.page{display:none}
+.page.on{display:block}
+.mockbadge{margin:0 20px 12px;font-size:11px;background:#fef9c3;color:#854d0e;padding:6px 12px;border-radius:10px;display:flex;align-items:center;gap:5px;font-weight:600}
+.track{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 20px 4px;scrollbar-width:none}
+.track::-webkit-scrollbar{display:none}
+.hcard{scroll-snap-align:center;flex:0 0 calc(100% - 40px);box-sizing:border-box;padding:20px;border-radius:22px;color:#fff}
+.hcard .top{display:flex;justify-content:space-between;align-items:flex-start}
+.hcard .lbl{font-size:12px;opacity:.85;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.hcard .chip{font-size:12px;background:rgba(255,255,255,.18);padding:4px 9px;border-radius:9px;font-weight:600;display:flex;align-items:center;gap:3px}
+.hcard .big{font-size:32px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px}
+.hcard .sub{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)}
+.hcard .sub>div{flex:1}.hcard .sub .k{font-size:11px;opacity:.8}.hcard .sub .v{font-size:16px;font-weight:700}
+.g-primary{background:linear-gradient(135deg,#4063e6,#3a4fd0);box-shadow:0 10px 28px rgba(64,99,230,.3)}
+.g-info{background:linear-gradient(135deg,#0ea5e9,#0284c7);box-shadow:0 10px 28px rgba(14,165,233,.3)}
+.g-success{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 10px 28px rgba(16,185,129,.3)}
+.g-error{background:linear-gradient(135deg,#f43f5e,#e11d48);box-shadow:0 10px 28px rgba(244,63,94,.3)}
+.g-warning{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 10px 28px rgba(245,158,11,.3)}
+.dots{display:flex;justify-content:center;gap:6px;padding:12px 0 16px}
+.dots span{width:6px;height:6px;border-radius:3px;background:#cbd5e1;transition:.3s}
+.dots span.on{width:18px;background:#4063e6}
+.sectitle{display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px}
+.sectitle .t{font-size:15px;font-weight:700;color:#0f172a}
+.sectitle .a{font-size:12px;color:#4063e6;font-weight:600}
+.list{padding:0 20px 18px;display:flex;flex-direction:column;gap:10px}
+.row{background:#fff;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(15,23,42,.05);cursor:pointer}
+.row:active{transform:scale(.985)}
+.ricon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.row .nm{font-size:14px;font-weight:700;color:#0f172a}
+.row .mt{font-size:11.5px;color:#94a3b8}
+.row .amt{font-size:16px;font-weight:800;color:#0f172a;text-align:right}
+.trend{font-size:11px;font-weight:600;display:flex;align-items:center;gap:2px;justify-content:flex-end}
+.t-up{color:#10b981}.t-down{color:#ef4444}.t-flat{color:#94a3b8}
+.chev{font-size:18px;color:#cbd5e1}
+.card{margin:0 20px 16px;background:#fff;border-radius:18px;padding:16px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.card h4{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.bar{margin-bottom:12px}.bar:last-child{margin:0}
+.bar .bl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.bar .bn{color:#334155;font-weight:600}.bar .bv{color:#0f172a;font-weight:700}
+.bar .track2{height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;border-radius:4px}
+.navbar{display:flex;justify-content:space-around;align-items:center;padding:10px 8px 14px;background:#fff;border-top:1px solid rgba(15,23,42,.05)}
+.nav{display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8;cursor:pointer;flex:1;padding:4px 0}
+.nav i{font-size:23px}.nav span{font-size:10px;font-weight:500}
+.nav.on{color:#4063e6}.nav.on span{font-weight:700}
+.nav.on .pill{width:42px;height:30px;border-radius:13px;background:#eef2ff;display:flex;align-items:center;justify-content:center;margin-bottom:-2px}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="statusbar"><span>09:42</span><span style="display:flex;gap:6px;align-items:center"><i class="ti ti-wifi" style="font-size:15px"></i><i class="ti ti-battery-3" style="font-size:16px"></i></span></div>
+
+  <div class="topbar">
+    <div><div class="sub">İyi günler 👋</div><div class="ttl" id="pgtitle">BKM Genel Bakış</div></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="icbtn"><i class="ti ti-bell" style="font-size:19px;color:#334155"></i><span class="dot-red"></span></button>
+      <div class="avatar">CFO</div>
+    </div>
+  </div>
+
+  <div class="seg"><span class="on">Günlük</span><span>Haftalık</span><span>Aylık</span></div>
+
+  <div class="body">
+
+    <!-- ============ GENEL ============ -->
+    <section class="page on" data-title="BKM Genel Bakış">
+      <div class="track">
+        <div class="hcard g-primary"><div class="top"><span class="lbl">Toplam Ciro</span><span class="chip"><i class="ti ti-trending-up"></i>%8,4</span></div><div class="big">5.109.518 ₺</div><div class="sub"><div><div class="k">Mağaza</div><div class="v">2.035.905 ₺</div></div><div><div class="k">Online</div><div class="v">3.073.613 ₺</div></div></div></div>
+        <div class="hcard g-info"><div class="top"><span class="lbl">Toplam İşlem</span><span class="chip"><i class="ti ti-trending-up"></i>%5,1</span></div><div class="big">2.969 fiş</div><div class="sub"><div><div class="k">Mağaza fiş</div><div class="v">248</div></div><div><div class="k">Online sipariş</div><div class="v">2.721</div></div></div></div>
+        <div class="hcard g-success"><div class="top"><span class="lbl">Sepet Ortalama</span><span class="chip"><i class="ti ti-trending-up"></i>%3,2</span></div><div class="big">689 ₺</div><div class="sub"><div><div class="k">Mağaza ATV</div><div class="v">586 ₺</div></div><div><div class="k">Online sepet</div><div class="v">1.130 ₺</div></div></div></div>
+        <div class="hcard g-error"><div class="top"><span class="lbl">İade</span><span class="chip"><i class="ti ti-trending-down"></i>%0,7</span></div><div class="big">34.661 ₺</div><div class="sub"><div><div class="k">İade fiş</div><div class="v">38</div></div><div><div class="k">Ciroya oran</div><div class="v">%0,7</div></div></div></div>
+      </div>
+      <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="sectitle"><span class="t">Mağazalar</span><span class="a">Tümü →</span></div>
+      <div class="list">
+        <div class="row"><span class="ricon" style="background:#ecfdf5"><i class="ti ti-building-store" style="font-size:22px;color:#10b981"></i></span><div style="flex:1"><div class="nm">Özlüce</div><div class="mt">1.284 fiş · sepet 753 ₺</div></div><div><div class="amt">967.304 ₺</div><div class="trend t-up"><i class="ti ti-trending-up" style="font-size:13px"></i>%12</div></div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eff6ff"><i class="ti ti-building-store" style="font-size:22px;color:#3b82f6"></i></span><div style="flex:1"><div class="nm">FSM</div><div class="mt">931 fiş · sepet 589 ₺</div></div><div><div class="amt">548.716 ₺</div><div class="trend t-flat"><i class="ti ti-minus" style="font-size:13px"></i>%2</div></div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#fff7ed"><i class="ti ti-building-store" style="font-size:22px;color:#f59e0b"></i></span><div style="flex:1"><div class="nm">İst. Yolu</div><div class="mt">754 fiş · sepet 690 ₺</div></div><div><div class="amt">519.885 ₺</div><div class="trend t-down"><i class="ti ti-trending-down" style="font-size:13px"></i>%19</div></div><i class="ti ti-chevron-right chev"></i></div>
+      </div>
+      <div class="list"><div class="row" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff"><span class="ricon" style="background:rgba(255,255,255,.2)"><i class="ti ti-world" style="font-size:23px"></i></span><div style="flex:1"><div class="nm" style="color:#fff">E-ticaret (online)</div><div class="mt" style="color:rgba(255,255,255,.85)">2.721 sipariş · sepet 1.130 ₺</div></div><div class="amt" style="color:#fff">3.073.613 ₺</div></div></div>
+    </section>
+
+    <!-- ============ E-TİCARET ============ -->
+    <section class="page" data-title="E-ticaret">
+      <div class="track">
+        <div class="hcard g-primary"><div class="top"><span class="lbl">Net Ciro (online)</span><span class="chip"><i class="ti ti-trending-up"></i>%11,3</span></div><div class="big">3.073.613 ₺</div><div class="sub"><div><div class="k">Sipariş</div><div class="v">2.721</div></div><div><div class="k">Sepet ort.</div><div class="v">1.130 ₺</div></div></div></div>
+        <div class="hcard g-info"><div class="top"><span class="lbl">Net Sipariş</span><span class="chip"><i class="ti ti-trending-up"></i>%6,9</span></div><div class="big">2.721</div><div class="sub"><div><div class="k">Mobil app</div><div class="v">2.041</div></div><div><div class="k">Web + site</div><div class="v">680</div></div></div></div>
+        <div class="hcard g-success"><div class="top"><span class="lbl">Sepet Ort.</span><span class="chip"><i class="ti ti-trending-up"></i>%4,1</span></div><div class="big">1.130 ₺</div><div class="sub"><div><div class="k">En yüksek il</div><div class="v">İstanbul</div></div><div><div class="k">Kargo ort.</div><div class="v">2,3 g</div></div></div></div>
+        <div class="hcard g-error"><div class="top"><span class="lbl">İptal / İade</span><span class="chip"><i class="ti ti-trending-down"></i>%2,8</span></div><div class="big">85.420 ₺</div><div class="sub"><div><div class="k">İade adet</div><div class="v">61</div></div><div><div class="k">COD iade</div><div class="v">%22</div></div></div></div>
+      </div>
+      <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="mockbadge"><i class="ti ti-alert-triangle"></i>Kanal/COD oranları örnek — gerçeği JOKER sorgusundan</div>
+      <div class="card"><h4><i class="ti ti-device-mobile" style="color:#4063e6"></i>Kanal Dağılımı (NET)</h4>
+        <div class="bar"><div class="bl"><span class="bn">Mobil App (Android)</span><span class="bv">1.474.334 ₺ · %48</span></div><div class="track2"><div class="fill" style="width:48%;background:#4063e6"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Mobil App (iOS)</span><span class="bv">829.876 ₺ · %27</span></div><div class="track2"><div class="fill" style="width:27%;background:#0ea5e9"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Web Sitesi</span><span class="bv">553.250 ₺ · %18</span></div><div class="track2"><div class="fill" style="width:18%;background:#10b981"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Mobil Site</span><span class="bv">216.153 ₺ · %7</span></div><div class="track2"><div class="fill" style="width:7%;background:#f59e0b"></div></div></div>
+      </div>
+      <div class="sectitle"><span class="t">İl Dağılımı — Top 5</span><span class="a">Tümü →</span></div>
+      <div class="list">
+        <div class="row"><span class="ricon" style="background:#eef2ff"><i class="ti ti-map-pin" style="font-size:22px;color:#4063e6"></i></span><div style="flex:1"><div class="nm">İstanbul</div><div class="mt">982 sipariş</div></div><div class="amt">1.108.500 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eef2ff"><i class="ti ti-map-pin" style="font-size:22px;color:#4063e6"></i></span><div style="flex:1"><div class="nm">Ankara</div><div class="mt">421 sipariş</div></div><div class="amt">476.300 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eef2ff"><i class="ti ti-map-pin" style="font-size:22px;color:#4063e6"></i></span><div style="flex:1"><div class="nm">İzmir</div><div class="mt">318 sipariş</div></div><div class="amt">359.700 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eef2ff"><i class="ti ti-map-pin" style="font-size:22px;color:#4063e6"></i></span><div style="flex:1"><div class="nm">Bursa</div><div class="mt">214 sipariş</div></div><div class="amt">241.900 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eef2ff"><i class="ti ti-map-pin" style="font-size:22px;color:#4063e6"></i></span><div style="flex:1"><div class="nm">Antalya</div><div class="mt">176 sipariş</div></div><div class="amt">198.900 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+      </div>
+    </section>
+
+    <!-- ============ OPERASYON ============ -->
+    <section class="page" data-title="Operasyon">
+      <div class="track">
+        <div class="hcard g-primary"><div class="top"><span class="lbl">Toplam İşlem</span><span class="chip"><i class="ti ti-trending-up"></i>%5,1</span></div><div class="big">2.969 fiş</div><div class="sub"><div><div class="k">Mağaza</div><div class="v">248</div></div><div><div class="k">Online</div><div class="v">2.721</div></div></div></div>
+        <div class="hcard g-info"><div class="top"><span class="lbl">Aktif Kasiyer</span><span class="chip"><i class="ti ti-users"></i>12</span></div><div class="big">12 kişi</div><div class="sub"><div><div class="k">₺/çalışma saati</div><div class="v">3.420 ₺</div></div><div><div class="k">En verimli</div><div class="v">Özlüce</div></div></div></div>
+        <div class="hcard g-success"><div class="top"><span class="lbl">En Yoğun Saat</span><span class="chip"><i class="ti ti-clock"></i>17:00</span></div><div class="big">17–18h</div><div class="sub"><div><div class="k">O saat fiş</div><div class="v">312</div></div><div><div class="k">Ciro payı</div><div class="v">%14</div></div></div></div>
+        <div class="hcard g-error"><div class="top"><span class="lbl">COD İade Zararı</span><span class="chip"><i class="ti ti-trending-down"></i>%22</span></div><div class="big">12.430 ₺</div><div class="sub"><div><div class="k">İade kargo</div><div class="v">61</div></div><div><div class="k">Birim zarar</div><div class="v">204 ₺</div></div></div></div>
+      </div>
+      <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="mockbadge"><i class="ti ti-alert-triangle"></i>Operasyon değerleri örnek — gerçeği EncoreMerkez sorgusundan</div>
+      <div class="card"><h4><i class="ti ti-clock-hour-9" style="color:#4063e6"></i>Saat Bazlı Yoğunluk</h4>
+        <div class="bar"><div class="bl"><span class="bn">17:00–18:00</span><span class="bv">312 fiş</span></div><div class="track2"><div class="fill" style="width:100%;background:#4063e6"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">16:00–17:00</span><span class="bv">268 fiş</span></div><div class="track2"><div class="fill" style="width:86%;background:#4063e6"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">12:00–13:00</span><span class="bv">241 fiş</span></div><div class="track2"><div class="fill" style="width:77%;background:#0ea5e9"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">18:00–19:00</span><span class="bv">198 fiş</span></div><div class="track2"><div class="fill" style="width:63%;background:#0ea5e9"></div></div></div>
+      </div>
+      <div class="sectitle"><span class="t">Kasiyer Performansı</span><span class="a">Tümü →</span></div>
+      <div class="list">
+        <div class="row"><span class="ricon" style="background:#ecfdf5"><i class="ti ti-user-check" style="font-size:22px;color:#10b981"></i></span><div style="flex:1"><div class="nm">Ayşe K.</div><div class="mt">Özlüce · 187 fiş</div></div><div><div class="amt">142.300 ₺</div><div class="trend t-up"><i class="ti ti-trending-up" style="font-size:13px"></i>en iyi</div></div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eff6ff"><i class="ti ti-user-check" style="font-size:22px;color:#3b82f6"></i></span><div style="flex:1"><div class="nm">Mehmet T.</div><div class="mt">FSM · 154 fiş</div></div><div class="amt">98.700 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#fff7ed"><i class="ti ti-user-check" style="font-size:22px;color:#f59e0b"></i></span><div style="flex:1"><div class="nm">Zeynep A.</div><div class="mt">İst.Yolu · 121 fiş</div></div><div class="amt">76.400 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+      </div>
+    </section>
+
+    <!-- ============ ENVANTER ============ -->
+    <section class="page" data-title="Envanter & Merchandising">
+      <div class="track">
+        <div class="hcard g-primary"><div class="top"><span class="lbl">Envanter Değeri</span><span class="chip"><i class="ti ti-trending-down"></i>%3,1</span></div><div class="big">184,6M ₺</div><div class="sub"><div><div class="k">SKU sayısı</div><div class="v">798.527</div></div><div><div class="k">Mağaza+depo</div><div class="v">4 lokasyon</div></div></div></div>
+        <div class="hcard g-warning"><div class="top"><span class="lbl">Ort. Devir Hızı</span><span class="chip"><i class="ti ti-rotate"></i>2,79x</span></div><div class="big">2,79x</div><div class="sub"><div><div class="k">Müşteri algısı</div><div class="v">4,14x</div></div><div><div class="k">Depo gerçek</div><div class="v">2,79x</div></div></div></div>
+        <div class="hcard g-error"><div class="top"><span class="lbl">Stokta Yokluk</span><span class="chip"><i class="ti ti-trending-up"></i>%4,2</span></div><div class="big">%4,2</div><div class="sub"><div><div class="k">Etkilenen SKU</div><div class="v">3.412</div></div><div><div class="k">Kayıp ciro tah.</div><div class="v">~190K ₺</div></div></div></div>
+        <div class="hcard g-info"><div class="top"><span class="lbl">Ölü Stok</span><span class="chip"><i class="ti ti-lock"></i>kilitli</span></div><div class="big">12,4M ₺</div><div class="sub"><div><div class="k">180g+ hareketsiz</div><div class="v">28.900 SKU</div></div><div><div class="k">Değer payı</div><div class="v">%6,7</div></div></div></div>
+      </div>
+      <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="mockbadge"><i class="ti ti-alert-triangle"></i>Devir 2,79x gerçek (sema) — diğer değerler örnek</div>
+      <div class="card"><h4><i class="ti ti-rotate-clockwise" style="color:#4063e6"></i>Kategori Devir Hızı</h4>
+        <div class="bar"><div class="bl"><span class="bn">Kırtasiye</span><span class="bv">5,8x</span></div><div class="track2"><div class="fill" style="width:100%;background:#10b981"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Çok Satan Kitap</span><span class="bv">4,2x</span></div><div class="track2"><div class="fill" style="width:72%;background:#10b981"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Oyuncak</span><span class="bv">2,1x</span></div><div class="track2"><div class="fill" style="width:36%;background:#f59e0b"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Akademik / Ders</span><span class="bv">0,9x</span></div><div class="track2"><div class="fill" style="width:16%;background:#ef4444"></div></div></div>
+      </div>
+      <div class="sectitle"><span class="t">Ölü Sermaye — Top</span><span class="a">Tümü →</span></div>
+      <div class="list">
+        <div class="row"><span class="ricon" style="background:#fef2f2"><i class="ti ti-lock" style="font-size:22px;color:#ef4444"></i></span><div style="flex:1"><div class="nm">Akademik / Ders</div><div class="mt">9.870 SKU · 210g ort.</div></div><div class="amt">4,8M ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#fff7ed"><i class="ti ti-lock" style="font-size:22px;color:#f59e0b"></i></span><div style="flex:1"><div class="nm">Sezonluk Hediyelik</div><div class="mt">6.210 SKU · 195g ort.</div></div><div class="amt">3,1M ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#fff7ed"><i class="ti ti-lock" style="font-size:22px;color:#f59e0b"></i></span><div style="flex:1"><div class="nm">Eski Baskı Roman</div><div class="mt">5.040 SKU · 240g ort.</div></div><div class="amt">2,2M ₺</div><i class="ti ti-chevron-right chev"></i></div>
+      </div>
+    </section>
+
+    <!-- ============ MÜŞTERİ ============ -->
+    <section class="page" data-title="Müşteri Segmenti (RFM)">
+      <div class="track">
+        <div class="hcard g-primary"><div class="top"><span class="lbl">Yazarkasa Müşteri</span><span class="chip"><i class="ti ti-trending-up"></i>%4,3</span></div><div class="big">45.120</div><div class="sub"><div><div class="k">Sadakat kartlı</div><div class="v">31.400</div></div><div><div class="k">Son 365g aktif</div><div class="v">28.900</div></div></div></div>
+        <div class="hcard g-success"><div class="top"><span class="lbl">Şampiyon + Sadık</span><span class="chip"><i class="ti ti-crown"></i>%18</span></div><div class="big">3.214</div><div class="sub"><div><div class="k">Ciro payı</div><div class="v">%52</div></div><div><div class="k">Ort. sıklık</div><div class="v">8,3</div></div></div></div>
+        <div class="hcard g-info"><div class="top"><span class="lbl">E-ticaret Müşteri</span><span class="chip"><i class="ti ti-trending-up"></i>%9,1</span></div><div class="big">28.640</div><div class="sub"><div><div class="k">Tekrar oranı</div><div class="v">%34</div></div><div><div class="k">Yeni (30g)</div><div class="v">2.180</div></div></div></div>
+        <div class="hcard g-warning"><div class="top"><span class="lbl">YK Ciro (365g)</span><span class="chip"><i class="ti ti-trending-up"></i>%7,2</span></div><div class="big">94,8M ₺</div><div class="sub"><div><div class="k">Müşteri başı</div><div class="v">2.101 ₺</div></div><div><div class="k">Riskli segment</div><div class="v">%21</div></div></div></div>
+      </div>
+      <div class="dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="mockbadge"><i class="ti ti-alert-triangle"></i>RFM segment değerleri örnek — gerçeği DerinCrm sorgusundan</div>
+      <div class="card"><h4><i class="ti ti-chart-pie" style="color:#4063e6"></i>RFM Segment Dağılımı</h4>
+        <div class="bar"><div class="bl"><span class="bn">Şampiyon</span><span class="bv">1.340 · %5</span></div><div class="track2"><div class="fill" style="width:62%;background:#10b981"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Sadık</span><span class="bv">1.874 · %7</span></div><div class="track2"><div class="fill" style="width:80%;background:#4063e6"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Riskli</span><span class="bv">5.980 · %21</span></div><div class="track2"><div class="fill" style="width:55%;background:#f59e0b"></div></div></div>
+        <div class="bar"><div class="bl"><span class="bn">Kayıp</span><span class="bv">8.210 · %29</span></div><div class="track2"><div class="fill" style="width:42%;background:#ef4444"></div></div></div>
+      </div>
+      <div class="sectitle"><span class="t">En Değerli Müşteriler</span><span class="a">Tümü →</span></div>
+      <div class="list">
+        <div class="row"><span class="ricon" style="background:#ecfdf5"><i class="ti ti-crown" style="font-size:22px;color:#10b981"></i></span><div style="flex:1"><div class="nm">A. Yılmaz</div><div class="mt">Şampiyon · 14 alışveriş</div></div><div class="amt">38.400 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#ecfdf5"><i class="ti ti-crown" style="font-size:22px;color:#10b981"></i></span><div style="flex:1"><div class="nm">M. Demir</div><div class="mt">Şampiyon · 11 alışveriş</div></div><div class="amt">29.700 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+        <div class="row"><span class="ricon" style="background:#eff6ff"><i class="ti ti-user-star" style="font-size:22px;color:#3b82f6"></i></span><div style="flex:1"><div class="nm">S. Kaya</div><div class="mt">Sadık · 9 alışveriş</div></div><div class="amt">22.100 ₺</div><i class="ti ti-chevron-right chev"></i></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="navbar" id="nav">
+    <div class="nav on" data-i="0"><span class="pill"><i class="ti ti-layout-dashboard"></i></span><span>Genel</span></div>
+    <div class="nav" data-i="1"><i class="ti ti-shopping-cart"></i><span>E-ticaret</span></div>
+    <div class="nav" data-i="2"><i class="ti ti-building-warehouse"></i><span>Operasyon</span></div>
+    <div class="nav" data-i="3"><i class="ti ti-package"></i><span>Envanter</span></div>
+    <div class="nav" data-i="4"><i class="ti ti-users"></i><span>Müşteri</span></div>
+  </div>
+
+</div>
+
+<script>
+var pages=document.querySelectorAll('.page'), navs=document.querySelectorAll('#nav .nav'), title=document.getElementById('pgtitle');
+var ICONS=['ti-layout-dashboard','ti-shopping-cart','ti-building-warehouse','ti-package','ti-users'];
+function show(i){
+  pages.forEach(function(p,j){ p.classList.toggle('on', j===i); });
+  navs.forEach(function(n,j){
+    n.classList.toggle('on', j===i);
+    n.innerHTML = j===i
+      ? '<span class="pill"><i class="ti '+ICONS[j]+'"></i></span><span>'+n.querySelector('span:last-child').textContent+'</span>'
+      : '<i class="ti '+ICONS[j]+'"></i><span>'+n.querySelector('span:last-child').textContent+'</span>';
+  });
+  title.textContent = pages[i].dataset.title;
+  document.querySelector('.body').scrollTop=0;
+}
+navs.forEach(function(n){ n.addEventListener('click', function(){ show(+n.dataset.i); }); });
+// hero carousel dots (her track kendi dots)
+document.querySelectorAll('.track').forEach(function(tr){
+  var dotwrap=tr.nextElementSibling;
+  if(!dotwrap || !dotwrap.classList.contains('dots')) return;
+  var ds=dotwrap.querySelectorAll('span');
+  tr.addEventListener('scroll', function(){
+    var i=Math.round(tr.scrollLeft/tr.clientWidth);
+    ds.forEach(function(d,j){ d.classList.toggle('on', j===i); });
+  });
+});
+// seg pill toggle (görsel)
+document.querySelectorAll('.seg span').forEach(function(s){
+  s.addEventListener('click', function(){
+    document.querySelectorAll('.seg span').forEach(function(x){x.classList.remove('on');});
+    s.classList.add('on');
+  });
+});
+</script>
+</body>
+</html>
