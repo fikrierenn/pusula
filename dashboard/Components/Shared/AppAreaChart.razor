@@ -1,4 +1,5 @@
-@* Mobil-native area sparkline (ApexCharts) — gradient dolgu, gridsiz, yumuşak. plan-08. *@
+@* Fintech-stil area sparkline (ApexCharts) — ince çizgi, hafif gradient, son nokta marker,
+   hafif x-ekseni, y gizli, gridsiz, dokun-tooltip. plan-08. *@
 @typeparam TItem where TItem : class
 
 <div class="relative" style="height:@(Height)px">
@@ -14,46 +15,62 @@
     [Parameter, EditorRequired] public Func<TItem, decimal?> YValue { get; set; } = default!;
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public string Color { get; set; } = "#4063e6";
-    [Parameter] public int Height { get; set; } = 220;
-    [Parameter] public bool Bare { get; set; }   // true → saf sparkline (eksen/grid/padding yok)
+    [Parameter] public int Height { get; set; } = 120;
 
     private ApexChartOptions<TItem> _opts = new();
 
-    // tr-TR + M kısaltma (charts.js fmtK/fmtM eşdeğeri) — ApexCharts JS formatter.
     private const string NumFmt = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}";
 
     protected override void OnParametersSet()
     {
+        var color = string.IsNullOrEmpty(Color) ? "#4063e6" : Color;
+        var lastIdx = Math.Max(0, (Items?.Count() ?? 1) - 1);
+
         _opts = new ApexChartOptions<TItem>
         {
-            Chart = new Chart
-            {
-                Toolbar = new Toolbar { Show = false },
-                Zoom = new Zoom { Enabled = false },
-                Sparkline = Bare ? new ChartSparkline { Enabled = true } : null,
-            },
-            Colors = new List<string> { string.IsNullOrEmpty(Color) ? "#4063e6" : Color },
-            Stroke = new Stroke { Curve = Curve.Smooth, Width = 2.5 },
+            Chart = new Chart { Toolbar = new Toolbar { Show = false }, Zoom = new Zoom { Enabled = false } },
+            Colors = new List<string> { color },
+            Stroke = new Stroke { Curve = Curve.Smooth, Width = 2 },
             Fill = new Fill
             {
                 Type = new List<FillType> { FillType.Gradient },
-                Gradient = new FillGradient { OpacityFrom = 0.28, OpacityTo = 0, ShadeIntensity = 1 },
+                Gradient = new FillGradient { OpacityFrom = 0.18, OpacityTo = 0, ShadeIntensity = 1 },
             },
-            DataLabels = new DataLabels { Enabled = false },
-            Grid = new Grid { Show = false },
-            Markers = new Markers { Size = 0 },
+            DataLabels = new DataLabels { Enabled = false },   // değer başlıkta + sabit tooltip'te
+            Grid = new Grid { Show = false, Padding = new Padding { Left = 6, Right = 10, Top = 0, Bottom = 0 } },
+            // Son noktayı vurgula (fintech "şimdiki değer" işareti)
+            Markers = new Markers
+            {
+                Size = 0,
+                Colors = new List<string> { color },
+                StrokeColors = "#ffffff",
+                StrokeWidth = 2,
+                Discrete = new List<MarkersDiscrete>
+                {
+                    new MarkersDiscrete { SeriesIndex = 0, DataPointIndex = lastIdx, Size = 4, FillColor = color, StrokeColor = "#ffffff" },
+                },
+            },
             Legend = new Legend { Show = false },
             Xaxis = new XAxis
             {
+                TickAmount = 5,   // 14 etiket kalabalık → ~5 (fintech seyrek)
                 AxisBorder = new AxisBorder { Show = false },
                 AxisTicks = new AxisTicks { Show = false },
-                Labels = new XAxisLabels { Style = new AxisLabelStyle { FontSize = "10px" } },
+                Labels = new XAxisLabels
+                {
+                    HideOverlappingLabels = true,
+                    Style = new AxisLabelStyle { FontSize = "10px", Colors = "#94a3b8" },
+                },
+                Tooltip = new AxisTooltip { Enabled = false },
             },
-            Yaxis = new List<YAxis>
+            Yaxis = new List<YAxis> { new YAxis { Show = false } },
+            // Tooltip ÜSTE SABİT (parmak altında kalmaz)
+            Tooltip = new Tooltip
             {
-                new YAxis { Labels = new YAxisLabels { Style = new AxisLabelStyle { FontSize = "10px" }, Formatter = NumFmt } },
+                Y = new TooltipY { Formatter = NumFmt },
+                X = new TooltipX { Show = true },
+                Fixed = new TooltipFixed { Enabled = true, Position = TooltipPosition.TopLeft, OffsetY = -8 },
             },
-            Tooltip = new Tooltip { Y = new TooltipY { Formatter = NumFmt } },
         };
     }
 }

@@ -142,18 +142,30 @@ else if (_data is not null)
             <AppRankBars TItem="CategorySlice" Items="_data.Kategori"
                          Label="@(k => k.Ad)" Value="@(k => k.Ciro)" ValueText="@(k => Tl(k.Ciro))" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Fiziksel Net Ciro</h3>
-            <div class="flex items-end justify-between mb-2">
-                <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@Tl(_trend.Sum(t => t.Net))</div>
-                <div class="text-[11px] text-base-content/45">14 gün toplam</div>
+            <div class="flex items-center gap-2 mb-2">
+                <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@Tl(_trend.Count > 0 ? _trend[^1].Net : 0)</div>
+                @{ var gwC = _trend.Count > 1 ? WowOf(_trend[^1].Net, _trend[^2].Net) : null; }
+                @if (gwC is not null)
+                {
+                    var tc = TrendIco(gwC.Value);
+                    <span class="text-xs font-bold inline-flex items-center gap-0.5 @tc.cls" title="önceki güne göre"><i data-lucide="@tc.ico" class="w-3.5 h-3.5"></i>@Pct(gwC.Value)</span>
+                }
+                <div class="text-[11px] text-base-content/45 ml-auto">son gün · 14g @Tl(_trend.Sum(t => t.Net))</div>
             </div>
-            <AppAreaChart TItem="TrendPoint" Items="_trend" Name="Net Ciro" Color="@_pColor" Bare="true" Height="90"
+            <AppAreaChart TItem="TrendPoint" Items="_trend" Name="Net Ciro" Color="@_pColor" Height="110"
                           XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="package" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Net Alış (Mal Kabul)</h3>
-            <div class="flex items-end justify-between mb-2">
-                <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@Tl(_alis.Sum(t => t.Net))</div>
-                <div class="text-[11px] text-base-content/45">14 gün toplam</div>
+            <div class="flex items-center gap-2 mb-2">
+                <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@Tl(_alis.Count > 0 ? _alis[^1].Net : 0)</div>
+                @{ var gwA = _alis.Count > 1 ? WowOf(_alis[^1].Net, _alis[^2].Net) : null; }
+                @if (gwA is not null)
+                {
+                    var ta = TrendIco(gwA.Value);
+                    <span class="text-xs font-bold inline-flex items-center gap-0.5 @ta.cls" title="önceki güne göre"><i data-lucide="@ta.ico" class="w-3.5 h-3.5"></i>@Pct(gwA.Value)</span>
+                }
+                <div class="text-[11px] text-base-content/45 ml-auto">son gün · 14g @Tl(_alis.Sum(t => t.Net))</div>
             </div>
-            <AppAreaChart TItem="TrendPoint" Items="_alis" Name="Net Alış" Color="@_pColor" Bare="true" Height="90"
+            <AppAreaChart TItem="TrendPoint" Items="_alis" Name="Net Alış" Color="@_pColor" Height="110"
                           XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" />
             <div class="text-base-content/50 text-[11px] mt-2">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
     </div>
