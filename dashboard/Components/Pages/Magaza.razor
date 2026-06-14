@@ -43,23 +43,20 @@ else if (_d is not null)
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
             <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="credit-card" class="w-[18px] h-[18px] text-primary"></i>Ödeme Tipi Mix</h3>
-            @{ decimal oMax = _d.Odeme.Count > 0 ? _d.Odeme.Max(o => o.Tutar) : 0; }
-            @foreach (var o in _d.Odeme)
-            {
-                var oc = o;
-                <div class="py-2 border-b border-base-200 last:border-b-0 cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" @onclick="@(() => OpenOdeme(oc))">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-[13px] font-semibold text-base-content/85 truncate">@o.Grup@(o.Detay.Count > 1 ? " ▸" : "")</span>
-                        <span class="text-[13px] font-bold shrink-0">@Tl(o.Tutar)</span>
-                    </div>
-                    <div class="flex items-center justify-between text-[11px] text-base-content/50 mt-0.5"><span>@Num(o.Islem) işlem</span><span>%@o.Pay</span></div>
-                    <div class="h-1.5 rounded-full bg-base-200 mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-primary" style="width:@PctW(o.Tutar, oMax)"></div></div>
-                </div>
-            }
-            @if (_d.Odeme.Count == 0)
-            {
-                <div class="text-base-content/50 text-[13px] py-2">Ödeme kaydı yok.</div>
-            }
+            <AppIconRow TItem="OdemeGrup" Items="_d.Odeme"
+                Name="@(o => o.Grup)"
+                Sub="@(o => $"%{o.Pay} · {Num(o.Islem)} işlem")"
+                Amount="@(o => Tl(o.Tutar))"
+                Icon="@(o => o.Grup.Contains("Kredi", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("Banka", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("Kart", StringComparison.OrdinalIgnoreCase) ? "credit-card"
+                             : o.Grup.Contains("Nakit", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("TÜRK", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("TL", StringComparison.OrdinalIgnoreCase) ? "banknote"
+                             : o.Grup.Contains("Hediye", StringComparison.OrdinalIgnoreCase) ? "gift"
+                             : o.Grup.Contains("İade", StringComparison.OrdinalIgnoreCase) ? "receipt"
+                             : "wallet")"
+                IconColor="@(o => o.Grup.Contains("Kredi", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("Banka", StringComparison.OrdinalIgnoreCase) ? ("bg-primary/10", "text-primary")
+                             : o.Grup.Contains("Nakit", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("TÜRK", StringComparison.OrdinalIgnoreCase) || o.Grup.Contains("TL", StringComparison.OrdinalIgnoreCase) ? ("bg-success/10", "text-success")
+                             : o.Grup.Contains("Hediye", StringComparison.OrdinalIgnoreCase) ? ("bg-warning/10", "text-warning")
+                             : ("bg-base-200", "text-base-content/60"))"
+                OnRowClick="@(o => OpenOdeme(o))" />
             <div class="text-[11px] text-base-content/40 mt-3">Kart grubuna tıkla → banka detayı. Nakit (TL) kasa mutabakatı. Para üstü hariç.</div>
         </div>
 

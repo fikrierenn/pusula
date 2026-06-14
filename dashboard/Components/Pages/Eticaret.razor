@@ -50,43 +50,32 @@ else if (_data is not null)
                          Label="@(k => k.Ad)" Value="@(k => (decimal)k.Adet)" ValueText="@(k => $"{Num(k.Adet)} · %{(kargoFirmaTot > 0 ? Math.Round(100m * k.Adet / kargoFirmaTot) : 0)}")" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı — Top 12 (@_aralik)</h3>
             @{ var ilTot = _data.Il.Sum(x => x.Adet); }
-            <AppRankBars TItem="NameCount" Items="_data.Il"
-                         Label="@(x => x.Ad)" Value="@(x => (decimal)x.Adet)" ValueText="@(x => $"{Num(x.Adet)} · %{(ilTot > 0 ? Math.Round(100m * x.Adet / ilTot) : 0)}")" /></div>
+            <AppIconRow TItem="NameCount" Items="_data.Il"
+                        Name="@(x => x.Ad)"
+                        Sub="@(x => $"%{(ilTot > 0 ? Math.Round(100m * x.Adet / ilTot) : 0)} pay")"
+                        Amount="@(x => Num(x.Adet))"
+                        Icon="@(_ => "map-pin")"
+                        IconColor="@(_ => ("bg-primary/10", "text-primary"))" /></div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Performansı (@_aralik) — @_kargoPerf.Count firma</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kargo Firma</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td><td class="text-right"><b>Teslim</b></td></tr>
-                @foreach (var k in _kargoPerf)
-                {
-                    <tr><td>@k.Kargo</td><td class="text-right">@Num(k.Adet)</td>
-                        <td class="text-right text-base-content/50">@(k.CikisTakvim is null ? "—" : k.CikisTakvim.Value.ToString("0.0"))</td>
-                        <td class="text-right @(k.CikisIsGunu >= 3 ? "text-error" : k.CikisIsGunu <= 2 ? "text-success" : "")">@(k.CikisIsGunu is null ? "—" : k.CikisIsGunu.Value.ToString("0.0"))</td>
-                        <td class="text-right">@(k.TeslimGun is null ? "—" : k.TeslimGun.Value.ToString("0.0"))</td></tr>
-                }
-                @if (_kargoPerf.Count == 0)
-                {
-                    <tr><td colspan="5" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
-                }
-            </table>
-            <div class="text-base-content/50 text-[11px]"><b>Çıkış Takvim</b> = müşteri algısı (ham gün). <b>Çıkış İş Günü</b> = depo gerçek performansı (hafta sonu+tatil hariç). Teslim = kargo→müşteri (takvim). İş günü ≥3 kırmızı, ≤2 yeşil.</div>
+            <AppDataTable TItem="KargoPerf" Items="_kargoPerf"
+                          Primary="@(k => k.Kargo)"
+                          Sub="@(k => $"{Num(k.Adet)} sipariş · teslim {(k.TeslimGun is null ? "—" : k.TeslimGun.Value.ToString("0.0") + "g")}")"
+                          MetricMain="@(k => k.CikisIsGunu is null ? "—" : $"{k.CikisIsGunu.Value:0.0}g")"
+                          MetricSub="@(k => k.CikisTakvim is null ? "" : $"takvim {k.CikisTakvim.Value:0.0}g")"
+                          Badge="@(k => k.CikisIsGunu >= 3 ? ("yavaş", "bg-error/10 text-error") : k.CikisIsGunu <= 2 ? ("hızlı", "bg-success/10 text-success") : ("orta", "bg-base-200 text-base-content/50"))" />
+            <div class="text-base-content/50 text-[11px] mt-2"><b>Çıkış İş Günü</b> = depo gerçek (hafta sonu+tatil hariç) — ana metrik. Takvim = müşteri algısı. Teslim = kargo→müşteri. İş günü ≥3 kırmızı, ≤2 yeşil.</div>
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
             <AppRankBars TItem="BekleyenBucket" Items="_bekleyen"
                          Label="@(b => b.Bucket)" Value="@(b => (decimal)b.Adet)" ValueText="@(b => $"{Num(b.Adet)} · %{(bekToplam > 0 ? Math.Round(100m * b.Adet / bekToplam) : 0)}")" />
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Yaş</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Pay</b></td></tr>
-                @foreach (var b in _bekleyen)
-                {
-                    <tr><td>@b.Bucket</td>
-                        <td class="text-right @(b.Bucket is "4-7g" or "8+g" && b.Adet > 0 ? "text-error" : "")">@Num(b.Adet)</td>
-                        <td class="text-right">%@(bekToplam > 0 ? Math.Round(100m * b.Adet / bekToplam) : 0)</td></tr>
-                }
-                <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM bekleyen</td><td class="text-right"><b>@Num(bekToplam)</b></td><td class="text-right"></td></tr>
-            </table>
-            <div class="text-base-content/50 text-[11px]">SENDDATE boş + normal statü. Sipariş tarihinden bugüne yaş. 4g+ kırmızı = SLA riski.</div>
+            <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200 text-[13px]">
+                <span class="font-bold">TOPLAM bekleyen</span><span class="font-bold tabular-nums">@Num(bekToplam)</span>
+            </div>
+            <div class="text-base-content/50 text-[11px] mt-2">SENDDATE boş + normal statü. Sipariş tarihinden bugüne yaş. 4g+ = SLA riski.</div>
         </div>
     </div>
 
@@ -95,44 +84,21 @@ else if (_data is not null)
             @{ var kgTop = _kargoGun.Sum(k => k.Adet); }
             <AppRankBars TItem="KargoGun" Items="_kargoGun"
                          Label="@(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")" Value="@(k => (decimal)k.Adet)" ValueText="@(k => $"{Num(k.Adet)} · %{(kgTop > 0 ? Math.Round(100m * k.Adet / kgTop) : 0)}")" />
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Çıkış Günü</b></td><td class="text-right"><b>Paket</b></td><td class="text-right"><b>Pay</b></td></tr>
-                @foreach (var k in _kargoGun)
-                {
-                    <tr><td>@(k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")</td>
-                        <td class="text-right @(k.Gun >= 4 && k.Adet > 0 ? "text-error" : "")">@Num(k.Adet)</td>
-                        <td class="text-right">%@(kgTop > 0 ? Math.Round(100m * k.Adet / kgTop) : 0)</td></tr>
-                }
-                @if (_kargoGun.Count == 0)
-                {
-                    <tr><td colspan="3" class="text-base-content/50">Kargoya çıkmış sipariş bulunamadı.</td></tr>
-                }
-                else
-                {
-                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM çıkan</td><td class="text-right"><b>@Num(kgTop)</b></td><td class="text-right"></td></tr>
-                }
-            </table>
-            <div class="text-base-content/50 text-[11px]">DATEDIFF(gün, sipariş, kargoya teslim). 4. gün+ kırmızı = yavaş çıkış.</div>
+            <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200 text-[13px]">
+                <span class="font-bold">TOPLAM çıkan</span><span class="font-bold tabular-nums">@Num(kgTop)</span>
+            </div>
+            <div class="text-base-content/50 text-[11px] mt-2">DATEDIFF(gün, sipariş, kargoya teslim). 4. gün+ = yavaş çıkış.</div>
         </div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Teslimat Performansı — Top 15 (çıkış @_aralik) — @_ilTeslimat.Count il</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Şehir</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td><td class="text-right"><b>Teslim</b></td><td class="text-right"><b>Toplam (algı)</b></td></tr>
-                @foreach (var i in _ilTeslimat)
-                {
-                    <tr><td>@i.Sehir</td><td class="text-right">@Num(i.Adet)</td>
-                        <td class="text-right text-base-content/50">@i.CikisTakvim.ToString("0.0")</td>
-                        <td class="text-right @(i.CikisIsGunu >= 3 ? "text-error" : i.CikisIsGunu <= 2 ? "text-success" : "")">@i.CikisIsGunu.ToString("0.0")</td>
-                        <td class="text-right @(i.TeslimGun >= 3 ? "text-error" : i.TeslimGun <= 1.5m ? "text-success" : "")">@i.TeslimGun.ToString("0.0")</td>
-                        <td class="text-right font-semibold">@((i.CikisTakvim + i.TeslimGun).ToString("0.0"))</td></tr>
-                }
-                @if (_ilTeslimat.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-base-content/50">Teslim olmuş sipariş bulunamadı.</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="IlTeslimat" Items="_ilTeslimat"
+                          Primary="@(i => i.Sehir)"
+                          Sub="@(i => $"{Num(i.Adet)} sipariş · teslim {i.TeslimGun:0.0}g")"
+                          MetricMain="@(i => $"{i.CikisIsGunu:0.0}g")"
+                          MetricSub="@(i => $"takvim {i.CikisTakvim:0.0}g")"
+                          Badge="@(i => i.CikisIsGunu >= 3 ? ("yavaş", "bg-error/10 text-error") : i.CikisIsGunu <= 2 ? ("hızlı", "bg-success/10 text-success") : ("orta", "bg-base-200 text-base-content/50"))" />
             <div class="text-base-content/50 text-[11px]"><b>Çıkış Takvim</b> = müşteri algısı (ham gün, hafta sonu+tatil dahil). <b>Çıkış İş Günü</b> = depo gerçek performansı (Pzt-Cuma çalışma). Teslim = kargo→müşteri (takvim, il+mesafe). Toplam (algı) = takvim çıkış + teslim = müşterinin beklediği süre. İş günü ≥3 kırmızı / ≤2 yeşil, teslim ≤1,5g yeşil. STATUS=1005 teslim olmuş.</div>
         </div>
     </div>
@@ -155,19 +121,13 @@ else if (_data is not null)
             </div>
             <AppAreaChart TItem="AyKargo" Items="_ayKargo" Name="Çıkış İş Günü" Color="@_pColor" Height="110"
                           XValue="@(a => (object)a.Ay)" YValue="@(a => (decimal?)a.CikisIsGunu)" />
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Ay</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
-                @foreach (var a in _ayKargo)
-                {
-                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenAyDetay(a)"><td>@a.Ay ▸</td><td class="text-right">@Num(a.Siparis)</td>
-                        <td class="text-right text-base-content/50">@a.CikisTakvim.ToString("0.0")</td>
-                        <td class="text-right @(a.CikisIsGunu >= 3 ? "text-error" : a.CikisIsGunu <= 2 ? "text-success" : "")">@a.CikisIsGunu.ToString("0.0")</td></tr>
-                }
-                @if (_ayKargo.Count == 0)
-                {
-                    <tr><td colspan="4" class="text-base-content/50">Veri yok.</td></tr>
-                }
-            </table>
+            <AppIconRow TItem="AyKargo" Items="_ayKargo"
+                        Name="@(a => a.Ay)"
+                        Sub="@(a => $"{Num(a.Siparis)} sipariş · takvim {a.CikisTakvim:0.0}g")"
+                        Amount="@(a => $"{a.CikisIsGunu:0.0}g")"
+                        Icon="@(_ => "calendar")"
+                        IconColor="@(a => a.CikisIsGunu >= 3 ? ("bg-error/10", "text-error") : a.CikisIsGunu <= 2 ? ("bg-success/10", "text-success") : ("bg-base-200", "text-base-content/60"))"
+                        OnRowClick="@(a => OpenAyDetay(a))" />
             <div class="text-base-content/50 text-[11px]">Grafik = <b>iş günü</b> trend (depo gerçek). Takvim = müşteri algısı. Yoğun aylarda iş günü artar (kapasite darboğazı) — örn. yılbaşı. ≥3 iş günü kırmızı, ≤2 yeşil.</div>
         </div>
     </div>
@@ -192,20 +152,12 @@ else if (_data is not null)
         @if (_selAy is not null)
         {
             <div class="text-base-content/50 text-xs mb-2">@_selAy.Ay · @Num(_selAy.Siparis) sipariş · çıkış takvim @_selAy.CikisTakvim.ToString("0.0")g / iş günü @_selAy.CikisIsGunu.ToString("0.0")g</div>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Gün</b></td><td><b>Gün Adı</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Çıkış Takvim</b></td><td class="text-right"><b>Çıkış İş Günü</b></td></tr>
-                @foreach (var g in _gunKargo)
-                {
-                    var hg = GunAdi(g.Gun);
-                    <tr><td>@g.Gun</td><td class="@(hg is "Cumartesi" or "Pazar" ? "text-base-content/40" : "")">@hg</td><td class="text-right">@Num(g.Siparis)</td>
-                        <td class="text-right text-base-content/50">@g.CikisTakvim.ToString("0.0")</td>
-                        <td class="text-right @(g.CikisIsGunu >= 3 ? "text-error" : g.CikisIsGunu <= 2 ? "text-success" : "")">@g.CikisIsGunu.ToString("0.0")</td></tr>
-                }
-                @if (_gunKargo.Count == 0)
-                {
-                    <tr><td colspan="5" class="text-base-content/50">Gün verisi yok.</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="GunKargo" Items="_gunKargo"
+                          Primary="@(g => GunAdi(g.Gun))"
+                          Sub="@(g => g.Gun)"
+                          MetricMain="@(g => $"{g.CikisIsGunu:0.0}g")"
+                          MetricSub="@(g => Num(g.Siparis) + " sipariş")"
+                          Badge="@(g => g.CikisIsGunu >= 3 ? ("yavaş", "bg-error/10 text-error") : g.CikisIsGunu <= 2 ? ("hızlı", "bg-success/10 text-success") : ("orta", "bg-base-200 text-base-content/50"))" />
             <div class="text-base-content/50 text-[11px] mt-2">Çıkış iş günü = hafta sonu + tatil hariç. Düşük-sipariş gün = resmi/dini tatil (depo kapalı).</div>
         }
     </Modal>

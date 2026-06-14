@@ -37,12 +37,14 @@ else if (_d is not null)
                          OnRowClick="@(d => OpenUrun(d.Kategori))" />
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ölü Sermaye — Kilitli Stok (anlık stok, en yüksek ₺)</h3>
-            <AppRankBars TItem="DevirRow"
-                         Items="@(_d.Devir.OrderByDescending(x => x.StokTl).Take(6))"
-                         Label="@(d => d.Kategori)"
-                         Value="@(d => d.StokTl)"
-                         ValueText="@(d => $"{Tl(d.StokTl)} · devir {d.Devir:0.0}x")"
-                         OnRowClick="@(d => OpenUrun(d.Kategori))" />
+            <AppIconRow TItem="DevirRow"
+                        Items="@(_d.Devir.OrderByDescending(x => x.StokTl).Take(6))"
+                        Name="@(d => d.Kategori)"
+                        Sub="@(d => $"devir {d.Devir:0.0}x")"
+                        Amount="@(d => Tl(d.StokTl))"
+                        Icon="@(_ => "lock")"
+                        IconColor="@(d => d.Devir < 1.5m ? ("bg-error/10", "text-error") : d.Devir < 3m ? ("bg-warning/10", "text-warning") : ("bg-base-200", "text-base-content/60"))"
+                        OnRowClick="@(d => OpenUrun(d.Kategori))" />
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">ABC — Ciro Yoğunluğu (Pareto 80/20, geçen ay)</h3>
             <AppDataTable TItem="AbcClass"

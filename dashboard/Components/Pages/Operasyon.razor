@@ -41,8 +41,9 @@ else if (_data is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Saat Bazlı Yoğunluk (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">mağaza · online hariç</span></h3><p class="text-[11px] text-base-content/50 mb-2">fiş yoğunluğu (saat bazlı)</p>
-            <AppBarChart TItem="HourBar" Items="_data.Saat" Name="Fiş" Color="@_pColor" Height="220" Horizontal="false"
-                         XValue="@(h => (object)$"{h.Saat:00}")" YValue="@(h => (decimal?)h.Fis)" /></div>
+            <AppRankBars TItem="HourBar" Items="@(_data.Saat.OrderByDescending(h => h.Fis).Take(6))"
+                         Label="@(h => $"{h.Saat:00}:00–{(h.Saat + 1):00}:00")" Value="@(h => (decimal)h.Fis)"
+                         ValueText="@(h => $"{Num(h.Fis)} fiş")" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kasiyer Performansı (@_aralik) — @_data.Kasiyer.Count kişi</h3>
             <AppDataTable TItem="KasiyerRow" Items="_data.Kasiyer"
                           Primary="@(k => k.Ad)" Sub="@(k => k.Magaza)"
