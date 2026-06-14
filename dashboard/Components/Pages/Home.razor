@@ -18,7 +18,7 @@
 </div>
 
 <!-- Dönem segment pill (paylaşılan — tüm sayfalar aynı) -->
-<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" CssClass="mb-4 lg:max-w-xl" />
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" CssClass="mb-4 lg:max-w-xl" />
 @if (_period == "ozel")
 {
     <div class="flex gap-2 mb-4 flex-wrap">

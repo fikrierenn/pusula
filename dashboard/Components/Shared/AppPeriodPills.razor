@@ -2,13 +2,29 @@
 <div class="flex gap-2 @CssClass">
     @foreach (var (key, label) in _opts)
     {
-        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors @(Period == key ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70")"
-                @onclick="@(() => PeriodChanged.InvokeAsync(key))">@label</button>
+        var aktif = Period == key;
+        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 @(aktif ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70 active:bg-base-200")"
+                @onclick="@(() => PeriodChanged.InvokeAsync(key))">
+            @if (aktif && Busy)
+            {
+                <span class="loading loading-spinner loading-xs"></span>
+            }
+            @label
+        </button>
     }
     @if (ShowOzel)
     {
-        <button class="w-11 shrink-0 rounded-full flex items-center justify-center @(Period == "ozel" ? "bg-neutral text-neutral-content" : "bg-base-100 border border-base-200 text-base-content/70")"
-                @onclick="@(() => PeriodChanged.InvokeAsync("ozel"))" aria-label="Özel aralık"><i data-lucide="calendar" class="w-5 h-5"></i></button>
+        <button class="w-11 shrink-0 rounded-full flex items-center justify-center transition-all active:scale-95 @(Period == "ozel" ? "bg-neutral text-neutral-content" : "bg-base-100 border border-base-200 text-base-content/70 active:bg-base-200")"
+                @onclick="@(() => PeriodChanged.InvokeAsync("ozel"))" aria-label="Özel aralık">
+            @if (Period == "ozel" && Busy)
+            {
+                <span class="loading loading-spinner loading-xs"></span>
+            }
+            else
+            {
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+            }
+        </button>
     }
 </div>
 
@@ -16,6 +32,7 @@
     [Parameter] public string Period { get; set; } = "ay";
     [Parameter] public EventCallback<string> PeriodChanged { get; set; }
     [Parameter] public bool ShowOzel { get; set; } = true;
+    [Parameter] public bool Busy { get; set; }   // yükleniyor → aktif pill'de spinner
     [Parameter] public string CssClass { get; set; } = "mb-4 lg:max-w-md";
 
     static readonly (string, string)[] _opts = { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") };

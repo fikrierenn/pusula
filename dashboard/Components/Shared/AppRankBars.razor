@@ -11,7 +11,7 @@
     {
         var v = Value(it);
         var item = it;
-        <div class="py-1.5 @(clickable ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
+        <div class="py-1.5 @(clickable ? "cursor-pointer hover:bg-base-200/40 active:bg-base-200 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
              @onclick="@(() => OnRowClick.InvokeAsync(item))">
             <div class="flex items-center justify-between gap-2 mb-1">
                 <span class="text-[13px] font-semibold text-base-content/85 truncate">@Label(it)@(clickable ? " ▸" : "")</span>

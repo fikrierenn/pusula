@@ -16,7 +16,7 @@
         <h1 class="text-2xl font-bold tracking-tight m-0 truncate">@(_d?.Ad ?? Mekan(Id))</h1>
     </div>
 </div>
-<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" ShowOzel="false" />
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" ShowOzel="false" />
 
 @if (_loading)
 {

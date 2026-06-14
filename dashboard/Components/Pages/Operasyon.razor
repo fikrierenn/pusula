@@ -12,7 +12,7 @@
     <div class="text-xs text-base-content/50">@_aralik</div>
     <h1 class="text-2xl font-bold tracking-tight m-0">Operasyon</h1>
 </div>
-<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" CssClass="mb-4 lg:max-w-md" />
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" CssClass="mb-4 lg:max-w-md" />
 @if (_period == "ozel")
 {
     <div class="flex gap-2 mb-4 flex-wrap">

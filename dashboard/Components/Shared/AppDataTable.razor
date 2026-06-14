@@ -11,7 +11,7 @@
         var expandable = Details is not null;
         var open = _open.Contains(idx);
         <div class="border-b border-base-200 last:border-b-0">
-            <div class="flex items-center gap-2 py-2.5 @(expandable ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
+            <div class="flex items-center gap-2 py-2.5 @(expandable ? "cursor-pointer hover:bg-base-200/40 active:bg-base-200 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
                  @onclick="@(() => Toggle(idx))">
                 <div class="min-w-0 flex-1">
                     <div class="text-[13px] font-semibold text-base-content/85 truncate">@Primary(item)</div>
