@@ -39,14 +39,17 @@ else if (_data is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kanal — NET (@_aralik)</h3>
+            @{ var kanalTot = _data.Etic.Sum(e => e.Ciro); }
             <AppRankBars TItem="EticChannel" Items="_data.Etic"
-                         Label="@(e => e.Ad)" Value="@(e => e.Ciro)" ValueText="@(e => Tl(e.Ciro))" /></div>
+                         Label="@(e => e.Ad)" Value="@(e => e.Ciro)" ValueText="@(e => $"{Tl(e.Ciro)} · %{(kanalTot > 0 ? Math.Round(100 * e.Ciro / kanalTot) : 0)}")" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kargo Firma (@_aralik)</h3>
+            @{ var kargoFirmaTot = _data.Kargo.Sum(k => k.Adet); }
             <AppRankBars TItem="NameCount" Items="_data.Kargo"
-                         Label="@(k => k.Ad)" Value="@(k => (decimal)k.Adet)" ValueText="@(k => Num(k.Adet))" /></div>
+                         Label="@(k => k.Ad)" Value="@(k => (decimal)k.Adet)" ValueText="@(k => $"{Num(k.Adet)} · %{(kargoFirmaTot > 0 ? Math.Round(100m * k.Adet / kargoFirmaTot) : 0)}")" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı — Top 12 (@_aralik)</h3>
+            @{ var ilTot = _data.Il.Sum(x => x.Adet); }
             <AppRankBars TItem="NameCount" Items="_data.Il"
-                         Label="@(x => x.Ad)" Value="@(x => (decimal)x.Adet)" ValueText="@(x => Num(x.Adet))" /></div>
+                         Label="@(x => x.Ad)" Value="@(x => (decimal)x.Adet)" ValueText="@(x => $"{Num(x.Adet)} · %{(ilTot > 0 ? Math.Round(100m * x.Adet / ilTot) : 0)}")" /></div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -70,7 +73,7 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Bekleyen Gün — Kargoya Çıkmamış (anlık)</h3>
             @{ var bekToplam = _bekleyen.Sum(b => b.Adet); }
             <AppRankBars TItem="BekleyenBucket" Items="_bekleyen"
-                         Label="@(b => b.Bucket)" Value="@(b => (decimal)b.Adet)" ValueText="@(b => Num(b.Adet))" />
+                         Label="@(b => b.Bucket)" Value="@(b => (decimal)b.Adet)" ValueText="@(b => $"{Num(b.Adet)} · %{(bekToplam > 0 ? Math.Round(100m * b.Adet / bekToplam) : 0)}")" />
             <table class="table table-sm w-full text-[13px]">
                 <tr><td><b>Yaş</b></td><td class="text-right"><b>Adet</b></td><td class="text-right"><b>Pay</b></td></tr>
                 @foreach (var b in _bekleyen)
@@ -87,9 +90,9 @@ else if (_data is not null)
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Günlük Kargo Çıkışı (@_aralik) — sipariş → kargoya teslim gün</h3>
-            <AppRankBars TItem="KargoGun" Items="_kargoGun"
-                         Label="@(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")" Value="@(k => (decimal)k.Adet)" ValueText="@(k => Num(k.Adet))" />
             @{ var kgTop = _kargoGun.Sum(k => k.Adet); }
+            <AppRankBars TItem="KargoGun" Items="_kargoGun"
+                         Label="@(k => k.Gun == 0 ? "Aynı gün" : $"{k.Gun}. gün")" Value="@(k => (decimal)k.Adet)" ValueText="@(k => $"{Num(k.Adet)} · %{(kgTop > 0 ? Math.Round(100m * k.Adet / kgTop) : 0)}")" />
             <table class="table table-sm w-full text-[13px]">
                 <tr><td><b>Çıkış Günü</b></td><td class="text-right"><b>Paket</b></td><td class="text-right"><b>Pay</b></td></tr>
                 @foreach (var k in _kargoGun)
