@@ -15,6 +15,7 @@
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public string Color { get; set; } = "#4063e6";
     [Parameter] public int Height { get; set; } = 220;
+    [Parameter] public bool Bare { get; set; }   // true → saf sparkline (eksen/grid/padding yok)
 
     private ApexChartOptions<TItem> _opts = new();
 
@@ -29,6 +30,7 @@
             {
                 Toolbar = new Toolbar { Show = false },
                 Zoom = new Zoom { Enabled = false },
+                Sparkline = Bare ? new ChartSparkline { Enabled = true } : null,
             },
             Colors = new List<string> { string.IsNullOrEmpty(Color) ? "#4063e6" : Color },
             Stroke = new Stroke { Curve = Curve.Smooth, Width = 2.5 },
