@@ -1,3 +1,4 @@
+using ApexCharts;
 using GmDashboard.Components;
 using GmDashboard.Data;
 
@@ -6,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddApexCharts();   // mobil-native grafik motoru (plan-08)
 
 builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<Queries>();
