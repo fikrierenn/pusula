@@ -172,31 +172,22 @@ else if (_data is not null)
     <Modal @bind-Open="_modalTot" Title="TOPLAM — Kategori Dağılımı (3 mağaza)">
         @{
             var birlesik = _data.Stores.SelectMany(s => s.Kategori)
-                .GroupBy(k => k.Ad).Select(g => new { Ad = g.Key, Ciro = g.Sum(x => x.Ciro) })
+                .GroupBy(k => k.Ad).Select(g => new CategorySlice(g.Key, g.Sum(x => x.Ciro)))
                 .OrderByDescending(x => x.Ciro).ToList();
             var totC = birlesik.Sum(x => x.Ciro);
         }
-        <div class="text-base-content/50 text-xs mb-2">@_aralik · net @Tl(_data.Fiziksel) · @Num(_data.Fis) fiş</div>
-        <table class="table table-sm w-full text-[13px]">
-            <tr><td><b>Kategori</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Pay</b></td></tr>
-            @foreach (var k in birlesik)
-            {
-                <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="text-right">@Tl(k.Ciro)</td><td class="text-right">%@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</td></tr>
-            }
-        </table>
+        <div class="text-base-content/50 text-xs mb-3">@_aralik · net @Tl(_data.Fiziksel) · @Num(_data.Fis) fiş · kategoriye dokun → ürünler</div>
+        <AppRankBars TItem="CategorySlice" Items="birlesik" Label="@(k => k.Ad)" Value="@(k => k.Ciro)"
+                     ValueText="@(k => $"{Tl(k.Ciro)} · %{(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)}")"
+                     OnRowClick="@(k => OpenUrun(k.Ad))" />
     </Modal>
 
     <Modal @bind-Open="_modalEtic" Title="E-ticaret — Kanal Dağılımı">
-        <div class="text-base-content/50 text-xs mb-2">@_aralik · net @Tl(_data.Eticaret) · @Num(_data.ESip) sipariş</div>
-        <table class="table table-sm w-full text-[13px]">
-            <tr><td><b>Kanal</b></td><td class="text-right"><b>Sipariş</b></td><td class="text-right"><b>Net Ciro</b></td><td class="text-right"><b>Sepet</b></td><td class="text-right"><b>Pay</b></td></tr>
-            @foreach (var e in _data.Etic)
-            {
-                <tr><td>@e.Ad</td><td class="text-right">@Num(e.Sip)</td><td class="text-right">@Tl(e.Ciro)</td>
-                    <td class="text-right">@Num(e.Sip > 0 ? (int)Math.Round(e.Ciro / e.Sip) : 0) ₺</td>
-                    <td class="text-right">%@(_data.Eticaret > 0 ? Math.Round(100 * e.Ciro / _data.Eticaret) : 0)</td></tr>
-            }
-        </table>
+        <div class="text-base-content/50 text-xs mb-3">@_aralik · net @Tl(_data.Eticaret) · @Num(_data.ESip) sipariş</div>
+        <AppDataTable TItem="EticChannel" Items="_data.Etic"
+                      Primary="@(e => e.Ad)" Sub="@(e => $"{Num(e.Sip)} sipariş · sepet {Tl(e.Sip > 0 ? (int)Math.Round(e.Ciro / e.Sip) : 0)}")"
+                      MetricMain="@(e => Tl(e.Ciro))"
+                      MetricSub="@(e => $"%{(_data.Eticaret > 0 ? Math.Round(100 * e.Ciro / _data.Eticaret) : 0)} pay")" />
     </Modal>
 
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
@@ -207,20 +198,10 @@ else if (_data is not null)
         }
         else
         {
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>#</b></td><td><b>Kod</b></td><td><b>Ürün</b></td><td class="text-right"><b>Satış (adet)</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Bakiye</b></td></tr>
-                @{ var ui = 1; }
-                @foreach (var u in _urunler)
-                {
-                    <tr><td class="text-base-content/40">@ui</td><td>@u.Kod</td><td>@u.Ad</td><td class="text-right">@Num(u.Satis)</td><td class="text-right">@Tl(u.Ciro)</td>
-                        <td class="text-right @(u.Bakiye <= 0 ? "text-error" : "")">@Num(u.Bakiye)</td></tr>
-                    ui++;
-                }
-                @if (_urunler.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-base-content/50">Ürün bulunamadı.</td></tr>
-                }
-            </table>
+            <AppDataTable TItem="UrunRow" Items="_urunler"
+                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod}")"
+                          MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} adet")"
+                          Badge="@(u => (u.Bakiye <= 0 ? "tükendi" : $"stok {Num(u.Bakiye)}", u.Bakiye <= 0 ? "bg-error/15 text-error" : "bg-base-200 text-base-content/60"))" />
         }
     </Modal>
 
