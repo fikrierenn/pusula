@@ -91,9 +91,9 @@ else if (_data is not null)
         <div class="text-[18px] font-extrabold whitespace-nowrap shrink-0">@Tl(_data.Eticaret)</div>
     </div>
 
-    @if (_period == "ay" && _hedefMag is not null)
+    @if (_period is "ay" or "haftalik" && _hedefMag is not null)
     {
-        <h2 class="text-lg font-bold tracking-tight mb-3">Hedefler</h2>
+        <h2 class="text-lg font-bold tracking-tight mb-3">Hedefler <span class="text-[11px] font-semibold text-base-content/45">(MTD · bugün beklenen %@PacePct)</span></h2>
         <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-5">
             <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="target" class="w-[18px] h-[18px] text-primary"></i>Mağaza — Hedef Gerçekleşme (MTD)</h3>
                 @{ decimal tNet = 0, tHed = 0; }
@@ -108,7 +108,7 @@ else if (_data is not null)
                     <div class="text-right"><span class="text-sm font-bold @GerRenk(tGer)">@(tGer is null ? "—" : $"%{tGer}")</span>
                         <div class="text-[11px] text-base-content/50">@Tl(tNet) / @Tl(tHed)</div></div>
                 </div>
-                <div class="text-base-content/50 text-[11px] mt-3">≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı. Hedef: BKMDATA.Hedef (aylık).</div>
+                <div class="text-base-content/50 text-[11px] mt-3">≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı · dikey çizgi = bugün beklenen (%@PacePct, gün/ay). Hedef: BKMDATA.Hedef (aylık MTD).</div>
             </div>
             <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="target" class="w-[18px] h-[18px] text-primary"></i>Kategori — Hedef Gerçekleşme (en sapan)</h3>
                 @foreach (var k in _hedefKat)
@@ -296,8 +296,12 @@ else if (_data is not null)
             var tAlis  = Queries.GetAlisTrendAsync(dun);
             await Task.WhenAll(tData, tTrend, tAlis);
             _data = tData.Result; _trend = tTrend.Result; _alis = tAlis.Result;
-            if (_period == "ay")
-                (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(start, endExcl);
+            // Hedef = aylık MTD (ay başı→bugün). Haftalıkta da göster (pace-line ile bağlam) — günlükte gizli.
+            if (_period is "ay" or "haftalik")
+            {
+                var ayBas = new DateOnly(dun.Year, dun.Month, 1);
+                (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(ayBas, g2);
+            }
             else { _hedefMag = null; _hedefKat = []; }
             _alerts = BuildAlerts();
             Notif.Set(_alerts, _aralik);   // global zile (MainLayout) ilet
@@ -355,15 +359,31 @@ else if (_data is not null)
     private static string BarW(decimal? pct) => Math.Min(Math.Max(pct ?? 0, 0), 100)
         .ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
 
-    // Kompakt hedef satırı (tablo yerine — mobilde taşmaz): ad + % + net/hedef + mini progress.
+    // Pace = ayın bugüne kadar geçen oranı (MTD beklenen gerçekleşme). Hedef barında dikey çizgi.
+    private static int PacePct => (int)Math.Round(100.0 * DateTime.Today.Day / DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month));
+
+    // Kompakt hedef satırı: ad + % (geride/önde) + net/hedef + mini progress + pace-line dikey çizgi.
     private RenderFragment HedefRow(string ad, decimal net, decimal hedef, decimal? pct) => @<div class="py-2 border-b border-base-200 last:border-b-0">
         <div class="flex items-center justify-between gap-2">
             <span class="text-[13px] font-semibold text-base-content/85 truncate">@ad</span>
-            <span class="text-[13px] font-bold shrink-0 @GerRenk(pct)">@(pct is null ? "—" : $"%{pct}")</span>
+            <span class="text-[13px] font-bold shrink-0 inline-flex items-center gap-1 @GerRenk(pct)">
+                @(pct is null ? "—" : $"%{pct}")
+                @if (pct is not null && pct < PacePct - 3)
+                {
+                    <span class="text-[10px] font-bold text-error">geride</span>
+                }
+                else if (pct is not null && pct > PacePct + 3)
+                {
+                    <span class="text-[10px] font-bold text-success">önde</span>
+                }
+            </span>
         </div>
         <div class="text-[11px] text-base-content/50 truncate mt-0.5">@Tl(net) / @Tl(hedef)</div>
-        <div class="h-1.5 rounded-full bg-base-200 mt-1.5 overflow-hidden">
-            <div class="h-full rounded-full @GerBar(pct)" style="width:@BarW(pct)"></div>
+        <div class="relative mt-1.5">
+            <div class="h-1.5 rounded-full bg-base-200 overflow-hidden">
+                <div class="h-full rounded-full @GerBar(pct)" style="width:@BarW(pct)"></div>
+            </div>
+            <div class="absolute -top-1 h-3.5 w-[2px] bg-base-content/60 rounded" style="left:@BarW((decimal)PacePct)" title="bugün beklenen %@PacePct"></div>
         </div>
     </div>;
 
