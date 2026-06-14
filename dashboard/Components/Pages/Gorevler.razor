@@ -28,45 +28,28 @@
     <input class="input input-bordered input-sm text-[13px]" placeholder="Atanan ara…" @bind="_fltAtanan" @bind:event="oninput" @bind:after="Uygula" />
 </div>
 
-<table class="table table-zebra w-full text-[13.5px] bg-base-100 rounded-2xl overflow-hidden shadow-sm">
-    <thead>
-        <tr>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">#</th>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Başlık</th>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Öncelik</th>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Atanan</th>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Durum</th>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide">Oluşturma</th>
-            <th class="text-left bg-base-200 text-base-content/60 text-xs uppercase tracking-wide"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var g in _filtreli)
-        {
-            <tr class="cursor-pointer hover:bg-base-200/50 @(g.Durum == "Kapalı" ? "opacity-50 line-through" : "")" @onclick="() => Duzenle(g)">
-                <td class="text-base-content/40">@g.Id</td>
-                <td>@g.Baslik</td>
-                <td><span class="badge badge-sm font-bold border-0 @OncBadge(g.Oncelik)">@g.Oncelik</span></td>
-                <td>@(string.IsNullOrEmpty(g.Atanan) ? "—" : g.Atanan)</td>
-                <td><span class="badge badge-sm font-bold border-0 @(g.Durum == "Kapalı" ? "badge-ghost" : "badge-info")">@g.Durum</span></td>
-                <td class="text-base-content/50">@g.Olusturma</td>
-                <td @onclick:stopPropagation="true">
-                    <div class="flex gap-1.5">
-                        @if (g.Durum != "Kapalı")
-                        {
-                            <button class="btn btn-xs" @onclick="() => Kapat(g.Id)">Kapat</button>
-                        }
-                        <button class="btn btn-xs btn-ghost text-error" @onclick="() => Sil(g.Id)">Sil</button>
-                    </div>
-                </td>
-            </tr>
-        }
-        @if (_filtreli.Count == 0)
-        {
-            <tr><td colspan="7" class="text-base-content/50 p-[18px] text-center">Görev yok.</td></tr>
-        }
-    </tbody>
-</table>
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-1">
+    <AppDataTable TItem="Gorev" Items="_filtreli"
+                  Primary="@(g => g.Baslik)"
+                  Sub="@(g => $"#{g.Id} · {(string.IsNullOrEmpty(g.Atanan) ? "atanmadı" : g.Atanan)} · {g.Olusturma}")"
+                  Badge="@(g => (g.Oncelik, OncTone(g.Oncelik)))">
+        <Details Context="g">
+            @if (!string.IsNullOrWhiteSpace(g.Aciklama))
+            {
+                <div class="text-[12.5px] text-base-content/70 leading-snug mb-2.5">@g.Aciklama</div>
+            }
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] font-bold rounded-full px-2 py-0.5 @(g.Durum == "Kapalı" ? "bg-base-200 text-base-content/60" : "bg-info/15 text-info")">@g.Durum</span>
+                <button class="btn btn-sm btn-primary ml-auto" @onclick="() => Duzenle(g)">Düzenle</button>
+                @if (g.Durum != "Kapalı")
+                {
+                    <button class="btn btn-sm" @onclick="() => Kapat(g.Id)">Kapat</button>
+                }
+                <button class="btn btn-sm btn-ghost text-error" @onclick="() => Sil(g.Id)">Sil</button>
+            </div>
+        </Details>
+    </AppDataTable>
+</div>
 
 <Modal @bind-Open="_modalAcik" Title="@($"Görev #{_seciliId} düzenle")">
     <div class="flex flex-col items-stretch gap-2.5 mt-2">
@@ -142,6 +125,7 @@
     private void Sil(long id) { Svc.Sil(id); Yenile(); }
 
     private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
-    private static string OncBadge(string o) => o.Contains("Yüksek") ? "badge-error" : o.Contains("Düşük") ? "badge-success" : "badge-warning";
+    // Öncelik solid pill tonu (AppDataTable Badge — plain span, .badge yok → bg gerek).
+    private static string OncTone(string o) => o.Contains("Yüksek") ? "bg-error/15 text-error" : o.Contains("Düşük") ? "bg-success/15 text-success" : "bg-warning/15 text-warning";
     private static string NormOnc(string o) => o.Contains("Yüksek") ? "Yüksek" : o.Contains("Düşük") ? "Düşük" : "Orta";
 }

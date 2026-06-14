@@ -1,5 +1,6 @@
 @page "/asistan"
 @using GmDashboard.Data
+@using GmDashboard.Components.Shared
 @inject LlmService Llm
 @inject GorevService Gorevler
 @rendermode InteractiveServer
@@ -64,23 +65,16 @@
 
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
         <h3>Açık Görevler (@_gorevler.Count)</h3>
-        <table class="table table-sm w-full text-[13px]">
-            <tr><td><b>#</b></td><td><b>Başlık</b></td><td><b>Öncelik</b></td><td><b>Atanan</b></td><td></td></tr>
-            @foreach (var g in _gorevler)
-            {
-                <tr>
-                    <td class="text-base-content/40">@g.Id</td>
-                    <td>@g.Baslik</td>
-                    <td><span class="badge badge-sm font-bold border-0 @OncBadge(g.Oncelik)">@g.Oncelik</span></td>
-                    <td>@(string.IsNullOrEmpty(g.Atanan) ? "—" : g.Atanan)</td>
-                    <td class="text-right"><button class="btn btn-xs" @onclick="() => KapatAsync(g.Id)">Kapat</button></td>
-                </tr>
-            }
-            @if (_gorevler.Count == 0)
-            {
-                <tr><td colspan="5" class="text-base-content/50">Açık görev yok.</td></tr>
-            }
-        </table>
+        <AppDataTable TItem="Gorev" Items="_gorevler"
+                      Primary="@(g => g.Baslik)"
+                      Sub="@(g => $"#{g.Id} · {(string.IsNullOrEmpty(g.Atanan) ? "atanmadı" : g.Atanan)}")"
+                      Badge="@(g => (g.Oncelik, OncTone(g.Oncelik)))">
+            <Details Context="g">
+                <div class="flex items-center justify-end">
+                    <button class="btn btn-sm" @onclick="() => KapatAsync(g.Id)">Kapat</button>
+                </div>
+            </Details>
+        </AppDataTable>
     </div>
 </div>
 
@@ -157,5 +151,6 @@
     }
 
     private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
-    private static string OncBadge(string o) => o.Contains("Yüksek") ? "badge-error" : o.Contains("Düşük") ? "badge-success" : "badge-warning";
+    // Öncelik solid pill tonu (AppDataTable Badge — plain span).
+    private static string OncTone(string o) => o.Contains("Yüksek") ? "bg-error/15 text-error" : o.Contains("Düşük") ? "bg-success/15 text-success" : "bg-warning/15 text-warning";
 }

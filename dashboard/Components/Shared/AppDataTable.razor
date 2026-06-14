@@ -20,13 +20,16 @@
                         <div class="text-[11px] text-base-content/50 truncate">@Sub(item)</div>
                     }
                 </div>
-                <div class="text-right shrink-0 min-w-[56px]">
-                    <div class="text-[13px] font-bold tabular-nums whitespace-nowrap">@MetricMain(item)</div>
-                    @if (MetricSub is not null)
-                    {
-                        <div class="text-[11px] text-base-content/50 tabular-nums whitespace-nowrap">@MetricSub(item)</div>
-                    }
-                </div>
+                @if (MetricMain is not null)
+                {
+                    <div class="text-right shrink-0 min-w-[56px]">
+                        <div class="text-[13px] font-bold tabular-nums whitespace-nowrap">@MetricMain(item)</div>
+                        @if (MetricSub is not null)
+                        {
+                            <div class="text-[11px] text-base-content/50 tabular-nums whitespace-nowrap">@MetricSub(item)</div>
+                        }
+                    </div>
+                }
                 @if (Badge is not null)
                 {
                     var b = Badge(item);
@@ -55,7 +58,7 @@
     [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
     [Parameter, EditorRequired] public Func<TItem, string> Primary { get; set; } = default!;
     [Parameter] public Func<TItem, string>? Sub { get; set; }
-    [Parameter, EditorRequired] public Func<TItem, string> MetricMain { get; set; } = default!;
+    [Parameter] public Func<TItem, string>? MetricMain { get; set; }
     [Parameter] public Func<TItem, string>? MetricSub { get; set; }
     [Parameter] public Func<TItem, (string Text, string Cls)>? Badge { get; set; }
     [Parameter] public RenderFragment<TItem>? Details { get; set; }   // set → satır tıkla-genişlet
