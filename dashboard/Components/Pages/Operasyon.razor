@@ -31,6 +31,14 @@ else if (_error is not null)
 }
 else if (_data is not null)
 {
+    <AppKpiCarousel Id="opkpi" Items="@(new List<KpiCardData>
+    {
+        new("Toplam İşlem", Num(_data.Fis), "from-primary to-primary/80", "mağaza fiş"),
+        new("Kasiyer", Num(_data.Kasiyer.Count), "from-info to-info/80", "aktif kasiyer"),
+        new("En Yoğun Saat", _data.Saat.Count > 0 ? $"{_data.Saat.OrderByDescending(h => h.Fis).First().Saat:00}:00" : "—", "from-success to-success/80", "fiş zirvesi"),
+        new("COD İade Zararı", _ops is not null ? Tl(_ops.CodZarar) : "—", "from-error to-error/80", "60g kargo×2"),
+    })" />
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Saat Bazlı Yoğunluk (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">mağaza · online hariç</span></h3><p class="text-[11px] text-base-content/50 mb-2">fiş yoğunluğu (saat bazlı)</p>
             <AppBarChart TItem="HourBar" Items="_data.Saat" Name="Fiş" Color="@_pColor" Height="220" Horizontal="false"
@@ -173,6 +181,15 @@ else if (_data is not null)
                 if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
             }
             catch { /* tema okunamazsa component fallback'i kullanır */ }
+        }
+        if (_data is not null)
+        {
+            try
+            {
+                var charts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+                await charts.InvokeVoidAsync("heroDots", "opkpi", "opkpiDots");   // KPI carousel dot senkronu
+            }
+            catch { /* prerender — sonraki render'da bağlanır */ }
         }
     }
 

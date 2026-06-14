@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Müşteri — BKM GM</PageTitle>
@@ -18,6 +19,18 @@ else if (_error is not null)
 }
 else
 {
+    var ykToplamMusteri = _yk.Sum(r => r.Musteri);
+    var ykSadakatMusteri = _yk.Where(r => r.Segment.StartsWith("1") || r.Segment.StartsWith("2")).Sum(r => r.Musteri);
+    var etToplamMusteri = _et.Sum(r => r.Musteri);
+    var ykToplamCiro = _yk.Sum(r => r.Ciro);
+    <AppKpiCarousel Id="mskpi" Items="@(new List<KpiCardData>
+    {
+        new("Yazarkasa Müşteri", Num(ykToplamMusteri), "from-primary to-primary/80", "son 365 gün · sadakat kartı"),
+        new("Şampiyon + Sadık", Num(ykSadakatMusteri), "from-info to-info/80", "YK en değerli 2 segment"),
+        new("E-ticaret Müşteri", Num(etToplamMusteri), "from-success to-success/80", "son 365 gün · JOKER"),
+        new("YK Ciro (365g)", Tl(ykToplamCiro), "from-warning to-warning/80", "sadakat kartı toplam"),
+    })" />
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Yazarkasa — Sadakat Kartı (son 365 gün)</h3>
@@ -83,6 +96,19 @@ else
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_yk.Count > 0 || _et.Count > 0)
+        {
+            try
+            {
+                var charts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+                await charts.InvokeVoidAsync("heroDots", "mskpi", "mskpiDots");
+            }
+            catch { /* prerender — sonraki render'da bağlanır */ }
+        }
     }
 
     private async Task OpenDrill(string kanal, string seg)

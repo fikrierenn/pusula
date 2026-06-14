@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Envanter — BKM GM</PageTitle>
@@ -18,10 +19,13 @@ else if (_error is not null)
 }
 else if (_d is not null)
 {
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 mb-4 max-sm:grid-cols-2">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-5 py-4"><div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50">Envanter Değeri (Ort.Maliyet)</div><div class="text-[25px] font-extrabold tracking-tight my-1">@Tl(_d.ToplamDeger)</div>
-            <div class="text-[12.5px] text-base-content/60">Dergi/Sınav hariç · son snapshot</div></div>
-    </div>
+    <AppKpiCarousel Id="envkpi" Items="@(new List<KpiCardData>
+    {
+        new("Envanter Değeri", Tl(_d.ToplamDeger), "from-primary to-primary/80", "ort.maliyet · Dergi/Sınav hariç"),
+        new("Ort. Devir Hızı", _d.Devir.Count > 0 ? (_d.Devir.Average(x => x.Devir).ToString("0.0") + "x") : "—", "from-info to-info/80", "yıllık devir hızı"),
+        new("Stokta Yokluk", _d.Stockout.Count > 0 ? ("%" + _d.Stockout.Average(x => x.Pct).ToString("0.0")) : "—", "from-warning to-warning/80", "satılanlarda (hedef <%5)"),
+        new("Ölü Stok", Tl(_d.Devir.Where(x => x.Devir < 1.5m).Sum(x => x.StokTl)), "from-error to-error/80", "devir<1,5x kilitli ₺"),
+    })" />
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Hızlı Dönen Kategoriler (yıllık devir)</h3>
@@ -121,6 +125,19 @@ else if (_d is not null)
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_d is not null)
+        {
+            try
+            {
+                var charts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+                await charts.InvokeVoidAsync("heroDots", "envkpi", "envkpiDots");
+            }
+            catch { /* prerender — sonraki render'da bağlanır */ }
+        }
     }
 
     private async Task OpenUrun(string kategori)
