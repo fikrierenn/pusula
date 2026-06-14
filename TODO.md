@@ -95,7 +95,38 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-49** Mağaza detay PERF (paralel)~~ — ✅ 14.06 commit 649e346 (LoadAsync→Task.WhenAll, plan-09 Adım 1; Home/Eticaret/Operasyon paralel; JOKER eşzamanlı 7 sorgu sorunsuz).
 - [x] ~~**B-50 ⚡ MOBİL TASARIM POLISH**~~ — ✅ 14.06 commit 72aada5+48b4221 (KPI beyaz/kompakt + hedef guard, build:css .NET target). B-51 ile süperseded.
 - [x] ~~**B-51 ⚡ APP DİLİ → WEB/BLAZOR UYARLAMA**~~ — ✅ 14.06 (cbefab3→0d2c0bc, ~24 commit). TÜM dashboard mobil-app dili: gradient hero CAROUSEL (AppKpiCarousel) + ikon-kart mağaza (trend WoW) + segment pill (AppPeriodPills) + fintech sparkline + **HTML progress (AppRankBars)** + accordion grid (AppDataTable). plan-08 (ApexCharts pilot → kullanıcı beğenmedi → HTML progress PİVOT) + plan-09 (5 iş: paralel/grid-oran/E-tic carousel/filtre/irsHrk). **irsHrk KDV mutabakatı:** fark %100=KDV(EncoreMerkez dahil/irsHrk hariç)+iade → drill EncoreMerkez net KDV-dahil (kart=drill), sema yazıldı. Shared: AppArea/Bar/RankBars/DataTable/KpiCarousel/PeriodPills.
-- [ ] **B-52** (yeni 14.06) Home TOPLAM/E-tic kategori modalları hâlâ `<table>` → AppDataTable (tutarlılık, düşük öncelik). B-47 mobil drill HTTPS hâlâ açık.
+- [x] ~~**B-52** Home TOPLAM/E-tic kategori modalları `<table>` → AppDataTable~~ — ✅ 14.06 commit 2e9dc88 (+ b42b60f Görevler/Asistan, + ef8e85e tap-feedback). Dashboard'da artık HİÇ `<table>` yok. Bu oturum ayrıca: AI Günün Özeti→yerel LLM (e68cf77), bildirim merkezi global bar (3077378), ürün drill kaç-gün-yeter 30/90/360g + stok dağılımı FSM/Özlüce/İst.Yolu/Depo/ODAK (507b8fa/958e0bc/6da84fa), modal kapatma UX (1b956c2). Skill: dashboard-icerik (75bd9b7) + dashboard-oneri (9a71835).
+
+#### Dashboard İçerik Backlog — dashboard-oneri taraması (14.06). Seçilince `dashboard-icerik` ile uygula.
+
+**🔥 Hızlı kazanım (S — mevcut sorgu varyasyonu, yeni tablo/köprü yok):**
+- [ ] **B-53** Mağaza detay 30-gün ciro trendi (AppAreaChart) — mağazada hiç trend yok. Veri: GetTrendAsync + mekanId filtresi. **(öncelik: yüksek)**
+- [ ] **B-54** Hedef pace-line — "ayın 14'ü %40, iyi mi?" beklenen-ilerleme çizgisi. Veri: C# (`Today.Day / DaysInMonth`), SQL yok. Haftalık görünümde hedef de gösterilsin. **(yüksek)**
+- [ ] **B-55** Mağaza saat×gün ısı haritası (heatmap 7×14) — personel/kampanya zamanlama. Veri: Sales DATEPART HOUR+WEEKDAY (mevcut saatSql + weekday boyutu). Yeni AppHeatmap bileşeni. **(yüksek)**
+- [ ] **B-56** COD iade il haritası/tablo — Doğu %15-21 risk → coğrafi COD kararı. Veri: GetIlTeslimat join + PAYDEFREF=-3 + CARGODELIVERYSTATUS. **(orta)**
+- [ ] **B-57** Kasiyer aylık sıralama + önceki-ay delta rozeti. Veri: kasSql 2× (cari+önceki dönem) + C# delta. **(orta)**
+- [ ] **B-58** Tekrar satın-alma oranı (yeni vs sadık müşteri) — Frq>1 payı, fiziksel + e-tic. Veri: RFM/ykSql alt sorgu. **(orta)** → B-66 sadakat temasına bağlı.
+
+**Orta (M — yeni sorgu/cross-db join):**
+- [ ] **B-59** E-ticaret online kategori mix (AppRankBars) — online ne satılıyor (fiziksel'de var, online'da yok). Veri: J_ORDER_DETAILS→J_ITEMS.DERINSIS_ID→urnKtgr2 (ISO tarih, JOKER timeout riski). **(yüksek-orta)**
+- [ ] **B-60** Depo WMS anlık durum kartı (Home veya /depo) — bekleyen toplama (J_DEPO_TOPLANACAK) + bugün kargoya çıkan (depo.emirAyr emTamam=1) + Joker CK stok. **(orta)**
+- [ ] **B-61** Kategori net marj % göstergesi — ciro var, marj yok. Veri: B-07 SQL (fatAyr.ehTutarN/ABS(ehAdetN)) adaptasyonu. **(orta)**
+- [ ] **B-62** Hediye çeki yükümlülük özeti — satılan vs kullanılan vs kalan bakiye (balance-sheet etkisi). Veri: SalesPayments + hediye çeki ID keşfi + J_ORDERS.VOUCHERCODE. **(orta)**
+- [ ] **B-63** Marka alış-vs-satış dengesi (rotasyon matrisi) — top-20 marka, alış>satış=birikim. Veri: irsHrk ehTip 4/100 vs 0/10 GROUP BY urnMrk. **(düşük-orta)**
+
+**Düşük:**
+- [ ] **B-64** E-ticaret sipariş durumu huni (funnel) — gelen→toplama→kargo→teslim→iade. Veri: J_ORDERS.STATUS (enum keşfi gerekli → codes.yaml). **(düşük)**
+- [ ] **B-65** Müşteri kayıp/risk segmenti 3-ay trendi (anlık→değişim). Veri: ykSql 3× (t/t-30/t-60). **(yüksek)** → B-66 temasına bağlı.
+
+#### 🎯 Müşteri Sadakat Derinleştirme (kullanıcı isteği 14.06 — derin CRM/sadakat). [TIER 3 plan-first — yeni "Sadakat" sayfası olabilir]
+> Veri tabanı: EncoreMerkez `Sales.CustomersId` + `DerinCrm.Customer` (Name/PhoneNumber/CardNumber) · e-tic `J_ORDER_CLIENTS.CUSTOMERREF` · mevcut RFM (C1-rfm). Tek köprü çözüldü (`DerinCrm.Customer.Id = Sales.CustomersId`).
+- [ ] **B-66** Kohort retention matrisi — aylık edinim kohortu × N-ay-sonra geri dönüş oranı (heatmap). "Ocak'ta gelen müşterinin %X'i 3. ay hâlâ alıyor". En güçlü sadakat metriği. **(yüksek, L)**
+- [ ] **B-67** RFM segment geçiş matrisi — dönemler arası segment akışı (Şampiyon→Risk→Kayıp migrasyonu). "Kaç şampiyon riske düştü?" erken uyarı. **(yüksek, M)**
+- [ ] **B-68** Win-back / reaktivasyon listesi — yüksek geçmiş değer + son 90g hareketsiz müşteri (isim/tel/kart, DerinCrm). Aksiyon listesi (SMS/arama). 335K kayıptan değerli olanları süz. **(yüksek, M)**
+- [ ] **B-69** Sadakat kartı analizi — kartlı vs kartsız müşteri ATV/frekans farkı + kart penetrasyonu (kartlı satış %). `DerinCrm.Customer.CardNumber` "2025…". Kart değeri kanıtı. **(orta, M)**
+- [ ] **B-70** Müşteri konsantrasyonu (Pareto) — cironun %X'i kaç müşteriden (bağımlılık riski) + top müşteri CLV tahmini (frekans×ATV×beklenen ömür). **(orta, M)**
+- [ ] **B-71** İlk-alış → 2. alış dönüşümü (onboarding funnel) — yeni müşterinin kaçı 2. alışa geçiyor, ne kadar sürede. Tutma başlangıcı. **(orta, M)**
+- [ ] **B-72** Müşteri bazlı kategori afinitesi — "kitap alan müşteri kırtasiyeye de geçiyor mu" (çapraz-satış sinyali, sepet genişletme). **(düşük, L)**
 - [x] ~~**B-42** Eski Python pano emekli~~ — ✅ 13.06: `scripts/gm_dashboard.py` SİLİNDİ (Blazor superset, 14 panel eşleşti + fazlası, cascade yok). briefings/* eski çıktılar GEÇMİŞ hafta (kullanılmaz) → dokunulmadı; gelecek brief generate_brief (status-fix sonrası) doğru üretir.
 - [ ] **B-43** Kafe POS DB erişimi araştır — EncoreMerkez'de kafe yok, xlsx kanonik. Kafe ayrı POS sistemi nerede? **(YENİ)**
 - [x] ~~**B-46** `tools/diskscan` native disk tarayıcı~~ — ✅ 13.06 commit 16f0caf. (1) optimize rebuild (42→37 sn), (2) .gitignore+kaynak commit, (3) C tarandı → cache D'ye yönlendirildi (npm/pip/yarn) + ~8,3 GB temizlendi (C 16→27,7 GB boş). D: 5,3→124 GB. MFT makine policy ile kapalı (err 50/1300) — dir-walk tavanı.
