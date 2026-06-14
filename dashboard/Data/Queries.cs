@@ -302,4 +302,66 @@ public sealed class Queries(Db db)
         var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
         return (await conn.QueryAsync<TrendPoint>(sql, new { bas, son })).OrderBy(t => t.Tarih).ToList();
     }
+
+    /// <summary>
+    /// B-73 Hedef tahmin: aylık net seri (irsHrk, 3 mağaza, KDV-hariç) + tahmin ayı için
+    /// YoY taban × son-3-ay YoY ivmesi + senaryo bandı (±σ). MTD gerçekleşme dahil.
+    /// Tahmin ayı = bugünün ayı (kısmi). irsHrk: ehTip 4/100 satış − 101 iade.
+    /// </summary>
+    public async Task<TahminSonuc> GetTahminAsync(DateOnly bugun)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT CONVERT(char(7),h.ehTrhS,23) AS Ay,
+                   CAST(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN WHEN h.ehTip=101 THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS Net
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (4,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son
+            GROUP BY CONVERT(char(7),h.ehTrhS,23);
+            """;
+        var bas = new DateOnly(bugun.Year, bugun.Month, 1).AddMonths(-25).ToDateTime(TimeOnly.MinValue);
+        var son = new DateOnly(bugun.Year, bugun.Month, 1).AddMonths(1).ToDateTime(TimeOnly.MinValue);
+        var seri = (await conn.QueryAsync<AylikNokta>(sql, new { bas, son })).OrderBy(x => x.Ay).ToList();
+        return Forecast.Hesapla(seri, $"{bugun:yyyy-MM}", bugun.Day, DateTime.DaysInMonth(bugun.Year, bugun.Month));
+    }
+}
+
+/// <summary>Hedef tahmin matematiği (saf C# — SQL'den ayrı, test edilebilir). B-73.</summary>
+public static class Forecast
+{
+    public static TahminSonuc Hesapla(IReadOnlyList<AylikNokta> seri, string tahminAy, int gunGecti, int ayGun)
+    {
+        var m = seri.ToDictionary(x => x.Ay, x => x.Net);
+        static string Kaydir(string ay, int n) =>
+            DateTime.ParseExact(ay + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+                .AddMonths(n).ToString("yyyy-MM");
+        decimal? Get(string a) => m.TryGetValue(a, out var v) ? v : null;
+
+        var mtd = Get(tahminAy) ?? 0m;                 // tahmin ayı şu ana kadar (kısmi)
+        var yoyBase = Get(Kaydir(tahminAy, -12));      // geçen yıl aynı ay
+
+        // Son 3 TAMAMLANMIŞ ayın YoY büyüme oranı → ivme.
+        var rates = new List<decimal>();
+        for (int i = 1; i <= 3; i++)
+        {
+            var k = Get(Kaydir(tahminAy, -i));
+            var kp = Get(Kaydir(tahminAy, -i - 12));
+            if (k is not null && kp is > 0) rates.Add(k.Value / kp.Value - 1);
+        }
+        var yeterli = yoyBase is > 0 && rates.Count >= 2;
+        if (!yeterli)
+            return new TahminSonuc(tahminAy, yoyBase ?? 0, 0, 0, 0, 0, mtd, null, false, seri);
+
+        var ivme = rates.Average();
+        var ort = (double)ivme;
+        var sigma = rates.Count > 1
+            ? (decimal)Math.Sqrt(rates.Sum(r => Math.Pow((double)r - ort, 2)) / rates.Count)
+            : 0m;
+        var tahmin = Math.Round(yoyBase!.Value * (1 + ivme), 0);
+        var alt = Math.Round(yoyBase.Value * (1 + ivme - sigma), 0);
+        var ust = Math.Round(yoyBase.Value * (1 + ivme + sigma), 0);
+        // MTD pace = kısmi ay → tüm aya doğrusal projeksiyon (kaba referans, mevsimsel değil).
+        decimal? pace = gunGecti > 0 ? Math.Round(mtd * ayGun / gunGecti, 0) : null;
+
+        return new TahminSonuc(tahminAy, yoyBase.Value, Math.Round(100 * ivme, 1), tahmin, alt, ust, mtd, pace, true, seri);
+    }
 }

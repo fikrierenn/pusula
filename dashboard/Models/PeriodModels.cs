@@ -6,6 +6,15 @@ public record KpiCardData(string Label, string Value, string Gradient, string Su
 /// <summary>Bildirim merkezi uyarısı. Ico=lucide adı; Tone=error|warning|success.</summary>
 public record AlertItem(string Ico, string Tone, string Title, string Desc);
 
+/// <summary>Aylık net ciro noktası (irsHrk, KDV-hariç). Ay = "yyyy-MM".</summary>
+public record AylikNokta(string Ay, decimal Net);
+
+/// <summary>Hedef tahmin sonucu (B-73). YoY taban × son-3-ay YoY ivmesi + senaryo bandı.
+/// Yetersiz veri (YoY yok) → Yeterli=false. Mtd = tahmin ayının şu ana kadarki gerçekleşmesi.</summary>
+public record TahminSonuc(string TahminAy, decimal YoYTaban, decimal IvmePct, decimal Tahmin,
+    decimal Alt, decimal Ust, decimal Mtd, decimal? MtdPace, bool Yeterli,
+    IReadOnlyList<AylikNokta> Seri);
+
 /// <summary>Mağaza dönem satırı (EncoreMerkez Sales → posMagaza). Net = iade sign'lı.</summary>
 public record StoreRow(int MekanId, decimal Net, int Fis, decimal Iade);
 
