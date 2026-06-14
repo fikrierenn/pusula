@@ -180,7 +180,7 @@ else if (_data is not null)
     </Modal>
 
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
-        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · ilk 100 · badge = stok · ~90g kaç gün yeter · satıra dokun → 30/90/360g</div>
+        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · ilk 100 · sağ = dönem satış · badge = stok ~90g kaç gün yeter · dokun → 30/90/360g</div>
         @if (_urunLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
@@ -188,11 +188,11 @@ else if (_data is not null)
         else
         {
             <AppDataTable TItem="UrunRow" Items="_urunler"
-                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod}")"
-                          MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} adet")"
+                          Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod} · stok {Num(u.Bakiye)}")"
+                          MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} satış")"
                           Badge="@(u => UrunStok(u))">
                 <Details Context="u">
-                    <div class="text-[10px] text-base-content/45 mb-1.5">Ort. günlük satış · stok kaç gün yeter (trailing pencere)</div>
+                    <div class="text-[10px] text-base-content/45 mb-1.5">Stok @Num(u.Bakiye) · ort. günlük satış · kaç gün yeter (trailing pencere)</div>
                     <div class="grid grid-cols-3 gap-2">
                         @CoverCell("30 gün", u.S30, 30, u.Bakiye)
                         @CoverCell("90 gün", u.S90, 90, u.Bakiye)
@@ -365,14 +365,14 @@ else if (_data is not null)
     private static int? Cover(int bakiye, int satisWin, int days)
         => bakiye <= 0 ? 0 : satisWin <= 0 ? null : (int)Math.Round(bakiye / (satisWin / (double)days));
     private static string OrtGun(int satisWin, int days) => (satisWin / (double)days).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
-    // Badge = 90 günlük pencere (dengeli) kaç-gün-yeter. ≤7g kırmızı (acil), ≤21g sarı.
+    // Badge = 90 günlük pencere (dengeli) kaç-gün-yeter. ≤7g kırmızı (acil), ≤21g sarı. (Stok adedi Sub'da.)
     private (string Text, string Cls) UrunStok(UrunRow u)
     {
         if (u.Bakiye <= 0) return ("tükendi", "bg-error/15 text-error");
         var c = Cover(u.Bakiye, u.S90, 90);
-        if (c is null) return ($"{Num(u.Bakiye)} stok", "bg-base-200 text-base-content/55");
-        var cls = c <= 7 ? "bg-error/15 text-error" : c <= 21 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/55";
-        return ($"{Num(u.Bakiye)} · ~{Num(c.Value)}g", cls);
+        if (c is null) return ("durgun", "bg-base-200 text-base-content/55");   // stok var, 90g satış yok
+        var cls = c <= 7 ? "bg-error/15 text-error" : c <= 21 ? "bg-warning/15 text-warning" : "bg-success/15 text-success";
+        return ($"~{Num(c.Value)}g yeter", cls);
     }
     // Accordion hücresi — bir trailing pencere (30/90/360): ort/gün + kaç gün yeter.
     private RenderFragment CoverCell(string lbl, int satisWin, int days, int bakiye) => @<div class="bg-base-100 rounded-xl py-2 px-1 text-center">
