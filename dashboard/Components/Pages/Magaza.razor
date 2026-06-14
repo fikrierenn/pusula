@@ -40,6 +40,23 @@ else if (_d is not null)
         </div>
     </div>
 
+    <!-- B-53 Mağaza son 30 gün ciro trendi (fintech sparkline) -->
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+        <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 30 Gün — Net Ciro</h3>
+        <div class="flex items-center gap-2 mb-2">
+            <div class="text-2xl font-extrabold tracking-tight whitespace-nowrap">@Tl(_trend.Count > 0 ? _trend[^1].Net : 0)</div>
+            @{ var avgT = _trend.Count > 0 ? _trend.Average(t => t.Net) : 0; var gwT = _trend.Count > 1 && avgT > 0 ? Math.Round(100 * (_trend[^1].Net - avgT) / avgT, 1) : (decimal?)null; }
+            @if (gwT is not null)
+            {
+                var ic = gwT == 0 ? ("minus", "text-base-content/40") : gwT > 0 ? ("trending-up", "text-success") : ("trending-down", "text-error");
+                <span class="text-xs font-bold inline-flex items-center gap-0.5 @ic.Item2" title="30 gün ortalamasına göre"><i data-lucide="@ic.Item1" class="w-3.5 h-3.5"></i>@gwT.Value.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))%</span>
+            }
+            <div class="text-[11px] text-base-content/45 ml-auto text-right">son gün · 30g ort @Tl((decimal)avgT)</div>
+        </div>
+        <AppAreaChart TItem="TrendPoint" Items="_trend" Name="Net Ciro" Color="@_pColor" Height="110"
+                      XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" />
+    </div>
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
             <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="credit-card" class="w-[18px] h-[18px] text-primary"></i>Ödeme Tipi Mix</h3>
@@ -189,6 +206,8 @@ else if (_d is not null)
     private string? _error;
     private string _aralik = "";
     private MagazaDetay? _d;
+    private IReadOnlyList<TrendPoint> _trend = [];   // B-53 son 30 gün
+    private string _pColor = "";                       // grafik rengi (DaisyUI --p köprü)
     private bool _modalUrun;
     private bool _urunLoading;
     private string _selKat = "";
@@ -220,7 +239,10 @@ else if (_d is not null)
             var son = endExcl.AddDays(-1);
             _start = start; _endExcl = endExcl;
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
-            _d = await Mag.GetDetayAsync(Id, start, endExcl);
+            var tDetay = Mag.GetDetayAsync(Id, start, endExcl);
+            var tTrend = Mag.GetTrendAsync(Id, dun, 30);
+            await Task.WhenAll(tDetay, tTrend);
+            _d = tDetay.Result; _trend = tTrend.Result;
             if (_d is null) _error = "Geçersiz mağaza.";
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -240,6 +262,16 @@ else if (_d is not null)
     private IJSObjectReference? _charts;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            try
+            {
+                var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+                var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+                if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+            }
+            catch { /* tema okunamazsa component fallback */ }
+        }
         if (_d is null) return;
         try
         {

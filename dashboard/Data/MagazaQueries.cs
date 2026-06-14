@@ -168,4 +168,25 @@ public sealed class MagazaQueries(Db db)
             upt, kpi.Iade ?? 0m, kpi.IadeOran ?? 0m, ger, odeme, kampanya,
             kampToplamBrut, kampToplamInd, kampToplamFis, kategori);
     }
+
+    /// <summary>Mağaza son N gün günlük net ciro (trend area). dun = referans (dahil). B-53.</summary>
+    public async Task<IReadOnlyList<TrendPoint>> GetTrendAsync(int mid, DateOnly dun, int gun = 30)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT CONVERT(varchar,s.Date,23) AS Tarih,
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,0)) AS Net
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+            LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+            WHERE MG.mekanID=@mid AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL
+              AND s.Date>=@bas AND s.Date<@son
+            GROUP BY CONVERT(varchar,s.Date,23);
+            """;
+        var bas = dun.AddDays(-(gun - 1)).ToDateTime(TimeOnly.MinValue);
+        var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        return (await conn.QueryAsync<TrendPoint>(sql, new { mid, bas, son })).OrderBy(t => t.Tarih).ToList();
+    }
 }
