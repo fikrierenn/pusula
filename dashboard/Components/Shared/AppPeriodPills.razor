@@ -1,0 +1,22 @@
+@* Dönem segment pill (tek kaynak — tüm sayfalar aynı). Günlük/Haftalık/Aylık + opsiyonel özel. plan-08. *@
+<div class="flex gap-2 @CssClass">
+    @foreach (var (key, label) in _opts)
+    {
+        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors @(Period == key ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70")"
+                @onclick="@(() => PeriodChanged.InvokeAsync(key))">@label</button>
+    }
+    @if (ShowOzel)
+    {
+        <button class="w-11 shrink-0 rounded-full flex items-center justify-center @(Period == "ozel" ? "bg-neutral text-neutral-content" : "bg-base-100 border border-base-200 text-base-content/70")"
+                @onclick="@(() => PeriodChanged.InvokeAsync("ozel"))" aria-label="Özel aralık"><i data-lucide="calendar" class="w-5 h-5"></i></button>
+    }
+</div>
+
+@code {
+    [Parameter] public string Period { get; set; } = "ay";
+    [Parameter] public EventCallback<string> PeriodChanged { get; set; }
+    [Parameter] public bool ShowOzel { get; set; } = true;
+    [Parameter] public string CssClass { get; set; } = "mb-4 lg:max-w-md";
+
+    static readonly (string, string)[] _opts = { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") };
+}

@@ -16,13 +16,7 @@
         <h1 class="text-2xl font-bold tracking-tight m-0 truncate">@(_d?.Ad ?? Mekan(Id))</h1>
     </div>
 </div>
-<div class="flex gap-2 mb-4 lg:max-w-md">
-    @foreach (var (key, label) in new[] { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") })
-    {
-        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors @(_period == key ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70")"
-                @onclick="() => SetPeriod(key)">@label</button>
-    }
-</div>
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" ShowOzel="false" />
 
 @if (_loading)
 {

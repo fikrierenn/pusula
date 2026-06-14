@@ -24,16 +24,8 @@
     </div>
 </div>
 
-<!-- Dönem segment pill (aktif=koyu) + özel takvim -->
-<div class="flex gap-2 mb-4 lg:max-w-xl">
-    @foreach (var (key, label) in new[] { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") })
-    {
-        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors @(_period == key ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70")"
-                @onclick="() => SetPeriod(key)">@label</button>
-    }
-    <button class="w-11 shrink-0 rounded-full flex items-center justify-center @(_period == "ozel" ? "bg-neutral text-neutral-content" : "bg-base-100 border border-base-200 text-base-content/70")"
-            @onclick='() => SetPeriod("ozel")' aria-label="Özel aralık"><i data-lucide="calendar" class="w-5 h-5"></i></button>
-</div>
+<!-- Dönem segment pill (paylaşılan — tüm sayfalar aynı) -->
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" CssClass="mb-4 lg:max-w-xl" />
 @if (_period == "ozel")
 {
     <div class="flex gap-2 mb-4 flex-wrap">

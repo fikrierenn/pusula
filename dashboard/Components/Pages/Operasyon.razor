@@ -8,21 +8,18 @@
 
 <PageTitle>Operasyon — BKM GM</PageTitle>
 
-<div class="flex items-center gap-3 mb-5 flex-wrap">
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">@_aralik</div>
     <h1 class="text-2xl font-bold tracking-tight m-0">Operasyon</h1>
-    <span class="text-sm font-semibold text-base-content/50">@_aralik</span>
-    <select class="select select-bordered select-sm ml-auto text-sm font-semibold" @bind="_period" @bind:after="LoadAsync">
-        <option value="gunluk">Günlük (dün)</option>
-        <option value="haftalik">Haftalık (son 7 gün)</option>
-        <option value="ay">Aylık (MTD)</option>
-        <option value="ozel">Özel aralık…</option>
-    </select>
-    @if (_period == "ozel")
-    {
+</div>
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" CssClass="mb-4 lg:max-w-md" />
+@if (_period == "ozel")
+{
+    <div class="flex gap-2 mb-4 flex-wrap">
         <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBas" @bind:after="LoadAsync" />
         <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBit" @bind:after="LoadAsync" />
-    }
-</div>
+    </div>
+}
 
 @if (_loading)
 {
@@ -147,6 +144,8 @@ else if (_data is not null)
         if (e < b) e = b;
         return (b, e.AddDays(1));
     }
+
+    private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
 
     private async Task LoadAsync()
     {
