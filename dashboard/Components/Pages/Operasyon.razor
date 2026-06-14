@@ -36,23 +36,21 @@ else if (_data is not null)
             <AppBarChart TItem="HourBar" Items="_data.Saat" Name="Fiş" Color="@_pColor" Height="220" Horizontal="false"
                          XValue="@(h => (object)$"{h.Saat:00}")" YValue="@(h => (decimal?)h.Fis)" /></div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kasiyer Performansı (@_aralik) — @_data.Kasiyer.Count kişi</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kasiyer</b></td><td class="text-right"><b>Fiş</b></td><td class="text-right"><b>Net Ciro</b></td><td class="text-right"><b>Sepet</b></td><td class="text-right"><b>İade</b></td></tr>
-                @{
-                    string? curM = null;
-                }
-                @foreach (var k in _data.Kasiyer)
-                {
-                    if (k.Magaza != curM)
-                    {
-                        curM = k.Magaza;
-                        <tr class="font-bold text-primary bg-base-200"><td colspan="5">@curM</td></tr>
-                    }
-                    <tr><td>@k.Ad</td><td class="text-right">@Num(k.Fis)</td><td class="text-right"><b>@Tl(k.Net)</b></td><td class="text-right">@Num(k.Atv) ₺</td><td class="text-right">@k.Iade</td></tr>
-                }
-                <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM (@_data.Kasiyer.Count kasiyer)</td><td class="text-right">@Num(_data.Kasiyer.Sum(k => k.Fis))</td>
-                    <td class="text-right"><b>@Tl(_data.Kasiyer.Sum(k => k.Net))</b></td><td class="text-right"></td><td class="text-right">@_data.Kasiyer.Sum(k => k.Iade)</td></tr>
-            </table>
+            <AppDataTable TItem="KasiyerRow" Items="_data.Kasiyer"
+                          Primary="@(k => k.Ad)" Sub="@(k => k.Magaza)"
+                          MetricMain="@(k => Tl(k.Net))" MetricSub="@(k => $"{Num(k.Fis)} fiş")">
+                <Details Context="k">
+                    <div class="grid grid-cols-3 gap-2 text-[12px]">
+                        <div><div class="text-base-content/50 text-[10px]">Fiş</div><div class="font-semibold tabular-nums">@Num(k.Fis)</div></div>
+                        <div><div class="text-base-content/50 text-[10px]">Sepet</div><div class="font-semibold tabular-nums">@Num(k.Atv) ₺</div></div>
+                        <div><div class="text-base-content/50 text-[10px]">İade</div><div class="font-semibold tabular-nums @(k.Iade > 0 ? "text-error" : "")">@k.Iade</div></div>
+                    </div>
+                </Details>
+            </AppDataTable>
+            <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200 text-[13px]">
+                <span class="font-bold">TOPLAM (@_data.Kasiyer.Count kasiyer)</span>
+                <span class="font-bold tabular-nums">@Tl(_data.Kasiyer.Sum(k => k.Net))</span>
+            </div>
         </div>
     </div>
 

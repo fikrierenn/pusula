@@ -1,0 +1,69 @@
+@* Mobil-native veri listesi (fintech watchlist anatomisi) — geniş tablo yerine.
+   Satır: sol birincil+alt | sağ metrik (büyük+küçük) | badge | chevron→accordion detay.
+   plan-08, NN/g + Coinbase ListCell uyarlaması. *@
+@typeparam TItem
+
+<div>
+    @{ var i = 0; }
+    @foreach (var it in (Items ?? Array.Empty<TItem>()))
+    {
+        var item = it; var idx = i++;
+        var expandable = Details is not null;
+        var open = _open.Contains(idx);
+        <div class="border-b border-base-200 last:border-b-0">
+            <div class="flex items-center gap-2 py-2.5 @(expandable ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
+                 @onclick="@(() => Toggle(idx))">
+                <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-semibold text-base-content/85 truncate">@Primary(item)</div>
+                    @if (Sub is not null)
+                    {
+                        <div class="text-[11px] text-base-content/50 truncate">@Sub(item)</div>
+                    }
+                </div>
+                <div class="text-right shrink-0 min-w-[56px]">
+                    <div class="text-[13px] font-bold tabular-nums whitespace-nowrap">@MetricMain(item)</div>
+                    @if (MetricSub is not null)
+                    {
+                        <div class="text-[11px] text-base-content/50 tabular-nums whitespace-nowrap">@MetricSub(item)</div>
+                    }
+                </div>
+                @if (Badge is not null)
+                {
+                    var b = Badge(item);
+                    <span class="shrink-0 text-[11px] font-bold rounded-full px-2 py-0.5 @b.Cls">@b.Text</span>
+                }
+                @if (expandable)
+                {
+                    <i data-lucide="@(open ? "chevron-down" : "chevron-right")" class="w-[18px] h-[18px] text-base-content/40 shrink-0"></i>
+                }
+            </div>
+            @if (expandable && open)
+            {
+                <div class="bg-base-200/50 rounded-xl px-3 py-2.5 mb-2 -mx-0.5">
+                    @Details!(item)
+                </div>
+            }
+        </div>
+    }
+    @if (Items is null || !Items.Any())
+    {
+        <div class="text-base-content/50 text-[13px] py-2">Veri yok.</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter, EditorRequired] public Func<TItem, string> Primary { get; set; } = default!;
+    [Parameter] public Func<TItem, string>? Sub { get; set; }
+    [Parameter, EditorRequired] public Func<TItem, string> MetricMain { get; set; } = default!;
+    [Parameter] public Func<TItem, string>? MetricSub { get; set; }
+    [Parameter] public Func<TItem, (string Text, string Cls)>? Badge { get; set; }
+    [Parameter] public RenderFragment<TItem>? Details { get; set; }   // set → satır tıkla-genişlet
+
+    private readonly HashSet<int> _open = new();
+    private void Toggle(int idx)
+    {
+        if (Details is null) return;
+        if (!_open.Remove(idx)) _open.Add(idx);
+    }
+}
