@@ -130,9 +130,6 @@ else if (_data is not null)
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
-        try { _ops = await Ref.GetOpsAsync(DateOnly.FromDateTime(DateTime.Today).AddDays(-1)); }
-        catch (Exception ex) { _error ??= ex.Message; }
-        StateHasChanged();
     }
 
     private (DateOnly, DateOnly) OzelAralik()
@@ -161,7 +158,11 @@ else if (_data is not null)
             };
             var son = endExcl.AddDays(-1);
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
-            _data = await Queries.GetPeriodAsync(start, endExcl);
+            var tData = Queries.GetPeriodAsync(start, endExcl);
+            var tOps = Ref.GetOpsAsync(dun);
+            await Task.WhenAll(tData, tOps);
+            _data = tData.Result;
+            try { _ops = tOps.Result; } catch (Exception ex) { _error ??= ex.Message; }
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

@@ -261,13 +261,16 @@ else if (_data is not null)
             };
             var son = endExcl.AddDays(-1);
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
-            _data = await Queries.GetPeriodAsync(start, endExcl);
-            _kargoPerf = await Etic.GetKargoPerfAsync(start, endExcl);
-            _kargoGun = await Etic.GetKargoGunAsync(start, endExcl);
-            _ilTeslimat = await Etic.GetIlTeslimatAsync(start, endExcl);
-            _ayKargo = await Etic.GetAyKargoAsync();      // son 13 ay (dönemsiz)
-            _cod = await Etic.GetCodOzetAsync(start, endExcl);
-            _bekleyen = await Etic.GetBekleyenAsync();   // anlık (dönemsiz)
+            var tData      = Queries.GetPeriodAsync(start, endExcl);
+            var tKargoPerf = Etic.GetKargoPerfAsync(start, endExcl);
+            var tKargoGun  = Etic.GetKargoGunAsync(start, endExcl);
+            var tIl        = Etic.GetIlTeslimatAsync(start, endExcl);
+            var tAyKargo   = Etic.GetAyKargoAsync();      // son 13 ay (dönemsiz)
+            var tCod       = Etic.GetCodOzetAsync(start, endExcl);
+            var tBekleyen  = Etic.GetBekleyenAsync();    // anlık (dönemsiz)
+            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tBekleyen);
+            _data = tData.Result; _kargoPerf = tKargoPerf.Result; _kargoGun = tKargoGun.Result;
+            _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _bekleyen = tBekleyen.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

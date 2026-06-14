@@ -289,9 +289,11 @@ else if (_data is not null)
                 _ => ((DateOnly?)null, (DateOnly?)null, "önceki eş döneme göre"),
             };
             _wowLabel = wl;
-            _data = await Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
-            _trend = await Queries.GetTrendAsync(dun);
-            _alis = await Queries.GetAlisTrendAsync(dun);
+            var tData  = Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
+            var tTrend = Queries.GetTrendAsync(dun);
+            var tAlis  = Queries.GetAlisTrendAsync(dun);
+            await Task.WhenAll(tData, tTrend, tAlis);
+            _data = tData.Result; _trend = tTrend.Result; _alis = tAlis.Result;
             if (_period == "ay")
                 (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(start, endExcl);
             else { _hedefMag = null; _hedefKat = []; }
