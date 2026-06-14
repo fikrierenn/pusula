@@ -220,10 +220,15 @@ public sealed class RefQueries(Db db)
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.TotalPrice ELSE 0 END) AS decimal(18,0)) AS Ciro,
-                CAST(MAX(ISNULL(stk.Bakiye,0)) AS int) AS Bakiye,
+                CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0)
+                     WHEN 4478 THEN ISNULL(MAX(stk.Ist),0) ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0) END AS int) AS Bakiye,
                 CAST(SUM(CASE WHEN s.Date>=@d30 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S30,
                 CAST(SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S90,
-                CAST(SUM(CASE WHEN s.Date>=@d360 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S360
+                CAST(SUM(CASE WHEN s.Date>=@d360 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S360,
+                CAST(ISNULL(MAX(stk.Fsm),0) AS int) AS StokFsm,
+                CAST(ISNULL(MAX(stk.Ozl),0) AS int) AS StokOzl,
+                CAST(ISNULL(MAX(stk.Ist),0) AS int) AS StokIst,
+                CAST(ISNULL(MAX(stk.Depo),0) AS int) AS StokDepo
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             CROSS APPLY (SELECT CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END AS v) sg
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
@@ -233,9 +238,14 @@ public sealed class RefQueries(Db db)
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
             JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=CONVERT(int,pr.Code)
             JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID AND k.ktgrAd=@kat
-            LEFT JOIN (SELECT h.ehstkID AS sID, SUM(h.ehAdetN) AS Bakiye FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
-                       WHERE h.ehMekan IN (1,4477,4478) AND (@mekan=0 OR h.ehMekan=@mekan) AND h.ehAltDepo=0 AND h.ehstkID IS NOT NULL
-                       GROUP BY h.ehstkID) stk ON stk.sID=u.stkID
+            LEFT JOIN (SELECT v.ehstkID AS sID,
+                           SUM(CASE WHEN v.ehMekan=1 THEN v.stok ELSE 0 END) AS Fsm,
+                           SUM(CASE WHEN v.ehMekan=4477 THEN v.stok ELSE 0 END) AS Ozl,
+                           SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) AS Ist,
+                           SUM(CASE WHEN v.ehMekan=12 THEN v.stok ELSE 0 END) AS Depo
+                       FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
+                       WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478,12)
+                       GROUP BY v.ehstkID) stk ON stk.sID=u.stkID
             WHERE MG.mekanID IN (1,4477,4478) AND (@mekan=0 OR MG.mekanID=@mekan)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
                 AND s.Date>=@minDate AND s.Date<@maxDate

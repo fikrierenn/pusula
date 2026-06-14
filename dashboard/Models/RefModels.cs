@@ -7,8 +7,10 @@ public record RfmSegment(string Segment, int Musteri, decimal Ciro);
 public record CustomerRow(long Id, string Ad, string Tel, int Frq, decimal Mon, int Rec);
 
 /// <summary>Drill: kategorideki tekil ürün. Satis/Ciro = seçili dönem; S30/S90/S360 = bugünden geriye
-/// trailing pencere satış adedi (kaç-gün-yeter hesabı için, dönemden bağımsız).</summary>
-public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye, int S30, int S90, int S360);
+/// trailing pencere satış adedi (kaç-gün-yeter). StokFsm/Ozl/Ist/Depo = anlık stok dağılımı (stokSonAltDepo_vw).
+/// Bakiye = seçili kapsamdaki şube stoğu (cover hesabı için).</summary>
+public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye, int S30, int S90, int S360,
+    int StokFsm, int StokOzl, int StokIst, int StokDepo);
 
 /// <summary>Ciro-vs-envanter scatter noktası (kategori).</summary>
 public record CveRow(string Kategori, decimal Ciro, decimal Env);
