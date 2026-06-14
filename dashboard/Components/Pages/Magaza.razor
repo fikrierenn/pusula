@@ -4,19 +4,24 @@
 @inject MagazaQueries Mag
 @inject RefQueries Ref
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Mağaza Detay — BKM GM</PageTitle>
 
-<div class="flex items-center gap-3 mb-5 flex-wrap">
-    <button class="btn btn-ghost btn-sm" @onclick='() => Nav.NavigateTo("")'>← Genel Bakış</button>
-    <h1 class="text-2xl font-bold tracking-tight m-0">@(_d?.Ad ?? Mekan(Id)) Mağaza</h1>
-    <span class="text-sm font-semibold text-base-content/50">@_aralik</span>
-    <select class="select select-bordered select-sm ml-auto text-sm font-semibold" @bind="_period" @bind:after="LoadAsync">
-        <option value="gunluk">Günlük (dün)</option>
-        <option value="haftalik">Haftalık (son 7 gün)</option>
-        <option value="ay">Aylık (MTD)</option>
-    </select>
+<div class="flex items-center gap-2 mb-4">
+    <button class="w-9 h-9 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center shrink-0" @onclick='() => Nav.NavigateTo("")' aria-label="Geri"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+    <div class="min-w-0">
+        <div class="text-xs text-base-content/50">Mağaza detay · @_aralik</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0 truncate">@(_d?.Ad ?? Mekan(Id))</h1>
+    </div>
+</div>
+<div class="flex gap-2 mb-4 lg:max-w-md">
+    @foreach (var (key, label) in new[] { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") })
+    {
+        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors @(_period == key ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70")"
+                @onclick="() => SetPeriod(key)">@label</button>
+    }
 </div>
 
 @if (_loading)
@@ -29,87 +34,70 @@ else if (_error is not null)
 }
 else if (_d is not null)
 {
-    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-white shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Ciro</div>
-            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_d.Net)</div>
-            @if (_period == "ay" && _d.GerPct is not null)
-            {
-                <div class="text-[13px] opacity-90">hedef gerçekleşme %@_d.GerPct (MTD)</div>
-            }
+    <div class="mb-5">
+        <div id="hero" class="carousel carousel-center w-full gap-3.5 lg:grid lg:grid-cols-4 lg:gap-3 lg:overflow-visible">
+            @KpiCard("Net Ciro", Tl(_d.Net), "from-primary to-primary/80", _period == "ay" && _d.GerPct is not null ? $"hedef %{_d.GerPct} (MTD)" : "dönem net")
+            @KpiCard("Fiş", Num(_d.Fis), "from-info to-info/80", $"sepet {Num(_d.Atv)} ₺")
+            @KpiCard("UPT", _d.Upt.ToString("0.00"), "from-success to-success/80", "ürün / fiş (sepet adedi)")
+            @KpiCard("İade", Tl(_d.Iade), "from-error to-error/80", $"oran %{_d.IadeOran}")
         </div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">Fiş</div>
-            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_d.Fis)</div>
-            <div class="text-[13px] opacity-90">sepet @Num(_d.Atv) ₺</div></div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">UPT (sepet adedi)</div>
-            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@_d.Upt.ToString("0.00")</div>
-            <div class="text-[13px] opacity-90">ürün / fiş</div></div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">İade</div>
-            <div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_d.Iade)</div>
-            <div class="text-[13px] opacity-90">oran %@_d.IadeOran</div></div>
+        <div id="heroDots" class="flex justify-center items-center gap-1.5 mt-3 lg:hidden">
+            <span class="hero-dot hero-dot-on"></span><span class="hero-dot"></span><span class="hero-dot"></span><span class="hero-dot"></span>
+        </div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-3 mb-3">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Ödeme Tipi Mix</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Ödeme</b></td><td class="text-right"><b>İşlem</b></td><td class="text-right"><b>Tutar</b></td><td class="text-right"><b>Pay</b></td></tr>
-                @{ decimal oTopTut = 0; int oTopIsl = 0; }
-                @foreach (var o in _d.Odeme)
-                {
-                    oTopTut += o.Tutar; oTopIsl += o.Islem;
-                    <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenOdeme(o)">
-                        <td>@o.Grup @(o.Detay.Count > 1 ? "▸" : "")</td>
-                        <td class="text-right">@Num(o.Islem)</td><td class="text-right">@Tl(o.Tutar)</td><td class="text-right">%@o.Pay</td></tr>
-                }
-                @if (_d.Odeme.Count > 0)
-                {
-                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM</td><td class="text-right">@Num(oTopIsl)</td><td class="text-right">@Tl(oTopTut)</td><td class="text-right">%100</td></tr>
-                }
-                else
-                {
-                    <tr><td colspan="4" class="text-base-content/50">Ödeme kaydı yok.</td></tr>
-                }
-            </table>
-            <div class="text-[11px] text-base-content/40 mt-2">Kart grubuna tıkla → banka detayı. Nakit (TL) kasa mutabakatı. Para üstü hariç.</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
+            <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="credit-card" class="w-[18px] h-[18px] text-primary"></i>Ödeme Tipi Mix</h3>
+            @{ decimal oMax = _d.Odeme.Count > 0 ? _d.Odeme.Max(o => o.Tutar) : 0; }
+            @foreach (var o in _d.Odeme)
+            {
+                var oc = o;
+                <div class="py-2 border-b border-base-200 last:border-b-0 cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" @onclick="@(() => OpenOdeme(oc))">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[13px] font-semibold text-base-content/85 truncate">@o.Grup@(o.Detay.Count > 1 ? " ▸" : "")</span>
+                        <span class="text-[13px] font-bold shrink-0">@Tl(o.Tutar)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-base-content/50 mt-0.5"><span>@Num(o.Islem) işlem</span><span>%@o.Pay</span></div>
+                    <div class="h-1.5 rounded-full bg-base-200 mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-primary" style="width:@PctW(o.Tutar, oMax)"></div></div>
+                </div>
+            }
+            @if (_d.Odeme.Count == 0)
+            {
+                <div class="text-base-content/50 text-[13px] py-2">Ödeme kaydı yok.</div>
+            }
+            <div class="text-[11px] text-base-content/40 mt-3">Kart grubuna tıkla → banka detayı. Nakit (TL) kasa mutabakatı. Para üstü hariç.</div>
         </div>
 
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kampanya Yükü</h3>
-            <table class="table table-sm w-full text-[13px]">
-                <tr><td><b>Kampanya</b></td><td class="text-right"><b>İndirim</b></td><td class="text-right"><b>Oran</b></td><td class="text-right"><b>Fiş</b></td></tr>
-                @foreach (var k in _d.Kampanya)
-                {
-                    var tikla = k.Detay.Count > 1;
-                    <tr class="@(tikla ? "cursor-pointer hover:bg-primary/5" : "")" @onclick="() => OpenKamp(k)">
-                        <td>@k.Ad @(tikla ? "▸" : "")</td><td class="text-right text-error">@Tl(k.Indirim)</td><td class="text-right font-semibold">%@k.Oran</td><td class="text-right">@Num(k.Fis)</td></tr>
-                }
-                @if (_d.Kampanya.Count > 0)
-                {
-                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td>TOPLAM</td><td class="text-right text-error">@Tl(_d.KampToplamIndirim)</td><td class="text-right">%@(_d.KampToplamBrut > 0 ? Math.Round(100 * _d.KampToplamIndirim / _d.KampToplamBrut, 1) : 0)</td><td class="text-right">@Num(_d.KampToplamFis)</td></tr>
-                }
-                else
-                {
-                    <tr><td colspan="4" class="text-base-content/50">Kampanya yok.</td></tr>
-                }
-            </table>
-            <div class="text-[11px] text-base-content/40 mt-2">Oran = indirim / kampanyalı kalem brüt satış (3al2öde ~%25-26). TOPLAM Fiş = en az bir kampanyalı tekil fiş (çift saymaz). (manuel/kodsuz) = set indirimi.</div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
+            <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="ticket-percent" class="w-[18px] h-[18px] text-primary"></i>Kampanya Yükü</h3>
+            @{ decimal kMax = _d.Kampanya.Count > 0 ? _d.Kampanya.Max(k => k.Indirim) : 0; }
+            @foreach (var k in _d.Kampanya)
+            {
+                var kc = k; var tikla = k.Detay.Count > 1;
+                <div class="py-2 border-b border-base-200 last:border-b-0 @(tikla ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")" @onclick="@(() => OpenKamp(kc))">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[13px] font-semibold text-base-content/85 truncate">@k.Ad@(tikla ? " ▸" : "")</span>
+                        <span class="text-[13px] font-bold shrink-0 text-error">@Tl(k.Indirim)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-base-content/50 mt-0.5"><span>@Num(k.Fis) fiş</span><span>oran %@k.Oran</span></div>
+                    <div class="h-1.5 rounded-full bg-base-200 mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-error" style="width:@PctW(k.Indirim, kMax)"></div></div>
+                </div>
+            }
+            @if (_d.Kampanya.Count == 0)
+            {
+                <div class="text-base-content/50 text-[13px] py-2">Kampanya yok.</div>
+            }
+            <div class="text-[11px] text-base-content/40 mt-3">Oran = indirim / kampanyalı kalem brüt satış (3al2öde ~%25-26). (manuel/kodsuz) = set indirimi.</div>
         </div>
     </div>
 
-    <div class="text-[11px] font-bold uppercase tracking-widest text-base-content/40 mt-6 mb-3">Kategori Dağılımı (tıkla → ürünler)</div>
-    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-        <table class="table table-sm w-full text-[13px]">
-            <tr><td><b>Kategori</b></td><td class="text-right"><b>Ciro</b></td><td class="text-right"><b>Pay</b></td></tr>
-            @{ var tot = _d.Kategori.Sum(k => k.Ciro); }
-            @foreach (var k in _d.Kategori)
-            {
-                <tr class="cursor-pointer hover:bg-primary/5" @onclick="() => OpenUrun(k.Ad)"><td>@k.Ad ▸</td><td class="text-right">@Tl(k.Ciro)</td><td class="text-right">%@(tot > 0 ? Math.Round(100 * k.Ciro / tot) : 0)</td></tr>
-            }
-            @if (_d.Kategori.Count == 0)
-            {
-                <tr><td colspan="3" class="text-base-content/50">Kategori verisi yok.</td></tr>
-            }
-        </table>
+    <h2 class="text-lg font-bold tracking-tight mb-3 mt-2">Kategori Dağılımı</h2>
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+        <AppRankBars TItem="CategorySlice" Items="_d.Kategori"
+                     Label="@(k => k.Ad)" Value="@(k => k.Ciro)" ValueText="@(k => Tl(k.Ciro))"
+                     OnRowClick="@(k => OpenUrun(k.Ad))" />
+        <div class="text-[11px] text-base-content/40 mt-2">Kategoriye tıkla → ürün listesi.</div>
     </div>
 
     <p class="text-[11px] text-base-content/40 mt-4">Dönüşüm oranı (G8) kapı sayıcı verisine bağlı — şimdilik yalnız FSM (CSV). Panele eklenecek: B-40 devam.</p>
@@ -219,6 +207,36 @@ else if (_d is not null)
         catch (Exception ex) { _error = ex.Message; }
         finally { _urunLoading = false; StateHasChanged(); }
     }
+
+    private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    private IJSObjectReference? _charts;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_d is null) return;
+        try
+        {
+            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _charts.InvokeVoidAsync("heroDots", "hero", "heroDots");
+        }
+        catch { /* prerender'da JS hazır değil — sonraki render'da bağlanır */ }
+    }
+
+    // Oransal genişlik — invariant (Türkçe virgül CSS'i bozar), 0-100 clamp.
+    private static string PctW(decimal v, decimal max)
+    {
+        var pct = max > 0 ? Math.Round(100 * v / max, 1) : 0;
+        return Math.Min(Math.Max(pct, 0), 100).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
+
+    // Gradient KPI kartı (carousel item) — Home hero dili.
+    private RenderFragment KpiCard(string label, string value, string gradient, string sub) => @<div class="carousel-item w-[86%] lg:w-auto">
+        <div class="w-full h-full rounded-3xl px-5 py-5 bg-gradient-to-br @gradient text-white shadow-lg flex flex-col">
+            <div class="opacity-80 text-[11px] uppercase tracking-wider font-semibold">@label</div>
+            <div class="text-[32px] font-extrabold leading-tight tracking-tight whitespace-nowrap mt-2">@value</div>
+            <div class="text-xs opacity-85 mt-1">@sub</div>
+        </div>
+    </div>;
 
     private static string Mekan(int id) => id switch { 1 => "FSM", 4477 => "Özlüce", 4478 => "İst.Yolu", _ => "?" };
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";

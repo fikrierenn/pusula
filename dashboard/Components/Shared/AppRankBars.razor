@@ -4,14 +4,17 @@
 @{
     var list = Items?.ToList() ?? new List<TItem>();
     decimal max = list.Count > 0 ? list.Max(Value) : 0m;
+    var clickable = OnRowClick.HasDelegate;
 }
 <div>
     @foreach (var it in list)
     {
         var v = Value(it);
-        <div class="py-1.5">
+        var item = it;
+        <div class="py-1.5 @(clickable ? "cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
+             @onclick="@(() => OnRowClick.InvokeAsync(item))">
             <div class="flex items-center justify-between gap-2 mb-1">
-                <span class="text-[13px] font-semibold text-base-content/85 truncate">@Label(it)</span>
+                <span class="text-[13px] font-semibold text-base-content/85 truncate">@Label(it)@(clickable ? " ▸" : "")</span>
                 <span class="text-[13px] font-bold shrink-0 text-base-content/70">@ValueText(it)</span>
             </div>
             <div class="h-2 rounded-full bg-base-200 overflow-hidden">
@@ -30,6 +33,7 @@
     [Parameter, EditorRequired] public Func<TItem, string> Label { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TItem, decimal> Value { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TItem, string> ValueText { get; set; } = default!;
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }   // set → satır tıklanabilir (drill)
 
     // Oransal genişlik — invariant (Türkçe virgül CSS'i bozar), 0-100 clamp.
     private static string W(decimal v, decimal max)
