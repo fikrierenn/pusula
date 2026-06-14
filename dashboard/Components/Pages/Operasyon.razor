@@ -47,7 +47,8 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kasiyer Performansı (@_aralik) — @_data.Kasiyer.Count kişi</h3>
             <AppDataTable TItem="KasiyerRow" Items="_data.Kasiyer"
                           Primary="@(k => k.Ad)" Sub="@(k => k.Magaza)"
-                          MetricMain="@(k => Tl(k.Net))" MetricSub="@(k => $"{Num(k.Fis)} fiş")">
+                          MetricMain="@(k => Tl(k.Net))" MetricSub="@(k => $"{Num(k.Fis)} fiş")"
+                          Badge="@(k => KasDeltaBadge(k))">
                 <Details Context="k">
                     <div class="grid grid-cols-3 gap-2 text-[12px]">
                         <div><div class="text-base-content/50 text-[10px]">Fiş</div><div class="font-semibold tabular-nums">@Num(k.Fis)</div></div>
@@ -128,6 +129,7 @@ else if (_data is not null)
     private OpsData? _ops;
     private string _aralik = "";
     private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
+    private Dictionary<string, decimal?> _kasDelta = new();   // B-57 kasiyer net delta (Magaza|Ad → %)
 
     protected override async Task OnInitializedAsync()
     {
@@ -160,10 +162,15 @@ else if (_data is not null)
             };
             var son = endExcl.AddDays(-1);
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+            // B-57 önceki eş-uzunluk dönem (kasiyer delta)
+            int len = endExcl.DayNumber - start.DayNumber;
+            var pStart = start.AddDays(-len);
             var tData = Queries.GetPeriodAsync(start, endExcl);
             var tOps = Ref.GetOpsAsync(dun);
-            await Task.WhenAll(tData, tOps);
+            var tKas = Queries.GetKasiyerDeltaAsync(start, endExcl, pStart, start);
+            await Task.WhenAll(tData, tOps, tKas);
             _data = tData.Result;
+            _kasDelta = tKas.Result.ToDictionary(k => k.Magaza + "|" + k.Ad, k => k.DeltaPct);
             try { _ops = tOps.Result; } catch (Exception ex) { _error ??= ex.Message; }
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -196,4 +203,13 @@ else if (_data is not null)
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    // B-57 kasiyer net delta badge (önceki eş döneme göre). Yok → "yeni" nötr.
+    private (string Text, string Cls) KasDeltaBadge(KasiyerRow k)
+    {
+        var d = _kasDelta.GetValueOrDefault(k.Magaza + "|" + k.Ad);
+        if (d is null) return ("yeni", "bg-base-200 text-base-content/55");
+        var s = d.Value.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
+        return (s, d > 0 ? "bg-success/15 text-success" : d < 0 ? "bg-error/15 text-error" : "bg-base-200 text-base-content/55");
+    }
 }

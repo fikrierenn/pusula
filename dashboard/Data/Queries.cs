@@ -324,6 +324,32 @@ public sealed class Queries(Db db)
         var seri = (await conn.QueryAsync<AylikNokta>(sql, new { mekan = mekanId, bas, son })).OrderBy(x => x.Ay).ToList();
         return Forecast.Hesapla(seri, $"{bugun:yyyy-MM}", bugun.Day, DateTime.DaysInMonth(bugun.Year, bugun.Month));
     }
+
+    /// <summary>B-57 Kasiyer net performansı + önceki eş-uzunluk döneme göre değişim %. Mağaza gruplu, net azalan.</summary>
+    public async Task<IReadOnlyList<KasiyerDelta>> GetKasiyerDeltaAsync(DateOnly start, DateOnly endExcl, DateOnly prevStart, DateOnly prevEnd)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, CAST(ISNULL(u.Name,'?') AS nvarchar(30)) AS Ad, COUNT(*) AS Fis,
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-ABS(s.DiscountTotal)) ELSE s.GrossTotal-s.DiscountTotal END) AS decimal(18,0)) AS Net
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
+            LEFT JOIN EncoreMerkez.dbo.Users u ON u.Id=s.UsersId
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=@start AND s.Date<@end
+            GROUP BY CAST(st.Name AS nvarchar(30)), CAST(ISNULL(u.Name,'?') AS nvarchar(30));
+            """;
+        var cur = (await conn.QueryAsync<(string Magaza, string Ad, int Fis, decimal Net)>(sql,
+            new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) })).ToList();
+        var prev = (await conn.QueryAsync<(string Magaza, string Ad, int Fis, decimal Net)>(sql,
+            new { start = prevStart.ToDateTime(TimeOnly.MinValue), end = prevEnd.ToDateTime(TimeOnly.MinValue) }))
+            .ToDictionary(k => k.Magaza + "|" + k.Ad, k => k.Net);
+        return cur.Select(k =>
+        {
+            decimal? d = prev.TryGetValue(k.Magaza + "|" + k.Ad, out var pn) && pn > 0
+                ? Math.Round(100 * (k.Net - pn) / pn, 1) : null;
+            return new KasiyerDelta(k.Magaza, k.Ad, k.Fis, k.Net, k.Fis > 0 ? (int)Math.Round(k.Net / k.Fis) : 0, d);
+        }).OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
+    }
 }
 
 /// <summary>Hedef tahmin matematiği (saf C# — SQL'den ayrı, test edilebilir). B-73.</summary>

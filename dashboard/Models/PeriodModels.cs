@@ -34,6 +34,9 @@ public record HourBar(int Saat, int Fis, decimal Net);
 /// <summary>Kasiyer performansı (Sales.UsersId=Users.Id).</summary>
 public record KasiyerRow(string Magaza, string Ad, int Fis, decimal Net, int Atv, int Iade);
 
+/// <summary>Kasiyer + önceki döneme göre net değişim (B-57). DeltaPct null = önceki dönemde yok.</summary>
+public record KasiyerDelta(string Magaza, string Ad, int Fis, decimal Net, int Atv, decimal? DeltaPct);
+
 /// <summary>14 gün trend noktası (fiziksel net, tarih).</summary>
 public record TrendPoint(string Tarih, decimal Net);
 
