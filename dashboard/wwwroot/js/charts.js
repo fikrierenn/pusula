@@ -66,18 +66,31 @@ export function donut(id, labels, data) {
     });
 }
 
+// Mobil sparkline: dikey gradient dolgu, gridsiz, yumuşak çizgi. Eksen minimal (y gizli, x seyrek).
 export function area(id, labels, data) {
+    const fill = (ctx) => {
+        const { chartArea, ctx: c } = ctx.chart;
+        if (!chartArea) return KP_FILL;
+        const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        g.addColorStop(0, 'rgba(64,99,230,.28)');
+        g.addColorStop(1, 'rgba(64,99,230,0)');
+        return g;
+    };
     draw(id, {
         type: 'line',
-        data: { labels, datasets: [{ data, borderColor: KP, backgroundColor: KP_FILL, fill: true, tension: .3 }] },
+        data: { labels, datasets: [{ data, borderColor: KP, backgroundColor: fill, fill: true, tension: .4, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: KP, borderWidth: 2.5 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },   // mobil: noktaya yakın dokun
             plugins: {
                 legend: { display: false },
-                datalabels: { align: 'top', color: '#475569', font: { size: 10, weight: 600 }, formatter: v => v }
+                datalabels: { display: false },
+                tooltip: { displayColors: false, callbacks: { label: c => ' ' + fmtK(c.parsed.y) } }
             },
-            scales: { y: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
+            scales: {
+                x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 5, font: { size: 10 }, color: '#94a3b8' }, grid: { display: false }, border: { display: false } },
+                y: { ticks: { maxTicksLimit: 4, font: { size: 10 }, color: '#94a3b8', callback: v => v >= 1e6 ? fmtM(v) : fmtK(v) }, grid: { display: false }, border: { display: false } }
+            }
         }
     });
 }
@@ -100,6 +113,21 @@ export function scatter(id, labels, x, y) {
             }
         }
     });
+}
+
+// Hero carousel dot göstergesi: scrollLeft → aktif kart index → dot opacity/genişlik.
+// Idempotent: listener bir kez bağlanır (dataset guard). Framework yok, saf scroll.
+export function heroDots(carouselId, dotsId) {
+    const car = document.getElementById(carouselId), dots = document.getElementById(dotsId);
+    if (!car || !dots) return;
+    const sync = () => {
+        // adım = kart genişliği + gap (ilk iki kartın offset farkı; peek'li layout'ta doğru)
+        const step = car.children.length > 1 ? car.children[1].offsetLeft - car.children[0].offsetLeft : car.clientWidth;
+        const idx = step > 0 ? Math.round(car.scrollLeft / step) : 0;
+        [...dots.children].forEach((d, i) => d.classList.toggle('hero-dot-on', i === idx));
+    };
+    if (!car.dataset.dotsBound) { car.addEventListener('scroll', sync, { passive: true }); car.dataset.dotsBound = '1'; }
+    sync();
 }
 
 export function barDual(id, labels, fis, net) {

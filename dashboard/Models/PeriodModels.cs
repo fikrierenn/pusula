@@ -3,9 +3,9 @@ namespace GmDashboard.Models;
 /// <summary>Mağaza dönem satırı (EncoreMerkez Sales → posMagaza). Net = iade sign'lı.</summary>
 public record StoreRow(int MekanId, decimal Net, int Fis, decimal Iade);
 
-/// <summary>Mağaza kartı (hedef gerçekleşme + sepet + kategori drill).</summary>
+/// <summary>Mağaza kartı (hedef gerçekleşme + sepet + kategori drill + WoW trend).</summary>
 public record StoreCard(int MekanId, string Ad, decimal Net, int Fis, int Atv, decimal? GerPct, decimal Iade,
-    IReadOnlyList<CategorySlice> Kategori);
+    IReadOnlyList<CategorySlice> Kategori, decimal? Wow = null);
 
 /// <summary>Kategori dilimi (mağaza×kategori aggregate → toplam).</summary>
 public record CategorySlice(string Ad, decimal Ciro);
@@ -52,7 +52,7 @@ public record HedefKategori(string Ad, decimal Net, decimal Hedef, decimal? GerP
 /// <summary>Günlük kargo çıkış dağılımı (sipariş→kargo gün farkı × paket adedi).</summary>
 public record KargoGun(int Gun, int Adet);
 
-/// <summary>Dönem özeti (tüm üst paneller).</summary>
+/// <summary>Dönem özeti (tüm üst paneller). Prev* = bir önceki eş-uzunluk dönem (hero WoW trendi).</summary>
 public record PeriodSummary(
     decimal Fiziksel, int Fis, decimal Iade, decimal Eticaret, int ESip, decimal Toplam,
     IReadOnlyList<StoreCard> Stores,
@@ -61,4 +61,5 @@ public record PeriodSummary(
     IReadOnlyList<HourBar> Saat,
     IReadOnlyList<KasiyerRow> Kasiyer,
     IReadOnlyList<NameCount> Kargo,
-    IReadOnlyList<NameCount> Il);
+    IReadOnlyList<NameCount> Il,
+    decimal PrevFiziksel = 0, int PrevFis = 0, decimal PrevIade = 0, decimal PrevEticaret = 0, int PrevESip = 0);

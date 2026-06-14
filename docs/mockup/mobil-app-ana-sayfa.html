@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>BKM Mobil App — Ana Sayfa Mockup (B-51 referans)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.17.0/dist/tabler-icons.min.css">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#cbd5e1;display:flex;justify-content:center;padding:24px 0;font-family:'Segoe UI',system-ui,sans-serif}
+  #hero::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<!--
+  BKM Mobil App — Ana Sayfa mockup (Oturum 3, 14.06.2026 onaylandı)
+  Referans: TODO B-51 "APP DİLİ → WEB/BLAZOR UYARLAMA"
+  NOT: Bu STATIK mockup. Renkler hardcode hex (mockup). Blazor uyarlamada DaisyUI token kullan:
+    gradient hero  -> from-primary to-primary/80 (hardcode #4063e6 DEĞİL)
+    mağaza ikon    -> success/info/warning token
+    trend oku      -> success(↑) / error(↓)
+    e-tic kart     -> info
+  Veri örnek (13.06.2026 günlük): Ciro 5.109.518 / Mağaza 2.035.905 / Online 3.073.613 / İşlem 2.969 / İade 34.661
+  Trend %'leri (WoW) PLACEHOLDER — gerçeği Queries.cs storeSql geçen-dönem net'ten gelecek.
+-->
+<div style="max-width:380px;margin:0 auto;background:#eef1f6;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,.18);border:1px solid rgba(15,23,42,.06)">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px 6px;font-size:13px;font-weight:600;color:#0f172a">
+    <span>00:42</span>
+    <span style="display:flex;gap:6px;align-items:center"><i class="ti ti-wifi" style="font-size:15px"></i><i class="ti ti-battery-3" style="font-size:16px"></i></span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 20px 14px">
+    <div>
+      <div style="font-size:12px;color:#64748b;font-weight:500">İyi akşamlar 👋</div>
+      <div style="font-size:19px;font-weight:700;color:#0f172a;letter-spacing:-.3px">BKM Genel Bakış</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button style="width:40px;height:40px;border-radius:14px;border:none;background:#fff;display:flex;align-items:center;justify-content:center;position:relative"><i class="ti ti-bell" style="font-size:19px;color:#334155"></i><span style="position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:#ef4444"></span></button>
+      <div style="width:40px;height:40px;border-radius:14px;background:#4063e6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">CFO</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;padding:0 20px 16px">
+    <span style="flex:1;text-align:center;padding:9px 0;border-radius:12px;background:#0f172a;color:#fff;font-size:13px;font-weight:600">Günlük</span>
+    <span style="flex:1;text-align:center;padding:9px 0;border-radius:12px;background:#fff;color:#64748b;font-size:13px;font-weight:500">Haftalık</span>
+    <span style="flex:1;text-align:center;padding:9px 0;border-radius:12px;background:#fff;color:#64748b;font-size:13px;font-weight:500">Aylık</span>
+  </div>
+
+  <div id="hero" style="display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 20px 4px;scrollbar-width:none;-ms-overflow-style:none">
+    <div style="scroll-snap-align:center;flex:0 0 calc(100% - 40px);box-sizing:border-box;padding:20px;border-radius:22px;background:linear-gradient(135deg,#4063e6,#3a4fd0);color:#fff;box-shadow:0 10px 28px rgba(64,99,230,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="font-size:12px;opacity:.85;font-weight:500;text-transform:uppercase;letter-spacing:.5px">Toplam Ciro</span><span style="font-size:12px;background:rgba(255,255,255,.18);padding:4px 9px;border-radius:9px;font-weight:600;display:flex;align-items:center;gap:3px"><i class="ti ti-trending-up" style="font-size:14px"></i>%8,4</span></div>
+      <div style="font-size:33px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px">5.109.518 ₺</div>
+      <div style="display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)"><div style="flex:1"><div style="font-size:11px;opacity:.8">Mağaza</div><div style="font-size:16px;font-weight:700">2.035.905 ₺</div></div><div style="flex:1"><div style="font-size:11px;opacity:.8">Online</div><div style="font-size:16px;font-weight:700">3.073.613 ₺</div></div></div>
+    </div>
+    <div style="scroll-snap-align:center;flex:0 0 calc(100% - 40px);box-sizing:border-box;padding:20px;border-radius:22px;background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;box-shadow:0 10px 28px rgba(14,165,233,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="font-size:12px;opacity:.85;font-weight:500;text-transform:uppercase;letter-spacing:.5px">Toplam İşlem</span><span style="font-size:12px;background:rgba(255,255,255,.18);padding:4px 9px;border-radius:9px;font-weight:600;display:flex;align-items:center;gap:3px"><i class="ti ti-trending-up" style="font-size:14px"></i>%5,1</span></div>
+      <div style="font-size:33px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px">2.969 fiş</div>
+      <div style="display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)"><div style="flex:1"><div style="font-size:11px;opacity:.8">Mağaza fiş</div><div style="font-size:16px;font-weight:700">248</div></div><div style="flex:1"><div style="font-size:11px;opacity:.8">Online sipariş</div><div style="font-size:16px;font-weight:700">2.721</div></div></div>
+    </div>
+    <div style="scroll-snap-align:center;flex:0 0 calc(100% - 40px);box-sizing:border-box;padding:20px;border-radius:22px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 10px 28px rgba(16,185,129,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="font-size:12px;opacity:.85;font-weight:500;text-transform:uppercase;letter-spacing:.5px">Sepet Ortalama</span><span style="font-size:12px;background:rgba(255,255,255,.18);padding:4px 9px;border-radius:9px;font-weight:600;display:flex;align-items:center;gap:3px"><i class="ti ti-trending-up" style="font-size:14px"></i>%3,2</span></div>
+      <div style="font-size:33px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px">689 ₺</div>
+      <div style="display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)"><div style="flex:1"><div style="font-size:11px;opacity:.8">Mağaza ATV</div><div style="font-size:16px;font-weight:700">586 ₺</div></div><div style="flex:1"><div style="font-size:11px;opacity:.8">Online sepet</div><div style="font-size:16px;font-weight:700">1.130 ₺</div></div></div>
+    </div>
+    <div style="scroll-snap-align:center;flex:0 0 calc(100% - 40px);box-sizing:border-box;padding:20px;border-radius:22px;background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;box-shadow:0 10px 28px rgba(244,63,94,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="font-size:12px;opacity:.85;font-weight:500;text-transform:uppercase;letter-spacing:.5px">İade</span><span style="font-size:12px;background:rgba(255,255,255,.18);padding:4px 9px;border-radius:9px;font-weight:600;display:flex;align-items:center;gap:3px"><i class="ti ti-trending-down" style="font-size:14px"></i>%0,7</span></div>
+      <div style="font-size:33px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px">34.661 ₺</div>
+      <div style="display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)"><div style="flex:1"><div style="font-size:11px;opacity:.8">İade fiş</div><div style="font-size:16px;font-weight:700">38</div></div><div style="flex:1"><div style="font-size:11px;opacity:.8">Ciroya oran</div><div style="font-size:16px;font-weight:700">%0,7</div></div></div>
+    </div>
+  </div>
+
+  <div id="dots" style="display:flex;justify-content:center;gap:6px;padding:12px 0 16px">
+    <span class="dot" style="width:18px;height:6px;border-radius:3px;background:#4063e6;transition:.3s"></span>
+    <span class="dot" style="width:6px;height:6px;border-radius:3px;background:#cbd5e1;transition:.3s"></span>
+    <span class="dot" style="width:6px;height:6px;border-radius:3px;background:#cbd5e1;transition:.3s"></span>
+    <span class="dot" style="width:6px;height:6px;border-radius:3px;background:#cbd5e1;transition:.3s"></span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px">
+    <span style="font-size:15px;font-weight:700;color:#0f172a">Mağazalar</span>
+    <span style="font-size:12px;color:#4063e6;font-weight:600">Tümü →</span>
+  </div>
+
+  <div style="padding:0 20px 18px;display:flex;flex-direction:column;gap:10px">
+    <div style="background:#fff;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(15,23,42,.05)">
+      <span style="width:44px;height:44px;border-radius:14px;background:#ecfdf5;display:flex;align-items:center;justify-content:center"><i class="ti ti-building-store" style="font-size:22px;color:#10b981"></i></span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#0f172a">Özlüce</div><div style="font-size:11.5px;color:#94a3b8">1.284 fiş · sepet 753 ₺</div></div>
+      <div style="text-align:right"><div style="font-size:16px;font-weight:800;color:#0f172a">967.304 ₺</div><div style="font-size:11px;color:#10b981;font-weight:600;display:flex;align-items:center;gap:2px;justify-content:flex-end"><i class="ti ti-trending-up" style="font-size:13px"></i>%12</div></div>
+      <i class="ti ti-chevron-right" style="font-size:18px;color:#cbd5e1"></i>
+    </div>
+    <div style="background:#fff;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(15,23,42,.05)">
+      <span style="width:44px;height:44px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center"><i class="ti ti-building-store" style="font-size:22px;color:#3b82f6"></i></span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#0f172a">FSM</div><div style="font-size:11.5px;color:#94a3b8">931 fiş · sepet 589 ₺</div></div>
+      <div style="text-align:right"><div style="font-size:16px;font-weight:800;color:#0f172a">548.716 ₺</div><div style="font-size:11px;color:#94a3b8;font-weight:600;display:flex;align-items:center;gap:2px;justify-content:flex-end"><i class="ti ti-minus" style="font-size:13px"></i>%2</div></div>
+      <i class="ti ti-chevron-right" style="font-size:18px;color:#cbd5e1"></i>
+    </div>
+    <div style="background:#fff;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(15,23,42,.05)">
+      <span style="width:44px;height:44px;border-radius:14px;background:#fff7ed;display:flex;align-items:center;justify-content:center"><i class="ti ti-building-store" style="font-size:22px;color:#f59e0b"></i></span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#0f172a">İst. Yolu</div><div style="font-size:11.5px;color:#94a3b8">754 fiş · sepet 690 ₺</div></div>
+      <div style="text-align:right"><div style="font-size:16px;font-weight:800;color:#0f172a">519.885 ₺</div><div style="font-size:11px;color:#ef4444;font-weight:600;display:flex;align-items:center;gap:2px;justify-content:flex-end"><i class="ti ti-trending-down" style="font-size:13px"></i>%19</div></div>
+      <i class="ti ti-chevron-right" style="font-size:18px;color:#cbd5e1"></i>
+    </div>
+  </div>
+
+  <div style="padding:0 20px 20px">
+    <div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:18px;padding:16px;display:flex;align-items:center;gap:13px;color:#fff;box-shadow:0 6px 18px rgba(14,165,233,.28)">
+      <span style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center"><i class="ti ti-world" style="font-size:23px"></i></span>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">E-ticaret (online)</div><div style="font-size:11.5px;opacity:.85">2.721 sipariş · sepet 1.130 ₺</div></div>
+      <div style="font-size:18px;font-weight:800">3.073.613 ₺</div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-around;align-items:center;padding:12px 10px 16px;background:#fff;border-top:1px solid rgba(15,23,42,.05)">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#4063e6"><span style="width:42px;height:34px;border-radius:13px;background:#eef2ff;display:flex;align-items:center;justify-content:center"><i class="ti ti-layout-dashboard" style="font-size:21px"></i></span><span style="font-size:10px;font-weight:700">Genel</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8"><i class="ti ti-shopping-cart" style="font-size:23px"></i><span style="font-size:10px;font-weight:500">E-ticaret</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8"><i class="ti ti-building-warehouse" style="font-size:23px"></i><span style="font-size:10px;font-weight:500">Operasyon</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8"><i class="ti ti-package" style="font-size:23px"></i><span style="font-size:10px;font-weight:500">Envanter</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8"><i class="ti ti-users" style="font-size:23px"></i><span style="font-size:10px;font-weight:500">Müşteri</span></div>
+  </div>
+
+</div>
+<script>
+(function(){
+  var hero=document.getElementById('hero'), dots=document.querySelectorAll('#dots .dot');
+  if(!hero) return;
+  hero.addEventListener('scroll', function(){
+    var i=Math.round(hero.scrollLeft/hero.clientWidth);
+    dots.forEach(function(d,j){ d.style.background=j===i?'#4063e6':'#cbd5e1'; d.style.width=j===i?'18px':'6px'; });
+  });
+})();
+</script>
+</body>
+</html>

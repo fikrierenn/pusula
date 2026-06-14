@@ -19,6 +19,9 @@
   /* Mobil alt nav: büyük ikon + okunur label */
   .btm-nav [data-lucide] { width: 1.6rem; height: 1.6rem; }
   .btm-nav .btm-nav-label { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  /* Hero carousel dot göstergesi (DaisyUI vermiyor — scroll-snap aktif kart) */
+  .hero-dot { @apply w-1.5 h-1.5 rounded-full bg-base-300 transition-all duration-200; }
+  .hero-dot-on { @apply w-4 bg-primary; }
 }
 
 /* ── Blazor varsayılan hata / validasyon UI (framework default — korunur) ── */

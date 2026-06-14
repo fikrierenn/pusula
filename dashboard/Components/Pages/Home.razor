@@ -9,21 +9,38 @@
 
 <PageTitle>BKM GM Dashboard</PageTitle>
 
-<div class="flex items-center gap-3 mb-5 flex-wrap">
-    <h1 class="text-2xl font-bold tracking-tight m-0">Genel Bakış</h1>
-    <span class="text-sm font-semibold text-base-content/50">@_aralik</span>
-    <select class="select select-bordered select-sm ml-auto text-sm font-semibold" @bind="_period" @bind:after="LoadAsync">
-        <option value="gunluk">Günlük (dün)</option>
-        <option value="haftalik">Haftalık (son 7 gün)</option>
-        <option value="ay">Aylık (MTD)</option>
-        <option value="ozel">Özel aralık…</option>
-    </select>
-    @if (_period == "ozel")
+<!-- App-stil başlık: greeting + marka + bildirim + avatar -->
+<div class="flex items-start justify-between gap-3 mb-4">
+    <div class="min-w-0">
+        <div class="text-sm italic text-base-content/50">@Greeting()</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0">BKM Genel Bakış</h1>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+        <button class="relative w-10 h-10 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center" @onclick='() => Nav.NavigateTo("gorevler")' aria-label="Görevler">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+        <div class="w-10 h-10 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center">CFO</div>
+    </div>
+</div>
+
+<!-- Dönem segment pill (aktif=koyu) + özel takvim -->
+<div class="flex gap-2 mb-4 lg:max-w-xl">
+    @foreach (var (key, label) in new[] { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") })
     {
+        <button class="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors @(_period == key ? "bg-neutral text-neutral-content shadow-sm" : "bg-base-100 border border-base-200 text-base-content/70")"
+                @onclick="() => SetPeriod(key)">@label</button>
+    }
+    <button class="w-11 shrink-0 rounded-full flex items-center justify-center @(_period == "ozel" ? "bg-neutral text-neutral-content" : "bg-base-100 border border-base-200 text-base-content/70")"
+            @onclick='() => SetPeriod("ozel")' aria-label="Özel aralık"><i data-lucide="calendar" class="w-5 h-5"></i></button>
+</div>
+@if (_period == "ozel")
+{
+    <div class="flex gap-2 mb-4 flex-wrap">
         <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBas" @bind:after="LoadAsync" />
         <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBit" @bind:after="LoadAsync" />
-    }
-</div>
+    </div>
+}
 
 @if (_loading)
 {
@@ -35,87 +52,92 @@ else if (_error is not null)
 }
 else if (_data is not null)
 {
-    <div class="rounded-2xl px-5 py-4 bg-primary text-white shadow-lg mb-4 lg:flex lg:gap-9 lg:items-center lg:flex-wrap lg:px-6 lg:py-5">
-        <div class="mb-3 lg:mb-0">
-            <div class="opacity-80 text-[11px] uppercase tracking-wider">Toplam Ciro (fiziksel + online)</div>
-            <div class="text-3xl font-extrabold leading-tight tracking-tight whitespace-nowrap">@Tl(_data.Toplam)</div>
-            <div class="text-xs opacity-90">mağaza @Tl(_data.Fiziksel) · online @Tl(_data.Eticaret)</div>
+    var prevToplam = _data.PrevFiziksel + _data.PrevEticaret;
+    var islem = _data.Fis + _data.ESip;
+    var prevIslem = _data.PrevFis + _data.PrevESip;
+    var sepet = islem > 0 ? _data.Toplam / islem : 0;
+    var prevSepet = prevIslem > 0 ? prevToplam / prevIslem : 0;
+    var magazaAtv = _data.Fis > 0 ? _data.Fiziksel / _data.Fis : 0;
+    var oSepet = _data.ESip > 0 ? _data.Eticaret / _data.ESip : 0;
+    var iadeOran = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
+    <!-- Hero KPI carousel — mobil swipe (peek'li scroll-snap), masaüstü 4'lü grid -->
+    <div class="mb-1">
+        <div id="hero" class="carousel carousel-center w-full gap-3.5 lg:grid lg:grid-cols-4 lg:gap-3 lg:overflow-visible">
+            @HeroCard("Toplam Ciro", Tl(_data.Toplam), WowOf(_data.Toplam, prevToplam), "from-primary to-primary/80", "Mağaza", Tl(_data.Fiziksel), "Online", Tl(_data.Eticaret))
+            @HeroCard("Toplam İşlem", Num(islem), WowOf(islem, prevIslem), "from-info to-info/80", "Mağaza fiş", Num(_data.Fis), "Online sipariş", Num(_data.ESip))
+            @HeroCard("Sepet Ortalama", Tl(sepet), WowOf(sepet, prevSepet), "from-success to-success/80", "Mağaza ATV", Tl(magazaAtv), "Online sepet", Tl(oSepet))
+            @HeroCard("İade", Tl(_data.Iade), WowOf(_data.Iade, _data.PrevIade), "from-error to-error/80", "Ciroya oran", $"%{iadeOran}", "Geçen dönem", Tl(_data.PrevIade))
         </div>
-        <div class="grid grid-cols-2 gap-4 pt-3 border-t border-white/20 lg:flex lg:gap-9 lg:pt-0 lg:border-0">
-            <div><div class="opacity-80 text-[11px] uppercase tracking-wider">İşlem</div><div class="text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight">@Num(_data.Fis)</div>
-                <div class="text-xs opacity-90">@Num(_data.ESip) online</div></div>
-            <div><div class="opacity-80 text-[11px] uppercase tracking-wider">İade</div><div class="text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight whitespace-nowrap">@Tl(_data.Iade)</div></div>
+        <div id="heroDots" class="flex justify-center items-center gap-1.5 mt-3 mb-4 lg:hidden">
+            <span class="hero-dot hero-dot-on"></span><span class="hero-dot"></span><span class="hero-dot"></span><span class="hero-dot"></span>
         </div>
     </div>
 
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 mb-4 max-sm:grid-cols-2">
+    <!-- Mağazalar başlık + tüm kategori drill -->
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold tracking-tight m-0">Mağazalar</h2>
+        <button class="text-sm font-semibold text-primary flex items-center gap-1" @onclick="() => _modalTot = true">Tümü <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+    </div>
+
+    <!-- İkon-kart mağaza listesi (renkli kare ikon + trend WoW rozet) -->
+    <div class="grid grid-cols-1 gap-2.5 mb-5 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+        @{ var paletIdx = 0; var palet = new[] { ("bg-success/15", "text-success"), ("bg-info/15", "text-info"), ("bg-warning/15", "text-warning") }; }
         @foreach (var s in _data.Stores)
         {
-            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-3.5 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick='() => Nav.NavigateTo($"magaza/{s.MekanId}")'>
-                <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50 flex items-center gap-1">@s.Ad <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></div>
-                <div class="text-[22px] lg:text-[25px] font-extrabold tracking-tight my-0.5 whitespace-nowrap">@Tl(s.Net)</div>
-                <div class="text-xs text-base-content/60">@Num(s.Fis) fiş · sepet @Num(s.Atv) ₺
-                    @if (_period == "ay" && s.GerPct is not null)
-                    {
-                        <span> · hedef %@s.GerPct</span>
-                    }
-                </div>
-            </div>
+            var (bg, fg) = palet[paletIdx++ % palet.Length];
+            @StoreRow(s.Ad, Tl(s.Net), $"{Num(s.Fis)} fiş · sepet {Num(s.Atv)} ₺", "store", fg, bg, s.Wow, () => Nav.NavigateTo($"magaza/{s.MekanId}"))
         }
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-3.5 bg-base-200/60 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalTot = true">
-            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50 flex items-center gap-1">TOPLAM (3 mağaza) <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></div>
-            <div class="text-[22px] lg:text-[25px] font-extrabold tracking-tight my-0.5 whitespace-nowrap">@Tl(_data.Fiziksel)</div>
-            <div class="text-xs text-base-content/60">@Num(_data.Fis) fiş · sepet @Num(_data.Fis > 0 ? (int)Math.Round(_data.Fiziksel / _data.Fis) : 0) ₺</div>
+    </div>
+
+    <!-- E-ticaret özet — gradient info kartı (kategori drill) -->
+    <div class="rounded-2xl px-4 py-4 mb-5 bg-gradient-to-br from-info to-info/80 text-white shadow-lg flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md"
+         @onclick="() => _modalEtic = true">
+        <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0"><i data-lucide="globe" class="w-[23px] h-[23px]"></i></div>
+        <div class="min-w-0 flex-1">
+            <div class="text-[13px] font-bold">E-ticaret (online)</div>
+            <div class="text-xs opacity-85 truncate">@Num(_data.ESip) sipariş · sepet @Tl(oSepet)</div>
         </div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-4 py-3.5 bg-info/10 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick="() => _modalEtic = true">
-            <div class="text-[11px] font-bold uppercase tracking-wide text-base-content/50 flex items-center gap-1">E-ticaret (online) <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></div>
-            <div class="text-[22px] lg:text-[25px] font-extrabold tracking-tight my-0.5 whitespace-nowrap">@Tl(_data.Eticaret)</div>
-            <div class="text-xs text-base-content/60">@Num(_data.ESip) sipariş · sepet @Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div>
-        </div>
+        <div class="text-[18px] font-extrabold whitespace-nowrap shrink-0">@Tl(_data.Eticaret)</div>
     </div>
 
     @if (_period == "ay" && _hedefMag is not null)
     {
-        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Hedef-Gerçekleşen — Mağaza (MTD)</h3>
-                <table class="table table-sm w-full text-[13px]">
-                    <tr><td><b>Mağaza</b></td><td class="text-right"><b>MTD Net</b></td><td class="text-right"><b>Hedef</b></td><td class="text-right"><b>Gerçekleşme</b></td></tr>
-                    @{ decimal tNet = 0, tHed = 0; }
-                    @foreach (var m in _hedefMag)
-                    {
-                        tNet += m.Net; tHed += m.Hedef;
-                        <tr><td>@m.Ad</td><td class="text-right">@Tl(m.Net)</td><td class="text-right">@Tl(m.Hedef)</td>
-                            <td class="text-right font-semibold @GerRenk(m.GerPct)">@(m.GerPct is null ? "—" : $"%{m.GerPct}")</td></tr>
-                    }
-                    @{ decimal? tGer = tHed > 0 ? Math.Round(100 * tNet / tHed, 1) : null; }
-                    <tr class="font-bold border-t-2 border-base-300 bg-base-200/60"><td><b>TOPLAM</b></td><td class="text-right"><b>@Tl(tNet)</b></td><td class="text-right"><b>@Tl(tHed)</b></td>
-                        <td class="text-right font-bold @GerRenk(tGer)">@(tGer is null ? "—" : $"%{tGer}")</td></tr>
-                </table>
-                <div class="relative h-[220px]"><canvas id="ch_hedef"></canvas></div>
-                <div class="text-base-content/50 text-[11px]">Renk: ≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı. Hedef: BKMDATA.Hedef (aylık).</div>
+        <h2 class="text-lg font-bold tracking-tight mb-3">Hedefler</h2>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-5">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="target" class="w-[18px] h-[18px] text-primary"></i>Mağaza — Hedef Gerçekleşme (MTD)</h3>
+                @{ decimal tNet = 0, tHed = 0; }
+                @foreach (var m in _hedefMag)
+                {
+                    tNet += m.Net; tHed += m.Hedef;
+                    @HedefRow(m.Ad, m.Net, m.Hedef, m.GerPct)
+                }
+                @{ decimal? tGer = tHed > 0 ? Math.Round(100 * tNet / tHed, 1) : null; }
+                <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200">
+                    <span class="text-sm font-bold">TOPLAM</span>
+                    <div class="text-right"><span class="text-sm font-bold @GerRenk(tGer)">@(tGer is null ? "—" : $"%{tGer}")</span>
+                        <div class="text-[11px] text-base-content/50">@Tl(tNet) / @Tl(tHed)</div></div>
+                </div>
+                <div class="text-base-content/50 text-[11px] mt-3">≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı. Hedef: BKMDATA.Hedef (aylık).</div>
             </div>
-            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Hedef-Gerçekleşen — Kategori (MTD, en sapan)</h3>
-                <table class="table table-sm w-full text-[13px]">
-                    <tr><td><b>Kategori</b></td><td class="text-right"><b>MTD Net</b></td><td class="text-right"><b>Hedef</b></td><td class="text-right"><b>Gerçekleşme</b></td></tr>
-                    @foreach (var k in _hedefKat)
-                    {
-                        <tr><td>@k.Ad</td><td class="text-right">@Tl(k.Net)</td><td class="text-right">@Tl(k.Hedef)</td>
-                            <td class="text-right font-semibold @GerRenk(k.GerPct)">@(k.GerPct is null ? "—" : $"%{k.GerPct}")</td></tr>
-                    }
-                    @if (_hedefKat.Count == 0)
-                    {
-                        <tr><td colspan="4" class="text-base-content/50">Kategori hedefi bulunamadı.</td></tr>
-                    }
-                </table>
-                <div class="text-base-content/50 text-[11px]">Köprü: Hedef.ktgId = urnKtgr2.ktgrID. Gerçekleşme artan (en sapan üstte).</div>
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="target" class="w-[18px] h-[18px] text-primary"></i>Kategori — Hedef Gerçekleşme (en sapan)</h3>
+                @foreach (var k in _hedefKat)
+                {
+                    @HedefRow(k.Ad, k.Net, k.Hedef, k.GerPct)
+                }
+                @if (_hedefKat.Count == 0)
+                {
+                    <div class="text-base-content/50 text-[13px]">Kategori hedefi bulunamadı.</div>
+                }
+                <div class="text-base-content/50 text-[11px] mt-3">Gerçekleşme artan (en sapan üstte).</div>
             </div>
         </div>
     }
 
+    <h2 class="text-lg font-bold tracking-tight mb-3">Analiz</h2>
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Mağaza Kategori Mix (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_kat"></canvas></div></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Son 14 Gün — Fiziksel Net Ciro</h3><div class="relative h-[220px]"><canvas id="ch_trend"></canvas></div></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="relative h-[220px]"><canvas id="ch_alis"></canvas></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-pie" class="w-[18px] h-[18px] text-primary"></i>Mağaza Kategori Mix (@_aralik)</h3><div class="relative h-[220px]"><canvas id="ch_kat"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Fiziksel Net Ciro</h3><div class="relative h-[220px]"><canvas id="ch_trend"></canvas></div></div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="package" class="w-[18px] h-[18px] text-primary"></i>Son 14 Gün — Net Alış (Mal Kabul)</h3><div class="relative h-[220px]"><canvas id="ch_alis"></canvas></div>
             <div class="text-base-content/50 text-[11px]">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0 (depo kapalı).</div></div>
     </div>
 
@@ -255,15 +277,13 @@ else if (_data is not null)
         try
         {
             _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _charts.InvokeVoidAsync("heroDots", "hero", "heroDots");
             await _charts.InvokeVoidAsync("bar", "ch_kat",
                 _data.Kategori.Select(k => k.Ad), _data.Kategori.Select(k => k.Ciro), true);
             await _charts.InvokeVoidAsync("area", "ch_trend",
                 _trend.Select(t => t.Tarih[5..]), _trend.Select(t => t.Net));
             await _charts.InvokeVoidAsync("area", "ch_alis",
                 _alis.Select(t => t.Tarih[5..]), _alis.Select(t => t.Net));
-            if (_period == "ay" && _hedefMag is not null)
-                await _charts.InvokeVoidAsync("bar", "ch_hedef",
-                    _hedefMag.Select(m => m.Ad), _hedefMag.Select(m => m.GerPct ?? 0), false);
         }
         catch { /* ilk prerender'da JS henüz hazır değil — sonraki render'da çizilir */ }
     }
@@ -276,7 +296,82 @@ else if (_data is not null)
     // Hedef gerçekleşme renk eşiği: ≥%95 yeşil, %85-95 sarı, <%85 kırmızı
     private static string GerRenk(decimal? pct) => pct is null ? "text-base-content/40"
         : pct >= 95 ? "text-success" : pct >= 85 ? "text-warning" : "text-error";
+    private static string GerBar(decimal? pct) => pct is null ? "bg-base-300"
+        : pct >= 95 ? "bg-success" : pct >= 85 ? "bg-warning" : "bg-error";
+    // Progress genişliği — invariant (Türkçe virgül CSS'i bozar), 0-100 clamp.
+    private static string BarW(decimal? pct) => Math.Min(Math.Max(pct ?? 0, 0), 100)
+        .ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    // Kompakt hedef satırı (tablo yerine — mobilde taşmaz): ad + % + net/hedef + mini progress.
+    private RenderFragment HedefRow(string ad, decimal net, decimal hedef, decimal? pct) => @<div class="py-2 border-b border-base-200 last:border-b-0">
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-[13px] font-semibold text-base-content/85 truncate">@ad</span>
+            <span class="text-[13px] font-bold shrink-0 @GerRenk(pct)">@(pct is null ? "—" : $"%{pct}")</span>
+        </div>
+        <div class="text-[11px] text-base-content/50 truncate mt-0.5">@Tl(net) / @Tl(hedef)</div>
+        <div class="h-1.5 rounded-full bg-base-200 mt-1.5 overflow-hidden">
+            <div class="h-full rounded-full @GerBar(pct)" style="width:@BarW(pct)"></div>
+        </div>
+    </div>;
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    // WoW: bir önceki eş-uzunluk döneme göre değişim %. prev=0 → trend yok (null).
+    private static decimal? WowOf(decimal cur, decimal prev) => prev > 0 ? Math.Round(100 * (cur - prev) / prev, 1) : null;
+    private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
+    private static (string ico, string cls) TrendIco(decimal pct)
+    {
+        if (pct == 0) return ("minus", "text-base-content/40");
+        return pct > 0 ? ("trending-up", "text-success") : ("trending-down", "text-error");
+    }
+
+    // Saate göre selamlama (yerel, tek kullanıcı app).
+    private static string Greeting()
+    {
+        var h = DateTime.Now.Hour;
+        return h < 6 ? "İyi geceler 👋" : h < 12 ? "Günaydın 👋" : h < 18 ? "İyi günler 👋" : "İyi akşamlar 👋";
+    }
+
+    private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    // Hero gradient KPI kartı (carousel item). WoW pill sağ-üst, altta ayraçlı 2-kolon stat.
+    private RenderFragment HeroCard(string label, string value, decimal? wow, string gradient, string l1, string v1, string l2, string v2) => @<div class="carousel-item w-[86%] lg:w-auto">
+        <div class="w-full h-full rounded-3xl px-5 py-5 bg-gradient-to-br @gradient text-white shadow-lg flex flex-col">
+            <div class="flex items-start justify-between gap-2">
+                <div class="opacity-80 text-[11px] uppercase tracking-wider font-semibold">@label</div>
+                @if (wow is not null)
+                {
+                    <span class="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-bold bg-white/20 rounded-full px-2 py-0.5">
+                        <i data-lucide="@(wow > 0 ? "arrow-up-right" : wow < 0 ? "arrow-down-right" : "minus")" class="w-3 h-3"></i>@Pct(wow.Value)
+                    </span>
+                }
+            </div>
+            <div class="text-[34px] font-extrabold leading-tight tracking-tight whitespace-nowrap mt-2 mb-3">@value</div>
+            <div class="grid grid-cols-2 gap-3 pt-3 border-t border-white/20 mt-auto">
+                <div><div class="opacity-75 text-[11px]">@l1</div><div class="text-base font-bold whitespace-nowrap">@v1</div></div>
+                <div><div class="opacity-75 text-[11px]">@l2</div><div class="text-base font-bold whitespace-nowrap">@v2</div></div>
+            </div>
+        </div>
+    </div>;
+
+    // İkon-kart mağaza satırı (renkli KARE ikon + tutar + altında WoW trend rozeti).
+    private RenderFragment StoreRow(string ad, string tutar, string alt, string icon, string iconColor, string iconBg, decimal? wow, Action onClick) => @<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl flex flex-row items-center gap-3 px-4 py-3.5 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick="onClick">
+        <div class="@iconBg @iconColor w-12 h-12 rounded-2xl flex items-center justify-center shrink-0">
+            <i data-lucide="@icon" class="w-[22px] h-[22px]"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="text-[15px] font-bold text-base-content/90 truncate">@ad</div>
+            <div class="text-xs text-base-content/55 truncate">@alt</div>
+        </div>
+        <div class="text-right shrink-0">
+            <div class="text-[18px] font-extrabold tracking-tight whitespace-nowrap">@tutar</div>
+            @if (wow is not null)
+            {
+                var t = TrendIco(wow.Value);
+                <div class="inline-flex items-center gap-0.5 text-[11px] font-bold mt-0.5 @t.cls"><i data-lucide="@t.ico" class="w-3 h-3"></i>@Pct(wow.Value)</div>
+            }
+        </div>
+        <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/30 shrink-0"></i>
+    </div>;
 }

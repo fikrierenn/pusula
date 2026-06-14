@@ -35,6 +35,13 @@ public sealed class Queries(Db db)
         var stores = (await conn.QueryAsync<StoreRow>(storeSql,
             new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) })).ToList();
 
+        // Geçen dönem (eş uzunluk, hemen öncesi) — hero + mağaza WoW trendi. Aynı storeSql, kaydırılmış tarih.
+        int len = endExcl.DayNumber - start.DayNumber;
+        var prevStart = start.AddDays(-len);
+        var prevStores = (await conn.QueryAsync<StoreRow>(storeSql,
+            new { start = prevStart.ToDateTime(TimeOnly.MinValue), end = start.ToDateTime(TimeOnly.MinValue) })).ToList();
+        var prevNetMap = prevStores.ToDictionary(s => s.MekanId, s => s.Net);
+
         // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — JOKER, ISO tarih
         const string eticSql = """
             SELECT SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
@@ -45,6 +52,12 @@ public sealed class Queries(Db db)
         var etic = await conn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql, new { giso, g2iso });
         var eSip = etic.Sip ?? 0;
         var eCiro = etic.Ciro ?? 0m;
+
+        // Geçen dönem e-ticaret net (hero online WoW)
+        var prevEtic = await conn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql,
+            new { giso = prevStart.ToString("yyyyMMdd"), g2iso = giso });
+        var prevECiro = prevEtic.Ciro ?? 0m;
+        var prevESip = prevEtic.Sip ?? 0;
 
         // Hedef (MTD) — sadece aylık dönemde dolu; ay başı–bugün
         var ayBas = new DateOnly(start.Year, start.Month, 1);
@@ -80,8 +93,10 @@ public sealed class Queries(Db db)
             var net = r?.Net ?? 0;
             var fis = r?.Fis ?? 0;
             decimal? ger = hedef.TryGetValue(mid, out var h) && h > 0 ? Math.Round(100 * net / h, 1) : null;
+            var pn = prevNetMap.GetValueOrDefault(mid, 0);
+            decimal? wow = pn > 0 ? Math.Round(100 * (net - pn) / pn, 1) : null;
             cards.Add(new StoreCard(mid, Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0, ger, r?.Iade ?? 0,
-                skatMap.GetValueOrDefault(mid, [])));
+                skatMap.GetValueOrDefault(mid, []), wow));
         }
 
         // E-ticaret kanal kırılımı (donut)
@@ -165,7 +180,11 @@ public sealed class Queries(Db db)
         var fiz = stores.Sum(s => s.Net);
         var fisTop = stores.Sum(s => s.Fis);
         var iadeTop = stores.Sum(s => s.Iade);
-        return new PeriodSummary(fiz, fisTop, iadeTop, eCiro, eSip, fiz + eCiro, cards, kategori, eticKanal, saat, kasiyer, kargo, il);
+        var prevFiz = prevStores.Sum(s => s.Net);
+        var prevFis = prevStores.Sum(s => s.Fis);
+        var prevIade = prevStores.Sum(s => s.Iade);
+        return new PeriodSummary(fiz, fisTop, iadeTop, eCiro, eSip, fiz + eCiro, cards, kategori, eticKanal, saat, kasiyer, kargo, il,
+            prevFiz, prevFis, prevIade, prevECiro, prevESip);
     }
 
     /// <summary>
