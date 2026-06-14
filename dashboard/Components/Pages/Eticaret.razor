@@ -145,6 +145,15 @@ else if (_data is not null)
                 </div>
                 <div class="text-base-content/50 text-[11px] mt-3">İade maliyeti = <b>2×kargo bedeli</b> (gidiş+geri getirme) — teslim edilmeyen COD sipariş, <b>BKM yutar</b>. Kapıda bedel (SERVICEPRICE) firmaya ödenen pass-through, kâr değil. COD iade oranı coğrafya-bağımlı (Doğu yüksek). PAYDEFREF=-3, çıkış dönemine göre.</div>
             </div>
+            <!-- B-56 COD il bazlı iade riski -->
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5"><i data-lucide="map-pin" class="w-4 h-4 text-error"></i>COD İade Riski — İl Bazlı (en yüksek, @_aralik)</h3>
+                <AppDataTable TItem="CodIl" Items="_codIl"
+                              Primary="@(c => c.Sehir)" Sub="@(c => $"{Num(c.Siparis)} COD sipariş")"
+                              MetricMain="@(c => $"{Num(c.Iade)} iade")"
+                              Badge="@(c => ($"%{c.Oran}", c.Oran >= 15 ? "bg-error/15 text-error" : c.Oran >= 10 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/55"))" />
+                <div class="text-base-content/50 text-[11px] mt-3">≥20 COD siparişli iller · iade oranına göre sıralı. Yüksek-riskli illerde COD kapatma/ön-ödeme teşviki değerlendirilebilir.</div>
+            </div>
         </div>
     }
 
@@ -177,6 +186,7 @@ else if (_data is not null)
     private IReadOnlyList<IlTeslimat> _ilTeslimat = [];
     private IReadOnlyList<AyKargo> _ayKargo = [];
     private CodOzet? _cod;
+    private IReadOnlyList<CodIl> _codIl = [];   // B-56 il bazlı COD risk
     private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private bool _modalGun;
     private AyKargo? _selAy;
@@ -224,10 +234,11 @@ else if (_data is not null)
             var tIl        = Etic.GetIlTeslimatAsync(start, endExcl);
             var tAyKargo   = Etic.GetAyKargoAsync();      // son 13 ay (dönemsiz)
             var tCod       = Etic.GetCodOzetAsync(start, endExcl);
+            var tCodIl     = Etic.GetCodIlAsync(start, endExcl);   // B-56
             var tBekleyen  = Etic.GetBekleyenAsync();    // anlık (dönemsiz)
-            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tBekleyen);
+            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen);
             _data = tData.Result; _kargoPerf = tKargoPerf.Result; _kargoGun = tKargoGun.Result;
-            _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _bekleyen = tBekleyen.Result;
+            _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _codIl = tCodIl.Result; _bekleyen = tBekleyen.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

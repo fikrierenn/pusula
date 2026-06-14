@@ -55,6 +55,9 @@ public record GunKargo(string Gun, int Siparis, decimal CikisTakvim, decimal Cik
 // Kapıda ödeme (COD) özeti (B-41): PAYDEFREF=-3. İade maliyeti = 2×kargo (BKM yutar). SENDDATE dönemi.
 public record CodOzet(int Siparis, int Teslim, int Iade, decimal IadeOran, decimal KapidaBedel, decimal IadeMaliyet);
 
+/// <summary>COD il bazlı iade oranı (B-56): coğrafi risk. PAYDEFREF=-3 + DCITY + CARGODELIVERYSTATUS=2.</summary>
+public record CodIl(string Sehir, int Siparis, int Iade, decimal Oran);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 

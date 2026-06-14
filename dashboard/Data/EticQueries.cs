@@ -189,6 +189,23 @@ public sealed class EticQueries(Db db)
         return new CodOzet(r.Siparis, r.Teslim, r.Iade, oran, r.KapidaBedel, r.IadeMaliyet);
     }
 
+    /// <summary>COD il bazlı iade oranı (B-56): coğrafi risk. En yüksek oran üstte (HAVING ≥20 sipariş — gürültü filtresi).</summary>
+    public async Task<IReadOnlyList<CodIl>> GetCodIlAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT TOP 12 mus.DCITY AS Sehir, COUNT(*) AS Siparis,
+                   SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) AS Iade,
+                   CAST(100.0*SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END)/COUNT(*) AS decimal(10,1)) AS Oran
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
+            WHERE o.PAYDEFREF=-3 AND o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL AND mus.DCITY IS NOT NULL
+            GROUP BY mus.DCITY HAVING COUNT(*)>=20 ORDER BY Oran DESC;
+            """;
+        return (await conn.QueryAsync<CodIl>(sql,
+            new { giso = start.ToString("yyyyMMdd"), g2iso = endExcl.ToString("yyyyMMdd") })).ToList();
+    }
+
     /// <summary>Bekleyen gün raporu: kargoya çıkmamış (SENDDATE NULL) + normal STATUS siparişlerin yaş dağılımı (anlık, dönemsiz).</summary>
     public async Task<IReadOnlyList<BekleyenBucket>> GetBekleyenAsync()
     {
