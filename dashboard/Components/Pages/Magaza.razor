@@ -57,6 +57,44 @@ else if (_d is not null)
                       XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" />
     </div>
 
+    <!-- B-55 Saat × Gün yoğunluk ısı haritası -->
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+        <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="calendar-clock" class="w-[18px] h-[18px] text-primary"></i>Yoğunluk — Saat × Gün (son 60 gün, fiş)</h3>
+        @if (_heat.Count > 0)
+        {
+            var maxF = _heat.Max(h => h.Fis);
+            var sMin = _heat.Min(h => h.Saat);
+            var sMax = _heat.Max(h => h.Saat);
+            var map = _heat.GroupBy(h => (h.Gun, h.Saat)).ToDictionary(g => g.Key, g => g.Sum(x => x.Fis));
+            var gunAd = new[] { "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz" };
+            <div class="overflow-x-auto -mx-1 px-1">
+                <div class="inline-grid gap-0.5" style="grid-template-columns:32px repeat(@(sMax - sMin + 1), 22px)">
+                    <div></div>
+                    @for (int s = sMin; s <= sMax; s++)
+                    {
+                        <div class="text-[9px] text-base-content/45 text-center leading-[14px]">@s</div>
+                    }
+                    @for (int g = 0; g < 7; g++)
+                    {
+                        var gi = g;
+                        <div class="text-[10px] font-semibold text-base-content/60 leading-[22px] pr-1 @(gi >= 5 ? "text-primary" : "")">@gunAd[gi]</div>
+                        @for (int s = sMin; s <= sMax; s++)
+                        {
+                            var f = map.GetValueOrDefault((gi, s), 0);
+                            var op = maxF > 0 && f > 0 ? Math.Max(0.08, Math.Round((double)f / maxF, 2)) : 0;
+                            <div class="rounded-[3px] h-[22px] @(f > 0 ? "bg-primary" : "bg-base-200")" style="@(f > 0 ? $"opacity:{op.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : "")" title="@gunAd[gi] @s:00 · @Num(f) fiş"></div>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="text-base-content/50 text-[11px] mt-2.5">Koyu = yoğun. Hafta sonu (Cmt/Paz) + öğleden sonra zirve. Personel/kampanya zamanlama için.</div>
+        }
+        else
+        {
+            <div class="text-base-content/50 text-[13px]">Veri yok.</div>
+        }
+    </div>
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
             <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="credit-card" class="w-[18px] h-[18px] text-primary"></i>Ödeme Tipi Mix</h3>
@@ -207,6 +245,7 @@ else if (_d is not null)
     private string _aralik = "";
     private MagazaDetay? _d;
     private IReadOnlyList<TrendPoint> _trend = [];   // B-53 son 30 gün
+    private IReadOnlyList<HeatCell> _heat = [];       // B-55 saat×gün
     private string _pColor = "";                       // grafik rengi (DaisyUI --p köprü)
     private bool _modalUrun;
     private bool _urunLoading;
@@ -241,8 +280,9 @@ else if (_d is not null)
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
             var tDetay = Mag.GetDetayAsync(Id, start, endExcl);
             var tTrend = Mag.GetTrendAsync(Id, dun, 30);
-            await Task.WhenAll(tDetay, tTrend);
-            _d = tDetay.Result; _trend = tTrend.Result;
+            var tHeat = Mag.GetHeatmapAsync(Id, dun, 60);
+            await Task.WhenAll(tDetay, tTrend, tHeat);
+            _d = tDetay.Result; _trend = tTrend.Result; _heat = tHeat.Result;
             if (_d is null) _error = "Geçersiz mağaza.";
         }
         catch (Exception ex) { _error = ex.Message; }

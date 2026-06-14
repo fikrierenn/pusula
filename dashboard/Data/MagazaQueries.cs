@@ -189,4 +189,22 @@ public sealed class MagazaQueries(Db db)
         var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
         return (await conn.QueryAsync<TrendPoint>(sql, new { mid, bas, son })).OrderBy(t => t.Tarih).ToList();
     }
+
+    /// <summary>B-55 saat×gün yoğunluk (heatmap): son N gün fiş adedi. Gun=DATEDIFF%7 (0=Pzt..6=Paz, deterministik).</summary>
+    public async Task<IReadOnlyList<HeatCell>> GetHeatmapAsync(int mid, DateOnly dun, int gun = 60)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT DATEDIFF(DAY,0,s.Date)%7 AS Gun, DATEPART(HOUR,s.Date) AS Saat, COUNT(*) AS Fis
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
+            WHERE MG.mekanID=@mid AND s.DocumentsTypeId IN (1,2,6,7,8) AND s.Date>=@bas AND s.Date<@son
+            GROUP BY DATEDIFF(DAY,0,s.Date)%7, DATEPART(HOUR,s.Date);
+            """;
+        var bas = dun.AddDays(-(gun - 1)).ToDateTime(TimeOnly.MinValue);
+        var son = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        return (await conn.QueryAsync<HeatCell>(sql, new { mid, bas, son })).ToList();
+    }
 }

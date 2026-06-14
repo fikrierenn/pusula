@@ -37,6 +37,9 @@ public record KasiyerRow(string Magaza, string Ad, int Fis, decimal Net, int Atv
 /// <summary>Kasiyer + önceki döneme göre net değişim (B-57). DeltaPct null = önceki dönemde yok.</summary>
 public record KasiyerDelta(string Magaza, string Ad, int Fis, decimal Net, int Atv, decimal? DeltaPct);
 
+/// <summary>Saat×gün yoğunluk hücresi (B-55 heatmap). Gun: 0=Pzt..6=Paz (DATEDIFF%7). Fis = fiş adedi.</summary>
+public record HeatCell(int Gun, int Saat, int Fis);
+
 /// <summary>14 gün trend noktası (fiziksel net, tarih).</summary>
 public record TrendPoint(string Tarih, decimal Net);
 
