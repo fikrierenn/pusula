@@ -59,6 +59,7 @@ entities:
   depo.adres: {pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')"}
   depo.stok_adres_palet_vw: {tip: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)"}
   ent.JokerCKStok_vw: {tip: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view"}
+  ent.odak_depo_Stok: {tip: tablo, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 486K ürün, ~7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. 14.06 keşif."}
   stokSonAltDepo_vw: {tip: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ehMekan POZİTİF stok: 12=Merkez Depo (~2,14M), 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
   ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK: {key: [ORDERREF], note: "depoda toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID)"}
