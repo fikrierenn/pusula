@@ -1,0 +1,56 @@
+@* Mobil-native bar (ApexCharts) — yuvarlatılmış köşe, gridsiz, değer etiketli. plan-08. *@
+@typeparam TItem where TItem : class
+
+<div class="relative" style="height:@(Height)px">
+    <ApexChart TItem="TItem" Options="_opts" Height="@Height">
+        <ApexPointSeries TItem="TItem" Items="Items" Name="@Name" SeriesType="SeriesType.Bar"
+                         XValue="XValue" YValue="YValue" />
+    </ApexChart>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter, EditorRequired] public Func<TItem, object> XValue { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, decimal?> YValue { get; set; } = default!;
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Color { get; set; } = "#4063e6";
+    [Parameter] public int Height { get; set; } = 220;
+    [Parameter] public bool Horizontal { get; set; } = true;
+
+    private ApexChartOptions<TItem> _opts = new();
+
+    private const string NumFmt = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}";
+
+    protected override void OnParametersSet()
+    {
+        _opts = new ApexChartOptions<TItem>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { string.IsNullOrEmpty(Color) ? "#4063e6" : Color },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar { Horizontal = Horizontal, BorderRadius = 6, BarHeight = "62%", ColumnWidth = "55%" },
+            },
+            DataLabels = new DataLabels
+            {
+                Enabled = true,
+                Formatter = NumFmt,
+                Style = new DataLabelsStyle { FontSize = "10px", Colors = new List<string> { "#475569" } },
+                OffsetX = Horizontal ? 18 : 0,
+            },
+            Grid = new Grid { Show = false },
+            Legend = new Legend { Show = false },
+            Xaxis = new XAxis
+            {
+                AxisBorder = new AxisBorder { Show = false },
+                AxisTicks = new AxisTicks { Show = false },
+                Labels = new XAxisLabels { Style = new AxisLabelStyle { FontSize = "10px" } },
+            },
+            Yaxis = new List<YAxis>
+            {
+                new YAxis { Labels = new YAxisLabels { Style = new AxisLabelStyle { FontSize = "11px" } } },
+            },
+            Tooltip = new Tooltip { Enabled = true },
+        };
+    }
+}
