@@ -1,7 +1,7 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-13
+updated: 2026-06-14
 
 metrics:
   net_ciro:
@@ -133,3 +133,13 @@ metrics:
     tatil_kaynak: "VERİDEN OTOMATİK (13.06 — hardcode/API yerine). Tatil = depo'nun çalışmadığı hafta-içi günler: çalışılan gün=SENDDATE kargo≥100, hafta-içi olup çalışılmayan=tatil. RESMİ+DİNİ+idari/grev hepsi otomatik (Kurban 25-30 May 0-kargo boşluk, 19 May 3-kargo resmi tatil — veride kesin). holidays.rest ücretli; Nager.Date dini bayram vermiyor → veriden en doğru, sıfır bakım. dashboard TatilValuesAsync (statik cache 6h)."
     bulgu: "ÇIKIŞ il-bağımsız sabit (iş günü ~1,8g, takvim ~4,1g) = DEPO darboğazı (operasyon, kontrol edilebilir). TESLİM il-bağımlı (İstanbul 1,4g · Doğu 2,7-2,8g) = kargo firma+mesafe (lojistik). Aylık çıkış trendi yoğunlukla korele (Aralık yılbaşı iş günü 3,1g zirve) = kapasite."
     rapor: "dashboard EticQueries.GetIlTeslimatAsync/GetAyKargoAsync/GetKargoPerfAsync (CikisIsGunu+TatilApply) · KARGO İL TESLİMAT PERFORMANSLARI.sql"
+
+  encore_irshrk_mutabakat:   # 14.06 — EncoreMerkez ↔ irsHrk ciro mutabakatı (FSM 13.06 işlem-seviye KESİN)
+    soru: "Dashboard kategori ciro (EncoreMerkez) drill (irsHrk) ile neden ~%14 (Oyuncak) farklı?"
+    kdv_bazi: "EncoreMerkez SalesProducts.TotalPrice + Sales.GrossTotal = KDV DAHİL. SalesProducts.VatTotal = KDV. KDV hariç = TotalPrice−VatTotal. irsHrk ehTutarN = KDV HARİÇ. Kitap %0, oyuncak/kırtasiye %20 → kategori bazında fark; blended mağaza ~%5-6."
+    iki_sebep: "(1) KDV (EncoreMerkez dahil, irsHrk hariç) — ~%5. (2) İADE: EncoreMerkez katSql iade edilen kalemi (SalesProducts.ReturnAmount>0) SATIŞ sayıyor; irsHrk ehTip 100/101 ile netliyor — ~%0,9."
+    kanit: "14.06 FSM 13.06: per-ürün EncoreMerkez KDV-hariç(TP−VatTotal) = irsHrk net, ADET EŞİTSE kuruşu kuruşuna (52529:107,5=107,5 · 3570:433,62=433,62). Residual = SADECE adet farkı (iade). Fiyat/eksik-ürün farkı YOK. Mağaza-gün: EncoreMerkez KDV-dahil 559.012 − KDV 38.155 = KDV-hariç 520.857 ≈ irsHrk 516.302 (%0,87 kalan = iade ehTip 101 ~4.893)."
+    karar: "Dashboard ciro KDV DAHİL (perakende, kasanın aldığı). Ana mağaza ciro (Sales fiş-net GrossTotal−DiscountTotal, DocType IIF 3 negatif) DOĞRU — DOKUNMA. irsHrk envanter/devir için (KDV hariç stok bazlı, orada doğru)."
+    todo: "katSql+skatSql (Queries.cs) + MagazaQueries kategori + drill GetUrunlerAsync: EncoreMerkez KDV-dahil KALSIN ama İADE-NETLE (ReturnAmount>0 satırı çıkar/negatifle). Drill irsHrk→EncoreMerkez KDV-dahil → kart=drill tutarlı. irsHrk'ye GEÇME (KDV hariç olur, ana ciroyla tutarsız)."
+    evidence: "14.06 — FULL OUTER JOIN stkID, EncoreMerkez SalesProducts(IsValid=1) vs irsHrk(ehTip 4/100), KDV-hariç + adet kıyas; ehTutarN×1,20=TP doğrulandı"
+    rapor: "Queries.cs katSql/skatSql · MagazaQueries.cs · RefQueries.GetUrunlerAsync (DÜZELTME BEKLİYOR)"

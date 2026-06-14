@@ -1,7 +1,7 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-06-12
+updated: 2026-06-14
 
 codes:
   irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
@@ -9,6 +9,8 @@ codes:
     satis_gross: [1, 4, 100]
     iade: [3, 5, 101]
     net_ciro: "SUM(gross) - SUM(iade); ehTutarN daima pozitif"
+    kdv: "ehTutarN = KDV HARİÇ (net). 13.06 işlem-seviye kanıt: stkID 1716577 irsHrk 1491,67 × 1,20 = 1790 EncoreMerkez TP (KDV dahil). Kitap KDV %0, oyuncak/kırtasiye %20."
+    iade_netleme_kritik: "Dashboard storeSql ehTip(4,100) alıp 101'i DÜŞMÜYOR → iade kalemi satış sayılıyor. DOĞRU net = ehTip(4,100) ehTutarN − ehTip 101 ehTutarN. 13.06 FSM: ehTip 100 (-3827 ad/512.727), 101 (+80,78 ad/4.893 iade), 4 (-29/3.575), 13=mal kabul (giriş, satış DEĞİL), 8=transfer (ehTutarN 0). ehTutarOzl kolonu da var (0)."
     values:
       0: Alış
       1: Satış
