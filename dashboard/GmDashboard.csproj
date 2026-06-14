@@ -7,6 +7,12 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <!-- Tailwind/DaisyUI CSS'i .NET build'inden önce derle.
+       npm/node_modules yoksa hata vermeden geçer; wwwroot/app.css commit'li kalır. -->
+  <Target Name="BuildTailwindCss" BeforeTargets="BeforeBuild" Condition="Exists('node_modules')">
+    <Exec Command="npm run build:css" ContinueOnError="true" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.79" />
     <PackageReference Include="LLamaSharp" Version="0.27.0" />
