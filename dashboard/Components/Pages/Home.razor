@@ -16,9 +16,12 @@
         <h1 class="text-2xl font-bold tracking-tight m-0">BKM Genel Bakış</h1>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-        <button class="relative w-10 h-10 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center" @onclick='() => Nav.NavigateTo("gorevler")' aria-label="Görevler">
+        <button class="relative w-10 h-10 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center" @onclick="() => _modalNotif = true" aria-label="Uyarılar">
             <i data-lucide="bell" class="w-5 h-5"></i>
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+            @if (_alerts.Count > 0)
+            {
+                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+            }
         </button>
         <div class="w-10 h-10 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center">CFO</div>
     </div>
@@ -64,6 +67,9 @@ else if (_data is not null)
             <span class="hero-dot hero-dot-on"></span><span class="hero-dot"></span><span class="hero-dot"></span><span class="hero-dot"></span>
         </div>
     </div>
+
+    <!-- AI Günün Özeti — koyu kart, otomatik yorum (rapor bakma → tepki) -->
+    @GunOzeti(prevToplam, iadeOran)
 
     <!-- Mağazalar başlık + tüm kategori drill -->
     <div class="flex items-center justify-between mb-3">
@@ -216,6 +222,27 @@ else if (_data is not null)
             </table>
         }
     </Modal>
+
+    <Modal @bind-Open="_modalNotif" Title="Uyarılar">
+        <div class="text-base-content/50 text-xs mb-3">@_aralik · @(_alerts.Count) uyarı · sinyaller @_wowLabel</div>
+        <div class="flex flex-col">
+            @foreach (var a in _alerts)
+            {
+                var (abg, afg) = AlertTone(a.Tone);
+                <div class="flex items-start gap-3 py-3 border-b border-base-200 last:border-b-0">
+                    <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 @abg @afg"><i data-lucide="@a.Ico" class="w-[18px] h-[18px]"></i></span>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[13px] font-bold text-base-content/90">@a.Title</div>
+                        <div class="text-[11.5px] text-base-content/55 leading-snug">@a.Desc</div>
+                    </div>
+                </div>
+            }
+            @if (_alerts.Count == 0)
+            {
+                <div class="text-base-content/50 text-[13px] py-3 text-center">Aktif uyarı yok — her şey hedefte.</div>
+            }
+        </div>
+    </Modal>
 }
 
 @code {
@@ -237,6 +264,10 @@ else if (_data is not null)
     private bool _modalEtic;
     private bool _modalTot;
     private bool _modalUrun;
+    private bool _modalNotif;
+    private List<AlertItem> _alerts = new();   // bildirim merkezi (LoadAsync'te dönem verisinden üretilir)
+
+    private record AlertItem(string Ico, string Tone, string Title, string Desc);
     private bool _urunLoading;
     private string _selKat = "";
     private IReadOnlyList<UrunRow> _urunler = [];
@@ -297,6 +328,7 @@ else if (_data is not null)
             if (_period == "ay")
                 (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(start, endExcl);
             else { _hedefMag = null; _hedefKat = []; }
+            _alerts = BuildAlerts();
         }
         catch (Exception ex)
         {
@@ -378,6 +410,78 @@ else if (_data is not null)
     }
 
     private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    // Dönem kelimesi (AI özet + uyarı metni için).
+    private string DonemKelime() => _period switch { "haftalik" => "Bu hafta", "ay" => "Bu ay", "ozel" => "Seçili dönemde", _ => "Dün" };
+
+    // Bildirim tonu → (bg, fg) DaisyUI token. error=kötü, warning=dikkat, success=iyi.
+    private static (string Bg, string Fg) AlertTone(string tone) => tone switch
+    {
+        "error" => ("bg-error/10", "text-error"),
+        "success" => ("bg-success/10", "text-success"),
+        _ => ("bg-warning/10", "text-warning"),
+    };
+
+    // Uyarıları dönem verisinden türet (sahte değil — gerçek sinyal: mağaza WoW, iade, hedef).
+    private List<AlertItem> BuildAlerts()
+    {
+        var list = new List<AlertItem>();
+        if (_data is null) return list;
+        // 1) Belirgin düşen mağazalar (WoW ≤ −10) — en kötü üstte.
+        foreach (var s in _data.Stores.Where(s => s.Wow is <= -10m).OrderBy(s => s.Wow))
+            list.Add(new AlertItem("trending-down", "error", $"{s.Ad} ciro {Pct(s.Wow!.Value)}",
+                $"{DonemKelime()} {_wowLabel}. Net {Tl(s.Net)}, dikkat gerektiriyor."));
+        // 2) İade oranı yüksek (>%2).
+        var iadeOran = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
+        if (iadeOran > 2)
+            list.Add(new AlertItem("undo-2", "warning", $"İade oranı %{iadeOran}",
+                $"Ciroya oran yükseldi ({Tl(_data.Iade)}). İade nedenlerine bakılmalı."));
+        // 3) Hedefi aşan mağazalar (sadece aylık, gerçekleşme ≥%105).
+        if (_hedefMag is not null)
+            foreach (var m in _hedefMag.Where(m => m.GerPct >= 105m).OrderByDescending(m => m.GerPct))
+                list.Add(new AlertItem("target", "success", $"{m.Ad} hedefi aştı",
+                    $"%{m.GerPct} gerçekleşme — {Tl(m.Net)} / {Tl(m.Hedef)}."));
+        // 4) En güçlü artan mağaza (WoW ≥ +10) — hiç düşüş uyarısı yoksa moral sinyali.
+        var best = _data.Stores.Where(s => s.Wow is >= 10m).OrderByDescending(s => s.Wow).FirstOrDefault();
+        if (best is not null && list.All(a => a.Tone != "success"))
+            list.Add(new AlertItem("trending-up", "success", $"{best.Ad} {Pct(best.Wow!.Value)} ile zirvede",
+                $"{DonemKelime()} en güçlü performans — net {Tl(best.Net)}."));
+        return list;
+    }
+
+    // AI Günün Özeti — koyu kart, otomatik yorum (vurgular: hi=beyaz, up=yeşil, dn=kırmızı).
+    private RenderFragment GunOzeti(decimal prevToplam, decimal iadeOran) => __builder =>
+    {
+        if (_data is null) return;
+        var wow = WowOf(_data.Toplam, prevToplam);
+        var ePay = _data.Toplam > 0 ? (int)Math.Round(100m * _data.Eticaret / _data.Toplam) : 0;
+        var dusen = _data.Stores.Where(s => s.Wow is < 0m).OrderBy(s => s.Wow).FirstOrDefault();
+        var artan = _data.Stores.Where(s => s.Wow is > 0m).OrderByDescending(s => s.Wow).FirstOrDefault();
+        <div class="rounded-3xl px-5 py-4 mb-5 bg-gradient-to-br from-neutral to-neutral/90 text-neutral-content shadow-lg">
+            <div class="flex items-center gap-2 mb-2.5">
+                <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[17px] h-[17px] text-white"></i></span>
+                <span class="text-[13px] font-bold">Günün Özeti</span>
+                <span class="text-[10px] font-semibold ml-auto bg-neutral-content/10 rounded-md px-2 py-0.5">AI · @_aralik</span>
+            </div>
+            <p class="text-[12.5px] leading-relaxed text-neutral-content/85 m-0">
+                @DonemKelime() ciro <span class="font-bold text-neutral-content">@Tl(_data.Toplam)</span>@if (wow is not null)
+                {<text>, @_wowLabel <span class="font-bold @(wow > 0 ? "text-success" : wow < 0 ? "text-error" : "")">@Pct(wow.Value)</span></text>}.
+                Online payı <span class="font-bold text-neutral-content">%@ePay</span> (@Tl(_data.Eticaret)).
+                @if (dusen is not null)
+                {<text> <span class="font-bold text-error">@dusen.Ad @Pct(dusen.Wow!.Value)</span> düşüş dikkat çekici.</text>}
+                @if (artan is not null)
+                {<text> <span class="font-bold text-success">@artan.Ad @Pct(artan.Wow!.Value)</span> ile zirvede.</text>}
+                İade oranı @(iadeOran <= 1 ? "düşük" : "yüksek") (%@iadeOran)@(iadeOran <= 1 ? ", sağlıklı" : "").
+            </p>
+            <div class="flex gap-2 mt-3">
+                <button class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 transition-colors" @onclick="() => _modalTot = true">📊 Detaylı analiz</button>
+                @if (dusen is not null)
+                {
+                    <button class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 transition-colors" @onclick="@(() => Nav.NavigateTo($"magaza/{dusen.MekanId}"))">🔍 @dusen.Ad incele</button>
+                }
+            </div>
+        </div>
+    };
 
     // Hero gradient KPI kartı (carousel item). WoW pill sağ-üst, altta ayraçlı 2-kolon stat.
     private RenderFragment HeroCard(string label, string value, decimal? wow, string gradient, string l1, string v1, string l2, string v2) => @<div class="carousel-item w-[86%] lg:w-auto">
