@@ -123,35 +123,16 @@ else if (_data is not null)
             </div>
         </div>
 
-        <!-- B-73 Hedef Tahmin — YoY taban × son-3-ay YoY ivmesi + senaryo bandı -->
-        @if (_tahmin is not null)
-        {
-            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
-                <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-1 flex items-center gap-2"><i data-lucide="sparkles" class="w-[18px] h-[18px] text-primary"></i>Hedef Tahmin — @AyAd(_tahmin.TahminAy)</h3>
-                @if (_tahmin.Yeterli)
-                {
-                    var t = _tahmin;
-                    <div class="text-[11px] text-base-content/45 mb-2">Geçen yıl aynı ay × son 3 ay YoY ivmesi (irsHrk net, 3 mağaza)</div>
-                    <div class="flex items-end gap-2 mb-1">
-                        <div class="text-[32px] font-extrabold tracking-tight whitespace-nowrap text-primary">@Tl(t.Tahmin)</div>
-                        <div class="text-xs font-bold mb-1.5 inline-flex items-center gap-0.5 @(t.IvmePct >= 0 ? "text-success" : "text-error")"><i data-lucide="@(t.IvmePct >= 0 ? "trending-up" : "trending-down")" class="w-3.5 h-3.5"></i>@Pct(t.IvmePct) ivme</div>
-                    </div>
-                    <div class="text-[12px] text-base-content/60 mb-3">Senaryo bandı: <span class="font-semibold">@Tl(t.Alt)</span> – <span class="font-semibold">@Tl(t.Ust)</span></div>
-                    <div class="grid grid-cols-3 gap-2 mb-3">
-                        <div class="bg-base-200/60 rounded-xl py-2 px-1 text-center"><div class="text-[10px] text-base-content/50">Geçen yıl aynı ay</div><div class="text-[12.5px] font-bold tabular-nums">@Tl(t.YoYTaban)</div></div>
-                        <div class="bg-base-200/60 rounded-xl py-2 px-1 text-center"><div class="text-[10px] text-base-content/50">Bu ay (şu ana dek)</div><div class="text-[12.5px] font-bold tabular-nums">@Tl(t.Mtd)</div></div>
-                        <div class="bg-base-200/60 rounded-xl py-2 px-1 text-center"><div class="text-[10px] text-base-content/50">Doğrusal pace</div><div class="text-[12.5px] font-bold tabular-nums @(t.MtdPace is not null && t.MtdPace < t.Alt ? "text-error" : "")">@(t.MtdPace is null ? "—" : Tl(t.MtdPace.Value))</div></div>
-                    </div>
-                    <AppAreaChart TItem="AylikNokta" Items="t.Seri" Name="Aylık net" Color="@_pColor" Height="100"
-                                  XValue="@(x => (object)x.Ay[2..])" YValue="@(x => (decimal?)x.Net)" />
-                    <div class="text-base-content/50 text-[11px] mt-2">Ağu/Eyl sınav sezonu (mevsimsel zirve) seride görünür — YoY tabanı bunu yansıtır. Pace = kısmi ayın doğrusal projeksiyonu (kaba).</div>
-                }
-                else
-                {
-                    <div class="text-base-content/50 text-[13px]">Tahmin için yeterli geçmiş yok (geçen yıl aynı ay + son aylar gerekli).</div>
-                }
+        <!-- B-73 Hedef Tahmin → ayrı sayfa (/tahmin) -->
+        <div class="rounded-2xl px-4 py-3.5 mb-5 bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md"
+             @onclick='() => Nav.NavigateTo("tahmin")'>
+            <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[22px] h-[22px]"></i></div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[13px] font-bold">Hedef Tahmin</div>
+                <div class="text-xs opacity-85">YoY taban × MoM ivme — bu ay + mağaza bazlı projeksiyon</div>
             </div>
-        }
+            <i data-lucide="arrow-right" class="w-5 h-5 shrink-0"></i>
+        </div>
     }
 
     <h2 class="text-lg font-bold tracking-tight mb-3">Analiz</h2>
@@ -257,7 +238,6 @@ else if (_data is not null)
     private IReadOnlyList<TrendPoint> _alis = [];
     private IReadOnlyList<HedefMagaza>? _hedefMag;
     private IReadOnlyList<HedefKategori> _hedefKat = [];
-    private TahminSonuc? _tahmin;   // B-73 hedef tahmin (YoY × ivme)
     private IJSObjectReference? _charts;
     private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private bool _modalEtic;
@@ -331,12 +311,9 @@ else if (_data is not null)
             if (_period is "ay" or "haftalik")
             {
                 var ayBas = new DateOnly(dun.Year, dun.Month, 1);
-                var tHedef = Queries.GetHedefAsync(ayBas, g2);
-                var tTahmin = Queries.GetTahminAsync(DateOnly.FromDateTime(DateTime.Today));
-                await Task.WhenAll(tHedef, tTahmin);
-                (_hedefMag, _hedefKat) = tHedef.Result; _tahmin = tTahmin.Result;
+                (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(ayBas, g2);
             }
-            else { _hedefMag = null; _hedefKat = []; _tahmin = null; }
+            else { _hedefMag = null; _hedefKat = []; }
             _alerts = BuildAlerts();
             Notif.Set(_alerts, _aralik);   // global zile (MainLayout) ilet
             // AI özet: deterministik metni anında göster, LLM'i arka planda çağır (sayfa beklemez).
@@ -395,11 +372,6 @@ else if (_data is not null)
 
     // Pace = ayın bugüne kadar geçen oranı (MTD beklenen gerçekleşme). Hedef barında dikey çizgi.
     private static int PacePct => (int)Math.Round(100.0 * DateTime.Today.Day / DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month));
-
-    // "yyyy-MM" → "Haziran 2026" (tr-TR).
-    private static string AyAd(string yyyyMM) =>
-        DateTime.ParseExact(yyyyMM + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
-            .ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 
     // Kompakt hedef satırı: ad + % (geride/önde) + net/hedef + mini progress + pace-line dikey çizgi.
     private RenderFragment HedefRow(string ad, decimal net, decimal hedef, decimal? pct) => @<div class="py-2 border-b border-base-200 last:border-b-0">

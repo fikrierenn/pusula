@@ -308,19 +308,20 @@ public sealed class Queries(Db db)
     /// YoY taban × son-3-ay YoY ivmesi + senaryo bandı (±σ). MTD gerçekleşme dahil.
     /// Tahmin ayı = bugünün ayı (kısmi). irsHrk: ehTip 4/100 satış − 101 iade.
     /// </summary>
-    public async Task<TahminSonuc> GetTahminAsync(DateOnly bugun)
+    public async Task<TahminSonuc> GetTahminAsync(DateOnly bugun, int mekanId = 0)
     {
         await using var conn = await db.OpenAsync();
         const string sql = """
             SELECT CONVERT(char(7),h.ehTrhS,23) AS Ay,
                    CAST(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN WHEN h.ehTip=101 THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS Net
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
-            WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (4,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son
+            WHERE h.ehMekan IN (1,4477,4478) AND (@mekan=0 OR h.ehMekan=@mekan)
+              AND h.ehTip IN (4,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son
             GROUP BY CONVERT(char(7),h.ehTrhS,23);
             """;
         var bas = new DateOnly(bugun.Year, bugun.Month, 1).AddMonths(-25).ToDateTime(TimeOnly.MinValue);
         var son = new DateOnly(bugun.Year, bugun.Month, 1).AddMonths(1).ToDateTime(TimeOnly.MinValue);
-        var seri = (await conn.QueryAsync<AylikNokta>(sql, new { bas, son })).OrderBy(x => x.Ay).ToList();
+        var seri = (await conn.QueryAsync<AylikNokta>(sql, new { mekan = mekanId, bas, son })).OrderBy(x => x.Ay).ToList();
         return Forecast.Hesapla(seri, $"{bugun:yyyy-MM}", bugun.Day, DateTime.DaysInMonth(bugun.Year, bugun.Month));
     }
 }

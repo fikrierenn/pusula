@@ -43,6 +43,7 @@
                                 }
                             </a>
                         </li>
+                        <li><a @onclick='() => Nav.NavigateTo("tahmin")'><i data-lucide="sparkles"></i>Hedef Tahmin</a></li>
                         <li><a @onclick='() => Nav.NavigateTo("asistan")'><i data-lucide="message-square"></i>Asistan</a></li>
                     </ul>
                 </div>
@@ -111,6 +112,12 @@
                 <li>
                     <NavLink href="musteri" @onclick="CloseDrawer" ActiveClass="active">
                         <i data-lucide="users"></i><span>Müşteri</span>
+                    </NavLink>
+                </li>
+
+                <li>
+                    <NavLink href="tahmin" @onclick="CloseDrawer" ActiveClass="active">
+                        <i data-lucide="sparkles"></i><span>Hedef Tahmin</span>
                     </NavLink>
                 </li>
 

@@ -1,0 +1,133 @@
+@page "/tahmin"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject Queries Queries
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>BKM Hedef Tahmin</PageTitle>
+
+<div class="min-w-0 mb-4">
+    <div class="text-sm italic text-base-content/50">Projeksiyon · YoY taban × MoM ivme</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Hedef Tahmin</h1>
+</div>
+
+@if (_loading)
+{
+    <p class="text-base-content/50">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
+}
+else if (_t is not null)
+{
+    <!-- Bu ay tahmin — büyük kart -->
+    <div class="rounded-3xl px-5 py-5 mb-5 bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg">
+        <div class="flex items-center gap-2 mb-1">
+            <i data-lucide="sparkles" class="w-[18px] h-[18px]"></i>
+            <span class="text-[13px] font-bold opacity-90">@AyAd(_t.TahminAy) — 3 mağaza</span>
+        </div>
+        @if (_t.Yeterli)
+        {
+            <div class="text-[36px] font-extrabold leading-tight tracking-tight whitespace-nowrap mb-1">@Tl(_t.Tahmin)</div>
+            <div class="text-sm opacity-90 mb-3">Senaryo bandı @Tl(_t.Alt) – @Tl(_t.Ust) · ivme @Pct(_t.IvmePct)</div>
+            <div class="grid grid-cols-3 gap-2 pt-3 border-t border-white/20">
+                <div><div class="text-[11px] opacity-75">Geçen yıl aynı ay</div><div class="text-[15px] font-bold whitespace-nowrap">@Tl(_t.YoYTaban)</div></div>
+                <div><div class="text-[11px] opacity-75">Bu ay (şu ana dek)</div><div class="text-[15px] font-bold whitespace-nowrap">@Tl(_t.Mtd)</div></div>
+                <div><div class="text-[11px] opacity-75">Doğrusal pace</div><div class="text-[15px] font-bold whitespace-nowrap">@(_t.MtdPace is null ? "—" : Tl(_t.MtdPace.Value))</div></div>
+            </div>
+        }
+        else
+        {
+            <div class="text-sm opacity-90">Tahmin için yeterli geçmiş yok.</div>
+        }
+    </div>
+
+    <!-- Mağaza bazlı tahmin -->
+    <h2 class="text-lg font-bold tracking-tight mb-3">Mağaza Bazlı Tahmin</h2>
+    <div class="grid grid-cols-1 gap-2.5 mb-5 lg:grid-cols-3">
+        @foreach (var (ad, t) in _magaza)
+        {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[14px] font-bold text-base-content/90">@ad</span>
+                    @if (t.Yeterli)
+                    {
+                        <span class="text-[11px] font-bold inline-flex items-center gap-0.5 @(t.IvmePct >= 0 ? "text-success" : "text-error")"><i data-lucide="@(t.IvmePct >= 0 ? "trending-up" : "trending-down")" class="w-3 h-3"></i>@Pct(t.IvmePct)</span>
+                    }
+                </div>
+                @if (t.Yeterli)
+                {
+                    <div class="text-[22px] font-extrabold tracking-tight whitespace-nowrap text-primary">@Tl(t.Tahmin)</div>
+                    <div class="text-[11px] text-base-content/55 mt-0.5">band @Tl(t.Alt) – @Tl(t.Ust)</div>
+                    <div class="text-[11px] text-base-content/45 mt-1">geçen yıl @Tl(t.YoYTaban) · pace @(t.MtdPace is null ? "—" : Tl(t.MtdPace.Value))</div>
+                }
+                else
+                {
+                    <div class="text-base-content/50 text-[13px]">Yeterli geçmiş yok.</div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Aylık seri grafik -->
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+        <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-no-axes-column" class="w-[18px] h-[18px] text-primary"></i>Aylık Net Ciro (irsHrk, 25 ay)</h3>
+        <AppAreaChart TItem="AylikNokta" Items="_t.Seri" Name="Aylık net" Color="@_pColor" Height="130"
+                      XValue="@(x => (object)x.Ay[2..])" YValue="@(x => (decimal?)x.Net)" />
+        <div class="text-base-content/50 text-[11px] mt-2">Ağu/Eyl sınav sezonu (mevsimsel zirve) seride görünür — YoY tabanı bunu yansıtır.</div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+        <h3 class="text-[14px] font-bold text-base-content/90 mb-2 flex items-center gap-2"><i data-lucide="info" class="w-4 h-4 text-info"></i>Yöntem</h3>
+        <p class="text-[12.5px] text-base-content/70 leading-relaxed m-0">
+            Tahmin = <b>geçen yıl aynı ay</b> (mevsimsel taban) × <b>son 3 ayın YoY büyüme ivmesi</b>.
+            Senaryo bandı = ivme ± standart sapma (muhafazakâr–iyimser). Kaynak: irsHrk net (KDV-hariç, 3 mağaza, tam geçmiş).
+            Doğrusal pace = kısmi ayın gün-oranlı kaba projeksiyonu (mevsimsel değil — sadece referans).
+        </p>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private TahminSonuc? _t;
+    private readonly List<(string Ad, TahminSonuc T)> _magaza = new();
+    private string _pColor = "";
+    private static readonly (int Id, string Ad)[] _mekanlar = { (1, "FSM"), (4477, "Özlüce"), (4478, "İst.Yolu") };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var bugun = DateOnly.FromDateTime(DateTime.Today);
+            var tTot = Queries.GetTahminAsync(bugun, 0);
+            var tMag = _mekanlar.Select(m => Queries.GetTahminAsync(bugun, m.Id)).ToArray();
+            await Task.WhenAll(new[] { tTot }.Concat(tMag));
+            _t = tTot.Result;
+            _magaza.Clear();
+            for (int i = 0; i < _mekanlar.Length; i++) _magaza.Add((_mekanlar[i].Ad, tMag[i].Result));
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+            var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+            if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+        }
+        catch { /* tema okunamazsa fallback */ }
+    }
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
+    private static string AyAd(string yyyyMM) =>
+        DateTime.ParseExact(yyyyMM + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+            .ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
