@@ -1,0 +1,30 @@
+@* Gradient hero KPI carousel (swipe + dot) — Home/Magaza/Eticaret tek kaynak. plan-09.
+   Mobil: peek'li scroll-snap. Masaüstü: N'li grid. Dot senkronu = charts.js heroDots (sayfa çağırır). *@
+@using GmDashboard.Models
+
+<div class="mb-5">
+    <div id="@Id" class="carousel carousel-center w-full gap-3.5 lg:grid lg:gap-3 lg:overflow-visible"
+         style="grid-template-columns:repeat(@Items.Count,minmax(0,1fr))">
+        @foreach (var k in Items)
+        {
+            <div class="carousel-item w-[86%] lg:w-auto">
+                <div class="w-full h-full rounded-3xl px-5 py-5 bg-gradient-to-br @k.Gradient text-white shadow-lg flex flex-col">
+                    <div class="opacity-80 text-[11px] uppercase tracking-wider font-semibold">@k.Label</div>
+                    <div class="text-[32px] font-extrabold leading-tight tracking-tight whitespace-nowrap mt-2">@k.Value</div>
+                    <div class="text-xs opacity-85 mt-1">@k.Sub</div>
+                </div>
+            </div>
+        }
+    </div>
+    <div id="@(Id)Dots" class="flex justify-center items-center gap-1.5 mt-3 lg:hidden">
+        @for (var i = 0; i < Items.Count; i++)
+        {
+            <span class="hero-dot @(i == 0 ? "hero-dot-on" : "")"></span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "kpi";
+    [Parameter, EditorRequired] public IReadOnlyList<KpiCardData> Items { get; set; } = Array.Empty<KpiCardData>();
+}

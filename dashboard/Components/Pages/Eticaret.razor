@@ -31,11 +31,13 @@ else if (_error is not null)
 }
 else if (_data is not null)
 {
-    <div class="flex gap-9 items-center flex-wrap mb-4 rounded-2xl px-6 py-5 bg-primary text-white shadow-lg max-md:gap-4 max-md:p-4 max-sm:flex-col max-sm:items-start">
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Ciro (online)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Tl(_data.Eticaret)</div></div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">Net Sipariş</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.ESip)</div></div>
-        <div><div class="opacity-80 text-xs uppercase tracking-wider">Sepet (ort.)</div><div class="text-3xl font-extrabold leading-tight tracking-tight max-md:text-2xl">@Num(_data.ESip > 0 ? (int)Math.Round(_data.Eticaret / _data.ESip) : 0) ₺</div></div>
-    </div>
+    <AppKpiCarousel Id="ekpi" Items="@(new List<KpiCardData>
+    {
+        new("Net Ciro (online)", Tl(_data.Eticaret), "from-primary to-primary/80", $"{Num(_data.ESip)} sipariş"),
+        new("Net Sipariş", Num(_data.ESip), "from-info to-info/80", "iptal/iade hariç"),
+        new("Sepet Ort.", Tl(_data.ESip > 0 ? Math.Round(_data.Eticaret / _data.ESip) : 0), "from-success to-success/80", "online ortalama"),
+        new("İptal / İade", Num(_data.Etic.Sum(e => e.Ipt)), "from-error to-error/80", "iptal+iade sipariş"),
+    })" />
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kanal — NET (@_aralik)</h3>
@@ -291,6 +293,15 @@ else if (_data is not null)
                 if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
             }
             catch { /* tema okunamazsa component fallback'i kullanır */ }
+        }
+        if (_data is not null)
+        {
+            try
+            {
+                var charts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+                await charts.InvokeVoidAsync("heroDots", "ekpi", "ekpiDots");   // KPI carousel dot senkronu
+            }
+            catch { /* prerender — sonraki render'da bağlanır */ }
         }
     }
 
