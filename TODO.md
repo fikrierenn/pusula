@@ -103,10 +103,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-53** Mağaza detay 30-gün ciro trendi~~ — ✅ 14.06 commit 1719bb9. MagazaQueries.GetTrendAsync (mekanID filtreli) + AppAreaChart. Özlüce 13.06=967.304 doğrulandı.
 - [x] ~~**B-54** Hedef pace-line~~ — ✅ 14.06 commit 7befb53. Dikey çizgi=bugün beklenen %(gün/ay), geride/önde rozet, haftalıkta da hedef. Gün 14/30→%47.
 - [x] ~~**B-73** Hedef Tahmin kartı (CFO yöntemi: YoY taban × MoM ivme)~~ — ✅ 14.06 commit e390c27. irsHrk net (tam geçmiş), GetTahminAsync + saf-C# Forecast.Hesapla. Geçen yıl aynı ay × son-3-ay YoY ivmesi + senaryo bandı ±σ + MTD pace. Haziran 51,34M (=30,98M×1,657) doğrulandı. Sınav sezonu YoY tabanda korunur. Yöntem hafızada [[bkm-hedef-tahmin-yontemi]].
-- [ ] **B-55** Mağaza saat×gün ısı haritası (heatmap 7×14) — personel/kampanya zamanlama. Veri: Sales DATEPART HOUR+WEEKDAY (mevcut saatSql + weekday boyutu). Yeni AppHeatmap bileşeni. **(yüksek)**
+- [x] ~~**B-55** Mağaza saat×gün ısı haritası~~ — ✅ 14.06. MagazaQueries.GetHeatmapAsync, gün=DATEDIFF%7 (deterministik DATEFIRST-bağımsız), primary-opacity hücre, son 60g. Hafta sonu+öğleden sonra zirve. **FAZ 1 TAMAM** (B-53/54/55/56/57 + B-73 + Tahmin sayfası /tahmin). B-58/B-65 sadakat metriği → Faz 3 /sadakat'a taşındı.
 - [x] ~~**B-56** COD iade il haritası~~ — ✅ 14.06 commit 75d55c2. PAYDEFREF=-3+DCITY+CARGODELIVERYSTATUS=2, oran sıralı (HAVING≥20). Doğu illeri ~%17. AppDataTable.
 - [x] ~~**B-57** Kasiyer önceki-döneme delta rozeti~~ — ✅ 14.06 commit 6f8b1de. GetKasiyerDeltaAsync (kasSql 2× + Magaza|Ad eşleşme). Yeşil/kırmızı delta badge.
-- [ ] **B-58** Tekrar satın-alma oranı (yeni vs sadık müşteri) — Frq>1 payı, fiziksel + e-tic. Veri: RFM/ykSql alt sorgu. **(orta)** → B-66 sadakat temasına bağlı.
+- [ ] **B-58** Tekrar satın-alma oranı (Frq>1 payı) → **Faz 3 /sadakat** (B-71 onboarding ile birlikte). Veri: RFM/ykSql alt sorgu.
 
 **Orta (M — yeni sorgu/cross-db join):**
 - [ ] **B-59** E-ticaret online kategori mix (AppRankBars) — online ne satılıyor (fiziksel'de var, online'da yok). Veri: J_ORDER_DETAILS→J_ITEMS.DERINSIS_ID→urnKtgr2 (ISO tarih, JOKER timeout riski). **(yüksek-orta)**
@@ -117,7 +117,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 **Düşük:**
 - [ ] **B-64** E-ticaret sipariş durumu huni (funnel) — gelen→toplama→kargo→teslim→iade. Veri: J_ORDERS.STATUS (enum keşfi gerekli → codes.yaml). **(düşük)**
-- [ ] **B-65** Müşteri kayıp/risk segmenti 3-ay trendi (anlık→değişim). Veri: ykSql 3× (t/t-30/t-60). **(yüksek)** → B-66 temasına bağlı.
+- [ ] **B-65** Müşteri kayıp/risk segmenti 3-ay trendi → **Faz 3 /sadakat** (B-67 segment geçiş matrisi ile birlikte). Veri: ykSql 3× (t/t-30/t-60).
 
 #### 🎯 Müşteri Sadakat Derinleştirme (kullanıcı isteği 14.06 — derin CRM/sadakat). [TIER 3 plan-first — yeni "Sadakat" sayfası olabilir]
 > Veri tabanı: EncoreMerkez `Sales.CustomersId` + `DerinCrm.Customer` (Name/PhoneNumber/CardNumber) · e-tic `J_ORDER_CLIENTS.CUSTOMERREF` · mevcut RFM (C1-rfm). Tek köprü çözüldü (`DerinCrm.Customer.Id = Sales.CustomersId`).
