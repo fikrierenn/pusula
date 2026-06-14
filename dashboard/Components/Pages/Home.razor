@@ -192,7 +192,8 @@ else if (_data is not null)
         </table>
     </Modal>
 
-    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
+    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
+        <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · satışa göre ilk 100 (stok = güncel)</div>
         @if (_urunLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
@@ -225,6 +226,7 @@ else if (_data is not null)
     private string? _error;
     private string _aralik = "";
     private string _wowLabel = "önceki döneme göre";   // trend rozetlerinin kıyas tabanı (dönem-bağlı)
+    private DateOnly _start, _endExcl;                  // ürün drill aynı dönemi kullansın
     private PeriodSummary? _data;
     private IReadOnlyList<TrendPoint> _trend = [];
     private IReadOnlyList<TrendPoint> _alis = [];
@@ -242,7 +244,7 @@ else if (_data is not null)
     private async Task OpenUrun(string kategori)
     {
         _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
-        try { _urunler = await Ref.GetUrunlerAsync(kategori); }
+        try { _urunler = await Ref.GetUrunlerAsync(kategori, 0, _start, _endExcl); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _urunLoading = false; StateHasChanged(); }
     }
@@ -274,6 +276,7 @@ else if (_data is not null)
                 _ => (dun, g2),
             };
             var son = endExcl.AddDays(-1);
+            _start = start; _endExcl = endExcl;
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
             // Geçen-dönem (WoW) penceresi + etiketi. Aylık → geçen ayın AYNI günleri (MTD doğru kıyas);
             // diğerleri hemen önceki eş-uzunluk.

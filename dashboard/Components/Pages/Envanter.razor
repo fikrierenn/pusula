@@ -117,6 +117,7 @@ else if (_d is not null)
     private bool _modalUrun;
     private bool _urunLoading;
     private string _selKat = "";
+    private DateOnly _gAyBas, _gAyBit;   // ürün drill = "geçen tam ay" (sayfa ciro/devir scope'u)
     private IReadOnlyList<UrunRow> _urunler = [];
 
     protected override async Task OnInitializedAsync()
@@ -124,6 +125,8 @@ else if (_d is not null)
         try
         {
             var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            var ayBasi = new DateOnly(dun.Year, dun.Month, 1);
+            _gAyBas = ayBasi.AddMonths(-1); _gAyBit = ayBasi;   // geçen tam ay
             _d = await Ref.GetInventoryAsync(dun);
             _cve = await Ref.GetCveAsync(dun);
         }
@@ -134,7 +137,7 @@ else if (_d is not null)
     private async Task OpenUrun(string kategori)
     {
         _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
-        try { _urunler = await Ref.GetUrunlerAsync(kategori); }
+        try { _urunler = await Ref.GetUrunlerAsync(kategori, 0, _gAyBas, _gAyBit); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _urunLoading = false; StateHasChanged(); }
     }

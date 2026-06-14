@@ -129,7 +129,8 @@ else if (_d is not null)
 
     <p class="text-[11px] text-base-content/40 mt-4">Dönüşüm oranı (G8) kapı sayıcı verisine bağlı — şimdilik yalnız FSM (CSV). Panele eklenecek: B-40 devam.</p>
 
-    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler (ilk 100, satışa göre)")">
+    <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
+        <div class="text-base-content/50 text-xs mb-2">@(_d?.Ad ?? Mekan(Id)) · @_aralik · satışa göre ilk 100 (stok = güncel)</div>
         @if (_urunLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
@@ -177,6 +178,7 @@ else if (_d is not null)
     private bool _modalUrun;
     private bool _urunLoading;
     private string _selKat = "";
+    private DateOnly _start, _endExcl;   // ürün drill aynı dönemi kullansın
     private IReadOnlyList<UrunRow> _urunler = [];
     private bool _modalOdeme;
     private OdemeGrup? _selOdeme;
@@ -202,6 +204,7 @@ else if (_d is not null)
                 _ => (dun, g2),
             };
             var son = endExcl.AddDays(-1);
+            _start = start; _endExcl = endExcl;
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
             _d = await Mag.GetDetayAsync(Id, start, endExcl);
             if (_d is null) _error = "Geçersiz mağaza.";
@@ -213,7 +216,7 @@ else if (_d is not null)
     private async Task OpenUrun(string kategori)
     {
         _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
-        try { _urunler = await Ref.GetUrunlerAsync(kategori); }
+        try { _urunler = await Ref.GetUrunlerAsync(kategori, Id, _start, _endExcl); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _urunLoading = false; StateHasChanged(); }
     }

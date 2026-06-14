@@ -207,25 +207,33 @@ public sealed class RefQueries(Db db)
             new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") })).ToList();
     }
 
-    /// <summary>Kategori → ürün drill (URUN_SQL port). irsHrk stkID, tüm geçmiş satış (ehTrhS&lt;2026-06-01).</summary>
-    public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori)
+    /// <summary>Kategori → ürün drill. Satış/Ciro = SEÇİLİ DÖNEM + mağaza (mekanId=0 → 3 mağaza toplam).
+    /// Bakiye = güncel stok (tüm geçmiş hareket toplamı, mağaza bazlı). irsHrk stkID, satış ehTip 4/100.</summary>
+    public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori, int mekanId, DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenAsync();
+        // Satış/Ciro CASE'i döneme bağlı; Bakiye WHERE'de tarih yok → tüm geçmiş = güncel stok.
         const string sql = """
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
-                CAST(-SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) AS int) AS Satis,
-                CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) AS Ciro,
+                CAST(-SUM(CASE WHEN h.ehTip IN (4,100) AND h.ehTrhS>=@start AND h.ehTrhS<@end THEN h.ehAdetN ELSE 0 END) AS int) AS Satis,
+                CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) AND h.ehTrhS>=@start AND h.ehTrhS<@end THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) AS Ciro,
                 CAST(SUM(h.ehAdetN) AS int) AS Bakiye
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID
             JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-            WHERE k.ktgrAd=@kat AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0
-                AND h.ehTrhS<'2026-06-01' AND h.ehstkID IS NOT NULL
+            WHERE k.ktgrAd=@kat AND h.ehMekan IN (1,4477,4478) AND (@mekan=0 OR h.ehMekan=@mekan)
+                AND h.ehAltDepo=0 AND h.ehstkID IS NOT NULL
             GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
-            HAVING -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END)>0
+            HAVING -SUM(CASE WHEN h.ehTip IN (4,100) AND h.ehTrhS>=@start AND h.ehTrhS<@end THEN h.ehAdetN ELSE 0 END)>0
             ORDER BY Satis DESC;
             """;
-        return (await conn.QueryAsync<UrunRow>(sql, new { kat = kategori })).ToList();
+        return (await conn.QueryAsync<UrunRow>(sql, new
+        {
+            kat = kategori,
+            mekan = mekanId,
+            start = start.ToDateTime(TimeOnly.MinValue),
+            end = endExcl.ToDateTime(TimeOnly.MinValue),
+        })).ToList();
     }
 
     /// <summary>Ciro-vs-envanter scatter (cve port). Kategori: Mayıs irsHrk ciro vs ENVANTER_RAPORU 3 mağaza değer.</summary>
