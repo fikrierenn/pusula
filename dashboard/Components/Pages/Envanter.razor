@@ -163,7 +163,7 @@ else if (_d is not null)
         {
             <AppDataTable TItem="UrunRow" Items="_urunler"
                           Primary="@(u => u.Ad)"
-                          Sub="@(u => $"Kod {u.Kod} · FSM:{u.StokFsm} Özl:{u.StokOzl} İst:{u.StokIst} Dep:{u.StokDepo} ODAK:{u.StokOdak}")"
+                          Sub="@(u => $"Kod {u.Kod} · FSM:{u.StokFsm} Özl:{u.StokOzl} İst:{u.StokIst} Dep:{u.StokDepo}")"
                           MetricMain="@(u => Tl(u.Ciro))"
                           MetricSub="@(u => $"{Num(u.Satis)} ad · S30:{u.S30} S90:{u.S90}")"
                           Badge="@(u => u.Bakiye <= 0
