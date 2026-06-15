@@ -115,17 +115,24 @@ else if (_d is not null)
     </div>
     }
 
-    @if (_marj.Count > 0)
+    @if (_marjLoading || _marj.Count > 0)
     {
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
-            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Kategori Brüt Marj — son 30g (fatAyr birim maliyet ortalaması)</h3>
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Kategori Brüt Marj — son 30g (kanonik maliyet: son 5 alış faturası)</h3>
+            @if (_marjLoading)
+            {
+                <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Marj hesaplanıyor… (maliyet şelalesi ağır, ~40s)</p>
+            }
+            else
+            {
             <AppRankBars TItem="MarjRow"
                          Items="@_marj"
                          Label="@(r => r.Kategori)"
                          Value="@(r => r.MarjPct)"
                          ValueText="@(r => $"%{r.MarjPct:0.0}  ({Tl(r.Ciro - r.Smm)} / {Tl(r.Ciro)})")" />
-            <div class="text-base-content/50 text-[11px] mt-2">Marj = (Ciro − SMM) / Ciro. SMM = fatAyr son alış ortalaması × adet. Maliyet verisi yetersiz kategoriler hariç.</div>
+            <div class="text-base-content/50 text-[11px] mt-2">Marj = (Ciro − SMM) / Ciro. SMM = kanonik maliyet (son 5 alış faturası → ORT_ALIS) × adet. Maliyet verisi yetersiz kategoriler hariç.</div>
+            }
         </div>
     </div>
     }
@@ -181,6 +188,7 @@ else if (_d is not null)
     private InventoryData? _d;
     private IReadOnlyList<CveRow> _cve = [];
     private IReadOnlyList<MarjRow> _marj = [];
+    private bool _marjLoading = true;   // marj ağır (~40s) → ana sayfadan ayrı, arka planda yüklenir
     private IReadOnlyList<MarkaRotasyonRow> _rot = [];
     private HcOzet? _hc;
     private bool _modalUrun;
@@ -199,18 +207,21 @@ else if (_d is not null)
             _gAyBas = ayBasi.AddMonths(-1); _gAyBit = ayBasi;   // geçen tam ay
             var tInv  = Ref.GetInventoryAsync(dun);
             var tCve  = Ref.GetCveAsync(dun);
-            var tMarj = Ref.GetMarjAsync();
             var tHc   = Ref.GetHediyeCekiAsync();
             var tRot  = Ref.GetMarkaRotasyonAsync(_gAyBas, _gAyBit);
-            await Task.WhenAll(tInv, tCve, tMarj, tHc, tRot);
+            await Task.WhenAll(tInv, tCve, tHc, tRot);
             _d    = tInv.Result;
             _cve  = tCve.Result;
-            _marj = tMarj.Result;
             _hc   = tHc.Result;
             _rot  = tRot.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }
+
+        // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
+        try { _marj = await Ref.GetMarjAsync(); }
+        catch { /* marj kartı boş kalır, sayfa etkilenmez */ }
+        finally { _marjLoading = false; StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
