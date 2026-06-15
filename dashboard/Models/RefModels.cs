@@ -47,6 +47,9 @@ public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>
 public record HcOzet(decimal ToplamSatilan12Ay, decimal ToplamKullanilan12Ay, IReadOnlyList<HcAyRow> Aylar);
 
+/// <summary>Marka alış-satış rotasyon satırı (geçen ay).</summary>
+public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decimal SatisCiro);
+
 /// <summary>Depo WMS günlük toplama verimi.</summary>
 public record DepoWmsData(int BugunIslem, int BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
 /// <summary>Depo WMS günlük trend satırı.</summary>

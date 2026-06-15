@@ -1,4 +1,4 @@
-@page "/envanter"
+﻿@page "/envanter"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
@@ -130,6 +130,24 @@ else if (_d is not null)
     </div>
     }
 
+
+    @if (_rot.Count > 0)
+    {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Marka Alış-Satış Dengesi — geçen ay, satış adedine göre Top 30</h3>
+            <AppDataTable TItem="MarkaRotasyonRow"
+                          Items="@_rot"
+                          Primary="@(r => r.Marka)"
+                          MetricMain="@(r => Tl(r.SatisCiro))"
+                          MetricSub="@(r => $"sat. {Num(r.SatisAdet)} · alış {Num(r.AlisAdet)}")"
+                          Badge="@(r => r.AlisAdet > r.SatisAdet
+                              ? ($"+{Num(r.AlisAdet - r.SatisAdet)} birikim", "bg-warning/15 text-warning")
+                              : ($"-{Num(r.SatisAdet - r.AlisAdet)} erime", "bg-info/15 text-info"))" />
+            <div class="text-base-content/50 text-[11px] mt-2">Birikim = alış > satış (stok artıyor). Erime = satış > alış (stok azalıyor). irsHrk ehTip 4/100=satış, 0/10=alış.</div>
+        </div>
+    </div>
+    }
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
         <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · geçen tam ay · satışa göre ilk 100 (stok = güncel)</div>
         @if (_urunLoading)
@@ -152,6 +170,7 @@ else if (_d is not null)
     private InventoryData? _d;
     private IReadOnlyList<CveRow> _cve = [];
     private IReadOnlyList<MarjRow> _marj = [];
+    private IReadOnlyList<MarkaRotasyonRow> _rot = [];
     private HcOzet? _hc;
     private bool _modalUrun;
     private bool _urunLoading;
@@ -170,11 +189,13 @@ else if (_d is not null)
             var tCve  = Ref.GetCveAsync(dun);
             var tMarj = Ref.GetMarjAsync();
             var tHc   = Ref.GetHediyeCekiAsync();
-            await Task.WhenAll(tInv, tCve, tMarj, tHc);
+            var tRot  = Ref.GetMarkaRotasyonAsync(_gAyBas, _gAyBit);
+            await Task.WhenAll(tInv, tCve, tMarj, tHc, tRot);
             _d    = tInv.Result;
             _cve  = tCve.Result;
             _marj = tMarj.Result;
             _hc   = tHc.Result;
+            _rot  = tRot.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

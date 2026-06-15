@@ -462,4 +462,29 @@ public sealed class RefQueries(Db db)
         // Maliyet kapsaması düşük kategorileri filtrele (SMM/Ciro < %5 veya > %95 = veri yok)
         return rows.Where(r => r.MarjPct is >= 5 and <= 95).OrderByDescending(r => r.MarjPct).ToList();
     }
+
+    /// <summary>Marka alış-vs-satış dengesi — geçen tam ay, top-30 satış adedine göre.</summary>
+    public async Task<IReadOnlyList<MarkaRotasyonRow>> GetMarkaRotasyonAsync(DateOnly ayBas, DateOnly ayBit)
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<MarkaRotasyonRow>("""
+            SELECT TOP 30 m.mrkAd AS Marka,
+                SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) AS SatisAdet,
+                SUM(CASE WHEN a.ehTip IN (0,10)  THEN ABS(a.ehAdetN) ELSE 0 END) AS AlisAdet,
+                SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutar - a.ehIndirim ELSE 0 END) AS SatisCiro
+            FROM DerinSISBkm.dbo.irsHrk a WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
+            JOIN DerinSISBkm.dbo.urnMrk m WITH(NOLOCK) ON m.mrkID = u.urnMrkID
+            WHERE a.ehTrhS >= @Bas AND a.ehTrhS < @Bit
+              AND a.ehMekan IN (12,1,4478,4477)
+            GROUP BY m.mrkAd
+            HAVING SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) > 0
+            ORDER BY SatisAdet DESC
+            """, new
+        {
+            Bas = new DateTime(ayBas.Year, ayBas.Month, ayBas.Day),
+            Bit = new DateTime(ayBit.Year, ayBit.Month, ayBit.Day),
+        });
+        return rows.ToList();
+    }
 }
