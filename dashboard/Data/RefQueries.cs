@@ -70,7 +70,7 @@ public sealed class RefQueries(Db db)
 
         // Toplam envanter değeri (Ort.Maliyet, son snapshot, Dergi/Sınav hariç)
         var toplam = await conn.ExecuteScalarAsync<decimal?>($"""
-            SELECT CAST(SUM([FSM Stok Maliyet]+[Özlüce Stok Maliyet]+[İst.Yolu Stok Maliyet]+[Merkez Depo Stok Maliyet]+[Odak Depo Stok Maliyet]) AS decimal(18,0))
+            SELECT CAST(SUM([FSM Stok Maliyet]+[Özlüce Stok Maliyet]+[İst.Yolu Stok Maliyet]+[Merkez Depo Stok Maliyet]) AS decimal(18,0))
             FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
             WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC};
             """) ?? 0m;
@@ -215,7 +215,7 @@ public sealed class RefQueries(Db db)
     public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori, int mekanId, DateOnly start, DateOnly endExcl, bool olusSort = false)
     {
         await using var conn = await db.OpenAsync();
-        // Bakiye mekan=0: 3 mağaza + depo + ODAK hepsi dahil (tam envanter görünümü).
+        // Bakiye mekan=0: 3 mağaza (FSM/Özl/İst) + merkez depo. ODAK hesaba dahil değil.
         // S30/S90/S360 = bugünden geriye trailing pencere (dönemden bağımsız).
         var having = olusSort
             ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) > 0"
