@@ -1,0 +1,99 @@
+@page "/sadakat"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject SadakatQueries Sada
+@rendermode InteractiveServer
+
+<PageTitle>Sadakat — BKM GM</PageTitle>
+<div class="flex items-center gap-3 mb-5 flex-wrap">
+    <h1 class="text-2xl font-bold tracking-tight m-0">Müşteri Sadakat & Tutma</h1>
+    <span class="text-sm font-semibold text-base-content/50">son 12 ay · EncoreMerkez yazarkasa · Faz 3</span>
+</div>
+
+@if (_loading)
+{
+    <p class="text-base-content/50">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
+}
+else
+{
+    var toplamCiro = _pareto.Sum(p => p.ToplamCiro);
+    var ilk10PctCiro = _pareto.FirstOrDefault()?.ToplamCiro ?? 0;
+    var ilk10PctMus = _pareto.FirstOrDefault()?.MusteriSayisi ?? 0;
+    var toplamMus = _pareto.Sum(p => p.MusteriSayisi);
+
+    <AppKpiCarousel Id="sadakatkpi" Items="@(new List<KpiCardData>
+    {
+        new("Win-Back Hedef", Num(_winBack.Count) + " müşteri", "from-error to-error/80", "90g hareketsiz · yıl içi aktif · frq≥3"),
+        new("Pareto %10", Pct(ilk10PctCiro, toplamCiro), "from-primary to-primary/80", $"ilk {Num(ilk10PctMus)} müşteri"),
+        new("Toplam Aktif", Num(toplamMus) + " müşteri", "from-info to-info/80", "son 12 ay CustomersId>0"),
+        new("Win-Back Ciro", Tl(_winBack.Sum(r => r.ToplCiro)), "from-warning to-warning/80", "yeniden kazanılabilir ₺"),
+    })" />
+
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Müşteri Konsantrasyonu — Pareto (son 12 ay, %10'ar dilim)</h3>
+            @{
+                decimal kumulatif = 0;
+            }
+            <AppDataTable TItem="ParetoRow"
+                          Items="@_pareto"
+                          Primary="@(r => $"Dilim {r.Dilim} — üst %{r.Dilim * 10}")"
+                          MetricMain="@(r => Tl(r.ToplamCiro))"
+                          MetricSub="@(r => Num(r.MusteriSayisi) + " müşteri")"
+                          Badge="@(r => {
+                              kumulatif += r.ToplamCiro;
+                              var pct = toplamCiro > 0 ? kumulatif * 100m / toplamCiro : 0;
+                              return ($"kümül. %{pct:0.0}", r.Dilim <= 2 ? "bg-error/15 text-error" : r.Dilim <= 4 ? "bg-warning/15 text-warning" : "bg-base-200 text-base-content/60");
+                          })" />
+            <div class="text-base-content/50 text-[11px] mt-2">Kümülatif % = o dilim dahil tüm üst dilimler. Yüksek konsantrasyon = az müşteriye yüksek bağımlılık riski.</div>
+        </div>
+    </div>
+
+    @if (_winBack.Count > 0)
+    {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Win-Back Listesi — 90g+ hareketsiz, yıl içi aktif, en yüksek ciro (Top 200)</h3>
+            <AppDataTable TItem="WinBackRow"
+                          Items="@_winBack"
+                          Primary="@(r => r.Ad.Length > 0 ? r.Ad : "(isimsiz)")"
+                          Sub="@(r => r.Tel)"
+                          MetricMain="@(r => Tl(r.ToplCiro))"
+                          MetricSub="@(r => $"{r.Frq} alış · {r.GunIdle}g önce")"
+                          Badge="@(r => r.GunIdle >= 180
+                              ? ($"{r.GunIdle}g idle", "bg-error/15 text-error")
+                              : ($"{r.GunIdle}g idle", "bg-warning/15 text-warning"))" />
+            <div class="text-base-content/50 text-[11px] mt-2">Kart numarası: kayıtta var ise kişisel teslimat (SMS/çağrı). Son satış yıl içinde, son 90 günde yok, min 3 alış min 500₺ toplam.</div>
+        </div>
+    </div>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private IReadOnlyList<WinBackRow> _winBack = [];
+    private IReadOnlyList<ParetoRow> _pareto = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tWb = Sada.GetWinBackAsync();
+            var tPar = Sada.GetParetoAsync();
+            await Task.WhenAll(tWb, tPar);
+            _winBack = tWb.Result;
+            _pareto = tPar.Result;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    private static string Pct(decimal pay, decimal top) => top > 0 ? $"%{pay * 100m / top:0.0}" : "—";
+}

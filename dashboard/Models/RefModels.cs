@@ -45,6 +45,12 @@ public record EticKategoriRow(string Kategori, int Siparis, decimal NetCiro, int
 /// <summary>E-ticaret sipariş durum dağılımı (funnel aşaması, geçen ay).</summary>
 public record EticFunnelRow(string Asama, int Siparis, decimal ToplamCiro);
 
+/// <summary>Win-back hedef müşteri (son 365g aktif, son 90g yok).</summary>
+public record WinBackRow(string Ad, string Tel, string Kart, int Frq, decimal ToplCiro, int GunIdle);
+
+/// <summary>Müşteri konsantrasyonu Pareto dilimi (%10'ar, son 12 ay).</summary>
+public record ParetoRow(int Dilim, int MusteriSayisi, decimal ToplamCiro);
+
 /// <summary>Hediye çeki aylık satılan/kullanılan.</summary>
 public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>
