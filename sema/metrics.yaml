@@ -1,7 +1,7 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-14
+updated: 2026-06-15
 
 metrics:
   net_ciro:
@@ -40,6 +40,22 @@ metrics:
     toplama_verim_ocamay: {2024: "10p/1.02M=102.339", 2025: "9p/1.38M=152.816", 2026: "8p/2.82M=352.701 (+%245)"}
     uyari: "paletSevkLog.kKisi tek sistem-kullanıcısı (operatör DEĞİL → emirAyr.emKisi/paletIcHrk.pikKisi kullan)"
     rapor: scripts/depo_isgucu_raporu.py
+
+  birim_maliyet:            # 15.06 — KANONİK maliyet sistemi (TEK KAYNAK, her yerde bu)
+    kaynak_job: "SQL Agent job 'MaliyetRaporu-Ceren' → step 'Maliyet_Rapor' (DerinSISBkm, gece otomatik → bkm.ENVANTER_RAPORU)"
+    formula: "COALESCE(MLYT, ORT_ALIS, SONRAKI, 0)"
+    MLYT: "son 5 alış faturası SUM(ehTutarN)/SUM(ehAdetN) — fatAyr fa JOIN fat f ON fa.ehID=f.eID AND f.eTip=0 AND f.eDurum<>2 AND f.eTarih<=@tarih, WHERE fa.ehstkID=stkID ORDER BY f.eTarih DESC, TOP 5"
+    ORT_ALIS: "fallback 1 → Aktarim.dbo.BKM_STOKLAR_MALIYETLI.ORT_ALIS (materialize, stok kolonları BAYAT ama ORT_ALIS maliyet OK)"
+    SONRAKI: "fallback 2 → satış sonrası ilk alış faturası birim (fatAyr/fat eTip=0)"
+    maliyet_tipi: "ENVANTER_RAPORU iki satır yazar: 'Ort.Maliyet' (bu şelale) + 'ÜstFiyat' (bkm.TarihtekiUstFiyat liste). Dashboard/analiz 'Ort.Maliyet' kullanır."
+    stok: "CANLI — 3 mağaza irsHrk (ehAltDepo=0, ehMekan 1/4477/4478, ehTrhS<=now SUM ehAdetN) + Merkez/WMS depo (depo.paletUrnTnm+paletTnm+adres, adrsAd<>'CK01') + Odak (ent.odak_depo_Stok)"
+    ktgr3: "ENVANTER_RAPORU.KTGR3 = urnKtgr2.ktgrAd (GRP.ktgrAd) — AYNI taksonomi, isim-join doğru. 122M ölü stok / 358M envanter geçerli."
+    kategori_filtre: "ürün sınıfı = bkm.UrunBilgi.Kategori3 ('Kitap','Kırtasiye','Çocuk Kitabı'... 22 değer). Kategori2 daha kaba (Kitap/Kırtasiye-Hediyelik/Oyuncak-Elektronik...)."
+    urun_dislama: "urnKtgr2ID NOT IN (11,25,23,9,5,6), urnTip=0, stkKod NOT LIKE '%.%', + sabit stkID listesi (job ile aynı)"
+    DIKKAT: "BKM_STOKLAR_MALIYETLI.*_STOK / *_STOK_TUTAR kolonları BAYAT (stale snapshot) → stok için KULLANMA, sadece ORT_ALIS fallback. Stok daima canlı irsHrk+WMS."
+    rapor: "scripts/olu_stok_excel.py (ürün-grain ölü stok dökümü, bu şelaleyi birebir çalıştırır)"
+    perf: "maliyet OUTER APPLY pahalı → ÖNCE stok>0 süz (#ST HAVING), SONRA maliyet (#M). Temp tablolara CLUSTERED INDEX(stkID)."
+    evidence: "15.06 — job msdb.sysjobsteps'ten okundu; Kitap (Kategori3='Kitap') 97.962 SKU = 65,8M kilitli, S90=0 ölü 72.904 SKU = 30,4M."
 
   envanter_exclusions:      # stok/envanter raporlarında ZORUNLU dışlamalar
     sinav_okullari:
