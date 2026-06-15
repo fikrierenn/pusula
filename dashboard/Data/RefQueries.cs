@@ -218,17 +218,17 @@ public sealed class RefQueries(Db db)
         // Bakiye mekan=0: 3 mağaza + depo + ODAK hepsi dahil (tam envanter görünümü).
         // S30/S90/S360 = bugünden geriye trailing pencere (dönemden bağımsız).
         var having = olusSort
-            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0)+ISNULL(MAX(od.StokMiktar),0) > 0"
+            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) > 0"
             : "SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END)>0";
         var orderBy = olusSort
-            ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0)+ISNULL(MAX(od.StokMiktar),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
+            ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
             : "Satis DESC";
         var sql = $"""
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.TotalPrice ELSE 0 END) AS decimal(18,0)) AS Ciro,
                 CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0) WHEN 4478 THEN ISNULL(MAX(stk.Ist),0)
-                     ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0)+ISNULL(MAX(od.StokMiktar),0) END AS int) AS Bakiye,
+                     ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) END AS int) AS Bakiye,
                 CAST(SUM(CASE WHEN s.Date>=@d30 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S30,
                 CAST(SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S90,
                 CAST(SUM(CASE WHEN s.Date>=@d360 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S360,
