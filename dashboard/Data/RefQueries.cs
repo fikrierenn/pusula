@@ -218,24 +218,24 @@ public sealed class RefQueries(Db db)
         // Bakiye mekan=0: 3 mağaza (FSM/Özl/İst) + merkez depo. ODAK hesaba dahil değil.
         // S30/S90/S360 = bugünden geriye trailing pencere (dönemden bağımsız).
         var having = olusSort
-            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) > 0 AND DATEDIFF(DAY, MAX(u.gTarih), GETDATE()) >= 90"
+            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(wms.Depo),0) > 0 AND DATEDIFF(DAY, MAX(u.gTarih), GETDATE()) >= 90"
             : "SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END)>0";
         var orderBy = olusSort
-            ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
+            ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(wms.Depo),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
             : "Satis DESC";
         var sql = $"""
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.TotalPrice ELSE 0 END) AS decimal(18,0)) AS Ciro,
                 CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0) WHEN 4478 THEN ISNULL(MAX(stk.Ist),0)
-                     ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) END AS int) AS Bakiye,
+                     ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(wms.Depo),0) END AS int) AS Bakiye,
                 CAST(SUM(CASE WHEN s.Date>=@d30 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S30,
                 CAST(SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S90,
                 CAST(SUM(CASE WHEN s.Date>=@d360 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S360,
                 CAST(ISNULL(MAX(stk.Fsm),0) AS int) AS StokFsm,
                 CAST(ISNULL(MAX(stk.Ozl),0) AS int) AS StokOzl,
                 CAST(ISNULL(MAX(stk.Ist),0) AS int) AS StokIst,
-                CAST(ISNULL(MAX(stk.Depo),0) AS int) AS StokDepo,
+                CAST(ISNULL(MAX(wms.Depo),0) AS int) AS StokDepo,
                 CAST(ISNULL(MAX(od.StokMiktar),0) AS int) AS StokOdak,
                 CAST(DATEDIFF(DAY, MAX(u.gTarih), GETDATE()) AS int) AS YasGun
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
@@ -250,11 +250,16 @@ public sealed class RefQueries(Db db)
             LEFT JOIN (SELECT v.ehstkID AS sID,
                            SUM(CASE WHEN v.ehMekan=1 THEN v.stok ELSE 0 END) AS Fsm,
                            SUM(CASE WHEN v.ehMekan=4477 THEN v.stok ELSE 0 END) AS Ozl,
-                           SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) AS Ist,
-                           SUM(CASE WHEN v.ehMekan=12 THEN v.stok ELSE 0 END) AS Depo
+                           SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) AS Ist
                        FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
-                       WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478,12)
+                       WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478)
                        GROUP BY v.ehstkID) stk ON stk.sID=u.stkID
+            LEFT JOIN (SELECT pu.pUStkID AS sID, SUM(pu.pUAdetN) AS Depo
+                       FROM DerinSISBkm.depo.paletUrnTnm pu
+                         JOIN DerinSISBkm.depo.paletTnm pt ON pt.pID=pu.pUID
+                         JOIN DerinSISBkm.depo.adres a ON a.adrsID=pt.pSonPozID
+                       WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
+                       GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
             LEFT JOIN DerinSISBkm.ent.odak_depo_Stok od WITH(NOLOCK) ON od.stkID=u.stkID
             WHERE MG.mekanID IN (1,4477,4478) AND (@mekan=0 OR MG.mekanID=@mekan)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
