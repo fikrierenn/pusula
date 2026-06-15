@@ -10,6 +10,8 @@ Hafta net ciro    : 10.135.341 TL  (WoW %-9,8)
 Fiş adedi         : 16.967  (+%7,3)
 Sepet ortalaması  : 597 TL
 Ay MTD (Haziran 2026): 10.135.341 TL  (gerçekleşme %98.8)
+E-ticaret net     : 19.090.079 TL  (WoW +%20,6)
+BIRLESIK          : 29.225.420 TL  (magaza %35 / online %65)
 
 
 1) MAGAZA OZETI — HAFTA 24
@@ -18,6 +20,17 @@ Ay MTD (Haziran 2026): 10.135.341 TL  (gerçekleşme %98.8)
 İst.Yolu            Fis:   4309  Net:      2.472.625 TL  Sepet:  573 TL  WoW %-32,5
 FSM                 Fis:   5896  Net:      3.024.865 TL  Sepet:  513 TL  WoW +%2,0
 TOPLAM              Fis:  16967  Net:     10.135.341 TL  Sepet:  597 TL  WoW %-9,8
+
+
+1b) E-TICARET (JOKER) — HAFTA 24
+------------------------------------------------
+Mobil Uygulama (Android)    Sip:  5.826  Net:      6.287.439 TL  Sepet: 1079 TL  WoW %-2,8
+Mobil Uygulama (iOS)        Sip:  3.443  Net:      3.766.147 TL  Sepet: 1093 TL  WoW +%13,9
+Mobil Site                  Sip:  7.110  Net:      6.237.766 TL  Sepet:  877 TL  WoW +%38,4
+Web Sitesi                  Sip:  2.361  Net:      2.798.345 TL  Sepet: 1185 TL  WoW +%81,8
+Diğer                       Sip:      1  Net:            383 TL  Sepet:  382 TL  WoW —
+TOPLAM                      Sip: 18.741  Net:     19.090.079 TL  Sepet: 1018 TL  WoW +%20,6
+(Net = iptal/iade haric, kargo dahil TOTALPRICE)
 
 
 2) GUNLUK SEYIR
@@ -53,6 +66,6 @@ KAPSAM UYARILARI
 - Iade fisleri sign'li (negatif) ciroya dahil
 
 ---
-BKM Kitap · Pazartesi Brifingi (otomatik) · 08.06.2026 09:09
+BKM Kitap · Pazartesi Brifingi (otomatik) · 11.06.2026 14:59
 scripts/generate_brief.py v1.0.0
 Sonraki brief: 15.06.2026 09:00
