@@ -478,7 +478,7 @@ public sealed class RefQueries(Db db)
             SELECT TOP 30 m.mrkAd AS Marka,
                 SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) AS SatisAdet,
                 SUM(CASE WHEN a.ehTip IN (0,10)  THEN ABS(a.ehAdetN) ELSE 0 END) AS AlisAdet,
-                SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutar - a.ehIndirim ELSE 0 END) AS SatisCiro
+                SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutarN ELSE 0 END) AS SatisCiro
             FROM DerinSISBkm.dbo.irsHrk a WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
             JOIN DerinSISBkm.dbo.urnMrk m WITH(NOLOCK) ON m.mrkID = u.urnMrkID
