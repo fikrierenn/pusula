@@ -11,6 +11,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-15 Oturum 3 — Sayfa yükleme süresi göstergesi
+- `PerfState` scoped servis + MainLayout footer rozeti (⏱ sayfa+süre, <2sn yeşil/2-5sn sarı/>5sn kırmızı) + 8 sayfa wiring. commit e3360a3. **Smoke test bekliyor.** Mobil header rozeti açık soru.
+
 ### 2026-06-15 — Kanonik maliyet + WMS depo + ölü stok raporu + perf (~22 commit)
 - **Tek maliyet sistemi:** gece job `MaliyetRaporu-Ceren` şelalesi keşfi (son 5 alış faturası → ORT_ALIS → sonraki) → `sema/metrics.yaml:birim_maliyet`. GetMarj fatAyr-AVG → kanonik (Kitap %30,6).
 - **Kanonik depo = WMS palet** (`depo.paletUrnTnm`, 4,38M) — `stokSonAltDepo` mekan=12 (2,14M) EKSİK. `sema/bridges.yaml:wms-depo-stok`. GetUrunler drill depo'su WMS'e geçti.
