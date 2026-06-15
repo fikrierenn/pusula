@@ -199,6 +199,21 @@ bridges:
     scope: derinsis
     confidence: 1.0
     note: "Anlık stok view → ürün. ehAltDepo=0 ZORUNLU. ehMekan ile depo(12,4480,4835)/mağaza(1,4477,4478) ayrımı. Envanter+cari özet."
+    UYARI: "MERKEZ DEPO stoğu için ehMekan=12 KULLANMA — irsHrk muhasebe bakiyesi EKSİK (2,14M) gerçek fiziksel WMS palet 4,38M (15.06). Mağaza (1/4477/4478) stoğu bu view'den OK; merkez depo daima WMS palet (id: wms-depo-stok)."
+  - id: wms-depo-stok
+    from: depo.paletUrnTnm.pUStkID
+    to: dbo.urn.stkID
+    scope: derinsis
+    confidence: 1.0
+    note: |
+      KANONİK merkez depo stoğu (gece job 'MaliyetRaporu-Ceren' ile aynı). stokSonAltDepo mekan=12 DEĞİL.
+      SELECT pu.pUStkID stkID, SUM(pu.pUAdetN) stok
+      FROM depo.paletUrnTnm pu
+        JOIN depo.paletTnm pt ON pt.pID=pu.pUID
+        JOIN depo.adres   a  ON a.adrsID=pt.pSonPozID
+      WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
+      GROUP BY pu.pUStkID
+    evidence: "15.06 — job sorgusu + WMS toplam 4.381.910 adet (stokSonAltDepo mekan=12 sadece 2.144.814). Dashboard GetUrunlerAsync + scripts/olu_stok_excel.py bunu kullanır."
   - id: depotoplanacak-orders
     from: ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK.ORDERREF
     to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
