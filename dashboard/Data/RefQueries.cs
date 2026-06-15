@@ -379,12 +379,12 @@ public sealed class RefQueries(Db db)
         await using var conn = await db.OpenAsync();
         var bugun = await conn.QueryFirstOrDefaultAsync<DepoWmsBugun>("""
             SELECT COUNT(*) AS Islem, CAST(ISNULL(SUM(emAdetTop),0) AS int) AS Adet
-            FROM depo.emirAyr WITH(NOLOCK)
+            FROM DerinSISBkm.depo.emirAyr WITH(NOLOCK)
             WHERE emTamam=1 AND CAST(emTarih AS date)=CAST(GETDATE() AS date)
             """);
         var trend = (await conn.QueryAsync<DepoWmsTrend>("""
             SELECT CAST(emTarih AS date) AS Gun, COUNT(*) AS Islem, CAST(SUM(emAdetTop) AS int) AS Adet
-            FROM depo.emirAyr WITH(NOLOCK)
+            FROM DerinSISBkm.depo.emirAyr WITH(NOLOCK)
             WHERE emTamam=1 AND emTarih>=DATEADD(DAY,-13,CAST(GETDATE() AS date))
             GROUP BY CAST(emTarih AS date)
             """)).OrderBy(t => t.Gun).ToList();
