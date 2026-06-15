@@ -266,8 +266,11 @@ public sealed class RefQueries(Db db)
         var today = DateTime.Today;
         var pStart = start.ToDateTime(TimeOnly.MinValue);
         var pEnd = endExcl.ToDateTime(TimeOnly.MinValue);
+        var d90 = today.AddDays(-90);
         var d360 = today.AddDays(-360);
         var tom = today.AddDays(1);
+        // Ölü stok modu sadece S90 + güncel stok ister → 360g yerine 90g tara (POS scan 4× küçülür).
+        var lower = olusSort ? d90 : d360;
         return (await conn.QueryAsync<UrunRow>(sql, new
         {
             kat = kategori,
@@ -275,9 +278,9 @@ public sealed class RefQueries(Db db)
             start = pStart,
             end = pEnd,
             d30 = today.AddDays(-30),
-            d90 = today.AddDays(-90),
+            d90,
             d360,
-            minDate = pStart < d360 ? pStart : d360,   // dönem + trailing 360g'yi kapsa
+            minDate = pStart < lower ? pStart : lower,   // ölü stok: 90g, normal: dönem + trailing 360g
             maxDate = pEnd > tom ? pEnd : tom,
         })).ToList();
     }
