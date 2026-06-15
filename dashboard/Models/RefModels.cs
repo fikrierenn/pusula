@@ -36,6 +36,9 @@ public record CodRow(string Tip, int Siparis, int Teslim, int Iade);
 /// <summary>Operasyon ek veri (SPLH + COD).</summary>
 public record OpsData(IReadOnlyList<SplhRow> Splh, IReadOnlyList<CodRow> Cod, decimal CodZarar);
 
+/// <summary>Kategori brüt marj satırı (son 30g fatAyr maliyet).</summary>
+public record MarjRow(string Kategori, decimal Ciro, decimal Smm, decimal MarjPct);
+
 /// <summary>Depo WMS günlük toplama verimi.</summary>
 public record DepoWmsData(int BugunIslem, int BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
 /// <summary>Depo WMS günlük trend satırı.</summary>

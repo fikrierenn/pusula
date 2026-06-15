@@ -88,6 +88,21 @@ else if (_d is not null)
         </div>
     </div>
 
+    @if (_marj.Count > 0)
+    {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Kategori Brüt Marj — son 30g (fatAyr birim maliyet ortalaması)</h3>
+            <AppRankBars TItem="MarjRow"
+                         Items="@_marj"
+                         Label="@(r => r.Kategori)"
+                         Value="@(r => r.MarjPct)"
+                         ValueText="@(r => $"%{r.MarjPct:0.0}  ({Tl(r.Ciro - r.Smm)} / {Tl(r.Ciro)})")" />
+            <div class="text-base-content/50 text-[11px] mt-2">Marj = (Ciro − SMM) / Ciro. SMM = fatAyr son alış ortalaması × adet. Maliyet verisi yetersiz kategoriler hariç.</div>
+        </div>
+    </div>
+    }
+
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + " — Ürünler")">
         <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · geçen tam ay · satışa göre ilk 100 (stok = güncel)</div>
         @if (_urunLoading)
@@ -109,6 +124,7 @@ else if (_d is not null)
     private string? _error;
     private InventoryData? _d;
     private IReadOnlyList<CveRow> _cve = [];
+    private IReadOnlyList<MarjRow> _marj = [];
     private bool _modalUrun;
     private bool _urunLoading;
     private string _selKat = "";
@@ -122,8 +138,13 @@ else if (_d is not null)
             var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
             var ayBasi = new DateOnly(dun.Year, dun.Month, 1);
             _gAyBas = ayBasi.AddMonths(-1); _gAyBit = ayBasi;   // geçen tam ay
-            _d = await Ref.GetInventoryAsync(dun);
-            _cve = await Ref.GetCveAsync(dun);
+            var tInv = Ref.GetInventoryAsync(dun);
+            var tCve = Ref.GetCveAsync(dun);
+            var tMarj = Ref.GetMarjAsync();
+            await Task.WhenAll(tInv, tCve, tMarj);
+            _d = tInv.Result;
+            _cve = tCve.Result;
+            _marj = tMarj.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }
