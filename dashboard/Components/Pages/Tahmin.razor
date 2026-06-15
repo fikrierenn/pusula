@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject Queries Queries
+@inject PerfState Perf
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -99,6 +100,7 @@ else if (_t is not null)
 
     protected override async Task OnInitializedAsync()
     {
+        var sw = PerfState.Start();
         try
         {
             var bugun = DateOnly.FromDateTime(DateTime.Today);
@@ -110,7 +112,7 @@ else if (_t is not null)
             for (int i = 0; i < _mekanlar.Length; i++) _magaza.Add((_mekanlar[i].Ad, tMag[i].Result));
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); }
+        finally { _loading = false; Perf.Report("Tahmin", sw); StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

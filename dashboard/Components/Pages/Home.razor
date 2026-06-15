@@ -5,6 +5,7 @@
 @inject RefQueries Ref
 @inject LlmService Llm
 @inject NotifState Notif
+@inject PerfState Perf
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @rendermode InteractiveServer
@@ -275,6 +276,7 @@ else if (_data is not null)
 
     private async Task LoadAsync()
     {
+        var sw = PerfState.Start();
         _loading = true; _error = null; StateHasChanged();
         try
         {
@@ -329,6 +331,7 @@ else if (_data is not null)
         finally
         {
             _loading = false;
+            Perf.Report("Genel Bakış", sw);
             StateHasChanged();
             await DrawChartsAsync();
         }

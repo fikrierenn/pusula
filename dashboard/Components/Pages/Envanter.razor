@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
+@inject PerfState Perf
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -200,6 +201,7 @@ else if (_d is not null)
 
     protected override async Task OnInitializedAsync()
     {
+        var sw = PerfState.Start();
         try
         {
             var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
@@ -216,7 +218,7 @@ else if (_d is not null)
             _rot  = tRot.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); }
+        finally { _loading = false; Perf.Report("Envanter", sw); StateHasChanged(); }
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
         try { _marj = await Ref.GetMarjAsync(); }

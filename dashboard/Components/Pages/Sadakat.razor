@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject SadakatQueries Sada
+@inject PerfState Perf
 @rendermode InteractiveServer
 
 <PageTitle>Sadakat — BKM GM</PageTitle>
@@ -123,6 +124,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var sw = PerfState.Start();
         try
         {
             var tWb = Sada.GetWinBackAsync();
@@ -138,7 +140,7 @@ else
             _rfmGecis = tGec.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); }
+        finally { _loading = false; Perf.Report("Sadakat", sw); StateHasChanged(); }
     }
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";

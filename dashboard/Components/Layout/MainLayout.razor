@@ -4,6 +4,7 @@
 @implements IDisposable
 @inject GmDashboard.Data.GorevService Gorevler
 @inject GmDashboard.Data.NotifState Notif
+@inject GmDashboard.Data.PerfState Perf
 @inject NavigationManager Nav
 
 <div class="drawer lg:drawer-open min-h-screen">
@@ -54,8 +55,15 @@
             @Body
         </main>
 
-        <footer class="px-5 py-3 text-xs text-base-content/40 border-t border-base-200 bg-base-100 hidden lg:block">
-            BKM Kitap · BKM-Asistan v1 · © 2026
+        <footer class="px-5 py-3 text-xs text-base-content/40 border-t border-base-200 bg-base-100 hidden lg:flex items-center gap-2">
+            <span>BKM Kitap · BKM-Asistan v1 · © 2026</span>
+            @if (Perf.LastMs > 0)
+            {
+                <span class="ml-auto flex items-center gap-1 @PerfTone">
+                    <i data-lucide="timer" class="w-3.5 h-3.5"></i>
+                    @Perf.LastPage @(Perf.LastMs >= 1000 ? $"{Perf.LastMs / 1000.0:0.0} sn" : $"{Perf.LastMs} ms")
+                </span>
+            }
         </footer>
 
         @* ── MOBİL ALT NAVİGASYON (app-tarzı tab bar) — sadece mobilde, masaüstü sidebar değişmez ── *@
@@ -183,12 +191,16 @@
         try { _acikGorev = Gorevler.Listele(acikOnly: true).Count; }
         catch { _acikGorev = 0; }
         Notif.Changed += OnNotifChanged;
+        Perf.Changed += OnNotifChanged;
     }
 
-    // Home uyarıları güncelleyince zil rozetini tazele.
+    // Home uyarıları / perf güncellenince footer + zil rozetini tazele.
     private async void OnNotifChanged() => await InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Notif.Changed -= OnNotifChanged;
+    public void Dispose() { Notif.Changed -= OnNotifChanged; Perf.Changed -= OnNotifChanged; }
+
+    // Yükleme süresi tonu: <2sn yeşil, 2-5sn sarı, >5sn kırmızı.
+    private string PerfTone => Perf.LastMs < 2000 ? "text-success" : Perf.LastMs < 5000 ? "text-warning" : "text-error";
 
     private void CloseDrawer() => _drawerOpen = false;
     private void GoGorevler() { CloseDrawer(); Nav.NavigateTo("gorevler"); }

@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject RefQueries Ref
+@inject PerfState Perf
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -82,13 +83,14 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var sw = PerfState.Start();
         try
         {
             _dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
             (_yk, _et) = await Ref.GetRfmAsync(_dun);
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; }
+        finally { _loading = false; Perf.Report("Müşteri", sw); StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

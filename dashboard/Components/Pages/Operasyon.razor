@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @inject Queries Queries
 @inject RefQueries Ref
+@inject PerfState Perf
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -160,6 +161,7 @@ else if (_data is not null)
 
     private async Task LoadAsync()
     {
+        var sw = PerfState.Start();
         _loading = true; _error = null; StateHasChanged();
         try
         {
@@ -188,7 +190,7 @@ else if (_data is not null)
             try { _wms = tWms.Result; } catch { /* WMS erişilemez */ }
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); }
+        finally { _loading = false; Perf.Report("Operasyon", sw); StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @inject Queries Queries
 @inject EticQueries Etic
+@inject PerfState Perf
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -254,6 +255,7 @@ else if (_data is not null)
 
     private async Task LoadAsync()
     {
+        var sw = PerfState.Start();
         _loading = true; _error = null; StateHasChanged();
         try
         {
@@ -285,7 +287,7 @@ else if (_data is not null)
             _funnel = tFunnel.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); }
+        finally { _loading = false; Perf.Report("E-ticaret", sw); StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

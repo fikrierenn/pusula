@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @inject MagazaQueries Mag
 @inject RefQueries Ref
+@inject PerfState Perf
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -264,6 +265,7 @@ else if (_d is not null)
 
     private async Task LoadAsync()
     {
+        var sw = PerfState.Start();
         _loading = true; _error = null; StateHasChanged();
         try
         {
@@ -286,7 +288,7 @@ else if (_d is not null)
             if (_d is null) _error = "Geçersiz mağaza.";
         }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _loading = false; StateHasChanged(); }
+        finally { _loading = false; Perf.Report($"Mağaza {Id}", sw); StateHasChanged(); }
     }
 
     private async Task OpenUrun(string kategori)
