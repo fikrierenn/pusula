@@ -57,6 +57,9 @@ public record KartliRow(string Tip, int FisSayisi, int Musteri, decimal NetCiro,
 /// <summary>Tekrar alış özeti — toplam, tekrar eden, ortalama 2. alış günü (B-58+B-71).</summary>
 public record TekrarAlisOzet(int ToplamMusteri, int TekrarMusteri, decimal OrtGun2Alis);
 
+/// <summary>RFM segment geçiş (dönem1→dönem2, B-67).</summary>
+public record RfmGecisRow(string EskiSeg, string YeniSeg, int Musteri);
+
 /// <summary>Hediye çeki aylık satılan/kullanılan.</summary>
 public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>

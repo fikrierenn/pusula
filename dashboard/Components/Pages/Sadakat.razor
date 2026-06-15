@@ -70,6 +70,28 @@ else
     </div>
     }
 
+    @if (_rfmGecis.Count > 0)
+    {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">RFM Segment Geçiş Matrisi — Mar25–Mar26 → Haz25–Haz26</h3>
+            <AppDataTable TItem="RfmGecisRow"
+                          Items="@_rfmGecis"
+                          Primary="@(r => r.EskiSeg.Substring(2))"
+                          Sub="@(r => "→ " + r.YeniSeg.Substring(2))"
+                          MetricMain="@(r => Num(r.Musteri) + " müşteri")"
+                          Badge="@(r => {
+                              int eski = int.Parse(r.EskiSeg[0].ToString());
+                              int yeni = int.Parse(r.YeniSeg[0].ToString());
+                              if (eski == yeni) return ("stabil", "bg-base-200 text-base-content/50");
+                              if (yeni < eski) return ("▲ iyileşme", "bg-success/15 text-success");
+                              return ("▼ kötüleşme", "bg-error/15 text-error");
+                          })" />
+            <div class="text-base-content/50 text-[11px] mt-2">Dönem 1 = Mar25–Mar26 · Dönem 2 = Haz25–Haz26 (üst üste 3 aylık kayma). Kötüleşme = numara artışı (1=Şampiyon, 5=Kayıp).</div>
+        </div>
+    </div>
+    }
+
     @if (_winBack.Count > 0)
     {
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -97,6 +119,7 @@ else
     private IReadOnlyList<ParetoRow> _pareto = [];
     private IReadOnlyList<KartliRow> _kartli = [];
     private TekrarAlisOzet? _tekrar;
+    private IReadOnlyList<RfmGecisRow> _rfmGecis = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,11 +129,13 @@ else
             var tPar = Sada.GetParetoAsync();
             var tKrt = Sada.GetKartliAsync();
             var tTek = Sada.GetTekrarAlisAsync();
-            await Task.WhenAll(tWb, tPar, tKrt, tTek);
+            var tGec = Sada.GetRfmGecisAsync();
+            await Task.WhenAll(tWb, tPar, tKrt, tTek, tGec);
             _winBack = tWb.Result;
             _pareto = tPar.Result;
             _kartli = tKrt.Result;
             _tekrar = tTek.Result;
+            _rfmGecis = tGec.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

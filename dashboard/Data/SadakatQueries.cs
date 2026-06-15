@@ -65,6 +65,44 @@ public sealed class SadakatQueries(Db db)
         return rows.ToList();
     }
 
+    /// <summary>RFM segment geçiş matrisi — 3-6 ay önceki segment → bugünkü segment (B-67).</summary>
+    public async Task<IReadOnlyList<RfmGecisRow>> GetRfmGecisAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<RfmGecisRow>("""
+            SELECT TOP 36 seg1.S AS EskiSeg, seg2.S AS YeniSeg, COUNT(*) AS Musteri
+            FROM (
+                SELECT s.CustomersId,
+                    CAST(CASE WHEN COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),'20260301')<=30 THEN N'1-Şampiyon'
+                         WHEN COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),'20260301')<=90 THEN N'2-Sadık'
+                         WHEN COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),'20260301')<=30 THEN N'3-Yeni'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),'20260301') BETWEEN 91 AND 180 THEN N'4-Risk'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),'20260301')>180 THEN N'5-Kayıp'
+                         ELSE N'6-Diğer' END AS nvarchar(20)) S
+                FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                WHERE s.DocumentsTypeId IN (1,2,6,7,8) AND s.CustomersId > 0
+                  AND s.Date >= '20250301' AND s.Date < '20260301'
+                GROUP BY s.CustomersId
+            ) seg1
+            JOIN (
+                SELECT s.CustomersId,
+                    CAST(CASE WHEN COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),GETDATE())<=30 THEN N'1-Şampiyon'
+                         WHEN COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),GETDATE())<=90 THEN N'2-Sadık'
+                         WHEN COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),GETDATE())<=30 THEN N'3-Yeni'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),GETDATE()) BETWEEN 91 AND 180 THEN N'4-Risk'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),GETDATE())>180 THEN N'5-Kayıp'
+                         ELSE N'6-Diğer' END AS nvarchar(20)) S
+                FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                WHERE s.DocumentsTypeId IN (1,2,6,7,8) AND s.CustomersId > 0
+                  AND s.Date >= '20250601' AND s.Date < '20260601'
+                GROUP BY s.CustomersId
+            ) seg2 ON seg2.CustomersId = seg1.CustomersId
+            GROUP BY seg1.S, seg2.S
+            ORDER BY Musteri DESC
+            """, commandTimeout: 30);
+        return rows.ToList();
+    }
+
     /// <summary>Tekrar alış özeti — B-58 (Frq>1 oranı) + B-71 (ortalama 2. alış günü). Son 12 ay.</summary>
     public async Task<TekrarAlisOzet> GetTekrarAlisAsync()
     {
