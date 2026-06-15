@@ -36,6 +36,11 @@ public record CodRow(string Tip, int Siparis, int Teslim, int Iade);
 /// <summary>Operasyon ek veri (SPLH + COD).</summary>
 public record OpsData(IReadOnlyList<SplhRow> Splh, IReadOnlyList<CodRow> Cod, decimal CodZarar);
 
+/// <summary>Depo WMS günlük toplama verimi.</summary>
+public record DepoWmsData(int BugunIslem, int BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
+/// <summary>Depo WMS günlük trend satırı.</summary>
+public record DepoWmsTrend(DateOnly Gun, int Islem, int Adet);
+
 /// <summary>Envanter sayfası toplu veri.</summary>
 public record InventoryData(
     decimal ToplamDeger,

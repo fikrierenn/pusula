@@ -37,6 +37,7 @@ else if (_data is not null)
         new("Kasiyer", Num(_data.Kasiyer.Count), "from-info to-info/80", "aktif kasiyer"),
         new("En Yoğun Saat", _data.Saat.Count > 0 ? $"{_data.Saat.OrderByDescending(h => h.Fis).First().Saat:00}:00" : "—", "from-success to-success/80", "fiş zirvesi"),
         new("COD İade Zararı", _ops is not null ? Tl(_ops.CodZarar) : "—", "from-error to-error/80", "60g kargo×2"),
+        new("Depo Bugün", _wms is not null ? Num(_wms.BugunAdet) : "—", "from-warning to-warning/80", $"{(_wms?.BugunIslem ?? 0)} toplama emri"),
     })" />
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -102,6 +103,16 @@ else if (_data is not null)
                 <p class="text-base-content/50 text-xs mb-2">SPLH verisi yok (PDKS).</p>
             }
         </div>
+        @if (_wms is not null && _wms.Trend.Count > 0)
+        {
+            var wmsMax = _wms.Trend.Max(t => t.Adet);
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Depo Toplama Verimi — Son 14 Gün (adet)</h3>
+                <AppRankBars TItem="DepoWmsTrend" Items="@(_wms.Trend)"
+                             Label="@(t => t.Gun.ToString("dd MMM", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")))"
+                             Value="@(t => t.Adet)"
+                             ValueText="@(t => $"{Num(t.Adet)} adet · {t.Islem} emir")" />
+            </div>
+        }
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kapıda Ödeme — Teslim/İade (olgun 60g)</h3>
             @if (_ops is not null)
             {
@@ -127,6 +138,7 @@ else if (_data is not null)
     private string? _error;
     private PeriodSummary? _data;
     private OpsData? _ops;
+    private DepoWmsData? _wms;
     private string _aralik = "";
     private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private Dictionary<string, decimal?> _kasDelta = new();   // B-57 kasiyer net delta (Magaza|Ad → %)
@@ -168,10 +180,12 @@ else if (_data is not null)
             var tData = Queries.GetPeriodAsync(start, endExcl);
             var tOps = Ref.GetOpsAsync(dun);
             var tKas = Queries.GetKasiyerDeltaAsync(start, endExcl, pStart, start);
-            await Task.WhenAll(tData, tOps, tKas);
+            var tWms = Ref.GetDepoWmsAsync();
+            await Task.WhenAll(tData, tOps, tKas, tWms);
             _data = tData.Result;
             _kasDelta = tKas.Result.ToDictionary(k => k.Magaza + "|" + k.Ad, k => k.DeltaPct);
             try { _ops = tOps.Result; } catch (Exception ex) { _error ??= ex.Message; }
+            try { _wms = tWms.Result; } catch { /* WMS erişilemez */ }
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }
