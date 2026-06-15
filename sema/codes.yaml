@@ -151,3 +151,21 @@ codes:
     "HEDİYE ÇEKİ": Hediye Çeki
     _default: Kredi/Banka Kartı   # banka adları (HALK BANKASI, İŞ, AKBANK, ANADOLU, VAKIF, DENİZ, QNB...)
     note: "FSM 01-12 Haz para üstü hariç: Kredi/Banka %74,7 · Nakit %24,4 · İade Çeki %0,7 · Hediye Çeki %0,1. HALK BANKASI POS hakim (%68,8 kart içi). SalesPayments.IsChangeAmount=0 (para üstü hariç) ZORUNLU."
+
+  J_ORDERS.STATUS:        # JOKER e-ticaret sipariş durumu (J_ORDER_STATUS lookup, 15.06.2026 keşif)
+    lookup: ODAKJOKER.JOKER.dbo.J_ORDER_STATUS (LOGICALREF=STATUS, NAME)
+    funnel_gruplari:
+      isleniyor: [1000, 1002, 1003, 1004, 1008, 3001, 3002, 3003, 3004, 3005, 3007, 3008, 4001-4008, 2001, 2003, 2006, 2008]
+      tedarik_bekliyor: [2000, 2002, 2007, 3006, 4006]
+      kargoya_verildi: [1005, 3009, 4009]
+      iade_geldi: [1006]
+      iptal: [1001, 3000, 4000]
+      kayip_sorunlu: [1007, 1009]
+    may_2026_dagilim:
+      3-Kargoya Verildi: 67796
+      5-İptal: 1160
+      4-İade: 850
+      1-İşleniyor: 39
+      2-Tedarik Bekliyor: 2
+    confidence: 0.95
+    evidence: "15.06.2026 — J_ORDER_STATUS full scan + Mayıs 2026 J_ORDERS GROUP BY STATUS"
