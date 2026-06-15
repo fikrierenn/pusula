@@ -65,6 +65,46 @@ public sealed class SadakatQueries(Db db)
         return rows.ToList();
     }
 
+    /// <summary>Tekrar alış özeti — B-58 (Frq>1 oranı) + B-71 (ortalama 2. alış günü). Son 12 ay.</summary>
+    public async Task<TekrarAlisOzet> GetTekrarAlisAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var r = await conn.QuerySingleAsync<TekrarAlisOzet>("""
+            SELECT
+                COUNT(DISTINCT s.CustomersId) AS ToplamMusteri,
+                COUNT(DISTINCT CASE WHEN frq.Frq >= 2 THEN s.CustomersId END) AS TekrarMusteri,
+                CAST(ISNULL(AVG(CAST(DATEDIFF(DAY, s.IlkTarih, ikinci.IkinciTarih) AS float)), 0) AS decimal(5,0)) AS OrtGun2Alis
+            FROM (
+                SELECT CustomersId, MIN(Date) AS IlkTarih
+                FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)
+                WHERE DocumentsTypeId IN (1,2,6,7,8) AND CustomersId > 0
+                  AND Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
+                GROUP BY CustomersId
+            ) s
+            LEFT JOIN (
+                SELECT CustomersId, COUNT(*) AS Frq
+                FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)
+                WHERE DocumentsTypeId IN (1,2,6,7,8) AND CustomersId > 0
+                  AND Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
+                GROUP BY CustomersId
+            ) frq ON frq.CustomersId = s.CustomersId
+            LEFT JOIN (
+                SELECT sal.CustomersId, MIN(sal.Date) AS IkinciTarih
+                FROM EncoreMerkez.dbo.Sales sal WITH(NOLOCK)
+                JOIN (
+                    SELECT CustomersId, MIN(Date) AS IlkTarih
+                    FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)
+                    WHERE DocumentsTypeId IN (1,2,6,7,8) AND CustomersId > 0
+                      AND Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
+                    GROUP BY CustomersId
+                ) ilk ON ilk.CustomersId = sal.CustomersId AND sal.Date > ilk.IlkTarih
+                WHERE sal.DocumentsTypeId IN (1,2,6,7,8) AND sal.CustomersId > 0
+                GROUP BY sal.CustomersId
+            ) ikinci ON ikinci.CustomersId = s.CustomersId
+            """, commandTimeout: 30);
+        return r;
+    }
+
     /// <summary>Sadakat kartı analizi — kartlı vs kartsız müşteri ATV/frekans karşılaştırması (son 12 ay).</summary>
     public async Task<IReadOnlyList<KartliRow>> GetKartliAsync()
     {

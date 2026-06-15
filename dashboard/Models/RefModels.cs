@@ -54,6 +54,9 @@ public record ParetoRow(int Dilim, int MusteriSayisi, decimal ToplamCiro);
 /// <summary>Kartlı vs kartsız müşteri karşılaştırması (B-69).</summary>
 public record KartliRow(string Tip, int FisSayisi, int Musteri, decimal NetCiro, decimal AtvMusteri);
 
+/// <summary>Tekrar alış özeti — toplam, tekrar eden, ortalama 2. alış günü (B-58+B-71).</summary>
+public record TekrarAlisOzet(int ToplamMusteri, int TekrarMusteri, decimal OrtGun2Alis);
+
 /// <summary>Hediye çeki aylık satılan/kullanılan.</summary>
 public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>

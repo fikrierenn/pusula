@@ -27,10 +27,11 @@ else
 
     <AppKpiCarousel Id="sadakatkpi" Items="@(new List<KpiCardData>
     {
+        new("Tekrar Alış", _tekrar != null ? Pct(_tekrar.TekrarMusteri, _tekrar.ToplamMusteri) : "—", "from-primary to-primary/80", $"Frq>1 · {Num(_tekrar?.TekrarMusteri ?? 0)} müşteri"),
+        new("2. Alış Süresi", _tekrar != null ? (_tekrar.OrtGun2Alis + " gün") : "—", "from-info to-info/80", "ilk → 2. alış ort. gün"),
         new("Win-Back Hedef", Num(_winBack.Count) + " müşteri", "from-error to-error/80", "90g hareketsiz · yıl içi aktif · frq≥3"),
-        new("Pareto %10", Pct(ilk10PctCiro, toplamCiro), "from-primary to-primary/80", $"ilk {Num(ilk10PctMus)} müşteri"),
-        new("Toplam Aktif", Num(toplamMus) + " müşteri", "from-info to-info/80", "son 12 ay CustomersId>0"),
-        new("Win-Back Ciro", Tl(_winBack.Sum(r => r.ToplCiro)), "from-warning to-warning/80", "yeniden kazanılabilir ₺"),
+        new("Pareto %10", Pct(ilk10PctCiro, toplamCiro), "from-warning to-warning/80", $"ilk {Num(ilk10PctMus)} müşteri"),
+        new("Win-Back Ciro", Tl(_winBack.Sum(r => r.ToplCiro)), "from-success to-success/80", "yeniden kazanılabilir ₺"),
     })" />
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -95,6 +96,7 @@ else
     private IReadOnlyList<WinBackRow> _winBack = [];
     private IReadOnlyList<ParetoRow> _pareto = [];
     private IReadOnlyList<KartliRow> _kartli = [];
+    private TekrarAlisOzet? _tekrar;
 
     protected override async Task OnInitializedAsync()
     {
@@ -103,10 +105,12 @@ else
             var tWb = Sada.GetWinBackAsync();
             var tPar = Sada.GetParetoAsync();
             var tKrt = Sada.GetKartliAsync();
-            await Task.WhenAll(tWb, tPar, tKrt);
+            var tTek = Sada.GetTekrarAlisAsync();
+            await Task.WhenAll(tWb, tPar, tKrt, tTek);
             _winBack = tWb.Result;
             _pareto = tPar.Result;
             _kartli = tKrt.Result;
+            _tekrar = tTek.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }
