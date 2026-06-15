@@ -151,7 +151,7 @@ else if (_d is not null)
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + (_olusSort ? " — Ölü Stok" : " — Ürünler"))">
         <div class="text-base-content/50 text-xs mb-2">
             @if (_olusSort)
-            { <span>stok/90g satış oranı büyük önce · 3 mağaza + depo dahil · stok = güncel</span> }
+            { <span>stok/90g satış oranı büyük önce · 3 mağaza + depo dahil · stok = güncel · yeni listelenenler (&lt;90g) hariç</span> }
             else
             { <span>3 mağaza toplam · geçen tam ay · satışa göre ilk 100 · stok = güncel</span> }
         </div>
@@ -165,7 +165,7 @@ else if (_d is not null)
                           Primary="@(u => u.Ad)"
                           Sub="@(u => $"Kod {u.Kod} · FSM:{u.StokFsm} Özl:{u.StokOzl} İst:{u.StokIst} Dep:{u.StokDepo}")"
                           MetricMain="@(u => Tl(u.Ciro))"
-                          MetricSub="@(u => $"{Num(u.Satis)} ad · S30:{u.S30} S90:{u.S90}")"
+                          MetricSub="@(u => $"{Num(u.Satis)} ad · S30:{u.S30} S90:{u.S90} · {(u.YasGun >= 365 ? $"{u.YasGun / 365}y" : $"{u.YasGun}g")} listede")"
                           Badge="@(u => u.Bakiye <= 0
                               ? ($"stok 0", "bg-error/15 text-error")
                               : u.S90 == 0

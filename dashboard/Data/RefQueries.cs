@@ -218,7 +218,7 @@ public sealed class RefQueries(Db db)
         // Bakiye mekan=0: 3 mağaza (FSM/Özl/İst) + merkez depo. ODAK hesaba dahil değil.
         // S30/S90/S360 = bugünden geriye trailing pencere (dönemden bağımsız).
         var having = olusSort
-            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) > 0"
+            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) > 0 AND DATEDIFF(DAY, MAX(u.gTarih), GETDATE()) >= 90"
             : "SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END)>0";
         var orderBy = olusSort
             ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
@@ -236,7 +236,8 @@ public sealed class RefQueries(Db db)
                 CAST(ISNULL(MAX(stk.Ozl),0) AS int) AS StokOzl,
                 CAST(ISNULL(MAX(stk.Ist),0) AS int) AS StokIst,
                 CAST(ISNULL(MAX(stk.Depo),0) AS int) AS StokDepo,
-                CAST(ISNULL(MAX(od.StokMiktar),0) AS int) AS StokOdak
+                CAST(ISNULL(MAX(od.StokMiktar),0) AS int) AS StokOdak,
+                CAST(DATEDIFF(DAY, MAX(u.gTarih), GETDATE()) AS int) AS YasGun
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             CROSS APPLY (SELECT CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END AS v) sg
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
