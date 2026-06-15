@@ -113,27 +113,27 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-55** Mağaza saat×gün ısı haritası~~ — ✅ 14.06. MagazaQueries.GetHeatmapAsync, gün=DATEDIFF%7 (deterministik DATEFIRST-bağımsız), primary-opacity hücre, son 60g. Hafta sonu+öğleden sonra zirve. **FAZ 1 TAMAM** (B-53/54/55/56/57 + B-73 + Tahmin sayfası /tahmin). B-58/B-65 sadakat metriği → Faz 3 /sadakat'a taşındı.
 - [x] ~~**B-56** COD iade il haritası~~ — ✅ 14.06 commit 75d55c2. PAYDEFREF=-3+DCITY+CARGODELIVERYSTATUS=2, oran sıralı (HAVING≥20). Doğu illeri ~%17. AppDataTable.
 - [x] ~~**B-57** Kasiyer önceki-döneme delta rozeti~~ — ✅ 14.06 commit 6f8b1de. GetKasiyerDeltaAsync (kasSql 2× + Magaza|Ad eşleşme). Yeşil/kırmızı delta badge.
-- [ ] **B-58** Tekrar satın-alma oranı (Frq>1 payı) → **Faz 3 /sadakat** (B-71 onboarding ile birlikte). Veri: RFM/ykSql alt sorgu.
+- [x] **B-58** Tekrar satın-alma oranı (Frq>1 payı) ✅ 35d6195 — %40.1 KPI /sadakat carousel
 
 **Orta (M — yeni sorgu/cross-db join):**
-- [ ] **B-59** E-ticaret online kategori mix (AppRankBars) — online ne satılıyor (fiziksel'de var, online'da yok). Veri: J_ORDER_DETAILS→J_ITEMS.DERINSIS_ID→urnKtgr2 (ISO tarih, JOKER timeout riski). **(yüksek-orta)**
-- [ ] **B-60** Depo WMS anlık durum kartı (Home veya /depo) — bekleyen toplama (J_DEPO_TOPLANACAK) + bugün kargoya çıkan (depo.emirAyr emTamam=1) + Joker CK stok. **(orta)**
-- [ ] **B-61** Kategori net marj % göstergesi — ciro var, marj yok. Veri: B-07 SQL (fatAyr.ehTutarN/ABS(ehAdetN)) adaptasyonu. **(orta)**
-- [ ] **B-62** Hediye çeki yükümlülük özeti — satılan vs kullanılan vs kalan bakiye (balance-sheet etkisi). Veri: SalesPayments + hediye çeki ID keşfi + J_ORDERS.VOUCHERCODE. **(orta)**
-- [ ] **B-63** Marka alış-vs-satış dengesi (rotasyon matrisi) — top-20 marka, alış>satış=birikim. Veri: irsHrk ehTip 4/100 vs 0/10 GROUP BY urnMrk. **(düşük-orta)**
+- [x] ~~**B-59**~~ ✅ 15.06 commit 3c8d32b — JOKER DERINSIS_ID→urnKtgr2 kategori mix, AppRankBars (Eticaret)
+- [x] ~~**B-60**~~ ✅ 15.06 commit 7daf10f — depo.emirAyr toplama verimi, 14g trend + bugün KPI (Operasyon)
+- [x] ~~**B-61**~~ ✅ 15.06 commit d2d829f — fatAyr OUTER APPLY brüt marj %, NOLOCK, Envanter sayfası
+- [x] ~~**B-62**~~ ✅ 15.06 commit bf39b10 — aylık satılan vs kullanılan, net yükümlülük (Envanter). VOUCHERCODE e-tic hariç, Eylül 2025 anomalisi görünür.
+- [x] **B-63** Marka alış-vs-satış dengesi (rotasyon matrisi) ✅ ebfbed9 — Top30 AppDataTable + birikim/erime badge (Envanter)
 
 **Düşük:**
-- [ ] **B-64** E-ticaret sipariş durumu huni (funnel) — gelen→toplama→kargo→teslim→iade. Veri: J_ORDERS.STATUS (enum keşfi gerekli → codes.yaml). **(düşük)**
+- [x] **B-64** E-ticaret sipariş durumu huni ✅ 1c1b162 — J_ORDERS.STATUS 6 aşama + badge (Eticaret)
 - [ ] **B-65** Müşteri kayıp/risk segmenti 3-ay trendi → **Faz 3 /sadakat** (B-67 segment geçiş matrisi ile birlikte). Veri: ykSql 3× (t/t-30/t-60).
 
 #### 🎯 Müşteri Sadakat Derinleştirme (kullanıcı isteği 14.06 — derin CRM/sadakat). [TIER 3 plan-first — yeni "Sadakat" sayfası olabilir]
 > Veri tabanı: EncoreMerkez `Sales.CustomersId` + `DerinCrm.Customer` (Name/PhoneNumber/CardNumber) · e-tic `J_ORDER_CLIENTS.CUSTOMERREF` · mevcut RFM (C1-rfm). Tek köprü çözüldü (`DerinCrm.Customer.Id = Sales.CustomersId`).
 - [ ] **B-66** Kohort retention matrisi — aylık edinim kohortu × N-ay-sonra geri dönüş oranı (heatmap). "Ocak'ta gelen müşterinin %X'i 3. ay hâlâ alıyor". En güçlü sadakat metriği. **(yüksek, L)**
-- [ ] **B-67** RFM segment geçiş matrisi — dönemler arası segment akışı (Şampiyon→Risk→Kayıp migrasyonu). "Kaç şampiyon riske düştü?" erken uyarı. **(yüksek, M)**
-- [ ] **B-68** Win-back / reaktivasyon listesi — yüksek geçmiş değer + son 90g hareketsiz müşteri (isim/tel/kart, DerinCrm). Aksiyon listesi (SMS/arama). 335K kayıptan değerli olanları süz. **(yüksek, M)**
-- [ ] **B-69** Sadakat kartı analizi — kartlı vs kartsız müşteri ATV/frekans farkı + kart penetrasyonu (kartlı satış %). `DerinCrm.Customer.CardNumber` "2025…". Kart değeri kanıtı. **(orta, M)**
-- [ ] **B-70** Müşteri konsantrasyonu (Pareto) — cironun %X'i kaç müşteriden (bağımlılık riski) + top müşteri CLV tahmini (frekans×ATV×beklenen ömür). **(orta, M)**
-- [ ] **B-71** İlk-alış → 2. alış dönüşümü (onboarding funnel) — yeni müşterinin kaçı 2. alışa geçiyor, ne kadar sürede. Tutma başlangıcı. **(orta, M)**
+- [x] **B-67** RFM segment geçiş matrisi ✅ 10b6121 — iyileşme/kötüleşme badge + geçiş tablosu (/sadakat)
+- [x] **B-68** Win-back / reaktivasyon listesi ✅ 46089e4 — Top200 aksiyon listesi /sadakat sayfası
+- [x] **B-69** Sadakat kartı analizi ✅ a88becc — kartlı vs kartsız ATV + fiş/müşteri karşılaştırma (/sadakat)
+- [x] **B-70** Müşteri konsantrasyonu (Pareto) ✅ 46089e4 — %10'ar dilim kümülatif ciro /sadakat
+- [x] **B-71** İlk-alış → 2. alış dönüşümü ✅ 35d6195 — ort. 49g KPI /sadakat carousel
 - [ ] **B-72** Müşteri bazlı kategori afinitesi — "kitap alan müşteri kırtasiyeye de geçiyor mu" (çapraz-satış sinyali, sepet genişletme). **(düşük, L)**
 - [x] ~~**B-42** Eski Python pano emekli~~ — ✅ 13.06: `scripts/gm_dashboard.py` SİLİNDİ (Blazor superset, 14 panel eşleşti + fazlası, cascade yok). briefings/* eski çıktılar GEÇMİŞ hafta (kullanılmaz) → dokunulmadı; gelecek brief generate_brief (status-fix sonrası) doğru üretir.
 - [ ] **B-43** Kafe POS DB erişimi araştır — EncoreMerkez'de kafe yok, xlsx kanonik. Kafe ayrı POS sistemi nerede? **(YENİ)**
