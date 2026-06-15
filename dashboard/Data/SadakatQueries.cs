@@ -64,4 +64,33 @@ public sealed class SadakatQueries(Db db)
             """, commandTimeout: 30);
         return rows.ToList();
     }
+
+    /// <summary>Sadakat kartı analizi — kartlı vs kartsız müşteri ATV/frekans karşılaştırması (son 12 ay).</summary>
+    public async Task<IReadOnlyList<KartliRow>> GetKartliAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<KartliRow>("""
+            SELECT TOP 2
+                CASE WHEN ISNULL(c.CardNumber,'')='' THEN 'Kartsız' ELSE 'Kartlı' END AS Tip,
+                COUNT(DISTINCT s.Id)          AS FisSayisi,
+                COUNT(DISTINCT s.CustomersId) AS Musteri,
+                SUM(CASE WHEN s.DocumentsTypeId=3
+                    THEN -(s.GrossTotal-s.DiscountTotal)
+                    ELSE   s.GrossTotal-s.DiscountTotal END) AS NetCiro,
+                CAST(
+                    SUM(CASE WHEN s.DocumentsTypeId=3
+                        THEN -(s.GrossTotal-s.DiscountTotal)
+                        ELSE   s.GrossTotal-s.DiscountTotal END)
+                    / NULLIF(COUNT(DISTINCT s.CustomersId), 0)
+                AS decimal(12,0)) AS AtvMusteri
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = s.CustomersId
+            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
+              AND s.CustomersId > 0
+              AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
+            GROUP BY CASE WHEN ISNULL(c.CardNumber,'')='' THEN 'Kartsız' ELSE 'Kartlı' END
+            ORDER BY Tip
+            """, commandTimeout: 30);
+        return rows.ToList();
+    }
 }

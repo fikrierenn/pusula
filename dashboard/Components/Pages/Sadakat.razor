@@ -53,6 +53,22 @@ else
         </div>
     </div>
 
+    @if (_kartli.Count > 0)
+    {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Sadakat Kartı Etkisi — son 12 ay</h3>
+            <AppDataTable TItem="KartliRow"
+                          Items="@_kartli"
+                          Primary="@(r => r.Tip)"
+                          MetricMain="@(r => Tl(r.NetCiro))"
+                          MetricSub="@(r => $"{Num(r.Musteri)} müşteri · {Num(r.FisSayisi)} fiş")"
+                          Badge="@(r => ($"ATV {Tl(r.AtvMusteri)}", r.Tip == "Kartlı" ? "bg-success/15 text-success" : "bg-base-200 text-base-content/60"))" />
+            <div class="text-base-content/50 text-[11px] mt-2">Kartsız = CustomersId>0 ama CardNumber boş (kurumsal/toptan). Kartlı = "2025…" kart. ATV = yıllık müşteri başı ciro.</div>
+        </div>
+    </div>
+    }
+
     @if (_winBack.Count > 0)
     {
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -78,6 +94,7 @@ else
     private string? _error;
     private IReadOnlyList<WinBackRow> _winBack = [];
     private IReadOnlyList<ParetoRow> _pareto = [];
+    private IReadOnlyList<KartliRow> _kartli = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -85,9 +102,11 @@ else
         {
             var tWb = Sada.GetWinBackAsync();
             var tPar = Sada.GetParetoAsync();
-            await Task.WhenAll(tWb, tPar);
+            var tKrt = Sada.GetKartliAsync();
+            await Task.WhenAll(tWb, tPar, tKrt);
             _winBack = tWb.Result;
             _pareto = tPar.Result;
+            _kartli = tKrt.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }
