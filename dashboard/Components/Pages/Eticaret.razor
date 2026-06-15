@@ -155,6 +155,22 @@ else if (_data is not null)
                 <div class="text-base-content/50 text-[11px] mt-3">≥20 COD siparişli iller · iade oranına göre sıralı. Yüksek-riskli illerde COD kapatma/ön-ödeme teşviki değerlendirilebilir.</div>
             </div>
         </div>
+
+    @if (_eticKtgr.Count > 0)
+    {
+        var topCiro = _eticKtgr.Sum(r => r.NetCiro);
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Online Kategori Mix — @_aralik</h3>
+                <AppRankBars TItem="EticKategoriRow"
+                             Items="@_eticKtgr"
+                             Label="@(r => r.Kategori)"
+                             Value="@(r => r.NetCiro)"
+                             ValueText="@(r => $"{Tl(r.NetCiro)}  %{(topCiro > 0 ? r.NetCiro * 100 / topCiro : 0):0.0} · {Num(r.Siparis)} sipariş")" />
+                <div class="text-base-content/50 text-[11px] mt-2">JOKER net ciro (SELLINGPRICE × adet). DERINSIS_ID köprüsü üstünden urnKtgr2. Eşleşmeyen ürünler hariç.</div>
+            </div>
+        </div>
+    }
     }
 
     <Modal @bind-Open="_modalGun" Title="@(_selAy?.Ay + " — Günlük Çıkış Detayı")">
@@ -187,6 +203,7 @@ else if (_data is not null)
     private IReadOnlyList<AyKargo> _ayKargo = [];
     private CodOzet? _cod;
     private IReadOnlyList<CodIl> _codIl = [];   // B-56 il bazlı COD risk
+    private IReadOnlyList<EticKategoriRow> _eticKtgr = [];   // B-59 kategori mix
     private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private bool _modalGun;
     private AyKargo? _selAy;
@@ -236,9 +253,11 @@ else if (_data is not null)
             var tCod       = Etic.GetCodOzetAsync(start, endExcl);
             var tCodIl     = Etic.GetCodIlAsync(start, endExcl);   // B-56
             var tBekleyen  = Etic.GetBekleyenAsync();    // anlık (dönemsiz)
-            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen);
+            var tEticKtgr  = Etic.GetEticKategoriAsync(start, endExcl);   // B-59
+            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr);
             _data = tData.Result; _kargoPerf = tKargoPerf.Result; _kargoGun = tKargoGun.Result;
             _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _codIl = tCodIl.Result; _bekleyen = tBekleyen.Result;
+            _eticKtgr = tEticKtgr.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

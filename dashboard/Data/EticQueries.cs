@@ -226,4 +226,24 @@ public sealed class EticQueries(Db db)
         return new[] { "0-1g", "2-3g", "4-7g", "8+g" }
             .Select(k => new BekleyenBucket(k, raw.GetValueOrDefault(k, 0))).ToList();
     }
+
+    /// <summary>E-ticaret (JOKER) kategori mix — verilen dönem. ISO tarih filtresi.</summary>
+    public async Task<IReadOnlyList<EticKategoriRow>> GetEticKategoriAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<EticKategoriRow>("""
+            SELECT k2.ktgrAd AS Kategori,
+                COUNT(DISTINCT o.ORDERID)            AS Siparis,
+                SUM(d.QUANTITY * d.SELLINGPRICE)     AS NetCiro,
+                CAST(SUM(d.QUANTITY) AS int)         AS Adet
+            FROM ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS d WITH(NOLOCK)
+            JOIN ODAKJOKER.JOKER.dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
+            JOIN ODAKJOKER.JOKER.dbo.J_ITEMS        ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
+            JOIN DerinSISBkm.dbo.urn       u  WITH(NOLOCK) ON u.stkID    = ji.DERINSIS_ID
+            JOIN DerinSISBkm.dbo.urnKtgr2 k2 WITH(NOLOCK) ON k2.ktgrID  = u.urnKtgr2ID
+            WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit
+            GROUP BY k2.ktgrAd
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.OrderByDescending(r => r.NetCiro).ToList();
+    }
 }
