@@ -452,32 +452,37 @@ public sealed class RefQueries(Db db)
     {
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<MarjRow>("""
-            SELECT k2.ktgrAd AS Kategori,
-                SUM(a.ehTutar - a.ehIndirim)                                         AS Ciro,
-                SUM(ABS(a.ehAdetN) * COALESCE(mlyt.M5, ml.ORT_ALIS))                 AS Smm,
-                CAST((SUM(a.ehTutar - a.ehIndirim) - SUM(ABS(a.ehAdetN) * COALESCE(mlyt.M5, ml.ORT_ALIS)))
-                    * 100.0 / NULLIF(SUM(a.ehTutar - a.ehIndirim), 0) AS decimal(5,1)) AS MarjPct
-            FROM DerinSISBkm.dbo.irs i WITH(NOLOCK)
-            JOIN DerinSISBkm.dbo.irsAyr a WITH(NOLOCK) ON a.ehID = i.eID
-            JOIN DerinSISBkm.dbo.urn u  WITH(NOLOCK) ON u.stkID  = a.ehStkID
-            JOIN DerinSISBkm.dbo.urnKtgr2 k2 WITH(NOLOCK) ON k2.ktgrID = u.urnKtgr2ID
+            SELECT s.Kat AS Kategori,
+                SUM(s.Ciro)                                            AS Ciro,
+                SUM(s.Adet * COALESCE(mlyt.M5, ml.ORT_ALIS))           AS Smm,
+                CAST((SUM(s.Ciro) - SUM(s.Adet * COALESCE(mlyt.M5, ml.ORT_ALIS)))
+                    * 100.0 / NULLIF(SUM(s.Ciro), 0) AS decimal(5,1))  AS MarjPct
+            FROM (
+                -- Ürün-başı ön-agg: maliyet OUTER APPLY satır-başı yerine ürün-başı 1× çalışsın (40s→~10s).
+                SELECT a.ehStkID AS stkID, CAST(k2.ktgrAd AS nvarchar(50)) AS Kat,
+                       SUM(a.ehTutar - a.ehIndirim) AS Ciro, SUM(ABS(a.ehAdetN)) AS Adet
+                FROM DerinSISBkm.dbo.irs i WITH(NOLOCK)
+                JOIN DerinSISBkm.dbo.irsAyr a WITH(NOLOCK) ON a.ehID = i.eID
+                JOIN DerinSISBkm.dbo.urn u  WITH(NOLOCK) ON u.stkID = a.ehStkID
+                JOIN DerinSISBkm.dbo.urnKtgr2 k2 WITH(NOLOCK) ON k2.ktgrID = u.urnKtgr2ID
+                WHERE i.eTip IN (1,4,100)
+                  AND i.eTarih >= DATEADD(DAY,-30,CAST(GETDATE() AS smalldatetime))
+                  AND i.eMekan IN (12,1,4478,4477)
+                GROUP BY a.ehStkID, CAST(k2.ktgrAd AS nvarchar(50))
+            ) s
             OUTER APPLY (
                 SELECT CONVERT(money, SUM(b.ehTutarN)/SUM(b.ehAdetN)) AS M5
                 FROM (SELECT TOP 5 fa.ehAdetN, fa.ehTutarN
                       FROM DerinSISBkm.dbo.fatAyr fa WITH(NOLOCK)
-                        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK) ON fa.ehID=f.eID
-                          AND f.eTip=0 AND f.eDurum<>2 AND f.eTarih<=i.eTarih
-                      WHERE fa.ehStkID=a.ehStkID AND fa.ehAdetN<>0 ORDER BY f.eTarih DESC) b
+                        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK) ON fa.ehID=f.eID AND f.eTip=0 AND f.eDurum<>2
+                      WHERE fa.ehStkID=s.stkID AND fa.ehAdetN<>0 ORDER BY f.eTarih DESC) b
                 HAVING SUM(b.ehAdetN)<>0
             ) mlyt
-            LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID = a.ehStkID
-            WHERE i.eTip IN (1,4,100)
-              AND i.eTarih >= DATEADD(DAY,-30,CAST(GETDATE() AS smalldatetime))
-              AND i.eMekan IN (12,1,4478,4477)
-              AND COALESCE(mlyt.M5, ml.ORT_ALIS) IS NOT NULL
-            GROUP BY k2.ktgrAd
-            HAVING SUM(a.ehTutar - a.ehIndirim) > 0
-            """, commandTimeout: 90);
+            LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID = s.stkID
+            WHERE COALESCE(mlyt.M5, ml.ORT_ALIS) IS NOT NULL
+            GROUP BY s.Kat
+            HAVING SUM(s.Ciro) > 0
+            """, commandTimeout: 60);
         // Maliyet kapsaması düşük kategorileri filtrele (SMM/Ciro < %5 veya > %95 = veri yok)
         return rows.Where(r => r.MarjPct is >= 5 and <= 95).OrderByDescending(r => r.MarjPct).ToList();
     }
