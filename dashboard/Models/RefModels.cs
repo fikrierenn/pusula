@@ -71,7 +71,7 @@ public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decima
 /// <summary>Depo WMS günlük toplama verimi.</summary>
 public record DepoWmsData(int BugunIslem, int BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
 /// <summary>Depo WMS günlük trend satırı.</summary>
-public record DepoWmsTrend(DateOnly Gun, int Islem, int Adet);
+public record DepoWmsTrend(DateTime Gun, int Islem, int Adet);
 
 /// <summary>Envanter sayfası toplu veri.</summary>
 public record InventoryData(
