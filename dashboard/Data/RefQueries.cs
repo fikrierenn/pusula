@@ -476,8 +476,8 @@ public sealed class RefQueries(Db db)
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<MarkaRotasyonRow>("""
             SELECT TOP 30 m.mrkAd AS Marka,
-                SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) AS SatisAdet,
-                SUM(CASE WHEN a.ehTip IN (0,10)  THEN ABS(a.ehAdetN) ELSE 0 END) AS AlisAdet,
+                CAST(SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) AS int) AS SatisAdet,
+                CAST(SUM(CASE WHEN a.ehTip IN (0,10)  THEN ABS(a.ehAdetN) ELSE 0 END) AS int) AS AlisAdet,
                 SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutarN ELSE 0 END) AS SatisCiro
             FROM DerinSISBkm.dbo.irsHrk a WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
