@@ -42,6 +42,9 @@ public record MarjRow(string Kategori, decimal Ciro, decimal Smm, decimal MarjPc
 /// <summary>E-ticaret kategori mix (JOKER, geçen ay).</summary>
 public record EticKategoriRow(string Kategori, int Siparis, decimal NetCiro, int Adet);
 
+/// <summary>E-ticaret sipariş durum dağılımı (funnel aşaması, geçen ay).</summary>
+public record EticFunnelRow(string Asama, int Siparis, decimal ToplamCiro);
+
 /// <summary>Hediye çeki aylık satılan/kullanılan.</summary>
 public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>

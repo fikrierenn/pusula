@@ -156,10 +156,13 @@ else if (_data is not null)
             </div>
         </div>
 
-    @if (_eticKtgr.Count > 0)
+    @if (_eticKtgr.Count > 0 || _funnel.Count > 0)
     {
         var topCiro = _eticKtgr.Sum(r => r.NetCiro);
+        var topSiparis = _funnel.Sum(r => r.Siparis);
         <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+            @if (_eticKtgr.Count > 0)
+            {
             <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
                 <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Online Kategori Mix — @_aralik</h3>
                 <AppRankBars TItem="EticKategoriRow"
@@ -169,6 +172,25 @@ else if (_data is not null)
                              ValueText="@(r => $"{Tl(r.NetCiro)}  %{(topCiro > 0 ? r.NetCiro * 100 / topCiro : 0):0.0} · {Num(r.Siparis)} sipariş")" />
                 <div class="text-base-content/50 text-[11px] mt-2">JOKER net ciro (SELLINGPRICE × adet). DERINSIS_ID köprüsü üstünden urnKtgr2. Eşleşmeyen ürünler hariç.</div>
             </div>
+            }
+            @if (_funnel.Count > 0)
+            {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Sipariş Durum Dağılımı — @_aralik</h3>
+                <AppDataTable TItem="EticFunnelRow"
+                              Items="@_funnel"
+                              Primary="@(r => r.Asama.Substring(2))"
+                              MetricMain="@(r => Num(r.Siparis) + " sipariş")"
+                              MetricSub="@(r => Tl(r.ToplamCiro))"
+                              Badge="@(r => r.Asama[0] switch {
+                                  '3' => ($"%{(topSiparis > 0 ? r.Siparis * 100m / topSiparis : 0):0.0}", "bg-success/15 text-success"),
+                                  '4' => ($"%{(topSiparis > 0 ? r.Siparis * 100m / topSiparis : 0):0.0}", "bg-warning/15 text-warning"),
+                                  '5' => ($"%{(topSiparis > 0 ? r.Siparis * 100m / topSiparis : 0):0.0}", "bg-error/15 text-error"),
+                                  _ => ($"%{(topSiparis > 0 ? r.Siparis * 100m / topSiparis : 0):0.0}", "bg-base-200 text-base-content/60"),
+                              })" />
+                <div class="text-base-content/50 text-[11px] mt-2">J_ORDERS.STATUS → 6 aşama. Kargo verildi = teslimata çıkmış. İptal+İade toplam kayıp sinyali.</div>
+            </div>
+            }
         </div>
     }
     }
@@ -204,6 +226,7 @@ else if (_data is not null)
     private CodOzet? _cod;
     private IReadOnlyList<CodIl> _codIl = [];   // B-56 il bazlı COD risk
     private IReadOnlyList<EticKategoriRow> _eticKtgr = [];   // B-59 kategori mix
+    private IReadOnlyList<EticFunnelRow> _funnel = [];        // B-64 sipariş durum huni
     private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private bool _modalGun;
     private AyKargo? _selAy;
@@ -254,10 +277,12 @@ else if (_data is not null)
             var tCodIl     = Etic.GetCodIlAsync(start, endExcl);   // B-56
             var tBekleyen  = Etic.GetBekleyenAsync();    // anlık (dönemsiz)
             var tEticKtgr  = Etic.GetEticKategoriAsync(start, endExcl);   // B-59
-            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr);
+            var tFunnel    = Etic.GetFunnelAsync(start, endExcl);          // B-64
+            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr, tFunnel);
             _data = tData.Result; _kargoPerf = tKargoPerf.Result; _kargoGun = tKargoGun.Result;
             _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _codIl = tCodIl.Result; _bekleyen = tBekleyen.Result;
             _eticKtgr = tEticKtgr.Result;
+            _funnel = tFunnel.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

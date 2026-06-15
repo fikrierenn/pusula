@@ -246,4 +246,34 @@ public sealed class EticQueries(Db db)
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.OrderByDescending(r => r.NetCiro).ToList();
     }
+
+    /// <summary>Sipariş durum huni — verilen dönem, 6 aşamaya gruplandırılmış.</summary>
+    public async Task<IReadOnlyList<EticFunnelRow>> GetFunnelAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<EticFunnelRow>("""
+            SELECT TOP 10
+                CASE
+                    WHEN o.STATUS IN (1001,3000,4000) THEN '5-İptal'
+                    WHEN o.STATUS IN (1006)           THEN '4-İade'
+                    WHEN o.STATUS IN (1005,3009,4009) THEN '3-Kargoya Verildi'
+                    WHEN o.STATUS IN (3006,4006,2000,2002,2007) THEN '2-Tedarik Bekliyor'
+                    WHEN o.STATUS IN (1007,1009)      THEN '6-Kayıp/Sorunlu'
+                    ELSE '1-İşleniyor'
+                END AS Asama,
+                COUNT(*) AS Siparis,
+                SUM(o.TOTALPRICE) AS ToplamCiro
+            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WITH(NOLOCK)
+            WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit
+            GROUP BY CASE
+                    WHEN o.STATUS IN (1001,3000,4000) THEN '5-İptal'
+                    WHEN o.STATUS IN (1006)           THEN '4-İade'
+                    WHEN o.STATUS IN (1005,3009,4009) THEN '3-Kargoya Verildi'
+                    WHEN o.STATUS IN (3006,4006,2000,2002,2007) THEN '2-Tedarik Bekliyor'
+                    WHEN o.STATUS IN (1007,1009)      THEN '6-Kayıp/Sorunlu'
+                    ELSE '1-İşleniyor'
+                END
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.OrderBy(r => r.Asama).ToList();
+    }
 }
