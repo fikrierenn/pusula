@@ -211,17 +211,24 @@ public sealed class RefQueries(Db db)
     /// KAYNAK: EncoreMerkez POS (kategori kartı/katSql ile AYNI → kart=drill tutarlı). Ciro = KDV DAHİL net
     /// (IIF DocType=3 iade negatif). Bakiye = güncel stok (irsHrk tüm geçmiş ehAdetN, mağaza bazlı).
     /// (14.06 mutabakat: irsHrk KDV-hariç olduğu için drill irsHrk'den EncoreMerkez'e alındı — sema encore_irshrk_mutabakat.)</summary>
-    public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori, int mekanId, DateOnly start, DateOnly endExcl)
+    /// <param name="olusSort">true = ölü stok sıralaması (stok/S90 oranı büyük önce); false = satış miktarı büyük önce.</param>
+    public async Task<IReadOnlyList<UrunRow>> GetUrunlerAsync(string kategori, int mekanId, DateOnly start, DateOnly endExcl, bool olusSort = false)
     {
         await using var conn = await db.OpenAsync();
-        // Satış/Ciro = seçili dönem (EncoreMerkez net KDV-dahil, kategori kartıyla aynı kaynak). Bakiye = irsHrk güncel stok.
-        // S30/S90/S360 = bugünden geriye trailing pencere satış adedi → kaç-gün-yeter (dönemden bağımsız, stabil).
-        const string sql = """
+        // Bakiye mekan=0: 3 mağaza + depo + ODAK hepsi dahil (tam envanter görünümü).
+        // S30/S90/S360 = bugünden geriye trailing pencere (dönemden bağımsız).
+        var having = olusSort
+            ? "ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0)+ISNULL(MAX(od.StokMiktar),0) > 0"
+            : "SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END)>0";
+        var orderBy = olusSort
+            ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0)+ISNULL(MAX(od.StokMiktar),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
+            : "Satis DESC";
+        var sql = $"""
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.TotalPrice ELSE 0 END) AS decimal(18,0)) AS Ciro,
-                CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0)
-                     WHEN 4478 THEN ISNULL(MAX(stk.Ist),0) ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0) END AS int) AS Bakiye,
+                CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0) WHEN 4478 THEN ISNULL(MAX(stk.Ist),0)
+                     ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(stk.Depo),0)+ISNULL(MAX(od.StokMiktar),0) END AS int) AS Bakiye,
                 CAST(SUM(CASE WHEN s.Date>=@d30 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S30,
                 CAST(SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S90,
                 CAST(SUM(CASE WHEN s.Date>=@d360 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S360,
@@ -252,8 +259,8 @@ public sealed class RefQueries(Db db)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
                 AND s.Date>=@minDate AND s.Date<@maxDate
             GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
-            HAVING SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END)>0
-            ORDER BY Satis DESC;
+            HAVING {having}
+            ORDER BY {orderBy};
             """;
         var today = DateTime.Today;
         var pStart = start.ToDateTime(TimeOnly.MinValue);
