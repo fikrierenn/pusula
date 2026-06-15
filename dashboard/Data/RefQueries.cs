@@ -384,6 +384,51 @@ public sealed class RefQueries(Db db)
         return new DepoWmsData(bugun?.Islem ?? 0, bugun?.Adet ?? 0, trend);
     }
 
+    /// <summary>Hediye çeki yükümlülük özeti — son 12 ay aylık satılan (POS) vs kullanılan (ödeme).</summary>
+    public async Task<HcOzet> GetHediyeCekiAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var satilan = (await conn.QueryAsync<HcAyRaw>("""
+            SELECT LEFT(CONVERT(varchar(10), s.Date, 23), 7) AS Ay,
+                SUM(CASE WHEN s.DocumentsTypeId=3 THEN -sp2.TotalPrice ELSE sp2.TotalPrice END) AS Tutar
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.SalesProducts sp2 WITH(NOLOCK) ON sp2.SalesId = s.Id AND sp2.IsValid=1
+            JOIN EncoreMerkez.dbo.Products p WITH(NOLOCK) ON p.Id = sp2.ProductsId
+            JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = CONVERT(int, p.Code)
+            JOIN DerinSISBkm.dbo.urnKtgr2 k2 WITH(NOLOCK) ON k2.ktgrID = u.urnKtgr2ID
+            WHERE k2.ktgrAd = 'Hediye Çeki'
+              AND s.DocumentsTypeId IN (1,2,3,6,7,8)
+              AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
+              AND ISNUMERIC(p.Code) = 1
+            GROUP BY LEFT(CONVERT(varchar(10), s.Date, 23), 7)
+            """)).ToDictionary(r => r.Ay, r => r.Tutar);
+
+        var kullanilan = (await conn.QueryAsync<HcAyRaw>("""
+            SELECT LEFT(CONVERT(varchar(10), s.Date, 23), 7) AS Ay,
+                SUM(pt.Amount) AS Tutar
+            FROM EncoreMerkez.dbo.SalesPayments pt WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = pt.SalesId
+            WHERE pt.PaymentTypesId = 11
+              AND pt.IsChangeAmount = 0
+              AND s.DocumentsTypeId IN (1,2,6,7,8)
+              AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
+            GROUP BY LEFT(CONVERT(varchar(10), s.Date, 23), 7)
+            """)).ToDictionary(r => r.Ay, r => r.Tutar);
+
+        var aylar = satilan.Keys.Union(kullanilan.Keys)
+            .OrderByDescending(a => a)
+            .Select(a => new HcAyRow(a,
+                satilan.GetValueOrDefault(a, 0),
+                kullanilan.GetValueOrDefault(a, 0)))
+            .ToList();
+
+        return new HcOzet(
+            aylar.Sum(a => a.SatilanTL),
+            aylar.Sum(a => a.KullanilanTL),
+            aylar);
+    }
+
+    private record HcAyRaw(string Ay, decimal Tutar);
     private record DepoWmsBugun(int Islem, int Adet);
 
     /// <summary>Kategori brüt marj % — son 30g, fatAyr birim maliyet ortalama. ~14s, CommandTimeout=60.</summary>

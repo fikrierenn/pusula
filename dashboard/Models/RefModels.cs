@@ -42,6 +42,11 @@ public record MarjRow(string Kategori, decimal Ciro, decimal Smm, decimal MarjPc
 /// <summary>E-ticaret kategori mix (JOKER, geçen ay).</summary>
 public record EticKategoriRow(string Kategori, int Siparis, decimal NetCiro, int Adet);
 
+/// <summary>Hediye çeki aylık satılan/kullanılan.</summary>
+public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
+/// <summary>Hediye çeki yükümlülük özeti.</summary>
+public record HcOzet(decimal ToplamSatilan12Ay, decimal ToplamKullanilan12Ay, IReadOnlyList<HcAyRow> Aylar);
+
 /// <summary>Depo WMS günlük toplama verimi.</summary>
 public record DepoWmsData(int BugunIslem, int BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
 /// <summary>Depo WMS günlük trend satırı.</summary>
