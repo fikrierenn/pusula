@@ -11,6 +11,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-15 — Kanonik maliyet + WMS depo + ölü stok raporu + perf (~22 commit)
+- **Tek maliyet sistemi:** gece job `MaliyetRaporu-Ceren` şelalesi keşfi (son 5 alış faturası → ORT_ALIS → sonraki) → `sema/metrics.yaml:birim_maliyet`. GetMarj fatAyr-AVG → kanonik (Kitap %30,6).
+- **Kanonik depo = WMS palet** (`depo.paletUrnTnm`, 4,38M) — `stokSonAltDepo` mekan=12 (2,14M) EKSİK. `sema/bridges.yaml:wms-depo-stok`. GetUrunler drill depo'su WMS'e geçti.
+- **Ölü stok ürün raporu (E4):** `scripts/olu_stok_excel.py` (`--kategori`/`--sadece-olu`) — ürün-grain, job şelalesi + canlı stok. Kitap 98K SKU=65,9M, ölü 30,4M. KATALOG.md E4.
+- **Perf:** Envanter progressive load (marj ~40s arka plana, sayfa 40s→5s) · GetMarj ürün-başı ön-agg (40s→10s, rakam birebir aynı) · ölü stok drill 90g tara · gTarih<90g filtresi.
+- **Runtime fix'leri:** GetMarkaRotasyon (ehTutarN + CAST int) · GetDepoWms (DerinSISBkm prefix) · DepoWmsTrend DateTime · ODAK Envanter'den tamamen kaldırıldı.
+- ⚠️ İşe yaramayan: `BKM_STOKLAR_MALIYETLI` stok kolonları BAYAT (sadece ORT_ALIS) · `irsHrk.ehMlyt` çöp.
+
 ### 2026-06-14 Oturum 5 — Mockup özellikleri + AI/LLM + Tahmin + Faz 1 (~40 commit)
 - AI Günün Özeti → yerel LLM (qwen2.5-3b, işaret-inversiyon fix) · bildirim merkezi global bar (NotifState + App.razor global rendermode) · ürün drill kaç-gün-yeter 30/90/360g + stok dağılımı 5-konum (FSM/Özlüce/İst.Yolu/Depo12/ODAK) · modal tek-seviye+44px✕ · dokunma geri bildirimi.
 - 2 skill: dashboard-icerik (ekle) + dashboard-oneri (öner). Tarama → plan-10 (B-53..B-72, 3 faz).
@@ -100,6 +108,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-47 ⚡ DRILL MOBİL FIX** — mkcert güvensiz cert (Android kırmızı X) → WSS/SignalR kurulmuyor → mobil HTTPS'te interaktivite/drill YOK (sayfa SSR açılır, tıklama ölü). Kanıt: HTTP'den (http://192.168.1.61:5112) drill çalışmalı. **Çözüm: Cloudflare tunnel** (gerçek cert → WSS+PWA install+standalone+drill hepsi). Kullanıcı tüneli 2× reddetti ama mkcert Android'de yetmiyor. VEYA iç sunucu+Let's Encrypt. **(YENİ 14.06)**
 - [ ] **B-48** Mağaza kartı drill netleştir — TOPLAM/E-tic = modal(kategori); mağaza kartları = `/magaza/{id}` SAYFA nav (B-40). Kullanıcı "diğerleri açılmıyor" → mobilde sayfa-nav mı SignalR mı teşhis (muhtemelen B-47 cert/SignalR ile aynı kök). **NOT: mağaza detay AÇILIYOR ama YAVAŞ (Özlüce geç açıldı) → B-49.** **(YENİ 14.06)**
 - [x] ~~**B-49** Mağaza detay PERF (paralel)~~ — ✅ 14.06 commit 649e346 (LoadAsync→Task.WhenAll, plan-09 Adım 1; Home/Eticaret/Operasyon paralel; JOKER eşzamanlı 7 sorgu sorunsuz).
+- [~] **B-74 ⚡ PERF progressive-load** — Envanter ✅ 15.06 (d43add8 marj arka plana + d0fb03c GetMarj 40s→10s). **Kalan:** `Task.WhenAll` tüm sayfada en yavaş sorguya kilitleniyor → **Eticaret 10 JOKER linked-server sorgusu tek WhenAll** (en kalabalık, latency riski) progressive-load veya anlık olanları (Bekleyen/AyKargo) ayır. Sadakat RfmGecis ağır. Stockout CROSS APPLY (GetInventory) tek GROUP BY pre-agg. **(YENİ 15.06)**
 - [x] ~~**B-50 ⚡ MOBİL TASARIM POLISH**~~ — ✅ 14.06 commit 72aada5+48b4221 (KPI beyaz/kompakt + hedef guard, build:css .NET target). B-51 ile süperseded.
 - [x] ~~**B-51 ⚡ APP DİLİ → WEB/BLAZOR UYARLAMA**~~ — ✅ 14.06 (cbefab3→0d2c0bc, ~24 commit). TÜM dashboard mobil-app dili: gradient hero CAROUSEL (AppKpiCarousel) + ikon-kart mağaza (trend WoW) + segment pill (AppPeriodPills) + fintech sparkline + **HTML progress (AppRankBars)** + accordion grid (AppDataTable). plan-08 (ApexCharts pilot → kullanıcı beğenmedi → HTML progress PİVOT) + plan-09 (5 iş: paralel/grid-oran/E-tic carousel/filtre/irsHrk). **irsHrk KDV mutabakatı:** fark %100=KDV(EncoreMerkez dahil/irsHrk hariç)+iade → drill EncoreMerkez net KDV-dahil (kart=drill), sema yazıldı. Shared: AppArea/Bar/RankBars/DataTable/KpiCarousel/PeriodPills.
 - [x] ~~**B-52** Home TOPLAM/E-tic kategori modalları `<table>` → AppDataTable~~ — ✅ 14.06 commit 2e9dc88 (+ b42b60f Görevler/Asistan, + ef8e85e tap-feedback). Dashboard'da artık HİÇ `<table>` yok. Bu oturum ayrıca: AI Günün Özeti→yerel LLM (e68cf77), bildirim merkezi global bar (3077378), ürün drill kaç-gün-yeter 30/90/360g + stok dağılımı FSM/Özlüce/İst.Yolu/Depo/ODAK (507b8fa/958e0bc/6da84fa), modal kapatma UX (1b956c2). Skill: dashboard-icerik (75bd9b7) + dashboard-oneri (9a71835).
