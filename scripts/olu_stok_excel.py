@@ -20,8 +20,15 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 
 R = Path(__file__).resolve().parent.parent
 KIRMIZI = "E30622"
-OUT = R / "briefings" / "olu-stok.xlsx"
 SADECE_OLU = "--sadece-olu" in sys.argv
+# --kategori "Kitap" → bkm.UrunBilgi.Kategori3 filtresi (yoksa tüm kategoriler).
+KATEGORI = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--kategori=")), None)
+if KATEGORI is None and "--kategori" in sys.argv:
+    i = sys.argv.index("--kategori")
+    if i + 1 < len(sys.argv):
+        KATEGORI = sys.argv[i + 1]
+_slug = "".join(c for c in (KATEGORI or "tumu").lower() if c.isalnum())
+OUT = R / "briefings" / f"olu-stok-{_slug}.xlsx"
 
 HEADERS = [
     "stkID", "Kod", "Ürün", "Kategori", "Marka/Yayınevi",
@@ -49,7 +56,7 @@ GROUP BY pUStkID;
 ;WITH URUNLER AS (
   SELECT u.stkID
   FROM urnKategori_vw u
-  JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.stkID=u.stkID AND ub.Kategori3=N'Kitap'
+  /*KATFILTRE*/
   WHERE u.urnKtgr2ID NOT IN (11,25,23,9,5,6) AND u.urnTip=0 AND u.stkKod NOT LIKE '%.%'
     AND u.stkID NOT IN (81809,77328,200772,84642,59337,65462,64515,56761,22390,60318,128118,1644512)
 ),
@@ -125,7 +132,9 @@ def get_data():
              " AND NOT EXISTS (SELECT 1 FROM dbo.irsHrk h3 WITH(NOLOCK) WHERE h3.ehstkID=s.stkID "
              "AND h3.ehTip IN (4,100) AND h3.ehMekan IN (1,4477,4478) AND h3.ehAltDepo=0 "
              "AND h3.ehTrhS>=DATEADD(DAY,-90,GETDATE()))")
-    cur.execute(SQL.replace("/*EXTRA*/", extra))
+    katf = ("JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.stkID=u.stkID AND ub.Kategori3=N'%s'"
+            % KATEGORI.replace("'", "''")) if KATEGORI else ""
+    cur.execute(SQL.replace("/*KATFILTRE*/", katf).replace("/*EXTRA*/", extra))
     rows = cur.fetchall()
     cur.close(); conn.close()
     rows.sort(key=lambda r: float(r["Kilitli"] or 0), reverse=True)
@@ -168,6 +177,7 @@ def build(rows):
     toplam = sum(float(r["Kilitli"] or 0) for r in rows)
     olu = sum(float(r["Kilitli"] or 0) for r in rows if (r["S90"] or 0) == 0)
     oluC = sum(1 for r in rows if (r["S90"] or 0) == 0)
+    print(f"Kategori3 filtresi: {KATEGORI or 'TÜMÜ'}")
     print("Maliyet: gece job 'MaliyetRaporu-Ceren' şelalesi (son5 fatura→ORT_ALIS). Stok: canlı 3 mağaza + WMS depo.")
     print(f"{len(rows):,} SKU · kilitli {toplam:,.0f} TL")
     print(f"  S90=0 (gerçek ölü): {oluC:,} SKU · {olu:,.0f} TL")

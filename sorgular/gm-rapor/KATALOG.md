@@ -57,10 +57,17 @@ Amaç: sermaye nerede kilitli, hayalet kayıt var mı, ne tükeniyor. Kaynak: ge
 | E1 | **Envanter snapshot özet** | Mağaza+depo toplam değer · 2 maliyet bazı (ÜstFiyat/Ort.Maliyet) | `sorgular/gm-rapor/envanter/E1-snapshot-ozet.sql` | ✅ YENİ |
 | E2 | Hayalet stok filtresi | Sınav Okulları (urnKtgr2ID=19) E1'de DIŞLANDI — İst.Yolu ±sahte değer temizlendi | `sorgular/tum_stoklar_anomali_taramasi.md` + E1 | ✅ filtreli |
 | E3 | Anlık/derin envanter (SSMS) | Ürün bazlı stok × maliyet, WMS+Odak dahil | `sorgular/envanter_raporu_job_sorgusu.sql` | mevcut (ağır) |
+| E4 | **Ölü stok ürün dökümü (Excel)** | Ürün bazlı kilitli sermaye + S90=0 ölü bayrağı · kanonik Ort.Maliyet şelalesi · CANLI stok (3 mağaza + WMS depo) | `scripts/olu_stok_excel.py` [`--sadece-olu`] → `briefings/olu-stok.xlsx` | ✅ YENİ 15.06 |
 
 **Kritik kural:** Sınav Okulları (urnKtgr2ID=19) **envanter dışı** (E1/E4/E6 hepsinde filtreli) — paket-koduyla-giriş/parça-koduyla-çıkış İst.Yolu'nu bozuyordu (ÜstFiyat −190M sahte negatif, Ort.Maliyet +149M sahte pozitif). GM'e **Ort.Maliyet** bazı birincil. Doğrulama (08.06.2026, Sınav hariç): Ort.Maliyet toplam **1,20 milyar TL**, İst.Yolu 70,1M (önce 216,8M görünüyordu).
 
-**Frekans:** E1 günlük bakılabilir (snapshot her gece tazelenir), E2 her gün kontrol, E3 haftalık/aylık derin analiz.
+**Frekans:** E1 günlük bakılabilir (snapshot her gece tazelenir), E2 her gün kontrol, E3 haftalık/aylık derin analiz. E4 aylık/talep üzerine (ürün dökümü, aksiyon listesi).
+
+**Kanonik maliyet + depo (15.06 — `sema/metrics.yaml:birim_maliyet` + `sema/bridges.yaml:wms-depo-stok`):**
+- **Maliyet** = gece job `MaliyetRaporu-Ceren` şelalesi: `COALESCE(son 5 alış faturası SUM(ehTutarN)/SUM(ehAdetN), BKM_STOKLAR_MALIYETLI.ORT_ALIS, sonraki ilk alış, 0)`. Dashboard/rapor **'Ort.Maliyet'** bazı kullanır.
+- **Merkez depo stoğu** = WMS palet (`depo.paletUrnTnm`→`paletTnm`→`adres`, CK01 hariç). `stokSonAltDepo_vw` mekan=12 **KULLANMA** (irsHrk bakiyesi eksik: 2,14M vs WMS 4,38M).
+- **Mağaza stoğu** (FSM/Özl/İst) `stokSonAltDepo_vw`'den OK (mağazada WMS yok).
+- **Kategori sınıfı** = `bkm.UrunBilgi.Kategori3` (Kitap/Kırtasiye/Çocuk Kitabı/... 22 değer). E4 `--kategori` arg'i bunu süzer.
 
 ---
 
