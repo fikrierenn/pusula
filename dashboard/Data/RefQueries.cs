@@ -447,34 +447,37 @@ public sealed class RefQueries(Db db)
     private record HcAyRaw(string Ay, decimal Tutar);
     private record DepoWmsBugun(int Islem, int Adet);
 
-    /// <summary>Kategori brüt marj % — son 30g, fatAyr birim maliyet ortalama. ~14s, CommandTimeout=60.</summary>
+    /// <summary>Kategori brüt marj % — son 30g. KANONİK maliyet: son 5 alış faturası (satış tarihine kadar) → ORT_ALIS fallback (gece job şelalesi). ~CommandTimeout=60.</summary>
     public async Task<IReadOnlyList<MarjRow>> GetMarjAsync()
     {
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<MarjRow>("""
             SELECT k2.ktgrAd AS Kategori,
                 SUM(a.ehTutar - a.ehIndirim)                                         AS Ciro,
-                SUM(ABS(a.ehAdetN) * m.BirimMaliyet)                                 AS Smm,
-                CAST((SUM(a.ehTutar - a.ehIndirim) - SUM(ABS(a.ehAdetN) * m.BirimMaliyet))
+                SUM(ABS(a.ehAdetN) * COALESCE(mlyt.M5, ml.ORT_ALIS))                 AS Smm,
+                CAST((SUM(a.ehTutar - a.ehIndirim) - SUM(ABS(a.ehAdetN) * COALESCE(mlyt.M5, ml.ORT_ALIS)))
                     * 100.0 / NULLIF(SUM(a.ehTutar - a.ehIndirim), 0) AS decimal(5,1)) AS MarjPct
             FROM DerinSISBkm.dbo.irs i WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.irsAyr a WITH(NOLOCK) ON a.ehID = i.eID
             JOIN DerinSISBkm.dbo.urn u  WITH(NOLOCK) ON u.stkID  = a.ehStkID
             JOIN DerinSISBkm.dbo.urnKtgr2 k2 WITH(NOLOCK) ON k2.ktgrID = u.urnKtgr2ID
             OUTER APPLY (
-                SELECT AVG(fa.ehTutarN / ABS(fa.ehAdetN)) AS BirimMaliyet
-                FROM DerinSISBkm.dbo.fatAyr fa WITH(NOLOCK)
-                WHERE fa.ehStkID = a.ehStkID
-                  AND fa.ehAdetN < 0
-                  AND fa.ehTutarN > 0
-            ) m
+                SELECT CONVERT(money, SUM(b.ehTutarN)/SUM(b.ehAdetN)) AS M5
+                FROM (SELECT TOP 5 fa.ehAdetN, fa.ehTutarN
+                      FROM DerinSISBkm.dbo.fatAyr fa WITH(NOLOCK)
+                        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK) ON fa.ehID=f.eID
+                          AND f.eTip=0 AND f.eDurum<>2 AND f.eTarih<=i.eTarih
+                      WHERE fa.ehStkID=a.ehStkID AND fa.ehAdetN<>0 ORDER BY f.eTarih DESC) b
+                HAVING SUM(b.ehAdetN)<>0
+            ) mlyt
+            LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID = a.ehStkID
             WHERE i.eTip IN (1,4,100)
               AND i.eTarih >= DATEADD(DAY,-30,CAST(GETDATE() AS smalldatetime))
               AND i.eMekan IN (12,1,4478,4477)
-              AND m.BirimMaliyet IS NOT NULL
+              AND COALESCE(mlyt.M5, ml.ORT_ALIS) IS NOT NULL
             GROUP BY k2.ktgrAd
             HAVING SUM(a.ehTutar - a.ehIndirim) > 0
-            """, commandTimeout: 60);
+            """, commandTimeout: 90);
         // Maliyet kapsaması düşük kategorileri filtrele (SMM/Ciro < %5 veya > %95 = veri yok)
         return rows.Where(r => r.MarjPct is >= 5 and <= 95).OrderByDescending(r => r.MarjPct).ToList();
     }
