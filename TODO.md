@@ -139,6 +139,19 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ✅ **B-102 sadakat kartlı/kartsız FİŞ düzeltme** — KAPALI 16.06. Eski: `CustomersId>0` + belge(1,2,3,6,7,8) → "Kartsız" 5.627 fiş/262M (Sınav=8 266M kirliliği, anonim eksik). Yeni: perakende(1,3), kartsız=anonim(CustomersId=0) dahil, metrik sepet/fiş. Kartlı 474.615 fiş/675₺ · Kartsız 529.428 fiş/539₺. KartliRow.AtvMusteri→AtvFis. (RefModels+SadakatQueries+Sadakat.razor)
 - [x] ✅ **B-101 /sadakat LLM yorumu** — KAPALI 16.06. `LlmService.SadakatYorumUret` (GunOzeti deseni: veri özeti→akıcı Türkçe yorum+aksiyon, uydurma-yok kuralı) + Sadakat.razor koyu yorum kartı (arka plan çağrı, spinner, `RendererInfo.IsInteractive` guard → prerender çift-inference engeli). Pipeline doğrulandı (model yüklendi+üretiyor); CPU-sandbox'ta yavaş, kullanıcı makinesinde Home özeti gibi. Pareto: ilk %10 müşteri = ciro %71,5 (konsantrasyon riski).
 
+#### Hermes disiplin aktivasyonu (16.06 — "katı disiplin, mekanik enforcement")
+> plan-12 7/7 WS yapıldı ama çoğu PASİF (ben-uygular). Mekanikleştirildi:
+- [x] ✅ **H-09 disiplin hook'ları aktif** — KAPALI 16.06. (1) `session-start.sh` journal-path bug FIX (`docs/journal/bkm/` — eskiden flat→README; curator-check de bundan görünmüyordu) + curator-due (≥7g) kontrolü + her-oturum disiplin yüzeyi (commit-eşik/keşif-SQL-arşiv/fiş-bazlı/footprint). (2) `pre-commit-antipattern.sh` BKM-adapte (BLOK=şifre/ex.Message/bare-except/async-void; UYAR=print/DateTime — CLI script print'i bloklamaz) + settings.json PreToolUse(Bash) **wire** (dormant'tı). Test: git-commit-dışı/staged-yok → exit 0.
+- [ ] **H-10 (ERTELE — bilinçli) WS-2 faz-2 fiziksel rule taşıma** — on-demand rule'ları `topic/` + `paths:`/skill-inject → gerçek token tasarrufu. RİSK: compact-survival (rule post-/compact düşer → sessiz konvansiyon kaybı = BKM'nin EN korktuğu sessiz-yanlış-rakam). Tek-kullanıcıda token ağrı değil → değer<risk. plan-12 §4 test-gate'li. Hook'lar zaten disiplini aktifledi → faz-2 GEREKMİYOR. Açılırsa: ayrı plan + compact-smoke şart.
+- [ ] **H-11 (ERTELE) WS-1 telemetri sidecar** — sema/skill kullanım sayacı. plan-12 reddi: tek-kullanıcıda over-engineering, manuel yargı yeter.
+
+#### Mimari / kod-bütünlüğü debt (16.06 full-scan — 4 ajan + roslyn deneme + file-size)
+> Build 0/0, gerçek antipattern/circular yok, SQL-Razor temiz ayrık. Aşağıdakiler debt (compiler hatası değil). roslyn MCP init olmadı (repo'da .sln yok — navigator başka solution'a bağlı).
+- [ ] **M-10 DRY: tekrarlı kod birleştir** — `Mekan` dict (Queries.cs:12 + MagazaQueries.cs:13 kopya) → tek kaynak (StoreConstants/NavRegistry) · `LoadEnv()` (Db.cs:114 + LlmService.cs:217 birebir) → `internal static` paylaş · `Q<T>` paralel-wrapper (RefQueries:84 + MagazaQueries:29) → Db extension · `LlmService` 3× inference bloğu → `Infer()` helper.
+- [ ] **M-11 GetRfmGecisAsync hard-coded tarih** — `'20260301'/'20260601'/'20250301'` SQL literal → pencere DONUK (zaman geçince eski dönem karşılaştırır). `DateOnly` parametresine taşı (AddMonths -3/-15).
+- [x] ✅ **M-12 kargo/il linked-server → direkt JOKER** — KAPALI 16.06. `Queries.cs:169-189` kargoSql/ilSql `ODAKJOKER.*` 4-part + ana `conn` → `dbo.*` 2-part + `jconn` (zaten açık, satır 61). JOKER linked server kaldırılmıştı (kullanıcı) — bunlar straggler'dı. Build yeşil.
+- [ ] **M-13 file-size 500+ kırmızı çizgi split** — RefQueries.cs 638 · Home.razor 566 · Tahmin.razor 504. file-size-discipline: sonraki PR'da split. (300+: Queries 472, Eticaret 411, Magaza 377, EticQueries 318, Musteri 304; generate_brief.py 678.)
+
 #### RFM / Müşteri tarafı — eklenecekler backlog (16.06 not, B-96 smoke sonrası)
 - [ ] **R-1 Ay-seçimli kazanım drill** — kazanım grafiğinde aya tıkla → o ayın yeni müşterileri listesi (ad/tel/ilk fiş/ilk tutar). Şu an 13-ay seri sadece adet.
 - [ ] **R-2 Kart oranı dönem seçimi** — kart-fiş oranı şu an 30g sabit. Günlük/haftalık/aylık pill ekle.

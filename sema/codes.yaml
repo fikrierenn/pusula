@@ -152,6 +152,32 @@ codes:
     _default: Kredi/Banka Kartı   # banka adları (HALK BANKASI, İŞ, AKBANK, ANADOLU, VAKIF, DENİZ, QNB...)
     note: "FSM 01-12 Haz para üstü hariç: Kredi/Banka %74,7 · Nakit %24,4 · İade Çeki %0,7 · Hediye Çeki %0,1. HALK BANKASI POS hakim (%68,8 kart içi). SalesPayments.IsChangeAmount=0 (para üstü hariç) ZORUNLU."
 
+  encore.SalesProductCampaigns.Source:   # indirim KAYNAK sınıflandırıcısı (16.06.2026 keşif)
+    values:
+      0: "Kampanya (adlı — CampaignId+CampaignName dolu; 3Al2Öde vb.)"
+      1: "Manuel indirim (adsız — CampaignId NULL, CampaignName boş; POS'ta sebep seçilir ama YAZILMAZ)"
+      2: "Legacy/otomatik indirim (adsız — çoğu eski veri; tüm-zaman −374,7M ama 2026 sadece −6,2M)"
+      3: "Kupon (adlı + CouponNo; küçük hacim −2,2M)"
+    indirim_kolonu: "TotalDiscount (negatif). spc bir ürün satırına N indirim üretebilir → brüt için sp.TotalPrice DISTINCT al, indirim spc'den SUM."
+    all_time_dagilim: "0: −147,6M / 1: −18,8M / 2: −374,7M / 3: −2,2M"
+    dagilim_2026: "0 (kampanya): −74,3M %83 · 1 (manuel): −8,6M %10 · 2 (legacy): −6,2M %7 · 3: yok (1 Oca–16 Haz)"
+    confidence: 0.95
+    evidence: "16.06.2026 — SalesProductCampaigns GROUP BY Source (tüm-zaman + Sales.Date 2026 join); Source 1/2 CampaignName/CampaignId daima boş örneklendi."
+
+  encore.RefundReasons.Type:   # RefundReasons çift görevli tablo (16.06.2026 keşif)
+    lookup: EncoreMerkez.dbo.RefundReasons
+    values:
+      0: "İade sebebi — SalesProducts.RefundReasonId'de KULLANILIR (Hasarlı Ürün, Müşteri Memnuniyetsizliği, Geri Dönüşüm, Hatalı Satış İadesi…)"
+      1: "Manuel indirim tipi — POS picklist (Personel, BSE, Anlaşmalı Kurum, 3Al2Öde, Bkm Kart, Sınav Koleji, Okul Kumbara Projesi…). ⚠️ HİÇBİR işlem kolonuna BAĞLANMIYOR."
+    kumbara: "Id=17 'Okul Kumbara Projesi İndirimi' (Type=1), tanım 05.01.2026."
+    kritik: "Type=1 indirim sebepleri ŞU kolonlarda YOK: SalesProducts.RefundReasonId (sadece Type=0), PriceChangeReasonId (hep 0), Sales.RefundReasonId (hiç kullanılmamış), Sales.Audits/Jobs/Details (0 'Kumbara'). EncoreMerkez view/SP de yok. AMA Kumbara indirim raporu OTOMATIK geliyor (POS raporlama e-postası) — kaynak tablo kullanıcıda, 17.06 verecek."
+    rapor_grain: "Otomatik rapor: Mağaza × Tarih → Tutar(brüt) · İndirim · Net · İndirim% · Fiş · Ürün adet. Örnek: FSM 21.05.2026 → 18 fiş / 5.650,70 brüt / 1.904,4 ind (%34) / 136 ürün."
+    elenen_lead: "Sales.CustomerData LIKE '%Kumbara%' = müşteri-kartı Kumbara (10.389 satış), rapor DEĞİL: FSM 21.05 kart-bazlı 86 fiş/24.436₺ ≠ rapor 18 fiş/5.650₺. Rapor indirim-tipi bazlı alt küme."
+    status: teyit bekliyor  # Type=1 işlem-bağı bulunamadı; kullanıcı kaynak tabloyu verecek (17.06.2026)
+    confidence: 0.5
+    evidence: "16.06.2026 — RefundReasons full (Kumbara=17); SalesProducts.RefundReasonId/PriceChangeReasonId/Sales.RefundReasonId/Audits/Jobs/Details elendi; sys.sql_modules 'Kumbara'/'RefundReasonId' 0; CustomerData-kartı eşleşmesi rapor rakamlarını TUTMADI. Kaynak BEKLENİYOR."
+    last_verified: 2026-06-16
+
   J_ORDERS.STATUS:        # JOKER e-ticaret sipariş durumu (J_ORDER_STATUS lookup, 15.06.2026 keşif)
     lookup: ODAKJOKER.JOKER.dbo.J_ORDER_STATUS (LOGICALREF=STATUS, NAME)
     funnel_gruplari:
