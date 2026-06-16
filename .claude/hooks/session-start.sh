@@ -30,15 +30,36 @@ if [ -f TODO.md ]; then
     echo ""
 fi
 
-# Son journal girdisi
+# Son journal girdisi (proje alt-dizini docs/journal/bkm/ — flat değil!)
 if [ -d docs/journal ]; then
-    last=$(ls -t docs/journal/*.md 2>/dev/null | grep -v README | head -1)
+    last=$(ls -t docs/journal/bkm/*.md docs/journal/*.md 2>/dev/null | grep -v README | head -1)
     if [ -n "$last" ]; then
         echo "### En son journal girdisi — $last"
         tail -40 "$last"
         echo ""
     fi
 fi
+
+# Curator-check vadesi (plan-12 WS-1): son curator-check'ten >=7 gun gectiyse hatirlat
+if [ -d docs/journal/bkm ]; then
+    lastcur=$(grep -rh "curator-check:" docs/journal/bkm/*.md 2>/dev/null | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sort | tail -1)
+    if [ -n "$lastcur" ]; then
+        days=$(( ( $(date +%s) - $(date -d "$lastcur" +%s 2>/dev/null || echo 0) ) / 86400 ))
+        if [ "$days" -ge 7 ] 2>/dev/null; then
+            echo "### ⚠️ CURATOR-CHECK VADESI"
+            echo "Son curator-check: $lastcur ($days gun once). Handoff'ta stale sema + TODO taramasi yap (>=7g)."
+            echo ""
+        fi
+    fi
+fi
+
+# Arsivlenmemis kesif SQL uyarisi (semantic-layer.md ikiz yukumluluk): bugun MCP kesif yapildiysa sorgular/ kontrol
+echo "### Aktif disiplinler (mekanik + ben-uygular)"
+echo "- Commit: 15-dosya esigi (yukarida) · pre-commit antipattern hook (guvenlik blok)"
+echo "- Kesif SQL → sorgular/YYYY-MM-DD-*.sql ARSIVLE + sema/*.yaml yaz (semantic-layer ikiz yukumluluk)"
+echo "- Musteri raporu = FIS bazli (DocType=1 sayim / (1,3) ciro; Fatura/Sinav haric)"
+echo "- Yeni yetenek → footprint-ladder en dar basamak · Tier-3 → plan-first"
+echo ""
 
 echo "### Kritik dosyalar / kurallar"
 [ -f docs/CONTEXT_MANAGEMENT.md ] && echo "- Baglam yonetimi: docs/CONTEXT_MANAGEMENT.md"

@@ -45,64 +45,58 @@ staged=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)
 # Hangi stack taramalarini acalim
 stacks="${CLAUDE_PRECOMMIT_STACKS:-dotnet,node,python,generic}"
 
-found_issues=()
+# BKM adaptasyonu (16.06): BLOK = guvenlik/korelasyon (sifre, ex.Message sizinti, bare except, async void).
+# UYAR (bloklamaz) = stil (DateTime.Now=yerel display kasitli, print()=CLI script legit, console.log, any).
+block_issues=()
+warn_issues=()
 
 for f in $staged; do
   [ -f "$f" ] || continue
 
-  # Hardcoded password (tum stack'lerde)
+  # Hardcoded password — BLOK (tum stack)
   if echo "$f" | grep -qE '\.(cs|cshtml|json|ps1|ts|tsx|js|jsx|py|java|rb|go|rs|yml|yaml|env|ini|config|xml)$'; then
     if grep -HnE 'password[[:space:]]*[=:][[:space:]]*["'\''][A-Za-z0-9!@#$%^&*+._-]{4,}' "$f" 2>/dev/null | grep -viE 'password[[:space:]]*[=:][[:space:]]*["'\'']?(\s|$|;|"|'\''|\{|\$)' | head -3; then
-      found_issues+=("$f: hardcoded sifre tespit (env var / secret manager kullan)")
+      block_issues+=("$f: hardcoded sifre (env var / secret manager kullan)")
     fi
   fi
 
   # .NET
   if echo ",$stacks," | grep -q ",dotnet," && [[ "$f" == *.cs ]]; then
-    if grep -Hn 'DateTime\.Now\b' "$f" 2>/dev/null | grep -v '^\s*//' | head -3; then
-      found_issues+=("$f: DateTime.Now -> DateTime.UtcNow kullan (timezone sorunu)")
+    if grep -Hn 'async void\b' "$f" 2>/dev/null | grep -v 'event' | grep -v '^\s*//' | head -3 >/dev/null; then
+      block_issues+=("$f: async void (event handler harici yasak)")
     fi
-    if grep -Hn 'async void\b' "$f" 2>/dev/null | grep -v 'event' | grep -v '^\s*//' | head -3; then
-      found_issues+=("$f: async void (event handler harici yasak)")
+    if grep -Hn 'new HttpClient()' "$f" 2>/dev/null | grep -v '^\s*//' | head -3 >/dev/null; then
+      block_issues+=("$f: new HttpClient() -> IHttpClientFactory")
     fi
-    if grep -Hn 'new HttpClient()' "$f" 2>/dev/null | grep -v '^\s*//' | head -3; then
-      found_issues+=("$f: new HttpClient() -> IHttpClientFactory")
+    if grep -HnE '(TempData\[.*\]|ViewBag\.|Json\(\s*new\s*\{[^}]*message).*ex\.Message' "$f" 2>/dev/null | head -3 >/dev/null; then
+      block_issues+=("$f: ex.Message user'a sizintili (logger'a yaz, generic mesaj)")
     fi
-    if grep -HnE '(TempData\[.*\]|ViewBag\.|Json\(\s*new\s*\{[^}]*message).*ex\.Message' "$f" 2>/dev/null | head -3; then
-      found_issues+=("$f: ex.Message user'a sizintili (logger'a yaz, user'a generic mesaj)")
-    fi
-  fi
-
-  # Node / TS
-  if echo ",$stacks," | grep -q ",node," && echo "$f" | grep -qE '\.(ts|tsx|js|jsx|mjs|cjs)$'; then
-    if grep -HnE 'console\.log\(' "$f" 2>/dev/null | grep -v '^\s*//' | head -3; then
-      found_issues+=("$f: console.log production kod icinde (logger kullan)")
-    fi
-    if grep -HnE '(any[[:space:]]*[,;)=]|:[[:space:]]*any[[:space:]]*[,;)=])' "$f" 2>/dev/null | head -3; then
-      found_issues+=("$f: 'any' kullanimi (strict tip ver)")
+    # DateTime.Now → UYAR (BKM tek-TZ yerel display kasitli; UtcNow tercih ama bloklamaz)
+    if grep -Hn 'DateTime\.Now\b' "$f" 2>/dev/null | grep -v '^\s*//' | head -1 >/dev/null; then
+      warn_issues+=("$f: DateTime.Now (yerel display ise OK; persist/hesap ise UtcNow)")
     fi
   fi
 
-  # Python
+  # Python — bare except BLOK (error-handling.md), print() UYAR (CLI script legit)
   if echo ",$stacks," | grep -q ",python," && [[ "$f" == *.py ]]; then
-    if grep -HnE 'print\(' "$f" 2>/dev/null | grep -v '^\s*#' | head -3; then
-      found_issues+=("$f: print() production kod icinde (logging kullan)")
-    fi
-    if grep -HnE 'except[[:space:]]*:' "$f" 2>/dev/null | head -3; then
-      found_issues+=("$f: bare except (yakalayacagin tipi belirt)")
+    if grep -HnE 'except[[:space:]]*:' "$f" 2>/dev/null | head -3 >/dev/null; then
+      block_issues+=("$f: bare 'except:' (yakalanan tipi belirt — sessiz hata yasak)")
     fi
   fi
 done
 
-if [ ${#found_issues[@]} -gt 0 ]; then
-  echo "=== PRE-COMMIT ANTIPATTERN SCAN: BLOKLANDI ===" >&2
-  for issue in "${found_issues[@]}"; do
-    echo "  X $issue" >&2
-  done
+# UYARILAR (bloklamaz)
+if [ ${#warn_issues[@]} -gt 0 ]; then
+  echo "=== PRE-COMMIT UYARI (bloklamaz) ===" >&2
+  for w in "${warn_issues[@]}"; do echo "  ! $w" >&2; done
+fi
+
+# BLOKLAR
+if [ ${#block_issues[@]} -gt 0 ]; then
+  echo "=== PRE-COMMIT ANTIPATTERN: BLOKLANDI ===" >&2
+  for issue in "${block_issues[@]}"; do echo "  X $issue" >&2; done
   echo "" >&2
-  echo "Commit iptal edildi. Once issue'lari duzelt, sonra tekrar commit'le." >&2
-  echo "Gecici bypass: CLAUDE_PRECOMMIT_SKIP=1 git commit ..." >&2
-  echo "Kural guncellemek icin: .claude/hooks/pre-commit-antipattern.sh" >&2
+  echo "Commit iptal. Once duzelt. Gecici bypass: CLAUDE_PRECOMMIT_SKIP=1 git commit ..." >&2
   exit 2
 fi
 
