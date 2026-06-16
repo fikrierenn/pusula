@@ -17,8 +17,8 @@ public sealed class SadakatQueries(Db db)
                 c.CardNumber         AS Kart,
                 COUNT(s.Id)          AS Frq,
                 SUM(CASE WHEN s.DocumentsTypeId=3
-                    THEN -(s.GrossTotal-s.DiscountTotal)
-                    ELSE   s.GrossTotal-s.DiscountTotal END) AS ToplCiro,
+                    THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
+                    ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS ToplCiro,
                 DATEDIFF(DAY, MAX(s.Date), GETDATE()) AS GunIdle
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = s.CustomersId
@@ -29,8 +29,8 @@ public sealed class SadakatQueries(Db db)
             GROUP BY c.Name, c.PhoneNumber, c.CardNumber
             HAVING COUNT(s.Id) >= 3
                AND SUM(CASE WHEN s.DocumentsTypeId=3
-                   THEN -(s.GrossTotal-s.DiscountTotal)
-                   ELSE   s.GrossTotal-s.DiscountTotal END) >= 500
+                   THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
+                   ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) >= 500
             ORDER BY ToplCiro DESC
             """, commandTimeout: 30);
         return rows.ToList();
@@ -48,12 +48,12 @@ public sealed class SadakatQueries(Db db)
             FROM (
                 SELECT s.CustomersId,
                     SUM(CASE WHEN s.DocumentsTypeId=3
-                        THEN -(s.GrossTotal-s.DiscountTotal)
-                        ELSE   s.GrossTotal-s.DiscountTotal END) AS Mon,
+                        THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
+                        ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS Mon,
                     NTILE(10) OVER (ORDER BY
                         SUM(CASE WHEN s.DocumentsTypeId=3
-                            THEN -(s.GrossTotal-s.DiscountTotal)
-                            ELSE   s.GrossTotal-s.DiscountTotal END) DESC) AS dilim
+                            THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
+                            ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) DESC) AS dilim
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
                 WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.CustomersId > 0
                   AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
@@ -153,12 +153,12 @@ public sealed class SadakatQueries(Db db)
                 COUNT(DISTINCT s.Id)          AS FisSayisi,
                 COUNT(DISTINCT s.CustomersId) AS Musteri,
                 SUM(CASE WHEN s.DocumentsTypeId=3
-                    THEN -(s.GrossTotal-s.DiscountTotal)
-                    ELSE   s.GrossTotal-s.DiscountTotal END) AS NetCiro,
+                    THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
+                    ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS NetCiro,
                 CAST(
                     SUM(CASE WHEN s.DocumentsTypeId=3
-                        THEN -(s.GrossTotal-s.DiscountTotal)
-                        ELSE   s.GrossTotal-s.DiscountTotal END)
+                        THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
+                        ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END)
                     / NULLIF(COUNT(DISTINCT s.CustomersId), 0)
                 AS decimal(12,0)) AS AtvMusteri
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)

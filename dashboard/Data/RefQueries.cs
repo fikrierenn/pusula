@@ -19,11 +19,17 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
             await using var c = await db.OpenAsync();
             return (await c.QueryAsync<RfmSegment>(sql, prm)).OrderBy(r => r.Segment).ToList();
         }
+        // et için DİREKT JOKER (linked değil) — detay net (KDV+kargo-hariç) hızlı çalışır. plan-16.
+        async Task<List<RfmSegment>> Qj(string sql, object prm)
+        {
+            await using var c = await db.OpenJokerAsync();
+            return (await c.QueryAsync<RfmSegment>(sql, prm)).OrderBy(r => r.Segment).ToList();
+        }
 
         // Yazarkasa (EncoreMerkez Sales, CustomersId)
         const string ykSql = """
             SELECT seg.S AS Segment, COUNT(*) AS Musteri, SUM(c.Mon) AS Ciro
-            FROM (SELECT s.CustomersId, DATEDIFF(DAY,MAX(s.Date),@dun) Rec, COUNT(*) Frq, SUM(s.GrossTotal-s.DiscountTotal) Mon
+            FROM (SELECT s.CustomersId, DATEDIFF(DAY,MAX(s.Date),@dun) Rec, COUNT(*) Frq, SUM(s.GrossTotal-s.DiscountTotal-s.VatTotal) Mon
                   FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
                   WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<@g2
                   GROUP BY s.CustomersId) c
@@ -37,9 +43,10 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
         // E-ticaret (JOKER, CUSTOMERREF) — ISO tarih
         const string etSql = """
             SELECT seg.S AS Segment, COUNT(*) AS Musteri, SUM(c.Mon) AS Ciro
-            FROM (SELECT oc.CUSTOMERREF, DATEDIFF(DAY,MAX(o.ORDERDATE),@dun) Rec, COUNT(*) Frq, SUM(o.TOTALPRICE) Mon
-                  FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-                  JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+            FROM (SELECT oc.CUSTOMERREF, DATEDIFF(DAY,MAX(o.ORDERDATE),@dun) Rec, COUNT(*) Frq, SUM(ISNULL(det.net,0)) Mon
+                  FROM dbo.J_ORDERS o
+                  JOIN dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+                  CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
                   WHERE o.ORDERDATE>=@bas AND o.ORDERDATE<@g2 AND oc.CUSTOMERREF>0
                   GROUP BY oc.CUSTOMERREF) c
             CROSS APPLY (SELECT CAST(CASE WHEN Frq>=5 AND Rec<=30 THEN N'1-Şampiyon' WHEN Frq>=3 AND Rec<=90 THEN N'2-Sadık'
@@ -47,7 +54,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
                          WHEN Rec>180 THEN N'5-Kayıp' ELSE N'6-Diğer' END AS nvarchar(20)) S) seg
             GROUP BY seg.S;
             """;
-        var tEt = Q(etSql,
+        var tEt = Qj(etSql,
             new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") });
 
         await Task.WhenAll(tYk, tEt);
@@ -192,7 +199,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
             SELECT TOP 100 s.CustomersId AS Id,
                 MAX(CAST(ISNULL(c.Name, s.CustomerCardNo) AS nvarchar(60))) AS Ad,
                 MAX(CAST(c.PhoneNumber AS nvarchar(15))) AS Tel,
-                COUNT(*) AS Frq, CAST(SUM(s.GrossTotal-s.DiscountTotal) AS decimal(18,0)) AS Mon,
+                COUNT(*) AS Frq, CAST(SUM(s.GrossTotal-s.DiscountTotal-s.VatTotal) AS decimal(18,0)) AS Mon,
                 DATEDIFF(DAY,MAX(s.Date),@dun) AS Rec
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
@@ -206,14 +213,16 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
     public async Task<IReadOnlyList<CustomerRow>> GetEtCustomersAsync(string seg, DateOnly dun)
     {
         if (!EtCond.TryGetValue(seg, out var cond)) return [];
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();  // DİREKT JOKER (linked değil) — detay net hızlı. plan-16.
         var sql = $"""
             SELECT TOP 100 oc.CUSTOMERREF AS Id, MAX(CAST(oc.CMAIL AS nvarchar(80))) AS Ad,
                 MAX(CAST(oc.CPHONE AS nvarchar(30))) AS Tel,
-                COUNT(*) AS Frq, CAST(SUM(o.TOTALPRICE) AS decimal(18,0)) AS Mon,
+                COUNT(*) AS Frq,
+                CAST(SUM(ISNULL(det.net,0)) AS decimal(18,0)) AS Mon,
                 DATEDIFF(DAY,MAX(o.ORDERDATE),@dun) AS Rec
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+            FROM dbo.J_ORDERS o
+            JOIN dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+            CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
             WHERE o.ORDERDATE>=@bas AND o.ORDERDATE<@g2 AND oc.CUSTOMERREF>0
             GROUP BY oc.CUSTOMERREF HAVING {cond} ORDER BY Mon DESC;
             """;
@@ -364,7 +373,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
                       AND z.TZe_VonZeit IS NOT NULL AND z.TZe_BisZeit IS NOT NULL
                     GROUP BY LTRIM(RTRIM(p.Per_Grp2))')) lab
                 JOIN (SELECT CASE MG.mekanID WHEN 1 THEN N'FSM' WHEN 4477 THEN N'ÖZLÜCE' WHEN 4478 THEN N'İST.YOLU' END Magaza,
-                    SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) NetCiro, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis
+                    SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) NetCiro, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis
                   FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
                   JOIN EncoreMerkez.dbo.Pos p WITH(NOLOCK) ON p.Id=s.PosId
                   JOIN EncoreMerkez.dbo.Stores st WITH(NOLOCK) ON st.Id=p.StoreId

@@ -236,7 +236,7 @@ public sealed class EticQueries(Db db)
         var rows = await conn.QueryAsync<EticKategoriRow>("""
             SELECT ji.DERINSIS_LOGOGRUP                AS Kategori,
                 COUNT(DISTINCT o.ORDERID)             AS Siparis,
-                SUM(d.QUANTITY * d.SELLINGPRICE)      AS NetCiro,
+                SUM(d.QUANTITY * d.SELLINGPRICEWITHOUTVAT)      AS NetCiro,
                 CAST(SUM(d.QUANTITY) AS int)          AS Adet
             FROM dbo.J_ORDER_DETAILS d WITH(NOLOCK)
             JOIN dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
@@ -255,13 +255,13 @@ public sealed class EticQueries(Db db)
             SELECT TOP 30 ji.NAME              AS Urun,
                 COUNT(DISTINCT o.ORDERID)      AS Siparis,
                 CAST(SUM(d.QUANTITY) AS int)   AS Adet,
-                SUM(d.QUANTITY * d.SELLINGPRICE) AS NetCiro
+                SUM(d.QUANTITY * d.SELLINGPRICEWITHOUTVAT) AS NetCiro
             FROM dbo.J_ORDER_DETAILS d WITH(NOLOCK)
             JOIN dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
             JOIN dbo.J_ITEMS       ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
             WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit AND ji.DERINSIS_LOGOGRUP = @Kat
             GROUP BY ji.NAME
-            ORDER BY SUM(d.QUANTITY * d.SELLINGPRICE) DESC
+            ORDER BY SUM(d.QUANTITY * d.SELLINGPRICEWITHOUTVAT) DESC
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd"), Kat = kategori });
         return rows.ToList();
     }
@@ -275,7 +275,7 @@ public sealed class EticQueries(Db db)
         var rows = await conn.QueryAsync<EticKategoriAyRow>("""
             SELECT MONTH(o.ORDERDATE)               AS Ay,
                 ji.DERINSIS_LOGOGRUP                AS Kategori,
-                SUM(d.QUANTITY * d.SELLINGPRICE)    AS NetCiro
+                SUM(d.QUANTITY * d.SELLINGPRICEWITHOUTVAT)    AS NetCiro
             FROM dbo.J_ORDER_DETAILS d WITH(NOLOCK)
             JOIN dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
             JOIN dbo.J_ITEMS       ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
@@ -300,8 +300,9 @@ public sealed class EticQueries(Db db)
                     ELSE '1-İşleniyor'
                 END AS Asama,
                 COUNT(*) AS Siparis,
-                SUM(o.TOTALPRICE) AS ToplamCiro
+                SUM(ISNULL(det.net,0)) AS ToplamCiro
             FROM dbo.J_ORDERS o WITH(NOLOCK)
+            CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
             WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit
             GROUP BY CASE
                     WHEN o.STATUS IN (1001,3000,4000) THEN '5-İptal'

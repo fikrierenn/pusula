@@ -33,7 +33,7 @@ public sealed class MagazaQueries(Db db)
         // Net / Fiş / İade / İade oranı (G3 pattern, tek mağaza; geri dönüşüm fişi 1001 hariç net'te)
         const string kpiSql = """
             SELECT
-                SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS Net,
+                SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
                 SUM(IIF(s.DocumentsTypeId=3,-1,1))                                AS Fis,
                 SUM(IIF(s.DocumentsTypeId=3,s.GrossTotal,0))                      AS Iade,
                 CAST(100.0*SUM(IIF(s.DocumentsTypeId=3,s.GrossTotal,0))
@@ -214,7 +214,7 @@ public sealed class MagazaQueries(Db db)
         await using var conn = await db.OpenAsync();
         const string sql = """
             SELECT CONVERT(varchar,s.Date,23) AS Tarih,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,0)) AS Net
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
