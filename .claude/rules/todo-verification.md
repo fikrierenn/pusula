@@ -1,5 +1,7 @@
 # TODO Doğrulama Disiplini
 
+> **Rule katmanı:** on-demand (konu-bazlı) — TODO/plan maddesine aksiyon almadan önce birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 _Kapsam: `TODO.md`, `docs/journal/*`, `plans/`, bug listeleri. Action almadan önce **canlı kod** ile karşılaştırılır._
 _`paths:` yok — compact sonrası survive._
 

@@ -224,7 +224,7 @@ Hermes'in KENDİ felsefesi bu adaptasyona uygulanır: **narrow waist** (en dar f
 1. [x] **H-01** WS-1 Curator: sema alan tanımı + decay rule + handoff curator-check + TODO arşiv + consolidate-sema skill. ✅ 16.06. (T2, bağımsız)
 2. [x] **H-02** WS-4 Delegation: agent-usage leaf/orchestrator + cap. ✅ 16.06 (T2, bağımsız)
 3. [x] **H-03** WS-6 Journal/handoff: iterative-merge + anchor. ✅ 16.06 (T2, bağımsız)
-4. [ ] **H-04** WS-2 NarrowWaist: footprint-ladder.md + rule etiketleme + skill-inject referansı. (T2; H-01..03 sonrası — handoff/sema kararları oturmalı). **Compact-survival smoke ZORUNLU.**
+4. [x] **H-04** WS-2 NarrowWaist: footprint-ladder.md + rule etiketleme + skill-inject referansı. ✅ 16.06 (7 rule etiketli, 2 skill referans, CLAUDE.md tier notu; compact-survival doğrulandı: paths: yok, dosyalar yerinde). (T2)
 5. [ ] **H-05** WS-5 ErrorClass: SqlErrorClassifier.cs + _errors.py + Db.cs retry birleştirme + error-handling.md bağlama. (T3, kod; build+smoke). **silent-failure-hunter taraması** (sessiz fallback/retry-loop avı).
 6. [ ] **H-06** WS-3 Registry-nav: NavRegistry.cs + MainLayout türetme. (T3, kod; build+nav-smoke). **python-reviewer gerekmez; nav görsel smoke ZORUNLU.**
 7. [ ] **H-07** WS-7 (ops.) Test: anti-snapshot kuralı. (T1-2; opsiyonel, atlanabilir)

@@ -1,5 +1,7 @@
 # Kodlama Disiplini (Karpathy Prensipleri)
 
+> **Rule katmanı:** on-demand (konu-bazlı) — kod yazımı tetiklenince birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 ## Simplicity First — Spekülatif Kod Yasak
 
 - İstenen dışında feature ekleme. "İleride lazım olur" gerekçesiyle abstraction yok.

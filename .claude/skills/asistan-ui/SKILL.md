@@ -138,6 +138,7 @@ Intent-first: aynı veriyi (görevler) iki kapıdan. Kullanıcı işine göre se
 - Push (Telegram) sadece bildirim için (PWA kapalıyken).
 
 ## İlişkili
+- **On-demand rule'lar (bu skill tetiklenince UYGULA — plan-12 WS-2):** `.claude/rules/renk-standardi.md` (DaisyUI token, hardcode hex yasak) · `.claude/rules/turkish-ui.md` (UTF-8 Türkçe) · `.claude/rules/coding-discipline.md` · `.claude/rules/file-size-discipline.md`.
 - `docs/arastirma/2026-06-12-bkm-asistan-acik-kaynak.md` — vizyon + mimari
 - `asistan/` — Telegram POC (mantık kaynağı: prompt, SQLite, parse)
 - `dashboard/` — entegrasyon hedefi (Asistan.razor + LlmService + GorevService)

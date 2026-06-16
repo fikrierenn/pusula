@@ -1,5 +1,7 @@
 # Türkçe UI Kuralları
 
+> **Rule katmanı:** on-demand (konu-bazlı) — UI metni/Razor işi tetiklenince birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 _Türkçe UI'lı projelerde aktif. İngilizce projeye bootstrap ederken `--no-turkish` flag'i ile hariç tut._
 
 ## Dil Ayrımı

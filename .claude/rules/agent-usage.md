@@ -1,5 +1,7 @@
 # Agent Kullanım Disiplini (Ana Ajan Delegasyonu)
 
+> **Rule katmanı:** on-demand (konu-bazlı) — alt-ajan/delegasyon kararı verilince birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 _Ana ajanın işleri alt-ajanlara (subagent) NASIL dağıtacağını ve hangi model katmanını seçeceğini tanımlar. Amaç: doğru iş → doğru ajan → doğru model. `paths:` yok — compact sonrası survive._
 
 ## 1. Temel İlke

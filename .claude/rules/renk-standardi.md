@@ -1,5 +1,7 @@
 # Renk Standardı (BKM Yönetim Paneli)
 
+> **Rule katmanı:** on-demand (konu-bazlı) — dashboard/UI işi (asistan-ui, dashboard-icerik) tetiklenince birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 _Tek kaynak: DaisyUI semantic token (corporate tema). Hardcode hex YASAK. `paths:` yok — compact sonrası survive._
 
 ## Temel İlke

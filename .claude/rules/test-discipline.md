@@ -1,5 +1,7 @@
 # Test Disiplini — Testleri Kapatmadan "Bitti" Deme
 
+> **Rule katmanı:** on-demand (konu-bazlı) — feature/fix/refactor kapatma anında birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 _Kapsam: Yeni feature / bug fix / refactor kapatma kriteri. `paths:` yok — compact sonrası survive._
 
 ## Mutlak Kurallar

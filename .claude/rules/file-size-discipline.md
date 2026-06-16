@@ -1,5 +1,7 @@
 # Dosya Boyutu Disiplini
 
+> **Rule katmanı:** on-demand (konu-bazlı) — kod yazımı/refactor tetiklenince birincil. Core değil. plan-12 WS-2 / footprint-ladder.
+
 ## Kural
 
 **Yeni yazılan/düzenlenen dosyalar 300 satırın altında kalmalı.**

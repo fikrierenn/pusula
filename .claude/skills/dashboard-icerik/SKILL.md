@@ -104,6 +104,7 @@ Otomatik yorum/özet gerekiyorsa `LlmService` (yerel qwen2.5-3b):
 - ❌ Build yeşil = bitti (390px smoke şart).
 
 ## İlişkili
+- **On-demand rule'lar (bu skill tetiklenince UYGULA — plan-12 WS-2):** `.claude/rules/renk-standardi.md` · `.claude/rules/turkish-ui.md` · `.claude/rules/file-size-discipline.md` · `.claude/rules/coding-discipline.md`.
 - `.claude/rules/renk-standardi.md` · `.claude/rules/sql-server-conventions.md` · `.claude/rules/semantic-layer.md` · `.claude/rules/plan-first.md`
 - `sema/*.yaml` · `plans/08-apexcharts-migration.md` · `plans/09-dashboard-rafine.md`
 - `.claude/skills/asistan-ui/SKILL.md` (chat UI — ayrı) · `.claude/skills/gm-rapor/SKILL.md` (rapor scripti — ayrı)

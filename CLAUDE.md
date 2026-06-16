@@ -135,6 +135,8 @@ Kullanıcı "iyi geceler" / "/handoff" / "kaydet ve kapat" derse → `session-ha
 
 ### İlişkili Dosyalar
 
+> **Rule katmanları (plan-12 WS-2):** `core` (her oturum birincil — session-protocol/memory, commit, sql-server-conventions, semantic-layer, before-major-change, response-style, error-handling, security-principles) vs `on-demand` (konu-bazlı — renk-standardi, turkish-ui, file-size, agent-usage, coding, test, todo-verification; ilgili iş/skill tetiklenince birincil). Hepsi yüklü kalır (compact-survival); etiket = öncelik. Yeni yetenek → `.claude/rules/footprint-ladder.md` (en dar basamak).
+
 - `.claude/rules/session-memory.md` — Üç katman ayrımı, eşikler.
 - `.claude/rules/session-protocol.md` — Oturum başı/orta/sonu ritüel.
 - `.claude/rules/commit-discipline.md` — 15 dosya eşiği, scope kullanımı.
