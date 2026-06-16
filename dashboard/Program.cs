@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddApexCharts();   // mobil-native grafik motoru (plan-08)
+builder.Services.AddHttpClient();   // takvim API (Apps Script) — IHttpClientFactory plan-14
 
 builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<Queries>();
@@ -19,6 +20,7 @@ builder.Services.AddScoped<SadakatQueries>();
 builder.Services.AddSingleton<LlmService>();      // yerel LLM — model lazy yüklenir (ilk istekte)
 builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)
 builder.Services.AddSingleton<TahminKayitService>(); // JSON tahmin kaydı (data/tahmin-kayitlari.json) plan-14
+builder.Services.AddSingleton<TakvimService>();      // takvim etmen (tatil API cache + okul JSON) plan-14
 builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
 builder.Services.AddScoped<PerfState>();          // sayfa yükleme süresi (sayfalar Track, footer okur)
 

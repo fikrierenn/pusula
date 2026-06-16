@@ -5,6 +5,7 @@
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject TahminKayitService Kayit
+@inject TakvimService Takvim
 @rendermode InteractiveServer
 
 <PageTitle>BKM Hedef Tahmin</PageTitle>
@@ -93,6 +94,41 @@ else if (_t is not null)
                 <span class="text-[11px] text-base-content/45">Ay sonu gerçekle kıyaslamak için.</span>
             }
         </div>
+
+        @if (_etmen is not null)
+        {
+            <!-- Takvim etmenleri (plan-14): hafta sonu + kayan dini bayram düzeltmesi. Çarpan KAPALI başlar (MAPE kanıtlayınca aç). -->
+            <h2 class="text-lg font-bold tracking-tight mb-3">Takvim Etmenleri</h2>
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+                <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="toggle toggle-primary toggle-sm" checked="@_carpanAcik" @onchange="CarpanToggle" />
+                        <span class="text-[13px] font-semibold">Etmen çarpanlarını uygula</span>
+                    </label>
+                    <button class="btn btn-xs btn-ghost gap-1 @(_takvimYenileniyor ? "loading" : "")" disabled="@_takvimYenileniyor" @onclick="TakvimYenile">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>Tatil verisini yenile
+                    </button>
+                </div>
+                @if (!_carpanAcik)
+                {
+                    <div class="text-[11px] text-warning mb-3">Çarpan kapalı — tahmin salt YoY×ivme. Birkaç ay kayıt birikip MAPE düşünce aç (plan-14 kararı).</div>
+                }
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div><div class="text-[11px] text-base-content/50">Hafta sonu günü</div><div class="text-[14px] font-bold">@_etmen.HaftaSonuSayisi</div><div class="text-[10px] text-base-content/40">çarpan @_etmen.HaftaSonuCarpan.ToString("0.000")</div></div>
+                    <div><div class="text-[11px] text-base-content/50">Dini bayram kapalı</div><div class="text-[14px] font-bold">@_etmen.TatilKapaliGun gün</div><div class="text-[10px] text-base-content/40">çarpan @_etmen.BayramDuzeltme.ToString("0.000")</div></div>
+                    <div><div class="text-[11px] text-base-content/50">Okul</div><div class="text-[14px] font-bold @(_etmen.OkulAcik ? "text-success" : "text-base-content/50")">@(_etmen.OkulAcik ? "Açık" : "Tatil")</div></div>
+                    <div><div class="text-[11px] text-base-content/50">Sınav ayı</div><div class="text-[14px] font-bold @(_etmen.SinavAyi ? "text-info" : "text-base-content/50")">@(_etmen.SinavAyi ? "Evet (LGS/YKS)" : "—")</div></div>
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-base-200">
+                    <span class="text-[12px] text-base-content/60">Kombine çarpan (hafta sonu × bayram)</span>
+                    <span class="text-[15px] font-extrabold tabular-nums @(Carpan == 1m ? "text-base-content/50" : Carpan > 1m ? "text-success" : "text-error")">×@Carpan.ToString("0.000")</span>
+                </div>
+                @if (!Takvim.CacheVar)
+                {
+                    <div class="text-[10px] text-base-content/45 mt-2">Tatil verisi henüz çekilmedi — bayram çarpanı nötr (1.0). "Tatil verisini yenile" ile API'den çek.</div>
+                }
+            </div>
+        }
 
         var kalanGun = DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month) - DateTime.Today.Day;
         var gecenGun = DateTime.Today.Day;
@@ -259,6 +295,11 @@ else if (_t is not null)
     private TahminKayitEntry? _mevcutKayit;
     private List<TahminKarsilastirma> _karsilastirma = new();
     private decimal _mape;
+    private AyEtmen? _etmen;
+    private bool _carpanAcik;        // plan-14 kararı: çarpan KAPALI başlar; MAPE kanıtlayınca aç
+    private bool _takvimYenileniyor;
+    // Kombine çarpan = hafta sonu × bayram düzeltmesi (okul şimdilik 1.0). Kapalıyken 1.0.
+    private decimal Carpan => _carpanAcik && _etmen is not null ? _etmen.HaftaSonuCarpan * _etmen.BayramDuzeltme : 1m;
     // Sınır: −24 ay (geçmiş backtest) … +3 ay (ileri projeksiyon). Çok ileri = spekülatif.
     private DateOnly Hedef => new(_hedefYil, _hedefAy, 1);
     private bool OncekiVar => Hedef > new DateOnly(_bugun.Year, _bugun.Month, 1).AddMonths(-24);
@@ -272,8 +313,10 @@ else if (_t is not null)
         var sw = PerfState.Start();
         try
         {
-            var tTot = Queries.GetTahminAsync(_bugun, _hedefYil, _hedefAy, 0);
-            var tMag = _mekanlar.Select(m => Queries.GetTahminAsync(_bugun, _hedefYil, _hedefAy, m.Id)).ToArray();
+            _etmen = Takvim.GetAyEtmen(_hedefYil, _hedefAy);
+            var c = Carpan;
+            var tTot = Queries.GetTahminAsync(_bugun, _hedefYil, _hedefAy, 0, c);
+            var tMag = _mekanlar.Select(m => Queries.GetTahminAsync(_bugun, _hedefYil, _hedefAy, m.Id, c)).ToArray();
             var tKat = Queries.GetTahminKategoriAsync(_bugun, _hedefYil, _hedefAy);
             await Task.WhenAll(((IEnumerable<Task>)new[] { tTot }).Concat(tMag).Concat(new[] { tKat }));
             _t = tTot.Result;
@@ -321,6 +364,20 @@ else if (_t is not null)
     {
         var yeni = Hedef.AddMonths(n);
         _hedefYil = yeni.Year; _hedefAy = yeni.Month;
+        await Yukle();
+    }
+
+    private async Task CarpanToggle()
+    {
+        _carpanAcik = !_carpanAcik;
+        await Yukle();
+    }
+
+    private async Task TakvimYenile()
+    {
+        _takvimYenileniyor = true; StateHasChanged();
+        await Takvim.ApidenYenileAsync();
+        _takvimYenileniyor = false;
         await Yukle();
     }
 

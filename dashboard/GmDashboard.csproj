@@ -13,6 +13,11 @@
     <Exec Command="npm run build:css" ContinueOnError="true" />
   </Target>
 
+  <!-- Okul takvimi (MEB) referans verisi — output'a kopyala (TakvimService data/'dan okur). plan-14 -->
+  <ItemGroup>
+    <Content Update="data\okul-takvimi.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Blazor-ApexCharts" Version="6.1.0" />
     <PackageReference Include="Dapper" Version="2.1.79" />

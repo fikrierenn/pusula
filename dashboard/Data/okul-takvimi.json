@@ -1,0 +1,13 @@
+{
+  "_aciklama": "MEB okul takvimi (dönem aralıkları) + merkezi sınav tarihleri. Tarih DMY (dd.MM.yyyy). plan-14. Yılda 1 elle güncelle — yeni MEB takvimi açıklanınca dönem + LGS/YKS satırı ekle. TakvimService sadece etmen rozeti için okur (OkulCarpan şimdilik 1.0).",
+  "Donemler": [
+    { "Bas": "09.09.2024", "Son": "20.06.2025" },
+    { "Bas": "08.09.2025", "Son": "26.06.2026" }
+  ],
+  "Sinavlar": [
+    { "Ad": "LGS", "Tarih": "08.06.2025" },
+    { "Ad": "YKS", "Tarih": "21.06.2025" },
+    { "Ad": "LGS", "Tarih": "07.06.2026" },
+    { "Ad": "YKS", "Tarih": "20.06.2026" }
+  ]
+}
