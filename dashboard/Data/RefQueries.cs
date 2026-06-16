@@ -26,14 +26,13 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
             return (await c.QueryAsync<RfmSegment>(sql, prm)).OrderBy(r => r.Segment).ToList();
         }
 
-        // Yazarkasa (EncoreMerkez Sales, CustomersId) — elle işaretli iç kartlar hariç (plan-16 ek)
+        // Yazarkasa (EncoreMerkez Sales, CustomersId) — iç-kart tek kanonik filtre (plan-18: isim+tel+elle liste)
         var icIds = icKart.Idler();
-        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
         var ykSql = $"""
             SELECT seg.S AS Segment, COUNT(*) AS Musteri, SUM(c.Mon) AS Ciro
             FROM (SELECT s.CustomersId, DATEDIFF(DAY,MAX(s.Date),@dun) Rec, COUNT(*) Frq, SUM(s.GrossTotal-s.DiscountTotal-s.VatTotal) Mon
                   FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<@g2{icF}
+                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<@g2{IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0)}
                   GROUP BY s.CustomersId) c
             CROSS APPLY (SELECT CAST(CASE WHEN Frq>=8 AND Rec<=30 THEN N'1-Şampiyon' WHEN Frq>=4 AND Rec<=90 THEN N'2-Sadık'
                          WHEN Frq<=2 AND Rec<=30 THEN N'3-Yeni' WHEN Rec BETWEEN 91 AND 180 THEN N'4-Risk'
@@ -76,8 +75,8 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
         {
             ayBas = ayBas.ToDateTime(TimeOnly.MinValue),
             aySon = aySon.ToDateTime(TimeOnly.MinValue),
-            snapBas = ayBas.ToString("yyyy-MM-dd"),
-            snapSon = aySonGun.ToString("yyyy-MM-dd"),
+            snapBas = ayBas.ToString("yyyyMMdd"),       // ISO yyyyMMdd — yyyy-MM-dd YASAK (sql-server-conventions)
+            snapSon = aySonGun.ToString("yyyyMMdd"),
         };
 
         // B-74: 5 ağır sorgu tek bağlantıda sıralıydı (~13s) → her biri kendi bağlantısı + paralel (B-49 deseni).
@@ -192,13 +191,9 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
     {
         if (!YkCond.TryGetValue(seg, out var cond)) return [];
         await using var conn = await db.OpenAsync();
-        // ic=false → 599/699 telefonlu + Mağaza/Kumbara iç kartlarını ayıkla (MUS_YK port) + elle işaretli iç kartlar (plan-16 ek)
+        // ic=false → iç-kart tek kanonik filtre (plan-18); ic=true → dahil (drill "iç kartları göster")
         var icIds = icKart.Idler();
-        var ickart = ic ? "" : """
-             AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'
-                  AND ISNULL(c.PhoneNumber,'') NOT LIKE '599%' AND ISNULL(c.PhoneNumber,'') NOT LIKE '699%'))
-            """;
-        var icF = (!ic && icIds.Length > 0) ? " AND s.CustomersId NOT IN @icIds" : "";
+        var filt = ic ? "" : IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
         var sql = $"""
             SELECT TOP 100 s.CustomersId AS Id,
                 MAX(CAST(ISNULL(c.Name, s.CustomerCardNo) AS nvarchar(60))) AS Ad,
@@ -207,7 +202,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
                 DATEDIFF(DAY,MAX(s.Date),@dun) AS Rec
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
-            WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<DATEADD(DAY,1,@dun){ickart}{icF}
+            WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<DATEADD(DAY,1,@dun){filt}
             GROUP BY s.CustomersId HAVING {cond} ORDER BY Mon DESC;
             """;
         return (await conn.QueryAsync<CustomerRow>(sql, new { dun = dun.ToDateTime(TimeOnly.MinValue), icIds })).ToList();
@@ -239,15 +234,13 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
     {
         await using var conn = await db.OpenAsync();
         var icIds = icKart.Idler();
-        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
-        // Yeni müşteri = ilk fiş tarihi o ayda. İç/mağaza kartı hariç (isim + elle liste).
+        var filt = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);   // tek kanonik iç-kart filtresi (plan-18: isim+tel+elle)
+        // Yeni müşteri = ilk fiş tarihi o ayda. İç/mağaza kartı hariç (kanonik filtre).
         var kazSql = $"""
             SELECT LEFT(CONVERT(varchar,ilk.IlkTarih,23),7) AS Ay, COUNT(*) AS Yeni
             FROM (SELECT s.CustomersId, MIN(s.Date) AS IlkTarih
                   FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                  LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
-                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0{icF}
-                    AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'))
+                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0{filt}
                   GROUP BY s.CustomersId) ilk
             WHERE ilk.IlkTarih >= DATEADD(MONTH,-12,@aybas)
             GROUP BY LEFT(CONVERT(varchar,ilk.IlkTarih,23),7);
@@ -256,19 +249,20 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
         var kaz = (await conn.QueryAsync<MusteriKazanim>(kazSql, new { aybas, icIds }))
             .OrderBy(k => k.Ay).ToList();
 
-        // Mağaza kart-fiş oranı (son 30g): kaç fiş, kaçı gerçek müşteri-kartlı.
+        // Mağaza kart-fiş oranı (son 30g): kaç fiş, kaçı gerçek müşteri-kartlı (iç kart kanonik filtre ile düşülür).
+        // NOT: filtre SUM(CASE) içinde → subquery YASAK (SQL), Customer-join'li kolon-form (SqlCols) kullanılır.
         var kartSql = $"""
             SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, COUNT(*) AS Fis,
-                   SUM(CASE WHEN s.CustomersId>0 AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%')) THEN 1 ELSE 0 END) AS Kartli
+                   SUM(CASE WHEN s.CustomersId>0{IcKartFiltre.SqlCols("c", "s", icIds.Length > 0)} THEN 1 ELSE 0 END) AS Kartli
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
             LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
-            WHERE s.DocumentsTypeId IN (1,2,6,7,8) AND s.Date>=DATEADD(DAY,-30,@dun) AND s.Date<@dun2
+            WHERE s.DocumentsTypeId = 1 AND s.Date>=DATEADD(DAY,-30,@dun) AND s.Date<@dun2
             GROUP BY CAST(st.Name AS nvarchar(30));
             """;
         var dun2 = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
         var kartRaw = (await conn.QueryAsync<(string Magaza, int Fis, int Kartli)>(kartSql,
-            new { dun = dun.ToDateTime(TimeOnly.MinValue), dun2 })).ToList();
+            new { dun = dun.ToDateTime(TimeOnly.MinValue), dun2, icIds })).ToList();
         var kart = kartRaw.Select(r => new MagazaKart(r.Magaza, r.Fis, r.Kartli,
             r.Fis > 0 ? Math.Round(100m * r.Kartli / r.Fis, 1) : 0)).OrderByDescending(k => k.Fis).ToList();
 
@@ -291,12 +285,13 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
             return (await jc.QueryAsync<FisRow>(et, new { id })).ToList();
         }
         await using var conn = await db.OpenAsync();
+        // Fiş-bazlı (1,3) + iade sign'lı — müşteri raporu evreniyle tutarlı (sql-server-conventions § fiş bazlı).
         const string yk = """
             SELECT TOP 100 CONVERT(varchar,s.Date,104) AS Tarih, CAST(s.Id AS varchar) AS [Ref],
                 (SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) WHERE sp.SalesId=s.Id AND sp.IsValid=1) AS Kalem,
-                CAST(s.GrossTotal-s.DiscountTotal-s.VatTotal AS decimal(18,0)) AS Tutar
+                CAST(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END AS decimal(18,0)) AS Tutar
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-            WHERE s.CustomersId=@id AND s.Date>=DATEADD(DAY,-365,GETDATE())
+            WHERE s.CustomersId=@id AND s.DocumentsTypeId IN (1,3) AND s.Date>=DATEADD(DAY,-365,GETDATE())
             ORDER BY s.Date DESC;
             """;
         return (await conn.QueryAsync<FisRow>(yk, new { id })).ToList();

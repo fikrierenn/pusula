@@ -74,8 +74,8 @@ public record WinBackRow(string Ad, string Tel, string Kart, int Frq, decimal To
 /// <summary>Müşteri konsantrasyonu Pareto dilimi (%10'ar, son 12 ay).</summary>
 public record ParetoRow(int Dilim, int MusteriSayisi, decimal ToplamCiro);
 
-/// <summary>Kartlı vs kartsız müşteri karşılaştırması (B-69).</summary>
-public record KartliRow(string Tip, int FisSayisi, int Musteri, decimal NetCiro, decimal AtvMusteri);
+/// <summary>Kartlı vs kartsız fiş karşılaştırması (B-69; B-102: perakende fiş, anonim kartsız dahil, sepet/fiş).</summary>
+public record KartliRow(string Tip, int FisSayisi, int Musteri, decimal NetCiro, decimal AtvFis);
 
 /// <summary>Tekrar alış özeti — toplam, tekrar eden, ortalama 2. alış günü (B-58+B-71).</summary>
 public record TekrarAlisOzet(int ToplamMusteri, int TekrarMusteri, decimal OrtGun2Alis);

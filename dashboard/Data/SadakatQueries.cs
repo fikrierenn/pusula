@@ -11,7 +11,7 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
     {
         await using var conn = await db.OpenAsync();
         var icIds = icKart.Idler();
-        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        var icF = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);   // tek kanonik iç-kart filtresi (plan-18)
         var rows = await conn.QueryAsync<WinBackRow>($"""
             SELECT TOP 200
                 LTRIM(c.Name)        AS Ad,
@@ -24,7 +24,7 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
                 DATEDIFF(DAY, MAX(s.Date), GETDATE()) AS GunIdle
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = s.CustomersId
-            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
+            WHERE s.DocumentsTypeId IN (1,3)
               AND s.CustomersId > 0{icF}
               AND s.Date >= DATEADD(DAY,-365,CAST(GETDATE() AS date))
               AND s.Date < DATEADD(DAY,-90,CAST(GETDATE() AS date))
@@ -43,10 +43,10 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
     {
         await using var conn = await db.OpenAsync();
         var icIds = icKart.Idler();
-        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        var icF = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);   // tek kanonik iç-kart filtresi (plan-18)
         var rows = await conn.QueryAsync<ParetoRow>($"""
             SELECT TOP 10
-                dilim.dilim   AS Dilim,
+                CAST(dilim.dilim AS int) AS Dilim,
                 COUNT(*)      AS MusteriSayisi,
                 SUM(dilim.Mon) AS ToplamCiro
             FROM (
@@ -59,7 +59,7 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
                             THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
                             ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) DESC) AS dilim
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.CustomersId > 0{icF}
+                WHERE s.DocumentsTypeId IN (1,3) AND s.CustomersId > 0{icF}
                   AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
                 GROUP BY s.CustomersId
             ) dilim
@@ -73,7 +73,9 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
     public async Task<IReadOnlyList<RfmGecisRow>> GetRfmGecisAsync()
     {
         await using var conn = await db.OpenAsync();
-        var rows = await conn.QueryAsync<RfmGecisRow>("""
+        var icIds = icKart.Idler();
+        var f = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);   // tek kanonik iç-kart filtresi (plan-18)
+        var rows = await conn.QueryAsync<RfmGecisRow>($"""
             SELECT TOP 36 seg1.S AS EskiSeg, seg2.S AS YeniSeg, COUNT(*) AS Musteri
             FROM (
                 SELECT s.CustomersId,
@@ -84,7 +86,7 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
                          WHEN DATEDIFF(DAY,MAX(s.Date),'20260301')>180 THEN N'5-Kayıp'
                          ELSE N'6-Diğer' END AS nvarchar(20)) S
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                WHERE s.DocumentsTypeId IN (1,2,6,7,8) AND s.CustomersId > 0
+                WHERE s.DocumentsTypeId = 1 AND s.CustomersId > 0{f}
                   AND s.Date >= '20250301' AND s.Date < '20260301'
                 GROUP BY s.CustomersId
             ) seg1
@@ -97,13 +99,13 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
                          WHEN DATEDIFF(DAY,MAX(s.Date),GETDATE())>180 THEN N'5-Kayıp'
                          ELSE N'6-Diğer' END AS nvarchar(20)) S
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                WHERE s.DocumentsTypeId IN (1,2,6,7,8) AND s.CustomersId > 0
+                WHERE s.DocumentsTypeId = 1 AND s.CustomersId > 0{f}
                   AND s.Date >= '20250601' AND s.Date < '20260601'
                 GROUP BY s.CustomersId
             ) seg2 ON seg2.CustomersId = seg1.CustomersId
             GROUP BY seg1.S, seg2.S
             ORDER BY Musteri DESC
-            """, commandTimeout: 30);
+            """, new { icIds }, commandTimeout: 30);
         return rows.ToList();
     }
 
@@ -111,7 +113,10 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
     public async Task<TekrarAlisOzet> GetTekrarAlisAsync()
     {
         await using var conn = await db.OpenAsync();
-        var r = await conn.QuerySingleAsync<TekrarAlisOzet>("""
+        var icIds = icKart.Idler();
+        var fb = IcKartFiltre.Sql("CustomersId", icIds.Length > 0);       // çıplak alias (alt-sorgu) — plan-18
+        var fs = IcKartFiltre.Sql("sal.CustomersId", icIds.Length > 0);   // sal alias
+        var r = await conn.QuerySingleAsync<TekrarAlisOzet>($"""
             SELECT
                 COUNT(DISTINCT s.CustomersId) AS ToplamMusteri,
                 COUNT(DISTINCT CASE WHEN frq.Frq >= 2 THEN s.CustomersId END) AS TekrarMusteri,
@@ -119,14 +124,14 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
             FROM (
                 SELECT CustomersId, MIN(Date) AS IlkTarih
                 FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)
-                WHERE DocumentsTypeId IN (1,2,6,7,8) AND CustomersId > 0
+                WHERE DocumentsTypeId = 1 AND CustomersId > 0{fb}
                   AND Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
                 GROUP BY CustomersId
             ) s
             LEFT JOIN (
                 SELECT CustomersId, COUNT(*) AS Frq
                 FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)
-                WHERE DocumentsTypeId IN (1,2,6,7,8) AND CustomersId > 0
+                WHERE DocumentsTypeId = 1 AND CustomersId > 0{fb}
                   AND Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
                 GROUP BY CustomersId
             ) frq ON frq.CustomersId = s.CustomersId
@@ -136,28 +141,33 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
                 JOIN (
                     SELECT CustomersId, MIN(Date) AS IlkTarih
                     FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)
-                    WHERE DocumentsTypeId IN (1,2,6,7,8) AND CustomersId > 0
+                    WHERE DocumentsTypeId = 1 AND CustomersId > 0{fb}
                       AND Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
                     GROUP BY CustomersId
                 ) ilk ON ilk.CustomersId = sal.CustomersId AND sal.Date > ilk.IlkTarih
-                WHERE sal.DocumentsTypeId IN (1,2,6,7,8) AND sal.CustomersId > 0
+                WHERE sal.DocumentsTypeId = 1 AND sal.CustomersId > 0{fs}
                 GROUP BY sal.CustomersId
             ) ikinci ON ikinci.CustomersId = s.CustomersId
-            """, commandTimeout: 30);
+            """, new { icIds }, commandTimeout: 30);
         return r;
     }
 
-    /// <summary>Sadakat kartı analizi — kartlı vs kartsız müşteri ATV/frekans karşılaştırması (son 12 ay).</summary>
+    /// <summary>
+    /// Sadakat kartı etkisi — kartlı vs kartsız FİŞ karşılaştırması (son 12 ay). B-102:
+    /// SADECE perakende (Fiş=1 + iade=3) — Fatura/Sınav/Personel HARİÇ (Sınav 8 kartsızı 266M şişiriyordu).
+    /// Kartsız = anonim (CustomersId=0) DAHİL — gerçek kartsız çoğunluk. Metrik: sepet/fiş (ATV per fiş).
+    /// </summary>
     public async Task<IReadOnlyList<KartliRow>> GetKartliAsync()
     {
         await using var conn = await db.OpenAsync();
         var icIds = icKart.Idler();
-        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        // icF: iç-kart (Mağaza/Kumbara/599/699/elle) hariç; CustomersId=0 anonim NOT IN'lerden GEÇER → kartsıza düşer.
+        var icF = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
         var rows = await conn.QueryAsync<KartliRow>($"""
             SELECT TOP 2
-                CASE WHEN ISNULL(c.CardNumber,'')='' THEN 'Kartsız' ELSE 'Kartlı' END AS Tip,
-                COUNT(DISTINCT s.Id)          AS FisSayisi,
-                COUNT(DISTINCT s.CustomersId) AS Musteri,
+                CASE WHEN s.CustomersId>0 AND ISNULL(c.CardNumber,'')<>'' THEN 'Kartlı' ELSE 'Kartsız' END AS Tip,
+                COUNT(*) AS FisSayisi,
+                COUNT(DISTINCT CASE WHEN s.CustomersId>0 THEN s.CustomersId END) AS Musteri,
                 SUM(CASE WHEN s.DocumentsTypeId=3
                     THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
                     ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS NetCiro,
@@ -165,14 +175,13 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
                     SUM(CASE WHEN s.DocumentsTypeId=3
                         THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
                         ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END)
-                    / NULLIF(COUNT(DISTINCT s.CustomersId), 0)
-                AS decimal(12,0)) AS AtvMusteri
+                    / NULLIF(COUNT(*), 0)
+                AS decimal(12,0)) AS AtvFis
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = s.CustomersId
-            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
-              AND s.CustomersId > 0{icF}
-              AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
-            GROUP BY CASE WHEN ISNULL(c.CardNumber,'')='' THEN 'Kartsız' ELSE 'Kartlı' END
+            WHERE s.DocumentsTypeId IN (1,3)
+              AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date)){icF}
+            GROUP BY CASE WHEN s.CustomersId>0 AND ISNULL(c.CardNumber,'')<>'' THEN 'Kartlı' ELSE 'Kartsız' END
             ORDER BY Tip
             """, new { icIds }, commandTimeout: 30);
         return rows.ToList();

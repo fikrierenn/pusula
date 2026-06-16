@@ -2,13 +2,16 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject SadakatQueries Sada
+@inject LlmService Llm
 @inject PerfState Perf
+@inject ILogger<Sadakat> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Sadakat — BKM GM</PageTitle>
 <div class="flex items-center gap-3 mb-5 flex-wrap">
     <h1 class="text-2xl font-bold tracking-tight m-0">Müşteri Sadakat & Tutma</h1>
     <span class="text-sm font-semibold text-base-content/50">son 12 ay · EncoreMerkez yazarkasa · Faz 3</span>
+    <span class="badge badge-primary badge-sm gap-1 font-semibold"><i data-lucide="receipt" class="w-3.5 h-3.5"></i>Fiş bazlı (perakende · Fatura/Sınav hariç)</span>
 </div>
 
 @if (_loading)
@@ -35,6 +38,27 @@ else
         new("Win-Back Ciro", Tl(_winBack.Sum(r => r.ToplCiro)), "from-success to-success/80", "yeniden kazanılabilir ₺"),
     })" />
 
+    @* AI Sadakat Yorumu — koyu kart, yerel LLM panoyu yorumlar (ham tablo → CFO-dili özet + aksiyon) *@
+    <div class="card bg-neutral text-neutral-content shadow-sm rounded-2xl p-[18px] mb-3">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[17px] h-[17px] text-white"></i></span>
+            <span class="text-[13px] font-bold">Sadakat Yorumu</span>
+            <span class="text-[10px] font-semibold ml-auto bg-neutral-content/10 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
+                @if (_yorumCalisiyor)
+                {
+                    <span class="loading loading-spinner loading-xs"></span><text>AI yazıyor…</text>
+                }
+                else
+                {
+                    <text>AI · son 12 ay</text>
+                }
+            </span>
+        </div>
+        <p class="text-[12.5px] leading-relaxed text-neutral-content/85 m-0">
+            @(string.IsNullOrWhiteSpace(_yorum) ? "Veriler yorumlanıyor — model ilk çağrıda yükleniyor (~20 sn)." : _yorum)
+        </p>
+    </div>
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Müşteri Konsantrasyonu — Pareto (son 12 ay, %10'ar dilim)</h3>
@@ -59,14 +83,14 @@ else
     {
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Sadakat Kartı Etkisi — son 12 ay</h3>
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Sadakat Kartı Etkisi — perakende fiş, son 12 ay</h3>
             <AppDataTable TItem="KartliRow"
                           Items="@_kartli"
                           Primary="@(r => r.Tip)"
                           MetricMain="@(r => Tl(r.NetCiro))"
-                          MetricSub="@(r => $"{Num(r.Musteri)} müşteri · {Num(r.FisSayisi)} fiş")"
-                          Badge="@(r => ($"ATV {Tl(r.AtvMusteri)}", r.Tip == "Kartlı" ? "bg-success/15 text-success" : "bg-base-200 text-base-content/60"))" />
-            <div class="text-base-content/50 text-[11px] mt-2">Kartsız = CustomersId>0 ama CardNumber boş (kurumsal/toptan). Kartlı = "2025…" kart. ATV = yıllık müşteri başı ciro.</div>
+                          MetricSub="@(r => $"{Num(r.FisSayisi)} fiş" + (r.Musteri > 0 ? $" · {Num(r.Musteri)} tanımlı müşteri" : ""))"
+                          Badge="@(r => ($"Sepet {Tl(r.AtvFis)}", r.Tip == "Kartlı" ? "bg-success/15 text-success" : "bg-base-200 text-base-content/60"))" />
+            <div class="text-base-content/50 text-[11px] mt-2">Sadece perakende fiş (Fatura/Sınav/Personel hariç). Kartsız = kart takılmamış tüm fiş (anonim yürü-gel dahil). Kartlı = "2025…" sadakat kartlı. Sepet = fiş başı net ciro — kartlının daha yüksek olması sadakat kartının etkisi.</div>
         </div>
     </div>
     }
@@ -121,6 +145,9 @@ else
     private IReadOnlyList<KartliRow> _kartli = [];
     private TekrarAlisOzet? _tekrar;
     private IReadOnlyList<RfmGecisRow> _rfmGecis = [];
+    private string _yorum = "";
+    private bool _yorumCalisiyor;
+    private int _yorumGen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -138,6 +165,8 @@ else
             _kartli = tKrt.Result;
             _tekrar = tTek.Result;
             _rfmGecis = tGec.Result;
+            // LLM yorumu arka planda — SADECE interactive render'da (prerender'da çift inference olmasın). Sayfa beklemez.
+            if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Sadakat", sw); StateHasChanged(); }
@@ -146,4 +175,45 @@ else
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
     private static string Pct(decimal pay, decimal top) => top > 0 ? $"%{pay * 100m / top:0.0}" : "—";
+
+    // LLM yorumu — Home GunOzeti deseni: arka planda çağrı, gen-race-guard, model yoksa placeholder kalır.
+    private async Task RefreshYorumAsync()
+    {
+        var gen = ++_yorumGen;
+        _yorumCalisiyor = true; await InvokeAsync(StateHasChanged);
+        try
+        {
+            var txt = await Llm.SadakatYorumUret(SadakatVeri());
+            if (gen == _yorumGen && !string.IsNullOrWhiteSpace(txt)) _yorum = txt;
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Sadakat LLM yorumu üretilemedi — placeholder kalıyor"); }
+        finally { if (gen == _yorumGen) { _yorumCalisiyor = false; await InvokeAsync(StateHasChanged); } }
+    }
+
+    // Panel verisinden LLM'e anahtar:değer özet (sadece veri, hesap LLM'de değil burada).
+    private string SadakatVeri()
+    {
+        var toplamCiro = _pareto.Sum(p => p.ToplamCiro);
+        var ilk10 = toplamCiro > 0 ? (_pareto.FirstOrDefault()?.ToplamCiro ?? 0) * 100m / toplamCiro : 0;
+        var ilk20 = toplamCiro > 0 ? _pareto.Take(2).Sum(p => p.ToplamCiro) * 100m / toplamCiro : 0;
+        var sb = new System.Text.StringBuilder();
+        if (_tekrar is not null)
+        {
+            var oran = _tekrar.ToplamMusteri > 0 ? _tekrar.TekrarMusteri * 100m / _tekrar.ToplamMusteri : 0;
+            sb.AppendLine($"Tekrar alış oranı: %{oran:0.0} (Frq>1, {Num(_tekrar.TekrarMusteri)} müşteri / {Num(_tekrar.ToplamMusteri)})");
+            sb.AppendLine($"2. alışa ortalama süre: {_tekrar.OrtGun2Alis} gün");
+        }
+        sb.AppendLine($"Müşteri konsantrasyonu: ilk %10 müşteri cironun %{ilk10:0.0}'ını, ilk %20 %{ilk20:0.0}'ini yapıyor");
+        var kk = _kartli.FirstOrDefault(k => k.Tip == "Kartlı");
+        var ks = _kartli.FirstOrDefault(k => k.Tip == "Kartsız");
+        if (kk is not null && ks is not null)
+            sb.AppendLine($"Sadakat kartı (perakende fiş sepeti): Kartlı {Tl(kk.AtvFis)} ({Num(kk.FisSayisi)} fiş) vs Kartsız {Tl(ks.AtvFis)} ({Num(ks.FisSayisi)} fiş)");
+        var kotu = _rfmGecis
+            .Where(r => int.Parse(r.YeniSeg[0].ToString()) > int.Parse(r.EskiSeg[0].ToString()))
+            .OrderByDescending(r => r.Musteri).FirstOrDefault();
+        if (kotu is not null)
+            sb.AppendLine($"En büyük segment kötüleşmesi: {kotu.EskiSeg[2..]} → {kotu.YeniSeg[2..]}, {Num(kotu.Musteri)} müşteri");
+        sb.AppendLine($"Win-back: {Num(_winBack.Count)} müşteri, toplam {Tl(_winBack.Sum(r => r.ToplCiro))} geri kazanılabilir (90g+ hareketsiz)");
+        return sb.ToString().TrimEnd();
+    }
 }

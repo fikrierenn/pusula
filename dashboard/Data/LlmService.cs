@@ -144,6 +144,55 @@ KESİN KURALLAR:
         finally { _sem.Release(); }
     }
 
+    /// <summary>
+    /// Müşteri sadakat panosu verisinden 3-4 cümlelik Türkçe yorum + 1 somut aksiyon üret.
+    /// veriOzet = anahtar:değer satırları (tekrar alış, Pareto konsantrasyon, kart etkisi, RFM geçiş, win-back).
+    /// Model uydurmaz, sadece veriyi yorumlar (GunOzetiUret ile aynı disiplin).
+    /// </summary>
+    public async Task<string> SadakatYorumUret(string veriOzet)
+    {
+        await EnsureLoaded();
+        if (_executor is null)
+            throw new InvalidOperationException(_loadError ?? "Model yüklenemedi.");
+
+        const string sys = """
+Sen BKM Kitap'ın (kitap+kırtasiye perakende + e-ticaret, 3 mağaza) CFO asistanısın.
+Sana müşteri SADAKAT panosu verisi verilir. Görevin: 3-4 cümlelik AKICI Türkçe yorum + sonda 1 somut aksiyon.
+KESİN KURALLAR:
+- SADECE verideki sayıları kullan, hiçbir rakam UYDURMA, hesap YAPMA.
+- Pareto konsantrasyonu yüksekse (az müşteri çok ciro) bağımlılık riskini vurgula.
+- Tekrar alış oranı düşükse ilk alışı ikinciye çevirme fırsatını söyle.
+- Win-back potansiyelini ₺ ile vurgula (geri kazanılabilir ciro).
+- Madde işareti/başlık YOK, tek akıcı paragraf, yönetici dili. Sayıları verideki biçimiyle (₺/%) yaz.
+""";
+        const string exUser = "Tekrar alış oranı: %38,0 (Frq>1, 90.000 müşteri / 237.000)\n2. alışa ortalama süre: 95 gün\nMüşteri konsantrasyonu: ilk %10 müşteri cironun %62,0'ını, ilk %20 %78,0'ini yapıyor\nSadakat kartı: Kartlı ATV 2.100 ₺ vs Kartsız ATV 5.400 ₺\nWin-back: 200 müşteri, toplam 1.250.000 ₺ geri kazanılabilir (90g+ hareketsiz)";
+        const string exAssistant = "Müşteri tabanı dar bir çekirdeğe bağımlı: ilk %20 müşteri cironun %78,0'ini taşıyor, bu da konsantrasyon riski demek. Tekrar alış oranı %38,0 ve ikinci alış ortalama 95 gün sürüyor — ilk alışı ikinciye çevirecek hatırlatma/kampanya alanı geniş. Kartsız müşterinin ATV'si (5.400 ₺) kartlıdan yüksek; kurumsal/toptan ağırlığı gösteriyor. Aksiyon: 1.250.000 ₺'lik win-back listesindeki 200 hareketsiz müşteriye kişisel teklifle dönüş kampanyası başlat.";
+
+        var prompt =
+            $"<|im_start|>system\n{sys}<|im_end|>\n" +
+            $"<|im_start|>user\n{exUser}<|im_end|>\n<|im_start|>assistant\n{exAssistant}<|im_end|>\n" +
+            $"<|im_start|>user\n{veriOzet}<|im_end|>\n<|im_start|>assistant\n";
+
+        var inf = new InferenceParams
+        {
+            MaxTokens = 260,
+            AntiPrompts = ["<|im_end|>", "<|im_start|>"],
+            SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.4f },
+        };
+
+        await _sem.WaitAsync();
+        try
+        {
+            var sb = new StringBuilder();
+            await foreach (var tok in _executor.InferAsync(prompt, inf))
+                sb.Append(tok);
+            return sb.ToString()
+                .Replace("<|im_end|>", "").Replace("<|im_start|>", "")
+                .Replace("<think>", "").Replace("</think>", "").Trim();
+        }
+        finally { _sem.Release(); }
+    }
+
     private async Task EnsureLoaded()
     {
         if (_loaded) return;
