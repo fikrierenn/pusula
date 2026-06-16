@@ -13,6 +13,22 @@
     <h1 class="text-2xl font-bold tracking-tight m-0">Hedef Tahmin</h1>
 </div>
 
+<!-- Ay seçici (plan-14): −24 … +3 ay. -->
+<div class="flex items-center gap-2 mb-4">
+    <button class="btn btn-sm btn-circle btn-ghost @(OncekiVar ? "" : "btn-disabled")" disabled="@(!OncekiVar || _loading)" @onclick="() => AyKaydir(-1)" aria-label="Önceki ay">
+        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+    </button>
+    <div class="text-center min-w-[10rem]">
+        <div class="text-[15px] font-bold tracking-tight">@AyAd($"{_hedefYil:0000}-{_hedefAy:00}")</div>
+        @if (_t is not null && _t.Gelecek) { <div class="text-[10px] font-semibold text-info uppercase tracking-wider">ileri projeksiyon</div> }
+        else if (_t is not null && _t.Gecmis) { <div class="text-[10px] font-semibold text-base-content/50 uppercase tracking-wider">geçmiş — backtest</div> }
+        else { <div class="text-[10px] font-semibold text-success uppercase tracking-wider">bu ay (canlı)</div> }
+    </div>
+    <button class="btn btn-sm btn-circle btn-ghost @(SonrakiVar ? "" : "btn-disabled")" disabled="@(!SonrakiVar || _loading)" @onclick="() => AyKaydir(1)" aria-label="Sonraki ay">
+        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+    </button>
+</div>
+
 @if (_loading)
 {
     <p class="text-base-content/50">Yükleniyor…</p>
@@ -35,8 +51,21 @@ else if (_t is not null)
             <div class="text-sm opacity-90 mb-3">Senaryo bandı @Tl(_t.Alt) – @Tl(_t.Ust) · ivme @Pct(_t.IvmePct)</div>
             <div class="grid grid-cols-3 gap-2 pt-3 border-t border-white/20">
                 <div><div class="text-[11px] opacity-75">Geçen yıl aynı ay</div><div class="text-[15px] font-bold whitespace-nowrap">@Tl(_t.YoYTaban)</div></div>
-                <div><div class="text-[11px] opacity-75">Bu ay (şu ana dek)</div><div class="text-[15px] font-bold whitespace-nowrap">@Tl(_t.Mtd)</div></div>
-                <div><div class="text-[11px] opacity-75">Doğrusal pace</div><div class="text-[15px] font-bold whitespace-nowrap">@(_t.MtdPace is null ? "—" : Tl(_t.MtdPace.Value))</div></div>
+                @if (_t.Gelecek)
+                {
+                    <div><div class="text-[11px] opacity-75">Gerçekleşme</div><div class="text-[15px] font-bold whitespace-nowrap opacity-70">henüz yok</div></div>
+                    <div><div class="text-[11px] opacity-75">Tür</div><div class="text-[15px] font-bold whitespace-nowrap">saf projeksiyon</div></div>
+                }
+                else if (_t.Gecmis)
+                {
+                    <div><div class="text-[11px] opacity-75">Gerçekleşen</div><div class="text-[15px] font-bold whitespace-nowrap">@(_t.Gercek is null ? "—" : Tl(_t.Gercek.Value))</div></div>
+                    <div><div class="text-[11px] opacity-75">Sapma (gerçek vs tahmin)</div><div class="text-[15px] font-bold whitespace-nowrap">@SapmaMetin(_t.Gercek, _t.Tahmin)</div></div>
+                }
+                else
+                {
+                    <div><div class="text-[11px] opacity-75">Bu ay (şu ana dek)</div><div class="text-[15px] font-bold whitespace-nowrap">@Tl(_t.Mtd)</div></div>
+                    <div><div class="text-[11px] opacity-75">Doğrusal pace</div><div class="text-[15px] font-bold whitespace-nowrap">@(_t.MtdPace is null ? "—" : Tl(_t.MtdPace.Value))</div></div>
+                }
             </div>
         }
         else
@@ -79,17 +108,20 @@ else if (_t is not null)
                 </div>
                 <div class="text-[16px] font-extrabold tabular-nums whitespace-nowrap shrink-0 text-primary">@Tl(_t.Tahmin)</div>
             </div>
-            <!-- MTD durum: geçen/kalan gün + doğrusal pace -->
-            <div class="rounded-xl bg-base-200/60 px-3.5 py-3 mt-3">
-                <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/45 mb-2">Ayın Durumu (MTD)</div>
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div><div class="text-[11px] text-base-content/50">Şu ana dek</div><div class="text-[14px] font-bold whitespace-nowrap">@Tl(_t.Mtd)</div></div>
-                    <div><div class="text-[11px] text-base-content/50">Geçen gün</div><div class="text-[14px] font-bold whitespace-nowrap">@gecenGun</div></div>
-                    <div><div class="text-[11px] text-base-content/50">Kalan gün</div><div class="text-[14px] font-bold whitespace-nowrap">@kalanGun</div></div>
-                    <div><div class="text-[11px] text-base-content/50">Doğrusal pace</div><div class="text-[14px] font-bold whitespace-nowrap">@(_t.MtdPace is null ? "—" : Tl(_t.MtdPace.Value))</div></div>
+            @if (!_t.Gelecek && !_t.Gecmis)
+            {
+                <!-- MTD durum: geçen/kalan gün + doğrusal pace (sadece içinde bulunulan ay) -->
+                <div class="rounded-xl bg-base-200/60 px-3.5 py-3 mt-3">
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/45 mb-2">Ayın Durumu (MTD)</div>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div><div class="text-[11px] text-base-content/50">Şu ana dek</div><div class="text-[14px] font-bold whitespace-nowrap">@Tl(_t.Mtd)</div></div>
+                        <div><div class="text-[11px] text-base-content/50">Geçen gün</div><div class="text-[14px] font-bold whitespace-nowrap">@gecenGun</div></div>
+                        <div><div class="text-[11px] text-base-content/50">Kalan gün</div><div class="text-[14px] font-bold whitespace-nowrap">@kalanGun</div></div>
+                        <div><div class="text-[11px] text-base-content/50">Doğrusal pace</div><div class="text-[14px] font-bold whitespace-nowrap">@(_t.MtdPace is null ? "—" : Tl(_t.MtdPace.Value))</div></div>
+                    </div>
+                    <div class="text-[10px] text-base-content/45 mt-2.5">Doğrusal pace = bugüne dek ciro ÷ geçen gün × ay günü (mevsimsel değil — sadece referans; mevsimsel tahmin yukarıdaki adım 3).</div>
                 </div>
-                <div class="text-[10px] text-base-content/45 mt-2.5">Doğrusal pace = bugüne dek ciro ÷ geçen gün × ay günü (mevsimsel değil — sadece referans; mevsimsel tahmin yukarıdaki adım 3).</div>
-            </div>
+            }
         </div>
     }
 
@@ -168,15 +200,25 @@ else if (_t is not null)
     private string _pColor = "";
     private static readonly (int Id, string Ad)[] _mekanlar = { (1, "FSM"), (4477, "Özlüce"), (4478, "İst.Yolu") };
 
-    protected override async Task OnInitializedAsync()
+    private static readonly DateOnly _bugun = DateOnly.FromDateTime(DateTime.Today);
+    private int _hedefYil = _bugun.Year;
+    private int _hedefAy = _bugun.Month;
+    // Sınır: −24 ay (geçmiş backtest) … +3 ay (ileri projeksiyon). Çok ileri = spekülatif.
+    private DateOnly Hedef => new(_hedefYil, _hedefAy, 1);
+    private bool OncekiVar => Hedef > new DateOnly(_bugun.Year, _bugun.Month, 1).AddMonths(-24);
+    private bool SonrakiVar => Hedef < new DateOnly(_bugun.Year, _bugun.Month, 1).AddMonths(3);
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Yukle()
     {
+        _loading = true; _error = null; StateHasChanged();
         var sw = PerfState.Start();
         try
         {
-            var bugun = DateOnly.FromDateTime(DateTime.Today);
-            var tTot = Queries.GetTahminAsync(bugun, 0);
-            var tMag = _mekanlar.Select(m => Queries.GetTahminAsync(bugun, m.Id)).ToArray();
-            var tKat = Queries.GetTahminKategoriAsync(bugun);
+            var tTot = Queries.GetTahminAsync(_bugun, _hedefYil, _hedefAy, 0);
+            var tMag = _mekanlar.Select(m => Queries.GetTahminAsync(_bugun, _hedefYil, _hedefAy, m.Id)).ToArray();
+            var tKat = Queries.GetTahminKategoriAsync(_bugun, _hedefYil, _hedefAy);
             await Task.WhenAll(((IEnumerable<Task>)new[] { tTot }).Concat(tMag).Concat(new[] { tKat }));
             _t = tTot.Result;
             _magaza.Clear();
@@ -185,6 +227,13 @@ else if (_t is not null)
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Tahmin", sw); StateHasChanged(); }
+    }
+
+    private async Task AyKaydir(int n)
+    {
+        var yeni = Hedef.AddMonths(n);
+        _hedefYil = yeni.Year; _hedefAy = yeni.Month;
+        await Yukle();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -197,6 +246,13 @@ else if (_t is not null)
             if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
         }
         catch { /* tema okunamazsa fallback */ }
+    }
+
+    private static string SapmaMetin(decimal? gercek, decimal tahmin)
+    {
+        if (gercek is null || tahmin == 0) return "—";
+        var pct = 100 * (gercek.Value - tahmin) / tahmin;
+        return pct.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
     }
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";

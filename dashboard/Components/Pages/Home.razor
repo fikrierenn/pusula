@@ -489,7 +489,7 @@ else if (_data is not null)
     // Tahmin özeti fire-and-forget (Home yüklenmesini bekletmez). plan-13.
     private async Task LoadTahminAsync(DateOnly bugun)
     {
-        try { _tahmin = await Queries.GetTahminAsync(bugun, 0); await InvokeAsync(StateHasChanged); }
+        try { _tahmin = await Queries.GetTahminAsync(bugun, bugun.Year, bugun.Month, 0); await InvokeAsync(StateHasChanged); }
         catch { /* non-critical — kart fallback metnine döner */ }
     }
 

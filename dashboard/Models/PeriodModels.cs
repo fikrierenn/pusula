@@ -10,13 +10,33 @@ public record AlertItem(string Ico, string Tone, string Title, string Desc);
 public record AylikNokta(string Ay, decimal Net);
 
 /// <summary>Hedef tahmin sonucu (B-73). YoY taban × son-3-ay YoY ivmesi + senaryo bandı.
-/// Yetersiz veri (YoY yok) → Yeterli=false. Mtd = tahmin ayının şu ana kadarki gerçekleşmesi.</summary>
+/// Yetersiz veri (YoY yok) → Yeterli=false. Mtd = tahmin ayının şu ana kadarki gerçekleşmesi.
+/// plan-14: Gelecek/Gecmis = hedef ay bugüne göre konumu. Gercek = geçmiş ay tam gerçekleşme (varsa).
+/// Carpan = uygulanan takvim etmen çarpanı (1.0 = etmen kapalı/etkisiz).</summary>
 public record TahminSonuc(string TahminAy, decimal YoYTaban, decimal IvmePct, decimal Tahmin,
     decimal Alt, decimal Ust, decimal Mtd, decimal? MtdPace, bool Yeterli,
-    IReadOnlyList<AylikNokta> Seri);
+    IReadOnlyList<AylikNokta> Seri,
+    bool Gelecek = false, bool Gecmis = false, decimal? Gercek = null, decimal Carpan = 1m);
 
 /// <summary>Kategori bazlı YoY MTD karşılaştırma (bu ay MTD vs geçen yıl aynı MTD). plan-13.</summary>
 public record TahminKategori(string Ad, decimal MtdBuYil, decimal MtdGecenYil, decimal? YoyPct);
+
+/// <summary>Kaydedilmiş tahmin (plan-14). data/tahmin-kayitlari.json. MekanId 0=toplam.
+/// Carpan = kayıt anında uygulanan takvim çarpanı (1.0 = etmensiz).</summary>
+public record TahminKayitEntry(string Id, int Year, int Month, int MekanId,
+    decimal Tahmin, decimal Alt, decimal Ust, decimal IvmePct, decimal YoYTaban,
+    decimal Carpan, string KayitTarih);
+
+/// <summary>Kayıt vs gerçek karşılaştırma (plan-14). Gercek null = ay henüz tamamlanmadı.</summary>
+public record TahminKarsilastirma(TahminKayitEntry Kayit, decimal? Gercek, decimal? SapmaPct);
+
+/// <summary>Takvim günü (plan-14). Ulusal+dini API'den, okul elle JSON'dan.</summary>
+public record TakvimGun(DateOnly Tarih, string Ad, TakvimTip Tip, bool YarimGun);
+public enum TakvimTip { Ulusal, DiniBayram, OkulAcik, OkulKapali, Sinav }
+
+/// <summary>Bir ay için hesaplanan takvim etmen özeti (plan-14). Çarpanlar deterministik.</summary>
+public record AyEtmen(int HaftaSonuSayisi, int TatilKapaliGun, bool OkulAcik, bool SinavAyi,
+    decimal HaftaSonuCarpan, decimal OkulCarpan, decimal BayramDuzeltme);
 
 /// <summary>Mağaza dönem satırı (EncoreMerkez Sales → posMagaza). Net = iade sign'lı.</summary>
 public record StoreRow(int MekanId, decimal Net, int Fis, decimal Iade);

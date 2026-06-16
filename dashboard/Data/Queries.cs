@@ -308,7 +308,9 @@ public sealed class Queries(Db db)
     /// YoY taban × son-3-ay YoY ivmesi + senaryo bandı (±σ). MTD gerçekleşme dahil.
     /// Tahmin ayı = bugünün ayı (kısmi). irsHrk: ehTip 4/100 satış − 101 iade.
     /// </summary>
-    public async Task<TahminSonuc> GetTahminAsync(DateOnly bugun, int mekanId = 0)
+    /// <summary>Hedef ay tahmini (plan-14). hedefYil/hedefAy seçilen ay; carpan = takvim etmen çarpanı (1.0=etmensiz).
+    /// Pencere hem hedefi (taban için -15 ay) hem bugünü (ivme için -15 ay) kapsar.</summary>
+    public async Task<TahminSonuc> GetTahminAsync(DateOnly bugun, int hedefYil, int hedefAy, int mekanId = 0, decimal carpan = 1m)
     {
         await using var conn = await db.OpenAsync();
         // Net = satış (ehTip 1,4,100) − iade (3,5,101). ehTutarN daima pozitif (sema codes.yaml).
@@ -320,10 +322,15 @@ public sealed class Queries(Db db)
               AND h.ehTip IN (1,3,4,5,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son
             GROUP BY CONVERT(char(7),h.ehTrhS,23);
             """;
-        var bas = new DateOnly(bugun.Year, bugun.Month, 1).AddMonths(-25).ToDateTime(TimeOnly.MinValue);
-        var son = new DateOnly(bugun.Year, bugun.Month, 1).AddMonths(1).ToDateTime(TimeOnly.MinValue);
-        var seri = (await conn.QueryAsync<AylikNokta>(sql, new { mekan = mekanId, bas, son })).OrderBy(x => x.Ay).ToList();
-        return Forecast.Hesapla(seri, $"{bugun:yyyy-MM}", bugun.Day, DateTime.DaysInMonth(bugun.Year, bugun.Month));
+        var hedef = new DateOnly(hedefYil, hedefAy, 1);
+        var cur = new DateOnly(bugun.Year, bugun.Month, 1);
+        // Erken sınır: hedef-15 (taban) ile bugün-15 (ivme) min'i. Geç sınır: ikisinin max'ı +1.
+        var basDate = (hedef < cur ? hedef : cur).AddMonths(-15);
+        var sonDate = (hedef > cur ? hedef : cur).AddMonths(1);
+        var seri = (await conn.QueryAsync<AylikNokta>(sql,
+            new { mekan = mekanId, bas = basDate.ToDateTime(TimeOnly.MinValue), son = sonDate.ToDateTime(TimeOnly.MinValue) }))
+            .OrderBy(x => x.Ay).ToList();
+        return Forecast.Hesapla(seri, $"{hedef:yyyy-MM}", $"{cur:yyyy-MM}", bugun.Day, DateTime.DaysInMonth(hedefYil, hedefAy), carpan);
     }
 
     /// <summary>B-57 Kasiyer net performansı + önceki eş-uzunluk döneme göre değişim %. Mağaza gruplu, net azalan.</summary>
@@ -352,14 +359,18 @@ public sealed class Queries(Db db)
         }).OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
     }
 
-    /// <summary>Kategori bazlı YoY MTD karşılaştırma (bu ay MTD vs geçen yıl aynı MTD, irsHrk+urn+urnKtgr2). plan-13.</summary>
-    public async Task<IReadOnlyList<TahminKategori>> GetTahminKategoriAsync(DateOnly bugun)
+    /// <summary>Kategori bazlı YoY karşılaştırma (seçilen ay vs geçen yıl aynı dönem, irsHrk+urn+urnKtgr2). plan-13/14.
+    /// Bu ay → MTD (bugüne dek); geçmiş ay → tam ay; gelecek ay → boş (bu-yıl tarafı veri yok).</summary>
+    public async Task<IReadOnlyList<TahminKategori>> GetTahminKategoriAsync(DateOnly bugun, int hedefYil, int hedefAy)
     {
         await using var conn = await db.OpenAsync();
-        var basBy = new DateOnly(bugun.Year, bugun.Month, 1).ToDateTime(TimeOnly.MinValue);
-        var sonBy = bugun.AddDays(1).ToDateTime(TimeOnly.MinValue);
-        var basGY = new DateOnly(bugun.Year - 1, bugun.Month, 1).ToDateTime(TimeOnly.MinValue);
-        var sonGY = new DateOnly(bugun.Year - 1, bugun.Month, bugun.Day).AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var hedef = new DateOnly(hedefYil, hedefAy, 1);
+        bool buAy = hedefYil == bugun.Year && hedefAy == bugun.Month;
+        int gun = buAy ? bugun.Day : DateTime.DaysInMonth(hedefYil, hedefAy);
+        var basBy = hedef.ToDateTime(TimeOnly.MinValue);
+        var sonBy = hedef.AddDays(gun).ToDateTime(TimeOnly.MinValue);
+        var basGY = hedef.AddYears(-1).ToDateTime(TimeOnly.MinValue);
+        var sonGY = hedef.AddYears(-1).AddDays(gun).ToDateTime(TimeOnly.MinValue);
         const string sql = """
             SELECT k.ktgrAd AS Ad,
                    CAST(SUM(CASE WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (1,4,100) THEN h.ehTutarN
@@ -390,7 +401,11 @@ public sealed class Queries(Db db)
 /// <summary>Hedef tahmin matematiği (saf C# — SQL'den ayrı, test edilebilir). B-73.</summary>
 public static class Forecast
 {
-    public static TahminSonuc Hesapla(IReadOnlyList<AylikNokta> seri, string tahminAy, int gunGecti, int ayGun)
+    /// <param name="bugunAy">İçinde bulunulan ay ("yyyy-MM"). İvme daima buna göre son-3-tamamlanmış-ay.</param>
+    /// <param name="gunGecti">Hedef==bugün ay ise geçen gün; aksi halde anlamsız.</param>
+    /// <param name="carpan">Takvim etmen çarpanı (plan-14). 1.0 = etmensiz. Tahmin/alt/üst bununla ölçeklenir.</param>
+    public static TahminSonuc Hesapla(IReadOnlyList<AylikNokta> seri, string tahminAy, string bugunAy,
+        int gunGecti, int ayGun, decimal carpan = 1m)
     {
         var m = seri.ToDictionary(x => x.Ay, x => x.Net);
         static string Kaydir(string ay, int n) =>
@@ -398,32 +413,38 @@ public static class Forecast
                 .AddMonths(n).ToString("yyyy-MM");
         decimal? Get(string a) => m.TryGetValue(a, out var v) ? v : null;
 
-        var mtd = Get(tahminAy) ?? 0m;                 // tahmin ayı şu ana kadar (kısmi)
-        var yoyBase = Get(Kaydir(tahminAy, -12));      // geçen yıl aynı ay
+        bool gelecek = string.CompareOrdinal(tahminAy, bugunAy) > 0;
+        bool gecmis = string.CompareOrdinal(tahminAy, bugunAy) < 0;
 
-        // Son 3 TAMAMLANMIŞ ayın YoY büyüme oranı → ivme.
+        var seriDeger = Get(tahminAy);
+        var mtd = gelecek ? 0m : (seriDeger ?? 0m);    // gelecek=yok; bu ay=kısmi; geçmiş=tam gerçek
+        decimal? gercek = gecmis ? seriDeger : null;   // geçmiş ay tam gerçekleşme (backtest)
+        var yoyBase = Get(Kaydir(tahminAy, -12));      // geçen yıl aynı ay (mevsimsel taban)
+
+        // İvme: BUGÜNE göre son 3 TAMAMLANMIŞ ay (hedef ay değil — gelecek ay tahmininde de geçerli).
         var rates = new List<decimal>();
         for (int i = 1; i <= 3; i++)
         {
-            var k = Get(Kaydir(tahminAy, -i));
-            var kp = Get(Kaydir(tahminAy, -i - 12));
+            var k = Get(Kaydir(bugunAy, -i));
+            var kp = Get(Kaydir(bugunAy, -i - 12));
             if (k is not null && kp is > 0) rates.Add(k.Value / kp.Value - 1);
         }
         var yeterli = yoyBase is > 0 && rates.Count >= 2;
         if (!yeterli)
-            return new TahminSonuc(tahminAy, yoyBase ?? 0, 0, 0, 0, 0, mtd, null, false, seri);
+            return new TahminSonuc(tahminAy, yoyBase ?? 0, 0, 0, 0, 0, mtd, null, false, seri, gelecek, gecmis, gercek, carpan);
 
         var ivme = rates.Average();
         var ort = (double)ivme;
         var sigma = rates.Count > 1
             ? (decimal)Math.Sqrt(rates.Sum(r => Math.Pow((double)r - ort, 2)) / rates.Count)
             : 0m;
-        var tahmin = Math.Round(yoyBase!.Value * (1 + ivme), 0);
-        var alt = Math.Round(yoyBase.Value * (1 + ivme - sigma), 0);
-        var ust = Math.Round(yoyBase.Value * (1 + ivme + sigma), 0);
-        // MTD pace = kısmi ay → tüm aya doğrusal projeksiyon (kaba referans, mevsimsel değil).
-        decimal? pace = gunGecti > 0 ? Math.Round(mtd * ayGun / gunGecti, 0) : null;
+        var tahmin = Math.Round(yoyBase!.Value * (1 + ivme) * carpan, 0);
+        var alt = Math.Round(yoyBase.Value * (1 + ivme - sigma) * carpan, 0);
+        var ust = Math.Round(yoyBase.Value * (1 + ivme + sigma) * carpan, 0);
+        // MTD pace = kısmi ay → tüm aya doğrusal projeksiyon (sadece bu ay anlamlı; mevsimsel değil).
+        decimal? pace = (!gelecek && !gecmis && gunGecti > 0) ? Math.Round(mtd * ayGun / gunGecti, 0) : null;
 
-        return new TahminSonuc(tahminAy, yoyBase.Value, Math.Round(100 * ivme, 1), tahmin, alt, ust, mtd, pace, true, seri);
+        return new TahminSonuc(tahminAy, yoyBase.Value, Math.Round(100 * ivme, 1), tahmin, alt, ust,
+            mtd, pace, true, seri, gelecek, gecmis, gercek, carpan);
     }
 }
