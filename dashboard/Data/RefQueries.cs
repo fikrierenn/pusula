@@ -234,6 +234,60 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
             new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") })).ToList();
     }
 
+    /// <summary>Drill katman 3: müşteri → fiş/sipariş listesi (son 365g, top 100). Tutar KDV-hariç. plan-17 (Python HAR_YK/HAR_ET portu).</summary>
+    public async Task<IReadOnlyList<FisRow>> GetFislerAsync(string kanal, long id)
+    {
+        if (kanal == "et")
+        {
+            await using var jc = await db.OpenJokerAsync();  // direkt JOKER
+            const string et = """
+                SELECT TOP 100 CONVERT(varchar,o.ORDERDATE,104) AS Tarih, CAST(o.ORDERID AS varchar) AS [Ref],
+                    ISNULL((SELECT COUNT(*) FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID),0) AS Kalem,
+                    CAST(ISNULL((SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID),0) AS decimal(18,0)) AS Tutar
+                FROM dbo.J_ORDERS o JOIN dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF=o.CLIENTREF
+                WHERE oc.CUSTOMERREF=@id ORDER BY o.ORDERDATE DESC;
+                """;
+            return (await jc.QueryAsync<FisRow>(et, new { id })).ToList();
+        }
+        await using var conn = await db.OpenAsync();
+        const string yk = """
+            SELECT TOP 100 CONVERT(varchar,s.Date,104) AS Tarih, CAST(s.Id AS varchar) AS [Ref],
+                (SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) WHERE sp.SalesId=s.Id AND sp.IsValid=1) AS Kalem,
+                CAST(s.GrossTotal-s.DiscountTotal-s.VatTotal AS decimal(18,0)) AS Tutar
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            WHERE s.CustomersId=@id AND s.Date>=DATEADD(DAY,-365,GETDATE())
+            ORDER BY s.Date DESC;
+            """;
+        return (await conn.QueryAsync<FisRow>(yk, new { id })).ToList();
+    }
+
+    /// <summary>Drill katman 4: fiş/sipariş içeriği (ürün/adet/birim/net, KDV-hariç). plan-17 (Python FIS_YK/FIS_ET portu).</summary>
+    public async Task<IReadOnlyList<FisIcerikRow>> GetFisIcerikAsync(string kanal, long fis)
+    {
+        if (kanal == "et")
+        {
+            await using var jc = await db.OpenJokerAsync();
+            const string et = """
+                SELECT TOP 200 CAST(it.NAME AS nvarchar(60)) AS Ad, d.QUANTITY AS Adet,
+                    CAST(d.SELLINGPRICEWITHOUTVAT AS decimal(18,2)) AS Birim,
+                    CAST(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT AS decimal(18,2)) AS Net
+                FROM dbo.J_ORDER_DETAILS d JOIN dbo.J_ITEMS it ON it.LOGICALREF=d.ITEMREF
+                WHERE d.ORDERREF=@fis;
+                """;
+            return (await jc.QueryAsync<FisIcerikRow>(et, new { fis })).ToList();
+        }
+        await using var conn = await db.OpenAsync();
+        const string yk = """
+            SELECT TOP 200 CAST(pr.Name AS nvarchar(60)) AS Ad, CAST(sp.Amount AS decimal(18,2)) AS Adet,
+                CAST((sp.TotalPrice-sp.VatTotal)/NULLIF(sp.Amount,0) AS decimal(18,2)) AS Birim,
+                CAST(sp.TotalPrice-sp.VatTotal AS decimal(18,2)) AS Net
+            FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
+            WHERE sp.SalesId=@fis AND sp.IsValid=1 AND sp.BarcodeNo<>'1001';
+            """;
+        return (await conn.QueryAsync<FisIcerikRow>(yk, new { fis })).ToList();
+    }
+
     /// <summary>Kategori → ürün drill. Satış/Ciro = SEÇİLİ DÖNEM + mağaza (mekanId=0 → 3 mağaza toplam).
     /// KAYNAK: EncoreMerkez POS (kategori kartı/katSql ile AYNI → kart=drill tutarlı). Ciro = KDV DAHİL net
     /// (IIF DocType=3 iade negatif). Bakiye = güncel stok (irsHrk tüm geçmiş ehAdetN, mağaza bazlı).

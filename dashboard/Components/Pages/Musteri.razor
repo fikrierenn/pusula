@@ -62,24 +62,61 @@ else
         </div>
     }
 
-    <Modal @bind-Open="_modalOpen" Title="@(_selSeg + " — Müşteri Listesi (ilk 100, harcamaya göre)")">
-        @if (_selKanal == "yk")
+    <Modal @bind-Open="_modalOpen" Title="@_modalBaslik">
+        @if (_lvl > 1)
         {
-            <label class="text-base-content/50 text-xs mb-2 block">
-                <input type="checkbox" @bind="_icKart" @bind:after="ReloadCustomersAsync" /> İç/mağaza kartlarını dahil et (599/699, Mağaza, Kumbara)
-            </label>
+            <button class="btn btn-xs btn-ghost gap-1 mb-2" @onclick="GeriDrill"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>geri</button>
         }
         @if (_drillLoading)
         {
             <p class="text-base-content/50">Yükleniyor…</p>
         }
-        else
+        else if (_lvl == 1)
         {
+            @if (_selKanal == "yk")
+            {
+                <label class="text-base-content/50 text-xs mb-2 block">
+                    <input type="checkbox" @bind="_icKart" @bind:after="ReloadCustomersAsync" /> İç/mağaza kartlarını dahil et (599/699, Mağaza, Kumbara)
+                </label>
+            }
             <AppDataTable TItem="CustomerRow" Items="_drill"
                           Primary="@(c => c.Ad)" Sub="@(c => c.Tel)"
                           MetricMain="@(c => Tl(c.Mon))" MetricSub="@(c => $"{Num(c.Frq)} alış")"
                           Badge="@(c => ($"{c.Rec}g", "bg-base-200 text-base-content/50"))"
-                          Details="@(_selKanal == "yk" ? IcKartDetay : null)" />
+                          Details="MusteriDetay" />
+        }
+        else if (_lvl == 2)
+        {
+            <div class="text-base-content/50 text-xs mb-2">@(_selKanal == "yk" ? "fiş" : "sipariş") geçmişi (365g, top 100) · tıkla → içerik</div>
+            @if (_fisler.Count == 0) { <p class="text-base-content/50 text-sm">Kayıt yok.</p> }
+            @foreach (var f in _fisler)
+            {
+                <div class="flex items-center gap-2 py-2.5 border-b border-base-200 last:border-b-0 cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5" @onclick="() => OpenIcerik(f)">
+                    <div class="min-w-0 flex-1"><div class="text-[13px] font-semibold text-base-content/85">@f.Tarih</div><div class="text-[11px] text-base-content/50">#@f.Ref · @f.Kalem kalem</div></div>
+                    <div class="text-[13px] font-bold tabular-nums whitespace-nowrap">@Tl(f.Tutar)</div>
+                    <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/40 shrink-0"></i>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="text-base-content/50 text-xs mb-2">birim × adet = net (KDV-hariç, indirim sonrası)</div>
+            <div class="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1 text-[12px] tabular-nums">
+                <div class="text-[10px] font-bold uppercase text-base-content/40">Ürün</div>
+                <div class="text-[10px] font-bold uppercase text-base-content/40 text-right">Adet</div>
+                <div class="text-[10px] font-bold uppercase text-base-content/40 text-right">Birim</div>
+                <div class="text-[10px] font-bold uppercase text-base-content/40 text-right">Net</div>
+                @foreach (var u in _fisIcerik)
+                {
+                    <div class="font-semibold text-base-content/85 truncate">@u.Ad</div>
+                    <div class="text-right">@u.Adet.ToString("0.##")</div>
+                    <div class="text-right text-base-content/60">@Tl(u.Birim)</div>
+                    <div class="text-right font-bold">@Tl(u.Net)</div>
+                }
+            </div>
+            <div class="flex items-center justify-between border-t border-base-300 mt-2 pt-2 text-[13px] font-bold">
+                <span>Dip Toplam (KDV-hariç)</span><span class="tabular-nums">@Tl(_fisIcerik.Sum(u => u.Net))</span>
+            </div>
         }
     </Modal>
 }
@@ -99,11 +136,30 @@ else
     private IReadOnlyList<CustomerRow> _drill = [];
     private IReadOnlyList<IcKart> _icKartlar = [];
 
-    // YK drill satır-genişlet → iç kart işaretle (RFM + müşteri analizlerinden çıkar). plan-16 ek.
-    private RenderFragment<CustomerRow> IcKartDetay => c => @<div class="pt-2">
-        <button class="btn btn-xs btn-error btn-outline gap-1" @onclick="() => IcKartIsaretle(c)">
-            <i data-lucide="store" class="w-3 h-3"></i>İç/mağaza kartı — RFM'den çıkar
+    // Drill seviyesi: 1=müşteri · 2=fiş listesi · 3=fiş içeriği (plan-17)
+    private int _lvl = 1;
+    private CustomerRow? _selMusteri;
+    private FisRow? _selFis;
+    private IReadOnlyList<FisRow> _fisler = [];
+    private IReadOnlyList<FisIcerikRow> _fisIcerik = [];
+    private string _modalBaslik => _lvl switch
+    {
+        2 => $"{_selMusteri?.Ad} — {(_selKanal == "yk" ? "Fişler" : "Siparişler")}",
+        3 => $"{(_selKanal == "yk" ? "Fiş" : "Sipariş")} #{_selFis?.Ref}",
+        _ => $"{_selSeg} — Müşteri Listesi (ilk 100, harcamaya göre)",
+    };
+
+    // Müşteri satır-genişlet → fişleri gör + iç kart işaretle (plan-16/17).
+    private RenderFragment<CustomerRow> MusteriDetay => c => @<div class="pt-2 flex flex-wrap gap-2">
+        <button class="btn btn-xs btn-primary gap-1" @onclick="() => OpenFisler(c)">
+            <i data-lucide="receipt" class="w-3 h-3"></i>@(_selKanal == "yk" ? "Fişlerini gör" : "Siparişlerini gör")
         </button>
+        @if (_selKanal == "yk")
+        {
+            <button class="btn btn-xs btn-error btn-outline gap-1" @onclick="() => IcKartIsaretle(c)">
+                <i data-lucide="store" class="w-3 h-3"></i>İç/mağaza kartı — RFM'den çıkar
+            </button>
+        }
     </div>;
 
     protected override async Task OnInitializedAsync()
@@ -136,10 +192,30 @@ else
     {
         // Yalnız gerçek RFM segmentleri drill açar (6-Diğer vb. atlanır)
         if (seg.StartsWith("6")) return;
-        _selKanal = kanal; _selSeg = seg; _icKart = false;
+        _selKanal = kanal; _selSeg = seg; _icKart = false; _lvl = 1;
         _modalOpen = true;
         await ReloadCustomersAsync();
     }
+
+    // Drill katman 3: müşteri → fiş/sipariş listesi (plan-17)
+    private async Task OpenFisler(CustomerRow c)
+    {
+        _selMusteri = c; _lvl = 2; _drillLoading = true; _fisler = []; StateHasChanged();
+        try { _fisler = await Ref.GetFislerAsync(_selKanal, c.Id); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _drillLoading = false; StateHasChanged(); }
+    }
+
+    // Drill katman 4: fiş → içerik (plan-17)
+    private async Task OpenIcerik(FisRow f)
+    {
+        _selFis = f; _lvl = 3; _drillLoading = true; _fisIcerik = []; StateHasChanged();
+        try { _fisIcerik = long.TryParse(f.Ref, out var rid) ? await Ref.GetFisIcerikAsync(_selKanal, rid) : []; }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _drillLoading = false; StateHasChanged(); }
+    }
+
+    private void GeriDrill() { if (_lvl > 1) _lvl--; }
 
     private async Task ReloadCustomersAsync()
     {
