@@ -21,16 +21,21 @@ public sealed class Queries(Db db)
         var g2iso = endExcl.ToString("yyyyMMdd");
 
         // Mağaza (EncoreMerkez Sales → posMagaza; geri dönüşüm fişi BarcodeNo='1001' hariç)
+        // Net = KDV-HARİÇ (plan-16): per-satır SalesProducts.TotalPrice−VatTotal (IsValid=1). Fiş başlık-seviye.
+        // Eski GrossTotal−DiscountTotal (KDV-dahil) KULLANILMIYOR → tahmin/irsHrk ile aynı ölçek.
         const string storeSql = """
             SELECT MG.mekanID AS MekanId,
-                   SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS Net,
+                   SUM(IIF(s.DocumentsTypeId=3,-1,1)*ISNULL(sn.net,0)) AS Net,
                    SUM(IIF(s.DocumentsTypeId=3,-1,1)) AS Fis,
-                   SUM(IIF(s.DocumentsTypeId=3,s.GrossTotal,0)) AS Iade
+                   SUM(IIF(s.DocumentsTypeId=3,ISNULL(sn.net,0),0)) AS Iade
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
             JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
             LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
+            CROSS APPLY (SELECT SUM(sp.TotalPrice - sp.VatTotal) AS net
+                         FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
+                         WHERE sp.SalesId=s.Id AND sp.IsValid=1) sn
             WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@start AND s.Date<@end
             GROUP BY MG.mekanID;
             """;
@@ -46,19 +51,24 @@ public sealed class Queries(Db db)
             new { start = pStart.ToDateTime(TimeOnly.MinValue), end = pEnd.ToDateTime(TimeOnly.MinValue) })).ToList();
         var prevNetMap = prevStores.ToDictionary(s => s.MekanId, s => s.Net);
 
-        // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — JOKER, ISO tarih
+        // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — DİREKT JOKER (B-74).
+        // Ciro = KDV+KARGO-HARİÇ (plan-16): satır SELLINGPRICEWITHOUTVAT (kargo order-başlığı CARGOPRICE'ta, satırda yok).
+        // Eski TOTALPRICE (KDV+kargo dahil) KULLANILMIYOR. Direkt bağlantıda detay CROSS APPLY hızlı (linked değil).
         const string eticSql = """
             SELECT SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN o.TOTALPRICE ELSE 0 END) AS Ciro
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
+            FROM dbo.J_ORDERS o
+            CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net
+                         FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso;
             """;
-        var etic = await conn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql, new { giso, g2iso });
+        await using var jconn = await db.OpenJokerAsync();
+        var etic = await jconn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql, new { giso, g2iso });
         var eSip = etic.Sip ?? 0;
         var eCiro = etic.Ciro ?? 0m;
 
         // Geçen dönem e-ticaret net (hero online WoW)
-        var prevEtic = await conn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql,
+        var prevEtic = await jconn.QuerySingleOrDefaultAsync<(int? Sip, decimal? Ciro)>(eticSql,
             new { giso = pStart.ToString("yyyyMMdd"), g2iso = pEnd.ToString("yyyyMMdd") });
         var prevECiro = prevEtic.Ciro ?? 0m;
         var prevESip = prevEtic.Sip ?? 0;

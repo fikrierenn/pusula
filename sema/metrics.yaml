@@ -155,7 +155,15 @@ metrics:
     kdv_bazi: "EncoreMerkez SalesProducts.TotalPrice + Sales.GrossTotal = KDV DAHİL. SalesProducts.VatTotal = KDV. KDV hariç = TotalPrice−VatTotal. irsHrk ehTutarN = KDV HARİÇ. Kitap %0, oyuncak/kırtasiye %20 → kategori bazında fark; blended mağaza ~%5-6."
     iki_sebep: "(1) KDV (EncoreMerkez dahil, irsHrk hariç) — ~%5. (2) İADE: EncoreMerkez katSql iade edilen kalemi (SalesProducts.ReturnAmount>0) SATIŞ sayıyor; irsHrk ehTip 100/101 ile netliyor — ~%0,9."
     kanit: "14.06 FSM 13.06: per-ürün EncoreMerkez KDV-hariç(TP−VatTotal) = irsHrk net, ADET EŞİTSE kuruşu kuruşuna (52529:107,5=107,5 · 3570:433,62=433,62). Residual = SADECE adet farkı (iade). Fiyat/eksik-ürün farkı YOK. Mağaza-gün: EncoreMerkez KDV-dahil 559.012 − KDV 38.155 = KDV-hariç 520.857 ≈ irsHrk 516.302 (%0,87 kalan = iade ehTip 101 ~4.893)."
-    karar: "Dashboard ciro KDV DAHİL (perakende, kasanın aldığı). Ana mağaza ciro (Sales fiş-net GrossTotal−DiscountTotal, DocType IIF 3 negatif) DOĞRU — DOKUNMA. irsHrk envanter/devir için (KDV hariç stok bazlı, orada doğru)."
-    todo: "katSql+skatSql (Queries.cs) + MagazaQueries kategori + drill GetUrunlerAsync: EncoreMerkez KDV-dahil KALSIN ama İADE-NETLE (ReturnAmount>0 satırı çıkar/negatifle). Drill irsHrk→EncoreMerkez KDV-dahil → kart=drill tutarlı. irsHrk'ye GEÇME (KDV hariç olur, ana ciroyla tutarsız)."
+    karar: "⚠️ SÜPERSEDED 16.06 → bkz. tum_ciro_kdv_kargo_haric. ESKİ KARAR (14.06): Dashboard ciro KDV DAHİL (kasanın aldığı), DOKUNMA. Kullanıcı 16.06 bu kararı iptal etti: HER ŞEY KDV-HARİÇ + KARGO-HARİÇ olacak."
     evidence: "14.06 — FULL OUTER JOIN stkID, EncoreMerkez SalesProducts(IsValid=1) vs irsHrk(ehTip 4/100), KDV-hariç + adet kıyas; ehTutarN×1,20=TP doğrulandı"
-    rapor: "Queries.cs katSql/skatSql · MagazaQueries.cs · RefQueries.GetUrunlerAsync (DÜZELTME BEKLİYOR)"
+    rapor: "Queries.cs katSql/skatSql · MagazaQueries.cs · RefQueries.GetUrunlerAsync"
+
+  tum_ciro_kdv_kargo_haric:   # 16.06 — KULLANICI DİREKTİFİ: tüm dashboard/rapor ciro KDV-hariç + kargo-hariç (plan-16)
+    karar: "TÜM ciro/tutar KDV-HARİÇ + KARGO-HARİÇ. 14.06 'ana ciro KDV-dahil DOKUNMA' kararı İPTAL. CFO net ciro istiyor (kasanın aldığı perakende-brüt değil)."
+    encore_haric: "EncoreMerkez KDV-hariç = SalesProducts.TotalPrice − SalesProducts.VatTotal (per-satır, IsValid=1). Sales.GrossTotal−DiscountTotal (başlık, KDV-dahil) KULLANMA → SalesProducts grubuna geç."
+    etic_haric: "E-ticaret KDV+kargo-hariç = SUM(J_ORDER_DETAILS.QUANTITY × SELLINGPRICEWITHOUTVAT). 16.06 KESİN: J_ORDER_DETAILS'te temiz KDV alanları var — VAT(oran), VATPRICE(KDV tutarı), SELLINGPRICEWITHOUTVAT(KDV-hariç birim), SELLINGPRICE(KDV-dahil birim). J_ORDERS.TOTALPRICE = SUM(QTY×SELLINGPRICE) + CARGOPRICE + SERVICEPRICE (birebir doğrulandı). TOTALPRICE/SELLINGPRICE KULLANMA (KDV+kargo dahil) → SELLINGPRICEWITHOUTVAT."
+    kanit: "16.06 canlı: ORDERID 110015826 TOTALPRICE 2086,9 = satir_net 1997 + CARGOPRICE 89,9. J_ORDER_DETAILS örnek: VAT=0 kitap, SELLINGPRICEWITHOUTVAT=247=SELLINGPRICE (kitap %0)."
+    irshrk_zaten: "irsHrk.ehTutarN zaten KDV-hariç (= ehTutar−ehindirim) → irsHrk tabanlı sorgular (tahmin motoru, envanter, devir, marka/kategori-stkID) DEĞİŞMEZ."
+    kapsam: "28 sorgu değişecek (Explore envanteri 16.06): 22 EncoreMerkez + 6 JOKER + 3 SELLINGPRICE. Headline = Queries.cs:24 storeSql. Her sorgu MCP eski/yeni mutabakatlı (B-81 disiplini)."
+    rapor: "plan-16 (KDV-kargo-hariç birleştirme). Queries.cs/MagazaQueries.cs/RefQueries.cs/EticQueries.cs/SadakatQueries.cs"
