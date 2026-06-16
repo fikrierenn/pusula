@@ -32,6 +32,26 @@ Yeni şema gerçeği (köprü / tablo / kod / metrik) **öğrenilince**:
 - `0.5-0.8` — gözlemlendi ama tam teyit yok.
 - `0.3-0.5` — hipotez / teyit bekliyor.
 
+## Yaşlanma / Decay (plan-12 WS-1 — Hermes curator uyarlaması)
+
+Doğrulanmış gerçek zamanla bayatlar (şema değişir, kolon kalkar). Fact-Force Gate'in eksik yarısı: gerçek **yaşlanır**, süresi dolunca **yeniden-doğrulama** ister. Bu, sessiz-yanlış-rakam riskini azaltır (stkKod=barkod / depo key-mismatch vakalarının tekrar kaynağı = bayatlamış varsayım).
+
+### Opsiyonel alanlar (geriye-uyumlu — okumayan kod etkilenmez)
+- `last_verified: YYYY-MM-DD` — bu kaydın canlı sorguyla EN SON doğrulandığı tarih (`evidence` tarihinden farklı olabilir; evidence = ilk keşif, last_verified = son teyit).
+- `ttl_days: <int>` — yeniden-doğrulama aralığı (gün). Yoksa confidence'tan türetilir (aşağı).
+
+### Decay kuralı
+- **`confidence: 1.0` MUAF** — kalıcı PK/FK/ehTip; yaşlanmaz, ttl gerekmez (pinned eşdeğeri).
+- Confidence <1.0 kayıtlarda varsayılan ttl:
+  - `0.9-0.99` → 180 gün
+  - `0.5-0.8` → 90 gün
+  - `0.3-0.5` → 30 gün (hipotez, erken teyit)
+- **Süre dolumu** = `last_verified + ttl_days < bugün` → kayıt **stale** (bayrak; OTOMATİK aksiyon DEĞİL — silinmez/değişmez, sadece "yeniden doğrula" işareti).
+- **Yeniden doğrulanınca** `last_verified` güncellenir (confidence aynı/yükselir). Çürürse `sema-ogren` çelişki kuralı (sil/düşür).
+
+### Curator-check (inactivity-triggered, cron YOK)
+`session-handoff` skill'i çalışırken son curator-check üstünden ≥7 gün geçtiyse hafif tarama: stale kayıt + çakışan/dar kayıt listesi. Derin konsolidasyon → `consolidate-sema` skill'i (dry-run, mutasyonsuz rapor + onay). Detay: `.claude/rules/semantic-layer.md`, `.claude/skills/consolidate-sema/SKILL.md`.
+
 ## Kullanım (gelecek)
 - Rapor scriptleri köprü/kod/metrik tanımını buradan okur (hardcode yerine).
 - MCP sorgu yazarken: doğru join `bridges.yaml`, doğru filtre `codes.yaml`/`metrics.yaml`.

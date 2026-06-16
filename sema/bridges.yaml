@@ -257,3 +257,5 @@ bridges:
       SalesProducts JOIN SalesProductCampaigns'te SUM(sp.TotalPrice) join fan-out'unda N× SAYILIR → kampanya brüt/net ŞİŞER
       (~%3.8 agg, çok-adetli satırda 52×). DOĞRU: indirim spc'den (SUM -DistributedAmount), brüt/net satır-başı 1× ayrı/DISTINCT CTE'den.
       İndirim ve yük% zaten doğruydu (spc'den); fan-out SADECE brüt+net'i şişiriyordu. Fix: commit 609f3dd MagazaQueries.cs."
+    last_verified: 2026-06-16     # plan-12 WS-1 decay; confidence 0.97 → ttl 180g
+    ttl_days: 180

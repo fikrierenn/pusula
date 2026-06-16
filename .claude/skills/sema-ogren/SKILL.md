@@ -29,10 +29,13 @@ BKM semantik katmanı `sema/` altında YAML olarak yaşar (canonical, makine-oku
      confidence: 0.3-1.0            # ölçek: sema/README.md
      note: "<kısa açıklama / uyarı>"
      evidence: "<tarih> — <nasıl doğrulandı / hangi sorgu>"
+     last_verified: <YYYY-MM-DD>    # ZORUNLU — son canlı teyit tarihi (decay için; sema/README.md)
+     ttl_days: <int>                # opsiyonel — yoksa confidence'tan türetilir; confidence:1.0 MUAF
      status: "teyit bekliyor"       # opsiyonel, düşük confidence ise
    ```
+   **`last_verified` zorunlu** (confidence:1.0 hariç — kalıcı, yaşlanmaz). Yaşlanma kuralı: `sema/README.md` § Decay.
 
-3. **Duplikasyon kontrol:** Aynı `id`/bağ var mı? Varsa **güncelle** (confidence/evidence), yeni satır ekleme.
+3. **Duplikasyon kontrol:** Aynı `id`/bağ var mı? Varsa **güncelle** (confidence/evidence + `last_verified` bugüne çek), yeni satır ekleme.
 
 4. **Tarih güncelle:** İlgili YAML'ın `updated:` alanı.
 

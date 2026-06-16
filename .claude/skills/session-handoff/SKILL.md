@@ -119,6 +119,18 @@ Hacim eşiği: 3+ saat veya 20+ dosya değişti → DETAYLI yaz.
 - 400+ satır → bildirim ver, eski kayıtlar arşive.
 - Aynı konu iki yerde olmasın.
 
+### Adim 4.6 — Curator-check (plan-12 WS-1 — inactivity-triggered, cron YOK)
+
+Son curator-check üstünden **≥7 gün** geçtiyse hafif tarama (yoksa atla):
+
+1. **Stale sema kaydı:** `last_verified + ttl_days < bugün` olan kayıtları listele (confidence:1.0 MUAF). Yaşlanma kuralı: `sema/README.md` § Decay.
+2. **Stale TODO:** ≥30 gün dokunulmamış açık `[ ]` maddeleri işaretle.
+3. **Çıktı:** kısa "şu kayıtlar/maddeler yeniden-doğrulama veya arşiv bekliyor" özeti. **OTOMATİK aksiyon YOK** — silme/archive yalnızca kullanıcı onayı.
+4. Derin konsolidasyon (dar/çakışan kayıt birleştirme) gerekiyorsa → `consolidate-sema` skill'i (dry-run rapor). 
+5. Son curator-check tarihini journal'a not düş (`curator-check: YYYY-MM-DD`).
+
+> Tarih kaynağı: en son journal'da `curator-check:` satırı; yoksa ilk çalıştırma sayılır.
+
 ### Adim 5 — Journal + TODO OTOMATIK commit
 
 ```bash
