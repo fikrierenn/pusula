@@ -5,12 +5,12 @@
 --        + MTD hedef gerçekleşme
 -- Veritabanı: EncoreMerkez (+ DerinSISBkm.posMagaza, BKMDATA.Hedef)
 -- Kanonik pattern: scripts/generate_brief.py (SQL_PERIOD / SQL_DAILY / SQL_HEDEF)
---   Net ciro = SUM(IIF(DocumentsTypeId=3,-1,1)*(GrossTotal-DiscountTotal))
+--   Net ciro = SUM(IIF(DocumentsTypeId=3,-1,1)*(GrossTotal-DiscountTotal-VatTotal))  -- KDV-hariç (plan-16)
 --   Mağaza   = Pos -> Stores -> posMagaza.mekanID (1=FSM, 4477=Özlüce, 4478=İst.Yolu)
 --   Geri dönüşüm fişi (SalesProducts.BarcodeNo='1001') anti-join ile hariç
 -- KPI sözlük (deep-research 2026-06-08, sorgular/gm-rapor/KATALOG.md § Genişletme):
 --   ATV (sepet ort) = Net ciro / Fiş   ·   UPT = Net adet / Fiş   ·   WoW/YoY erken uyarı
--- DOĞRULAMA: @Gun=07.06.2026 → TOPLAM 1.933.437 TL / 3060 fiş = haftalık brief ile birebir.
+-- DOĞRULAMA: @Gun=07.06.2026 → TOPLAM 1.933.437 TL / 3060 fiş (⚠️ KDV-DAHİL dönem; plan-16 sonrası KDV-hariç ~1,79M — yeniden doğrula).
 --            UPT: FSM 3,38 · Özlüce 4,05 · İst.Yolu 4,33 (FSM düşük sepet = adet sorunu).
 -- YoY KISIT: EncoreMerkez POS verisi 11.07.2025'te başlıyor → YoY kolonu ~11.07.2026'ya
 --            kadar boş (—) gösterir. Tarihsel YoY için DerinSIS irsHrk kaynağı gerekir (ayrı sorgu).
@@ -29,7 +29,7 @@ DECLARE @AyBas    date = DATEFROMPARTS(YEAR(@Gun), MONTH(@Gun), 1);  -- MTD baş
 
 ;WITH Gun AS (   -- dün, mağaza bazlı (Net ciro + Fiş + İade + Net adet→UPT)
     SELECT MG.mekanID,
-        SUM(IIF(s.DocumentsTypeId = 3, -1, 1) * (s.GrossTotal - s.DiscountTotal)) AS NetCiro,
+        SUM(IIF(s.DocumentsTypeId = 3, -1, 1) * (s.GrossTotal - s.DiscountTotal - s.VatTotal)) AS NetCiro,
         SUM(IIF(s.DocumentsTypeId = 3, -1, 1)) AS Fis,
         SUM(IIF(s.DocumentsTypeId = 3, 1, 0)) AS IadeFis,
         SUM(IIF(s.DocumentsTypeId = 3, -1, 1) * adet.Cnt) AS NetAdet

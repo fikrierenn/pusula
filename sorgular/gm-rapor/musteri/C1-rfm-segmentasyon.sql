@@ -12,7 +12,7 @@
 --   Yazarkasa: Şampiyon 4.082 (12.6K ₺, 19,9 fiş!) · Sadık 21.347 · Kayıp 20.010 (850 ₺).
 -- KARAKTER: Yazarkasa yüksek frekans (haftada bir), e-ticaret yüksek sepet.
 -- ⚠️ Yazarkasa: sadece DocumentsTypeId=1 (perakende fiş) — fatura(2)/sınav(8)/personel kurumsal
---   tek-seferlik dev alımları HARİÇ (Kayıp segmentini şişiriyordu). E-ticaret: brüt TOTALPRICE.
+--   tek-seferlik dev alımları HARİÇ (Kayıp segmentini şişiriyordu). Ciro KDV-hariç (plan-16): yazarkasa GrossTotal-Disc-Vat, e-tic SELLINGPRICEWITHOUTVAT.
 -- NOT: MCP-safe (CTE'siz). İki blok ayrı çalıştırılır. ISO/DMY dikkat.
 -- =====================================================================
 
@@ -25,7 +25,8 @@ SELECT N'E-TİCARET' AS Kanal, seg.Segment,
 FROM (
     SELECT oc.CUSTOMERREF,
         DATEDIFF(DAY, MAX(o.ORDERDATE), CONVERT(date, CONVERT(varchar(8),GETDATE(),112))) AS RecencyGun,
-        COUNT(*) AS Frequency, SUM(o.TOTALPRICE) AS Monetary
+        COUNT(*) AS Frequency,
+        SUM(ISNULL((SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) FROM ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID),0)) AS Monetary  -- KDV+kargo-hariç (plan-16; TOTALPRICE brüt DEĞİL)
     FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
     JOIN ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF = o.CLIENTREF
     WHERE o.ORDERDATE >= CONVERT(varchar(8), DATEADD(DAY,-365,GETDATE()), 112) AND oc.CUSTOMERREF > 0
@@ -53,7 +54,7 @@ SELECT N'YAZARKASA' AS Kanal, seg.Segment,
 FROM (
     SELECT s.CustomersId,
         DATEDIFF(DAY, MAX(s.Date), @Bugun) AS RecencyGun,
-        COUNT(*) AS Frequency, SUM(s.GrossTotal - s.DiscountTotal) AS Monetary
+        COUNT(*) AS Frequency, SUM(s.GrossTotal - s.DiscountTotal - s.VatTotal) AS Monetary   -- KDV-hariç (plan-16)
     FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
     WHERE s.DocumentsTypeId = 1 AND s.CustomersId > 0
       AND s.Date >= @Bas AND s.Date < DATEADD(DAY,1,@Bugun)

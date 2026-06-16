@@ -166,26 +166,26 @@ public sealed class Queries(Db db)
             .Select(k => new KasiyerRow(k.Magaza, k.Ad, k.Fis, k.Net, k.Fis > 0 ? (int)Math.Round(k.Net / k.Fis) : 0, k.Iade))
             .OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
 
-        // E-ticaret kargo firma dağılımı (net sipariş, JOKER J_CARGO)
+        // E-ticaret kargo firma dağılımı (net sipariş, JOKER J_CARGO) — DİREKT JOKER (linked server kaldırıldı, M-12)
         const string kargoSql = """
             SELECT ISNULL(c.CNAME,'(bilinmiyor)') AS Ad, COUNT(*) AS Adet
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            LEFT JOIN ODAKJOKER.JOKER.dbo.J_CARGO c ON c.ID=o.CARGOREF
+            FROM dbo.J_ORDERS o
+            LEFT JOIN dbo.J_CARGO c ON c.ID=o.CARGOREF
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
             GROUP BY ISNULL(c.CNAME,'(bilinmiyor)');
             """;
-        var kargo = (await conn.QueryAsync<NameCount>(kargoSql, new { giso, g2iso }))
+        var kargo = (await jconn.QueryAsync<NameCount>(kargoSql, new { giso, g2iso }))
             .OrderByDescending(k => k.Adet).ToList();
 
-        // E-ticaret il dağılımı (teslimat DCITY, top 12)
+        // E-ticaret il dağılımı (teslimat DCITY, top 12) — DİREKT JOKER (M-12)
         const string ilSql = """
             SELECT ISNULL(d.DCITY,'(bilinmiyor)') AS Ad, COUNT(*) AS Adet
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            LEFT JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS d ON d.LOGICALREF=o.DELIVERYREF
+            FROM dbo.J_ORDERS o
+            LEFT JOIN dbo.J_ORDER_DELIVERY_ADDRESS d ON d.LOGICALREF=o.DELIVERYREF
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
             GROUP BY ISNULL(d.DCITY,'(bilinmiyor)');
             """;
-        var il = (await conn.QueryAsync<NameCount>(ilSql, new { giso, g2iso }))
+        var il = (await jconn.QueryAsync<NameCount>(ilSql, new { giso, g2iso }))
             .OrderByDescending(x => x.Adet).Take(12).ToList();
 
         var fiz = stores.Sum(s => s.Net);
@@ -346,7 +346,7 @@ public sealed class Queries(Db db)
         await using var conn = await db.OpenAsync();
         const string sql = """
             SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, CAST(ISNULL(u.Name,'?') AS nvarchar(30)) AS Ad, COUNT(*) AS Fis,
-                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-ABS(s.DiscountTotal)-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal END) AS decimal(18,0)) AS Net
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-ABS(s.DiscountTotal)-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
             LEFT JOIN EncoreMerkez.dbo.Users u ON u.Id=s.UsersId

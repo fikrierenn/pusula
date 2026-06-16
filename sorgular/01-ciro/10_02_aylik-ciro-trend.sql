@@ -22,7 +22,7 @@ SELECT
     SUM(CASE WHEN s.DocumentsTypeId = 3 THEN 1 ELSE 0 END) AS IadeFisSayisi,
     CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.GrossTotal ELSE s.GrossTotal END) AS decimal(18,2)) AS BrutCiro,
     CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -ABS(s.DiscountTotal) ELSE s.DiscountTotal END) AS decimal(18,2)) AS ToplamIndirim,
-    CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.TotalAmount ELSE s.TotalAmount END) AS decimal(18,2)) AS NetCiro,
+    CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS decimal(18,2)) AS NetCiro,  -- KDV-hariç (TotalAmount ciro DEĞİL — adet)
     CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.VatTotal ELSE s.VatTotal END) AS decimal(18,2)) AS ToplamKDV,
     CASE WHEN SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.GrossTotal ELSE s.GrossTotal END) > 0
          THEN CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -ABS(s.DiscountTotal) ELSE s.DiscountTotal END) * 100.0
