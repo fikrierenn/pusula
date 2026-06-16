@@ -53,6 +53,19 @@ if [ -d docs/journal/bkm ]; then
     fi
 fi
 
+# Curator hafif yuzey (her oturum): sema teyit-bekliyor + superseded duran kayit + son rapor
+if [ -d sema ]; then
+    teyit=$(grep -rl "status:.*teyit bekliyor\|status: teyit" sema/*.yaml 2>/dev/null | wc -l | tr -d ' ')
+    sup=$(grep -rc "SÜPERSEDED\|süperseded" sema/*.yaml 2>/dev/null | grep -v ':0' | wc -l | tr -d ' ')
+    if [ "$teyit" != "0" ] || [ "$sup" != "0" ]; then
+        echo "### Curator yuzey (sema)"
+        echo "- teyit-bekliyor kayit iceren dosya: $teyit · superseded-duran iceren dosya: $sup"
+        lastrep=$(ls -t docs/curator/REPORT-*.md 2>/dev/null | head -1)
+        [ -n "$lastrep" ] && echo "- son curator raporu: $lastrep"
+        echo ""
+    fi
+fi
+
 # Arsivlenmemis kesif SQL uyarisi (semantic-layer.md ikiz yukumluluk): bugun MCP kesif yapildiysa sorgular/ kontrol
 echo "### Aktif disiplinler (mekanik + ben-uygular)"
 echo "- Commit: 15-dosya esigi (yukarida) · pre-commit antipattern hook (guvenlik blok)"

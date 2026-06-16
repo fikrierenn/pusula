@@ -122,13 +122,14 @@ Hacim eşiği: 3+ saat veya 20+ dosya değişti → DETAYLI yaz.
 
 ### Adim 4.6 — Curator-check (plan-12 WS-1 — inactivity-triggered, cron YOK)
 
-Son curator-check üstünden **≥7 gün** geçtiyse hafif tarama (yoksa atla):
+Son curator-check üstünden **≥7 gün** geçtiyse **KOŞULSUZ `consolidate-sema` dry-run çalıştır** (handoff'un parçası — atlanmaz):
 
-1. **Stale sema kaydı:** `last_verified + ttl_days < bugün` olan kayıtları listele (confidence:1.0 MUAF). Yaşlanma kuralı: `sema/README.md` § Decay.
-2. **Stale TODO:** ≥30 gün dokunulmamış açık `[ ]` maddeleri işaretle.
-3. **Çıktı:** kısa "şu kayıtlar/maddeler yeniden-doğrulama veya arşiv bekliyor" özeti. **OTOMATİK aksiyon YOK** — silme/archive yalnızca kullanıcı onayı.
-4. Derin konsolidasyon (dar/çakışan kayıt birleştirme) gerekiyorsa → `consolidate-sema` skill'i (dry-run rapor). 
-5. Son curator-check tarihini journal'a not düş (`curator-check: YYYY-MM-DD`).
+1. `consolidate-sema` skill'ini dry-run modda çağır → `docs/curator/REPORT-YYYY-MM-DD.md` üretir (stale sema + dar/çakışan + eski TODO).
+2. Raporun özetini + "önerilen aksiyonlar" listesini kullanıcıya göster.
+3. **OTOMATİK aksiyon YOK** — archive/birleştirme/[x] yalnızca kullanıcı onayı (curator hard-rule: stale=bayrak). Onaylarsa consolidate-sema Mod-2 uygular.
+4. Son curator-check tarihini journal'a not düş (`> curator-check: YYYY-MM-DD`).
+
+**<7 gün ise:** hafif yüzey — `status: teyit bekliyor` + `SÜPERSEDED` duran sema kaydı + ≥30g açık TODO sayısını 1 satır göster (tam dry-run gerekmez).
 
 > Tarih kaynağı: en son journal'da `curator-check:` satırı; yoksa ilk çalıştırma sayılır.
 
