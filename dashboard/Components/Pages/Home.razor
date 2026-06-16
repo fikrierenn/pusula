@@ -74,7 +74,7 @@ else if (_data is not null)
         @foreach (var s in _data.Stores)
         {
             var (bg, fg) = palet[paletIdx++ % palet.Length];
-            @StoreRow(s.Ad, Tl(s.Net), $"{Num(s.Fis)} fiş · sepet {Num(s.Atv)} ₺", "store", fg, bg, s.Wow, () => Nav.NavigateTo($"magaza/{s.MekanId}"))
+            @StoreRow(s.Ad, Tl(s.Net), $"{Num(s.Fis)} fiş · sepet {Num(s.Atv)} ₺", "store", fg, bg, s.Wow, $"magaza/{s.MekanId}")
         }
     </div>
     <div class="text-[11px] text-base-content/45 mb-5 px-1 flex items-center gap-1">
@@ -124,16 +124,15 @@ else if (_data is not null)
             </div>
         </div>
 
-        <!-- B-73 Hedef Tahmin → ayrı sayfa (/tahmin) -->
-        <div class="rounded-2xl px-4 py-3.5 mb-5 bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md"
-             @onclick='() => Nav.NavigateTo("tahmin")'>
+        <!-- B-73 Hedef Tahmin → ayrı sayfa (/tahmin). <a href> — SignalR'sız çalışır (B-48). -->
+        <a href="tahmin" class="rounded-2xl px-4 py-3.5 mb-5 bg-gradient-to-br from-primary to-primary/80 text-white no-underline shadow-lg flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md">
             <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[22px] h-[22px]"></i></div>
             <div class="min-w-0 flex-1">
                 <div class="text-[13px] font-bold">Hedef Tahmin</div>
                 <div class="text-xs opacity-85">YoY taban × MoM ivme — bu ay + mağaza bazlı projeksiyon</div>
             </div>
             <i data-lucide="arrow-right" class="w-5 h-5 shrink-0"></i>
-        </div>
+        </a>
     }
 
     <h2 class="text-lg font-bold tracking-tight mb-3">Analiz</h2>
@@ -505,7 +504,7 @@ else if (_data is not null)
                 <button class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 transition-colors" @onclick="() => _modalTot = true">📊 Detaylı analiz</button>
                 @if (dusen is not null)
                 {
-                    <button class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 transition-colors" @onclick="@(() => Nav.NavigateTo($"magaza/{dusen.MekanId}"))">🔍 @dusen.Ad incele</button>
+                    <a href="magaza/@dusen.MekanId" class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 no-underline text-current transition-colors">🔍 @dusen.Ad incele</a>
                 }
             </div>
         </div>
@@ -611,7 +610,8 @@ else if (_data is not null)
     </div>;
 
     // İkon-kart mağaza satırı (renkli KARE ikon + tutar + altında WoW trend rozeti).
-    private RenderFragment StoreRow(string ad, string tutar, string alt, string icon, string iconColor, string iconBg, decimal? wow, Action onClick) => @<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl flex flex-row items-center gap-3 px-4 py-3.5 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md" @onclick="onClick">
+    // Gerçek <a href> — SignalR/interaktivite olmadan da çalışır (B-48: mobil sayfa-nav SSR-güvenli).
+    private RenderFragment StoreRow(string ad, string tutar, string alt, string icon, string iconColor, string iconBg, decimal? wow, string href) => @<a href="@href" class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl flex flex-row items-center gap-3 px-4 py-3.5 cursor-pointer no-underline text-base-content transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md">
         <div class="@iconBg @iconColor w-12 h-12 rounded-2xl flex items-center justify-center shrink-0">
             <i data-lucide="@icon" class="w-[22px] h-[22px]"></i>
         </div>
@@ -628,5 +628,5 @@ else if (_data is not null)
             }
         </div>
         <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/30 shrink-0"></i>
-    </div>;
+    </a>;
 }
