@@ -1,0 +1,50 @@
+@* Yığılmış sütun grafiği (ApexCharts) — çok-kategori × dönem. Composition + toplam bir bakışta. *@
+@typeparam TItem where TItem : class
+
+<div class="relative" style="height:@(Height)px">
+    <ApexChart TItem="TItem" Options="_opts" Height="@Height">
+        @foreach (var g in Items.GroupBy(Series).OrderByDescending(g => g.Sum(x => YValue(x) ?? 0)))
+        {
+            <ApexPointSeries TItem="TItem" Items="g" Name="@g.Key" SeriesType="SeriesType.Bar"
+                             XValue="XValue" YValue="YValue" />
+        }
+    </ApexChart>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter, EditorRequired] public Func<TItem, string> Series { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, object> XValue { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, decimal?> YValue { get; set; } = default!;
+    [Parameter] public int Height { get; set; } = 300;
+
+    private ApexChartOptions<TItem> _opts = new();
+
+    private const string NumFmt = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}";
+
+    protected override void OnParametersSet()
+    {
+        _opts = new ApexChartOptions<TItem>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false }, Stacked = true, Zoom = new Zoom { Enabled = false } },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar { Horizontal = false, BorderRadius = 4, ColumnWidth = "62%" },
+            },
+            DataLabels = new DataLabels { Enabled = false },   // yığılmış: değer tooltip'te (etiket kalabalık yapar)
+            Grid = new Grid { Show = true, BorderColor = "#e2e8f0", StrokeDashArray = 4 },
+            Legend = new Legend { Show = true, Position = LegendPosition.Bottom, FontSize = "11px" },
+            Xaxis = new XAxis
+            {
+                AxisBorder = new AxisBorder { Show = false },
+                AxisTicks = new AxisTicks { Show = false },
+                Labels = new XAxisLabels { Style = new AxisLabelStyle { FontSize = "10px", Colors = "#94a3b8" } },
+            },
+            Yaxis = new List<YAxis>
+            {
+                new YAxis { Labels = new YAxisLabels { Formatter = NumFmt, Style = new AxisLabelStyle { FontSize = "10px", Colors = "#94a3b8" } } },
+            },
+            Tooltip = new Tooltip { Enabled = true, Y = new TooltipY { Formatter = NumFmt } },
+        };
+    }
+}

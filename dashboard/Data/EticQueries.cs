@@ -5,7 +5,9 @@ namespace GmDashboard.Data;
 
 /// <summary>
 /// E-ticaret (JOKER) lojistik performans sorguları — E-ticaret sayfası için.
-/// Tarih param = ISO YYYYMMDD (linked server ODAKJOKER). NET filtre: STATUS NOT IN (1001,1006,1007,3000,4000).
+/// Bağlantı: db.OpenJokerAsync() = 192.168.40.70 DIREKT (linked server ODAKJOKER yerine — B-74 perf).
+/// Tablolar dbo.J_* (4-part ODAKJOKER prefix YOK). Tarih param = ISO YYYYMMDD. NET filtre: STATUS NOT IN (1001,1006,1007,3000,4000).
+/// Kategori: J_ITEMS.DERINSIS_LOGOGRUP (= DerinSIS Kategori3 grain, linked join gerekmez).
 /// </summary>
 public sealed class EticQueries(Db db)
 {
@@ -39,7 +41,7 @@ public sealed class EticQueries(Db db)
             var son = DateOnly.FromDateTime(DateTime.Today);
             // Çalışılan günler: kargo çıkışı ≥ eşik
             var calisilan = (await conn.QueryAsync<DateTime>(
-                "SELECT CONVERT(date,o.SENDDATE) d FROM ODAKJOKER.JOKER.dbo.J_ORDERS o " +
+                "SELECT CONVERT(date,o.SENDDATE) d FROM dbo.J_ORDERS o " +
                 "WHERE o.SENDDATE>=@bas AND o.SENDDATE<@son GROUP BY CONVERT(date,o.SENDDATE) HAVING COUNT(*)>=@esik",
                 new { bas = bas.ToString("yyyyMMdd"), son = son.ToString("yyyyMMdd"), esik = CalismaEsigi }))
                 .Select(DateOnly.FromDateTime).ToHashSet();
@@ -64,15 +66,15 @@ public sealed class EticQueries(Db db)
     /// <summary>Kargo performansı: firma × adet × ort. çıkış günü × ort. teslim günü (dönem-duyarlı, sadece teslim olmuş).</summary>
     public async Task<IReadOnlyList<KargoPerf>> GetKargoPerfAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         var tatil = await TatilValuesAsync(conn);
         var sql = $"""
             SELECT TOP 10 ISNULL(c.CNAME,'(bilinmiyor)') AS Kargo, COUNT(*) AS Adet,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
                    CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu,
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            LEFT JOIN ODAKJOKER.JOKER.dbo.J_CARGO c ON c.ID=o.CARGOREF
+            FROM dbo.J_ORDERS o
+            LEFT JOIN dbo.J_CARGO c ON c.ID=o.CARGOREF
             {TatilApply(tatil)}
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
               AND o.SENDDATE IS NOT NULL AND o.CARGODELIVERYDATE IS NOT NULL
@@ -86,10 +88,10 @@ public sealed class EticQueries(Db db)
     /// <summary>Günlük kargo çıkış dağılımı: sipariş→kargoya teslim gün farkı (0,1,2…) × paket adedi (dönem, çıkmış siparişler).</summary>
     public async Task<IReadOnlyList<KargoGun>> GetKargoGunAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         const string sql = """
             SELECT DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE) AS Gun, COUNT(*) AS Adet
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            FROM dbo.J_ORDERS o
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
               AND o.SENDDATE IS NOT NULL AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
               AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
@@ -103,15 +105,15 @@ public sealed class EticQueries(Db db)
     /// <summary>İl teslimat performansı (B-41): şehir × adet × ort çıkış/teslim gün. Kargoya çıkış (SENDDATE) dönemi, teslim olmuş (STATUS=1005).</summary>
     public async Task<IReadOnlyList<IlTeslimat>> GetIlTeslimatAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         var tatil = await TatilValuesAsync(conn);
         var sql = $"""
             SELECT TOP 15 mus.DCITY AS Sehir, COUNT(*) AS Adet,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
                    CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu,
                    CAST(AVG(CAST(DATEDIFF(HOUR,o.SENDDATE,o.CARGODELIVERYDATE) AS float)/24) AS decimal(10,1)) AS TeslimGun
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
+            FROM dbo.J_ORDERS o
+            JOIN dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
             {TatilApply(tatil)}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso
               AND o.CARGODELIVERYDATE IS NOT NULL AND o.STATUS=1005 AND mus.DCITY IS NOT NULL
@@ -124,7 +126,7 @@ public sealed class EticQueries(Db db)
     /// <summary>Aylık çıkış trendi (B-41): son 13 ay × sipariş × ort çıkış gün (sipariş→kargoya veriliş). Dönem-bağımsız (kapasite/yoğunluk trendi).</summary>
     public async Task<IReadOnlyList<AyKargo>> GetAyKargoAsync()
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         // Son 13 tam ay: bu ayın başından 12 ay geri (kısmi son ay dahil edilmez)
         var ayBas = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-12);
         var ayBitis = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -134,7 +136,7 @@ public sealed class EticQueries(Db db)
                    COUNT(DISTINCT o.ORDERID) AS Siparis,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
                    CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            FROM dbo.J_ORDERS o
             {TatilApply(tatil)}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
@@ -150,7 +152,7 @@ public sealed class EticQueries(Db db)
     /// <summary>Gün çıkış detayı (B-41 drill): bir ayın (YYYYMM) günleri × sipariş × çıkış takvim+iş günü.</summary>
     public async Task<IReadOnlyList<GunKargo>> GetGunKargoAsync(int ayKod)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         var ayBas = new DateOnly(ayKod / 100, ayKod % 100, 1);
         var ayBitis = ayBas.AddMonths(1);
         var tatil = await TatilValuesAsync(conn);
@@ -159,7 +161,7 @@ public sealed class EticQueries(Db db)
                    COUNT(DISTINCT o.ORDERID) AS Siparis,
                    CAST(AVG({CikisTakvim}) AS decimal(10,1)) AS CikisTakvim,
                    CAST(AVG(CAST({CikisIsGunu} AS float)) AS decimal(10,1)) AS CikisIsGunu
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            FROM dbo.J_ORDERS o
             {TatilApply(tatil)}
             WHERE o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL
               AND o.STATUS NOT IN (1001,1006,1007,3000,4000) AND DATEDIFF(DAY,o.ORDERDATE,o.SENDDATE)>=0
@@ -173,14 +175,14 @@ public sealed class EticQueries(Db db)
     /// <summary>Kapıda ödeme (COD) özeti (B-41): PAYDEFREF=-3. İade=CARGODELIVERYSTATUS=2, iade maliyeti=2×CARGOPRICE (gidiş+geri, BKM yutar). SENDDATE dönemi.</summary>
     public async Task<CodOzet> GetCodOzetAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         const string sql = """
             SELECT COUNT(*) AS Siparis,
                    SUM(CASE WHEN o.STATUS=1005 THEN 1 ELSE 0 END) AS Teslim,
                    SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) AS Iade,
                    CAST(SUM(o.SERVICEPRICE) AS decimal(18,0)) AS KapidaBedel,
                    CAST(SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 2*o.CARGOPRICE ELSE 0 END) AS decimal(18,0)) AS IadeMaliyet
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            FROM dbo.J_ORDERS o
             WHERE o.PAYDEFREF=-3 AND o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL;
             """;
         var r = await conn.QuerySingleOrDefaultAsync<(int Siparis, int Teslim, int Iade, decimal KapidaBedel, decimal IadeMaliyet)>(sql,
@@ -192,13 +194,13 @@ public sealed class EticQueries(Db db)
     /// <summary>COD il bazlı iade oranı (B-56): coğrafi risk. En yüksek oran üstte (HAVING ≥20 sipariş — gürültü filtresi).</summary>
     public async Task<IReadOnlyList<CodIl>> GetCodIlAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         const string sql = """
             SELECT TOP 12 mus.DCITY AS Sehir, COUNT(*) AS Siparis,
                    SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) AS Iade,
                    CAST(100.0*SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END)/COUNT(*) AS decimal(10,1)) AS Oran
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
-            JOIN ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
+            FROM dbo.J_ORDERS o
+            JOIN dbo.J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF
             WHERE o.PAYDEFREF=-3 AND o.SENDDATE>=@giso AND o.SENDDATE<@g2iso AND o.SENDDATE IS NOT NULL AND mus.DCITY IS NOT NULL
             GROUP BY mus.DCITY HAVING COUNT(*)>=20 ORDER BY Oran DESC;
             """;
@@ -209,13 +211,13 @@ public sealed class EticQueries(Db db)
     /// <summary>Bekleyen gün raporu: kargoya çıkmamış (SENDDATE NULL) + normal STATUS siparişlerin yaş dağılımı (anlık, dönemsiz).</summary>
     public async Task<IReadOnlyList<BekleyenBucket>> GetBekleyenAsync()
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         const string sql = """
             SELECT CASE WHEN DATEDIFF(DAY,o.ORDERDATE,GETDATE())<=1 THEN '0-1g'
                         WHEN DATEDIFF(DAY,o.ORDERDATE,GETDATE())<=3 THEN '2-3g'
                         WHEN DATEDIFF(DAY,o.ORDERDATE,GETDATE())<=7 THEN '4-7g' ELSE '8+g' END AS Bucket,
                    COUNT(*) AS Adet
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o
+            FROM dbo.J_ORDERS o
             WHERE o.SENDDATE IS NULL AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
             GROUP BY CASE WHEN DATEDIFF(DAY,o.ORDERDATE,GETDATE())<=1 THEN '0-1g'
                           WHEN DATEDIFF(DAY,o.ORDERDATE,GETDATE())<=3 THEN '2-3g'
@@ -227,30 +229,66 @@ public sealed class EticQueries(Db db)
             .Select(k => new BekleyenBucket(k, raw.GetValueOrDefault(k, 0))).ToList();
     }
 
-    /// <summary>E-ticaret (JOKER) kategori mix — verilen dönem. ISO tarih filtresi.</summary>
+    /// <summary>E-ticaret (JOKER) kategori mix — verilen dönem. Kategori = J_ITEMS.DERINSIS_LOGOGRUP (DerinSIS Kategori3 grain, linked gerekmez).</summary>
     public async Task<IReadOnlyList<EticKategoriRow>> GetEticKategoriAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         var rows = await conn.QueryAsync<EticKategoriRow>("""
-            SELECT k2.ktgrAd AS Kategori,
-                COUNT(DISTINCT o.ORDERID)            AS Siparis,
-                SUM(d.QUANTITY * d.SELLINGPRICE)     AS NetCiro,
-                CAST(SUM(d.QUANTITY) AS int)         AS Adet
-            FROM ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS d WITH(NOLOCK)
-            JOIN ODAKJOKER.JOKER.dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
-            JOIN ODAKJOKER.JOKER.dbo.J_ITEMS        ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
-            JOIN DerinSISBkm.dbo.urn       u  WITH(NOLOCK) ON u.stkID    = ji.DERINSIS_ID
-            JOIN DerinSISBkm.dbo.urnKtgr2 k2 WITH(NOLOCK) ON k2.ktgrID  = u.urnKtgr2ID
-            WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit
-            GROUP BY k2.ktgrAd
+            SELECT ji.DERINSIS_LOGOGRUP                AS Kategori,
+                COUNT(DISTINCT o.ORDERID)             AS Siparis,
+                SUM(d.QUANTITY * d.SELLINGPRICE)      AS NetCiro,
+                CAST(SUM(d.QUANTITY) AS int)          AS Adet
+            FROM dbo.J_ORDER_DETAILS d WITH(NOLOCK)
+            JOIN dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
+            JOIN dbo.J_ITEMS       ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
+            WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit AND ji.DERINSIS_LOGOGRUP IS NOT NULL
+            GROUP BY ji.DERINSIS_LOGOGRUP
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.OrderByDescending(r => r.NetCiro).ToList();
+    }
+
+    /// <summary>Kategori drill: bir LOGOGRUP kategorisi altındaki ürünler — TOP 30 net ciroya göre (sipariş/adet/ciro).</summary>
+    public async Task<IReadOnlyList<EticKategoriUrunRow>> GetEticKategoriUrunAsync(string kategori, DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<EticKategoriUrunRow>("""
+            SELECT TOP 30 ji.NAME              AS Urun,
+                COUNT(DISTINCT o.ORDERID)      AS Siparis,
+                CAST(SUM(d.QUANTITY) AS int)   AS Adet,
+                SUM(d.QUANTITY * d.SELLINGPRICE) AS NetCiro
+            FROM dbo.J_ORDER_DETAILS d WITH(NOLOCK)
+            JOIN dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
+            JOIN dbo.J_ITEMS       ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
+            WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit AND ji.DERINSIS_LOGOGRUP = @Kat
+            GROUP BY ji.NAME
+            ORDER BY SUM(d.QUANTITY * d.SELLINGPRICE) DESC
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd"), Kat = kategori });
+        return rows.ToList();
+    }
+
+    /// <summary>Kategori × ay (mevcut yıl, Oca→bugün) — yığılmış grafik için. ORDERDATE bazlı net ciro.</summary>
+    public async Task<IReadOnlyList<EticKategoriAyRow>> GetEticKategoriYilAsync()
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var yilBas = new DateOnly(DateTime.Today.Year, 1, 1);
+        var yarin = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+        var rows = await conn.QueryAsync<EticKategoriAyRow>("""
+            SELECT MONTH(o.ORDERDATE)               AS Ay,
+                ji.DERINSIS_LOGOGRUP                AS Kategori,
+                SUM(d.QUANTITY * d.SELLINGPRICE)    AS NetCiro
+            FROM dbo.J_ORDER_DETAILS d WITH(NOLOCK)
+            JOIN dbo.J_ORDERS      o  WITH(NOLOCK) ON o.ORDERID    = d.ORDERREF
+            JOIN dbo.J_ITEMS       ji WITH(NOLOCK) ON ji.LOGICALREF = d.ITEMREF
+            WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit AND ji.DERINSIS_LOGOGRUP IS NOT NULL
+            GROUP BY MONTH(o.ORDERDATE), ji.DERINSIS_LOGOGRUP
+            """, new { Bas = yilBas.ToString("yyyyMMdd"), Bit = yarin.ToString("yyyyMMdd") });
+        return rows.ToList();
     }
 
     /// <summary>Sipariş durum huni — verilen dönem, 6 aşamaya gruplandırılmış.</summary>
     public async Task<IReadOnlyList<EticFunnelRow>> GetFunnelAsync(DateOnly start, DateOnly endExcl)
     {
-        await using var conn = await db.OpenAsync();
+        await using var conn = await db.OpenJokerAsync();
         var rows = await conn.QueryAsync<EticFunnelRow>("""
             SELECT TOP 10
                 CASE
@@ -263,7 +301,7 @@ public sealed class EticQueries(Db db)
                 END AS Asama,
                 COUNT(*) AS Siparis,
                 SUM(o.TOTALPRICE) AS ToplamCiro
-            FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WITH(NOLOCK)
+            FROM dbo.J_ORDERS o WITH(NOLOCK)
             WHERE o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit
             GROUP BY CASE
                     WHEN o.STATUS IN (1001,3000,4000) THEN '5-İptal'

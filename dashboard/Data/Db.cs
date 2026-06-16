@@ -9,6 +9,7 @@ namespace GmDashboard.Data;
 public sealed class Db
 {
     private readonly string _connStr;
+    private readonly string? _jokerConnStr;
 
     public Db(IConfiguration config)
     {
@@ -39,6 +40,25 @@ public sealed class Db
             b.Password = pass;
         }
         _connStr = b.ConnectionString;
+
+        // JOKER e-ticaret DB direkt bağlantı (linked server ODAKJOKER yerine — B-74 perf).
+        // User/pass JOKER_* yoksa MSSQL_* ile aynı (Fikri teyit: aynı sa).
+        var jHost = env.GetValueOrDefault("JOKER_HOST");
+        if (!string.IsNullOrWhiteSpace(jHost))
+        {
+            var jPort = env.GetValueOrDefault("JOKER_PORT");
+            var jb = new SqlConnectionStringBuilder
+            {
+                DataSource = string.IsNullOrWhiteSpace(jPort) ? jHost : $"{jHost},{jPort}",
+                InitialCatalog = env.GetValueOrDefault("JOKER_DATABASE") ?? "JOKER",
+                UserID = env.GetValueOrDefault("JOKER_USER") ?? user,
+                Password = env.GetValueOrDefault("JOKER_PASSWORD") ?? pass,
+                TrustServerCertificate = true,
+                ConnectTimeout = 20,
+                CommandTimeout = 240,
+            };
+            _jokerConnStr = jb.ConnectionString;
+        }
     }
 
     /// <summary>Her çağrıda yeni açık bağlantı (Dapper using ile kapatır). DMY zorunlu sorgular için SET DATEFORMAT dmy.</summary>
@@ -52,6 +72,16 @@ public sealed class Db
             await cmd.ExecuteNonQueryAsync();
         }
         return conn;
+    }
+
+    /// <summary>JOKER e-ticaret DB'ye direkt bağlantı (linked server ODAKJOKER yerine). .env'de JOKER_HOST yoksa hata.</summary>
+    public async Task<SqlConnection> OpenJokerAsync()
+    {
+        if (_jokerConnStr is null)
+            throw new InvalidOperationException(".env içinde JOKER_HOST yok — direkt JOKER bağlantısı yapılandırılmamış.");
+        var conn = new SqlConnection(_jokerConnStr);
+        await conn.OpenAsync();
+        return conn;   // JOKER tarih literalleri ISO YYYYMMDD — DATEFORMAT gerekmez.
     }
 
     /// <summary>Repo kökü .env'i bul + parse (Python cfg() ile birebir kaynak).</summary>

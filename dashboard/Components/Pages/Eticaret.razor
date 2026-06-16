@@ -49,14 +49,26 @@ else if (_data is not null)
             @{ var kargoFirmaTot = _data.Kargo.Sum(k => k.Adet); }
             <AppRankBars TItem="NameCount" Items="_data.Kargo"
                          Label="@(k => k.Ad)" Value="@(k => (decimal)k.Adet)" ValueText="@(k => $"{Num(k.Adet)} · %{(kargoFirmaTot > 0 ? Math.Round(100m * k.Adet / kargoFirmaTot) : 0)}")" /></div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı — Top 12 (@_aralik)</h3>
-            @{ var ilTot = _data.Il.Sum(x => x.Adet); }
-            <AppIconRow TItem="NameCount" Items="_data.Il"
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">İl Dağılımı (@_aralik)</h3>
+            @{ var ilTot = _data.Il.Sum(x => x.Adet); var ilTop = _data.Il.Take(3).ToList(); var ilRest = _data.Il.Skip(3).ToList(); }
+            <AppIconRow TItem="NameCount" Items="ilTop"
                         Name="@(x => x.Ad)"
                         Sub="@(x => $"%{(ilTot > 0 ? Math.Round(100m * x.Adet / ilTot) : 0)} pay")"
                         Amount="@(x => Num(x.Adet))"
                         Icon="@(_ => "map-pin")"
-                        IconColor="@(_ => ("bg-primary/10", "text-primary"))" /></div>
+                        IconColor="@(_ => ("bg-primary/10", "text-primary"))" />
+            @if (ilRest.Count > 0)
+            {
+                <details class="group mt-1">
+                    <summary class="list-none cursor-pointer select-none py-2 flex items-center gap-1.5 text-[12px] font-medium text-primary"><i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>+@ilRest.Count il daha</summary>
+                    <AppIconRow TItem="NameCount" Items="ilRest"
+                                Name="@(x => x.Ad)"
+                                Sub="@(x => $"%{(ilTot > 0 ? Math.Round(100m * x.Adet / ilTot) : 0)} pay")"
+                                Amount="@(x => Num(x.Adet))"
+                                Icon="@(_ => "map-pin")"
+                                IconColor="@(_ => ("bg-primary/10", "text-primary"))" />
+                </details>
+            }</div>
     </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -170,8 +182,9 @@ else if (_data is not null)
                              Items="@_eticKtgr"
                              Label="@(r => r.Kategori)"
                              Value="@(r => r.NetCiro)"
-                             ValueText="@(r => $"{Tl(r.NetCiro)}  %{(topCiro > 0 ? r.NetCiro * 100 / topCiro : 0):0.0} · {Num(r.Siparis)} sipariş")" />
-                <div class="text-base-content/50 text-[11px] mt-2">JOKER net ciro (SELLINGPRICE × adet). DERINSIS_ID köprüsü üstünden urnKtgr2. Eşleşmeyen ürünler hariç.</div>
+                             ValueText="@(r => $"{Tl(r.NetCiro)}  %{(topCiro > 0 ? r.NetCiro * 100 / topCiro : 0):0.0} · {Num(r.Siparis)} sipariş")"
+                             OnRowClick="OpenKtgrDetay" />
+                <div class="text-base-content/50 text-[11px] mt-2">JOKER net ciro (SELLINGPRICE × adet). Kategori = J_ITEMS logo grubu (DerinSIS Kategori3 grain). Tanımsız = kategorisiz ürün. Satıra dokun → ürün kırılımı.</div>
             </div>
             }
             @if (_funnel.Count > 0)
@@ -194,6 +207,18 @@ else if (_data is not null)
             }
         </div>
     }
+
+    @if (_ktgrYil.Count > 0)
+    {
+        <div class="mb-3">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5"><i data-lucide="chart-column" class="w-4 h-4 text-primary"></i>Kategori Yıl Trendi — @DateTime.Today.Year (aylık net ciro)</h3>
+                <AppStackedBarChart TItem="EticKategoriAyRow" Items="@YilLumped()" Height="320"
+                                    Series="@(r => r.Kategori)" XValue="@(r => (object)AyAd(r.Ay))" YValue="@(r => (decimal?)r.NetCiro)" />
+                <div class="text-base-content/50 text-[11px] mt-2">Aylık net ciro, kategori bazlı yığılmış (en büyük 7 + Diğer). Mevcut yıl Oca→bugün, ORDERDATE bazlı.</div>
+            </div>
+        </div>
+    }
     }
 
     <Modal @bind-Open="_modalGun" Title="@(_selAy?.Ay + " — Günlük Çıkış Detayı")">
@@ -207,6 +232,25 @@ else if (_data is not null)
                           MetricSub="@(g => Num(g.Siparis) + " sipariş")"
                           Badge="@(g => g.CikisIsGunu >= 3 ? ("yavaş", "bg-error/10 text-error") : g.CikisIsGunu <= 2 ? ("hızlı", "bg-success/10 text-success") : ("orta", "bg-base-200 text-base-content/50"))" />
             <div class="text-base-content/50 text-[11px] mt-2">Çıkış iş günü = hafta sonu + tatil hariç. Düşük-sipariş gün = resmi/dini tatil (depo kapalı).</div>
+        }
+    </Modal>
+
+    <Modal @bind-Open="_modalKtgr" Title="@(_selKtgr?.Kategori + " — Ürün Kırılımı")">
+        @if (_selKtgr is not null)
+        {
+            <div class="text-base-content/50 text-xs mb-2">@_aralik · @Tl(_selKtgr.NetCiro) net ciro · @Num(_selKtgr.Siparis) sipariş · @Num(_selKtgr.Adet) adet</div>
+            @if (_ktgrUrun.Count > 0)
+            {
+                <AppDataTable TItem="EticKategoriUrunRow" Items="_ktgrUrun"
+                              Primary="@(u => u.Urun)"
+                              Sub="@(u => $"{Num(u.Siparis)} sipariş · {Num(u.Adet)} adet")"
+                              MetricMain="@(u => Tl(u.NetCiro))" />
+                <div class="text-base-content/50 text-[11px] mt-2">En yüksek net ciro ilk 30 ürün. Net ciro = SELLINGPRICE × adet.</div>
+            }
+            else
+            {
+                <div class="text-base-content/50 text-[13px] py-4 text-center">Yükleniyor…</div>
+            }
         }
     </Modal>
 }
@@ -232,11 +276,42 @@ else if (_data is not null)
     private bool _modalGun;
     private AyKargo? _selAy;
     private IReadOnlyList<GunKargo> _gunKargo = [];
+    private bool _modalKtgr;
+    private EticKategoriRow? _selKtgr;
+    private IReadOnlyList<EticKategoriUrunRow> _ktgrUrun = [];
+    private DateOnly _start, _endExcl;   // kategori drill için aktif dönem
+    private IReadOnlyList<EticKategoriAyRow> _ktgrYil = [];   // kategori × ay yıl trendi (yığılmış grafik)
+
+    private static readonly string[] _aylar = { "Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara" };
+    private static string AyAd(int ay) => ay is >= 1 and <= 12 ? _aylar[ay - 1] : ay.ToString();
+
+    // Yığılmış grafik için: en büyük 7 kategori + kalan "Diğer", aya göre sıralı.
+    private IReadOnlyList<EticKategoriAyRow> YilLumped()
+    {
+        if (_ktgrYil.Count == 0) return [];
+        var top = _ktgrYil.GroupBy(r => r.Kategori)
+            .Select(g => (Kat: g.Key, Tot: g.Sum(x => x.NetCiro)))
+            .OrderByDescending(x => x.Tot).Take(7).Select(x => x.Kat).ToHashSet();
+        return _ktgrYil
+            .Select(r => top.Contains(r.Kategori) ? r : r with { Kategori = "Diğer" })
+            .GroupBy(r => (r.Ay, r.Kategori))
+            .Select(g => new EticKategoriAyRow(g.Key.Ay, g.Key.Kategori, g.Sum(x => x.NetCiro)))
+            .OrderBy(r => r.Ay)
+            .ToList();
+    }
 
     private async Task OpenAyDetay(AyKargo a)
     {
         _selAy = a; _modalGun = true; _gunKargo = []; StateHasChanged();
         try { _gunKargo = await Etic.GetGunKargoAsync(a.AyKod); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { StateHasChanged(); }
+    }
+
+    private async Task OpenKtgrDetay(EticKategoriRow k)
+    {
+        _selKtgr = k; _modalKtgr = true; _ktgrUrun = []; StateHasChanged();
+        try { _ktgrUrun = await Etic.GetEticKategoriUrunAsync(k.Kategori, _start, _endExcl); }
         catch (Exception ex) { _error = ex.Message; }
         finally { StateHasChanged(); }
     }
@@ -269,6 +344,7 @@ else if (_data is not null)
                 _ => (dun, g2),
             };
             var son = endExcl.AddDays(-1);
+            _start = start; _endExcl = endExcl;   // kategori drill aktif dönemi
             _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
             var tData      = Queries.GetPeriodAsync(start, endExcl);
             var tKargoPerf = Etic.GetKargoPerfAsync(start, endExcl);
@@ -280,11 +356,13 @@ else if (_data is not null)
             var tBekleyen  = Etic.GetBekleyenAsync();    // anlık (dönemsiz)
             var tEticKtgr  = Etic.GetEticKategoriAsync(start, endExcl);   // B-59
             var tFunnel    = Etic.GetFunnelAsync(start, endExcl);          // B-64
-            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr, tFunnel);
+            var tKtgrYil   = Etic.GetEticKategoriYilAsync();   // kategori × ay yıl trendi (dönemsiz)
+            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr, tFunnel, tKtgrYil);
             _data = tData.Result; _kargoPerf = tKargoPerf.Result; _kargoGun = tKargoGun.Result;
             _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _codIl = tCodIl.Result; _bekleyen = tBekleyen.Result;
             _eticKtgr = tEticKtgr.Result;
             _funnel = tFunnel.Result;
+            _ktgrYil = tKtgrYil.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("E-ticaret", sw); StateHasChanged(); }
