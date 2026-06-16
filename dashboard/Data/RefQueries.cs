@@ -56,7 +56,6 @@ public sealed class RefQueries(Db db)
     /// <summary>Envanter sayfası: toplam değer + devir + ABC + marka + stockout. Geçen tam ay penceresi.</summary>
     public async Task<InventoryData> GetInventoryAsync(DateOnly dun)
     {
-        await using var conn = await db.OpenAsync();
         var ayBas = new DateOnly(dun.Year, dun.Month, 1).AddMonths(-1);  // geçen ay ilk
         var aySon = new DateOnly(dun.Year, dun.Month, 1);               // bu ay ilk (exclusive)
         var aySonGun = aySon.AddDays(-1);                                // geçen ay son gün (snapshot)
@@ -68,15 +67,19 @@ public sealed class RefQueries(Db db)
             snapSon = aySonGun.ToString("yyyy-MM-dd"),
         };
 
+        // B-74: 5 ağır sorgu tek bağlantıda sıralıydı (~13s) → her biri kendi bağlantısı + paralel (B-49 deseni).
+        // SQL'ler birebir aynı (rakam değişmez); sadece eşzamanlı çalışır → süre ~en yavaş tek sorguya iner.
+        async Task<T> Q<T>(Func<System.Data.IDbConnection, Task<T>> fn) { await using var c = await db.OpenAsync(); return await fn(c); }
+
         // Toplam envanter değeri (Ort.Maliyet, son snapshot, Dergi/Sınav hariç)
-        var toplam = await conn.ExecuteScalarAsync<decimal?>($"""
+        var tToplam = Q(c => c.ExecuteScalarAsync<decimal?>($"""
             SELECT CAST(SUM([FSM Stok Maliyet]+[Özlüce Stok Maliyet]+[İst.Yolu Stok Maliyet]+[Merkez Depo Stok Maliyet]) AS decimal(18,0))
             FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
             WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC};
-            """) ?? 0m;
+            """));
 
         // Devir/WoS/sell-through/stok ₺ (irsHrk satış+gelen + ENVANTER snapshot başı/sonu ort. adet)
-        var ev = await conn.QueryAsync<(string K, decimal Sat, decimal Gel, decimal BA, decimal EA, decimal BM, decimal EM)>($"""
+        var tEv = Q(c => c.QueryAsync<(string K, decimal Sat, decimal Gel, decimal BA, decimal EA, decimal BM, decimal EM)>($"""
             SELECT m.K, m.Sat, m.Gel, ISNULL(b.A,0) BA, ISNULL(e.A,0) EA, ISNULL(b.M,0) BM, ISNULL(e.M,0) EM
             FROM (SELECT CAST(k.ktgrAd AS nvarchar(50)) K, -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) Sat,
                          SUM(CASE WHEN h.ehTip IN (10,13) THEN h.ehAdetN ELSE 0 END) Gel
@@ -93,20 +96,10 @@ public sealed class RefQueries(Db db)
                        FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK) WHERE CAST(Tarih AS date)=@snapSon AND [Maliyet Tipi]='Ort.Maliyet' GROUP BY KTGR3) e
                    ON e.K COLLATE Turkish_CI_AS=m.K COLLATE Turkish_CI_AS
             WHERE m.K NOT IN {EXC};
-            """, p);
-        var devir = new List<DevirRow>();
-        foreach (var r in ev)
-        {
-            var ort = (r.BA + r.EA) / 2;
-            if (ort <= 0) continue;
-            var stl = (r.BM + r.EM) / 2;
-            decimal? wos = r.Sat > 0 ? Math.Round(ort * 52 / 12 / r.Sat, 1) : null;
-            decimal? st = (r.BA + r.Gel) > 0 ? Math.Round(100 * r.Sat / (r.BA + r.Gel), 1) : null;
-            devir.Add(new DevirRow(r.K, Math.Round(12 * r.Sat / ort, 2), wos, st, Math.Round(stl), (int)Math.Round(r.Sat)));
-        }
+            """, p));
 
         // ABC (Pareto) — geçen ay ürün cirosu kümülatif
-        var abc = (await conn.QueryAsync<AbcClass>($"""
+        var tAbc = Q(c => c.QueryAsync<AbcClass>($"""
             SELECT Sinif, COUNT(*) AS Adet, CAST(SUM(Ciro) AS decimal(18,0)) AS Ciro FROM (
               SELECT ProductsId, Ciro, 100.0*SUM(Ciro) OVER(ORDER BY Ciro DESC ROWS UNBOUNDED PRECEDING)/SUM(Ciro) OVER() KP FROM (
                 SELECT sp.ProductsId, SUM(sp.TotalPrice) Ciro FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
@@ -114,10 +107,10 @@ public sealed class RefQueries(Db db)
                 WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=@ayBas AND s.Date<@aySon AND s.DocumentsTypeId IN (1,2,6,7,8)
                 GROUP BY sp.ProductsId HAVING SUM(sp.TotalPrice)>0) p) r
             CROSS APPLY (SELECT CASE WHEN KP<=80 THEN 'A' WHEN KP<=95 THEN 'B' ELSE 'C' END Sinif) x GROUP BY Sinif;
-            """, p)).OrderBy(a => a.Sinif).ToList();
+            """, p));
 
         // Marka/yayınevi top 20 (irsHrk stkID, geçen ay)
-        var marka = (await conn.QueryAsync<MarkaRow>("""
+        var tMarka = Q(c => c.QueryAsync<MarkaRow>("""
             SELECT TOP 20 CAST(mrk.mrkAd AS nvarchar(80)) AS Ad,
                    CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) AS Ciro,
                    CAST(-SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehAdetN ELSE 0 END) AS int) AS Adet,
@@ -126,10 +119,10 @@ public sealed class RefQueries(Db db)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnMrk mrk ON mrk.mrkID=u.urnMrkID
             WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100)
             GROUP BY CAST(mrk.mrkAd AS nvarchar(80)) ORDER BY Ciro DESC;
-            """, p)).ToList();
+            """, p));
 
-        // Stockout (E8) — son 30g talepli SKU, bakiye<=0 oranı
-        var stockout = (await conn.QueryAsync<StockoutRow>("""
+        // Stockout (E8) — son 30g talepli SKU, bakiye<=0 oranı. (pre-agg denendi 16.06: ~1s, kazanç yok → CROSS APPLY kaldı.)
+        var tStockout = Q(c => c.QueryAsync<StockoutRow>("""
             SELECT x.Kategori, COUNT(*) AS Cesit, SUM(CASE WHEN x.Bakiye<=0 THEN 1 ELSE 0 END) AS Yok,
                    CAST(100.0*SUM(CASE WHEN x.Bakiye<=0 THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0) AS decimal(10,1)) AS Pct
             FROM (SELECT k.ktgrAd Kategori, sold.stkID, bal.Bakiye
@@ -141,7 +134,24 @@ public sealed class RefQueries(Db db)
                            WHERE b.ehstkID=sold.stkID AND b.ehMekan IN (1,4477,4478) AND b.ehAltDepo=0) bal
               WHERE k.ktgrAd NOT IN (N'Sınav Okulları',N'Dergi',N'Genel',N'Tanımsız',N'Etkinlik',N'Hediye Çeki')) x
             GROUP BY x.Kategori;
-            """)).OrderByDescending(s => s.Pct).ToList();
+            """));
+
+        await Task.WhenAll(tToplam, tEv, tAbc, tMarka, tStockout);
+
+        var toplam = (await tToplam) ?? 0m;
+        var devir = new List<DevirRow>();
+        foreach (var r in await tEv)
+        {
+            var ort = (r.BA + r.EA) / 2;
+            if (ort <= 0) continue;
+            var stl = (r.BM + r.EM) / 2;
+            decimal? wos = r.Sat > 0 ? Math.Round(ort * 52 / 12 / r.Sat, 1) : null;
+            decimal? st = (r.BA + r.Gel) > 0 ? Math.Round(100 * r.Sat / (r.BA + r.Gel), 1) : null;
+            devir.Add(new DevirRow(r.K, Math.Round(12 * r.Sat / ort, 2), wos, st, Math.Round(stl), (int)Math.Round(r.Sat)));
+        }
+        var abc = (await tAbc).OrderBy(a => a.Sinif).ToList();
+        var marka = (await tMarka).ToList();
+        var stockout = (await tStockout).OrderByDescending(s => s.Pct).ToList();
 
         return new InventoryData(toplam, devir.OrderByDescending(d => d.Devir).ToList(), abc, marka, stockout);
     }

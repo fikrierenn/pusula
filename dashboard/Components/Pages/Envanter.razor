@@ -5,6 +5,9 @@
 @inject PerfState Perf
 @inject IJSRuntime JS
 @rendermode InteractiveServer
+@attribute [StreamRendering]
+@* B-74: marj (~9s, kanonik maliyet şelalesi) prerender'ı bloklamasın — sayfa WhenAll grubuyla (~1.1s) hemen
+   stream'lenir, marj sonradan eklenir. Mobil HTTP'de de çalışır (SignalR gerektirmez, chunked response). *@
 
 <PageTitle>Envanter — BKM GM</PageTitle>
 <div class="flex items-center gap-3 mb-5 flex-wrap"><h1 class="text-2xl font-bold tracking-tight m-0">Envanter & Merchandising</h1>
