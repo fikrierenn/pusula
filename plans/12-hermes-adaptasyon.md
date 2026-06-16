@@ -222,8 +222,8 @@ Hermes'in KENDİ felsefesi bu adaptasyona uygulanır: **narrow waist** (en dar f
 > Her WS bağımsız teslim + kendi mini-onayı. Sıra = öncelik (§6).
 
 1. [x] **H-01** WS-1 Curator: sema alan tanımı + decay rule + handoff curator-check + TODO arşiv + consolidate-sema skill. ✅ 16.06. (T2, bağımsız)
-2. [ ] **H-02** WS-4 Delegation: agent-usage leaf/orchestrator + cap. (T2, bağımsız — H-01 ile paralel olabilir)
-3. [ ] **H-03** WS-6 Journal/handoff: iterative-merge + anchor. (T2, bağımsız)
+2. [x] **H-02** WS-4 Delegation: agent-usage leaf/orchestrator + cap. ✅ 16.06 (T2, bağımsız)
+3. [x] **H-03** WS-6 Journal/handoff: iterative-merge + anchor. ✅ 16.06 (T2, bağımsız)
 4. [ ] **H-04** WS-2 NarrowWaist: footprint-ladder.md + rule etiketleme + skill-inject referansı. (T2; H-01..03 sonrası — handoff/sema kararları oturmalı). **Compact-survival smoke ZORUNLU.**
 5. [ ] **H-05** WS-5 ErrorClass: SqlErrorClassifier.cs + _errors.py + Db.cs retry birleştirme + error-handling.md bağlama. (T3, kod; build+smoke). **silent-failure-hunter taraması** (sessiz fallback/retry-loop avı).
 6. [ ] **H-06** WS-3 Registry-nav: NavRegistry.cs + MainLayout türetme. (T3, kod; build+nav-smoke). **python-reviewer gerekmez; nav görsel smoke ZORUNLU.**

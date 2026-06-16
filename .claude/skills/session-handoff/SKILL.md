@@ -179,6 +179,12 @@ Oturum kaydedildi: docs/journal/2026-06-03.md
 5. Aynı gün ikinci çağrı: `## Oturum 2` ekle.
 6. Türkçe yaz, UTF-8.
 
+### İteratif-Merge & Anchor (plan-12 WS-6 — Hermes context-compression uyarlaması)
+
+7. **İteratif-merge, sıfırdan değil.** Aynı gün 2. oturum → önceki oturum bloğunu KORU, üstüne **delta** ekle (`## Oturum 2`). Önceki özeti yeniden yazma/budama — yalnız yeni olanı ekle (Hermes iterative-summary: bilgi kaybını önler).
+8. **Anchor — budanmaz bölüm.** "Yarına Başlangıç Noktası" + "Yarım Kalan" + son kullanıcı talebi ASLA özetlenmez/budanmaz — uzun günde bile birebir korunur (Hermes tail-anchor: aktif görev kaybolmasın).
+9. **Anti-thrash.** Son oturumda <%10 yeni içerik (1-2 ufak commit, kayda değer karar yok) varsa AYRI `## Oturum N` bloğu açma — mevcut son bloğa 1-2 satır not düş. Gürültü azalt.
+
 ## İlişkili Dosyalar
 
 - `.claude/hooks/session-start.sh`

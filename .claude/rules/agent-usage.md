@@ -55,6 +55,21 @@ Done tanımı: <ne dönünce bitmiş sayılır>
 Raporla: <istenen çıktı format>
 ```
 
+## 7. Rol & Derinlik (Hermes delegation uyarlaması — plan-12 WS-4)
+
+Ana ajan alt-ajan açarken **rol** atar; rol yetki ve derinliği sınırlar.
+
+| Rol | Yetki | Kim |
+|---|---|---|
+| **leaf** (varsayılan) | Salt-işçi. Kendi alt-ajanını AÇAMAZ (delegate yok). Tek görev, izole bağlam. Araştırma/denetim ajanları yazma-tool'suz (§5). | `code-explorer`, `silent-failure-hunter`, `python-reviewer`, `Explore`, çoğu denetim ajanı |
+| **orchestrator** | Alt-ajan açabilir, ama **depth-bounded**. Sonuçları sentezler. | `planner` (plan yazımı için araştırır), ana döngü |
+
+**Kurallar:**
+- **max_concurrent = 3** — aynı anda en fazla 3 paralel alt-ajan (BKM "3+ paralel feature" eşiğiyle hizalı). Daha fazla hedef varsa dalga dalga (3'lü grup).
+- **Derinlik ≤ 2** — orchestrator → leaf. Leaf alt-ajan AÇAMAZ (sonsuz fan-out engeli). 3. seviye gerekirse ana ajana geri dön.
+- **İzolasyon:** alt-ajan geçmiş konuşma bağlamını GÖRMEZ — yalnızca verilen görev. Parent, child özetini bekler (senkron), sonra devam.
+- **Model bilinçli:** her Task çağrısında model (haiku/sonnet/opus) işe göre seçilir (§2) — depth-cap bunu pekiştirir, eşit-harcama yasak.
+
 ## İlişkili
 - `.claude/rules/session-memory.md` — sub-agent prompt disiplini.
 - Proje agent'ları: `.claude/agents/*.md`.
