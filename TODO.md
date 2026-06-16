@@ -129,6 +129,16 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### BKM — BIRLESIK ONCELIK SIRASI
 
+#### 🌅 SABAH HIZLI KAZANIMLAR (17.06 handoff — curated, açık backlog'dan ~30dk-1sa'lik işler)
+> Önce bunları hızlıca temizle (düşük efor/risk, bağımsız), sonra büyük iş (Kumbara/B-91/B-81).
+- [ ] **HK-1 mobil "Diğer" menü** (UX, ~20dk) — Mağazalar/TOPLAM/Sadakat mobilde erişilemiyor (btm-nav 5 sekme, sidebar 11). Çözüm: `MainLayout.razor` btm-nav'a 6. öğe **"Diğer" (⋯, icon `menu`)** = NavLink değil, `<label for="bkm-drawer">` (drawer toggle) → drawer tüm `NavRegistry.Items` gösteriyor zaten. Masaüstü değişmez. Tek dosya.
+- [ ] **HK-2 B-99 sql-denetci agent test** (~15dk) — `sorgular/04-karzarar/` dar kapsamda agent çalıştır, bulgu+format doğru mu. (Yeni fiş-bazlı denetim maddesi #12 eklendi — onu da test eder.)
+- [ ] **HK-3 B-86 GetDepoWms 0-guard** (~15dk) — `RefQueries.Envanter.cs` GetDepoWmsAsync boş-sonuç→0 "Depo Bugün": gerçek-0 vs veri-yok ayırt et (nullable + "veri yok" göster).
+- [ ] **HK-4 B-89 ApexCharts var(--p)** (~30dk) — hardcode hex → CSS-var (context7 doğruladı `colors:['var(--p)']` çalışıyor). `AppAreaChart`/`AppBarChart` default `#4063e6`, axis renkleri → DaisyUI token. renk-standardi uyumu.
+- [ ] **HK-5 C-13 .gitignore build artifact** (~10dk) — `sorgular/03-kampanya/RaporApp/bin|obj`, `*.dll/*.exe/*.pdb` → .gitignore + `git rm --cached`.
+- [ ] **HK-6 B-16/B-17 Express DB doc** (~15dk) — CLAUDE.md'de `[DOLDUR]`: Express (192.168.40.66\SQLEXPRESS) amacı + hangi DB'ler + ALLOWED_DATABASES daralt kararı.
+> Not — **B-82** (kasiyer ABS formül): `Queries.cs:157` kasSql doğrulandı (zaten -VatTotal vardı, false-positive); `:349` GetKasiyerDelta asimetri DÜZELTİLDİ (17.06). Kalan: iade-branch `ABS(DiscountTotal)` tutarlılığı — düşük öncelik, MCP mutabakatıyla doğrula.
+
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
 - [x] ✅ **B-96 müşteri kazanım/kart stat SMOKE** — KAPALI 16.06. /musteri runtime doğrulandı: kazanım area chart SVG çiziliyor (Haz 2026 ~8.381 yeni · 13 ay 223.896), kart oranı bar (ÖZLÜCE %68,4 · FSM %51,8 · İst.Yolu %53,0 · Toplam %58,7), AppSozluk (Home) native details kapalı-başlar/açılır. Konsol hatası yok. (plan-17, cf9e7ab)
 - [ ] **B-97 plan-17 WP-2 lokasyon filtresi** — `GetInventoryAsync` ~10 noktada `ehMekan IN (1,4477,4478)` hardcoded → 5-lokasyon (FSM/Özl/İst/Depo12/ODAK) toggle param + "stok=şube+Depo, ODAK hariç" (Python urunler_query_sql). Dedike, mutabakatlı.
