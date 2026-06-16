@@ -139,7 +139,7 @@ public sealed class MagazaQueries(Db db)
         // Kategori (skat, tek mağaza — ürün drill için)
         const string katSql = """
             SELECT CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Ciro
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId

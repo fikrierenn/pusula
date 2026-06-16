@@ -84,7 +84,7 @@ public sealed class Queries(Db db)
         var katPar = new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) };
         const string skatSql = """
             SELECT MG.mekanID AS MekanId, CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Ciro
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
             JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
@@ -132,7 +132,7 @@ public sealed class Queries(Db db)
         // Kategori mix (mağaza×kategori → toplam; Products.Code=stkID köprüsü, geri dönüşüm hariç)
         const string katSql = """
             SELECT CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Ciro
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
@@ -246,7 +246,7 @@ public sealed class Queries(Db db)
         // Kategori MTD net (Products.Code=stkID köprüsü; tüm mağazalar toplam)
         const string katNetSql = """
             SELECT u.urnKtgr2ID AS KtgId, CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*sp.TotalPrice) AS decimal(18,0)) AS Net
+                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId

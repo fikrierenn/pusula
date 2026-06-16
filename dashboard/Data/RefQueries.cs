@@ -106,10 +106,10 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
         var tAbc = Q(c => c.QueryAsync<AbcClass>($"""
             SELECT Sinif, COUNT(*) AS Adet, CAST(SUM(Ciro) AS decimal(18,0)) AS Ciro FROM (
               SELECT ProductsId, Ciro, 100.0*SUM(Ciro) OVER(ORDER BY Ciro DESC ROWS UNBOUNDED PRECEDING)/SUM(Ciro) OVER() KP FROM (
-                SELECT sp.ProductsId, SUM(sp.TotalPrice) Ciro FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
+                SELECT sp.ProductsId, SUM(sp.TotalPrice-sp.VatTotal) Ciro FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
                 JOIN EncoreMerkez.dbo.Sales s ON s.Id=sp.SalesId
                 WHERE sp.IsValid=1 AND sp.BarcodeNo<>'1001' AND s.Date>=@ayBas AND s.Date<@aySon AND s.DocumentsTypeId IN (1,2,6,7,8)
-                GROUP BY sp.ProductsId HAVING SUM(sp.TotalPrice)>0) p) r
+                GROUP BY sp.ProductsId HAVING SUM(sp.TotalPrice-sp.VatTotal)>0) p) r
             CROSS APPLY (SELECT CASE WHEN KP<=80 THEN 'A' WHEN KP<=95 THEN 'B' ELSE 'C' END Sinif) x GROUP BY Sinif;
             """, p));
 
@@ -240,7 +240,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
         var sql = $"""
             SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
-                CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.TotalPrice ELSE 0 END) AS decimal(18,0)) AS Ciro,
+                CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*(sp.TotalPrice-sp.VatTotal) ELSE 0 END) AS decimal(18,0)) AS Ciro,
                 CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0) WHEN 4478 THEN ISNULL(MAX(stk.Ist),0)
                      ELSE ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(wms.Depo),0) END AS int) AS Bakiye,
                 CAST(SUM(CASE WHEN s.Date>=@d30 THEN sg.v*sp.Amount ELSE 0 END) AS int) AS S30,
@@ -420,7 +420,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
         await using var conn = await db.OpenAsync();
         var satilan = (await conn.QueryAsync<HcAyRaw>("""
             SELECT LEFT(CONVERT(varchar(10), s.Date, 23), 7) AS Ay,
-                SUM(CASE WHEN s.DocumentsTypeId=3 THEN -sp2.TotalPrice ELSE sp2.TotalPrice END) AS Tutar
+                SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(sp2.TotalPrice-sp2.VatTotal) ELSE (sp2.TotalPrice-sp2.VatTotal) END) AS Tutar
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.SalesProducts sp2 WITH(NOLOCK) ON sp2.SalesId = s.Id AND sp2.IsValid=1
             JOIN EncoreMerkez.dbo.Products p WITH(NOLOCK) ON p.Id = sp2.ProductsId
