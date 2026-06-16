@@ -15,6 +15,8 @@ function handleReconnectStateChanged(event) {
         reconnectModal.close();
     } else if (event.detail.state === "failed") {
         document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
+        // Telefon arka planda kalsa bile: /healthz poll, sunucu dönünce otomatik reload.
+        if (window.__bkmRecover) window.__bkmRecover();
     } else if (event.detail.state === "rejected") {
         location.reload();
     }

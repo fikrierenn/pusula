@@ -40,6 +40,9 @@ app.UseAntiforgery();
 app.MapGet("/ca.crt", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.ContentRootPath, "cert", "bkm-ca.crt"), "application/x-x509-ca-cert", "BKM-Panel-CA.crt"));
 
+// Hafif sağlık ucu — istemci circuit kopunca poll eder, sunucu dönünce telefon otomatik reload.
+app.MapGet("/healthz", () => Results.Text("ok"));
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

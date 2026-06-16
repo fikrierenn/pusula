@@ -36,6 +36,26 @@
         _ico.observe(document.body, { childList: true, subtree: true });
         // PWA service worker (install prompt + standalone)
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+
+        // Sunucu kapanınca circuit kopar; telefon takılı kalmasın → /healthz poll, sunucu dönünce otomatik reload.
+        // ReconnectModal "failed" branch'i de bunu çağırır (window.__bkmRecover).
+        window.__bkmRecover = function () {
+            if (window.__bkmRecovering) return;
+            window.__bkmRecovering = true;
+            (function tick() {
+                fetch('/healthz', { cache: 'no-store' })
+                    .then(r => { if (r.ok) location.reload(); else setTimeout(tick, 2000); })
+                    .catch(() => setTimeout(tick, 2000));
+            })();
+        };
+        // Sarı #blazor-error-ui görünür olunca (unhandled error / sunucu kill) recovery başlat.
+        (function () {
+            const ui = document.getElementById('blazor-error-ui');
+            if (!ui) return;
+            new MutationObserver(() => {
+                if (ui.style.display && ui.style.display !== 'none') window.__bkmRecover();
+            }).observe(ui, { attributes: true, attributeFilter: ['style'] });
+        })();
     </script>
 </body>
 
