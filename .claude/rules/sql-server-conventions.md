@@ -41,6 +41,11 @@ _BKM Kitap projesinde T-SQL yazımı için kalıcı kurallar._
 Çalışmaz: `STRING_AGG`, `TRIM`, `IIF`, `TRY_CONVERT`.
 Alternatifler: `STUFF + FOR XML PATH`, `LTRIM(RTRIM(...))`, `CASE WHEN`, `CONVERT + ISDATE`.
 
+## Aggregate + Kolon Gotcha (17.06 dersi)
+
+- **`SUM(CASE WHEN ... NOT IN (subquery) ...)` YASAK** — SQL: "Cannot perform an aggregate function on an expression containing a subquery". Aggregate'in CASE'i içinde alt-sorgu olmaz. Çözüm: filtreyi WHERE'e taşı, VEYA Customer-join'li kolon-form kullan (`IcKartFiltre.SqlCols`). WHERE içinde NOT IN(subquery) SERBEST — sadece aggregate-CASE içinde yasak.
+- **`EncoreMerkez.Sales.TotalAmount` ≠ NET CİRO.** TotalAmount küçük/adet-benzeri değer (örn. GrossTotal=1320 iken TotalAmount=13) — ciro DEĞİL. Net ciro daima `GrossTotal - DiscountTotal - VatTotal` (KDV-hariç). `SUM(TotalAmount)`'ı ciro sanma (10_01/10_02 bu yüzden çöp üretiyordu).
+
 ## İndirim Kolonları
 
 - `DiscountTotalDirect` = TOPLAM.

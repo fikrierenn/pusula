@@ -37,6 +37,11 @@ Tek dosyada iç içe 5+ feature → merge conflict, test zorluğu, yeni gelişti
 - Tek sorumluluk başına dosya (örn: `userService.ts` → `userQueries.ts` + `userMutations.ts` + `userValidation.ts`)
 - Pure fonksiyonları utils'e çıkar
 - Class büyükse composition pattern
+- **C# `partial class` = sıfır-risk split** (17.06 dersi): büyük servisi konuya göre 2 dosyaya böl (`RefQueries.cs` + `RefQueries.Envanter.cs`, `public sealed partial class`). Tip değişmez → DI + çağıran + primary-ctor + paylaşılan const aynı. Build kanıtlar. (RefQueries 638→334+314.)
+
+**Blazor `.razor` (KRİTİK nüans — 17.06 dersi):**
+- **`@code` içinde markup RenderFragment varsa (`__builder => { <div>... }`) → `.razor.cs` code-behind GEÇERSİZ** — düz C# Razor-markup derlemez (`error CS1525 '<'`). Code-behind sadece saf-C# `@code` için.
+- Büyük `.razor` split = **sub-component** (markup chunk'ı child `.razor`'a çıkar), code-behind değil. (Home/Tahmin bu yüzden ertelendi — M-13.)
 
 **API Route / Controller:**
 - Handler logic'i servise taşı — route sadece auth + validation + response
