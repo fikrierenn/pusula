@@ -67,22 +67,14 @@
         </footer>
 
         @* ── MOBİL ALT NAVİGASYON (app-tarzı tab bar) — sadece mobilde, masaüstü sidebar değişmez ── *@
+        @* btm-nav: NavRegistry tek-kaynaktan türer (plan-12 WS-3) *@
         <nav class="btm-nav lg:hidden z-40 bg-base-100 border-t border-base-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]">
-            <NavLink href="" Match="NavLinkMatch.All" ActiveClass="active text-primary">
-                <i data-lucide="layout-dashboard"></i><span class="btm-nav-label text-[10px]">Genel</span>
-            </NavLink>
-            <NavLink href="eticaret" ActiveClass="active text-primary">
-                <i data-lucide="shopping-cart"></i><span class="btm-nav-label text-[10px]">E-ticaret</span>
-            </NavLink>
-            <NavLink href="operasyon" ActiveClass="active text-primary">
-                <i data-lucide="store"></i><span class="btm-nav-label text-[10px]">Operasyon</span>
-            </NavLink>
-            <NavLink href="envanter" ActiveClass="active text-primary">
-                <i data-lucide="package"></i><span class="btm-nav-label text-[10px]">Envanter</span>
-            </NavLink>
-            <NavLink href="musteri" ActiveClass="active text-primary">
-                <i data-lucide="users"></i><span class="btm-nav-label text-[10px]">Müşteri</span>
-            </NavLink>
+            @foreach (var item in NavRegistry.BottomNav)
+            {
+                <NavLink href="@item.Href" Match="item.Match" ActiveClass="active text-primary">
+                    <i data-lucide="@item.Icon"></i><span class="btm-nav-label text-[10px]">@item.BtmLabel</span>
+                </NavLink>
+            }
         </nav>
     </div>
 
@@ -95,70 +87,24 @@
                 <span class="font-bold text-sm">Yönetim Paneli</span>
             </div>
 
+            @* Sidebar: NavRegistry tek-kaynaktan türer, grup başlıklı (plan-12 WS-3) *@
             <ul class="menu flex-1 px-3 gap-0.5">
-                <li class="menu-title text-neutral-content/50">ANALİTİK</li>
-                <li>
-                    <NavLink href="" Match="NavLinkMatch.All" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="layout-dashboard"></i><span>Genel Bakış</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="magazalar" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="store"></i><span>Mağazalar</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="toplam" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="chart-pie"></i><span>TOPLAM Kategori</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="eticaret" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="shopping-cart"></i><span>E-ticaret</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="operasyon" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="store"></i><span>Operasyon</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="envanter" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="package"></i><span>Envanter</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="musteri" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="users"></i><span>Müşteri</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="sadakat" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="heart"></i><span>Sadakat</span>
-                    </NavLink>
-                </li>
-
-                <li>
-                    <NavLink href="tahmin" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="sparkles"></i><span>Hedef Tahmin</span>
-                    </NavLink>
-                </li>
-
-                <li class="menu-title text-neutral-content/50">ASİSTAN</li>
-                <li>
-                    <NavLink href="asistan" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="message-square"></i><span>Asistan</span>
-                    </NavLink>
-                </li>
-                <li>
-                    <NavLink href="gorevler" @onclick="CloseDrawer" ActiveClass="active">
-                        <i data-lucide="check-square"></i><span>Görevler</span>
-                        @if (_acikGorev > 0)
-                        {
-                            <span class="badge badge-primary badge-sm ml-auto">@_acikGorev</span>
-                        }
-                    </NavLink>
-                </li>
+                @foreach (var grp in NavRegistry.Sections)
+                {
+                    <li class="menu-title text-neutral-content/50">@grp</li>
+                    @foreach (var item in NavRegistry.Items.Where(i => i.Section == grp))
+                    {
+                        <li>
+                            <NavLink href="@item.Href" Match="item.Match" @onclick="CloseDrawer" ActiveClass="active">
+                                <i data-lucide="@item.Icon"></i><span>@item.Label</span>
+                                @if (item.GorevBadge && _acikGorev > 0)
+                                {
+                                    <span class="badge badge-primary badge-sm ml-auto">@_acikGorev</span>
+                                }
+                            </NavLink>
+                        </li>
+                    }
+                }
             </ul>
         </div>
     </aside>

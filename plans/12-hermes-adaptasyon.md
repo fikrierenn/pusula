@@ -226,7 +226,7 @@ Hermes'in KENDİ felsefesi bu adaptasyona uygulanır: **narrow waist** (en dar f
 3. [x] **H-03** WS-6 Journal/handoff: iterative-merge + anchor. ✅ 16.06 (T2, bağımsız)
 4. [x] **H-04** WS-2 NarrowWaist: footprint-ladder.md + rule etiketleme + skill-inject referansı. ✅ 16.06 (7 rule etiketli, 2 skill referans, CLAUDE.md tier notu; compact-survival doğrulandı: paths: yok, dosyalar yerinde). (T2)
 5. [x] **H-05** WS-5 ErrorClass: SqlErrorClassifier.cs + _errors.py + Db.cs retry + generate_brief.py + error-handling.md. ✅ 16.06. Build yeşil, Python OK, smoke 200. silent-failure-hunter: auth-fatal yanlışsınıflama bulgusu DÜZELTİLDİ (18456/login-failed→fatal, C#+Python). (T3, kod)
-6. [ ] **H-06** WS-3 Registry-nav: NavRegistry.cs + MainLayout türetme. (T3, kod; build+nav-smoke). **python-reviewer gerekmez; nav görsel smoke ZORUNLU.**
+6. [x] **H-06** WS-3 Registry-nav: NavRegistry.cs + MainLayout türetme. ✅ 16.06. Build yeşil, smoke: sidebar 11 + btm-nav 5 + 2 grup, tüm href doğru, görsel birebir (btm-nav active=primary). (T3, kod)
 7. [ ] **H-07** WS-7 (ops.) Test: anti-snapshot kuralı. (T1-2; opsiyonel, atlanabilir)
 8. [ ] **H-08** Her WS sonrası `TODO.md` Faz senkronu + journal not.
 
