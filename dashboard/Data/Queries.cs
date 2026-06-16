@@ -351,6 +351,40 @@ public sealed class Queries(Db db)
             return new KasiyerDelta(k.Magaza, k.Ad, k.Fis, k.Net, k.Fis > 0 ? (int)Math.Round(k.Net / k.Fis) : 0, d);
         }).OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
     }
+
+    /// <summary>Kategori bazlı YoY MTD karşılaştırma (bu ay MTD vs geçen yıl aynı MTD, irsHrk+urn+urnKtgr2). plan-13.</summary>
+    public async Task<IReadOnlyList<TahminKategori>> GetTahminKategoriAsync(DateOnly bugun)
+    {
+        await using var conn = await db.OpenAsync();
+        var basBy = new DateOnly(bugun.Year, bugun.Month, 1).ToDateTime(TimeOnly.MinValue);
+        var sonBy = bugun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var basGY = new DateOnly(bugun.Year - 1, bugun.Month, 1).ToDateTime(TimeOnly.MinValue);
+        var sonGY = new DateOnly(bugun.Year - 1, bugun.Month, bugun.Day).AddDays(1).ToDateTime(TimeOnly.MinValue);
+        const string sql = """
+            SELECT k.ktgrAd AS Ad,
+                   CAST(SUM(CASE WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (1,4,100) THEN h.ehTutarN
+                                 WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS MtdBuYil,
+                   CAST(SUM(CASE WHEN h.ehTrhS>=@basGY AND h.ehTrhS<@sonGY AND h.ehTip IN (1,4,100) THEN h.ehTutarN
+                                 WHEN h.ehTrhS>=@basGY AND h.ehTrhS<@sonGY AND h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS MtdGecenYil
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urn u ON u.stkID = h.ehstkID
+            JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.stkKtgr2
+            WHERE h.ehMekan IN (1,4477,4478)
+              AND h.ehTip IN (1,3,4,5,100,101)
+              AND h.ehTrhS >= @basGY AND h.ehTrhS < @sonBy
+            GROUP BY k.ktgrAd
+            HAVING SUM(CASE WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (1,4,100) THEN h.ehTutarN
+                            WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) > 0
+            ORDER BY MtdBuYil DESC;
+            """;
+        var rows = await conn.QueryAsync<(string Ad, decimal MtdBuYil, decimal MtdGecenYil)>(
+            sql, new { basBy, sonBy, basGY, sonGY });
+        return rows.Select(r =>
+        {
+            decimal? yoy = r.MtdGecenYil > 0 ? Math.Round(100 * (r.MtdBuYil - r.MtdGecenYil) / r.MtdGecenYil, 1) : null;
+            return new TahminKategori(r.Ad, r.MtdBuYil, r.MtdGecenYil, yoy);
+        }).ToList();
+    }
 }
 
 /// <summary>Hedef tahmin matematiği (saf C# — SQL'den ayrı, test edilebilir). B-73.</summary>

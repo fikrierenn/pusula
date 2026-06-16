@@ -74,6 +74,21 @@ else if (_data is not null)
             </a>
         }
     </div>
+    <!-- Karşılaştırma bar (bu dönem vs geçen dönem). prevNet = Net/(1+Wow%). plan-13. -->
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+        <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2">
+            <i data-lucide="bar-chart-2" class="w-[18px] h-[18px] text-primary"></i>Mağaza Karşılaştırma
+        </h3>
+        <div style="height:160px">
+            <ApexChart TItem="StoreCard" Options="_barOpts" Height="160">
+                <ApexPointSeries TItem="StoreCard" Items="_data.Stores" Name="Bu dönem" SeriesType="SeriesType.Bar"
+                                 XValue="@(s => (object)s.Ad)" YValue="@(s => (decimal?)s.Net)" />
+                <ApexPointSeries TItem="StoreCard" Items="_data.Stores.Where(s => s.Wow is not null).ToList()" Name="Geçen dönem" SeriesType="SeriesType.Bar"
+                                 XValue="@(s => (object)s.Ad)" YValue="@(s => (decimal?)Math.Round(s.Net / (1 + s.Wow!.Value / 100), 0))" />
+            </ApexChart>
+        </div>
+    </div>
+
     <div class="flex gap-2 mb-5">
         <a href="@($"toplam?d={_period}")" class="flex-1 text-center text-[13px] font-semibold py-2.5 rounded-xl bg-base-100 border border-base-200 no-underline text-primary transition-colors hover:bg-base-200/40">📊 Kategori dağılımı</a>
     </div>
@@ -89,6 +104,24 @@ else if (_data is not null)
     private string _wowLabel = "önceki döneme göre";
     private PeriodSummary? _data;
     private static readonly string[] _gecerliDonem = { "gunluk", "haftalik", "ay" };
+
+    private readonly ApexChartOptions<StoreCard> _barOpts = new()
+    {
+        Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+        Colors = new List<string> { "#4f46e5", "#94a3b8" },
+        PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { Horizontal = true, BorderRadius = 4, BarHeight = "60%" } },
+        DataLabels = new DataLabels
+        {
+            Enabled = true,
+            Formatter = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}",
+            Style = new DataLabelsStyle { FontSize = "10px", Colors = new List<string> { "#475569" } },
+            OffsetX = 18,
+        },
+        Grid = new Grid { Show = false },
+        Legend = new Legend { Show = true, Position = LegendPosition.Bottom, FontSize = "11px" },
+        Xaxis = new XAxis { AxisBorder = new AxisBorder { Show = false }, AxisTicks = new AxisTicks { Show = false } },
+        Tooltip = new Tooltip { Enabled = true },
+    };
 
     protected override async Task OnParametersSetAsync()
     {

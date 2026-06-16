@@ -31,8 +31,52 @@ else if (_error is not null)
 }
 else if (_data is not null)
 {
-    var birlesik = _data.Stores.SelectMany(s => s.Kategori)
-        .GroupBy(k => k.Ad).Select(g => new CategorySlice(g.Key, g.Sum(x => x.Ciro)))
+    <!-- Üst KPI satırı (plan-13) -->
+    <div class="grid grid-cols-2 gap-2.5 mb-4 sm:grid-cols-4">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-3.5 py-3 min-w-0">
+            <div class="text-[10px] text-base-content/50 mb-0.5">Mağaza Net</div>
+            <div class="text-[18px] font-extrabold tabular-nums">@Tl(_data.Fiziksel)</div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-3.5 py-3 min-w-0">
+            <div class="text-[10px] text-base-content/50 mb-0.5">Fiş</div>
+            <div class="text-[18px] font-extrabold tabular-nums">@Num(_data.Fis)</div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-3.5 py-3 min-w-0">
+            <div class="text-[10px] text-base-content/50 mb-0.5">Online Net</div>
+            <div class="text-[18px] font-extrabold tabular-nums text-info">@Tl(_data.Eticaret)</div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl px-3.5 py-3 min-w-0">
+            <div class="text-[10px] text-base-content/50 mb-0.5">Online Sipariş</div>
+            <div class="text-[18px] font-extrabold tabular-nums text-info">@Num(_data.ESip)</div>
+        </div>
+    </div>
+
+    <!-- Mağaza filtre sekmesi (plan-13: client-side, StoreCard.Kategori) -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <button class="btn btn-xs @(_selMekan == 0 ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="@(() => _selMekan = 0)">Hepsi</button>
+        @foreach (var s in _data.Stores)
+        {
+            var sid = s.MekanId;
+            <button class="btn btn-xs @(_selMekan == sid ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="@(() => _selMekan = sid)">@s.Ad</button>
+        }
+        <button class="btn btn-xs @(_selMekan == -1 ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="@(() => _selMekan = -1)">Online</button>
+    </div>
+
+    @if (_selMekan == -1)
+    {
+        <div class="card bg-info/10 border border-info/30 rounded-2xl p-4 mb-4 text-[13px] text-base-content/70">
+            <i data-lucide="info" class="w-4 h-4 text-info inline-block align-[-3px] mr-1"></i>
+            Online kategori kırılımı mevcut değil — JOKER siparişleri henüz kategorize edilmemiş.
+            <a href="eticaret" class="text-info font-semibold ml-1 no-underline">E-ticaret sayfasına git →</a>
+        </div>
+    }
+    else
+    {
+    var kaynak = _selMekan == 0
+        ? _data.Stores.SelectMany(s => s.Kategori)
+        : _data.Stores.Where(s => s.MekanId == _selMekan).SelectMany(s => s.Kategori);
+    var birlesik = kaynak.GroupBy(k => k.Ad)
+        .Select(g => new CategorySlice(g.Key, g.Sum(x => x.Ciro)))
         .OrderByDescending(x => x.Ciro).ToList();
     var totC = birlesik.Sum(x => x.Ciro);
 
@@ -59,7 +103,7 @@ else if (_data is not null)
         }
     </div>
 
-    @if (!string.IsNullOrEmpty(_selKat))
+    @if (!string.IsNullOrEmpty(_selKat) && _selMekan != -1)
     {
         <!-- Seçili kategori ürünleri (SSR — ?kat= query param) -->
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
@@ -98,6 +142,7 @@ else if (_data is not null)
             }
         </div>
     }
+    } @* else (_selMekan != -1) *@
 }
 
 @code {
@@ -106,6 +151,7 @@ else if (_data is not null)
     [SupplyParameterFromQuery(Name = "kat")] public string? Kat { get; set; }
 
     private string _period = "gunluk";
+    private int _selMekan = 0;  // 0=hepsi, -1=online, MekanId=mağaza filtre (plan-13)
     private bool _loading = true;
     private string? _error;
     private string _aralik = "";

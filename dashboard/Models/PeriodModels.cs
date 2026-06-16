@@ -15,6 +15,9 @@ public record TahminSonuc(string TahminAy, decimal YoYTaban, decimal IvmePct, de
     decimal Alt, decimal Ust, decimal Mtd, decimal? MtdPace, bool Yeterli,
     IReadOnlyList<AylikNokta> Seri);
 
+/// <summary>Kategori bazlı YoY MTD karşılaştırma (bu ay MTD vs geçen yıl aynı MTD). plan-13.</summary>
+public record TahminKategori(string Ad, decimal MtdBuYil, decimal MtdGecenYil, decimal? YoyPct);
+
 /// <summary>Mağaza dönem satırı (EncoreMerkez Sales → posMagaza). Net = iade sign'lı.</summary>
 public record StoreRow(int MekanId, decimal Net, int Fis, decimal Iade);
 

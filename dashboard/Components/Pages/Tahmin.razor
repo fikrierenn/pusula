@@ -120,6 +120,27 @@ else if (_t is not null)
         }
     </div>
 
+    <!-- Kategori bazlı YoY (plan-13) -->
+    @if (_kategori.Count > 0)
+    {
+        <h2 class="text-lg font-bold tracking-tight mb-3">Kategori — Bu Ay MTD vs Geçen Yıl</h2>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+            <div class="text-base-content/50 text-xs mb-3">İrsHrk net · 3 mağaza · @AyAd(_t!.TahminAy) (MTD) vs geçen yıl aynı dönem</div>
+            @foreach (var k in _kategori)
+            {
+                var yoyRenk = k.YoyPct is null ? "text-base-content/40" : k.YoyPct >= 0 ? "text-success" : "text-error";
+                <div class="flex items-center justify-between gap-2 py-1.5 border-b border-base-200 last:border-b-0">
+                    <span class="text-[13px] font-semibold text-base-content/85 truncate">@k.Ad</span>
+                    <div class="flex items-center gap-3 shrink-0 tabular-nums">
+                        <span class="text-[12px] text-base-content/50">@Tl(k.MtdGecenYil)</span>
+                        <span class="text-[13px] font-bold">@Tl(k.MtdBuYil)</span>
+                        <span class="text-[12px] font-bold @yoyRenk">@(k.YoyPct is null ? "—" : Pct(k.YoyPct.Value))</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
     <!-- Aylık seri grafik -->
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
         <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-no-axes-column" class="w-[18px] h-[18px] text-primary"></i>Aylık Net Ciro (irsHrk, 25 ay)</h3>
@@ -143,6 +164,7 @@ else if (_t is not null)
     private string? _error;
     private TahminSonuc? _t;
     private readonly List<(string Ad, TahminSonuc T)> _magaza = new();
+    private IReadOnlyList<TahminKategori> _kategori = [];
     private string _pColor = "";
     private static readonly (int Id, string Ad)[] _mekanlar = { (1, "FSM"), (4477, "Özlüce"), (4478, "İst.Yolu") };
 
@@ -154,10 +176,12 @@ else if (_t is not null)
             var bugun = DateOnly.FromDateTime(DateTime.Today);
             var tTot = Queries.GetTahminAsync(bugun, 0);
             var tMag = _mekanlar.Select(m => Queries.GetTahminAsync(bugun, m.Id)).ToArray();
-            await Task.WhenAll(new[] { tTot }.Concat(tMag));
+            var tKat = Queries.GetTahminKategoriAsync(bugun);
+            await Task.WhenAll(((IEnumerable<Task>)new[] { tTot }).Concat(tMag).Concat(new[] { tKat }));
             _t = tTot.Result;
             _magaza.Clear();
             for (int i = 0; i < _mekanlar.Length; i++) _magaza.Add((_mekanlar[i].Ad, tMag[i].Result));
+            _kategori = tKat.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Tahmin", sw); StateHasChanged(); }
