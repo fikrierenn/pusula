@@ -5,7 +5,7 @@
 **Tarih:** 2026-06-16
 **Proje:** `bkm`
 **Yazan:** Fikri / Claude (planner subagent, opus)
-**Durum:** Taslak
+**Durum:** ✅ TAMAMLANDI 16.06 — 7/7 WS (WS-1 78c9060 · WS-4+6 86d903e · WS-2 72d3f62 · WS-5 1f40896 · WS-3 e7a5d50 · WS-7). Faz-2 ertelenenler B-93/94/95.
 
 ---
 
@@ -227,7 +227,7 @@ Hermes'in KENDİ felsefesi bu adaptasyona uygulanır: **narrow waist** (en dar f
 4. [x] **H-04** WS-2 NarrowWaist: footprint-ladder.md + rule etiketleme + skill-inject referansı. ✅ 16.06 (7 rule etiketli, 2 skill referans, CLAUDE.md tier notu; compact-survival doğrulandı: paths: yok, dosyalar yerinde). (T2)
 5. [x] **H-05** WS-5 ErrorClass: SqlErrorClassifier.cs + _errors.py + Db.cs retry + generate_brief.py + error-handling.md. ✅ 16.06. Build yeşil, Python OK, smoke 200. silent-failure-hunter: auth-fatal yanlışsınıflama bulgusu DÜZELTİLDİ (18456/login-failed→fatal, C#+Python). (T3, kod)
 6. [x] **H-06** WS-3 Registry-nav: NavRegistry.cs + MainLayout türetme. ✅ 16.06. Build yeşil, smoke: sidebar 11 + btm-nav 5 + 2 grup, tüm href doğru, görsel birebir (btm-nav active=primary). (T3, kod)
-7. [ ] **H-07** WS-7 (ops.) Test: anti-snapshot kuralı. (T1-2; opsiyonel, atlanabilir)
+7. [x] **H-07** WS-7 (ops.) Test: anti-snapshot kuralı. ✅ 16.06 (test-discipline.md davranışsal-kontrat bölümü). (T1-2)
 8. [ ] **H-08** Her WS sonrası `TODO.md` Faz senkronu + journal not.
 
 > Bağımlılık özeti: H-01/02/03 birbirinden bağımsız (paralel onaylanabilir). H-04 onların kararlarına dayanır. H-05/H-06 koddur, core'lardan bağımsız ama risk nedeniyle sona. H-07 opsiyonel.

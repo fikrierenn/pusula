@@ -39,6 +39,20 @@ Bir iş ancak şu üçü sağlanınca kapanır:
 3. **`skip` / `xit` / `[Ignore]` ile testi by-pass etmek** — sebep dokümante edilmeden devre dışı kabul edilmez.
 4. **Failure'ı "ileride bakacağım" diye bırakmak** — stale-claim olur (`.claude/rules/todo-verification.md`).
 5. **Sadece happy-path test** — edge case, hata yolu, boş/null girdi de test edilir.
+6. **Snapshot / change-detector test** — mevcut-veriyi sabitleyen test kapsam katmaz, ilk değişimde kırılır (plan-12 WS-7, Hermes "explicit contracts over snapshots").
+
+## Davranışsal Kontrat > Snapshot (plan-12 WS-7)
+
+Test **ilişki/invariant** doğrular, anlık-veriyi değil. Mevcut sayıyı/listeyi sabitleyen test = "change-detector" (her veri değişiminde kırılır, hata yakalamaz).
+
+| ❌ Snapshot (kötü) | ✅ İnvariant (iyi) |
+|---|---|
+| `assert len(stores) == 3` | `assert len(stores) >= 1` |
+| `assert net == 5_401_374` | `assert net == brut - indirim` (formül ilişkisi) |
+| `assert "Oyuncak" in kategoriler` | `assert all(k.ciro >= 0 for k in kategoriler)` |
+| `assert rows == 37` | `assert rows > 0 and toplam == sum(r.ciro for r in rows)` |
+
+BKM rapor doğrulamasında: "bu hafta X satır geldi" değil — "satır ≥1 VE net=brüt−indirim VE iade negatif düşülmüş". Rakam mutabakatı (MCP eski/yeni) ayrı; test = davranış sözleşmesi.
 
 ## İlişkili
 - `.claude/rules/todo-verification.md` — "kapalı" iddiasını kanıtla.
