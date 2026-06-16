@@ -10,9 +10,11 @@ public sealed class Db
 {
     private readonly string _connStr;
     private readonly string? _jokerConnStr;
+    private readonly ILogger<Db> _logger;
 
-    public Db(IConfiguration config)
+    public Db(IConfiguration config, ILogger<Db> logger)
     {
+        _logger = logger;
         var env = LoadEnv();
         var host = env.GetValueOrDefault("MSSQL_HOST") ?? throw new InvalidOperationException(".env içinde MSSQL_HOST yok");
         var port = env.GetValueOrDefault("MSSQL_PORT");
@@ -62,26 +64,50 @@ public sealed class Db
     }
 
     /// <summary>Her çağrıda yeni açık bağlantı (Dapper using ile kapatır). DMY zorunlu sorgular için SET DATEFORMAT dmy.</summary>
-    public async Task<SqlConnection> OpenAsync()
-    {
-        var conn = new SqlConnection(_connStr);
-        await conn.OpenAsync();
-        using (var cmd = conn.CreateCommand())
-        {
-            cmd.CommandText = "SET DATEFORMAT dmy;";  // yerel DMY (sql-server-conventions.md)
-            await cmd.ExecuteNonQueryAsync();
-        }
-        return conn;
-    }
+    public Task<SqlConnection> OpenAsync() => OpenWithRetryAsync(_connStr, dateformat: true);
 
     /// <summary>JOKER e-ticaret DB'ye direkt bağlantı (linked server ODAKJOKER yerine). .env'de JOKER_HOST yoksa hata.</summary>
-    public async Task<SqlConnection> OpenJokerAsync()
+    public Task<SqlConnection> OpenJokerAsync()
     {
         if (_jokerConnStr is null)
             throw new InvalidOperationException(".env içinde JOKER_HOST yok — direkt JOKER bağlantısı yapılandırılmamış.");
-        var conn = new SqlConnection(_jokerConnStr);
-        await conn.OpenAsync();
-        return conn;   // JOKER tarih literalleri ISO YYYYMMDD — DATEFORMAT gerekmez.
+        return OpenWithRetryAsync(_jokerConnStr, dateformat: false);  // JOKER ISO YYYYMMDD — DATEFORMAT gerekmez.
+    }
+
+    // Bağlantı açma + (opsiyonel) SET DATEFORMAT, transient hatada retry (plan-12 WS-5).
+    // Server restart / ağ blip = baskın transient (SignalR-drop senaryosu). max 2 retry + backoff.
+    // Fatal (syntax/izin) veya tükenmiş transient → exception PROPAGATE (çağıranın catch'i banner gösterir; sessiz değil).
+    private async Task<SqlConnection> OpenWithRetryAsync(string connStr, bool dateformat)
+    {
+        const int maxRetry = 2;
+        for (int attempt = 0; ; attempt++)
+        {
+            SqlConnection? conn = null;
+            try
+            {
+                conn = new SqlConnection(connStr);
+                await conn.OpenAsync();
+                if (dateformat)
+                {
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SET DATEFORMAT dmy;";  // yerel DMY (sql-server-conventions.md)
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                return conn;
+            }
+            catch (Exception ex) when (attempt < maxRetry && SqlErrorClassifier.ShouldRetry(ex))
+            {
+                conn?.Dispose();
+                var delayMs = 300 * (attempt + 1);   // 300ms, 600ms backoff
+                _logger.LogWarning(ex, "Transient SQL bağlantı hatası (deneme {Attempt}/{Max}) — {Delay}ms sonra retry", attempt + 1, maxRetry + 1, delayMs);
+                await Task.Delay(delayMs);
+            }
+            catch
+            {
+                conn?.Dispose();
+                throw;   // fatal veya tükenmiş transient → yukarı
+            }
+        }
     }
 
     /// <summary>Repo kökü .env'i bul + parse (Python cfg() ile birebir kaynak).</summary>

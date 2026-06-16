@@ -40,6 +40,8 @@ try:
 except ImportError as e:
     sys.exit(f"Eksik paket: {e}. Yükle: pip install pymssql jinja2")
 
+from _errors import connect_with_retry  # plan-12 WS-5: transient bağlantı retry (aynı scripts/ dizini)
+
 SCRIPT_VERSION = "1.1.0"  # 1.1.0: e-ticaret (JOKER) haftalık kanal kırılımı + birleşik toplam
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = REPO_ROOT / "briefings" / "template"
@@ -516,10 +518,10 @@ def main():
 
     # DB
     cfg = get_db_config()
-    conn = pymssql.connect(
+    conn = connect_with_retry(lambda: pymssql.connect(   # plan-12 WS-5: transient hatada max-2 retry+backoff
         server=cfg["server"], user=cfg["user"], password=cfg["password"],
         database=cfg.get("database", "master"), autocommit=True,
-    )
+    ))
     warnings = []
 
     try:

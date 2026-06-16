@@ -37,6 +37,14 @@ _Her stack'te geçerli ilke. `paths:` yok — compact sonrası survive._
 4. Exception message'ı kullanıcıya basmak — bilgi sızıntısı.
 5. Try/catch'i fonksiyonun tamamına sarıp her şeyi tek "hata oldu"ya indirgemek.
 
+## Sınıflandırıcı (kod tarafı — plan-12 WS-5)
+
+"Gerçek exception" tipini koda gömme; **merkezi sınıflandırıcıdan** sor (transient → retry+backoff, fatal → fail). Dağınık inline string-match yasak.
+- **C#:** `dashboard/Data/SqlErrorClassifier.cs` — `SqlErrorKind {Transient,Fatal}` + `ShouldRetry`. `Db.OpenAsync`/`OpenJokerAsync` transient bağlantı hatasında max-2 retry+backoff (loglu, sessiz değil).
+- **Python:** `scripts/_errors.py` — `is_transient()` + `connect_with_retry()` (pymssql OperationalError=transient, ProgrammingError=fatal).
+- **Kural:** retry yalnızca transient + bounded (max 2) + her deneme loglanır. Bilinmeyen=transient ama bounded (sonsuz loop yok). BKM tek-DB → `should_rotate`/`should_fallback` YOK, sadece `should_retry`.
+
 ## İlişkili
 - `.claude/rules/security-principles.md` — exception sızıntısı, log maskeleme.
 - `silent-failure-hunter` agent — sessiz hata avı.
+- `dashboard/Data/SqlErrorClassifier.cs` · `scripts/_errors.py` — sınıflandırıcı kaynağı.
