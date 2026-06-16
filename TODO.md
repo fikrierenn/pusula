@@ -137,7 +137,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-82** ORTA — Kasiyer net `ABS(DiscountTotal)` formülü diğer sorgulardan farklı (Queries.cs:148-160, 333-341), çift-düzeltme riski → doğrula.
 - [ ] **B-83** ORTA — exception sızıntısı `_error = ex.Message` UI'da (tüm sayfalar) → generic mesaj + detay logger'a.
 - [ ] **B-84** ORTA — auth YOK (finansal + müşteri PII ağa açık). İç LAN/PWA bağlamı kabul ama karar gerek (basit auth?).
-- [ ] **B-85** ORTA — 3 boş catch loglamıyor (RefQueries:374 SPLH, Operasyon:190 WMS, Envanter:228 marj) → `ILogger.LogWarning` ekle (rakam maskelemez ama error-handling ihlali).
+- [x] ~~**B-85** boş catch loglama~~ — ✅ 16.06. RefQueries SPLH + Envanter marj → `ILogger.LogWarning` (RefQueries'e ILogger inject, Envanter'a @inject). Operasyon WMS iç-catch ölüydü (WhenAll await sonrası ulaşılmaz) → kaldırıldı. Build yeşil.
 - [ ] **B-86** ORTA — `GetDepoWmsAsync` boş-sonuç→0 "Depo Bugün" (RefQueries:399-410): gerçek-0 vs veri-yok ayırt edilemez.
 - [x] ~~**B-87** ölü kod~~ — ✅ 16.06. Operasyon `_pColor` field + ölü OnAfterRender theme bloğu + Gorevler `OncSinif()` silindi. Build yeşil. (todo-verification: ikisi de grep ile doğrulandı.)
 - [ ] **B-88** DÜŞÜK PERF — Home `GetHedefAsync` WhenAll'a al (sıralı); Müşteri `GetRfmAsync` içi 2 sorgu paralel (B-74 deseni).

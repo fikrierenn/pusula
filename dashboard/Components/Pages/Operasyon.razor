@@ -182,11 +182,11 @@ else if (_data is not null)
             var tOps = Ref.GetOpsAsync(dun);
             var tKas = Queries.GetKasiyerDeltaAsync(start, endExcl, pStart, start);
             var tWms = Ref.GetDepoWmsAsync();
-            await Task.WhenAll(tData, tOps, tKas, tWms);
+            await Task.WhenAll(tData, tOps, tKas, tWms);   // herhangi biri patlarsa burada throw → dış catch
             _data = tData.Result;
             _kasDelta = tKas.Result.ToDictionary(k => k.Magaza + "|" + k.Ad, k => k.DeltaPct);
-            try { _ops = tOps.Result; } catch (Exception ex) { _error ??= ex.Message; }
-            try { _wms = tWms.Result; } catch { /* WMS erişilemez */ }
+            _ops = tOps.Result;   // B-85: ölü iç try/catch kaldırıldı (WhenAll await sonrası .Result throw etmez)
+            _wms = tWms.Result;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Operasyon", sw); StateHasChanged(); }

@@ -4,6 +4,7 @@
 @inject RefQueries Ref
 @inject PerfState Perf
 @inject IJSRuntime JS
+@inject ILogger<Envanter> Logger
 @rendermode InteractiveServer
 @attribute [StreamRendering]
 @* B-74: marj (~9s, kanonik maliyet şelalesi) prerender'ı bloklamasın — sayfa WhenAll grubuyla (~1.1s) hemen
@@ -225,7 +226,7 @@ else if (_d is not null)
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
         try { _marj = await Ref.GetMarjAsync(); }
-        catch { /* marj kartı boş kalır, sayfa etkilenmez */ }
+        catch (Exception ex) { Logger.LogWarning(ex, "Marj (maliyet şelalesi) alınamadı — marj kartı boş gösterilecek"); }  // B-85: sessiz değil
         finally { _marjLoading = false; StateHasChanged(); }
     }
 

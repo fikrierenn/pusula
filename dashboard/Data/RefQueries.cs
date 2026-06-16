@@ -6,7 +6,7 @@ namespace GmDashboard.Data;
 /// <summary>
 /// Referans paneller (envanter + müşteri). Aylık/365g sabit pencere. SQL Python gm_dashboard.py'den port.
 /// </summary>
-public sealed class RefQueries(Db db)
+public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
 {
     /// <summary>RFM müşteri segmenti — yazarkasa (365g) + e-ticaret. dun = referans gün.</summary>
     public async Task<(IReadOnlyList<RfmSegment> Yazarkasa, IReadOnlyList<RfmSegment> Eticaret)> GetRfmAsync(DateOnly dun)
@@ -371,7 +371,7 @@ public sealed class RefQueries(Db db)
                 """;
             splh = (await conn.QueryAsync<SplhRow>(sql)).OrderByDescending(s => s.Saat > 0 ? s.NetCiro / s.Saat : 0).ToList();
         }
-        catch { /* PDKS linked server yoksa panel boş */ }
+        catch (Exception ex) { logger.LogWarning(ex, "SPLH (PDKS OPENQUERY) alınamadı — işgücü paneli boş gösterilecek"); }  // B-85: sessiz değil
 
         // COD — olgun pencere (75→15 gün önce; son 15 gün kargo süreci bitmemiş hariç)
         var codB = dun.AddDays(-75).ToString("yyyyMMdd");
