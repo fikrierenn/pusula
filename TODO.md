@@ -192,7 +192,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-87** ölü kod~~ — ✅ 16.06. Operasyon `_pColor` field + ölü OnAfterRender theme bloğu + Gorevler `OncSinif()` silindi. Build yeşil. (todo-verification: ikisi de grep ile doğrulandı.)
 - [x] ~~**B-88** perf paralel~~ — ✅ 16.06. Home `GetHedefAsync` WhenAll'a dahil (ayrı sıralı await yerine). Müşteri `GetRfmAsync` yk+et her biri kendi bağlantısı + WhenAll (B-74 deseni). SQL birebir, build yeşil, smoke 200. (Not: Müşteri 4.3s'in çoğu prerender double-render = B-91 ayrı.)
 - [ ] **B-89** DÜŞÜK — hardcode hex → ApexCharts CSS-var (**Context7 doğruladı: `colors:['var(--p)']` çalışıyor**, ilk denetimin "API kısıtı" sonucu YANLIŞ): `AppAreaChart`/`AppBarChart` default `#4063e6`, axis renkleri, `charts.js` PAL → `var(--p)/--er/--su`.
-- [ ] **B-90** DÜŞÜK — dosya boyutu: `Home.razor` 535 (>500 kırmızı çizgi), `RefQueries.cs` 524, `Eticaret.razor` 411, `Queries.cs` 395, `Magaza.razor` 377 → split.
+- [~] **B-90 → M-13 ile birleşti** (süperseded) — file-size split. ✅ RefQueries 638→334 (17.06). ⏸️ Home/Tahmin sub-component bekliyor. Sayılar M-13'te güncel; bu madde M-13'e bakar.
 - [ ] **B-91** Blazor prerender **double-render** (Context7) — prerender'lı InteractiveServer'da OnInitializedAsync 2× → masaüstünde TÜM sayfa SQL'i çift koşuyor (mobilde tek). `PersistentComponentState` ile persist→restore. Tüm sayfalar. DB yükü 2×→1×.
 
 #### ⏸️ Ertelenenler / Kısayollar (16.06 — normale çevrilecek, ATLANMAYACAK)
@@ -248,19 +248,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-35** EncoreMerkez stkID köprüsü~~ — ✅ 09.06 BULUNDU: `Products.Code`(int)=`urn.stkID` (%99,98). Join: SalesProducts.ProductsId→Products.Code=stkID→urn. Oyuncak 700K→10,96M doğrulandı. Kural yazıldı.
 - [x] ~~**B-36** Dashboard devir/ölü sermaye hesap detayı~~ — ✅ 09.06 modallara Satılan/ay + Ort Stok adet + 'Hesap' (12×S÷O) kolonları + formül başlığı. Devir 0,15x artık şeffaf.
 - [x] ~~**B-37** stkID düzeltmesi rapor dosyalarına~~ — ✅ 09.06 G4-kategori-magaza.sql + A6-marka-yayinevi.sql + generate_brief.py SQL_CATEGORY/TOTAL → Products.Code=urn.stkID köprüsü. G4 doğrulandı (Oyuncak 07.06 3,5k→491k, 140× düzelme).
-- [ ] **B-NEW-00 ⚡ (restart sonrası):** SQL bağlantı testi `mcp__sqlserver__sql_query SELECT @@SERVERNAME, GETDATE()`. OK ise B-NEW-01'e geç.
 
-#### Faz 0.5 — Mayıs %50 kitap kampanyası tahmini (TAM SCOPE'LANDI, sırayla yürüt)
-
-> **Tetikleyici:** "mayıs kampanyası" / "kitap %50 tahmin" / "kampanya tahminine devam"
-> **Tam plan:** `docs/journal/bkm/2026-04-27.md` → RESUME bölümünden başla, hiçbir karar yeniden tartışılmasın.
-
-- [ ] **B-NEW-01** Şema keşfi: `urnKtgr2.ktgrAd` LIKE 'KITAP%' kategori isimlerini bul. EncoreMerkez `Sales`/`SalesProducts`/`Products` describe. Products↔urn köprüsü (LinkedProductId veya Barcode↔barkod fallback).
-- [ ] **B-NEW-02** Geçmiş veri sorguları (3 dönem): May25 (01-31), Apr25 (01-30), Apr26 (01-26 — gün-prorate). Filtreler: `IsValid=1`, `DocumentsTypeId IN (1,2,3,6,7,8)`, kitap kategorisi. CampaignId NULL/NOT NULL ayrı çıkar.
-- [ ] **B-NEW-03** Tahmin modeli: `tahmin = may25 × MIN(MAX(apr26/apr25, 0.5), 2.0) × elastikiyet`. 3 senaryo (1.5x / 2.0x / 2.5x adet). Edge case'ler: Apr25=0, May25=0 ayrı handle.
-- [ ] **B-NEW-04** Excel çıktı (xlsx skill): 7 sheet — Yönetim Özeti / Kategori / Top100 Ciro / Top100 Adet / Tüm Kitaplar / Senaryo Karşılaştırma / Doğrulama.
-- [ ] **B-NEW-05** Doğrulama: top 10 mantıklı mı, kategori dağılımı sağlık check, outlier flag.
-- [ ] **B-NEW-06** (Opsiyonel) Stok ihtiyacı türevi: tahmin × güvenlik − mevcut stok = sipariş öneri.
+#### Faz 0.5 — Mayıs %50 kitap kampanyası tahmini
+> ⤵️ **ARŞİVLENDİ (17.06 curator)** — kampanya penceresi geçti (Nisan-Mayıs 2025/26). Detay `## Arşiv`'de. Geçerliliği geri gelirse (yeni kampanya) aktif Faz'a alınır + RESUME `docs/journal/bkm/2026-04-27.md`.
 
 #### Faz 1 — Bu hafta (yüksek öncelik — ~5 gün)
 - [ ] **B-04** `scripts/register-scheduled-task.ps1` çalıştır → Task Scheduler kaydı (her Pazartesi 09:00). **Tek görev mimarisi:** 14.05.2026'da `send_brief.bat` v5 self-healing yapıldı (brief.html yoksa `generate_brief.py` ile kendisi üretir → eski generator/sender yarış koşulu bitti, 11.05'te bu yüzden mail gitmemişti). `register-brief-generator-task.ps1` deprecated edildi (artık sadece eski `BKM-Brief-Generator` görevini kaldırıyor); `register-scheduled-task.ps1` çalıştırıldığında o eski görevi de otomatik temizler. **Kullanıcı sadece `register-scheduled-task.ps1`'i çalıştıracak.**
@@ -343,15 +333,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] **ECC-06** session-handoff'a "İşe YARAMAYANLAR" bölümü. ✅ 10.06
 
 #### Faz 0 — Bugün
-- [ ] **C-01** `_kurulum-paketi/claude-config/` içeriğini `.claude/` olarak repo köküne kopyala (PowerShell veya elle).
-- [ ] **C-02** `CLAUDE.md.PATCH` içeriğini mevcut CLAUDE.md sonuna ekle (`§ Session & Memory Disiplini`).
-- [ ] **C-03** `git mv SESSION_LOG.md docs/journal/bkm/_archive-session-log.md`.
-- [ ] **C-04** Hook test: `bash .claude/hooks/session-start.sh` — multi-project journal listesi gelmeli.
-- [ ] **C-05** İlk commit: `chore(crossproject): atlasops session/memory yapısı adapte (multi-project)`.
+- [x] ~~**C-01..C-05** atlasops session/memory kurulum~~ — ✅ TAMAM (27.04, Oturum 1). `.claude/` (rules+skills+hooks+agents) mevcut, CLAUDE.md § Session & Memory var, SESSION_LOG arşivlendi, hook'lar çalışıyor (session-start + handoff + pre-commit), ilk commit atıldı. Stale-open kalmıştı (curator yakaladı 17.06).
 
 #### Faz 1 — Bu hafta
 - [ ] **C-06** Template (D:\Dev\claude-context-template) güncelle: atlasops'taki güncel session-handoff SKILL.md'yi merge et.
-- [ ] **C-07** ADR-001 yaz: "Multi-project journal yapısı".
+- [x] ~~**C-07** ADR-001 yaz~~ — ✅ B-19 ile yapıldı (`docs/ADR/001-multi-project-journal.md`). Duplicate madde.
 
 #### Faz 2 — Bu ay
 - [ ] **C-08** Mevcut `docs/01-baglanti.md` ... `09-raporlar-ve-skills.md` BKM odaklı — `docs/projects/bkm/` altına taşı (büyük refactor, ayrı PR).
@@ -373,7 +359,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### Disiplin
 - [ ] **C-10** Aylık `/consolidate-memory` çağrısı — eski journal'ları arşive taşı (3 ay sonra).
-- [ ] **C-11** `pre-commit-antipattern.sh` hook ekle (şu an pasif) — ihtiyaç hissedilince.
+- [x] ~~**C-11** `pre-commit-antipattern.sh` hook ekle~~ — ✅ 17.06 wire edildi (H-09: settings.json PreToolUse(Bash) + BKM-adapte blok/uyar). Commit 7fc5a36.
 - [ ] **C-13** Build artifact'ları `.gitignore`'a taşı: `sorgular/03-kampanya/RaporApp/bin/Release/`, `obj/Release/`, `*.dll`, `*.exe`, `*.pdb`. 3. commit'te yığıldı (220 dosyanın çoğu bunlar). `git rm --cached -r ...` + yeni commit.
 - [x] ~~**C-14** Paralel oturum koruma — ADR-002 implementasyonu~~ — ✅ Lock mekanizması + `session-start.sh` uyarı + `session-handoff` pre-commit git check + stale cleanup (4h TTL) + `session-protocol.md` lock disiplini. Detay: `docs/ADR/002-paralel-oturum-koruma.md`.
 - [ ] **C-15** (opsiyonel) TODO.md split per-project: `TODO/bkm.md` + `TODO/_crossproject.md` + `TODO/belinza.md` + `TODO/yonetiq.md`. Race condition azaltır. ADR-002'de tartışıldı.
@@ -390,4 +376,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 > Tamamlanmamış ama artık geçersiz/ertelenmiş maddeler (plan-12 WS-1 state-machine). **Silinmez** — git history korur + buraya taşınır. Geçerliliği geri gelirse aktif Faz'a alınır. Taşıma: `session-handoff` curator-check işaretler → kullanıcı onayı → buraya.
 
-_(Henüz arşivlenen madde yok.)_
+### Mayıs %50 kitap kampanyası tahmini (B-NEW-00..06) — arşiv 17.06
+> Sebep: kampanya penceresi geçti (Nisan-Mayıs 2025/26, şu an Haziran). Tam plan/RESUME: `docs/journal/bkm/2026-04-27.md`. Yeni kampanya gelirse aktif Faz'a geri al.
+- [ ] **B-NEW-00** (restart sonrası) SQL bağlantı testi `SELECT @@SERVERNAME, GETDATE()`.
+- [ ] **B-NEW-01** Şema keşfi: `urnKtgr2.ktgrAd` LIKE 'KITAP%' + EncoreMerkez Sales/SalesProducts/Products + Products↔urn köprüsü.
+- [ ] **B-NEW-02** Geçmiş veri 3 dönem (May25/Apr25/Apr26 prorate), IsValid=1, DocType IN(1,2,3,6,7,8), CampaignId NULL/NOT NULL ayrı.
+- [ ] **B-NEW-03** Model `tahmin = may25 × MIN(MAX(apr26/apr25,0.5),2.0) × elastikiyet`, 3 senaryo, edge-case.
+- [ ] **B-NEW-04** Excel 7 sheet (xlsx skill).
+- [ ] **B-NEW-05** Doğrulama (top10/dağılım/outlier).
+- [ ] **B-NEW-06** (ops.) Stok ihtiyacı türevi.
