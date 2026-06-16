@@ -272,7 +272,8 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
                 SELECT TOP 200 CAST(it.NAME AS nvarchar(60)) AS Ad, d.QUANTITY AS Adet,
                     CAST(d.QUANTITY*d.SELLINGPRICEWITHOUTDISCOUNT/(1+d.VAT/100.0) AS decimal(18,2)) AS Brut,
                     CAST(d.QUANTITY*(d.SELLINGPRICEWITHOUTDISCOUNT/(1+d.VAT/100.0) - d.SELLINGPRICEWITHOUTVAT) AS decimal(18,2)) AS Indirim,
-                    CAST(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT AS decimal(18,2)) AS Net
+                    CAST(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT AS decimal(18,2)) AS Net,
+                    CAST(NULL AS nvarchar(50)) AS Kampanya
                 FROM dbo.J_ORDER_DETAILS d JOIN dbo.J_ITEMS it ON it.LOGICALREF=d.ITEMREF
                 WHERE d.ORDERREF=@fis;
                 """;
@@ -284,7 +285,9 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
             SELECT TOP 200 CAST(pr.Name AS nvarchar(60)) AS Ad, CAST(sp.Amount AS decimal(18,2)) AS Adet,
                 CAST(sp.TotalPrice-sp.VatTotal+sp.DiscountTotalDirect AS decimal(18,2)) AS Brut,
                 CAST(sp.DiscountTotalDirect AS decimal(18,2)) AS Indirim,
-                CAST(sp.TotalPrice-sp.VatTotal AS decimal(18,2)) AS Net
+                CAST(sp.TotalPrice-sp.VatTotal AS decimal(18,2)) AS Net,
+                (SELECT TOP 1 CAST(spc.CampaignName AS nvarchar(50)) FROM EncoreMerkez.dbo.SalesProductCampaigns spc WITH(NOLOCK)
+                 WHERE spc.SalesId=sp.SalesId AND spc.ProductSequence=sp.Sequence AND LTRIM(RTRIM(spc.CampaignName))<>'') AS Kampanya
             FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
             WHERE sp.SalesId=@fis AND sp.IsValid=1 AND sp.BarcodeNo<>'1001';

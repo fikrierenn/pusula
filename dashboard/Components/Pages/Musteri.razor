@@ -120,7 +120,7 @@ else
                         </div>
                         @if (u.Indirim > 0)
                         {
-                            <div class="flex justify-between text-error text-[11px]"><span>&nbsp;&nbsp;indirim</span><span class="tabular-nums">−@Tl(u.Indirim)</span></div>
+                            <div class="flex justify-between text-error text-[11px]"><span class="truncate">&nbsp;&nbsp;@(string.IsNullOrWhiteSpace(u.Kampanya) ? "Manuel indirim" : u.Kampanya)</span><span class="tabular-nums shrink-0">−@Tl(u.Indirim)</span></div>
                         }
                     </div>
                 }

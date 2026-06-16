@@ -11,7 +11,7 @@ public record FisRow(string Tarih, string Ref, int Kalem, decimal Tutar);
 
 /// <summary>Drill katman 4: fiş içeriği ürün satırı (tam fiş — brüt/indirim/net). Hepsi KDV-hariç. plan-17.
 /// Brüt = liste, İndirim = uygulanan, Net = ödenen ciro (Brüt−İndirim). Birim = Brüt/Adet.</summary>
-public record FisIcerikRow(string Ad, decimal Adet, decimal Brut, decimal Indirim, decimal Net);
+public record FisIcerikRow(string Ad, decimal Adet, decimal Brut, decimal Indirim, decimal Net, string? Kampanya);
 
 /// <summary>Drill: kategorideki tekil ürün. Satis/Ciro = seçili dönem; S30/S90/S360 = bugünden geriye
 /// trailing pencere satış adedi (kaç-gün-yeter). StokFsm/Ozl/Ist/Depo = anlık stok dağılımı (stokSonAltDepo_vw).
