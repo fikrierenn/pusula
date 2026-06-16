@@ -140,7 +140,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-85** boş catch loglama~~ — ✅ 16.06. RefQueries SPLH + Envanter marj → `ILogger.LogWarning` (RefQueries'e ILogger inject, Envanter'a @inject). Operasyon WMS iç-catch ölüydü (WhenAll await sonrası ulaşılmaz) → kaldırıldı. Build yeşil.
 - [ ] **B-86** ORTA — `GetDepoWmsAsync` boş-sonuç→0 "Depo Bugün" (RefQueries:399-410): gerçek-0 vs veri-yok ayırt edilemez.
 - [x] ~~**B-87** ölü kod~~ — ✅ 16.06. Operasyon `_pColor` field + ölü OnAfterRender theme bloğu + Gorevler `OncSinif()` silindi. Build yeşil. (todo-verification: ikisi de grep ile doğrulandı.)
-- [ ] **B-88** DÜŞÜK PERF — Home `GetHedefAsync` WhenAll'a al (sıralı); Müşteri `GetRfmAsync` içi 2 sorgu paralel (B-74 deseni).
+- [x] ~~**B-88** perf paralel~~ — ✅ 16.06. Home `GetHedefAsync` WhenAll'a dahil (ayrı sıralı await yerine). Müşteri `GetRfmAsync` yk+et her biri kendi bağlantısı + WhenAll (B-74 deseni). SQL birebir, build yeşil, smoke 200. (Not: Müşteri 4.3s'in çoğu prerender double-render = B-91 ayrı.)
 - [ ] **B-89** DÜŞÜK — hardcode hex → ApexCharts CSS-var (**Context7 doğruladı: `colors:['var(--p)']` çalışıyor**, ilk denetimin "API kısıtı" sonucu YANLIŞ): `AppAreaChart`/`AppBarChart` default `#4063e6`, axis renkleri, `charts.js` PAL → `var(--p)/--er/--su`.
 - [ ] **B-90** DÜŞÜK — dosya boyutu: `Home.razor` 535 (>500 kırmızı çizgi), `RefQueries.cs` 524, `Eticaret.razor` 411, `Queries.cs` 395, `Magaza.razor` 377 → split.
 - [ ] **B-91** Blazor prerender **double-render** (Context7) — prerender'lı InteractiveServer'da OnInitializedAsync 2× → masaüstünde TÜM sayfa SQL'i çift koşuyor (mobilde tek). `PersistentComponentState` ile persist→restore. Tüm sayfalar. DB yükü 2×→1×.

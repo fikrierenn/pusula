@@ -236,14 +236,14 @@ else if (_data is not null)
             var tData  = Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
             var tTrend = Queries.GetTrendAsync(dun);
             var tAlis  = Queries.GetAlisTrendAsync(dun);
-            await Task.WhenAll(tData, tTrend, tAlis);
+            // Hedef = aylık MTD (ay/haftalık). B-88: ayrı sıralı await yerine WhenAll'a dahil (paralel).
+            Task<(IReadOnlyList<HedefMagaza> Magaza, IReadOnlyList<HedefKategori> Kategori)>? tHedef =
+                (_period is "ay" or "haftalik") ? Queries.GetHedefAsync(new DateOnly(dun.Year, dun.Month, 1), g2) : null;
+            var coreTasks = new List<Task> { tData, tTrend, tAlis };
+            if (tHedef is not null) coreTasks.Add(tHedef);
+            await Task.WhenAll(coreTasks);
             _data = tData.Result; _trend = tTrend.Result; _alis = tAlis.Result;
-            // Hedef = aylık MTD (ay başı→bugün). Haftalıkta da göster (pace-line ile bağlam) — günlükte gizli.
-            if (_period is "ay" or "haftalik")
-            {
-                var ayBas = new DateOnly(dun.Year, dun.Month, 1);
-                (_hedefMag, _hedefKat) = await Queries.GetHedefAsync(ayBas, g2);
-            }
+            if (tHedef is not null) (_hedefMag, _hedefKat) = tHedef.Result;
             else { _hedefMag = null; _hedefKat = []; }
             _alerts = BuildAlerts();
             Notif.Set(_alerts, _aralik);   // global zile (MainLayout) ilet

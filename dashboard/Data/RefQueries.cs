@@ -11,9 +11,14 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
     /// <summary>RFM müşteri segmenti — yazarkasa (365g) + e-ticaret. dun = referans gün.</summary>
     public async Task<(IReadOnlyList<RfmSegment> Yazarkasa, IReadOnlyList<RfmSegment> Eticaret)> GetRfmAsync(DateOnly dun)
     {
-        await using var conn = await db.OpenAsync();
         var dunDt = dun.ToDateTime(TimeOnly.MinValue);
         var g2Dt = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        // B-88: yk (EncoreMerkez) + et (JOKER) bağımsız → her biri kendi bağlantısı, paralel (B-74 deseni).
+        async Task<List<RfmSegment>> Q(string sql, object prm)
+        {
+            await using var c = await db.OpenAsync();
+            return (await c.QueryAsync<RfmSegment>(sql, prm)).OrderBy(r => r.Segment).ToList();
+        }
 
         // Yazarkasa (EncoreMerkez Sales, CustomersId)
         const string ykSql = """
@@ -27,8 +32,7 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
                          WHEN Rec>180 THEN N'5-Kayıp' ELSE N'6-Diğer' END AS nvarchar(20)) S) seg
             GROUP BY seg.S;
             """;
-        var yk = (await conn.QueryAsync<RfmSegment>(ykSql, new { dun = dunDt, g2 = g2Dt }))
-            .OrderBy(r => r.Segment).ToList();
+        var tYk = Q(ykSql, new { dun = dunDt, g2 = g2Dt });
 
         // E-ticaret (JOKER, CUSTOMERREF) — ISO tarih
         const string etSql = """
@@ -43,11 +47,11 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
                          WHEN Rec>180 THEN N'5-Kayıp' ELSE N'6-Diğer' END AS nvarchar(20)) S) seg
             GROUP BY seg.S;
             """;
-        var et = (await conn.QueryAsync<RfmSegment>(etSql,
-            new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") }))
-            .OrderBy(r => r.Segment).ToList();
+        var tEt = Q(etSql,
+            new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") });
 
-        return (yk, et);
+        await Task.WhenAll(tYk, tEt);
+        return (await tYk, await tEt);
     }
 
     // Stok/envanter raporlarında dışlanan kategoriler (sema metrics envanter_exclusions)
