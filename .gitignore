@@ -40,3 +40,6 @@ __pycache__/
 dashboard/cert/
 tools/cert/
 
+# Rapor çıktı artifactları (regenerate edilebilir, git'e girmez)
+briefings/olu-stok*.xlsx
+
