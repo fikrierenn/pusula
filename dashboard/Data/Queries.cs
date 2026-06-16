@@ -368,7 +368,7 @@ public sealed class Queries(Db db)
                                  WHEN h.ehTrhS>=@basGY AND h.ehTrhS<@sonGY AND h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS MtdGecenYil
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID = h.ehstkID
-            JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.stkKtgr2
+            JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.urnKtgr2ID
             WHERE h.ehMekan IN (1,4477,4478)
               AND h.ehTip IN (1,3,4,5,100,101)
               AND h.ehTrhS >= @basGY AND h.ehTrhS < @sonBy
