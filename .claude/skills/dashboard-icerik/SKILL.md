@@ -43,7 +43,8 @@
   - Yerel DMY (`CONVERT 104`), ODAKJOKER ISO (`YYYYMMDD`).
   - EncoreMerkez: `WHERE IsValid=1`, `DiscountTotalDirect`, DocType `IN (1,2,3,6,7,8)`, iade `CASE WHEN DocType=3 THEN -` , compat 110 (IIF/STRING_AGG yok — ama default DB DerinSISBkm context'te IIF ÇALIŞIR).
   - Köprü: `Products.Code = urn.stkID` (stkKod/barkod DEĞİL).
-  - **Ciro KDV-dahil** (EncoreMerkez TotalPrice/GrossTotal). irsHrk KDV-hariç (envanter/devir için).
+  - **Ciro KDV+kargo-HARİÇ** (plan-16, CFO direktifi): EncoreMerkez `GrossTotal-DiscountTotal-VatTotal`, e-tic direkt JOKER `SELLINGPRICEWITHOUTVAT`. irsHrk zaten KDV-hariç. (Eski "KDV-dahil GrossTotal" SÜPERSEDED.)
+  - **Müşteri/sadakat raporları FİŞ bazlı**: sayım/frekans=`DocType=1`, ciro=`(1,3)`; Fatura(2)/Personel(6,7)/Sınav(8) hariç. Bkz. `sql-server-conventions.md` § MÜŞTERİ RAPORLARI FİŞ BAZLI.
   - Anlık stok: `stokSonAltDepo_vw` (ehMekan 1/4477/4478=mağaza, 12=Merkez Depo; transit 4480/26142/4835 hariç). ODAK e-tic stok: `ent.odak_depo_Stok` (stkID→StokMiktar).
 - **Şube scope:** drill metotları `@mekan` parametresi alır — Genel=0 (3 mağaza TOPLAM), Magaza detay=`Id`. WHERE `(@mekan=0 OR MG.mekanID=@mekan)`.
 - **MCP test-first:** yeni sorgu → `mcp__sqlserver__sql_query` (tek SELECT, CTE'siz, top-level ORDER BY'a TOP ekle) → sayı mantıklı mı doğrula → C#'a göm. **Asla körlemesine gömme** (stkKod=barkod / key-mismatch sessiz yanlış sayı üretir).
@@ -97,7 +98,7 @@ Otomatik yorum/özet gerekiyorsa `LlmService` (yerel qwen2.5-3b):
 - ❌ `<table>` → AppDataTable/AppRankBars.
 - ❌ Ham hex / kendi renk değişkeni → DaisyUI token.
 - ❌ Sorguyu MCP'de doğrulamadan C#'a gömmek → sessiz yanlış sayı.
-- ❌ irsHrk (KDV-hariç) ile POS cirosu (KDV-dahil) karıştırmak.
+- ❌ Eski KDV-dahil formül (`GrossTotal-DiscountTotal`) kullanmak → hep `-VatTotal` ekle (plan-16 KDV-hariç).
 - ❌ Yavaş aksiyona geri bildirim koymamak (pasif buton).
 - ❌ İç içe modal stack (telefonda kapatma karmaşası) → tek seviye.
 - ❌ Sayfaya kendi bell/CFO (üst bar'da var, tekrar).

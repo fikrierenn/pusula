@@ -77,8 +77,9 @@ git diff --name-only HEAD --diff-filter=AM
 
 ### Adim 2 — Journal Kontrol
 ```bash
-JOURNAL="docs/journal/$(date +%Y-%m-%d).md"
-mkdir -p docs/journal
+# Proje alt-dizini ZORUNLU (multi-project: bkm/belinza/yonetiq). BKM bu repo'nun aktif projesi.
+JOURNAL="docs/journal/bkm/$(date +%Y-%m-%d).md"
+mkdir -p docs/journal/bkm
 ```
 
 ### Adim 3 — Konusma Baglamini DERIN OKU
@@ -134,7 +135,7 @@ Son curator-check üstünden **≥7 gün** geçtiyse hafif tarama (yoksa atla):
 ### Adim 5 — Journal + TODO OTOMATIK commit
 
 ```bash
-JOURNAL="docs/journal/$(date +%Y-%m-%d).md"
+JOURNAL="docs/journal/bkm/$(date +%Y-%m-%d).md"
 TODO="TODO.md"
 STAGED=""
 
@@ -151,6 +152,15 @@ fi
 ```
 
 Sadece bu iki dosya. `git add .` / `-A` yasak.
+
+### Adim 5.5 — Keşif SQL + sema kontrolü (ZORUNLU — semantic-layer.md ikiz yükümlülük)
+
+Oturumda MCP `sql_query` ile anlamlı keşif/analiz yapıldıysa:
+1. **sema/ güncel mi?** Yeni köprü/kod/metrik `sema/*.yaml`'a yazıldı mı (yoksa `sema-ogren`).
+2. **SQL arşivlendi mi?** Keşif sorgusu `sorgular/YYYY-MM-DD-<konu>.sql`'e kaydedildi mi (yoksa kaydet).
+3. Eksikse journal "Yarına" + TODO'ya "arşivlenecek SQL: <konu>" maddesi düş.
+
+> Bu adım `.claude/rules/semantic-layer.md` § Keşif/Analiz SQL'i Arşivle kuralını handoff'ta zorlar — sık atlanıyordu.
 
 ### Adim 6 — Ozet Goster
 

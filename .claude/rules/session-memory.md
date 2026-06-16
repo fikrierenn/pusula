@@ -10,7 +10,7 @@ _Bağlam yönetimi anayasasının pratik kuralları. Detay: `docs/CONTEXT_MANAGE
 | Davranış kuralı (kalıcı) | `.claude/rules/<konu>.md` |
 | Aktif plan / backlog | `TODO.md` |
 | Büyük mimari karar | `docs/ADR/NNN-<slug>.md` |
-| Oturum notu / günlük | `docs/journal/YYYY-MM-DD.md` |
+| Oturum notu / günlük | `docs/journal/<proje>/YYYY-MM-DD.md` (bu repo: `docs/journal/bkm/`) |
 | Tek seferlik scratch | auto-memory (machine-local) |
 
 **Aynı bilgi iki yerde yaşamaz.**
@@ -25,7 +25,7 @@ Elle yapılabilecek:
 
 ## Oturum Sonu Ritüeli
 
-1. **`/handoff` skill** → `docs/journal/YYYY-MM-DD.md`
+1. **`/handoff` skill** → `docs/journal/<proje>/YYYY-MM-DD.md` (bu repo: `docs/journal/bkm/`)
 2. **Commit kontrol** — bu oturumun işini commit et
 3. **TODO.md güncelle**
 

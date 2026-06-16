@@ -21,7 +21,7 @@ bash .claude/hooks/session-start.sh
 ### Adım 2 — Son 2 journal dosyasını oku
 
 ```bash
-ls -t docs/journal/*.md | head -2
+ls -t docs/journal/bkm/*.md | head -2   # proje alt-dizini ZORUNLU (bkm/belinza/yonetiq)
 ```
 
 Her ikisini de `Read` et. Özellikle bak:
@@ -65,7 +65,7 @@ Mimari karar alındıysa `docs/ADR/NNN-konu.md` yaz (veya en azından TODO'ya "A
 Kullanıcı "iyi geceler" / "handoff" / "kaydet ve kapat" / "/handoff" / "devam edeceğiz" → `.claude/skills/session-handoff/SKILL.md` devreye girer.
 
 ### Ne yapar
-`docs/journal/YYYY-MM-DD.md`'ye append eder:
+`docs/journal/<proje>/YYYY-MM-DD.md`'ye (bu repo: `docs/journal/bkm/`) append eder:
 - Ana konu, tamamlananlar (dosya:line referanslı), build/test durumu, commit durumu, yarım kalan işler, kararlar, dikkat edilmesi gerekenler, yarına başlangıç noktası.
 
 ### CLAUDE.md'ye session log yazma

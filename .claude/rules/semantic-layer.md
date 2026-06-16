@@ -24,6 +24,19 @@ _BKM şema bilgisi `sema/*.yaml`'da canonical, makine-okunur tutulur. `paths:` y
 4. **Duplikasyon yok.** Aynı bağ varsa güncelle (confidence/evidence), yeni satır açma.
 5. **Çelişki → düzelt.** Yeni gerçek eskiyi çürütürse eskiyi sil veya düşür (`note: süperseded`).
 6. **Rapor scriptleri sema-driven.** Yeni script köprü/kod/metrik tanımını `sema/`'dan okur; tutarlılık tek kaynaktan.
+7. **Keşif SQL'i ARŞİVLE (ikiz yükümlülük — KRİTİK, sık unutulur).** Bir veri sorusunu MCP ile keşfettiysen (yeni köprü/kod/metrik üreten anlamlı sorgu), oturumu kapatmadan İKİSİNİ birden yap: (a) gerçeği `sema/*.yaml`'a yaz, (b) çalıştırdığın SQL'i `sorgular/YYYY-MM-DD-<konu>.sql`'e arşivle. Biri olmadan diğeri eksik: sema "ne öğrendik", arşiv "nasıl bulduk (tekrar üretilebilir)".
+
+## Keşif/Analiz SQL'i Arşivle (İkiz Yükümlülük)
+
+**Tetik:** MCP `sql_query` ile anlamlı bir keşif/analiz yaptın (yeni tablo/köprü/kod ortaya çıktı, bir CFO sorusunu cevapladın, bir bug'ı SQL ile teşhis ettin). Tek-satır sanity-check HARİÇ.
+
+**İki adım, oturum içinde, atlanmaz:**
+1. **Gerçek → `sema/`** (yukarıdaki kurallar — bridges/entities/codes/metrics).
+2. **SQL → `sorgular/YYYY-MM-DD-<konu>.sql`** — çalıştırılabilir, başına 2-3 satır yorum (ne sorusu, hangi DB, bulgu özeti). MCP-uyarlaması değil, SSMS-çalışır tam sorgu (CTE serbest).
+
+**Neden:** Keşif SQL'i kaybolursa aynı soruyu yeniden keşfetmek pahalı; sema "ne" der ama "nasıl doğrulandı" arşivde durur. Bu oturum Kumbara/kartlı-kartsız keşfi sema'ya yazıldı ama SQL arşivlenmedi → bu kuralın doğuş sebebi.
+
+**Dashboard gömülü SQL ayrı:** `dashboard/Data/*.cs` içindeki sorgu KODUN evi (arşive kopyalama). Bu kural MCP-keşif/analiz SQL'i içindir.
 
 ## Confidence ölçeği
 `1.0` kalıcı (PK/FK) · `0.9-0.99` canlı %99+ eşleşme · `0.5-0.8` gözlem ama tam teyit yok · `0.3-0.5` hipotez/teyit bekliyor.

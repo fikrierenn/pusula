@@ -34,4 +34,4 @@ _Hermes "narrow waist" uyarlaması (plan-12 WS-2). Yeni bir ihtiyaç çıkınca 
 - `.claude/rules/coding-discipline.md` — simplicity-first (aynı damar).
 - `.claude/rules/plan-first.md` — Tier sistemi (büyük basamak = Tier-3 plan).
 - `.claude/rules/semantic-layer.md` — sema-entity basamağı + decay.
-- `plans/12-hermes-adaptasyon.md` — kaynak (Hermes narrow-waist).
+- `plans/archive/12-hermes-adaptasyon.md` — kaynak (Hermes narrow-waist; tamamlandı, arşivde).

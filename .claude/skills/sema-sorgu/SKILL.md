@@ -29,6 +29,7 @@ BKM şemasında sorgu yazmak köprü/kod/filtre bilgisini gerektirir (stkKod≠b
    - EncoreMerkez compat 110: `STRING_AGG`/`TRIM`/`IIF`/`TRY_CONVERT` YOK → alternatif.
    - `SalesProducts` → daima `WHERE IsValid=1`. `LineCount` KULLANMA → CROSS APPLY COUNT.
    - İndirim: sadece `DiscountTotalDirect`. Belge: `DocumentsTypeId IN (1,2,3,6,7,8)`, iade(3) negatif sign.
+   - **Müşteri/RFM/sadakat sorgusu → FİŞ bazlı**: sayım/frekans `DocumentsTypeId=1`, ciro `(1,3)`; Fatura(2)/Personel(6,7)/Sınav(8) HARİÇ. Kartsız=anonim(CustomersId=0) dahil. Bkz. `sql-server-conventions.md` § MÜŞTERİ RAPORLARI FİŞ BAZLI.
    - **stkKod≠barkod** → ürün/kategori eşleşmesi daima stkID (`irsHrk.ehstkID=urn.stkID` veya `Products.Code=stkID`).
    - **KDV-hariç** (plan-16): EncoreMerkez `GrossTotal-DiscountTotal-VatTotal` / SalesProducts `TotalPrice-VatTotal`; e-ticaret `SELLINGPRICEWITHOUTVAT` (kargo-hariç). irsHrk `ehTutarN` zaten KDV-hariç.
    - Net ciro irsHrk: `SUM(CASE WHEN ehTip IN(1,4,100) THEN ehTutarN WHEN ehTip IN(3,5,101) THEN -ehTutarN END)`.

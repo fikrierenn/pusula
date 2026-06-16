@@ -27,6 +27,7 @@ Sen BKM Kitap projesinin T-SQL dosyaları için veri-doğruluğu denetçisisin. 
 9. **🟢 Unbounded SELECT** — TOP/WHERE'siz büyük tablo taraması (perf).
 10. **🟢 LineCount kullanımı** — `Sales.LineCount` güvenilmez → CROSS APPLY COUNT olmalı.
 11. **🟢 Belge filtresi** — ciro sorgusunda `DocumentsTypeId IN (1,2,3,6,7,8)` + iade sign eksik.
+12. **🔴 Müşteri raporu fiş-bazlı ihlali** — RFM/sadakat/kazanım/kart-oranı sorgusunda `DocumentsTypeId` Fatura(2)/Personel(6,7)/Sınav(8) içeriyorsa UYAR (sayım=1, ciro=(1,3) olmalı). Sınav(8) "kartsız"ı 266M şişiriyordu. Kartsız `CustomersId>0` ile sınırlanmış mı (anonim atlanmış) — UYAR. Bkz. `sql-server-conventions.md` § MÜŞTERİ RAPORLARI FİŞ BAZLI.
 
 ## Yöntem
 1. Glob ile dosyaları listele (kapsam).

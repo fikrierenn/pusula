@@ -62,6 +62,16 @@ AVG iade hariç:
 CASE WHEN s.DocumentsTypeId <> 3 THEN ... END
 ```
 
+## MÜŞTERİ RAPORLARI = FİŞ BAZLI (KRİTİK — 16.06.2026 CFO direktifi)
+
+**Tüm müşteri/sadakat raporları SADECE perakende fiş üzerinden çalışır.** Fatura(2)/Personel(6,7)/**Sınav Okulları(8)** belge tipleri HARİÇ — bunlar kurumsal/B2B, perakende müşteri davranışı değil (Sınav tek başına "kartsız"ı 266M şişiriyordu, B-102).
+
+- **Sayım/frekans/recency raporu** (RFM segment, RFM geçiş, tekrar-alış, kazanım, kart-oranı): `DocumentsTypeId = 1` (sadece satış fişi). İade(3) bir "alış" değil → frekansa katma.
+- **Ciro (Monetary) raporu** (Pareto, win-back, kartlı/kartsız sepet): `DocumentsTypeId IN (1,3)` — iade sign'lı düşülür (`CASE WHEN =3 THEN -net ELSE net`).
+- **Kartsız = anonim DAHİL** (`CustomersId=0` yürü-gel müşteri). `CustomersId>0` şartı kartsız tarafını yok eder — KULLANMA. Kartlı = `CustomersId>0 AND CardNumber<>''`.
+- İç-kart hariç tutma her zaman `IcKartFiltre` (isim Mağaza/Kumbara + tel 599/699 + elle liste).
+- **UI'da belirgin yazılır:** her müşteri sayfası/paneli "fiş bazlı (perakende)" etiketi taşır.
+
 ## SalesProducts CROSS APPLY
 
 ```sql

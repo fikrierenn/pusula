@@ -41,10 +41,10 @@ Argümanda tarih yoksa **dün** = `CAST(DATEADD(DAY,-1,GETDATE()) AS date)`. Kul
 ```sql
 SELECT MG.mekanID,
     CASE MG.mekanID WHEN 1 THEN 'FSM' WHEN 4477 THEN 'Ozluce' WHEN 4478 THEN 'IstYolu' END AS Magaza,
-    CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,2)) AS NetCiro,
+    CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,2)) AS NetCiro,
     SUM(IIF(s.DocumentsTypeId=3,-1,1)) AS Fis,
     SUM(IIF(s.DocumentsTypeId=3,1,0)) AS IadeFis,
-    CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal))
+    CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal))
        / NULLIF(SUM(IIF(s.DocumentsTypeId=3,-1,1)),0) AS decimal(18,2)) AS SepetOrt
 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
 JOIN EncoreMerkez.dbo.Pos p WITH(NOLOCK) ON p.Id=s.PosId
