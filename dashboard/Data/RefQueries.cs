@@ -6,7 +6,7 @@ namespace GmDashboard.Data;
 /// <summary>
 /// Referans paneller (envanter + müşteri). Aylık/365g sabit pencere. SQL Python gm_dashboard.py'den port.
 /// </summary>
-public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
+public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService icKart)
 {
     /// <summary>RFM müşteri segmenti — yazarkasa (365g) + e-ticaret. dun = referans gün.</summary>
     public async Task<(IReadOnlyList<RfmSegment> Yazarkasa, IReadOnlyList<RfmSegment> Eticaret)> GetRfmAsync(DateOnly dun)
@@ -26,19 +26,21 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
             return (await c.QueryAsync<RfmSegment>(sql, prm)).OrderBy(r => r.Segment).ToList();
         }
 
-        // Yazarkasa (EncoreMerkez Sales, CustomersId)
-        const string ykSql = """
+        // Yazarkasa (EncoreMerkez Sales, CustomersId) — elle işaretli iç kartlar hariç (plan-16 ek)
+        var icIds = icKart.Idler();
+        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        var ykSql = $"""
             SELECT seg.S AS Segment, COUNT(*) AS Musteri, SUM(c.Mon) AS Ciro
             FROM (SELECT s.CustomersId, DATEDIFF(DAY,MAX(s.Date),@dun) Rec, COUNT(*) Frq, SUM(s.GrossTotal-s.DiscountTotal-s.VatTotal) Mon
                   FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<@g2
+                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<@g2{icF}
                   GROUP BY s.CustomersId) c
             CROSS APPLY (SELECT CAST(CASE WHEN Frq>=8 AND Rec<=30 THEN N'1-Şampiyon' WHEN Frq>=4 AND Rec<=90 THEN N'2-Sadık'
                          WHEN Frq<=2 AND Rec<=30 THEN N'3-Yeni' WHEN Rec BETWEEN 91 AND 180 THEN N'4-Risk'
                          WHEN Rec>180 THEN N'5-Kayıp' ELSE N'6-Diğer' END AS nvarchar(20)) S) seg
             GROUP BY seg.S;
             """;
-        var tYk = Q(ykSql, new { dun = dunDt, g2 = g2Dt });
+        var tYk = Q(ykSql, new { dun = dunDt, g2 = g2Dt, icIds });
 
         // E-ticaret (JOKER, CUSTOMERREF) — ISO tarih
         const string etSql = """
@@ -190,11 +192,13 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
     {
         if (!YkCond.TryGetValue(seg, out var cond)) return [];
         await using var conn = await db.OpenAsync();
-        // ic=false → 599/699 telefonlu + Mağaza/Kumbara iç kartlarını ayıkla (MUS_YK port)
+        // ic=false → 599/699 telefonlu + Mağaza/Kumbara iç kartlarını ayıkla (MUS_YK port) + elle işaretli iç kartlar (plan-16 ek)
+        var icIds = icKart.Idler();
         var ickart = ic ? "" : """
              AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'
                   AND ISNULL(c.PhoneNumber,'') NOT LIKE '599%' AND ISNULL(c.PhoneNumber,'') NOT LIKE '699%'))
             """;
+        var icF = (!ic && icIds.Length > 0) ? " AND s.CustomersId NOT IN @icIds" : "";
         var sql = $"""
             SELECT TOP 100 s.CustomersId AS Id,
                 MAX(CAST(ISNULL(c.Name, s.CustomerCardNo) AS nvarchar(60))) AS Ad,
@@ -203,10 +207,10 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger)
                 DATEDIFF(DAY,MAX(s.Date),@dun) AS Rec
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
-            WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<DATEADD(DAY,1,@dun){ickart}
+            WHERE s.DocumentsTypeId=1 AND s.CustomersId>0 AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<DATEADD(DAY,1,@dun){ickart}{icF}
             GROUP BY s.CustomersId HAVING {cond} ORDER BY Mon DESC;
             """;
-        return (await conn.QueryAsync<CustomerRow>(sql, new { dun = dun.ToDateTime(TimeOnly.MinValue) })).ToList();
+        return (await conn.QueryAsync<CustomerRow>(sql, new { dun = dun.ToDateTime(TimeOnly.MinValue), icIds })).ToList();
     }
 
     /// <summary>RFM drill (e-ticaret JOKER) — segment → top 100 müşteri. ISO tarih.</summary>

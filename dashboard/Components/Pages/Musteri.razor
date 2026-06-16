@@ -4,6 +4,7 @@
 @inject RefQueries Ref
 @inject PerfState Perf
 @inject IJSRuntime JS
+@inject IcKartService IcKart
 @rendermode InteractiveServer
 
 <PageTitle>Müşteri — BKM GM</PageTitle>
@@ -44,7 +45,22 @@ else
                          ValueText="@(r => $"{Tl(r.Ciro)} · {Num(r.Musteri)} müşteri")" OnRowClick="@(r => OpenDrill("et", r.Segment))" />
         </div>
     </div>
-    <p class="text-base-content/50 text-xs mb-2">RFM = Recency (son alış) · Frequency (sıklık) · Monetary (harcama). İki ayrı evren — kimlik köprüsü yok, birleştirilmez. Segment satırına tıkla → ilk 100 müşteri.</p>
+    <p class="text-base-content/50 text-xs mb-2">RFM = Recency (son alış) · Frequency (sıklık) · Monetary (harcama). İki ayrı evren — kimlik köprüsü yok, birleştirilmez. Segment satırına tıkla → ilk 100 müşteri, sonra müşteriye tıkla → iç kart işaretle.</p>
+
+    @if (_icKartlar.Count > 0)
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 mb-3">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-2 flex items-center gap-1.5"><i data-lucide="store" class="w-4 h-4 text-error"></i>İç/Mağaza Kartları (@_icKartlar.Count) — RFM + müşteri analizlerinden hariç</h3>
+            <div class="flex flex-wrap gap-2">
+                @foreach (var k in _icKartlar)
+                {
+                    <span class="badge badge-outline gap-1 py-3">@k.Ad
+                        <button class="text-error hover:text-error/70" title="Geri al (RFM'e dahil et)" @onclick="() => IcKartGeriAl(k.Id)">✕</button>
+                    </span>
+                }
+            </div>
+        </div>
+    }
 
     <Modal @bind-Open="_modalOpen" Title="@(_selSeg + " — Müşteri Listesi (ilk 100, harcamaya göre)")">
         @if (_selKanal == "yk")
@@ -62,7 +78,8 @@ else
             <AppDataTable TItem="CustomerRow" Items="_drill"
                           Primary="@(c => c.Ad)" Sub="@(c => c.Tel)"
                           MetricMain="@(c => Tl(c.Mon))" MetricSub="@(c => $"{Num(c.Frq)} alış")"
-                          Badge="@(c => ($"{c.Rec}g", "bg-base-200 text-base-content/50"))" />
+                          Badge="@(c => ($"{c.Rec}g", "bg-base-200 text-base-content/50"))"
+                          Details="@(_selKanal == "yk" ? IcKartDetay : null)" />
         }
     </Modal>
 }
@@ -80,6 +97,14 @@ else
     private string _selKanal = "yk";
     private string _selSeg = "";
     private IReadOnlyList<CustomerRow> _drill = [];
+    private IReadOnlyList<IcKart> _icKartlar = [];
+
+    // YK drill satır-genişlet → iç kart işaretle (RFM + müşteri analizlerinden çıkar). plan-16 ek.
+    private RenderFragment<CustomerRow> IcKartDetay => c => @<div class="pt-2">
+        <button class="btn btn-xs btn-error btn-outline gap-1" @onclick="() => IcKartIsaretle(c)">
+            <i data-lucide="store" class="w-3 h-3"></i>İç/mağaza kartı — RFM'den çıkar
+        </button>
+    </div>;
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,6 +113,7 @@ else
         {
             _dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
             (_yk, _et) = await Ref.GetRfmAsync(_dun);
+            _icKartlar = IcKart.Yukle();
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Müşteri", sw); StateHasChanged(); }
@@ -126,6 +152,23 @@ else
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _drillLoading = false; StateHasChanged(); }
+    }
+
+    private async Task IcKartIsaretle(CustomerRow c)
+    {
+        if (c.Id <= 0) return;
+        IcKart.Ekle(c.Id, c.Ad);
+        (_yk, _et) = await Ref.GetRfmAsync(_dun);   // segment toplamları güncellensin
+        _icKartlar = IcKart.Yukle();
+        await ReloadCustomersAsync();               // drill'den de çıksın
+    }
+
+    private async Task IcKartGeriAl(long id)
+    {
+        IcKart.Sil(id);
+        (_yk, _et) = await Ref.GetRfmAsync(_dun);
+        _icKartlar = IcKart.Yukle();
+        StateHasChanged();
     }
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";

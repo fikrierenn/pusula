@@ -4,13 +4,15 @@ using GmDashboard.Models;
 namespace GmDashboard.Data;
 
 /// <summary>Sadakat / müşteri tutma sorguları — /sadakat sayfası (Faz 3).</summary>
-public sealed class SadakatQueries(Db db)
+public sealed class SadakatQueries(Db db, IcKartService icKart)
 {
     /// <summary>Win-back listesi — son 365g aktif ama son 90g yok, frekans≥3, ciro≥500. Aksiyon listesi.</summary>
     public async Task<IReadOnlyList<WinBackRow>> GetWinBackAsync()
     {
         await using var conn = await db.OpenAsync();
-        var rows = await conn.QueryAsync<WinBackRow>("""
+        var icIds = icKart.Idler();
+        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        var rows = await conn.QueryAsync<WinBackRow>($"""
             SELECT TOP 200
                 LTRIM(c.Name)        AS Ad,
                 c.PhoneNumber        AS Tel,
@@ -23,7 +25,7 @@ public sealed class SadakatQueries(Db db)
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = s.CustomersId
             WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
-              AND s.CustomersId > 0
+              AND s.CustomersId > 0{icF}
               AND s.Date >= DATEADD(DAY,-365,CAST(GETDATE() AS date))
               AND s.Date < DATEADD(DAY,-90,CAST(GETDATE() AS date))
             GROUP BY c.Name, c.PhoneNumber, c.CardNumber
@@ -32,7 +34,7 @@ public sealed class SadakatQueries(Db db)
                    THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
                    ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) >= 500
             ORDER BY ToplCiro DESC
-            """, commandTimeout: 30);
+            """, new { icIds }, commandTimeout: 30);
         return rows.ToList();
     }
 
@@ -40,7 +42,9 @@ public sealed class SadakatQueries(Db db)
     public async Task<IReadOnlyList<ParetoRow>> GetParetoAsync()
     {
         await using var conn = await db.OpenAsync();
-        var rows = await conn.QueryAsync<ParetoRow>("""
+        var icIds = icKart.Idler();
+        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        var rows = await conn.QueryAsync<ParetoRow>($"""
             SELECT TOP 10
                 dilim.dilim   AS Dilim,
                 COUNT(*)      AS MusteriSayisi,
@@ -55,13 +59,13 @@ public sealed class SadakatQueries(Db db)
                             THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal)
                             ELSE   s.GrossTotal-s.DiscountTotal-s.VatTotal END) DESC) AS dilim
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-                WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.CustomersId > 0
+                WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.CustomersId > 0{icF}
                   AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
                 GROUP BY s.CustomersId
             ) dilim
             GROUP BY dilim.dilim
             ORDER BY dilim.dilim
-            """, commandTimeout: 30);
+            """, new { icIds }, commandTimeout: 30);
         return rows.ToList();
     }
 
@@ -147,7 +151,9 @@ public sealed class SadakatQueries(Db db)
     public async Task<IReadOnlyList<KartliRow>> GetKartliAsync()
     {
         await using var conn = await db.OpenAsync();
-        var rows = await conn.QueryAsync<KartliRow>("""
+        var icIds = icKart.Idler();
+        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        var rows = await conn.QueryAsync<KartliRow>($"""
             SELECT TOP 2
                 CASE WHEN ISNULL(c.CardNumber,'')='' THEN 'Kartsız' ELSE 'Kartlı' END AS Tip,
                 COUNT(DISTINCT s.Id)          AS FisSayisi,
@@ -164,11 +170,11 @@ public sealed class SadakatQueries(Db db)
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = s.CustomersId
             WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
-              AND s.CustomersId > 0
+              AND s.CustomersId > 0{icF}
               AND s.Date >= DATEADD(MONTH,-12,CAST(GETDATE() AS date))
             GROUP BY CASE WHEN ISNULL(c.CardNumber,'')='' THEN 'Kartsız' ELSE 'Kartlı' END
             ORDER BY Tip
-            """, commandTimeout: 30);
+            """, new { icIds }, commandTimeout: 30);
         return rows.ToList();
     }
 }

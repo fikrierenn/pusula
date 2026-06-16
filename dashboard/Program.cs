@@ -21,6 +21,7 @@ builder.Services.AddSingleton<LlmService>();      // yerel LLM — model lazy y�
 builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)
 builder.Services.AddSingleton<TahminKayitService>(); // JSON tahmin kaydı (data/tahmin-kayitlari.json) plan-14
 builder.Services.AddSingleton<TakvimService>();      // takvim etmen (tatil API cache + okul JSON) plan-14
+builder.Services.AddSingleton<IcKartService>();      // elle işaretli iç/mağaza kartları (data/ic-kartlar.json) plan-16 ek
 builder.Services.AddScoped<ForecastOkuService>();    // tahmin motoru çıktısı okur (data/forecast/*.json) plan-15
 builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
 builder.Services.AddScoped<PerfState>();          // sayfa yükleme süresi (sayfalar Track, footer okur)

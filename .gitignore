@@ -48,3 +48,6 @@ briefings/olu-stok*.xlsx
 dashboard/data/forecast/
 dashboard/data/takvim-cache.json
 dashboard/data/tahmin-kayitlari.json
+dashboard/data/ic-kartlar.json
+run_forecast.log
+send_brief.log
