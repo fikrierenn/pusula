@@ -13,6 +13,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-16 Oturum 5 — plan 13→17 + tahmin motoru + KDV-hariç + fiş drill (~30 commit)
+- **plan-13** Genel Bakış redesign ✅ · **plan-14** tahmin ay-seçimi+kayıt+MAPE+takvim etmenleri ✅
+- **plan-15** Python tahmin motoru + öğrenen katman ✅ (`scripts/forecast/` 6 modül, 6 model ensemble, backtest MAPE %7,5, ForecastOkuService + dashboard, run_forecast.bat + schtasks 10:00)
+- **plan-16** tüm dashboard KDV+kargo-hariç ✅ (28 sorgu, headline -%7-9, sema 14.06 KDV-dahil kararı süperseded)
+- **plan-17** Python eksik portlar: WP-1 fiş drill+termal-fiş ✅ · WP-3 saat fiş+ciro ✅ · WP-4 AppSozluk sözlük ✅ (WP-2 lokasyon ⏳)
+- iç-kart elle işaretleme ✅ (IcKartService) · 2 skill (sema-sorgu, forecast-yorum) + 1 agent (sql-denetci) ✅
+- müşteri kazanım+kart stat (build yeşil, **smoke bekliyor**)
+
 ### 2026-06-16 — E-ticaret direkt JOKER + perf + recovery + B-48 (6 commit)
 - E-ticaret 10 sorgu linked ODAKJOKER → **192.168.40.70 DİREKT** (Db.OpenJokerAsync, .env JOKER_HOST). Kategori `J_ITEMS.DERINSIS_LOGOGRUP`=Kategori3 grain (0.6s vs 4.1s). Kategori→ürün drill + kategori yıl trendi yığılmış grafik (AppStackedBarChart) + il akordiyon. commit b792f4e.
 - Kampanya brüt **spc fan-out fix** (N indirim satırı/ürün → brüt şişiyordu) + **GetDetay 7 sorgu paralel** (B-49 ikinci tur ~3.4s→1.2s). commit 609f3dd.
@@ -115,6 +123,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ### BKM — BIRLESIK ONCELIK SIRASI
 
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
+- [ ] **B-96 🔴 müşteri kazanım/kart stat SMOKE** — commit cf9e7ab build yeşil ama RUNTIME doğrulanmadı. /musteri aç → aylık yeni müşteri kazanım grafiği + mağaza kart oranı bar + AppSozluk aç/kapa render. (plan-17, yarına ilk iş.)
+- [ ] **B-97 plan-17 WP-2 lokasyon filtresi** — `GetInventoryAsync` ~10 noktada `ehMekan IN (1,4477,4478)` hardcoded → 5-lokasyon (FSM/Özl/İst/Depo12/ODAK) toggle param + "stok=şube+Depo, ODAK hariç" (Python urunler_query_sql). Dedike, mutabakatlı.
+- [ ] **B-98 manuel indirim sebebi yok (keşif)** — fiş detayında manuel indirim "neden"i EncoreMerkez'de SAKLANMIYOR (SPC Source=1 boş, BasketDiscounts BOŞ, PriceChangeReasonId=0, Description boş). Kumbara=müşteri kartı (DerinCrm.Customer.Name) indirim değil. `scripts/_kumbara_scan.py` (izlenmiyor) tam-scan koştu — sonucu kontrol et + temizle. Kampanya adı (Source=0) çalışıyor.
+- [ ] **B-99 sql-denetci agent test** — yeni agent yüklendi (sonraki oturum aktif), denenmedi. `sorgular/04-karzarar/` dar kapsamda doğrula (bulgu üretiyor mu + format).
 - [~] **B-40** Mağaza detay sayfası `/magaza/{id}` — ✅ panel + drill commit 13.06 (de4f214…1f2142a). Ödeme üst-grup+banka drill · kampanya 3al2öde-ayrı/Diğer-toplu drill · UPT · iade · kategori→ürün. IsValid+iade fix doğrulandı (dashboard=MCP). **Kalan:** dönüşüm (G8 kapı sayıcı CSV — FSM-only, Özlüce/İst.Yolu sayıcı bekliyor).
 - [~] **B-41** JOKER kargo SQL — ✅ ÇEKİRDEK 14.06 (18 commit): il teslimat (takvim+iş günü) · aylık çıkış trendi + gün drill · COD iade maliyeti. **İş günü** çıkış (takvim 4,14→2,79g) + **veriden otomatik tatil** (resmi+dini+grev, sıfır bakım). queries.yaml+sema. **Kalan:** #5-7 (günlük detay→ay-drill ile karşılandı · v2 · çıkış-teslim→il'de var) düşük değer. Kargo kar/zarar YAPILMAZ (KargoMaliyetiniHesapla remote çağrılamaz).
 - [ ] **B-47 ⚡ DRILL MOBİL FIX** — mkcert güvensiz cert (Android kırmızı X) → WSS/SignalR kurulmuyor → mobil HTTPS'te interaktivite/drill YOK (sayfa SSR açılır, tıklama ölü). Kanıt: HTTP'den (http://192.168.1.61:5112) drill çalışmalı. **Çözüm: Cloudflare tunnel** (gerçek cert → WSS+PWA install+standalone+drill hepsi). Kullanıcı tüneli 2× reddetti ama mkcert Android'de yetmiyor. VEYA iç sunucu+Let's Encrypt. **(YENİ 14.06)**
