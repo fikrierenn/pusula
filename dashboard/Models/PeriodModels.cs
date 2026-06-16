@@ -38,6 +38,38 @@ public enum TakvimTip { Ulusal, DiniBayram, OkulAcik, OkulKapali, Sinav }
 public record AyEtmen(int HaftaSonuSayisi, int TatilKapaliGun, bool OkulAcik, bool SinavAyi,
     decimal HaftaSonuCarpan, decimal OkulCarpan, decimal BayramDuzeltme);
 
+// --- Tahmin motoru (plan-15) çıktısı: scripts/forecast/ → data/forecast/*.json ---
+
+/// <summary>Bir modelin ensemble katkısı (tahmin + ağırlık).</summary>
+public record ForecastModelKatki(decimal Tahmin, decimal Agirlik);
+
+/// <summary>Bir ay için motor tahmini: ensemble nokta/band + model katkıları + bileşen kırılımı (glm yorumu).</summary>
+public record ForecastAy(int Yil, int Ay, decimal? Point, decimal? Alt, decimal? Ust,
+    [property: System.Text.Json.Serialization.JsonPropertyName("model_sayisi")] int ModelSayisi,
+    IReadOnlyList<string> Atlanan,
+    IReadOnlyDictionary<string, ForecastModelKatki> Modeller,
+    IReadOnlyDictionary<string, decimal> Bilesen);
+
+/// <summary>tahmin-aylik.json kökü.</summary>
+public record ForecastCikti(string Uretim,
+    [property: System.Text.Json.Serialization.JsonPropertyName("seri_son")] string SeriSon,
+    IReadOnlyList<ForecastAy> Aylar);
+
+/// <summary>Bir yöntemin öğrenilen performansı (backtest).</summary>
+public record ForecastYontem(decimal Wmape,
+    [property: System.Text.Json.Serialization.JsonPropertyName("bias_pct")] decimal BiasPct,
+    decimal Agirlik);
+
+/// <summary>Ensemble band yüzdeleri + gözlemlenen MAPE.</summary>
+public record ForecastBand(
+    [property: System.Text.Json.Serialization.JsonPropertyName("alt_pct")] decimal AltPct,
+    [property: System.Text.Json.Serialization.JsonPropertyName("ust_pct")] decimal UstPct,
+    [property: System.Text.Json.Serialization.JsonPropertyName("ensemble_mape")] decimal EnsembleMape);
+
+/// <summary>yontem-agirlik.json kökü (öğrenen katman şeffaflığı).</summary>
+public record ForecastAgirlik(string Uretim,
+    IReadOnlyDictionary<string, ForecastYontem> Modeller, ForecastBand Band);
+
 /// <summary>Mağaza dönem satırı (EncoreMerkez Sales → posMagaza). Net = iade sign'lı.</summary>
 public record StoreRow(int MekanId, decimal Net, int Fis, decimal Iade);
 

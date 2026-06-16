@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject TahminKayitService Kayit
 @inject TakvimService Takvim
+@inject ForecastOkuService Motor
 @rendermode InteractiveServer
 
 <PageTitle>BKM Hedef Tahmin</PageTitle>
@@ -30,6 +31,77 @@
         <i data-lucide="chevron-right" class="w-5 h-5"></i>
     </button>
 </div>
+
+@if (!_loading && _motorAy is not null && _motorAy.Point is not null)
+{
+    <!-- Tahmin motoru ensemble (plan-15): 6 model yarışır, öğrenen ağırlık + de-bias + gözlemlenen band. -->
+    <div class="rounded-3xl px-5 py-5 mb-5 bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg">
+        <div class="flex items-center justify-between gap-2 mb-1">
+            <div class="flex items-center gap-2">
+                <i data-lucide="brain-circuit" class="w-[18px] h-[18px]"></i>
+                <span class="text-[13px] font-bold opacity-90">Tahmin Motoru — Ensemble</span>
+            </div>
+            <span class="text-[10px] font-bold bg-white/20 rounded-full px-2 py-0.5">@_motorAy.ModelSayisi model · öğrenen</span>
+        </div>
+        <div class="text-[36px] font-extrabold leading-tight tracking-tight whitespace-nowrap mb-1">@Tl(_motorAy.Point.Value)</div>
+        <div class="text-sm opacity-90 mb-1">Senaryo bandı @Tl(_motorAy.Alt!.Value) – @Tl(_motorAy.Ust!.Value)
+            @if (_motorAgirlik is not null) { <span>· backtest MAPE ±@_motorAgirlik.Band.EnsembleMape.ToString("0.0")%</span> }
+        </div>
+        @if (_motorAy.Atlanan.Count > 0)
+        {
+            <div class="text-[11px] opacity-80">Çalışmayan model: @string.Join(", ", _motorAy.Atlanan) (yetersiz yakın veri)</div>
+        }
+    </div>
+
+    <!-- Model yarışı + öğrenilen ağırlık (şeffaflık) -->
+    <h2 class="text-lg font-bold tracking-tight mb-3">Model Yarışı — Öğrenen Ağırlık</h2>
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+        <div class="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 gap-y-1.5 text-[12px] tabular-nums items-center">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40">Model</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">Tahmin</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">Ağırlık</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">MAPE</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">Bias</div>
+            @foreach (var (ad, k) in _motorAy.Modeller.OrderByDescending(m => m.Value.Agirlik))
+            {
+                var y = _motorAgirlik?.Modeller.GetValueOrDefault(ad);
+                <div class="font-semibold text-base-content/85 truncate" title="@ad">@MotorAd(ad)</div>
+                <div class="text-right">@Tl(k.Tahmin)</div>
+                <div class="text-right font-bold @(k.Agirlik > 0 ? "text-primary" : "text-base-content/30")">%@Math.Round(k.Agirlik * 100)</div>
+                <div class="text-right text-base-content/60">@(y is null ? "—" : y.Wmape.ToString("0.0") + "%")</div>
+                <div class="text-right @(y is null ? "text-base-content/40" : Math.Abs(y.BiasPct) <= 5 ? "text-success" : "text-warning")">@(y is null ? "—" : y.BiasPct.ToString("+0.0;-0.0;0") + "%")</div>
+            }
+        </div>
+        <div class="text-[10px] text-base-content/45 mt-3">Ağırlık = son 18 ay backtest doğruluğu (recency-ağırlıklı, düşük MAPE→yüksek ağırlık). Bias de-bias edilir. Kaynak: scripts/forecast (rolling-origin). @_motorAgirlik?.Uretim</div>
+    </div>
+
+    <!-- Bileşen kırılımı (glm_calendar yorumu) -->
+    @if (_motorAy.Bilesen.Count > 0)
+    {
+        <h2 class="text-lg font-bold tracking-tight mb-3">Bileşen Kırılımı</h2>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+            <div class="text-base-content/50 text-xs mb-3">glm_calendar (trend+mevsim+tatil regresör) ayrışması — neyin ne kadar etkisi (ensemble noktasından bağımsız yorum).</div>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                @foreach (var (ad, v) in _motorAy.Bilesen)
+                {
+                    <div>
+                        <div class="text-[11px] text-base-content/50">@BilesenAd(ad)</div>
+                        <div class="text-[14px] font-bold whitespace-nowrap @(v < 0 ? "text-error" : "")">@Tl(v)</div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="divider text-[11px] text-base-content/40">aşağısı: klasik yöntem (YoY×ivme) — karşılaştırma + kayıt</div>
+}
+else if (!_loading)
+{
+    <div class="alert alert-warning text-[12px] mb-5 py-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        Tahmin motoru çıktısı yok (bu ay için). Klasik YoY×ivme gösteriliyor. Motoru çalıştır: <code>python scripts/forecast/run.py</code>
+    </div>
+}
 
 @if (_loading)
 {
@@ -296,6 +368,8 @@ else if (_t is not null)
     private List<TahminKarsilastirma> _karsilastirma = new();
     private decimal _mape;
     private AyEtmen? _etmen;
+    private ForecastAy? _motorAy;           // plan-15 motor ensemble (seçili ay)
+    private ForecastAgirlik? _motorAgirlik; // plan-15 öğrenen katman (model ağırlık/bias/band)
     private bool _carpanAcik;        // plan-14 kararı: çarpan KAPALI başlar; MAPE kanıtlayınca aç
     private bool _takvimYenileniyor;
     // Kombine çarpan = hafta sonu × bayram düzeltmesi (okul şimdilik 1.0). Kapalıyken 1.0.
@@ -323,6 +397,8 @@ else if (_t is not null)
             _magaza.Clear();
             for (int i = 0; i < _mekanlar.Length; i++) _magaza.Add((_mekanlar[i].Ad, tMag[i].Result));
             _kategori = tKat.Result;
+            _motorAy = Motor.Ay(_hedefYil, _hedefAy);      // plan-15 motor çıktısı (yoksa null → klasik fallback)
+            _motorAgirlik = Motor.Agirlik();
             await KayitlariYukle();
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -399,6 +475,26 @@ else if (_t is not null)
         var pct = 100 * (gercek.Value - tahmin) / tahmin;
         return pct.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
     }
+
+    private static string MotorAd(string k) => k switch
+    {
+        "heuristik" => "Heuristik (YoY×ivme)",
+        "glm_calendar" => "GLM (trend+tatil)",
+        "seasonal_naive" => "Mevsimsel naif",
+        "dow_ewma" => "Gün+EWMA",
+        "autoets" => "AutoETS",
+        "autoarima" => "AutoARIMA",
+        _ => k,
+    };
+
+    private static string BilesenAd(string k) => k switch
+    {
+        "taban_trend" => "Taban + Trend",
+        "haftalik" => "Haftalık mevsim",
+        "yillik" => "Yıllık mevsim",
+        "tatil_okul" => "Tatil + Okul",
+        _ => k,
+    };
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
