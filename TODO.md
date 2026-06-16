@@ -139,7 +139,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-84** ORTA — auth YOK (finansal + müşteri PII ağa açık). İç LAN/PWA bağlamı kabul ama karar gerek (basit auth?).
 - [ ] **B-85** ORTA — 3 boş catch loglamıyor (RefQueries:374 SPLH, Operasyon:190 WMS, Envanter:228 marj) → `ILogger.LogWarning` ekle (rakam maskelemez ama error-handling ihlali).
 - [ ] **B-86** ORTA — `GetDepoWmsAsync` boş-sonuç→0 "Depo Bugün" (RefQueries:399-410): gerçek-0 vs veri-yok ayırt edilemez.
-- [ ] **B-87** DÜŞÜK — ölü kod: `Operasyon._pColor`, `Gorevler.OncSinif()` sil.
+- [x] ~~**B-87** ölü kod~~ — ✅ 16.06. Operasyon `_pColor` field + ölü OnAfterRender theme bloğu + Gorevler `OncSinif()` silindi. Build yeşil. (todo-verification: ikisi de grep ile doğrulandı.)
 - [ ] **B-88** DÜŞÜK PERF — Home `GetHedefAsync` WhenAll'a al (sıralı); Müşteri `GetRfmAsync` içi 2 sorgu paralel (B-74 deseni).
 - [ ] **B-89** DÜŞÜK — hardcode hex → ApexCharts CSS-var (**Context7 doğruladı: `colors:['var(--p)']` çalışıyor**, ilk denetimin "API kısıtı" sonucu YANLIŞ): `AppAreaChart`/`AppBarChart` default `#4063e6`, axis renkleri, `charts.js` PAL → `var(--p)/--er/--su`.
 - [ ] **B-90** DÜŞÜK — dosya boyutu: `Home.razor` 535 (>500 kırmızı çizgi), `RefQueries.cs` 524, `Eticaret.razor` 411, `Queries.cs` 395, `Magaza.razor` 377 → split.

@@ -141,7 +141,6 @@ else if (_data is not null)
     private OpsData? _ops;
     private DepoWmsData? _wms;
     private string _aralik = "";
-    private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
     private Dictionary<string, decimal?> _kasDelta = new();   // B-57 kasiyer net delta (Magaza|Ad → %)
 
     protected override async Task OnInitializedAsync()
@@ -195,17 +194,6 @@ else if (_data is not null)
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            // DaisyUI primary'yi grafik rengine köprüle (tema-bağlı, hardcode yok).
-            try
-            {
-                var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
-                var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
-                if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
-            }
-            catch { /* tema okunamazsa component fallback'i kullanır */ }
-        }
         if (_data is not null)
         {
             try

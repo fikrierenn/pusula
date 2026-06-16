@@ -124,7 +124,6 @@
     private void Kapat(long id) { Svc.Kapat(id); Yenile(); }
     private void Sil(long id) { Svc.Sil(id); Yenile(); }
 
-    private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
     // Öncelik solid pill tonu (AppDataTable Badge — plain span, .badge yok → bg gerek).
     private static string OncTone(string o) => o.Contains("Yüksek") ? "bg-error/15 text-error" : o.Contains("Düşük") ? "bg-success/15 text-success" : "bg-warning/15 text-warning";
     private static string NormOnc(string o) => o.Contains("Yüksek") ? "Yüksek" : o.Contains("Düşük") ? "Düşük" : "Orta";
