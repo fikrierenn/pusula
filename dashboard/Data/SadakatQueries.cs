@@ -75,32 +75,35 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
         await using var conn = await db.OpenAsync();
         var icIds = icKart.Idler();
         var f = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);   // tek kanonik iç-kart filtresi (plan-18)
+        // Kayan pencere (M-11): sabit tarih yerine bugüne göre. seg1 = bugün-3ay ankrajlı 12 ay, seg2 = bugün ankrajlı 12 ay.
         var rows = await conn.QueryAsync<RfmGecisRow>($"""
+            DECLARE @bugun date = CAST(GETDATE() AS date);
+            DECLARE @anchor1 date = DATEADD(MONTH,-3,@bugun);
             SELECT TOP 36 seg1.S AS EskiSeg, seg2.S AS YeniSeg, COUNT(*) AS Musteri
             FROM (
                 SELECT s.CustomersId,
-                    CAST(CASE WHEN COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),'20260301')<=30 THEN N'1-Şampiyon'
-                         WHEN COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),'20260301')<=90 THEN N'2-Sadık'
-                         WHEN COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),'20260301')<=30 THEN N'3-Yeni'
-                         WHEN DATEDIFF(DAY,MAX(s.Date),'20260301') BETWEEN 91 AND 180 THEN N'4-Risk'
-                         WHEN DATEDIFF(DAY,MAX(s.Date),'20260301')>180 THEN N'5-Kayıp'
+                    CAST(CASE WHEN COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),@anchor1)<=30 THEN N'1-Şampiyon'
+                         WHEN COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),@anchor1)<=90 THEN N'2-Sadık'
+                         WHEN COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),@anchor1)<=30 THEN N'3-Yeni'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),@anchor1) BETWEEN 91 AND 180 THEN N'4-Risk'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),@anchor1)>180 THEN N'5-Kayıp'
                          ELSE N'6-Diğer' END AS nvarchar(20)) S
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
                 WHERE s.DocumentsTypeId = 1 AND s.CustomersId > 0{f}
-                  AND s.Date >= '20250301' AND s.Date < '20260301'
+                  AND s.Date >= DATEADD(MONTH,-12,@anchor1) AND s.Date < @anchor1
                 GROUP BY s.CustomersId
             ) seg1
             JOIN (
                 SELECT s.CustomersId,
-                    CAST(CASE WHEN COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),GETDATE())<=30 THEN N'1-Şampiyon'
-                         WHEN COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),GETDATE())<=90 THEN N'2-Sadık'
-                         WHEN COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),GETDATE())<=30 THEN N'3-Yeni'
-                         WHEN DATEDIFF(DAY,MAX(s.Date),GETDATE()) BETWEEN 91 AND 180 THEN N'4-Risk'
-                         WHEN DATEDIFF(DAY,MAX(s.Date),GETDATE())>180 THEN N'5-Kayıp'
+                    CAST(CASE WHEN COUNT(*)>=8 AND DATEDIFF(DAY,MAX(s.Date),@bugun)<=30 THEN N'1-Şampiyon'
+                         WHEN COUNT(*)>=4 AND DATEDIFF(DAY,MAX(s.Date),@bugun)<=90 THEN N'2-Sadık'
+                         WHEN COUNT(*)<=2 AND DATEDIFF(DAY,MAX(s.Date),@bugun)<=30 THEN N'3-Yeni'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),@bugun) BETWEEN 91 AND 180 THEN N'4-Risk'
+                         WHEN DATEDIFF(DAY,MAX(s.Date),@bugun)>180 THEN N'5-Kayıp'
                          ELSE N'6-Diğer' END AS nvarchar(20)) S
                 FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
                 WHERE s.DocumentsTypeId = 1 AND s.CustomersId > 0{f}
-                  AND s.Date >= '20250601' AND s.Date < '20260601'
+                  AND s.Date >= DATEADD(MONTH,-12,@bugun) AND s.Date < DATEADD(DAY,1,@bugun)
                 GROUP BY s.CustomersId
             ) seg2 ON seg2.CustomersId = seg1.CustomersId
             GROUP BY seg1.S, seg2.S

@@ -148,7 +148,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 #### Mimari / kod-bütünlüğü debt (16.06 full-scan — 4 ajan + roslyn deneme + file-size)
 > Build 0/0, gerçek antipattern/circular yok, SQL-Razor temiz ayrık. Aşağıdakiler debt (compiler hatası değil). roslyn MCP init olmadı (repo'da .sln yok — navigator başka solution'a bağlı).
 - [ ] **M-10 DRY: tekrarlı kod birleştir** — `Mekan` dict (Queries.cs:12 + MagazaQueries.cs:13 kopya) → tek kaynak (StoreConstants/NavRegistry) · `LoadEnv()` (Db.cs:114 + LlmService.cs:217 birebir) → `internal static` paylaş · `Q<T>` paralel-wrapper (RefQueries:84 + MagazaQueries:29) → Db extension · `LlmService` 3× inference bloğu → `Infer()` helper.
-- [ ] **M-11 GetRfmGecisAsync hard-coded tarih** — `'20260301'/'20260601'/'20250301'` SQL literal → pencere DONUK (zaman geçince eski dönem karşılaştırır). `DateOnly` parametresine taşı (AddMonths -3/-15).
+- [x] ✅ **M-11 GetRfmGecisAsync hard-coded tarih → kayan pencere** — KAPALI 17.06. `DECLARE @bugun/@anchor1=bugün-3ay` + `DATEADD(MONTH,...)` → seg1=[bugün-15ay..bugün-3ay], seg2=[bugün-12ay..bugün]. Her gün otomatik güncel. UI başlık+dipnot dinamik. Build yeşil, MCP sliding-window sane (6→6 122K, 2-Sadık→Şampiyon 2571).
 - [x] ✅ **M-12 kargo/il linked-server → direkt JOKER** — KAPALI 16.06. `Queries.cs:169-189` kargoSql/ilSql `ODAKJOKER.*` 4-part + ana `conn` → `dbo.*` 2-part + `jconn` (zaten açık, satır 61). JOKER linked server kaldırılmıştı (kullanıcı) — bunlar straggler'dı. Build yeşil.
 - [ ] **M-13 file-size 500+ kırmızı çizgi split** — RefQueries.cs 638 · Home.razor 566 · Tahmin.razor 504. file-size-discipline: sonraki PR'da split. (300+: Queries 472, Eticaret 411, Magaza 377, EticQueries 318, Musteri 304; generate_brief.py 678.)
 
