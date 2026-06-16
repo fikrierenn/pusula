@@ -1,0 +1,7 @@
+# Tahmin motoru (plan-15 Faz 1) bağımlılıkları.
+# pandas/numpy mevcut rapor altyapısında zaten var; statsforecast ekstra aday (AutoETS/AutoARIMA).
+# pymssql proje genelinde (scripts/_errors.py) kullanılır.
+pandas>=2.0
+numpy>=1.23
+pymssql>=2.2
+statsforecast>=1.7   # opsiyonel: yoksa autoets/autoarima adayları atlanır, motor saf-numpy çalışır

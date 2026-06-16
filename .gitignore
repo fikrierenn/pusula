@@ -43,3 +43,8 @@ tools/cert/
 # Rapor çıktı artifactları (regenerate edilebilir, git'e girmez)
 briefings/olu-stok*.xlsx
 
+
+# Tahmin motoru runtime ciktisi (plan-15, regenerate edilebilir) + kisisel kayit/cache
+dashboard/data/forecast/
+dashboard/data/takvim-cache.json
+dashboard/data/tahmin-kayitlari.json
