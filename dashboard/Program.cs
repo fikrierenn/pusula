@@ -18,6 +18,7 @@ builder.Services.AddScoped<EticQueries>();
 builder.Services.AddScoped<SadakatQueries>();
 builder.Services.AddSingleton<LlmService>();      // yerel LLM — model lazy yüklenir (ilk istekte)
 builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)
+builder.Services.AddSingleton<TahminKayitService>(); // JSON tahmin kaydı (data/tahmin-kayitlari.json) plan-14
 builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
 builder.Services.AddScoped<PerfState>();          // sayfa yükleme süresi (sayfalar Track, footer okur)
 

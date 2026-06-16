@@ -396,6 +396,21 @@ public sealed class Queries(Db db)
             return new TahminKategori(r.Ad, r.MtdBuYil, r.MtdGecenYil, yoy);
         }).ToList();
     }
+
+    /// <summary>Bir ayın gerçek net cirosu (plan-14 kayıt karşılaştırma). MekanId 0=toplam. Veri yoksa null.</summary>
+    public async Task<decimal?> GetGercekCiroAsync(int yil, int ay, int mekanId = 0)
+    {
+        await using var conn = await db.OpenAsync();
+        const string sql = """
+            SELECT CAST(SUM(CASE WHEN h.ehTip IN (1,4,100) THEN h.ehTutarN WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0))
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            WHERE h.ehMekan IN (1,4477,4478) AND (@mekan=0 OR h.ehMekan=@mekan)
+              AND h.ehTip IN (1,3,4,5,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son;
+            """;
+        var bas = new DateOnly(yil, ay, 1).ToDateTime(TimeOnly.MinValue);
+        var son = new DateOnly(yil, ay, 1).AddMonths(1).ToDateTime(TimeOnly.MinValue);
+        return await conn.ExecuteScalarAsync<decimal?>(sql, new { mekan = mekanId, bas, son });
+    }
 }
 
 /// <summary>Hedef tahmin matematiği (saf C# — SQL'den ayrı, test edilebilir). B-73.</summary>

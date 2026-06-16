@@ -4,6 +4,7 @@
 @inject Queries Queries
 @inject PerfState Perf
 @inject IJSRuntime JS
+@inject TahminKayitService Kayit
 @rendermode InteractiveServer
 
 <PageTitle>BKM Hedef Tahmin</PageTitle>
@@ -76,6 +77,23 @@ else if (_t is not null)
 
     @if (_t.Yeterli)
     {
+        <!-- Kaydet / kayıt durumu (plan-14): seçilen ay tahminini sakla, ay sonu gerçekle kıyasla. -->
+        <div class="flex items-center gap-2 mb-5 flex-wrap">
+            @if (_mevcutKayit is not null)
+            {
+                <span class="text-[13px] text-base-content/70">Kaydedildi: <b>@Tl(_mevcutKayit.Tahmin)</b> <span class="text-base-content/45">(@_mevcutKayit.KayitTarih)</span></span>
+                <button class="btn btn-xs btn-ghost text-error" @onclick="() => KayitSil(_mevcutKayit.Id)">Sil</button>
+                <button class="btn btn-xs btn-outline" @onclick="TahminiKaydet">Güncelle</button>
+            }
+            else
+            {
+                <button class="btn btn-sm btn-primary gap-1.5" @onclick="TahminiKaydet">
+                    <i data-lucide="bookmark-plus" class="w-4 h-4"></i>Bu tahmini kaydet
+                </button>
+                <span class="text-[11px] text-base-content/45">Ay sonu gerçekle kıyaslamak için.</span>
+            }
+        </div>
+
         var kalanGun = DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month) - DateTime.Today.Day;
         var gecenGun = DateTime.Today.Day;
         <!-- Hesap adımları — "çatır çutur hesap" şeffaf: YoY taban → ivme → tahmin + MTD pace -->
@@ -173,6 +191,40 @@ else if (_t is not null)
         </div>
     }
 
+    <!-- Kayıtlı tahminler + model doğruluğu (plan-14) -->
+    @if (_karsilastirma.Count > 0)
+    {
+        <h2 class="text-lg font-bold tracking-tight mb-3">Kayıtlı Tahminler — Gerçekle Karşılaştırma</h2>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+            @{
+                var degerlendirilen = _karsilastirma.Count(c => c.SapmaPct is not null);
+            }
+            @if (degerlendirilen > 0)
+            {
+                <div class="flex items-baseline gap-2 mb-3">
+                    <span class="text-[11px] font-bold uppercase tracking-widest text-base-content/45">Model doğruluğu</span>
+                    <span class="text-[20px] font-extrabold tabular-nums @(_mape <= 10 ? "text-success" : _mape <= 20 ? "text-warning" : "text-error")">±@_mape.ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))%</span>
+                    <span class="text-[11px] text-base-content/45">ort. mutlak sapma · @degerlendirilen tamamlanmış ay</span>
+                </div>
+            }
+            <div class="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1.5 text-[12px] tabular-nums">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40">Ay</div>
+                <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">Tahmin</div>
+                <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">Gerçek</div>
+                <div class="text-[10px] font-bold uppercase tracking-wider text-base-content/40 text-right">Sapma</div>
+                @foreach (var c in _karsilastirma)
+                {
+                    var renk = c.SapmaPct is null ? "text-base-content/40" : Math.Abs(c.SapmaPct.Value) <= 10 ? "text-success" : Math.Abs(c.SapmaPct.Value) <= 20 ? "text-warning" : "text-error";
+                    <div class="font-semibold text-base-content/85 truncate">@AyAd($"{c.Kayit.Year:0000}-{c.Kayit.Month:00}")</div>
+                    <div class="text-right">@Tl(c.Kayit.Tahmin)</div>
+                    <div class="text-right">@(c.Gercek is null ? "bekliyor" : Tl(c.Gercek.Value))</div>
+                    <div class="text-right font-bold @renk">@(c.SapmaPct is null ? "—" : c.SapmaPct.Value.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%")</div>
+                }
+            </div>
+            <div class="text-[10px] text-base-content/45 mt-3">Sapma = (gerçek − tahmin) ÷ tahmin. "Bekliyor" = ay henüz tamamlanmadı. MAPE düştükçe model isabetli.</div>
+        </div>
+    }
+
     <!-- Aylık seri grafik -->
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
         <h3 class="text-[15px] font-bold tracking-tight text-base-content/90 mb-3 flex items-center gap-2"><i data-lucide="chart-no-axes-column" class="w-[18px] h-[18px] text-primary"></i>Aylık Net Ciro (irsHrk, 25 ay)</h3>
@@ -203,6 +255,10 @@ else if (_t is not null)
     private static readonly DateOnly _bugun = DateOnly.FromDateTime(DateTime.Today);
     private int _hedefYil = _bugun.Year;
     private int _hedefAy = _bugun.Month;
+    private IReadOnlyList<TahminKayitEntry> _kayitlar = [];
+    private TahminKayitEntry? _mevcutKayit;
+    private List<TahminKarsilastirma> _karsilastirma = new();
+    private decimal _mape;
     // Sınır: −24 ay (geçmiş backtest) … +3 ay (ileri projeksiyon). Çok ileri = spekülatif.
     private DateOnly Hedef => new(_hedefYil, _hedefAy, 1);
     private bool OncekiVar => Hedef > new DateOnly(_bugun.Year, _bugun.Month, 1).AddMonths(-24);
@@ -224,9 +280,41 @@ else if (_t is not null)
             _magaza.Clear();
             for (int i = 0; i < _mekanlar.Length; i++) _magaza.Add((_mekanlar[i].Ad, tMag[i].Result));
             _kategori = tKat.Result;
+            await KayitlariYukle();
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Tahmin", sw); StateHasChanged(); }
+    }
+
+    // Kayıtlar + geçmiş ay gerçek karşılaştırması (plan-14). MAPE = tamamlanmış kayıtlardan ort. mutlak sapma.
+    private async Task KayitlariYukle()
+    {
+        _kayitlar = Kayit.Yukle();
+        _mevcutKayit = _kayitlar.FirstOrDefault(k => k.Year == _hedefYil && k.Month == _hedefAy && k.MekanId == 0);
+        var curMonth = new DateOnly(_bugun.Year, _bugun.Month, 1);
+        var liste = new List<TahminKarsilastirma>();
+        foreach (var k in _kayitlar.Where(k => k.MekanId == 0).OrderByDescending(k => k.Year * 100 + k.Month).Take(12))
+        {
+            bool tamam = new DateOnly(k.Year, k.Month, 1).AddMonths(1) <= curMonth;  // ay tümüyle geçti
+            decimal? ger = tamam ? await Queries.GetGercekCiroAsync(k.Year, k.Month, 0) : null;
+            decimal? sapma = (ger is not null && k.Tahmin != 0) ? Math.Round(100 * (ger.Value - k.Tahmin) / k.Tahmin, 1) : null;
+            liste.Add(new TahminKarsilastirma(k, ger, sapma));
+        }
+        _karsilastirma = liste;
+        _mape = _karsilastirma.Where(c => c.SapmaPct is not null).Select(c => Math.Abs(c.SapmaPct!.Value)).DefaultIfEmpty().Average();
+    }
+
+    private async Task TahminiKaydet()
+    {
+        if (_t is null || !_t.Yeterli) return;
+        var entry = new TahminKayitEntry(Guid.NewGuid().ToString("N"), _hedefYil, _hedefAy, 0,
+            _t.Tahmin, _t.Alt, _t.Ust, _t.IvmePct, _t.YoYTaban, _t.Carpan, DateTime.Now.ToString("dd.MM.yyyy HH:mm"));
+        if (Kayit.Kaydet(entry)) await KayitlariYukle();
+    }
+
+    private async Task KayitSil(string id)
+    {
+        if (Kayit.Sil(id)) await KayitlariYukle();
     }
 
     private async Task AyKaydir(int n)
