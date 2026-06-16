@@ -234,6 +234,47 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
             new { dun = dun.ToString("yyyyMMdd"), bas = dun.AddDays(-365).ToString("yyyyMMdd"), g2 = dun.AddDays(1).ToString("yyyyMMdd") })).ToList();
     }
 
+    /// <summary>Müşteri istatistik (plan-17): aylık yeni müşteri kazanımı (13 ay) + mağaza kart-fiş oranı (30g). İç kartlar hariç.</summary>
+    public async Task<MusteriStat> GetMusteriStatAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        var icIds = icKart.Idler();
+        var icF = icIds.Length > 0 ? " AND s.CustomersId NOT IN @icIds" : "";
+        // Yeni müşteri = ilk fiş tarihi o ayda. İç/mağaza kartı hariç (isim + elle liste).
+        var kazSql = $"""
+            SELECT LEFT(CONVERT(varchar,ilk.IlkTarih,23),7) AS Ay, COUNT(*) AS Yeni
+            FROM (SELECT s.CustomersId, MIN(s.Date) AS IlkTarih
+                  FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                  LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
+                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0{icF}
+                    AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%'))
+                  GROUP BY s.CustomersId) ilk
+            WHERE ilk.IlkTarih >= DATEADD(MONTH,-12,@aybas)
+            GROUP BY LEFT(CONVERT(varchar,ilk.IlkTarih,23),7);
+            """;
+        var aybas = new DateOnly(dun.Year, dun.Month, 1).ToDateTime(TimeOnly.MinValue);
+        var kaz = (await conn.QueryAsync<MusteriKazanim>(kazSql, new { aybas, icIds }))
+            .OrderBy(k => k.Ay).ToList();
+
+        // Mağaza kart-fiş oranı (son 30g): kaç fiş, kaçı gerçek müşteri-kartlı.
+        var kartSql = $"""
+            SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, COUNT(*) AS Fis,
+                   SUM(CASE WHEN s.CustomersId>0 AND (c.Id IS NULL OR (c.Name NOT LIKE '%Mağaza%' AND c.Name NOT LIKE '%Kumbara%')) THEN 1 ELSE 0 END) AS Kartli
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
+            LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
+            WHERE s.DocumentsTypeId IN (1,2,6,7,8) AND s.Date>=DATEADD(DAY,-30,@dun) AND s.Date<@dun2
+            GROUP BY CAST(st.Name AS nvarchar(30));
+            """;
+        var dun2 = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var kartRaw = (await conn.QueryAsync<(string Magaza, int Fis, int Kartli)>(kartSql,
+            new { dun = dun.ToDateTime(TimeOnly.MinValue), dun2 })).ToList();
+        var kart = kartRaw.Select(r => new MagazaKart(r.Magaza, r.Fis, r.Kartli,
+            r.Fis > 0 ? Math.Round(100m * r.Kartli / r.Fis, 1) : 0)).OrderByDescending(k => k.Fis).ToList();
+
+        return new MusteriStat(kaz, kart, kart.Sum(k => k.Fis), kart.Sum(k => k.Kartli));
+    }
+
     /// <summary>Drill katman 3: müşteri → fiş/sipariş listesi (son 365g, top 100). Tutar KDV-hariç. plan-17 (Python HAR_YK/HAR_ET portu).</summary>
     public async Task<IReadOnlyList<FisRow>> GetFislerAsync(string kanal, long id)
     {

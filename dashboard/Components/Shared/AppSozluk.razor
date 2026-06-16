@@ -1,9 +1,10 @@
-@* Kavram sözlüğü — açılır panel (plan-17 WP-4, Python legend portu). DaisyUI collapse, semantic token. *@
-<details class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-2xl mb-3">
-    <summary class="collapse-title text-sm font-bold text-primary flex items-center gap-1.5">
+@* Kavram sözlüğü — native <details> aç/kapa (plan-17 WP-4). Kapalı başlar, başlığa tıkla → açılır. *@
+<details class="group bg-base-100 border border-base-200 rounded-2xl mb-3 overflow-hidden">
+    <summary class="cursor-pointer select-none list-none px-4 py-3 text-sm font-bold text-primary flex items-center gap-1.5 hover:bg-base-200/40">
         <i data-lucide="book-open" class="w-4 h-4"></i>Terimler &amp; Nasıl Yorumlanır?
+        <i data-lucide="chevron-down" class="w-4 h-4 ml-auto transition-transform group-open:rotate-180"></i>
     </summary>
-    <div class="collapse-content text-[12.5px] leading-relaxed text-base-content/75 space-y-1.5">
+    <div class="px-4 pb-4 pt-1 text-[12.5px] leading-relaxed text-base-content/75 space-y-1.5 border-t border-base-200">
         <div><b>Dönüşüm Oranı</b> = Fiş ÷ Giriş — mağazaya girenin yüzde kaçı alışveriş yaptı. <i class="text-success">Yüksek iyi</i> (FSM ~%51 sağlıklı).</div>
         <div><b>Sepet Ort (ATV)</b> = Ciro ÷ Fiş — ortalama fiş tutarı.</div>
         <div><b>UPT</b> = Ürün ÷ Fiş — bir fişte ortalama kaç ürün (sepet derinliği). <i>Düşük = sığ sepet.</i></div>
@@ -16,6 +17,8 @@
         <div><b>RFM</b> = Recency (son alış) · Frequency (sıklık) · Monetary (harcama) — müşteri sadakat segmenti.</div>
         <div><b>SPLH</b> = Ciro ÷ çalışılan saat — işgücü verimi.</div>
         <div><b>İade Oranı</b> = İade ÷ Satış — yüksek = kalite/operasyon sinyali.</div>
+        <div><b>Kart Oranı</b> = müşteri-kartlı fiş ÷ toplam fiş — sadakat kartı takılma yüzdesi (müşteri tanıma).</div>
+        <div><b>Yeni Müşteri Kazanım</b> = o ay İLK kez alışveriş yapan müşteri sayısı (ilk fiş tarihi o ayda).</div>
         <div><b>KDV-hariç</b> = tüm ciro rakamları net (kasanın aldığı KDV+kargo hariç) — tahmin/envanter/POS aynı ölçek (plan-16).</div>
         <div><b>MTD</b> = ay başından bugüne kümülatif · <b>WoW</b> = geçen haftaya/döneme göre · <b>YoY</b> = geçen yıla göre.</div>
     </div>

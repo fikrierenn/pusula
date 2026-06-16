@@ -47,6 +47,31 @@ else
     </div>
     <p class="text-base-content/50 text-xs mb-2">RFM = Recency (son alış) · Frequency (sıklık) · Monetary (harcama). İki ayrı evren — kimlik köprüsü yok, birleştirilmez. Segment satırına tıkla → ilk 100 müşteri, sonra müşteriye tıkla → iç kart işaretle.</p>
 
+    @if (_stat is not null)
+    {
+        <h2 class="text-lg font-bold tracking-tight mb-3 mt-2">Müşteri Kazanım &amp; Kart İstatistik</h2>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="user-plus" class="w-4 h-4 text-success"></i>Aylık Yeni Müşteri Kazanım (13 ay)</h3>
+                <div class="text-[11px] text-base-content/50 mb-2">o ay İLK kez alışveriş yapan kart · iç kart hariç</div>
+                <AppAreaChart TItem="MusteriKazanim" Items="_stat.Kazanim" Name="Yeni müşteri" Height="120"
+                              XValue="@(k => (object)k.Ay[5..])" YValue="@(k => (decimal?)k.Yeni)" />
+                @{ var sonAy = _stat.Kazanim.Count > 0 ? _stat.Kazanim[^1] : null; }
+                @if (sonAy is not null)
+                {
+                    <div class="text-[11px] text-base-content/50 mt-2">Son ay <b>@AyAd(sonAy.Ay)</b>: <b class="text-success">@Num(sonAy.Yeni)</b> yeni müşteri · 13 ay toplam @Num(_stat.Kazanim.Sum(k => k.Yeni))</div>
+                }
+            </div>
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="credit-card" class="w-4 h-4 text-info"></i>Kart Oranı — Mağaza (son 30g)</h3>
+                <div class="text-[11px] text-base-content/50 mb-2">kaç fişin kaçı müşteri-kartlı (sadakat tanıma)</div>
+                <AppRankBars TItem="MagazaKart" Items="_stat.KartOran" Label="@(m => m.Magaza)" Value="@(m => m.Oran)"
+                             ValueText="@(m => $"%{m.Oran} · {Num(m.Kartli)}/{Num(m.Fis)} fiş")" />
+                <div class="text-[12px] font-semibold mt-2 pt-2 border-t border-base-200">Toplam: <b>%@(_stat.ToplamFis > 0 ? Math.Round(100m * _stat.ToplamKartli / _stat.ToplamFis, 1) : 0)</b> kartlı (@Num(_stat.ToplamKartli)/@Num(_stat.ToplamFis) fiş)</div>
+            </div>
+        </div>
+    }
+
     @if (_icKartlar.Count > 0)
     {
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 mb-3">
@@ -148,6 +173,7 @@ else
     private IReadOnlyList<RfmSegment> _yk = [];
     private IReadOnlyList<RfmSegment> _et = [];
     private DateOnly _dun;
+    private MusteriStat? _stat;
 
     private bool _modalOpen;
     private bool _drillLoading;
@@ -191,6 +217,7 @@ else
             _dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
             (_yk, _et) = await Ref.GetRfmAsync(_dun);
             _icKartlar = IcKart.Yukle();
+            _stat = await Ref.GetMusteriStatAsync(_dun);
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; Perf.Report("Müşteri", sw); StateHasChanged(); }
@@ -270,4 +297,7 @@ else
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    private static string AyAd(string yyyyMM) =>
+        DateTime.ParseExact(yyyyMM + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+            .ToString("MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 }

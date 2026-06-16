@@ -9,6 +9,16 @@ public record CustomerRow(long Id, string Ad, string Tel, int Frq, decimal Mon, 
 /// <summary>Drill katman 3: müşteri fiş/sipariş satırı. Ref = fiş Id (YK) / ORDERID (ET). Tutar KDV-hariç. plan-17.</summary>
 public record FisRow(string Tarih, string Ref, int Kalem, decimal Tutar);
 
+/// <summary>Aylık yeni müşteri kazanımı (ilk fiş tarihi o ayda). plan-17.</summary>
+public record MusteriKazanim(string Ay, int Yeni);
+
+/// <summary>Mağaza kart-fiş oranı (kaç fişin kaçı müşteri-kartlı). plan-17.</summary>
+public record MagazaKart(string Magaza, int Fis, int Kartli, decimal Oran);
+
+/// <summary>Müşteri istatistik özeti (kazanım serisi + mağaza kart oranı + toplam). plan-17.</summary>
+public record MusteriStat(IReadOnlyList<MusteriKazanim> Kazanim, IReadOnlyList<MagazaKart> KartOran,
+    int ToplamFis, int ToplamKartli);
+
 /// <summary>Drill katman 4: fiş içeriği ürün satırı (tam fiş — brüt/indirim/net). Hepsi KDV-hariç. plan-17.
 /// Brüt = liste, İndirim = uygulanan, Net = ödenen ciro (Brüt−İndirim). Birim = Brüt/Adet.</summary>
 public record FisIcerikRow(string Ad, decimal Adet, decimal Brut, decimal Indirim, decimal Net, string? Kampanya);
