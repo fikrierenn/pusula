@@ -51,12 +51,13 @@ public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<Takvim
 
             var temiz = new List<TakvimGun>();
             var gorulen = new HashSet<DateOnly>();   // tarih bazlı dedup
+            int elenenGurultu = 0, elenenParse = 0;
             foreach (var k in ham)
             {
-                // Gürültü filtresi: İngilizce artık kayıtlar ("Sacrifice Feast Holiday") — gerçek başlıklar "Bayramı" içerir.
-                if (k.title.Contains("Feast", StringComparison.OrdinalIgnoreCase) ||
-                    k.title.Contains("Holiday", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!DateOnly.TryParseExact(k.localeDateString, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tarih)) continue;
+                // Gürültü filtresi: API'nin İngilizce artık kaydı ("Sacrifice Feast Holiday", 25.05) — gerçek başlıklar Türkçe "Bayramı" içerir.
+                // Yalnızca "Feast" (gözlemlenen tek gürültü imzası); "Holiday" çok geniş, meşru tatili eleyebilir → kullanılmaz.
+                if (k.title.Contains("Feast", StringComparison.OrdinalIgnoreCase)) { elenenGurultu++; continue; }
+                if (!DateOnly.TryParseExact(k.localeDateString, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tarih)) { elenenParse++; continue; }
                 if (!gorulen.Add(tarih)) continue;
 
                 bool dini = k.title.Contains("Ramazan", StringComparison.OrdinalIgnoreCase) ||
@@ -66,6 +67,8 @@ public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<Takvim
                 temiz.Add(new TakvimGun(tarih, k.title, dini ? TakvimTip.DiniBayram : TakvimTip.Ulusal, yarim));
             }
             if (temiz.Count == 0) throw new InvalidDataException("Temizleme sonrası 0 kayıt — yazma iptal");
+            if (elenenGurultu > 0 || elenenParse > 0)
+                log.LogWarning("Takvim API temizleme: {Gurultu} gürültü, {Parse} parse-hatası kayıt elendi ({Kalan} tutuldu)", elenenGurultu, elenenParse, temiz.Count);
 
             Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
             File.WriteAllText(_cachePath, JsonSerializer.Serialize(temiz, _opt));
@@ -109,7 +112,11 @@ public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<Takvim
         int diniBu = DiniKapaliGun(tatiller, yil, ay);
         int diniGY = DiniKapaliGun(tatiller, yil - 1, ay);
         // YoY kayan bayram düzeltmesi: hedef ayda taban yıla göre fazla kapalı gün → tahmin düşür.
-        decimal bayramCarpan = Math.Round(1m - (decimal)(diniBu - diniGY) / ayGun, 4);
+        // Clamp [0.7,1.3]: yanlış sınıflandırma/gürültü absürt çarpan üretirse tahmini patlatmasın (loglu).
+        decimal bayramHam = Math.Round(1m - (decimal)(diniBu - diniGY) / ayGun, 4);
+        decimal bayramCarpan = Math.Clamp(bayramHam, 0.7m, 1.3m);
+        if (bayramCarpan != bayramHam)
+            log.LogWarning("Bayram çarpanı clamp edildi {Yil}-{Ay}: {Ham} → {Son} (diniBu={B}, diniGY={G})", yil, ay, bayramHam, bayramCarpan, diniBu, diniGY);
 
         var okul = Okul();
         bool okulAcik = okul.Donemler.Any(d => d.Bas <= new DateOnly(yil, ay, ayGun) && d.Son >= new DateOnly(yil, ay, 1));
