@@ -45,6 +45,54 @@ else if (_t is not null)
         }
     </div>
 
+    @if (_t.Yeterli)
+    {
+        var kalanGun = DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month) - DateTime.Today.Day;
+        var gecenGun = DateTime.Today.Day;
+        <!-- Hesap adımları — "çatır çutur hesap" şeffaf: YoY taban → ivme → tahmin + MTD pace -->
+        <h2 class="text-lg font-bold tracking-tight mb-3">Hesap Adımları</h2>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-5">
+            <!-- 1: YoY taban -->
+            <div class="flex items-start gap-3 py-2.5 border-b border-base-200">
+                <span class="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[13px] font-extrabold">1</span>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-bold text-base-content/85">Mevsimsel taban — geçen yıl aynı ay</div>
+                    <div class="text-[11px] text-base-content/50 mt-0.5">@AyAd(_t.TahminAy) için geçen yılın aynı ayı referans alınır (sınav sezonu mevsimselliğini yansıtır).</div>
+                </div>
+                <div class="text-[15px] font-extrabold tabular-nums whitespace-nowrap shrink-0">@Tl(_t.YoYTaban)</div>
+            </div>
+            <!-- 2: MoM ivme -->
+            <div class="flex items-start gap-3 py-2.5 border-b border-base-200">
+                <span class="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[13px] font-extrabold">2</span>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-bold text-base-content/85">Büyüme ivmesi — son 3 ayın YoY ortalaması</div>
+                    <div class="text-[11px] text-base-content/50 mt-0.5">Son 3 ayın geçen yıla göre büyümesi tabana uygulanır.</div>
+                </div>
+                <div class="text-[15px] font-extrabold tabular-nums whitespace-nowrap shrink-0 @(_t.IvmePct >= 0 ? "text-success" : "text-error")">@Pct(_t.IvmePct)</div>
+            </div>
+            <!-- 3: Tahmin -->
+            <div class="flex items-start gap-3 py-2.5 border-b border-base-200">
+                <span class="w-7 h-7 rounded-full bg-success/15 text-success flex items-center justify-center shrink-0 text-[13px] font-extrabold">=</span>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-bold text-base-content/85">Ay sonu tahmini = taban × (1 + ivme)</div>
+                    <div class="text-[11px] text-base-content/50 mt-0.5">Senaryo bandı @Tl(_t.Alt) – @Tl(_t.Ust) (ivme ± standart sapma).</div>
+                </div>
+                <div class="text-[16px] font-extrabold tabular-nums whitespace-nowrap shrink-0 text-primary">@Tl(_t.Tahmin)</div>
+            </div>
+            <!-- MTD durum: geçen/kalan gün + doğrusal pace -->
+            <div class="rounded-xl bg-base-200/60 px-3.5 py-3 mt-3">
+                <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/45 mb-2">Ayın Durumu (MTD)</div>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div><div class="text-[11px] text-base-content/50">Şu ana dek</div><div class="text-[14px] font-bold whitespace-nowrap">@Tl(_t.Mtd)</div></div>
+                    <div><div class="text-[11px] text-base-content/50">Geçen gün</div><div class="text-[14px] font-bold whitespace-nowrap">@gecenGun</div></div>
+                    <div><div class="text-[11px] text-base-content/50">Kalan gün</div><div class="text-[14px] font-bold whitespace-nowrap">@kalanGun</div></div>
+                    <div><div class="text-[11px] text-base-content/50">Doğrusal pace</div><div class="text-[14px] font-bold whitespace-nowrap">@(_t.MtdPace is null ? "—" : Tl(_t.MtdPace.Value))</div></div>
+                </div>
+                <div class="text-[10px] text-base-content/45 mt-2.5">Doğrusal pace = bugüne dek ciro ÷ geçen gün × ay günü (mevsimsel değil — sadece referans; mevsimsel tahmin yukarıdaki adım 3).</div>
+            </div>
+        </div>
+    }
+
     <!-- Mağaza bazlı tahmin -->
     <h2 class="text-lg font-bold tracking-tight mb-3">Mağaza Bazlı Tahmin</h2>
     <div class="grid grid-cols-1 gap-2.5 mb-5 lg:grid-cols-3">

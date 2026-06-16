@@ -1,0 +1,192 @@
+@page "/toplam"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject Queries Queries
+@inject RefQueries Ref
+@inject PerfState Perf
+@rendermode InteractiveServer
+
+@* TOPLAM — 3 mağaza birleşik kategori dağılımı + kategori→ürün drill.
+   Drill SignalR'sız: kategori satırı <a href="toplam?d=...&kat=..."> → server-render (B-48 deseni, mobil-güvenli).
+   Dönem de query param (d) — drill href mevcut dönemi korur. Pills masaüstünde interaktif, mobilde varsayılan. *@
+
+<PageTitle>TOPLAM — Kategori Dağılımı</PageTitle>
+
+<div class="flex items-center gap-2 mb-4">
+    <a href="@($"")" class="w-9 h-9 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center shrink-0 no-underline text-base-content" aria-label="Geri"><i data-lucide="chevron-left" class="w-5 h-5"></i></a>
+    <div class="min-w-0">
+        <div class="text-xs text-base-content/50">3 mağaza birleşik · online hariç</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0 truncate">TOPLAM — Kategoriler</h1>
+    </div>
+</div>
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" ShowOzel="false" CssClass="mb-4 lg:max-w-xl" />
+
+@if (_loading)
+{
+    <p class="text-base-content/50">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
+}
+else if (_data is not null)
+{
+    var birlesik = _data.Stores.SelectMany(s => s.Kategori)
+        .GroupBy(k => k.Ad).Select(g => new CategorySlice(g.Key, g.Sum(x => x.Ciro)))
+        .OrderByDescending(x => x.Ciro).ToList();
+    var totC = birlesik.Sum(x => x.Ciro);
+
+    <!-- Birleşik kategori dağılımı (3 mağaza) — kategoriye dokun → ürünler (SSR nav) -->
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-4">
+        <div class="text-base-content/50 text-xs mb-3">@_aralik · net @Tl(_data.Fiziksel) · @Num(_data.Fis) fiş · kategoriye dokun → ürünler</div>
+        @foreach (var k in birlesik)
+        {
+            var sel = string.Equals(k.Ad, _selKat, StringComparison.Ordinal);
+            <a href="@($"toplam?d={_period}&kat={Uri.EscapeDataString(k.Ad)}")"
+               class="block no-underline text-base-content py-1.5 px-1.5 -mx-1.5 rounded-lg hover:bg-base-200/40 active:bg-base-200 transition-colors @(sel ? "bg-primary/5" : "")">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-[13px] font-semibold text-base-content/85 truncate @(sel ? "text-primary" : "")">@k.Ad ▸</span>
+                    <span class="text-[13px] font-bold shrink-0 text-base-content/70">@Tl(k.Ciro) · %@(totC > 0 ? Math.Round(100 * k.Ciro / totC) : 0)</span>
+                </div>
+                <div class="h-2 rounded-full bg-base-200 overflow-hidden">
+                    <div class="h-full rounded-full bg-primary transition-all duration-300" style="width:@BarW(k.Ciro, birlesik.Count > 0 ? birlesik[0].Ciro : 0)"></div>
+                </div>
+            </a>
+        }
+        @if (birlesik.Count == 0)
+        {
+            <div class="text-base-content/50 text-[13px] py-2">Veri yok.</div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(_selKat))
+    {
+        <!-- Seçili kategori ürünleri (SSR — ?kat= query param) -->
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <h2 class="text-lg font-bold tracking-tight m-0 truncate"><i data-lucide="package" class="w-[18px] h-[18px] text-primary inline-block align-[-3px] mr-1"></i>@_selKat — Ürünler</h2>
+                <a href="@($"toplam?d={_period}")" class="text-sm font-semibold text-base-content/50 no-underline shrink-0">temizle ✕</a>
+            </div>
+            <div class="text-base-content/50 text-xs mb-2">3 mağaza toplam · @_aralik · ilk 100 · sağ = dönem satış · badge = stok ~90g kaç gün yeter · dokun → 30/90/360g</div>
+            @if (_urunLoading)
+            {
+                <p class="text-base-content/50">Yükleniyor…</p>
+            }
+            else
+            {
+                <AppDataTable TItem="UrunRow" Items="_urunler"
+                              Primary="@(u => u.Ad)" Sub="@(u => $"Kod {u.Kod} · stok {Num(u.Bakiye)}")"
+                              MetricMain="@(u => Tl(u.Ciro))" MetricSub="@(u => $"{Num(u.Satis)} satış")"
+                              Badge="@(u => UrunStok(u))">
+                    <Details Context="u">
+                        <div class="text-[10px] text-base-content/45 mb-1.5">Ort. günlük satış · kaç gün yeter (trailing pencere)</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            @CoverCell("30 gün", u.S30, 30, u.Bakiye)
+                            @CoverCell("90 gün", u.S90, 90, u.Bakiye)
+                            @CoverCell("360 gün", u.S360, 360, u.Bakiye)
+                        </div>
+                        <div class="text-[10px] text-base-content/45 mt-3 mb-1.5">Stok dağılımı (şube · merkez depo · ODAK e-tic)</div>
+                        <div class="grid grid-cols-5 gap-1.5">
+                            @StokCell("FSM", u.StokFsm)
+                            @StokCell("Özlüce", u.StokOzl)
+                            @StokCell("İst.Yolu", u.StokIst)
+                            @StokCell("Depo", u.StokDepo, depo: true)
+                            @StokCell("ODAK", u.StokOdak, odak: true)
+                        </div>
+                    </Details>
+                </AppDataTable>
+            }
+        </div>
+    }
+}
+
+@code {
+    // Dönem + seçili kategori query param ile gelir → drill SSR-güvenli (SignalR'sız çalışır).
+    [SupplyParameterFromQuery(Name = "d")] public string? Donem { get; set; }
+    [SupplyParameterFromQuery(Name = "kat")] public string? Kat { get; set; }
+
+    private string _period = "gunluk";
+    private bool _loading = true;
+    private string? _error;
+    private string _aralik = "";
+    private DateOnly _start, _endExcl;
+    private PeriodSummary? _data;
+    private string _selKat = "";
+    private bool _urunLoading;
+    private IReadOnlyList<UrunRow> _urunler = [];
+    private static readonly string[] _gecerliDonem = { "gunluk", "haftalik", "ay" };
+
+    // Query param değişimi (dönem/kategori nav) → yeniden yükle. İlk render dahil.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(Donem) && _gecerliDonem.Contains(Donem)) _period = Donem;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var sw = PerfState.Start();
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            var g2 = dun.AddDays(1);
+            (DateOnly start, DateOnly endExcl) = _period switch
+            {
+                "haftalik" => (dun.AddDays(-6), g2),
+                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                _ => (dun, g2),
+            };
+            var son = endExcl.AddDays(-1);
+            _start = start; _endExcl = endExcl;
+            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+            _data = await Queries.GetPeriodAsync(start, endExcl);
+            // Seçili kategori (query param) → ürün listesi (aynı dönem). Boşsa drill yok.
+            _selKat = Kat ?? "";
+            if (!string.IsNullOrEmpty(_selKat))
+            {
+                _urunLoading = true; _urunler = []; StateHasChanged();
+                _urunler = await Ref.GetUrunlerAsync(_selKat, 0, start, endExcl);
+            }
+            else { _urunler = []; }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _urunLoading = false; _loading = false; Perf.Report("TOPLAM", sw); StateHasChanged(); }
+    }
+
+    // Masaüstü interaktif dönem değişimi (SignalR). Mobilde pills çalışmaz; drill href dönemi taşır.
+    private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    // Bar genişliği (en büyük kategoriye oranlı) — invariant, 0-100 clamp.
+    private static string BarW(decimal v, decimal max)
+    {
+        var pct = max > 0 ? Math.Round(100 * v / max, 1) : 0;
+        return Math.Min(Math.Max(pct, 0), 100).ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
+
+    // Ürün drill envanter sinyali — kaç-gün-yeter = stok / (trailing pencere ort. günlük satış).
+    private static int? Cover(int bakiye, int satisWin, int days)
+        => bakiye <= 0 ? 0 : satisWin <= 0 ? null : (int)Math.Round(bakiye / (satisWin / (double)days));
+    private static string OrtGun(int satisWin, int days) => (satisWin / (double)days).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    private (string Text, string Cls) UrunStok(UrunRow u)
+    {
+        if (u.Bakiye <= 0) return ("tükendi", "bg-error/15 text-error");
+        var c = Cover(u.Bakiye, u.S90, 90);
+        if (c is null) return ("durgun", "bg-base-200 text-base-content/55");
+        var cls = c <= 7 ? "bg-error/15 text-error" : c <= 21 ? "bg-warning/15 text-warning" : "bg-success/15 text-success";
+        return ($"~{Num(c.Value)}g yeter", cls);
+    }
+    private RenderFragment CoverCell(string lbl, int satisWin, int days, int bakiye) => @<div class="bg-base-100 rounded-xl py-2 px-1 text-center">
+        <div class="text-[10px] text-base-content/50">@lbl</div>
+        <div class="text-[12.5px] font-bold tabular-nums">@OrtGun(satisWin, days)<span class="text-[10px] font-normal text-base-content/50">/g</span></div>
+        @{ var c = Cover(bakiye, satisWin, days); }
+        <div class="text-[11px] font-semibold @(c is null ? "text-base-content/40" : c == 0 ? "text-error" : c <= 7 ? "text-error" : c <= 21 ? "text-warning" : "text-success")">@(c is null ? "—" : c == 0 ? "tükendi" : $"~{Num(c.Value)}g")</div>
+    </div>;
+    private RenderFragment StokCell(string lbl, int adet, bool depo = false, bool odak = false) => @<div class="@(odak ? "bg-info/10" : depo ? "bg-base-200" : "bg-base-100") rounded-xl py-2 px-1 text-center">
+        <div class="text-[10px] @(odak ? "text-info font-semibold" : "text-base-content/50")">@lbl</div>
+        <div class="text-[12.5px] font-bold tabular-nums @(adet <= 0 ? "text-base-content/35" : odak ? "text-info" : "")">@Num(adet)</div>
+    </div>;
+}

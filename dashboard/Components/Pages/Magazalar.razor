@@ -1,0 +1,142 @@
+@page "/magazalar"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject Queries Queries
+@inject PerfState Perf
+@rendermode InteractiveServer
+
+@* Mağazalar — 3 mağaza yan yana karşılaştırma. Her kart <a href="magaza/{id}"> (B-48 SSR-güvenli).
+   Dönem query param (d) — masaüstü pills interaktif, mobilde varsayılan. *@
+
+<PageTitle>Mağazalar — Karşılaştırma</PageTitle>
+
+<div class="flex items-center gap-2 mb-4">
+    <a href="@($"")" class="w-9 h-9 rounded-xl bg-base-100 border border-base-200 flex items-center justify-center shrink-0 no-underline text-base-content" aria-label="Geri"><i data-lucide="chevron-left" class="w-5 h-5"></i></a>
+    <div class="min-w-0">
+        <div class="text-xs text-base-content/50">3 mağaza yan yana · @_wowLabel</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0 truncate">Mağazalar — Karşılaştırma</h1>
+    </div>
+</div>
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" ShowOzel="false" CssClass="mb-4 lg:max-w-xl" />
+
+@if (_loading)
+{
+    <p class="text-base-content/50">Yükleniyor…</p>
+}
+else if (_error is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_error</p>
+}
+else if (_data is not null)
+{
+    var enYuksek = _data.Stores.Count > 0 ? _data.Stores.Max(s => s.Net) : 0m;
+    <div class="text-base-content/50 text-xs mb-3">@_aralik · mağazaya dokun → detay</div>
+    <div class="grid grid-cols-1 gap-2.5 mb-5 lg:grid-cols-3">
+        @{ var paletIdx = 0; var palet = new[] { ("bg-success/15", "text-success"), ("bg-info/15", "text-info"), ("bg-warning/15", "text-warning") }; }
+        @foreach (var s in _data.Stores)
+        {
+            var (bg, fg) = palet[paletIdx++ % palet.Length];
+            var lider = enYuksek > 0 && s.Net == enYuksek;
+            <a href="@($"magaza/{s.MekanId}")" class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 no-underline text-base-content transition-transform active:scale-[.98] hover:-translate-y-0.5 hover:shadow-md">
+                <div class="flex items-center gap-2.5 mb-3">
+                    <div class="@bg @fg w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"><i data-lucide="store" class="w-[22px] h-[22px]"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[15px] font-bold text-base-content/90 truncate">@s.Ad</div>
+                        @if (lider)
+                        {
+                            <div class="text-[10px] font-bold text-success inline-flex items-center gap-0.5"><i data-lucide="crown" class="w-3 h-3"></i>en yüksek ciro</div>
+                        }
+                    </div>
+                    <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/30 shrink-0"></i>
+                </div>
+                <div class="text-[26px] font-extrabold tracking-tight whitespace-nowrap mb-0.5">@Tl(s.Net)</div>
+                @if (s.Wow is not null)
+                {
+                    var t = TrendIco(s.Wow.Value);
+                    <div class="inline-flex items-center gap-0.5 text-[12px] font-bold mb-3 @t.cls" title="@_wowLabel"><i data-lucide="@t.ico" class="w-3.5 h-3.5"></i>@Pct(s.Wow.Value)</div>
+                }
+                else
+                {
+                    <div class="text-[12px] text-base-content/40 mb-3">trend yok</div>
+                }
+                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-base-200">
+                    <div><div class="text-[10px] text-base-content/50">Fiş</div><div class="text-[14px] font-bold whitespace-nowrap">@Num(s.Fis)</div></div>
+                    <div><div class="text-[10px] text-base-content/50">Sepet</div><div class="text-[14px] font-bold whitespace-nowrap">@Num(s.Atv) ₺</div></div>
+                    <div><div class="text-[10px] text-base-content/50">İade</div><div class="text-[14px] font-bold whitespace-nowrap">@Tl(s.Iade)</div></div>
+                </div>
+                @if (_period == "ay" && s.GerPct is not null)
+                {
+                    <div class="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-base-200">
+                        <span class="text-[11px] text-base-content/50">Hedef (MTD)</span>
+                        <span class="text-[13px] font-bold @GerRenk(s.GerPct)">%@s.GerPct</span>
+                    </div>
+                }
+            </a>
+        }
+    </div>
+    <div class="flex gap-2 mb-5">
+        <a href="@($"toplam?d={_period}")" class="flex-1 text-center text-[13px] font-semibold py-2.5 rounded-xl bg-base-100 border border-base-200 no-underline text-primary transition-colors hover:bg-base-200/40">📊 Kategori dağılımı</a>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "d")] public string? Donem { get; set; }
+
+    private string _period = "gunluk";
+    private bool _loading = true;
+    private string? _error;
+    private string _aralik = "";
+    private string _wowLabel = "önceki döneme göre";
+    private PeriodSummary? _data;
+    private static readonly string[] _gecerliDonem = { "gunluk", "haftalik", "ay" };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(Donem) && _gecerliDonem.Contains(Donem)) _period = Donem;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var sw = PerfState.Start();
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+            var g2 = dun.AddDays(1);
+            (DateOnly start, DateOnly endExcl) = _period switch
+            {
+                "haftalik" => (dun.AddDays(-6), g2),
+                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                _ => (dun, g2),
+            };
+            var son = endExcl.AddDays(-1);
+            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+            // WoW penceresi + etiketi — Home ile aynı (geçen ayın aynı günleri / önceki eş-uzunluk).
+            int len = endExcl.DayNumber - start.DayNumber;
+            var (pStart, pEnd, wl) = _period switch
+            {
+                "ay" => ((DateOnly?)start.AddMonths(-1), (DateOnly?)start.AddMonths(-1).AddDays(len), "geçen ayın aynı günlerine göre"),
+                "haftalik" => ((DateOnly?)start.AddDays(-7), (DateOnly?)start, "önceki 7 güne göre"),
+                _ => ((DateOnly?)start.AddDays(-1), (DateOnly?)start, "önceki güne göre"),
+            };
+            _wowLabel = wl;
+            _data = await Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; Perf.Report("Mağazalar", sw); StateHasChanged(); }
+    }
+
+    private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
+    private static (string ico, string cls) TrendIco(decimal pct)
+    {
+        if (pct == 0) return ("minus", "text-base-content/40");
+        return pct > 0 ? ("trending-up", "text-success") : ("trending-down", "text-error");
+    }
+    private static string GerRenk(decimal? pct) => pct is null ? "text-base-content/40"
+        : pct >= 95 ? "text-success" : pct >= 85 ? "text-warning" : "text-error";
+}
