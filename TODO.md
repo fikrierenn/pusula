@@ -13,6 +13,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-16 Oturum 6 — Kumbara keşfi + iç-kart tek filtre (plan-18) + müşteri raporları FİŞ bazlı (CFO direktifi)
+- **B-96** müşteri kazanım/kart stat smoke ✅ · **Kumbara = RefundReasons Id=17 indirim tipi** keşfi (işlem-bağı kullanıcıda, 17.06)
+- **plan-18** iç-kart tek kanonik filtre (`IcKartFiltre.Sql`/`SqlCols`) → 9 müşteri sorgusu; isim+tel(599/699)+elle liste tek tanım (B-100)
+- **/sadakat LLM yorumu** (B-101) · **kartlı/kartsız FİŞ düzeltme** 5.627→529.428 kartsız fiş (B-102) · ParetoRow bigint fix
+- **B-103 CFO direktifi:** tüm müşteri raporları FİŞ bazlı (Fatura/Sınav/Personel hariç) + belirgin rozet; kural `sql-server-conventions.md`'ye yazıldı
+- Build yeşil, /musteri + /sadakat canlı doğrulandı. Kod commit BEKLİYOR (3 bucket).
+
 ### 2026-06-16 Oturum 5 — plan 13→17 + tahmin motoru + KDV-hariç + fiş drill (~30 commit)
 - **plan-13** Genel Bakış redesign ✅ · **plan-14** tahmin ay-seçimi+kayıt+MAPE+takvim etmenleri ✅
 - **plan-15** Python tahmin motoru + öğrenen katman ✅ (`scripts/forecast/` 6 modül, 6 model ensemble, backtest MAPE %7,5, ForecastOkuService + dashboard, run_forecast.bat + schtasks 10:00)
@@ -123,10 +130,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ### BKM — BIRLESIK ONCELIK SIRASI
 
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
-- [ ] **B-96 🔴 müşteri kazanım/kart stat SMOKE** — commit cf9e7ab build yeşil ama RUNTIME doğrulanmadı. /musteri aç → aylık yeni müşteri kazanım grafiği + mağaza kart oranı bar + AppSozluk aç/kapa render. (plan-17, yarına ilk iş.)
+- [x] ✅ **B-96 müşteri kazanım/kart stat SMOKE** — KAPALI 16.06. /musteri runtime doğrulandı: kazanım area chart SVG çiziliyor (Haz 2026 ~8.381 yeni · 13 ay 223.896), kart oranı bar (ÖZLÜCE %68,4 · FSM %51,8 · İst.Yolu %53,0 · Toplam %58,7), AppSozluk (Home) native details kapalı-başlar/açılır. Konsol hatası yok. (plan-17, cf9e7ab)
 - [ ] **B-97 plan-17 WP-2 lokasyon filtresi** — `GetInventoryAsync` ~10 noktada `ehMekan IN (1,4477,4478)` hardcoded → 5-lokasyon (FSM/Özl/İst/Depo12/ODAK) toggle param + "stok=şube+Depo, ODAK hariç" (Python urunler_query_sql). Dedike, mutabakatlı.
-- [ ] **B-98 manuel indirim sebebi yok (keşif)** — fiş detayında manuel indirim "neden"i EncoreMerkez'de SAKLANMIYOR (SPC Source=1 boş, BasketDiscounts BOŞ, PriceChangeReasonId=0, Description boş). Kumbara=müşteri kartı (DerinCrm.Customer.Name) indirim değil. `scripts/_kumbara_scan.py` (izlenmiyor) tam-scan koştu — sonucu kontrol et + temizle. Kampanya adı (Source=0) çalışıyor.
+- [~] **B-98 manuel indirim TİPİ + Kumbara (16.06 REVİZE)** — DÜZELTME: manuel indirim TİP LİSTESİ var → `EncoreMerkez.dbo.RefundReasons` Type=1 (Personel, BSE, Anlaşmalı Kurum, 3Al2Öde, Bkm Kart, Sınav Koleji, **Okul Kumbara Projesi=Id 17**…). AMA seçilen tip işlem kolonuna BAĞLANMIYOR (RefundReasonId sadece Type=0; PriceChangeReasonId=0; Sales.RefundReasonId boş; Audits/Jobs/Details'te yok; EncoreMerkez view/SP yok). Kumbara indirim raporu OTOMATIK geliyor (POS e-postası: Mağaza×Tarih → brüt/ind/net/%/fiş/ürün). 🔜 **Kullanıcı 17.06 kaynak tabloyu verecek** → işlem-bağını bağla → İndirim Kaynak kırılımı paneli (SPC.Source 0=kampanya/1=manuel/2=legacy/3=kupon) + Kumbara satırı + RefundReasons referans liste. sema/codes.yaml'a kaydedildi (status: teyit bekliyor). `scripts/_kumbara_scan.py` izlenmiyor — temizle/sil.
 - [ ] **B-99 sql-denetci agent test** — yeni agent yüklendi (sonraki oturum aktif), denenmedi. `sorgular/04-karzarar/` dar kapsamda doğrula (bulgu üretiyor mu + format).
+- [x] ✅ **B-100 iç-kart tek kanonik filtre (plan-18)** — KAPALI 16.06. `IcKartFiltre.Sql` (WHERE NOT-IN subquery) + `SqlCols` (aggregate-CASE, Customer-join) → 9 müşteri sorgusuna uygulandı (RefQueries RFM/kazanım/kart-oranı/drill + SadakatQueries WinBack/Pareto/Kartlı/RfmGeçiş/TekrarAlış). İsim(Mağaza/Kumbara)+tel(599/699)+elle liste tek tanım. Smoke: /musteri kart-oranı İst.Yolu %53→%50,6 (AKL/RGR/AGH 599-kartlar düştü), /sadakat 5 panel hatasız. Build yeşil. Pre-existing fix: ParetoRow.Dilim int↔NTILE bigint → `CAST(... AS int)`.
+- [x] ✅ **B-103 TÜM müşteri raporları FİŞ bazlı + görünür etiket (16.06 CFO direktifi)** — KAPALI 16.06. Kural: `sql-server-conventions.md` § Müşteri Raporları Fiş Bazlı. Sayım/frekans (RFM, RfmGeçiş, TekrarAlış, kart-oranı, kazanım) → `DocumentsTypeId=1`; ciro (Pareto, WinBack, Kartlı) → `(1,3)` iade-sign'lı. Fatura(2)/Personel(6,7)/Sınav(8) HARİÇ. Etki: Pareto dilim1 527M→139,7M (Sınav çıktı), kart-oranı saf fiş. /musteri + /sadakat başlığında belirgin "📄 Fiş bazlı (perakende · Fatura/Sınav hariç)" rozeti. Build yeşil, ikisi de doğrulandı.
+- [x] ✅ **B-102 sadakat kartlı/kartsız FİŞ düzeltme** — KAPALI 16.06. Eski: `CustomersId>0` + belge(1,2,3,6,7,8) → "Kartsız" 5.627 fiş/262M (Sınav=8 266M kirliliği, anonim eksik). Yeni: perakende(1,3), kartsız=anonim(CustomersId=0) dahil, metrik sepet/fiş. Kartlı 474.615 fiş/675₺ · Kartsız 529.428 fiş/539₺. KartliRow.AtvMusteri→AtvFis. (RefModels+SadakatQueries+Sadakat.razor)
+- [x] ✅ **B-101 /sadakat LLM yorumu** — KAPALI 16.06. `LlmService.SadakatYorumUret` (GunOzeti deseni: veri özeti→akıcı Türkçe yorum+aksiyon, uydurma-yok kuralı) + Sadakat.razor koyu yorum kartı (arka plan çağrı, spinner, `RendererInfo.IsInteractive` guard → prerender çift-inference engeli). Pipeline doğrulandı (model yüklendi+üretiyor); CPU-sandbox'ta yavaş, kullanıcı makinesinde Home özeti gibi. Pareto: ilk %10 müşteri = ciro %71,5 (konsantrasyon riski).
 
 #### RFM / Müşteri tarafı — eklenecekler backlog (16.06 not, B-96 smoke sonrası)
 - [ ] **R-1 Ay-seçimli kazanım drill** — kazanım grafiğinde aya tıkla → o ayın yeni müşterileri listesi (ad/tel/ilk fiş/ilk tutar). Şu an 13-ay seri sadece adet.
