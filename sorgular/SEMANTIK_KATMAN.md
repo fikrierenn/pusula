@@ -211,6 +211,9 @@ irsHrk.ehTutarN = irsAyr.ehTutar − irsAyr.ehIndirim
 ### I. Joker (Online B2B — Linked Server `odakjoker`)
 
 > **Mimari:** Joker AYRI DB. Erişim `odakjoker` Linked Server üzerinden. DerinSIS tarafında kullanım için lokal snapshot/cache view ve tablolar mevcut.
+>
+> **⚡ 16.06 — Dashboard direkt bağlantı:** Dashboard e-ticaret sorguları artık linked yerine **192.168.40.70'e DİREKT** bağlanıyor (`Db.OpenJokerAsync()`, `.env JOKER_HOST`). Sorgular `ODAKJOKER.JOKER.dbo.*` yerine `dbo.*`. Distributed-query overhead kalktı (4.1s→0.6s). MCP/SSMS analizde hâlâ linked kullanılabilir; .70 direkt SADECE dashboard runtime. Detay köprüler: `sema/bridges.yaml` (joker-direct-conn, items-logogrup-kategori3).
+> **E-ticaret KATEGORİ:** `J_ITEMS.DERINSIS_LOGOGRUP` = DerinSIS **Kategori3**'ü metin olarak birebir taşır → cross-server join GEREKMEZ. (`ANAKATEGORI`/`WEB_ANAKATEGORI` daha kaba; `UrunBilgi.Kat3` BOŞ, doğru kolon `Kategori3`.)
 
 **Lokal snapshot/cache (DerinSISBkm — pratikte bunları kullan):**
 

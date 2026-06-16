@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-06-12
+updated: 2026-06-16
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -108,6 +108,18 @@ bridges:
     evidence: "09.06 — DerinSISBkmCrm.mst (T…) EŞLEŞMEZ, EncoreMerkezCrm BOŞ."
 
   # --- E-ticaret (ODAKJOKER.JOKER) ---
+  - id: joker-direct-conn
+    from: dashboard.OpenJokerAsync
+    to: "192.168.40.70 JOKER (direkt)"
+    scope: joker
+    confidence: 1.0
+    note: |
+      Dashboard e-ticaret sorguları artık linked server ODAKJOKER.JOKER yerine 192.168.40.70'e DİREKT bağlanıyor.
+      dashboard/Data/Db.cs OpenJokerAsync() — .env JOKER_HOST=192.168.40.70, sa şifresi MSSQL_PASSWORD ile AYNI (Fikri teyit).
+      Sorgular: 'ODAKJOKER.JOKER.dbo.*' linked yerine 'dbo.*' DİREKT. Distributed-query overhead kalktı (4.1s→0.6s, 7×).
+      NOT: Aşağıdaki joker köprüleri hâlâ aynı tablo/kolonları kullanır — sadece bağlantı yolu değişti (linked→direkt), join mantığı aynı.
+      MCP/SSMS analizlerde hâlâ ODAKJOKER.JOKER linked kullanılabilir; .70 direkt SADECE dashboard runtime.
+    evidence: "16.06 — commit b792f4e. EticQueries.cs 10/10 sorgu .70 direkt. LOGOGRUP kategori 4.1s→0.6s."
   - id: orderdetails-orders
     from: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.ORDERREF
     to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
@@ -125,7 +137,20 @@ bridges:
     to: DerinSISBkm.dbo.urn.stkID
     scope: cross-db
     confidence: 1.0
-    note: "E-ticaret ürün → DerinSIS kategori. Marka direkt J_ITEMS.BRAND."
+    note: "E-ticaret ürün → DerinSIS (stkID). Marka direkt J_ITEMS.BRAND. KATEGORİ için bu cross-server hop GEREKMEZ → items-logogrup-kategori3 kullan."
+  - id: items-logogrup-kategori3
+    from: ODAKJOKER.JOKER.dbo.J_ITEMS.DERINSIS_LOGOGRUP
+    to: "DerinSIS Kategori3 (metin, birebir)"
+    scope: joker
+    confidence: 1.0
+    note: |
+      J_ITEMS.DERINSIS_LOGOGRUP metin kolonu DerinSIS Kategori3'ü BİREBİR taşır → e-ticaret kategori kırılımı için
+      cross-server join (DERINSIS_ID → DERINSIS linked → bkm.UrunBilgi.Kategori3) GEREKMEZ. LOGOGRUP zaten metin Kategori3.
+      Birebir aynı rakam, linked hop yok (.70 direkt sorguda kullanılır).
+      ⚠ İŞE YARAMAYANLAR:
+        - J_ITEMS.ANAKATEGORI / WEB_ANAKATEGORI = Kategori3 DEĞİL (daha kaba: "Kitap" vs "Edebiyat Kitapları").
+        - bkm.UrunBilgi.Kat3 kitapta BOŞ; doğru kolon Kategori3 (≠ Kat3).
+    evidence: "16.06 — commit b792f4e. EticQueries.cs kategori = LOGOGRUP GROUP BY; linked urn/urnKtgr2 join ile birebir aynı, 4.1s→0.6s."
   - id: orders-paytype
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.PAYDEFREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES.ID
@@ -225,4 +250,10 @@ bridges:
     to: EncoreMerkez.SalesProducts.SalesId+Sequence
     scope: encore
     confidence: 0.97
-    note: "Kampanya indirim oranı köprüsü (12.06). join: sp.SalesId=spc.SalesId AND sp.Sequence=spc.ProductSequence AND sp.IsValid=1. Grain=kampanyalı kalem. 3AL2ÖDE oran %25,7 doğrulandı (kullanıcı '%24 gibi' ile uyumlu). spc.DistributedAmount=-TotalDiscount (indirimin kendisi, brüt DEĞİL); brüt=sp.TotalPrice(net)+indirim."
+    note: |
+      Kampanya indirim oranı köprüsü (12.06). join: sp.SalesId=spc.SalesId AND sp.Sequence=spc.ProductSequence AND sp.IsValid=1.
+      Grain=kampanyalı kalem. 3AL2ÖDE oran %25,7 doğrulandı. spc.DistributedAmount=-TotalDiscount (indirimin kendisi, brüt DEĞİL); brüt=sp.TotalPrice(net)+indirim.
+      ⚠ FAN-OUT GOTCHA (16.06): SalesProductCampaigns bir ürün satırına N indirim satırı üretir (3al2öde 52 adet=26 çift=52 spc).
+      SalesProducts JOIN SalesProductCampaigns'te SUM(sp.TotalPrice) join fan-out'unda N× SAYILIR → kampanya brüt/net ŞİŞER
+      (~%3.8 agg, çok-adetli satırda 52×). DOĞRU: indirim spc'den (SUM -DistributedAmount), brüt/net satır-başı 1× ayrı/DISTINCT CTE'den.
+      İndirim ve yük% zaten doğruydu (spc'den); fan-out SADECE brüt+net'i şişiriyordu. Fix: commit 609f3dd MagazaQueries.cs."
