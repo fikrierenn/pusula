@@ -76,24 +76,7 @@ Kullanıcı kısa dağınık bir not yazar. Görevin: notu NET, AKSİYON ODAKLI 
             $"<|im_start|>user\n{EX_USER}<|im_end|>\n<|im_start|>assistant\n{EX_ASSISTANT}<|im_end|>\n" +
             $"<|im_start|>user\n{userNote}<|im_end|>\n<|im_start|>assistant\n";
 
-        var inf = new InferenceParams
-        {
-            MaxTokens = 400,
-            AntiPrompts = ["<|im_end|>", "<|im_start|>"],
-            SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.5f },
-        };
-
-        await _sem.WaitAsync();
-        try
-        {
-            var sb = new StringBuilder();
-            await foreach (var tok in _executor.InferAsync(prompt, inf))
-                sb.Append(tok);
-            return sb.ToString()
-                .Replace("<|im_end|>", "").Replace("<|im_start|>", "")
-                .Replace("<think>", "").Replace("</think>", "").Trim();
-        }
-        finally { _sem.Release(); }
+        return await Infer(prompt, maxTokens: 400, temp: 0.5f);
     }
 
     /// <summary>
@@ -124,24 +107,7 @@ KESİN KURALLAR:
             $"<|im_start|>user\n{exUser}<|im_end|>\n<|im_start|>assistant\n{exAssistant}<|im_end|>\n" +
             $"<|im_start|>user\n{veriOzet}<|im_end|>\n<|im_start|>assistant\n";
 
-        var inf = new InferenceParams
-        {
-            MaxTokens = 220,
-            AntiPrompts = ["<|im_end|>", "<|im_start|>"],
-            SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.4f },
-        };
-
-        await _sem.WaitAsync();
-        try
-        {
-            var sb = new StringBuilder();
-            await foreach (var tok in _executor.InferAsync(prompt, inf))
-                sb.Append(tok);
-            return sb.ToString()
-                .Replace("<|im_end|>", "").Replace("<|im_start|>", "")
-                .Replace("<think>", "").Replace("</think>", "").Trim();
-        }
-        finally { _sem.Release(); }
+        return await Infer(prompt, maxTokens: 220, temp: 0.4f);
     }
 
     /// <summary>
@@ -173,18 +139,23 @@ KESİN KURALLAR:
             $"<|im_start|>user\n{exUser}<|im_end|>\n<|im_start|>assistant\n{exAssistant}<|im_end|>\n" +
             $"<|im_start|>user\n{veriOzet}<|im_end|>\n<|im_start|>assistant\n";
 
+        return await Infer(prompt, maxTokens: 260, temp: 0.4f);
+    }
+
+    /// <summary>Ortak ChatML inference döngüsü (M-10 DRY) — seri (SemaphoreSlim), ChatML token temizliği. Çağıran _executor'ı null-check eder + prompt/maxTokens/temp verir.</summary>
+    private async Task<string> Infer(string prompt, int maxTokens, float temp)
+    {
         var inf = new InferenceParams
         {
-            MaxTokens = 260,
+            MaxTokens = maxTokens,
             AntiPrompts = ["<|im_end|>", "<|im_start|>"],
-            SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.4f },
+            SamplingPipeline = new DefaultSamplingPipeline { Temperature = temp },
         };
-
         await _sem.WaitAsync();
         try
         {
             var sb = new StringBuilder();
-            await foreach (var tok in _executor.InferAsync(prompt, inf))
+            await foreach (var tok in _executor!.InferAsync(prompt, inf))
                 sb.Append(tok);
             return sb.ToString()
                 .Replace("<|im_end|>", "").Replace("<|im_start|>", "")
