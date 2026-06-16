@@ -109,6 +109,18 @@ codes:
       3009: "Odak - Kargoya Verildi (normal)"
       4000: "Odak - İptal (satır, İPTAL)"
     note: "J_ORDERS.STATUS ana sipariş statüsü. Net = SUM(TOTALPRICE WHERE STATUS NOT IN (1001,1006,1007,3000,4000)). 3004/3006 normal aşama — DÜŞÜRME. Eski {1006,3004,3006} filtresi yanlıştı (B-29/dashboard/brief etkilendi, 11.06 düzeltildi)."
+    # funnel grupları + Mayıs dağılım (curator 17.06: eski bare 'J_ORDERS.STATUS' kaydından birleştirildi)
+    funnel_gruplari:
+      isleniyor: [1000, 1002, 1003, 1004, 1008, 3001, 3002, 3003, 3004, 3005, 3007, 3008, 4001-4008, 2001, 2003, 2006, 2008]
+      tedarik_bekliyor: [2000, 2002, 2007, 3006, 4006]
+      kargoya_verildi: [1005, 3009, 4009]
+      iade_geldi: [1006]
+      iptal: [1001, 3000, 4000]
+      kayip_sorunlu: [1007, 1009]
+    may_2026_dagilim: {3-Kargoya Verildi: 67796, 5-İptal: 1160, 4-İade: 850, 1-İşleniyor: 39, 2-Tedarik Bekliyor: 2}
+    confidence: 0.95
+    last_verified: 2026-06-15   # 15.06 J_ORDER_STATUS full scan + Mayıs GROUP BY (ttl 180g → 2026-12)
+    evidence: "11.06 net-iptal düzeltme + 15.06 J_ORDER_STATUS full scan/Mayıs dağılım. Tek kaynak (curator 17.06 dup birleşti)."
   joker.J_ORDERS.APPLICATION:
     values: ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi"]
 
@@ -178,20 +190,5 @@ codes:
     evidence: "16.06.2026 — RefundReasons full (Kumbara=17); SalesProducts.RefundReasonId/PriceChangeReasonId/Sales.RefundReasonId/Audits/Jobs/Details elendi; sys.sql_modules 'Kumbara'/'RefundReasonId' 0; CustomerData-kartı eşleşmesi rapor rakamlarını TUTMADI. Kaynak BEKLENİYOR."
     last_verified: 2026-06-16
 
-  J_ORDERS.STATUS:        # JOKER e-ticaret sipariş durumu (J_ORDER_STATUS lookup, 15.06.2026 keşif)
-    lookup: ODAKJOKER.JOKER.dbo.J_ORDER_STATUS (LOGICALREF=STATUS, NAME)
-    funnel_gruplari:
-      isleniyor: [1000, 1002, 1003, 1004, 1008, 3001, 3002, 3003, 3004, 3005, 3007, 3008, 4001-4008, 2001, 2003, 2006, 2008]
-      tedarik_bekliyor: [2000, 2002, 2007, 3006, 4006]
-      kargoya_verildi: [1005, 3009, 4009]
-      iade_geldi: [1006]
-      iptal: [1001, 3000, 4000]
-      kayip_sorunlu: [1007, 1009]
-    may_2026_dagilim:
-      3-Kargoya Verildi: 67796
-      5-İptal: 1160
-      4-İade: 850
-      1-İşleniyor: 39
-      2-Tedarik Bekliyor: 2
-    confidence: 0.95
-    evidence: "15.06.2026 — J_ORDER_STATUS full scan + Mayıs 2026 J_ORDERS GROUP BY STATUS"
+  # J_ORDERS.STATUS → joker.J_ORDERS.STATUS'a BİRLEŞTİ (curator 17.06, dup giderme — tek-doğruluk-kaynağı).
+  #   funnel_gruplari + may_2026_dagilim + confidence/evidence artık joker.J_ORDERS.STATUS altında. (git history eski hali korur.)
