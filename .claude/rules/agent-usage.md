@@ -29,6 +29,7 @@ _Ana ajanın işleri alt-ajanlara (subagent) NASIL dağıtacağını ve hangi mo
 | Güvenlik denetimi (injection/XSS/CSRF/IDOR/secret) | `security-reviewer` | opus |
 | Silent failure / sessiz yanlış rakam denetimi | `silent-failure-hunter` ✅ | opus |
 | Python rapor scripti review (pymssql/sema uyum) | `python-reviewer` ✅ | sonnet |
+| SQL dosya denetimi (IsValid/COLLATE/stkKod-barkod/KDV/tarih) | `sql-denetci` ✅ | sonnet |
 | Kural-uyum kod review | `code-reviewer` | sonnet |
 | Build derle + hata/uyarı say | `build-validator` | haiku |
 | Test çalıştır + raporla | `test-runner` | haiku |
