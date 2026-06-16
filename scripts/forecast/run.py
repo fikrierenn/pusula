@@ -8,6 +8,7 @@ Cikti (dashboard/data/forecast/ — C# ForecastOkuService okur):
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -27,20 +28,26 @@ def _ay_tahmin(daily, yil, ay, ogrenilen):
     ts = pd.Timestamp(yil, ay, 1)
     te = ts + pd.offsets.MonthBegin(1)
     train = daily[daily["ds"] < ts]
-    model_nokta, katki = {}, {}
+    model_nokta, katki, atlanan = {}, {}, []
     for ad, fn in MODELS.items():
         try:
             p = fn(train, ts, te)["point"]
-        except Exception:
+        except Exception as e:
             p = float("nan")
+            print(f"[run] {ad} {yil}-{ay:02d} HATA: {str(e)[:70]}")
         if np.isfinite(p):
             model_nokta[ad] = float(p)
             katki[ad] = {"tahmin": round(p), "agirlik": ogrenilen["modeller"].get(ad, {}).get("agirlik", 0)}
+        else:
+            atlanan.append(ad)
+    if atlanan:
+        print(f"[run] {yil}-{ay:02d} atlanan model ({len(atlanan)}): {', '.join(atlanan)}")
     ens = ensemble_tahmin(model_nokta, ogrenilen)
     glm = predict_glm_calendar(train, ts, te)  # yorumlanabilir bilesen (ensemble noktasi degil)
     return {
         "yil": yil, "ay": ay,
         "point": ens.get("point"), "alt": ens.get("alt"), "ust": ens.get("ust"),
+        "model_sayisi": len(katki), "atlanan": atlanan,  # seffaflik: ensemble kac modelden (sessiz degil)
         "modeller": katki,
         "bilesen": glm.get("components", {}),  # glm_calendar yorumu (taban_trend/haftalik/yillik/tatil_okul)
     }
@@ -64,22 +71,33 @@ def main(n_ileri: int = 3):
         aylar.append(_ay_tahmin(daily, t.year, t.month, ogrenilen))
 
     uretim = datetime.now().strftime("%d.%m.%Y %H:%M")
+    # Tum objeleri ONCE kur (biri patlarsa hicbir dosya yazilmaz — ya-hep-ya-hic).
+    objeler = {
+        "tahmin-aylik.json": {"uretim": uretim, "seri_son": str(son.date()), "aylar": aylar},
+        "yontem-agirlik.json": {"uretim": uretim, **ogrenilen,
+            "ozet": {m: {"mape": round(r["mape"], 2), "bias_pct": round(r["bias_pct"], 2), "n": int(r["n"])}
+                     for m, r in ozet.iterrows()}},
+        "backtest-gecmis.json": {"uretim": uretim,
+            "kayitlar": [{"ay": str(r["ay"].date()), "model": r["model"], "tahmin": round(r["tahmin"]),
+                          "gercek": round(r["gercek"]), "ape": round(r["ape"] * 100, 2)}
+                         for _, r in bt.iterrows()]},
+    }
     _OUT.mkdir(parents=True, exist_ok=True)
-    _yaz(_OUT / "tahmin-aylik.json", {"uretim": uretim, "seri_son": str(son.date()), "aylar": aylar})
-    _yaz(_OUT / "yontem-agirlik.json", {"uretim": uretim, **ogrenilen,
-         "ozet": {m: {"mape": round(r["mape"], 2), "bias_pct": round(r["bias_pct"], 2), "n": int(r["n"])}
-                  for m, r in ozet.iterrows()}})
-    _yaz(_OUT / "backtest-gecmis.json", {"uretim": uretim,
-         "kayitlar": [{"ay": str(r["ay"].date()), "model": r["model"], "tahmin": round(r["tahmin"]),
-                       "gercek": round(r["gercek"]), "ape": round(r["ape"] * 100, 2)}
-                      for _, r in bt.iterrows()]})
+    for ad, obj in objeler.items():
+        _yaz_atomik(_OUT / ad, obj)
     print(f"[run] JSON yazildi -> {_OUT}")
     for a in aylar:
-        print(f"  {a['yil']}-{a['ay']:02d}: ensemble {a['point']:,} band [{a['alt']:,} - {a['ust']:,}]")
+        if a["point"] is None:
+            print(f"  {a['yil']}-{a['ay']:02d}: TAHMIN YOK (tum modeller elendi — {a['atlanan']})")
+        else:
+            print(f"  {a['yil']}-{a['ay']:02d}: ensemble {a['point']:,} band [{a['alt']:,} - {a['ust']:,}] ({a['model_sayisi']} model)")
 
 
-def _yaz(path: Path, obj: dict):
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+def _yaz_atomik(path: Path, obj: dict):
+    """tmp'ye yaz + os.replace (atomik) — kismi/bozuk dosya birakmaz."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 if __name__ == "__main__":

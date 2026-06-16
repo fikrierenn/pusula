@@ -167,13 +167,17 @@ def _sf_predict(model_ctor, train_daily, target_start, target_end):
 
 
 def predict_autoets(train_daily, target_start, target_end):
-    from statsforecast.models import AutoETS
-    return _sf_predict(lambda: AutoETS(season_length=12), train_daily, target_start, target_end)
+    def ctor():  # import try-icinde → statsforecast yoksa ImportError _sf_predict'te yakalanir (modul cokmez)
+        from statsforecast.models import AutoETS
+        return AutoETS(season_length=12)
+    return _sf_predict(ctor, train_daily, target_start, target_end)
 
 
 def predict_autoarima(train_daily, target_start, target_end):
-    from statsforecast.models import AutoARIMA
-    return _sf_predict(lambda: AutoARIMA(season_length=12), train_daily, target_start, target_end)
+    def ctor():
+        from statsforecast.models import AutoARIMA
+        return AutoARIMA(season_length=12)
+    return _sf_predict(ctor, train_daily, target_start, target_end)
 
 
 # ---------- kayit ----------

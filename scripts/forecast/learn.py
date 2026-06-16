@@ -33,7 +33,8 @@ def ogren(bt: pd.DataFrame, lam: float = 0.9, mape_tavan: float = 40.0) -> dict:
         info[model] = {"wmape": round(wmape, 2), "bias_pct": round(bias, 2)}
 
     # Agirlik: 1/wmape^2 (iyi model cok daha agir); MAPE tavanini asan model elenir (agirlik 0).
-    ham = {m: (1.0 / (v["wmape"] ** 2) if v["wmape"] <= mape_tavan else 0.0) for m, v in info.items()}
+    # max(wmape,1e-6): mukemmel-fit (wmape=0) ZeroDivision'i onle.
+    ham = {m: (1.0 / (max(v["wmape"], 1e-6) ** 2) if v["wmape"] <= mape_tavan else 0.0) for m, v in info.items()}
     toplam = sum(ham.values()) or 1.0
     for m in info:
         info[m]["agirlik"] = round(ham[m] / toplam, 4)
@@ -63,7 +64,8 @@ def _ensemble_point(model_tahmin: dict, info: dict):
         a = info[m]["agirlik"]
         if a <= 0:
             continue
-        debias = p / (1 + info[m]["bias_pct"] / 100)   # bias'tan arindir
+        b = max(-90.0, min(90.0, info[m]["bias_pct"]))  # clip: bias=-100 → payda 0 ZeroDivision'i onle
+        debias = p / (1 + b / 100)   # bias'tan arindir
         pay += a * debias
         agirlik_top += a
     return pay / agirlik_top if agirlik_top > 0 else None

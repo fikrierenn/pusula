@@ -68,11 +68,12 @@ def get_daily_series(mekan: int = 0) -> pd.DataFrame:
                CAST(SUM(CASE WHEN h.ehTip IN (1,4,100) THEN h.ehTutarN
                              WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS float) AS y
         FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-        WHERE h.ehMekan IN (1,4477,4478) AND (%d = 0 OR h.ehMekan = %d)
+        WHERE h.ehMekan IN (1,4477,4478) AND (%s = 0 OR h.ehMekan = %s)
           AND h.ehTip IN (1,3,4,5,100,101)
         GROUP BY CAST(h.ehTrhS AS date)
         ORDER BY ds;
     """
+    mekan = int(mekan)  # tip guvencesi (parametreli ama int-cast garanti)
     cfg = get_db_config()
     conn = connect_with_retry(lambda: pymssql.connect(
         server=cfg["server"], user=cfg["user"], password=cfg["password"],

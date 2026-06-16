@@ -8,6 +8,7 @@ Okul kaynak: dashboard/data/okul-takvimi.json (MEB donem + sinav, elle).
 from __future__ import annotations
 
 import json
+import warnings
 from datetime import date
 from pathlib import Path
 
@@ -50,10 +51,13 @@ def _dini_gunler(yil: int):
 def _okul_donemleri():
     """okul-takvimi.json → (donem araliklari [(bas,son)], sinav tarih set). Yoksa bos (notr)."""
     if not _OKUL_PATH.exists():
+        warnings.warn(f"okul-takvimi.json yok ({_OKUL_PATH}) — okul/sinav regresoru NOTR (0). "
+                      "GLM tatil etkisi eksik kalir.", stacklevel=2)
         return [], set()
     try:
         j = json.loads(_OKUL_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as e:
+        warnings.warn(f"okul-takvimi.json okunamadi ({e}) — okul/sinav regresoru NOTR (0).", stacklevel=2)
         return [], set()
     donem = []
     for d in j.get("Donemler", []):
