@@ -9,8 +9,9 @@ public record CustomerRow(long Id, string Ad, string Tel, int Frq, decimal Mon, 
 /// <summary>Drill katman 3: müşteri fiş/sipariş satırı. Ref = fiş Id (YK) / ORDERID (ET). Tutar KDV-hariç. plan-17.</summary>
 public record FisRow(string Tarih, string Ref, int Kalem, decimal Tutar);
 
-/// <summary>Drill katman 4: fiş içeriği ürün satırı. Net = KDV-hariç, Birim = net/adet. plan-17.</summary>
-public record FisIcerikRow(string Ad, decimal Adet, decimal Birim, decimal Net);
+/// <summary>Drill katman 4: fiş içeriği ürün satırı (tam fiş — brüt/indirim/net). Hepsi KDV-hariç. plan-17.
+/// Brüt = liste, İndirim = uygulanan, Net = ödenen ciro (Brüt−İndirim). Birim = Brüt/Adet.</summary>
+public record FisIcerikRow(string Ad, decimal Adet, decimal Brut, decimal Indirim, decimal Net);
 
 /// <summary>Drill: kategorideki tekil ürün. Satis/Ciro = seçili dönem; S30/S90/S360 = bugünden geriye
 /// trailing pencere satış adedi (kaç-gün-yeter). StokFsm/Ozl/Ist/Depo = anlık stok dağılımı (stokSonAltDepo_vw).

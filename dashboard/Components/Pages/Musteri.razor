@@ -100,22 +100,43 @@ else
         }
         else
         {
-            <div class="text-base-content/50 text-xs mb-2">birim × adet = net (KDV-hariç, indirim sonrası)</div>
-            <div class="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1 text-[12px] tabular-nums">
-                <div class="text-[10px] font-bold uppercase text-base-content/40">Ürün</div>
-                <div class="text-[10px] font-bold uppercase text-base-content/40 text-right">Adet</div>
-                <div class="text-[10px] font-bold uppercase text-base-content/40 text-right">Birim</div>
-                <div class="text-[10px] font-bold uppercase text-base-content/40 text-right">Net</div>
+            var tBrut = _fisIcerik.Sum(u => u.Brut); var tInd = _fisIcerik.Sum(u => u.Indirim); var tNet = _fisIcerik.Sum(u => u.Net);
+            <!-- Termal fiş görünümü (monospace, kesik çizgi) — "bildiğin fiş" -->
+            <div class="font-mono text-[12px] leading-relaxed max-w-[360px] mx-auto bg-base-100 border border-base-300 rounded-lg px-4 py-3 text-base-content/90">
+                <div class="text-center font-bold tracking-wider text-[13px]">BKM KİTAP</div>
+                <div class="text-center text-[10px] text-base-content/50">@(_selKanal == "yk" ? "Yazarkasa Fişi" : "E-Ticaret Siparişi")</div>
+                <div class="text-center text-base-content/40">════════════════════════</div>
+                <div class="flex justify-between text-[10px] text-base-content/55">
+                    <span>@(_selKanal == "yk" ? "FİŞ" : "SİP") #@_selFis?.Ref</span><span>@_selFis?.Tarih</span>
+                </div>
+                <div class="text-base-content/40">- - - - - - - - - - - - - - - - - - - -</div>
                 @foreach (var u in _fisIcerik)
                 {
-                    <div class="font-semibold text-base-content/85 truncate">@u.Ad</div>
-                    <div class="text-right">@u.Adet.ToString("0.##")</div>
-                    <div class="text-right text-base-content/60">@Tl(u.Birim)</div>
-                    <div class="text-right font-bold">@Tl(u.Net)</div>
+                    <div class="mt-1">
+                        <div class="truncate">@u.Ad</div>
+                        <div class="flex justify-between text-base-content/70">
+                            <span>@u.Adet.ToString("0.##") x @Tl(u.Brut / (u.Adet == 0 ? 1 : u.Adet))</span>
+                            <span class="tabular-nums">@Tl(u.Brut)</span>
+                        </div>
+                        @if (u.Indirim > 0)
+                        {
+                            <div class="flex justify-between text-error text-[11px]"><span>&nbsp;&nbsp;indirim</span><span class="tabular-nums">−@Tl(u.Indirim)</span></div>
+                        }
+                    </div>
                 }
-            </div>
-            <div class="flex items-center justify-between border-t border-base-300 mt-2 pt-2 text-[13px] font-bold">
-                <span>Dip Toplam (KDV-hariç)</span><span class="tabular-nums">@Tl(_fisIcerik.Sum(u => u.Net))</span>
+                <div class="text-base-content/40 mt-1">- - - - - - - - - - - - - - - - - - - -</div>
+                <div class="flex justify-between text-base-content/70"><span>ARA TOPLAM</span><span class="tabular-nums">@Tl(tBrut)</span></div>
+                @if (tInd > 0)
+                {
+                    <div class="flex justify-between text-error"><span>İNDİRİM (%@((100 * tInd / tBrut).ToString("0.0")))</span><span class="tabular-nums">−@Tl(tInd)</span></div>
+                }
+                <div class="flex justify-between font-bold text-[14px] mt-0.5"><span>TOPLAM</span><span class="tabular-nums">@Tl(tNet)</span></div>
+                <div class="text-center text-[9px] text-base-content/40 mt-0.5">(KDV hariç net ciro)</div>
+                <div class="text-base-content/40">════════════════════════</div>
+                <div class="text-[10px] text-base-content/55">MÜŞTERİ: <span class="font-semibold text-base-content/80">@_selMusteri?.Ad</span></div>
+                @if (!string.IsNullOrWhiteSpace(_selMusteri?.Tel)) { <div class="text-[10px] text-base-content/55">TEL: @_selMusteri!.Tel</div> }
+                <div class="text-center text-[10px] text-base-content/40 mt-1">@_fisIcerik.Count kalem · @_fisIcerik.Sum(u => u.Adet).ToString("0.##") adet</div>
+                <div class="text-center text-base-content/40">★ TEŞEKKÜRLER ★</div>
             </div>
         }
     </Modal>

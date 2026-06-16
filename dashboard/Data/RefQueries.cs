@@ -267,9 +267,11 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
         if (kanal == "et")
         {
             await using var jc = await db.OpenJokerAsync();
+            // Net = KDV-hariç (SELLINGPRICEWITHOUTVAT). Brüt = liste KDV-hariç (gross/(1+VAT/100)). İndirim = Brüt−Net.
             const string et = """
                 SELECT TOP 200 CAST(it.NAME AS nvarchar(60)) AS Ad, d.QUANTITY AS Adet,
-                    CAST(d.SELLINGPRICEWITHOUTVAT AS decimal(18,2)) AS Birim,
+                    CAST(d.QUANTITY*d.SELLINGPRICEWITHOUTDISCOUNT/(1+d.VAT/100.0) AS decimal(18,2)) AS Brut,
+                    CAST(d.QUANTITY*(d.SELLINGPRICEWITHOUTDISCOUNT/(1+d.VAT/100.0) - d.SELLINGPRICEWITHOUTVAT) AS decimal(18,2)) AS Indirim,
                     CAST(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT AS decimal(18,2)) AS Net
                 FROM dbo.J_ORDER_DETAILS d JOIN dbo.J_ITEMS it ON it.LOGICALREF=d.ITEMREF
                 WHERE d.ORDERREF=@fis;
@@ -277,9 +279,11 @@ public sealed class RefQueries(Db db, ILogger<RefQueries> logger, IcKartService 
             return (await jc.QueryAsync<FisIcerikRow>(et, new { fis })).ToList();
         }
         await using var conn = await db.OpenAsync();
+        // Net = KDV-hariç (TotalPrice−VatTotal). İndirim = DiscountTotalDirect (KDV-dahil baz; kitap %0'da tam, %20'de yaklaşık). Brüt = Net+İndirim.
         const string yk = """
             SELECT TOP 200 CAST(pr.Name AS nvarchar(60)) AS Ad, CAST(sp.Amount AS decimal(18,2)) AS Adet,
-                CAST((sp.TotalPrice-sp.VatTotal)/NULLIF(sp.Amount,0) AS decimal(18,2)) AS Birim,
+                CAST(sp.TotalPrice-sp.VatTotal+sp.DiscountTotalDirect AS decimal(18,2)) AS Brut,
+                CAST(sp.DiscountTotalDirect AS decimal(18,2)) AS Indirim,
                 CAST(sp.TotalPrice-sp.VatTotal AS decimal(18,2)) AS Net
             FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
