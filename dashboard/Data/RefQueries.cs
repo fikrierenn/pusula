@@ -269,6 +269,27 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         return new MusteriStat(kaz, kart, kart.Sum(k => k.Fis), kart.Sum(k => k.Kartli));
     }
 
+    /// <summary>Kart oranı drill (R-2): farklı pencere (gun=7/30/90) için mağaza bazlı kartlı-fiş oranı. İç kart kanonik filtre.</summary>
+    public async Task<IReadOnlyList<MagazaKart>> GetKartOranAsync(DateOnly dun, int gun)
+    {
+        await using var conn = await db.OpenAsync();
+        var icIds = icKart.Idler();
+        var kartSql = $"""
+            SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, COUNT(*) AS Fis,
+                   SUM(CASE WHEN s.CustomersId>0{IcKartFiltre.SqlCols("c", "s", icIds.Length > 0)} THEN 1 ELSE 0 END) AS Kartli
+            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
+            LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
+            WHERE s.DocumentsTypeId = 1 AND s.Date>=DATEADD(DAY,-@gun,@dun) AND s.Date<@dun2
+            GROUP BY CAST(st.Name AS nvarchar(30));
+            """;
+        var dun2 = dun.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var raw = (await conn.QueryAsync<(string Magaza, int Fis, int Kartli)>(kartSql,
+            new { gun, dun = dun.ToDateTime(TimeOnly.MinValue), dun2, icIds })).ToList();
+        return raw.Select(r => new MagazaKart(r.Magaza, r.Fis, r.Kartli,
+            r.Fis > 0 ? Math.Round(100m * r.Kartli / r.Fis, 1) : 0)).OrderByDescending(k => k.Fis).ToList();
+    }
+
     /// <summary>Kazanım drill (R-1): ay="2025-06" formatında → o ayda ilk kez alışveriş yapan müşteriler (Top 200, iç kart hariç).</summary>
     public async Task<IReadOnlyList<KazanimDetayRow>> GetKazanimDetayAsync(string ay)
     {

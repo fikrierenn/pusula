@@ -94,11 +94,27 @@ else
                 }
             </div>
             <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-                <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="credit-card" class="w-4 h-4 text-info"></i>Kart Oranı — Mağaza (son 30g)</h3>
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <h3 class="text-sm font-semibold text-base-content/90 flex items-center gap-1.5"><i data-lucide="credit-card" class="w-4 h-4 text-info"></i>Kart Oranı — Mağaza (son @_kartGun g)</h3>
+                    <div class="join join-horizontal shrink-0">
+                        @foreach (var g in new[] { 7, 30, 90 })
+                        {
+                            <button class="join-item btn btn-xs @(_kartGun == g ? "btn-primary" : "btn-ghost")" @onclick="() => DeğişKartGun(g)">@g g</button>
+                        }
+                    </div>
+                </div>
                 <div class="text-[11px] text-base-content/50 mb-2">kaç fişin kaçı müşteri-kartlı (sadakat tanıma)</div>
-                <AppRankBars TItem="MagazaKart" Items="_stat.KartOran" Label="@(m => m.Magaza)" Value="@(m => m.Oran)"
-                             ValueText="@(m => $"%{m.Oran} · {Num(m.Kartli)}/{Num(m.Fis)} fiş")" />
-                <div class="text-[12px] font-semibold mt-2 pt-2 border-t border-base-200">Toplam: <b>%@(_stat.ToplamFis > 0 ? Math.Round(100m * _stat.ToplamKartli / _stat.ToplamFis, 1) : 0)</b> kartlı (@Num(_stat.ToplamKartli)/@Num(_stat.ToplamFis) fiş)</div>
+                @if (_kartLoading)
+                {
+                    <span class="loading loading-spinner loading-xs text-base-content/40"></span>
+                }
+                else
+                {
+                    var kFis = _kartData.Sum(m => m.Fis); var kKartli = _kartData.Sum(m => m.Kartli);
+                    <AppRankBars TItem="MagazaKart" Items="_kartData" Label="@(m => m.Magaza)" Value="@(m => m.Oran)"
+                                 ValueText="@(m => $"%{m.Oran} · {Num(m.Kartli)}/{Num(m.Fis)} fiş")" />
+                    <div class="text-[12px] font-semibold mt-2 pt-2 border-t border-base-200">Toplam: <b>%@(kFis > 0 ? Math.Round(100m * kKartli / kFis, 1) : 0)</b> kartlı (@Num(kKartli)/@Num(kFis) fiş)</div>
+                }
             </div>
         </div>
     }
@@ -208,6 +224,10 @@ else
 
     // R-1: kazanım drill (ay seçimi)
     private string? _selKazAy;
+    // R-2: kart oranı dönem pill
+    private int _kartGun = 30;
+    private bool _kartLoading;
+    private IReadOnlyList<MagazaKart> _kartData = [];
     private bool _kazDetayLoading;
     private IReadOnlyList<KazanimDetayRow> _kazDetay = [];
 
@@ -254,6 +274,7 @@ else
             (_yk, _et) = await Ref.GetRfmAsync(_dun);
             _icKartlar = IcKart.Yukle();
             _stat = await Ref.GetMusteriStatAsync(_dun);
+            _kartData = _stat?.KartOran ?? [];
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Müşteri", sw); StateHasChanged(); }
@@ -285,6 +306,18 @@ else
         }
         catch (Exception ex) { Logger.LogError(ex, "Kazanım detay yükleme hatası"); _kazDetay = []; }
         finally { _kazDetayLoading = false; StateHasChanged(); }
+    }
+
+    // R-2: kart oranı dönem pill değiştir.
+    private async Task DeğişKartGun(int gun)
+    {
+        if (_kartGun == gun) return;
+        _kartGun = gun;
+        _kartLoading = true;
+        StateHasChanged();
+        try { _kartData = await Ref.GetKartOranAsync(_dun, gun); }
+        catch (Exception ex) { Logger.LogError(ex, "Kart oranı yükleme hatası"); }
+        finally { _kartLoading = false; StateHasChanged(); }
     }
 
     private async Task OpenDrill(string kanal, string seg)
