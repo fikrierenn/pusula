@@ -20,8 +20,8 @@
 - **Host:** `192.168.40.66\SQLEXPRESS` (named instance)
 - **MCP tool prefix:** `mcp__sqlserver-express__*`
 - **Port notu:** Named instance — ya statik port (1433/1434) açılması ya da SQL Browser servisi gerekir. Config'de `MSSQL_PORT=1433` yazıyorsa SQL Express'te IPAll → TCP Port 1433 sabitlenmiş demektir.
-- **Kullanım amacı:** [DOLDUR]
-- **İzinli DB'ler:** `ALLOWED_DATABASES` boş → hepsi açık.
+- **Kullanım amacı:** PDKS (Personel Devam Kontrol Sistemi) — personel giriş/çıkış, mesai takibi.
+- **İzinli DB'ler:** `ALLOWED_DATABASES` boş → hepsi açık. (Daraltma kararı: B-17 açık)
 
 ## Ortak Kurallar
 

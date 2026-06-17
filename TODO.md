@@ -143,7 +143,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ✅ **HK-3 B-86 GetDepoWms 0-guard** (18.06, commit 752ab3b) (~15dk) — `RefQueries.Envanter.cs` GetDepoWmsAsync boş-sonuç→0 "Depo Bugün": gerçek-0 vs veri-yok ayırt et (nullable + "veri yok" göster).
 - [x] ✅ **HK-4 B-89 ApexCharts var(--p)** (18.06, commit f97a780) (~30dk) — hardcode hex → CSS-var (context7 doğruladı `colors:['var(--p)']` çalışıyor). `AppAreaChart`/`AppBarChart` default `#4063e6`, axis renkleri → DaisyUI token. renk-standardi uyumu.
 - [x] ✅ **HK-5 C-13 .gitignore build artifact** (18.06, commit 38f65d8) (~10dk) — `sorgular/03-kampanya/RaporApp/bin|obj`, `*.dll/*.exe/*.pdb` → .gitignore + `git rm --cached`.
-- [ ] **HK-6 B-16/B-17 Express DB doc** (~15dk) — CLAUDE.md'de `[DOLDUR]`: Express (192.168.40.66\SQLEXPRESS) amacı + hangi DB'ler + ALLOWED_DATABASES daralt kararı.
+- [x] ✅ **HK-6 B-16 Express amacı** (18.06) — PDKS sunucusu (personel devam). B-17 ALLOWED_DATABASES daraltma kararı açık kalıyor (düşük öncelik).
 > Not — **B-82** (kasiyer ABS formül): `Queries.cs:157` kasSql doğrulandı (zaten -VatTotal vardı, false-positive); `:349` GetKasiyerDelta asimetri DÜZELTİLDİ (17.06). Kalan: iade-branch `ABS(DiscountTotal)` tutarlılığı — düşük öncelik, MCP mutabakatıyla doğrula.
 
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
