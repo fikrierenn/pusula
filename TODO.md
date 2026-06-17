@@ -285,8 +285,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-23b** v3: Önceki alış faturası snapshot (fiyat trendi).
 - [ ] **B-23c** v3: Yabancı para çevrim (fat.eDvzKur).
 - [ ] **B-23d** v3: Stored procedure'a sarma (`bkm.sp_GunlukKitapKarZarar`).
-- [ ] **B-25** CLAUDE.md veya `.claude/rules/session-protocol.md`'ye ekle: oturum başı ritüelinde **`sorgular/SEMANTIK_KATMAN.md`** zorunlu okuma listesine eklensin (ehTip kod sözlüğü, mekanID'ler, `ehTutarN = ehTutar - ehIndirim` mantığı bu dosyada). 07.05.2026 oturumunda atlandı, kullanıcı uyardı. **(YENİ)**
-- [ ] **B-24** ADR-004 yaz: "DerinSIS alış faturası convention'ı: ehAdet NEGATİF + ehMaliyet=0" — bu kritik kural sql-server-conventions.md'ye eklendi mi kontrol et. **(YENİ)**
+- [x] ✅ **B-25** (18.06, commit 8e573f4) — session-protocol Adım 3.5 SEMANTIK_KATMAN zorunlu okuma eklendi. oturum başı ritüelinde **`sorgular/SEMANTIK_KATMAN.md`** zorunlu okuma listesine eklensin (ehTip kod sözlüğü, mekanID'ler, `ehTutarN = ehTutar - ehIndirim` mantığı bu dosyada). 07.05.2026 oturumunda atlandı, kullanıcı uyardı. **(YENİ)**
+- [x] ✅ **B-24** (18.06, commit 8e573f4) — sql-server-conventions.md'ye eklendi (ADR-004 bölümü).
 - [x] ~~**B-26** E5 GMROI doğrulaması~~ — ✅ 08.06 karzarar v7 pymssql ile koşuldu (SET DATEFORMAT dmy). Mayıs aylık GMROI: Gıda 0,23 · Kitap/Akademi 0,03 · TOPLAM 0,07/ay. Kitap kategorileri ölü sermaye (E4/ABC ile tutarlı). Tüm GM KPI sözlüğü artık doğrulandı.
 - [ ] **B-27** G1 panosu (`10_00_gunluk-gm-panosu.sql`) 12 sn sürüyor — UPT için fiş-başı CROSS APPLY ağır. Günlük otomatik mail'e bağlanırsa UPT'yi ön-hesaplı/materialized tut. **(YENİ)**
 
