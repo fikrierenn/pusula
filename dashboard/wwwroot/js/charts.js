@@ -3,7 +3,7 @@
 const KP = (getComputedStyle(document.documentElement).getPropertyValue('--p').trim()
   ? `oklch(${getComputedStyle(document.documentElement).getPropertyValue('--p').trim()})`
   : '#4063e6');
-const KP_FILL = 'rgba(64,99,230,.12)';
+const KP_FILL = `color-mix(in srgb, ${KP} 12%, transparent)`;
 const PAL = [KP, '#0ea5e9', '#22c55e', '#f59e0b', '#a855f7', '#64748b', '#ec4899', '#14b8a6'];
 const store = {};
 
@@ -72,8 +72,8 @@ export function area(id, labels, data) {
         const { chartArea, ctx: c } = ctx.chart;
         if (!chartArea) return KP_FILL;
         const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-        g.addColorStop(0, 'rgba(64,99,230,.28)');
-        g.addColorStop(1, 'rgba(64,99,230,0)');
+        g.addColorStop(0, `color-mix(in srgb, ${KP} 28%, transparent)`);
+        g.addColorStop(1, 'transparent');
         return g;
     };
     draw(id, {

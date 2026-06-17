@@ -14,7 +14,7 @@
     [Parameter, EditorRequired] public Func<TItem, object> XValue { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TItem, decimal?> YValue { get; set; } = default!;
     [Parameter] public string Name { get; set; } = "";
-    [Parameter] public string Color { get; set; } = "#4063e6";
+    [Parameter] public string Color { get; set; } = "var(--p)";
     [Parameter] public int Height { get; set; } = 120;
 
     private ApexChartOptions<TItem> _opts = new();
@@ -23,7 +23,7 @@
 
     protected override void OnParametersSet()
     {
-        var color = string.IsNullOrEmpty(Color) ? "#4063e6" : Color;
+        var color = string.IsNullOrEmpty(Color) ? "var(--p)" : Color;
         var lastIdx = Math.Max(0, (Items?.Count() ?? 1) - 1);
 
         _opts = new ApexChartOptions<TItem>
