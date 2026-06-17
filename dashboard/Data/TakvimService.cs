@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dapper;
 using GmDashboard.Models;
+using Microsoft.Data.SqlClient;
 
 namespace GmDashboard.Data;
 
@@ -34,9 +35,30 @@ public sealed class TakvimService
                 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelTakvim')
                 CREATE TABLE dbo.PanelTakvim (
                     Tarih date PRIMARY KEY, Ad nvarchar(120) NOT NULL, Tip nvarchar(20) NOT NULL, YarimGun bit NOT NULL);
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelOkulDonem')
+                CREATE TABLE dbo.PanelOkulDonem (Id int IDENTITY(1,1) PRIMARY KEY, Bas date NOT NULL, Son date NOT NULL);
                 """);
+            SeedOkulIfEmpty(c);  // ilk açılış: okul-takvimi.json → DB (boşsa)
         }
-        catch (Exception ex) { log.LogError(ex, "PanelTakvim tablo oluşturma hatası"); }
+        catch (Exception ex) { log.LogError(ex, "Panel takvim tablo oluşturma/seed hatası"); }
+    }
+
+    /// <summary>İlk açılış migration — okul-takvimi.json içeriğini DB'ye yükle (tablo boşsa). JSON seed kaynağı olarak kalır.</summary>
+    private void SeedOkulIfEmpty(SqlConnection c)
+    {
+        if (!File.Exists(_okulPath)) return;
+        var donemBos = c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelOkulDonem") == 0;
+        var sinavBos = c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim WHERE Tip=N'Sinav'") == 0;
+        if (!donemBos && !sinavBos) return;
+        OkulTakvim j;
+        try { j = JsonSerializer.Deserialize<OkulTakvim>(File.ReadAllText(_okulPath), _opt) ?? new(); }
+        catch (Exception ex) { _log.LogError(ex, "okul-takvimi.json seed parse hatası"); return; }
+        if (donemBos && j.Donemler.Count > 0)
+            c.Execute("INSERT INTO dbo.PanelOkulDonem (Bas, Son) VALUES (@Bas, @Son)", j.Donemler);
+        if (sinavBos && j.Sinavlar.Count > 0)
+            c.Execute("INSERT INTO dbo.PanelTakvim (Tarih, Ad, Tip, YarimGun) VALUES (@Tarih, @Ad, N'Sinav', 0)",
+                j.Sinavlar.Select(s => new { s.Tarih, s.Ad }));
+        _log.LogInformation("Okul takvimi seed edildi: {D} dönem, {S} sınav", j.Donemler.Count, j.Sinavlar.Count);
     }
 
     // ---- Tatil (DB) ----
@@ -107,18 +129,25 @@ public sealed class TakvimService
         }
     }
 
-    // ---- Okul (elle JSON) ----
+    // ---- Okul (DB: PanelOkulDonem + PanelTakvim Tip=Sinav) ----
 
     private OkulTakvim Okul()
     {
+        if (!_db.PanelEnabled) return new();
         try
         {
-            if (!File.Exists(_okulPath)) return new();
-            return JsonSerializer.Deserialize<OkulTakvim>(File.ReadAllText(_okulPath), _opt) ?? new();
+            using var c = _db.OpenPanel();
+            var t = new OkulTakvim
+            {
+                Donemler = c.Query<OkulDonemDto>("SELECT Bas, Son FROM dbo.PanelOkulDonem").ToList(),
+                Sinavlar = c.Query<TakvimGun>("SELECT Tarih, Ad, Tip, YarimGun FROM dbo.PanelTakvim WHERE Tip=N'Sinav'")
+                    .Select(s => new OkulSinavDto { Ad = s.Ad, Tarih = s.Tarih }).ToList(),
+            };
+            return t;
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Okul takvimi okunamadı ({Path})", _okulPath);
+            _log.LogError(ex, "Okul takvimi DB okunamadı — boş ile devam");
             return new();
         }
     }
