@@ -122,21 +122,9 @@ else if (_data is not null)
                              ValueText="@(t => $"{Num(t.Adet)} adet · {t.Islem} emir")" />
             </div>
         }
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">Kapıda Ödeme — Teslim/İade (olgun 60g)</h3>
-            @if (_ops is not null)
-            {
-                <AppDataTable TItem="CodRow" Items="@(_ops.Cod.OrderBy(x => x.Tip == "COD" ? 0 : 1))"
-                              Primary="@(c => c.Tip)"
-                              MetricMain="@(c => Num(c.Siparis))"
-                              MetricSub="@(c => "sipariş")"
-                              Sub="@(c => c.Siparis > 0 ? "teslim %" + Math.Round(100m * c.Teslim / c.Siparis, 1) : "teslim —")"
-                              Badge="@(c => { var iadePct = c.Siparis > 0 ? Math.Round(100m * c.Iade / c.Siparis, 1) : 0; return c.Tip == "COD" ? ($"iade %{iadePct}", "bg-error/10 text-error") : ($"iade %{iadePct}", "bg-success/10 text-success"); })" />
-                <div class="pt-2.5 mt-1 border-t-2 border-base-200 text-[13px] text-error">
-                    COD iade zararı (60g): <span class="font-bold">@Tl(_ops.CodZarar)</span> <span class="text-base-content/50">(kargo ×2)</span>
-                </div>
-            }
-        </div>
-        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+    </div>
+
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5">
                 Manuel İndirim Kırılımı — 2026
                 <span class="text-[11px] font-normal text-base-content/50 ml-1">SPC.Source=1 · RefundReasons.Type=1 · sebep seç → Mağaza×Ay detay</span>
@@ -273,7 +261,6 @@ else if (_data is not null)
                 <div class="text-base-content/50 text-[11px]">İnd.%>30 kırmızı · >15 turuncu · Satıra tıkla → Mağaza×Ay detay (Brüt/İnd./%).</div>
             }
         </div>
-    </div>
 }
 
 
