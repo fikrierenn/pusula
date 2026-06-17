@@ -1,11 +1,13 @@
 @page "/eticaret"
 @using GmDashboard.Data
 @using GmDashboard.Models
+@implements IDisposable
 @inject Queries Queries
 @inject EticQueries Etic
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject ILogger<Eticaret> Logger
+@inject PersistentComponentState AppState
 @rendermode InteractiveServer
 
 <PageTitle>E-ticaret — BKM GM</PageTitle>
@@ -317,7 +319,39 @@ else if (_data is not null)
         finally { StateHasChanged(); }
     }
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private PersistingComponentStateSubscription _persistSub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+        if (AppState.TryTakeFromJson<PeriodSummary>("etc_data", out var d) &&
+            AppState.TryTakeFromJson<List<BekleyenBucket>>("etc_bekleyen", out var bek) &&
+            AppState.TryTakeFromJson<List<EticKategoriRow>>("etc_ktgr", out var ktgr) &&
+            AppState.TryTakeFromJson<List<EticFunnelRow>>("etc_funnel", out var funnel))
+        {
+            _data = d; _bekleyen = bek ?? []; _eticKtgr = ktgr ?? []; _funnel = funnel ?? [];
+            if (AppState.TryTakeFromJson<List<KargoPerf>>("etc_kargo", out var kp)) _kargoPerf = kp ?? [];
+            if (AppState.TryTakeFromJson<CodOzet>("etc_cod", out var cod)) _cod = cod;
+            if (AppState.TryTakeFromJson<List<EticKategoriAyRow>>("etc_ktgryil", out var ky)) _ktgrYil = ky ?? [];
+            _loading = false; StateHasChanged();
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private Task PersistData()
+    {
+        if (_data is not null) AppState.PersistAsJson("etc_data", _data);
+        AppState.PersistAsJson("etc_bekleyen", _bekleyen);
+        AppState.PersistAsJson("etc_ktgr", _eticKtgr);
+        AppState.PersistAsJson("etc_funnel", _funnel);
+        AppState.PersistAsJson("etc_kargo", _kargoPerf);
+        if (_cod is not null) AppState.PersistAsJson("etc_cod", _cod);
+        AppState.PersistAsJson("etc_ktgryil", _ktgrYil);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
 
     private (DateOnly, DateOnly) OzelAralik()
     {

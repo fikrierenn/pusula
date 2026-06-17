@@ -1,6 +1,7 @@
 @page "/"
 @using GmDashboard.Data
 @using GmDashboard.Models
+@implements IDisposable
 @inject Queries Queries
 @inject LlmService Llm
 @inject NotifState Notif
@@ -8,6 +9,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject ILogger<Home> Logger
+@inject PersistentComponentState AppState
 @rendermode InteractiveServer
 
 <PageTitle>BKM GM Dashboard</PageTitle>
@@ -212,7 +214,36 @@ else if (_data is not null)
         return (b, e.AddDays(1));
     }
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private PersistingComponentStateSubscription _persistSub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+        if (AppState.TryTakeFromJson<PeriodSummary>("home_data", out var d) &&
+            AppState.TryTakeFromJson<List<TrendPoint>>("home_trend", out var tr) &&
+            AppState.TryTakeFromJson<List<TrendPoint>>("home_alis", out var al))
+        {
+            _data = d; _trend = tr ?? []; _alis = al ?? [];
+            if (AppState.TryTakeFromJson<List<HedefMagaza>>("home_hedefmag", out var hm) &&
+                AppState.TryTakeFromJson<List<HedefKategori>>("home_hedefkat", out var hk))
+            { _hedefMag = hm; _hedefKat = hk ?? []; }
+            _loading = false;
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private Task PersistData()
+    {
+        if (_data is not null) AppState.PersistAsJson("home_data", _data);
+        AppState.PersistAsJson("home_trend", _trend);
+        AppState.PersistAsJson("home_alis", _alis);
+        if (_hedefMag is not null) AppState.PersistAsJson("home_hedefmag", _hedefMag);
+        AppState.PersistAsJson("home_hedefkat", _hedefKat);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
 
     private async Task LoadAsync()
     {

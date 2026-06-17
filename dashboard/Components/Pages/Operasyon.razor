@@ -1,11 +1,13 @@
 @page "/operasyon"
 @using GmDashboard.Data
 @using GmDashboard.Models
+@implements IDisposable
 @inject Queries Queries
 @inject RefQueries Ref
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject ILogger<Operasyon> Logger
+@inject PersistentComponentState AppState
 @rendermode InteractiveServer
 
 <PageTitle>Operasyon — BKM GM</PageTitle>
@@ -149,10 +151,31 @@ else if (_data is not null)
     private string _aralik = "";
     private Dictionary<string, decimal?> _kasDelta = new();   // B-57 kasiyer net delta (Magaza|Ad → %)
 
+    private PersistingComponentStateSubscription _persistSub;
+
     protected override async Task OnInitializedAsync()
     {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+        if (AppState.TryTakeFromJson<PeriodSummary>("ops_data", out var d) &&
+            AppState.TryTakeFromJson<OpsData>("ops_ops", out var ops))
+        {
+            _data = d; _ops = ops;
+            if (AppState.TryTakeFromJson<DepoWmsData>("ops_wms", out var wms)) _wms = wms;
+            _loading = false; StateHasChanged();
+            return;
+        }
         await LoadAsync();
     }
+
+    private Task PersistData()
+    {
+        if (_data is not null) AppState.PersistAsJson("ops_data", _data);
+        if (_ops is not null) AppState.PersistAsJson("ops_ops", _ops);
+        if (_wms is not null) AppState.PersistAsJson("ops_wms", _wms);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
 
     private (DateOnly, DateOnly) OzelAralik()
     {

@@ -1,10 +1,12 @@
 @page "/sadakat"
 @using GmDashboard.Data
 @using GmDashboard.Models
+@implements IDisposable
 @inject SadakatQueries Sada
 @inject LlmService Llm
 @inject PerfState Perf
 @inject ILogger<Sadakat> Logger
+@inject PersistentComponentState AppState
 @rendermode InteractiveServer
 
 <PageTitle>Sadakat — BKM GM</PageTitle>
@@ -149,8 +151,22 @@ else
     private bool _yorumCalisiyor;
     private int _yorumGen;
 
+    private PersistingComponentStateSubscription _persistSub;
+
     protected override async Task OnInitializedAsync()
     {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+        if (AppState.TryTakeFromJson<List<WinBackRow>>("sad_wb", out var wb) &&
+            AppState.TryTakeFromJson<List<ParetoRow>>("sad_par", out var par) &&
+            AppState.TryTakeFromJson<List<KartliRow>>("sad_krt", out var krt))
+        {
+            _winBack = wb ?? []; _pareto = par ?? []; _kartli = krt ?? [];
+            if (AppState.TryTakeFromJson<TekrarAlisOzet>("sad_tek", out var tek)) _tekrar = tek;
+            if (AppState.TryTakeFromJson<List<RfmGecisRow>>("sad_gec", out var gec)) _rfmGecis = gec ?? [];
+            _loading = false; StateHasChanged();
+            if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
+            return;
+        }
         var sw = PerfState.Start();
         try
         {
@@ -165,12 +181,23 @@ else
             _kartli = tKrt.Result;
             _tekrar = tTek.Result;
             _rfmGecis = tGec.Result;
-            // LLM yorumu arka planda — SADECE interactive render'da (prerender'da çift inference olmasın). Sayfa beklemez.
             if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Sadakat", sw); StateHasChanged(); }
     }
+
+    private Task PersistData()
+    {
+        AppState.PersistAsJson("sad_wb", _winBack);
+        AppState.PersistAsJson("sad_par", _pareto);
+        AppState.PersistAsJson("sad_krt", _kartli);
+        if (_tekrar is not null) AppState.PersistAsJson("sad_tek", _tekrar);
+        AppState.PersistAsJson("sad_gec", _rfmGecis);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
