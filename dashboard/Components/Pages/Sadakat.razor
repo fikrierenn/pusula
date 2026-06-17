@@ -168,7 +168,7 @@ else
             // LLM yorumu arka planda — SADECE interactive render'da (prerender'da çift inference olmasın). Sayfa beklemez.
             if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Sadakat", sw); StateHasChanged(); }
     }
 

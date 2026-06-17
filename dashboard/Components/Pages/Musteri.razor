@@ -5,6 +5,7 @@
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject IcKartService IcKart
+@inject ILogger<Musteri> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Müşteri — BKM GM</PageTitle>
@@ -220,7 +221,7 @@ else
             _icKartlar = IcKart.Yukle();
             _stat = await Ref.GetMusteriStatAsync(_dun);
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Müşteri", sw); StateHasChanged(); }
     }
 
@@ -251,7 +252,7 @@ else
     {
         _selMusteri = c; _lvl = 2; _drillLoading = true; _fisler = []; StateHasChanged();
         try { _fisler = await Ref.GetFislerAsync(_selKanal, c.Id); }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _drillLoading = false; StateHasChanged(); }
     }
 
@@ -260,7 +261,7 @@ else
     {
         _selFis = f; _lvl = 3; _drillLoading = true; _fisIcerik = []; StateHasChanged();
         try { _fisIcerik = long.TryParse(f.Ref, out var rid) ? await Ref.GetFisIcerikAsync(_selKanal, rid) : []; }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _drillLoading = false; StateHasChanged(); }
     }
 
@@ -275,7 +276,7 @@ else
                 ? await Ref.GetYkCustomersAsync(_selSeg, _dun, _icKart)
                 : await Ref.GetEtCustomersAsync(_selSeg, _dun);
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _drillLoading = false; StateHasChanged(); }
     }
 

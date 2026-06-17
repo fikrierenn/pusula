@@ -4,6 +4,7 @@
 @inject Queries Queries
 @inject RefQueries Ref
 @inject PerfState Perf
+@inject ILogger<Toplam> Logger
 @rendermode InteractiveServer
 
 @* TOPLAM — 3 mağaza birleşik kategori dağılımı + kategori→ürün drill.
@@ -196,7 +197,7 @@ else if (_data is not null)
             }
             else { _urunler = []; }
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _urunLoading = false; _loading = false; Perf.Report("TOPLAM", sw); StateHasChanged(); }
     }
 

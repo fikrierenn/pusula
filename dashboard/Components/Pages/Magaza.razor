@@ -6,6 +6,7 @@
 @inject PerfState Perf
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject ILogger<Magaza> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Mağaza Detay — BKM GM</PageTitle>
@@ -287,7 +288,7 @@ else if (_d is not null)
             _d = tDetay.Result; _trend = tTrend.Result; _heat = tHeat.Result;
             if (_d is null) _error = "Geçersiz mağaza.";
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report($"Mağaza {Id}", sw); StateHasChanged(); }
     }
 
@@ -295,7 +296,7 @@ else if (_d is not null)
     {
         _selKat = kategori; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
         try { _urunler = await Ref.GetUrunlerAsync(kategori, Id, _start, _endExcl); }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _urunLoading = false; StateHasChanged(); }
     }
 

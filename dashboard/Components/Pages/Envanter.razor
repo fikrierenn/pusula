@@ -221,7 +221,7 @@ else if (_d is not null)
             _hc   = tHc.Result;
             _rot  = tRot.Result;
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Envanter", sw); StateHasChanged(); }
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
@@ -247,7 +247,7 @@ else if (_d is not null)
     {
         _selKat = kategori; _olusSort = olusSort; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
         try { _urunler = await Ref.GetUrunlerAsync(kategori, 0, _gAyBas, _gAyBit, olusSort); }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _urunLoading = false; StateHasChanged(); }
     }
 

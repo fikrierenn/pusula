@@ -7,6 +7,7 @@
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject ILogger<Home> Logger
 @rendermode InteractiveServer
 
 <PageTitle>BKM GM Dashboard</PageTitle>
@@ -265,7 +266,7 @@ else if (_data is not null)
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu.";
         }
         finally
         {

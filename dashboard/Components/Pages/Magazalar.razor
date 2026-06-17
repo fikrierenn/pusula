@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @inject Queries Queries
 @inject PerfState Perf
+@inject ILogger<Magazalar> Logger
 @rendermode InteractiveServer
 
 @* Mağazalar — 3 mağaza yan yana karşılaştırma. Her kart <a href="magaza/{id}"> (B-48 SSR-güvenli).
@@ -156,7 +157,7 @@ else if (_data is not null)
             _wowLabel = wl;
             _data = await Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Mağazalar", sw); StateHasChanged(); }
     }
 
