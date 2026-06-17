@@ -269,6 +269,36 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         return new MusteriStat(kaz, kart, kart.Sum(k => k.Fis), kart.Sum(k => k.Kartli));
     }
 
+    /// <summary>Kazanım drill (R-1): ay="2025-06" formatında → o ayda ilk kez alışveriş yapan müşteriler (Top 200, iç kart hariç).</summary>
+    public async Task<IReadOnlyList<KazanimDetayRow>> GetKazanimDetayAsync(string ay)
+    {
+        await using var conn = await db.OpenAsync();
+        var icIds = icKart.Idler();
+        var filt = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
+        var sql = $"""
+            SELECT TOP 200
+                ISNULL(c.Name, '') AS Ad,
+                ISNULL(c.PhoneNumber, '') AS Tel,
+                CONVERT(varchar, ilk.IlkTarih, 104) AS IlkTarih,
+                CAST((SELECT TOP 1 s2.GrossTotal - s2.DiscountTotal - s2.VatTotal
+                      FROM EncoreMerkez.dbo.Sales s2 WITH(NOLOCK)
+                      WHERE s2.CustomersId = ilk.CustomersId
+                        AND CONVERT(date, s2.Date) = CONVERT(date, ilk.IlkTarih)
+                        AND s2.DocumentsTypeId = 1
+                      ORDER BY s2.Id) AS decimal(18,0)) AS IlkTutar
+            FROM (
+                SELECT s.CustomersId, MIN(s.Date) AS IlkTarih
+                FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                WHERE s.DocumentsTypeId = 1 AND s.CustomersId > 0{filt}
+                GROUP BY s.CustomersId
+                HAVING LEFT(CONVERT(varchar, MIN(s.Date), 23), 7) = @ay
+            ) ilk
+            LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id = ilk.CustomersId
+            ORDER BY ilk.IlkTarih DESC;
+            """;
+        return (await conn.QueryAsync<KazanimDetayRow>(sql, new { ay, icIds })).ToList();
+    }
+
     /// <summary>Drill katman 3: müşteri → fiş/sipariş listesi (son 365g, top 100). Tutar KDV-hariç. plan-17 (Python HAR_YK/HAR_ET portu).</summary>
     public async Task<IReadOnlyList<FisRow>> GetFislerAsync(string kanal, long id)
     {

@@ -12,6 +12,9 @@ public record FisRow(string Tarih, string Ref, int Kalem, decimal Tutar);
 /// <summary>Aylık yeni müşteri kazanımı (ilk fiş tarihi o ayda). plan-17.</summary>
 public record MusteriKazanim(string Ay, int Yeni);
 
+/// <summary>Kazanım drill: o ayda ilk kez alışveriş yapan müşteri (ad/tel/ilk fiş tarihi ve tutarı). R-1.</summary>
+public record KazanimDetayRow(string Ad, string Tel, string IlkTarih, decimal IlkTutar);
+
 /// <summary>Mağaza kart-fiş oranı (kaç fişin kaçı müşteri-kartlı). plan-17.</summary>
 public record MagazaKart(string Magaza, int Fis, int Kartli, decimal Oran);
 

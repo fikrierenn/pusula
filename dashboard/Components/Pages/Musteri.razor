@@ -57,11 +57,40 @@ else
                 <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="user-plus" class="w-4 h-4 text-success"></i>Aylık Yeni Müşteri Kazanım (13 ay)</h3>
                 <div class="text-[11px] text-base-content/50 mb-2">o ay İLK kez alışveriş yapan kart · iç kart hariç</div>
                 <AppAreaChart TItem="MusteriKazanim" Items="_stat.Kazanim" Name="Yeni müşteri" Height="120"
-                              XValue="@(k => (object)k.Ay[5..])" YValue="@(k => (decimal?)k.Yeni)" />
+                              XValue="@(k => (object)k.Ay[5..])" YValue="@(k => (decimal?)k.Yeni)"
+                              OnDataPointSelection="@SeçAy" />
                 @{ var sonAy = _stat.Kazanim.Count > 0 ? _stat.Kazanim[^1] : null; }
                 @if (sonAy is not null)
                 {
-                    <div class="text-[11px] text-base-content/50 mt-2">Son ay <b>@AyAd(sonAy.Ay)</b>: <b class="text-success">@Num(sonAy.Yeni)</b> yeni müşteri · 13 ay toplam @Num(_stat.Kazanim.Sum(k => k.Yeni))</div>
+                    <div class="text-[11px] text-base-content/50 mt-2">Son ay <b>@AyAd(sonAy.Ay)</b>: <b class="text-success">@Num(sonAy.Yeni)</b> yeni müşteri · 13 ay toplam @Num(_stat.Kazanim.Sum(k => k.Yeni)) · <span class="text-primary">aya tıkla → detay</span></div>
+                }
+                @if (_selKazAy is not null)
+                {
+                    <div class="mt-3 border-t border-base-200 pt-3">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-[12px] font-semibold"><i data-lucide="user-plus" class="w-3.5 h-3.5 inline text-success"></i> @AyAd(_selKazAy) — Yeni Müşteriler</span>
+                            <button class="btn btn-ghost btn-xs ml-auto" @onclick="() => { _selKazAy = null; _kazDetay = []; }">✕ kapat</button>
+                        </div>
+                        @if (_kazDetayLoading)
+                        {
+                            <span class="loading loading-spinner loading-xs text-base-content/40"></span>
+                        }
+                        else if (_kazDetay.Count == 0)
+                        {
+                            <div class="text-[11px] text-base-content/50">Veri yok.</div>
+                        }
+                        else
+                        {
+                            <AppDataTable TItem="KazanimDetayRow"
+                                          Items="@_kazDetay"
+                                          Primary="@(r => string.IsNullOrEmpty(r.Ad) ? "(isimsiz)" : r.Ad)"
+                                          Sub="@(r => r.Tel)"
+                                          MetricMain="@(r => Tl(r.IlkTutar))"
+                                          MetricSub="@(r => r.IlkTarih)"
+                                          Badge="@(r => ("ilk alış", "bg-success/15 text-success"))" />
+                            <div class="text-[11px] text-base-content/50 mt-1">@Num(_kazDetay.Count) müşteri gösteriliyor (max 200) · İlk alış tutarı KDV-hariç</div>
+                        }
+                    </div>
                 }
             </div>
             <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
@@ -177,6 +206,11 @@ else
     private DateOnly _dun;
     private MusteriStat? _stat;
 
+    // R-1: kazanım drill (ay seçimi)
+    private string? _selKazAy;
+    private bool _kazDetayLoading;
+    private IReadOnlyList<KazanimDetayRow> _kazDetay = [];
+
     private bool _modalOpen;
     private bool _drillLoading;
     private bool _icKart;
@@ -236,6 +270,21 @@ else
             }
             catch { /* prerender — sonraki render'da bağlanır */ }
         }
+    }
+
+    // R-1: kazanım grafiğinde ay tıklanınca detay yükle.
+    private async Task SeçAy(MusteriKazanim k)
+    {
+        if (_selKazAy == k.Ay) { _selKazAy = null; _kazDetay = []; return; }  // toggle kapat
+        _selKazAy = k.Ay;
+        _kazDetayLoading = true;
+        StateHasChanged();
+        try
+        {
+            _kazDetay = await Ref.GetKazanimDetayAsync(k.Ay);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Kazanım detay yükleme hatası"); _kazDetay = []; }
+        finally { _kazDetayLoading = false; StateHasChanged(); }
     }
 
     private async Task OpenDrill(string kanal, string seg)

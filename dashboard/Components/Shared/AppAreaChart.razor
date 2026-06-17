@@ -2,8 +2,8 @@
    hafif x-ekseni, y gizli, gridsiz, dokun-tooltip. plan-08. *@
 @typeparam TItem where TItem : class
 
-<div class="relative" style="height:@(Height)px">
-    <ApexChart TItem="TItem" Options="_opts" Height="@Height">
+<div class="relative @(OnDataPointSelection.HasDelegate ? "[&_.apexcharts-canvas]:cursor-pointer" : "")" style="height:@(Height)px">
+    <ApexChart TItem="TItem" Options="_opts" Height="@Height" OnDataPointSelection="HandleClick">
         <ApexPointSeries TItem="TItem" Items="Items" Name="@Name" SeriesType="SeriesType.Area"
                          XValue="XValue" YValue="YValue" />
     </ApexChart>
@@ -16,8 +16,15 @@
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public string Color { get; set; } = "var(--p)";
     [Parameter] public int Height { get; set; } = 120;
+    [Parameter] public EventCallback<TItem> OnDataPointSelection { get; set; }
 
     private ApexChartOptions<TItem> _opts = new();
+
+    private Task HandleClick(SelectedData<TItem> e)
+    {
+        var item = e.DataPoint.Items.FirstOrDefault();
+        return item != null ? OnDataPointSelection.InvokeAsync(item) : Task.CompletedTask;
+    }
 
     private const string NumFmt = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}";
 
