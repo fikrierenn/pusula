@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using MiniExcelLibs;
 
+// Dapper: SQL date ↔ DateOnly (SqlClient date'i DateTime döndürür; record DateOnly ctor eşleşmez) — B-108.
+Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -152,3 +155,14 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+// ── Dapper DateOnly ↔ SQL date handler (B-108) ──
+internal sealed class DateOnlyTypeHandler : Dapper.SqlMapper.TypeHandler<DateOnly>
+{
+    public override DateOnly Parse(object value) => DateOnly.FromDateTime((DateTime)value);
+    public override void SetValue(System.Data.IDbDataParameter p, DateOnly value)
+    {
+        p.DbType = System.Data.DbType.Date;
+        p.Value = value.ToDateTime(TimeOnly.MinValue);
+    }
+}

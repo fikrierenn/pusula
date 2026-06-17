@@ -1,61 +1,84 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Dapper;
 using GmDashboard.Models;
 
 namespace GmDashboard.Data;
 
 /// <summary>
-/// Takvim etmen servisi (plan-14). İki kaynak:
-///  1. Ulusal+dini+arife tatil → Apps Script API, data/takvim-cache.json'a önbellek (yılda 1 Yenile).
-///  2. Okul dönem + sınav → data/okul-takvimi.json (elle, MEB takvimi).
-/// Tahmin daima cache/dosyadan okur — canlı API bağımlılığı YOK (kişisel script, kaybolabilir).
-/// Etmen çarpanları deterministik; sessiz hata yutulmaz (error-handling.md).
+/// Takvim etmen servisi (plan-14, B-108). İki kaynak:
+///  1. Ulusal+dini+arife tatil → Apps Script API, localhost Express BkmPanel.dbo.PanelTakvim (yılda 1 Yenile).
+///     DB'de tutulur → görev/brief/tahmin sorgulayabilir (örn. görev son tarihi tatile denk mi).
+///  2. Okul dönem + sınav → data/okul-takvimi.json (elle, MEB takvimi — dönem aralığı, ayrı yapı).
+/// Tahmin daima DB'den okur — canlı API bağımlılığı YOK (kişisel script, kaybolabilir).
 /// </summary>
-public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<TakvimService> log)
+public sealed class TakvimService
 {
-    // Apps Script — DMY localeDateString + epoch date. Dini bayram + arife dahil (Nager.Date'te yok).
     private const string ApiUrl = "https://script.google.com/macros/s/AKfycbzVHms-rNzPCAXTWQkqJncuHBhcaW9Yhx4vY_njRhkmQY3fdgmrcIyjCqyttkkcjEvo/exec";
-    private static readonly string _cachePath = Path.Combine(AppContext.BaseDirectory, "data", "takvim-cache.json");
     private static readonly string _okulPath = Path.Combine(AppContext.BaseDirectory, "data", "okul-takvimi.json");
-    private static readonly JsonSerializerOptions _opt = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
+    private static readonly JsonSerializerOptions _opt = new() { Converters = { new JsonStringEnumConverter() } };
 
-    // ---- Tatil (cache) ----
+    private readonly IHttpClientFactory _http;
+    private readonly Db _db;
+    private readonly ILogger<TakvimService> _log;
 
-    /// <summary>Önbellekteki tatil günleri (ulusal+dini+arife). Yoksa boş — etmen nötr (çarpan 1.0).</summary>
-    public IReadOnlyList<TakvimGun> TatilGunleri()
+    public TakvimService(IHttpClientFactory http, Db db, ILogger<TakvimService> log)
     {
+        _http = http; _db = db; _log = log;
+        if (!db.PanelEnabled) { log.LogWarning("Panel DB kapalı — takvim devre dışı"); return; }
         try
         {
-            if (!File.Exists(_cachePath)) return [];
-            return JsonSerializer.Deserialize<List<TakvimGun>>(File.ReadAllText(_cachePath), _opt) ?? [];
+            using var c = db.OpenPanel();
+            c.Execute("""
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelTakvim')
+                CREATE TABLE dbo.PanelTakvim (
+                    Tarih date PRIMARY KEY, Ad nvarchar(120) NOT NULL, Tip nvarchar(20) NOT NULL, YarimGun bit NOT NULL);
+                """);
         }
-        catch (Exception ex)
+        catch (Exception ex) { log.LogError(ex, "PanelTakvim tablo oluşturma hatası"); }
+    }
+
+    // ---- Tatil (DB) ----
+
+    /// <summary>PanelTakvim tatil günleri (ulusal+dini+arife). Yoksa boş — etmen nötr (çarpan 1.0).</summary>
+    public IReadOnlyList<TakvimGun> TatilGunleri()
+    {
+        if (!_db.PanelEnabled) return [];
+        try
         {
-            log.LogError(ex, "Takvim cache okunamadı ({Path}) — boş ile devam", _cachePath);
-            return [];
+            using var c = _db.OpenPanel();
+            return c.Query<TakvimGun>("SELECT Tarih, Ad, Tip, YarimGun FROM dbo.PanelTakvim ORDER BY Tarih").ToList();
+        }
+        catch (Exception ex) { _log.LogError(ex, "Takvim DB okunamadı — boş ile devam"); return []; }
+    }
+
+    public bool CacheVar
+    {
+        get
+        {
+            if (!_db.PanelEnabled) return false;
+            try { using var c = _db.OpenPanel(); return c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim") > 0; }
+            catch { return false; }
         }
     }
 
-    public bool CacheVar => File.Exists(_cachePath);
-
-    /// <summary>API'den çek, gürültü temizle, cache'e yaz. Başarısızsa eski cache korunur (false döner).</summary>
+    /// <summary>API'den çek, gürültü temizle, PanelTakvim'e yaz (DELETE+INSERT). Başarısızsa eski veri korunur (false).</summary>
     public async Task<bool> ApidenYenileAsync()
     {
+        if (!_db.PanelEnabled) return false;
         try
         {
-            var http = httpFactory.CreateClient();
+            var http = _http.CreateClient();
             http.Timeout = TimeSpan.FromSeconds(15);
             var json = await http.GetStringAsync(ApiUrl);
             var ham = JsonSerializer.Deserialize<List<ApiKayit>>(json) ?? throw new InvalidDataException("API boş/çözümlenemez yanıt");
 
             var temiz = new List<TakvimGun>();
-            var gorulen = new HashSet<DateOnly>();   // tarih bazlı dedup
+            var gorulen = new HashSet<DateOnly>();
             int elenenGurultu = 0, elenenParse = 0;
             foreach (var k in ham)
             {
-                // Gürültü filtresi: API'nin İngilizce artık kaydı ("Sacrifice Feast Holiday", 25.05) — gerçek başlıklar Türkçe "Bayramı" içerir.
-                // Yalnızca "Feast" (gözlemlenen tek gürültü imzası); "Holiday" çok geniş, meşru tatili eleyebilir → kullanılmaz.
                 if (k.title.Contains("Feast", StringComparison.OrdinalIgnoreCase)) { elenenGurultu++; continue; }
                 if (!DateOnly.TryParseExact(k.localeDateString, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tarih)) { elenenParse++; continue; }
                 if (!gorulen.Add(tarih)) continue;
@@ -68,16 +91,18 @@ public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<Takvim
             }
             if (temiz.Count == 0) throw new InvalidDataException("Temizleme sonrası 0 kayıt — yazma iptal");
             if (elenenGurultu > 0 || elenenParse > 0)
-                log.LogWarning("Takvim API temizleme: {Gurultu} gürültü, {Parse} parse-hatası kayıt elendi ({Kalan} tutuldu)", elenenGurultu, elenenParse, temiz.Count);
+                _log.LogWarning("Takvim API temizleme: {Gurultu} gürültü, {Parse} parse-hatası elendi ({Kalan} tutuldu)", elenenGurultu, elenenParse, temiz.Count);
 
-            Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
-            File.WriteAllText(_cachePath, JsonSerializer.Serialize(temiz, _opt));
-            log.LogInformation("Takvim cache güncellendi: {N} gün", temiz.Count);
+            using var c = _db.OpenPanel();
+            c.Execute("DELETE FROM dbo.PanelTakvim WHERE Tip IN (N'Ulusal', N'DiniBayram')");  // okul tipleri korunur
+            c.Execute("INSERT INTO dbo.PanelTakvim (Tarih, Ad, Tip, YarimGun) VALUES (@Tarih, @Ad, @Tip, @YarimGun)",
+                temiz.Select(t => new { t.Tarih, t.Ad, Tip = t.Tip.ToString(), t.YarimGun }));
+            _log.LogInformation("PanelTakvim güncellendi: {N} gün", temiz.Count);
             return true;
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Takvim API yenileme başarısız — eski cache korunuyor");
+            _log.LogError(ex, "Takvim API yenileme başarısız — eski veri korunuyor");
             return false;
         }
     }
@@ -93,7 +118,7 @@ public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<Takvim
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Okul takvimi okunamadı ({Path})", _okulPath);
+            _log.LogError(ex, "Okul takvimi okunamadı ({Path})", _okulPath);
             return new();
         }
     }
@@ -116,7 +141,7 @@ public sealed class TakvimService(IHttpClientFactory httpFactory, ILogger<Takvim
         decimal bayramHam = Math.Round(1m - (decimal)(diniBu - diniGY) / ayGun, 4);
         decimal bayramCarpan = Math.Clamp(bayramHam, 0.7m, 1.3m);
         if (bayramCarpan != bayramHam)
-            log.LogWarning("Bayram çarpanı clamp edildi {Yil}-{Ay}: {Ham} → {Son} (diniBu={B}, diniGY={G})", yil, ay, bayramHam, bayramCarpan, diniBu, diniGY);
+            _log.LogWarning("Bayram çarpanı clamp edildi {Yil}-{Ay}: {Ham} → {Son} (diniBu={B}, diniGY={G})", yil, ay, bayramHam, bayramCarpan, diniBu, diniGY);
 
         var okul = Okul();
         bool okulAcik = okul.Donemler.Any(d => d.Bas <= new DateOnly(yil, ay, ayGun) && d.Son >= new DateOnly(yil, ay, 1));
