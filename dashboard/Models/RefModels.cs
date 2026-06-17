@@ -15,6 +15,9 @@ public record MusteriKazanim(string Ay, int Yeni);
 /// <summary>Kazanım drill: o ayda ilk kez alışveriş yapan müşteri (ad/tel/ilk fiş tarihi ve tutarı). R-1.</summary>
 public record KazanimDetayRow(string Ad, string Tel, string IlkTarih, decimal IlkTutar);
 
+/// <summary>Kohort retention matrisi satırı (R-4). CohortAy="2025-06", N=ay farkı (1-12), Donenler=o ayda tekrar gelenler, Buyukluk=cohort toplam.</summary>
+public record KohortRow(string CohortAy, int N, int Donenler, int Buyukluk);
+
 /// <summary>Mağaza kart-fiş oranı (kaç fişin kaçı müşteri-kartlı). plan-17.</summary>
 public record MagazaKart(string Magaza, int Fis, int Kartli, decimal Oran);
 

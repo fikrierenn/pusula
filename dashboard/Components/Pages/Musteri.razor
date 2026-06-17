@@ -133,6 +133,55 @@ else
         </div>
     }
 
+    @if (_kohort.Count > 0)
+    {
+        var cohortlar = _kohort.Select(r => r.CohortAy).Distinct().OrderBy(a => a).ToList();
+        var nMax = _kohort.Max(r => r.N);
+        var lookup = _kohort.ToDictionary(r => (r.CohortAy, r.N));
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-1">Kohort Retention Matrisi — aylık edinim × N. ay geri dönüş %</h3>
+            <div class="text-[11px] text-base-content/50 mb-3">Satır = kazanım ayı · Sütun = kaçıncı ay sonra tekrar alış · Hücre = kohorttaki müşterilerin geri dönüş %'si</div>
+            <div class="overflow-x-auto">
+                <table class="text-[11px] border-separate border-spacing-[2px] min-w-max">
+                    <thead>
+                        <tr>
+                            <th class="text-left pr-3 text-base-content/60 font-medium pb-1">Kohort</th>
+                            <th class="text-center px-1 text-base-content/60 font-medium pb-1">n</th>
+                            @for (var n = 1; n <= nMax; n++)
+                            {
+                                <th class="text-center w-10 text-base-content/50 font-medium pb-1">+@n ay</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ay in cohortlar)
+                        {
+                            var byt = lookup.TryGetValue((ay, 1), out var r1) ? r1.Buyukluk : _kohort.Where(r => r.CohortAy == ay).Select(r => r.Buyukluk).FirstOrDefault();
+                            <tr>
+                                <td class="pr-3 text-base-content/70 whitespace-nowrap">@AyAd(ay)</td>
+                                <td class="text-center px-1 text-base-content/50">@Num(byt)</td>
+                                @for (var n = 1; n <= nMax; n++)
+                                {
+                                    @if (lookup.TryGetValue((ay, n), out var cell))
+                                    {
+                                        var pct = byt > 0 ? (int)Math.Round(cell.Donenler * 100m / byt) : 0;
+                                        var bg = pct >= 40 ? "bg-success/80 text-white" : pct >= 20 ? "bg-success/30 text-success" : pct >= 10 ? "bg-warning/20 text-warning" : "bg-base-200 text-base-content/50";
+                                        <td class="text-center rounded w-10 h-7 @bg">%@pct</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="text-center text-base-content/20 w-10">—</td>
+                                    }
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-[11px] text-base-content/50 mt-2">n = kohort büyüklüğü (o ay ilk kez alışveriş yapan müşteri) · İç/mağaza kartı hariç · YK (yazarkasa) bazlı</div>
+        </div>
+    }
+
     @if (_icKartlar.Count > 0)
     {
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 mb-3">
@@ -242,6 +291,8 @@ else
     private int _kartGun = 30;
     // R-3: e-ticaret kazanım
     private IReadOnlyList<MusteriKazanim> _kazEt = [];
+    // R-4: kohort retention
+    private IReadOnlyList<KohortRow> _kohort = [];
     private bool _kartLoading;
     private IReadOnlyList<MagazaKart> _kartData = [];
     private bool _kazDetayLoading;
@@ -290,11 +341,13 @@ else
             var tRfm = Ref.GetRfmAsync(_dun);
             var tStat = Ref.GetMusteriStatAsync(_dun);
             var tKazEt = Ref.GetKazanimEtAsync(_dun);
+            var tKohort = Ref.GetKohortAsync(_dun);
             _icKartlar = IcKart.Yukle();
-            await Task.WhenAll(tRfm, tStat, tKazEt);
+            await Task.WhenAll(tRfm, tStat, tKazEt, tKohort);
             (_yk, _et) = tRfm.Result;
             _stat = tStat.Result;
             _kazEt = tKazEt.Result;
+            _kohort = tKohort.Result;
             _kartData = _stat?.KartOran ?? [];
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }

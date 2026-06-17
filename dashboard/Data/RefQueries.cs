@@ -290,6 +290,47 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
             r.Fis > 0 ? Math.Round(100m * r.Kartli / r.Fis, 1) : 0)).OrderByDescending(k => k.Fis).ToList();
     }
 
+    /// <summary>Kohort retention matrisi (R-4): son 12 ay kohort × N. ay geri dönüş (N=1..12). İç kart hariç.</summary>
+    public async Task<IReadOnlyList<KohortRow>> GetKohortAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        var icIds = icKart.Idler();
+        var filt = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
+        var filtI = IcKartFiltre.Sql("s2.CustomersId", icIds.Length > 0);
+        var cohortBas = dun.AddMonths(-11);
+        var sql = $"""
+            SELECT n.CohortAy, n.N, COUNT(DISTINCT n.CustomersId) AS Donenler, kb.Buyukluk
+            FROM (
+                SELECT i.CohortAy, i.CustomersId,
+                    DATEDIFF(MONTH, CAST(i.CohortAy + '-01' AS date), CONVERT(date, s.Date)) AS N
+                FROM (
+                    SELECT s2.CustomersId, LEFT(CONVERT(varchar, MIN(s2.Date), 23), 7) AS CohortAy
+                    FROM EncoreMerkez.dbo.Sales s2 WITH(NOLOCK)
+                    WHERE s2.DocumentsTypeId = 1 AND s2.CustomersId > 0{filtI}
+                    GROUP BY s2.CustomersId
+                    HAVING LEFT(CONVERT(varchar, MIN(s2.Date), 23), 7) >= @cohortBas
+                ) i
+                JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.CustomersId = i.CustomersId
+                    AND s.DocumentsTypeId = 1{filt}
+                WHERE DATEDIFF(MONTH, CAST(i.CohortAy + '-01' AS date), CONVERT(date, s.Date)) BETWEEN 1 AND 12
+            ) n
+            JOIN (
+                SELECT LEFT(CONVERT(varchar, MIN(s3.Date), 23), 7) AS CohortAy, COUNT(*) AS Buyukluk
+                FROM (
+                    SELECT s3x.CustomersId, MIN(s3x.Date) AS MinDate
+                    FROM EncoreMerkez.dbo.Sales s3x WITH(NOLOCK)
+                    WHERE s3x.DocumentsTypeId = 1 AND s3x.CustomersId > 0{IcKartFiltre.Sql("s3x.CustomersId", icIds.Length > 0)}
+                    GROUP BY s3x.CustomersId
+                ) s3
+                WHERE LEFT(CONVERT(varchar, s3.MinDate, 23), 7) >= @cohortBas
+                GROUP BY LEFT(CONVERT(varchar, s3.MinDate, 23), 7)
+            ) kb ON kb.CohortAy = n.CohortAy
+            GROUP BY n.CohortAy, n.N, kb.Buyukluk
+            ORDER BY n.CohortAy, n.N;
+            """;
+        return (await conn.QueryAsync<KohortRow>(sql, new { cohortBas = cohortBas.ToString("yyyy-MM"), icIds })).ToList();
+    }
+
     /// <summary>E-ticaret kazanım (R-3): aylık ilk sipariş veren yeni müşteriler (JOKER, 13 ay). Misafir siparişler hariç (CUSTOMERREF>0).</summary>
     public async Task<IReadOnlyList<MusteriKazanim>> GetKazanimEtAsync(DateOnly dun)
     {
