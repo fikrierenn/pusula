@@ -107,6 +107,13 @@ public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>
 public record HcOzet(decimal ToplamSatilan12Ay, decimal ToplamKullanilan12Ay, IReadOnlyList<HcAyRow> Aylar);
 
+/// <summary>Kumbara indirim özet satırı (B-98). Mağaza × Ay bazlı.</summary>
+public record KumbaraAyRow(string Magaza, string Ay, decimal Brut, decimal Indirim, int FisSayisi)
+{
+    public decimal IndirimPct => Brut > 0 ? Math.Round(Indirim / Brut * 100, 1) : 0;
+    public decimal Net => Brut - Indirim;
+}
+
 /// <summary>Marka alış-satış rotasyon satırı (geçen ay).</summary>
 public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decimal SatisCiro);
 

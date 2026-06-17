@@ -182,13 +182,18 @@ codes:
       0: "İade sebebi — SalesProducts.RefundReasonId'de KULLANILIR (Hasarlı Ürün, Müşteri Memnuniyetsizliği, Geri Dönüşüm, Hatalı Satış İadesi…)"
       1: "Manuel indirim tipi — POS picklist (Personel, BSE, Anlaşmalı Kurum, 3Al2Öde, Bkm Kart, Sınav Koleji, Okul Kumbara Projesi…). ⚠️ HİÇBİR işlem kolonuna BAĞLANMIYOR."
     kumbara: "Id=17 'Okul Kumbara Projesi İndirimi' (Type=1), tanım 05.01.2026."
-    kritik: "Type=1 indirim sebepleri ŞU kolonlarda YOK: SalesProducts.RefundReasonId (sadece Type=0), PriceChangeReasonId (hep 0), Sales.RefundReasonId (hiç kullanılmamış), Sales.Audits/Jobs/Details (0 'Kumbara'). EncoreMerkez view/SP de yok. AMA Kumbara indirim raporu OTOMATIK geliyor (POS raporlama e-postası) — kaynak tablo kullanıcıda, 17.06 verecek."
+    kritik: "Type=1 indirim sebepleri GERÇEK KÖPRÜSÜ (17.06 kullanıcı SQL kanıtı): Sales → SalesProducts (IsValid=1) → SalesProductCampaigns (SalesId+Sequence, CampaignId IS NULL) → RefundReasons (Id = spc.CampaignVersion). CampaignVersion kolonunda RefundReasonId tutuluyor. Direkt Sales/SalesProducts kolonlarında YOK — sadece SPC JOIN ile erişilir."
+    kumbara_sorgu: |
+      Sales → SalesProducts (IsValid=1, p.Sequence eşleşme)
+       → SalesProductCampaigns spc ON spc.SalesId=s.Id AND spc.ProductSequence=p.Sequence AND CampaignId IS NULL
+       → RefundReasons rr ON rr.Id=spc.CampaignVersion AND rr.Id=17
+      Çıktı grain: Magaza × Tarih × GrossTotal/DiscountTotal/FisSayisi/SatirSayisi(TotalAmount).
     rapor_grain: "Otomatik rapor: Mağaza × Tarih → Tutar(brüt) · İndirim · Net · İndirim% · Fiş · Ürün adet. Örnek: FSM 21.05.2026 → 18 fiş / 5.650,70 brüt / 1.904,4 ind (%34) / 136 ürün."
     elenen_lead: "Sales.CustomerData LIKE '%Kumbara%' = müşteri-kartı Kumbara (10.389 satış), rapor DEĞİL: FSM 21.05 kart-bazlı 86 fiş/24.436₺ ≠ rapor 18 fiş/5.650₺. Rapor indirim-tipi bazlı alt küme."
-    status: teyit bekliyor  # Type=1 işlem-bağı bulunamadı; kullanıcı kaynak tabloyu verecek (17.06.2026)
-    confidence: 0.5
-    evidence: "16.06.2026 — RefundReasons full (Kumbara=17); SalesProducts.RefundReasonId/PriceChangeReasonId/Sales.RefundReasonId/Audits/Jobs/Details elendi; sys.sql_modules 'Kumbara'/'RefundReasonId' 0; CustomerData-kartı eşleşmesi rapor rakamlarını TUTMADI. Kaynak BEKLENİYOR."
-    last_verified: 2026-06-16
+    status: doğrulandı  # 17.06 kullanıcı SQL: SPC.CampaignVersion → RefundReasons.Id köprüsü
+    confidence: 0.95
+    evidence: "17.06.2026 — kullanıcı üretim SQL paylaştı: SalesProductCampaigns.CampaignVersion = RefundReasons.Id (CampaignId IS NULL iken). Kumbara Id=17 doğrulandı. Join: Sales→SalesProducts→SPC(CampaignId IS NULL)→RefundReasons(Id=17)."
+    last_verified: 2026-06-17
 
   # J_ORDERS.STATUS → joker.J_ORDERS.STATUS'a BİRLEŞTİ (curator 17.06, dup giderme — tek-doğruluk-kaynağı).
   #   funnel_gruplari + may_2026_dagilim + confidence/evidence artık joker.J_ORDERS.STATUS altında. (git history eski hali korur.)

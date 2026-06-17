@@ -136,8 +136,78 @@ else if (_data is not null)
                 </div>
             }
         </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5">
+                Kumbara İndirimi — Mağaza × Ay (2026)
+                <span class="text-[11px] font-normal text-base-content/50 ml-1">Okul Kumbara Projesi · SPC köprüsü</span>
+            </h3>
+            @if (_kumbaraLoading)
+            {
+                <div class="text-xs text-base-content/40 animate-pulse">Yükleniyor...</div>
+            }
+            else if (_kumbara.Count == 0)
+            {
+                <div class="text-xs text-base-content/40">Veri yok (2026 başından itibaren).</div>
+            }
+            else
+            {
+                var aylar = _kumbara.Select(r => r.Ay).Distinct().OrderBy(a => a).ToList();
+                var magazalar = _kumbara.Select(r => r.Magaza).Distinct().OrderBy(m => m).ToList();
+                <div class="overflow-x-auto">
+                <table class="table table-xs w-full">
+                    <thead>
+                        <tr class="text-[11px] text-base-content/60">
+                            <th>Ay</th>
+                            @foreach (var mag in magazalar)
+                            {
+                                <th class="text-right">@mag Brüt</th>
+                                <th class="text-right">İndirim</th>
+                                <th class="text-right">%</th>
+                            }
+                            <th class="text-right">Toplam İnd.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var ay in aylar)
+                    {
+                        var satirlar = _kumbara.Where(r => r.Ay == ay).ToList();
+                        var topInd = satirlar.Sum(r => r.Indirim);
+                        <tr>
+                            <td class="font-medium text-[12px]">@ay</td>
+                            @foreach (var mag in magazalar)
+                            {
+                                var r = satirlar.FirstOrDefault(x => x.Magaza == mag);
+                                <td class="text-right text-[12px] text-base-content/70">@(r is null ? "—" : Tl(r.Brut))</td>
+                                <td class="text-right text-[12px] text-error">@(r is null ? "—" : Tl(r.Indirim))</td>
+                                <td class="text-right text-[12px] @(r is not null && r.IndirimPct > 30 ? "text-error font-semibold" : "text-base-content/60")">@(r is null ? "—" : "%" + r.IndirimPct)</td>
+                            }
+                            <td class="text-right text-[12px] font-semibold text-error">@Tl(topInd)</td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-bold text-[12px] border-t-2 border-base-200">
+                            <td>TOPLAM</td>
+                            @foreach (var mag in magazalar)
+                            {
+                                var mag2 = mag;
+                                var r = _kumbara.Where(x => x.Magaza == mag2).ToList();
+                                <td class="text-right">@Tl(r.Sum(x => x.Brut))</td>
+                                <td class="text-right text-error">@Tl(r.Sum(x => x.Indirim))</td>
+                                var totB = r.Sum(x => x.Brut); var totI = r.Sum(x => x.Indirim);
+                                <td class="text-right @(totB > 0 && totI/totB*100 > 30 ? "text-error" : "")">@(totB > 0 ? "%" + Math.Round(totI / totB * 100, 1) : "—")</td>
+                            }
+                            <td class="text-right text-error">@Tl(_kumbara.Sum(r => r.Indirim))</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                </div>
+                <div class="text-base-content/50 text-[11px] mt-2">%30+ indirim oranı kırmızı. Fiş sayısı: @Num(_kumbara.Sum(r => r.FisSayisi)).</div>
+            }
+        </div>
     </div>
 }
+
 
 @code {
     private string _period = "gunluk";
@@ -150,6 +220,8 @@ else if (_data is not null)
     private DepoWmsData? _wms;
     private string _aralik = "";
     private Dictionary<string, decimal?> _kasDelta = new();   // B-57 kasiyer net delta (Magaza|Ad → %)
+    private IReadOnlyList<KumbaraAyRow> _kumbara = [];
+    private bool _kumbaraLoading = true;
 
     private PersistingComponentStateSubscription _persistSub;
 
@@ -219,6 +291,11 @@ else if (_data is not null)
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Operasyon", sw); StateHasChanged(); }
+
+        // Kumbara ağır JOIN — ana sayfa açıldıktan sonra arka planda yükle (B-98)
+        try { _kumbara = await Ref.GetKumbaraAsync(); }
+        catch (Exception ex) { Logger.LogWarning(ex, "Kumbara verisi alınamadı"); _kumbara = []; }
+        finally { _kumbaraLoading = false; StateHasChanged(); }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
