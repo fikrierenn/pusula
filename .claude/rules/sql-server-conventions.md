@@ -135,11 +135,15 @@ CROSS APPLY (
 DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 ```
 
-## DerinSIS Alış Faturası Convention (ADR-004 — KRİTİK)
+## DerinSIS Adet İşareti + Alış/Satış Kodları (17.06 KESİN DÜZELTME — eski ADR-004 TERSTİ)
 
-- **`ehAdet` alış faturasında NEGATİF gelir** (irsHrk ehTip=1 alış). Satış ehTip=4/100'de pozitif. Toplarken `ABS(ehAdet)` veya işaret farkını hesaba kat.
-- **`ehMaliyet` alış faturasında 0 olabilir** — maliyet ayrı job ile güncellenir, anlık sorguda sıfır gelirse job henüz çalışmamış demektir.
-- Alış faturası filtresi: `ehTip IN (1)` veya `ehTip IN (1,2)` (iade alış dahilse).
+**201 kanıt (irsHrk + fatAyr, son 30g):** `tipID` lookup = `irsTip_vw`. Adet işareti **giriş(+)/çıkış(−)** mantığı:
+- **Alış = ehTip/eTip `0`** (+ Yerel Alım `10`). `ehAdetN` **POZİTİF** (giriş). irsHrk ehTip=0 ort +216; fatAyr eTip=0 ort +17,5.
+- **Satış = ehTip `1, 4, 100`** (Satış / Mağaza Satış / POS Satış). `ehAdetN` **NEGATİF** (çıkış). Net ciro `ehTutarN` daima pozitif (mutlak tutar).
+- **İade:** Satış İade `3,5,101` / Alış İade `2`.
+- ⚠️ **eski ADR-004 satırı YANLIŞTI** ("ehTip=1 alış, alış ehAdet negatif") — gerçeğin TAM TERSİ. `ehTip=1=Satış` (alış değil), alış POZİTİF. SEMANTIK_KATMAN.md ("ehAdetN çıkışta negatif") doğruydu.
+- Adet toplarken: işaret anlamlıysa koru; mutlak miktar gerekiyorsa `ABS(ehAdetN)`.
+- **`ehMaliyet` alış faturasında 0 olabilir** — maliyet ayrı job ile güncellenir; anlık 0 = job çalışmamış.
 
 ## Arama Perf: `OR EXISTS` yerine `stkID IN (alt-sorgu UNION)` (17.06 dersi)
 

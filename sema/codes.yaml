@@ -16,7 +16,7 @@ codes:
   irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
     lookup: dbo.irsTip_vw
     irs_eTip_ayni: "irs.eTip (belge başlık) AYNI lookup (irsTip_vw) — aynı kodlar. 17.06 201-doğrulama: eTip 1=Satış (7.9M), 0=Alış (29.6M), 100=POS Satış. ⚠️ DENETİM TUZAĞI: irs.eTip=1'i 'alış' SANMA — 1=Satış. (sql-denetci 17.06 GetMarjAsync'i bu yüzden yanlış KIRMIZI işaretledi → eTip IN(1,4,100) hepsi SATIŞ, doğru.)"
-    adr004_celiski: "⚠️ sql-server-conventions.md ADR-004 'irsHrk ehTip=1 alış' DİYOR ama irsTip_vw 1=Satış. Çelişki — alış aslında ehTip=0. ADR-004 kod-no düzeltilmeli (kullanıcı onayı)."
+    adet_isareti: "17.06 201-kanıt: Alış (ehTip 0, +Yerel Alım 10) ehAdetN POZİTİF (giriş); Satış (1,4,100) NEGATİF (çıkış). irsHrk + fatAyr aynı. ehTutarN daima pozitif. (Eski ADR-004 'ehTip=1 alış/negatif' TERSTİ → sql-server-conventions.md 17.06 düzeltildi.)"
     last_verified: "2026-06-17"
     satis_gross: [1, 4, 100]
     iade: [3, 5, 101]
