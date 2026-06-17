@@ -292,7 +292,7 @@ public sealed partial class RefQueries
     public async Task<IReadOnlyList<MarkaRotasyonRow>> GetMarkaRotasyonAsync(DateOnly ayBas, DateOnly ayBit)
     {
         await using var conn = await db.OpenAsync();
-        var rows = await conn.QueryAsync<MarkaRotasyonRow>("""
+        var rows = await conn.QueryAsync<MarkaRotasyonRow>($"""
             SELECT TOP 30 m.mrkAd AS Marka,
                 CAST(-SUM(CASE WHEN a.ehTip IN (4,100,3,5,101) THEN a.ehAdetN ELSE 0 END) AS int) AS SatisAdet,
                 CAST(SUM(CASE WHEN a.ehTip IN (0,10)  THEN ABS(a.ehAdetN) ELSE 0 END) AS int) AS AlisAdet,
