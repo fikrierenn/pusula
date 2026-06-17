@@ -31,12 +31,12 @@ public sealed class TakvimService
         try
         {
             using var c = db.OpenPanel();
+            // Tek tablo tüm takvim: tatil/sınav tek-gün (Bas=Son), okul dönem aralık (Bas<Son). Tip ayırır.
             c.Execute("""
                 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelTakvim')
                 CREATE TABLE dbo.PanelTakvim (
-                    Tarih date PRIMARY KEY, Ad nvarchar(120) NOT NULL, Tip nvarchar(20) NOT NULL, YarimGun bit NOT NULL);
-                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelOkulDonem')
-                CREATE TABLE dbo.PanelOkulDonem (Id int IDENTITY(1,1) PRIMARY KEY, Bas date NOT NULL, Son date NOT NULL);
+                    Id int IDENTITY(1,1) PRIMARY KEY, Bas date NOT NULL, Son date NOT NULL,
+                    Ad nvarchar(120) NOT NULL, Tip nvarchar(20) NOT NULL, YarimGun bit NOT NULL DEFAULT 0);
                 """);
             SeedOkulIfEmpty(c);  // ilk açılış: okul-takvimi.json → DB (boşsa)
         }
@@ -47,16 +47,16 @@ public sealed class TakvimService
     private void SeedOkulIfEmpty(SqlConnection c)
     {
         if (!File.Exists(_okulPath)) return;
-        var donemBos = c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelOkulDonem") == 0;
+        var donemBos = c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim WHERE Tip=N'OkulAcik'") == 0;
         var sinavBos = c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim WHERE Tip=N'Sinav'") == 0;
         if (!donemBos && !sinavBos) return;
         OkulTakvim j;
         try { j = JsonSerializer.Deserialize<OkulTakvim>(File.ReadAllText(_okulPath), _opt) ?? new(); }
         catch (Exception ex) { _log.LogError(ex, "okul-takvimi.json seed parse hatası"); return; }
         if (donemBos && j.Donemler.Count > 0)
-            c.Execute("INSERT INTO dbo.PanelOkulDonem (Bas, Son) VALUES (@Bas, @Son)", j.Donemler);
+            c.Execute("INSERT INTO dbo.PanelTakvim (Bas, Son, Ad, Tip, YarimGun) VALUES (@Bas, @Son, N'Okul Dönemi', N'OkulAcik', 0)", j.Donemler);
         if (sinavBos && j.Sinavlar.Count > 0)
-            c.Execute("INSERT INTO dbo.PanelTakvim (Tarih, Ad, Tip, YarimGun) VALUES (@Tarih, @Ad, N'Sinav', 0)",
+            c.Execute("INSERT INTO dbo.PanelTakvim (Bas, Son, Ad, Tip, YarimGun) VALUES (@Tarih, @Tarih, @Ad, N'Sinav', 0)",
                 j.Sinavlar.Select(s => new { s.Tarih, s.Ad }));
         _log.LogInformation("Okul takvimi seed edildi: {D} dönem, {S} sınav", j.Donemler.Count, j.Sinavlar.Count);
     }
@@ -70,7 +70,7 @@ public sealed class TakvimService
         try
         {
             using var c = _db.OpenPanel();
-            return c.Query<TakvimGun>("SELECT Tarih, Ad, Tip, YarimGun FROM dbo.PanelTakvim ORDER BY Tarih").ToList();
+            return c.Query<TakvimGun>("SELECT Bas AS Tarih, Ad, Tip, YarimGun FROM dbo.PanelTakvim WHERE Tip IN (N'Ulusal', N'DiniBayram') ORDER BY Bas").ToList();
         }
         catch (Exception ex) { _log.LogError(ex, "Takvim DB okunamadı — boş ile devam"); return []; }
     }
@@ -80,7 +80,7 @@ public sealed class TakvimService
         get
         {
             if (!_db.PanelEnabled) return false;
-            try { using var c = _db.OpenPanel(); return c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim") > 0; }
+            try { using var c = _db.OpenPanel(); return c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim WHERE Tip IN (N'Ulusal', N'DiniBayram')") > 0; }
             catch { return false; }
         }
     }
@@ -116,8 +116,8 @@ public sealed class TakvimService
                 _log.LogWarning("Takvim API temizleme: {Gurultu} gürültü, {Parse} parse-hatası elendi ({Kalan} tutuldu)", elenenGurultu, elenenParse, temiz.Count);
 
             using var c = _db.OpenPanel();
-            c.Execute("DELETE FROM dbo.PanelTakvim WHERE Tip IN (N'Ulusal', N'DiniBayram')");  // okul tipleri korunur
-            c.Execute("INSERT INTO dbo.PanelTakvim (Tarih, Ad, Tip, YarimGun) VALUES (@Tarih, @Ad, @Tip, @YarimGun)",
+            c.Execute("DELETE FROM dbo.PanelTakvim WHERE Tip IN (N'Ulusal', N'DiniBayram')");  // okul/sınav korunur
+            c.Execute("INSERT INTO dbo.PanelTakvim (Bas, Son, Ad, Tip, YarimGun) VALUES (@Tarih, @Tarih, @Ad, @Tip, @YarimGun)",
                 temiz.Select(t => new { t.Tarih, t.Ad, Tip = t.Tip.ToString(), t.YarimGun }));
             _log.LogInformation("PanelTakvim güncellendi: {N} gün", temiz.Count);
             return true;
@@ -139,9 +139,8 @@ public sealed class TakvimService
             using var c = _db.OpenPanel();
             var t = new OkulTakvim
             {
-                Donemler = c.Query<OkulDonemDto>("SELECT Bas, Son FROM dbo.PanelOkulDonem").ToList(),
-                Sinavlar = c.Query<TakvimGun>("SELECT Tarih, Ad, Tip, YarimGun FROM dbo.PanelTakvim WHERE Tip=N'Sinav'")
-                    .Select(s => new OkulSinavDto { Ad = s.Ad, Tarih = s.Tarih }).ToList(),
+                Donemler = c.Query<OkulDonemDto>("SELECT Bas, Son FROM dbo.PanelTakvim WHERE Tip=N'OkulAcik'").ToList(),
+                Sinavlar = c.Query<OkulSinavDto>("SELECT Bas AS Tarih, Ad FROM dbo.PanelTakvim WHERE Tip=N'Sinav'").ToList(),
             };
             return t;
         }
