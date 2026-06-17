@@ -49,17 +49,23 @@ else if (_d is not null)
                     <td class="text-right font-mono">@Tl(_d.DepoStok)</td>
                     <td class="text-right font-mono font-bold">@Tl(_d.FsmStok + _d.OzluceStok + _d.IstYoluStok + _d.DepoStok)</td>
                 </tr>
-                @foreach (var r in _d.Devir.OrderByDescending(x => x.StokTl).Take(15))
+                @if (_d.KategoriStok is { Count: > 0 } kstok)
                 {
-                <tr class="hover:bg-base-200/40">
-                    <td class="text-base-content/70 text-xs pl-3">@r.Kategori</td>
-                    <td colspan="4"></td>
-                    <td class="text-right font-mono text-xs">@Tl(r.StokTl)</td>
-                </tr>
+                    @foreach (var k in kstok)
+                    {
+                    <tr class="hover:bg-base-200/40">
+                        <td class="text-base-content/70 text-xs pl-3">@k.Kategori</td>
+                        <td class="text-right font-mono text-xs">@Tl(k.Fsm)</td>
+                        <td class="text-right font-mono text-xs">@Tl(k.Ozluce)</td>
+                        <td class="text-right font-mono text-xs">@Tl(k.IstYolu)</td>
+                        <td class="text-right font-mono text-xs">@Tl(k.Depo)</td>
+                        <td class="text-right font-mono text-xs font-medium">@Tl(k.Toplam)</td>
+                    </tr>
+                    }
                 }
             </tbody>
         </table>
-        <div class="text-base-content/40 text-[11px] mt-2">Anlık snapshot · Ort.Maliyet · Dergi/Sınav hariç · Kategori stok: geçen ay ort.</div>
+        <div class="text-base-content/40 text-[11px] mt-2">Anlık snapshot · Ort.Maliyet · Dergi/Sınav hariç</div>
     </div>
 
     @if (_d.Trend is { Count: > 0 } trend)

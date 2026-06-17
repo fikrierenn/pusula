@@ -130,6 +130,12 @@ public record DepoWmsData(int? BugunIslem, int? BugunAdet, IReadOnlyList<DepoWms
 /// <summary>Depo WMS günlük trend satırı.</summary>
 public record DepoWmsTrend(DateTime Gun, int Islem, int Adet);
 
+/// <summary>Kategori bazlı anlık stok dağılımı (MAX snapshot, FSM/Özlüce/İst.Yolu/Depo).</summary>
+public record KategoriStokRow(string Kategori, decimal Fsm, decimal Ozluce, decimal IstYolu, decimal Depo)
+{
+    public decimal Toplam => Fsm + Ozluce + IstYolu + Depo;
+}
+
 /// <summary>Ölü stok ürün satırı (S90=0, Bakiye>0, YasGun≥90).</summary>
 public record OluStokRow(string Kod, string Ad, string Kategori,
     int Bakiye, int StokFsm, int StokOzl, int StokIst, int StokDepo,
@@ -155,4 +161,5 @@ public record InventoryData(
     decimal OzluceStok = 0,
     decimal IstYoluStok = 0,
     decimal DepoStok = 0,
-    IReadOnlyList<EnvanterAyRow>? Trend = null);
+    IReadOnlyList<EnvanterAyRow>? Trend = null,
+    IReadOnlyList<KategoriStokRow>? KategoriStok = null);

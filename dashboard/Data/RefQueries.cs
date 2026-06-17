@@ -87,7 +87,8 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         var tToplam = Q(c => c.ExecuteScalarAsync<decimal?>($"""
             SELECT CAST(SUM(ISNULL([FSM Stok Maliyet],0)+ISNULL([Özlüce Stok Maliyet],0)+ISNULL([İst.Yolu Stok Maliyet],0)+ISNULL([Merkez Depo Stok Maliyet],0)) AS decimal(18,0))
             FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
-            WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU) AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC};
+            WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
+              AND [Maliyet Tipi]='Ort.Maliyet' AND (KTGR3 IS NULL OR KTGR3 NOT IN {EXC});
             """));
 
         // Devir/WoS/sell-through/stok ₺ (irsHrk satış+gelen + ENVANTER snapshot başı/sonu ort. adet)
@@ -172,6 +173,21 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
             GROUP BY LEFT(CONVERT(varchar, CAST(Tarih AS date), 23), 7);
             """));
 
+        // Kategori × mağaza stok (aynı MAX snapshot — tablo toplamı KPI ile tutarlı)
+        // ISNULL(KTGR3,'Diğer'): NULL kategorili satırlar tToplam'da sayılır ama GROUP BY'da kaybolur → gap kapanır
+        var tKategori = Q(c => c.QueryAsync<KategoriStokRow>($"""
+            SELECT ISNULL(CAST(KTGR3 AS nvarchar(50)), N'Diğer') AS Kategori,
+                CAST(SUM(ISNULL([FSM Stok Maliyet],0)) AS decimal(18,0)) AS Fsm,
+                CAST(SUM(ISNULL([Özlüce Stok Maliyet],0)) AS decimal(18,0)) AS Ozluce,
+                CAST(SUM(ISNULL([İst.Yolu Stok Maliyet],0)) AS decimal(18,0)) AS IstYolu,
+                CAST(SUM(ISNULL([Merkez Depo Stok Maliyet],0)) AS decimal(18,0)) AS Depo
+            FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
+            WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
+              AND [Maliyet Tipi]='Ort.Maliyet'
+              AND (KTGR3 IS NULL OR KTGR3 NOT IN {EXC})
+            GROUP BY ISNULL(CAST(KTGR3 AS nvarchar(50)), N'Diğer');
+            """));
+
         // Mağaza bazlı envanter (FSM/Özlüce/İst.Yolu/Depo) — aynı MAX(Tarih) snapshot
         var tMagaza = Q(c => c.QueryFirstOrDefaultAsync<(decimal Fsm, decimal Ozluce, decimal IstYolu, decimal Depo)>($"""
             SELECT
@@ -181,10 +197,10 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
                 CAST(SUM(ISNULL([Merkez Depo Stok Maliyet],0)) AS decimal(18,0)) AS Depo
             FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
             WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
-              AND [Maliyet Tipi]='Ort.Maliyet' AND KTGR3 NOT IN {EXC};
+              AND [Maliyet Tipi]='Ort.Maliyet' AND (KTGR3 IS NULL OR KTGR3 NOT IN {EXC});
             """));
 
-        await Task.WhenAll(tToplam, tEv, tAbc, tMarka, tStockout, tMagaza, tTrend);
+        await Task.WhenAll(tToplam, tEv, tAbc, tMarka, tStockout, tMagaza, tTrend, tKategori);
 
         var toplam = (await tToplam) ?? 0m;
         var devir = new List<DevirRow>();
@@ -204,8 +220,10 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
 
         var trend = (await tTrend).OrderBy(r => r.Ay).ToList();
 
+        var kategori = (await tKategori).OrderByDescending(k => k.Toplam).ToList();
+
         return new InventoryData(toplam, devir.OrderByDescending(d => d.Devir).ToList(), abc, marka, stockout,
-            mag.Fsm, mag.Ozluce, mag.IstYolu, mag.Depo, trend);
+            mag.Fsm, mag.Ozluce, mag.IstYolu, mag.Depo, trend, kategori);
     }
 
     // Segment whitelist (RFM drill) — yalnız bu değerler SQL HAVING koşuluna map'lenir (injection yok)

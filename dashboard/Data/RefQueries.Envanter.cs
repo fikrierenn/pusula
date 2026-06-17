@@ -255,8 +255,8 @@ public sealed partial class RefQueries
             CAST(ISNULL(stk.Ozl,0) AS int) AS StokOzl,
             CAST(ISNULL(stk.Ist,0) AS int) AS StokIst,
             CAST(ISNULL(wms.Depo,0) AS int) AS StokDepo,
-            CAST(ISNULL(ml.ORT_ALIS,0) AS decimal(18,2)) AS OrtMaliyet,
-            CAST((ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) * ISNULL(ml.ORT_ALIS,0) AS decimal(18,0)) AS StokTl,
+            CAST(ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) AS decimal(18,2)) AS OrtMaliyet,
+            CAST((ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) * ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) AS decimal(18,0)) AS StokTl,
             CAST(DATEDIFF(DAY, u.gTarih, GETDATE()) AS int) AS YasGun
         FROM DerinSISBkm.dbo.urn u WITH(NOLOCK)
         JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID
@@ -274,10 +274,16 @@ public sealed partial class RefQueries
                    WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
                    GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
         LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID=u.stkID
+        LEFT JOIN (SELECT u2.urnKtgr2ID AS ktgrID, AVG(ml2.ORT_ALIS) AS AvgMaliyet
+                   FROM Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml2 WITH(NOLOCK)
+                   JOIN DerinSISBkm.dbo.urn u2 WITH(NOLOCK) ON u2.stkID=ml2.STKID
+                   WHERE ml2.ORT_ALIS > 0
+                   GROUP BY u2.urnKtgr2ID) avgml ON avgml.ktgrID=u.urnKtgr2ID
         WHERE k.ktgrAd NOT IN {EXC}
-          AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik')
+          AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik',N'Zkargo')
           AND DATEDIFF(DAY, u.gTarih, GETDATE()) >= 90
           AND (ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) > 0
+          AND ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) > 0
           AND NOT EXISTS (
               SELECT 1 FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
               WHERE h.ehstkID=u.stkID AND h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-90,GETDATE())
@@ -301,10 +307,17 @@ public sealed partial class RefQueries
                          JOIN DerinSISBkm.depo.adres a ON a.adrsID=pt.pSonPozID
                        WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
                        GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
+            LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID=u.stkID
+            LEFT JOIN (SELECT u2.urnKtgr2ID AS ktgrID, AVG(ml2.ORT_ALIS) AS AvgMaliyet
+                       FROM Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml2 WITH(NOLOCK)
+                       JOIN DerinSISBkm.dbo.urn u2 WITH(NOLOCK) ON u2.stkID=ml2.STKID
+                       WHERE ml2.ORT_ALIS > 0
+                       GROUP BY u2.urnKtgr2ID) avgml ON avgml.ktgrID=u.urnKtgr2ID
             WHERE k.ktgrAd NOT IN {EXC}
-              AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik')
+              AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik',N'Zkargo')
               AND DATEDIFF(DAY, u.gTarih, GETDATE()) >= 90
               AND (ISNULL(stk.T,0)+ISNULL(wms.T,0)) > 0
+              AND ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) > 0
               AND NOT EXISTS (
                   SELECT 1 FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
                   WHERE h.ehstkID=u.stkID AND h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-90,GETDATE())
