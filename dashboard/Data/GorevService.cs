@@ -1,6 +1,5 @@
 using System.Text;
 using Dapper;
-using Microsoft.Data.Sqlite;
 
 namespace GmDashboard.Data;
 
@@ -8,30 +7,35 @@ namespace GmDashboard.Data;
 public sealed record Gorev(long Id, string Baslik, string Aciklama, string Oncelik, string? Atanan, string Durum, string Olusturma);
 
 /// <summary>
-/// SQLite görev deposu (asistan.db, dashboard kökü). Dapper.
-/// Şema asistan POC ile birebir: gorevler + kisiler.
+/// Görev deposu — localhost Express BkmPanel.dbo.PanelGorev (eski SQLite asistan.db'den taşındı).
 /// </summary>
 public sealed class GorevService
 {
-    private readonly string _connStr;
+    private readonly Db _db;
+    private readonly ILogger<GorevService> _log;
 
-    public GorevService()
+    public GorevService(Db db, ILogger<GorevService> log)
     {
-        var dbPath = Path.Combine(AppContext.BaseDirectory, "asistan.db");
-        _connStr = $"Data Source={dbPath}";
-        using var c = new SqliteConnection(_connStr);
-        c.Open();
-        c.Execute("""
-            CREATE TABLE IF NOT EXISTS gorevler(
-              id INTEGER PRIMARY KEY AUTOINCREMENT, baslik TEXT, aciklama TEXT,
-              oncelik TEXT, atanan TEXT, durum TEXT DEFAULT 'Açık', olusturma TEXT);
-            CREATE TABLE IF NOT EXISTS kisiler(ad TEXT PRIMARY KEY, iletisim TEXT);
-            """);
+        _db = db; _log = log;
+        if (!db.PanelEnabled) { log.LogWarning("Panel DB kapalı — görev deposu devre dışı"); return; }
+        try
+        {
+            using var c = db.OpenPanel();
+            c.Execute("""
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelGorev')
+                CREATE TABLE dbo.PanelGorev (
+                    Id bigint IDENTITY(1,1) PRIMARY KEY, Baslik nvarchar(300), Aciklama nvarchar(max),
+                    Oncelik nvarchar(20), Atanan nvarchar(100) NULL, Durum nvarchar(20) NOT NULL DEFAULT N'Açık',
+                    Olusturma nvarchar(20));
+                """);
+        }
+        catch (Exception ex) { log.LogError(ex, "PanelGorev tablo oluşturma hatası"); }
     }
 
-    /// <summary>Taslak metninden başlık/açıklama/öncelik ayıkla + kaydet. Yeni id döner.</summary>
+    /// <summary>Taslak metninden başlık/açıklama/öncelik ayıkla + kaydet. Yeni id döner (0 = hata).</summary>
     public long Kaydet(string taslak, string? atanan = null)
     {
+        if (!_db.PanelEnabled) return 0;
         var lines = taslak.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         string baslik = "", oncelik = "Orta";
         var aciklama = new StringBuilder();
@@ -42,48 +46,56 @@ public sealed class GorevService
             else if (l.StartsWith("⚡")) oncelik = l.Contains("Yüksek") ? "Yüksek" : l.Contains("Düşük") ? "Düşük" : "Orta";
         }
         if (baslik.Length == 0) baslik = lines.FirstOrDefault() ?? "Görev";
-
-        using var db = new SqliteConnection(_connStr);
-        db.Open();
-        db.Execute(
-            "INSERT INTO gorevler(baslik,aciklama,oncelik,atanan,durum,olusturma) VALUES(@baslik,@aciklama,@oncelik,@atanan,'Açık',@t)",
-            new { baslik, aciklama = aciklama.ToString(), oncelik, atanan, t = DateTime.Now.ToString("dd.MM.yyyy HH:mm") });
-        return db.ExecuteScalar<long>("SELECT last_insert_rowid()");
+        try
+        {
+            using var c = _db.OpenPanel();
+            return c.ExecuteScalar<long>("""
+                INSERT INTO dbo.PanelGorev (Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma)
+                VALUES (@baslik, @aciklama, @oncelik, @atanan, N'Açık', @t);
+                SELECT CAST(SCOPE_IDENTITY() AS bigint);
+                """, new { baslik, aciklama = aciklama.ToString(), oncelik, atanan, t = DateTime.Now.ToString("dd.MM.yyyy HH:mm") });
+        }
+        catch (Exception ex) { _log.LogError(ex, "Görev kaydedilemedi"); return 0; }
     }
 
     public IReadOnlyList<Gorev> Listele(bool acikOnly = true)
     {
-        using var db = new SqliteConnection(_connStr);
-        var sql = "SELECT id,baslik,aciklama,oncelik,atanan,durum,olusturma FROM gorevler"
-                  + (acikOnly ? " WHERE durum<>'Kapalı'" : "") + " ORDER BY id DESC LIMIT 100";
-        return db.Query<Gorev>(sql).ToList();
+        if (!_db.PanelEnabled) return [];
+        try
+        {
+            using var c = _db.OpenPanel();
+            var sql = "SELECT TOP 100 Id, Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma FROM dbo.PanelGorev"
+                      + (acikOnly ? " WHERE Durum<>N'Kapalı'" : "") + " ORDER BY Id DESC";
+            return c.Query<Gorev>(sql).ToList();
+        }
+        catch (Exception ex) { _log.LogError(ex, "Görev listesi okunamadı"); return []; }
     }
 
     public Gorev? Get(long id)
     {
-        using var db = new SqliteConnection(_connStr);
-        return db.QueryFirstOrDefault<Gorev>(
-            "SELECT id,baslik,aciklama,oncelik,atanan,durum,olusturma FROM gorevler WHERE id=@id", new { id });
+        if (!_db.PanelEnabled) return null;
+        try
+        {
+            using var c = _db.OpenPanel();
+            return c.QueryFirstOrDefault<Gorev>(
+                "SELECT Id, Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma FROM dbo.PanelGorev WHERE Id=@id", new { id });
+        }
+        catch (Exception ex) { _log.LogError(ex, "Görev okunamadı (Id {Id})", id); return null; }
     }
 
-    public bool Kapat(long id)
-    {
-        using var db = new SqliteConnection(_connStr);
-        return db.Execute("UPDATE gorevler SET durum='Kapalı' WHERE id=@id", new { id }) > 0;
-    }
+    public bool Kapat(long id) => Exec("UPDATE dbo.PanelGorev SET Durum=N'Kapalı' WHERE Id=@id", new { id });
 
     /// <summary>Görev alanlarını güncelle (düzenle modalı).</summary>
-    public bool Guncelle(long id, string baslik, string aciklama, string oncelik, string? atanan, string durum)
-    {
-        using var db = new SqliteConnection(_connStr);
-        return db.Execute(
-            "UPDATE gorevler SET baslik=@baslik, aciklama=@aciklama, oncelik=@oncelik, atanan=@atanan, durum=@durum WHERE id=@id",
-            new { id, baslik, aciklama, oncelik, atanan, durum }) > 0;
-    }
+    public bool Guncelle(long id, string baslik, string aciklama, string oncelik, string? atanan, string durum) =>
+        Exec("UPDATE dbo.PanelGorev SET Baslik=@baslik, Aciklama=@aciklama, Oncelik=@oncelik, Atanan=@atanan, Durum=@durum WHERE Id=@id",
+            new { id, baslik, aciklama, oncelik, atanan, durum });
 
-    public bool Sil(long id)
+    public bool Sil(long id) => Exec("DELETE FROM dbo.PanelGorev WHERE Id=@id", new { id });
+
+    private bool Exec(string sql, object p)
     {
-        using var db = new SqliteConnection(_connStr);
-        return db.Execute("DELETE FROM gorevler WHERE id=@id", new { id }) > 0;
+        if (!_db.PanelEnabled) return false;
+        try { using var c = _db.OpenPanel(); return c.Execute(sql, p) > 0; }
+        catch (Exception ex) { _log.LogError(ex, "Görev işlemi başarısız"); return false; }
     }
 }

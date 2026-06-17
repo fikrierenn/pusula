@@ -1,73 +1,75 @@
-using System.Text.Json;
+using Dapper;
 using GmDashboard.Models;
 
 namespace GmDashboard.Data;
 
 /// <summary>
-/// Kaydedilmiş tahmin deposu (plan-14). JSON dosya: data/tahmin-kayitlari.json.
-/// Tek kullanıcı (CFO) → DB/migration yerine düz JSON. Upsert anahtarı: Year+Month+MekanId.
-/// Hata sessiz yutulmaz (error-handling.md): log + güvenli boş liste fallback.
+/// Kaydedilmiş tahmin deposu (plan-14). localhost Express BkmPanel.dbo.PanelTahminKayit.
+/// Upsert anahtarı: Year+Month+MekanId. Hata sessiz yutulmaz (error-handling.md): log + güvenli boş/false.
 /// </summary>
-public sealed class TahminKayitService(ILogger<TahminKayitService> log)
+public sealed class TahminKayitService
 {
-    private static readonly string _path = Path.Combine(AppContext.BaseDirectory, "data", "tahmin-kayitlari.json");
-    private static readonly JsonSerializerOptions _opt = new() { WriteIndented = true };
-    private readonly object _kilit = new();
+    private readonly Db _db;
+    private readonly ILogger<TahminKayitService> _log;
+
+    public TahminKayitService(Db db, ILogger<TahminKayitService> log)
+    {
+        _db = db; _log = log;
+        if (!db.PanelEnabled) { log.LogWarning("Panel DB kapalı — tahmin kayıtları boş çalışır"); return; }
+        try
+        {
+            using var c = db.OpenPanel();
+            c.Execute("""
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelTahminKayit')
+                CREATE TABLE dbo.PanelTahminKayit (
+                    Id nvarchar(50) PRIMARY KEY, Year int NOT NULL, Month int NOT NULL, MekanId int NOT NULL,
+                    Tahmin decimal(18,4), Alt decimal(18,4), Ust decimal(18,4), IvmePct decimal(18,4),
+                    YoYTaban decimal(18,4), Carpan decimal(18,4), KayitTarih nvarchar(20) NOT NULL,
+                    CONSTRAINT UQ_PanelTahmin UNIQUE (Year, Month, MekanId));
+                """);
+        }
+        catch (Exception ex) { log.LogError(ex, "PanelTahminKayit tablo oluşturma hatası"); }
+    }
 
     public IReadOnlyList<TahminKayitEntry> Yukle()
     {
-        lock (_kilit) return YukleIc();
-    }
-
-    private List<TahminKayitEntry> YukleIc()
-    {
+        if (!_db.PanelEnabled) return [];
         try
         {
-            if (!File.Exists(_path)) return new();
-            var json = File.ReadAllText(_path);
-            return JsonSerializer.Deserialize<List<TahminKayitEntry>>(json) ?? new();
+            using var c = _db.OpenPanel();
+            return c.Query<TahminKayitEntry>("""
+                SELECT Id, Year, Month, MekanId, Tahmin, Alt, Ust, IvmePct, YoYTaban, Carpan, KayitTarih
+                FROM dbo.PanelTahminKayit ORDER BY Year DESC, Month DESC
+                """).ToList();
         }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "Tahmin kayıtları okunamadı ({Path}) — boş liste ile devam", _path);
-            return new();
-        }
+        catch (Exception ex) { _log.LogError(ex, "Tahmin kayıtları okunamadı — boş liste ile devam"); return []; }
     }
 
     /// <summary>Year+Month+MekanId aynı kayıt varsa üzerine yazar, yoksa ekler. Başarı = true.</summary>
-    public bool Kaydet(TahminKayitEntry entry)
+    public bool Kaydet(TahminKayitEntry e)
     {
-        lock (_kilit)
+        if (!_db.PanelEnabled) return false;
+        try
         {
-            var liste = YukleIc();
-            liste.RemoveAll(e => e.Year == entry.Year && e.Month == entry.Month && e.MekanId == entry.MekanId);
-            liste.Add(entry);
-            return Yaz(liste);
+            using var c = _db.OpenPanel();
+            c.Execute("DELETE FROM dbo.PanelTahminKayit WHERE Year=@Year AND Month=@Month AND MekanId=@MekanId", e);
+            c.Execute("""
+                INSERT INTO dbo.PanelTahminKayit (Id, Year, Month, MekanId, Tahmin, Alt, Ust, IvmePct, YoYTaban, Carpan, KayitTarih)
+                VALUES (@Id, @Year, @Month, @MekanId, @Tahmin, @Alt, @Ust, @IvmePct, @YoYTaban, @Carpan, @KayitTarih)
+                """, e);
+            return true;
         }
+        catch (Exception ex) { _log.LogError(ex, "Tahmin kaydı yazılamadı"); return false; }
     }
 
     public bool Sil(string id)
     {
-        lock (_kilit)
-        {
-            var liste = YukleIc();
-            if (liste.RemoveAll(e => e.Id == id) == 0) return false;
-            return Yaz(liste);
-        }
-    }
-
-    private bool Yaz(List<TahminKayitEntry> liste)
-    {
+        if (!_db.PanelEnabled) return false;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(liste, _opt));
-            return true;
+            using var c = _db.OpenPanel();
+            return c.Execute("DELETE FROM dbo.PanelTahminKayit WHERE Id=@id", new { id }) > 0;
         }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "Tahmin kayıtları yazılamadı ({Path})", _path);
-            return false;
-        }
+        catch (Exception ex) { _log.LogError(ex, "Tahmin kaydı silinemedi (Id {Id})", id); return false; }
     }
 }

@@ -86,6 +86,15 @@ public sealed class Db
     public Task<SqlConnection>? OpenPanelAsync() =>
         _panelConnStr is null ? null : OpenWithRetryAsync(_panelConnStr, dateformat: false);
 
+    /// <summary>Panel DB senkron bağlantı (auth + app-state servisleri — localhost, hızlı, retry'sız).</summary>
+    public SqlConnection OpenPanel()
+    {
+        if (_panelConnStr is null) throw new InvalidOperationException(".env PANEL_DB_HOST yok — panel DB yapılandırılmamış.");
+        var conn = new SqlConnection(_panelConnStr);
+        conn.Open();
+        return conn;
+    }
+
     public bool PanelEnabled => _panelConnStr is not null;
 
     /// <summary>Her çağrıda yeni açık bağlantı (Dapper using ile kapatır). DMY zorunlu sorgular için SET DATEFORMAT dmy.</summary>

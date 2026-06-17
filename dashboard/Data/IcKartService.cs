@@ -1,4 +1,4 @@
-using System.Text.Json;
+using Dapper;
 using GmDashboard.Models;
 
 namespace GmDashboard.Data;
@@ -35,64 +35,72 @@ public static class IcKartFiltre
 /// Otomatik desen filtresi (isim %Mağaza%/%Kumbara%, tel 599/699) YETMEZ → kullanıcı tıkla-işaretle.
 /// Geri alınabilir (Sil). Hata sessiz yutulmaz (error-handling.md).
 /// </summary>
-public sealed class IcKartService(ILogger<IcKartService> log)
+public sealed class IcKartService
 {
-    private static readonly string _path = Path.Combine(AppContext.BaseDirectory, "data", "ic-kartlar.json");
-    private static readonly JsonSerializerOptions _opt = new() { WriteIndented = true };
-    private readonly object _kilit = new();
+    private readonly Db _db;
+    private readonly ILogger<IcKartService> _log;
 
-    public IReadOnlyList<IcKart> Yukle() { lock (_kilit) return YukleIc(); }
-
-    /// <summary>SQL filtresi için işaretli CustomersId dizisi (boşsa boş dizi → çağıran NOT IN eklemez).</summary>
-    public long[] Idler() { lock (_kilit) return YukleIc().Select(k => k.Id).ToArray(); }
-
-    private List<IcKart> YukleIc()
+    public IcKartService(Db db, ILogger<IcKartService> log)
     {
+        _db = db; _log = log;
+        if (!db.PanelEnabled) { log.LogWarning("Panel DB kapalı — iç-kart listesi boş çalışır"); return; }
         try
         {
-            if (!File.Exists(_path)) return new();
-            return JsonSerializer.Deserialize<List<IcKart>>(File.ReadAllText(_path)) ?? new();
+            using var c = db.OpenPanel();
+            c.Execute("""
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelIcKart')
+                CREATE TABLE dbo.PanelIcKart (Id bigint PRIMARY KEY, Ad nvarchar(200) NOT NULL, KayitTarih nvarchar(20) NOT NULL);
+                """);
         }
-        catch (Exception ex)
+        catch (Exception ex) { log.LogError(ex, "PanelIcKart tablo oluşturma hatası"); }
+    }
+
+    public IReadOnlyList<IcKart> Yukle()
+    {
+        if (!_db.PanelEnabled) return [];
+        try
         {
-            log.LogError(ex, "İç kart listesi okunamadı ({Path}) — boş ile devam", _path);
-            return new();
+            using var c = _db.OpenPanel();
+            return c.Query<IcKart>("SELECT Id, Ad, KayitTarih FROM dbo.PanelIcKart ORDER BY Ad").ToList();
         }
+        catch (Exception ex) { _log.LogError(ex, "İç kart listesi okunamadı — boş ile devam"); return []; }
+    }
+
+    /// <summary>SQL filtresi için işaretli CustomersId dizisi (boşsa boş dizi → çağıran NOT IN eklemez).</summary>
+    public long[] Idler()
+    {
+        if (!_db.PanelEnabled) return [];
+        try
+        {
+            using var c = _db.OpenPanel();
+            return c.Query<long>("SELECT Id FROM dbo.PanelIcKart").ToArray();
+        }
+        catch (Exception ex) { _log.LogError(ex, "İç kart Id listesi okunamadı — boş ile devam"); return []; }
     }
 
     public bool Ekle(long id, string ad)
     {
-        lock (_kilit)
+        if (!_db.PanelEnabled) return false;
+        try
         {
-            var liste = YukleIc();
-            if (liste.Any(k => k.Id == id)) return true;  // zaten var
-            liste.Add(new IcKart(id, ad, DateTime.Now.ToString("dd.MM.yyyy HH:mm")));
-            return Yaz(liste);
+            using var c = _db.OpenPanel();
+            c.Execute("""
+                IF NOT EXISTS (SELECT 1 FROM dbo.PanelIcKart WHERE Id=@id)
+                INSERT INTO dbo.PanelIcKart (Id, Ad, KayitTarih) VALUES (@id, @ad, @t);
+                """, new { id, ad, t = DateTime.Now.ToString("dd.MM.yyyy HH:mm") });
+            return true;
         }
+        catch (Exception ex) { _log.LogError(ex, "İç kart eklenemedi (Id {Id})", id); return false; }
     }
 
     public bool Sil(long id)
     {
-        lock (_kilit)
-        {
-            var liste = YukleIc();
-            if (liste.RemoveAll(k => k.Id == id) == 0) return false;
-            return Yaz(liste);
-        }
-    }
-
-    private bool Yaz(List<IcKart> liste)
-    {
+        if (!_db.PanelEnabled) return false;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(liste, _opt));
-            return true;
+            using var c = _db.OpenPanel();
+            return c.Execute("DELETE FROM dbo.PanelIcKart WHERE Id=@id", new { id }) > 0;
         }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "İç kart listesi yazılamadı ({Path})", _path);
-            return false;
-        }
+        catch (Exception ex) { _log.LogError(ex, "İç kart silinemedi (Id {Id})", id); return false; }
     }
 }
