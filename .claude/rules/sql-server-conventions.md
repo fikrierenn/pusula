@@ -135,6 +135,12 @@ CROSS APPLY (
 DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 ```
 
+## DerinSIS Alış Faturası Convention (ADR-004 — KRİTİK)
+
+- **`ehAdet` alış faturasında NEGATİF gelir** (irsHrk ehTip=1 alış). Satış ehTip=4/100'de pozitif. Toplarken `ABS(ehAdet)` veya işaret farkını hesaba kat.
+- **`ehMaliyet` alış faturasında 0 olabilir** — maliyet ayrı job ile güncellenir, anlık sorguda sıfır gelirse job henüz çalışmamış demektir.
+- Alış faturası filtresi: `ehTip IN (1)` veya `ehTip IN (1,2)` (iade alış dahilse).
+
 ## İlişkili Dosyalar
 
 - `docs/01-baglanti.md`, `docs/02-tablolar-magaza.md`, `docs/03-ciro-filtreleri.md`

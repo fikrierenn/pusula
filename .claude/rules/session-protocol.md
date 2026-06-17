@@ -33,6 +33,14 @@ Her ikisini de `Read` et. Özellikle bak:
 
 `TODO.md` → **"BIRLESIK ONCELIK SIRASI"** bölümü. En az Faz 0 (bugün) + Faz 1'in ilk 3 maddesi. Aktif bug başlıkları.
 
+### Adım 3.5 — Semantik katman özeti oku (SQL iş varsa ZORUNLU)
+
+SQL sorgusu yazılacaksa veya veri analizi yapılacaksa:
+```bash
+head -80 sorgular/SEMANTIK_KATMAN.md
+```
+İçerir: ehTip kod sözlüğü (4=satış/100=web/101=iade…), mekanID'ler, `ehTutarN = ehTutar - ehIndirim` mantığı, köprüler. Bu dosya okunmadan yazılan sorgu yanlış join/filtre riski taşır (07.05.2026 vakası).
+
 ### Adım 4 — Uncommitted durumu bil
 
 `git status --porcelain | wc -l` — 15 üstüyse **yeni iş yasak**, önce commit-split.
