@@ -153,39 +153,70 @@ else if (_data is not null)
             {
                 @* --- SEBEP ÖZETİ --- *@
                 var sebepler = _manuel.GroupBy(r => r.Sebep)
-                    .Select(g => (Sebep: g.Key, Indirim: g.Sum(x => x.Indirim), Fis: g.Sum(x => x.FisSayisi)))
+                    .Select(g => (
+                        Sebep:    g.Key,
+                        Brut:     g.Sum(x => x.Brut),
+                        Indirim:  g.Sum(x => x.Indirim),
+                        Net:      g.Sum(x => x.Net),
+                        Fis:      g.Sum(x => x.FisSayisi)))
                     .OrderByDescending(x => x.Indirim).ToList();
-                var toplamInd = sebepler.Sum(s => s.Indirim);
+                var toplamBrut = sebepler.Sum(s => s.Brut);
+                var toplamInd  = sebepler.Sum(s => s.Indirim);
+                var toplamNet  = sebepler.Sum(s => s.Net);
+                var toplamFis  = sebepler.Sum(s => s.Fis);
                 <div class="overflow-x-auto mb-3">
                 <table class="table table-xs w-full">
-                    <thead><tr class="text-[11px] text-base-content/60"><th>İndirim Sebebi</th><th class="text-right">Toplam İndirim</th><th class="text-right">Pay</th><th class="text-right">Fiş</th><th class="w-6"></th></tr></thead>
+                    <thead><tr class="text-[11px] text-base-content/60">
+                        <th>İndirim Sebebi</th>
+                        <th class="text-right">Brüt</th>
+                        <th class="text-right">İndirim</th>
+                        <th class="text-right">İnd.%</th>
+                        <th class="text-right">Net</th>
+                        <th class="text-right">Fiş</th>
+                        <th class="text-right">Ort.İnd/Fiş</th>
+                        <th class="text-right">Pay</th>
+                        <th class="w-5"></th>
+                    </tr></thead>
                     <tbody>
                     @foreach (var s in sebepler)
                     {
-                        var sebep = s.Sebep;
-                        var pct = toplamInd > 0 ? s.Indirim / toplamInd * 100 : 0;
-                        var active = _selSebep == sebep;
+                        var sebep    = s.Sebep;
+                        var indPct   = s.Brut > 0 ? Math.Round(s.Indirim / s.Brut * 100, 1) : 0;
+                        var payPct   = toplamInd > 0 ? Math.Round(s.Indirim / toplamInd * 100, 1) : 0;
+                        var ortFis   = s.Fis > 0 ? Math.Round(s.Indirim / s.Fis, 0) : 0;
+                        var active   = _selSebep == sebep;
+                        var indColor = indPct > 30 ? "text-error font-semibold" : indPct > 15 ? "text-warning" : "text-base-content/60";
                         <tr class="cursor-pointer hover:bg-base-200/60 @(active ? "bg-warning/10" : "")" @onclick="@(() => _selSebep = active ? null : sebep)">
                             <td class="font-medium text-[12px] @(sebep.Contains("Kumbara") ? "text-warning" : "")">@sebep</td>
+                            <td class="text-right text-[12px] text-base-content/60">@Tl(s.Brut)</td>
                             <td class="text-right text-[12px] text-error font-semibold">@Tl(s.Indirim)</td>
-                            <td class="text-right text-[12px] text-base-content/60">%@Math.Round(pct,1)</td>
+                            <td class="text-right text-[12px] @indColor">%@indPct</td>
+                            <td class="text-right text-[12px] text-base-content/70">@Tl(s.Net)</td>
                             <td class="text-right text-[12px] text-base-content/60">@Num(s.Fis)</td>
+                            <td class="text-right text-[12px] text-base-content/60">@Tl(ortFis)</td>
+                            <td class="text-right text-[12px] text-base-content/50">%@payPct</td>
                             <td class="text-[10px] text-base-content/40">@(active ? "▲" : "▼")</td>
                         </tr>
                         @if (active)
                         {
                             @* --- MAĞAZA × AY DETAY (tıklanan sebep) --- *@
-                            var detay = _manuel.Where(r => r.Sebep == sebep).ToList();
-                            var aylarD = detay.Select(r => r.Ay).Distinct().OrderBy(a => a).ToList();
+                            var detay    = _manuel.Where(r => r.Sebep == sebep).ToList();
+                            var aylarD   = detay.Select(r => r.Ay).Distinct().OrderBy(a => a).ToList();
                             var magazalarD = detay.Select(r => r.Magaza).Distinct().OrderBy(m => m).ToList();
                             <tr class="bg-base-200/40">
-                                <td colspan="5" class="p-0">
+                                <td colspan="9" class="p-0">
                                 <div class="overflow-x-auto p-2">
                                 <table class="table table-xs w-full text-[11px]">
                                     <thead><tr class="text-base-content/50">
                                         <th>Ay</th>
-                                        @foreach (var mag in magazalarD) { <th class="text-right">@mag</th> }
-                                        <th class="text-right font-semibold">Toplam</th>
+                                        @foreach (var mag in magazalarD)
+                                        {
+                                            <th class="text-right">@mag Brüt</th>
+                                            <th class="text-right">İnd.</th>
+                                            <th class="text-right">%</th>
+                                            <th class="text-right">Fiş</th>
+                                        }
+                                        <th class="text-right font-semibold">Top.İnd.</th>
                                     </tr></thead>
                                     <tbody>
                                     @foreach (var ay in aylarD)
@@ -196,7 +227,10 @@ else if (_data is not null)
                                             @foreach (var mag in magazalarD)
                                             {
                                                 var r = satirlar.FirstOrDefault(x => x.Magaza == mag);
+                                                <td class="text-right text-base-content/60">@(r is null ? "—" : Tl(r.Brut))</td>
                                                 <td class="text-right text-error">@(r is null ? "—" : Tl(r.Indirim))</td>
+                                                <td class="text-right @(r is not null && r.IndirimPct > 30 ? "text-error font-semibold" : r is not null && r.IndirimPct > 15 ? "text-warning" : "text-base-content/50")">@(r is null ? "—" : $"%{r.IndirimPct}")</td>
+                                                <td class="text-right text-base-content/50">@(r is null ? "—" : Num(r.FisSayisi))</td>
                                             }
                                             <td class="text-right font-semibold text-error">@Tl(satirlar.Sum(r => r.Indirim))</td>
                                         </tr>
@@ -204,8 +238,17 @@ else if (_data is not null)
                                     </tbody>
                                     <tfoot><tr class="font-bold border-t border-base-300">
                                         <td>TOPLAM</td>
-                                        @foreach (var mag in magazalarD) { var m2=mag; <td class="text-right text-error">@Tl(detay.Where(r=>r.Magaza==m2).Sum(r=>r.Indirim))</td> }
-                                        <td class="text-right text-error">@Tl(detay.Sum(r=>r.Indirim))</td>
+                                        @foreach (var mag in magazalarD)
+                                        {
+                                            var m2 = mag;
+                                            var mg = detay.Where(r => r.Magaza == m2).ToList();
+                                            var mB = mg.Sum(r => r.Brut); var mI = mg.Sum(r => r.Indirim);
+                                            <td class="text-right text-base-content/60">@Tl(mB)</td>
+                                            <td class="text-right text-error">@Tl(mI)</td>
+                                            <td class="text-right @(mB > 0 && mI/mB*100 > 30 ? "text-error" : "text-base-content/50")">@(mB > 0 ? $"%{Math.Round(mI/mB*100,1)}" : "—")</td>
+                                            <td class="text-right text-base-content/50">@Num(mg.Sum(r=>r.FisSayisi))</td>
+                                        }
+                                        <td class="text-right text-error">@Tl(detay.Sum(r => r.Indirim))</td>
                                     </tr></tfoot>
                                 </table>
                                 </div>
@@ -216,14 +259,18 @@ else if (_data is not null)
                     </tbody>
                     <tfoot><tr class="font-bold text-[12px] border-t-2 border-base-200">
                         <td>TOPLAM</td>
+                        <td class="text-right text-base-content/60">@Tl(toplamBrut)</td>
                         <td class="text-right text-error">@Tl(toplamInd)</td>
+                        <td class="text-right @(toplamBrut > 0 && toplamInd/toplamBrut*100 > 15 ? "text-error" : "")">@(toplamBrut > 0 ? $"%{Math.Round(toplamInd/toplamBrut*100,1)}" : "—")</td>
+                        <td class="text-right text-base-content/70">@Tl(toplamNet)</td>
+                        <td class="text-right">@Num(toplamFis)</td>
+                        <td class="text-right">@Tl(toplamFis > 0 ? Math.Round(toplamInd / toplamFis, 0) : 0)</td>
                         <td class="text-right">%100</td>
-                        <td class="text-right">@Num(sebepler.Sum(s => s.Fis))</td>
                         <td></td>
                     </tr></tfoot>
                 </table>
                 </div>
-                <div class="text-base-content/50 text-[11px]">Satıra tıkla → Mağaza×Ay detay. SPC köprüsü (CampaignId NULL → CampaignVersion=RefundReasons.Id).</div>
+                <div class="text-base-content/50 text-[11px]">İnd.%>30 kırmızı · >15 turuncu · Satıra tıkla → Mağaza×Ay detay (Brüt/İnd./%).</div>
             }
         </div>
     </div>

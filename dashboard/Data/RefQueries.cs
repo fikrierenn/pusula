@@ -513,6 +513,7 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
                 ISNULL(rr.Name, N'(bilinmiyor)')                   AS Sebep,
                 st.Name                                             AS Magaza,
                 CONVERT(varchar(7), CONVERT(date, s.[Date]), 120)  AS Ay,
+                SUM(s.GrossTotal)                                   AS Brut,
                 SUM(s.DiscountTotal)                                AS Indirim,
                 COUNT(DISTINCT s.Id)                                AS FisSayisi
             FROM EncoreMerkez.dbo.Sales             s   WITH(NOLOCK)

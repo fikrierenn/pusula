@@ -114,8 +114,13 @@ public record KumbaraAyRow(string Magaza, string Ay, decimal Brut, decimal Indir
     public decimal Net => Brut - Indirim;
 }
 
-/// <summary>Manuel indirim (SPC.Source=1, RefundReasons.Type=1) sebep × mağaza × ay kırılımı.</summary>
-public record ManuelIndirimRow(string Sebep, string Magaza, string Ay, decimal Indirim, int FisSayisi);
+/// <summary>Manuel indirim (RefundReasons.Type=1) sebep × mağaza × ay kırılımı.</summary>
+public record ManuelIndirimRow(string Sebep, string Magaza, string Ay, decimal Brut, decimal Indirim, int FisSayisi)
+{
+    public decimal Net          => Brut - Indirim;
+    public decimal IndirimPct   => Brut > 0 ? Math.Round(Indirim / Brut * 100, 1) : 0;
+    public decimal OrtIndirimFis => FisSayisi > 0 ? Math.Round(Indirim / FisSayisi, 0) : 0;
+}
 
 /// <summary>Marka alış-satış rotasyon satırı (geçen ay).</summary>
 public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decimal SatisCiro);
