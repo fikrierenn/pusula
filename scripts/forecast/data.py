@@ -79,6 +79,7 @@ def get_daily_series(mekan: int = 0) -> pd.DataFrame:
     conn = connect_with_retry(lambda: pymssql.connect(
         server=cfg["server"], user=cfg["user"], password=cfg["password"],
         database=cfg.get("database", "master"), autocommit=True,
+        login_timeout=10, timeout=120,   # login süresiz bloklanmasın; uzun sorgu (günlük seri) için 120s
     ))
     try:
         df = pd.read_sql(sql, conn, params=(mekan, mekan))

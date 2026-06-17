@@ -583,7 +583,7 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
             JOIN EncoreMerkez.dbo.Stores            st  WITH(NOLOCK) ON st.Id = ps.StoreId
             JOIN DerinSISBkm.dbo.posMagaza          mg  WITH(NOLOCK)
                  ON mg.mekanKod = st.Code AND mg.mekanID IN ({LokasyonConfig.Subeler})
-            WHERE CONVERT(date, s.[Date]) >= '2026-01-01'
+            WHERE CONVERT(date, s.[Date]) >= '20260101'
             GROUP BY rr.Name, st.Name, CONVERT(varchar(7), CONVERT(date, s.[Date]), 120)
             ORDER BY SUM(s.DiscountTotal) DESC, Ay, Magaza;
             """;
@@ -612,7 +612,7 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
             JOIN EncoreMerkez.dbo.Stores            st  WITH(NOLOCK) ON st.Id = ps.StoreId
             JOIN DerinSISBkm.dbo.posMagaza          mg  WITH(NOLOCK)
                  ON mg.mekanKod = st.Code AND mg.mekanID IN ({LokasyonConfig.Subeler})
-            WHERE CONVERT(date, s.[Date]) >= '2026-01-01'
+            WHERE CONVERT(date, s.[Date]) >= '20260101'
             GROUP BY st.Name, CONVERT(varchar(7), CONVERT(date, s.[Date]), 120)
             ORDER BY Ay, Magaza;
             """;

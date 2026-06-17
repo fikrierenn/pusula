@@ -81,7 +81,7 @@ public sealed class TakvimService
         {
             if (!_db.PanelEnabled) return false;
             try { using var c = _db.OpenPanel(); return c.ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.PanelTakvim WHERE Tip IN (N'Ulusal', N'DiniBayram')") > 0; }
-            catch { return false; }
+            catch (Exception ex) { _log.LogWarning(ex, "Takvim cache kontrolü başarısız — yok sayıldı"); return false; }
         }
     }
 

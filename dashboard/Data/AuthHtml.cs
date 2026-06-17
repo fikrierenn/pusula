@@ -45,7 +45,7 @@ internal static class AuthHtml
 
     public static string Setup(string? hata)
     {
-        var err = hata is null ? "" : $"<div class='err'>{hata}</div>";
+        var err = hata is null ? "" : $"<div class='err'>{System.Net.WebUtility.HtmlEncode(hata)}</div>";
         return $$"""
             <!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1"><title>BKM Panel — İlk Kurulum</title>{{Stil}}</head>

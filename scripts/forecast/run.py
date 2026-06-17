@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from datetime import datetime
 
 import numpy as np
@@ -31,7 +32,8 @@ def _ay_tahmin(daily, yil, ay, ogrenilen):
             p = fn(train, ts, te)["point"]
         except Exception as e:
             p = float("nan")
-            print(f"[run] {ad} {yil}-{ay:02d} HATA: {str(e)[:70]}")
+            # stderr'e bas → ForecastService (C#) yakalar; kod/şema hatası "model yakınsamadı" gibi maskelenmesin.
+            print(f"[run] {ad} {yil}-{ay:02d} HATA ({type(e).__name__}): {str(e)[:80]}", file=sys.stderr)
         if np.isfinite(p):
             model_nokta[ad] = float(p)
             katki[ad] = {"tahmin": round(p), "agirlik": ogrenilen["modeller"].get(ad, {}).get("agirlik", 0)}
@@ -86,31 +88,39 @@ def main(n_ileri: int = 3):
             print(f"  {a['yil']}-{a['ay']:02d}: TAHMIN YOK (tum modeller elendi — {a['atlanan']})")
         else:
             print(f"  {a['yil']}-{a['ay']:02d}: ensemble {a['point']:,} band [{a['alt']:,} - {a['ust']:,}] ({a['model_sayisi']} model)")
+    # Hiçbir ay tahmin üretemediyse exit≠0 → ForecastService "güncellendi" demesin (sessiz boş tahmin engeli).
+    if all(a["point"] is None for a in aylar):
+        sys.exit("[run] HATA: hicbir ay icin tahmin uretilemedi — tum modeller elendi")
 
 
 def _yaz_db(objeler: dict):
     """PanelForecast'e JSON-string yaz (pyodbc, Windows auth). Tek transaction — ya-hep-ya-hic.
     Bağlantı: PANEL_DB_HOST/NAME env veya localhost\\SQLEXPRESS + BkmPanel default (kişisel, tek makine)."""
+    import re
     import pyodbc
     host = os.environ.get("PANEL_DB_HOST", r"localhost\SQLEXPRESS")
     dbname = os.environ.get("PANEL_DB_NAME", "BkmPanel")
+    # ODBC connection-string injection guard: host/db sadece güvenli karakter (sunucu\instance, db adı).
+    if not re.fullmatch(r"[A-Za-z0-9._\\-]+", host) or not re.fullmatch(r"[A-Za-z0-9._-]+", dbname):
+        raise ValueError(f"Geçersiz PANEL_DB_HOST/NAME: {host!r} / {dbname!r}")
+    # Login Timeout=10 → login aşaması süresiz bloklanmaz (query timeout ayrı).
     cn = pyodbc.connect(
         f"Driver={{ODBC Driver 18 for SQL Server}};Server={host};Database={dbname};"
-        "Trusted_Connection=yes;TrustServerCertificate=yes", timeout=10)
+        "Trusted_Connection=yes;TrustServerCertificate=yes;Login Timeout=10", timeout=30)
     try:
-        cur = cn.cursor()
-        cur.execute("""
-            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelForecast')
-            CREATE TABLE dbo.PanelForecast (Ad nvarchar(40) PRIMARY KEY, Json nvarchar(max) NOT NULL,
-                Uretim datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
-        """)
-        for ad, obj in objeler.items():
-            j = json.dumps(obj, ensure_ascii=False)
+        with cn.cursor() as cur:
             cur.execute("""
-                MERGE dbo.PanelForecast AS t USING (SELECT ? AS Ad, ? AS Json) AS s ON t.Ad=s.Ad
-                WHEN MATCHED THEN UPDATE SET Json=s.Json, Uretim=SYSUTCDATETIME()
-                WHEN NOT MATCHED THEN INSERT (Ad, Json) VALUES (s.Ad, s.Json);
-            """, ad, j)
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelForecast')
+                CREATE TABLE dbo.PanelForecast (Ad nvarchar(40) PRIMARY KEY, Json nvarchar(max) NOT NULL,
+                    Uretim datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
+            """)
+            for ad, obj in objeler.items():
+                j = json.dumps(obj, ensure_ascii=False)
+                cur.execute("""
+                    MERGE dbo.PanelForecast AS t USING (SELECT ? AS Ad, ? AS Json) AS s ON t.Ad=s.Ad
+                    WHEN MATCHED THEN UPDATE SET Json=s.Json, Uretim=SYSUTCDATETIME()
+                    WHEN NOT MATCHED THEN INSERT (Ad, Json) VALUES (s.Ad, s.Json);
+                """, ad, j)
         cn.commit()
     finally:
         cn.close()
