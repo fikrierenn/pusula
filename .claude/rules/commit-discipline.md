@@ -4,6 +4,8 @@ _Her projede aynen uygulanır. `paths:` yok — compact sonrası survive._
 
 ## Commit Kuralları
 
+0. **S1 — Commit → TODO `[x]` ZORUNLU (18.06 sertleştirme).** Bir TODO maddesini kapatan commit atılırken AYNI ANDA o madde `TODO.md`'de `[x] ✅ <tarih> (commit <hash>)` yapılır. Commit atıp TODO'yu açık bırakmak **yasak** — done-but-`[ ]` birikiminin kök sebebi bu. İstisna yok.
+
 1. **Kullanıcı açıkça istemedikçe commit etme.** "commit et", "commit'le", "git commit" net komut olmadan commit yok.
    - **İstisna:** `session-handoff` skill'i, yalnızca `docs/journal/YYYY-MM-DD.md` dosyasını otomatik commit eder (başka path'e dokunmaz). Gerekçe: handoff artifactı dosyaya yazılıp bırakılırsa her oturum başında uncommitted olarak görünür ve pre-commit hook gürültü yapar.
 2. **Bir commit = bir konu.** AI 3 katman birden çıkarırsa → 3 ayrı commit.

@@ -104,6 +104,15 @@ Hacim eşiği: 3+ saat veya 20+ dosya değişti → DETAYLI yaz.
 
 ### Adim 4.5 — TODO.md Senkronu (ZORUNLU)
 
+**S2 — Stale-pass (18.06 sertleştirme — her handoff'ta zorunlu):**
+Önce done-but-open tara:
+```bash
+# done-but-[ ] adayları: bu oturumda commit'lenen ID'ler hâlâ [ ] mi?
+git log --since=midnight --oneline | grep -oE '[A-Z]-[0-9]+|HK-[0-9]+|B-[0-9]+|R-[0-9]+' | sort -u
+grep -n "^\- \[ \]" TODO.md | grep -E "<yukarıdaki ID'ler>"
+```
+Eşleşen → anında `[x]` + hash. Tüm `[ ]` madde sayısını journal'a yaz (stale trend takibi).
+
 5 zorunlu adım:
 
 1. TODO.md'yi oku.

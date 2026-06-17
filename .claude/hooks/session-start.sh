@@ -25,7 +25,20 @@ fi
 echo ""
 
 if [ -f TODO.md ]; then
+    open_count=$(grep -c '^- \[ \]' TODO.md 2>/dev/null || echo 0)
+    done_count=$(grep -c '^- \[x\]' TODO.md 2>/dev/null || echo 0)
+    # S4: done-but-open tespiti — son 3 gun commit'lerdeki ID'ler hala [ ] mi?
+    recent_ids=$(git log --since='3 days ago' --oneline 2>/dev/null | grep -oE 'HK-[0-9]+|B-[0-9]+|R-[0-9]+|C-[0-9]+|M-[0-9]+' | sort -u | tr '\n' '|' | sed 's/|$//')
+    if [ -n "$recent_ids" ]; then
+        stale_open=$(grep -cE "^\- \[ \].*(${recent_ids})" TODO.md 2>/dev/null || echo 0)
+    else
+        stale_open=0
+    fi
     echo "### Aktif TODO basliklari (ilk 20)"
+    echo "- Acik [ ]: $open_count · Tamamlanan [x]: $done_count · Potansiyel done-but-open (son 3g): $stale_open"
+    if [ "$stale_open" -gt 0 ] 2>/dev/null; then
+        echo "  UYARI S4: Son 3 gun commit'lerde ID var ama TODO'da hala [ ] — kontrol et."
+    fi
     grep -E '^### |^- \[ \]|^## ' TODO.md 2>/dev/null | head -20
     echo ""
 fi

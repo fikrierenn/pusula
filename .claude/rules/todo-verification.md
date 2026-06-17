@@ -7,6 +7,12 @@ _`paths:` yok — compact sonrası survive._
 
 ## Mutlak Kurallar
 
+0. **S3 — Yeni TODO maddesi öncesi dup-grep (18.06 sertleştirme).** Yeni madde eklemeden önce aynı konu/ID var mı kontrol et:
+   ```bash
+   grep -n "<ID veya anahtar-kelime>" TODO.md
+   ```
+   Varsa → mevcut maddeyi güncelle, yeni satır açma. Dup'lar (B-90↔M-13, C-07↔B-19 vakası) bu adım atlandığı için oluştu.
+
 1. **TODO listesi bilgi değildir, hipotez tahtasıdır.** "Açık" yazısı bugün açık olduğunu kanıtlamaz; yazıldığı tarihte açıktı. Bugün de açık olduğunu kanıtlamak senin işin.
 
 2. **Action almadan önce file:line ile doğrula.** Madde `auth/login.ts:128 yetki kontrolü yok` diyorsa:
