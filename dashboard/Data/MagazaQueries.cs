@@ -33,11 +33,11 @@ public sealed class MagazaQueries(Db db)
         // Net / Fiş / İade / İade oranı (G3 pattern, tek mağaza; geri dönüşüm fişi 1001 hariç net'te)
         const string kpiSql = """
             SELECT
-                SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
-                SUM(IIF(s.DocumentsTypeId=3,-1,1))                                AS Fis,
-                SUM(IIF(s.DocumentsTypeId=3,s.GrossTotal,0))                      AS Iade,
-                CAST(100.0*SUM(IIF(s.DocumentsTypeId=3,s.GrossTotal,0))
-                   / NULLIF(SUM(IIF(s.DocumentsTypeId IN(1,2,6,7,8),s.GrossTotal,0)),0) AS decimal(10,1)) AS IadeOran
+                SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
+                SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END)                                AS Fis,
+                SUM(CASE WHEN s.DocumentsTypeId=3 THEN s.GrossTotal ELSE 0 END)                      AS Iade,
+                CAST(100.0*SUM(CASE WHEN s.DocumentsTypeId=3 THEN s.GrossTotal ELSE 0 END)
+                   / NULLIF(SUM(CASE WHEN s.DocumentsTypeId IN(1,2,6,7,8) THEN s.GrossTotal ELSE 0 END),0) AS decimal(10,1)) AS IadeOran
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
@@ -139,7 +139,7 @@ public sealed class MagazaQueries(Db db)
         // Kategori (skat, tek mağaza — ürün drill için)
         const string katSql = """
             SELECT CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
@@ -214,7 +214,7 @@ public sealed class MagazaQueries(Db db)
         await using var conn = await db.OpenAsync();
         const string sql = """
             SELECT CONVERT(varchar,s.Date,23) AS Tarih,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId

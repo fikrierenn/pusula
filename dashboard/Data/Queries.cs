@@ -24,9 +24,9 @@ public sealed class Queries(Db db)
         // Net = KDV-HARİÇ (plan-16): Sales.GrossTotal−DiscountTotal−VatTotal (header VAT = satır TP−VatTotal toplamı, kuruşu kuruşuna doğrulandı 16.06).
         const string storeSql = """
             SELECT MG.mekanID AS MekanId,
-                   SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
-                   SUM(IIF(s.DocumentsTypeId=3,-1,1)) AS Fis,
-                   SUM(IIF(s.DocumentsTypeId=3,(s.GrossTotal-s.DiscountTotal-s.VatTotal),0)) AS Iade
+                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
+                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
+                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN (s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE 0 END) AS Iade
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
@@ -80,7 +80,7 @@ public sealed class Queries(Db db)
         var katPar = new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) };
         const string skatSql = """
             SELECT MG.mekanID AS MekanId, CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
             JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
@@ -129,7 +129,7 @@ public sealed class Queries(Db db)
         // Kategori mix (mağaza×kategori → toplam; Products.Code=stkID köprüsü, geri dönüşüm hariç)
         const string katSql = """
             SELECT CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
@@ -143,8 +143,8 @@ public sealed class Queries(Db db)
 
         // Saat bazlı yoğunluk
         const string saatSql = """
-            SELECT DATEPART(HOUR,s.Date) AS Saat, SUM(IIF(s.DocumentsTypeId=3,-1,1)) AS Fis,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
+            SELECT DATEPART(HOUR,s.Date) AS Saat, SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=@start AND s.Date<@end
             GROUP BY DATEPART(HOUR,s.Date);
@@ -217,7 +217,7 @@ public sealed class Queries(Db db)
         // Mağaza MTD net (geri dönüşüm fişi hariç)
         const string netSql = """
             SELECT MG.mekanID AS MekanId,
-                   SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net
+                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
             JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
@@ -243,7 +243,7 @@ public sealed class Queries(Db db)
         // Kategori MTD net (Products.Code=stkID köprüsü; tüm mağazalar toplam)
         const string katNetSql = """
             SELECT u.urnKtgr2ID AS KtgId, CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Net
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
             JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
@@ -283,7 +283,7 @@ public sealed class Queries(Db db)
         await using var conn = await db.OpenAsync();
         const string sql = """
             SELECT CONVERT(varchar,s.Date,23) AS Tarih,
-                   CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
+                   CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
             WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@bas AND s.Date<@son
