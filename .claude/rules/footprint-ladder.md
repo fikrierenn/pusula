@@ -29,6 +29,8 @@ _Hermes "narrow waist" uyarlaması (plan-12 WS-2). Yeni bir ihtiyaç çıkınca 
 - ❌ "Yeni özellik = yeni sayfa" refleksi → önce mevcut sayfaya bölüm/sorgu eklenebilir mi?
 - ❌ Tek-kullanımlık iş için yeni skill/agent → mevcut akışta inline çöz.
 - ❌ "İleride lazım olur" diye geniş soyutlama (bkz. `coding-discipline.md` simplicity-first).
+- ❌ **Skill/agent yaratmadan önce mevcut listeyi kontrol ETMEMEK** (17.06 dersi: `bkm-sunum`'u proje-local yarattım, halbuki global kapsamlı versiyonu vardı → dup). Yeni skill/agent ÖNCESİ available-skills listesine (proje `.claude/skills/` + global + plugin) bak; aynı isim/işlev varsa GENİŞLET, yaratma.
+- ❌ Dış repodan (awesome-X, superpowers vb.) "esin" diye BKM'de zaten olanı tekrar kurmak → önce mevcut rule/skill ile kıyasla; çoğu zaten kapsanmış olabilir.
 
 ## İlişkili
 - `.claude/rules/coding-discipline.md` — simplicity-first (aynı damar).
