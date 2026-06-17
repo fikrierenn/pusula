@@ -374,7 +374,7 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
                 WHERE DATEDIFF(MONTH, CAST(i.CohortAy + '-01' AS date), CONVERT(date, s.Date)) BETWEEN 1 AND 12
             ) n
             JOIN (
-                SELECT LEFT(CONVERT(varchar, MIN(s3.Date), 23), 7) AS CohortAy, COUNT(*) AS Buyukluk
+                SELECT LEFT(CONVERT(varchar, MIN(s3.MinDate), 23), 7) AS CohortAy, COUNT(*) AS Buyukluk
                 FROM (
                     SELECT s3x.CustomersId, MIN(s3x.Date) AS MinDate
                     FROM EncoreMerkez.dbo.Sales s3x WITH(NOLOCK)

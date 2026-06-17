@@ -406,11 +406,11 @@ else
         var sw = PerfState.Start();
         try
         {
-            var tRfm = Ref.GetRfmAsync(_dun);
-            var tStat = Ref.GetMusteriStatAsync(_dun);
+            var tRfm   = Ref.GetRfmAsync(_dun);
+            var tStat  = Ref.GetMusteriStatAsync(_dun);
             var tKazEt = Ref.GetKazanimEtAsync(_dun);
-            var tKohort = Ref.GetKohortAsync(_dun);
-            var tLtv = Ref.GetLtvAsync(_dun);
+            var tKohort= Ref.GetKohortAsync(_dun);
+            var tLtv   = Ref.GetLtvAsync(_dun);
             var tChurn = Ref.GetChurnAsync(_dun);
             await Task.WhenAll(tRfm, tStat, tKazEt, tKohort, tLtv, tChurn);
             (_yk, _et) = tRfm.Result;
