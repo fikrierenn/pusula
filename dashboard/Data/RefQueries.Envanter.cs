@@ -150,7 +150,7 @@ public sealed partial class RefQueries
                       AND z.TZe_VonZeit IS NOT NULL AND z.TZe_BisZeit IS NOT NULL
                     GROUP BY LTRIM(RTRIM(p.Per_Grp2))')) lab
                 JOIN (SELECT CASE MG.mekanID WHEN 1 THEN N'FSM' WHEN 4477 THEN N'ÖZLÜCE' WHEN 4478 THEN N'İST.YOLU' END Magaza,
-                    SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) NetCiro, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis
+                    SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) NetCiro, SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) Fis
                   FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
                   JOIN EncoreMerkez.dbo.Pos p WITH(NOLOCK) ON p.Id=s.PosId
                   JOIN EncoreMerkez.dbo.Stores st WITH(NOLOCK) ON st.Id=p.StoreId
