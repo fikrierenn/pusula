@@ -178,7 +178,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **R-2 Kart oranı dönem seçimi** — kart-fiş oranı şu an 30g sabit. Günlük/haftalık/aylık pill ekle.
 - [ ] **R-3 E-ticaret kazanım** — yeni müşteri kazanım şu an YK (yazarkasa) only. JOKER CUSTOMERREF ilk-sipariş ile e-tic kazanım serisi ekle (ayrı evren).
 - [ ] **R-4 Kohort retention matrisi** (= B-66) — aylık edinim kohortu × N-ay-sonra geri dönüş % (heatmap). "Ocak'ta gelenin %X'i 3. ay hâlâ alıyor."
-- [ ] **R-5 Segment geçiş matrisi UI** — `SadakatQueries.GetRfmGecisAsync` SQL VAR (B-67), dashboard'da panel YOK. 3-6 ay önceki segment → bugünkü segment akışı (kim Şampiyon'dan Risk'e düştü).
+- [x] ✅ 18.06 **R-5 Segment geçiş matrisi UI** — stale: `Sadakat.razor:100-117`'de AppDataTable panel MEVCUT (eski/yeni seg + iyileşme/kötüleşme badge). SQL GetRfmGecisAsync bağlı.
 - [ ] **R-6 Müşteri LTV / yaşam boyu değer** — segment başına ort. yıllık harcama × tahmini ömür. Kart sahibi vs kartsız ATV farkı (GetKartliAsync var, kazanca bağla).
 - [ ] **R-7 Churn / tekrar-alım oranı** — ilk alıştan sonra 2. alış yapan % (aktivasyon), 90g sessizleşen (churn riski) adedi/trendi.
 - [ ] **R-8 Müşteri fiş drill polish** — fiş listesinde indirimli/kampanyalı fiş işareti (rozet), ET sipariş durumu, geri-navigasyon UX (şu an seviye state).
@@ -200,9 +200,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 #### 🔬 Sistem Denetimi Bulguları (16.06, 4-ajan + Context7) — KOD DÜZELTME BEKLİYOR
 > Denetim raporu journal 16.06 Oturum. Güvenlik TEMİZ (injection/secret/XSS yok). Aşağısı açık:
-- [ ] **B-81 🔴 KRİTİK iade-netleme (~%0,9 ciro şişik)** — irsHrk sorguları `ehTip IN (4,100)` alıp iade `(101,5,3)` DÜŞMÜYOR: `RefQueries.cs` devir(84-88)/marka(115)/cve(312-317)/rotasyon(505-508)/marj(478) + EncoreMerkez `ReturnAmount` netleme `Queries.cs` katSql/skatSql + `MagazaQueries.cs` katSql + `RefQueries.GetUrunlerAsync`. sema `metrics.yaml net_ciro`/`encore_irshrk_mutabakat` zaten "DÜZELTME BEKLİYOR". **Her sorgu MCP eski/yeni mutabakatlı** düzeltme — dedike iş, aceleye gelmez. (En yüksek değer.)
-- [ ] **B-82** ORTA — Kasiyer net `ABS(DiscountTotal)` formülü diğer sorgulardan farklı (Queries.cs:148-160, 333-341), çift-düzeltme riski → doğrula.
-- [ ] **B-83** ORTA — exception sızıntısı `_error = ex.Message` UI'da (tüm sayfalar) → generic mesaj + detay logger'a.
+- [x] ✅ 18.06 **B-81 🔴 KRİTİK iade-netleme** — irsHrk sorgularına `ehTip IN(3,5,101)` iade dalı eklendi: `RefQueries.cs` devir-Sat + marka-Ciro/Adet; `RefQueries.Envanter.cs` envanter-ciro + marka-rotasyon SatisAdet/SatisCiro. GetUrunlerAsync zaten doğruydu (EncoreMerkez DocType=3 sign). Stockout filtresi değişmedi (SKU-listesi, ciro değil). Mayıs doğrulama: iade/satış %4.22 (ehTip 101 only). Build OK.
+- [x] ✅ 18.06 **B-82** ORTA — Kasiyer ABS(DiscountTotal) doğrulandı: iade satırında DiscountTotal POZİTİF → ABS zararsız, formül doğru. Yan bulgu: Queries.cs + MagazaQueries.cs'de IIF → CASE WHEN compat-110 fix uygulandı (14 adet).
+- [x] ✅ 18.06 **B-83** ORTA — exception sızıntısı `_error = ex.Message` → Logger.LogError + generic mesaj. 10 sayfa, 17 lokasyon. ILogger<T> inject eklendi.
 - [ ] **B-84** ORTA — auth YOK (finansal + müşteri PII ağa açık). İç LAN/PWA bağlamı kabul ama karar gerek (basit auth?).
 - [x] ~~**B-85** boş catch loglama~~ — ✅ 16.06. RefQueries SPLH + Envanter marj → `ILogger.LogWarning` (RefQueries'e ILogger inject, Envanter'a @inject). Operasyon WMS iç-catch ölüydü (WhenAll await sonrası ulaşılmaz) → kaldırıldı. Build yeşil.
 - [x] ✅ **B-86** → HK-3 ile kapandı (18.06, commit 752ab3b).
