@@ -38,7 +38,7 @@ public record FisIcerikRow(string Ad, decimal Adet, decimal Brut, decimal Indiri
 /// <summary>Drill: kategorideki tekil ürün. Satis/Ciro = seçili dönem; S30/S90/S360 = bugünden geriye
 /// trailing pencere satış adedi (kaç-gün-yeter). StokFsm/Ozl/Ist/Depo = anlık stok dağılımı (stokSonAltDepo_vw).
 /// Bakiye = seçili kapsamdaki şube stoğu (cover hesabı için).</summary>
-public record UrunRow(string Kod, string Ad, int Satis, decimal Ciro, int Bakiye, int S30, int S90, int S360,
+public record UrunRow(int StkId, string Kod, string Ad, int Satis, decimal Ciro, int Bakiye, int S30, int S90, int S360,
     int StokFsm, int StokOzl, int StokIst, int StokDepo, int StokOdak, int YasGun);
 
 /// <summary>Ciro-vs-envanter scatter noktası (kategori).</summary>
@@ -137,9 +137,16 @@ public record KategoriStokRow(string Kategori, decimal Fsm, decimal Ozluce, deci
 }
 
 /// <summary>Ölü stok ürün satırı (S90=0, Bakiye>0, YasGun≥90).</summary>
-public record OluStokRow(string Kod, string Ad, string Kategori,
+public record OluStokRow(int StkId, string Kod, string Ad, string Kategori,
     int Bakiye, int StokFsm, int StokOzl, int StokIst, int StokDepo,
     decimal OrtMaliyet, decimal StokTl, int YasGun);
+
+/// <summary>Ürün stok hareket defter satırı (irsHrk). IsDevir=true → mekan açılış satırı (seçili tarih öncesi bakiye,
+/// Giriş/Çıkış boş). Normal satır: Giriş=ehAdetN&gt;0, Çıkış=ehAdetN&lt;0. Kalan=mekan-içi yürüyen (devir + kümülatif).</summary>
+public record StokHareketRow(string Tarih, string Tip, string Mekan, string Firma, string Evrak, int Giris, int Cikis, int Kalan, bool IsDevir = false);
+
+/// <summary>Ürün arama sonucu (stok hareket sayfası — ad/kod/barkod araması). Bakiye yok (lazy: defterde Kalan).</summary>
+public record UrunAraRow(int StkId, string Kod, string Ad, string Kategori);
 
 /// <summary>Aylık mağaza bazlı envanter snapshot (ay sonu, Ort.Maliyet). Maliyet ₺ + stok adet.</summary>
 public record EnvanterAyRow(string Ay,

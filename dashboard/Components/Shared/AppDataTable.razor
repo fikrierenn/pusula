@@ -9,10 +9,11 @@
     {
         var item = it; var idx = i++;
         var expandable = Details is not null;
+        var clickable = expandable || OnRowClick.HasDelegate;
         var open = _open.Contains(idx);
         <div class="border-b border-base-200 last:border-b-0">
-            <div class="flex items-center gap-2 py-2.5 @(expandable ? "cursor-pointer hover:bg-base-200/40 active:bg-base-200 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
-                 @onclick="@(() => Toggle(idx))">
+            <div class="flex items-center gap-2 py-2.5 @(clickable ? "cursor-pointer hover:bg-base-200/40 active:bg-base-200 rounded-lg -mx-1.5 px-1.5 transition-colors" : "")"
+                 @onclick="@(() => RowClicked(idx, item))">
                 <div class="min-w-0 flex-1">
                     <div class="text-[13px] font-semibold text-base-content/85 truncate">@Primary(item)</div>
                     @if (Sub is not null)
@@ -62,11 +63,12 @@
     [Parameter] public Func<TItem, string>? MetricSub { get; set; }
     [Parameter] public Func<TItem, (string Text, string Cls)>? Badge { get; set; }
     [Parameter] public RenderFragment<TItem>? Details { get; set; }   // set → satır tıkla-genişlet
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }   // set → satır tıkla-callback (Details yoksa)
 
     private readonly HashSet<int> _open = new();
-    private void Toggle(int idx)
+    private async Task RowClicked(int idx, TItem item)
     {
-        if (Details is null) return;
-        if (!_open.Remove(idx)) _open.Add(idx);
+        if (Details is not null) { if (!_open.Remove(idx)) _open.Add(idx); return; }
+        if (OnRowClick.HasDelegate) await OnRowClick.InvokeAsync(item);
     }
 }

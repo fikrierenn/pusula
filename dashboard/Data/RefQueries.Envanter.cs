@@ -24,7 +24,7 @@ public sealed partial class RefQueries
             ? "CASE WHEN SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END)=0 THEN 999999 ELSE CAST(ISNULL(MAX(stk.Fsm),0)+ISNULL(MAX(stk.Ozl),0)+ISNULL(MAX(stk.Ist),0)+ISNULL(MAX(wms.Depo),0) AS float)/SUM(CASE WHEN s.Date>=@d90 THEN sg.v*sp.Amount ELSE 0 END) END DESC"
             : "Satis DESC";
         var sql = $"""
-            SELECT TOP 100 u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
+            SELECT TOP 100 u.stkID AS StkId, u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*sp.Amount ELSE 0 END) AS int) AS Satis,
                 CAST(SUM(CASE WHEN s.Date>=@start AND s.Date<@end THEN sg.v*(sp.TotalPrice-sp.VatTotal) ELSE 0 END) AS decimal(18,0)) AS Ciro,
                 CAST(CASE @mekan WHEN 1 THEN ISNULL(MAX(stk.Fsm),0) WHEN 4477 THEN ISNULL(MAX(stk.Ozl),0) WHEN 4478 THEN ISNULL(MAX(stk.Ist),0)
@@ -64,7 +64,7 @@ public sealed partial class RefQueries
             WHERE MG.mekanID IN ({LokasyonConfig.Subeler}) AND (@mekan=0 OR MG.mekanID=@mekan)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
                 AND s.Date>=@minDate AND s.Date<@maxDate
-            GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
+            GROUP BY u.stkID, u.stkKod, CAST(u.stkAd AS nvarchar(80))
             HAVING {having}
             ORDER BY {orderBy};
             """;
@@ -248,15 +248,15 @@ public sealed partial class RefQueries
     // Ölü stok SQL şablonu: S90=0 + Bakiye>0 + YasGun>=90, tüm kategoriler, ort.maliyet × adet ≈ stok değeri
     // OFFSET/FETCH: SQL 2012+ (EncoreMerkez değil DerinSIS, compat 110 kısıtı yok)
     private string OluStokSql(string orderAndPage) => $"""
-        SELECT u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
+        SELECT u.stkID AS StkId, u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
             CAST(k.ktgrAd AS nvarchar(50)) AS Kategori,
             CAST(ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0) AS int) AS Bakiye,
             CAST(ISNULL(stk.Fsm,0) AS int) AS StokFsm,
             CAST(ISNULL(stk.Ozl,0) AS int) AS StokOzl,
             CAST(ISNULL(stk.Ist,0) AS int) AS StokIst,
             CAST(ISNULL(wms.Depo,0) AS int) AS StokDepo,
-            CAST(ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) AS decimal(18,2)) AS OrtMaliyet,
-            CAST((ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) * ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) AS decimal(18,0)) AS StokTl,
+            CAST(COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN u.fiyatS > 0 THEN u.fiyatS * avgml.AvgCostOran END) AS decimal(18,2)) AS OrtMaliyet,
+            CAST((ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) * COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN u.fiyatS > 0 THEN u.fiyatS * avgml.AvgCostOran END) AS decimal(18,0)) AS StokTl,
             CAST(DATEDIFF(DAY, u.gTarih, GETDATE()) AS int) AS YasGun
         FROM DerinSISBkm.dbo.urn u WITH(NOLOCK)
         JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID
@@ -274,16 +274,31 @@ public sealed partial class RefQueries
                    WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
                    GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
         LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID=u.stkID
-        LEFT JOIN (SELECT u2.urnKtgr2ID AS ktgrID, AVG(ml2.ORT_ALIS) AS AvgMaliyet
+        LEFT JOIN (SELECT u2.urnKtgr2ID AS ktgrID,
+                       AVG(CASE WHEN u2.fiyatS > 0 THEN ml2.ORT_ALIS / u2.fiyatS END) AS AvgCostOran
                    FROM Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml2 WITH(NOLOCK)
                    JOIN DerinSISBkm.dbo.urn u2 WITH(NOLOCK) ON u2.stkID=ml2.STKID
-                   WHERE ml2.ORT_ALIS > 0
+                   WHERE ml2.ORT_ALIS > 0 AND u2.fiyatS > 0 AND ml2.ORT_ALIS < u2.fiyatS
                    GROUP BY u2.urnKtgr2ID) avgml ON avgml.ktgrID=u.urnKtgr2ID
+        OUTER APPLY (
+            SELECT CONVERT(money, SUM(b.ehTutarN) / SUM(b.ehAdetN)) AS Maliyet
+            FROM (
+                SELECT TOP 5 fa.ehAdetN, fa.ehTutarN
+                FROM DerinSISBkm.dbo.fatAyr fa WITH(NOLOCK)
+                JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK) ON fa.ehID=f.eID
+                    AND f.eTip=0 AND f.eDurum<>2
+                WHERE fa.ehstkID=u.stkID AND fa.ehAdetN<>0
+                ORDER BY f.eTarih DESC
+            ) b
+            HAVING SUM(b.ehAdetN) <> 0
+        ) fat5
         WHERE k.ktgrAd NOT IN {EXC}
-          AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik',N'Zkargo')
+          AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik',N'Zkargo',N'KARGO')
+          AND u.urnTip = 0
+          AND u.stkID NOT IN (81809)
           AND DATEDIFF(DAY, u.gTarih, GETDATE()) >= 90
           AND (ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) > 0
-          AND ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) > 0
+          AND COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN u.fiyatS > 0 THEN u.fiyatS * avgml.AvgCostOran END) > 0
           AND NOT EXISTS (
               SELECT 1 FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
               WHERE h.ehstkID=u.stkID AND h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-90,GETDATE())
@@ -308,16 +323,31 @@ public sealed partial class RefQueries
                        WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
                        GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
             LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID=u.stkID
-            LEFT JOIN (SELECT u2.urnKtgr2ID AS ktgrID, AVG(ml2.ORT_ALIS) AS AvgMaliyet
+            LEFT JOIN (SELECT u2.urnKtgr2ID AS ktgrID,
+                           AVG(CASE WHEN u2.fiyatS > 0 THEN ml2.ORT_ALIS / u2.fiyatS END) AS AvgCostOran
                        FROM Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml2 WITH(NOLOCK)
                        JOIN DerinSISBkm.dbo.urn u2 WITH(NOLOCK) ON u2.stkID=ml2.STKID
-                       WHERE ml2.ORT_ALIS > 0
+                       WHERE ml2.ORT_ALIS > 0 AND u2.fiyatS > 0 AND ml2.ORT_ALIS < u2.fiyatS
                        GROUP BY u2.urnKtgr2ID) avgml ON avgml.ktgrID=u.urnKtgr2ID
+            OUTER APPLY (
+                SELECT CONVERT(money, SUM(b.ehTutarN) / SUM(b.ehAdetN)) AS Maliyet
+                FROM (
+                    SELECT TOP 5 fa.ehAdetN, fa.ehTutarN
+                    FROM DerinSISBkm.dbo.fatAyr fa WITH(NOLOCK)
+                    JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK) ON fa.ehID=f.eID
+                        AND f.eTip=0 AND f.eDurum<>2
+                    WHERE fa.ehstkID=u.stkID AND fa.ehAdetN<>0
+                    ORDER BY f.eTarih DESC
+                ) b
+                HAVING SUM(b.ehAdetN) <> 0
+            ) fat5
             WHERE k.ktgrAd NOT IN {EXC}
-              AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik',N'Zkargo')
+              AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik',N'Zkargo',N'KARGO')
+              AND u.urnTip = 0
+              AND u.stkID NOT IN (81809)
               AND DATEDIFF(DAY, u.gTarih, GETDATE()) >= 90
               AND (ISNULL(stk.T,0)+ISNULL(wms.T,0)) > 0
-              AND ISNULL(ml.ORT_ALIS, avgml.AvgMaliyet) > 0
+              AND COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN u.fiyatS > 0 THEN u.fiyatS * avgml.AvgCostOran END) > 0
               AND NOT EXISTS (
                   SELECT 1 FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
                   WHERE h.ehstkID=u.stkID AND h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-90,GETDATE())
@@ -332,6 +362,78 @@ public sealed partial class RefQueries
     {
         await using var conn = await db.OpenAsync();
         return await conn.QueryAsync<OluStokRow>(OluStokSql("ORDER BY StokTl DESC"), commandTimeout: 120);
+    }
+
+    /// <summary>Ürün stok hareket defteri — TEK birleşik liste, tarih sıralı, global yürüyen Kalan.
+    /// gun>0 → tek "Devir" açılış satırı (başlangıç öncesi tüm-mekan net bakiye) + dönem hareketleri.
+    /// gun=0 → devir yok, en baştan. mekan=0 → 3 şube + 12 depo birlikte; mekan seçiliyse o mekan defteri.</summary>
+    public async Task<IReadOnlyList<StokHareketRow>> GetStokHareketAsync(int stkId, int gun = 30, int mekan = 0)
+    {
+        await using var conn = await db.OpenAsync();
+        var bas = gun > 0 ? DateTime.Today.AddDays(-gun) : (DateTime?)null;
+
+        // Devir: başlangıç öncesi TÜM-mekan (veya seçili mekan) net bakiyesi — tek değer.
+        var devir = bas is null ? 0 : await conn.ExecuteScalarAsync<int?>($"""
+            SELECT CAST(ISNULL(SUM(h.ehAdetN),0) AS int)
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            WHERE h.ehstkID=@stkId AND h.ehAltDepo=0 AND h.ehMekan IN ({LokasyonConfig.SubelerVeDepo})
+              AND (@mekan=0 OR h.ehMekan=@mekan) AND h.ehTrhS < @bas
+            """, new { stkId, mekan, bas }) ?? 0;
+
+        // Dönem hareketleri: tarih sıralı, GLOBAL kümülatif (tüm liste boyunca tek yürüyen).
+        var hrk = (await conn.QueryAsync<HareketRaw>($"""
+            SELECT TOP 500
+                CONVERT(varchar(10), H.ehTrhS, 104) AS Tarih,
+                CAST(ISNULL(t.tipAD, CAST(H.ehTip AS nvarchar(10))) AS nvarchar(30)) AS Tip,
+                CAST(ISNULL(f.frmAd, CAST(H.ehMekan AS nvarchar(10))) AS nvarchar(40)) AS Ad,
+                CAST(ISNULL(ff.frmAd, '') AS nvarchar(50)) AS Firma,
+                CAST(ISNULL(i.eNo, '') AS nvarchar(30)) AS Evrak,
+                CAST(CASE WHEN H.ehAdetN > 0 THEN H.ehAdetN ELSE 0 END AS int) AS Giris,
+                CAST(CASE WHEN H.ehAdetN < 0 THEN -H.ehAdetN ELSE 0 END AS int) AS Cikis,
+                CAST(SUM(H.ehAdetN) OVER (ORDER BY H.ehTrhS, H.hrkID ROWS UNBOUNDED PRECEDING) AS int) AS DonemKum
+            FROM DerinSISBkm.dbo.irsHrk H WITH(NOLOCK)
+            LEFT JOIN DerinSISBkm.dbo.irs i WITH(NOLOCK) ON i.eID = H.ehID
+            LEFT JOIN DerinSISBkm.dbo.frm ff WITH(NOLOCK) ON ff.frmID = i.eFirma
+            LEFT JOIN DerinSISBkm.dbo.frm f WITH(NOLOCK) ON f.frmID = H.ehMekan
+            LEFT JOIN DerinSISBkm.dbo.irsTip_vw t ON t.tipID = H.ehTip
+            WHERE H.ehstkID=@stkId AND H.ehAltDepo=0 AND H.ehMekan IN ({LokasyonConfig.SubelerVeDepo})
+              AND (@mekan=0 OR H.ehMekan=@mekan)
+              AND (@gun=0 OR H.ehTrhS >= @bas)
+            ORDER BY H.ehTrhS, H.hrkID
+            """, new { stkId, mekan, gun, bas })).ToList();
+
+        // Tek liste: Devir açılış satırı (varsa) + tarih sıralı hareketler. Kalan = devir + global kümülatif.
+        var sonuc = new List<StokHareketRow>();
+        if (bas is not null)
+            sonuc.Add(new StokHareketRow("", "Devir", "", "", "", 0, 0, devir, IsDevir: true));
+        foreach (var h in hrk)
+            sonuc.Add(new StokHareketRow(h.Tarih, h.Tip, h.Ad, h.Firma, h.Evrak, h.Giris, h.Cikis, devir + h.DonemKum));
+        return sonuc;
+    }
+
+    private record HareketRaw(string Tarih, string Tip, string Ad, string Firma, string Evrak, int Giris, int Cikis, int DonemKum);
+
+    /// <summary>Ürün ara — barkod/stkKod (rakamsa exact, hızlı) veya ad (LIKE). urnTip=0, TOP 30. Bakiye = 3 şube+depo.</summary>
+    public async Task<IReadOnlyList<UrunAraRow>> GetUrunAraAsync(string q)
+    {
+        q = (q ?? "").Trim();
+        if (q.Length < 2) return [];
+        // Barkod/kod modu: giriş tamamen rakam → index'li exact eşleşme. stkID önce alt-sorgudan toplanır
+        // (OR EXISTS urn'u full tarıyordu, 5.8s → 0.14s). Metin → stkAd LIKE.
+        var rakam = q.All(char.IsDigit);
+        var filtre = rakam
+            ? "u.stkID IN (SELECT stkID FROM DerinSISBkm.dbo.urn WITH(NOLOCK) WHERE stkKod=@q UNION SELECT urnBrkdStkID FROM DerinSISBkm.dbo.urnBrkd WITH(NOLOCK) WHERE urnBarkod=@q AND urnBrkdOnce=0)"
+            : "u.stkAd LIKE @like";
+        await using var conn = await db.OpenAsync();
+        // Bakiye YOK (lazy) → arama hızlı; stok dağılımı/Kalan ürün seçilince defterde gelir.
+        return (await conn.QueryAsync<UrunAraRow>($"""
+            SELECT TOP 30 u.stkID AS StkId, u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
+                CAST(k.ktgrAd AS nvarchar(50)) AS Kategori
+            FROM DerinSISBkm.dbo.urn u WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID
+            WHERE u.urnTip=0 AND ({filtre})
+            ORDER BY u.stkAd
+            """, new { q, like = "%" + q + "%" })).ToList();
     }
 
     private record HcAyRaw(string Ay, decimal Tutar);

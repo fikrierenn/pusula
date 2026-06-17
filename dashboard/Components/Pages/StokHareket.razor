@@ -1,0 +1,189 @@
+@page "/stok-hareket"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@using Microsoft.AspNetCore.Components
+@inject RefQueries Ref
+@inject ILogger<StokHareket> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Stok Hareket — BKM GM</PageTitle>
+<div class="flex items-center gap-3 mb-5 flex-wrap">
+    <h1 class="text-2xl font-bold tracking-tight m-0">Stok Hareket Sorgu</h1>
+    <span class="text-sm font-semibold text-base-content/50">ürün ara → hareket geçmişi (satış/alış/iade/transfer)</span>
+</div>
+
+<div class="card bg-base-100 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <div class="flex items-center gap-2">
+            <input @bind="_q" @bind:event="oninput" @bind:after="Debounce" @onkeydown="OnKey"
+                   placeholder="Ürün adı, stok kodu veya barkod…"
+                   class="input input-bordered input-sm flex-1" autofocus />
+            @if (_araLoading)
+            {
+                <span class="loading loading-spinner loading-sm text-primary"></span>
+            }
+        </div>
+        @if (_araRows.Count > 0)
+        {
+            <div class="mt-3 max-h-64 overflow-y-auto space-y-1">
+                @foreach (var r in _araRows)
+                {
+                    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-base-200 cursor-pointer hover:bg-base-200/50 rounded px-1.5
+                                @(_selStkId == r.StkId ? "bg-primary/10" : "")"
+                         @onclick="() => Sec(r)">
+                        <div class="min-w-0">
+                            <div class="text-sm font-medium truncate">@r.Ad</div>
+                            <div class="text-xs text-base-content/50">@r.Kategori · Kod @r.Kod</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (_aradiBos)
+        {
+            <p class="text-base-content/40 text-sm mt-2">Sonuç yok.</p>
+        }
+    </div>
+</div>
+
+@if (_selStkId > 0)
+{
+    <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h2 class="font-bold text-base m-0 truncate">@_selAd</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 mb-3">
+                <div class="join">
+                    @foreach (var (g, lbl) in new[] { (30, "30g"), (90, "90g"), (365, "1y"), (0, "Tümü") })
+                    {
+                        <button class="btn btn-xs join-item @(_gun == g ? "btn-primary" : "btn-ghost")"
+                                @onclick="() => SetGun(g)">@lbl</button>
+                    }
+                </div>
+                <div class="join">
+                    @foreach (var (m, lbl) in new[] { (0, "Tümü"), (1, "FSM"), (4477, "Özlüce"), (4478, "İst.Yolu"), (12, "Depo") })
+                    {
+                        <button class="btn btn-xs join-item @(_mekan == m ? "btn-primary" : "btn-ghost")"
+                                @onclick="() => SetMekan(m)">@lbl</button>
+                    }
+                </div>
+            </div>
+            @if (_hLoading)
+            {
+                <p class="text-base-content/50">Yükleniyor…</p>
+            }
+            else if (_hRows.Count == 0)
+            {
+                <p class="text-base-content/40 text-sm">Seçili filtrede hareket yok — tarihi genişletin.</p>
+            }
+            else
+            {
+                <div class="text-xs text-base-content/40 mb-2">Mekan bazlı · Devir = dönem öncesi bakiye · Kalan yürüyen</div>
+                <div class="overflow-x-auto">
+                <table class="table table-xs w-full">
+                    <thead>
+                        <tr class="text-base-content/50">
+                            <th>Tarih</th><th>Tip</th><th>Mekan</th><th>Firma / Karşı Taraf</th><th>Evrak</th>
+                            <th class="text-right text-success">Giriş</th>
+                            <th class="text-right text-error">Çıkış</th><th class="text-right">Kalan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var h in _hRows)
+                        {
+                            <tr class="@HareketSinif(h)">
+                                <td class="text-base-content/60 whitespace-nowrap">@h.Tarih</td>
+                                <td class="text-base-content/80">@h.Tip</td>
+                                <td class="text-base-content/70 whitespace-nowrap">@h.Mekan</td>
+                                <td class="text-base-content/60 max-w-[180px] truncate" title="@h.Firma">@h.Firma</td>
+                                <td class="text-base-content/40 whitespace-nowrap">@h.Evrak</td>
+                                <td class="text-right text-success font-medium">@(h.Giris > 0 ? Num(h.Giris) : "—")</td>
+                                <td class="text-right text-error font-medium">@(h.Cikis > 0 ? Num(h.Cikis) : "—")</td>
+                                <td class="text-right font-semibold">@Num(h.Kalan)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string _q = "";
+    private bool _araLoading, _aradiBos;
+    private readonly List<UrunAraRow> _araRows = [];
+
+    private int _selStkId;
+    private string _selAd = "";
+    private int _gun = 30;     // default son 30 gün
+    private int _mekan;        // default tüm şubeler
+    private bool _hLoading;
+    private readonly List<StokHareketRow> _hRows = [];
+
+    private CancellationTokenSource? _cts;
+
+    // Envanter (ölü stok / kategori drill) → /stok-hareket?stk=ID&ad=… ile direkt açılış.
+    [SupplyParameterFromQuery(Name = "stk")] public int? Stk { get; set; }
+    [SupplyParameterFromQuery(Name = "ad")] public string? Ad { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Stk is > 0)
+        {
+            _selStkId = Stk.Value; _selAd = Ad ?? $"Ürün #{Stk}"; _gun = 30; _mekan = 0;
+            await Yukle();
+        }
+    }
+
+    // As-you-type: 350ms yazma durunca sunucudan ara (her tuş değil → lazy). Enter anında arar.
+    private async Task Debounce()
+    {
+        _cts?.Cancel();
+        var cts = _cts = new CancellationTokenSource();
+        try { await Task.Delay(350, cts.Token); } catch (TaskCanceledException) { return; }
+        if (!cts.IsCancellationRequested) await Ara();
+    }
+
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") { _cts?.Cancel(); await Ara(); } }
+
+    private async Task Ara()
+    {
+        if (string.IsNullOrWhiteSpace(_q) || _q.Trim().Length < 2) { _araRows.Clear(); _aradiBos = false; StateHasChanged(); return; }
+        _araLoading = true; _aradiBos = false; StateHasChanged();
+        try
+        {
+            var rows = await Ref.GetUrunAraAsync(_q);
+            _araRows.Clear(); _araRows.AddRange(rows);
+            _aradiBos = _araRows.Count == 0;
+            // Tek sonuç (barkod okutma) → otomatik seç + defter getir.
+            if (_araRows.Count == 1) { _araLoading = false; await Sec(_araRows[0]); return; }
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Ürün arama hatası — q={Q}", _q); }
+        finally { _araLoading = false; StateHasChanged(); }
+    }
+
+    private Task Sec(UrunAraRow r)
+    {
+        _selStkId = r.StkId; _selAd = r.Ad; _gun = 30; _mekan = 0;
+        return Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        _hLoading = true; _hRows.Clear(); StateHasChanged();
+        try { _hRows.AddRange(await Ref.GetStokHareketAsync(_selStkId, _gun, _mekan)); }
+        catch (Exception ex) { Logger.LogError(ex, "Stok hareket hatası — stkID {StkId}", _selStkId); }
+        finally { _hLoading = false; StateHasChanged(); }
+    }
+
+    private Task SetGun(int gun) { _gun = gun; return Yukle(); }
+    private Task SetMekan(int mekan) { _mekan = mekan; return Yukle(); }
+
+    // Satır arka planı: devir gri, giriş yeşilimsi, çıkış kırmızımsı.
+    private static string HareketSinif(StokHareketRow h) =>
+        h.IsDevir ? "bg-base-200/50 font-semibold" : h.Giris > 0 ? "bg-success/5 hover:bg-success/10" : h.Cikis > 0 ? "bg-error/5 hover:bg-error/10" : "hover";
+    private static string Num(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
