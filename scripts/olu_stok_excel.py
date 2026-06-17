@@ -20,6 +20,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 
 R = Path(__file__).resolve().parent.parent
 KIRMIZI = "E30622"
+MEKANLAR = "1,4477,4478"  # FSM=1, Özlüce=4477, İstanbul Yolu=4478 — LokasyonConfig.Subeler ile senkron
 SADECE_OLU = "--sadece-olu" in sys.argv
 # --kategori "Kitap" → bkm.UrunBilgi.Kategori3 filtresi (yoksa tüm kategoriler).
 KATEGORI = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--kategori=")), None)
@@ -64,7 +65,7 @@ VERI AS (
   SELECT stk.ehstkID AS stkID, SUM(CONVERT(FLOAT,stk.ehAdetN)) AS mag, CONVERT(FLOAT,0) AS wms
   FROM dbo.irsHrk stk WITH(NOLOCK)
   JOIN URUNLER u ON u.stkID=stk.ehstkID
-  WHERE stk.ehTrhS<=@tarih AND stk.ehAltDepo=0 AND stk.ehMekan IN (1,4477,4478)
+  WHERE stk.ehTrhS<=@tarih AND stk.ehAltDepo=0 AND stk.ehMekan IN ({MEKANLAR})
   GROUP BY stk.ehstkID
   UNION ALL
   SELECT s.stkID, 0, SUM(s.stok) FROM #WMS s JOIN URUNLER u ON u.stkID=s.stkID GROUP BY s.stkID
@@ -104,7 +105,7 @@ JOIN #M m ON m.stkID=s.stkID
 OUTER APPLY (SELECT CAST(-SUM(CASE WHEN h2.ehTip IN (4,100) THEN h2.ehAdetN ELSE 0 END) AS int) AS S90,
                     MAX(CASE WHEN h2.ehTip IN (4,100) THEN h2.ehTrhS END) AS SonSatis
              FROM dbo.irsHrk h2 WITH(NOLOCK)
-             WHERE h2.ehstkID=s.stkID AND h2.ehMekan IN (1,4477,4478) AND h2.ehAltDepo=0
+             WHERE h2.ehstkID=s.stkID AND h2.ehMekan IN ({MEKANLAR}) AND h2.ehAltDepo=0
                AND h2.ehTrhS>=DATEADD(DAY,-90,GETDATE())) sat
 WHERE (s.MagStok+s.WmsStok)*m.brmMaliyet > 0 /*EXTRA*/;
 
@@ -129,12 +130,12 @@ def get_data():
     cur = conn.cursor(as_dict=True)
     # SADECE_OLU: dead = son 90g satış yok. WHERE'e NOT EXISTS ekle.
     extra = ("" if not SADECE_OLU else
-             " AND NOT EXISTS (SELECT 1 FROM dbo.irsHrk h3 WITH(NOLOCK) WHERE h3.ehstkID=s.stkID "
-             "AND h3.ehTip IN (4,100) AND h3.ehMekan IN (1,4477,4478) AND h3.ehAltDepo=0 "
-             "AND h3.ehTrhS>=DATEADD(DAY,-90,GETDATE()))")
+             f" AND NOT EXISTS (SELECT 1 FROM dbo.irsHrk h3 WITH(NOLOCK) WHERE h3.ehstkID=s.stkID "
+             f"AND h3.ehTip IN (4,100) AND h3.ehMekan IN ({MEKANLAR}) AND h3.ehAltDepo=0 "
+             f"AND h3.ehTrhS>=DATEADD(DAY,-90,GETDATE()))")
     katf = ("JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.stkID=u.stkID AND ub.Kategori3=N'%s'"
             % KATEGORI.replace("'", "''")) if KATEGORI else ""
-    cur.execute(SQL.replace("/*KATFILTRE*/", katf).replace("/*EXTRA*/", extra))
+    cur.execute(SQL.replace("{MEKANLAR}", MEKANLAR).replace("/*KATFILTRE*/", katf).replace("/*EXTRA*/", extra))
     rows = cur.fetchall()
     cur.close(); conn.close()
     rows.sort(key=lambda r: float(r["Kilitli"] or 0), reverse=True)

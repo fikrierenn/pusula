@@ -63,12 +63,13 @@ def get_daily_series(mekan: int = 0) -> pd.DataFrame:
     """
     import pymssql
 
-    sql = """
+    _mekan_in = ",".join(str(m) for m in _MEKANLAR)
+    sql = f"""
         SELECT CAST(h.ehTrhS AS date) AS ds,
                CAST(SUM(CASE WHEN h.ehTip IN (1,4,100) THEN h.ehTutarN
                              WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS float) AS y
         FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-        WHERE h.ehMekan IN (1,4477,4478) AND (%s = 0 OR h.ehMekan = %s)
+        WHERE h.ehMekan IN ({_mekan_in}) AND (%s = 0 OR h.ehMekan = %s)
           AND h.ehTip IN (1,3,4,5,100,101)
         GROUP BY CAST(h.ehTrhS AS date)
         ORDER BY ds;

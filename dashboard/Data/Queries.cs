@@ -321,11 +321,11 @@ public sealed class Queries(Db db)
     {
         await using var conn = await db.OpenAsync();
         // Net = satış (ehTip 1,4,100) − iade (3,5,101). ehTutarN daima pozitif (sema codes.yaml).
-        const string sql = """
+        var sql = $"""
             SELECT CONVERT(char(7),h.ehTrhS,23) AS Ay,
                    CAST(SUM(CASE WHEN h.ehTip IN (1,4,100) THEN h.ehTutarN WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS Net
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
-            WHERE h.ehMekan IN (1,4477,4478) AND (@mekan=0 OR h.ehMekan=@mekan)
+            WHERE h.ehMekan IN ({LokasyonConfig.Subeler}) AND (@mekan=0 OR h.ehMekan=@mekan)
               AND h.ehTip IN (1,3,4,5,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son
             GROUP BY CONVERT(char(7),h.ehTrhS,23);
             """;
@@ -378,7 +378,7 @@ public sealed class Queries(Db db)
         var sonBy = hedef.AddDays(gun).ToDateTime(TimeOnly.MinValue);
         var basGY = hedef.AddYears(-1).ToDateTime(TimeOnly.MinValue);
         var sonGY = hedef.AddYears(-1).AddDays(gun).ToDateTime(TimeOnly.MinValue);
-        const string sql = """
+        var sql = $"""
             SELECT k.ktgrAd AS Ad,
                    CAST(SUM(CASE WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (1,4,100) THEN h.ehTutarN
                                  WHEN h.ehTrhS>=@basBy AND h.ehTrhS<@sonBy AND h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS MtdBuYil,
@@ -387,7 +387,7 @@ public sealed class Queries(Db db)
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID = h.ehstkID
             JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.urnKtgr2ID
-            WHERE h.ehMekan IN (1,4477,4478)
+            WHERE h.ehMekan IN ({LokasyonConfig.Subeler})
               AND h.ehTip IN (1,3,4,5,100,101)
               AND h.ehTrhS >= @basGY AND h.ehTrhS < @sonBy
             GROUP BY k.ktgrAd
@@ -408,10 +408,10 @@ public sealed class Queries(Db db)
     public async Task<decimal?> GetGercekCiroAsync(int yil, int ay, int mekanId = 0)
     {
         await using var conn = await db.OpenAsync();
-        const string sql = """
+        var sql = $"""
             SELECT CAST(SUM(CASE WHEN h.ehTip IN (1,4,100) THEN h.ehTutarN WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0))
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
-            WHERE h.ehMekan IN (1,4477,4478) AND (@mekan=0 OR h.ehMekan=@mekan)
+            WHERE h.ehMekan IN ({LokasyonConfig.Subeler}) AND (@mekan=0 OR h.ehMekan=@mekan)
               AND h.ehTip IN (1,3,4,5,100,101) AND h.ehTrhS>=@bas AND h.ehTrhS<@son;
             """;
         var bas = new DateOnly(yil, ay, 1).ToDateTime(TimeOnly.MinValue);

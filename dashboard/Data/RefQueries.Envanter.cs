@@ -52,7 +52,7 @@ public sealed partial class RefQueries
                            SUM(CASE WHEN v.ehMekan=4477 THEN v.stok ELSE 0 END) AS Ozl,
                            SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) AS Ist
                        FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
-                       WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478)
+                       WHERE v.ehAltDepo=0 AND v.ehMekan IN ({LokasyonConfig.Subeler})
                        GROUP BY v.ehstkID) stk ON stk.sID=u.stkID
             LEFT JOIN (SELECT pu.pUStkID AS sID, SUM(pu.pUAdetN) AS Depo
                        FROM DerinSISBkm.depo.paletUrnTnm pu
@@ -61,7 +61,7 @@ public sealed partial class RefQueries
                        WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
                        GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
             LEFT JOIN DerinSISBkm.ent.odak_depo_Stok od WITH(NOLOCK) ON od.stkID=u.stkID
-            WHERE MG.mekanID IN (1,4477,4478) AND (@mekan=0 OR MG.mekanID=@mekan)
+            WHERE MG.mekanID IN ({LokasyonConfig.Subeler}) AND (@mekan=0 OR MG.mekanID=@mekan)
                 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1
                 AND s.Date>=@minDate AND s.Date<@maxDate
             GROUP BY u.stkKod, CAST(u.stkAd AS nvarchar(80))
@@ -104,7 +104,7 @@ public sealed partial class RefQueries
                    CAST(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) Ciro
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100,3,5,101)
+            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN ({LokasyonConfig.Subeler}) AND h.ehAltDepo=0 AND h.ehTip IN (4,100,3,5,101)
                   AND k.ktgrAd NOT IN {EXC}
             GROUP BY CAST(k.ktgrAd AS nvarchar(50));
             """, p)).ToDictionary(x => x.K, x => x.Ciro, StringComparer.OrdinalIgnoreCase);
@@ -301,7 +301,7 @@ public sealed partial class RefQueries
             JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
             JOIN DerinSISBkm.dbo.urnMrk m WITH(NOLOCK) ON m.mrkID = u.urnMrkID
             WHERE a.ehTrhS >= @Bas AND a.ehTrhS < @Bit
-              AND a.ehMekan IN (12,1,4478,4477)
+              AND a.ehMekan IN ({LokasyonConfig.SubelerVeDepo})
             GROUP BY m.mrkAd
             HAVING SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) > 0
             ORDER BY SatisAdet DESC
