@@ -245,7 +245,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 **Düşük:**
 - [x] **B-64** E-ticaret sipariş durumu huni ✅ 1c1b162 — J_ORDERS.STATUS 6 aşama + badge (Eticaret)
-- [ ] **B-65** Müşteri kayıp/risk segmenti 3-ay trendi → **Faz 3 /sadakat** (B-67 segment geçiş matrisi ile birlikte). Veri: ykSql 3× (t/t-30/t-60).
+- [x] **B-65** ✅ 17.06 Müşteri kayıp/risk segmenti 3-ay trendi — SegmentTrendiRow + GetSegmentTrendiAsync (ykSql 3× t0/t30/t60) + /sadakat kart (Risk/Kayıp kırmızı, delta yön-duyarlı). (commit 8dac591)
 
 #### 🎯 Müşteri Sadakat Derinleştirme (kullanıcı isteği 14.06 — derin CRM/sadakat). [TIER 3 plan-first — yeni "Sadakat" sayfası olabilir]
 > Veri tabanı: EncoreMerkez `Sales.CustomersId` + `DerinCrm.Customer` (Name/PhoneNumber/CardNumber) · e-tic `J_ORDER_CLIENTS.CUSTOMERREF` · mevcut RFM (C1-rfm). Tek köprü çözüldü (`DerinCrm.Customer.Id = Sales.CustomersId`).
