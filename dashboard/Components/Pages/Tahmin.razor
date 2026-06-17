@@ -8,16 +8,30 @@
 @inject TahminKayitService Kayit
 @inject TakvimService Takvim
 @inject ForecastOkuService Motor
+@inject ForecastService MotorCalistir
 @inject ILogger<Tahmin> Logger
 @inject PersistentComponentState AppState
 @rendermode InteractiveServer
 
 <PageTitle>BKM Hedef Tahmin</PageTitle>
 
-<div class="min-w-0 mb-4">
-    <div class="text-sm italic text-base-content/50">Projeksiyon · YoY taban × MoM ivme</div>
-    <h1 class="text-2xl font-bold tracking-tight m-0">Hedef Tahmin</h1>
+<div class="flex items-start justify-between gap-2 mb-4 flex-wrap">
+    <div class="min-w-0">
+        <div class="text-sm italic text-base-content/50">Projeksiyon · YoY taban × MoM ivme</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0">Hedef Tahmin</h1>
+    </div>
+    @if (MotorCalistir.Available)
+    {
+        <button class="btn btn-sm btn-primary gap-1.5 @(_motorCalisiyor ? "loading" : "")" disabled="@_motorCalisiyor" @onclick="MotorCalistirTetikle">
+            @if (!_motorCalisiyor) { <i data-lucide="refresh-cw" class="w-4 h-4"></i> }
+            @(_motorCalisiyor ? "Çalışıyor…" : "Tahmini Çalıştır")
+        </button>
+    }
 </div>
+@if (_motorMesaj is not null)
+{
+    <div class="alert @(_motorOk ? "alert-success" : "alert-error") py-2 mb-3 text-sm">@_motorMesaj</div>
+}
 
 <!-- Ay seçici (plan-14): −24 … +3 ay. -->
 <div class="flex items-center gap-2 mb-4">
@@ -375,6 +389,9 @@ else if (_t is not null)
     private ForecastAgirlik? _motorAgirlik; // plan-15 öğrenen katman (model ağırlık/bias/band)
     private bool _carpanAcik;        // plan-14 kararı: çarpan KAPALI başlar; MAPE kanıtlayınca aç
     private bool _takvimYenileniyor;
+    private bool _motorCalisiyor;
+    private bool _motorOk;
+    private string? _motorMesaj;
     // Kombine çarpan = hafta sonu × bayram düzeltmesi (okul şimdilik 1.0). Kapalıyken 1.0.
     private decimal Carpan => _carpanAcik && _etmen is not null ? _etmen.HaftaSonuCarpan * _etmen.BayramDuzeltme : 1m;
     // Sınır: −24 ay (geçmiş backtest) … +3 ay (ileri projeksiyon). Çok ileri = spekülatif.
@@ -488,6 +505,16 @@ else if (_t is not null)
         await Takvim.ApidenYenileAsync();
         _takvimYenileniyor = false;
         await Yukle();
+    }
+
+    // Forecast motorunu (python run.py) tetikle → bitince çıktı JSON güncel → sayfayı yenile.
+    private async Task MotorCalistirTetikle()
+    {
+        _motorCalisiyor = true; _motorMesaj = null; StateHasChanged();
+        var (ok, mesaj, _) = await MotorCalistir.RunAsync();
+        _motorOk = ok; _motorMesaj = mesaj; _motorCalisiyor = false;
+        if (ok) await Yukle();   // yeni tahmin JSON'unu oku
+        else StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
