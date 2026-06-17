@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @inject Queries Queries
 @inject RefQueries Ref
+@inject EticQueries Etic
 @inject PerfState Perf
 @inject ILogger<Toplam> Logger
 @rendermode InteractiveServer
@@ -60,16 +61,62 @@ else if (_data is not null)
             var sid = s.MekanId;
             <button class="btn btn-xs @(_selMekan == sid ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="@(() => _selMekan = sid)">@s.Ad</button>
         }
-        <button class="btn btn-xs @(_selMekan == -1 ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="@(() => _selMekan = -1)">Online</button>
+        <button class="btn btn-xs @(_selMekan == -1 ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="SeçOnline">Online</button>
     </div>
 
     @if (_selMekan == -1)
     {
-        <div class="card bg-info/10 border border-info/30 rounded-2xl p-4 mb-4 text-[13px] text-base-content/70">
-            <i data-lucide="info" class="w-4 h-4 text-info inline-block align-[-3px] mr-1"></i>
-            Online kategori kırılımı mevcut değil — JOKER siparişleri henüz kategorize edilmemiş.
-            <a href="eticaret" class="text-info font-semibold ml-1 no-underline">E-ticaret sayfasına git →</a>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-4">
+            <div class="text-base-content/50 text-xs mb-3">@_aralik · e-ticaret · JOKER · DERINSIS_LOGOGRUP · kategoriye dokun → ürünler</div>
+            @if (_etLoading)
+            {
+                <p class="text-base-content/50 text-[13px]">Yükleniyor…</p>
+            }
+            else if (_etKategori.Count == 0)
+            {
+                <div class="text-base-content/50 text-[13px] py-2">Veri yok.</div>
+            }
+            else
+            {
+            var etTot = _etKategori.Sum(k => k.NetCiro);
+            @foreach (var k in _etKategori)
+            {
+                var etSel = string.Equals(k.Kategori, _selEtKat, StringComparison.Ordinal);
+                <button class="block w-full text-left no-underline text-base-content py-1.5 px-1.5 -mx-1.5 rounded-lg hover:bg-base-200/40 active:bg-base-200 transition-colors @(etSel ? "bg-info/5" : "")"
+                        @onclick="@(() => SeçEtKat(k.Kategori))">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="text-[13px] font-semibold text-base-content/85 truncate @(etSel ? "text-info" : "")">@k.Kategori ▸</span>
+                        <span class="text-[13px] font-bold shrink-0 text-base-content/70">@Tl(k.NetCiro) · %@(etTot > 0 ? Math.Round(100 * k.NetCiro / etTot) : 0) · @Num(k.Siparis) sip</span>
+                    </div>
+                    <div class="h-2 rounded-full bg-base-200 overflow-hidden">
+                        <div class="h-full rounded-full bg-info transition-all duration-300" style="width:@BarW(k.NetCiro, _etKategori[0].NetCiro)"></div>
+                    </div>
+                </button>
+            }
+            }
         </div>
+
+        @if (!string.IsNullOrEmpty(_selEtKat))
+        {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-w-0 mb-3">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <h2 class="text-lg font-bold tracking-tight m-0 truncate"><i data-lucide="package" class="w-[18px] h-[18px] text-info inline-block align-[-3px] mr-1"></i>@_selEtKat — Online Ürünler</h2>
+                    <button class="text-sm font-semibold text-base-content/50" @onclick="@(() => { _selEtKat = null; _etUrunler = []; })">temizle ✕</button>
+                </div>
+                <div class="text-base-content/50 text-xs mb-2">@_aralik · ilk 30 · net ciro (KDV hariç)</div>
+                @if (_etUrunLoading)
+                {
+                    <p class="text-base-content/50">Yükleniyor…</p>
+                }
+                else
+                {
+                    <AppDataTable TItem="EticKategoriUrunRow" Items="_etUrunler"
+                                  Primary="@(u => u.Urun)"
+                                  MetricMain="@(u => Tl(u.NetCiro))" MetricSub="@(u => $"{Num(u.Siparis)} sip · {Num(u.Adet)} adet")">
+                    </AppDataTable>
+                }
+            </div>
+        }
     }
     else
     {
@@ -161,6 +208,12 @@ else if (_data is not null)
     private string _selKat = "";
     private bool _urunLoading;
     private IReadOnlyList<UrunRow> _urunler = [];
+    // B-92: ET kategori lazy state
+    private bool _etLoading;
+    private IReadOnlyList<EticKategoriRow> _etKategori = [];
+    private string? _selEtKat;
+    private bool _etUrunLoading;
+    private IReadOnlyList<EticKategoriUrunRow> _etUrunler = [];
     private static readonly string[] _gecerliDonem = { "gunluk", "haftalik", "ay" };
 
     // Query param değişimi (dönem/kategori nav) → yeniden yükle. İlk render dahil.
@@ -196,6 +249,7 @@ else if (_data is not null)
                 _urunler = await Ref.GetUrunlerAsync(_selKat, 0, start, endExcl);
             }
             else { _urunler = []; }
+            _etKategori = []; _etUrunler = []; _selEtKat = null;
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _urunLoading = false; _loading = false; Perf.Report("TOPLAM", sw); StateHasChanged(); }
@@ -203,6 +257,25 @@ else if (_data is not null)
 
     // Masaüstü interaktif dönem değişimi (SignalR). Mobilde pills çalışmaz; drill href dönemi taşır.
     private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    private async Task SeçOnline()
+    {
+        _selMekan = -1; _selEtKat = null; _etUrunler = [];
+        if (_etKategori.Count > 0) { StateHasChanged(); return; }
+        _etLoading = true; StateHasChanged();
+        try { _etKategori = await Etic.GetEticKategoriAsync(_start, _endExcl); }
+        catch (Exception ex) { Logger.LogError(ex, "ET kategori yükleme hatası"); _etKategori = []; }
+        finally { _etLoading = false; StateHasChanged(); }
+    }
+
+    private async Task SeçEtKat(string kat)
+    {
+        if (_selEtKat == kat) { _selEtKat = null; _etUrunler = []; return; }
+        _selEtKat = kat; _etUrunLoading = true; _etUrunler = []; StateHasChanged();
+        try { _etUrunler = await Etic.GetEticKategoriUrunAsync(kat, _start, _endExcl); }
+        catch (Exception ex) { Logger.LogError(ex, "ET kategori ürün yükleme hatası"); _etUrunler = []; }
+        finally { _etUrunLoading = false; StateHasChanged(); }
+    }
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));

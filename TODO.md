@@ -218,7 +218,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   **PLAN:** Tier-3, TAZE oturum. Sayfa-sayfa (ağır önce: Home 8-sorgu · Müşteri RFM · Envanter). Her sayfa: uygula → build → smoke (masaüstü tek-fetch + **mobil SSR hâlâ görünür** + drill çalışır). 12 sayfa × N alan boilerplate — verbose ama mekanik. Mobil regresyon testi ZORUNLU (B-47 ile etkileşir).
 
 #### ⏸️ Ertelenenler / Kısayollar (16.06 — normale çevrilecek, ATLANMAYACAK)
-- [ ] **B-92** /toplam **online (e-ticaret) kategori** V2 — B-75'te V1 mağaza-only yapıldı; online kategori için yeni e-tic SQL (J_ORDER_DETAILS→J_ITEMS→DERINSIS_ID→urnKtgr2 veya LOGOGRUP) gerekir + ayrı doğrulama.
+- [x] **B-92** ✅ 17.06.2026 (commit pending) — /toplam Online sekmesi: EticQueries.GetEticKategoriAsync (LOGOGRUP) lazy yük + kategori drill GetEticKategoriUrunAsync; dönem değişince cache temizle.
 - [ ] **B-93** plan-12 WS-2 **faz-2** — konu-bazlı rule'ları fiziksel `.claude/rules/topic/` dizine taşı + skill-inject (gerçek system-prompt token düşüşü). **compact-survival smoke ZORUNLU** geçmeden yapma.
 - [ ] **B-94** plan-12 WS-1 **telemetri** — sema/skill kullanım sayacı (`.usage.json` sidecar). Şimdilik manuel yargı; veri-temelli stale tespiti istenirse.
 - [ ] **B-95** sema **last_verified geriye-doldurma** — şu an sadece encore-kampanya-kalem örnek aldı. Diğer <1.0 kayıtlar (bekleyen-siparis-il 0.9, hedef-kategori 0.95, salescampaign-sales 0.95, items-derinsis kontrol) dokunuldukça `last_verified` kazanmalı (toplu değil, footprint-ladder).
