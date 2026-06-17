@@ -92,7 +92,7 @@ public record HcOzet(decimal ToplamSatilan12Ay, decimal ToplamKullanilan12Ay, IR
 public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decimal SatisCiro);
 
 /// <summary>Depo WMS günlük toplama verimi.</summary>
-public record DepoWmsData(int BugunIslem, int BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
+public record DepoWmsData(int? BugunIslem, int? BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
 /// <summary>Depo WMS günlük trend satırı.</summary>
 public record DepoWmsTrend(DateTime Gun, int Islem, int Adet);
 

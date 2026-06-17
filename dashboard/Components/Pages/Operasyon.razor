@@ -38,7 +38,7 @@ else if (_data is not null)
         new("Kasiyer", Num(_data.Kasiyer.Count), "from-info to-info/80", "aktif kasiyer"),
         new("En Yoğun Saat", _data.Saat.Count > 0 ? $"{_data.Saat.OrderByDescending(h => h.Fis).First().Saat:00}:00" : "—", "from-success to-success/80", "fiş zirvesi"),
         new("COD İade Zararı", _ops is not null ? Tl(_ops.CodZarar) : "—", "from-error to-error/80", "60g kargo×2"),
-        new("Depo Bugün", _wms is not null ? Num(_wms.BugunAdet) : "—", "from-warning to-warning/80", $"{(_wms?.BugunIslem ?? 0)} toplama emri"),
+        new("Depo Bugün", _wms?.BugunAdet is not null ? Num(_wms.BugunAdet.Value) : "veri yok", "from-warning to-warning/80", _wms?.BugunIslem is not null ? $"{_wms.BugunIslem} toplama emri" : "bugün kayıt yok"),
     })" />
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
