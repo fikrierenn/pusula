@@ -10,6 +10,7 @@ public sealed class Db
 {
     private readonly string _connStr;
     private readonly string? _jokerConnStr;
+    private readonly string? _panelConnStr;
     private readonly ILogger<Db> _logger;
 
     public Db(IConfiguration config, ILogger<Db> logger)
@@ -61,7 +62,31 @@ public sealed class Db
             };
             _jokerConnStr = jb.ConnectionString;
         }
+
+        // Panel auth DB (localhost, Windows auth) — B-84. .env'de PANEL_DB_HOST yoksa auth devre dışı.
+        var pHost = env.GetValueOrDefault("PANEL_DB_HOST");
+        if (!string.IsNullOrWhiteSpace(pHost))
+        {
+            var pb = new SqlConnectionStringBuilder
+            {
+                DataSource = pHost,
+                InitialCatalog = env.GetValueOrDefault("PANEL_DB_NAME") ?? "BkmPanel",
+                TrustServerCertificate = true,
+                ConnectTimeout = 10,
+                CommandTimeout = 30,
+            };
+            if (string.Equals(env.GetValueOrDefault("PANEL_DB_TRUSTED"), "true", StringComparison.OrdinalIgnoreCase))
+                pb.IntegratedSecurity = true;
+            else { pb.UserID = env.GetValueOrDefault("PANEL_DB_USER") ?? "sa"; pb.Password = env.GetValueOrDefault("PANEL_DB_PASSWORD") ?? ""; }
+            _panelConnStr = pb.ConnectionString;
+        }
     }
+
+    /// <summary>Panel auth DB bağlantısı (localhost BkmPanel). .env'de PANEL_DB_HOST yoksa null → auth kapalı.</summary>
+    public Task<SqlConnection>? OpenPanelAsync() =>
+        _panelConnStr is null ? null : OpenWithRetryAsync(_panelConnStr, dateformat: false);
+
+    public bool PanelEnabled => _panelConnStr is not null;
 
     /// <summary>Her çağrıda yeni açık bağlantı (Dapper using ile kapatır). DMY zorunlu sorgular için SET DATEFORMAT dmy.</summary>
     public Task<SqlConnection> OpenAsync() => OpenWithRetryAsync(_connStr, dateformat: true);
