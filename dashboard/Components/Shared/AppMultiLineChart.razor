@@ -1,0 +1,66 @@
+@* Çok serili çizgi grafik (ApexCharts) — her seri ayrı renk, legend altta, y-ekseni fmtM. *@
+@using ApexCharts
+@typeparam TItem where TItem : class
+
+<div style="height:@(Height)px">
+    <ApexChart TItem="TItem" Options="_opts" Height="@Height">
+        @foreach (var s in Series)
+        {
+            <ApexPointSeries TItem="TItem" Items="s.Items" Name="@s.Name"
+                             SeriesType="SeriesType.Line"
+                             XValue="@XValue" YValue="@s.YValue" />
+        }
+    </ApexChart>
+</div>
+
+@code {
+    public record SeriesSpec(string Name, IEnumerable<TItem> Items, Func<TItem, decimal?> YValue);
+
+    [Parameter, EditorRequired] public IEnumerable<SeriesSpec> Series { get; set; } = [];
+    [Parameter, EditorRequired] public Func<TItem, object> XValue { get; set; } = default!;
+    [Parameter] public int Height { get; set; } = 240;
+    [Parameter] public string YFormatter { get; set; } = "function(v){return v==null?'':Math.abs(v)>=1e6?(v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M':Math.round(v).toLocaleString('tr-TR')}";
+
+    private ApexChartOptions<TItem> _opts = new();
+
+    protected override void OnParametersSet()
+    {
+        _opts = new ApexChartOptions<TItem>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false }, Zoom = new Zoom { Enabled = false } },
+            Stroke = new Stroke { Curve = Curve.Smooth, Width = new List<int>(Enumerable.Repeat(2, 10)) },
+            DataLabels = new DataLabels { Enabled = false },
+            Grid = new Grid { Show = true, BorderColor = "#e2e8f0", Padding = new Padding { Left = 6, Right = 10, Top = 0, Bottom = 0 } },
+            Markers = new Markers { Size = 0, Hover = new MarkersHover { Size = 5 } },
+            Legend = new Legend { Show = true, Position = LegendPosition.Bottom, FontSize = "11px" },
+            Xaxis = new XAxis
+            {
+                AxisBorder = new AxisBorder { Show = false },
+                AxisTicks = new AxisTicks { Show = false },
+                Labels = new XAxisLabels
+                {
+                    Rotate = 0,
+                    HideOverlappingLabels = true,
+                    Style = new AxisLabelStyle { FontSize = "10px", Colors = "#94a3b8" },
+                },
+                Tooltip = new AxisTooltip { Enabled = false },
+            },
+            Yaxis = new List<YAxis>
+            {
+                new YAxis
+                {
+                    Labels = new YAxisLabels
+                    {
+                        Formatter = YFormatter,
+                        Style = new AxisLabelStyle { FontSize = "10px", Colors = new List<string> { "#94a3b8" } },
+                    }
+                }
+            },
+            Tooltip = new Tooltip
+            {
+                Shared = true,
+                Y = new TooltipY { Formatter = YFormatter },
+            },
+        };
+    }
+}

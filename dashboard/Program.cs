@@ -1,6 +1,7 @@
 using ApexCharts;
 using GmDashboard.Components;
 using GmDashboard.Data;
+using MiniExcelLibs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +48,32 @@ app.MapGet("/ca.crt", (IWebHostEnvironment env) =>
 
 // Hafif sağlık ucu — istemci circuit kopunca poll eder, sunucu dönünce telefon otomatik reload.
 app.MapGet("/healthz", () => Results.Text("ok"));
+
+// Ölü stok Excel indirme — MiniExcel streaming, büyük liste için uygun.
+app.MapGet("/api/olustok-excel", async (RefQueries ref_, HttpContext ctx) =>
+{
+    var rows = await ref_.GetOluStokTumAsync();
+    var data = rows.Select(r => new
+    {
+        Stok_Kodu   = r.Kod,
+        Ürün_Adı    = r.Ad,
+        Kategori    = r.Kategori,
+        Toplam      = r.Bakiye,
+        FSM         = r.StokFsm,
+        Özlüce      = r.StokOzl,
+        İst_Yolu    = r.StokIst,
+        Depo        = r.StokDepo,
+        Ort_Maliyet = r.OrtMaliyet,
+        Stok_TL     = r.StokTl,
+        Yaş_Gün     = r.YasGun,
+    });
+    ctx.Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    ctx.Response.Headers.ContentDisposition = "attachment; filename=\"olustok.xlsx\"";
+    using var ms = new MemoryStream();
+    await MiniExcel.SaveAsAsync(ms, data);
+    ms.Position = 0;
+    await ms.CopyToAsync(ctx.Response.Body);
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

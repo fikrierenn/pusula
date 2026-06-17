@@ -245,6 +245,82 @@ public sealed partial class RefQueries
             aylar);
     }
 
+    // Ölü stok SQL şablonu: S90=0 + Bakiye>0 + YasGun>=90, tüm kategoriler, ort.maliyet × adet ≈ stok değeri
+    // OFFSET/FETCH: SQL 2012+ (EncoreMerkez değil DerinSIS, compat 110 kısıtı yok)
+    private string OluStokSql(string orderAndPage) => $"""
+        SELECT u.stkKod AS Kod, CAST(u.stkAd AS nvarchar(80)) AS Ad,
+            CAST(k.ktgrAd AS nvarchar(50)) AS Kategori,
+            CAST(ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0) AS int) AS Bakiye,
+            CAST(ISNULL(stk.Fsm,0) AS int) AS StokFsm,
+            CAST(ISNULL(stk.Ozl,0) AS int) AS StokOzl,
+            CAST(ISNULL(stk.Ist,0) AS int) AS StokIst,
+            CAST(ISNULL(wms.Depo,0) AS int) AS StokDepo,
+            CAST(ISNULL(ml.ORT_ALIS,0) AS decimal(18,2)) AS OrtMaliyet,
+            CAST((ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) * ISNULL(ml.ORT_ALIS,0) AS decimal(18,0)) AS StokTl,
+            CAST(DATEDIFF(DAY, u.gTarih, GETDATE()) AS int) AS YasGun
+        FROM DerinSISBkm.dbo.urn u WITH(NOLOCK)
+        JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID
+        LEFT JOIN (SELECT v.ehstkID AS sID,
+                       SUM(CASE WHEN v.ehMekan=1    THEN v.stok ELSE 0 END) AS Fsm,
+                       SUM(CASE WHEN v.ehMekan=4477  THEN v.stok ELSE 0 END) AS Ozl,
+                       SUM(CASE WHEN v.ehMekan=4478  THEN v.stok ELSE 0 END) AS Ist
+                   FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
+                   WHERE v.ehAltDepo=0 AND v.ehMekan IN ({LokasyonConfig.Subeler})
+                   GROUP BY v.ehstkID) stk ON stk.sID=u.stkID
+        LEFT JOIN (SELECT pu.pUStkID AS sID, SUM(pu.pUAdetN) AS Depo
+                   FROM DerinSISBkm.depo.paletUrnTnm pu
+                     JOIN DerinSISBkm.depo.paletTnm pt ON pt.pID=pu.pUID
+                     JOIN DerinSISBkm.depo.adres a ON a.adrsID=pt.pSonPozID
+                   WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
+                   GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
+        LEFT JOIN Aktarim.dbo.BKM_STOKLAR_MALIYETLI ml WITH(NOLOCK) ON ml.STKID=u.stkID
+        WHERE k.ktgrAd NOT IN {EXC}
+          AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik')
+          AND DATEDIFF(DAY, u.gTarih, GETDATE()) >= 90
+          AND (ISNULL(stk.Fsm,0)+ISNULL(stk.Ozl,0)+ISNULL(stk.Ist,0)+ISNULL(wms.Depo,0)) > 0
+          AND NOT EXISTS (
+              SELECT 1 FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+              WHERE h.ehstkID=u.stkID AND h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-90,GETDATE())
+                AND h.ehMekan IN ({LokasyonConfig.Subeler}) AND h.ehAltDepo=0
+          )
+        {orderAndPage}
+        """;
+
+    /// <summary>Ölü stok ürün listesi sayfalı (S90=0, Bakiye>0, YasGun≥90). Stok ₺ büyük önce.</summary>
+    public async Task<(IReadOnlyList<OluStokRow> Rows, int Toplam)> GetOluStokAsync(int offset, int limit = 50)
+    {
+        await using var conn = await db.OpenAsync();
+        var sayfa = await conn.QueryAsync<OluStokRow>(OluStokSql($"ORDER BY StokTl DESC OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY"));
+        var toplam = await conn.ExecuteScalarAsync<int>($"""
+            SELECT COUNT(*) FROM DerinSISBkm.dbo.urn u WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID=u.urnKtgr2ID
+            LEFT JOIN (SELECT v.ehstkID sID, SUM(v.stok) T FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
+                       WHERE v.ehAltDepo=0 AND v.ehMekan IN ({LokasyonConfig.Subeler}) GROUP BY v.ehstkID) stk ON stk.sID=u.stkID
+            LEFT JOIN (SELECT pu.pUStkID sID, SUM(pu.pUAdetN) T FROM DerinSISBkm.depo.paletUrnTnm pu
+                         JOIN DerinSISBkm.depo.paletTnm pt ON pt.pID=pu.pUID
+                         JOIN DerinSISBkm.depo.adres a ON a.adrsID=pt.pSonPozID
+                       WHERE pu.pUAdetN>0 AND a.adrsAd NOT IN ('CK01') AND pu.pUID NOT IN ('42560','20353')
+                       GROUP BY pu.pUStkID) wms ON wms.sID=u.stkID
+            WHERE k.ktgrAd NOT IN {EXC}
+              AND k.ktgrAd NOT IN (N'Sınav Okulları',N'Hediye Çeki',N'Etkinlik')
+              AND DATEDIFF(DAY, u.gTarih, GETDATE()) >= 90
+              AND (ISNULL(stk.T,0)+ISNULL(wms.T,0)) > 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+                  WHERE h.ehstkID=u.stkID AND h.ehTip IN (4,100) AND h.ehTrhS>=DATEADD(DAY,-90,GETDATE())
+                    AND h.ehMekan IN ({LokasyonConfig.Subeler}) AND h.ehAltDepo=0
+              )
+            """);
+        return (sayfa.ToList(), toplam);
+    }
+
+    /// <summary>Ölü stok tam liste (Excel için — limit yok).</summary>
+    public async Task<IEnumerable<OluStokRow>> GetOluStokTumAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        return await conn.QueryAsync<OluStokRow>(OluStokSql("ORDER BY StokTl DESC"), commandTimeout: 120);
+    }
+
     private record HcAyRaw(string Ay, decimal Tutar);
     private record DepoWmsBugun(int Islem, int Adet);
 

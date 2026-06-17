@@ -130,10 +130,29 @@ public record DepoWmsData(int? BugunIslem, int? BugunAdet, IReadOnlyList<DepoWms
 /// <summary>Depo WMS günlük trend satırı.</summary>
 public record DepoWmsTrend(DateTime Gun, int Islem, int Adet);
 
+/// <summary>Ölü stok ürün satırı (S90=0, Bakiye>0, YasGun≥90).</summary>
+public record OluStokRow(string Kod, string Ad, string Kategori,
+    int Bakiye, int StokFsm, int StokOzl, int StokIst, int StokDepo,
+    decimal OrtMaliyet, decimal StokTl, int YasGun);
+
+/// <summary>Aylık mağaza bazlı envanter snapshot (ay sonu, Ort.Maliyet). Maliyet ₺ + stok adet.</summary>
+public record EnvanterAyRow(string Ay,
+    decimal Fsm, decimal Ozluce, decimal IstYolu, decimal Depo,
+    decimal FsmAdet = 0, decimal OzluceAdet = 0, decimal IstYoluAdet = 0, decimal DepoAdet = 0)
+{
+    public decimal Toplam => Fsm + Ozluce + IstYolu + Depo;
+    public decimal ToplamAdet => FsmAdet + OzluceAdet + IstYoluAdet + DepoAdet;
+}
+
 /// <summary>Envanter sayfası toplu veri.</summary>
 public record InventoryData(
     decimal ToplamDeger,
     IReadOnlyList<DevirRow> Devir,
     IReadOnlyList<AbcClass> Abc,
     IReadOnlyList<MarkaRow> Marka,
-    IReadOnlyList<StockoutRow> Stockout);
+    IReadOnlyList<StockoutRow> Stockout,
+    decimal FsmStok = 0,
+    decimal OzluceStok = 0,
+    decimal IstYoluStok = 0,
+    decimal DepoStok = 0,
+    IReadOnlyList<EnvanterAyRow>? Trend = null);

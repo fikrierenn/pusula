@@ -31,8 +31,69 @@ else if (_d is not null)
         new("Envanter Değeri", Tl(_d.ToplamDeger), "from-primary to-primary/80", "ort.maliyet · Dergi/Sınav hariç"),
         new("Ort. Devir Hızı", _d.Devir.Count > 0 ? (_d.Devir.Average(x => x.Devir).ToString("0.0") + "x") : "—", "from-info to-info/80", "yıllık devir hızı"),
         new("Stokta Yokluk", _d.Stockout.Count > 0 ? ("%" + _d.Stockout.Average(x => x.Pct).ToString("0.0")) : "—", "from-warning to-warning/80", "satılanlarda (hedef <%5)"),
-        new("Ölü Stok", Tl(_d.Devir.Where(x => x.Devir < 1.5m).Sum(x => x.StokTl)), "from-error to-error/80", "devir<1,5x kilitli ₺"),
+        new("Ölü Stok", Tl(_d.Devir.Where(x => x.Devir < 1.5m).Sum(x => x.StokTl)), "from-error to-error/80", "devir<1,5x kilitli ₺", EventCallback.Factory.Create(this, AcOluStok)),
     })" />
+
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
+        <h3 class="text-sm font-semibold text-base-content/90 mb-3">Anlık Stok Dağılımı — Mağaza Bazlı</h3>
+        <table class="table table-xs w-full">
+            <thead><tr class="text-base-content/50">
+                <th></th><th class="text-right">FSM</th><th class="text-right">Özlüce</th><th class="text-right">İst.Yolu</th><th class="text-right">Merkez Depo</th><th class="text-right font-bold">Toplam</th>
+            </tr></thead>
+            <tbody>
+                <tr class="font-semibold border-b border-base-200">
+                    <td class="text-base-content/60 text-xs">Toplam Stok (₺)</td>
+                    <td class="text-right font-mono">@Tl(_d.FsmStok)</td>
+                    <td class="text-right font-mono">@Tl(_d.OzluceStok)</td>
+                    <td class="text-right font-mono">@Tl(_d.IstYoluStok)</td>
+                    <td class="text-right font-mono">@Tl(_d.DepoStok)</td>
+                    <td class="text-right font-mono font-bold">@Tl(_d.FsmStok + _d.OzluceStok + _d.IstYoluStok + _d.DepoStok)</td>
+                </tr>
+                @foreach (var r in _d.Devir.OrderByDescending(x => x.StokTl).Take(15))
+                {
+                <tr class="hover:bg-base-200/40">
+                    <td class="text-base-content/70 text-xs pl-3">@r.Kategori</td>
+                    <td colspan="4"></td>
+                    <td class="text-right font-mono text-xs">@Tl(r.StokTl)</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+        <div class="text-base-content/40 text-[11px] mt-2">Anlık snapshot · Ort.Maliyet · Dergi/Sınav hariç · Kategori stok: geçen ay ort.</div>
+    </div>
+
+    @if (_d.Trend is { Count: > 0 } trend)
+    {
+    <div class="grid grid-cols-1 gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-2">Mağaza Bazlı Stok Değeri Seyri — Son 12 Ay (₺, Ort.Maliyet, ay sonu)</h3>
+            <AppMultiLineChart TItem="EnvanterAyRow"
+                Series="@(new AppMultiLineChart<EnvanterAyRow>.SeriesSpec[] {
+                    new("FSM",         trend, r => r.Fsm),
+                    new("Özlüce",      trend, r => r.Ozluce),
+                    new("İst.Yolu",    trend, r => r.IstYolu),
+                    new("Merkez Depo", trend, r => r.Depo),
+                })"
+                XValue="@(r => (object)r.Ay)"
+                Height="240" />
+            <div class="text-base-content/50 text-[11px] mt-1">Dergi/Sınav hariç · İst.Yolu 2026'daki artış: Sınav Okulları stoğu · ENVANTER_RAPORU gece job'ı</div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-2">Mağaza Bazlı Stok Adet Seyri — Son 12 Ay (adet, ay sonu)</h3>
+            <AppMultiLineChart TItem="EnvanterAyRow"
+                Series="@(new AppMultiLineChart<EnvanterAyRow>.SeriesSpec[] {
+                    new("FSM",         trend, r => r.FsmAdet),
+                    new("Özlüce",      trend, r => r.OzluceAdet),
+                    new("İst.Yolu",    trend, r => r.IstYoluAdet),
+                    new("Merkez Depo", trend, r => r.DepoAdet),
+                })"
+                XValue="@(r => (object)r.Ay)"
+                YFormatter="function(v){return v==null?'':Math.round(v).toLocaleString('tr-TR')}"
+                Height="240" />
+            <div class="text-base-content/50 text-[11px] mt-1">Dergi/Sınav hariç · ENVANTER_RAPORU gece job'ı</div>
+        </div>
+    </div>
+    }
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Hızlı Dönen Kategoriler (yıllık devir)</h3>
@@ -162,6 +223,52 @@ else if (_d is not null)
         </div>
     </div>
     }
+    <Modal @bind-Open="_modalOluStok" Title="Ölü Stok — 90g Satışsız Ürünler">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <span class="text-base-content/50 text-xs">Stok değeri büyük önce · S90=0 · YasGun≥90 · Dergi/Sınav/HC hariç</span>
+            <a href="/api/olustok-excel" class="btn btn-xs btn-success gap-1" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Excel indir
+            </a>
+        </div>
+        @if (_olusLoading)
+        {
+            <p class="text-base-content/50">Yükleniyor…</p>
+        }
+        else
+        {
+            <div class="space-y-1">
+                @foreach (var r in _olusRows)
+                {
+                    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-base-200">
+                        <div class="min-w-0">
+                            <div class="text-sm font-medium truncate">@r.Ad</div>
+                            <div class="text-xs text-base-content/50">@r.Kategori · Kod @r.Kod · @r.YasGun gün listede</div>
+                            <div class="text-xs text-base-content/40">FSM:@r.StokFsm Özl:@r.StokOzl İst:@r.StokIst Dep:@r.StokDepo</div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="font-bold text-error text-sm">@Tl(r.StokTl)</div>
+                            <div class="text-xs text-base-content/50">@Num(r.Bakiye) adet</div>
+                        </div>
+                    </div>
+                }
+            </div>
+            @if (_olusRows.Count < _olusToplam)
+            {
+                <div class="mt-3 flex justify-between items-center text-xs text-base-content/40">
+                    <span>@_olusRows.Count / @_olusToplam ürün gösteriliyor</span>
+                    <button class="btn btn-xs btn-outline" @onclick="OlusStokDahaFazla" disabled="@_olusYukleniyor">
+                        @(_olusYukleniyor ? "Yükleniyor…" : "Daha fazla yükle")
+                    </button>
+                </div>
+            }
+            else if (_olusRows.Count > 0)
+            {
+                <div class="mt-3 text-xs text-base-content/40 text-center">Tüm @_olusToplam ürün listelendi</div>
+            }
+        }
+    </Modal>
+
     <Modal @bind-Open="_modalUrun" Title="@(_selKat + (_olusSort ? " — Ölü Stok" : " — Ürünler"))">
         <div class="text-base-content/50 text-xs mb-2">
             @if (_olusSort)
@@ -204,6 +311,12 @@ else if (_d is not null)
     private string _selKat = "";
     private DateOnly _gAyBas, _gAyBit;   // ürün drill = "geçen tam ay" (sayfa ciro/devir scope'u)
     private IReadOnlyList<UrunRow> _urunler = [];
+
+    private bool _modalOluStok;
+    private bool _olusLoading;
+    private bool _olusYukleniyor;
+    private int _olusToplam;
+    private readonly List<OluStokRow> _olusRows = [];
 
     private PersistingComponentStateSubscription _persistSub;
 
@@ -270,6 +383,33 @@ else if (_d is not null)
             }
             catch { /* prerender — sonraki render'da bağlanır */ }
         }
+    }
+
+    private async Task AcOluStok()
+    {
+        if (_modalOluStok) return;
+        _modalOluStok = true; _olusLoading = true; _olusRows.Clear(); _olusToplam = 0; StateHasChanged();
+        try
+        {
+            var (rows, toplam) = await Ref.GetOluStokAsync(0, 50);
+            _olusRows.AddRange(rows);
+            _olusToplam = toplam;
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Ölü stok yükleme hatası"); }
+        finally { _olusLoading = false; StateHasChanged(); }
+    }
+
+    private async Task OlusStokDahaFazla()
+    {
+        if (_olusYukleniyor) return;
+        _olusYukleniyor = true; StateHasChanged();
+        try
+        {
+            var (rows, _) = await Ref.GetOluStokAsync(_olusRows.Count, 50);
+            _olusRows.AddRange(rows);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Ölü stok sayfa yükleme hatası"); }
+        finally { _olusYukleniyor = false; StateHasChanged(); }
     }
 
     private async Task OpenUrun(string kategori, bool olusSort = false)

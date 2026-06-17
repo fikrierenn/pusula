@@ -8,10 +8,11 @@
         @foreach (var k in Items)
         {
             <div class="carousel-item w-[86%] lg:w-auto">
-                <div class="w-full h-full rounded-3xl px-5 py-5 bg-gradient-to-br @k.Gradient text-white shadow-lg flex flex-col">
+                <div class="w-full h-full rounded-3xl px-5 py-5 bg-gradient-to-br @k.Gradient text-white shadow-lg flex flex-col @(k.OnClick.HasDelegate ? "cursor-pointer active:scale-[0.98] transition-transform" : "")"
+                     @onclick="@(k.OnClick.HasDelegate ? k.OnClick : default)">
                     <div class="opacity-80 text-[11px] uppercase tracking-wider font-semibold">@k.Label</div>
                     <div class="text-[32px] font-extrabold leading-tight tracking-tight whitespace-nowrap mt-2">@k.Value</div>
-                    <div class="text-xs opacity-85 mt-1">@k.Sub</div>
+                    <div class="text-xs opacity-85 mt-1">@k.Sub @(k.OnClick.HasDelegate ? "↗" : "")</div>
                 </div>
             </div>
         }
