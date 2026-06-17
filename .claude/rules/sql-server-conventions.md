@@ -141,6 +141,19 @@ DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 - **`ehMaliyet` alış faturasında 0 olabilir** — maliyet ayrı job ile güncellenir, anlık sorguda sıfır gelirse job henüz çalışmamış demektir.
 - Alış faturası filtresi: `ehTip IN (1)` veya `ehTip IN (1,2)` (iade alış dahilse).
 
+## Arama Perf: `OR EXISTS` yerine `stkID IN (alt-sorgu UNION)` (17.06 dersi)
+
+- **`WHERE ... OR EXISTS(SELECT 1 FROM urnBrkd ...)` YASAK büyük tabloda** — optimizer urn'u (850K) full tarayıp her satıra EXISTS çalıştırır → 5.8s. Barkod/kod araması böyle yavaşladı.
+- **Doğrusu:** eşleşen ID'leri ÖNCE indexli alt-sorgudan topla, sonra ana tabloyu daralt:
+  `WHERE u.stkID IN (SELECT stkID FROM urn WHERE stkKod=@q UNION SELECT urnBrkdStkID FROM urnBrkd WHERE urnBarkod=@q AND urnBrkdOnce=0)` → 0.14s (42×).
+- Genel kural: `OR` ile birden çok tabloya yayılan filtre → optimizer kötü plan; `IN (alt-sorgu)` veya `UNION` ile ayır.
+- Korelasyonlu agregat (bakiye/stok) çok-satırlı derived-table JOIN yerine **OUTER APPLY** ile sadece eşleşen ≤N satıra indir (tüm view agg etme).
+
+## Dapper DateOnly ↔ SQL `date` (17.06 dersi)
+
+- **SQL `date` kolonu Dapper'da DateTime döner; record ctor `DateOnly` ise eşleşmez** → `materialization` hatası ("matching signature ... System.DateTime").
+- **Çözüm:** global TypeHandler (Program.cs'te bir kez): `Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler())` — `Parse: DateOnly.FromDateTime((DateTime)v)`, `SetValue: DbType.Date + value.ToDateTime(TimeOnly.MinValue)`. Hem okuma hem yazma (param) çözer.
+
 ## İlişkili Dosyalar
 
 - `docs/01-baglanti.md`, `docs/02-tablolar-magaza.md`, `docs/03-ciro-filtreleri.md`
