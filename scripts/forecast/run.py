@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -19,8 +18,6 @@ from data import get_daily_series
 from models import MODELS, predict_glm_calendar
 from backtest import rolling_backtest, model_ozet
 from learn import ogren, ensemble_tahmin
-
-_OUT = Path(__file__).resolve().parent.parent.parent / "dashboard" / "data" / "forecast"
 
 
 def _ay_tahmin(daily, yil, ay, ogrenilen):
@@ -71,21 +68,19 @@ def main(n_ileri: int = 3):
         aylar.append(_ay_tahmin(daily, t.year, t.month, ogrenilen))
 
     uretim = datetime.now().strftime("%d.%m.%Y %H:%M")
-    # Tum objeleri ONCE kur (biri patlarsa hicbir dosya yazilmaz — ya-hep-ya-hic).
+    # Tum objeleri ONCE kur (biri patlarsa hicbir kayit yazilmaz — ya-hep-ya-hic).
     objeler = {
-        "tahmin-aylik.json": {"uretim": uretim, "seri_son": str(son.date()), "aylar": aylar},
-        "yontem-agirlik.json": {"uretim": uretim, **ogrenilen,
+        "tahmin-aylik": {"uretim": uretim, "seri_son": str(son.date()), "aylar": aylar},
+        "yontem-agirlik": {"uretim": uretim, **ogrenilen,
             "ozet": {m: {"mape": round(r["mape"], 2), "bias_pct": round(r["bias_pct"], 2), "n": int(r["n"])}
                      for m, r in ozet.iterrows()}},
-        "backtest-gecmis.json": {"uretim": uretim,
+        "backtest-gecmis": {"uretim": uretim,
             "kayitlar": [{"ay": str(r["ay"].date()), "model": r["model"], "tahmin": round(r["tahmin"]),
                           "gercek": round(r["gercek"]), "ape": round(r["ape"] * 100, 2)}
                          for _, r in bt.iterrows()]},
     }
-    _OUT.mkdir(parents=True, exist_ok=True)
-    for ad, obj in objeler.items():
-        _yaz_atomik(_OUT / ad, obj)
-    print(f"[run] JSON yazildi -> {_OUT}")
+    _yaz_db(objeler)  # localhost Express BkmPanel.dbo.PanelForecast — C# ForecastOkuService okur (API yok, ortak DB)
+    print(f"[run] PanelForecast'e yazildi ({len(objeler)} kayit)")
     for a in aylar:
         if a["point"] is None:
             print(f"  {a['yil']}-{a['ay']:02d}: TAHMIN YOK (tum modeller elendi — {a['atlanan']})")
@@ -93,11 +88,32 @@ def main(n_ileri: int = 3):
             print(f"  {a['yil']}-{a['ay']:02d}: ensemble {a['point']:,} band [{a['alt']:,} - {a['ust']:,}] ({a['model_sayisi']} model)")
 
 
-def _yaz_atomik(path: Path, obj: dict):
-    """tmp'ye yaz + os.replace (atomik) — kismi/bozuk dosya birakmaz."""
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+def _yaz_db(objeler: dict):
+    """PanelForecast'e JSON-string yaz (pyodbc, Windows auth). Tek transaction — ya-hep-ya-hic.
+    Bağlantı: PANEL_DB_HOST/NAME env veya localhost\\SQLEXPRESS + BkmPanel default (kişisel, tek makine)."""
+    import pyodbc
+    host = os.environ.get("PANEL_DB_HOST", r"localhost\SQLEXPRESS")
+    dbname = os.environ.get("PANEL_DB_NAME", "BkmPanel")
+    cn = pyodbc.connect(
+        f"Driver={{ODBC Driver 18 for SQL Server}};Server={host};Database={dbname};"
+        "Trusted_Connection=yes;TrustServerCertificate=yes", timeout=10)
+    try:
+        cur = cn.cursor()
+        cur.execute("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PanelForecast')
+            CREATE TABLE dbo.PanelForecast (Ad nvarchar(40) PRIMARY KEY, Json nvarchar(max) NOT NULL,
+                Uretim datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
+        """)
+        for ad, obj in objeler.items():
+            j = json.dumps(obj, ensure_ascii=False)
+            cur.execute("""
+                MERGE dbo.PanelForecast AS t USING (SELECT ? AS Ad, ? AS Json) AS s ON t.Ad=s.Ad
+                WHEN MATCHED THEN UPDATE SET Json=s.Json, Uretim=SYSUTCDATETIME()
+                WHEN NOT MATCHED THEN INSERT (Ad, Json) VALUES (s.Ad, s.Json);
+            """, ad, j)
+        cn.commit()
+    finally:
+        cn.close()
 
 
 if __name__ == "__main__":
