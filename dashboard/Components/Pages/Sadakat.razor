@@ -97,6 +97,48 @@ else
     </div>
     }
 
+    @if (_segTrendi.Count > 0)
+    {
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 mb-3">
+        <h3 class="text-sm font-semibold text-base-content/90 mb-3">Segment 3-Ay Trendi <span class="text-[11px] font-normal text-base-content/50 ml-1">📄 fiş bazlı · bugün / 30g önce / 60g önce</span></h3>
+        <div class="overflow-x-auto">
+        <table class="table table-xs w-full">
+            <thead>
+                <tr class="text-[11px] text-base-content/60">
+                    <th class="w-28">Segment</th>
+                    <th class="text-right">60g önce</th>
+                    <th class="text-right">30g önce</th>
+                    <th class="text-right">Bugün</th>
+                    <th class="text-right">Δ 30g</th>
+                    <th class="text-right">Δ 60g</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in _segTrendi)
+            {
+                var isRisk  = r.Segment.StartsWith("4") || r.Segment.StartsWith("5");
+                var rowCls  = isRisk ? "bg-error/5" : "";
+                var d30Cls  = r.Delta30 > 0 ? "text-error" : r.Delta30 < 0 ? "text-success" : "text-base-content/40";
+                var d60Cls  = r.Delta60 > 0 ? "text-error" : r.Delta60 < 0 ? "text-success" : "text-base-content/40";
+                // 4-Risk ve 5-Kayıp için büyüme kötü (error), küçülme iyi (success)
+                // 1-Şampiyon, 2-Sadık, 3-Yeni için büyüme iyi
+                if (!isRisk) { d30Cls = r.Delta30 > 0 ? "text-success" : r.Delta30 < 0 ? "text-error" : "text-base-content/40"; d60Cls = r.Delta60 > 0 ? "text-success" : r.Delta60 < 0 ? "text-error" : "text-base-content/40"; }
+                <tr class="@rowCls">
+                    <td class="font-medium text-[12px] @(isRisk ? "text-error" : "text-base-content/85")">@r.Segment.Substring(2)</td>
+                    <td class="text-right text-[12px] text-base-content/60">@Num(r.T60)</td>
+                    <td class="text-right text-[12px] text-base-content/60">@Num(r.T30)</td>
+                    <td class="text-right text-[12px] font-semibold">@Num(r.T0)</td>
+                    <td class="text-right text-[12px] font-medium @d30Cls">@(r.Delta30 > 0 ? "+" : "")@Num(r.Delta30)</td>
+                    <td class="text-right text-[12px] font-medium @d60Cls">@(r.Delta60 > 0 ? "+" : "")@Num(r.Delta60)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+        <div class="text-base-content/50 text-[11px] mt-2">Risk/Kayıp için + kırmızı (kötü) · Şampiyon/Sadık/Yeni için + yeşil (iyi). Snapshot: RFM penceresi her noktada 365g.</div>
+    </div>
+    }
+
     @if (_rfmGecis.Count > 0)
     {
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -147,6 +189,7 @@ else
     private IReadOnlyList<KartliRow> _kartli = [];
     private TekrarAlisOzet? _tekrar;
     private IReadOnlyList<RfmGecisRow> _rfmGecis = [];
+    private IReadOnlyList<SegmentTrendiRow> _segTrendi = [];
     private string _yorum = "";
     private bool _yorumCalisiyor;
     private int _yorumGen;
@@ -163,6 +206,7 @@ else
             _winBack = wb ?? []; _pareto = par ?? []; _kartli = krt ?? [];
             if (AppState.TryTakeFromJson<TekrarAlisOzet>("sad_tek", out var tek)) _tekrar = tek;
             if (AppState.TryTakeFromJson<List<RfmGecisRow>>("sad_gec", out var gec)) _rfmGecis = gec ?? [];
+            if (AppState.TryTakeFromJson<List<SegmentTrendiRow>>("sad_trendi", out var tr)) _segTrendi = tr ?? [];
             _loading = false; StateHasChanged();
             if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
             return;
@@ -175,12 +219,14 @@ else
             var tKrt = Sada.GetKartliAsync();
             var tTek = Sada.GetTekrarAlisAsync();
             var tGec = Sada.GetRfmGecisAsync();
-            await Task.WhenAll(tWb, tPar, tKrt, tTek, tGec);
+            var tTrendi = Sada.GetSegmentTrendiAsync();
+            await Task.WhenAll(tWb, tPar, tKrt, tTek, tGec, tTrendi);
             _winBack = tWb.Result;
             _pareto = tPar.Result;
             _kartli = tKrt.Result;
             _tekrar = tTek.Result;
             _rfmGecis = tGec.Result;
+            _segTrendi = tTrendi.Result;
             if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
@@ -194,6 +240,7 @@ else
         AppState.PersistAsJson("sad_krt", _kartli);
         if (_tekrar is not null) AppState.PersistAsJson("sad_tek", _tekrar);
         AppState.PersistAsJson("sad_gec", _rfmGecis);
+        AppState.PersistAsJson("sad_trendi", (List<SegmentTrendiRow>)_segTrendi.ToList());
         return Task.CompletedTask;
     }
 

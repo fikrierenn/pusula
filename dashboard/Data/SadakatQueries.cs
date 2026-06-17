@@ -189,4 +189,53 @@ public sealed class SadakatQueries(Db db, IcKartService icKart)
             """, new { icIds }, commandTimeout: 30);
         return rows.ToList();
     }
+
+    /// <summary>Segment 3-noktalı trendi (B-65): bugün / 30g önce / 60g önce snapshot karşılaştırması.</summary>
+    public async Task<IReadOnlyList<SegmentTrendiRow>> GetSegmentTrendiAsync()
+    {
+        var icIds = icKart.Idler();
+        var icF = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
+        var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+        var g2 = dun.AddDays(1);
+
+        // Aynı SQL 3× farklı referans günü (t0/t30/t60) — ykSql deseni
+        var segSql = $"""
+            SELECT seg.S AS Segment, COUNT(*) AS Cnt
+            FROM (SELECT s.CustomersId, DATEDIFF(DAY,MAX(s.Date),@dun) Rec, COUNT(*) Frq
+                  FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                  WHERE s.DocumentsTypeId=1 AND s.CustomersId>0
+                    AND s.Date>=DATEADD(DAY,-365,@dun) AND s.Date<@g2{icF}
+                  GROUP BY s.CustomersId) c
+            CROSS APPLY (SELECT CAST(CASE
+                WHEN Frq>=8 AND Rec<=30  THEN N'1-Şampiyon'
+                WHEN Frq>=4 AND Rec<=90  THEN N'2-Sadık'
+                WHEN Frq<=2 AND Rec<=30  THEN N'3-Yeni'
+                WHEN Rec BETWEEN 91 AND 180 THEN N'4-Risk'
+                WHEN Rec>180             THEN N'5-Kayıp'
+                ELSE N'6-Diğer' END AS nvarchar(20)) S) seg
+            GROUP BY seg.S;
+            """;
+
+        await using var conn = await db.OpenAsync();
+        async Task<Dictionary<string, int>> snap(DateOnly d)
+        {
+            var g = d.AddDays(1);
+            var rows = await conn.QueryAsync<(string Segment, int Cnt)>(segSql,
+                new { dun = d.ToDateTime(TimeOnly.MinValue), g2 = g.ToDateTime(TimeOnly.MinValue), icIds },
+                commandTimeout: 30);
+            return rows.ToDictionary(r => r.Segment, r => r.Cnt);
+        }
+
+        var t0  = await snap(dun);
+        var t30 = await snap(dun.AddDays(-30));
+        var t60 = await snap(dun.AddDays(-60));
+
+        var segments = new[] { "1-Şampiyon", "2-Sadık", "3-Yeni", "4-Risk", "5-Kayıp", "6-Diğer" };
+        return segments.Select(s => new SegmentTrendiRow(
+            s,
+            t0.GetValueOrDefault(s),
+            t30.GetValueOrDefault(s),
+            t60.GetValueOrDefault(s)
+        )).ToList();
+    }
 }

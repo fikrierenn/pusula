@@ -95,6 +95,13 @@ public record TekrarAlisOzet(int ToplamMusteri, int TekrarMusteri, decimal OrtGu
 /// <summary>RFM segment geçiş (dönem1→dönem2, B-67).</summary>
 public record RfmGecisRow(string EskiSeg, string YeniSeg, int Musteri);
 
+/// <summary>Segment 3-noktalı trendi (B-65). T0=bugün, T30=30g önce, T60=60g önce.</summary>
+public record SegmentTrendiRow(string Segment, int T0, int T30, int T60)
+{
+    public int Delta30 => T0 - T30;   // son 30g değişim (+ = büyüdü)
+    public int Delta60 => T0 - T60;   // son 60g değişim
+}
+
 /// <summary>Hediye çeki aylık satılan/kullanılan.</summary>
 public record HcAyRow(string Ay, decimal SatilanTL, decimal KullanilanTL);
 /// <summary>Hediye çeki yükümlülük özeti.</summary>
