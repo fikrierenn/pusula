@@ -290,6 +290,27 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
             r.Fis > 0 ? Math.Round(100m * r.Kartli / r.Fis, 1) : 0)).OrderByDescending(k => k.Fis).ToList();
     }
 
+    /// <summary>E-ticaret kazanım (R-3): aylık ilk sipariş veren yeni müşteriler (JOKER, 13 ay). Misafir siparişler hariç (CUSTOMERREF>0).</summary>
+    public async Task<IReadOnlyList<MusteriKazanim>> GetKazanimEtAsync(DateOnly dun)
+    {
+        await using var jc = await db.OpenJokerAsync();
+        var bas = dun.AddMonths(-12).ToString("yyyyMMdd");
+        const string sql = """
+            SELECT LEFT(CONVERT(varchar, ilk.IlkTarih, 23), 7) AS Ay, COUNT(*) AS Yeni
+            FROM (
+                SELECT oc.CUSTOMERREF, MIN(CONVERT(date, o.ORDERDATE)) AS IlkTarih
+                FROM dbo.J_ORDERS o
+                JOIN dbo.J_ORDER_CLIENTS oc ON oc.LOGICALREF = o.CLIENTREF
+                WHERE oc.CUSTOMERREF > 0
+                GROUP BY oc.CUSTOMERREF
+                HAVING MIN(CONVERT(date, o.ORDERDATE)) >= @bas
+            ) ilk
+            GROUP BY LEFT(CONVERT(varchar, ilk.IlkTarih, 23), 7)
+            ORDER BY Ay;
+            """;
+        return (await jc.QueryAsync<MusteriKazanim>(sql, new { bas })).ToList();
+    }
+
     /// <summary>Kazanım drill (R-1): ay="2025-06" formatında → o ayda ilk kez alışveriş yapan müşteriler (Top 200, iç kart hariç).</summary>
     public async Task<IReadOnlyList<KazanimDetayRow>> GetKazanimDetayAsync(string ay)
     {

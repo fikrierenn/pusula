@@ -174,8 +174,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [~] **M-13 file-size split (kısmi)** — ✅ RefQueries.cs 638→**334** + `RefQueries.Envanter.cs` 314 (partial class, envanter/ürün/ops/marj; DI+çağıran değişmez, build yeşil) 17.06. ⏸️ Home.razor 566 + Tahmin.razor 504 → code-behind GEÇERSİZ (`@code` içinde markup RenderFragment → düz .cs derlenmez). **Sub-component extraction** gerek (markup chunk'ı child .razor'a) — dedike Tier-3, dikkatli. (300+ debt: Queries 472, Eticaret 411, Magaza 377, EticQueries 318, Musteri 304; generate_brief.py 678.)
 
 #### RFM / Müşteri tarafı — eklenecekler backlog (16.06 not, B-96 smoke sonrası)
-- [ ] **R-1 Ay-seçimli kazanım drill** — kazanım grafiğinde aya tıkla → o ayın yeni müşterileri listesi (ad/tel/ilk fiş/ilk tutar). Şu an 13-ay seri sadece adet.
-- [ ] **R-2 Kart oranı dönem seçimi** — kart-fiş oranı şu an 30g sabit. Günlük/haftalık/aylık pill ekle.
+- [x] **R-1 Ay-seçimli kazanım drill** ✅ 17.06.2026 (commit 72c8163) — AppAreaChart OnDataPointSelection + GetKazanimDetayAsync + Musteri.razor inline detay panel.
+- [x] **R-2 Kart oranı dönem seçimi** ✅ 17.06.2026 (commit 46995b7) — 7g/30g/90g pill + GetKartOranAsync + dinamik _kartData.
 - [ ] **R-3 E-ticaret kazanım** — yeni müşteri kazanım şu an YK (yazarkasa) only. JOKER CUSTOMERREF ilk-sipariş ile e-tic kazanım serisi ekle (ayrı evren).
 - [ ] **R-4 Kohort retention matrisi** (= B-66) — aylık edinim kohortu × N-ay-sonra geri dönüş % (heatmap). "Ocak'ta gelenin %X'i 3. ay hâlâ alıyor."
 - [x] ✅ 18.06 **R-5 Segment geçiş matrisi UI** — stale: `Sadakat.razor:100-117`'de AppDataTable panel MEVCUT (eski/yeni seg + iyileşme/kötüleşme badge). SQL GetRfmGecisAsync bağlı.

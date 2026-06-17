@@ -116,6 +116,20 @@ else
                     <div class="text-[12px] font-semibold mt-2 pt-2 border-t border-base-200">Toplam: <b>%@(kFis > 0 ? Math.Round(100m * kKartli / kFis, 1) : 0)</b> kartlı (@Num(kKartli)/@Num(kFis) fiş)</div>
                 }
             </div>
+            @if (_kazEt.Count > 0)
+            {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="shopping-cart" class="w-4 h-4 text-info"></i>E-Ticaret Yeni Müşteri Kazanım (13 ay)</h3>
+                <div class="text-[11px] text-base-content/50 mb-2">JOKER'de İLK sipariş ay bazlı · misafir sipariş hariç · YK'dan bağımsız evren</div>
+                <AppAreaChart TItem="MusteriKazanim" Items="_kazEt" Name="Yeni e-tic müşteri" Height="120" Color="var(--in)"
+                              XValue="@(k => (object)k.Ay[5..])" YValue="@(k => (decimal?)k.Yeni)" />
+                @{ var sonEt = _kazEt.Count > 0 ? _kazEt[^1] : null; }
+                @if (sonEt is not null)
+                {
+                    <div class="text-[11px] text-base-content/50 mt-2">Son ay <b>@AyAd(sonEt.Ay)</b>: <b class="text-info">@Num(sonEt.Yeni)</b> yeni · 13 ay toplam @Num(_kazEt.Sum(k => k.Yeni))</div>
+                }
+            </div>
+            }
         </div>
     }
 
@@ -226,6 +240,8 @@ else
     private string? _selKazAy;
     // R-2: kart oranı dönem pill
     private int _kartGun = 30;
+    // R-3: e-ticaret kazanım
+    private IReadOnlyList<MusteriKazanim> _kazEt = [];
     private bool _kartLoading;
     private IReadOnlyList<MagazaKart> _kartData = [];
     private bool _kazDetayLoading;
@@ -271,9 +287,14 @@ else
         try
         {
             _dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
-            (_yk, _et) = await Ref.GetRfmAsync(_dun);
+            var tRfm = Ref.GetRfmAsync(_dun);
+            var tStat = Ref.GetMusteriStatAsync(_dun);
+            var tKazEt = Ref.GetKazanimEtAsync(_dun);
             _icKartlar = IcKart.Yukle();
-            _stat = await Ref.GetMusteriStatAsync(_dun);
+            await Task.WhenAll(tRfm, tStat, tKazEt);
+            (_yk, _et) = tRfm.Result;
+            _stat = tStat.Result;
+            _kazEt = tKazEt.Result;
             _kartData = _stat?.KartOran ?? [];
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
