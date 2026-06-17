@@ -133,6 +133,19 @@ Intent-first: aynı veriyi (görevler) iki kapıdan. Kullanıcı işine göre se
 6. **4 kalite ölçütü (her ekranda):** (a) **capability transparency** — asistan ne yapabilir görünür (üst ipucu/menü), (b) **recovery** — hata/yanlışta [Düzelt]/[İptal]/[Tekrar], (c) **confidence** — emin değilken belli et, (d) **accessibility** — kontrast, büyük dokunma alanı, klavye (Enter).
 7. **Progressive disclosure:** taslak özet gelir; "detay/gerekçe" istenirse genişler. Bir kerede her şeyi gösterme.
 
+## 5.5 Teslim-Öncesi UI Checklist (ui-ux-pro-max ilhamı, 17.06 — her UI işinde ZORUNLU)
+Soyut "kalite ölçütü" yetmez — ölçülebilir kapı. Yeni/değişen ekran teslim ÖNCESİ:
+- [ ] **İkon = SVG/Lucide** (emoji DEĞİL — `<i data-lucide>`). Tutarlı boyut.
+- [ ] **Tıklanabilir = `cursor-pointer`** (buton/kart/satır) + hover state (DaisyUI `hover:`/`btn`).
+- [ ] **Geçiş 150-300ms** (hover/expand). Ani değil.
+- [ ] **Kontrast ≥ 4.5:1** (DaisyUI `base-content` token uyumlu; custom renkte kontrol).
+- [ ] **Focus görünür** (klavye nav `:focus-visible`, Enter ile aksiyon).
+- [ ] **Responsive 375→1440** (mobil PWA öncelik; `sm:`/`lg:`, taşma yok, tabloda `overflow-x-auto`).
+- [ ] **Renk = anlam** (renk-standardi: artış yeşil/düşüş kırmızı, hardcode hex YOK).
+- [ ] **Türkçe + UTF-8** (turkish-ui).
+- [ ] **Boş/yükleniyor/hata durumu** var (sessiz boş ekran değil).
+- ❌ Anti-pattern: finansal panelde dikkat-dağıtan gradient/süs; emoji-ikon; cursor'suz tıklanabilir; sabit-px taşan tablo.
+
 ## 6. Genişleme (sonraki)
 - Mail özet kartı (Graph) · hatırlatma · BKM-BI sorgu ("dün ciro?") — hepsi AYNI chat akışında, farklı kart tipi.
 - Push (Telegram) sadece bildirim için (PWA kapalıyken).
