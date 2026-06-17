@@ -1,9 +1,28 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-15
+updated: 2026-06-17
 
 metrics:
+  olu_stok_maliyet_zinciri:
+    source: "dashboard/Data/RefQueries.Envanter.cs OluStokSql"
+    chain: "COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN fiyatS>0 THEN fiyatS * avgml.AvgCostOran END)"
+    step1:
+      kaynak: "DerinSISBkm.dbo.fatAyr JOIN fat ON f.eTip=0 AND f.eDurum<>2"
+      yontem: "TOP 5 ORDER BY f.eTarih DESC → SUM(ehTutarN)/SUM(ehAdetN)"
+      filtre: "ehAdetN<>0, HAVING SUM(ehAdetN)<>0"
+      not: "Satış tarihi anchor yok (ölü stok) → GETDATE() örtük üst sınır"
+    step2:
+      kaynak: "Aktarim.dbo.BKM_STOKLAR_MALIYETLI.ORT_ALIS"
+      not: "Gece job ile güncellenir; anlık sorguda 0 gelebilir (job henüz çalışmamış)"
+    step3:
+      kaynak: "urn.fiyatS × AVG(ORT_ALIS/fiyatS) kategori bazında"
+      imputation_query: "AVG(CASE WHEN fiyatS>0 THEN ml.ORT_ALIS/fiyatS END) GROUP BY urnKtgr2ID"
+      filtre: "ORT_ALIS>0 AND fiyatS>0 AND ORT_ALIS<fiyatS"
+      not: "Tersine kayıtlar (maliyet>fiyat) kirli veri — filtreden çıkar"
+    confidence: 1.0
+    evidence: "2026-06-17 — dashboard build yeşil, OluStokSql OUTER APPLY fat5 eklendi"
+
   net_ciro:
     source: dbo.irsHrk
     grain: "ehTrhS (=irs.eTarihS) — stok/ciro daima bu tarih"

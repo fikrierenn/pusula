@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-12
+updated: 2026-06-17
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -25,7 +25,18 @@ ai_hints:   # sorgu üretirken her zaman geçerli
 
 entities:
   # ERP çekirdek
-  dbo.urn: {pk: stkID, key: [stkKod, stkAd, urnMrkID, urnKtgr2ID, urnTip], note: "stkKod barkod DEĞİL → eşleme stkID üstünden"}
+  dbo.urn:
+    pk: stkID
+    key: [stkKod, stkAd, urnMrkID, urnKtgr2ID, urnTip, fiyatS]
+    note: "stkKod barkod DEĞİL → eşleme stkID üstünden"
+    urnTip: "0=normal ürün (856K), 1=gider/hizmet kalemi (250 kayıt — muhasebe, hepsi Tanımsız kategorisinde). Ölü stok sorgusunda WHERE urnTip=0 ZORUNLU."
+    fiyatS: "satış/liste fiyatı (KDV dahil). Sıfır-maliyetli imputation anchor: AVG(ORT_ALIS/fiyatS) kategori bazında → ürün maliyeti = fiyatS × oran. Filtre: fiyatS>0 AND ORT_ALIS<fiyatS."
+    olu_stok_exclusions:
+      stkID: [81809]
+      note: "81809=İskonto ve Fiyat Farkı (Kırtasiye) — muhasebe kalemi yanlış kategoride, urnTip=0 olduğu için urnTip filtresi yakalamıyor"
+      kategoriler_ek: ["Zkargo", "KARGO"]
+      kategoriler_ek_note: "Zkargo=alış kargo giderleri; KARGO=gelir kalemleri (stkKod KARGO1/KARGO2, stkID 144860/144963)"
+    last_verified: "2026-06-17"
   bkm.Urunbilgi: {tip: view, note: "en pratik ürün lookup: stkID, BarkodAna, mrkAd, Kategori3, SatisFiyat"}
   dbo.irsHrk:
     pk: ehID

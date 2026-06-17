@@ -1,9 +1,18 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-06-14
+updated: 2026-06-17
 
 codes:
+  urn.urnTip:
+    values:
+      0: "Normal ürün (856K kayıt) — stok/satış sorgularında varsayılan"
+      1: "Gider/hizmet kalemi (250 kayıt — Elektrik, Temizlik, Reklam vb. muhasebe). Hepsi Tanımsız kategorisinde."
+      2: "Bilinmiyor (52 kayıt, ürün tablosunda yok)"
+    filtre: "Ölü stok dahil tüm ürün sorgularında WHERE urnTip=0 ZORUNLU — gider kalemleri aksi halde sızdı"
+    confidence: 1.0
+    evidence: "2026-06-17 — MCP SELECT urnTip, COUNT(*) FROM urn GROUP BY urnTip"
+
   irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
     lookup: dbo.irsTip_vw
     satis_gross: [1, 4, 100]

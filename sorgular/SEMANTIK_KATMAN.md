@@ -419,7 +419,7 @@ HAVING SUM(ehAdetN) < 0
 
 | Filtre | Anlam |
 |---|---|
-| `urnTip = 0` | Normal ürün (paket/sanal değil) |
+| `urnTip = 0` | Normal ürün — **ölü stok dahil tüm ürün sorgularında ZORUNLU**. urnTip=1 gider/hizmet kalemi (250 kayıt, muhasebe). |
 | `ehAltDepo = 0` | Ana depo/mağaza (alt depo değil) |
 | `urnKtgr2ID NOT IN (11,25,23,9,5,6)` | Envanter Job exclude listesi |
 | `urnKtgrID = 78 AND urnKtgr1ID = 5 AND urnKtgr2ID = 19` | **Sınav Okulları** (envanter -300M sorununun kaynağı) |
@@ -431,6 +431,13 @@ HAVING SUM(ehAdetN) < 0
 | Tarih: `CONVERT(date, '01.04.2026', 104)` | **DMY format** (yyyy-MM-dd KULLANMA) |
 
 **stkID exclude (job'da):** `81809, 77328, 200772, 84642, 59337, 65462, 64515, 56761, 22390, 60318, 128118, 1644512`
+
+**Ölü stok maliyet zinciri (COALESCE):**
+1. `fatAyr/fat` son 5 alış faturası (`eTip=0, eDurum<>2`) → `SUM(ehTutarN)/SUM(ehAdetN)`
+2. `Aktarim.dbo.BKM_STOKLAR_MALIYETLI.ORT_ALIS`
+3. `urn.fiyatS × AVG(ORT_ALIS/fiyatS)` — kategori ortalama maliyet oranı imputation (filtre: `ORT_ALIS>0 AND fiyatS>0 AND ORT_ALIS<fiyatS`)
+
+**Ölü stok ek hariç kategoriler:** `Zkargo` (alış kargo), `KARGO` (gelir kalemleri, stkID 144860/144963)
 
 ---
 
