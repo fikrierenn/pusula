@@ -101,10 +101,10 @@ public sealed partial class RefQueries
         // Ciro (irsHrk, geçen ay, 3 mağaza) — envanterle aynı stkID kaynağı
         var ciro = (await conn.QueryAsync<(string K, decimal Ciro)>($"""
             SELECT CAST(k.ktgrAd AS nvarchar(50)) K,
-                   CAST(ABS(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) Ciro
+                   CAST(SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehTutarN WHEN h.ehTip IN (3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) Ciro
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100)
+            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100,3,5,101)
                   AND k.ktgrAd NOT IN {EXC}
             GROUP BY CAST(k.ktgrAd AS nvarchar(50));
             """, p)).ToDictionary(x => x.K, x => x.Ciro, StringComparer.OrdinalIgnoreCase);
@@ -294,9 +294,9 @@ public sealed partial class RefQueries
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<MarkaRotasyonRow>("""
             SELECT TOP 30 m.mrkAd AS Marka,
-                CAST(SUM(CASE WHEN a.ehTip IN (4,100) THEN ABS(a.ehAdetN) ELSE 0 END) AS int) AS SatisAdet,
+                CAST(-SUM(CASE WHEN a.ehTip IN (4,100,3,5,101) THEN a.ehAdetN ELSE 0 END) AS int) AS SatisAdet,
                 CAST(SUM(CASE WHEN a.ehTip IN (0,10)  THEN ABS(a.ehAdetN) ELSE 0 END) AS int) AS AlisAdet,
-                SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutarN ELSE 0 END) AS SatisCiro
+                SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutarN WHEN a.ehTip IN (3,5,101) THEN -a.ehTutarN ELSE 0 END) AS SatisCiro
             FROM DerinSISBkm.dbo.irsHrk a WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
             JOIN DerinSISBkm.dbo.urnMrk m WITH(NOLOCK) ON m.mrkID = u.urnMrkID

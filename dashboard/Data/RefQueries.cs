@@ -93,11 +93,11 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         // Devir/WoS/sell-through/stok ₺ (irsHrk satış+gelen + ENVANTER snapshot başı/sonu ort. adet)
         var tEv = Q(c => c.QueryAsync<(string K, decimal Sat, decimal Gel, decimal BA, decimal EA, decimal BM, decimal EM)>($"""
             SELECT m.K, m.Sat, m.Gel, ISNULL(b.A,0) BA, ISNULL(e.A,0) EA, ISNULL(b.M,0) BM, ISNULL(e.M,0) EM
-            FROM (SELECT CAST(k.ktgrAd AS nvarchar(50)) K, -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) Sat,
+            FROM (SELECT CAST(k.ktgrAd AS nvarchar(50)) K, -SUM(CASE WHEN h.ehTip IN (4,100,3,5,101) THEN h.ehAdetN ELSE 0 END) Sat,
                          SUM(CASE WHEN h.ehTip IN (10,13) THEN h.ehAdetN ELSE 0 END) Gel
                   FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
                   JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID=u.urnKtgr2ID
-                  WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100,10,13)
+                  WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100,10,13,3,5,101)
                   GROUP BY CAST(k.ktgrAd AS nvarchar(50))) m
             LEFT JOIN (SELECT KTGR3 K, SUM(ISNULL([Fsm Stok Adet],0)+ISNULL([Özlüce Stok Adet],0)+ISNULL([İst.Yolu Stok Adet],0)) A,
                               SUM(ISNULL([FSM Stok Maliyet],0)+ISNULL([Özlüce Stok Maliyet],0)+ISNULL([İst.Yolu Stok Maliyet],0)) M
@@ -124,12 +124,12 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         // Marka/yayınevi top 20 (irsHrk stkID, geçen ay)
         var tMarka = Q(c => c.QueryAsync<MarkaRow>("""
             SELECT TOP 20 CAST(mrk.mrkAd AS nvarchar(80)) AS Ad,
-                   CAST(ABS(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN ELSE 0 END)) AS decimal(18,0)) AS Ciro,
-                   CAST(-SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehAdetN ELSE 0 END) AS int) AS Adet,
+                   CAST(SUM(CASE WHEN h.ehTip IN(4,100) THEN h.ehTutarN WHEN h.ehTip IN(3,5,101) THEN -h.ehTutarN ELSE 0 END) AS decimal(18,0)) AS Ciro,
+                   CAST(-SUM(CASE WHEN h.ehTip IN(4,100,3,5,101) THEN h.ehAdetN ELSE 0 END) AS int) AS Adet,
                    COUNT(DISTINCT h.ehstkID) AS Cesit
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             JOIN DerinSISBkm.dbo.urn u ON u.stkID=h.ehstkID JOIN DerinSISBkm.dbo.urnMrk mrk ON mrk.mrkID=u.urnMrkID
-            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100)
+            WHERE h.ehTrhS>=@ayBas AND h.ehTrhS<@aySon AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo=0 AND h.ehTip IN (4,100,3,5,101)
             GROUP BY CAST(mrk.mrkAd AS nvarchar(80)) ORDER BY Ciro DESC;
             """, p));
 
