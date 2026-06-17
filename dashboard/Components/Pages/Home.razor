@@ -446,10 +446,10 @@ else if (_data is not null)
             </div>
             <p class="text-[12.5px] leading-relaxed text-neutral-content/85 m-0">@Highlight(_ozetMetin)</p>
             <div class="flex gap-2 mt-3">
-                <a href="@($"toplam?d={_period}")" class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 no-underline text-current transition-colors">📊 Detaylı analiz</a>
+                <a href="@($"toplam?d={_period}")" class="flex-1 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 no-underline text-current transition-colors"><i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>Detaylı analiz</a>
                 @if (dusen is not null)
                 {
-                    <a href="magaza/@dusen.MekanId" class="flex-1 text-center text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 no-underline text-current transition-colors">🔍 @dusen.Ad incele</a>
+                    <a href="magaza/@dusen.MekanId" class="flex-1 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 active:bg-neutral-content/20 no-underline text-current transition-colors"><i data-lucide="search" class="w-3.5 h-3.5"></i>@dusen.Ad incele</a>
                 }
             </div>
         </div>

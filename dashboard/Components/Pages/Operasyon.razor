@@ -82,7 +82,7 @@ else if (_data is not null)
                               Primary="@(s => s.Magaza)"
                               MetricMain="@(s => s.Saat > 0 ? Num((int)Math.Round(s.NetCiro / s.Saat)) + " ₺/s" : "—")"
                               MetricSub="@(s => s.Saat > 0 ? (s.Fis / s.Saat).ToString("0.0") + " fiş/saat" : "—")"
-                              Badge="@(s => ($"👤{s.Personel}", "bg-base-200 text-base-content/50"))" />
+                              Badge="@(s => ($"{s.Personel} kişi", "bg-base-200 text-base-content/50"))" />
             }
             else
             {

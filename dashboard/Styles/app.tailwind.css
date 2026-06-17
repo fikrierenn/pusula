@@ -34,4 +34,8 @@
 }
 #blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .75rem; top: .5rem; }
 .blazor-error-boundary { background: #b32121; padding: 1rem; color: white; }
-.blazor-error-boundary::after { content: "An error has occurred."; }
+.blazor-error-boundary::after { content: "Bir hata oluştu."; }
+
+/* ── Erişilebilirlik: klavye-nav focus görünürlüğü (UI checklist B-113 — tüm tıklanabilir + input) ── */
+*:focus-visible { outline: 2px solid var(--p, #4063e6); outline-offset: 2px; border-radius: 2px; }
+:focus:not(:focus-visible) { outline: none; }

@@ -34,10 +34,10 @@
             <div class="card bg-base-200/40 border border-base-200 rounded-xl p-4 mt-3.5">
                 <pre class="m-0 whitespace-pre-wrap text-[13.5px] leading-relaxed text-base-content/90">@_taslak</pre>
                 <div class="flex gap-2 items-center mt-2.5 flex-wrap">
-                    <button class="btn btn-primary" @onclick="KaydetAsync" disabled="@_busy">✅ Kaydet</button>
-                    <button class="btn" @onclick="() => _ataAcik = !_ataAcik" disabled="@_busy">👤 Kişiye Ata</button>
-                    <button class="btn" @onclick="() => _duzeltAcik = !_duzeltAcik" disabled="@_busy">✏️ Düzelt</button>
-                    <button class="btn btn-ghost btn-sm text-error" @onclick="Iptal" disabled="@_busy">❌ İptal</button>
+                    <button class="btn btn-primary gap-1.5" @onclick="KaydetAsync" disabled="@_busy"><i data-lucide="check" class="w-4 h-4"></i>Kaydet</button>
+                    <button class="btn gap-1.5" @onclick="() => _ataAcik = !_ataAcik" disabled="@_busy"><i data-lucide="user" class="w-4 h-4"></i>Kişiye Ata</button>
+                    <button class="btn gap-1.5" @onclick="() => _duzeltAcik = !_duzeltAcik" disabled="@_busy"><i data-lucide="pencil" class="w-4 h-4"></i>Düzelt</button>
+                    <button class="btn btn-ghost btn-sm text-error gap-1.5" @onclick="Iptal" disabled="@_busy"><i data-lucide="x" class="w-4 h-4"></i>İptal</button>
                 </div>
 
                 @if (_ataAcik)
@@ -131,7 +131,7 @@
         try
         {
             var id = await Task.Run(() => Gorevler.Kaydet(_taslak, atanan));
-            _sonMesaj = atanan is null ? $"✅ Görev #{id} kaydedildi." : $"✅ Görev #{id} kaydedildi ve {atanan} kişisine atandı.";
+            _sonMesaj = atanan is null ? $"Görev #{id} kaydedildi." : $"Görev #{id} kaydedildi ve {atanan} kişisine atandı.";
             _taslak = null; _not = "";
             Yenile();
         }
