@@ -13,6 +13,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-17 Oturum 2 — Ölü stok maliyet/filtre + Stok Hareket sayfası (defter)
+- **B-104** ölü stok maliyet zinciri: son 5 alış faturası (`fatAyr` eTip=0) → `ORT_ALIS` → `fiyatS × kategori AVG(ORT_ALIS/fiyatS)` imputation (sıfır-maliyetli ürünler kategori marjıyla fiyatlanır)
+- **B-105** ölü stok kirli kayıt filtresi: `urnTip=0` (gider/hizmet kalemi hariç) + `KARGO`/`Zkargo` kategori + stkID 81809 (İskonto ve Fiyat Farkı). sema entities/codes/metrics + SEMANTIK_KATMAN güncel
+- **B-106** yeni **Stok Hareket sayfası** (`/stok-hareket`, NavRegistry): ürün ara (barkod/kod exact + ad LIKE, debounce as-you-type, barkod tek-sonuç otomatik) → defter. TEK birleşik liste, tarih sıralı, Devir açılış satırı + global yürüyen Kalan, Firma/Evrak kolonları, Giriş/Çıkış renk. 3 şube + 12 depo. Barkod arama 5.8s→0.14s (stkID IN alt-sorgu)
+- AppDataTable `OnRowClick`; ölü stok + kategori drill satırı → tam-ekran sayfaya yönlendirir (modal-üstü-modal kaldırıldı)
+- Build yeşil, sorgular MCP'de doğrulandı. **Kod commit BEKLİYOR.**
+
 ### 2026-06-16 Oturum 6 — Kumbara keşfi + iç-kart tek filtre (plan-18) + müşteri raporları FİŞ bazlı (CFO direktifi)
 - **B-96** müşteri kazanım/kart stat smoke ✅ · **Kumbara = RefundReasons Id=17 indirim tipi** keşfi (işlem-bağı kullanıcıda, 17.06)
 - **plan-18** iç-kart tek kanonik filtre (`IcKartFiltre.Sql`/`SqlCols`) → 9 müşteri sorgusu; isim+tel(599/699)+elle liste tek tanım (B-100)
