@@ -177,7 +177,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] **R-1 Ay-seçimli kazanım drill** ✅ 17.06.2026 (commit 72c8163) — AppAreaChart OnDataPointSelection + GetKazanimDetayAsync + Musteri.razor inline detay panel.
 - [x] **R-2 Kart oranı dönem seçimi** ✅ 17.06.2026 (commit 46995b7) — 7g/30g/90g pill + GetKartOranAsync + dinamik _kartData.
 - [x] **R-3 E-ticaret kazanım** ✅ 17.06.2026 (commit f580478) — GetKazanimEtAsync (JOKER J_ORDERS ilk sipariş 13ay) + Musteri.razor ET kart (info renk, bağımsız evren notu).
-- [ ] **R-4 Kohort retention matrisi** (= B-66) — aylık edinim kohortu × N-ay-sonra geri dönüş % (heatmap). "Ocak'ta gelenin %X'i 3. ay hâlâ alıyor."
+- [x] **R-4 Kohort retention matrisi** ✅ 17.06.2026 (commit af47abc) — GetKohortAsync (12ay × N-ay geri dönüş) + heatmap tablo (renk kodlu %, n=kohort büyüklüğü).
 - [x] ✅ 18.06 **R-5 Segment geçiş matrisi UI** — stale: `Sadakat.razor:100-117`'de AppDataTable panel MEVCUT (eski/yeni seg + iyileşme/kötüleşme badge). SQL GetRfmGecisAsync bağlı.
 - [ ] **R-6 Müşteri LTV / yaşam boyu değer** — segment başına ort. yıllık harcama × tahmini ömür. Kart sahibi vs kartsız ATV farkı (GetKartliAsync var, kazanca bağla).
 - [ ] **R-7 Churn / tekrar-alım oranı** — ilk alıştan sonra 2. alış yapan % (aktivasyon), 90g sessizleşen (churn riski) adedi/trendi.

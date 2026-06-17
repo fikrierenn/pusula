@@ -402,7 +402,8 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         const string yk = """
             SELECT TOP 100 CONVERT(varchar,s.Date,104) AS Tarih, CAST(s.Id AS varchar) AS [Ref],
                 (SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) WHERE sp.SalesId=s.Id AND sp.IsValid=1) AS Kalem,
-                CAST(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END AS decimal(18,0)) AS Tutar
+                CAST(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END AS decimal(18,0)) AS Tutar,
+                CAST(CASE WHEN s.DocumentsTypeId=3 THEN 0 ELSE s.DiscountTotal END AS decimal(18,0)) AS IndirimTutar
             FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
             WHERE s.CustomersId=@id AND s.DocumentsTypeId IN (1,3) AND s.Date>=DATEADD(DAY,-365,GETDATE())
             ORDER BY s.Date DESC;

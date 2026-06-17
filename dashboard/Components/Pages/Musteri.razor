@@ -227,8 +227,15 @@ else
             @foreach (var f in _fisler)
             {
                 <div class="flex items-center gap-2 py-2.5 border-b border-base-200 last:border-b-0 cursor-pointer hover:bg-base-200/40 rounded-lg -mx-1.5 px-1.5" @onclick="() => OpenIcerik(f)">
-                    <div class="min-w-0 flex-1"><div class="text-[13px] font-semibold text-base-content/85">@f.Tarih</div><div class="text-[11px] text-base-content/50">#@f.Ref · @f.Kalem kalem</div></div>
-                    <div class="text-[13px] font-bold tabular-nums whitespace-nowrap">@Tl(f.Tutar)</div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[13px] font-semibold text-base-content/85 flex items-center gap-1.5">
+                            @f.Tarih
+                            @if (f.Tutar < 0) { <span class="badge badge-xs bg-error/15 text-error border-0">iade</span> }
+                            @if (f.IndirimTutar > 0) { <span class="badge badge-xs bg-warning/15 text-warning border-0">−@Tl(f.IndirimTutar)</span> }
+                        </div>
+                        <div class="text-[11px] text-base-content/50">#@f.Ref · @f.Kalem kalem</div>
+                    </div>
+                    <div class="text-[13px] font-bold tabular-nums whitespace-nowrap @(f.Tutar < 0 ? "text-error" : "")">@Tl(f.Tutar)</div>
                     <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/40 shrink-0"></i>
                 </div>
             }
