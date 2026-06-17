@@ -18,6 +18,12 @@ public record KazanimDetayRow(string Ad, string Tel, string IlkTarih, decimal Il
 /// <summary>Kohort retention matrisi satırı (R-4). CohortAy="2025-06", N=ay farkı (1-12), Donenler=o ayda tekrar gelenler, Buyukluk=cohort toplam.</summary>
 public record KohortRow(string CohortAy, int N, int Donenler, int Buyukluk);
 
+/// <summary>LTV özet (R-6). Kartlı vs kartsız segmenti: müşteri sayısı, ort yıllık ciro, ort aktif ay, ort işlem sayısı. plan-17.</summary>
+public record LtvOzet(string Segment, int Musteri, decimal OrtYillikCiro, decimal OrtAktifAy, decimal OrtFrekans);
+
+/// <summary>Churn/tekrar-alım özeti (R-7). Son 365g içinde en az 1 alış yapanlar baz: aktivasyon=2. alış yapan %, churn riski=90g+ sessiz.</summary>
+public record ChurnOzet(int ToplamMusteri, int Aktivasyon, int ChurnRisk, decimal AktivasyonPct, decimal ChurnPct);
+
 /// <summary>Mağaza kart-fiş oranı (kaç fişin kaçı müşteri-kartlı). plan-17.</summary>
 public record MagazaKart(string Magaza, int Fis, int Kartli, decimal Oran);
 

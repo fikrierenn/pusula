@@ -290,6 +290,65 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
             r.Fis > 0 ? Math.Round(100m * r.Kartli / r.Fis, 1) : 0)).OrderByDescending(k => k.Fis).ToList();
     }
 
+    /// <summary>Churn/tekrar-alım özeti (R-7): son 365g aktif müşterilerde aktivasyon (2+ alış) ve churn riski (90g+ sessiz). İç kart hariç.</summary>
+    public async Task<ChurnOzet> GetChurnAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        var icIds = icKart.Idler();
+        var filt = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
+        var sql = $"""
+            SELECT
+                COUNT(*) AS ToplamMusteri,
+                SUM(CASE WHEN frq >= 2 THEN 1 ELSE 0 END) AS Aktivasyon,
+                SUM(CASE WHEN son_alis < DATEADD(DAY,-90,@dun) THEN 1 ELSE 0 END) AS ChurnRisk,
+                CAST(SUM(CASE WHEN frq >= 2 THEN 1 ELSE 0 END) AS decimal(18,1)) / NULLIF(COUNT(*),0) * 100 AS AktivasyonPct,
+                CAST(SUM(CASE WHEN son_alis < DATEADD(DAY,-90,@dun) THEN 1 ELSE 0 END) AS decimal(18,1)) / NULLIF(COUNT(*),0) * 100 AS ChurnPct
+            FROM (
+                SELECT s.CustomersId,
+                    COUNT(CASE WHEN s.DocumentsTypeId=1 THEN 1 END) AS frq,
+                    MAX(CONVERT(date,s.Date)) AS son_alis
+                FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                WHERE s.DocumentsTypeId IN (1,3) AND s.CustomersId > 0{filt}
+                    AND s.Date >= DATEADD(DAY,-365,@dun)
+                GROUP BY s.CustomersId
+                HAVING COUNT(CASE WHEN s.DocumentsTypeId=1 THEN 1 END) >= 1
+            ) m;
+            """;
+        var r = await conn.QueryFirstOrDefaultAsync<ChurnOzet>(sql, new { dun = dun.ToDateTime(TimeOnly.MinValue), icIds });
+        return r ?? new ChurnOzet(0, 0, 0, 0, 0);
+    }
+
+    /// <summary>LTV özet (R-6): kartlı vs kartsız müşteri yaşam boyu değer göstergesi (ort yıllık ciro, aktif ay, frekans). En az 2 alış yapanlar.</summary>
+    public async Task<IReadOnlyList<LtvOzet>> GetLtvAsync(DateOnly dun)
+    {
+        await using var conn = await db.OpenAsync();
+        var icIds = icKart.Idler();
+        var filt = IcKartFiltre.Sql("s.CustomersId", icIds.Length > 0);
+        var sql = $"""
+            SELECT seg.Segment,
+                COUNT(*) AS Musteri,
+                CAST(AVG(seg.YillikCiro) AS decimal(18,0)) AS OrtYillikCiro,
+                CAST(AVG(seg.AktifAy) AS decimal(18,1)) AS OrtAktifAy,
+                CAST(AVG(CAST(seg.Frq AS float)) AS decimal(18,1)) AS OrtFrekans
+            FROM (
+                SELECT s.CustomersId,
+                    CAST(CASE WHEN s.CustomersId > 0 AND c.CardNumber IS NOT NULL AND c.CardNumber <> '' THEN 'Kartlı' ELSE 'Kartsız' END AS varchar(10)) AS Segment,
+                    SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END)
+                        / NULLIF(DATEDIFF(MONTH, MIN(s.Date), MAX(s.Date))+1, 0) * 12.0 AS YillikCiro,
+                    CAST(DATEDIFF(MONTH, MIN(s.Date), MAX(s.Date))+1 AS float) AS AktifAy,
+                    COUNT(CASE WHEN s.DocumentsTypeId=1 THEN 1 END) AS Frq
+                FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                LEFT JOIN DerinCrm.dbo.Customer c WITH(NOLOCK) ON c.Id=s.CustomersId
+                WHERE s.DocumentsTypeId IN (1,3) AND s.CustomersId > 0{filt}
+                    AND s.Date >= DATEADD(DAY,-365,@dun)
+                GROUP BY s.CustomersId, CASE WHEN s.CustomersId > 0 AND c.CardNumber IS NOT NULL AND c.CardNumber <> '' THEN 'Kartlı' ELSE 'Kartsız' END
+                HAVING COUNT(CASE WHEN s.DocumentsTypeId=1 THEN 1 END) >= 2
+            ) seg
+            GROUP BY seg.Segment;
+            """;
+        return (await conn.QueryAsync<LtvOzet>(sql, new { dun = dun.ToDateTime(TimeOnly.MinValue), icIds })).ToList();
+    }
+
     /// <summary>Kohort retention matrisi (R-4): son 12 ay kohort × N. ay geri dönüş (N=1..12). İç kart hariç.</summary>
     public async Task<IReadOnlyList<KohortRow>> GetKohortAsync(DateOnly dun)
     {

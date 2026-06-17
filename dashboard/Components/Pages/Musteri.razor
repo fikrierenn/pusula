@@ -133,6 +133,44 @@ else
         </div>
     }
 
+    @if (_ltv.Count > 0 || _churn is not null)
+    {
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+            @if (_ltv.Count > 0)
+            {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="trending-up" class="w-4 h-4 text-primary"></i>Müşteri LTV — Yıllık Değer (son 365g, min 2 alış)</h3>
+                <div class="text-[11px] text-base-content/50 mb-2">ort. yıllık ciro · aktif ay · frekans · kartlı vs kartsız karşılaştırma</div>
+                <AppDataTable TItem="LtvOzet"
+                              Items="@_ltv"
+                              Primary="@(r => r.Segment)"
+                              MetricMain="@(r => Tl(r.OrtYillikCiro) + "/yıl")"
+                              MetricSub="@(r => $"{r.OrtFrekans:0.0} alış/yıl · {r.OrtAktifAy:0.0} ay aktif")"
+                              Badge="@(r => (Num(r.Musteri) + " müşteri", r.Segment == "Kartlı" ? "bg-success/15 text-success" : "bg-base-200 text-base-content/60"))" />
+                <div class="text-[11px] text-base-content/50 mt-2">İç/mağaza kartı hariç · Aktif ay = ilk→son alış aralığı · Yıllık ciro = toplam/(aktif ay)×12</div>
+            </div>
+            }
+            @if (_churn is not null && _churn.ToplamMusteri > 0)
+            {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+                <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5"><i data-lucide="user-minus" class="w-4 h-4 text-error"></i>Tekrar-Alım & Churn — son 365g aktif müşteriler</h3>
+                <div class="text-[11px] text-base-content/50 mb-2">aktivasyon = 2+ alış · churn riski = son 90g+ sessiz</div>
+                <div class="space-y-3 mt-1">
+                    <div>
+                        <div class="flex justify-between text-[13px] mb-1"><span class="font-semibold">Aktivasyon (2+ alış)</span><span class="font-bold text-success">%@(_churn.AktivasyonPct.ToString("0.0")) · @Num(_churn.Aktivasyon)</span></div>
+                        <div class="h-2 rounded-full bg-base-200"><div class="h-full rounded-full bg-success" style="width:@(Math.Min(100, (int)_churn.AktivasyonPct))%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[13px] mb-1"><span class="font-semibold">Churn Riski (90g+ sessiz)</span><span class="font-bold text-error">%@(_churn.ChurnPct.ToString("0.0")) · @Num(_churn.ChurnRisk)</span></div>
+                        <div class="h-2 rounded-full bg-base-200"><div class="h-full rounded-full bg-error" style="width:@(Math.Min(100, (int)_churn.ChurnPct))%"></div></div>
+                    </div>
+                    <div class="text-[11px] text-base-content/50 pt-1 border-t border-base-200">Baz: @Num(_churn.ToplamMusteri) müşteri (son 365g ≥1 alış)</div>
+                </div>
+            </div>
+            }
+        </div>
+    }
+
     @if (_kohort.Count > 0)
     {
         var cohortlar = _kohort.Select(r => r.CohortAy).Distinct().OrderBy(a => a).ToList();
@@ -300,6 +338,10 @@ else
     private IReadOnlyList<MusteriKazanim> _kazEt = [];
     // R-4: kohort retention
     private IReadOnlyList<KohortRow> _kohort = [];
+    // R-6: LTV
+    private IReadOnlyList<LtvOzet> _ltv = [];
+    // R-7: churn
+    private ChurnOzet? _churn;
     private bool _kartLoading;
     private IReadOnlyList<MagazaKart> _kartData = [];
     private bool _kazDetayLoading;
@@ -349,12 +391,16 @@ else
             var tStat = Ref.GetMusteriStatAsync(_dun);
             var tKazEt = Ref.GetKazanimEtAsync(_dun);
             var tKohort = Ref.GetKohortAsync(_dun);
+            var tLtv = Ref.GetLtvAsync(_dun);
+            var tChurn = Ref.GetChurnAsync(_dun);
             _icKartlar = IcKart.Yukle();
-            await Task.WhenAll(tRfm, tStat, tKazEt, tKohort);
+            await Task.WhenAll(tRfm, tStat, tKazEt, tKohort, tLtv, tChurn);
             (_yk, _et) = tRfm.Result;
             _stat = tStat.Result;
             _kazEt = tKazEt.Result;
             _kohort = tKohort.Result;
+            _ltv = tLtv.Result;
+            _churn = tChurn.Result;
             _kartData = _stat?.KartOran ?? [];
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
