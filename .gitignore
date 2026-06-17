@@ -43,6 +43,11 @@ tools/cert/
 # Rapor çıktı artifactları (regenerate edilebilir, git'e girmez)
 briefings/olu-stok*.xlsx
 
+# RaporApp build çıktıları (dotnet publish artifacts)
+sorgular/03-kampanya/RaporApp/bin/
+sorgular/03-kampanya/RaporApp/obj/
+sorgular/03-kampanya/dist/
+
 
 # Tahmin motoru runtime ciktisi (plan-15, regenerate edilebilir) + kisisel kayit/cache
 dashboard/data/forecast/
