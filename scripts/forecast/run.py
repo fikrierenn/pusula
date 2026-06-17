@@ -87,7 +87,8 @@ def main(n_ileri: int = 3):
         if a["point"] is None:
             print(f"  {a['yil']}-{a['ay']:02d}: TAHMIN YOK (tum modeller elendi — {a['atlanan']})")
         else:
-            print(f"  {a['yil']}-{a['ay']:02d}: ensemble {a['point']:,} band [{a['alt']:,} - {a['ust']:,}] ({a['model_sayisi']} model)")
+            band = f"[{a['alt']:,} - {a['ust']:,}]" if a["alt"] is not None and a["ust"] is not None else "[band yok]"
+            print(f"  {a['yil']}-{a['ay']:02d}: ensemble {a['point']:,} band {band} ({a['model_sayisi']} model)")
     # Hiçbir ay tahmin üretemediyse exit≠0 → ForecastService "güncellendi" demesin (sessiz boş tahmin engeli).
     if all(a["point"] is None for a in aylar):
         sys.exit("[run] HATA: hicbir ay icin tahmin uretilemedi — tum modeller elendi")

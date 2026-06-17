@@ -45,7 +45,9 @@ public sealed class ForecastOkuService
             using var c = _db.OpenPanel();
             var json = c.ExecuteScalar<string?>("SELECT Json FROM dbo.PanelForecast WHERE Ad=@ad", new { ad });
             if (json is null) { _log.LogWarning("Forecast kaydı yok ({Ad}) — fallback heuristik", ad); return null; }
-            return JsonSerializer.Deserialize<T>(json, _opt);
+            var r = JsonSerializer.Deserialize<T>(json, _opt);
+            if (r is null) _log.LogWarning("Forecast JSON çözüldü ama null ({Ad}) — bozuk/eski şema, fallback", ad);
+            return r;
         }
         catch (Exception ex)
         {
