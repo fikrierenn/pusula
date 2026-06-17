@@ -138,71 +138,92 @@ else if (_data is not null)
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5">
-                Kumbara İndirimi — Mağaza × Ay (2026)
-                <span class="text-[11px] font-normal text-base-content/50 ml-1">Okul Kumbara Projesi · SPC köprüsü</span>
+                Manuel İndirim Kırılımı — 2026
+                <span class="text-[11px] font-normal text-base-content/50 ml-1">SPC.Source=1 · RefundReasons.Type=1 · sebep seç → Mağaza×Ay detay</span>
             </h3>
             @if (_kumbaraLoading)
             {
                 <div class="text-xs text-base-content/40 animate-pulse">Yükleniyor...</div>
             }
-            else if (_kumbara.Count == 0)
+            else if (_manuel.Count == 0)
             {
                 <div class="text-xs text-base-content/40">Veri yok (2026 başından itibaren).</div>
             }
             else
             {
-                var aylar = _kumbara.Select(r => r.Ay).Distinct().OrderBy(a => a).ToList();
-                var magazalar = _kumbara.Select(r => r.Magaza).Distinct().OrderBy(m => m).ToList();
-                <div class="overflow-x-auto">
+                @* --- SEBEP ÖZETİ --- *@
+                var sebepler = _manuel.GroupBy(r => r.Sebep)
+                    .Select(g => (Sebep: g.Key, Indirim: g.Sum(x => x.Indirim), Fis: g.Sum(x => x.FisSayisi)))
+                    .OrderByDescending(x => x.Indirim).ToList();
+                var toplamInd = sebepler.Sum(s => s.Indirim);
+                <div class="overflow-x-auto mb-3">
                 <table class="table table-xs w-full">
-                    <thead>
-                        <tr class="text-[11px] text-base-content/60">
-                            <th>Ay</th>
-                            @foreach (var mag in magazalar)
-                            {
-                                <th class="text-right">@mag Brüt</th>
-                                <th class="text-right">İndirim</th>
-                                <th class="text-right">%</th>
-                            }
-                            <th class="text-right">Toplam İnd.</th>
-                        </tr>
-                    </thead>
+                    <thead><tr class="text-[11px] text-base-content/60"><th>İndirim Sebebi</th><th class="text-right">Toplam İndirim</th><th class="text-right">Pay</th><th class="text-right">Fiş</th><th class="w-6"></th></tr></thead>
                     <tbody>
-                    @foreach (var ay in aylar)
+                    @foreach (var s in sebepler)
                     {
-                        var satirlar = _kumbara.Where(r => r.Ay == ay).ToList();
-                        var topInd = satirlar.Sum(r => r.Indirim);
-                        <tr>
-                            <td class="font-medium text-[12px]">@ay</td>
-                            @foreach (var mag in magazalar)
-                            {
-                                var r = satirlar.FirstOrDefault(x => x.Magaza == mag);
-                                <td class="text-right text-[12px] text-base-content/70">@(r is null ? "—" : Tl(r.Brut))</td>
-                                <td class="text-right text-[12px] text-error">@(r is null ? "—" : Tl(r.Indirim))</td>
-                                <td class="text-right text-[12px] @(r is not null && r.IndirimPct > 30 ? "text-error font-semibold" : "text-base-content/60")">@(r is null ? "—" : "%" + r.IndirimPct)</td>
-                            }
-                            <td class="text-right text-[12px] font-semibold text-error">@Tl(topInd)</td>
+                        var sebep = s.Sebep;
+                        var pct = toplamInd > 0 ? s.Indirim / toplamInd * 100 : 0;
+                        var active = _selSebep == sebep;
+                        <tr class="cursor-pointer hover:bg-base-200/60 @(active ? "bg-warning/10" : "")" @onclick="@(() => _selSebep = active ? null : sebep)">
+                            <td class="font-medium text-[12px] @(sebep.Contains("Kumbara") ? "text-warning" : "")">@sebep</td>
+                            <td class="text-right text-[12px] text-error font-semibold">@Tl(s.Indirim)</td>
+                            <td class="text-right text-[12px] text-base-content/60">%@Math.Round(pct,1)</td>
+                            <td class="text-right text-[12px] text-base-content/60">@Num(s.Fis)</td>
+                            <td class="text-[10px] text-base-content/40">@(active ? "▲" : "▼")</td>
                         </tr>
+                        @if (active)
+                        {
+                            @* --- MAĞAZA × AY DETAY (tıklanan sebep) --- *@
+                            var detay = _manuel.Where(r => r.Sebep == sebep).ToList();
+                            var aylarD = detay.Select(r => r.Ay).Distinct().OrderBy(a => a).ToList();
+                            var magazalarD = detay.Select(r => r.Magaza).Distinct().OrderBy(m => m).ToList();
+                            <tr class="bg-base-200/40">
+                                <td colspan="5" class="p-0">
+                                <div class="overflow-x-auto p-2">
+                                <table class="table table-xs w-full text-[11px]">
+                                    <thead><tr class="text-base-content/50">
+                                        <th>Ay</th>
+                                        @foreach (var mag in magazalarD) { <th class="text-right">@mag</th> }
+                                        <th class="text-right font-semibold">Toplam</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    @foreach (var ay in aylarD)
+                                    {
+                                        var satirlar = detay.Where(r => r.Ay == ay).ToList();
+                                        <tr>
+                                            <td class="font-medium">@ay</td>
+                                            @foreach (var mag in magazalarD)
+                                            {
+                                                var r = satirlar.FirstOrDefault(x => x.Magaza == mag);
+                                                <td class="text-right text-error">@(r is null ? "—" : Tl(r.Indirim))</td>
+                                            }
+                                            <td class="text-right font-semibold text-error">@Tl(satirlar.Sum(r => r.Indirim))</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                    <tfoot><tr class="font-bold border-t border-base-300">
+                                        <td>TOPLAM</td>
+                                        @foreach (var mag in magazalarD) { var m2=mag; <td class="text-right text-error">@Tl(detay.Where(r=>r.Magaza==m2).Sum(r=>r.Indirim))</td> }
+                                        <td class="text-right text-error">@Tl(detay.Sum(r=>r.Indirim))</td>
+                                    </tr></tfoot>
+                                </table>
+                                </div>
+                                </td>
+                            </tr>
+                        }
                     }
                     </tbody>
-                    <tfoot>
-                        <tr class="font-bold text-[12px] border-t-2 border-base-200">
-                            <td>TOPLAM</td>
-                            @foreach (var mag in magazalar)
-                            {
-                                var mag2 = mag;
-                                var r = _kumbara.Where(x => x.Magaza == mag2).ToList();
-                                <td class="text-right">@Tl(r.Sum(x => x.Brut))</td>
-                                <td class="text-right text-error">@Tl(r.Sum(x => x.Indirim))</td>
-                                var totB = r.Sum(x => x.Brut); var totI = r.Sum(x => x.Indirim);
-                                <td class="text-right @(totB > 0 && totI/totB*100 > 30 ? "text-error" : "")">@(totB > 0 ? "%" + Math.Round(totI / totB * 100, 1) : "—")</td>
-                            }
-                            <td class="text-right text-error">@Tl(_kumbara.Sum(r => r.Indirim))</td>
-                        </tr>
-                    </tfoot>
+                    <tfoot><tr class="font-bold text-[12px] border-t-2 border-base-200">
+                        <td>TOPLAM</td>
+                        <td class="text-right text-error">@Tl(toplamInd)</td>
+                        <td class="text-right">%100</td>
+                        <td class="text-right">@Num(sebepler.Sum(s => s.Fis))</td>
+                        <td></td>
+                    </tr></tfoot>
                 </table>
                 </div>
-                <div class="text-base-content/50 text-[11px] mt-2">%30+ indirim oranı kırmızı. Fiş sayısı: @Num(_kumbara.Sum(r => r.FisSayisi)).</div>
+                <div class="text-base-content/50 text-[11px]">Satıra tıkla → Mağaza×Ay detay. SPC köprüsü (CampaignId NULL → CampaignVersion=RefundReasons.Id).</div>
             }
         </div>
     </div>
@@ -221,7 +242,9 @@ else if (_data is not null)
     private string _aralik = "";
     private Dictionary<string, decimal?> _kasDelta = new();   // B-57 kasiyer net delta (Magaza|Ad → %)
     private IReadOnlyList<KumbaraAyRow> _kumbara = [];
+    private IReadOnlyList<ManuelIndirimRow> _manuel = [];
     private bool _kumbaraLoading = true;
+    private string? _selSebep;   // açık sebep drill
 
     private PersistingComponentStateSubscription _persistSub;
 
@@ -292,9 +315,16 @@ else if (_data is not null)
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
         finally { _loading = false; Perf.Report("Operasyon", sw); StateHasChanged(); }
 
-        // Kumbara ağır JOIN — ana sayfa açıldıktan sonra arka planda yükle (B-98)
-        try { _kumbara = await Ref.GetKumbaraAsync(); }
-        catch (Exception ex) { Logger.LogWarning(ex, "Kumbara verisi alınamadı"); _kumbara = []; }
+        // Manuel indirim + Kumbara — ağır JOIN, arka planda yükle (B-98)
+        try
+        {
+            var tKumbara = Ref.GetKumbaraAsync();
+            var tManuel = Ref.GetManuelIndirimAsync();
+            await Task.WhenAll(tKumbara, tManuel);
+            _kumbara = tKumbara.Result;
+            _manuel = tManuel.Result;
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Manuel indirim verisi alınamadı"); _kumbara = []; _manuel = []; }
         finally { _kumbaraLoading = false; StateHasChanged(); }
     }
 

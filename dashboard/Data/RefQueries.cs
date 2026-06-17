@@ -504,6 +504,33 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
         return (await conn.QueryAsync<FisIcerikRow>(yk, new { fis })).ToList();
     }
 
+    /// <summary>Manuel indirim kırılımı (B-98 genişletme) — tüm RefundReasons.Type=1 sebepleri × Mağaza × Ay.</summary>
+    public async Task<IReadOnlyList<ManuelIndirimRow>> GetManuelIndirimAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var sql = $"""
+            SELECT
+                ISNULL(rr.Name, N'(bilinmiyor)')                   AS Sebep,
+                st.Name                                             AS Magaza,
+                CONVERT(varchar(7), CONVERT(date, s.[Date]), 120)  AS Ay,
+                SUM(s.DiscountTotal)                                AS Indirim,
+                COUNT(DISTINCT s.Id)                                AS FisSayisi
+            FROM EncoreMerkez.dbo.Sales             s   WITH(NOLOCK)
+            JOIN EncoreMerkez.dbo.SalesProducts     p   WITH(NOLOCK) ON p.SalesId = s.Id AND p.IsValid = 1
+            JOIN EncoreMerkez.dbo.SalesProductCampaigns spc WITH(NOLOCK)
+                 ON spc.SalesId = s.Id AND spc.ProductSequence = p.[Sequence] AND spc.CampaignId IS NULL
+            JOIN EncoreMerkez.dbo.RefundReasons     rr  WITH(NOLOCK) ON rr.Id = spc.CampaignVersion AND rr.Type = 1
+            JOIN EncoreMerkez.dbo.Pos               ps  WITH(NOLOCK) ON ps.Id = s.PosId
+            JOIN EncoreMerkez.dbo.Stores            st  WITH(NOLOCK) ON st.Id = ps.StoreId
+            JOIN DerinSISBkm.dbo.posMagaza          mg  WITH(NOLOCK)
+                 ON mg.mekanKod = st.Code AND mg.mekanID IN ({LokasyonConfig.Subeler})
+            WHERE CONVERT(date, s.[Date]) >= '2026-01-01'
+            GROUP BY rr.Name, st.Name, CONVERT(varchar(7), CONVERT(date, s.[Date]), 120)
+            ORDER BY SUM(s.DiscountTotal) DESC, Ay, Magaza;
+            """;
+        return (await conn.QueryAsync<ManuelIndirimRow>(sql, commandTimeout: 45)).ToList();
+    }
+
     /// <summary>Kumbara indirim özeti (B-98) — Mağaza × Ay, 2026 başından bugüne.
     /// Köprü: SalesProductCampaigns.CampaignVersion = RefundReasons.Id (CampaignId IS NULL). Id=17 = Okul Kumbara.</summary>
     public async Task<IReadOnlyList<KumbaraAyRow>> GetKumbaraAsync()
