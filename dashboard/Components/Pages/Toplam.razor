@@ -1,4 +1,4 @@
-@page "/toplam"
+﻿@page "/toplam"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -287,7 +287,7 @@ else if (_data is not null)
             else { _urunler = []; }
             _etKategori = []; _etUrunler = []; _selEtKat = null;
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _urunLoading = false; _loading = false; Perf.Report("TOPLAM", sw); StateHasChanged(); }
     }
 

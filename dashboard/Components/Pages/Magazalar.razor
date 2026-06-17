@@ -1,4 +1,4 @@
-@page "/magazalar"
+﻿@page "/magazalar"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -187,7 +187,7 @@ else if (_data is not null)
             _wowLabel = wl;
             _data = await Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Mağazalar", sw); StateHasChanged(); }
     }
 

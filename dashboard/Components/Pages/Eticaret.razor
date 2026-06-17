@@ -1,4 +1,4 @@
-@page "/eticaret"
+﻿@page "/eticaret"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -307,7 +307,7 @@ else if (_data is not null)
     {
         _selAy = a; _modalGun = true; _gunKargo = []; StateHasChanged();
         try { _gunKargo = await Etic.GetGunKargoAsync(a.AyKod); }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { StateHasChanged(); }
     }
 
@@ -315,7 +315,7 @@ else if (_data is not null)
     {
         _selKtgr = k; _modalKtgr = true; _ktgrUrun = []; StateHasChanged();
         try { _ktgrUrun = await Etic.GetEticKategoriUrunAsync(k.Kategori, _start, _endExcl); }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { StateHasChanged(); }
     }
 
@@ -399,7 +399,7 @@ else if (_data is not null)
             _funnel = tFunnel.Result;
             _ktgrYil = tKtgrYil.Result;
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("E-ticaret", sw); StateHasChanged(); }
     }
 

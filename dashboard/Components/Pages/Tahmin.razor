@@ -1,4 +1,4 @@
-@page "/tahmin"
+﻿@page "/tahmin"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -434,7 +434,7 @@ else if (_t is not null)
             _motorAgirlik = Motor.Agirlik();
             await KayitlariYukle();
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Tahmin", sw); StateHasChanged(); }
     }
 

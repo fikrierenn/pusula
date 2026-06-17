@@ -238,7 +238,7 @@ else if (_d is not null)
                 _hc   = tHc.Result;
                 _rot  = tRot.Result;
             }
-            catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+            catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
             finally { _loading = false; Perf.Report("Envanter", sw); StateHasChanged(); }
         }
 
@@ -276,7 +276,7 @@ else if (_d is not null)
     {
         _selKat = kategori; _olusSort = olusSort; _modalUrun = true; _urunLoading = true; _urunler = []; StateHasChanged();
         try { _urunler = await Ref.GetUrunlerAsync(kategori, 0, _gAyBas, _gAyBit, olusSort); }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _urunLoading = false; StateHasChanged(); }
     }
 

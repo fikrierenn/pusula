@@ -1,4 +1,4 @@
-@page "/sadakat"
+﻿@page "/sadakat"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -229,7 +229,7 @@ else
             _segTrendi = tTrendi.Result;
             if (RendererInfo.IsInteractive) _ = RefreshYorumAsync();
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Sadakat", sw); StateHasChanged(); }
     }
 

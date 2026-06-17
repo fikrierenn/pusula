@@ -1,4 +1,4 @@
-@page "/operasyon"
+﻿@page "/operasyon"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -359,7 +359,7 @@ else if (_data is not null)
             _ops = tOps.Result;   // B-85: ölü iç try/catch kaldırıldı (WhenAll await sonrası .Result throw etmez)
             _wms = tWms.Result;
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Operasyon", sw); StateHasChanged(); }
 
         // Manuel indirim + Kumbara — ağır JOIN, arka planda yükle (B-98)

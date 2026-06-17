@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -297,7 +297,7 @@ else if (_data is not null)
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu.";
+            Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}";
         }
         finally
         {

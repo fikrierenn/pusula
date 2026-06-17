@@ -1,4 +1,4 @@
-@page "/musteri"
+﻿@page "/musteri"
 @using GmDashboard.Data
 @using GmDashboard.Models
 @implements IDisposable
@@ -421,7 +421,7 @@ else
             _churn = tChurn.Result;
             _kartData = _stat?.KartOran ?? [];
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Müşteri", sw); StateHasChanged(); }
     }
 
@@ -493,7 +493,7 @@ else
     {
         _selMusteri = c; _lvl = 2; _drillLoading = true; _fisler = []; StateHasChanged();
         try { _fisler = await Ref.GetFislerAsync(_selKanal, c.Id); }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _drillLoading = false; StateHasChanged(); }
     }
 
@@ -502,7 +502,7 @@ else
     {
         _selFis = f; _lvl = 3; _drillLoading = true; _fisIcerik = []; StateHasChanged();
         try { _fisIcerik = long.TryParse(f.Ref, out var rid) ? await Ref.GetFisIcerikAsync(_selKanal, rid) : []; }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _drillLoading = false; StateHasChanged(); }
     }
 
@@ -517,7 +517,7 @@ else
                 ? await Ref.GetYkCustomersAsync(_selSeg, _dun, _icKart)
                 : await Ref.GetEtCustomersAsync(_selSeg, _dun);
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _drillLoading = false; StateHasChanged(); }
     }
 
