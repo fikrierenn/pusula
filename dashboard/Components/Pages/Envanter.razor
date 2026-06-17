@@ -1,10 +1,12 @@
 ﻿@page "/envanter"
 @using GmDashboard.Data
 @using GmDashboard.Models
+@implements IDisposable
 @inject RefQueries Ref
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject ILogger<Envanter> Logger
+@inject PersistentComponentState AppState
 @rendermode InteractiveServer
 @attribute [StreamRendering]
 @* B-74: marj (~9s, kanonik maliyet şelalesi) prerender'ı bloklamasın — sayfa WhenAll grubuyla (~1.1s) hemen
@@ -203,32 +205,59 @@ else if (_d is not null)
     private DateOnly _gAyBas, _gAyBit;   // ürün drill = "geçen tam ay" (sayfa ciro/devir scope'u)
     private IReadOnlyList<UrunRow> _urunler = [];
 
+    private PersistingComponentStateSubscription _persistSub;
+
     protected override async Task OnInitializedAsync()
     {
-        var sw = PerfState.Start();
-        try
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+
+        var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+        var ayBasi = new DateOnly(dun.Year, dun.Month, 1);
+        _gAyBas = ayBasi.AddMonths(-1); _gAyBit = ayBasi;
+
+        if (AppState.TryTakeFromJson<InventoryData>("env_d", out var inv) && inv is not null &&
+            AppState.TryTakeFromJson<List<CveRow>>("env_cve", out var cve) &&
+            AppState.TryTakeFromJson<HcOzet>("env_hc", out var hc) &&
+            AppState.TryTakeFromJson<List<MarkaRotasyonRow>>("env_rot", out var rot))
         {
-            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
-            var ayBasi = new DateOnly(dun.Year, dun.Month, 1);
-            _gAyBas = ayBasi.AddMonths(-1); _gAyBit = ayBasi;   // geçen tam ay
-            var tInv  = Ref.GetInventoryAsync(dun);
-            var tCve  = Ref.GetCveAsync(dun);
-            var tHc   = Ref.GetHediyeCekiAsync();
-            var tRot  = Ref.GetMarkaRotasyonAsync(_gAyBas, _gAyBit);
-            await Task.WhenAll(tInv, tCve, tHc, tRot);
-            _d    = tInv.Result;
-            _cve  = tCve.Result;
-            _hc   = tHc.Result;
-            _rot  = tRot.Result;
+            _d = inv; _cve = cve ?? []; _hc = hc; _rot = rot ?? [];
+            _loading = false; StateHasChanged();
         }
-        catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
-        finally { _loading = false; Perf.Report("Envanter", sw); StateHasChanged(); }
+        else
+        {
+            var sw = PerfState.Start();
+            try
+            {
+                var tInv  = Ref.GetInventoryAsync(dun);
+                var tCve  = Ref.GetCveAsync(dun);
+                var tHc   = Ref.GetHediyeCekiAsync();
+                var tRot  = Ref.GetMarkaRotasyonAsync(_gAyBas, _gAyBit);
+                await Task.WhenAll(tInv, tCve, tHc, tRot);
+                _d    = tInv.Result;
+                _cve  = tCve.Result;
+                _hc   = tHc.Result;
+                _rot  = tRot.Result;
+            }
+            catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = "Veri yüklenirken hata oluştu."; }
+            finally { _loading = false; Perf.Report("Envanter", sw); StateHasChanged(); }
+        }
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
         try { _marj = await Ref.GetMarjAsync(); }
         catch (Exception ex) { Logger.LogWarning(ex, "Marj (maliyet şelalesi) alınamadı — marj kartı boş gösterilecek"); }  // B-85: sessiz değil
         finally { _marjLoading = false; StateHasChanged(); }
     }
+
+    private Task PersistData()
+    {
+        if (_d is not null) AppState.PersistAsJson("env_d", _d);
+        AppState.PersistAsJson("env_cve", (List<CveRow>)_cve.ToList());
+        if (_hc is not null) AppState.PersistAsJson("env_hc", _hc);
+        AppState.PersistAsJson("env_rot", (List<MarkaRotasyonRow>)_rot.ToList());
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -21,6 +21,9 @@ public record TahminSonuc(string TahminAy, decimal YoYTaban, decimal IvmePct, de
 /// <summary>Kategori bazlı YoY MTD karşılaştırma (bu ay MTD vs geçen yıl aynı MTD). plan-13.</summary>
 public record TahminKategori(string Ad, decimal MtdBuYil, decimal MtdGecenYil, decimal? YoyPct);
 
+/// <summary>Mağaza tahmin satırı — PersistentComponentState için ValueTuple yerine.</summary>
+public record TahminMagazaItem(string Ad, TahminSonuc T);
+
 /// <summary>Kaydedilmiş tahmin (plan-14). data/tahmin-kayitlari.json. MekanId 0=toplam.
 /// Carpan = kayıt anında uygulanan takvim çarpanı (1.0 = etmensiz).</summary>
 public record TahminKayitEntry(string Id, int Year, int Month, int MekanId,

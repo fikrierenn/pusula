@@ -1,12 +1,14 @@
 @page "/magaza/{Id:int}"
 @using GmDashboard.Data
 @using GmDashboard.Models
+@implements IDisposable
 @inject MagazaQueries Mag
 @inject RefQueries Ref
 @inject PerfState Perf
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ILogger<Magaza> Logger
+@inject PersistentComponentState AppState
 @rendermode InteractiveServer
 
 <PageTitle>Mağaza Detay — BKM GM</PageTitle>
@@ -262,7 +264,47 @@ else if (_d is not null)
     private void OpenOdeme(OdemeGrup o) { _selOdeme = o; _modalOdeme = true; }
     private void OpenKamp(KampanyaGrup k) { if (k.Detay.Count > 1) { _selKamp = k; _modalKamp = true; } }
 
-    protected override async Task OnParametersSetAsync() => await LoadAsync();
+    private PersistingComponentStateSubscription _persistSub;
+
+    protected override Task OnInitializedAsync()
+    {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AppState.TryTakeFromJson<int>("mag_id", out var pid) && pid == Id &&
+            AppState.TryTakeFromJson<string>("mag_period", out var pp) && pp == _period &&
+            AppState.TryTakeFromJson<MagazaDetay>("mag_d", out var d) && d is not null &&
+            AppState.TryTakeFromJson<List<TrendPoint>>("mag_trend", out var tr) &&
+            AppState.TryTakeFromJson<List<HeatCell>>("mag_heat", out var heat) &&
+            AppState.TryTakeFromJson<DateOnly>("mag_start", out var st) &&
+            AppState.TryTakeFromJson<DateOnly>("mag_end", out var en) &&
+            AppState.TryTakeFromJson<string>("mag_aralik", out var ar))
+        {
+            _d = d; _trend = tr ?? []; _heat = heat ?? [];
+            _start = st; _endExcl = en; _aralik = ar ?? "";
+            _loading = false; StateHasChanged();
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private Task PersistData()
+    {
+        AppState.PersistAsJson("mag_id", Id);
+        AppState.PersistAsJson("mag_period", _period);
+        if (_d is not null) AppState.PersistAsJson("mag_d", _d);
+        AppState.PersistAsJson("mag_trend", (List<TrendPoint>)_trend.ToList());
+        AppState.PersistAsJson("mag_heat", (List<HeatCell>)_heat.ToList());
+        AppState.PersistAsJson("mag_start", _start);
+        AppState.PersistAsJson("mag_end", _endExcl);
+        AppState.PersistAsJson("mag_aralik", _aralik);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
 
     private async Task LoadAsync()
     {
