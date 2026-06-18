@@ -79,6 +79,16 @@ Asistan.razor (chat)
 - **SaltOkumaGuard:** trim→tek statement→`SELECT`/`WITH` ile başlamalı; yasak keyword (INSERT/UPDATE/DELETE/DROP/ALTER/EXEC/MERGE/TRUNCATE/GRANT/sp_/xp_) RED; `;` multi-statement RED.
 - **Db:** salt-okuma bağlantı (ApplicationIntent=ReadOnly veya ayrı login; en azından guard). MAX_ROWS limit.
 
+## Deep-Research Bulguları (18.06 — 3 doğrulanmış HIGH, gerisi hipotez)
+**Doğrulanmış (3-0 adversarial, primary docs):**
+- **Golden-record few-shot ⭐ SOMUT:** doğrulanmış NL→SQL örnek çiftleri prompt'a enjekte = en güçlü accuracy kalıbı (Dataherald + Vanna konsensüs). **BKM'de HAZIR:** `sorgular/*.sql` arşivi (semantic-layer ikiz-yükümlülük kuralıyla zaten birikiyor) = golden-record store. → `sql_sorgu` aracı SQL üretmeden ÖNCE: soruya benzer arşiv-SQL + ilgili sema entry retrieve → Claude prompt'a örnek olarak ver. Pure-prompt DEĞİL, retrieve-then-generate.
+- **Semantic-layer grounding:** sema/*.yaml = Dataherald "Context Store" muadili — canonical context, prompt'a feed. Mevcut yaklaşım doğrulandı.
+
+**Hipotez (rate-limit/single-source — uygulamadan ÖNCE re-verify):**
+- **Memory "access-compliance gap" (Mem0 preprint):** recall tek başına tercih-uyumu SAĞLAMAZ — CFO düzeltmesi sadece "hatırlanan NL-not" değil, mümkünse **sistem-prompt'a sabit/enforced kural** olmalı. Öğrenen-katman: kritik tercihler (ör. "ciro hep KDV-hariç") sistem-prompt'a pinned, gevşek tercihler retrieve. Doğrulanmadı → Faz-1'de basit başla (NL-not), gap görülürse enforce.
+- **Multi-tool composition güvenlik:** SQL çıktısı → mail/takvim aracına zincirleme = saldırı yüzeyi (CFO PII+finans yüksek-risk). Faz-2 mail eklenince **source-to-sink isolation**: asistan SQL sonucu otomatik mail gövdesine GİTMESİN; CFO onayı + maskeleme. Hipotez, Faz-2 re-verify.
+- **Mail Graph scope:** delegated `Mail.Send` + send-approval gate (preview-default, explicit-confirm mutasyon). Faz-2 doğrula.
+
 ## Kod Organizasyonu (asistan kısımları AYRI — dağılmasın)
 Tek proje (dashboard) ama asistan kodu kendi grubunda:
 - `dashboard/Data/Asistan/` namespace: `AsistanService.cs` (tool-use loop), `AsistanAraclar.cs` (tool tanım+exec), `AsistanBellek.cs` (PanelAsistanBellek recall/learn), `SaltOkumaGuard.cs`, `PiiMaske.cs`.
@@ -88,7 +98,7 @@ Tek proje (dashboard) ama asistan kodu kendi grubunda:
 
 ## Adımlar
 1. **Anthropic SDK** — nuget (`Anthropic.SDK` veya raw HttpClient). `.env` ANTHROPIC_API_KEY + model (haiku/sonnet). Db'ye okuma-guard helper.
-2. **AsistanAraclar.cs** — tool tanımları (JSON schema) + `sql_sorgu` (guard+exec+limit) + `sema_oku`. Salt-okuma guard birim-mantığı.
+2. **AsistanAraclar.cs** — tool tanımları (JSON schema) + `sql_sorgu` (guard+exec+limit) + `sema_oku` + **`ornek_sql_bul`** (golden-record: soruya benzer `sorgular/*.sql` retrieve → few-shot). Salt-okuma guard. **Retrieve-then-generate:** SQL üretmeden önce sema entry + benzer arşiv-SQL prompt'a enjekte (deep-research HIGH bulgu).
 3. **AsistanService.cs** — tool-use loop (system=sema kuralları özeti, max N tur, bağlam-sıkıştırma). Hata/loglu.
 4. **Asistan.razor** — veri-sorgu modu: chat input → SorAsync → cevap balonu (+ tablo varsa). Görev-taslak modu korunur (intent ayrımı: soru mu / not mu).
 5. **Güvenlik smoke** — yazma denemesi reddi + 3 veri sorusu doğru rakam (dashboard mutabakat).
