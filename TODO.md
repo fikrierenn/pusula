@@ -139,6 +139,16 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### BKM — BIRLESIK ONCELIK SIRASI
 
+#### 🌅 SABAH (19.06) — kalan iş kürasyonu (18.06 handoff, tüm TODO tarandı)
+> Genius asistanı (B-45) BİTTİ — kalan sadece canlı-test (LLM kotası 19.06 03:00 reset / $10→1000gün) + senin dışa-dönük aksiyonların (etkinlik-Oluştur/mail-Gönder Chrome onay · auth şifre değiştir). Aşağısı pre-existing BKM backlog'undan en değerli/aksiyonel olanlar.
+- [ ] **🥇 B-111** ⭐ WMS bekleyen-sipariş doluluk göstergesi — metrik `metrics.yaml`'da HAZIR (`depo.emir`+`J_ORDER_DETAILS.STATUS`), sadece Operasyon sayfasına mini-kart. **EN DÜŞÜK EFOR / API'siz.**
+- [ ] **🥈 B-112** Dashboard hızlı kazanımlar (4 kart, mevcut sorgu varyasyonu): (a) ödeme-grubu trendi nakit↑=stres · (b) iade sebebi (`RefundReasons.Type=0`) · (c) kampanya kaynak (`SPC.Source`) · (d) kasa saatleri yoğunluk.
+- [ ] **🥉 B-110** ⭐ Tedarikçi/Yayınevi performans paneli (ciro+iade+devir<1.5×→sipariş-kes sinyali; `urnMrk`+`irsHrk`+`urnKtgr2` köprü kanıtlı) — yeni sayfa/kart, CFO sermaye kararı. **(Tier-3, biraz büyük)**
+- [ ] **B-06** CampaignId=NULL **389,4M ₺** indirim kaynak araştırması (Session-2'den açık — MCP keşfi).
+- [ ] **B-12/B-13** e-ticaret keşif SQL'lerini `sorgular/`'a arşivle (ikiz-yükümlülük borcu).
+- [ ] **TEMİZLİK:** B-NEW-00..06 (Mayıs kampanya) **stale → `## Arşiv`'e taşı** (Nisan'dan beri aktif Faz'da, bitmedi).
+> Diğer açık: Faz-2 veri (B-08/09/10/11/14), otomasyon (B-21/32 mail-scheduler, B-05, B-23a-d), ertelenen (B-93/94/95 bilinçli), ayrı-repo (MCP M-0x → `D:\Dev\sqlserver-mcp`), ayrı-proje (Belinza BL-0x, YonetIQ Y-0x başlamadı). Tam liste aşağıda.
+
 #### 🌅 SABAH HIZLI KAZANIMLAR (17.06 handoff — curated, açık backlog'dan ~30dk-1sa'lik işler)
 > Önce bunları hızlıca temizle (düşük efor/risk, bağımsız), sonra büyük iş (Kumbara/B-91/B-81).
 - [x] ✅ **HK-0 🥇 İLK İŞ: tüm açık TODO tara + iş listesi + TODO-DİSİPLİNİ SERTLEŞTİR** (18.06) (kullanıcı direktifi 17.06) — (1) TODO.md TÜM açık `[ ]` maddeleri tara (todo-verification: file:line ile canlı doğrula, stale [x]-değil-aslında-açık + atlanmış olanları yakala), (2) öncelikli **iş listesi** çıkar (efor/değer/bağımlılık). (3) **TODO-yönetimi için skill GEREKİYOR mu** değerlendir: `plan-tracker` (TodoWrite↔TODO sync) + `consolidate-sema` (stale budama) VAR — "tüm açık tara + öncelikli iş listesi" işini KAPSIYOR mu? Boşluk → **`yetenek-uret`** ile `todo-tara` skill forge (footprint: önce mevcut genişlet).
