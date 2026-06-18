@@ -24,11 +24,15 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
         gecmis.Add(new LlmTur("user", soru));
         var iz = new List<string>();
         var tanimlar = araclar.Tanimlar();
+        // Tarih bağlamı — LLM bugünü bilmez; "yarın/bu hafta" doğru çözümlenir (yerel saat, tek-makine TR).
+        var simdi = DateTime.Now;
+        var tarihBag = $"BUGÜN: {simdi:dd.MM.yyyy} {simdi.ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))}, saat {simdi:HH:mm}. 'yarın/bu hafta/gelecek ...' bunu baz al; etkinlik zamanını yyyy-MM-ddTHH:mm yaz.\n\n";
+        var sistem = tarihBag + SistemTalimat;
 
         for (int tur = 0; tur < MaxTur; tur++)
         {
             LlmYanit yanit;
-            try { yanit = await llm.UretAsync(SistemTalimat, gecmis, tanimlar, ct); }
+            try { yanit = await llm.UretAsync(sistem, gecmis, tanimlar, ct); }
             catch (Exception ex)
             {
                 log.LogError(ex, "Asistan LLM hatası");
