@@ -259,3 +259,35 @@ bridges:
       İndirim ve yük% zaten doğruydu (spc'den); fan-out SADECE brüt+net'i şişiriyordu. Fix: commit 609f3dd MagazaQueries.cs."
     last_verified: 2026-06-16     # plan-12 WS-1 decay; confidence 0.97 → ttl 180g
     ttl_days: 180
+
+  # ── BKMMaliyet ↔ DerinSIS köprüleri (FIFO maliyet, 2026-06-19) ──
+  - id: maliyet-stkid-urn
+    from: BKMMaliyet.dbo.FifoKatman.StkId  (FifoCikisDetay/AcilisEnvanter/Sorunlu de aynı)
+    to: DerinSISBkm.dbo.urn.stkID
+    scope: maliyet
+    confidence: 1.0
+    note: "BKMMaliyet tüm Fifo* tabloları StkId = urn.stkID (int, 1:1). Ürün/kategori için urn.stkID üstünden (stkKod/barkod DEĞİL)."
+  - id: maliyet-marj-cikis
+    from: BKMMaliyet.dbo.FifoCikisDetay (SatisTutar, CikisTutar)
+    to: "marj = SUM(SatisTutar) − SUM(CikisTutar); marj% = brüt/gelir×100"
+    scope: maliyet
+    confidence: 1.0
+    note: "Ürün/kategori/dönem karlılığı bu tek tablodan. SATIS satırları; HareketTarihi ay-filtresi. Ocak2026: gelir 72.35M/SMM 46.71M/brüt 25.64M/%35.4. Kategori = bkm.UrunBilgi.Kategori3 (urnKtgr2 karşılığı)."
+    last_verified: 2026-06-19
+    ttl_days: 180
+  - id: maliyet-kategori3-urnktgr2
+    from: DerinSIS_Local.bkm.UrunBilgi.Kategori3
+    to: DerinSISBkm.dbo.urnKtgr2.ktgrAd
+    scope: maliyet
+    confidence: 0.9
+    note: "Kategori3 = urnKtgr2 ana kategori (18 değer, DOLU). ≠ dbo.UrunBilgi.Kat3 (seyrek %25). K/Z raporunda Kategori3 kullan."
+    last_verified: 2026-06-19
+    ttl_days: 180
+  - id: maliyet-songecerli-fiyat
+    from: DerinSIS_Local.bkm.fn_SonGecerliFiyat(@AsOf,@FiyatTuru)
+    to: "wrapper → fn_SonGecerliFiyat_Adv(@AsOf,@FiyatTuru,1,1); fytOzl fTur=1/fTip=1 kanonik"
+    scope: maliyet
+    confidence: 0.95
+    note: "sonrakiNet = sonrakiFiyat × (fInd1..5 indirim kademeleri çarpımı). fTarihSon FİLTRELENMEZ (son-bilinen). Açılış SART tier kaynağı. TVF korelasyonlu çağırma → timeout; iç mantık+hedef-ID scan'e göm (restrict-then-rownumber)."
+    last_verified: 2026-06-19
+    ttl_days: 180

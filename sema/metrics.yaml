@@ -120,6 +120,8 @@ metrics:
     formula: "ihtiyaç = SUM(QUANTITY sipariş) − ISNULL(SUM(raflanmış koli),0); depodan_toplanacak = ihtiyaç − JokerHavuz mevcut"
     note: "J_ORDER_DETAILS_COMP ile set/kompozit ürün açılır (COMPBARCODE/COMPITEMREF). DETAILS.STATUS=2003 (rafta) tarihi NULL'lanır."
     rapor: "BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql"
+    UYARI_emirAyr: "B-111 keşfi (18.06): bu metrik J_ORDERS (e-tic) tarafı. DerinSIS depo.emirAyr.emTamam=0 ALTERNATİF DEĞİL — KİRLİ: 2.422 emir/~2M satır/4,3M kalan adet, header kTarih 2021'e kadar. depo.emir.emDurum=1 hem zombi hem taze kapsar → temiz açık/kapalı bayrağı YOK. emirAyr-tabanlı bekleyen kart için recency-filtre (son ~7g) ZORUNLU + zombi-uyarısı ayrı. Kanıt: sorgular/2026-06-18-wms-bekleyen-kesif.sql"
+    last_verified: 2026-06-18
 
   cari_firma_stok_hareket:  # firma bazlı stok + 3 ay alış/satış (cari özet)
     source: "stokSonAltDepo_vw (depo+mağaza stok) + irsHrk (3 ay alış/satış pivot) + bakiye_vw"
@@ -188,3 +190,25 @@ metrics:
     durum: "✅ TAMAMLANDI 16.06 (plan-16 arşiv). Doğrulama: Genel Bakış mağaza -%7,1/online -%9,2, /toplam kategori (Kitap %0 değişmedi, %20'liler -%16), e-ticaret/müşteri/RFM 4 sayfa smoke OK, fiş sayısı korundu."
     istisna: "KDV-DAHİL kalanlar (bilinçli): (1) MagazaQueries kampSql kampanya indirim oranı paneli — oran=indirim/brüt KDV'den bağımsız, yarı-çevirmek oranı bozar. (2) MagazaQueries Iade/IadeOran gross-ratio. (3) MagazaQueries odemeSql SalesPayments.Amount = gerçek tahsilat (kasanın aldığı, KDV-dahil DOĞRU — ciro değil). (4) COD kargo maliyeti RefQueries (CARGOPRICE×2 = maliyet, ciro değil)."
     rapor: "plan-16 (arşiv). Queries.cs/MagazaQueries.cs/RefQueries.cs/EticQueries.cs/SadakatQueries.cs — hepsi KDV+kargo-hariç (istisnalar hariç)."
+
+  # ── BKMMaliyet — FIFO maliyet/marj metrikleri (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
+  fifo_karlilik:
+    kaynak: "BKMMaliyet.dbo.FifoCikisDetay (HareketTipi='SATIS')"
+    gelir: "SUM(SatisTutar)  — satış geliri (irsHrk ehTutarN, KDV-hariç, miktar-oranlı çıkış segmentine dağıtılmış)"
+    smm: "SUM(CikisTutar)  — satılan malın maliyeti (CikisTutar COMPUTED = Miktar × BirimMaliyet)"
+    brut_kar: "gelir − smm"
+    marj_yuzde: "brut_kar / gelir × 100"
+    kategori: "bkm.UrunBilgi.Kategori3 (urnKtgr2; LEFT JOIN ub.stkID=c.StkId). dbo.Kat3 KULLANMA (seyrek)."
+    ay_filtre: "HareketTarihi >= ay-başı AND < ay-sonu+1"
+    ocak_2026: "Gelir 72.35M · SMM 46.71M · Brüt 25.64M · Marj %35.4 (yeni master, rev2 ile birebir). Top: Kırtasiye %43, Oyuncak %38, Akademi %38, Kitap %33, Çocuk %32, Hazırlık %29."
+    last_verified: 2026-06-19
+  fifo_birim_maliyet: "eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND KalanMiktar>0"
+  fifo_acilis_stok: "GEÇMİŞ-doğru: irsHrk KÜMÜLATİF SUM(ehAdetN) WHERE ehTrhS<=@devir AND ehAltDepo=0 AND ehMekan IN(1,12,4477,4478) HAVING>0. ANLIK stok view (stokSonAltDepo_vw) KULLANMA — devir-tarihi stoğunu bugünkü stokla bozar (19.06 bug)."
+  fifo_garanti_tier:
+    aciklama: "Açılış SP (sp_Fifo_AcilisCalistir_V2 ADIM 5.5) — tüm tier sonrası maliyetsiz/katmansız stok için FİYAT 0 OLAMAZ garantisi."
+    oncelik: "1) UrunBilgi.SonAlis>0 (gerçek son-alış = gerçek-ürün ayracı) → 2) SatisFiyat × kategori-marj oranı (AVG cost/satış per KatAna, ≥20 ürün) → 3) kategori ortalama mutlak maliyet → 4) impute-EDİLEMEZ → DEVRE DIŞI (non-inventory)"
+    sabit_kaldirildi: "1-TL @GarantiSabitFiyat KALDIRILDI (19.06): non-inventory'yi (sınav süreli yayın/hediye çeki/kafe) %100 marj sayıp Ocak'ı +1.37M şişiriyordu (272 kalem). Artık impute-edilemez=devre-dışı."
+    sonalis_dersi: "Salt kategori-imput gerçek ürünleri (SonAlis>0 ama kategori-dışı) yanlış devre-dışı yapıyordu → SonAlis tier eklendi → yanlış-dışlama=0. SonAlis=0 = non-inventory ayracı."
+    last_verified: 2026-06-19
+  fifo_fiyat_0_olamaz: "FifoKatman.BirimMaliyet<=0 KESİNLİKLE yasak (fifo-domain §6). 0 = sessiz %100-marj. GATE: SELECT COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı hariç) = 0."
+  fifo_non_inventory: "Devre-dışı = stkID-CURATED (isim-pattern DEĞİL — fifo-domain §3): 'Geri Dönüşüm' çocuk kitabı, 'Poşet Dosya' kırtasiye, 'Big Babol Poşet' sakız GERÇEK ürün. Gerçek non-inventory: BKM bagging-poşet, kargo gideri (Zkargo), hediye çeki, iskonto/fiyat-farkı, demirbaş, yemek-ilk-madde, isimsiz-obsolete."

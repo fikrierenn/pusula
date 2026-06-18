@@ -209,3 +209,34 @@ codes:
 
   # J_ORDERS.STATUS → joker.J_ORDERS.STATUS'a BİRLEŞTİ (curator 17.06, dup giderme — tek-doğruluk-kaynağı).
   #   funnel_gruplari + may_2026_dagilim + confidence/evidence artık joker.J_ORDERS.STATUS altında. (git history eski hali korur.)
+
+  # ── BKMMaliyet FIFO kod sözlükleri (2026-06-19) ──
+  BKMMaliyet.FifoKatman.KaynakTip:
+    NORMAL_yok: "(KaynakTip değil, Durum)"
+    ALIS: "alış faturası katmanı"
+    ACILIS: "açılış normal katmanı (gerçek alış fiyatı)"
+    ACILIS_TAMAMLA: "açılış tamamlama (son alış/merkez/sart/kategori-imput)"
+    AYLIK_DEVIR: "geçmiş ay devir katmanı (GirisTarihi=AyBitis, ≤ envanter)"
+    SENTETIK_ALIS: "sentetik katman (fallback fiyat, stok yetersizde)"
+    note: "FIFO maliyet havuzu giriş kaynağı"
+    last_verified: 2026-06-19
+  BKMMaliyet.FifoKatman.Durum:
+    NORMAL: "gerçek fatura fiyatı (en güvenilir)"
+    TAMAMLAMA: "son alış fiyatı (UrunBilgi.SonAlis dahil — gerçek son-alış)"
+    MERKEZ_TAMAMLAMA: "merkez depo (12) son alış"
+    SART_TAMAMLAMA: "son geçerli satınalma-şartı (fn_SonGecerliFiyat/fytOzl)"
+    AYLIK_DEVIR: "geçmiş ay stok devri"
+    KATEGORI_IMPUT: "SatisFiyat × kategori-marj oranı (imputation, 19.06 GARANTİ tier)"
+    KATEGORI_ORT: "kategori ortalama mutlak maliyet (SatisFiyat yoksa)"
+    note: "BirimMaliyet<=0 OLAMAZ (fifo-domain §6). 1-TL SABIT KALDIRILDI (19.06): impute-edilemez → DEVRE DIŞI (non-inventory), sahte ~%100 marj üretmez."
+    last_verified: 2026-06-19
+  BKMMaliyet.FifoSorunluStoklar.SorunTipi:
+    ALIS_YOK: "hiç alış bulunamadı"
+    "ALIS_YOK_*_TAMAMLANDI": "fallback (merkez/songecerli) ile çözüldü"
+    ALIS_EKSIK_TAMAMLANDI: "stok>alış, son alışla tamamlandı"
+    STOK_YETERSIZ: "satış katmanları aşıyor (sentetik gerekli)"
+    FIYAT_YOK: "hiçbir kaynak fiyat yok (GARANTİ sonrası → devre-dışı veya imput)"
+    note: "log/audit; çözülen 'TAMAMLANDI' tipleri maliyet ATANMIŞ (tahmini)"
+    last_verified: 2026-06-19
+  BKMMaliyet.FifoCikisDetay.HareketTipi: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}
+  # DerinSIS irs/irsHrk eTip (FIFO kullanımı): alış 0,2,10,3,6,102,103 · satış 1,4,5,100,101 (100=POS satış dominant) · iade 3,5,101

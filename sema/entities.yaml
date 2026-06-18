@@ -90,3 +90,24 @@ entities:
 
   # EncoreMerkez kampanya
   EncoreMerkez.dbo.SalesProductCampaigns: {pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
+
+  # ── BKMMaliyet — FIFO maliyet sistemi (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
+  # ERP kaynağı: DerinSISBkm (prod) / DerinSIS_Local (BT-FIKRI demo). SP master: fifo/v2-production/00_V2_MASTER_FULL.sql
+  BKMMaliyet.dbo.FifoKatman:
+    pk: KatmanId
+    key: [StkId, GirisTarihi, KaynakTip, GirisMiktar, KalanMiktar, BirimMaliyet, Durum]
+    grain: "ürün × giriş katmanı (FIFO maliyet havuzu, mekan-bağımsız PARTITION BY StkId)"
+    note: "BirimMaliyet<=0 OLAMAZ (fifo-domain §6). KaynakTip→codes. Eldeki birim maliyet=SUM(KalanMiktar*BirimMaliyet)/SUM(KalanMiktar) WHERE KalanMiktar>0."
+    last_verified: "2026-06-19"
+  BKMMaliyet.dbo.FifoCikisDetay:
+    pk: CikisId
+    key: [StkId, HareketTarihi, HareketTipi, MekanId, KatmanId, Miktar, BirimMaliyet, CikisTutar, SatisTutar]
+    grain: "satış/iade çıkış × tüketilen katman segmenti"
+    note: "marj = SatisTutar(gelir) − CikisTutar(SMM). CikisTutar COMPUTED=Miktar×BirimMaliyet (UPDATE edilemez). SatisTutar=irsHrk ehTutarN miktar-oranlı. HareketTipi SATIS/IADE. çıkış SMM=irsHrk kaynaklı (irs/irsAyr DEĞİL)."
+    last_verified: "2026-06-19"
+  BKMMaliyet.dbo.FifoAcilisEnvanter: {pk: "(EnvanterTarihi,MekanId,StkId)", key: [StokMiktar], note: "açılış stok snapshot=irsHrk KÜMÜLATİF (ehTrhS<=devir, ehAltDepo=0, mekan 1/12/4477/4478) — GEÇMİŞ-doğru, anlık-stok view DEĞİL."}
+  BKMMaliyet.dbo.FifoSorunluStoklar: {pk: "(EnvanterTarihi,MekanId,StkId,SorunTipi)", key: [StokMiktar, Aciklama], note: "SorunTipi→codes (FIYAT_YOK/ALIS_YOK/...TAMAMLANDI)"}
+  BKMMaliyet.dbo.FifoDevreDisiUrunler: {pk: StkId, key: [Sebep, EkleyenKullanici], note: "non-inventory (poşet-bagging/gider/hediye-çeki/demirbaş). Envanterde KALIR, FIFO katmanı kurulMAZ. fifo-domain §2/§3: stkID-curated (isim-pattern DEĞİL — 'Geri Dönüşüm' çocuk kitabı/'Poşet Dosya' kırtasiye gerçek ürün)."}
+  BKMMaliyet.dbo.FifoFallbackFiyatlari: {pk: "(StkId,SatinalmaSarti,MekanId)", key: [BirimMaliyet], note: "fallback fiyat; SatinalmaSarti='DEVIR_FALLBACK' açılışta devreye girer"}
+  BKMMaliyet.dbo.OrtalamaAylikMaliyet: {pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
+  # ERP kaynak (FIFO tüketir): DerinSIS irsHrk(stok/çıkış), fat+fatAyr(alış), fytOzl(satınalma şartı fiyatı), bkm.UrunBilgi(stkID/SatisFiyat/SonAlis/Kategori3/KatAna)
