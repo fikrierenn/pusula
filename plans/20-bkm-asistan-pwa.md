@@ -79,6 +79,13 @@ Asistan.razor (chat)
 - **SaltOkumaGuard:** trim→tek statement→`SELECT`/`WITH` ile başlamalı; yasak keyword (INSERT/UPDATE/DELETE/DROP/ALTER/EXEC/MERGE/TRUNCATE/GRANT/sp_/xp_) RED; `;` multi-statement RED.
 - **Db:** salt-okuma bağlantı (ApplicationIntent=ReadOnly veya ayrı login; en azından guard). MAX_ROWS limit.
 
+## Kod Organizasyonu (asistan kısımları AYRI — dağılmasın)
+Tek proje (dashboard) ama asistan kodu kendi grubunda:
+- `dashboard/Data/Asistan/` namespace: `AsistanService.cs` (tool-use loop), `AsistanAraclar.cs` (tool tanım+exec), `AsistanBellek.cs` (PanelAsistanBellek recall/learn), `SaltOkumaGuard.cs`, `PiiMaske.cs`.
+- `dashboard/Components/Pages/Asistan.razor` — UI (mevcut, genişler).
+- BkmPanel tabloları: `PanelGorev` (var), `PanelAsistanBellek` (yeni).
+- Plan dosyaları: bu plan = master + Faz-1. Faz-2 (mail/takvim) → Faz-1 bitince `plans/21-asistan-mail-takvim.md`. Faz-3 → plan-22. (Şimdi bölme erken — detay yok.)
+
 ## Adımlar
 1. **Anthropic SDK** — nuget (`Anthropic.SDK` veya raw HttpClient). `.env` ANTHROPIC_API_KEY + model (haiku/sonnet). Db'ye okuma-guard helper.
 2. **AsistanAraclar.cs** — tool tanımları (JSON schema) + `sql_sorgu` (guard+exec+limit) + `sema_oku`. Salt-okuma guard birim-mantığı.
