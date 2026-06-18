@@ -1,7 +1,12 @@
+using System.Text.Json;
+
 namespace GmDashboard.Data.Asistan;
 
-/// <summary>Asistan cevabı: metin + araç izi + (varsa) onay bekleyen görev taslağı.</summary>
-public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi, string? Taslak = null);
+/// <summary>Onay bekleyen dış-aksiyon önerisi. Tip: "gorev" | "etkinlik" | "mail". Ozet=karta basılacak metin, Veri=onayda çalıştırılacak argümanlar.</summary>
+public sealed record AsistanOneri(string Tip, string Ozet, JsonElement Veri);
+
+/// <summary>Asistan cevabı: metin + araç izi + (varsa) onay bekleyen öneri (görev/etkinlik/mail).</summary>
+public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi, AsistanOneri? Oneri = null);
 
 /// <summary>
 /// BKM-Asistan tool-use loop (plan-20 Faz-1). Tek akış: kullanıcı mesajı → LLM (Gemini→Groq) niyeti+bağlamı yönetir.
@@ -40,13 +45,13 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
             foreach (var cagri in yanit.AracCagrilari)
             {
                 iz.Add(cagri.Ad);
-                // Görev taslağı önerisi → loop'u durdur, kullanıcı onayına sun (otomatik kaydetme).
-                if (cagri.Ad == "gorev_taslak_oner")
+                // Dış-aksiyon önerisi (görev/etkinlik/mail) → loop'u durdur, kullanıcı onayına sun (otomatik YAPMA).
+                if (cagri.Ad is "gorev_taslak_oner" or "takvim_etkinlik_oner" or "mail_taslak_oner")
                 {
-                    var taslak = araclar.TaslakKur(cagri.Argumanlar);
+                    var oneri = araclar.OneriKur(cagri.Ad, cagri.Argumanlar);
                     gecmis.Add(new LlmTur("tool", AracSonuc: new LlmAracSonuc(cagri.Ad, "{\"durum\":\"kullanıcı onayına sunuldu\"}", cagri.Id)));
-                    var intro = string.IsNullOrWhiteSpace(yanit.Metin) ? "Bir görev taslağı hazırladım — onayını bekliyorum." : yanit.Metin!;
-                    return new(intro, iz, taslak);
+                    var intro = string.IsNullOrWhiteSpace(yanit.Metin) ? OneriIntro(oneri.Tip) : yanit.Metin!;
+                    return new(intro, iz, oneri);
                 }
                 var sonuc = await araclar.CalistirAsync(cagri.Ad, cagri.Argumanlar, ct);
                 gecmis.Add(new LlmTur("tool", AracSonuc: new LlmAracSonuc(cagri.Ad, sonuc, cagri.Id)));
@@ -55,12 +60,22 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
         return new($"İşlem {MaxTur} adımda tamamlanamadı — sadeleştirir misiniz?", iz);
     }
 
+    private static string OneriIntro(string tip) => tip switch
+    {
+        "etkinlik" => "Bir takvim etkinliği hazırladım — onayını bekliyorum.",
+        "mail"     => "Bir mail taslağı hazırladım — onayını bekliyorum.",
+        _          => "Bir görev taslağı hazırladım — onayını bekliyorum.",
+    };
+
     // Sistem talimatı — iş/not asistanı birincil; veri sorusu ikincil (araçlar gerektiğinde).
     private const string SistemTalimat = """
         Sen BKM Kitap'ın CFO'suna yardımcı Türkçe asistanısın. Birincil işin: konuşmak, fikir/notu nete çevirmek, görev yönetmek. Kısa, net, sıcak ama yönetici dili.
 
         NİYET (sen karar ver — bağlamı koru):
         - Kullanıcı bir İŞ / YAPILACAK / FİKİR / HATIRLATMA söylerse (ör. "vitrin yenilensin", "tedarikçiyle toplantı ayarla") → `gorev_taslak_oner` aracıyla yapılandırılmış taslak öner. KAYDETME — kullanıcı onaylar (Kaydet/Ata/Düzelt UI'da).
+        - Kullanıcı TAKVİM/TOPLANTI işi derse → "ne var/programım" = `takvim_listele` (oku); "ayarla/oluştur" = `takvim_etkinlik_oner` (ONAYA sunar, otomatik oluşturmaz).
+        - Kullanıcı MAİL işi derse → "gelen kutusu/özet/X'ten var mı" = `mail_ozet` (oku); "yaz/yanıtla/gönder" = `mail_taslak_oner` (ONAYA sunar, otomatik göndermez). Mail gövdesine müşteri verisi/PII GÖMME.
+        - Takvim/mail aracı "Google bağlı değil" derse → kullanıcıya "Asistan'da 'Google'a bağlan'a tıkla" de.
         - Kullanıcı bir VERİ sorusu sorarsa (ciro/stok/kargo/müşteri sayısı) → veri araçlarını kullan (aşağıda). Bu ikincil; gerekmiyorsa kullanma.
         - TAKİP mesajları ("evet", "güncelle", "şunu da ekle", "onu da göster") → önceki konuşmanın DEVAMIDIR. Bağlamı koru, sıfırdan taslak/sorgu başlatma. "evet" = az önce önerdiğin şeyi yap demektir.
         - Tek kelimelik/belirsiz girdiyi taslağa ÇEVİRME — bağlama bak; bağlam yoksa kısa netleştirme sorusu sor.

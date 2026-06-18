@@ -8,7 +8,7 @@ namespace GmDashboard.Data.Asistan;
 /// Asistan araçları (plan-20 Faz-1): sql_sorgu (salt-okuma + PII maske), sema_oku, ornek_sql_bul (golden-record),
 /// gorev_* (GorevService). LLM tool-use ile çağrılır; AsistanService loop çalıştırır.
 /// </summary>
-public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment env, ILogger<AsistanAraclar> log)
+public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar takvimMail, IHostEnvironment env, ILogger<AsistanAraclar> log)
 {
     private const int SatirLimit = 60;
     private string RepoKok => BulRepoKok();
@@ -38,7 +38,63 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
         new("gorev_listele",
             "Açık görevleri listeler (kapatılmamış).",
             new { type = "object", properties = new { } }),
+        // ── Faz-2: Google Takvim + Gmail ──
+        new("takvim_listele",
+            "Kullanıcının Google Takvim'indeki yaklaşan etkinlikleri listeler (okuma). 'bu hafta ne var', 'yarın programım' gibi.",
+            new { type = "object", properties = new { gun_sayisi = new { type = "integer", description = "Kaç günü göster (varsayılan 7)" } } }),
+        new("takvim_etkinlik_oner",
+            "Toplantı/etkinlik OLUŞTURMA önerisi hazırlar ve ONAYA sunar (otomatik OLUŞTURMAZ — kullanıcı Onayla der). 'cuma 14:00 toplantı ayarla' gibi. Zamanları ISO yaz: yyyy-MM-ddTHH:mm.",
+            new { type = "object", properties = new {
+                baslik = new { type = "string", description = "Etkinlik başlığı" },
+                baslangic = new { type = "string", description = "Başlangıç: yyyy-MM-ddTHH:mm (yerel saat)" },
+                bitis = new { type = "string", description = "Bitiş: yyyy-MM-ddTHH:mm (boşsa +1 saat)" },
+                katilimcilar = new { type = "string", description = "Davetli e-postaları, virgülle (opsiyonel)" },
+                aciklama = new { type = "string", description = "Açıklama (opsiyonel)" },
+                konum = new { type = "string", description = "Konum (opsiyonel)" },
+            }, required = new[] { "baslik", "baslangic" } }),
+        new("mail_ozet",
+            "Gmail gelen kutusunu okuyup özet döndürür (okuma). 'bugünkü mailler', 'X'ten gelen var mı'. sorgu = Gmail arama (boş=son 7 gün inbox).",
+            new { type = "object", properties = new {
+                sorgu = new { type = "string", description = "Gmail arama sorgusu (ör. 'from:x@y.com', 'is:unread'); boş=son 7 gün" },
+                adet = new { type = "integer", description = "Kaç mail (varsayılan 8)" },
+            } }),
+        new("mail_taslak_oner",
+            "Mail GÖNDERME taslağı hazırlar ve ONAYA sunar (otomatik GÖNDERMEZ — kullanıcı Gönder der). Gövdeye müşteri verisi/PII gömme. 'X'e şu konuda yaz' gibi.",
+            new { type = "object", properties = new {
+                kime = new { type = "string", description = "Alıcı e-posta" },
+                konu = new { type = "string", description = "Konu" },
+                govde = new { type = "string", description = "Mail gövdesi (Türkçe, nazik)" },
+            }, required = new[] { "kime", "govde" } }),
     ];
+
+    /// <summary>Onay-bekleyen aksiyon önerisi (görev/etkinlik/mail) → AsistanOneri (UI onay kartı + onayda çalıştırılacak veri).</summary>
+    public AsistanOneri OneriKur(string ad, JsonElement args) => ad switch
+    {
+        "takvim_etkinlik_oner" => new("etkinlik", EtkinlikOzet(args), args),
+        "mail_taslak_oner"     => new("mail", MailOzetKart(args), args),
+        _                       => new("gorev", TaslakKur(args), args),
+    };
+
+    private static string EtkinlikOzet(JsonElement a)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append("📅 ").Append(Arg(a, "baslik") ?? "Etkinlik").Append('\n');
+        sb.Append("🕒 ").Append(Arg(a, "baslangic") ?? "—");
+        var bit = Arg(a, "bitis"); if (!string.IsNullOrWhiteSpace(bit)) sb.Append(" → ").Append(bit);
+        var kat = Arg(a, "katilimcilar"); if (!string.IsNullOrWhiteSpace(kat)) sb.Append("\n👥 ").Append(kat);
+        var kon = Arg(a, "konum"); if (!string.IsNullOrWhiteSpace(kon)) sb.Append("\n📍 ").Append(kon);
+        var ack = Arg(a, "aciklama"); if (!string.IsNullOrWhiteSpace(ack)) sb.Append("\n📝 ").Append(ack);
+        return sb.ToString();
+    }
+
+    private static string MailOzetKart(JsonElement a)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append("✉️ Kime: ").Append(Arg(a, "kime") ?? "—").Append('\n');
+        sb.Append("Konu: ").Append(Arg(a, "konu") ?? "(konu yok)").Append("\n\n");
+        sb.Append(Arg(a, "govde") ?? "");
+        return sb.ToString();
+    }
 
     /// <summary>gorev_taslak_oner argümanlarını GorevService.Kaydet'in beklediği 📋/📝/⚡/👤 metnine çevirir (onaya sunulur).</summary>
     public string TaslakKur(JsonElement args)
@@ -70,6 +126,8 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
                 "sema_oku"      => SemaOku(Arg(args, "dosya")),
                 "ornek_sql_bul" => OrnekSqlBul(Arg(args, "konu")),
                 "gorev_listele" => GorevListele(),
+                "takvim_listele" => await takvimMail.TakvimListele(ArgInt(args, "gun_sayisi"), ct),
+                "mail_ozet"      => await takvimMail.MailOzet(Arg(args, "sorgu"), ArgInt(args, "adet"), ct),
                 _ => Hata($"Bilinmeyen araç: {ad}"),
             };
         }
@@ -149,6 +207,9 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
     private static string Kisalt(string s, int n) => s.Length <= n ? s : s[..n] + "…";
     private static string? Arg(JsonElement a, string ad) =>
         a.ValueKind == JsonValueKind.Object && a.TryGetProperty(ad, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
+    private static int ArgInt(JsonElement a, string ad) =>
+        a.ValueKind == JsonValueKind.Object && a.TryGetProperty(ad, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) ? n
+        : int.TryParse(Arg(a, ad), out var p) ? p : 0;
 
     private string BulRepoKok()
     {

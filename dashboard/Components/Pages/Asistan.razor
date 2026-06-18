@@ -4,6 +4,8 @@
 @using Microsoft.AspNetCore.Components.Web
 @inject AsistanService Ai
 @inject GorevService Gorevler
+@inject TakvimMailAraclar TakvimMail
+@inject GoogleAuthService GAuth
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 
@@ -21,6 +23,20 @@
             <span class="badge badge-warning gap-1 ml-auto">LLM yapılandırılmamış</span>
         }
     </div>
+
+    @* ── Google bağlantı durumu (Faz-2: Gmail+Takvim) ── *@
+    @if (GAuth.Yapilandirilmis && !_googleBagli)
+    {
+        <div class="alert bg-base-100 border border-base-300 rounded-2xl py-2.5 flex items-center gap-2">
+            <i data-lucide="calendar" class="w-5 h-5 text-primary"></i>
+            <span class="text-sm flex-1">Takvim ve mail için Google hesabını bağla.</span>
+            <a class="btn btn-sm btn-primary gap-1.5" href="/auth/google"><i data-lucide="link" class="w-4 h-4"></i>Google'a bağlan</a>
+        </div>
+    }
+    @if (_googleMesaj is not null)
+    {
+        <div class="alert @(_googleMesaj.Contains("bağlandı") ? "alert-success" : "alert-error") py-2 text-sm">@_googleMesaj</div>
+    }
 
     @* ── Konuşma akışı ── *@
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-h-[320px]">
@@ -72,36 +88,49 @@
                         </div>
                     </div>
                 }
-                else if (m.Rol == Rol.Taslak)
+                else if (m.Rol == Rol.Oneri && m.Oneri is { } o)
                 {
+                    var (ikon, etiket) = OneriBaslik(o.Tip);
                     <div class="chat chat-start">
                         <div class="chat-bubble bg-base-100 border border-base-300 text-base-content max-w-[94%] p-0 overflow-hidden">
                             <div class="p-3.5">
                                 <div class="flex items-center gap-1.5 mb-2 text-primary">
-                                    <i data-lucide="clipboard-list" class="w-4 h-4"></i><span class="font-semibold text-sm">Görev taslağı</span>
+                                    <i data-lucide="@ikon" class="w-4 h-4"></i><span class="font-semibold text-sm">@etiket</span>
                                 </div>
-                                <pre class="m-0 whitespace-pre-wrap font-sans text-[13.5px] leading-relaxed text-base-content/90">@m.Metin</pre>
+                                <pre class="m-0 whitespace-pre-wrap font-sans text-[13.5px] leading-relaxed text-base-content/90">@o.Ozet</pre>
                             </div>
-                            @if (idx == _mesajlar.Count - 1 && _pendingTaslak is not null)
+                            @if (idx == _mesajlar.Count - 1 && _pendingOneri is not null)
                             {
                                 <div class="bg-base-200/50 px-3.5 py-2.5 flex flex-col gap-2">
                                     <div class="flex gap-2 flex-wrap">
-                                        <button class="btn btn-sm btn-primary gap-1.5" @onclick="KaydetAsync" disabled="@_busy"><i data-lucide="check" class="w-4 h-4"></i>Kaydet</button>
-                                        <button class="btn btn-sm gap-1.5" @onclick="() => { _ataAcik = !_ataAcik; _duzeltAcik = false; }" disabled="@_busy"><i data-lucide="user-plus" class="w-4 h-4"></i>Ata</button>
+                                        @if (o.Tip == "gorev")
+                                        {
+                                            <button class="btn btn-sm btn-primary gap-1.5" @onclick="() => KaydetGorev(null)" disabled="@_busy"><i data-lucide="check" class="w-4 h-4"></i>Kaydet</button>
+                                            <button class="btn btn-sm gap-1.5" @onclick="() => { _ataAcik = !_ataAcik; _duzeltAcik = false; }" disabled="@_busy"><i data-lucide="user-plus" class="w-4 h-4"></i>Ata</button>
+                                        }
+                                        else if (o.Tip == "etkinlik")
+                                        {
+                                            <button class="btn btn-sm btn-primary gap-1.5" @onclick="OnaylaEtkinlik" disabled="@_busy"><i data-lucide="calendar-check" class="w-4 h-4"></i>Onayla & Oluştur</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-primary gap-1.5" @onclick="() => GonderMail(false)" disabled="@_busy"><i data-lucide="send" class="w-4 h-4"></i>Gönder</button>
+                                            <button class="btn btn-sm gap-1.5" @onclick="() => GonderMail(true)" disabled="@_busy"><i data-lucide="save" class="w-4 h-4"></i>Taslağa kaydet</button>
+                                        }
                                         <button class="btn btn-sm gap-1.5" @onclick="() => { _duzeltAcik = !_duzeltAcik; _ataAcik = false; }" disabled="@_busy"><i data-lucide="pencil" class="w-4 h-4"></i>Düzelt</button>
                                         <button class="btn btn-sm btn-ghost text-error gap-1.5" @onclick="Iptal" disabled="@_busy"><i data-lucide="x" class="w-4 h-4"></i>İptal</button>
                                     </div>
-                                    @if (_ataAcik)
+                                    @if (_ataAcik && o.Tip == "gorev")
                                     {
                                         <div class="flex gap-2 flex-wrap">
                                             <input class="input input-bordered input-sm flex-1 min-w-[160px]" placeholder="İsim / rol (örn: Mağaza müdürü)" @bind="_atanan" disabled="@_busy" />
-                                            <button class="btn btn-sm btn-primary" @onclick="AtaKaydetAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_atanan))">Kaydet ve Ata</button>
+                                            <button class="btn btn-sm btn-primary" @onclick="() => KaydetGorev(_atanan)" disabled="@(_busy || string.IsNullOrWhiteSpace(_atanan))">Kaydet ve Ata</button>
                                         </div>
                                     }
                                     @if (_duzeltAcik)
                                     {
                                         <div class="flex gap-2 flex-wrap">
-                                            <input class="input input-bordered input-sm flex-1 min-w-[160px]" placeholder="Düzeltme (örn: bütçeyi 50 bin TL yap)" @bind="_duzeltme" disabled="@_busy" />
+                                            <input class="input input-bordered input-sm flex-1 min-w-[160px]" placeholder="Düzeltme (örn: saati 15:00 yap)" @bind="_duzeltme" disabled="@_busy" />
                                             <button class="btn btn-sm btn-primary" @onclick="DuzeltAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_duzeltme))">Uygula</button>
                                         </div>
                                     }
@@ -179,22 +208,24 @@
 </div>
 
 @code {
-    private enum Rol { Kullanici, Cevap, Taslak, Sistem }
-    private sealed record ChatMesaj(Rol Rol, string? Metin = null, IReadOnlyList<string>? Iz = null, long? GorevId = null);
+    private enum Rol { Kullanici, Cevap, Oneri, Sistem }
+    private sealed record ChatMesaj(Rol Rol, string? Metin = null, IReadOnlyList<string>? Iz = null, long? GorevId = null, AsistanOneri? Oneri = null);
 
     private readonly List<ChatMesaj> _mesajlar = [];
-    private readonly List<LlmTur> _gecmis = [];        // veri-sorusu konuşma sürekliliği
+    private readonly List<LlmTur> _gecmis = [];        // konuşma sürekliliği (bağlam)
     private string _girdi = "";
     private bool _busy;
     private string _busyMesaj = "Düşünüyorum…";
     private string? _hata;
 
-    // Aktif taslak (onay bekleyen) + kaynağı
-    private string? _pendingTaslak;
+    // Aktif öneri (onay bekleyen görev/etkinlik/mail) + kaynağı
+    private AsistanOneri? _pendingOneri;
     private string _pendingNot = "";
     private bool _ataAcik, _duzeltAcik;
     private string _atanan = "", _duzeltme = "";
 
+    private bool _googleBagli;
+    private string? _googleMesaj;
     private IReadOnlyList<Gorev> _gorevler = [];
 
     private static readonly (string Metin, string Ikon)[] Ornekler =
@@ -205,9 +236,25 @@
         ("Özlüce vitrin yenilensin, ramazan teması", "lightbulb"),
     ];
 
-    protected override void OnInitialized() => Yenile();
+    protected override async Task OnInitializedAsync()
+    {
+        Yenile();
+        if (GAuth.Yapilandirilmis) _googleBagli = await GAuth.BagliMiAsync();
+        // OAuth callback dönüşü (?google=ok|hata)
+        var uri = new Uri(Nav.Uri);
+        var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (q.TryGetValue("google", out var g))
+            _googleMesaj = g == "ok" ? "Google hesabın bağlandı — artık takvim ve mail kullanabilirim." : "Google bağlantısı tamamlanamadı, tekrar dener misin?";
+    }
 
     private void Yenile() => _gorevler = Gorevler.Listele(acikOnly: true);
+
+    private static (string Ikon, string Etiket) OneriBaslik(string tip) => tip switch
+    {
+        "etkinlik" => ("calendar-clock", "Takvim etkinliği"),
+        "mail"     => ("mail", "Mail taslağı"),
+        _          => ("clipboard-list", "Görev taslağı"),
+    };
 
     private async Task OnKey(KeyboardEventArgs e)
     {
@@ -220,9 +267,9 @@
     {
         var metin = _girdi.Trim();
         if (metin.Length == 0 || _busy || !Ai.Hazir) return;
-        _girdi = ""; _hata = null;
-        // Yeni mesaj geldiyse önceki taslağın butonları kapanır (statik kalır)
-        _pendingTaslak = null; _ataAcik = _duzeltAcik = false;
+        _girdi = ""; _hata = null; _googleMesaj = null;
+        // Yeni mesaj geldiyse önceki önerinin butonları kapanır (statik kalır)
+        _pendingOneri = null; _ataAcik = _duzeltAcik = false;
         _mesajlar.Add(new(Rol.Kullanici, metin));
 
         _pendingNot = metin;
@@ -245,21 +292,21 @@
         _busy = true; _busyMesaj = "Düzeltiyorum…"; StateHasChanged();
         try
         {
-            // Takip mesajı — LLM bağlamdaki taslağı revize edip yeniden önerir (gorev_taslak_oner).
-            var cevap = await Ai.SorAsync($"Önerdiğin taslağı şöyle düzelt: {d}", _gecmis);
+            // Takip mesajı — LLM bağlamdaki öneriyi revize edip yeniden önerir.
+            var cevap = await Ai.SorAsync($"Önerdiğin öneriyi şöyle düzelt: {d}", _gecmis);
             EkleCevap(cevap, _pendingNot);
         }
         catch (Exception ex) { _hata = ex.Message; }
         finally { _busy = false; StateHasChanged(); }
     }
 
-    // SorAsync sonucunu akışa ekle: taslak önerisi → onay kartı; değilse düz cevap balonu.
+    // SorAsync sonucunu akışa ekle: öneri → onay kartı; değilse düz cevap balonu.
     private void EkleCevap(AsistanCevap cevap, string kaynakNot)
     {
-        if (cevap.Taslak is not null)
+        if (cevap.Oneri is not null)
         {
-            _pendingTaslak = cevap.Taslak; _pendingNot = kaynakNot; _ataAcik = _duzeltAcik = false;
-            _mesajlar.Add(new(Rol.Taslak, cevap.Taslak));
+            _pendingOneri = cevap.Oneri; _pendingNot = kaynakNot; _ataAcik = _duzeltAcik = false;
+            _mesajlar.Add(new(Rol.Oneri, Oneri: cevap.Oneri));
         }
         else
         {
@@ -267,29 +314,54 @@
         }
     }
 
-    private async Task KaydetAsync() => await Kaydet(null);
-    private async Task AtaKaydetAsync() { await Kaydet(_atanan); _atanan = ""; _ataAcik = false; }
-
-    private async Task Kaydet(string? atanan)
+    // ── Görev önerisi onayı ──
+    private async Task KaydetGorev(string? atanan)
     {
-        if (_pendingTaslak is null) return;
+        if (_pendingOneri is not { Tip: "gorev" } o) return;
         try
         {
-            var taslak = _pendingTaslak;
-            var id = await Task.Run(() => Gorevler.Kaydet(taslak, atanan));
+            var id = await Task.Run(() => Gorevler.Kaydet(o.Ozet, string.IsNullOrWhiteSpace(atanan) ? null : atanan));
             if (id > 0)
             {
-                var mesaj = atanan is null ? $"Görev #{id} kaydedildi" : $"Görev #{id} kaydedildi · {atanan}";
-                _mesajlar.Add(new(Rol.Sistem, mesaj, GorevId: id));
-                _pendingTaslak = null; _ataAcik = false;
-                Yenile();
+                _mesajlar.Add(new(Rol.Sistem, atanan is null ? $"Görev #{id} kaydedildi" : $"Görev #{id} kaydedildi · {atanan}", GorevId: id));
+                _pendingOneri = null; _ataAcik = false; _atanan = ""; Yenile();
             }
-            else { _hata = "Görev kaydedilemedi (panel DB?)."; }
+            else { _hata = "Görev kaydedilemedi."; }
         }
         catch (Exception ex) { _hata = ex.Message; }
     }
 
-    private void Iptal() { _pendingTaslak = null; _ataAcik = _duzeltAcik = false; }
+    // ── Etkinlik önerisi onayı → Google Takvim'de oluştur ──
+    private async Task OnaylaEtkinlik()
+    {
+        if (_pendingOneri is not { Tip: "etkinlik" } o) return;
+        _busy = true; _busyMesaj = "Etkinlik oluşturuluyor…"; StateHasChanged();
+        try
+        {
+            var (ok, mesaj) = await TakvimMail.EtkinlikOlustur(o.Veri);
+            _mesajlar.Add(new(ok ? Rol.Sistem : Rol.Cevap, mesaj));
+            if (ok) _pendingOneri = null;
+        }
+        catch (Exception ex) { _hata = ex.Message; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    // ── Mail önerisi onayı → gönder veya taslağa kaydet ──
+    private async Task GonderMail(bool taslakOnly)
+    {
+        if (_pendingOneri is not { Tip: "mail" } o) return;
+        _busy = true; _busyMesaj = taslakOnly ? "Taslak kaydediliyor…" : "Mail gönderiliyor…"; StateHasChanged();
+        try
+        {
+            var (ok, mesaj) = await TakvimMail.MailGonder(o.Veri, taslakOnly);
+            _mesajlar.Add(new(ok ? Rol.Sistem : Rol.Cevap, mesaj));
+            if (ok) _pendingOneri = null;
+        }
+        catch (Exception ex) { _hata = ex.Message; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private void Iptal() { _pendingOneri = null; _ataAcik = _duzeltAcik = false; }
 
     private async Task KapatAsync(long id)
     {
