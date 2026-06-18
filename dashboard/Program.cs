@@ -55,6 +55,7 @@ builder.Services.AddSingleton<GmDashboard.Data.Asistan.GeminiProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.GroqProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.FallbackLlmProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.ILlmProvider>(sp => sp.GetRequiredService<GmDashboard.Data.Asistan.FallbackLlmProvider>());
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.GoogleAuthService>();  // Faz-2 OAuth (Gmail+Takvim)
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanAraclar>();   // sql_sorgu(salt-okuma+PII)/sema_oku/ornek_sql_bul/gorev_*
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanService>();   // tool-use loop
 builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
@@ -132,6 +133,18 @@ app.MapPost("/auth/logout", async (HttpContext ctx) =>
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).DisableAntiforgery();
+
+// ── Google OAuth (Faz-2: Gmail+Takvim) — yalnız giriş yapmış CFO bağlanabilir (AllowAnonymous YOK). ──
+app.MapGet("/auth/google", (GmDashboard.Data.Asistan.GoogleAuthService g) =>
+    g.Yapilandirilmis ? Results.Redirect(g.AuthUrl())
+                      : Results.Text("Google OAuth yapılandırılmamış (.env GOOGLE_CLIENT_ID/SECRET)."));
+
+app.MapGet("/auth/google/callback", async (GmDashboard.Data.Asistan.GoogleAuthService g, string? code, string? error) =>
+{
+    if (!string.IsNullOrEmpty(error) || string.IsNullOrEmpty(code)) return Results.Redirect("/asistan?google=hata");
+    try { await g.BaglantiBitirAsync(code); return Results.Redirect("/asistan?google=ok"); }
+    catch { return Results.Redirect("/asistan?google=hata"); }
+});
 
 // Ölü stok Excel indirme — MiniExcel streaming, büyük liste için uygun.
 app.MapGet("/api/olustok-excel", async (RefQueries ref_, HttpContext ctx) =>
