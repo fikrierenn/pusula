@@ -55,6 +55,8 @@ builder.Services.AddSingleton<GmDashboard.Data.Asistan.GeminiProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.GroqProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.FallbackLlmProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.ILlmProvider>(sp => sp.GetRequiredService<GmDashboard.Data.Asistan.FallbackLlmProvider>());
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanAraclar>();   // sql_sorgu(salt-okuma+PII)/sema_oku/ornek_sql_bul/gorev_*
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanService>();   // tool-use loop
 builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
 builder.Services.AddScoped<PerfState>();          // sayfa yükleme süresi (sayfalar Track, footer okur)
 
