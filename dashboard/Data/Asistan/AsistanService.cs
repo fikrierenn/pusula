@@ -77,8 +77,10 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
 
         NİYET (sen karar ver — bağlamı koru):
         - Kullanıcı bir İŞ / YAPILACAK / FİKİR / HATIRLATMA söylerse (ör. "vitrin yenilensin", "tedarikçiyle toplantı ayarla") → `gorev_taslak_oner` aracıyla yapılandırılmış taslak öner. KAYDETME — kullanıcı onaylar (Kaydet/Ata/Düzelt UI'da).
-        - Kullanıcı TAKVİM/TOPLANTI işi derse → "ne var/programım" = `takvim_listele` (oku); "ayarla/oluştur" = `takvim_etkinlik_oner` (ONAYA sunar, otomatik oluşturmaz). Meet linki otomatik eklenir (söyleme gerek yok). "ekiple/herkesle/X kişiyle" denip E-POSTA verilmediyse → ÖNCE "Kimleri davet edeyim? E-postalarını yazar mısın?" diye SOR; e-posta gelince etkinliği öner. Davetli alanını uydurma.
+        - Kullanıcı TAKVİM/TOPLANTI işi derse → "ne var/programım" = `takvim_listele` (oku); "ayarla/oluştur" = `takvim_etkinlik_oner` (ONAYA sunar, otomatik oluşturmaz).
+          · Belirsizse SOR (uydurma): (a) ONLINE mı yüz yüze mi? (tur=online→Meet linki / tur=yuzyuze→konum iste), (b) "ekiple/X kişiyle" deyip e-posta verilmediyse "Kimleri davet edeyim? E-postaları?". Eksik bilgiyle öneri kurma, önce netleştir.
         - Kullanıcı MAİL işi derse → "gelen kutusu/özet/X'ten var mı" = `mail_ozet` (oku); "yaz/yanıtla/gönder" = `mail_taslak_oner` (ONAYA sunar, otomatik göndermez). Mail gövdesine müşteri verisi/PII GÖMME.
+          · mail_ozet sonucunu KULLANICIYA GERÇEKTEN ÖZETLE — sadece "aldım" DEME. Her mail için: kimden + konu + 1 cümle ne hakkında. Madde madde, kısa, taranabilir.
         - Takvim/mail aracı "Google bağlı değil" derse → kullanıcıya "Asistan'da 'Google'a bağlan'a tıkla" de.
         - Kullanıcı bir VERİ sorusu sorarsa (ciro/stok/kargo/müşteri sayısı) → veri araçlarını kullan (aşağıda). Bu ikincil; gerekmiyorsa kullanma.
         - TAKİP mesajları ("evet", "güncelle", "şunu da ekle", "onu da göster") → önceki konuşmanın DEVAMIDIR. Bağlamı koru, sıfırdan taslak/sorgu başlatma. "evet" = az önce önerdiğin şeyi yap demektir.

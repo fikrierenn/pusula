@@ -48,9 +48,10 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
                 baslik = new { type = "string", description = "Etkinlik başlığı" },
                 baslangic = new { type = "string", description = "Başlangıç: yyyy-MM-ddTHH:mm (yerel saat)" },
                 bitis = new { type = "string", description = "Bitiş: yyyy-MM-ddTHH:mm (boşsa +1 saat)" },
+                tur = new { type = "string", description = "online (Google Meet linki) | yuzyuze (konum). Kullanıcıya SOR, uydurma." },
                 katilimcilar = new { type = "string", description = "Davetli e-postaları, virgülle (opsiyonel)" },
                 aciklama = new { type = "string", description = "Açıklama (opsiyonel)" },
-                konum = new { type = "string", description = "Konum (opsiyonel)" },
+                konum = new { type = "string", description = "Konum — yüz yüzeyse zorunlu (opsiyonel)" },
             }, required = new[] { "baslik", "baslangic" } }),
         new("mail_ozet",
             "Gmail gelen kutusunu okuyup özet döndürür (okuma). 'bugünkü mailler', 'X'ten gelen var mı'. sorgu = Gmail arama (boş=son 7 gün inbox).",
@@ -81,6 +82,8 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
         sb.Append("📅 ").Append(Arg(a, "baslik") ?? "Etkinlik").Append('\n');
         sb.Append("🕒 ").Append(Arg(a, "baslangic") ?? "—");
         var bit = Arg(a, "bitis"); if (!string.IsNullOrWhiteSpace(bit)) sb.Append(" → ").Append(bit);
+        var yuzyuze = string.Equals(Arg(a, "tur"), "yuzyuze", StringComparison.OrdinalIgnoreCase);
+        sb.Append(yuzyuze ? "\n🏢 Yüz yüze" : "\n💻 Online (Meet linki eklenecek)");
         var kat = Arg(a, "katilimcilar"); if (!string.IsNullOrWhiteSpace(kat)) sb.Append("\n👥 ").Append(kat);
         var kon = Arg(a, "konum"); if (!string.IsNullOrWhiteSpace(kon)) sb.Append("\n📍 ").Append(kon);
         var ack = Arg(a, "aciklama"); if (!string.IsNullOrWhiteSpace(ack)) sb.Append("\n📝 ").Append(ack);

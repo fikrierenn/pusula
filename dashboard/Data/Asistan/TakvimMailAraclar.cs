@@ -91,6 +91,8 @@ public sealed class TakvimMailAraclar(GoogleAuthService gauth, ILogger<TakvimMai
         var katilimcilar = (Str(veri, "katilimcilar") ?? "")
             .Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(x => x.Contains('@')).Select(x => new EventAttendee { Email = x }).ToList();
+        // tur: "online" → Google Meet linki; "yuzyuze" → konum, Meet yok. Belirsizse online varsay.
+        var online = !string.Equals(Str(veri, "tur"), "yuzyuze", StringComparison.OrdinalIgnoreCase);
         var ev = new Event
         {
             Summary = Str(veri, "baslik"),
@@ -99,20 +101,19 @@ public sealed class TakvimMailAraclar(GoogleAuthService gauth, ILogger<TakvimMai
             Start = new EventDateTime { DateTimeDateTimeOffset = bas, TimeZone = TimeZone },
             End = new EventDateTime { DateTimeDateTimeOffset = bit, TimeZone = TimeZone },
             Attendees = katilimcilar.Count > 0 ? katilimcilar : null,
-            // Google Meet linki otomatik oluştur (online toplantı).
-            ConferenceData = new ConferenceData
+            ConferenceData = online ? new ConferenceData
             {
                 CreateRequest = new CreateConferenceRequest
                 {
                     RequestId = Guid.NewGuid().ToString("N"),
                     ConferenceSolutionKey = new ConferenceSolutionKey { Type = "hangoutsMeet" },
                 },
-            },
+            } : null,
         };
         try
         {
             var req = svc.Events.Insert(ev, "primary");
-            req.ConferenceDataVersion = 1;                                        // Meet linki üret
+            if (online) req.ConferenceDataVersion = 1;                            // Meet linki üret (sadece online)
             req.SendUpdates = EventsResource.InsertRequest.SendUpdatesEnum.All;   // davet gönder
             var sonuc = await req.ExecuteAsync(ct);
             var meet = sonuc.HangoutLink ?? sonuc.ConferenceData?.EntryPoints?.FirstOrDefault(e => e.EntryPointType == "video")?.Uri;
