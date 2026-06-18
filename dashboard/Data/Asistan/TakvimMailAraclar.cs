@@ -99,13 +99,27 @@ public sealed class TakvimMailAraclar(GoogleAuthService gauth, ILogger<TakvimMai
             Start = new EventDateTime { DateTimeDateTimeOffset = bas, TimeZone = TimeZone },
             End = new EventDateTime { DateTimeDateTimeOffset = bit, TimeZone = TimeZone },
             Attendees = katilimcilar.Count > 0 ? katilimcilar : null,
+            // Google Meet linki otomatik oluştur (online toplantı).
+            ConferenceData = new ConferenceData
+            {
+                CreateRequest = new CreateConferenceRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    ConferenceSolutionKey = new ConferenceSolutionKey { Type = "hangoutsMeet" },
+                },
+            },
         };
         try
         {
             var req = svc.Events.Insert(ev, "primary");
+            req.ConferenceDataVersion = 1;                                        // Meet linki üret
             req.SendUpdates = EventsResource.InsertRequest.SendUpdatesEnum.All;   // davet gönder
             var sonuc = await req.ExecuteAsync(ct);
-            return (true, $"Etkinlik oluşturuldu: {sonuc.Summary} ({bas:dd.MM.yyyy HH:mm})" + (katilimcilar.Count > 0 ? $", {katilimcilar.Count} davet gönderildi" : ""));
+            var meet = sonuc.HangoutLink ?? sonuc.ConferenceData?.EntryPoints?.FirstOrDefault(e => e.EntryPointType == "video")?.Uri;
+            var msg = $"Etkinlik oluşturuldu: {sonuc.Summary} ({bas:dd.MM.yyyy HH:mm})";
+            msg += katilimcilar.Count > 0 ? $" · {katilimcilar.Count} davet gönderildi" : " · davetli yok (e-posta verilmedi)";
+            if (!string.IsNullOrWhiteSpace(meet)) msg += $" · Meet: {meet}";
+            return (true, msg);
         }
         catch (Exception ex) { log.LogError(ex, "Etkinlik oluşturulamadı"); return (false, "Etkinlik oluşturulamadı."); }
     }

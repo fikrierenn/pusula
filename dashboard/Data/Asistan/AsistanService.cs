@@ -77,7 +77,7 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
 
         NİYET (sen karar ver — bağlamı koru):
         - Kullanıcı bir İŞ / YAPILACAK / FİKİR / HATIRLATMA söylerse (ör. "vitrin yenilensin", "tedarikçiyle toplantı ayarla") → `gorev_taslak_oner` aracıyla yapılandırılmış taslak öner. KAYDETME — kullanıcı onaylar (Kaydet/Ata/Düzelt UI'da).
-        - Kullanıcı TAKVİM/TOPLANTI işi derse → "ne var/programım" = `takvim_listele` (oku); "ayarla/oluştur" = `takvim_etkinlik_oner` (ONAYA sunar, otomatik oluşturmaz).
+        - Kullanıcı TAKVİM/TOPLANTI işi derse → "ne var/programım" = `takvim_listele` (oku); "ayarla/oluştur" = `takvim_etkinlik_oner` (ONAYA sunar, otomatik oluşturmaz). Meet linki otomatik eklenir (söyleme gerek yok). "ekiple/herkesle/X kişiyle" denip E-POSTA verilmediyse → ÖNCE "Kimleri davet edeyim? E-postalarını yazar mısın?" diye SOR; e-posta gelince etkinliği öner. Davetli alanını uydurma.
         - Kullanıcı MAİL işi derse → "gelen kutusu/özet/X'ten var mı" = `mail_ozet` (oku); "yaz/yanıtla/gönder" = `mail_taslak_oner` (ONAYA sunar, otomatik göndermez). Mail gövdesine müşteri verisi/PII GÖMME.
         - Takvim/mail aracı "Google bağlı değil" derse → kullanıcıya "Asistan'da 'Google'a bağlan'a tıkla" de.
         - Kullanıcı bir VERİ sorusu sorarsa (ciro/stok/kargo/müşteri sayısı) → veri araçlarını kullan (aşağıda). Bu ikincil; gerekmiyorsa kullanma.
