@@ -13,14 +13,18 @@ public sealed class GeminiProvider : ILlmProvider
     private readonly IHttpClientFactory _http;
     private readonly ILogger<GeminiProvider> _log;
     private readonly string? _key;
-    private readonly string _model;
+    private readonly IReadOnlyList<string> _modeller;   // çok-model rotasyon (RPD havuzu çoğalt — 18.06)
 
     public GeminiProvider(IHttpClientFactory http, ILogger<GeminiProvider> log)
     {
         _http = http; _log = log;
         var env = Db.LoadEnvStatic();
         _key = env.GetValueOrDefault("GEMINI_API_KEY");
-        _model = env.GetValueOrDefault("GEMINI_MODEL") ?? "gemini-2.0-flash";
+        // GEMINI_MODELS (virgüllü liste) öncelikli; yoksa tekil GEMINI_MODEL; yoksa varsayılan.
+        var liste = (env.GetValueOrDefault("GEMINI_MODELS") ?? env.GetValueOrDefault("GEMINI_MODEL") ?? "gemini-2.0-flash")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct().ToList();
+        _modeller = liste.Count > 0 ? liste : ["gemini-2.0-flash"];
         if (string.IsNullOrWhiteSpace(_key)) log.LogWarning("GEMINI_API_KEY yok — asistan LLM devre dışı");
     }
 
@@ -31,6 +35,26 @@ public sealed class GeminiProvider : ILlmProvider
     {
         if (!Hazir) throw new InvalidOperationException("GEMINI_API_KEY yapılandırılmamış.");
 
+        // ── Çok-model rotasyon: model-A 429/503 → model-B (her modelin ayrı RPD havuzu). Hepsi tükenirse fırlat → Groq fallback. ──
+        for (int i = 0; i < _modeller.Count; i++)
+        {
+            try { return await UretBirAsync(_modeller[i], sistemTalimat, gecmis, araclar, ct); }
+            catch (HttpRequestException ex) when (KotaHatasi(ex) && i < _modeller.Count - 1)
+            {
+                _log.LogWarning("Gemini {Model} kota/429 ({Code}) — sıradaki modele geçiliyor: {Sonraki}",
+                    _modeller[i], (int?)ex.StatusCode, _modeller[i + 1]);
+            }
+        }
+        throw new HttpRequestException($"Tüm Gemini modelleri tükendi ({_modeller.Count} model, kota/429).");
+    }
+
+    // 429 (TooManyRequests) veya 503 (ServiceUnavailable) → rotasyon tetikler. Diğer hatalar (auth/400) rotasyonsuz fırlar.
+    private static bool KotaHatasi(HttpRequestException ex) =>
+        ex.StatusCode is System.Net.HttpStatusCode.TooManyRequests or System.Net.HttpStatusCode.ServiceUnavailable;
+
+    private async Task<LlmYanit> UretBirAsync(string model, string sistemTalimat, IReadOnlyList<LlmTur> gecmis,
+        IReadOnlyList<LlmArac> araclar, CancellationToken ct)
+    {
         // ── İstek gövdesi (Gemini v1beta generateContent) ──
         var contents = new JsonArray();
         foreach (var t in gecmis)
@@ -56,14 +80,14 @@ public sealed class GeminiProvider : ILlmProvider
 
         var cli = _http.CreateClient();
         cli.Timeout = TimeSpan.FromSeconds(60);
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_key}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_key}";
         using var resp = await cli.PostAsync(url,
             new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"), ct);
         var json = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
         {
-            _log.LogError("Gemini HTTP {Code}: {Body}", (int)resp.StatusCode, json.Length > 300 ? json[..300] : json);
-            throw new HttpRequestException($"Gemini hata {(int)resp.StatusCode}");
+            _log.LogError("Gemini {Model} HTTP {Code}: {Body}", model, (int)resp.StatusCode, json.Length > 300 ? json[..300] : json);
+            throw new HttpRequestException($"Gemini hata {(int)resp.StatusCode}", null, resp.StatusCode);
         }
 
         // ── Yanıt çözümle: parts[] → text + functionCall ──
