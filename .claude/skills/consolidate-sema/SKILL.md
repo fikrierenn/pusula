@@ -30,6 +30,16 @@ sema/*.yaml içinde `last_verified + ttl_days < bugün` olan kayıtlar (confiden
 ### Adım 3 — Eski TODO tarama
 TODO.md açık `[ ]` maddeleri: ≥30 gün dokunulmamış (tarih damgası / ilgili commit yokluğu). Aday: arşiv veya "hâlâ geçerli mi?" doğrulama.
 
+### Adım 3.5 — Asistan belleği (PanelAsistanBellek) stale tarama (plan-22)
+Genius öğrenen-katmanı da yaşlanır (sema decay deseni). BkmPanel.PanelAsistanBellek'te stale tercih/gerçek = `SonDogrulama + TtlGun < bugün` (TtlGun>0; 0=pinned MUAF). localhost\SQLEXPRESS, Invoke-Sqlcmd ile:
+```powershell
+Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database BkmPanel -Query "
+  SELECT Id, Tip, Icerik, SonDogrulama, TtlGun FROM dbo.PanelAsistanBellek
+  WHERE Durum=N'aktif' AND TtlGun>0
+    AND DATEADD(day, TtlGun, TRY_CONVERT(date, LEFT(SonDogrulama,10), 104)) < CAST(GETDATE() AS date)"
+```
+Aday: "hâlâ geçerli mi?" → Doğrula veya Arşivle (kullanıcı `/bellek` sayfasında da yapabilir). **ASLA otomatik — onay şart.**
+
 ### Adım 4 — REPORT.md yaz (mutasyonsuz)
 `docs/curator/REPORT-YYYY-MM-DD.md`:
 ```markdown
@@ -40,6 +50,8 @@ TODO.md açık `[ ]` maddeleri: ≥30 gün dokunulmamış (tarih damgası / ilgi
 | id'ler | tip | önerilen aksiyon (birleştir→umbrella / archive süperseded) |
 ## Eski TODO (N)
 | madde | yaş | öneri (doğrula / arşiv) |
+## Stale asistan belleği (N)
+| Id | Tip | Icerik | aşım(gün) | öneri (Doğrula / Arşivle) |
 ## Önerilen aksiyonlar (onay bekliyor)
 - [ ] ...
 ```
@@ -50,6 +62,7 @@ Kullanıcı REPORT'tan aksiyon seçince:
 - **Stale yeniden-doğrula:** canlı sorgu → `last_verified` bugüne çek (sema-ogren). Çürürse düşür/sil-değil-not.
 - **Birleştir:** dar kayıtları umbrella kayda taşı; eskileri `note: "süperseded by <id>"` + (onayla) arşiv bölümüne.
 - **Archive:** sema kaydı → ilgili YAML'da `## archive` bölümü VEYA TODO maddesi → `## Arşiv`. **Silme yok.**
+- **Asistan belleği (onayla):** stale satır → `UPDATE dbo.PanelAsistanBellek SET Durum=N'arsiv' WHERE Id=@id` (DELETE değil), VEYA hâlâ geçerliyse `SET SonDogrulama=<bugün>`. localhost\SQLEXPRESS.
 - Her uygulama tek commit (`chore(bkm): sema/TODO curator bakım (plan: 12)`), önce git-status temiz olsun (revert kolaylığı).
 
 ## Tetik

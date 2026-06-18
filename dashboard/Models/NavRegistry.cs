@@ -35,8 +35,9 @@ public static class NavRegistry
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),
         new NavItem("sadakat", "Sadakat", "heart"),
         new NavItem("tahmin", "Hedef Tahmin", "sparkles"),
-        new NavItem("asistan", "Asistan", "message-square", Section: "ASİSTAN"),
+        new NavItem("asistan", "Genius", "message-square", Section: "ASİSTAN"),
         new NavItem("gorevler", "Görevler", "check-square", Section: "ASİSTAN", GorevBadge: true),
+        new NavItem("bellek", "Bellek", "database", Section: "ASİSTAN"),
     };
 
     /// <summary>btm-nav (mobil) öğeleri — sıra korunur.</summary>

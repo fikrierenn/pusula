@@ -9,6 +9,7 @@
 @inject TakvimMailAraclar TakvimMail
 @inject GoogleAuthService GAuth
 @inject GorusmeService Gorusmeler
+@inject AsistanBellekService Bel
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 
@@ -138,6 +139,10 @@
                                         {
                                             <button class="btn btn-sm btn-primary gap-1.5" @onclick="() => KaydetGorev(null)" disabled="@_busy"><i data-lucide="check" class="w-4 h-4"></i>Kaydet</button>
                                             <button class="btn btn-sm gap-1.5" @onclick="() => { _ataAcik = !_ataAcik; _duzeltAcik = false; }" disabled="@_busy"><i data-lucide="user-plus" class="w-4 h-4"></i>Ata</button>
+                                            @if (Bel.Aktif)
+                                            {
+                                                <button class="btn btn-sm gap-1.5" @onclick="BellekeSakla" disabled="@_busy" title="Görev değil, kalıcı tercih olarak belleğe yaz"><i data-lucide="database" class="w-4 h-4"></i>Bellek</button>
+                                            }
                                         }
                                         else if (o.Tip == "etkinlik")
                                         {
@@ -417,6 +422,21 @@
             else { _hata = "Görev kaydedilemedi."; }
         }
         catch (Exception ex) { _hata = ex.Message; }
+    }
+
+    // ── Görev önerisini GÖREV değil kalıcı TERCİH olarak belleğe yaz ──
+    private void BellekeSakla()
+    {
+        if (_pendingOneri is not { Tip: "gorev" } o) return;
+        string icerik = o.Veri.ValueKind == JsonValueKind.Object && o.Veri.TryGetProperty("baslik", out var b) && b.ValueKind == JsonValueKind.String
+            ? b.GetString()! : _pendingNot;
+        var s = Bel.Yaz("ekle", icerik, "tercih");
+        if (s.Durum == BellekSonucDurum.Eklendi)
+        {
+            _mesajlar.Add(new(Rol.Sistem, $"Belleğe eklendi: {icerik}"));
+            _pendingOneri = null; _ataAcik = _duzeltAcik = false; Kaydet();
+        }
+        else { _hata = s.Mesaj; }
     }
 
     // ── Etkinlik önerisi onayı → Google Takvim'de oluştur ──
