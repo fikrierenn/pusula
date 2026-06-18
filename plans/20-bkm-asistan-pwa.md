@@ -84,10 +84,21 @@ Asistan.razor (chat)
 - **Golden-record few-shot ⭐ SOMUT:** doğrulanmış NL→SQL örnek çiftleri prompt'a enjekte = en güçlü accuracy kalıbı (Dataherald + Vanna konsensüs). **BKM'de HAZIR:** `sorgular/*.sql` arşivi (semantic-layer ikiz-yükümlülük kuralıyla zaten birikiyor) = golden-record store. → `sql_sorgu` aracı SQL üretmeden ÖNCE: soruya benzer arşiv-SQL + ilgili sema entry retrieve → Claude prompt'a örnek olarak ver. Pure-prompt DEĞİL, retrieve-then-generate.
 - **Semantic-layer grounding:** sema/*.yaml = Dataherald "Context Store" muadili — canonical context, prompt'a feed. Mevcut yaklaşım doğrulandı.
 
-**Hipotez (rate-limit/single-source — uygulamadan ÖNCE re-verify):**
-- **Memory "access-compliance gap" (Mem0 preprint):** recall tek başına tercih-uyumu SAĞLAMAZ — CFO düzeltmesi sadece "hatırlanan NL-not" değil, mümkünse **sistem-prompt'a sabit/enforced kural** olmalı. Öğrenen-katman: kritik tercihler (ör. "ciro hep KDV-hariç") sistem-prompt'a pinned, gevşek tercihler retrieve. Doğrulanmadı → Faz-1'de basit başla (NL-not), gap görülürse enforce.
-- **Multi-tool composition güvenlik:** SQL çıktısı → mail/takvim aracına zincirleme = saldırı yüzeyi (CFO PII+finans yüksek-risk). Faz-2 mail eklenince **source-to-sink isolation**: asistan SQL sonucu otomatik mail gövdesine GİTMESİN; CFO onayı + maskeleme. Hipotez, Faz-2 re-verify.
-- **Mail Graph scope:** delegated `Mail.Send` + send-approval gate (preview-default, explicit-confirm mutasyon). Faz-2 doğrula.
+**Memory mimarisi (18.06 Mem0 + Letta primary-doc DOĞRULANDI):**
+- **İki katman (Letta blocks):** `core/pinned` — CFO sabit tercihleri (ör. "ciro=KDV-hariç net") HER sistem-prompt'ta; `archival` — sık-soru/geçmiş, retrieve edilir. (Mem0 access-compliance gap'in çözümü: kritik tercih pinned, recall'a güvenme.)
+- **ADD-only + temporal (Mem0):** tercih çakışınca eskiyi SİLME — tarihli ekle, en güncel öncelik (`son_kullanim`/tarih). DELETE yok, decay = düşük-öncelik (curator işaretler).
+- **Self-editing tool (Letta):** asistanın `bellek_yaz` aracı — Claude tool-use ile kendi belleğini günceller. CFO "şunu hatırla / hep böyle yap" → tool → PanelAsistanBellek. Düzeltme de bu yolla.
+- **Multi-signal retrieval:** semantic + keyword + entity (BKM: basit başla — kullanıcı + konu eşleşmesi; vektör v2).
+
+**Mail/Takvim (18.06 Graph primary-doc DOĞRULANDI — Faz-2):**
+- **Delegated scope, admin-consent YOK** (tek-kullanıcı CFO tam uygun). Application izni KAÇIN (tüm kuruluş + admin consent).
+- Scopes: `Mail.Read` (oku/özet) + `Mail.Send` (gönder) + `Calendars.ReadWrite` (etkinlik). Hepsi delegated, consent gerekmez.
+- **Send-approval:** asistan mail/etkinlik TASLAK üretir → CFO onaylar → gönder (mutasyon explicit-confirm).
+- Ön-koşul: BKM mail M365/Exchange mi? Evet → Graph. Hayır → IMAP/SMTP + Google Calendar.
+
+**Hâlâ hipotez (re-verify):**
+- **Multi-tool composition güvenlik:** SQL çıktısı → mail aracına zincirleme = saldırı yüzeyi (PII+finans). Faz-2: **source-to-sink isolation** — asistan SQL sonucu otomatik mail gövdesine GİTMESİN; CFO onayı + PII maske. (arXiv preprint, 0-vote — hipotez ama yüksek-risk, önlem ucuz.)
+- Executive UX (proaktiflik, passive style-learning) — blog-kalite ilham, öğrenen-katman + quick-reply zaten karşılıyor.
 
 ## Kod Organizasyonu (asistan kısımları AYRI — dağılmasın)
 Tek proje (dashboard) ama asistan kodu kendi grubunda:
