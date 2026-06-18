@@ -58,6 +58,7 @@ builder.Services.AddSingleton<GmDashboard.Data.Asistan.FallbackLlmProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.ILlmProvider>(sp => sp.GetRequiredService<GmDashboard.Data.Asistan.FallbackLlmProvider>());
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.GoogleAuthService>();  // Faz-2 OAuth (Gmail+Takvim)
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.GorusmeService>();     // görüşme kalıcılığı (session/log)
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanBellekService>(); // öğrenen katman (plan-22 Genius)
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.TakvimMailAraclar>();  // Faz-2 Calendar+Gmail araç impl.
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanAraclar>();   // sql_sorgu(salt-okuma+PII)/sema_oku/ornek_sql_bul/gorev_*
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanService>();   // tool-use loop

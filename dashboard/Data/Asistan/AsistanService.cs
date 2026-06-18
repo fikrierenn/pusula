@@ -12,7 +12,7 @@ public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi, A
 /// BKM-Asistan tool-use loop (plan-20 Faz-1). Tek akış: kullanıcı mesajı → LLM (Gemini→Groq) niyeti+bağlamı yönetir.
 /// İş/not → `gorev_taslak_oner` (onaya sunulur, otomatik kaydetmez). Veri sorusu → sema/sql araçları. learn-claude-code loop deseni.
 /// </summary>
-public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILogger<AsistanService> log)
+public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, AsistanBellekService bellek, ILogger<AsistanService> log)
 {
     private const int MaxTur = 6;
 
@@ -39,7 +39,10 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
         // Tarih bağlamı — LLM bugünü bilmez; "yarın/bu hafta" doğru çözümlenir (yerel saat, tek-makine TR).
         var simdi = DateTime.Now;
         var tarihBag = $"BUGÜN: {simdi:dd.MM.yyyy} {simdi.ToString("dddd", new System.Globalization.CultureInfo("tr-TR"))}, saat {simdi:HH:mm}. 'yarın/bu hafta/gelecek ...' bunu baz al; etkinlik zamanını yyyy-MM-ddTHH:mm yaz.\n\n";
-        var sistem = tarihBag + SistemTalimat;
+        // Bellek snapshot'ı tur başında BİR KEZ donar (Hermes FROZEN — aynı çağrı içi bellek_yaz prompt'u değiştirmez, sonraki SorAsync'te yansır).
+        var snap = bellek.Aktif ? bellek.Snapshot() : null;
+        var bellekBag = snap is { ToplamChar: > 0 } && !string.IsNullOrWhiteSpace(snap.Metin) ? snap.Metin + "\n\n" : "";
+        var sistem = tarihBag + bellekBag + SistemTalimat;
 
         for (int tur = 0; tur < MaxTur; tur++)
         {
@@ -92,7 +95,7 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
 
     // Sistem talimatı — iş/not asistanı birincil; veri sorusu ikincil (araçlar gerektiğinde).
     private const string SistemTalimat = """
-        Sen BKM Kitap'ın CFO'suna yardımcı Türkçe asistanısın. Birincil işin: konuşmak, fikir/notu nete çevirmek, görev yönetmek. Kısa, net, sıcak ama yönetici dili.
+        Sen **Genius** — BKM Kitap CFO'sunun lambadan çıkmış akıl danışmanısın (hem "dahi" hem "cin"). Birincil işin: konuşmak, fikir/notu nete çevirmek, görev yönetmek. Kısa, net, hafif esprili ama işte ciddi; yönetici dili. Adın sorulursa "Genius" de.
 
         NİYET (sen karar ver — bağlamı koru):
         - Kullanıcı bir İŞ / YAPILACAK / FİKİR / HATIRLATMA söylerse (ör. "vitrin yenilensin", "tedarikçiyle toplantı ayarla") → `gorev_taslak_oner` aracıyla yapılandırılmış taslak öner. KAYDETME — kullanıcı onaylar (Kaydet/Ata/Düzelt UI'da).
@@ -105,7 +108,9 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
         - TAKİP mesajları ("evet", "güncelle", "şunu da ekle", "onu da göster") → önceki konuşmanın DEVAMIDIR. Bağlamı koru, sıfırdan taslak/sorgu başlatma. "evet" = az önce önerdiğin şeyi yap demektir.
         - Tek kelimelik/belirsiz girdiyi taslağa ÇEVİRME — bağlama bak; bağlam yoksa kısa netleştirme sorusu sor.
         - NETLEŞTİRME sorusunda AÇIK/SONLU seçenek varsa (online mı yüz yüze mi, evet/hayır) → düz metin yerine `secenek_sun` ile BUTONLU sor (kullanıcı tıklasın, yazmasın). Serbest cevap (e-posta/isim/tarih) gerekiyorsa normal sor.
-        - Kalıcı tercih/kural söylerse ("bundan sonra şöyle yap", "varsayılan X") → bunu görev YAPMA; "tamam, öyle yapacağım" de ve o oturum boyunca uygula.
+        - Kalıcı tercih/kural/düzeltme söylerse ("bundan sonra şöyle yap", "varsayılan X", seni düzeltince) → `bellek_yaz` action=ekle ile KAYDET (görev YAPMA), sonra "tamam, aklımda" de. Aynı şeyi 2.+ kez sorarsa o gerçeği de belleğe yaz. Bellek PII/finansal rakam İÇERMEZ — sadece tercih/davranış/sabit gerçek (rakam her seferinde canlı SQL).
+        - bellek_yaz "limit_asildi" dönerse → AYNI turda eski/çakışan girdiyi `bellek_yaz` action=sil veya degistir ile temizle, sonra tekrar ekle.
+        - "geçen sefer/daha önce ne demiştik/konuşmuştuk" → `gecmis_ara` (belleğe sorma — bellek zaten yukarıda [GENIUS BELLEK] bloğunda). Bellek bloğundaki tercihleri HER cevapta uygula.
 
         gorev_taslak_oner ALANLARI: baslik (zorunlu, net), aciklama (2-3 cümle somut), oncelik (Düşük/Orta/Yüksek), atanan (rol/kişi öner), bitti (ölçülebilir kriter), acik_soru (eksik bilgi varsa; yoksa boş). Notta OLMAYAN detayı UYDURMA → acik_soru'ya yaz.
 

@@ -8,7 +8,7 @@ namespace GmDashboard.Data.Asistan;
 /// Asistan araçları (plan-20 Faz-1): sql_sorgu (salt-okuma + PII maske), sema_oku, ornek_sql_bul (golden-record),
 /// gorev_* (GorevService). LLM tool-use ile çağrılır; AsistanService loop çalıştırır.
 /// </summary>
-public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar takvimMail, IHostEnvironment env, ILogger<AsistanAraclar> log)
+public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar takvimMail, AsistanBellekService bellek, GorusmeService gorusme, IHostEnvironment env, ILogger<AsistanAraclar> log)
 {
     private const int SatirLimit = 60;
     private string RepoKok => BulRepoKok();
@@ -44,6 +44,20 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
                 soru = new { type = "string", description = "Kısa netleştirme sorusu" },
                 secenekler = new { type = "array", items = new { type = "string" }, description = "2-5 tıklanır seçenek" },
             }, required = new[] { "soru", "secenekler" } }),
+        new("bellek_yaz",
+            "Kullanıcının KALICI tercih/kural/düzeltmesini ya da sık tekrarlanan gerçeği belleğe yazar (oturumlar arası kalır). READ YOK — bellek zaten prompt başında. Kullan: 'bundan sonra şöyle yap', kullanıcı seni düzeltince, veya aynı şeyi 2.+ kez sorunca. PII/finansal rakam YAZMA — sadece tercih/davranış/sabit gerçek.",
+            new { type = "object", properties = new {
+                action = new { type = "string", description = "ekle | degistir | sil" },
+                tip = new { type = "string", description = "tercih (davranış/kural) | gercek (sabit bilgi)" },
+                icerik = new { type = "string", description = "Tek satır, kısa, kalıcı ifade (ekle/degistir için)" },
+                eslesme = new { type = "string", description = "degistir/sil için: değişecek mevcut girdinin bir kısmı (substring)" },
+            }, required = new[] { "action" } }),
+        new("gecmis_ara",
+            "Geçmiş konuşmalarda konu/terim arar (token yükü olmadan — bellek değil, arşiv). 'geçen ay ne demiştik', 'X hakkında daha önce ne konuştuk'. Belleğe sorma (bellek zaten yukarıda).",
+            new { type = "object", properties = new {
+                terim = new { type = "string", description = "Aranacak anahtar kelime" },
+                adet = new { type = "integer", description = "Kaç sonuç (varsayılan 6)" },
+            }, required = new[] { "terim" } }),
         // ── Faz-2: Google Takvim + Gmail ──
         new("takvim_listele",
             "Kullanıcının Google Takvim'indeki yaklaşan etkinlikleri listeler (okuma). 'bu hafta ne var', 'yarın programım' gibi.",
@@ -151,6 +165,8 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
                 "gorev_listele" => GorevListele(),
                 "takvim_listele" => await takvimMail.TakvimListele(ArgInt(args, "gun_sayisi"), ct),
                 "mail_ozet"      => await takvimMail.MailOzet(Arg(args, "sorgu"), ArgInt(args, "adet"), ct),
+                "bellek_yaz"     => BellekYaz(args),
+                "gecmis_ara"     => GecmisAra(Arg(args, "terim"), ArgInt(args, "adet")),
                 _ => Hata($"Bilinmeyen araç: {ad}"),
             };
         }
@@ -224,6 +240,26 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
     {
         var liste = gorev.Listele(acikOnly: true).Select(g => new { g.Id, g.Baslik, g.Oncelik, g.Atanan, g.Durum });
         return JsonSerializer.Serialize(new { gorevler = liste });
+    }
+
+    // bellek_yaz → AsistanBellekService.Yaz. LimitAsildi'de mevcut girdileri ekle (LLM aynı turda konsolide etsin).
+    private string BellekYaz(JsonElement args)
+    {
+        var sonuc = bellek.Yaz(Arg(args, "action") ?? "", Arg(args, "icerik"), Arg(args, "tip") ?? "tercih", Arg(args, "eslesme"));
+        if (sonuc.Durum == BellekSonucDurum.LimitAsildi)
+        {
+            var tip = string.Equals(Arg(args, "tip"), "gercek", StringComparison.OrdinalIgnoreCase) ? "gercek" : "tercih";
+            var mevcut = bellek.Listele().Where(b => b.Tip == tip).Select(b => b.Icerik).ToList();
+            return JsonSerializer.Serialize(new { durum = "limit_asildi", mesaj = sonuc.Mesaj, mevcut });
+        }
+        return JsonSerializer.Serialize(new { durum = sonuc.Durum.ToString(), mesaj = sonuc.Mesaj });
+    }
+
+    private string GecmisAra(string? terim, int adet)
+    {
+        if (string.IsNullOrWhiteSpace(terim)) return Hata("terim boş");
+        var bulunan = gorusme.Ara(terim, adet <= 0 ? 6 : adet).Select(g => new { g.Baslik, g.Guncelleme, g.Parca });
+        return JsonSerializer.Serialize(new { bulunan });
     }
 
     private static string Hata(string m) => JsonSerializer.Serialize(new { hata = m });

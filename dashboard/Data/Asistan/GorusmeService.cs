@@ -6,6 +6,8 @@ namespace GmDashboard.Data.Asistan;
 public sealed record Gorusme(long Id, string Baslik, string? MesajlarJson, string? GecmisJson);
 /// <summary>Görüşme listesi satırı (geçmiş seçici).</summary>
 public sealed record GorusmeBilgi(long Id, string Baslik, string Guncelleme);
+/// <summary>gecmis_ara sonucu (cold session_search) — başlık + eşleşen parça.</summary>
+public sealed record GorusmeArama(long Id, string Baslik, string Guncelleme, string Parca);
 
 /// <summary>
 /// BKM-Asistan görüşme kalıcılığı (plan-21 #2b) — BkmPanel.PanelAsistanGorusme. Tek CFO; konuşma+bağlam restart'ta kalır.
@@ -104,5 +106,38 @@ public sealed class GorusmeService
                 "SELECT TOP (@n) Id, Baslik, Guncelleme FROM dbo.PanelAsistanGorusme ORDER BY Id DESC", new { n }).ToList();
         }
         catch (Exception ex) { _log.LogError(ex, "Görüşme listesi okunamadı"); return []; }
+    }
+
+    /// <summary>Cold session_search — geçmiş konuşmalarda terim ara (LIKE). Tam JSON değil, eşleşen civarı ~200char snippet döner (token koruması).</summary>
+    public IReadOnlyList<GorusmeArama> Ara(string terim, int adet = 6)
+    {
+        if (!_db.PanelEnabled || string.IsNullOrWhiteSpace(terim)) return [];
+        var t = terim.Trim().Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");   // LIKE meta-escape
+        try
+        {
+            using var c = _db.OpenPanel();
+            var rows = c.Query<AramaSatir>("""
+                SELECT TOP (@n) Id, Baslik, Guncelleme, MesajlarJson
+                FROM dbo.PanelAsistanGorusme
+                WHERE MesajlarJson LIKE N'%'+@t+N'%' OR Baslik LIKE N'%'+@t+N'%'
+                ORDER BY Id DESC
+                """, new { n = adet, t });
+            return rows.Select(r => new GorusmeArama(r.Id, r.Baslik, r.Guncelleme, Parca(r.MesajlarJson, terim.Trim()))).ToList();
+        }
+        catch (Exception ex) { _log.LogError(ex, "Görüşme arama hatası"); return []; }
+    }
+
+    private sealed record AramaSatir(long Id, string Baslik, string Guncelleme, string? MesajlarJson);
+
+    // Eşleşen terimin etrafından ~200char okunabilir parça (JSON gürültüsü minimum).
+    private static string Parca(string? json, string terim)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "";
+        var i = json.IndexOf(terim, StringComparison.OrdinalIgnoreCase);
+        if (i < 0) return json.Length > 200 ? json[..200] + "…" : json;
+        var bas = Math.Max(0, i - 80);
+        var son = Math.Min(json.Length, i + terim.Length + 120);
+        var p = json[bas..son];
+        return (bas > 0 ? "…" : "") + p + (son < json.Length ? "…" : "");
     }
 }
