@@ -1,5 +1,6 @@
 @page "/asistan"
 @using System.Text.Json
+@using Markdig
 @using GmDashboard.Data
 @using GmDashboard.Data.Asistan
 @using Microsoft.AspNetCore.Components.Web
@@ -94,7 +95,7 @@
                 {
                     <div class="chat chat-start">
                         <div class="chat-bubble bg-base-200 text-base-content max-w-[92%]">
-                            <pre class="m-0 whitespace-pre-wrap font-sans text-[13.5px] leading-relaxed">@m.Metin</pre>
+                            <div class="text-[13.5px] leading-relaxed [&_p]:my-1 [&_ul]:list-disc [&_ul]:ml-5 [&_ol]:list-decimal [&_ol]:ml-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:bg-base-300/60 [&_code]:px-1 [&_code]:rounded [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold">@Md(m.Metin)</div>
                             @if (m.Iz is { Count: > 0 })
                             {
                                 <div class="flex gap-1 items-center mt-2 flex-wrap opacity-70">
@@ -330,6 +331,10 @@
         if (g is null) return;
         _gorusmeId = g.Id; _hata = null; YukleJson(g);
     }
+
+    // Asistan cevabını markdown render et (LLM **kalın**/liste üretiyor). DisableHtml → ham HTML kaçışlı (XSS güvenli).
+    private static readonly MarkdownPipeline _mdPipe = new MarkdownPipelineBuilder().DisableHtml().UseSoftlineBreakAsHardlineBreak().Build();
+    private static MarkupString Md(string? s) => (MarkupString)Markdown.ToHtml(s ?? "", _mdPipe);
 
     private static (string Ikon, string Etiket) OneriBaslik(string tip) => tip switch
     {

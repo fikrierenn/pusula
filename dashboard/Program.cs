@@ -42,7 +42,8 @@ builder.Services.AddScoped<MagazaQueries>();
 builder.Services.AddScoped<RefQueries>();
 builder.Services.AddScoped<EticQueries>();
 builder.Services.AddScoped<SadakatQueries>();
-builder.Services.AddSingleton<LlmService>();      // yerel LLM — model lazy yüklenir (ilk istekte)
+// NOT: LlmService (yerel qwen) DI'dan KALDIRILDI (18.06) — pano özetleri+asistan cloud'a geçti, çağıran yok.
+// Kod korunuyor (LlmService.cs + LLamaSharp) ama başlangıçta yüklenmiyor → boot hızlı. Yeniden gerekirse tek satır ekle.
 builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)
 builder.Services.AddSingleton<TahminKayitService>(); // JSON tahmin kaydı (data/tahmin-kayitlari.json) plan-14
 builder.Services.AddSingleton<TakvimService>();      // takvim etmen (tatil API cache + okul JSON) plan-14
