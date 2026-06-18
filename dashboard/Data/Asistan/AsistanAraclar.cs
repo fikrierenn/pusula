@@ -59,11 +59,13 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
     private async Task<string> SqlSorgu(string? sql, CancellationToken ct)
     {
         var (ok, sebep) = SaltOkumaGuard.Dogrula(sql);
-        if (!ok) return Hata($"Sorgu reddedildi (güvenlik): {sebep}");
+        if (!ok) { log.LogWarning("Asistan sql_sorgu REDDEDİLDİ ({Sebep}): {Sql}", sebep, Kisalt(sql ?? "", 400)); return Hata($"Sorgu reddedildi (güvenlik): {sebep}"); }
 
+        log.LogInformation("Asistan sql_sorgu çalıştırılıyor: {Sql}", Kisalt(sql!, 600));
         await using var conn = await db.OpenAsync();
         var rows = (await conn.QueryAsync(sql!, commandTimeout: 30)).Cast<IDictionary<string, object>>().Take(SatirLimit).ToList();
         var maskeli = rows.Select(r => r.ToDictionary(kv => kv.Key, kv => (object?)Maskele(kv.Key, kv.Value))).ToList();
+        log.LogInformation("Asistan sql_sorgu sonuç: {Satir} satır", maskeli.Count);
         return JsonSerializer.Serialize(new { satir = maskeli.Count, limit = SatirLimit, veri = maskeli });
     }
 

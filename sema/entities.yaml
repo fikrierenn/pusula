@@ -53,8 +53,8 @@ entities:
   dbo.mekan_vw: {tip: view, key: [mekanID, mekanAd, mekanTip]}
 
   # POS
-  EncoreMerkez.dbo.Sales: {pk: Id, key: [CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotalDirect, IsValid]}
-  EncoreMerkez.dbo.SalesProducts: {key: [SalesId, ProductsId, BarcodeNo, IsValid], filter: "IsValid=1 ZORUNLU"}
+  EncoreMerkez.dbo.Sales: {pk: Id, key: [Date, CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotal, VatTotal], note: "Date=satış datetime (SaleDate DEĞİL); header indirim=DiscountTotal (DiscountTotalDirect/Campaign SalesProducts kalem-düzeyinde, header'da YOK); net KDV-hariç=GrossTotal-DiscountTotal-VatTotal. Sales'te IsValid YOK (o SalesProducts'ta). 18.06 sys.columns doğrulandı"}
+  EncoreMerkez.dbo.SalesProducts: {key: [SalesId, ProductsId, BarcodeNo, DiscountTotalDirect, DiscountTotalCampaign, IsValid], filter: "IsValid=1 ZORUNLU", note: "kalem-düzeyi indirim DiscountTotalDirect (toplam); DiscountTotalCampaign alt-küme"}
   EncoreMerkez.dbo.Products: {pk: Id, key: [Code], note: "Code=urn.stkID köprüsü"}
   DerinCrm.dbo.Customer: {pk: Id, key: [Name, PhoneNumber, CardNumber, Group1Id], note: "Id=Sales.CustomersId; Group1Id=2 personel"}
 
