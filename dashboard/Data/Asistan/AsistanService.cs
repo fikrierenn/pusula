@@ -5,8 +5,8 @@ namespace GmDashboard.Data.Asistan;
 /// <summary>Onay bekleyen dış-aksiyon önerisi. Tip: "gorev" | "etkinlik" | "mail". Ozet=karta basılacak metin, Veri=onayda çalıştırılacak argümanlar.</summary>
 public sealed record AsistanOneri(string Tip, string Ozet, JsonElement Veri);
 
-/// <summary>Asistan cevabı: metin + araç izi + (varsa) onay bekleyen öneri (görev/etkinlik/mail).</summary>
-public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi, AsistanOneri? Oneri = null);
+/// <summary>Asistan cevabı: metin + araç izi + (varsa) onay önerisi + (varsa) tıklanır seçenekler (netleştirme).</summary>
+public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi, AsistanOneri? Oneri = null, IReadOnlyList<string>? Secenekler = null);
 
 /// <summary>
 /// BKM-Asistan tool-use loop (plan-20 Faz-1). Tek akış: kullanıcı mesajı → LLM (Gemini→Groq) niyeti+bağlamı yönetir.
@@ -61,6 +61,13 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
             foreach (var cagri in yanit.AracCagrilari)
             {
                 iz.Add(cagri.Ad);
+                // Netleştirme sorusu (tıklanır seçenekler) → loop'u durdur, kullanıcıya butonlu soru sun.
+                if (cagri.Ad == "secenek_sun")
+                {
+                    var (netSoru, secenekler) = araclar.SecenekKur(cagri.Argumanlar);
+                    gecmis.Add(new LlmTur("tool", AracSonuc: new LlmAracSonuc(cagri.Ad, "{\"durum\":\"kullanıcıya soruldu\"}", cagri.Id)));
+                    return new(string.IsNullOrWhiteSpace(yanit.Metin) ? netSoru : yanit.Metin!, iz, Secenekler: secenekler);
+                }
                 // Dış-aksiyon önerisi (görev/etkinlik/mail) → loop'u durdur, kullanıcı onayına sun (otomatik YAPMA).
                 if (cagri.Ad is "gorev_taslak_oner" or "takvim_etkinlik_oner" or "mail_taslak_oner")
                 {
@@ -97,6 +104,7 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
         - Kullanıcı bir VERİ sorusu sorarsa (ciro/stok/kargo/müşteri sayısı) → veri araçlarını kullan (aşağıda). Bu ikincil; gerekmiyorsa kullanma.
         - TAKİP mesajları ("evet", "güncelle", "şunu da ekle", "onu da göster") → önceki konuşmanın DEVAMIDIR. Bağlamı koru, sıfırdan taslak/sorgu başlatma. "evet" = az önce önerdiğin şeyi yap demektir.
         - Tek kelimelik/belirsiz girdiyi taslağa ÇEVİRME — bağlama bak; bağlam yoksa kısa netleştirme sorusu sor.
+        - NETLEŞTİRME sorusunda AÇIK/SONLU seçenek varsa (online mı yüz yüze mi, evet/hayır) → düz metin yerine `secenek_sun` ile BUTONLU sor (kullanıcı tıklasın, yazmasın). Serbest cevap (e-posta/isim/tarih) gerekiyorsa normal sor.
         - Kalıcı tercih/kural söylerse ("bundan sonra şöyle yap", "varsayılan X") → bunu görev YAPMA; "tamam, öyle yapacağım" de ve o oturum boyunca uygula.
 
         gorev_taslak_oner ALANLARI: baslik (zorunlu, net), aciklama (2-3 cümle somut), oncelik (Düşük/Orta/Yüksek), atanan (rol/kişi öner), bitti (ölçülebilir kriter), acik_soru (eksik bilgi varsa; yoksa boş). Notta OLMAYAN detayı UYDURMA → acik_soru'ya yaz.

@@ -38,6 +38,12 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
         new("gorev_listele",
             "Açık görevleri listeler (kapatılmamış).",
             new { type = "object", properties = new { } }),
+        new("secenek_sun",
+            "Kullanıcıya NETLEŞTİRME sorusu sorarken AÇIK/SONLU seçenekler varsa (online mı yüz yüze mi, evet/hayır, A/B/C) düz metin yerine bunu kullan — kullanıcı tıklayıp seçer (az yazma). Serbest cevap gerekiyorsa (e-posta, isim, tarih) KULLANMA, normal sor.",
+            new { type = "object", properties = new {
+                soru = new { type = "string", description = "Kısa netleştirme sorusu" },
+                secenekler = new { type = "array", items = new { type = "string" }, description = "2-5 tıklanır seçenek" },
+            }, required = new[] { "soru", "secenekler" } }),
         // ── Faz-2: Google Takvim + Gmail ──
         new("takvim_listele",
             "Kullanıcının Google Takvim'indeki yaklaşan etkinlikleri listeler (okuma). 'bu hafta ne var', 'yarın programım' gibi.",
@@ -67,6 +73,20 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
                 govde = new { type = "string", description = "Mail gövdesi (Türkçe, nazik)" },
             }, required = new[] { "kime", "govde" } }),
     ];
+
+    /// <summary>secenek_sun argümanları → (soru, seçenek listesi). UI tıklanır butonlar gösterir.</summary>
+    public (string Soru, List<string> Secenekler) SecenekKur(JsonElement args)
+    {
+        var soru = Arg(args, "soru") ?? "Hangisi?";
+        var liste = new List<string>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("secenekler", out var s) && s.ValueKind == JsonValueKind.Array)
+            foreach (var e in s.EnumerateArray())
+            {
+                var v = e.ValueKind == JsonValueKind.String ? e.GetString() : e.ToString();
+                if (!string.IsNullOrWhiteSpace(v)) liste.Add(v!.Trim());
+            }
+        return (soru, liste);
+    }
 
     /// <summary>Onay-bekleyen aksiyon önerisi (görev/etkinlik/mail) → AsistanOneri (UI onay kartı + onayda çalıştırılacak veri).</summary>
     public AsistanOneri OneriKur(string ad, JsonElement args) => ad switch

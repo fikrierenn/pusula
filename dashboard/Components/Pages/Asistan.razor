@@ -87,6 +87,15 @@
                             }
                         </div>
                     </div>
+                    @if (m.Secenekler is { Count: > 0 } && idx == _mesajlar.Count - 1)
+                    {
+                        <div class="flex gap-2 flex-wrap mt-1 ml-1">
+                            @foreach (var sec in m.Secenekler)
+                            {
+                                <button class="btn btn-sm btn-outline btn-primary rounded-full" @onclick="() => CipGonder(sec)" disabled="@_busy">@sec</button>
+                            }
+                        </div>
+                    }
                 }
                 else if (m.Rol == Rol.Oneri && m.Oneri is { } o)
                 {
@@ -209,7 +218,7 @@
 
 @code {
     private enum Rol { Kullanici, Cevap, Oneri, Sistem }
-    private sealed record ChatMesaj(Rol Rol, string? Metin = null, IReadOnlyList<string>? Iz = null, long? GorevId = null, AsistanOneri? Oneri = null);
+    private sealed record ChatMesaj(Rol Rol, string? Metin = null, IReadOnlyList<string>? Iz = null, long? GorevId = null, AsistanOneri? Oneri = null, IReadOnlyList<string>? Secenekler = null);
 
     private readonly List<ChatMesaj> _mesajlar = [];
     private readonly List<LlmTur> _gecmis = [];        // konuşma sürekliliği (bağlam)
@@ -310,7 +319,7 @@
         }
         else
         {
-            _mesajlar.Add(new(Rol.Cevap, cevap.Metin, cevap.AracIzi));
+            _mesajlar.Add(new(Rol.Cevap, cevap.Metin, cevap.AracIzi, Secenekler: cevap.Secenekler));
         }
     }
 
