@@ -145,6 +145,9 @@ public sealed class Db
     }
 
     /// <summary>Repo kökü .env'i bul + parse (Python cfg() ile birebir kaynak).</summary>
+    /// <summary>.env'i dışarıdan okumak için (GeminiProvider GEMINI_API_KEY — plan-20).</summary>
+    public static Dictionary<string, string> LoadEnvStatic() => LoadEnv();
+
     private static Dictionary<string, string> LoadEnv()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

@@ -49,6 +49,12 @@ builder.Services.AddSingleton<TakvimService>();      // takvim etmen (tatil API 
 builder.Services.AddSingleton<IcKartService>();      // elle işaretli iç/mağaza kartları (data/ic-kartlar.json) plan-16 ek
 builder.Services.AddScoped<ForecastOkuService>();    // tahmin motoru çıktısı okur (data/forecast/*.json) plan-15
 builder.Services.AddScoped<ForecastService>();       // forecast motorunu portaldan tetikler (python run.py) B-109
+
+// ── BKM-Asistan (B-45, plan-20) — LLM sağlayıcı: Gemini birincil + Groq yedek (fallback) ──
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.GeminiProvider>();
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.GroqProvider>();
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.FallbackLlmProvider>();
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.ILlmProvider>(sp => sp.GetRequiredService<GmDashboard.Data.Asistan.FallbackLlmProvider>());
 builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
 builder.Services.AddScoped<PerfState>();          // sayfa yükleme süresi (sayfalar Track, footer okur)
 
