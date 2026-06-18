@@ -225,22 +225,14 @@
         _pendingTaslak = null; _ataAcik = _duzeltAcik = false;
         _mesajlar.Add(new(Rol.Kullanici, metin));
 
-        var soru = IsSoru(metin);
-        _busy = true; _busyMesaj = soru ? "Veriye bakıyorum…" : "Taslağa çeviriyorum…";
+        _pendingNot = metin;
+        _busy = true; _busyMesaj = "Düşünüyorum…";
         StateHasChanged();
         try
         {
-            if (soru)
-            {
-                var cevap = await Ai.SorAsync(metin, _gecmis);
-                _mesajlar.Add(new(Rol.Cevap, cevap.Metin, cevap.AracIzi));
-            }
-            else
-            {
-                var taslak = await Ai.TaslakUretAsync(metin);
-                _pendingTaslak = taslak; _pendingNot = metin;
-                _mesajlar.Add(new(Rol.Taslak, taslak));
-            }
+            // Tek akış: LLM niyeti+bağlamı yönetir. Taslak önerirse onay kartı, yoksa düz cevap.
+            var cevap = await Ai.SorAsync(metin, _gecmis);
+            EkleCevap(cevap, metin);
         }
         catch (Exception ex) { _hata = "İşlem tamamlanamadı: " + ex.Message; }
         finally { _busy = false; StateHasChanged(); }
@@ -248,17 +240,31 @@
 
     private async Task DuzeltAsync()
     {
-        if (string.IsNullOrWhiteSpace(_duzeltme) || _pendingTaslak is null) return;
+        if (string.IsNullOrWhiteSpace(_duzeltme)) return;
         var d = _duzeltme; _duzeltme = ""; _duzeltAcik = false;
         _busy = true; _busyMesaj = "Düzeltiyorum…"; StateHasChanged();
         try
         {
-            var taslak = await Ai.TaslakUretAsync(_pendingNot, d);
-            _pendingTaslak = taslak;
-            _mesajlar.Add(new(Rol.Taslak, taslak));
+            // Takip mesajı — LLM bağlamdaki taslağı revize edip yeniden önerir (gorev_taslak_oner).
+            var cevap = await Ai.SorAsync($"Önerdiğin taslağı şöyle düzelt: {d}", _gecmis);
+            EkleCevap(cevap, _pendingNot);
         }
         catch (Exception ex) { _hata = ex.Message; }
         finally { _busy = false; StateHasChanged(); }
+    }
+
+    // SorAsync sonucunu akışa ekle: taslak önerisi → onay kartı; değilse düz cevap balonu.
+    private void EkleCevap(AsistanCevap cevap, string kaynakNot)
+    {
+        if (cevap.Taslak is not null)
+        {
+            _pendingTaslak = cevap.Taslak; _pendingNot = kaynakNot; _ataAcik = _duzeltAcik = false;
+            _mesajlar.Add(new(Rol.Taslak, cevap.Taslak));
+        }
+        else
+        {
+            _mesajlar.Add(new(Rol.Cevap, cevap.Metin, cevap.AracIzi));
+        }
     }
 
     private async Task KaydetAsync() => await Kaydet(null);
@@ -289,30 +295,6 @@
     {
         await Task.Run(() => Gorevler.Kapat(id));
         Yenile(); StateHasChanged();
-    }
-
-    // Niyet ayrımı (soru→veri / not→taslak) — Türkçe sezgisel. "?" güçlü soru sinyali;
-    // emir-fiil → not; veri-isim/soru-sözcüğü/üstünlük → veri. Belirsiz → taslak (geri-alınabilir, İptal var).
-    private static bool IsSoru(string m)
-    {
-        var t = " " + m.Trim().ToLowerInvariant() + " ";
-        var soruIsareti = t.TrimEnd().EndsWith("?");
-
-        // Açık NOT (emir/görev) — ama "?" varsa yine soru say (öncelik soruda)
-        string[] notSinyal = ["ayarla", "hatırlat", "planla", "yenile", "alınsın", "yapılsın", "gönder",
-                              " ekle", "organize", "toplantı", "randevu", "görüş", " ara ", "hazırla",
-                              "oluştur", "sipariş ver", "bütçe ayır", "görev ", "yaptır", "sın ", "sin "];
-        if (!soruIsareti && notSinyal.Any(k => t.Contains(k))) return false;
-
-        if (soruIsareti) return true;
-
-        // VERİ sinyali — soru sözcüğü + iş-verisi ismi + üstünlük
-        string[] veriSinyal = ["ne kadar", "kaç", "hangi", "nasıl", "nedir", " kim ", " nerede ", "ne oldu",
-                               "göster", "listele", "ciro", "satış", "satan", "sattı", "satıl", "müşteri", "harca",
-                               "ürün", "marka", "kategori", "stok", "kargo", "iade", "fiş", "mağaza", "hedef",
-                               "kâr", "adet", "fiyat", "ortalama", "toplam", "en çok", "en az", "en pahalı",
-                               "en ucuz", "en iyi", "en kötü"];
-        return veriSinyal.Any(k => t.Contains(k));
     }
 
     private static string OncTone(string o) =>

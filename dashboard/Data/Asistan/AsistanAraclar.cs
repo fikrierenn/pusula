@@ -25,13 +25,39 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
         new("ornek_sql_bul",
             "Arşivlenmiş örnek SQL'lerde (sorgular/) konuya benzer sorgu arar — golden-record few-shot. SQL yazmadan önce benzer doğrulanmış örnek bul.",
             new { type = "object", properties = new { konu = new { type = "string", description = "Aranan konu/anahtar kelime (ör. 'kargo iade', 'kategori ciro')" } }, required = new[] { "konu" } }),
-        new("gorev_ekle",
-            "Yeni görev/yapılacak oluşturur. baslik zorunlu, atanan opsiyonel.",
-            new { type = "object", properties = new { baslik = new { type = "string" }, aciklama = new { type = "string" }, atanan = new { type = "string" } }, required = new[] { "baslik" } }),
+        new("gorev_taslak_oner",
+            "Kullanıcının söylediği iş/not/fikri yapılandırılmış GÖREV TASLAĞINA çevirip ONAYA sunar (otomatik KAYDETMEZ — kullanıcı Kaydet/Ata/Düzelt ile onaylar). Kullanıcı bir yapılacak/hatırlatma/proje söyleyince çağır.",
+            new { type = "object", properties = new {
+                baslik = new { type = "string", description = "Net, aksiyon-odaklı başlık" },
+                aciklama = new { type = "string", description = "2-3 cümle somut açıklama" },
+                oncelik = new { type = "string", description = "Düşük | Orta | Yüksek" },
+                atanan = new { type = "string", description = "Önerilen sorumlu (rol/kişi)" },
+                bitti = new { type = "string", description = "Bitti sayılır: ölçülebilir kriter" },
+                acik_soru = new { type = "string", description = "Eksik/belirsiz bilgi varsa soru; yoksa boş" },
+            }, required = new[] { "baslik" } }),
         new("gorev_listele",
             "Açık görevleri listeler (kapatılmamış).",
             new { type = "object", properties = new { } }),
     ];
+
+    /// <summary>gorev_taslak_oner argümanlarını GorevService.Kaydet'in beklediği 📋/📝/⚡/👤 metnine çevirir (onaya sunulur).</summary>
+    public string TaslakKur(JsonElement args)
+    {
+        string baslik = Arg(args, "baslik") ?? "Görev";
+        string aciklama = Arg(args, "aciklama") ?? "";
+        string oncelik = Arg(args, "oncelik") ?? "Orta";
+        string? atanan = Arg(args, "atanan");
+        string? bitti = Arg(args, "bitti");
+        string? acikSoru = Arg(args, "acik_soru");
+        var sb = new System.Text.StringBuilder();
+        sb.Append("📋 ").Append(baslik.Trim()).Append('\n');
+        if (!string.IsNullOrWhiteSpace(aciklama)) sb.Append("📝 ").Append(aciklama.Trim()).Append('\n');
+        sb.Append("⚡ Öncelik: ").Append(oncelik.Trim()).Append('\n');
+        sb.Append("👤 Önerilen sorumlu: ").Append(string.IsNullOrWhiteSpace(atanan) ? "—" : atanan.Trim()).Append('\n');
+        if (!string.IsNullOrWhiteSpace(bitti)) sb.Append("✅ Bitti sayılır: ").Append(bitti.Trim()).Append('\n');
+        sb.Append("❓ ").Append(string.IsNullOrWhiteSpace(acikSoru) ? "—" : acikSoru.Trim());
+        return sb.ToString();
+    }
 
     /// <summary>Araç çağrısını çalıştır → JSON sonuç (tool turuna geri beslenir).</summary>
     public async Task<string> CalistirAsync(string ad, JsonElement args, CancellationToken ct = default)
@@ -43,7 +69,6 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
                 "sql_sorgu"     => await SqlSorgu(Arg(args, "sql"), ct),
                 "sema_oku"      => SemaOku(Arg(args, "dosya")),
                 "ornek_sql_bul" => OrnekSqlBul(Arg(args, "konu")),
-                "gorev_ekle"    => GorevEkle(Arg(args, "baslik"), Arg(args, "aciklama"), Arg(args, "atanan")),
                 "gorev_listele" => GorevListele(),
                 _ => Hata($"Bilinmeyen araç: {ad}"),
             };
@@ -112,14 +137,6 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
             .Where(x => x.skor > 0).OrderByDescending(x => x.skor).Take(3).ToList();
         var ornekler = eslesen.Select(x => new { dosya = Path.GetFileName(x.f), sql = Kisalt(File.ReadAllText(x.f), 1500) }).ToList();
         return JsonSerializer.Serialize(new { bulunan = ornekler });
-    }
-
-    private string GorevEkle(string? baslik, string? aciklama, string? atanan)
-    {
-        if (string.IsNullOrWhiteSpace(baslik)) return Hata("baslik zorunlu");
-        var taslak = $"📋{baslik}\n📝{aciklama}";
-        var id = gorev.Kaydet(taslak, string.IsNullOrWhiteSpace(atanan) ? null : atanan);
-        return JsonSerializer.Serialize(new { ok = id > 0, id, mesaj = id > 0 ? $"Görev #{id} oluşturuldu" : "Görev kaydedilemedi" });
     }
 
     private string GorevListele()

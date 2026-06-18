@@ -1,47 +1,17 @@
 namespace GmDashboard.Data.Asistan;
 
-/// <summary>Asistan cevabı: metin + hangi araçlar kullanıldı (şeffaflık/debug).</summary>
-public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi);
+/// <summary>Asistan cevabı: metin + araç izi + (varsa) onay bekleyen görev taslağı.</summary>
+public sealed record AsistanCevap(string Metin, IReadOnlyList<string> AracIzi, string? Taslak = null);
 
 /// <summary>
-/// BKM-Asistan tool-use loop (plan-20 Faz-1). Soru → LLM (Gemini/Groq) → araç çağrıları (sql/sema/görev) → cevap.
-/// learn-claude-code loop deseni: araç-istedikçe çalıştır+geri besle, metin gelince dur. Max tur sınırı.
+/// BKM-Asistan tool-use loop (plan-20 Faz-1). Tek akış: kullanıcı mesajı → LLM (Gemini→Groq) niyeti+bağlamı yönetir.
+/// İş/not → `gorev_taslak_oner` (onaya sunulur, otomatik kaydetmez). Veri sorusu → sema/sql araçları. learn-claude-code loop deseni.
 /// </summary>
-public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, LlmService yerel, ILogger<AsistanService> log)
+public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILogger<AsistanService> log)
 {
     private const int MaxTur = 6;
 
     public bool Hazir => llm.Hazir;
-
-    /// <summary>
-    /// Nottan görev taslağı üret — bulut birincil (Gemini→Groq, FallbackLlmProvider), yerel qwen EN SON fallback (18.06 kullanıcı kararı).
-    /// Format LlmService.TaslakSistem ile aynı (📋/📝/⚡/👤 — GorevService.Kaydet parse eder). duzeltme verilirse revize.
-    /// </summary>
-    public async Task<string> TaslakUretAsync(string not, string? duzeltme = null, CancellationToken ct = default)
-    {
-        var userNote = string.IsNullOrWhiteSpace(duzeltme)
-            ? not
-            : $"{not}\n\n[Kullanıcı düzeltmesi: {duzeltme}] — bu düzeltmeyi uygulayıp taslağı yeniden yaz.";
-
-        if (llm.Hazir)
-        {
-            try
-            {
-                var gecmis = new List<LlmTur>
-                {
-                    new("user", LlmService.TaslakOrnekUser),
-                    new("model", LlmService.TaslakOrnekAsistan),
-                    new("user", userNote),
-                };
-                var y = await llm.UretAsync(LlmService.TaslakSistem, gecmis, [], ct);   // araçsız → düz metin
-                if (!string.IsNullOrWhiteSpace(y.Metin)) return y.Metin.Trim();
-                log.LogWarning("Bulut taslak boş döndü — yerel qwen'e düşülüyor");
-            }
-            catch (Exception ex) { log.LogWarning(ex, "Bulut taslak başarısız (quota/hata) — yerel qwen fallback"); }
-        }
-        // EN SON fallback: yerel qwen (offline/quota-bitmiş senaryo)
-        return await yerel.TaslakUret(not, duzeltme);
-    }
 
     public async Task<AsistanCevap> SorAsync(string soru, List<LlmTur> gecmis, CancellationToken ct = default)
     {
@@ -70,27 +40,43 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, Llm
             foreach (var cagri in yanit.AracCagrilari)
             {
                 iz.Add(cagri.Ad);
+                // Görev taslağı önerisi → loop'u durdur, kullanıcı onayına sun (otomatik kaydetme).
+                if (cagri.Ad == "gorev_taslak_oner")
+                {
+                    var taslak = araclar.TaslakKur(cagri.Argumanlar);
+                    gecmis.Add(new LlmTur("tool", AracSonuc: new LlmAracSonuc(cagri.Ad, "{\"durum\":\"kullanıcı onayına sunuldu\"}", cagri.Id)));
+                    var intro = string.IsNullOrWhiteSpace(yanit.Metin) ? "Bir görev taslağı hazırladım — onayını bekliyorum." : yanit.Metin!;
+                    return new(intro, iz, taslak);
+                }
                 var sonuc = await araclar.CalistirAsync(cagri.Ad, cagri.Argumanlar, ct);
                 gecmis.Add(new LlmTur("tool", AracSonuc: new LlmAracSonuc(cagri.Ad, sonuc, cagri.Id)));
             }
         }
-        return new($"İşlem {MaxTur} adımda tamamlanamadı — soruyu sadeleştirir misiniz?", iz);
+        return new($"İşlem {MaxTur} adımda tamamlanamadı — sadeleştirir misiniz?", iz);
     }
 
-    // Sistem talimatı — sema kuralları gömülü (yanlış rakam önleme). Detay sema_oku/ornek_sql_bul araçlarıyla.
+    // Sistem talimatı — iş/not asistanı birincil; veri sorusu ikincil (araçlar gerektiğinde).
     private const string SistemTalimat = """
-        Sen BKM Kitap'ın CFO'suna yardımcı Türkçe veri asistanısın. Kısa, net, sayı-odaklı cevap ver.
+        Sen BKM Kitap'ın CFO'suna yardımcı Türkçe asistanısın. Birincil işin: konuşmak, fikir/notu nete çevirmek, görev yönetmek. Kısa, net, sıcak ama yönetici dili.
 
-        KULLANICIYA KONUŞMA (kritik — CFO teknik değil):
-        - Araç adı, kolon adı, tablo adı (`dbo.Sales` vb.), `mekanID`, `sema_oku`, `sql_sorgu` gibi TEKNİK TERİMLERİ kullanıcıya ASLA söyleme/yazma — HATA mesajında bile. Sorgu başarısız olursa kullanıcıya sadece "o veriye şu an ulaşamadım / şöyle netleştirir misiniz" de, tablo/kolon adı verme.
-        - YALNIZCA sorulanı cevapla. İstenmedikçe mağaza/ürün/kategori kırılımı YAPMA (gereksiz sorgu = yavaş + dağınık). Tek net sayı/cevap yeter.
-        - Mağazalar SADECE: FSM, Özlüce, İst.Yolu (+ Merkez Depo). Başka şube (Ankara, Mars vb.) sorulursa kullanıcıya kısaca "öyle bir mağazamız yok, mağazalarımız: FSM / Özlüce / İst.Yolu" de — kullanıcıdan ID/teknik bilgi İSTEME, kendin çöz.
-        - Cevap 1-3 cümle. Bilmiyorsan/veri yoksa dürüstçe söyle, uydurma.
+        NİYET (sen karar ver — bağlamı koru):
+        - Kullanıcı bir İŞ / YAPILACAK / FİKİR / HATIRLATMA söylerse (ör. "vitrin yenilensin", "tedarikçiyle toplantı ayarla") → `gorev_taslak_oner` aracıyla yapılandırılmış taslak öner. KAYDETME — kullanıcı onaylar (Kaydet/Ata/Düzelt UI'da).
+        - Kullanıcı bir VERİ sorusu sorarsa (ciro/stok/kargo/müşteri sayısı) → veri araçlarını kullan (aşağıda). Bu ikincil; gerekmiyorsa kullanma.
+        - TAKİP mesajları ("evet", "güncelle", "şunu da ekle", "onu da göster") → önceki konuşmanın DEVAMIDIR. Bağlamı koru, sıfırdan taslak/sorgu başlatma. "evet" = az önce önerdiğin şeyi yap demektir.
+        - Tek kelimelik/belirsiz girdiyi taslağa ÇEVİRME — bağlama bak; bağlam yoksa kısa netleştirme sorusu sor.
+        - Kalıcı tercih/kural söylerse ("bundan sonra şöyle yap", "varsayılan X") → bunu görev YAPMA; "tamam, öyle yapacağım" de ve o oturum boyunca uygula.
 
-        ARAÇLAR:
-        - Veri sorusu (ciro/stok/kargo/müşteri) → ZORUNLU akış: ÖNCE `sema_oku` (doğru tablo/kolon/join — kolon adını ASLA tahmin etme) +/veya `ornek_sql_bul`, SONRA `sql_sorgu`. Kolon uydurmak = yanlış/boş sonuç = yanlış CFO kararı.
-        - Görev/yapılacak → `gorev_ekle` / `gorev_listele`.
-        - Emin değilsen uydurma — netleştirme sorusu sor. `sql_sorgu` boş/hatalı dönerse kolon adlarını sema_oku ile doğrula, düzelt, tekrar dene.
+        gorev_taslak_oner ALANLARI: baslik (zorunlu, net), aciklama (2-3 cümle somut), oncelik (Düşük/Orta/Yüksek), atanan (rol/kişi öner), bitti (ölçülebilir kriter), acik_soru (eksik bilgi varsa; yoksa boş). Notta OLMAYAN detayı UYDURMA → acik_soru'ya yaz.
+
+        KULLANICIYA KONUŞMA (CFO teknik değil):
+        - Araç/kolon/tablo adı, `mekanID`, `sema_oku`, `sql_sorgu` gibi TEKNİK TERİMLERİ ASLA yazma — hata mesajında bile. Sorgu başarısızsa sadece "o veriye şu an ulaşamadım" de.
+        - YALNIZCA sorulanı yap. İstenmedikçe mağaza/ürün kırılımı yapma. Cevap 1-3 cümle.
+        - Mağazalar SADECE: FSM, Özlüce, İst.Yolu (+ Merkez Depo). Başka şube sorulursa "öyle bir mağazamız yok, mağazalarımız: FSM / Özlüce / İst.Yolu" de — kullanıcıdan ID isteme.
+        - Bilmiyorsan/veri yoksa dürüstçe söyle, uydurma.
+
+        VERİ ARAÇLARI (yalnız veri sorusunda):
+        - Akış: ÖNCE `sema_oku` (doğru tablo/kolon — ASLA tahmin etme) +/veya `ornek_sql_bul`, SONRA `sql_sorgu`. Boş/hata dönerse sema_oku ile düzelt, tekrar dene.
+        - TARİH belirtilmezse VARSAYILAN SON 30 GÜN kullan ve cevapta "(son 30 gün)" diye belirt.
 
         SQL KURALLARI (yanlış rakam = yanlış CFO kararı — dikkat):
         - SALT-OKUMA: yalnız SELECT/WITH. Yazma/DDL YOK.
