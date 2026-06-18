@@ -146,6 +146,7 @@ Müşteri adı/telefon Claude API'ye giderken **maskelenmeli** (KVKK + finansal 
 ## LLM = Google Gemini (karar 18.06)
 - **Model:** Gemini Flash (2.0/2.5) — ucuz, hızlı, function-calling (tool-use) güçlü, büyük context (sema + golden-record few-shot rahat sığar). Karmaşık soruda Pro'ya yükselt.
 - **`ILlmProvider` interface ZORUNLU (baştan):** model-agnostik soyutlama — Gemini bugün, gerekirse Claude/OpenAI/Azure/yerel tek satır. Bağımlılık kilitleme yok.
+- **Fallback ZİNCİRİ (18.06 karar — yapılacak):** önce **Gemini kendi içinde rotasyon** (model-A 2.5-flash → model-B 3.1-flash-lite/3-flash; her birinin ayrı free-tier RPD havuzu → günlük kapasiteyi çoğalt), sonra **Groq fallback**. `FallbackLlmProvider` çok-aşamalı olmalı: `GeminiProvider` birden çok model dener (429/quota → sıradaki Gemini modeli), hepsi tükenince Groq. Şu an basit 2-aşama (Gemini→Groq) yazıldı; çok-model rotasyon EKLENECEK. .env GEMINI_MODELS=gemini-2.5-flash,gemini-3.1-flash-lite (virgüllü liste).
 - **.NET:** `Mscc.GenerativeAI` nuget (popüler .NET Gemini) veya raw REST (HttpClient). Function-calling = tool-use loop.
 - **API key:** `GEMINI_API_KEY` → `.env` (Google AI Studio). Plaintext kod YASAK.
 - **Gizlilik:** veri Google'a gider → **PII-maske ZORUNLU** (ham müşteri adı/tel asla; sema+SQL+agregat gider). Salt-okuma + maske + agregat = TestSprite'tan farklı korunma.
