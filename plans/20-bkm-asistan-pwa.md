@@ -108,7 +108,7 @@ Tek proje (dashboard) ama asistan kodu kendi grubunda:
 - Plan dosyaları: bu plan = master + Faz-1. Faz-2 (mail/takvim) → Faz-1 bitince `plans/21-asistan-mail-takvim.md`. Faz-3 → plan-22. (Şimdi bölme erken — detay yok.)
 
 ## Adımlar
-1. **Anthropic SDK** — nuget (`Anthropic.SDK` veya raw HttpClient). `.env` ANTHROPIC_API_KEY + model (haiku/sonnet). Db'ye okuma-guard helper.
+1. **Gemini provider** — `ILlmProvider` interface + `GeminiProvider` (`Mscc.GenerativeAI` nuget veya raw REST). `.env` GEMINI_API_KEY + model (gemini-flash). Function-calling = tool-use. Db'ye okuma-guard helper.
 2. **AsistanAraclar.cs** — tool tanımları (JSON schema) + `sql_sorgu` (guard+exec+limit) + `sema_oku` + **`ornek_sql_bul`** (golden-record: soruya benzer `sorgular/*.sql` retrieve → few-shot). Salt-okuma guard. **Retrieve-then-generate:** SQL üretmeden önce sema entry + benzer arşiv-SQL prompt'a enjekte (deep-research HIGH bulgu).
 3. **AsistanService.cs** — tool-use loop (system=sema kuralları özeti, max N tur, bağlam-sıkıştırma). Hata/loglu.
 4. **Asistan.razor** — veri-sorgu modu: chat input → SorAsync → cevap balonu (+ tablo varsa). Görev-taslak modu korunur (intent ayrımı: soru mu / not mu).
@@ -143,8 +143,15 @@ Müşteri adı/telefon Claude API'ye giderken **maskelenmeli** (KVKK + finansal 
 - En basit Faz-1: asistan agregat/sayı sorularına odaklı (ciro/adet/trend — PII yok). Müşteri-bazlı (ad/tel) sorgu → maskeli veya CFO-only render.
 - Sema'da PII kolonları işaretli (Customer.Name/PhoneNumber) → asistan bunları Claude'a ham göndermez.
 
+## LLM = Google Gemini (karar 18.06)
+- **Model:** Gemini Flash (2.0/2.5) — ucuz, hızlı, function-calling (tool-use) güçlü, büyük context (sema + golden-record few-shot rahat sığar). Karmaşık soruda Pro'ya yükselt.
+- **`ILlmProvider` interface ZORUNLU (baştan):** model-agnostik soyutlama — Gemini bugün, gerekirse Claude/OpenAI/Azure/yerel tek satır. Bağımlılık kilitleme yok.
+- **.NET:** `Mscc.GenerativeAI` nuget (popüler .NET Gemini) veya raw REST (HttpClient). Function-calling = tool-use loop.
+- **API key:** `GEMINI_API_KEY` → `.env` (Google AI Studio). Plaintext kod YASAK.
+- **Gizlilik:** veri Google'a gider → **PII-maske ZORUNLU** (ham müşteri adı/tel asla; sema+SQL+agregat gider). Salt-okuma + maske + agregat = TestSprite'tan farklı korunma.
+- **Ekosistem bonusu:** Gemini Google → **Gmail API + Google Calendar** doğal hizalı (Faz-2 mail/takvim — Graph yerine; Gmail/Calendar MCP zaten bağlı). Tek Google çatısı.
+
 ## Açık karar (kullanıcı)
-- **API key:** Anthropic key var mı? (sk-ant-…) — yoksa edinilmeli.
-- **Model:** Haiku (ucuz/hızlı, basit SQL yeter) vs Sonnet (karmaşık soru). Öneri: **Haiku** başla, yetmezse Sonnet.
-- **MS Agent Framework mı, çıplak Claude tool-use mu?** → Öneri: **çıplak Claude tool-use loop** (learn-claude-code pattern, basit, tek-ajan). Agent Framework tek-ajanda over-abstraction.
-- **Mail backend:** BKM `bkmkitap.com` = M365/Exchange mi? Evet → Graph API (mail+takvim+görev+kişi TEK). Hayır → IMAP/SMTP + Google Calendar. (Faz 2)
+- **GEMINI_API_KEY var mı?** (Google AI Studio) — Faz-1 blocker.
+- **Mail backend (Faz-2):** Gmail mi (Google — Gemini'yle hizalı, GCal dahil) yoksa M365/Graph mı? BKM `bkmkitap.com` hangisi? → Öneri: Gmail+GCal (Gemini ekosistem).
+- **Çıplak tool-use loop** (learn-claude-code pattern) — Agent Framework tek-ajanda over-abstraction. ✓
