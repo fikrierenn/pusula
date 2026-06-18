@@ -13,6 +13,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-18 Oturum 4 — FIFO maliyet katmanı bütünlük + Ocak K/Z + üretim-master planı (cross-repo: D:\Dev\fifo)
+- **FIFO bütünlük (fifo repo):** maliyetsiz katman/çıkış → 0; 13 reprice + 619 katmansız stok katmanlandı (fytOzl/kategori-imput/devre-dışı). SP 0-fiyat guard (14_V2) + `fifo-domain §6` "FİYAT 0 OLAMAZ". Commit fifo `f474830`+`742847f`. Ocak marj rev2 birebir (brüt 25.58M/%35.4).
+- **Ocak Kategori3 K/Z Excel** (bkm.UrunBilgi.Kategori3=urnKtgr2, 18 kat) + negatif-marj 34 hata-şüphe Excel → `fifo/raporlar/`.
+- **Üretim tek-master planı:** `fifo/docs/PLAN-uretim-master-deploy.md` (Tier-3, GO verildi, S1'den başlanacak). + `plans/23-fifo-maliyet-sema-entegrasyon.md` (pusula sema tarafı).
+- **/learn:** TVF-per-row-timeout → restrict-then-rownumber (`sql-server-conventions.md`); sqlcli json-capture (`fifo-domain §5`). Detay: journal Oturum 4.
+
 ### 2026-06-18 Oturum 2 — Genius asistanı: Faz-1+UI redesign+Faz-2 Gmail/Takvim+OpenRouter+plan-22 öğrenen katman (~35 commit)
 - B-45 devasa: chat UI redesign + LLM-yönetimli tek akış (niyet-heuristik kaldırıldı) + Faz-2 Google OAuth/Takvim/Gmail (onay-kapılı) + OpenRouter→Gemini→Groq zinciri + plan-22 Hermes-uyarlı bellek (PanelAsistanBellek + bellek_yaz/gecmis_ara) + görev SonTarih + **Genius ismi + lambadan-cin maskotu** + 99-komut repertuar + markdown render. Hepsi build-yeşil + büyük kısmı canlı-doğrulandı. Sonunda free LLM kotası dolunca (OpenRouter 50/gün) test durdu → 19.06 03:00 reset / $10. Detay: `docs/journal/bkm/2026-06-18.md` Oturum 2.
 
@@ -141,6 +147,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 #### 🌅 SABAH (19.06) — kalan iş kürasyonu (18.06 handoff, tüm TODO tarandı)
 > Genius asistanı (B-45) BİTTİ — kalan sadece canlı-test (LLM kotası 19.06 03:00 reset / $10→1000gün) + senin dışa-dönük aksiyonların (etkinlik-Oluştur/mail-Gönder Chrome onay · auth şifre değiştir). Aşağısı pre-existing BKM backlog'undan en değerli/aksiyonel olanlar.
+- [ ] **🔥 B-113 (cross-repo: D:\Dev\fifo)** FIFO üretim tek-master deploy (0→canlı) — plan `fifo/docs/PLAN-uretim-master-deploy.md` ONAYLANDI, GO. S1 irs+irsAyr re-seed → S2 açılış SP GARANTİ final-tier (kategori-imput→sabit) → S3 boş-DB GATE maliyetsiz=0 → S4 `$(ErpDb)` param → S5 dedup master+seed → S6 deploy+pipeline doğrula → S7 commit. **Prod cutover AYRI onay.** Bütünlük gate KAPALI (13 reprice + 619 katmanlandı, commit fifo f474830/742847f).
+- [ ] **B-114 plan-23 Faz-1 (pusula sema)** FIFO maliyet → `sema/*.yaml` (entity/bridge/code/metric). Verified facts journal Oturum 4'te hazır (marj=SatisTutar−CikisTutar, StkId↔urn.stkID, Kategori3=urnKtgr2, fn_SonGecerliFiyat/fytOzl fTur=1·fTip=1). sema-ogren ile yaz. Sonra Faz-2/3 (dashboard maliyet sayfası + asistan maliyet sorusu).
+- [ ] **B-115** Negatif-marj 34 hata-şüphe (oran>3): kullanıcı `fifo/raporlar/negatif-marj-hata-suphe-2026-06-19.xlsx` "Karar" kolonunu dolduracak → reprice+ManuelMaliyet (818 gerçek-zarar DOKUNMA).
 - [ ] **🥇 B-111** ⭐ WMS bekleyen-sipariş doluluk göstergesi — metrik `metrics.yaml`'da HAZIR (`depo.emir`+`J_ORDER_DETAILS.STATUS`), sadece Operasyon sayfasına mini-kart. **EN DÜŞÜK EFOR / API'siz.**
 - [ ] **🥈 B-112** Dashboard hızlı kazanımlar (4 kart, mevcut sorgu varyasyonu): (a) ödeme-grubu trendi nakit↑=stres · (b) iade sebebi (`RefundReasons.Type=0`) · (c) kampanya kaynak (`SPC.Source`) · (d) kasa saatleri yoğunluk.
 - [ ] **🥉 B-110** ⭐ Tedarikçi/Yayınevi performans paneli (ciro+iade+devir<1.5×→sipariş-kes sinyali; `urnMrk`+`irsHrk`+`urnKtgr2` köprü kanıtlı) — yeni sayfa/kart, CFO sermaye kararı. **(Tier-3, biraz büyük)**
