@@ -18,6 +18,18 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
 
     public bool Hazir => llm.Hazir;
 
+    /// <summary>
+    /// Araçsız tek-seferlik metin üretimi (pano özetleri/yorumları — Home/Sadakat). Cloud zinciri (OpenRouter→Gemini→Groq).
+    /// Yerel qwen'den daha derin yorum. Cloud tümü düşerse fırlar — çağıran sayfa AI-siz özetiyle degrade olur.
+    /// </summary>
+    public async Task<string> MetinUretAsync(string sistemTalimat, string kullaniciIcerik, CancellationToken ct = default)
+    {
+        if (!llm.Hazir) throw new InvalidOperationException("LLM yapılandırılmamış.");
+        var gecmis = new List<LlmTur> { new("user", kullaniciIcerik) };
+        var y = await llm.UretAsync(sistemTalimat, gecmis, [], ct);
+        return (y.Metin ?? "").Trim();
+    }
+
     public async Task<AsistanCevap> SorAsync(string soru, List<LlmTur> gecmis, CancellationToken ct = default)
     {
         if (!llm.Hazir) return new("Asistan yapılandırılmamış (GEMINI/GROQ key yok).", []);

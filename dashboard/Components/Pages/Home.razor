@@ -3,7 +3,7 @@
 @using GmDashboard.Models
 @implements IDisposable
 @inject Queries Queries
-@inject LlmService Llm
+@inject GmDashboard.Data.Asistan.AsistanService Ai
 @inject NotifState Notif
 @inject PerfState Perf
 @inject IJSRuntime JS
@@ -526,7 +526,18 @@ else if (_data is not null)
         catch { /* non-critical — kart fallback metnine döner */ }
     }
 
-    // Yerel LLM'den özet al (arka plan — sayfa beklemez). Dönem değişirse eski sonucu yok say (gen guard).
+    // Derin günlük özet — cloud LLM (OpenRouter→Gemini→Groq). SADECE veriyi yorumlar, rakam uydurmaz.
+    private const string GunOzetDerinSistem = """
+        Sen BKM Kitap'ın (kitap+kırtasiye + e-ticaret, 3 mağaza: FSM/Özlüce/İst.Yolu) CFO asistanısın.
+        Sana günlük pano verisi verilir. 4-6 cümle DERİN ama özlü Türkçe analiz yaz (akıcı paragraf, madde değil):
+        - En dikkat çeken artış/düşüşü SEBEP-ODAKLI yorumla (hangi mağaza/kanal, ne kadar — verideki rakamla).
+        - ANOMALİ varsa işaretle: bir mağaza diğerlerinden belirgin sapıyorsa, iade oranı yüksekse, online/mağaza dengesi bozuksa.
+        - Online vs mağaza dinamiğini değerlendir.
+        - SONDA 1 SOMUT aksiyon öner (ölçülebilir, bugüne özel).
+        KESİN KURALLAR: SADECE verideki sayıları kullan — RAKAM UYDURMA, toplama/çıkarma YAPMA. Yönü ASLA ters çevirme (veride "ARTIŞ"=arttı). Sayıları verideki biçimde (₺ ve %). Veride olmayan metrik EKLEME.
+        """;
+
+    // Özet al (arka plan — sayfa beklemez). Dönem değişirse eski sonucu yok say (gen guard).
     private async Task RefreshOzetAsync(decimal prevToplam, decimal iadeOran)
     {
         if (_data is null) return;
@@ -534,10 +545,10 @@ else if (_data is not null)
         _ozetCalisiyor = true; await InvokeAsync(StateHasChanged);
         try
         {
-            var txt = await Llm.GunOzetiUret(OzetVeri(prevToplam, iadeOran));
+            var txt = await Ai.MetinUretAsync(GunOzetDerinSistem, OzetVeri(prevToplam, iadeOran));
             if (gen == _ozetGen && !string.IsNullOrWhiteSpace(txt)) { _ozetMetin = txt; _ozetAI = true; }
         }
-        catch { /* model yoksa/yüklenmezse deterministik metin kalır */ }
+        catch { /* cloud düşerse deterministik metin kalır */ }
         finally { if (gen == _ozetGen) { _ozetCalisiyor = false; await InvokeAsync(StateHasChanged); } }
     }
 

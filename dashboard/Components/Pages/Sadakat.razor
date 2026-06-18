@@ -3,7 +3,7 @@
 @using GmDashboard.Models
 @implements IDisposable
 @inject SadakatQueries Sada
-@inject LlmService Llm
+@inject GmDashboard.Data.Asistan.AsistanService Ai
 @inject PerfState Perf
 @inject ILogger<Sadakat> Logger
 @inject PersistentComponentState AppState
@@ -250,14 +250,25 @@ else
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
     private static string Pct(decimal pay, decimal top) => top > 0 ? $"%{pay * 100m / top:0.0}" : "—";
 
-    // LLM yorumu — Home GunOzeti deseni: arka planda çağrı, gen-race-guard, model yoksa placeholder kalır.
+    // Derin sadakat yorumu — cloud LLM (OpenRouter→Gemini→Groq). SADECE veriyi yorumlar.
+    private const string SadakatDerinSistem = """
+        Sen BKM Kitap'ın (kitap+kırtasiye + e-ticaret, 3 mağaza) CFO asistanısın.
+        Sana müşteri SADAKAT panosu verisi verilir. 4-6 cümle DERİN Türkçe yorum + sonda 1 SOMUT aksiyon (akıcı paragraf):
+        - Pareto konsantrasyonu yüksekse (az müşteri çok ciro) bağımlılık RİSKİNİ vurgula.
+        - Tekrar-alış oranı düşükse ilk alışı ikinciye çevirme fırsatını söyle (₺ potansiyel).
+        - Kartlı/kartsız ATV farkını yorumla (ne anlama geliyor).
+        - Win-back potansiyelini ₺ ile vurgula (geri kazanılabilir ciro) + nasıl.
+        KESİN KURALLAR: SADECE verideki sayıları kullan — RAKAM UYDURMA, hesap YAPMA. Sayıları verideki biçimde (₺/%). Yönü ters çevirme.
+        """;
+
+    // Yorum — arka planda çağrı, gen-race-guard, cloud düşerse placeholder kalır.
     private async Task RefreshYorumAsync()
     {
         var gen = ++_yorumGen;
         _yorumCalisiyor = true; await InvokeAsync(StateHasChanged);
         try
         {
-            var txt = await Llm.SadakatYorumUret(SadakatVeri());
+            var txt = await Ai.MetinUretAsync(SadakatDerinSistem, SadakatVeri());
             if (gen == _yorumGen && !string.IsNullOrWhiteSpace(txt)) _yorum = txt;
         }
         catch (Exception ex) { Logger.LogWarning(ex, "Sadakat LLM yorumu üretilemedi — placeholder kalıyor"); }
