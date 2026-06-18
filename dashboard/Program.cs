@@ -50,7 +50,8 @@ builder.Services.AddSingleton<IcKartService>();      // elle işaretli iç/mağa
 builder.Services.AddScoped<ForecastOkuService>();    // tahmin motoru çıktısı okur (data/forecast/*.json) plan-15
 builder.Services.AddScoped<ForecastService>();       // forecast motorunu portaldan tetikler (python run.py) B-109
 
-// ── BKM-Asistan (B-45, plan-20) — LLM sağlayıcı: Gemini birincil + Groq yedek (fallback) ──
+// ── BKM-Asistan (B-45) — LLM zinciri: OpenRouter (birincil) → Gemini → Groq (plan-21, 18.06) ──
+builder.Services.AddSingleton<GmDashboard.Data.Asistan.OpenRouterProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.GeminiProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.GroqProvider>();
 builder.Services.AddSingleton<GmDashboard.Data.Asistan.FallbackLlmProvider>();
