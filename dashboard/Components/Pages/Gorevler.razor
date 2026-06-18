@@ -40,6 +40,12 @@
             }
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-[11px] font-bold rounded-full px-2 py-0.5 @(g.Durum == "Kapalı" ? "bg-base-200 text-base-content/60" : "bg-info/15 text-info")">@g.Durum</span>
+                @if (!string.IsNullOrWhiteSpace(g.SonTarih))
+                {
+                    <span class="text-[11px] font-bold rounded-full px-2 py-0.5 @(Gecikti(g) ? "bg-error/15 text-error" : "bg-base-200 text-base-content/60")">
+                        @(Gecikti(g) ? "Gecikti · " : "")📅 @g.SonTarih
+                    </span>
+                }
                 <button class="btn btn-sm btn-primary ml-auto" @onclick="() => Duzenle(g)">Düzenle</button>
                 @if (g.Durum != "Kapalı")
                 {
@@ -65,6 +71,8 @@
         </select>
         <label class="text-base-content/50">Atanan</label>
         <input class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eAtanan" placeholder="İsim / rol" />
+        <label class="text-base-content/50">Son tarih</label>
+        <input type="date" class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eSonTarih" />
         <label class="text-base-content/50">Durum</label>
         <select class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" @bind="_eDurum">
             <option value="Açık">Açık</option>
@@ -85,6 +93,7 @@
     private bool _modalAcik;
     private long _seciliId;
     private string _eBaslik = "", _eAciklama = "", _eOncelik = "Orta", _eAtanan = "", _eDurum = "Açık";
+    private DateOnly? _eSonTarih;
 
     private int AcikSayi => _tumGorevler.Count(g => g.Durum != "Kapalı");
 
@@ -109,17 +118,21 @@
     {
         _seciliId = g.Id;
         _eBaslik = g.Baslik; _eAciklama = g.Aciklama; _eOncelik = NormOnc(g.Oncelik);
-        _eAtanan = g.Atanan ?? ""; _eDurum = g.Durum;
+        _eAtanan = g.Atanan ?? ""; _eDurum = g.Durum; _eSonTarih = ParseDmy(g.SonTarih);
         _modalAcik = true;
     }
 
     private void Kaydet()
     {
         Svc.Guncelle(_seciliId, _eBaslik, _eAciklama, _eOncelik,
-            string.IsNullOrWhiteSpace(_eAtanan) ? null : _eAtanan, _eDurum);
+            string.IsNullOrWhiteSpace(_eAtanan) ? null : _eAtanan, _eDurum, _eSonTarih?.ToString("dd.MM.yyyy"));
         _modalAcik = false;
         Yenile();
     }
+
+    // depo dd.MM.yyyy ↔ DateOnly (input[type=date])
+    private static DateOnly? ParseDmy(string? dmy) => DateOnly.TryParseExact(dmy, "dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d) ? d : null;
+    private static bool Gecikti(Gorev g) => g.Durum != "Kapalı" && DateOnly.TryParseExact(g.SonTarih, "dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d) && d < DateOnly.FromDateTime(DateTime.Today);
 
     private void Kapat(long id) { Svc.Kapat(id); Yenile(); }
     private void Sil(long id) { Svc.Sil(id); Yenile(); }

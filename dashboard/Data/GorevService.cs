@@ -3,8 +3,8 @@ using Dapper;
 
 namespace GmDashboard.Data;
 
-/// <summary>Görev kaydı (asistan/Program.cs SaveTask + /gorevler mantığı).</summary>
-public sealed record Gorev(long Id, string Baslik, string Aciklama, string Oncelik, string? Atanan, string Durum, string Olusturma);
+/// <summary>Görev kaydı (asistan/Program.cs SaveTask + /gorevler mantığı). SonTarih = due date (dd.MM.yyyy, opsiyonel).</summary>
+public sealed record Gorev(long Id, string Baslik, string Aciklama, string Oncelik, string? Atanan, string Durum, string Olusturma, string? SonTarih = null);
 
 /// <summary>
 /// Görev deposu — localhost Express BkmPanel.dbo.PanelGorev (eski SQLite asistan.db'den taşındı).
@@ -27,6 +27,7 @@ public sealed class GorevService
                     Id bigint IDENTITY(1,1) PRIMARY KEY, Baslik nvarchar(300), Aciklama nvarchar(max),
                     Oncelik nvarchar(20), Atanan nvarchar(100) NULL, Durum nvarchar(20) NOT NULL DEFAULT N'Açık',
                     Olusturma nvarchar(20));
+                IF COL_LENGTH('dbo.PanelGorev','SonTarih') IS NULL ALTER TABLE dbo.PanelGorev ADD SonTarih nvarchar(20) NULL;
                 """);
         }
         catch (Exception ex) { log.LogError(ex, "PanelGorev tablo oluşturma hatası"); }
@@ -37,23 +38,24 @@ public sealed class GorevService
     {
         if (!_db.PanelEnabled) return 0;
         var lines = taslak.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        string baslik = "", oncelik = "Orta";
+        string baslik = "", oncelik = "Orta"; string? sonTarih = null;
         var aciklama = new StringBuilder();
         foreach (var l in lines)
         {
             if (l.StartsWith("📋")) baslik = l[2..].Trim();
             else if (l.StartsWith("📝")) aciklama.Append(l[2..].Trim());
             else if (l.StartsWith("⚡")) oncelik = l.Contains("Yüksek") ? "Yüksek" : l.Contains("Düşük") ? "Düşük" : "Orta";
+            else if (l.StartsWith("📅")) { var v = l[2..].Replace("Son tarih:", "").Trim(); if (v.Length > 0) sonTarih = v; }
         }
         if (baslik.Length == 0) baslik = lines.FirstOrDefault() ?? "Görev";
         try
         {
             using var c = _db.OpenPanel();
             return c.ExecuteScalar<long>("""
-                INSERT INTO dbo.PanelGorev (Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma)
-                VALUES (@baslik, @aciklama, @oncelik, @atanan, N'Açık', @t);
+                INSERT INTO dbo.PanelGorev (Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma, SonTarih)
+                VALUES (@baslik, @aciklama, @oncelik, @atanan, N'Açık', @t, @sonTarih);
                 SELECT CAST(SCOPE_IDENTITY() AS bigint);
-                """, new { baslik, aciklama = aciklama.ToString(), oncelik, atanan, t = DateTime.Now.ToString("dd.MM.yyyy HH:mm") });
+                """, new { baslik, aciklama = aciklama.ToString(), oncelik, atanan, t = DateTime.Now.ToString("dd.MM.yyyy HH:mm"), sonTarih });
         }
         catch (Exception ex) { _log.LogError(ex, "Görev kaydedilemedi"); return 0; }
     }
@@ -64,7 +66,7 @@ public sealed class GorevService
         try
         {
             using var c = _db.OpenPanel();
-            var sql = "SELECT TOP 100 Id, Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma FROM dbo.PanelGorev"
+            var sql = "SELECT TOP 100 Id, Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma, SonTarih FROM dbo.PanelGorev"
                       + (acikOnly ? " WHERE Durum<>N'Kapalı'" : "") + " ORDER BY Id DESC";
             return c.Query<Gorev>(sql).ToList();
         }
@@ -78,7 +80,7 @@ public sealed class GorevService
         {
             using var c = _db.OpenPanel();
             return c.QueryFirstOrDefault<Gorev>(
-                "SELECT Id, Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma FROM dbo.PanelGorev WHERE Id=@id", new { id });
+                "SELECT Id, Baslik, Aciklama, Oncelik, Atanan, Durum, Olusturma, SonTarih FROM dbo.PanelGorev WHERE Id=@id", new { id });
         }
         catch (Exception ex) { _log.LogError(ex, "Görev okunamadı (Id {Id})", id); return null; }
     }
@@ -86,9 +88,9 @@ public sealed class GorevService
     public bool Kapat(long id) => Exec("UPDATE dbo.PanelGorev SET Durum=N'Kapalı' WHERE Id=@id", new { id });
 
     /// <summary>Görev alanlarını güncelle (düzenle modalı).</summary>
-    public bool Guncelle(long id, string baslik, string aciklama, string oncelik, string? atanan, string durum) =>
-        Exec("UPDATE dbo.PanelGorev SET Baslik=@baslik, Aciklama=@aciklama, Oncelik=@oncelik, Atanan=@atanan, Durum=@durum WHERE Id=@id",
-            new { id, baslik, aciklama, oncelik, atanan, durum });
+    public bool Guncelle(long id, string baslik, string aciklama, string oncelik, string? atanan, string durum, string? sonTarih = null) =>
+        Exec("UPDATE dbo.PanelGorev SET Baslik=@baslik, Aciklama=@aciklama, Oncelik=@oncelik, Atanan=@atanan, Durum=@durum, SonTarih=@sonTarih WHERE Id=@id",
+            new { id, baslik, aciklama, oncelik, atanan, durum, sonTarih });
 
     public bool Sil(long id) => Exec("DELETE FROM dbo.PanelGorev WHERE Id=@id", new { id });
 

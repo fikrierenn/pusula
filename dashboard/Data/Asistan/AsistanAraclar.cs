@@ -33,6 +33,7 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
                 oncelik = new { type = "string", description = "Düşük | Orta | Yüksek" },
                 atanan = new { type = "string", description = "Önerilen sorumlu (rol/kişi)" },
                 bitti = new { type = "string", description = "Bitti sayılır: ölçülebilir kriter" },
+                son_tarih = new { type = "string", description = "Son tarih dd.MM.yyyy (kullanıcı 'cuma'ya kadar' derse BUGÜN bağlamından çöz; yoksa boş)" },
                 acik_soru = new { type = "string", description = "Eksik/belirsiz bilgi varsa soru; yoksa boş" },
             }, required = new[] { "baslik" } }),
         new("gorev_listele",
@@ -147,6 +148,8 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
         if (!string.IsNullOrWhiteSpace(aciklama)) sb.Append("📝 ").Append(aciklama.Trim()).Append('\n');
         sb.Append("⚡ Öncelik: ").Append(oncelik.Trim()).Append('\n');
         sb.Append("👤 Önerilen sorumlu: ").Append(string.IsNullOrWhiteSpace(atanan) ? "—" : atanan.Trim()).Append('\n');
+        var sonTarih = Arg(args, "son_tarih");
+        if (!string.IsNullOrWhiteSpace(sonTarih)) sb.Append("📅 Son tarih: ").Append(sonTarih.Trim()).Append('\n');
         if (!string.IsNullOrWhiteSpace(bitti)) sb.Append("✅ Bitti sayılır: ").Append(bitti.Trim()).Append('\n');
         sb.Append("❓ ").Append(string.IsNullOrWhiteSpace(acikSoru) ? "—" : acikSoru.Trim());
         return sb.ToString();

@@ -112,7 +112,8 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, Asi
         - bellek_yaz "limit_asildi" dönerse → AYNI turda eski/çakışan girdiyi `bellek_yaz` action=sil veya degistir ile temizle, sonra tekrar ekle.
         - "geçen sefer/daha önce ne demiştik/konuşmuştuk" → `gecmis_ara` (belleğe sorma — bellek zaten yukarıda [GENIUS BELLEK] bloğunda). Bellek bloğundaki tercihleri HER cevapta uygula.
 
-        gorev_taslak_oner ALANLARI: baslik (zorunlu, net), aciklama (2-3 cümle somut), oncelik (Düşük/Orta/Yüksek), atanan (rol/kişi öner), bitti (ölçülebilir kriter), acik_soru (eksik bilgi varsa; yoksa boş). Notta OLMAYAN detayı UYDURMA → acik_soru'ya yaz.
+        gorev_taslak_oner ALANLARI: baslik (zorunlu, net), aciklama (2-3 cümle somut), oncelik (Düşük/Orta/Yüksek), atanan (rol/kişi öner), son_tarih (kullanıcı tarih derse dd.MM.yyyy çöz), bitti (ölçülebilir kriter), acik_soru (eksik bilgi varsa; yoksa boş). Notta OLMAYAN detayı UYDURMA → acik_soru'ya yaz.
+        - HAM/KISA not gelirse ("vitrin loş", "tedarikçiyi ara") ham notu başlık yapma — ZENGİNLEŞTİR: aciklama'yı somutlaştır, mantıklı sorumlu öner, tarih ima varsa son_tarih çöz, eksikse acik_soru sor.
 
         KULLANICIYA KONUŞMA (CFO teknik değil):
         - Araç/kolon/tablo adı, `mekanID`, `sema_oku`, `sql_sorgu` gibi TEKNİK TERİMLERİ ASLA yazma — hata mesajında bile. Sorgu başarısızsa sadece "o veriye şu an ulaşamadım" de.
