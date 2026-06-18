@@ -89,12 +89,12 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, IHostEnvironment e
         try
         {
             if (hedef is not null && File.Exists(Path.Combine(dir, hedef)))
-                return JsonSerializer.Serialize(new { dosya = hedef, icerik = File.ReadAllText(Path.Combine(dir, hedef)) });
-            // hepsi → kısa liste + entities/codes (en kritik)
+                return JsonSerializer.Serialize(new { dosya = hedef, icerik = Kisalt(File.ReadAllText(Path.Combine(dir, hedef)), 6000) });
+            // hepsi → her dosya kırpılmış (LLM token bütçesi/TPM koruması — tam dosya için dosya adı belirt)
             var ozet = new[] { "entities", "codes", "bridges", "metrics" }
                 .Where(f => File.Exists(Path.Combine(dir, $"{f}.yaml")))
-                .ToDictionary(f => f, f => File.ReadAllText(Path.Combine(dir, $"{f}.yaml")));
-            return JsonSerializer.Serialize(new { sema = ozet });
+                .ToDictionary(f => f, f => Kisalt(File.ReadAllText(Path.Combine(dir, $"{f}.yaml")), 2200));
+            return JsonSerializer.Serialize(new { sema = ozet, not = "Kırpıldı — tam içerik için dosya:entities|codes|bridges|metrics belirt." });
         }
         catch (Exception ex) { return Hata($"sema okunamadı: {ex.Message}"); }
     }

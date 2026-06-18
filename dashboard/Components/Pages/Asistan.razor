@@ -291,14 +291,28 @@
         Yenile(); StateHasChanged();
     }
 
-    // Niyet ayrımı (soru mu, not mu) — basit Türkçe sezgisel. Yanlışsa kullanıcı yeniden yazar.
+    // Niyet ayrımı (soru→veri / not→taslak) — Türkçe sezgisel. "?" güçlü soru sinyali;
+    // emir-fiil → not; veri-isim/soru-sözcüğü/üstünlük → veri. Belirsiz → taslak (geri-alınabilir, İptal var).
     private static bool IsSoru(string m)
     {
         var t = " " + m.Trim().ToLowerInvariant() + " ";
-        if (t.TrimEnd().EndsWith("?")) return true;
-        string[] qk = ["ne kadar", "kaç", "hangi", " mı ", " mi ", " mu ", " mü ", "nedir", "ne oldu",
-                       "göster", "listele", "ciro", "satış", "stok", "kargo", "ortalama", "toplam", "kaçtı", "nasıl gidiyor"];
-        return qk.Any(k => t.Contains(k));
+        var soruIsareti = t.TrimEnd().EndsWith("?");
+
+        // Açık NOT (emir/görev) — ama "?" varsa yine soru say (öncelik soruda)
+        string[] notSinyal = ["ayarla", "hatırlat", "planla", "yenile", "alınsın", "yapılsın", "gönder",
+                              " ekle", "organize", "toplantı", "randevu", "görüş", " ara ", "hazırla",
+                              "oluştur", "sipariş ver", "bütçe ayır", "görev ", "yaptır", "sın ", "sin "];
+        if (!soruIsareti && notSinyal.Any(k => t.Contains(k))) return false;
+
+        if (soruIsareti) return true;
+
+        // VERİ sinyali — soru sözcüğü + iş-verisi ismi + üstünlük
+        string[] veriSinyal = ["ne kadar", "kaç", "hangi", "nasıl", "nedir", " kim ", " nerede ", "ne oldu",
+                               "göster", "listele", "ciro", "satış", "satan", "sattı", "satıl", "müşteri", "harca",
+                               "ürün", "marka", "kategori", "stok", "kargo", "iade", "fiş", "mağaza", "hedef",
+                               "kâr", "adet", "fiyat", "ortalama", "toplam", "en çok", "en az", "en pahalı",
+                               "en ucuz", "en iyi", "en kötü"];
+        return veriSinyal.Any(k => t.Contains(k));
     }
 
     private static string OncTone(string o) =>

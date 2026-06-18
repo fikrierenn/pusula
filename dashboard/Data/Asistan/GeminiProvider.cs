@@ -44,8 +44,12 @@ public sealed class GeminiProvider : ILlmProvider
                 _log.LogWarning("Gemini {Model} kota/429 ({Code}) — sıradaki modele geçiliyor: {Sonraki}",
                     _modeller[i], (int?)ex.StatusCode, _modeller[i + 1]);
             }
+            catch (GeminiBosYanitException) when (i < _modeller.Count - 1)
+            {
+                _log.LogWarning("Gemini {Model} boş yanıt — sıradaki modele geçiliyor: {Sonraki}", _modeller[i], _modeller[i + 1]);
+            }
         }
-        throw new HttpRequestException($"Tüm Gemini modelleri tükendi ({_modeller.Count} model, kota/429).");
+        throw new HttpRequestException($"Tüm Gemini modelleri tükendi ({_modeller.Count} model — kota/boş yanıt).");
     }
 
     // 429 (TooManyRequests) veya 503 (ServiceUnavailable) → rotasyon tetikler. Diğer hatalar (auth/400) rotasyonsuz fırlar.
@@ -90,9 +94,19 @@ public sealed class GeminiProvider : ILlmProvider
             throw new HttpRequestException($"Gemini hata {(int)resp.StatusCode}", null, resp.StatusCode);
         }
 
-        // ── Yanıt çözümle: parts[] → text + functionCall ──
+        // ── Yanıt çözümle: parts[] → text + functionCall (defansif — 200 ama candidates/parts yok olabilir:
+        //    safety-block / finishReason=MAX_TOKENS / promptFeedback). Çökme yerine rotasyona uygun hata fırlat. ──
         using var doc = JsonDocument.Parse(json);
-        var parts = doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts");
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("candidates", out var cands) || cands.GetArrayLength() == 0
+            || !cands[0].TryGetProperty("content", out var content) || !content.TryGetProperty("parts", out var parts))
+        {
+            var sebep = root.TryGetProperty("promptFeedback", out var pf) ? pf.ToString()
+                : cands.ValueKind == JsonValueKind.Array && cands.GetArrayLength() > 0 && cands[0].TryGetProperty("finishReason", out var fr) ? fr.GetString()
+                : "içerik yok";
+            _log.LogWarning("Gemini {Model} 200 ama içerik yok ({Sebep}) — boş yanıt", model, sebep);
+            throw new GeminiBosYanitException($"Gemini {model} içerik döndürmedi ({sebep}).");
+        }
         var sb = new StringBuilder();
         var cagrilar = new List<LlmAracCagri>();
         foreach (var p in parts.EnumerateArray())
@@ -137,3 +151,6 @@ public sealed class GeminiProvider : ILlmProvider
         return new JsonObject { ["role"] = t.Rol == "model" ? "model" : "user", ["parts"] = parts };
     }
 }
+
+/// <summary>Gemini 200 döndü ama kullanılabilir içerik yok (safety-block / MAX_TOKENS / boş candidates). Rotasyon tetikler.</summary>
+public sealed class GeminiBosYanitException(string mesaj) : Exception(mesaj);
