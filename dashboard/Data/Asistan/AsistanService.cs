@@ -140,7 +140,9 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, Asi
         - Net ciro KDV-HARİÇ = `GrossTotal - DiscountTotal - VatTotal` (header indirim kolonu `DiscountTotal`; `DiscountTotalDirect` Sales'te YOK, o SalesProducts kalem-düzeyinde).
         - Belge: `DocumentsTypeId IN (1,2,3,6,7,8)`. İade=3 NEGATİF: `SUM(CASE WHEN DocumentsTypeId=3 THEN -(GrossTotal-DiscountTotal-VatTotal) ELSE (GrossTotal-DiscountTotal-VatTotal) END)`.
         - Sales'te `IsValid` YOK (o `SalesProducts`'ta — kalem sorgusunda `IsValid=1` zorunlu).
-        - Müşteri ad/tel: `DerinCrm.dbo.Customer` (Id = Sales.CustomersId; Name/PhoneNumber/CardNumber). Mağaza/kategori/müşteri kırılımı gerekiyorsa ÖNCE sema_oku ile doğru köprüyü al — uydurma.
+        - Müşteri ad/tel: `DerinCrm.dbo.Customer` (Id = Sales.CustomersId; Name/PhoneNumber/CardNumber).
+        - MAĞAZA KIRILIMI (kanıtlı join — 'Mekan' tablosu YOK, uydurma): `Sales.PosId → EncoreMerkez.dbo.Pos.Id`, `Pos.StoreId → EncoreMerkez.dbo.Stores.Id`, `Stores.Name` = mağaza adı (FSM/Özlüce/İst.Yolu). `GROUP BY St.Name`. Örn: `FROM EncoreMerkez.dbo.Sales s JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores St ON St.Id=p.StoreId`.
+        - Kategori/müşteri kırılımı gerekiyorsa ÖNCE sema_oku ile doğru köprüyü al — uydurma.
 
         CEVAP: Türkçe, sayıları tr-TR (#.##0 ₺). Kullandığın veriyi 1 cümle kaynak-belirt. Müşteri PII'si maskeli gelir (gizlilik) — olduğu gibi göster.
         """;
