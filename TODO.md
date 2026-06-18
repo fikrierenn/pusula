@@ -13,6 +13,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-19 — FIFO üretim tek-master (0→canlı) + uçtan-uca Ocak doğrulama (cross-repo: D:\Dev\fifo = ASIL PROJE)
+- **B-116 master ÜRETİLDİ+DOĞRULANDI** (commit bekliyor; ID düzeltme: eski B-113=UI-checklist çakışması → B-116): `fifo/v2-production/00_V2_MASTER_FULL.sql` (build-master.sh) — portable, $(ErpDb)/$(MaliyetDb), curated 16SP/11view/15tbl/seed. Boş BKMMaliyet_Test'e deploy+açılış+aylık+ortalama 0 hata, maliyetsiz=0, **Ocak Brüt 25,65M/%35,4 = rev2 birebir**.
+- FIFO SP fix: açılış irsHrk-kümülatif (geçmiş-doğru, anlık-stok bug), GARANTİ final-tier (SonAlış→kategori-imput→devre-dışı, **1-TL sabit kaldırıldı**), 04 dryrun kolon-fix.
+- **Repo ayrımı netleşti: FIFO=asıl proje, pusula=sadece sema** (kullanıcı). Tam kayıt FIFO memory'de (session_log + CLAUDE.md SON DURUM #8). Detay: `docs/journal/bkm/2026-06-19.md`.
+- Yarına: FIFO commit · sızan gerçek-gider stkID-curated devre-dışı · prod cutover (201 kapalı) · **plan-23 Faz-1 sema (pusula, B-114) hâlâ açık**.
+
 ### 2026-06-18 Oturum 4 — FIFO maliyet katmanı bütünlük + Ocak K/Z + üretim-master planı (cross-repo: D:\Dev\fifo)
 - **FIFO bütünlük (fifo repo):** maliyetsiz katman/çıkış → 0; 13 reprice + 619 katmansız stok katmanlandı (fytOzl/kategori-imput/devre-dışı). SP 0-fiyat guard (14_V2) + `fifo-domain §6` "FİYAT 0 OLAMAZ". Commit fifo `f474830`+`742847f`. Ocak marj rev2 birebir (brüt 25.58M/%35.4).
 - **Ocak Kategori3 K/Z Excel** (bkm.UrunBilgi.Kategori3=urnKtgr2, 18 kat) + negatif-marj 34 hata-şüphe Excel → `fifo/raporlar/`.
@@ -147,7 +153,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 #### 🌅 SABAH (19.06) — kalan iş kürasyonu (18.06 handoff, tüm TODO tarandı)
 > Genius asistanı (B-45) BİTTİ — kalan sadece canlı-test (LLM kotası 19.06 03:00 reset / $10→1000gün) + senin dışa-dönük aksiyonların (etkinlik-Oluştur/mail-Gönder Chrome onay · auth şifre değiştir). Aşağısı pre-existing BKM backlog'undan en değerli/aksiyonel olanlar.
-- [ ] **🔥 B-113 (cross-repo: D:\Dev\fifo)** FIFO üretim tek-master deploy (0→canlı) — plan `fifo/docs/PLAN-uretim-master-deploy.md` ONAYLANDI, GO. S1 irs+irsAyr re-seed → S2 açılış SP GARANTİ final-tier (kategori-imput→sabit) → S3 boş-DB GATE maliyetsiz=0 → S4 `$(ErpDb)` param → S5 dedup master+seed → S6 deploy+pipeline doğrula → S7 commit. **Prod cutover AYRI onay.** Bütünlük gate KAPALI (13 reprice + 619 katmanlandı, commit fifo f474830/742847f).
+- [~] **🔥 B-116 (cross-repo: D:\Dev\fifo) — master ÜRETİLDİ+DOĞRULANDI 19.06** (eski "B-113" ID UI-checklist'le çakışıyordu → B-116). `00_V2_MASTER_FULL.sql` portable+parametrik+curated; boş DB'ye deploy+açılış+aylık 0 hata, maliyetsiz=0, Ocak 25,65M/%35,4=rev2. Açılış geçmiş-doğru (irsHrk-kümülatif) + GARANTİ (1-TL sabit kaldırıldı→devre-dışı) + SonAlış tier. **KALAN:** (1) fifo COMMIT, (2) sızan gerçek-gider stkID-curated devre-dışı, (3) prod cutover (201 kapalı, AYRI onay).
 - [ ] **B-114 plan-23 Faz-1 (pusula sema)** FIFO maliyet → `sema/*.yaml` (entity/bridge/code/metric). Verified facts journal Oturum 4'te hazır (marj=SatisTutar−CikisTutar, StkId↔urn.stkID, Kategori3=urnKtgr2, fn_SonGecerliFiyat/fytOzl fTur=1·fTip=1). sema-ogren ile yaz. Sonra Faz-2/3 (dashboard maliyet sayfası + asistan maliyet sorusu).
 - [ ] **B-115** Negatif-marj 34 hata-şüphe (oran>3): kullanıcı `fifo/raporlar/negatif-marj-hata-suphe-2026-06-19.xlsx` "Karar" kolonunu dolduracak → reprice+ManuelMaliyet (818 gerçek-zarar DOKUNMA).
 - [ ] **🥇 B-111** ⭐ WMS bekleyen-sipariş doluluk göstergesi — metrik `metrics.yaml`'da HAZIR (`depo.emir`+`J_ORDER_DETAILS.STATUS`), sadece Operasyon sayfasına mini-kart. **EN DÜŞÜK EFOR / API'siz.**
