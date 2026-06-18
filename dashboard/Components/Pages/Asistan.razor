@@ -1,15 +1,64 @@
 @page "/asistan"
 @using GmDashboard.Data
+@using GmDashboard.Data.Asistan
 @using GmDashboard.Components.Shared
 @inject LlmService Llm
 @inject GorevService Gorevler
+@inject AsistanService Ai
 @rendermode InteractiveServer
 
 <PageTitle>BKM Asistan</PageTitle>
 
 <div class="flex items-center gap-3 mb-5 flex-wrap">
     <h1 class="text-2xl font-bold tracking-tight m-0">Asistan</h1>
-    <span class="text-sm font-semibold text-base-content/50">Not → görev taslağı → kaydet / ata</span>
+    <span class="text-sm font-semibold text-base-content/50">Veri sor (AI) · Not → görev taslağı</span>
+</div>
+
+@* ── Veri Sorusu (AI tool-use: sema → örnek-SQL → sorgu → Türkçe cevap) ── *@
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
+    <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="sparkles" class="w-5 h-5 text-primary"></i>
+        <h3 class="m-0">Veri Sor</h3>
+        @if (!Ai.Hazir)
+        {
+            <span class="badge badge-sm badge-warning gap-1">yapılandırılmamış</span>
+        }
+    </div>
+    <div class="flex gap-2 items-end flex-wrap">
+        <textarea class="textarea textarea-bordered flex-1 min-w-[240px] text-sm resize-y" rows="2"
+                  placeholder="Örn: dün ciro ne kadar? / bu hafta hangi kategori en çok sattı?"
+                  @bind="_soru" @bind:event="oninput" disabled="@(_soruBusy || !Ai.Hazir)"></textarea>
+        <button class="btn btn-primary gap-1.5" @onclick="SorAsync"
+                disabled="@(_soruBusy || !Ai.Hazir || string.IsNullOrWhiteSpace(_soru))">
+            <i data-lucide="send" class="w-4 h-4"></i>Sor
+        </button>
+    </div>
+    @if (_soruBusy)
+    {
+        <span class="text-base-content/50 italic mt-2 flex items-center gap-2">
+            <span class="loading loading-dots loading-sm"></span>Düşünüyor…
+        </span>
+    }
+    @if (_soruHata is not null)
+    {
+        <p class="text-error font-semibold mt-2">@_soruHata</p>
+    }
+    @if (_cevap is not null)
+    {
+        <div class="card bg-base-200/40 border border-base-200 rounded-xl p-4 mt-3">
+            <pre class="m-0 whitespace-pre-wrap text-[13.5px] leading-relaxed text-base-content/90">@_cevap.Metin</pre>
+            @if (_cevap.AracIzi.Count > 0)
+            {
+                <div class="flex gap-1.5 items-center mt-3 flex-wrap">
+                    <span class="text-xs text-base-content/40">araç izi:</span>
+                    @foreach (var a in _cevap.AracIzi)
+                    {
+                        <span class="badge badge-sm badge-ghost font-mono">@a</span>
+                    }
+                </div>
+            }
+        </div>
+    }
 </div>
 
 <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
@@ -79,6 +128,29 @@
 </div>
 
 @code {
+    // ── Veri Sorusu (AI) ──
+    private string _soru = "";
+    private AsistanCevap? _cevap;
+    private bool _soruBusy;
+    private string? _soruHata;
+    private readonly List<LlmTur> _gecmis = [];
+
+    private async Task SorAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_soru) || !Ai.Hazir) return;
+        _soruBusy = true; _soruHata = null; _cevap = null;
+        StateHasChanged();
+        var soru = _soru;
+        try
+        {
+            _cevap = await Ai.SorAsync(soru, _gecmis);
+            _soru = "";
+        }
+        catch (Exception ex) { _soruHata = "Cevap üretilemedi: " + ex.Message; }
+        finally { _soruBusy = false; StateHasChanged(); }
+    }
+
+    // ── Not → görev taslağı ──
     private string _not = "";
     private string? _taslak;
     private string _atanan = "";
