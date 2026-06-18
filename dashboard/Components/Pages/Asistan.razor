@@ -1,194 +1,261 @@
 @page "/asistan"
 @using GmDashboard.Data
 @using GmDashboard.Data.Asistan
-@using GmDashboard.Components.Shared
-@inject LlmService Llm
-@inject GorevService Gorevler
+@using Microsoft.AspNetCore.Components.Web
 @inject AsistanService Ai
+@inject GorevService Gorevler
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 
 <PageTitle>BKM Asistan</PageTitle>
 
-<div class="flex items-center gap-3 mb-5 flex-wrap">
-    <h1 class="text-2xl font-bold tracking-tight m-0">Asistan</h1>
-    <span class="text-sm font-semibold text-base-content/50">Veri sor (AI) · Not → görev taslağı</span>
-</div>
+<div class="flex flex-col gap-3 max-w-[820px] mx-auto">
 
-@* ── Veri Sorusu (AI tool-use: sema → örnek-SQL → sorgu → Türkçe cevap) ── *@
-<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
-    <div class="flex items-center gap-2 mb-2">
-        <i data-lucide="sparkles" class="w-5 h-5 text-primary"></i>
-        <h3 class="m-0">Veri Sor</h3>
+    @* ── Başlık ── *@
+    <div class="flex items-center gap-2 flex-wrap">
+        <i data-lucide="sparkles" class="w-6 h-6 text-primary"></i>
+        <h1 class="text-2xl font-bold tracking-tight m-0">Asistan</h1>
+        <span class="text-sm text-base-content/50">Soru sor veya not bırak — gerisini ben hallederim</span>
         @if (!Ai.Hazir)
         {
-            <span class="badge badge-sm badge-warning gap-1">yapılandırılmamış</span>
+            <span class="badge badge-warning gap-1 ml-auto">LLM yapılandırılmamış</span>
         }
     </div>
-    <div class="flex gap-2 items-end flex-wrap">
-        <textarea class="textarea textarea-bordered flex-1 min-w-[240px] text-sm resize-y" rows="2"
-                  placeholder="Örn: dün ciro ne kadar? / bu hafta hangi kategori en çok sattı?"
-                  @bind="_soru" @bind:event="oninput" disabled="@(_soruBusy || !Ai.Hazir)"></textarea>
-        <button class="btn btn-primary gap-1.5" @onclick="SorAsync"
-                disabled="@(_soruBusy || !Ai.Hazir || string.IsNullOrWhiteSpace(_soru))">
-            <i data-lucide="send" class="w-4 h-4"></i>Sor
-        </button>
-    </div>
-    @if (_soruBusy)
-    {
-        <span class="text-base-content/50 italic mt-2 flex items-center gap-2">
-            <span class="loading loading-dots loading-sm"></span>Düşünüyor…
-        </span>
-    }
-    @if (_soruHata is not null)
-    {
-        <p class="text-error font-semibold mt-2">@_soruHata</p>
-    }
-    @if (_cevap is not null)
-    {
-        <div class="card bg-base-200/40 border border-base-200 rounded-xl p-4 mt-3">
-            <pre class="m-0 whitespace-pre-wrap text-[13.5px] leading-relaxed text-base-content/90">@_cevap.Metin</pre>
-            @if (_cevap.AracIzi.Count > 0)
-            {
-                <div class="flex gap-1.5 items-center mt-3 flex-wrap">
-                    <span class="text-xs text-base-content/40">araç izi:</span>
-                    @foreach (var a in _cevap.AracIzi)
+
+    @* ── Konuşma akışı ── *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 min-h-[320px]">
+
+        @if (_mesajlar.Count == 0)
+        {
+            @* Boş ekran — karşılama + hızlı öneri çipleri *@
+            <div class="flex flex-col items-center text-center gap-4 py-8">
+                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <i data-lucide="message-square" class="w-7 h-7 text-primary"></i>
+                </div>
+                <p class="text-base-content/60 max-w-sm m-0">Bir <b>veri sorusu</b> sor ya da aklındaki bir <b>işi</b> yaz — görev taslağına çeviririm.</p>
+                <div class="flex flex-wrap gap-2 justify-center">
+                    @foreach (var ornek in Ornekler)
                     {
-                        <span class="badge badge-sm badge-ghost font-mono">@a</span>
+                        <button class="btn btn-sm btn-outline rounded-full gap-1.5 normal-case"
+                                @onclick="() => CipGonder(ornek.Metin)" disabled="@_busy">
+                            <i data-lucide="@ornek.Ikon" class="w-3.5 h-3.5"></i>@ornek.Metin
+                        </button>
                     }
                 </div>
-            }
-        </div>
-    }
-</div>
-
-<div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
-    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-        <h3>Yeni Not</h3>
-        <textarea class="textarea textarea-bordered w-full text-sm resize-y" rows="3" placeholder="Kısa bir not yaz… (örn: özlüce vitrin yenilensin ramazan teması bütçe ayrılsın)"
-                  @bind="_not" @bind:event="oninput" disabled="@_busy"></textarea>
-        <div class="flex gap-2 items-center mt-2.5 flex-wrap">
-            <button class="btn btn-primary" @onclick="GonderAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_not))">Gönder</button>
-            @if (_busy)
-            {
-                <span class="text-base-content/50 italic">@_busyMesaj</span>
-            }
-        </div>
-        @if (_hata is not null)
-        {
-            <p class="text-error font-semibold">@_hata</p>
+            </div>
         }
 
-        @if (_taslak is not null)
-        {
-            <div class="card bg-base-200/40 border border-base-200 rounded-xl p-4 mt-3.5">
-                <pre class="m-0 whitespace-pre-wrap text-[13.5px] leading-relaxed text-base-content/90">@_taslak</pre>
-                <div class="flex gap-2 items-center mt-2.5 flex-wrap">
-                    <button class="btn btn-primary gap-1.5" @onclick="KaydetAsync" disabled="@_busy"><i data-lucide="check" class="w-4 h-4"></i>Kaydet</button>
-                    <button class="btn gap-1.5" @onclick="() => _ataAcik = !_ataAcik" disabled="@_busy"><i data-lucide="user" class="w-4 h-4"></i>Kişiye Ata</button>
-                    <button class="btn gap-1.5" @onclick="() => _duzeltAcik = !_duzeltAcik" disabled="@_busy"><i data-lucide="pencil" class="w-4 h-4"></i>Düzelt</button>
-                    <button class="btn btn-ghost btn-sm text-error gap-1.5" @onclick="Iptal" disabled="@_busy"><i data-lucide="x" class="w-4 h-4"></i>İptal</button>
-                </div>
-
-                @if (_ataAcik)
+        <div class="flex flex-col gap-3">
+            @foreach (var (m, idx) in _mesajlar.Select((m, i) => (m, i)))
+            {
+                @if (m.Rol == Rol.Kullanici)
                 {
-                    <div class="flex gap-2 mt-2 flex-wrap">
-                        <input class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" placeholder="İsim / rol" @bind="_atanan" disabled="@_busy" />
-                        <button class="btn btn-primary" @onclick="AtaKaydetAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_atanan))">Kaydet ve Ata</button>
+                    <div class="chat chat-end">
+                        <div class="chat-bubble chat-bubble-primary text-sm">@m.Metin</div>
                     </div>
                 }
-                @if (_duzeltAcik)
+                else if (m.Rol == Rol.Cevap)
                 {
-                    <div class="flex gap-2 mt-2 flex-wrap">
-                        <input class="input input-bordered input-sm flex-1 min-w-[160px] text-[13px]" placeholder="Düzeltme (örn: bütçeyi 50 bin TL yap)" @bind="_duzeltme" disabled="@_busy" />
-                        <button class="btn btn-primary" @onclick="DuzeltAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_duzeltme))">Uygula</button>
+                    <div class="chat chat-start">
+                        <div class="chat-bubble bg-base-200 text-base-content max-w-[92%]">
+                            <pre class="m-0 whitespace-pre-wrap font-sans text-[13.5px] leading-relaxed">@m.Metin</pre>
+                            @if (m.Iz is { Count: > 0 })
+                            {
+                                <div class="flex gap-1 items-center mt-2 flex-wrap opacity-70">
+                                    <span class="text-[11px] text-base-content/40">kaynak:</span>
+                                    @foreach (var a in m.Iz)
+                                    {
+                                        <span class="badge badge-xs badge-ghost font-mono">@a</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (m.Rol == Rol.Taslak)
+                {
+                    <div class="chat chat-start">
+                        <div class="chat-bubble bg-base-100 border border-base-300 text-base-content max-w-[94%] p-0 overflow-hidden">
+                            <div class="p-3.5">
+                                <div class="flex items-center gap-1.5 mb-2 text-primary">
+                                    <i data-lucide="clipboard-list" class="w-4 h-4"></i><span class="font-semibold text-sm">Görev taslağı</span>
+                                </div>
+                                <pre class="m-0 whitespace-pre-wrap font-sans text-[13.5px] leading-relaxed text-base-content/90">@m.Metin</pre>
+                            </div>
+                            @if (idx == _mesajlar.Count - 1 && _pendingTaslak is not null)
+                            {
+                                <div class="bg-base-200/50 px-3.5 py-2.5 flex flex-col gap-2">
+                                    <div class="flex gap-2 flex-wrap">
+                                        <button class="btn btn-sm btn-primary gap-1.5" @onclick="KaydetAsync" disabled="@_busy"><i data-lucide="check" class="w-4 h-4"></i>Kaydet</button>
+                                        <button class="btn btn-sm gap-1.5" @onclick="() => { _ataAcik = !_ataAcik; _duzeltAcik = false; }" disabled="@_busy"><i data-lucide="user-plus" class="w-4 h-4"></i>Ata</button>
+                                        <button class="btn btn-sm gap-1.5" @onclick="() => { _duzeltAcik = !_duzeltAcik; _ataAcik = false; }" disabled="@_busy"><i data-lucide="pencil" class="w-4 h-4"></i>Düzelt</button>
+                                        <button class="btn btn-sm btn-ghost text-error gap-1.5" @onclick="Iptal" disabled="@_busy"><i data-lucide="x" class="w-4 h-4"></i>İptal</button>
+                                    </div>
+                                    @if (_ataAcik)
+                                    {
+                                        <div class="flex gap-2 flex-wrap">
+                                            <input class="input input-bordered input-sm flex-1 min-w-[160px]" placeholder="İsim / rol (örn: Mağaza müdürü)" @bind="_atanan" disabled="@_busy" />
+                                            <button class="btn btn-sm btn-primary" @onclick="AtaKaydetAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_atanan))">Kaydet ve Ata</button>
+                                        </div>
+                                    }
+                                    @if (_duzeltAcik)
+                                    {
+                                        <div class="flex gap-2 flex-wrap">
+                                            <input class="input input-bordered input-sm flex-1 min-w-[160px]" placeholder="Düzeltme (örn: bütçeyi 50 bin TL yap)" @bind="_duzeltme" disabled="@_busy" />
+                                            <button class="btn btn-sm btn-primary" @onclick="DuzeltAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_duzeltme))">Uygula</button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else // Sistem
+                {
+                    <div class="flex justify-center">
+                        <div class="badge badge-success gap-1.5 py-3 px-3">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>@m.Metin
+                            @if (m.GorevId is { } gid)
+                            {
+                                <button class="underline ml-1" @onclick='() => Nav.NavigateTo("gorevler")'>Görevlerde aç</button>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+            @if (_busy)
+            {
+                <div class="chat chat-start">
+                    <div class="chat-bubble bg-base-200 text-base-content/60 italic flex items-center gap-2">
+                        <span class="loading loading-dots loading-sm"></span>@_busyMesaj
+                    </div>
+                </div>
+            }
+            @if (_hata is not null)
+            {
+                <p class="text-error font-semibold text-sm">@_hata</p>
+            }
+        </div>
+    </div>
+
+    @* ── Giriş çubuğu ── *@
+    <div class="flex gap-2 items-center sticky bottom-2">
+        <input class="input input-bordered flex-1 shadow-sm" placeholder="Soru veya not yaz…  (örn: dün ciro? / vitrin yenilensin)"
+               @bind="_girdi" @bind:event="oninput" @onkeydown="OnKey" disabled="@(_busy || !Ai.Hazir)" />
+        <button class="btn btn-primary btn-circle shadow" @onclick="Gonder" disabled="@(_busy || !Ai.Hazir || string.IsNullOrWhiteSpace(_girdi))" title="Gönder">
+            <i data-lucide="send" class="w-5 h-5"></i>
+        </button>
+    </div>
+
+    @* ── Açık görevler ── *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="list-checks" class="w-5 h-5 text-primary"></i>
+            <h3 class="m-0 text-base font-semibold">Açık Görevler (@_gorevler.Count)</h3>
+            <button class="btn btn-xs btn-ghost ml-auto gap-1" @onclick='() => Nav.NavigateTo("gorevler")'>Tümü<i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+        </div>
+        @if (_gorevler.Count == 0)
+        {
+            <p class="text-base-content/40 text-sm m-0">Açık görev yok.</p>
+        }
+        else
+        {
+            <div class="flex flex-col divide-y divide-base-200">
+                @foreach (var g in _gorevler)
+                {
+                    <div class="flex items-center gap-2 py-2">
+                        <span class="badge badge-sm @OncTone(g.Oncelik)">@g.Oncelik</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-medium text-sm truncate">@g.Baslik</div>
+                            <div class="text-xs text-base-content/40">#@g.Id · @(string.IsNullOrEmpty(g.Atanan) ? "atanmadı" : g.Atanan)</div>
+                        </div>
+                        <button class="btn btn-xs gap-1" @onclick="() => KapatAsync(g.Id)" disabled="@_busy"><i data-lucide="check" class="w-3.5 h-3.5"></i>Kapat</button>
                     </div>
                 }
             </div>
         }
-
-        @if (_sonMesaj is not null)
-        {
-            <p class="text-success font-semibold mt-3">@_sonMesaj</p>
-        }
-    </div>
-
-    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
-        <h3>Açık Görevler (@_gorevler.Count)</h3>
-        <AppDataTable TItem="Gorev" Items="_gorevler"
-                      Primary="@(g => g.Baslik)"
-                      Sub="@(g => $"#{g.Id} · {(string.IsNullOrEmpty(g.Atanan) ? "atanmadı" : g.Atanan)}")"
-                      Badge="@(g => (g.Oncelik, OncTone(g.Oncelik)))">
-            <Details Context="g">
-                <div class="flex items-center justify-end">
-                    <button class="btn btn-sm" @onclick="() => KapatAsync(g.Id)">Kapat</button>
-                </div>
-            </Details>
-        </AppDataTable>
     </div>
 </div>
 
 @code {
-    // ── Veri Sorusu (AI) ──
-    private string _soru = "";
-    private AsistanCevap? _cevap;
-    private bool _soruBusy;
-    private string? _soruHata;
-    private readonly List<LlmTur> _gecmis = [];
+    private enum Rol { Kullanici, Cevap, Taslak, Sistem }
+    private sealed record ChatMesaj(Rol Rol, string? Metin = null, IReadOnlyList<string>? Iz = null, long? GorevId = null);
 
-    private async Task SorAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_soru) || !Ai.Hazir) return;
-        _soruBusy = true; _soruHata = null; _cevap = null;
-        StateHasChanged();
-        var soru = _soru;
-        try
-        {
-            _cevap = await Ai.SorAsync(soru, _gecmis);
-            _soru = "";
-        }
-        catch (Exception ex) { _soruHata = "Cevap üretilemedi: " + ex.Message; }
-        finally { _soruBusy = false; StateHasChanged(); }
-    }
-
-    // ── Not → görev taslağı ──
-    private string _not = "";
-    private string? _taslak;
-    private string _atanan = "";
-    private string _duzeltme = "";
-    private bool _ataAcik, _duzeltAcik;
+    private readonly List<ChatMesaj> _mesajlar = [];
+    private readonly List<LlmTur> _gecmis = [];        // veri-sorusu konuşma sürekliliği
+    private string _girdi = "";
     private bool _busy;
-    private string _busyMesaj = "";
+    private string _busyMesaj = "Düşünüyorum…";
     private string? _hata;
-    private string? _sonMesaj;
+
+    // Aktif taslak (onay bekleyen) + kaynağı
+    private string? _pendingTaslak;
+    private string _pendingNot = "";
+    private bool _ataAcik, _duzeltAcik;
+    private string _atanan = "", _duzeltme = "";
+
     private IReadOnlyList<Gorev> _gorevler = [];
+
+    private static readonly (string Metin, string Ikon)[] Ornekler =
+    [
+        ("Dün ciro ne kadar?", "trending-up"),
+        ("Bu hafta en çok satan kategori?", "bar-chart-3"),
+        ("Bekleyen kargo sayısı?", "truck"),
+        ("Özlüce vitrin yenilensin, ramazan teması", "lightbulb"),
+    ];
 
     protected override void OnInitialized() => Yenile();
 
     private void Yenile() => _gorevler = Gorevler.Listele(acikOnly: true);
 
-    private async Task GonderAsync()
+    private async Task OnKey(KeyboardEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_not)) return;
-        _hata = null; _sonMesaj = null; _ataAcik = false; _duzeltAcik = false;
-        await Uret(_not, null);
+        if (e.Key == "Enter" && !e.ShiftKey) await Gonder();
+    }
+
+    private async Task CipGonder(string metin) { _girdi = metin; await Gonder(); }
+
+    private async Task Gonder()
+    {
+        var metin = _girdi.Trim();
+        if (metin.Length == 0 || _busy || !Ai.Hazir) return;
+        _girdi = ""; _hata = null;
+        // Yeni mesaj geldiyse önceki taslağın butonları kapanır (statik kalır)
+        _pendingTaslak = null; _ataAcik = _duzeltAcik = false;
+        _mesajlar.Add(new(Rol.Kullanici, metin));
+
+        var soru = IsSoru(metin);
+        _busy = true; _busyMesaj = soru ? "Veriye bakıyorum…" : "Taslağa çeviriyorum…";
+        StateHasChanged();
+        try
+        {
+            if (soru)
+            {
+                var cevap = await Ai.SorAsync(metin, _gecmis);
+                _mesajlar.Add(new(Rol.Cevap, cevap.Metin, cevap.AracIzi));
+            }
+            else
+            {
+                var taslak = await Ai.TaslakUretAsync(metin);
+                _pendingTaslak = taslak; _pendingNot = metin;
+                _mesajlar.Add(new(Rol.Taslak, taslak));
+            }
+        }
+        catch (Exception ex) { _hata = "İşlem tamamlanamadı: " + ex.Message; }
+        finally { _busy = false; StateHasChanged(); }
     }
 
     private async Task DuzeltAsync()
     {
-        if (string.IsNullOrWhiteSpace(_duzeltme) || _taslak is null) return;
-        var d = _duzeltme; _duzeltAcik = false;
-        await Uret(_not, d);
-        _duzeltme = "";
-    }
-
-    private async Task Uret(string not, string? duzeltme)
-    {
-        _busy = true;
-        _busyMesaj = Llm.Loaded ? "Taslak üretiliyor…" : "Model yükleniyor… (ilk seferde ~20 sn)";
-        StateHasChanged();
+        if (string.IsNullOrWhiteSpace(_duzeltme) || _pendingTaslak is null) return;
+        var d = _duzeltme; _duzeltme = ""; _duzeltAcik = false;
+        _busy = true; _busyMesaj = "Düzeltiyorum…"; StateHasChanged();
         try
         {
-            _taslak = await Task.Run(() => Llm.TaslakUret(not, duzeltme));
+            var taslak = await Ai.TaslakUretAsync(_pendingNot, d);
+            _pendingTaslak = taslak;
+            _mesajlar.Add(new(Rol.Taslak, taslak));
         }
         catch (Exception ex) { _hata = ex.Message; }
         finally { _busy = false; StateHasChanged(); }
@@ -199,30 +266,41 @@
 
     private async Task Kaydet(string? atanan)
     {
-        if (_taslak is null) return;
+        if (_pendingTaslak is null) return;
         try
         {
-            var id = await Task.Run(() => Gorevler.Kaydet(_taslak, atanan));
-            _sonMesaj = atanan is null ? $"Görev #{id} kaydedildi." : $"Görev #{id} kaydedildi ve {atanan} kişisine atandı.";
-            _taslak = null; _not = "";
-            Yenile();
+            var taslak = _pendingTaslak;
+            var id = await Task.Run(() => Gorevler.Kaydet(taslak, atanan));
+            if (id > 0)
+            {
+                var mesaj = atanan is null ? $"Görev #{id} kaydedildi" : $"Görev #{id} kaydedildi · {atanan}";
+                _mesajlar.Add(new(Rol.Sistem, mesaj, GorevId: id));
+                _pendingTaslak = null; _ataAcik = false;
+                Yenile();
+            }
+            else { _hata = "Görev kaydedilemedi (panel DB?)."; }
         }
         catch (Exception ex) { _hata = ex.Message; }
     }
 
-    private void Iptal()
-    {
-        _taslak = null; _ataAcik = false; _duzeltAcik = false; _sonMesaj = null;
-    }
+    private void Iptal() { _pendingTaslak = null; _ataAcik = _duzeltAcik = false; }
 
     private async Task KapatAsync(long id)
     {
         await Task.Run(() => Gorevler.Kapat(id));
-        Yenile();
-        StateHasChanged();
+        Yenile(); StateHasChanged();
     }
 
-    private static string OncSinif(string o) => o.Contains("Yüksek") ? "y" : o.Contains("Düşük") ? "d" : "o";
-    // Öncelik solid pill tonu (AppDataTable Badge — plain span).
-    private static string OncTone(string o) => o.Contains("Yüksek") ? "bg-error/15 text-error" : o.Contains("Düşük") ? "bg-success/15 text-success" : "bg-warning/15 text-warning";
+    // Niyet ayrımı (soru mu, not mu) — basit Türkçe sezgisel. Yanlışsa kullanıcı yeniden yazar.
+    private static bool IsSoru(string m)
+    {
+        var t = " " + m.Trim().ToLowerInvariant() + " ";
+        if (t.TrimEnd().EndsWith("?")) return true;
+        string[] qk = ["ne kadar", "kaç", "hangi", " mı ", " mi ", " mu ", " mü ", "nedir", "ne oldu",
+                       "göster", "listele", "ciro", "satış", "stok", "kargo", "ortalama", "toplam", "kaçtı", "nasıl gidiyor"];
+        return qk.Any(k => t.Contains(k));
+    }
+
+    private static string OncTone(string o) =>
+        o.Contains("Yüksek") ? "badge-error" : o.Contains("Düşük") ? "badge-success" : "badge-warning";
 }

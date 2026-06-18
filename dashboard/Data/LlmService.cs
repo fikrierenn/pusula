@@ -31,8 +31,8 @@ public sealed class LlmService : IAsyncDisposable
     /// <summary>Model henüz yüklendi mi (UI "yükleniyor" göstergesi için).</summary>
     public bool Loaded => _loaded;
 
-    // ── Akıllı prompt (asistan POC ile birebir) ──
-    private const string SYSTEM = """
+    // ── Akıllı prompt (asistan POC ile birebir). public: AsistanService bulut taslak (Gemini→Groq) için aynı format/few-shot'u kullanır. ──
+    public const string TaslakSistem = """
 Sen BKM Kitap'ın (kitap+kırtasiye perakende + e-ticaret, 3 mağaza: FSM/Özlüce/İst.Yolu) CFO asistanısın.
 Kullanıcı kısa dağınık bir not yazar. Görevin: notu NET, AKSİYON ODAKLI bir görev taslağına çevir.
 - Notta olmayan detayı UYDURMA — eksikse "Açık sorular"a yaz.
@@ -47,8 +47,8 @@ Kullanıcı kısa dağınık bir not yazar. Görevin: notu NET, AKSİYON ODAKLI 
 ❓ <açık soru veya "—">
 """;
 
-    private const string EX_USER = "özlüce vitrin yenilensin ramazan teması bütçe ayrılsın";
-    private const string EX_ASSISTANT = """
+    public const string TaslakOrnekUser = "özlüce vitrin yenilensin ramazan teması bütçe ayrılsın";
+    public const string TaslakOrnekAsistan = """
 📋 Özlüce vitrin yenileme — Ramazan teması
 📝 Özlüce mağaza vitrini Ramazan konseptiyle yenilenecek. Tema kurgusu, malzeme ve montaj için bütçe ayrılmalı. Ramazan öncesi (en geç 2 hafta önce) tamamlanmalı.
 ⚡ Öncelik: Orta (sezonsal, tarihe bağlı)
@@ -72,8 +72,8 @@ Kullanıcı kısa dağınık bir not yazar. Görevin: notu NET, AKSİYON ODAKLI 
             : $"{not}\n\n[Kullanıcı düzeltmesi: {duzeltme}] — bu düzeltmeyi uygulayıp taslağı yeniden yaz.";
 
         var prompt =
-            $"<|im_start|>system\n{SYSTEM}<|im_end|>\n" +
-            $"<|im_start|>user\n{EX_USER}<|im_end|>\n<|im_start|>assistant\n{EX_ASSISTANT}<|im_end|>\n" +
+            $"<|im_start|>system\n{TaslakSistem}<|im_end|>\n" +
+            $"<|im_start|>user\n{TaslakOrnekUser}<|im_end|>\n<|im_start|>assistant\n{TaslakOrnekAsistan}<|im_end|>\n" +
             $"<|im_start|>user\n{userNote}<|im_end|>\n<|im_start|>assistant\n";
 
         return await Infer(prompt, maxTokens: 400, temp: 0.5f);
