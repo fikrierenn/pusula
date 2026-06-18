@@ -98,6 +98,9 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, ILo
         VERİ ARAÇLARI (yalnız veri sorusunda):
         - Akış: ÖNCE `sema_oku` (doğru tablo/kolon — ASLA tahmin etme) +/veya `ornek_sql_bul`, SONRA `sql_sorgu`. Boş/hata dönerse sema_oku ile düzelt, tekrar dene.
         - TARİH belirtilmezse VARSAYILAN SON 30 GÜN kullan ve cevapta "(son 30 gün)" diye belirt.
+        - RAKAMLA KONUŞ — KANIT ver: "Kitap görünüyor / sanırım / yaklaşık" YASAK. Sorgudan gelen KESİN sayıyı yaz (₺ tr-TR veya adet). "En çok satan = Kitap" değil → "Kitap: 1.234.567 ₺ (X adet)". Sıralama sorusunda ilk 3-5'i rakamıyla listele.
+        - MAĞAZA DETAYI: ciro/satış sorularında ilgiliyse FSM / Özlüce / İst.Yolu kırılımını da ver (tek toplam yetmez — CFO mağaza bazını ister). Sorgunu buna göre GROUP BY mağaza kur.
+        - KANIT cümlesi: hangi dönem + hangi filtre (KDV-hariç net, iade düşülmüş) kullandığını 1 cümle belirt.
 
         SQL KURALLARI (yanlış rakam = yanlış CFO kararı — dikkat):
         - SALT-OKUMA: yalnız SELECT/WITH. Yazma/DDL YOK.

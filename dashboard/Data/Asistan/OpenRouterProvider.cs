@@ -14,14 +14,17 @@ public sealed class OpenRouterProvider : ILlmProvider
     private readonly IHttpClientFactory _http;
     private readonly ILogger<OpenRouterProvider> _log;
     private readonly string? _key;
-    private readonly string _model;
+    private readonly IReadOnlyList<string> _modeller;   // iç-rotasyon: 429'da sıradaki free model (dayanıklılık)
 
     public OpenRouterProvider(IHttpClientFactory http, ILogger<OpenRouterProvider> log)
     {
         _http = http; _log = log;
         var env = Db.LoadEnvStatic();
         _key = env.GetValueOrDefault("OPENROUTER_API_KEY");
-        _model = env.GetValueOrDefault("OPENROUTER_MODEL") ?? "nex-agi/nex-n2-pro:free";
+        // OPENROUTER_MODELS (virgüllü) öncelikli; yoksa tekil OPENROUTER_MODEL; yoksa varsayılan.
+        var liste = (env.GetValueOrDefault("OPENROUTER_MODELS") ?? env.GetValueOrDefault("OPENROUTER_MODEL") ?? "nex-agi/nex-n2-pro:free")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToList();
+        _modeller = liste.Count > 0 ? liste : ["nex-agi/nex-n2-pro:free"];
         if (string.IsNullOrWhiteSpace(_key)) log.LogWarning("OPENROUTER_API_KEY yok — OpenRouter devre dışı");
     }
 
@@ -31,12 +34,30 @@ public sealed class OpenRouterProvider : ILlmProvider
         IReadOnlyList<LlmArac> araclar, CancellationToken ct = default)
     {
         if (!Hazir) throw new InvalidOperationException("OPENROUTER_API_KEY yapılandırılmamış.");
+        // İç-rotasyon: model-A 429/503 → model-B (aynı 50/gün havuzu ama anlık rate-limit'i atlatır). Hepsi tükenirse fırlat → Gemini.
+        for (int i = 0; i < _modeller.Count; i++)
+        {
+            try { return await UretBirAsync(_modeller[i], sistemTalimat, gecmis, araclar, ct); }
+            catch (HttpRequestException ex) when (KotaHatasi(ex) && i < _modeller.Count - 1)
+            {
+                _log.LogWarning("OpenRouter {Model} kota/429 — sıradaki modele: {Sonraki}", _modeller[i], _modeller[i + 1]);
+            }
+        }
+        throw new HttpRequestException($"Tüm OpenRouter modelleri tükendi ({_modeller.Count}).");
+    }
 
+    // 429/503 (kota/yoğun) veya 404 (model-ID yanlış/kaldırılmış) → sıradaki modele geç. Diğer hatalar (401 key) fırlar.
+    private static bool KotaHatasi(HttpRequestException ex) =>
+        ex.StatusCode is System.Net.HttpStatusCode.TooManyRequests or System.Net.HttpStatusCode.ServiceUnavailable or System.Net.HttpStatusCode.NotFound;
+
+    private async Task<LlmYanit> UretBirAsync(string model, string sistemTalimat, IReadOnlyList<LlmTur> gecmis,
+        IReadOnlyList<LlmArac> araclar, CancellationToken ct)
+    {
         var messages = new JsonArray { new JsonObject { ["role"] = "system", ["content"] = sistemTalimat } };
         int callSeq = 0;
         foreach (var t in gecmis) messages.Add(TuruJson(t, ref callSeq));
 
-        var body = new JsonObject { ["model"] = _model, ["messages"] = messages };
+        var body = new JsonObject { ["model"] = model, ["messages"] = messages };
         if (araclar.Count > 0)
         {
             var tools = new JsonArray();
@@ -67,7 +88,7 @@ public sealed class OpenRouterProvider : ILlmProvider
         var json = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
         {
-            _log.LogError("OpenRouter HTTP {Code}: {Body}", (int)resp.StatusCode, json.Length > 300 ? json[..300] : json);
+            _log.LogError("OpenRouter {Model} HTTP {Code}: {Body}", model, (int)resp.StatusCode, json.Length > 300 ? json[..300] : json);
             throw new HttpRequestException($"OpenRouter hata {(int)resp.StatusCode}", null, resp.StatusCode);
         }
 
