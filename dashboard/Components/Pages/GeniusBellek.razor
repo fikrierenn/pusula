@@ -1,0 +1,122 @@
+@page "/bellek"
+@using GmDashboard.Data.Asistan
+@inject AsistanBellekService Bel
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>Genius Belleği</PageTitle>
+
+<div class="flex flex-col gap-3 max-w-[820px] mx-auto">
+
+    <div class="flex items-center gap-2 flex-wrap">
+        <img src="/img/genius.svg" alt="Genius" class="w-8 h-8 -my-1" />
+        <h1 class="text-2xl font-bold tracking-tight m-0">Genius Belleği</h1>
+        <span class="text-sm text-base-content/50">Öğrendiği tercih ve gerçekler — doğrula, arşivle</span>
+        <button class="btn btn-sm btn-ghost ml-auto gap-1.5" @onclick='() => Nav.NavigateTo("asistan")'><i data-lucide="arrow-left" class="w-4 h-4"></i>Asistan</button>
+    </div>
+
+    @if (!Bel.Aktif)
+    {
+        <div class="alert alert-warning">Bellek devre dışı (panel DB yok).</div>
+    }
+    else
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+            <div class="flex items-center gap-2 mb-1.5">
+                <i data-lucide="database" class="w-4 h-4 text-primary"></i>
+                <span class="text-sm font-semibold">Doluluk</span>
+                <span class="text-sm text-base-content/50 ml-auto">%@_yuzde · @_kullanilan / @_toplam char</span>
+            </div>
+            <progress class="progress @(_yuzde > 85 ? "progress-error" : _yuzde > 60 ? "progress-warning" : "progress-primary")" value="@_yuzde" max="100"></progress>
+        </div>
+
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+            <div class="flex gap-2 items-end flex-wrap">
+                <select class="select select-bordered select-sm" @bind="_yeniTip">
+                    <option value="tercih">Tercih</option>
+                    <option value="gercek">Gerçek</option>
+                </select>
+                <input class="input input-bordered input-sm flex-1 min-w-[220px]" placeholder="Tek satır tercih/gerçek (ör. Raporlar son 30 gün + mağaza kırılımı)"
+                       @bind="_yeniIcerik" @bind:event="oninput" />
+                <button class="btn btn-sm btn-primary gap-1.5" @onclick="Ekle" disabled="@string.IsNullOrWhiteSpace(_yeniIcerik)"><i data-lucide="plus" class="w-4 h-4"></i>Ekle</button>
+            </div>
+            @if (_mesaj is not null)
+            {
+                <p class="text-sm mt-2 @(_mesajHata ? "text-error" : "text-success")">@_mesaj</p>
+            }
+        </div>
+
+        @BlokKart("Tercihler", "kullanıcı davranış/kural", "tercih", "sliders")
+        @BlokKart("Bilinen Gerçekler", "sabit bilgi", "gercek", "book")
+    }
+</div>
+
+@code {
+    private IReadOnlyList<Bellek> _hepsi = [];
+    private HashSet<long> _staleIds = [];
+    private int _yuzde, _kullanilan, _toplam;
+    private string _yeniTip = "tercih", _yeniIcerik = "";
+    private string? _mesaj; private bool _mesajHata;
+
+    protected override void OnInitialized() => Yenile();
+
+    private void Yenile()
+    {
+        _hepsi = Bel.Listele();
+        _staleIds = Bel.StaleListele().Select(b => b.Id).ToHashSet();
+        var snap = Bel.Snapshot();
+        _yuzde = snap.YuzdeDolu; _kullanilan = snap.KullanilanChar; _toplam = snap.ToplamChar;
+    }
+
+    private void Ekle()
+    {
+        if (string.IsNullOrWhiteSpace(_yeniIcerik)) return;
+        var s = Bel.Yaz("ekle", _yeniIcerik.Trim(), _yeniTip);
+        _mesajHata = s.Durum is not BellekSonucDurum.Eklendi;
+        _mesaj = s.Mesaj;
+        if (!_mesajHata) _yeniIcerik = "";
+        Yenile();
+    }
+
+    private void Dogrula(long id) { Bel.Dogrula(id); _mesaj = "Doğrulandı (taze)."; _mesajHata = false; Yenile(); }
+    private void Arsivle(long id) { Bel.Arsivle(id); _mesaj = "Arşivlendi."; _mesajHata = false; Yenile(); }
+
+    private RenderFragment BlokKart(string baslik, string alt, string tip, string ikon) => @<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="@ikon" class="w-5 h-5 text-primary"></i>
+            <h3 class="m-0 text-base font-semibold">@baslik</h3>
+            <span class="text-xs text-base-content/40">@alt</span>
+            <span class="badge badge-sm badge-ghost ml-auto">@_hepsi.Count(b => b.Tip == tip)</span>
+        </div>
+        @{ var liste = _hepsi.Where(b => b.Tip == tip).ToList(); }
+        @if (liste.Count == 0)
+        {
+            <p class="text-base-content/40 text-sm m-0">Henüz yok.</p>
+        }
+        else
+        {
+            <div class="flex flex-col divide-y divide-base-200">
+                @foreach (var b in liste)
+                {
+                    <div class="flex items-center gap-2 py-2">
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm @(_staleIds.Contains(b.Id) ? "text-base-content/60" : "")">@b.Icerik</div>
+                            <div class="text-xs text-base-content/40 flex items-center gap-1.5">
+                                <span>@b.Kaynak</span>
+                                @if (_staleIds.Contains(b.Id))
+                                {
+                                    <span class="badge badge-xs badge-warning gap-0.5"><i data-lucide="alert-triangle" class="w-3 h-3"></i>eskimiş — hâlâ geçerli mi?</span>
+                                }
+                            </div>
+                        </div>
+                        @if (_staleIds.Contains(b.Id))
+                        {
+                            <button class="btn btn-xs gap-1" @onclick="() => Dogrula(b.Id)"><i data-lucide="check" class="w-3.5 h-3.5"></i>Geçerli</button>
+                        }
+                        <button class="btn btn-xs btn-ghost text-error gap-1" @onclick="() => Arsivle(b.Id)"><i data-lucide="archive" class="w-3.5 h-3.5"></i>Arşivle</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>;
+}
