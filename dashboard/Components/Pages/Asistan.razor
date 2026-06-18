@@ -17,9 +17,9 @@
 
     @* ── Başlık ── *@
     <div class="flex items-center gap-2 flex-wrap">
-        <i data-lucide="sparkles" class="w-6 h-6 text-primary"></i>
-        <h1 class="text-2xl font-bold tracking-tight m-0">Asistan</h1>
-        <span class="text-sm text-base-content/50">Soru sor veya not bırak — gerisini ben hallederim</span>
+        <img src="/img/genius.svg" alt="Genius" class="w-9 h-9 -my-1" />
+        <h1 class="text-2xl font-bold tracking-tight m-0">Genius</h1>
+        <span class="text-sm text-base-content/50">Sor, not bırak, toplantı kur — lambadan çıktım, emrindeyim</span>
         <div class="ml-auto flex items-center gap-2">
             @if (!Ai.Hazir)
             {
@@ -67,10 +67,8 @@
         {
             @* Boş ekran — karşılama + hızlı öneri çipleri *@
             <div class="flex flex-col items-center text-center gap-4 py-8">
-                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <i data-lucide="message-square" class="w-7 h-7 text-primary"></i>
-                </div>
-                <p class="text-base-content/60 max-w-sm m-0">Bir <b>veri sorusu</b> sor ya da aklındaki bir <b>işi</b> yaz — görev taslağına çeviririm.</p>
+                <img src="/img/genius.svg" alt="Genius" class="w-28 h-28" />
+                <p class="text-base-content/60 max-w-sm m-0">Selam, ben <b>Genius</b>. Bir <b>veri sorusu</b> sor, bir <b>iş/not</b> yaz, ya da <b>toplantı/mail</b> de — gerisini ben hallederim.</p>
                 <div class="flex flex-wrap gap-2 justify-center">
                     @foreach (var ornek in Ornekler)
                     {

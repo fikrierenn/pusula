@@ -1,0 +1,47 @@
+<svg viewBox="0 0 680 560" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Genius — lambadan çıkan cin</title><desc>BKM-Asistan Genius: altın sihirli lambadan mor dumanla yükselen, sarıklı ve gülümseyen dost danışman cin.</desc>
+<ellipse cx="340" cy="300" rx="250" ry="250" fill="#8E7BF0" opacity="0.07"/>
+<g fill="#FFE9A8" opacity="0.9">
+<path d="M150 120 l6 16 l16 6 l-16 6 l-6 16 l-6-16 l-16-6 l16-6 z"/>
+<path d="M545 90 l5 13 l13 5 l-13 5 l-5 13 l-5-13 l-13-5 l13-5 z"/>
+<path d="M560 250 l4 11 l11 4 l-11 4 l-4 11 l-4-11 l-11-4 l11-4 z"/>
+<path d="M120 300 l4 11 l11 4 l-11 4 l-4 11 l-4-11 l-11-4 l11-4 z"/>
+<circle cx="500" cy="180" r="3"/><circle cx="190" cy="220" r="3"/><circle cx="430" cy="70" r="3"/>
+</g>
+<path d="M250 470 C200 380 210 300 290 250 C250 320 300 360 345 360 C390 360 440 320 400 250 C480 300 490 380 440 470 Z" fill="#8E7BF0" opacity="0.30"/>
+<path d="M278 470 C250 390 260 330 320 290 C300 340 332 366 345 366 C358 366 392 340 372 290 C432 330 442 390 414 470 Z" fill="#A99BF5" opacity="0.40"/>
+<g>
+<path d="M295 360 C285 320 300 300 320 292 L372 292 C392 300 408 320 398 360 C380 372 360 376 346 376 C332 376 312 372 295 360 Z" fill="#7C6FE8"/>
+<path d="M300 318 C285 326 268 322 256 332 C272 330 286 336 300 342 Z" fill="#7C6FE8"/>
+<path d="M393 318 C408 326 426 320 438 330 C422 330 408 336 394 342 Z" fill="#7C6FE8"/>
+<circle cx="262" cy="330" r="9" fill="#6C5FD8"/>
+<circle cx="432" cy="328" r="9" fill="#6C5FD8"/>
+<circle cx="346" cy="232" r="46" fill="#8E7BF0"/>
+<path d="M300 214 C300 176 392 176 392 214 C392 196 376 182 346 182 C316 182 300 196 300 214 Z" fill="#2E2A6E"/>
+<path d="M298 214 C298 206 394 206 394 214 C394 226 372 232 346 232 C320 232 298 226 298 214 Z" fill="#3A357F"/>
+<path d="M346 150 C330 150 322 168 332 182 C338 172 354 172 360 182 C370 168 362 150 346 150 Z" fill="#2E2A6E"/>
+<circle cx="346" cy="158" r="8" fill="#E30622"/>
+<circle cx="343" cy="155" r="2.5" fill="#FF8A93"/>
+<ellipse cx="330" cy="232" rx="3.4" ry="5" fill="#2E2A6E"/>
+<ellipse cx="362" cy="232" rx="3.4" ry="5" fill="#2E2A6E"/>
+<path d="M320 222 C326 218 334 218 339 221" stroke="#2E2A6E" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+<path d="M353 221 C358 218 366 218 372 222" stroke="#2E2A6E" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+<path d="M322 258 C330 270 362 270 370 258 C360 262 332 262 322 258 Z" fill="#2E2A6E"/>
+<path d="M338 264 C342 270 350 270 354 264" stroke="#5A4FC0" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+</g>
+<g>
+<ellipse cx="340" cy="500" rx="118" ry="20" fill="#0F172A" opacity="0.06"/>
+<path d="M232 486 C218 470 224 452 252 446 L300 470 C320 480 360 480 380 470 L430 446 C458 452 462 470 448 486 C430 498 392 504 340 504 C288 504 250 498 232 486 Z" fill="#E0A52E"/>
+<path d="M232 486 C250 494 288 498 340 498 C392 498 430 494 448 486 C430 498 392 504 340 504 C288 504 250 498 232 486 Z" fill="#B97E15"/>
+<path d="M250 460 C232 452 214 452 206 444 C214 446 230 444 252 448 Z" fill="#E0A52E"/>
+<path d="M210 444 C198 440 196 432 204 428 C206 434 214 438 224 440 Z" fill="#C8901E"/>
+<path d="M430 462 C452 456 470 462 476 452 C470 466 452 470 430 470 Z" fill="#E0A52E"/>
+<ellipse cx="340" cy="448" rx="40" ry="12" fill="#EEBB4A"/>
+<ellipse cx="340" cy="442" rx="14" ry="7" fill="#C8901E"/>
+<circle cx="340" cy="432" r="6" fill="#EEBB4A"/>
+</g>
+<g fill="#FFFFFF" opacity="0.85">
+<path d="M408 400 l3 8 l8 3 l-8 3 l-3 8 l-3-8 l-8-3 l8-3 z"/>
+<path d="M262 410 l3 8 l8 3 l-8 3 l-3 8 l-3-8 l-8-3 l8-3 z"/>
+</g>
+</svg>
