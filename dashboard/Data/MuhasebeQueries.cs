@@ -12,7 +12,7 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
 {
-    const string Sp = "bkm.sp_KapanisMudahaleKontrol_v2";
+    const string Sp = "DerinSISBkm.bkm.sp_KapanisMudahaleKontrol_v2";
 
     /// <summary>Özet: dönem×kaynak×gider (adet/tutar/maxgün/risk). yil/ay null → tüm kapanmış dönemler.</summary>
     public async Task<IReadOnlyList<KontrolOzetRow>> GetOzetAsync(int? yil, int? ay, string kaynak, bool sadeceGider)
@@ -44,7 +44,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<(int Yil, int Ay, string Kapanis)>("""
             SELECT TOP 60 DonemYil AS Yil, DonemAy AS Ay, CONVERT(varchar(10), KapanisDT, 104) AS Kapanis
-            FROM bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
+            FROM DerinSISBkm.bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
             """);
         return rows.ToList();
     }
@@ -57,7 +57,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<KapanisDonem>("""
             SELECT TOP 200 DonemYil, DonemAy, KapanisDT, Aciklama, KayitDT
-            FROM bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
+            FROM DerinSISBkm.bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
             """);
         return rows.ToList();
     }
@@ -70,7 +70,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         await using var conn = await db.OpenAsync();
         // MERGE: aynı dönem varsa KapanisDT/Aciklama güncelle, yoksa ekle. Tek atomik ifade.
         const string sql = """
-            MERGE bkm.Fin_AyKapanis AS t
+            MERGE DerinSISBkm.bkm.Fin_AyKapanis AS t
             USING (SELECT @yil AS DonemYil, @ay AS DonemAy) AS s
               ON t.DonemYil = s.DonemYil AND t.DonemAy = s.DonemAy
             WHEN MATCHED THEN UPDATE SET t.KapanisDT = @kapanisDt, t.Aciklama = @aciklama, t.KayitDT = SYSDATETIME()
@@ -87,7 +87,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     {
         await using var conn = await db.OpenAsync();
         var n = await conn.ExecuteAsync(
-            "DELETE FROM bkm.Fin_AyKapanis WHERE DonemYil = @yil AND DonemAy = @ay", new { yil, ay });
+            "DELETE FROM DerinSISBkm.bkm.Fin_AyKapanis WHERE DonemYil = @yil AND DonemAy = @ay", new { yil, ay });
         logger.LogInformation("Fin_AyKapanis sil {Yil}-{Ay:00} ({N} satır)", yil, ay, n);
     }
 }

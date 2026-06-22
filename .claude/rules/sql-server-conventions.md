@@ -96,6 +96,12 @@ CROSS APPLY (
 - Ürün sayısı her ciro raporuna dahil.
 - Hazır SQL: çalıştırılabilir + 3AL2ÖDE kırılımlı.
 
+## Dashboard Bağlantısı master'a Açılır → 3-PARÇALI İSİM ZORUNLU (23.06 dersi)
+
+- **`Db.OpenAsync()` varsayılan katalog = `master`** (`.env MSSQL_DATABASE=master`; app cross-DB: DerinSISBkm + EncoreMerkez + DerinCrm). 2-parçalı isim (`bkm.x`, `mhs.x`, `dbo.car`) master'dan çözülmez → **"Geçersiz nesne adı" (Err 208).**
+- **Kural:** Dashboard Dapper sorgularında ERP nesnesi her zaman **3-parçalı**: `DerinSISBkm.bkm.Fin_AyKapanis`, `DerinSISBkm.mhs.mhsMizan_vw`, `DerinSISBkm.dbo.irsHrk`. (RefQueries zaten böyle; MuhasebeQueries/MizanQueries 2-parçalı yazıldı → login-arkası 208 patladı: Mizan/Kontrol/Ayarlar.)
+- **MCP test YANILTIR:** `mcp__sqlserver__sql_query` `database=DerinSISBkm` ile çağrılır → 2-parçalı orada ÇALIŞIR ama app (master) bağlamında ÇALIŞMAZ. "MCP'de doğrulandı" ≠ "app'te çalışır". 3-parçalı yaz, gerekirse `database=master` ile doğrula.
+
 ## MCP Sunucu Seçimi
 
 - `sqlserver` (192.168.40.201) → BKM/ERP varsayılan.

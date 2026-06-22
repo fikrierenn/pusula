@@ -5,7 +5,7 @@ namespace GmDashboard.Data;
 
 /// <summary>
 /// Mizan / likidite dashboard (B-118, plan-25) — DerinSISBkm.mhs trial balance.
-/// Kaynak: `mhs.mhsMizan_vw` (Borc/Alacak hazır kolon), `mhs.mhsHsp` (hesap adı). Mevcut Db.OpenAsync (201), yeni bağlantı yok.
+/// Kaynak: `DerinSISBkm.mhs.mhsMizan_vw` (Borc/Alacak hazır kolon), `DerinSISBkm.mhs.mhsHsp` (hesap adı). Mevcut Db.OpenAsync (201), yeni bağlantı yok.
 /// Dönem = fisSirketID (yıl−2020; 6=2026). Açılış/devir fişi (01.01) dahil → bakiye gerçek (sadece akış değil).
 /// B-117 (forensic Kontrol) AYRI track; bu = mali-tablo. İşaret: Bakiye = Borç − Alacak (keşif 2026-06-23 doğrulandı).
 /// </summary>
@@ -18,7 +18,7 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
     {
         await using var conn = await db.OpenAsync();
         var ids = await conn.QueryAsync<int>(
-            "SELECT DISTINCT hspSirketID FROM mhs.mhsHsp ORDER BY hspSirketID DESC");
+            "SELECT DISTINCT hspSirketID FROM DerinSISBkm.mhs.mhsHsp ORDER BY hspSirketID DESC");
         return ids.Select(s => (s, s + YilOffset)).ToList();
     }
 
@@ -38,7 +38,7 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
                 KdvHesaplanan  = SUM(CASE WHEN LEFT(hspKod,3)='391' THEN Alacak-Borc ELSE 0 END),
                 ToplamBorc = SUM(Borc),
                 ToplamAlacak = SUM(Alacak)
-            FROM mhs.mhsMizan_vw WHERE fisSirketID = @sirketId
+            FROM DerinSISBkm.mhs.mhsMizan_vw WHERE fisSirketID = @sirketId
             """;
         var r = await conn.QuerySingleAsync(sql, new { sirketId });
         decimal kdvInd = r.KdvIndirilecek ?? 0m, kdvHes = r.KdvHesaplanan ?? 0m;
@@ -57,7 +57,7 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
                 SELECT LEFT(hspKod,3) AS AnaKod,
                        SUM(Borc) AS Borc, SUM(Alacak) AS Alacak,
                        COUNT(DISTINCT hspKod) AS AltAdet
-                FROM mhs.mhsMizan_vw
+                FROM DerinSISBkm.mhs.mhsMizan_vw
                 WHERE fisSirketID = @sirketId
                 GROUP BY LEFT(hspKod,3)
             )
@@ -68,7 +68,7 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
                    g.AltAdet
             FROM g
             OUTER APPLY (
-                SELECT TOP 1 h.hspAd FROM mhs.mhsHsp h
+                SELECT TOP 1 h.hspAd FROM DerinSISBkm.mhs.mhsHsp h
                 WHERE h.hspSirketID = @sirketId AND h.hspKod LIKE g.AnaKod + '%'
                 ORDER BY LEN(h.hspKod), h.hspKod
             ) n
@@ -88,7 +88,7 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
         const string sql = """
             WITH g AS (
                 SELECT hspKod, SUM(Borc) AS Borc, SUM(Alacak) AS Alacak
-                FROM mhs.mhsMizan_vw
+                FROM DerinSISBkm.mhs.mhsMizan_vw
                 WHERE fisSirketID = @sirketId AND hspKod LIKE @prefix
                 GROUP BY hspKod
             )
@@ -97,7 +97,7 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
                    CAST(g.Alacak AS decimal(18,2)) AS Alacak,
                    CAST(g.Borc - g.Alacak AS decimal(18,2)) AS Bakiye
             FROM g
-            LEFT JOIN mhs.mhsHsp h ON h.hspKod = g.hspKod AND h.hspSirketID = @sirketId
+            LEFT JOIN DerinSISBkm.mhs.mhsHsp h ON h.hspKod = g.hspKod AND h.hspSirketID = @sirketId
             ORDER BY ABS(g.Borc - g.Alacak) DESC, g.hspKod
             """;
         var rows = await conn.QueryAsync<MizanDetayRow>(sql, new { sirketId, prefix = anaKod + "%" });
