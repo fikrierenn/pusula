@@ -230,3 +230,13 @@ metrics:
     bulgu: "22.06 canlı: 2025-Eki 11,79M ₺ kapanış-sonrası (Şule, açılmadı) · MHS manuel 100-164g geç (pinar.muhasebe1, Ara'25 31 fiş/132g) · 2026 görece temiz (CAR aylık <600K). Tem'25 Özge giren≠onaylayan = nadir gerçek-SoD."
     confidence: 0.95
     last_verified: 2026-06-22
+  kesin_mizan:   # 23.06 — B-118 mizan/likidite dashboard
+    aciklama: "Genel muhasebe mizanı — ana(3-hane)→alt(100.10)→en alt(100.10.001) hiyerarşi. Dönem = fisSirketID (yıl−2020)."
+    formula: "Bakiye = Borç − Alacak (borç-pozitif). Borç=SUM(fisBA=1 → -fisTutar), Alacak=SUM(fisBA=0 → fisTutar). Kaynak mhsFis (mhsMizan_vw DEĞİL — kapanış içeriyor)."
+    kapanis_haric: "Kapanmış yıl: 'Kapanış' bilanço fişi HARİÇ (codes mhsFisBaslik.fisAd_sistem) → gerçek bakiye. NOT EXISTS(fisAd=N'Kapanış'). Açık yıl etkisiz (Kapanış yok). VİRMAN'lar DAHİL (590 dönem kârı görünür)."
+    nakit_pozisyon: "100+101+102+108 borç bakiyesi (103 Verilen Çek KONTRA → AYRI göster, nakit'e KATMA — katarsa -219M yanıltır, doğru +578M)."
+    kdv_net: "391 hesaplanan (alacak bak) − 191 indirilecek (borç bak). Pozitif=ödenecek, negatif=devreden."
+    dogrulama: "23.06 kullanıcı 2025 Excel mizanı: 100/102/120/320/600 KURUŞU KURUŞUNA ✓, denge Borç=Alacak=28,93 mlr. 590 dönem kârı 5,87M fark = Excel 28.04 snapshot, 692/590 virman 30.04 revize (veri/zamanlama, formül değil)."
+    arac: "MizanQueries.GetSonucAsync · /mizan (Mizan.razor + MizanDugum recursive). TekDuzenHesap (79 ana hesap adı)."
+    confidence: 1.0
+    last_verified: 2026-06-23

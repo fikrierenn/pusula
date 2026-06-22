@@ -243,12 +243,20 @@ codes:
 
   # === MUHASEBE / GL (22.06 keşif — B-117) ===
   mhs.mhsFis.fisBA:
-    values: {0: "taraf-0 (fisTutar POZİTİF)", 1: "taraf-1 (fisTutar NEGATİF saklı)"}
-    bakiye: "SUM(fisTutar) — defter dengeli (toplam 0). Borç=SUM(BA=0), Alacak=SUM(BA=1 ×-1) gösterimde."
-    ampirik: "Gelir 6xx hep BA=0 tarafında, gider 7xx hep BA=1 tarafında (canlı: 600 hep BA=0; 760/770 hep BA=1). TERS-YÖN anomali = 6xx'te BA=1 / 7xx'te BA=0 (610/611/612 iade hariç). 2026 Kas: 42 gelir-ters/163K."
-    uyari: "Borç/Alacak ETİKETİ kesinleştirilMEDİ → gelir-tablosu/dönem-K-Z için mutabakat şart (plan-25 kapsam-dışı). Mizan borç/alacak gösterimi mekanik güvenli."
-    confidence: 0.8
-    last_verified: 2026-06-22
+    values: {0: "ALACAK (fisTutar POZİTİF)", 1: "BORÇ (fisTutar NEGATİF saklı)"}
+    KESİN: "23.06 mhsMizan_vw tanımıyla çürütülemez kanıt: Alacak=SUM((1-fisBA)*fisTutar), Borc=SUM(-(fisBA*fisTutar)) → fisBA=0=Alacak, fisBA=1=Borç."
+    bakiye: "Bakiye = Borç − Alacak (borç-pozitif). Borç=SUM(fisBA=1 → -fisTutar), Alacak=SUM(fisBA=0 → fisTutar). Defter dengeli: toplam Borç=toplam Alacak (2025: 28,93 mlr ✓; 2026: 21,48 mlr)."
+    ampirik: "Gelir 6xx BA=0 (alacak — 600 pozitif kanıt), gider 6xx/7xx BA=1 (borç). TERS-YÖN anomali = 6xx'te BA=1 (610/611/612 iade hariç)."
+    eski_hata: "0.8 önceki kayıt 'taraf-0/1, Borç/Alacak etiketi kesinleştirilmedi' dedi → view-def ile DÜZELTİLDİ, artık kesin."
+    confidence: 1.0
+    last_verified: 2026-06-23
+  mhs.mhsFisBaslik.fisAd_sistem:   # 23.06 — açılış/kapanış sistem fişleri (B-118 kesin mizan)
+    Açılış: "fisAd=N'Açılış', yevmiyeNo=1 (yıl ilk fişi). Önceki yıl kapanış bakiyelerini devreder → mizanda DAHİL kalır (opening). 01.01 büyük çift-taraflı fiş."
+    Kapanış: "fisAd=N'Kapanış', yevmiyeNo=MAX (yıl son fişi), her KAPANMIŞ yılda TEK. Bilanço-kapanış: tüm hesapları sıfırlar → mhsMizan_vw bunu İÇERDİĞİ için kapanmış yıl her hesap Borç=Alacak=Bakiye 0."
+    ayırt: "fisTip Açılış/Kapanış'ı AYIRMAZ (yalnız 0/2; VİRMAN+Kapanış+normal hepsi fisTip=2). Özel kapanış-tip alanı YOK. Ayraç = fisAd (sistem-sabit ad) + pozisyon (Kapanış=max yevmiye). Açık yılda (2026) Kapanış YOK."
+    kesin_mizan: "Gerçek mizan = 'Kapanış' fişi HARİÇ (VİRMAN'lar DAHİL: 6xx→690→692→590 kapanır, bilanço bakiyeli, 590 dönem kârı görünür). Sorgu: NOT EXISTS(fisAd=N'Kapanış')."
+    confidence: 1.0
+    last_verified: 2026-06-23
   mhs.mhsEntTip:
     values: {0: "Kullanıcı (MANUEL)", 1: "Fatura", 2: "Cari", 3: "POS", 4: "Mağaza Kasası", 5: "Cari Fiş"}
     filtre: "SoD/zamanlama/kapanış-sonrası kontrollerinde fisEntTipID=0 (manuel) FİLTRELE — 1/3/4 otomatik batch gürültü (%85 'geç kayıt' otomatikti, false-positive)."

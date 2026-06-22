@@ -125,11 +125,17 @@ entities:
     grain: "yevmiye fiş başlığı (15,3M)"
     note: "fisEntTipID=0 MANUEL, 1/3/4 otomatik entegrasyon (codes mhsEntTip). gTarih=giriş/kTarih=değişim/fisTarih=muhasebe tarihi → kapanış-sonrası kontrol. gKisi/oKisi → drn1.insID."
     last_verified: "2026-06-22"
-  mhs.mhsHsp: {pk: "(hspID, hspSirketID)", key: [hspKod, hspAd, hspAnaID, hspTur], note: "hesap planı 24,5K. hspKod = Tek Düzen 'AAA.10.XXX' (100 kasa/102 banka/120 alıcı/153 mal/320 satıcı/600 gelir/770 gider). hspSirketID JOIN ZORUNLU."}
+  mhs.mhsHsp: {pk: "(hspID, hspSirketID)", key: [hspKod, hspAd, hspAnaID, hspTur], note: "hesap planı 24,5K. hspKod hiyerarşik 'AAA.YY.ZZZ' (100.10=KASA, 100.10.001=Merkez TL.Kasa). ⚠️ 3-HANELİ ana hesap (100/120/600) mhsHsp'de SATIR DEĞİL — yalnız noktalı alt hesaplar var. 3-haneli Tek Düzen adı (Kasa/Bankalar) DIŞ kaynak → dashboard/Data/TekDuzenHesap.cs (79 ad). hspSirketID JOIN ZORUNLU."}
   mhs.mhsAnaHsp: {pk: aHspID, key: [aHspAd, aHspTur, aHspBA], note: "ana hesap grupları (390)"}
   mhs.mhsSirket: {pk: sirketID, key: [sirketAd, sirketDonem], note: "sirketID = DÖNEM YILI (1=2021 … 6=2026). mhsFis.fisSirketID/mhsFisBaslik.fisbSirketID bununla filtrelenir."}
   mhs.mzn: {key: [hspKod, hspAd, h1..h8, h1Ad..h8Ad, hspBA], note: "hesap kırılım/seviye tanımı (23,5K)"}
-  mhs.mhsMizan_vw: {tip: view, note: "HAZIR mizan view'ı — panel/denetim için"}
+  mhs.mhsMizan_vw:
+    tip: view
+    key: [fisSirketID, fisTarih, hspKod, fisHspID, Alacak, Borc]
+    grain: "fiş-tarih × hesap (leaf) — Borc/Alacak HAZIR kolon (fisBA çözmeye gerek yok)"
+    def: "WITH ENCRYPTION. Alacak=SUM((1-fisBA)*fisTutar), Borc=SUM(-(fisBA*fisTutar)). Bakiye=SUM(Borc)-SUM(Alacak)."
+    uyari: "⚠️ KAPANIŞ FİŞİNİ İÇERİR → kapanmış yıl (sirket 1-5) her hesap Borç=Alacak=Bakiye 0 (işe yaramaz). Kesin mizan için view DEĞİL → mhsFis'ten 'Kapanış' fişi hariç hesapla (codes mhsFisBaslik.fisAd_sistem). Açık yıl (2026) view OK. fisID/fisAd kolonu YOK → kapanış-hariç view ile yapılamaz."
+    last_verified: 2026-06-23
   mhs.mhsFisKontrolBakiye_vw: {tip: view, note: "fiş borç=alacak denge kontrol (K3)"}
   dbo.car:
     pk: cID
