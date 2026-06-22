@@ -43,7 +43,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     {
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<(int Yil, int Ay, string Kapanis)>("""
-            SELECT TOP 60 DonemYil AS Yil, DonemAy AS Ay, CONVERT(varchar(10), KapanisDT, 104) AS Kapanis
+            SELECT TOP 60 CAST(DonemYil AS int) AS Yil, CAST(DonemAy AS int) AS Ay, CONVERT(varchar(10), KapanisDT, 104) AS Kapanis
             FROM DerinSISBkm.bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
             """);
         return rows.ToList();
@@ -56,7 +56,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     {
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<KapanisDonem>("""
-            SELECT TOP 200 DonemYil, DonemAy, KapanisDT, Aciklama, KayitDT
+            SELECT TOP 200 CAST(DonemYil AS int) AS DonemYil, CAST(DonemAy AS int) AS DonemAy, KapanisDT, Aciklama, KayitDT
             FROM DerinSISBkm.bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
             """);
         return rows.ToList();

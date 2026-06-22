@@ -165,6 +165,12 @@ DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 - **SQL `date` kolonu Dapper'da DateTime döner; record ctor `DateOnly` ise eşleşmez** → `materialization` hatası ("matching signature ... System.DateTime").
 - **Çözüm:** global TypeHandler (Program.cs'te bir kez): `Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler())` — `Parse: DateOnly.FromDateTime((DateTime)v)`, `SetValue: DbType.Date + value.ToDateTime(TimeOnly.MinValue)`. Hem okuma hem yazma (param) çözer.
 
+## Dapper Record Materialization: smallint/tinyint → CAST AS int (23.06 dersi)
+
+- **Positional record (`record Foo(int X, ...)`) Dapper'da ctor tipi tam eşleşme ister.** SQL `smallint`→Int16, `tinyint`→Byte; record `int`(Int32) ile EŞLEŞMEZ → `InvalidOperationException: parameterless default constructor or one matching signature (Int16, Byte, ...) required`.
+- **Çözüm:** SELECT'te `CAST(col AS int)` (ya da record alanını `short`/`byte` yap). `Fin_AyKapanis.DonemYil`(smallint)/`DonemAy`(tinyint) → `CAST(... AS int)` (KapanisDonem record int). ValueTuple da aynı — CAST güvenli.
+- Scalar `QueryAsync<int>` (tek kolon) tinyint'ten sorunsuz (Convert) — sorun yalnız çok-kolonlu record/tuple ctor eşleşmesinde.
+
 ## İlişkili Dosyalar
 
 - `docs/01-baglanti.md`, `docs/02-tablolar-magaza.md`, `docs/03-ciro-filtreleri.md`
