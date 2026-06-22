@@ -25,6 +25,11 @@ _*.ps1
 _*.sh
 _plan-first-content.md
 
+# --- Codex CLI tooling (makine-local, CLAUDE.md/skills mirror — çift-kaynak tutma) ---
+.agents/
+.codex/
+AGENTS.md
+
 # --- Claude Code (template bootstrap) ---
 .claude/worktrees/
 .claude/settings.local.json
