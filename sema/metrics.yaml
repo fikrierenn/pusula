@@ -1,7 +1,7 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-17
+updated: 2026-06-22
 
 metrics:
   olu_stok_maliyet_zinciri:
@@ -219,4 +219,14 @@ metrics:
     dislama: "İç-operasyon + ev-markası: mrkID 0=Markasız, 269=BKM Kitap, 2101=Sınav Okulları, 5972=Sınav Kıyafet, 10911=BKM-Mağaza. + satış adet ≥50 gürültü eşiği."
     perf: "Satış agregatı + stok agregatı AYRI derived-table, mrkID'de JOIN (~17s). Satır-başı OUTER APPLY stok korelasyonu → timeout (sql-server-conventions filtreyi-aşağı-it dersi)."
     bulgu: "22.06: Faber-Castell devir 0,46× (636K stok, sermaye tuzağı) · Yapı Kredi 1,28× · Bilgi Sarmal 9,7× ama iade %12,4. PARAF/Fenomen/Timaş Çocuk sağlıklı."
+    last_verified: 2026-06-22
+  kapanis_mudahale:   # 22.06 — B-117 GL forensic
+    aciklama: "Kapanmış muhasebe ayına SONRADAN dokunma (ISA 240 post-closing). Kaynak: dbo.car + dbo.fat(eTip 6,7,8) + mhs.mhsFisBaslik."
+    mudahale: "giriş(gTarih/cgTarih) VEYA değişim(kTarih/ckTarih) > Fin_AyKapanis.KapanisDT (belge ayının kapanış tarihi). GecGiris/SonradanDeg bayrak."
+    severity: "3=ikisi · 2=sonradan-değişim · 1=geç-giriş · 0=yok. RiskSkor = severity×100 + min(GunSonra,90) + round-number(25) + giren=onaylayan(20) + mükerrer(15)."
+    forensic: "round-number (ABS(tutar)%1000=0 & ≥1000) · mükerrer (kaynak+gider+ABS(tutar)+belge-tarih >1) · giren=onaylayan (kisi giren=onay; küçük ekipte YAPISAL, kişisel şüphe değil)."
+    sadece_gider: "frm/urn 'G-%' (car/fat) · hspKod 6xx/7xx (mhs) — codes.gider_konvansiyonu"
+    arac: "bkm.sp_KapanisMudahaleKontrol_v2 (@Mod OZET/DETAY, @GiderKod drill). Panel /muhasebe + skill muhasebe-denetci."
+    bulgu: "22.06 canlı: 2025-Eki 11,79M ₺ kapanış-sonrası (Şule, açılmadı) · MHS manuel 100-164g geç (pinar.muhasebe1, Ara'25 31 fiş/132g) · 2026 görece temiz (CAR aylık <600K). Tem'25 Özge giren≠onaylayan = nadir gerçek-SoD."
+    confidence: 0.95
     last_verified: 2026-06-22

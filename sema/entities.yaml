@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-17
+updated: 2026-06-22
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -111,3 +111,35 @@ entities:
   BKMMaliyet.dbo.FifoFallbackFiyatlari: {pk: "(StkId,SatinalmaSarti,MekanId)", key: [BirimMaliyet], note: "fallback fiyat; SatinalmaSarti='DEVIR_FALLBACK' açılışta devreye girer"}
   BKMMaliyet.dbo.OrtalamaAylikMaliyet: {pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
   # ERP kaynak (FIFO tüketir): DerinSIS irsHrk(stok/çıkış), fat+fatAyr(alış), fytOzl(satınalma şartı fiyatı), bkm.UrunBilgi(stkID/SatisFiyat/SonAlis/Kategori3/KatAna)
+
+  # === MUHASEBE / GL + FİNANS/CARİ (22.06 keşif — B-117 GL forensic) ===
+  mhs.mhsFis:
+    pk: fsID
+    key: [fisID, fisSirketID, yevmiyeNo, fisTarih, fisTip, fisBA, fisTutar, fisHspID, fisCari]
+    grain: "yevmiye satırı — fiş başına ≥2 satır, borç+alacak dengeli (39,5M)"
+    note: "fisBA 0/1 iki taraf; fisTutar BA=1'de NEGATİF saklı → bakiye=SUM(fisTutar) (defter dengeli, toplam 0). Gelir 6xx hep BA=0, gider 7xx hep BA=1 (codes mhsFis.fisBA). DMY."
+    last_verified: "2026-06-22"
+  mhs.mhsFisBaslik:
+    pk: fisbID
+    key: [fisbSirketID, yevmiyeNo, fisTarih, fisEntTipID, gKisi, kKisi, oKisi, gTarih, kTarih, oTarih, fiscID]
+    grain: "yevmiye fiş başlığı (15,3M)"
+    note: "fisEntTipID=0 MANUEL, 1/3/4 otomatik entegrasyon (codes mhsEntTip). gTarih=giriş/kTarih=değişim/fisTarih=muhasebe tarihi → kapanış-sonrası kontrol. gKisi/oKisi → drn1.insID."
+    last_verified: "2026-06-22"
+  mhs.mhsHsp: {pk: "(hspID, hspSirketID)", key: [hspKod, hspAd, hspAnaID, hspTur], note: "hesap planı 24,5K. hspKod = Tek Düzen 'AAA.10.XXX' (100 kasa/102 banka/120 alıcı/153 mal/320 satıcı/600 gelir/770 gider). hspSirketID JOIN ZORUNLU."}
+  mhs.mhsAnaHsp: {pk: aHspID, key: [aHspAd, aHspTur, aHspBA], note: "ana hesap grupları (390)"}
+  mhs.mhsSirket: {pk: sirketID, key: [sirketAd, sirketDonem], note: "sirketID = DÖNEM YILI (1=2021 … 6=2026). mhsFis.fisSirketID/mhsFisBaslik.fisbSirketID bununla filtrelenir."}
+  mhs.mzn: {key: [hspKod, hspAd, h1..h8, h1Ad..h8Ad, hspBA], note: "hesap kırılım/seviye tanımı (23,5K)"}
+  mhs.mhsMizan_vw: {tip: view, note: "HAZIR mizan view'ı — panel/denetim için"}
+  mhs.mhsFisKontrolBakiye_vw: {tip: view, note: "fiş borç=alacak denge kontrol (K3)"}
+  dbo.car:
+    pk: cID
+    key: [cTarih, cTarihVade, cBA, cTutar, cTip, cKod, cKodKarsi, cOnay, cgKisi, ckKisi, coKisi, cgTarih, ckTarih, cEvrakNo, cNot]
+    grain: "cari hareket (23,7M, bugüne kadar canlı)"
+    note: "cBA borç/alacak; cTarihVade=VADE (yaşlandırma). cKod/cKodKarsi→frm.frmID. cOnay=1 onaylı. cgKisi/ckKisi/coKisi→drn1. Gider carisi: frm.frmKod LIKE 'G-%'."
+    last_verified: "2026-06-22"
+  dbo.carAyr: {note: "cari ayrıntı (18,4M); cKDVTutar"}
+  dbo.carCek: {pk: "(çek)", note: "çek/senet portföyü (11,5K). fn_odenmemisCekler ile ödenmemiş/vade."}
+  dbo.frm: {pk: frmID, key: [frmKod, frmAd, VD, VN], note: "cari/firma master (49,9K). VD=vergi dairesi, VN=vergi no. frmKod 'G-%'=gider carisi."}
+  dbo.drn1: {pk: insID, key: [insAd], note: "KULLANICI/personel master. gKisi/cgKisi/ckKisi/coKisi/oKisi → drn1.insID. Ekip: Şule(1897)/Pınar(16)/pinar.muhasebe1(449)/2(450)/Özge."}
+  bkm.Fin_AyKapanis: {pk: "(DonemYil, DonemAy)", key: [KapanisDT, KapanisKisi, Aciklama], note: "muhasebe ay-kapanış tarihleri. 2025 Oca–2026 May DOLU (22.06). Kapanış-sonrası müdahale kontrolünün anahtarı; evrak YEAR/MONTH(belge) ile join."}
+  bkm.sp_KapanisMudahaleKontrol_v2: {tip: sp, note: "GL forensic — CAR+FAT+MHS kapanış-sonrası müdahale. @Yil/@Ay (NULL=tüm dönem), @Kaynak, @Mod OZET/DETAY, @GiderKod drill, @SadeceGider. severity+forensic+drn1 isim. Fikri'nin 3 SP'sini konsolide eder. Panel /muhasebe + skill muhasebe-denetci sarar."}

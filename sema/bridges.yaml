@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-06-16
+updated: 2026-06-22
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -291,3 +291,49 @@ bridges:
     note: "sonrakiNet = sonrakiFiyat × (fInd1..5 indirim kademeleri çarpımı). fTarihSon FİLTRELENMEZ (son-bilinen). Açılış SART tier kaynağı. TVF korelasyonlu çağırma → timeout; iç mantık+hedef-ID scan'e göm (restrict-then-rownumber)."
     last_verified: 2026-06-19
     ttl_days: 180
+
+  # --- MUHASEBE / GL + CARİ (22.06 keşif — B-117) ---
+  - id: mhsfis-mhsfisbaslik
+    from: mhs.mhsFis.fisID
+    to: mhs.mhsFisBaslik.fisbID
+    scope: derinsis
+    confidence: 1.0
+    note: "Yevmiye satır → başlık. +fisSirketID şart. Fiş başına 2 satır (B/A). ⚠️ yevmiyeNo UNIQUE DEĞİL — onunla join YANLIŞ (4 çakışma kanıtı)."
+    evidence: "2026-06-22 MCP: fisID=fisbID → 2 satır; yevmiyeNo → 4 (çakışma)"
+    last_verified: 2026-06-22
+  - id: mhsfis-hsp
+    from: mhs.mhsFis.fisHspID
+    to: mhs.mhsHsp.hspID
+    scope: derinsis
+    confidence: 1.0
+    note: "Yevmiye satır → hesap planı. +hspSirketID şart. hspKod Tek Düzen."
+    last_verified: 2026-06-22
+  - id: kisi-drn1
+    from: "dbo.fat.gKisi / dbo.car.cgKisi / mhs.mhsFisBaslik.gKisi (+ ckKisi/coKisi/oKisi)"
+    to: dbo.drn1.insID
+    scope: derinsis
+    confidence: 1.0
+    note: "Evrak kişi (giren/değiştiren/onaylayan) → kullanıcı adı (drn1.insAd). FK kanıtlı (fat.gKisi→drn1.insID). Denetimde ID DEĞİL isim göster."
+    evidence: "2026-06-22 sys.foreign_keys: fat/car/posHedef.gKisi → drn1.insID"
+    last_verified: 2026-06-22
+  - id: car-frm
+    from: "dbo.car.cKod / cKodKarsi"
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 1.0
+    note: "Cari hareket → firma/cari master. Gider carisi frm.frmKod LIKE 'G-%'."
+    last_verified: 2026-06-22
+  - id: fat-mhsfis
+    from: dbo.fat.eMhsFisID
+    to: mhs.mhsFis (muhasebe fiş)
+    scope: derinsis
+    confidence: 0.9
+    note: "Alış faturası → muhasebe fiş bağı. Entegrasyon kaçağı kontrolü (kontrol_fatCarMhsFisIDFarkli_vw)."
+    last_verified: 2026-06-22
+  - id: evrak-finaykapanis
+    from: "YEAR/MONTH(car.cTarih / fat.eTarihS / mhsFisBaslik.fisTarih)"
+    to: "bkm.Fin_AyKapanis (DonemYil, DonemAy)"
+    scope: derinsis
+    confidence: 1.0
+    note: "Belge ayı → kapanış tarihi. Müdahale = giriş/değişim (gTarih/kTarih) > KapanisDT. Kapanış-sonrası forensic kontrolün ana köprüsü."
+    last_verified: 2026-06-22
