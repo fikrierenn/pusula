@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @implements IDisposable
 @inject RefQueries Ref
+@inject AyarService Ayar
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject ILogger<Envanter> Logger
@@ -31,8 +32,8 @@ else if (_d is not null)
     {
         new("Envanter Değeri", Tl(_d.ToplamDeger), "from-primary to-primary/80", "ort.maliyet · Dergi/Sınav hariç"),
         new("Ort. Devir Hızı", _d.Devir.Count > 0 ? (_d.Devir.Average(x => x.Devir).ToString("0.0") + "x") : "—", "from-info to-info/80", "yıllık devir hızı"),
-        new("Stokta Yokluk", _d.Stockout.Count > 0 ? ("%" + _d.Stockout.Average(x => x.Pct).ToString("0.0")) : "—", "from-warning to-warning/80", "satılanlarda (hedef <%5)"),
-        new("Ölü Stok", Tl(_d.Devir.Where(x => x.Devir < 1.5m).Sum(x => x.StokTl)), "from-error to-error/80", "devir<1,5x kilitli ₺", EventCallback.Factory.Create(this, AcOluStok)),
+        new("Stokta Yokluk", _d.Stockout.Count > 0 ? ("%" + _d.Stockout.Average(x => x.Pct).ToString("0.0")) : "—", "from-warning to-warning/80", $"satılanlarda (hedef <%{Ayar.Deger.StokYoklukHedef:0.#})"),
+        new("Ölü Stok", Tl(_d.Devir.Where(x => x.Devir < Ayar.Deger.DevirOlu).Sum(x => x.StokTl)), "from-error to-error/80", $"devir<{Ayar.Deger.DevirOlu:0.#}x kilitli ₺", EventCallback.Factory.Create(this, AcOluStok)),
     })" />
 
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
@@ -118,7 +119,7 @@ else if (_d is not null)
                         Sub="@(d => $"devir {d.Devir:0.0}x")"
                         Amount="@(d => Tl(d.StokTl))"
                         Icon="@(_ => "lock")"
-                        IconColor="@(d => d.Devir < 1.5m ? ("bg-error/10", "text-error") : d.Devir < 3m ? ("bg-warning/10", "text-warning") : ("bg-base-200", "text-base-content/60"))"
+                        IconColor="@(d => d.Devir < Ayar.Deger.DevirOlu ? ("bg-error/10", "text-error") : d.Devir < Ayar.Deger.DevirSaglikli ? ("bg-warning/10", "text-warning") : ("bg-base-200", "text-base-content/60"))"
                         OnRowClick="@(d => OpenUrun(d.Kategori, olusSort: true))" />
         </div>
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">ABC — Ciro Yoğunluğu (Pareto 80/20, geçen ay)</h3>
@@ -255,7 +256,8 @@ else if (_d is not null)
                     <tbody>
                     @foreach (var r in _tedPerf)
                     {
-                        var devirCls = r.DevirHizi is null ? "text-info" : r.DevirHizi < 1.5 ? "text-error" : r.DevirHizi < 3 ? "text-warning" : "text-success";
+                        double dOlu = (double)Ayar.Deger.DevirOlu, dSag = (double)Ayar.Deger.DevirSaglikli;
+                        var devirCls = r.DevirHizi is null ? "text-info" : r.DevirHizi < dOlu ? "text-error" : r.DevirHizi < dSag ? "text-warning" : "text-success";
                         var iadeCls = r.IadeOrani > 0.10m ? "text-error font-semibold" : "text-base-content/60";
                         <tr>
                             <td class="font-medium">@r.Marka</td>
@@ -268,11 +270,11 @@ else if (_d is not null)
                                 {
                                     <span class="badge badge-sm badge-info">stok yok</span>
                                 }
-                                else if (r.DevirHizi < 1.5)
+                                else if (r.DevirHizi < dOlu)
                                 {
                                     <span class="badge badge-sm badge-error">sipariş kes</span>
                                 }
-                                else if (r.DevirHizi < 3)
+                                else if (r.DevirHizi < dSag)
                                 {
                                     <span class="badge badge-sm badge-warning">izle</span>
                                 }
@@ -429,7 +431,7 @@ else if (_d is not null)
         }
 
         // Tedarikçi/yayınevi performans (B-110, ~3s) — marj'dan önce, hızlı görünsün.
-        try { _tedPerf = await Ref.GetTedarikciPerformansAsync(DateOnly.FromDateTime(DateTime.Today).AddYears(-1)); }
+        try { _tedPerf = await Ref.GetTedarikciPerformansAsync(DateOnly.FromDateTime(DateTime.Today).AddYears(-1), Ayar.Deger.HaricMarkalarEtkin); }
         catch (Exception ex) { Logger.LogWarning(ex, "Tedarikçi performans alınamadı — kart boş gösterilecek"); }
         finally { _tedPerfLoading = false; StateHasChanged(); }
 

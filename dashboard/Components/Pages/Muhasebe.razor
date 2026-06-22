@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject MuhasebeQueries Muh
+@inject AyarService Ayar
 @inject PerfState Perf
 @inject ILogger<Muhasebe> Logger
 @rendermode InteractiveServer
@@ -170,7 +171,7 @@ else
         finally { _detayLoading = false; StateHasChanged(); }
     }
 
-    private static string RiskCls(int risk) => risk >= 300 ? "text-error" : risk >= 200 ? "text-warning" : risk >= 100 ? "text-info" : "text-base-content/60";
+    private string RiskCls(int risk) => risk >= Ayar.Deger.RiskYuksek ? "text-error" : risk >= Ayar.Deger.RiskOrta ? "text-warning" : risk >= Ayar.Deger.RiskDusuk ? "text-info" : "text-base-content/60";
 
     private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
 }

@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject MuhasebeQueries Muh
+@inject AyarService Ayar
 @inject IJSRuntime JS
 @inject ILogger<Ayarlar> Logger
 @rendermode InteractiveServer
@@ -93,6 +94,52 @@
     }
 </div>
 
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mt-4 max-w-3xl">
+    <h3 class="text-sm font-semibold text-base-content/90 mb-1">İş Eşikleri</h3>
+    <p class="text-[11px] text-base-content/50 mb-4">Envanter (devir/stockout), Kontrol paneli (risk) ve Tedarikçi scorecard bu değerleri kullanır. Hardcode'dan çıkarıldı.</p>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Devir — ölü stok eşiği (&lt;)</span>
+            <input type="number" step="0.1" min="0" class="input input-bordered input-sm" @bind="_e.DevirOlu" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Devir — sağlıklı eşiği (&gt;)</span>
+            <input type="number" step="0.1" min="0" class="input input-bordered input-sm" @bind="_e.DevirSaglikli" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Stokta-yokluk hedefi (%)</span>
+            <input type="number" step="0.1" min="0" max="100" class="input input-bordered input-sm" @bind="_e.StokYoklukHedef" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Risk — düşük (info)</span>
+            <input type="number" min="0" class="input input-bordered input-sm" @bind="_e.RiskDusuk" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Risk — orta (warning)</span>
+            <input type="number" min="0" class="input input-bordered input-sm" @bind="_e.RiskOrta" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Risk — yüksek (error)</span>
+            <input type="number" min="0" class="input input-bordered input-sm" @bind="_e.RiskYuksek" />
+        </label>
+    </div>
+    <label class="form-control mb-3">
+        <span class="label-text text-xs mb-1">Hariç marka ID'leri (tedarikçi scorecard dışı — virgüllü)</span>
+        <input type="text" class="input input-bordered input-sm font-mono" @bind="_haricMrk" placeholder="0,269,2101,5972,10911" />
+    </label>
+    <div class="flex items-center gap-3">
+        <button class="btn btn-primary btn-sm" @onclick="EsikKaydet" disabled="@_esikKaydediliyor">
+            @if (_esikKaydediliyor) { <span class="loading loading-spinner loading-xs"></span> }
+            Eşikleri Kaydet
+        </button>
+        @if (_esikMesaj is not null)
+        {
+            <span class="text-sm @(_esikHata ? "text-error" : "text-success")">@_esikMesaj</span>
+        }
+    </div>
+</div>
+
 @code {
     private IReadOnlyList<KapanisDonem> _liste = [];
     private int _yil = 2026, _ay = 1;
@@ -101,7 +148,59 @@
     private bool _duzenleMod, _kaydediliyor, _yukleniyor = true, _mesajHata;
     private string? _mesaj;
 
-    protected override async Task OnInitializedAsync() => await YukleAsync();
+    // İş eşikleri formu (PanelAyarlar immutable → mutable form-model)
+    private EsikForm _e = new();
+    private string _haricMrk = "";
+    private bool _esikKaydediliyor, _esikHata;
+    private string? _esikMesaj;
+
+    protected override async Task OnInitializedAsync()
+    {
+        EsikYukle();
+        await YukleAsync();
+    }
+
+    private void EsikYukle()
+    {
+        var a = Ayar.Deger;
+        _e = new EsikForm
+        {
+            DevirOlu = a.DevirOlu, DevirSaglikli = a.DevirSaglikli, StokYoklukHedef = a.StokYoklukHedef,
+            RiskDusuk = a.RiskDusuk, RiskOrta = a.RiskOrta, RiskYuksek = a.RiskYuksek,
+        };
+        _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
+    }
+
+    private async Task EsikKaydet()
+    {
+        _esikMesaj = null;
+        if (_e.DevirOlu <= 0 || _e.DevirSaglikli <= _e.DevirOlu)
+        { _esikMesaj = "Devir: sağlıklı eşiği > ölü eşiği > 0 olmalı."; _esikHata = true; return; }
+        if (_e.RiskOrta <= _e.RiskDusuk || _e.RiskYuksek <= _e.RiskOrta)
+        { _esikMesaj = "Risk eşikleri artan olmalı (düşük < orta < yüksek)."; _esikHata = true; return; }
+        var haric = _haricMrk.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var n) ? n : (int?)null).Where(n => n.HasValue).Select(n => n!.Value).ToArray();
+        _esikKaydediliyor = true; StateHasChanged();
+        try
+        {
+            await Ayar.KaydetAsync(new PanelAyarlar(
+                _e.DevirOlu, _e.DevirSaglikli, _e.StokYoklukHedef,
+                _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, haric));
+            _esikMesaj = "Eşikler kaydedildi."; _esikHata = false;
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _esikMesaj = $"Kayıt başarısız: {ex.Message}"; _esikHata = true; }
+        finally { _esikKaydediliyor = false; StateHasChanged(); }
+    }
+
+    private sealed class EsikForm
+    {
+        public decimal DevirOlu { get; set; } = 1.5m;
+        public decimal DevirSaglikli { get; set; } = 3.0m;
+        public decimal StokYoklukHedef { get; set; } = 5.0m;
+        public int RiskDusuk { get; set; } = 100;
+        public int RiskOrta { get; set; } = 200;
+        public int RiskYuksek { get; set; } = 300;
+    }
 
     private async Task YukleAsync()
     {

@@ -508,7 +508,7 @@ public sealed partial class RefQueries
     /// net ciro · iade oranı · stok devir hızı (yıllık satış adet / anlık stok adet) → "sipariş-kes" sinyali.
     /// İç-operasyon + ev-markası (Markasız/Sınav/BKM) hariç; satış adet ≥ 50 eşiği gürültü filtresi.
     /// Satış agregatı + stok agregatı AYRI derived-table, mrkID'de JOIN (satır-başı OUTER APPLY timeout tuzağından kaçınır).</summary>
-    public async Task<IReadOnlyList<TedarikciPerfRow>> GetTedarikciPerformansAsync(DateOnly bas)
+    public async Task<IReadOnlyList<TedarikciPerfRow>> GetTedarikciPerformansAsync(DateOnly bas, IReadOnlyList<int> haricMrk)
     {
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<TedarikciPerfRow>($"""
@@ -525,7 +525,7 @@ public sealed partial class RefQueries
                 JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
                 JOIN DerinSISBkm.dbo.urnMrk m WITH(NOLOCK) ON m.mrkID = u.urnMrkID
                 WHERE a.ehTrhS >= @Bas AND a.ehMekan IN ({LokasyonConfig.SubelerVeDepo})
-                  AND m.mrkID NOT IN (0, 269, 2101, 5972, 10911)
+                  AND m.mrkID NOT IN @haricMrk
                 GROUP BY m.mrkID, m.mrkAd
                 HAVING -SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehAdetN ELSE 0 END) >= 50
             ) sv
@@ -537,7 +537,7 @@ public sealed partial class RefQueries
                 GROUP BY u2.urnMrkID
             ) st ON st.urnMrkID = sv.mrkID
             ORDER BY sv.NetCiro DESC
-            """, new { Bas = new DateTime(bas.Year, bas.Month, bas.Day) });
+            """, new { Bas = new DateTime(bas.Year, bas.Month, bas.Day), haricMrk });
         return rows.ToList();
     }
 }

@@ -50,6 +50,7 @@ builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asist
 builder.Services.AddSingleton<TahminKayitService>(); // JSON tahmin kaydı (data/tahmin-kayitlari.json) plan-14
 builder.Services.AddSingleton<TakvimService>();      // takvim etmen (tatil API cache + okul JSON) plan-14
 builder.Services.AddSingleton<IcKartService>();      // elle işaretli iç/mağaza kartları (data/ic-kartlar.json) plan-16 ek
+builder.Services.AddSingleton<AyarService>();        // iş eşiği ayarları (PanelAyar, BkmPanel) — devir/stockout/risk/hariç-marka
 builder.Services.AddScoped<ForecastOkuService>();    // tahmin motoru çıktısı okur (data/forecast/*.json) plan-15
 builder.Services.AddScoped<ForecastService>();       // forecast motorunu portaldan tetikler (python run.py) B-109
 
