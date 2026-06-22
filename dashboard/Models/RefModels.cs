@@ -122,6 +122,17 @@ public record ManuelIndirimRow(string Sebep, string Magaza, string Ay, decimal B
     public decimal OrtIndirimFis => FisSayisi > 0 ? Math.Round(Indirim / FisSayisi, 0) : 0;
 }
 
+// ── B-112 Operasyon hızlı kazanımlar (3 kart) ──────────────────────────────
+/// <summary>Ödeme üst-grubu cirosu (zincir, dönem) + önceki eş-dönem (nakit payı↑ = stres sinyali).</summary>
+public record OdemeGrupRow(string Grup, decimal Tutar, decimal Onceki)
+{
+    public decimal Delta => Tutar - Onceki;
+}
+/// <summary>İade sebebi (RefundReasons.Type=0) — DocType=3 iade kalemleri, dönem.</summary>
+public record IadeSebepRow(string Sebep, int Kalem, decimal Tutar);
+/// <summary>İndirim kaynağı (SalesProductCampaigns.Source 0/1/2) — dönem indirim hacmi.</summary>
+public record IndirimKaynakRow(int Source, string Ad, decimal Indirim, int Fis);
+
 /// <summary>Marka alış-satış rotasyon satırı (geçen ay).</summary>
 public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decimal SatisCiro);
 

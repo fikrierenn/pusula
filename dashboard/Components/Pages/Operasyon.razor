@@ -124,6 +124,101 @@ else if (_data is not null)
         }
     </div>
 
+    @* ── B-112 hızlı kazanımlar: ödeme grubu trendi · iade sebebi · indirim kaynağı ── *@
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        @* (a) Ödeme üst-grubu + önceki eş-dönem delta — nakit payı↑ = nakit-stres sinyali *@
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5">Ödeme Grubu (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">para üstü hariç</span></h3>
+            <p class="text-[11px] text-base-content/50 mb-2.5">tahsilat dağılımı · Δ önceki eş-döneme göre · nakit payı↑ = stres</p>
+            @if (_kumbaraLoading) { <div class="text-xs text-base-content/40 animate-pulse">Yükleniyor...</div> }
+            else if (_odeme.Count == 0) { <div class="text-xs text-base-content/40">Veri yok.</div> }
+            else
+            {
+                var topO = _odeme.Sum(o => o.Tutar);
+                var nakit = _odeme.FirstOrDefault(o => o.Grup == "Nakit");
+                <table class="table table-xs w-full">
+                    <thead><tr class="text-[11px] text-base-content/60"><th>Grup</th><th class="text-right">Tahsilat</th><th class="text-right">Pay</th><th class="text-right">Δ</th></tr></thead>
+                    <tbody>
+                    @foreach (var o in _odeme)
+                    {
+                        var pay = topO > 0 ? Math.Round(o.Tutar / topO * 100, 1) : 0;
+                        var dPct = o.Onceki > 0 ? Math.Round(o.Delta / o.Onceki * 100, 1) : (decimal?)null;
+                        var nakitStres = o.Grup == "Nakit" && o.Delta > 0;
+                        <tr>
+                            <td class="text-[12px] font-medium @(nakitStres ? "text-warning" : "")">@o.Grup</td>
+                            <td class="text-right text-[12px] text-base-content/70">@Tl(o.Tutar)</td>
+                            <td class="text-right text-[12px] font-semibold">%@pay</td>
+                            <td class="text-right text-[12px] @(dPct is null ? "text-base-content/40" : nakitStres ? "text-warning font-semibold" : o.Delta > 0 ? "text-success" : o.Delta < 0 ? "text-error" : "text-base-content/50")">@(dPct is null ? "—" : (o.Delta > 0 ? "▲" : o.Delta < 0 ? "▼" : "") + $"%{Math.Abs(dPct.Value)}")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                @if (nakit is not null && nakit.Onceki > 0 && nakit.Delta > 0)
+                {
+                    <div class="text-[11px] text-warning mt-2">⚠ Nakit tahsilat önceki döneme göre arttı — kart/POS kaçağı veya nakit-stres olabilir.</div>
+                }
+            }
+        </div>
+
+        @* (b) İade sebebi — RefundReasons.Type=0, DocType=3 iade kalemleri *@
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5">İade Sebebi (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">iade fişi</span></h3>
+            <p class="text-[11px] text-base-content/50 mb-2.5">iade kalemleri · sebep bazlı (kalem + KDV-hariç tutar)</p>
+            @if (_kumbaraLoading) { <div class="text-xs text-base-content/40 animate-pulse">Yükleniyor...</div> }
+            else if (_iadeSebep.Count == 0) { <div class="text-xs text-base-content/40">İade kaydı yok.</div> }
+            else
+            {
+                var topK = _iadeSebep.Sum(r => r.Kalem);
+                <table class="table table-xs w-full">
+                    <thead><tr class="text-[11px] text-base-content/60"><th>Sebep</th><th class="text-right">Kalem</th><th class="text-right">Pay</th><th class="text-right">Tutar</th></tr></thead>
+                    <tbody>
+                    @foreach (var r in _iadeSebep)
+                    {
+                        var pay = topK > 0 ? Math.Round(100m * r.Kalem / topK, 1) : 0;
+                        <tr>
+                            <td class="text-[12px] font-medium">@r.Sebep</td>
+                            <td class="text-right text-[12px] text-base-content/70">@Num(r.Kalem)</td>
+                            <td class="text-right text-[12px] @(pay > 50 ? "text-error font-semibold" : "text-base-content/60")">%@pay</td>
+                            <td class="text-right text-[12px] text-error">@Tl(r.Tutar)</td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot><tr class="font-bold text-[12px] border-t-2 border-base-200"><td>TOPLAM</td><td class="text-right">@Num(topK)</td><td class="text-right">%100</td><td class="text-right text-error">@Tl(_iadeSebep.Sum(r => r.Tutar))</td></tr></tfoot>
+                </table>
+            }
+        </div>
+
+        @* (c) İndirim kaynağı — SalesProductCampaigns.Source *@
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5">İndirim Kaynağı (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">SPC.Source</span></h3>
+            <p class="text-[11px] text-base-content/50 mb-2.5">indirim hacmi kaynağa göre · adlı kampanya mı, kodsuz manuel mi?</p>
+            @if (_kumbaraLoading) { <div class="text-xs text-base-content/40 animate-pulse">Yükleniyor...</div> }
+            else if (_indKaynak.Count == 0) { <div class="text-xs text-base-content/40">İndirim yok.</div> }
+            else
+            {
+                var topI = _indKaynak.Sum(r => r.Indirim);
+                <table class="table table-xs w-full">
+                    <thead><tr class="text-[11px] text-base-content/60"><th>Kaynak</th><th class="text-right">İndirim</th><th class="text-right">Pay</th><th class="text-right">Fiş</th></tr></thead>
+                    <tbody>
+                    @foreach (var r in _indKaynak)
+                    {
+                        var pay = topI > 0 ? Math.Round(r.Indirim / topI * 100, 1) : 0;
+                        var manuel = r.Source == 1;
+                        <tr>
+                            <td class="text-[12px] font-medium @(manuel ? "text-warning" : "")">@r.Ad</td>
+                            <td class="text-right text-[12px] text-error font-semibold">@Tl(r.Indirim)</td>
+                            <td class="text-right text-[12px] font-semibold">%@pay</td>
+                            <td class="text-right text-[12px] text-base-content/60">@Num(r.Fis)</td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot><tr class="font-bold text-[12px] border-t-2 border-base-200"><td>TOPLAM</td><td class="text-right text-error">@Tl(topI)</td><td class="text-right">%100</td><td></td></tr></tfoot>
+                </table>
+                <div class="text-[11px] text-base-content/50 mt-2">Manuel (kodsuz) pay yüksekse → POS'ta sebepsiz indirim; kontrol gerek.</div>
+            }
+        </div>
+    </div>
+
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
             <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5">
                 Manuel İndirim Kırılımı — 2026
@@ -279,6 +374,9 @@ else if (_data is not null)
     private IReadOnlyList<ManuelIndirimRow> _manuel = [];
     private bool _kumbaraLoading = true;
     private string? _selSebep;   // açık sebep drill
+    private IReadOnlyList<OdemeGrupRow> _odeme = [];       // B-112 (a) ödeme grubu + delta
+    private IReadOnlyList<IadeSebepRow> _iadeSebep = [];   // B-112 (b) iade sebebi (Type=0)
+    private IReadOnlyList<IndirimKaynakRow> _indKaynak = []; // B-112 (c) indirim kaynağı (Source)
 
     private PersistingComponentStateSubscription _persistSub;
 
@@ -320,22 +418,24 @@ else if (_data is not null)
     {
         var sw = PerfState.Start();
         _loading = true; _error = null; StateHasChanged();
+
+        var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+        var g2 = dun.AddDays(1);
+        (DateOnly start, DateOnly endExcl) = _period switch
+        {
+            "haftalik" => (dun.AddDays(-6), g2),
+            "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+            "ozel" => OzelAralik(),
+            _ => (dun, g2),
+        };
+        var son = endExcl.AddDays(-1);
+        _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+        // B-57 önceki eş-uzunluk dönem (kasiyer delta + B-112 ödeme delta)
+        int len = endExcl.DayNumber - start.DayNumber;
+        var pStart = start.AddDays(-len);
+
         try
         {
-            var dun = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
-            var g2 = dun.AddDays(1);
-            (DateOnly start, DateOnly endExcl) = _period switch
-            {
-                "haftalik" => (dun.AddDays(-6), g2),
-                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
-                "ozel" => OzelAralik(),
-                _ => (dun, g2),
-            };
-            var son = endExcl.AddDays(-1);
-            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
-            // B-57 önceki eş-uzunluk dönem (kasiyer delta)
-            int len = endExcl.DayNumber - start.DayNumber;
-            var pStart = start.AddDays(-len);
             var tData = Queries.GetPeriodAsync(start, endExcl);
             var tOps = Ref.GetOpsAsync(dun);
             var tKas = Queries.GetKasiyerDeltaAsync(start, endExcl, pStart, start);
@@ -349,16 +449,22 @@ else if (_data is not null)
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Operasyon", sw); StateHasChanged(); }
 
-        // Manuel indirim + Kumbara — ağır JOIN, arka planda yükle (B-98)
+        // Manuel indirim + Kumbara + B-112 hızlı kazanımlar — ağır/ek JOIN, arka planda yükle (B-98)
         try
         {
             var tKumbara = Ref.GetKumbaraAsync();
             var tManuel = Ref.GetManuelIndirimAsync();
-            await Task.WhenAll(tKumbara, tManuel);
+            var tOdeme = Ref.GetOdemeGrupAsync(start, endExcl, pStart);
+            var tIade = Ref.GetIadeSebepAsync(start, endExcl);
+            var tInd = Ref.GetIndirimKaynakAsync(start, endExcl);
+            await Task.WhenAll(tKumbara, tManuel, tOdeme, tIade, tInd);
             _kumbara = tKumbara.Result;
             _manuel = tManuel.Result;
+            _odeme = tOdeme.Result;
+            _iadeSebep = tIade.Result;
+            _indKaynak = tInd.Result;
         }
-        catch (Exception ex) { Logger.LogWarning(ex, "Manuel indirim verisi alınamadı"); _kumbara = []; _manuel = []; }
+        catch (Exception ex) { Logger.LogWarning(ex, "Manuel indirim / hızlı-kazanım verisi alınamadı"); _kumbara = []; _manuel = []; _odeme = []; _iadeSebep = []; _indKaynak = []; }
         finally { _kumbaraLoading = false; StateHasChanged(); }
     }
 
