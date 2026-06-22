@@ -13,6 +13,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-22 — Operasyon hızlı kazanım kartları (B-112 3/4 + B-111) + TODO dedup
+- **B-112** (6df2a39): Operasyon'a 3 kart — ödeme grubu+Δ (nakit-stres) / iade sebebi (RefundReasons.Type=0) / indirim kaynağı (SPC.Source). (d) kasa saatleri zaten vardı. Yeni `RefQueries.Operasyon.cs` partial + 3 record. Dönem-duyarlı.
+- **B-111** (5884ac6): WMS bekleyen doluluk kartı — TEMİZ J_ORDERS aşama split (`GetBekleyenDurumAsync`), emirAyr kirli kullanılmadı. Canlı toplanma 2/hazırlanan 4.283/temin 6.185.
+- **TODO dedup** (95ffc0f): B-111/B-112 Faz-2 asılları done-but-open düzeltildi (SABAH kopyalarıyla senkron).
+- Build yeşil, sorgular MCP-doğrulandı. Render login-gated (kullanıcı görsel onay). Detay: `docs/journal/bkm/2026-06-22.md`.
+
 ### 2026-06-19 — FIFO üretim tek-master (0→canlı) + uçtan-uca Ocak doğrulama (cross-repo: D:\Dev\fifo = ASIL PROJE)
 - **B-116 master ÜRETİLDİ+DOĞRULANDI** (commit bekliyor; ID düzeltme: eski B-113=UI-checklist çakışması → B-116): `fifo/v2-production/00_V2_MASTER_FULL.sql` (build-master.sh) — portable, $(ErpDb)/$(MaliyetDb), curated 16SP/11view/15tbl/seed. Boş BKMMaliyet_Test'e deploy+açılış+aylık+ortalama 0 hata, maliyetsiz=0, **Ocak Brüt 25,65M/%35,4 = rev2 birebir**.
 - FIFO SP fix: açılış irsHrk-kümülatif (geçmiş-doğru, anlık-stok bug), GARANTİ final-tier (SonAlış→kategori-imput→devre-dışı, **1-TL sabit kaldırıldı**), 04 dryrun kolon-fix.
