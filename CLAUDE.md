@@ -3,7 +3,7 @@
 > Kısa iskelet. Detaylar [`docs/00-INDEX.md`](docs/00-INDEX.md) altındadır. **İlk adım:** `docs/00-INDEX.md` → ilgili konu dosyası.
 
 **Son güncelleme:** 11 Haziran 2026 · **Repo:** `D:\Dev\pusula` (eski adı sqlserver-mcp-server)
-**Kullanıcı:** Fikri (BKM Kitap CFO)
+**Kullanıcı:** Fikri (BKM Kitap GM)
 
 ## Aktif Temalar (beş session harmanlanmış)
 

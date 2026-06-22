@@ -1,0 +1,176 @@
+@page "/muhasebe"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject MuhasebeQueries Muh
+@inject PerfState Perf
+@inject ILogger<Muhasebe> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Muhasebe / Kontrol — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Kapanış-sonrası müdahale denetimi · CAR + FAT + MHS · gider (G-%/6xx-7xx)</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Muhasebe / Kontrol</h1>
+</div>
+
+<div class="flex gap-2 mb-4 flex-wrap items-center">
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_donem" @bind:after="LoadAsync">
+        <option value="">Tüm kapanmış dönemler</option>
+        @foreach (var d in _donemler)
+        {
+            <option value="@d.Yil-@d.Ay">@($"{d.Ay:00}.{d.Yil}") (kapanış @d.Kapanis)</option>
+        }
+    </select>
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_kaynak" @bind:after="LoadAsync">
+        <option value="HEPSI">Tüm kaynak</option>
+        <option value="CAR">Cari (CAR)</option>
+        <option value="FAT">Fatura (FAT)</option>
+        <option value="MHS">Yevmiye (MHS)</option>
+    </select>
+    <label class="label cursor-pointer gap-2 text-sm">
+        <input type="checkbox" class="checkbox checkbox-sm" @bind="_sadeceGider" @bind:after="LoadAsync" />
+        <span>Sadece gider</span>
+    </label>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4">
+        <span>Kontrol çalıştırılamadı: @_error<br /><span class="opacity-70 text-xs">SP deploy edildi mi? (bkm.sp_KapanisMudahaleKontrol_v2) · Fin_AyKapanis dolu mu?</span></span>
+    </div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Kapanış-sonrası müdahaleler taranıyor…</p>
+}
+else if (_ozet.Count == 0)
+{
+    <div class="alert text-sm"><span>Seçili dönemde kapanış-sonrası müdahale bulunamadı — temiz.</span></div>
+}
+else
+{
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
+        <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Özet — satıra tıkla → evrak detayı (@_ozet.Count grup)</h3>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead><tr>
+                    <th>Dönem</th><th>Kaynak</th><th>Gider</th>
+                    <th class="text-right">Evrak</th><th class="text-right">Tutar</th>
+                    <th class="text-right">Maks Gün</th><th>Bayraklar</th><th class="text-right">Risk</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var r in _ozet)
+                {
+                    <tr class="hover cursor-pointer" @onclick="() => AcDetay(r)">
+                        <td class="font-medium">@r.Donem</td>
+                        <td><span class="badge badge-sm badge-ghost">@r.Kaynak</span></td>
+                        <td class="max-w-[220px] truncate" title="@r.GiderAd">@(r.GiderKod ?? r.GiderAd ?? "—")</td>
+                        <td class="text-right">@r.EvrakAdet</td>
+                        <td class="text-right font-semibold">@Tl(r.ToplamTutar)</td>
+                        <td class="text-right @(r.MaxGunSonra >= 60 ? "text-error font-bold" : r.MaxGunSonra >= 30 ? "text-warning" : "")">@r.MaxGunSonra g</td>
+                        <td class="text-xs">
+                            @if (r.YuvarlakAdet > 0) { <span class="badge badge-xs badge-warning mr-1">yuvarlak @r.YuvarlakAdet</span> }
+                            @if (r.MukerrerAdet > 0) { <span class="badge badge-xs badge-warning mr-1">mükerrer @r.MukerrerAdet</span> }
+                            @if (r.GirenOnayAyniAdet > 0) { <span class="badge badge-xs badge-ghost">tek-kişi @r.GirenOnayAyniAdet</span> }
+                        </td>
+                        <td class="text-right font-bold @RiskCls(r.MaxRiskSkor)">@r.MaxRiskSkor</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-base-content/50 text-[11px] mt-2">Maks Gün = kapanıştan kaç gün sonra dokunulmuş (≥60 kırmızı). Risk = severity×100 + gün + forensic. Giren=Onaylayan küçük ekipte yapısal.</div>
+    </div>
+}
+
+<Modal @bind-Open="_modal" Title="@_detayBaslik">
+    @if (_detayLoading)
+    {
+        <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Evraklar yükleniyor…</p>
+    }
+    else if (_detay.Count == 0)
+    {
+        <p class="text-base-content/50 text-sm py-4">Evrak bulunamadı.</p>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-xs">
+                <thead><tr>
+                    <th class="text-right">Risk</th><th>Evrak No</th>
+                    <th>Belge</th><th>Değişim</th><th class="text-right">Gün</th>
+                    <th>Giren</th><th>Onaylayan</th><th class="text-right">Tutar</th><th>Not</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var d in _detay)
+                {
+                    <tr>
+                        <td class="text-right font-bold @RiskCls(d.RiskSkor)">@d.RiskSkor</td>
+                        <td class="font-mono text-xs">@d.EvrakNo</td>
+                        <td>@d.BelgeTarihi</td>
+                        <td class="@(d.GunSonra >= 60 ? "text-error font-semibold" : "")">@d.DegisimTarihi</td>
+                        <td class="text-right">@d.GunSonra</td>
+                        <td>@(d.Giren ?? "—") @(d.GirenOnaylayanAyni ? "⚠" : "")</td>
+                        <td>@(d.Onaylayan ?? "—")</td>
+                        <td class="text-right font-semibold">@Tl(d.Tutar)</td>
+                        <td class="max-w-[260px] truncate text-xs text-base-content/60" title="@d.Notu">@d.Notu</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-base-content/50 text-[11px] mt-2">⚠ = giren ve onaylayan aynı kişi. Gün = kapanıştan sonra. RiskSkor yüksek önce.</div>
+    }
+</Modal>
+
+@code {
+    private IReadOnlyList<(int Yil, int Ay, string Kapanis)> _donemler = [];
+    private IReadOnlyList<KontrolOzetRow> _ozet = [];
+    private IReadOnlyList<KontrolDetayRow> _detay = [];
+    private bool _loading = true, _detayLoading, _modal;
+    private string? _error, _detayBaslik;
+    private string _donem = "";          // "" = tüm dönem, yoksa "Yil-Ay"
+    private string _kaynak = "HEPSI";
+    private bool _sadeceGider = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _donemler = await Muh.GetDonemlerAsync(); }
+        catch (Exception ex) { Logger.LogWarning(ex, "Dönem listesi alınamadı"); }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        var sw = PerfState.Start();
+        try
+        {
+            int? yil = null, ay = null;
+            if (!string.IsNullOrEmpty(_donem))
+            {
+                var p = _donem.Split('-');
+                yil = int.Parse(p[0]); ay = int.Parse(p[1]);
+            }
+            _ozet = await Muh.GetOzetAsync(yil, ay, _kaynak, _sadeceGider);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Muhasebe kontrol özet hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
+        finally { _loading = false; Perf.Report("Muhasebe", sw); StateHasChanged(); }
+    }
+
+    private async Task AcDetay(KontrolOzetRow r)
+    {
+        // Donem "AA.YYYY" → ay/yıl
+        var ay = int.Parse(r.Donem[..2]);
+        var yil = int.Parse(r.Donem[3..]);
+        _detayBaslik = $"{r.Donem} · {r.Kaynak} · {(r.GiderKod ?? r.GiderAd ?? "tüm")}";
+        _modal = true; _detayLoading = true; _detay = []; StateHasChanged();
+        try { _detay = await Muh.GetDetayAsync(yil, ay, r.Kaynak, r.GiderKod, _sadeceGider); }
+        catch (Exception ex) { Logger.LogError(ex, "Muhasebe kontrol detay hatası"); }
+        finally { _detayLoading = false; StateHasChanged(); }
+    }
+
+    private static string RiskCls(int risk) => risk >= 300 ? "text-error" : risk >= 200 ? "text-warning" : risk >= 100 ? "text-info" : "text-base-content/60";
+
+    private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+}
