@@ -3,7 +3,10 @@
 **Tarih:** 2026-06-22
 **Proje:** `bkm`
 **Yazan:** Fikri / Claude
-**Durum:** `Taslak`
+**Durum:** `Onaylandı — sıraya alındı (B-117 sonrası)`
+**TODO ID:** **B-118** (eski "B-115" YANLIŞTI — B-115 = FIFO negatif-marj, çakışma 22.06 düzeltildi)
+
+> ⚠️ **B-117'den AYRI track.** B-117 = kapanış-sonrası müdahale **forensic Kontrol paneli** (`/muhasebe`, SP sarıcı, yazıldı). Bu plan (B-118) = **mizan/likidite mali-tablo dashboard** (nakit/cari/KDV) — ayrı sayfa, ayrı amaç. İkisi "muhasebe" adını paylaşıyor ama karıştırma.
 
 ---
 
@@ -36,7 +39,7 @@ Dashboard tamamen satış/envanter/operasyon/müşteri odaklı; back-office (muh
 - `dashboard/Models/NavRegistry.cs` (veya nav neredeyse) — Muhasebe linki.
 - `sema/entities.yaml` + `bridges.yaml` + `codes.yaml` — mhs domeni.
 - `sorgular/2026-06-22-muhasebe-kesif.sql` — keşif arşivi.
-- `TODO.md` — plan-25 maddeleri (yeni ID: B-115).
+- `TODO.md` — plan-25 maddeleri (ID: **B-118**).
 
 **Tahmini boyut:** ~5 dosya (3 yeni kod + sema + arşiv) / ~250 satır. Sayfa <300 satır hedef, gerekirse alt-component.
 
@@ -77,11 +80,13 @@ Dashboard tamamen satış/envanter/operasyon/müşteri odaklı; back-office (muh
 
 ## 7. Adımlar
 
-1. [ ] **B-115.1** Keşif tamamlama: mhsAnaHsp grup eşlemesi, KDV hesap kodları (191/391), nakit hesap seti netleştir + SQL arşivle.
-2. [ ] **B-115.2** `MuhasebeQueries.cs` + `MuhasebeModels.cs` — mizan / nakit / cari / KDV / özet sorguları.
-3. [ ] **B-115.3** `Muhasebe.razor` — özet kart + mizan tablo + drill (alt-component gerekrse).
-4. [ ] **B-115.4** Nav linki + Türkçe UI + DaisyUI token.
-5. [ ] **B-115.5** Build + invariant/mutabakat doğrula + sema + TODO senkron + commit.
+> ⚠️ Adım 2-3'te `MuhasebeQueries.cs`/`Muhasebe.razor` **zaten B-117 Kontrol paneli tarafından kullanılıyor** — bu mizan dashboard AYRI dosyalara gitmeli (`MizanQueries.cs` + `Mizan.razor`, route `/mizan`) ki iki track çakışmasın.
+
+1. [ ] **B-118.1** Keşif tamamlama: mhsAnaHsp grup eşlemesi, KDV hesap kodları (191/391), nakit hesap seti netleştir + SQL arşivle.
+2. [ ] **B-118.2** `MizanQueries.cs` + `MizanModels.cs` — mizan / nakit / cari / KDV / özet sorguları.
+3. [ ] **B-118.3** `Mizan.razor` (route `/mizan`) — özet kart + mizan tablo + drill (alt-component gerekirse).
+4. [ ] **B-118.4** Nav linki + Türkçe UI + DaisyUI token.
+5. [ ] **B-118.5** Build + invariant/mutabakat doğrula + sema + TODO senkron + commit.
 
 ## 8. İlişkili
 - Veri-keşfi bu oturum (2026-06-22): mhs şeması 54,96M, Tek Düzen, sirketID=dönem.
