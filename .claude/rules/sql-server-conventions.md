@@ -152,6 +152,7 @@ DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
   `WHERE u.stkID IN (SELECT stkID FROM urn WHERE stkKod=@q UNION SELECT urnBrkdStkID FROM urnBrkd WHERE urnBarkod=@q AND urnBrkdOnce=0)` → 0.14s (42×).
 - Genel kural: `OR` ile birden çok tabloya yayılan filtre → optimizer kötü plan; `IN (alt-sorgu)` veya `UNION` ile ayır.
 - Korelasyonlu agregat (bakiye/stok) çok-satırlı derived-table JOIN yerine **OUTER APPLY** ile sadece eşleşen ≤N satıra indir (tüm view agg etme).
+- **TVF'i korelasyonlu alt-sorguda satır-başı çağırma → timeout (19.06 dersi).** `WHERE EXISTS(SELECT 1 FROM fn_SonGecerliFiyat(@d,1) f WHERE f.fStkID=u.StkId)` N hedef için TVF'i N kez (her seferinde tüm tabloyu/6.5M satırı window'layıp) çalıştırır → timeout. **Doğrusu:** TVF'in İÇ mantığını çıkar, hedef ID filtresini scan'e GÖM (`WHERE ... AND f.fStkID IN (SELECT StkId FROM #hedef)`), `ROW_NUMBER` sadece hedef satırlarda koşsun. Aynı sonuç, saniyeler. (Aynı "filtreyi aşağı it" ilkesi — `fn_SonGecerliFiyat` 619 üründe TVF-per-row timeout, restrict-then-rownumber ile hızlandı.)
 
 ## Dapper DateOnly ↔ SQL `date` (17.06 dersi)
 
