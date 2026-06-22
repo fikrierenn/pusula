@@ -1,0 +1,38 @@
+@using GmDashboard.Models
+
+@* Mizan ağacı tek düğüm (recursive). Kendi <tr>'ını + (açıksa) çocuklarını basar → tablo içine düzleşir. *@
+<tr class="hover @(Node.YaprakMi ? "" : "cursor-pointer")" @onclick="Topla">
+    <td class="font-mono whitespace-nowrap" style="padding-left:@(Derinlik * 16 + 8)px">
+        @if (!Node.YaprakMi)
+        {
+            <span class="inline-block w-3 text-base-content/50">@(_acik ? "▾" : "▸")</span>
+        }
+        else
+        {
+            <span class="inline-block w-3"></span>
+        }
+        <span class="@(Node.Seviye == 1 ? "font-semibold" : "")">@Node.Kod</span>
+    </td>
+    <td class="max-w-[320px] truncate @(Node.Seviye == 1 ? "font-semibold" : "text-base-content/80")" title="@Node.Ad">@Node.Ad</td>
+    <td class="text-right tabular-nums">@Tl(Node.Borc)</td>
+    <td class="text-right tabular-nums">@Tl(Node.Alacak)</td>
+    <td class="text-right tabular-nums font-semibold @Cls(Node.Bakiye)">@Tl(Node.Bakiye)</td>
+</tr>
+@if (_acik)
+{
+    @foreach (var c in Node.Cocuklar)
+    {
+        <MizanDugum Node="c" Derinlik="Derinlik + 1" />
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public MizanNode Node { get; set; } = default!;
+    [Parameter] public int Derinlik { get; set; }
+    private bool _acik;
+
+    private void Topla() { if (!Node.YaprakMi) _acik = !_acik; }
+
+    private static string Cls(decimal b) => b > 0 ? "text-base-content" : b < 0 ? "text-info" : "text-base-content/40";
+    private static string Tl(decimal v) => v == 0 ? "—" : v.ToString("#,##0.00", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
