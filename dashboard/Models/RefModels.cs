@@ -136,6 +136,16 @@ public record IndirimKaynakRow(int Source, string Ad, decimal Indirim, int Fis);
 /// <summary>Marka alış-satış rotasyon satırı (geçen ay).</summary>
 public record MarkaRotasyonRow(string Marka, int SatisAdet, int AlisAdet, decimal SatisCiro);
 
+/// <summary>Tedarikçi/yayınevi performans scorecard (B-110, son 12 ay).
+/// Devir = yıllık satış adet / anlık stok adet (sermaye verimliliği). İade oranı = iade tutar / satış brüt.</summary>
+public record TedarikciPerfRow(string Marka, int SatisAdet, int IadeAdet, decimal NetCiro, decimal SatisBrut, decimal IadeTutar, int StokAdet)
+{
+    /// <summary>İade tutar / brüt satış tutar (0–1).</summary>
+    public decimal IadeOrani => SatisBrut > 0 ? IadeTutar / SatisBrut : 0;
+    /// <summary>Yıllık stok devir hızı. Stok=0 → null (stok tükenmiş, hızlı dönmüş).</summary>
+    public double? DevirHizi => StokAdet > 0 ? (double)SatisAdet / StokAdet : null;
+}
+
 /// <summary>Depo WMS günlük toplama verimi.</summary>
 public record DepoWmsData(int? BugunIslem, int? BugunAdet, IReadOnlyList<DepoWmsTrend> Trend);
 /// <summary>Depo WMS günlük trend satırı.</summary>

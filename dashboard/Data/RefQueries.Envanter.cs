@@ -503,4 +503,41 @@ public sealed partial class RefQueries
         });
         return rows.ToList();
     }
+
+    /// <summary>Tedarikçi/yayınevi performans scorecard (B-110) — son 12 ay marka bazlı:
+    /// net ciro · iade oranı · stok devir hızı (yıllık satış adet / anlık stok adet) → "sipariş-kes" sinyali.
+    /// İç-operasyon + ev-markası (Markasız/Sınav/BKM) hariç; satış adet ≥ 50 eşiği gürültü filtresi.
+    /// Satış agregatı + stok agregatı AYRI derived-table, mrkID'de JOIN (satır-başı OUTER APPLY timeout tuzağından kaçınır).</summary>
+    public async Task<IReadOnlyList<TedarikciPerfRow>> GetTedarikciPerformansAsync(DateOnly bas)
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<TedarikciPerfRow>($"""
+            SELECT TOP 30 sv.Marka, sv.SatisAdet, sv.IadeAdet, sv.NetCiro, sv.SatisBrut, sv.IadeTutar,
+                CAST(ISNULL(st.StokAdet, 0) AS int) AS StokAdet
+            FROM (
+                SELECT m.mrkID, m.mrkAd AS Marka,
+                    CAST(-SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehAdetN ELSE 0 END) AS int) AS SatisAdet,
+                    CAST(SUM(CASE WHEN a.ehTip IN (3,5,101) THEN a.ehAdetN ELSE 0 END) AS int) AS IadeAdet,
+                    SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutarN WHEN a.ehTip IN (3,5,101) THEN -a.ehTutarN ELSE 0 END) AS NetCiro,
+                    SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehTutarN ELSE 0 END) AS SatisBrut,
+                    SUM(CASE WHEN a.ehTip IN (3,5,101) THEN a.ehTutarN ELSE 0 END) AS IadeTutar
+                FROM DerinSISBkm.dbo.irsHrk a WITH(NOLOCK)
+                JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = a.ehstkID
+                JOIN DerinSISBkm.dbo.urnMrk m WITH(NOLOCK) ON m.mrkID = u.urnMrkID
+                WHERE a.ehTrhS >= @Bas AND a.ehMekan IN ({LokasyonConfig.SubelerVeDepo})
+                  AND m.mrkID NOT IN (0, 269, 2101, 5972, 10911)
+                GROUP BY m.mrkID, m.mrkAd
+                HAVING -SUM(CASE WHEN a.ehTip IN (4,100) THEN a.ehAdetN ELSE 0 END) >= 50
+            ) sv
+            LEFT JOIN (
+                SELECT u2.urnMrkID, SUM(s.stok) AS StokAdet
+                FROM DerinSISBkm.dbo.stokSonAltDepo_vw s WITH(NOLOCK)
+                JOIN DerinSISBkm.dbo.urn u2 WITH(NOLOCK) ON u2.stkID = s.ehstkID
+                WHERE s.ehAltDepo = 0 AND s.stok > 0 AND s.ehMekan IN ({LokasyonConfig.SubelerVeDepo})
+                GROUP BY u2.urnMrkID
+            ) st ON st.urnMrkID = sv.mrkID
+            ORDER BY sv.NetCiro DESC
+            """, new { Bas = new DateTime(bas.Year, bas.Month, bas.Day) });
+        return rows.ToList();
+    }
 }

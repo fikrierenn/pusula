@@ -212,3 +212,11 @@ metrics:
     last_verified: 2026-06-19
   fifo_fiyat_0_olamaz: "FifoKatman.BirimMaliyet<=0 KESİNLİKLE yasak (fifo-domain §6). 0 = sessiz %100-marj. GATE: SELECT COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı hariç) = 0."
   fifo_non_inventory: "Devre-dışı = stkID-CURATED (isim-pattern DEĞİL — fifo-domain §3): 'Geri Dönüşüm' çocuk kitabı, 'Poşet Dosya' kırtasiye, 'Big Babol Poşet' sakız GERÇEK ürün. Gerçek non-inventory: BKM bagging-poşet, kargo gideri (Zkargo), hediye çeki, iskonto/fiyat-farkı, demirbaş, yemek-ilk-madde, isimsiz-obsolete."
+  marka_devir:   # 22.06 — B-110 tedarikçi/yayınevi performans scorecard
+    aciklama: "Marka/yayınevi (urn.urnMrkID → urnMrk.mrkID) bazında sermaye verimliliği = stok devir hızı + iade oranı."
+    devir: "son 12 ay satış adet / anlık stok adet. Satış adet = -SUM(ehAdetN) ehTip IN(4,100). Stok = SUM(stokSonAltDepo_vw.stok) ehAltDepo=0, mekan 1/4477/4478/12. <1,5× = sermaye tuzağı (sipariş-kes sinyali), 1,5–3× izle, >3× sağlıklı. stok=0 → null (tükenmiş)."
+    iade_orani: "iade tutar / brüt satış tutar. iade = ehTip IN(3,5,101) ehTutarN; brüt = ehTip IN(4,100). >%10 kırmızı bayrak."
+    dislama: "İç-operasyon + ev-markası: mrkID 0=Markasız, 269=BKM Kitap, 2101=Sınav Okulları, 5972=Sınav Kıyafet, 10911=BKM-Mağaza. + satış adet ≥50 gürültü eşiği."
+    perf: "Satış agregatı + stok agregatı AYRI derived-table, mrkID'de JOIN (~17s). Satır-başı OUTER APPLY stok korelasyonu → timeout (sql-server-conventions filtreyi-aşağı-it dersi)."
+    bulgu: "22.06: Faber-Castell devir 0,46× (636K stok, sermaye tuzağı) · Yapı Kredi 1,28× · Bilgi Sarmal 9,7× ama iade %12,4. PARAF/Fenomen/Timaş Çocuk sağlıklı."
+    last_verified: 2026-06-22

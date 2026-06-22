@@ -230,6 +230,68 @@ else if (_d is not null)
         </div>
     </div>
     }
+
+    @if (_tedPerfLoading || _tedPerf.Count > 0)
+    {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Tedarikçi / Yayınevi Performans — son 12 ay (sermaye verimliliği · Top 30 net ciro)</h3>
+            @if (_tedPerfLoading)
+            {
+                <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Marka devir/iade hesaplanıyor…</p>
+            }
+            else
+            {
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead><tr>
+                        <th>Marka / Yayınevi</th>
+                        <th class="text-right">Net Ciro</th>
+                        <th class="text-right">Stok</th>
+                        <th class="text-right">Devir</th>
+                        <th class="text-right">İade</th>
+                        <th>Sinyal</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var r in _tedPerf)
+                    {
+                        var devirCls = r.DevirHizi is null ? "text-info" : r.DevirHizi < 1.5 ? "text-error" : r.DevirHizi < 3 ? "text-warning" : "text-success";
+                        var iadeCls = r.IadeOrani > 0.10m ? "text-error font-semibold" : "text-base-content/60";
+                        <tr>
+                            <td class="font-medium">@r.Marka</td>
+                            <td class="text-right">@Tl(r.NetCiro)</td>
+                            <td class="text-right text-base-content/60">@Num(r.StokAdet)</td>
+                            <td class="text-right font-bold @devirCls">@(r.DevirHizi is null ? "—" : $"{r.DevirHizi.Value:0.0}×")</td>
+                            <td class="text-right @iadeCls">@($"%{r.IadeOrani * 100:0.0}")</td>
+                            <td>
+                                @if (r.DevirHizi is null)
+                                {
+                                    <span class="badge badge-sm badge-info">stok yok</span>
+                                }
+                                else if (r.DevirHizi < 1.5)
+                                {
+                                    <span class="badge badge-sm badge-error">sipariş kes</span>
+                                }
+                                else if (r.DevirHizi < 3)
+                                {
+                                    <span class="badge badge-sm badge-warning">izle</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-sm badge-success">sağlıklı</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-base-content/50 text-[11px] mt-2">Devir = son 12 ay satış adet / anlık stok adet. &lt;1,5× = sermaye tuzağı (sipariş kes), 1,5–3× izle, &gt;3× sağlıklı. İade oranı = iade tutar / brüt satış; &gt;%10 kırmızı. İç-operasyon (Sınav/BKM/Markasız) hariç.</div>
+            }
+        </div>
+    </div>
+    }
+
     <Modal @bind-Open="_modalOluStok" Title="Ölü Stok — 90g Satışsız Ürünler">
         <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <span class="text-base-content/50 text-xs">Stok değeri büyük önce · S90=0 · YasGun≥90 · Dergi/Sınav/HC hariç</span>
@@ -313,6 +375,8 @@ else if (_d is not null)
     private IReadOnlyList<MarjRow> _marj = [];
     private bool _marjLoading = true;   // marj ağır (~40s) → ana sayfadan ayrı, arka planda yüklenir
     private IReadOnlyList<MarkaRotasyonRow> _rot = [];
+    private IReadOnlyList<TedarikciPerfRow> _tedPerf = [];
+    private bool _tedPerfLoading = true;   // B-110: 12-ay marka taraması + stok, arka planda (~3s)
     private HcOzet? _hc;
     private bool _modalUrun;
     private bool _urunLoading;
@@ -363,6 +427,11 @@ else if (_d is not null)
             catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
             finally { _loading = false; Perf.Report("Envanter", sw); StateHasChanged(); }
         }
+
+        // Tedarikçi/yayınevi performans (B-110, ~3s) — marj'dan önce, hızlı görünsün.
+        try { _tedPerf = await Ref.GetTedarikciPerformansAsync(DateOnly.FromDateTime(DateTime.Today).AddYears(-1)); }
+        catch (Exception ex) { Logger.LogWarning(ex, "Tedarikçi performans alınamadı — kart boş gösterilecek"); }
+        finally { _tedPerfLoading = false; StateHasChanged(); }
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
         try { _marj = await Ref.GetMarjAsync(); }
