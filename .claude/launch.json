@@ -5,7 +5,8 @@
       "name": "blazor-dash",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "dashboard"],
-      "port": 5112
+      "port": 5112,
+      "autoPort": false
     }
   ]
 }

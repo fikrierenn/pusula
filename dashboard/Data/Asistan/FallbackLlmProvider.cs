@@ -1,15 +1,15 @@
 namespace GmDashboard.Data.Asistan;
 
 /// <summary>
-/// Çok-katmanlı sağlayıcı zinciri (plan-21, 18.06): OpenRouter (birincil) → Gemini → Groq.
+/// Çok-katmanlı sağlayıcı zinciri (plan-21/26, 22.06): Z.ai → OpenRouter → Gemini → Groq.
 /// Sıradaki Hazır sağlayıcı denenir; hata/quota verirse bir sonrakine düşülür (loglu, sessiz değil). Hepsi yoksa hata.
 /// </summary>
 public sealed class FallbackLlmProvider(
-    OpenRouterProvider openRouter, GeminiProvider gemini, GroqProvider groq, ILogger<FallbackLlmProvider> log) : ILlmProvider
+    ZaiProvider zai, OpenRouterProvider openRouter, GeminiProvider gemini, GroqProvider groq, ILogger<FallbackLlmProvider> log) : ILlmProvider
 {
-    // Öncelik sırası — OpenRouter birincil (Nex-N2-Pro free, function-calling, büyük context).
+    // Öncelik sırası — Z.ai birincil (free GLM-Flash, function-calling), sonra OpenRouter free havuzu.
     private IEnumerable<(string Ad, ILlmProvider P)> Zincir =>
-        [("OpenRouter", openRouter), ("Gemini", gemini), ("Groq", groq)];
+        [("Z.ai", zai), ("OpenRouter", openRouter), ("Gemini", gemini), ("Groq", groq)];
 
     public bool Hazir => Zincir.Any(x => x.P.Hazir);
 
