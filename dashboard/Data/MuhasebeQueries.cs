@@ -48,4 +48,46 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
             """);
         return rows.ToList();
     }
+
+    // ── Ayarlar: Fin_AyKapanis yönetimi (B-117/d) — ay kapanış tarihleri ekle/güncelle/sil ──
+
+    /// <summary>Tüm kapanış kayıtları (yönetim listesi), en yeni önce.</summary>
+    public async Task<IReadOnlyList<KapanisDonem>> GetKapanisListAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<KapanisDonem>("""
+            SELECT TOP 200 DonemYil, DonemAy, KapanisDT, Aciklama, KayitDT
+            FROM bkm.Fin_AyKapanis ORDER BY DonemYil DESC, DonemAy DESC
+            """);
+        return rows.ToList();
+    }
+
+    /// <summary>Ay kapanışı ekle/güncelle (PK = DonemYil+DonemAy). Parametreli + aralık guard. KayitDT server-side.</summary>
+    public async Task UpsertKapanisAsync(int yil, int ay, DateTime kapanisDt, string? aciklama)
+    {
+        if (yil is < 2020 or > 2035) throw new ArgumentOutOfRangeException(nameof(yil), "Yıl 2020–2035 aralığında olmalı.");
+        if (ay is < 1 or > 12) throw new ArgumentOutOfRangeException(nameof(ay), "Ay 1–12 aralığında olmalı.");
+        await using var conn = await db.OpenAsync();
+        // MERGE: aynı dönem varsa KapanisDT/Aciklama güncelle, yoksa ekle. Tek atomik ifade.
+        const string sql = """
+            MERGE bkm.Fin_AyKapanis AS t
+            USING (SELECT @yil AS DonemYil, @ay AS DonemAy) AS s
+              ON t.DonemYil = s.DonemYil AND t.DonemAy = s.DonemAy
+            WHEN MATCHED THEN UPDATE SET t.KapanisDT = @kapanisDt, t.Aciklama = @aciklama, t.KayitDT = SYSDATETIME()
+            WHEN NOT MATCHED THEN
+              INSERT (DonemYil, DonemAy, KapanisDT, Aciklama, KayitDT)
+              VALUES (@yil, @ay, @kapanisDt, @aciklama, SYSDATETIME());
+            """;
+        var n = await conn.ExecuteAsync(sql, new { yil, ay, kapanisDt, aciklama });
+        logger.LogInformation("Fin_AyKapanis upsert {Yil}-{Ay:00} → {Tarih:dd.MM.yyyy} ({N} satır)", yil, ay, kapanisDt, n);
+    }
+
+    /// <summary>Ay kapanışı sil (PK ile). UI onay ister.</summary>
+    public async Task DeleteKapanisAsync(int yil, int ay)
+    {
+        await using var conn = await db.OpenAsync();
+        var n = await conn.ExecuteAsync(
+            "DELETE FROM bkm.Fin_AyKapanis WHERE DonemYil = @yil AND DonemAy = @ay", new { yil, ay });
+        logger.LogInformation("Fin_AyKapanis sil {Yil}-{Ay:00} ({N} satır)", yil, ay, n);
+    }
 }

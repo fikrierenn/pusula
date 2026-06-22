@@ -8,6 +8,9 @@ public record KontrolOzetRow(
     int SonradanDegAdet, int GecGirisAdet, int YuvarlakAdet, int MukerrerAdet, int GirenOnayAyniAdet,
     int MaxRiskSkor, int ToplamRiskSkor);
 
+/// <summary>Ay kapanış kaydı (bkm.Fin_AyKapanis) — Ayarlar formu satırı. Kontrol panelinin tarama dönemini belirler.</summary>
+public record KapanisDonem(int DonemYil, int DonemAy, DateTime KapanisDT, string? Aciklama, DateTime KayitDT);
+
 /// <summary>Kapanış-sonrası müdahale DETAY satırı (@Mod='DETAY'). Giren/Onaylayan = drn1.insAd.</summary>
 public record KontrolDetayRow(
     string Donem, string Kaynak, long EvrakID, string EvrakNo,

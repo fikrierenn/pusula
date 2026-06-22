@@ -1,0 +1,148 @@
+@page "/ayarlar"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject MuhasebeQueries Muh
+@inject IJSRuntime JS
+@inject ILogger<Ayarlar> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Ayarlar — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Sistem ayarları · ay kapanış tarihleri</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Ayarlar</h1>
+</div>
+
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4 max-w-3xl">
+    <h3 class="text-sm font-semibold text-base-content/90 mb-1">Ay Kapanışı (Fin_AyKapanis)</h3>
+    <p class="text-[11px] text-base-content/50 mb-4">
+        Bu tarihler <a href="/muhasebe" class="link link-hover text-info">Muhasebe / Kontrol</a> panelinin
+        kapanış-sonrası müdahale taramasını belirler. Bir döneme tarih girilmezse o dönem taranmaz.
+    </p>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end mb-2">
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Yıl</span>
+            <input type="number" min="2020" max="2035" class="input input-bordered input-sm" @bind="_yil" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Ay</span>
+            <select class="select select-bordered select-sm" @bind="_ay">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m">@($"{m:00}")</option>
+                }
+            </select>
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Kapanış Tarihi</span>
+            <input type="date" class="input input-bordered input-sm" @bind="_tarih" />
+        </label>
+        <button class="btn btn-primary btn-sm" @onclick="Kaydet" disabled="@_kaydediliyor">
+            @if (_kaydediliyor) { <span class="loading loading-spinner loading-xs"></span> }
+            @(_duzenleMod ? "Güncelle" : "Ekle")
+        </button>
+    </div>
+    <label class="form-control mb-2">
+        <span class="label-text text-xs mb-1">Açıklama (opsiyonel)</span>
+        <input type="text" maxlength="400" class="input input-bordered input-sm" @bind="_aciklama" placeholder="örn. Mayıs kapanışı" />
+    </label>
+
+    @if (_mesaj is not null)
+    {
+        <div class="alert @(_mesajHata ? "alert-error" : "alert-success") text-sm py-2 mt-1">
+            <span>@_mesaj</span>
+        </div>
+    }
+</div>
+
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] max-w-3xl">
+    <h3 class="text-sm font-semibold text-base-content/90 mb-3">Kayıtlı Kapanışlar (@_liste.Count)</h3>
+    @if (_yukleniyor)
+    {
+        <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Yükleniyor…</p>
+    }
+    else if (_liste.Count == 0)
+    {
+        <p class="text-base-content/50 text-sm py-3">Henüz kapanış kaydı yok.</p>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead><tr>
+                    <th>Dönem</th><th>Kapanış</th><th>Açıklama</th><th>Kayıt</th><th class="text-right">İşlem</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var k in _liste)
+                {
+                    <tr class="hover">
+                        <td class="font-medium">@($"{k.DonemAy:00}.{k.DonemYil}")</td>
+                        <td>@k.KapanisDT.ToString("dd.MM.yyyy")</td>
+                        <td class="max-w-[220px] truncate text-base-content/70" title="@k.Aciklama">@(k.Aciklama ?? "—")</td>
+                        <td class="text-xs text-base-content/40">@k.KayitDT.ToString("dd.MM.yyyy")</td>
+                        <td class="text-right whitespace-nowrap">
+                            <button class="btn btn-ghost btn-xs" @onclick="() => Duzenle(k)">Düzenle</button>
+                            <button class="btn btn-ghost btn-xs text-error" @onclick="() => Sil(k)">Sil</button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<KapanisDonem> _liste = [];
+    private int _yil = 2026, _ay = 1;
+    private DateTime? _tarih;
+    private string? _aciklama;
+    private bool _duzenleMod, _kaydediliyor, _yukleniyor = true, _mesajHata;
+    private string? _mesaj;
+
+    protected override async Task OnInitializedAsync() => await YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true; StateHasChanged();
+        try { _liste = await Muh.GetKapanisListAsync(); }
+        catch (Exception ex) { Logger.LogError(ex, "Kapanış listesi yüklenemedi"); _mesaj = "Liste yüklenemedi."; _mesajHata = true; }
+        finally { _yukleniyor = false; StateHasChanged(); }
+    }
+
+    private async Task Kaydet()
+    {
+        _mesaj = null;
+        if (_tarih is null) { _mesaj = "Kapanış tarihi zorunlu."; _mesajHata = true; return; }
+        _kaydediliyor = true; StateHasChanged();
+        try
+        {
+            await Muh.UpsertKapanisAsync(_yil, _ay, _tarih.Value, string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
+            _mesaj = $"{_ay:00}.{_yil} kapanışı kaydedildi."; _mesajHata = false;
+            _duzenleMod = false; _aciklama = null; _tarih = null;
+            await YukleAsync();
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Kapanış kaydı hatası"); _mesaj = $"Kayıt başarısız: {ex.Message}"; _mesajHata = true; }
+        finally { _kaydediliyor = false; StateHasChanged(); }
+    }
+
+    private void Duzenle(KapanisDonem k)
+    {
+        _yil = k.DonemYil; _ay = k.DonemAy; _tarih = k.KapanisDT.Date; _aciklama = k.Aciklama;
+        _duzenleMod = true; _mesaj = null;
+    }
+
+    private async Task Sil(KapanisDonem k)
+    {
+        var onay = await JS.InvokeAsync<bool>("confirm", $"{k.DonemAy:00}.{k.DonemYil} kapanışı silinsin mi? Bu dönem artık Kontrol taramasına girmez.");
+        if (!onay) return;
+        try
+        {
+            await Muh.DeleteKapanisAsync(k.DonemYil, k.DonemAy);
+            _mesaj = $"{k.DonemAy:00}.{k.DonemYil} silindi."; _mesajHata = false;
+            await YukleAsync();
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Kapanış silme hatası"); _mesaj = $"Silme başarısız: {ex.Message}"; _mesajHata = true; StateHasChanged(); }
+    }
+}
