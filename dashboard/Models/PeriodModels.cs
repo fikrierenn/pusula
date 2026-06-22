@@ -128,6 +128,12 @@ public record CodIl(string Sehir, int Siparis, int Iade, decimal Oran);
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 
+/// <summary>B-111 WMS bekleyen doluluk — aşama split (anlık, SENDDATE NULL). Toplanma=raflanmayı bekleyen (en kritik).</summary>
+public record BekleyenDurum(int ToplanmaBekleyen, int Hazirlanan, int TeminBekleyen)
+{
+    public int Toplam => ToplanmaBekleyen + Hazirlanan + TeminBekleyen;
+}
+
 /// <summary>Mağaza hedef-gerçekleşen satırı (MTD net × aylık hedef × gerçekleşme %).</summary>
 public record HedefMagaza(int MekanId, string Ad, decimal Net, decimal Hedef, decimal? GerPct);
 

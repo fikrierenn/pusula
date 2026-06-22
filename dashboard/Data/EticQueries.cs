@@ -229,6 +229,21 @@ public sealed class EticQueries(Db db)
             .Select(k => new BekleyenBucket(k, raw.GetValueOrDefault(k, 0))).ToList();
     }
 
+    /// <summary>B-111 WMS bekleyen doluluk — aşama split (anlık, kargoya çıkmamış). L3 raporu mantığı, zincir toplam.
+    /// 1000=toplanma bekleyen (raflanmayı bekleyen, en kritik) · 3001/3003/3004=hazırlanan · 3006=temin bekleyen.</summary>
+    public async Task<BekleyenDurum> GetBekleyenDurumAsync()
+    {
+        await using var conn = await db.OpenJokerAsync();
+        const string sql = """
+            SELECT SUM(CASE WHEN o.STATUS=1000 THEN 1 ELSE 0 END)                AS ToplanmaBekleyen,
+                   SUM(CASE WHEN o.STATUS IN (3001,3003,3004) THEN 1 ELSE 0 END) AS Hazirlanan,
+                   SUM(CASE WHEN o.STATUS=3006 THEN 1 ELSE 0 END)                AS TeminBekleyen
+            FROM dbo.J_ORDERS o
+            WHERE o.SENDDATE IS NULL AND o.STATUS IN (1000,3001,3003,3004,3006);
+            """;
+        return await conn.QueryFirstOrDefaultAsync<BekleyenDurum>(sql) ?? new BekleyenDurum(0, 0, 0);
+    }
+
     /// <summary>E-ticaret (JOKER) kategori mix — verilen dönem. Kategori = J_ITEMS.DERINSIS_LOGOGRUP (DerinSIS Kategori3 grain, linked gerekmez).</summary>
     public async Task<IReadOnlyList<EticKategoriRow>> GetEticKategoriAsync(DateOnly start, DateOnly endExcl)
     {

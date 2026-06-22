@@ -4,6 +4,7 @@
 @implements IDisposable
 @inject Queries Queries
 @inject RefQueries Ref
+@inject EticQueries Etic
 @inject PerfState Perf
 @inject IJSRuntime JS
 @inject ILogger<Operasyon> Logger
@@ -122,6 +123,29 @@ else if (_data is not null)
                              ValueText="@(t => $"{Num(t.Adet)} adet · {t.Islem} emir")" />
             </div>
         }
+        @* B-111 WMS bekleyen doluluk — e-tic aşama split (anlık, kargoya çıkmamış) *@
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0">
+            <h3 class="text-sm font-semibold text-base-content/90 mb-1 flex items-center gap-1.5">Bekleyen Sipariş — Doluluk (anlık)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/55 ml-auto">e-tic · kargoya çıkmamış</span></h3>
+            <p class="text-[11px] text-base-content/50 mb-2.5">aşamaya göre açık sipariş · toplanma = raflanmayı bekleyen (WMS yükü)</p>
+            @if (_kumbaraLoading) { <div class="text-xs text-base-content/40 animate-pulse">Yükleniyor...</div> }
+            else if (_bekDurum is null || _bekDurum.Toplam == 0) { <div class="text-xs text-base-content/40">Bekleyen sipariş yok.</div> }
+            else
+            {
+                var bekBars = new[] {
+                    (Ad: "Toplanma bekleyen", Adet: _bekDurum.ToplanmaBekleyen),
+                    (Ad: "Hazırlanan", Adet: _bekDurum.Hazirlanan),
+                    (Ad: "Temin bekleyen", Adet: _bekDurum.TeminBekleyen),
+                };
+                <AppRankBars TItem="(string Ad, int Adet)" Items="@bekBars"
+                             Label="@(b => b.Ad)" Value="@(b => (decimal)b.Adet)"
+                             ValueText="@(b => Num(b.Adet))" />
+                <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-200 text-[13px]">
+                    <span class="font-bold">TOPLAM bekleyen</span>
+                    <span class="font-bold tabular-nums">@Num(_bekDurum.Toplam)</span>
+                </div>
+                <div class="text-[11px] text-base-content/50 mt-1">Toplanma bekleyen düşük = WMS picking güncel; yığılma <b>temin</b> (tedarik) tarafında.</div>
+            }
+        </div>
     </div>
 
     @* ── B-112 hızlı kazanımlar: ödeme grubu trendi · iade sebebi · indirim kaynağı ── *@
@@ -377,6 +401,7 @@ else if (_data is not null)
     private IReadOnlyList<OdemeGrupRow> _odeme = [];       // B-112 (a) ödeme grubu + delta
     private IReadOnlyList<IadeSebepRow> _iadeSebep = [];   // B-112 (b) iade sebebi (Type=0)
     private IReadOnlyList<IndirimKaynakRow> _indKaynak = []; // B-112 (c) indirim kaynağı (Source)
+    private BekleyenDurum? _bekDurum;                       // B-111 WMS bekleyen doluluk (e-tic aşama split)
 
     private PersistingComponentStateSubscription _persistSub;
 
@@ -457,14 +482,16 @@ else if (_data is not null)
             var tOdeme = Ref.GetOdemeGrupAsync(start, endExcl, pStart);
             var tIade = Ref.GetIadeSebepAsync(start, endExcl);
             var tInd = Ref.GetIndirimKaynakAsync(start, endExcl);
-            await Task.WhenAll(tKumbara, tManuel, tOdeme, tIade, tInd);
+            var tBek = Etic.GetBekleyenDurumAsync();   // B-111 anlık (dönemsiz)
+            await Task.WhenAll(tKumbara, tManuel, tOdeme, tIade, tInd, tBek);
             _kumbara = tKumbara.Result;
             _manuel = tManuel.Result;
             _odeme = tOdeme.Result;
             _iadeSebep = tIade.Result;
             _indKaynak = tInd.Result;
+            _bekDurum = tBek.Result;
         }
-        catch (Exception ex) { Logger.LogWarning(ex, "Manuel indirim / hızlı-kazanım verisi alınamadı"); _kumbara = []; _manuel = []; _odeme = []; _iadeSebep = []; _indKaynak = []; }
+        catch (Exception ex) { Logger.LogWarning(ex, "Manuel indirim / hızlı-kazanım verisi alınamadı"); _kumbara = []; _manuel = []; _odeme = []; _iadeSebep = []; _indKaynak = []; _bekDurum = null; }
         finally { _kumbaraLoading = false; StateHasChanged(); }
     }
 
