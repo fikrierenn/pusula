@@ -59,7 +59,7 @@ Dashboard tamamen satış/envanter/operasyon/müşteri odaklı; back-office (muh
 
 | Risk | Etki | Olasılık | Mitigation |
 |---|---|---|---|
-| İşaret yanlış yorumu (borç/alacak) → ters bakiye | yüksek | orta | fisBA=0 Borç(+), fisBA=1 Alacak(fisTutar negatif saklı). Bakiye=SUM(fisTutar). MCP'de denge doğrulandı (borç=alacak, SUM=0). Mizan toplam Borç=Alacak invariant testi. |
+| İşaret yanlış yorumu (borç/alacak) → ters bakiye | yüksek | — | **DÜZELTİLDİ 23.06 (view tanımı + canlı kanıt):** `mhsMizan_vw` = `SUM((1-fisBA)*fisTutar) AS Alacak`, `SUM(-(fisBA*fisTutar)) AS Borc` → **fisBA=0=Alacak, fisBA=1=Borç**. Bakiye=Borç−Alacak. View hazır Borc/Alacak verir → fisBA elle çözülmez. Denge doğrulandı (Borç=Alacak=21,48 mlr). _(Bu satırın eski hali "fisBA=0 Borç" TERSTİ.)_ |
 | 6xx/7xx yanlış etiketleme (gelir pozitif anomali) | yüksek | — | Kapsam dışı (Faz-2). Bu sayfada K/Z YOK. |
 | 39,5M satır perf | orta | düşük | fisSirketID (=yıl) + hesap GROUP BY ~230-510ms (MCP doğrulandı). Join (hspID AND hspSirketID). Index doğal (sirket+tarih). |
 | Çoklu-şirket karışması (sirketID=dönem) | orta | orta | sirketID = dönem yılı (1=2021…6=2026). Sayfa tek dönem; default sirketID 6 (2026). Selector. |

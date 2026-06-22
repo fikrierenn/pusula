@@ -33,12 +33,14 @@ public static class NavRegistry
         new NavItem("envanter", "Envanter", "package", InBottomNav: true),
         new NavItem("stok-hareket", "Stok Hareket", "history"),
         new NavItem("muhasebe", "Muhasebe / Kontrol", "landmark"),
+        new NavItem("mizan", "Mizan / Finans", "scale"),
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),
         new NavItem("sadakat", "Sadakat", "heart"),
         new NavItem("tahmin", "Hedef Tahmin", "sparkles"),
         new NavItem("asistan", "Genius", "message-square", Section: "ASİSTAN"),
         new NavItem("gorevler", "Görevler", "check-square", Section: "ASİSTAN", GorevBadge: true),
         new NavItem("bellek", "Bellek", "database", Section: "ASİSTAN"),
+        new NavItem("ayarlar", "Ayarlar", "settings", Section: "SİSTEM"),
     };
 
     /// <summary>btm-nav (mobil) öğeleri — sıra korunur.</summary>

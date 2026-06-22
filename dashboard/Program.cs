@@ -42,7 +42,8 @@ builder.Services.AddScoped<MagazaQueries>();
 builder.Services.AddScoped<RefQueries>();
 builder.Services.AddScoped<EticQueries>();
 builder.Services.AddScoped<SadakatQueries>();
-builder.Services.AddScoped<MuhasebeQueries>();   // B-117 muhasebe/kontrol paneli
+builder.Services.AddScoped<MuhasebeQueries>();   // B-117 muhasebe/kontrol paneli (forensic)
+builder.Services.AddScoped<MizanQueries>();      // B-118 mizan/finans paneli (mali-tablo, plan-25)
 // NOT: LlmService (yerel qwen) DI'dan KALDIRILDI (18.06) — pano özetleri+asistan cloud'a geçti, çağıran yok.
 // Kod korunuyor (LlmService.cs + LLamaSharp) ama başlangıçta yüklenmiyor → boot hızlı. Yeniden gerekirse tek satır ekle.
 builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)

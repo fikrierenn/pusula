@@ -1,0 +1,181 @@
+@page "/mizan"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject MizanQueries Miz
+@inject PerfState Perf
+@inject ILogger<Mizan> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Mizan / Finans — BKM GM</PageTitle>
+
+<div class="mb-4 flex items-end justify-between flex-wrap gap-2">
+    <div>
+        <div class="text-xs text-base-content/50">Genel muhasebe mizanı · nakit pozisyon · cari · KDV · @(_yil) dönemi</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0">Mizan / Finans</h1>
+    </div>
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_sirketId" @bind:after="LoadAsync">
+        @foreach (var d in _donemler)
+        {
+            <option value="@d.SirketId">@d.Yil</option>
+        }
+    </select>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4">
+        <span>Mizan yüklenemedi: @_error<br /><span class="opacity-70 text-xs">mhs.mhsMizan_vw erişilebilir mi?</span></span>
+    </div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Mizan hesaplanıyor…</p>
+}
+else
+{
+    @* ── Özet kartlar ── *@
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+            <div class="text-xs text-base-content/50 mb-1">Nakit pozisyon</div>
+            <div class="text-xl font-bold @(_ozet!.Nakit >= 0 ? "text-success" : "text-error")">@Tl(_ozet.Nakit)</div>
+            <div class="text-[11px] text-base-content/40 mt-1">100 kasa + 101 al.çek + 102 banka + 108</div>
+            <div class="text-[11px] text-base-content/50 mt-0.5">Verilen çek (103): <span class="text-warning font-medium">@Tl(_ozet.VerilenCek)</span></div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+            <div class="text-xs text-base-content/50 mb-1">Alıcılar (120)</div>
+            <div class="text-xl font-bold">@Tl(_ozet.Alicilar)</div>
+            <div class="text-[11px] text-base-content/40 mt-1">net alacak (borç bakiyesi)</div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+            <div class="text-xs text-base-content/50 mb-1">Satıcılar (320)</div>
+            <div class="text-xl font-bold">@Tl(_ozet.Saticilar)</div>
+            <div class="text-[11px] text-base-content/40 mt-1">ödenecek (alacak bakiyesi)</div>
+        </div>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+            <div class="text-xs text-base-content/50 mb-1">KDV net</div>
+            <div class="text-xl font-bold @(_ozet.KdvNet > 0 ? "text-warning" : "")">@Tl(_ozet.KdvNet)</div>
+            <div class="text-[11px] text-base-content/40 mt-1">391 hesaplanan − 191 indirilecek</div>
+        </div>
+    </div>
+
+    @* ── Denge invariant ── *@
+    <div class="text-[11px] mb-3 flex items-center gap-2">
+        @{ var fark = Math.Abs(_ozet.ToplamBorc - _ozet.ToplamAlacak); }
+        <span class="badge badge-sm @(fark < 0.5m ? "badge-success" : "badge-error") badge-outline">
+            @(fark < 0.5m ? "✓ denge" : "⚠ denge bozuk")
+        </span>
+        <span class="text-base-content/50">Toplam Borç @Tl(_ozet.ToplamBorc) · Alacak @Tl(_ozet.ToplamAlacak)</span>
+    </div>
+
+    @* ── Mizan tablosu ── *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+        <h3 class="text-sm font-semibold text-base-content/90 mb-3.5">Ana hesap mizanı — satıra tıkla → alt hesap kırılımı (@_mizan.Count grup)</h3>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead><tr>
+                    <th>Hesap</th><th>Ad</th>
+                    <th class="text-right">Borç</th><th class="text-right">Alacak</th>
+                    <th class="text-right">Bakiye</th><th class="text-right">Alt</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var r in _mizan)
+                {
+                    <tr class="hover cursor-pointer" @onclick="() => AcDetay(r)">
+                        <td class="font-mono font-semibold">@r.AnaKod</td>
+                        <td class="max-w-[280px] truncate" title="@r.AnaAd">@(r.AnaAd ?? "—")</td>
+                        <td class="text-right">@Tl(r.Borc)</td>
+                        <td class="text-right">@Tl(r.Alacak)</td>
+                        <td class="text-right font-semibold @BakiyeCls(r.Bakiye)">@Tl(r.Bakiye)</td>
+                        <td class="text-right text-base-content/50">@r.AltAdet</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-base-content/50 text-[11px] mt-2">Bakiye = Borç − Alacak (pozitif = borç bakiyesi/varlık · negatif = alacak bakiyesi/kaynak). Açılış/devir dahil.</div>
+    </div>
+}
+
+<Modal @bind-Open="_modal" Title="@_detayBaslik">
+    @if (_detayLoading)
+    {
+        <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Alt hesaplar yükleniyor…</p>
+    }
+    else if (_detay.Count == 0)
+    {
+        <p class="text-base-content/50 text-sm py-4">Alt hesap bulunamadı.</p>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-xs">
+                <thead><tr>
+                    <th>Hesap</th><th>Ad</th>
+                    <th class="text-right">Borç</th><th class="text-right">Alacak</th><th class="text-right">Bakiye</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var d in _detay)
+                {
+                    <tr>
+                        <td class="font-mono text-xs">@d.HspKod</td>
+                        <td class="max-w-[260px] truncate" title="@d.HspAd">@(d.HspAd ?? "—")</td>
+                        <td class="text-right">@Tl(d.Borc)</td>
+                        <td class="text-right">@Tl(d.Alacak)</td>
+                        <td class="text-right font-semibold @BakiyeCls(d.Bakiye)">@Tl(d.Bakiye)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</Modal>
+
+@code {
+    private IReadOnlyList<(int SirketId, int Yil)> _donemler = [];
+    private IReadOnlyList<MizanRow> _mizan = [];
+    private IReadOnlyList<MizanDetayRow> _detay = [];
+    private MizanOzet? _ozet;
+    private bool _loading = true, _detayLoading, _modal;
+    private string? _error, _detayBaslik;
+    private int _sirketId;
+    private int _yil => _sirketId + MizanQueries.YilOffset;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _donemler = await Miz.GetDonemlerAsync();
+            _sirketId = _donemler.Count > 0 ? _donemler[0].SirketId : 6;   // en yeni dönem
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Mizan dönem listesi alınamadı"); _sirketId = 6; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        var sw = PerfState.Start();
+        try
+        {
+            var ozetTask = Miz.GetOzetAsync(_sirketId);
+            var mizanTask = Miz.GetMizanAsync(_sirketId);
+            await Task.WhenAll(ozetTask, mizanTask);
+            _ozet = ozetTask.Result; _mizan = mizanTask.Result;
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Mizan yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
+        finally { _loading = false; Perf.Report("Mizan", sw); StateHasChanged(); }
+    }
+
+    private async Task AcDetay(MizanRow r)
+    {
+        _detayBaslik = $"{r.AnaKod} · {r.AnaAd ?? "alt hesaplar"}";
+        _modal = true; _detayLoading = true; _detay = []; StateHasChanged();
+        try { _detay = await Miz.GetMizanDetayAsync(_sirketId, r.AnaKod); }
+        catch (Exception ex) { Logger.LogError(ex, "Mizan drill hatası"); }
+        finally { _detayLoading = false; StateHasChanged(); }
+    }
+
+    private static string BakiyeCls(decimal b) => b > 0 ? "text-base-content" : b < 0 ? "text-info" : "text-base-content/40";
+
+    private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+}
