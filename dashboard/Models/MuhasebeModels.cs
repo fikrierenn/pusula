@@ -16,6 +16,6 @@ public record KontrolDetayRow(
     string Donem, string Kaynak, long EvrakID, string EvrakNo,
     string BelgeTarihi, string KapanisTarihi, string DegisimTarihi,
     bool GecGiris, bool SonradanDeg, int GunSonra, int Severity,
-    bool YuvarlakTutar, bool GirenOnaylayanAyni, bool Mukerrer, int RiskSkor,
+    int YuvarlakTutar, int GirenOnaylayanAyni, int Mukerrer, int RiskSkor,   // SP CASE 1/0 → int (bool DEĞİL — Dapper materialization fix)
     string? GiderKod, string? GiderAd, string? KarsiKod,
     string? Giren, string? Onaylayan, decimal Tutar, string? Notu);

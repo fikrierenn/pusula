@@ -110,7 +110,7 @@ else
                         <td>@d.BelgeTarihi</td>
                         <td class="@(d.GunSonra >= 60 ? "text-error font-semibold" : "")">@d.DegisimTarihi</td>
                         <td class="text-right">@d.GunSonra</td>
-                        <td>@(d.Giren ?? "—") @(d.GirenOnaylayanAyni ? "⚠" : "")</td>
+                        <td>@(d.Giren ?? "—") @(d.GirenOnaylayanAyni != 0 ? "⚠" : "")</td>
                         <td>@(d.Onaylayan ?? "—")</td>
                         <td class="text-right font-semibold">@Tl(d.Tutar)</td>
                         <td class="max-w-[260px] truncate text-xs text-base-content/60" title="@d.Notu">@d.Notu</td>
