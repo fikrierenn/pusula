@@ -540,4 +540,24 @@ public sealed partial class RefQueries
             """, new { Bas = new DateTime(bas.Year, bas.Month, bas.Day), haricMrk });
         return rows.ToList();
     }
+
+    /// <summary>Kategori bazlı stok ADET + ÇEŞİT (distinct SKU) — anlık, 3 mağaza + merkez depo, stok>0.
+    /// Non-ürün kategorileri (Sınav/Hediye Çeki/Etkinlik/Kargo) hariç. ~3s (COUNT DISTINCT) → arka plan yük.</summary>
+    public async Task<IReadOnlyList<KategoriAdetRow>> GetKategoriAdetAsync()
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<KategoriAdetRow>($"""
+            SELECT TOP 40 CAST(k.ktgrAd AS nvarchar(50)) AS Kategori,
+                   COUNT(DISTINCT u.stkID) AS Cesit,
+                   CAST(SUM(s.stok) AS bigint) AS Adet
+            FROM DerinSISBkm.dbo.stokSonAltDepo_vw s WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = s.ehstkID
+            JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID = u.urnKtgr2ID
+            WHERE s.ehAltDepo = 0 AND s.ehMekan IN ({LokasyonConfig.SubelerVeDepo}) AND s.stok > 0
+              AND k.ktgrAd NOT IN (N'Sınav Okulları', N'Hediye Çeki', N'Etkinlik', N'Zkargo', N'KARGO')
+            GROUP BY CAST(k.ktgrAd AS nvarchar(50))
+            ORDER BY SUM(s.stok) DESC
+            """);
+        return rows.ToList();
+    }
 }

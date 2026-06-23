@@ -103,6 +103,43 @@ else if (_d is not null)
     </div>
     }
 
+    @* Kategori bazlı stok ADET + ÇEŞİT (distinct SKU) — anlık, 3 mağaza + depo *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
+        <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5">
+            Kategori Stok — Adet &amp; Çeşit (anlık, 3 mağaza + depo)
+            @if (_katAdetLoading) { <span class="loading loading-spinner loading-xs text-base-content/40"></span> }
+        </h3>
+        @if (_katAdet.Count > 0)
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead><tr>
+                        <th>Kategori</th>
+                        <th class="text-right">Çeşit (SKU)</th>
+                        <th class="text-right">Stok Adet</th>
+                        <th class="w-[30%]"></th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var k in _katAdet)
+                    {
+                        <tr class="hover cursor-pointer" @onclick="() => OpenUrun(k.Kategori)">
+                            <td class="font-medium">@k.Kategori</td>
+                            <td class="text-right tabular-nums text-base-content/70">@Num(k.Cesit)</td>
+                            <td class="text-right tabular-nums font-semibold">@Num((int)Math.Min(k.Adet, int.MaxValue))</td>
+                            <td><div class="h-2 rounded bg-primary/70" style="width:@(_katAdetMax > 0 ? (int)(100.0 * k.Adet / _katAdetMax) : 0)%"></div></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-base-content/50 text-[11px] mt-2">Çeşit = stoğu olan farklı ürün (SKU) sayısı · Adet = toplam fiziksel stok miktarı. Satıra tıkla → ürün listesi. Non-ürün kategorileri (Sınav/Hediye Çeki/Kargo) hariç.</div>
+        }
+        else if (!_katAdetLoading)
+        {
+            <p class="text-base-content/50 text-sm py-3">Kategori stok verisi yok.</p>
+        }
+    </div>
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Hızlı Dönen Kategoriler (yıllık devir)</h3>
             <AppRankBars TItem="DevirRow"
@@ -379,6 +416,9 @@ else if (_d is not null)
     private IReadOnlyList<MarkaRotasyonRow> _rot = [];
     private IReadOnlyList<TedarikciPerfRow> _tedPerf = [];
     private bool _tedPerfLoading = true;   // B-110: 12-ay marka taraması + stok, arka planda (~3s)
+    private IReadOnlyList<KategoriAdetRow> _katAdet = [];
+    private long _katAdetMax;               // bar ölçek (en yüksek adet)
+    private bool _katAdetLoading = true;   // kategori adet+çeşit (~3s COUNT DISTINCT), arka planda
     private HcOzet? _hc;
     private bool _modalUrun;
     private bool _urunLoading;
@@ -434,6 +474,11 @@ else if (_d is not null)
         try { _tedPerf = await Ref.GetTedarikciPerformansAsync(DateOnly.FromDateTime(DateTime.Today).AddYears(-1), Ayar.Deger.HaricMarkalarEtkin); }
         catch (Exception ex) { Logger.LogWarning(ex, "Tedarikçi performans alınamadı — kart boş gösterilecek"); }
         finally { _tedPerfLoading = false; StateHasChanged(); }
+
+        // Kategori stok adet + çeşit (~3s) — arka planda.
+        try { _katAdet = await Ref.GetKategoriAdetAsync(); _katAdetMax = _katAdet.Count > 0 ? _katAdet.Max(k => k.Adet) : 0; }
+        catch (Exception ex) { Logger.LogWarning(ex, "Kategori adet alınamadı — kart boş gösterilecek"); }
+        finally { _katAdetLoading = false; StateHasChanged(); }
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
         try { _marj = await Ref.GetMarjAsync(); }

@@ -56,6 +56,9 @@ public record MarkaRow(string Ad, decimal Ciro, int Adet, int Cesit);
 /// <summary>Stockout kategori satırı.</summary>
 public record StockoutRow(string Kategori, int Cesit, int Yok, decimal Pct);
 
+/// <summary>Kategori bazlı stok adet + çeşit (distinct SKU). 3 mağaza + merkez depo, stok>0.</summary>
+public record KategoriAdetRow(string Kategori, int Cesit, long Adet);
+
 /// <summary>SPLH işgücü verimi (mağaza, ₺/saat).</summary>
 public record SplhRow(string Magaza, decimal NetCiro, int Fis, decimal Saat, int Personel);
 
