@@ -38,9 +38,12 @@ BEGIN
     SET NOCOUNT ON;
 
     /* Hedef dönem(ler): tek ay verildiyse onu, yoksa Fin_AyKapanis'teki tüm kapanmış ayları al. */
-    DECLARE @Donemler TABLE (DonemYil int, DonemAy tinyint, KapanisDT datetime2(0));
-    INSERT INTO @Donemler (DonemYil, DonemAy, KapanisDT)
-    SELECT k.DonemYil, k.DonemAy, k.KapanisDT
+    -- AyBas/AySon: SARGABLE tarih-aralığı (YEAR/MONTH join non-sargable → index boşa, full scan). Range → index seek.
+    DECLARE @Donemler TABLE (DonemYil int, DonemAy tinyint, KapanisDT datetime2(0), AyBas date, AySon date);
+    INSERT INTO @Donemler (DonemYil, DonemAy, KapanisDT, AyBas, AySon)
+    SELECT k.DonemYil, k.DonemAy, k.KapanisDT,
+           DATEFROMPARTS(k.DonemYil, k.DonemAy, 1),
+           DATEADD(MONTH, 1, DATEFROMPARTS(k.DonemYil, k.DonemAy, 1))
     FROM bkm.Fin_AyKapanis k
     WHERE (@Yil IS NULL OR k.DonemYil = @Yil)
       AND (@Ay  IS NULL OR k.DonemAy  = @Ay);
@@ -91,7 +94,7 @@ BEGIN
         f2.frmKod, c.cgKisi, c.coKisi,
         CAST(c.cTutar AS decimal(18,2)), c.cNot
     FROM dbo.car c
-    JOIN @Donemler d ON d.DonemYil = YEAR(c.cTarih) AND d.DonemAy = MONTH(c.cTarih)
+    JOIN @Donemler d ON c.cTarih >= d.AyBas AND c.cTarih < d.AySon   -- sargable (IX_car_cTarih seek)
     LEFT JOIN dbo.frm f1 ON f1.frmID = c.cKod
     LEFT JOIN dbo.frm f2 ON f2.frmID = c.cKodKarsi
     WHERE c.cOnay = 1
@@ -119,7 +122,7 @@ BEGIN
            - SUM(ISNULL(a.ehTutarKDVtvkft,0)) - SUM(ISNULL(a.ehTutarStopaj,0)) AS decimal(18,2)),
         f.eNot
     FROM dbo.fat f
-    JOIN @Donemler d ON d.DonemYil = YEAR(f.eTarihS) AND d.DonemAy = MONTH(f.eTarihS)
+    JOIN @Donemler d ON f.eTarihS >= d.AyBas AND f.eTarihS < d.AySon   -- sargable (IX_fat_7 seek)
     JOIN dbo.fatAyr a ON a.ehID = f.eID
     LEFT JOIN dbo.urn u ON u.stkID = a.ehStkID AND u.urnTip IN (1,2)
     WHERE f.eTip IN (6,7,8)
@@ -147,7 +150,7 @@ BEGIN
               FROM mhs.mhsFis ff WHERE ff.fisID=b.fisbID AND ff.fisSirketID=b.fisbSirketID) AS decimal(18,2)),
         CAST(b.fisAd AS nvarchar(400))
     FROM mhs.mhsFisBaslik b
-    JOIN @Donemler d ON d.DonemYil = YEAR(b.fisTarih) AND d.DonemAy = MONTH(b.fisTarih)
+    JOIN @Donemler d ON b.fisTarih >= d.AyBas AND b.fisTarih < d.AySon   -- sargable (fisTarih indexsiz → yine de range filtre erken daraltır)
     WHERE (ISNULL(b.gTarih,b.fisTarih) > d.KapanisDT OR ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih)) > d.KapanisDT)
       AND (@SadeceGider = 0 OR EXISTS (
             SELECT 1 FROM mhs.mhsFis ff JOIN mhs.mhsHsp h ON h.hspID=ff.fisHspID AND h.hspSirketID=ff.fisSirketID
