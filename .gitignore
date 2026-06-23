@@ -61,3 +61,7 @@ dashboard/data/tahmin-kayitlari.json
 dashboard/data/ic-kartlar.json
 run_forecast.log
 send_brief.log
+
+# Rapor çıktıları (regenerable — script ile üretilir)
+raporlar/*.xlsx
+~$*
