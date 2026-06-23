@@ -16,7 +16,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
 
     // Dapper map'leme için düz record (8+ elemanlı ValueTuple nested Rest → Dapper 8. elemanı map edemez, tutar boş kalır).
     private sealed record YevmiyeQ(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? Aciklama, decimal Borc, decimal Alacak);
-    private sealed record FaturaQ(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, string Kod, string Urun, decimal Adet, decimal Tutar, decimal Kdv);
+    private sealed record FaturaQ(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, string Kod, string Urun, string? MasrafMerkezi, decimal Adet, decimal Tutar, decimal Kdv);
 
     /// <summary>Özet: dönem×kaynak×gider (adet/tutar/maxgün/risk). yil/ay null → tüm kapanmış dönemler.</summary>
     public async Task<IReadOnlyList<KontrolOzetRow>> GetOzetAsync(int? yil, int? ay, string kaynak, bool sadeceGider)
@@ -76,18 +76,20 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
                    CAST(fr.frmKod AS varchar(40)) AS CariKod, CAST(fr.frmAd AS nvarchar(120)) AS CariAd,
                    CAST(ISNULL(u.stkKod, '') AS nvarchar(50)) AS Kod,
                    CAST(ISNULL(u.stkAd, '(tanımsız)') AS nvarchar(90)) AS Urun,
+                   CAST(LTRIM(REPLACE(REPLACE(gm.frmAd, N'G - ', N''), N' Gider Merkezi', N'')) AS nvarchar(60)) AS MasrafMerkezi,
                    CAST(a.ehAdetN AS decimal(18,2)) AS Adet,
                    CAST(a.ehTutar AS decimal(18,2)) AS Tutar,
                    CAST(ISNULL(a.ehTutarKDV,0) AS decimal(18,2)) AS Kdv
             FROM DerinSISBkm.dbo.fat f
             JOIN DerinSISBkm.dbo.fatAyr a ON a.ehID = f.eID
             LEFT JOIN DerinSISBkm.dbo.frm fr ON fr.frmID = f.eFirma
+            LEFT JOIN DerinSISBkm.dbo.frm gm ON gm.frmID = a.fGdrMerkez
             LEFT JOIN DerinSISBkm.dbo.urn u ON u.stkID = a.ehStkID
             WHERE f.eID = @faturaId
             ORDER BY a.ehID
             """, new { faturaId })).ToList();
         if (rows.Count == 0) return null;
-        var satirlar = rows.Select(r => new FaturaSatir(r.Kod, r.Urun, r.Adet, r.Tutar, r.Kdv)).ToList();
+        var satirlar = rows.Select(r => new FaturaSatir(r.Kod, r.Urun, r.MasrafMerkezi, r.Adet, r.Tutar, r.Kdv)).ToList();
         return new Fatura(rows[0].EvrakNo, rows[0].Tarih, rows[0].Tip, rows[0].Not, rows[0].CariKod, rows[0].CariAd, satirlar);
     }
 

@@ -22,8 +22,8 @@ public record YevmiyeFis(int YevmiyeNo, string Tarih, string FisAd, IReadOnlyLis
     public decimal Denge => Math.Abs(ToplamBorc - ToplamAlacak);
 }
 
-/// <summary>Gider/masraf faturası tek satırı (dbo.fatAyr × urn).</summary>
-public record FaturaSatir(string Kod, string Urun, decimal Adet, decimal Tutar, decimal Kdv);
+/// <summary>Gider/masraf faturası tek satırı (dbo.fatAyr × urn). MasrafMerkezi = fGdrMerkez → frm (gider merkezi).</summary>
+public record FaturaSatir(string Kod, string Urun, string? MasrafMerkezi, decimal Adet, decimal Tutar, decimal Kdv);
 
 /// <summary>Gider faturası (başlık + satırlar) — Kontrol DETAY FAT evrak drill'i. eID ile.</summary>
 public record Fatura(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, IReadOnlyList<FaturaSatir> Satirlar)
