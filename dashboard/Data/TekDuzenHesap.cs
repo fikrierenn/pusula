@@ -47,4 +47,28 @@ public static class TekDuzenHesap
     };
 
     public static string AdVeya(string kod) => Ad.TryGetValue(kod, out var a) ? a : kod;
+
+    /// <summary>1-2 haneli üst grup adları (Tek Düzen ana sınıf + grup). Mizan ağacı 1./2. seviye.</summary>
+    public static readonly IReadOnlyDictionary<string, string> Grup = new Dictionary<string, string>
+    {
+        ["1"] = "Dönen Varlıklar", ["2"] = "Duran Varlıklar", ["3"] = "Kısa Vadeli Yabancı Kaynaklar",
+        ["4"] = "Uzun Vadeli Yabancı Kaynaklar", ["5"] = "Özkaynaklar", ["6"] = "Gelir Tablosu Hesapları",
+        ["7"] = "Maliyet Hesapları", ["9"] = "Nazım Hesaplar",
+        ["10"] = "Hazır Değerler", ["12"] = "Ticari Alacaklar", ["13"] = "Diğer Alacaklar", ["15"] = "Stoklar",
+        ["18"] = "Gelecek Aylara Ait Giderler ve Gelir Tahakkukları", ["19"] = "Diğer Dönen Varlıklar",
+        ["22"] = "Ticari Alacaklar", ["25"] = "Maddi Duran Varlıklar", ["26"] = "Maddi Olmayan Duran Varlıklar",
+        ["28"] = "Gelecek Yıllara Ait Giderler ve Gelir Tahakkukları", ["30"] = "Mali Borçlar",
+        ["32"] = "Ticari Borçlar", ["33"] = "Diğer Borçlar", ["34"] = "Alınan Avanslar",
+        ["36"] = "Ödenecek Vergi ve Diğer Yükümlülükler", ["37"] = "Borç ve Gider Karşılıkları",
+        ["38"] = "Gelecek Aylara Ait Gelirler ve Gider Tahakkukları", ["39"] = "Diğer Kısa Vadeli Yabancı Kaynaklar",
+        ["40"] = "Mali Borçlar", ["50"] = "Ödenmiş Sermaye", ["54"] = "Kar Yedekleri",
+        ["57"] = "Geçmiş Yıllar Karları", ["59"] = "Dönem Net Karı(Zararı)", ["60"] = "Brüt Satışlar",
+        ["61"] = "Satış İndirimleri(-)", ["62"] = "Satışların Maliyeti(-)", ["63"] = "Faaliyet Giderleri(-)",
+        ["64"] = "Diğer Faaliyetlerden Olağan Gelir ve Karlar", ["65"] = "Diğer Faaliyetlerden Olağan Gider ve Zararlar(-)",
+        ["66"] = "Finansman Giderleri(-)", ["67"] = "Olağan Dışı Gelir ve Karlar", ["68"] = "Olağan Dışı Gider ve Zararlar(-)",
+        ["69"] = "Dönem Net Karı(Zararı)", ["74"] = "Hizmet Üretim Maliyeti", ["76"] = "Pazarlama,Satış ve Dağıtım Giderleri",
+        ["77"] = "Genel Yönetim Giderleri", ["78"] = "Finansman Giderleri", ["95"] = "Matrah Düzeltmeleri",
+    };
+
+    public static string GrupVeya(string kod) => Grup.TryGetValue(kod, out var a) ? a : kod;
 }

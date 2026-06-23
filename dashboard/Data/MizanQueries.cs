@@ -49,11 +49,20 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
             .GroupBy(x => x.Kod).ToDictionary(g => g.Key, g => g.First().Ad, StringComparer.Ordinal);
 
         var agac = AgacKur(leafler, adlar);
-        logger.LogInformation("Mizan ağacı (sirket {S}): {Kok} ana hesap, {Leaf} leaf", sirketId, agac.Count, leafler.Count);
-        return new MizanSonuc(OzetHesapla(agac), agac);
+        // Özet için 3-haneli ana hesap bakiyeleri (ağaçtan topla).
+        var ucHane = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        void Topla(MizanNode n)
+        {
+            if (n.Kod.Length == 3 && !n.Kod.Contains('.')) ucHane[n.Kod] = n.Bakiye;
+            foreach (var c in n.Cocuklar) Topla(c);
+        }
+        foreach (var k in agac) Topla(k);
+        logger.LogInformation("Mizan ağacı (sirket {S}): {Kok} sınıf, {Leaf} leaf", sirketId, agac.Count, leafler.Count);
+        return new MizanSonuc(OzetHesapla(ucHane, agac), agac);
     }
 
-    /// <summary>Leaf bakiyelerden 3-haneli ana → alt → en alt ağacı kurar, alt-toplamları yukarı biriktirir.</summary>
+    /// <summary>Leaf bakiyelerden Excel hiyerarşisi: 1-haneli sınıf → 2 grup → 3 ana hesap → alt (100.10) → en alt.
+    /// Alt-toplamlar her ataya biriktirilir. Üst grup adları Tek Düzen (TekDuzenHesap.Grup/Ad), alt hesaplar mhsHsp.</summary>
     private static List<MizanNode> AgacKur(IReadOnlyList<LeafRow> leafler, IReadOnlyDictionary<string, string> adlar)
     {
         var map = new Dictionary<string, MizanNode>(StringComparer.Ordinal);
@@ -61,8 +70,12 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
         foreach (var r in leafler)
         {
             var segs = r.HspKod.Split('.');
-            var paths = new List<string>(segs.Length) { segs[0] };
-            for (int i = 1; i < segs.Length; i++) paths.Add(paths[^1] + "." + segs[i]);
+            var s0 = segs[0];                                  // 3-haneli ana (örn "100")
+            var paths = new List<string>();
+            if (s0.Length >= 1) paths.Add(s0[..1]);            // 1-haneli sınıf ("1")
+            if (s0.Length >= 2) paths.Add(s0[..2]);            // 2-haneli grup ("10")
+            paths.Add(s0);                                     // 3-haneli ana ("100")
+            for (int i = 1; i < segs.Length; i++) paths.Add(paths[^1] + "." + segs[i]);   // alt + en alt
 
             MizanNode? ust = null;
             for (int lvl = 0; lvl < paths.Count; lvl++)
@@ -70,9 +83,10 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
                 var pk = paths[lvl];
                 if (!map.TryGetValue(pk, out var node))
                 {
-                    string ad = lvl == 0 ? TekDuzenHesap.AdVeya(pk)
-                              : pk == r.HspKod ? r.HspAd
-                              : adlar.TryGetValue(pk, out var a) ? a : pk;
+                    string ad = !pk.Contains('.') && pk.Length <= 2 ? TekDuzenHesap.GrupVeya(pk)   // 1-2 hane grup
+                              : !pk.Contains('.') ? TekDuzenHesap.AdVeya(pk)                        // 3 hane ana
+                              : pk == r.HspKod ? r.HspAd                                            // leaf
+                              : adlar.TryGetValue(pk, out var a) ? a : pk;                          // ara alt
                     node = new MizanNode { Kod = pk, Ad = ad, Seviye = lvl + 1 };
                     map[pk] = node;
                     if (ust is null) kokler.Add(node); else ust.Cocuklar.Add(node);
@@ -91,10 +105,9 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
         foreach (var n in ns) Sirala(n.Cocuklar);
     }
 
-    /// <summary>Özet kartlar — 3-haneli kök düğümlerden. Varlık borç-pozitif, yükümlülük alacak-pozitif.</summary>
-    private static MizanOzet OzetHesapla(IReadOnlyList<MizanNode> kokler)
+    /// <summary>Özet kartlar — 3-haneli ana hesap bakiyelerinden. Varlık borç-pozitif, yükümlülük alacak-pozitif.</summary>
+    private static MizanOzet OzetHesapla(IReadOnlyDictionary<string, decimal> k, IReadOnlyList<MizanNode> kokler)
     {
-        var k = kokler.ToDictionary(n => n.Kod, n => n.Bakiye, StringComparer.Ordinal);
         decimal Borc(params string[] kods) => kods.Sum(c => k.GetValueOrDefault(c));        // borç bakiyesi (varlık)
         decimal Alacak(params string[] kods) => kods.Sum(c => -k.GetValueOrDefault(c));      // alacak bakiyesi (kaynak)
         var kdvInd = Borc("191"); var kdvHes = Alacak("391");

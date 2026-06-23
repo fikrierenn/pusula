@@ -64,6 +64,16 @@ else if (_sonuc is not null)
     </div>
 
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <span class="text-xs text-base-content/50">Kırılım:</span>
+            <div class="join">
+                @foreach (var s in _seviyeler)
+                {
+                    <button class="btn btn-xs join-item @(_acikSeviye == s.Deger ? "btn-primary" : "btn-ghost border-base-300")"
+                            @onclick="() => _acikSeviye = s.Deger">@s.Ad</button>
+                }
+            </div>
+        </div>
         <div class="overflow-x-auto">
             <table class="table table-sm table-pin-rows">
                 <thead><tr>
@@ -73,7 +83,7 @@ else if (_sonuc is not null)
                 <tbody>
                 @foreach (var k in _sonuc.Agac)
                 {
-                    <MizanDugum Node="k" Derinlik="0" />
+                    <MizanDugum Node="k" AcikSeviye="_acikSeviye" />
                 }
                 </tbody>
             </table>
@@ -89,6 +99,9 @@ else if (_sonuc is not null)
     private string? _error;
     private int _sirketId;
     private int _yil => _sirketId + MizanQueries.YilOffset;
+    private int _acikSeviye = 3;   // minimum: 3 (1·10·100 ana hesap hep görünür)
+    private static readonly (string Ad, int Deger)[] _seviyeler =
+        [("Ana hesap", 3), ("Alt hesap", 4), ("Tüm kırılım", 6)];
 
     protected override async Task OnInitializedAsync()
     {
