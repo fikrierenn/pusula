@@ -105,9 +105,9 @@ else
                 <tbody>
                 @foreach (var d in _detay)
                 {
-                    <tr class="@(d.Kaynak == "MHS" ? "hover cursor-pointer" : "")" @onclick="() => YevmiyeAc(d)">
+                    <tr class="@(d.Kaynak is "MHS" or "FAT" ? "hover cursor-pointer" : "")" @onclick="() => EvrakAc(d)">
                         <td class="text-right font-bold @RiskCls(d.RiskSkor)">@d.RiskSkor</td>
-                        <td class="font-mono text-xs">@d.EvrakNo @(d.Kaynak == "MHS" ? "↗" : "")</td>
+                        <td class="font-mono text-xs">@d.EvrakNo @(d.Kaynak is "MHS" or "FAT" ? "↗" : "")</td>
                         <td>@d.BelgeTarihi</td>
                         <td class="@(d.GunSonra >= 60 ? "text-error font-semibold" : "")">@d.DegisimTarihi</td>
                         <td class="text-right">@d.GunSonra</td>
@@ -176,12 +176,18 @@ else
         finally { _detayLoading = false; StateHasChanged(); }
     }
 
-    // MHS evrak → yevmiye fiş sayfası (ayrı sayfa; modal-üstü-modal Blazor'da çalışmaz). sirket = dönem yılı − 2020.
-    private void YevmiyeAc(KontrolDetayRow d)
+    // Evrak drill (ayrı sayfa; modal-üstü-modal Blazor'da çalışmaz). MHS→yevmiye fişi, FAT→gider faturası.
+    private void EvrakAc(KontrolDetayRow d)
     {
-        if (d.Kaynak != "MHS") return;
-        var yil = int.Parse(d.Donem[3..]);
-        Nav.NavigateTo($"/yevmiye-fis?fis={d.EvrakID}&sirket={yil - 2020}");
+        if (d.Kaynak == "MHS")
+        {
+            var yil = int.Parse(d.Donem[3..]);   // sirket = dönem yılı − 2020
+            Nav.NavigateTo($"/yevmiye-fis?fis={d.EvrakID}&sirket={yil - 2020}");
+        }
+        else if (d.Kaynak == "FAT")
+        {
+            Nav.NavigateTo($"/fatura?fat={d.EvrakID}");
+        }
     }
 
     private string RiskCls(int risk) => risk >= Ayar.Deger.RiskYuksek ? "text-error" : risk >= Ayar.Deger.RiskOrta ? "text-warning" : risk >= Ayar.Deger.RiskDusuk ? "text-info" : "text-base-content/60";
