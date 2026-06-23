@@ -19,6 +19,7 @@ public record YevmiyeFis(int YevmiyeNo, string Tarih, string FisAd, IReadOnlyLis
 {
     public decimal ToplamBorc => Satirlar.Sum(s => s.Borc);
     public decimal ToplamAlacak => Satirlar.Sum(s => s.Alacak);
+    public decimal Denge => Math.Abs(ToplamBorc - ToplamAlacak);
 }
 
 /// <summary>Kapanış-sonrası müdahale DETAY satırı (@Mod='DETAY'). Giren/Onaylayan = drn1.insAd.</summary>

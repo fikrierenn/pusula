@@ -30,36 +30,68 @@ else if (_fis is null)
 }
 else
 {
-    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] max-w-4xl">
-        <div class="text-sm text-base-content/70 mb-3">@_fis.FisAd</div>
-        <div class="overflow-x-auto">
-            <table class="table table-sm">
-                <thead><tr>
-                    <th>Hesap</th><th>Ad</th><th>Açıklama</th>
-                    <th class="text-right">Borç</th><th class="text-right">Alacak</th>
-                </tr></thead>
-                <tbody>
-                @foreach (var s in _fis.Satirlar)
-                {
-                    <tr class="hover">
-                        <td class="font-mono text-xs whitespace-nowrap">@s.HspKod</td>
-                        <td class="max-w-[200px] truncate" title="@s.HspAd">@s.HspAd</td>
-                        <td class="max-w-[240px] truncate text-base-content/60 text-xs" title="@s.Aciklama">@s.Aciklama</td>
-                        <td class="text-right tabular-nums @(s.Borc != 0 ? "font-medium" : "text-base-content/30")">@(s.Borc != 0 ? Tl(s.Borc) : "—")</td>
-                        <td class="text-right tabular-nums @(s.Alacak != 0 ? "font-medium" : "text-base-content/30")">@(s.Alacak != 0 ? Tl(s.Alacak) : "—")</td>
-                    </tr>
-                }
-                </tbody>
-                <tfoot><tr class="border-t-2 border-base-300 font-bold">
-                    <td colspan="3" class="text-right">Toplam</td>
-                    <td class="text-right tabular-nums">@Tl(_fis.ToplamBorc)</td>
-                    <td class="text-right tabular-nums">@Tl(_fis.ToplamAlacak)</td>
-                </tr></tfoot>
-            </table>
+    <div class="bg-base-100 border-2 border-base-300 rounded-lg shadow-sm max-w-4xl mx-auto overflow-hidden">
+
+        @* ── Antet ── *@
+        <div class="flex items-start justify-between gap-4 px-6 py-4 border-b-2 border-base-300 bg-base-200/40">
+            <div>
+                <div class="text-lg font-bold tracking-tight">BKM Kitap Kırtasiye</div>
+                <div class="text-xs text-base-content/60">Mahsup / Yevmiye Fişi</div>
+            </div>
+            <div class="text-right text-sm">
+                <table class="text-xs border border-base-300">
+                    <tr class="border-b border-base-300"><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Yevmiye No</td><td class="px-2 py-0.5 font-mono text-right">@_fis.YevmiyeNo</td></tr>
+                    <tr><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Tarih</td><td class="px-2 py-0.5 font-mono text-right">@_fis.Tarih</td></tr>
+                </table>
+            </div>
         </div>
-        @{ var denge = Math.Abs(_fis.ToplamBorc - _fis.ToplamAlacak); }
-        <div class="text-[11px] mt-2 @(denge < 0.5m ? "text-success" : "text-error")">
-            @(denge < 0.5m ? "✓ Borç = Alacak (denge)" : "⚠ Denge bozuk: fark " + Tl(denge))
+
+        @if (!string.IsNullOrWhiteSpace(_fis.FisAd))
+        {
+            <div class="px-6 py-2 text-sm text-base-content/70 border-b border-base-200">Açıklama: <span class="font-medium text-base-content">@_fis.FisAd</span></div>
+        }
+
+        @* ── Defter satırları ── *@
+        <table class="w-full text-sm border-collapse">
+            <thead>
+                <tr class="bg-base-200/50 text-xs text-base-content/60 border-b-2 border-base-300">
+                    <th class="text-left px-3 py-2 border-r border-base-300 w-[120px]">Hesap Kodu</th>
+                    <th class="text-left px-3 py-2 border-r border-base-300">Hesap Adı / Açıklama</th>
+                    <th class="text-right px-3 py-2 border-r border-base-300 w-[130px]">Borç</th>
+                    <th class="text-right px-3 py-2 w-[130px]">Alacak</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var s in _fis.Satirlar)
+            {
+                <tr class="border-b border-base-200 align-top">
+                    <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap border-r border-base-200">@s.HspKod</td>
+                    <td class="px-3 py-1.5 border-r border-base-200">
+                        <div class="font-medium">@s.HspAd</div>
+                        @if (!string.IsNullOrWhiteSpace(s.Aciklama)) { <div class="text-[11px] text-base-content/50">@s.Aciklama</div> }
+                    </td>
+                    <td class="px-3 py-1.5 text-right tabular-nums font-mono border-r border-base-200 @(s.Borc == 0 ? "text-base-content/20" : "")">@(s.Borc != 0 ? Tl(s.Borc) : "")</td>
+                    <td class="px-3 py-1.5 text-right tabular-nums font-mono @(s.Alacak == 0 ? "text-base-content/20" : "")">@(s.Alacak != 0 ? Tl(s.Alacak) : "")</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
+                    <td colspan="2" class="px-3 py-2 text-right border-r border-base-300">TOPLAM</td>
+                    <td class="px-3 py-2 text-right tabular-nums font-mono border-r border-base-300">@Tl(_fis.ToplamBorc)</td>
+                    <td class="px-3 py-2 text-right tabular-nums font-mono">@Tl(_fis.ToplamAlacak)</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        @* ── Denge + imza ── *@
+        <div class="px-6 py-2 text-[11px] border-t border-base-200 @(_fis.Denge < 0.5m ? "text-success" : "text-error font-semibold")">
+            @(_fis.Denge < 0.5m ? "✓ Borç = Alacak — fiş dengeli" : "⚠ Denge bozuk · fark " + Tl(_fis.Denge))
+        </div>
+        <div class="grid grid-cols-3 gap-4 px-6 pt-8 pb-5 text-center text-xs text-base-content/60">
+            <div class="border-t border-base-300 pt-1.5">Düzenleyen</div>
+            <div class="border-t border-base-300 pt-1.5">Kontrol</div>
+            <div class="border-t border-base-300 pt-1.5">Onaylayan</div>
         </div>
     </div>
 }
