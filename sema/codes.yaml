@@ -1,7 +1,7 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-06-22
+updated: 2026-06-24
 
 codes:
   urn.urnTip:
@@ -156,9 +156,11 @@ codes:
     note: "Satır seviye (J_ORDERS.STATUS ana sipariş; bu DETAY). Bekleyen toplama: WMSAKTARMA=1 AND ORDERS.STATUS=1000 AND DETAILS.STATUS IN (2000,2002,2003,2007)."
 
   mekanID:
-    values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: Ek Depo, 4835: Ek Depo}
+    # isim kaynağı = posMagaza.mekanAd (dbo.mekan YOK). 24.06 teyit.
+    values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: "İade Deposu (ODAK)", 4835: Ek Depo, 26142: "İPTAL-Transfer Deposu (transit)", 60398: HEYKEL TRANSFER}
     depo_grubu: [12, 4480, 4835]    # cari/envanter sorgularında "Depo"
     magaza_grubu: [1, 4477, 4478]   # "Mağaza"
+    transit_haric: [26142, 4480, 4835]   # stokSonAltDepo_vw'da transit/sanal — anlık stok toplamında HARİÇ (26142=129K Hazırlık sahte over-count tuzağı, 24.06)
   frmID_onemli:
     values:
       0: GENEL

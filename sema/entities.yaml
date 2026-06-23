@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-22
+updated: 2026-06-24
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -22,6 +22,7 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "Canlı sorguda WITH(NOLOCK) (özellikle irsHrk, depo.*)."
   - "MCP sql_query: CTE yok, top-level ORDER BY yok, multi-statement yok — tek SELECT yaz."
   - "urn.stkKod BARKOD DEĞİL — ürün eşleşmesi daima stkID üstünden."
+  - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
   # ERP çekirdek
@@ -37,7 +38,6 @@ entities:
       kategoriler_ek: ["Zkargo", "KARGO"]
       kategoriler_ek_note: "Zkargo=alış kargo giderleri; KARGO=gelir kalemleri (stkKod KARGO1/KARGO2, stkID 144860/144963)"
     last_verified: "2026-06-17"
-  bkm.Urunbilgi: {tip: view, note: "en pratik ürün lookup: stkID, BarkodAna, mrkAd, Kategori3, SatisFiyat"}
   dbo.irsHrk:
     pk: ehID
     grain: "birleşik hareket (ehID+ehstkID+ehTip)"
@@ -70,7 +70,8 @@ entities:
   depo.adres: {pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')"}
   depo.stok_adres_palet_vw: {tip: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)"}
   ent.JokerCKStok_vw: {tip: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view"}
-  ent.odak_depo_Stok: {tip: tablo, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 486K ürün, ~7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. 14.06 keşif."}
+  ent.odak_depo_Stok: {tip: tablo, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 487.567 satır, 349.756 çeşit stokta, ~7,0-7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. ⚠ 'ODAK stok' sorulduğunda KANONİK = BU TABLO; stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA (24.06 vakası: vw mekan 26142 İPTAL-Transfer 129K dahil edilip sessiz over-count yapıldı). 14.06 keşif, 24.06 teyit."}
+  bkm.UrunBilgi: {tip: view, pk: stkID, key: [stkID, mrkAd, Yazar, SatisFiyat, SonAlis, Kategori3], note: "Denormalize ÜRÜN MASTER VIEW (sys.objects=VIEW) — en pratik ürün lookup; tek view'dan marka+yazar+maliyet+fiyat+kategori (urn+urnMrk join'e gerek yok, rapor scriptleri buradan). Kolonlar: stkKod/BarkodAna/stkAd, mrkID/mrkAd(marka=yayınevi), YazarId/Yazar, frmID/FirmaAd(ana tedarikçi), KatAna/Kat1..5/Kategori2/Kategori3(metin hiyerarşi; Kategori3=urnKtgr2.ktgrAd ör 'Hazırlık Kitapları'), SatisFiyat(üst/liste fiyat birim), SonAlis(son alış maliyet birim, 0=güncellenmemiş), OzelWebFiyat, AlisKDVYuzde/SatisKDVYuzde, urnTip(0=normal), AnaTedarikciId. 24.06 kolon+tip teyit (eski kısa stub ile birleşti)."}
   stokSonAltDepo_vw: {tip: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ehMekan POZİTİF stok: 12=Merkez Depo (~2,14M), 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
   ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK: {key: [ORDERREF], note: "depoda toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID)"}
