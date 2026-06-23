@@ -45,6 +45,15 @@ else
             </div>
         </div>
 
+        @if (!string.IsNullOrWhiteSpace(_fat.CariAd))
+        {
+            <div class="px-6 py-3 border-b border-base-200 flex items-baseline gap-2">
+                <span class="text-xs text-base-content/50 uppercase tracking-wide">Satıcı / Cari</span>
+                <span class="font-semibold">@_fat.CariAd</span>
+                @if (!string.IsNullOrWhiteSpace(_fat.CariKod)) { <span class="text-xs font-mono text-base-content/50">@_fat.CariKod</span> }
+            </div>
+        }
+
         @if (!string.IsNullOrWhiteSpace(_fat.Not))
         {
             <div class="px-6 py-2 text-sm text-base-content/70 border-b border-base-200">Not: <span class="font-medium text-base-content">@_fat.Not</span></div>

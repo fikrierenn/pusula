@@ -26,7 +26,7 @@ public record YevmiyeFis(int YevmiyeNo, string Tarih, string FisAd, IReadOnlyLis
 public record FaturaSatir(string Kod, string Urun, decimal Adet, decimal Tutar, decimal Kdv);
 
 /// <summary>Gider faturası (başlık + satırlar) — Kontrol DETAY FAT evrak drill'i. eID ile.</summary>
-public record Fatura(string EvrakNo, string Tarih, int Tip, string? Not, IReadOnlyList<FaturaSatir> Satirlar)
+public record Fatura(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, IReadOnlyList<FaturaSatir> Satirlar)
 {
     public decimal ToplamTutar => Satirlar.Sum(s => s.Tutar);
     public decimal ToplamKdv => Satirlar.Sum(s => s.Kdv);
