@@ -16,7 +16,6 @@
 
 <div class="flex gap-2 mb-4 flex-wrap items-center">
     <select class="select select-bordered select-sm text-sm font-semibold" @bind="_donem" @bind:after="LoadAsync">
-        <option value="">Tüm kapanmış dönemler</option>
         @foreach (var d in _donemler)
         {
             <option value="@d.Yil-@d.Ay">@($"{d.Ay:00}.{d.Yil}") (kapanış @d.Kapanis)</option>

@@ -37,28 +37,27 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    /* Hedef dönem(ler): tek ay verildiyse onu, yoksa Fin_AyKapanis'teki tüm kapanmış ayları al. */
-    -- AyBas/AySon: SARGABLE tarih-aralığı (YEAR/MONTH join non-sargable → index boşa, full scan). Range → index seek.
-    -- SirketID = mhs şirket-dönem (yıl−2020; 6=2026). MHS branch fisbSirketID filtresi → mevcut mhsFisBaslik_FisListe
-    --   (fisbSirketID, fisTarih) index SEEK (15M full-scan yerine tek yıl; 1494ms→66ms, yeni index gerekmez).
-    -- TEMP TABLO (table-variable DEĞİL): table-var 1-satır tahmin eder → car/fat (23.7M) range-join'da kötü plan (full scan, timeout).
-    -- #temp istatistik tutar → optimizer doğru kardinalite → index seek. Tüketen INSERT'lerde OPTION(RECOMPILE) güvence.
-    IF OBJECT_ID('tempdb..#Donemler') IS NOT NULL DROP TABLE #Donemler;
-    CREATE TABLE #Donemler (DonemYil int, DonemAy tinyint, KapanisDT datetime2(0), AyBas date, AySon date, SirketId int);
-    INSERT INTO #Donemler (DonemYil, DonemAy, KapanisDT, AyBas, AySon, SirketId)
-    SELECT k.DonemYil, k.DonemAy, k.KapanisDT,
-           DATEFROMPARTS(k.DonemYil, k.DonemAy, 1),
-           DATEADD(MONTH, 1, DATEFROMPARTS(k.DonemYil, k.DonemAy, 1)),
-           k.DonemYil - 2020
+    /* TEK DÖNEM (panel hep tek dönem çağırır). @Yil/@Ay verilmezse EN YENİ kapanmış dönem.
+       SAF SKALER yaklaşım: tüm filtreler skaler sabit değişken (@AyBas/@AySon/@Kap/@Sir) → OPTION(RECOMPILE) ile
+       optimizer literal görür → index SEEK. #Donemler JOIN YOK (range-join seek'i öldürüyordu: CAR 87s; skaler 139ms). */
+    DECLARE @DonemYil int, @DonemAy tinyint, @Kap datetime2(0), @AyBas date, @AySon date, @Sir int;
+    SELECT TOP 1
+        @DonemYil = k.DonemYil, @DonemAy = k.DonemAy, @Kap = k.KapanisDT,
+        @AyBas = DATEFROMPARTS(k.DonemYil, k.DonemAy, 1),
+        @AySon = DATEADD(MONTH, 1, DATEFROMPARTS(k.DonemYil, k.DonemAy, 1)),
+        @Sir   = k.DonemYil - 2020   -- mhs şirket-dönem (yıl−2020; 6=2026)
     FROM bkm.Fin_AyKapanis k
     WHERE (@Yil IS NULL OR k.DonemYil = @Yil)
-      AND (@Ay  IS NULL OR k.DonemAy  = @Ay);
+      AND (@Ay  IS NULL OR k.DonemAy  = @Ay)
+    ORDER BY k.DonemYil DESC, k.DonemAy DESC;
 
-    IF NOT EXISTS (SELECT 1 FROM #Donemler)
+    IF @AyBas IS NULL
     BEGIN
         RAISERROR(N'Kapanış dönemi bulunamadı. bkm.Fin_AyKapanis''e ilgili ay(lar)ı girin (örn. 2026 ayları eksik).',16,1);
         RETURN;
     END;
+
+    DECLARE @Donem char(7) = RIGHT('0'+CAST(@DonemAy AS varchar(2)),2) + '.' + CAST(@DonemYil AS varchar(4));
 
     /* ---- Ortak ham hareket havuzu (kaynak-bağımsız kolon şeması) ---- */
     CREATE TABLE #H (
@@ -87,41 +86,41 @@ BEGIN
     INSERT INTO #H
     SELECT
         'CAR', CAST(c.cID AS bigint), CAST(c.cEvrakNo AS varchar(50)),
-        RIGHT('0'+CAST(d.DonemAy AS varchar(2)),2)+'.'+CAST(d.DonemYil AS varchar(4)),
+        @Donem,
         CAST(c.cTarih AS datetime2(0)),
-        d.KapanisDT,
+        @Kap,
         CAST(ISNULL(c.cgTarih, c.cTarih) AS datetime2(0)),
         CAST(ISNULL(c.ckTarih, ISNULL(c.cgTarih, c.cTarih)) AS datetime2(0)),
-        CASE WHEN ISNULL(c.cgTarih,c.cTarih) > d.KapanisDT THEN 1 ELSE 0 END,
-        CASE WHEN ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih)) > d.KapanisDT THEN 1 ELSE 0 END,
-        DATEDIFF(DAY, d.KapanisDT, ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih))),
+        CASE WHEN ISNULL(c.cgTarih,c.cTarih) > @Kap THEN 1 ELSE 0 END,
+        CASE WHEN ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih)) > @Kap THEN 1 ELSE 0 END,
+        DATEDIFF(DAY, @Kap, ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih))),
         CASE WHEN f1.frmKod LIKE 'G-%' THEN f1.frmKod WHEN f2.frmKod LIKE 'G-%' THEN f2.frmKod ELSE f1.frmKod END,
         CASE WHEN f1.frmKod LIKE 'G-%' THEN f1.frmAd  WHEN f2.frmKod LIKE 'G-%' THEN f2.frmAd  ELSE f1.frmAd  END,
         f2.frmKod, c.cgKisi, c.coKisi,
         CAST(c.cTutar AS decimal(18,2)), c.cNot
     FROM dbo.car c
-    JOIN #Donemler d ON c.cTarih >= d.AyBas AND c.cTarih < d.AySon   -- sargable (IX_car_cTarih seek)
     LEFT JOIN dbo.frm f1 ON f1.frmID = c.cKod
     LEFT JOIN dbo.frm f2 ON f2.frmID = c.cKodKarsi
-    WHERE c.cOnay = 1
-      AND (ISNULL(c.cgTarih,c.cTarih) > d.KapanisDT
-        OR ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih)) > d.KapanisDT)     -- kapanış sonrası dokunma
+    WHERE c.cTarih >= @AyBas AND c.cTarih < @AySon   -- SKALER seek (IX_car_cTarih) — 87s→139ms
+      AND c.cOnay = 1
+      AND (ISNULL(c.cgTarih,c.cTarih) > @Kap
+        OR ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih)) > @Kap)     -- kapanış sonrası dokunma
       AND (@SadeceGider = 0 OR (f1.frmKod LIKE 'G-%' OR f2.frmKod LIKE 'G-%'))
-    OPTION (RECOMPILE);   -- #Donemler gerçek değer/kardinaliteyle plan (car 23.7M seek garantisi)
+    OPTION (RECOMPILE);   -- skaler @AyBas/@AySon literal → IX_car_cTarih seek (car 23.7M)
 
     /* ===================== FAT (gider/masraf faturası eTip 6,7,8) ===================== */
     IF @Kaynak IN ('FAT','HEPSI')
     INSERT INTO #H
     SELECT
         'FAT', CAST(f.eID AS bigint), CAST(f.eNo AS varchar(50)),
-        RIGHT('0'+CAST(d.DonemAy AS varchar(2)),2)+'.'+CAST(d.DonemYil AS varchar(4)),
+        @Donem,
         CAST(f.eTarihS AS datetime2(0)),
-        d.KapanisDT,
+        @Kap,
         CAST(ISNULL(f.gTarih, ISNULL(f.oTarih, f.eTarihS)) AS datetime2(0)),
         CAST(f.kTarih AS datetime2(0)),
-        CASE WHEN ISNULL(f.gTarih,ISNULL(f.oTarih,f.eTarihS)) > d.KapanisDT THEN 1 ELSE 0 END,
-        CASE WHEN f.kTarih > d.KapanisDT THEN 1 ELSE 0 END,
-        DATEDIFF(DAY, d.KapanisDT, f.kTarih),
+        CASE WHEN ISNULL(f.gTarih,ISNULL(f.oTarih,f.eTarihS)) > @Kap THEN 1 ELSE 0 END,
+        CASE WHEN f.kTarih > @Kap THEN 1 ELSE 0 END,
+        DATEDIFF(DAY, @Kap, f.kTarih),
         MAX(CASE WHEN u.stkKod LIKE 'G-%' THEN u.stkKod END),
         MAX(CASE WHEN u.stkKod LIKE 'G-%' THEN u.stkAd  END),
         NULL, f.gKisi, f.oKisi,
@@ -129,42 +128,42 @@ BEGIN
            - SUM(ISNULL(a.ehTutarKDVtvkft,0)) - SUM(ISNULL(a.ehTutarStopaj,0)) AS decimal(18,2)),
         f.eNot
     FROM dbo.fat f
-    JOIN #Donemler d ON f.eTarihS >= d.AyBas AND f.eTarihS < d.AySon   -- sargable (IX_fat_7 seek)
     JOIN dbo.fatAyr a ON a.ehID = f.eID
     LEFT JOIN dbo.urn u ON u.stkID = a.ehStkID AND u.urnTip IN (1,2)
-    WHERE f.eTip IN (6,7,8)
-      AND (ISNULL(f.gTarih,ISNULL(f.oTarih,f.eTarihS)) > d.KapanisDT OR f.kTarih > d.KapanisDT)
+    WHERE f.eTarihS >= @AyBas AND f.eTarihS < @AySon   -- SKALER seek (IX_fat_7)
+      AND f.eTip IN (6,7,8)
+      AND (ISNULL(f.gTarih,ISNULL(f.oTarih,f.eTarihS)) > @Kap OR f.kTarih > @Kap)
       AND (@SadeceGider = 0 OR EXISTS (
             SELECT 1 FROM dbo.fatAyr a2 JOIN dbo.urn u2 ON u2.stkID=a2.ehStkID
             WHERE a2.ehID=f.eID AND u2.stkKod LIKE 'G-%'))
-    GROUP BY f.eID, f.eNo, f.eTarihS, f.gTarih, f.oTarih, f.kTarih, f.gKisi, f.oKisi, f.eNot, d.DonemYil, d.DonemAy, d.KapanisDT
-    OPTION (RECOMPILE);   -- #Donemler gerçek değer/kardinaliteyle plan (fat seek garantisi)
+    GROUP BY f.eID, f.eNo, f.eTarihS, f.gTarih, f.oTarih, f.kTarih, f.gKisi, f.oKisi, f.eNot
+    OPTION (RECOMPILE);   -- skaler @AyBas/@AySon literal → IX_fat_7 seek
 
     /* ===================== MHS (yevmiye fişi) ===================== */
     IF @Kaynak IN ('MHS','HEPSI')
     INSERT INTO #H
     SELECT
         'MHS', CAST(b.fisbID AS bigint), CAST(b.yevmiyeNo AS varchar(50)),
-        RIGHT('0'+CAST(d.DonemAy AS varchar(2)),2)+'.'+CAST(d.DonemYil AS varchar(4)),
+        @Donem,
         CAST(b.fisTarih AS datetime2(0)),
-        d.KapanisDT,
+        @Kap,
         CAST(ISNULL(b.gTarih, b.fisTarih) AS datetime2(0)),
         CAST(ISNULL(b.kTarih, ISNULL(b.gTarih, b.fisTarih)) AS datetime2(0)),
-        CASE WHEN ISNULL(b.gTarih,b.fisTarih) > d.KapanisDT THEN 1 ELSE 0 END,
-        CASE WHEN ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih)) > d.KapanisDT THEN 1 ELSE 0 END,
-        DATEDIFF(DAY, d.KapanisDT, ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih))),
+        CASE WHEN ISNULL(b.gTarih,b.fisTarih) > @Kap THEN 1 ELSE 0 END,
+        CASE WHEN ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih)) > @Kap THEN 1 ELSE 0 END,
+        DATEDIFF(DAY, @Kap, ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih))),
         NULL, N'(yevmiye fişi)', NULL, b.gKisi, b.oKisi,
         CAST((SELECT SUM(CASE WHEN ff.fisBA=0 THEN ff.fisTutar ELSE 0 END)
               FROM mhs.mhsFis ff WHERE ff.fisID=b.fisbID AND ff.fisSirketID=b.fisbSirketID) AS decimal(18,2)),
         CAST(b.fisAd AS nvarchar(400))
     FROM mhs.mhsFisBaslik b
-    JOIN #Donemler d ON b.fisbSirketID = d.SirketId AND b.fisTarih >= d.AyBas AND b.fisTarih < d.AySon   -- mhsFisBaslik_FisListe(fisbSirketID,fisTarih) SEEK (66ms)
-    WHERE (ISNULL(b.gTarih,b.fisTarih) > d.KapanisDT OR ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih)) > d.KapanisDT)
+    WHERE b.fisbSirketID = @Sir AND b.fisTarih >= @AyBas AND b.fisTarih < @AySon   -- SKALER seek (mhsFisBaslik_FisListe: 14s→243ms)
+      AND (ISNULL(b.gTarih,b.fisTarih) > @Kap OR ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih)) > @Kap)
       AND (@SadeceGider = 0 OR EXISTS (
             SELECT 1 FROM mhs.mhsFis ff JOIN mhs.mhsHsp h ON h.hspID=ff.fisHspID AND h.hspSirketID=ff.fisSirketID
             WHERE ff.fisID=b.fisbID AND ff.fisSirketID=b.fisbSirketID
               AND (h.hspKod LIKE '6%' OR h.hspKod LIKE '7%')))
-    OPTION (RECOMPILE);   -- #Donemler gerçek değer/kardinaliteyle plan (mhsFisBaslik_FisListe seek garantisi)
+    OPTION (RECOMPILE);   -- skaler @Sir/@AyBas literal → mhsFisBaslik_FisListe seek
 
     /* ---- Severity + forensic bayraklar ---- */
     ;WITH Skor AS (
@@ -230,7 +229,7 @@ BEGIN
         ORDER BY MAX(RiskSkor) DESC, COUNT(*) DESC;
     END
 
-    DROP TABLE #H; DROP TABLE #B; DROP TABLE #Donemler;
+    DROP TABLE #H; DROP TABLE #B;
 END
 GO
 
