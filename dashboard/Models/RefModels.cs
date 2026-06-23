@@ -56,9 +56,6 @@ public record MarkaRow(string Ad, decimal Ciro, int Adet, int Cesit);
 /// <summary>Stockout kategori satırı.</summary>
 public record StockoutRow(string Kategori, int Cesit, int Yok, decimal Pct);
 
-/// <summary>Kategori bazlı stok adet + çeşit (distinct SKU). 3 mağaza + merkez depo, stok>0.</summary>
-public record KategoriAdetRow(string Kategori, int Cesit, long Adet);
-
 /// <summary>SPLH işgücü verimi (mağaza, ₺/saat).</summary>
 public record SplhRow(string Magaza, decimal NetCiro, int Fis, decimal Saat, int Personel);
 
@@ -154,11 +151,18 @@ public record DepoWmsData(int? BugunIslem, int? BugunAdet, IReadOnlyList<DepoWms
 /// <summary>Depo WMS günlük trend satırı.</summary>
 public record DepoWmsTrend(DateTime Gun, int Islem, int Adet);
 
-/// <summary>Kategori bazlı anlık stok dağılımı (MAX snapshot, FSM/Özlüce/İst.Yolu/Depo).</summary>
-public record KategoriStokRow(string Kategori, decimal Fsm, decimal Ozluce, decimal IstYolu, decimal Depo)
+/// <summary>Kategori bazlı anlık stok dağılımı (MAX snapshot). ₺ (maliyet) + Adet per mağaza (FSM/Özlüce/İst.Yolu/Depo).
+/// Çeşit (distinct SKU) ayrı canlı sorgudan (KategoriCesitRow) — snapshot pre-aggregated, çeşit veremiyor.</summary>
+public record KategoriStokRow(string Kategori, decimal Fsm, decimal Ozluce, decimal IstYolu, decimal Depo,
+    long FsmAdet = 0, long OzluceAdet = 0, long IstYoluAdet = 0, long DepoAdet = 0)
 {
     public decimal Toplam => Fsm + Ozluce + IstYolu + Depo;
+    public long ToplamAdet => FsmAdet + OzluceAdet + IstYoluAdet + DepoAdet;
 }
+
+/// <summary>Kategori bazlı çeşit (distinct SKU) per mağaza — canlı (stokSonAltDepo_vw, ~3s arka plan).
+/// Toplam = mağazalar-arası distinct (per-store toplamı DEĞİL; aynı ürün 2 mağazada tek sayılır).</summary>
+public record KategoriCesitRow(string Kategori, int Fsm, int Ozluce, int IstYolu, int Depo, int Toplam);
 
 /// <summary>Ölü stok ürün satırı (S90=0, Bakiye>0, YasGun≥90).</summary>
 public record OluStokRow(int StkId, string Kod, string Ad, string Kategori,

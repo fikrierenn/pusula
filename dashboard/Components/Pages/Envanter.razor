@@ -37,37 +37,53 @@ else if (_d is not null)
     })" />
 
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
-        <h3 class="text-sm font-semibold text-base-content/90 mb-3">Anlık Stok Dağılımı — Mağaza Bazlı</h3>
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <h3 class="text-sm font-semibold text-base-content/90">Anlık Stok Dağılımı — Mağaza Bazlı</h3>
+            <div class="join">
+                <button class="btn btn-xs join-item @(_stokMetrik == StokMetrik.Tl ? "btn-primary" : "btn-ghost border-base-300")" @onclick="() => _stokMetrik = StokMetrik.Tl">₺</button>
+                <button class="btn btn-xs join-item @(_stokMetrik == StokMetrik.Adet ? "btn-primary" : "btn-ghost border-base-300")" @onclick="() => _stokMetrik = StokMetrik.Adet">Adet</button>
+                <button class="btn btn-xs join-item @(_stokMetrik == StokMetrik.Cesit ? "btn-primary" : "btn-ghost border-base-300")" @onclick="() => _stokMetrik = StokMetrik.Cesit">
+                    Çeşit @if (_cesitLoading) { <span class="loading loading-spinner loading-xs"></span> }
+                </button>
+            </div>
+        </div>
         <table class="table table-xs w-full">
             <thead><tr class="text-base-content/50">
                 <th></th><th class="text-right">FSM</th><th class="text-right">Özlüce</th><th class="text-right">İst.Yolu</th><th class="text-right">Merkez Depo</th><th class="text-right font-bold">Toplam</th>
             </tr></thead>
             <tbody>
-                <tr class="font-semibold border-b border-base-200">
-                    <td class="text-base-content/60 text-xs">Toplam Stok (₺)</td>
-                    <td class="text-right font-mono">@Tl(_d.FsmStok)</td>
-                    <td class="text-right font-mono">@Tl(_d.OzluceStok)</td>
-                    <td class="text-right font-mono">@Tl(_d.IstYoluStok)</td>
-                    <td class="text-right font-mono">@Tl(_d.DepoStok)</td>
-                    <td class="text-right font-mono font-bold">@Tl(_d.FsmStok + _d.OzluceStok + _d.IstYoluStok + _d.DepoStok)</td>
-                </tr>
                 @if (_d.KategoriStok is { Count: > 0 } kstok)
                 {
+                    <tr class="font-semibold border-b border-base-200">
+                        <td class="text-base-content/60 text-xs">Toplam (@MetrikAd)</td>
+                        <td class="text-right font-mono">@Hucre(_d.FsmStok, kstok.Sum(k => k.FsmAdet), _cesit.Values.Sum(c => c.Fsm))</td>
+                        <td class="text-right font-mono">@Hucre(_d.OzluceStok, kstok.Sum(k => k.OzluceAdet), _cesit.Values.Sum(c => c.Ozluce))</td>
+                        <td class="text-right font-mono">@Hucre(_d.IstYoluStok, kstok.Sum(k => k.IstYoluAdet), _cesit.Values.Sum(c => c.IstYolu))</td>
+                        <td class="text-right font-mono">@Hucre(_d.DepoStok, kstok.Sum(k => k.DepoAdet), _cesit.Values.Sum(c => c.Depo))</td>
+                        <td class="text-right font-mono font-bold">@Hucre(_d.FsmStok + _d.OzluceStok + _d.IstYoluStok + _d.DepoStok, kstok.Sum(k => k.ToplamAdet), _cesit.Values.Sum(c => c.Toplam))</td>
+                    </tr>
                     @foreach (var k in kstok)
                     {
-                    <tr class="hover:bg-base-200/40">
-                        <td class="text-base-content/70 text-xs pl-3">@k.Kategori</td>
-                        <td class="text-right font-mono text-xs">@Tl(k.Fsm)</td>
-                        <td class="text-right font-mono text-xs">@Tl(k.Ozluce)</td>
-                        <td class="text-right font-mono text-xs">@Tl(k.IstYolu)</td>
-                        <td class="text-right font-mono text-xs">@Tl(k.Depo)</td>
-                        <td class="text-right font-mono text-xs font-medium">@Tl(k.Toplam)</td>
-                    </tr>
+                        var c = _cesit.GetValueOrDefault(k.Kategori);
+                        <tr class="hover:bg-base-200/40 cursor-pointer" @onclick="() => OpenUrun(k.Kategori)">
+                            <td class="text-base-content/70 text-xs pl-3">@k.Kategori</td>
+                            <td class="text-right font-mono text-xs">@Hucre(k.Fsm, k.FsmAdet, c?.Fsm ?? 0)</td>
+                            <td class="text-right font-mono text-xs">@Hucre(k.Ozluce, k.OzluceAdet, c?.Ozluce ?? 0)</td>
+                            <td class="text-right font-mono text-xs">@Hucre(k.IstYolu, k.IstYoluAdet, c?.IstYolu ?? 0)</td>
+                            <td class="text-right font-mono text-xs">@Hucre(k.Depo, k.DepoAdet, c?.Depo ?? 0)</td>
+                            <td class="text-right font-mono text-xs font-medium">@Hucre(k.Toplam, k.ToplamAdet, c?.Toplam ?? 0)</td>
+                        </tr>
                     }
                 }
             </tbody>
         </table>
-        <div class="text-base-content/40 text-[11px] mt-2">Anlık snapshot · Ort.Maliyet · Dergi/Sınav hariç</div>
+        <div class="text-base-content/40 text-[11px] mt-2">
+            @(_stokMetrik switch {
+                StokMetrik.Tl => "Stok değeri ₺ · Ort.Maliyet snapshot",
+                StokMetrik.Adet => "Fiziksel stok adedi · snapshot",
+                _ => "Çeşit = stoğu olan farklı ürün (SKU) sayısı · canlı · Toplam = mağazalar-arası distinct"
+            }) · Dergi/Sınav hariç · satıra tıkla → ürün
+        </div>
     </div>
 
     @if (_d.Trend is { Count: > 0 } trend)
@@ -102,43 +118,6 @@ else if (_d is not null)
         </div>
     </div>
     }
-
-    @* Kategori bazlı stok ADET + ÇEŞİT (distinct SKU) — anlık, 3 mağaza + depo *@
-    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3">
-        <h3 class="text-sm font-semibold text-base-content/90 mb-3 flex items-center gap-1.5">
-            Kategori Stok — Adet &amp; Çeşit (anlık, 3 mağaza + depo)
-            @if (_katAdetLoading) { <span class="loading loading-spinner loading-xs text-base-content/40"></span> }
-        </h3>
-        @if (_katAdet.Count > 0)
-        {
-            <div class="overflow-x-auto">
-                <table class="table table-sm">
-                    <thead><tr>
-                        <th>Kategori</th>
-                        <th class="text-right">Çeşit (SKU)</th>
-                        <th class="text-right">Stok Adet</th>
-                        <th class="w-[30%]"></th>
-                    </tr></thead>
-                    <tbody>
-                    @foreach (var k in _katAdet)
-                    {
-                        <tr class="hover cursor-pointer" @onclick="() => OpenUrun(k.Kategori)">
-                            <td class="font-medium">@k.Kategori</td>
-                            <td class="text-right tabular-nums text-base-content/70">@Num(k.Cesit)</td>
-                            <td class="text-right tabular-nums font-semibold">@Num((int)Math.Min(k.Adet, int.MaxValue))</td>
-                            <td><div class="h-2 rounded bg-primary/70" style="width:@(_katAdetMax > 0 ? (int)(100.0 * k.Adet / _katAdetMax) : 0)%"></div></td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-            <div class="text-base-content/50 text-[11px] mt-2">Çeşit = stoğu olan farklı ürün (SKU) sayısı · Adet = toplam fiziksel stok miktarı. Satıra tıkla → ürün listesi. Non-ürün kategorileri (Sınav/Hediye Çeki/Kargo) hariç.</div>
-        }
-        else if (!_katAdetLoading)
-        {
-            <p class="text-base-content/50 text-sm py-3">Kategori stok verisi yok.</p>
-        }
-    </div>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5">En Hızlı Dönen Kategoriler (yıllık devir)</h3>
@@ -416,9 +395,10 @@ else if (_d is not null)
     private IReadOnlyList<MarkaRotasyonRow> _rot = [];
     private IReadOnlyList<TedarikciPerfRow> _tedPerf = [];
     private bool _tedPerfLoading = true;   // B-110: 12-ay marka taraması + stok, arka planda (~3s)
-    private IReadOnlyList<KategoriAdetRow> _katAdet = [];
-    private long _katAdetMax;               // bar ölçek (en yüksek adet)
-    private bool _katAdetLoading = true;   // kategori adet+çeşit (~3s COUNT DISTINCT), arka planda
+    private enum StokMetrik { Tl, Adet, Cesit }
+    private StokMetrik _stokMetrik = StokMetrik.Tl;   // "Anlık Stok Dağılımı" tablosu toggle
+    private Dictionary<string, KategoriCesitRow> _cesit = new(StringComparer.OrdinalIgnoreCase);
+    private bool _cesitLoading = true;     // per-store çeşit (~3s canlı), arka planda
     private HcOzet? _hc;
     private bool _modalUrun;
     private bool _urunLoading;
@@ -475,10 +455,10 @@ else if (_d is not null)
         catch (Exception ex) { Logger.LogWarning(ex, "Tedarikçi performans alınamadı — kart boş gösterilecek"); }
         finally { _tedPerfLoading = false; StateHasChanged(); }
 
-        // Kategori stok adet + çeşit (~3s) — arka planda.
-        try { _katAdet = await Ref.GetKategoriAdetAsync(); _katAdetMax = _katAdet.Count > 0 ? _katAdet.Max(k => k.Adet) : 0; }
-        catch (Exception ex) { Logger.LogWarning(ex, "Kategori adet alınamadı — kart boş gösterilecek"); }
-        finally { _katAdetLoading = false; StateHasChanged(); }
+        // Kategori çeşit per-store (~3s canlı) — arka planda; ₺/Adet zaten ana yükte (snapshot).
+        try { _cesit = (await Ref.GetKategoriCesitAsync()).ToDictionary(c => c.Kategori, c => c, StringComparer.OrdinalIgnoreCase); }
+        catch (Exception ex) { Logger.LogWarning(ex, "Kategori çeşit alınamadı — çeşit toggle boş"); }
+        finally { _cesitLoading = false; StateHasChanged(); }
 
         // Marj ağır (~40s, kanonik maliyet şelalesi) — sayfa açıldıktan SONRA arka planda yükle.
         try { _marj = await Ref.GetMarjAsync(); }
@@ -561,4 +541,13 @@ else if (_d is not null)
 
     private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
     private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    private string MetrikAd => _stokMetrik switch { StokMetrik.Tl => "₺", StokMetrik.Adet => "Adet", _ => "Çeşit" };
+    // Stok Dağılımı hücre değeri — seçili metriğe göre (₺ / Adet snapshot'tan, Çeşit canlı dict'ten).
+    private string Hucre(decimal tl, long adet, int cesit) => _stokMetrik switch
+    {
+        StokMetrik.Tl => Tl(tl),
+        StokMetrik.Adet => Num((int)Math.Min(adet, int.MaxValue)),
+        _ => _cesitLoading ? "…" : Num(cesit)
+    };
 }

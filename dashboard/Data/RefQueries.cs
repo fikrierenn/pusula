@@ -180,7 +180,11 @@ public sealed partial class RefQueries(Db db, ILogger<RefQueries> logger, IcKart
                 CAST(SUM(ISNULL([FSM Stok Maliyet],0)) AS decimal(18,0)) AS Fsm,
                 CAST(SUM(ISNULL([Özlüce Stok Maliyet],0)) AS decimal(18,0)) AS Ozluce,
                 CAST(SUM(ISNULL([İst.Yolu Stok Maliyet],0)) AS decimal(18,0)) AS IstYolu,
-                CAST(SUM(ISNULL([Merkez Depo Stok Maliyet],0)) AS decimal(18,0)) AS Depo
+                CAST(SUM(ISNULL([Merkez Depo Stok Maliyet],0)) AS decimal(18,0)) AS Depo,
+                CAST(SUM(ISNULL([Fsm Stok Adet],0)) AS bigint) AS FsmAdet,
+                CAST(SUM(ISNULL([Özlüce Stok Adet],0)) AS bigint) AS OzluceAdet,
+                CAST(SUM(ISNULL([İst.Yolu Stok Adet],0)) AS bigint) AS IstYoluAdet,
+                CAST(SUM(ISNULL([Merkez Depo Stok Adet],0)) AS bigint) AS DepoAdet
             FROM DerinSISBkm.bkm.ENVANTER_RAPORU WITH(NOLOCK)
             WHERE Tarih=(SELECT MAX(Tarih) FROM DerinSISBkm.bkm.ENVANTER_RAPORU)
               AND [Maliyet Tipi]='Ort.Maliyet'
