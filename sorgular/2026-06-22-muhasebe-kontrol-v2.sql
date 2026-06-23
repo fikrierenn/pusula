@@ -206,11 +206,11 @@ BEGIN
             EvrakAdet     = COUNT(*),
             ToplamTutar   = CAST(SUM(Tutar) AS decimal(18,2)),
             MaxGunSonra   = MAX(GunSonra),
-            SonradanDegAdet = SUM(SonradanDeg),
-            GecGirisAdet    = SUM(GecGiris),
-            YuvarlakAdet    = SUM(YuvarlakTutar),
-            MukerrerAdet    = SUM(Mukerrer),
-            GirenOnayAyniAdet = SUM(GirenOnaylayanAyni),
+            SonradanDegAdet = SUM(CAST(SonradanDeg AS int)),       -- SUM(bit) geçersiz → CAST int
+            GecGirisAdet    = SUM(CAST(GecGiris AS int)),
+            YuvarlakAdet    = SUM(CAST(YuvarlakTutar AS int)),
+            MukerrerAdet    = SUM(CAST(Mukerrer AS int)),
+            GirenOnayAyniAdet = SUM(CAST(GirenOnaylayanAyni AS int)),
             MaxRiskSkor   = MAX(RiskSkor),
             ToplamRiskSkor= SUM(RiskSkor)
         FROM #B
