@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ApexCharts;
 using Microsoft.AspNetCore.Authentication;
+using GmDashboard;
 using GmDashboard.Components;
 using GmDashboard.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -36,39 +37,11 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddApexCharts();   // mobil-native grafik motoru (plan-08)
 builder.Services.AddHttpClient();   // takvim API (Apps Script) — IHttpClientFactory plan-14
 
-builder.Services.AddSingleton<Db>();
-builder.Services.AddScoped<Queries>();
-builder.Services.AddScoped<MagazaQueries>();
-builder.Services.AddScoped<RefQueries>();
-builder.Services.AddScoped<EticQueries>();
-builder.Services.AddScoped<SadakatQueries>();
-builder.Services.AddScoped<MuhasebeQueries>();   // B-117 muhasebe/kontrol paneli (forensic)
-builder.Services.AddScoped<MizanQueries>();      // B-118 mizan/finans paneli (mali-tablo, plan-25)
-// NOT: LlmService (yerel qwen) DI'dan KALDIRILDI (18.06) — pano özetleri+asistan cloud'a geçti, çağıran yok.
-// Kod korunuyor (LlmService.cs + LLamaSharp) ama başlangıçta yüklenmiyor → boot hızlı. Yeniden gerekirse tek satır ekle.
-builder.Services.AddSingleton<GorevService>();    // SQLite görev deposu (asistan.db)
-builder.Services.AddSingleton<TahminKayitService>(); // JSON tahmin kaydı (data/tahmin-kayitlari.json) plan-14
-builder.Services.AddSingleton<TakvimService>();      // takvim etmen (tatil API cache + okul JSON) plan-14
-builder.Services.AddSingleton<IcKartService>();      // elle işaretli iç/mağaza kartları (data/ic-kartlar.json) plan-16 ek
-builder.Services.AddSingleton<AyarService>();        // iş eşiği ayarları (PanelAyar, BkmPanel) — devir/stockout/risk/hariç-marka
-builder.Services.AddScoped<ForecastOkuService>();    // tahmin motoru çıktısı okur (data/forecast/*.json) plan-15
-builder.Services.AddScoped<ForecastService>();       // forecast motorunu portaldan tetikler (python run.py) B-109
-
-// ── BKM-Asistan (B-45) — LLM zinciri: Z.ai → OpenRouter → Gemini → Groq (plan-21/26, 22.06) ──
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.ZaiProvider>();          // Z.ai free GLM-Flash (plan-26 birincil)
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.OpenRouterProvider>();
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.GeminiProvider>();
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.GroqProvider>();
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.FallbackLlmProvider>();
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.ILlmProvider>(sp => sp.GetRequiredService<GmDashboard.Data.Asistan.FallbackLlmProvider>());
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.GoogleAuthService>();  // Faz-2 OAuth (Gmail+Takvim)
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.GorusmeService>();     // görüşme kalıcılığı (session/log)
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanBellekService>(); // öğrenen katman (plan-22 Genius)
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.TakvimMailAraclar>();  // Faz-2 Calendar+Gmail araç impl.
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanAraclar>();   // sql_sorgu(salt-okuma+PII)/sema_oku/ornek_sql_bul/gorev_*
-builder.Services.AddSingleton<GmDashboard.Data.Asistan.AsistanService>();   // tool-use loop
-builder.Services.AddScoped<NotifState>();         // bildirim merkezi (Home üretir, MainLayout zili okur)
-builder.Services.AddScoped<PerfState>();          // sayfa yükleme süresi (sayfalar Track, footer okur)
+// ── DI: özellik-bazlı kayıt (B-121, ServiceRegistration.cs). Yeni servis → kendi grubuna, Program.cs değişmez. ──
+// NOT: LlmService (yerel qwen) DI'dan KALDIRILDI (18.06) — asistan cloud'a geçti. Kod korunuyor, yüklenmiyor (boot hızlı).
+builder.Services.AddBkmVeri();      // Db + ERP/mizan sorgu servisleri
+builder.Services.AddBkmDurum();     // app-local durum (görev/tahmin/takvim/ayar) + forecast + UI state
+builder.Services.AddBkmAsistan();   // LLM zinciri + asistan araçları (plan-21/26)
 
 var app = builder.Build();
 

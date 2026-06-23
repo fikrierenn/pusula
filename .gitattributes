@@ -1,5 +1,8 @@
 # Bash hook script'leri her zaman LF
 *.sh text eol=lf
 
+# Tailwind build çıktısı — üretilmiş (diff gürültüsü gizle/collapse). Kaynak: Styles/app.tailwind.css (B-121)
+dashboard/wwwroot/app.css linguist-generated=true -diff
+
 # Default: auto
 * text=auto

@@ -50,6 +50,14 @@ git log --oneline -10
 
 Otomasyon: `commit-splitter` subagent (her projeye eklenebilir).
 
+### Paylaşılan-dosya kuralı (B-121 — monolit bleed azalt)
+
+Tek-app monolitte bazı dosyalar **doğası gereği kesişir** (her özellik dokunur): `Program.cs` DI, `NavRegistry.cs` nav, `wwwroot/app.css` (Tailwind build). Karışmayı azalt:
+- **Paylaşılan dosya edit'i kendi özellik commit'iyle gider** — ayrı bucket'a düşmez (ör. yeni Muhasebe sayfası → `Muhasebe.razor` + `NavRegistry` muhasebe-satırı + DI AYNI commit'te).
+- **DI özellik-bazlı:** yeni servis `ServiceRegistration.cs`'in ilgili `AddBkm*` grubuna eklenir, `Program.cs` değişmez → hunk-split biter.
+- **`app.css` build çıktısı** (`.gitattributes` `linguist-generated`) — gitignore'lanAMAZ (csproj node-yok fallback); değiştiyse onu üreten UI commit'iyle gider.
+- Monolitte bleed tamamen bitmez — disiplinle yönetilir.
+
 ## Git Hook'ları (opsiyonel)
 
 - **pre-commit (antipattern scan):** stack-bağımlı (ör. .NET: `DateTime.Now`, `async void`, `new HttpClient()`).
