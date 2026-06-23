@@ -136,7 +136,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        try { _donemler = await Muh.GetDonemlerAsync(); }
+        try
+        {
+            _donemler = await Muh.GetDonemlerAsync();
+            // İlk yük en yeni TEK dönem (tüm dönem taraması ağır — kullanıcı isterse "Tüm" seçer).
+            if (_donemler.Count > 0) _donem = $"{_donemler[0].Yil}-{_donemler[0].Ay}";
+        }
         catch (Exception ex) { Logger.LogWarning(ex, "Dönem listesi alınamadı"); }
         await LoadAsync();
     }
