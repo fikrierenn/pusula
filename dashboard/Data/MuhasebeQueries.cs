@@ -14,6 +14,10 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
 {
     const string Sp = "DerinSISBkm.bkm.sp_KapanisMudahaleKontrol_v2";
 
+    // Dapper map'leme için düz record (8+ elemanlı ValueTuple nested Rest → Dapper 8. elemanı map edemez, tutar boş kalır).
+    private sealed record YevmiyeQ(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? Aciklama, decimal Borc, decimal Alacak);
+    private sealed record FaturaQ(string EvrakNo, string Tarih, int Tip, string? Not, string Kod, string Urun, decimal Adet, decimal Tutar, decimal Kdv);
+
     /// <summary>Özet: dönem×kaynak×gider (adet/tutar/maxgün/risk). yil/ay null → tüm kapanmış dönemler.</summary>
     public async Task<IReadOnlyList<KontrolOzetRow>> GetOzetAsync(int? yil, int? ay, string kaynak, bool sadeceGider)
     {
@@ -42,8 +46,8 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     public async Task<YevmiyeFis?> GetYevmiyeFisAsync(int fisId, int sirketId)
     {
         await using var conn = await db.OpenAsync();
-        var rows = (await conn.QueryAsync<(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? Aciklama, decimal Borc, decimal Alacak)>("""
-            SELECT b.yevmiyeNo AS YevmiyeNo,
+        var rows = (await conn.QueryAsync<YevmiyeQ>("""
+            SELECT CAST(b.yevmiyeNo AS int) AS YevmiyeNo,
                    CONVERT(varchar(10), b.fisTarih, 104) AS Tarih,
                    CAST(b.fisAd AS nvarchar(200)) AS FisAd,
                    h.hspKod AS HspKod, CAST(h.hspAd AS nvarchar(80)) AS HspAd,
@@ -65,7 +69,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     public async Task<Fatura?> GetFaturaAsync(int faturaId)
     {
         await using var conn = await db.OpenAsync();
-        var rows = (await conn.QueryAsync<(string EvrakNo, string Tarih, int Tip, string? Not, string Kod, string Urun, decimal Adet, decimal Tutar, decimal Kdv)>("""
+        var rows = (await conn.QueryAsync<FaturaQ>("""
             SELECT CAST(f.eNo AS varchar(50)) AS EvrakNo,
                    CONVERT(varchar(10), f.eTarihS, 104) AS Tarih,
                    CAST(f.eTip AS int) AS Tip, CAST(f.eNot AS nvarchar(200)) AS Not,

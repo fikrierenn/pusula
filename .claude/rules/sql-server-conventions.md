@@ -165,6 +165,12 @@ DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 - **SQL `date` kolonu Dapper'da DateTime döner; record ctor `DateOnly` ise eşleşmez** → `materialization` hatası ("matching signature ... System.DateTime").
 - **Çözüm:** global TypeHandler (Program.cs'te bir kez): `Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler())` — `Parse: DateOnly.FromDateTime((DateTime)v)`, `SetValue: DbType.Date + value.ToDateTime(TimeOnly.MinValue)`. Hem okuma hem yazma (param) çözer.
 
+## Dapper 8+ elemanlı ValueTuple → RECORD kullan (24.06 dersi)
+
+- **`QueryAsync<(a,b,c,d,e,f,g,h)>` (8+ eleman) SESSİZ yanlış map'ler.** 8-elemanlı ValueTuple = `ValueTuple<...7, ValueTuple<T8>>` (nested Rest); Dapper 8. elemanı (Rest.Item1) güvenilir map etmez → o kolon **default (0/null)** kalır, hata YOK. Yevmiye fiş `Alacak` (8. kolon) hep 0 göründü ("tutar yok").
+- **Çözüm:** 8+ kolonlu Dapper sorgusunda ValueTuple yerine **düz `record`** (isimle map, Rest yok). ≤7 eleman ValueTuple güvenli.
+- Genel: çok-kolonlu Dapper materialization = record (positional ctor, isim eşleşmesi) > ValueTuple.
+
 ## Dapper Record Materialization: smallint/tinyint → CAST AS int (23.06 dersi)
 
 - **Positional record (`record Foo(int X, ...)`) Dapper'da ctor tipi tam eşleşme ister.** SQL `smallint`→Int16, `tinyint`→Byte; record `int`(Int32) ile EŞLEŞMEZ → `InvalidOperationException: parameterless default constructor or one matching signature (Int16, Byte, ...) required`.
