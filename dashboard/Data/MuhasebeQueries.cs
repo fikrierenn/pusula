@@ -72,7 +72,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         var rows = (await conn.QueryAsync<FaturaQ>("""
             SELECT CAST(f.eNo AS varchar(50)) AS EvrakNo,
                    CONVERT(varchar(10), f.eTarihS, 104) AS Tarih,
-                   CAST(f.eTip AS int) AS Tip, CAST(f.eNot AS nvarchar(200)) AS Not,
+                   CAST(f.eTip AS int) AS Tip, CAST(f.eNot AS nvarchar(200)) AS [Not],
                    CAST(ISNULL(u.stkKod, '') AS nvarchar(50)) AS Kod,
                    CAST(ISNULL(u.stkAd, '(tanımsız)') AS nvarchar(90)) AS Urun,
                    CAST(a.ehAdetN AS decimal(18,2)) AS Adet,
