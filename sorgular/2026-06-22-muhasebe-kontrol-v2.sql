@@ -39,11 +39,14 @@ BEGIN
 
     /* Hedef dönem(ler): tek ay verildiyse onu, yoksa Fin_AyKapanis'teki tüm kapanmış ayları al. */
     -- AyBas/AySon: SARGABLE tarih-aralığı (YEAR/MONTH join non-sargable → index boşa, full scan). Range → index seek.
-    DECLARE @Donemler TABLE (DonemYil int, DonemAy tinyint, KapanisDT datetime2(0), AyBas date, AySon date);
-    INSERT INTO @Donemler (DonemYil, DonemAy, KapanisDT, AyBas, AySon)
+    -- SirketID = mhs şirket-dönem (yıl−2020; 6=2026). MHS branch fisbSirketID filtresi → mevcut mhsFisBaslik_FisListe
+    --   (fisbSirketID, fisTarih) index SEEK (15M full-scan yerine tek yıl; 1494ms→66ms, yeni index gerekmez).
+    DECLARE @Donemler TABLE (DonemYil int, DonemAy tinyint, KapanisDT datetime2(0), AyBas date, AySon date, SirketId int);
+    INSERT INTO @Donemler (DonemYil, DonemAy, KapanisDT, AyBas, AySon, SirketId)
     SELECT k.DonemYil, k.DonemAy, k.KapanisDT,
            DATEFROMPARTS(k.DonemYil, k.DonemAy, 1),
-           DATEADD(MONTH, 1, DATEFROMPARTS(k.DonemYil, k.DonemAy, 1))
+           DATEADD(MONTH, 1, DATEFROMPARTS(k.DonemYil, k.DonemAy, 1)),
+           k.DonemYil - 2020
     FROM bkm.Fin_AyKapanis k
     WHERE (@Yil IS NULL OR k.DonemYil = @Yil)
       AND (@Ay  IS NULL OR k.DonemAy  = @Ay);
@@ -150,7 +153,7 @@ BEGIN
               FROM mhs.mhsFis ff WHERE ff.fisID=b.fisbID AND ff.fisSirketID=b.fisbSirketID) AS decimal(18,2)),
         CAST(b.fisAd AS nvarchar(400))
     FROM mhs.mhsFisBaslik b
-    JOIN @Donemler d ON b.fisTarih >= d.AyBas AND b.fisTarih < d.AySon   -- sargable (fisTarih indexsiz → yine de range filtre erken daraltır)
+    JOIN @Donemler d ON b.fisbSirketID = d.SirketId AND b.fisTarih >= d.AyBas AND b.fisTarih < d.AySon   -- mhsFisBaslik_FisListe(fisbSirketID,fisTarih) SEEK (66ms)
     WHERE (ISNULL(b.gTarih,b.fisTarih) > d.KapanisDT OR ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih)) > d.KapanisDT)
       AND (@SadeceGider = 0 OR EXISTS (
             SELECT 1 FROM mhs.mhsFis ff JOIN mhs.mhsHsp h ON h.hspID=ff.fisHspID AND h.hspSirketID=ff.fisSirketID
