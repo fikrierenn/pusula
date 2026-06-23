@@ -25,10 +25,12 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
     }
 
     /// <summary>Tek yükleme: özet kartlar + tam mizan ağacı. Kapanış fişi hariç (kesin mizan).</summary>
-    public async Task<MizanSonuc> GetSonucAsync(int sirketId)
+    /// <param name="ay">1-12 kümülatif mizan (yıl başından bu aya kadar). 12 = tüm yıl.</param>
+    public async Task<MizanSonuc> GetSonucAsync(int sirketId, int ay = 12)
     {
+        if (ay is < 1 or > 12) ay = 12;
         await using var conn = await db.OpenAsync();
-        // Leaf bakiyeler — fiş satırından, "Kapanış" bilanço fişi HARİÇ (NOT EXISTS → açık yılda etkisiz).
+        // Leaf bakiyeler — fiş satırından, "Kapanış" bilanço fişi HARİÇ, fisTarih ayı ≤ @ay (kümülatif).
         var leafler = (await conn.QueryAsync<LeafRow>("""
             SELECT h.hspKod AS HspKod, h.hspAd AS HspAd,
                    CAST(SUM(CASE WHEN ff.fisBA=1 THEN -ff.fisTutar ELSE 0 END) AS decimal(18,2)) AS Borc,
@@ -36,17 +38,23 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
             FROM DerinSISBkm.mhs.mhsFis ff
             JOIN DerinSISBkm.mhs.mhsHsp h ON h.hspID = ff.fisHspID AND h.hspSirketID = ff.fisSirketID
             WHERE ff.fisSirketID = @sirketId
+              AND MONTH(ff.fisTarih) <= @ay
               AND NOT EXISTS (SELECT 1 FROM DerinSISBkm.mhs.mhsFisBaslik k
                               WHERE k.fisbID = ff.fisID AND k.fisbSirketID = ff.fisSirketID AND k.fisAd = N'Kapanış')
             GROUP BY h.hspKod, h.hspAd
             HAVING SUM(CASE WHEN ff.fisBA=1 THEN -ff.fisTutar ELSE 0 END) <> 0
                 OR SUM(CASE WHEN ff.fisBA=0 THEN  ff.fisTutar ELSE 0 END) <> 0
-            """, new { sirketId })).ToList();
+            """, new { sirketId, ay })).ToList();
 
-        // Ara seviye (100.10) adları için tam hesap-adı sözlüğü.
-        var adlar = (await conn.QueryAsync<(string Kod, string Ad)>(
-            "SELECT hspKod, hspAd FROM DerinSISBkm.mhs.mhsHsp WHERE hspSirketID = @sirketId", new { sirketId }))
-            .GroupBy(x => x.Kod).ToDictionary(g => g.Key, g => g.First().Ad, StringComparer.Ordinal);
+        // Hesap adları TABLODAN (hardcode YOK): mhsAnaHsp = 1/2/3-haneli Tek Düzen ana hesap (standart, sirket-bağımsız)
+        // + mhsHsp = noktalı alt hesap (bu sirket). İkisi birleşir → her seviye adı.
+        var adlar = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var r in await conn.QueryAsync<(string Kod, string Ad)>(
+            "SELECT CAST(aHspID AS varchar(20)) AS Kod, aHspAd AS Ad FROM DerinSISBkm.mhs.mhsAnaHsp"))
+            if (!string.IsNullOrEmpty(r.Ad)) adlar[r.Kod] = r.Ad;
+        foreach (var r in await conn.QueryAsync<(string Kod, string Ad)>(
+            "SELECT hspKod AS Kod, hspAd AS Ad FROM DerinSISBkm.mhs.mhsHsp WHERE hspSirketID = @sirketId", new { sirketId }))
+            if (!string.IsNullOrEmpty(r.Ad)) adlar[r.Kod] = r.Ad;
 
         var agac = AgacKur(leafler, adlar);
         // Özet için 3-haneli ana hesap bakiyeleri (ağaçtan topla).
@@ -57,12 +65,12 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
             foreach (var c in n.Cocuklar) Topla(c);
         }
         foreach (var k in agac) Topla(k);
-        logger.LogInformation("Mizan ağacı (sirket {S}): {Kok} sınıf, {Leaf} leaf", sirketId, agac.Count, leafler.Count);
+        logger.LogInformation("Mizan ağacı (sirket {S}, ay≤{Ay}): {Kok} sınıf, {Leaf} leaf", sirketId, ay, agac.Count, leafler.Count);
         return new MizanSonuc(OzetHesapla(ucHane, agac), agac);
     }
 
     /// <summary>Leaf bakiyelerden Excel hiyerarşisi: 1-haneli sınıf → 2 grup → 3 ana hesap → alt (100.10) → en alt.
-    /// Alt-toplamlar her ataya biriktirilir. Üst grup adları Tek Düzen (TekDuzenHesap.Grup/Ad), alt hesaplar mhsHsp.</summary>
+    /// Alt-toplamlar her ataya biriktirilir. Adlar TABLODAN (adlar = mhsAnaHsp 1/2/3-hane + mhsHsp noktalı). Hardcode YOK.</summary>
     private static List<MizanNode> AgacKur(IReadOnlyList<LeafRow> leafler, IReadOnlyDictionary<string, string> adlar)
     {
         var map = new Dictionary<string, MizanNode>(StringComparer.Ordinal);
@@ -83,10 +91,10 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
                 var pk = paths[lvl];
                 if (!map.TryGetValue(pk, out var node))
                 {
-                    string ad = !pk.Contains('.') && pk.Length <= 2 ? TekDuzenHesap.GrupVeya(pk)   // 1-2 hane grup
-                              : !pk.Contains('.') ? TekDuzenHesap.AdVeya(pk)                        // 3 hane ana
-                              : pk == r.HspKod ? r.HspAd                                            // leaf
-                              : adlar.TryGetValue(pk, out var a) ? a : pk;                          // ara alt
+                    // Ad TABLODAN: adlar (mhsAnaHsp 1/2/3-hane + mhsHsp noktalı) → yoksa leaf'in kendi adı → yoksa kod.
+                    string ad = adlar.TryGetValue(pk, out var a) ? a
+                              : pk == r.HspKod ? r.HspAd
+                              : pk;
                     node = new MizanNode { Kod = pk, Ad = ad, Seviye = lvl + 1 };
                     map[pk] = node;
                     if (ust is null) kokler.Add(node); else ust.Cocuklar.Add(node);

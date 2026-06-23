@@ -13,12 +13,20 @@
         <div class="text-xs text-base-content/50">Genel muhasebe kesin mizanı · ana → alt → en alt · @(_yil) dönemi (kapanış öncesi)</div>
         <h1 class="text-2xl font-bold tracking-tight m-0">Mizan / Finans</h1>
     </div>
-    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_sirketId" @bind:after="LoadAsync">
-        @foreach (var d in _donemler)
-        {
-            <option value="@d.SirketId">@d.Yil</option>
-        }
-    </select>
+    <div class="flex items-center gap-2">
+        <select class="select select-bordered select-sm text-sm font-semibold" @bind="_sirketId" @bind:after="LoadAsync">
+            @foreach (var d in _donemler)
+            {
+                <option value="@d.SirketId">@d.Yil</option>
+            }
+        </select>
+        <select class="select select-bordered select-sm text-sm font-semibold" @bind="_ay" @bind:after="LoadAsync">
+            @for (int m = 1; m <= 12; m++)
+            {
+                <option value="@m">@_aylar[m - 1]@(m == 12 ? " (tüm yıl)" : "")</option>
+            }
+        </select>
+    </div>
 </div>
 
 @if (_error is not null)
@@ -100,8 +108,10 @@ else if (_sonuc is not null)
     private int _sirketId;
     private int _yil => _sirketId + MizanQueries.YilOffset;
     private int _acikSeviye = 3;   // minimum: 3 (1·10·100 ana hesap hep görünür)
+    private int _ay = 12;          // kümülatif mizan ayı (12 = tüm yıl)
     private static readonly (string Ad, int Deger)[] _seviyeler =
         [("Ana hesap", 3), ("Alt hesap", 4), ("Tüm kırılım", 6)];
+    private static readonly string[] _aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,7 +128,7 @@ else if (_sonuc is not null)
     {
         _loading = true; _error = null; StateHasChanged();
         var sw = PerfState.Start();
-        try { _sonuc = await Miz.GetSonucAsync(_sirketId); }
+        try { _sonuc = await Miz.GetSonucAsync(_sirketId, _ay); }
         catch (Exception ex) { Logger.LogError(ex, "Mizan yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Mizan", sw); StateHasChanged(); }
     }
