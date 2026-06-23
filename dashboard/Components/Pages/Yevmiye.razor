@@ -1,0 +1,84 @@
+@page "/yevmiye-fis"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject MuhasebeQueries Muh
+@inject NavigationManager Nav
+@inject ILogger<Yevmiye> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Yevmiye Fişi — BKM GM</PageTitle>
+
+<div class="mb-4 flex items-center gap-3">
+    <button class="btn btn-ghost btn-sm" @onclick="@(() => Nav.NavigateTo("/muhasebe"))">← Kontrol</button>
+    <div>
+        <div class="text-xs text-base-content/50">Yevmiye fişi · mhs.mhsFis</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0">@(_fis is null ? "Yevmiye Fişi" : $"Fiş {_fis.YevmiyeNo} · {_fis.Tarih}")</h1>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Fiş yükleniyor…</p>
+}
+else if (_fis is null)
+{
+    <div class="alert text-sm"><span>Fiş bulunamadı (fisbID @Fis · şirket @Sirket).</span></div>
+}
+else
+{
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] max-w-4xl">
+        <div class="text-sm text-base-content/70 mb-3">@_fis.FisAd</div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead><tr>
+                    <th>Hesap</th><th>Ad</th><th>Açıklama</th>
+                    <th class="text-right">Borç</th><th class="text-right">Alacak</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var s in _fis.Satirlar)
+                {
+                    <tr class="hover">
+                        <td class="font-mono text-xs whitespace-nowrap">@s.HspKod</td>
+                        <td class="max-w-[200px] truncate" title="@s.HspAd">@s.HspAd</td>
+                        <td class="max-w-[240px] truncate text-base-content/60 text-xs" title="@s.Aciklama">@s.Aciklama</td>
+                        <td class="text-right tabular-nums @(s.Borc != 0 ? "font-medium" : "text-base-content/30")">@(s.Borc != 0 ? Tl(s.Borc) : "—")</td>
+                        <td class="text-right tabular-nums @(s.Alacak != 0 ? "font-medium" : "text-base-content/30")">@(s.Alacak != 0 ? Tl(s.Alacak) : "—")</td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot><tr class="border-t-2 border-base-300 font-bold">
+                    <td colspan="3" class="text-right">Toplam</td>
+                    <td class="text-right tabular-nums">@Tl(_fis.ToplamBorc)</td>
+                    <td class="text-right tabular-nums">@Tl(_fis.ToplamAlacak)</td>
+                </tr></tfoot>
+            </table>
+        </div>
+        @{ var denge = Math.Abs(_fis.ToplamBorc - _fis.ToplamAlacak); }
+        <div class="text-[11px] mt-2 @(denge < 0.5m ? "text-success" : "text-error")">
+            @(denge < 0.5m ? "✓ Borç = Alacak (denge)" : "⚠ Denge bozuk: fark " + Tl(denge))
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "fis")] public int Fis { get; set; }
+    [SupplyParameterFromQuery(Name = "sirket")] public int Sirket { get; set; }
+
+    private YevmiyeFis? _fis;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true; _error = null;
+        try { _fis = await Muh.GetYevmiyeFisAsync(Fis, Sirket); }
+        catch (Exception ex) { Logger.LogError(ex, "Yevmiye fişi yüklenemedi (fis {Fis})", Fis); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private static string Tl(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}

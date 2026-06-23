@@ -38,6 +38,29 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         return rows.ToList();
     }
 
+    /// <summary>Yevmiye fişi detayı (DETAY evrak drill) — fisbID + sirketID ile satırlar. MHS evrak = yevmiye fişi.</summary>
+    public async Task<YevmiyeFis?> GetYevmiyeFisAsync(int fisId, int sirketId)
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = (await conn.QueryAsync<(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? Aciklama, decimal Borc, decimal Alacak)>("""
+            SELECT b.yevmiyeNo AS YevmiyeNo,
+                   CONVERT(varchar(10), b.fisTarih, 104) AS Tarih,
+                   CAST(b.fisAd AS nvarchar(200)) AS FisAd,
+                   h.hspKod AS HspKod, CAST(h.hspAd AS nvarchar(80)) AS HspAd,
+                   CAST(ff.fisAciklama AS nvarchar(160)) AS Aciklama,
+                   CAST(CASE WHEN ff.fisBA=1 THEN -ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Borc,
+                   CAST(CASE WHEN ff.fisBA=0 THEN  ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Alacak
+            FROM DerinSISBkm.mhs.mhsFisBaslik b
+            JOIN DerinSISBkm.mhs.mhsFis ff ON ff.fisID = b.fisbID AND ff.fisSirketID = b.fisbSirketID
+            JOIN DerinSISBkm.mhs.mhsHsp h ON h.hspID = ff.fisHspID AND h.hspSirketID = ff.fisSirketID
+            WHERE b.fisbID = @fisId AND b.fisbSirketID = @sirketId
+            ORDER BY ff.fsID
+            """, new { fisId, sirketId })).ToList();
+        if (rows.Count == 0) return null;
+        var satirlar = rows.Select(r => new YevmiyeFisSatir(r.HspKod, r.HspAd, r.Aciklama, r.Borc, r.Alacak)).ToList();
+        return new YevmiyeFis(rows[0].YevmiyeNo, rows[0].Tarih, rows[0].FisAd, satirlar);
+    }
+
     /// <summary>Kapanmış dönem listesi (seçici için). Fin_AyKapanis — en yeni önce.</summary>
     public async Task<IReadOnlyList<(int Yil, int Ay, string Kapanis)>> GetDonemlerAsync()
     {

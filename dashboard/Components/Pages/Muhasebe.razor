@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject MuhasebeQueries Muh
+@inject NavigationManager Nav
 @inject AyarService Ayar
 @inject PerfState Perf
 @inject ILogger<Muhasebe> Logger
@@ -104,9 +105,9 @@ else
                 <tbody>
                 @foreach (var d in _detay)
                 {
-                    <tr>
+                    <tr class="@(d.Kaynak == "MHS" ? "hover cursor-pointer" : "")" @onclick="() => YevmiyeAc(d)">
                         <td class="text-right font-bold @RiskCls(d.RiskSkor)">@d.RiskSkor</td>
-                        <td class="font-mono text-xs">@d.EvrakNo</td>
+                        <td class="font-mono text-xs">@d.EvrakNo @(d.Kaynak == "MHS" ? "↗" : "")</td>
                         <td>@d.BelgeTarihi</td>
                         <td class="@(d.GunSonra >= 60 ? "text-error font-semibold" : "")">@d.DegisimTarihi</td>
                         <td class="text-right">@d.GunSonra</td>
@@ -173,6 +174,14 @@ else
         try { _detay = await Muh.GetDetayAsync(yil, ay, r.Kaynak, r.GiderKod, _sadeceGider); }
         catch (Exception ex) { Logger.LogError(ex, "Muhasebe kontrol detay hatası"); }
         finally { _detayLoading = false; StateHasChanged(); }
+    }
+
+    // MHS evrak → yevmiye fiş sayfası (ayrı sayfa; modal-üstü-modal Blazor'da çalışmaz). sirket = dönem yılı − 2020.
+    private void YevmiyeAc(KontrolDetayRow d)
+    {
+        if (d.Kaynak != "MHS") return;
+        var yil = int.Parse(d.Donem[3..]);
+        Nav.NavigateTo($"/yevmiye-fis?fis={d.EvrakID}&sirket={yil - 2020}");
     }
 
     private string RiskCls(int risk) => risk >= Ayar.Deger.RiskYuksek ? "text-error" : risk >= Ayar.Deger.RiskOrta ? "text-warning" : risk >= Ayar.Deger.RiskDusuk ? "text-info" : "text-base-content/60";
