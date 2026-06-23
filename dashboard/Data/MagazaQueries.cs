@@ -10,7 +10,7 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed class MagazaQueries(Db db)
 {
-    static readonly Dictionary<int, string> Mekan = new() { [1] = "FSM", [4477] = "Özlüce", [4478] = "İst.Yolu" };
+    // Mağaza adı LokasyonConfig.Mekan'dan (posMagaza dinamik — hardcode değil).
 
     // Ödeme tipi → üst-grup. TÜRK LİRASI=Nakit, çekler ayrı, geri kalan banka adları=Kredi/Banka Kartı.
     static string OdemeGrubu(string tip) => tip?.ToUpperInvariant() switch
@@ -23,7 +23,7 @@ public sealed class MagazaQueries(Db db)
 
     public async Task<MagazaDetay?> GetDetayAsync(int mid, DateOnly start, DateOnly endExcl)
     {
-        if (!Mekan.ContainsKey(mid)) return null;
+        if (!LokasyonConfig.Mekan.ContainsKey(mid)) return null;
         var par = new { mid, start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) };
         // B-49 perf: 7 bağımsız sorgu paralel (her biri kendi bağlantısı) → sıralı ~3,4s yerine ~1,2s (max tek sorgu).
         async Task<T> Q<T>(Func<System.Data.IDbConnection, Task<T>> fn) { await using var c = await db.OpenAsync(); return await fn(c); }
@@ -203,7 +203,7 @@ public sealed class MagazaQueries(Db db)
         var hedef = tHedef.Result;
         decimal? ger = hedef is > 0 ? Math.Round(100 * net / hedef.Value, 1) : null;
 
-        return new MagazaDetay(mid, Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0,
+        return new MagazaDetay(mid, LokasyonConfig.Mekan[mid], net, fis, fis > 0 ? (int)Math.Round(net / fis) : 0,
             upt, kpi.Iade ?? 0m, kpi.IadeOran ?? 0m, ger, odeme, kampanya,
             kampToplamBrut, kampToplamInd, kampToplamFis, kategori);
     }
