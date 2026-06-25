@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject OdakQueries Odak
+@inject NavigationManager Nav
 @inject ILogger<OdakStok> Logger
 @rendermode InteractiveServer
 
@@ -171,18 +172,51 @@
     }
     else
     {
+        <div class="text-[11px] text-base-content/50 mb-1">Cariye tıkla → faturalar açılır. Fatura no → fatura detayına gider.</div>
         <table class="table table-xs">
-            <thead><tr><th>Cari</th><th class="text-right">Alış Adet</th><th class="text-right">Fatura#</th><th class="text-right">Alış ₺</th><th>Son Alış</th></tr></thead>
+            <thead><tr><th></th><th>Cari</th><th class="text-right">Alış Adet</th><th class="text-right">Fatura#</th><th class="text-right">Alış ₺</th><th>Son Alış</th></tr></thead>
             <tbody>
             @foreach (var c in _modalCariler)
             {
-                <tr>
+                <tr class="hover cursor-pointer" @onclick="() => CariFaturaAc(c.CariId)">
+                    <td class="w-4 text-base-content/40">@(_acikCari == c.CariId ? "▾" : "▸")</td>
                     <td><div class="font-medium">@c.CariAd</div><div class="font-mono text-[11px] text-base-content/50">@c.CariKod</div></td>
                     <td class="text-right">@Num((int)c.AlisAdet)</td>
                     <td class="text-right">@c.FaturaSayisi</td>
                     <td class="text-right tabular-nums">@Tl(c.AlisTutar)</td>
                     <td class="font-mono text-xs">@c.SonAlis</td>
                 </tr>
+                @if (_acikCari == c.CariId)
+                {
+                    <tr class="bg-base-200/40">
+                        <td></td>
+                        <td colspan="5" class="p-2">
+                            @if (_cariFaturaLoading)
+                            {
+                                <span class="loading loading-spinner loading-xs"></span>
+                            }
+                            else if (_cariFaturalar is { Count: > 0 })
+                            {
+                                <table class="table table-xs w-full">
+                                    <thead><tr class="text-[11px]"><th>Fatura No</th><th>Tarih</th><th class="text-right">Adet</th><th class="text-right">Tutar</th><th></th></tr></thead>
+                                    <tbody>
+                                    @foreach (var f in _cariFaturalar)
+                                    {
+                                        <tr>
+                                            <td class="font-mono text-xs">@f.EvrakNo</td>
+                                            <td class="font-mono text-xs">@f.Tarih</td>
+                                            <td class="text-right">@Num((int)f.Adet)</td>
+                                            <td class="text-right tabular-nums">@Tl(f.Tutar)</td>
+                                            <td><button class="btn btn-xs btn-outline btn-primary" @onclick="() => FaturaAc(f.EID)">🧾 Aç</button></td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            }
+                            else { <span class="text-xs text-base-content/40">Fatura bulunamadı.</span> }
+                        </td>
+                    </tr>
+                }
             }
             </tbody>
         </table>
@@ -212,7 +246,11 @@
     // Modal
     private bool _modal;
     private string _modalBaslik = "";
+    private int _modalStkId;
     private IReadOnlyList<OdakUsulsuzCari>? _modalCariler;
+    private int? _acikCari;
+    private IReadOnlyList<OdakCariFatura>? _cariFaturalar;
+    private bool _cariFaturaLoading;
 
     protected override async Task OnInitializedAsync()
     {
@@ -279,10 +317,22 @@
 
     private async Task CariAc(OdakUsulsuz r)
     {
-        _modal = true; _modalBaslik = $"{r.Urun} — Cari Bazlı Alış (son 1 yıl)"; _modalCariler = null; StateHasChanged();
+        _modal = true; _modalBaslik = $"{r.Urun} — Cari Bazlı Alış (son 1 yıl)";
+        _modalStkId = r.StkID; _modalCariler = null; _acikCari = null; _cariFaturalar = null; StateHasChanged();
         try { _modalCariler = await Odak.GetUsulsuzCarilerAsync(r.StkID); }
         catch (Exception ex) { Logger.LogError(ex, "ODAK cari drill"); _modalCariler = []; }
     }
+
+    private async Task CariFaturaAc(int cariId)
+    {
+        if (_acikCari == cariId) { _acikCari = null; return; }   // tıkla → kapat
+        _acikCari = cariId; _cariFaturalar = null; _cariFaturaLoading = true; StateHasChanged();
+        try { _cariFaturalar = await Odak.GetCariFaturalarAsync(_modalStkId, cariId); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK cari fatura drill"); _cariFaturalar = []; }
+        finally { _cariFaturaLoading = false; }
+    }
+
+    private void FaturaAc(int eID) => Nav.NavigateTo($"/fatura?fat={eID}");
 
     private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
     private static string Num(int v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));

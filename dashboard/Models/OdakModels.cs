@@ -22,8 +22,11 @@ public record OdakUsulsuz(
     int OdakStok, int YilSatis, decimal? AyKapsam,
     int CariSayisi, int FaturaSayisi, int AlisAdet, decimal AlisTutar);
 
-/// <summary>Usulsüz drill — bir ürünün cari bazlı alış kırılımı (modal).</summary>
-public record OdakUsulsuzCari(string CariKod, string CariAd, int FaturaSayisi, decimal AlisAdet, decimal AlisTutar, string SonAlis);
+/// <summary>Usulsüz drill — bir ürünün cari bazlı alış kırılımı (modal). CariId = frmID (fatura drill için).</summary>
+public record OdakUsulsuzCari(int CariId, string CariKod, string CariAd, int FaturaSayisi, decimal AlisAdet, decimal AlisTutar, string SonAlis);
+
+/// <summary>Cari × ürün fatura kırılımı (cari satırına tıklayınca) — eID ile /fatura sayfasına link.</summary>
+public record OdakCariFatura(int EID, string EvrakNo, string Tarih, decimal Adet, decimal Tutar);
 
 /// <summary>Sayfalı sonuç sarmalayıcı (server-side OFFSET/FETCH).</summary>
 public record OdakSayfa<T>(IReadOnlyList<T> Satirlar, int ToplamSatir);

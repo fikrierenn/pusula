@@ -217,7 +217,8 @@ public sealed class OdakQueries(Db db)
     {
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<OdakUsulsuzCari>("""
-            SELECT ISNULL(fr.frmKod, N'-') AS CariKod,
+            SELECT CAST(ISNULL(f.eFirma,0) AS int) AS CariId,
+                   ISNULL(fr.frmKod, N'-') AS CariKod,
                    ISNULL(fr.frmAd, N'(tanımsız)') AS CariAd,
                    COUNT(DISTINCT f.eID) AS FaturaSayisi,
                    CAST(SUM(fa.ehAdetN) AS decimal(18,2)) AS AlisAdet,
@@ -227,9 +228,29 @@ public sealed class OdakQueries(Db db)
             JOIN DerinSISBkm.dbo.fat f ON f.eID = fa.ehID AND f.eTip = 0 AND f.eDurum <> 2
             LEFT JOIN DerinSISBkm.dbo.frm fr ON fr.frmID = f.eFirma
             WHERE fa.ehstkID = @stkID AND f.eTarih >= DATEADD(YEAR,-1,GETDATE())
-            GROUP BY fr.frmKod, fr.frmAd
+            GROUP BY f.eFirma, fr.frmKod, fr.frmAd
             ORDER BY SUM(fa.ehTutarN) DESC
             """, new { stkID });
+        return rows.ToList();
+    }
+
+    /// <summary>Bir cari × ürün için fatura listesi (cari satırına tıklayınca) — eID ile /fatura drill.</summary>
+    public async Task<IReadOnlyList<OdakCariFatura>> GetCariFaturalarAsync(int stkID, int cariId)
+    {
+        await using var conn = await db.OpenAsync();
+        var rows = await conn.QueryAsync<OdakCariFatura>("""
+            SELECT CAST(f.eID AS int) AS EID,
+                   CAST(f.eNo AS varchar(50)) AS EvrakNo,
+                   CONVERT(varchar(10), f.eTarihS, 104) AS Tarih,
+                   CAST(SUM(fa.ehAdetN) AS decimal(18,2)) AS Adet,
+                   CAST(SUM(fa.ehTutarN) AS decimal(18,2)) AS Tutar
+            FROM DerinSISBkm.dbo.fat f
+            JOIN DerinSISBkm.dbo.fatAyr fa ON fa.ehID = f.eID AND fa.ehstkID = @stkID
+            WHERE f.eFirma = @cariId AND f.eTip = 0 AND f.eDurum <> 2
+              AND f.eTarih >= DATEADD(YEAR,-1,GETDATE())
+            GROUP BY f.eID, f.eNo, f.eTarihS
+            ORDER BY f.eTarihS DESC
+            """, new { stkID, cariId });
         return rows.ToList();
     }
 
