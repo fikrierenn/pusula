@@ -20,7 +20,9 @@
         <a role="tab" class="tab @(_kapsam == "hepsi" ? "tab-active" : "")" @onclick='() => KapsamSec("hepsi")'>Hepsi</a>
     </div>
     <input class="input input-bordered input-sm w-64" placeholder="Cari kod / ad ara…" @bind="_ara" @bind:after="Yukle" />
-    <span class="text-[11px] text-base-content/50">En yüksek mutlak bakiyeli ilk @_top kayıt</span>
+    <button class="btn btn-sm btn-primary" @onclick="Yukle">Ara</button>
+    @if (_ara != "") { <button class="btn btn-sm btn-ghost" @onclick="AramaTemizle">✕</button> }
+    <span class="text-[11px] text-base-content/50">@(_ara == "" ? $"En yüksek mutlak bakiyeli ilk {_son} kayıt" : $"Aramada tüm eşleşmeler ({_rows.Count})")</span>
 </div>
 
 @if (_error is not null)
@@ -88,7 +90,7 @@ else
 @code {
     private string _kapsam = "satici";
     private string _ara = "";
-    private const int _top = 200;
+    private int _son = 200;   // browse limiti (arama yokken); arama varken tüm eşleşmeler
     private IReadOnlyList<CariRiskRow> _rows = [];
     private bool _loading = true;
     private string? _error;
@@ -101,10 +103,19 @@ else
         await Yukle();
     }
 
+    private async Task AramaTemizle()
+    {
+        _ara = "";
+        await Yukle();
+    }
+
     private async Task Yukle()
     {
         _loading = true; _error = null; StateHasChanged();
-        try { _rows = await Finans.GetCariRiskAsync(_kapsam, _ara, _top); }
+        // Arama varken cap'i yükselt (dar arama → eksik kalmasın); browse'da en yüksek 200 bakiye.
+        var top = string.IsNullOrWhiteSpace(_ara) ? 200 : 5000;
+        _son = top;
+        try { _rows = await Finans.GetCariRiskAsync(_kapsam, _ara, top); }
         catch (Exception ex) { Logger.LogError(ex, "Cari risk yüklenemedi ({Kapsam})", _kapsam); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
     }
