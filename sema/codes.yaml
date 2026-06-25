@@ -1,9 +1,30 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-06-24
+updated: 2026-06-25
 
 codes:
+  frm.frmTip:          # dbo.frmTipTnm (kanonik lookup — hardcode ETME)
+    lookup: dbo.frmTipTnm
+    join: "LEFT JOIN dbo.frmTipTnm tp ON tp.frmTipID = frm.frmTip → tp.frmTipAd"
+    values:
+      0: Firma
+      1: Müşteri
+      2: Mağaza
+      3: Depo
+      4: Ofis
+      5: Banka-Kasa
+      6: Çalışan
+      7: Gider
+      8: Hizmet
+      9: Sevk Adresi
+      10: Gider Merkezi
+      11: Demirbaş
+    note: "Cari kart tipi. Dashboard Cari/Risk (B-124) bu lookup'tan çeker — TipAd hardcode kaldırıldı."
+    confidence: 1.0
+    evidence: "2026-06-25 — SELECT * FROM dbo.frmTipTnm (12 değer). Cari/Risk sayfasında Tip 8=Hizmet görülünce keşfedildi."
+    last_verified: "2026-06-25"
+
   urn.urnTip:
     values:
       0: "Normal ürün (856K kayıt) — stok/satış sorgularında varsayılan"

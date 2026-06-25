@@ -70,7 +70,7 @@ else
                     <tr class="hover">
                         <td class="font-mono text-[11px] whitespace-nowrap">@r.Kod</td>
                         <td class="max-w-[280px] truncate" title="@r.Ad">@r.Ad</td>
-                        <td><span class="badge badge-ghost badge-sm">@TipAd(r.Tip)</span></td>
+                        <td><span class="badge badge-ghost badge-sm">@r.TipAd</span></td>
                         <td class="text-right tabular-nums">@Tl(r.Borc)</td>
                         <td class="text-right tabular-nums">@Tl(r.Alacak)</td>
                         <td class="text-right tabular-nums font-semibold">@Tl(r.Bakiye)</td>
@@ -119,11 +119,6 @@ else
         catch (Exception ex) { Logger.LogError(ex, "Cari risk yüklenemedi ({Kapsam})", _kapsam); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
     }
-
-    private static string TipAd(int t) => t switch
-    {
-        0 => "Satıcı", 1 => "Alıcı", 2 => "Mağaza", 5 => "Banka/Çek", 7 => "Gider", _ => $"Tip {t}"
-    };
 
     private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 }

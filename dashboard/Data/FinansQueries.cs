@@ -20,7 +20,7 @@ public sealed class FinansQueries(Db db)
                 CAST(b.cKod AS int) AS CariId,
                 fr.frmKod AS Kod,
                 CAST(fr.frmAd AS nvarchar(120)) AS Ad,
-                CAST(fr.frmTip AS int) AS Tip,
+                CAST(ISNULL(tp.frmTipAd, CAST(fr.frmTip AS varchar(10))) AS nvarchar(30)) AS TipAd,
                 CAST(ABS(b.borc) AS decimal(18,2)) AS Borc,
                 CAST(b.alacak AS decimal(18,2)) AS Alacak,
                 CAST(b.bakiye AS decimal(18,2)) AS Bakiye,
@@ -29,6 +29,7 @@ public sealed class FinansQueries(Db db)
                 CAST(ISNULL(fr.frmBakiyeLimit,0) AS decimal(18,2)) AS Limit
             FROM DerinSISBkm.dbo.bakiyeVDGG_vw b
             JOIN DerinSISBkm.dbo.frm fr ON fr.frmID = b.cKod
+            LEFT JOIN DerinSISBkm.dbo.frmTipTnm tp ON tp.frmTipID = fr.frmTip
             WHERE ABS(b.bakiye) > 0
               AND (@kapsam = 'hepsi'
                    OR (@kapsam = 'satici' AND fr.frmKod LIKE '320%')
