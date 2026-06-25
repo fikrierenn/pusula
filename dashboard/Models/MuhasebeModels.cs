@@ -40,6 +40,11 @@ public record Fatura(string EvrakNo, string Tarih, int Tip, string? Not, string?
     public decimal GenelToplam => ToplamTutar + ToplamKdv;
 }
 
+/// <summary>Cari bakiye / risk özeti satırı (B-124). Kaynak: bakiyeVDGG_vw + frm.
+/// Borc=ABS(borç tarafı), Bakiye=net (alacak+borç-işaretli), VadesiGecen=GecenB, Yaklasan=GelecekB, Limit=frmBakiyeLimit.</summary>
+public record CariRiskRow(int CariId, string Kod, string Ad, int Tip,
+    decimal Borc, decimal Alacak, decimal Bakiye, decimal VadesiGecen, decimal Yaklasan, decimal Limit);
+
 /// <summary>Kapanış-sonrası müdahale DETAY satırı (@Mod='DETAY'). Giren/Onaylayan = drn1.insAd.</summary>
 public record KontrolDetayRow(
     string Donem, string Kaynak, long EvrakID, string EvrakNo,

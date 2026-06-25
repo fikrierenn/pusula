@@ -1,0 +1,118 @@
+@page "/cari-risk"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject FinansQueries Finans
+@inject ILogger<CariRisk> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Cari / Risk — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Cari bakiye + vadesi geçmiş · bakiyeVDGG_vw</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Cari / Risk Özeti</h1>
+</div>
+
+@* ── Filtreler ── *@
+<div class="flex flex-wrap items-center gap-2 mb-3">
+    <div role="tablist" class="tabs tabs-boxed tabs-sm">
+        <a role="tab" class="tab @(_kapsam == "satici" ? "tab-active" : "")" @onclick='() => KapsamSec("satici")'>Satıcılar (320)</a>
+        <a role="tab" class="tab @(_kapsam == "alici" ? "tab-active" : "")" @onclick='() => KapsamSec("alici")'>Alıcılar (120)</a>
+        <a role="tab" class="tab @(_kapsam == "hepsi" ? "tab-active" : "")" @onclick='() => KapsamSec("hepsi")'>Hepsi</a>
+    </div>
+    <input class="input input-bordered input-sm w-64" placeholder="Cari kod / ad ara…" @bind="_ara" @bind:after="Yukle" />
+    <span class="text-[11px] text-base-content/50">En yüksek mutlak bakiyeli ilk @_top kayıt</span>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Bakiye hesaplanıyor… (~10 sn, ağır görünüm)</p>
+}
+else
+{
+    @* Özet şeritleri *@
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Kayıt</div>
+            <div class="text-lg font-bold">@_rows.Count</div>
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Toplam Net Bakiye</div>
+            <div class="text-lg font-bold tabular-nums">@Tl(_rows.Sum(r => r.Bakiye))</div>
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Vadesi Geçen (toplam)</div>
+            <div class="text-lg font-bold tabular-nums text-error">@Tl(_rows.Sum(r => r.VadesiGecen))</div>
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Limit Aşan Cari</div>
+            <div class="text-lg font-bold text-warning">@_rows.Count(r => r.Limit > 0 && Math.Abs(r.Bakiye) > r.Limit)</div>
+        </div>
+    </div>
+
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+        <div class="overflow-x-auto">
+            <table class="table table-xs">
+                <thead><tr>
+                    <th>Kod</th><th>Cari</th><th>Tip</th>
+                    <th class="text-right">Borç</th><th class="text-right">Alacak</th><th class="text-right">Net Bakiye</th>
+                    <th class="text-right">Vadesi Geçen</th><th class="text-right">Yaklaşan</th><th class="text-right">Limit</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var r in _rows)
+                {
+                    var limitAsim = r.Limit > 0 && Math.Abs(r.Bakiye) > r.Limit;
+                    <tr class="hover">
+                        <td class="font-mono text-[11px] whitespace-nowrap">@r.Kod</td>
+                        <td class="max-w-[280px] truncate" title="@r.Ad">@r.Ad</td>
+                        <td><span class="badge badge-ghost badge-sm">@TipAd(r.Tip)</span></td>
+                        <td class="text-right tabular-nums">@Tl(r.Borc)</td>
+                        <td class="text-right tabular-nums">@Tl(r.Alacak)</td>
+                        <td class="text-right tabular-nums font-semibold">@Tl(r.Bakiye)</td>
+                        <td class="text-right tabular-nums @(Math.Abs(r.VadesiGecen) > 0 ? "text-error font-semibold" : "text-base-content/30")">@(Math.Abs(r.VadesiGecen) > 0 ? Tl(r.VadesiGecen) : "—")</td>
+                        <td class="text-right tabular-nums @(Math.Abs(r.Yaklasan) > 0 ? "" : "text-base-content/30")">@(Math.Abs(r.Yaklasan) > 0 ? Tl(r.Yaklasan) : "—")</td>
+                        <td class="text-right tabular-nums">@(r.Limit > 0 ? Tl(r.Limit) : "—") @if (limitAsim) { <span class="badge badge-error badge-xs ml-1">aşım</span> }</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (_rows.Count == 0) { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+    </div>
+    <div class="text-[11px] text-base-content/40 mt-2">Net Bakiye = alacak + borç (işaretli). Vadesi Geçen / Yaklaşan = bakiyeVDGG_vw (GecenB / GelecekB). Limit = cari bakiye limiti (frm).</div>
+}
+
+@code {
+    private string _kapsam = "satici";
+    private string _ara = "";
+    private const int _top = 200;
+    private IReadOnlyList<CariRiskRow> _rows = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task KapsamSec(string k)
+    {
+        _kapsam = k;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try { _rows = await Finans.GetCariRiskAsync(_kapsam, _ara, _top); }
+        catch (Exception ex) { Logger.LogError(ex, "Cari risk yüklenemedi ({Kapsam})", _kapsam); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private static string TipAd(int t) => t switch
+    {
+        0 => "Satıcı", 1 => "Alıcı", 2 => "Mağaza", 5 => "Banka/Çek", 7 => "Gider", _ => $"Tip {t}"
+    };
+
+    private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
