@@ -125,8 +125,8 @@ public record CodOzet(int Siparis, int Teslim, int Iade, decimal IadeOran, decim
 /// <summary>COD il bazlı iade oranı (B-56): coğrafi risk. PAYDEFREF=-3 + DCITY + CARGODELIVERYSTATUS=2.</summary>
 public record CodIl(string Sehir, int Siparis, int Iade, decimal Oran);
 
-/// <summary>Baskısı yok yapılan siparişler — kullanıcı bazlı özet (B-126). Kaynak JOKER.BASKISIYOK × J_ORDER_DETAILS × EM_USERS.</summary>
-public record BaskisiYokOzet(string Kullanici, int BarkodSayi, int SipSayi, int Miktar, decimal Tutar);
+/// <summary>Baskısı yok yapılan siparişler — gün bazlı özet (B-126). Kaynak JOKER.BASKISIYOK × J_ORDER_DETAILS.</summary>
+public record BaskisiYokOzet(string Gun, int BarkodSayi, int SipSayi, int Miktar, decimal Tutar);
 
 /// <summary>Baskısı yok — ürün bazlı detay. JOKER.BASKISIYOK × J_ORDER_DETAILS × J_ITEMS × EM_USERS.</summary>
 public record BaskisiYokDetay(string Tarih, string Kullanici, string Barkod, string? Kod, string? Ad, string? Marka, string? Grup, int Miktar, decimal Tutar);

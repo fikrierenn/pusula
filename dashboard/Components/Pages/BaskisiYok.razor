@@ -35,19 +35,19 @@ else
     @* Kullanıcı özeti *@
     <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
         <div class="flex items-center justify-between mb-2">
-            <div class="text-sm font-semibold">Kullanıcı Özeti <span class="text-xs text-base-content/50">— @_ozet.Count kullanıcı</span></div>
+            <div class="text-sm font-semibold">Gün Özeti <span class="text-xs text-base-content/50">— @_ozet.Count gün</span></div>
             <ExcelButton FileName="baskisi-yok-ozet" SayfaAd="Ozet" Rows="OzetExcel" />
         </div>
         <div class="overflow-x-auto">
             <table class="table table-xs">
                 <thead><tr>
-                    <th>Kullanıcı</th><th class="text-right">Barkod</th><th class="text-right">Sipariş</th><th class="text-right">Miktar</th><th class="text-right">Tutar</th>
+                    <th>Gün</th><th class="text-right">Barkod</th><th class="text-right">Sipariş</th><th class="text-right">Miktar</th><th class="text-right">Tutar</th>
                 </tr></thead>
                 <tbody>
                 @foreach (var o in _ozet)
                 {
                     <tr class="hover">
-                        <td>@o.Kullanici</td>
+                        <td class="font-mono text-xs whitespace-nowrap">@o.Gun</td>
                         <td class="text-right">@Num(o.BarkodSayi)</td>
                         <td class="text-right">@Num(o.SipSayi)</td>
                         <td class="text-right">@Num(o.Miktar)</td>
@@ -135,7 +135,7 @@ else
     private Task<IEnumerable<IDictionary<string, object?>>> OzetExcel() =>
         Task.FromResult<IEnumerable<IDictionary<string, object?>>>(_ozet.Select(o => new Dictionary<string, object?>
         {
-            ["Kullanıcı"] = o.Kullanici, ["Barkod"] = o.BarkodSayi, ["Sipariş"] = o.SipSayi, ["Miktar"] = o.Miktar, ["Tutar"] = o.Tutar,
+            ["Gün"] = o.Gun, ["Barkod"] = o.BarkodSayi, ["Sipariş"] = o.SipSayi, ["Miktar"] = o.Miktar, ["Tutar"] = o.Tutar,
         }));
 
     private Task<IEnumerable<IDictionary<string, object?>>> DetayExcel() =>

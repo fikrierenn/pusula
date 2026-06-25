@@ -336,17 +336,16 @@ public sealed class EticQueries(Db db)
     {
         await using var conn = await db.OpenJokerAsync();
         var rows = await conn.QueryAsync<BaskisiYokOzet>("""
-            SELECT U.FULLNAME                          AS Kullanici,
+            SELECT CONVERT(varchar(10), CONVERT(DATE, B.TARIH), 104) AS Gun,
                    COUNT(DISTINCT B.BARCODE)           AS BarkodSayi,
                    COUNT(DISTINCT D.ORDERREF)          AS SipSayi,
                    CAST(SUM(B.QUANTITY) AS int)        AS Miktar,
                    SUM(B.QUANTITY * D.SELLINGPRICE)    AS Tutar
             FROM   dbo.BASKISIYOK B WITH(NOLOCK)
             JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
-            JOIN   dbo.EM_USERS U WITH(NOLOCK)        ON U.LOGICALREF = B.USERREF
             WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
-            GROUP BY U.FULLNAME
-            ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
+            GROUP BY CONVERT(DATE, B.TARIH)
+            ORDER BY CONVERT(DATE, B.TARIH) DESC
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.ToList();
     }
