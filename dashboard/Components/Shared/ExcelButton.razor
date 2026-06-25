@@ -1,0 +1,36 @@
+@* Genel Excel dışa-aktarma butonu (B-125) — her grid'de aynı kullanılır.
+   Rows: çağrıldığında satır-sözlüğü listesi döndüren async fabrika (sayfalı sayfalarda TÜMÜNÜ çekebilsin). *@
+@using GmDashboard.Data
+@inject IJSRuntime JS
+@inject ILogger<ExcelButton> Logger
+
+<button class="btn btn-sm btn-outline gap-1" @onclick="Aktar" disabled="@(_calisiyor || Rows is null)" title="Excel'e aktar">
+    @if (_calisiyor) { <span class="loading loading-spinner loading-xs"></span> }
+    else { <i data-lucide="file-down" class="w-4 h-4"></i> }
+    @Label
+</button>
+
+@code {
+    [Parameter] public string FileName { get; set; } = "rapor";
+    [Parameter] public string Label { get; set; } = "Excel";
+    [Parameter] public string SayfaAd { get; set; } = "Rapor";
+    [Parameter] public Func<Task<IEnumerable<IDictionary<string, object?>>>>? Rows { get; set; }
+
+    private bool _calisiyor;
+
+    private async Task Aktar()
+    {
+        if (Rows is null) return;
+        _calisiyor = true;
+        try
+        {
+            var data = await Rows();
+            var bytes = ExcelExport.Olustur(data, SayfaAd);
+            var b64 = Convert.ToBase64String(bytes);
+            var ad = $"{FileName}-{DateTime.Today:yyyy-MM-dd}.xlsx";
+            await JS.InvokeVoidAsync("bkmDownload", ad, b64, ExcelExport.ContentType);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Excel export hatası ({File})", FileName); }
+        finally { _calisiyor = false; }
+    }
+}

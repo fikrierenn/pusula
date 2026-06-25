@@ -22,6 +22,7 @@
     <input class="input input-bordered input-sm w-64" placeholder="Cari kod / ad ara…" @bind="_ara" @bind:after="Yukle" />
     <button class="btn btn-sm btn-primary" @onclick="Yukle">Ara</button>
     @if (_ara != "") { <button class="btn btn-sm btn-ghost" @onclick="AramaTemizle">✕</button> }
+    <ExcelButton FileName="cari-risk" SayfaAd="Cari Risk" Rows="ExcelSatirlar" />
     <span class="text-[11px] text-base-content/50">@(_ara == "" ? $"En yüksek mutlak bakiyeli ilk {_son} kayıt" : $"Aramada tüm eşleşmeler ({_rows.Count})")</span>
 </div>
 
@@ -119,6 +120,14 @@ else
         catch (Exception ex) { Logger.LogError(ex, "Cari risk yüklenemedi ({Kapsam})", _kapsam); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
     }
+
+    private Task<IEnumerable<IDictionary<string, object?>>> ExcelSatirlar() =>
+        Task.FromResult<IEnumerable<IDictionary<string, object?>>>(_rows.Select(r => new Dictionary<string, object?>
+        {
+            ["Kod"] = r.Kod, ["Cari"] = r.Ad, ["Tip"] = r.TipAd,
+            ["Borç"] = r.Borc, ["Alacak"] = r.Alacak, ["Net Bakiye"] = r.Bakiye,
+            ["Vadesi Geçen"] = r.VadesiGecen, ["Yaklaşan"] = r.Yaklasan, ["Limit"] = r.Limit,
+        }));
 
     private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 }

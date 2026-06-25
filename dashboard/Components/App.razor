@@ -37,6 +37,15 @@
         // PWA service worker (install prompt + standalone)
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js').catch(() => {});
 
+        // Genel dosya indirme (Excel export vb.) — base64 → Blob → indir.
+        window.bkmDownload = function (name, b64, type) {
+            const bin = atob(b64), len = bin.length, bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+            const url = URL.createObjectURL(new Blob([bytes], { type }));
+            const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+
         // Sunucu kapanınca circuit kopar; telefon takılı kalmasın → /healthz poll, sunucu dönünce otomatik reload.
         // ReconnectModal "failed" branch'i de bunu çağırır (window.__bkmRecover).
         window.__bkmRecover = function () {
