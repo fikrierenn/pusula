@@ -54,9 +54,22 @@ else
             </div>
         }
 
-        @if (!string.IsNullOrWhiteSpace(_fat.Not))
+        @if (!string.IsNullOrWhiteSpace(_fat.Not) || _fat.YevmiyeFisID is not null)
         {
-            <div class="px-6 py-2 text-sm text-base-content/70 border-b border-base-200">Not: <span class="font-medium text-base-content">@_fat.Not</span></div>
+            <div class="px-6 py-2 text-sm text-base-content/70 border-b border-base-200 flex items-center justify-between gap-3">
+                @if (!string.IsNullOrWhiteSpace(_fat.Not))
+                {
+                    <span>Not: <span class="font-medium text-base-content">@_fat.Not</span></span>
+                }
+                else { <span></span> }
+                @if (_fat.YevmiyeFisID is not null)
+                {
+                    <button class="btn btn-sm btn-outline btn-primary whitespace-nowrap"
+                            @onclick="@(() => Nav.NavigateTo($"/yevmiye-fis?fis={_fat.YevmiyeFisID}&sirket={_fat.YevmiyeSirket}"))">
+                        📒 Yevmiye Fişini Aç@(_fat.YevmiyeNo is not null ? $" (No {_fat.YevmiyeNo})" : "")
+                    </button>
+                }
+            </div>
         }
 
         @* ── Kalemler ── *@
@@ -96,6 +109,25 @@ else
                 </tr>
             </tfoot>
         </table>
+
+        @* ── Kayıt bilgisi (kim / ne zaman) ── *@
+        <div class="grid grid-cols-3 gap-4 px-6 pt-4 pb-5 text-xs border-t border-base-200">
+            <div>
+                <div class="text-base-content/50 mb-0.5">Giren</div>
+                <div class="font-medium">@(string.IsNullOrWhiteSpace(_fat.Giren) ? "—" : _fat.Giren)</div>
+                <div class="text-base-content/40 font-mono">@_fat.GirisT</div>
+            </div>
+            <div>
+                <div class="text-base-content/50 mb-0.5">Son Değiştiren</div>
+                <div class="font-medium">@(string.IsNullOrWhiteSpace(_fat.Degistiren) ? "—" : _fat.Degistiren)</div>
+                <div class="text-base-content/40 font-mono">@_fat.DegisT</div>
+            </div>
+            <div>
+                <div class="text-base-content/50 mb-0.5">Onaylayan</div>
+                <div class="font-medium">@(string.IsNullOrWhiteSpace(_fat.Onaylayan) ? "—" : _fat.Onaylayan)</div>
+                <div class="text-base-content/40 font-mono">@_fat.OnayT</div>
+            </div>
+        </div>
     </div>
 }
 

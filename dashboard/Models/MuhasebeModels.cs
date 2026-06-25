@@ -11,11 +11,14 @@ public record KontrolOzetRow(
 /// <summary>Ay kapanış kaydı (bkm.Fin_AyKapanis) — Ayarlar formu satırı. Kontrol panelinin tarama dönemini belirler.</summary>
 public record KapanisDonem(int DonemYil, int DonemAy, DateTime KapanisDT, string? Aciklama, DateTime KayitDT);
 
-/// <summary>Yevmiye fişi tek satırı (mhsFis × mhsHsp). Borç=fisBA1(-fisTutar) / Alacak=fisBA0(fisTutar).</summary>
-public record YevmiyeFisSatir(string HspKod, string HspAd, string? Aciklama, decimal Borc, decimal Alacak);
+/// <summary>Yevmiye fişi tek satırı (mhsFis × mhsHsp). Borç=fisBA1(-fisTutar) / Alacak=fisBA0(fisTutar). UstAd = bir üst kırılım hesap adı (hspKod prefix).</summary>
+public record YevmiyeFisSatir(string HspKod, string HspAd, string? UstAd, string? Aciklama, decimal Borc, decimal Alacak);
 
-/// <summary>Yevmiye fişi (başlık + satırlar) — Kontrol DETAY evrak drill'i. fisbID ile.</summary>
-public record YevmiyeFis(int YevmiyeNo, string Tarih, string FisAd, IReadOnlyList<YevmiyeFisSatir> Satirlar)
+/// <summary>Yevmiye fişi (başlık + satırlar) — Kontrol DETAY evrak drill'i. fisbID ile.
+/// Audit (mhsFisBaslik): Giren=gKisi/gTarih, Değiştiren=kKisi/kTarih, Onaylayan=oKisi/oTarih (kişi → drn1.insAd).</summary>
+public record YevmiyeFis(int YevmiyeNo, string Tarih, string FisAd, IReadOnlyList<YevmiyeFisSatir> Satirlar,
+    string? Giren = null, string? GirisT = null, string? Degistiren = null, string? DegisT = null, string? Onaylayan = null, string? OnayT = null,
+    int? FaturaEID = null, string? FaturaNo = null)
 {
     public decimal ToplamBorc => Satirlar.Sum(s => s.Borc);
     public decimal ToplamAlacak => Satirlar.Sum(s => s.Alacak);
@@ -25,8 +28,12 @@ public record YevmiyeFis(int YevmiyeNo, string Tarih, string FisAd, IReadOnlyLis
 /// <summary>Gider/masraf faturası tek satırı (dbo.fatAyr × urn). MasrafMerkezi = fGdrMerkez → frm (gider merkezi).</summary>
 public record FaturaSatir(string Kod, string Urun, string? MasrafMerkezi, decimal Adet, decimal Tutar, decimal Kdv);
 
-/// <summary>Gider faturası (başlık + satırlar) — Kontrol DETAY FAT evrak drill'i. eID ile.</summary>
-public record Fatura(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, IReadOnlyList<FaturaSatir> Satirlar)
+/// <summary>Gider faturası (başlık + satırlar) — Kontrol DETAY FAT evrak drill'i. eID ile.
+/// Audit (dbo.fat): Giren=gKisi/gTarih, Değiştiren=kKisi/kTarih, Onaylayan=oKisi/oTarih (kişi → drn1.insAd).
+/// Yevmiye köprü: fat.eMhsFisID → mhsFisBaslik.fisbID (muhasebeleşen fiş).</summary>
+public record Fatura(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, IReadOnlyList<FaturaSatir> Satirlar,
+    string? Giren = null, string? GirisT = null, string? Degistiren = null, string? DegisT = null, string? Onaylayan = null, string? OnayT = null,
+    int? YevmiyeFisID = null, int? YevmiyeSirket = null, int? YevmiyeNo = null)
 {
     public decimal ToplamTutar => Satirlar.Sum(s => s.Tutar);
     public decimal ToplamKdv => Satirlar.Sum(s => s.Kdv);

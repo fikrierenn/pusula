@@ -118,6 +118,13 @@ else
                     </tr>
                 }
                 </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
+                        <td colspan="7" class="text-right">TOPLAM (@_detay.Count evrak)</td>
+                        <td class="text-right">@Tl(_detay.Sum(d => d.Tutar))</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         <div class="text-base-content/50 text-[11px] mt-2">⚠ = giren ve onaylayan aynı kişi. Gün = kapanıştan sonra. RiskSkor yüksek önce.</div>

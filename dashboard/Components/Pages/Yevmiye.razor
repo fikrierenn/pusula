@@ -46,9 +46,22 @@ else
             </div>
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(_fis.FisAd))
+        @if (!string.IsNullOrWhiteSpace(_fis.FisAd) || _fis.FaturaEID is not null)
         {
-            <div class="px-6 py-2 text-sm text-base-content/70 border-b border-base-200">Açıklama: <span class="font-medium text-base-content">@_fis.FisAd</span></div>
+            <div class="px-6 py-2 text-sm text-base-content/70 border-b border-base-200 flex items-center justify-between gap-3">
+                @if (!string.IsNullOrWhiteSpace(_fis.FisAd))
+                {
+                    <span>Açıklama: <span class="font-medium text-base-content">@_fis.FisAd</span></span>
+                }
+                else { <span></span> }
+                @if (_fis.FaturaEID is not null)
+                {
+                    <button class="btn btn-sm btn-outline btn-primary whitespace-nowrap"
+                            @onclick="@(() => Nav.NavigateTo($"/fatura?fat={_fis.FaturaEID}"))">
+                        🧾 Faturayı Aç@(string.IsNullOrWhiteSpace(_fis.FaturaNo) ? "" : $" ({_fis.FaturaNo})")
+                    </button>
+                }
+            </div>
         }
 
         @* ── Defter satırları ── *@
@@ -68,6 +81,7 @@ else
                     <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap border-r border-base-200">@s.HspKod</td>
                     <td class="px-3 py-1.5 border-r border-base-200">
                         <div class="font-medium">@s.HspAd</div>
+                        @if (!string.IsNullOrWhiteSpace(s.UstAd)) { <div class="text-[11px] text-base-content/40">↳ @s.UstAd</div> }
                         @if (!string.IsNullOrWhiteSpace(s.Aciklama)) { <div class="text-[11px] text-base-content/50">@s.Aciklama</div> }
                     </td>
                     <td class="px-3 py-1.5 text-right tabular-nums font-mono border-r border-base-200 @(s.Borc == 0 ? "text-base-content/20" : "")">@(s.Borc != 0 ? Tl(s.Borc) : "")</td>
@@ -88,10 +102,23 @@ else
         <div class="px-6 py-2 text-[11px] border-t border-base-200 @(_fis.Denge < 0.5m ? "text-success" : "text-error font-semibold")">
             @(_fis.Denge < 0.5m ? "✓ Borç = Alacak — fiş dengeli" : "⚠ Denge bozuk · fark " + Tl(_fis.Denge))
         </div>
-        <div class="grid grid-cols-3 gap-4 px-6 pt-8 pb-5 text-center text-xs text-base-content/60">
-            <div class="border-t border-base-300 pt-1.5">Düzenleyen</div>
-            <div class="border-t border-base-300 pt-1.5">Kontrol</div>
-            <div class="border-t border-base-300 pt-1.5">Onaylayan</div>
+        @* ── Kayıt bilgisi (kim / ne zaman) ── *@
+        <div class="grid grid-cols-3 gap-4 px-6 pt-4 pb-5 text-xs border-t border-base-200">
+            <div>
+                <div class="text-base-content/50 mb-0.5">Giren</div>
+                <div class="font-medium">@(string.IsNullOrWhiteSpace(_fis.Giren) ? "—" : _fis.Giren)</div>
+                <div class="text-base-content/40 font-mono">@_fis.GirisT</div>
+            </div>
+            <div>
+                <div class="text-base-content/50 mb-0.5">Son Değiştiren</div>
+                <div class="font-medium">@(string.IsNullOrWhiteSpace(_fis.Degistiren) ? "—" : _fis.Degistiren)</div>
+                <div class="text-base-content/40 font-mono">@_fis.DegisT</div>
+            </div>
+            <div>
+                <div class="text-base-content/50 mb-0.5">Onaylayan</div>
+                <div class="font-medium">@(string.IsNullOrWhiteSpace(_fis.Onaylayan) ? "—" : _fis.Onaylayan)</div>
+                <div class="text-base-content/40 font-mono">@_fis.OnayT</div>
+            </div>
         </div>
     </div>
 }

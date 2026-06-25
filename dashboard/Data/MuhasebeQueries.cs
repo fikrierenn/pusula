@@ -15,8 +15,10 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     const string Sp = "DerinSISBkm.bkm.sp_KapanisMudahaleKontrol_v2";
 
     // Dapper map'leme için düz record (8+ elemanlı ValueTuple nested Rest → Dapper 8. elemanı map edemez, tutar boş kalır).
-    private sealed record YevmiyeQ(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? Aciklama, decimal Borc, decimal Alacak);
-    private sealed record FaturaQ(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, string Kod, string Urun, string? MasrafMerkezi, decimal Adet, decimal Tutar, decimal Kdv);
+    private sealed record YevmiyeQ(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? UstAd, string? Aciklama, decimal Borc, decimal Alacak,
+        string? Giren, string? GirisT, string? Degistiren, string? DegisT, string? Onaylayan, string? OnayT, int? FaturaEID, string? FaturaNo);
+    private sealed record FaturaQ(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, string Kod, string Urun, string? MasrafMerkezi, decimal Adet, decimal Tutar, decimal Kdv,
+        string? Giren, string? GirisT, string? Degistiren, string? DegisT, string? Onaylayan, string? OnayT, int? YevmiyeFisID, int? YevmiyeSirket, int? YevmiyeNo);
 
     /// <summary>Özet: dönem×kaynak×gider (adet/tutar/maxgün/risk). yil/ay null → tüm kapanmış dönemler.</summary>
     public async Task<IReadOnlyList<KontrolOzetRow>> GetOzetAsync(int? yil, int? ay, string kaynak, bool sadeceGider)
@@ -51,18 +53,36 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
                    CONVERT(varchar(10), b.fisTarih, 104) AS Tarih,
                    CAST(b.fisAd AS nvarchar(200)) AS FisAd,
                    h.hspKod AS HspKod, CAST(h.hspAd AS nvarchar(80)) AS HspAd,
+                   CAST(p.hspAd AS nvarchar(80)) AS UstAd,
                    CAST(ff.fisAciklama AS nvarchar(160)) AS Aciklama,
                    CAST(CASE WHEN ff.fisTutar < 0 THEN -ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Borc,
-                   CAST(CASE WHEN ff.fisTutar > 0 THEN  ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Alacak
+                   CAST(CASE WHEN ff.fisTutar > 0 THEN  ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Alacak,
+                   CAST(LTRIM(RTRIM(g.insAd + ' ' + g.insSoyad)) AS nvarchar(80)) AS Giren,
+                   CONVERT(varchar(10), b.gTarih, 104) + ' ' + CONVERT(varchar(5), b.gTarih, 108) AS GirisT,
+                   CAST(LTRIM(RTRIM(k.insAd + ' ' + k.insSoyad)) AS nvarchar(80)) AS Degistiren,
+                   CONVERT(varchar(10), b.kTarih, 104) + ' ' + CONVERT(varchar(5), b.kTarih, 108) AS DegisT,
+                   CAST(LTRIM(RTRIM(o.insAd + ' ' + o.insSoyad)) AS nvarchar(80)) AS Onaylayan,
+                   CONVERT(varchar(10), b.oTarih, 104) + ' ' + CONVERT(varchar(5), b.oTarih, 108) AS OnayT,
+                   fa.eID AS FaturaEID, CAST(fa.eNo AS varchar(50)) AS FaturaNo
             FROM DerinSISBkm.mhs.mhsFisBaslik b
             JOIN DerinSISBkm.mhs.mhsFis ff ON ff.fisID = b.fisbID AND ff.fisSirketID = b.fisbSirketID
             JOIN DerinSISBkm.mhs.mhsHsp h ON h.hspID = ff.fisHspID AND h.hspSirketID = ff.fisSirketID
+            LEFT JOIN DerinSISBkm.mhs.mhsHsp p ON p.hspSirketID = h.hspSirketID
+                 AND CHARINDEX('.', REVERSE(h.hspKod)) > 0
+                 AND p.hspKod = LEFT(h.hspKod, LEN(h.hspKod) - CHARINDEX('.', REVERSE(h.hspKod)))
+            LEFT JOIN DerinSISBkm.dbo.drn1 g ON g.insID = b.gKisi
+            LEFT JOIN DerinSISBkm.dbo.drn1 k ON k.insID = b.kKisi
+            LEFT JOIN DerinSISBkm.dbo.drn1 o ON o.insID = b.oKisi
+            OUTER APPLY (SELECT TOP 1 f2.eID, f2.eNo FROM DerinSISBkm.dbo.fat f2 WHERE f2.eMhsFisID = b.fisbID) fa
             WHERE b.fisbID = @fisId AND b.fisbSirketID = @sirketId
             ORDER BY ff.fsID
             """, new { fisId, sirketId })).ToList();
         if (rows.Count == 0) return null;
-        var satirlar = rows.Select(r => new YevmiyeFisSatir(r.HspKod, r.HspAd, r.Aciklama, r.Borc, r.Alacak)).ToList();
-        return new YevmiyeFis(rows[0].YevmiyeNo, rows[0].Tarih, rows[0].FisAd, satirlar);
+        var satirlar = rows.Select(r => new YevmiyeFisSatir(r.HspKod, r.HspAd, r.UstAd, r.Aciklama, r.Borc, r.Alacak)).ToList();
+        var h0 = rows[0];
+        return new YevmiyeFis(h0.YevmiyeNo, h0.Tarih, h0.FisAd, satirlar,
+            h0.Giren, h0.GirisT, h0.Degistiren, h0.DegisT, h0.Onaylayan, h0.OnayT,
+            h0.FaturaEID, h0.FaturaNo);
     }
 
     /// <summary>Gider/masraf faturası detayı (DETAY FAT evrak drill) — eID ile satırlar (urn ürün/gider kalemi).</summary>
@@ -79,18 +99,32 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
                    CAST(LTRIM(REPLACE(REPLACE(gm.frmAd, N'G - ', N''), N' Gider Merkezi', N'')) AS nvarchar(60)) AS MasrafMerkezi,
                    CAST(a.ehAdetN AS decimal(18,2)) AS Adet,
                    CAST(a.ehTutar AS decimal(18,2)) AS Tutar,
-                   CAST(ISNULL(a.ehTutarKDV,0) AS decimal(18,2)) AS Kdv
+                   CAST(ISNULL(a.ehTutarKDV,0) AS decimal(18,2)) AS Kdv,
+                   CAST(LTRIM(RTRIM(g.insAd + ' ' + g.insSoyad)) AS nvarchar(80)) AS Giren,
+                   CONVERT(varchar(10), f.gTarih, 104) + ' ' + CONVERT(varchar(5), f.gTarih, 108) AS GirisT,
+                   CAST(LTRIM(RTRIM(k.insAd + ' ' + k.insSoyad)) AS nvarchar(80)) AS Degistiren,
+                   CONVERT(varchar(10), f.kTarih, 104) + ' ' + CONVERT(varchar(5), f.kTarih, 108) AS DegisT,
+                   CAST(LTRIM(RTRIM(o.insAd + ' ' + o.insSoyad)) AS nvarchar(80)) AS Onaylayan,
+                   CONVERT(varchar(10), f.oTarih, 104) + ' ' + CONVERT(varchar(5), f.oTarih, 108) AS OnayT,
+                   mf.fisbID AS YevmiyeFisID, mf.fisbSirketID AS YevmiyeSirket, mf.yevmiyeNo AS YevmiyeNo
             FROM DerinSISBkm.dbo.fat f
             JOIN DerinSISBkm.dbo.fatAyr a ON a.ehID = f.eID
             LEFT JOIN DerinSISBkm.dbo.frm fr ON fr.frmID = f.eFirma
             LEFT JOIN DerinSISBkm.dbo.frm gm ON gm.frmID = a.fGdrMerkez
             LEFT JOIN DerinSISBkm.dbo.urn u ON u.stkID = a.ehStkID
+            LEFT JOIN DerinSISBkm.dbo.drn1 g ON g.insID = f.gKisi
+            LEFT JOIN DerinSISBkm.dbo.drn1 k ON k.insID = f.kKisi
+            LEFT JOIN DerinSISBkm.dbo.drn1 o ON o.insID = f.oKisi
+            LEFT JOIN DerinSISBkm.mhs.mhsFisBaslik mf ON mf.fisbID = f.eMhsFisID
             WHERE f.eID = @faturaId
             ORDER BY a.ehID
             """, new { faturaId })).ToList();
         if (rows.Count == 0) return null;
         var satirlar = rows.Select(r => new FaturaSatir(r.Kod, r.Urun, r.MasrafMerkezi, r.Adet, r.Tutar, r.Kdv)).ToList();
-        return new Fatura(rows[0].EvrakNo, rows[0].Tarih, rows[0].Tip, rows[0].Not, rows[0].CariKod, rows[0].CariAd, satirlar);
+        var h0 = rows[0];
+        return new Fatura(h0.EvrakNo, h0.Tarih, h0.Tip, h0.Not, h0.CariKod, h0.CariAd, satirlar,
+            h0.Giren, h0.GirisT, h0.Degistiren, h0.DegisT, h0.Onaylayan, h0.OnayT,
+            h0.YevmiyeFisID, h0.YevmiyeSirket, h0.YevmiyeNo);
     }
 
     /// <summary>Kapanmış dönem listesi (seçici için). Fin_AyKapanis — en yeni önce.</summary>

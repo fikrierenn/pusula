@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-06-22
+updated: 2026-06-25
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -313,9 +313,9 @@ bridges:
     to: dbo.drn1.insID
     scope: derinsis
     confidence: 1.0
-    note: "Evrak kişi (giren/değiştiren/onaylayan) → kullanıcı adı (drn1.insAd). FK kanıtlı (fat.gKisi→drn1.insID). Denetimde ID DEĞİL isim göster."
-    evidence: "2026-06-22 sys.foreign_keys: fat/car/posHedef.gKisi → drn1.insID"
-    last_verified: 2026-06-22
+    note: "Evrak kişi (giren=gKisi/gTarih, değiştiren=kKisi/kTarih, onaylayan=oKisi/oTarih) → kullanıcı adı (drn1.insAd+insSoyad). FK kanıtlı. Denetimde ID DEĞİL isim göster. 'Değişti mi' = kTarih>gTarih veya kKisi≠gKisi. Alan-bazlı değişiklik geçmişi tablosu YOK — sadece bu damgalar."
+    evidence: "2026-06-22 sys.foreign_keys: fat/car/posHedef.gKisi → drn1.insID. 2026-06-25 canlı: mhsFisBaslik+fat audit dashboard'da gösterildi (yevmiye/fatura sayfası)."
+    last_verified: 2026-06-25
   - id: car-frm
     from: "dbo.car.cKod / cKodKarsi"
     to: dbo.frm.frmID
@@ -325,11 +325,20 @@ bridges:
     last_verified: 2026-06-22
   - id: fat-mhsfis
     from: dbo.fat.eMhsFisID
-    to: mhs.mhsFis (muhasebe fiş)
+    to: mhs.mhsFisBaslik.fisbID
     scope: derinsis
-    confidence: 0.9
-    note: "Alış faturası → muhasebe fiş bağı. Entegrasyon kaçağı kontrolü (kontrol_fatCarMhsFisIDFarkli_vw)."
-    last_verified: 2026-06-22
+    confidence: 0.99
+    note: "Fatura → muhasebeleşen yevmiye fişi (başlık). fisbID GLOBAL benzersiz (şirkete göre tekrar YOK, 0 çakışma) → join'de fisbSirketID gerekmez. Dashboard çift-yön drill: yevmiye→fatura (OUTER APPLY TOP 1 eMhsFisID=fisbID) ve fatura→yevmiye. eNo metin değil — eMhsFisID temiz sayısal bağ (aynı eNo'nun noktalı varyantı '25225839.' ayrı belge olabilir, eNo ile eşleme YANILTIR). Entegrasyon kaçağı: kontrol_fatCarMhsFisIDFarkli_vw."
+    evidence: "2026-06-25 canlı: fat eID 7050402(eNo 25225839)→fisbID 15466371(yevmiye 35802), eID 7050409(eNo '25225839.')→fisbID 15466372(yevmiye 35803). fisbID global-unique HAVING COUNT(DISTINCT fisbSirketID)>1 = 0."
+    last_verified: 2026-06-25
+  - id: hesap-usthesap
+    from: mhs.mhsHsp.hspKod (bir üst kırılım — son '.segment' atılmış prefix)
+    to: mhs.mhsHsp.hspKod (+ hspSirketID)
+    scope: derinsis
+    confidence: 0.95
+    note: "Üst hesap (parent) = hspKod prefix self-join: '740.30.002'→'740.30'→hspAd. SQL: LEFT(kod, LEN(kod)-CHARINDEX('.',REVERSE(kod))), CHARINDEX>0 guard (noktasız leaf'te self-match önle). DİKKAT: hspAnaID (smallint) üst hesap DEĞİL — TDHP grup no (740/760), mhsHsp'de o kodla satır YOK. Üst hesap için prefix kullan."
+    evidence: "2026-06-25 canlı fiş 35803: 320.10.B019(Buski A.Ş.)→320.10(YURT İÇİ SATICILAR), 740.30.002(Su Giderleri)→740.30(DIŞARDAN SAĞLANAN FAYDA VE HİZMETLER), 191.10.020→191.10(YURTİÇİ ALIMLARA AİT KDV)."
+    last_verified: 2026-06-25
   - id: evrak-finaykapanis
     from: "YEAR/MONTH(car.cTarih / fat.eTarihS / mhsFisBaslik.fisTarih)"
     to: "bkm.Fin_AyKapanis (DonemYil, DonemAy)"
