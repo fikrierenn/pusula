@@ -146,6 +146,28 @@ else if (_data is not null)
                         OnRowClick="@(a => OpenAyDetay(a))" />
             <div class="text-base-content/50 text-[11px]">Grafik = <b>iş günü</b> trend (depo gerçek). Takvim = müşteri algısı. Yoğun aylarda iş günü artar (kapasite darboğazı) — örn. yılbaşı. ≥3 iş günü kırmızı, ≤2 yeşil.</div>
         </div>
+
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5"><i data-lucide="printer" class="w-4 h-4 text-error"></i>Baskısı Yok — 30 Gün Trend</h3>
+            @{
+                var bskCesitTop = _bskTrend.Count > 0 ? _bskTrend[^1].Cesit : 0;
+                var bskAdetTop = _bskTrend.Count > 0 ? _bskTrend[^1].Adet : 0;
+                var bskCesitToplam = _bskTrend.Sum(b => b.Cesit);
+                var bskAdetToplam = _bskTrend.Sum(b => b.Adet);
+            }
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div class="flex items-baseline gap-2 mb-1"><div class="text-xl font-extrabold tracking-tight">@Num(bskCesitToplam)</div><div class="text-[11px] text-base-content/45">çeşit (30g) · bugün @bskCesitTop</div></div>
+                    <AppAreaChart TItem="BaskisiYokGun" Items="_bskTrend" Name="Çeşit" Color="@_pColor" Height="110"
+                                  XValue="@(b => (object)b.Gun)" YValue="@(b => (decimal?)b.Cesit)" />
+                </div>
+                <div>
+                    <div class="flex items-baseline gap-2 mb-1"><div class="text-xl font-extrabold tracking-tight">@Num(bskAdetToplam)</div><div class="text-[11px] text-base-content/45">adet (30g) · bugün @bskAdetTop</div></div>
+                    <AppAreaChart TItem="BaskisiYokGun" Items="_bskTrend" Name="Adet" Color="@_pColor" Height="110"
+                                  XValue="@(b => (object)b.Gun)" YValue="@(b => (decimal?)b.Adet)" />
+                </div>
+            </div>
+            <div class="text-base-content/50 text-[11px] mt-2">Baskısı yok yapılan siparişler (JOKER). Çeşit = farklı barkod, Adet = toplam miktar. Detay: <a href="/baskisi-yok" class="link link-primary">Baskısı Yok sayfası</a>.</div>
+        </div>
     </div>
 
     @if (_cod is not null)
@@ -271,6 +293,7 @@ else if (_data is not null)
     private IReadOnlyList<KargoGun> _kargoGun = [];
     private IReadOnlyList<IlTeslimat> _ilTeslimat = [];
     private IReadOnlyList<AyKargo> _ayKargo = [];
+    private IReadOnlyList<BaskisiYokGun> _bskTrend = [];   // baskısı yok 30 gün trend
     private CodOzet? _cod;
     private IReadOnlyList<CodIl> _codIl = [];   // B-56 il bazlı COD risk
     private IReadOnlyList<EticKategoriRow> _eticKtgr = [];   // B-59 kategori mix
@@ -392,12 +415,15 @@ else if (_data is not null)
             var tEticKtgr  = Etic.GetEticKategoriAsync(start, endExcl);   // B-59
             var tFunnel    = Etic.GetFunnelAsync(start, endExcl);          // B-64
             var tKtgrYil   = Etic.GetEticKategoriYilAsync();   // kategori × ay yıl trendi (dönemsiz)
-            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr, tFunnel, tKtgrYil);
+            var bugun      = DateOnly.FromDateTime(DateTime.Today);
+            var tBskTrend  = Etic.GetBaskisiYokTrendAsync(bugun.AddDays(-29), bugun.AddDays(1));   // baskısı yok 30 gün (dönemsiz)
+            await Task.WhenAll(tData, tKargoPerf, tKargoGun, tIl, tAyKargo, tCod, tCodIl, tBekleyen, tEticKtgr, tFunnel, tKtgrYil, tBskTrend);
             _data = tData.Result; _kargoPerf = tKargoPerf.Result; _kargoGun = tKargoGun.Result;
             _ilTeslimat = tIl.Result; _ayKargo = tAyKargo.Result; _cod = tCod.Result; _codIl = tCodIl.Result; _bekleyen = tBekleyen.Result;
             _eticKtgr = tEticKtgr.Result;
             _funnel = tFunnel.Result;
             _ktgrYil = tKtgrYil.Result;
+            _bskTrend = tBskTrend.Result;
         }
         catch (Exception ex) { Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("E-ticaret", sw); StateHasChanged(); }

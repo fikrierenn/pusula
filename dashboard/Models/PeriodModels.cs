@@ -131,6 +131,9 @@ public record BaskisiYokOzet(string Kullanici, int BarkodSayi, int SipSayi, int 
 /// <summary>Baskısı yok — ürün bazlı detay. JOKER.BASKISIYOK × J_ORDER_DETAILS × J_ITEMS × EM_USERS.</summary>
 public record BaskisiYokDetay(string Tarih, string Kullanici, string Barkod, string? Kod, string? Ad, string? Marka, string? Grup, int Miktar, decimal Tutar);
 
+/// <summary>Baskısı yok — günlük trend (çeşit=distinct barkod, adet=toplam miktar). E-ticaret sayfası grafiği.</summary>
+public record BaskisiYokGun(string Gun, int Cesit, int Adet);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 

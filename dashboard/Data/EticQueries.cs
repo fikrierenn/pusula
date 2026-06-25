@@ -351,6 +351,22 @@ public sealed class EticQueries(Db db)
         return rows.ToList();
     }
 
+    /// <summary>Baskısı yok — günlük trend (çeşit + adet) tarih aralığı. Sadece BASKISIYOK (barkod + miktar).</summary>
+    public async Task<IReadOnlyList<BaskisiYokGun>> GetBaskisiYokTrendAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokGun>("""
+            SELECT CONVERT(varchar(10), CONVERT(DATE, B.TARIH), 104) AS Gun,
+                   COUNT(DISTINCT B.BARCODE)                         AS Cesit,
+                   CAST(SUM(B.QUANTITY) AS int)                      AS Adet
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            GROUP BY CONVERT(DATE, B.TARIH)
+            ORDER BY CONVERT(DATE, B.TARIH)
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
+
     /// <summary>Baskısı yok — ürün bazlı detay (tarih aralığı). BASKISIYOK × J_ORDER_DETAILS × J_ITEMS × EM_USERS.</summary>
     public async Task<IReadOnlyList<BaskisiYokDetay>> GetBaskisiYokDetayAsync(DateOnly start, DateOnly endExcl)
     {
