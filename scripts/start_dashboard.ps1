@@ -43,6 +43,27 @@ function Stop-Dash {
     }
 }
 
+# Release'i yeniden derle + yeniden baslat (kod degisince taze surum - "eski surum" derdini cozer).
+# Derleme UI thread'ini ~20sn kilitler (tray manuel aksiyon, kabul). DLL kilidi: once dotnet'i oldur.
+function Rebuild-Dash {
+    $ni.ShowBalloonTip(3000, "BKM Dashboard", "Derleniyor... (15-30 sn)", [System.Windows.Forms.ToolTipIcon]::Info)
+    Stop-Dash
+    Start-Sleep -Milliseconds 900   # DLL kilidini birak
+    $ok = $true
+    try {
+        & dotnet build "D:\Dev\pusula\dashboard\GmDashboard.csproj" -c Release 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { $ok = $false }
+    } catch { $ok = $false }
+    $script:fastFails = 0
+    $script:running   = $true
+    Start-Dash
+    if ($ok) {
+        $ni.ShowBalloonTip(3000, "BKM Dashboard", "Yeni sürüm derlendi ve başlatıldı.", [System.Windows.Forms.ToolTipIcon]::Info)
+    } else {
+        $ni.ShowBalloonTip(5000, "BKM Dashboard", "Derleme BAŞARISIZ — eski sürümle başlatıldı.", [System.Windows.Forms.ToolTipIcon]::Warning)
+    }
+}
+
 # --- Tray ikonu ---
 $ni = New-Object System.Windows.Forms.NotifyIcon
 try {
@@ -65,6 +86,8 @@ $miYeniden.Add_Click({
     Start-Dash
     $ni.ShowBalloonTip(3000, "BKM Dashboard", "Yeniden başlatıldı.", [System.Windows.Forms.ToolTipIcon]::Info)
 })
+$miDerle = $menu.Items.Add("Yeniden Derle ve Başlat")
+$miDerle.Add_Click({ Rebuild-Dash })
 $menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator)) | Out-Null
 $miCik = $menu.Items.Add("Durdur ve Çık")
 $miCik.Add_Click({
