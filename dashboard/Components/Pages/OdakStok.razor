@@ -15,8 +15,9 @@
 
 @* ── Sayfa-tarzı sekme barı (tam genişlik, alt-çizgili) ── *@
 <div role="tablist" class="tabs tabs-bordered w-full mb-3">
-    <a role="tab" class="tab flex-1 @(_tab == 0 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(0)">Stok-Satış</a>
-    <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(1)">Usulsüz Sipariş</a>
+    <a role="tab" class="tab flex-1 @(_tab == 0 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(0)">Marka / Yayınevi Özeti</a>
+    <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(1)">Ürün Dökümü</a>
+    <a role="tab" class="tab flex-1 @(_tab == 2 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(2)">Usulsüz Sipariş</a>
 </div>
 
 @* ── Kategori seçici ── *@
@@ -35,11 +36,10 @@
     <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
 }
 
-@* ══════════ SEKME 1: STOK-SATIŞ ══════════ *@
+@* ══════════ SEKME 0: MARKA / YAYINEVİ ÖZETİ ══════════ *@
 @if (_tab == 0)
 {
-    @* Marka/yayınevi özeti *@
-    <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="text-sm font-semibold mb-2">Marka / Yayınevi Özeti <span class="text-xs text-base-content/50">— devir = yıllık şube satış / ODAK stok</span></div>
         @if (_ozetLoading)
         {
@@ -71,7 +71,11 @@
         }
     </div>
 
-    @* Ürün tam döküm (sayfalı) *@
+}
+
+@* ══════════ SEKME 1: ÜRÜN DÖKÜMÜ ══════════ *@
+@if (_tab == 1)
+{
     <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Ürün Dökümü</div>
@@ -117,7 +121,7 @@
 }
 
 @* ══════════ SEKME 2: USULSÜZ SİPARİŞ ══════════ *@
-@if (_tab == 1)
+@if (_tab == 2)
 {
     <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
@@ -231,17 +235,19 @@
     private int _tab = 0;
     private string? _error;
 
-    // Sekme 1
+    // Sekme 0 — marka özeti
     private IReadOnlyList<OdakMarkaOzet> _ozet = [];
+    private bool _ozetLoading, _ozetYuklendi;
+
+    // Sekme 1 — ürün dökümü
     private OdakSayfa<OdakUrun>? _urunSayfa;
     private int _urunPage = 1;
-    private bool _ozetLoading, _urunLoading;
+    private bool _urunLoading, _urunYuklendi;
 
-    // Sekme 2
+    // Sekme 2 — usulsüz
     private OdakSayfa<OdakUsulsuz>? _usulsuzSayfa;
     private int _usulsuzPage = 1;
-    private bool _usulsuzLoading;
-    private bool _usulsuzYuklendi;   // sekme açılınca ilk yükleme
+    private bool _usulsuzLoading, _usulsuzYuklendi;
 
     // Modal
     private bool _modal;
@@ -259,7 +265,7 @@
             _kategoriler = await Odak.GetKategorilerAsync();
             _kategori = _kategoriler.FirstOrDefault(k => k.Kategori == "Hazırlık Kitapları")?.Kategori
                         ?? _kategoriler.FirstOrDefault()?.Kategori ?? "";
-            if (_kategori != "") await LoadStokSatis();
+            if (_kategori != "") await LoadTab(_tab);
         }
         catch (Exception ex) { Logger.LogError(ex, "ODAK kategori yüklenemedi"); _error = $"Yüklenemedi: {ex.Message}"; }
     }
@@ -267,28 +273,39 @@
     private async Task KategoriDegisti()
     {
         _error = null;
-        _urunPage = 1; _usulsuzPage = 1; _usulsuzYuklendi = false; _usulsuzSayfa = null;
-        if (_tab == 0) await LoadStokSatis();
-        else await LoadUsulsuz();
+        // kategori değişti → tüm sekmeleri taze yükle (lazy bayrakları sıfırla)
+        _ozetYuklendi = _urunYuklendi = _usulsuzYuklendi = false;
+        _urunPage = 1; _usulsuzPage = 1; _urunSayfa = null; _usulsuzSayfa = null;
+        await LoadTab(_tab);
     }
 
     private async Task SetTab(int t)
     {
         _tab = t;
-        if (t == 1 && !_usulsuzYuklendi) await LoadUsulsuz();
+        await LoadTab(t);
     }
 
-    private async Task LoadStokSatis()
+    private async Task LoadTab(int t)
     {
-        _ozetLoading = true; _urunLoading = true; StateHasChanged();
-        try
-        {
-            _ozet = await Odak.GetMarkaOzetAsync(_kategori);
-            _ozetLoading = false; StateHasChanged();
-            _urunSayfa = await Odak.GetUrunlerAsync(_kategori, (_urunPage - 1) * PageSize, PageSize);
-        }
-        catch (Exception ex) { Logger.LogError(ex, "ODAK stok-satış yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
-        finally { _ozetLoading = false; _urunLoading = false; }
+        if (t == 0 && !_ozetYuklendi) await LoadOzet();
+        else if (t == 1 && !_urunYuklendi) await LoadUrun();
+        else if (t == 2 && !_usulsuzYuklendi) await LoadUsulsuz();
+    }
+
+    private async Task LoadOzet()
+    {
+        _ozetLoading = true; _ozetYuklendi = true; StateHasChanged();
+        try { _ozet = await Odak.GetMarkaOzetAsync(_kategori); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK marka özet yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _ozetLoading = false; }
+    }
+
+    private async Task LoadUrun()
+    {
+        _urunLoading = true; _urunYuklendi = true; StateHasChanged();
+        try { _urunSayfa = await Odak.GetUrunlerAsync(_kategori, (_urunPage - 1) * PageSize, PageSize); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK ürün dökümü yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _urunLoading = false; }
     }
 
     private async Task UrunSayfaGit(int sayfa)

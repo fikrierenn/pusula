@@ -106,7 +106,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
                    CONVERT(varchar(10), f.kTarih, 104) + ' ' + CONVERT(varchar(5), f.kTarih, 108) AS DegisT,
                    CAST(LTRIM(RTRIM(o.insAd + ' ' + o.insSoyad)) AS nvarchar(80)) AS Onaylayan,
                    CONVERT(varchar(10), f.oTarih, 104) + ' ' + CONVERT(varchar(5), f.oTarih, 108) AS OnayT,
-                   mf.fisbID AS YevmiyeFisID, mf.fisbSirketID AS YevmiyeSirket, mf.yevmiyeNo AS YevmiyeNo
+                   mf.fisbID AS YevmiyeFisID, CAST(mf.fisbSirketID AS int) AS YevmiyeSirket, CAST(mf.yevmiyeNo AS int) AS YevmiyeNo
             FROM DerinSISBkm.dbo.fat f
             JOIN DerinSISBkm.dbo.fatAyr a ON a.ehID = f.eID
             LEFT JOIN DerinSISBkm.dbo.frm fr ON fr.frmID = f.eFirma
