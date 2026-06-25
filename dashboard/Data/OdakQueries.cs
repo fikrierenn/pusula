@@ -72,10 +72,12 @@ public sealed class OdakQueries(Db db)
         return rows.ToList();
     }
 
-    /// <summary>Ürün tam döküm (seçili kategori, sayfalı). E-ticaret OPENQUERY ile dahil. Stok toplamına göre sıralı.</summary>
-    public async Task<OdakSayfa<OdakUrun>> GetUrunlerAsync(string kategori, int offset, int take)
+    /// <summary>Ürün tam döküm (seçili kategori, sayfalı). marka (tam) + ara (yazar/ürün LIKE) filtresi. E-ticaret OPENQUERY dahil.</summary>
+    public async Task<OdakSayfa<OdakUrun>> GetUrunlerAsync(string kategori, string? marka, string? ara, int offset, int take)
     {
         await using var conn = await db.OpenAsync();
+        var araLike = string.IsNullOrWhiteSpace(ara) ? null : "%" + ara.Trim() + "%";
+        marka = string.IsNullOrWhiteSpace(marka) ? null : marka;
         var sql = $"""
             WITH ecom AS (
                 SELECT DERINSIS_ID AS stkID, Qty FROM OPENQUERY(ODAKJOKER, '
@@ -134,10 +136,12 @@ public sealed class OdakQueries(Db db)
             LEFT JOIN ecom ON ecom.stkID = u.stkID
             WHERE u.urnTip = 0
               AND (ISNULL(o.StokMiktar,0) > 0 OR ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(mgz.Mrkz,0) > 0)
+              AND (@marka IS NULL OR ISNULL(m.mrkAd, N'-') = @marka)
+              AND (@araLike IS NULL OR u.stkAd LIKE @araLike OR ub.Yazar LIKE @araLike)
             ORDER BY StokToplam DESC
             OFFSET @offset ROWS FETCH NEXT @take ROWS ONLY
             """;
-        var rows = (await conn.QueryAsync<OdakUrunRow>(sql, new { kategori, offset, take })).ToList();
+        var rows = (await conn.QueryAsync<OdakUrunRow>(sql, new { kategori, marka, araLike, offset, take })).ToList();
         var toplam = rows.Count > 0 ? rows[0].ToplamSatir : 0;
         var satirlar = rows.Select(r => new OdakUrun(r.StkID, r.Marka, r.Yazar, r.Kod, r.Urun,
             r.StokFsm, r.StokOzl, r.StokIst, r.StokMrkz, r.StokOdak, r.StokToplam,

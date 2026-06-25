@@ -31,6 +31,13 @@
     </select>
 </div>
 
+@* ── Veri tarih aralığı ── *@
+<div class="text-[11px] text-base-content/50 mb-3 flex flex-wrap gap-x-4 gap-y-1">
+    <span>📦 Stok: <b>anlık</b> (bugün @_bugun.ToString("dd.MM.yyyy"))</span>
+    <span>🛒 Satış &amp; e-ticaret: <b>son 12 ay</b> (@_yilOnce.ToString("dd.MM.yyyy") – @_bugun.ToString("dd.MM.yyyy"))</span>
+    <span>🧾 Alış (usulsüz): <b>son 1 yıl</b></span>
+</div>
+
 @if (_error is not null)
 {
     <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
@@ -80,6 +87,21 @@
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Ürün Dökümü</div>
             @if (_urunSayfa is not null) { <Sayfalama Toplam="_urunSayfa.ToplamSatir" Sayfa="_urunPage" Boyut="PageSize" OnDegis="UrunSayfaGit" /> }
+        </div>
+        @* Marka / yazar filtresi *@
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+            <select class="select select-bordered select-xs w-56" @bind="_urunMarka" @bind:after="UrunFiltrele">
+                <option value="">Tüm markalar / yayınevleri</option>
+                @foreach (var o in _ozet)
+                {
+                    <option value="@o.Marka">@o.Marka</option>
+                }
+            </select>
+            <input class="input input-bordered input-xs w-56" placeholder="Yazar / ürün adı ara…" @bind="_urunAra" @bind:after="UrunFiltrele" />
+            @if (_urunMarka != "" || _urunAra != "")
+            {
+                <button class="btn btn-xs btn-ghost" @onclick="UrunTemizle">✕ Temizle</button>
+            }
         </div>
         @if (_urunLoading)
         {
@@ -234,6 +256,8 @@
     private string _kategori = "";
     private int _tab = 0;
     private string? _error;
+    private readonly DateTime _bugun = DateTime.Today;
+    private readonly DateTime _yilOnce = DateTime.Today.AddYears(-1);
 
     // Sekme 0 — marka özeti
     private IReadOnlyList<OdakMarkaOzet> _ozet = [];
@@ -243,6 +267,8 @@
     private OdakSayfa<OdakUrun>? _urunSayfa;
     private int _urunPage = 1;
     private bool _urunLoading, _urunYuklendi;
+    private string _urunMarka = "";   // "" = tüm markalar
+    private string _urunAra = "";     // yazar/ürün adı arama
 
     // Sekme 2 — usulsüz
     private OdakSayfa<OdakUsulsuz>? _usulsuzSayfa;
@@ -276,6 +302,7 @@
         // kategori değişti → tüm sekmeleri taze yükle (lazy bayrakları sıfırla)
         _ozetYuklendi = _urunYuklendi = _usulsuzYuklendi = false;
         _urunPage = 1; _usulsuzPage = 1; _urunSayfa = null; _usulsuzSayfa = null;
+        _urunMarka = ""; _urunAra = "";
         await LoadTab(_tab);
     }
 
@@ -303,15 +330,31 @@
     private async Task LoadUrun()
     {
         _urunLoading = true; _urunYuklendi = true; StateHasChanged();
-        try { _urunSayfa = await Odak.GetUrunlerAsync(_kategori, (_urunPage - 1) * PageSize, PageSize); }
+        try
+        {
+            if (!_ozetYuklendi) await LoadOzet();   // marka açılır listesi için
+            _urunSayfa = await Odak.GetUrunlerAsync(_kategori, _urunMarka, _urunAra, (_urunPage - 1) * PageSize, PageSize);
+        }
         catch (Exception ex) { Logger.LogError(ex, "ODAK ürün dökümü yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _urunLoading = false; }
+    }
+
+    private async Task UrunFiltrele()   // marka/ara değişince ilk sayfadan yükle
+    {
+        _urunPage = 1;
+        await LoadUrun();
+    }
+
+    private async Task UrunTemizle()
+    {
+        _urunMarka = ""; _urunAra = "";
+        await UrunFiltrele();
     }
 
     private async Task UrunSayfaGit(int sayfa)
     {
         _urunPage = sayfa; _urunLoading = true; StateHasChanged();
-        try { _urunSayfa = await Odak.GetUrunlerAsync(_kategori, (_urunPage - 1) * PageSize, PageSize); }
+        try { _urunSayfa = await Odak.GetUrunlerAsync(_kategori, _urunMarka, _urunAra, (_urunPage - 1) * PageSize, PageSize); }
         catch (Exception ex) { Logger.LogError(ex, "ODAK ürün sayfa"); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _urunLoading = false; }
     }
