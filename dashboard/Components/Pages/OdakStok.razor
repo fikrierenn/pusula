@@ -12,18 +12,21 @@
     <h1 class="text-2xl font-bold tracking-tight m-0">ODAK Stok-Satış</h1>
 </div>
 
-@* ── Kategori seçici + sekmeler ── *@
-<div class="flex flex-wrap items-center gap-3 mb-4">
-    <select class="select select-bordered select-sm w-64" @bind="_kategori" @bind:after="KategoriDegisti">
+@* ── Sayfa-tarzı sekme barı (tam genişlik, alt-çizgili) ── *@
+<div role="tablist" class="tabs tabs-bordered w-full mb-3">
+    <a role="tab" class="tab flex-1 @(_tab == 0 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(0)">Stok-Satış</a>
+    <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => SetTab(1)">Usulsüz Sipariş</a>
+</div>
+
+@* ── Kategori seçici ── *@
+<div class="flex items-center gap-2 mb-4">
+    <span class="text-xs text-base-content/50">Kategori</span>
+    <select class="select select-bordered select-sm w-72" @bind="_kategori" @bind:after="KategoriDegisti">
         @foreach (var k in _kategoriler)
         {
             <option value="@k.Kategori">@k.Kategori (@k.Cesit çeşit · @Num(k.StokAdet) adet)</option>
         }
     </select>
-    <div role="tablist" class="tabs tabs-boxed">
-        <a role="tab" class="tab @(_tab == 0 ? "tab-active" : "")" @onclick="() => SetTab(0)">Stok-Satış</a>
-        <a role="tab" class="tab @(_tab == 1 ? "tab-active" : "")" @onclick="() => SetTab(1)">Usulsüz Sipariş</a>
-    </div>
 </div>
 
 @if (_error is not null)
