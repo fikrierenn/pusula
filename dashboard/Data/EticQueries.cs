@@ -331,8 +331,8 @@ public sealed class EticQueries(Db db)
         return rows.OrderBy(r => r.Asama).ToList();
     }
 
-    /// <summary>Baskısı yok yapılan siparişler — kullanıcı bazlı özet (tek gün). Kaynak JOKER.BASKISIYOK.</summary>
-    public async Task<IReadOnlyList<BaskisiYokOzet>> GetBaskisiYokOzetAsync(DateOnly gun)
+    /// <summary>Baskısı yok yapılan siparişler — kullanıcı bazlı özet (tarih aralığı [start, endExcl)). Kaynak JOKER.BASKISIYOK.</summary>
+    public async Task<IReadOnlyList<BaskisiYokOzet>> GetBaskisiYokOzetAsync(DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenJokerAsync();
         var rows = await conn.QueryAsync<BaskisiYokOzet>("""
@@ -347,12 +347,12 @@ public sealed class EticQueries(Db db)
             WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
             GROUP BY U.FULLNAME
             ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
-            """, new { Bas = gun.ToString("yyyyMMdd"), Bit = gun.AddDays(1).ToString("yyyyMMdd") });
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.ToList();
     }
 
-    /// <summary>Baskısı yok — ürün bazlı detay (tek gün). BASKISIYOK × J_ORDER_DETAILS × J_ITEMS × EM_USERS.</summary>
-    public async Task<IReadOnlyList<BaskisiYokDetay>> GetBaskisiYokDetayAsync(DateOnly gun)
+    /// <summary>Baskısı yok — ürün bazlı detay (tarih aralığı). BASKISIYOK × J_ORDER_DETAILS × J_ITEMS × EM_USERS.</summary>
+    public async Task<IReadOnlyList<BaskisiYokDetay>> GetBaskisiYokDetayAsync(DateOnly start, DateOnly endExcl)
     {
         await using var conn = await db.OpenJokerAsync();
         var rows = await conn.QueryAsync<BaskisiYokDetay>("""
@@ -372,7 +372,7 @@ public sealed class EticQueries(Db db)
             WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
             GROUP BY B.TARIH, U.FULLNAME, D.BARCODE, A.CODE, A.NAME, A.BRAND, A.GROUPCODE
             ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
-            """, new { Bas = gun.ToString("yyyyMMdd"), Bit = gun.AddDays(1).ToString("yyyyMMdd") });
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.ToList();
     }
 }

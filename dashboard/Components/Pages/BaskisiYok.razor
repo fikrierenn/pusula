@@ -13,9 +13,13 @@
 </div>
 
 <div class="flex flex-wrap items-center gap-2 mb-4">
-    <span class="text-xs text-base-content/50">Gün</span>
-    <input type="date" class="input input-bordered input-sm" @bind="_gun" @bind:after="Yukle" />
+    <span class="text-xs text-base-content/50">Tarih</span>
+    <input type="date" class="input input-bordered input-sm" @bind="_bas" @bind:after="Yukle" />
+    <span class="text-base-content/40">–</span>
+    <input type="date" class="input input-bordered input-sm" @bind="_bit" @bind:after="Yukle" />
     <button class="btn btn-sm btn-ghost" @onclick="Bugun">Bugün</button>
+    <button class="btn btn-sm btn-ghost" @onclick="Son7">Son 7 gün</button>
+    <button class="btn btn-sm btn-ghost" @onclick="BuAy">Bu ay</button>
 </div>
 
 @if (_error is not null)
@@ -100,7 +104,8 @@ else
 }
 
 @code {
-    private DateTime _gun = DateTime.Today;
+    private DateTime _bas = DateTime.Today;
+    private DateTime _bit = DateTime.Today;
     private IReadOnlyList<BaskisiYokOzet> _ozet = [];
     private IReadOnlyList<BaskisiYokDetay> _detay = [];
     private bool _loading = true;
@@ -108,22 +113,22 @@ else
 
     protected override async Task OnInitializedAsync() => await Yukle();
 
-    private async Task Bugun()
-    {
-        _gun = DateTime.Today;
-        await Yukle();
-    }
+    private async Task Bugun() { _bas = DateTime.Today; _bit = DateTime.Today; await Yukle(); }
+    private async Task Son7()  { _bit = DateTime.Today; _bas = DateTime.Today.AddDays(-6); await Yukle(); }
+    private async Task BuAy()  { _bit = DateTime.Today; _bas = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1); await Yukle(); }
 
     private async Task Yukle()
     {
         _loading = true; _error = null; StateHasChanged();
-        var g = DateOnly.FromDateTime(_gun);
+        if (_bit < _bas) (_bas, _bit) = (_bit, _bas);   // ters girilirse düzelt
+        var start = DateOnly.FromDateTime(_bas);
+        var endExcl = DateOnly.FromDateTime(_bit).AddDays(1);   // bitiş dahil
         try
         {
-            _ozet = await Etic.GetBaskisiYokOzetAsync(g);
-            _detay = await Etic.GetBaskisiYokDetayAsync(g);
+            _ozet = await Etic.GetBaskisiYokOzetAsync(start, endExcl);
+            _detay = await Etic.GetBaskisiYokDetayAsync(start, endExcl);
         }
-        catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Gun})", g); _error = $"Yüklenemedi: {ex.Message}"; }
+        catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Bas}-{Bit})", start, endExcl); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
     }
 
