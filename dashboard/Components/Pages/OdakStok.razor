@@ -2,7 +2,6 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject OdakQueries Odak
-@inject NavigationManager Nav
 @inject ILogger<OdakStok> Logger
 @rendermode InteractiveServer
 
@@ -123,7 +122,7 @@
                     @foreach (var u in _urunSayfa.Satirlar)
                     {
                         <tr class="hover align-top">
-                            <td><button class="link link-primary font-mono text-[11px]" title="Stok hareketleri" @onclick="() => StokHareketAc(u.StkID, u.Urun)">@u.StkID</button></td>
+                            <td><a class="link link-primary font-mono text-[11px]" title="Stok hareketleri (yeni sekme)" href="@StokHareketUrl(u.StkID, u.Urun)" target="_blank">@u.StkID</a></td>
                             <td class="max-w-[120px] truncate text-xs" title="@u.Marka">@u.Marka</td>
                             <td class="font-mono text-[11px] whitespace-nowrap">@u.Kod</td>
                             <td class="max-w-[260px] truncate text-xs" title="@u.Urun">@u.Urun</td>
@@ -172,7 +171,7 @@
                     {
                         <tr class="hover align-top">
                             <td class="text-right"><span class="badge badge-sm @(r.CariSayisi >= 4 ? "badge-error" : r.CariSayisi == 3 ? "badge-warning" : "badge-ghost")">@r.CariSayisi</span></td>
-                            <td><button class="link link-primary font-mono text-[11px]" title="Stok hareketleri" @onclick="() => StokHareketAc(r.StkID, r.Urun)">@r.StkID</button></td>
+                            <td><a class="link link-primary font-mono text-[11px]" title="Stok hareketleri (yeni sekme)" href="@StokHareketUrl(r.StkID, r.Urun)" target="_blank">@r.StkID</a></td>
                             <td class="max-w-[120px] truncate text-xs" title="@r.Marka">@r.Marka</td>
                             <td class="font-mono text-[11px] whitespace-nowrap">@r.Kod</td>
                             <td class="max-w-[260px] truncate text-xs" title="@r.Urun">@r.Urun</td>
@@ -235,7 +234,7 @@
                                             <td class="font-mono text-xs">@f.Tarih</td>
                                             <td class="text-right">@Num((int)f.Adet)</td>
                                             <td class="text-right tabular-nums">@Tl(f.Tutar)</td>
-                                            <td><button class="btn btn-xs btn-outline btn-primary" @onclick="() => FaturaAc(f.EID)">🧾 Aç</button></td>
+                                            <td><a class="btn btn-xs btn-outline btn-primary" href="@($"/fatura?fat={f.EID}")" target="_blank">🧾 Aç</a></td>
                                         </tr>
                                     }
                                     </tbody>
@@ -394,9 +393,7 @@
         finally { _cariFaturaLoading = false; }
     }
 
-    private void FaturaAc(int eID) => Nav.NavigateTo($"/fatura?fat={eID}");
-
-    private void StokHareketAc(int stkID, string ad) => Nav.NavigateTo($"/stok-hareket?stk={stkID}&ad={Uri.EscapeDataString(ad)}");
+    private static string StokHareketUrl(int stkID, string ad) => $"/stok-hareket?stk={stkID}&ad={Uri.EscapeDataString(ad)}";
 
     private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
     private static string Num(int v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
