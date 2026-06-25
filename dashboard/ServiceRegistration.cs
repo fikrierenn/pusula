@@ -20,6 +20,7 @@ public static class ServiceRegistration
         s.AddScoped<SadakatQueries>();
         s.AddScoped<MuhasebeQueries>();   // B-117 kontrol paneli (forensic)
         s.AddScoped<MizanQueries>();      // B-118 mizan/finans (plan-25)
+        s.AddScoped<OdakQueries>();       // B-122 ODAK stok-satış + usulsüz sipariş
         return s;
     }
 

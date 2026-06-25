@@ -1,0 +1,21 @@
+@* Basit sayfalama kontrolü — önceki/sonraki + "Sayfa X / Y (toplam N)". Server-side OFFSET/FETCH ile kullanılır. *@
+<div class="flex items-center gap-2 text-xs">
+    <button class="btn btn-xs btn-ghost" disabled="@(Sayfa <= 1)" @onclick="() => Git(Sayfa - 1)">‹ Önceki</button>
+    <span class="text-base-content/60 whitespace-nowrap">Sayfa @Sayfa / @ToplamSayfa <span class="text-base-content/40">(@Toplam.ToString("#,##0") kayıt)</span></span>
+    <button class="btn btn-xs btn-ghost" disabled="@(Sayfa >= ToplamSayfa)" @onclick="() => Git(Sayfa + 1)">Sonraki ›</button>
+</div>
+
+@code {
+    [Parameter] public int Toplam { get; set; }
+    [Parameter] public int Sayfa { get; set; } = 1;
+    [Parameter] public int Boyut { get; set; } = 50;
+    [Parameter] public EventCallback<int> OnDegis { get; set; }
+
+    private int ToplamSayfa => Toplam <= 0 ? 1 : (Toplam + Boyut - 1) / Boyut;
+
+    private async Task Git(int s)
+    {
+        if (s < 1 || s > ToplamSayfa || s == Sayfa) return;
+        await OnDegis.InvokeAsync(s);
+    }
+}

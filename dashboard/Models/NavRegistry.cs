@@ -32,6 +32,7 @@ public static class NavRegistry
         new NavItem("operasyon", "Operasyon", "store", InBottomNav: true),
         new NavItem("envanter", "Envanter", "package", InBottomNav: true),
         new NavItem("stok-hareket", "Stok Hareket", "history"),
+        new NavItem("odak-stok", "ODAK Stok", "warehouse"),
         new NavItem("muhasebe", "Muhasebe / Kontrol", "landmark"),
         new NavItem("mizan", "Mizan / Finans", "scale"),
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),

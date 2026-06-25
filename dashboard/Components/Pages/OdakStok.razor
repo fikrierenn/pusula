@@ -1,0 +1,286 @@
+@page "/odak-stok"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject OdakQueries Odak
+@inject ILogger<OdakStok> Logger
+@rendermode InteractiveServer
+
+<PageTitle>ODAK Stok — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">ODAK fulfillment stoğu × satış · ent.odak_depo_Stok</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">ODAK Stok-Satış</h1>
+</div>
+
+@* ── Kategori seçici + sekmeler ── *@
+<div class="flex flex-wrap items-center gap-3 mb-4">
+    <select class="select select-bordered select-sm w-64" @bind="_kategori" @bind:after="KategoriDegisti">
+        @foreach (var k in _kategoriler)
+        {
+            <option value="@k.Kategori">@k.Kategori (@k.Cesit çeşit · @Num(k.StokAdet) adet)</option>
+        }
+    </select>
+    <div role="tablist" class="tabs tabs-boxed">
+        <a role="tab" class="tab @(_tab == 0 ? "tab-active" : "")" @onclick="() => SetTab(0)">Stok-Satış</a>
+        <a role="tab" class="tab @(_tab == 1 ? "tab-active" : "")" @onclick="() => SetTab(1)">Usulsüz Sipariş</a>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
+}
+
+@* ══════════ SEKME 1: STOK-SATIŞ ══════════ *@
+@if (_tab == 0)
+{
+    @* Marka/yayınevi özeti *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
+        <div class="text-sm font-semibold mb-2">Marka / Yayınevi Özeti <span class="text-xs text-base-content/50">— devir = yıllık şube satış / ODAK stok</span></div>
+        @if (_ozetLoading)
+        {
+            <p class="text-base-content/40 text-sm py-3 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Yükleniyor…</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto max-h-72">
+                <table class="table table-xs">
+                    <thead><tr>
+                        <th>Marka / Yayınevi</th><th class="text-right">Çeşit</th><th class="text-right">ODAK Stok</th>
+                        <th class="text-right">Yıl Satış</th><th class="text-right">Yıl Ciro</th><th class="text-right">Devir</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var o in _ozet)
+                    {
+                        <tr class="hover">
+                            <td class="max-w-[280px] truncate" title="@o.Marka">@o.Marka</td>
+                            <td class="text-right">@Num(o.Cesit)</td>
+                            <td class="text-right">@Num(o.StokAdet)</td>
+                            <td class="text-right">@Num(o.YilSatis)</td>
+                            <td class="text-right tabular-nums">@Tl(o.YilCiro)</td>
+                            <td class="text-right font-semibold @(o.Devir is < 1 ? "text-error" : o.Devir is >= 3 ? "text-success" : "")">@(o.Devir?.ToString("0.00") ?? "—")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* Ürün tam döküm (sayfalı) *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold">Ürün Dökümü</div>
+            @if (_urunSayfa is not null) { <Sayfalama Toplam="_urunSayfa.ToplamSatir" Sayfa="_urunPage" Boyut="PageSize" OnDegis="UrunSayfaGit" /> }
+        </div>
+        @if (_urunLoading)
+        {
+            <p class="text-base-content/40 text-sm py-3 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Yükleniyor… (e-ticaret dahil, biraz sürebilir)</p>
+        }
+        else if (_urunSayfa is not null)
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead>
+                        <tr class="text-[11px]">
+                            <th>Marka</th><th>Kod</th><th>Ürün</th>
+                            <th class="text-right">FSM</th><th class="text-right">Özl</th><th class="text-right">İst</th><th class="text-right">Mrkz</th><th class="text-right font-bold">ODAK</th><th class="text-right">Top</th>
+                            <th class="text-right">SatFSM</th><th class="text-right">SatÖzl</th><th class="text-right">SatİY</th><th class="text-right">E-tic</th><th class="text-right">SatTop</th>
+                            <th class="text-right">Maliyet</th><th class="text-right">Fiyat</th><th class="text-right">Ay Kapsam</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var u in _urunSayfa.Satirlar)
+                    {
+                        <tr class="hover align-top">
+                            <td class="max-w-[120px] truncate text-xs" title="@u.Marka">@u.Marka</td>
+                            <td class="font-mono text-[11px] whitespace-nowrap">@u.Kod</td>
+                            <td class="max-w-[260px] truncate text-xs" title="@u.Urun">@u.Urun</td>
+                            <td class="text-right">@Num(u.StokFsm)</td><td class="text-right">@Num(u.StokOzl)</td><td class="text-right">@Num(u.StokIst)</td><td class="text-right">@Num(u.StokMrkz)</td>
+                            <td class="text-right font-bold">@Num(u.StokOdak)</td><td class="text-right">@Num(u.StokToplam)</td>
+                            <td class="text-right">@Num(u.SatisFsm)</td><td class="text-right">@Num(u.SatisOzl)</td><td class="text-right">@Num(u.SatisIst)</td><td class="text-right text-info">@Num(u.EcomSiparis)</td><td class="text-right">@Num(u.SatisToplam)</td>
+                            <td class="text-right tabular-nums">@(u.Maliyet > 0 ? Tl(u.Maliyet.Value) : "—")</td>
+                            <td class="text-right tabular-nums">@(u.Fiyat > 0 ? Tl(u.Fiyat.Value) : "—")</td>
+                            <td class="text-right font-semibold @(u.AyKapsam is >= 12 ? "text-error" : u.AyKapsam is >= 6 ? "text-warning" : "")">@(u.AyKapsam?.ToString("0.0") ?? "—")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            @if (_urunSayfa.Satirlar.Count == 0) { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+        }
+    </div>
+}
+
+@* ══════════ SEKME 2: USULSÜZ SİPARİŞ ══════════ *@
+@if (_tab == 1)
+{
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <div class="text-sm font-semibold">Usulsüz Sipariş Şüphesi</div>
+                <div class="text-[11px] text-base-content/50">ODAK stoğu yüksek (≥6 ay) veya satışsız olduğu HALDE son 1 yılda ≥2 farklı cariden alım yapılmış ürünler.</div>
+            </div>
+            @if (_usulsuzSayfa is not null) { <Sayfalama Toplam="_usulsuzSayfa.ToplamSatir" Sayfa="_usulsuzPage" Boyut="PageSize" OnDegis="UsulsuzSayfaGit" /> }
+        </div>
+        @if (_usulsuzLoading)
+        {
+            <p class="text-base-content/40 text-sm py-3 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Taranıyor… (alış faturaları, biraz sürebilir)</p>
+        }
+        else if (_usulsuzSayfa is not null)
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead><tr>
+                        <th class="text-right">Cari#</th><th>Marka</th><th>Kod</th><th>Ürün</th>
+                        <th class="text-right">ODAK Stok</th><th class="text-right">Yıl Satış</th><th class="text-right">Ay Kapsam</th>
+                        <th class="text-right">Alış Adet</th><th class="text-right">Fatura#</th><th class="text-right">Alış ₺</th><th></th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var r in _usulsuzSayfa.Satirlar)
+                    {
+                        <tr class="hover align-top">
+                            <td class="text-right"><span class="badge badge-sm @(r.CariSayisi >= 4 ? "badge-error" : r.CariSayisi == 3 ? "badge-warning" : "badge-ghost")">@r.CariSayisi</span></td>
+                            <td class="max-w-[120px] truncate text-xs" title="@r.Marka">@r.Marka</td>
+                            <td class="font-mono text-[11px] whitespace-nowrap">@r.Kod</td>
+                            <td class="max-w-[260px] truncate text-xs" title="@r.Urun">@r.Urun</td>
+                            <td class="text-right font-bold">@Num(r.OdakStok)</td>
+                            <td class="text-right">@Num(r.YilSatis)</td>
+                            <td class="text-right font-semibold @(r.AyKapsam is null or >= 12 ? "text-error" : "text-warning")">@(r.AyKapsam?.ToString("0.0") ?? "∞")</td>
+                            <td class="text-right">@Num(r.AlisAdet)</td>
+                            <td class="text-right">@Num(r.FaturaSayisi)</td>
+                            <td class="text-right tabular-nums">@Tl(r.AlisTutar)</td>
+                            <td><button class="btn btn-xs btn-outline" @onclick="() => CariAc(r)">Cariler</button></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            @if (_usulsuzSayfa.Satirlar.Count == 0) { <p class="text-base-content/40 text-sm py-3">Bu kategoride şüpheli kayıt yok.</p> }
+        }
+    </div>
+}
+
+<Modal @bind-Open="_modal" Title="@_modalBaslik">
+    @if (_modalCariler is null)
+    {
+        <p class="text-base-content/40 text-sm py-3 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Yükleniyor…</p>
+    }
+    else
+    {
+        <table class="table table-xs">
+            <thead><tr><th>Cari</th><th class="text-right">Alış Adet</th><th class="text-right">Fatura#</th><th class="text-right">Alış ₺</th><th>Son Alış</th></tr></thead>
+            <tbody>
+            @foreach (var c in _modalCariler)
+            {
+                <tr>
+                    <td><div class="font-medium">@c.CariAd</div><div class="font-mono text-[11px] text-base-content/50">@c.CariKod</div></td>
+                    <td class="text-right">@Num((int)c.AlisAdet)</td>
+                    <td class="text-right">@c.FaturaSayisi</td>
+                    <td class="text-right tabular-nums">@Tl(c.AlisTutar)</td>
+                    <td class="font-mono text-xs">@c.SonAlis</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</Modal>
+
+@code {
+    const int PageSize = 50;
+
+    private IReadOnlyList<OdakKategori> _kategoriler = [];
+    private string _kategori = "";
+    private int _tab = 0;
+    private string? _error;
+
+    // Sekme 1
+    private IReadOnlyList<OdakMarkaOzet> _ozet = [];
+    private OdakSayfa<OdakUrun>? _urunSayfa;
+    private int _urunPage = 1;
+    private bool _ozetLoading, _urunLoading;
+
+    // Sekme 2
+    private OdakSayfa<OdakUsulsuz>? _usulsuzSayfa;
+    private int _usulsuzPage = 1;
+    private bool _usulsuzLoading;
+    private bool _usulsuzYuklendi;   // sekme açılınca ilk yükleme
+
+    // Modal
+    private bool _modal;
+    private string _modalBaslik = "";
+    private IReadOnlyList<OdakUsulsuzCari>? _modalCariler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _kategoriler = await Odak.GetKategorilerAsync();
+            _kategori = _kategoriler.FirstOrDefault(k => k.Kategori == "Hazırlık Kitapları")?.Kategori
+                        ?? _kategoriler.FirstOrDefault()?.Kategori ?? "";
+            if (_kategori != "") await LoadStokSatis();
+        }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK kategori yüklenemedi"); _error = $"Yüklenemedi: {ex.Message}"; }
+    }
+
+    private async Task KategoriDegisti()
+    {
+        _error = null;
+        _urunPage = 1; _usulsuzPage = 1; _usulsuzYuklendi = false; _usulsuzSayfa = null;
+        if (_tab == 0) await LoadStokSatis();
+        else await LoadUsulsuz();
+    }
+
+    private async Task SetTab(int t)
+    {
+        _tab = t;
+        if (t == 1 && !_usulsuzYuklendi) await LoadUsulsuz();
+    }
+
+    private async Task LoadStokSatis()
+    {
+        _ozetLoading = true; _urunLoading = true; StateHasChanged();
+        try
+        {
+            _ozet = await Odak.GetMarkaOzetAsync(_kategori);
+            _ozetLoading = false; StateHasChanged();
+            _urunSayfa = await Odak.GetUrunlerAsync(_kategori, (_urunPage - 1) * PageSize, PageSize);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK stok-satış yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _ozetLoading = false; _urunLoading = false; }
+    }
+
+    private async Task UrunSayfaGit(int sayfa)
+    {
+        _urunPage = sayfa; _urunLoading = true; StateHasChanged();
+        try { _urunSayfa = await Odak.GetUrunlerAsync(_kategori, (_urunPage - 1) * PageSize, PageSize); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK ürün sayfa"); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _urunLoading = false; }
+    }
+
+    private async Task LoadUsulsuz()
+    {
+        _usulsuzLoading = true; _usulsuzYuklendi = true; StateHasChanged();
+        try { _usulsuzSayfa = await Odak.GetUsulsuzAsync(_kategori, (_usulsuzPage - 1) * PageSize, PageSize); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK usulsüz yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _usulsuzLoading = false; }
+    }
+
+    private async Task UsulsuzSayfaGit(int sayfa)
+    {
+        _usulsuzPage = sayfa; _usulsuzLoading = true; StateHasChanged();
+        try { _usulsuzSayfa = await Odak.GetUsulsuzAsync(_kategori, (_usulsuzPage - 1) * PageSize, PageSize); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK usulsüz sayfa"); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _usulsuzLoading = false; }
+    }
+
+    private async Task CariAc(OdakUsulsuz r)
+    {
+        _modal = true; _modalBaslik = $"{r.Urun} — Cari Bazlı Alış (son 1 yıl)"; _modalCariler = null; StateHasChanged();
+        try { _modalCariler = await Odak.GetUsulsuzCarilerAsync(r.StkID); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK cari drill"); _modalCariler = []; }
+    }
+
+    private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    private static string Num(int v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
