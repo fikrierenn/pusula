@@ -330,4 +330,49 @@ public sealed class EticQueries(Db db)
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.OrderBy(r => r.Asama).ToList();
     }
+
+    /// <summary>Baskısı yok yapılan siparişler — kullanıcı bazlı özet (tek gün). Kaynak JOKER.BASKISIYOK.</summary>
+    public async Task<IReadOnlyList<BaskisiYokOzet>> GetBaskisiYokOzetAsync(DateOnly gun)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokOzet>("""
+            SELECT U.FULLNAME                          AS Kullanici,
+                   COUNT(DISTINCT B.BARCODE)           AS BarkodSayi,
+                   COUNT(DISTINCT D.ORDERREF)          AS SipSayi,
+                   CAST(SUM(B.QUANTITY) AS int)        AS Miktar,
+                   SUM(B.QUANTITY * D.SELLINGPRICE)    AS Tutar
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
+            JOIN   dbo.EM_USERS U WITH(NOLOCK)        ON U.LOGICALREF = B.USERREF
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            GROUP BY U.FULLNAME
+            ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
+            """, new { Bas = gun.ToString("yyyyMMdd"), Bit = gun.AddDays(1).ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
+
+    /// <summary>Baskısı yok — ürün bazlı detay (tek gün). BASKISIYOK × J_ORDER_DETAILS × J_ITEMS × EM_USERS.</summary>
+    public async Task<IReadOnlyList<BaskisiYokDetay>> GetBaskisiYokDetayAsync(DateOnly gun)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokDetay>("""
+            SELECT CONVERT(varchar(10), B.TARIH, 104)  AS Tarih,
+                   U.FULLNAME                          AS Kullanici,
+                   D.BARCODE                           AS Barkod,
+                   A.CODE                              AS Kod,
+                   A.NAME                              AS Ad,
+                   A.BRAND                             AS Marka,
+                   A.GROUPCODE                         AS Grup,
+                   CAST(SUM(B.QUANTITY) AS int)        AS Miktar,
+                   SUM(B.QUANTITY * D.SELLINGPRICE)    AS Tutar
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
+            JOIN   dbo.J_ITEMS A WITH(NOLOCK)         ON A.LOGICALREF = D.ITEMREF
+            JOIN   dbo.EM_USERS U WITH(NOLOCK)        ON U.LOGICALREF = B.USERREF
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            GROUP BY B.TARIH, U.FULLNAME, D.BARCODE, A.CODE, A.NAME, A.BRAND, A.GROUPCODE
+            ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
+            """, new { Bas = gun.ToString("yyyyMMdd"), Bit = gun.AddDays(1).ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
 }

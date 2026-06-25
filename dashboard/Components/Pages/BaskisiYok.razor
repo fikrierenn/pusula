@@ -1,0 +1,145 @@
+@page "/baskisi-yok"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject EticQueries Etic
+@inject ILogger<BaskisiYok> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Baskısı Yok Siparişler — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">E-ticaret · JOKER BASKISIYOK</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Baskısı Yok Yapılan Siparişler</h1>
+</div>
+
+<div class="flex flex-wrap items-center gap-2 mb-4">
+    <span class="text-xs text-base-content/50">Gün</span>
+    <input type="date" class="input input-bordered input-sm" @bind="_gun" @bind:after="Yukle" />
+    <button class="btn btn-sm btn-ghost" @onclick="Bugun">Bugün</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Yükleniyor…</p>
+}
+else
+{
+    @* Kullanıcı özeti *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold">Kullanıcı Özeti <span class="text-xs text-base-content/50">— @_ozet.Count kullanıcı</span></div>
+            <ExcelButton FileName="baskisi-yok-ozet" SayfaAd="Ozet" Rows="OzetExcel" />
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-xs">
+                <thead><tr>
+                    <th>Kullanıcı</th><th class="text-right">Barkod</th><th class="text-right">Sipariş</th><th class="text-right">Miktar</th><th class="text-right">Tutar</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var o in _ozet)
+                {
+                    <tr class="hover">
+                        <td>@o.Kullanici</td>
+                        <td class="text-right">@Num(o.BarkodSayi)</td>
+                        <td class="text-right">@Num(o.SipSayi)</td>
+                        <td class="text-right">@Num(o.Miktar)</td>
+                        <td class="text-right tabular-nums font-semibold">@Tl(o.Tutar)</td>
+                    </tr>
+                }
+                </tbody>
+                @if (_ozet.Count > 0)
+                {
+                    <tfoot><tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
+                        <td class="text-right">TOPLAM</td>
+                        <td class="text-right">@Num(_ozet.Sum(o => o.BarkodSayi))</td>
+                        <td class="text-right">@Num(_ozet.Sum(o => o.SipSayi))</td>
+                        <td class="text-right">@Num(_ozet.Sum(o => o.Miktar))</td>
+                        <td class="text-right tabular-nums">@Tl(_ozet.Sum(o => o.Tutar))</td>
+                    </tr></tfoot>
+                }
+            </table>
+        </div>
+        @if (_ozet.Count == 0) { <p class="text-base-content/40 text-sm py-3">Bu gün için kayıt yok.</p> }
+    </div>
+
+    @* Ürün detayı *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold">Ürün Detayı <span class="text-xs text-base-content/50">— @_detay.Count satır</span></div>
+            <ExcelButton FileName="baskisi-yok-detay" SayfaAd="Detay" Rows="DetayExcel" />
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-xs">
+                <thead><tr>
+                    <th>Kullanıcı</th><th>Barkod</th><th>Kod</th><th>Ürün</th><th>Marka</th><th>Grup</th>
+                    <th class="text-right">Miktar</th><th class="text-right">Tutar</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var d in _detay)
+                {
+                    <tr class="hover align-top">
+                        <td class="text-xs whitespace-nowrap">@d.Kullanici</td>
+                        <td class="font-mono text-[11px] whitespace-nowrap">@d.Barkod</td>
+                        <td class="font-mono text-[11px] whitespace-nowrap">@d.Kod</td>
+                        <td class="max-w-[280px] truncate text-xs" title="@d.Ad">@d.Ad</td>
+                        <td class="max-w-[120px] truncate text-xs" title="@d.Marka">@d.Marka</td>
+                        <td class="text-xs">@d.Grup</td>
+                        <td class="text-right">@Num(d.Miktar)</td>
+                        <td class="text-right tabular-nums">@Tl(d.Tutar)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (_detay.Count == 0) { <p class="text-base-content/40 text-sm py-3">Bu gün için kayıt yok.</p> }
+    </div>
+}
+
+@code {
+    private DateTime _gun = DateTime.Today;
+    private IReadOnlyList<BaskisiYokOzet> _ozet = [];
+    private IReadOnlyList<BaskisiYokDetay> _detay = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Bugun()
+    {
+        _gun = DateTime.Today;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        var g = DateOnly.FromDateTime(_gun);
+        try
+        {
+            _ozet = await Etic.GetBaskisiYokOzetAsync(g);
+            _detay = await Etic.GetBaskisiYokDetayAsync(g);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Gun})", g); _error = $"Yüklenemedi: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private Task<IEnumerable<IDictionary<string, object?>>> OzetExcel() =>
+        Task.FromResult<IEnumerable<IDictionary<string, object?>>>(_ozet.Select(o => new Dictionary<string, object?>
+        {
+            ["Kullanıcı"] = o.Kullanici, ["Barkod"] = o.BarkodSayi, ["Sipariş"] = o.SipSayi, ["Miktar"] = o.Miktar, ["Tutar"] = o.Tutar,
+        }));
+
+    private Task<IEnumerable<IDictionary<string, object?>>> DetayExcel() =>
+        Task.FromResult<IEnumerable<IDictionary<string, object?>>>(_detay.Select(d => new Dictionary<string, object?>
+        {
+            ["Tarih"] = d.Tarih, ["Kullanıcı"] = d.Kullanici, ["Barkod"] = d.Barkod, ["Kod"] = d.Kod,
+            ["Ürün"] = d.Ad, ["Marka"] = d.Marka, ["Grup"] = d.Grup, ["Miktar"] = d.Miktar, ["Tutar"] = d.Tutar,
+        }));
+
+    private static string Tl(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    private static string Num(int v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+}
