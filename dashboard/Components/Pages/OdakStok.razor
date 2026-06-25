@@ -123,7 +123,7 @@
                     @foreach (var u in _urunSayfa.Satirlar)
                     {
                         <tr class="hover align-top">
-                            <td class="font-mono text-[11px] text-base-content/50">@u.StkID</td>
+                            <td><button class="link link-primary font-mono text-[11px]" title="Stok hareketleri" @onclick="() => StokHareketAc(u.StkID, u.Urun)">@u.StkID</button></td>
                             <td class="max-w-[120px] truncate text-xs" title="@u.Marka">@u.Marka</td>
                             <td class="font-mono text-[11px] whitespace-nowrap">@u.Kod</td>
                             <td class="max-w-[260px] truncate text-xs" title="@u.Urun">@u.Urun</td>
@@ -172,7 +172,7 @@
                     {
                         <tr class="hover align-top">
                             <td class="text-right"><span class="badge badge-sm @(r.CariSayisi >= 4 ? "badge-error" : r.CariSayisi == 3 ? "badge-warning" : "badge-ghost")">@r.CariSayisi</span></td>
-                            <td class="font-mono text-[11px] text-base-content/50">@r.StkID</td>
+                            <td><button class="link link-primary font-mono text-[11px]" title="Stok hareketleri" @onclick="() => StokHareketAc(r.StkID, r.Urun)">@r.StkID</button></td>
                             <td class="max-w-[120px] truncate text-xs" title="@r.Marka">@r.Marka</td>
                             <td class="font-mono text-[11px] whitespace-nowrap">@r.Kod</td>
                             <td class="max-w-[260px] truncate text-xs" title="@r.Urun">@r.Urun</td>
@@ -395,6 +395,8 @@
     }
 
     private void FaturaAc(int eID) => Nav.NavigateTo($"/fatura?fat={eID}");
+
+    private void StokHareketAc(int stkID, string ad) => Nav.NavigateTo($"/stok-hareket?stk={stkID}&ad={Uri.EscapeDataString(ad)}");
 
     private static string Tl(decimal v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
     private static string Num(int v) => v.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
