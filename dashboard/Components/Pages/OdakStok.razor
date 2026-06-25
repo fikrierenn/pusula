@@ -113,7 +113,7 @@
                 <table class="table table-xs">
                     <thead>
                         <tr class="text-[11px]">
-                            <th>Marka</th><th>Kod</th><th>Ürün</th>
+                            <th>StkID</th><th>Marka</th><th>Kod</th><th>Ürün</th>
                             <th class="text-right">FSM</th><th class="text-right">Özl</th><th class="text-right">İst</th><th class="text-right">Mrkz</th><th class="text-right font-bold">ODAK</th><th class="text-right">Top</th>
                             <th class="text-right">SatFSM</th><th class="text-right">SatÖzl</th><th class="text-right">SatİY</th><th class="text-right">E-tic</th><th class="text-right">SatTop</th>
                             <th class="text-right">Maliyet</th><th class="text-right">Fiyat</th><th class="text-right">Ay Kapsam</th>
@@ -123,6 +123,7 @@
                     @foreach (var u in _urunSayfa.Satirlar)
                     {
                         <tr class="hover align-top">
+                            <td class="font-mono text-[11px] text-base-content/50">@u.StkID</td>
                             <td class="max-w-[120px] truncate text-xs" title="@u.Marka">@u.Marka</td>
                             <td class="font-mono text-[11px] whitespace-nowrap">@u.Kod</td>
                             <td class="max-w-[260px] truncate text-xs" title="@u.Urun">@u.Urun</td>
@@ -162,7 +163,7 @@
             <div class="overflow-x-auto">
                 <table class="table table-xs">
                     <thead><tr>
-                        <th class="text-right">Cari#</th><th>Marka</th><th>Kod</th><th>Ürün</th>
+                        <th class="text-right">Cari#</th><th>StkID</th><th>Marka</th><th>Kod</th><th>Ürün</th>
                         <th class="text-right">ODAK Stok</th><th class="text-right">Yıl Satış</th><th class="text-right">Ay Kapsam</th>
                         <th class="text-right">Alış Adet</th><th class="text-right">Fatura#</th><th class="text-right">Alış ₺</th><th></th>
                     </tr></thead>
@@ -171,6 +172,7 @@
                     {
                         <tr class="hover align-top">
                             <td class="text-right"><span class="badge badge-sm @(r.CariSayisi >= 4 ? "badge-error" : r.CariSayisi == 3 ? "badge-warning" : "badge-ghost")">@r.CariSayisi</span></td>
+                            <td class="font-mono text-[11px] text-base-content/50">@r.StkID</td>
                             <td class="max-w-[120px] truncate text-xs" title="@r.Marka">@r.Marka</td>
                             <td class="font-mono text-[11px] whitespace-nowrap">@r.Kod</td>
                             <td class="max-w-[260px] truncate text-xs" title="@r.Urun">@r.Urun</td>
