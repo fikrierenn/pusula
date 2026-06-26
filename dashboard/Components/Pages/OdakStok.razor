@@ -44,33 +44,14 @@
 }
 else if (_kpi is not null)
 {
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-            <div class="text-xs text-base-content/50">Çeşit</div>
-            <div class="text-xl font-bold">@Num(_kpi.Cesit)</div>
-            <div class="text-[11px] text-base-content/40">@Num(_kpi.StokAdet) adet</div>
-        </div>
-        <div class="bg-base-100 border-2 border-primary/30 rounded-lg p-3">
-            <div class="text-xs text-base-content/50">Bağlı Sermaye (ODAK)</div>
-            <div class="text-xl font-bold text-primary tabular-nums">@Tl(_kpi.StokTl) ₺</div>
-            <div class="text-[11px] text-base-content/40">stok × maliyet</div>
-        </div>
-        <div class="bg-base-100 border-2 border-error/30 rounded-lg p-3">
-            <div class="text-xs text-base-content/50">Ölü Stok (satışsız)</div>
-            <div class="text-xl font-bold text-error tabular-nums">@Tl(_kpi.OluTl) ₺</div>
-            <div class="text-[11px] text-base-content/40">@Num(_kpi.OluCesit) çeşit · %@(_kpi.StokTl > 0 ? Math.Round(_kpi.OluTl / _kpi.StokTl * 100, 0) : 0) sermaye</div>
-        </div>
-        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-            <div class="text-xs text-base-content/50">Ort. Ay-Kapsam</div>
-            <div class="text-xl font-bold @(_kpi.OrtAyKapsam is >= 12 ? "text-error" : _kpi.OrtAyKapsam is >= 6 ? "text-warning" : "")">@(_kpi.OrtAyKapsam?.ToString("0.0") ?? "—") ay</div>
-            <div class="text-[11px] text-base-content/40">stok kaç aylık satışa yeter</div>
-        </div>
-        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-            <div class="text-xs text-base-content/50">Sağlıklı / Ölü</div>
-            <div class="text-xl font-bold">@(_kpi.Cesit > 0 ? Math.Round(100.0 * (_kpi.Cesit - _kpi.OluCesit) / _kpi.Cesit, 0) : 0)%</div>
-            <div class="text-[11px] text-base-content/40">satışı olan çeşit oranı</div>
-        </div>
-    </div>
+    <AppKpiCarousel Id="odakkpi" Items="@(new List<KpiCardData>
+    {
+        new("Çeşit", Num(_kpi.Cesit), "from-info to-info/80", $"{Num(_kpi.StokAdet)} adet"),
+        new("Bağlı Sermaye", Tl(_kpi.StokTl), "from-primary to-primary/80", "ODAK stok × maliyet"),
+        new("Ölü Stok", Tl(_kpi.OluTl), "from-error to-error/80", $"{Num(_kpi.OluCesit)} çeşit · %{(_kpi.StokTl > 0 ? Math.Round(_kpi.OluTl / _kpi.StokTl * 100, 0) : 0)} sermaye"),
+        new("Ort. Ay-Kapsam", (_kpi.OrtAyKapsam?.ToString("0.0") ?? "—") + " ay", "from-warning to-warning/80", "stok kaç aylık satışa yeter"),
+        new("Sağlıklı Çeşit", $"%{(_kpi.Cesit > 0 ? Math.Round(100.0 * (_kpi.Cesit - _kpi.OluCesit) / _kpi.Cesit, 0) : 0)}", "from-success to-success/80", "satışı olan oranı"),
+    })" />
 }
 
 @if (_error is not null)
