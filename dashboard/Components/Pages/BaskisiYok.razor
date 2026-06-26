@@ -138,6 +138,17 @@ else
         </div>
         @if (_grup.Count == 0) { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
     </div>
+
+    @* Saat-bazlı yoğunluk *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3 mt-4">
+        <div class="text-sm font-semibold mb-2">Saat Bazlı Yoğunluk <span class="text-xs text-base-content/50">— gün içi hangi saatlerde (adet)</span></div>
+        @if (_saat.Count > 0)
+        {
+            <AppAreaChart TItem="BaskisiYokSaat" Items="_saat" Name="Adet" Height="130"
+                          XValue="@(s => (object)s.Saat)" YValue="@(s => (decimal?)s.Adet)" />
+        }
+        else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+    </div>
 }
 
 @code {
@@ -147,6 +158,7 @@ else
     private IReadOnlyList<BaskisiYokDetay> _detay = [];
     private BaskisiYokKpi? _kpi;
     private IReadOnlyList<BaskisiYokGrup> _grup = [];
+    private IReadOnlyList<BaskisiYokSaat> _saat = [];
     private bool _loading = true;
     private string? _error;
 
@@ -168,6 +180,7 @@ else
             _ozet = await Etic.GetBaskisiYokOzetAsync(start, endExcl);
             _detay = await Etic.GetBaskisiYokDetayAsync(start, endExcl);
             _grup = await Etic.GetBaskisiYokGrupAsync(start, endExcl);
+            _saat = await Etic.GetBaskisiYokSaatAsync(start, endExcl);
         }
         catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Bas}-{Bit})", start, endExcl); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }

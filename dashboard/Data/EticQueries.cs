@@ -425,4 +425,20 @@ public sealed class EticQueries(Db db)
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.ToList();
     }
+
+    /// <summary>Baskısı yok — saat-bazlı yoğunluk (gün içi 0-23, iptal hariç). Hangi saatlerde yoğun.</summary>
+    public async Task<IReadOnlyList<BaskisiYokSaat>> GetBaskisiYokSaatAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokSaat>("""
+            SELECT RIGHT('0' + CAST(DATEPART(HOUR, B.TARIH) AS varchar(2)), 2) + ':00' AS Saat,
+                   CAST(SUM(B.QUANTITY) AS int)        AS Adet,
+                   COUNT(DISTINCT B.BARCODE)           AS Cesit
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
+            GROUP BY DATEPART(HOUR, B.TARIH)
+            ORDER BY DATEPART(HOUR, B.TARIH)
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
 }

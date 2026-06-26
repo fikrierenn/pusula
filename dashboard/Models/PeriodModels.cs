@@ -140,6 +140,9 @@ public record BaskisiYokKpi(int Cesit, int Adet, decimal Tutar, int Siparis, int
 /// <summary>Baskısı yok — ürün grubu (GROUPCODE) bazlı dağılım.</summary>
 public record BaskisiYokGrup(string Grup, int Cesit, int Adet, decimal Tutar);
 
+/// <summary>Baskısı yok — saat-bazlı yoğunluk (gün içi 0-23). Adet = toplam miktar o saatte.</summary>
+public record BaskisiYokSaat(string Saat, int Adet, int Cesit);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 
