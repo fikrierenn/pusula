@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-06-25
+updated: 2026-06-26
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -36,6 +36,13 @@ bridges:
     scope: derinsis
     confidence: 1.0
     note: "Evrak → cari/firma. Mağaza frmID=1/4477/4478, GENEL=0, tedarikçi=diğer."
+  - id: bakiyevdgg-frm
+    from: dbo.bakiyeVDGG_vw.cKod
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 1.0
+    note: "Cari bakiye/yaşlandırma → cari kart. GecenB=vadesi geçmiş, GelecekB=yaklaşan, frmBakiyeLimit=risk limiti. Dashboard /cari-risk (B-124). Aynı kalıp satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı)."
+    evidence: "2026-06-25 canlı — bakiyeVDGG_vw JOIN frm ON frmID=cKod, Cari/Risk sayfası."
 
   # --- WMS / depo (10.06 keşif) ---
   - id: palet-irs
@@ -132,6 +139,25 @@ bridges:
     to: ODAKJOKER.JOKER.dbo.J_ITEMS.LOGICALREF
     scope: joker
     confidence: 1.0
+  - id: baskisiyok-orderdetail
+    from: ODAKJOKER.JOKER.dbo.BASKISIYOK.DETAILREF
+    to: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.LOGICALREF
+    scope: joker
+    confidence: 1.0
+    note: "Baskısı yok satır → sipariş detayı (LOGICALREF, ORDERREF DEĞİL). Tutar=B.QUANTITY×D.SELLINGPRICE."
+    evidence: "2026-06-26 — kullanıcı çalışan SQL + OPENQUERY kolon teyit. Dashboard /baskisi-yok."
+  - id: baskisiyok-user
+    from: ODAKJOKER.JOKER.dbo.BASKISIYOK.USERREF
+    to: ODAKJOKER.JOKER.dbo.EM_USERS.LOGICALREF
+    scope: joker
+    confidence: 1.0
+    note: "İşlemi yapan kullanıcı → EM_USERS.FULLNAME."
+  - id: baskisiyok-item
+    from: ODAKJOKER.JOKER.dbo.BASKISIYOK.ITEMREF
+    to: ODAKJOKER.JOKER.dbo.J_ITEMS.LOGICALREF
+    scope: joker
+    confidence: 1.0
+    note: "BASKISIYOK.ITEMREF doğrudan J_ITEMS (detay üzerinden geçmeye gerek yok). NAME/BRAND/CODE/GROUPCODE."
   - id: items-derinsis
     from: ODAKJOKER.JOKER.dbo.J_ITEMS.DERINSIS_ID
     to: DerinSISBkm.dbo.urn.stkID

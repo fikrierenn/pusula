@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-24
+updated: 2026-06-26
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -72,6 +72,7 @@ entities:
   ent.JokerCKStok_vw: {tip: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view"}
   ent.odak_depo_Stok: {tip: tablo, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 487.567 satır, 349.756 çeşit stokta, ~7,0-7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. ⚠ 'ODAK stok' sorulduğunda KANONİK = BU TABLO; stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA (24.06 vakası: vw mekan 26142 İPTAL-Transfer 129K dahil edilip sessiz over-count yapıldı). 14.06 keşif, 24.06 teyit."}
   bkm.UrunBilgi: {tip: view, pk: stkID, key: [stkID, mrkAd, Yazar, SatisFiyat, SonAlis, Kategori3], note: "Denormalize ÜRÜN MASTER VIEW (sys.objects=VIEW) — en pratik ürün lookup; tek view'dan marka+yazar+maliyet+fiyat+kategori (urn+urnMrk join'e gerek yok, rapor scriptleri buradan). Kolonlar: stkKod/BarkodAna/stkAd, mrkID/mrkAd(marka=yayınevi), YazarId/Yazar, frmID/FirmaAd(ana tedarikçi), KatAna/Kat1..5/Kategori2/Kategori3(metin hiyerarşi; Kategori3=urnKtgr2.ktgrAd ör 'Hazırlık Kitapları'), SatisFiyat(üst/liste fiyat birim), SonAlis(son alış maliyet birim, 0=güncellenmemiş), OzelWebFiyat, AlisKDVYuzde/SatisKDVYuzde, urnTip(0=normal), AnaTedarikciId. 24.06 kolon+tip teyit (eski kısa stub ile birleşti)."}
+  dbo.bakiyeVDGG_vw: {tip: view, key: [cKod, borc, alacak, bakiye, GecenB, GelecekB], note: "Cari bazlı bakiye + vade yaşlandırma. cKod=frm.frmID. bakiye=net (alacak+borç-işaretli; borç negatif depolanır). GecenB=vadesi GEÇMİŞ tutar, GelecekB=YAKLAŞAN (henüz vadesi gelmemiş). Risk limiti = frm.frmBakiyeLimit (aşım = ABS(bakiye)>limit). Dashboard /cari-risk (B-124). ⚠ AĞIR ~8s (tüm car agg). frmKod prefix: 320=satıcı,120=alıcı,100/101/103/300=banka/çek,6xx/7xx=gider. Diğer: bakiye_vw/bakiyeGrup_vw, satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı), cek_vw (çek). 2026-06-25 canlı."}
   stokSonAltDepo_vw: {tip: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ehMekan POZİTİF stok: 12=Merkez Depo (~2,14M), 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
   ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK: {key: [ORDERREF], note: "depoda toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID)"}
@@ -88,6 +89,8 @@ entities:
   ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS]}
   ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT], note: "ORDERREF=J_ORDERS.ORDERID"}
   ODAKJOKER.JOKER.dbo.J_ITEMS: {pk: LOGICALREF, key: [NAME, BRAND, DERINSIS_ID], note: "BRAND direkt marka; DERINSIS_ID=urn.stkID"}
+  ODAKJOKER.JOKER.dbo.BASKISIYOK: {key: [LOGICALREF, TARIH, DETAILREF, ORDERREF, ITEMREF, USERREF, BARCODE, QUANTITY], note: "Baskısı yok (etiket basılmadan) yapılan e-tic sipariş satırları. DETAILREF→J_ORDER_DETAILS.LOGICALREF, ITEMREF→J_ITEMS.LOGICALREF, USERREF→EM_USERS.LOGICALREF, ORDERREF→J_ORDERS.ORDERID, TARIH=işlem zamanı (datetime). Tutar=QUANTITY×J_ORDER_DETAILS.SELLINGPRICE, çeşit=distinct BARCODE. Dashboard /baskisi-yok (B-126) + e-tic 30g trend. 2026-06-26 kolon teyit (OPENQUERY)."}
+  ODAKJOKER.JOKER.dbo.EM_USERS: {pk: LOGICALREF, key: [FULLNAME], note: "JOKER panel kullanıcıları; BASKISIYOK.USERREF→LOGICALREF, FULLNAME=işlemi yapan."}
 
   # EncoreMerkez kampanya
   EncoreMerkez.dbo.SalesProductCampaigns: {pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
