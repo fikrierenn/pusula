@@ -45,31 +45,48 @@ else
         })" />
     }
 
-    @* Grafikler (KPI altı) — saat / haftanın günü / gün gecikmesi *@
+    @* Grafikler (KPI altı) — Saat × Gün ısı haritası + gün gecikmesi *@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
-        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-            <div class="text-sm font-semibold mb-2">Saat Yoğunluğu <span class="text-xs text-base-content/50">— gün içi (adet)</span></div>
-            @if (_saat.Count > 0)
+        @* Isı haritası (2 sütun) *@
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3 lg:col-span-2">
+            <div class="text-sm font-semibold mb-3 flex items-center gap-1.5"><i data-lucide="calendar-clock" class="w-4 h-4 text-primary"></i>Yoğunluk — Saat × Gün <span class="text-xs text-base-content/50 font-normal">(adet)</span></div>
+            @if (_heat.Count > 0)
             {
-                <AppAreaChart TItem="BaskisiYokSaat" Items="_saat" Name="Adet" Color="@_pColor" Height="130"
-                              XValue="@(s => (object)s.Saat)" YValue="@(s => (decimal?)s.Adet)" />
+                var maxF = _heat.Max(h => h.Fis);
+                var sMin = _heat.Min(h => h.Saat);
+                var sMax = _heat.Max(h => h.Saat);
+                var map = _heat.GroupBy(h => (h.Gun, h.Saat)).ToDictionary(g => g.Key, g => g.Sum(x => x.Fis));
+                var gunAd = new[] { "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz" };
+                <div class="overflow-x-auto -mx-1 px-1">
+                    <div class="inline-grid gap-0.5" style="grid-template-columns:32px repeat(@(sMax - sMin + 1), 22px)">
+                        <div></div>
+                        @for (int s = sMin; s <= sMax; s++)
+                        {
+                            <div class="text-[9px] text-base-content/45 text-center leading-[14px]">@s</div>
+                        }
+                        @for (int g = 0; g < 7; g++)
+                        {
+                            var gi = g;
+                            <div class="text-[10px] font-semibold text-base-content/60 leading-[22px] pr-1 @(gi >= 5 ? "text-primary" : "")">@gunAd[gi]</div>
+                            @for (int s = sMin; s <= sMax; s++)
+                            {
+                                var f = map.GetValueOrDefault((gi, s), 0);
+                                var op = maxF > 0 && f > 0 ? Math.Max(0.08, Math.Round((double)f / maxF, 2)) : 0;
+                                <div class="rounded-[3px] h-[22px] @(f > 0 ? "bg-primary" : "bg-base-200")" style="@(f > 0 ? $"opacity:{op.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : "")" title="@gunAd[gi] @s:00 · @Num(f) adet"></div>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="text-base-content/50 text-[11px] mt-2.5">Koyu = yoğun. Hangi gün/saatte baskısız işlem zirve — personel/vardiya planı.</div>
             }
             else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
         </div>
+        @* Gün gecikmesi (1 sütun) *@
         <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-            <div class="text-sm font-semibold mb-2">Haftanın Günü <span class="text-xs text-base-content/50">— (adet)</span></div>
-            @if (_hafta.Count > 0)
-            {
-                <AppAreaChart TItem="BaskisiYokHaftaGun" Items="_hafta" Name="Adet" Color="@_pColor" Height="130"
-                              XValue="@(h => (object)h.Gun)" YValue="@(h => (decimal?)h.Adet)" />
-            }
-            else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
-        </div>
-        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-            <div class="text-sm font-semibold mb-2">Sipariş→Baskısı Yok Gecikme <span class="text-xs text-base-content/50">— kaç gün sonra (adet)</span></div>
+            <div class="text-sm font-semibold mb-2">Sipariş→Baskısı Yok <span class="text-xs text-base-content/50">— kaç gün sonra (adet)</span></div>
             @if (_gecikme.Count > 0)
             {
-                <AppAreaChart TItem="BaskisiYokGecikme" Items="_gecikme" Name="Adet" Color="@_pColor" Height="130"
+                <AppAreaChart TItem="BaskisiYokGecikme" Items="_gecikme" Name="Adet" Color="@_pColor" Height="180"
                               XValue="@(g => (object)g.Kova)" YValue="@(g => (decimal?)g.Adet)" />
             }
             else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
@@ -180,8 +197,7 @@ else
     private IReadOnlyList<BaskisiYokDetay> _detay = [];
     private BaskisiYokKpi? _kpi;
     private IReadOnlyList<BaskisiYokGrup> _grup = [];
-    private IReadOnlyList<BaskisiYokSaat> _saat = [];
-    private IReadOnlyList<BaskisiYokHaftaGun> _hafta = [];
+    private IReadOnlyList<HeatCell> _heat = [];
     private IReadOnlyList<BaskisiYokGecikme> _gecikme = [];
     private bool _loading = true;
     private string? _error;
@@ -217,8 +233,7 @@ else
             _ozet = await Etic.GetBaskisiYokOzetAsync(start, endExcl);
             _detay = await Etic.GetBaskisiYokDetayAsync(start, endExcl);
             _grup = await Etic.GetBaskisiYokGrupAsync(start, endExcl);
-            _saat = await Etic.GetBaskisiYokSaatAsync(start, endExcl);
-            _hafta = await Etic.GetBaskisiYokHaftaGunAsync(start, endExcl);
+            _heat = await Etic.GetBaskisiYokHeatAsync(start, endExcl);
             _gecikme = await Etic.GetBaskisiYokGecikmeAsync(start, endExcl);
         }
         catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Bas}-{Bit})", start, endExcl); _error = $"Yüklenemedi: {ex.Message}"; }

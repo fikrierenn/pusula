@@ -483,6 +483,22 @@ public sealed class EticQueries(Db db)
         return rows.ToList();
     }
 
+    /// <summary>Baskısı yok — Saat × Gün ısı haritası (Gun 0=Pzt..6=Paz, Fis=adet). İptal hariç.</summary>
+    public async Task<IReadOnlyList<HeatCell>> GetBaskisiYokHeatAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<HeatCell>("""
+            SET DATEFIRST 1;
+            SELECT (DATEPART(WEEKDAY, B.TARIH) - 1) AS Gun,
+                   DATEPART(HOUR, B.TARIH)          AS Saat,
+                   CAST(SUM(B.QUANTITY) AS int)     AS Fis
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
+            GROUP BY DATEPART(WEEKDAY, B.TARIH), DATEPART(HOUR, B.TARIH)
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
+
     /// <summary>E-ticaret — gelen siparişlerin saat-bazlı yoğunluğu (J_ORDERS.ORDERDATE saati). Sipariş = J_ORDERS satırı.</summary>
     public async Task<IReadOnlyList<SiparisSaat>> GetSiparisSaatAsync(DateOnly start, DateOnly endExcl)
     {
