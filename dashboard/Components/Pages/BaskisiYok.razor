@@ -104,7 +104,7 @@ else
 }
 
 @code {
-    private DateTime _bas = DateTime.Today;
+    private DateTime _bas = DateTime.Today.AddDays(-6);   // varsayılan son 7 gün (bugün çoğu sabah boş)
     private DateTime _bit = DateTime.Today;
     private IReadOnlyList<BaskisiYokOzet> _ozet = [];
     private IReadOnlyList<BaskisiYokDetay> _detay = [];
