@@ -390,4 +390,39 @@ public sealed class EticQueries(Db db)
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.ToList();
     }
+
+    /// <summary>Baskısı yok — seçili aralık KPI özeti (iptal=B.QUANTITY=0 ayrı sayılır, hariç tutulur).</summary>
+    public async Task<BaskisiYokKpi> GetBaskisiYokKpiAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        return await conn.QuerySingleAsync<BaskisiYokKpi>("""
+            SELECT CAST(COUNT(DISTINCT CASE WHEN B.QUANTITY > 0 THEN B.BARCODE END) AS int)        AS Cesit,
+                   CAST(SUM(CASE WHEN B.QUANTITY > 0 THEN B.QUANTITY ELSE 0 END) AS int)            AS Adet,
+                   ISNULL(SUM(CASE WHEN B.QUANTITY > 0 THEN B.QUANTITY * D.SELLINGPRICE ELSE 0 END), 0) AS Tutar,
+                   CAST(COUNT(DISTINCT CASE WHEN B.QUANTITY > 0 THEN D.ORDERREF END) AS int)        AS Siparis,
+                   CAST(SUM(CASE WHEN B.QUANTITY = 0 THEN 1 ELSE 0 END) AS int)                     AS IptalSatir
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+    }
+
+    /// <summary>Baskısı yok — ürün grubu (J_ITEMS.GROUPCODE) bazlı dağılım (iptal hariç). Tutara göre.</summary>
+    public async Task<IReadOnlyList<BaskisiYokGrup>> GetBaskisiYokGrupAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokGrup>("""
+            SELECT TOP 20 ISNULL(A.GROUPCODE, N'-')         AS Grup,
+                   COUNT(DISTINCT B.BARCODE)                AS Cesit,
+                   CAST(SUM(B.QUANTITY) AS int)             AS Adet,
+                   SUM(B.QUANTITY * D.SELLINGPRICE)         AS Tutar
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
+            JOIN   dbo.J_ITEMS A WITH(NOLOCK)         ON A.LOGICALREF = D.ITEMREF
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
+            GROUP BY A.GROUPCODE
+            ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
 }

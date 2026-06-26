@@ -32,6 +32,34 @@ else if (_loading)
 }
 else
 {
+    @* KPI özet şeridi *@
+    @if (_kpi is not null)
+    {
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+                <div class="text-xs text-base-content/50">Çeşit</div>
+                <div class="text-xl font-bold">@Num(_kpi.Cesit)</div>
+            </div>
+            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+                <div class="text-xs text-base-content/50">Adet</div>
+                <div class="text-xl font-bold">@Num(_kpi.Adet)</div>
+            </div>
+            <div class="bg-base-100 border-2 border-primary/30 rounded-lg p-3">
+                <div class="text-xs text-base-content/50">Tutar</div>
+                <div class="text-xl font-bold text-primary tabular-nums">@Tl(_kpi.Tutar)</div>
+            </div>
+            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+                <div class="text-xs text-base-content/50">Sipariş</div>
+                <div class="text-xl font-bold">@Num(_kpi.Siparis)</div>
+            </div>
+            <div class="bg-base-100 border-2 @(_kpi.IptalSatir > 0 ? "border-warning/40" : "border-base-300") rounded-lg p-3">
+                <div class="text-xs text-base-content/50">İptal (0 adet) — hariç</div>
+                <div class="text-xl font-bold @(_kpi.IptalSatir > 0 ? "text-warning" : "")">@Num(_kpi.IptalSatir)</div>
+                <div class="text-[11px] text-base-content/40">satır rapora alınmadı</div>
+            </div>
+        </div>
+    }
+
     @* Kullanıcı özeti *@
     <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
         <div class="flex items-center justify-between mb-2">
@@ -101,6 +129,31 @@ else
         </div>
         @if (_detay.Count == 0) { <p class="text-base-content/40 text-sm py-3">Bu gün için kayıt yok.</p> }
     </div>
+
+    @* Grup dağılımı *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3 mt-4">
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold">Ürün Grubu Dağılımı <span class="text-xs text-base-content/50">— @_grup.Count grup</span></div>
+            <ExcelButton FileName="baskisi-yok-grup" SayfaAd="Grup" Rows="GrupExcel" />
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-xs">
+                <thead><tr><th>Grup</th><th class="text-right">Çeşit</th><th class="text-right">Adet</th><th class="text-right">Tutar</th></tr></thead>
+                <tbody>
+                @foreach (var g in _grup)
+                {
+                    <tr class="hover">
+                        <td>@g.Grup</td>
+                        <td class="text-right">@Num(g.Cesit)</td>
+                        <td class="text-right">@Num(g.Adet)</td>
+                        <td class="text-right tabular-nums">@Tl(g.Tutar)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (_grup.Count == 0) { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+    </div>
 }
 
 @code {
@@ -108,6 +161,8 @@ else
     private DateTime _bit = DateTime.Today;
     private IReadOnlyList<BaskisiYokOzet> _ozet = [];
     private IReadOnlyList<BaskisiYokDetay> _detay = [];
+    private BaskisiYokKpi? _kpi;
+    private IReadOnlyList<BaskisiYokGrup> _grup = [];
     private bool _loading = true;
     private string? _error;
 
@@ -125,8 +180,10 @@ else
         var endExcl = DateOnly.FromDateTime(_bit).AddDays(1);   // bitiş dahil
         try
         {
+            _kpi = await Etic.GetBaskisiYokKpiAsync(start, endExcl);
             _ozet = await Etic.GetBaskisiYokOzetAsync(start, endExcl);
             _detay = await Etic.GetBaskisiYokDetayAsync(start, endExcl);
+            _grup = await Etic.GetBaskisiYokGrupAsync(start, endExcl);
         }
         catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Bas}-{Bit})", start, endExcl); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
@@ -143,6 +200,12 @@ else
         {
             ["Tarih"] = d.Tarih, ["Kullanıcı"] = d.Kullanici, ["Barkod"] = d.Barkod, ["Kod"] = d.Kod,
             ["Ürün"] = d.Ad, ["Marka"] = d.Marka, ["Grup"] = d.Grup, ["Miktar"] = d.Miktar, ["Tutar"] = d.Tutar,
+        }));
+
+    private Task<IEnumerable<IDictionary<string, object?>>> GrupExcel() =>
+        Task.FromResult<IEnumerable<IDictionary<string, object?>>>(_grup.Select(g => new Dictionary<string, object?>
+        {
+            ["Grup"] = g.Grup, ["Çeşit"] = g.Cesit, ["Adet"] = g.Adet, ["Tutar"] = g.Tutar,
         }));
 
     private static string Tl(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));

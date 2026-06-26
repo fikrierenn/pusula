@@ -134,6 +134,12 @@ public record BaskisiYokDetay(string Tarih, string Kullanici, string Barkod, str
 /// <summary>Baskısı yok — günlük trend (çeşit=distinct barkod, adet=toplam miktar). E-ticaret sayfası grafiği.</summary>
 public record BaskisiYokGun(string Gun, int Cesit, int Adet);
 
+/// <summary>Baskısı yok — seçili aralık KPI özeti. IptalSatir = B.QUANTITY=0 (iptal bug) hariç tutulan satır sayısı.</summary>
+public record BaskisiYokKpi(int Cesit, int Adet, decimal Tutar, int Siparis, int IptalSatir);
+
+/// <summary>Baskısı yok — ürün grubu (GROUPCODE) bazlı dağılım.</summary>
+public record BaskisiYokGrup(string Grup, int Cesit, int Adet, decimal Tutar);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 
