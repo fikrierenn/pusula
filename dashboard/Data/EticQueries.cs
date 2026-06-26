@@ -441,4 +441,60 @@ public sealed class EticQueries(Db db)
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
         return rows.ToList();
     }
+
+    /// <summary>Baskısı yok — haftanın günü yoğunluğu (Pzt=1..Paz=7, SET DATEFIRST 1 sabit). İptal hariç.</summary>
+    public async Task<IReadOnlyList<BaskisiYokHaftaGun>> GetBaskisiYokHaftaGunAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokHaftaGun>("""
+            SET DATEFIRST 1;
+            SELECT DATEPART(WEEKDAY, B.TARIH) AS GunNo,
+                   CASE DATEPART(WEEKDAY, B.TARIH)
+                        WHEN 1 THEN N'Pazartesi' WHEN 2 THEN N'Salı' WHEN 3 THEN N'Çarşamba'
+                        WHEN 4 THEN N'Perşembe' WHEN 5 THEN N'Cuma' WHEN 6 THEN N'Cumartesi' ELSE N'Pazar' END AS Gun,
+                   CAST(SUM(B.QUANTITY) AS int) AS Adet
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
+            GROUP BY DATEPART(WEEKDAY, B.TARIH)
+            ORDER BY DATEPART(WEEKDAY, B.TARIH)
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
+
+    /// <summary>Baskısı yok — sipariş→baskısı-yok gün gecikmesi yoğunluğu (kova). DATEDIFF(ORDERDATE, B.TARIH).</summary>
+    public async Task<IReadOnlyList<BaskisiYokGecikme>> GetBaskisiYokGecikmeAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<BaskisiYokGecikme>("""
+            SELECT g.Sira, g.Kova, CAST(SUM(B.QUANTITY) AS int) AS Adet
+            FROM   dbo.BASKISIYOK B WITH(NOLOCK)
+            JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
+            JOIN   dbo.J_ORDERS O WITH(NOLOCK)        ON O.ORDERID = D.ORDERREF
+            CROSS APPLY (SELECT d2 = DATEDIFF(DAY, O.ORDERDATE, B.TARIH)) x
+            CROSS APPLY (SELECT
+                Sira = CASE WHEN x.d2 <= 0 THEN 0 WHEN x.d2 = 1 THEN 1 WHEN x.d2 = 2 THEN 2 WHEN x.d2 = 3 THEN 3
+                            WHEN x.d2 BETWEEN 4 AND 7 THEN 4 WHEN x.d2 BETWEEN 8 AND 14 THEN 5 ELSE 6 END,
+                Kova = CASE WHEN x.d2 <= 0 THEN N'Aynı gün' WHEN x.d2 = 1 THEN N'1 gün' WHEN x.d2 = 2 THEN N'2 gün' WHEN x.d2 = 3 THEN N'3 gün'
+                            WHEN x.d2 BETWEEN 4 AND 7 THEN N'4-7 gün' WHEN x.d2 BETWEEN 8 AND 14 THEN N'8-14 gün' ELSE N'15+ gün' END) g
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
+            GROUP BY g.Sira, g.Kova
+            ORDER BY g.Sira
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
+
+    /// <summary>E-ticaret — gelen siparişlerin saat-bazlı yoğunluğu (J_ORDERS.ORDERDATE saati). Sipariş = J_ORDERS satırı.</summary>
+    public async Task<IReadOnlyList<SiparisSaat>> GetSiparisSaatAsync(DateOnly start, DateOnly endExcl)
+    {
+        await using var conn = await db.OpenJokerAsync();
+        var rows = await conn.QueryAsync<SiparisSaat>("""
+            SELECT RIGHT('0' + CAST(DATEPART(HOUR, o.ORDERDATE) AS varchar(2)), 2) + ':00' AS Saat,
+                   COUNT(*) AS Siparis
+            FROM   dbo.J_ORDERS o WITH(NOLOCK)
+            WHERE  o.ORDERDATE >= @Bas AND o.ORDERDATE < @Bit
+            GROUP BY DATEPART(HOUR, o.ORDERDATE)
+            ORDER BY DATEPART(HOUR, o.ORDERDATE)
+            """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
+        return rows.ToList();
+    }
 }

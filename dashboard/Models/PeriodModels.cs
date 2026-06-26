@@ -143,6 +143,15 @@ public record BaskisiYokGrup(string Grup, int Cesit, int Adet, decimal Tutar);
 /// <summary>Baskısı yok — saat-bazlı yoğunluk (gün içi 0-23). Adet = toplam miktar o saatte.</summary>
 public record BaskisiYokSaat(string Saat, int Adet, int Cesit);
 
+/// <summary>Baskısı yok — haftanın günü yoğunluğu (Pzt-Paz).</summary>
+public record BaskisiYokHaftaGun(int GunNo, string Gun, int Adet);
+
+/// <summary>Baskısı yok — sipariş→baskısı-yok gün gecikmesi yoğunluğu (kova).</summary>
+public record BaskisiYokGecikme(int Sira, string Kova, int Adet);
+
+/// <summary>E-ticaret — gelen siparişlerin saat-bazlı yoğunluğu (J_ORDERS.ORDERDATE saati).</summary>
+public record SiparisSaat(string Saat, int Siparis);
+
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 

@@ -44,6 +44,37 @@ else
         })" />
     }
 
+    @* Grafikler (KPI altı) — saat / haftanın günü / gün gecikmesi *@
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-sm font-semibold mb-2">Saat Yoğunluğu <span class="text-xs text-base-content/50">— gün içi (adet)</span></div>
+            @if (_saat.Count > 0)
+            {
+                <AppAreaChart TItem="BaskisiYokSaat" Items="_saat" Name="Adet" Height="130"
+                              XValue="@(s => (object)s.Saat)" YValue="@(s => (decimal?)s.Adet)" />
+            }
+            else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-sm font-semibold mb-2">Haftanın Günü <span class="text-xs text-base-content/50">— (adet)</span></div>
+            @if (_hafta.Count > 0)
+            {
+                <AppAreaChart TItem="BaskisiYokHaftaGun" Items="_hafta" Name="Adet" Height="130"
+                              XValue="@(h => (object)h.Gun)" YValue="@(h => (decimal?)h.Adet)" />
+            }
+            else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-sm font-semibold mb-2">Sipariş→Baskısı Yok Gecikme <span class="text-xs text-base-content/50">— kaç gün sonra (adet)</span></div>
+            @if (_gecikme.Count > 0)
+            {
+                <AppAreaChart TItem="BaskisiYokGecikme" Items="_gecikme" Name="Adet" Height="130"
+                              XValue="@(g => (object)g.Kova)" YValue="@(g => (decimal?)g.Adet)" />
+            }
+            else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
+        </div>
+    </div>
+
     @* Kullanıcı özeti *@
     <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
         <div class="flex items-center justify-between mb-2">
@@ -139,16 +170,6 @@ else
         @if (_grup.Count == 0) { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
     </div>
 
-    @* Saat-bazlı yoğunluk *@
-    <div class="bg-base-100 border border-base-300 rounded-lg p-3 mt-4">
-        <div class="text-sm font-semibold mb-2">Saat Bazlı Yoğunluk <span class="text-xs text-base-content/50">— gün içi hangi saatlerde (adet)</span></div>
-        @if (_saat.Count > 0)
-        {
-            <AppAreaChart TItem="BaskisiYokSaat" Items="_saat" Name="Adet" Height="130"
-                          XValue="@(s => (object)s.Saat)" YValue="@(s => (decimal?)s.Adet)" />
-        }
-        else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
-    </div>
 }
 
 @code {
@@ -159,6 +180,8 @@ else
     private BaskisiYokKpi? _kpi;
     private IReadOnlyList<BaskisiYokGrup> _grup = [];
     private IReadOnlyList<BaskisiYokSaat> _saat = [];
+    private IReadOnlyList<BaskisiYokHaftaGun> _hafta = [];
+    private IReadOnlyList<BaskisiYokGecikme> _gecikme = [];
     private bool _loading = true;
     private string? _error;
 
@@ -181,6 +204,8 @@ else
             _detay = await Etic.GetBaskisiYokDetayAsync(start, endExcl);
             _grup = await Etic.GetBaskisiYokGrupAsync(start, endExcl);
             _saat = await Etic.GetBaskisiYokSaatAsync(start, endExcl);
+            _hafta = await Etic.GetBaskisiYokHaftaGunAsync(start, endExcl);
+            _gecikme = await Etic.GetBaskisiYokGecikmeAsync(start, endExcl);
         }
         catch (Exception ex) { Logger.LogError(ex, "Baskısı yok yüklenemedi ({Bas}-{Bit})", start, endExcl); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
