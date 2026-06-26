@@ -6,8 +6,14 @@ namespace GmDashboard.Models;
 /// <summary>Kategori seçici satırı (ODAK stoklu kategoriler).</summary>
 public record OdakKategori(string Kategori, int Cesit, int StokAdet);
 
-/// <summary>Marka/yayınevi özeti (seçili kategori) — çeşit, stok, ciro, devir.</summary>
-public record OdakMarkaOzet(string Marka, int Cesit, int StokAdet, int YilSatis, decimal YilCiro, decimal? Devir);
+/// <summary>Marka/yayınevi özeti (seçili kategori) — çeşit, stok, stok ₺, ciro, devir.</summary>
+public record OdakMarkaOzet(string Marka, int Cesit, int StokAdet, decimal StokTl, int YilSatis, decimal YilCiro, decimal? Devir);
+
+/// <summary>ODAK KPI şeridi (seçili kategori) — bağlı sermaye + ölü stok + ay-kapsam.</summary>
+public record OdakKpi(int Cesit, int StokAdet, decimal StokTl, int OluCesit, decimal OluTl, decimal? OrtAyKapsam);
+
+/// <summary>Aşırı stok satırı (en yüksek ay-kapsam) — bağlı sermaye vurgusu için.</summary>
+public record OdakAsiri(int StkID, string Marka, string Urun, int Stok, decimal? AyKapsam, decimal StokTl);
 
 /// <summary>Ürün tam döküm satırı (seçili kategori, sayfalı) — şube/depo/ODAK stok + satış + maliyet/fiyat.</summary>
 public record OdakUrun(

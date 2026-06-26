@@ -37,6 +37,42 @@
     <span>🧾 Alış (usulsüz): <b>son 1 yıl</b></span>
 </div>
 
+@* ── KPI şeridi (bağlı sermaye + ölü stok) ── *@
+@if (_kpiLoading)
+{
+    <div class="mb-4 text-base-content/40 text-xs flex items-center gap-2"><span class="loading loading-spinner loading-xs"></span> Bağlı sermaye hesaplanıyor…</div>
+}
+else if (_kpi is not null)
+{
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Çeşit</div>
+            <div class="text-xl font-bold">@Num(_kpi.Cesit)</div>
+            <div class="text-[11px] text-base-content/40">@Num(_kpi.StokAdet) adet</div>
+        </div>
+        <div class="bg-base-100 border-2 border-primary/30 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Bağlı Sermaye (ODAK)</div>
+            <div class="text-xl font-bold text-primary tabular-nums">@Tl(_kpi.StokTl) ₺</div>
+            <div class="text-[11px] text-base-content/40">stok × maliyet</div>
+        </div>
+        <div class="bg-base-100 border-2 border-error/30 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Ölü Stok (satışsız)</div>
+            <div class="text-xl font-bold text-error tabular-nums">@Tl(_kpi.OluTl) ₺</div>
+            <div class="text-[11px] text-base-content/40">@Num(_kpi.OluCesit) çeşit · %@(_kpi.StokTl > 0 ? Math.Round(_kpi.OluTl / _kpi.StokTl * 100, 0) : 0) sermaye</div>
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Ort. Ay-Kapsam</div>
+            <div class="text-xl font-bold @(_kpi.OrtAyKapsam is >= 12 ? "text-error" : _kpi.OrtAyKapsam is >= 6 ? "text-warning" : "")">@(_kpi.OrtAyKapsam?.ToString("0.0") ?? "—") ay</div>
+            <div class="text-[11px] text-base-content/40">stok kaç aylık satışa yeter</div>
+        </div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+            <div class="text-xs text-base-content/50">Sağlıklı / Ölü</div>
+            <div class="text-xl font-bold">@(_kpi.Cesit > 0 ? Math.Round(100.0 * (_kpi.Cesit - _kpi.OluCesit) / _kpi.Cesit, 0) : 0)%</div>
+            <div class="text-[11px] text-base-content/40">satışı olan çeşit oranı</div>
+        </div>
+    </div>
+}
+
 @if (_error is not null)
 {
     <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
@@ -45,6 +81,36 @@
 @* ══════════ SEKME 0: MARKA / YAYINEVİ ÖZETİ ══════════ *@
 @if (_tab == 0)
 {
+    @* Aşırı stok Top-10 (bağlı sermaye vurgusu) *@
+    <div class="bg-base-100 border-2 border-warning/30 rounded-lg p-3 mb-4">
+        <div class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>Aşırı Stok — En Yüksek Ay-Kapsam (Top 10) <span class="text-xs text-base-content/50 font-normal">satışı var ama yıllarca yetecek stok = bağlı para</span></div>
+        @if (_asiriLoading)
+        {
+            <p class="text-base-content/40 text-sm py-2 flex items-center gap-2"><span class="loading loading-spinner loading-xs"></span> Yükleniyor…</p>
+        }
+        else if (_asiri.Count > 0)
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead><tr><th>Marka</th><th>Ürün</th><th class="text-right">Stok</th><th class="text-right">Ay Kapsam</th><th class="text-right">Bağlı ₺</th></tr></thead>
+                    <tbody>
+                    @foreach (var a in _asiri)
+                    {
+                        <tr class="hover">
+                            <td class="max-w-[120px] truncate text-xs" title="@a.Marka">@a.Marka</td>
+                            <td class="max-w-[300px] truncate text-xs" title="@a.Urun"><a class="link link-primary" href="@StokHareketUrl(a.StkID, a.Urun)" target="_blank">@a.Urun</a></td>
+                            <td class="text-right">@Num(a.Stok)</td>
+                            <td class="text-right font-bold text-error">@(a.AyKapsam?.ToString("0") ?? "—") ay</td>
+                            <td class="text-right tabular-nums font-semibold">@Tl(a.StokTl)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else { <p class="text-base-content/40 text-sm py-2">Kayıt yok.</p> }
+    </div>
+
     <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Marka / Yayınevi Özeti <span class="text-xs text-base-content/50">— devir = yıllık şube satış / ODAK stok</span></div>
@@ -59,7 +125,7 @@
             <div class="overflow-x-auto max-h-72">
                 <table class="table table-xs">
                     <thead><tr>
-                        <th>Marka / Yayınevi</th><th class="text-right">Çeşit</th><th class="text-right">ODAK Stok</th>
+                        <th>Marka / Yayınevi</th><th class="text-right">Çeşit</th><th class="text-right">ODAK Stok</th><th class="text-right">Stok ₺</th>
                         <th class="text-right">Yıl Satış</th><th class="text-right">Yıl Ciro</th><th class="text-right">Devir</th>
                     </tr></thead>
                     <tbody>
@@ -69,6 +135,7 @@
                             <td class="max-w-[280px] truncate" title="@o.Marka">@o.Marka</td>
                             <td class="text-right">@Num(o.Cesit)</td>
                             <td class="text-right">@Num(o.StokAdet)</td>
+                            <td class="text-right tabular-nums">@Tl(o.StokTl)</td>
                             <td class="text-right">@Num(o.YilSatis)</td>
                             <td class="text-right tabular-nums">@Tl(o.YilCiro)</td>
                             <td class="text-right font-semibold @(o.Devir is < 1 ? "text-error" : o.Devir is >= 3 ? "text-success" : "")">@(o.Devir?.ToString("0.00") ?? "—")</td>
@@ -273,6 +340,12 @@
     private readonly DateTime _bugun = DateTime.Today;
     private readonly DateTime _yilOnce = DateTime.Today.AddYears(-1);
 
+    // KPI şeridi (her zaman, kategori bazlı) + aşırı stok
+    private OdakKpi? _kpi;
+    private bool _kpiLoading;
+    private IReadOnlyList<OdakAsiri> _asiri = [];
+    private bool _asiriLoading;
+
     // Sekme 0 — marka özeti
     private IReadOnlyList<OdakMarkaOzet> _ozet = [];
     private bool _ozetLoading, _ozetYuklendi;
@@ -305,7 +378,7 @@
             _kategoriler = await Odak.GetKategorilerAsync();
             _kategori = _kategoriler.FirstOrDefault(k => k.Kategori == "Hazırlık Kitapları")?.Kategori
                         ?? _kategoriler.FirstOrDefault()?.Kategori ?? "";
-            if (_kategori != "") await LoadTab(_tab);
+            if (_kategori != "") { await LoadKpi(); await LoadTab(_tab); }
         }
         catch (Exception ex) { Logger.LogError(ex, "ODAK kategori yüklenemedi"); _error = $"Yüklenemedi: {ex.Message}"; }
     }
@@ -313,11 +386,20 @@
     private async Task KategoriDegisti()
     {
         _error = null;
-        // kategori değişti → tüm sekmeleri taze yükle (lazy bayrakları sıfırla)
+        // kategori değişti → KPI + tüm sekmeleri taze yükle (lazy bayrakları sıfırla)
         _ozetYuklendi = _urunYuklendi = _usulsuzYuklendi = false;
         _urunPage = 1; _usulsuzPage = 1; _urunSayfa = null; _usulsuzSayfa = null;
         _urunMarka = ""; _urunAra = "";
+        await LoadKpi();
         await LoadTab(_tab);
+    }
+
+    private async Task LoadKpi()
+    {
+        _kpiLoading = true; _kpi = null; StateHasChanged();
+        try { _kpi = await Odak.GetOdakKpiAsync(_kategori); }
+        catch (Exception ex) { Logger.LogError(ex, "ODAK KPI yüklenemedi ({Kat})", _kategori); }
+        finally { _kpiLoading = false; }
     }
 
     private async Task SetTab(int t)
@@ -335,10 +417,15 @@
 
     private async Task LoadOzet()
     {
-        _ozetLoading = true; _ozetYuklendi = true; StateHasChanged();
-        try { _ozet = await Odak.GetMarkaOzetAsync(_kategori); }
+        _ozetLoading = true; _asiriLoading = true; _ozetYuklendi = true; StateHasChanged();
+        try
+        {
+            _ozet = await Odak.GetMarkaOzetAsync(_kategori);
+            _ozetLoading = false; StateHasChanged();
+            _asiri = await Odak.GetOdakAsiriAsync(_kategori, 10);
+        }
         catch (Exception ex) { Logger.LogError(ex, "ODAK marka özet yüklenemedi ({Kat})", _kategori); _error = $"Yüklenemedi: {ex.Message}"; }
-        finally { _ozetLoading = false; }
+        finally { _ozetLoading = false; _asiriLoading = false; }
     }
 
     private async Task LoadUrun()
@@ -412,7 +499,7 @@
     private Task<IEnumerable<IDictionary<string, object?>>> OzetExcel() =>
         Task.FromResult<IEnumerable<IDictionary<string, object?>>>(_ozet.Select(o => new Dictionary<string, object?>
         {
-            ["Marka/Yayınevi"] = o.Marka, ["Çeşit"] = o.Cesit, ["ODAK Stok"] = o.StokAdet,
+            ["Marka/Yayınevi"] = o.Marka, ["Çeşit"] = o.Cesit, ["ODAK Stok"] = o.StokAdet, ["Stok ₺"] = o.StokTl,
             ["Yıl Satış"] = o.YilSatis, ["Yıl Ciro"] = o.YilCiro, ["Devir"] = o.Devir,
         }));
 

@@ -39,10 +39,12 @@ public sealed class OdakQueries(Db db)
         await using var conn = await db.OpenAsync();
         var rows = await conn.QueryAsync<OdakMarkaOzet>("""
             WITH stk AS (
-                SELECT u.urnMrkID, COUNT(DISTINCT o.stkID) AS Cesit, SUM(o.StokMiktar) AS Stok
+                SELECT u.urnMrkID, COUNT(DISTINCT o.stkID) AS Cesit, SUM(o.StokMiktar) AS Stok,
+                       SUM(o.StokMiktar * ISNULL(ub.SonAlis, 0)) AS StokTl
                 FROM DerinSISBkm.ent.odak_depo_Stok o
                 JOIN DerinSISBkm.dbo.urn u ON u.stkID = o.stkID
                 JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.urnKtgr2ID AND k.ktgrAd = @kategori
+                LEFT JOIN DerinSISBkm.bkm.UrunBilgi ub ON ub.stkID = o.stkID
                 WHERE o.StokMiktar > 0
                 GROUP BY u.urnMrkID
             ),
@@ -60,6 +62,7 @@ public sealed class OdakQueries(Db db)
             SELECT ISNULL(m.mrkAd, N'-') AS Marka,
                    stk.Cesit AS Cesit,
                    CAST(stk.Stok AS int) AS StokAdet,
+                   CAST(stk.StokTl AS decimal(18,0)) AS StokTl,
                    CAST(ISNULL(sat.SatisAdet,0) AS int) AS YilSatis,
                    CAST(ISNULL(sat.NetCiro,0) AS decimal(18,0)) AS YilCiro,
                    CASE WHEN stk.Stok > 0 THEN CAST(1.0 * ISNULL(sat.SatisAdet,0) / stk.Stok AS decimal(10,2)) END AS Devir
@@ -70,6 +73,86 @@ public sealed class OdakQueries(Db db)
             ORDER BY stk.Stok DESC
             """, new { kategori });
         return rows.ToList();
+    }
+
+    /// <summary>ODAK KPI şeridi (seçili kategori): bağlı sermaye (stok ₺), ölü stok ₺, ort ay-kapsam. Stok ₺ = adet × UrunBilgi.SonAlis.</summary>
+    public async Task<OdakKpi> GetOdakKpiAsync(string kategori)
+    {
+        await using var conn = await db.OpenAsync();
+        var sql = $"""
+            WITH ecom AS (
+                SELECT DERINSIS_ID AS stkID, Qty FROM OPENQUERY(ODAKJOKER, '
+                    SELECT i.DERINSIS_ID, SUM(d.QUANTITY) AS Qty FROM JOKER.dbo.J_ORDER_DETAILS d
+                    JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
+                    WHERE o.ORDERDATE >= ''{Iso12()}'' AND i.DERINSIS_ID > 0 GROUP BY i.DERINSIS_ID')
+            ),
+            sat AS (
+                SELECT h.ehstkID sID, -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) AS Adet
+                FROM DerinSISBkm.dbo.irsHrk h
+                JOIN DerinSISBkm.dbo.urn u2 ON u2.stkID = h.ehstkID
+                JOIN DerinSISBkm.dbo.urnKtgr2 k2 ON k2.ktgrID = u2.urnKtgr2ID AND k2.ktgrAd = @kategori
+                WHERE h.ehTrhS >= DATEADD(YEAR,-1,GETDATE()) AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo = 0 AND h.ehTip IN (4,100)
+                GROUP BY h.ehstkID
+            ),
+            p AS (
+                SELECT o.StokMiktar AS stok, ISNULL(ub.SonAlis,0) AS mal,
+                       ISNULL(s.Adet,0) + ISNULL(e.Qty,0) AS satis
+                FROM DerinSISBkm.ent.odak_depo_Stok o
+                JOIN DerinSISBkm.dbo.urn u ON u.stkID = o.stkID
+                JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.urnKtgr2ID AND k.ktgrAd = @kategori
+                LEFT JOIN DerinSISBkm.bkm.UrunBilgi ub ON ub.stkID = o.stkID
+                LEFT JOIN sat s ON s.sID = o.stkID
+                LEFT JOIN ecom e ON e.stkID = o.stkID
+                WHERE o.StokMiktar > 0 AND u.urnTip = 0
+            )
+            SELECT COUNT(*) AS Cesit,
+                   CAST(SUM(stok) AS int) AS StokAdet,
+                   CAST(SUM(stok * mal) AS decimal(18,0)) AS StokTl,
+                   CAST(SUM(CASE WHEN satis = 0 THEN 1 ELSE 0 END) AS int) AS OluCesit,
+                   CAST(SUM(CASE WHEN satis = 0 THEN stok * mal ELSE 0 END) AS decimal(18,0)) AS OluTl,
+                   CAST(AVG(CASE WHEN satis > 0 THEN stok / (satis / 12.0) END) AS decimal(10,1)) AS OrtAyKapsam
+            FROM p
+            """;
+        return await conn.QuerySingleAsync<OdakKpi>(sql, new { kategori });
+    }
+
+    /// <summary>Aşırı stok Top-N (seçili kategori): satışı OLAN ama ay-kapsamı en yüksek ürünler (bağlı sermaye vurgusu).</summary>
+    public async Task<IReadOnlyList<OdakAsiri>> GetOdakAsiriAsync(string kategori, int top)
+    {
+        await using var conn = await db.OpenAsync();
+        var sql = $"""
+            WITH ecom AS (
+                SELECT DERINSIS_ID AS stkID, Qty FROM OPENQUERY(ODAKJOKER, '
+                    SELECT i.DERINSIS_ID, SUM(d.QUANTITY) AS Qty FROM JOKER.dbo.J_ORDER_DETAILS d
+                    JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
+                    WHERE o.ORDERDATE >= ''{Iso12()}'' AND i.DERINSIS_ID > 0 GROUP BY i.DERINSIS_ID')
+            ),
+            sat AS (
+                SELECT h.ehstkID sID, -SUM(CASE WHEN h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) AS Adet
+                FROM DerinSISBkm.dbo.irsHrk h
+                JOIN DerinSISBkm.dbo.urn u2 ON u2.stkID = h.ehstkID
+                JOIN DerinSISBkm.dbo.urnKtgr2 k2 ON k2.ktgrID = u2.urnKtgr2ID AND k2.ktgrAd = @kategori
+                WHERE h.ehTrhS >= DATEADD(YEAR,-1,GETDATE()) AND h.ehMekan IN (1,4477,4478) AND h.ehAltDepo = 0 AND h.ehTip IN (4,100)
+                GROUP BY h.ehstkID
+            )
+            SELECT TOP (@top)
+                CAST(o.stkID AS int) AS StkID,
+                ISNULL(m.mrkAd, N'-') AS Marka,
+                u.stkAd AS Urun,
+                CAST(o.StokMiktar AS int) AS Stok,
+                CAST(o.StokMiktar / ((ISNULL(s.Adet,0) + ISNULL(e.Qty,0)) / 12.0) AS decimal(10,1)) AS AyKapsam,
+                CAST(o.StokMiktar * ISNULL(ub.SonAlis,0) AS decimal(18,0)) AS StokTl
+            FROM DerinSISBkm.ent.odak_depo_Stok o
+            JOIN DerinSISBkm.dbo.urn u ON u.stkID = o.stkID
+            JOIN DerinSISBkm.dbo.urnKtgr2 k ON k.ktgrID = u.urnKtgr2ID AND k.ktgrAd = @kategori
+            LEFT JOIN DerinSISBkm.dbo.urnMrk m ON m.mrkID = u.urnMrkID
+            LEFT JOIN DerinSISBkm.bkm.UrunBilgi ub ON ub.stkID = o.stkID
+            LEFT JOIN sat s ON s.sID = o.stkID
+            LEFT JOIN ecom e ON e.stkID = o.stkID
+            WHERE o.StokMiktar > 0 AND u.urnTip = 0 AND (ISNULL(s.Adet,0) + ISNULL(e.Qty,0)) > 0
+            ORDER BY o.StokMiktar / ((ISNULL(s.Adet,0) + ISNULL(e.Qty,0)) / 12.0) DESC
+            """;
+        return (await conn.QueryAsync<OdakAsiri>(sql, new { kategori, top })).ToList();
     }
 
     /// <summary>Ürün tam döküm (seçili kategori, sayfalı). marka (tam) + ara (yazar/ürün LIKE) filtresi. E-ticaret OPENQUERY dahil.</summary>
