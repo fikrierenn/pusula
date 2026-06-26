@@ -32,32 +32,16 @@ else if (_loading)
 }
 else
 {
-    @* KPI özet şeridi *@
+    @* KPI özet şeridi (sistem standardı — AppKpiCarousel) *@
     @if (_kpi is not null)
     {
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-                <div class="text-xs text-base-content/50">Çeşit</div>
-                <div class="text-xl font-bold">@Num(_kpi.Cesit)</div>
-            </div>
-            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-                <div class="text-xs text-base-content/50">Adet</div>
-                <div class="text-xl font-bold">@Num(_kpi.Adet)</div>
-            </div>
-            <div class="bg-base-100 border-2 border-primary/30 rounded-lg p-3">
-                <div class="text-xs text-base-content/50">Tutar</div>
-                <div class="text-xl font-bold text-primary tabular-nums">@Tl(_kpi.Tutar)</div>
-            </div>
-            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-                <div class="text-xs text-base-content/50">Sipariş</div>
-                <div class="text-xl font-bold">@Num(_kpi.Siparis)</div>
-            </div>
-            <div class="bg-base-100 border-2 @(_kpi.IptalSatir > 0 ? "border-warning/40" : "border-base-300") rounded-lg p-3">
-                <div class="text-xs text-base-content/50">İptal (0 adet) — hariç</div>
-                <div class="text-xl font-bold @(_kpi.IptalSatir > 0 ? "text-warning" : "")">@Num(_kpi.IptalSatir)</div>
-                <div class="text-[11px] text-base-content/40">satır rapora alınmadı</div>
-            </div>
-        </div>
+        <AppKpiCarousel Id="bskkpi" Items="@(new List<KpiCardData>
+        {
+            new("Çeşit", Num(_kpi.Cesit), "from-info to-info/80", "farklı barkod"),
+            new("Adet", Num(_kpi.Adet), "from-primary to-primary/80", "baskısız adet"),
+            new("Tutar", Tl(_kpi.Tutar), "from-success to-success/80", "toplam"),
+            new("Sipariş", Num(_kpi.Siparis), "from-warning to-warning/80", "etkilenen sipariş"),
+        })" />
     }
 
     @* Kullanıcı özeti *@
