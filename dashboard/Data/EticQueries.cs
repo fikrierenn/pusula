@@ -343,7 +343,7 @@ public sealed class EticQueries(Db db)
                    SUM(B.QUANTITY * D.SELLINGPRICE)    AS Tutar
             FROM   dbo.BASKISIYOK B WITH(NOLOCK)
             JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
-            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
             GROUP BY CONVERT(DATE, B.TARIH)
             ORDER BY CONVERT(DATE, B.TARIH) DESC
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
@@ -359,7 +359,7 @@ public sealed class EticQueries(Db db)
                    COUNT(DISTINCT B.BARCODE)                         AS Cesit,
                    CAST(SUM(B.QUANTITY) AS int)                      AS Adet
             FROM   dbo.BASKISIYOK B WITH(NOLOCK)
-            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
             GROUP BY CONVERT(DATE, B.TARIH)
             ORDER BY CONVERT(DATE, B.TARIH)
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });
@@ -384,7 +384,7 @@ public sealed class EticQueries(Db db)
             JOIN   dbo.J_ORDER_DETAILS D WITH(NOLOCK) ON D.LOGICALREF = B.DETAILREF
             JOIN   dbo.J_ITEMS A WITH(NOLOCK)         ON A.LOGICALREF = D.ITEMREF
             JOIN   dbo.EM_USERS U WITH(NOLOCK)        ON U.LOGICALREF = B.USERREF
-            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit
+            WHERE  CONVERT(DATE, B.TARIH) >= @Bas AND CONVERT(DATE, B.TARIH) < @Bit AND B.QUANTITY > 0
             GROUP BY B.TARIH, U.FULLNAME, D.BARCODE, A.CODE, A.NAME, A.BRAND, A.GROUPCODE
             ORDER BY SUM(B.QUANTITY * D.SELLINGPRICE) DESC
             """, new { Bas = start.ToString("yyyyMMdd"), Bit = endExcl.ToString("yyyyMMdd") });

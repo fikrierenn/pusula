@@ -13,6 +13,15 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# Konsol penceresini GIZLE (nasil baslatilirsa baslatilsin gorunmesin; pencere kapatinca tray olmesin).
+# ShowWindow(SW_HIDE) — hata olursa SES CIKARMA, sakin devam (gizleme kritik degil, sunucu calismali).
+try {
+    $sig = '[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);'
+    $t = Add-Type -MemberDefinition $sig -Name 'WinHide' -Namespace 'Win32Hide' -PassThru -ErrorAction Stop
+    $h = $t::GetConsoleWindow()
+    if ($h -ne [IntPtr]::Zero) { [void]$t::ShowWindow($h, 0) }
+} catch { }
+
 $dll     = "D:\Dev\pusula\dashboard\bin\Release\net10.0\GmDashboard.dll"
 $workDir = "D:\Dev\pusula\dashboard"   # content root: Kestrel cert/bkm.crt + wwwroot goreli yollari
 $iconPng = "D:\Dev\pusula\dashboard\wwwroot\icon-192.png"
