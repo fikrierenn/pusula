@@ -2,6 +2,7 @@
 @using GmDashboard.Data
 @using GmDashboard.Models
 @inject EticQueries Etic
+@inject IJSRuntime JS
 @inject ILogger<BaskisiYok> Logger
 @rendermode InteractiveServer
 
@@ -50,7 +51,7 @@ else
             <div class="text-sm font-semibold mb-2">Saat Yoğunluğu <span class="text-xs text-base-content/50">— gün içi (adet)</span></div>
             @if (_saat.Count > 0)
             {
-                <AppAreaChart TItem="BaskisiYokSaat" Items="_saat" Name="Adet" Height="130"
+                <AppAreaChart TItem="BaskisiYokSaat" Items="_saat" Name="Adet" Color="@_pColor" Height="130"
                               XValue="@(s => (object)s.Saat)" YValue="@(s => (decimal?)s.Adet)" />
             }
             else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
@@ -59,7 +60,7 @@ else
             <div class="text-sm font-semibold mb-2">Haftanın Günü <span class="text-xs text-base-content/50">— (adet)</span></div>
             @if (_hafta.Count > 0)
             {
-                <AppAreaChart TItem="BaskisiYokHaftaGun" Items="_hafta" Name="Adet" Height="130"
+                <AppAreaChart TItem="BaskisiYokHaftaGun" Items="_hafta" Name="Adet" Color="@_pColor" Height="130"
                               XValue="@(h => (object)h.Gun)" YValue="@(h => (decimal?)h.Adet)" />
             }
             else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
@@ -68,7 +69,7 @@ else
             <div class="text-sm font-semibold mb-2">Sipariş→Baskısı Yok Gecikme <span class="text-xs text-base-content/50">— kaç gün sonra (adet)</span></div>
             @if (_gecikme.Count > 0)
             {
-                <AppAreaChart TItem="BaskisiYokGecikme" Items="_gecikme" Name="Adet" Height="130"
+                <AppAreaChart TItem="BaskisiYokGecikme" Items="_gecikme" Name="Adet" Color="@_pColor" Height="130"
                               XValue="@(g => (object)g.Kova)" YValue="@(g => (decimal?)g.Adet)" />
             }
             else { <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p> }
@@ -184,8 +185,21 @@ else
     private IReadOnlyList<BaskisiYokGecikme> _gecikme = [];
     private bool _loading = true;
     private string? _error;
+    private string _pColor = "";   // DaisyUI --p grafik rengi (tema köprüsü, hardcode yok)
 
     protected override async Task OnInitializedAsync() => await Yukle();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+            var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+            if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+        }
+        catch { /* tema okunamazsa component fallback */ }
+    }
 
     private async Task Bugun() { _bas = DateTime.Today; _bit = DateTime.Today; await Yukle(); }
     private async Task Son7()  { _bit = DateTime.Today; _bas = DateTime.Today.AddDays(-6); await Yukle(); }

@@ -172,7 +172,7 @@ else if (_data is not null)
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] min-w-0 [grid-column:span_2] max-[900px]:[grid-column:1/-1]"><h3 class="text-sm font-semibold text-base-content/90 mb-3.5 flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4 text-primary"></i>Gelen Sipariş — Saat Yoğunluğu (@_aralik)</h3>
             @if (_sipSaat.Count > 0)
             {
-                <AppAreaChart TItem="SiparisSaat" Items="_sipSaat" Name="Sipariş" Height="130"
+                <AppAreaChart TItem="SiparisSaat" Items="_sipSaat" Name="Sipariş" Color="@_pColor" Height="130"
                               XValue="@(s => (object)s.Saat)" YValue="@(s => (decimal?)s.Siparis)" />
                 <div class="text-base-content/50 text-[11px] mt-2">Gün içi hangi saatlerde sipariş yoğun (ORDERDATE saati). Kapasite/vardiya planı.</div>
             }
