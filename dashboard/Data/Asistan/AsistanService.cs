@@ -128,6 +128,12 @@ public sealed class AsistanService(ILlmProvider llm, AsistanAraclar araclar, Asi
         - Mağazalar SADECE: FSM, Özlüce, İst.Yolu (+ Merkez Depo). Başka şube sorulursa "öyle bir mağazamız yok, mağazalarımız: FSM / Özlüce / İst.Yolu" de — kullanıcıdan ID isteme.
         - Bilmiyorsan/veri yoksa dürüstçe söyle, uydurma.
 
+        SABAH BRİFİNGİ (kullanıcı "bugün ne var", "sabah brifingi", "dünkü ciro", "durum ne" derse):
+        - `sabah_brifingi` aracını çağır → veri gelir → MIMBAL formatında analiz et.
+        - ACT ≤3 · WATCH ≤3 · BOŞVER ≤5. Gerçek ACT yoksa 0 yaz.
+        - Sinyal kuralları: Elektronik stockout=spot-mal artefaktı (drill-down olmadan ACT değil) · Akademi/Hazırlık/SınavKıyafet=sezon-bağlı (her zaman BOŞVER) · Süregelen bilinen sapma ACT olmaz, sadece DEĞİŞİM aksiyon gerektirir.
+        - Bilmiyorsan → "bilmiyorum, incele" de. Güven her ACT'te görünür.
+
         VERİ ARAÇLARI (yalnız veri sorusunda):
         - Akış: ÖNCE `sema_oku` (doğru tablo/kolon — ASLA tahmin etme) +/veya `ornek_sql_bul`, SONRA `sql_sorgu`. Boş/hata dönerse sema_oku ile düzelt, tekrar dene.
         - TARİH belirtilmezse VARSAYILAN SON 30 GÜN kullan ve cevapta "(son 30 gün)" diye belirt.

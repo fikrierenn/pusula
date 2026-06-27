@@ -1,0 +1,170 @@
+@page "/sabah"
+@using Markdig
+@using GmDashboard.Data
+@using GmDashboard.Data.Asistan
+@inject SabahService SabahSvc
+@inject AsistanService Ai
+@inject AsistanBellekService Bellek
+@rendermode InteractiveServer
+
+<PageTitle>Sabah Brifingi</PageTitle>
+
+<div class="max-w-[820px] mx-auto flex flex-col gap-4">
+
+    @* ── Başlık ── *@
+    <div class="flex items-center gap-2 flex-wrap">
+        <i data-lucide="sunrise" class="w-7 h-7 text-warning"></i>
+        <h1 class="text-2xl font-bold tracking-tight m-0">Sabah Brifingi</h1>
+        <span class="text-sm text-base-content/50">@(_veri?.Tarih.ToString("dd.MM.yyyy") ?? "—")</span>
+        <button class="btn btn-sm btn-ghost ml-auto gap-1.5" @onclick="YenileAsync" disabled="@_yukleniyor">
+            <i data-lucide="refresh-cw" class="w-4 h-4 @(_yukleniyor ? "animate-spin" : "")"></i>Yenile
+        </button>
+    </div>
+
+    @* ── Hata ── *@
+    @if (_hata is not null)
+    {
+        <div class="alert alert-error text-sm">Veri alınamadı: @_hata</div>
+    }
+
+    @* ── Yükleniyor ── *@
+    @if (_yukleniyor)
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-6">
+            <div class="flex items-center gap-3 text-base-content/60">
+                <span class="loading loading-spinner loading-sm"></span>
+                <span class="text-sm">Veri çekiliyor ve analiz ediliyor…</span>
+            </div>
+        </div>
+    }
+    else if (_brief is not null)
+    {
+        @* ── Brief ── *@
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5">
+            <article class="prose prose-sm max-w-none">
+                @((MarkupString)Markdig.Markdown.ToHtml(_brief, _md))
+            </article>
+        </div>
+
+        @* ── Ham veri ── *@
+        @if (_veri is not null)
+        {
+            <details class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-2xl">
+                <summary class="collapse-title text-sm font-medium">Ham veri</summary>
+                <div class="collapse-content">
+                    <pre class="text-xs text-base-content/70 whitespace-pre-wrap">@SabahService.VeriMetni(_veri)</pre>
+                </div>
+            </details>
+        }
+
+        @* ── Evaluation ── *@
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5">
+            <h2 class="text-base font-semibold mb-3 m-0">Gün sonu değerlendirmesi</h2>
+            @if (_evalKaydedildi)
+            {
+                <div class="alert alert-success text-sm py-2">Değerlendirme kaydedildi — Genius belleğine işlendi.</div>
+            }
+            else
+            {
+                <div class="flex flex-col gap-3">
+                    <EvalSatir Soru="1. Yeni bir şey öğrendim mi?"   Cevap="_eval1" CevapSecildi="v => _eval1 = v" />
+                    <EvalSatir Soru="2. Listeden aksiyon aldım mı?"  Cevap="_eval2" CevapSecildi="v => _eval2 = v" />
+                    <EvalSatir Soru="3. IGNORE doğru muydu?"         Cevap="_eval3" CevapSecildi="v => _eval3 = v" />
+                    <button class="btn btn-primary btn-sm self-start mt-1 gap-1.5"
+                            @onclick="EvalKaydet"
+                            disabled="@(_eval1 is null || _eval2 is null || _eval3 is null)">
+                        <i data-lucide="save" class="w-4 h-4"></i>Kaydet
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+    private static readonly MarkdownPipeline _md = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+
+    private SabahVeri? _veri;
+    private string?    _brief;
+    private string?    _hata;
+    private bool       _yukleniyor = true;
+
+    private bool? _eval1, _eval2, _eval3;
+    private bool  _evalKaydedildi;
+
+    protected override async Task OnInitializedAsync() => await YukleAsync();
+
+    private async Task YenileAsync()
+    {
+        _brief = null; _veri = null; _hata = null;
+        _eval1 = _eval2 = _eval3 = null;
+        _evalKaydedildi = false;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        StateHasChanged();
+        try
+        {
+            _veri = await SabahSvc.GetAsync();
+            if (_veri.Hata is not null) { _hata = _veri.Hata; return; }
+
+            if (!Ai.Hazir) { _brief = "*(Asistan yapılandırılmamış — LLM key yok. Ham veri aşağıda.)*"; return; }
+
+            _brief = await Ai.MetinUretAsync(SabahSistemTalimat, SabahService.VeriMetni(_veri));
+        }
+        catch (Exception ex) { _hata = ex.Message; }
+        finally { _yukleniyor = false; StateHasChanged(); }
+    }
+
+    private void EvalKaydet()
+    {
+        if (_eval1 is null || _eval2 is null || _eval3 is null || _veri is null) return;
+        var tarih = _veri.Tarih.ToString("dd.MM.yyyy");
+
+        if (_eval1 == true)  Bellek.Yaz("ekle", $"Sabah brifingi {tarih}: yeni şey öğrendim (sinyal çalıştı)", "gercek");
+        if (_eval1 == false) Bellek.Yaz("ekle", $"Sabah brifingi {tarih}: yeni şey öğrenmedim (sakin gün veya sinyal zayıf)", "gercek");
+        if (_eval2 == true)  Bellek.Yaz("ekle", $"Sabah brifingi {tarih}: liste aksiyon üretti", "gercek");
+        if (_eval3 == false) Bellek.Yaz("ekle", $"Sabah brifingi {tarih}: IGNORE yanlıştı — sinyal kalitesini gözden geçir", "gercek");
+
+        _evalKaydedildi = true;
+    }
+
+    // Evet/Hayır satırı — inline render fragment (component değil)
+    private RenderFragment EvalSatir(string Soru, bool? Cevap, Action<bool> CevapSecildi) => __builder =>
+    {
+        <div class="flex items-center gap-3">
+            <span class="text-sm flex-1">@Soru</span>
+            <button class="btn btn-xs @(Cevap == true ? "btn-success" : "btn-ghost opacity-50")"
+                    @onclick="() => { CevapSecildi(true); StateHasChanged(); }">Evet</button>
+            <button class="btn btn-xs @(Cevap == false ? "btn-error" : "btn-ghost opacity-50")"
+                    @onclick="() => { CevapSecildi(false); StateHasChanged(); }">Hayır</button>
+        </div>;
+    };
+
+    private const string SabahSistemTalimat = """
+        Sen BKM Kitap Sabah Dikkat Listesi asistanısın. Verilen ciro + stockout verisini 5 dakikada okunabilir MIMBAL formatında analiz et.
+
+        FORMAT (sabit):
+        **Tek satır sağlık:** [toplam ciro ₺] · WoW [%] · MTD [%] ([gerçekleşen]/[hedef])
+
+        ## 🔴 BUGÜN AKSİYON (0–3 madde)
+        Her madde: Ne değişti · Neden bu ACT (hedef üstünde / etki yüksek / kontrol edilebilir) · Etki · Sonraki adım · Güven (yüksek/orta/düşük)
+
+        ## 🟡 İZLE (0–3 madde)
+
+        ## ⚪ BOŞVER (bilinen/susturulan, her biri tek satır gerekçeli)
+
+        SİNYAL KALİTESİ KURALLARI:
+        - Akademi, Hazırlık, Sınav Kıyafet stockout = sezon-bağlı → her zaman BOŞVER
+        - Elektronik stockout = spot-mal artefaktı riski (dönen barkod) → drill-down olmadan ACT değil → BOŞVER veya İZLE
+        - Süregelen bilinen sapma ACT olmaz — sadece DEĞİŞİM aksiyon gerektirir
+        - Gerçek ACT yoksa 0 madde yaz, yer doldurma
+        - Bilmiyorsan → "bilmiyorum, incele" de — uydurma, korelasyonu nedensellik yapma
+
+        Türkçe yaz. Sayıları tr-TR (₺ N0). Maksimum 5 dakika okuma.
+        """;
+}

@@ -6,9 +6,9 @@ namespace GmDashboard.Data.Asistan;
 
 /// <summary>
 /// Asistan araçları (plan-20 Faz-1): sql_sorgu (salt-okuma + PII maske), sema_oku, ornek_sql_bul (golden-record),
-/// gorev_* (GorevService). LLM tool-use ile çağrılır; AsistanService loop çalıştırır.
+/// gorev_* (GorevService), sabah_brifingi (MIMBAL entegrasyonu). LLM tool-use ile çağrılır; AsistanService loop çalıştırır.
 /// </summary>
-public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar takvimMail, AsistanBellekService bellek, GorusmeService gorusme, IHostEnvironment env, ILogger<AsistanAraclar> log)
+public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar takvimMail, AsistanBellekService bellek, GorusmeService gorusme, SabahService sabah, IHostEnvironment env, ILogger<AsistanAraclar> log)
 {
     private const int SatirLimit = 60;
     private string RepoKok => BulRepoKok();
@@ -87,6 +87,9 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
                 konu = new { type = "string", description = "Konu" },
                 govde = new { type = "string", description = "Mail gövdesi (Türkçe, nazik)" },
             }, required = new[] { "kime", "govde" } }),
+        new("sabah_brifingi",
+            "Bugünün Sabah Dikkat Listesini üretir: dünkü mağaza cirosu (WoW + MTD hedef) + stockout kategori özeti. 'Bugün ne var', 'sabah brifingi', 'dünkü ciro' gibi ifadelerde kullan.",
+            new { type = "object", properties = new { } }),
     ];
 
     /// <summary>secenek_sun argümanları → (soru, seçenek listesi). UI tıklanır butonlar gösterir.</summary>
@@ -162,14 +165,15 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
         {
             return ad switch
             {
-                "sql_sorgu"     => await SqlSorgu(Arg(args, "sql"), ct),
-                "sema_oku"      => SemaOku(Arg(args, "dosya")),
-                "ornek_sql_bul" => OrnekSqlBul(Arg(args, "konu")),
-                "gorev_listele" => GorevListele(),
+                "sql_sorgu"      => await SqlSorgu(Arg(args, "sql"), ct),
+                "sema_oku"       => SemaOku(Arg(args, "dosya")),
+                "ornek_sql_bul"  => OrnekSqlBul(Arg(args, "konu")),
+                "gorev_listele"  => GorevListele(),
                 "takvim_listele" => await takvimMail.TakvimListele(ArgInt(args, "gun_sayisi"), ct),
                 "mail_ozet"      => await takvimMail.MailOzet(Arg(args, "sorgu"), ArgInt(args, "adet"), ct),
                 "bellek_yaz"     => BellekYaz(args),
                 "gecmis_ara"     => GecmisAra(Arg(args, "terim"), ArgInt(args, "adet")),
+                "sabah_brifingi" => await SabahBrifingi(ct),
                 _ => Hata($"Bilinmeyen araç: {ad}"),
             };
         }
@@ -272,6 +276,26 @@ public sealed class AsistanAraclar(Db db, GorevService gorev, TakvimMailAraclar 
     private static int ArgInt(JsonElement a, string ad) =>
         a.ValueKind == JsonValueKind.Object && a.TryGetProperty(ad, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) ? n
         : int.TryParse(Arg(a, ad), out var p) ? p : 0;
+
+    private async Task<string> SabahBrifingi(CancellationToken ct)
+    {
+        var veri = await sabah.GetAsync();
+        if (veri.Hata is not null) return Hata($"Veri alınamadı: {veri.Hata}");
+        return JsonSerializer.Serialize(new {
+            tarih    = veri.Tarih.ToString("dd.MM.yyyy"),
+            magazalar = veri.Magazalar.Select(m => new {
+                m.Ad, net = (long)m.Net, m.Fis,
+                wowYuzde = veri.ToplamWow > 0 ? Math.Round((m.Net - m.Wow) / m.Wow * 100, 1) : 0,
+                mtdYuzde = m.Hedef > 0 ? Math.Round(m.Mtd / m.Hedef * 100, 1) : 0,
+                mtdNet   = (long)m.Mtd, hedef = (long)m.Hedef,
+            }),
+            toplamNet    = (long)veri.ToplamNet,
+            toplamWowYuzde = veri.ToplamWow > 0 ? Math.Round((veri.ToplamNet - veri.ToplamWow) / veri.ToplamWow * 100, 1) : 0,
+            mtdYuzde  = veri.ToplamHedef > 0 ? Math.Round(veri.ToplamMtd / veri.ToplamHedef * 100, 1) : 0,
+            stockout  = veri.Stockout,
+            uyari     = "Elektronik=spot-mal artefaktı riski; Akademi/Hazırlık/SınavKıyafet=sezon-dışı; sahaf zaten hariç.",
+        });
+    }
 
     private string BulRepoKok()
     {
