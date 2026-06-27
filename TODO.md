@@ -13,6 +13,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-06-26/27 — Baskısı Yok kapsamlı iyileştirme + ODAK Stok KPI + sema borçları
+- **Baskısı Yok (B-126 uzantı + sema):** iptal-0 bug fix (`WHERE B.QUANTITY>0`) + AppKpiCarousel KPI + grup dağılımı + saat×gün heatmap (B-55 deseni) + gecikme kova grafiği + saat/haftanın-günü grafikler + _pColor köprüsü + varsayılan Son 7 gün + SQL arşiv. BASKISIYOK sema entity + 3 bridge yazıldı (B-126 TAMAMEN KAPALI).
+- **ODAK Stok (B-123 uzantı):** KPI şeridi AppKpiCarousel (Çeşit/Bağlı Sermaye/Ölü Stok/Ort.Ay-Kapsam) + Aşırı Stok Top-10 kart (warning border) + marka özeti Stok ₺ kolonu.
+- **E-ticaret:** sipariş saat yoğunluğu grafiği (`GetSiparisSaatAsync`).
+- **Tray:** `start_dashboard.ps1` konsol ShowWindow(SW_HIDE) gizleme.
+- **Sema:** `bakiyeVDGG_vw` entity + `bakiyevdgg-frm` bridge.
+- 10 commit (49495cf → da842e7). Uncommitted: `.gitignore` + `raporlar/` + `make-dashboard-cert.sh`.
+
 ### 2026-06-22 — Operasyon hızlı kazanım kartları (B-112 3/4 + B-111) + TODO dedup
 - **B-112** (6df2a39): Operasyon'a 3 kart — ödeme grubu+Δ (nakit-stres) / iade sebebi (RefundReasons.Type=0) / indirim kaynağı (SPC.Source). (d) kasa saatleri zaten vardı. Yeni `RefQueries.Operasyon.cs` partial + 3 record. Dönem-duyarlı.
 - **B-111** (5884ac6): WMS bekleyen doluluk kartı — TEMİZ J_ORDERS aşama split (`GetBekleyenDurumAsync`), emirAyr kirli kullanılmadı. Canlı toplanma 2/hazırlanan 4.283/temin 6.185.
@@ -174,7 +182,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ✅ **B-123 ODAK Stok paneli** — 25.06 (commit 9cb40fa + iyileştirmeler 2737134/2202a78/031357e/0b1743d/983e58f/f2f40b6/2d1867b/a31e6c4). `/odak-stok` 3 sekme (marka özet / ürün dökümü server-paginated / usulsüz sipariş). ODAK=`ent.odak_depo_Stok`, alış `fat eTip=0→eFirma`. Usulsüz=stok≥6ay/satışsız + ≥2 cari; cari→fatura→/fatura drill. StkID→stok-hareket (yeni sekme). Marka/yazar filtre, tarih aralığı notu, Excel. (Kod yorumu "B-122" yazıldı — kozmetik, B-123 doğru.)
 - [x] ✅ **B-124 Cari / Risk Özeti finans sayfası** — 25.06 (commit 4e17abc/e6eef09/1e2727b). `/cari-risk` `bakiyeVDGG_vw + frm`: borç/alacak/net bakiye + vadesi geçen (GecenB) + yaklaşan + limit aşımı. Filtre Satıcı(320)/Alıcı(120)/Hepsi + arama. **frm.frmTip→`dbo.frmTipTnm` lookup** (hardcode kaldırıldı, Tip 8=Hizmet) → sema/codes.yaml. Not: bakiyeVDGG_vw ~8s ağır (spinner).
 - [x] ✅ **B-125 Genel Excel export bileşeni** — 25.06 (commit e7d81cb). Reusable `ExcelButton` (MiniExcel) + `ExcelExport.Olustur` (satır-sözlüğü) + `bkmDownload` JS. Her grid `<ExcelButton Rows="..." />`. Cari/Risk + ODAK + Baskısı Yok eklendi. **Diğer tablolara yayılabilir (envanter/mizan).**
-- [x] ✅ **B-126 Baskısı Yok e-ticaret raporu** — 25.06 (commit 72d7a1f/bb7daa9/3cec5c0/9d09c11). `/baskisi-yok` JOKER `BASKISIYOK×J_ORDER_DETAILS×J_ITEMS×EM_USERS` (direkt OpenJoker). Gün bazlı özet + ürün detay + Excel + tarih aralığı (Bugün/Son7/Bu ay). E-ticaret sayfasına 30g trend grafiği (çeşit+adet). **KALAN: BASKISIYOK sema entity (JOKER MCP down → doğrulanamadı, canlı çalışıyor).**
+- [x] ✅ **B-126 Baskısı Yok e-ticaret raporu** — 25.06 (commit 72d7a1f/bb7daa9/3cec5c0/9d09c11). `/baskisi-yok` JOKER `BASKISIYOK×J_ORDER_DETAILS×J_ITEMS×EM_USERS` (direkt OpenJoker). Gün bazlı özet + ürün detay + Excel + tarih aralığı (Bugün/Son7/Bu ay). E-ticaret sayfasına 30g trend grafiği (çeşit+adet). ✅ **BASKISIYOK sema entity + 3 bridge yazıldı 26.06** (`sema/entities.yaml:92`, `bridges.yaml:142-160`; iptal-0 bug notu dahil). TAMAMEN KAPALI.
 - [x] ✅ **HK-tray Dashboard tray ikonu** — 25.06 (commit e9c2cb3/5772013). start_dashboard.ps1 NotifyIcon: çift-tık aç, sağ-tık menü (Paneli Aç / Yeniden Başlat / Yeniden Derle ve Başlat / Durdur-Çık). "Yeniden Derle ve Başlat" = eski-sürüm derdine çözüm.
 - [x] ✅ **HK-denetim Haftalık muhasebe denetim zamanlı görev** — 25.06 (commit b030604). YEREL Task `BKM-Muhasebe-Denetim` Pzt 08:00 (kuruldu+tetiklendi, mail gitti). `haftalik_muhasebe_denetim.py` (SP salt-okuma + Türkçe yorum HTML) + bat + register. Bulut/headless LAN DB'ye ulaşamaz → yerel.
 - [ ] **B-06** CampaignId=NULL **389,4M ₺** indirim kaynak araştırması (Session-2'den açık — MCP keşfi).
