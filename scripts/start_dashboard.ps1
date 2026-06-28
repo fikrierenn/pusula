@@ -130,6 +130,16 @@ Start-Dash
 $timer.Start()
 $ni.ShowBalloonTip(3000, "BKM Dashboard", "Sunucu çalışıyor: $panelUrl", [System.Windows.Forms.ToolTipIcon]::Info)
 
+# Sabah brifingi: sunucu ayaga kalkinca /sabah sayfasini otomatik ac
+$sabahTimer = New-Object System.Windows.Forms.Timer
+$sabahTimer.Interval = 5000   # 5sn — Kestrel baslangic suresi
+$sabahTimer.Add_Tick({
+    $sabahTimer.Stop()
+    $sabahTimer.Dispose()
+    Start-Process "$panelUrl/sabah"
+})
+$sabahTimer.Start()
+
 # Mesaj dongusu (tray canli kalsin). Cik menusu Application.Exit cagirir.
 $ctx = New-Object System.Windows.Forms.ApplicationContext
 [System.Windows.Forms.Application]::Run($ctx)
