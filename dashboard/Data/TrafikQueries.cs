@@ -39,12 +39,13 @@ public sealed class TrafikQueries(Db db)
             """, new { bas, bit });
     }
 
-    /// <summary>Heatmap: gün×saat ortalama (Ziyaretci / Fis / Kasiyer). Ziyaretçi + fiş ayrı sorgu, C#'da (gun,saat) birleştir.</summary>
+    /// <summary>Heatmap: gün×saat ortalama (Ziyaretci / Fis / Kasiyer). İki ayrı connection — MARS yok (paralel sorgu aynı conn = hata).</summary>
     public async Task<IReadOnlyList<TrafikHeat>> GetHeatAsync(DateOnly bas, DateOnly bit)
     {
-        await using var conn = await db.OpenAsync();
+        await using var connZ = await db.OpenAsync();
+        await using var connF = await db.OpenAsync();
 
-        var zTask = conn.QueryAsync<(int Gun, int Saat, int Val)>("""
+        var zTask = connZ.QueryAsync<(int Gun, int Saat, int Val)>("""
             SELECT
                 (DATEPART(weekday, CONVERT(date, Tarih)) + @@DATEFIRST - 2) % 7 AS Gun,
                 DATEPART(hour, Tarih) AS Saat,
@@ -56,7 +57,7 @@ public sealed class TrafikQueries(Db db)
                 DATEPART(hour, Tarih)
             """, new { bas, bit });
 
-        var fTask = conn.QueryAsync<(int Gun, int Saat, int Fis, int Kasiyer)>($"""
+        var fTask = connF.QueryAsync<(int Gun, int Saat, int Fis, int Kasiyer)>($"""
             SELECT
                 Gun,
                 Saat,
