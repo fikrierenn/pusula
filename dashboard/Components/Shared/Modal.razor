@@ -1,6 +1,6 @@
 @* DaisyUI native modal — drill paneli. modal-open ile açılır, backdrop tık kapatır. *@
 <div class="modal modal-bottom sm:modal-middle z-[200] @(Open ? "modal-open" : "")" role="dialog">
-    <div class="modal-box max-w-3xl w-full max-h-[88vh] sm:max-h-[85vh]">
+    <div class="modal-box @MaxWidthCls w-full max-h-[88vh] sm:max-h-[85vh]">
         @* Grip = mobilde geniş tıkla-kapat alanı (parmak içgüdüsel buraya gider). *@
         <button class="block w-full pt-1 pb-2 sm:hidden" @onclick="Close" aria-label="Kapat">
             <span class="block w-12 h-1.5 bg-base-300 rounded-full mx-auto"></span>
@@ -19,6 +19,14 @@
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Size { get; set; } = "md";  // sm=2xl · md=3xl · lg=5xl · xl=7xl
+
+    private string MaxWidthCls => Size switch {
+        "sm" => "max-w-2xl",
+        "lg" => "max-w-5xl",
+        "xl" => "max-w-7xl",
+        _    => "max-w-3xl"
+    };
 
     private async Task Close() => await OpenChanged.InvokeAsync(false);
 }

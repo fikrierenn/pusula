@@ -29,6 +29,26 @@
         <div class="alert alert-error text-sm">Veri alınamadı: @_hata</div>
     }
 
+    @* ── Bağlam notu ── *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4">
+        <div class="flex items-start gap-3">
+            <i data-lucide="message-circle" class="w-4 h-4 text-info mt-2 shrink-0"></i>
+            <div class="flex-1 flex gap-2">
+                <textarea class="textarea textarea-bordered textarea-sm flex-1 resize-none text-sm"
+                          rows="2"
+                          placeholder="Bugün bağlam notu… (örn: okullar tatile girdi, karne hediyesi kampanyası devam ediyor)"
+                          @bind="_baglamNotu" @bind:event="oninput"
+                          disabled="@_yukleniyor"></textarea>
+                @if (!string.IsNullOrWhiteSpace(_baglamNotu))
+                {
+                    <button class="btn btn-info btn-sm self-end gap-1" @onclick="BaglamKaydetVeYenile" disabled="@_yukleniyor">
+                        <i data-lucide="zap" class="w-3.5 h-3.5"></i>Uygula
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
     @* ── Yükleniyor ── *@
     @if (_yukleniyor)
     {
@@ -122,6 +142,7 @@
     private string?    _bellekOzet;
     private string?    _hata;
     private bool       _yukleniyor = true;
+    private string     _baglamNotu = "";
 
     private bool? _eval1, _eval2, _eval3;
     private bool  _evalKaydedildi;
@@ -133,6 +154,17 @@
     private async Task YenileAsync()
     {
         _brief = null; _veri = null; _hata = null; _bellekOzet = null;
+        _eval1 = _eval2 = _eval3 = null;
+        _evalKaydedildi = false; _evalYorum = null; _evalYorumYukleniyor = false;
+        await YukleAsync();
+    }
+
+    private async Task BaglamKaydetVeYenile()
+    {
+        if (string.IsNullOrWhiteSpace(_baglamNotu)) return;
+        var tarih = DateOnly.FromDateTime(DateTime.Today).AddDays(-1).ToString("dd.MM.yyyy");
+        Bellek.Yaz("ekle", $"Bağlam ({tarih}): {_baglamNotu.Trim()}", "gercek");
+        _brief = null; _hata = null; _bellekOzet = null;
         _eval1 = _eval2 = _eval3 = null;
         _evalKaydedildi = false; _evalYorum = null; _evalYorumYukleniyor = false;
         await YukleAsync();
@@ -154,7 +186,7 @@
             if (bellekMetni is { Length: > 10 })
                 _bellekOzet = bellekMetni;
 
-            var talimat = BuildTalimat(_veri.IsPazartesi, bellekMetni);
+            var talimat = BuildTalimat(_veri.IsPazartesi, bellekMetni, _baglamNotu);
             _brief = await Ai.MetinUretAsync(talimat, SabahService.VeriMetni(_veri));
         }
         catch (Exception ex) { _hata = ex.Message; }
@@ -208,10 +240,17 @@
         </div>;
     };
 
-    private static string BuildTalimat(bool isPazartesi, string? bellekMetni)
+    private static string BuildTalimat(bool isPazartesi, string? bellekMetni, string baglamNotu = "")
     {
         var sb = new System.Text.StringBuilder();
         sb.Append(isPazartesi ? SabahTalimatPazartesi : SabahTalimatGunluk);
+
+        if (!string.IsNullOrWhiteSpace(baglamNotu))
+        {
+            sb.AppendLine();
+            sb.AppendLine("=== BUGÜN BAĞLAM NOTU (kullanıcı girdi — analizde öncelikli dikkate al) ===");
+            sb.AppendLine(baglamNotu.Trim());
+        }
 
         if (bellekMetni is { Length: > 10 })
         {
