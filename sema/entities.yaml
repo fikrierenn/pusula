@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-26
+updated: 2026-06-29
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -153,3 +153,11 @@ entities:
   dbo.drn1: {pk: insID, key: [insAd], note: "KULLANICI/personel master. gKisi/cgKisi/ckKisi/coKisi/oKisi → drn1.insID. Ekip: Şule(1897)/Pınar(16)/pinar.muhasebe1(449)/2(450)/Özge."}
   bkm.Fin_AyKapanis: {pk: "(DonemYil, DonemAy)", key: [KapanisDT, KapanisKisi, Aciklama], note: "muhasebe ay-kapanış tarihleri. 2025 Oca–2026 May DOLU (22.06). Kapanış-sonrası müdahale kontrolünün anahtarı; evrak YEAR/MONTH(belge) ile join."}
   bkm.sp_KapanisMudahaleKontrol_v2: {tip: sp, note: "GL forensic — CAR+FAT+MHS kapanış-sonrası müdahale. @Yil/@Ay (NULL=tüm dönem), @Kaynak, @Mod OZET/DETAY, @GiderKod drill, @SadeceGider. severity+forensic+drn1 isim. Fikri'nin 3 SP'sini konsolide eder. Panel /muhasebe + skill muhasebe-denetci sarar."}
+  bkm.MusteriSayi:
+    pk: "[MekanId, Tarih]"
+    key: [MekanId, Tarih, MusteriSayi]
+    grain: "mekan × saat — kapı giriş sayacı, saatlik yazım"
+    note: "Fiziksel kapı sayacı logu. MekanId=1(FSM) şu an tek aktif. Diğer mağazalara kurulum planlanıyor. Veri başlangıcı 2026-04-13. Günlük toplam 1.400-2.535, zirve Cuma/Cmt. Saat zirvesi 13:00-14:00."
+    confidence: 1.0
+    last_verified: "2026-06-29"
+    evidence: "2026-06-29 — MCP DerinSISBkm, SELECT kolon/COUNT/örnek. 1.864 satır, toplam 140.102 müşteri."

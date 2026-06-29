@@ -22,6 +22,7 @@ public static class ServiceRegistration
         s.AddScoped<MizanQueries>();      // B-118 mizan/finans (plan-25)
         s.AddScoped<OdakQueries>();       // B-122 ODAK stok-satış + usulsüz sipariş
         s.AddScoped<FinansQueries>();     // B-124 cari bakiye / risk özeti
+        s.AddScoped<TrafikQueries>();    // B-127 FSM trafik & kasiyer analizi
         s.AddSingleton<SabahService>();   // MIMBAL sabah brifingi (G1+E8)
         return s;
     }

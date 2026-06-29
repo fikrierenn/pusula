@@ -155,6 +155,17 @@ public record SiparisSaat(string Saat, int Siparis);
 /// <summary>Bekleyen gün bucket'ı (kargoya çıkmamış sipariş yaşı; anlık).</summary>
 public record BekleyenBucket(string Bucket, int Adet);
 
+// --- FSM Trafik & Kasiyer (B-127) ---
+
+/// <summary>FSM trafik KPI — kapı sayacı + POS (dönem). Ziyaretci=MusteriSayi toplamı.</summary>
+public record TrafikKpi(int Ziyaretci, int Fis, decimal Net, int Kasiyer);
+
+/// <summary>Trafik heatmap hücresi — gün×saat ortalaması (Ziyaretci / Fis / Kasiyer). Gun: 0=Pzt..6=Paz.</summary>
+public record TrafikHeat(int Gun, int Saat, int Ziyaretci, int Fis, int Kasiyer);
+
+/// <summary>FSM satış personeli dönem performansı (POS bazlı). IlkSaat/SonSaat=mesai ucu.</summary>
+public record TrafikPersonel(string Ad, int Fis, decimal Net, int Atv, int CalistigiGun, int IlkSaat, int SonSaat);
+
 /// <summary>B-111 WMS bekleyen doluluk — aşama split (anlık, SENDDATE NULL). Toplanma=raflanmayı bekleyen (en kritik).</summary>
 public record BekleyenDurum(int ToplanmaBekleyen, int Hazirlanan, int TeminBekleyen)
 {

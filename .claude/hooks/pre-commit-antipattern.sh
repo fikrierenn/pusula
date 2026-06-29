@@ -55,31 +55,33 @@ for f in $staged; do
 
   # Hardcoded password — BLOK (tum stack)
   if echo "$f" | grep -qE '\.(cs|cshtml|json|ps1|ts|tsx|js|jsx|py|java|rb|go|rs|yml|yaml|env|ini|config|xml)$'; then
-    if grep -HnE 'password[[:space:]]*[=:][[:space:]]*["'\''][A-Za-z0-9!@#$%^&*+._-]{4,}' "$f" 2>/dev/null | grep -viE 'password[[:space:]]*[=:][[:space:]]*["'\'']?(\s|$|;|"|'\''|\{|\$)' | head -3; then
+    if grep -E 'password[[:space:]]*[=:][[:space:]]*["'"'"'][A-Za-z0-9!@#$%^&*+._-]{4,}' "$f" 2>/dev/null \
+       | grep -qviE 'password[[:space:]]*[=:][[:space:]]*["'"'"']?(\s|$|;|"|'"'"'|\{|\$)'; then
       block_issues+=("$f: hardcoded sifre (env var / secret manager kullan)")
     fi
   fi
 
   # .NET
   if echo ",$stacks," | grep -q ",dotnet," && [[ "$f" == *.cs ]]; then
-    if grep -Hn 'async void\b' "$f" 2>/dev/null | grep -v 'event' | grep -v '^\s*//' | head -3 >/dev/null; then
+    # grep -q ile son komut kuralı: eşleşme varsa exit 0 (true), yoksa exit 1 (false)
+    if grep -E 'async void\b' "$f" 2>/dev/null | grep -v 'event' | grep -qv '^\s*//'; then
       block_issues+=("$f: async void (event handler harici yasak)")
     fi
-    if grep -Hn 'new HttpClient()' "$f" 2>/dev/null | grep -v '^\s*//' | head -3 >/dev/null; then
+    if grep 'new HttpClient()' "$f" 2>/dev/null | grep -qv '^\s*//'; then
       block_issues+=("$f: new HttpClient() -> IHttpClientFactory")
     fi
-    if grep -HnE '(TempData\[.*\]|ViewBag\.|Json\(\s*new\s*\{[^}]*message).*ex\.Message' "$f" 2>/dev/null | head -3 >/dev/null; then
+    if grep -E '(TempData\[.*\]|ViewBag\.|Json\(\s*new\s*\{[^}]*message).*ex\.Message' "$f" 2>/dev/null | grep -q .; then
       block_issues+=("$f: ex.Message user'a sizintili (logger'a yaz, generic mesaj)")
     fi
     # DateTime.Now → UYAR (BKM tek-TZ yerel display kasitli; UtcNow tercih ama bloklamaz)
-    if grep -Hn 'DateTime\.Now\b' "$f" 2>/dev/null | grep -v '^\s*//' | head -1 >/dev/null; then
+    if grep -E 'DateTime\.Now\b' "$f" 2>/dev/null | grep -qv '^\s*//'; then
       warn_issues+=("$f: DateTime.Now (yerel display ise OK; persist/hesap ise UtcNow)")
     fi
   fi
 
   # Python — bare except BLOK (error-handling.md), print() UYAR (CLI script legit)
   if echo ",$stacks," | grep -q ",python," && [[ "$f" == *.py ]]; then
-    if grep -HnE 'except[[:space:]]*:' "$f" 2>/dev/null | head -3 >/dev/null; then
+    if grep -qE 'except[[:space:]]*:' "$f" 2>/dev/null; then
       block_issues+=("$f: bare 'except:' (yakalanan tipi belirt — sessiz hata yasak)")
     fi
   fi

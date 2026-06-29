@@ -1,0 +1,270 @@
+@page "/trafik"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject TrafikQueries TrafikSvc
+@inject ILogger<Trafik> Logger
+@rendermode InteractiveServer
+
+<PageTitle>FSM Trafik & Kasiyer — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">FSM · Kapı sayacı × POS fiş</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">FSM Trafik &amp; Kasiyer Analizi</h1>
+</div>
+
+<div class="flex flex-wrap items-center gap-2 mb-4">
+    <span class="text-xs text-base-content/50">Tarih</span>
+    <input type="date" class="input input-bordered input-sm" @bind="_bas" @bind:after="Yukle" />
+    <span class="text-base-content/40">–</span>
+    <input type="date" class="input input-bordered input-sm" @bind="_bit" @bind:after="Yukle" />
+    <button class="btn btn-sm btn-ghost" @onclick="BuHafta">Bu hafta</button>
+    <button class="btn btn-sm btn-ghost" @onclick="BuAy">Bu ay</button>
+    <button class="btn btn-sm btn-ghost" @onclick="Son4Hafta">Son 4 hafta</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>@_error</span></div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2">
+        <span class="loading loading-spinner loading-sm"></span> Yükleniyor…
+    </p>
+}
+else
+{
+    @* KPI şeridi *@
+    @if (_kpi is not null)
+    {
+        var conv = _kpi.Ziyaretci > 0 ? Math.Round(100.0 * _kpi.Fis / _kpi.Ziyaretci, 1) : 0;
+        var perZiy = _kpi.Ziyaretci > 0 ? (int)(_kpi.Net / _kpi.Ziyaretci) : 0;
+        <AppKpiCarousel Id="trafikkpi" Items="@(new List<KpiCardData>
+        {
+            new("Ziyaretçi",      Fmt(_kpi.Ziyaretci),         "from-info to-info/80",          "kapı girişi"),
+            new("Fiş",            Fmt(_kpi.Fis),                "from-primary to-primary/80",    "satış işlemi"),
+            new("Dönüşüm",        conv.ToString("F1") + "%",    "from-success to-success/80",    "fiş / ziyaretçi"),
+            new("₺/Ziyaretçi",   FmtTl(perZiy),               "from-warning to-warning/80",    "ortalama"),
+            new("Aktif Personel", Fmt(_kpi.Kasiyer),            "from-secondary to-secondary/80","dönem boyunca"),
+        })" />
+    }
+
+    @* 3 Heatmap *@
+    @if (_heat.Count > 0)
+    {
+        var map = _heat.ToDictionary(h => (h.Gun, h.Saat));
+        var sMin = _heat.Min(h => h.Saat);
+        var sMax = _heat.Max(h => h.Saat);
+        string[] gunAd = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+        @* Ziyaretçi heatmap *@
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-3">
+            <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <i data-lucide="users" class="w-4 h-4 text-info"></i>
+                Kapı Girişi — Saat × Gün
+                <span class="text-xs text-base-content/50 font-normal">(ort. ziyaretçi/saat)</span>
+            </div>
+            @{
+                var maxZ = _heat.Max(h => h.Ziyaretci);
+                <div class="overflow-x-auto pb-1">
+                    <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
+                        <div></div>
+                        @for (int s = sMin; s <= sMax; s++)
+                        {
+                            <div class="text-[9px] text-base-content/40 text-center leading-4">@s</div>
+                        }
+                        @for (int g = 0; g < 7; g++)
+                        {
+                            int gi = g;
+                            <div class="text-[10px] text-base-content/60 flex items-center h-[22px]">@gunAd[gi]</div>
+                            @for (int s = sMin; s <= sMax; s++)
+                            {
+                                int si = s;
+                                var cell = map.GetValueOrDefault((gi, si));
+                                int val = cell?.Ziyaretci ?? 0;
+                                double op = maxZ > 0 && val > 0 ? Math.Max(0.08, Math.Round((double)val / maxZ, 2)) : 0;
+                                <div class="rounded-[3px] h-[22px] @(val > 0 ? "bg-info" : "bg-base-200")"
+                                     style="@(val > 0 ? $"opacity:{op.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}" : "")"
+                                     title="@gunAd[gi] @(si):00 — @val ziyaretçi"></div>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="text-base-content/50 text-[11px] mt-1">Koyu = yoğun. Kapı sayacı saatlik, gün ortalaması.</div>
+            }
+        </div>
+
+        @* Fiş + Kasiyer yan yana *@
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+
+            @* POS Fiş heatmap *@
+            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+                <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                    <i data-lucide="receipt" class="w-4 h-4 text-primary"></i>
+                    POS Fiş — Saat × Gün
+                    <span class="text-xs text-base-content/50 font-normal">(ort. fiş)</span>
+                </div>
+                @{
+                    var maxF = _heat.Max(h => h.Fis);
+                    <div class="overflow-x-auto pb-1">
+                        <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
+                            <div></div>
+                            @for (int s = sMin; s <= sMax; s++)
+                            {
+                                <div class="text-[9px] text-base-content/40 text-center leading-4">@s</div>
+                            }
+                            @for (int g = 0; g < 7; g++)
+                            {
+                                int gi = g;
+                                <div class="text-[10px] text-base-content/60 flex items-center h-[22px]">@gunAd[gi]</div>
+                                @for (int s = sMin; s <= sMax; s++)
+                                {
+                                    int si = s;
+                                    var cell = map.GetValueOrDefault((gi, si));
+                                    int val = cell?.Fis ?? 0;
+                                    double op = maxF > 0 && val > 0 ? Math.Max(0.08, Math.Round((double)val / maxF, 2)) : 0;
+                                    <div class="rounded-[3px] h-[22px] @(val > 0 ? "bg-primary" : "bg-base-200")"
+                                         style="@(val > 0 ? $"opacity:{op.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}" : "")"
+                                         title="@gunAd[gi] @(si):00 — @val fiş"></div>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Kasiyer heatmap *@
+            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+                <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                    <i data-lucide="user-check" class="w-4 h-4 text-warning"></i>
+                    Aktif Kasiyer — Saat × Gün
+                    <span class="text-xs text-base-content/50 font-normal">(ort. kişi)</span>
+                </div>
+                @{
+                    var maxK = _heat.Max(h => h.Kasiyer);
+                    <div class="overflow-x-auto pb-1">
+                        <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
+                            <div></div>
+                            @for (int s = sMin; s <= sMax; s++)
+                            {
+                                <div class="text-[9px] text-base-content/40 text-center leading-4">@s</div>
+                            }
+                            @for (int g = 0; g < 7; g++)
+                            {
+                                int gi = g;
+                                <div class="text-[10px] text-base-content/60 flex items-center h-[22px]">@gunAd[gi]</div>
+                                @for (int s = sMin; s <= sMax; s++)
+                                {
+                                    int si = s;
+                                    var cell = map.GetValueOrDefault((gi, si));
+                                    int val = cell?.Kasiyer ?? 0;
+                                    double op = maxK > 0 && val > 0 ? Math.Max(0.08, Math.Round((double)val / maxK, 2)) : 0;
+                                    <div class="rounded-[3px] h-[22px] @(val > 0 ? "bg-warning" : "bg-base-200")"
+                                         style="@(val > 0 ? $"opacity:{op.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}" : "")"
+                                         title="@gunAd[gi] @(si):00 — @val kasiyer"></div>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bg-base-100 border border-base-300 rounded-lg p-4 mb-3 text-base-content/40 text-sm">
+            Bu dönem için heatmap verisi yok.
+        </div>
+    }
+
+    @* Personel tablosu *@
+    <div class="bg-base-100 border border-base-300 rounded-lg p-3">
+        <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+            <i data-lucide="badge-check" class="w-4 h-4 text-primary"></i>
+            Satış Personeli — Dönem Performansı
+            <span class="text-xs text-base-content/50 font-normal">(@_personel.Count kişi)</span>
+        </div>
+        @if (_personel.Count > 0)
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead><tr>
+                        <th>Personel</th>
+                        <th class="text-right">Fiş</th>
+                        <th class="text-right">Net ₺</th>
+                        <th class="text-right">ATV</th>
+                        <th class="text-right">Çalıştığı Gün</th>
+                        <th class="text-right">Mesai</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var p in _personel)
+                    {
+                        <tr class="hover">
+                            <td class="font-semibold">@p.Ad</td>
+                            <td class="text-right tabular-nums">@Fmt(p.Fis)</td>
+                            <td class="text-right tabular-nums font-semibold">@FmtTl(p.Net)</td>
+                            <td class="text-right tabular-nums text-base-content/70">@FmtTl(p.Atv)</td>
+                            <td class="text-right tabular-nums">@p.CalistigiGun g</td>
+                            <td class="text-right tabular-nums text-base-content/60">@p.IlkSaat:00–@p.SonSaat:00</td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot><tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
+                        <td>TOPLAM</td>
+                        <td class="text-right">@Fmt(_personel.Sum(p => p.Fis))</td>
+                        <td class="text-right">@FmtTl(_personel.Sum(p => p.Net))</td>
+                        <td></td><td></td><td></td>
+                    </tr></tfoot>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-base-content/40 text-sm py-3">Kayıt yok.</p>
+        }
+    </div>
+}
+
+@code {
+    DateOnly _bas = DateOnly.FromDateTime(DateTime.Today.AddDays(-27));
+    DateOnly _bit = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+
+    TrafikKpi? _kpi;
+    List<TrafikHeat> _heat = [];
+    List<TrafikPersonel> _personel = [];
+    bool _loading = true;
+    string? _error;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    async Task Yukle()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var t1 = TrafikSvc.GetKpiAsync(_bas, _bit);
+            var t2 = TrafikSvc.GetHeatAsync(_bas, _bit);
+            var t3 = TrafikSvc.GetPersonelAsync(_bas, _bit);
+            await Task.WhenAll(t1, t2, t3);
+            _kpi      = t1.Result;
+            _heat     = (List<TrafikHeat>)t2.Result;
+            _personel = (List<TrafikPersonel>)t3.Result;
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Trafik yükleme hatası"); _error = ex.Message; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    void BuHafta()
+    {
+        var t = DateTime.Today;
+        _bas = DateOnly.FromDateTime(t.AddDays(-(int)t.DayOfWeek == 0 ? 6 : (int)t.DayOfWeek - 1));
+        _bit = DateOnly.FromDateTime(t.AddDays(1));
+        _ = Yukle();
+    }
+    void BuAy()     { var t = DateTime.Today; _bas = new DateOnly(t.Year, t.Month, 1); _bit = DateOnly.FromDateTime(t.AddDays(1)); _ = Yukle(); }
+    void Son4Hafta(){ _bas = DateOnly.FromDateTime(DateTime.Today.AddDays(-27)); _bit = DateOnly.FromDateTime(DateTime.Today.AddDays(1)); _ = Yukle(); }
+
+    static string Fmt(int v)      => v.ToString("N0");
+    static string FmtTl(decimal v) => v.ToString("N0") + " ₺";
+    static string FmtTl(int v)     => v.ToString("N0") + " ₺";
+}
