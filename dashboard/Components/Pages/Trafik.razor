@@ -57,15 +57,18 @@ else
         var sMax = _heat.Max(h => h.Saat);
         string[] gunAd = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
-        @* Ziyaretçi heatmap *@
+        @* Birleşik heatmap: her hücre 3 bant — info=ziyaretçi / primary=fiş / warning=kasiyer *@
         <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-3">
-            <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                <i data-lucide="users" class="w-4 h-4 text-info"></i>
-                Kapı Girişi — Saat × Gün
-                <span class="text-xs text-base-content/50 font-normal">(ort. ziyaretçi/saat)</span>
+            <div class="text-sm font-semibold mb-2 flex items-center gap-3 flex-wrap">
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-info opacity-80"></span><span class="text-xs text-base-content/70">Ziyaretçi</span></span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-primary opacity-80"></span><span class="text-xs text-base-content/70">Fiş</span></span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-warning opacity-80"></span><span class="text-xs text-base-content/70">Kasiyer</span></span>
+                <span class="text-xs text-base-content/40 font-normal ml-auto">Saat × Gün — koyu = yoğun</span>
             </div>
             @{
                 var maxZ = _heat.Max(h => h.Ziyaretci);
+                var maxF = _heat.Max(h => h.Fis);
+                var maxK = _heat.Max(h => h.Kasiyer);
                 <div class="overflow-x-auto pb-1">
                     <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
                         <div></div>
@@ -76,98 +79,28 @@ else
                         @for (int g = 0; g < 7; g++)
                         {
                             int gi = g;
-                            <div class="text-[10px] text-base-content/60 flex items-center h-[22px]">@gunAd[gi]</div>
+                            <div class="text-[10px] text-base-content/60 flex items-center h-[33px]">@gunAd[gi]</div>
                             @for (int s = sMin; s <= sMax; s++)
                             {
                                 int si = s;
                                 var cell = map.GetValueOrDefault((gi, si));
-                                int val = cell?.Ziyaretci ?? 0;
-                                double op = maxZ > 0 && val > 0 ? Math.Max(0.08, Math.Round((double)val / maxZ, 2)) : 0;
-                                <div class="rounded-[3px] h-[22px] @(val > 0 ? "bg-info" : "bg-base-200")"
-                                     style="@(val > 0 ? $"opacity:{op.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}" : "")"
-                                     title="@gunAd[gi] @(si):00 — @val ziyaretçi"></div>
+                                int vz = cell?.Ziyaretci ?? 0;
+                                int vf = cell?.Fis ?? 0;
+                                int vk = cell?.Kasiyer ?? 0;
+                                string opZ = (maxZ > 0 && vz > 0 ? Math.Max(0.10, Math.Round((double)vz / maxZ, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                                string opF = (maxF > 0 && vf > 0 ? Math.Max(0.10, Math.Round((double)vf / maxF, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                                string opK = (maxK > 0 && vk > 0 ? Math.Max(0.10, Math.Round((double)vk / maxK, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                                <div class="rounded-[3px] h-[33px] bg-base-200 overflow-hidden flex flex-col gap-[1px]"
+                                     title="@gunAd[gi] @(si):00 — Ziy:@vz / Fiş:@vf / Kas:@vk">
+                                    <div class="flex-1 bg-info"    style="opacity:@opZ"></div>
+                                    <div class="flex-1 bg-primary" style="opacity:@opF"></div>
+                                    <div class="flex-1 bg-warning" style="opacity:@opK"></div>
+                                </div>
                             }
                         }
                     </div>
                 </div>
-                <div class="text-base-content/50 text-[11px] mt-1">Koyu = yoğun. Kapı sayacı saatlik, gün ortalaması.</div>
             }
-        </div>
-
-        @* Fiş + Kasiyer yan yana *@
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-
-            @* POS Fiş heatmap *@
-            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-                <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                    <i data-lucide="receipt" class="w-4 h-4 text-primary"></i>
-                    POS Fiş — Saat × Gün
-                    <span class="text-xs text-base-content/50 font-normal">(ort. fiş)</span>
-                </div>
-                @{
-                    var maxF = _heat.Max(h => h.Fis);
-                    <div class="overflow-x-auto pb-1">
-                        <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
-                            <div></div>
-                            @for (int s = sMin; s <= sMax; s++)
-                            {
-                                <div class="text-[9px] text-base-content/40 text-center leading-4">@s</div>
-                            }
-                            @for (int g = 0; g < 7; g++)
-                            {
-                                int gi = g;
-                                <div class="text-[10px] text-base-content/60 flex items-center h-[22px]">@gunAd[gi]</div>
-                                @for (int s = sMin; s <= sMax; s++)
-                                {
-                                    int si = s;
-                                    var cell = map.GetValueOrDefault((gi, si));
-                                    int val = cell?.Fis ?? 0;
-                                    double op = maxF > 0 && val > 0 ? Math.Max(0.08, Math.Round((double)val / maxF, 2)) : 0;
-                                    <div class="rounded-[3px] h-[22px] @(val > 0 ? "bg-primary" : "bg-base-200")"
-                                         style="@(val > 0 ? $"opacity:{op.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}" : "")"
-                                         title="@gunAd[gi] @(si):00 — @val fiş"></div>
-                                }
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-
-            @* Kasiyer heatmap *@
-            <div class="bg-base-100 border border-base-300 rounded-lg p-3">
-                <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                    <i data-lucide="user-check" class="w-4 h-4 text-warning"></i>
-                    Aktif Kasiyer — Saat × Gün
-                    <span class="text-xs text-base-content/50 font-normal">(ort. kişi)</span>
-                </div>
-                @{
-                    var maxK = _heat.Max(h => h.Kasiyer);
-                    <div class="overflow-x-auto pb-1">
-                        <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
-                            <div></div>
-                            @for (int s = sMin; s <= sMax; s++)
-                            {
-                                <div class="text-[9px] text-base-content/40 text-center leading-4">@s</div>
-                            }
-                            @for (int g = 0; g < 7; g++)
-                            {
-                                int gi = g;
-                                <div class="text-[10px] text-base-content/60 flex items-center h-[22px]">@gunAd[gi]</div>
-                                @for (int s = sMin; s <= sMax; s++)
-                                {
-                                    int si = s;
-                                    var cell = map.GetValueOrDefault((gi, si));
-                                    int val = cell?.Kasiyer ?? 0;
-                                    double op = maxK > 0 && val > 0 ? Math.Max(0.08, Math.Round((double)val / maxK, 2)) : 0;
-                                    <div class="rounded-[3px] h-[22px] @(val > 0 ? "bg-warning" : "bg-base-200")"
-                                         style="@(val > 0 ? $"opacity:{op.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}" : "")"
-                                         title="@gunAd[gi] @(si):00 — @val kasiyer"></div>
-                                }
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
         </div>
     }
     else
