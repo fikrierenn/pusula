@@ -44,6 +44,22 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         return rows.ToList();
     }
 
+    private sealed record CariMhsFis(int FisId, int Sirket);
+
+    /// <summary>CAR evrak drill köprüsü: cID → varsa bağlı yevmiye fişi (car.cMhsFisID → mhsFisBaslik.fisbID/fisbSirketID).
+    /// null dönerse o cari hareketin muhasebe fişi yok (ör. elden teslim/nakit) — drill hedefi yok, normal durum.</summary>
+    public async Task<(int FisId, int Sirket)?> GetCariMhsFisAsync(long cId)
+    {
+        await using var conn = await db.OpenAsync();
+        var row = await conn.QueryFirstOrDefaultAsync<CariMhsFis>("""
+            SELECT CAST(c.cMhsFisID AS int) AS FisId, CAST(b.fisbSirketID AS int) AS Sirket
+            FROM DerinSISBkm.dbo.car c
+            JOIN DerinSISBkm.mhs.mhsFisBaslik b ON b.fisbID = c.cMhsFisID
+            WHERE c.cID = @cId AND c.cMhsFisID > 0
+            """, new { cId });
+        return row is null ? null : (row.FisId, row.Sirket);
+    }
+
     /// <summary>Yevmiye fişi detayı (DETAY evrak drill) — fisbID + sirketID ile satırlar. MHS evrak = yevmiye fişi.</summary>
     public async Task<YevmiyeFis?> GetYevmiyeFisAsync(int fisId, int sirketId)
     {

@@ -42,6 +42,10 @@ else
                     <tr class="border-b border-base-300"><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Fatura No</td><td class="px-2 py-0.5 font-mono text-right">@_fat.EvrakNo</td></tr>
                     <tr><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Tarih</td><td class="px-2 py-0.5 font-mono text-right">@_fat.Tarih</td></tr>
                 </table>
+                @if (!string.IsNullOrWhiteSpace(Kapanis))
+                {
+                    <div class="text-error font-semibold text-xs mt-1">Ay Kapanışı: @Kapanis</div>
+                }
             </div>
         </div>
 
@@ -65,7 +69,7 @@ else
                 @if (_fat.YevmiyeFisID is not null)
                 {
                     <button class="btn btn-sm btn-outline btn-primary whitespace-nowrap"
-                            @onclick="@(() => Nav.NavigateTo($"/yevmiye-fis?fis={_fat.YevmiyeFisID}&sirket={_fat.YevmiyeSirket}"))">
+                            @onclick="@(() => Nav.NavigateTo($"/yevmiye-fis?fis={_fat.YevmiyeFisID}&sirket={_fat.YevmiyeSirket}{KapanisQs}"))">
                         📒 Yevmiye Fişini Aç@(_fat.YevmiyeNo is not null ? $" (No {_fat.YevmiyeNo})" : "")
                     </button>
                 }
@@ -133,10 +137,12 @@ else
 
 @code {
     [SupplyParameterFromQuery(Name = "fat")] public int Fat { get; set; }
+    [SupplyParameterFromQuery(Name = "kapanis")] public string? Kapanis { get; set; }
 
     private Models.Fatura? _fat;
     private bool _loading = true;
     private string? _error;
+    private string KapanisQs => string.IsNullOrWhiteSpace(Kapanis) ? "" : $"&kapanis={Uri.EscapeDataString(Kapanis)}";
 
     protected override async Task OnParametersSetAsync()
     {

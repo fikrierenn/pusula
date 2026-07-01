@@ -163,6 +163,15 @@ BEGIN
             SELECT 1 FROM mhs.mhsFis ff JOIN mhs.mhsHsp h ON h.hspID=ff.fisHspID AND h.hspSirketID=ff.fisSirketID
             WHERE ff.fisID=b.fisbID AND ff.fisSirketID=b.fisbSirketID
               AND (h.hspKod LIKE '6%' OR h.hspKod LIKE '7%')))
+      -- ÇİFT-SAYIM FIX (01.07.2026): HEPSI modunda, bu yevmiye fişi zaten bir CAR hareketinin
+      -- (car.cMhsFisID) altında CAR bloğu tarafından eklendiyse tekrar ekleme. CAR = kanonik
+      -- (giren/onaylayan/karşı-taraf forensic'i daha zengin); MHS bloğu sadece CAR köprüsü
+      -- OLMAYAN veya CAR tarafı kapanış-sonrası SAYILMAYAN saf yevmiye anomalilerini yakalar.
+      -- Doğrulama: May'26 kapanış — 36 mükerrer (aynı fiş hem CAR hem MHS satırı, EvrakAdet+Tutar şişme).
+      AND (@Kaynak <> 'HEPSI' OR NOT EXISTS (
+            SELECT 1 FROM dbo.car c2
+            WHERE c2.cMhsFisID = b.fisbID
+              AND (ISNULL(c2.cgTarih,c2.cTarih) > @Kap OR ISNULL(c2.ckTarih,ISNULL(c2.cgTarih,c2.cTarih)) > @Kap)))
     OPTION (RECOMPILE);   -- skaler @Sir/@AyBas literal → mhsFisBaslik_FisListe seek
 
     /* ---- Severity + forensic bayraklar ---- */
@@ -240,4 +249,17 @@ GO
    -- Sadece yevmiye (mhs) tüm dönem detay:    EXEC bkm.sp_KapanisMudahaleKontrol_v2 @Kaynak='MHS', @Mod='DETAY';
    -- Gider filtresiz (tüm evrak):             EXEC bkm.sp_KapanisMudahaleKontrol_v2 @Yil=2025, @Ay=5, @SadeceGider=0;
    -- DRILL (özet satırına tıklama):           EXEC bkm.sp_KapanisMudahaleKontrol_v2 @Yil=2025, @Ay=5, @Kaynak='CAR', @Mod='DETAY', @GiderKod='G-001';
+*/
+
+/* ---- ÇİFT-SAYIM DOĞRULAMA (01.07.2026 — deploy ÖNCESİ/SONRASI kıyasla) ----
+   Aynı yevmiye fişi hem CAR (cari hareket) hem MHS (fiş) satırı olarak HEPSI modunda ikiye katlanıyor muydu:
+   SELECT COUNT(*) AS CiftSayimAdedi
+   FROM dbo.car c JOIN mhs.mhsFisBaslik b ON b.fisbID=c.cMhsFisID AND b.fisbSirketID=6
+   WHERE c.cTarih>='20260501' AND c.cTarih<'20260601' AND c.cMhsFisID>0
+     AND (ISNULL(c.cgTarih,c.cTarih)>'20260616 23:59:59' OR ISNULL(c.ckTarih,ISNULL(c.cgTarih,c.cTarih))>'20260616 23:59:59')
+     AND b.fisTarih>='20260501' AND b.fisTarih<'20260601'
+     AND (ISNULL(b.gTarih,b.fisTarih)>'20260616 23:59:59' OR ISNULL(b.kTarih,ISNULL(b.gTarih,b.fisTarih))>'20260616 23:59:59');
+   -- Mayıs 2026 kapanış (16.06): 36 mükerrer (deploy ÖNCESİ, sirket=6 = yıl-2020). Fix sonrası
+   -- @Kaynak='HEPSI' @Mod='DETAY' çıktısında bu 36 fişin MHS satırı düşmeli, CAR satırı kalmalı
+   -- (EvrakAdet aynı 36 kadar azalmalı, ToplamTutar'da mükerrer toplam düşmeli).
 */

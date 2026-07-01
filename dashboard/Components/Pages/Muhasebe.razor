@@ -84,7 +84,7 @@ else
     </div>
 }
 
-<Modal @bind-Open="_modal" Title="@_detayBaslik" Size="lg">
+<Modal @bind-Open="_modal" Title="@_detayBaslik" Size="full">
     @if (_detayLoading)
     {
         <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Evraklar yükleniyor…</p>
@@ -99,16 +99,17 @@ else
             <table class="table table-xs">
                 <thead><tr>
                     <th class="text-right">Risk</th><th>Evrak No</th>
-                    <th>Belge</th><th>Değişim</th><th class="text-right">Gün</th>
+                    <th>Belge</th><th>Kapanış</th><th>Değişim</th><th class="text-right">Gün</th>
                     <th>Giren</th><th>Onaylayan</th><th class="text-right">Tutar</th><th>Not</th>
                 </tr></thead>
                 <tbody>
                 @foreach (var d in _detay)
                 {
-                    <tr class="@(d.Kaynak is "MHS" or "FAT" ? "hover cursor-pointer" : "")" @onclick="() => EvrakAc(d)">
+                    <tr class="@(d.Kaynak is "MHS" or "FAT" or "CAR" ? "hover cursor-pointer" : "")" @onclick="() => EvrakAc(d)">
                         <td class="text-right font-bold @RiskCls(d.RiskSkor)">@d.RiskSkor</td>
-                        <td class="font-mono text-xs">@d.EvrakNo @(d.Kaynak is "MHS" or "FAT" ? "↗" : "")</td>
+                        <td class="font-mono text-xs">@d.EvrakNo @(d.Kaynak is "MHS" or "FAT" or "CAR" ? "↗" : "")</td>
                         <td>@d.BelgeTarihi</td>
+                        <td class="text-base-content/60">@d.KapanisTarihi</td>
                         <td class="@(d.GunSonra >= 60 ? "text-error font-semibold" : "")">@d.DegisimTarihi</td>
                         <td class="text-right">@d.GunSonra</td>
                         <td>@(d.Giren ?? "—") @(d.GirenOnaylayanAyni != 0 ? "⚠" : "")</td>
@@ -120,7 +121,7 @@ else
                 </tbody>
                 <tfoot>
                     <tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
-                        <td colspan="7" class="text-right">TOPLAM (@_detay.Count evrak)</td>
+                        <td colspan="8" class="text-right">TOPLAM (@_detay.Count evrak)</td>
                         <td class="text-right">@Tl(_detay.Sum(d => d.Tutar))</td>
                         <td></td>
                     </tr>
@@ -183,17 +184,25 @@ else
         finally { _detayLoading = false; StateHasChanged(); }
     }
 
-    // Evrak drill (ayrı sayfa; modal-üstü-modal Blazor'da çalışmaz). MHS→yevmiye fişi, FAT→gider faturası.
-    private void EvrakAc(KontrolDetayRow d)
+    // Evrak drill (ayrı sayfa; modal-üstü-modal Blazor'da çalışmaz). MHS→yevmiye fişi, FAT→gider faturası,
+    // CAR→bağlı yevmiye fişi (varsa; elden teslim/nakit gibi muhasebeleşmemiş harekette hedef yok, no-op).
+    // Kapanış tarihi query param ile evrak sayfasına taşınır — orada kırmızı referans olarak gösterilir.
+    private async Task EvrakAc(KontrolDetayRow d)
     {
+        var kap = Uri.EscapeDataString(d.KapanisTarihi);
         if (d.Kaynak == "MHS")
         {
             var yil = int.Parse(d.Donem[3..]);   // sirket = dönem yılı − 2020
-            Nav.NavigateTo($"/yevmiye-fis?fis={d.EvrakID}&sirket={yil - 2020}");
+            Nav.NavigateTo($"/yevmiye-fis?fis={d.EvrakID}&sirket={yil - 2020}&kapanis={kap}");
         }
         else if (d.Kaynak == "FAT")
         {
-            Nav.NavigateTo($"/fatura?fat={d.EvrakID}");
+            Nav.NavigateTo($"/fatura?fat={d.EvrakID}&kapanis={kap}");
+        }
+        else if (d.Kaynak == "CAR")
+        {
+            var fis = await Muh.GetCariMhsFisAsync(d.EvrakID);
+            if (fis is not null) Nav.NavigateTo($"/yevmiye-fis?fis={fis.Value.FisId}&sirket={fis.Value.Sirket}&kapanis={kap}");
         }
     }
 
