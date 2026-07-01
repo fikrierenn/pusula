@@ -19,13 +19,17 @@
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public string Size { get; set; } = "md";  // sm=2xl · md=3xl · lg=5xl · xl=7xl
+    [Parameter] public string Size { get; set; } = "md";  // sm=2xl · md=3xl · lg=5xl · xl=7xl · full=cap yok (geniş grid)
 
+    // ! (important) ZORUNLU: DaisyUI'nin sm:modal-middle kuralı (.sm\:modal-middle :where(.modal-box){max-width:32rem})
+    // CSS çıktısında utility'lerden SONRA gelir (Tailwind responsive varyantları dosya sonuna toplar) → eşit
+    // specificity'de o kazanır, Size prop'u sessizce hiçe sayılırdı (01.07.2026 keşfi — tüm modallar etkiliydi).
     private string MaxWidthCls => Size switch {
-        "sm" => "max-w-2xl",
-        "lg" => "max-w-5xl",
-        "xl" => "max-w-7xl",
-        _    => "max-w-3xl"
+        "sm"   => "!max-w-2xl",
+        "lg"   => "!max-w-5xl",
+        "xl"   => "!max-w-7xl",
+        "full" => "!max-w-none",
+        _      => "!max-w-3xl"
     };
 
     private async Task Close() => await OpenChanged.InvokeAsync(false);
