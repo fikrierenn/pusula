@@ -166,6 +166,9 @@ public record TrafikHeat(int Gun, int Saat, int Ziyaretci, int Fis, int Kasiyer)
 /// <summary>FSM satış personeli dönem performansı (POS bazlı). IlkSaat/SonSaat=mesai ucu.</summary>
 public record TrafikPersonel(string Ad, int Fis, decimal Net, int Atv, int CalistigiGun, int IlkSaat, int SonSaat);
 
+/// <summary>PDKS saatlik ort. çalışan — OPENQUERY([PDKS] TTagZei×TPerTab), Per_Grp2='FSM', giriş≤H&lt;çıkış. Gun: 0=Pzt..6=Paz.</summary>
+public record TrafikPdksHeat(int Gun, int Saat, int Personel);
+
 /// <summary>B-111 WMS bekleyen doluluk — aşama split (anlık, SENDDATE NULL). Toplanma=raflanmayı bekleyen (en kritik).</summary>
 public record BekleyenDurum(int ToplanmaBekleyen, int Hazirlanan, int TeminBekleyen)
 {

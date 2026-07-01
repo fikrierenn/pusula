@@ -84,6 +84,15 @@ entities:
 
   # PDKS (işgücü — OPENQUERY)
   pdks: {tip: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
+  # PDKS saatlik çalışan headcount — KABUL EDİLEN MANTIK (2026-06-30, TrafikQueries.GetPdksPersonelAsync)
+  pdks_saatlik_personel:
+    kaynak: "OPENQUERY([PDKS]) TTagZei z JOIN TPerTab p ON p.Per_PersNr=z.TZe_PersNr; filter Per_Grp1='MAĞAZALAR' AND Per_Grp2='FSM' AND TZe_VonZeit/BisZeit NOT NULL"
+    grain: "haftagünü(0=Pzt..6=Paz) × saat(0-23) → ort. eş-zamanlı çalışan personel"
+    kural_1_vardiya_araligi: "Kişi başı GÜN içinde MIN(giriş saati) → MAX(son dolu saat). Öğle molası segmenti satır kırar (ör. 10-13 + 14-18) → segment-bazlı saymak mola saatinde SAHTE DÜŞÜŞ üretir. MIN-MAX span mola saatini de 'vardiyada' sayar (doğru)."
+    kural_2_cikis_saati: "Son dolu saat = çıkış dakikası>0 ise DATEPART(hour) (18:30→18 dahil), tam saatte çıktıysa hour-1 (18:00→17, saat 18'de yok). Yoksa 18:30 çalışan saat 18'de hiç sayılmaz = sahte uçurum. Giriş saati floor (10:30→10, açılış kısmi saati sayılır)."
+    kural_3_ortalama: "AVG = SUM(o saatteki kişi) / o haftagününün ÇALIŞILAN TOPLAM gün sayısı (opdays). Sadece-dolu-güne bölmek (eski AVG) boş saatleri 0 saymaz → uç saatler şişer. Boş saat 0 paya girer."
+    dogrulama: "2026-06-30, Haziran 4 Salı: 16=24·17=23·18=21·19=16·20=13 (yumuşak iniş). Eski hatalı sürüm 18'de 21→14 keskin uçurum gösteriyordu (çıkış-floor bug). 27.06 Cmt span: 9→27 plato →12 pürüzsüz."
+    not: "Trafik sayfası 'Personel–Trafik Uyumu' haritasının success-bandı/karne hesabı bunu kullanır. Sadece FSM (Per_Grp2='FSM'); diğer mağaza gerekince parametrize."
 
   # E-ticaret
   ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS]}

@@ -5,11 +5,11 @@
 @inject ILogger<Trafik> Logger
 @rendermode InteractiveServer
 
-<PageTitle>FSM Trafik & Kasiyer — BKM GM</PageTitle>
+<PageTitle>Trafik & Kasiyer — BKM GM</PageTitle>
 
 <div class="mb-4">
-    <div class="text-xs text-base-content/50">FSM · Kapı sayacı × POS fiş</div>
-    <h1 class="text-2xl font-bold tracking-tight m-0">FSM Trafik &amp; Kasiyer Analizi</h1>
+    <div class="text-xs text-base-content/50">Kapı sayacı × POS fiş × PDKS personel · şu an FSM</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Trafik &amp; Kasiyer Analizi</h1>
 </div>
 
 <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -57,20 +57,22 @@ else
         var sMax = _heat.Max(h => h.Saat);
         string[] gunAd = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
-        @* Birleşik heatmap: her hücre 3 bant — info=ziyaretçi / primary=fiş / warning=kasiyer *@
+        var pdksMap = _pdks.ToDictionary(p => (p.Gun, p.Saat));
+
+        @* Personel–Trafik uyum haritası: renk=karne (kırmızı az personel / yeşil dengeli / mavi atıl), koyuluk=o saatin yoğunluğu *@
         <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-3">
-            <div class="text-sm font-semibold mb-2 flex items-center gap-3 flex-wrap">
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-info opacity-80"></span><span class="text-xs text-base-content/70">Ziyaretçi</span></span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-primary opacity-80"></span><span class="text-xs text-base-content/70">Fiş</span></span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-warning opacity-80"></span><span class="text-xs text-base-content/70">Kasiyer</span></span>
-                <span class="text-xs text-base-content/40 font-normal ml-auto">Saat × Gün — koyu = yoğun</span>
+            <div class="text-sm font-semibold mb-1">Personel – Trafik Uyumu</div>
+            <div class="text-xs text-base-content/50 mb-2">Her hücre: o saatte gelen müşteriye karşı çalışan personel yeterli mi? Koyu = yoğun saat.</div>
+            <div class="flex items-center gap-3 flex-wrap mb-2">
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-error"></span><span class="text-xs text-base-content/70">Çok müşteri / az personel (riskli)</span></span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-success"></span><span class="text-xs text-base-content/70">Dengeli</span></span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-info"></span><span class="text-xs text-base-content/70">Az müşteri / çok personel (atıl)</span></span>
             </div>
             @{
                 var maxZ = _heat.Max(h => h.Ziyaretci);
-                var maxF = _heat.Max(h => h.Fis);
-                var maxK = _heat.Max(h => h.Kasiyer);
+                var maxP = _pdks.Count > 0 ? _pdks.Max(p => p.Personel) : 0;
                 <div class="overflow-x-auto pb-1">
-                    <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 22px)")">
+                    <div class="inline-grid gap-0.5" style="@($"grid-template-columns:32px repeat({sMax - sMin + 1}, 26px)")">
                         <div></div>
                         @for (int s = sMin; s <= sMax; s++)
                         {
@@ -79,34 +81,88 @@ else
                         @for (int g = 0; g < 7; g++)
                         {
                             int gi = g;
-                            <div class="text-[10px] text-base-content/60 flex items-center h-[33px]">@gunAd[gi]</div>
+                            <div class="text-[10px] text-base-content/60 flex items-center h-[30px]">@gunAd[gi]</div>
                             @for (int s = sMin; s <= sMax; s++)
                             {
                                 int si = s;
                                 var cell = map.GetValueOrDefault((gi, si));
                                 int vz = cell?.Ziyaretci ?? 0;
-                                int vf = cell?.Fis ?? 0;
-                                int vk = cell?.Kasiyer ?? 0;
-                                string opZ = (maxZ > 0 && vz > 0 ? Math.Max(0.10, Math.Round((double)vz / maxZ, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                                string opF = (maxF > 0 && vf > 0 ? Math.Max(0.10, Math.Round((double)vf / maxF, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                                string opK = (maxK > 0 && vk > 0 ? Math.Max(0.10, Math.Round((double)vk / maxK, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                                <div class="rounded-[3px] h-[33px] bg-base-200 overflow-hidden flex flex-col gap-[1px]"
-                                     title="@gunAd[gi] @(si):00 — Ziy:@vz / Fiş:@vf / Kas:@vk">
-                                    <div class="flex-1 bg-info"    style="opacity:@opZ"></div>
-                                    <div class="flex-1 bg-primary" style="opacity:@opF"></div>
-                                    <div class="flex-1 bg-warning" style="opacity:@opK"></div>
-                                </div>
+                                int vp = pdksMap.GetValueOrDefault((gi, si))?.Personel ?? 0;
+                                double zN = maxZ > 0 ? (double)vz / maxZ : 0;
+                                double pN = maxP > 0 ? (double)vp / maxP : 0;
+                                double mis = zN - pN;                        // + = personel az, - = personel fazla
+                                string hue = mis >= 0.15 ? "bg-error" : mis <= -0.15 ? "bg-info" : "bg-success";
+                                double yog = Math.Max(zN, pN);               // hücre yoğunluğu (göz yoğun saate gitsin)
+                                string op = (yog > 0 ? Math.Max(0.10, Math.Round(yog, 2)) : 0.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                                string karne = mis >= 0.15 ? "PERSONEL AZ" : mis <= -0.15 ? "personel fazla" : "dengeli";
+                                <div class="rounded-[3px] h-[30px] @(vz == 0 && vp == 0 ? "bg-base-200" : hue)"
+                                     style="opacity:@op"
+                                     title="@gunAd[gi] @(si):00 — Ziyaretçi:@vz / Personel:@vp → @karne"></div>
                             }
                         }
                     </div>
                 </div>
             }
+            @* Ham veri raporu — modal grid *@
+            <div class="mt-2 pt-2 border-t border-base-200 flex justify-end">
+                <button class="btn btn-xs btn-ghost gap-1" @onclick="() => _showRapor = true">
+                    <i data-lucide="table" class="w-3.5 h-3.5"></i> Veri tablosu
+                </button>
+            </div>
         </div>
     }
     else
     {
         <div class="bg-base-100 border border-base-300 rounded-lg p-4 mb-3 text-base-content/40 text-sm">
             Bu dönem için heatmap verisi yok.
+        </div>
+    }
+
+    @* Saatlik ham veri modalı: gün×saat — Ziyaretçi / Fiş / Kasiyer / PDKS personel *@
+    @if (_showRapor && _heat.Count > 0)
+    {
+        var pdksMapR = _pdks.ToDictionary(p => (p.Gun, p.Saat));
+        string[] gunAdR = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+        var satirlar = _heat
+            .OrderBy(h => h.Gun).ThenBy(h => h.Saat)
+            .Select(h => (h.Gun, h.Saat, h.Ziyaretci, h.Fis, h.Kasiyer,
+                          Personel: pdksMapR.GetValueOrDefault((h.Gun, h.Saat))?.Personel ?? 0))
+            .ToList();
+        <div class="modal modal-open" @onclick="() => _showRapor = false">
+            <div class="modal-box max-w-3xl max-h-[85vh]" @onclick:stopPropagation="true">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-base">Saatlik Ham Veri — Gün × Saat</h3>
+                    <button class="btn btn-sm btn-circle btn-ghost" @onclick="() => _showRapor = false">✕</button>
+                </div>
+                <div class="text-xs text-base-content/50 mb-2">Dönem ortalaması (haftagünü × saat). Ziyaretçi=kapı · Fiş/Kasiyer=POS · Personel=PDKS vardiya.</div>
+                <div class="overflow-auto max-h-[65vh]">
+                    <table class="table table-xs table-pin-rows">
+                        <thead><tr>
+                            <th>Gün</th>
+                            <th class="text-right">Saat</th>
+                            <th class="text-right text-info">Ziyaretçi</th>
+                            <th class="text-right text-primary">Fiş</th>
+                            <th class="text-right text-warning">Kasiyer</th>
+                            <th class="text-right text-success">Personel</th>
+                            <th class="text-right">Ziy/Personel</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var r in satirlar)
+                        {
+                            <tr class="hover">
+                                <td class="font-semibold">@gunAdR[r.Gun]</td>
+                                <td class="text-right tabular-nums">@r.Saat:00</td>
+                                <td class="text-right tabular-nums text-info">@Fmt(r.Ziyaretci)</td>
+                                <td class="text-right tabular-nums text-primary">@Fmt(r.Fis)</td>
+                                <td class="text-right tabular-nums text-warning">@r.Kasiyer</td>
+                                <td class="text-right tabular-nums text-success font-semibold">@r.Personel</td>
+                                <td class="text-right tabular-nums text-base-content/60">@(r.Personel > 0 ? (r.Ziyaretci / r.Personel).ToString("N0") : "—")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     }
 
@@ -165,7 +221,9 @@ else
     TrafikKpi? _kpi;
     List<TrafikHeat> _heat = [];
     List<TrafikPersonel> _personel = [];
+    List<TrafikPdksHeat> _pdks = [];
     bool _loading = true;
+    bool _showRapor;
     string? _error;
 
     protected override async Task OnInitializedAsync() => await Yukle();
@@ -178,10 +236,12 @@ else
             var t1 = TrafikSvc.GetKpiAsync(_bas, _bit);
             var t2 = TrafikSvc.GetHeatAsync(_bas, _bit);
             var t3 = TrafikSvc.GetPersonelAsync(_bas, _bit);
-            await Task.WhenAll(t1, t2, t3);
+            var t4 = TrafikSvc.GetPdksPersonelAsync(_bas, _bit);
+            await Task.WhenAll(t1, t2, t3, t4);
             _kpi      = t1.Result;
             _heat     = (List<TrafikHeat>)t2.Result;
             _personel = (List<TrafikPersonel>)t3.Result;
+            _pdks     = (List<TrafikPdksHeat>)t4.Result;
         }
         catch (Exception ex) { Logger.LogError(ex, "Trafik yükleme hatası"); _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

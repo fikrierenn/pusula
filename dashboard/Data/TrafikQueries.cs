@@ -94,6 +94,70 @@ public sealed class TrafikQueries(Db db)
         }).ToList();
     }
 
+    /// <summary>PDKS saatlik ort. çalışan (FSM). Her (Gun,Saat) için o saatte vardiyada olan personel, gün ortalaması.
+    /// VARDİYA ARALIĞI = kişi başı gün içi MIN giriş–MAX çıkış (öğle molası satır kırmasını yutar — yoksa mola saatinde
+    /// sahte düşüş olur). ORTALAMA paydası = o haftagününün çalışılan TOPLAM gün sayısı (boş saat 0 sayılır, uç saat şişmez).
+    /// OPENQUERY([PDKS]) TTagZei×TPerTab. Tarihler OPENQUERY içine gömülür — DateOnly kaynağı, injection riski yok.</summary>
+    public async Task<IReadOnlyList<TrafikPdksHeat>> GetPdksPersonelAsync(DateOnly bas, DateOnly bit)
+    {
+        var bas8 = bas.ToString("yyyyMMdd");
+        var bit8 = bit.AddDays(-1).ToString("yyyyMMdd"); // bit exclusive
+        var sql = $"""
+            WITH nums AS (
+                SELECT 0 AS h UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+                UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7
+                UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11
+                UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+                UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19
+                UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23
+            ),
+            seg AS (
+                -- GirisH = giriş saati (floor). SonH = son DOLU saat: çıkış dakikası>0 ise o saat dahil,
+                -- tam saatte çıktıysa (18:00) o saat hariç. Yoksa 18:30 çalışanı saat 18'de hiç saymazdık (sahte uçurum).
+                SELECT TZe_PersNr, TZe_Datum,
+                       DATEPART(hour, TZe_VonZeit) AS GirisH,
+                       CASE WHEN DATEPART(minute, TZe_BisZeit) > 0
+                            THEN DATEPART(hour, TZe_BisZeit)
+                            ELSE DATEPART(hour, TZe_BisZeit) - 1 END AS SonH
+                FROM OPENQUERY([PDKS], '
+                    SELECT TZe_PersNr, TZe_Datum, TZe_VonZeit, TZe_BisZeit
+                    FROM TTagZei z
+                    INNER JOIN TPerTab p ON p.Per_PersNr = z.TZe_PersNr
+                    WHERE z.TZe_Datum >= ''{bas8}'' AND z.TZe_Datum <= ''{bit8}''
+                      AND p.Per_Grp1 = ''MAĞAZALAR''
+                      AND LTRIM(RTRIM(p.Per_Grp2)) = ''FSM''
+                      AND z.TZe_VonZeit IS NOT NULL AND z.TZe_BisZeit IS NOT NULL
+                ')
+            ),
+            span AS (
+                SELECT TZe_PersNr, TZe_Datum,
+                       MIN(GirisH) AS g, MAX(SonH) AS lastH,
+                       (DATEPART(weekday, TZe_Datum) + @@DATEFIRST - 2) % 7 AS Gun
+                FROM seg
+                GROUP BY TZe_PersNr, TZe_Datum, (DATEPART(weekday, TZe_Datum) + @@DATEFIRST - 2) % 7
+            ),
+            opdays AS (
+                SELECT Gun, COUNT(DISTINCT TZe_Datum) AS Gunler
+                FROM span
+                GROUP BY Gun
+            ),
+            perDate AS (
+                SELECT s.TZe_Datum, s.Gun, n.h AS Saat,
+                       COUNT(DISTINCT s.TZe_PersNr) AS Cnt
+                FROM span s
+                JOIN nums n ON n.h >= s.g AND n.h <= s.lastH
+                GROUP BY s.TZe_Datum, s.Gun, n.h
+            )
+            SELECT pd.Gun, pd.Saat,
+                   CAST(ROUND(SUM(CAST(pd.Cnt AS float)) / NULLIF(o.Gunler, 0), 0) AS int) AS Personel
+            FROM perDate pd
+            JOIN opdays o ON o.Gun = pd.Gun
+            GROUP BY pd.Gun, pd.Saat, o.Gunler
+            """;
+        await using var conn = await db.OpenAsync();
+        return (await conn.QueryAsync<TrafikPdksHeat>(sql)).ToList();
+    }
+
     /// <summary>Satış personeli dönem performansı (fiş bazlı, FSM, isim: EncoreMerkez.dbo.Users.Name).</summary>
     public async Task<IReadOnlyList<TrafikPersonel>> GetPersonelAsync(DateOnly bas, DateOnly bit)
     {
