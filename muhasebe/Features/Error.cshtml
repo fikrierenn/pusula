@@ -1,0 +1,13 @@
+@page "/Error"
+@model Muhasebe.Pages.ErrorModel
+@{ ViewData["Title"] = "Hata"; }
+
+<div class="max-w-lg mx-auto mt-16 bg-white rounded-xl border border-slate-200 p-8 text-center">
+    <h1 class="text-xl font-semibold text-slate-800 mb-2">Beklenmedik bir hata oluştu</h1>
+    <p class="text-slate-500 text-sm mb-4">Lütfen tekrar deneyin. Sorun sürerse sistem yöneticisine bildirin.</p>
+    @if (Model.RequestId is not null)
+    {
+        <p class="text-xs text-slate-400">İstek: <code>@Model.RequestId</code></p>
+    }
+    <a href="/" class="inline-block mt-4 text-sm text-slate-700 underline">Ana sayfaya dön</a>
+</div>

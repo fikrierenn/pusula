@@ -1,0 +1,27 @@
+@page "/"
+@model Muhasebe.Pages.Dashboard.IndexModel
+@{ ViewData["Title"] = "Genel Bakış"; }
+
+<h1 class="text-2xl font-semibold mb-1">Otonom Muhasebe</h1>
+<p class="text-slate-500 mb-6">Banka ekstresi satır → cari sınıflandırma (öneri, salt-okuma).</p>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="text-3xl font-semibold text-slate-800">807K</div>
+        <div class="text-sm text-slate-500 mt-1">geçmiş banka satırı (eğitim)</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="text-3xl font-semibold text-emerald-600">~%99</div>
+        <div class="text-sm text-slate-500 mt-1">auto-onay doğruluğu (agree≥%97)</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="text-3xl font-semibold text-slate-800">~%61</div>
+        <div class="text-sm text-slate-500 mt-1">otomatik kapsam</div>
+    </div>
+</div>
+
+<div class="mt-6">
+    <a href="/banka-ekstresi" class="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700">
+        Banka Eşleştirmeye git →
+    </a>
+</div>

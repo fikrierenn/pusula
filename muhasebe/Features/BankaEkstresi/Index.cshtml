@@ -1,0 +1,158 @@
+@page "/banka-ekstresi"
+@model Muhasebe.Pages.BankaEkstresi.IndexModel
+@{ ViewData["Title"] = "Banka Eşleştirme"; }
+
+@functions {
+    static (string cls, string ad) Rozet(Muhasebe.Lib.BankaOneri s)
+    {
+        if (s.Ogrenildi) return ("bg-sky-100 text-sky-700", "öğrenildi");
+        return s.Kademe switch
+        {
+            "AUTO" => ("bg-emerald-100 text-emerald-700", "AUTO"),
+            "ISTISNA" => ("bg-amber-100 text-amber-700", "İstisna"),
+            _ => ("bg-slate-100 text-slate-500", "Bulunamadı"),
+        };
+    }
+}
+
+<h1 class="text-2xl font-semibold mb-1">Banka Eşleştirme</h1>
+<p class="text-slate-500 mb-5">Ekstre açıklamalarını yapıştır → her satır için cari önerisi. Onayla/düzelt → motor öğrenir. ERP'ye yazmaz.</p>
+
+@if (Model.Mesaj is not null)
+{
+    <div class="mb-4 px-4 py-2 rounded-lg bg-sky-50 text-sky-800 text-sm border border-sky-200">@Model.Mesaj</div>
+}
+
+<form method="post" class="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+    <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="text-sm font-medium text-slate-600">Banka hesabı:</span>
+        <select name="BankaHesapId" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm min-w-64">
+            <option value="0">— seç (bu ekstre hangi hesap) —</option>
+            @foreach (var h in Model.BankaHesaplari)
+            {
+                <option value="@h.Id" selected="@(Model.BankaHesapId == h.Id)">@h.Ad (@h.Kod)</option>
+            }
+        </select>
+    </div>
+    <div class="flex items-center gap-6 mb-3">
+        <span class="text-sm font-medium text-slate-600">Yön:</span>
+        <label class="flex items-center gap-2 text-sm">
+            <input type="radio" name="Yon" value="1" checked="@(Model.Yon != "0")" /> Giden (ödeme)
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+            <input type="radio" name="Yon" value="0" checked="@(Model.Yon == "0")" /> Gelen (tahsilat)
+        </label>
+    </div>
+    <textarea name="Girdi" rows="8" placeholder="Her satıra bir ekstre açıklaması&#10;örn: YANIT YAYINCILIK&#10;GARANTİ BANKA KOMİSYONU"
+              class="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-400">@Model.Girdi</textarea>
+    <div class="flex items-center justify-between mt-3">
+        <span class="text-xs text-slate-400">
+            @if (Model.SonYukleme is not null) { <text>Index: @Model.AnahtarSayisi.ToString("N0") anahtar · @Model.OgrenilenSayisi öğrenilen · @Model.SonYukleme.Value.ToString("HH:mm")</text> }
+            else { <text>Index yükleniyor…</text> }
+        </span>
+        <button type="submit" class="bg-slate-900 text-white px-5 py-2 rounded-lg text-sm hover:bg-slate-700">Sınıflandır</button>
+    </div>
+</form>
+
+@if (Model.Sonuclar.Count > 0)
+{
+    <div class="flex flex-wrap items-center gap-3 mb-4 text-sm">
+        <span class="px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700">AUTO: @Model.AutoSayi</span>
+        <span class="px-3 py-1 rounded-lg bg-amber-100 text-amber-700">İstisna: @Model.IstisnaSayi</span>
+        <span class="px-3 py-1 rounded-lg bg-slate-100 text-slate-500">Bulunamadı: @Model.YokSayi</span>
+        <div class="ml-auto relative">
+            <input id="cariAra" type="text" placeholder="Cari ara (isim/kod)…" autocomplete="off"
+                   class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-64" />
+            <div id="cariResults" class="absolute right-0 mt-1 w-96 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-left">
+                <tr>
+                    <th class="px-4 py-2 font-medium">Açıklama</th>
+                    <th class="px-4 py-2 font-medium">Durum</th>
+                    <th class="px-4 py-2 font-medium">Önerilen cari</th>
+                    <th class="px-4 py-2 font-medium text-right">Güven</th>
+                    <th class="px-4 py-2 font-medium">Adaylar</th>
+                    <th class="px-4 py-2 font-medium">Onayla / Düzelt</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var s in Model.Sonuclar)
+                {
+                    var (cls, ad) = Rozet(s);
+                    var vurgu = s.Kademe is "ISTISNA" or "YOK" && !s.Ogrenildi ? "bg-amber-50/40" : "";
+                    <tr class="align-top @vurgu">
+                        <td class="px-4 py-3 font-mono text-slate-700">@s.Aciklama</td>
+                        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs font-medium @cls">@ad</span></td>
+                        <td class="px-4 py-3">
+                            @if (s.CariId is not null)
+                            {
+                                <div class="font-medium text-slate-800">@s.CariAd</div>
+                                <div class="text-xs text-slate-400">@s.CariKod · #@s.CariId</div>
+                            }
+                            else { <span class="text-slate-400">—</span> }
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            @if (s.CariId is not null && !s.Ogrenildi)
+                            {
+                                <span class="@(s.Guven >= 0.97 ? "text-emerald-600" : "text-amber-600") font-medium">@s.Guven.ToString("P0")</span>
+                                <div class="text-xs text-slate-400">n=@s.Kanit</div>
+                            }
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-500">
+                            @foreach (var a in s.Adaylar.Skip(1))
+                            {
+                                <div>#@a.CariId @a.CariAd <span class="text-slate-400">(@a.Pay.ToString("P0"))</span></div>
+                            }
+                        </td>
+                        <td class="px-4 py-3">
+                            <form method="post" asp-page-handler="Ogret" class="flex items-center gap-1">
+                                <input type="hidden" name="Girdi" value="@Model.Girdi" />
+                                <input type="hidden" name="Yon" value="@Model.Yon" />
+                                <input type="hidden" name="BankaHesapId" value="@Model.BankaHesapId" />
+                                <input type="hidden" name="aciklama" value="@s.Aciklama" />
+                                <input type="hidden" name="onerilenCariId" value="@(s.CariId ?? 0)" />
+                                <input type="number" name="dogruCariId" value="@(s.CariId ?? 0)" title="Doğru cari (id). Yukarıdan ara → tıkla."
+                                       class="w-24 border border-slate-300 rounded px-2 py-1 text-xs" />
+                                <button type="submit" class="bg-slate-900 text-white px-3 py-1 rounded text-xs hover:bg-slate-700">Öğret</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="text-xs text-slate-400 mt-2">Sarı satır = onay bekliyor (düşük güven). “Cari ara” → sonuca tıkla → son tıkladığın satırın kutusuna yazar. “Öğret”: kutu doğruysa onaylar, değiştirdiysen düzeltir → motor o an öğrenir.</p>
+}
+
+<script>
+    (function () {
+        let lastInput = null;
+        document.addEventListener('focusin', e => { if (e.target.matches('input[name=dogruCariId]')) lastInput = e.target; });
+        const box = document.getElementById('cariAra');
+        const res = document.getElementById('cariResults');
+        if (!box) return;
+        let t;
+        box.addEventListener('input', () => {
+            clearTimeout(t);
+            const q = box.value.trim();
+            if (q.length < 2) { res.innerHTML = ''; return; }
+            t = setTimeout(async () => {
+                const r = await fetch('/banka-ekstresi?handler=CariAra&q=' + encodeURIComponent(q));
+                const data = await r.json();
+                res.innerHTML = data.map(c =>
+                    `<button type="button" data-id="${c.id}" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-xs border-b border-slate-100">#${c.id} <b>${c.ad}</b> <span class="text-slate-400">${c.kod}</span></button>`
+                ).join('') || '<div class="px-3 py-2 text-xs text-slate-400">sonuç yok</div>';
+            }, 250);
+        });
+        res.addEventListener('click', e => {
+            const b = e.target.closest('button[data-id]'); if (!b) return;
+            if (lastInput) lastInput.value = b.dataset.id;
+            box.value = ''; res.innerHTML = '';
+            if (lastInput) lastInput.focus();
+        });
+    })();
+</script>
