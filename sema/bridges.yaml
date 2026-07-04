@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-06-26
+updated: 2026-07-04
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -43,6 +43,25 @@ bridges:
     confidence: 1.0
     note: "Cari bakiye/yaşlandırma → cari kart. GecenB=vadesi geçmiş, GelecekB=yaklaşan, frmBakiyeLimit=risk limiti. Dashboard /cari-risk (B-124). Aynı kalıp satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı)."
     evidence: "2026-06-25 canlı — bakiyeVDGG_vw JOIN frm ON frmID=cKod, Cari/Risk sayfası."
+  - id: car-karsi-frm
+    from: dbo.car.cKodKarsi
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 1.0
+    note: "Cari hareket karşı taraf → cari kart (frmAd/frmKod). car.cKod da → frm.frmID (aynı). Banka hesabı = frmTip=5 (Banka-Kasa). Banka ekstresi (cTip=122) sınıflandırmada banka-olmayan taraf = gerçek cari (bkz. metrics banka-ekstresi-perspektif)."
+    evidence: "2026-07-04 canlı — car cTip=122, 807.600 satır JOIN frm; 4522=GARANTI (frmTip=5), 223=Yanıt Yay."
+    last_verified: "2026-07-04"
+  - id: frm-mhsent-glhesap
+    from: mhs.mhsEntFrm.mefFrmID
+    to: dbo.frm.frmID
+    then:
+      from: mhs.mhsEntFrm.mefHesap
+      to: mhs.mhsHsp.hspKod
+    scope: derinsis
+    confidence: 0.95
+    note: "Cari → muhasebe GL hesabı. mhsEntFrm(mefFrmID→mefHesap) frm→hesapKod haritası; mhsHsp.hspKod=mefHesap → hspID. cKodKarsi biliniyorsa GL hesabı DETERMİNİSTİK. mhs.mhsEnt_car bunu kullanır. Gider/hizmet (frmTip 7/8/11) mhsEntUrn üstünden."
+    evidence: "2026-07-04 — mhs.mhsEnt_car decrypted kaynak (Fikri)."
+    last_verified: "2026-07-04"
 
   # --- WMS / depo (10.06 keşif) ---
   - id: palet-irs

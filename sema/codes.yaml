@@ -1,7 +1,7 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-06-25
+updated: 2026-07-04
 
 codes:
   frm.frmTip:          # dbo.frmTipTnm (kanonik lookup — hardcode ETME)
@@ -24,6 +24,27 @@ codes:
     confidence: 1.0
     evidence: "2026-06-25 — SELECT * FROM dbo.frmTipTnm (12 değer). Cari/Risk sayfasında Tip 8=Hizmet görülünce keşfedildi."
     last_verified: "2026-06-25"
+
+  car.cFatTip:         # dbo.carTipF (cari hareket alt-tipi, 73 değer)
+    lookup: dbo.carTipF
+    join: "JOIN dbo.carTipF ON ctfID = car.cFatTip → ctfAd"
+    values:
+      0: "Alış"
+      1: "Satış"
+      100: "Nakit"
+      101: "Havale"
+      102: "Virman"
+      103: "Kredi Kartı"
+      104: "EFT"
+      122: "Banka Ekstresi — 807.600 satır (2021-2026), Şule (insID 1897) elle giriyor. Sınıflandırıcı pilot hedefi (plan-27)."
+      13: "Gider Ödemesi"
+      14: "Banka Teslim"
+      15: "Kasiyer Ödemesi"
+      "200-222": "Çek/senet (A.Çek/V.Çek portföy/ciro/tahsil/iade); cTip>=200 → carCek_ekle"
+    mekanik: "Çift-kayıt: cKodKarsi<>0 → 2 ayna satır (cBag-bağlı). İşaret: cBA=0→cTutar POZİTİF, cBA=1→NEGATİF ((1-2*cBA)*tutar). cMhsFisID>0 = muhasebeleşmiş, değiştirilemez. car_ekle bunu kurar (WITH ENCRYPTION)."
+    confidence: 1.0
+    evidence: "2026-07-04 — SELECT * FROM carTipF (73 değer) + car_ekle decrypted kaynak (Fikri)."
+    last_verified: "2026-07-04"
 
   urn.urnTip:
     values:

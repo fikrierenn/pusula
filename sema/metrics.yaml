@@ -1,9 +1,26 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-06-22
+updated: 2026-07-04
 
 metrics:
+  banka_ekstresi_siniflandirma:
+    kaynak: "dbo.car cTip=122 (Banka Ekstresi); köprü car-karsi-frm; kod car.cFatTip=122"
+    problem: "Banka ekstresi satır açıklamasından (cNot) doğru cari (cKodKarsi) atama. Şule (insID 1897) elle yapıyor; oto-import/SP YOK. Pilot: muhasebe app (plan-27)."
+    perspektif: "Çiftin BANKA-OLMAYAN tarafı = gerçek cari — cKod ∈ banka hesabı (frmTip=5) olan satırın cKodKarsi'si. cBA TEK BAŞINA ayraç DEĞİL (aynı işlemde bir satır cBA=0 gerçek tarafken diğeri cBA=1). mhs.mhsEntKontrolCar postalama için cBA=0 tarafını seçer (kanonik, çift-post engeli)."
+    motor: "Lexical — normalize(cNot, tr-TR upper) + yön-anahtarlı çoğunluk. PERSPEKTİF KİLİDİ: index yalnız cKod frmTip=5 (banka) satırlardan (582K/807K), ayna/virman gürültüsü kalkar. Operasyon noktası: agree≥%97 & n≥5 → AUTO %99,62 doğru @ %69,7 kapsam (kilitsiz %98,8@%61 idi). Embedding v1'de gereksiz."
+    gl_hesap: "cKodKarsi bilinince GL hesabı deterministik → köprü frm-mhsent-glhesap."
+    confidence: 0.9
+    evidence: "2026-07-04 — 807.600 satır zaman-bazlı holdout (son 30g) + canlı browser test (perspektif doğrulandı)."
+    last_verified: "2026-07-04"
+  car_acik_kalem_ve_gl_zinciri:
+    ckalan: "dbo.car_isle(@frmID) (WITH ENCRYPTION): cari net bakiye (bakiye_vw / sağlayıcı ise carSatOde_vw) → satırlara vade DESC, cID DESC (LIFO-by-vade) dağıt → cKalan = kapanmamış kalıntı. Açık kalem = cKalan<>0."
+    car_gl_zinciri: "car_ekle (giriş + cKodKarsi ata) → mhs.mhsEntKontrolCar (uygun cBA=0 seç, iki taraf mhsEntFrm-tanımlı) → mhs.mhsEnt_car (yevmiye mhsFis borç/alacak) → mhs.cariIsle_oto (günlük zamanlayıcı, cCrmID>0)."
+    trigger: "car/carAyr/carNot/carSatOde/carCek üzerinde TRIGGER YOK → yazma footprint'i car_ekle'nin açık yazdığı kadar."
+    sifreleme: "dbo.car_isle/car_ekle, mhs.mhsEnt_car/mhsEnt_carFis/mhsEntKontrolCar = WITH ENCRYPTION (EXEC edilebilir, okunamaz). mhs.cariIsle_oto, ent.AnaCariBul okunur (ent.AnaCariBul = ürün→ana tedarikçi, banka-cari ile ALAKASIZ). Şifreli SP mantığı gerekince Fikri decrypted kaynak verir."
+    confidence: 1.0
+    evidence: "2026-07-04 — car_isle/car_ekle/mhsEnt_car/mhsEntKontrolCar decrypted kaynak (Fikri); trigger sorgusu 0 satır."
+    last_verified: "2026-07-04"
   olu_stok_maliyet_zinciri:
     source: "dashboard/Data/RefQueries.Envanter.cs OluStokSql"
     chain: "COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN fiyatS>0 THEN fiyatS * avgml.AvgCostOran END)"

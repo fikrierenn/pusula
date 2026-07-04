@@ -112,6 +112,7 @@ CROSS APPLY (
 - **CTE çalışmaz.** `mcp__sqlserver__sql_query` sorguyu auto-TOP wrap edip `(WITH...)` parantezler → `Incorrect syntax near ')'`. MCP için **tek SELECT, CTE'siz** yaz. CTE'li tam sorgular SSMS içindir.
 - **ORDER BY top-level olmaz.** Wrapper derived table yapar → `ORDER BY ... unless TOP/OFFSET/FOR XML`. MCP'de ORDER BY'ı çıkar veya `TOP` ekle.
 - **Multi-statement reddedilir.** `DECLARE @x; SELECT...` → "Birden fazla statement". MCP'de değişkenleri inline literal yap. SSMS'te DECLARE serbest.
+- **`OBJECT_DEFINITION('dbo.X')` NULL ≠ şifreli (04.07 dersi).** NULL üç sebepten: (a) `WITH ENCRYPTION`, (b) **yanlış şema** (obje `mhs`/`ent`/`bkm`'de, sen `dbo` aradın), (c) VIEW DEFINITION izni yok. "dbo.cariIsle_oto NULL → şifreli" sandım; halbuki `mhs.cariIsle_oto`'ydu. **Doğrusu:** şemadan bağımsız teyit → `SELECT s.name,o.name,CASE WHEN m.definition IS NULL THEN 'NULL' ELSE 'OK' END FROM sys.objects o JOIN sys.schemas s ON s.schema_id=o.schema_id LEFT JOIN sys.sql_modules m ON m.object_id=o.object_id WHERE o.name='<ad>'`. Hâlâ NULL ise şifreli/izin. DerinSIS: native SP (`dbo.car_isle`, `mhs.mhsEnt_car`) gerçekten `WITH ENCRYPTION`; config-level (`mhs.cariIsle_oto`, `ent.AnaCariBul`) okunur.
 
 ## E-ticaret Müşteri Zinciri
 

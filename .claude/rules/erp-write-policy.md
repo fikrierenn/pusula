@@ -4,15 +4,17 @@
 
 ## Mutlak Kural
 
-**ERP / production veritabanlarına TEK izinli yazma hedefi = `bkm.Fin_AyKapanis`. Başka HİÇBİR tabloya yazma YOK.**
+**ERP / production veritabanlarına izinli yazma hedefleri = SADECE app-owned `bkm.*` tabloları: `bkm.Fin_AyKapanis` (dashboard) + `bkm.BankaOgrenme` (muhasebe app). Başka HİÇBİR tabloya / DerinSIS native tabloya / başka şemaya yazma YOK.**
 
-Kullanıcı direktifi (verbatim): _"sadece o tabloya yazacaksın, başkası yasak"_.
+Kullanıcı direktifi (verbatim): _"sadece o tabloya yazacaksın, başkası yasak"_ (23.06 Fin_AyKapanis) · _"bkm şeması olarak"_ (04.07 BankaOgrenme — banka ekstresi öğrenme deposu, ERP-write yetkilendirildi).
+
+> **İlke:** `bkm` şeması = Fikri'nin app-owned namespace'i (DerinSIS native `dbo`/`mhs`/`ent` DEĞİL). Yeni app-owned `bkm.*` tablosu yazımı yalnız kullanıcı açık onayıyla + bu kurala eklenerek. DerinSIS native tablo (car/fat/irsHrk/mhsFis…) yazımı MUTLAK YASAK.
 
 ## Bağlantı Bazlı Yetki
 
 | Bağlantı (Db.cs) | Hedef | Yazma izni |
 |---|---|---|
-| `Db.OpenAsync()` | 192.168.40.201 — **DerinSISBkm / EncoreMerkez / BKM (ERP)** | **SALT-OKUMA** — TEK istisna: `bkm.Fin_AyKapanis` (INSERT/UPDATE/DELETE/MERGE). Başka tablo yazımı YASAK. |
+| `Db.OpenAsync()` | 192.168.40.201 — **DerinSISBkm / EncoreMerkez / BKM (ERP)** | **SALT-OKUMA** — istisna yalnız app-owned `bkm.Fin_AyKapanis` + `bkm.BankaOgrenme` (INSERT/UPDATE/DELETE). Başka tablo / native tablo yazımı YASAK. |
 | `Db.OpenJokerAsync()` | 192.168.40.70 — **JOKER e-ticaret** | **SALT-OKUMA** — istisna yok. |
 | `Db.OpenPanel()` / `OpenPanelAsync()` | localhost — **BkmPanel (app-local)** | Yazma SERBEST ama yalnız `dbo.Panel*` kendi tabloları (auth/görev/bellek/tahmin/takvim/içkart). Bu panelin kendi durum deposu, ERP değil. |
 
