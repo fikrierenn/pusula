@@ -282,4 +282,16 @@ metrics:
     backtest_bulgu_2026_07_30: "ENS offline backtest (mağaza 1, bkm.OneriSiparis self-join): satış yoğunluğu (Miktar90) güven-proxy'si tahmin güvenilirliğini AYIRIYOR — SMAPE 2.0(ölü)→0.66(çok-yoğun), 6 tarihte replike, sezon-bağımsız. %74.7 ürün ÖLÜ stok (90g satış=0) → triyaj: insan dikkati yoğun-satanlara, ölüler bastırılır. Naive trailing-tahmin sapması SEZONLUK (yaza fazla/güze eksik, 6-tarih ortalamada eriyor). → forecast doğruluğu değil, GÜVEN kalibrasyonu + kayıp-satış düzeltmesi asıl kazanç."
     confidence: 0.9
     evidence: "2026-07-30 — proc gövdesi (13KB) okundu + bkm.OneriSiparis self-join backtest (mağaza 1, 6 tarih D→D+30, SMAPE bucket). Arşiv: sorgular/2026-07-30-oneri-siparis-backtest.sql."
+
+  satinalma_accountability:   # 2026-07-30 — satinalma-danisman fact-force keşfi (alıcıya hesap sorma zinciri)
+    zincir: "Öneri (OneriSiparis.OneriSiparisAdet, s,S nötr taban) → Talep/Sipariş (OneriSiparisTalep.SiparisMiktar = ALICI kararı) → Mal Kabul (MalKabulSatirLog.Miktar = gerçek gelen) → Stok/Satış (outcome: devir/ölü-stok/stockout)"
+    kose_tasi: "ÖNERİ-SAPMASI = SiparisMiktar − OneriSiparisAdet (aynı Tarih/MekanId/StkId). Kontrol-edilebilir+ölçülebilir+adil. Alıcı öneriyi ezip fazla aldı & SKU ölü kaldı → alıcı sorumlu; öneriyi izledi & kötü → SİSTEM sorumlu (s,S nötr taban confound'u çözer)."
+    fill_rate: "gelen/sipariş = MalKabulSatirLog.Miktar / OneriSiparisTalep.SiparisMiktar. Kısa-fill = EksikIrsaliyeNo/IadeIrsaliyeNo → TEDARİKÇİ başarısızlığı (alıcı değil); kronik+alıcı o tedarikçide ısrar → alıcı (tedarikçi-seçimi)."
+    atif: "Alıcı = OneriSiparisTalep.OnaylayanKullanici (varchar-isim) + OneriSiparisKullaniciKategori (kategori-sahipliği). ⚠ MalKabul.OlusturanKullaniciId/KullaniciId = KABUL PERSONELİ, alıcı DEĞİL (haksız-atıf tuzağı)."
+    perverse_incentive: "Sapma-cezası → alıcı 'hep öneriyi izle'ye kaçar (sistem kör-noktalarında insan düzeltmesi ölür). KARŞI-METRİK: sapma→HAKLI (devir iyi) çıktıysa ÖDÜL; öneriyi izleyip stockout=sistem hatası (alıcıya yazma)."
+    adil_atif: "Confound elemesi ZORUNLU (talep şoku/sezon/kampanya-zorlaması/yayınevi fiyat = kontrol-dışı). Sinyal=sistematik pattern; tek SKU=gürültü. Overclaim yasak: iddia=kanıt+güven. Skill: .claude/skills/satinalma-danisman."
+    acik: "Sipariş↔MalKabul köprüsü çok-hoplu (Talep.SipId→sip→irs/malkabul); doğrudan FK ve EvrakNo YOK (test edildi 0 örtüşme). fill_rate için bu köprü keşfedilmeli."
+    confidence: 0.7
+    last_verified: 2026-07-30
+    evidence: "2026-07-30 canlı sqlcli — OneriSiparisTalep/KullaniciKategori/MalKabulBaslik/SatirLog profil + EvrakNo köprü testi (0 örtüşme). Eksen tam-tasarımı bekliyor (öneri-sapması→ölü-stok)."
     last_verified: "2026-07-30"

@@ -260,4 +260,19 @@ entities:
     stok_dogrulama: "OneriSiparis.Stok ≈ SUM(dbo.irsHrk.ehAdetN WHERE ehMekan=m AND ehstkID=s AND ehTrhS≤Tarih) — 8 üründe 7 tam tuttu."
     confidence: 1.0
     evidence: "2026-07-30 (ENS backtest) — sys.partitions 208M satır; MIN/MAX(Tarih)=2025-01-01..bugün; proc gövdesi (13KB) okundu; Stok 7/8 irsHrk kümülatifle tam."
+  # --- Satınalma accountability zinciri (2026-07-30 keşif — satinalma-danisman) ---
+  bkm.OneriSiparisTalep:
+    key: [Tarih, MekanId, StkId, SiparisMiktar, SipId, Onay, EvrakNo, EkleyenKullanici, OnaylayanKullanici, OdakAktar]
+    grain: "insan sipariş kararı satırı (ürün×mekan×talep)"
+    note: "ALICI KARARI = burası (öneri motoru OneriSiparis.OneriSiparisAdet önerir, insan buradan onaylar/değiştirir). Accountability köşe taşı: ÖNERİ-SAPMASI = SiparisMiktar − OneriSiparis.OneriSiparisAdet (aynı Tarih/MekanId/StkId). Alıcı = OnaylayanKullanici (⚠ VARCHAR-isim, insId değil) + kategori-sahibi (OneriSiparisKullaniciKategori). SipId → sip (gerçek PO). ⚠ EvrakNo MalKabul köprüsü DEĞİL (0 örtüşme test edildi; Talep.EvrakNo ~boş, farklı format). 111.721 satır."
+  bkm.OneriSiparisKullaniciKategori:
+    key: [insId, ktgrID, mekanId]
+    note: "ALICI ↔ KATEGORİ sahipliği = adil-atıf temeli (alıcı kategorilerinin ölü-stok/stockout'undan sorumlu). 68 satır = 26 alıcı × 11 kategori × 3 şube. insId isim: bkm.SayimKullanici.AdSoyad (iky.personel persId TUTMADI). Kardeş: OneriSiparisKullaniciReyon (reyon)."
+  bkm.MalKabulBaslik:
+    pk: MalKabulBaslikId
+    key: [EvrakTarihi, CariId, MekanId, EvrakNo, IrsaliyeNo, IadeIrsaliyeNo, EksikIrsaliyeNo, Onay, Iptal, OlusturanKullaniciId, HareketTip]
+    note: "MAL KABUL (gelen mal) başlığı, 4.295 satır. CariId=tedarikçi · MekanId=kabul yeri · EksikIrsaliyeNo/IadeIrsaliyeNo = TEDARİKÇİ başarısızlığı confound-ayırıcı (eksik/geç/iade = alıcı değil tedarikçi; kronik+alıcı o tedarikçide ısrar → alıcı=tedarikçi-seçimi). ⚠ OlusturanKullaniciId = KABUL EDEN PERSONEL, ALICI DEĞİL (→SayimKullanici, atıf tuzağı). Sipariş↔kabul köprüsü çok-hoplu (Talep.SipId→sip→irs/malkabul), doğrudan FK yok — keşif bekliyor."
+  bkm.MalKabulSatirLog:
+    key: [MalKabulBaslikId, StokId, Miktar, KullaniciId, LogDate]
+    note: "Mal kabul satır logu, 3.41M satır. StokId×Miktar = GERÇEK GELEN adet → fill-rate = gelen/sipariş (SiparisMiktar). FK: MalKabulBaslikId→MalKabulBaslik. KullaniciId→SayimKullanici (kabul eden, alıcı değil)."
     last_verified: "2026-07-30"
