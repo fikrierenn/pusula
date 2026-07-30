@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-06-29
+updated: 2026-07-30
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -15,6 +15,8 @@ databases:
   ODAKJOKER.JOKER: {rol: "e-ticaret (linked server)", tarih: "YYYYMMDD ISO — DMY burada SESSİZ HATA"}
   BKMDATA: {rol: "Hedef tablosu + veri ambarı"}
   BKMMaliyet: {rol: "maliyet/marj"}
+  BKM_GENEL: {rol: "Zirve ERP — BORDRO/PERSONEL/SGK (ayrı sunucu; MCP: zirve). DerinSIS'ten AYRI sistem. Personel görev-ünvan otoritesi (perbilgi.Gorevi serbest metin)."}
+  Mosaik: {rol: "Mosaik portal (reporthub, .NET modüler; MCP: portalhub) DB — SOP/Kvkk/Forms/Circular + görev-tanımı modülü (planlı). ReportHUB DB DEĞİL (o recovery_pending/eski). Doküman/versiyon/onay/workflow + AppModules kayıt + ModuleRoleAccess yetki + AuditLog + Kvkk envanteri."}
 
 ai_hints:   # sorgu üretirken her zaman geçerli
   - "yyyy-MM-dd tarih formatı HİÇBİR yerde kullanılmaz."
@@ -95,8 +97,8 @@ entities:
     not: "Trafik sayfası 'Personel–Trafik Uyumu' haritasının success-bandı/karne hesabı bunu kullanır. Sadece FSM (Per_Grp2='FSM'); diğer mağaza gerekince parametrize."
 
   # E-ticaret
-  ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS]}
-  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT], note: "ORDERREF=J_ORDERS.ORDERID"}
+  ODAKJOKER.JOKER.dbo.J_ORDERS: {pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS, BASEORDERID, SUBORDERS, ORDERTYPE], note: "⚠ TÜREMİŞ SİPARİŞ (çift-sayım tuzağı): BASEORDERID (int, NULL=ana) = türemiş siparişin ana ORDERID'si; SUBORDERS>0 = bu sipariş bölünmüş (çocuğu var, 'asıl'); ORDERTYPE 0=ana · 2=türemiş. Sipariş bölününce hem asıl hem türemiş J_ORDERS'ta durur → RAPOR/ANALİZDE ASILI ÇIKAR (türemiş güncel): AND NOT EXISTS(SELECT 1 FROM ODAKJOKER.JOKER.dbo.J_ORDERS b WHERE b.BASEORDERID=o.ORDERID). Tem-2026 kart: 93.500 sipariş = 139 superseded-ana + 225 türemiş-çocuk (~%0,15, ama iptal-ilişkili → problemli satırda daha yoğun). 2026-07-30 canlı. ⚠ SERVICEPRICE ÇİFT ANLAMLI, PAYDEFREF'e göre okunur: PAYDEFREF=-3 (Kapıda Ödeme) → COD hizmet bedeli (8.167/8.167 dolu, %100). PAYDEFREF=-13 (iyzico/kart) → VADE FARKI (JOKER API'de ayrı alan: Payment.LateChargeAmount; API'nin CashOnDeliveryAmount'ı ayrı ve bu siparişlerde 0). Haz+Tem 2026: 4.266/135.803 iyzico siparişi (%3,1) dolu = 981.754 ₺ — COD toplamının (693.378 ₺) üstünde, ciro/maliyet raporunda COD sanılırsa yanlış sınıflanır. Tutar kimliği: TOTALPRICE = SUM(D.QUANTITY*D.SELLINGPRICE) + CARGOPRICE + SERVICEPRICE (kuruşu kuruşuna, 12 sipariş × JOKER API karşılaştırması). VADE FARKI TARİFESİ (sabit oran, sepetten bağımsız; taban = satır toplamı + CARGOPRICE - VOUCHERVALUE): %10,44 · %13,52 · %16,29 · %19,62 · %31,14 · %38,33 (Tem-2026: 1.331 sipariş bu 6 kademede). ⚠ FAİZSİZ TAKSİT YOK (kullanıcı teyit 2026-07-30) → SERVICEPRICE>0 = KESİN taksitli, =0 = KESİN peşin (kart -13'te; proxy değil tam ayrım). TAKSİT SAYISI HİÇBİR YERDE YAZILI DEĞİL — JOKER'de taksit kolonu YOK (tüm DB kolon taraması: TAKSIT/INSTALLMENT/VADE/KOMISYON = 0 eşleşme); API'nin Payment.InstallmentCount alanı beslenmiyor (vade farkı dolu siparişte bile 1 dönüyor). Kademe→taksit eşlemesi iyzico panelinden doğrulanmayı bekliyor (teyit bekliyor, confidence 0.5). BANK kolonu boş (%94), TRANSACTIONID/ROUND/FIRM/ISLEM_ACIKLAMA da boş — taksit izi yok. 2026-07-17 canlı keşif."}
+  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT, STATUS], note: "ORDERREF=J_ORDERS.ORDERID · ITEMREF=J_ITEMS.LOGICALREF. STATUS=SATIR durumu (2xxx/4xxx, lookup J_ORDER_STATUS) — İPTAL/İADE ANALİZİNİN DOĞRU GRAIN'İ (header J_ORDERS.STATUS kısmi iptali kaçırır, bkz codes.yaml joker.J_ORDER_DETAILS.STATUS). İptal=2005, İade=2010, Baskısı-yok/fiili-iptal=2004. İptal/iade kolonları: IPTALNO, IPTALSEBEP(varchar), IPTALTARIH(datetime), IADESEBEPNO, IADEMIKTAR, IADEACIKLAMA, IADETALEP, IADETALEPTARIH, ODEMEDURUM(smallint). ⚠ DURUM kolonu ölü (hep NULL). 2026-07-30 canlı."}
   ODAKJOKER.JOKER.dbo.J_ITEMS: {pk: LOGICALREF, key: [NAME, BRAND, DERINSIS_ID], note: "BRAND direkt marka; DERINSIS_ID=urn.stkID"}
   ODAKJOKER.JOKER.dbo.BASKISIYOK: {key: [LOGICALREF, TARIH, DETAILREF, ORDERREF, ITEMREF, USERREF, BARCODE, QUANTITY], note: "Baskısı yok (etiket basılmadan) yapılan e-tic sipariş satırları. DETAILREF→J_ORDER_DETAILS.LOGICALREF, ITEMREF→J_ITEMS.LOGICALREF, USERREF→EM_USERS.LOGICALREF, ORDERREF→J_ORDERS.ORDERID, TARIH=işlem zamanı (datetime). Adet/Tutar = BASKISIYOK.QUANTITY (B) × D.SELLINGPRICE. ⚠ B.QUANTITY=0 satırları İPTAL kaynaklı (bug, 58/1681 son-30g) → RAPORDA DEVRE DIŞI: WHERE B.QUANTITY>0. (D.QUANTITY iptali sayar, KULLANMA.) çeşit=distinct B.BARCODE. SELLINGPRICE=0=hediye çeki (normal, Tutar 0 Adet dolu). Dashboard /baskisi-yok (B-126) + e-tic 30g trend. 2026-06-26 kolon teyit + iptal-0 filtre."}
   ODAKJOKER.JOKER.dbo.EM_USERS: {pk: LOGICALREF, key: [FULLNAME], note: "JOKER panel kullanıcıları; BASKISIYOK.USERREF→LOGICALREF, FULLNAME=işlemi yapan."}
@@ -170,3 +172,92 @@ entities:
     confidence: 1.0
     last_verified: "2026-06-29"
     evidence: "2026-06-29 — MCP DerinSISBkm, SELECT kolon/COUNT/örnek. 1.864 satır, toplam 140.102 müşteri."
+
+  # === Zirve BKM_GENEL — bordro/personel (2026-07-02 keşif; MCP zirve). Görev-tanımı projesi: D:\Dev\gorevtanimlari\bkm ===
+  BKM_GENEL.dbo.perbilgi:
+    pk: Personelno
+    key: [Adsoyad, Gorevi, Grupkodu, Subekodu, Subeadi, Masrafmerkezi, Cbgorev, Cbmeslek, Personeldurumu, Firmakodu]
+    grain: "personel (3447 satır; tarihçe/ayrılan dahil)"
+    note: "HAM personel master. Gorevi=serbest metin ünvan (127, KİRLİ: NULL/boş/varyant). Grupkodu(16)=birim/lokasyon. ⚠️ Personeldurumu '1'(3382)/'2'(65) GERÇEK aktif filtresi DEĞİL (tarihçe dahil). Cbgorev(3)=org değil (SGK), Masrafmerkezi/Subeadi çoğu NULL. İK/görev-tanımı işi için HAM perbilgi yerine vw_PersonelDepartman kullan (temiz + doğru aktif=Ict IS NULL)."
+    confidence: 0.9
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — MCP zirve sql_query: describe perbilgi + Gorevi/Grupkodu/Masrafmerkezi/Subeadi dağılım + Personeldurumu kardinalite."
+  BKM_GENEL.dbo.vw_PersonelDepartman:
+    tip: view
+    key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Igt, Ict]
+    grain: "personel (normalize; ham perbilgi üstüne temiz katman)"
+    note: "İK/personel KANONİK KAYNAĞI (Mosaik sp_Ik* raporları hep bunu kullanır). ⚠️ Personelno ALFANÜMERİK STRING (ör. '4634-BKM' = personelno+firma), int DEĞİL. AKTİF = Ict IS NULL (271 aktif; Personeldurumu DEĞİL). Kıdem = DATEDIFF(DAY,Igt,GETDATE())/365.25. Temiz boyutlar: Unvan(59), Departman(27: YARDIMCI KİTAP/KÜLTÜR/KIRTASİYE/ÇOCUK/OYUNCAK/AKADEMİ/KASA/KAFE/MUTFAK/MAL KABUL/DEPO/CALL CENTER/MAĞAZA/GRAFİK TASARIM/ETKİNLİK/FİNANS/MUHASEBE/İK/SATIN ALMA/PAZARLAMA/DENETİM/BİLGİ TEKNOLOJİLERİ/İCRA KURULU/ŞURA/MERKEZ…), Lokasyon(4), AltLokasyon(10=şube; UserDataFilterInjector FilterKey='sube' satır-düzeyi filtre). Görev-tanımı EŞLEME anahtarı = (Departman + Unvan) — bizim müdürlük+rol tasarımıyla örtüşür; eşlenmeyen = tanım-gap."
+    confidence: 0.95
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — reporthub/Mosaik/Database/sp_IkPersonelListesi.sql + sp_IkMagazaYogunlugu.sql; MCP zirve=ZIRVE\\ZRVSQL2008 (=IK datasource, aynı sunucu). View DEPLOY EDİLMİŞ (271); sp_Ik* CANLIDA YOK (0) → yalnız repo Database/*.sql, Zirve'ye deploy bekliyor. İK rapor SP'leri Zirve'de çalışır (Mosaik'te değil)."
+
+  # === Mosaik portal DB (2026-07-02 keşif; MCP portalhub) — görev-tanımı modülü HEDEFİ ===
+  Mosaik.dbo.OrgPositions:
+    pk: Id
+    key: [Code, Title, ParentPositionId, DisplayOrder, IsActive, Description]
+    grain: "organizasyon pozisyonu (62; self-FK ağaç ParentPositionId; UX_OrgPositions_Code unique)"
+    note: "Zirve'den senkron org (Direktör-modeli: Saha Operasyon/Mali İşler/Finans Direktörü, İç Denetim ve İK Müdürü…). Bizim md org (Genel Müdür + 9 müdürlük, 48 tanım) ile EŞLEŞMİYOR → görev-tanımı EŞLEME tablosuyla köprülenir, 1:1 zorlanmaz."
+    confidence: 0.9
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — MCP portalhub describe OrgPositions + 8 örnek satır."
+  Mosaik.dbo.SopDocuments: {pk: Id, note: "SOP doküman başlık (2 satır). Görev-tanımı modülü ŞABLONU (prosedür ~ görev tanımı). Versiyon → SopVersions."}
+  Mosaik.dbo.SopVersions:
+    pk: Id
+    key: [SopDocumentId, VersionNumber, ContentJson, PlainTextContent, EffectiveDate, SupersededDate, Status, CreatedBy]
+    grain: "SOP doküman × versiyon (IX unique SopDocumentId+VersionNumber)"
+    note: "Görev-tanımı versiyon/YAYIN modelinin BİREBİR ŞABLONU. ContentJson(nvarchar MAX)=içerik; Status(tinyint)=taslak/yayın/süperse; VersionNumber++ yayında; EffectiveDate/SupersededDate revizyon zinciri (kullanıcının 'yayınlanınca revizyon no' isteğinin karşılığı). Onay: SopApprovalSubmissions; jenerik motor: ApprovalRequests/ApprovalSteps/StatusTransitions/WorkflowTemplates. Yetki: ModuleRoleAccess/Roles; modül kaydı: AppModules(13); iz: AuditLog(467)."
+    confidence: 0.9
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — MCP portalhub describe SopVersions + browse (Sop*/Approval*/Document*/AppModules/Kvkk*)."
+  # Görev Tanımları modülü — 02.07.2026 KURULDU + göç yapıldı (kaynak: gorevtanimlari/bkm; DDL reporthub/Mosaik/Database/80_GorevTanimlari.sql)
+  Mosaik.dbo.GorevDocuments:
+    pk: Id
+    key: [PositionCode, Title, OrgPositionId, IsActive]
+    grain: "pozisyon başına 1 görev-tanımı dokümanı (48; UX PositionCode)"
+    note: "Görev tanımı doküman başlığı. PositionCode=kanonik pozisyon adı (bkm md tanım başlığı). OrgPositionId→OrgPositions (opsiyonel köprü). Versiyon → GorevVersions."
+    confidence: 1.0
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — CREATE + göç (48 kayıt); sqlcli mosaik profili doğrulama."
+  Mosaik.dbo.GorevVersions:
+    pk: Id
+    key: [GorevDocumentId, VersionNumber, ContentJson, Status, EffectiveDate, SupersededDate]
+    grain: "doküman × versiyon (UX GorevDocumentId+VersionNumber; SopVersions deseni)"
+    note: "ContentJson={paragraphs:[],kpi:[{text,active}]} (bkm subtreeData formatı). Status 0=taslak/1=yayın/2=süperse. Yayın=Rev N (VersionNumber++). 48 kayıt Rev 1 yayın (göç baseline)."
+    confidence: 1.0
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — CREATE + göç 48 versiyon, ISJSON=48 doğrulandı."
+  Mosaik.dbo.GorevZirveMap:
+    pk: Id
+    key: [GorevDocumentId, ZirveDepartman, ZirveUnvan, MatchType]
+    grain: "görev-tanımı ↔ Zirve rol eşlemesi (çok-a-çok; UX Departman+Unvan)"
+    note: "Anahtar = vw_PersonelDepartman (Departman+Unvan), ham Gorevi DEĞİL. MatchType exact/manual/none. Eşlenmeyen Zirve rolü = tanım-gap. v1: 34 satır (25 exact + 9 manual), 48 dokümanın 25'i eşlendi. GAP = ~30 frontline rol (Satış Danışmanı/Kasiyer/Garson/Reyon Şefi… personelin çoğunluğu) → tanım yazılacak."
+    confidence: 1.0
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — CREATE + eşleme v1 INSERT (34 satır)."
+  Mosaik.dbo.GorevPersonelMap:
+    pk: Id
+    key: [Personelno, GorevDocumentId, Source]
+    grain: "kişi-düzeyi eşleme (Personelno UNIQUE → doküman)"
+    note: "KİŞİ override (rol GorevZirveMap'i EZER). Gerekçe: aynı ünvan farklı tanıma gider (Satın Alma Görevlisi → kişi Kırtasiye vs Oyuncak). Personelno = Zirve perbilgi/vw_PersonelDepartman. Mosaik.Modules.GorevTanimlari mapping ekranı doldurur (kişi-map yoksa rol-map fallback). HENÜZ BOŞ."
+    confidence: 1.0
+    last_verified: "2026-07-02"
+    evidence: "2026-07-02 — CREATE (modül Database/01). Mapping ekranı = Mosaik MVC modülü (offline HTML terk edildi)."
+
+  # === KÖPRÜ (planlı, teyit bekliyor) — görev-tanımı eşleme ===
+  # Mosaik görev-tanımı pozisyonu (bizim md kanonik) ↔ BKM_GENEL.perbilgi.Gorevi (normalize, çok-a-çok).
+  # Eşlenmeyen Zirve Gorevi = görev-tanımı yazılacak rol (gap raporu; T-08 kafe/T-09 mağaza alt-kadro ile örtüşür).
+  # Plan tablosu: GorevPositionZirveMap(GorevPositionId, ZirveGoreviNorm, MatchType, ...). Detay: gorevtanimlari/bkm DECISIONS G.
+
+  # === Reorder / yeniden-sipariş öneri motoru (ENS backtest keşfi 2026-07-30) ===
+  bkm.OneriSiparis:
+    kaynak: "gece proc bkm.OneriSiparisHesaplaSapmaDuzeltmeli üretir → bu tabloya yazar; gündüz desktop .NET arayüzden onaylanır"
+    key: [Tarih, MekanId, StkId]
+    grain: "gün × mağaza × ürün — reorder önerisi günlük snapshot"
+    kolonlar: "Miktar30/60/90/180/360 (trailing satış adet), GunStok (stok gün-cover), Minimum/Maximum (s,S eşik), OneriSiparisAdet (öneri miktar), FazlaStok, Stok, SubeStok, SatisFiyat, KategoriId, YeniUrun"
+    tarih_araligi: "2025-01-01 → bugün (~19 ay), 208M satır. Proc yalnız BUGÜNÜ siler → eski günler BİRİKİR = öneri geçmişi/audit (backtest için altın)."
+    mekan: "yalnız aktif şube 1/4477/4478. Mekan 12 (ana depo) DAHİL DEĞİL — depo reorder ayrı."
+    onay_tablosu: "bkm.OneriSiparisTalep (Onay, OnaylayanKullanici, SiparisMiktar) = insan onay/sipariş kaydı."
+    stok_dogrulama: "OneriSiparis.Stok ≈ SUM(dbo.irsHrk.ehAdetN WHERE ehMekan=m AND ehstkID=s AND ehTrhS≤Tarih) — 8 üründe 7 tam tuttu."
+    confidence: 1.0
+    evidence: "2026-07-30 (ENS backtest) — sys.partitions 208M satır; MIN/MAX(Tarih)=2025-01-01..bugün; proc gövdesi (13KB) okundu; Stok 7/8 irsHrk kümülatifle tam."
+    last_verified: "2026-07-30"

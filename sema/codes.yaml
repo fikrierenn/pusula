@@ -187,15 +187,17 @@ codes:
 
   joker.J_ORDER_DETAILS.STATUS:   # detay satır: 2xxx=Sipariş detay, 4xxx=Odak detay (kod ailesi yukarıda)
     bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi
+    net_iptal_iade: [2004, 2005, 2010]   # SATIR-BAZLI iptal/iade — rapor bunları saymalı (2004=fiili iptal)
     values:
       2000: Tedarik Bekleniyor
       2002: Ürün Tedariğe Gönderildi
       2003: Ürünlerin Hepsi Rafta
-      2005: Ürün İptal Edildi
+      2004: "Ürünün Baskısı Bulunamıyor (tedarik edilemedi = FİİLİ İPTAL, müşteri değil)"
+      2005: Ürün İptal Edildi (müşteri/operasyon iptali)
       2007: Ürünün Tedarikçiden Siparişi Verilmiş
-      2009: Ürün Kargoya Verildi
-      2010: Ürün İade Geldi
-    note: "Satır seviye (J_ORDERS.STATUS ana sipariş; bu DETAY). Bekleyen toplama: WMSAKTARMA=1 AND ORDERS.STATUS=1000 AND DETAILS.STATUS IN (2000,2002,2003,2007)."
+      2009: Ürün Kargoya Verildi (normal ana hacim)
+      2010: Ürün İade Geldi (teslimat sonrası)
+    note: "Satır seviye (J_ORDERS.STATUS ana sipariş; bu DETAY). ⚠ İPTAL/İADE ANALİZİ SATIR GRAIN'DE YAPILIR — header J_ORDERS.STATUS kısmi iptali KAÇIRIR: bir sipariş header'da 1005 'Kargoya Verildi' iken bir kalemi 2004/2005 iptal olabilir (ör. TS110730641852: header 1005, 1 kalem 2004). İptal=2005, İade=2010, Baskısı-yok(fiili iptal)=2004. Sebep kolonları: IPTALSEBEP/IPTALTARIH (2005) · IADESEBEPNO/IADEACIKLAMA/IADEMIKTAR/IADETALEPTARIH (2010). İptallerin ~%38'i tedarik/operasyon kaynaklı (müşteri değil). Bekleyen toplama: WMSAKTARMA=1 AND ORDERS.STATUS=1000 AND DETAILS.STATUS IN (2000,2002,2003,2007). Sorgu: sorgular/2026-07-30-etic-kart-iptal-detay.sql. 2026-07-30 canlı keşif (Temmuz kart iptal raporu)."
 
   mekanID:
     # isim kaynağı = posMagaza.mekanAd (dbo.mekan YOK). 24.06 teyit.

@@ -1,7 +1,7 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-07-04
+updated: 2026-07-30
 
 metrics:
   banka_ekstresi_siniflandirma:
@@ -121,6 +121,21 @@ metrics:
     iade_orani: "COD ~%9-10 (online ~%0.5) — COĞRAFYA kaynaklı (Doğu/GD %15-21, Batı %3-6), firma değil"
     voucher: "VOUCHERCODE dolu = hediye çeki → satır indirimi olarak yansır"
     rapor: scripts/kapida_odeme_analiz.py
+
+  etic_iptal_iade:          # e-ticaret iptal/iade analizi (2026-07-30 keşif)
+    grain: "SATIR (J_ORDER_DETAILS.STATUS) — header J_ORDERS.STATUS kısmi iptali kaçırır"
+    kategoriler: "İptal=2005 · İade=2010 · Baskısı-yok/fiili-iptal=2004 · Normal=diğer (2009 kargoya verildi)"
+    turemis_filtre: "AND NOT EXISTS(SELECT 1 FROM J_ORDERS b WHERE b.BASEORDERID=o.ORDERID) — superseded asılı çıkar (çift-sayım)"
+    vade_kargo_dagitim: "SERVICEPRICE(vade farkı, -13) + CARGOPRICE(kargo) sipariş-bazlı → satıra ürün-tutarı oranında prorate: pay = tutar × SatirTutar/SUM(SatirTutar) OVER(PARTITION BY ORDERID)"
+    iade_mantigi: "iptal/iade kaleminde: ürün bedeli + vade farkı payı HER ZAMAN iade; kargo payı SADECE sipariş komple iptalse (hiç sevk yok: MAX(STATUS NOT IN(2004,2005))=0) iade"
+    komple_vs_kismi: "sevkVar=MAX(STATUS NOT IN(2004,2005)) OVER(ORDERID). Komple İptal=sevkVar 0 (tüm satır iptal, kargo dahil tümü geri) · Kısmi=sevkVar 1 + ≥1 problemli satır (sevk oldu, kargo tutulur). Kalem-bazlı rapor bunu gizler → sipariş-grain ayrımı şart. Tem-2026 kart: 1.615 komple (1,74M ₺ tam kayıp) + 2.552 kısmi (4,38M karışık) + 89.236 temiz"
+    odeme_ayrimi: "grup PAYDEFREF bazlı (SERVICEPRICE bazlı DEĞİL — COD'yi taksitliye karıştırır): -13+SP>0=Kart-Taksitli · -13=Kart-Tek Çekim · -3=Kapıda · -1=Havale"
+    taksitli_kesin: "FAİZSİZ TAKSİT YOK (kullanıcı teyit 2026-07-30) → kart(-13) siparişinde SERVICEPRICE>0 = KESİN taksitli, =0 = KESİN peşin. Proxy DEĞİL tam ayrım; faizsiz-taksit peşine sızma kısıtı GEÇERSİZ."
+    parasal_taban: "İKİ taban (sql-denetci #1): BRÜT/Tahsilat=SELLINGPRICE+kargo+VF (KDV+hepsi dahil, müşteri nakit/iade) · NET CİRO=SELLINGPRICEWITHOUTVAT (KDV-hariç, kargo/VF hariç, plan-16 CFO-kıyas). Kitap %0 KDV→brüt≈net; fark kırtasiye/oyuncak %20. 'Ciro'=net, müşteri-nakit='Tahsilat'. 0-sepet(hediye çeki) prorate sızıntısı → SifirSepetSiparis kolonuyla görünür (bulgu #2)."
+    calistir: "sqlcli query/script (CTE destekli, .env conn) — MCP auto-TOP CTE'yi kıramaz; heavy sorguda tek-sipariş filtrele (linked-server timeout)"
+    tem2026_kart: "ciro 100,80M · problemli %2,45 · iade 2,87M (%2,84). Kapıda %9,71 problemli (kartın ~4x)"
+    sql: sorgular/2026-07-30-etic-kart-iptal-detay.sql
+    last_verified: 2026-07-30
 
   depo_stok_dagilim:        # WMS depo stok kovaları (12.06 — gerçek prod sorgu)
     source: "depo.paletUrnTnm + paletTnm + adres (palet→adres→tip), PIVOT adrsAlanTip × pUStkID"
@@ -257,3 +272,14 @@ metrics:
     arac: "MizanQueries.GetSonucAsync · /mizan (Mizan.razor + MizanDugum recursive). TekDuzenHesap (79 ana hesap adı)."
     confidence: 1.0
     last_verified: 2026-06-23
+
+  reorder_oneri_motoru:
+    proc: "bkm.OneriSiparisHesaplaSapmaDuzeltmeli (gece batch → entity bkm.OneriSiparis). Şube 1/4477/4478."
+    model: "min-max (s,S): Minimum = günlük_hız × min_stok_gün(15); Maximum = × max_stok_gün(30); OneriSiparisAdet = (Stok ≤ Minimum ve Miktar180>0) ? Maximum−Stok : 0. GunStok = Stok×90/Miktar180. Açık PO bakiye (sipBakiye_vw) stoğa eklenir (çift-sipariş önler). Kategori3 (OneriSiparisKtg3Ondeger) min/max override."
+    gunluk_hiz: "DuzeltilmisOrt = irsHrk satış (ehTip 1/4/100, -ehAdetN) / gün, ortTarih penceresi (kategori OrtSatisGun ya da 90g)."
+    spike_sonumleme: "'Sapma-Düzeltmeli': bir günün satışı ortalamanın 1.8 katını aşarsa o gün ortalamayla değiştirilir (toplu alım/etkinlik talebi şişirmesin). ⚠️ YALNIZ kategori 2,15,24,8,12,16 — keyfi/hardcoded."
+    kalibrasyonsuz_uyari: "sabitler 1.8/15/30/90g/45g-yeni KALİBRE DEĞİL (opinion). Talep SANSÜRÜ düzeltilmiyor: stoksuz gün = kayıp satış kaydedilmez → satış gerçek talepten az → öneri EKSİK çıkar. Aynı-gün delete+insert → gün-içi öneri audit'i yok (ama gün-ler arası birikir)."
+    backtest_bulgu_2026_07_30: "ENS offline backtest (mağaza 1, bkm.OneriSiparis self-join): satış yoğunluğu (Miktar90) güven-proxy'si tahmin güvenilirliğini AYIRIYOR — SMAPE 2.0(ölü)→0.66(çok-yoğun), 6 tarihte replike, sezon-bağımsız. %74.7 ürün ÖLÜ stok (90g satış=0) → triyaj: insan dikkati yoğun-satanlara, ölüler bastırılır. Naive trailing-tahmin sapması SEZONLUK (yaza fazla/güze eksik, 6-tarih ortalamada eriyor). → forecast doğruluğu değil, GÜVEN kalibrasyonu + kayıp-satış düzeltmesi asıl kazanç."
+    confidence: 0.9
+    evidence: "2026-07-30 — proc gövdesi (13KB) okundu + bkm.OneriSiparis self-join backtest (mağaza 1, 6 tarih D→D+30, SMAPE bucket). Arşiv: sorgular/2026-07-30-oneri-siparis-backtest.sql."
+    last_verified: "2026-07-30"
