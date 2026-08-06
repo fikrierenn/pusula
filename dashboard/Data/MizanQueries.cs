@@ -25,10 +25,12 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
     }
 
     /// <summary>Tek yükleme: özet kartlar + tam mizan ağacı. Kapanış fişi hariç (kesin mizan).</summary>
-    /// <param name="ay">1-12 kümülatif mizan (yıl başından bu aya kadar). 12 = tüm yıl.</param>
-    public async Task<MizanSonuc> GetSonucAsync(int sirketId, int ay = 12)
+    /// <param name="ay">Üst ay sınırı (1-12).</param>
+    /// <param name="ayBas">Alt ay sınırı. 1 = kümülatif (yıl başından @ay'a); @ay = yalnız o ay (hareket mizanı).</param>
+    public async Task<MizanSonuc> GetSonucAsync(int sirketId, int ay = 12, int ayBas = 1)
     {
         if (ay is < 1 or > 12) ay = 12;
+        if (ayBas is < 1 or > 12) ayBas = 1;
         await using var conn = await db.OpenAsync();
         // Leaf bakiyeler — fiş satırından, "Kapanış" bilanço fişi HARİÇ, fisTarih ayı ≤ @ay (kümülatif).
         var leafler = (await conn.QueryAsync<LeafRow>("""
@@ -38,13 +40,13 @@ public sealed class MizanQueries(Db db, ILogger<MizanQueries> logger)
             FROM DerinSISBkm.mhs.mhsFis ff
             JOIN DerinSISBkm.mhs.mhsHsp h ON h.hspID = ff.fisHspID AND h.hspSirketID = ff.fisSirketID
             WHERE ff.fisSirketID = @sirketId
-              AND MONTH(ff.fisTarih) <= @ay
+              AND MONTH(ff.fisTarih) BETWEEN @ayBas AND @ay
               AND NOT EXISTS (SELECT 1 FROM DerinSISBkm.mhs.mhsFisBaslik k
                               WHERE k.fisbID = ff.fisID AND k.fisbSirketID = ff.fisSirketID AND k.fisAd = N'Kapanış')
             GROUP BY h.hspKod, h.hspAd
             HAVING SUM(CASE WHEN ff.fisBA=1 THEN -ff.fisTutar ELSE 0 END) <> 0
                 OR SUM(CASE WHEN ff.fisBA=0 THEN  ff.fisTutar ELSE 0 END) <> 0
-            """, new { sirketId, ay })).ToList();
+            """, new { sirketId, ay, ayBas })).ToList();
 
         // Hesap adları TABLODAN (hardcode YOK): mhsAnaHsp = 1/2/3-haneli Tek Düzen ana hesap (standart, sirket-bağımsız)
         // + mhsHsp = noktalı alt hesap (bu sirket). İkisi birleşir → her seviye adı.

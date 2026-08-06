@@ -26,6 +26,10 @@
                 <option value="@m">@_aylar[m - 1]@(m == 12 ? " (tüm yıl)" : "")</option>
             }
         </select>
+        <div class="join">
+            <button class="join-item btn btn-sm @(_kumule ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="() => SetMod(true)" title="Yıl başından seçili aya kümülatif bakiye">Kümüle</button>
+            <button class="join-item btn btn-sm @(!_kumule ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="() => SetMod(false)" title="Yalnız seçili ayın hareketi">Tek ay</button>
+        </div>
     </div>
 </div>
 
@@ -108,7 +112,8 @@ else if (_sonuc is not null)
     private int _sirketId;
     private int _yil => _sirketId + MizanQueries.YilOffset;
     private int _acikSeviye = 3;   // minimum: 3 (1·10·100 ana hesap hep görünür)
-    private int _ay = 12;          // kümülatif mizan ayı (12 = tüm yıl)
+    private int _ay = 12;          // üst ay sınırı (12 = tüm yıl)
+    private bool _kumule = true;   // true = Oca→ay kümülatif · false = yalnız seçili ay (hareket)
     private static readonly (string Ad, int Deger)[] _seviyeler =
         [("Ana hesap", 3), ("Alt hesap", 4), ("Tüm kırılım", 6)];
     private static readonly string[] _aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -124,11 +129,13 @@ else if (_sonuc is not null)
         await LoadAsync();
     }
 
+    private async Task SetMod(bool kumule) { _kumule = kumule; await LoadAsync(); }
+
     private async Task LoadAsync()
     {
         _loading = true; _error = null; StateHasChanged();
         var sw = PerfState.Start();
-        try { _sonuc = await Miz.GetSonucAsync(_sirketId, _ay); }
+        try { _sonuc = await Miz.GetSonucAsync(_sirketId, _ay, _kumule ? 1 : _ay); }
         catch (Exception ex) { Logger.LogError(ex, "Mizan yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
         finally { _loading = false; Perf.Report("Mizan", sw); StateHasChanged(); }
     }
