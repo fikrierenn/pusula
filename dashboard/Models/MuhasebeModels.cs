@@ -12,7 +12,7 @@ public record KontrolOzetRow(
 public record KapanisDonem(int DonemYil, int DonemAy, DateTime KapanisDT, string? Aciklama, DateTime KayitDT);
 
 /// <summary>Yevmiye fişi tek satırı (mhsFis × mhsHsp). Borç=fisBA1(-fisTutar) / Alacak=fisBA0(fisTutar). UstAd = bir üst kırılım hesap adı (hspKod prefix).</summary>
-public record YevmiyeFisSatir(string HspKod, string HspAd, string? UstAd, string? Aciklama, decimal Borc, decimal Alacak);
+public record YevmiyeFisSatir(string HspKod, string HspAd, string? UstAd, string? Aciklama, string? MerkezAd, decimal Borc, decimal Alacak);
 
 /// <summary>Yevmiye fişi (başlık + satırlar) — Kontrol DETAY evrak drill'i. fisbID ile.
 /// Audit (mhsFisBaslik): Giren=gKisi/gTarih, Değiştiren=kKisi/kTarih, Onaylayan=oKisi/oTarih (kişi → drn1.insAd).</summary>

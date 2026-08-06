@@ -15,7 +15,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
     const string Sp = "DerinSISBkm.bkm.sp_KapanisMudahaleKontrol_v2";
 
     // Dapper map'leme için düz record (8+ elemanlı ValueTuple nested Rest → Dapper 8. elemanı map edemez, tutar boş kalır).
-    private sealed record YevmiyeQ(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? UstAd, string? Aciklama, decimal Borc, decimal Alacak,
+    private sealed record YevmiyeQ(int YevmiyeNo, string Tarih, string FisAd, string HspKod, string HspAd, string? UstAd, string? Aciklama, string? MerkezAd, decimal Borc, decimal Alacak,
         string? Giren, string? GirisT, string? Degistiren, string? DegisT, string? Onaylayan, string? OnayT, int? FaturaEID, string? FaturaNo);
     private sealed record FaturaQ(string EvrakNo, string Tarih, int Tip, string? Not, string? CariKod, string? CariAd, string Kod, string Urun, string? MasrafMerkezi, decimal Adet, decimal Tutar, decimal Kdv,
         string? Giren, string? GirisT, string? Degistiren, string? DegisT, string? Onaylayan, string? OnayT, int? YevmiyeFisID, int? YevmiyeSirket, int? YevmiyeNo);
@@ -71,6 +71,9 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
                    h.hspKod AS HspKod, CAST(h.hspAd AS nvarchar(80)) AS HspAd,
                    CAST(p.hspAd AS nvarchar(80)) AS UstAd,
                    CAST(ff.fisAciklama AS nvarchar(160)) AS Aciklama,
+                   CASE WHEN ISNULL(ff.fisGdrMerkez,0) > 0
+                        THEN CAST(LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(gmy.frmAd,N'G - ',N''),N'G- ',N''),N' Gider Merkezi',N''))) AS nvarchar(60))
+                        ELSE NULL END AS MerkezAd,
                    CAST(CASE WHEN ff.fisTutar < 0 THEN -ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Borc,
                    CAST(CASE WHEN ff.fisTutar > 0 THEN  ff.fisTutar ELSE 0 END AS decimal(18,2)) AS Alacak,
                    CAST(LTRIM(RTRIM(g.insAd + ' ' + g.insSoyad)) AS nvarchar(80)) AS Giren,
@@ -86,6 +89,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
             LEFT JOIN DerinSISBkm.mhs.mhsHsp p ON p.hspSirketID = h.hspSirketID
                  AND CHARINDEX('.', REVERSE(h.hspKod)) > 0
                  AND p.hspKod = LEFT(h.hspKod, LEN(h.hspKod) - CHARINDEX('.', REVERSE(h.hspKod)))
+            LEFT JOIN DerinSISBkm.dbo.frm gmy ON gmy.frmID = ff.fisGdrMerkez
             LEFT JOIN DerinSISBkm.dbo.drn1 g ON g.insID = b.gKisi
             LEFT JOIN DerinSISBkm.dbo.drn1 k ON k.insID = b.kKisi
             LEFT JOIN DerinSISBkm.dbo.drn1 o ON o.insID = b.oKisi
@@ -94,7 +98,7 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
             ORDER BY ff.fsID
             """, new { fisId, sirketId })).ToList();
         if (rows.Count == 0) return null;
-        var satirlar = rows.Select(r => new YevmiyeFisSatir(r.HspKod, r.HspAd, r.UstAd, r.Aciklama, r.Borc, r.Alacak)).ToList();
+        var satirlar = rows.Select(r => new YevmiyeFisSatir(r.HspKod, r.HspAd, r.UstAd, r.Aciklama, r.MerkezAd, r.Borc, r.Alacak)).ToList();
         var h0 = rows[0];
         return new YevmiyeFis(h0.YevmiyeNo, h0.Tarih, h0.FisAd, satirlar,
             h0.Giren, h0.GirisT, h0.Degistiren, h0.DegisT, h0.Onaylayan, h0.OnayT,
@@ -141,6 +145,16 @@ public sealed class MuhasebeQueries(Db db, ILogger<MuhasebeQueries> logger)
         return new Fatura(h0.EvrakNo, h0.Tarih, h0.Tip, h0.Not, h0.CariKod, h0.CariAd, satirlar,
             h0.Giren, h0.GirisT, h0.Degistiren, h0.DegisT, h0.Onaylayan, h0.OnayT,
             h0.YevmiyeFisID, h0.YevmiyeSirket, h0.YevmiyeNo);
+    }
+
+    /// <summary>Belirli dönem (yıl/ay) kapatıldıysa kapanış tarihini döner (dd.MM.yyyy), yoksa null. Fatura/Yevmiye rozetinde otomatik gösterilir.</summary>
+    public async Task<string?> GetKapanisTarihiAsync(int yil, int ay)
+    {
+        await using var conn = await db.OpenAsync();
+        return await conn.QueryFirstOrDefaultAsync<string?>("""
+            SELECT CONVERT(varchar(10), KapanisDT, 104)
+            FROM DerinSISBkm.bkm.Fin_AyKapanis WHERE DonemYil = @yil AND DonemAy = @ay
+            """, new { yil, ay });
     }
 
     /// <summary>Kapanmış dönem listesi (seçici için). Fin_AyKapanis — en yeni önce.</summary>

@@ -9,7 +9,7 @@
 <PageTitle>Fatura — BKM GM</PageTitle>
 
 <div class="mb-4 flex items-center gap-3">
-    <button class="btn btn-ghost btn-sm" @onclick="@(() => Nav.NavigateTo("/muhasebe"))">← Kontrol</button>
+    <button class="btn btn-ghost btn-sm" @onclick="Geriye">← @GeriLabel</button>
     <div>
         <div class="text-xs text-base-content/50">Gider / masraf faturası · dbo.fat</div>
         <h1 class="text-2xl font-bold tracking-tight m-0">@(_fat is null ? "Fatura" : $"Fatura {_fat.EvrakNo} · {_fat.Tarih}")</h1>
@@ -42,9 +42,9 @@ else
                     <tr class="border-b border-base-300"><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Fatura No</td><td class="px-2 py-0.5 font-mono text-right">@_fat.EvrakNo</td></tr>
                     <tr><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Tarih</td><td class="px-2 py-0.5 font-mono text-right">@_fat.Tarih</td></tr>
                 </table>
-                @if (!string.IsNullOrWhiteSpace(Kapanis))
+                @if (!string.IsNullOrWhiteSpace(KapanisEtkin))
                 {
-                    <div class="text-error font-semibold text-xs mt-1">Ay Kapanışı: @Kapanis</div>
+                    <div class="text-error font-semibold text-xs mt-1">Ay Kapanışı: @KapanisEtkin</div>
                 }
             </div>
         </div>
@@ -69,7 +69,7 @@ else
                 @if (_fat.YevmiyeFisID is not null)
                 {
                     <button class="btn btn-sm btn-outline btn-primary whitespace-nowrap"
-                            @onclick="@(() => Nav.NavigateTo($"/yevmiye-fis?fis={_fat.YevmiyeFisID}&sirket={_fat.YevmiyeSirket}{KapanisQs}"))">
+                            @onclick="@(() => Nav.NavigateTo($"/yevmiye-fis?fis={_fat.YevmiyeFisID}&sirket={_fat.YevmiyeSirket}{KapanisQs}{GeriQs}"))">
                         📒 Yevmiye Fişini Aç@(_fat.YevmiyeNo is not null ? $" (No {_fat.YevmiyeNo})" : "")
                     </button>
                 }
@@ -138,16 +138,31 @@ else
 @code {
     [SupplyParameterFromQuery(Name = "fat")] public int Fat { get; set; }
     [SupplyParameterFromQuery(Name = "kapanis")] public string? Kapanis { get; set; }
+    [SupplyParameterFromQuery(Name = "geri")] public string? Geri { get; set; }
 
     private Models.Fatura? _fat;
     private bool _loading = true;
     private string? _error;
-    private string KapanisQs => string.IsNullOrWhiteSpace(Kapanis) ? "" : $"&kapanis={Uri.EscapeDataString(Kapanis)}";
+    private string? _kapanisAuto;
+    private string? KapanisEtkin => !string.IsNullOrWhiteSpace(Kapanis) ? Kapanis : _kapanisAuto;
+    private string KapanisQs => string.IsNullOrWhiteSpace(KapanisEtkin) ? "" : $"&kapanis={Uri.EscapeDataString(KapanisEtkin)}";
+    private string GeriQs => string.IsNullOrWhiteSpace(Geri) ? "" : $"&geri={Uri.EscapeDataString(Geri)}";
+    private string GeriLabel => Geri switch { "/gider-mizan" => "Gider Mizanı", "/mizan" => "Mizan", _ => "Kontrol" };
+    private void Geriye() => Nav.NavigateTo(string.IsNullOrWhiteSpace(Geri) ? "/muhasebe" : Geri);
 
     protected override async Task OnParametersSetAsync()
     {
-        _loading = true; _error = null;
-        try { _fat = await Muh.GetFaturaAsync(Fat); }
+        _loading = true; _error = null; _kapanisAuto = null;
+        try
+        {
+            _fat = await Muh.GetFaturaAsync(Fat);
+            if (_fat is not null && string.IsNullOrWhiteSpace(Kapanis))
+            {
+                var p = _fat.Tarih.Split('.');
+                if (p.Length == 3 && int.TryParse(p[1], out var ay) && int.TryParse(p[2], out var yil))
+                    _kapanisAuto = await Muh.GetKapanisTarihiAsync(yil, ay);
+            }
+        }
         catch (Exception ex) { Logger.LogError(ex, "Fatura yüklenemedi (eID {Fat})", Fat); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
     }

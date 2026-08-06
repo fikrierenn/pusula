@@ -9,7 +9,7 @@
 <PageTitle>Yevmiye Fişi — BKM GM</PageTitle>
 
 <div class="mb-4 flex items-center gap-3">
-    <button class="btn btn-ghost btn-sm" @onclick="@(() => Nav.NavigateTo("/muhasebe"))">← Kontrol</button>
+    <button class="btn btn-ghost btn-sm" @onclick="Geriye">← @GeriLabel</button>
     <div>
         <div class="text-xs text-base-content/50">Yevmiye fişi · mhs.mhsFis</div>
         <h1 class="text-2xl font-bold tracking-tight m-0">@(_fis is null ? "Yevmiye Fişi" : $"Fiş {_fis.YevmiyeNo} · {_fis.Tarih}")</h1>
@@ -43,9 +43,9 @@ else
                     <tr class="border-b border-base-300"><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Yevmiye No</td><td class="px-2 py-0.5 font-mono text-right">@_fis.YevmiyeNo</td></tr>
                     <tr><td class="px-2 py-0.5 bg-base-200/60 font-semibold border-r border-base-300">Tarih</td><td class="px-2 py-0.5 font-mono text-right">@_fis.Tarih</td></tr>
                 </table>
-                @if (!string.IsNullOrWhiteSpace(Kapanis))
+                @if (!string.IsNullOrWhiteSpace(KapanisEtkin))
                 {
-                    <div class="text-error font-semibold text-xs mt-1">Ay Kapanışı: @Kapanis</div>
+                    <div class="text-error font-semibold text-xs mt-1">Ay Kapanışı: @KapanisEtkin</div>
                 }
             </div>
         </div>
@@ -61,7 +61,7 @@ else
                 @if (_fis.FaturaEID is not null)
                 {
                     <button class="btn btn-sm btn-outline btn-primary whitespace-nowrap"
-                            @onclick="@(() => Nav.NavigateTo($"/fatura?fat={_fis.FaturaEID}{KapanisQs}"))">
+                            @onclick="@(() => Nav.NavigateTo($"/fatura?fat={_fis.FaturaEID}{KapanisQs}{GeriQs}"))">
                         🧾 Faturayı Aç@(string.IsNullOrWhiteSpace(_fis.FaturaNo) ? "" : $" ({_fis.FaturaNo})")
                     </button>
                 }
@@ -87,6 +87,7 @@ else
                         <div class="font-medium">@s.HspAd</div>
                         @if (!string.IsNullOrWhiteSpace(s.UstAd)) { <div class="text-[11px] text-base-content/40">↳ @s.UstAd</div> }
                         @if (!string.IsNullOrWhiteSpace(s.Aciklama)) { <div class="text-[11px] text-base-content/50">@s.Aciklama</div> }
+                        @if (!string.IsNullOrWhiteSpace(s.MerkezAd)) { <div class="text-[11px] text-primary/80">🏷 Gider merkezi: @s.MerkezAd</div> }
                     </td>
                     <td class="px-3 py-1.5 text-right tabular-nums font-mono border-r border-base-200 @(s.Borc == 0 ? "text-base-content/20" : "")">@(s.Borc != 0 ? Tl(s.Borc) : "")</td>
                     <td class="px-3 py-1.5 text-right tabular-nums font-mono @(s.Alacak == 0 ? "text-base-content/20" : "")">@(s.Alacak != 0 ? Tl(s.Alacak) : "")</td>
@@ -131,16 +132,32 @@ else
     [SupplyParameterFromQuery(Name = "fis")] public int Fis { get; set; }
     [SupplyParameterFromQuery(Name = "sirket")] public int Sirket { get; set; }
     [SupplyParameterFromQuery(Name = "kapanis")] public string? Kapanis { get; set; }
+    [SupplyParameterFromQuery(Name = "geri")] public string? Geri { get; set; }
 
     private YevmiyeFis? _fis;
     private bool _loading = true;
     private string? _error;
-    private string KapanisQs => string.IsNullOrWhiteSpace(Kapanis) ? "" : $"&kapanis={Uri.EscapeDataString(Kapanis)}";
+    private string? _kapanisAuto;   // caller kapanış vermezse dönemden otomatik bulunur
+    private string? KapanisEtkin => !string.IsNullOrWhiteSpace(Kapanis) ? Kapanis : _kapanisAuto;
+    private string KapanisQs => string.IsNullOrWhiteSpace(KapanisEtkin) ? "" : $"&kapanis={Uri.EscapeDataString(KapanisEtkin)}";
+    private string GeriQs => string.IsNullOrWhiteSpace(Geri) ? "" : $"&geri={Uri.EscapeDataString(Geri)}";
+    private string GeriLabel => Geri switch { "/gider-mizan" => "Gider Mizanı", "/mizan" => "Mizan", _ => "Kontrol" };
+    private void Geriye() => Nav.NavigateTo(string.IsNullOrWhiteSpace(Geri) ? "/muhasebe" : Geri);
 
     protected override async Task OnParametersSetAsync()
     {
-        _loading = true; _error = null;
-        try { _fis = await Muh.GetYevmiyeFisAsync(Fis, Sirket); }
+        _loading = true; _error = null; _kapanisAuto = null;
+        try
+        {
+            _fis = await Muh.GetYevmiyeFisAsync(Fis, Sirket);
+            // Kapanış caller'dan gelmediyse fişin döneminden otomatik bul (dd.MM.yyyy).
+            if (_fis is not null && string.IsNullOrWhiteSpace(Kapanis))
+            {
+                var p = _fis.Tarih.Split('.');
+                if (p.Length == 3 && int.TryParse(p[1], out var ay) && int.TryParse(p[2], out var yil))
+                    _kapanisAuto = await Muh.GetKapanisTarihiAsync(yil, ay);
+            }
+        }
         catch (Exception ex) { Logger.LogError(ex, "Yevmiye fişi yüklenemedi (fis {Fis})", Fis); _error = $"Yüklenemedi: {ex.Message}"; }
         finally { _loading = false; }
     }
