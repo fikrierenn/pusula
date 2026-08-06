@@ -1,9 +1,17 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-07-30
+updated: 2026-08-06
 
 metrics:
+  gider_mizan_dagitim:
+    kaynak: "mhs.mhsFis (GL satır) + mhsHsp; köprü mhsfis-gdrmerkez → frm (gider merkezi). MizanQueries ile aynı çekirdek."
+    gider_tanimi: "hspKod '7%' TÜMÜ (740 hizmet/kafe · 760 pazarlama · 770 genel yönetim · 780 finansman) + gider-6xx (LEFT(hspKod,2) IN 62,63,65,66,68 → 653 komisyon · 689 ÖİV/olağandışı). Gelir 6xx (600 satış/602 kira geliri/642 mevduat/679 teşvik) HARİÇ. BKM 7/A yöntemi → yansıtma (7x1) aktif değil, 6xx+7xx çift-sayım YOK."
+    tutar: "Bakiye = Borç−Alacak = SUM(fisBA=1→-fisTutar) − SUM(fisBA=0→fisTutar). Gider debit → pozitif. Kapanış fişi HARİÇ (mhsFisBaslik.fisAd<>'Kapanış'). Yıl = fisSirketID+2020 (2026→sirket 6). Kümüle MONTH≤ay / tek ay MONTH=ay."
+    dagitim: "gider merkezi = fisGdrMerkez→frm (ad temizliği 'G - …Gider Merkezi' strip). 0 = GENEL (dağıtılmamış) — giderin ~%69'u burada, özellikle 780 finansman + personel ücreti (x.10.001) hiçbir merkeze atanmamış."
+    dogrulama: "2026-08-06 DerinSIS resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26) ile birebir (740=5,27M·760=14,08M·770=21,01M·780=38,49M kuruşuna). Uygulama: dashboard /gider-mizan (GiderMizanQueries) + sorgular/2026-08-06-gider-merkezi-mizan-matris.sql."
+    last_verified: "2026-08-06"
+
   banka_ekstresi_siniflandirma:
     kaynak: "dbo.car cTip=122 (Banka Ekstresi); köprü car-karsi-frm; kod car.cFatTip=122"
     problem: "Banka ekstresi satır açıklamasından (cNot) doğru cari (cKodKarsi) atama. Şule (insID 1897) elle yapıyor; oto-import/SP YOK. Pilot: muhasebe app (plan-27)."

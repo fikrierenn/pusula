@@ -130,10 +130,10 @@ entities:
   # === MUHASEBE / GL + FİNANS/CARİ (22.06 keşif — B-117 GL forensic) ===
   mhs.mhsFis:
     pk: fsID
-    key: [fisID, fisSirketID, yevmiyeNo, fisTarih, fisTip, fisBA, fisTutar, fisHspID, fisCari]
+    key: [fisID, fisSirketID, yevmiyeNo, fisTarih, fisTip, fisBA, fisTutar, fisHspID, fisGdrMerkez, fisCari]
     grain: "yevmiye satırı — fiş başına ≥2 satır, borç+alacak dengeli (39,5M)"
-    note: "fisBA 0/1 iki taraf; fisTutar BA=1'de NEGATİF saklı → bakiye=SUM(fisTutar) (defter dengeli, toplam 0). Gelir 6xx hep BA=0, gider 7xx hep BA=1 (codes mhsFis.fisBA). DMY."
-    last_verified: "2026-06-22"
+    note: "fisBA 0/1 iki taraf; fisTutar BA=1'de NEGATİF saklı → bakiye=SUM(fisTutar) (defter dengeli, toplam 0). Gelir 6xx hep BA=0, gider 7xx hep BA=1 (codes mhsFis.fisBA). fisGdrMerkez = gider merkezi (köprü mhsfis-gdrmerkez → frm; 0=GENEL). DMY."
+    last_verified: "2026-08-06"
   mhs.mhsFisBaslik:
     pk: fisbID
     key: [fisbSirketID, yevmiyeNo, fisTarih, fisEntTipID, gKisi, kKisi, oKisi, gTarih, kTarih, oTarih, fiscID]

@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-07-04
+updated: 2026-08-06
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -14,6 +14,14 @@ bridges:
     confidence: 1.0
     note: "Satış/stok hareketi → ürün. En temiz ürün/kategori köprüsü. ehTip 1/4/100 satış."
     evidence: "kalıcı"
+  - id: mhsfis-gdrmerkez
+    from: mhs.mhsFis.fisGdrMerkez
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 0.99
+    note: "Yevmiye GL satırı → gider merkezi (frmTip=10 cari). 0/NULL = dağıtılmamış (GENEL). 'Gider Merkezi Dağılımlı Mizan' bunun üstünden. Fatura tarafı: fat.fatAyr.fGdrMerkez de aynı frm'e bağlanır. Ad temizliği: 'G - '/'G- ' + ' Gider Merkezi' strip."
+    evidence: "2026-08-06 — DerinSIS resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26 xlsx) ile birebir (740/760/770/780 kuruşuna tuttu). GiderMizanQueries + sorgular/2026-08-06-gider-merkezi-mizan-matris.sql."
+    last_verified: "2026-08-06"
   - id: irshrk-mekan
     from: dbo.irsHrk.ehMekan
     to: dbo.mekan_vw.mekanID
