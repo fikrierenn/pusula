@@ -1,0 +1,360 @@
+@page "/gider-mizan"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject GiderMizanQueries Q
+@inject MuhasebeQueries Muh
+@inject NavigationManager Nav
+@inject PerfState Perf
+@inject ILogger<GiderMerkeziMizan> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Gider Merkezi Mizanı — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Gider Merkezi Dağılımlı Mizan · mhs.mhsFis · hücreye tıkla → fiş/fatura</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Gider Merkezi Mizanı</h1>
+</div>
+
+<div class="flex gap-2 mb-4 flex-wrap items-center">
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_sirketId" @bind:after="LoadAsync">
+        @foreach (var d in _donemler) { <option value="@d.SirketId">@d.Yil</option> }
+    </select>
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_ay" @bind:after="LoadAsync">
+        @for (int m = 1; m <= 12; m++) { <option value="@m">@_aylar[m - 1]</option> }
+    </select>
+    <div class="join">
+        <button class="join-item btn btn-sm @(_kumule ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="() => SetMod(true)">Kümüle (Oca→ay)</button>
+        <button class="join-item btn btn-sm @(!_kumule ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="() => SetMod(false)">Tek ay</button>
+    </div>
+
+    @* Hesap grubu çoklu seçim *@
+    <div class="dropdown">
+        <div tabindex="0" role="button" class="btn btn-sm btn-outline">Hesap @(_selGrup.Count > 0 ? $"({_selGrup.Count})" : "· tümü")</div>
+        <div tabindex="0" class="dropdown-content z-40 bg-base-100 border border-base-300 rounded-box shadow p-2 w-64 max-h-80 overflow-y-auto">
+            <button class="btn btn-ghost btn-xs w-full justify-start mb-1" @onclick="() => { _selGrup.Clear(); ReP(); }">↺ Tümü</button>
+            @foreach (var g in _grupSecenek)
+            {
+                <label class="label cursor-pointer justify-start gap-2 py-0.5">
+                    <input type="checkbox" class="checkbox checkbox-xs" checked="@_selGrup.Contains(g.Kod)" @onchange="e => ToggleGrup(g.Kod, e)" />
+                    <span class="text-xs">@g.Kod · @g.Ad</span>
+                </label>
+            }
+        </div>
+    </div>
+
+    @* Gider merkezi çoklu seçim *@
+    <div class="dropdown">
+        <div tabindex="0" role="button" class="btn btn-sm btn-outline">Gider merkezi @(_selMerkez.Count > 0 ? $"({_selMerkez.Count})" : "· tümü")</div>
+        <div tabindex="0" class="dropdown-content z-40 bg-base-100 border border-base-300 rounded-box shadow p-2 w-72 max-h-80 overflow-y-auto">
+            <button class="btn btn-ghost btn-xs w-full justify-start mb-1" @onclick="() => { _selMerkez.Clear(); ReP(); }">↺ Tümü</button>
+            @foreach (var m in _merkezSecenek)
+            {
+                <label class="label cursor-pointer justify-start gap-2 py-0.5">
+                    <input type="checkbox" class="checkbox checkbox-xs" checked="@_selMerkez.Contains(m.Id)" @onchange="e => ToggleMerkez(m.Id, e)" />
+                    <span class="text-xs">@m.Ad</span>
+                </label>
+            }
+        </div>
+    </div>
+
+    <input class="input input-bordered input-sm text-sm w-40" placeholder="Hesap ara…" @bind="_araHesap" @bind:event="oninput" @bind:after="ReP" />
+    <input class="input input-bordered input-sm text-sm w-40" placeholder="Merkez ara…" @bind="_araMerkez" @bind:event="oninput" @bind:after="ReP" />
+
+    @if (!_loading && _gruplar.Count > 0)
+    {
+        <ExcelButton FileName="gider-merkezi-mizan" SayfaAd="GiderMizan" Rows="ExcelRows" />
+        <span class="text-sm text-base-content/60 ml-auto">Toplam gider: <span class="font-bold text-error">@Tl(_genelToplam)</span></span>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>Mizan yüklenemedi: @_error</span></div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Gider mizanı hesaplanıyor…</p>
+}
+else if (_gruplar.Count == 0)
+{
+    <div class="alert text-sm"><span>Seçili dönemde gider hareketi yok.</span></div>
+}
+else
+{
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-3 mb-3">
+        <div class="overflow-x-auto max-h-[75vh]">
+            <table class="table table-xs border-separate border-spacing-0">
+                <thead class="sticky top-0 z-20">
+                    <tr class="bg-base-200">
+                        <th class="sticky left-0 z-30 bg-base-200 min-w-[240px]">Hesap</th>
+                        @foreach (var m in _merkezler)
+                        {
+                            <th class="text-right whitespace-nowrap px-2 align-bottom" title="@m.Ad">
+                                <div class="[writing-mode:vertical-rl] rotate-180 inline-block max-h-[130px] overflow-hidden font-semibold">@m.Ad</div>
+                            </th>
+                        }
+                        <th class="text-right sticky right-0 z-30 bg-base-200 font-bold">Toplam</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var g in _gruplar)
+                {
+                    <tr class="bg-base-200/60 font-semibold">
+                        <td class="sticky left-0 z-10 bg-base-200/60">@g.Grup · @g.GrupAd</td>
+                        @foreach (var m in _merkezler)
+                        {
+                            var v = g.Subtotal.GetValueOrDefault(m.Id);
+                            <td class="text-right tabular-nums @(v != 0 ? "" : "text-base-content/20")">@(v != 0 ? Kisa(v) : "·")</td>
+                        }
+                        <td class="text-right sticky right-0 z-10 bg-base-200/60 font-bold">@Kisa(g.Toplam)</td>
+                    </tr>
+                    @foreach (var h in g.Hesaplar)
+                    {
+                        <tr class="hover">
+                            <td class="sticky left-0 z-10 bg-base-100 pl-4 text-xs" title="@h.HspKod @h.HspAd">
+                                <span class="text-base-content/40 font-mono">@h.HspKod</span> @h.HspAd
+                            </td>
+                            @foreach (var m in _merkezler)
+                            {
+                                var v = h.Cells.GetValueOrDefault(m.Id);
+                                @if (v != 0)
+                                {
+                                    <td class="text-right tabular-nums cursor-pointer @HeatCls(v) hover:ring-1 hover:ring-error"
+                                        title="@h.HspAd · @m.Ad · @Tl(v) — tıkla: fiş/fatura"
+                                        @onclick="() => AcHucre(h, m)">@Kisa(v)</td>
+                                }
+                                else { <td class="text-right text-base-content/15">·</td> }
+                            }
+                            <td class="text-right sticky right-0 z-10 bg-base-100 font-semibold tabular-nums">@Kisa(h.Toplam)</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+                <tfoot class="sticky bottom-0 z-20">
+                    <tr class="bg-base-300 font-bold">
+                        <td class="sticky left-0 z-30 bg-base-300">TOPLAM</td>
+                        @foreach (var m in _merkezler)
+                        {
+                            <td class="text-right tabular-nums">@Kisa(m.Toplam)</td>
+                        }
+                        <td class="text-right sticky right-0 z-30 bg-base-300">@Kisa(_genelToplam)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="text-base-content/50 text-[11px] mt-2">
+            Kaynak = kesin mizan (Kapanış fişi hariç, Borç−Alacak). Gider = 7xx + gider-6xx. Renk yoğunluğu = tutar büyüklüğü.
+            GENEL = gider merkezine atanmamış (özellikle 780 finansman + personel ücreti). Hücreye tıkla → arkasındaki yevmiye/fatura.
+        </div>
+    </div>
+}
+
+<Modal @bind-Open="_modal" Title="@_detayBaslik" Size="xl">
+    @if (_detayLoading)
+    {
+        <p class="text-base-content/40 text-sm py-4 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Yevmiye satırları yükleniyor…</p>
+    }
+    else if (_detay.Count == 0)
+    {
+        <p class="text-base-content/50 text-sm py-4">Bu hücrede satır bulunamadı.</p>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead><tr>
+                    <th>Tarih</th><th class="text-right">Yev. No</th><th>Açıklama</th>
+                    <th class="text-right">Tutar</th><th>Evrak</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var d in _detay)
+                {
+                    <tr class="hover cursor-pointer" @onclick="() => FisAc(d)">
+                        <td class="whitespace-nowrap">@d.Tarih</td>
+                        <td class="text-right font-mono text-xs">@d.YevmiyeNo</td>
+                        <td class="max-w-[360px] truncate text-xs" title="@d.Aciklama">@(d.Aciklama ?? "—")</td>
+                        <td class="text-right font-semibold tabular-nums">@Tl(d.Tutar)</td>
+                        <td class="text-xs">
+                            <span class="link link-primary">yevmiye ↗</span>
+                            @if (d.FaturaEID is not null)
+                            {
+                                <a class="link link-secondary ml-2" @onclick:stopPropagation="true" @onclick="() => FaturaAc(d)">fatura @d.FaturaNo ↗</a>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
+                        <td colspan="3" class="text-right">TOPLAM (@_detay.Count satır)</td>
+                        <td class="text-right tabular-nums">@Tl(_detay.Sum(d => d.Tutar))</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="text-base-content/50 text-[11px] mt-2">Satıra tıkla → yevmiye fişi (fişten faturaya geçilebilir). Fatura ↗ = doğrudan gider faturası.</div>
+    }
+</Modal>
+
+@code {
+    private sealed record ColMerkez(int Id, string Ad, decimal Toplam);
+    private sealed class HesapRow { public string HspKod = ""; public string HspAd = ""; public Dictionary<int, decimal> Cells = new(); public decimal Toplam; }
+    private sealed class GrupBlok { public string Grup = ""; public string GrupAd = ""; public List<HesapRow> Hesaplar = new(); public Dictionary<int, decimal> Subtotal = new(); public decimal Toplam; }
+
+    private IReadOnlyList<(int SirketId, int Yil)> _donemler = [];
+    private IReadOnlyList<GiderMizanSatir> _allRows = [];      // dönem yüklemesi (filtresiz) — filtre client-side re-pivot
+    private List<(string Kod, string Ad)> _grupSecenek = [];
+    private List<ColMerkez> _merkezSecenek = [];
+    private readonly HashSet<string> _selGrup = new();
+    private readonly HashSet<int> _selMerkez = new();
+    private List<ColMerkez> _merkezler = [];
+    private List<GrupBlok> _gruplar = [];
+    private decimal _genelToplam, _cellMax;
+
+    private int _sirketId, _ay = DateTime.Today.Month;
+    private bool _kumule = true;
+    private string _araHesap = "", _araMerkez = "";
+    private bool _loading = true, _detayLoading, _modal;
+    private string? _error, _detayBaslik;
+
+    private IReadOnlyList<GiderMizanDetay> _detay = [];
+    private HesapRow? _aktifHesap; private ColMerkez? _aktifMerkez;
+
+    private static readonly string[] _aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _donemler = await Q.GetDonemlerAsync();
+            if (_donemler.Count > 0) _sirketId = _donemler[0].SirketId;
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Dönem listesi alınamadı"); }
+        await LoadAsync();
+    }
+
+    private async Task SetMod(bool kumule) { _kumule = kumule; await LoadAsync(); }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        var sw = PerfState.Start();
+        try
+        {
+            var ayBas = _kumule ? 1 : _ay;
+            _allRows = await Q.GetMatrisAsync(_sirketId, ayBas, _ay);
+            // Filtre seçenekleri = tüm dönem (filtreden bağımsız) — kullanıcı buradan seçer.
+            _grupSecenek = _allRows.GroupBy(r => (r.Grup, r.GrupAd))
+                .Select(g => (g.Key.Grup, g.Key.GrupAd)).OrderBy(x => x.Grup).ToList();
+            _merkezSecenek = _allRows.GroupBy(r => (r.MerkezId, r.MerkezAd))
+                .Select(g => new ColMerkez(g.Key.MerkezId, g.Key.MerkezAd, g.Sum(x => x.Gider)))
+                .OrderByDescending(m => m.Toplam).ToList();
+            Pivotla();
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Gider mizan yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
+        finally { _loading = false; Perf.Report("GiderMizan", sw); StateHasChanged(); }
+    }
+
+    private void ToggleGrup(string kod, ChangeEventArgs e) { if (e.Value is true) _selGrup.Add(kod); else _selGrup.Remove(kod); ReP(); }
+    private void ToggleMerkez(int id, ChangeEventArgs e) { if (e.Value is true) _selMerkez.Add(id); else _selMerkez.Remove(id); ReP(); }
+    private void ReP() { Pivotla(); StateHasChanged(); }
+
+    // Düz satırlardan pivot (seçili filtrelerle): merkez sütunları (tutar desc) + ana-grup blokları + hesap satırları.
+    private void Pivotla()
+    {
+        var rows = _allRows.Where(r =>
+            (_selGrup.Count == 0 || _selGrup.Contains(r.Grup)) &&
+            (_selMerkez.Count == 0 || _selMerkez.Contains(r.MerkezId))).ToList();
+        _merkezler = rows.GroupBy(r => (r.MerkezId, r.MerkezAd))
+                         .Select(g => new ColMerkez(g.Key.MerkezId, g.Key.MerkezAd, g.Sum(x => x.Gider)))
+                         .OrderByDescending(m => m.Toplam).ToList();
+        if (!string.IsNullOrWhiteSpace(_araMerkez))
+            _merkezler = _merkezler.Where(m => m.Ad.Contains(_araMerkez.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+        _genelToplam = rows.Sum(r => r.Gider);
+        _cellMax = rows.Count > 0 ? rows.Max(r => Math.Abs(r.Gider)) : 1m;
+
+        _gruplar = rows.GroupBy(r => (r.Grup, r.GrupAd))
+            .OrderBy(g => g.Key.Grup)
+            .Select(g =>
+            {
+                var blok = new GrupBlok { Grup = g.Key.Grup, GrupAd = g.Key.GrupAd, Toplam = g.Sum(x => x.Gider) };
+                foreach (var mg in g.GroupBy(x => x.MerkezId)) blok.Subtotal[mg.Key] = mg.Sum(x => x.Gider);
+                blok.Hesaplar = g.GroupBy(x => (x.HspKod, x.HspAd))
+                    .OrderBy(h => h.Key.HspKod)
+                    .Select(h => new HesapRow
+                    {
+                        HspKod = h.Key.HspKod, HspAd = h.Key.HspAd,
+                        Cells = h.ToDictionary(x => x.MerkezId, x => x.Gider),
+                        Toplam = h.Sum(x => x.Gider),
+                    }).ToList();
+                return blok;
+            }).ToList();
+
+        if (!string.IsNullOrWhiteSpace(_araHesap))
+        {
+            var q = _araHesap.Trim();
+            foreach (var g in _gruplar)
+                g.Hesaplar = g.Hesaplar.Where(h =>
+                    h.HspKod.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    h.HspAd.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+            _gruplar = _gruplar.Where(g => g.Hesaplar.Count > 0).ToList();
+        }
+    }
+
+    // Excel: görünen matris (filtreli) → satır-sözlüğü (Grup + Hesap + her merkez + Toplam).
+    private Task<IEnumerable<IDictionary<string, object?>>> ExcelRows()
+    {
+        var list = new List<IDictionary<string, object?>>();
+        foreach (var g in _gruplar)
+            foreach (var h in g.Hesaplar)
+            {
+                var d = new Dictionary<string, object?> { ["Grup"] = $"{g.Grup} {g.GrupAd}", ["Hesap"] = $"{h.HspKod} {h.HspAd}" };
+                foreach (var m in _merkezler) d[m.Ad] = h.Cells.TryGetValue(m.Id, out var v) && v != 0 ? v : null;
+                d["Toplam"] = h.Toplam;
+                list.Add(d);
+            }
+        return Task.FromResult<IEnumerable<IDictionary<string, object?>>>(list);
+    }
+
+    private async Task AcHucre(HesapRow h, ColMerkez m)
+    {
+        _aktifHesap = h; _aktifMerkez = m;
+        _detayBaslik = $"{h.HspKod} {h.HspAd} · {m.Ad}";
+        _modal = true; _detayLoading = true; _detay = []; StateHasChanged();
+        try
+        {
+            var ayBas = _kumule ? 1 : _ay;
+            _detay = await Q.GetHucreDetayAsync(_sirketId, ayBas, _ay, h.HspKod, m.Id);
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Hücre detay hatası"); }
+        finally { _detayLoading = false; StateHasChanged(); }
+    }
+
+    private void FisAc(GiderMizanDetay d) => Nav.NavigateTo($"/yevmiye-fis?fis={d.FisId}&sirket={d.Sirket}&geri=%2Fgider-mizan");
+    private void FaturaAc(GiderMizanDetay d) { if (d.FaturaEID is not null) Nav.NavigateTo($"/fatura?fat={d.FaturaEID}&geri=%2Fgider-mizan"); }
+
+    // Heat bucket — DaisyUI error token opacity (renk-standardi: hardcode hex yok). Yoğunluk = |v|/max.
+    private string HeatCls(decimal v)
+    {
+        var r = _cellMax > 0 ? (double)(Math.Abs(v) / _cellMax) : 0;
+        return r switch
+        {
+            >= 0.50 => "bg-error/70 text-error-content font-semibold",
+            >= 0.25 => "bg-error/50 text-error-content",
+            >= 0.10 => "bg-error/30",
+            >= 0.03 => "bg-error/20",
+            _       => "bg-error/10",
+        };
+    }
+
+    private static string Kisa(decimal v)
+    {
+        var a = Math.Abs(v);
+        if (a >= 1_000_000) return (v / 1_000_000m).ToString("#,##0.0", Tr) + "M";
+        if (a >= 1_000)     return (v / 1_000m).ToString("#,##0", Tr) + "K";
+        return v.ToString("#,##0", Tr);
+    }
+    private static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    private static string Tl(decimal v) => v.ToString("#,##0", Tr) + " ₺";
+}

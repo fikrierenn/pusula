@@ -36,6 +36,7 @@ public static class NavRegistry
         new NavItem("odak-stok", "ODAK Stok", "warehouse"),
         new NavItem("muhasebe", "Muhasebe / Kontrol", "landmark"),
         new NavItem("mizan", "Mizan / Finans", "scale"),
+        new NavItem("gider-mizan", "Gider Merkezi Mizanı", "grid-3x3"),
         new NavItem("cari-risk", "Cari / Risk", "wallet"),
         new NavItem("trafik", "Trafik & Kasiyer", "activity"),
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),
