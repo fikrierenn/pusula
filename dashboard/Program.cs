@@ -30,7 +30,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;  // HTTP(5112)+HTTPS(5443) paralel mimari
     });
 builder.Services.AddAuthorization(o =>
-    o.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());  // her şey auth, allow-list hariç
+{
+    // Prod: her şey auth (allow-list hariç). Development: local preview için anonim (muhasebe app ile aynı desen).
+    if (!builder.Environment.IsDevelopment())
+        o.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+});
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthService>();
 
