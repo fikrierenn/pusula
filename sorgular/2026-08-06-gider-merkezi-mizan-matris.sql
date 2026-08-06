@@ -97,3 +97,15 @@ DECLARE @sql nvarchar(max) = N'
 EXEC sp_executesql @sql,
      N'@sirket int,@ayBas int,@ay int',
      @sirket, @ayBas, @ay;
+
+/* ============================================================================
+   ERP-NATIVE TEYİT (2026-08-06) — gider tanımı + fisGdrMerkez köprüsü çapraz-doğrulandı:
+   1. Resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26 xlsx) ↔ bağımsız pyodbc:
+      grand total + 109 hesap + 19 merkez + 365/365 hücre = 0 sapma (kuruşuna).
+   2. mhs.mhsGelirTabloGiderMerkeziDetayli (decrypted SP): INNER JOIN frm ON frmID=fisGdrMerkez
+      — aynı köprü. NOT: bu SP 6xx-only (aHspID LIKE '6%'), 7xx YOK → BKM 7/A'da opex'i göstermez
+      (dönem kârı opex-siz şişkin). Benim mizanım 7xx işletme giderini bu boşlukta gösterir.
+   3. dbo.kontrol_masrafmerkezibosolan6li_vw / 7li_vw: hspAnaID LIKE '6%'/'7%' + fisGdrMerkez=0
+      → ERP'nin 'gider merkezi atanmamış satır' kontrolü = %69 GENEL bulgusunun ERP-native karşılığı.
+   4. Köprü posMagaza.mekanGiderMerkez→frm: FSM→GFsm · Özlüce→GOzl · İst→GIst (mağaza-bazlı atama).
+   ============================================================================ */

@@ -18,9 +18,17 @@ bridges:
     from: mhs.mhsFis.fisGdrMerkez
     to: dbo.frm.frmID
     scope: derinsis
-    confidence: 0.99
-    note: "Yevmiye GL satırı → gider merkezi (frmTip=10 cari). 0/NULL = dağıtılmamış (GENEL). 'Gider Merkezi Dağılımlı Mizan' bunun üstünden. Fatura tarafı: fat.fatAyr.fGdrMerkez de aynı frm'e bağlanır. Ad temizliği: 'G - '/'G- ' + ' Gider Merkezi' strip."
-    evidence: "2026-08-06 — DerinSIS resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26 xlsx) ile birebir (740/760/770/780 kuruşuna tuttu). GiderMizanQueries + sorgular/2026-08-06-gider-merkezi-mizan-matris.sql."
+    confidence: 1.0
+    note: "Yevmiye GL satırı → gider merkezi (frmTip=10 cari). 0/NULL = dağıtılmamış (GENEL). 'Gider Merkezi Dağılımlı Mizan' bunun üstünden. Fatura tarafı: fat.fatAyr.fGdrMerkez de aynı frm'e bağlanır. Ad temizliği: 'G - '/'G- ' + ' Gider Merkezi' strip. ERP-NATIVE: mhs.mhsGelirTabloGiderMerkeziDetayli SP'si INNER JOIN frm ON frmID=fisGdrMerkez ile aynı köprüyü kullanır."
+    evidence: "2026-08-06 — (1) resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26 xlsx) ile bağımsız pyodbc birebir: grand+109 hesap+19 merkez+365/365 hücre 0 sapma. (2) ERP native SP mhsGelirTabloGiderMerkeziDetayli decrypted kaynak aynı join. (3) orphan fisGdrMerkez=0 (hepsi frmTip=10). (4) ERP kontrol view'leri kontrol_masrafmerkezibosolan6li_vw/7li_vw: hspAnaID LIKE '6%'/'7%' + fisGdrMerkez=0 → 'atanmamış' (GENEL) kontrolü = benim %69 GENEL bulgum ERP-native."
+    last_verified: "2026-08-06"
+  - id: posmagaza-gdrmerkez
+    from: dbo.posMagaza.mekanGiderMerkez
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 1.0
+    note: "Mağaza → kendi gider merkezi cari (frmTip=10). FSM(mekan 1)→GFsm(4581) · Özlüce(4477)→GOzl(4582) · İst.Yolu(4478)→GIst(4587). mhsFis.fisGdrMerkez ile aynı frm uzayı → mağaza-bazlı gider merkezi ataması bu köprüden. ERP kontrol_masrafmerkezibosolan*_vw bu join'i kullanır."
+    evidence: "2026-08-06 — canlı posMagaza JOIN frm (3 mağaza 1:1 temiz) + ERP kontrol view'leri."
     last_verified: "2026-08-06"
   - id: irshrk-mekan
     from: dbo.irsHrk.ehMekan
