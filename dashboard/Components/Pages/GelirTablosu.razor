@@ -1,0 +1,235 @@
+@page "/gelir-tablosu"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject GelirTabloQueries Q
+@inject PerfState Perf
+@inject ILogger<GelirTablosu> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Ayrıntılı Gelir Tablosu — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Ayrıntılı Gelir Tablosu · Net Satış → Faaliyet Kârı → Net Kâr · mhs.mhsFis (7xx dahil)</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Gelir Tablosu</h1>
+</div>
+
+<div class="flex gap-2 mb-4 flex-wrap items-center">
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_sirketId" @bind:after="ReloadDonem">
+        @foreach (var d in _donemler) { <option value="@d.SirketId">@d.Yil</option> }
+    </select>
+    <select class="select select-bordered select-sm text-sm font-semibold" @bind="_ay" @bind:after="LoadAsync">
+        @for (int m = 1; m <= 12; m++) { <option value="@m">@_aylar[m - 1]</option> }
+    </select>
+    <div class="join">
+        <button class="join-item btn btn-sm @(_kumule ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="() => SetMod(true)">Kümüle</button>
+        <button class="join-item btn btn-sm @(!_kumule ? "btn-primary" : "btn-ghost border border-base-300")" @onclick="() => SetMod(false)">Tek ay</button>
+    </div>
+    <select class="select select-bordered select-sm text-sm font-semibold max-w-[240px]" @bind="_merkezId" @bind:after="LoadAsync">
+        <option value="-1">Tüm Merkezler (Toplam)</option>
+        @foreach (var m in _merkezler) { <option value="@m.Id">@m.Ad</option> }
+    </select>
+    @if (!_loading && _rows.Count > 0)
+    {
+        <ExcelButton FileName="gelir-tablosu" SayfaAd="GelirTablosu" Rows="ExcelRows" />
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error text-sm mb-4"><span>Gelir tablosu yüklenemedi: @_error</span></div>
+}
+else if (_loading)
+{
+    <p class="text-base-content/40 text-sm py-6 flex items-center gap-2"><span class="loading loading-spinner loading-sm"></span> Gelir tablosu hesaplanıyor…</p>
+}
+else
+{
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 mb-3 max-w-4xl">
+        <table class="table table-sm">
+            <thead><tr class="text-xs text-base-content/50">
+                <th>Kalem</th><th class="text-right">Tutar (₺)</th><th class="text-right w-20">Net Satış %</th>
+            </tr></thead>
+            <tbody>
+                @* NET SATIŞLAR *@
+                <tr class="font-bold border-t-2 border-base-300">
+                    <td>NET SATIŞLAR</td><td class="text-right tabular-nums">@Tl(_netSatis)</td><td class="text-right">%100,0</td>
+                </tr>
+                @foreach (var r in _netSatisDetay)
+                {
+                    <tr class="text-sm text-base-content/70"><td class="pl-6">@r.Ad</td><td class="text-right tabular-nums">@Tl(r.Tutar)</td><td class="text-right">@Yuzde(r.Tutar)</td></tr>
+                }
+
+                @* FAALİYET GİDERLERİ *@
+                <tr class="font-semibold border-t border-base-200 bg-base-200/30">
+                    <td>FAALİYET GİDERLERİ (−)</td><td class="text-right tabular-nums text-error">@Tl(_faaliyetGider)</td><td class="text-right text-error">@Yuzde(_faaliyetGider)</td>
+                </tr>
+                @foreach (var k in _giderKategoriler)
+                {
+                    <tr class="hover cursor-pointer" @onclick="() => Toggle(k.Key)">
+                        <td class="pl-6">@(Acik(k.Key) ? "▾" : "▸") @k.Ad</td>
+                        <td class="text-right tabular-nums">@Tl(k.Tutar)</td>
+                        <td class="text-right text-base-content/60">@Yuzde(k.Tutar)</td>
+                    </tr>
+                    @if (Acik(k.Key))
+                    {
+                        @foreach (var d in k.Detay)
+                        {
+                            <tr class="text-xs text-base-content/50"><td class="pl-12">@d.Ad</td><td class="text-right tabular-nums">@Tl(d.Tutar)</td><td class="text-right">@Yuzde(d.Tutar)</td></tr>
+                        }
+                    }
+                }
+
+                @* FAALİYET KÂRI *@
+                <tr class="font-bold border-y-2 border-base-300 bg-primary/5">
+                    <td>FAALİYET KÂRI</td>
+                    <td class="text-right tabular-nums @(_faaliyetKar >= 0 ? "text-success" : "text-error")">@Tl(_faaliyetKar)</td>
+                    <td class="text-right font-bold @(_faaliyetKar >= 0 ? "text-success" : "text-error")">@Yuzde(_faaliyetKar)</td>
+                </tr>
+
+                @* ALT-FAALİYET *@
+                @foreach (var b in _altBolumler)
+                {
+                    <tr class="hover cursor-pointer @(b.Tutar >= 0 ? "" : "")" @onclick="() => Toggle(b.Key)">
+                        <td class="pl-6">@(Acik(b.Key) ? "▾" : "▸") @b.Ad</td>
+                        <td class="text-right tabular-nums @(b.Tutar >= 0 ? "text-success" : "text-error")">@Tl(b.Tutar)</td>
+                        <td class="text-right text-base-content/60">@Yuzde(b.Tutar)</td>
+                    </tr>
+                    @if (Acik(b.Key))
+                    {
+                        @foreach (var d in b.Detay)
+                        {
+                            <tr class="text-xs text-base-content/50"><td class="pl-12">@d.Ad</td><td class="text-right tabular-nums">@Tl(d.Tutar)</td><td class="text-right">@Yuzde(d.Tutar)</td></tr>
+                        }
+                    }
+                }
+
+                @* NET KÂR *@
+                <tr class="font-bold border-t-2 border-base-300 @(_netKar >= 0 ? "bg-success/10" : "bg-error/10")">
+                    <td>NET KÂR</td>
+                    <td class="text-right tabular-nums @(_netKar >= 0 ? "text-success" : "text-error")">@Tl(_netKar)</td>
+                    <td class="text-right font-bold @(_netKar >= 0 ? "text-success" : "text-error")">@Yuzde(_netKar)</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="text-base-content/50 text-[11px] mt-2">
+            Net Satış = 60−61 · Faaliyet Gideri = 740/760/770 (kategori .YY) · Faaliyet Kârı = Net Satış − gider ·
+            Net Kâr = + finansman(780) + KKEG(689) + diğer(64/65/67). İşaret: signed fiş tutarı, Kapanış fişi hariç.
+            @if (_merkezId >= 0) { <span class="text-primary font-medium">· Seçili merkez: @(_merkezler.FirstOrDefault(m => m.Id == _merkezId).Ad ?? "?")</span> }
+        </div>
+    </div>
+}
+
+@code {
+    private sealed record Kalem(string Ad, decimal Tutar);
+    private sealed record KategoriBlok(string Key, string Ad, decimal Tutar, List<Kalem> Detay);
+
+    private IReadOnlyList<(int SirketId, int Yil)> _donemler = [];
+    private IReadOnlyList<(int Id, string Ad)> _merkezler = [];
+    private IReadOnlyList<GelirDetay> _rows = [];
+
+    private int _sirketId, _ay = DateTime.Today.Month, _merkezId = -1;
+    private bool _kumule = true, _loading = true;
+    private string? _error;
+    private readonly HashSet<string> _acik = new();
+
+    // Hesaplanan P&L
+    private decimal _netSatis, _faaliyetGider, _faaliyetKar, _netKar;
+    private List<Kalem> _netSatisDetay = [];
+    private List<KategoriBlok> _giderKategoriler = [];
+    private List<KategoriBlok> _altBolumler = [];
+
+    private static readonly string[] _aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _donemler = await Q.GetDonemlerAsync();
+            if (_donemler.Count > 0) _sirketId = _donemler[0].SirketId;
+            await ReloadDonem();
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Gelir tablosu init hatası"); await LoadAsync(); }
+    }
+
+    private async Task ReloadDonem()
+    {
+        try { _merkezler = await Q.GetMerkezlerAsync(_sirketId); } catch (Exception ex) { Logger.LogWarning(ex, "Merkez listesi"); }
+        if (_merkezId != -1 && !_merkezler.Any(m => m.Id == _merkezId)) _merkezId = -1;
+        await LoadAsync();
+    }
+
+    private async Task SetMod(bool kumule) { _kumule = kumule; await LoadAsync(); }
+    private void Toggle(string key) { if (!_acik.Remove(key)) _acik.Add(key); }
+    private bool Acik(string key) => _acik.Contains(key);
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        var sw = PerfState.Start();
+        try
+        {
+            var ayBas = _kumule ? 1 : _ay;
+            _rows = await Q.GetGelirTabloAsync(_sirketId, ayBas, _ay, _merkezId < 0 ? null : _merkezId);
+            Hesapla();
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Gelir tablosu yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}"; }
+        finally { _loading = false; Perf.Report("GelirTablosu", sw); StateHasChanged(); }
+    }
+
+    // signed fisTutar: gelir +, gider −. P&L hiyerarşisi + alt-toplam + net kâr.
+    private void Hesapla()
+    {
+        _netSatis = _rows.Where(r => r.Bolum == "NETSATIS").Sum(r => r.Tutar);
+        _netSatisDetay = _rows.Where(r => r.Bolum == "NETSATIS")
+            .GroupBy(r => r.HspAd).Select(g => new Kalem(g.Key, g.Sum(x => x.Tutar)))
+            .OrderByDescending(k => Math.Abs(k.Tutar)).ToList();
+
+        _faaliyetGider = _rows.Where(r => r.Bolum == "GIDER").Sum(r => r.Tutar);   // negatif
+        _giderKategoriler = GelirTabloQueries.KategoriSira
+            .Select(yy => new { yy, det = _rows.Where(r => r.Bolum == "GIDER" && r.Kategori == yy).ToList() })
+            .Where(x => x.det.Count > 0)
+            .Select(x => new KategoriBlok(
+                "G" + x.yy,
+                GelirTabloQueries.KategoriAd.GetValueOrDefault(x.yy, "Kategori " + x.yy),
+                x.det.Sum(r => r.Tutar),
+                x.det.GroupBy(r => r.HspAd).Select(g => new Kalem(g.Key, g.Sum(v => v.Tutar)))
+                    .OrderBy(k => k.Tutar).ToList()))
+            .ToList();
+
+        _faaliyetKar = _netSatis + _faaliyetGider;
+
+        _altBolumler = new[]
+        {
+            ("FINANSMAN", "Finansman / Komisyon Giderleri (−)"),
+            ("DIGERGELIR", "Diğer Faaliyetlerden Gelir/Kâr"),
+            ("DIGERGIDER", "Diğer Faaliyetlerden Gider (−)"),
+            ("KKEG", "KKEG / Olağandışı Gider (−)"),
+        }.Select(t => new { key = t.Item1, ad = t.Item2, det = _rows.Where(r => r.Bolum == t.Item1).ToList() })
+         .Where(x => x.det.Count > 0)
+         .Select(x => new KategoriBlok(x.key, x.ad, x.det.Sum(r => r.Tutar),
+             x.det.GroupBy(r => r.HspAd).Select(g => new Kalem(g.Key, g.Sum(v => v.Tutar)))
+                 .OrderBy(k => k.Tutar).ToList()))
+         .ToList();
+
+        _netKar = _faaliyetKar + _altBolumler.Sum(b => b.Tutar);
+    }
+
+    private Task<IEnumerable<IDictionary<string, object?>>> ExcelRows()
+    {
+        var list = new List<IDictionary<string, object?>>();
+        void Ekle(string kalem, decimal tutar, int seviye) =>
+            list.Add(new Dictionary<string, object?> { ["Kalem"] = new string(' ', seviye * 2) + kalem, ["Tutar"] = tutar, ["Net Satış %"] = _netSatis != 0 ? Math.Round(tutar / _netSatis * 100, 1) : 0 });
+        Ekle("NET SATIŞLAR", _netSatis, 0);
+        foreach (var r in _netSatisDetay) Ekle(r.Ad, r.Tutar, 1);
+        Ekle("FAALİYET GİDERLERİ", _faaliyetGider, 0);
+        foreach (var k in _giderKategoriler) { Ekle(k.Ad, k.Tutar, 1); foreach (var d in k.Detay) Ekle(d.Ad, d.Tutar, 2); }
+        Ekle("FAALİYET KÂRI", _faaliyetKar, 0);
+        foreach (var b in _altBolumler) { Ekle(b.Ad, b.Tutar, 1); foreach (var d in b.Detay) Ekle(d.Ad, d.Tutar, 2); }
+        Ekle("NET KÂR", _netKar, 0);
+        return Task.FromResult<IEnumerable<IDictionary<string, object?>>>(list);
+    }
+
+    private static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    private static string Tl(decimal v) => v.ToString("#,##0", Tr);
+    private string Yuzde(decimal v) => _netSatis != 0 ? "%" + (v / _netSatis * 100).ToString("0.0", Tr) : "—";
+}
