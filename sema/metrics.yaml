@@ -4,6 +4,14 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  gelir_tablosu_pl:
+    kaynak: "mhs.mhsFis signed fisTutar (gelir BA=0→+, gider BA=1→−). Dashboard /gelir-tablosu (GelirTabloQueries). Merkez: fisGdrMerkez (köprü mhsfis-gdrmerkez)."
+    yapi: "Net Satış(60−61) → Faaliyet Gideri(740/760/770, kategori .YY: 10 işçi ücret·20 yönetim·30 dışarıdan fayda·40 çeşitli·50 vergi-harç·60 amortisman) → FAALİYET KÂRI = NetSatış−gider → +Finansman(780/66/653)+Diğer(64/65/67)+KKEG(689/68) → NET KÂR = tüm 6xx+7xx signed toplam."
+    kritik_cogs: "⚠️ SMM (satılan malın maliyeti/kitap alış) YOK — BKM COGS'u stok hareketiyle tutar, GL 62 hesabına YAZMAZ (62 aktivitesi 0). Net Kâr = SMM-ÖNCESİ katkı, gerçek dip-kâr DEĞİL. Kullanıcı şablonu da COGS'suz."
+    erp_karsilastirma: "Resmi mhs.mhsGelirTabloGiderMerkeziDetayli SP'si 6xx-ONLY (aHspID LIKE '6%') → 740/760/770 opex + 780 finansmanı GÖSTERMEZ → 'dönem kârı' opex-siz şişkin (Haziran: SP 80,9M vs bu rapor Net Kâr 2,04M). Bu rapor 7xx dahil tam P&L."
+    dogrulama: "2026-08-06 Haziran toplam: Net Satış 75,74M (ERP SP 61x ile birebir), Faaliyet Kârı 35,39M (%46,7), Net Kâr 2,04M. Kapanış-hariç, yıl=sirketID+2020."
+    last_verified: "2026-08-06"
+
   gider_mizan_dagitim:
     kaynak: "mhs.mhsFis (GL satır) + mhsHsp; köprü mhsfis-gdrmerkez → frm (gider merkezi). MizanQueries ile aynı çekirdek."
     gider_tanimi: "hspKod '7%' TÜMÜ (740 hizmet/kafe · 760 pazarlama · 770 genel yönetim · 780 finansman) + gider-6xx (LEFT(hspKod,2) IN 62,63,65,66,68 → 653 komisyon · 689 ÖİV/olağandışı). Gelir 6xx (600 satış/602 kira geliri/642 mevduat/679 teşvik) HARİÇ. BKM 7/A yöntemi → yansıtma (7x1) aktif değil, 6xx+7xx çift-sayım YOK."
