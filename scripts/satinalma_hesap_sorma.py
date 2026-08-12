@@ -259,7 +259,8 @@ def hesapla(sid, kat):
     kap = sube_now + depo_now                        # ay sonu = fiziki (şube + depo)
     net_month = kapanis.get(sid, 0) - acilis.get(sid, 0)     # ledger ay-net (delta güvenilir)
     ac = kap - net_month                             # ay başı
-    stoklu_ay = sum(1 for M in SON12 if _sbal(M) > 0)   # ŞUBE stoklu-ay (tablodan, güvenilir)
+    # ŞUBE stoklu-ay: bakiye>0 VEYA o ay satış>0 (sattıysa stok vardı — recon 0'a floor'lanmışsa düzeltir)
+    stoklu_ay = sum(1 for M in SON12 if _sbal(M) > 0 or d.get(M, 0) > 0)
     aktif_ay = max(1, stoklu_ay)
     aylik_ort = son12 / aktif_ay                    # aktif-ay hızı (şube stoklu ay'a böl)
     # yaş: ilk satıştan bu yana kaç ay (yeterli-geçmiş kapısı)
@@ -277,7 +278,9 @@ def hesapla(sid, kat):
             # ÇÖKÜŞ (g<1) İLERİYE UZATILMAZ → g_eff=1 (bugünkü hızda erit; düşüşü sonsuza çarpmak
             # aşırı-kötümser: ürün zaten düşmüş son12'ye, üstüne bir düşüş daha = çifte-sayım).
             g_eff = (1.0 + (g - 1.0) * max(0.0, 1.0 - f / 12.0)) if g >= 1.0 else 1.0
-            exp = shape[f % 12] * g_eff
+            # SEZON HİZASI: f=0 = ilk gelecek ay (hedef+1). Geçen yıl karşılığı SON12[1] (hedef−11).
+            # SON12[0]=hedef−12 olduğu için +1 kaydır → gelecek Ağu, geçen Ağu'ya oturur.
+            exp = shape[(f + 1) % 12] * g_eff
             if exp <= 0:
                 f += 1; continue
             if rem <= exp:
@@ -286,7 +289,7 @@ def hesapla(sid, kat):
         if tuk_ay is None:
             tuk_ay = 999.0                          # 999 = pratikte tükenmez (talep var ama çok yavaş)
     trend = (g >= 2.0)                             # güçlü son-yıl boom → muhtemel trend/fad (kalıcı değil)
-    gy_sezon = sum(shape[:3])                       # geçen yıl önümüz-sezon (Ağu-Eki) GERÇEK satış (ham)
+    gy_sezon = sum(shape[1:4])                      # geçen yıl önümüz-sezon (hedef+1..+3 = Ağu-Eki) GERÇEK satış
     sezon3 = gy_sezon * g                           # bu sezon beklenen (× büyüme)
     naive_mos = (kap / (son12 / 12.0)) if son12 > 0 else None
     # ---- ÜRÜN KARAKTERİ (şekil-bazlı: istikrar + sezon-hizası + büyüme) ----
@@ -341,43 +344,69 @@ HEAD = ["Ürün Kodu", "Ürün Adı", "Kategori", "Marka",
         "Bu Ay Satılan (adet)", "Bu Ay Diğer Hareket (transfer/sayım)"]
 
 def yorum(h, al_adet, ac, bay):
-    ac_ay = (ac / h["aylik_ort"]) if h["aylik_ort"] > 0 else None
-    sez = ("sezon ürünü" if (h["son12"] > 0 and h["sezon3"] >= 0.4 * h["son12"]) else "sezonluk değil")
+    def tr(n): return f"{n:,}".replace(",", ".")   # Türkçe binlik ayracı (nokta)
+    hiz = round(h["aylik_ort"])
+    kap = h["kap"]; tuk = h["tuk_ay"]; bek = round(h["sezon3"])
+
+    def sure(t):                                    # ay ve yıl olarak sade ifade
+        if t is None:
+            return ""
+        if t >= 999:
+            return "bu satış hızıyla pratikte hiç tükenmez"
+        if t >= 24:
+            return f"eldeki stok bu satış hızıyla yaklaşık {t:.0f} ayda (yaklaşık {t/12:.0f} yılda) tükenir"
+        return f"eldeki stok bu satış hızıyla yaklaşık {t:.0f} ayda tükenir"
+
     if "FAZLA" in bay:
-        buyume = (f"büyüme ×{h['g']:.1f}" if h["g"] >= 1.0 else f"düşüşte (×{h['g']:.1f}, tükenmede bugünkü hız)")
-        return (f"Ay başı {ac} stok (~{ac_ay:.0f} ay), {al_adet} daha alındı; aktif hız ~{h['aylik_ort']:.0f}/ay, "
-                f"{sez}, sezon + {buyume} → {h['tuk_ay']:.0f} ayda erir → fazla.")
+        s = (f"Ay başında elde {tr(ac)} adet vardı, bu ay {tr(al_adet)} adet daha alındı. "
+             f"Ürün ayda ortalama {tr(hiz)} adet satıyor. {sure(tuk).capitalize()}. "
+             f"İhtiyaçtan çok fazla alınmış.")
+        if h["g"] < 1.0:
+            s += " Üstelik ürünün satışı geçen yıla göre düşüşte."
+        return s
     if "KÜÇÜK-ALIM" in bay:
-        return f"Bu ay yalnız {al_adet} adet (min-koli, az alınamaz); ay sonu {h['kap']} stok fazla ama alım kararı küçük → alıcıya haksız suçlama değil."
+        return (f"Bu ay yalnızca {al_adet} adet alınmış — bu en küçük koli miktarı, daha azı alınamıyor. "
+                f"Elde {tr(kap)} adet fazla stok var ama bu ayki alım küçük olduğu için alıcının kararı sayılmaz.")
     if "UZUN-KUYRUK" in bay:
-        return f"Yavaş çeşit-SKU; sezon dahil {h['tuk_ay']:.0f} ayda erir ama bağlı para küçük → düşük öncelik (odak: büyük FAZLA'lar)."
+        return (f"Yavaş satan bir çeşit ürünü. {sure(tuk).capitalize()}, "
+                f"ama bağlanan para küçük olduğu için öncelikli değil.")
     if "YENİDEN-STOK" in bay:
-        return f"Son 12 ayın çoğu stoksuzdu (satamadı, ay başı {ac}); eski talep var, {al_adet} restok → izle, ölü değil."
+        return (f"Geçen yıl stoğu bittiği için satılamamış, ama eskiden talebi vardı. "
+                f"{tr(al_adet)} adet ile yeniden stoklanmış. Ölü ürün değil, izlemek yeterli.")
     if "GENÇ" in bay:
-        return f"Ürün {h['history_ay']} aydır satışta (<12 ay) — tam sezon geçmişi yok, hüküm için erken; {al_adet} alındı, izle."
+        return (f"Ürün ilk kez {h['history_ay']} ay önce satılmaya başlanmış. "
+                f"Tam bir yıllık geçmişi olmadığı için şimdilik değerlendirilemiyor.")
     if "DEĞERLENDİRME" in bay:
-        return f"Son 24 ayda satış yok (stok yoktu/yeni ürün), {al_adet} alındı → talep verisi yok, değerlendirme dışı."
+        return (f"Bu üründen son iki yılda hiç satış olmamış. "
+                f"Talep bilgisi olmadığı için değerlendirilemiyor.")
     if "ÖLÜ" in bay:
-        return f"12 ayın ≥6'sı stokluydu ama satış 0; {al_adet} daha alındı → ölü ürüne alım."
+        return (f"Ürün yıl boyunca elde vardı ama hiç satmadı. Buna rağmen {tr(al_adet)} adet daha alınmış. "
+                f"Satmayan bir ürüne alım yapılmış.")
     if "TREND" in bay:
-        return (f"Son yıl {h['g']:.1f}× büyüdü (trend/fad) — bu sezon ~{round(h['sezon3'])} beklenir ama hız kalıcı "
-                f"olmayabilir. Kısa-vade küçük parti al; büyük bulk alım trend bitince elde kalır.")
+        return (f"Ürünün satışı son bir yılda çok arttı, ama bu geçici bir moda olabilir. "
+                f"Önümüzdeki dönemde yaklaşık {tr(bek)} adet satması bekleniyor. Bu hız kalıcı olmayabilir; "
+                f"az miktarda ve sık almak, bir kerede çok stoklamaktan daha güvenli.")
     if "AZ ALMIŞ" in bay:
-        return (f"Ay sonu {h['kap']}, önümüz sezon beklenen ~{round(h['sezon3'])} (büyüme dahil) → sezon eritir, "
-                f"stockout riski, daha alınmalı.")
+        return (f"Ürün iyi satıyor, elde sadece {tr(kap)} adet kalmış. "
+                f"Önümüzdeki dönemde yaklaşık {tr(bek)} adet satması bekleniyor. "
+                f"Bu stok yetmeyecek, daha alınmalı.")
     if "verisi yok" in bay:
-        return (f"Geçen yıl bu üründe satış yok (büyüme kategori-tahmini, ×{h['g']:.1f}); ay sonu {h['kap']} stok "
-                f"sezon dahil {h['tuk_ay']:.0f} ayda erir ama kesinlik düşük → izle, suçlama değil.")
+        return (f"Geçen yıl bu üründen satış olmadığı için ne kadar büyüdüğü kesin bilinmiyor. "
+                f"{sure(tuk).capitalize()}, ama tahmin kesin olmadığı için izlemek gerekir.")
     if "İZLE" in bay:
-        return f"Sezon+büyüme dahil {h['tuk_ay']:.0f} ayda erir, sınırda — izle."
-    return (f"Sezon+büyüme dahil {h['tuk_ay']:.0f} ay, makul." if h["tuk_ay"] is not None else "Normal.")
+        return f"{sure(tuk).capitalize()} — sınırda bir durum, izlemek gerekir."
+    return (f"{sure(tuk).capitalize()} — stok ile satış dengeli, sorun görünmüyor."
+            if tuk is not None else "Stok ile satış dengeli, sorun görünmüyor.")
 
 rows = []
+denetim = []       # otomatik tutarlılık denetimi için satır-başı hesaplar
 for sid in ids:
     _sa, ad, kat, mrk = master.get(sid, ("—", "", "", ""))
     al_adet, al_tut = alis[sid]
     h = hesapla(sid, kat)
     bmal = maliyet.get(sid, 0)
+    if bmal <= 0 and al_adet > 0 and al_tut > 0:      # fatura/devir yok → bu ayki alış birimi (en taze)
+        bmal = round(al_tut / al_adet, 4)
     bay = bayrak(sid, h, al_adet)
     ac = h["ac"]                                               # ay başı (fiziki-ankrajlı)
     satildi = tuk_month.get(sid, 0)                             # bu ay satılan (şube+etic)
@@ -401,7 +430,42 @@ for sid in ids:
                  h["karakter"], h["onc12"], h["satis_ay"], h["stoklu_ay"],
                  round(h["aylik_ort"], 1), round(h["sezon_pay"] * 100), h["g_kaynak"], h["history_ay"],
                  satildi, diger])
+    denetim.append(dict(sid=sid, bay=bay, bmal=bmal, al_tut=al_tut, al_adet=al_adet, donmus=donmus,
+                        satildi=satildi, diger=diger, **h))   # h zaten ac/kap içerir
 rows.sort(key=lambda r: (-(r[16] or 0), -(r[5] or 0)))   # bağlı para, sonra alış tutar
+
+# ================= OTOMATİK TUTARLILIK DENETİMİ (regresyon guard) =================
+def dogrula(D):
+    ihlal = {}
+    def ek(sid, kural): ihlal.setdefault(kural, []).append(sid)
+    for x in D:
+        s = x["sid"]; bay = x["bay"]; kap = x["kap"]; ac = x["ac"]
+        aysonu = ac + x["al_adet"] - x["satildi"] + x["diger"]
+        if aysonu != kap: ek(s, "roll-forward kapanmıyor (ay başı+alınan−satılan+diğer≠ay sonu)")
+        if x["son12"] > 0 and x["stoklu_ay"] == 0: ek(s, "sattı ama stoklu-ay=0")
+        if x["bmal"] <= 0 and x["al_tut"] > 0: ek(s, "birim maliyet 0 ama bu ay alış değeri var")
+        if x["donmus"] > 0 and not any(t in bay for t in ("FAZLA", "UZUN-KUYRUK", "KÜÇÜK-ALIM")):
+            ek(s, "bağlı para var ama etiket fazla-ailesi değil")
+        if "🔴 FAZLA" in bay and (x["tuk_ay"] or 0) <= ESIK: ek(s, "FAZLA ama tükenme ≤12 ay")
+        if x["g_kaynak"] == "ürün" and x["onc12"] < 100: ek(s, "büyüme 'ürün' ama taban<100")
+        if x["g_kaynak"] == "kategori" and x["onc12"] >= 100: ek(s, "büyüme 'kategori' ama taban≥100")
+        if x["karakter"] == "DÜŞÜŞ" and x["g"] >= 0.7: ek(s, "karakter DÜŞÜŞ ama büyüme≥0.7")
+        if x["karakter"] == "SEZONSAL" and x["sezon_pay"] < 0.5: ek(s, "karakter SEZONSAL ama sezon-payı<0.5")
+        if x["karakter"] == "NORMAL" and x["satis_ay"] < 9: ek(s, "karakter NORMAL ama satışlı-ay<9")
+        if x["karakter"] == "DURGUN" and x["son24"] != 0: ek(s, "karakter DURGUN ama son24≠0")
+        if kap < 0: ek(s, "ay sonu stok negatif")
+        if "AZ ALMIŞ" in bay and kap >= x["sezon3"]: ek(s, "AZ-ALMIŞ ama ay sonu≥beklenen")
+        if x["stoklu_ay"] > 0 and abs(x["aylik_ort"] - x["son12"] / x["stoklu_ay"]) > 0.5:
+            ek(s, "aylık hız ≠ son12/stoklu-ay")
+        if x["tuk_ay"] is None and x["son12"] > 0 and kap > 0: ek(s, "tükenme boş ama satış+stok var")
+    return ihlal
+_ihlal = dogrula(denetim)
+if _ihlal:
+    print("⚠️ TUTARLILIK İHLALLERİ:", flush=True)
+    for k, sids in sorted(_ihlal.items(), key=lambda kv: -len(kv[1])):
+        print(f"   [{len(sids)}] {k}  (ör: {sids[:5]})", flush=True)
+else:
+    print("✓ Tutarlılık denetimi temiz (ihlal yok).", flush=True)
 
 # ---- türetilen kolonları Excel FORMÜLÜNE çevir (kaynak izlenebilir olsun; sıralama SONRASI, gerçek satır no) ----
 def _L(name): return get_column_letter(HEAD.index(name) + 1)
