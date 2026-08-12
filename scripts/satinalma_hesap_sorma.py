@@ -151,13 +151,14 @@ cur.execute("""
     GROUP BY h.ehstkID HAVING SUM(h.ehAdetN)<>0""")
 for sid, b in cur.fetchall():
     maliyet.setdefault(sid, float(b or 0))
-# ilk GERÇEK satış (yaş / yeterli-geçmiş kapısı — genç ürünü FAZLA'dan korur)
-ilk_satis = {}
+# ilk STOK-GİRİŞ (yaş kapısı): alış(0,10) · sevk/transfer(13) · stok-ekle(16) · devir-sayım(99).
+# Satış/iade HARİÇ → ürün stoğa GERÇEKTEN ne zaman girdi. <12 ay = genç (değerlendirme için erken/adil değil).
+ilk_giris = {}
 cur.execute(f"""SELECT h.ehstkID, MIN(h.ehTrhS) FROM dbo.irsHrk h WITH(NOLOCK)
-    JOIN #a ON #a.stkID=h.ehstkID WHERE h.ehTip IN (1,4,100) AND h.ehTrhS<'{T_AY1}'
+    JOIN #a ON #a.stkID=h.ehstkID WHERE h.ehTip IN (0,10,13,16,99) AND h.ehTrhS<'{T_AY1}'
     GROUP BY h.ehstkID""")
 for sid, dt in cur.fetchall():
-    ilk_satis[sid] = dt
+    ilk_giris[sid] = dt
 
 # aylık net ledger delta (TÜM ehTip) — ay-ay stok yeniden-kurulumu (stoklu-ay + aktif-ay hızı)
 aylik_delta = {}
@@ -263,11 +264,11 @@ def hesapla(sid, kat):
     stoklu_ay = sum(1 for M in SON12 if _sbal(M) > 0 or d.get(M, 0) > 0)
     aktif_ay = max(1, stoklu_ay)
     aylik_ort = son12 / aktif_ay                    # aktif-ay hızı (şube stoklu ay'a böl)
-    # yaş: ilk satıştan bu yana kaç ay (yeterli-geçmiş kapısı)
-    ih = ilk_satis.get(sid)
-    history_ay = ((AYY - ih.year) * 12 + (AYM - ih.month)) if ih is not None else -1
-    genc = (0 <= history_ay < 12)                  # sattı ama <12 ay → şekil güvenilmez (yapısal sıfır)
-    yeni = (son24 == 0)                            # 24 ayda hiç satış → durgun/yeni
+    # yaş: ilk STOK-GİRİŞ'ten bu yana kaç ay (alış/sevk/stok-ekle/devir). <12 ay → genç.
+    ih = ilk_giris.get(sid)
+    history_ay = ((AYY - ih.year) * 12 + (AYM - ih.month)) if ih is not None else 0
+    genc = (0 <= history_ay < 12)                  # stoğa <12 ay önce girdi → değerlendirme için erken
+    yeni = genc and son24 == 0                     # yeni + hiç satmamış (eski+satmayan artık ÖLÜ olabilir)
     had_stock = stoklu_ay >= 6                      # 12 ayın ≥yarısı ŞUBE'de stoklu → satma fırsatı vardı
     shape = [d.get(a, 0) for a in SON12]
     tuk_ay = None                                  # sezonlu ileri tükenme (şekil × sönümlü büyüme) — GERÇEK ay (cap yok)
@@ -295,8 +296,8 @@ def hesapla(sid, kat):
     # ---- ÜRÜN KARAKTERİ (şekil-bazlı: istikrar + sezon-hizası + büyüme) ----
     satis_ay = sum(1 for x in shape if x > 0)       # kaç ayda satış oldu (istikrar sinyali)
     sezon_pay = (gy_sezon / son12) if son12 > 0 else 0.0   # satışın önümüz-sezon payı (sezonluk sinyali)
-    if son24 == 0:         karakter = "DURGUN"       # 24 ay hiç satış
-    elif genc:             karakter = "GENÇ"         # <12 ay geçmiş
+    if genc:               karakter = "GENÇ"         # stoğa <12 ay önce girdi (öncelik)
+    elif son24 == 0:       karakter = "DURGUN"       # eski + 24 ay hiç satış
     elif sezon_pay >= 0.5: karakter = "SEZONSAL"     # satışın ≥%50'si sezonda → her yıl tekrar (istikrardan ÖNCE bak)
     elif satis_ay >= 9:    karakter = "NORMAL"       # yılın ≥9 ayı yayılı satar → istikrarlı staple (g güvenilir)
     elif g >= 2.0:         karakter = "TREND"        # spiky + sezon-dışı + büyüme → fad riski (kalıcı değil)
@@ -309,13 +310,11 @@ def hesapla(sid, kat):
                 sube_now=sube_now, depo_now=depo_now)
 
 def bayrak(sid, h, al_adet):
-    if h["yeni"]:
-        return "DEĞERLENDİRME DIŞI — 24 ayda satış yok (yeni/durgun)"
-    if h["genc"]:
-        return f"GENÇ ÜRÜN — {h['history_ay']} aylık geçmiş (<12), hüküm için erken — izle"
-    if h["son12"] == 0:
+    if h["genc"]:                                      # stoğa <12 ay önce girdi → değerlendirme için erken
+        return f"GENÇ ÜRÜN — stoğa {h['history_ay']} ay önce girdi (<12), hüküm için erken — izle"
+    if h["son12"] == 0:                                # eski ürün (stoğa >12 ay önce girdi) ama son 12 ay satış 0
         if h["had_stock"]:
-            return "🔴 ÖLÜ-ALIM — stok vardı, 12 ay satmadı"
+            return "🔴 ÖLÜ-ALIM — stok vardı ama 12 ay satmadı, yine de alındı"
         return "🟠 YENİDEN-STOK — stoksuzdu (eski talep), restok — izle"
     if h["kap"] - h["sezon3"] < 0:
         if h["karakter"] == "TREND":               # fad → "daha al" tehlikeli (trend biter, elde kalır)
@@ -340,7 +339,7 @@ HEAD = ["Ürün Kodu", "Ürün Adı", "Kategori", "Marka",
         "Değerlendirme", "Açıklama / Gerekçe",
         "Ürün Karakteri", "Geçen Yıl Toplam Satış (büyüme tabanı)", "Yılda Kaç Ay Satmış (12'de)",
         "Yılda Kaç Ay Stoklu (12'de)", "Aylık Satış Hızı (=son12÷stoklu ay)", "Satışın Sezon Payı (%)",
-        "Büyüme Kaynağı (ürün/kategori)", "İlk Satıştan Beri (ay)",
+        "Büyüme Kaynağı (ürün/kategori)", "Stoğa İlk Girişten Beri (ay)",
         "Bu Ay Satılan (adet)", "Bu Ay Diğer Hareket (transfer/sayım)"]
 
 def yorum(h, al_adet, ac, bay):
@@ -374,8 +373,8 @@ def yorum(h, al_adet, ac, bay):
         return (f"Geçen yıl stoğu bittiği için satılamamış, ama eskiden talebi vardı. "
                 f"{tr(al_adet)} adet ile yeniden stoklanmış. Ölü ürün değil, izlemek yeterli.")
     if "GENÇ" in bay:
-        return (f"Ürün ilk kez {h['history_ay']} ay önce satılmaya başlanmış. "
-                f"Tam bir yıllık geçmişi olmadığı için şimdilik değerlendirilemiyor.")
+        return (f"Ürün stoğa ilk kez {h['history_ay']} ay önce girdi (alış veya sevkle). "
+                f"Tam bir yıllık satış geçmişi olmadığı için şimdilik değerlendirilemiyor.")
     if "DEĞERLENDİRME" in bay:
         return (f"Bu üründen son iki yılda hiç satış olmamış. "
                 f"Talep bilgisi olmadığı için değerlendirilemiyor.")
@@ -580,7 +579,7 @@ KOMENT = {
     "Aylık Satış Hızı (=son12÷stoklu ay)": "NE: Gerçek aylık satış hızı.\nNASIL: Excel formülü = Son 12 Ay ÷ Stoklu Ay (stoksuz ayları saymaz).",
     "Satışın Sezon Payı (%)": "NE: Satışın önümüz-sezondaki payı.\nNASIL: = Geçen Yıl Sezon ÷ Son 12 Ay × 100.\nBAK: Yüksek (≥50) = sezonsal ürün.",
     "Büyüme Kaynağı (ürün/kategori)": "NE: Büyüme katsayısı nereden geldi.\n'ürün' = kendi YoY'u (taban≥100) · 'kategori' = taban ince, kategori sezon oranı.",
-    "İlk Satıştan Beri (ay)": "NE: Ürünün ilk satışından bu yana geçen ay.\nBAK: <12 = GENÇ (tam sezon geçmişi yok, değerlendirme dışı).",
+    "Stoğa İlk Girişten Beri (ay)": "NE: Ürün stoğa ilk kez ne zaman girdi (alış/sevk/stok-ekle/devir).\nBAK: <12 ay = GENÇ (tam yıllık satış geçmişi yok → değerlendirme için erken).",
     "Bu Ay Satılan (adet)": "NE: Bu ay satılan adet (şube + e-tic). Roll-forward'ın çıkış kalemi.",
     "Bu Ay Diğer Hareket (transfer/sayım)": "NE: Bu ayki transfer/sayım/iade net hareketi.\nBAK: Alıcının kararı DEĞİL; roll-forward'ı kapatmak için (ay başı+alınan−satılan+diğer=ay sonu).",
 }
@@ -623,7 +622,7 @@ notlar = [
     ("• Aylık Satış Hızı = Son 12 Ay Satış ÷ Yılda Kaç Ay Stoklu (Excel formülü; stoksuz ayları saymaz → gerçek hız).", False),
     ("• Satışın Sezon Payı % = Geçen Yıl Sezon Satışı ÷ Son 12 Ay × 100 (Excel formülü). Yüksek = sezonsal.", False),
     ("• Büyüme Kaynağı: 'ürün' (kendi YoY'u, taban ≥100) veya 'kategori' (taban ince → kategori sezon oranı).", False),
-    ("• İlk Satıştan Beri (ay): ilk satıştan bu yana ay. <12 = GENÇ (hüküm için erken).", False),
+    ("• Stoğa İlk Girişten Beri (ay): ürün stoğa ilk kez ne zaman girdi (alış/sevk/stok-ekle/devir). <12 ay = GENÇ (değerlendirme için erken).", False),
     ("", False),
     ("ÜRÜN KARAKTERİ — SEZONSAL / TREND / NORMAL NASIL AYRILIR", True),
     ("Tek sayı (büyüme) trend'i ayırmaz; SATIŞ DESENİNE (şekil) bakılır. Sıra ile ilk uyan:", False),
