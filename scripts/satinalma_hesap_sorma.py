@@ -22,6 +22,7 @@ import pyodbc
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.comments import Comment
 
 # ---- hedef ay ----
 if len(sys.argv) > 1:
@@ -41,6 +42,8 @@ T_GEC = f"{_gy:04d}{_gm:02d}01"
 _wy, _wm = ym_add(AYY, AYM, -12)
 T_WSTART = f"{_wy:04d}{_wm:02d}01"   # son-12-ay talep penceresi başı (stok-vardı testi için)
 ESIK = 12                                        # sezonlu tükenme > 12 ay → fazla
+MAT_ESIK = 5000                                  # materiality: bağlı para < bu → küçük/uzun-kuyruk (odak)
+MIN_KOLI = 24                                    # bu ay alış ≤ bu → küçük-koli/min-sipariş (adil-atıf)
 print(f"Hedef ay: {AY} · alış [{T_AY0},{T_AY1}) · şekil geçmişi [{T_GEC},{T_AY0})", flush=True)
 
 # ---- .env + bağlantı ----
@@ -94,7 +97,9 @@ for sid, ac, kp, ws in cur.fetchall():
 
 # ---- 3) AYLIK ŞEKİL: şube satış (24 ay) ----
 print("Aylık şekil — şube satış...", flush=True)
-aylik = {}   # stkID -> {ay: adet}  (şube + e-tic birleşik)
+aylik = {}          # stkID -> {ay: adet}  (şube + e-tic birleşik — analiz için)
+aylik_sube = {}     # sadece şube (sayfa için)
+aylik_etic = {}     # sadece e-tic (sayfa için)
 cur.execute(f"""
     SELECT h.ehstkID, CONVERT(varchar(7),h.ehTrhS,126) ay, -SUM(h.ehAdetN)
     FROM dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
@@ -102,6 +107,7 @@ cur.execute(f"""
     GROUP BY h.ehstkID, CONVERT(varchar(7),h.ehTrhS,126)""")
 for sid, ay, q in cur.fetchall():
     aylik.setdefault(sid, {})[ay] = aylik.get(sid, {}).get(ay, 0) + int(q or 0)
+    aylik_sube.setdefault(sid, {})[ay] = aylik_sube.get(sid, {}).get(ay, 0) + int(q or 0)
 
 # ---- 4) AYLIK ŞEKİL: e-tic (OPENQUERY, kategori-geniş, Python'da alınan-set süz) ----
 print("Aylık şekil — e-tic (OPENQUERY)...", flush=True)
@@ -119,6 +125,7 @@ cur.execute(f"""
     JOIN #a ON #a.stkID=x.stkID""")
 for sid, ay, q in cur.fetchall():
     aylik.setdefault(sid, {})[ay] = aylik.get(sid, {}).get(ay, 0) + int(q or 0)
+    aylik_etic.setdefault(sid, {})[ay] = aylik_etic.get(sid, {}).get(ay, 0) + int(q or 0)
 
 # ---- 5) MASTER + MALIYET ----
 print("Master + maliyet...", flush=True)
@@ -262,13 +269,14 @@ def hesapla(sid, kat):
     yeni = (son24 == 0)                            # 24 ayda hiç satış → durgun/yeni
     had_stock = stoklu_ay >= 6                      # 12 ayın ≥yarısı ŞUBE'de stoklu → satma fırsatı vardı
     shape = [d.get(a, 0) for a in SON12]
-    tuk_ay = None                                  # sezonlu ileri tükenme (şekil × sönümlü büyüme)
+    tuk_ay = None                                  # sezonlu ileri tükenme (şekil × sönümlü büyüme) — GERÇEK ay (cap yok)
     if sum(shape) > 0 and kap > 0:
         rem = kap; f = 0
-        while f < 60:
-            # büyüme primi zamanla söner — TREND kalıcı değil: boom (g>1) 12 ayda baseline'a iner;
-            # çöküş (g<1) sürer (fad ölümü devam eder). Sonsuz boom-ekstrapolasyonu yasak.
-            g_eff = (1.0 + (g - 1.0) * max(0.0, 1.0 - f / 12.0)) if g >= 1.0 else g
+        while f < 999:
+            # büyüme primi zamanla söner: boom (g>1) 12 ayda baseline'a iner.
+            # ÇÖKÜŞ (g<1) İLERİYE UZATILMAZ → g_eff=1 (bugünkü hızda erit; düşüşü sonsuza çarpmak
+            # aşırı-kötümser: ürün zaten düşmüş son12'ye, üstüne bir düşüş daha = çifte-sayım).
+            g_eff = (1.0 + (g - 1.0) * max(0.0, 1.0 - f / 12.0)) if g >= 1.0 else 1.0
             exp = shape[f % 12] * g_eff
             if exp <= 0:
                 f += 1; continue
@@ -276,7 +284,7 @@ def hesapla(sid, kat):
                 tuk_ay = f + rem / exp; break
             rem -= exp; f += 1
         if tuk_ay is None:
-            tuk_ay = 60.0
+            tuk_ay = 999.0                          # 999 = pratikte tükenmez (talep var ama çok yavaş)
     trend = (g >= 2.0)                             # güçlü son-yıl boom → muhtemel trend/fad (kalıcı değil)
     gy_sezon = sum(shape[:3])                       # geçen yıl önümüz-sezon (Ağu-Eki) GERÇEK satış (ham)
     sezon3 = gy_sezon * g                           # bu sezon beklenen (× büyüme)
@@ -336,8 +344,13 @@ def yorum(h, al_adet, ac, bay):
     ac_ay = (ac / h["aylik_ort"]) if h["aylik_ort"] > 0 else None
     sez = ("sezon ürünü" if (h["son12"] > 0 and h["sezon3"] >= 0.4 * h["son12"]) else "sezonluk değil")
     if "FAZLA" in bay:
-        return (f"Ay başı {ac} stok vardı (~{ac_ay:.0f} ay), {al_adet} daha alındı; aktif satış hızı "
-                f"~{h['aylik_ort']:.0f}/ay, {sez}, sezon+büyüme (×{h['g']:.1f}) dahil {h['tuk_ay']:.0f} ayda erir → fazla.")
+        buyume = (f"büyüme ×{h['g']:.1f}" if h["g"] >= 1.0 else f"düşüşte (×{h['g']:.1f}, tükenmede bugünkü hız)")
+        return (f"Ay başı {ac} stok (~{ac_ay:.0f} ay), {al_adet} daha alındı; aktif hız ~{h['aylik_ort']:.0f}/ay, "
+                f"{sez}, sezon + {buyume} → {h['tuk_ay']:.0f} ayda erir → fazla.")
+    if "KÜÇÜK-ALIM" in bay:
+        return f"Bu ay yalnız {al_adet} adet (min-koli, az alınamaz); ay sonu {h['kap']} stok fazla ama alım kararı küçük → alıcıya haksız suçlama değil."
+    if "UZUN-KUYRUK" in bay:
+        return f"Yavaş çeşit-SKU; sezon dahil {h['tuk_ay']:.0f} ayda erir ama bağlı para küçük → düşük öncelik (odak: büyük FAZLA'lar)."
     if "YENİDEN-STOK" in bay:
         return f"Son 12 ayın çoğu stoksuzdu (satamadı, ay başı {ac}); eski talep var, {al_adet} restok → izle, ölü değil."
     if "GENÇ" in bay:
@@ -373,6 +386,11 @@ for sid in ids:
     if "FAZLA" in bay and h["aylik_ort"] > 0:
         fazla_adet = max(0, h["kap"] - h["aylik_ort"] * ESIK)   # 12-ay aktif-hız üstü = fazla
         donmus = fazla_adet * bmal
+    # materiality (#1) + min-sipariş (#3): büyük FAZLA'yı gürültüden ayır (odak + adil-atıf)
+    if "FAZLA" in bay and al_adet <= MIN_KOLI:
+        bay = f"🟡 KÜÇÜK-ALIM — {al_adet} adet (min-koli, az alınamaz); stok fazla ama bu ay az aldı"
+    elif "FAZLA" in bay and donmus < MAT_ESIK:
+        bay = f"🟡 UZUN-KUYRUK — küçük fazla ({round(donmus):,} ₺ bağlı); yavaş SKU, düşük öncelik"
     rows.append([sid, ad, kat, mrk,
                  al_adet, round(al_tut), round(bmal, 2),
                  ac, h["kap"], h["son12"], round(h["g"], 2),
@@ -418,6 +436,7 @@ def ozetle(key_idx):
         d = r[17] or ""
         if "FAZLA" in d: e["fazla"] += 1
         elif "ÖLÜ" in d: e["olu"] += 1
+        elif "UZUN-KUYRUK" in d or "KÜÇÜK-ALIM" in d: e["izle"] += 1   # materiality/min-koli → izle
         elif "YENİDEN" in d: e["izle"] += 1      # restok = izle
         elif "GENÇ" in d: e["yeni"] += 1         # genç = değerlendirme dışı (muaf)
         elif "TREND" in d: e["az"] += 1          # trend-hızlı = temkinli-al (az tarafı)
@@ -440,6 +459,7 @@ muaf = [r for r in rows if "DEĞERLENDİRME" in r[17] or "GENÇ" in r[17]]
 az = [r for r in rows if "AZ ALMIŞ" in r[17]]
 trend = [r for r in rows if "TREND" in r[17]]
 restok = [r for r in rows if "YENİDEN" in r[17]]
+uzun = [r for r in rows if "UZUN-KUYRUK" in r[17] or "KÜÇÜK-ALIM" in r[17]]
 donmus_tot = sum(r[16] or 0 for r in fazla)
 mal0 = sum(1 for r in fazla if (r[6] or 0) == 0)
 top_kat = kat_rows[0] if kat_rows else ["—", 0, 0, 0, 0, 0]
@@ -471,6 +491,39 @@ ws1 = wb.active; ws1.title = "Ürün Detay"
 yaz(ws1, HEAD, rows,
     [8, 40, 12, 18, 10, 13, 12, 13, 20, 12, 14, 16, 14, 15, 20, 18, 15, 34, 62, 14, 16, 13, 13, 16, 13, 14, 13, 13, 16],
     {5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 21, 22, 23, 25, 27, 28, 29}, freeze="C2")
+
+# Her başlık hücresine NOT (ne işe yarar · nasıl hesaplandı · nasıl bakılır) — fareyle üstüne gel
+KOMENT = {
+    "Bu Ay Alınan (adet)": "NE: Bu ay satın alınan adet.\nNASIL: irsHrk fiziki stok girişi (ehTip 0 Alış + 10 Yerel Alım).\nBAK: Son 12 Ay Satış'ın kaç katı? Çok üstündeyse fazla-alım şüphesi.",
+    "Bu Ay Alış Tutarı (₺, KDV'siz)": "NE: Bu ayki alışın parası (KDV-hariç net).\nNASIL: irsHrk ehTutarN toplamı.\nBAK: adet × birim maliyet civarı.",
+    "Birim Maliyet (₺)": "NE: Bir adedin alış maliyeti (KDV-hariç).\nNASIL: Son alış faturası birim; yoksa 31.05.2021 devir. Bağlı-para hesabında kullanılır.",
+    "Ay Başındaki Stok": "NE: Ay başında eldeki fiziki stok (şube+depo).\nNASIL: = Ay Sonu − bu ayın net hareketi (ledger delta).",
+    "Ay Sonundaki Stok (=başı+alınan−satılan+diğer)": "NE: Ay sonunda eldeki fiziki stok.\nNASIL: Excel formülü = Ay Başı + Bu Ay Alınan − Bu Ay Satılan + Diğer. Fiziki: şube(stokSon)+depo(WMS). Hücreye tıkla, kaynağı gör.",
+    "Son 12 Ay Satış (adet)": "NE: Son 12 ayda satılan toplam adet (şube + e-ticaret).\nBAK: Ana talep göstergesi. Bu Ay Alınan bunun kaç katı = kaç yıllık aldın.",
+    "Yıllık Büyüme (bu yıl ÷ geçen yıl)": "NE: Talep büyüme katsayısı.\nNASIL: Son 12 Ay ÷ Geçen Yıl Toplam (taban≥100 ise ürünün kendi YoY'u; ince ise kategori sezon oranı).\nBAK: >1 büyüyor · <1 düşüyor.",
+    "Kaç Ayda Tükenir (sezon+büyüme)": "NE: Eldeki stok kaç ayda biter (ANA KARAR ölçüsü).\nNASIL: Ay sonu stok, geçen yılın aylık satış deseni × büyüme ile ileri yürütülür (sezonu + büyümeyi hesaba katar). 999 = pratikte tükenmez.\nBAK: >12 ay = FAZLA şüphesi.",
+    "Kaç Ayda Tükenir (basit)": "NE: Sezonsuz kaba yeterlilik.\nNASIL: = Ay Sonu ÷ (Son 12 Ay ÷ 12). Kıyas için; karar bunun değil soldakinin.",
+    "Geçen Yıl Sezon Satışı (adet)": "NE: Geçen yıl önümüzdeki sezonda (Ağu-Eyl-Eki) FİİLEN satılan adet.\nBAK: Tahminin ham dayanağı (şeffaflık).",
+    "Bu Sezon Beklenen Satış (=geçen sezon×büyüme)": "NE: Bu sezon beklenen satış.\nNASIL: Excel formülü = Geçen Yıl Sezon × Büyüme.",
+    "Sezon Sonrası Elde Kalacak (=ay sonu−beklenen)": "NE: Sezon geçtikten sonra elde kalacak.\nNASIL: = Ay Sonu − Bu Sezon Beklenen. NEGATİF = sezon hepsini yer → stockout riski, daha al.",
+    "Fazla Stokta Bağlı Para (₺)": "NE: Fazla stokta donmuş sermaye (alt-sınır).\nNASIL: (Ay Sonu − 12-aylık ihtiyaç) fazla-kısım × Birim Maliyet. Sadece FAZLA'da dolu.",
+    "Değerlendirme": "NE: Sonuç etiketi (FAZLA / AZ-ALMIŞ / ÖLÜ / TREND / GENÇ ...).\nBAK: Anlamları 'Kapsam & Yorum' sayfasında Etiket Sözlüğü'nde.",
+    "Açıklama / Gerekçe": "NE: Etiketin kanıtlı gerekçesi (tek cümle) — rakamlarla neden bu sonuç.",
+    "Ürün Karakteri": "NE: Satış deseni tipi: NORMAL(istikrarlı) / SEZONSAL / TREND(fad) / DÜŞÜŞ / DÜZENSİZ / GENÇ / DURGUN.\nBAK: Ayrım mantığı 'Kapsam & Yorum' sayfasında.",
+    "Geçen Yıl Toplam Satış (büyüme tabanı)": "NE: Önceki 12 ayın satışı = büyüme katsayısının paydası.\nBAK: <100 ise büyüme güvenilmez → kategori oranı kullanılır.",
+    "Yılda Kaç Ay Satmış (12'de)": "NE: Son 12 ayın kaçında satış oldu (istikrar).\nBAK: ≥9 = istikrarlı staple · düşük = spiky (sezon/fad).",
+    "Yılda Kaç Ay Stoklu (12'de)": "NE: Son 12 ayın kaçında ŞUBE stoğu vardı (satabilir miydi).\nNASIL: bkm.StokAyBakiyeMekanBazli tablosundan.\nBAK: ≥6 stoklu + hiç satış = gerçek ÖLÜ.",
+    "Aylık Satış Hızı (=son12÷stoklu ay)": "NE: Gerçek aylık satış hızı.\nNASIL: Excel formülü = Son 12 Ay ÷ Stoklu Ay (stoksuz ayları saymaz).",
+    "Satışın Sezon Payı (%)": "NE: Satışın önümüz-sezondaki payı.\nNASIL: = Geçen Yıl Sezon ÷ Son 12 Ay × 100.\nBAK: Yüksek (≥50) = sezonsal ürün.",
+    "Büyüme Kaynağı (ürün/kategori)": "NE: Büyüme katsayısı nereden geldi.\n'ürün' = kendi YoY'u (taban≥100) · 'kategori' = taban ince, kategori sezon oranı.",
+    "İlk Satıştan Beri (ay)": "NE: Ürünün ilk satışından bu yana geçen ay.\nBAK: <12 = GENÇ (tam sezon geçmişi yok, değerlendirme dışı).",
+    "Bu Ay Satılan (adet)": "NE: Bu ay satılan adet (şube + e-tic). Roll-forward'ın çıkış kalemi.",
+    "Bu Ay Diğer Hareket (transfer/sayım)": "NE: Bu ayki transfer/sayım/iade net hareketi.\nBAK: Alıcının kararı DEĞİL; roll-forward'ı kapatmak için (ay başı+alınan−satılan+diğer=ay sonu).",
+}
+for ci, hh in enumerate(HEAD, 1):
+    if hh in KOMENT:
+        cm = Comment(KOMENT[hh], "Rapor"); cm.width = 300; cm.height = 150
+        ws1.cell(1, ci).comment = cm
 yaz(wb.create_sheet("Kategori Özeti"), kat_h, kat_rows, [14, 8, 11, 15, 9, 15, 8, 11, 9, 11], {3, 5})
 yaz(wb.create_sheet("Marka Özeti"), marka_h, marka_rows, [30, 8, 11, 15, 9, 15, 8, 11, 9, 11], {3, 5})
 
@@ -480,7 +533,7 @@ notlar = [
     (f"SATINALMA HESAP-SORMA — {AY[:4]}-{AY[4:]} · Kapsam & Yorum", True),
     ("", False),
     ("GENEL YORUM", True),
-    (f"• {len(fazla)} SKU FAZLA alım · fazla stokta bağlı para ~{donmus_tot:,.0f} ₺ (alt-sınır).", False),
+    (f"• {len(fazla)} SKU GERÇEK FAZLA (materyal, ≥{MAT_ESIK}₺ + koli>{MIN_KOLI}) · bağlı para ~{donmus_tot:,.0f} ₺ (alt-sınır). Ayrıca {len(uzun)} küçük/uzun-kuyruk (düşük öncelik, ayrıldı).", False),
     (f"• {len(olu)} ÖLÜ-ALIM (stok vardı 12 ay satmadı) · {len(az)} AZ-ALMIŞ (sezon eritir → daha alınmalı) · {len(trend)} TREND-HIZLI (temkinli, bulk riskli) · {len(restok)} YENİDEN-STOK (stoksuzdu, restok).", False),
     (f"• {len(muaf)} ürün MUAF (genç <12 ay veya 24 ay satmayan) → değerlendirme dışı (adil).", False),
     (f"• Ürün karakteri dağılımı: {kar_txt}.", False),
@@ -545,6 +598,35 @@ for ri, (txt, hdr) in enumerate(notlar, 1):
     c = wsN.cell(ri, 1, txt); c.alignment = left
     if hdr: c.font = big if ri == 1 else bold
 wsN.column_dimensions["A"].width = 160
+
+# ---- EK SAYFALAR: Aylık Stok Bakiye (şube) + Aylık Satış (şube+e-tic) ----
+def sbal_at(sid, M):                                # M ayı-sonu toplam şube bakiyesi (son değer taşınır)
+    t = 0
+    for lst in sube_series.get(sid, {}).values():
+        last = 0
+        for ay, st in lst:
+            if ay <= M: last = st
+            else: break
+        t += last
+    return t
+AYLAR = ONC12 + SON12                               # 24 ay (eskiden yeniye)
+sube_rows, etic_rows, stok_rows = [], [], []
+for sid in ids:
+    _sa, ad, kat, mrk = master.get(sid, ("—", "", "", ""))
+    ds = aylik_sube.get(sid, {}); de = aylik_etic.get(sid, {})
+    sube_rows.append([sid, ad, kat, mrk] + [ds.get(ay, 0) for ay in AYLAR])
+    etic_rows.append([sid, ad, kat, mrk] + [de.get(ay, 0) for ay in AYLAR])
+    stok_rows.append([sid, ad, kat, mrk] + [sbal_at(sid, ay) for ay in AYLAR] + [fiziki_depo.get(sid, 0)])
+for R in (sube_rows, etic_rows, stok_rows):
+    R.sort(key=lambda r: (r[2] or "", r[1] or ""))       # kategori, ad
+ID4 = ["Ürün Kodu", "Ürün Adı", "Kategori", "Marka"]
+W4 = [8, 40, 12, 18]
+yaz(wb.create_sheet("Aylık Satış (Şube)"), ID4 + AYLAR, sube_rows, W4 + [9] * len(AYLAR),
+    set(range(5, 5 + len(AYLAR))), freeze="E2")
+yaz(wb.create_sheet("Aylık Satış (E-tic)"), ID4 + AYLAR, etic_rows, W4 + [9] * len(AYLAR),
+    set(range(5, 5 + len(AYLAR))), freeze="E2")
+yaz(wb.create_sheet("Aylık Stok Bakiye"), ID4 + AYLAR + ["Depo (anlık WMS)"], stok_rows,
+    W4 + [9] * len(AYLAR) + [13], set(range(5, 6 + len(AYLAR))), freeze="E2")
 
 out = os.path.join(os.path.dirname(__file__), "..", "raporlar", f"satinalma-hesap-{AY}.xlsx")
 os.makedirs(os.path.dirname(out), exist_ok=True)
