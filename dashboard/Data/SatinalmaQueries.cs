@@ -54,7 +54,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
         DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
         DECLARE @L_seze char(7)=CONVERT(char(7),CONVERT(date,@SEZe),126);
-        DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24;
+        DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24, @MINSTOK int=3;   -- min-stoklu (≈1/şube×3): 1-2 adet 'stok vardı' sayılmaz
 
         IF OBJECT_ID('tempdb..#a') IS NOT NULL DROP TABLE #a;
         SELECT h.ehstkID AS stkID, CONVERT(int,SUM(h.ehAdetN)) AS alis_adet, CONVERT(money,SUM(h.ehTutarN)) AS alis_tutar
@@ -156,7 +156,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         CREATE CLUSTERED INDEX ix ON #bal(stkID, ehMekan, DonemA);
         IF OBJECT_ID('tempdb..#stoklu') IS NOT NULL DROP TABLE #stoklu;
         SELECT a.stkID,
-          SUM(CASE WHEN (bal.bakiye>0 OR ISNULL(sa.satis,0)>0) THEN 1 ELSE 0 END) AS stoklu_ay
+          SUM(CASE WHEN (bal.bakiye>=@MINSTOK OR ISNULL(sa.satis,0)>0) THEN 1 ELSE 0 END) AS stoklu_ay
         INTO #stoklu
         FROM #a a
         CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11)) v(n)

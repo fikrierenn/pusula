@@ -26,7 +26,7 @@ DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
 DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
 DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
 DECLARE @L_seze char(7)=CONVERT(char(7),CONVERT(date,@SEZe),126);
-DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24;                  -- fazla eşiği, materiality, min-koli
+DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24, @MINSTOK int=3;  -- fazla eşiği, materiality, min-koli, min-stoklu (≈1/şube×3)
 
 /* 1) #a — bu ay alınan ürünler + alış adet/tutar */
 IF OBJECT_ID('tempdb..#a') IS NOT NULL DROP TABLE #a;
@@ -124,7 +124,7 @@ UPDATE #stok SET ac = kap - ay_net;
 /* 7) #stoklu — şube stoklu-ay (SON12'de bakiye>0 VEYA o ay satış>0), bkm.StokAyBakiyeMekanBazli'den */
 IF OBJECT_ID('tempdb..#stoklu') IS NOT NULL DROP TABLE #stoklu;
 SELECT a.stkID,
-  SUM(CASE WHEN (bal.bakiye>0 OR ISNULL(sa.satis,0)>0) THEN 1 ELSE 0 END) AS stoklu_ay
+  SUM(CASE WHEN (bal.bakiye>=@MINSTOK OR ISNULL(sa.satis,0)>0) THEN 1 ELSE 0 END) AS stoklu_ay   -- ≥@MINSTOK: 1-2 adet 'stok vardı' sayılmaz (ÖLÜ over-tetik önlenir)
 INTO #stoklu
 FROM #a a
 CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11)) v(n)

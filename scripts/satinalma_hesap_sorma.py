@@ -44,6 +44,7 @@ T_WSTART = f"{_wy:04d}{_wm:02d}01"   # son-12-ay talep penceresi başı (stok-va
 ESIK = 12                                        # sezonlu tükenme > 12 ay → fazla
 MAT_ESIK = 5000                                  # materiality: bağlı para < bu → küçük/uzun-kuyruk (odak)
 MIN_KOLI = 24                                    # bu ay alış ≤ bu → küçük-koli/min-sipariş (adil-atıf)
+MIN_STOK = 3                                      # stoklu-ay için min şube bakiye (≈1/şube×3); 1-2 adet 'stok vardı' sayılmaz
 print(f"Hedef ay: {AY} · alış [{T_AY0},{T_AY1}) · şekil geçmişi [{T_GEC},{T_AY0})", flush=True)
 
 # ---- .env + bağlantı ----
@@ -268,7 +269,7 @@ def hesapla(sid, kat):
     net_month = kapanis.get(sid, 0) - acilis.get(sid, 0)     # ledger ay-net (delta güvenilir)
     ac = kap - net_month                             # ay başı
     # ŞUBE stoklu-ay: bakiye>0 VEYA o ay satış>0 (sattıysa stok vardı — recon 0'a floor'lanmışsa düzeltir)
-    stoklu_ay = sum(1 for M in SON12 if _sbal(M) > 0 or d.get(M, 0) > 0)
+    stoklu_ay = sum(1 for M in SON12 if _sbal(M) >= MIN_STOK or d.get(M, 0) > 0)
     aktif_ay = max(1, stoklu_ay)
     aylik_ort = son12 / aktif_ay                    # aktif-ay hızı (şube stoklu ay'a böl)
     # yaş: ilk STOK-GİRİŞ'ten bu yana kaç ay (alış/sevk/stok-ekle/devir). <12 ay → genç.
