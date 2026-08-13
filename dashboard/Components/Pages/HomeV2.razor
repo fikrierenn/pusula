@@ -1,0 +1,653 @@
+@page "/v2"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@implements IDisposable
+@inject Queries Queries
+@inject GmDashboard.Data.Asistan.AsistanService Ai
+@inject NotifState Notif
+@inject PerfState Perf
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject ILogger<HomeV2> Logger
+@inject PersistentComponentState AppState
+@rendermode InteractiveServer
+
+@* =====================================================================
+   BKM Genel Bakış — V2 (dark "finansal kokpit" yönü).
+   @code veri katmanı Home.razor ile BİREBİR aynı (Queries/model çağrıları,
+   LoadAsync, AI özet, hedef, trend). Yalnızca markup + yardımcı fragment
+   sınıfları yeni görsel dile taşındı. Route: /v2 (mevcut / bozulmaz).
+
+   Renk: v2 imza paleti Tailwind arbitrary value ile (JIT derler). Bu,
+   evin "sadece DaisyUI token" kuralından bilinçli sapmadır — istenirse
+   business (dark) teması + semantic token sürümüne çevrilebilir.
+   ===================================================================== *@
+
+<PageTitle>BKM Genel Bakış · V2</PageTitle>
+
+<HeadContent>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Newsreader:ital,opsz@1,6..72&display=swap" rel="stylesheet" />
+</HeadContent>
+
+@* Dark kanvas — MainLayout p-4 dolgusunu -m-4 ile taşıp base-200'ü örter (full-bleed). *@
+<div class="-m-4 p-4 lg:p-6 pb-24 lg:pb-6 min-h-[calc(100vh-3.5rem)] bg-base-200 text-base-content font-['Public_Sans']">
+<div class="max-w-[1180px] mx-auto">
+
+    @* Başlık — editoryal italik selam + iri teknik başlık *@
+    <div class="min-w-0 mb-5">
+        <div class="text-[15px] italic text-base-content/60 font-['Newsreader'] mb-0.5">@Greeting()</div>
+        <h1 class="font-['Space_Grotesk'] font-bold text-[clamp(26px,4vw,34px)] tracking-tight m-0 leading-none">BKM Genel Bakış</h1>
+    </div>
+
+    @* Dönem pill'leri — v2 amber (SetPeriod ile aynı veri akışı) *@
+    <div class="flex items-center gap-1 bg-base-100 border border-base-300 rounded-2xl p-1 mb-4 w-full lg:max-w-md">
+        @foreach (var (key, label) in new[] { ("gunluk", "Günlük"), ("haftalik", "Haftalık"), ("ay", "Aylık") })
+        {
+            var aktif = _period == key;
+            <button @onclick="() => SetPeriod(key)"
+                    class="flex-1 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all inline-flex items-center justify-center gap-1.5 @(aktif ? "bg-warning text-warning-content shadow-sm" : "text-base-content/60 hover:text-base-content")">
+                @if (aktif && _loading)
+                {
+                    <span class="loading loading-spinner loading-xs"></span>
+                }
+                @label
+            </button>
+        }
+        <button @onclick='() => SetPeriod("ozel")' aria-label="Özel aralık"
+                class="w-10 shrink-0 rounded-xl py-2 flex items-center justify-center transition-all @(_period == "ozel" ? "bg-warning text-warning-content" : "text-base-content/60 hover:text-base-content")">
+            <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
+        </button>
+    </div>
+    @if (_period == "ozel")
+    {
+        <div class="flex gap-2 mb-4 flex-wrap">
+            <input type="date" class="bg-base-100 border border-base-300 rounded-xl px-3 py-2 text-sm font-semibold text-base-content [color-scheme:dark]" @bind="_ozelBas" @bind:after="LoadAsync" />
+            <input type="date" class="bg-base-100 border border-base-300 rounded-xl px-3 py-2 text-sm font-semibold text-base-content [color-scheme:dark]" @bind="_ozelBit" @bind:after="LoadAsync" />
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <p class="text-base-content/60">Yükleniyor…</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="text-error font-semibold">Veri alınamadı: @_error</p>
+    }
+    else if (_data is not null)
+    {
+        var prevToplam = _data.PrevFiziksel + _data.PrevEticaret;
+        var islem = _data.Fis + _data.ESip;
+        var prevIslem = _data.PrevFis + _data.PrevESip;
+        var sepet = islem > 0 ? _data.Toplam / islem : 0;
+        var prevSepet = prevIslem > 0 ? prevToplam / prevIslem : 0;
+        var magazaAtv = _data.Fis > 0 ? _data.Fiziksel / _data.Fis : 0;
+        var oSepet = _data.ESip > 0 ? _data.Eticaret / _data.ESip : 0;
+        var iadeOran = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
+
+        @* Hero KPI — mobil carousel / masaüstü 4'lü grid *@
+        <div class="mb-1">
+            <div id="hero" class="carousel carousel-center w-full gap-3.5 lg:grid lg:grid-cols-4 lg:gap-3 lg:overflow-visible">
+                @HeroCard("Toplam Ciro", Tl(_data.Toplam), WowOf(_data.Toplam, prevToplam), "#F4A93C", "Mağaza", Tl(_data.Fiziksel), "Online", Tl(_data.Eticaret), "toplam")
+                @HeroCard("Toplam İşlem", Num(islem), WowOf(islem, prevIslem), "#57B0F5", "Mağaza fiş", Num(_data.Fis), "Online sipariş", Num(_data.ESip), "magazalar")
+                @HeroCard("Sepet Ortalama", Tl(sepet), WowOf(sepet, prevSepet), "#48C9AF", "Mağaza ATV", Tl(magazaAtv), "Online sepet", Tl(oSepet), "magazalar")
+                @HeroCard("İade", Tl(_data.Iade), WowOf(_data.Iade, _data.PrevIade), "#FF7D6B", "Ciroya oran", $"%{iadeOran}", "Geçen dönem", Tl(_data.PrevIade))
+            </div>
+            <div id="heroDots" class="flex justify-center items-center gap-1.5 mt-3 mb-4 lg:hidden">
+                <span class="hero-dot hero-dot-on"></span><span class="hero-dot"></span><span class="hero-dot"></span><span class="hero-dot"></span>
+            </div>
+        </div>
+
+        @* AI Günün Özeti *@
+        @GunOzeti()
+
+        @* Mağazalar başlık + nav *@
+        <div class="flex items-center justify-between gap-2 mb-3">
+            <h2 class="font-['Space_Grotesk'] text-[19px] font-bold tracking-tight m-0">Mağazalar</h2>
+            <div class="flex items-center gap-3 shrink-0">
+                <a href="@($"magazalar?d={_period}")" class="text-[13px] font-semibold text-warning inline-flex items-center gap-1 no-underline">Karşılaştır <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+                <a href="@($"toplam?d={_period}")" class="text-[13px] font-semibold text-warning inline-flex items-center gap-1 no-underline">Kategoriler <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2.5 mb-4 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+            @{ var paletIdx = 0; var palet = new[] { ("#48C9AF", "bg-success/15"), ("#F4A93C", "bg-warning/15"), ("#9B8CFF", "bg-secondary/15") }; }
+            @foreach (var s in _data.Stores)
+            {
+                var (fg, bg) = palet[paletIdx++ % palet.Length];
+                @StoreRow(s.Ad, Tl(s.Net), $"{Num(s.Fis)} fiş · sepet {Num(s.Atv)} ₺", fg, bg, s.Wow, $"magaza/{s.MekanId}")
+            }
+        </div>
+        <div class="text-[11px] text-base-content/40 mb-5 px-1 flex items-center gap-1">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Trend oranları @_wowLabel
+        </div>
+
+        @* E-ticaret özet kartı → /eticaret *@
+        <a href="eticaret" class="rounded-2xl px-4 py-4 mb-5 no-underline flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 bg-[linear-gradient(135deg,rgba(87,176,245,.16),rgba(87,176,245,.05))] border border-info/30 text-base-content">
+            <div class="w-11 h-11 rounded-2xl bg-info/20 text-info flex items-center justify-center shrink-0"><i data-lucide="globe" class="w-[23px] h-[23px]"></i></div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[14px] font-bold">E-ticaret (online)</div>
+                <div class="text-xs text-base-content/60 truncate">@Num(_data.ESip) sipariş · sepet @Tl(oSepet)</div>
+            </div>
+            <div class="font-['Space_Grotesk'] text-[19px] font-bold whitespace-nowrap shrink-0">@Tl(_data.Eticaret)</div>
+            <i data-lucide="chevron-right" class="w-5 h-5 text-base-content/40 shrink-0"></i>
+        </a>
+
+        @if (_period is "ay" or "haftalik" && _hedefMag is not null)
+        {
+            <h2 class="font-['Space_Grotesk'] text-[19px] font-bold tracking-tight mb-3">Hedefler <span class="text-[11px] font-semibold text-base-content/40">(MTD · hedef geçen güne dek prorate)</span></h2>
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-5">
+                <div class="bg-base-100 border border-base-300 rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content mb-3 flex items-center gap-2"><i data-lucide="target" class="w-[18px] h-[18px] text-warning"></i>Mağaza — Hedef Gerçekleşme (MTD)</h3>
+                    @{ decimal tNet = 0, tHed = 0; }
+                    @foreach (var m in _hedefMag)
+                    {
+                        tNet += m.Net; tHed += m.Hedef;
+                        @HedefRow(m.Ad, m.Net, m.Hedef, m.GerPct)
+                    }
+                    @{ decimal? tGer = tHed > 0 ? Math.Round(100 * tNet / tHed, 1) : null; }
+                    <div class="flex items-center justify-between pt-2.5 mt-1 border-t-2 border-base-300">
+                        <span class="text-sm font-bold">TOPLAM</span>
+                        <div class="text-right"><span class="text-sm font-bold @GerRenk(tGer)">@(tGer is null ? "—" : $"%{tGer}")</span>
+                            <div class="text-[11px] text-base-content/60">@Tl(tNet) / @Tl(tHed)</div></div>
+                    </div>
+                    <div class="text-base-content/40 text-[11px] mt-3">≥%95 yeşil · %85-95 sarı · &lt;%85 kırmızı · dikey çizgi = hedef (%100). Hedef geçen güne dek prorate (satış-ağırlıklı günlük).</div>
+                </div>
+                <div class="bg-base-100 border border-base-300 rounded-2xl p-4 min-w-0"><h3 class="text-[15px] font-bold tracking-tight text-base-content mb-3 flex items-center gap-2"><i data-lucide="target" class="w-[18px] h-[18px] text-warning"></i>Kategori — Hedef Gerçekleşme (en sapan)</h3>
+                    @foreach (var k in _hedefKat)
+                    {
+                        @HedefRow(k.Ad, k.Net, k.Hedef, k.GerPct)
+                    }
+                    @if (_hedefKat.Count == 0)
+                    {
+                        <div class="text-base-content/60 text-[13px]">Kategori hedefi bulunamadı.</div>
+                    }
+                    <div class="text-base-content/40 text-[11px] mt-3">Gerçekleşme artan (en sapan üstte).</div>
+                </div>
+            </div>
+
+            <a href="tahmin" class="rounded-2xl px-4 py-3.5 mb-5 no-underline flex items-center gap-3 cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5 bg-[linear-gradient(135deg,rgba(244,169,60,.18),rgba(244,169,60,.05))] border border-warning/30 text-base-content">
+                <div class="w-11 h-11 rounded-2xl bg-warning/20 text-warning flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[22px] h-[22px]"></i></div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[14px] font-bold">Hedef Tahmin</div>
+                    @if (_tahmin is { Yeterli: true })
+                    {
+                        <div class="text-xs text-base-content/60">~@Tl(_tahmin.Tahmin) · @Tl(_tahmin.Alt)–@Tl(_tahmin.Ust)</div>
+                    }
+                    else
+                    {
+                        <div class="text-xs text-base-content/60">YoY taban × MoM ivme — bu ay + mağaza bazlı projeksiyon</div>
+                    }
+                </div>
+                <i data-lucide="arrow-right" class="w-5 h-5 text-base-content/40 shrink-0"></i>
+            </a>
+        }
+
+        @* ── Analiz ── *@
+        <h2 class="font-['Space_Grotesk'] text-[19px] font-bold tracking-tight mb-3">Analiz</h2>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3 mb-3">
+
+            @* Kategori Mix — inline renkli barlar (koyu kartta okunur) *@
+            <div class="bg-base-100 border border-base-300 rounded-2xl p-5 min-w-0">
+                <h3 class="text-[14px] font-bold tracking-tight text-base-content mb-4 flex items-center gap-2"><i data-lucide="chart-pie" class="w-[18px] h-[18px] text-warning"></i>Kategori Mix (@_aralik)<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/60 ml-auto">mağaza · online hariç</span></h3>
+                @{ var katMax = _data.Kategori.Count > 0 ? _data.Kategori.Max(k => k.Ciro) : 0m; var kIdx = 0; }
+                @foreach (var k in _data.Kategori)
+                {
+                    var col = _kColors[kIdx++ % _kColors.Length];
+                    <div class="mb-3.5 last:mb-0">
+                        <div class="flex justify-between text-[12.5px] mb-1.5"><span class="font-semibold text-base-content/90">@k.Ad</span><span class="text-base-content/60 font-['Space_Grotesk']">@Tl(k.Ciro)</span></div>
+                        <div class="h-[7px] rounded-full bg-base-200 overflow-hidden"><div class="h-full rounded-full" style="width:@BarW(katMax > 0 ? Math.Round(100 * k.Ciro / katMax, 1) : 0);background:@col"></div></div>
+                    </div>
+                }
+            </div>
+
+            @* Son 14 Gün — Net Ciro (AppAreaChart korunuyor, amber) *@
+            <div class="bg-base-100 border border-base-300 rounded-2xl p-5 min-w-0">
+                <h3 class="text-[14px] font-bold tracking-tight text-base-content mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-[18px] h-[18px] text-warning"></i>Son 14 Gün — Net Ciro<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-base-200 text-base-content/60 ml-auto">mağaza</span></h3>
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="font-['Space_Grotesk'] text-2xl font-bold tracking-tight whitespace-nowrap">@Tl(_trend.Count > 0 ? _trend[^1].Net : 0)</div>
+                    @{ var avgC = _trend.Count > 0 ? _trend.Average(t => t.Net) : 0; var gwC = _trend.Count > 1 ? WowOf(_trend[^1].Net, avgC) : null; }
+                    @if (gwC is not null)
+                    {
+                        var tc = TrendIco(gwC.Value);
+                        <span class="text-xs font-bold inline-flex items-center gap-0.5 @tc.cls"><i data-lucide="@tc.ico" class="w-3.5 h-3.5"></i>@Pct(gwC.Value)</span>
+                    }
+                    <div class="text-[11px] text-base-content/40 ml-auto text-right">dün · 14g ort @Tl(avgC)</div>
+                </div>
+                <AppAreaChart TItem="TrendPoint" Items="_trend" Name="Net Ciro" Color="#F4A93C" Height="110"
+                              XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" />
+            </div>
+
+            @* Son 14 Gün — Net Alış *@
+            <div class="bg-base-100 border border-base-300 rounded-2xl p-5 min-w-0">
+                <h3 class="text-[14px] font-bold tracking-tight text-base-content mb-3 flex items-center gap-2"><i data-lucide="package" class="w-[18px] h-[18px] text-warning"></i>Son 14 Gün — Net Alış (Mal Kabul)</h3>
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="font-['Space_Grotesk'] text-2xl font-bold tracking-tight whitespace-nowrap">@Tl(_alis.Count > 0 ? _alis[^1].Net : 0)</div>
+                    @{ var avgA = _alis.Count > 0 ? _alis.Average(t => t.Net) : 0; var gwA = _alis.Count > 1 ? WowOf(_alis[^1].Net, avgA) : null; }
+                    @if (gwA is not null)
+                    {
+                        var ta = TrendIco(gwA.Value);
+                        <span class="text-xs font-bold inline-flex items-center gap-0.5 @ta.cls"><i data-lucide="@ta.ico" class="w-3.5 h-3.5"></i>@Pct(gwA.Value)</span>
+                    }
+                    <div class="text-[11px] text-base-content/40 ml-auto text-right">dün · 14g ort @Tl(avgA)</div>
+                </div>
+                <AppAreaChart TItem="TrendPoint" Items="_alis" Name="Net Alış" Color="#57B0F5" Height="110"
+                              XValue="@(t => (object)t.Tarih[5..])" YValue="@(t => (decimal?)t.Net)" />
+                <div class="text-base-content/40 text-[11px] mt-2">Alış = tedarikçi girişi (ehTip 0+10) − alış iade. Pazar 0.</div>
+            </div>
+        </div>
+
+        <AppSozluk />
+    }
+
+</div>
+</div>
+
+@code {
+    // v2 imza kategori paleti (inline barlar).
+    private static readonly string[] _kColors = { "#F4A93C", "#48C9AF", "#9B8CFF", "#FF7D6B", "#57B0F5" };
+
+    private string _period = "gunluk";
+    private DateTime? _ozelBas = DateTime.Today.AddDays(-7);
+    private DateTime? _ozelBit = DateTime.Today.AddDays(-1);
+    private bool _loading = true;
+    private string? _error;
+    private string _aralik = "";
+    private string _wowLabel = "önceki döneme göre";   // trend rozetlerinin kıyas tabanı (dönem-bağlı)
+    private PeriodSummary? _data;
+    private IReadOnlyList<TrendPoint> _trend = [];
+    private IReadOnlyList<TrendPoint> _alis = [];
+    private IReadOnlyList<HedefMagaza>? _hedefMag;
+    private IReadOnlyList<HedefKategori> _hedefKat = [];
+    private TahminSonuc? _tahmin;
+    private IJSObjectReference? _charts;
+    private string _pColor = "";   // DaisyUI --p (grafik rengi, OnAfterRender'da köprüden)
+    private List<AlertItem> _alerts = new();   // bildirim merkezi (LoadAsync'te dönem verisinden üretilir → NotifState)
+    private string _ozetMetin = "";            // AI Günün Özeti metni (önce deterministik, sonra LLM)
+    private bool _ozetAI;                       // metin LLM'den mi geldi (rozet "AI" vs "Otomatik")
+    private bool _ozetCalisiyor;                // LLM inference sürüyor (rozette spinner)
+    private int _ozetGen;                        // dönem-değişimi yarışı için kuşak sayacı
+
+    // Özel aralık: başlangıç ≤ bitiş güvence, endExcl = bitiş+1 gün
+    private (DateOnly, DateOnly) OzelAralik()
+    {
+        var b = DateOnly.FromDateTime(_ozelBas ?? DateTime.Today.AddDays(-7));
+        var e = DateOnly.FromDateTime(_ozelBit ?? DateTime.Today.AddDays(-1));
+        if (e < b) e = b;
+        return (b, e.AddDays(1));
+    }
+
+    private PersistingComponentStateSubscription _persistSub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+        if (AppState.TryTakeFromJson<PeriodSummary>("homev2_data", out var d) &&
+            AppState.TryTakeFromJson<List<TrendPoint>>("homev2_trend", out var tr) &&
+            AppState.TryTakeFromJson<List<TrendPoint>>("homev2_alis", out var al))
+        {
+            _data = d; _trend = tr ?? []; _alis = al ?? [];
+            if (AppState.TryTakeFromJson<List<HedefMagaza>>("homev2_hedefmag", out var hm) &&
+                AppState.TryTakeFromJson<List<HedefKategori>>("homev2_hedefkat", out var hk))
+            { _hedefMag = hm; _hedefKat = hk ?? []; }
+            _loading = false;
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private Task PersistData()
+    {
+        if (_data is not null) AppState.PersistAsJson("homev2_data", _data);
+        AppState.PersistAsJson("homev2_trend", _trend);
+        AppState.PersistAsJson("homev2_alis", _alis);
+        if (_hedefMag is not null) AppState.PersistAsJson("homev2_hedefmag", _hedefMag);
+        AppState.PersistAsJson("homev2_hedefkat", _hedefKat);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
+
+    private async Task LoadAsync()
+    {
+        var sw = PerfState.Start();
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var bugun = DateOnly.FromDateTime(DateTime.Today);
+            var dun = bugun.AddDays(-1);
+            var g2 = bugun;
+            (DateOnly start, DateOnly endExcl) = _period switch
+            {
+                "haftalik" => (dun.AddDays(-6), g2),
+                "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                "ozel" => OzelAralik(),
+                _ => (dun, g2),
+            };
+            var son = endExcl.AddDays(-1);
+            _aralik = start == son ? son.ToString("dd.MM.yyyy") : $"{start:dd.MM.yyyy} – {son:dd.MM.yyyy}";
+            int len = endExcl.DayNumber - start.DayNumber;
+            var (pStart, pEnd, wl) = _period switch
+            {
+                "ay" => ((DateOnly?)start.AddMonths(-1), (DateOnly?)start.AddMonths(-1).AddDays(len), "geçen ayın aynı günlerine göre"),
+                "haftalik" => ((DateOnly?)start.AddDays(-7), (DateOnly?)start, "önceki 7 güne göre"),
+                "gunluk" => ((DateOnly?)start.AddDays(-1), (DateOnly?)start, "önceki güne göre"),
+                _ => ((DateOnly?)null, (DateOnly?)null, "önceki eş döneme göre"),
+            };
+            _wowLabel = wl;
+            var tData  = Queries.GetPeriodAsync(start, endExcl, pStart, pEnd);
+            var tTrend = Queries.GetTrendAsync(dun);
+            var tAlis  = Queries.GetAlisTrendAsync(dun);
+            Task<(IReadOnlyList<HedefMagaza> Magaza, IReadOnlyList<HedefKategori> Kategori)>? tHedef =
+                (_period is "ay" or "haftalik") ? Queries.GetHedefAsync(new DateOnly(dun.Year, dun.Month, 1), g2) : null;
+            var coreTasks = new List<Task> { tData, tTrend, tAlis };
+            if (tHedef is not null) coreTasks.Add(tHedef);
+            await Task.WhenAll(coreTasks);
+            _data = tData.Result; _trend = tTrend.Result; _alis = tAlis.Result;
+            if (tHedef is not null) (_hedefMag, _hedefKat) = tHedef.Result;
+            else { _hedefMag = null; _hedefKat = []; }
+            _alerts = BuildAlerts();
+            Notif.Set(_alerts, _aralik);
+            _ = LoadTahminAsync(bugun);
+            var prevTop = _data.PrevFiziksel + _data.PrevEticaret;
+            var iadeOr = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
+            _ozetMetin = OzetDeterministik(prevTop, iadeOr); _ozetAI = false;
+            _ = RefreshOzetAsync(prevTop, iadeOr);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Veri yükleme hatası"); _error = $"{ex.GetType().Name}: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            Perf.Report("Genel Bakış V2", sw);
+            StateHasChanged();
+            await DrawChartsAsync();
+        }
+    }
+
+    private async Task DrawChartsAsync()
+    {
+        try
+        {
+            _charts ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _charts.InvokeVoidAsync("heroDots", "hero", "heroDots");
+        }
+        catch { /* ilk prerender'da JS henüz hazır değil */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var theme = await JS.InvokeAsync<IJSObjectReference>("import", "./js/theme-colors.js");
+                var c = await theme.InvokeAsync<Dictionary<string, string>>("daisyColors");
+                if (c.TryGetValue("p", out var p) && _pColor != p) { _pColor = p; StateHasChanged(); }
+            }
+            catch { }
+            if (_data is not null) await DrawChartsAsync();
+        }
+    }
+
+    // Hedef ZATEN geçen-gün kadar prorate edilmiş (BKMDATA.Hedef günlük, tarih<bugün toplanır → satış-ağırlıklı).
+    // pct = MTD-net / MTD-hedef → %100 = tam yolunda. Renk/yazı %100 tabanına göre (takvim-pace DEĞİL).
+    private static string GerRenk(decimal? pct) => pct is null ? "text-base-content/40"
+        : pct >= 95 ? "text-success" : pct >= 85 ? "text-warning" : "text-error";
+    private static string GerBar(decimal? pct) => pct is null ? "bg-base-200"
+        : pct >= 95 ? "bg-success" : pct >= 85 ? "bg-warning" : "bg-error";
+    private static string BarW(decimal? pct) => Math.Min(Math.Max(pct ?? 0, 0), 100)
+        .ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    private RenderFragment HedefRow(string ad, decimal net, decimal hedef, decimal? pct) => @<div class="py-2 border-b border-base-300 last:border-b-0">
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-[13px] font-semibold text-base-content/85 truncate">@ad</span>
+            <span class="text-[13px] font-bold shrink-0 inline-flex items-center gap-1 @GerRenk(pct)">
+                @(pct is null ? "—" : $"%{pct}")
+                @if (pct is not null && pct < 97)
+                {
+                    <span class="text-[10px] font-bold text-error">geride</span>
+                }
+                else if (pct is not null && pct > 103)
+                {
+                    <span class="text-[10px] font-bold text-success">önde</span>
+                }
+            </span>
+        </div>
+        <div class="text-[11px] text-base-content/60 truncate mt-0.5">@Tl(net) / @Tl(hedef)</div>
+        <div class="relative mt-1.5">
+            <div class="h-1.5 rounded-full bg-base-200 overflow-hidden">
+                <div class="h-full rounded-full @GerBar(pct)" style="width:@BarW(pct)"></div>
+            </div>
+            <div class="absolute -top-1 h-3.5 w-[2px] bg-base-content/40 rounded" style="left:100%" title="hedef (geçen güne dek) = %100"></div>
+        </div>
+    </div>;
+
+    private static string Tl(decimal n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    private static string Num(int n) => n.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    private static decimal? WowOf(decimal cur, decimal prev) => prev > 0 ? Math.Round(100 * (cur - prev) / prev, 1) : null;
+    private static string Pct(decimal v) => v.ToString("+#,##0.0;-#,##0.0;0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + "%";
+    private static (string ico, string cls) TrendIco(decimal pct)
+    {
+        if (pct == 0) return ("minus", "text-base-content/40");
+        return pct > 0 ? ("trending-up", "text-success") : ("trending-down", "text-error");
+    }
+
+    private static string Greeting()
+    {
+        var h = DateTime.Now.Hour;
+        return h < 6 ? "iyi geceler" : h < 12 ? "günaydın" : h < 18 ? "iyi günler" : "iyi akşamlar";
+    }
+
+    private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    private string DonemKelime() => _period switch { "haftalik" => "Bu hafta", "ay" => "Bu ay", "ozel" => "Seçili dönemde", _ => "Dün" };
+
+    private List<AlertItem> BuildAlerts()
+    {
+        var list = new List<AlertItem>();
+        if (_data is null) return list;
+        foreach (var s in _data.Stores.Where(s => s.Wow is <= -10m).OrderBy(s => s.Wow))
+            list.Add(new AlertItem("trending-down", "error", $"{s.Ad} ciro {Pct(s.Wow!.Value)}",
+                $"{DonemKelime()} {_wowLabel}. Net {Tl(s.Net)}, dikkat gerektiriyor."));
+        var iadeOran = _data.Fiziksel > 0 ? Math.Round(100 * _data.Iade / _data.Fiziksel, 1) : 0;
+        if (iadeOran > 2)
+            list.Add(new AlertItem("undo-2", "warning", $"İade oranı %{iadeOran}",
+                $"Ciroya oran yükseldi ({Tl(_data.Iade)}). İade nedenlerine bakılmalı."));
+        if (_hedefMag is not null)
+            foreach (var m in _hedefMag.Where(m => m.GerPct >= 105m).OrderByDescending(m => m.GerPct))
+                list.Add(new AlertItem("target", "success", $"{m.Ad} hedefi aştı",
+                    $"%{m.GerPct} gerçekleşme — {Tl(m.Net)} / {Tl(m.Hedef)}."));
+        var best = _data.Stores.Where(s => s.Wow is >= 10m).OrderByDescending(s => s.Wow).FirstOrDefault();
+        if (best is not null && list.All(a => a.Tone != "success"))
+            list.Add(new AlertItem("trending-up", "success", $"{best.Ad} {Pct(best.Wow!.Value)} ile zirvede",
+                $"{DonemKelime()} en güçlü performans — net {Tl(best.Net)}."));
+        return list;
+    }
+
+    // AI Günün Özeti — v2 dark kart.
+    private RenderFragment GunOzeti() => __builder =>
+    {
+        if (_data is null) return;
+        var dusen = _data.Stores.Where(s => s.Wow is < 0m).OrderBy(s => s.Wow).FirstOrDefault();
+        <div class="rounded-3xl px-5 py-5 mb-5 bg-neutral border border-neutral text-neutral-content shadow-lg relative overflow-hidden">
+            <div class="flex items-center gap-2 mb-2.5 relative">
+                <span class="w-8 h-8 rounded-xl bg-warning flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-[17px] h-[17px] text-warning-content"></i></span>
+                <span class="text-[13px] font-bold">Günün Özeti</span>
+                <span class="text-[10px] font-semibold ml-auto bg-neutral-content/10 border border-neutral-content/20 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
+                    @if (_ozetCalisiyor)
+                    {
+                        <span class="loading loading-spinner loading-xs"></span><text>AI yazıyor…</text>
+                    }
+                    else
+                    {
+                        <text>@(_ozetAI ? "Genius AI" : "Otomatik") · @_aralik</text>
+                    }
+                </span>
+            </div>
+            <p class="text-[13px] leading-relaxed text-neutral-content/80 m-0 relative">@Highlight(_ozetMetin)</p>
+            <div class="flex gap-2 mt-3.5 relative">
+                <a href="@($"toplam?d={_period}")" class="flex-1 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 hover:bg-neutral-content/20 no-underline text-current transition-colors"><i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>Detaylı analiz</a>
+                @if (dusen is not null)
+                {
+                    <a href="magaza/@dusen.MekanId" class="flex-1 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-semibold py-2 rounded-xl bg-neutral-content/10 hover:bg-neutral-content/20 no-underline text-current transition-colors"><i data-lucide="search" class="w-3.5 h-3.5"></i>@dusen.Ad incele</a>
+                }
+            </div>
+        </div>
+    };
+
+    private static readonly System.Text.RegularExpressions.Regex _hlRx =
+        new(@"([+\-−]\s?%\s?\d[\d.,]*)|(%\s?\d[\d.,]*)|(\d[\d.,]*\s?₺)", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private RenderFragment Highlight(string text) => __builder =>
+    {
+        int seq = 0, pos = 0;
+        foreach (System.Text.RegularExpressions.Match m in _hlRx.Matches(text ?? ""))
+        {
+            if (m.Index > pos) __builder.AddContent(seq++, text!.Substring(pos, m.Index - pos));
+            var tok = m.Value;
+            var cls = tok.StartsWith('+') ? "font-bold text-success"
+                : (tok.StartsWith('-') || tok.StartsWith('−')) ? "font-bold text-error"
+                : "font-bold text-base-content";
+            __builder.OpenElement(seq++, "span");
+            __builder.AddAttribute(seq++, "class", cls);
+            __builder.AddContent(seq++, tok);
+            __builder.CloseElement();
+            pos = m.Index + m.Length;
+        }
+        if (text is not null && pos < text.Length) __builder.AddContent(seq++, text.Substring(pos));
+    };
+
+    private string OzetDeterministik(decimal prevToplam, decimal iadeOran)
+    {
+        if (_data is null) return "";
+        var wow = WowOf(_data.Toplam, prevToplam);
+        var ePay = _data.Toplam > 0 ? (int)Math.Round(100m * _data.Eticaret / _data.Toplam) : 0;
+        var dusen = _data.Stores.Where(s => s.Wow is < 0m).OrderBy(s => s.Wow).FirstOrDefault();
+        var artan = _data.Stores.Where(s => s.Wow is > 0m).OrderByDescending(s => s.Wow).FirstOrDefault();
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"{DonemKelime()} ciro {Tl(_data.Toplam)}");
+        if (wow is not null) sb.Append($", {_wowLabel} {Pct(wow.Value)}");
+        sb.Append($". Online payı %{ePay} ({Tl(_data.Eticaret)}).");
+        if (dusen is not null) sb.Append($" {dusen.Ad} {Pct(dusen.Wow!.Value)} düşüş dikkat çekici.");
+        if (artan is not null) sb.Append($" {artan.Ad} {Pct(artan.Wow!.Value)} ile zirvede.");
+        sb.Append($" İade oranı {(iadeOran <= 2 ? "düşük" : "yüksek")} (%{iadeOran}){(iadeOran <= 2 ? ", sağlıklı" : "")}.");
+        return sb.ToString();
+    }
+
+    private static string YonPct(decimal? wow)
+    {
+        if (wow is null) return "veri yok";
+        var v = Math.Abs(wow.Value).ToString("#,##0.0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        return wow > 0 ? $"%{v} ARTIŞ" : wow < 0 ? $"%{v} DÜŞÜŞ" : "değişim yok";
+    }
+
+    private string OzetVeri(decimal prevToplam, decimal iadeOran)
+    {
+        var wow = WowOf(_data!.Toplam, prevToplam);
+        var ePay = _data.Toplam > 0 ? (int)Math.Round(100m * _data.Eticaret / _data.Toplam) : 0;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Dönem: {DonemKelime()} ({_aralik})");
+        sb.AppendLine($"Toplam ciro: {Tl(_data.Toplam)} ({_wowLabel} {YonPct(wow)})");
+        sb.AppendLine($"Mağaza cirosu: {Tl(_data.Fiziksel)} · Online ciro: {Tl(_data.Eticaret)} (online payı %{ePay})");
+        sb.AppendLine("Mağaza trendleri (" + _wowLabel + "):");
+        foreach (var s in _data.Stores.OrderByDescending(s => s.Wow ?? -999))
+            sb.AppendLine($"  - {s.Ad}: {Tl(s.Net)}, {YonPct(s.Wow)}");
+        sb.Append($"İade: {Tl(_data.Iade)} (ciroya oran %{iadeOran})");
+        return sb.ToString();
+    }
+
+    private async Task LoadTahminAsync(DateOnly bugun)
+    {
+        try { _tahmin = await Queries.GetTahminAsync(bugun, bugun.Year, bugun.Month, 0); await InvokeAsync(StateHasChanged); }
+        catch { }
+    }
+
+    private const string GunOzetDerinSistem = """
+        Sen BKM Kitap'ın (kitap+kırtasiye + e-ticaret, 3 mağaza: FSM/Özlüce/İst.Yolu) CFO asistanısın.
+        Sana günlük pano verisi verilir. 4-6 cümle DERİN ama özlü Türkçe analiz yaz (akıcı paragraf, madde değil):
+        - En dikkat çeken artış/düşüşü SEBEP-ODAKLI yorumla (hangi mağaza/kanal, ne kadar — verideki rakamla).
+        - ANOMALİ varsa işaretle: bir mağaza diğerlerinden belirgin sapıyorsa, iade oranı yüksekse, online/mağaza dengesi bozuksa.
+        - Online vs mağaza dinamiğini değerlendir.
+        - SONDA 1 SOMUT aksiyon öner (ölçülebilir, bugüne özel).
+        KESİN KURALLAR: SADECE verideki sayıları kullan — RAKAM UYDURMA, toplama/çıkarma YAPMA. Yönü ASLA ters çevirme (veride "ARTIŞ"=arttı). Sayıları verideki biçimde (₺ ve %). Veride olmayan metrik EKLEME.
+        """;
+
+    private async Task RefreshOzetAsync(decimal prevToplam, decimal iadeOran)
+    {
+        if (_data is null) return;
+        var gen = ++_ozetGen;
+        _ozetCalisiyor = true; await InvokeAsync(StateHasChanged);
+        try
+        {
+            var txt = await Ai.MetinUretAsync(GunOzetDerinSistem, OzetVeri(prevToplam, iadeOran));
+            if (gen == _ozetGen && !string.IsNullOrWhiteSpace(txt)) { _ozetMetin = txt; _ozetAI = true; }
+        }
+        catch { }
+        finally { if (gen == _ozetGen) { _ozetCalisiyor = false; await InvokeAsync(StateHasChanged); } }
+    }
+
+    // Hero gradient yerine v2 flat panel: üst ince renk şeridi + 2-kolon stat footer.
+    // href verilirse tıklanır <a> (SSR-güvenli sayfa-nav, B-48) — canlı Home ile aynı davranış.
+    private RenderFragment HeroCard(string label, string value, decimal? wow, string accent, string l1, string v1, string l2, string v2, string? href = null) => @<div class="carousel-item w-[86%] lg:w-auto">
+        @if (href is not null)
+        {
+            <a href="@href" class="w-full h-full rounded-3xl px-5 py-5 bg-base-100 border border-base-300 shadow-lg flex flex-col relative overflow-hidden no-underline text-base-content cursor-pointer transition-transform active:scale-[.98] hover:-translate-y-0.5">
+                @HeroInner(label, value, wow, accent, l1, v1, l2, v2)
+            </a>
+        }
+        else
+        {
+            <div class="w-full h-full rounded-3xl px-5 py-5 bg-base-100 border border-base-300 shadow-lg flex flex-col relative overflow-hidden">
+                @HeroInner(label, value, wow, accent, l1, v1, l2, v2)
+            </div>
+        }
+    </div>;
+
+    private RenderFragment HeroInner(string label, string value, decimal? wow, string accent, string l1, string v1, string l2, string v2) => @<text>
+        <div class="absolute top-0 left-0 w-full h-[3px]" style="background:@accent;opacity:.85"></div>
+        <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full" style="background:@accent"></span>
+                <div class="text-base-content/60 text-[11px] uppercase tracking-wider font-bold">@label</div>
+            </div>
+            @if (wow is not null)
+            {
+                var w = wow.Value;
+                var ico = w > 0 ? "arrow-up-right" : w < 0 ? "arrow-down-right" : "minus";
+                var cls = w > 0 ? "text-success bg-success/15" : w < 0 ? "text-error bg-error/15" : "text-base-content/60 bg-base-200";
+                <span class="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-bold rounded-full px-2 py-0.5 @cls" title="@_wowLabel">
+                    <i data-lucide="@ico" class="w-3 h-3"></i>@Pct(w)
+                </span>
+            }
+        </div>
+        <div class="font-['Space_Grotesk'] text-[34px] font-bold leading-none tracking-tight whitespace-nowrap mt-3 mb-4">@value</div>
+        <div class="grid grid-cols-2 gap-3 pt-3.5 border-t border-base-300 mt-auto">
+            <div><div class="text-base-content/40 text-[11px]">@l1</div><div class="font-['Space_Grotesk'] text-[15px] font-bold whitespace-nowrap">@v1</div></div>
+            <div><div class="text-base-content/40 text-[11px]">@l2</div><div class="font-['Space_Grotesk'] text-[15px] font-bold whitespace-nowrap">@v2</div></div>
+        </div>
+    </text>;
+
+    // İkon-kart mağaza satırı (renkli KARE ikon + tutar + WoW rozet). Gerçek <a href> (SSR-güvenli).
+    private RenderFragment StoreRow(string ad, string tutar, string alt, string iconColor, string iconBg, decimal? wow, string href) => @<a href="@href" class="rounded-2xl flex flex-row items-center gap-3.5 px-4 py-3.5 cursor-pointer no-underline bg-base-100 border border-base-300 text-base-content transition-transform active:scale-[.98] hover:-translate-y-0.5">
+        <div class="@iconBg w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style="color:@iconColor">
+            <i data-lucide="store" class="w-[22px] h-[22px]"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="text-[15px] font-bold text-base-content/95 truncate">@ad</div>
+            <div class="text-xs text-base-content/60 truncate">@alt</div>
+        </div>
+        <div class="text-right shrink-0">
+            <div class="font-['Space_Grotesk'] text-[18px] font-bold tracking-tight whitespace-nowrap">@tutar</div>
+            @if (wow is not null)
+            {
+                var t = TrendIco(wow.Value);
+                <div class="inline-flex items-center gap-0.5 text-[11px] font-bold mt-0.5 @t.cls" title="@_wowLabel"><i data-lucide="@t.ico" class="w-3 h-3"></i>@Pct(wow.Value)</div>
+            }
+        </div>
+        <i data-lucide="chevron-right" class="w-[18px] h-[18px] text-base-content/40 shrink-0"></i>
+    </a>;
+}

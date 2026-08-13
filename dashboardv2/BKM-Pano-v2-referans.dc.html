@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:#100E15;font-family:'Public Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes glow{0%,100%{opacity:.5}50%{opacity:.85}}
+</style>
+</helmet>
+<div style="--ink:#100E15;--panel:#1A1722;--panel2:#221E2E;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--txt:#ECE8F3;--muted:#9C94AC;--faint:#6C6579;--accent:#F4A93C;--accentDeep:#E88A2E;--pos:#48C9AF;--neg:#FF7D6B;--c1:#F4A93C;--c2:#48C9AF;--c3:#9B8CFF;--c4:#FF7D6B;--c5:#57B0F5;background:var(--ink);color:var(--txt);min-height:100vh;display:flex;position:relative;overflow-x:hidden">
+
+  <div style="position:fixed;top:-12%;left:14%;width:44vw;height:44vw;max-width:640px;max-height:640px;background:radial-gradient(circle,rgba(244,169,60,.10),transparent 62%);filter:blur(30px);pointer-events:none;z-index:0"></div>
+
+  <!-- ===== SIDEBAR (desktop) ===== -->
+  <sc-if value="{{ showSidebar }}" hint-placeholder-val="{{ true }}">
+  <aside style="width:250px;flex-shrink:0;border-right:1px solid var(--line);background:rgba(20,17,28,.75);backdrop-filter:blur(8px);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;z-index:5">
+    <div style="display:flex;align-items:center;gap:11px;padding:22px 22px 18px">
+      <div style="width:38px;height:38px;border-radius:11px;background:linear-gradient(140deg,var(--accent),var(--accentDeep));display:flex;align-items:center;justify-content:center;color:#20160a;box-shadow:0 6px 18px rgba(244,169,60,.28)">{{ brandIcon }}</div>
+      <div>
+        <div style="font-family:'Space Grotesk';font-weight:700;font-size:15px;letter-spacing:.02em;line-height:1">BKM KİTAP</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Yönetim Panosu</div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:6px 12px 20px">
+      <sc-for list="{{ navGroups }}" as="grp" hint-placeholder-count="3">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--faint);padding:16px 12px 7px">{{ grp.title }}</div>
+        <sc-for list="{{ grp.items }}" as="it" hint-placeholder-count="4">
+          <a onClick="{{ it.on }}" style="{{ it.rowStyle }}">
+            <span style="{{ it.iconStyle }}">{{ it.iconEl }}</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.label }}</span>
+            <sc-if value="{{ it.active }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:99px;background:var(--accent);box-shadow:0 0 8px var(--accent)"></span></sc-if>
+          </a>
+        </sc-for>
+      </sc-for>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:700;font-size:12px;color:var(--accent)">CF</div>
+      <div style="min-width:0">
+        <div style="font-size:12.5px;font-weight:600;line-height:1.1">CFO</div>
+        <div style="font-size:11px;color:var(--muted)">BKM Kitap · 3 mağaza</div>
+      </div>
+    </div>
+  </aside>
+  </sc-if>
+
+  <!-- ===== MAIN ===== -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;z-index:1">
+
+    <!-- topbar -->
+    <header style="position:sticky;top:0;z-index:8;background:rgba(16,14,21,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:13px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="min-width:0;flex:1">
+        <div style="font-family:'Newsreader';font-style:italic;font-size:14px;color:var(--accent);line-height:1;display:flex;align-items:center;gap:6px">{{ greetIcon }}{{ greeting }}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">{{ dateStr }}</div>
+      </div>
+      <div style="display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px">
+        <sc-for list="{{ periods }}" as="p" hint-placeholder-count="4">
+          <button onClick="{{ p.on }}" style="{{ p.style }}">{{ p.label }}</button>
+        </sc-for>
+      </div>
+      <button style="position:relative;width:40px;height:40px;border-radius:12px;background:var(--panel);border:1px solid var(--line);color:var(--txt);display:flex;align-items:center;justify-content:center;cursor:pointer">
+        {{ bellIcon }}
+        <span style="position:absolute;top:7px;right:7px;min-width:15px;height:15px;padding:0 4px;border-radius:99px;background:var(--neg);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1">{{ bellCount }}</span>
+      </button>
+    </header>
+
+    <main style="flex:1;padding:26px 22px 96px;max-width:1260px;width:100%;margin:0 auto">
+
+      <!-- ============ GENEL BAKIŞ ============ -->
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="margin-bottom:20px">
+          <div style="font-family:'Newsreader';font-style:italic;color:var(--muted);font-size:15px;margin-bottom:2px">bugünün panoraması</div>
+          <h1 style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(26px,4vw,34px);letter-spacing:-.02em;margin:0">Genel Bakış</h1>
+        </div>
+
+        <!-- hero KPI -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px">
+          <sc-for list="{{ heroCards }}" as="k" hint-placeholder-count="4">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:19px 19px 17px;position:relative;overflow:hidden">
+              <div style="position:absolute;inset:0 auto auto 0;width:100%;height:3px;background:{{ k.color }};opacity:.85"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="width:8px;height:8px;border-radius:99px;background:{{ k.color }}"></span>
+                  <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase">{{ k.label }}</span>
+                </div>
+                <sc-if value="{{ k.wow.show }}" hint-placeholder-val="{{ false }}">
+                  <span style="{{ k.wow.style }}">{{ k.wow.iconEl }}{{ k.wow.txt }}</span>
+                </sc-if>
+              </div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(28px,3.4vw,38px);letter-spacing:-.02em;line-height:1;white-space:nowrap">{{ k.value }}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:15px;margin-top:16px;border-top:1px solid var(--line)">
+                <div><div style="font-size:11px;color:var(--faint)">{{ k.l1 }}</div><div style="font-size:14px;font-weight:700;font-family:'Space Grotesk'">{{ k.v1 }}</div></div>
+                <div><div style="font-size:11px;color:var(--faint)">{{ k.l2 }}</div><div style="font-size:14px;font-weight:700;font-family:'Space Grotesk'">{{ k.v2 }}</div></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- AI özet -->
+        <div style="background:linear-gradient(135deg,#241F33,#191524);border:1px solid var(--line2);border-radius:22px;padding:20px 22px;margin-bottom:26px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:-40px;right:-20px;width:180px;height:180px;background:radial-gradient(circle,rgba(244,169,60,.16),transparent 65%);animation:glow 5s ease-in-out infinite"></div>
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;position:relative">
+            <span style="width:30px;height:30px;border-radius:10px;background:linear-gradient(140deg,var(--accent),var(--accentDeep));display:flex;align-items:center;justify-content:center;color:#20160a">{{ sparkIcon }}</span>
+            <span style="font-size:13px;font-weight:700">Günün Özeti</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:4px 9px">Genius AI · {{ aralik }}</span>
+          </div>
+          <p style="font-size:14px;line-height:1.7;margin:0;color:#D6D0E0;position:relative">
+            <sc-for list="{{ ozetTokens }}" as="t" hint-placeholder-count="6"><span style="{{ t.style }}">{{ t.txt }}</span></sc-for>
+          </p>
+        </div>
+
+        <!-- Mağazalar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h2 style="font-family:'Space Grotesk';font-weight:700;font-size:19px;letter-spacing:-.01em;margin:0">Mağazalar</h2>
+          <span style="font-size:12px;color:var(--muted)">{{ wowLabel }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:26px">
+          <sc-for list="{{ storeRows }}" as="s" hint-placeholder-count="3">
+            <a onClick="{{ s.on }}" style="display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px 17px;cursor:pointer;text-decoration:none;color:var(--txt);transition:border-color .18s">
+              <div style="width:46px;height:46px;border-radius:14px;background:{{ s.tint }};color:{{ s.color }};display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ s.iconEl }}</div>
+              <div style="min-width:0;flex:1">
+                <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.ad }}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:1px">{{ s.sub }}</div>
+              </div>
+              <svg viewBox="0 0 64 22" width="64" height="22" preserveAspectRatio="none" style="flex-shrink:0;overflow:visible"><polyline points="{{ s.spark }}" fill="none" stroke="{{ s.color }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-family:'Space Grotesk';font-weight:700;font-size:17px;white-space:nowrap">{{ s.tutar }}</div>
+                <div style="{{ s.wowStyle }}">{{ s.wowIcon }}{{ s.wowTxt }}</div>
+              </div>
+            </a>
+          </sc-for>
+        </div>
+
+        <!-- Analiz -->
+        <h2 style="font-family:'Space Grotesk';font-weight:700;font-size:19px;letter-spacing:-.01em;margin:0 0 14px">Analiz</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:26px">
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="color:var(--accent)">{{ pieIcon }}</span><h3 style="font-size:14px;font-weight:700;margin:0">Kategori Mix</h3><span style="margin-left:auto;font-size:10px;color:var(--faint);background:rgba(255,255,255,.05);padding:3px 8px;border-radius:7px">mağaza</span></div>
+            <sc-for list="{{ kategori }}" as="c" hint-placeholder-count="5">
+              <div style="margin-bottom:13px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span style="font-weight:600">{{ c.label }}</span><span style="color:var(--muted);font-family:'Space Grotesk'">{{ c.valueText }}</span></div>
+                <div style="height:7px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ c.width }};background:{{ c.color }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="color:var(--accent)">{{ trendIconEl }}</span><h3 style="font-size:14px;font-weight:700;margin:0">Son 14 Gün — Net Ciro</h3></div>
+            <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:26px;letter-spacing:-.02em">{{ trend14.lastTxt }}</div>
+              <span style="{{ trend14.gwStyle }}">{{ trend14.gwIcon }}{{ trend14.gwTxt }}</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--faint)">14g ort {{ trend14.avgTxt }}</span>
+            </div>
+            <svg viewBox="0 0 100 46" width="100%" height="120" preserveAspectRatio="none">
+              <defs><linearGradient id="ag14" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".34"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+              <path d="{{ trend14.area }}" fill="url(#ag14)"/>
+              <path d="{{ trend14.line }}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- E-ticaret CTA -->
+        <a onClick="{{ goEtic }}" style="display:flex;align-items:center;gap:15px;background:linear-gradient(135deg,rgba(87,176,245,.16),rgba(87,176,245,.05));border:1px solid rgba(87,176,245,.28);border-radius:20px;padding:17px 20px;cursor:pointer;text-decoration:none;color:var(--txt)">
+          <div style="width:46px;height:46px;border-radius:14px;background:rgba(87,176,245,.18);color:var(--c5);display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ globeIcon }}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">E-ticaret (online)</div><div style="font-size:12px;color:var(--muted)">{{ eticSub }}</div></div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:19px;white-space:nowrap">{{ eticTutar }}</div>
+          <span style="color:var(--faint)">{{ chevRIcon }}</span>
+        </a>
+      </div>
+      </sc-if>
+
+      <!-- ============ MAĞAZA DETAY ============ -->
+      <sc-if value="{{ isStore }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <button onClick="{{ goHome }}" style="width:40px;height:40px;border-radius:13px;background:var(--panel);border:1px solid var(--line);color:var(--txt);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">{{ chevLIcon }}</button>
+          <div>
+            <div style="font-family:'Newsreader';font-style:italic;color:var(--muted);font-size:14px">mağaza detayı · günlük</div>
+            <h1 style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(24px,3.6vw,30px);letter-spacing:-.02em;margin:0">{{ store.ad }}</h1>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px">
+          <sc-for list="{{ store.kpis }}" as="k" hint-placeholder-count="4">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px"><span style="width:8px;height:8px;border-radius:99px;background:{{ k.color }}"></span><span style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">{{ k.label }}</span></div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(24px,3vw,30px);letter-spacing:-.02em;line-height:1;white-space:nowrap">{{ k.value }}</div>
+              <div style="font-size:12px;color:var(--faint);margin-top:9px">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="color:var(--accent)">{{ trendIconEl2 }}</span><h3 style="font-size:14px;font-weight:700;margin:0">Son 30 Gün — Net Ciro</h3></div>
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+            <div style="font-family:'Space Grotesk';font-weight:700;font-size:26px;letter-spacing:-.02em">{{ store.trend.lastTxt }}</div>
+            <span style="{{ store.trend.gwStyle }}">{{ store.trend.gwIcon }}{{ store.trend.gwTxt }}</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--faint)">30g ort {{ store.trend.avgTxt }}</span>
+          </div>
+          <svg viewBox="0 0 100 46" width="100%" height="130" preserveAspectRatio="none">
+            <defs><linearGradient id="ag30" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--c2)" stop-opacity=".34"/><stop offset="1" stop-color="var(--c2)" stop-opacity="0"/></linearGradient></defs>
+            <path d="{{ store.trend.area }}" fill="url(#ag30)"/>
+            <path d="{{ store.trend.line }}" fill="none" stroke="var(--c2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+          </svg>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="color:var(--accent)">{{ pieIcon2 }}</span><h3 style="font-size:14px;font-weight:700;margin:0">Kategori Kırılımı</h3></div>
+            <sc-for list="{{ store.kategori }}" as="c" hint-placeholder-count="4">
+              <div style="margin-bottom:13px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span style="font-weight:600">{{ c.label }}</span><span style="color:var(--muted);font-family:'Space Grotesk'">{{ c.valueText }}</span></div>
+                <div style="height:7px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ c.width }};background:{{ c.color }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="color:var(--accent)">{{ heatIcon }}</span><h3 style="font-size:14px;font-weight:700;margin:0">Yoğunluk — Saat × Gün</h3></div>
+            <div style="overflow-x:auto">
+              <div style="display:inline-grid;grid-template-columns:30px repeat({{ store.heatCols }},1fr);gap:3px;min-width:340px">
+                <div></div>
+                <sc-for list="{{ store.heatHours }}" as="h" hint-placeholder-count="7"><div style="font-size:9px;color:var(--faint);text-align:center">{{ h }}</div></sc-for>
+                <sc-for list="{{ store.heat }}" as="row" hint-placeholder-count="7">
+                  <div style="font-size:10px;font-weight:600;color:{{ row.dayColor }};line-height:20px;padding-right:3px">{{ row.day }}</div>
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="7"><div title="{{ cell.title }}" style="height:20px;border-radius:4px;background:{{ cell.bg }}"></div></sc-for>
+                </sc-for>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--faint);margin-top:12px">Son 60 gün · fiş yoğunluğu. Koyu = düşük, amber = yüksek.</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ E-TİCARET ============ -->
+      <sc-if value="{{ isEtic }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="margin-bottom:20px">
+          <div style="font-family:'Newsreader';font-style:italic;color:var(--muted);font-size:15px">online kanal performansı</div>
+          <h1 style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(26px,4vw,34px);letter-spacing:-.02em;margin:0">E-ticaret</h1>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px">
+          <sc-for list="{{ etic.kpis }}" as="k" hint-placeholder-count="4">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px"><span style="width:8px;height:8px;border-radius:99px;background:{{ k.color }}"></span><span style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">{{ k.label }}</span></div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(24px,3vw,30px);letter-spacing:-.02em;line-height:1;white-space:nowrap">{{ k.value }}</div>
+              <div style="font-size:12px;color:var(--faint);margin-top:9px">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:14px">
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px">
+            <h3 style="font-size:14px;font-weight:700;margin:0 0 16px">Kanal — Net Ciro</h3>
+            <sc-for list="{{ etic.kanal }}" as="c" hint-placeholder-count="4">
+              <div style="margin-bottom:13px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span style="font-weight:600">{{ c.label }}</span><span style="color:var(--muted);font-family:'Space Grotesk'">{{ c.valueText }}</span></div>
+                <div style="height:7px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ c.width }};background:{{ c.color }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px">
+            <h3 style="font-size:14px;font-weight:700;margin:0 0 16px">İl Dağılımı</h3>
+            <sc-for list="{{ etic.il }}" as="i" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)">
+                <span style="width:34px;height:34px;border-radius:11px;background:rgba(87,176,245,.14);color:var(--c5);display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ i.iconEl }}</span>
+                <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">{{ i.ad }}</div><div style="font-size:11px;color:var(--faint)">%{{ i.pay }} pay</div></div>
+                <div style="font-family:'Space Grotesk';font-weight:700;font-size:15px">{{ i.adet }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="color:var(--accent)">{{ truckIcon }}</span><h3 style="font-size:14px;font-weight:700;margin:0">Kargo Performansı</h3></div>
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px 16px;align-items:center;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--faint);text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid var(--line)">
+            <div>Firma</div><div style="text-align:right">Çıkış (iş günü)</div><div style="text-align:right">Durum</div>
+          </div>
+          <sc-for list="{{ etic.kargo }}" as="k" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px 16px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)">
+              <div style="min-width:0"><div style="font-size:14px;font-weight:600">{{ k.ad }}</div><div style="font-size:11.5px;color:var(--faint)">{{ k.adet }} sipariş · teslim {{ k.teslim }}</div></div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:16px;text-align:right;color:{{ k.cikisColor }}">{{ k.cikis }}</div>
+              <div style="text-align:right"><span style="{{ k.badgeStyle }}">{{ k.badge }}</span></div>
+            </div>
+          </sc-for>
+          <div style="font-size:11px;color:var(--faint);margin-top:12px">Çıkış iş günü = depo gerçek performansı (Pzt–Cuma). ≥3 gün kırmızı, ≤2 gün yeşil.</div>
+        </div>
+      </div>
+      </sc-if>
+
+    </main>
+
+    <!-- mobile bottom nav -->
+    <sc-if value="{{ showBottomNav }}" hint-placeholder-val="{{ false }}">
+    <nav style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(16,14,21,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:8px 6px calc(8px + env(safe-area-inset-bottom))">
+      <sc-for list="{{ bottomNav }}" as="b" hint-placeholder-count="5">
+        <button onClick="{{ b.on }}" style="{{ b.style }}"><span style="{{ b.iconStyle }}">{{ b.iconEl }}</span><span style="font-size:10px;font-weight:600">{{ b.label }}</span></button>
+      </sc-for>
+    </nav>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { screen: 'home', period: 'gunluk', isMobile: (typeof window!=='undefined' && window.innerWidth < 1024) };
+
+  componentDidMount(){
+    this._mq = window.matchMedia('(max-width:1023px)');
+    this._onMq = e => this.setState({ isMobile: e.matches });
+    this._mq.addEventListener('change', this._onMq);
+  }
+  componentWillUnmount(){ this._mq && this._mq.removeEventListener('change', this._onMq); }
+
+  // ---- icon helper ----
+  ic(name, size=20, sw=1.75){
+    const P = {
+      dashboard:[['rect',{x:3,y:3,width:7,height:9,rx:1.5}],['rect',{x:14,y:3,width:7,height:5,rx:1.5}],['rect',{x:14,y:12,width:7,height:9,rx:1.5}],['rect',{x:3,y:16,width:7,height:5,rx:1.5}]],
+      store:[['path',{d:'M3 9l1.5-5h15L21 9'}],['path',{d:'M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9'}],['path',{d:'M9 20v-6h6v6'}]],
+      cart:[['circle',{cx:9,cy:21,r:1}],['circle',{cx:20,cy:21,r:1}],['path',{d:'M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6'}]],
+      package:[['path',{d:'M21 8l-9-5-9 5v8l9 5 9-5V8z'}],['path',{d:'M3 8l9 5 9-5'}],['path',{d:'M12 13v10'}]],
+      users:[['path',{d:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'}],['circle',{cx:9,cy:7,r:4}],['path',{d:'M23 21v-2a4 4 0 0 0-3-3.87'}],['path',{d:'M16 3.13a4 4 0 0 1 0 7.75'}]],
+      bell:[['path',{d:'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'}],['path',{d:'M10.3 21a1.94 1.94 0 0 0 3.4 0'}]],
+      sparkles:[['path',{d:'M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3z'}],['path',{d:'M19 14l.7 1.9L22 17l-2.3.6L19 20l-.7-2.4L16 17l2.3-1.1z'}]],
+      target:[['circle',{cx:12,cy:12,r:9}],['circle',{cx:12,cy:12,r:5}],['circle',{cx:12,cy:12,r:1.4}]],
+      globe:[['circle',{cx:12,cy:12,r:9}],['line',{x1:3,y1:12,x2:21,y2:12}],['path',{d:'M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z'}]],
+      pie:[['path',{d:'M21.2 15.9A10 10 0 1 1 8.1 2.8'}],['path',{d:'M22 12A10 10 0 0 0 12 2v10z'}]],
+      trend:[['polyline',{points:'22 7 13.5 15.5 8.5 10.5 2 17'}],['polyline',{points:'16 7 22 7 22 13'}]],
+      heat:[['rect',{x:3,y:4,width:18,height:16,rx:2}],['line',{x1:3,y1:10,x2:21,y2:10}],['line',{x1:9,y1:4,x2:9,y2:20}],['line',{x1:15,y1:4,x2:15,y2:20}]],
+      truck:[['path',{d:'M1 4h14v11H1z'}],['path',{d:'M15 8h4l4 4v3h-8z'}],['circle',{cx:5.5,cy:18,r:2}],['circle',{cx:18.5,cy:18,r:2}]],
+      map:[['path',{d:'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'}],['circle',{cx:12,cy:10,r:3}]],
+      book:[['path',{d:'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'}],['path',{d:'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'}]],
+      chevR:[['polyline',{points:'9 18 15 12 9 6'}]],
+      chevL:[['polyline',{points:'15 18 9 12 15 6'}]],
+      arrowUR:[['line',{x1:7,y1:17,x2:17,y2:7}],['polyline',{points:'7 7 17 7 17 17'}]],
+      arrowDR:[['line',{x1:7,y1:7,x2:17,y2:17}],['polyline',{points:'17 7 17 17 7 17'}]],
+      sun:[['circle',{cx:12,cy:12,r:4}],['line',{x1:12,y1:2,x2:12,y2:4}],['line',{x1:12,y1:20,x2:12,y2:22}],['line',{x1:4.9,y1:4.9,x2:6.3,y2:6.3}],['line',{x1:17.7,y1:17.7,x2:19.1,y2:19.1}],['line',{x1:2,y1:12,x2:4,y2:12}],['line',{x1:20,y1:12,x2:22,y2:12}],['line',{x1:4.9,y1:19.1,x2:6.3,y2:17.7}],['line',{x1:17.7,y1:6.3,x2:19.1,y2:4.9}]]
+    };
+    const kids = (P[name]||[]).map((c,i)=>React.createElement(c[0],{key:i,...c[1]}));
+    return React.createElement('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:sw,strokeLinecap:'round',strokeLinejoin:'round'},kids);
+  }
+
+  // ---- format ----
+  tl(n){ return Math.round(n).toLocaleString('tr-TR')+' ₺'; }
+  num(n){ return Math.round(n).toLocaleString('tr-TR'); }
+  pct(v){ const s=(v>0?'+':v<0?'−':''); return s+Math.abs(v).toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'; }
+
+  wowChip(v, small){
+    if(v==null) return {show:false};
+    const up=v>=0, col=up?'var(--pos)':'var(--neg)', bg=up?'rgba(72,201,175,.14)':'rgba(255,125,107,.14)';
+    return {show:true, txt:this.pct(v), iconEl:this.ic(up?'arrowUR':'arrowDR', small?12:13, 2.2),
+      style:`display:inline-flex;align-items:center;gap:2px;font-size:${small?10:11}px;font-weight:700;padding:${small?'2px 6px':'3px 8px'};border-radius:999px;color:${col};background:${bg}`};
+  }
+  trendChip(v){
+    const up=v>=0, col=up?'var(--pos)':'var(--neg)';
+    return {style:`display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:700;color:${col};justify-content:flex-end;margin-top:2px`,
+      iconEl:this.ic(up?'trend':'trend', 13, 2), txt:this.pct(v), col};
+  }
+
+  series(n, base, amp, seed){ const a=[]; for(let i=0;i<n;i++){ const w=Math.sin(i*0.55+seed)*amp + Math.sin(i*1.7+seed*2)*amp*0.4 + ((i*7+seed*13)%9-4)*0.012; a.push(Math.round(base*(1+w))); } return a; }
+  spark(vals,w,h){ const mn=Math.min(...vals),mx=Math.max(...vals),r=mx-mn||1; return vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-1-((v-mn)/r)*(h-2)).toFixed(1)}`).join(' '); }
+  area(vals){ const w=100,h=46,mn=Math.min(...vals),mx=Math.max(...vals),r=mx-mn||1;
+    const pts=vals.map((v,i)=>[ (i/(vals.length-1)*w), (h-2-((v-mn)/r)*(h-8)) ]);
+    const line='M'+pts.map(p=>`${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' L');
+    const areaP=line+` L${w},${h} L0,${h} Z`;
+    const last=vals[vals.length-1], avg=vals.reduce((a,b)=>a+b,0)/vals.length, gw=Math.round((last-avg)/avg*1000)/10;
+    return {line, area:areaP, lastTxt:this.tl(last), avgTxt:this.tl(avg), ...this.gwChip(gw)};
+  }
+  gwChip(gw){ const up=gw>=0,col=up?'var(--pos)':'var(--neg)',bg=up?'rgba(72,201,175,.14)':'rgba(255,125,107,.14)';
+    return {gwTxt:this.pct(gw), gwIcon:this.ic(up?'trend':'trend',13,2), gwStyle:`display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;color:${col};background:${bg}`}; }
+
+  bars(items, colors){ const mx=Math.max(...items.map(i=>i.v))||1;
+    return items.map((it,i)=>({label:it.label, valueText:it.vt, width:(it.v/mx*100).toFixed(1)+'%', color:colors[i%colors.length]})); }
+
+  renderVals(){
+    const set = (screen)=>()=>this.setState({screen});
+    const setP = (period)=>()=>this.setState({period});
+    const C=['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
+    const scr=this.state.screen;
+
+    // greeting
+    const h=new Date().getHours();
+    const greeting = h<6?'İyi geceler':h<12?'Günaydın':h<18?'İyi günler':'İyi akşamlar';
+    const gd=new Date(); const aylar=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const gunler=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+    const dateStr=`${gd.getDate()} ${aylar[gd.getMonth()]} ${gd.getFullYear()}, ${gunler[gd.getDay()]}`;
+
+    // nav
+    const rowBase='display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none;margin-bottom:2px;transition:background .15s;';
+    const mkItem=(key,label,icon,scrKey,imp)=>{
+      const active=imp && scr===scrKey;
+      return {label, key, active,
+        on:imp?set(scrKey):(()=>{}),
+        iconEl:this.ic(icon,18,1.75),
+        rowStyle: rowBase + (active?'background:rgba(244,169,60,.13);color:var(--accent);':imp?'color:var(--txt);':'color:var(--faint);cursor:default;'),
+        iconStyle:`display:flex;align-items:center;flex-shrink:0;${active?'color:var(--accent)':imp?'color:var(--muted)':'color:var(--faint)'}`};
+    };
+    const navGroups=[
+      {title:'ANALİTİK', items:[
+        mkItem('home','Genel Bakış','dashboard','home',true),
+        mkItem('store','Mağazalar','store','store',true),
+        mkItem('etic','E-ticaret','cart','etic',true),
+        mkItem('env','Envanter','package',null,false),
+        mkItem('mus','Müşteri','users',null,false),
+      ]},
+      {title:'ASİSTAN', items:[
+        mkItem('gen','Genius AI','sparkles',null,false),
+        mkItem('gor','Görevler','target',null,false),
+      ]},
+    ];
+    const bnBase='flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;background:none;border:none;cursor:pointer;';
+    const mkBn=(label,icon,scrKey)=>{ const active=scr===scrKey; return {label, on:set(scrKey), iconEl:this.ic(icon,22,1.9),
+      style:bnBase+(active?'color:var(--accent);':'color:var(--faint);'),
+      iconStyle:`display:flex;align-items:center;${active?'color:var(--accent)':'color:var(--faint)'}`}; };
+    const bottomNav=[mkBn('Genel','dashboard','home'),mkBn('Mağaza','store','store'),mkBn('E-ticaret','cart','etic'),mkBn('Envanter','package','home'),mkBn('Müşteri','users','home')];
+
+    // period pills
+    const pOpts=[['gunluk','Günlük'],['haftalik','Haftalık'],['ay','Aylık'],['ozel','Özel']];
+    const periods=pOpts.map(([k,l])=>({label:l, on:setP(k),
+      style:`border:none;cursor:pointer;font-size:12px;font-weight:600;padding:6px 12px;border-radius:9px;font-family:inherit;transition:.15s;`+(this.state.period===k?'background:var(--accent);color:#20160a;':'background:transparent;color:var(--muted);')}));
+    const aralik = this.state.period==='gunluk'?'1 Tem':this.state.period==='haftalik'?'25 Haz – 1 Tem':this.state.period==='ay'?'1–1 Tem (MTD)':'seçili aralık';
+
+    // ---------- HOME DATA ----------
+    const stores=[
+      {id:1,ad:'FSM',net:312400,fis:1240,atv:252,wow:8.4,seed:1.2,color:'var(--c2)',tint:'rgba(72,201,175,.14)'},
+      {id:2,ad:'Özlüce',net:268900,fis:1010,atv:266,wow:-3.2,seed:3.1,color:'var(--c1)',tint:'rgba(244,169,60,.14)'},
+      {id:3,ad:'İstanbul Yolu',net:191700,fis:720,atv:266,wow:12.1,seed:4.6,color:'var(--c3)',tint:'rgba(155,140,255,.14)'},
+    ];
+    const fiziksel=stores.reduce((a,s)=>a+s.net,0); // 773000
+    const eticNet=214500, toplam=fiziksel+eticNet;
+    const esip=1180, fisTot=stores.reduce((a,s)=>a+s.fis,0), islem=fisTot+esip;
+    const sepet=Math.round(toplam/islem), oSepet=Math.round(eticNet/esip);
+    const iade=18600, iadeOran=2.4;
+    const heroCards=[
+      {label:'Toplam Ciro',value:this.tl(toplam),wow:this.wowChip(6.2),color:'var(--c1)',l1:'Mağaza',v1:this.tl(fiziksel),l2:'Online',v2:this.tl(eticNet),delay:'0s'},
+      {label:'Toplam İşlem',value:this.num(islem),wow:this.wowChip(4.1),color:'var(--c5)',l1:'Mağaza fiş',v1:this.num(fisTot),l2:'Online sip.',v2:this.num(esip),delay:'.07s'},
+      {label:'Sepet Ort.',value:this.tl(sepet),wow:this.wowChip(2.0),color:'var(--c2)',l1:'Mağaza ATV',v1:this.tl(258),l2:'Online sepet',v2:this.tl(oSepet),delay:'.14s'},
+      {label:'İade',value:this.tl(iade),wow:this.wowChip(-5.0),color:'var(--c4)',l1:'Ciroya oran',v1:'%'+iadeOran,l2:'Geçen dönem',v2:this.tl(19580),delay:'.21s'},
+    ];
+    const storeRows=stores.map(s=>{ const sp=this.series(12,s.net,0.14,s.seed); const tc=this.trendChip(s.wow);
+      return {ad:s.ad, sub:`${this.num(s.fis)} fiş · sepet ${this.num(s.atv)} ₺`, tutar:this.tl(s.net),
+        color:s.color, tint:s.tint, iconEl:this.ic('store',22,1.8), on:set('store'),
+        spark:this.spark(sp,64,22), wowStyle:tc.style, wowIcon:tc.iconEl, wowTxt:tc.txt}; });
+    const kategori=this.bars([
+      {label:'Kitap',v:389000,vt:this.tl(389000)},
+      {label:'Kırtasiye',v:190000,vt:this.tl(190000)},
+      {label:'Oyuncak & Hobi',v:121000,vt:this.tl(121000)},
+      {label:'Hediyelik',v:95000,vt:this.tl(95000)},
+      {label:'Diğer',v:69000,vt:this.tl(69000)},
+    ],C);
+    const trend14=this.area(this.series(14,760000,0.11,2.0));
+
+    // AI özet — highlight tokens
+    const ozetRaw='Bugün ciro '+this.tl(toplam)+', önceki güne göre +6,2% artışla güçlü. Online payı %22 ('+this.tl(eticNet)+') ile ivme koruyor. İstanbul Yolu +12,1% ile zirvede, Özlüce −3,2% ile hafif geride — hafta sonu kampanya etkisi izlenmeli. İade oranı %2,4, sağlıklı bantta.';
+    const rx=/([+\-−]\s?%?\s?\d[\d.,]*%?)|(%\s?\d[\d.,]*)|(\d[\d.,]*\s?₺)/g;
+    const ozetTokens=[]; let last=0, m;
+    while((m=rx.exec(ozetRaw))){ if(m.index>last) ozetTokens.push({txt:ozetRaw.slice(last,m.index),style:''});
+      const t=m[0], up=/^\+/.test(t), dn=/^[-−]/.test(t);
+      ozetTokens.push({txt:t, style:'font-weight:700;'+(up?'color:var(--pos)':dn?'color:var(--neg)':'color:var(--txt)')}); last=m.index+t.length; }
+    if(last<ozetRaw.length) ozetTokens.push({txt:ozetRaw.slice(last),style:''});
+
+    // ---------- STORE DATA ----------
+    const stTrend=this.area(this.series(30,300000,0.1,1.2));
+    const stHours=[]; for(let hh=9;hh<=21;hh++) stHours.push(String(hh));
+    const dayNames=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+    const heat=dayNames.map((d,di)=>{ const cells=stHours.map((hr,hi)=>{ const hnum=+hr;
+        const peak= (hnum>=13&&hnum<=19?1:0.45) * (di>=4?1:0.7) * (1+Math.sin((hnum-9)*0.5+di)*0.18);
+        const op=Math.max(0, Math.min(1, peak*0.9));
+        const fis=Math.round(op*46);
+        const bg= op<0.05?'rgba(255,255,255,.04)':`color-mix(in srgb, var(--accent) ${Math.round(op*100)}%, rgba(255,255,255,.05))`;
+        return {bg, title:`${d} ${hr}:00 · ${fis} fiş`}; });
+      return {day:d, dayColor:di>=5?'var(--accent)':'var(--muted)', cells}; });
+    const store={
+      ad:'FSM',
+      kpis:[
+        {label:'Net Ciro',value:this.tl(312400),sub:'dönem net',color:'var(--c2)',delay:'0s'},
+        {label:'Fiş',value:this.num(1240),sub:'sepet 252 ₺',color:'var(--c5)',delay:'.07s'},
+        {label:'UPT',value:'2,14',sub:'ürün / fiş',color:'var(--c3)',delay:'.14s'},
+        {label:'İade',value:this.tl(6560),sub:'oran %2,1',color:'var(--c4)',delay:'.21s'},
+      ],
+      trend:stTrend,
+      kategori:this.bars([
+        {label:'Kitap',v:158000,vt:this.tl(158000)},
+        {label:'Kırtasiye',v:74000,vt:this.tl(74000)},
+        {label:'Oyuncak & Hobi',v:49000,vt:this.tl(49000)},
+        {label:'Hediyelik',v:31000,vt:this.tl(31000)},
+      ],C),
+      heatCols:stHours.length, heatHours:stHours, heat,
+    };
+
+    // ---------- ETİCARET DATA ----------
+    const etic={
+      kpis:[
+        {label:'Net Ciro',value:this.tl(214500),sub:'1.180 sipariş',color:'var(--c1)',delay:'0s'},
+        {label:'Net Sipariş',value:this.num(1180),sub:'iptal/iade hariç',color:'var(--c5)',delay:'.07s'},
+        {label:'Sepet Ort.',value:this.tl(182),sub:'online ortalama',color:'var(--c2)',delay:'.14s'},
+        {label:'İptal / İade',value:this.num(74),sub:'sipariş',color:'var(--c4)',delay:'.21s'},
+      ],
+      kanal:this.bars([
+        {label:'Trendyol',v:96400,vt:this.tl(96400)+' · %45'},
+        {label:'Hepsiburada',v:58200,vt:this.tl(58200)+' · %27'},
+        {label:'Kendi Site',v:41800,vt:this.tl(41800)+' · %19'},
+        {label:'N11',v:18100,vt:this.tl(18100)+' · %9'},
+      ],C),
+      il:[
+        {ad:'İstanbul',adet:'448',pay:'38'},{ad:'Ankara',adet:'165',pay:'14'},
+        {ad:'İzmir',adet:'130',pay:'11'},{ad:'Bursa',adet:'106',pay:'9'},{ad:'Antalya',adet:'78',pay:'7'},
+      ].map(x=>({...x, iconEl:this.ic('map',17,1.9)})),
+      kargo:[
+        {ad:'Aras Kargo',adet:'520',teslim:'2,1g',cikis:'1,8g',tone:'hizli'},
+        {ad:'Yurtiçi',adet:'340',teslim:'2,6g',cikis:'2,4g',tone:'orta'},
+        {ad:'MNG',adet:'220',teslim:'3,4g',cikis:'3,1g',tone:'yavas'},
+        {ad:'Sürat',adet:'100',teslim:'2,2g',cikis:'2,0g',tone:'hizli'},
+      ].map(k=>{ const t=k.tone;
+        const col=t==='hizli'?'var(--pos)':t==='yavas'?'var(--neg)':'var(--muted)';
+        const bg=t==='hizli'?'rgba(72,201,175,.14)':t==='yavas'?'rgba(255,125,107,.14)':'rgba(255,255,255,.07)';
+        const lbl=t==='hizli'?'hızlı':t==='yavas'?'yavaş':'orta';
+        return {...k, cikisColor:col, badge:lbl,
+          badgeStyle:`display:inline-block;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;color:${col};background:${bg}`}; }),
+    };
+
+    return {
+      showSidebar:!this.state.isMobile, showBottomNav:this.state.isMobile,
+      brandIcon:this.ic('book',20,2), greetIcon:this.ic(h<18&&h>=6?'sun':'sparkles',15,2),
+      sparkIcon:this.ic('sparkles',17,2), bellIcon:this.ic('bell',19,1.8), bellCount:'3',
+      pieIcon:this.ic('pie',18,1.8), pieIcon2:this.ic('pie',18,1.8), heatIcon:this.ic('heat',18,1.8),
+      trendIconEl:this.ic('trend',18,1.9), trendIconEl2:this.ic('trend',18,1.9),
+      globeIcon:this.ic('globe',22,1.8), chevRIcon:this.ic('chevR',20,2), chevLIcon:this.ic('chevL',20,2),
+      truckIcon:this.ic('truck',18,1.8),
+      greeting, dateStr, periods, navGroups, bottomNav, aralik,
+      isHome:scr==='home', isStore:scr==='store', isEtic:scr==='etic',
+      goHome:set('home'), goEtic:set('etic'),
+      wowLabel:'önceki güne göre',
+      heroCards, storeRows, kategori, trend14, ozetTokens,
+      eticSub:`${this.num(esip)} sipariş · sepet ${this.tl(oSepet)}`, eticTutar:this.tl(eticNet),
+      store, etic,
+    };
+  }
+}
+</script>
+</body>
+</html>
