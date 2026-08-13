@@ -20,7 +20,14 @@
         <h1 class="text-2xl font-bold tracking-tight m-0 truncate">@(_d?.Ad ?? Mekan(Id))</h1>
     </div>
 </div>
-<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" ShowOzel="false" />
+<AppPeriodPills Period="_period" PeriodChanged="SetPeriod" Busy="_loading" />
+@if (_period == "ozel")
+{
+    <div class="flex gap-2 mb-4 flex-wrap">
+        <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBas" @bind:after="LoadAsync" />
+        <input type="date" class="input input-bordered input-sm text-sm font-semibold" @bind="_ozelBit" @bind:after="LoadAsync" />
+    </div>
+}
 
 @if (_loading)
 {
@@ -244,6 +251,8 @@ else if (_d is not null)
     [Parameter] public int Id { get; set; }
 
     private string _period = "ay";
+    private DateTime? _ozelBas = DateTime.Today.AddDays(-7);
+    private DateTime? _ozelBit = DateTime.Today.AddDays(-1);
     private bool _loading = true;
     private string? _error;
     private string _aralik = "";
@@ -318,6 +327,7 @@ else if (_d is not null)
             {
                 "haftalik" => (dun.AddDays(-6), g2),
                 "ay" => (new DateOnly(dun.Year, dun.Month, 1), g2),
+                "ozel" => OzelAralik(),
                 _ => (dun, g2),
             };
             var son = endExcl.AddDays(-1);
@@ -343,6 +353,15 @@ else if (_d is not null)
     }
 
     private async Task SetPeriod(string p) { if (_period == p) return; _period = p; await LoadAsync(); }
+
+    // Özel aralık: başlangıç ≤ bitiş güvence, endExcl = bitiş+1 gün
+    private (DateOnly, DateOnly) OzelAralik()
+    {
+        var b = DateOnly.FromDateTime(_ozelBas ?? DateTime.Today.AddDays(-7));
+        var e = DateOnly.FromDateTime(_ozelBit ?? DateTime.Today.AddDays(-1));
+        if (e < b) e = b;
+        return (b, e.AddDays(1));
+    }
 
     private IJSObjectReference? _charts;
     protected override async Task OnAfterRenderAsync(bool firstRender)
