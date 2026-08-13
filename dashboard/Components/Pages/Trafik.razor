@@ -166,6 +166,62 @@ else
         </div>
     }
 
+    @* Gün-gün detay: kapı sayacı × POS (eski sayiyo-rapor.xlsx karşılığı) *@
+    @if (_gunluk.Count > 0)
+    {
+        string[] gunAdG = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+        var toplamGiris = _gunluk.Sum(g => g.Giris);
+        var toplamFis = _gunluk.Sum(g => g.Fis);
+        var toplamCiro = _gunluk.Sum(g => g.Ciro);
+        <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-3">
+            <div class="text-sm font-semibold mb-2">Gün Gün Detay — Dönüşüm &amp; Sepet</div>
+            <AppAreaChart TItem="TrafikGunluk" Items="_gunluk" Name="Dönüşüm %" Color="var(--su)" Height="110"
+                          XValue="@(g => (object)g.Tarih.ToString("dd.MM"))"
+                          YValue="@(g => (decimal?)(g.Giris > 0 ? Math.Round(100m * g.Fis / g.Giris, 1) : 0))" />
+            <div class="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                <table class="table table-xs table-pin-rows">
+                    <thead><tr>
+                        <th>Tarih</th><th>Gün</th>
+                        <th class="text-right">Giriş</th>
+                        <th class="text-right">Fiş</th>
+                        <th class="text-right">Dönüşüm %</th>
+                        <th class="text-right">Net Ciro ₺</th>
+                        <th class="text-right">₺/Ziyaret</th>
+                        <th class="text-right">Sepet</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var g in _gunluk)
+                    {
+                        var wd = ((int)g.Tarih.DayOfWeek + 6) % 7;
+                        var conv2 = g.Giris > 0 ? 100m * g.Fis / g.Giris : 0;
+                        var cpv2 = g.Giris > 0 ? g.Ciro / g.Giris : 0;
+                        var sepet = g.Fis > 0 ? g.Ciro / g.Fis : 0;
+                        <tr class="hover @(wd >= 5 ? "bg-error/5" : "")">
+                            <td class="tabular-nums">@g.Tarih.ToString("dd.MM.yyyy")</td>
+                            <td>@gunAdG[wd]</td>
+                            <td class="text-right tabular-nums">@Fmt(g.Giris)</td>
+                            <td class="text-right tabular-nums">@Fmt(g.Fis)</td>
+                            <td class="text-right tabular-nums text-success">%@conv2.ToString("F1")</td>
+                            <td class="text-right tabular-nums">@FmtTl(g.Ciro)</td>
+                            <td class="text-right tabular-nums">@FmtTl(cpv2)</td>
+                            <td class="text-right tabular-nums text-base-content/70">@FmtTl(sepet)</td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot><tr class="border-t-2 border-base-300 bg-base-200/40 font-bold">
+                        <td colspan="2">TOPLAM/ORT</td>
+                        <td class="text-right">@Fmt(toplamGiris)</td>
+                        <td class="text-right">@Fmt(toplamFis)</td>
+                        <td class="text-right">%@(toplamGiris > 0 ? (100m * toplamFis / toplamGiris).ToString("F1") : "—")</td>
+                        <td class="text-right">@FmtTl(toplamCiro)</td>
+                        <td class="text-right">@FmtTl(toplamGiris > 0 ? toplamCiro / toplamGiris : 0)</td>
+                        <td class="text-right">@FmtTl(toplamFis > 0 ? toplamCiro / toplamFis : 0)</td>
+                    </tr></tfoot>
+                </table>
+            </div>
+        </div>
+    }
+
     @* Personel tablosu *@
     <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="text-sm font-semibold mb-2 flex items-center gap-1.5">
@@ -222,6 +278,7 @@ else
     List<TrafikHeat> _heat = [];
     List<TrafikPersonel> _personel = [];
     List<TrafikPdksHeat> _pdks = [];
+    List<TrafikGunluk> _gunluk = [];
     bool _loading = true;
     bool _showRapor;
     string? _error;
@@ -237,11 +294,13 @@ else
             var t2 = TrafikSvc.GetHeatAsync(_bas, _bit);
             var t3 = TrafikSvc.GetPersonelAsync(_bas, _bit);
             var t4 = TrafikSvc.GetPdksPersonelAsync(_bas, _bit);
-            await Task.WhenAll(t1, t2, t3, t4);
+            var t5 = TrafikSvc.GetGunlukAsync(_bas, _bit);
+            await Task.WhenAll(t1, t2, t3, t4, t5);
             _kpi      = t1.Result;
             _heat     = (List<TrafikHeat>)t2.Result;
             _personel = (List<TrafikPersonel>)t3.Result;
             _pdks     = (List<TrafikPdksHeat>)t4.Result;
+            _gunluk   = (List<TrafikGunluk>)t5.Result;
         }
         catch (Exception ex) { Logger.LogError(ex, "Trafik yükleme hatası"); _error = ex.Message; }
         finally { _loading = false; StateHasChanged(); }

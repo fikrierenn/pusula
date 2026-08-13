@@ -169,6 +169,9 @@ public record TrafikPersonel(string Ad, int Fis, decimal Net, int Atv, int Calis
 /// <summary>PDKS saatlik ort. çalışan — OPENQUERY([PDKS] TTagZei×TPerTab), Per_Grp2='FSM', giriş≤H&lt;çıkış. Gun: 0=Pzt..6=Paz.</summary>
 public record TrafikPdksHeat(int Gun, int Saat, int Personel);
 
+/// <summary>Trafik gün-gün detay (eski sayiyo-rapor.xlsx karşılığı). Dönüşüm/Sepet UI'da hesaplanır (Fis/Giris, Ciro/Fis).</summary>
+public record TrafikGunluk(DateOnly Tarih, int Giris, int Fis, decimal Ciro);
+
 /// <summary>B-111 WMS bekleyen doluluk — aşama split (anlık, SENDDATE NULL). Toplanma=raflanmayı bekleyen (en kritik).</summary>
 public record BekleyenDurum(int ToplanmaBekleyen, int Hazirlanan, int TeminBekleyen)
 {

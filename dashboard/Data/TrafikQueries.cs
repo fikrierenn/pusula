@@ -182,4 +182,30 @@ public sealed class TrafikQueries(Db db)
                 r.Fis > 0 ? (int)(r.Net / r.Fis) : 0, r.CalistigiGun, r.IlkSaat, r.SonSaat))
             .ToList();
     }
+
+    /// <summary>Gün-gün detay (eski sayiyo-rapor.xlsx karşılığı) — kapı sayacı × POS fiş/ciro, günlük. Dönüşüm/Sepet UI'da hesaplanır.</summary>
+    public async Task<IReadOnlyList<TrafikGunluk>> GetGunlukAsync(DateOnly bas, DateOnly bit)
+    {
+        await using var conn = await db.OpenAsync();
+        return (await conn.QueryAsync<TrafikGunluk>($"""
+            ;WITH G AS (
+                SELECT CAST(Tarih AS date) AS T, SUM(MusteriSayi) AS Giris
+                FROM DerinSISBkm.bkm.MusteriSayi
+                WHERE MekanId = 1 AND Tarih >= @bas AND Tarih < @bit
+                GROUP BY CAST(Tarih AS date)
+            ), F AS (
+                SELECT CAST(s.Date AS date) AS T,
+                    SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
+                    CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END
+                             * (s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Ciro
+                FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+                {FsmJoin}
+                WHERE {FsmWhere} AND s.Date >= @bas AND s.Date < @bit
+                GROUP BY CAST(s.Date AS date)
+            )
+            SELECT G.T AS Tarih, G.Giris, ISNULL(F.Fis, 0) AS Fis, ISNULL(F.Ciro, 0) AS Ciro
+            FROM G LEFT JOIN F ON F.T = G.T
+            ORDER BY G.T
+            """, new { bas, bit })).ToList();
+    }
 }
