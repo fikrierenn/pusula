@@ -45,6 +45,32 @@ export function bar(id, labels, data, horizontal) {
     });
 }
 
+// Sezon-renkli dikey bar: labels 'YYYY-MM'; sezMonths ['08','09','10'] gibi → o aylar warning, diğerleri primary.
+export function barSez(id, labels, data, sezMonths) {
+    const arr = Array.from(data);
+    const tot = arr.reduce((a, b) => a + (b > 0 ? b : 0), 0);
+    const pct = v => tot > 0 ? Math.round(100 * v / tot) : 0;
+    const SEZ = dv('--wa') || '#f59e0b';
+    const sez = new Set(Array.from(sezMonths));
+    const colors = Array.from(labels).map(l => sez.has(String(l).slice(5)) ? SEZ : KP);
+    draw(id, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            layout: { padding: { top: 22 } },
+            plugins: {
+                legend: { display: false },
+                datalabels: { anchor: 'end', align: 'end', color: '#475569', font: { size: 9, weight: 600 }, clamp: true,
+                    formatter: v => v > 0 ? fmtK(v) : '' },
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.raw).toLocaleString('tr-TR')} (%${pct(c.raw)})${sez.has(String(c.label).slice(5)) ? ' · sezon' : ''}` } }
+            },
+            scales: { y: { ticks: { callback: v => v >= 1e6 ? fmtM(v) : v } } }
+        }
+    });
+}
+
 export function donut(id, labels, data) {
     const tot = Array.from(data).reduce((a, b) => a + b, 0);
     draw(id, {

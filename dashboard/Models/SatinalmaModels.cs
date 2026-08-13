@@ -62,6 +62,7 @@ public sealed class SatinalmaUrunOzet
     public string Marka { get; set; } = "";
     public int SubeStok { get; set; }
     public int DepoStok { get; set; }
+    public string? ResimUrl { get; set; }   // bkmkitap CDN (ent.tsoft_urun.ImageUrl); yoksa null
     public int ToplamStok => SubeStok + DepoStok;
 }
 

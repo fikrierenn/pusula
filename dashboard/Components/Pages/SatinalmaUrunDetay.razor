@@ -3,43 +3,62 @@
 @using GmDashboard.Models
 @using System.Globalization
 @inject SatinalmaQueries Satinalma
+@inject IJSRuntime JS
 @inject ILogger<SatinalmaUrunDetay> Logger
 @rendermode InteractiveServer
 
 <PageTitle>@(_ozet?.UrunAd ?? "Ürün") — Alım Detayı</PageTitle>
 
 <div class="mb-3">
-    <a href="/satinalma/analiz" class="text-xs link link-primary">← Alım Analizi</a>
+    <a href="/satinalma/analiz" class="text-xs link link-hover text-base-content/60 inline-flex items-center gap-1"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Alım Analizi</a>
 </div>
 
 @if (_loading)
 {
-    <div class="text-base-content/40 text-sm flex items-center gap-2 py-8"><span class="loading loading-spinner loading-sm"></span> Yükleniyor…</div>
+    <div class="flex items-center gap-3 py-10 text-base-content/50 text-sm"><span class="loading loading-spinner loading-md"></span> Yükleniyor…</div>
 }
 else if (_error is not null)
 {
-    <div class="alert alert-error text-sm"><span>@_error</span></div>
+    <div class="alert alert-error text-sm"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>@_error</span></div>
 }
 else if (_ozet is null)
 {
-    <div class="text-base-content/50 text-sm py-8">Ürün bulunamadı (kod @StkId).</div>
+    <div class="text-base-content/50 text-sm py-10">Ürün bulunamadı (kod @StkId).</div>
 }
 else
 {
-    @* ── Başlık + stok ── *@
-    <div class="mb-4">
-        <div class="text-xs text-base-content/50">@_ozet.Kategori · @_ozet.Marka · kod @_ozet.UrunKodu</div>
-        <h1 class="text-2xl font-bold tracking-tight m-0">@_ozet.UrunAd</h1>
+    @* ── Başlık (resim + ad) ── *@
+    <div class="mb-4 flex items-center gap-4">
+        @if (!string.IsNullOrEmpty(_ozet.ResimUrl))
+        {
+            <img src="@_ozet.ResimUrl" alt="@_ozet.UrunAd" loading="lazy" referrerpolicy="no-referrer"
+                 class="w-20 h-20 rounded-lg object-contain border border-base-300 bg-base-100 shrink-0"
+                 onerror="this.style.display='none'" />
+        }
+        <div class="min-w-0">
+            <div class="flex items-center gap-2 text-xs mb-1">
+                <span class="badge badge-sm badge-ghost">@_ozet.Kategori</span>
+                <span class="badge badge-sm badge-ghost">@_ozet.Marka</span>
+                <span class="text-base-content/40">kod @_ozet.UrunKodu</span>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight m-0">@_ozet.UrunAd</h1>
+        </div>
     </div>
-    <div class="flex flex-wrap gap-2 mb-5">
-        <div class="stat bg-base-100 border border-base-300 rounded-lg py-2 px-4 min-w-32">
-            <div class="stat-title text-xs">Şube Stok</div><div class="stat-value text-xl">@Num(_ozet.SubeStok)</div>
+
+    @* ── TEŞHİS kartı (durum + tükenme) ── *@
+    <div class="rounded-xl border @TeshisKenar p-4 mb-5">
+        <div class="flex items-start gap-3">
+            <div class="rounded-lg @TeshisIkonBg p-2.5 shrink-0"><i data-lucide="@TeshisIkon" class="w-6 h-6"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-lg @TeshisText leading-tight">@TeshisBaslik</div>
+                <div class="text-sm text-base-content/70 mt-0.5">@TeshisYorum</div>
+            </div>
         </div>
-        <div class="stat bg-base-100 border border-base-300 rounded-lg py-2 px-4 min-w-32">
-            <div class="stat-title text-xs">Depo (WMS)</div><div class="stat-value text-xl">@Num(_ozet.DepoStok)</div>
-        </div>
-        <div class="stat bg-base-100 border border-primary/30 rounded-lg py-2 px-4 min-w-32">
-            <div class="stat-title text-xs">Toplam</div><div class="stat-value text-xl text-primary">@Num(_ozet.ToplamStok)</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+            <div><div class="text-xs text-base-content/50">Eldeki Stok</div><div class="text-lg font-bold">@Num(_ozet.ToplamStok)</div><div class="text-[11px] text-base-content/40">şube @Num(_ozet.SubeStok) · depo @Num(_ozet.DepoStok)</div></div>
+            <div><div class="text-xs text-base-content/50">Son 12 Ay Satış</div><div class="text-lg font-bold">@Num(_son12)</div><div class="text-[11px] text-base-content/40">ayda ~@Num(_aylikOrt) adet</div></div>
+            <div><div class="text-xs text-base-content/50">Kaç Ayda Tükenir</div><div class="text-lg font-bold @TeshisText">@(_tukenmeAy is null ? "—" : _tukenmeAy >= 999 ? "hiç" : _tukenmeAy.Value.ToString("0.0", _tr))</div><div class="text-[11px] text-base-content/40">bu hızla</div></div>
+            <div><div class="text-xs text-base-content/50">Son Alış Birim</div><div class="text-lg font-bold">@(_fatura.Count > 0 ? Tl(_fatura[0].Birim) : "—")</div><div class="text-[11px] text-base-content/40">@(_fatura.Count > 0 ? _fatura[0].Tedarikci : "")</div></div>
         </div>
     </div>
 
@@ -49,7 +68,7 @@ else
             <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="receipt-text" class="w-4 h-4 text-primary"></i>Alış Faturaları <span class="text-xs text-base-content/50 font-normal">(son @_fatura.Count)</span></h2>
             @if (_fatura.Count == 0)
             {
-                <div class="text-base-content/50 text-sm py-4">Alış faturası yok.</div>
+                <div class="text-base-content/50 text-sm py-4 border border-base-300 rounded-lg text-center">Alış faturası yok.</div>
             }
             else
             {
@@ -61,8 +80,8 @@ else
                         {
                             <tr class="hover">
                                 <td class="whitespace-nowrap text-xs">@f.Tarih.ToString("dd.MM.yy")</td>
-                                <td class="text-xs">@f.BelgeNo</td>
-                                <td class="max-w-[160px] truncate text-xs" title="@f.Tedarikci">@f.Tedarikci</td>
+                                <td class="text-xs text-base-content/60">@f.BelgeNo</td>
+                                <td class="max-w-[150px] truncate text-xs" title="@f.Tedarikci">@f.Tedarikci</td>
                                 <td class="text-right tabular-nums">@Num(f.Adet)</td>
                                 <td class="text-right tabular-nums">@Tl(f.Tutar)</td>
                                 <td class="text-right tabular-nums font-semibold">@Tl(f.Birim)</td>
@@ -74,26 +93,35 @@ else
             }
         </div>
 
-        @* ── Aylık satış (şube + e-tic) ── *@
+        @* ── Aylık satış grafiği + tablo ── *@
         <div>
-            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="trending-up" class="w-4 h-4 text-info"></i>Aylık Satış <span class="text-xs text-base-content/50 font-normal">(son 24 ay · şube + e-ticaret)</span></h2>
-            <div class="overflow-x-auto border border-base-300 rounded-lg">
-                <table class="table table-xs">
-                    <thead><tr><th>Ay</th><th class="text-right">Şube</th><th class="text-right">E-tic</th><th class="text-right">Toplam</th><th class="w-32"></th></tr></thead>
-                    <tbody>
-                    @foreach (var a in _satis)
-                    {
-                        <tr class="hover @(a.Toplam == 0 ? "opacity-40" : "")">
-                            <td class="whitespace-nowrap text-xs">@a.Ay</td>
-                            <td class="text-right tabular-nums">@Num(a.Sube)</td>
-                            <td class="text-right tabular-nums text-info">@Num(a.Etic)</td>
-                            <td class="text-right tabular-nums font-semibold">@Num(a.Toplam)</td>
-                            <td><div class="bg-primary/70 h-2 rounded" style="width:@(Bar(a.Toplam))%"></div></td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="bar-chart-3" class="w-4 h-4 text-info"></i>Aylık Satış <span class="text-xs text-base-content/50 font-normal">(son 24 ay · şube + e-tic)</span></h2>
+            <div class="border border-base-300 rounded-lg p-3 mb-2">
+                <div style="height:200px"><canvas id="satisChart"></canvas></div>
+                <div class="flex items-center gap-3 text-[11px] text-base-content/50 mt-1.5 justify-center">
+                    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>normal ay</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-warning"></span>okul sezonu (Ağu–Eki)</span>
+                </div>
             </div>
+            <details class="border border-base-300 rounded-lg">
+                <summary class="text-xs text-base-content/60 px-3 py-1.5 cursor-pointer select-none">Aylık döküm (tablo)</summary>
+                <div class="overflow-x-auto">
+                    <table class="table table-xs">
+                        <thead><tr><th>Ay</th><th class="text-right">Şube</th><th class="text-right">E-tic</th><th class="text-right">Toplam</th></tr></thead>
+                        <tbody>
+                        @foreach (var a in _satis)
+                        {
+                            <tr class="hover @(a.Toplam == 0 ? "opacity-40" : "")">
+                                <td class="whitespace-nowrap text-xs">@a.Ay</td>
+                                <td class="text-right tabular-nums">@Num(a.Sube)</td>
+                                <td class="text-right tabular-nums text-info">@Num(a.Etic)</td>
+                                <td class="text-right tabular-nums font-semibold">@Num(a.Toplam)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
         </div>
     </div>
 }
@@ -107,7 +135,12 @@ else
     SatinalmaUrunOzet? _ozet;
     List<SatinalmaFaturaSatir> _fatura = new();
     List<SatinalmaAySatis> _satis = new();
-    int _maxSatis = 1;
+
+    // Teşhis (detayın kendi verisinden — son 12 ay satış + eldeki stok)
+    int _son12, _aylikOrt;
+    decimal? _tukenmeAy;
+    enum Durum { Atil, Fazla, Izle, Saglikli, Yeni }
+    Durum _durum;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -121,7 +154,7 @@ else
             _ozet = await tOzet;
             _fatura = (await tFat).ToList();
             _satis = (await tSat).ToList();
-            _maxSatis = Math.Max(1, _satis.Count > 0 ? _satis.Max(s => s.Toplam) : 1);
+            HesaplaTeshis();
         }
         catch (Exception ex)
         {
@@ -131,7 +164,56 @@ else
         finally { _loading = false; StateHasChanged(); }
     }
 
-    int Bar(int adet) => (int)Math.Round(100.0 * adet / _maxSatis);
+    void HesaplaTeshis()
+    {
+        // Son 12 ay = _satis listesinin son 12 ayı (kronolojik sıralı).
+        _son12 = _satis.TakeLast(12).Sum(s => s.Toplam);
+        _aylikOrt = (int)Math.Round(_son12 / 12.0);
+        var stok = _ozet?.ToplamStok ?? 0;
+        _tukenmeAy = _son12 > 0 ? Math.Round(stok / (_son12 / 12.0m), 1) : (stok > 0 ? 999m : null);
+
+        var ilkSatisVar = _satis.Any(s => s.Toplam > 0);
+        if (!ilkSatisVar && stok == 0) _durum = Durum.Yeni;             // hiç hareket
+        else if (_son12 == 0 && stok > 0) _durum = Durum.Atil;         // stok var, 12 ay satış yok
+        else if (_tukenmeAy >= 12) _durum = Durum.Fazla;               // 12+ ay yeter
+        else if (_tukenmeAy >= 6) _durum = Durum.Izle;
+        else _durum = Durum.Saglikli;
+    }
+
+    string TeshisBaslik => _durum switch
+    {
+        Durum.Atil => "ATIL STOK — 12 aydır satış yok",
+        Durum.Fazla => "FAZLA STOK ŞÜPHESİ",
+        Durum.Izle => "İZLENMELİ",
+        Durum.Saglikli => "SAĞLIKLI DEVİR",
+        _ => "YENİ / VERİ YOK",
+    };
+    string TeshisYorum => _durum switch
+    {
+        Durum.Atil => $"Elde {Num(_ozet?.ToplamStok ?? 0)} adet var ama son 12 ayda hiç satmamış. Yeni alım gözden geçirilmeli.",
+        Durum.Fazla => $"Eldeki {Num(_ozet?.ToplamStok ?? 0)} adet, ayda ~{Num(_aylikOrt)} satış hızıyla {(_tukenmeAy >= 999 ? "pratikte tükenmez" : $"~{_tukenmeAy?.ToString("0", _tr)} ayda erir")}. İhtiyaçtan fazla olabilir.",
+        Durum.Izle => $"Eldeki stok ~{_tukenmeAy?.ToString("0", _tr)} ayda erir — sınırda, izlemek yeterli.",
+        Durum.Saglikli => $"Eldeki stok ~{_tukenmeAy?.ToString("0", _tr)} ayda erir. Devir sağlıklı.",
+        _ => "Yeterli satış/hareket geçmişi yok — hüküm için erken.",
+    };
+    string TeshisText => _durum switch { Durum.Atil or Durum.Fazla => "text-error", Durum.Izle => "text-warning", Durum.Saglikli => "text-success", _ => "text-base-content/60" };
+    string TeshisKenar => _durum switch { Durum.Atil or Durum.Fazla => "border-error/40 bg-error/5", Durum.Izle => "border-warning/40 bg-warning/5", Durum.Saglikli => "border-success/40 bg-success/5", _ => "border-base-300" };
+    string TeshisIkonBg => _durum switch { Durum.Atil or Durum.Fazla => "bg-error/10 text-error", Durum.Izle => "bg-warning/10 text-warning", Durum.Saglikli => "bg-success/10 text-success", _ => "bg-base-200 text-base-content/50" };
+    string TeshisIkon => _durum switch { Durum.Atil => "skull", Durum.Fazla => "alert-triangle", Durum.Izle => "eye", Durum.Saglikli => "check-circle", _ => "help-circle" };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loading || _satis.Count == 0) return;
+        try
+        {
+            var charts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await charts.InvokeVoidAsync("barSez", "satisChart",
+                _satis.Select(s => s.Ay).ToArray(), _satis.Select(s => s.Toplam).ToArray(),
+                new[] { "08", "09", "10" });   // okul sezonu ayrı renk (warning)
+        }
+        catch { /* prerender / import başarısız → tablo yeter */ }
+    }
+
     static string Num(int n) => n.ToString("#,##0", _tr);
     static string Tl(decimal d) => d.ToString("#,##0.##", _tr) + " ₺";
 }

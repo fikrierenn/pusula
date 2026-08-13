@@ -16,7 +16,9 @@ public sealed partial class SatinalmaQueries
         const string sql = """
             SELECT u.stkID AS UrunKodu, u.stkAd AS UrunAd, u.Kategori3 AS Kategori, u.mrkAd AS Marka,
               ISNULL((SELECT SUM(stok) FROM DerinSISBkm.dbo.stokSon_vw WHERE ehstkID=@id AND ehMekan IN (1,4477,4478)),0) AS SubeStok,
-              ISNULL((SELECT SUM(Stok) FROM DerinSISBkm.depo.stok_adres_palet_vw WHERE stkID=@id AND adrsAlanTipID IN (0,1)),0) AS DepoStok
+              ISNULL((SELECT SUM(Stok) FROM DerinSISBkm.depo.stok_adres_palet_vw WHERE stkID=@id AND adrsAlanTipID IN (0,1)),0) AS DepoStok,
+              (SELECT TOP 1 'https://cdn.bkmkitap.com/'+ts.ImageUrl FROM DerinSISBkm.ent.tsoft_urun ts
+                 WHERE ts.stkid=@id AND ts.ImageUrl IS NOT NULL AND ts.ImageUrl<>'') AS ResimUrl
             FROM DerinSISBkm.bkm.UrunBilgi u WHERE u.stkID=@id;
             """;
         await using var c = await db.OpenAsync();
