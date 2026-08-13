@@ -1,0 +1,137 @@
+@page "/satinalma/urun/{StkId:int}"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@using System.Globalization
+@inject SatinalmaQueries Satinalma
+@inject ILogger<SatinalmaUrunDetay> Logger
+@rendermode InteractiveServer
+
+<PageTitle>@(_ozet?.UrunAd ?? "Ürün") — Alım Detayı</PageTitle>
+
+<div class="mb-3">
+    <a href="/satinalma/analiz" class="text-xs link link-primary">← Alım Analizi</a>
+</div>
+
+@if (_loading)
+{
+    <div class="text-base-content/40 text-sm flex items-center gap-2 py-8"><span class="loading loading-spinner loading-sm"></span> Yükleniyor…</div>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-error text-sm"><span>@_error</span></div>
+}
+else if (_ozet is null)
+{
+    <div class="text-base-content/50 text-sm py-8">Ürün bulunamadı (kod @StkId).</div>
+}
+else
+{
+    @* ── Başlık + stok ── *@
+    <div class="mb-4">
+        <div class="text-xs text-base-content/50">@_ozet.Kategori · @_ozet.Marka · kod @_ozet.UrunKodu</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0">@_ozet.UrunAd</h1>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-5">
+        <div class="stat bg-base-100 border border-base-300 rounded-lg py-2 px-4 min-w-32">
+            <div class="stat-title text-xs">Şube Stok</div><div class="stat-value text-xl">@Num(_ozet.SubeStok)</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-300 rounded-lg py-2 px-4 min-w-32">
+            <div class="stat-title text-xs">Depo (WMS)</div><div class="stat-value text-xl">@Num(_ozet.DepoStok)</div>
+        </div>
+        <div class="stat bg-base-100 border border-primary/30 rounded-lg py-2 px-4 min-w-32">
+            <div class="stat-title text-xs">Toplam</div><div class="stat-value text-xl text-primary">@Num(_ozet.ToplamStok)</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        @* ── Alış faturaları ── *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="receipt-text" class="w-4 h-4 text-primary"></i>Alış Faturaları <span class="text-xs text-base-content/50 font-normal">(son @_fatura.Count)</span></h2>
+            @if (_fatura.Count == 0)
+            {
+                <div class="text-base-content/50 text-sm py-4">Alış faturası yok.</div>
+            }
+            else
+            {
+                <div class="overflow-x-auto border border-base-300 rounded-lg">
+                    <table class="table table-xs">
+                        <thead><tr><th>Tarih</th><th>Belge</th><th>Tedarikçi</th><th class="text-right">Adet</th><th class="text-right">Tutar ₺</th><th class="text-right">Birim ₺</th></tr></thead>
+                        <tbody>
+                        @foreach (var f in _fatura)
+                        {
+                            <tr class="hover">
+                                <td class="whitespace-nowrap text-xs">@f.Tarih.ToString("dd.MM.yy")</td>
+                                <td class="text-xs">@f.BelgeNo</td>
+                                <td class="max-w-[160px] truncate text-xs" title="@f.Tedarikci">@f.Tedarikci</td>
+                                <td class="text-right tabular-nums">@Num(f.Adet)</td>
+                                <td class="text-right tabular-nums">@Tl(f.Tutar)</td>
+                                <td class="text-right tabular-nums font-semibold">@Tl(f.Birim)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        @* ── Aylık satış (şube + e-tic) ── *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="trending-up" class="w-4 h-4 text-info"></i>Aylık Satış <span class="text-xs text-base-content/50 font-normal">(son 24 ay · şube + e-ticaret)</span></h2>
+            <div class="overflow-x-auto border border-base-300 rounded-lg">
+                <table class="table table-xs">
+                    <thead><tr><th>Ay</th><th class="text-right">Şube</th><th class="text-right">E-tic</th><th class="text-right">Toplam</th><th class="w-32"></th></tr></thead>
+                    <tbody>
+                    @foreach (var a in _satis)
+                    {
+                        <tr class="hover @(a.Toplam == 0 ? "opacity-40" : "")">
+                            <td class="whitespace-nowrap text-xs">@a.Ay</td>
+                            <td class="text-right tabular-nums">@Num(a.Sube)</td>
+                            <td class="text-right tabular-nums text-info">@Num(a.Etic)</td>
+                            <td class="text-right tabular-nums font-semibold">@Num(a.Toplam)</td>
+                            <td><div class="bg-primary/70 h-2 rounded" style="width:@(Bar(a.Toplam))%"></div></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int StkId { get; set; }
+
+    static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+    bool _loading = true;
+    string? _error;
+    SatinalmaUrunOzet? _ozet;
+    List<SatinalmaFaturaSatir> _fatura = new();
+    List<SatinalmaAySatis> _satis = new();
+    int _maxSatis = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var tOzet = Satinalma.GetUrunOzetAsync(StkId);
+            var tFat = Satinalma.GetFaturaDetayAsync(StkId);
+            var tSat = Satinalma.GetAySatisAsync(StkId);
+            await Task.WhenAll(tOzet, tFat, tSat);
+            _ozet = await tOzet;
+            _fatura = (await tFat).ToList();
+            _satis = (await tSat).ToList();
+            _maxSatis = Math.Max(1, _satis.Count > 0 ? _satis.Max(s => s.Toplam) : 1);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Ürün alım detayı yüklenemedi (stkID {Id})", StkId);
+            _error = "Detay yüklenemedi. Lütfen tekrar deneyin.";
+        }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    int Bar(int adet) => (int)Math.Round(100.0 * adet / _maxSatis);
+    static string Num(int n) => n.ToString("#,##0", _tr);
+    static string Tl(decimal d) => d.ToString("#,##0.##", _tr) + " ₺";
+}

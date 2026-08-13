@@ -25,6 +25,7 @@ public static class ServiceRegistration
         s.AddScoped<OdakQueries>();       // B-122 ODAK stok-satış + usulsüz sipariş
         s.AddScoped<FinansQueries>();     // B-124 cari bakiye / risk özeti
         s.AddScoped<TrafikQueries>();    // B-127 FSM trafik & kasiyer analizi
+        s.AddScoped<SatinalmaQueries>(); // plan-32 satınalma raporları (hesap-sorma; DINAMIK emitter)
         s.AddSingleton<SabahService>();   // MIMBAL sabah brifingi (G1+E8)
         return s;
     }
