@@ -146,20 +146,32 @@ else
         </label>
     </div>
 
+    @* ── Yöntem (nasıl okunur) ── *@
+    <details class="border border-base-300 rounded-lg mb-2 text-sm">
+        <summary class="px-3 py-1.5 cursor-pointer select-none text-base-content/70 flex items-center gap-1.5"><i data-lucide="help-circle" class="w-4 h-4"></i>Nasıl okunur? · yöntem</summary>
+        <div class="px-4 py-2 text-xs text-base-content/70 space-y-1 border-t border-base-300">
+            <div><b>FAZLA</b> = ay-sonu stok, önümüzdeki sezon (geçen yıl aynı dönem × büyüme) dahil <b>12 aydan uzun</b> sürede erir → ihtiyaçtan çok alım.</div>
+            <div><b>Sezonluk bağlı para</b> = (Ay Sonu − Bu Sezon Beklenen) × Birim = sezon sonrası donmuş sermaye. Tolerans altındakiler "düşük öncelik" ayrılır (linear değil → sezonsal ürün şişmez).</div>
+            <div><b>Değerlendirme:</b> <span class="text-error">FAZLA / ÖLÜ-ALIM</span> (kritik) · <span class="text-warning">YENİDEN-STOK / İZLE / UZUN-KUYRUK / KÜÇÜK-ALIM</span> (izle) · <span class="text-success">AZ ALMIŞ / NORMAL</span> (sağlıklı) · GENÇ (hüküm için erken).</div>
+            <div><b>Tükenir</b> = sezon+büyüme ile ileri yürütme (ANA KARAR); "basit" (Son12÷12) sezonu görmez. Büyüme taban≥100 ürün-YoY, ince ise kategori sezon oranı.</div>
+            <div class="text-base-content/50">Kapsam: Hediyelik/Kırtasiye/Oyuncak · alış = irsHrk ehTip 0/10 · ay-sonu anlık fiziki (şube+depo) · <b>e-ticaret hariç</b> (şube satış).</div>
+        </div>
+    </details>
+
     @* ── Tablo (sıralanabilir, tıklanabilir satır) ── *@
     <div class="overflow-x-auto border border-base-300 rounded-lg">
         <table class="table table-xs table-pin-rows">
             <thead>
                 <tr>
                     <th>Ürün</th><th>Kategori</th><th>Marka</th>
-                    @Th("AlisAdet", "Alınan")
-                    @Th("BirimMaliyet", "Birim ₺")
-                    @Th("AySonu", "Ay Sonu")
-                    @Th("Son12", "Son12")
-                    @Th("Buyume", "Büyüme")
-                    @Th("TukAy", "Tükenir")
-                    @Th("BagliPara", "Bağlı ₺")
-                    <th>Değerlendirme</th>
+                    @Th("AlisAdet", "Alınan", "Bu ay alınan adet (irsHrk alış — ehTip 0/10). Bu Ay Alınan, Son12'nin kaç katı = kaç yıllık aldın.")
+                    @Th("BirimMaliyet", "Birim ₺", "Son alış faturası birim maliyeti (fatura-bazında SUM tutar/SUM adet — bedava satırlar dahil).")
+                    @Th("AySonu", "Ay Sonu", "Ay sonu fiziki stok = şube (stokSon) + depo (WMS).")
+                    @Th("Son12", "Son12", "Son 12 ay satış adedi (şube). Ana talep göstergesi.")
+                    @Th("Buyume", "Büyüme", "Yıllık büyüme = Son12 ÷ Önceki12 (taban≥100 ürün YoY; ince ise kategori sezon oranı). >1 büyüyor, <1 düşüyor.")
+                    @Th("TukAy", "Tükenir", "ANA KARAR: eldeki stok kaç ayda biter — geçen yılın aylık deseni × büyüme ile ileri yürütülür (sezon+büyüme dahil). >12 ay = FAZLA şüphesi. boş/hiç = tükenmez.")
+                    @Th("BagliPara", "Bağlı ₺", "Fazla stokta donmuş sermaye (SEZONLUK) = (Ay Sonu − Bu Sezon Beklenen) × Birim. Sezon-sonrası kalan; linear değil.")
+                    <th title="Sonuç etiketi. FAZLA=ihtiyaçtan çok · ÖLÜ-ALIM=stok vardı satmadı · AZ ALMIŞ=sezon eritir/stockout · İZLE=sınırda/veri-yok · YENİDEN-STOK=restok · GENÇ=erken.">Değerlendirme</th>
                 </tr>
             </thead>
             <tbody>
@@ -285,12 +297,13 @@ else
         }
     }
 
-    RenderFragment Th(string key, string label) => builder =>
+    RenderFragment Th(string key, string label, string? tip = null) => builder =>
     {
         builder.OpenElement(0, "th");
-        builder.AddAttribute(1, "class", "text-right cursor-pointer select-none hover:text-primary transition-colors whitespace-nowrap");
+        builder.AddAttribute(1, "class", "text-right cursor-help select-none hover:text-primary transition-colors whitespace-nowrap");
         builder.AddAttribute(2, "onclick", EventCallback.Factory.Create(this, () => Sort(key)));
-        builder.AddContent(3, label + (_sortKey == key ? (_sortAsc ? " ▲" : " ▼") : ""));
+        if (tip is not null) builder.AddAttribute(3, "title", tip);
+        builder.AddContent(4, label + (_sortKey == key ? (_sortAsc ? " ▲" : " ▼") : ""));
         builder.CloseElement();
     };
 
