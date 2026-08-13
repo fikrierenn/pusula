@@ -53,6 +53,13 @@ bridges:
     confidence: 1.0
     note: "Fatura → tedarikçi/cari firma adı (frm.frmAd). Alış faturasında (eTip=0) eFirma=tedarikçi. irs-firma ile aynı desen (evrak→frm). Satınalma ürün-detay drill (dashboard SatinalmaQueries.UrunDetay) bunu kullanır. Belge no = fat.eNo."
     last_verified: "2026-08-13"
+  - id: tsoft-urun-resim
+    from: ent.tsoft_urun.stkid
+    to: urn.stkID
+    scope: derinsis
+    confidence: 1.0
+    note: "E-ticaret (T-Soft) ürün görseli: ent.tsoft_urun.stkid=urn.stkID; ImageUrl=dosya adı → tam URL 'https://cdn.bkmkitap.com/'+ImageUrl (250px K variant; büyük=-B.jpg). CDN HOTLINK korumalı → <img referrerpolicy=no-referrer> gerekli (referer'lı istek placeholder döner). Satınalma ürün-detay görseli bunu kullanır. ent.tsoft_urun_vw de aynı ImageUrl."
+    last_verified: "2026-08-13"
   - id: irs-firma
     from: dbo.irs.eFirma
     to: dbo.frm.frmID
