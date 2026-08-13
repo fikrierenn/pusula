@@ -12,7 +12,8 @@
 
 <PageTitle>Müşteri — BKM GM</PageTitle>
 <div class="flex items-center gap-3 mb-5 flex-wrap"><h1 class="text-2xl font-bold tracking-tight m-0">Müşteri Segmenti (RFM)</h1>
-    <span class="text-sm font-semibold text-base-content/50">son 365 gün · @_dun.ToString("dd.MM.yyyy") itibarıyla</span>
+    <span class="text-sm font-semibold text-base-content/50">son 365 gün · itibar tarihi</span>
+    <input type="date" class="input input-bordered input-sm text-sm font-semibold w-40" @bind="_itibar" @bind:after="AnchorDegisti" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
     <span class="badge badge-primary badge-sm gap-1 font-semibold"><i data-lucide="receipt" class="w-3.5 h-3.5"></i>Fiş bazlı (perakende · Fatura/Sınav hariç)</span></div>
 
 @if (_loading)
@@ -330,6 +331,7 @@ else
     private IReadOnlyList<RfmSegment> _yk = [];
     private IReadOnlyList<RfmSegment> _et = [];
     private DateOnly _dun;
+    private DateTime _itibar = DateTime.Today.AddDays(-1);   // RFM anchor (itibar tarihi)
     private MusteriStat? _stat;
 
     // R-1: kazanım drill (ay seçimi)
@@ -403,6 +405,22 @@ else
             _loading = false; StateHasChanged();
             return;
         }
+        await LoadAsync();
+    }
+
+    // İtibar tarihi (RFM anchor) değişti → tüm panoyu yeniden yükle.
+    private async Task AnchorDegisti()
+    {
+        var yeni = DateOnly.FromDateTime(_itibar);
+        if (yeni == _dun) return;
+        if (yeni > DateOnly.FromDateTime(DateTime.Today)) { yeni = DateOnly.FromDateTime(DateTime.Today); _itibar = DateTime.Today; }
+        _dun = yeni;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
         var sw = PerfState.Start();
         try
         {
