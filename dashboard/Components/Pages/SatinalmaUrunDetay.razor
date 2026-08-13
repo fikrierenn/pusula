@@ -32,7 +32,8 @@ else
         @if (!string.IsNullOrEmpty(_ozet.ResimUrl))
         {
             <img src="@_ozet.ResimUrl" alt="@_ozet.UrunAd" loading="lazy" referrerpolicy="no-referrer"
-                 class="w-20 h-20 rounded-lg object-contain border border-base-300 bg-base-100 shrink-0"
+                 class="w-20 h-20 rounded-lg object-contain border border-base-300 bg-base-100 shrink-0 cursor-zoom-in hover:border-primary transition-colors"
+                 title="büyütmek için tıkla" @onclick="() => _resimAcik = true"
                  onerror="this.style.display='none'" />
         }
         <div class="min-w-0">
@@ -45,21 +46,25 @@ else
         </div>
     </div>
 
-    @* ── TEŞHİS kartı (durum + tükenme) ── *@
-    <div class="rounded-xl border @TeshisKenar p-4 mb-5">
+    @* ── TEŞHİS (KANONİK sezonlu model — Alım Analizi çekirdeği, naif ortalama DEĞİL) ── *@
+    <div class="rounded-xl border @Kenar p-4 mb-5">
         <div class="flex items-start gap-3">
-            <div class="rounded-lg @TeshisIkonBg p-2.5 shrink-0"><i data-lucide="@TeshisIkon" class="w-6 h-6"></i></div>
+            <div class="rounded-lg @IkonBg p-2.5 shrink-0"><i data-lucide="@Ikon" class="w-6 h-6"></i></div>
             <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg @TeshisText leading-tight">@TeshisBaslik</div>
-                <div class="text-sm text-base-content/70 mt-0.5">@TeshisYorum</div>
+                <div class="font-bold text-lg @Txt leading-tight">@(_analiz?.Degerlendirme ?? "Sezonlu model verisi yok")</div>
+                <div class="text-sm text-base-content/70 mt-0.5">@Yorum</div>
             </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-            <div><div class="text-xs text-base-content/50">Eldeki Stok</div><div class="text-lg font-bold">@Num(_ozet.ToplamStok)</div><div class="text-[11px] text-base-content/40">şube @Num(_ozet.SubeStok) · depo @Num(_ozet.DepoStok)</div></div>
-            <div><div class="text-xs text-base-content/50">Son 12 Ay Satış</div><div class="text-lg font-bold">@Num(_son12)</div><div class="text-[11px] text-base-content/40">ayda ~@Num(_aylikOrt) adet</div></div>
-            <div><div class="text-xs text-base-content/50">Kaç Ayda Tükenir</div><div class="text-lg font-bold @TeshisText">@(_tukenmeAy is null ? "—" : _tukenmeAy >= 999 ? "hiç" : _tukenmeAy.Value.ToString("0.0", _tr))</div><div class="text-[11px] text-base-content/40">bu hızla</div></div>
-            <div><div class="text-xs text-base-content/50">Son Alış Birim</div><div class="text-lg font-bold">@(_fatura.Count > 0 ? Tl(_fatura[0].Birim) : "—")</div><div class="text-[11px] text-base-content/40">@(_fatura.Count > 0 ? _fatura[0].Tedarikci : "")</div></div>
-        </div>
+        @if (_analiz is not null)
+        {
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
+                <div><div class="text-xs text-base-content/50">Eldeki Stok</div><div class="text-lg font-bold">@Num(_ozet.ToplamStok)</div><div class="text-[11px] text-base-content/40">şube @Num(_ozet.SubeStok)·depo @Num(_ozet.DepoStok)</div></div>
+                <div><div class="text-xs text-base-content/50">Son 12 Ay Satış</div><div class="text-lg font-bold">@Num(_analiz.Son12)</div><div class="text-[11px] text-base-content/40">büyüme ×@_analiz.Buyume.ToString("0.0", _tr)</div></div>
+                <div><div class="text-xs text-base-content/50">Geçen Sezon (Ağu-Eki)</div><div class="text-lg font-bold text-warning">@Num(_analiz.GySezon)</div><div class="text-[11px] text-base-content/40">okul dönemi</div></div>
+                <div><div class="text-xs text-base-content/50">Bu Sezon Beklenen</div><div class="text-lg font-bold">@Num(_analiz.BeklenenSezon)</div><div class="text-[11px] text-base-content/40">geçen sezon×büyüme</div></div>
+                <div><div class="text-xs text-base-content/50">Sezon Sonrası Kalan</div><div class="text-lg font-bold @(_analiz.SezonKalan > _analiz.GySezon ? "text-error" : _analiz.SezonKalan <= 0 ? "text-success" : "")">@Num(_analiz.SezonKalan)</div><div class="text-[11px] text-base-content/40">sezonlu tükenme @(_analiz.TukAy is null ? "—" : _analiz.TukAy >= 999 ? "hiç" : _analiz.TukAy.Value.ToString("0.0", _tr) + " ay")</div></div>
+            </div>
+        }
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -124,6 +129,16 @@ else
             </details>
         </div>
     </div>
+
+    @* ── Resim büyütme (lightbox) ── *@
+    @if (_resimAcik && !string.IsNullOrEmpty(_ozet.ResimUrl))
+    {
+        <div class="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-6 cursor-zoom-out" @onclick="() => _resimAcik = false">
+            <img src="@BuyukUrl" alt="@_ozet.UrunAd" referrerpolicy="no-referrer"
+                 class="max-h-[88vh] max-w-[88vw] rounded-lg bg-base-100 shadow-2xl"
+                 onerror="this.onerror=null;this.src='@_ozet.ResimUrl'" />
+        </div>
+    }
 }
 
 @code {
@@ -136,11 +151,9 @@ else
     List<SatinalmaFaturaSatir> _fatura = new();
     List<SatinalmaAySatis> _satis = new();
 
-    // Teşhis (detayın kendi verisinden — son 12 ay satış + eldeki stok)
-    int _son12, _aylikOrt;
-    decimal? _tukenmeAy;
-    enum Durum { Atil, Fazla, Izle, Saglikli, Yeni }
-    Durum _durum;
+    SatinalmaAnalizSatir? _analiz;   // KANONİK sezonlu model (tek-ürün, Alım Analizi çekirdeği)
+    bool _resimAcik;
+    string BuyukUrl => string.IsNullOrEmpty(_ozet?.ResimUrl) ? "" : _ozet!.ResimUrl.Replace("-K.jpg", "-B.jpg");
 
     protected override async Task OnParametersSetAsync()
     {
@@ -150,11 +163,12 @@ else
             var tOzet = Satinalma.GetUrunOzetAsync(StkId);
             var tFat = Satinalma.GetFaturaDetayAsync(StkId);
             var tSat = Satinalma.GetAySatisAsync(StkId);
-            await Task.WhenAll(tOzet, tFat, tSat);
+            var tAnaliz = Satinalma.GetUrunAnalizAsync(StkId);
+            await Task.WhenAll(tOzet, tFat, tSat, tAnaliz);
             _ozet = await tOzet;
             _fatura = (await tFat).ToList();
             _satis = (await tSat).ToList();
-            HesaplaTeshis();
+            _analiz = await tAnaliz;
         }
         catch (Exception ex)
         {
@@ -164,42 +178,51 @@ else
         finally { _loading = false; StateHasChanged(); }
     }
 
-    void HesaplaTeshis()
+    string Yorum
     {
-        // Son 12 ay = _satis listesinin son 12 ayı (kronolojik sıralı).
-        _son12 = _satis.TakeLast(12).Sum(s => s.Toplam);
-        _aylikOrt = (int)Math.Round(_son12 / 12.0);
-        var stok = _ozet?.ToplamStok ?? 0;
-        _tukenmeAy = _son12 > 0 ? Math.Round(stok / (_son12 / 12.0m), 1) : (stok > 0 ? 999m : null);
-
-        var ilkSatisVar = _satis.Any(s => s.Toplam > 0);
-        if (!ilkSatisVar && stok == 0) _durum = Durum.Yeni;             // hiç hareket
-        else if (_son12 == 0 && stok > 0) _durum = Durum.Atil;         // stok var, 12 ay satış yok
-        else if (_tukenmeAy >= 12) _durum = Durum.Fazla;               // 12+ ay yeter
-        else if (_tukenmeAy >= 6) _durum = Durum.Izle;
-        else _durum = Durum.Saglikli;
+        get
+        {
+            var a = _analiz;
+            if (a is null) return "Sezonlu model verisi hesaplanamadı.";
+            return a.Grup switch
+            {
+                "ÖLÜ-ALIM" => "Stok vardı ama son 12 ayda hiç satmadı — yine de alınmış. Alım kararı gözden geçirilmeli.",
+                "YENİDEN-STOK" => "Stoksuzdu (eski talep vardı), yeniden stoklanmış — ölü değil, izlemek yeterli.",
+                "GENÇ" => "Yeni ürün — tam bir yıllık/sezonluk geçmişi yok, hüküm için erken.",
+                "AZ ALMIŞ" or "TREND-HIZLI" => $"Geçen sezon (Ağu-Eki) {Num(a.GySezon)} sattı; bu sezon ~{Num(a.BeklenenSezon)} bekleniyor. Eldeki stok sezonu zor karşılar (sezon sonrası {Num(a.SezonKalan)}) — stockout riski, az alınmış.",
+                "FAZLA" => $"Geçen sezon {Num(a.GySezon)} sattı; büyümeyle bu sezon ~{Num(a.BeklenenSezon)} bekleniyor ama sezon sonrası hâlâ ~{Num(a.SezonKalan)} kalır — ihtiyaçtan fazla.",
+                _ => $"Geçen sezon (Ağu-Eki) {Num(a.GySezon)} sattı · büyüme ×{a.Buyume.ToString("0.0", _tr)} → bu sezon ~{Num(a.BeklenenSezon)} bekleniyor · sezon sonrası ~{Num(System.Math.Max(0, a.SezonKalan))} kalır.",
+            };
+        }
     }
 
-    string TeshisBaslik => _durum switch
+    string Txt => _analiz?.Grup switch
     {
-        Durum.Atil => "ATIL STOK — 12 aydır satış yok",
-        Durum.Fazla => "FAZLA STOK ŞÜPHESİ",
-        Durum.Izle => "İZLENMELİ",
-        Durum.Saglikli => "SAĞLIKLI DEVİR",
-        _ => "YENİ / VERİ YOK",
+        "FAZLA" or "ÖLÜ-ALIM" => "text-error",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "text-warning",
+        "AZ ALMIŞ" or "NORMAL" => "text-success",
+        _ => "text-base-content/60",
     };
-    string TeshisYorum => _durum switch
+    string Kenar => _analiz?.Grup switch
     {
-        Durum.Atil => $"Elde {Num(_ozet?.ToplamStok ?? 0)} adet var ama son 12 ayda hiç satmamış. Yeni alım gözden geçirilmeli.",
-        Durum.Fazla => $"Eldeki {Num(_ozet?.ToplamStok ?? 0)} adet, ayda ~{Num(_aylikOrt)} satış hızıyla {(_tukenmeAy >= 999 ? "pratikte tükenmez" : $"~{_tukenmeAy?.ToString("0", _tr)} ayda erir")}. İhtiyaçtan fazla olabilir.",
-        Durum.Izle => $"Eldeki stok ~{_tukenmeAy?.ToString("0", _tr)} ayda erir — sınırda, izlemek yeterli.",
-        Durum.Saglikli => $"Eldeki stok ~{_tukenmeAy?.ToString("0", _tr)} ayda erir. Devir sağlıklı.",
-        _ => "Yeterli satış/hareket geçmişi yok — hüküm için erken.",
+        "FAZLA" or "ÖLÜ-ALIM" => "border-error/40 bg-error/5",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "border-warning/40 bg-warning/5",
+        "AZ ALMIŞ" or "NORMAL" => "border-success/40 bg-success/5",
+        _ => "border-base-300",
     };
-    string TeshisText => _durum switch { Durum.Atil or Durum.Fazla => "text-error", Durum.Izle => "text-warning", Durum.Saglikli => "text-success", _ => "text-base-content/60" };
-    string TeshisKenar => _durum switch { Durum.Atil or Durum.Fazla => "border-error/40 bg-error/5", Durum.Izle => "border-warning/40 bg-warning/5", Durum.Saglikli => "border-success/40 bg-success/5", _ => "border-base-300" };
-    string TeshisIkonBg => _durum switch { Durum.Atil or Durum.Fazla => "bg-error/10 text-error", Durum.Izle => "bg-warning/10 text-warning", Durum.Saglikli => "bg-success/10 text-success", _ => "bg-base-200 text-base-content/50" };
-    string TeshisIkon => _durum switch { Durum.Atil => "skull", Durum.Fazla => "alert-triangle", Durum.Izle => "eye", Durum.Saglikli => "check-circle", _ => "help-circle" };
+    string IkonBg => _analiz?.Grup switch
+    {
+        "FAZLA" or "ÖLÜ-ALIM" => "bg-error/10 text-error",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "bg-warning/10 text-warning",
+        "AZ ALMIŞ" or "NORMAL" => "bg-success/10 text-success",
+        _ => "bg-base-200 text-base-content/50",
+    };
+    string Ikon => _analiz?.Grup switch
+    {
+        "FAZLA" => "alert-triangle", "ÖLÜ-ALIM" => "skull", "AZ ALMIŞ" => "trending-down",
+        "İZLE" => "eye", "YENİDEN-STOK" => "rotate-ccw", "NORMAL" => "check-circle", "GENÇ" => "sprout",
+        _ => "help-circle",
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

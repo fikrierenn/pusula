@@ -10,6 +10,24 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed partial class SatinalmaQueries
 {
+    /// <summary>
+    /// Tek ürün için KANONİK sezonlu analiz (Alım Analizi ile aynı çekirdek/SQL — gy_sezon, büyüme,
+    /// beklenen sezon, sezon-sonrası kalan, sezonlu tükenme, değerlendirme). Detay teşhisi bunu kullanır;
+    /// naif aylık-ortalama DEĞİL. #a tek ürüne daraltılır (alım-ayı filtresi kaldırılır). Son biten ay bağlamı.
+    /// </summary>
+    public async Task<SatinalmaAnalizSatir?> GetUrunAnalizAsync(int stkID)
+    {
+        var ay0 = new System.DateTime(System.DateTime.Today.Year, System.DateTime.Today.Month, 1)
+                        .AddMonths(-1).ToString("yyyyMMdd");
+        // AnalizSql'in #a tanımını tek-ürüne daralt (aylık alım filtresi yerine ürün-id). Model gerisi aynı → kanonik.
+        var sql = AnalizSql.Replace(
+            "WHERE h.ehTip IN (0,10) AND h.ehTrhS>=@AY0 AND h.ehTrhS<@AY1 AND h.ehAdetN>0",
+            "WHERE h.ehstkID=@STK AND h.ehTip IN (0,10)");
+        await using var c = await db.OpenAsync();
+        return await c.QueryFirstOrDefaultAsync<SatinalmaAnalizSatir>(
+            new CommandDefinition(sql, new { AY0 = ay0, STK = stkID }, commandTimeout: 60));
+    }
+
     /// <summary>Ürün başlığı + anlık şube/depo stok. Yoksa null (geçersiz stkID).</summary>
     public async Task<SatinalmaUrunOzet?> GetUrunOzetAsync(int stkID)
     {
