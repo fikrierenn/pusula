@@ -1,0 +1,337 @@
+@page "/satinalma/analiz"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@using System.Globalization
+@inject SatinalmaQueries Satinalma
+@inject NavigationManager Nav
+@inject ILogger<SatinalmaAnaliz> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Alım Analizi — BKM GM</PageTitle>
+
+<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <div class="text-xs text-base-content/50">Aylık alım kararları · Hediyelik / Kırtasiye / Oyuncak</div>
+        <h1 class="text-2xl font-bold tracking-tight m-0">Alım Analizi</h1>
+    </div>
+    <div class="flex items-center gap-2">
+        <select class="select select-bordered select-sm w-44" @bind="_ay0" @bind:after="Yukle" disabled="@_loading">
+            @foreach (var (deger, etiket) in _aylar)
+            {
+                <option value="@deger">@etiket</option>
+            }
+        </select>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="flex items-center gap-3 py-10 text-base-content/50 text-sm">
+        <span class="loading loading-spinner loading-md"></span>
+        <div>
+            <div class="font-medium text-base-content/70">Hesaplanıyor…</div>
+            <div class="text-xs">Stok + satış + tükenme modeli (~6 sn, sonra anlık)</div>
+        </div>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-error text-sm"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>@_error</span></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="text-base-content/50 text-sm py-10 text-center">Bu ay için alım kaydı yok.</div>
+}
+else
+{
+    @* ── İçgörü bandı ── *@
+    <div class="rounded-lg bg-base-200/60 border border-base-300 px-4 py-2.5 mb-4 text-sm flex items-center gap-2 flex-wrap">
+        <i data-lucide="lightbulb" class="w-4 h-4 text-warning shrink-0"></i>
+        <span>
+            <b>@Num(_rows.Count)</b> üründe <b>@Tl(_rows.Sum(r => (decimal)r.AlisTutar))</b> alım.
+            @if (Say("FAZLA") + Say("ÖLÜ-ALIM") > 0)
+            {
+                <span>Dikkat: <b class="text-error">@Num(Say("FAZLA")) fazla</b> (@Tl(_rows.Where(r => r.Grup == "FAZLA").Sum(r => (decimal)r.AlisTutar)) bağlı) · <b class="text-error">@Num(Say("ÖLÜ-ALIM")) ölü-alım</b>.</span>
+            }
+            else
+            {
+                <span class="text-success">Kritik fazla/ölü-alım yok.</span>
+            }
+        </span>
+    </div>
+
+    @* ── KPI kartları ── *@
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="rounded-xl bg-base-100 border border-base-300 p-3.5 flex items-start gap-3">
+            <div class="rounded-lg bg-primary/10 text-primary p-2 shrink-0"><i data-lucide="shopping-cart" class="w-5 h-5"></i></div>
+            <div class="min-w-0">
+                <div class="text-xs text-base-content/50">Toplam Alış</div>
+                <div class="text-xl font-bold leading-tight truncate">@Tl(_rows.Sum(r => (decimal)r.AlisTutar))</div>
+                <div class="text-[11px] text-base-content/50">@Num(_rows.Count) ürün</div>
+            </div>
+        </div>
+        <div class="rounded-xl bg-base-100 border border-error/30 p-3.5 flex items-start gap-3">
+            <div class="rounded-lg bg-error/10 text-error p-2 shrink-0"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
+            <div class="min-w-0">
+                <div class="text-xs text-base-content/50">Fazla Alım · Bağlı Para</div>
+                <div class="text-xl font-bold leading-tight text-error truncate">@Tl(_rows.Where(r => r.Grup == "FAZLA").Sum(r => (decimal)r.AlisTutar))</div>
+                <div class="text-[11px] text-base-content/50">@Num(Say("FAZLA")) üründe donmuş sermaye</div>
+            </div>
+        </div>
+        <div class="rounded-xl bg-base-100 border border-error/30 p-3.5 flex items-start gap-3">
+            <div class="rounded-lg bg-error/10 text-error p-2 shrink-0"><i data-lucide="skull" class="w-5 h-5"></i></div>
+            <div class="min-w-0">
+                <div class="text-xs text-base-content/50">Ölü-Alım</div>
+                <div class="text-xl font-bold leading-tight text-error">@Num(Say("ÖLÜ-ALIM"))</div>
+                <div class="text-[11px] text-base-content/50">stok vardı, 12 ay satmadı</div>
+            </div>
+        </div>
+        <div class="rounded-xl bg-base-100 border border-success/30 p-3.5 flex items-start gap-3">
+            <div class="rounded-lg bg-success/10 text-success p-2 shrink-0"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
+            <div class="min-w-0">
+                <div class="text-xs text-base-content/50">Sağlıklı Oran</div>
+                <div class="text-xl font-bold leading-tight text-success">%@SaglikPct</div>
+                <div class="text-[11px] text-base-content/50">fazla/ölü/izle dışı</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Sekme barı ── *@
+    <div role="tablist" class="tabs tabs-bordered w-full mb-3">
+        <a role="tab" class="tab flex-1 @(_tab == 0 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 0">Ürünler</a>
+        <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 1">Kategori Özeti</a>
+        <a role="tab" class="tab flex-1 @(_tab == 2 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 2">Marka / Tedarikçi</a>
+    </div>
+}
+
+@if (!_loading && _error is null && _rows.Count > 0 && _tab == 0)
+{
+    @* ── Filtre + arama ── *@
+    <div class="flex flex-wrap items-center gap-1.5 my-3">
+        @foreach (var g in _gruplar)
+        {
+            var aktif = _secili.Contains(g);
+            <button class="btn btn-xs gap-1 transition-colors @(aktif ? GrupBtn(g) : "btn-ghost border border-base-300 text-base-content/60")"
+                    @onclick="() => GrupTikla(g)">
+                <span class="w-1.5 h-1.5 rounded-full @GrupDot(g)"></span>@g
+                <span class="opacity-70 tabular-nums">@Say(g)</span>
+            </button>
+        }
+        <button class="btn btn-xs btn-ghost text-base-content/50" @onclick="TumunuTemizle" title="filtreyi temizle"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+        <label class="input input-bordered input-xs flex items-center gap-1.5 w-52 ml-auto">
+            <i data-lucide="search" class="w-3.5 h-3.5 opacity-50"></i>
+            <input class="grow" placeholder="ürün / marka ara…" @bind="_ara" @bind:event="oninput" />
+        </label>
+    </div>
+
+    <div class="text-xs text-base-content/50 mb-1.5">@Filtreli.Count() / @_rows.Count ürün · satıra tıkla → detay</div>
+
+    @* ── Tablo (sıralanabilir, tıklanabilir satır) ── *@
+    <div class="overflow-x-auto border border-base-300 rounded-lg">
+        <table class="table table-xs table-pin-rows">
+            <thead>
+                <tr>
+                    <th>Ürün</th><th>Kategori</th><th>Marka</th>
+                    @Th("AlisAdet", "Alınan")
+                    @Th("BirimMaliyet", "Birim ₺")
+                    @Th("AySonu", "Ay Sonu")
+                    @Th("Son12", "Son12")
+                    @Th("Buyume", "Büyüme")
+                    @Th("TukAy", "Tükenir")
+                    @Th("StokluAy", "Stoklu-ay")
+                    <th>Değerlendirme</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Filtreli)
+                {
+                    <tr class="hover cursor-pointer @SatirKenar(r.Grup)" @onclick="() => Git(r.UrunKodu)">
+                        <td class="max-w-[280px] truncate text-xs font-medium" title="@r.UrunAd">@r.UrunAd</td>
+                        <td class="text-xs text-base-content/70">@r.Kategori</td>
+                        <td class="max-w-[110px] truncate text-xs text-base-content/70" title="@r.Marka">@r.Marka</td>
+                        <td class="text-right tabular-nums">@Num(r.AlisAdet)</td>
+                        <td class="text-right tabular-nums">@Tl(r.BirimMaliyet)</td>
+                        <td class="text-right tabular-nums">@Num(r.AySonu)</td>
+                        <td class="text-right tabular-nums">@Num(r.Son12)</td>
+                        <td class="text-right tabular-nums @(r.Buyume < 0.7m ? "text-error" : r.Buyume >= 2 ? "text-success" : "")">@r.Buyume.ToString("0.0", _tr)</td>
+                        <td class="text-right tabular-nums">@(r.TukAy?.ToString("0.0", _tr) ?? "—")</td>
+                        <td class="text-right tabular-nums">@(r.StokluAy?.ToString() ?? "—")</td>
+                        <td class="text-xs font-semibold whitespace-nowrap @GrupText(r.Grup)">@r.Degerlendirme</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!_loading && _error is null && _rows.Count > 0 && _tab is 1 or 2)
+{
+    var ozet = _tab == 1 ? Ozet(r => r.Kategori) : Ozet(r => r.Marka, 50);
+    var baslik = _tab == 1 ? "Kategori" : "Marka";
+    @if (_tab == 2)
+    {
+        <div class="text-xs text-base-content/50 mb-1.5">En yüksek alışlı 50 marka</div>
+    }
+    <div class="overflow-x-auto border border-base-300 rounded-lg">
+        <table class="table table-sm table-pin-rows">
+            <thead>
+                <tr>
+                    <th>@baslik</th>
+                    <th class="text-right">Ürün</th>
+                    <th class="text-right">Alış ₺</th>
+                    <th class="text-right">🔴 Fazla</th>
+                    <th class="text-right">🔴 Ölü</th>
+                    <th class="text-right">Bağlı Para ₺</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in ozet)
+                {
+                    <tr class="hover">
+                        <td class="font-medium max-w-[240px] truncate" title="@o.Ad">@o.Ad</td>
+                        <td class="text-right tabular-nums">@Num(o.Urun)</td>
+                        <td class="text-right tabular-nums">@Tl(o.Alis)</td>
+                        <td class="text-right tabular-nums @(o.Fazla > 0 ? "text-error font-semibold" : "text-base-content/40")">@Num(o.Fazla)</td>
+                        <td class="text-right tabular-nums @(o.Olu > 0 ? "text-error font-semibold" : "text-base-content/40")">@Num(o.Olu)</td>
+                        <td class="text-right tabular-nums font-semibold @(o.Bagli > 0 ? "text-error" : "text-base-content/40")">@Tl(o.Bagli)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    int _tab;
+    sealed record OzetSatir(string Ad, int Urun, decimal Alis, int Fazla, int Olu, decimal Bagli);
+    IEnumerable<OzetSatir> Ozet(Func<SatinalmaAnalizSatir, string> key, int? top = null)
+    {
+        var q = _rows.GroupBy(key).Select(g => new OzetSatir(
+                string.IsNullOrWhiteSpace(g.Key) ? "—" : g.Key,
+                g.Count(), g.Sum(r => (decimal)r.AlisTutar),
+                g.Count(r => r.Grup == "FAZLA"), g.Count(r => r.Grup == "ÖLÜ-ALIM"),
+                g.Where(r => r.Grup == "FAZLA").Sum(r => (decimal)r.AlisTutar)))
+            .OrderByDescending(o => o.Alis);
+        return top.HasValue ? q.Take(top.Value) : q;
+    }
+
+    static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+    static readonly string[] _oncelik = { "FAZLA", "ÖLÜ-ALIM", "TREND-HIZLI", "YENİDEN-STOK", "UZUN-KUYRUK", "KÜÇÜK-ALIM", "İZLE", "AZ ALMIŞ", "NORMAL", "GENÇ", "DİĞER" };
+
+    List<(string Deger, string Etiket)> _aylar = new();
+    string _ay0 = "";
+    bool _loading = true;
+    string? _error;
+    List<SatinalmaAnalizSatir> _rows = new();
+    List<string> _gruplar = new();
+    HashSet<string> _secili = new() { "FAZLA", "ÖLÜ-ALIM" };
+    string _ara = "";
+    string _sortKey = "";
+    bool _sortAsc;
+
+    IEnumerable<SatinalmaAnalizSatir> Filtreli
+    {
+        get
+        {
+            var q = _rows.Where(r => (_secili.Count == 0 || _secili.Contains(r.Grup))
+                          && (_ara.Length == 0 || r.UrunAd.Contains(_ara, StringComparison.OrdinalIgnoreCase) || r.Marka.Contains(_ara, StringComparison.OrdinalIgnoreCase)));
+            if (_sortKey.Length == 0) return q;
+            System.Func<SatinalmaAnalizSatir, decimal> k = _sortKey switch
+            {
+                "AlisAdet" => r => r.AlisAdet,
+                "BirimMaliyet" => r => r.BirimMaliyet,
+                "AySonu" => r => r.AySonu,
+                "Son12" => r => r.Son12,
+                "Buyume" => r => r.Buyume,
+                "TukAy" => r => r.TukAy ?? -1,
+                "StokluAy" => r => r.StokluAy ?? -1,
+                _ => r => 0,
+            };
+            return _sortAsc ? q.OrderBy(k) : q.OrderByDescending(k);
+        }
+    }
+
+    RenderFragment Th(string key, string label) => builder =>
+    {
+        builder.OpenElement(0, "th");
+        builder.AddAttribute(1, "class", "text-right cursor-pointer select-none hover:text-primary transition-colors whitespace-nowrap");
+        builder.AddAttribute(2, "onclick", EventCallback.Factory.Create(this, () => Sort(key)));
+        builder.AddContent(3, label + (_sortKey == key ? (_sortAsc ? " ▲" : " ▼") : ""));
+        builder.CloseElement();
+    };
+
+    void Sort(string key)
+    {
+        if (_sortKey == key) _sortAsc = !_sortAsc;
+        else { _sortKey = key; _sortAsc = false; }
+    }
+
+    void Git(int stkID) => Nav.NavigateTo($"/satinalma/urun/{stkID}");
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ilk = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+        for (int i = 0; i < 12; i++)
+        {
+            var d = ilk.AddMonths(-i);
+            _aylar.Add((d.ToString("yyyyMM") + "01", d.ToString("MMMM yyyy", _tr)));
+        }
+        _ay0 = _aylar[0].Deger;
+        await Yukle();
+    }
+
+    async Task Yukle()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            _rows = (await Satinalma.GetAnalizAsync(_ay0)).ToList();
+            _gruplar = _rows.Select(r => r.Grup).Distinct().OrderBy(g => Array.IndexOf(_oncelik, g)).ToList();
+            _secili.IntersectWith(_gruplar);
+            if (_secili.Count == 0) _secili = _gruplar.Where(g => g is "FAZLA" or "ÖLÜ-ALIM").ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Alım Analizi yüklenemedi (ay {Ay})", _ay0);
+            _error = "Rapor yüklenemedi. Lütfen tekrar deneyin.";
+            _rows = new();
+        }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    void GrupTikla(string g) { if (!_secili.Add(g)) _secili.Remove(g); }
+    void TumunuTemizle() => _secili.Clear();
+    int Say(string g) => _rows.Count(r => r.Grup == g);
+    int SaglikPct => _rows.Count == 0 ? 0 : (int)Math.Round(100.0 * (_rows.Count - Say("FAZLA") - Say("ÖLÜ-ALIM") - Say("İZLE")) / _rows.Count);
+
+    static string GrupBtn(string g) => g switch
+    {
+        "FAZLA" or "ÖLÜ-ALIM" => "btn-error",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "btn-warning",
+        "AZ ALMIŞ" or "NORMAL" => "btn-success",
+        _ => "btn-neutral",
+    };
+    static string GrupDot(string g) => g switch
+    {
+        "FAZLA" or "ÖLÜ-ALIM" => "bg-error",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "bg-warning",
+        "AZ ALMIŞ" or "NORMAL" => "bg-success",
+        _ => "bg-base-content/30",
+    };
+    static string GrupText(string g) => g switch
+    {
+        "FAZLA" or "ÖLÜ-ALIM" => "text-error",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "text-warning",
+        "AZ ALMIŞ" or "NORMAL" => "text-success",
+        _ => "text-base-content/50",
+    };
+    static string SatirKenar(string g) => g switch
+    {
+        "FAZLA" or "ÖLÜ-ALIM" => "border-l-2 border-l-error",
+        "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "border-l-2 border-l-warning",
+        _ => "border-l-2 border-l-transparent",
+    };
+
+    static string Num(int n) => n.ToString("#,##0", _tr);
+    static string Tl(decimal d) => d.ToString("#,##0", _tr) + " ₺";
+}

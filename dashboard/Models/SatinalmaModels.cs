@@ -9,7 +9,7 @@ namespace GmDashboard.Models;
 /// emitter çıktısı (emitter-ayrımı). Kolonlar Excel/DINAMIK ile birebir; Dapper-map için boşluksuz
 /// alias. Nullable: LEFT JOIN kaynaklı (stoklu/ilk-giriş) + hesap-tabansız (tük).
 /// </summary>
-public sealed class SatinalmaHesapSatir
+public sealed class SatinalmaAnalizSatir
 {
     public int UrunKodu { get; set; }
     public string UrunAd { get; set; } = "";

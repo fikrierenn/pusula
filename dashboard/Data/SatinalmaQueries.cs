@@ -15,11 +15,11 @@ namespace GmDashboard.Data;
 public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> logger)
 {
     // Ay-bazlı sonuç cache (geçmiş ay değişmez; içinde-olunan ay TTL ile tazelenir). Static → tüm request'ler paylaşır.
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (System.DateTime Ts, IReadOnlyList<SatinalmaHesapSatir> Rows)> _cache = new();
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (System.DateTime Ts, IReadOnlyList<SatinalmaAnalizSatir> Rows)> _cache = new();
     static readonly System.TimeSpan _ttl = System.TimeSpan.FromMinutes(20);
 
     /// <summary>Hesap-sorma: bir ayın alım kararları + FAZLA/ÖLÜ/YENİDEN-STOK değerlendirmesi. ay0='YYYYMMDD'. 20dk cache.</summary>
-    public async Task<IReadOnlyList<SatinalmaHesapSatir>> GetHesapSormaAsync(string ay0)
+    public async Task<IReadOnlyList<SatinalmaAnalizSatir>> GetAnalizAsync(string ay0)
     {
         // ay0 whitelist: tam 8 hane rakam (SQL injection guard — string param olsa da savunma).
         if (ay0 is null || ay0.Length != 8 || !ay0.All(char.IsDigit))
@@ -30,7 +30,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await using var c = await db.OpenAsync();
-        var rows = await c.QueryAsync<SatinalmaHesapSatir>(new CommandDefinition(HesapSormaSql, new { AY0 = ay0 }, commandTimeout: 240));
+        var rows = await c.QueryAsync<SatinalmaAnalizSatir>(new CommandDefinition(AnalizSql, new { AY0 = ay0 }, commandTimeout: 240));
         var list = rows.AsList();
         _cache[ay0] = (System.DateTime.UtcNow, list);
         logger.LogInformation("Alım Analizi {Ay}: {N} ürün, {Ms}ms (şube-only, e-tic hariç; cache'lendi)", ay0, list.Count, sw.ElapsedMilliseconds);
@@ -38,7 +38,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
     }
 
     // DINAMIK SQL — @AY0 DECLARE'i kaldırıldı (Dapper param), objeler 3-parçalı, final alias boşluksuz.
-    private const string HesapSormaSql = """
+    private const string AnalizSql = """
         SET NOCOUNT ON;
         DECLARE @d0 date = CONVERT(date,@AY0);
         DECLARE @AY1  char(8)=CONVERT(char(8),DATEADD(month, 1,@d0),112);
