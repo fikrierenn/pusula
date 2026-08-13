@@ -137,11 +137,12 @@ for sid, sa, ad, kat, mrk in cur.fetchall():
 maliyet = {}
 cur.execute("""
     SELECT stkID, birim FROM (
-      SELECT fa.ehstkID stkID, CONVERT(decimal(18,4), fa.ehTutarN/NULLIF(fa.ehAdetN,0)) birim,
-             ROW_NUMBER() OVER (PARTITION BY fa.ehstkID ORDER BY f.eTarih DESC, f.eID DESC) rn
+      SELECT fa.ehstkID stkID, CONVERT(decimal(18,4), SUM(fa.ehTutarN)/NULLIF(SUM(fa.ehAdetN),0)) birim,
+             ROW_NUMBER() OVER (PARTITION BY fa.ehstkID ORDER BY MAX(f.eTarih) DESC, f.eID DESC) rn
       FROM dbo.fatAyr fa WITH(NOLOCK) JOIN dbo.fat f WITH(NOLOCK) ON fa.ehID=f.eID
       JOIN #a ON #a.stkID=fa.ehstkID
-      WHERE f.eTip=0 AND f.eDurum<>2 AND fa.ehAdetN>0) t WHERE rn=1""")
+      WHERE f.eTip=0 AND f.eDurum<>2 AND fa.ehAdetN>0
+      GROUP BY fa.ehstkID, f.eID) t WHERE rn=1""")   # fatura-bazında topla-böl (bedava/0-birim satırlar ortalamaya dahil): SUM(tutar)/SUM(adet), sonra en son fatura
 for sid, b in cur.fetchall():
     maliyet[sid] = float(b or 0)
 cur.execute("""
@@ -208,8 +209,8 @@ for sid, q in cur.fetchall():
 sube_series = {}   # sid -> {mekan: [(ay, stok)...] artan}
 cur.execute("""SELECT stkID, ehMekan, CONVERT(varchar(7),Donem,126) ay, Stok
     FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK)
-    WHERE Kaynak='irsHrk' AND stkID IN (SELECT stkID FROM #a) AND Donem>='20240101'
-    ORDER BY stkID, ehMekan, Donem""")
+    WHERE Kaynak='irsHrk' AND stkID IN (SELECT stkID FROM #a)
+    ORDER BY stkID, ehMekan, Donem""")   # floor YOK: 2021 devir bakiyesi ileri taşınır (duran ölü-stok stoklu-ay sayılır)
 for sid, mk, ay, st in cur.fetchall():
     sube_series.setdefault(sid, {}).setdefault(mk, []).append((ay, int(st or 0)))
 # DEPO fiziki = canlı WMS (tablodaki WMS de aynı anlık; canlı en güncel)
@@ -218,6 +219,12 @@ cur.execute("""SELECT stkID, SUM(Stok) FROM depo.stok_adres_palet_vw WITH(NOLOCK
     WHERE adrsAlanTipID IN (0,1) AND stkID IN (SELECT stkID FROM #a) GROUP BY stkID""")
 for sid, s in cur.fetchall():
     fiziki_depo[sid] = int(s or 0)
+# ŞUBE ay-sonu = CANLI fiziki (stokSon_vw, mekan 1/4477/4478) — duran devir stoğunu da gösterir (DINAMIK ile tek kaynak)
+fiziki_sube = {}
+cur.execute("""SELECT ehstkID, SUM(stok) FROM stokSon_vw WITH(NOLOCK)
+    WHERE ehMekan IN (1,4477,4478) AND ehstkID IN (SELECT stkID FROM #a) GROUP BY ehstkID""")
+for sid, s in cur.fetchall():
+    fiziki_sube[sid] = int(s or 0)
 cur.execute("DROP TABLE #a")
 cur.close(); cn.close()
 
@@ -256,7 +263,7 @@ def hesapla(sid, kat):
                 else: break
             t += last
         return t
-    sube_now = _sbal("9999-99"); depo_now = fiziki_depo.get(sid, 0)
+    sube_now = fiziki_sube.get(sid, 0); depo_now = fiziki_depo.get(sid, 0)   # ay-sonu = canlı fiziki (stokSon_vw)
     kap = sube_now + depo_now                        # ay sonu = fiziki (şube + depo)
     net_month = kapanis.get(sid, 0) - acilis.get(sid, 0)     # ledger ay-net (delta güvenilir)
     ac = kap - net_month                             # ay başı
