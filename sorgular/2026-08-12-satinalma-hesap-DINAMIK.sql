@@ -1,7 +1,8 @@
 /*
   SATINALMA HESAP-SORMA — TAM DİNAMİK SQL (Excel raporunun birebir SQL karşılığı).
   scripts/satinalma_hesap_sorma.py mantığını temp tablo + numbers-table ile SSMS'te üretir.
-  ÇALIŞTIRMA: DerinSISBkm üzerinde tek seferde (F5). Örnek ay = Temmuz 2026.
+  ÇALIŞTIRMA: DerinSISBkm üzerinde tek seferde (Ctrl+A → F5). PARAMETRİK: sadece @AY0'ı
+              değiştir (ör. '20260801' = Ağustos) — tüm türev tarihler + ay-listeleri otomatik.
   BAĞIMLILIK: bkm.StokAyBakiyeMekanBazli (şube aylık bakiye — stok-tablo scriptiyle doldurulmuş olmalı).
   NOT: MCP çok-statement temp tabloyu çalıştıramaz → SSMS'te koş, Excel ile kıyasla.
 
@@ -10,11 +11,22 @@
             → #tuk sezonlu tükenme → maliyet → FINAL (karakter+değerlendirme+açıklama).
 */
 SET NOCOUNT ON;
-DECLARE @AY0 char(8)='20260701', @AY1 char(8)='20260801';         -- hedef ay [başı, sonu)
-DECLARE @S12b char(8)='20250701', @S24b char(8)='20240701';       -- son12 başı, 24-ay başı
-DECLARE @O12b char(8)='20240701', @O12e char(8)='20250701';       -- önceki12 [başı,bitiş)
-DECLARE @SEZb char(8)='20250801', @SEZe char(8)='20251101';       -- geçen yıl sezon (Ağu-Eki)
-DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24;             -- fazla eşiği, materiality, min-koli
+DECLARE @AY0 char(8)='20260701';                                       -- ★ TEK GİRDİ: hedef ay başı (ay değiştir → SADECE burası). Gerisi türetilir.
+DECLARE @d0 date = CONVERT(date,@AY0);
+DECLARE @AY1  char(8)=CONVERT(char(8),DATEADD(month, 1,@d0),112);      -- sonraki ay başı (hariç)
+DECLARE @S12b char(8)=CONVERT(char(8),DATEADD(month,-12,@d0),112);     -- son12 başı
+DECLARE @S24b char(8)=CONVERT(char(8),DATEADD(month,-24,@d0),112);     -- 24-ay başı
+DECLARE @O12b char(8)=@S24b, @O12e char(8)=@S12b;                      -- önceki12 [başı,bitiş)
+DECLARE @SEZb char(8)=CONVERT(char(8),DATEADD(month,-11,@d0),112);     -- geçen yıl önümüz-sezon başı (hedef+1 −12)
+DECLARE @SEZe char(8)=CONVERT(char(8),DATEADD(month, -8,@d0),112);     -- +3 ay sonu (hedef+4 −12)
+DECLARE @PSEZb char(8)=CONVERT(char(8),DATEADD(month,-12,CONVERT(date,@SEZb)),112);  -- önceki yıl sezon başı (kategori-g paydası)
+DECLARE @PSEZe char(8)=CONVERT(char(8),DATEADD(month,-12,CONVERT(date,@SEZe)),112);
+DECLARE @L_ay0 char(7)=CONVERT(char(7),@d0,126);                       -- 'YYYY-MM' etiketler (char(7) ay eşleme)
+DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
+DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
+DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
+DECLARE @L_seze char(7)=CONVERT(char(7),CONVERT(date,@SEZe),126);
+DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24;                  -- fazla eşiği, materiality, min-koli
 
 /* 1) #a — bu ay alınan ürünler + alış adet/tutar */
 IF OBJECT_ID('tempdb..#a') IS NOT NULL DROP TABLE #a;
@@ -39,54 +51,60 @@ INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.e
 FROM dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
 WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>=@S24b AND h.ehTrhS<@AY0
 GROUP BY h.ehstkID, CONVERT(char(7),h.ehTrhS,126);
+-- OPENQUERY @var alamaz → pencere SABİT-GENİŞ (2023..2027), dış WHERE ile @S24b..@AY0'a daralt (son24 tam 24-ay).
 INSERT #ay SELECT x.stkID, x.ay, CONVERT(int,x.qty)
 FROM OPENQUERY(ODAKJOKER,'
     SELECT i.DERINSIS_ID stkID, CONVERT(varchar(4),YEAR(o.ORDERDATE))+''-''+RIGHT(''0''+CONVERT(varchar(2),MONTH(o.ORDERDATE)),2) ay, SUM(d.QUANTITY) qty
     FROM JOKER.dbo.J_ORDER_DETAILS d JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
-    WHERE o.ORDERDATE>=''20240701'' AND o.ORDERDATE<''20260701'' AND i.DERINSIS_ID>0 AND d.STATUS NOT IN (2004,2005,2010)
+    WHERE o.ORDERDATE>=''20230101'' AND o.ORDERDATE<''20270101'' AND i.DERINSIS_ID>0 AND d.STATUS NOT IN (2004,2005,2010)
     GROUP BY i.DERINSIS_ID, CONVERT(varchar(4),YEAR(o.ORDERDATE))+''-''+RIGHT(''0''+CONVERT(varchar(2),MONTH(o.ORDERDATE)),2)') x
-JOIN #a ON #a.stkID=x.stkID;
+JOIN #a ON #a.stkID=x.stkID
+WHERE x.ay>=@L_s24 AND x.ay<@L_ay0;
 -- ürün×ay birleşik (şube+etic)
 IF OBJECT_ID('tempdb..#aylik') IS NOT NULL DROP TABLE #aylik;
 SELECT stkID, ay, SUM(satis) AS satis INTO #aylik FROM #ay GROUP BY stkID, ay;
 CREATE CLUSTERED INDEX ix ON #aylik(stkID, ay);
 
-/* 4) #shape — 12-ay şekil (SON12: 2025-07=idx0 .. 2026-06=idx11) */
+/* 4) #shape — 12-ay şekil (SON12: idx0 = hedef−12 .. idx11 = hedef−1; ay = @S12b + idx) */
 IF OBJECT_ID('tempdb..#shape') IS NOT NULL DROP TABLE #shape;
 SELECT s.stkID, m.idx, ISNULL(a.satis,0) AS val
 INTO #shape
 FROM (SELECT stkID FROM #a) s
-CROSS JOIN (VALUES (0,'2025-07'),(1,'2025-08'),(2,'2025-09'),(3,'2025-10'),(4,'2025-11'),(5,'2025-12'),
-                   (6,'2026-01'),(7,'2026-02'),(8,'2026-03'),(9,'2026-04'),(10,'2026-05'),(11,'2026-06')) m(idx,ay)
-LEFT JOIN #aylik a ON a.stkID=s.stkID AND a.ay=m.ay;
+CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11)) m(idx)
+LEFT JOIN #aylik a ON a.stkID=s.stkID AND a.ay=CONVERT(char(7),DATEADD(month,m.idx,CONVERT(date,@S12b)),126);
 CREATE CLUSTERED INDEX ix ON #shape(stkID, idx);
 
 /* 5) #agg — son12/onc12/son24/gy_sezon(shape idx1..3)/satis_ay + büyüme g */
 IF OBJECT_ID('tempdb..#agg') IS NOT NULL DROP TABLE #agg;
 SELECT a.stkID,
-   ISNULL(SUM(CASE WHEN ay>='2025-07' AND ay<='2026-06' THEN al.satis END),0) AS son12,
-   ISNULL(SUM(CASE WHEN ay>='2024-07' AND ay<='2025-06' THEN al.satis END),0) AS onc12,
+   ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 THEN al.satis END),0) AS son12,
+   ISNULL(SUM(CASE WHEN ay>=@L_s24 AND ay<@L_s12 THEN al.satis END),0) AS onc12,
    ISNULL(SUM(al.satis),0) AS son24,
-   ISNULL(SUM(CASE WHEN ay IN ('2025-08','2025-09','2025-10') THEN al.satis END),0) AS gy_sezon,
-   ISNULL(SUM(CASE WHEN ay>='2025-07' AND ay<='2026-06' AND al.satis>0 THEN 1 END),0) AS satis_ay
+   ISNULL(SUM(CASE WHEN ay>=@L_sezb AND ay<@L_seze THEN al.satis END),0) AS gy_sezon,
+   ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay
 INTO #agg
 FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
 GROUP BY a.stkID;
 ALTER TABLE #agg ADD g float, g_kaynak varchar(10);
--- kategori sezon büyümesi (fallback)
-DECLARE @gK float, @gO float, @gH float;
-SELECT @gK = CASE WHEN o>0 THEN 1.0*y/o ELSE 1 END FROM (SELECT
-   -SUM(CASE WHEN i.ehTrhS>=@SEZb AND i.ehTrhS<@SEZe THEN i.ehAdetN ELSE 0 END) y,
-   -SUM(CASE WHEN i.ehTrhS>='20240801' AND i.ehTrhS<'20241101' THEN i.ehAdetN ELSE 0 END) o
-   FROM dbo.irsHrk i WITH(NOLOCK) JOIN bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID=i.ehstkID AND u.Kat3ID=12
-   WHERE i.ehTip IN (1,4,100) AND i.ehTrhS>='20240801' AND i.ehTrhS<@SEZe) t;   -- Kırtasiye
--- (Oyuncak/Hediyelik için ayrı; kısalık için kategori-g'yi ürün-bazlı fallback'te ürün Kat3ID'sine göre çöz)
+-- kategori sezon büyümesi (Python g_kat: per Kat3ID geçen-yıl-sezon/önceki-yıl-sezon, floor 0.5 cap 4) — DİNAMİK, @AY0'a göre kayar
+IF OBJECT_ID('tempdb..#katg') IS NOT NULL DROP TABLE #katg;
+SELECT Kat3ID, CASE WHEN raw<0.5 THEN 0.5 WHEN raw>4.0 THEN 4.0 ELSE raw END AS g
+INTO #katg
+FROM (
+  SELECT u.Kat3ID,
+     CASE WHEN SUM(CASE WHEN i.ehTrhS>=@PSEZb AND i.ehTrhS<@PSEZe THEN -i.ehAdetN ELSE 0 END) > 0
+          THEN 1.0*SUM(CASE WHEN i.ehTrhS>=@SEZb AND i.ehTrhS<@SEZe THEN -i.ehAdetN ELSE 0 END)
+                  /SUM(CASE WHEN i.ehTrhS>=@PSEZb AND i.ehTrhS<@PSEZe THEN -i.ehAdetN ELSE 0 END)
+          ELSE 1.0 END AS raw
+  FROM dbo.irsHrk i WITH(NOLOCK) JOIN bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID=i.ehstkID AND u.Kat3ID IN (10,12,16)
+  WHERE i.ehTip IN (1,4,100) AND i.ehTrhS>=@PSEZb AND i.ehTrhS<@SEZe
+  GROUP BY u.Kat3ID) t;
 UPDATE g SET g.g = CASE WHEN g.onc12>=100 THEN CASE WHEN 1.0*g.son12/g.onc12<0.3 THEN 0.3 WHEN 1.0*g.son12/g.onc12>6 THEN 6 ELSE 1.0*g.son12/g.onc12 END
-                        ELSE ISNULL(kg.gval,1.37) END,
+                        ELSE ISNULL(kg.g,1.0) END,
        g.g_kaynak = CASE WHEN g.onc12>=100 THEN 'ürün' ELSE 'kategori' END
 FROM #agg g
-OUTER APPLY (SELECT CASE u.Kat3ID WHEN 12 THEN 1.37 WHEN 16 THEN 1.61 WHEN 10 THEN 2.54 END gval
-             FROM bkm.UrunBilgi u WHERE u.stkID=g.stkID) kg;
+LEFT JOIN bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID=g.stkID
+LEFT JOIN #katg kg ON kg.Kat3ID=u.Kat3ID;
 
 /* 6) #stok — ay sonu = fiziki(şube stokSon + depo WMS); ay başı = ay sonu − ledger ay-net */
 IF OBJECT_ID('tempdb..#stok') IS NOT NULL DROP TABLE #stok;
@@ -109,8 +127,8 @@ SELECT a.stkID,
   SUM(CASE WHEN (bal.bakiye>0 OR ISNULL(sa.satis,0)>0) THEN 1 ELSE 0 END) AS stoklu_ay
 INTO #stoklu
 FROM #a a
-CROSS JOIN (VALUES ('2025-07'),('2025-08'),('2025-09'),('2025-10'),('2025-11'),('2025-12'),
-                   ('2026-01'),('2026-02'),('2026-03'),('2026-04'),('2026-05'),('2026-06')) m(ay)
+CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11)) v(n)
+CROSS APPLY (SELECT CONVERT(char(7),DATEADD(month,v.n,CONVERT(date,@S12b)),126) AS ay) m
 OUTER APPLY (SELECT SUM(x.Stok) bakiye FROM (
      SELECT b.ehMekan, (SELECT TOP 1 b2.Stok FROM bkm.StokAyBakiyeMekanBazli b2 WITH(NOLOCK)
         WHERE b2.stkID=a.stkID AND b2.ehMekan=b.ehMekan AND b2.Kaynak='irsHrk' AND CONVERT(char(7),b2.Donem,126)<=m.ay
