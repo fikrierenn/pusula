@@ -219,7 +219,7 @@ SELECT
      WHEN st.kap>0 AND ISNULL(tk.tuk_ay,999) > @ESIK THEN
         (CASE WHEN ag.g_kaynak='kategori' THEN N'🟠 İZLE (veri yok)'   -- Python: kategori-veri-yok, min-koli/materiality'den ÖNCE (kategori ürün FAZLA olmaz → KÜÇÜK/UZUN'a düşmez)
               WHEN a.alis_adet<=@MINKOLI THEN N'🟡 KÜÇÜK-ALIM'
-              WHEN CONVERT(money,CASE WHEN ag.son12>0 THEN (st.kap-1.0*ag.son12/NULLIF(sl.stoklu_ay,0)*@ESIK) ELSE 0 END)
+              WHEN CONVERT(money, CASE WHEN st.kap-ag.gy_sezon*ag.g>0 THEN st.kap-ag.gy_sezon*ag.g ELSE 0 END)   -- SEZONLUK donmuş: sezon-sonrası kalan × birim (linear DEĞİL)
                    * ISNULL(NULLIF(m.birim,0),CASE WHEN a.alis_adet>0 THEN a.alis_tutar/a.alis_adet END) < @MAT THEN N'🟡 UZUN-KUYRUK'
               ELSE N'🔴 FAZLA' END)
      WHEN st.kap>0 AND ISNULL(tk.tuk_ay,999) > 6 THEN N'🟠 İZLE'

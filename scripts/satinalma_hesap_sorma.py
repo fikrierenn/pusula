@@ -418,8 +418,8 @@ for sid in ids:
     satildi = tuk_month.get(sid, 0)                             # bu ay satılan (şube+etic)
     diger = h["kap"] - ac - al_adet + satildi                  # bu ay diğer (transfer/sayım): roll-forward kapatır
     donmus = 0
-    if "FAZLA" in bay and h["aylik_ort"] > 0:
-        fazla_adet = max(0, h["kap"] - h["aylik_ort"] * ESIK)   # 12-ay aktif-hız üstü = fazla
+    if "FAZLA" in bay:
+        fazla_adet = max(0, h["kap"] - h["sezon3"])   # SEZONLUK: sezon-sonrası kalan (kap − gy_sezon×g); linear DEĞİL (sezonsalda şişer)
         donmus = fazla_adet * bmal
     # materiality (#1) + min-sipariş (#3): büyük FAZLA'yı gürültüden ayır (odak + adil-atıf)
     if "FAZLA" in bay and al_adet <= MIN_KOLI:
@@ -576,7 +576,7 @@ KOMENT = {
     "Geçen Yıl Sezon Satışı (adet)": "NE: Geçen yıl önümüzdeki sezonda (Ağu-Eyl-Eki) FİİLEN satılan adet.\nBAK: Tahminin ham dayanağı (şeffaflık).",
     "Bu Sezon Beklenen Satış (=geçen sezon×büyüme)": "NE: Bu sezon beklenen satış.\nNASIL: Excel formülü = Geçen Yıl Sezon × Büyüme.",
     "Sezon Sonrası Elde Kalacak (=ay sonu−beklenen)": "NE: Sezon geçtikten sonra elde kalacak.\nNASIL: = Ay Sonu − Bu Sezon Beklenen. NEGATİF = sezon hepsini yer → stockout riski, daha al.",
-    "Fazla Stokta Bağlı Para (₺)": "NE: Fazla stokta donmuş sermaye (alt-sınır).\nNASIL: (Ay Sonu − 12-aylık ihtiyaç) fazla-kısım × Birim Maliyet. Sadece FAZLA'da dolu.",
+    "Fazla Stokta Bağlı Para (₺)": "NE: Fazla stokta donmuş sermaye (sezonluk).\nNASIL: (Ay Sonu − Bu Sezon Beklenen) × Birim Maliyet — sezon-sonrası kalan. Sadece FAZLA'da dolu (linear değil).",
     "Değerlendirme": "NE: Sonuç etiketi (FAZLA / AZ-ALMIŞ / ÖLÜ / TREND / GENÇ ...).\nBAK: Anlamları 'Kapsam & Yorum' sayfasında Etiket Sözlüğü'nde.",
     "Açıklama / Gerekçe": "NE: Etiketin kanıtlı gerekçesi (tek cümle) — rakamlarla neden bu sonuç.",
     "Ürün Karakteri": "NE: Satış deseni tipi: NORMAL(istikrarlı) / SEZONSAL / TREND(fad) / DÜŞÜŞ / DÜZENSİZ / GENÇ / DURGUN.\nBAK: Ayrım mantığı 'Kapsam & Yorum' sayfasında.",
@@ -621,7 +621,7 @@ notlar = [
     ("• Geçen Yıl Sezon Satışı: geçen yıl önümüzdeki sezonda (Ağu-Eyl-Eki) FİİLEN satılan adet — tahminin ham dayanağı.", False),
     ("• Bu Sezon Beklenen Satış = Geçen Yıl Sezon Satışı × Yıllık Büyüme (Excel formülü).", False),
     ("• Sezon Sonrası Elde Kalacak = Ay Sonu − Bu Sezon Beklenen (Excel formülü; negatif = sezon hepsini yer = stockout riski).", False),
-    ("• Fazla Stokta Bağlı Para = (Ay Sonu − Aylık Hız×12 fazla-kısım) × Birim Maliyet (donmuş sermaye alt-sınırı; sadece FAZLA'da dolu).", False),
+    ("• Fazla Stokta Bağlı Para = (Ay Sonu − Bu Sezon Beklenen) × Birim Maliyet — SEZONLUK sezon-sonrası kalan (linear değil; sezonsal üründe şişmez). Sadece FAZLA'da dolu.", False),
     ("• Ürün Karakteri: satış deseni tipi (aşağıda) — NORMAL / SEZONSAL / TREND / DÜŞÜŞ / DÜZENSİZ / GENÇ / DURGUN.", False),
     ("• Geçen Yıl Toplam Satış (taban): önceki 12 ayın satışı — büyüme paydası. <100 = büyüme güvenilmez → kategori.", False),
     ("• Yılda Kaç Ay Satmış: son 12 ayın kaçında satış oldu. ≥9 = istikrarlı staple; düşük = spiky (sezon/fad).", False),
