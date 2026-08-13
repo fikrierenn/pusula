@@ -46,6 +46,13 @@ bridges:
     to: dbo.fat.eID
     scope: derinsis
     confidence: 1.0
+  - id: fat-firma
+    from: dbo.fat.eFirma
+    to: dbo.frm.frmID
+    scope: derinsis
+    confidence: 1.0
+    note: "Fatura → tedarikçi/cari firma adı (frm.frmAd). Alış faturasında (eTip=0) eFirma=tedarikçi. irs-firma ile aynı desen (evrak→frm). Satınalma ürün-detay drill (dashboard SatinalmaQueries.UrunDetay) bunu kullanır. Belge no = fat.eNo."
+    last_verified: "2026-08-13"
   - id: irs-firma
     from: dbo.irs.eFirma
     to: dbo.frm.frmID
