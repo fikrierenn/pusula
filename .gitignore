@@ -63,5 +63,17 @@ run_forecast.log
 send_brief.log
 
 # Rapor çıktıları (regenerable — script ile üretilir)
-raporlar/*.xlsx
+raporlar/
 ~$*
+kontrol.xlsx
+
+# Kök stray dosyalar (repo içeriği değil — çalışma dosyaları)
+/Haziran.26 Mizan.xlsx
+/WhatsApp Image*.jpeg
+/Dosyalar* tara tasar*.zip
+/bkm temmuz*.xlsx
+/ik raporlar*/
+
+# Cert private key (CA imzalama anahtari — ASLA commit etme) + yedekler
+dashboard/cert/ca.key
+dashboard/cert/*.bak
