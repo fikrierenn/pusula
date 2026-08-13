@@ -1,10 +1,12 @@
 """
 SAYIYO (KAPI SAYICI) EXCEL RAPORU — FSM
-Gün gün detay (trafik + fiş + dönüşüm + ciro + işgücü) + Yönetici Özeti sayfası.
+Veri kaynağı: bkm.MusteriSayi (API ile otomatik beslenen kapı sayacı, günlük SUM) +
+EncoreMerkez POS (fiş/ciro). CSV/xlsx elle-yükleme akışı KALDIRILDI (24.07.2026) — API canlı.
+Gün gün detay (trafik + fiş + dönüşüm + ciro + sepet) + Yönetici Özeti sayfası.
 Çıktı: briefings/sayiyo-rapor.xlsx
-Kullanım: python sayiyo_excel.py
+Kullanım: python sayiyo_excel.py [--gun 60]
 """
-import sys, csv, json, os, statistics
+import sys, json, os, statistics, argparse
 from pathlib import Path
 from datetime import date, timedelta
 try:
@@ -34,41 +36,51 @@ def cfg():
     return json.loads((R / ".secrets" / "db.json").read_text(encoding="utf-8"))
 
 
-def get_data():
-    traf = {r["Tarih"]: int(r["Giris"]) for r in csv.DictReader(open(R / "sayiyo" / "fsm_gunluk_trafik.csv", encoding="utf-8"))}
-    days = sorted(traf)
+# FSM = posMagaza.mekanID=1 (bkm.MusteriSayi.MekanId=1 ile aynı mekan). Geri dönüşüm fişi (BarcodeNo='1001') hariç.
+SQL_GIRIS = """
+    SELECT CONVERT(varchar, CAST(Tarih AS date), 23) T, SUM(MusteriSayi) Giris
+    FROM DerinSISBkm.bkm.MusteriSayi
+    WHERE MekanId = 1 AND Tarih >= %s AND Tarih < %s
+    GROUP BY CAST(Tarih AS date)
+"""
+
+SQL_FIS = """
+    SELECT CONVERT(varchar, s.Date, 23) T, SUM(IIF(s.DocumentsTypeId = 3, -1, 1)) Fis,
+        CAST(SUM(IIF(s.DocumentsTypeId = 3, -1, 1) * (s.GrossTotal - s.DiscountTotal - s.VatTotal)) AS decimal(18,0)) Ciro
+    FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+    JOIN EncoreMerkez.dbo.Pos p ON p.Id = s.PosId
+    JOIN EncoreMerkez.dbo.Stores st ON st.Id = p.StoreId
+    JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
+    LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId = s.Id AND spb.BarcodeNo = '1001'
+    WHERE MG.mekanID = 1 AND spb.Id IS NULL AND s.DocumentsTypeId IN (1,2,3,6,7,8)
+      AND s.Date >= %s AND s.Date < %s
+    GROUP BY CONVERT(varchar, s.Date, 23)
+"""
+
+
+def get_data(gun):
+    bit = date.today()  # bugün genelde kısmi (yarım gün) → dışla
+    bas = bit - timedelta(days=gun)
     c = cfg()
     conn = pymssql.connect(server=c["server"], user=c["user"], password=c["password"], database=c.get("database", "master"), charset="UTF-8", login_timeout=20, timeout=120)
     cur = conn.cursor(as_dict=True)
-    g0, g1 = days[0], (date.fromisoformat(days[-1]) + timedelta(days=1)).isoformat()
-    cur.execute("""SELECT CONVERT(varchar,s.Date,23) T, SUM(IIF(s.DocumentsTypeId=3,-1,1)) Fis,
-        CAST(SUM(IIF(s.DocumentsTypeId=3,-1,1)*(s.GrossTotal-s.DiscountTotal)) AS decimal(18,0)) Ciro
-      FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-      JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS=st.Code COLLATE Turkish_CI_AS
-      LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-      WHERE MG.mekanID=1 AND s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=%s AND s.Date<%s
-      GROUP BY CONVERT(varchar,s.Date,23)""", (g0, g1))
+    cur.execute(SQL_GIRIS, (bas.isoformat(), bit.isoformat()))
+    traf = {r["T"]: int(r["Giris"]) for r in cur.fetchall()}
+    cur.execute(SQL_FIS, (bas.isoformat(), bit.isoformat()))
     sal = {r["T"]: r for r in cur.fetchall()}
-    inner = ("SELECT CONVERT(varchar(10),z.TZe_Datum,23) Gun, CAST(SUM(DATEDIFF(MINUTE,z.TZe_VonZeit,z.TZe_BisZeit))/60.0 AS decimal(18,1)) Saat, COUNT(DISTINCT z.TZe_PersNr) Personel "
-             "FROM TTagZei z JOIN TPerTab p ON p.Per_PersNr=z.TZe_PersNr WHERE z.TZe_Datum>=''%s'' AND z.TZe_Datum<=''%s'' AND p.Per_Grp1=''MAĞAZALAR'' AND LTRIM(RTRIM(p.Per_Grp2))=''FSM'' AND z.TZe_VonZeit IS NOT NULL AND z.TZe_BisZeit IS NOT NULL "
-             "GROUP BY CONVERT(varchar(10),z.TZe_Datum,23)") % (days[0].replace("-", ""), days[-1].replace("-", ""))
-    cur.execute("SELECT * FROM OPENQUERY([PDKS], '" + inner + "')")
-    lab = {r["Gun"]: r for r in cur.fetchall()}
     cur.close(); conn.close()
+
     rows = []
-    son = days[-1]  # export günü genelde kısmi (yarım) — dışla
-    for g in days:
-        if g == son:
-            continue
+    for g in sorted(traf):
         gi = traf[g]
         if gi < 50 or g not in sal:
             continue
-        s = sal[g]; l = lab.get(g, {})
-        fis = int(s["Fis"]); ci = float(s["Ciro"] or 0); sa = float(l.get("Saat") or 0); pe = int(l.get("Personel") or 0)
+        s = sal[g]
+        fis = int(s["Fis"]); ci = float(s["Ciro"] or 0)
         yy, mm, dd = map(int, g.split("-"))
         rows.append(dict(g=g, wd=WD[date(yy, mm, dd).weekday()], gi=gi, fis=fis, ci=ci,
                          conv=100*fis/gi if gi else 0, cpv=ci/gi if gi else 0,
-                         sa=sa, pe=pe, yuk=gi/sa if sa else 0, splh=ci/sa if sa else 0))
+                         sepet=ci/fis if fis else 0))
     return rows
 
 
@@ -96,7 +108,7 @@ def build(rows):
             ("Toplam Fiş", f"{tf:,}".replace(",", ".")),
             ("Ortalama Dönüşüm", f"%{statistics.mean(convs):.1f}".replace(".", ",")),
             ("Toplam Ciro", f"{tc:,.0f} ₺".replace(",", ".")),
-            ("Ortalama ₺/Ziyaret", f"{tc/tg:,.0f} ₺".replace(",", "."))]
+            ("Ortalama Sepet (ATV)", f"{tc/tf:,.0f} ₺".replace(",", "."))]
     r0 = 4
     for i, (k, v) in enumerate(kpis):
         col = 1 + i*2
@@ -108,19 +120,9 @@ def build(rows):
         f"• Dönüşüm: ortalama %{statistics.mean(convs):.1f}, medyan %{med:.1f}, bant %{min(convs):.1f}–%{max(convs):.1f} (giren her 2 kişiden ~1'i alışveriş yaptı — sağlıklı).".replace(".", ",", 6),
         f"• En iyi gün: {best['g']} {best['wd']} %{best['conv']:.1f}  ·  En kötü: {worst['g']} {worst['wd']} %{worst['conv']:.1f} (incele — trafik normal, dönüşüm düşük = operasyon).".replace(".", ",", 4),
         f"• FIRSAT: kötü günler ortalamaya çekilse → günlük ~{lost/len(rows):,.0f} ₺, YILLIK ~{yillik:,.0f} ₺ ek ciro (sadece tutarlılıkla).".replace(",", "."),
-    ]
-    if any(r["sa"] for r in rows):
-        labr = [r for r in rows if r["sa"]]
-        insights += [
-            f"• İşgücü: ortalama {statistics.mean([r['pe'] for r in labr]):.0f} personel/gün, yük (ziyaretçi/saat) {statistics.mean([r['yuk'] for r in labr]):.1f}, SPLH {statistics.mean([r['splh'] for r in labr]):,.0f} ₺/saat.".replace(",", ".").replace(".", ",", 2),
-            "• Personel trafiğe ayarlanıyor (hafta sonu kadro artıyor) ama özel günlerde takviye eksik kalabiliyor.",
-        ]
-    insights += [
         "", "ÖNERİLER",
-        "• İzin/off günleri → Çarşamba + Salı (en düşük trafik; Salı zaten fazla kadrolu).",
-        "• Cumartesi + Pazar → tam kadro, izin yok (en yüksek trafik + verim).",
-        "• Özel günlere (bayram vb.) personel takviyesi — pik trafik kadrolanmazsa satış kaçar.",
         "• Düşük-dönüşüm günleri için kök-neden takibi (personel/stok/deneyim) — her puan = para.",
+        "• Özel günlere (bayram vb.) personel takviyesi — pik trafik kadrolanmazsa satış kaçar.",
         "", "Not: Kapı sayıcı şu an sadece FSM'de. Özlüce + İst.Yolu'na yayılırsa fırsat 3 mağazaya katlanır.",
     ]
     rr = r0 + 3
@@ -134,21 +136,20 @@ def build(rows):
             c.font = Font(size=10)
         rr += 1
     ws.column_dimensions["A"].width = 30
-    for col in "BCDEFGHIJ":
+    for col in "BCDEFGHI":
         ws.column_dimensions[col].width = 16
 
     # ---- Gün Gün ----
     d = wb.create_sheet("Gün Gün")
-    hdr = ["Tarih", "Gün", "Giriş", "Fiş", "Dönüşüm %", "Net Ciro ₺", "₺/Ziyaret", "İşgücü-Saat", "Personel", "Yük (ziy/saat)", "SPLH ₺/saat"]
+    hdr = ["Tarih", "Gün", "Giriş", "Fiş", "Dönüşüm %", "Net Ciro ₺", "₺/Ziyaret", "Sepet"]
     for j, h in enumerate(hdr, 1):
         c = d.cell(1, j, h); c.fill = red; c.font = white; c.alignment = center; c.border = thin
     for i, r in enumerate(rows, 2):
-        vals = [r["g"], r["wd"], r["gi"], r["fis"], round(r["conv"], 1), round(r["ci"]), round(r["cpv"]),
-                round(r["sa"], 1) if r["sa"] else None, r["pe"] or None, round(r["yuk"], 1) if r["yuk"] else None, round(r["splh"]) if r["splh"] else None]
+        vals = [r["g"], r["wd"], r["gi"], r["fis"], round(r["conv"], 1), round(r["ci"]), round(r["cpv"]), round(r["sepet"])]
         for j, v in enumerate(vals, 1):
             cc = d.cell(i, j, v); cc.border = thin
-            if j in (3, 4, 6, 7, 9, 11): cc.number_format = "#,##0"
-            if j in (5, 10): cc.number_format = "0.0"
+            if j in (3, 4, 6, 7, 8): cc.number_format = "#,##0"
+            if j == 5: cc.number_format = "0.0"
             if r["wd"] in ("Cmt", "Pzr"): cc.fill = PatternFill("solid", fgColor="FEF2F2")
     nr = len(rows) + 1
     # toplam satırı
@@ -157,8 +158,9 @@ def build(rows):
     d.cell(tr, 3, tg).number_format = "#,##0"; d.cell(tr, 4, tf).number_format = "#,##0"
     d.cell(tr, 5, round(statistics.mean(convs), 1)).number_format = "0.0"
     d.cell(tr, 6, round(tc)).number_format = "#,##0"; d.cell(tr, 7, round(tc/tg)).number_format = "#,##0"
-    for j in range(1, 12): d.cell(tr, j).font = bold
-    widths = [11, 6, 9, 8, 11, 14, 11, 12, 10, 14, 13]
+    d.cell(tr, 8, round(tc/tf)).number_format = "#,##0"
+    for j in range(1, 9): d.cell(tr, j).font = bold
+    widths = [11, 6, 9, 8, 11, 14, 11, 10]
     for j, w in enumerate(widths, 1):
         d.column_dimensions[get_column_letter(j)].width = w
     d.freeze_panes = "A2"
@@ -179,4 +181,7 @@ def build(rows):
 
 
 if __name__ == "__main__":
-    build(get_data())
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--gun", type=int, default=60)
+    args = ap.parse_args()
+    build(get_data(args.gun))
