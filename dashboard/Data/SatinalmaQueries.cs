@@ -8,22 +8,33 @@ namespace GmDashboard.Data;
 /// (bu dosya = Hesap-Sorma; yeni rapor → SatinalmaQueries.Xxx.cs kısmi + GetXxxAsync). Ortak: Db.OpenAsync
 /// salt-okuma (erp-write-policy), 3-parçalı DerinSISBkm isim (master katalog Err 208; conventions 23.06).
 ///
-/// Hesap-Sorma çekirdeği = sorgular/2026-08-12-satinalma-hesap-DINAMIK.sql (Python emitter ile birebir
-/// doğrulandı — Temmuz+Ağustos 0-fark). Aynı SQL Dapper ile: @AY0 tek param, türev tarihler DATEADD;
-/// OPENQUERY(ODAKJOKER) linked server master'dan çözülür (katalogdan bağımsız), aynen kalır.
+/// Hesap-Sorma çekirdeği = sorgular/2026-08-12-satinalma-hesap-DINAMIK.sql (Python emitter ile doğrulandı).
+/// Aynı SQL Dapper ile: @AY0 tek param, türev tarihler DATEADD. FARK: e-ticaret satışı HARİÇ (şube-only) —
+/// OPENQUERY linked-server 18,5s perf sorunu (kullanıcı kararı, e-tic ayrı incelenecek).
 /// </summary>
 public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> logger)
 {
-    /// <summary>Hesap-sorma: bir ayın alım kararları + FAZLA/ÖLÜ/YENİDEN-STOK değerlendirmesi. ay0='YYYYMMDD'.</summary>
+    // Ay-bazlı sonuç cache (geçmiş ay değişmez; içinde-olunan ay TTL ile tazelenir). Static → tüm request'ler paylaşır.
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (System.DateTime Ts, IReadOnlyList<SatinalmaHesapSatir> Rows)> _cache = new();
+    static readonly System.TimeSpan _ttl = System.TimeSpan.FromMinutes(20);
+
+    /// <summary>Hesap-sorma: bir ayın alım kararları + FAZLA/ÖLÜ/YENİDEN-STOK değerlendirmesi. ay0='YYYYMMDD'. 20dk cache.</summary>
     public async Task<IReadOnlyList<SatinalmaHesapSatir>> GetHesapSormaAsync(string ay0)
     {
         // ay0 whitelist: tam 8 hane rakam (SQL injection guard — string param olsa da savunma).
         if (ay0 is null || ay0.Length != 8 || !ay0.All(char.IsDigit))
             throw new ArgumentException("ay0 'YYYYMMDD' 8-hane olmalı", nameof(ay0));
 
+        if (_cache.TryGetValue(ay0, out var hit) && System.DateTime.UtcNow - hit.Ts < _ttl)
+            return hit.Rows;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         await using var c = await db.OpenAsync();
         var rows = await c.QueryAsync<SatinalmaHesapSatir>(new CommandDefinition(HesapSormaSql, new { AY0 = ay0 }, commandTimeout: 240));
-        return rows.AsList();
+        var list = rows.AsList();
+        _cache[ay0] = (System.DateTime.UtcNow, list);
+        logger.LogInformation("Alım Analizi {Ay}: {N} ürün, {Ms}ms (şube-only, e-tic hariç; cache'lendi)", ay0, list.Count, sw.ElapsedMilliseconds);
+        return list;
     }
 
     // DINAMIK SQL — @AY0 DECLARE'i kaldırıldı (Dapper param), objeler 3-parçalı, final alias boşluksuz.
@@ -65,14 +76,9 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
         WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>=@S24b AND h.ehTrhS<@AY0
         GROUP BY h.ehstkID, CONVERT(char(7),h.ehTrhS,126);
-        INSERT #ay SELECT x.stkID, x.ay, CONVERT(int,x.qty)
-        FROM OPENQUERY(ODAKJOKER,'
-            SELECT i.DERINSIS_ID stkID, CONVERT(varchar(4),YEAR(o.ORDERDATE))+''-''+RIGHT(''0''+CONVERT(varchar(2),MONTH(o.ORDERDATE)),2) ay, SUM(d.QUANTITY) qty
-            FROM JOKER.dbo.J_ORDER_DETAILS d JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
-            WHERE o.ORDERDATE>=''20230101'' AND o.ORDERDATE<''20270101'' AND i.DERINSIS_ID>0 AND d.STATUS NOT IN (2004,2005,2010)
-            GROUP BY i.DERINSIS_ID, CONVERT(varchar(4),YEAR(o.ORDERDATE))+''-''+RIGHT(''0''+CONVERT(varchar(2),MONTH(o.ORDERDATE)),2)') x
-        JOIN #a ON #a.stkID=x.stkID
-        WHERE x.ay>=@L_s24 AND x.ay<@L_ay0;
+        -- NOT: E-ticaret satışı HARİÇ (kullanıcı kararı) — sadece şube (irsHrk 1/4/100). OPENQUERY(ODAKJOKER)
+        -- filtresiz 2,7M satır/18,5s perf sorunu yaptığından kaldırıldı; e-tic ayrı detayda incelenecek.
+        -- (DINAMIK/Excel e-tic DAHİL → dashboard bu ölçüde küçük sapabilir; bu kategorilerde e-tic payı düşük.)
         IF OBJECT_ID('tempdb..#aylik') IS NOT NULL DROP TABLE #aylik;
         SELECT stkID, ay, SUM(satis) AS satis INTO #aylik FROM #ay GROUP BY stkID, ay;
         CREATE CLUSTERED INDEX ix ON #aylik(stkID, ay);
@@ -115,20 +121,39 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         LEFT JOIN DerinSISBkm.bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID=g.stkID
         LEFT JOIN #katg kg ON kg.Kat3ID=u.Kat3ID;
 
+        -- PERF: OUTER APPLY-per-ürün (2446× stokSon_vw 848K tarama) yerine set-based tek GROUP BY (IN #a).
+        IF OBJECT_ID('tempdb..#sube') IS NOT NULL DROP TABLE #sube;
+        SELECT ehstkID AS stkID, CONVERT(int,SUM(stok)) AS s INTO #sube
+        FROM DerinSISBkm.dbo.stokSon_vw WITH(NOLOCK)
+        WHERE ehMekan IN (1,4477,4478) AND ehstkID IN (SELECT stkID FROM #a) GROUP BY ehstkID;
+        IF OBJECT_ID('tempdb..#depo') IS NOT NULL DROP TABLE #depo;
+        SELECT stkID, CONVERT(int,SUM(Stok)) AS d INTO #depo
+        FROM DerinSISBkm.depo.stok_adres_palet_vw WITH(NOLOCK)
+        WHERE adrsAlanTipID IN (0,1) AND stkID IN (SELECT stkID FROM #a) GROUP BY stkID;
+        IF OBJECT_ID('tempdb..#led') IS NOT NULL DROP TABLE #led;
+        SELECT ehstkID AS stkID,
+               SUM(CASE WHEN ehTrhS<@AY0 THEN ehAdetN ELSE 0 END) AS acilis,
+               SUM(CASE WHEN ehTrhS<@AY1 THEN ehAdetN ELSE 0 END) AS kapanis
+        INTO #led FROM DerinSISBkm.dbo.irsHrk WITH(NOLOCK)
+        WHERE ehTrhS<@AY1 AND ehstkID IN (SELECT stkID FROM #a) GROUP BY ehstkID;
         IF OBJECT_ID('tempdb..#stok') IS NOT NULL DROP TABLE #stok;
         SELECT a.stkID,
-           ISNULL(sube.s,0)+ISNULL(depo.d,0) AS kap,
-           ISNULL(led.kapanis,0)-ISNULL(led.acilis,0) AS ay_net
+           CONVERT(int, ISNULL(su.s,0)+ISNULL(dp.d,0)) AS kap,
+           CONVERT(int, ISNULL(l.kapanis,0)-ISNULL(l.acilis,0)) AS ay_net,
+           CONVERT(int, ISNULL(su.s,0)+ISNULL(dp.d,0) - (ISNULL(l.kapanis,0)-ISNULL(l.acilis,0))) AS ac
         INTO #stok
         FROM #a a
-        OUTER APPLY (SELECT SUM(stok) s FROM DerinSISBkm.dbo.stokSon_vw WHERE ehstkID=a.stkID AND ehMekan IN (1,4477,4478)) sube
-        OUTER APPLY (SELECT SUM(Stok) d FROM DerinSISBkm.depo.stok_adres_palet_vw WHERE stkID=a.stkID AND adrsAlanTipID IN (0,1)) depo
-        OUTER APPLY (SELECT SUM(CASE WHEN ehTrhS<@AY0 THEN ehAdetN ELSE 0 END) acilis,
-                            SUM(CASE WHEN ehTrhS<@AY1 THEN ehAdetN ELSE 0 END) kapanis
-                     FROM DerinSISBkm.dbo.irsHrk WITH(NOLOCK) WHERE ehstkID=a.stkID AND ehTrhS<@AY1) led;
-        ALTER TABLE #stok ADD ac int;
-        UPDATE #stok SET ac = kap - ay_net;
+        LEFT JOIN #sube su ON su.stkID=a.stkID
+        LEFT JOIN #depo dp ON dp.stkID=a.stkID
+        LEFT JOIN #led l ON l.stkID=a.stkID;
 
+        -- PERF: 6,4M-satır StokAyBakiye'yi ürün-başı 88K× korelasyonlu taramak yerine ÖNCE #a ürünlerine
+        -- filtrele (#bal, indexli) → carry-forward TOP1 tiny-tabloya seek. DonemA char(7) önden hesaplı.
+        IF OBJECT_ID('tempdb..#bal') IS NOT NULL DROP TABLE #bal;
+        SELECT stkID, ehMekan, CONVERT(char(7),Donem,126) AS DonemA, Stok
+        INTO #bal FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli WITH(NOLOCK)
+        WHERE Kaynak='irsHrk' AND stkID IN (SELECT stkID FROM #a);
+        CREATE CLUSTERED INDEX ix ON #bal(stkID, ehMekan, DonemA);
         IF OBJECT_ID('tempdb..#stoklu') IS NOT NULL DROP TABLE #stoklu;
         SELECT a.stkID,
           SUM(CASE WHEN (bal.bakiye>0 OR ISNULL(sa.satis,0)>0) THEN 1 ELSE 0 END) AS stoklu_ay
@@ -137,15 +162,15 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11)) v(n)
         CROSS APPLY (SELECT CONVERT(char(7),DATEADD(month,v.n,CONVERT(date,@S12b)),126) AS ay) m
         OUTER APPLY (SELECT SUM(x.Stok) bakiye FROM (
-             SELECT b.ehMekan, (SELECT TOP 1 b2.Stok FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli b2 WITH(NOLOCK)
-                WHERE b2.stkID=a.stkID AND b2.ehMekan=b.ehMekan AND b2.Kaynak='irsHrk' AND CONVERT(char(7),b2.Donem,126)<=m.ay
-                ORDER BY b2.Donem DESC) Stok
-             FROM (SELECT DISTINCT ehMekan FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE stkID=a.stkID AND Kaynak='irsHrk') b) x) bal
+             SELECT b.ehMekan, (SELECT TOP 1 b2.Stok FROM #bal b2
+                WHERE b2.stkID=a.stkID AND b2.ehMekan=b.ehMekan AND b2.DonemA<=m.ay
+                ORDER BY b2.DonemA DESC) Stok
+             FROM (SELECT DISTINCT ehMekan FROM #bal WHERE stkID=a.stkID) b) x) bal
         OUTER APPLY (SELECT satis FROM #aylik WHERE stkID=a.stkID AND ay=m.ay) sa
         GROUP BY a.stkID;
 
         IF OBJECT_ID('tempdb..#f') IS NOT NULL DROP TABLE #f;
-        SELECT TOP 1000 CONVERT(int,ROW_NUMBER() OVER (ORDER BY (SELECT NULL))-1) AS f INTO #f FROM sys.all_columns;
+        SELECT TOP 120 CONVERT(int,ROW_NUMBER() OVER (ORDER BY (SELECT NULL))-1) AS f INTO #f FROM sys.all_columns;   -- PERF: 120 ay (10 yıl) yeter; ötesi zaten 'tükenmez'. 1000 = 2,4M-satır window (yavaş).
         IF OBJECT_ID('tempdb..#tuk') IS NOT NULL DROP TABLE #tuk;
         ;WITH exp AS (
             SELECT sh.stkID, f.f,
