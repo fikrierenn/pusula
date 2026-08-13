@@ -272,8 +272,10 @@ else
     bool _sadeceOnemli = true; // düşük-öncelikli (bağlı<tolerans) fazlaları gizle
 
     static bool FazlaAile(string g) => g is "FAZLA" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM";
-    // Materiality: bağlı ≥ tolerans → önemli; altı → düşük öncelik.
-    int OnemsizSayi => _rows.Count(r => FazlaAile(r.Grup) && r.BagliPara < _tolerans);
+    static bool ProblemStok(string g) => FazlaAile(g) || g == "ÖLÜ-ALIM";   // fazla + ölü = donmuş sermaye
+    // Materiality: bağlı ≥ tolerans → önemli; altı → düşük öncelik (fazla + ölü-alım).
+    bool Dusuk(SatinalmaAnalizSatir r) => ProblemStok(r.Grup) && r.BagliPara < _tolerans;
+    int OnemsizSayi => _rows.Count(Dusuk);
     int MateryalSayi => _rows.Count(r => FazlaAile(r.Grup) && r.BagliPara >= _tolerans);
     decimal MateryalBagli => _rows.Where(r => FazlaAile(r.Grup) && r.BagliPara >= _tolerans).Sum(r => r.BagliPara);
 
@@ -285,7 +287,7 @@ else
                           && (_odakKat.Length == 0 || r.Kategori == _odakKat)
                           && (_odakMarka.Length == 0 || r.Marka == _odakMarka)
                           && (_odakGrup.Length == 0 || r.Grup1 == _odakGrup)
-                          && !(_sadeceOnemli && FazlaAile(r.Grup) && r.BagliPara < _tolerans)
+                          && !(_sadeceOnemli && Dusuk(r))
                           && (_ara.Length == 0 || r.UrunAd.Contains(_ara, StringComparison.OrdinalIgnoreCase) || r.Marka.Contains(_ara, StringComparison.OrdinalIgnoreCase)));
             if (_sortKey.Length == 0) return q;
             System.Func<SatinalmaAnalizSatir, decimal> k = _sortKey switch

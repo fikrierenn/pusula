@@ -186,7 +186,7 @@ else
             if (a is null) return "Sezonlu model verisi hesaplanamadı.";
             return a.Grup switch
             {
-                "ÖLÜ-ALIM" => "Stok vardı ama son 12 ayda hiç satmadı — yine de alınmış. Alım kararı gözden geçirilmeli.",
+                "ÖLÜ-ALIM" => $"Son 12 ayda hiç satış yok; buna rağmen ~{a.StokluAy} ay şube stoğu vardı (az da olsa, satabilirdi) → 'ölü'. Bu dönem yine alım yapılmış. Miktar/bağlı-para küçükse öncelik düşük.",
                 "YENİDEN-STOK" => "Stoksuzdu (eski talep vardı), yeniden stoklanmış — ölü değil, izlemek yeterli.",
                 "GENÇ" => "Yeni ürün — tam bir yıllık/sezonluk geçmişi yok, hüküm için erken.",
                 "AZ ALMIŞ" or "TREND-HIZLI" => $"Geçen sezon (Ağu-Eki) {Num(a.GySezon)} sattı; bu sezon ~{Num(a.BeklenenSezon)} bekleniyor. Eldeki stok sezonu zor karşılar (sezon sonrası {Num(a.SezonKalan)}) — stockout riski, az alınmış.",
