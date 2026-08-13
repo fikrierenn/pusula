@@ -36,6 +36,12 @@ public sealed class SatinalmaAnalizSatir
     public string Karakter { get; set; } = "";
     public string Degerlendirme { get; set; } = "";
 
+    /// <summary>Sezonluk bağlı para (donmuş sermaye) = sezon-sonrası-kalan × birim maliyet. Sadece fazla-ailesinde.
+    /// Model'in linear donmuş'u (kap−yıllık) sezonsal üründe şişer; bu sezon-farkını kullanır (öncelik sıralaması).</summary>
+    public decimal BagliPara => Grup is "FAZLA" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM"
+        ? System.Math.Max(0, SezonKalan) * BirimMaliyet
+        : Grup == "ÖLÜ-ALIM" ? AySonu * BirimMaliyet : 0m;
+
     /// <summary>Değerlendirme'den emoji-siz grup etiketi (filtre + renk için). Prefix eşleme.</summary>
     public string Grup =>
         Degerlendirme.Contains("FAZLA") ? "FAZLA"

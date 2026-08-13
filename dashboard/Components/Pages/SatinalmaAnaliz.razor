@@ -51,7 +51,7 @@ else
             <b>@Num(_rows.Count)</b> üründe <b>@Tl(_rows.Sum(r => (decimal)r.AlisTutar))</b> alım.
             @if (Say("FAZLA") + Say("ÖLÜ-ALIM") > 0)
             {
-                <span>Dikkat: <b class="text-error">@Num(Say("FAZLA")) fazla</b> (@Tl(_rows.Where(r => r.Grup == "FAZLA").Sum(r => (decimal)r.AlisTutar)) bağlı) · <b class="text-error">@Num(Say("ÖLÜ-ALIM")) ölü-alım</b>.</span>
+                <span>Dikkat: <b class="text-error">@Num(MateryalSayi) materyal fazla</b> (@Tl(MateryalBagli) bağlı, ≥@Tl(_tolerans)) · <b class="text-error">@Num(Say("ÖLÜ-ALIM")) ölü-alım</b>. @Num(OnemsizSayi) düşük-öncelik ayrıldı.</span>
             }
             else
             {
@@ -73,9 +73,9 @@ else
         <div class="rounded-xl bg-base-100 border border-error/30 p-3.5 flex items-start gap-3">
             <div class="rounded-lg bg-error/10 text-error p-2 shrink-0"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
             <div class="min-w-0">
-                <div class="text-xs text-base-content/50">Fazla Alım · Bağlı Para</div>
-                <div class="text-xl font-bold leading-tight text-error truncate">@Tl(_rows.Where(r => r.Grup == "FAZLA").Sum(r => (decimal)r.AlisTutar))</div>
-                <div class="text-[11px] text-base-content/50">@Num(Say("FAZLA")) üründe donmuş sermaye</div>
+                <div class="text-xs text-base-content/50">Materyal Fazla · Bağlı Para</div>
+                <div class="text-xl font-bold leading-tight text-error truncate">@Tl(MateryalBagli)</div>
+                <div class="text-[11px] text-base-content/50">@Num(MateryalSayi) üründe donmuş (≥@Tl(_tolerans))</div>
             </div>
         </div>
         <div class="rounded-xl bg-base-100 border border-error/30 p-3.5 flex items-start gap-3">
@@ -124,7 +124,7 @@ else
         </label>
     </div>
 
-    <div class="flex items-center gap-2 mb-1.5">
+    <div class="flex flex-wrap items-center gap-2 mb-1.5">
         @if (_odakKat.Length > 0 || _odakMarka.Length > 0)
         {
             <span class="badge badge-primary badge-sm gap-1 cursor-pointer" @onclick="OdakTemizle">
@@ -132,6 +132,18 @@ else
             </span>
         }
         <span class="text-xs text-base-content/50">@Filtreli.Count() / @_rows.Count ürün · satıra tıkla → detay</span>
+        <label class="flex items-center gap-1.5 text-xs text-base-content/60 ml-auto cursor-pointer" title="bağlı parası düşük (sezonluk) fazlaları listeden ayır">
+            <input type="checkbox" class="toggle toggle-xs toggle-primary" @bind="_sadeceOnemli" />
+            düşük-öncelik fazlayı gizle
+            @if (_sadeceOnemli && OnemsizSayi > 0)
+            {
+                <span class="badge badge-ghost badge-xs">@OnemsizSayi gizli</span>
+            }
+        </label>
+        <label class="flex items-center gap-1 text-xs text-base-content/50">
+            tolerans
+            <input type="number" step="1000" class="input input-bordered input-xs w-24 tabular-nums" @bind="_tolerans" @bind:event="oninput" /> ₺
+        </label>
     </div>
 
     @* ── Tablo (sıralanabilir, tıklanabilir satır) ── *@
@@ -146,7 +158,7 @@ else
                     @Th("Son12", "Son12")
                     @Th("Buyume", "Büyüme")
                     @Th("TukAy", "Tükenir")
-                    @Th("StokluAy", "Stoklu-ay")
+                    @Th("BagliPara", "Bağlı ₺")
                     <th>Değerlendirme</th>
                 </tr>
             </thead>
@@ -163,7 +175,7 @@ else
                         <td class="text-right tabular-nums">@Num(r.Son12)</td>
                         <td class="text-right tabular-nums @(r.Buyume < 0.7m ? "text-error" : r.Buyume >= 2 ? "text-success" : "")">@r.Buyume.ToString("0.0", _tr)</td>
                         <td class="text-right tabular-nums">@(r.TukAy?.ToString("0.0", _tr) ?? "—")</td>
-                        <td class="text-right tabular-nums">@(r.StokluAy?.ToString() ?? "—")</td>
+                        <td class="text-right tabular-nums @(r.BagliPara >= _tolerans ? "text-error font-semibold" : r.BagliPara > 0 ? "text-warning" : "text-base-content/30")">@(r.BagliPara > 0 ? Tl(r.BagliPara) : "—")</td>
                         <td class="text-xs font-semibold whitespace-nowrap @GrupText(r.Grup)">@r.Degerlendirme</td>
                     </tr>
                 }
@@ -218,8 +230,8 @@ else
                 string.IsNullOrWhiteSpace(g.Key) ? "—" : g.Key,
                 g.Count(), g.Sum(r => (decimal)r.AlisTutar),
                 g.Count(r => r.Grup == "FAZLA"), g.Count(r => r.Grup == "ÖLÜ-ALIM"),
-                g.Where(r => r.Grup == "FAZLA").Sum(r => (decimal)r.AlisTutar)))
-            .OrderByDescending(o => o.Alis);
+                g.Sum(r => r.BagliPara)))   // sezonluk bağlı para (donmuş sermaye) — AlisTutar değil
+            .OrderByDescending(o => o.Bagli);
         return top.HasValue ? q.Take(top.Value) : q;
     }
 
@@ -238,6 +250,14 @@ else
     string _odakMarka = "";
     string _sortKey = "";
     bool _sortAsc;
+    int _tolerans = 5000;      // materiality eşiği ₺ — altındaki fazlalar 'düşük öncelik'
+    bool _sadeceOnemli = true; // düşük-öncelikli (bağlı<tolerans) fazlaları gizle
+
+    static bool FazlaAile(string g) => g is "FAZLA" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM";
+    // Materiality: bağlı ≥ tolerans → önemli; altı → düşük öncelik.
+    int OnemsizSayi => _rows.Count(r => FazlaAile(r.Grup) && r.BagliPara < _tolerans);
+    int MateryalSayi => _rows.Count(r => FazlaAile(r.Grup) && r.BagliPara >= _tolerans);
+    decimal MateryalBagli => _rows.Where(r => FazlaAile(r.Grup) && r.BagliPara >= _tolerans).Sum(r => r.BagliPara);
 
     IEnumerable<SatinalmaAnalizSatir> Filtreli
     {
@@ -246,6 +266,7 @@ else
             var q = _rows.Where(r => (_secili.Count == 0 || _secili.Contains(r.Grup))
                           && (_odakKat.Length == 0 || r.Kategori == _odakKat)
                           && (_odakMarka.Length == 0 || r.Marka == _odakMarka)
+                          && !(_sadeceOnemli && FazlaAile(r.Grup) && r.BagliPara < _tolerans)
                           && (_ara.Length == 0 || r.UrunAd.Contains(_ara, StringComparison.OrdinalIgnoreCase) || r.Marka.Contains(_ara, StringComparison.OrdinalIgnoreCase)));
             if (_sortKey.Length == 0) return q;
             System.Func<SatinalmaAnalizSatir, decimal> k = _sortKey switch
@@ -257,6 +278,7 @@ else
                 "Buyume" => r => r.Buyume,
                 "TukAy" => r => r.TukAy ?? -1,
                 "StokluAy" => r => r.StokluAy ?? -1,
+                "BagliPara" => r => r.BagliPara,
                 _ => r => 0,
             };
             return _sortAsc ? q.OrderBy(k) : q.OrderByDescending(k);
