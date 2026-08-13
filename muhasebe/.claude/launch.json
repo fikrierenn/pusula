@@ -6,6 +6,12 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--urls", "http://localhost:5199"],
       "port": 5199
+    },
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "D:/Dev/pusula/dashboard", "--urls", "http://localhost:5081"],
+      "port": 5081
     }
   ]
 }
