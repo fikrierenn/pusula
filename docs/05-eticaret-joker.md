@@ -48,7 +48,23 @@ BKM Kitap online satışı JOKER platformunda. `sqlserver` üzerinden `ODAKJOKER
 - **Kargo durumu:** `J_ORDER_CARGO_STATUS` — `STATUS` (0=İşlem görmemiş,1=TESLİM EDİLDİ,2=İADE GELDİ,3=KAYIP,4=HAREKET GÖRÜYOR). Join: `cs.STATUS = o.CARGODELIVERYSTATUS`.
 - **Teslimat ili:** `J_ORDERS.DELIVERYREF = J_ORDER_DELIVERY_ADDRESS.LOGICALREF` (ORDERCODE kolonu BOŞ) → `DCITY` (il, temiz "İstanbul"), `DTOWN` (ilçe).
 - **Hediye çeki:** `J_ORDERS.VOUCHERCODE` dolu = kullanılmış; sistemde **satır indirimi** olarak yansır (SELLINGPRICE düşer; "1₺ kitap" çoğu bu).
-- **Tutarlar:** `CARGOPRICE` ~81-90₺ müşteri kargo, `SERVICEPRICE` = kapıda ödeme bedeli.
+- **Tutarlar:** `CARGOPRICE` ~81-90₺ müşteri kargo. `SERVICEPRICE` **çift anlamlı — `PAYDEFREF`'e göre okunur** (aşağıdaki bölüm).
+
+### SERVICEPRICE = COD bedeli DEĞİL, kartta VADE FARKI (17.07.2026 keşif — KESİN)
+
+`SERVICEPRICE` tek kolon, iki farklı şey taşıyor:
+
+| `PAYDEFREF` | `SERVICEPRICE` anlamı | Haz+Tem 2026 |
+|---|---|---|
+| **−3** (Kapıda Ödeme) | COD hizmet bedeli | 8.167/8.167 dolu (%100) · 693.378 ₺ |
+| **−13** (iyzico/kart) | **VADE FARKI** | 4.266/135.803 dolu (%3,1) · **981.754 ₺** |
+| −1 (Havale/EFT) | — | 0 |
+
+- **Kart tarafındaki tutar COD DEĞİL.** JOKER API'de iki alan ayrı: vade farkı = `Payment.LateChargeAmount`, kapıda ödeme = `Shipment.CashOnDeliveryAmount` (kart siparişlerinde 0). DB ikisini de `SERVICEPRICE`'a yazıyor. Ciro/maliyet raporunda ayrılmazsa vade farkı COD sanılır → yanlış sınıflama (kart tarafı COD'un üstünde, küçük kalem değil).
+- **Tutar kimliği:** `TOTALPRICE = SUM(D.QUANTITY×D.SELLINGPRICE) + CARGOPRICE + SERVICEPRICE` — kuruşu kuruşuna kapanır (JOKER API ile 12 sipariş karşılaştırıldı).
+- **Vade farkı tarifesi** (sabit oran, sepet büyüklüğünden bağımsız; taban = satır toplamı + `CARGOPRICE` − `VOUCHERVALUE`): **%10,44 · %13,52 · %16,29 · %19,62 · %31,14 · %38,33**. Tem-2026'da 1.331 sipariş bu 6 kademede. Kanıt: %38,33 kademesinde sepet 390 ₺ ile 2.356 ₺ aynı oranı veriyor (6 kat fark, oran sabit).
+- ⚠ **Taksit sayısı hiçbir yerde yazılı değil.** JOKER'de taksit kolonu YOK (tüm DB taraması: `TAKSIT`/`INSTALLMENT`/`VADE`/`KOMISYON` → 0 eşleşme). API'nin `Payment.InstallmentCount` alanı beslenmiyor — vade farkı dolu siparişte bile `1` dönüyor. `BANK` (%94 boş), `TRANSACTIONID`, `ROUND`, `FIRM`, `ISLEM_ACIKLAMA` de boş. **Kademe→taksit eşlemesi iyzico panelinden doğrulanmayı bekliyor** (her kademeden örnek sipariş: `sorgular/2026-07-17-joker-vade-farki.sql`).
+- Yanlış izler: `b2c.ayar.vadeFarkiStkID = 0` (tanımsız + entegrasyon 2018'den ölü). `urn` stkID 303636 "Vade Farkları" (`G-760.30.027`) = **gider** carisi ürünü (BKM'nin ödediği), müşteri satırı değil.
 
 ### COD (Kapıda Ödeme) ekonomisi
 - COD = `PAYDEFREF=−3`. **SERVICEPRICE pass-through** (firmaya ödenir, kâr DEĞİL).
