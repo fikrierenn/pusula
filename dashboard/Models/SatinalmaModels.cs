@@ -14,6 +14,7 @@ public sealed class SatinalmaAnalizSatir
     public int UrunKodu { get; set; }
     public string UrunAd { get; set; } = "";
     public string Kategori { get; set; } = "";
+    public string Grup1 { get; set; } = "";   // ürün tipi (Kat2: Silgiler/Kalemtıraşlar/Kalemler…)
     public string Marka { get; set; } = "";
     public int AlisAdet { get; set; }
     public int AlisTutar { get; set; }

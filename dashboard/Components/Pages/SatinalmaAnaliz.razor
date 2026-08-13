@@ -99,7 +99,8 @@ else
     @* ── Sekme barı ── *@
     <div role="tablist" class="tabs tabs-bordered w-full mb-3">
         <a role="tab" class="tab flex-1 @(_tab == 0 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 0">Ürünler</a>
-        <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 1">Kategori Özeti</a>
+        <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 1">Kategori</a>
+        <a role="tab" class="tab flex-1 @(_tab == 3 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 3">Ürün Grubu</a>
         <a role="tab" class="tab flex-1 @(_tab == 2 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 2">Marka / Tedarikçi</a>
     </div>
 }
@@ -125,10 +126,10 @@ else
     </div>
 
     <div class="flex flex-wrap items-center gap-2 mb-1.5">
-        @if (_odakKat.Length > 0 || _odakMarka.Length > 0)
+        @if (_odakKat.Length > 0 || _odakMarka.Length > 0 || _odakGrup.Length > 0)
         {
             <span class="badge badge-primary badge-sm gap-1 cursor-pointer" @onclick="OdakTemizle">
-                @(_odakKat.Length > 0 ? $"Kategori: {_odakKat}" : $"Marka: {_odakMarka}") <i data-lucide="x" class="w-3 h-3"></i>
+                @(_odakKat.Length > 0 ? $"Kategori: {_odakKat}" : _odakGrup.Length > 0 ? $"Grup: {_odakGrup}" : $"Marka: {_odakMarka}") <i data-lucide="x" class="w-3 h-3"></i>
             </span>
         }
         <span class="text-xs text-base-content/50">@Filtreli.Count() / @_rows.Count ürün · satıra tıkla → detay</span>
@@ -196,13 +197,17 @@ else
     </div>
 }
 
-@if (!_loading && _error is null && _rows.Count > 0 && _tab is 1 or 2)
+@if (!_loading && _error is null && _rows.Count > 0 && _tab is 1 or 2 or 3)
 {
-    var ozet = _tab == 1 ? Ozet(r => r.Kategori) : Ozet(r => r.Marka, 50);
-    var baslik = _tab == 1 ? "Kategori" : "Marka";
+    var ozet = _tab == 1 ? Ozet(r => r.Kategori) : _tab == 3 ? Ozet(r => r.Grup1) : Ozet(r => r.Marka, 50);
+    var baslik = _tab == 1 ? "Kategori" : _tab == 3 ? "Ürün Grubu" : "Marka";
     @if (_tab == 2)
     {
         <div class="text-xs text-base-content/50 mb-1.5">En yüksek alışlı 50 marka</div>
+    }
+    else if (_tab == 3)
+    {
+        <div class="text-xs text-base-content/50 mb-1.5">Ürün tipi (silgi, kalemtıraş, kalem, uç…) — bağlı paraya göre</div>
     }
     <div class="overflow-x-auto border border-base-300 rounded-lg">
         <table class="table table-sm table-pin-rows">
@@ -258,8 +263,9 @@ else
     List<string> _gruplar = new();
     HashSet<string> _secili = new() { "FAZLA", "ÖLÜ-ALIM" };
     string _ara = "";
-    string _odakKat = "";      // kategori/marka özet satırından drill → Ürünler'i daralt
+    string _odakKat = "";      // kategori/marka/grup özet satırından drill → Ürünler'i daralt
     string _odakMarka = "";
+    string _odakGrup = "";
     string _sortKey = "";
     bool _sortAsc;
     int _tolerans = 5000;      // materiality eşiği ₺ — altındaki fazlalar 'düşük öncelik'
@@ -278,6 +284,7 @@ else
             var q = _rows.Where(r => (_secili.Count == 0 || _secili.Contains(r.Grup))
                           && (_odakKat.Length == 0 || r.Kategori == _odakKat)
                           && (_odakMarka.Length == 0 || r.Marka == _odakMarka)
+                          && (_odakGrup.Length == 0 || r.Grup1 == _odakGrup)
                           && !(_sadeceOnemli && FazlaAile(r.Grup) && r.BagliPara < _tolerans)
                           && (_ara.Length == 0 || r.UrunAd.Contains(_ara, StringComparison.OrdinalIgnoreCase) || r.Marka.Contains(_ara, StringComparison.OrdinalIgnoreCase)));
             if (_sortKey.Length == 0) return q;
@@ -314,10 +321,11 @@ else
     }
 
     void Git(int stkID) => Nav.NavigateTo($"/satinalma/urun/{stkID}");
-    void OdakOzet(string ad) { if (_tab == 1) OdakKategori(ad); else OdakMarkaSet(ad); }
-    void OdakKategori(string kat) { _odakKat = kat; _odakMarka = ""; _secili.Clear(); _tab = 0; }
-    void OdakMarkaSet(string m) { _odakMarka = m; _odakKat = ""; _secili.Clear(); _tab = 0; }
-    void OdakTemizle() { _odakKat = ""; _odakMarka = ""; }
+    void OdakOzet(string ad) { if (_tab == 1) OdakKategori(ad); else if (_tab == 3) OdakGrup(ad); else OdakMarkaSet(ad); }
+    void OdakKategori(string kat) { _odakKat = kat; _odakMarka = ""; _odakGrup = ""; _secili.Clear(); _tab = 0; }
+    void OdakMarkaSet(string m) { _odakMarka = m; _odakKat = ""; _odakGrup = ""; _secili.Clear(); _tab = 0; }
+    void OdakGrup(string g) { _odakGrup = g; _odakKat = ""; _odakMarka = ""; _secili.Clear(); _tab = 0; }
+    void OdakTemizle() { _odakKat = ""; _odakMarka = ""; _odakGrup = ""; }
 
     protected override async Task OnInitializedAsync()
     {

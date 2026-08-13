@@ -209,6 +209,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            a.stkID                                                   AS UrunKodu,
            u.stkAd                                                   AS UrunAd,
            u.Kategori3                                               AS Kategori,
+           ISNULL(NULLIF(u.Kat2,''),ISNULL(NULLIF(u.Kat1,''),'—'))   AS Grup1,   -- ürün tipi (Silgiler/Kalemtıraşlar/...); Kat2 boşsa Kat1
            u.mrkAd                                                   AS Marka,
            a.alis_adet                                               AS AlisAdet,
            CONVERT(int,a.alis_tutar)                                 AS AlisTutar,
