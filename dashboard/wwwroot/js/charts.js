@@ -1,10 +1,10 @@
 // Chart.js interop — Blazor'dan canvas grafikleri çizer. Dönem değişince destroy+recreate.
-// Corporate tema — DaisyUI primary'den oku (yoksa indigo fallback). Kırmızı bırakıldı.
-const KP = (getComputedStyle(document.documentElement).getPropertyValue('--p').trim()
-  ? `oklch(${getComputedStyle(document.documentElement).getPropertyValue('--p').trim()})`
-  : '#4063e6');
+// Tema renkleri DaisyUI token'larından okunur (renk-standardi: kendi palet sabiti yok). Fallback = eski hardcode.
+const dv = n => { const v = getComputedStyle(document.documentElement).getPropertyValue(n).trim(); return v ? `oklch(${v})` : null; };
+const KP = dv('--p') || '#4063e6';
 const KP_FILL = `color-mix(in srgb, ${KP} 12%, transparent)`;
-const PAL = [KP, '#0ea5e9', '#22c55e', '#f59e0b', '#a855f7', '#64748b', '#ec4899', '#14b8a6'];
+const PAL = [KP, dv('--in') || '#0ea5e9', dv('--su') || '#22c55e', dv('--wa') || '#f59e0b',
+             dv('--s') || '#a855f7', dv('--a') || '#64748b', dv('--er') || '#ec4899', dv('--n') || '#14b8a6'];
 const store = {};
 
 // Datalabels plugin global kayıt (donut %, bar değer). Yoksa sessiz geç.
