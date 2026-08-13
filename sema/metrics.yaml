@@ -20,6 +20,17 @@ metrics:
     dogrulama: "2026-08-06 DerinSIS resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26) ile birebir (740=5,27M·760=14,08M·770=21,01M·780=38,49M kuruşuna). Uygulama: dashboard /gider-mizan (GiderMizanQueries) + sorgular/2026-08-06-gider-merkezi-mizan-matris.sql."
     last_verified: "2026-08-06"
 
+  satinalma_birim_maliyet:
+    kaynak: "dbo.fatAyr + dbo.fat (eTip=0 alış faturası, eDurum<>2). Yoksa 2021-05-31 devir (irsHrk ehTip=99). Yoksa bu-ay alış birimi (alis_tutar/alis_adet)."
+    formul: "Birim maliyet = EN SON alış faturasında (eID) SUM(fa.ehTutarN)/SUM(fa.ehAdetN) — FATURA-BAZINDA topla-böl, satır-bazında DEĞİL. Sıra: en son fatura (ORDER BY MAX(f.eTarih) DESC, f.eID DESC), GROUP BY ehstkID, eID."
+    kritik_grain: "⚠️ Aynı faturada (aynı eID+eTarih) bir ürünün BİRDEN ÇOK fatAyr satırı olabilir — biri gerçek fiyatlı, biri ehTutarN=0 (bedava/promo/bonus adet). ROW_NUMBER(...ORDER BY eTarih,eID) tek satır seçmek TIE (non-deterministik: pymssql vs SSMS farklı satır → farklı birim). DOĞRU: faturayı topla (SUM/SUM) → bedava adetler ortalamaya girer, gerçek landed-cost. 0-birim satırı ELEME (57 verir, şişik); TOPLA (52.25 verir, doğru)."
+    stoklu_ay_carry: "'Yılda kaç ay stoklu' = bkm.StokAyBakiyeMekanBazli (Kaynak='irsHrk', şube mekan 1/4477/4478) SON12 ayda bakiye>0 VEYA o ay satış>0. Donem ALT-SINIRI YOK: 2021-05-31 devir bakiyesi ileri taşınır → 5 yıl hareketsiz duran 1-adet stok stoklu-ay=12 → ÖLÜ-ALIM (satma fırsatı vardı). Floor (Donem>=2024) koyarsan duran ölü-stok YENİDEN-STOK'a kaçar (yanlış: üstüne alım teşviki)."
+    aysonu_stok: "Ay-sonu = ŞUBE canlı stokSon_vw (mekan 1/4477/4478) + DEPO canlı stok_adres_palet_vw (adrsAlanTipID IN 0,1). İkisi de CANLI/anlık — geçmiş-ay tarihçesi yok (WMS ay-sonu snapshot tutmaz). Yeni-biten-ay raporu için doğru (canlı≈ay-sonu); geriye-dönük eski-ay için ay-sonu kayar. Ay-başı = ay-sonu − ledger ay-net (irsHrk delta, tüm ehTip)."
+    uygulama: "scripts/satinalma_hesap_sorma.py (Excel emitter) + sorgular/2026-08-12-satinalma-hesap-DINAMIK.sql (tam-SQL emitter). İkisi 2446/2446 üründe birebir (2026-08-13 doğrulandı). Kategori: bkm.UrunBilgi.Kat3ID IN 10/12/16."
+    confidence: 0.95
+    evidence: "2026-08-13 MCP: 200491 son fatura eID 7056126 = 44@2508 + 4@0 = 48 adet/2508 ₺ → 52.25 (satır-rn=1 tie 57 verir). Python≡DINAMIK birebir (openpyxl hücre-hücre, gerçek fark 0)."
+    last_verified: "2026-08-13"
+
   banka_ekstresi_siniflandirma:
     kaynak: "dbo.car cTip=122 (Banka Ekstresi); köprü car-karsi-frm; kod car.cFatTip=122"
     problem: "Banka ekstresi satır açıklamasından (cNot) doğru cari (cKodKarsi) atama. Şule (insID 1897) elle yapıyor; oto-import/SP YOK. Pilot: muhasebe app (plan-27)."
