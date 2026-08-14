@@ -98,8 +98,9 @@ public sealed partial class SatinalmaQueries
                    ISNULL(ev.eNo,'—') AS EvrakNo
             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
             OUTER APPLY (SELECT TOP 1 i.eNo FROM DerinSISBkm.dbo.irs i WITH(NOLOCK) WHERE i.eID=h.ehID) ev
-            WHERE h.ehstkID=@id AND h.ehTip IN (1,4,100) AND h.ehAdetN<0 AND -h.ehAdetN > @cap AND h.ehTrhS>=@bas
+            WHERE h.ehstkID=@id AND h.ehTip IN (1,4) AND h.ehAdetN<0 AND -h.ehAdetN > @cap AND h.ehTrhS>=@bas
             ORDER BY -h.ehAdetN DESC;
+            -- ehTip 100 (POS) HARİÇ: POS satırı günlük-aggregate (gerçek bulk değil); bulk = sevk/fatura belge (ehTip 1/4).
             """;
         await using var c = await db.OpenAsync();
         var rows = (await c.QueryAsync<SatinalmaBulkHareket>(sql, new { id = stkID, cap, bas, top })).AsList();
