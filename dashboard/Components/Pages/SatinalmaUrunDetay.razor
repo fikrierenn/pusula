@@ -81,6 +81,39 @@ else
                     <div class="text-base-content/70 leading-relaxed">@KaynakAciklama</div>
                 </div>
             </details>
+
+            @* ── Şube-bazlı sezon: forecast tabanı kuru şubelerle bastırıldı mı? ── *@
+            @if (_subeSezon.Count > 0)
+            {
+                <details class="mt-2 border border-base-300 rounded-lg bg-base-200/40" open="@KuruBastirma">
+                    <summary class="text-xs font-medium text-base-content/70 px-3 py-2 cursor-pointer select-none flex items-center gap-1.5">
+                        <i data-lucide="store" class="w-3.5 h-3.5 text-primary"></i>Şube Bazlı Sezon (@SezonLbl) — stok var mıydı?
+                        @if (KuruBastirma)
+                        {
+                            <span class="badge badge-sm badge-warning">taban bastırılmış olabilir</span>
+                        }
+                    </summary>
+                    <div class="px-3 pb-3 pt-1 text-xs space-y-2">
+                        <div class="overflow-x-auto">
+                            <table class="table table-xs">
+                                <thead><tr><th>Şube</th><th class="text-right">Sezon Satış</th><th class="text-right">Sezon Max Stok</th><th>Durum</th></tr></thead>
+                                <tbody>
+                                @foreach (var s in _subeSezon)
+                                {
+                                    <tr>
+                                        <td class="font-medium">@s.Ad</td>
+                                        <td class="text-right tabular-nums">@Num(s.Satis)</td>
+                                        <td class="text-right tabular-nums">@Num(s.MaxStok)</td>
+                                        <td>@if (s.Kuru) { <span class="text-error font-medium">● kuru (stok yok)</span> } else { <span class="text-success">● stok vardı</span> }</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-base-content/70 leading-relaxed">@SubeSezonAciklama</div>
+                    </div>
+                </details>
+            }
         }
     </div>
 
@@ -167,6 +200,7 @@ else
     SatinalmaUrunOzet? _ozet;
     List<SatinalmaFaturaSatir> _fatura = new();
     List<SatinalmaAySatis> _satis = new();
+    List<SatinalmaSubeSezon> _subeSezon = new();
 
     SatinalmaAnalizSatir? _analiz;   // KANONİK sezonlu model (tek-ürün, Alım Analizi çekirdeği)
 
@@ -188,11 +222,13 @@ else
             var tFat = Satinalma.GetFaturaDetayAsync(StkId);
             var tSat = Satinalma.GetAySatisAsync(StkId);
             var tAnaliz = Satinalma.GetUrunAnalizAsync(StkId);
-            await Task.WhenAll(tOzet, tFat, tSat, tAnaliz);
+            var tSube = Satinalma.GetSubeSezonAsync(StkId);
+            await Task.WhenAll(tOzet, tFat, tSat, tAnaliz, tSube);
             _ozet = await tOzet;
             _fatura = (await tFat).ToList();
             _satis = (await tSat).ToList();
             _analiz = await tAnaliz;
+            _subeSezon = (await tSube).ToList();
         }
         catch (Exception ex)
         {
@@ -208,7 +244,7 @@ else
         {
             var a = _analiz;
             if (a is null) return "Sezonlu model verisi hesaplanamadı.";
-            return a.Grup switch
+            var s = a.Grup switch
             {
                 "ÖLÜ-ALIM" => $"Son 12 ayda hiç satış yok; buna rağmen ~{a.StokluAy} ay şube stoğu vardı (az da olsa, satabilirdi) → 'ölü'. Bu dönem yine alım yapılmış. Miktar/bağlı-para küçükse öncelik düşük.",
                 "YENİDEN-STOK" => "Stoksuzdu (eski talep vardı), yeniden stoklanmış — ölü değil, izlemek yeterli.",
@@ -217,6 +253,28 @@ else
                 "FAZLA" => $"Geçen sezon {Num(a.GySezon)} sattı; büyümeyle bu sezon ~{Num(a.BeklenenSezon)} bekleniyor ama sezon sonrası hâlâ ~{Num(a.SezonKalan)} kalır — ihtiyaçtan fazla.",
                 _ => $"Geçen {SezonLbl} sezonunda {Num(a.GySezon)} sattı · büyüme ×{a.Buyume.ToString("0.0", _tr)} → bu sezon ~{Num(a.BeklenenSezon)} bekleniyor · sezon sonrası ~{Num(System.Math.Max(0, a.SezonKalan))} kalır.",
             };
+            if (KuruBastirma)
+                s += $" ⚠ Ama geçen sezon {KuruSubeAd} stoksuzdu → gerçek talep bu sayının üstünde olabilir; kararı temkinli yorumla.";
+            return s;
+        }
+    }
+
+    // ── Şube-bazlı sezon: forecast tabanı kuru şubelerle bastırıldı mı? ──
+    // Bastırma = EN AZ bir şube kuru (stok yok) VE EN AZ bir şube stoklu (yani talep sinyali asimetrik, sıfır-toplam değil).
+    bool KuruBastirma => _subeSezon.Count > 0 && _subeSezon.Any(x => x.Kuru) && _subeSezon.Any(x => !x.Kuru);
+    string KuruSubeAd => string.Join(", ", _subeSezon.Where(x => x.Kuru).Select(x => x.Ad));
+    string StokluSubeAd => string.Join(", ", _subeSezon.Where(x => !x.Kuru).Select(x => x.Ad));
+    string SubeSezonAciklama
+    {
+        get
+        {
+            if (_subeSezon.Count == 0) return "";
+            if (KuruBastirma)
+                return $"Geçen {SezonLbl} sezonunda {KuruSubeAd} raf stoğu yoktu → o şube(ler)de satış imkânsızdı. Sadece {StokluSubeAd} stokluydu. "
+                     + $"Yani sezon satışı (forecast tabanı {Num(_analiz?.GySezon ?? 0)}) gerçek talebin ALTINDA — tam dağıtımla daha yüksek olurdu. FAZLA/beklenen sayısını buna göre temkinli oku.";
+            if (_subeSezon.All(x => x.Kuru))
+                return $"Geçen {SezonLbl} sezonunda TÜM şubeler kuruydu → sezon satışı stok yokluğundan bastırılmış; talep tabanı güvenilmez (stok gelince gerçek talep görülür).";
+            return $"Geçen {SezonLbl} sezonunda tüm aktif şubelerde stok vardı → sezon satışı gerçek talebi yansıtır (stok-kısıtı yok).";
         }
     }
 

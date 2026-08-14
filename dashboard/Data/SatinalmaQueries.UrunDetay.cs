@@ -63,6 +63,31 @@ public sealed partial class SatinalmaQueries
         return (await c.QueryAsync<SatinalmaFaturaSatir>(sql, new { id = stkID })).AsList();
     }
 
+    /// <summary>Geçen-yıl SABİT sezon penceresinde ŞUBE-bazlı satış + o sezondaki MAX raf stoğu.
+    /// Amaç: forecast tabanı (gy_sezon) bazı şubeler KURUyken bastırıldı mı? Kuru şube = "talep yok" değil "stok yok"
+    /// → toplam sezon-satışı eksik-sayım. Detay teşhisi bu şeffaflığı gösterir (591060 Faber-Castell vakası).</summary>
+    public async Task<IReadOnlyList<SatinalmaSubeSezon>> GetSubeSezonAsync(int stkID)
+    {
+        var ay0 = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1).ToString("yyyyMMdd");
+        var sz = SatinalmaSezon.Hesapla(ay0);   // geçen-yıl sezon [SEZb,SEZe) — Alım Analizi ile aynı pencere
+        const string sql = """
+            SELECT m.Mekan, m.Ad,
+              ISNULL(s.satis,0) AS Satis,
+              ISNULL(b.max_stok,0) AS MaxStok
+            FROM (VALUES (1,N'FSM'),(4477,N'Özlüce'),(4478,N'İst.Yolu')) m(Mekan,Ad)
+            LEFT JOIN (SELECT ehMekan, CONVERT(int,SUM(-ehAdetN)) satis
+                       FROM DerinSISBkm.dbo.irsHrk WITH(NOLOCK)
+                       WHERE ehstkID=@id AND ehTip IN (1,4,100) AND ehTrhS>=@sezb AND ehTrhS<@seze
+                       GROUP BY ehMekan) s ON s.ehMekan=m.Mekan
+            LEFT JOIN (SELECT ehMekan, CONVERT(int,MAX(Stok)) max_stok
+                       FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli WITH(NOLOCK)
+                       WHERE stkID=@id AND Kaynak='irsHrk' AND Donem>=@sezb AND Donem<@seze
+                       GROUP BY ehMekan) b ON b.ehMekan=m.Mekan;
+            """;
+        await using var c = await db.OpenAsync();
+        return (await c.QueryAsync<SatinalmaSubeSezon>(sql, new { id = stkID, sezb = sz.SEZb, seze = sz.SEZe })).AsList();
+    }
+
     /// <summary>Son 24 ay satış — şube (irsHrk) DerinSIS + e-ticaret (JOKER direkt), ay-bazında birleşik.</summary>
     public async Task<IReadOnlyList<SatinalmaAySatis>> GetAySatisAsync(int stkID)
     {

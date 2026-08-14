@@ -94,3 +94,15 @@ public sealed class SatinalmaAySatis
     public int Etic { get; set; }
     public int Toplam => Sube + Etic;
 }
+
+/// <summary>Geçen-yıl sezon penceresinde şube-bazlı satış + o sezonda görülen max raf stoğu.
+/// Kuru şube (MaxStok küçük) = satış "talep yok" değil "stok yok" → forecast tabanı eksik-sayım sinyali.</summary>
+public sealed class SatinalmaSubeSezon
+{
+    public int Mekan { get; set; }
+    public string Ad { get; set; } = "";
+    public int Satis { get; set; }
+    public int MaxStok { get; set; }
+    /// <summary>Sezon boyunca raf ~boş (min-stok 3 altı) → o şubede satış imkânı yoktu.</summary>
+    public bool Kuru => MaxStok < 3;
+}
