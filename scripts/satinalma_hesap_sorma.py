@@ -46,6 +46,7 @@ MAT_ESIK = 5000                                  # materiality: bağlı para < b
 MIN_KOLI = 24                                    # bu ay alış ≤ bu → küçük-koli/min-sipariş (adil-atıf)
 MIN_STOK = 3                                      # stoklu-ay için min şube bakiye (≈1/şube×3); 1-2 adet 'stok vardı' sayılmaz
 SEZ_MIN = 30                                      # sezon-özel büyüme için min önceki-yıl sezon tabanı (altı → yıllık/kategori)
+RETAIL_CAP = 50                                   # retail-momentum: tek-hareket bu üstü = toptan/bulk, tavana kırpılır (dashboard SatinRetailCap ile aynı)
 print(f"Hedef ay: {AY} · alış [{T_AY0},{T_AY1}) · şekil geçmişi [{T_GEC},{T_AY0})", flush=True)
 
 # ---- .env + bağlantı ----
@@ -102,14 +103,20 @@ print("Aylık şekil — şube satış...", flush=True)
 aylik = {}          # stkID -> {ay: adet}  (şube + e-tic birleşik — analiz için)
 aylik_sube = {}     # sadece şube (sayfa için)
 aylik_etic = {}     # sadece e-tic (sayfa için)
+aylik_retail = {}   # stkID -> {ay: retail}  (bulk @RETAIL_CAP kırpılmış — momentum floor)
+aylik_fis = {}      # stkID -> {ay: fiş}      (çok-fişli ay gate — tek-bulk elenir)
 cur.execute(f"""
-    SELECT h.ehstkID, CONVERT(varchar(7),h.ehTrhS,126) ay, -SUM(h.ehAdetN)
+    SELECT h.ehstkID, CONVERT(varchar(7),h.ehTrhS,126) ay, -SUM(h.ehAdetN),
+           SUM(CASE WHEN -h.ehAdetN > {RETAIL_CAP} THEN {RETAIL_CAP} ELSE -h.ehAdetN END),
+           COUNT(DISTINCT h.ehID)
     FROM dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
     WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>='{T_GEC}' AND h.ehTrhS<'{T_AY0}'
     GROUP BY h.ehstkID, CONVERT(varchar(7),h.ehTrhS,126)""")
-for sid, ay, q in cur.fetchall():
+for sid, ay, q, rt, fs in cur.fetchall():
     aylik.setdefault(sid, {})[ay] = aylik.get(sid, {}).get(ay, 0) + int(q or 0)
     aylik_sube.setdefault(sid, {})[ay] = aylik_sube.get(sid, {}).get(ay, 0) + int(q or 0)
+    aylik_retail.setdefault(sid, {})[ay] = int(rt or 0)
+    aylik_fis.setdefault(sid, {})[ay] = int(fs or 0)
 
 # ---- 4) AYLIK ŞEKİL: e-tic (OPENQUERY, kategori-geniş, Python'da alınan-set süz) ----
 print("Aylık şekil — e-tic (OPENQUERY)...", flush=True)
@@ -126,8 +133,12 @@ cur.execute(f"""
         GROUP BY i.DERINSIS_ID, CONVERT(varchar(4),YEAR(o.ORDERDATE))+''-''+RIGHT(''0''+CONVERT(varchar(2),MONTH(o.ORDERDATE)),2)') x
     JOIN #a ON #a.stkID=x.stkID""")
 for sid, ay, q in cur.fetchall():
-    aylik.setdefault(sid, {})[ay] = aylik.get(sid, {}).get(ay, 0) + int(q or 0)
-    aylik_etic.setdefault(sid, {})[ay] = aylik_etic.get(sid, {}).get(ay, 0) + int(q or 0)
+    qi = int(q or 0)
+    aylik.setdefault(sid, {})[ay] = aylik.get(sid, {}).get(ay, 0) + qi
+    aylik_etic.setdefault(sid, {})[ay] = aylik_etic.get(sid, {}).get(ay, 0) + qi
+    # e-tic = perakende (bulk yok) → retail=qty, fis=999 (momentum hep sayılır)
+    aylik_retail.setdefault(sid, {})[ay] = aylik_retail.get(sid, {}).get(ay, 0) + qi
+    aylik_fis.setdefault(sid, {})[ay] = aylik_fis.get(sid, {}).get(ay, 0) + 999
 
 # ---- 5) MASTER + MALIYET ----
 print("Master + maliyet...", flush=True)
@@ -326,6 +337,14 @@ def hesapla(sid, kat):
     # BEKLENEN: g<1 (düşüş) tabana ÇARPILMAZ (g_fc=max(1,g)) — gy_sezon zaten düşmüş sayı, üstüne bir düşüş
     # daha = çifte-ceza (tükenme g_eff=1 kararıyla tutarlı; 591060 Faber vakası: 71×0.30=21 saçmalığı).
     sezon3 = gy_sezon * max(1.0, g)                  # bu sezon beklenen (geçen-yıl sabit sezon × forecast-büyüme)
+    # RETAIL-MOMENTUM FLOOR: son3ay bulk-kırpılmış + çok-fişli retail velocity × sezon-ay. Anomalik-düşük sezon
+    # tabanı retail satan üründe kurtarılır; bulk (RETAIL_CAP+fiş<3) gizlenmez → gerçek fazla korunur.
+    rt = aylik_retail.get(sid, {}); fz = aylik_fis.get(sid, {})
+    retail_son3 = sum(rt.get(m, 0) for m in SON12[9:12] if fz.get(m, 0) >= 3)   # son 3 ay, çok-fişli
+    sezon_ay = len(SEZ_GY)
+    floor = retail_son3 / 3.0 * sezon_ay
+    if floor > sezon3:
+        sezon3 = floor
     naive_mos = (kap / (son12 / 12.0)) if son12 > 0 else None
     # ---- ÜRÜN KARAKTERİ (şekil-bazlı: istikrar + sezon-hizası + büyüme) ----
     satis_ay = sum(1 for x in shape if x > 0)       # kaç ayda satış oldu (istikrar sinyali)
@@ -338,7 +357,7 @@ def hesapla(sid, kat):
     elif g < 0.7:          karakter = "DÜŞÜŞ"        # talep azalıyor
     else:                  karakter = "DÜZENSİZ"     # dalgalı, net desen yok
     return dict(son12=son12, onc12=onc12, son24=son24, g=g, g_kaynak=g_kaynak, kap=kap, ac=ac, tuk_ay=tuk_ay,
-                gy_sezon=gy_sezon, sezon3=sezon3, naive=naive_mos, yeni=yeni, genc=genc, had_stock=had_stock,
+                gy_sezon=gy_sezon, sezon3=sezon3, retail_son3=retail_son3, naive=naive_mos, yeni=yeni, genc=genc, had_stock=had_stock,
                 stoklu_ay=stoklu_ay, aylik_ort=aylik_ort, history_ay=history_ay,
                 satis_ay=satis_ay, sezon_pay=sezon_pay, karakter=karakter,
                 sube_now=sube_now, depo_now=depo_now)

@@ -14,7 +14,8 @@ public record PanelAyarlar(
     int SatinMaterialite = 5000,       // bağlı para < bu ₺ → düşük öncelik (MAT + tolerans varsayılanı)
     int SatinMinKoli = 24,             // bu ay alış ≤ bu → küçük-koli (MINKOLI)
     int SatinMinStok = 3,              // stoklu-ay için min şube bakiye (≈1/şube×3; MINSTOK)
-    int SatinSezonMinTaban = 30)       // sezon-özel büyüme için min önceki-yıl sezon tabanı (SEZMIN)
+    int SatinSezonMinTaban = 30,       // sezon-özel büyüme için min önceki-yıl sezon tabanı (SEZMIN)
+    int SatinRetailCap = 50)           // retail-momentum: tek-hareket bu adedin üstü = toptan/bulk, tavana kırpılır (RETAILCAP)
 {
     public static readonly int[] VarsayilanHaricMarkalar = [0, 269, 2101, 5972, 10911];
     public IReadOnlyList<int> HaricMarkalarEtkin => HaricMarkalar is { Count: > 0 } ? HaricMarkalar : VarsayilanHaricMarkalar;

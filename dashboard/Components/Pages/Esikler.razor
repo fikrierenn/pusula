@@ -46,6 +46,8 @@
               @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinMinStok" />)
         @Alan("Sezon-büyüme min taban", "Ürünün önceki-yıl sezon (Ağu-Eki) satışı bu adedin üstündeyse SEZON-özel büyüme kullanılır; altı → yıllık/kategori büyüme.",
               @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinSezonMinTaban" />)
+        @Alan("Retail-momentum cap (adet)", "Son-ay momentum tabanı için tek satış hareketi bu adedin üstündeyse TOPTAN/bulk sayılır, tavana kırpılır. Bulk siparişler forecast'i şişirmez; sadece gerçek perakende talep (çok-fişli ay) beklenen-tabanını yükseltir. ~50 = perakendenin %99,5'i altında.",
+              @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinRetailCap" />)
     </div>
 
     <h3 class="text-sm font-semibold mb-1 mt-3">Hariç Markalar</h3>
@@ -94,6 +96,7 @@
             RiskDusuk = a.RiskDusuk, RiskOrta = a.RiskOrta, RiskYuksek = a.RiskYuksek,
             SatinFazlaAy = a.SatinFazlaAy, SatinMaterialite = a.SatinMaterialite, SatinMinKoli = a.SatinMinKoli,
             SatinMinStok = a.SatinMinStok, SatinSezonMinTaban = a.SatinSezonMinTaban,
+            SatinRetailCap = a.SatinRetailCap,
         };
         _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
         await MarkaCoz();
@@ -129,7 +132,7 @@
             await Ayar.KaydetAsync(new PanelAyarlar(
                 _e.DevirOlu, _e.DevirSaglikli, _e.StokYoklukHedef,
                 _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, HaricIds(),
-                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban));
+                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban, _e.SatinRetailCap));
             _mesaj = "Kaydedildi (PanelAyar / BkmPanel)."; _hata = false;
         }
         catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _mesaj = $"Kayıt başarısız: {ex.Message}"; _hata = true; }
@@ -149,5 +152,6 @@
         public int SatinMinKoli { get; set; } = 24;
         public int SatinMinStok { get; set; } = 3;
         public int SatinSezonMinTaban { get; set; } = 30;
+        public int SatinRetailCap { get; set; } = 50;
     }
 }

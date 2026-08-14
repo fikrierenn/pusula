@@ -55,7 +55,8 @@ public sealed class AyarService
                 SatinMaterialite: Int(map, "satin_materialite", d.SatinMaterialite),
                 SatinMinKoli: Int(map, "satin_min_koli", d.SatinMinKoli),
                 SatinMinStok: Int(map, "satin_min_stok", d.SatinMinStok),
-                SatinSezonMinTaban: Int(map, "satin_sezon_min", d.SatinSezonMinTaban));
+                SatinSezonMinTaban: Int(map, "satin_sezon_min", d.SatinSezonMinTaban),
+                SatinRetailCap: Int(map, "satin_retail_cap", d.SatinRetailCap));
         }
         catch (Exception ex) { _log.LogError(ex, "Ayarlar okunamadı — varsayılanla devam"); }
     }
@@ -78,6 +79,7 @@ public sealed class AyarService
             ("satin_min_koli", a.SatinMinKoli.ToString()),
             ("satin_min_stok", a.SatinMinStok.ToString()),
             ("satin_sezon_min", a.SatinSezonMinTaban.ToString()),
+            ("satin_retail_cap", a.SatinRetailCap.ToString()),
         };
         await using var c = await _db.OpenPanelAsync()!;
         foreach (var (k, v) in satirlar)

@@ -24,9 +24,11 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         p.Add("MINKOLI", ayar.Deger.SatinMinKoli);
         p.Add("MINSTOK", ayar.Deger.SatinMinStok);
         p.Add("SEZMIN", ayar.Deger.SatinSezonMinTaban);
+        p.Add("RETAILCAP", ayar.Deger.SatinRetailCap);
         var sz = SatinalmaSezon.Hesapla(ay0);   // sabit sezon (kaymaz) — en yakın gelen sezonun geçen/önceki yıl penceresi
         p.Add("SEZb", sz.SEZb); p.Add("SEZe", sz.SEZe);
         p.Add("PSEZb", sz.PSEZb); p.Add("PSEZe", sz.PSEZe);
+        p.Add("SEZAY", sz.AylarMM.Length);      // sezon ay sayısı (retail-momentum floor sezon-normalize)
         return p;
     }
     // Ay-bazlı sonuç cache (geçmiş ay değişmez; içinde-olunan ay TTL ile tazelenir). Static → tüm request'ler paylaşır.
@@ -64,6 +66,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         -- @SEZb/@SEZe (geçen-yıl SABİT sezon) + @PSEZb/@PSEZe (önceki-yıl) = Dapper param (SatinalmaSezon.Hesapla).
         -- Kayan pencere DEĞİL — sabit takvim sezonu (Yaz/Okul/Ara-Tatil/Sömestr), ay0'a göre en yakın gelen.
         DECLARE @L_ay0 char(7)=CONVERT(char(7),@d0,126);
+        DECLARE @L_son3 char(7)=CONVERT(char(7),DATEADD(month,-3,@d0),126);   -- retail-momentum: son 3 ay başı
         DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
         DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
         DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
@@ -87,8 +90,12 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         WHERE h.ehTip IN (0,10,13,16,99) AND h.ehTrhS<@AY1 GROUP BY h.ehstkID;
 
         IF OBJECT_ID('tempdb..#ay') IS NOT NULL DROP TABLE #ay;
-        CREATE TABLE #ay (stkID int, ay char(7), satis int);
-        INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.ehAdetN))
+        CREATE TABLE #ay (stkID int, ay char(7), satis int, retail int, fis int);
+        -- retail = her hareket @RETAILCAP'e kırpılıp toplanır (bulk tek-hareket düşer); fis = o ay distinct fiş sayısı
+        -- (retail momentum SADECE çok-fişli aylardan sayılır → tek-bulk ayı 'retail' saymaz — #agg gate fis>=3).
+        INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.ehAdetN)),
+               CONVERT(int, SUM(CASE WHEN -h.ehAdetN > @RETAILCAP THEN @RETAILCAP ELSE -h.ehAdetN END)),
+               CONVERT(int, COUNT(DISTINCT h.ehID))
         FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
         WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>=@S24b AND h.ehTrhS<@AY0
         GROUP BY h.ehstkID, CONVERT(char(7),h.ehTrhS,126);
@@ -96,7 +103,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         -- filtresiz 2,7M satır/18,5s perf sorunu yaptığından kaldırıldı; e-tic ayrı detayda incelenecek.
         -- (DINAMIK/Excel e-tic DAHİL → dashboard bu ölçüde küçük sapabilir; bu kategorilerde e-tic payı düşük.)
         IF OBJECT_ID('tempdb..#aylik') IS NOT NULL DROP TABLE #aylik;
-        SELECT stkID, ay, SUM(satis) AS satis INTO #aylik FROM #ay GROUP BY stkID, ay;
+        SELECT stkID, ay, SUM(satis) AS satis, SUM(retail) AS retail, SUM(fis) AS fis INTO #aylik FROM #ay GROUP BY stkID, ay;
         CREATE CLUSTERED INDEX ix ON #aylik(stkID, ay);
 
         IF OBJECT_ID('tempdb..#shape') IS NOT NULL DROP TABLE #shape;
@@ -114,7 +121,8 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            ISNULL(SUM(al.satis),0) AS son24,
            ISNULL(SUM(CASE WHEN ay>=@L_sezb AND ay<@L_seze THEN al.satis END),0) AS gy_sezon,
            ISNULL(SUM(CASE WHEN ay>=@L_psezb AND ay<@L_pseze THEN al.satis END),0) AS gy_sezon_onc,
-           ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay
+           ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay,
+           ISNULL(SUM(CASE WHEN ay>=@L_son3 AND ay<@L_ay0 AND al.fis>=3 THEN al.retail END),0) AS retail_son3   -- bulk-kırpılmış + çok-fişli son 3 ay (tek-bulk ayı hariç)
         INTO #agg
         FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
         GROUP BY a.stkID;
@@ -148,7 +156,14 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
                   ELSE 'kategori' END AS kaynak) r;
         -- BEKLENEN = geçen-yıl sezon × büyüme; AMA g<1 (düşüş) tabana ÇARPILMAZ (g_fc=max(1,g)). gy_sezon zaten
         -- düşmüş sayı; üstüne bir düşüş daha = çifte-ceza (tükenme döngüsündeki g_eff=1 kararıyla tutarlı).
-        UPDATE #agg SET beklenen = CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END);
+        -- RETAIL-MOMENTUM FLOOR: beklenen, sezonluk-tabanın VE son3ay retail-velocity'nin (sezon-normalize) BÜYÜĞÜ.
+        -- Sezonluk-taban anomalik düşükse (Okul'25=17) ama ürün retail satıyorsa (bulk hariç) floor kurtarır.
+        -- Bulk/toptan @RETAILCAP'te kesildi → gerçek fazlayı gizlemez (over-buy'ın retail-momentum'u düşük).
+        UPDATE #agg SET beklenen =
+            CASE WHEN CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END)
+                    >= CONVERT(int, retail_son3/3.0*@SEZAY)
+                 THEN CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END)
+                 ELSE CONVERT(int, retail_son3/3.0*@SEZAY) END;
 
         -- PERF: OUTER APPLY-per-ürün (2446× stokSon_vw 848K tarama) yerine set-based tek GROUP BY (IN #a).
         IF OBJECT_ID('tempdb..#sube') IS NOT NULL DROP TABLE #sube;
@@ -253,6 +268,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            ag.gy_sezon_onc                                           AS GySezonOnc,
            ag.onc12                                                  AS Onc12,
            ag.beklenen                                               AS BeklenenSezon,
+           ag.retail_son3                                            AS RetailSon3,
            st.kap - ag.beklenen                                      AS SezonKalan,
            sl.stoklu_ay                                              AS StokluAy,
            CONVERT(decimal(10,1), CASE WHEN sl.stoklu_ay>0 THEN 1.0*ag.son12/sl.stoklu_ay END) AS AylikHiz,

@@ -29,6 +29,7 @@ DECLARE @SEZe  char(8)=CONVERT(char(8),DATEADD(month,1,DATEFROMPARTS(@SEZ_YIL-1,
 DECLARE @PSEZb char(8)=CONVERT(char(8),DATEFROMPARTS(@SEZ_YIL-2,@SEZ_BAS,1),112);               -- önceki yıl sezon başı (büyüme paydası)
 DECLARE @PSEZe char(8)=CONVERT(char(8),DATEADD(month,1,DATEFROMPARTS(@SEZ_YIL-2,@SEZ_SON,1)),112);
 DECLARE @L_ay0 char(7)=CONVERT(char(7),@d0,126);                       -- 'YYYY-MM' etiketler (char(7) ay eşleme)
+DECLARE @L_son3 char(7)=CONVERT(char(7),DATEADD(month,-3,@d0),126);    -- retail-momentum son 3 ay başı
 DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
 DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
 DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
@@ -36,6 +37,7 @@ DECLARE @L_seze char(7)=CONVERT(char(7),CONVERT(date,@SEZe),126);
 DECLARE @L_psezb char(7)=CONVERT(char(7),CONVERT(date,@PSEZb),126);   -- önceki yıl sezon etiketleri (yıl-önce Ağu-Eki)
 DECLARE @L_pseze char(7)=CONVERT(char(7),CONVERT(date,@PSEZe),126);
 DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24, @MINSTOK int=3, @SEZMIN int=30;  -- fazla/materiality/min-koli/min-stoklu + sezon-büyüme min taban
+DECLARE @RETAILCAP int=50;  -- retail-momentum: tek-hareket bu üstü = toptan/bulk, tavana kırpılır (dashboard SatinRetailCap ile aynı)
 
 /* 1) #a — bu ay alınan ürünler + alış adet/tutar */
 IF OBJECT_ID('tempdb..#a') IS NOT NULL DROP TABLE #a;
@@ -55,13 +57,17 @@ WHERE h.ehTip IN (0,10,13,16,99) AND h.ehTrhS<@AY1 GROUP BY h.ehstkID;
 
 /* 3) #ay — aylık satış (şube irsHrk 1/4/100 + e-tic JOKER), 24 ay */
 IF OBJECT_ID('tempdb..#ay') IS NOT NULL DROP TABLE #ay;
-CREATE TABLE #ay (stkID int, ay char(7), satis int);
-INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.ehAdetN))
+CREATE TABLE #ay (stkID int, ay char(7), satis int, retail int, fis int);
+-- retail = hareket @RETAILCAP'e kırpılıp toplanır (bulk düşer); fis = distinct fiş (retail-momentum çok-fişli aydan)
+INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.ehAdetN)),
+       CONVERT(int, SUM(CASE WHEN -h.ehAdetN > @RETAILCAP THEN @RETAILCAP ELSE -h.ehAdetN END)),
+       CONVERT(int, COUNT(DISTINCT h.ehID))
 FROM dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
 WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>=@S24b AND h.ehTrhS<@AY0
 GROUP BY h.ehstkID, CONVERT(char(7),h.ehTrhS,126);
 -- OPENQUERY @var alamaz → pencere SABİT-GENİŞ (2023..2027), dış WHERE ile @S24b..@AY0'a daralt (son24 tam 24-ay).
-INSERT #ay SELECT x.stkID, x.ay, CONVERT(int,x.qty)
+-- E-tic = perakende (online sipariş, bulk yok) → retail=qty, fis=999 (momentum hep sayılır)
+INSERT #ay SELECT x.stkID, x.ay, CONVERT(int,x.qty), CONVERT(int,x.qty), 999
 FROM OPENQUERY(ODAKJOKER,'
     SELECT i.DERINSIS_ID stkID, CONVERT(varchar(4),YEAR(o.ORDERDATE))+''-''+RIGHT(''0''+CONVERT(varchar(2),MONTH(o.ORDERDATE)),2) ay, SUM(d.QUANTITY) qty
     FROM JOKER.dbo.J_ORDER_DETAILS d JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
@@ -71,7 +77,7 @@ JOIN #a ON #a.stkID=x.stkID
 WHERE x.ay>=@L_s24 AND x.ay<@L_ay0;
 -- ürün×ay birleşik (şube+etic)
 IF OBJECT_ID('tempdb..#aylik') IS NOT NULL DROP TABLE #aylik;
-SELECT stkID, ay, SUM(satis) AS satis INTO #aylik FROM #ay GROUP BY stkID, ay;
+SELECT stkID, ay, SUM(satis) AS satis, SUM(retail) AS retail, SUM(fis) AS fis INTO #aylik FROM #ay GROUP BY stkID, ay;
 CREATE CLUSTERED INDEX ix ON #aylik(stkID, ay);
 
 /* 4) #shape — 12-ay şekil (SON12: idx0 = hedef−12 .. idx11 = hedef−1; ay = @S12b + idx) */
@@ -91,7 +97,8 @@ SELECT a.stkID,
    ISNULL(SUM(al.satis),0) AS son24,
    ISNULL(SUM(CASE WHEN ay>=@L_sezb AND ay<@L_seze THEN al.satis END),0) AS gy_sezon,
    ISNULL(SUM(CASE WHEN ay>=@L_psezb AND ay<@L_pseze THEN al.satis END),0) AS gy_sezon_onc,   -- önceki yıl sezon (sezon-büyüme paydası)
-   ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay
+   ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay,
+   ISNULL(SUM(CASE WHEN ay>=@L_son3 AND ay<@L_ay0 AND al.fis>=3 THEN al.retail END),0) AS retail_son3   -- bulk-kırpılmış + çok-fişli son3
 INTO #agg
 FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
 GROUP BY a.stkID;
@@ -127,7 +134,13 @@ CROSS APPLY (SELECT
           ELSE 'kategori' END AS kaynak) r;
 -- BEKLENEN = geçen-yıl sezon × büyüme; g<1 (düşüş) tabana ÇARPILMAZ (g_fc=max(1,g)) — gy_sezon zaten düşmüş,
 -- üstüne bir düşüş daha çifte-ceza (tükenme g_eff=1 kararıyla tutarlı).
-UPDATE #agg SET beklenen = CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END);
+-- RETAIL-MOMENTUM FLOOR: beklenen = MAX(sezonluk-taban, son3ay retail-velocity × sezon-ay). Anomalik-düşük sezon
+-- tabanı retail satan üründe kurtarılır; bulk @RETAILCAP+fiş-gate'te kesildi → gerçek fazla gizlenmez.
+UPDATE #agg SET beklenen =
+    CASE WHEN CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END)
+            >= CONVERT(int, retail_son3/3.0*(@SEZ_SON-@SEZ_BAS+1))
+         THEN CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END)
+         ELSE CONVERT(int, retail_son3/3.0*(@SEZ_SON-@SEZ_BAS+1)) END;
 
 /* 6) #stok — ay sonu = fiziki(şube stokSon + depo WMS); ay başı = ay sonu − ledger ay-net */
 IF OBJECT_ID('tempdb..#stok') IS NOT NULL DROP TABLE #stok;
@@ -216,6 +229,7 @@ SELECT
    CONVERT(decimal(10,1), CASE WHEN ag.son12=0 OR st.kap<=0 THEN NULL ELSE ISNULL(tk.tuk_ay,999) END) AS [Kaç Ayda Tükenir],
    CONVERT(decimal(10,1), CASE WHEN ag.son12>0 THEN st.kap/(ag.son12/12.0) END) AS [Kaç Ayda Tükenir (basit)],
    ag.gy_sezon                                               AS [Geçen Yıl Sezon Satışı],
+   ag.retail_son3                                            AS [Son3 Retail Momentum],
    ag.beklenen                                               AS [Bu Sezon Beklenen],
    st.kap - ag.beklenen                                      AS [Sezon Sonrası Kalan],
    sl.stoklu_ay                                              AS [Yılda Kaç Ay Stoklu],

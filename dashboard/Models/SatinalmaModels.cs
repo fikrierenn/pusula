@@ -28,6 +28,7 @@ public sealed class SatinalmaAnalizSatir
     public int GySezon { get; set; }
     public int GySezonOnc { get; set; }   // önceki-yıl sezon (büyüme paydası — şeffaflık)
     public int Onc12 { get; set; }         // önceki 12 ay (yıllık-tier paydası — şeffaflık)
+    public int RetailSon3 { get; set; }    // son 3 ay bulk-kırpılmış retail (momentum floor tabanı — şeffaflık)
     public int BeklenenSezon { get; set; }
     public int SezonKalan { get; set; }
     public int? StokluAy { get; set; }
