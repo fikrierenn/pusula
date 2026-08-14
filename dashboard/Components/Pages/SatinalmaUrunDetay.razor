@@ -59,11 +59,28 @@ else
         {
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
                 <div><div class="text-xs text-base-content/50">Eldeki Stok</div><div class="text-lg font-bold">@Num(_ozet.ToplamStok)</div><div class="text-[11px] text-base-content/40">şube @Num(_ozet.SubeStok)·depo @Num(_ozet.DepoStok)</div></div>
-                <div><div class="text-xs text-base-content/50">Talep Eğilimi</div><div class="text-lg font-bold @EgilimCls">@EgilimIbare</div><div class="text-[11px] text-base-content/40">geçen sezona göre (×@_analiz.Buyume.ToString("0.00", _tr))</div></div>
+                <div><div class="text-xs text-base-content/50">Talep Eğilimi</div><div class="text-lg font-bold @EgilimCls">@EgilimIbare</div><div class="text-[11px] text-base-content/40">@EgilimAltyazi (×@_analiz.Buyume.ToString("0.00", _tr))</div></div>
                 <div><div class="text-xs text-base-content/50">Geçen Sezon · @SezonLbl</div><div class="text-lg font-bold text-warning">@Num(_analiz.GySezon)</div><div class="text-[11px] text-base-content/40">forecast tabanı</div></div>
                 <div><div class="text-xs text-base-content/50">Bu Sezon Beklenen</div><div class="text-lg font-bold">@Num(_analiz.BeklenenSezon)</div><div class="text-[11px] text-base-content/40">geçen sezon×büyüme</div></div>
                 <div><div class="text-xs text-base-content/50">Sezon Sonrası Kalan</div><div class="text-lg font-bold @(_analiz.SezonKalan > _analiz.GySezon ? "text-error" : _analiz.SezonKalan <= 0 ? "text-success" : "")">@Num(_analiz.SezonKalan)</div><div class="text-[11px] text-base-content/40">sezonlu tükenme @(_analiz.TukAy is null ? "—" : _analiz.TukAy >= 999 ? "hiç" : _analiz.TukAy.Value.ToString("0.0", _tr) + " ay")</div></div>
             </div>
+
+            @* ── Model Girdileri: hesabı besleyen HAM döneler + büyüme kaynağı (şeffaflık) ── *@
+            <details class="mt-3 border border-base-300 rounded-lg bg-base-200/40">
+                <summary class="text-xs font-medium text-base-content/70 px-3 py-2 cursor-pointer select-none flex items-center gap-1.5">
+                    <i data-lucide="function-square" class="w-3.5 h-3.5 text-primary"></i>Model Girdileri — büyüme ×@_analiz.Buyume.ToString("0.00", _tr) nereden?
+                    <span class="badge badge-sm @KaynakBadgeCls">@KaynakEtiket</span>
+                </summary>
+                <div class="px-3 pb-3 pt-1 text-xs space-y-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-base-content/80">
+                        <div class="bg-base-100 rounded p-2"><div class="text-base-content/50 text-[11px]">Geçen sezon (@SezonLbl)</div><div class="font-bold tabular-nums">@Num(_analiz.GySezon)</div></div>
+                        <div class="bg-base-100 rounded p-2"><div class="text-base-content/50 text-[11px]">Önceki yıl sezon</div><div class="font-bold tabular-nums">@Num(_analiz.GySezonOnc)</div><div class="text-[10px] text-base-content/40">büyüme paydası</div></div>
+                        <div class="bg-base-100 rounded p-2"><div class="text-base-content/50 text-[11px]">Son 12 ay</div><div class="font-bold tabular-nums">@Num(_analiz.Son12)</div></div>
+                        <div class="bg-base-100 rounded p-2"><div class="text-base-content/50 text-[11px]">Önceki 12 ay</div><div class="font-bold tabular-nums">@Num(_analiz.Onc12)</div></div>
+                    </div>
+                    <div class="text-base-content/70 leading-relaxed">@KaynakAciklama</div>
+                </div>
+            </details>
         }
     </div>
 
@@ -217,6 +234,39 @@ else
     string EgilimCls
     {
         get { var g = _analiz?.Buyume ?? 1m; return g > 1.05m ? "text-success" : g < 0.95m ? "text-error" : "text-base-content/60"; }
+    }
+
+    // Büyüme kaynağı (3-katman: sezon/ürün/kategori) — etiket + renk + hangi tabana göre.
+    string EgilimAltyazi => _analiz?.BuyumeKaynak switch
+    {
+        "sezon" => "kendi sezon YoY'una göre",
+        "ürün" => "kendi yıllık (sezon-dışı) YoY'una göre",
+        "kategori" => "kategori büyümesine göre (kendi verisi yetersiz)",
+        _ => "geçmişe göre",
+    };
+    string KaynakEtiket => _analiz?.BuyumeKaynak switch
+    {
+        "sezon" => "SEZON", "ürün" => "YILLIK", "kategori" => "KATEGORİ", _ => "—",
+    };
+    string KaynakBadgeCls => _analiz?.BuyumeKaynak switch
+    {
+        "sezon" => "badge-success", "ürün" => "badge-info", "kategori" => "badge-warning", _ => "badge-ghost",
+    };
+    // Hangi tier neden ateşlendi — HAM sayılarla (SEZMIN=30 önceki-yıl-sezon tabanı, 100 yıllık-payda eşiği).
+    string KaynakAciklama
+    {
+        get
+        {
+            var a = _analiz; if (a is null) return "";
+            var g = a.Buyume.ToString("0.00", _tr);
+            return a.BuyumeKaynak switch
+            {
+                "sezon" => $"Önceki-yıl sezon tabanı {Num(a.GySezonOnc)} ≥ 30 → ürünün KENDİ sezon büyümesi kullanıldı: {Num(a.GySezon)} ÷ {Num(a.GySezonOnc)} = ×{g}.",
+                "ürün" => $"Sezon tabanı ({Num(a.GySezonOnc)}) 30 altında kaldı; yıllık sezon-dışı taban ({Num(a.Onc12 - a.GySezonOnc)}) ≥ 100 → yıllık YoY: ({Num(a.Son12)}−{Num(a.GySezon)}) ÷ ({Num(a.Onc12)}−{Num(a.GySezonOnc)}) = ×{g}.",
+                "kategori" => $"Ürünün kendi tabanı ince (önceki-yıl sezon {Num(a.GySezonOnc)} < 30 VE yıllık sezon-dışı {Num(a.Onc12 - a.GySezonOnc)} < 100) → güvenilir kendi-büyümesi çıkmadı, kategori büyümesi ×{g} kullanıldı. Bu ürüne özel bir talep sinyali DEĞİL.",
+                _ => $"Büyüme ×{g}.",
+            };
+        }
     }
 
     string Txt => _analiz?.Grup switch

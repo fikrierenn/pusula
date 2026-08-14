@@ -247,6 +247,8 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            CONVERT(decimal(10,1), CASE WHEN ag.son12=0 OR st.kap<=0 THEN NULL ELSE ISNULL(tk.tuk_ay,999) END) AS TukAy,
            CONVERT(decimal(10,1), CASE WHEN ag.son12>0 THEN st.kap/(ag.son12/12.0) END) AS TukBasit,
            ag.gy_sezon                                               AS GySezon,
+           ag.gy_sezon_onc                                           AS GySezonOnc,
+           ag.onc12                                                  AS Onc12,
            CONVERT(int, ag.gy_sezon*ag.g)                            AS BeklenenSezon,
            st.kap - CONVERT(int, ag.gy_sezon*ag.g)                   AS SezonKalan,
            sl.stoklu_ay                                              AS StokluAy,
