@@ -267,7 +267,7 @@ else
     string _odakKat = "";      // kategori/marka/grup özet satırından drill → Ürünler'i daralt
     string _odakMarka = "";
     string _odakGrup = "";
-    string _sortKey = "";
+    string _sortKey = "BagliPara";   // varsayılan: bağlı paraya göre azalan (en çok donmuş üstte)
     bool _sortAsc;
     int _tolerans;             // materiality eşiği ₺ (Ayarlar'dan; OnInitialized'da set) — altı 'düşük öncelik'
     bool _sadeceOnemli = true; // düşük-öncelikli (bağlı<tolerans) fazlaları gizle

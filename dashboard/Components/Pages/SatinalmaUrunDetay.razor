@@ -59,7 +59,7 @@ else
         {
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
                 <div><div class="text-xs text-base-content/50">Eldeki Stok</div><div class="text-lg font-bold">@Num(_ozet.ToplamStok)</div><div class="text-[11px] text-base-content/40">şube @Num(_ozet.SubeStok)·depo @Num(_ozet.DepoStok)</div></div>
-                <div><div class="text-xs text-base-content/50">Son 12 Ay Satış</div><div class="text-lg font-bold">@Num(_analiz.Son12)</div><div class="text-[11px] text-base-content/40">büyüme ×@_analiz.Buyume.ToString("0.0", _tr)</div></div>
+                <div><div class="text-xs text-base-content/50">Talep Eğilimi</div><div class="text-lg font-bold @EgilimCls">@EgilimIbare</div><div class="text-[11px] text-base-content/40">geçen sezona göre (×@_analiz.Buyume.ToString("0.00", _tr))</div></div>
                 <div><div class="text-xs text-base-content/50">Geçen Sezon (Ağu-Eki)</div><div class="text-lg font-bold text-warning">@Num(_analiz.GySezon)</div><div class="text-[11px] text-base-content/40">okul dönemi</div></div>
                 <div><div class="text-xs text-base-content/50">Bu Sezon Beklenen</div><div class="text-lg font-bold">@Num(_analiz.BeklenenSezon)</div><div class="text-[11px] text-base-content/40">geçen sezon×büyüme</div></div>
                 <div><div class="text-xs text-base-content/50">Sezon Sonrası Kalan</div><div class="text-lg font-bold @(_analiz.SezonKalan > _analiz.GySezon ? "text-error" : _analiz.SezonKalan <= 0 ? "text-success" : "")">@Num(_analiz.SezonKalan)</div><div class="text-[11px] text-base-content/40">sezonlu tükenme @(_analiz.TukAy is null ? "—" : _analiz.TukAy >= 999 ? "hiç" : _analiz.TukAy.Value.ToString("0.0", _tr) + " ay")</div></div>
@@ -194,6 +194,22 @@ else
                 _ => $"Geçen sezon (Ağu-Eki) {Num(a.GySezon)} sattı · büyüme ×{a.Buyume.ToString("0.0", _tr)} → bu sezon ~{Num(a.BeklenenSezon)} bekleniyor · sezon sonrası ~{Num(System.Math.Max(0, a.SezonKalan))} kalır.",
             };
         }
+    }
+
+    // Talep eğilimi (büyüme g → ±% yön) — "0.8" yerine "↓ %16 düşüş".
+    string EgilimIbare
+    {
+        get
+        {
+            var g = _analiz?.Buyume ?? 1m;
+            if (g > 1.05m) return $"↑ %{System.Math.Round((g - 1) * 100)} artış";
+            if (g < 0.95m) return $"↓ %{System.Math.Round((1 - g) * 100)} düşüş";
+            return "→ sabit";
+        }
+    }
+    string EgilimCls
+    {
+        get { var g = _analiz?.Buyume ?? 1m; return g > 1.05m ? "text-success" : g < 0.95m ? "text-error" : "text-base-content/60"; }
     }
 
     string Txt => _analiz?.Grup switch

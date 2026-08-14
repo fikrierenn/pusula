@@ -47,6 +47,7 @@ public static class NavRegistry
         new NavItem("asistan", "Genius", "message-square", Section: "ASİSTAN"),
         new NavItem("gorevler", "Görevler", "check-square", Section: "ASİSTAN", GorevBadge: true),
         new NavItem("bellek", "Bellek", "database", Section: "ASİSTAN"),
+        new NavItem("parametreler", "Rapor Parametreleri", "sliders-horizontal", Section: "SİSTEM"),
         new NavItem("ayarlar", "Ayarlar", "settings", Section: "SİSTEM"),
     };
 

@@ -1,0 +1,153 @@
+@page "/parametreler"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@using Dapper
+@inject AyarService Ayar
+@inject Db Db
+@inject ILogger<Esikler> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Rapor Parametreleri — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Alım Analizi + Envanter + Kontrol raporlarının eşik/parametreleri · <b>PanelAyar</b> (BkmPanel, app-local — ERP'ye yazılmaz)</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Rapor Parametreleri</h1>
+</div>
+
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4 max-w-3xl">
+    <h3 class="text-sm font-semibold mb-1">Envanter & Kontrol</h3>
+    <p class="text-[11px] text-base-content/50 mb-4">Envanter (devir/stockout), Kontrol paneli (risk) ve Tedarikçi scorecard bu değerleri kullanır.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+        @Alan("Devir — ölü stok eşiği", "Yıllık stok devir hızı bunun ALTINDAysa ürün 'ölü stok' (para bağlı, satmıyor). Örn 1.5 = stok yılda 1.5 kez döner.",
+              @<input type="number" step="0.1" min="0" class="input input-bordered input-sm w-full" @bind="_e.DevirOlu" />)
+        @Alan("Devir — sağlıklı eşiği", "Bunun ÜSTÜ sağlıklı devir (yeşil). İki eşik arası 'izle' (sarı).",
+              @<input type="number" step="0.1" min="0" class="input input-bordered input-sm w-full" @bind="_e.DevirSaglikli" />)
+        @Alan("Stokta-yokluk hedefi (%)", "Ürünlerin en fazla yüzde kaçı stoksuz kalabilir (hedef üst sınır). Aşılırsa kayıp satış sinyali.",
+              @<input type="number" step="0.1" min="0" max="100" class="input input-bordered input-sm w-full" @bind="_e.StokYoklukHedef" />)
+        @Alan("Risk — düşük (info)", "Kontrol panelinde cari/müdahale risk skoru renk eşiği — bu değere kadar 'bilgi' (mavi).",
+              @<input type="number" min="0" class="input input-bordered input-sm w-full" @bind="_e.RiskDusuk" />)
+        @Alan("Risk — orta (uyarı)", "Bu değere kadar 'uyarı' (sarı). Düşük < orta < yüksek olmalı.",
+              @<input type="number" min="0" class="input input-bordered input-sm w-full" @bind="_e.RiskOrta" />)
+        @Alan("Risk — yüksek (kritik)", "Bu değerin üstü 'kritik' (kırmızı).",
+              @<input type="number" min="0" class="input input-bordered input-sm w-full" @bind="_e.RiskYuksek" />)
+    </div>
+
+    <h3 class="text-sm font-semibold mb-1 mt-3">Satınalma — Alım Analizi</h3>
+    <p class="text-[11px] text-base-content/50 mb-3">Alım Analizi sayfasının FAZLA/ÖLÜ/öncelik hesabını belirler.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+        @Alan("Fazla eşiği (ay)", "Eldeki stok bu kadar AYdan uzun sürede eriyorsa 'FAZLA' (ihtiyaçtan çok alınmış). Sezon+büyüme dahil. Varsayılan 12.",
+              @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinFazlaAy" />)
+        @Alan("Materiality / tolerans (₺)", "Fazla/ölü stokta bağlı para bu ₺'nin ALTINDAysa 'düşük öncelik' (küçük tutar, gürültü). Üstü = gerçek sorun. Alım Analizi tolerans varsayılanı da bu.",
+              @<input type="number" min="0" step="500" class="input input-bordered input-sm w-full" @bind="_e.SatinMaterialite" />)
+        @Alan("Min-koli (adet)", "Bu ay alış bu adet veya altındaysa 'küçük-koli' (en az sipariş miktarı — alıcının kararı sayılmaz).",
+              @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinMinKoli" />)
+        @Alan("Min-stoklu (adet)", "Bir ayı 'stoklu' saymak için şubede en az bu kadar adet olmalı (≈1 adet × 3 şube). 1-2 adet 'stok vardı' sayılmaz → sahte ölü-alım önlenir.",
+              @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinMinStok" />)
+        @Alan("Sezon-büyüme min taban", "Ürünün önceki-yıl sezon (Ağu-Eki) satışı bu adedin üstündeyse SEZON-özel büyüme kullanılır; altı → yıllık/kategori büyüme.",
+              @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinSezonMinTaban" />)
+    </div>
+
+    <h3 class="text-sm font-semibold mb-1 mt-3">Hariç Markalar</h3>
+    <p class="text-[11px] text-base-content/50 mb-2">Tedarikçi scorecard dışı bırakılan iç/ev markaları (kendi ürünleri — dış tedarikçi değil). mrkID (virgüllü).</p>
+    <input type="text" class="input input-bordered input-sm font-mono w-full mb-2" @bind="_haricMrk" @bind:after="MarkaCoz" placeholder="0,269,2101,5972,10911" />
+    <div class="flex flex-wrap gap-1.5 mb-3">
+        @foreach (var id in HaricIds())
+        {
+            <span class="badge badge-ghost badge-sm gap-1"><b>@id</b> @(_markaAd.GetValueOrDefault(id, "?"))</span>
+        }
+    </div>
+
+    <div class="flex items-center gap-3">
+        <button class="btn btn-primary btn-sm" @onclick="Kaydet" disabled="@_kaydediliyor">
+            @if (_kaydediliyor) { <span class="loading loading-spinner loading-xs"></span> }
+            Kaydet
+        </button>
+        @if (_mesaj is not null)
+        {
+            <span class="text-sm @(_hata ? "text-error" : "text-success")">@_mesaj</span>
+        }
+    </div>
+</div>
+
+@code {
+    EsikForm _e = new();
+    string _haricMrk = "";
+    Dictionary<int, string> _markaAd = new();
+    bool _kaydediliyor, _hata;
+    string? _mesaj;
+
+    // Etiket + hint + input üçlüsü (herkes anlasın — açıklama her alanda).
+    RenderFragment Alan(string baslik, string hint, RenderFragment input) =>
+    @<label class="form-control">
+        <span class="label-text text-xs font-medium mb-1">@baslik</span>
+        @input
+        <span class="text-[10px] text-base-content/45 mt-1 leading-tight">@hint</span>
+    </label>;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var a = Ayar.Deger;
+        _e = new EsikForm
+        {
+            DevirOlu = a.DevirOlu, DevirSaglikli = a.DevirSaglikli, StokYoklukHedef = a.StokYoklukHedef,
+            RiskDusuk = a.RiskDusuk, RiskOrta = a.RiskOrta, RiskYuksek = a.RiskYuksek,
+            SatinFazlaAy = a.SatinFazlaAy, SatinMaterialite = a.SatinMaterialite, SatinMinKoli = a.SatinMinKoli,
+            SatinMinStok = a.SatinMinStok, SatinSezonMinTaban = a.SatinSezonMinTaban,
+        };
+        _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
+        await MarkaCoz();
+    }
+
+    int[] HaricIds() => _haricMrk.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(s => int.TryParse(s, out var n) ? n : (int?)null).Where(n => n.HasValue).Select(n => n!.Value).ToArray();
+
+    async Task MarkaCoz()
+    {
+        var ids = HaricIds();
+        if (ids.Length == 0) { _markaAd = new(); return; }
+        try
+        {
+            await using var c = await Db.OpenAsync();
+            _markaAd = (await c.QueryAsync<(int mrkID, string mrkAd)>(
+                    "SELECT mrkID, mrkAd FROM DerinSISBkm.dbo.urnMrk WHERE mrkID IN @ids", new { ids }))
+                .ToDictionary(x => x.mrkID, x => x.mrkAd);
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Marka adları çözülemedi"); }
+    }
+
+    async Task Kaydet()
+    {
+        _mesaj = null;
+        if (_e.DevirOlu <= 0 || _e.DevirSaglikli <= _e.DevirOlu)
+        { _mesaj = "Devir: sağlıklı eşiği > ölü eşiği > 0 olmalı."; _hata = true; return; }
+        if (_e.RiskOrta <= _e.RiskDusuk || _e.RiskYuksek <= _e.RiskOrta)
+        { _mesaj = "Risk eşikleri artan olmalı (düşük < orta < yüksek)."; _hata = true; return; }
+        _kaydediliyor = true; StateHasChanged();
+        try
+        {
+            await Ayar.KaydetAsync(new PanelAyarlar(
+                _e.DevirOlu, _e.DevirSaglikli, _e.StokYoklukHedef,
+                _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, HaricIds(),
+                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban));
+            _mesaj = "Kaydedildi (PanelAyar / BkmPanel)."; _hata = false;
+        }
+        catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _mesaj = $"Kayıt başarısız: {ex.Message}"; _hata = true; }
+        finally { _kaydediliyor = false; StateHasChanged(); }
+    }
+
+    sealed class EsikForm
+    {
+        public decimal DevirOlu { get; set; } = 1.5m;
+        public decimal DevirSaglikli { get; set; } = 3.0m;
+        public decimal StokYoklukHedef { get; set; } = 5.0m;
+        public int RiskDusuk { get; set; } = 100;
+        public int RiskOrta { get; set; } = 200;
+        public int RiskYuksek { get; set; } = 300;
+        public int SatinFazlaAy { get; set; } = 12;
+        public int SatinMaterialite { get; set; } = 5000;
+        public int SatinMinKoli { get; set; } = 24;
+        public int SatinMinStok { get; set; } = 3;
+        public int SatinSezonMinTaban { get; set; } = 30;
+    }
+}
