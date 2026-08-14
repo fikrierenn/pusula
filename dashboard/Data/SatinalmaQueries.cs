@@ -91,10 +91,12 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
 
         IF OBJECT_ID('tempdb..#ay') IS NOT NULL DROP TABLE #ay;
         CREATE TABLE #ay (stkID int, ay char(7), satis int, retail int, fis int);
-        -- retail = her hareket @RETAILCAP'e kırpılıp toplanır (bulk tek-hareket düşer); fis = o ay distinct fiş sayısı
-        -- (retail momentum SADECE çok-fişli aylardan sayılır → tek-bulk ayı 'retail' saymaz — #agg gate fis>=3).
+        -- retail = POS (ehTip 100) TAM (günlük-aggregate, bireysel fiş küçük ~retail — EncoreMerkez'de max~26);
+        -- SEVK/FATURA (ehTip 1/4) belge-bazlı → @RETAILCAP'e kırpılır (tek büyük belge = toptan/bulk düşer).
+        -- ⚠ KRİTİK: irsHrk POS satırı GÜNLÜK-TOPLAM (145 fiş→1 satır), cap'lersen gerçek retail'i bulk sanırsın.
         INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.ehAdetN)),
-               CONVERT(int, SUM(CASE WHEN -h.ehAdetN > @RETAILCAP THEN @RETAILCAP ELSE -h.ehAdetN END)),
+               CONVERT(int, SUM(CASE WHEN h.ehTip=100 THEN -h.ehAdetN
+                                     WHEN -h.ehAdetN > @RETAILCAP THEN @RETAILCAP ELSE -h.ehAdetN END)),
                CONVERT(int, COUNT(DISTINCT h.ehID))
         FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
         WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>=@S24b AND h.ehTrhS<@AY0

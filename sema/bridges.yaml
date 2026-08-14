@@ -48,6 +48,13 @@ bridges:
     confidence: 1.0
     last_verified: "2026-08-14"
     note: "irsHrk hareket → irsaliye başlık. irs.eNo = EVRAK NO (depo sevk 'D01…' gerçek belge), irs.eCrmID = cari (POS satışta 0 — cari EncoreMerkez'de). ehTip 100 POS satışta eNo='POS Satış' (yazarkasa, gerçek fiş DerinSIS'te değil EncoreMerkez.Sales'te). Satınalma TOPTAN-KANAL drill (SatinalmaQueries.UrunDetay.GetBulkHareketAsync) bunu kullanır — bulk hareketin evrak-no'sunu gösterir. irsHrk KOLONLARI: ehID/ehstkID/ehMekan/ehTrhS/ehAdetN/ehTutarN/ehMlyt/ehAltDepo/hrkID/ehTip/ehTutarOzl/hrkTarih (cari/belge-no YOK → irs join şart)."
+  - id: irshrk-pos-encore
+    from: dbo.irsHrk (ehTip=100)
+    to: EncoreMerkez.dbo.SalesProducts + Sales
+    scope: cross-db
+    confidence: 1.0
+    last_verified: "2026-08-14"
+    note: "⚠ KRİTİK: irsHrk POS satırı (ehTip=100) bir GÜNÜN o üründeki TÜM POS satışının TOPLAMI (tek satır), bireysel fiş DEĞİL. 26281 İst.Yolu 06.09.25 irsHrk=823 → EncoreMerkez'de 145 fiş satırı, max_tek 26, ort 6.8 (toplam 984 tüm-mağaza). Yani irsHrk POS = günlük-aggregate. SONUÇ: irsHrk POS satırını 'tek işlem' sanıp cap'lemek YANLIŞ (retail'i bulk sanır) — satınalma retail-momentum sadece ehTip 1/4 (sevk/fatura belge-bazlı) cap'ler, ehTip 100 TAM retail. Gerçek POS-fiş granülaritesi (bulk POS tespiti gerekirse): EncoreMerkez.SalesProducts.Amount (miktar) + Products.Code=urn.stkID + Sales.Date/ReceiptNo/CustomersId. SEVK/FATURA (ehTip 1/4) irsHrk satırı = belge-bazlı (matara 405 ehTip 1 depo sevk = gerçek tek-belge bulk)."
   - id: fat-fatayr
     from: dbo.fatAyr.ehID
     to: dbo.fat.eID

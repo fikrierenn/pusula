@@ -58,9 +58,10 @@ WHERE h.ehTip IN (0,10,13,16,99) AND h.ehTrhS<@AY1 GROUP BY h.ehstkID;
 /* 3) #ay — aylık satış (şube irsHrk 1/4/100 + e-tic JOKER), 24 ay */
 IF OBJECT_ID('tempdb..#ay') IS NOT NULL DROP TABLE #ay;
 CREATE TABLE #ay (stkID int, ay char(7), satis int, retail int, fis int);
--- retail = hareket @RETAILCAP'e kırpılıp toplanır (bulk düşer); fis = distinct fiş (retail-momentum çok-fişli aydan)
+-- retail = POS (ehTip 100) TAM (günlük-aggregate, EncoreMerkez'de bireysel fiş küçük); SEVK/FATURA (1/4) belge-bazlı
+-- → @RETAILCAP'e kırpılır. ⚠ POS satırı GÜNLÜK-TOPLAM (145 fiş→1 satır), cap'lersen retail'i bulk sanırsın.
 INSERT #ay SELECT h.ehstkID, CONVERT(char(7),h.ehTrhS,126), CONVERT(int,-SUM(h.ehAdetN)),
-       CONVERT(int, SUM(CASE WHEN -h.ehAdetN > @RETAILCAP THEN @RETAILCAP ELSE -h.ehAdetN END)),
+       CONVERT(int, SUM(CASE WHEN h.ehTip=100 THEN -h.ehAdetN WHEN -h.ehAdetN > @RETAILCAP THEN @RETAILCAP ELSE -h.ehAdetN END)),
        CONVERT(int, COUNT(DISTINCT h.ehID))
 FROM dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
 WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>=@S24b AND h.ehTrhS<@AY0

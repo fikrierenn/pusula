@@ -107,7 +107,7 @@ aylik_retail = {}   # stkID -> {ay: retail}  (bulk @RETAIL_CAP kırpılmış —
 aylik_fis = {}      # stkID -> {ay: fiş}      (çok-fişli ay gate — tek-bulk elenir)
 cur.execute(f"""
     SELECT h.ehstkID, CONVERT(varchar(7),h.ehTrhS,126) ay, -SUM(h.ehAdetN),
-           SUM(CASE WHEN -h.ehAdetN > {RETAIL_CAP} THEN {RETAIL_CAP} ELSE -h.ehAdetN END),
+           SUM(CASE WHEN h.ehTip=100 THEN -h.ehAdetN WHEN -h.ehAdetN > {RETAIL_CAP} THEN {RETAIL_CAP} ELSE -h.ehAdetN END),
            COUNT(DISTINCT h.ehID)
     FROM dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
     WHERE h.ehTip IN (1,4,100) AND h.ehTrhS>='{T_GEC}' AND h.ehTrhS<'{T_AY0}'
