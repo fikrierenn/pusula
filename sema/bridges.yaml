@@ -41,6 +41,13 @@ bridges:
     scope: derinsis
     confidence: 1.0
     note: "Evrak satır → başlık. irsHrk birleşik hareket (ehID+ehstkID+ehTip grup)."
+  - id: irshrk-irs
+    from: dbo.irsHrk.ehID
+    to: dbo.irs.eID
+    scope: derinsis
+    confidence: 1.0
+    last_verified: "2026-08-14"
+    note: "irsHrk hareket → irsaliye başlık. irs.eNo = EVRAK NO (depo sevk 'D01…' gerçek belge), irs.eCrmID = cari (POS satışta 0 — cari EncoreMerkez'de). ehTip 100 POS satışta eNo='POS Satış' (yazarkasa, gerçek fiş DerinSIS'te değil EncoreMerkez.Sales'te). Satınalma TOPTAN-KANAL drill (SatinalmaQueries.UrunDetay.GetBulkHareketAsync) bunu kullanır — bulk hareketin evrak-no'sunu gösterir. irsHrk KOLONLARI: ehID/ehstkID/ehMekan/ehTrhS/ehAdetN/ehTutarN/ehMlyt/ehAltDepo/hrkID/ehTip/ehTutarOzl/hrkTarih (cari/belge-no YOK → irs join şart)."
   - id: fat-fatayr
     from: dbo.fatAyr.ehID
     to: dbo.fat.eID
