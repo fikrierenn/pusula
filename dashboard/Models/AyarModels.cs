@@ -9,7 +9,12 @@ public record PanelAyarlar(
     int RiskDusuk = 100,               // Kontrol paneli risk renk eşiği (info)
     int RiskOrta = 200,                // warning
     int RiskYuksek = 300,              // error
-    IReadOnlyList<int>? HaricMarkalar = null)  // tedarikçi scorecard dışı mrkID (iç-op/ev-markası)
+    IReadOnlyList<int>? HaricMarkalar = null,  // tedarikçi scorecard dışı mrkID (iç-op/ev-markası)
+    int SatinFazlaAy = 12,             // Alım Analizi: tükenme > bu ay → FAZLA şüphesi (ESIK)
+    int SatinMaterialite = 5000,       // bağlı para < bu ₺ → düşük öncelik (MAT + tolerans varsayılanı)
+    int SatinMinKoli = 24,             // bu ay alış ≤ bu → küçük-koli (MINKOLI)
+    int SatinMinStok = 3,              // stoklu-ay için min şube bakiye (≈1/şube×3; MINSTOK)
+    int SatinSezonMinTaban = 30)       // sezon-özel büyüme için min önceki-yıl sezon tabanı (SEZMIN)
 {
     public static readonly int[] VarsayilanHaricMarkalar = [0, 269, 2101, 5972, 10911];
     public IReadOnlyList<int> HaricMarkalarEtkin => HaricMarkalar is { Count: > 0 } ? HaricMarkalar : VarsayilanHaricMarkalar;

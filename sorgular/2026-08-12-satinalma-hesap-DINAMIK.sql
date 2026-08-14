@@ -26,7 +26,9 @@ DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
 DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
 DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
 DECLARE @L_seze char(7)=CONVERT(char(7),CONVERT(date,@SEZe),126);
-DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24, @MINSTOK int=3;  -- fazla eşiği, materiality, min-koli, min-stoklu (≈1/şube×3)
+DECLARE @L_psezb char(7)=CONVERT(char(7),CONVERT(date,@PSEZb),126);   -- önceki yıl sezon etiketleri (yıl-önce Ağu-Eki)
+DECLARE @L_pseze char(7)=CONVERT(char(7),CONVERT(date,@PSEZe),126);
+DECLARE @ESIK int=12, @MAT int=5000, @MINKOLI int=24, @MINSTOK int=3, @SEZMIN int=30;  -- fazla/materiality/min-koli/min-stoklu + sezon-büyüme min taban
 
 /* 1) #a — bu ay alınan ürünler + alış adet/tutar */
 IF OBJECT_ID('tempdb..#a') IS NOT NULL DROP TABLE #a;
@@ -81,6 +83,7 @@ SELECT a.stkID,
    ISNULL(SUM(CASE WHEN ay>=@L_s24 AND ay<@L_s12 THEN al.satis END),0) AS onc12,
    ISNULL(SUM(al.satis),0) AS son24,
    ISNULL(SUM(CASE WHEN ay>=@L_sezb AND ay<@L_seze THEN al.satis END),0) AS gy_sezon,
+   ISNULL(SUM(CASE WHEN ay>=@L_psezb AND ay<@L_pseze THEN al.satis END),0) AS gy_sezon_onc,   -- önceki yıl sezon (sezon-büyüme paydası)
    ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay
 INTO #agg
 FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
@@ -99,12 +102,22 @@ FROM (
   FROM dbo.irsHrk i WITH(NOLOCK) JOIN bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID=i.ehstkID AND u.Kat3ID IN (10,12,16)
   WHERE i.ehTip IN (1,4,100) AND i.ehTrhS>=@PSEZb AND i.ehTrhS<@SEZe
   GROUP BY u.Kat3ID) t;
-UPDATE g SET g.g = CASE WHEN g.onc12>=100 THEN CASE WHEN 1.0*g.son12/g.onc12<0.3 THEN 0.3 WHEN 1.0*g.son12/g.onc12>6 THEN 6 ELSE 1.0*g.son12/g.onc12 END
-                        ELSE ISNULL(kg.g,1.0) END,
-       g.g_kaynak = CASE WHEN g.onc12>=100 THEN 'ürün' ELSE 'kategori' END
+-- Büyüme hiyerarşisi: (1) SEZON-özel = geçen sezon ÷ önceki-yıl sezon (taban≥@SEZMIN) — sezonsal ürüne isabet;
+-- (2) yıllık SEZON-DIŞI = (son12−sezon) ÷ (önc12−önceki-sezon) (sezon çıkarılır, birbirini kirletmez);
+-- (3) kategori-g. Hepsi 0.3–6 kırp.
+UPDATE g SET
+   g.g = CASE WHEN r.raw<0.3 THEN 0.3 WHEN r.raw>6 THEN 6 ELSE r.raw END,
+   g.g_kaynak = r.kaynak
 FROM #agg g
 LEFT JOIN bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID=g.stkID
-LEFT JOIN #katg kg ON kg.Kat3ID=u.Kat3ID;
+LEFT JOIN #katg kg ON kg.Kat3ID=u.Kat3ID
+CROSS APPLY (SELECT
+     CASE WHEN g.gy_sezon_onc>=@SEZMIN THEN 1.0*g.gy_sezon/g.gy_sezon_onc
+          WHEN (g.onc12-g.gy_sezon_onc)>=100 THEN 1.0*(g.son12-g.gy_sezon)/NULLIF(g.onc12-g.gy_sezon_onc,0)
+          ELSE ISNULL(kg.g,1.0) END AS raw,
+     CASE WHEN g.gy_sezon_onc>=@SEZMIN THEN 'sezon'
+          WHEN (g.onc12-g.gy_sezon_onc)>=100 THEN 'ürün'
+          ELSE 'kategori' END AS kaynak) r;
 
 /* 6) #stok — ay sonu = fiziki(şube stokSon + depo WMS); ay başı = ay sonu − ledger ay-net */
 IF OBJECT_ID('tempdb..#stok') IS NOT NULL DROP TABLE #stok;

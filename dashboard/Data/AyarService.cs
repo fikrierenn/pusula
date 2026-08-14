@@ -50,7 +50,12 @@ public sealed class AyarService
                 RiskDusuk: Int(map, "risk_dusuk", d.RiskDusuk),
                 RiskOrta: Int(map, "risk_orta", d.RiskOrta),
                 RiskYuksek: Int(map, "risk_yuksek", d.RiskYuksek),
-                HaricMarkalar: IntList(map, "haric_markalar"));
+                HaricMarkalar: IntList(map, "haric_markalar"),
+                SatinFazlaAy: Int(map, "satin_fazla_ay", d.SatinFazlaAy),
+                SatinMaterialite: Int(map, "satin_materialite", d.SatinMaterialite),
+                SatinMinKoli: Int(map, "satin_min_koli", d.SatinMinKoli),
+                SatinMinStok: Int(map, "satin_min_stok", d.SatinMinStok),
+                SatinSezonMinTaban: Int(map, "satin_sezon_min", d.SatinSezonMinTaban));
         }
         catch (Exception ex) { _log.LogError(ex, "Ayarlar okunamadı — varsayılanla devam"); }
     }
@@ -68,6 +73,11 @@ public sealed class AyarService
             ("risk_orta", a.RiskOrta.ToString()),
             ("risk_yuksek", a.RiskYuksek.ToString()),
             ("haric_markalar", string.Join(",", a.HaricMarkalarEtkin)),
+            ("satin_fazla_ay", a.SatinFazlaAy.ToString()),
+            ("satin_materialite", a.SatinMaterialite.ToString()),
+            ("satin_min_koli", a.SatinMinKoli.ToString()),
+            ("satin_min_stok", a.SatinMinStok.ToString()),
+            ("satin_sezon_min", a.SatinSezonMinTaban.ToString()),
         };
         await using var c = await _db.OpenPanelAsync()!;
         foreach (var (k, v) in satirlar)

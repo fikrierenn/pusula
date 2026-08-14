@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @using System.Globalization
 @inject SatinalmaQueries Satinalma
+@inject AyarService Ayar
 @inject NavigationManager Nav
 @inject ILogger<SatinalmaAnaliz> Logger
 @rendermode InteractiveServer
@@ -268,7 +269,7 @@ else
     string _odakGrup = "";
     string _sortKey = "";
     bool _sortAsc;
-    int _tolerans = 5000;      // materiality eşiği ₺ — altındaki fazlalar 'düşük öncelik'
+    int _tolerans;             // materiality eşiği ₺ (Ayarlar'dan; OnInitialized'da set) — altı 'düşük öncelik'
     bool _sadeceOnemli = true; // düşük-öncelikli (bağlı<tolerans) fazlaları gizle
 
     static bool FazlaAile(string g) => g is "FAZLA" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM";
@@ -331,6 +332,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _tolerans = Ayar.Deger.SatinMaterialite;   // varsayılan tolerans = ayar materiality
         var ilk = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
         for (int i = 0; i < 12; i++)
         {

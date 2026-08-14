@@ -45,6 +45,7 @@ ESIK = 12                                        # sezonlu tükenme > 12 ay → 
 MAT_ESIK = 5000                                  # materiality: bağlı para < bu → küçük/uzun-kuyruk (odak)
 MIN_KOLI = 24                                    # bu ay alış ≤ bu → küçük-koli/min-sipariş (adil-atıf)
 MIN_STOK = 3                                      # stoklu-ay için min şube bakiye (≈1/şube×3); 1-2 adet 'stok vardı' sayılmaz
+SEZ_MIN = 30                                      # sezon-özel büyüme için min önceki-yıl sezon tabanı (altı → yıllık/kategori)
 print(f"Hedef ay: {AY} · alış [{T_AY0},{T_AY1}) · şekil geçmişi [{T_GEC},{T_AY0})", flush=True)
 
 # ---- .env + bağlantı ----
@@ -247,10 +248,17 @@ def hesapla(sid, kat):
     son12 = sum(d.get(a, 0) for a in SON12)
     onc12 = sum(d.get(a, 0) for a in ONC12)
     son24 = sum(d.values())
-    # BÜYÜME: ürün-bazlı YoY (yeterli TABAN varsa güvenilir) → yoksa kategori sezon-g fallback
-    # (küçük tabandan büyüme gürültülü: 75→370 = ×5 güvenilmez; eşik 100 adet önceki-yıl)
-    if onc12 >= 100:
-        g = min(6.0, max(0.3, son12 / onc12)); g_kaynak = "ürün"
+    # BÜYÜME hiyerarşisi: (1) SEZON-özel = geçen sezon ÷ önceki-yıl sezon (taban≥MIN_STOK... hayır SEZ_MIN);
+    # (2) yıllık SEZON-DIŞI = (son12−sezon)÷(önc12−önceki-sezon) — sezon çıkarılır, birbirini kirletmez;
+    # (3) kategori. Küçük taban gürültülü → eşik.
+    gy_sezon = sum(d.get(SON12[i], 0) for i in (1, 2, 3))       # önümüz-sezon geçen yıl (Ağu-Eki)
+    gy_sezon_onc = sum(d.get(ONC12[i], 0) for i in (1, 2, 3))   # önceki yıl sezon (Ağu-Eki)
+    non_son = son12 - gy_sezon
+    non_onc = onc12 - gy_sezon_onc
+    if gy_sezon_onc >= SEZ_MIN:
+        g = min(6.0, max(0.3, gy_sezon / gy_sezon_onc)); g_kaynak = "sezon"
+    elif non_onc >= 100:
+        g = min(6.0, max(0.3, non_son / non_onc)); g_kaynak = "ürün"
     else:
         g = g_kat.get(kat, 1.0); g_kaynak = "kategori"
     # STOK: ŞUBE aylık bakiye persistent tablodan (bkm.StokAyBakiyeMekanBazli) · DEPO canlı WMS

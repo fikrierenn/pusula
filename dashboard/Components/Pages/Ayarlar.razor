@@ -124,6 +124,30 @@
             <input type="number" min="0" class="input input-bordered input-sm" @bind="_e.RiskYuksek" />
         </label>
     </div>
+
+    <div class="divider my-1 text-[11px] text-base-content/40">Satınalma — Alım Analizi</div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Fazla eşiği (tükenme > ay)</span>
+            <input type="number" min="1" class="input input-bordered input-sm" @bind="_e.SatinFazlaAy" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Materiality / tolerans (₺)</span>
+            <input type="number" min="0" step="500" class="input input-bordered input-sm" @bind="_e.SatinMaterialite" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Min-koli (bu ay alış ≤)</span>
+            <input type="number" min="1" class="input input-bordered input-sm" @bind="_e.SatinMinKoli" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Min-stoklu (şube bakiye ≥)</span>
+            <input type="number" min="1" class="input input-bordered input-sm" @bind="_e.SatinMinStok" />
+        </label>
+        <label class="form-control">
+            <span class="label-text text-xs mb-1">Sezon-büyüme min taban</span>
+            <input type="number" min="1" class="input input-bordered input-sm" @bind="_e.SatinSezonMinTaban" />
+        </label>
+    </div>
     <label class="form-control mb-3">
         <span class="label-text text-xs mb-1">Hariç marka ID'leri (tedarikçi scorecard dışı — virgüllü)</span>
         <input type="text" class="input input-bordered input-sm font-mono" @bind="_haricMrk" placeholder="0,269,2101,5972,10911" />
@@ -167,6 +191,8 @@
         {
             DevirOlu = a.DevirOlu, DevirSaglikli = a.DevirSaglikli, StokYoklukHedef = a.StokYoklukHedef,
             RiskDusuk = a.RiskDusuk, RiskOrta = a.RiskOrta, RiskYuksek = a.RiskYuksek,
+            SatinFazlaAy = a.SatinFazlaAy, SatinMaterialite = a.SatinMaterialite, SatinMinKoli = a.SatinMinKoli,
+            SatinMinStok = a.SatinMinStok, SatinSezonMinTaban = a.SatinSezonMinTaban,
         };
         _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
     }
@@ -185,7 +211,8 @@
         {
             await Ayar.KaydetAsync(new PanelAyarlar(
                 _e.DevirOlu, _e.DevirSaglikli, _e.StokYoklukHedef,
-                _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, haric));
+                _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, haric,
+                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban));
             _esikMesaj = "Eşikler kaydedildi."; _esikHata = false;
         }
         catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _esikMesaj = $"Kayıt başarısız: {ex.Message}"; _esikHata = true; }
@@ -200,6 +227,11 @@
         public int RiskDusuk { get; set; } = 100;
         public int RiskOrta { get; set; } = 200;
         public int RiskYuksek { get; set; } = 300;
+        public int SatinFazlaAy { get; set; } = 12;
+        public int SatinMaterialite { get; set; } = 5000;
+        public int SatinMinKoli { get; set; } = 24;
+        public int SatinMinStok { get; set; } = 3;
+        public int SatinSezonMinTaban { get; set; } = 30;
     }
 
     private async Task YukleAsync()

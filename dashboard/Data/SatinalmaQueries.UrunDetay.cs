@@ -23,9 +23,10 @@ public sealed partial class SatinalmaQueries
         var sql = AnalizSql.Replace(
             "WHERE h.ehTip IN (0,10) AND h.ehTrhS>=@AY0 AND h.ehTrhS<@AY1 AND h.ehAdetN>0",
             "WHERE h.ehstkID=@STK AND h.ehTip IN (0,10)");
+        var p = BaseParams(); p.Add("AY0", ay0); p.Add("STK", stkID);
         await using var c = await db.OpenAsync();
         return await c.QueryFirstOrDefaultAsync<SatinalmaAnalizSatir>(
-            new CommandDefinition(sql, new { AY0 = ay0, STK = stkID }, commandTimeout: 60));
+            new CommandDefinition(sql, p, commandTimeout: 60));
     }
 
     /// <summary>Ürün başlığı + anlık şube/depo stok. Yoksa null (geçersiz stkID).</summary>
