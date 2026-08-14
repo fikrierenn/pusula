@@ -243,6 +243,22 @@ SON12 = ym_labels(sy, sm, 12)      # şekil (gelecek talep proxy) + son12 toplam
 ONC12 = ym_labels(py, pm, 12)      # YoY payda
 YENI_CUTOFF = datetime.datetime(sy, sm, 1)   # ilk-hareket bundan sonraysa "yeni" (yeterli geçmiş yok)
 
+# SABİT sezon (kaymaz — tarih kayar). En yakın gelen sezon; forecast tabanı = o sezonun GEÇEN YIL occurrence'ı.
+# Yaz(Haz-Tem)·Okul(Ağu-Eki,ana)·Ara Tatil(Kas)·Sömestr(Oca-Şub). Dashboard SatinalmaSezon.cs ile AYNI model.
+SEZONLAR = [(6, 7, "Yaz"), (8, 10, "Okul"), (11, 11, "Ara Tatil"), (1, 2, "Sömestr")]
+def _sonraki_sezon(y, m):
+    d0 = datetime.date(y, m, 1); en = None; en_st = None
+    for (b, s, ad) in SEZONLAR:
+        st = datetime.date(d0.year, b, 1)
+        if st <= d0: st = datetime.date(d0.year + 1, b, 1)
+        if en_st is None or st < en_st: en_st = st; en = (b, s, ad)
+    b, s, ad = en; gy = en_st.year - 1; pyr = en_st.year - 2
+    gy_lbl = [f"{gy:04d}-{mm:02d}" for mm in range(b, s + 1)]     # geçen yıl aynı sezon (forecast tabanı)
+    py_lbl = [f"{pyr:04d}-{mm:02d}" for mm in range(b, s + 1)]    # önceki yıl aynı sezon (büyüme paydası)
+    return gy_lbl, py_lbl, ad, f"{ad} ({b:02d}-{s:02d})"
+SEZ_GY, SEZ_PY, SEZ_AD, SEZ_LBL = _sonraki_sezon(AYY, AYM)
+print(f"Sabit sezon (forecast tabanı): {SEZ_LBL} · geçen-yıl {SEZ_GY} · önceki-yıl {SEZ_PY}", flush=True)
+
 def hesapla(sid, kat):
     d = aylik.get(sid, {})
     son12 = sum(d.get(a, 0) for a in SON12)
@@ -251,8 +267,8 @@ def hesapla(sid, kat):
     # BÜYÜME hiyerarşisi: (1) SEZON-özel = geçen sezon ÷ önceki-yıl sezon (taban≥MIN_STOK... hayır SEZ_MIN);
     # (2) yıllık SEZON-DIŞI = (son12−sezon)÷(önc12−önceki-sezon) — sezon çıkarılır, birbirini kirletmez;
     # (3) kategori. Küçük taban gürültülü → eşik.
-    gy_sezon = sum(d.get(SON12[i], 0) for i in (1, 2, 3))       # önümüz-sezon geçen yıl (Ağu-Eki)
-    gy_sezon_onc = sum(d.get(ONC12[i], 0) for i in (1, 2, 3))   # önceki yıl sezon (Ağu-Eki)
+    gy_sezon = sum(d.get(l, 0) for l in SEZ_GY)                 # SABİT sezon geçen yıl (forecast tabanı)
+    gy_sezon_onc = sum(d.get(l, 0) for l in SEZ_PY)             # SABİT sezon önceki yıl (büyüme paydası)
     non_son = son12 - gy_sezon
     non_onc = onc12 - gy_sezon_onc
     if gy_sezon_onc >= SEZ_MIN:
@@ -306,8 +322,8 @@ def hesapla(sid, kat):
         if tuk_ay is None:
             tuk_ay = 999.0                          # 999 = pratikte tükenmez (talep var ama çok yavaş)
     trend = (g >= 2.0)                             # güçlü son-yıl boom → muhtemel trend/fad (kalıcı değil)
-    gy_sezon = sum(shape[1:4])                      # geçen yıl önümüz-sezon (hedef+1..+3 = Ağu-Eki) GERÇEK satış
-    sezon3 = gy_sezon * g                           # bu sezon beklenen (× büyüme)
+    # gy_sezon zaten yukarıda SABİT sezon (SEZ_GY) ile hesaplandı — tükenme şekli (shape) forward-projection için ayrı.
+    sezon3 = gy_sezon * g                           # bu sezon beklenen (geçen-yıl sabit sezon × büyüme)
     naive_mos = (kap / (son12 / 12.0)) if son12 > 0 else None
     # ---- ÜRÜN KARAKTERİ (şekil-bazlı: istikrar + sezon-hizası + büyüme) ----
     satis_ay = sum(1 for x in shape if x > 0)       # kaç ayda satış oldu (istikrar sinyali)

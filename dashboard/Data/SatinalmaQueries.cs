@@ -14,15 +14,19 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> logger, AyarService ayar)
 {
-    // Alım Analizi eşikleri Ayarlar sayfasından (hardcode değil) → SQL Dapper param'ı.
-    DynamicParameters BaseParams()
+    // Alım Analizi eşikleri Ayarlar sayfasından (hardcode değil) + SABİT sezon pencereleri → SQL Dapper param'ı.
+    DynamicParameters BaseParams(string ay0)
     {
         var p = new DynamicParameters();
+        p.Add("AY0", ay0);
         p.Add("ESIK", ayar.Deger.SatinFazlaAy);
         p.Add("MAT", ayar.Deger.SatinMaterialite);
         p.Add("MINKOLI", ayar.Deger.SatinMinKoli);
         p.Add("MINSTOK", ayar.Deger.SatinMinStok);
         p.Add("SEZMIN", ayar.Deger.SatinSezonMinTaban);
+        var sz = SatinalmaSezon.Hesapla(ay0);   // sabit sezon (kaymaz) — en yakın gelen sezonun geçen/önceki yıl penceresi
+        p.Add("SEZb", sz.SEZb); p.Add("SEZe", sz.SEZe);
+        p.Add("PSEZb", sz.PSEZb); p.Add("PSEZe", sz.PSEZe);
         return p;
     }
     // Ay-bazlı sonuç cache (geçmiş ay değişmez; içinde-olunan ay TTL ile tazelenir). Static → tüm request'ler paylaşır.
@@ -41,7 +45,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await using var c = await db.OpenAsync();
-        var p = BaseParams(); p.Add("AY0", ay0);
+        var p = BaseParams(ay0);
         var rows = await c.QueryAsync<SatinalmaAnalizSatir>(new CommandDefinition(AnalizSql, p, commandTimeout: 240));
         var list = rows.AsList();
         _cache[ay0] = (System.DateTime.UtcNow, list);
@@ -57,10 +61,8 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         DECLARE @S12b char(8)=CONVERT(char(8),DATEADD(month,-12,@d0),112);
         DECLARE @S24b char(8)=CONVERT(char(8),DATEADD(month,-24,@d0),112);
         DECLARE @O12b char(8)=@S24b, @O12e char(8)=@S12b;
-        DECLARE @SEZb char(8)=CONVERT(char(8),DATEADD(month,-11,@d0),112);
-        DECLARE @SEZe char(8)=CONVERT(char(8),DATEADD(month, -8,@d0),112);
-        DECLARE @PSEZb char(8)=CONVERT(char(8),DATEADD(month,-12,CONVERT(date,@SEZb)),112);
-        DECLARE @PSEZe char(8)=CONVERT(char(8),DATEADD(month,-12,CONVERT(date,@SEZe)),112);
+        -- @SEZb/@SEZe (geçen-yıl SABİT sezon) + @PSEZb/@PSEZe (önceki-yıl) = Dapper param (SatinalmaSezon.Hesapla).
+        -- Kayan pencere DEĞİL — sabit takvim sezonu (Yaz/Okul/Ara-Tatil/Sömestr), ay0'a göre en yakın gelen.
         DECLARE @L_ay0 char(7)=CONVERT(char(7),@d0,126);
         DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
         DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);

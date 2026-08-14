@@ -60,7 +60,7 @@ else
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
                 <div><div class="text-xs text-base-content/50">Eldeki Stok</div><div class="text-lg font-bold">@Num(_ozet.ToplamStok)</div><div class="text-[11px] text-base-content/40">şube @Num(_ozet.SubeStok)·depo @Num(_ozet.DepoStok)</div></div>
                 <div><div class="text-xs text-base-content/50">Talep Eğilimi</div><div class="text-lg font-bold @EgilimCls">@EgilimIbare</div><div class="text-[11px] text-base-content/40">geçen sezona göre (×@_analiz.Buyume.ToString("0.00", _tr))</div></div>
-                <div><div class="text-xs text-base-content/50">Geçen Sezon (Ağu-Eki)</div><div class="text-lg font-bold text-warning">@Num(_analiz.GySezon)</div><div class="text-[11px] text-base-content/40">okul dönemi</div></div>
+                <div><div class="text-xs text-base-content/50">Geçen Sezon · @SezonLbl</div><div class="text-lg font-bold text-warning">@Num(_analiz.GySezon)</div><div class="text-[11px] text-base-content/40">forecast tabanı</div></div>
                 <div><div class="text-xs text-base-content/50">Bu Sezon Beklenen</div><div class="text-lg font-bold">@Num(_analiz.BeklenenSezon)</div><div class="text-[11px] text-base-content/40">geçen sezon×büyüme</div></div>
                 <div><div class="text-xs text-base-content/50">Sezon Sonrası Kalan</div><div class="text-lg font-bold @(_analiz.SezonKalan > _analiz.GySezon ? "text-error" : _analiz.SezonKalan <= 0 ? "text-success" : "")">@Num(_analiz.SezonKalan)</div><div class="text-[11px] text-base-content/40">sezonlu tükenme @(_analiz.TukAy is null ? "—" : _analiz.TukAy >= 999 ? "hiç" : _analiz.TukAy.Value.ToString("0.0", _tr) + " ay")</div></div>
             </div>
@@ -105,7 +105,7 @@ else
                 <div style="height:200px"><canvas id="satisChart"></canvas></div>
                 <div class="flex items-center gap-3 text-[11px] text-base-content/50 mt-1.5 justify-center">
                     <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>normal ay</span>
-                    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-warning"></span>okul sezonu (Ağu–Eki)</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-warning"></span>@SezonLbl</span>
                 </div>
             </div>
             <details class="border border-base-300 rounded-lg">
@@ -152,6 +152,13 @@ else
     List<SatinalmaAySatis> _satis = new();
 
     SatinalmaAnalizSatir? _analiz;   // KANONİK sezonlu model (tek-ürün, Alım Analizi çekirdeği)
+
+    // SABİT sezon (kaymaz — tarih kayar) — SatinalmaSezon tek kaynak. En yakın gelen sezon (Okul/Ara Tatil/Sömestr/Yaz).
+    readonly (string SEZb, string SEZe, string PSEZb, string PSEZe, string Ad, string[] AylarMM) _sez =
+        SatinalmaSezon.Hesapla(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1).ToString("yyyyMMdd"));
+    string SezonLbl => _sez.Ad;          // ör "Okul (Ağu-Eki)"
+    string[] SezonMM => _sez.AylarMM;    // bu-yıl sezon ayları → chart highlight (warning)
+
     bool _resimAcik;
     string BuyukUrl => string.IsNullOrEmpty(_ozet?.ResimUrl) ? "" : _ozet!.ResimUrl.Replace("-K.jpg", "-B.jpg");
 
@@ -189,9 +196,9 @@ else
                 "ÖLÜ-ALIM" => $"Son 12 ayda hiç satış yok; buna rağmen ~{a.StokluAy} ay şube stoğu vardı (az da olsa, satabilirdi) → 'ölü'. Bu dönem yine alım yapılmış. Miktar/bağlı-para küçükse öncelik düşük.",
                 "YENİDEN-STOK" => "Stoksuzdu (eski talep vardı), yeniden stoklanmış — ölü değil, izlemek yeterli.",
                 "GENÇ" => "Yeni ürün — tam bir yıllık/sezonluk geçmişi yok, hüküm için erken.",
-                "AZ ALMIŞ" or "TREND-HIZLI" => $"Geçen sezon (Ağu-Eki) {Num(a.GySezon)} sattı; bu sezon ~{Num(a.BeklenenSezon)} bekleniyor. Eldeki stok sezonu zor karşılar (sezon sonrası {Num(a.SezonKalan)}) — stockout riski, az alınmış.",
+                "AZ ALMIŞ" or "TREND-HIZLI" => $"Geçen {SezonLbl} sezonunda {Num(a.GySezon)} sattı; bu sezon ~{Num(a.BeklenenSezon)} bekleniyor. Eldeki stok sezonu zor karşılar (sezon sonrası {Num(a.SezonKalan)}) — stockout riski, az alınmış.",
                 "FAZLA" => $"Geçen sezon {Num(a.GySezon)} sattı; büyümeyle bu sezon ~{Num(a.BeklenenSezon)} bekleniyor ama sezon sonrası hâlâ ~{Num(a.SezonKalan)} kalır — ihtiyaçtan fazla.",
-                _ => $"Geçen sezon (Ağu-Eki) {Num(a.GySezon)} sattı · büyüme ×{a.Buyume.ToString("0.0", _tr)} → bu sezon ~{Num(a.BeklenenSezon)} bekleniyor · sezon sonrası ~{Num(System.Math.Max(0, a.SezonKalan))} kalır.",
+                _ => $"Geçen {SezonLbl} sezonunda {Num(a.GySezon)} sattı · büyüme ×{a.Buyume.ToString("0.0", _tr)} → bu sezon ~{Num(a.BeklenenSezon)} bekleniyor · sezon sonrası ~{Num(System.Math.Max(0, a.SezonKalan))} kalır.",
             };
         }
     }
@@ -248,7 +255,7 @@ else
             var charts = await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
             await charts.InvokeVoidAsync("barSez", "satisChart",
                 _satis.Select(s => s.Ay).ToArray(), _satis.Select(s => s.Toplam).ToArray(),
-                new[] { "08", "09", "10" });   // okul sezonu ayrı renk (warning)
+                SezonMM);   // kayan önümüz-sezon ayları ayrı renk (warning)
         }
         catch { /* prerender / import başarısız → tablo yeter */ }
     }

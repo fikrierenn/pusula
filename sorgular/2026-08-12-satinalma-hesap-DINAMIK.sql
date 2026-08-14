@@ -17,10 +17,17 @@ DECLARE @AY1  char(8)=CONVERT(char(8),DATEADD(month, 1,@d0),112);      -- sonrak
 DECLARE @S12b char(8)=CONVERT(char(8),DATEADD(month,-12,@d0),112);     -- son12 başı
 DECLARE @S24b char(8)=CONVERT(char(8),DATEADD(month,-24,@d0),112);     -- 24-ay başı
 DECLARE @O12b char(8)=@S24b, @O12e char(8)=@S12b;                      -- önceki12 [başı,bitiş)
-DECLARE @SEZb char(8)=CONVERT(char(8),DATEADD(month,-11,@d0),112);     -- geçen yıl önümüz-sezon başı (hedef+1 −12)
-DECLARE @SEZe char(8)=CONVERT(char(8),DATEADD(month, -8,@d0),112);     -- +3 ay sonu (hedef+4 −12)
-DECLARE @PSEZb char(8)=CONVERT(char(8),DATEADD(month,-12,CONVERT(date,@SEZb)),112);  -- önceki yıl sezon başı (kategori-g paydası)
-DECLARE @PSEZe char(8)=CONVERT(char(8),DATEADD(month,-12,CONVERT(date,@SEZe)),112);
+-- SABİT sezon (kaymaz — tarih kayar): en yakın gelen sezon Yaz(6-7)/Okul(8-10)/Ara Tatil(11)/Sömestr(1-2).
+-- Forecast tabanı = o sezonun GEÇEN YIL occurrence'ı; büyüme paydası = önceki yıl. Dashboard SatinalmaSezon.cs ile AYNI.
+DECLARE @SEZ_BAS int, @SEZ_SON int, @SEZ_YIL int;
+;WITH S(bas,son) AS (SELECT 6,7 UNION ALL SELECT 8,10 UNION ALL SELECT 11,11 UNION ALL SELECT 1,2)
+SELECT TOP 1 @SEZ_BAS=bas, @SEZ_SON=son,
+       @SEZ_YIL=YEAR(CASE WHEN DATEFROMPARTS(YEAR(@d0),bas,1)>@d0 THEN DATEFROMPARTS(YEAR(@d0),bas,1) ELSE DATEFROMPARTS(YEAR(@d0)+1,bas,1) END)
+FROM S ORDER BY CASE WHEN DATEFROMPARTS(YEAR(@d0),bas,1)>@d0 THEN DATEFROMPARTS(YEAR(@d0),bas,1) ELSE DATEFROMPARTS(YEAR(@d0)+1,bas,1) END;
+DECLARE @SEZb  char(8)=CONVERT(char(8),DATEFROMPARTS(@SEZ_YIL-1,@SEZ_BAS,1),112);               -- geçen yıl sezon başı (forecast tabanı)
+DECLARE @SEZe  char(8)=CONVERT(char(8),DATEADD(month,1,DATEFROMPARTS(@SEZ_YIL-1,@SEZ_SON,1)),112); -- sezon sonu +1 (hariç)
+DECLARE @PSEZb char(8)=CONVERT(char(8),DATEFROMPARTS(@SEZ_YIL-2,@SEZ_BAS,1),112);               -- önceki yıl sezon başı (büyüme paydası)
+DECLARE @PSEZe char(8)=CONVERT(char(8),DATEADD(month,1,DATEFROMPARTS(@SEZ_YIL-2,@SEZ_SON,1)),112);
 DECLARE @L_ay0 char(7)=CONVERT(char(7),@d0,126);                       -- 'YYYY-MM' etiketler (char(7) ay eşleme)
 DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
 DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
@@ -76,7 +83,7 @@ CROSS JOIN (VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11)) m(idx)
 LEFT JOIN #aylik a ON a.stkID=s.stkID AND a.ay=CONVERT(char(7),DATEADD(month,m.idx,CONVERT(date,@S12b)),126);
 CREATE CLUSTERED INDEX ix ON #shape(stkID, idx);
 
-/* 5) #agg — son12/onc12/son24/gy_sezon(shape idx1..3)/satis_ay + büyüme g */
+/* 5) #agg — son12/onc12/son24/gy_sezon(SABİT sezon @L_sezb..@L_seze)/satis_ay + büyüme g */
 IF OBJECT_ID('tempdb..#agg') IS NOT NULL DROP TABLE #agg;
 SELECT a.stkID,
    ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 THEN al.satis END),0) AS son12,
