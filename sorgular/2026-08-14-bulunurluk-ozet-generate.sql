@@ -67,8 +67,15 @@ SELECT v.stkID,
     MAX(CASE WHEN v.ehMekan=4478 AND v.mx<@min THEN 1 ELSE 0 END) AS d4478
 INTO #sku FROM #av v GROUP BY v.stkID;
 
+-- RECENCY GATE: son12 satış + son3ay satış. Kayıp listesine SADECE son3ay canlı-talepli ürün girer
+-- (tarihli/ölü ürün — ör "2026 Ajanda" Ağustos'ta — trailing-12'de satmış görünür ama talebi EXPIRED,
+--  kuru şubeye stoklamak anlamsız → hayalet-kayıp. Top-500'ün ~%48'i böyle çıktı, elendi).
+DECLARE @son3 char(8) = CONVERT(char(8), DATEADD(month, -3, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)), 112);
 IF OBJECT_ID('tempdb..#satis') IS NOT NULL DROP TABLE #satis;
-SELECT ehstkID AS stkID, CONVERT(int,SUM(-ehAdetN)) AS satis INTO #satis
+SELECT ehstkID AS stkID,
+       CONVERT(int,SUM(-ehAdetN)) AS satis,
+       CONVERT(int,SUM(CASE WHEN ehTrhS>=@son3 THEN -ehAdetN ELSE 0 END)) AS satis_son3
+INTO #satis
 FROM dbo.irsHrk WITH(NOLOCK)
 WHERE ehTip IN (1,4,100) AND ehTrhS>=@bas AND ehTrhS<@son AND ehstkID IN (SELECT stkID FROM #aktif)
 GROUP BY ehstkID;
@@ -76,10 +83,12 @@ CREATE CLUSTERED INDEX ix ON #satis(stkID);
 
 DELETE FROM bkm.BulunurlukKayip WHERE Donem=@Donem;
 ;WITH aday AS (
-    SELECT k.stkID, s.satis, k.stoklu, k.kuru, k.d1, k.d4477, k.d4478,
-           CONVERT(int, 1.0*s.satis*(3-k.stoklu)/k.stoklu) AS kayip_adet
+    -- DEMAND = son3ay velocity × 4 (yıllık forward projeksiyon) — trailing-12 DEĞİL. Dated/ölü ürün (agenda:
+    -- son3=2 → 8/yıl → küçük kayıp → dibe) otomatik elenir; sezonu-gelen (son3 ramp) korunur. GorunurSatis=son12 (bağlam).
+    SELECT k.stkID, s.satis, s.satis_son3, k.stoklu, k.kuru, k.d1, k.d4477, k.d4478,
+           CONVERT(int, 1.0*(s.satis_son3*4)*(3-k.stoklu)/k.stoklu) AS kayip_adet
     FROM #sku k JOIN #satis s ON s.stkID=k.stkID
-    WHERE k.stoklu IN (1,2) AND k.kuru>=1
+    WHERE k.stoklu IN (1,2) AND k.kuru>=1 AND s.satis_son3 > 0   -- son 3 ay canlı-talep şart (tam-ölü elenir)
 )
 INSERT INTO bkm.BulunurlukKayip (Donem, StkID, StkAd, Kategori, Marka, StokluSube, KuruSube, KuruSubeAd, GorunurSatis, TahminiKayipAdet, BirimMaliyet)
 SELECT TOP 500 @Donem, t.stkID, u.stkAd, ISNULL(ub.Kategori3,''), ISNULL(ub.mrkAd,''),
