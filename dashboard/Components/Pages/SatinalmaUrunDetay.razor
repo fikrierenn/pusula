@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @using System.Globalization
 @inject SatinalmaQueries Satinalma
+@inject AyarService Ayar
 @inject IJSRuntime JS
 @inject ILogger<SatinalmaUrunDetay> Logger
 @rendermode InteractiveServer
@@ -63,7 +64,24 @@ else
                 <div class="text-sm text-base-content/70 mt-0.5">@Yorum</div>
                 @if (_analiz?.BulkKanal == true)
                 {
-                    <div class="text-warning text-[11px] mt-1 leading-relaxed">⚠ Son 12 ayın %@(System.Math.Round(_analiz.BulkOran*100))'i TOPTAN (retail @Num(_analiz.RetailSon12) / ham @Num(_analiz.Son12)). Bu ürün toptan hareket ediyor — FAZLA "retail hızına" göredir; düzenli toptan/okul siparişi alıyorsa eldeki stok o kanalla temizlenir, gerçek fazla olmayabilir.</div>
+                    <details class="mt-1">
+                        <summary class="text-warning text-[11px] leading-relaxed cursor-pointer">⚠ Son 12 ayın %@(System.Math.Round(_analiz.BulkOran*100))'i TOPTAN (retail @Num(_analiz.RetailSon12) / ham @Num(_analiz.Son12)). Bu ürün toptan hareket ediyor — FAZLA "retail hızına" göredir; düzenli toptan/okul siparişi alıyorsa stok o kanalla temizlenir. <span class="underline">Toptan hareketleri gör →</span></summary>
+                        @if (_bulk.Count > 0)
+                        {
+                            <div class="overflow-x-auto border border-warning/30 rounded-lg mt-1.5 max-w-md">
+                                <table class="table table-xs">
+                                    <thead><tr><th>Tarih</th><th>Yer</th><th>Evrak</th><th class="text-right">Adet (tek hareket)</th></tr></thead>
+                                    <tbody>
+                                    @foreach (var b in _bulk)
+                                    {
+                                        <tr><td class="whitespace-nowrap text-xs">@b.Tarih.ToString("dd.MM.yy")</td><td class="text-xs">@b.MekanAd</td><td class="text-xs text-base-content/60">@b.EvrakNo</td><td class="text-right tabular-nums font-medium text-warning">@Num(b.Adet)</td></tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-[10px] text-base-content/40 mt-1">İst.Yolu "POS Satış" büyük fişleri = genelde Sınav Okulları toptan (yazarkasa; cari EncoreMerkez'de). Depo (D01…) = merkez sevk/e-tic. Evrak-no = irsaliye belgesi.</div>
+                        }
+                    </details>
                 }
             </div>
         </div>
@@ -218,6 +236,7 @@ else
     List<SatinalmaFaturaSatir> _fatura = new();
     List<SatinalmaAySatis> _satis = new();
     List<SatinalmaSubeSezon> _subeSezon = new();
+    List<SatinalmaBulkHareket> _bulk = new();
 
     SatinalmaAnalizSatir? _analiz;   // KANONİK sezonlu model (tek-ürün, Alım Analizi çekirdeği)
 
@@ -241,12 +260,14 @@ else
             var tSat = Satinalma.GetAySatisAsync(StkId);
             var tAnaliz = Satinalma.GetUrunAnalizAsync(StkId);
             var tSube = Satinalma.GetSubeSezonAsync(StkId);
-            await Task.WhenAll(tOzet, tFat, tSat, tAnaliz, tSube);
+            var tBulk = Satinalma.GetBulkHareketAsync(StkId, Ayar.Deger.SatinRetailCap);
+            await Task.WhenAll(tOzet, tFat, tSat, tAnaliz, tSube, tBulk);
             _ozet = await tOzet;
             _fatura = (await tFat).ToList();
             _satis = (await tSat).ToList();
             _analiz = await tAnaliz;
             _subeSezon = (await tSube).ToList();
+            _bulk = (await tBulk).ToList();
         }
         catch (Exception ex)
         {

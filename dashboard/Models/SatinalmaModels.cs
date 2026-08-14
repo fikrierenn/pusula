@@ -103,6 +103,16 @@ public sealed class SatinalmaAySatis
     public int Toplam => Sube + Etic;
 }
 
+/// <summary>Toptan/bulk satış hareketi (retail-cap üstü tek hareket) — TOPTAN KANAL drill.</summary>
+public sealed class SatinalmaBulkHareket
+{
+    public DateTime Tarih { get; set; }
+    public int Mekan { get; set; }
+    public string MekanAd { get; set; } = "";
+    public int Adet { get; set; }
+    public string EvrakNo { get; set; } = "";   // irs.eNo — depo sevk (D01…) gerçek belge; POS'ta "POS Satış"
+}
+
 /// <summary>Geçen-yıl sezon penceresinde şube-bazlı satış + o sezonda görülen max raf stoğu.
 /// Kuru şube (MaxStok küçük) = satış "talep yok" değil "stok yok" → forecast tabanı eksik-sayım sinyali.</summary>
 public sealed class SatinalmaSubeSezon

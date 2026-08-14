@@ -88,6 +88,25 @@ public sealed partial class SatinalmaQueries
         return (await c.QueryAsync<SatinalmaSubeSezon>(sql, new { id = stkID, sezb = sz.SEZb, seze = sz.SEZe })).AsList();
     }
 
+    /// <summary>TOPTAN/bulk satış hareketleri (son 12 ay, tek-hareket > cap) — TOPTAN KANAL rozeti drill.
+    /// Analist "bu %X toptan nereden" görsün (ör. Sınav Okulları İst.Yolu bulk kalem alımı).</summary>
+    public async Task<IReadOnlyList<SatinalmaBulkHareket>> GetBulkHareketAsync(int stkID, int cap, int top = 20)
+    {
+        var bas = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-12).ToString("yyyyMMdd");
+        var sql = $"""
+            SELECT TOP (@top) h.ehTrhS AS Tarih, h.ehMekan AS Mekan, CONVERT(int,-h.ehAdetN) AS Adet,
+                   ISNULL(ev.eNo,'—') AS EvrakNo
+            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            OUTER APPLY (SELECT TOP 1 i.eNo FROM DerinSISBkm.dbo.irs i WITH(NOLOCK) WHERE i.eID=h.ehID) ev
+            WHERE h.ehstkID=@id AND h.ehTip IN (1,4,100) AND h.ehAdetN<0 AND -h.ehAdetN > @cap AND h.ehTrhS>=@bas
+            ORDER BY -h.ehAdetN DESC;
+            """;
+        await using var c = await db.OpenAsync();
+        var rows = (await c.QueryAsync<SatinalmaBulkHareket>(sql, new { id = stkID, cap, bas, top })).AsList();
+        foreach (var r in rows) r.MekanAd = r.Mekan switch { 1 => "FSM", 4477 => "Özlüce", 4478 => "İst.Yolu", 12 => "Depo/online", _ => r.Mekan.ToString() };
+        return rows;
+    }
+
     /// <summary>Son 24 ay satış — şube (irsHrk) DerinSIS + e-ticaret (JOKER direkt), ay-bazında birleşik.</summary>
     public async Task<IReadOnlyList<SatinalmaAySatis>> GetAySatisAsync(int stkID)
     {
