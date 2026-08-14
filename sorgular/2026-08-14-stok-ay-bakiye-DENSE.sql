@@ -56,19 +56,28 @@ LEFT JOIN #delta d ON d.ehstkID = p.ehstkID AND d.ehMekan = p.ehMekan AND d.Done
 LEFT JOIN #opening o ON o.ehstkID = p.ehstkID AND o.ehMekan = p.ehMekan;
 CREATE CLUSTERED INDEX ix_db ON #db (ehstkID, ehMekan, Donem);
 
--- 6) YAZ — önce boşalt, sonra sparse (eski) + dense (son 36 ay) tek INSERT.
-DELETE FROM bkm.StokAyBakiyeMekanBazli WHERE Kaynak = 'irsHrk';
+-- 6) YAZ — ATOMİK (failure-safe nightly: hata → rollback, eski veri korunur). Temp'ler yukarıda hazır → tran kısa.
+SET XACT_ABORT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+    DELETE FROM bkm.StokAyBakiyeMekanBazli WHERE Kaynak = 'irsHrk';
 
-INSERT INTO bkm.StokAyBakiyeMekanBazli (Donem, stkID, ehMekan, Stok, Kaynak)
-SELECT Donem, ehstkID, ehMekan, CASE WHEN Stok < 0 THEN 0 ELSE CONVERT(int, Stok) END, 'irsHrk'
-FROM #sparse WHERE Donem < @denseCut                          -- eski: sparse
-UNION ALL
-SELECT Donem, ehstkID, ehMekan,
-       CASE WHEN acilis + SUM(delta) OVER (PARTITION BY ehstkID, ehMekan ORDER BY Donem ROWS UNBOUNDED PRECEDING) < 0
-            THEN 0
-            ELSE CONVERT(int, acilis + SUM(delta) OVER (PARTITION BY ehstkID, ehMekan ORDER BY Donem ROWS UNBOUNDED PRECEDING)) END,
-       'irsHrk'
-FROM #db;                                                     -- son 36 ay: dense (0 dahil)
+    INSERT INTO bkm.StokAyBakiyeMekanBazli (Donem, stkID, ehMekan, Stok, Kaynak)
+    SELECT Donem, ehstkID, ehMekan, CASE WHEN Stok < 0 THEN 0 ELSE CONVERT(int, Stok) END, 'irsHrk'
+    FROM #sparse WHERE Donem < @denseCut                          -- eski: sparse
+    UNION ALL
+    SELECT Donem, ehstkID, ehMekan,
+           CASE WHEN acilis + SUM(delta) OVER (PARTITION BY ehstkID, ehMekan ORDER BY Donem ROWS UNBOUNDED PRECEDING) < 0
+                THEN 0
+                ELSE CONVERT(int, acilis + SUM(delta) OVER (PARTITION BY ehstkID, ehMekan ORDER BY Donem ROWS UNBOUNDED PRECEDING)) END,
+           'irsHrk'
+    FROM #db;                                                     -- son 36 ay: dense (0 dahil)
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;   -- hata → eski irsHrk verisi geri gelir (boş kalmaz)
+    THROW;
+END CATCH
 
 DROP TABLE #delta, #sparse, #pairs, #opening, #spine, #db;
 
