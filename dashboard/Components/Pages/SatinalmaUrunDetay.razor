@@ -51,8 +51,20 @@ else
         <div class="flex items-start gap-3">
             <div class="rounded-lg @IkonBg p-2.5 shrink-0"><i data-lucide="@Ikon" class="w-6 h-6"></i></div>
             <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg @Txt leading-tight">@(_analiz?.Degerlendirme ?? "Sezonlu model verisi yok")</div>
+                <div class="font-bold text-lg @Txt leading-tight flex items-center gap-2 flex-wrap">
+                    @(_analiz?.Degerlendirme ?? "Sezonlu model verisi yok")
+                    @if (_analiz?.BulkKanal == true)
+                    {
+                        <span class="badge badge-warning gap-1" title="Bu ürünün son-12-ay satışının %@(System.Math.Round(_analiz.BulkOran*100))'i toptan/bulk (tek büyük hareket). Retail forecast toplam talebi eksik gösterir — toptan sipariş geldiğinde stok temizlenir.">
+                            <i data-lucide="package" class="w-3.5 h-3.5"></i>TOPTAN KANAL %@(System.Math.Round(_analiz.BulkOran*100))
+                        </span>
+                    }
+                </div>
                 <div class="text-sm text-base-content/70 mt-0.5">@Yorum</div>
+                @if (_analiz?.BulkKanal == true)
+                {
+                    <div class="text-warning text-[11px] mt-1 leading-relaxed">⚠ Son 12 ayın %@(System.Math.Round(_analiz.BulkOran*100))'i TOPTAN (retail @Num(_analiz.RetailSon12) / ham @Num(_analiz.Son12)). Bu ürün toptan hareket ediyor — FAZLA "retail hızına" göredir; düzenli toptan/okul siparişi alıyorsa eldeki stok o kanalla temizlenir, gerçek fazla olmayabilir.</div>
+                }
             </div>
         </div>
         @if (_analiz is not null)

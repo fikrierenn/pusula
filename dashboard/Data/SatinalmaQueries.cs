@@ -122,7 +122,8 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            ISNULL(SUM(CASE WHEN ay>=@L_sezb AND ay<@L_seze THEN al.satis END),0) AS gy_sezon,
            ISNULL(SUM(CASE WHEN ay>=@L_psezb AND ay<@L_pseze THEN al.satis END),0) AS gy_sezon_onc,
            ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 AND al.satis>0 THEN 1 END),0) AS satis_ay,
-           ISNULL(SUM(CASE WHEN ay>=@L_son3 AND ay<@L_ay0 AND al.fis>=3 THEN al.retail END),0) AS retail_son3   -- bulk-kırpılmış + çok-fişli son 3 ay (tek-bulk ayı hariç)
+           ISNULL(SUM(CASE WHEN ay>=@L_son3 AND ay<@L_ay0 AND al.fis>=3 THEN al.retail END),0) AS retail_son3,   -- bulk-kırpılmış + çok-fişli son 3 ay (tek-bulk ayı hariç)
+           ISNULL(SUM(CASE WHEN ay>=@L_s12 AND ay<@L_ay0 THEN al.retail END),0) AS retail_son12   -- bulk-kırpılmış son12 (bulk-oran = 1 − retail/ham)
         INTO #agg
         FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
         GROUP BY a.stkID;
@@ -269,6 +270,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            ag.onc12                                                  AS Onc12,
            ag.beklenen                                               AS BeklenenSezon,
            ag.retail_son3                                            AS RetailSon3,
+           ag.retail_son12                                           AS RetailSon12,
            st.kap - ag.beklenen                                      AS SezonKalan,
            sl.stoklu_ay                                              AS StokluAy,
            CONVERT(decimal(10,1), CASE WHEN sl.stoklu_ay>0 THEN 1.0*ag.son12/sl.stoklu_ay END) AS AylikHiz,

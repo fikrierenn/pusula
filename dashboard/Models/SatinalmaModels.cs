@@ -29,6 +29,13 @@ public sealed class SatinalmaAnalizSatir
     public int GySezonOnc { get; set; }   // önceki-yıl sezon (büyüme paydası — şeffaflık)
     public int Onc12 { get; set; }         // önceki 12 ay (yıllık-tier paydası — şeffaflık)
     public int RetailSon3 { get; set; }    // son 3 ay bulk-kırpılmış retail (momentum floor tabanı — şeffaflık)
+    public int RetailSon12 { get; set; }   // son 12 ay bulk-kırpılmış retail (bulk-oran göstergesi)
+
+    /// <summary>Bulk-kanal oranı: son12 satışının % kaçı toptan (retail-cap üstü). Yüksek → ürün toptan hareket ediyor,
+    /// retail forecast toplam talebi eksik gösterir. 0 (tam retail) .. 1 (tam bulk).</summary>
+    public double BulkOran => Son12 > 0 ? System.Math.Max(0, 1.0 - (double)RetailSon12 / Son12) : 0;
+    /// <summary>Bulk-kanal ürünü mü — son12 anlamlı VE bulk-oran yüksek (≥%40).</summary>
+    public bool BulkKanal => Son12 >= 50 && BulkOran >= 0.40;
     public int BeklenenSezon { get; set; }
     public int SezonKalan { get; set; }
     public int? StokluAy { get; set; }
