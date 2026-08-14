@@ -31,6 +31,19 @@ metrics:
     evidence: "2026-08-13 MCP: 200491 son fatura eID 7056126 = 44@2508 + 4@0 = 48 adet/2508 ₺ → 52.25 (satır-rn=1 tie 57 verir). Python≡DINAMIK birebir (openpyxl hücre-hücre, gerçek fark 0)."
     last_verified: "2026-08-13"
 
+  bulunurluk_osa:
+    tanim: "Şube-bazlı raf bulunurluğu (On-Shelf Availability). Bir SKU bir şubede M ayında 'bulunur' = GİRİŞ-bakiyesi (M-1 ay-sonu) ≥ min-stok(3). Kaynak: bkm.StokAyBakiyeMekanBazli (ay-sonu bakiye, carry-forward — bkz entities). Amaç: kuru-raf = kayıp satış görünür kıl + satınalma forecast tabanını düzelt (plan-33)."
+    availability_gate: "GİRİŞ-bakiyesi kullan (M-1 ay-sonu), same-month-end DEĞİL — son-gün-gelen stok o ay satılamaz, ay-sonu 'stoklu' der (şişme). Satır sadece hareketli aya yazılır → carry-forward (Donem<=@ay ORDER BY Donem DESC) ŞART."
+    oos_orani: "Şube×kategori OOS = (kuru-SKU / o şubede-taşınan-aktif-SKU). Aktif = son12 satan. Taşınan = geçmişte o şubede raf açılmış (kasıtlı-assortment ele — hiç taşınmayan SKU 'gap' değil)."
+    kayip_satis: "Kuru şube + başka şubede kanıtlı-talep → kaçan adet. Şube-payı ROTASYON yüzünden güvenilmez (591060: FSM 0→0→71, Özlüce 65→270→0) → çapraz-şube oranı KULLANMA; her şube KENDİ stoklu-sezon medyanı (stok-gate: o sezon o şubede raf ≥3 olan sezonlar). Kaba üst-sınır: kismi_satis × (3−stoklu_sube)/stoklu_sube."
+    uc_filtre: "Gerçek-gap ≠ ham kısmi-dağıtım: (1) geçmişte-taşımış (assortment ele), (2) mağaza-boyut normalizasyon (eksik-şube kendi ölçeğinde), (3) online-kanal (mekan 12) ayrı (raf-stoğu tutmaz, kuru sayma)."
+    sizing: "2026-08-14 Faz0 (Kat3 10/12/16, son12): 42.744 aktif · kısmi(1-2 şube) 15.802 (%37, carry-in düzeltilmiş) · kaba kayıp ~263K adet. Ham (carry-in'siz) 16.238/%38/~377K — hareketsiz-stok şişirmesi."
+    accountability: "Bulunurluk-düzeltilmiş taban satınalmada AYRI gösterilir; FAZLA kararını OTOMATİK değiştirmez (taban şişirme overbuy gizler — hesap-sorma aracının kırmızı çizgisi)."
+    uygulama: "plan-33 (B-133 sema / B-134 BulunurlukQueries / B-135 sayfa / B-136 satınalma entegrasyon). Keşif: sorgular/2026-08-14-bulunurluk-sizing.sql."
+    confidence: 0.9
+    evidence: "2026-08-14 — sizing 3 varyant çalıştırıldı (ham/carry-in); tablo semantiği kod+veri doğrulandı (591060 birebir); 591060 vaka elle izlendi (şube×sezon stok+satış)."
+    last_verified: "2026-08-14"
+
   banka_ekstresi_siniflandirma:
     kaynak: "dbo.car cTip=122 (Banka Ekstresi); köprü car-karsi-frm; kod car.cFatTip=122"
     problem: "Banka ekstresi satır açıklamasından (cNot) doğru cari (cKodKarsi) atama. Şule (insID 1897) elle yapıyor; oto-import/SP YOK. Pilot: muhasebe app (plan-27)."

@@ -26,6 +26,7 @@ public static class ServiceRegistration
         s.AddScoped<FinansQueries>();     // B-124 cari bakiye / risk özeti
         s.AddScoped<TrafikQueries>();    // B-127 FSM trafik & kasiyer analizi
         s.AddScoped<SatinalmaQueries>(); // plan-32 satınalma raporları (hesap-sorma; DINAMIK emitter)
+        s.AddScoped<BulunurlukQueries>(); // plan-33 şube bazlı bulunurluk (OSA) + kayıp-satış
         s.AddSingleton<SabahService>();   // MIMBAL sabah brifingi (G1+E8)
         return s;
     }

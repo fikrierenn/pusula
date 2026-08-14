@@ -44,6 +44,7 @@ public static class NavRegistry
         new NavItem("sadakat", "Sadakat", "heart"),
         new NavItem("tahmin", "Hedef Tahmin", "sparkles"),
         new NavItem("satinalma/analiz", "Alım Analizi", "shopping-bag", Section: "SATINALMA"),
+        new NavItem("bulunurluk", "Bulunurluk", "store", Section: "SATINALMA"),
         new NavItem("asistan", "Genius", "message-square", Section: "ASİSTAN"),
         new NavItem("gorevler", "Görevler", "check-square", Section: "ASİSTAN", GorevBadge: true),
         new NavItem("bellek", "Bellek", "database", Section: "ASİSTAN"),

@@ -276,3 +276,14 @@ entities:
     key: [MalKabulBaslikId, StokId, Miktar, KullaniciId, LogDate]
     note: "Mal kabul satır logu, 3.41M satır. StokId×Miktar = GERÇEK GELEN adet → fill-rate = gelen/sipariş (SiparisMiktar). FK: MalKabulBaslikId→MalKabulBaslik. KullaniciId→SayimKullanici (kabul eden, alıcı değil)."
     last_verified: "2026-07-30"
+  # --- Bulunurluk (On-Shelf Availability) temeli — plan-33, KOD+VERİ doğrulandı 2026-08-14 ---
+  bkm.StokAyBakiyeMekanBazli:
+    key: [Donem, stkID, ehMekan]
+    grain: "ay-sonu (EOMONTH) × ürün × mekan — kalıcı aylık stok bakiyesi geçmişi"
+    kolonlar: "Donem(EOMONTH date), stkID, ehMekan(1/4477/4478 şube · 12 depo), Stok(int), Kaynak('irsHrk' şube | 'WMS' depo)"
+    semantik: "Stok = ay-SONU KÜMÜLATİF BAKİYE (running-total), HAREKET-TOPLAMI DEĞİL. Şube: irsHrk ehAltDepo=0 kümülatif, negatif→0 floor. 591060 birebir doğrulandı (ehAltDepo=0 kümülatif = tablo)."
+    tuzaklar: "(1) Satır SADECE hareketli aylara yazılır (snapshot değil) → ara aylar YOK → carry-forward ŞART: SELECT TOP 1 Stok WHERE stkID/mekan AND Donem<=@ay ORDER BY Donem DESC. (2) Ay-SONU bakiye → 'o ay satılabilir miydi' için giriş-bakiyesi (M-1 ay-sonu ≥ eşik) kullan, same-month-end DEĞİL (son-gün-gelen stok şişirir). (3) DEPO (mekan 12) geçmişi YOK — sadece anlık WMS snapshot; tarihsel bulunurluk ŞUBE-ONLY. (4) Transit mekan 26142/4480/4835 HARİÇ."
+    uretim: "sorgular/2026-08-12-stok-ay-bakiye-mekan-tablo.sql (aylık ay-sonu çalıştır). Alternatif zengin kaynak: OneriSiparis (208M, gün×mağaza×ürün GunStok/Stok — GÜNLÜK ama sadece 2025-01+; daha ince ama ağır)."
+    confidence: 1.0
+    evidence: "2026-08-14 — üretim scripti okundu (running-total ehAltDepo=0); 591060 mekan-1 tablo=ehAltDepo=0 kümülatif BİREBİR (193/189/157/131/118/72/59)."
+    last_verified: "2026-08-14"

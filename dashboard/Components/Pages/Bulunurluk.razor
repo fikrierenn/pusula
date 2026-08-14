@@ -1,0 +1,150 @@
+@page "/bulunurluk"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject BulunurlukQueries Bulunur
+@inject NavigationManager Nav
+@inject ILogger<Bulunurluk> Logger
+
+<PageTitle>Bulunurluk — BKM GM</PageTitle>
+
+<div class="space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <i data-lucide="store" class="w-6 h-6 text-primary"></i>Şube Bulunurluğu
+        </h1>
+        <p class="text-sm text-base-content/60 mt-1">
+            Raf bulunurluğu (On-Shelf Availability) — bir şubede stoksuz kalan ürün = sessiz kayıp satış.
+            Kat3 (Hediyelik/Kırtasiye/Oyuncak), son 12 ay. Kaynak: ay-sonu şube bakiyesi × satış.
+        </p>
+    </div>
+
+    @if (_yukleniyor)
+    {
+        <div class="flex items-center gap-2 text-base-content/60 py-8 justify-center"><span class="loading loading-spinner"></span> Hesaplanıyor…</div>
+    }
+    else if (_hata is not null)
+    {
+        <div class="alert alert-error"><i data-lucide="alert-triangle" class="w-5 h-5"></i>@_hata</div>
+    }
+    else
+    {
+        @* ── KPI: şube geneli OOS ── *@
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            @foreach (var s in _subeGenel)
+            {
+                <div class="card bg-base-100 border border-base-300">
+                    <div class="card-body p-4">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold">@s.MekanAd</span>
+                            <span class="badge @OosCls(s.Oos)">@s.Oos.ToString("0.0") % OOS</span>
+                        </div>
+                        <div class="text-xs text-base-content/50">@Num(s.Kuru) / @Num(s.Tasinan) taşınan-aktif SKU kuru</div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ── Matris: şube × kategori OOS% ── *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5"><i data-lucide="grid-3x3" class="w-4 h-4 text-primary"></i>Şube × Kategori OOS %</h2>
+            <div class="overflow-x-auto border border-base-300 rounded-lg">
+                <table class="table table-sm">
+                    <thead><tr><th>Şube</th>@foreach (var k in _katlar){<th class="text-right">@k</th>}</tr></thead>
+                    <tbody>
+                    @foreach (var mekan in _mekanlar)
+                    {
+                        <tr class="hover">
+                            <td class="font-medium">@BulunurlukQueriesMekanAd(mekan)</td>
+                            @foreach (var k in _katlar)
+                            {
+                                var cell = _oos.FirstOrDefault(x => x.Mekan == mekan && x.Kategori == k);
+                                <td class="text-right tabular-nums @(cell is null ? "text-base-content/30" : OosTxt(cell.OosYuzde))">
+                                    @(cell is null ? "—" : cell.OosYuzde.ToString("0.0") + "%")
+                                    @if (cell is not null) { <span class="text-[10px] text-base-content/40 block">@Num(cell.Kuru)/@Num(cell.TasinanAktif)</span> }
+                                </td>
+                            }
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ── Kayıp-satış öncelik ── *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <i data-lucide="trending-down" class="w-4 h-4 text-error"></i>Kayıp-Satış Önceliği
+                <span class="text-xs text-base-content/50 font-normal">(kısmi-dağıtım + kuru şube; tahmini kaçan ₺ — üst-sınır)</span>
+            </h2>
+            <div class="text-[11px] text-base-content/50 mb-2">
+                Tahmini kayıp = görünür satış × (eksik-şube ÷ stoklu-şube) × son alış birim maliyeti. Kaba üst-sınır (eksik-şube aynı hızda satar varsayımı). Satıra tıkla → ürün detay.
+            </div>
+            <div class="overflow-x-auto border border-base-300 rounded-lg">
+                <table class="table table-xs">
+                    <thead><tr>
+                        <th>Ürün</th><th>Kategori</th><th class="text-right">Görünür Satış</th>
+                        <th class="text-center">Stoklu/Kuru</th><th>Kuru Şube</th>
+                        <th class="text-right">Tah. Kayıp Adet</th><th class="text-right">Tah. Kayıp ₺</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var r in _kayip)
+                    {
+                        <tr class="hover cursor-pointer" @onclick="() => Git(r.StkID)">
+                            <td class="max-w-[240px] truncate" title="@r.StkAd"><span class="text-base-content/40 text-[10px]">@r.StkID</span> @r.StkAd</td>
+                            <td class="text-xs text-base-content/60">@r.Kategori</td>
+                            <td class="text-right tabular-nums">@Num(r.GorunurSatis)</td>
+                            <td class="text-center tabular-nums"><span class="text-success">@r.StokluSube</span>/<span class="text-error">@r.KuruSube</span></td>
+                            <td class="text-xs text-error">@r.KuruSubeAd</td>
+                            <td class="text-right tabular-nums font-medium">@Num(r.TahminiKayipAdet)</td>
+                            <td class="text-right tabular-nums font-semibold">@Tl(r.TahminiKayipTl)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    List<SubeOos> _oos = new();
+    List<BulunurlukKayip> _kayip = new();
+    bool _yukleniyor = true;
+    string? _hata;
+
+    record SubeGenel(int Mekan, string MekanAd, int Tasinan, int Kuru, decimal Oos);
+    List<SubeGenel> _subeGenel = new();
+    int[] _mekanlar = { 1, 4477, 4478 };
+    string[] _katlar = { "Hediyelik", "Kırtasiye", "Oyuncak" };
+
+    static string BulunurlukQueriesMekanAd(int m) => m switch { 1 => "FSM", 4477 => "Özlüce", 4478 => "İst.Yolu", _ => m.ToString() };
+    static string Num(int n) => n.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+    static string Tl(decimal v) => v.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + " ₺";
+    static string OosCls(decimal o) => o >= 35 ? "badge-error" : o >= 20 ? "badge-warning" : "badge-success";
+    static string OosTxt(decimal o) => o >= 35 ? "text-error font-semibold" : o >= 20 ? "text-warning" : "text-success";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tOos = Bulunur.GetSubeOosAsync();
+            var tKayip = Bulunur.GetKayipOncelikAsync(200);
+            await Task.WhenAll(tOos, tKayip);
+            _oos = (await tOos).ToList();
+            _kayip = (await tKayip).ToList();
+            _subeGenel = _oos.GroupBy(x => x.Mekan)
+                .Select(g => new SubeGenel(g.Key, BulunurlukQueriesMekanAd(g.Key),
+                    g.Sum(x => x.TasinanAktif), g.Sum(x => x.Kuru),
+                    g.Sum(x => x.TasinanAktif) > 0 ? System.Math.Round(100m * g.Sum(x => x.Kuru) / g.Sum(x => x.TasinanAktif), 1) : 0))
+                .OrderBy(x => x.Mekan).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Bulunurluk yüklenemedi");
+            _hata = "Bulunurluk hesaplanamadı. Lütfen tekrar deneyin.";
+        }
+        finally { _yukleniyor = false; }
+    }
+
+    void Git(int stkID) => Nav.NavigateTo($"/satinalma/urun/{stkID}");
+}
