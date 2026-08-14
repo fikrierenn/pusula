@@ -4,9 +4,9 @@
 
 ## Mutlak Kural
 
-**ERP / production veritabanlarına izinli yazma hedefleri = SADECE app-owned `bkm.*` tabloları: `bkm.Fin_AyKapanis` (dashboard) + `bkm.BankaOgrenme` (muhasebe app). Başka HİÇBİR tabloya / DerinSIS native tabloya / başka şemaya yazma YOK.**
+**ERP / production veritabanlarına izinli yazma hedefleri = SADECE app-owned `bkm.*` tabloları: `bkm.Fin_AyKapanis` (dashboard) + `bkm.BankaOgrenme` (muhasebe app) + `bkm.StokAyBakiyeMekanBazli` (stok geçmiş, SQL job) + `bkm.BulunurlukOzet` + `bkm.BulunurlukKayip` (bulunurluk pre-agg, SQL job). Başka HİÇBİR tabloya / DerinSIS native tabloya / başka şemaya yazma YOK.**
 
-Kullanıcı direktifi (verbatim): _"sadece o tabloya yazacaksın, başkası yasak"_ (23.06 Fin_AyKapanis) · _"bkm şeması olarak"_ (04.07 BankaOgrenme — banka ekstresi öğrenme deposu, ERP-write yetkilendirildi).
+Kullanıcı direktifi (verbatim): _"sadece o tabloya yazacaksın, başkası yasak"_ (23.06 Fin_AyKapanis) · _"bkm şeması olarak"_ (04.07 BankaOgrenme) · _"pre-agg tabloları oluştur"_ (14.08 Bulunurluk — plan-33, OSA özet deposu; dense StokAyBakiyeMekanBazli + BulunurlukOzet/Kayip SQL job'la yazılır, dashboard salt-okur).
 
 > **İlke:** `bkm` şeması = Fikri'nin app-owned namespace'i (DerinSIS native `dbo`/`mhs`/`ent` DEĞİL). Yeni app-owned `bkm.*` tablosu yazımı yalnız kullanıcı açık onayıyla + bu kurala eklenerek. DerinSIS native tablo (car/fat/irsHrk/mhsFis…) yazımı MUTLAK YASAK.
 

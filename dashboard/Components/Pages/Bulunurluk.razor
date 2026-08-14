@@ -26,8 +26,18 @@
     {
         <div class="alert alert-error"><i data-lucide="alert-triangle" class="w-5 h-5"></i>@_hata</div>
     }
+    else if (_oos.Count == 0)
+    {
+        <div class="alert alert-info"><i data-lucide="info" class="w-5 h-5"></i>
+            Bulunurluk özeti henüz üretilmemiş. SQL job'ı çalıştır (<code>bulunurluk-ozet-generate</code>) → veri burada görünür.
+        </div>
+    }
     else
     {
+        @if (_snapshot is not null)
+        {
+            <div class="text-xs text-base-content/50 -mt-2">Veri tarihi: @_snapshot.Value.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) snapshot</div>
+        }
         @* ── KPI: şube geneli OOS ── *@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             @foreach (var s in _subeGenel)
@@ -109,6 +119,7 @@
 @code {
     List<SubeOos> _oos = new();
     List<BulunurlukKayip> _kayip = new();
+    DateTime? _snapshot;
     bool _yukleniyor = true;
     string? _hata;
 
@@ -129,9 +140,11 @@
         {
             var tOos = Bulunur.GetSubeOosAsync();
             var tKayip = Bulunur.GetKayipOncelikAsync(200);
-            await Task.WhenAll(tOos, tKayip);
+            var tSnap = Bulunur.GetSnapshotAsync();
+            await Task.WhenAll(tOos, tKayip, tSnap);
             _oos = (await tOos).ToList();
             _kayip = (await tKayip).ToList();
+            _snapshot = await tSnap;
             _subeGenel = _oos.GroupBy(x => x.Mekan)
                 .Select(g => new SubeGenel(g.Key, BulunurlukQueriesMekanAd(g.Key),
                     g.Sum(x => x.TasinanAktif), g.Sum(x => x.Kuru),
