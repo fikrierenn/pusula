@@ -95,7 +95,7 @@ SELECT a.stkID,
 INTO #agg
 FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
 GROUP BY a.stkID;
-ALTER TABLE #agg ADD g float, g_kaynak varchar(10);
+ALTER TABLE #agg ADD g float, g_kaynak varchar(10), beklenen int;
 -- kategori sezon büyümesi (Python g_kat: per Kat3ID geçen-yıl-sezon/önceki-yıl-sezon, floor 0.5 cap 4) — DİNAMİK, @AY0'a göre kayar
 IF OBJECT_ID('tempdb..#katg') IS NOT NULL DROP TABLE #katg;
 SELECT Kat3ID, CASE WHEN raw<0.5 THEN 0.5 WHEN raw>4.0 THEN 4.0 ELSE raw END AS g
@@ -125,6 +125,9 @@ CROSS APPLY (SELECT
      CASE WHEN g.gy_sezon_onc>=@SEZMIN THEN 'sezon'
           WHEN (g.onc12-g.gy_sezon_onc)>=100 THEN 'ürün'
           ELSE 'kategori' END AS kaynak) r;
+-- BEKLENEN = geçen-yıl sezon × büyüme; g<1 (düşüş) tabana ÇARPILMAZ (g_fc=max(1,g)) — gy_sezon zaten düşmüş,
+-- üstüne bir düşüş daha çifte-ceza (tükenme g_eff=1 kararıyla tutarlı).
+UPDATE #agg SET beklenen = CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END);
 
 /* 6) #stok — ay sonu = fiziki(şube stokSon + depo WMS); ay başı = ay sonu − ledger ay-net */
 IF OBJECT_ID('tempdb..#stok') IS NOT NULL DROP TABLE #stok;
@@ -213,8 +216,8 @@ SELECT
    CONVERT(decimal(10,1), CASE WHEN ag.son12=0 OR st.kap<=0 THEN NULL ELSE ISNULL(tk.tuk_ay,999) END) AS [Kaç Ayda Tükenir],
    CONVERT(decimal(10,1), CASE WHEN ag.son12>0 THEN st.kap/(ag.son12/12.0) END) AS [Kaç Ayda Tükenir (basit)],
    ag.gy_sezon                                               AS [Geçen Yıl Sezon Satışı],
-   CONVERT(int, ag.gy_sezon*ag.g)                            AS [Bu Sezon Beklenen],
-   st.kap - CONVERT(int, ag.gy_sezon*ag.g)                   AS [Sezon Sonrası Kalan],
+   ag.beklenen                                               AS [Bu Sezon Beklenen],
+   st.kap - ag.beklenen                                      AS [Sezon Sonrası Kalan],
    sl.stoklu_ay                                              AS [Yılda Kaç Ay Stoklu],
    CONVERT(decimal(10,1), CASE WHEN sl.stoklu_ay>0 THEN 1.0*ag.son12/sl.stoklu_ay END) AS [Aylık Satış Hızı],
    CONVERT(int, CASE WHEN ag.son12>0 THEN 100.0*ag.gy_sezon/ag.son12 ELSE 0 END) AS [Satışın Sezon Payı %],
@@ -235,11 +238,11 @@ SELECT
      WHEN DATEDIFF(month,ik.ilk_giris,@AY0) BETWEEN 0 AND 11 THEN N'GENÇ ÜRÜN'
      WHEN ag.son12=0 AND sl.stoklu_ay>=6 THEN N'🔴 ÖLÜ-ALIM'
      WHEN ag.son12=0 THEN N'🟠 YENİDEN-STOK'
-     WHEN st.kap - ag.gy_sezon*ag.g < 0 THEN (CASE WHEN NOT(ag.son12>0 AND ag.gy_sezon>=0.5*ag.son12) AND ag.satis_ay<9 AND ag.g>=2 THEN N'🟠 TREND-HIZLI' ELSE N'🟢 AZ ALMIŞ' END)   -- Python: karakter='TREND' (g>=2 AMA sezonsal/normal DEĞİL), sadece g>=2 değil
+     WHEN st.kap - ag.beklenen < 0 THEN (CASE WHEN NOT(ag.son12>0 AND ag.gy_sezon>=0.5*ag.son12) AND ag.satis_ay<9 AND ag.g>=2 THEN N'🟠 TREND-HIZLI' ELSE N'🟢 AZ ALMIŞ' END)   -- Python: karakter='TREND' (g>=2 AMA sezonsal/normal DEĞİL), sadece g>=2 değil
      WHEN st.kap>0 AND ISNULL(tk.tuk_ay,999) > @ESIK THEN
         (CASE WHEN ag.g_kaynak='kategori' THEN N'🟠 İZLE (veri yok)'   -- Python: kategori-veri-yok, min-koli/materiality'den ÖNCE (kategori ürün FAZLA olmaz → KÜÇÜK/UZUN'a düşmez)
               WHEN a.alis_adet<=@MINKOLI THEN N'🟡 KÜÇÜK-ALIM'
-              WHEN CONVERT(money, CASE WHEN st.kap-ag.gy_sezon*ag.g>0 THEN st.kap-ag.gy_sezon*ag.g ELSE 0 END)   -- SEZONLUK donmuş: sezon-sonrası kalan × birim (linear DEĞİL)
+              WHEN CONVERT(money, CASE WHEN st.kap-ag.beklenen>0 THEN st.kap-ag.beklenen ELSE 0 END)   -- SEZONLUK donmuş: sezon-sonrası kalan × birim (linear DEĞİL)
                    * ISNULL(NULLIF(m.birim,0),CASE WHEN a.alis_adet>0 THEN a.alis_tutar/a.alis_adet END) < @MAT THEN N'🟡 UZUN-KUYRUK'
               ELSE N'🔴 FAZLA' END)
      WHEN st.kap>0 AND ISNULL(tk.tuk_ay,999) > 6 THEN N'🟠 İZLE'

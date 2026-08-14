@@ -118,7 +118,7 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         INTO #agg
         FROM #a a LEFT JOIN #aylik al ON al.stkID=a.stkID
         GROUP BY a.stkID;
-        ALTER TABLE #agg ADD g float, g_kaynak varchar(10);
+        ALTER TABLE #agg ADD g float, g_kaynak varchar(10), beklenen int;
         IF OBJECT_ID('tempdb..#katg') IS NOT NULL DROP TABLE #katg;
         SELECT Kat3ID, CASE WHEN raw<0.5 THEN 0.5 WHEN raw>4.0 THEN 4.0 ELSE raw END AS g
         INTO #katg
@@ -146,6 +146,9 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
              CASE WHEN g.gy_sezon_onc>=@SEZMIN THEN 'sezon'
                   WHEN (g.onc12-g.gy_sezon_onc)>=100 THEN 'ürün'
                   ELSE 'kategori' END AS kaynak) r;
+        -- BEKLENEN = geçen-yıl sezon × büyüme; AMA g<1 (düşüş) tabana ÇARPILMAZ (g_fc=max(1,g)). gy_sezon zaten
+        -- düşmüş sayı; üstüne bir düşüş daha = çifte-ceza (tükenme döngüsündeki g_eff=1 kararıyla tutarlı).
+        UPDATE #agg SET beklenen = CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END);
 
         -- PERF: OUTER APPLY-per-ürün (2446× stokSon_vw 848K tarama) yerine set-based tek GROUP BY (IN #a).
         IF OBJECT_ID('tempdb..#sube') IS NOT NULL DROP TABLE #sube;
@@ -249,8 +252,8 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            ag.gy_sezon                                               AS GySezon,
            ag.gy_sezon_onc                                           AS GySezonOnc,
            ag.onc12                                                  AS Onc12,
-           CONVERT(int, ag.gy_sezon*ag.g)                            AS BeklenenSezon,
-           st.kap - CONVERT(int, ag.gy_sezon*ag.g)                   AS SezonKalan,
+           ag.beklenen                                               AS BeklenenSezon,
+           st.kap - ag.beklenen                                      AS SezonKalan,
            sl.stoklu_ay                                              AS StokluAy,
            CONVERT(decimal(10,1), CASE WHEN sl.stoklu_ay>0 THEN 1.0*ag.son12/sl.stoklu_ay END) AS AylikHiz,
            CONVERT(int, CASE WHEN ag.son12>0 THEN 100.0*ag.gy_sezon/ag.son12 ELSE 0 END) AS SezonPay,
@@ -269,11 +272,11 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
              WHEN DATEDIFF(month,ik.ilk_giris,@AY0) BETWEEN 0 AND 11 THEN N'GENÇ ÜRÜN'
              WHEN ag.son12=0 AND sl.stoklu_ay>=6 THEN N'🔴 ÖLÜ-ALIM'
              WHEN ag.son12=0 THEN N'🟠 YENİDEN-STOK'
-             WHEN st.kap - ag.gy_sezon*ag.g < 0 THEN (CASE WHEN NOT(ag.son12>0 AND ag.gy_sezon>=0.5*ag.son12) AND ag.satis_ay<9 AND ag.g>=2 THEN N'🟠 TREND-HIZLI' ELSE N'🟢 AZ ALMIŞ' END)
+             WHEN st.kap - ag.beklenen < 0 THEN (CASE WHEN NOT(ag.son12>0 AND ag.gy_sezon>=0.5*ag.son12) AND ag.satis_ay<9 AND ag.g>=2 THEN N'🟠 TREND-HIZLI' ELSE N'🟢 AZ ALMIŞ' END)
              WHEN st.kap>0 AND ISNULL(tk.tuk_ay,999) > @ESIK THEN
                 (CASE WHEN ag.g_kaynak='kategori' THEN N'🟠 İZLE (veri yok)'
                       WHEN a.alis_adet<=@MINKOLI THEN N'🟡 KÜÇÜK-ALIM'
-                      WHEN CONVERT(money, CASE WHEN st.kap-ag.gy_sezon*ag.g>0 THEN st.kap-ag.gy_sezon*ag.g ELSE 0 END)   -- SEZONLUK donmuş: sezon-sonrası kalan × birim (linear DEĞİL)
+                      WHEN CONVERT(money, CASE WHEN st.kap-ag.beklenen>0 THEN st.kap-ag.beklenen ELSE 0 END)   -- SEZONLUK donmuş: sezon-sonrası kalan × birim (linear DEĞİL)
                            * ISNULL(NULLIF(m.birim,0),CASE WHEN a.alis_adet>0 THEN a.alis_tutar/a.alis_adet END) < @MAT THEN N'🟡 UZUN-KUYRUK'
                       ELSE N'🔴 FAZLA' END)
              WHEN st.kap>0 AND ISNULL(tk.tuk_ay,999) > 6 THEN N'🟠 İZLE'

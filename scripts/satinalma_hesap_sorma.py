@@ -323,7 +323,9 @@ def hesapla(sid, kat):
             tuk_ay = 999.0                          # 999 = pratikte tükenmez (talep var ama çok yavaş)
     trend = (g >= 2.0)                             # güçlü son-yıl boom → muhtemel trend/fad (kalıcı değil)
     # gy_sezon zaten yukarıda SABİT sezon (SEZ_GY) ile hesaplandı — tükenme şekli (shape) forward-projection için ayrı.
-    sezon3 = gy_sezon * g                           # bu sezon beklenen (geçen-yıl sabit sezon × büyüme)
+    # BEKLENEN: g<1 (düşüş) tabana ÇARPILMAZ (g_fc=max(1,g)) — gy_sezon zaten düşmüş sayı, üstüne bir düşüş
+    # daha = çifte-ceza (tükenme g_eff=1 kararıyla tutarlı; 591060 Faber vakası: 71×0.30=21 saçmalığı).
+    sezon3 = gy_sezon * max(1.0, g)                  # bu sezon beklenen (geçen-yıl sabit sezon × forecast-büyüme)
     naive_mos = (kap / (son12 / 12.0)) if son12 > 0 else None
     # ---- ÜRÜN KARAKTERİ (şekil-bazlı: istikrar + sezon-hizası + büyüme) ----
     satis_ay = sum(1 for x in shape if x > 0)       # kaç ayda satış oldu (istikrar sinyali)
