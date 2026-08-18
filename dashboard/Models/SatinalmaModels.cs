@@ -155,3 +155,28 @@ public sealed class SatinalmaSubeSezon
     /// <summary>Sezon boyunca raf ~boş (min-stok 3 altı) → o şubede satış imkânı yoktu.</summary>
     public bool Kuru => MaxStok < 3;
 }
+
+/// <summary>plan-34 B-145 — fiyat sapması satırı: aynı ürün, farklı tedarikçi, farklı birim fiyat.
+/// FazlaOdenen = en ucuz tedarikçiye göre fazladan ödenen tutar (yalnız kıyasa giren faturalar).</summary>
+public sealed class FiyatSapmaRow
+{
+    public int UrunKodu { get; set; }
+    public string UrunAd { get; set; } = "";
+    public string Kategori { get; set; } = "";
+    public string Marka { get; set; } = "";
+    public int TedarikciSayi { get; set; }
+    public int ToplamAdet { get; set; }
+    public decimal EnAzBirim { get; set; }
+    public decimal EnCokBirim { get; set; }
+    public decimal FarkPct { get; set; }
+    public decimal FazlaOdenen { get; set; }
+    public string EnAzTedarikci { get; set; } = "";
+    public string EnCokTedarikci { get; set; } = "";
+    public string? EnCokSonTarih { get; set; }
+    /// <summary>en pahalı/en ucuz > 10× → aynı satılabilir birim değil (paket/koli/bundle farkı ya da jenerik SKU).
+    /// Aşırı-ödeme KANITI SAYILMAZ; ayrı kovaya alınır (overclaim yasağı).</summary>
+    public bool OlcekSuphesi { get; set; }
+    /// <summary>Kıyasın uçlarından biri GRUP-İÇİ / ilişkili taraf. Fark alıcı hatası değil, transfer fiyatlaması —
+    /// manşet 'fazla ödenen' toplamına KATILMAZ, ayrı gösterilir (haksız atıf önlemi).</summary>
+    public bool IliskiliTaraf { get; set; }
+}

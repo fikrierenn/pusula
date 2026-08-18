@@ -81,7 +81,7 @@ Ayrıca **adalet boşluğu**: "fazla aldı" iddiası, tedarikçinin iade hakkı 
 ## 5. Done Criteria
 
 - [x] ✅ Ratchet kolonu — HP kümesi (1701937-1701944) 8/8 otomatik işaretlendi (⚠ TEKRAR 7,7×–14,1×). NOT: ilk tanım (satış düşüyor) HP'yi KAÇIRDI (yeni ürün satışı sıfırdan rampa yapıyor); tanım 'sistematik aşırı-alım' (≥3 ayda alım + basit-kapsam > eşik) olarak düzeltildi + GENÇ muafiyetinden bağımsız yapıldı. Ters momentum ayrı rozet (↓TERS).
-- [ ] Fiyat sapması sekmesi: aynı stkID farklı tedarikçi/tarih birim-fiyat farkı; HP kaleminde Budak↔Promarka %3 farkı görünüyor.
+- [x] ✅ Fiyat sapması sekmesi (tıklanınca yüklenir) — 1.577 ürün / 2.703.020 ₺ dış-tedarikçi farkı. ÜÇ ADALET FİLTRESİ eklendi: (a) birim <1 ₺ hariç (jenerik 'Muhtelif' SKU adet/tutar karşılığı yok, %3M fark üretiyordu), (b) ölçek-uyumsuz >10× ayrı kova (paket/bundle), (c) GRUP-İÇİ/ilişkili taraf ayrı kova (577 satır / 1.832.638 ₺ — transfer fiyatlaması, alıcı hatası değil). Hepsi şeffaf sayıyla gösterilir (sessiz kırpma yok).
 - [x] ✅ Stockout rozeti (📉 KURU, 24 ürün) + `AZ ALMIŞ` yeşil→nötr.
 - [ ] Atıf: talep eden + onaylayan; whitelist filtresi aktif (hakan/kubra hariç), eren hesapları birleşik, metrikler aktif-güne normalize, **mutlak sayı UI'da yok**.
 - [x] ✅ İade bayrağı — Ayarlar'da `frmIadeKural` kod girişi + ↩İADE rozeti + BagliPara=0; boş = kapalı (regresyon yok, canlı doğrulandı).
@@ -101,7 +101,7 @@ Ayrıca **adalet boşluğu**: "fazla aldı" iddiası, tedarikçinin iade hakkı 
 1. [x] ✅ **B-142** Ayarlar altyapısı: iade kural kodları (çoklu seçim) + alıcı whitelist (hesap → kişi/şube/kategori, hariç bayrağı) + hesap birleştirme eşlemesi.
 2. [x] ✅ **B-143** Ratchet kolonu (çekirdek + UI) — tek geçiş proxy; Serve Deep doğrulaması.
 3. [x] ✅ **B-144** Stockout karşı-metriği + `AZ ALMIŞ` renk nötrleme (**B-143 ile AYNI sürümde** — ters teşvik).
-4. [ ] **B-145** Fiyat sapması sekmesi (`SatinalmaQueries.FiyatSapma.cs`, tıklanınca yüklenir).
+4. [x] ✅ **B-145** Fiyat sapması sekmesi (`SatinalmaQueries.FiyatSapma.cs`, tıklanınca yüklenir).
 5. [ ] **B-146** Atıf kolonu/sekmesi — oran-bazlı, aktif-güne normalize, unvan etiketi yok, pencere ≥ 01.02.2025.
 6. [ ] **B-147** 3 emitter senkronu + B-136 mutabakat koşusu (dashboard / DINAMIK / Python birebir).
 7. [ ] **B-148** `veri-dogrula` QA + sema/arşiv güncelleme + journal notu.

@@ -61,6 +61,7 @@ public sealed class AyarService
                 SatinAliciHaric: Str(map, "satin_alici_haric"),
                 SatinAliciBirlestir: Str(map, "satin_alici_birlestir"),
                 SatinRatchetAy: Int(map, "satin_ratchet_ay", d.SatinRatchetAy),
+                SatinIliskiliTaraf: Str(map, "satin_iliskili_taraf"),
                 SatinAtifBaslangic: Str(map, "satin_atif_baslangic"));
         }
         catch (Exception ex) { _log.LogError(ex, "Ayarlar okunamadı — varsayılanla devam"); }
@@ -89,6 +90,7 @@ public sealed class AyarService
             ("satin_alici_haric", string.Join(",", a.AliciHaricEtkin)),
             ("satin_alici_birlestir", string.Join(";", a.AliciBirlestirMap.Select(kv => $"{kv.Value}={kv.Key}"))),
             ("satin_ratchet_ay", a.SatinRatchetAy.ToString()),
+            ("satin_iliskili_taraf", string.Join(",", a.IliskiliTarafIds)),
             ("satin_atif_baslangic", a.AtifBaslangicEtkin),
         };
         await using var c = await _db.OpenPanelAsync()!;

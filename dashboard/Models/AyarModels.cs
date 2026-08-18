@@ -21,6 +21,7 @@ public record PanelAyarlar(
     string? SatinAliciHaric = null,      // atıf dışı hesaplar (yazılımcı/denetim) — varsayılan hakan.cetin, kubra.kulaksizoglu
     string? SatinAliciBirlestir = null,  // aynı kişinin çok hesabı: "ana=digeri;ana2=digeri2" (varsayılan eren.boran2=eren.boran)
     int SatinRatchetAy = 6,              // ratchet penceresi (ay) — üst üste alım/trend taraması
+    string? SatinIliskiliTaraf = null,   // grup-içi/ilişkili taraf tedarikçi frmID listesi (fiyat kıyasında ayrı kova)
     string? SatinAtifBaslangic = null)   // atıf pencere başı YYYYMMDD — varsayılan 20250201 (kanal kırılması + talep verisi güvenilir sınırı)
 {
     public static readonly int[] VarsayilanHaricMarkalar = [0, 269, 2101, 5972, 10911];
@@ -57,6 +58,20 @@ public record PanelAyarlar(
     /// <summary>Atıf pencere başı (YYYYMMDD). 2025-02-01 öncesi veri güvenilmez: e-tic kanal devri (06.01.2025) + talep sistemi ısınma dönemi + 2024-08/09/10 kayıt boşluğu.</summary>
     public string AtifBaslangicEtkin =>
         !string.IsNullOrWhiteSpace(SatinAtifBaslangic) && SatinAtifBaslangic!.Length == 8 ? SatinAtifBaslangic! : "20250201";
+
+    /// <summary>Grup-içi / ilişkili taraf tedarikçiler (frmID). Fiyat kıyasında AYRI KOVA — grup-içi transfer fiyatı
+    /// dış tedarikçiyle aynı ölçekte kıyaslanamaz, alıcı hatası sayılmaz (transfer fiyatlaması konusu).
+    /// Varsayılan: 9525 ODAK-POINT · 22100 POİNT KİTAP · 56/38093 BURSA KÜLTÜR MERKEZİ · 4841/23842 BKM KİTAP · 58/9339/4694/7950/50582 Bursa Kültür-Sanat.</summary>
+    public IReadOnlyList<int> IliskiliTarafIds
+    {
+        get
+        {
+            var l = Ayir(SatinIliskiliTaraf).Select(x => int.TryParse(x, out var n) ? n : (int?)null)
+                     .Where(n => n.HasValue).Select(n => n!.Value).ToArray();
+            return l.Length > 0 ? l : VarsayilanIliskiliTaraf;
+        }
+    }
+    public static readonly int[] VarsayilanIliskiliTaraf = [9525, 22100, 56, 38093, 4841, 23842, 58, 9339, 4694, 7950, 50582];
 
     static IReadOnlyList<string> Ayir(string? s) => string.IsNullOrWhiteSpace(s)
         ? []

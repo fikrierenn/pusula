@@ -111,6 +111,7 @@ else
         <a role="tab" class="tab flex-1 @(_tab == 1 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 1">Kategori</a>
         <a role="tab" class="tab flex-1 @(_tab == 3 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 3">Ürün Grubu</a>
         <a role="tab" class="tab flex-1 @(_tab == 2 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 2">Marka / Tedarikçi</a>
+        <a role="tab" class="tab flex-1 @(_tab == 4 ? "tab-active font-semibold text-primary" : "")" @onclick="FiyatSekmesi">Fiyat Sapması</a>
     </div>
 }
 
@@ -272,8 +273,107 @@ else
     </div>
 }
 
+@if (_tab == 4)
+{
+    <div class="text-xs text-base-content/60 mb-2">
+        Aynı ürünü <b>farklı tedarikçiden farklı birim fiyata</b> almak — hesap-sormanın en temiz ekseni
+        (karar tamamen alıcının kontrolünde, piyasa artışı tüm tedarikçileri aynı dönemde etkilediği için confound az).
+        Son 12 ay alış faturası · tedarikçi başına ≥6 adet · bedava/0-tutarlı satır hariç · %1 altı fark gürültü sayıldı.
+        <b>Fazla ödenen</b> = en ucuz tedarikçinin birim fiyatına göre fazladan ödenen tutar.
+    </div>
+    @if (_fiyatYukleniyor)
+    {
+        <div class="flex items-center gap-2 text-sm text-base-content/60 py-6">
+            <span class="loading loading-spinner loading-sm"></span> Fiyat sapması hesaplanıyor…
+        </div>
+    }
+    else if (_fiyatHata is not null)
+    {
+        <div class="alert alert-error text-sm">@_fiyatHata</div>
+    }
+    else if (_fiyat.Count == 0)
+    {
+        <div class="text-sm text-base-content/60 py-6">Kıyaslanabilir çoklu-tedarikçi alımı bulunamadı.</div>
+    }
+    else
+    {
+        <div class="text-[11px] text-base-content/50 mb-1.5">
+            @Num(FiyatTemiz.Count) üründe fark · toplam fazla ödenen <b class="text-error">@Tl(FiyatTemiz.Sum(r => r.FazlaOdenen))</b>
+            @if (FiyatSuphe > 0)
+            {
+                <span title="En pahalı/en ucuz oranı 10 katı aşıyor → aynı satılabilir birim değil (paket/koli/bundle farkı veya jenerik 'Muhtelif' SKU). Aşırı-ödeme kanıtı sayılmaz, listeden ayrıldı.">
+                    · <b class="text-warning">@Num(FiyatSuphe) satır ölçek-uyumsuz</b> (paket/bundle şüphesi — ayrıldı)
+                </span>
+            }
+            @if (FiyatIliskili > 0)
+            {
+                <span title="Kıyasın uçlarından biri grup-içi/ilişkili taraf (ODAK-POINT, Bursa Kültür Merkezi, BKM Kitap vb.). Fark alıcı hatası DEĞİL, transfer fiyatlaması konusu — manşet toplamına katılmadı. Liste Ayarlar'daki frmID'lerden okunur.">
+                    · <b class="text-info">@Num(FiyatIliskili) satır grup-içi</b> (@Tl(FiyatIliskiliTutar) — transfer fiyatlaması, ayrıldı)
+                </span>
+            }
+        </div>
+        <div class="overflow-x-auto border border-base-300 rounded-lg">
+            <table class="table table-xs table-pin-rows">
+                <thead>
+                    <tr>
+                        <th>Ürün</th><th>Kategori</th><th>Marka</th>
+                        <th class="text-right" title="Kıyasa giren tedarikçi sayısı (≥6 adet alınmış)">Ted.</th>
+                        <th class="text-right">Adet</th>
+                        <th class="text-right" title="En ucuz tedarikçinin birim fiyatı">En Az ₺</th>
+                        <th class="text-right" title="En pahalı tedarikçinin birim fiyatı">En Çok ₺</th>
+                        <th class="text-right">Fark %</th>
+                        <th class="text-right" title="En ucuza göre fazladan ödenen toplam">Fazla Ödenen ₺</th>
+                        <th>En Ucuz</th><th>En Pahalı</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in FiyatTemiz.Take(200))
+                    {
+                        <tr class="hover cursor-pointer" @onclick="() => Git(r.UrunKodu)">
+                            <td class="max-w-[260px] truncate text-xs font-medium" title="@r.UrunAd">@r.UrunAd</td>
+                            <td class="text-xs text-base-content/70">@r.Kategori</td>
+                            <td class="max-w-[110px] truncate text-xs text-base-content/70" title="@r.Marka">@r.Marka</td>
+                            <td class="text-right tabular-nums">@r.TedarikciSayi</td>
+                            <td class="text-right tabular-nums">@Num(r.ToplamAdet)</td>
+                            <td class="text-right tabular-nums">@Tl(r.EnAzBirim)</td>
+                            <td class="text-right tabular-nums">@Tl(r.EnCokBirim)</td>
+                            <td class="text-right tabular-nums @(r.FarkPct >= 10 ? "text-error font-semibold" : r.FarkPct >= 3 ? "text-warning" : "")">@r.FarkPct.ToString("0.0", _tr)</td>
+                            <td class="text-right tabular-nums font-semibold @(r.FazlaOdenen >= _tolerans ? "text-error" : "text-warning")">@Tl(r.FazlaOdenen)</td>
+                            <td class="max-w-[150px] truncate text-xs text-success" title="@r.EnAzTedarikci">@r.EnAzTedarikci</td>
+                            <td class="max-w-[150px] truncate text-xs text-error" title="@($"{r.EnCokTedarikci} · son alım {r.EnCokSonTarih}")">@r.EnCokTedarikci</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (FiyatTemiz.Count > 200)
+        {
+            <div class="text-[11px] text-base-content/40 mt-1">İlk 200 satır gösteriliyor (@Num(FiyatTemiz.Count) toplam).</div>
+        }
+    }
+}
+
 @code {
     int _tab;
+    List<FiyatSapmaRow> _fiyat = new();
+    // Ölçek-uyumsuz satırlar (paket/bundle veya jenerik SKU) ana listeden AYRILIR — sayısı görünür (sessiz kırpma yok).
+    List<FiyatSapmaRow> FiyatTemiz => _fiyat.Where(r => !r.OlcekSuphesi && !r.IliskiliTaraf).ToList();
+    int FiyatIliskili => _fiyat.Count(r => r.IliskiliTaraf && !r.OlcekSuphesi);
+    decimal FiyatIliskiliTutar => _fiyat.Where(r => r.IliskiliTaraf && !r.OlcekSuphesi).Sum(r => r.FazlaOdenen);
+    int FiyatSuphe => _fiyat.Count(r => r.OlcekSuphesi);
+    bool _fiyatYukleniyor;
+    string? _fiyatHata;
+
+    /// <summary>Fiyat sapması sekmesi — TIKLANINCA yüklenir (ana sayfayı yavaşlatmaz, plan-34 perf riski).</summary>
+    async Task FiyatSekmesi()
+    {
+        _tab = 4;
+        if (_fiyat.Count > 0 || _fiyatYukleniyor) return;
+        _fiyatYukleniyor = true; _fiyatHata = null; StateHasChanged();
+        try { _fiyat = (await Satinalma.GetFiyatSapmaAsync(_ay0)).ToList(); }
+        catch (Exception ex) { _fiyatHata = $"Fiyat sapması hesaplanamadı: {ex.Message}"; }
+        finally { _fiyatYukleniyor = false; StateHasChanged(); }
+    }
     // Bağlı para İKİ AYRI TANIM: FazlaBagli = sezon-sonrası kalan × maliyet · OluBagli = tam stok × maliyet.
     // Tek kolonda toplamak kıyaslanamaz büyüklükleri karıştırır → ayrı taşınır; Bagli yalnız ÖNCELİK SIRALAMASI için.
     sealed record OzetSatir(string Ad, int Urun, decimal Alis, int Fazla, int Olu, decimal FazlaBagli, decimal OluBagli)
@@ -394,6 +494,7 @@ else
         _loading = true; _error = null; StateHasChanged();
         try
         {
+            _fiyat = new(); _fiyatHata = null;   // dönem değişti → fiyat sapması cache'i sıfırla (plan-34)
             _rows = (await Satinalma.GetAnalizAsync(_ay0)).ToList();
             _gruplar = _rows.Select(r => r.Grup).Distinct().OrderBy(g => Array.IndexOf(_oncelik, g)).ToList();
             _secili.IntersectWith(_gruplar);
