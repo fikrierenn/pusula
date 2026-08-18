@@ -129,3 +129,26 @@ FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
 LEFT JOIN DerinSISBkm.dbo.mekan_vw m WITH(NOLOCK) ON m.mekanID = t.MekanId
 GROUP BY t.EkleyenKullanici, t.MekanId, m.mekanAd
 ORDER BY COUNT(*) DESC;
+
+/* ---------------------------------------------------------------------------
+   10) ROL ÇIKARIMI — ürün desenine bakarak (seyda.cindan vakası, 2026-08-18)
+   seyda.cindan talebinin %99'u Çocuk Kitabı (15.076/15.231, 8.047 ürün, 27.384 adet)
+   → ÇOCUK KİTABI kategori/reyon sorumlusu (md yrd deseni DEĞİL).
+   Heuristik: MD YRD = yayılmış (eren.boran2 12 ktg/%57 · eren.boran %44 · sirac %43)
+              REYON     = konsantre + sürekli (seyda %98/52 gün · ist.cocuk %98 · ist.kultur %85)
+   ⚠ SINIR: omerfaruk.kirmaci md yrd AMA %99 konsantre — tek günde 358 talep (toplu iş).
+     Konsantrasyon unvanı değil DAVRANIŞI ölçer; aktif-gün ile birlikte okunmalı.
+   ⚠ PERF: kategori payını satır-başı korelasyonlu alt-sorguyla hesaplamak 24,9s sürdü.
+     Aşağıdaki ucuz form kullanılır (tek GROUP BY), pay dışarıda hesaplanır.
+--------------------------------------------------------------------------- */
+SELECT t.EkleyenKullanici, k.ktgrAd,
+       COUNT(*)                AS talep,
+       SUM(t.SiparisMiktar)    AS adet,
+       COUNT(DISTINCT t.StkId) AS urun,
+       COUNT(DISTINCT CONVERT(varchar(10), t.Tarih, 112)) AS farkli_gun
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = t.StkId
+LEFT JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID = u.urnKtgr2ID
+WHERE t.Tarih >= '20250201'
+GROUP BY t.EkleyenKullanici, k.ktgrAd
+ORDER BY t.EkleyenKullanici, COUNT(*) DESC;
