@@ -25,6 +25,9 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         p.Add("MINSTOK", ayar.Deger.SatinMinStok);
         p.Add("SEZMIN", ayar.Deger.SatinSezonMinTaban);
         p.Add("RETAILCAP", ayar.Deger.SatinRetailCap);
+        p.Add("RATAY", ayar.Deger.SatinRatchetAy);                       // plan-34 ratchet penceresi (ay)
+        // İade-hakkı kodları BOŞSA özellik kapalı → eşleşmeyen sentinel (-1) gönderilir, davranış eskisi gibi.
+        p.Add("IADEKOD", ayar.Deger.IadeKuralKodlari.Count > 0 ? ayar.Deger.IadeKuralKodlari : new[] { -1 });
         var sz = SatinalmaSezon.Hesapla(ay0);   // sabit sezon (kaymaz) — en yakın gelen sezonun geçen/önceki yıl penceresi
         p.Add("SEZb", sz.SEZb); p.Add("SEZe", sz.SEZe);
         p.Add("PSEZb", sz.PSEZb); p.Add("PSEZe", sz.PSEZe);
@@ -69,6 +72,11 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         DECLARE @L_son3 char(7)=CONVERT(char(7),DATEADD(month,-3,@d0),126);   -- retail-momentum: son 3 ay başı
         DECLARE @L_s12 char(7)=CONVERT(char(7),CONVERT(date,@S12b),126);
         DECLARE @L_s24 char(7)=CONVERT(char(7),CONVERT(date,@S24b),126);
+        -- plan-34 RATCHET pencereleri: alım ay0 DAHİL (karar o ay verildi), satış ay0 hariç (#aylik ay0'ı içermez).
+        DECLARE @RATb  char(8)=CONVERT(char(8),DATEADD(month,1-@RATAY,@d0),112);
+        DECLARE @L_r1  char(7)=CONVERT(char(7),DATEADD(month,-2,@d0),126);   -- alım son3 başı (ay0-2)
+        DECLARE @L_r2  char(7)=CONVERT(char(7),DATEADD(month,-5,@d0),126);   -- alım önceki3 başı (ay0-5)
+        DECLARE @L_s6  char(7)=CONVERT(char(7),DATEADD(month,-6,@d0),126);   -- satış önceki3 başı (ay0-6)
         DECLARE @L_sezb char(7)=CONVERT(char(7),CONVERT(date,@SEZb),126);
         DECLARE @L_seze char(7)=CONVERT(char(7),CONVERT(date,@SEZe),126);
         DECLARE @L_psezb char(7)=CONVERT(char(7),CONVERT(date,@PSEZb),126);
@@ -167,6 +175,47 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
                     >= CONVERT(int, retail_son3/3.0*@SEZAY)
                  THEN CONVERT(int, gy_sezon * CASE WHEN g<1 THEN 1.0 ELSE g END)
                  ELSE CONVERT(int, retail_son3/3.0*@SEZAY) END;
+
+        -- === plan-34 B-143 RATCHET: aylık ALIM deseni (tek geçiş, model 6× koşturulmaz) ===
+        IF OBJECT_ID('tempdb..#alay') IS NOT NULL DROP TABLE #alay;
+        SELECT h.ehstkID AS stkID, CONVERT(char(7),h.ehTrhS,126) AS ay, CONVERT(int,SUM(h.ehAdetN)) AS adet
+        INTO #alay
+        FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK) JOIN #a ON #a.stkID=h.ehstkID
+        WHERE h.ehTip IN (0,10) AND h.ehAdetN>0 AND h.ehTrhS>=@RATb AND h.ehTrhS<@AY1
+        GROUP BY h.ehstkID, CONVERT(char(7),h.ehTrhS,126);
+        CREATE CLUSTERED INDEX ix ON #alay(stkID);
+
+        IF OBJECT_ID('tempdb..#rat') IS NOT NULL DROP TABLE #rat;
+        SELECT a.stkID,
+           ISNULL((SELECT COUNT(*) FROM #alay z WHERE z.stkID=a.stkID),0)                                  AS alim_ay,
+           ISNULL((SELECT SUM(z.adet) FROM #alay z WHERE z.stkID=a.stkID AND z.ay>=@L_r1),0)               AS alim_son3,
+           ISNULL((SELECT SUM(z.adet) FROM #alay z WHERE z.stkID=a.stkID AND z.ay>=@L_r2 AND z.ay<@L_r1),0) AS alim_onc3,
+           ISNULL((SELECT SUM(y.satis) FROM #aylik y WHERE y.stkID=a.stkID AND y.ay>=@L_son3),0)            AS satis_son3,
+           ISNULL((SELECT SUM(y.satis) FROM #aylik y WHERE y.stkID=a.stkID AND y.ay>=@L_s6 AND y.ay<@L_son3),0) AS satis_onc3
+        INTO #rat
+        FROM #a a;
+        CREATE UNIQUE CLUSTERED INDEX ix ON #rat(stkID);
+
+        -- === plan-34 B-144 KARŞI-METRİK: stockout kaybı (bulunurluk pre-agg, en güncel dönem) ===
+        IF OBJECT_ID('tempdb..#kayip') IS NOT NULL DROP TABLE #kayip;
+        SELECT k.StkID AS stkID, CONVERT(int,SUM(k.TahminiKayipAdet)) AS kayip_adet, CONVERT(int,MAX(k.KuruSube)) AS kuru_sube
+        INTO #kayip
+        FROM DerinSISBkm.bkm.BulunurlukKayip k WITH(NOLOCK)
+        WHERE k.Donem = (SELECT MAX(Donem) FROM DerinSISBkm.bkm.BulunurlukKayip)
+          AND k.StkID IN (SELECT stkID FROM #a)
+        GROUP BY k.StkID;
+
+        -- === plan-34 İADE HAKKI (PARAMETRE): bu ayın alımı hangi tedarikçiden, iade kuralı sayılanlardan mı? ===
+        -- @IADEKOD boşsa (-1) hiçbir satır eşleşmez → bayrak 0, eski davranış (regresyon yok).
+        IF OBJECT_ID('tempdb..#iade') IS NOT NULL DROP TABLE #iade;
+        SELECT h.ehstkID AS stkID, CONVERT(bit, MAX(CASE WHEN fr.frmIadeKural IN @IADEKOD THEN 1 ELSE 0 END)) AS iade_hakki
+        INTO #iade
+        FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+        JOIN #a ON #a.stkID=h.ehstkID
+        JOIN DerinSISBkm.dbo.irs i WITH(NOLOCK) ON i.eID=h.ehID
+        LEFT JOIN DerinSISBkm.dbo.frm fr WITH(NOLOCK) ON fr.frmID=i.eFirma
+        WHERE h.ehTip IN (0,10) AND h.ehAdetN>0 AND h.ehTrhS>=@AY0 AND h.ehTrhS<@AY1
+        GROUP BY h.ehstkID;
 
         -- PERF: OUTER APPLY-per-ürün (2446× stokSon_vw 848K tarama) yerine set-based tek GROUP BY (IN #a).
         IF OBJECT_ID('tempdb..#sube') IS NOT NULL DROP TABLE #sube;
@@ -273,6 +322,21 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
            ag.beklenen                                               AS BeklenenSezon,
            ag.retail_son3                                            AS RetailSon3,
            ag.retail_son12                                           AS RetailSon12,
+           ISNULL(rt.alim_ay,0)                                      AS RatchetAlimAy,
+           ISNULL(rt.alim_son3,0)                                    AS RatchetAlimSon3,
+           ISNULL(rt.alim_onc3,0)                                    AS RatchetAlimOnc3,
+           ISNULL(rt.satis_son3,0)                                   AS RatchetSatisSon3,
+           ISNULL(rt.satis_onc3,0)                                   AS RatchetSatisOnc3,
+           -- SİSTEMATİK AŞIRI-ALIM: >=3 ayda alım VE eldeki stok basit-kapsamı @ESIK ayı aşıyor.
+           -- GENÇ muafiyetinden BAĞIMSIZ (bilinçli): 5 ayda 7 sipariş + 100 ay kapsam 'yargı için erken' değil.
+           CONVERT(bit, CASE WHEN ISNULL(rt.alim_ay,0)>=3 AND ag.son12>0
+                                  AND st.kap/(ag.son12/12.0) > @ESIK THEN 1 ELSE 0 END) AS Ratchet,
+           -- TERS MOMENTUM (ek nüans): sipariş artarken satış düşüyor. Tek başına suçlama değil, sistematikliğin yönü.
+           CONVERT(bit, CASE WHEN ISNULL(rt.alim_son3,0)>=ISNULL(rt.alim_onc3,0) AND ISNULL(rt.satis_onc3,0)>0
+                                  AND ISNULL(rt.satis_son3,0)<ISNULL(rt.satis_onc3,0) THEN 1 ELSE 0 END) AS RatchetTers,
+           ISNULL(ky.kayip_adet,0)                                   AS KayipAdet,
+           ISNULL(ky.kuru_sube,0)                                    AS KuruSube,
+           ISNULL(id.iade_hakki,CONVERT(bit,0))                      AS IadeHakki,
            st.kap - ag.beklenen                                      AS SezonKalan,
            sl.stoklu_ay                                              AS StokluAy,
            CONVERT(decimal(10,1), CASE WHEN sl.stoklu_ay>0 THEN 1.0*ag.son12/sl.stoklu_ay END) AS AylikHiz,
@@ -309,6 +373,9 @@ public sealed partial class SatinalmaQueries(Db db, ILogger<SatinalmaQueries> lo
         LEFT JOIN #tuk tk ON tk.stkID=a.stkID
         LEFT JOIN #ilk ik ON ik.stkID=a.stkID
         LEFT JOIN #mal m ON m.stkID=a.stkID
+        LEFT JOIN #rat rt ON rt.stkID=a.stkID
+        LEFT JOIN #kayip ky ON ky.stkID=a.stkID
+        LEFT JOIN #iade id ON id.stkID=a.stkID
         ORDER BY u.Kategori3, u.stkAd;
         """;
 }

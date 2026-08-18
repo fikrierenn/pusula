@@ -48,6 +48,30 @@
               @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinSezonMinTaban" />)
         @Alan("Retail-momentum cap (adet)", "Son-ay momentum tabanı için tek satış hareketi bu adedin üstündeyse TOPTAN/bulk sayılır, tavana kırpılır. Bulk siparişler forecast'i şişirmez; sadece gerçek perakende talep (çok-fişli ay) beklenen-tabanını yükseltir. ~50 = perakendenin %99,5'i altında.",
               @<input type="number" min="1" class="input input-bordered input-sm w-full" @bind="_e.SatinRetailCap" />)
+        @Alan("Ratchet penceresi (ay)", "Sistematik aşırı-alım taraması kaç aya bakar. Bu pencerede ≥3 ayda alım varsa 'tekrar eden alım' sayılır (tek-seferlik toplu iş değil). Varsayılan 6.",
+              @<input type="number" min="3" max="24" class="input input-bordered input-sm w-full" @bind="_e.SatinRatchetAy" />)
+    </div>
+
+    <h3 class="text-sm font-semibold mb-1 mt-3">Satınalma — Hesap-Sorma (plan-34)</h3>
+    <p class="text-[11px] text-base-content/50 mb-2">
+        <b>İade-hakkı kural kodları:</b> <code>frm.frmIadeKural</code> değerlerinden hangileri "iade hakkı VAR" sayılacak (virgüllü, ör. <code>1,2</code>).
+        Girilirse o tedarikçiden alınan fazla stok <b>donmuş sermaye sayılmaz</b> (bağlı para 0, satırda ↩İADE rozeti) — iade edilebilir stokla alıcı suçlanmaz.
+        <b>BOŞ bırakılırsa özellik kapalı</b>, davranış eskisi gibi. Canlı dağılım: kod 0 → 1.248 tedarikçi (ort. vade ~0/peşin) · 1 → 99 · 2 → 1.273 (vade türü 1'de ort. 130 gün).
+        Kodların anlamı muhasebe teyidi bekliyor.
+    </p>
+    <input type="text" class="input input-bordered input-sm font-mono w-full mb-3" @bind="_e.SatinIadeKurallari" placeholder="boş = kapalı · örnek: 1,2" />
+    <p class="text-[11px] text-base-content/50 mb-2">
+        <b>Atıf dışı hesaplar:</b> alıcı olmayan kullanıcılar (yazılımcı, iç denetim) — talep kayıtları hesap-sormaya girmez.
+        <b>Hesap birleştirme:</b> aynı kişinin çok hesabı (<code>ana=ikincil;ana2=ikincil2</code>) — yoksa aynı kişi iki alıcı sayılır.
+        <b>Atıf pencere başı:</b> YYYYMMDD; 2025-02-01 öncesi veri güvenilmez (e-tic kanal devri 06.01.2025 + talep sistemi ısınma + 2024-08/09/10 kayıt boşluğu).
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+        @Alan("Atıf dışı hesaplar", "Virgüllü kullanıcı adı listesi. Boş = varsayılan (hakan.cetin, kubra.kulaksizoglu).",
+              @<input type="text" class="input input-bordered input-sm font-mono w-full" @bind="_e.SatinAliciHaric" placeholder="hakan.cetin,kubra.kulaksizoglu" />)
+        @Alan("Hesap birleştirme", "ana=ikincil çiftleri, ; ile ayrılır. Boş = varsayılan (eren.boran2=eren.boran).",
+              @<input type="text" class="input input-bordered input-sm font-mono w-full" @bind="_e.SatinAliciBirlestir" placeholder="eren.boran2=eren.boran" />)
+        @Alan("Atıf pencere başı", "YYYYMMDD. Boş = 20250201 (önerilen; öncesi veri güvenilmez).",
+              @<input type="text" maxlength="8" class="input input-bordered input-sm font-mono w-full" @bind="_e.SatinAtifBaslangic" placeholder="20250201" />)
     </div>
 
     <h3 class="text-sm font-semibold mb-1 mt-3">Hariç Markalar</h3>
@@ -97,6 +121,11 @@
             SatinFazlaAy = a.SatinFazlaAy, SatinMaterialite = a.SatinMaterialite, SatinMinKoli = a.SatinMinKoli,
             SatinMinStok = a.SatinMinStok, SatinSezonMinTaban = a.SatinSezonMinTaban,
             SatinRetailCap = a.SatinRetailCap,
+            SatinRatchetAy = a.SatinRatchetAy,
+            SatinIadeKurallari = string.Join(",", a.IadeKuralKodlari),
+            SatinAliciHaric = string.Join(",", a.AliciHaricEtkin),
+            SatinAliciBirlestir = string.Join(";", a.AliciBirlestirMap.Select(kv => $"{kv.Value}={kv.Key}")),
+            SatinAtifBaslangic = a.AtifBaslangicEtkin,
         };
         _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
         await MarkaCoz();
@@ -126,13 +155,19 @@
         { _mesaj = "Devir: sağlıklı eşiği > ölü eşiği > 0 olmalı."; _hata = true; return; }
         if (_e.RiskOrta <= _e.RiskDusuk || _e.RiskYuksek <= _e.RiskOrta)
         { _mesaj = "Risk eşikleri artan olmalı (düşük < orta < yüksek)."; _hata = true; return; }
+        if (_e.SatinRatchetAy is < 3 or > 24)
+        { _mesaj = "Ratchet penceresi 3-24 ay arası olmalı."; _hata = true; return; }
+        if (!string.IsNullOrWhiteSpace(_e.SatinAtifBaslangic)
+            && !System.DateTime.TryParseExact(_e.SatinAtifBaslangic, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out _))
+        { _mesaj = "Atıf pencere başı YYYYMMDD formatında olmalı (ör. 20250201)."; _hata = true; return; }
         _kaydediliyor = true; StateHasChanged();
         try
         {
             await Ayar.KaydetAsync(new PanelAyarlar(
                 _e.DevirOlu, _e.DevirSaglikli, _e.StokYoklukHedef,
                 _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, HaricIds(),
-                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban, _e.SatinRetailCap));
+                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban, _e.SatinRetailCap,
+                _e.SatinIadeKurallari, _e.SatinAliciHaric, _e.SatinAliciBirlestir, _e.SatinRatchetAy, _e.SatinAtifBaslangic));
             _mesaj = "Kaydedildi (PanelAyar / BkmPanel)."; _hata = false;
         }
         catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _mesaj = $"Kayıt başarısız: {ex.Message}"; _hata = true; }
@@ -153,5 +188,10 @@
         public int SatinMinStok { get; set; } = 3;
         public int SatinSezonMinTaban { get; set; } = 30;
         public int SatinRetailCap { get; set; } = 50;
+        public int SatinRatchetAy { get; set; } = 6;
+        public string? SatinIadeKurallari { get; set; }
+        public string? SatinAliciHaric { get; set; }
+        public string? SatinAliciBirlestir { get; set; }
+        public string? SatinAtifBaslangic { get; set; }
     }
 }

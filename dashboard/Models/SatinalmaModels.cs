@@ -36,6 +36,36 @@ public sealed class SatinalmaAnalizSatir
     public double BulkOran => Son12 > 0 ? System.Math.Max(0, 1.0 - (double)RetailSon12 / Son12) : 0;
     /// <summary>Bulk-kanal ürünü mü — son12 anlamlı VE bulk-oran yüksek (≥%40).</summary>
     public bool BulkKanal => Son12 >= 50 && BulkOran >= 0.40;
+    // === plan-34 B-143 RATCHET (sistematiklik) ===
+    public int RatchetAlimAy { get; set; }      // ratchet penceresinde kaç ay alım yapıldı (ay0 dahil)
+    public int RatchetAlimSon3 { get; set; }    // son 3 ay alım adedi
+    public int RatchetAlimOnc3 { get; set; }    // önceki 3 ay alım adedi
+    public int RatchetSatisSon3 { get; set; }   // son 3 ay satış (ay0 hariç — #aylik grain'i)
+    public int RatchetSatisOnc3 { get; set; }   // önceki 3 ay satış
+
+    /// <summary>SİSTEMATİK AŞIRI-ALIM (çekirdekte hesaplanır): ≥3 ayda alım VE stok basit-kapsamı eşik ayı aşıyor.
+    /// GENÇ muafiyetinden bağımsız — 5 ayda 7 sipariş + 100 ay kapsam 'yargı için erken' değildir (Serve Deep HP vakası).
+    /// Sinyal-vs-gürültü: tek kötü ay gürültü, tekrar eden desen sinyal.</summary>
+    public bool Ratchet { get; set; }
+    /// <summary>TERS MOMENTUM: sipariş artarken satış düşüyor. Tek başına suçlama DEĞİL — sistematikliğin yönünü gösterir.</summary>
+    public bool RatchetTers { get; set; }
+
+    /// <summary>Sinyal şiddeti (sıralama): sattığının kaç katını alıyor (son 3 ay). Ratchet değilse 0.</summary>
+    public double RatchetSkor => !Ratchet ? 0
+        : RatchetSatisSon3 > 0 ? (double)RatchetAlimSon3 / RatchetSatisSon3
+        : RatchetAlimSon3 > 0 ? 99.0 : 0;
+
+    // === plan-34 B-144 KARŞI-METRİK (ters teşvik dengesi) ===
+    public int KayipAdet { get; set; }          // bulunurluk kaybı: stok yokken tahmini kaçan adet
+    public int KuruSube { get; set; }           // kaç şubede stok yok
+    /// <summary>Stockout sinyali var mı — 'az al' davranışının maliyeti. FAZLA cezasının karşı-ağırlığı.</summary>
+    public bool Stockout => KayipAdet > 0;
+
+    // === plan-34 İADE HAKKI (parametre) ===
+    /// <summary>Bu ayın alımı iade-hakkı sayılan tedarikçiden mi (Ayarlar'daki frmIadeKural kodları).
+    /// TRUE → fazla stok geri çevrilebilir, DONMUŞ SERMAYE SAYILMAZ; 'fazla aldı' iddiası bu satırda zayıflar.</summary>
+    public bool IadeHakki { get; set; }
+
     public int BeklenenSezon { get; set; }
     public int SezonKalan { get; set; }
     public int? StokluAy { get; set; }
@@ -49,7 +79,8 @@ public sealed class SatinalmaAnalizSatir
 
     /// <summary>Sezonluk bağlı para (donmuş sermaye) = sezon-sonrası-kalan × birim maliyet. Sadece fazla-ailesinde.
     /// Model'in linear donmuş'u (kap−yıllık) sezonsal üründe şişer; bu sezon-farkını kullanır (öncelik sıralaması).</summary>
-    public decimal BagliPara => Grup is "FAZLA" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM"
+    public decimal BagliPara => IadeHakki ? 0m      // plan-34: iade edilebilir stok donmuş sermaye değil (Ayarlar'da kod girilmişse)
+        : Grup is "FAZLA" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM"
         ? System.Math.Max(0, SezonKalan) * BirimMaliyet
         : Grup == "ÖLÜ-ALIM" ? AySonu * BirimMaliyet : 0m;
 

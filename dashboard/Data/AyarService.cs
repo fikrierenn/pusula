@@ -56,7 +56,12 @@ public sealed class AyarService
                 SatinMinKoli: Int(map, "satin_min_koli", d.SatinMinKoli),
                 SatinMinStok: Int(map, "satin_min_stok", d.SatinMinStok),
                 SatinSezonMinTaban: Int(map, "satin_sezon_min", d.SatinSezonMinTaban),
-                SatinRetailCap: Int(map, "satin_retail_cap", d.SatinRetailCap));
+                SatinRetailCap: Int(map, "satin_retail_cap", d.SatinRetailCap),
+                SatinIadeKurallari: Str(map, "satin_iade_kurallari"),
+                SatinAliciHaric: Str(map, "satin_alici_haric"),
+                SatinAliciBirlestir: Str(map, "satin_alici_birlestir"),
+                SatinRatchetAy: Int(map, "satin_ratchet_ay", d.SatinRatchetAy),
+                SatinAtifBaslangic: Str(map, "satin_atif_baslangic"));
         }
         catch (Exception ex) { _log.LogError(ex, "Ayarlar okunamadı — varsayılanla devam"); }
     }
@@ -80,6 +85,11 @@ public sealed class AyarService
             ("satin_min_stok", a.SatinMinStok.ToString()),
             ("satin_sezon_min", a.SatinSezonMinTaban.ToString()),
             ("satin_retail_cap", a.SatinRetailCap.ToString()),
+            ("satin_iade_kurallari", string.Join(",", a.IadeKuralKodlari)),
+            ("satin_alici_haric", string.Join(",", a.AliciHaricEtkin)),
+            ("satin_alici_birlestir", string.Join(";", a.AliciBirlestirMap.Select(kv => $"{kv.Value}={kv.Key}"))),
+            ("satin_ratchet_ay", a.SatinRatchetAy.ToString()),
+            ("satin_atif_baslangic", a.AtifBaslangicEtkin),
         };
         await using var c = await _db.OpenPanelAsync()!;
         foreach (var (k, v) in satirlar)
@@ -94,6 +104,8 @@ public sealed class AyarService
 
     static decimal Dec(IDictionary<string, string> m, string k, decimal def) =>
         m.TryGetValue(k, out var v) && decimal.TryParse(v, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : def;
+    static string? Str(IDictionary<string, string> m, string k) =>
+        m.TryGetValue(k, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
     static int Int(IDictionary<string, string> m, string k, int def) =>
         m.TryGetValue(k, out var v) && int.TryParse(v, out var n) ? n : def;
     static IReadOnlyList<int>? IntList(IDictionary<string, string> m, string k) =>

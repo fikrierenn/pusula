@@ -3,7 +3,7 @@
 **Tarih:** 2026-08-18
 **Proje:** `bkm`
 **Yazan:** Claude (satinalma-danisman denetimi + 2026-08-18 keşifleri)
-**Durum:** `Taslak`
+**Durum:** `Uygulamada` (onay: 2026-08-18, kullanıcı)
 
 ---
 
@@ -80,11 +80,11 @@ Ayrıca **adalet boşluğu**: "fazla aldı" iddiası, tedarikçinin iade hakkı 
 
 ## 5. Done Criteria
 
-- [ ] Ratchet kolonu: son 6 ay tekrar-alım + trend; Serve Deep kümesi (stkID 1701937-1701944) **otomatik** işaretleniyor (elle bulmaya gerek yok).
+- [x] ✅ Ratchet kolonu — HP kümesi (1701937-1701944) 8/8 otomatik işaretlendi (⚠ TEKRAR 7,7×–14,1×). NOT: ilk tanım (satış düşüyor) HP'yi KAÇIRDI (yeni ürün satışı sıfırdan rampa yapıyor); tanım 'sistematik aşırı-alım' (≥3 ayda alım + basit-kapsam > eşik) olarak düzeltildi + GENÇ muafiyetinden bağımsız yapıldı. Ters momentum ayrı rozet (↓TERS).
 - [ ] Fiyat sapması sekmesi: aynı stkID farklı tedarikçi/tarih birim-fiyat farkı; HP kaleminde Budak↔Promarka %3 farkı görünüyor.
-- [ ] Stockout rozeti: `BulunurlukKayip`'tan kayıp-adet; `AZ ALMIŞ` rengi nötr.
+- [x] ✅ Stockout rozeti (📉 KURU, 24 ürün) + `AZ ALMIŞ` yeşil→nötr.
 - [ ] Atıf: talep eden + onaylayan; whitelist filtresi aktif (hakan/kubra hariç), eren hesapları birleşik, metrikler aktif-güne normalize, **mutlak sayı UI'da yok**.
-- [ ] İade bayrağı: Ayarlar'dan girilen kural kodları FAZLA / bağlı-para işaretini koşullandırıyor; boş bırakılırsa mevcut davranış (regresyon yok).
+- [x] ✅ İade bayrağı — Ayarlar'da `frmIadeKural` kod girişi + ↩İADE rozeti + BagliPara=0; boş = kapalı (regresyon yok, canlı doğrulandı).
 - [ ] Pencere ≥ 01.02.2025 tüm atıf sorgularında; UI'da yazılı.
 - [ ] **3 emitter mutabakat**: dashboard = DINAMIK (SSMS) = Python (openpyxl) — Temmuz 2026 için satır/rakam birebir (B-136 kapanır).
 - [ ] Build yeşil + canlı smoke (5112) + `veri-dogrula` QA geçti.
@@ -98,9 +98,9 @@ Ayrıca **adalet boşluğu**: "fazla aldı" iddiası, tedarikçinin iade hakkı 
 
 ## 7. Adımlar / TODO maddeleri
 
-1. [ ] **B-142** Ayarlar altyapısı: iade kural kodları (çoklu seçim) + alıcı whitelist (hesap → kişi/şube/kategori, hariç bayrağı) + hesap birleştirme eşlemesi.
-2. [ ] **B-143** Ratchet kolonu (çekirdek + UI) — tek geçiş proxy; Serve Deep doğrulaması.
-3. [ ] **B-144** Stockout karşı-metriği + `AZ ALMIŞ` renk nötrleme (**B-143 ile AYNI sürümde** — ters teşvik).
+1. [x] ✅ **B-142** Ayarlar altyapısı: iade kural kodları (çoklu seçim) + alıcı whitelist (hesap → kişi/şube/kategori, hariç bayrağı) + hesap birleştirme eşlemesi.
+2. [x] ✅ **B-143** Ratchet kolonu (çekirdek + UI) — tek geçiş proxy; Serve Deep doğrulaması.
+3. [x] ✅ **B-144** Stockout karşı-metriği + `AZ ALMIŞ` renk nötrleme (**B-143 ile AYNI sürümde** — ters teşvik).
 4. [ ] **B-145** Fiyat sapması sekmesi (`SatinalmaQueries.FiyatSapma.cs`, tıklanınca yüklenir).
 5. [ ] **B-146** Atıf kolonu/sekmesi — oran-bazlı, aktif-güne normalize, unvan etiketi yok, pencere ≥ 01.02.2025.
 6. [ ] **B-147** 3 emitter senkronu + B-136 mutabakat koşusu (dashboard / DINAMIK / Python birebir).
@@ -119,5 +119,5 @@ Ayrıca **adalet boşluğu**: "fazla aldı" iddiası, tedarikçinin iade hakkı 
 ## 9. Onay
 
 - [x] Plan kullanıcıya gösterildi (2026-08-18)
-- [ ] Geri bildirim alındı
-- [ ] Onay alındı: `<tarih>`
+- [x] Geri bildirim alındı — düzeltme yok
+- [x] Onay alındı: 2026-08-18, Fikri (GMY)

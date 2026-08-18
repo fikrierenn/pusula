@@ -52,7 +52,15 @@ else
             <b>@Num(_rows.Count)</b> üründe <b>@Tl(_rows.Sum(r => (decimal)r.AlisTutar))</b> alım.
             @if (Say("FAZLA") + Say("ÖLÜ-ALIM") > 0)
             {
-                <span>Dikkat: <b class="text-error">@Num(MateryalSayi) materyal fazla</b> (@Tl(MateryalBagli) bağlı, ≥@Tl(_tolerans)) · <b class="text-error">@Num(Say("ÖLÜ-ALIM")) ölü-alım</b>. @Num(OnemsizSayi) düşük-öncelik ayrıldı.</span>
+                <span>Dikkat: <b class="text-error">@Num(MateryalSayi) materyal fazla</b> (@Tl(MateryalBagli) bağlı, ≥@Tl(_tolerans)) · <b class="text-error">@Num(Say("ÖLÜ-ALIM")) ölü-alım</b>. @Num(OnemsizSayi) düşük-öncelik ayrıldı.
+                @if (RatchetSayi > 0)
+                {
+                    <span> · <b class="text-error">@Num(RatchetSayi) tekrar eden alım</b> (≥3 ayda alım + stok kapsamı eşik üstü)@(TersSayi > 0 ? $", {TersSayi}'inde sipariş↑ satış↓" : "")</span>
+                }
+                @if (StockoutSayi > 0)
+                {
+                    <span> · <b class="text-warning">@Num(StockoutSayi) üründe stok yokluğu</b> (karşı-metrik)</span>
+                }</span>
             }
             else
             {
@@ -174,6 +182,7 @@ else
                     @Th("TukAy", "Tükenir", "ANA KARAR: eldeki stok kaç ayda biter — geçen yılın aylık deseni × büyüme ile ileri yürütülür (sezon+büyüme dahil). >12 ay = FAZLA şüphesi. boş/hiç = tükenmez.")
                     @Th("BagliPara", "Bağlı ₺", "Fazla stokta donmuş sermaye (SEZONLUK) = (Ay Sonu − Bu Sezon Beklenen) × Birim. Sezon-sonrası kalan; linear değil.")
                     <th title="Sonuç etiketi. FAZLA=ihtiyaçtan çok · ÖLÜ-ALIM=stok vardı satmadı · AZ ALMIŞ=sezon eritir/stockout · İZLE=sınırda/veri-yok · YENİDEN-STOK=restok · GENÇ=erken.">Değerlendirme</th>
+                    @Th("RatchetSkor", "Sinyal", "HESAP-SORMA sinyalleri (plan-34). ⚠TEKRAR = talep düşerken sipariş büyüyor (≥3 ayda alım + alım↑ + satış↓) = sistematik, tek kötü ay değil. 📉KURU = stok yokken kaçan satış (karşı-metrik: 'az al' da bir hata). ↩İADE = tedarikçide iade hakkı var → fazla stok donmuş sermaye SAYILMAZ.")
                 </tr>
             </thead>
             <tbody>
@@ -191,6 +200,28 @@ else
                         <td class="text-right tabular-nums">@TukGoster(r.TukAy)</td>
                         <td class="text-right tabular-nums @(r.BagliPara >= _tolerans ? "text-error font-semibold" : r.BagliPara > 0 ? "text-warning" : "text-base-content/30")">@(r.BagliPara > 0 ? Tl(r.BagliPara) : "—")</td>
                         <td class="text-xs font-semibold whitespace-nowrap @GrupText(r.Grup)">@r.Degerlendirme</td>
+                        <td class="whitespace-nowrap text-[11px]">
+                            @if (r.Ratchet)
+                            {
+                                <span class="badge badge-error badge-xs mr-1" title="@($"{r.RatchetAlimAy} ayda alım (sistematik) · son3 alım {Num(r.RatchetAlimSon3)} adet vs satış {Num(r.RatchetSatisSon3)} adet · önceki3 alım {Num(r.RatchetAlimOnc3)} / satış {Num(r.RatchetSatisOnc3)}")">⚠ TEKRAR@(r.RatchetSkor >= 2 ? $" {r.RatchetSkor:0.#}×" : "")</span>
+                            }
+                            @if (r.RatchetTers)
+                            {
+                                <span class="badge badge-error badge-outline badge-xs mr-1" title="@($"Sipariş artarken satış düşüyor: alım {Num(r.RatchetAlimOnc3)}→{Num(r.RatchetAlimSon3)}, satış {Num(r.RatchetSatisOnc3)}→{Num(r.RatchetSatisSon3)}")">↓ TERS</span>
+                            }
+                            @if (r.Stockout)
+                            {
+                                <span class="badge badge-warning badge-xs mr-1" title="@($"{r.KuruSube} şubede stok yok · tahmini kaçan {Num(r.KayipAdet)} adet (bulunurluk pre-agg)")">📉 KURU</span>
+                            }
+                            @if (r.IadeHakki)
+                            {
+                                <span class="badge badge-ghost badge-xs" title="Tedarikçide iade hakkı var (Ayarlar'daki frmIadeKural kodları) → fazla stok geri çevrilebilir, bağlı para 0 sayıldı.">↩ İADE</span>
+                            }
+                            @if (!r.Ratchet && !r.RatchetTers && !r.Stockout && !r.IadeHakki)
+                            {
+                                <span class="text-base-content/25">—</span>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -285,6 +316,9 @@ else
     // Materiality: bağlı ≥ tolerans → önemli; altı → düşük öncelik (fazla + ölü-alım).
     bool Dusuk(SatinalmaAnalizSatir r) => ProblemStok(r.Grup) && r.BagliPara < _tolerans;
     int OnemsizSayi => _rows.Count(Dusuk);
+    int RatchetSayi => _rows.Count(r => r.Ratchet);
+    int TersSayi => _rows.Count(r => r.RatchetTers);
+    int StockoutSayi => _rows.Count(r => r.Stockout);
     decimal OluBagliToplam => _rows.Where(r => r.Grup == "ÖLÜ-ALIM").Sum(r => r.BagliPara);
     // Tükenir: model 999'u "pratikte tükenmez" sentinel'i olarak üretir — 999,0 ay diye okunmasın.
     string TukGoster(decimal? t) => t is null ? "—" : t >= 999m ? "tükenmez" : t.Value.ToString("0.0", _tr);
@@ -312,6 +346,7 @@ else
                 "TukAy" => r => r.TukAy ?? -1,
                 "StokluAy" => r => r.StokluAy ?? -1,
                 "BagliPara" => r => r.BagliPara,
+                "RatchetSkor" => r => (decimal)r.RatchetSkor,
                 _ => r => 0,
             };
             return _sortAsc ? q.OrderBy(k) : q.OrderByDescending(k);
@@ -384,21 +419,24 @@ else
     {
         "FAZLA" or "ÖLÜ-ALIM" => "btn-error",
         "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "btn-warning",
-        "AZ ALMIŞ" or "NORMAL" => "btn-success",
+        "NORMAL" => "btn-success",
+        "AZ ALMIŞ" => "btn-neutral",
         _ => "btn-neutral",
     };
     static string GrupDot(string g) => g switch
     {
         "FAZLA" or "ÖLÜ-ALIM" => "bg-error",
         "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "bg-warning",
-        "AZ ALMIŞ" or "NORMAL" => "bg-success",
+        "NORMAL" => "bg-success",
+        "AZ ALMIŞ" => "bg-neutral",
         _ => "bg-base-content/30",
     };
     static string GrupText(string g) => g switch
     {
         "FAZLA" or "ÖLÜ-ALIM" => "text-error",
         "TREND-HIZLI" or "YENİDEN-STOK" or "İZLE" or "UZUN-KUYRUK" or "KÜÇÜK-ALIM" => "text-warning",
-        "AZ ALMIŞ" or "NORMAL" => "text-success",
+        "NORMAL" => "text-success",
+        "AZ ALMIŞ" => "text-base-content/60",
         _ => "text-base-content/50",
     };
     static string SatirKenar(string g) => g switch
