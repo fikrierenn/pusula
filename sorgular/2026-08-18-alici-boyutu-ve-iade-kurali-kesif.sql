@@ -90,3 +90,21 @@ FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
 WHERE t.EkleyenKullanici = 'hakan.cetin'
 GROUP BY CONVERT(varchar(7), t.Tarih, 126), t.MekanId
 ORDER BY 1 DESC;
+
+/* ---------------------------------------------------------------------------
+   8) ŞUBE BENİMSEME ASİMETRİSİ (kullanıcı teyidi: ilk canlı test İST.YOLU, uzun süre tek kullanan)
+   İST YOLU 82.202 talep (%70, 11 kullanıcı) · ÖZLÜCE 22.940 (%20) · FSM 12.376 (%10).
+   2025-02 SONRASI da aynı oran (79.523/22.029/11.949) → kalıcı benimseme farkı.
+   => ATIF ADALET KURALI: mutlak talep/adet sayısıyla alıcı kıyaslanAMAZ; yalnız ORAN/İSABET
+      (talep başına isabet, fazla-oranı) kullanılır. Talep yokluğu karar yokluğu DEĞİLDİR.
+--------------------------------------------------------------------------- */
+SELECT t.MekanId, m.mekanAd,
+       COUNT(*)                                AS talep,
+       COUNT(DISTINCT t.EkleyenKullanici)       AS kullanici,
+       CONVERT(varchar, MIN(t.Tarih), 104)      AS ilk_talep,
+       CONVERT(varchar, MAX(t.Tarih), 104)      AS son_talep,
+       SUM(CASE WHEN t.Tarih >= '20250201' THEN 1 ELSE 0 END) AS talep_2025_02_sonrasi
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+LEFT JOIN DerinSISBkm.dbo.mekan_vw m WITH(NOLOCK) ON m.mekanID = t.MekanId
+GROUP BY t.MekanId, m.mekanAd
+ORDER BY COUNT(*) DESC;
