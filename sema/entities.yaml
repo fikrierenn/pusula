@@ -322,3 +322,32 @@ entities:
     confidence: 1.0
     evidence: "2026-08-17 — irsHrk ehTip 0/10 × irs.eFirma GROUP BY yıl (sorgular/2026-08-17-sirket-donem-point-kontrol.sql blok 5-6)."
     last_verified: "2026-08-17"
+  # --- ATIF TUZAĞI: evrak giren kişi ≠ alıcı (GMY teyidi 2026-08-18) ---
+  irs_gKisi_atif_tuzagi:
+    tip: gozlem
+    note: "⚠️ dbo.irs.gKisi (alış evrakı giren kişi) = MAL KABUL YAPAN personel, SATINALMACI DEĞİL. GMY teyidi 2026-08-18. Son 12 ayda yalnız 4 kişi: insID 697 SAMET TILCI 2.320 evrak/118 tedarikçi · 18 Mehmet 517/46 · 25 Mesut 99/27 · 1661 Erkan 53/18 — bu profil depo mal-kabul operatörü, alıcı değil."
+    kural: "Satınalma hesap-sorma / alıcı-atıf analizinde irs.gKisi (ve fat.gKisi, MalKabulBaslik.OlusturanKullaniciId) KİŞİYE ATIF İÇİN KULLANILMAZ. Kullanılırsa mal kabul personeli alıcının kararından sorumlu tutulur = haksız suçlama. Kardeş tuzak: bkm.MalKabulSatirLog.KullaniciId."
+    alici_boyutu_durumu: "ÇÖZÜLDÜ 2026-08-18 → bkm.OneriSiparisTalep (EkleyenKullanici + OnaylayanKullanici). Detay: entity bkm.OneriSiparisTalep."
+    confidence: 1.0
+    evidence: "2026-08-18 — irs eTip=0 GROUP BY gKisi (12 ay, 4 kişi) + kullanıcı (GMY) doğrudan teyidi."
+    last_verified: "2026-08-18"
+  # --- ALICI (KARAR-VERİCİ) BOYUTU — accountability temeli, 2026-08-18 keşif ---
+  bkm.OneriSiparisTalep:
+    key: [Tarih, MekanId, StkId, SiparisMiktar, Onay, SipId, EkleyenKullanici, OnaylayanKullanici, EvrakNo, OdakAktar]
+    grain: "talep satırı — tarih × mekan × ürün (sipariş TALEBİ, mal kabul DEĞİL)"
+    note: "**GERÇEK KARAR BOYUTU** — irs.gKisi (mal kabul) yerine atıf buradan yapılır. EkleyenKullanici = talebi açan (karar), OnaylayanKullanici = onaylayan (SoD). SiparisMiktar = istenen adet. SipId/EvrakNo → sipariş zinciri; kardeş tablo bkm.OneriSiparisTalepSiparis (FrmId=tedarikçi, SipAdet, TalepNo, Gonderildi) talebi TEDARİKÇİYE bağlar."
+    kullanici_profili: "25 kullanıcı, 2024-06 → 2026-08. İKİ TİP: (a) KİŞİ hesabı — eren.boran2 29.253 talep/16.422 ürün · seyda.cindan 15.231 · hakan.cetin 1.215 talep AMA 25.334 adet (büyük parti) · kubra.kulaksizoglu 861 · sirac.yigit 441 · omerfaruk.kirmaci 358 · eren.boran 778. (b) REYON/ŞUBE paylaşımlı hesabı — ist.cocuk 23.358 · ist.kultur 14.846 · fsm.kultur 9.674 · ist.akademi 7.864 · ozl.kultur 4.581 · ist.hazirlik 4.126 · ozl/fsm/ist.oyuncak-kirtasiye-akademi-sinav-cocuk."
+    atif_kurali: "KİŞİ hesabında bireye atıf yapılabilir; REYON/ŞUBE paylaşımlı hesabında (ist.cocuk vb.) BİREYE ATIF YAPILAMAZ → reyon/kategori sorumlusuna atfedilir (bkm.OneriSiparisKullaniciKategori / OneriSiparisKullaniciReyon ile isimlendir)."
+    sod_gozlemi: "Onay oranı çoğu kullanıcıda ~%100 (eren.boran2 29.113/29.253 · seyda.cindan 15.231/15.231) → onay muhtemelen FORMALİTE, gerçek kontrol değil. İSTİSNA: sirac.yigit 62/441 (%14) · kubra.kulaksizoglu 449/861 (%52) · ozl.oyuncak 896/1.357 (%66). Ayrı denetim konusu: onay bir kontrol mü? Ekleyen=Onaylayan vakaları taranmalı (görevler ayrılığı)."
+    confidence: 0.9
+    evidence: "2026-08-18 — sys.columns + GROUP BY EkleyenKullanici (25 satır, talep/ürün/adet/onay/onaylayan-sayı/tarih aralığı)."
+    last_verified: "2026-08-18"
+  # --- İADE HAKKI / VADE KOŞULU — 'fazla aldı' iddiasının adalet şartı, 2026-08-18 ---
+  frm_iade_vade_kosullari:
+    tip: gozlem
+    note: "dbo.frm.frmIadeKural = TEDARİKÇİ bazında iade kuralı, DOLU ve anlamlı: 0→1.248 tedarikçi (ort vade ~0 = peşin) · 1→99 · 2→1.273 (frmVadeTur=1 olanlarda ort vade 130 GÜN). Vade alanları: frmVade + frmVade1..5 + frmVadeTur (0/1/2). Ayrıca frmSiparisSevkAdet."
+    onemi: "Satınalma hesap-sorma ADALET ŞARTI — iade hakkı olan tedarikçiden alınan fazla stok geri çevrilebilir, donmuş sermaye sayılmaz. 'FAZLA' etiketi iade kuralı bilinmeden alıcı aleyhine kullanılırsa haksız. Vade de gerçek maliyeti değiştirir (aynı fiyat + 130 gün vade ≠ peşin)."
+    eksik: "frmIadeKural 0/1/2 kod ANLAMI teyit bekliyor (lookup tablosu bulunamadı — kullanıcı/muhasebe teyidi gerekiyor). ⚠️ dbo.urn.alimIadeYok ÖLÜ KOLON: Kat3 10/12/16 evrenindeki 138.920 ürünün TAMAMI aynı değer (2) → ürün-bazlı iade hakkı bilgisi YOK, kullanma."
+    confidence: 0.8
+    evidence: "2026-08-18 — frm GROUP BY frmIadeKural,frmVadeTur (9 satır, frmTip=0) + urn.alimIadeYok dağılımı (tek değer)."
+    last_verified: "2026-08-18"

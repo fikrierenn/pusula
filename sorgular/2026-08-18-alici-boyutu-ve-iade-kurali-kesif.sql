@@ -1,0 +1,67 @@
+/*
+  Soru: Alım Analizi'ne alıcı-atıf eklenebilir mi (kim karar verdi)? "Fazla aldı" iddiası
+        iade hakkı/vade koşulu bilinmeden adil mi?
+  DB: DerinSISBkm. Tetik: 2026-08-18 Alım Analizi eksik-boyut denetimi (satinalma-danisman).
+
+  BULGULAR:
+   1) irs.gKisi = MAL KABUL personeli (GMY teyidi) → ALICI ATIFI İÇİN KULLANILAMAZ.
+      12 ayda 4 kişi: SAMET TILCI 2.320 evrak/118 tedarikçi · Mehmet 517/46 · Mesut 99/27 · Erkan 53/18.
+   2) GERÇEK KARAR BOYUTU = bkm.OneriSiparisTalep (EkleyenKullanici + OnaylayanKullanici +
+      SiparisMiktar + Onay + SipId). 25 kullanıcı, 2024-06 → 2026-08.
+      İKİ TİP: kişi hesabı (eren.boran2 29.253 talep · seyda.cindan 15.231 · hakan.cetin 1.215/25.334 adet)
+      vs REYON paylaşımlı hesap (ist.cocuk 23.358 · ist.kultur 14.846 · fsm.kultur 9.674 …).
+      → paylaşımlı hesapta BİREYE atıf YAPILAMAZ, reyon sorumlusuna atfedilir.
+      SoD sinyali: onay oranı çoğunda ~%100 (formalite şüphesi); istisna sirac.yigit %14, kubra %52.
+   3) Tedarikçiye bağlanma: bkm.OneriSiparisTalepSiparis (FrmId, SipAdet, TalepNo, Gonderildi).
+   4) İADE/VADE: dbo.frm.frmIadeKural DOLU (0→1.248 peşin · 1→99 · 2→1.273, vadeTur=1'de ort 130 gün);
+      frmVade/frmVade1..5/frmVadeTur mevcut. ⚠️ dbo.urn.alimIadeYok ÖLÜ KOLON (138.920 ürün tek değer=2).
+      frmIadeKural 0/1/2 kod anlamı TEYİT BEKLİYOR (lookup yok).
+*/
+
+-- 1) Alış evrakını giren kişiler (ALICI DEĞİL — mal kabul; atıf tuzağı kanıtı)
+SELECT i.gKisi, k.insAd,
+       COUNT(DISTINCT i.eID)    AS alis_evrak,
+       COUNT(DISTINCT i.eFirma) AS tedarikci,
+       CONVERT(varchar, MIN(i.eTarihS), 104) AS ilk,
+       CONVERT(varchar, MAX(i.eTarihS), 104) AS son
+FROM dbo.irs i WITH(NOLOCK)
+LEFT JOIN dbo.drn1 k WITH(NOLOCK) ON k.insID = i.gKisi
+WHERE i.eTip = 0 AND i.eTarihS >= '20250801' AND i.eTarihS < '20260801'
+GROUP BY i.gKisi, k.insAd
+ORDER BY COUNT(DISTINCT i.eID) DESC;
+
+-- 2) GERÇEK alıcı boyutu — talep açan + onaylayan + onay oranı (SoD sinyali)
+SELECT t.EkleyenKullanici,
+       COUNT(*)                                AS talep,
+       COUNT(DISTINCT t.StkId)                 AS urun,
+       SUM(t.SiparisMiktar)                    AS toplam_adet,
+       SUM(CASE WHEN t.Onay = 1 THEN 1 ELSE 0 END) AS onayli,
+       COUNT(DISTINCT t.OnaylayanKullanici)    AS onaylayan_sayi,
+       CONVERT(varchar, MIN(t.Tarih), 104)     AS ilk,
+       CONVERT(varchar, MAX(t.Tarih), 104)     AS son
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+GROUP BY t.EkleyenKullanici
+ORDER BY COUNT(*) DESC;
+
+-- 3) Görevler ayrılığı (SoD) — ekleyen = onaylayan olan talepler (kendi talebini onaylama)
+SELECT t.EkleyenKullanici, COUNT(*) AS kendi_onayladi, SUM(t.SiparisMiktar) AS adet
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+WHERE t.Onay = 1 AND t.OnaylayanKullanici = t.EkleyenKullanici
+GROUP BY t.EkleyenKullanici
+ORDER BY COUNT(*) DESC;
+
+-- 4) İade kuralı + vade dağılımı (adalet şartı) — frmTip=0 satıcı
+SELECT f.frmIadeKural, f.frmVadeTur, COUNT(*) AS tedarikci_sayi,
+       AVG(CONVERT(float, f.frmVade)) AS ort_vade
+FROM dbo.frm f WITH(NOLOCK)
+WHERE f.frmTip = 0
+GROUP BY f.frmIadeKural, f.frmVadeTur
+ORDER BY COUNT(*) DESC;
+
+-- 5) urn.alimIadeYok gerçekten kullanılıyor mu? (tek değer dönerse ÖLÜ KOLON)
+SELECT u.alimIadeYok, COUNT(*) AS urun_sayi
+FROM dbo.urn u WITH(NOLOCK)
+JOIN DerinSISBkm.bkm.UrunBilgi b WITH(NOLOCK) ON b.stkID = u.stkID AND b.Kat3ID IN (10,12,16)
+WHERE u.urnTip = 0
+GROUP BY u.alimIadeYok
+ORDER BY COUNT(*) DESC;
