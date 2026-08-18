@@ -65,3 +65,28 @@ JOIN DerinSISBkm.bkm.UrunBilgi b WITH(NOLOCK) ON b.stkID = u.stkID AND b.Kat3ID 
 WHERE u.urnTip = 0
 GROUP BY u.alimIadeYok
 ORDER BY COUNT(*) DESC;
+
+/* ---------------------------------------------------------------------------
+   6) HESAP HİJYENİ + GÜVENİLİR PENCERE (2026-08-18 kullanıcı teyidi)
+   hakan.cetin = YAZILIMCI, alıcı DEĞİL → atıftan çıkar. Kanıtı: talebinin %96'sı
+   Mayıs 2024'te 3 mağazaya birden (809 talep/24.354 adet), bir kayıt 'Deneme Amaçlı'.
+   Devreye alma: 2024-03/04 tek kullanıcı · 2024-05 test yükü · 2024-08/09/10 KAYIT YOK
+   · 2025-02'den itibaren istikrarlı (8-16 kullanıcı) → ATIF PENCERESİ >= 2025-02-01.
+--------------------------------------------------------------------------- */
+SELECT CONVERT(varchar(7), t.Tarih, 126) AS ay,
+       COUNT(*)                                  AS talep,
+       COUNT(DISTINCT t.EkleyenKullanici)        AS kullanici,
+       SUM(t.SiparisMiktar)                      AS adet,
+       SUM(CASE WHEN t.EkleyenKullanici = 'hakan.cetin' THEN 1 ELSE 0 END) AS hakan_talep
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+GROUP BY CONVERT(varchar(7), t.Tarih, 126)
+ORDER BY 1;
+
+-- 7) Yazılımcı/test hesabının imzası: ay × mekan yoğunlaşması + açıklama
+SELECT CONVERT(varchar(7), t.Tarih, 126) AS ay, t.MekanId,
+       COUNT(*) AS talep, SUM(t.SiparisMiktar) AS adet, MAX(t.SiparisMiktar) AS max_tek,
+       COUNT(DISTINCT t.Aciklama) AS farkli_aciklama, MIN(t.Aciklama) AS ornek_aciklama
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+WHERE t.EkleyenKullanici = 'hakan.cetin'
+GROUP BY CONVERT(varchar(7), t.Tarih, 126), t.MekanId
+ORDER BY 1 DESC;
