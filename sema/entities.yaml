@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-07-30
+updated: 2026-08-17
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -287,3 +287,38 @@ entities:
     confidence: 1.0
     evidence: "2026-08-14 — üretim scripti okundu (running-total ehAltDepo=0); 591060 mekan-1 tablo=ehAltDepo=0 kümülatif BİREBİR (193/189/157/131/118/72/59)."
     last_verified: "2026-08-14"
+  # --- ŞİRKET/DÖNEM TUZAĞI (2026-08-17 keşif — isim yanıltıcı) ---
+  mhs.mhsSirket:
+    pk: sirketID
+    key: [sirketAd, sirketDonem, sirketIlkFisID, sirketSonFisID, sirketOnce, sirketEntegre]
+    grain: "MALİ DÖNEM (yıl) — ŞİRKET DEĞİL"
+    note: "⚠️ İSİM YANILTICI: 6 satır var ama HEPSİ aynı tüzel kişi ('BKM Kitap Kırtasiye'); ayrım sirketDonem = 2021..2026. Yani sirketID = mali yıl kodu (1=2021 … 6=2026). DerinSISBkm TEK ŞİRKET tutar — çok-şirket konsolidasyonu YOK. sirketOnce=1 → aktif/açık dönem (2026). sirketIlkFisID/SonFisID = o dönemin fiş ID aralığı."
+    tuzaklar: "(1) mhs.mhsFis.fisSirketID / mhsFisBaslik.fisbSirketID / mhsHsp.hspSirketID 'şirket' DEĞİL DÖNEM → filtre koymadan SUM edersen tüm yılları toplarsın; tek yıl sanıp koyarsan diğer yılları kaybedersin. Dönem seçimi fisTarih ile yapılmalı, fisSirketID kimlik olarak kullanılmamalı. (2) 'SirketIci' kolonları (bkm.RiskUrunOzet.SirketIciNetTutar, bkm.IrsTipGrupMap.SirketIciMi, dbo.kontrol_sirketiciAdetler_vw) = ŞUBE-ARASI TRANSFER (intra-company), tüzel kişi değil."
+    confidence: 1.0
+    evidence: "2026-08-17 — SELECT * FROM mhs.mhsSirket (6 satır, sirketAd hepsi 'BKM Kitap Kırtasiye', sirketDonem 2021-2026); mhsFis fisSirketID GROUP BY tarih aralıkları birebir örtüşüyor (1→31.05.2021-31.01.2022, 6→01.01.2026-17.08.2026)."
+    last_verified: "2026-08-17"
+  # --- GL kayıt granülaritesi KIRILMASI (2026-08-17 keşif — GL forensic için kritik) ---
+  mhs.mhsFis_granulerlik_kirilmasi:
+    tip: gozlem
+    note: "⚠️ 2025'te yevmiye kayıt granülaritesi DEĞİŞTİ: fiş sayısı 2024=2.685.683 → 2025=122.893 (−%95,4) → 2026(17.08)=46.210; satır 7.907.904 → 346.230 → 127.003. AMA TL hacmi DÜŞMEDİ, ARTTI (BA=1 tarafı 2024 24,8 mia → 2025 31,2 mia). Yani detay-fiş yerine TOPLU/ÖZET fiş atılıyor (muhtemelen POS/entegrasyon özet-posting'e geçti)."
+    etki: "GL forensic (B-117) ve Benford/mükerrer/round-number analizleri 2024 ile 2025+ arasında KIYASLANAMAZ — satır sayısı temelli her metrik (fiş başına satır, anomali yoğunluğu, SoD) yıl-kırılımı ŞART. Trend grafiğinde 2025 çöküşü GERÇEK İŞ DÜŞÜŞÜ DEĞİL, posting değişikliği."
+    kok_sebep: "ÇÖZÜLDÜ 2026-08-18 — GL posting değişikliği DEĞİL, KAYNAK BELGE kaybı. dbo.fat SATIŞ faturası (eTip=1) Ara'24 122.145 → Şub'25 104 (alış eTip=0 SABİT ~1.000/ay). Kaybolan faturaların Ara'24'te %100'ü eMekan=12 MERKEZ DEPO = e-ticaret sevk faturası. Kırılan entegrasyon: mhsEntTip 1=Fatura 409.224→6.297 · 2=Cari 397.014→15.541; 3=POS DEĞİŞMEDİ (1.214→1.181, zaten özet). Giren kişi AYNI (Pınar/Şule) → personel/yetki sebebi elendi. dbo.car 382.563→13.011. irsHrk: sevk/fatura satışı (ehTip 1/4) 94,9M→4,9M ₺ ama POS (100) SABİT 41,0→38,5→33,1→37,2M. Kırılma: Oca'25 geçiş, ŞUBAT 2025 tamamlandı."
+    yorum: "TEYİT EDİLDİ (GMY, 2026-08-18): **06.01.2025'te e-ticaret faturalama süreci POINT tarafına DEVREDİLDİ.** Mağaza POS DerinSIS'te devam; e-ticaret fatura kanalı BKM Kitap tüzel kişisinden çıktı. İlişkili taraf frm 9525 ODAK-POINT (alım 2024 217M → 2025 308M ₺) aynı yapının parçası."
+    kesim_tarihleri: "ÜÇ TARİH AYRI TUTULMALI — (a) 06.01.2025 devir günü (o gün hâlâ pik 4.614 fatura = BKM'de kesilen son yığın), (b) 06-15.01.2025 KUYRUK: açık siparişlerin faturalanması, azalan (07.01 2.518 → 10.01 419 → 14.01 1.345 toplu kapanış → 15.01 160), (c) 16.01.2025 pratik SIFIR (29 → tek haneli). ANALİTİK PENCERE BAŞLANGICI = 01.02.2025 (ilk tam temiz ay). Ocak 2025 HİBRİT AY — hiçbir kıyasa katma."
+    kirilma_kategori_dagilimi: "ÖLÇÜLDÜ 2026-08-18 — kırılma neredeyse TAMAMEN KİTAP e-ticaretinde; kitap-dışı ETKİLENMEDİ. Depo sevk (ehMekan=12, ehTip 1/4), aylık normalize: KİTAP vb. 74,54M ₺/ay → 4,13M ₺/ay (−%94,5) · KIRTASİYE/OYUNCAK/HEDİYELİK (Kat3 10/12/16) 3,63M → 3,43M ₺/ay (−%5,5 DÜZ). Şube (ehMekan 1/4477/4478) her iki evrende hafif değişim (−%9 / −%21)."
+    etki_ek: "PENCERE DENETİMİ SONUCU: (a) Satınalma Alım Analizi (SatinalmaQueries.cs, evren Kat3 10/12/16) — son12/son24/sezon pencereleri kırılmayı AŞSA BİLE evreninde kanal kaybı YOK → MUAF, düzeltme gerekmez. ⚠️ B-139 (matara/ajanda 2024↔2025 ayrışması) bu kırılmayla AÇIKLANMIYOR — model zaafı olarak KALIR (ilk kurulan 'kök sebep' bağı ÖLÇÜMLE ÇÜRÜTÜLDÜ). (b) KİTAP kategorili veya TÜM-KATEGORİ analizler (ciro YoY, hedef gerçekleşme, tahmin YoY tabanı, GL forensic) kırılmadan ETKİLENİR → 01.02.2025 öncesi/sonrası kıyas kanal-normalize edilmeli. (c) Bulunurluk (BulunurlukQueries + pre-agg) pencere '20250801'-'20260801' = kırılma SONRASI → MUAF."
+    kod_notu: "SatinalmaQueries.cs satış bloğunda ehMekan filtresi YOK; dosya yorumu 'e-ticaret satışı HARİÇ (şube-only)' yalnız KIRILMA SONRASI için doğru — kırılma öncesi mekan-12 depo sevki #ay'a DAHİL. Kat3 10/12/16 evreninde bu akış küçük+düz olduğu için sonuç değişmiyor, ama yorum yanıltıcı → e-tic dahil/hariç iddiası mekan filtresiyle değil kategori gerçeğiyle doğrulanmalı."
+    pencere_denetimi: "KOD DENETİMİ 2026-08-18 (ehTip 1 = sevk/fatura içeren TÜM sorgular tarandı) — MUAF: (1) Queries.cs ciro/YoY/hedef/tahmin-taban (326/383/412) ehTip 1 içeriyor AMA ehMekan IN(LokasyonConfig.Subeler=1,4477,4478) → depo/e-tic HARİÇ. (2) RefQueries.Envanter (ölü stok, marka rotasyon, B-110 tedarikçi scorecard), OdakQueries, SabahService → ehTip IN(4,100), ehTip 1 HİÇ YOK → yapısal muaf. (3) stok_satis_aylik_raporu.py + sorgular/2026-07-31 → ehMekan şube-only. (4) Bulunurluk (Queries+pre-agg+sizing) pencere 2025-08+ → kırılma sonrası. (5) SatinalmaQueries(.UrunDetay) + satinalma_hesap_sorma.py: mekan filtresi YOK ve pencere 24 ay (kırılmayı aşar) AMA evren Kat3 10/12/16'da mekan-12 akışı kırılmada DÜŞMEDİ (3,63→3,43M ₺/ay) → o akış e-ticaret değil TOPTAN sevk → pratik etki yok, Python'un JOKER e-tic eklemesi de ÇİFT SAYIM DEĞİL (şüphe ölçümle elendi). ETKİLENEN (tek gerçek risk): B-117 GL forensic + KİTAP kategorili veya tüm-kategori DerinSIS kıyasları → 01.02.2025 öncesi/sonrası kanal-normalize şart."
+    confidence: 1.0
+    evidence: "2026-08-18 — sorgular/2026-08-18-gl-kanal-kirilmasi-subat2025.sql (7 blok: mhsFisBaslik aylık · entTip kırılımı · gKisi kontrol · fat alış-vs-satış · kaybolan faturanın mekanı · car · irsHrk POS-vs-sevk)."
+    last_verified: "2026-08-18"
+  # --- TEDARİKÇİ KONSANTRASYONU / ilişkili-taraf adayı (2026-08-17) ---
+  frm_9525_odak_point:
+    tip: gozlem
+    note: "dbo.frm frmID=9525 'ODAK KİTAP-POİNT İNTERNET TEKNOLOJİLERİ' (frmKod 320.10.P060, frmTip=0 satıcı) = alım girişinin ~%40'ı TEK BAŞINA. 2025: 307,7M ₺ (diğer 176 firma 468,1M) · 2026(17.08): 224,7M ₺ (diğer 151 firma 339,6M). Kardeş cari: frmID 22100 'POİNT KİTAP DAĞITIM TİC. A.Ş.' (ihmal edilebilir hacim, 2021-22)."
+    etki: "Web kaydında 'BKM KİTAP Point İnternet Tek. ve Lojistik A.Ş.' ayrı tüzel kişi olarak görünüyor → 9525 muhtemelen İLİŞKİLİ TARAF (grup içi dağıtım/e-tic). Öyleyse: transfer-fiyatlama, grup-içi mutabakat, ve satınalma hesap-sorma analizlerinde 'tedarikçi performansı' kıyası ÇARPIK (grup-içi ≠ dış tedarikçi). Alıcı-atıf analizinde ayrı kova yapılmalı."
+    status: "İLİŞKİLİ TARAF — TEYİT EDİLDİ (kullanıcı/GMY, 2026-08-17). Grup-içi dağıtım kanalı; dış tedarikçiyle aynı kovada kıyaslanMAZ."
+    kural: "Satınalma/tedarikçi performans analizinde frmID 9525 AYRI KOVA (ilişkili-taraf). Tedarikçi-scorecard, fill-rate, gecikme, iade-oranı kıyaslarında dış tedarikçilerle karıştırma; konsantrasyon raporunda ilişkili-taraf olarak etiketle."
+    confidence: 1.0
+    evidence: "2026-08-17 — irsHrk ehTip 0/10 × irs.eFirma GROUP BY yıl (sorgular/2026-08-17-sirket-donem-point-kontrol.sql blok 5-6)."
+    last_verified: "2026-08-17"
