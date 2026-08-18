@@ -3,7 +3,7 @@
 > Bu şablon Tier 3 işler içindir. Tier 1 (yok) ve Tier 2 (TODO satırı) için kullanma.
 
 **Tarih:** YYYY-MM-DD
-**Proje:** `bkm` | `belinza` | `yonetiq` | `mcp` | `crossproject`
+**Proje:** `bkm` | `yonetiq` | `mcp` | `crossproject`
 **Yazan:** Fikri / Claude (oturum ID: `<id>`)
 **Durum:** `Taslak` | `Onaylandı` | `Uygulamada` | `Tamamlandı` | `İptal`
 

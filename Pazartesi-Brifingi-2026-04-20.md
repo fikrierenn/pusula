@@ -313,4 +313,4 @@ Bu rapor sadece **3 Bursa mağazası** (FSM + Özlüce + İst.Yolu) fiili satı�
 
 ---
 
-*Rapor: 20 Nisan 2026, 08:00 öncesi otomatik çekiliş için hazırdır. Haftalık / aylık ritmin kalıcı hali için `haftalik-belinza-ozeti` scheduled task'ının Pazartesi saatinde tetiklenmesi yeterlidir. Eksik kanalların (Heykel, bkmkitap.com, kafe) entegrasyonu sonraki iterasyon.*
+*Rapor: 20 Nisan 2026, 08:00 öncesi otomatik çekiliş için hazırdır. Haftalık / aylık ritmin kalıcı hali için haftalık brief scheduled task'ının Pazartesi saatinde tetiklenmesi yeterlidir. Eksik kanalların (Heykel, bkmkitap.com, kafe) entegrasyonu sonraki iterasyon.*

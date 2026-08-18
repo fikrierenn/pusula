@@ -12,7 +12,7 @@ YYYY-MM-DD
 
 ## Proje
 
-`bkm` | `belinza` | `yonetiq` | `crossproject`
+`bkm` | `yonetiq` | `crossproject`
 
 ## Bağlam
 

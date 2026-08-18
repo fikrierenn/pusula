@@ -5,7 +5,6 @@ Bu klasörde her çalışma gününün notu, **proje başına** ayrı klasörde:
 ```
 journal/
 ├── bkm/                # BKM Kitap (DerinSIS, EncoreMerkez, JOKER e-ticaret)
-├── belinza/            # Belinza (boş başlangıç)
 ├── yonetiq/            # YonetIQ (boş başlangıç)
 └── _crossproject/      # MCP server kodu, infra, multi-proje işler
 ```

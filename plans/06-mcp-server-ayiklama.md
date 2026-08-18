@@ -3,7 +3,7 @@
 **Tarih:** 10.06.2026 · **Tier:** 3 (yeni repo, kullanıcı-görünür yapı değişikliği)
 
 ## Problem
-`sqlserver-mcp-server` repo'su iki kimlik taşıyor: (a) gerçek MCP server kodu (`src/` 2.194 satır TS, 8 tool, testli), (b) BKM analitik çalışma alanı (raporlar, scriptler, sema, docs). MCP server kodu bataklığa gömülü — bağımsız geliştirilemiyor, versiyonlanamıyor, başka projelere (Belinza/YonetIQ/Operax) temiz dağıtılamıyor.
+`sqlserver-mcp-server` repo'su iki kimlik taşıyor: (a) gerçek MCP server kodu (`src/` 2.194 satır TS, 8 tool, testli), (b) BKM analitik çalışma alanı (raporlar, scriptler, sema, docs). MCP server kodu bataklığa gömülü — bağımsız geliştirilemiyor, versiyonlanamıyor, başka projelere (YonetIQ/Operax) temiz dağıtılamıyor.
 
 ## Scope
 - **Dahil:** `src/`, testler, package*, tsconfig, .env.example → yeni bağımsız proje `D:\Dev\sqlserver-mcp`. Yeni mimari iskeleti (rules/agents/commands/hooks/skills). Build+test yeşil doğrulama. Git init + ilk commit.

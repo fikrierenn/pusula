@@ -77,7 +77,7 @@ git diff --name-only HEAD --diff-filter=AM
 
 ### Adim 2 — Journal Kontrol
 ```bash
-# Proje alt-dizini ZORUNLU (multi-project: bkm/belinza/yonetiq). BKM bu repo'nun aktif projesi.
+# Proje alt-dizini ZORUNLU (multi-project: bkm/yonetiq). BKM bu repo'nun aktif projesi.
 JOURNAL="docs/journal/bkm/$(date +%Y-%m-%d).md"
 mkdir -p docs/journal/bkm
 ```

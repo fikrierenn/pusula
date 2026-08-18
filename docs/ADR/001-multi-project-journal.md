@@ -14,10 +14,9 @@
 
 ## Bağlam
 
-`sqlserver-mcp-server` repo'su tek bir projeye değil, birden fazla SQL Server bağlantısına köprü kuran bir MCP server. ALLOWED_DATABASES = "BKM, Belinza, YonetIQ" — yani 3 farklı kurumsal projeye hizmet ediyor:
+`sqlserver-mcp-server` repo'su tek bir projeye değil, birden fazla SQL Server bağlantısına köprü kuran bir MCP server. ALLOWED_DATABASES birden çok katalog içeriyor — yani farklı kurumsal projelere hizmet ediyor:
 
 - **BKM Kitap** (kapsamlı içerik dolu — DerinSIS + EncoreMerkez + JOKER)
-- **Belinza** (henüz boş)
 - **YonetIQ** (henüz boş)
 
 Buna ek olarak repo'nun kendisi (MCP server kodu, `.claude/` disiplini, infra) bir cross-project katman.
@@ -25,7 +24,7 @@ Buna ek olarak repo'nun kendisi (MCP server kodu, `.claude/` disiplini, infra) b
 İlk session'larda `SESSION_LOG.md` tek bir kronolojik dosyaydı — proje ayrımı yoktu, BKM verisiyle MCP kod değişiklikleri iç içe geçmişti. Bu yapıda:
 - Yeni oturum hangi projede çalışılacak belirsiz
 - Commit scope'ları karışık
-- Belinza/YonetIQ için yer ayrılmamış
+- Diğer projeler için yer ayrılmamış
 - "Tek bir bilgi iki yerde durmasın" ilkesi (CONTEXT_MANAGEMENT İlke 1) ihlal edilmiş
 
 ## Karar
@@ -38,7 +37,6 @@ docs/journal/
 │   ├── README.md
 │   ├── YYYY-MM-DD.md
 │   └── _archive-session-log.md
-├── belinza/
 │   └── README.md (boş başlangıç)
 ├── yonetiq/
 │   └── README.md (boş başlangıç)
@@ -58,8 +56,8 @@ Commit scope = proje adı:
 
 - Multi-project repo gerçeği: 3 DB bağlantısı + cross-project infra.
 - Proje ayrımı paralel oturumların çakışmasını **kısmen** çözüyor (farklı proje farklı dosya).
-- Belinza ve YonetIQ için yer açık, içerik dolduğunda yapı hazır.
-- Commit scope'ları net (`feat(bkm):` vs `feat(belinza):`).
+- Diğer projeler için yer açık, içerik dolduğunda yapı hazır.
+- Commit scope'ları net (`feat(bkm):` vs `feat(yonetiq):`).
 
 ## Alternatifler (Reddedilenler)
 
@@ -85,7 +83,7 @@ Commit scope = proje adı:
 - TODO.md ortak — proje sayısı arttıkça karmaşıklaşır (bkz. ADR-002 önerisi: TODO/<proje>.md split).
 
 ### Bilinmeyen
-- Belinza ve YonetIQ için kaç journal birikecek, ne hızda büyüyecek.
+- Diğer projeler için kaç journal birikecek, ne hızda büyüyecek.
 - Cross-project işlerin _crossproject/'ta ne kadar yer tutacağı.
 
 ## Uygulama

@@ -66,7 +66,7 @@ Kronolojik günlük: [`SESSION_LOG.md`](SESSION_LOG.md)
 
 ## Bekleyen İşler
 
-> Detaylı liste artık [`TODO.md`](TODO.md) içinde — multi-project Faz yapısı (BKM + MCP + CrossProject + Belinza/YonetIQ).
+> Detaylı liste artık [`TODO.md`](TODO.md) içinde — multi-project Faz yapısı (BKM + MCP + CrossProject + YonetIQ).
 >
 > Aşağıdaki kısa hatırlatma listesi 27.04.2026'da TODO.md'ye taşındı, burada tarihsel referans olarak duruyor.
 
@@ -96,7 +96,7 @@ Kronolojik günlük: [`SESSION_LOG.md`](SESSION_LOG.md)
 | Mimari karar | `docs/ADR/NNN-<slug>.md` |
 | Oturum notu / günlük | `docs/journal/<proje>/YYYY-MM-DD.md` |
 
-**Aynı bilgi iki yerde durmaz.** Multi-project repo: `<proje>` = `bkm` / `belinza` / `yonetiq` / `_crossproject`.
+**Aynı bilgi iki yerde durmaz.** Multi-project repo: `<proje>` = `bkm` / `yonetiq` / `_crossproject`.
 
 ### Oturum Başı Ritüeli (KOŞULSUZ)
 

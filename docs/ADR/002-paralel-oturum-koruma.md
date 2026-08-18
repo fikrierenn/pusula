@@ -60,7 +60,7 @@ ADR-001 (multi-project) bu sorunun **yarısını** çözüyor — proje ayrımı
 - Çakışma tespit edilirse kullanıcıya: `"Başka oturum commit attı (hash: X). Üzerine yazmak (overwrite) / merge (manuel) / iptal?"`
 
 **d) TODO.md split (opsiyonel C-15):**
-- Tek `TODO.md` yerine `TODO/bkm.md` + `TODO/_crossproject.md` + `TODO/belinza.md` + `TODO/yonetiq.md`.
+- Tek `TODO.md` yerine `TODO/bkm.md` + `TODO/_crossproject.md` + `TODO/yonetiq.md`.
 - Aynı projede paralel oturum hâlâ çakışabilir, ama farklı proje çakışmaz.
 
 ### 2. SaaS-grade (ileri — başka oturuma)

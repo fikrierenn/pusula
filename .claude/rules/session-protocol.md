@@ -21,7 +21,7 @@ bash .claude/hooks/session-start.sh
 ### Adım 2 — Son 2 journal dosyasını oku
 
 ```bash
-ls -t docs/journal/bkm/*.md | head -2   # proje alt-dizini ZORUNLU (bkm/belinza/yonetiq)
+ls -t docs/journal/bkm/*.md | head -2   # proje alt-dizini ZORUNLU (bkm/yonetiq)
 ```
 
 Her ikisini de `Read` et. Özellikle bak:

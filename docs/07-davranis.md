@@ -7,7 +7,7 @@
 - Tutar/etki gör — soyut analiz yerine sayısal etki.
 - Aksiyon önerirken "tek satır SQL" gibi pratik çözümler ver.
 - **DMY tarih formatı zorunlu** (linked server ODAKJOKER hariç — orada ISO `YYYYMMDD`).
-- Maliyet gizlilik politikasına dikkat (Belinza skill'inden, BKM için de geçerli).
+- Maliyet gizlilik politikasına dikkat.
 - Sorgu yazarken: SARGable yaz, `NOT IN` yerine `NOT EXISTS`, büyük raporda `NOLOCK`. Detay: [`D:\Belgelerim\sql\sql_server_puf_noktalari.md`](file:///D:/Belgelerim/sql/sql_server_puf_noktalari.md)
 - `urn` tablosunda ürün adı = `stkAd`, ürün ID = `stkID` (urnAd/urnID hata).
 - `urnKtgr2` join'de kolon adı `ktgrAd` (`ktgr2Ad` hata).

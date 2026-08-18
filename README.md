@@ -49,7 +49,7 @@ MSSQL_PORT=1433
 MSSQL_USER=sa
 MSSQL_PASSWORD=SeninkiNeYazBuraya
 MSSQL_DATABASE=master
-ALLOWED_DATABASES=BKM,Belinza,YonetIQ
+ALLOWED_DATABASES=BKM,YonetIQ
 MAX_ROWS=1000
 QUERY_TIMEOUT_MS=30000
 ALLOW_WRITE=false
@@ -101,7 +101,7 @@ Claude Code Desktop'un config dosyasını aç:
         "MSSQL_USER": "sa",
         "MSSQL_PASSWORD": "SeninkiNeYazBuraya",
         "MSSQL_DATABASE": "master",
-        "ALLOWED_DATABASES": "BKM,Belinza,YonetIQ",
+        "ALLOWED_DATABASES": "BKM,YonetIQ",
         "MAX_ROWS": "1000",
         "QUERY_TIMEOUT_MS": "30000",
         "ALLOW_WRITE": "false"
@@ -187,8 +187,8 @@ Bu sürümde:
 "Bu ay BKM'nin mekan bazlı satış karşılaştırmasını çıkar"
 → Claude: sql_query(query="SELECT ...", database="BKM")
 
-"Belinza veritabanında eksik indexler var mı?"
-→ Claude: sql_index_analysis(database="Belinza")
+"YonetIQ veritabanında eksik indexler var mı?"
+→ Claude: sql_index_analysis(database="YonetIQ")
 ```
 
 ## Geliştirme

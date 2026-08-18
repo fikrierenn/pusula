@@ -13,7 +13,7 @@ MCP server kodu (`src/`), infra disiplini (`.claude/`, `docs/CONTEXT_MANAGEMENT.
 
 ## Buraya yazılmayanlar
 
-- BKM/Belinza/YonetIQ'a özgü iş çıktıları → kendi klasörlerinde.
+- BKM/YonetIQ'a özgü iş çıktıları → kendi klasörlerinde.
 
 ## Mevcut Dosyalar
 

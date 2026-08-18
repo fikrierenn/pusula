@@ -1,6 +1,6 @@
 ---
 name: veri-yorumlama
-description: Veri, rapor, sorgu çıktısı, dashboard veya analiz sonucunu yorumlamak için kurumsal karar-destek disiplini. "Bu veri ne diyor", "şu raporu yorumla", "bu rakamlardan ne çıkıyor", "anomali var mı", "hangi insight var", "veriye bakar mısın" gibi ifadelerde tetikle. 5 lensli analiz framework'ü (Executive Summary / Pattern / Surprise / Misleading Risk / New Questions), Materiality Filter, Confidence Discipline, Executive Attention Economy, BKM/Belinza operational pattern library ve runtime constraints (DMY tarih, IsValid=1, EncoreMerkez compat 110, COLLATE Turkish_CI_AS, ODAKJOKER ISO tarih) içerir. Dashboard üretmez — yanıltıcı analizden kaynaklanan kötü executive kararını engellemeyi hedefler. bi-dashboard, sql-server-uzmani, kok-sebep ve finans-butce-muhasebe ile zincirleme çalışır.
+description: Veri, rapor, sorgu çıktısı, dashboard veya analiz sonucunu yorumlamak için kurumsal karar-destek disiplini. "Bu veri ne diyor", "şu raporu yorumla", "bu rakamlardan ne çıkıyor", "anomali var mı", "hangi insight var", "veriye bakar mısın" gibi ifadelerde tetikle. 5 lensli analiz framework'ü (Executive Summary / Pattern / Surprise / Misleading Risk / New Questions), Materiality Filter, Confidence Discipline, Executive Attention Economy, BKM operational pattern library ve runtime constraints (DMY tarih, IsValid=1, EncoreMerkez compat 110, COLLATE Turkish_CI_AS, ODAKJOKER ISO tarih) içerir. Dashboard üretmez — yanıltıcı analizden kaynaklanan kötü executive kararını engellemeyi hedefler. bi-dashboard, sql-server-uzmani, kok-sebep ve finans-butce-muhasebe ile zincirleme çalışır.
 ---
 
 # Veri Yorumlama — Kurumsal Karar Motoru
@@ -300,8 +300,6 @@ Bu skill **canonical yorum katmanıdır** — diğer skill'ler içine plug-in ol
 | **sql-server-uzmani** | Veri çekmek için T-SQL üretimi gerek |
 | **kok-sebep** | Anomali bulundu, "neden böyle oldu" zinciri açılacak (5 Whys) |
 | **finans-butce-muhasebe** | Finansal materialiti hesabı, bütçe-gerçek sapma, FIFO etkisi |
-| **belinza-baglan** | Belinza/BelOps verisi geldiğinde — kırmızı çizgiler, ürün grupları |
-| **dusakabin-mobilya** | Belinza proje akışı verisi (teklif → onay → montaj → servis) |
 | **erp-crm-wms-mimari** | Sistem mimari kararı veriden çıkıyor |
 | **humanizer** | Executive özetini insan tonuna getirmek |
 
