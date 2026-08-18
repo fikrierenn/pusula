@@ -108,3 +108,24 @@ FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
 LEFT JOIN DerinSISBkm.dbo.mekan_vw m WITH(NOLOCK) ON m.mekanID = t.MekanId
 GROUP BY t.MekanId, m.mekanAd
 ORDER BY COUNT(*) DESC;
+
+/* ---------------------------------------------------------------------------
+   9) İSİMLİ HESAP → ROL/ŞUBE EŞLEŞMESİ (kullanıcı teyidi 2026-08-18)
+   eren.boran2 = İst.Yolu md yrd (29.253 talep, %99,5, 131 aktif gün) ·
+   eren.boran = AYNI KİŞİ (778 talep, 6 gün → atıfta BİRLEŞTİR) ·
+   sirac.yigit = Özlüce md yrd (441 talep 2 GÜNDE, yalnız 62 onaylı) ·
+   seyda.cindan = Özlüce (15.231, %100, 52 gün) · omerfaruk.kirmaci = İst.Yolu (358, TEK gün).
+   HARİÇ: hakan.cetin (yazılımcı) · kubra.kulaksizoglu (iç denetim/iş geliştirme).
+   DERS: 'düşük onay = alıcı değil' hipotezi ÇÜRÜK (sirac md yrd ama %14 onay).
+   DERS: metrik AKTİF GÜNE normalize edilmeli — 358 talep/1 gün ≠ 358 talep/131 gün.
+--------------------------------------------------------------------------- */
+SELECT t.EkleyenKullanici, t.MekanId, m.mekanAd,
+       COUNT(*)                                              AS talep,
+       SUM(CASE WHEN t.Onay = 1 THEN 1 ELSE 0 END)            AS onayli,
+       COUNT(DISTINCT CONVERT(varchar(10), t.Tarih, 112))     AS farkli_gun,
+       CONVERT(varchar, MIN(t.Tarih), 104)                    AS ilk,
+       CONVERT(varchar, MAX(t.Tarih), 104)                    AS son
+FROM DerinSISBkm.bkm.OneriSiparisTalep t WITH(NOLOCK)
+LEFT JOIN DerinSISBkm.dbo.mekan_vw m WITH(NOLOCK) ON m.mekanID = t.MekanId
+GROUP BY t.EkleyenKullanici, t.MekanId, m.mekanAd
+ORDER BY COUNT(*) DESC;
