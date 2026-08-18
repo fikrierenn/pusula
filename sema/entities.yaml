@@ -24,6 +24,7 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "Canlı sorguda WITH(NOLOCK) (özellikle irsHrk, depo.*)."
   - "MCP sql_query: CTE yok, top-level ORDER BY yok, multi-statement yok — tek SELECT yaz."
   - "urn.stkKod BARKOD DEĞİL — ürün eşleşmesi daima stkID üstünden."
+  - "KOLON ADI BÜYÜK/KÜÇÜK HARF TUTARSIZ (canlı doğrulama 2026-08-18): irsHrk = `ehstkID` (küçük s) · fatAyr/irsAyr = `ehStkID` (büyük S) · bkm.StokAyBakiyeMekanBazli = `stkID` · bkm.UrunBilgi = `stkID`. SQL Server case-insensitive olduğu için çalışır, ama kopyala-yapıştır sorgu/kod okurken karıştırma; case-sensitive collation'a taşınırsa kırılır."
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
@@ -386,4 +387,15 @@ entities:
     uretim: "sorgular/2026-08-14-bulunurluk-ozet-generate.sql (blok 3). Okuyan: BulunurlukQueries.GetKayipOncelikAsync + plan-34 B-144 SatinalmaQueries #kayip (📉KURU rozeti)."
     confidence: 0.95
     evidence: "2026-08-18 — kolonlar canlı sys.columns ile doğrulandı (12 kolon); kısmi-dağıtım filtresi + recency gate + kayıp formülü üretim scriptinden okundu. Canlı satır sayısı doğrulanmadı (ERP erişimi düştü)."
+    last_verified: "2026-08-18"
+  # --- CANLI ŞEMA DOĞRULAMA DAMGASI (curator A10 / TODO B-152) ---
+  _sema_dogrulama_2026_08_18:
+    tip: dogrulama_damgasi
+    kapsam: "sema/entities.yaml'daki DerinSISBkm-yerel objelerin canlı varlık + pk/key kolon kontrolü (sys.objects + sys.columns)."
+    sonuc: "**60 objeden 59'u MEVCUT.** Tip doğrulaması: bkm.UrunBilgi = VIEW (tablo değil) · bkm.sp_KapanisMudahaleKontrol_v2 = SQL_STORED_PROCEDURE · dbo.mekan_vw/irsTip_vw/stokSon_vw/stokSonAltDepo_vw/bakiyeVDGG_vw/mhsMizan_vw/mhsFisKontrolBakiye_vw/JokerCKStok_vw/stok_adres_palet_vw = VIEW · gerisi USER_TABLE."
+    kolon_kontrolu: "Kritik 25 tabloda pk/key kolonları BİREBİR doğrulandı — sema ile canlı arasında EKSİK/YANLIŞ kolon YOK. Doğrulananlar: irs · irsHrk · irsAyr · fat · fatAyr · frm · car · carCek · drn1 · urn · urnKtgr2 · urnMrk · urnBrkd · posMagaza · stokSon_vw · mekan_vw · mhsFis · mhsFisBaslik · mhsHsp · mhsSirket · UrunBilgi · OneriSiparisTalep · OneriSiparisTalepSiparis · StokAyBakiyeMekanBazli · BulunurlukOzet · BulunurlukKayip · MalKabulBaslik · emir · emirAyr · paletIcHrk."
+    bulunamayan: "`bkm.MayKampanyaTahmin_2026` — YANLIŞ ALARM, sema boşluğu değil: yalnızca kendisini CREATE eden scriptte geçiyor (sorgular/03-kampanya/mayis-50indirim-tahmin-tablo.sql), hiç çalıştırılmamış. BKM veritabanında da yok. Tüketen kod YOK."
+    dogrulanmayan: "Çapraz-DB objeler ayrı bağlantı gerektiriyor, bu koşuda kontrol EDİLMEDİ: EncoreMerkez.* (4) · DerinCrm.dbo.Customer · BKMDATA.dbo.Hedef · BKMMaliyet.* (7) · ODAKJOKER.JOKER.* (8) · BKM_GENEL.dbo.perbilgi · Mosaik.* (7, reporthub projesi)."
+    confidence: 1.0
+    evidence: "2026-08-18 — sys.objects IN(60 ad) → 59 satır; sys.columns 2 koşuda 642 satır (400+242), sema pk/key listeleriyle karşılaştırıldı."
     last_verified: "2026-08-18"
