@@ -46,7 +46,7 @@ bridges:
     to: dbo.irs.eID
     scope: derinsis
     confidence: 1.0
-    last_verified: "2026-08-14"
+    last_verified: "2026-08-18"   # Serve Deep evrak-dökümünde fiilen kullanıldı (evrak 007287 + HP 8 evrak, doğru sonuç)
     note: "irsHrk hareket → irsaliye başlık. irs.eNo = EVRAK NO (depo sevk 'D01…' gerçek belge), irs.eCrmID = cari (POS satışta 0 — cari EncoreMerkez'de). ehTip 100 POS satışta eNo='POS Satış' (yazarkasa, gerçek fiş DerinSIS'te değil EncoreMerkez.Sales'te). Satınalma TOPTAN-KANAL drill (SatinalmaQueries.UrunDetay.GetBulkHareketAsync) bunu kullanır — bulk hareketin evrak-no'sunu gösterir. irsHrk KOLONLARI: ehID/ehstkID/ehMekan/ehTrhS/ehAdetN/ehTutarN/ehMlyt/ehAltDepo/hrkID/ehTip/ehTutarOzl/hrkTarih (cari/belge-no YOK → irs join şart)."
   - id: irshrk-pos-encore
     from: dbo.irsHrk (ehTip=100)
@@ -79,7 +79,8 @@ bridges:
     to: dbo.frm.frmID
     scope: derinsis
     confidence: 1.0
-    note: "Evrak → cari/firma. Mağaza frmID=1/4477/4478, GENEL=0, tedarikçi=diğer."
+    last_verified: "2026-08-18"   # Serve Deep + ilişkili-taraf analizinde kullanıldı (PROMARKA/BETA/BUDAK, ODAK-POINT %40 tespiti)
+    note: "Evrak → cari/firma. Mağaza frmID=1/4477/4478, GENEL=0, tedarikçi=diğer. İLİŞKİLİ TARAF (grup-içi) frmID'ler: 9525 ODAK-POINT · 22100 POİNT KİTAP · 56/38093 Bursa Kültür Merkezi · 4841/23842 BKM Kitap · 58/9339/4694/7950/50582 Bursa Kültür-Sanat → fiyat kıyasında AYRI KOVA (Ayarlar SatinIliskiliTaraf)."
   - id: bakiyevdgg-frm
     from: dbo.bakiyeVDGG_vw.cKod
     to: dbo.frm.frmID

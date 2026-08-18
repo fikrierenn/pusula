@@ -316,3 +316,11 @@ codes:
     fat_eTip: "gider/masraf faturası eTip IN (6,7,8)"
     confidence: 1.0
     last_verified: 2026-06-22
+  mhsFisBaslik.fisEntTipID:          # lookup: mhs.mhsEntTip (canlı okundu 2026-08-18)
+    lookup: mhs.mhsEntTip
+    join: "LEFT JOIN mhs.mhsEntTip e ON e.entTipID = mhsFisBaslik.fisEntTipID → e.entTipAd"
+    values: {0: "Kullanıcı (manuel)", 1: "Fatura", 2: "Cari", 3: "POS", 4: "Mağaza Kasası", 5: "Cari Fiş"}
+    kullanim: "Yevmiye fişinin hangi entegrasyondan doğduğunu söyler. Şub-2025 kanal kırılması teşhisinde belirleyici oldu: 1=Fatura 409.224→6.297 · 2=Cari 397.014→15.541 ÇÖKTÜ ama 3=POS 1.214→1.181 DEĞİŞMEDİ → kırılma POS'ta değil fatura/cari entegrasyonundaydı (kaynak belge kaybı). Manuel-kayıt denetiminde fisEntTipID=0 filtresi (bkz. mhs.mhsEntTip notu)."
+    confidence: 1.0
+    evidence: "2026-08-18 — SELECT * FROM mhs.mhsEntTip (6 satır) canlı okundu."
+    last_verified: "2026-08-18"
