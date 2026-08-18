@@ -84,7 +84,7 @@ else
             <div class="min-w-0">
                 <div class="text-xs text-base-content/50">Ölü-Alım</div>
                 <div class="text-xl font-bold leading-tight text-error">@Num(Say("ÖLÜ-ALIM"))</div>
-                <div class="text-[11px] text-base-content/50">stok vardı, 12 ay satmadı</div>
+                <div class="text-[11px] text-base-content/50" title="Ölü-alım bağlı para = ay-sonu TAM stok × birim maliyet. Fazla'nın bağlı parası (sezon-sonrası kalan) ile AYNI TANIM DEĞİL — toplanmaz, ayrı okunur.">@Tl(OluBagliToplam) bağlı · stok vardı, 12 ay satmadı</div>
             </div>
         </div>
         <div class="rounded-xl bg-base-100 border border-success/30 p-3.5 flex items-start gap-3">
@@ -92,7 +92,7 @@ else
             <div class="min-w-0">
                 <div class="text-xs text-base-content/50">Sağlıklı Oran</div>
                 <div class="text-xl font-bold leading-tight text-success">%@SaglikPct</div>
-                <div class="text-[11px] text-base-content/50">fazla/ölü/izle dışı</div>
+                <div class="text-[11px] text-base-content/50" title="Payda = hüküm verilebilir ürünler (GENÇ hariç — yeni ürün, karar için erken). GENÇ paydaya katılırsa oran yapay yükselir.">@Num(HukumEvren) hüküm verilebilir üründe</div>
             </div>
         </div>
     </div>
@@ -188,7 +188,7 @@ else
                         <td class="text-right tabular-nums">@Num(r.AySonu)</td>
                         <td class="text-right tabular-nums">@Num(r.Son12)</td>
                         <td class="text-right tabular-nums @(r.Buyume < 0.7m ? "text-error" : r.Buyume >= 2 ? "text-success" : "")">@r.Buyume.ToString("0.0", _tr)</td>
-                        <td class="text-right tabular-nums">@(r.TukAy?.ToString("0.0", _tr) ?? "—")</td>
+                        <td class="text-right tabular-nums">@TukGoster(r.TukAy)</td>
                         <td class="text-right tabular-nums @(r.BagliPara >= _tolerans ? "text-error font-semibold" : r.BagliPara > 0 ? "text-warning" : "text-base-content/30")">@(r.BagliPara > 0 ? Tl(r.BagliPara) : "—")</td>
                         <td class="text-xs font-semibold whitespace-nowrap @GrupText(r.Grup)">@r.Degerlendirme</td>
                     </tr>
@@ -219,7 +219,8 @@ else
                     <th class="text-right">Alış ₺</th>
                     <th class="text-right">🔴 Fazla</th>
                     <th class="text-right">🔴 Ölü</th>
-                    <th class="text-right">Bağlı Para ₺</th>
+                    <th class="text-right" title="FAZLA ailesi bağlı para = sezon-sonrası kalan × birim maliyet.">Fazla Bağlı ₺</th>
+                    <th class="text-right" title="ÖLÜ-ALIM bağlı para = ay-sonu TAM stok × birim maliyet. Fazla ile aynı tanım değil — ayrı kolon.">Ölü Bağlı ₺</th>
                 </tr>
             </thead>
             <tbody>
@@ -231,7 +232,8 @@ else
                         <td class="text-right tabular-nums">@Tl(o.Alis)</td>
                         <td class="text-right tabular-nums @(o.Fazla > 0 ? "text-error font-semibold" : "text-base-content/40")">@Num(o.Fazla)</td>
                         <td class="text-right tabular-nums @(o.Olu > 0 ? "text-error font-semibold" : "text-base-content/40")">@Num(o.Olu)</td>
-                        <td class="text-right tabular-nums font-semibold @(o.Bagli > 0 ? "text-error" : "text-base-content/40")">@Tl(o.Bagli)</td>
+                        <td class="text-right tabular-nums font-semibold @(o.FazlaBagli > 0 ? "text-error" : "text-base-content/40")">@Tl(o.FazlaBagli)</td>
+                        <td class="text-right tabular-nums font-semibold @(o.OluBagli > 0 ? "text-error" : "text-base-content/40")">@Tl(o.OluBagli)</td>
                     </tr>
                 }
             </tbody>
@@ -241,14 +243,20 @@ else
 
 @code {
     int _tab;
-    sealed record OzetSatir(string Ad, int Urun, decimal Alis, int Fazla, int Olu, decimal Bagli);
+    // Bağlı para İKİ AYRI TANIM: FazlaBagli = sezon-sonrası kalan × maliyet · OluBagli = tam stok × maliyet.
+    // Tek kolonda toplamak kıyaslanamaz büyüklükleri karıştırır → ayrı taşınır; Bagli yalnız ÖNCELİK SIRALAMASI için.
+    sealed record OzetSatir(string Ad, int Urun, decimal Alis, int Fazla, int Olu, decimal FazlaBagli, decimal OluBagli)
+    {
+        public decimal Bagli => FazlaBagli + OluBagli;
+    }
     IEnumerable<OzetSatir> Ozet(Func<SatinalmaAnalizSatir, string> key, int? top = null)
     {
         var q = _rows.GroupBy(key).Select(g => new OzetSatir(
                 string.IsNullOrWhiteSpace(g.Key) ? "—" : g.Key,
                 g.Count(), g.Sum(r => (decimal)r.AlisTutar),
                 g.Count(r => r.Grup == "FAZLA"), g.Count(r => r.Grup == "ÖLÜ-ALIM"),
-                g.Sum(r => r.BagliPara)))   // sezonluk bağlı para (donmuş sermaye) — AlisTutar değil
+                g.Where(r => FazlaAile(r.Grup)).Sum(r => r.BagliPara),
+                g.Where(r => r.Grup == "ÖLÜ-ALIM").Sum(r => r.BagliPara)))
             .OrderByDescending(o => o.Bagli);
         return top.HasValue ? q.Take(top.Value) : q;
     }
@@ -277,6 +285,9 @@ else
     // Materiality: bağlı ≥ tolerans → önemli; altı → düşük öncelik (fazla + ölü-alım).
     bool Dusuk(SatinalmaAnalizSatir r) => ProblemStok(r.Grup) && r.BagliPara < _tolerans;
     int OnemsizSayi => _rows.Count(Dusuk);
+    decimal OluBagliToplam => _rows.Where(r => r.Grup == "ÖLÜ-ALIM").Sum(r => r.BagliPara);
+    // Tükenir: model 999'u "pratikte tükenmez" sentinel'i olarak üretir — 999,0 ay diye okunmasın.
+    string TukGoster(decimal? t) => t is null ? "—" : t >= 999m ? "tükenmez" : t.Value.ToString("0.0", _tr);
     int MateryalSayi => _rows.Count(r => FazlaAile(r.Grup) && r.BagliPara >= _tolerans);
     decimal MateryalBagli => _rows.Where(r => FazlaAile(r.Grup) && r.BagliPara >= _tolerans).Sum(r => r.BagliPara);
 
@@ -365,7 +376,9 @@ else
     void GrupTikla(string g) { if (!_secili.Add(g)) _secili.Remove(g); }
     void TumunuTemizle() => _secili.Clear();
     int Say(string g) => _rows.Count(r => r.Grup == g);
-    int SaglikPct => _rows.Count == 0 ? 0 : (int)Math.Round(100.0 * (_rows.Count - Say("FAZLA") - Say("ÖLÜ-ALIM") - Say("İZLE")) / _rows.Count);
+    // Hüküm verilebilir evren = GENÇ hariç (GENÇ = ilk girişi yeni, karar için erken → sağlık oranını yapay şişirir).
+    int HukumEvren => _rows.Count(r => r.Grup != "GENÇ");
+    int SaglikPct => HukumEvren == 0 ? 0 : (int)Math.Round(100.0 * (HukumEvren - Say("FAZLA") - Say("ÖLÜ-ALIM") - Say("İZLE")) / HukumEvren);
 
     static string GrupBtn(string g) => g switch
     {
