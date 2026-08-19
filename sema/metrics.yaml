@@ -336,3 +336,15 @@ metrics:
     last_verified: 2026-07-30
     evidence: "2026-07-30 canlı sqlcli — OneriSiparisTalep/KullaniciKategori/MalKabulBaslik/SatirLog profil + EvrakNo köprü testi (0 örtüşme). Eksen tam-tasarımı bekliyor (öneri-sapması→ölü-stok)."
     last_verified: "2026-07-30"
+  oneri_sapmasi:
+    tanim: "ÖNERİ-SAPMASI = bkm.OneriSiparisTalep.SiparisMiktar − bkm.OneriSiparis.OneriSiparisAdet, join (Tarih, MekanId, StkId). Öneri motoru bir adet önerir, insan değiştirir → sapma = kontrol edilebilir karar."
+    neden_adil: "Ham talep hacmi ŞUBE BENİMSEMESİNE bağlı (İst.Yolu %70) → kişi kıyasında haksız. Sapma ORANI benimsemeden bağımsız; aynı kişinin kendi kararını öneriyle kıyaslar."
+    join_perf: "OneriSiparis PK CLUSTERED (Tarih, MekanId, StkId) = tam join anahtarı → talep tarafından SEEK. CAST(t.Tarih AS date) KÜÇÜK tarafta yapılır (208M satırlık tabloda CAST seek'i bozar). Canlı: 111K talep × 208M öneri ≈ 2,2s."
+    eslesme_orani: "Talep satırlarının ~%99'u öneri kaydıyla eşleşiyor (2026-08-18 canlı). Eşleşme <%90 olan kullanıcıda oranlar şüpheli — UI uyarı rengi gösterir."
+    kirpma: "⚠️ Satır oranı [-100%, +200%] KIRPILIR, sonra ortalanır. Sebep: düz ortalama tek uç satıra teslim (öneri=1 → talep=50 = +4900%); canlıda ist.kirtasiye %262,5 çıkmıştı, kırpma sonrası %49,3. Kırpılan satır sayısı UI'da parantezde ŞEFFAF gösterilir (sessiz kırpma yasak). Alt sınır -100% doğal (talep=0)."
+    turev_gostergeler: "AynenOran (öneriyi değiştirmeden kabul — %100 ise KARAR DEĞİL ONAY) · FazlaOran (öneriden fazla isteme = aşırı-alım yönü) · AzOran (öneriden az = stockout yönü) · OnayOran (kontrol katmanı) · GunlukTalep (aktif-güne normalize) · TekSeferlik (≤2 aktif gün → oranlar temsili değil)."
+    canli_bulgu: "2026-08-18/19 (pencere 01.02.2025+): sirac.yigit + omerfaruk.kirmaci %100 AYNEN → öneri motorunu onaylıyorlar, kendi kararlarını koymuyorlar (sirac ayrıca %14 onay = talepleri reddedilmiş). ist.cocuk %56,2 FAZLA + %38,7 aynen → en çok müdahale eden. fsm.kultur %21 fazla / %20 az (dengeli, net sapma negatif). ozl.kultur %97,1 aynen (neredeyse hiç müdahale)."
+    uygulama: "dashboard/Data/SatinalmaQueries.Atif.cs → Alım Analizi 'Talep Sapması' sekmesi (plan-34 B-146). Whitelist + hesap birleştirme + pencere Ayarlar'dan."
+    confidence: 0.95
+    evidence: "2026-08-19 — canlı join 29 kullanıcı×şube, eşleşme %98,6-100; kırpma öncesi/sonrası kıyaslandı."
+    last_verified: "2026-08-19"

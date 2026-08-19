@@ -180,3 +180,37 @@ public sealed class FiyatSapmaRow
     /// manşet 'fazla ödenen' toplamına KATILMAZ, ayrı gösterilir (haksız atıf önlemi).</summary>
     public bool IliskiliTaraf { get; set; }
 }
+
+/// <summary>plan-34 B-146 — atıf satırı: kullanıcı (birleştirilmiş) × şube öneri-sapması.
+/// TÜM göstergeler ORAN; mutlak talep/adet ile kişi kıyası YASAK (benimseme asimetriği).</summary>
+public sealed class AtifRow
+{
+    public string Kullanici { get; set; } = "";
+    public int MekanId { get; set; }
+    public string SubeAd { get; set; } = "";
+    public int Talep { get; set; }          // payda — kıyas ölçüsü DEĞİL
+    public int AktifGun { get; set; }
+    public int Urun { get; set; }
+    public int OneriEslesen { get; set; }
+    public int Aynen { get; set; }
+    public int Fazla { get; set; }
+    public int Az { get; set; }
+    public int Onayli { get; set; }
+    public decimal? OrtSapmaYuzde { get; set; }   // satır oranları [-100,+200] kırpılmış ortalama (uç satır sürüklemesin)
+    public int UcSapma { get; set; }              // sapması +200%'ü aşan talep sayısı (kırpma şeffaflığı)
+
+    /// <summary>Öneri motoruyla eşleşme oranı — veri kalitesi (düşükse alttaki oranlar şüpheli).</summary>
+    public decimal EslesmeOran => Talep > 0 ? 100m * OneriEslesen / Talep : 0;
+    /// <summary>Öneriyi AYNEN kabul oranı. %100'e yakın = öneri motorunu onaylıyor (karar değil onay).</summary>
+    public decimal AynenOran => OneriEslesen > 0 ? 100m * Aynen / OneriEslesen : 0;
+    /// <summary>ÖNERİDEN FAZLA isteme oranı — ana atıf sinyali (aşırı-alım yönü).</summary>
+    public decimal FazlaOran => OneriEslesen > 0 ? 100m * Fazla / OneriEslesen : 0;
+    /// <summary>Öneriden AZ isteme oranı — karşı yön (stockout riski üretir).</summary>
+    public decimal AzOran => OneriEslesen > 0 ? 100m * Az / OneriEslesen : 0;
+    /// <summary>Onay oranı — KONTROL katmanı (Ekleyen=karar, Onaylayan=kontrol ayrımı).</summary>
+    public decimal OnayOran => Talep > 0 ? 100m * Onayli / Talep : 0;
+    /// <summary>Aktif güne normalize günlük talep yoğunluğu — 358 talep/1 gün ile 29.253/131 günü ayırır.</summary>
+    public decimal GunlukTalep => AktifGun > 0 ? Math.Round((decimal)Talep / AktifGun, 1) : 0;
+    /// <summary>Tek-seferlik toplu iş mi (≤2 aktif gün) — süreklilik yoksa oranlar davranışı temsil etmez.</summary>
+    public bool TekSeferlik => AktifGun <= 2;
+}

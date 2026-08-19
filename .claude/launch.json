@@ -4,8 +4,25 @@
     {
       "name": "blazor-dash",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "dashboard"],
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "dashboard"
+      ],
       "port": 5112,
+      "autoPort": false
+    },
+    {
+      "name": "blazor-dash-test",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "dashboard",
+        "--urls",
+        "http://0.0.0.0:5113"
+      ],
+      "port": 5113,
       "autoPort": false
     }
   ]

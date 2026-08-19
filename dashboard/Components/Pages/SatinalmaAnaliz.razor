@@ -112,6 +112,7 @@ else
         <a role="tab" class="tab flex-1 @(_tab == 3 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 3">Ürün Grubu</a>
         <a role="tab" class="tab flex-1 @(_tab == 2 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 2">Marka / Tedarikçi</a>
         <a role="tab" class="tab flex-1 @(_tab == 4 ? "tab-active font-semibold text-primary" : "")" @onclick="FiyatSekmesi">Fiyat Sapması</a>
+        <a role="tab" class="tab flex-1 @(_tab == 5 ? "tab-active font-semibold text-primary" : "")" @onclick="AtifSekmesi">Talep Sapması</a>
     </div>
 }
 
@@ -353,8 +354,112 @@ else
     }
 }
 
+@if (_tab == 5)
+{
+    <div class="text-xs text-base-content/60 mb-2">
+        <b>ÖNERİ-SAPMASI</b> = talep edilen adet − öneri motorunun önerdiği adet (aynı gün/şube/ürün).
+        Öneri motoru bir sayı önerir, insan onu değiştirir → <b>sapma = kontrol edilebilir karar</b>.
+        Ham talep hacminden adil: hacim şubenin sistemi ne kadar kullandığına bağlı (İst.Yolu %70), oran değil.
+    </div>
+    <div class="alert alert-warning py-2 text-[11px] mb-3">
+        <span>
+            <b>Adil okuma kuralları:</b> pencere @_atifPencere itibarıyla (öncesi güvenilmez — e-tic kanal devri 06.01.2025 + talep sistemi ısınma dönemi).
+            Atıf-dışı hesaplar (yazılımcı / iç denetim) elendi, aynı kişinin çok hesabı birleştirildi.
+            <b>Şubeler arası kişi kıyası YAPILAMAZ</b> (FSM'de isimli hesap yok, benimseme farklı) ·
+            <b>unvan etiketi kullanılmaz</b> (roller zaman içinde değişti) ·
+            <b>talep sayısı kıyas ölçüsü DEĞİL</b>, yalnız oranların paydası.
+        </span>
+    </div>
+    @if (_atifYukleniyor)
+    {
+        <div class="flex items-center gap-2 text-sm text-base-content/60 py-6">
+            <span class="loading loading-spinner loading-sm"></span> Talep sapması hesaplanıyor…
+        </div>
+    }
+    else if (_atifHata is not null)
+    {
+        <div class="alert alert-error text-sm">@_atifHata</div>
+    }
+    else if (_atif.Count == 0)
+    {
+        <div class="text-sm text-base-content/60 py-6">Pencerede en az 10 talebi olan kullanıcı bulunamadı.</div>
+    }
+    else
+    {
+        <div class="overflow-x-auto border border-base-300 rounded-lg">
+            <table class="table table-xs table-pin-rows">
+                <thead>
+                    <tr>
+                        <th>Kullanıcı</th><th>Şube</th>
+                        <th class="text-right" title="Oranların paydası — kıyas ölçüsü DEĞİL">Talep</th>
+                        <th class="text-right" title="Kaç ayrı günde talep açtı (süreklilik). 2 gün veya altı = tek-seferlik toplu iş, oranlar temsili değil.">Aktif Gün</th>
+                        <th class="text-right" title="Aktif güne normalize günlük talep yoğunluğu">Talep/Gün</th>
+                        <th class="text-right" title="Öneri motoruyla eşleşme oranı — veri kalitesi. Düşükse alttaki oranlar şüpheli.">Eşleşme %</th>
+                        <th class="text-right" title="Öneriyi AYNEN kabul oranı. %100'e yakın = öneri motorunu onaylıyor, kendi kararını koymuyor.">Aynen %</th>
+                        <th class="text-right" title="ÖNERİDEN FAZLA isteme oranı — ana atıf sinyali (aşırı-alım yönü)">Fazla %</th>
+                        <th class="text-right" title="Öneriden AZ isteme oranı — karşı yön, stockout riski üretir">Az %</th>
+                        <th class="text-right" title="Satır bazında ortalama (talep-öneri)/öneri, her satır [-100%,+200%] KIRPILMIŞ (uç satır ortalamayı sürüklemesin). Parantez içi = sapması +200%'ü aşan talep sayısı.">Ort Sapma %</th>
+                        <th class="text-right" title="Onay oranı — KONTROL katmanı (Ekleyen=karar, Onaylayan=kontrol)">Onay %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in _atif)
+                    {
+                        <tr class="hover">
+                            <td class="font-medium text-xs whitespace-nowrap">
+                                @r.Kullanici
+                                @if (r.TekSeferlik)
+                                {
+                                    <span class="badge badge-ghost badge-xs ml-1" title="2 aktif gün veya altı — tek-seferlik toplu iş; oranlar davranışı temsil etmez.">tek-seferlik</span>
+                                }
+                            </td>
+                            <td class="text-xs text-base-content/70">@r.SubeAd</td>
+                            <td class="text-right tabular-nums text-base-content/50">@Num(r.Talep)</td>
+                            <td class="text-right tabular-nums">@r.AktifGun</td>
+                            <td class="text-right tabular-nums">@r.GunlukTalep.ToString("0.#", _tr)</td>
+                            <td class="text-right tabular-nums @(r.EslesmeOran < 90 ? "text-warning" : "text-base-content/50")">@r.EslesmeOran.ToString("0.#", _tr)</td>
+                            <td class="text-right tabular-nums @(r.AynenOran >= 99 ? "text-info font-semibold" : "")">@r.AynenOran.ToString("0.#", _tr)</td>
+                            <td class="text-right tabular-nums @(r.FazlaOran >= 40 ? "text-error font-semibold" : r.FazlaOran >= 20 ? "text-warning" : "")">@r.FazlaOran.ToString("0.#", _tr)</td>
+                            <td class="text-right tabular-nums @(r.AzOran >= 20 ? "text-warning" : "")">@r.AzOran.ToString("0.#", _tr)</td>
+                            <td class="text-right tabular-nums @(r.OrtSapmaYuzde >= 20 ? "text-error" : r.OrtSapmaYuzde <= -20 ? "text-warning" : "")">@(r.OrtSapmaYuzde?.ToString("0.#", _tr) ?? "—")@(r.UcSapma > 0 ? $" ({r.UcSapma})" : "")</td>
+                            <td class="text-right tabular-nums @(r.OnayOran < 50 ? "text-error" : "text-base-content/50")">@r.OnayOran.ToString("0.#", _tr)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-[11px] text-base-content/50 mt-1.5">
+            <b>Nasıl okunur:</b> <span class="text-info">Aynen %100</span> = öneri motorunu onaylıyor (karar değil onay) ·
+            <span class="text-error">Fazla % yüksek</span> = sistematik olarak öneriden çok istiyor (aşırı-alım yönü) ·
+            <span class="text-warning">Az % yüksek</span> = öneriden az istiyor (stockout yönü) ·
+            <span class="text-error">Onay % düşük</span> = talepleri reddediliyor (kontrol çalışıyor).
+            Tek satır suçlama değildir — sistematik desen + confound elemesi şart.
+        </div>
+    }
+}
+
 @code {
     int _tab;
+    List<AtifRow> _atif = new();
+    bool _atifYukleniyor;
+    string? _atifHata;
+    string _atifPencere = "01.02.2025";
+
+    /// <summary>Talep sapması sekmesi — TIKLANINCA yüklenir (208M satırlık öneri tablosuna join; ana sayfa yavaşlamaz).</summary>
+    async Task AtifSekmesi()
+    {
+        _tab = 5;
+        if (_atif.Count > 0 || _atifYukleniyor) return;
+        _atifYukleniyor = true; _atifHata = null; StateHasChanged();
+        try
+        {
+            _atif = (await Satinalma.GetAtifAsync()).ToList();
+            var b = Ayar.Deger.AtifBaslangicEtkin;
+            if (b.Length == 8) _atifPencere = b.Substring(6, 2) + "." + b.Substring(4, 2) + "." + b.Substring(0, 4);
+        }
+        catch (Exception ex) { _atifHata = "Talep sapması hesaplanamadı: " + ex.Message; }
+        finally { _atifYukleniyor = false; StateHasChanged(); }
+    }
     List<FiyatSapmaRow> _fiyat = new();
     // Ölçek-uyumsuz satırlar (paket/bundle veya jenerik SKU) ana listeden AYRILIR — sayısı görünür (sessiz kırpma yok).
     List<FiyatSapmaRow> FiyatTemiz => _fiyat.Where(r => !r.OlcekSuphesi && !r.IliskiliTaraf).ToList();
