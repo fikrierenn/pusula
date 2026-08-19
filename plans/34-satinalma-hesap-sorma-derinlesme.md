@@ -104,7 +104,9 @@ Ayrıca **adalet boşluğu**: "fazla aldı" iddiası, tedarikçinin iade hakkı 
 4. [x] ✅ **B-145** Fiyat sapması sekmesi (`SatinalmaQueries.FiyatSapma.cs`, tıklanınca yüklenir).
 5. [x] ✅ **B-146** Atıf kolonu/sekmesi — oran-bazlı, aktif-güne normalize, unvan etiketi yok, pencere ≥ 01.02.2025.
 6. [ ] **B-147** 3 emitter senkronu + B-136 mutabakat koşusu (dashboard / DINAMIK / Python birebir).
-7. [ ] **B-148** `veri-dogrula` QA + sema/arşiv güncelleme + journal notu.
+7. [x] ✅ **B-153** (KAPSAM EKLENDİ 19.08, kullanıcı direktifi) SATINALMA ekseni — mağaza talebinden ayrı: dbo.sip eTip 0/3, kadro Ayarlar'dan, sipTip_vw kod sözlüğü sema'ya yazıldı.
+8. [ ] **B-154** (YENİ) Sipariş kapama/karşılanma kontrolü — ehSevkAdet NULL, irsAyr.ehSipID bağı doğrulanamadı, eDurum 0/1 anlamı teyit bekliyor. Dashboard'a KONULMADI.
+9. [ ] **B-148** `veri-dogrula` QA + sema/arşiv güncelleme + journal notu.
 
 ## 8. İlişkili
 

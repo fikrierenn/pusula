@@ -22,6 +22,7 @@ public record PanelAyarlar(
     string? SatinAliciBirlestir = null,  // aynı kişinin çok hesabı: "ana=digeri;ana2=digeri2" (varsayılan eren.boran2=eren.boran)
     int SatinRatchetAy = 6,              // ratchet penceresi (ay) — üst üste alım/trend taraması
     string? SatinIliskiliTaraf = null,   // grup-içi/ilişkili taraf tedarikçi frmID listesi (fiyat kıyasında ayrı kova)
+    string? SatinAlimciInsIds = null,    // SATINALMACI drn1.insID listesi (dış alım siparişi atıfı) — mağaza/mal-kabul/IT/depo HARİÇ
     string? SatinAtifBaslangic = null)   // atıf pencere başı YYYYMMDD — varsayılan 20250201 (kanal kırılması + talep verisi güvenilir sınırı)
 {
     public static readonly int[] VarsayilanHaricMarkalar = [0, 269, 2101, 5972, 10911];
@@ -72,6 +73,20 @@ public record PanelAyarlar(
         }
     }
     public static readonly int[] VarsayilanIliskiliTaraf = [9525, 22100, 56, 38093, 4841, 23842, 58, 9339, 4694, 7950, 50582];
+
+    /// <summary>SATINALMACI kadrosu (drn1.insID). Dış alım siparişi (sip eTip 0/3) atıfı YALNIZ bunlara yapılır.
+    /// Varsayılan: 48 Onurhan · 76 Aydın (kullanıcı teyidi 2026-08-19). HARİÇ olanlar bilinçli: 137 entegrasyon (sistem),
+    /// 697 Samet Tılcı (MAL KABUL), 1661 Erkan (IT), 25 Mesut + 104 Yusuf (DEPO) — sipariş girmiş olsalar da satınalma kararı onların değil.</summary>
+    public IReadOnlyList<int> AlimciInsIds
+    {
+        get
+        {
+            var l = Ayir(SatinAlimciInsIds).Select(x => int.TryParse(x, out var n) ? n : (int?)null)
+                     .Where(n => n.HasValue).Select(n => n!.Value).ToArray();
+            return l.Length > 0 ? l : VarsayilanAlimci;
+        }
+    }
+    public static readonly int[] VarsayilanAlimci = [48, 76];
 
     static IReadOnlyList<string> Ayir(string? s) => string.IsNullOrWhiteSpace(s)
         ? []

@@ -214,3 +214,29 @@ public sealed class AtifRow
     /// <summary>Tek-seferlik toplu iş mi (≤2 aktif gün) — süreklilik yoksa oranlar davranışı temsil etmez.</summary>
     public bool TekSeferlik => AktifGun <= 2;
 }
+
+/// <summary>plan-34 B-153 — SATINALMA tarafı atıf satırı. Mağaza talebinden AYRI eksen:
+/// mağaza "ne istediğine", satınalma "dış tedarikçiden ne kadar / kimden aldığına" hesap verir.
+/// Kaynak: dbo.sip eTip 0 (Alış) + 3 (Yerel Alım) — eTip 13 Depo→Mağaza ve 9 Alış İade Emri BURAYA GİRMEZ.</summary>
+public sealed class SatinalmaAtifRow
+{
+    public int InsId { get; set; }
+    public string Kisi { get; set; } = "";
+    public int Siparis { get; set; }
+    public int AktifGun { get; set; }
+    public int Tedarikci { get; set; }
+    public int Urun { get; set; }
+    public long SiparisAdet { get; set; }
+    public int GrupIciSiparis { get; set; }
+    public long KarsilananAdet { get; set; }
+
+    /// <summary>Aktif güne normalize sipariş yoğunluğu.</summary>
+    public decimal SiparisGun => AktifGun > 0 ? Math.Round((decimal)Siparis / AktifGun, 1) : 0;
+    /// <summary>Sipariş başına ortalama kalem-adedi (parti büyüklüğü göstergesi).</summary>
+    public decimal AdetSiparis => Siparis > 0 ? Math.Round((decimal)SiparisAdet / Siparis, 0) : 0;
+    /// <summary>Grup-içi (ilişkili taraf) sipariş oranı — transfer fiyatlaması ayrımı, dış tedarikçi kararı değil.</summary>
+    public decimal GrupIciOran => Siparis > 0 ? 100m * GrupIciSiparis / Siparis : 0;
+    /// <summary>KARŞILANMA ORANI = irsaliyeye bağlanan adet / sipariş adedi. Düşükse: tedarikçi teslim etmedi
+    /// VEYA sipariş gerçekçi değildi. Tedarikçi başarısızlığı ile alıcı hatasını AYIRMAK için tedarikçi kırılımı şart.</summary>
+    public decimal KarsilanmaOran => SiparisAdet > 0 ? Math.Round(100m * KarsilananAdet / SiparisAdet, 1) : 0;
+}

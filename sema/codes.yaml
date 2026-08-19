@@ -324,3 +324,13 @@ codes:
     confidence: 1.0
     evidence: "2026-08-18 — SELECT * FROM mhs.mhsEntTip (6 satır) canlı okundu."
     last_verified: "2026-08-18"
+  sip.eTip:                          # lookup: dbo.sipTip_vw (canlı okundu 2026-08-19)
+    lookup: dbo.sipTip_vw
+    join: "LEFT JOIN dbo.sipTip_vw st ON st.tipID = sip.eTip -> st.tipAD"
+    values: {0: "Alış", 1: "Satış", 2: "Mağaza Depo", 3: "Yerel Alım", 4: "Depo Depo", 5: "Gider", 6: "Hizmet", 7: "Mağaza Satış", 8: "Mağaza Mağaza", 9: "Alış İade Emri", 10: "Satış İade Emri", 11: "Mağaza Satış İade Emri", 12: "Alış Mağaza İade Emri", 13: "Depo Mağaza"}
+    hesap_sorma_ayrimi: "**DIŞ ALIM KARARI = eTip 0 (Alış) + 3 (Yerel Alım).** eTip 13 (Depo->Mağaza) = mağaza sevk siparişi, satınalma değil. eTip 9 (Alış İade Emri) = MAL KABUL işlemi, alım DEĞİL."
+    tuzak: "⚠️ eTip 9'u 'alım' sanmak Samet Tılcı'yı (MAL KABULCÜ, 1.869 kayıt / 97 tedarikçi) en büyük satınalmacı gösterir — 2026-08-19'da bu hataya düşüldü, sipTip_vw okunarak düzeltildi. Tedarikçi çeşitliliği yüksek olması alım anlamına GELMEZ (iade de çok tedarikçiye yapılır)."
+    canli_dagilim: "2025-02-01+ pencere: eTip 13 -> 7.877 sipariş (3 tedarikçi, şube hesapları) · 9 -> 2.141 (107 ted., Samet) · 3 -> 1.952 (19 ted., %99 grup-içi, entegrasyon kullanıcısı) · 1 -> 1.930 (16 ted., %98 grup-içi) · 0 -> 1.566 (139 ted., Onurhan+Aydın)."
+    confidence: 1.0
+    evidence: "2026-08-19 — SELECT * FROM dbo.sipTip_vw (14 satır) + sip eTip dağılımı canlı."
+    last_verified: "2026-08-19"

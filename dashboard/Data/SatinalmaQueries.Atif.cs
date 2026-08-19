@@ -91,4 +91,49 @@ public sealed partial class SatinalmaQueries
             rows.Count, a.AtifBaslangicEtkin, haric.Length, birlestir.Length);
         return rows;
     }
+
+    /// <summary>
+    /// plan-34 B-153 — SATINALMA tarafı atıf: dış alım siparişi (dbo.sip eTip 0 Alış + 3 Yerel Alım).
+    /// MAĞAZA TALEBİNDEN AYRI EKSEN. eTip 13 (Depo→Mağaza) ve 9 (Alış İade Emri) DAHİL DEĞİL —
+    /// sipTip_vw kod sözlüğü 2026-08-19'da canlı okundu; eTip 9'u "alım" sanmak Samet'i (mal kabulcü) satınalmacı gösterir.
+    /// Atıf YALNIZ Ayarlar.AlimciInsIds kadrosuna (varsayılan 48 Onurhan · 76 Aydın — kullanıcı teyidi).
+    /// PERF: karşılanan adet ÖN-TOPLANIR (irsAyr GROUP BY ehSipID/ehSipSira) → sipariş satırında fan-out YOK.
+    /// </summary>
+    public async Task<IReadOnlyList<SatinalmaAtifRow>> GetSatinalmaAtifAsync()
+    {
+        var a = ayar.Deger;
+        const string sql = """
+            SELECT s.gKisi                                          AS InsId,
+                   ISNULL(LTRIM(RTRIM(k.insAd)), CONVERT(varchar(12), s.gKisi)) AS Kisi,
+                   COUNT(DISTINCT s.eID)                            AS Siparis,
+                   COUNT(DISTINCT CONVERT(varchar(10), s.eTarihS, 112)) AS AktifGun,
+                   COUNT(DISTINCT s.eFirma)                         AS Tedarikci,
+                   COUNT(DISTINCT sa.ehStkID)                       AS Urun,
+                   CONVERT(bigint, SUM(sa.ehAdet))                  AS SiparisAdet,
+                   COUNT(DISTINCT CASE WHEN s.eFirma IN @ILISKILI THEN s.eID END) AS GrupIciSiparis,
+                   CONVERT(bigint, SUM(ISNULL(irs.karsilanan, 0)))  AS KarsilananAdet
+            FROM DerinSISBkm.dbo.sip s WITH(NOLOCK)
+            JOIN DerinSISBkm.dbo.sipAyr sa WITH(NOLOCK) ON sa.ehID = s.eID
+            LEFT JOIN DerinSISBkm.dbo.drn1 k WITH(NOLOCK) ON k.insID = s.gKisi
+            -- Karşılanan adet: sipariş satırına bağlı irsaliye satırları ÖN-TOPLANMIŞ (fan-out önlemi)
+            LEFT JOIN (SELECT ehSipID, ehSipSira, SUM(ehAdetN) AS karsilanan
+                       FROM DerinSISBkm.dbo.irsAyr WITH(NOLOCK)
+                       WHERE ehSipID IS NOT NULL
+                       GROUP BY ehSipID, ehSipSira) irs
+                   ON irs.ehSipID = sa.ehID AND irs.ehSipSira = sa.ehSira
+            WHERE s.eTarihS >= @BAS
+              AND s.eTip IN (0, 3)          -- 0=Alış, 3=Yerel Alım (sipTip_vw). 13/9 HARİÇ.
+              AND s.gKisi IN @ALIMCI
+            GROUP BY s.gKisi, ISNULL(LTRIM(RTRIM(k.insAd)), CONVERT(varchar(12), s.gKisi))
+            ORDER BY COUNT(DISTINCT s.eID) DESC;
+            """;
+        var p = new DynamicParameters();
+        p.Add("BAS", a.AtifBaslangicEtkin);
+        p.Add("ALIMCI", a.AlimciInsIds);
+        p.Add("ILISKILI", a.IliskiliTarafIds);
+        await using var c = await db.OpenAsync();
+        var rows = (await c.QueryAsync<SatinalmaAtifRow>(new CommandDefinition(sql, p, commandTimeout: 90))).ToList();
+        logger.LogInformation("Satınalma atıf: {N} alımcı (eTip 0/3, pencere {Bas})", rows.Count, a.AtifBaslangicEtkin);
+        return rows;
+    }
 }

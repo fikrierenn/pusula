@@ -112,7 +112,7 @@ else
         <a role="tab" class="tab flex-1 @(_tab == 3 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 3">Ürün Grubu</a>
         <a role="tab" class="tab flex-1 @(_tab == 2 ? "tab-active font-semibold text-primary" : "")" @onclick="() => _tab = 2">Marka / Tedarikçi</a>
         <a role="tab" class="tab flex-1 @(_tab == 4 ? "tab-active font-semibold text-primary" : "")" @onclick="FiyatSekmesi">Fiyat Sapması</a>
-        <a role="tab" class="tab flex-1 @(_tab == 5 ? "tab-active font-semibold text-primary" : "")" @onclick="AtifSekmesi">Talep Sapması</a>
+        <a role="tab" class="tab flex-1 @(_tab == 5 ? "tab-active font-semibold text-primary" : "")" @onclick="AtifSekmesi">Kim Karar Verdi</a>
     </div>
 }
 
@@ -436,6 +436,74 @@ else
             Tek satır suçlama değildir — sistematik desen + confound elemesi şart.
         </div>
     }
+
+    @* ── SATINALMA EKSENİ (mağaza talebinden AYRI) ── *@
+    <div class="divider text-xs text-base-content/50 mt-5">SATINALMA BİRİMİ — dış tedarikçi alım kararı</div>
+    <div class="text-xs text-base-content/60 mb-2">
+        Yukarıdaki tablo <b>mağaza tarafı</b>: "ne istedim" (öneri motoruna göre sapma).
+        Bu tablo <b>satınalma tarafı</b>: "dış tedarikçiden ne kadar, kimden aldım".
+        <b>İki ayrı karar, iki ayrı hesap</b> — biri diğerinin yerine okunamaz.
+        Kaynak: <code>dbo.sip</code> eTip 0 (Alış) + 3 (Yerel Alım).
+        <b>Dahil değil:</b> eTip 13 Depo→Mağaza (mağaza sevk siparişi) · eTip 9 Alış İade Emri (mal kabul işlemi).
+    </div>
+    @if (_salYukleniyor)
+    {
+        <div class="flex items-center gap-2 text-sm text-base-content/60 py-4">
+            <span class="loading loading-spinner loading-sm"></span> Satınalma atfı hesaplanıyor…
+        </div>
+    }
+    else if (_salHata is not null)
+    {
+        <div class="alert alert-error text-sm">@_salHata</div>
+    }
+    else if (_sal.Count == 0)
+    {
+        <div class="text-sm text-base-content/60 py-4">Satınalmacı kadrosunda (Ayarlar) pencerede sipariş bulunamadı.</div>
+    }
+    else
+    {
+        <div class="overflow-x-auto border border-base-300 rounded-lg">
+            <table class="table table-xs table-pin-rows">
+                <thead>
+                    <tr>
+                        <th>Satınalmacı</th>
+                        <th class="text-right" title="Dış alım siparişi sayısı (eTip 0/3)">Sipariş</th>
+                        <th class="text-right" title="Kaç ayrı günde sipariş açtı">Aktif Gün</th>
+                        <th class="text-right" title="Aktif güne normalize sipariş yoğunluğu">Sipariş/Gün</th>
+                        <th class="text-right" title="Kaç ayrı tedarikçiyle çalıştı — tedarikçi seçim genişliği">Tedarikçi</th>
+                        <th class="text-right" title="Kaç ayrı ürün sipariş etti">Ürün</th>
+                        <th class="text-right" title="Toplam sipariş adedi — kıyas ölçüsü DEĞİL, ölçek göstergesi">Adet</th>
+                        <th class="text-right" title="Sipariş başına ortalama adet — parti büyüklüğü">Adet/Sipariş</th>
+                        <th class="text-right" title="Grup-içi (ilişkili taraf) sipariş oranı. Transfer fiyatlaması konusu, dış tedarikçi kararı değil.">Grup-içi %</th>
+                        
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in _sal)
+                    {
+                        <tr class="hover">
+                            <td class="font-medium text-xs whitespace-nowrap">@r.Kisi</td>
+                            <td class="text-right tabular-nums">@Num(r.Siparis)</td>
+                            <td class="text-right tabular-nums">@r.AktifGun</td>
+                            <td class="text-right tabular-nums">@r.SiparisGun.ToString("0.#", _tr)</td>
+                            <td class="text-right tabular-nums">@r.Tedarikci</td>
+                            <td class="text-right tabular-nums">@Num(r.Urun)</td>
+                            <td class="text-right tabular-nums text-base-content/50">@r.SiparisAdet.ToString("N0", _tr)</td>
+                            <td class="text-right tabular-nums">@r.AdetSiparis.ToString("N0", _tr)</td>
+                            <td class="text-right tabular-nums @(r.GrupIciOran >= 30 ? "text-info" : "text-base-content/50")">@r.GrupIciOran.ToString("0.#", _tr)</td>
+                            
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-[11px] text-base-content/50 mt-1.5">
+            <b>Kadro filtresi:</b> atıf yalnız Ayarlar'daki satınalmacı listesine yapılır (varsayılan Onurhan · Aydın).
+            Sipariş girmiş olsa da <b>hariç</b>: entegrasyon (sistem) · Samet Tılcı (mal kabul) · Erkan (IT) · Mesut/Yusuf (depo) —
+            kayıt onların kullanıcısıyla düşse bile satınalma kararı onların değil.
+            <b>Sipariş karşılanma/kapama oranı BU TABLODA YOK</b> — sipariş→irsaliye bağı (irsAyr.ehSipID) doğrulanamadı (fan-out riski + örnek satırlarda 0 karşılanma). Ayrı keşif işi: B-154.
+        </div>
+    }
 }
 
 @code {
@@ -443,6 +511,9 @@ else
     List<AtifRow> _atif = new();
     bool _atifYukleniyor;
     string? _atifHata;
+    List<SatinalmaAtifRow> _sal = new();
+    bool _salYukleniyor;
+    string? _salHata;
     string _atifPencere = "01.02.2025";
 
     /// <summary>Talep sapması sekmesi — TIKLANINCA yüklenir (208M satırlık öneri tablosuna join; ana sayfa yavaşlamaz).</summary>
@@ -459,6 +530,12 @@ else
         }
         catch (Exception ex) { _atifHata = "Talep sapması hesaplanamadı: " + ex.Message; }
         finally { _atifYukleniyor = false; StateHasChanged(); }
+
+        // Satınalma ekseni (B-153) — mağaza tablosundan AYRI sorgu, aynı sekmede alt blok.
+        _salYukleniyor = true; _salHata = null; StateHasChanged();
+        try { _sal = (await Satinalma.GetSatinalmaAtifAsync()).ToList(); }
+        catch (Exception ex) { _salHata = "Satınalma atfı hesaplanamadı: " + ex.Message; }
+        finally { _salYukleniyor = false; StateHasChanged(); }
     }
     List<FiyatSapmaRow> _fiyat = new();
     // Ölçek-uyumsuz satırlar (paket/bundle veya jenerik SKU) ana listeden AYRILIR — sayısı görünür (sessiz kırpma yok).

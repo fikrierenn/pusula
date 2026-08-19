@@ -401,3 +401,16 @@ entities:
     confidence: 1.0
     evidence: "2026-08-18 — sys.objects IN(60 ad) → 59 satır; sys.columns 2 koşuda 642 satır (400+242), sema pk/key listeleriyle karşılaştırıldı."
     last_verified: "2026-08-18"
+  # --- SİPARİŞ (dış alım kararı) — plan-34 B-153, 2026-08-19 ---
+  dbo.sip:
+    pk: eID
+    key: [eNo, eMekan, eFirma, eTip, eTarihS, eDurum, onay, gKisi, oKisi, eOto, eTarihV]
+    grain: "sipariş başlığı (satırlar dbo.sipAyr, ehID=sip.eID + ehSira)"
+    note: "eTip -> sipTip_vw (codes sip.eTip). eFirma = tedarikçi (frm). gKisi = siparişi GİREN, oKisi = onaylayan. eOto = otomatik oluşturma bayrağı (canlı pencerede tamamı 0 = elle). eDurum canlı: 0 (1.121 sipariş) · 1 (2.386) · 2 (10, iptal şüphesi) — 0/1 ayrımının anlamı TEYİT BEKLİYOR."
+    rol_haritasi: "**gKisi rolleri (kullanıcı teyidi 2026-08-19):** 48 Onurhan = SATINALMACI · 76 Aydın = SATINALMACI · 697 Samet Tılcı = MAL KABULCÜ (eTip 9 iade emri) · 1661 Erkan = IT · 25 Mesut + 104 Yusuf = DEPO · 137 entegrasyon = SİSTEM · şube/kasa/DER-IST-xx hesapları = mağaza sevk talebi (eTip 13). Dış alım atıfı YALNIZ 48+76 (Ayarlar.AlimciInsIds)."
+    iki_eksen: "**MAĞAZA ve SATINALMA AYRI HESAP VERİR** (kullanıcı direktifi 2026-08-19): mağaza 'ne istedim' (bkm.OneriSiparisTalep, öneri-sapması) · satınalma 'dış tedarikçiden ne kadar/kimden aldım' (dbo.sip eTip 0/3). Biri diğerinin yerine okunamaz; B-146 ilk halinde yalnız mağaza tarafı vardı, satınalma ekseni B-153 ile eklendi."
+    canli_olcum: "2025-02-01+ eTip 0/3: Onurhan 913 sipariş / 320 aktif gün / 94 tedarikçi / 9.568 ürün / 785 adet-sipariş / %2,1 grup-içi · Aydın 651 / 255 / 64 / 14.926 ürün / 7.131 adet-sipariş / %4 grup-içi. ⚠ Aydın'ın sipariş başına adedi Onurhan'ın 9 KATI — kategori farkı mı veri anomalisi mi AÇIK SORU (yorumlanmadan kullanılmamalı)."
+    karsilanma_uyarisi: "⚠️ SİPARİŞ KARŞILANMA/KAPAMA ORANI HENÜZ ÖLÇÜLEMİYOR: (a) sipAyr.ehSevkAdet TAMAMEN NULL (kullanılmıyor), (b) sipAyr.ehAdet = ehAdetN (birim sorunu yok), (c) irsAyr.ehSipID/ehSipSira bağı var AMA doğrulanamadı — 'satırların %85i bağlı' ilk ölçümü LEFT JOIN FAN-OUT ile şişmişti; örnek Haziran-2026 satırlarında karşılanma 0 (henüz teslim edilmemiş olabilir). Dashboard'a KONULMADI. Keşif: B-154."
+    confidence: 0.9
+    evidence: "2026-08-19 — sys.columns (40 kolon) + eTip/gKisi/eDurum canlı dağılımlar + sipAyr örnek satır incelemesi + kullanıcı rol teyidi."
+    last_verified: "2026-08-19"
