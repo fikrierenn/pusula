@@ -334,3 +334,11 @@ codes:
     confidence: 1.0
     evidence: "2026-08-19 — SELECT * FROM dbo.sipTip_vw (14 satır) + sip eTip dağılımı canlı."
     last_verified: "2026-08-19"
+  urn.KDVs / urn.KDVa:               # KDV KOD'u — YÜZDE DEĞİL (2026-08-19)
+    values: {1: "%0", 2: "%1", 6: "%10", 7: "%20"}
+    note: "**urn.KDVs (satış) / urn.KDVa (alış) bir LOOKUP KODUDUR, oran değildir.** `SP.VatPercent <> U.KDVs` şeklinde karşılaştırmak TÜM satırları 'uyumsuz' gösterir (ben 2026-08-19'da bu hataya düştüm). Doğru kontrol: kod→yüzde eşlemesi üstünden. Yüzde tablosu: dbo.kdvYuzde_vw."
+    canli_dogrulama: "18.08.2026 Sınav fişleri 721/721 satır POS↔ERP TUTARLI: kod 1→%0 (253 satır) · 2→%1 (1) · 6→%10 (172) · 7→%20 (295). Sapma YOK."
+    kdv_dagilimi_tuzagi: "Sınav/kitap ağırlıklı günlerde blended KDV %1-2 görünür — HATA DEĞİL: cironun ~%87'si %0 KDV'li süreli yayın + kitap (18.08: Sınav Okulları 1.021.517 ₺ · Hazırlık Kitapları 37.081 ₺ · Çocuk Kitabı 13.752 ₺ hepsi %0). 'KDV çok düşük' alarmı vermeden önce kategori × VatPercent kırılımına bak."
+    confidence: 0.95
+    evidence: "2026-08-19 — sorgular/2026-08-19-sinav-encore-kdv-denetim.sql blok 4-5."
+    last_verified: "2026-08-19"
