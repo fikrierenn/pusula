@@ -38,6 +38,27 @@ _BKM şema bilgisi `sema/*.yaml`'da canonical, makine-okunur tutulur. `paths:` y
 
 **Dashboard gömülü SQL ayrı:** `dashboard/Data/*.cs` içindeki sorgu KODUN evi (arşive kopyalama). Bu kural MCP-keşif/analiz SQL'i içindir.
 
+## ŞEMA GERÇEĞİ ≠ SATIR VERİSİ (20.08.2026 kullanıcı direktifi)
+
+**Sema'ya KURAL yazılır, LİSTE yazılmaz.** Satır verisi (kampüs listesi, şube adları, dönem listesi, kullanıcı/kadro listesi, ürün listesi, tedarikçi adları) **değişkendir** — açılır, kapanır, yenilenir. Sema'ya yazıldığı an bayatlamaya başlar ve sonraki oturum onu doğruymuş gibi kullanır.
+
+| ❌ Sema'ya YAZMA (satır verisi) | ✅ Sema'ya YAZ (kalıcı gerçek) |
+|---|---|
+| "14 kampüs: 42 DEMİRCİ · 43 MKP · …" | "Gerçek kampüs = `Aktif=1` + Test-prefix hariç; `SinavKampusId` tek başına ayraç DEĞİL" |
+| "Dönem 8 → 378 sipariş, 7 → 8.723 …" | "Dönem kümesi `snv.Donem`'den CANLI okunur; Siparis'te orphan DonemId var, JOIN ile düşer" |
+| "Aktif alıcılar: 48 Onurhan, 76 Aydın" | "Alıcı kadrosu Ayarlar'dan parametrik okunur; rol ayrımı `sipTip_vw` eTip ile yapılır" |
+| "Kategori 10 Hediyelik, 12 Kırtasiye…" | (kod/enum ise `codes.yaml`'a — o gerçekten sabit lookup) |
+
+**Ayrım testi:** "Bu bilgi 6 ay sonra hâlâ doğru mu?" Hayırsa → satır verisi, sema'ya girmez; kodda canlı sorgulanır.
+
+**İstisnalar (yazılabilir):**
+- **Kod/enum lookup** (`codes.yaml`) — `ehTip=4` satış, `DocumentsTypeId=3` iade: bunlar şema sözleşmesi, satır verisi değil.
+- **Büyüklük mertebesi** — "≈365K satır (2026-08)" perf kararı için faydalı; **tarih damgalı** ve "mertebe" olduğu belli olacak.
+- **Tuzağın kanıtı** — tek örnek kayıt ("StokId 227386'da iki sistemde ad farklı") desenin kanıtı; liste değil, örnek.
+- **Ölçüm bulgusu** — "1.787 sipariş hatalı ödendi (ölçüm 2026-08-19)": `evidence` alanında, tarihli, "anlık" olduğu açık.
+
+**Anti-pattern:** liste yazıp `last_verified` damgasıyla kendini güvende sanmak. Liste TTL ile korunmaz — bir kampüs kapanınca kayıt sessizce yanlış olur, kimse fark etmez.
+
 ## Confidence ölçeği
 `1.0` kalıcı (PK/FK) · `0.9-0.99` canlı %99+ eşleşme · `0.5-0.8` gözlem ama tam teyit yok · `0.3-0.5` hipotez/teyit bekliyor.
 
