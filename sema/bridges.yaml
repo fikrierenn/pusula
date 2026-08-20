@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-08-06
+updated: 2026-08-20
 
 bridges:
   # --- ERP iç (DerinSISBkm) ---
@@ -436,3 +436,31 @@ bridges:
     confidence: 1.0
     note: "Belge ayı → kapanış tarihi. Müdahale = giriş/değişim (gTarih/kTarih) > KapanisDT. Kapanış-sonrası forensic kontrolün ana köprüsü."
     last_verified: 2026-06-22
+  - id: sinav-fis-encore
+    from: BKM.snv.SinavSiparisFisEncore.InvoiceNo
+    to: EncoreMerkez.dbo.Sales.DocumentNo
+    scope: cross-db
+    confidence: 0.95
+    guard: "DISTINCT Sales.Id (9.338 FE satırı / 9.319 tekil fiş). Dönem filtresi için FE→snv.Siparis JOIN DEĞİL EXISTS (JOIN fan-out yapar)."
+    note: "Sınav siparişi ↔ POS fişi. COLLATE gerekmedi (aynı collation, canlı doğrulandı). YALNIZ SATIŞ tarafı için güvenli — iade için sales-iade-linked kullan (FE kısmi iadeleri kaydetmiyor, %43 kayıp)."
+    evidence: "2026-08-19 — 9.319 fiş / 240.176 satır; header↔satır mutabakatı 0 sapma."
+  - id: sales-iade-linked
+    from: EncoreMerkez.dbo.Sales.LinkedDocumentId
+    to: EncoreMerkez.dbo.Sales.Id
+    scope: encoremerkez
+    confidence: 1.0
+    guard: "İade tarafı DocumentsTypeId=3; orijinal tarafı DocumentsTypeId=8 (Sınav) veya 1 (perakende). 1:N — aynı orijinale birden çok iade olabilir (Sales.Id 85249 → 92725 + 152373)."
+    note: "**İade → orijinal fiş zinciri.** Sınav tarafında 171/171 bağlı, orijinalin SiparisKod'u iade fişiyle aynı. Index: IX_Sales_LinkedDocumentId_SalesType. ⚠ Sales.RefundReasonId header'da HER ZAMAN 0 — sebep SalesProducts.RefundReasonId / SalesProductCampaigns zincirinde. ⚠ Perakende genelinde 33.295 iade fişinin 13.613'ü (2.726.203,86 TL) LinkedDocumentId=0 → zincir kurulamıyor (%41)."
+    satir_eslesme: "İade satırı ↔ orijinal satır anahtarı = LinkedDocumentId + ProductsId + TotalPrice + Amount. **Sequence EŞLEŞMEZ** (iade fişi kendi sıra numarasını kullanır)."
+    evidence: "2026-08-19 — sorgular/2026-08-19-sinav-iade-zinciri.sql; 298 iade fişi %100 bağlı, satır eşleşmesi 92725↔85249 kuruşu kuruşuna."
+  - id: siparisdetay-sales
+    from: BKM.snv.SiparisDetay.FisId
+    to: EncoreMerkez.dbo.Sales.DocumentNo
+    then:
+      from: BKM.snv.SiparisDetay.FisIdSiraNo
+      to: EncoreMerkez.dbo.SalesProducts.Sequence
+    scope: cross-db
+    confidence: 0.85
+    guard: "Yalnız OdemesiYapildi=1 kalemlerde dolu (ödenmemişte NULL). SalesProducts tarafında IsValid=1."
+    note: "Sipariş KALEMİ → fiş SATIRI. Ödenen kalemin TL karşılığını verir (SiparisDetay.BirimFiyat NULL olduğu için tek yol). Ping-pong sonrası genelde son geçerli fişe repoint edilir ama her vakada değil (3812025233328 senkron kopukluğu)."
+    evidence: "2026-08-19 — SiparisId 19381 (3812025195916) 26 kalemi 17561337840006'ya bağlı; 252 kalemde FisId boş."

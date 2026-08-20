@@ -109,9 +109,8 @@
                             <div class="text-[11px] @(o.Celiski > 0 ? "text-error font-semibold" : "text-base-content/40")">
                                 @(o.Celiski > 0 ? $"{Num(o.Celiski)} sipariş bayrağı yanlış" : "bayrak tutarlı")
                             </div>
-                            <div class="text-[11px] text-base-content/40">
-                                @Tl(o.NetKdvHaric) <span class="opacity-70">(sipariş bazlı)</span>
-                            </div>
+                            @* Ciro burada GÖSTERİLMEZ: bu sorgunun kapsamı sipariş-bazlı (FE-only, dönem-üstü)
+                               → KPI/kova ciro rakamıyla 9.228 ₺ sapıyor. Tek ciro kaynağı KPI şeridi. *@
                         </div>
                     </div>
                 }

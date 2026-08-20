@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-08-17
+updated: 2026-08-20
 
 databases:
   DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -425,3 +425,74 @@ entities:
     confidence: 0.9
     evidence: "2026-08-19 — sys.columns (40 kolon) + eTip/gKisi/eDurum canlı dağılımlar + sipAyr örnek satır incelemesi + kullanıcı rol teyidi."
     last_verified: "2026-08-19"
+
+  # --- SINAV OKULLARI (BKM.snv şeması) — plan-35 B-159, 2026-08-19/20 keşfi ---
+  BKM.snv.Siparis:
+    pk: SiparisId
+    key: [SiparisKod, OkulId, SinifId, CariId, OgrenciId, Tarih, DonemId, Hazirlandi, Odendi, IrsaliyeId, GuncellemeTarih]
+    grain: "öğrenci-dönem siparişi (kalemler snv.SiparisDetay)"
+    satir_sayisi: "27.824 (2026-08-19)"
+    donem_haritasi: "**DonemId HARDCODE YASAK.** Canlı: 8 -> 378 sipariş (22.07.2026+, aktif) · 7 -> 8.723 (06.08.2025-19.04.2026) · 6 -> 8.927 (2024-25) · 5 -> 9.794 (2023-24) · 1 -> 13 · -7 -> 15 · -8 -> 1. ⚠ DonemId=8 INNER JOIN geçmişin TAMAMINI siler: fiş tablosunda 9.319 fişin 8.998'i dönem 7/-7'de. Negatif ID'ler (-7/-8) ve Dönem 1 muhtemel test/hata kaydı — TEYİT BEKLİYOR."
+    odendi_tuzagi: "⚠️ **Odendi bit KISMİYİ TAM SANIYOR + TARİHÇE TUTMAZ.** Kalem kalem ödenen siparişte (28 kalemin 26'sı alınmış) flag 1 kalıyor. Dönem 7+8'de **1.787 sipariş / 6.475 kalem hatalı ödendi** (%20 sipariş). GuncellemeTarih tek alan, üzerine yazılıyor — 5 hareketli siparişte NULL bile olabiliyor. DOĞRU DURUM SiparisDetay.OdemesiYapildi'dan TÜRETİLİR; flag yalnız denetim kolonu."
+    pingpong: "Aynı SiparisKod üzerinde satış-iade-satış dizisi normal: 3812025229833 aynı Z'de 9 dakikada 3 satış + 2 iade (net 50.348 TL, brüt 151.044 TL). Gruplama anahtarı SiparisKod — yeniden kesilen satış fişinin LinkedDocumentId'si 0, öncekiyle bağlı DEĞİL. Ciro daima net; fiş sayısı COUNT(DISTINCT SiparisKod) (tip-8 fiş 9.154 iken gerçek sipariş 9.006)."
+    confidence: 0.95
+    evidence: "2026-08-19 — sorgular/2026-08-19-sinav-odeme-durumu-pingpong.sql + -sinav-odeme-kismi-model.sql; canlı dönem dağılımı + 1.787 çelişki ölçümü."
+    last_verified: "2026-08-20"
+  BKM.snv.SiparisDetay:
+    pk: SiparisDetayId
+    key: [SiparisId, StokId, Adet, KasaAdet, BirimFiyat, Alindi, OdemesiYapildi, OkulTeslimat, Iptal, Hazirlandi, FisId, FisIdSiraNo, FisAciklama]
+    grain: "sipariş kalemi (SiparisId × StokId)"
+    satir_sayisi: "365.444 (2026-08-19)"
+    odeme_modeli: "**ÖDEME KALEM BAZLI** — OdemesiYapildi bit. Sipariş durumu: ödenmiş=0 -> HİÇ ÖDENMEDİ · ödenmemiş=0 -> TAM ÖDENDİ · ikisi de >0 -> KISMİ. (Iptal=1 paydadan düşer.) Dönem 7+8: TAM 7.224 · KISMİ 1.791 · HİÇ 65 sipariş. Kısmilik İADEDEN GELMİYOR — 1.745/1.791'inde hiç iade yok; sebep kalemin hiç kasadan geçmemesi (KasaAdet=0, FisId NULL, Hazirlandi=0)."
+    birimfiyat_tuzagi: "⚠️ **BirimFiyat PRATİKTE NULL** — dönem 7-8'de 112.499 ödenmiş kalemin toplam beklenen tutarı yalnız 599 TL. Tutar için BKM.snv.SinavUrun.Fiyat kullanılır."
+    fis_koprusu: "FisId = EncoreMerkez.Sales.DocumentNo · FisIdSiraNo = EncoreMerkez.SalesProducts.Sequence (bridges siparisdetay-sales). Ping-pong sonrası genelde SON geçerli fişe repoint ediliyor ama HER vakada değil: 3812025233328'de fişte 40.828,10 TL geçmiş, SiparisDetay'da 1 kalem ödenmiş ve hiçbir kalemde FisId yok (senkron kopukluğu)."
+    fanout: "⚠️ (SiparisId, StokId) çoklu satır dönebilir → LEFT JOIN yerine **OUTER APPLY TOP 1**. 18.08.2026'da fan-out yoktu (721=721 tekil) ama garanti değil."
+    confidence: 0.95
+    evidence: "2026-08-19 — sorgular/2026-08-19-sinav-odeme-kismi-model.sql (5 blok); 3x2 matris + BirimFiyat NULL ölçümü + FisId köprü doğrulaması."
+    last_verified: "2026-08-20"
+  BKM.snv.SinavUrun:
+    pk: StokId
+    key: [StokKod, Barkod, StokAd, Marka, Kategori, Kdv, Fiyat, OkulTeslim, TeslimDonem, BirinciDonem, IkinciDonem, Aktif]
+    grain: "Sınav ürün kartı (dönem-bağımsız)"
+    note: "**Fiyat = eksik/ödenmemiş kalem tutarının KANONİK KAYNAĞI** (SiparisDetay.BirimFiyat NULL). Kdv alanı incelenen 18 üründe 0 (kitap/set = %0 KDV) → tutarlar KDV'siz."
+    ad_uyusmazligi: "⚠️ **AYNI StokId, iki sistemde FARKLI AD.** 227386: urn.stkAd='Duyun Sesimi' ama SinavUrun.StokAd='P4C 6 YAŞ DÜŞÜNME KUTUSU VE HİKAYE VE MATERYAL SET' (3.950 TL eğitim seti, kitap değil). 1546676: 'BÇÜ COSMOLAND 36-48 AY (2 KİTAP SET)' vs 'BÇÜ 3-4 YAŞ COSMOLAND EĞİTİM SETİ İNGİLİZCE'. Rapor hangi kaynaktan isim çekerse farklı görünür — Sınav raporlarında SinavUrun.StokAd tercih (iş anlamı doğru), fallback urn.stkAd."
+    confidence: 0.9
+    evidence: "2026-08-19 — 18 eksik-kalem ürününün tamamı canlı okundu (Aktif=1, BirinciDonem=1, IkinciDonem=1, TeslimDonem=0); eksik tutar 64.521,90 TL bu alandan hesaplandı."
+    last_verified: "2026-08-20"
+  BKM.snv.SinifKitap:
+    pk: SkId
+    key: [SinifId, StokId, DonemId, FisteGoster]
+    grain: "sınıf × ürün × dönem (kitap listesi). Okul-özel varyant: snv.SinifOkulKitap (OkulId+SinifId+StokId)"
+    fistegoster_curutmesi: "⚠️ **FisteGoster ÖDEME DAVRANIŞINI AÇIKLAMIYOR — hipotez ÇÜRÜTÜLDÜ (2026-08-19).** 18 eksik ürünün hepsinde FisteGoster=0 görülünce 'fişte gösterilmiyor, o yüzden ödenmiyor' sanıldı. Dönem 8 çapraz tablo: FisteGoster=0 olan 2.183 kalemin **1.947'si ÖDENMİŞ** (0/0: 236 · 0/1: 1.947 · 1/0: 163 · 1/1: 1.097). Bayrak dönem 8'in baskın/varsayılan değeri, ayırt edici değil."
+    kapsam_kontrolu: "Eksik kalemler sınıf listesinden ÇIKARILMAMIŞ: 18 ürünün tamamı dönem 8'de kayıtlı ve doğru sınıfa bağlı. 'Pasife alındı / sonraki döneme bırakıldı' açıklaması geçersiz."
+    veri_kirliligi: "Canlıda TEST kaydı: MOMO (136080) için SinifId 39 = 'TEST 21.06sınıfı', FisteGoster=1. Temizlenmeli."
+    confidence: 0.9
+    evidence: "2026-08-19 — 22 kayıt canlı okundu (dönem 8) + FisteGoster × OdemesiYapildi 3.443 kalemlik çapraz tablo."
+    last_verified: "2026-08-20"
+  BKM.snv.SinavSiparisFisEncore:
+    pk: Id
+    key: [SiparisKod, InvoiceNo, InvoiceTotal, InvoiceDate, InvoiceDateOnly]
+    grain: "sipariş ↔ POS fişi eşleşmesi (InvoiceNo = EncoreMerkez.Sales.DocumentNo)"
+    satir_sayisi: "9.344 satır / 9.337 tekil InvoiceNo / 9.319 tekil Sales.Id (29.07.2025-19.08.2026)"
+    iade_kapsam_tuzagi: "⚠️ **İADELERİN %43'ÜNÜ KAÇIRIYOR.** Sınav fişine bağlı 298 iade fişinin yalnız 171'i FE'de (6.508.993,34 TL); 127'si FE DIŞINDA (371.700,51 TL). Desen: FE **sipariş-seviyesi TAM iade/iptali** kaydeder (171'in 143'ü tam); **kalem-bazlı KISMİ iade FE'ye yazılmaz** (127'nin yalnız 2'si tam) — perakende iade fişi olarak kesilir, bir kısmı GTY… e-fatura formatında, BAŞKA MAĞAZADA (StoresId 2/3) ve satıştan AYLAR sonra. **Doğru iade köprüsü Sales.LinkedDocumentId** (bridges sales-iade-linked). Net ciro = FE satışları − LinkedDocumentId iadeleri; iadeyi FE'den saymak ciroyu yüksek gösterir (dönem 8'de 9.228,00 TL)."
+    invoicetotal_tuzagi: "⚠️ InvoiceTotal İADE kaydında da POZİTİF. Toplanırsa ping-pong siparişinde 5 kayıt × 50.348 = 251.740 TL çıkar, gerçek 50.348. **Tutar daima Sales'ten, iade sign'lı.**"
+    belge_tipi: "Kapsamdaki fişler: tip 8 Sınav Okulları 9.154 · tip 3 İade 171 · tip 1 Fiş 1. DISTINCT Sales.Id gerekli (9.338 satır / 9.319 tekil fiş)."
+    confidence: 0.95
+    evidence: "2026-08-19 — sorgular/2026-08-19-sinav-iade-zinciri.sql (5 blok); 298 iade fişi LinkedDocumentId ile %100 bağlı, FE kapsamı 171/298."
+    last_verified: "2026-08-20"
+  BKM.snv.SiparisFis:
+    pk: Id
+    key: [SiparisId, FisBelgeId, FisTip, KONTROL_TARIH, DerinsisId]
+    grain: "sipariş ↔ DerinSIS e-belge (Encore ÖNCESİ/paralel dönem defteri)"
+    note: "19.444 satır · 01.08.2023-20.07.2025 · FisTip: EAR e-arşiv 17.538 · EFA e-fatura 1.397 · GPS 488 · FIS 14 · FAT 7. FisBelgeId GUID formatı (PD00000420-…), Encore DocumentNo DEĞİL. **Dönem 5-6 kapsamı** — dönem 7-8 (Encore) için SinavSiparisFisEncore kullanılır. İki tablo KARIŞTIRILMAZ."
+    confidence: 0.85
+    evidence: "2026-08-19 — FisTip dağılımı + örnek satırlar canlı okundu."
+    last_verified: "2026-08-20"
+  BKM.snv.Okul:
+    pk: OkulId
+    key: [OkulAd, Il, Ilce, Aktif, SinavKampusId]
+    grain: "kampüs"
+    note: "10 aktif kampüs (2026-08): 42 DEMİRCİ (Nilüfer) · 43 MKP · 44 DOĞU (Kestel) · 45 ÖZLÜCE · 46 GEMLİK · 47 KUZEY (Osmangazi) · 48 BADEMLİ · 49 BALAT · 52 İNEGÖL · 58 NİLÜFER B.Ç.Ü. Sınıf: snv.Sinif (SinifNo/SinifAd — 'BÇU 3-4', 'BÇU 6', '2'..'8', '4 NİLÜFER'). Öğrenci: snv.Ogrenci (OgrenciAdSoyad/OgrenciTelefon/VeliId) — **KVKK: rapora ad/telefon YAZILMAZ**, kampüs+sınıf+SiparisKod ile aksiyon alınır."
+    confidence: 0.9
+    evidence: "2026-08-19 — 10 kampüs + 7 sınıf canlı okundu."
+    last_verified: "2026-08-20"
