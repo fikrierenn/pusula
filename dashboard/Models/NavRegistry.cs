@@ -43,6 +43,7 @@ public static class NavRegistry
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),
         new NavItem("sadakat", "Sadakat", "heart"),
         new NavItem("tahmin", "Hedef Tahmin", "sparkles"),
+        new NavItem("sinav", "Sınav Okulları", "graduation-cap"),
         new NavItem("satinalma/analiz", "Alım Analizi", "shopping-bag", Section: "SATINALMA"),
         new NavItem("bulunurluk", "Bulunurluk", "store", Section: "SATINALMA"),
         new NavItem("asistan", "Genius", "message-square", Section: "ASİSTAN"),

@@ -1,0 +1,343 @@
+@page "/sinav"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject SinavQueries SinavQ
+@inject ILogger<Sinav> Logger
+
+<PageTitle>Sınav Okulları — BKM GM</PageTitle>
+
+<div class="space-y-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+                <i data-lucide="graduation-cap" class="w-6 h-6 text-primary"></i>Sınav Okulları
+            </h1>
+            <p class="text-sm text-base-content/60 mt-1">
+                Sipariş → fiş → tahsilat zinciri. Tüm tutarlar <span class="font-semibold">KDV hariç</span>.
+                İade <span class="font-semibold">LinkedDocumentId</span> zincirinden düşülür (sipariş fiş tablosu kısmi iadeleri kaydetmiyor).
+            </p>
+        </div>
+        @if (_donemler.Count > 0)
+        {
+            <select class="select select-sm select-bordered" @onchange="DonemDegisti" disabled="@_yukleniyor">
+                <option value="">Tüm dönemler</option>
+                @foreach (var d in _donemler)
+                {
+                    <option value="@d.DonemId" selected="@(_donemId == d.DonemId)">@d.Etiket · @Num(d.Siparis) sipariş</option>
+                }
+            </select>
+        }
+    </div>
+
+    @if (_yukleniyor)
+    {
+        <div class="flex items-center gap-2 text-base-content/60 py-8 justify-center">
+            <span class="loading loading-spinner"></span> Hesaplanıyor…
+        </div>
+    }
+    else if (_hata is not null)
+    {
+        <div class="alert alert-error"><i data-lucide="alert-triangle" class="w-5 h-5"></i>@_hata</div>
+    }
+    else if (_kpi is null || _kpi.Siparis == 0)
+    {
+        <div class="alert alert-info"><i data-lucide="info" class="w-5 h-5"></i>Bu dönemde sipariş bulunamadı.</div>
+    }
+    else
+    {
+        @* ══ 1 · SEZON KPI ══ *@
+        <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+                <div class="text-xs text-base-content/50">Net ciro (KDV hariç)</div>
+                <div class="text-lg font-bold tabular-nums whitespace-nowrap text-primary">@Tl(_kpi.NetKdvHaric)</div>
+                <div class="text-[11px] text-base-content/40">brüt @Tl(_kpi.BrutKdvDahil) · KDV dahil</div>
+            </div></div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+                <div class="text-xs text-base-content/50">Sipariş</div>
+                <div class="text-lg font-bold tabular-nums whitespace-nowrap">@Num(_kpi.Siparis)</div>
+                <div class="text-[11px] text-base-content/40">@Num(_kpi.SatisFis) satış fişi</div>
+            </div></div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+                <div class="text-xs text-base-content/50">Ort. sepet</div>
+                <div class="text-lg font-bold tabular-nums whitespace-nowrap">@Tl(_kpi.OrtSepet)</div>
+                <div class="text-[11px] text-base-content/40">sipariş başına</div>
+            </div></div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+                <div class="text-xs text-base-content/50">Yan ürün payı</div>
+                <div class="text-lg font-bold tabular-nums whitespace-nowrap text-info">@Yuzde(_attach?.SiparisDisiPayYuzde ?? 0)</div>
+                <div class="text-[11px] text-base-content/40">sipariş dışı (kıyafet dahil)</div>
+            </div></div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+                <div class="text-xs text-base-content/50">İade oranı</div>
+                <div class="text-lg font-bold tabular-nums whitespace-nowrap @(_kpi.IadeOraniYuzde >= 3 ? "text-error" : "text-success")">@Yuzde(_kpi.IadeOraniYuzde)</div>
+                <div class="text-[11px] text-base-content/40">@Num(_kpi.IadeFis) fiş · @Tl(_kpi.IadeKdvHaric)</div>
+            </div></div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+                <div class="text-xs text-base-content/50">Kısmi sipariş</div>
+                <div class="text-lg font-bold tabular-nums whitespace-nowrap @(_kpi.KismiSiparis > 0 ? "text-warning" : "")">@Num(_kpi.KismiSiparis)</div>
+                <div class="text-[11px] text-base-content/40">kalemi eksik ödenmiş</div>
+            </div></div>
+        </div>
+
+        @* ══ 2 · ÖDEME SAĞLIK ══ *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <i data-lucide="wallet" class="w-4 h-4 text-primary"></i>Ödeme Sağlığı
+                <span class="text-xs text-base-content/50 font-normal">(kalem bazlı — <code>SiparisDetay.OdemesiYapildi</code>)</span>
+            </h2>
+            @if (_kpi.CeliskiSiparis > 0)
+            {
+                <div class="alert alert-error mb-2 py-2">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    <span><span class="font-bold">@Num(_kpi.CeliskiSiparis) sipariş</span> yanlış işaretli —
+                    <code>Siparis.Odendi</code> bayrağı kalem durumuyla çelişiyor. Bayrak kısmi ödemeyi tam sanıyor;
+                    durum bu sayfada kalemlerden türetilir.</span>
+                </div>
+            }
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                @foreach (var o in _odeme.OrderBy(x => Sira(x.Durum)))
+                {
+                    <div class="card bg-base-100 border @(o.Durum == "KISMI_ODENDI" && o.Siparis > 0 ? "border-warning" : "border-base-300")">
+                        <div class="card-body p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="font-semibold">@o.Etiket</span>
+                                <span class="badge @DurumCls(o.Durum)">@Num(o.Siparis)</span>
+                            </div>
+                            <div class="text-xs text-base-content/50">
+                                @Num(o.Kalem) kalem · @Num(o.OdenmemisKalem) ödenmemiş
+                            </div>
+                            <div class="text-[11px] @(o.Celiski > 0 ? "text-error font-semibold" : "text-base-content/40")">
+                                @(o.Celiski > 0 ? $"{Num(o.Celiski)} sipariş bayrağı yanlış" : "bayrak tutarlı")
+                            </div>
+                            <div class="text-[11px] text-base-content/40">
+                                @Tl(o.NetKdvHaric) <span class="opacity-70">(sipariş bazlı)</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ══ 3 · KOVA / ATTACH ══ *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <i data-lucide="shopping-basket" class="w-4 h-4 text-primary"></i>Sepet Kırılımı ve Ek Ciro
+                <span class="text-xs text-base-content/50 font-normal">(ayraç sipariş kapsamı — kategori değil)</span>
+            </h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div class="lg:col-span-2 overflow-x-auto border border-base-300 rounded-lg">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th>Kova</th><th class="text-right">Satır</th><th class="text-right">Adet</th>
+                            <th class="text-right">KDV hariç</th><th class="text-right">Pay</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var k in _kova.OrderByDescending(x => x.NetKdvHaric))
+                        {
+                            <tr class="hover">
+                                <td class="font-medium"><span class="badge badge-sm @KovaCls(k.Kova)">@k.Etiket</span></td>
+                                <td class="text-right tabular-nums">@Num(k.Satir)</td>
+                                <td class="text-right tabular-nums">@Num((int)k.Adet)</td>
+                                <td class="text-right tabular-nums font-semibold">@Tl(k.NetKdvHaric)</td>
+                                <td class="text-right tabular-nums">@Yuzde(k.PayYuzde)</td>
+                            </tr>
+                        }
+                        </tbody>
+                        <tfoot><tr class="font-semibold">
+                            <td>Toplam</td>
+                            <td class="text-right tabular-nums">@Num(_kova.Sum(x => x.Satir))</td>
+                            <td></td>
+                            <td class="text-right tabular-nums">@Tl(_kova.Sum(x => x.NetKdvHaric))</td>
+                            <td class="text-right">100%</td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+                @if (_attach is not null)
+                {
+                    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4 gap-1">
+                        <div class="text-xs text-base-content/50">Ek satış (attach)</div>
+                        <div class="text-2xl font-bold tabular-nums text-info">@Yuzde(_attach.AttachYuzde)</div>
+                        <div class="text-xs text-base-content/60">
+                            @Num(_attach.YanUrunluFis) / @Num(_attach.Fis) fişte sipariş dışı ürün
+                        </div>
+                        <div class="divider my-1"></div>
+                        <div class="flex justify-between text-xs"><span class="text-base-content/60">Yan ürün cirosu</span><span class="tabular-nums font-medium">@Tl(_attach.YanKdvHaric)</span></div>
+                        <div class="flex justify-between text-xs"><span class="text-base-content/60">Fiş başı yan ciro</span><span class="tabular-nums font-medium">@Tl(_attach.FisBasiYanCiro)</span></div>
+                        <div class="flex justify-between text-xs"><span class="text-base-content/60">Kıyafetli fiş</span><span class="tabular-nums font-medium">@Num(_attach.KiyafetliFis)</span></div>
+                    </div></div>
+                }
+            </div>
+        </div>
+
+        @* ══ 4 · EKSİK KALEM ══ *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <i data-lucide="clipboard-list" class="w-4 h-4 text-error"></i>Eksik Kalem
+                <span class="text-xs text-base-content/50 font-normal">(kısmi siparişlerde ödenmemiş kalemler)</span>
+            </h2>
+            @if (_eksik.Count == 0)
+            {
+                <div class="alert alert-success py-2"><i data-lucide="check" class="w-5 h-5"></i>Kısmi siparişte eksik kalem yok.</div>
+            }
+            else
+            {
+                <div class="flex flex-wrap gap-3 mb-2 text-xs">
+                    <span class="badge badge-error badge-outline">Tedarik: @Num(_eksik.Count(x => !x.StokVar)) kalem · @Tl(_eksik.Where(x => !x.StokVar).Sum(x => x.Tutar))</span>
+                    <span class="badge badge-warning badge-outline">Tahsilat: @Num(_eksik.Count(x => x.StokVar)) kalem · @Tl(_eksik.Where(x => x.StokVar).Sum(x => x.Tutar))</span>
+                    <span class="badge badge-neutral">Toplam @Tl(_eksik.Sum(x => x.Tutar))</span>
+                </div>
+                <div class="text-[11px] text-base-content/50 mb-2">
+                    Tutar <code>SinavUrun.Fiyat</code>'tan (<code>SiparisDetay.BirimFiyat</code> boş). Stok = İst.Yolu mağazası;
+                    <span class="text-error">stok yok</span> ise tedarik açığı, <span class="text-warning">stok var</span> ise kasadan geçmemiş.
+                </div>
+                <div class="overflow-x-auto border border-base-300 rounded-lg">
+                    <table class="table table-xs">
+                        <thead><tr>
+                            <th>Sipariş</th><th>Kampüs</th><th>Sınıf</th><th>Eksik ürün</th>
+                            <th class="text-center">Kalem</th><th class="text-right">Adet</th>
+                            <th class="text-right">Tutar</th><th class="text-right">Stok</th><th>Sebep</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var e in _eksik.Take(200))
+                        {
+                            <tr class="hover">
+                                <td class="tabular-nums text-[11px]">@e.SiparisKod<span class="block text-base-content/40">@e.SiparisTarih?.ToString("dd.MM.yyyy")</span></td>
+                                <td class="text-xs">@e.Kampus</td>
+                                <td class="text-xs">@e.Sinif</td>
+                                <td class="max-w-[240px] truncate" title="@e.Urun">@e.Urun<span class="block text-[10px] text-base-content/40">@e.Kategori</span></td>
+                                <td class="text-center tabular-nums text-[11px]">@e.OdenmisKalem/@e.Kalem</td>
+                                <td class="text-right tabular-nums">@Num(e.Adet)</td>
+                                <td class="text-right tabular-nums font-semibold">@Tl(e.Tutar)</td>
+                                <td class="text-right tabular-nums @(e.StokVar ? "text-success" : "text-error font-semibold")">@Num((int)e.StokIstYolu)</td>
+                                <td><span class="badge badge-sm @(e.StokVar ? "badge-warning" : "badge-error")">@e.Sebep</span></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (_eksik.Count > 200)
+                {
+                    <div class="text-[11px] text-base-content/50 mt-1">İlk 200 satır gösteriliyor (toplam @Num(_eksik.Count)).</div>
+                }
+            }
+        </div>
+
+        @* ══ 5 · İADE RADARI ══ *@
+        <div>
+            <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <i data-lucide="rotate-ccw" class="w-4 h-4 text-error"></i>İade Radarı
+                <span class="text-xs text-base-content/50 font-normal">(kasa düzeltmesi / gerçek iade ayrımı)</span>
+            </h2>
+            @if (_iade.Count == 0)
+            {
+                <div class="alert alert-success py-2"><i data-lucide="check" class="w-5 h-5"></i>Bu dönemde iade yok.</div>
+            }
+            else
+            {
+                <div class="flex flex-wrap gap-3 mb-2 text-xs">
+                    <span class="badge badge-neutral">@Num(_iade.Count) iade fişi · @Tl(_iade.Sum(x => x.IadeKdvHaric))</span>
+                    <span class="badge badge-outline">Kasa düzeltmesi: @Num(_iade.Count(x => x.Yorum == "Kasa düzeltmesi"))</span>
+                    <span class="badge badge-error badge-outline">Gerçek iade: @Num(_iade.Count(x => x.Yorum == "Gerçek iade"))</span>
+                    <span class="badge badge-warning badge-outline">Fiş tablosunda yok: @Num(_iade.Count(x => x.FeDurumu == "FE dışında"))</span>
+                </div>
+                <div class="overflow-x-auto border border-base-300 rounded-lg">
+                    <table class="table table-xs">
+                        <thead><tr>
+                            <th>İade tarihi</th><th>Belge / Z / Kasa</th><th>Sipariş</th>
+                            <th class="text-right">Gün</th><th class="text-right">İade (KDV hariç)</th>
+                            <th class="text-right">Orijinal</th><th>Tip</th><th>Yorum</th><th>Kayıt</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var i in _iade.Take(150))
+                        {
+                            <tr class="hover">
+                                <td class="tabular-nums text-[11px]">@i.IadeTarih.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td class="text-[11px]">@i.IadeBelgeNo<span class="block text-base-content/40">Z @i.Zno · Kasa @i.Kasa</span></td>
+                                <td class="tabular-nums text-[11px]">@i.SiparisKod</td>
+                                <td class="text-right tabular-nums">@i.GunFarki</td>
+                                <td class="text-right tabular-nums font-semibold text-error">@Tl(i.IadeKdvHaric)</td>
+                                <td class="text-right tabular-nums text-base-content/60">@Tl(i.OrijinalKdvDahil)</td>
+                                <td><span class="badge badge-sm @(i.IadeTipi == "TAM" ? "badge-error" : "badge-warning")">@i.IadeTipi</span></td>
+                                <td class="text-xs @(i.Yorum == "Kasa düzeltmesi" ? "text-base-content/50" : "text-error")">@i.Yorum</td>
+                                <td class="text-[11px] text-base-content/50">@i.FeDurumu</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    int? _donemId;
+    List<SinavDonem> _donemler = new();
+    SinavSezonKpi? _kpi;
+    SinavAttach? _attach;
+    List<SinavOdemeDurum> _odeme = new();
+    List<SinavKova> _kova = new();
+    List<SinavEksikKalem> _eksik = new();
+    List<SinavIade> _iade = new();
+    bool _yukleniyor = true;
+    string? _hata;
+
+    static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    static string Num(int n) => n.ToString("N0", Tr);
+    static string Tl(decimal v) => v.ToString("N0", Tr) + " ₺";
+    static string Yuzde(decimal v) => v.ToString("N1", Tr) + "%";
+    static int Sira(string durum) => durum switch { "TAM_ODENDI" => 0, "KISMI_ODENDI" => 1, _ => 2 };
+    static string DurumCls(string durum) => durum switch
+    {
+        "TAM_ODENDI" => "badge-success",
+        "KISMI_ODENDI" => "badge-warning",
+        _ => "badge-error",
+    };
+    static string KovaCls(string kova) => kova switch
+    {
+        "PAKET" => "badge-primary",
+        "KIYAFET" => "badge-info",
+        _ => "badge-warning",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _donemler = (await SinavQ.GetDonemlerAsync()).ToList();
+        _donemId = _donemler.Count > 0 ? _donemler[0].DonemId : null;   // en güncel dönem
+        await Yukle();
+    }
+
+    async Task DonemDegisti(ChangeEventArgs e)
+    {
+        _donemId = int.TryParse(e.Value?.ToString(), out var d) ? d : null;
+        await Yukle();
+    }
+
+    async Task Yukle()
+    {
+        _yukleniyor = true;
+        _hata = null;
+        try
+        {
+            var tKpi = SinavQ.GetSezonKpiAsync(_donemId);
+            var tOdeme = SinavQ.GetOdemeDurumAsync(_donemId);
+            var tKova = SinavQ.GetKovaAsync(_donemId);
+            var tAttach = SinavQ.GetAttachAsync(_donemId);
+            var tEksik = SinavQ.GetEksikKalemAsync(_donemId);
+            var tIade = SinavQ.GetIadeAsync(_donemId);
+            await Task.WhenAll(tKpi, tOdeme, tKova, tAttach, tEksik, tIade);
+            _kpi = await tKpi;
+            _odeme = (await tOdeme).ToList();
+            _kova = (await tKova).ToList();
+            _attach = await tAttach;
+            _eksik = (await tEksik).ToList();
+            _iade = (await tIade).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Sınav paneli yüklenemedi (dönem {D})", _donemId);
+            _hata = "Sınav verileri hesaplanamadı. Lütfen tekrar deneyin.";
+        }
+        finally { _yukleniyor = false; }
+    }
+}
