@@ -492,7 +492,8 @@ entities:
     pk: OkulId
     key: [OkulAd, Il, Ilce, Aktif, SinavKampusId]
     grain: "kampüs"
-    note: "10 aktif kampüs (2026-08): 42 DEMİRCİ (Nilüfer) · 43 MKP · 44 DOĞU (Kestel) · 45 ÖZLÜCE · 46 GEMLİK · 47 KUZEY (Osmangazi) · 48 BADEMLİ · 49 BALAT · 52 İNEGÖL · 58 NİLÜFER B.Ç.Ü. Sınıf: snv.Sinif (SinifNo/SinifAd — 'BÇU 3-4', 'BÇU 6', '2'..'8', '4 NİLÜFER'). Öğrenci: snv.Ogrenci (OgrenciAdSoyad/OgrenciTelefon/VeliId) — **KVKK: rapora ad/telefon YAZILMAZ**, kampüs+sınıf+SiparisKod ile aksiyon alınır."
+    note: "**14 gerçek kampüs** (Aktif=1 + SinavKampusId DOLU): 42 DEMİRCİ (Nilüfer) · 43 MKP · 44 DOĞU (Kestel) · 45 ÖZLÜCE · 46 GEMLİK · 47 KUZEY (Osmangazi) · 48 BADEMLİ · 49 BALAT · 50 KARAMAN · 51 İHSANİYE · 52 İNEGÖL · 53 KESTEL-2 · 54 ACIBADEM · 55 19 MAYIS · + 58 NİLÜFER B.Ç.Ü (SinavKampusId NULL ama GERÇEK — BÇÜ ayrı program). Sınıf: snv.Sinif (SinifNo/SinifAd — 'BÇU 3-4', 'BÇU 6', '2'..'8', '4 NİLÜFER', '11.FEN', '12.FEN'). Öğrenci: snv.Ogrenci (OgrenciAdSoyad/OgrenciTelefon/VeliId) — **KVKK: rapora ad/telefon YAZILMAZ**, kampüs+sınıf+SiparisKod ile aksiyon alınır."
+    veri_kirliligi: "41 okul kaydından 24'ü `Aktif=0` + adı 'Test' prefix (zararsız). ⚠ AMA **56 'deneme okul1'** ve **57 'bkm sınıf'** `Aktif=1` — CANLI ÇÖP (SinavKampusId NULL, dönem −7 test siparişleri bu okullarda). Gerçek-kampüs filtresi: `Aktif=1 AND OkulAd NOT LIKE 'Test%' AND OkulId NOT IN (56,57)`. `SinavKampusId IS NOT NULL` tek başına YETMEZ — 58'i de dışlar. ⚠ Bu kayıt 2026-08-19'da '10 aktif kampüs' diye yazılmıştı, YANLIŞTI (yalnız dönem-8'de siparişi olanlar sayılmış); 2026-08-20 düzeltildi."
     confidence: 0.9
     evidence: "2026-08-19 — 10 kampüs + 7 sınıf canlı okundu."
     last_verified: "2026-08-20"

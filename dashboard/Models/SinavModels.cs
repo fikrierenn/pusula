@@ -148,16 +148,29 @@ public sealed class SinavIade
         GunFarki == 0 && Zno == Zno_Orijinal ? "Kasa düzeltmesi" : "Gerçek iade";
 }
 
-/// <summary>Sınav dönemi (dropdown). <c>DonemId</c> hardcode YASAK — 8 sabitlemek geçmişteki
-/// 8.998 fişi görünmez yapar (dönem 7 = 06.08.2025–19.04.2026).</summary>
+/// <summary>Sınav dönemi (dropdown). <c>DonemId</c> hardcode YASAK — ne sabit ID (8 sabitlemek
+/// dönem 7'nin 8.998 fişini görünmez yapar) ne sabit liste (dönem 9 açılınca eklemek gerekirdi).
+/// Kaynak <c>snv.Donem</c> tablosu: tanımlı + siparişi olan dönemler DİNAMİK listelenir.
+/// Tanımsız <c>DonemId</c> (−7 / −8 orphan kayıtları) tabloda karşılığı olmadığı için otomatik düşer.</summary>
 public sealed class SinavDonem
 {
     public int DonemId { get; set; }
+    public string DonemAciklama { get; set; } = "";
     public int Siparis { get; set; }
+    public int Fis { get; set; }
     public DateTime? Ilk { get; set; }
     public DateTime? Son { get; set; }
 
-    public string Etiket => Ilk.HasValue && Son.HasValue
-        ? $"Dönem {DonemId} ({Ilk:MM.yyyy}–{Son:MM.yyyy})"
-        : $"Dönem {DonemId}";
+    /// <summary>Encore fişi olan dönem = panelin ciro/iade bölümleri dolu gelir.
+    /// Fişsiz dönem (Encore öncesi, `snv.SiparisFis` EAR/EFA köprüsünde) sipariş gösterir ama ciro göstermez.</summary>
+    public bool FisVar => Fis > 0;
+
+    public string Etiket
+    {
+        get
+        {
+            var ad = string.IsNullOrWhiteSpace(DonemAciklama) ? $"Dönem {DonemId}" : $"{DonemAciklama} (D{DonemId})";
+            return FisVar ? ad : $"{ad} — fiş yok";
+        }
+    }
 }

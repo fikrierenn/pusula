@@ -96,19 +96,36 @@ public sealed class SinavQueries(Db db, ILogger<SinavQueries> logger)
         )
         """;
 
-    /// <summary>Dönem listesi (dropdown). Sipariş sayısı + tarih aralığı ile.</summary>
+    /// <summary>Dönem listesi (dropdown) — DİNAMİK, hardcode ID/liste YOK.
+    /// Kural: <c>snv.Donem</c>'de TANIMLI olan **TÜM** dönemler (sipariş/fiş filtresi YOK — kullanıcı
+    /// direktifi 2026-08-20: "tanımı olan tüm dönemler gelmeli"). Yeni sezon <c>snv.Donem</c>'e
+    /// eklendiği an listelenir; tanımsız orphan <c>DonemId</c> (−7 / −8) tabloda karşılığı
+    /// olmadığı için listeye girmez. Sipariş + fiş sayısı bilgi olarak döner — fişsiz dönem
+    /// (Encore öncesi, <c>snv.SiparisFis</c> EAR/EFA köprüsü) etikette işaretlenir.</summary>
     public async Task<IReadOnlyList<SinavDonem>> GetDonemlerAsync()
     {
         const string sql = """
-            SELECT sip.DonemId, COUNT(*) AS Siparis,
-                   MIN(sip.Tarih) AS Ilk, MAX(sip.Tarih) AS Son
-            FROM BKM.snv.Siparis sip WITH(NOLOCK)
-            WHERE sip.DonemId IS NOT NULL
-            GROUP BY sip.DonemId
-            ORDER BY sip.DonemId DESC;
+            SELECT d.DonemId,
+                   ISNULL(d.DonemAciklama, '') AS DonemAciklama,
+                   X.Siparis, X.Ilk, X.Son,
+                   ISNULL(F.Fis, 0) AS Fis
+            FROM BKM.snv.Donem d WITH(NOLOCK)
+                 CROSS APPLY (SELECT COUNT(*) AS Siparis, MIN(sip.Tarih) AS Ilk, MAX(sip.Tarih) AS Son
+                              FROM BKM.snv.Siparis sip WITH(NOLOCK)
+                              WHERE sip.DonemId = d.DonemId) X
+                 OUTER APPLY (SELECT COUNT(DISTINCT S.Id) AS Fis
+                              FROM BKM.snv.SinavSiparisFisEncore FE WITH(NOLOCK)
+                                   JOIN EncoreMerkez.dbo.Sales S WITH(NOLOCK) ON S.DocumentNo = FE.InvoiceNo
+                              WHERE EXISTS (SELECT 1 FROM BKM.snv.Siparis sip2 WITH(NOLOCK)
+                                            WHERE sip2.SiparisKod = FE.SiparisKod
+                                              AND sip2.DonemId = d.DonemId)) F
+            ORDER BY d.DonemId DESC;
             """;
         await using var c = await db.OpenAsync();
-        return (await c.QueryAsync<SinavDonem>(sql)).AsList();
+        var rows = (await c.QueryAsync<SinavDonem>(sql)).AsList();
+        logger.LogInformation("Sınav dönemleri: {N} tanımlı (fişli: {F}, siparişsiz: {B})",
+            rows.Count, rows.Count(r => r.FisVar), rows.Count(r => r.Siparis == 0));
+        return rows;
     }
 
     /// <summary>Sezon KPI şeridi — ciro / sipariş / sepet / iade / kısmi. Tutarlar KDV hariç.</summary>

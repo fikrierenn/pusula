@@ -45,6 +45,18 @@
     }
     else
     {
+        @* Fişsiz dönem uyarısı — sessiz sıfır göstermek yanlış okuma üretir *@
+        @if (_seciliDonem is { FisVar: false })
+        {
+            <div class="alert alert-info py-2">
+                <i data-lucide="info" class="w-5 h-5"></i>
+                <span><span class="font-semibold">@_seciliDonem.DonemAciklama</span> döneminin Encore fişi yok
+                (Encore öncesi sezon — belgeler <code>snv.SiparisFis</code> / e-arşiv köprüsünde).
+                <span class="font-semibold">Ciro · Sepet Kırılımı · İade Radarı bölümleri boş görünür;</span>
+                Sipariş, Ödeme Sağlığı ve Eksik Kalem bölümleri geçerlidir.</span>
+            </div>
+        }
+
         @* ══ 1 · SEZON KPI ══ *@
         <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
             <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
@@ -281,6 +293,8 @@
     bool _yukleniyor = true;
     string? _hata;
 
+    SinavDonem? _seciliDonem => _donemler.FirstOrDefault(d => d.DonemId == _donemId);
+
     static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
     static string Num(int n) => n.ToString("N0", Tr);
     static string Tl(decimal v) => v.ToString("N0", Tr) + " ₺";
@@ -302,7 +316,9 @@
     protected override async Task OnInitializedAsync()
     {
         _donemler = (await SinavQ.GetDonemlerAsync()).ToList();
-        _donemId = _donemler.Count > 0 ? _donemler[0].DonemId : null;   // en güncel dönem
+        // Varsayılan = en güncel FİŞLİ dönem (liste DonemId DESC). Yeni sezon açılıp henüz fiş
+        // kesilmemişse panel boş görünmesin; fiş gelince kendiliğinden ona geçer. Hardcode ID YOK.
+        _donemId = (_donemler.FirstOrDefault(d => d.FisVar) ?? _donemler.FirstOrDefault())?.DonemId;
         await Yukle();
     }
 
