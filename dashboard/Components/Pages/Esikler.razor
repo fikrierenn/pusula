@@ -126,6 +126,8 @@
             SatinAliciHaric = string.Join(",", a.AliciHaricEtkin),
             SatinAliciBirlestir = string.Join(";", a.AliciBirlestirMap.Select(kv => $"{kv.Value}={kv.Key}")),
             SatinAtifBaslangic = a.AtifBaslangicEtkin,
+            SatinIliskiliTaraf = string.Join(",", a.IliskiliTarafIds),
+            SatinAlimciInsIds = string.Join(",", a.AlimciInsIds),
         };
         _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
         await MarkaCoz();
@@ -163,11 +165,20 @@
         _kaydediliyor = true; StateHasChanged();
         try
         {
+            // ADLANDIRILMIŞ ARGÜMAN ZORUNLU: positional çağrı, record'a araya parametre eklendiğinde
+            // SESSİZCE kayar. Nitekim kaydı: SatinAtifBaslangic, SatinIliskiliTaraf yuvasına düşüyordu
+            // → IliskiliTarafIds = [20250201] olup grup-içi tedarikçi listesini eziyordu.
             await Ayar.KaydetAsync(new PanelAyarlar(
-                _e.DevirOlu, _e.DevirSaglikli, _e.StokYoklukHedef,
-                _e.RiskDusuk, _e.RiskOrta, _e.RiskYuksek, HaricIds(),
-                _e.SatinFazlaAy, _e.SatinMaterialite, _e.SatinMinKoli, _e.SatinMinStok, _e.SatinSezonMinTaban, _e.SatinRetailCap,
-                _e.SatinIadeKurallari, _e.SatinAliciHaric, _e.SatinAliciBirlestir, _e.SatinRatchetAy, _e.SatinAtifBaslangic));
+                DevirOlu: _e.DevirOlu, DevirSaglikli: _e.DevirSaglikli, StokYoklukHedef: _e.StokYoklukHedef,
+                RiskDusuk: _e.RiskDusuk, RiskOrta: _e.RiskOrta, RiskYuksek: _e.RiskYuksek,
+                HaricMarkalar: HaricIds(),
+                SatinFazlaAy: _e.SatinFazlaAy, SatinMaterialite: _e.SatinMaterialite,
+                SatinMinKoli: _e.SatinMinKoli, SatinMinStok: _e.SatinMinStok,
+                SatinSezonMinTaban: _e.SatinSezonMinTaban, SatinRetailCap: _e.SatinRetailCap,
+                SatinIadeKurallari: _e.SatinIadeKurallari, SatinAliciHaric: _e.SatinAliciHaric,
+                SatinAliciBirlestir: _e.SatinAliciBirlestir, SatinRatchetAy: _e.SatinRatchetAy,
+                SatinIliskiliTaraf: _e.SatinIliskiliTaraf, SatinAlimciInsIds: _e.SatinAlimciInsIds,
+                SatinAtifBaslangic: _e.SatinAtifBaslangic));
             _mesaj = "Kaydedildi (PanelAyar / BkmPanel)."; _hata = false;
         }
         catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _mesaj = $"Kayıt başarısız: {ex.Message}"; _hata = true; }
@@ -193,5 +204,7 @@
         public string? SatinAliciHaric { get; set; }
         public string? SatinAliciBirlestir { get; set; }
         public string? SatinAtifBaslangic { get; set; }
+        public string? SatinIliskiliTaraf { get; set; }
+        public string? SatinAlimciInsIds { get; set; }
     }
 }
