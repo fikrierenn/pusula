@@ -23,7 +23,9 @@ public record PanelAyarlar(
     int SatinRatchetAy = 6,              // ratchet penceresi (ay) — üst üste alım/trend taraması
     string? SatinIliskiliTaraf = null,   // grup-içi/ilişkili taraf tedarikçi frmID listesi (fiyat kıyasında ayrı kova)
     string? SatinAlimciInsIds = null,    // SATINALMACI drn1.insID listesi (dış alım siparişi atıfı) — mağaza/mal-kabul/IT/depo HARİÇ
-    string? SatinAtifBaslangic = null)   // atıf pencere başı YYYYMMDD — varsayılan 20250201 (kanal kırılması + talep verisi güvenilir sınırı)
+    string? SatinAtifBaslangic = null,   // atıf pencere başı YYYYMMDD — varsayılan 20250201 (kanal kırılması + talep verisi güvenilir sınırı)
+    // --- plan-36: müşteri grup haritası ---
+    string? MusteriGruplari = null)      // "Grup Adı=frmID,frmID;Grup2=frmID" — ERP'de frmBagID/frmGrup1..5 BOŞ olduğu için elle tutulur
 {
     public static readonly int[] VarsayilanHaricMarkalar = [0, 269, 2101, 5972, 10911];
     public IReadOnlyList<int> HaricMarkalarEtkin => HaricMarkalar is { Count: > 0 } ? HaricMarkalar : VarsayilanHaricMarkalar;
@@ -87,6 +89,39 @@ public record PanelAyarlar(
         }
     }
     public static readonly int[] VarsayilanAlimci = [48, 76];
+
+    /// <summary>Müşteri grup haritası: frmID → grup adı. Aynı ekonomik grubun ayrı şirketleri
+    /// (ayrı <c>frmID</c>) hacim/indirim analizinde TEK alıcı sayılır — konsolide edilmezse üç
+    /// orta-ölçekli müşteri gibi görünür ve "indirim–hacim ters ilişkili" YANLIŞ yorumu çıkar.
+    /// <para>⚠ ERP'de grup alanı var ama BOŞ (<c>frm.frmBagID</c> + <c>frmGrup1..5</c> hepsi 0) →
+    /// harita elle tutulur. Grup kanıtı ORTAK ADRES + kullanıcı teyidi; vergi numarası öneki
+    /// grup kanıtı DEĞİLDİR (ör. ÇETİN Elektrik 2450383237 / ÇETİN Proje 2450012214 aynı önek,
+    /// farklı adres → teyit bekliyor, haritaya girmedi).</para>
+    /// Format: <c>Grup Adı=frmID,frmID;Grup Adı 2=frmID</c></summary>
+    public IReadOnlyDictionary<int, string> MusteriGrupMap
+    {
+        get
+        {
+            var ham = string.IsNullOrWhiteSpace(MusteriGruplari) ? VarsayilanMusteriGrup : MusteriGruplari!;
+            var d = new Dictionary<int, string>();
+            foreach (var parca in ham.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var kv = parca.Split('=', 2, StringSplitOptions.TrimEntries);
+                if (kv.Length != 2 || kv[0].Length == 0) continue;
+                foreach (var id in kv[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    if (int.TryParse(id, out var n)) d[n] = kv[0];   // frmID → grup adı
+            }
+            return d;
+        }
+    }
+
+    /// <summary>Varsayılan: İNALLAR Otomotiv (24922) + İNALLAR Sigorta (56291) + GÖNYE Otomotiv (56292).
+    /// Kanıt: üçü de Ovaakça Çeşmebaşı / İstanbul Cad. adresinde + kullanıcı teyidi (2026-08-25).</summary>
+    public const string VarsayilanMusteriGrup = "İNALLAR / GÖNYE=24922,56291,56292";
+
+    /// <summary>Bir müşterinin görünen adı — grup üyesiyse grup adı, değilse kendi adı.</summary>
+    public string MusteriGrupAdi(int frmID, string kendiAdi) =>
+        MusteriGrupMap.TryGetValue(frmID, out var g) ? g : kendiAdi;
 
     static IReadOnlyList<string> Ayir(string? s) => string.IsNullOrWhiteSpace(s)
         ? []

@@ -61,7 +61,7 @@ Bu, emitter'da **aritmetik** bırakır (iş mantığı değil): grain, filtre, m
 | İlk yükleme 15 s | AppState cache + yükleniyor göstergesi; kabul edildi (kullanıcı kararı) |
 | fat5 kapsama boşluğu (maliyeti olmayan stkID) | Kapsama yüzdesi panelde **açıkça** gösterilir; maliyetsiz satır net'ten düşülmez |
 | Barem-1 kaldıracının yanlış okunması | Panelde basılı kupür / kısmi bakiye ayrımı gösterilir; bonus simülatörü **yalnız basılı** oranları kullanır |
-| Müşteri grup konsolidasyonu ERP'de yok (`frmBagID` boş) | Bu turda ham liste + uyarı notu. Grup parametresi TODO'ya (Ayarlar'dan okunacak) |
+| Müşteri grup konsolidasyonu ERP'de yok (`frmBagID` boş) | ✅ `musteri_gruplari` parametresi (Rapor Parametreleri) — panel bu haritayla konsolide eder |
 | Bonus simülatörünün fazla güvenilir görünmesi | 50/100 ₺ oranının 28 fişe dayandığı panelde yazılı; "pilot gerekir" notu |
 
 ## 6. Done kriterleri
@@ -71,7 +71,7 @@ Bu, emitter'da **aritmetik** bırakır (iş mantığı değil): grain, filtre, m
 - [x] Rakamlar arşiv SQL çıktısıyla tutuyor (kanal 3.198.307 brüt / kullanım 2.589.048 / barem-6 marj %37,4)
 - [x] Kapsama ve örneklem uyarıları panelde yazılı
 - [ ] Envanter'deki HC bloğundan panele link (ikinci tur)
-- [ ] Müşteri grup parametresi (Ayarlar) — TODO
+- [x] Müşteri grup parametresi (Rapor Parametreleri → `musteri_gruplari`); panel fatura tablosu konsolide
 
 ## 7. Rollback
 

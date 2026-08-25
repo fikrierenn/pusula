@@ -63,7 +63,8 @@ public sealed class AyarService
                 SatinRatchetAy: Int(map, "satin_ratchet_ay", d.SatinRatchetAy),
                 SatinIliskiliTaraf: Str(map, "satin_iliskili_taraf"),
                 SatinAlimciInsIds: Str(map, "satin_alimci"),
-                SatinAtifBaslangic: Str(map, "satin_atif_baslangic"));
+                SatinAtifBaslangic: Str(map, "satin_atif_baslangic"),
+                MusteriGruplari: Str(map, "musteri_gruplari"));
         }
         catch (Exception ex) { _log.LogError(ex, "Ayarlar okunamadı — varsayılanla devam"); }
     }
@@ -94,6 +95,9 @@ public sealed class AyarService
             ("satin_iliskili_taraf", string.Join(",", a.IliskiliTarafIds)),
             ("satin_alimci", string.Join(",", a.AlimciInsIds)),
             ("satin_atif_baslangic", a.AtifBaslangicEtkin),
+            // Boş bırakılırsa varsayılan grup haritası yazılır (Kaydet sonrası harita kaybolmasın).
+            ("musteri_gruplari", string.IsNullOrWhiteSpace(a.MusteriGruplari)
+                ? PanelAyarlar.VarsayilanMusteriGrup : a.MusteriGruplari!),
         };
         await using var c = await _db.OpenPanelAsync()!;
         foreach (var (k, v) in satirlar)

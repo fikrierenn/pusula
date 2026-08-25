@@ -74,6 +74,27 @@
               @<input type="text" maxlength="8" class="input input-bordered input-sm font-mono w-full" @bind="_e.SatinAtifBaslangic" placeholder="20250201" />)
     </div>
 
+    <h3 class="text-sm font-semibold mb-1 mt-3">Müşteri Grupları (plan-36)</h3>
+    <p class="text-[11px] text-base-content/50 mb-2">
+        Aynı ekonomik grubun ayrı şirketleri (ayrı <code>frmID</code>) hacim ve indirim analizinde
+        <b>tek alıcı</b> sayılır. Konsolide edilmezse aynı grup üç orta-ölçekli müşteri gibi görünür ve
+        indirim–hacim ilişkisi yanlış okunur. <b>ERP'de grup alanı boş</b>
+        (<code>frm.frmBagID</code> + <code>frmGrup1..5</code> hepsi 0), bu yüzden harita burada tutulur.
+        Grup kanıtı <b>ortak adres</b>; vergi numarası öneki kanıt değildir.
+        Format: <code>Grup Adı=frmID,frmID;Grup Adı 2=frmID</code>
+    </p>
+    <input type="text" class="input input-bordered input-sm font-mono w-full mb-2" @bind="_e.MusteriGruplari"
+           @bind:after="FirmaCoz" placeholder="@PanelAyarlar.VarsayilanMusteriGrup" />
+    <div class="flex flex-wrap gap-1.5 mb-3">
+        @foreach (var g in GrupOnizleme())
+        {
+            <span class="badge badge-ghost badge-sm gap-1">
+                <b>@g.Key</b>
+                @string.Join(" · ", g.Value.Select(id => $"{id} {_firmaAd.GetValueOrDefault(id, "?")}"))
+            </span>
+        }
+    </div>
+
     <h3 class="text-sm font-semibold mb-1 mt-3">Hariç Markalar</h3>
     <p class="text-[11px] text-base-content/50 mb-2">Tedarikçi scorecard dışı bırakılan iç/ev markaları (kendi ürünleri — dış tedarikçi değil). mrkID (virgüllü).</p>
     <input type="text" class="input input-bordered input-sm font-mono w-full mb-2" @bind="_haricMrk" @bind:after="MarkaCoz" placeholder="0,269,2101,5972,10911" />
@@ -100,6 +121,7 @@
     EsikForm _e = new();
     string _haricMrk = "";
     Dictionary<int, string> _markaAd = new();
+    Dictionary<int, string> _firmaAd = new();
     bool _kaydediliyor, _hata;
     string? _mesaj;
 
@@ -128,9 +150,12 @@
             SatinAtifBaslangic = a.AtifBaslangicEtkin,
             SatinIliskiliTaraf = string.Join(",", a.IliskiliTarafIds),
             SatinAlimciInsIds = string.Join(",", a.AlimciInsIds),
+            MusteriGruplari = string.IsNullOrWhiteSpace(a.MusteriGruplari)
+                ? PanelAyarlar.VarsayilanMusteriGrup : a.MusteriGruplari,
         };
         _haricMrk = string.Join(",", a.HaricMarkalarEtkin);
         await MarkaCoz();
+        await FirmaCoz();
     }
 
     int[] HaricIds() => _haricMrk.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -150,6 +175,56 @@
         catch (Exception ex) { Logger.LogWarning(ex, "Marka adları çözülemedi"); }
     }
 
+    /// <summary>Girilen metni grup → frmID listesi olarak ayrıştırır (önizleme + doğrulama ortak yolu).
+    /// Hatalı parça sessizce ATLANMAZ: <see cref="GrupHatasi"/> kaydı UI'da gösterilir.</summary>
+    Dictionary<string, List<int>> GrupOnizleme()
+    {
+        var sonuc = new Dictionary<string, List<int>>();
+        var ham = string.IsNullOrWhiteSpace(_e.MusteriGruplari) ? PanelAyarlar.VarsayilanMusteriGrup : _e.MusteriGruplari!;
+        foreach (var parca in ham.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var kv = parca.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (kv.Length != 2 || kv[0].Length == 0) continue;
+            var ids = kv[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                           .Select(x => int.TryParse(x, out var n) ? n : (int?)null)
+                           .Where(n => n.HasValue).Select(n => n!.Value).ToList();
+            if (ids.Count > 0) sonuc[kv[0]] = ids;
+        }
+        return sonuc;
+    }
+
+    /// <summary>Grup metnindeki biçim hatası (null = sorun yok). Kaydetmeden önce çağrılır —
+    /// hatalı satır sessizce düşerse grup konsolidasyonu eksik çalışır, kimse fark etmez.</summary>
+    string? GrupHatasi()
+    {
+        if (string.IsNullOrWhiteSpace(_e.MusteriGruplari)) return null;   // boş = varsayılan
+        foreach (var parca in _e.MusteriGruplari!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var kv = parca.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (kv.Length != 2 || kv[0].Length == 0)
+                return $"Müşteri grubu biçimi hatalı: «{parca}» — «Grup Adı=frmID,frmID» olmalı.";
+            var idler = kv[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (idler.Length == 0) return $"«{kv[0]}» grubunda frmID yok.";
+            foreach (var id in idler)
+                if (!int.TryParse(id, out _)) return $"«{kv[0]}» grubunda geçersiz frmID: «{id}».";
+        }
+        return null;
+    }
+
+    async Task FirmaCoz()
+    {
+        var ids = GrupOnizleme().SelectMany(g => g.Value).Distinct().ToArray();
+        if (ids.Length == 0) { _firmaAd = new(); return; }
+        try
+        {
+            await using var c = await Db.OpenAsync();
+            _firmaAd = (await c.QueryAsync<(int frmID, string frmAd)>(
+                    "SELECT frmID, frmAd FROM DerinSISBkm.dbo.frm WHERE frmID IN @ids", new { ids }))
+                .ToDictionary(x => x.frmID, x => x.frmAd);
+        }
+        catch (Exception ex) { Logger.LogWarning(ex, "Firma adları çözülemedi"); }
+    }
+
     async Task Kaydet()
     {
         _mesaj = null;
@@ -162,6 +237,7 @@
         if (!string.IsNullOrWhiteSpace(_e.SatinAtifBaslangic)
             && !System.DateTime.TryParseExact(_e.SatinAtifBaslangic, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out _))
         { _mesaj = "Atıf pencere başı YYYYMMDD formatında olmalı (ör. 20250201)."; _hata = true; return; }
+        if (GrupHatasi() is { } gh) { _mesaj = gh; _hata = true; return; }
         _kaydediliyor = true; StateHasChanged();
         try
         {
@@ -178,7 +254,8 @@
                 SatinIadeKurallari: _e.SatinIadeKurallari, SatinAliciHaric: _e.SatinAliciHaric,
                 SatinAliciBirlestir: _e.SatinAliciBirlestir, SatinRatchetAy: _e.SatinRatchetAy,
                 SatinIliskiliTaraf: _e.SatinIliskiliTaraf, SatinAlimciInsIds: _e.SatinAlimciInsIds,
-                SatinAtifBaslangic: _e.SatinAtifBaslangic));
+                SatinAtifBaslangic: _e.SatinAtifBaslangic,
+                MusteriGruplari: _e.MusteriGruplari));
             _mesaj = "Kaydedildi (PanelAyar / BkmPanel)."; _hata = false;
         }
         catch (Exception ex) { Logger.LogError(ex, "Eşik kaydı hatası"); _mesaj = $"Kayıt başarısız: {ex.Message}"; _hata = true; }
@@ -206,5 +283,6 @@
         public string? SatinAtifBaslangic { get; set; }
         public string? SatinIliskiliTaraf { get; set; }
         public string? SatinAlimciInsIds { get; set; }
+        public string? MusteriGruplari { get; set; }
     }
 }

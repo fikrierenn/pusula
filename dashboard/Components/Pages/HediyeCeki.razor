@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @implements IDisposable
 @inject HediyeCekiQueries HcQ
+@inject AyarService Ayar
 @inject PerfState Perf
 @inject ILogger<HediyeCeki> Logger
 @inject PersistentComponentState AppState
@@ -235,10 +236,11 @@
                 <div>
                     <h2 class="font-semibold">Bugün kime ne veriyoruz</h2>
                     <p class="text-xs text-base-content/60 mt-0.5">
-                        Satış faturası kanalı. <span class="font-semibold">Grup konsolidasyonu ERP'de tanımlı
-                        değil</span> — müşteri grup alanı boş, liste ham geliyor. Aynı gruba ait şirketler
-                        (ör. İNALLAR Otomotiv / İNALLAR Sigorta / GÖNYE Otomotiv) ayrı satırlarda görünür;
-                        kademe kararı verilirken elle konsolide edilmeli.
+                        Satış faturası kanalı, <span class="font-semibold">müşteri grubu bazında konsolide</span>.
+                        ERP'de grup alanı boş olduğu için harita
+                        <a href="/parametreler" class="link link-primary">Rapor Parametreleri</a>'nden okunur —
+                        aynı gruba ait şirketler ayrı <span class="font-mono">frmID</span> taşıdığı için
+                        konsolide edilmezse tek büyük alıcı, üç orta-ölçekli müşteri gibi görünür.
                     </p>
                 </div>
                 <div class="overflow-x-auto">
@@ -249,10 +251,20 @@
                             <th class="text-right">Oran</th><th class="text-right">Brüt payı</th>
                         </tr></thead>
                         <tbody>
-                        @foreach (var f in _fatura)
+                        @foreach (var f in _faturaGrup)
                         {
                             <tr>
-                                <td class="max-w-[22rem] truncate" title="@f.FirmaAd">@f.FirmaAd</td>
+                                <td class="max-w-[22rem] truncate" title="@f.Detay">
+                                    @f.Ad
+                                    @if (f.UyeSayisi > 1)
+                                    {
+                                        <span class="badge badge-primary badge-xs ml-1">@f.UyeSayisi şirket</span>
+                                    }
+                                    @if (f.GrupIci)
+                                    {
+                                        <span class="badge badge-ghost badge-xs ml-1">grup-içi</span>
+                                    }
+                                </td>
                                 <td class="text-right tabular-nums">@Num(f.Fatura)</td>
                                 <td class="text-right tabular-nums">@Adet(f.Adet)</td>
                                 <td class="text-right tabular-nums">@Tl(f.Brut)</td>
@@ -272,6 +284,14 @@
                         </tr></tfoot>
                     </table>
                 </div>
+                @if (_enBuyukIndirimPay > 0)
+                {
+                    <p class="text-[11px] text-base-content/50">
+                        İndirim bütçesinin <span class="font-semibold">@Yuzde(_enBuyukIndirimPay)</span>'i
+                        tek alıcıya gidiyor (<span class="font-semibold">@_enBuyukIndirimAd</span>) —
+                        konsantrasyon. Grup-içi taraflar piyasa fiyatı kıyasına girmez, ayrı kovada tutulur.
+                    </p>
+                }
             </div>
         </div>
 
@@ -397,6 +417,16 @@
     List<HcBaremSatir> _barem = [];
     List<HcKategori> _kategori = [];
     List<HcKupur> _kupur = [];
+    List<FaturaGrupSatir> _faturaGrup = [];
+    decimal _enBuyukIndirimPay;
+    string _enBuyukIndirimAd = "";
+
+    /// <summary>Grup konsolide fatura satırı — harita Rapor Parametreleri'nden gelir (ERP'de grup alanı boş).</summary>
+    sealed record FaturaGrupSatir(string Ad, string Detay, int UyeSayisi, bool GrupIci,
+                                  int Fatura, decimal Adet, decimal Brut, decimal Indirim)
+    {
+        public decimal Oran => Brut == 0 ? 0 : 100m * Indirim / Brut;
+    }
     decimal _satisBrut, _satilanNet, _bedelsiz, _faturaPay, _posPay, _yuvarlakPay, _bakiye;
     decimal _faturaBrut, _faturaIndirim, _faturaOran, _faturaMin, _faturaMax, _genelMarj, _anaKupurOran;
 
@@ -511,6 +541,23 @@
         _faturaOran    = _faturaBrut == 0 ? 0 : 100m * _faturaIndirim / _faturaBrut;
         _faturaMin     = _fatura.Count == 0 ? 0 : _fatura.Min(f => f.Oran);
         _faturaMax     = _fatura.Count == 0 ? 0 : _fatura.Max(f => f.Oran);
+
+        // Fatura kanalı — grup konsolidasyonu (Rapor Parametreleri'nden okunan harita)
+        var grupMap = Ayar.Deger.MusteriGrupMap;
+        var iliskili = Ayar.Deger.IliskiliTarafIds.ToHashSet();
+        _faturaGrup = _fatura
+            .GroupBy(f => grupMap.TryGetValue(f.FrmID, out var g) ? g : f.FirmaAd)
+            .Select(g => new FaturaGrupSatir(
+                g.Key,
+                string.Join(" · ", g.Select(x => $"{x.FrmID} {x.FirmaAd}")),
+                g.Count(),
+                g.Any(x => iliskili.Contains(x.FrmID)),
+                g.Sum(x => x.Fatura), g.Sum(x => x.Adet), g.Sum(x => x.Brut), g.Sum(x => x.Indirim)))
+            .OrderByDescending(g => g.Brut).ToList();
+
+        var enBuyuk = _faturaGrup.Where(g => g.Indirim > 0).OrderByDescending(g => g.Indirim).FirstOrDefault();
+        _enBuyukIndirimPay = enBuyuk is not null && _faturaIndirim > 0 ? 100m * enBuyuk.Indirim / _faturaIndirim : 0;
+        _enBuyukIndirimAd = enBuyuk?.Ad ?? "";
 
         // Basılı kupür (bonus dayanağı) — marj barem'den eşleştirilir; kısmi bakiye ayıklanmış.
         _kupur = _basili.Select(p => new HcKupur(
