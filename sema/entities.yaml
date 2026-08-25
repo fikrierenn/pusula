@@ -498,3 +498,30 @@ entities:
     confidence: 0.9
     evidence: "2026-08-20 — snv.Okul tamamı canlı okundu; Aktif/Test-prefix/SinavKampusId üç ayracın hiçbirinin tek başına yetmediği doğrulandı. Sayı/liste bilinçli olarak KAYDEDİLMEDİ (değişken veri)."
     last_verified: "2026-08-20"
+
+  EncoreMerkez.dbo.SalesPayments:
+    pk: Id
+    key: [SalesId, PaymentTypesId, Amount, IsChangeAmount, ExchangeAmount, Info]
+    grain: "satış x ödeme kalemi (bir fiş N ödeme satırı; para üstü ayrı satır)"
+    note: "Tahsilat defteri. `IsChangeAmount=0` ZORUNLU (=1 para üstü, toplarsan şişer). `Amount` = gerçek tahsilat, KDV-DAHİL (ciro DEĞİL — metrics kdv istisna §3). PaymentTypesId → PaymentTypes (11 = HEDİYE ÇEKİ, 10 = İADE ÇEKİ = geri dönüşüm/iade çeki — AYRI ENSTRÜMANLAR, KARIŞTIRMA: 12 ayda 11 → 2,59 M₺ / 10 → 15,1 M₺, toplamak ~6× şişirir. Tip 11'in %100'ü IsGiftCard=true, hiç IsRefundVoucher yok → tip-11 filtresi tek başına doğru ayrım). `Info` = JSON: IstanbulKart / GiftCardCode / GiftCardType / SecurityCode / IsGiftCard / IsRefundVoucher / Slip / ProvisionId; kart alanları ayrı kolonlarda (CreditCard*). ⚠ compat 110 → JSON_VALUE/OPENJSON YOK; Info'dan kod çıkarmak CHARINDEX+SUBSTRING ister ve bazı satırlarda kod boş → SUBSTRING length guard olmadan 'Invalid length parameter' patlar."
+    confidence: 0.95
+    last_verified: "2026-08-25"
+    evidence: "2026-08-25 canlı örnekleme + PaymentTypes dağılımı (Ağu25-Tem26); sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 1/3."
+
+  DerinSISBkm.dbo.fatAyr:
+    pk: ehID_satir
+    key: [ehID, ehstkID, ehAdetN, ehTutar, ehIndirim, ehTutarN, ehKDV, ehMaliyet]
+    grain: "fatura (fat.eID) × ürün satırı"
+    note: "⚠⚠ **eTip=4 (Mağaza Satış) satırlarında `ehTutarN` BESLENMİYOR** — sistematik, 4 yıllık, kötüleşiyor: net=0 satır oranı 2023 %65,4 · 2024 %63,7 · 2025 %72,5 · 2026 %76,8. Diğer tüm eTip'lerde ≤%0,28 (Oca-2026 kontrolü: eTip 0/1/2/3/5/6/7/8/10 hepsi temiz, yalnız 4 kırık). `ehIndirim` de eTip=4'te çoğunlukla 0. Büyüklük: 2025'te ehTutar 67,8M − indirim 2,9M = beklenen 64,9M, okunan ehTutarN 12,7M → **~52 M₺ eksik okuma**. KURAL: eTip=4'te `ehTutarN` KULLANMA → `irsHrk` (ehTip=4, ehTutarN orada DOĞRU) veya `ehTutar − ehIndirim`. Diğer eTip'lerde ehTutarN güvenilir (= ehTutar − ehIndirim, KDV-hariç)."
+    confidence: 0.95
+    last_verified: "2026-08-25"
+    evidence: "2026-08-25 canlı — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 13 (tip kıyası Oca-2026 + yıl kıyası 2023-2026 + satır detayı); hediye çeki kanalında fatAyr 6.000 ₺ vs irsHrk 323.550 ₺ uyuşmazlığından çıktı."
+
+  EncoreMerkez.dbo.RefundReasons:
+    pk: Id
+    key: [Name, Type, IsDeleted]
+    grain: "iade/indirim sebep tanımı (lookup)"
+    note: "`Type = 0` iade sebebi · `Type = 1` indirim sebebi — aynı tabloda iki farklı enstrüman, ayırmadan kullanma. `SalesProducts.RefundReasonId` satır seviyesinde dolu; `Sales.RefundReasonId` PRATİKTE HEP 0 (fiş seviyesinde beslenmiyor — sebep filtresi SATIR seviyesinden yapılır). Kritik değer: **12 = 'Geri Dönüşüm'** (Type 0, 21.07.2025'te açıldı) → kasada geri dönüşüm çeki üretimi buradan izlenir; ürünü `stkID 583160`, karşılığı `PaymentTypesId=10` İADE ÇEKİ. Diğer Type-0: 1 Hasarlı Ürün · 2 Hatalı Satış İadesi · 3 Okul Kayıt İptali · 4 Fiyat Avantajı · 5 Müşteri Memnuniyetsizliği."
+    confidence: 0.9
+    last_verified: "2026-08-25"
+    evidence: "2026-08-25 canlı — RefundReasons tam liste + SalesProducts/Sales RefundReasonId hacim kıyası (Sales tarafı 0 satır döndü); sorgular/2026-08-25-... blok 14."
