@@ -28,6 +28,7 @@ public static class ServiceRegistration
         s.AddScoped<SatinalmaQueries>(); // plan-32 satınalma raporları (hesap-sorma; DINAMIK emitter)
         s.AddScoped<BulunurlukQueries>(); // plan-33 şube bazlı bulunurluk (OSA) + kayıp-satış
         s.AddScoped<SinavQueries>();      // plan-35 Sınav Okulları paneli (sezon/ödeme/eksik kalem/attach/iade)
+        s.AddScoped<HediyeCekiQueries>(); // plan-36 hediye çeki kârlılık/indirim tavanı (kanal+barem+bonus)
         s.AddSingleton<SabahService>();   // MIMBAL sabah brifingi (G1+E8)
         return s;
     }

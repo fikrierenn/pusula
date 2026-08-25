@@ -1,0 +1,539 @@
+@page "/hediye-ceki"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@implements IDisposable
+@inject HediyeCekiQueries HcQ
+@inject PerfState Perf
+@inject ILogger<HediyeCeki> Logger
+@inject PersistentComponentState AppState
+@rendermode InteractiveServer
+
+@*  Hediye Çeki paneli — plan-36. Çekirdek: sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql
+    Belge: docs/2026-08-25-hediye-ceki-indirim-raporu.md (v5)
+    Renk: yalnız DaisyUI semantic token (renk-standardi.md) — hardcode hex YOK.        *@
+
+<PageTitle>Hediye Çeki — BKM GM</PageTitle>
+
+<div class="space-y-5">
+
+    <div>
+        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <i data-lucide="ticket" class="w-6 h-6 text-primary"></i>Hediye Çeki
+        </h1>
+        <p class="text-sm text-base-content/60 mt-1">
+            Çek satışı hasılat değil <span class="font-semibold">avans</span> (KDV = 0) — kâr çekin
+            harcandığı anda doğar. Nominalden verilen indirim doğrudan o kârdan düşer.
+            Pencere <span class="font-semibold">@Gun(_bas) – @Gun(_bit.AddDays(-1))</span> (son 12 tam ay).
+            Tutarlar KDV-hariç net; sepet ödenen tutarı gerçek tahsilattır (KDV-dahil).
+        </p>
+    </div>
+
+    @if (_hata is not null)
+    {
+        <div class="alert alert-error"><i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            <span>Veri alınamadı: @_hata</span></div>
+    }
+    else if (_yukleniyor)
+    {
+        <div class="flex items-center gap-3 text-sm text-base-content/60">
+            <span class="loading loading-spinner loading-md text-primary"></span>
+            Maliyet şelalesi (son 5 alış faturası) hesaplanıyor — ilk yükleme 15 saniye sürebilir.
+        </div>
+    }
+    else
+    {
+        @*  ── KPI bandı ───────────────────────────────────────────────────────  *@
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="card bg-base-100 border border-base-300">
+                <div class="card-body p-4">
+                    <div class="text-xs text-base-content/50">Satılan çek (net)</div>
+                    <div class="text-xl font-bold tabular-nums">@Tl(_satilanNet)</div>
+                    <div class="text-[11px] text-base-content/50">
+                        Fatura @Yuzde(_faturaPay) · POS @Yuzde(_posPay)
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="card-body p-4">
+                    <div class="text-xs text-base-content/50">Kullanılan çek (POS)</div>
+                    <div class="text-xl font-bold tabular-nums">@Tl(_kullanim?.Tutar ?? 0)</div>
+                    <div class="text-[11px] text-base-content/50">
+                        @Num(_kullanim?.Hareket ?? 0) hareket · basılı kupür @Yuzde(_yuvarlakPay)
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="card-body p-4">
+                    <div class="text-xs text-base-content/50">Kullanılmamış bakiye</div>
+                    <div class="text-xl font-bold tabular-nums @(_bakiye >= 0 ? "text-success" : "text-error")">
+                        @Tl(_bakiye)
+                    </div>
+                    <div class="text-[11px] text-base-content/50">
+                        + bedelsiz çıkış @Tl(_bedelsiz) (imha/hediye)
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="card-body p-4">
+                    <div class="text-xs text-base-content/50">Fatura kanalı indirimi</div>
+                    <div class="text-xl font-bold tabular-nums @(_faturaOran > 10 ? "text-warning" : "")">
+                        @Yuzde(_faturaOran)
+                    </div>
+                    <div class="text-[11px] text-base-content/50">
+                        ortalama · dağılım @Yuzde(_faturaMin)–@Yuzde(_faturaMax)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @*  ── 1) Kanal ────────────────────────────────────────────────────────  *@
+        <div class="card bg-base-100 border border-base-300">
+            <div class="card-body p-4 space-y-3">
+                <div>
+                    <h2 class="font-semibold">Çek hangi kanaldan satılıyor</h2>
+                    <p class="text-xs text-base-content/60 mt-0.5">
+                        Kaynak <span class="font-mono">irsHrk</span> hareket tipi. POS azınlık kanal —
+                        yalnız kasaya bakmak hacmi yaklaşık üç kat eksik gösterir.
+                        <span class="font-semibold">Diğer Giriş</span> çek basımı/stok girişidir, satış değil.
+                    </p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th>Hareket tipi</th><th class="text-right">Satır</th>
+                            <th class="text-right">Adet</th><th class="text-right">Net ₺</th>
+                            <th class="text-right">Pay</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var k in _kanal.Where(x => x.Satis).OrderByDescending(x => x.TutarNet))
+                        {
+                            <tr>
+                                <td>@k.TipAd <span class="badge badge-ghost badge-xs">@k.Tip</span></td>
+                                <td class="text-right tabular-nums">@Num(k.Satir)</td>
+                                <td class="text-right tabular-nums">@Adet(k.Adet)</td>
+                                <td class="text-right tabular-nums font-semibold">@Tl(k.TutarNet)</td>
+                                <td class="text-right tabular-nums">@Yuzde(_satisBrut == 0 ? 0 : 100m * k.TutarNet / _satisBrut)</td>
+                            </tr>
+                        }
+                        @foreach (var k in _kanal.Where(x => x.Iade).OrderByDescending(x => x.TutarNet))
+                        {
+                            <tr class="text-base-content/60">
+                                <td>@k.TipAd <span class="badge badge-ghost badge-xs">@k.Tip</span></td>
+                                <td class="text-right tabular-nums">@Num(k.Satir)</td>
+                                <td class="text-right tabular-nums">@Adet(k.Adet)</td>
+                                <td class="text-right tabular-nums text-error">−@Tl(k.TutarNet)</td>
+                                <td></td>
+                            </tr>
+                        }
+                        </tbody>
+                        <tfoot><tr class="font-semibold">
+                            <td>Net satılan çek</td><td></td><td></td>
+                            <td class="text-right tabular-nums">@Tl(_satilanNet)</td><td></td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+                @if (_kanal.Any(k => k.StokGirisi || k.Bedelsiz))
+                {
+                    <p class="text-[11px] text-base-content/50">
+                        Kanal dışı:
+                        @foreach (var k in _kanal.Where(k => k.StokGirisi || k.Bedelsiz))
+                        {
+                            <span class="mr-2">@k.TipAd @Tl(k.TutarNet)</span>
+                        }
+                    </p>
+                }
+            </div>
+        </div>
+
+        @*  ── 2) Baremli kârlılık ─────────────────────────────────────────────  *@
+        <div class="card bg-base-100 border border-base-300">
+            <div class="card-body p-4 space-y-3">
+                <div>
+                    <h2 class="font-semibold">Baremli kârlılık — kararın merkezi</h2>
+                    <p class="text-xs text-base-content/60 mt-0.5">
+                        Kaldıraç = sepet ödenen ÷ çekle ödenen. Maliyet <span class="font-semibold">son 5 alış
+                        faturası</span> (kanonik). Geri dönüşüm ve çek SKU'ları ayıklanmış.
+                        <span class="font-semibold">Kâr / 1 ₺ çek</span> aynı zamanda kırılma noktasıdır:
+                        o orandan büyük indirim brüt kârı sıfırın altına indirir.
+                    </p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th>Barem</th><th class="text-right">Fiş</th><th class="text-right">Ort. çek</th>
+                            <th class="text-right">Ort. sepet</th><th class="text-right">Kaldıraç</th>
+                            <th class="text-right">Sepet ind.</th><th class="text-right">Marj</th>
+                            <th class="text-right">Kâr/fiş</th><th class="text-right">Kâr/1 ₺</th>
+                            <th class="text-right">Kitap payı</th><th class="text-right">Kapsama</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var b in _barem)
+                        {
+                            <tr>
+                                <td class="font-medium">@b.Etiket</td>
+                                <td class="text-right tabular-nums">@Num(b.Fis)</td>
+                                <td class="text-right tabular-nums">@Tl(b.OrtCek)</td>
+                                <td class="text-right tabular-nums">@Tl(b.OrtSepet)</td>
+                                <td class="text-right tabular-nums font-semibold">@Kat(b.Kaldirac)</td>
+                                <td class="text-right tabular-nums">@Yuzde(b.IndirimOran)</td>
+                                <td class="text-right tabular-nums @MarjCls(b.Marj)">@Yuzde(b.Marj)</td>
+                                <td class="text-right tabular-nums">@Tl(b.KarFis)</td>
+                                <td class="text-right tabular-nums font-semibold">@Ondalik(b.KarCek)</td>
+                                <td class="text-right tabular-nums @(b.KitapPay > 25 ? "text-warning" : "")">@Yuzde(b.KitapPay)</td>
+                                <td class="text-right tabular-nums text-base-content/50">@Yuzde(b.Kapsama)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-[11px] text-base-content/50">
+                    Çek büyüdükçe kaldıraç düşer ama marj yükselir — kitap payı azaldığı için.
+                    Kapsama, maliyeti bilinen net cironun payıdır; maliyetsiz satır net'ten düşülmez.
+                </p>
+            </div>
+        </div>
+
+        @*  ── 3) Kategori marjı ───────────────────────────────────────────────  *@
+        <div class="card bg-base-100 border border-base-300">
+            <div class="card-body p-4 space-y-3">
+                <h2 class="font-semibold">Çek nereye harcanıyor</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th>Kategori</th><th class="text-right">Brüt ₺</th><th class="text-right">İndirim</th>
+                            <th class="text-right">Net ₺</th><th class="text-right">Marj</th><th class="text-right">Brüt kâr ₺</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var k in _kategori.Take(12))
+                        {
+                            <tr>
+                                <td>@k.KatAna</td>
+                                <td class="text-right tabular-nums">@Tl(k.Brut)</td>
+                                <td class="text-right tabular-nums">@Yuzde(k.IndirimOran)</td>
+                                <td class="text-right tabular-nums">@Tl(k.Net)</td>
+                                <td class="text-right tabular-nums @MarjCls(k.Marj)">@Yuzde(k.Marj)</td>
+                                <td class="text-right tabular-nums">@Tl(k.BrutKar)</td>
+                            </tr>
+                        }
+                        </tbody>
+                        <tfoot><tr class="font-semibold">
+                            <td>Toplam</td>
+                            <td class="text-right tabular-nums">@Tl(_kategori.Sum(k => k.Brut))</td>
+                            <td></td>
+                            <td class="text-right tabular-nums">@Tl(_kategori.Sum(k => k.Net))</td>
+                            <td class="text-right tabular-nums">@Yuzde(_genelMarj)</td>
+                            <td class="text-right tabular-nums">@Tl(_kategori.Sum(k => k.BrutKar))</td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @*  ── 4) Fatura kanalı indirimleri ────────────────────────────────────  *@
+        <div class="card bg-base-100 border border-base-300">
+            <div class="card-body p-4 space-y-3">
+                <div>
+                    <h2 class="font-semibold">Bugün kime ne veriyoruz</h2>
+                    <p class="text-xs text-base-content/60 mt-0.5">
+                        Satış faturası kanalı. <span class="font-semibold">Grup konsolidasyonu ERP'de tanımlı
+                        değil</span> — müşteri grup alanı boş, liste ham geliyor. Aynı gruba ait şirketler
+                        (ör. İNALLAR Otomotiv / İNALLAR Sigorta / GÖNYE Otomotiv) ayrı satırlarda görünür;
+                        kademe kararı verilirken elle konsolide edilmeli.
+                    </p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th>Müşteri</th><th class="text-right">Fatura</th><th class="text-right">Adet</th>
+                            <th class="text-right">Brüt ₺</th><th class="text-right">İndirim ₺</th>
+                            <th class="text-right">Oran</th><th class="text-right">Brüt payı</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var f in _fatura)
+                        {
+                            <tr>
+                                <td class="max-w-[22rem] truncate" title="@f.FirmaAd">@f.FirmaAd</td>
+                                <td class="text-right tabular-nums">@Num(f.Fatura)</td>
+                                <td class="text-right tabular-nums">@Adet(f.Adet)</td>
+                                <td class="text-right tabular-nums">@Tl(f.Brut)</td>
+                                <td class="text-right tabular-nums">@Tl(f.Indirim)</td>
+                                <td class="text-right tabular-nums @OranCls(f.Oran)">@Yuzde(f.Oran)</td>
+                                <td class="text-right tabular-nums text-base-content/50">
+                                    @Yuzde(_faturaBrut == 0 ? 0 : 100m * f.Brut / _faturaBrut)
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                        <tfoot><tr class="font-semibold">
+                            <td>Toplam</td><td></td><td></td>
+                            <td class="text-right tabular-nums">@Tl(_faturaBrut)</td>
+                            <td class="text-right tabular-nums">@Tl(_faturaIndirim)</td>
+                            <td class="text-right tabular-nums">@Yuzde(_faturaOran)</td><td></td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @*  ── 5) Bonus vs indirim simülatörü ──────────────────────────────────  *@
+        <div class="card bg-base-100 border border-base-300">
+            <div class="card-body p-4 space-y-3">
+                <div>
+                    <h2 class="font-semibold">İndirim mi, çek fazlası mı?</h2>
+                    <p class="text-xs text-base-content/60 mt-0.5">
+                        Müşteri eşdeğerliği <span class="font-mono">b = x / (1 − x)</span>.
+                        Bonus <span class="font-semibold">aynı kupürde</span> verilirse sonuç indirimle
+                        birebir aynıdır — avantaj yalnız bonus küçük kupürde verilirse doğar.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap items-end gap-3">
+                    <label class="form-control">
+                        <span class="label-text text-xs">İndirim oranı</span>
+                        <select class="select select-sm select-bordered" @bind="_simX">
+                            @foreach (var x in new[] { 5, 8, 10, 12, 15, 20 })
+                            {
+                                <option value="@x">%@x</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text text-xs">Nominal (örnek)</span>
+                        <select class="select select-sm select-bordered" @bind="_simNominal">
+                            @foreach (var n in new[] { 25_000, 100_000, 250_000, 480_000 })
+                            {
+                                <option value="@n">@Tl(n)</option>
+                            }
+                        </select>
+                    </label>
+                    <div class="text-xs text-base-content/60 pb-1.5">
+                        Eşdeğer bonus <span class="font-semibold">@Yuzde(100m * HediyeCekiSabit.BonusEsdeger(_simX / 100m))</span>
+                        · %@_simX bonus ≈ <span class="font-semibold">@Yuzde(100m * HediyeCekiSabit.IndirimEsdeger(_simX / 100m))</span> indirim
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th>Teklif</th><th class="text-right">Kâr / 1 ₺ nakit</th>
+                            <th class="text-right">Alınan nakit ₺</th><th class="text-right">Çek yüzü ₺</th>
+                            <th class="text-right">Brüt kâr ₺</th><th class="text-right">Fark</th>
+                        </tr></thead>
+                        <tbody>
+                            @{
+                                var sx = _simX / 100m;
+                                var sb = HediyeCekiSabit.BonusEsdeger(sx);
+                                var rAna = _anaKupurOran;
+                                var indKar = HediyeCekiSabit.IndirimKar(rAna, sx);
+                                var indBrut = _simNominal * indKar;
+                            }
+                            <tr>
+                                <td>%@_simX indirim</td>
+                                <td class="text-right tabular-nums font-semibold">@Ondalik(indKar)</td>
+                                <td class="text-right tabular-nums">@Tl(_simNominal * (1 - sx))</td>
+                                <td class="text-right tabular-nums">@Tl(_simNominal)</td>
+                                <td class="text-right tabular-nums">@Tl(indBrut)</td>
+                                <td class="text-right text-base-content/40">—</td>
+                            </tr>
+                            @foreach (var k in _kupur.OrderBy(k => k.Dilim))
+                            {
+                                var bonusKar = HediyeCekiSabit.BonusKar(rAna, k.KarCek, sb);
+                                var bonusBrut = _simNominal * bonusKar;
+                                var fark = bonusBrut - indBrut;
+                                <tr>
+                                    <td>
+                                        Bonus @k.Etiket kupür
+                                        @if (k.ZayifOrneklem)
+                                        {
+                                            <span class="badge badge-warning badge-xs ml-1" title="@Num(k.Fis) fiş — mertebe göstergesi">zayıf örneklem</span>
+                                        }
+                                    </td>
+                                    <td class="text-right tabular-nums font-semibold">@Ondalik(bonusKar)</td>
+                                    <td class="text-right tabular-nums">@Tl(_simNominal)</td>
+                                    <td class="text-right tabular-nums">@Tl(_simNominal * (1 + sb))</td>
+                                    <td class="text-right tabular-nums">@Tl(bonusBrut)</td>
+                                    <td class="text-right tabular-nums @(fark >= 0 ? "text-success" : "text-error")">
+                                        @(fark >= 0 ? "+" : "−")@Tl(Math.Abs(fark))
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-warning text-xs">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                    <div>
+                        <div class="font-semibold">Bonusu bozan tek şey: arbitraj</div>
+                        Avantaj "bonus küçük sepette harcanır" varsayımına dayanıyor. Alıcı çok sayıda küçük
+                        çeki tek kişiye verir ve o kişi hepsini <span class="font-semibold">tek fişte</span>
+                        harcarsa sepet büyük-çek davranışına döner, üstünlük sıfırlanır.
+                        <span class="font-semibold">Zorunlu kural: tek fişte en fazla 1 bonus çek</span>
+                        (POS'ta zorlanmalı) + süre sınırı. Küçük kupür oranları sınırlı örnekleme dayanıyor —
+                        kalıcı politika öncesi pilot gerekir. Bonus, alınan nakitten büyük yükümlülük
+                        yaratır: kayıt biçimi muhasebeye teyit ettirilmeli.
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    DateOnly _bas, _bit;
+    bool _yukleniyor = true;
+    string? _hata;
+    PersistingComponentStateSubscription _persistSub;
+
+    List<HcKanal> _kanal = [];
+    HcKullanim? _kullanim;
+    List<HcBaremPayda> _payda = [];
+    List<HcBaremKalem> _kalem = [];
+    List<HcMaliyet> _maliyet = [];
+    List<HcFaturaIndirim> _fatura = [];
+    List<HcBaremPayda> _basili = [];
+
+    // Türetilmiş
+    List<HcBaremSatir> _barem = [];
+    List<HcKategori> _kategori = [];
+    List<HcKupur> _kupur = [];
+    decimal _satisBrut, _satilanNet, _bedelsiz, _faturaPay, _posPay, _yuvarlakPay, _bakiye;
+    decimal _faturaBrut, _faturaIndirim, _faturaOran, _faturaMin, _faturaMax, _genelMarj, _anaKupurOran;
+
+    int _simX = 15;
+    int _simNominal = 480_000;
+
+    static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    static string Num(int n) => n.ToString("N0", Tr);
+    static string Tl(decimal v) => v.ToString("N0", Tr) + " ₺";
+    static string Adet(decimal v) => v.ToString("N0", Tr);
+    static string Yuzde(decimal v) => "%" + v.ToString("N1", Tr);
+    static string Kat(decimal v) => v.ToString("N2", Tr) + "×";
+    static string Ondalik(decimal v) => v.ToString("N3", Tr);
+    static string Gun(DateOnly d) => d.ToString("dd.MM.yyyy");
+    static string MarjCls(decimal m) => m >= 30 ? "text-success" : m >= 20 ? "text-warning" : "text-error";
+    static string OranCls(decimal o) => o >= 12 ? "text-error" : o > 0 ? "text-warning" : "text-success";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _persistSub = AppState.RegisterOnPersisting(PersistData);
+
+        // Son 12 TAM ay — içinde bulunduğumuz kısmi ay hariç (yarım ay marjı bozar).
+        var ayBasi = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        _bit = ayBasi;
+        _bas = ayBasi.AddMonths(-12);
+
+        if (AppState.TryTakeFromJson<List<HcKanal>>("hc_kanal", out var kn) && kn is not null &&
+            AppState.TryTakeFromJson<HcKullanim>("hc_kul", out var ku) && ku is not null &&
+            AppState.TryTakeFromJson<List<HcBaremPayda>>("hc_payda", out var pd) &&
+            AppState.TryTakeFromJson<List<HcBaremKalem>>("hc_kalem", out var kl) &&
+            AppState.TryTakeFromJson<List<HcMaliyet>>("hc_mal", out var ml) &&
+            AppState.TryTakeFromJson<List<HcFaturaIndirim>>("hc_fat", out var ft) &&
+            AppState.TryTakeFromJson<List<HcBaremPayda>>("hc_basili", out var bs))
+        {
+            _kanal = kn; _kullanim = ku; _payda = pd ?? []; _kalem = kl ?? [];
+            _maliyet = ml ?? []; _fatura = ft ?? []; _basili = bs ?? [];
+            Turet();
+            _yukleniyor = false;
+            return;
+        }
+
+        var sw = PerfState.Start();
+        try
+        {
+            var tKanal  = HcQ.GetKanalAsync(_bas, _bit);
+            var tKul    = HcQ.GetKullanimAsync(_bas, _bit);
+            var tPayda  = HcQ.GetBaremPaydaAsync(_bas, _bit);
+            var tKalem  = HcQ.GetBaremKalemAsync(_bas, _bit);
+            var tFat    = HcQ.GetFaturaIndirimAsync(_bas, _bit);
+            var tBasili = HcQ.GetBasiliKupurAsync(_bas, _bit);
+            await Task.WhenAll(tKanal, tKul, tPayda, tKalem, tFat, tBasili);
+            _kanal = tKanal.Result; _kullanim = tKul.Result; _payda = tPayda.Result;
+            _kalem = tKalem.Result; _fatura = tFat.Result; _basili = tBasili.Result;
+
+            // En pahalı sorgu en sona: diğerleri hazırken maliyet şelalesi koşar (~15 s).
+            _maliyet = await HcQ.GetMaliyetAsync(_bas, _bit);
+            Turet();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Hediye çeki paneli veri yükleme hatası");
+            _hata = $"{ex.GetType().Name}: {ex.Message}";
+        }
+        finally { _yukleniyor = false; Perf.Report("HediyeCeki", sw); }
+    }
+
+    /// <summary>Ham sorgu sonuçlarından panel satırlarını türetir. Burada yalnız ARİTMETİK var
+    /// (adet × birim maliyet, toplama, oran) — grain/filtre/maliyet şelalesi SQL'de (emitter-ayrimi).</summary>
+    void Turet()
+    {
+        var mal = _maliyet.ToDictionary(m => m.StkID, m => m.Birim);
+        var kitap = HediyeCekiSabit.KitapKategorileri.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Kanal
+        _satisBrut  = _kanal.Where(k => k.Satis).Sum(k => k.TutarNet);
+        var iade    = _kanal.Where(k => k.Iade).Sum(k => k.TutarNet);
+        _satilanNet = _satisBrut - iade;
+        _bedelsiz   = _kanal.Where(k => k.Bedelsiz).Sum(k => k.TutarNet);
+        _faturaPay  = _satisBrut == 0 ? 0 : 100m * _kanal.Where(k => k.Tip == 1).Sum(k => k.TutarNet) / _satisBrut;
+        _posPay     = _satisBrut == 0 ? 0 : 100m * _kanal.Where(k => k.Tip == 100).Sum(k => k.TutarNet) / _satisBrut;
+        _bakiye     = _satilanNet - (_kullanim?.Tutar ?? 0);
+        _yuvarlakPay = (_kullanim?.Tutar ?? 0) == 0 ? 0 : 100m * _kullanim!.YuvarlakTutar / _kullanim.Tutar;
+
+        // Barem
+        _barem = _payda.Select(p =>
+        {
+            var kalemler = _kalem.Where(k => k.Dilim == p.Dilim).ToList();
+            var kapsanan = kalemler.Where(k => mal.ContainsKey(k.StkID)).Sum(k => k.Net);
+            var maliyet  = kalemler.Where(k => mal.ContainsKey(k.StkID)).Sum(k => k.Adet * mal[k.StkID]);
+            return new HcBaremSatir(
+                p.Dilim, HediyeCekiSabit.DilimEtiket(p.Dilim), p.Fis, p.OrtCek,
+                p.Fis == 0 ? 0 : p.SepetOdenen / p.Fis,
+                p.HcOdenen == 0 ? 0 : p.SepetOdenen / p.HcOdenen,
+                kalemler.Sum(k => k.Brut), kalemler.Sum(k => k.Indirim), kalemler.Sum(k => k.Net),
+                kapsanan, maliyet,
+                kalemler.Where(k => kitap.Contains(k.KatAna)).Sum(k => k.Net))
+            { HcOdenenGuvenli = p.HcOdenen };
+        }).OrderBy(b => b.Dilim).ToList();
+
+        // Kategori
+        _kategori = _kalem.GroupBy(k => k.KatAna).Select(g => new HcKategori(
+            g.Key, g.Sum(k => k.Brut), g.Sum(k => k.Indirim), g.Sum(k => k.Net),
+            g.Where(k => mal.ContainsKey(k.StkID)).Sum(k => k.Net),
+            g.Where(k => mal.ContainsKey(k.StkID)).Sum(k => k.Adet * mal[k.StkID])))
+            .OrderByDescending(k => k.Brut).ToList();
+        var kapsananTop = _kategori.Sum(k => k.NetKapsanan);
+        _genelMarj = kapsananTop == 0 ? 0 : 100m * _kategori.Sum(k => k.BrutKar) / kapsananTop;
+
+        // Fatura kanalı
+        _faturaBrut    = _fatura.Sum(f => f.Brut);
+        _faturaIndirim = _fatura.Sum(f => f.Indirim);
+        _faturaOran    = _faturaBrut == 0 ? 0 : 100m * _faturaIndirim / _faturaBrut;
+        _faturaMin     = _fatura.Count == 0 ? 0 : _fatura.Min(f => f.Oran);
+        _faturaMax     = _fatura.Count == 0 ? 0 : _fatura.Max(f => f.Oran);
+
+        // Basılı kupür (bonus dayanağı) — marj barem'den eşleştirilir; kısmi bakiye ayıklanmış.
+        _kupur = _basili.Select(p => new HcKupur(
+                p.Dilim, HediyeCekiSabit.DilimEtiket(p.Dilim), p.Fis, p.HcOdenen, p.SepetOdenen,
+                _barem.FirstOrDefault(b => b.Dilim == p.Dilim)?.Marj ?? _genelMarj))
+            .Where(k => k.HcOdenen > 0).ToList();
+
+        // Ana çek oranı = en büyük dilim (toplu alım oraya düşer); yoksa genel.
+        _anaKupurOran = _kupur.OrderByDescending(k => k.Dilim).FirstOrDefault()?.KarCek
+                        ?? (_barem.LastOrDefault()?.KarCek ?? 0);
+    }
+
+    Task PersistData()
+    {
+        AppState.PersistAsJson("hc_kanal", _kanal);
+        if (_kullanim is not null) AppState.PersistAsJson("hc_kul", _kullanim);
+        AppState.PersistAsJson("hc_payda", _payda);
+        AppState.PersistAsJson("hc_kalem", _kalem);
+        AppState.PersistAsJson("hc_mal", _maliyet);
+        AppState.PersistAsJson("hc_fat", _fatura);
+        AppState.PersistAsJson("hc_basili", _basili);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
+}

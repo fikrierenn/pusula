@@ -42,6 +42,7 @@ public static class NavRegistry
         new NavItem("trafik", "Trafik & Kasiyer", "activity"),
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),
         new NavItem("sadakat", "Sadakat", "heart"),
+        new NavItem("hediye-ceki", "Hediye Çeki", "ticket"),
         new NavItem("tahmin", "Hedef Tahmin", "sparkles"),
         new NavItem("sinav", "Sınav Okulları", "graduation-cap"),
         new NavItem("satinalma/analiz", "Alım Analizi", "shopping-bag", Section: "SATINALMA"),
