@@ -1,0 +1,71 @@
+BKM KITAP — PAZARTESI BRIFINGI · 17.08.2026
+Hafta 34 · 10.08 - 16.08 kapanisi
+Veri kesim: 16.08.2026 23:59 · Kaynak: EncoreMerkez (3 Bursa)
+==================================================================
+
+
+OZET
+----
+Hafta net ciro    : 24.571.640 TL  (WoW +%56,2)
+Fiş adedi         : 17.043  (+%2,6)
+Sepet ortalaması  : 1.442 TL
+Ay MTD (Ağustos 2026): 44.690.146 TL  (gerçekleşme %126.6)
+E-ticaret net     : 20.934.933 TL  (WoW %-3,5)
+BIRLESIK          : 45.506.573 TL  (magaza %54 / online %46)
+
+
+1) MAGAZA OZETI — HAFTA 34
+------------------------------------------
+Özlüce              Fis:   6813  Net:      5.789.140 TL  Sepet:  849 TL  WoW +%11,2
+İst.Yolu            Fis:   4619  Net:     14.749.772 TL  Sepet: 3193 TL  WoW +%106,6
+FSM                 Fis:   5611  Net:      4.032.727 TL  Sepet:  718 TL  WoW +%19,3
+TOPLAM              Fis:  17043  Net:     24.571.640 TL  Sepet: 1441 TL  WoW +%56,2
+
+
+1b) E-TICARET (JOKER) — HAFTA 34
+------------------------------------------------
+Mobil Uygulama (Android)    Sip:  4.538  Net:      5.460.020 TL  Sepet: 1203 TL  WoW %-13,9
+Mobil Uygulama (iOS)        Sip:  3.211  Net:      3.977.044 TL  Sepet: 1238 TL  WoW %-4,1
+Mobil Site                  Sip:  8.256  Net:      8.056.756 TL  Sepet:  975 TL  WoW +%2,4
+Web Sitesi                  Sip:  2.508  Net:      3.441.114 TL  Sepet: 1372 TL  WoW +%2,9
+Diğer                       Sip:      0  Net:              0 TL  Sepet:    0 TL  WoW —
+TOPLAM                      Sip: 18.513  Net:     20.934.933 TL  Sepet: 1130 TL  WoW %-3,5
+(Net = iptal/iade haric, kargo dahil TOTALPRICE)
+
+
+2) GUNLUK SEYIR
+----------------
+10.08 Pzt                  Net:      2.492.699 TL  Fis:  2249  Sepet: 1108 TL
+11.08 Sal                  Net:      2.824.550 TL  Fis:  2336  Sepet: 1209 TL
+12.08 Çar                  Net:      2.674.200 TL  Fis:  2276  Sepet: 1174 TL
+13.08 Per                  Net:      2.524.308 TL  Fis:  2315  Sepet: 1090 TL
+14.08 Cum                  Net:      4.180.995 TL  Fis:  2308  Sepet: 1811 TL
+15.08 Cmt                  Net:      4.962.940 TL  Fis:  2820  Sepet: 1759 TL
+16.08 Pzr                  Net:      4.911.948 TL  Fis:  2739  Sepet: 1793 TL
+TOPLAM                     Net:     24.571.640 TL  Fis: 17043  Sepet: 1441 TL
+
+
+3) AY MTD (Ağustos 2026)
+---------------------------
+Özlüce              Net:     12.695.538 TL  Hedef:     14.002.118 TL  Gerceklesme: %90.7
+İst.Yolu            Net:     23.556.815 TL  Hedef:     12.787.518 TL  Gerceklesme: %184.2
+FSM                 Net:      8.437.793 TL  Hedef:      8.500.852 TL  Gerceklesme: %99.3
+TOPLAM              Net:     44.690.146 TL  Hedef:     35.290.488 TL  Gerceklesme: %126.6
+
+
+4) ONUMUZDEKI HAFTA — HAFTA 35
+--------------------------------------------------
+Hafta 35 (23.08.2026 kapanışı). Özel gün yok, baseline beklenir.
+
+
+KAPSAM UYARILARI
+-----------------
+- Kapsam: 3 Bursa fiziksel magaza (FSM, Ozluce, Ist.Yolu)
+- Heykel, JOKER e-ticaret, kitapsepeti, kafeler dahil degil
+- Geri donusum fisleri (BarcodeNo='1001') haric
+- Iade fisleri sign'li (negatif) ciroya dahil
+
+---
+BKM Kitap · Pazartesi Brifingi (otomatik) · 17.08.2026 10:22
+scripts/generate_brief.py v1.1.0
+Sonraki brief: 24.08.2026 09:00
