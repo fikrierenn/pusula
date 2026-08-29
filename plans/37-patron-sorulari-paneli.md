@@ -13,8 +13,8 @@
 kapanış sorusu ("sen olsan ne yapardın?") tanımlıyor
 (hedef/gerçekleşen/fark/nakit/sorumlu · satış · satınalma · operasyon · finans · İK-BT-lojistik).
 
-Bugün bu soruların cevabı **dağınık** (29.08 sayfa-başlığı denetimi): **10 ✅ canlı** dashboard sayfasında ·
-**8 🟡 parçalı** (bir yönü var, sorunun tamamını cevaplamıyor) · **6 ❌ veri yok** · 1 kapsam dışı. GMY bir soruyu sormak istediğinde hangi sayfaya gideceğini bilmiyor,
+Bugün bu soruların cevabı **dağınık** (29.08 sayfa-başlığı denetimi): **9 ✅ canlı** dashboard sayfasında ·
+**8 🟡 parçalı** (bir yönü var, sorunun tamamını cevaplamıyor) · **7 ❌ veri yok** · 1 kapsam dışı. GMY bir soruyu sormak istediğinde hangi sayfaya gideceğini bilmiyor,
 ve **cevabı olmayan sorular görünmüyor** — "veri yok" ile "kötü sonuç" ayırt edilemiyor.
 
 İhtiyaç: 25 sorunun tamamını tek ekranda listeleyen, her soruyu ya canlı sayıya ya da doğru sayfaya
@@ -80,7 +80,7 @@ bağlayan, cevaplanamayan soruyu **açıkça boşluk olarak işaretleyen** bir k
 
 ### A: 25 sorunun hepsini canlı hesaplayan tek büyük sayfa
 **Açıklama:** Sayfa açılınca 25 metrik paralel sorgulanır, hepsi sayı gösterir.
-**Reddetme sebebi:** 25 ağır sorgu = 60+ sn açılış (bulunurluk/FIFO tek başına 15 sn). Ayrıca 6 sorunun
+**Reddetme sebebi:** 25 ağır sorgu = 60+ sn açılış (bulunurluk/FIFO tek başına 15 sn). Ayrıca 7 sorunun
 verisi yok — sayfa yarı boş açılır. Perf ve dürüstlük ikisi de kaybeder.
 
 ### B: Her departmana ayrı yeni sayfa (Satış Soruları, Finans Soruları…)

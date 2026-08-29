@@ -26,6 +26,7 @@ public static class NavRegistry
     public static readonly IReadOnlyList<NavItem> Items = new[]
     {
         new NavItem("", "Genel Bakış", "layout-dashboard", InBottomNav: true, BottomLabel: "Genel", MatchAll: true),
+        new NavItem("patron-sorulari", "Patron Soruları", "clipboard-list"),
         new NavItem("magazalar", "Mağazalar", "store"),
         new NavItem("toplam", "TOPLAM Kategori", "chart-pie"),
         new NavItem("eticaret", "E-ticaret", "shopping-cart", InBottomNav: true),

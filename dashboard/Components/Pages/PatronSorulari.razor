@@ -1,0 +1,183 @@
+@page "/patron-sorulari"
+@using GmDashboard.Models
+@rendermode InteractiveServer
+
+@*  Patron Soruları paneli — plan-37 Faz A (statik).
+    Kaynak: PatronSorulariRegistry (tek kaynak: docs/2026-08-29-patron-sorulari-kapsam.md).
+    HESAP YAPMAZ — mevcut sayfalara yönlendirir, boşluğu açıkça gösterir.
+    Renk: yalnız DaisyUI semantic token (renk-standardi.md) — hardcode hex YOK.               *@
+
+<PageTitle>Patron Soruları — BKM GM</PageTitle>
+
+<div class="space-y-5">
+
+    <div>
+        <div class="text-xs text-base-content/50">6 departman · @PatronSorulariRegistry.ToplamSoru hesap-sorma sorusu</div>
+        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2 m-0">
+            <i data-lucide="clipboard-list" class="w-6 h-6 text-primary"></i>Patron Soruları
+        </h1>
+        <p class="text-sm text-base-content/60 mt-1">
+            Her sorunun cevabı <span class="font-semibold">nerede</span> — cevaplanamıyorsa
+            <span class="font-semibold">neden</span>. Boşluk gizlenmez: "veri yok" ile "kötü sonuç"
+            ayrı şeylerdir. Rozetler kanıta dayanır (ilgili sayfada isimli kart).
+        </p>
+    </div>
+
+    @if (_hatalar.Count > 0)
+    {
+        <div class="alert alert-warning text-sm">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            <div>
+                <div class="font-semibold">Kayıt defteri tutarsız (@_hatalar.Count)</div>
+                <ul class="list-disc ml-5 mt-1">@foreach (var h in _hatalar) { <li>@h</li> }</ul>
+            </div>
+        </div>
+    }
+
+    @*  ── Skor bandı ─────────────────────────────────────────────────────  *@
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        @foreach (var (durum, baslik, aciklama) in _kovalar)
+        {
+            var n = PatronSorulariRegistry.Sayim(durum);
+            <button class="card bg-base-100 border text-left transition
+                           @(_filtre == durum ? "border-primary ring-1 ring-primary" : "border-base-300")"
+                    @onclick="() => FiltreSec(durum)">
+                <div class="card-body p-4">
+                    <div class="text-xs text-base-content/50 flex items-center gap-1">
+                        <span class="@RozetRenk(durum)">@Rozet(durum)</span> @baslik
+                    </div>
+                    <div class="text-xl font-bold tabular-nums @RozetRenk(durum)">@n</div>
+                    <div class="text-[11px] text-base-content/50">@aciklama</div>
+                </div>
+            </button>
+        }
+    </div>
+
+    @if (_filtre is not null)
+    {
+        <div class="flex items-center gap-2 text-sm">
+            <span class="text-base-content/60">Filtre: <span class="font-semibold">@Baslik(_filtre.Value)</span></span>
+            <button class="btn btn-xs btn-ghost" @onclick="() => FiltreSec(null)">✕ temizle</button>
+        </div>
+    }
+
+    @*  ── Departman blokları ─────────────────────────────────────────────  *@
+    @foreach (var dep in PatronSorulariRegistry.Departmanlar)
+    {
+        var sorular = PatronSorulariRegistry.DepartmanSorulari(dep.No)
+                        .Where(s => _filtre is null || s.Durum == _filtre).ToList();
+        if (sorular.Count == 0) { continue; }
+
+        <div class="card bg-base-100 border border-base-300">
+            <div class="card-body p-4 gap-3">
+
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <h2 class="font-semibold flex items-center gap-2 m-0">
+                        <i data-lucide="@dep.Ikon" class="w-4 h-4 text-primary"></i>
+                        <span class="text-base-content/40 tabular-nums">@dep.No</span> @dep.Ad
+                    </h2>
+                    <button class="btn btn-xs btn-outline btn-primary" disabled
+                            title="Faz C — bu bloğun rakamları @dep.Danisman rolüyle Genius'a beslenecek">
+                        <i data-lucide="sparkles" class="w-3 h-3"></i>
+                        @PatronSorulariRegistry.KapanisSorusu
+                    </button>
+                </div>
+
+                <div class="divide-y divide-base-300">
+                    @foreach (var s in sorular)
+                    {
+                        <div class="py-3 flex flex-col md:flex-row md:items-start gap-2 md:gap-4">
+
+                            <div class="flex items-center gap-2 md:w-64 shrink-0">
+                                <span class="text-base @RozetRenk(s.Durum)" title="@Baslik(s.Durum)">@Rozet(s.Durum)</span>
+                                <div>
+                                    <div class="text-[11px] text-base-content/40 tabular-nums">@s.Id</div>
+                                    <div class="text-sm font-medium leading-tight">@s.Soru</div>
+                                </div>
+                            </div>
+
+                            <div class="grow text-xs space-y-1">
+                                <div class="text-base-content/60">@s.Kanit</div>
+                                @if (s.Eksik is not null)
+                                {
+                                    <div class="text-warning"><span class="font-semibold">Eksik:</span> @s.Eksik</div>
+                                }
+                                @if (s.Is is not null)
+                                {
+                                    <div class="text-base-content/40"><span class="font-semibold">İş:</span> @s.Is</div>
+                                }
+                                <div class="text-base-content/40">
+                                    Danışman: <code class="text-[11px]">@PatronSorulariRegistry.DanismanBul(s)</code>
+                                </div>
+                            </div>
+
+                            <div class="shrink-0">
+                                @if (s.Route is not null)
+                                {
+                                    <a class="btn btn-xs btn-primary btn-outline" href="/@s.Route">
+                                        Aç <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                                    </a>
+                                }
+                                else if (s.Durum == SoruDurum.KapsamDisi)
+                                {
+                                    <span class="badge badge-ghost badge-sm">kapsam dışı</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-error badge-outline badge-sm">veri yok</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <p class="text-[11px] text-base-content/40">
+        Kaynak: <code>docs/2026-08-29-patron-sorulari-kapsam.md</code> ·
+        Kayıt defteri: <code>PatronSorulariRegistry.cs</code> · plan-37 Faz A (statik; canlı mini-metrik Faz B).
+        Rozet değişikliği önce belgeye yazılır.
+    </p>
+</div>
+
+@code {
+    private SoruDurum? _filtre;
+    private IReadOnlyList<string> _hatalar = Array.Empty<string>();
+
+    private static readonly (SoruDurum Durum, string Baslik, string Aciklama)[] _kovalar =
+    {
+        (SoruDurum.Canli,      "Cevaplanıyor",  "canlı sayfada isimli kart"),
+        (SoruDurum.Parcali,    "Parçalı",       "bir yönü var, tamamı değil"),
+        (SoruDurum.VeriYok,    "Veri yok",      "boşluk — plana bağlı"),
+        (SoruDurum.KapsamDisi, "Kapsam dışı",   "BKM'de bu iş yok"),
+    };
+
+    protected override void OnInitialized() => _hatalar = PatronSorulariRegistry.Dogrula();
+
+    private void FiltreSec(SoruDurum? d) => _filtre = (_filtre == d) ? null : d;
+
+    private static string Rozet(SoruDurum d) => d switch
+    {
+        SoruDurum.Canli => "✅",
+        SoruDurum.Parcali => "🟡",
+        SoruDurum.VeriYok => "❌",
+        _ => "⬜",
+    };
+
+    private static string RozetRenk(SoruDurum d) => d switch
+    {
+        SoruDurum.Canli => "text-success",
+        SoruDurum.Parcali => "text-warning",
+        SoruDurum.VeriYok => "text-error",
+        _ => "text-base-content/40",
+    };
+
+    private static string Baslik(SoruDurum d) => d switch
+    {
+        SoruDurum.Canli => "Cevaplanıyor",
+        SoruDurum.Parcali => "Parçalı",
+        SoruDurum.VeriYok => "Veri yok",
+        _ => "Kapsam dışı",
+    };
+}
