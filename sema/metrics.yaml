@@ -41,6 +41,10 @@ metrics:
     sizing: "2026-08-14 Faz0 (Kat3 10/12/16, son12): 42.744 aktif · kısmi(1-2 şube) 15.802 (%37, carry-in düzeltilmiş) · kaba kayıp ~263K adet. Ham (carry-in'siz) 16.238/%38/~377K — hareketsiz-stok şişirmesi."
     accountability: "Bulunurluk-düzeltilmiş taban satınalmada AYRI gösterilir; FAZLA kararını OTOMATİK değiştirmez (taban şişirme overbuy gizler — hesap-sorma aracının kırmızı çizgisi)."
     uygulama: "plan-33 (B-133 sema / B-134 BulunurlukQueries / B-135 sayfa / B-136 satınalma entegrasyon). Keşif: sorgular/2026-08-14-bulunurluk-sizing.sql."
+    kapsam_gun_mevsimsellik: "⚠️ 'Kapsam (gün) = stok ÷ son-3-ay günlük hız' MEVSİMSEL ÜRÜNDE YANILTIR. Okul kırtasiyesi/hazırlık kitabı Mayıs-Temmuz'da yavaş → sezon dışı ölçümde kapsam 1.000-8.500 GÜN çıkar (Pritt Kuruboya 8.550 g), aynı ürün Eylül'de kuru kalır. KURAL: mevsimsel kalemde kapsam yerine SEZON-BAZLI hazırlık oranı = (şube+depo stok) ÷ (GEÇEN YIL aynı sezon satış adedi). >2.000 gün kapsam mevsimsellikle açıklanamaz, gerçek aşırı stoktur."
+    jit_ayrimi_YoY: "⚠️ **DÜŞÜK STOK TEK BAŞINA ANOMALİ DEĞİL** — kitapta normal işletme modu JIT olabilir. Zorunlu kontrol: GEÇEN YIL AYNI TARİHTEKİ stok (irsHrk kümülatif kesim, ehTrhS < aynı-gün-geçen-yıl). Ölçüm 2026-08-25: hazırlık-oranı <%25 olan 108 sezon-SKU'sunun 52'si geçen yıl da aynı durumdaydı (JIT, alarm değil) → GERÇEK GERİLEME 56 SKU. YoY kontrolü yapılmazsa alarmın yarısı yalancı."
+    mal_yolda_kontrolu: "'Stok yok' bulgusu ancak açık sipariş kontrolüyle birlikte aksiyona döner: dbo.sip + sipAyr, s.eTarih (GİRİŞ tarihi — eTarihS DEĞİL, bkz entities dbo.sip tuzağı), eDurum<>2. Yalnız VAR/YOK okunur; karşılanma oranı ölçülemiyor (ehSevkAdet NULL). Ölçüm 2026-08-25: kritik 108 SKU'nun 79'unda son 60 günde sipariş satırı YOK → eksiklik 'mal yolda' ile açıklanmıyor."
+    depoda_var_rafta_yok: "Kuru şube + aynı SKU'da depo stoğu ≥10 → SATINALMA DEĞİL SEVK/DAĞITIM hatası (sıfır maliyetli kazanım). Ölçüm 2026-08-25 top50-ciro içinde 2 vaka (LGS Matematik A Fenomen: İst.Yolu 1 ad stok / 439 ad yıllık satış / depoda 495 ad)."
     confidence: 0.9
     evidence: "2026-08-14 — sizing 3 varyant çalıştırıldı (ham/carry-in); tablo semantiği kod+veri doğrulandı (591060 birebir); 591060 vaka elle izlendi (şube×sezon stok+satış)."
     last_verified: "2026-08-14"
@@ -147,6 +151,16 @@ metrics:
       filter: "stok/stockout raporlarında (E8) Sahaf HARİÇ — urn.stkAd NOT LIKE N'SHF-%'"
       neden: "ikinci el tekil kopya; satıldı=devamı yok, reorder edilemez → kalıcı stoksuz, stockout sinyalini şişirir (Dergi gibi)"
       evidence: "13.06 — kullanıcı kararı + drill-down: Kitap stockout ham %5,3 → sahaf-hariç %2,6. 644 stoksuzun 342'si (%53) sahaf (SHF-)."
+    sinav_okullari_SATIS:   # 25.08.2026 — kardeş kural: yukarıdaki sinav_okullari yalnız STOK/ENVANTER içindi
+      filter: "ÇOK-SATAN / bulunurluk / stockout / raf-performans analizlerinde de HARİÇ: bkm.UrunBilgi.KatAna LIKE N'Sınav Okul%' VEYA Kategori3=N'Sınav Okulları'"
+      neden: "Bunlar EĞİTİM HİZMETİ/ABONELİK PAKETİ SKU'su (ör. '<n>. SINIF SÜRELİ YAYIN 2026', birim ~40-45K ₺) — raf stoğu YOK, olması da beklenmez. Bulunurluk metriğinde 12/12 ay 'kuru' görünüp OOS oranını sahte şişirirler; ciro sıralamasının tamamını kaplayıp gerçek raf ürününü listeden atarlar."
+      buyukluk: "≈%40 şube cirosu (322M ₺ / 803M ₺ · 54 SKU) — mertebe, ölçüm 2026-08-25 (son 12 ay)"
+      evidence: "2026-08-25 — irsHrk ehTip 4/100/5/101 şube (1/4477/4478) son12: ham top-20 cironun 19'u Süreli Yayın paketi; hepsi stok 0 + kuru 12/12 ay. sorgular/2026-08-25-cok-satan-50-stok-bulunurluk.sql blok 2."
+    poset_ambalaj:
+      filter: "ADET-bazlı çok-satan/rotasyon sıralamasında HARİÇ — stkAd LIKE N'%Poşet%' AND Kategori3=N'Genel'"
+      neden: "ambalaj/sarf, satılan ürün değil. ~465K adet/yıl ile adet sıralamasının ilk 6'sının 4'ünü kaplar, cirosu 0,3M ₺ (birim ~0,65 ₺). Ciro sıralamasını bozmaz, ADET sıralamasını tamamen bozar."
+      kardes_tuzak: "'Karne Hediyesi' 16.842 adet / 168 ₺ ciro (birim 0,01 ₺) = promosyon/bedelsiz kalem POS'ta satış gibi kaydediliyor → adet sıralaması ciro filtresi olmadan kullanılamaz."
+      evidence: "2026-08-25 — aynı koşu, adet DESC ham liste."
 
   eticaret_net:             # haftalık brief + G7 net tanımı
     source: ODAKJOKER.JOKER.dbo.J_ORDERS
