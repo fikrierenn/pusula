@@ -77,3 +77,11 @@ kontrol.xlsx
 # Cert private key (CA imzalama anahtari — ASLA commit etme) + yedekler
 dashboard/cert/ca.key
 dashboard/cert/*.bak
+
+# Kişisel veri içeren rapor çıktıları (KVKK — isimli maaş/bordro/personel dökümü).
+# Script'ler commit'lenir, ÜRETTİĞİ dosya commit'lenmez.
+briefings/**/*aa*[Ll]istesi*.xlsx
+briefings/**/beyaz-yaka-*.json
+briefings/**/beyaz-yaka-*.xlsx
+briefings/personel-kart-anomali.xlsx
+send_brief.log
