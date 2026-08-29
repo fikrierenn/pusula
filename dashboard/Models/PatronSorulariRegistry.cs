@@ -19,6 +19,7 @@ public enum SoruDurum
 /// <param name="Eksik">Parçalı ise sorunun cevaplanmayan yarısı.</param>
 /// <param name="Is">Boşluğu kapatacak plan/TODO referansı.</param>
 /// <param name="Danisman">Departman varsayılanını ezer (6. departman üç disipline ayrılır).</param>
+/// <param name="Metrik">Faz B lazy mini-metrik anahtarı (PatronSorulariQueries). null = rakam yok.</param>
 public record PatronSorusu(
     string Id,
     int DepartmanNo,
@@ -28,7 +29,8 @@ public record PatronSorusu(
     string Kanit,
     string? Eksik = null,
     string? Is = null,
-    string? Danisman = null);
+    string? Danisman = null,
+    string? Metrik = null);
 
 /// <param name="Danisman">Bloğun "Sen olsan ne yapardın?" butonunun konuşacağı danışman skill'i.</param>
 public record PatronDepartman(int No, string Ad, string Ikon, string Danisman);
@@ -58,9 +60,9 @@ public static class PatronSorulariRegistry
     {
         // ── 1 — Her departmana önce (kesişen blok; danışman ilgili departmanınki) ──
         new PatronSorusu("PS-1.1", 1, "Hedef neydi?", SoruDurum.Canli, "tahmin",
-            "Mağaza Bazlı Tahmin · Hedef (MTD) kartı"),
+            "Mağaza Bazlı Tahmin · Hedef (MTD) kartı", Metrik: "hedef-gerceklesme"),
         new PatronSorusu("PS-1.2", 1, "Gerçekleşen ne oldu?", SoruDurum.Canli, "",
-            "Genel Bakış KPI bandı · TOPLAM — Kategoriler"),
+            "Genel Bakış KPI bandı · TOPLAM — Kategoriler", Metrik: "mtd-ciro"),
         new PatronSorusu("PS-1.3", 1, "Fark neden oluştu?", SoruDurum.Parcali, "tahmin",
             "Hesap Adımları + Bileşen Kırılımı",
             Eksik: "Fiyat × miktar × mix variance ayrıştırması yok — farkın kaynağı sayısal bölünmüyor",
@@ -69,7 +71,7 @@ public static class PatronSorulariRegistry
             "Gelir tablosu tahakkuk esaslı; nakit görünümü hiç yok",
             Is: "plan-38 (nakit bloğu)"),
         new PatronSorusu("PS-1.5", 1, "Kim, ne zamana kadar düzeltecek?", SoruDurum.Canli, "gorevler",
-            "Görev + son tarih + açık görev rozeti"),
+            "Görev + son tarih + açık görev rozeti", Metrik: "acik-gorev"),
 
         // ── 2 — Satış ve pazarlama ──
         new PatronSorusu("PS-2.1", 2, "Hangi müşteri ve ürün gerçekten kazandırıyor?", SoruDurum.Parcali, "sadakat",
@@ -79,7 +81,7 @@ public static class PatronSorulariRegistry
         new PatronSorusu("PS-2.2", 2, "İndirim katkı payını ne kadar düşürüyor?", SoruDurum.Parcali, "hediye-ceki",
             "Baremli kârlılık · İndirim mi çek fazlası mı · /operasyon İndirim Kaynağı dağılımı",
             Eksik: "İndirim → marj erozyonu köprüsü yok (tüm indirim türleri birlikte, kategori üstü)",
-            Is: "Tier-2"),
+            Is: "Tier-2", Metrik: "hediye-ceki-12ay"),
         new PatronSorusu("PS-2.3", 2, "Teklifler satışa neden dönmüyor?", SoruDurum.KapsamDisi, null,
             "BKM perakende; B2B teklif süreci yok (GMY kararı 29.08.2026). Tekrar sorulmasın diye listede tutuluyor"),
         new PatronSorusu("PS-2.4", 2, "Hangi alacağın tahsilatı riskli?", SoruDurum.Canli, "cari-risk",
@@ -93,7 +95,7 @@ public static class PatronSorulariRegistry
         new PatronSorusu("PS-3.2", 3, "Stok kaç gün bekliyor?", SoruDurum.Canli, "envanter",
             "Kategori Devir Hızı · ölü stok listesinde \"gün listede\""),
         new PatronSorusu("PS-3.3", 3, "Hangi mal yavaşlıyor veya değer kaybediyor?", SoruDurum.Canli, "envanter",
-            "Ölü Sermaye — Kilitli Stok · Marka Alış-Satış Dengesi · /baskisi-yok · /bulunurluk"),
+            "Ölü Sermaye — Kilitli Stok · Marka Alış-Satış Dengesi · /baskisi-yok · /bulunurluk", Metrik: "bulunurluk-oos"),
         new PatronSorusu("PS-3.4", 3, "Alternatif tedarikçimiz var mı?", SoruDurum.VeriYok, null,
             "Tedarikçi ↔ ürün alternatif matrisi yok; tek-yayınevi bağımlılığı ölçülmüyor",
             Is: "Tier-2"),
@@ -107,7 +109,7 @@ public static class PatronSorulariRegistry
         new PatronSorusu("PS-4.3", 4, "Birim maliyet neden değişti?", SoruDurum.Canli, "satinalma/analiz",
             "Alış fiyat sapması + kanonik maliyet şelalesi (son 5 alış faturası). Fiyat/mix/fire ayrımı yorumda"),
         new PatronSorusu("PS-4.4", 4, "Teslimat nerede gecikiyor?", SoruDurum.Canli, "eticaret",
-            "Bekleyen Gün (kargoya çıkmamış) · sipariş→kargo gün · Kargo Performansı (firma bazlı)"),
+            "Bekleyen Gün (kargoya çıkmamış) · sipariş→kargo gün · Kargo Performansı (firma bazlı)", Metrik: "bekleyen-kargo"),
 
         // ── 5 — Finans, muhasebe ve vergi (en zayıf blok) ──
         new PatronSorusu("PS-5.1", 5, "13 haftada en düşük nakit ne zaman?", SoruDurum.VeriYok, null,
