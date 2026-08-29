@@ -195,11 +195,15 @@ entities:
     evidence: "2026-07-02 — MCP zirve sql_query: describe perbilgi + Gorevi/Grupkodu/Masrafmerkezi/Subeadi dağılım + Personeldurumu kardinalite."
   BKM_GENEL.dbo.vw_PersonelDepartman:
     tip: view
-    key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Igt, Ict]
+    key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Igt, Ict, Ucret, TahakkukSekli, Banka, Iban]
     grain: "personel (normalize; ham perbilgi üstüne temiz katman)"
+    ucret_kurali: "⚠️ ÜCRET DE BURADA (bordro için ayrı tabloya gitme). `Ucret` = CARİ oran, `dbo.puanbil` cari ay ile birebir tutar. `TahakkukSekli`='NET' (tüm kadro) → tutarlar NET, BRÜT DEĞİL. İKİ BİRİM VAR ve view `Ucretsekli`'yi TAŞIMAZ: GÜNLÜK (kadronun ~%99, aylık = Ucret×30) vs AYLIK (avuç içi üst yönetim, doğrudan). Birimi karıştırmak sessiz 30× hata üretir. Ayrım: `dbo.puanbil.Ucretsekli` (doğru yol) veya büyüklük eşiği (GÜNLÜK üst sınırı ile AYLIK alt sınırı arasında ~30× uçurum var — eşik ölçümle teyit edilerek kullanılır). ⚠️ `dbo.perbilgi.Maas` BAYAT (yıllar öncesinin değerleri) — ÜCRET İÇİN KULLANMA."
+    firma_kapsami: "View 3 firmayı BİRLEŞTİRİR (BKM_GENEL + BURSA_KÜLTÜR_MERKEZİ + ASİYE_BİNGÖLBALİ); `dbo.perbilgi` yalnız BKM_GENEL'i tutar. perbilgi'ye INNER JOIN edersen diğer iki firmanın personeli SESSİZCE düşer. Firma ayracı = `Firma` kolonu; `Personelno` zaten no+firma birleşimi ('179-BKMH')."
+    beyaz_yaka: "Sema'da hazır beyaz/mavi yaka bayrağı YOK — türetilir: Lokasyon='GENEL MÜDÜRLÜK' (ofis) eksi saha ünvanları (depo/forklift/şoför/bekçi/temizlik/bakım). Mağaza-kafe yönetimi ve şef kadroları KAPSAM KARARI (kullanıcıya sorulur, sabit değil). Kapsam seçimi sonucu ciddi değiştirir → rapor başlığında hangi tanımın kullanıldığı YAZILIR."
     note: "İK/personel KANONİK KAYNAĞI (Mosaik sp_Ik* raporları hep bunu kullanır). ⚠️ Personelno ALFANÜMERİK STRING (ör. '4634-BKM' = personelno+firma), int DEĞİL. AKTİF = Ict IS NULL (271 aktif; Personeldurumu DEĞİL). Kıdem = DATEDIFF(DAY,Igt,GETDATE())/365.25. Temiz boyutlar: Unvan(59), Departman(27: YARDIMCI KİTAP/KÜLTÜR/KIRTASİYE/ÇOCUK/OYUNCAK/AKADEMİ/KASA/KAFE/MUTFAK/MAL KABUL/DEPO/CALL CENTER/MAĞAZA/GRAFİK TASARIM/ETKİNLİK/FİNANS/MUHASEBE/İK/SATIN ALMA/PAZARLAMA/DENETİM/BİLGİ TEKNOLOJİLERİ/İCRA KURULU/ŞURA/MERKEZ…), Lokasyon(4), AltLokasyon(10=şube; UserDataFilterInjector FilterKey='sube' satır-düzeyi filtre). Görev-tanımı EŞLEME anahtarı = (Departman + Unvan) — bizim müdürlük+rol tasarımıyla örtüşür; eşlenmeyen = tanım-gap."
     confidence: 0.95
-    last_verified: "2026-07-02"
+    last_verified: "2026-08-29"
+    evidence_2026_08_29: "Ücret keşfi (MCP zirve): view.Ucret ↔ puanbil(Yil=2026,Ay=7) eşleşen 212 kişide 209 birebir (kalan 3 ara-dönem zam). puanbil.Ucretsekli 2026 dağılımı GÜNLÜK 755 / AYLIK 1009 kayıt; kişi bazında kadronun ezici çoğunluğu GÜNLÜK. Aktif sayımı 341 (view, Ict IS NULL) vs 288 (perbilgi) → fark = diğer 2 firma. perbilgi.Maas örnekleri (1.400 ₺ gibi) cari ücretin çok altında = bayat. Arşiv: sorgular/2026-08-29-beyaz-yaka-maas-listesi.sql"
     evidence: "2026-07-02 — reporthub/Mosaik/Database/sp_IkPersonelListesi.sql + sp_IkMagazaYogunlugu.sql; MCP zirve=ZIRVE\\ZRVSQL2008 (=IK datasource, aynı sunucu). View DEPLOY EDİLMİŞ (271); sp_Ik* CANLIDA YOK (0) → yalnız repo Database/*.sql, Zirve'ye deploy bekliyor. İK rapor SP'leri Zirve'de çalışır (Mosaik'te değil)."
 
   # === Mosaik portal DB (2026-07-02 keşif; MCP portalhub) — görev-tanımı modülü HEDEFİ ===
