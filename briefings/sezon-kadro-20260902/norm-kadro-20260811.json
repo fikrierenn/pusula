@@ -4,7 +4,8 @@
     "tarih": "11.08.2026",
     "kaynak": "Kullanıcı (GMY) tarafından verilen norm kadro tablosu — İK/operasyon parametresi, Zirve'den sorgulanmaz",
     "kapsam": "Mağaza kadrolu norm; Şura tabloda YOK",
-    "not": "Tablo iki bölüm: MAĞAZA-KADROLU (sezon dışı norm, departman bazında) ve MAĞAZA-SEZONLUK (sezonluk norm, yalnız mağaza toplamı). Engelli kadro sayıları raporlamaya DAHİL. Şura tabloda yok."
+    "not": "Tablo iki bölüm: MAĞAZA-KADROLU (sezon dışı norm, departman bazında) ve MAĞAZA-SEZONLUK (sezonluk norm, yalnız mağaza toplamı). Engelli kadro sayıları raporlamaya DAHİL. Şura tabloda yok.",
+    "karar": "KARAR (yönetim, 02.09.2026 teyidi): ENGELLİ kadro NORM DIŞIDIR — norm doluluğuna sayılmaz. Bu karar, norm tablosunun kendi notunu ('Engelli kadro sayıları raporlamaya dahil edilmiştir') GEÇERSİZ KILAR. ETKİNLİK de norm dışıdır (tabloda 0 tanımlı). Karşılaştırma: norm (145 kadrolu / 72 sezonluk) vs operasyonel gerçek = kadrolu − engelli − etkinlik."
   },
   "sube_esleme": {
     "FSM": "FSM",

@@ -299,13 +299,19 @@ if nrm0:
     kpi(s, 0.6, 1.5, 3.9, "NORM · KADRO + SEZON", "%d" % tp0["norm_toplam"],
         "kadrolu %d + sezonluk %d · %s tarihli norm" % (tp0["norm"], tp0["norm_sezonluk"], nrm0["tarih"]),
         MGREY, 34, ikon="users")
-    kpi(s, 4.68, 1.5, 3.9, "GERÇEK · 31 AĞUSTOS", "%d" % tp0["toplam_kesim26"],
-        "kadrolu %d + sezonluk %d" % (tp0["kadrolu_kesim26"], tp0["sezonluk_kesim26"]),
-        MGREY, 34, ikon="users")
+    kpi(s, 4.68, 1.5, 3.9, "GERÇEK · 31 AĞUSTOS (OPERASYONEL)",
+        "%d" % (tp0["kadrolu_kesim26"] - sum(a.get("etkinlik", 0) + a.get("engelli", 0)
+                                             for a in nrm0.get("ayrik", {}).values())
+                + tp0["sezonluk_kesim26"]),
+        "engelli ve etkinlik norm dışı tutuldu", MGREY, 34, ikon="users")
+    ayr0 = nrm0.get("ayrik", {})
+    dis0 = sum(a.get("etkinlik", 0) + a.get("engelli", 0) for a in ayr0.values())
+    kad_ops0 = tp0["kadrolu_kesim26"] - dis0
+    fark0 = (kad_ops0 + tp0["sezonluk_kesim26"]) - tp0["norm_toplam"]
     kpi(s, 8.75, 1.5, 3.9, "NORMA GÖRE", "%+d kişi" % fark0,
-        "kadrolu %+d · sezonluk %+d" % (tp0["kadrolu_kesim26"] - tp0["norm"],
-                                        tp0["sezonluk_kesim26"] - tp0["norm_sezonluk"]),
-        DRED, 30, ikon="alert-triangle")
+        "kadrolu %+d · sezonluk %+d (engelli/etkinlik norm dışı)"
+        % (kad_ops0 - tp0["norm"], tp0["sezonluk_kesim26"] - tp0["norm_sezonluk"]),
+        DRED, 28, ikon="alert-triangle")
 
     rrect(s, 0.6, 3.62, 12.05, 0.82, LGREY, RED, lw=2)
     tb(s, 0.9, 3.62, 11.5, 0.82,
@@ -324,10 +330,13 @@ if nrm0:
          % (k5["kadrolu_taban25"], k5["kadrolu_taban26"], taban_fark, sezon_ici_26, yzd(d_kb)),
          9.5, False, GREY)])
 
-    dipnot(s, "* Norm: BKMKİTAP Mağaza Kadro ve Sezon Takip Tablosu, %s (kadrolu norm departman "
-              "bazında, sezonluk norm mağaza toplamı; engelli kadro dahil) · Kapsam: dört mağaza — "
-              "Şura norm tablosunda yok · Gerçek sayılar 31.08 as-of · İş hacmi üç POS mağazası."
-           % nrm0["tarih"])
+    dipnot(s, "* Norm = ENGELLİ DIŞINDAKİ personel sayısı (yönetim kararı); etkinlik kadrosu da norm "
+              "dışı — gerçek rakamdan düşüldü (engelli %d · etkinlik %d kişi). İK'nın kayıt toplamı "
+              "kadrolu %d + sezonluk %d = %d · Norm kaynağı: BKMKİTAP Mağaza Kadro ve Sezon Takip "
+              "Tablosu, %s · Kapsam: dört mağaza (Şura norm tablosunda yok) · İş hacmi üç POS mağazası."
+           % (sum(a.get("engelli", 0) for a in ayr0.values()),
+              sum(a.get("etkinlik", 0) for a in ayr0.values()),
+              tp0["kadrolu_kesim26"], tp0["sezonluk_kesim26"], tp0["toplam_kesim26"], nrm0["tarih"]))
     sig(s)
 
 # ================================================================= 5 KADRO AKISI
@@ -717,10 +726,17 @@ if nrm:
     acik_toplam = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
     toplam_fark = tp["toplam_kesim26"] - tp["norm_toplam"]
     tb(s, 0.6, 1.5, 12.05, 0.34,
-       [("Norm %d (kadrolu %d + sezonluk %d) · gerçek %d (kadrolu %d + sezonluk %d) · fark %+d kişi — "
-         "aşağıda mağaza ve grup kırılımı."
-         % (tp["norm_toplam"], tp["norm"], tp["norm_sezonluk"], tp["toplam_kesim26"],
-            tp["kadrolu_kesim26"], tp["sezonluk_kesim26"], toplam_fark), 12, True, DRED)])
+       [("Norm %d (kadrolu %d + sezonluk %d) · operasyonel gerçek %d (kadrolu %d + sezonluk %d) · "
+         "fark %+d kişi — engelli ve etkinlik norm dışı tutuldu."
+         % (tp["norm_toplam"], tp["norm"], tp["norm_sezonluk"],
+            tp["kadrolu_kesim26"] - sum(a.get("etkinlik", 0) + a.get("engelli", 0)
+                                        for a in nrm.get("ayrik", {}).values()) + tp["sezonluk_kesim26"],
+            tp["kadrolu_kesim26"] - sum(a.get("etkinlik", 0) + a.get("engelli", 0)
+                                        for a in nrm.get("ayrik", {}).values()),
+            tp["sezonluk_kesim26"],
+            (tp["kadrolu_kesim26"] - sum(a.get("etkinlik", 0) + a.get("engelli", 0)
+                                         for a in nrm.get("ayrik", {}).values())
+             + tp["sezonluk_kesim26"]) - tp["norm_toplam"]), 11.5, True, DRED)])
 
     NL2 = chr(10)
     ayr = nrm.get("ayrik", {})
@@ -730,36 +746,42 @@ if nrm:
               "Norm" + NL2 + "kadrolu", "Gerçek" + NL2 + "kadrolu", "Fark",
               "Norm" + NL2 + "sezonluk", "Gerçek" + NL2 + "sezonluk", "Fark",
               "NORM" + NL2 + "TOPLAM", "GERÇEK" + NL2 + "TOPLAM", "FARK"]]
-    # magaza satirlari: ETKINLIK DUSULMUS (normda 0 tanimli -> fark dogru kalir)
+    # ⚠ KARAR (yonetim): ENGELLI ve ETKINLIK NORM DISIDIR -> norm dolulugu hesabinda gercek
+    #   kadroludan DUSULUR. (Norm tablosunun "engelli dahil" notu bu kararla gecersiz.)
     for r in nrm["sube"]:
-        etk = ayr.get(r["sube"], {}).get("etkinlik", 0)
-        kad = r["kadrolu_kesim26"] - etk
+        a_ = ayr.get(r["sube"], {})
+        etk, eng = a_.get("etkinlik", 0), a_.get("engelli", 0)
+        kad = r["kadrolu_kesim26"] - etk - eng
         top = kad + r["sezonluk_kesim26"]
         satir.append([tr_title(r["sube"]),
                       str(r["norm"]), str(kad), "%+d" % (kad - r["norm"]),
                       str(r["norm_sezonluk"]), str(r["sezonluk_kesim26"]),
                       "%+d" % (r["sezonluk_kesim26"] - r["norm_sezonluk"]),
                       str(r["norm_toplam"]), str(top), "%+d" % (top - r["norm_toplam"])])
-    kad_ops = tp["kadrolu_kesim26"] - etk_top
+    kad_ops = tp["kadrolu_kesim26"] - etk_top - eng_top
     # AYRI SATIRLAR
-    satir.append(["Etkinlik (normda 0)", "0", str(etk_top), "%+d" % etk_top,
-                  "0", "0", "0", "0", str(etk_top), "%+d" % etk_top])
-    satir.append(["Engelli ** (norma dahil)", "dahil", str(eng_top), "—",
-                  "—", "0", "—", "dahil", str(eng_top), "—"])
-    satir.append(["GENEL TOPLAM", str(tp["norm"]), str(tp["kadrolu_kesim26"]),
-                  "%+d" % (tp["kadrolu_kesim26"] - tp["norm"]),
+    satir.append(["Etkinlik (norm dışı)", "—", str(etk_top), "—",
+                  "—", "0", "—", "—", str(etk_top), "—"])
+    satir.append(["Engelli ** (norm dışı)", "—", str(eng_top), "—",
+                  "—", "0", "—", "—", str(eng_top), "—"])
+    satir.append(["OPERASYONEL TOPLAM", str(tp["norm"]), str(kad_ops),
+                  "%+d" % (kad_ops - tp["norm"]),
                   str(tp["norm_sezonluk"]), str(tp["sezonluk_kesim26"]),
                   "%+d" % (tp["sezonluk_kesim26"] - tp["norm_sezonluk"]),
-                  str(tp["norm_toplam"]), str(tp["toplam_kesim26"]), "%+d" % toplam_fark])
+                  str(tp["norm_toplam"]), str(kad_ops + tp["sezonluk_kesim26"]),
+                  "%+d" % (kad_ops + tp["sezonluk_kesim26"] - tp["norm_toplam"])])
+    satir.append(["Kayıt toplamı (İK, tüm gruplar)", "—", str(tp["kadrolu_kesim26"]), "—",
+                  "—", str(tp["sezonluk_kesim26"]), "—",
+                  "—", str(tp["toplam_kesim26"]), "—"])
 
-    t = s.shapes.add_table(len(satir), 10, Inches(0.6), Inches(2.0), Inches(12.05), Inches(1.78)).table
+    t = s.shapes.add_table(len(satir), 10, Inches(0.6), Inches(1.98), Inches(12.05), Inches(1.9)).table
     for i, gen in enumerate((2.35, 1.02, 1.08, 0.82, 1.05, 1.14, 0.82, 1.15, 1.25, 0.82)):
         t.columns[i].width = Inches(gen)
     t.rows[0].height = Inches(0.38)
     for r_ in list(t.rows)[1:]:
         r_.height = Inches(0.2)
-    ozet_satirlar = (len(satir) - 1,)                     # GENEL TOPLAM
-    ayri_satirlar = (len(satir) - 3, len(satir) - 2)     # Etkinlik ve Engelli satirlari
+    ozet_satirlar = (len(satir) - 2,)                     # OPERASYONEL TOPLAM (asil kiyas)
+    ayri_satirlar = (len(satir) - 4, len(satir) - 3, len(satir) - 1)   # norm disi gruplar + kayit toplami
     for r, row in enumerate(satir):
         for c, val in enumerate(row):
             cell = t.cell(r, c); cell.text = val
@@ -784,20 +806,26 @@ if nrm:
 
     # ENGELLI / ETKINLIK: mağaza satirlarinin ICINDE sayilir; burada bilgi amaçli AYRI gosterilir.
     #   Engelli tespiti perbilgi'ye dayanir -> yalniz BKM_GENEL firmasinda mumkun (Heykel/Sura kor).
-    tb(s, 0.6, 4.1, 12.05, 0.22,
-       [("** Engelli mağaza satırlarından düşülmedi (norm tablosu engelliyi departmanlara dağıtmış) · Heykel ve Şura'da engelli kadro YOK: 50 çalışan altı, 4857/30 yükümlülüğü doğmuyor.",
-         8.5, False, GREY)])
-    rrect(s, 0.6, 4.42, 12.05, 0.5, LGREY, RED, lw=1.5)
-    tb(s, 0.9, 4.42, 11.6, 0.5,
-       [("Şirketin kendi norm tablosuna göre 31 Ağustos'ta toplam personel %d kişi EKSİK "
-         "(norm %d · gerçek %d): kadrolu %+d, sezonluk %+d — etkinlik hariç kadrolu açığı %+d."
-         % (abs(toplam_fark), tp["norm_toplam"], tp["toplam_kesim26"],
-            tp["kadrolu_kesim26"] - tp["norm"], tp["sezonluk_kesim26"] - tp["norm_sezonluk"],
-            kad_ops - tp["norm"]),
-         10.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
+    tb(s, 0.6, 4.28, 12.05, 0.34,
+       [("** YÖNETİM KARARI: engelli ve etkinlik kadrosu NORM DIŞIDIR — norm doluluğuna sayılmaz, "
+         "mağaza satırlarından düşülmüştür. Heykel ve Şura'da engelli kadro yoktur (ayrı tüzel "
+         "kişilik, 50 çalışan altı → 4857/30 yükümlülüğü doğmaz).", 8.5, False, GREY)])
+    rrect(s, 0.6, 4.78, 12.05, 0.52, LGREY, RED, lw=1.5)
+    tb(s, 0.9, 4.78, 11.6, 0.52,
+       [("Norm doluluğu (engelli ve etkinlik hariç): norm %d · operasyonel gerçek %d → %+d KİŞİ EKSİK "
+         "(kadrolu %+d · sezonluk %+d)."
+         % (tp["norm_toplam"], kad_ops + tp["sezonluk_kesim26"],
+            (kad_ops + tp["sezonluk_kesim26"]) - tp["norm_toplam"],
+            kad_ops - tp["norm"], tp["sezonluk_kesim26"] - tp["norm_sezonluk"]),
+         11, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
 
-    dipnot(s, "* ETKİNLİK normda 0 tanımlı olduğu için mağaza satırlarından DÜŞÜLDÜ — düşülünce kadrolu açığı −8 yerine −11 · ENGELLİ norma dahil olduğundan düşülmedi, ayrı satırda bilgi olarak verildi (FSM 1 · İst. Yolu 2; Heykel/Şura 50 çalışan altı olduğu için yükümlülük yok) · Norm kaynağı: BKMKİTAP Mağaza Kadro ve Sezon Takip Tablosu, %s · Kapsam dışı: %s norm tablosunda yok · Gerçek sayılar 31.08 as-of."
-           % (nrm["tarih"], ", ".join(tr_title(x) for x in nrm["kapsam_disi"]) or "—"))
+    dipnot(s, "* Norm = ENGELLİ DIŞINDAKİ personel sayısı (yönetim kararı); etkinlik de norm dışı. "
+              "Mağaza satırları operasyonel kadroyu gösterir (kadrolu − engelli − etkinlik). "
+              "Engelli %d · etkinlik %d kişi ayrı satırda; en alttaki kayıt toplamı İK'nın resmi "
+              "rakamıdır (kadrolu %d · sezonluk %d) · Norm kaynağı: BKMKİTAP Mağaza Kadro ve Sezon "
+              "Takip Tablosu, %s · Kapsam dışı: %s · Gerçek sayılar 31.08 as-of."
+           % (eng_top, etk_top, tp["kadrolu_kesim26"], tp["sezonluk_kesim26"], nrm["tarih"],
+              ", ".join(tr_title(x) for x in nrm["kapsam_disi"]) or "—"))
     sig(s)
 
 # ================================================================= NORM ACIGI · BOLUM
@@ -849,9 +877,11 @@ if nrm and nrm.get("bolum"):
          "fazlasının başka bölümün açığını maskelemesinden gelir. Gerçek ihtiyaç bölüm bazında "
          "okunur." % (acik_bolum, acik_sube), 10, False, INK)], sp=1.12)
 
-    dipnot(s, "* Kapsam: norm tablosundaki dört mağaza (FSM · İst. Yolu · Özlüce · Heykel; Şura norm "
-              "tablosunda yok) · Norm %s tarihli, SEZON DIŞI kadroyu tanımlar · Kıyas yalnız kadrolu "
-              "personel ile; sezonluk kolonu açığın nasıl kapatıldığını gösterir." % nrm["tarih"])
+    dipnot(s, "* Kapsam: norm tablosundaki dört mağaza (Şura yok) · Norm %s tarihli · ETKİNLİK zaten "
+              "ayrı bölüm satırı (normda 0) · ⚠ ENGELLİ bu tabloda düşülmedi: bölüm dağılımı "
+              "ölçülmemiştir, bu yüzden ilgili bölümlerin açığı toplamda 3 kişiye kadar daha büyük "
+              "olabilir · Mağaza toplamı ve operasyonel kıyas için 'Norm Kadro — Mağaza Detayı' "
+              "slaytına bakılır." % nrm["tarih"])
     sig(s)
 
 # ================================================================= SEZONLUK ALIM ZAMANLAMASI
