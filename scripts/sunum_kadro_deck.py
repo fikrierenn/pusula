@@ -27,7 +27,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_MARKER_STYLE
 from pptx.oxml.ns import qn
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 
@@ -215,15 +215,27 @@ DIP_KARMA = ("* Kadro: beş mağaza (%s), ölçüm noktaları 30.06 ve 31.08 · 
 
 
 def dipnot(sl, metin):
-    """Logo bandinin ustune ince kapsam notu. Her rakamli slaytta ZORUNLU."""
-    tb(sl, 0.6, 6.02, 8.5, 0.32, [(metin, 9, False, MGREY)], sp=1.0)
+    """Kapsam notu — LOGONUN SAGINDA (x2.1, y6.2). Her rakamli slaytta ZORUNLU.
+
+    ⚠ Yerlesim dersi (02.09.2026): dipnot y6.02'de tam genislikteydi ve slayt-ozel alt notlarla
+    (y5.6-5.95, sarma sonrasi 6.1-6.5'e uzayan) UST USTE BINIYORDU. Artik logo bandi hizasinda,
+    logodan sonra basliyor: slayt icerigi y6.1'e kadar serbest.
+    """
+    tb(sl, 2.1, 6.2, 10.45, 0.62, [(metin, 8, False, MGREY)], sp=1.05)
 
 
 def kpi(sl, x, y, w, etiket, deger, alt, renk=RED, buyuk=34):
-    card(sl, x, y, w, 1.75, renk)
-    tb(sl, x + 0.22, y + 0.22, w - 0.4, 0.3, [(etiket, 10, True, GREY)])
-    tb(sl, x + 0.22, y + 0.52, w - 0.4, 0.7, [(deger, buyuk, True, renk)])
-    tb(sl, x + 0.22, y + 1.24, w - 0.4, 0.45, [(alt, 10.5, False, GREY)])
+    """KPI kutusu.
+
+    ⚠ Yerlesim dersi (02.09.2026): etiket 2 satira sardiginda (uzun etiket, ör. "KADRO · UC POS
+    MAGAZASI (SEZONLUK DAHIL)") ikinci satir DEGERIN uzerine biniyordu. Bloklar arasi mesafe
+    artirildi, kutu 1.75 -> 2.0 buyudu, etiket puntosu 10 -> 9. Etiketi kisa tut (<= 28 karakter):
+    ikinci satir icin yer var ama tercih tek satir.
+    """
+    card(sl, x, y, w, 2.0, renk)
+    tb(sl, x + 0.22, y + 0.18, w - 0.38, 0.42, [(etiket, 9, True, GREY)], sp=1.05)
+    tb(sl, x + 0.22, y + 0.66, w - 0.38, 0.72, [(deger, buyuk, True, renk)])
+    tb(sl, x + 0.22, y + 1.44, w - 0.38, 0.5, [(alt, 10, False, GREY)], sp=1.05)
 
 
 def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2026", yuzde_etiket=False):
@@ -275,17 +287,17 @@ kpi(s, 6.7, 1.5, 2.9, "ÜRÜN ADEDİ", yzd(d_adet),
 kpi(s, 9.75, 1.5, 2.9, "KİŞİ BAŞI ÜRÜN", yzd(d_kb),
     "%s → %s adet" % (bin(kb25), bin(kb26)), YESIL, 30)
 
-rrect(s, 0.6, 3.6, 12.05, 1.0, LGREY, RED, lw=1.5)
-tb(s, 0.9, 3.6, 11.5, 1.0,
+rrect(s, 0.6, 3.75, 12.05, 0.95, LGREY, RED, lw=1.5)
+tb(s, 0.9, 3.75, 11.5, 0.95,
    [("Kadro farkı sezon öncesinde oluşmuştur; sezon döneminde kadro azalırken iş hacmi %s artmıştır."
      % yzd(d_adet).replace("+", ""), 15, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
 
-card(s, 0.6, 4.8, 5.9, 1.15, MGREY)
-tb(s, 0.85, 4.92, 5.4, 0.3, [("KADRO · ÜÇ POS MAĞAZASI (SEZONLUK DAHİL)", 10, True, GREY)])
-tb(s, 0.85, 5.22, 5.4, 0.65, [("%d → %d kişi  (%s)" % (kadro25, kadro26, yzd(d_kadro)), 15, True, CHAR)])
-card(s, 6.75, 4.8, 5.9, 1.15, RED)
-tb(s, 7.0, 4.92, 5.4, 0.3, [("İŞ HACMİ", 10, True, GREY)])
-tb(s, 7.0, 5.22, 5.4, 0.65,
+card(s, 0.6, 4.85, 5.9, 1.1, MGREY)
+tb(s, 0.85, 4.95, 5.4, 0.3, [("KADRO · ÜÇ POS MAĞAZASI (SEZONLUK DAHİL)", 10, True, GREY)])
+tb(s, 0.85, 5.25, 5.4, 0.6, [("%d → %d kişi  (%s)" % (kadro25, kadro26, yzd(d_kadro)), 15, True, CHAR)])
+card(s, 6.75, 4.85, 5.9, 1.1, RED)
+tb(s, 7.0, 4.95, 5.4, 0.3, [("İŞ HACMİ", 10, True, GREY)])
+tb(s, 7.0, 5.25, 5.4, 0.6,
    [("iş hacmi, kadronun %s katı oranında artmıştır" % ("%.1f" % kat).replace(".", ","), 15, True, RED)])
 dipnot(s, DIP_KARMA)
 sig(s)
@@ -377,10 +389,10 @@ sig(s)
 # ================================================================= 8 IS HACMI
 s = add("Yalnızca Başlık"); setph(s, 0, "Dönem İş Hacmi")
 kpi(s, 0.6, 1.5, 3.9, "ELLEÇLENEN ÜRÜN", yzd(d_adet), "%s → %s adet" % (bin(adet25), bin(adet26)), YESIL, 32)
-kpi(s, 4.68, 1.5, 3.9, "CİRO (KDV DAHİL)", yzd(d_ciro),
+kpi(s, 4.68, 1.5, 3.9, "CİRO · KDV DAHİL", yzd(d_ciro),
     "%s → %s milyon TL" % (bin(kd25 / 1e6, 1), bin(kd26 / 1e6, 1)), YESIL, 32)
-kpi(s, 8.75, 1.5, 3.9, "KADRO · 3 POS MAĞAZASI", yzd(d_kadro),
-    "%d → %d kişi (sezonluk dahil)" % (kadro25, kadro26), CHAR, 32)
+kpi(s, 8.75, 1.5, 3.9, "KADRO · 3 MAĞAZA", yzd(d_kadro),
+    "%d → %d kişi (sezonluk dahil)" % (kadro25, kadro26), MGREY, 32)
 
 cift_bar(s, 0.6, 3.5, 6.1, 2.4, ["Ürün adedi (bin)", "Ciro (milyon TL)", "Kadro (kişi)"],
          (adet25 / 1000, kd25 / 1e6, kadro25), (adet26 / 1000, kd26 / 1e6, kadro26))
@@ -390,10 +402,7 @@ tb(s, 7.25, 3.85, 5.2, 1.75,
     ("Adet enflasyondan etkilenmez; kasadan geçen, rafa dizilen ve depodan çıkan fiili mal "
      "miktarını gösterir. Ciro fiyat artışını içerir, adet içermez.", 12, False, INK)], sp=1.15)
 tb(s, 0.6, 5.95, 12.05, 0.4,
-   [("Kıyas okul açılışına hizalı: 2025 açılış 8 Eylül → dönem %s – %s · 2026 açılış 14 Eylül → dönem "
-     "%s – %s (her iki yıl %d gün). Kaynak: DerinSIS mağaza satışı, Sınav hariç, iadeler düşülmüş."
-     % (PT[str(ONCEKI)][0], PT[str(ONCEKI)][1], PT[str(CARI)][0], PT[str(CARI)][1], gun),
-     10, False, MGREY)])
+   [("Kaynak: DerinSIS mağaza satışı · Sınav hariç · iadeler düşülmüş · KDV dahil.", 10, False, MGREY)])
 dipnot(s, DIP_POS)
 sig(s)
 
@@ -413,9 +422,9 @@ for ad, a, b in zip(kats, s1, s2):
     tb(s, 10.7, y + 0.12, 1.85, 0.5, [(yzd(b / a - 1), 17, True, YESIL)], align=PP_ALIGN.RIGHT)
     y += 1.3
 tb(s, 0.6, 5.6, 12.05, 0.7,
-   [("Kişi başı = o mağazada 31 Ağustos'ta fiilen çalışan TÜM personel (sezonluk dahil). En çok kadro "
-     "büyüyen mağazada (İst. Yolu %d → %d kişi) bile kişi başı iş arttı."
-     % (mag["İst. Yolu"]["kadro25"], mag["İst. Yolu"]["kadro26"]), 11, False, GREY)])
+   [("Kişi başı = 31 Ağustos'ta o mağazada fiilen çalışan TÜM personel (sezonluk dahil). Kadrosu en çok "
+     "büyüyen mağazada (İst. Yolu %d → %d) dahi kişi başı iş artmıştır."
+     % (mag["İst. Yolu"]["kadro25"], mag["İst. Yolu"]["kadro26"]), 10, False, GREY)])
 dipnot(s, DIP_POS)
 sig(s)
 
@@ -433,6 +442,11 @@ lc.plots[0].data_labels.number_format = '#,##0'
 lc.plots[0].data_labels.font.size = Pt(10)
 ser = lc.series[0]; ser.format.line.color.rgb = RED; ser.format.line.width = Pt(2.5)
 ser.smooth = False
+# marka: varsayilan mavi baklava isaretci YASAK -> kirmizi daire
+ser.marker.style = XL_MARKER_STYLE.CIRCLE
+ser.marker.size = 7
+ser.marker.format.fill.solid(); ser.marker.format.fill.fore_color.rgb = RED
+ser.marker.format.line.color.rgb = WHITE
 
 notlar = [("2024'te kadro atladı", "Kadrolu 60 → 91. Adet yalnız %11 arttı → kişi başı iş düştü.", DRED),
           ("Ama 2023 'norm' değil", "O yıl FSM kasada 0, Özlüce kasada 1 kişi vardı — eksik kadroyla "
@@ -445,8 +459,8 @@ for h, d, col in notlar:
     tb(s, 8.35, y + 0.48, 4.05, 0.7, [(d, 10.5, False, GREY)])
     y += 1.35
 tb(s, 0.6, 5.65, 12.05, 0.5,
-   [("Ocak–Ağustos kümülatif, üç POS mağazası, Sınav hariç. Kadro = 31.08 itibarıyla kadrolu "
-     "(sezonluk hariç — yıllar arası tahliye zamanlaması kıyası bozar).", 10.5, False, MGREY)])
+   [("Kadro = 31.08 itibarıyla kadrolu (sezonluk hariç; yıllar arası tahliye zamanlaması kıyası bozar).",
+     10, False, MGREY)])
 dipnot(s, DIP_OCA_AGU + " · kadro: 31.08 kesimi, her yıl")
 sig(s)
 
@@ -650,9 +664,9 @@ if ky:
     dg = ky["eylul_dalga_beklentisi"]
     ay_adet_d = ky["y26_agu_tam"]["adet"] / ky["y25_agu_tam"]["adet"] - 1
 
-    kpi(s, 0.6, 1.5, 3.9, "AĞUSTOS · GERÇEKLEŞEN", yzd(ay_adet_d),
+    kpi(s, 0.6, 1.5, 3.9, "AĞUSTOS · GERÇEK", yzd(ay_adet_d),
         "%s → %s adet" % (bin(ky["y25_agu_tam"]["adet"]), bin(ky["y26_agu_tam"]["adet"])), MGREY, 30)
-    kpi(s, 4.68, 1.5, 3.9, "AĞUSTOS · KAYMA OLMASAYDI", bin(ky["agustos_kaymasiz_tahmin"]["adet"]),
+    kpi(s, 4.68, 1.5, 3.9, "AĞUSTOS · KAYMASIZ", bin(ky["agustos_kaymasiz_tahmin"]["adet"]),
         "adet tahmini · %s M TL" % bin(ky["agustos_kaymasiz_tahmin"]["ciro"] / 1e6, 1), DRED, 26)
     kpi(s, 8.75, 1.5, 3.9, "EYLÜL'E KAYAN", bin(ky["eylule_kayan"]["adet"]),
         "adet · %s M TL" % bin(ky["eylule_kayan"]["ciro"] / 1e6, 1), DRED, 26)
