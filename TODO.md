@@ -573,12 +573,17 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   hücre değerleri baseline ile **birebir (0 fark)**, JSON 1e-6 toleransında aynı, 94/94 tutarlılık ✓,
   deste 19 slayt ✓. Yan bulgu: `norm.bolum` sıralaması eşit açıkta çalışma-arası değişiyordu
   (set + PYTHONHASHSEED) → ikincil anahtar eklendi, çıktı tekrar-üretilebilir oldu.
-- [ ] **K-23 Sunum destesi split (Tier 3 — K-20'nin kalan yarısı)** — `scripts/sunum_kadro_deck.py`
-  1.333 satır. Modül düzeyinde akış: slaytlar sırayla oluşuyor, ~30 türetilmiş global paylaşılıyor
-  (`mag`, `k5`, `d_adet`, `bolum`, `nrm`, `mal`, `fm`…). Bölmek için bağlam nesnesi sözleşmesi
-  gerekir (`C = hesapla(v)` → `slayt_*(pr, C)`); yardımcılar (`card/kpi/tb/rrect/setph/add/dipnot/
-  sig` + palet + şablon yükleme ≈300 satır) `sunum_ortak.py`'ye çıkar. Plan 39 kapsamı dışında
-  bırakıldı: veri tarafı doğrulanmadan iki büyük refactor aynı commit'e sığmaz.
+- [x] **K-23 Sunum destesi split** ✅ 03.09.2026 (plan: 40) — `sunum_kadro_deck.py` 1.333 satır →
+  **8 modül**, en büyüğü 361: `sunum_ortak` (palet + şablon durumu + çizim yardımcıları) ·
+  `sunum_baglam` (`hesapla(v)` → SimpleNamespace, türetilmiş oranlar + dipnot metinleri) ·
+  `sunum_slayt_kadro/_hacim/_norm/_maliyet/_kapanis` (tema bazlı, imza `slayt_x(C)`) ·
+  `sunum_kadro_deck` (CLI — slayt SIRASI yalnız burada). Regresyon kanıtı: 19 slayt × 332 şekil
+  (tür + geometri + metin + grafik serileri) baseline ile **0 fark**; yerleşim ihlali yok;
+  tutarlılık 94/94. Yöntem: blok taşıma + tokenize tabanlı `C.` yeniden yazımı (STRING token'ına
+  dokunulmadı — naif regex "fiili mal miktarını" gibi metinleri bozardı).
+  Taşımanın açığa çıkardığı iki yapısal tuzak: (a) şablon durumu modül gövdesinde kuruluyordu →
+  `ac(tpl)` tek giriş noktası, import artık yan etkisiz; (b) `nrm/mal/fm/al/ay2/ky` bir blokta
+  atanıp sonrakinde okunuyordu → bağlama taşındı.
 
 #### İK danışman denetimi — desteyi güçlendirecek eksik eksenler (03.09.2026)
 
