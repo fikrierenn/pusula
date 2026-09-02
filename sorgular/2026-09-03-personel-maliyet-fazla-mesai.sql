@@ -25,7 +25,14 @@
      kadro 2025 seviyesinde kalsaydı: +14.625 saat FM gerekir → kişi başı
      yıllık 342 saat → 270 saatlik YASAL SINIR AŞILIR.
 
-   ⚠⚠ PENCERE (03.09.2026 kullanici uyarisi): ESAS pencere **SEZON (01.07-31.08)**; kadro
+   ⚠⚠ SEZON = **TEMMUZ–EKİM** (kullanıcı, 03.09.2026). Temmuz hazırlık; asıl hacim ve
+      sezonluk kadro Ağustos–Ekim'de. Kanıt (3 POS, KDV-hariç ciro 2025): Tem 30,7M ·
+      Ağu 186,9M · Eyl 313,0M · Eki 71,4M — sezon 4 ayı 602M = yılın ~%65'i. Sezonluk FTE
+      2025: Tem 3,4 · Ağu 26,5 · Eyl 37,1 · Eki 9,7. 2026 sezonu HENÜZ TAMAMLANMADI →
+      kıyas tamamlanan ortak ay(lar) ile; 2025'in tam sezonu ayrı referans blok.
+      ⚠ Sezon oranı (%3,54) ile yıl-geneli oranı (%12,85) BİRBİRİYLE KIYASLANMAZ.
+
+   ⚠⚠ ESKİ PENCERE NOTU: ESAS pencere **SEZON**; kadro
       sezonda artiyor, yilbasindan kumulatif pencere sezonu sulandirir ve artisin ZAMANINI
       gizler. Uc cikti birden uretilir: sezon (esas) · kumulatif (referans) · AY kirilimi.
       Sezon 2026 icin Agustos bordrosu kosmadigindan Temmuz ile sinirli — bu, cikti dosyalarinda

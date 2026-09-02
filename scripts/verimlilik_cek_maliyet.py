@@ -21,7 +21,7 @@ Sezon penceresi ESAS, kumulatif referanstir; ikisi ayni tabloda yan yana ETIKETL
 import sys
 
 from verimlilik_ortak import (AY_AD_KISA, AY_NORMAL_SAAT, CARI, FM_YILLIK_SINIR, MEKAN,
-                              ONCEKI, SUBE)
+                              ONCEKI, SEZON_AYLAR, SUBE)
 
 
 def cek_maliyet(zc, veri, ciro_ay):
@@ -73,7 +73,7 @@ def cek_maliyet(zc, veri, ciro_ay):
                FM_YILLIK_SINIR / 12.0, ONCEKI, CARI, son_ay)
     mal_sube = {}
     for (yil, sube, kisi_ay, prim_gun, brut, isvs, isvi, mal, net_, fms, fmt, fmy, fmsn,
-         fmmax) in zc.fetchall():
+         fmmax) in zc.fetchall():   # NOT: bu sorgu segment KIRILIMSIZ (sube x yil toplami)
         mal_sube[(int(yil), sube)] = {
             "kisi_ay": int(kisi_ay), "prim_gun": float(prim_gun or 0),
             "fte": float(prim_gun or 0) / 30.0, "brut": float(brut or 0),
@@ -85,6 +85,7 @@ def cek_maliyet(zc, veri, ciro_ay):
     # AY x YIL x SUBE kirilimi — sezon/kumulatif pencereler bundan TURETILIR (tek sorgu).
     zc.execute("""
         SELECT b.Yil, b.Ayindex, p.AltLokasyon,
+               CASE WHEN p.Kadro = 'SEZONLUK' THEN 'SEZONLUK' ELSE 'KADROLU' END AS segment,
                COUNT(*)                                       AS kisi_ay,
                SUM(CAST(b.Primgunu AS float))                 AS prim_gun,
                SUM(b.Bt + b.Isskk + b.Iisk)                   AS maliyet,
@@ -99,12 +100,13 @@ def cek_maliyet(zc, veri, ciro_ay):
         FROM dbo.vw_PuanBil b
         INNER JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno
         WHERE b.Yil IN (?, ?) AND b.Ayindex BETWEEN 1 AND ? AND p.Lokasyon LIKE 'MA%'
-        GROUP BY b.Yil, b.Ayindex, p.AltLokasyon""",
-               FM_YILLIK_SINIR / 12.0, ONCEKI, CARI, son_ay)
+        GROUP BY b.Yil, b.Ayindex, p.AltLokasyon,
+                 CASE WHEN p.Kadro = 'SEZONLUK' THEN 'SEZONLUK' ELSE 'KADROLU' END""",
+               FM_YILLIK_SINIR / 12.0, ONCEKI, CARI, max(son_ay, max(SEZON_AYLAR)))
     ay_sube = {}
-    for (yil, ay_, sube, kisi_ay, prim_gun, mal_, brut, isvs, isvi, net_, fms, fmt, fmy,
+    for (yil, ay_, sube, segment, kisi_ay, prim_gun, mal_, brut, isvs, isvi, net_, fms, fmt, fmy,
          fmsn) in zc.fetchall():
-        ay_sube[(int(yil), int(ay_), sube)] = {
+        ay_sube[(int(yil), int(ay_), sube, segment)] = {
             "kisi_ay": int(kisi_ay), "prim_gun": float(prim_gun or 0),
             "fte": float(prim_gun or 0) / 30.0,
             "maliyet": float(mal_ or 0), "brut": float(brut or 0),
@@ -159,9 +161,12 @@ def cek_maliyet(zc, veri, ciro_ay):
                "maliyet", "net", "fm_saat", "fm_tutar", "fm_yapan_kisi_ay",
                "fm_sinir_hizinda_kisi_ay")
 
-    def _pencere(yil, aylar, subeler):
-        d = {a: sum(ay_sube.get((yil, ay_, sb), {}).get(a, 0)
-                    for ay_ in aylar for sb in subeler) for a in ALANLAR}
+    SEGMENTLER = ("KADROLU", "SEZONLUK")
+
+    def _pencere(yil, aylar, subeler, segmentler=SEGMENTLER):
+        """Pencere toplami. `segmentler` ile KADROLU / SEZONLUK ayrimi yapilir."""
+        d = {a: sum(ay_sube.get((yil, ay_, sb, sg), {}).get(a, 0)
+                    for ay_ in aylar for sb in subeler for sg in segmentler) for a in ALANLAR}
         d["ciro_kdvharic"] = sum(ciro_ay.get((yil, ay_), (0.0, 0.0))[0] for ay_ in aylar)
         d["adet"] = sum(ciro_ay.get((yil, ay_), (0.0, 0.0))[1] for ay_ in aylar)
         d["aylar"] = list(aylar)
@@ -176,37 +181,68 @@ def cek_maliyet(zc, veri, ciro_ay):
             d["maliyet_ciro_orani"] = d["maliyet"] / d["ciro_kdvharic"]
         return d
 
-    # SEZON = 01.07-31.08; bordro kosmus aylarla sinirli (2026 Agustos henuz yok -> BAYRAK)
-    sezon_aylar = [a_ for a_ in (7, 8) if a_ <= son_ay]
+    # SEZON = Temmuz-Ekim (SEZON_AYLAR). KIYAS yalniz iki yilda da bordrosu KOSMUS aylarla
+    #   yapilir; 2026 sezonu henuz tamamlanmadigi icin kalan aylar EKSIK olarak bayraklanir ve
+    #   gecen yilin TAM sezonu ayrica referans verilir.
+    sezon_aylar = [a_ for a_ in SEZON_AYLAR if a_ <= son_ay]
     if not sezon_aylar:
-        sys.exit("SEZON PENCERESİ BOŞ: bordro son tam ay %d, sezon ayı (7-8) yok." % son_ay)
+        sys.exit("SEZON PENCERESİ BOŞ: bordro son tam ay %d, sezon ayı %s yok."
+                 % (son_ay, list(SEZON_AYLAR)))
     maliyet["sezon"] = {
         "aylar": sezon_aylar,
         "etiket": (AY_AD_KISA[sezon_aylar[0]] if len(sezon_aylar) == 1
                    else "%s–%s" % (AY_AD_KISA[sezon_aylar[0]], AY_AD_KISA[sezon_aylar[-1]])),
-        "eksik_aylar": [a_ for a_ in (7, 8) if a_ not in sezon_aylar],
-        "tam_mi": sezon_aylar == [7, 8],
+        "kural_aylar": list(SEZON_AYLAR),
+        "kural_etiket": "%s–%s" % (AY_AD_KISA[SEZON_AYLAR[0]], AY_AD_KISA[SEZON_AYLAR[-1]]),
+        "eksik_aylar": [a_ for a_ in SEZON_AYLAR if a_ not in sezon_aylar],
+        "tam_mi": list(sezon_aylar) == list(SEZON_AYLAR),
         "pos": {"%d" % (y % 100): _pencere(y, sezon_aylar, POS_SUBELER) for y in (ONCEKI, CARI)},
         "tum": {"%d" % (y % 100): _pencere(y, sezon_aylar, TUM_SUBELER) for y in (ONCEKI, CARI)},
+        # KADROLU / SEZONLUK ayri ayri (kullanici istegi 03.09): sezonluk maliyeti ve FTE'si
+        # kadrolu tabandan AYRI okunur — sezon savunmasinda ikisi farkli sorulara cevap verir.
+        "segment": {sg: {"%d" % (y % 100): _pencere(y, sezon_aylar, POS_SUBELER, (sg,))
+                         for y in (ONCEKI, CARI)} for sg in SEGMENTLER},
     }
+    # GECEN YILIN TAM SEZONU (Tem-Eki) — "sezon neye benziyor" referansi; 2026 doldukca kiyas
+    #   ayni pencerede yapilabilir hale gelir.
+    maliyet["sezon"]["gecen_yil_tam"] = {
+        "aylar": list(SEZON_AYLAR),
+        "pos": _pencere(ONCEKI, list(SEZON_AYLAR), POS_SUBELER),
+        "segment": {sg: _pencere(ONCEKI, list(SEZON_AYLAR), POS_SUBELER, (sg,))
+                    for sg in SEGMENTLER}}
     if not maliyet["sezon"]["tam_mi"]:
         maliyet["sezon"]["uyari"] = (
-            "⚠ SEZON PENCERESİ EKSİK: %s ayı bordrosu henüz koşmadı (%d yılı). Sezon karşılaştırması "
-            "%s ayı/ayları ile sınırlıdır; Ağustos bordrosu işlendiğinde bu blok kendiliğinden "
-            "tamamlanır. Yıl geneli için «kümülatif» pencereye bakılır."
-            % (", ".join(AY_AD_KISA[a_] for a_ in maliyet["sezon"]["eksik_aylar"]), CARI,
+            "⚠ %d SEZONU HENÜZ TAMAMLANMADI. Sezon = %s ayları; %s ayı/ayları için bordro henüz "
+            "işlenmedi (Ağustos bordrosu koşmadı, Eylül–Ekim daha gelmedi). Karşılaştırma "
+            "tamamlanan ortak ay(lar) ile sınırlıdır: %s. Geçen yılın TAM sezonu ayrıca "
+            "referans olarak verilmiştir."
+            % (CARI, "%s–%s" % (AY_AD_KISA[SEZON_AYLAR[0]], AY_AD_KISA[SEZON_AYLAR[-1]]),
+               ", ".join(AY_AD_KISA[a_] for a_ in maliyet["sezon"]["eksik_aylar"]),
                ", ".join(AY_AD_KISA[a_] for a_ in sezon_aylar)))
+
+    maliyet["segment_kumulatif"] = {
+        sg: {"%d" % (y % 100): _pencere(y, list(range(1, son_ay + 1)), POS_SUBELER, (sg,))
+             for y in (ONCEKI, CARI)} for sg in SEGMENTLER}
 
     # AYLIK kirilim — kadro (kisi-ay) ve maliyetin HANGI AY olustugu
     maliyet["ay"] = []
-    for ay_ in range(1, son_ay + 1):
-        satir = {"ay": ay_, "ad": AY_AD_KISA[ay_], "sezon_mu": ay_ in (7, 8)}
+    for ay_ in range(1, max(son_ay, max(SEZON_AYLAR)) + 1):
+        satir = {"ay": ay_, "ad": AY_AD_KISA[ay_], "sezon_mu": ay_ in SEZON_AYLAR,
+                 # kiyas yalniz iki yilda da bordrosu kosmus aylarda anlamli
+                 "kiyas_mumkun": ay_ <= son_ay}
         for yil in (ONCEKI, CARI):
             ek = yil % 100
             p_ = _pencere(yil, [ay_], POS_SUBELER)
             satir["kisi_ay%d" % ek] = p_["kisi_ay"]
             satir["fte%d" % ek] = p_["fte"]
             satir["ort_prim_gun%d" % ek] = p_.get("ort_prim_gun", 0.0)
+            for sg in SEGMENTLER:
+                sp_ = _pencere(yil, [ay_], POS_SUBELER, (sg,))
+                onek = sg.lower()
+                satir["%s_fte%d" % (onek, ek)] = sp_["fte"]
+                satir["%s_kisi_ay%d" % (onek, ek)] = sp_["kisi_ay"]
+                satir["%s_maliyet%d" % (onek, ek)] = sp_["maliyet"]
+                satir["%s_fm_saat%d" % (onek, ek)] = sp_["fm_saat"]
             satir["maliyet%d" % ek] = p_["maliyet"]
             satir["fm_saat%d" % ek] = p_["fm_saat"]
             satir["ciro%d" % ek] = p_["ciro_kdvharic"]
@@ -214,9 +250,12 @@ def cek_maliyet(zc, veri, ciro_ay):
         maliyet["ay"].append(satir)
 
     maliyet["pencere_aciklama"] = (
-        "SEZON penceresi esastır (%s); KÜMÜLATİF pencere (%s) yıl geneli referansıdır. Aylık "
-        "kırılım kadro ve maliyet artışının hangi ayda oluştuğunu gösterir." % (
-            maliyet["sezon"]["etiket"], maliyet["pencere"]))
+        "SEZON = %s (Temmuz hazırlık; asıl hacim ve sezonluk kadro Ağustos–Ekim). %d sezonu henüz "
+        "tamamlanmadığı için KIYAS tamamlanan ortak ay(lar) ile yapılır: %s. KÜMÜLATİF pencere "
+        "(%s) yıl geneli referansıdır; aylık kırılım artışın hangi ayda oluştuğunu gösterir; "
+        "geçen yılın tam sezonu ayrı blokta durur." % (
+            maliyet["sezon"]["kural_etiket"], CARI, maliyet["sezon"]["etiket"],
+            maliyet["pencere"]))
 
     # K-22: "kadro almasaydik ne olurdu" — eksik kisi-ay kapasitesi fazla mesaiye biner.
     #   Model: kadro ONCEKI yilin kisi-ay seviyesinde kalsaydi, aradaki kisi-ay farki

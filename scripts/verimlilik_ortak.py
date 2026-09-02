@@ -32,6 +32,11 @@ SINAV_DAHIL = ("(COALESCE(kat.Kategori3, N'x') IN " + SINAV +
 YILLAR = [2023, 2024, 2025, 2026]
 ONCEKI, CARI = 2025, 2026
 
+# ---- SEZON TANIMI (kullanici, 03.09.2026): okul sezonu TEMMUZ-EKIM; agirlik Agu-Eyl-Eki.
+#   Temmuz hazirlik, asil hacim ve sezonluk kadro Agustos-Ekim'de. Kadro/maliyet kiyasi bu
+#   pencerede yapilir; yil-geneli kumulatif pencere yalniz REFERANSTIR.
+SEZON_AYLAR = (7, 8, 9, 10)
+
 # ---- K-22 yasal fazla mesai cercevesi (4857/41 + 63) — is hukuku sabitleri
 AY_NORMAL_SAAT = 195.0     # 45 saat/hafta x 52 / 12 ay
 FM_YILLIK_SINIR = 270.0    # kisi basi yillik fazla mesai ust siniri (saat)

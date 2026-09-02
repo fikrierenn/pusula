@@ -156,16 +156,50 @@ def main(argv):
             kontrol("sezon maliyet/ciro orani%s yeniden hesaplandi" % ek,
                     round(s_["maliyet_ciro_orani"], 6),
                     round(s_["maliyet"] / s_["ciro_kdvharic"], 6))
+        # KADROLU + SEZONLUK = toplam (segment ayrimi kayip/cift saymamali)
+        for ek in ("25", "26"):
+            for alan in ("fte", "kisi_ay", "maliyet", "fm_saat"):
+                kontrol("sezon %s%s = kadrolu + sezonluk" % (alan, ek),
+                        round(sz["pos"][ek][alan], 2),
+                        round(sum(sz["segment"][sg][ek][alan] for sg in ("KADROLU", "SEZONLUK")), 2))
+                kontrol("kümülatif %s%s = kadrolu + sezonluk" % (alan, ek),
+                        round(m["pos"][ek][alan], 2),
+                        round(sum(m["segment_kumulatif"][sg][ek][alan]
+                                  for sg in ("KADROLU", "SEZONLUK")), 2))
+            for onek in ("kadrolu", "sezonluk"):
+                kontrol("aylik %s FTE%s toplami = kümülatif segment" % (onek, ek),
+                        round(m["segment_kumulatif"][onek.upper()][ek]["fte"], 2),
+                        round(sum(r["%s_fte%s" % (onek, ek)]
+                                  for r in m["ay"] if r["kiyas_mumkun"]), 2))
+            kontrol("aylik kadrolu+sezonluk FTE%s = aylik toplam FTE%s" % (ek, ek),
+                    round(sum(r["fte" + ek] for r in m["ay"]), 2),
+                    round(sum(r["kadrolu_fte" + ek] + r["sezonluk_fte" + ek] for r in m["ay"]), 2))
+
         # aylik toplam = kumulatif pencere
         for ek in ("25", "26"):
             for alan in ("kisi_ay", "fte", "maliyet", "fm_saat"):
                 kontrol("aylik %s%s toplami = kumulatif pencere" % (alan, ek),
                         round(m["pos"][ek][alan], 2),
-                        round(sum(r[alan + ek] for r in m["ay"]), 2))
-        sonuc.append((len(m["ay"]) == m["pencere_ay"], "aylik satir sayisi = pencere ayi",
-                      m["pencere_ay"], len(m["ay"]), "eksik ay = sessiz dusuk maliyet"))
-        sonuc.append((sz["aylar"] and all(a_ in (7, 8) for a_ in sz["aylar"]),
-                      "sezon aylari 7-8 icinde", "[7,8]", sz["aylar"], ""))
+                        round(sum(r[alan + ek] for r in m["ay"] if r["kiyas_mumkun"]), 2))
+        sonuc.append((len(m["ay"]) == max(m["pencere_ay"], max(sz["kural_aylar"])),
+                      "aylik satir sayisi = max(pencere ayi, sezon sonu)",
+                      max(m["pencere_ay"], max(sz["kural_aylar"])), len(m["ay"]),
+                      "sezon Ekim'de bitiyor; geçen yılın sezon ayları da tabloda"))
+        sonuc.append((all(r["kiyas_mumkun"] == (r["ay"] <= m["pencere_ay"]) for r in m["ay"]),
+                      "kıyas bayrağı = ay ≤ son tam bordro ayı", "tutarlı", "tutarlı",
+                      "bordrosu koşmamış ayda iki yıl kıyaslanmaz"))
+        sonuc.append((bool(sz["aylar"]) and all(a_ in sz["kural_aylar"] for a_ in sz["aylar"]),
+                      "sezon aylari kural (Tem-Eki) icinde", str(sz["kural_aylar"]),
+                      str(sz["aylar"]), "sezon = Temmuz-Ekim; kiyas tamamlanan ortak aylarda"))
+        sonuc.append((sz["gecen_yil_tam"]["pos"]["fte"] > sz["pos"]["25"]["fte"],
+                      "geçen yılın TAM sezonu > kıyas penceresi (tam sezon daha geniş)",
+                      "tam > kısmi",
+                      "%.1f vs %.1f" % (sz["gecen_yil_tam"]["pos"]["fte"], sz["pos"]["25"]["fte"]),
+                      "2025 Tem-Eki tamamı referans olarak duruyor"))
+        kontrol("geçen yıl tam sezon = kadrolu + sezonluk",
+                round(sz["gecen_yil_tam"]["pos"]["fte"], 2),
+                round(sum(sz["gecen_yil_tam"]["segment"][sg]["fte"]
+                          for sg in ("KADROLU", "SEZONLUK")), 2))
         for ek in ("25", "26"):
             p_ = m["pos"][ek]
             # FTE = prim günü / 30 · FTE ≤ kayıt sayısı (yarım ay çalışan tam sayılmaz)

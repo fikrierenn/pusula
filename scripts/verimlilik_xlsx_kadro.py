@@ -318,9 +318,10 @@ def sayfa_maliyet(wb, veri):
     p25, p26 = m["pos"]["%d" % (ONCEKI % 100)], m["pos"]["%d" % (CARI % 100)]
     sz = m["sezon"]
     sz25, sz26 = sz["pos"]["%d" % (ONCEKI % 100)], sz["pos"]["%d" % (CARI % 100)]
-    ws.cell(1, 1, "Personel maliyeti ve ciro orani — ESAS PENCERE: %s · referans: %s · "
+    ws.cell(1, 1, "Personel maliyeti ve ciro orani — SEZON %s (kiyas: %s) · yil geneli: %s · "
                   "uc POS magazasi (%s)"
-            % (sz["etiket"], m["pencere"], " · ".join(x.title() for x in m["kapsam_pos"]))
+            % (sz["kural_etiket"], sz["etiket"], m["pencere"],
+               " · ".join(x.title() for x in m["kapsam_pos"]))
             ).font = Font(bold=True, size=12)
     if sz.get("uyari"):
         u = ws.cell(2, 1, sz["uyari"])
@@ -375,15 +376,79 @@ def sayfa_maliyet(wb, veri):
             % (sz["etiket"], m["pencere"])).font = Font(italic=True, size=9)
     s += 2
 
+    # --- GECEN YILIN TAM SEZONU (referans: sezon neye benziyor)
+    g = sz["gecen_yil_tam"]["pos"]
+    ws.cell(s, 1, "GECEN YILIN TAM SEZONU (%d, %s) — %d sezonu tamamlaninca ayni pencerede kiyas"
+            % (ONCEKI, sz["kural_etiket"], CARI)).font = BOLUM_YAZI
+    s += 1
+    for etiket, val, fmt in (("FTE (tam zaman esdeger)", g["fte"], ADET1),
+                             ("  — kadrolu FTE", sz["gecen_yil_tam"]["segment"]["KADROLU"]["fte"], ADET1),
+                             ("  — sezonluk FTE", sz["gecen_yil_tam"]["segment"]["SEZONLUK"]["fte"], ADET1),
+                             ("Personel maliyeti", g["maliyet"], TL),
+                             ("Ciro (KDV haric)", g["ciro_kdvharic"], TL),
+                             ("Maliyet / ciro orani", g.get("maliyet_ciro_orani", 0), "0.00%"),
+                             ("Fazla mesai (saat)", g["fm_saat"], ADET1)):
+        c0 = ws.cell(s, 1, etiket); c0.border = KENAR
+        c = ws.cell(s, 2, val); c.number_format = fmt; c.border = KENAR
+        s += 1
+    ws.cell(s, 1, "SEZONUN SEKLI: sezonda ciro birkac kat artarken kadro ayni oranda artmaz -> "
+                  "maliyet/ciro orani sezon aylarinda sezon disina gore COK dusuktur. Bu yuzden "
+                  "sezon ile yil-geneli oranlari BIRBIRIYLE kiyaslanmaz.").font = Font(italic=True, size=9)
+    s += 2
+
+    # --- KADROLU / SEZONLUK AYRIMI (kullanici istegi 03.09)
+    ws.cell(s, 1, "KADROLU / SEZONLUK AYRIMI — uc POS magazasi").font = BOLUM_YAZI
+    s += 1
+    skol = [("Segment", 16, None), ("SEZON FTE %d" % ONCEKI, 12, ADET1),
+            ("SEZON FTE %d" % CARI, 12, ADET1), ("SEZON maliyet %d" % ONCEKI, 15, TL),
+            ("SEZON maliyet %d" % CARI, 15, TL), ("FTE basi maliyet %d" % CARI, 15, TL),
+            ("KUM. FTE %d" % ONCEKI, 12, ADET1), ("KUM. FTE %d" % CARI, 12, ADET1),
+            ("KUM. maliyet %d" % CARI, 15, TL), ("SEZON FM saat %d" % CARI, 13, ADET1)]
+    for i, (ad, gen, _f) in enumerate(skol, start=1):
+        h = ws.cell(s, i, ad); h.fill = BASLIK; h.font = BASLIK_YAZI; h.border = KENAR
+        h.alignment = Alignment(horizontal="center")
+    s += 1
+    for sg in ("KADROLU", "SEZONLUK"):
+        a25 = sz["segment"][sg]["%d" % (ONCEKI % 100)]
+        a26 = sz["segment"][sg]["%d" % (CARI % 100)]
+        k25 = m["segment_kumulatif"][sg]["%d" % (ONCEKI % 100)]
+        k26 = m["segment_kumulatif"][sg]["%d" % (CARI % 100)]
+        ws.cell(s, 1, sg.title()).border = KENAR
+        for kol, val, fmt in ((2, a25["fte"], ADET1), (3, a26["fte"], ADET1),
+                              (4, a25["maliyet"], TL), (5, a26["maliyet"], TL),
+                              (6, a26.get("fte_basi_maliyet", 0), TL),
+                              (7, k25["fte"], ADET1), (8, k26["fte"], ADET1),
+                              (9, k26["maliyet"], TL), (10, a26["fm_saat"], ADET1)):
+            c = ws.cell(s, kol, val); c.number_format = fmt; c.border = KENAR
+        s += 1
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True); ws.cell(s, 1).fill = GRI
+    ws.cell(s, 1).border = KENAR
+    for kol, val, fmt in ((2, sz25["fte"], ADET1), (3, sz26["fte"], ADET1),
+                          (4, sz25["maliyet"], TL), (5, sz26["maliyet"], TL),
+                          (6, sz26.get("fte_basi_maliyet", 0), TL),
+                          (7, p25["fte"], ADET1), (8, p26["fte"], ADET1),
+                          (9, p26["maliyet"], TL), (10, sz26["fm_saat"], ADET1)):
+        c = ws.cell(s, kol, val); c.number_format = fmt; c.border = KENAR
+        c.fill = GRI; c.font = Font(bold=True)
+    s += 1
+    ws.cell(s, 1, "⚠ Segment ayraci `vw_PersonelDepartman.Kadro` = BUGUNKU durum (tarihlenmiyor): "
+                  "gecmiste sezonluk calisip kadroya gecen kisi GECMIS ayda da KADROLU gorunur. "
+                  "Ayrica sezonluk alimin buyuk kismi AGUSTOS'ta; Agustos bordrosu islenince "
+                  "sezonluk agirligi gercek seviyesine cikar.").font = Font(italic=True, size=9)
+    s += 2
+
     # --- AYLIK KIRILIM (kadro artisi ve maliyet HANGI AY olustu)
-    ws.cell(s, 1, "AYLIK KIRILIM — uc POS magazasi (* = sezon ayi)").font = BOLUM_YAZI
+    ws.cell(s, 1, "AYLIK KIRILIM — uc POS magazasi (* = sezon ayi %s; %d icin bordrosu "
+                  "kosmamis aylar bos)" % (sz["kural_etiket"], CARI)).font = BOLUM_YAZI
     s += 1
     akol = [("Ay", 8, None), ("FTE %d" % ONCEKI, 10, ADET1), ("FTE %d" % CARI, 10, ADET1),
             ("FTE Δ", 9, YUZDE), ("Maliyet %d" % ONCEKI, 14, TL), ("Maliyet %d" % CARI, 14, TL),
             ("Maliyet Δ", 10, YUZDE), ("FM saat %d" % ONCEKI, 11, ADET1),
             ("FM saat %d" % CARI, 11, ADET1), ("Oran %d" % ONCEKI, 9, None),
             ("Oran %d" % CARI, 9, None), ("Kayit %d" % ONCEKI, 9, ADET),
-            ("Kayit %d" % CARI, 9, ADET), ("Ort. prim gunu %d" % CARI, 13, ADET1)]
+            ("Kayit %d" % CARI, 9, ADET), ("Ort. prim gunu %d" % CARI, 13, ADET1),
+            ("Kadrolu FTE %d" % ONCEKI, 12, ADET1), ("Kadrolu FTE %d" % CARI, 12, ADET1),
+            ("Sezonluk FTE %d" % ONCEKI, 13, ADET1), ("Sezonluk FTE %d" % CARI, 13, ADET1)]
     for i, (ad, gen, _f) in enumerate(akol, start=1):
         h = ws.cell(s, i, ad); h.fill = BASLIK; h.font = BASLIK_YAZI; h.border = KENAR
         h.alignment = Alignment(horizontal="center")
@@ -393,15 +458,20 @@ def sayfa_maliyet(wb, veri):
         c0.border = KENAR
         if r["sezon_mu"]:
             c0.font = Font(bold=True)
+        yok = not r.get("kiyas_mumkun", True)      # bordrosu kosmamis ay -> CARI yil bos
         for kol, val, fmt in ((2, r["fte%d" % (ONCEKI % 100)], ADET1),
-                              (3, r["fte%d" % (CARI % 100)], ADET1),
+                              (3, "—" if yok else r["fte%d" % (CARI % 100)], ADET1),
                               (5, r["maliyet%d" % (ONCEKI % 100)], TL),
-                              (6, r["maliyet%d" % (CARI % 100)], TL),
+                              (6, "—" if yok else r["maliyet%d" % (CARI % 100)], TL),
                               (8, r["fm_saat%d" % (ONCEKI % 100)], ADET1),
-                              (9, r["fm_saat%d" % (CARI % 100)], ADET1),
+                              (9, "—" if yok else r["fm_saat%d" % (CARI % 100)], ADET1),
                               (12, r["kisi_ay%d" % (ONCEKI % 100)], ADET),
-                              (13, r["kisi_ay%d" % (CARI % 100)], ADET),
-                              (14, r["ort_prim_gun%d" % (CARI % 100)], ADET1)):
+                              (13, "—" if yok else r["kisi_ay%d" % (CARI % 100)], ADET),
+                              (14, "—" if yok else r["ort_prim_gun%d" % (CARI % 100)], ADET1),
+                              (15, r["kadrolu_fte%d" % (ONCEKI % 100)], ADET1),
+                              (16, "—" if yok else r["kadrolu_fte%d" % (CARI % 100)], ADET1),
+                              (17, r["sezonluk_fte%d" % (ONCEKI % 100)], ADET1),
+                              (18, "—" if yok else r["sezonluk_fte%d" % (CARI % 100)], ADET1)):
             c = ws.cell(s, kol, val); c.number_format = fmt; c.border = KENAR
             if r["sezon_mu"]:
                 c.fill = VURGU
@@ -409,7 +479,8 @@ def sayfa_maliyet(wb, veri):
             c = ws.cell(s, kol, "=%s%d/%s%d-1" % (c_, s, b_, s))
             c.number_format = YUZDE; c.border = KENAR
         for kol, anahtar in ((10, "oran%d" % (ONCEKI % 100)), (11, "oran%d" % (CARI % 100))):
-            c = ws.cell(s, kol, r[anahtar] if r[anahtar] is not None else "—")
+            deg_ = None if (yok and kol == 11) else r[anahtar]
+            c = ws.cell(s, kol, deg_ if deg_ is not None else "—")
             c.number_format = "0.0%"
             c.border = KENAR
         s += 1
