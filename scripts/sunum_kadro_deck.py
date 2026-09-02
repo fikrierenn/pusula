@@ -31,6 +31,11 @@ from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_MARKER_STYLE
 from pptx.oxml.ns import qn
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 
+try:   # Windows cp1254 konsolu: ok/uyari isaretleri UnicodeEncodeError veriyordu
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError) as _e:
+    print("stdout utf-8 yapilamadi: %s" % _e)
+
 KOK = Path(__file__).resolve().parent.parent
 VERI = KOK / "briefings" / "sezon-kadro-20260902" / "verimlilik-veri.json"
 TPL = r"C:\Users\fikri.eren\Desktop\Sunum.pptx"
@@ -54,10 +59,14 @@ k5 = v["kadro_5magaza"]
 gun = v["meta"]["gun"]
 POS_SUBE = {"İST. YOLU": "İst. Yolu", "ÖZLÜCE": "Özlüce", "FSM": "FSM"}
 
-adet25 = sum(m["adet25"] for m in v["magaza"]); adet26 = sum(m["adet26"] for m in v["magaza"])
-kh25 = sum(m["kdvharic25"] for m in v["magaza"]); kh26 = sum(m["kdvharic26"] for m in v["magaza"])
-kd25 = sum(m["kdvdahil25"] for m in v["magaza"]); kd26 = sum(m["kdvdahil26"] for m in v["magaza"])
-kadro25 = sum(m["kadro25"] for m in v["magaza"]); kadro26 = sum(m["kadro26"] for m in v["magaza"])
+# K-19: toplamlar CEKIRDEKTE hesaplanir (emitter-ayrimi); burada yeniden SUM edilmez.
+if "toplam" not in v:
+    sys.exit("VERİ ESKİ: JSON'da «toplam» bloğu yok. scripts/verimlilik_excel.py --cek ile yeniden üret.")
+tpl_ = v["toplam"]
+adet25, adet26 = tpl_["adet25"], tpl_["adet26"]
+kh25, kh26 = tpl_["kdvharic25"], tpl_["kdvharic26"]
+kd25, kd26 = tpl_["kdvdahil25"], tpl_["kdvdahil26"]
+kadro25, kadro26 = tpl_["kadro25"], tpl_["kadro26"]
 
 d_adet = adet26 / adet25 - 1
 d_ciro = kd26 / kd25 - 1
@@ -66,6 +75,9 @@ kb25, kb26 = adet25 / kadro25, adet26 / kadro26
 d_kb = kb26 / kb25 - 1
 kat = d_adet / d_kadro
 taban_fark = k5["kadrolu_taban26"] - k5["kadrolu_taban25"]
+# K-15: bolum grafigi 31.08 KESIM deltalarini gosterir; altindaki cumle taban (30.06) farkini
+#   yaziyordu. Bugun ikisi de ayni ciktigi icin tutuyordu — olcuyu grafigin kaynagiyla esitle.
+kesim_fark = k5["kadrolu_kesim26"] - k5["kadrolu_kesim25"]
 sezon_ici_26 = k5["kadrolu_kesim26"] - k5["kadrolu_taban26"]
 sezon_ici_25 = k5["kadrolu_kesim25"] - k5["kadrolu_taban25"]
 oa = v["ocak_agustos"]
@@ -111,10 +123,16 @@ TITLE_BG, CONTENT_BG = srcpr.slides[0], srcpr.slides[1]
 
 
 def L(name):
+    """Sablon layout'u. K-14: bulunamazsa SESSIZCE bos layout'a dusmez — cikar.
+
+    Eski davranis: slide_layouts[6] (bos) donuyordu -> baslik placeholder'i olmayan slayt,
+    setph() de None donup sessizce gecince BASLIKSIZ deste uretiliyordu.
+    """
     for l in pr.slide_masters[0].slide_layouts:
         if l.name == name:
             return l
-    return pr.slide_masters[0].slide_layouts[6]
+    sys.exit("ŞABLON LAYOUT BULUNAMADI: '%s'. Şablon (%s) değişmiş — mevcut layout'lar: %s"
+             % (name, TPL, ", ".join(l.name for l in pr.slide_masters[0].slide_layouts)))
 
 
 def copy_bg(src, dst):
@@ -135,8 +153,8 @@ sld = pr.slides._sldIdLst
 for sid in list(sld):
     try:
         pr.part.drop_rel(sid.get(qn('r:id')))
-    except Exception:
-        pass
+    except KeyError as e:      # iliski zaten yok — bilgi amacli, sessiz yutma yok
+        print("  ⚠ şablon slayt ilişkisi bulunamadı, atlandı: %s" % e, flush=True)
     sld.remove(sid)
 
 
@@ -161,7 +179,9 @@ def setph(sl, idx, text):
                 ph.left, ph.top = Inches(0.6), Inches(0.30)
                 ph.width, ph.height = Inches(12.05), Inches(1.00)
             return ph
-    return None
+    # K-14: placeholder yoksa basliksiz slayt uretilirdi (sessiz kayip) — cikar.
+    sys.exit("PLACEHOLDER BULUNAMADI (idx=%d, layout '%s'): başlıksız slayt üretilmesin diye "
+             "durduruldu. Metin: %s" % (idx, sl.slide_layout.name, text[:60]))
 
 
 def tb(sl, x, y, w, h, runs, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP, sp=1.0):
@@ -455,7 +475,7 @@ dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 9 KISI BASI MAGAZA
-s = add("Yalnızca Başlık"); setph(s, 0, "Personel Başına İş Hacmi")
+s = add("Yalnızca Başlık"); setph(s, 0, "Personel Başına İş Hacmi — Okul-Hizalı Pencere")
 kats, s1, s2 = [], [], []
 for ad in ("Özlüce", "İst. Yolu", "FSM"):
     m = mag[ad]
@@ -477,9 +497,12 @@ dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 10 4 YILLIK TREND
-s = add("Yalnızca Başlık"); setph(s, 0, "Personel Başına İş Hacmi — Dört Yıllık Seyir")
+# K-16: bu slayt Oca-Agu adedini KADROLU'ya bolerken onceki slayt hizali-pencere adedini TUM
+#   kadroya boluyor — iki farkli olcek. Basliklarda ve etiketlerde olcu ADIYLA yazilir.
+s = add("Yalnızca Başlık")
+setph(s, 0, "Dört Yıllık Seyir — Ocak-Ağustos Adedi / Kadrolu")
 cd = CategoryChartData(); cd.categories = [str(y_["yil"]) for y_ in v["yillar"]]
-cd.add_series("adet / kişi", tuple(y_["adet"] / y_["kadrolu"] for y_ in v["yillar"]))
+cd.add_series("Oca-Ağu adet ÷ kadrolu", tuple(y_["adet"] / y_["kadrolu"] for y_ in v["yillar"]))
 lc = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(0.6), Inches(1.6),
                         Inches(7.2), Inches(3.9), cd).chart
 lc.has_title = False; lc.has_legend = False
@@ -496,10 +519,23 @@ ser.marker.size = 7
 ser.marker.format.fill.solid(); ser.marker.format.fill.fore_color.rgb = RED
 ser.marker.format.line.color.rgb = WHITE
 
-notlar = [("2024'te kadro atladı", "Kadrolu 60 → 91. Adet yalnız %11 arttı → kişi başı iş düştü.", DRED),
-          ("Ama 2023 'norm' değil", "O yıl FSM kasada 0, Özlüce kasada 1 kişi vardı — eksik kadroyla "
-                                    "çalışma.", GREY),
-          ("2024 → 2026 toparlanma", "Kişi başı iş %28,8 arttı; bu yıl kadro büyürken verim de arttı.", RED)]
+# K-10: bu ucu ONCE elle yazilmisti (60 -> 91, +%11, +%28,8). JSON yenilenince bayatlardi;
+#   artik v["yillar"]'dan turetilir.
+_yl = {y_["yil"]: y_ for y_ in v["yillar"]}
+_yrs = sorted(_yl)
+_atl_o, _atl_y = max(zip(_yrs, _yrs[1:]),
+                     key=lambda p: _yl[p[1]]["kadrolu"] - _yl[p[0]]["kadrolu"])
+_kb = {y_: _yl[y_]["adet"] / _yl[y_]["kadrolu"] for y_ in _yrs}
+notlar = [("%d'te kadro atladı" % _atl_y,
+           "Kadrolu %d → %d. Adet yalnız %s arttı → kişi başı iş %s."
+           % (_yl[_atl_o]["kadrolu"], _yl[_atl_y]["kadrolu"],
+              yzd(_yl[_atl_y]["adet"] / _yl[_atl_o]["adet"] - 1),
+              "düştü" if _kb[_atl_y] < _kb[_atl_o] else "arttı"), DRED),
+          ("Ama %d 'norm' değil" % _atl_o,
+           "O yıl FSM kasada 0, Özlüce kasada 1 kişi vardı — eksik kadroyla çalışma.", GREY),
+          ("%d → %d toparlanma" % (_atl_y, _yrs[-1]),
+           "Kişi başı iş %s arttı; bu yıl kadro büyürken verim de arttı."
+           % yzd(_kb[_yrs[-1]] / _kb[_atl_y] - 1), RED)]
 y = 1.75
 for h, d, col in notlar:
     card(s, 8.1, y, 4.55, 1.2, col)
@@ -507,8 +543,9 @@ for h, d, col in notlar:
     tb(s, 8.35, y + 0.48, 4.05, 0.7, [(d, 10.5, False, GREY)])
     y += 1.35
 tb(s, 0.6, 5.65, 12.05, 0.5,
-   [("Kadro = 31.08 itibarıyla kadrolu (sezonluk hariç; yıllar arası tahliye zamanlaması kıyası bozar).",
-     10, False, MGREY)])
+   [("Ölçü: Ocak–Ağustos ürün adedi ÷ 31.08 kadrolu (sezonluk HARİÇ; yıllar arası sezonluk "
+     "zamanlaması kıyası bozar). «Okul-hizalı pencere ÷ TÜM kadro» ölçüsü ayrı slayttadır — iki "
+     "ölçünün seviyeleri karşılaştırılmaz, yönleri karşılaştırılır.", 10, False, MGREY)])
 dipnot(s, DIP_OCA_AGU + " · kadro: 31.08 kesimi, her yıl")
 sig(s)
 
@@ -532,8 +569,8 @@ bc.plots[0].vary_by_categories = False
 card(s, 8.1, 1.6, 4.55, 1.75, MGREY)
 tb(s, 8.35, 1.72, 4.05, 0.35, [("KADROSU DEĞİŞMEYEN BÖLÜMLER", 10.5, True, GREY)])
 tb(s, 8.35, 2.08, 4.05, 1.2,
-   [("Yönetim +0  ·  Mal Kabul +0  ·  İdari İşler +0", 13, True, CHAR),
-    ("Bu üç bölümde kadro değişimi sıfırdır.", 10.5, False, GREY)], sp=1.15)
+   [("  ·  ".join("%s +0" % tr_title(b["bolum"]) for b in sabit) or "—", 13, True, CHAR),
+    ("Bu %d bölümde kadro değişimi sıfırdır." % len(sabit), 10.5, False, GREY)], sp=1.15)
 card(s, 8.1, 3.5, 4.55, 1.7, RED)
 tb(s, 8.35, 3.62, 4.05, 0.35, [("KADROSU ARTAN BÖLÜMLER", 10.5, True, GREY)])
 tb(s, 8.35, 3.98, 4.05, 1.15,
@@ -541,8 +578,9 @@ tb(s, 8.35, 3.98, 4.05, 1.15,
      12, True, DRED)], sp=1.15)
 rrect(s, 0.6, 5.28, 12.05, 0.72, LGREY, RED, lw=1.5)
 tb(s, 0.9, 5.28, 11.5, 0.72,
-   [("Kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerindedir; yönetim kadrosunda değişim "
-     "yoktur." % taban_fark, 13.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
+   [("31 Ağustos kesiminde kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerindedir; "
+     "yönetim kadrosunda değişim yoktur." % kesim_fark, 13.5, True, DRED)],
+   anchor=MSO_ANCHOR.MIDDLE)
 dipnot(s, DIP_BES)
 sig(s)
 
@@ -559,6 +597,13 @@ for ad in ("Özlüce", "İst. Yolu", "FSM"):
                  ("%.1f" % (da / dk)).replace(".", ",") + "x"])
 perf.append(["TOPLAM", "%d → %d" % (kadro25, kadro26), yzd(d_kadro), yzd(d_adet), yzd(d_ciro),
              yzd(d_kb), ("%.1f" % kat).replace(".", ",") + "x"])
+
+# K-10: "en cok kadro ekleyen magazada dahi oran X kat" cumlesi elle yaziliydi (2,2) — turetilir.
+_en_kadro = max(("Özlüce", "İst. Yolu", "FSM"),
+                key=lambda a: mag[a]["kadro26"] / mag[a]["kadro25"] - 1)
+_m = mag[_en_kadro]
+_en_kadro_oran = ("%.1f" % ((_m["adet26"] / _m["adet25"] - 1)
+                            / (_m["kadro26"] / _m["kadro25"] - 1))).replace(".", ",")
 
 t = s.shapes.add_table(len(perf), 7, Inches(0.6), Inches(1.5), Inches(12.05), Inches(1.9)).table
 for i, gen in enumerate((2.2, 1.9, 1.5, 1.85, 1.5, 1.7, 1.4)):
@@ -600,7 +645,7 @@ rrect(s, 8.2, 3.8, 4.45, 1.95, LGREY, RED, lw=1.5)
 tb(s, 8.45, 3.95, 4.0, 1.7,
    [("Değerlendirme", 13.5, True, DRED),
     ("Üç mağazanın tamamında iş hacmi artışı kadro artışının üzerindedir. Kadro artışı en yüksek "
-     "olan İst. Yolu'nda dahi oran 2,2 katıdır.", 11.5, False, INK)], sp=1.15)
+     "olan %s mağazasında dahi oran %s katıdır." % (_en_kadro, _en_kadro_oran), 11.5, False, INK)], sp=1.15)
 dipnot(s, DIP_POS)
 sig(s)
 
@@ -611,6 +656,14 @@ ESLES = {"Hazırlık Kitapları": "YARDIMCI KİTAP", "Kırtasiye": "KIRTASİYE",
 kadro_delta = {b["bolum"]: b["kadrolu26"] - b["kadrolu25"] for b in v["bolum"]}
 kat_veri = [k for k in v["kategori"] if k["kategori"] in ESLES]
 kat_veri.sort(key=lambda k: -kadro_delta.get(ESLES[k["kategori"]], 0))
+# K-13: tabloda YALNIZ bolum eslesmesi olan kategoriler var; geri kalanlar (Genel, Hediyelik,
+#   Kisisel Bakim...) gorunmuyordu -> "kadro en hizli buyuyene gitti" iddiasi denetlenemiyordu.
+#   Kalanlar tek "DIGER" satirinda toplanir + kapsam yuzdesi dipnota yazilir.
+_dis = [k for k in v["kategori"] if k["kategori"] not in ESLES]
+_tum25 = sum(k["adet25"] for k in v["kategori"]) or 1
+_tum26 = sum(k["adet26"] for k in v["kategori"]) or 1
+_kaps26 = sum(k["adet26"] for k in kat_veri)
+_kapsam_yzd = ("%%%.0f" % (100.0 * _kaps26 / _tum26))
 
 NL = chr(10)
 satir = [["Kategori", "Bakan bölüm", "Ürün adedi 2025 → 2026",
@@ -627,6 +680,19 @@ for k in kat_veri:
                   yzd(k["ciro26"] / k["ciro25"] - 1),
                   oa_adet, oa_ciro,
                   "%+d kişi" % kadro_delta.get(b, 0)])
+if _dis:
+    _d25, _d26 = sum(k["adet25"] for k in _dis), sum(k["adet26"] for k in _dis)
+    _dc25, _dc26 = sum(k["ciro25"] for k in _dis), sum(k["ciro26"] for k in _dis)
+    _doa25, _doa26 = (sum(k.get("oa_adet25") or 0 for k in _dis),
+                      sum(k.get("oa_adet26") or 0 for k in _dis))
+    _doc25, _doc26 = (sum(k.get("oa_ciro25") or 0 for k in _dis),
+                      sum(k.get("oa_ciro26") or 0 for k in _dis))
+    satir.append(["DİĞER (%d kategori)" % len(_dis), "bölüm eşleşmesi yok",
+                  "%s → %s" % (bin(_d25), bin(_d26)),
+                  yzd(_d26 / _d25 - 1) if _d25 else "—",
+                  yzd(_dc26 / _dc25 - 1) if _dc25 else "—",
+                  yzd(_doa26 / _doa25 - 1) if _doa25 else "—",
+                  yzd(_doc26 / _doc25 - 1) if _doc25 else "—", "—"])
 t = s.shapes.add_table(len(satir), 8, Inches(0.6), Inches(1.5), Inches(12.05), Inches(2.7)).table
 for i, gen in enumerate((2.15, 1.75, 2.35, 1.2, 1.15, 1.25, 1.15, 1.05)):
     t.columns[i].width = Inches(gen)
@@ -664,8 +730,13 @@ tb(s, 8.45, 4.5, 4.0, 1.48,
    [("Değerlendirme", 13.5, True, DRED),
     ("Kadro artışı, ürün adedi en hızlı artan kategorilere yönlendirilmiştir. SEZON kolonları "
      "okul-hizalı pencereyi, OCA-AĞU kolonları yılın tamamını (01.01–31.08) gösterir; sıralama "
-     "iki pencerede de aynıdır.", 10.5, False, INK)], sp=1.15)
-dipnot(s, DIP_POS + " · OCA-AĞU kolonları: 01.01 – 31.08 kümülatif (her iki yıl)")
+     "iki pencerede de aynıdır. DİĞER satırı, tek bir reyona atfedilemeyen kategorilerin "
+     "toplamıdır (kadro eşleşmesi yapılamaz); kapsam bütünlüğü için gösterilir.",
+     10, False, INK)], sp=1.12)
+dipnot(s, DIP_POS + " · OCA-AĞU kolonları: 01.01 – 31.08 kümülatif (her iki yıl) · Bölüm "
+          "eşleşmesi olan %d kategori ayrı satırda = hizalı pencere adedinin %s'i; kalan %d "
+          "kategori DİĞER satırında toplandı (eşik: iki yılda da ≥2.000 adet)"
+          % (len(kat_veri), _kapsam_yzd, len(_dis)))
 
 # ================================================================= TAKVIM KAYMASI
 ky = v.get("kayma")
@@ -848,26 +919,31 @@ if nrm and nrm.get("bolum"):
     s = add("Yalnızca Başlık"); setph(s, 0, "Norm Açığı — Bölüm Bazında")
     bl = nrm["bolum"]
     acik_bolum = nrm["acik_bolum_toplam"]
-    ayr_b = nrm.get("ayrik", {})
-    acik_sube = sum(max(0, r["norm"] - (r["kadrolu_kesim26"]
-                                        - ayr_b.get(r["sube"], {}).get("etkinlik", 0)
-                                        - ayr_b.get(r["sube"], {}).get("engelli", 0)))
-                    for r in nrm["sube"])
+    # K-11/K-06: magaza acigi ve teyit bekleyen acik CEKIRDEKTEN okunur (emitter hesap yapmaz).
+    acik_sube = nrm["acik_sube_toplam"]
+    acik_teyit = nrm.get("acik_bolum_teyit", 0)
+    teyit_adlar = nrm.get("teyit_bolumler", [])
 
     satir = [["Bölüm", "Norm", "Operasyonel" + chr(10) + "kadrolu", "Engelli" + chr(10) + "(norm dışı)",
               "Açık", "Fazla", "Sezonluk" + chr(10) + "31.08"]]
-    bl_norm = [r for r in bl if not r.get("norm_disi")]
+    # K-06: normda tanimli ama kayitta hic kisi olmayan bolum "acik" degil, TEYIT BEKLEYEN.
+    bl_norm = [r for r in bl if not r.get("norm_disi") and not r.get("teyit_gerekiyor")]
+    bl_teyit = [r for r in bl if r.get("teyit_gerekiyor")]
     for r in bl_norm:
         satir.append([tr_title(r["bolum"]), str(r["norm"]), str(r["kadrolu26"]),
                       str(r["engelli26"]) if r["engelli26"] else "—",
                       str(r["acik"]) if r["acik"] else "—",
                       str(r["fazla"]) if r["fazla"] else "—",
                       str(r["sezonluk26"]) if r["sezonluk26"] else "—"])
-    satir.append(["TOPLAM", str(sum(r["norm"] for r in bl_norm)),
+    satir.append(["TOPLAM" + (" (teyit hariç)" if bl_teyit else ""),
+                  str(sum(r["norm"] for r in bl_norm)),
                   str(sum(r["kadrolu26"] for r in bl_norm)),
                   str(sum(r["engelli26"] for r in bl_norm)),
                   str(acik_bolum), str(nrm["fazla_bolum_toplam"]),
                   str(sum(r["sezonluk26"] for r in bl_norm))])
+    for r in bl_teyit:
+        satir.append([tr_title(r["bolum"]) + " (teyit bekliyor)", str(r["norm"]), "0", "—", "—",
+                      "—", str(r["sezonluk26"]) if r["sezonluk26"] else "—"])
     for r in bl:
         if r.get("norm_disi"):
             satir.append([tr_title(r["bolum"]) + " (norm dışı)", "—", str(r["kadrolu26"]), "—", "—",
@@ -882,7 +958,7 @@ if nrm and nrm.get("bolum"):
     for r, row in enumerate(satir):
         for c, val in enumerate(row):
             cell = t.cell(r, c); cell.text = val
-            son_satir = (satir[r][0] == "TOPLAM")
+            son_satir = satir[r][0].startswith("TOPLAM")
             for para in cell.text_frame.paragraphs:
                 para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
                 for run in para.runs:
@@ -891,12 +967,13 @@ if nrm and nrm.get("bolum"):
                     run.font.bold = (r == 0 or son_satir or c == 4)
                     run.font.color.rgb = WHITE if r == 0 else (DRED if c == 4 else INK)
             cell.fill.solid()
-            norm_disi_satir = (r == len(satir) - 1 and "norm dışı" in satir[r][0])
+            norm_disi_satir = ("norm dışı" in satir[r][0] or "teyit bekliyor" in satir[r][0])
             cell.fill.fore_color.rgb = RED if r == 0 else (
                 RGBColor(0xFF, 0xF6, 0xE6) if norm_disi_satir else
                 (LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA))))
 
-    en_buyuk = [r for r in bl if r["acik"] and not r.get("norm_disi")][:4]
+    en_buyuk = [r for r in bl if r["acik"] and not r.get("norm_disi")
+                and not r.get("teyit_gerekiyor")][:4]
     card(s, 8.7, 1.5, 3.95, 2.15, DRED, ikon="alert-triangle")
     tb(s, 8.95, 1.62, 3.0, 0.32, [("EN BÜYÜK AÇIKLAR", 10, True, GREY)])
     tb(s, 8.95, 1.98, 3.5, 1.6,
@@ -908,7 +985,12 @@ if nrm and nrm.get("bolum"):
        [("Neden mağaza toplamından büyük?", 12, True, DRED),
         ("Bölüm bazında açık %d kişi, mağaza bazında %d. Aradaki fark, bir mağazada bir bölümün "
          "fazlasının başka bölümün açığını maskelemesinden gelir. Gerçek ihtiyaç bölüm bazında "
-         "okunur." % (acik_bolum, acik_sube), 10, False, INK)], sp=1.12)
+         "okunur.%s" % (acik_bolum, acik_sube,
+                        ("" if not acik_teyit else
+                         " Ayrıca normda tanımlı olduğu hâlde kayıtta hiç personeli olmayan %d "
+                         "kişilik satır (%s) açığa DAHİL EDİLMEDİ — teyit bekliyor."
+                         % (acik_teyit, " · ".join(tr_title(x) for x in teyit_adlar)))),
+         10, False, INK)], sp=1.12)
 
     dipnot(s, "* Norm = engelli DIŞINDAKİ personel (yönetim kararı) — engelli bölüm bazında da "
               "DÜŞÜLDÜ: %s · ETKİNLİK normda tanımlı olmadığı için norm dışı satır olarak en altta "
@@ -926,6 +1008,10 @@ if al and ay2:
     s = add("Yalnızca Başlık"); setph(s, 0, "Sezonluk Alım Zamanlaması")
     a25, a26 = al[str(ONCEKI)], al[str(CARI)]
     gun_fark = a26["ort_yil_gunu"] - a25["ort_yil_gunu"]
+    # K-10: asagidaki yorum kolonlari elle yazilmisti (+%25,1 / -%2,9 / "3 kisi") — turetilir.
+    d_yarim1 = yzd(ay2["1"]["adet26"] / ay2["1"]["adet25"] - 1)
+    d_yarim2 = yzd(ay2["2"]["adet26"] / ay2["2"]["adet25"] - 1)
+    sez_kesim_fark = k5["sezonluk_kesim26"] - k5["sezonluk_kesim25"]
 
     kpi(s, 0.6, 1.5, 3.9, "ORTALAMA ALIM GÜNÜ",
         (("%.1f" % gun_fark).replace(".", ",") + " gün geç") if gun_fark > 0
@@ -953,13 +1039,17 @@ if al and ay2:
              ["15–31 Ağustos ürün adedi", bin(ay2["2"]["adet25"]), bin(ay2["2"]["adet26"]),
               "%s — dalga Eylül'e kaydı" % yzd(ay2["2"]["adet26"] / ay2["2"]["adet25"] - 1)],
              ["31.08'de çalışan sezonluk", "%d kişi" % k5["sezonluk_kesim25"],
-              "%d kişi" % k5["sezonluk_kesim26"], "kesimde 3 kişi DAHA AZ"],
+              "%d kişi" % k5["sezonluk_kesim26"],
+              "kesimde %d kişi DAHA %s" % (abs(sez_kesim_fark),
+                                           "AZ" if sez_kesim_fark < 0 else "FAZLA")],
              ["   — Temmuz alımı", "%d kişi" % a25.get("aktif_donem", {}).get("2_temmuz", 0),
               "%d kişi" % a26.get("aktif_donem", {}).get("2_temmuz", 0), "erken alım payı düştü"],
              ["   — 1–14 Ağustos alımı", "%d kişi" % a25.get("aktif_donem", {}).get("3_agustos_1_14", 0),
-              "%d kişi" % a26.get("aktif_donem", {}).get("3_agustos_1_14", 0), "iş +%25,1 büyüyen dönem"],
+              "%d kişi" % a26.get("aktif_donem", {}).get("3_agustos_1_14", 0),
+              "iş %s büyüyen dönem" % d_yarim1],
              ["   — 15–31 Ağustos alımı", "%d kişi" % a25.get("aktif_donem", {}).get("4_agustos_15_31", 0),
-              "%d kişi" % a26.get("aktif_donem", {}).get("4_agustos_15_31", 0), "iş −%2,9 → alım azaltıldı"],
+              "%d kişi" % a26.get("aktif_donem", {}).get("4_agustos_15_31", 0),
+              "iş %s → alım azaltıldı" % d_yarim2],
              ]  # NOT: "önceki yıldan devreden" satırı patron sunumuna KONULMADI — 2025 alımlı
                 #       tek kayıt hâlâ Kadro='SEZONLUK' görünüyor, veri düzeltmesi İK'da (02.09.2026).
     t = s.shapes.add_table(len(satir), 4, Inches(0.6), Inches(3.55), Inches(12.05), Inches(2.2)).table
@@ -1003,8 +1093,11 @@ itiraz = [
      "Bu yüzden ölçüm POS'tan değil ERP'den (DerinSIS) alındı — iki yılda da aynı kaynak, aynı belge tipi. "
      "Temmuz 2025 kasa geçişi ölçüye girmiyor."),
     ("Sezonluk personel erken mi alındı?",
-     "Hayır: takvim ölçüsünde 2026 alımı ortalama 2,5 gün DAHA GEÇ; Temmuz ve öncesi alım 6 kişiden "
-     "2'ye indi. Artış 1–14 Ağustos'ta ve o iki haftada ürün adedi +%25,1 büyüdü — alım işi takip etti."),
+     "Hayır: takvim ölçüsünde %s alımı ortalama %s gün DAHA GEÇ; Temmuz ve öncesi alım %d kişiden "
+     "%d'ye indi. Artış 1–14 Ağustos'ta ve o iki haftada ürün adedi %s büyüdü — alım işi takip etti."
+     % (CARI, ("%.1f" % (al[str(CARI)]["ort_yil_gunu"] - al[str(ONCEKI)]["ort_yil_gunu"]))
+        .replace(".", ","), al[str(ONCEKI)]["temmuz_ve_oncesi"], al[str(CARI)]["temmuz_ve_oncesi"],
+        yzd(v["agustos_yarim"]["1"]["adet26"] / v["agustos_yarim"]["1"]["adet25"] - 1))),
     ("Ağustos ayında ivme düşüşü var mı?",
      "Takvim etkisi: okullar 2025'te 8 Eylül, 2026'da 14 Eylül açıldı — sezon 6 gün geriye kaydı. "
      "Açılışa hizalanınca haftalık büyüme %65–79 bandında düz seyrediyor."),

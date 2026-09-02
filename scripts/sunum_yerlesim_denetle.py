@@ -21,6 +21,11 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.util import Emu
 
+try:   # Windows cp1254 konsolu: ok/uyari isaretleri UnicodeEncodeError veriyordu
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError) as _e:
+    print("stdout utf-8 yapilamadi: %s" % _e)
+
 KOK = Path(__file__).resolve().parent.parent
 VARSAYILAN = KOK / "briefings" / "sezon-kadro-20260902" / "sunum-kadro-sezon2026.pptx"
 
@@ -51,8 +56,11 @@ def kutu(sh):
             satirlar = sh.table.rows
             toplam = sum(max(inc(r.height), SATIR_MIN) for r in satirlar)
             yuk = max(yuk, toplam)
-        except Exception:
-            pass
+        except (AttributeError, TypeError, ValueError) as e:
+            # sessiz yutma yasak: tablo yuksekligi olculemezse BEYAN EDILEN yukseklik kullanilir,
+            # bu da tasmayi gizleyebilir -> uyari basilir.
+            print("  ⚠ tablo yüksekliği ölçülemedi, beyan edilen yükseklik kullanıldı: %s" % e,
+                  flush=True)
     return (inc(sh.left), inc(sh.top), inc(sh.left) + inc(sh.width), inc(sh.top) + yuk)
 
 
@@ -60,8 +68,8 @@ def metin(sh):
     try:
         if sh.has_text_frame:
             return " ".join(p.text for p in sh.text_frame.paragraphs).strip()
-    except Exception:
-        pass
+    except (AttributeError, ValueError) as e:
+        print("  ⚠ şekil metni okunamadı (%s) — kural eşleşmesi bu şekli atlıyor" % e, flush=True)
     return ""
 
 

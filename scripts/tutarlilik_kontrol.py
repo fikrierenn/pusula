@@ -62,9 +62,28 @@ def main(argv):
     pos_kadrolu = sum(mk[s]["kadrolu_kesim26"] for s in POS)
     pos_sezonluk = sum(mk[s]["sezonluk_kesim26"] for s in POS)
     pos_kadro = sum(m["kadro26"] for m in v["magaza"])
-    kontrol("3 POS kadro (hacim tablosu) = kadrolu + sezonluk (İK)",
+    kontrol("3 POS kadro 2026 (hacim tablosu) = kadrolu + sezonluk (İK)",
             pos_kadrolu + pos_sezonluk, pos_kadro,
-            "sunumda 143 → 160 diye geçen rakam")
+            "sunumda «... → 160» diye geçen rakam")
+    # K-11: 2025 tarafi hic sinanmiyordu — taban kayarsa "kaç kat" da kayar
+    kontrol("3 POS kadro 2025 (hacim tablosu) = kadrolu + sezonluk (İK)",
+            sum(mk[s_]["kadrolu_kesim25"] + mk[s_]["sezonluk_kesim25"] for s_ in POS),
+            sum(m["kadro25"] for m in v["magaza"]),
+            "sunumda «143 → ...» diye geçen rakam")
+    # K-19: toplam blogu cekirdekte hesaplanir; emitter'lar bunu okur
+    tp_ = v.get("toplam") or {}
+    for alan in ("adet", "kdvharic", "kdvdahil", "kadro"):
+        for ek in (25, 26):
+            ad_ = "%s%d" % (alan, ek)
+            kontrol("çekirdek toplam %s = mağaza satırları toplamı" % ad_,
+                    round(float(tp_.get(ad_, -1)), 2),
+                    round(sum(float(m[ad_]) for m in v["magaza"]), 2))
+    # K-08: pencere gun sayisi MAGAZA x YIL bazinda esit olmali
+    for anahtar, gun_ in (v["meta"].get("gun_magaza") or {}).items():
+        kontrol("pencere günü (%s)" % anahtar, v["meta"]["gun"], gun_)
+    sonuc.append((not v["meta"].get("gun_uyari"),
+                  "mağaza bazında satış günü uyarısı yok", "yok",
+                  " · ".join(v["meta"].get("gun_uyari") or []) or "yok", ""))
 
     # ---------------------------------------------------------------- NORM (4 mağaza)
     if n:
@@ -94,8 +113,23 @@ def main(argv):
         kontrol("etkinlik satırı = şube etkinlik toplamı", etk,
                 sum(b["kadrolu26"] for b in n["bolum"] if b["bolum"] == ETKINLIK_BOLUM))
         # açık/fazla aritmetiği
-        acik_b = sum(max(0, b["norm"] - b["kadrolu26"]) for b in n["bolum"] if b["bolum"] != ETKINLIK_BOLUM)
-        kontrol("bölüm açık toplamı", n["acik_bolum_toplam"], acik_b)
+        # K-06: normda tanimli ama kayitta hic kisi olmayan bolum acik degil, teyit bekleyen
+        acik_b = sum(max(0, b["norm"] - b["kadrolu26"]) for b in n["bolum"]
+                     if b["bolum"] != ETKINLIK_BOLUM and not b.get("teyit_gerekiyor"))
+        kontrol("bölüm açık toplamı (teyit bekleyen hariç)", n["acik_bolum_toplam"], acik_b)
+        kontrol("teyit bekleyen açık toplamı", n.get("acik_bolum_teyit", 0),
+                sum(max(0, b["norm"] - b["kadrolu26"]) for b in n["bolum"]
+                    if b.get("teyit_gerekiyor")))
+        sonuc.append((n.get("engelli_format_atlanan", 0) == 0,
+                      "engelli taramasında Personelno biçimi yüzünden atlanan kayıt",
+                      0, n.get("engelli_format_atlanan", 0),
+                      ">0 ise engelli sayısı alt sınır, norm açığı olduğundan küçük görünür"))
+        kontrol("mağaza açığı çekirdekte hesaplanmış (acik_sube_toplam)",
+                n["acik_sube_toplam"],
+                sum(max(0, r["norm"] - (r["kadrolu_kesim26"]
+                                        - ayr.get(r["sube"], {}).get("engelli", 0)
+                                        - ayr.get(r["sube"], {}).get("etkinlik", 0)))
+                    for r in n["sube"]))
         acik_s = sum(max(0, r["norm"] - (r["kadrolu_kesim26"]
                                          - ayr.get(r["sube"], {}).get("engelli", 0)
                                          - ayr.get(r["sube"], {}).get("etkinlik", 0)))
@@ -107,6 +141,17 @@ def main(argv):
             sonuc.append((True, "bölüm açığı (%d) ≥ mağaza açığı (%d)" % (acik_b, acik_s),
                           acik_b, acik_b, "mağaza içi fazlalar açığı maskeler"))
 
+    # ---------------------------------------------------------------- KATEGORİ KAPSAMI (K-13)
+    if v.get("kategori"):
+        ESLES_ADLAR = ("Hazırlık Kitapları", "Kırtasiye", "Kitap", "Çocuk Kitabı",
+                       "Oyuncak", "Akademi")
+        kaps = sum(k["adet26"] for k in v["kategori"] if k["kategori"] in ESLES_ADLAR)
+        tum = sum(k["adet26"] for k in v["kategori"]) or 1
+        pay = 100.0 * kaps / tum
+        sonuc.append((pay >= 60, "sunum kategori tablosu hizalı pencere adedinin %%%.0f'ini "
+                      "kapsıyor (kalanı DİĞER satırında)" % pay, "≥%60", "%%%.0f" % pay,
+                      "eşleşmesiz kategoriler tabloda DİĞER olarak toplanır"))
+
     # ---------------------------------------------------------------- İŞ HACMİ
     kontrol("hizalı pencere adet toplamı", round(sum(m["adet26"] for m in v["magaza"])),
             round(sum(m["adet26"] for m in v["magaza"])))
@@ -117,6 +162,16 @@ def main(argv):
         kontrol("kaymasız Ağustos − gerçek = Eylül'e kayan",
                 round(ky["eylule_kayan"]["adet"]),
                 round(ky["agustos_kaymasiz_tahmin"]["adet"] - ky["y26_agu_tam"]["adet"]))
+        # K-07: dilimlerin hicbiri bos olamaz; hizali pencereler ayni gun sayisinda olmali
+        for dilim in ("y25_hizali", "y26_hizali", "y25_agu_tam", "y26_agu_tam",
+                      "y25_agu_kalan", "y25_eyl_1_7"):
+            d_ = ky[dilim]
+            sonuc.append((d_["adet"] > 0 and d_["ciro"] > 0 and d_["gun"] > 0,
+                          "kayma dilimi «%s» dolu" % dilim, ">0",
+                          "adet %.0f / gün %d" % (d_["adet"], d_["gun"]),
+                          "boş dilim «Eylül'e kayan»ı tüm Ağustos kadar gösterir"))
+        kontrol("hizalı pencere gün sayısı iki yılda eşit",
+                ky["y25_hizali"]["gun"], ky["y26_hizali"]["gun"])
     if v.get("yillar"):
         y26 = [y for y in v["yillar"] if y["yil"] == 2026][0]
         kontrol("Oca-Ağu mağaza adedi (yıllar ↔ kanal tablosu)",
@@ -140,6 +195,14 @@ def main(argv):
         if dosya and dosya.stat().st_mtime < yol.stat().st_mtime - 1:
             sonuc.append((False, "%s JSON'dan ESKI (bayat çıktı)" % dosya.name,
                           "yeniden üret", "eski", "emitter'ı tekrar çalıştır"))
+    for seg in ("KADROLU", "SEZONLUK"):
+        for yil_ in ("2025", "2026"):
+            d_ = (v.get("tutunma") or {}).get(seg, {}).get(yil_, {})
+            sonuc.append((d_.get("oran14") is not None,
+                          "tutunma ölçümü var (%s %s)" % (seg, yil_), "var",
+                          "var" if d_.get("oran14") is not None else "yok",
+                          "sunumdaki kalma oranı KPI'sı bu ölçümden gelir"))
+
     ops_toplam = ops_kadrolu + n["toplam"]["sezonluk_kesim26"] if n else 0
     pos26 = sum(m["kadro26"] for m in v["magaza"])
 
@@ -186,30 +249,6 @@ def main(argv):
                           ("hizalı adet 2025", round(sum(m["adet25"] for m in v["magaza"]), 2))):
             sonuc.append((round(float(deger), 2) in sayilar,
                           "Excel'de %s (%s) var" % (ad, deger), deger, deger, ""))
-
-    # ÇAPRAZ-SAYFA FORMÜL REFERANSI (bulgu 15): openpyxl formül hücrelerini sayı olarak görmez,
-    # bu yüzden "kaç kat" hücresi CİRO oranını (6,0x) gösterirken denetim 33/33 ✓ veriyordu.
-    # Artık Sunum sayfasının işaret ettiği Ozet hücresinin FORMÜLÜ sınanıyor.
-    if xlsx:
-        from openpyxl import load_workbook as _lw
-        wb2 = _lw(str(xlsx))
-        if "Sunum" in wb2.sheetnames and "Ozet" in wb2.sheetnames:
-            sn, oz = wb2["Sunum"], wb2["Ozet"]
-            bulundu = False
-            for r in range(1, sn.max_row + 1):
-                etiket, ref = sn.cell(r, 2).value, sn.cell(r, 3).value
-                if not (etiket and ref and isinstance(ref, str) and "KAT" in str(etiket).upper()):
-                    continue
-                hucre = str(ref).replace("='Ozet'!", "").strip()
-                formul = str(oz[hucre].value or "")
-                bulundu = True
-                # adet-tabanli oran: E8/E7 (adet Δ ÷ kadro Δ). Ciro tabanli (E9/E7) YANLIS.
-                sonuc.append((formul.replace(" ", "") == "=E8/E7",
-                              "Sunum «kaç kat» → Ozet!%s formülü adet tabanlı" % hucre,
-                              "=E8/E7", formul,
-                              "ciro tabanlı (=E9/E7) olursa oran 2,9x yerine 6,0x görünür"))
-            if not bulundu:
-                sonuc.append((False, "Sunum sayfasında «kaç kat» satırı bulunamadı", "var", "yok", ""))
 
     # ÇAPRAZ-SAYFA FORMÜL REFERANSI (bulgu 15): openpyxl formül hücrelerini sayı olarak görmez,
     # bu yüzden "kaç kat" hücresi CİRO oranını (6,0x) gösterirken denetim 33/33 ✓ veriyordu.

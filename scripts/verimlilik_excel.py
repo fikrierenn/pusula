@@ -17,6 +17,11 @@ import json
 import os
 import re
 import sys
+
+try:   # Windows cp1254 konsolunda ok/uyari isaretleri UnicodeEncodeError veriyordu
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError) as _e:
+    print("stdout utf-8 yapilamadi: %s" % _e)
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -76,6 +81,26 @@ def _env():
     return env
 
 
+_BAGLANTILAR = []          # K-17: acilan her baglanti burada; main finally'de kapatilir
+
+
+def _kapat(cn):
+    """Tek baglantiyi kapat ve listeden dus (finally'de ikinci kez kapatilmasin)."""
+    if cn in _BAGLANTILAR:
+        _BAGLANTILAR.remove(cn)
+    cn.close()
+
+
+def kapat_baglantilar():
+    """Acik pyodbc baglantilarini kapat. sys.exit (mutabakat hatasi) yolunda da calisir."""
+    while _BAGLANTILAR:
+        cn = _BAGLANTILAR.pop()
+        try:
+            cn.close()
+        except pyodbc.Error as e:
+            print("  ⚠ bağlantı kapatılamadı: %s" % e, flush=True)
+
+
 def _cn(env, sunucu):
     """sunucu: 'erp' (DerinSIS) veya 'zirve' (İK)."""
     import pyodbc
@@ -107,6 +132,7 @@ def _cn(env, sunucu):
             if deneme > 1:
                 print("  bağlantı %d. denemede kuruldu (%s)" % (deneme, sunucu), flush=True)
             cn.timeout = 600
+            _BAGLANTILAR.append(cn)
             return cn
         except pyodbc.Error as e:
             son_hata = e
@@ -155,9 +181,11 @@ def cek(env, kisi=False):
           AND """ + _hizali_kosul() + """
         GROUP BY bs.eMekan, YEAR(bs.eTarihS)""")
     hacim, gunler, pencere_tarih = {}, {}, {}
+    gun_mekan = {}          # K-08: gun sayisi MAGAZA x YIL bazinda — tek sozlukte eziliyordu
     for mekan, yil, adet, kh, kd, gun, ilk, son in cur.fetchall():
         hacim[(int(mekan), int(yil))] = (float(adet), float(kh), float(kd))
         gunler[int(yil)] = int(gun)
+        gun_mekan[(int(mekan), int(yil))] = int(gun)
         # fiili ilk/son gun (magazalar arasi ayni pencerede; genis olani al)
         eski = pencere_tarih.get(int(yil))
         ilk_s, son_s = ilk.strftime("%d.%m.%Y"), son.strftime("%d.%m.%Y")
@@ -169,6 +197,24 @@ def cek(env, kisi=False):
     if len(gunler) != 2 or len(set(gunler.values())) != 1:
         sys.exit("Pencere eşit değil (gün sayıları %s) — kıyas yapılamaz." % gunler)
     veri["meta"]["gun"] = next(iter(gunler.values()))
+    # K-08: eski kontrol yalnizca SON magazanin gun sayisini kiyasliyordu. Bir magaza bir yil
+    #   eksik gun satmissa (kapanis/ariza) o magazanin delta ve kisi-basi rakami sessizce sapar.
+    gun_uyari = []
+    for mekan in MEKAN:
+        g_o, g_c = gun_mekan.get((mekan, ONCEKI)), gun_mekan.get((mekan, CARI))
+        if g_o is None or g_c is None:
+            sys.exit("PENCERE EKSİK: %s mağazasında %s verisi yok (gün sayıları %s)."
+                     % (MEKAN[mekan], ONCEKI if g_o is None else CARI, gun_mekan))
+        if g_o != g_c:
+            sys.exit("PENCERE EŞİT DEĞİL (%s): %d gün %d, %d gün %d — mağaza bazında kıyas bozulur."
+                     % (MEKAN[mekan], ONCEKI, g_o, CARI, g_c))
+        if g_o != veri["meta"]["gun"]:
+            gun_uyari.append("%s %d gün (pencere %d)" % (MEKAN[mekan], g_o, veri["meta"]["gun"]))
+    if gun_uyari:
+        print("  ⚠ satış günü pencereden az: %s" % " · ".join(gun_uyari), flush=True)
+    veri["meta"]["gun_magaza"] = {"%s|%d" % (MEKAN[m], y): g
+                                  for (m, y), g in sorted(gun_mekan.items())}
+    veri["meta"]["gun_uyari"] = gun_uyari
     veri["meta"]["pencere_tarih"] = {str(k): val for k, val in sorted(pencere_tarih.items())}
 
     # 2) Ocak-Agustos, magaza vs Sinav
@@ -320,6 +366,18 @@ def cek(env, kisi=False):
         adet, ciro, gunn = cur.fetchone()
         kayma[ad] = {"adet": float(adet or 0), "ciro": float(ciro or 0), "gun": int(gunn or 0)}
 
+    # K-07: bir dilim bos donerse (tarih penceresi hatasi / veri gecikmesi) "or 0" sessizce
+    #   sifir yazar ve "Eylul'e kayan" TUM Agustos kadar cikar. Bos dilim = hesap yapilamaz.
+    for ad in dilimler:
+        d_ = kayma[ad]
+        if d_["adet"] <= 0 or d_["ciro"] <= 0 or d_["gun"] <= 0:
+            sys.exit("KAYMA DİLİMİ BOŞ: %s (%s – %s) → adet %.0f, ciro %.0f, gün %d. "
+                     "Tarih penceresi veya veri eksik; kayma hesabı yapılamaz."
+                     % (ad, dilimler[ad][0], dilimler[ad][1], d_["adet"], d_["ciro"], d_["gun"]))
+    if kayma["y25_hizali"]["gun"] != kayma["y26_hizali"]["gun"]:
+        sys.exit("KAYMA PENCERESİ EŞİT DEĞİL: %d gün %d, %d gün %d — hizalı büyüme oranı sapar."
+                 % (ONCEKI, kayma["y25_hizali"]["gun"], CARI, kayma["y26_hizali"]["gun"]))
+
     g_adet = kayma["y26_hizali"]["adet"] / kayma["y25_hizali"]["adet"] - 1
     g_ciro = kayma["y26_hizali"]["ciro"] / kayma["y25_hizali"]["ciro"] - 1
     kayma["hizali_buyume"] = {"adet": g_adet, "ciro": g_ciro,
@@ -327,12 +385,22 @@ def cek(env, kisi=False):
                               "pencere_2025": "01.08 – %s.2025" % esli_2025.strftime("%d.%m"),
                               "pencere_2026": "07.08 – %s.2026" % son_tam.strftime("%d.%m"),
                               "son_tam_gun": son_tam.strftime("%d.%m.%Y")}
+    # K-07: hizali buyume orani makul bantta olmali. Bant disi = pencere/filtre hatasi
+    #   (or. bir yil Sinav dahil kalmis) — hatali oran tum kayma tahminini carpitir.
+    for ad_, g_ in (("adet", g_adet), ("ciro", g_ciro)):
+        if not (-0.5 <= g_ <= 2.0):
+            sys.exit("HİZALI BÜYÜME BANT DIŞI (%s): %%%.1f. Pencere/filtre hatası olasılığı — "
+                     "kayma tahmini üretilmedi." % (ad_, g_ * 100))
     kayma["agustos_kaymasiz_tahmin"] = {
         "adet": kayma["y25_agu_tam"]["adet"] * (1 + g_adet),
         "ciro": kayma["y25_agu_tam"]["ciro"] * (1 + g_ciro)}
     kayma["eylule_kayan"] = {
         "adet": kayma["agustos_kaymasiz_tahmin"]["adet"] - kayma["y26_agu_tam"]["adet"],
         "ciro": kayma["agustos_kaymasiz_tahmin"]["ciro"] - kayma["y26_agu_tam"]["ciro"]}
+    for ad_ in ("adet", "ciro"):
+        if kayma["eylule_kayan"][ad_] <= 0:
+            print("  ⚠ kayma-arındırılmış Ağustos gerçekleşenin ALTINDA (%s) — kayma anlatısı "
+                  "bu ölçüde desteklenmiyor." % ad_, flush=True)
     # 2025 okul-oncesi dalga (28 Agu - 07 Eyl) -> 2026'da 03-13 Eyl beklentisi
     dalga25_adet = kayma["y25_agu_kalan"]["adet"] + kayma["y25_eyl_1_7"]["adet"]
     dalga25_ciro = kayma["y25_agu_kalan"]["ciro"] + kayma["y25_eyl_1_7"]["ciro"]
@@ -373,7 +441,7 @@ def cek(env, kisi=False):
         yarim[str(int(y_))]["ciro%d" % (int(yil) % 100)] = float(ciro)
     veri["agustos_yarim"] = yarim
 
-    erp.close()
+    _kapat(erp)
 
 
 
@@ -381,25 +449,9 @@ def cek(env, kisi=False):
     print("Zirve: kadro as-of sayımları...", flush=True)
     zrv = _cn(env, "zirve")
     zc = zrv.cursor()
-    asof = "v.Igt <= '%s' AND (v.Ict IS NULL OR v.Ict >= '%s')"
-
-    def kadro_sube(tarih, sube):
-        zc.execute("SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v "
-                   "WHERE v.AltLokasyon = ? AND v.Lokasyon LIKE 'MA%' AND "
-                   + (asof % (tarih, tarih)), sube)
-        return int(zc.fetchone()[0])
-
-    for mekan, ad in MEKAN.items():
-        h_o = hacim[(mekan, ONCEKI)]
-        h_c = hacim[(mekan, CARI)]
-        veri["magaza"].append({
-            "ad": ad, "mekan": mekan,
-            "kadro%d" % (ONCEKI % 100): kadro_sube("%d0831" % ONCEKI, SUBE[mekan]),
-            "kadro%d" % (CARI % 100): kadro_sube("%d0831" % CARI, SUBE[mekan]),
-            "adet%d" % (ONCEKI % 100): h_o[0], "adet%d" % (CARI % 100): h_c[0],
-            "kdvharic%d" % (ONCEKI % 100): h_o[1], "kdvharic%d" % (CARI % 100): h_c[1],
-            "kdvdahil%d" % (ONCEKI % 100): h_o[2], "kdvdahil%d" % (CARI % 100): h_c[2],
-        })
+    # K-18: as-of kosulu PARAMETRELI (once %-format ile literal gomuluyordu; proje geneli
+    #   ? kullaniyor, tek desen kalsin). Iki ? alir: (tarih, tarih).
+    ASOF = "v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?)"
 
     # 5 magaza kadrolu taban/kesim + sezonluk (POS'ta olmayan Heykel/Sura dahil)
     def kadro_5(tarih, sezonluk=None):
@@ -409,7 +461,7 @@ def cek(env, kisi=False):
         elif sezonluk is False:
             kosul += " AND COALESCE(v.Kadro, '') <> 'SEZONLUK'"
         zc.execute("SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v WHERE " + kosul
-                   + " AND " + (asof % (tarih, tarih)))
+                   + " AND " + ASOF, tarih, tarih)
         return int(zc.fetchone()[0])
 
     veri["kadro_5magaza"] = {
@@ -448,13 +500,27 @@ def cek(env, kisi=False):
             satir["sezonluk_kesim%d" % ek] = sk
         veri["magaza_kadro"].append(satir)
 
+    # 3 POS magazasi: is hacmi + kadro. K-11: kadro AYRI bir sayim sorgusundan geliyordu
+    #   (kadro_sube) — iki kaynak sessizce ayrisabilir ve "143 -> 160" tabani kayardi. Artik
+    #   kadro TEK KAYNAK: yukaridaki magaza_kadro tablosu (kadrolu + sezonluk).
+    _mk = {m["sube"]: m for m in veri["magaza_kadro"]}
+    for mekan, ad in MEKAN.items():
+        sat = {"ad": ad, "mekan": mekan}
+        mkr = _mk[SUBE[mekan]]
+        for yil in (ONCEKI, CARI):
+            ek = yil % 100
+            h = hacim[(mekan, yil)]
+            sat["kadro%d" % ek] = mkr["kadrolu_kesim%d" % ek] + mkr["sezonluk_kesim%d" % ek]
+            sat["adet%d" % ek], sat["kdvharic%d" % ek], sat["kdvdahil%d" % ek] = h[0], h[1], h[2]
+        veri["magaza"].append(sat)
+
     # yillik trend kadrolu (3 POS magazasi)
     for yil in YILLAR:
         zc.execute("""SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v
                       WHERE v.AltLokasyon IN (?, ?, ?) AND v.Lokasyon LIKE 'MA%'
                         AND COALESCE(v.Kadro, '') <> 'SEZONLUK'
-                        AND """ + (asof % ("%d0831" % yil, "%d0831" % yil)),
-                   SUBE[4478], SUBE[4477], SUBE[1])
+                        AND """ + ASOF,
+                   SUBE[4478], SUBE[4477], SUBE[1], "%d0831" % yil, "%d0831" % yil)
         veri["yillar"].append({"yil": yil, "kadrolu": int(zc.fetchone()[0]),
                                "adet": yil_adet.get(yil, 0.0)})
     # 6) BOLUM (departman) kirilimi — kadro nereye gitti: yonetim / kasa / mal kabul / satis reyonlari
@@ -685,6 +751,20 @@ def cek(env, kisi=False):
             ) x
             GROUP BY x.bolum""", *(list(norm_subeler) + ["%d0831" % CARI, "%d0831" % CARI]))
         eng_bolum = {b: int(k) for b, k in zc.fetchall() if k}
+        # K-09: engelli tespiti Personelno'yu "<no>-BKM" bicimine gore ayristirir. Bicim bozuksa
+        #   (tire yok / sol taraf sayi degil) kisi SESSIZCE "engelli degil" sayilir -> engelli az,
+        #   operasyonel kadro fazla, norm acigi KUCUK gorunur. Atlanan satir sayisi olculur.
+        zc.execute("""
+            SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v
+            WHERE v.Lokasyon LIKE 'MA%' AND COALESCE(v.Kadro,'') <> 'SEZONLUK'
+              AND v.Personelno LIKE '%-BKM'
+              AND NOT (CHARINDEX('-', v.Personelno) > 1
+                       AND ISNUMERIC(LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) = 1)
+              AND """ + ASOF, "%d0831" % CARI, "%d0831" % CARI)
+        eng_atlanan = int(zc.fetchone()[0] or 0)
+        if eng_atlanan:
+            print("  ⚠ engelli taramasında %d kayıt Personelno biçimi yüzünden atlandı — "
+                  "engelli sayısı ALT SINIR." % eng_atlanan, flush=True)
         ger_bolum, sez_bolum = {}, {}
         for r in veri["magaza_bolum"]:
             if r["sube"] in norm_subeler:
@@ -698,8 +778,14 @@ def cek(env, kisi=False):
                 continue
             eng = eng_bolum.get(b, 0)
             gr = gr0 - eng                      # engelli norm disi -> operasyonel kadrolu
+            # K-06: normda tanimli ama kayitta HIC kisi olmayan bolum (MUHASEBE 1/0, OYUN ALANI
+            #   1/0) "acik" sayilmaz. Iki olasilik ayirt edilemiyor: (a) bolum gercekten bos,
+            #   (b) bolum adi Zirve'de baska yazili (key-mismatch). Ayri "teyit gerekiyor"
+            #   satirina alinir; operasyonel acik toplamina GIRMEZ.
+            teyit = (nm > 0 and gr0 == 0)
             bolum_kars.append({"bolum": b, "norm": nm, "kadrolu26": gr, "kayit_kadrolu26": gr0,
                                "engelli26": eng, "norm_disi": (b == "ETKİNLİK"),
+                               "teyit_gerekiyor": teyit,
                                "acik": max(0, nm - gr), "fazla": max(0, gr - nm), "sezonluk26": sz})
         veri["norm"] = {
             "tarih": nd["meta"]["tarih"], "kaynak_dosya": norm_dosya[-1].name,
@@ -708,9 +794,13 @@ def cek(env, kisi=False):
             "bolum": bolum_kars,
             # ⚠ Bolum bazinda acik toplami, magaza bazindan BUYUK olur: magaza icinde bir bolumun
             #   fazlasi baska bolumun acigini maskeler (net -8, magaza-acik 11, bolum-acik 15).
-            "acik_bolum_toplam": sum(r["acik"] for r in bolum_kars if not r["norm_disi"]),
+            "acik_bolum_toplam": sum(r["acik"] for r in bolum_kars
+                                     if not r["norm_disi"] and not r["teyit_gerekiyor"]),
+            # normda var ama kayitta hic kisi yok -> teyit bekleyen (acik toplamina girmez, K-06)
+            "acik_bolum_teyit": sum(r["acik"] for r in bolum_kars if r["teyit_gerekiyor"]),
+            "teyit_bolumler": [r["bolum"] for r in bolum_kars if r["teyit_gerekiyor"]],
             "fazla_bolum_toplam": sum(r["fazla"] for r in bolum_kars if not r["norm_disi"]),
-            "engelli_bolum": eng_bolum,
+            "engelli_bolum": eng_bolum, "engelli_format_atlanan": eng_atlanan,
             "toplam": {"norm": sum(r["norm"] for r in satirlar),
                        "norm_sezonluk": sum(r["norm_sezonluk"] for r in satirlar),
                        "norm_toplam": sum(r["norm_toplam"] for r in satirlar),
@@ -820,7 +910,15 @@ def cek(env, kisi=False):
                          % (alan, ek, bolum_toplam, k5["%s%d" % (alan, ek)]))
     print("Mutabakat OK: şube ve bölüm toplamları kapsam sayımıyla birebir.", flush=True)
 
-    zrv.close()
+    _kapat(zrv)
+
+    # K-19: emitter'lar (Excel + sunum) toplamlari AYRI AYRI SUM ediyordu (emitter-ayrimi
+    #   kurali: hesap cekirdekte). Tek kaynak burada.
+    veri["toplam"] = {}
+    for alan in ("adet", "kdvharic", "kdvdahil", "kadro"):
+        for yil in (ONCEKI, CARI):
+            ek = yil % 100
+            veri["toplam"]["%s%d" % (alan, ek)] = sum(m["%s%d" % (alan, ek)] for m in veri["magaza"])
 
     veri["meta"].update({
         "baslik": "Kişi başı iş hacmi — sezon %d vs %d" % (CARI, ONCEKI),
@@ -1758,13 +1856,18 @@ def sayfa_norm(wb, veri):
         h.alignment = Alignment(horizontal="center")
     s += 1
     for r in n["bolum"]:
-        ws.cell(s, 1, r["bolum"].title()).border = KENAR
+        # K-06: normda tanimli ama kayitta hic kisi olmayan bolum "acik" degil TEYIT BEKLEYEN
+        teyit = r.get("teyit_gerekiyor")
+        ws.cell(s, 1, r["bolum"].title() + (" (teyit bekliyor)" if teyit else "")).border = KENAR
         for kol, v_ in ((2, r["norm"]), (3, r["kadrolu26"]),
-                        (4, r["acik"] or "—"), (5, r["fazla"] or "—"), (6, r["sezonluk26"])):
+                        (4, "—" if teyit else (r["acik"] or "—")),
+                        (5, r["fazla"] or "—"), (6, r["sezonluk26"])):
             c = ws.cell(s, kol, v_)
             c.number_format = ADET
             c.border = KENAR
-            if kol == 4 and r["acik"]:
+            if teyit:
+                c.fill = PatternFill("solid", fgColor="FFF6E6")
+            elif kol == 4 and r["acik"]:
                 c.font = Font(bold=True, color="A6001A")
                 c.fill = VURGU
         s += 1
@@ -1795,6 +1898,14 @@ def sayfa_norm(wb, veri):
         "kadroyu gosterir (kadrolu - engelli - etkinlik); en altta IK'nin kayit toplami durur.",
         "⚠ BOLUM acigi (%d) MAGAZA acigindan (%d) BUYUK: magaza icinde bir bolumun fazlasi baska "
         "bolumun acigini maskeler." % (n["acik_bolum_toplam"], n.get("acik_sube_toplam", 0)),
+        "TEYIT BEKLEYEN: normda tanimli ama kayitta HIC kisi olmayan bolum(ler) %s = %d kisi. "
+        "Bolum adi Zirve'de baska yazili olabilir (key-mismatch) veya bolum gercekten bos; "
+        "ACIK TOPLAMINA DAHIL EDILMEDI." % (
+            ", ".join(x.title() for x in n.get("teyit_bolumler", [])) or "yok",
+            n.get("acik_bolum_teyit", 0)),
+        "ENGELLI TESPITI: Personelno bicimi yuzunden atlanan kayit sayisi %d (0 olmali; >0 ise "
+        "engelli sayisi ALT SINIR, norm acigi oldugundan kucuk gorunur)."
+        % n.get("engelli_format_atlanan", 0),
         "NORM SEZON DISI kadroyu tanimlar -> sezonluk personel norma DAHIL DEGIL; kiyas yalniz KADROLU ile.",
         "Norm kaynagi: %s (%s). Yonetim parametresi, Zirve'den sorgulanmaz." % (n["kaynak_dosya"], n["tarih"]),
         "KAPSAM DISI: %s norm tablosunda yok." % (", ".join(x.title() for x in n["kapsam_disi"]) or "—"),
@@ -1855,7 +1966,10 @@ def main(argv):
     veri_yolu, cikti = Path(args[0]), Path(args[1])
 
     if cek_mod:
-        veri = cek(_env(), kisi=kisi_mod)
+        try:
+            veri = cek(_env(), kisi=kisi_mod)
+        finally:
+            kapat_baglantilar()   # K-17: mutabakat sys.exit'inde bile baglantilar kapanir
         veri_yolu.parent.mkdir(parents=True, exist_ok=True)
         # KVKK: kisi-duzeyi satirlar PAYLASILAN json'a YAZILMAZ (o dosya git'te izleniyor).
         # Ayri *KISILI*.json dosyasina gider; gitignore o deseni yakalar.
