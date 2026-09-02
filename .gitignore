@@ -85,3 +85,9 @@ briefings/**/beyaz-yaka-*.json
 briefings/**/beyaz-yaka-*.xlsx
 briefings/personel-kart-anomali.xlsx
 send_brief.log
+
+# Sezon personel kisi listesi (KVKK - ad soyad + personel no)
+briefings/**/sezon-personel-listesi*.xlsx
+
+# Sezon kadro TEK DOSYA (kisi listesi sayfalari dahil - KVKK)
+briefings/**/sezon-kadro-2026*.xlsx

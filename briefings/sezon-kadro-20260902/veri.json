@@ -1,0 +1,1692 @@
+{
+  "meta": {
+    "baslik": "Sezon kadrosu kohort analizi",
+    "kesim": "2026-09-02",
+    "kohort_penceresi": "1 Temmuz - 2 Eylul (Igt)",
+    "kaynak": "Zirve BKM_GENEL.dbo.vw_PersonelDepartman",
+    "sezon_bayragi": "Kadro = 'SEZONLUK'",
+    "cekirdek_sql": "sorgular/2026-09-02-sezon-personel-kohort-magaza.sql"
+  },
+  "ozet": [
+    {
+      "kadro": "SEZONLUK",
+      "kohort": 2024,
+      "alinan": 73,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 7,
+      "risk14": 55,
+      "kalan14": 51,
+      "risk30": 34,
+      "kalan30": 32,
+      "ort_kalis_gun": 43
+    },
+    {
+      "kadro": "SEZONLUK",
+      "kohort": 2025,
+      "alinan": 83,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 9,
+      "risk14": 60,
+      "kalan14": 56,
+      "risk30": 9,
+      "kalan30": 8,
+      "ort_kalis_gun": 53
+    },
+    {
+      "kadro": "SEZONLUK",
+      "kohort": 2026,
+      "alinan": 86,
+      "bugun_aktif": 76,
+      "eylul_oncesi_ayrilan": 10,
+      "risk14": 61,
+      "kalan14": 56,
+      "risk30": 14,
+      "kalan30": 12,
+      "ort_kalis_gun": 13
+    },
+    {
+      "kadro": "KADRO",
+      "kohort": 2024,
+      "alinan": 54,
+      "bugun_aktif": 6,
+      "eylul_oncesi_ayrilan": 9,
+      "risk14": 43,
+      "kalan14": 39,
+      "risk30": 36,
+      "kalan30": 30,
+      "ort_kalis_gun": null
+    },
+    {
+      "kadro": "KADRO",
+      "kohort": 2025,
+      "alinan": 48,
+      "bugun_aktif": 14,
+      "eylul_oncesi_ayrilan": 6,
+      "risk14": 38,
+      "kalan14": 35,
+      "risk30": 26,
+      "kalan30": 21,
+      "ort_kalis_gun": null
+    },
+    {
+      "kadro": "KADRO",
+      "kohort": 2026,
+      "alinan": 61,
+      "bugun_aktif": 43,
+      "eylul_oncesi_ayrilan": 18,
+      "risk14": 49,
+      "kalan14": 37,
+      "risk30": 39,
+      "kalan30": 27,
+      "ort_kalis_gun": null
+    },
+    {
+      "kadro": "DIGER (stajyer/part-time/bos)",
+      "kohort": 2024,
+      "alinan": 3,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 3,
+      "kalan14": 3,
+      "risk30": 2,
+      "kalan30": 2,
+      "ort_kalis_gun": null
+    },
+    {
+      "kadro": "DIGER (stajyer/part-time/bos)",
+      "kohort": 2025,
+      "alinan": 1,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 1,
+      "kalan14": 1,
+      "risk30": 1,
+      "kalan30": 1,
+      "ort_kalis_gun": null
+    },
+    {
+      "kadro": "DIGER (stajyer/part-time/bos)",
+      "kohort": 2026,
+      "alinan": 3,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 2,
+      "risk14": 3,
+      "kalan14": 1,
+      "risk30": 1,
+      "kalan30": 1,
+      "ort_kalis_gun": null
+    }
+  ],
+  "sezonluk_sube": [
+    {
+      "grup": "MAGAZALAR",
+      "sube": "IST. YOLU",
+      "kohort": 2024,
+      "alinan": 23,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 20,
+      "kalan14": 19,
+      "risk30": 15,
+      "kalan30": 14
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "IST. YOLU",
+      "kohort": 2025,
+      "alinan": 23,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 19,
+      "kalan14": 19,
+      "risk30": 4,
+      "kalan30": 4
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "IST. YOLU",
+      "kohort": 2026,
+      "alinan": 25,
+      "bugun_aktif": 25,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 22,
+      "kalan14": 22,
+      "risk30": 5,
+      "kalan30": 5
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "OZLUCE",
+      "kohort": 2024,
+      "alinan": 15,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 10,
+      "kalan14": 10,
+      "risk30": 6,
+      "kalan30": 6
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "OZLUCE",
+      "kohort": 2025,
+      "alinan": 18,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 3,
+      "risk14": 14,
+      "kalan14": 12,
+      "risk30": 3,
+      "kalan30": 2
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "OZLUCE",
+      "kohort": 2026,
+      "alinan": 20,
+      "bugun_aktif": 16,
+      "eylul_oncesi_ayrilan": 4,
+      "risk14": 11,
+      "kalan14": 9,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "HEYKEL",
+      "kohort": 2024,
+      "alinan": 9,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 5,
+      "kalan14": 4,
+      "risk30": 1,
+      "kalan30": 1
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "HEYKEL",
+      "kohort": 2025,
+      "alinan": 13,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 10,
+      "kalan14": 10,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "HEYKEL",
+      "kohort": 2026,
+      "alinan": 13,
+      "bugun_aktif": 10,
+      "eylul_oncesi_ayrilan": 3,
+      "risk14": 7,
+      "kalan14": 5,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "FSM",
+      "kohort": 2024,
+      "alinan": 10,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 8,
+      "kalan14": 8,
+      "risk30": 4,
+      "kalan30": 3
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "FSM",
+      "kohort": 2025,
+      "alinan": 12,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 2,
+      "risk14": 7,
+      "kalan14": 7,
+      "risk30": 1,
+      "kalan30": 1
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "FSM",
+      "kohort": 2026,
+      "alinan": 12,
+      "bugun_aktif": 12,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 10,
+      "kalan14": 10,
+      "risk30": 2,
+      "kalan30": 2
+    },
+    {
+      "grup": "GENEL MUDURLUK",
+      "sube": "MERKEZ DEPO",
+      "kohort": 2024,
+      "alinan": 5,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 5,
+      "kalan14": 5,
+      "risk30": 5,
+      "kalan30": 5
+    },
+    {
+      "grup": "GENEL MUDURLUK",
+      "sube": "MERKEZ DEPO",
+      "kohort": 2025,
+      "alinan": 8,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 3,
+      "risk14": 5,
+      "kalan14": 4,
+      "risk30": 1,
+      "kalan30": 1
+    },
+    {
+      "grup": "GENEL MUDURLUK",
+      "sube": "MERKEZ DEPO",
+      "kohort": 2026,
+      "alinan": 11,
+      "bugun_aktif": 8,
+      "eylul_oncesi_ayrilan": 3,
+      "risk14": 8,
+      "kalan14": 7,
+      "risk30": 6,
+      "kalan30": 4
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "SURA",
+      "kohort": 2024,
+      "alinan": 4,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 2,
+      "kalan14": 1,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "SURA",
+      "kohort": 2025,
+      "alinan": 8,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 4,
+      "kalan14": 3,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "SURA",
+      "kohort": 2026,
+      "alinan": 3,
+      "bugun_aktif": 3,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 3,
+      "kalan14": 3,
+      "risk30": 1,
+      "kalan30": 1
+    },
+    {
+      "grup": "KAFELER",
+      "sube": "OZLUCE KAFE",
+      "kohort": 2024,
+      "alinan": 4,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 4,
+      "kalan14": 3,
+      "risk30": 2,
+      "kalan30": 2
+    },
+    {
+      "grup": "KAFELER",
+      "sube": "IST. YOLU KAFE",
+      "kohort": 2024,
+      "alinan": 1,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 1,
+      "kalan14": 1,
+      "risk30": 1,
+      "kalan30": 1
+    },
+    {
+      "grup": "KAFELER",
+      "sube": "IST. YOLU KAFE",
+      "kohort": 2026,
+      "alinan": 1,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 0,
+      "kalan14": 0,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "GENEL MUDURLUK",
+      "sube": "GENEL YONETIM",
+      "kohort": 2024,
+      "alinan": 1,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 0,
+      "kalan14": 0,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "GENEL MUDURLUK",
+      "sube": "GENEL YONETIM",
+      "kohort": 2025,
+      "alinan": 1,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 1,
+      "kalan14": 1,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "GENEL MUDURLUK",
+      "sube": "GENEL YONETIM",
+      "kohort": 2026,
+      "alinan": 1,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 0,
+      "kalan14": 0,
+      "risk30": 0,
+      "kalan30": 0
+    },
+    {
+      "grup": "MAGAZALAR",
+      "sube": "KITAP (kapali)",
+      "kohort": 2024,
+      "alinan": 1,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 0,
+      "kalan14": 0,
+      "risk30": 0,
+      "kalan30": 0
+    }
+  ],
+  "kadrolu_sube": [
+    {
+      "sube": "FSM",
+      "kohort": 2025,
+      "alinan": 5,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 4,
+      "kalan14": 4
+    },
+    {
+      "sube": "FSM",
+      "kohort": 2026,
+      "alinan": 12,
+      "bugun_aktif": 8,
+      "eylul_oncesi_ayrilan": 4,
+      "risk14": 10,
+      "kalan14": 8
+    },
+    {
+      "sube": "FSM KAFE",
+      "kohort": 2025,
+      "alinan": 8,
+      "bugun_aktif": 2,
+      "eylul_oncesi_ayrilan": 2,
+      "risk14": 7,
+      "kalan14": 7
+    },
+    {
+      "sube": "FSM KAFE",
+      "kohort": 2026,
+      "alinan": 7,
+      "bugun_aktif": 3,
+      "eylul_oncesi_ayrilan": 4,
+      "risk14": 6,
+      "kalan14": 4
+    },
+    {
+      "sube": "OZLUCE",
+      "kohort": 2025,
+      "alinan": 5,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 5,
+      "kalan14": 5
+    },
+    {
+      "sube": "OZLUCE",
+      "kohort": 2026,
+      "alinan": 11,
+      "bugun_aktif": 8,
+      "eylul_oncesi_ayrilan": 3,
+      "risk14": 8,
+      "kalan14": 6
+    },
+    {
+      "sube": "OZLUCE KAFE",
+      "kohort": 2025,
+      "alinan": 4,
+      "bugun_aktif": 2,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 2,
+      "kalan14": 2
+    },
+    {
+      "sube": "OZLUCE KAFE",
+      "kohort": 2026,
+      "alinan": 8,
+      "bugun_aktif": 5,
+      "eylul_oncesi_ayrilan": 3,
+      "risk14": 8,
+      "kalan14": 6
+    },
+    {
+      "sube": "IST. YOLU",
+      "kohort": 2025,
+      "alinan": 7,
+      "bugun_aktif": 3,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 7,
+      "kalan14": 7
+    },
+    {
+      "sube": "IST. YOLU",
+      "kohort": 2026,
+      "alinan": 7,
+      "bugun_aktif": 5,
+      "eylul_oncesi_ayrilan": 2,
+      "risk14": 5,
+      "kalan14": 3
+    },
+    {
+      "sube": "IST. YOLU KAFE",
+      "kohort": 2025,
+      "alinan": 5,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 2,
+      "risk14": 4,
+      "kalan14": 2
+    },
+    {
+      "sube": "IST. YOLU KAFE",
+      "kohort": 2026,
+      "alinan": 5,
+      "bugun_aktif": 4,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 4,
+      "kalan14": 3
+    },
+    {
+      "sube": "HEYKEL",
+      "kohort": 2025,
+      "alinan": 4,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 3,
+      "kalan14": 3
+    },
+    {
+      "sube": "HEYKEL",
+      "kohort": 2026,
+      "alinan": 4,
+      "bugun_aktif": 3,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 4,
+      "kalan14": 3
+    },
+    {
+      "sube": "SURA",
+      "kohort": 2025,
+      "alinan": 5,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 4,
+      "kalan14": 3
+    },
+    {
+      "sube": "SURA",
+      "kohort": 2026,
+      "alinan": 2,
+      "bugun_aktif": 2,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 2,
+      "kalan14": 2
+    },
+    {
+      "sube": "GENEL YONETIM",
+      "kohort": 2025,
+      "alinan": 4,
+      "bugun_aktif": 2,
+      "eylul_oncesi_ayrilan": 1,
+      "risk14": 3,
+      "kalan14": 3
+    },
+    {
+      "sube": "GENEL YONETIM",
+      "kohort": 2026,
+      "alinan": 5,
+      "bugun_aktif": 5,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 2,
+      "kalan14": 2
+    },
+    {
+      "sube": "MERKEZ DEPO",
+      "kohort": 2025,
+      "alinan": 2,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 0,
+      "kalan14": 0
+    },
+    {
+      "sube": "MERKEZ DEPO",
+      "kohort": 2026,
+      "alinan": 1,
+      "bugun_aktif": 1,
+      "eylul_oncesi_ayrilan": 0,
+      "risk14": 1,
+      "kalan14": 1
+    },
+    {
+      "sube": "(LOKASYON BOS)",
+      "kohort": 2026,
+      "alinan": 2,
+      "bugun_aktif": 0,
+      "eylul_oncesi_ayrilan": 2,
+      "risk14": 2,
+      "kalan14": 0
+    }
+  ],
+  "sezonluk_sube_reyon": [
+    {
+      "sube": "IST. YOLU",
+      "departman": "KIRTASIYE",
+      "a25": 7,
+      "eylul_oncesi25": 0,
+      "a26": 7,
+      "ayril26": 0
+    },
+    {
+      "sube": "IST. YOLU",
+      "departman": "YARDIMCI KITAP",
+      "a25": 6,
+      "eylul_oncesi25": 0,
+      "a26": 7,
+      "ayril26": 0
+    },
+    {
+      "sube": "IST. YOLU",
+      "departman": "KASA",
+      "a25": 5,
+      "eylul_oncesi25": 0,
+      "a26": 4,
+      "ayril26": 0
+    },
+    {
+      "sube": "IST. YOLU",
+      "departman": "KIYAFET",
+      "a25": 3,
+      "eylul_oncesi25": 0,
+      "a26": 4,
+      "ayril26": 0
+    },
+    {
+      "sube": "IST. YOLU",
+      "departman": "COCUK",
+      "a25": 2,
+      "eylul_oncesi25": 0,
+      "a26": 2,
+      "ayril26": 0
+    },
+    {
+      "sube": "IST. YOLU",
+      "departman": "KULTUR",
+      "a25": 0,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "IST. YOLU KAFE",
+      "departman": "KAFE",
+      "a25": 0,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "OZLUCE",
+      "departman": "KIRTASIYE",
+      "a25": 7,
+      "eylul_oncesi25": 2,
+      "a26": 8,
+      "ayril26": 2
+    },
+    {
+      "sube": "OZLUCE",
+      "departman": "YARDIMCI KITAP",
+      "a25": 5,
+      "eylul_oncesi25": 0,
+      "a26": 5,
+      "ayril26": 1
+    },
+    {
+      "sube": "OZLUCE",
+      "departman": "KASA",
+      "a25": 4,
+      "eylul_oncesi25": 1,
+      "a26": 4,
+      "ayril26": 1
+    },
+    {
+      "sube": "OZLUCE",
+      "departman": "COCUK",
+      "a25": 1,
+      "eylul_oncesi25": 0,
+      "a26": 3,
+      "ayril26": 0
+    },
+    {
+      "sube": "OZLUCE",
+      "departman": "AKADEMI",
+      "a25": 1,
+      "eylul_oncesi25": 0,
+      "a26": 0,
+      "ayril26": 0
+    },
+    {
+      "sube": "HEYKEL",
+      "departman": "KIRTASIYE",
+      "a25": 9,
+      "eylul_oncesi25": 0,
+      "a26": 8,
+      "ayril26": 1
+    },
+    {
+      "sube": "HEYKEL",
+      "departman": "YARDIMCI KITAP",
+      "a25": 4,
+      "eylul_oncesi25": 0,
+      "a26": 4,
+      "ayril26": 2
+    },
+    {
+      "sube": "HEYKEL",
+      "departman": "COCUK",
+      "a25": 0,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "FSM",
+      "departman": "KIRTASIYE",
+      "a25": 7,
+      "eylul_oncesi25": 2,
+      "a26": 4,
+      "ayril26": 0
+    },
+    {
+      "sube": "FSM",
+      "departman": "YARDIMCI KITAP",
+      "a25": 3,
+      "eylul_oncesi25": 0,
+      "a26": 3,
+      "ayril26": 0
+    },
+    {
+      "sube": "FSM",
+      "departman": "KASA",
+      "a25": 1,
+      "eylul_oncesi25": 0,
+      "a26": 2,
+      "ayril26": 0
+    },
+    {
+      "sube": "FSM",
+      "departman": "KULTUR",
+      "a25": 0,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "FSM",
+      "departman": "AKADEMI",
+      "a25": 0,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "FSM",
+      "departman": "MAL KABUL",
+      "a25": 1,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "MERKEZ DEPO",
+      "departman": "DEPO",
+      "a25": 8,
+      "eylul_oncesi25": 3,
+      "a26": 11,
+      "ayril26": 3
+    },
+    {
+      "sube": "SURA",
+      "departman": "YARDIMCI KITAP",
+      "a25": 8,
+      "eylul_oncesi25": 1,
+      "a26": 3,
+      "ayril26": 0
+    },
+    {
+      "sube": "GENEL YONETIM",
+      "departman": "MUSTERI HIZ.",
+      "a25": 0,
+      "eylul_oncesi25": 0,
+      "a26": 1,
+      "ayril26": 0
+    },
+    {
+      "sube": "GENEL YONETIM",
+      "departman": "CALL CENTER",
+      "a25": 1,
+      "eylul_oncesi25": 0,
+      "a26": 0,
+      "ayril26": 0
+    }
+  ],
+  "cozulme": [
+    {
+      "kohort": 2024,
+      "ay": "Temmuz",
+      "ay_ofset": -1,
+      "ayrilan": 0
+    },
+    {
+      "kohort": 2024,
+      "ay": "Agustos",
+      "ay_ofset": 0,
+      "ayrilan": 7
+    },
+    {
+      "kohort": 2024,
+      "ay": "Eylul",
+      "ay_ofset": 1,
+      "ayrilan": 59
+    },
+    {
+      "kohort": 2024,
+      "ay": "Ekim",
+      "ay_ofset": 2,
+      "ayrilan": 4
+    },
+    {
+      "kohort": 2024,
+      "ay": "Kasim",
+      "ay_ofset": 3,
+      "ayrilan": 3
+    },
+    {
+      "kohort": 2024,
+      "ay": "Aralik+",
+      "ay_ofset": 4,
+      "ayrilan": 0
+    },
+    {
+      "kohort": 2025,
+      "ay": "Temmuz",
+      "ay_ofset": -1,
+      "ayrilan": 1
+    },
+    {
+      "kohort": 2025,
+      "ay": "Agustos",
+      "ay_ofset": 0,
+      "ayrilan": 8
+    },
+    {
+      "kohort": 2025,
+      "ay": "Eylul",
+      "ay_ofset": 1,
+      "ayrilan": 56
+    },
+    {
+      "kohort": 2025,
+      "ay": "Ekim",
+      "ay_ofset": 2,
+      "ayrilan": 6
+    },
+    {
+      "kohort": 2025,
+      "ay": "Kasim",
+      "ay_ofset": 3,
+      "ayrilan": 5
+    },
+    {
+      "kohort": 2025,
+      "ay": "Aralik+",
+      "ay_ofset": 4,
+      "ayrilan": 6
+    },
+    {
+      "kohort": 2026,
+      "ay": "Temmuz",
+      "ay_ofset": -1,
+      "ayrilan": 0
+    },
+    {
+      "kohort": 2026,
+      "ay": "Agustos",
+      "ay_ofset": 0,
+      "ayrilan": 10
+    },
+    {
+      "kohort": 2026,
+      "ay": "Eylul",
+      "ay_ofset": 1,
+      "ayrilan": null
+    },
+    {
+      "kohort": 2026,
+      "ay": "Ekim",
+      "ay_ofset": 2,
+      "ayrilan": null
+    },
+    {
+      "kohort": 2026,
+      "ay": "Kasim",
+      "ay_ofset": 3,
+      "ayrilan": null
+    },
+    {
+      "kohort": 2026,
+      "ay": "Aralik+",
+      "ay_ofset": 4,
+      "ayrilan": null
+    }
+  ],
+  "aylik_alim": [
+    {
+      "yil": 2023,
+      "ay": 8,
+      "sezonluk_alim": 8
+    },
+    {
+      "yil": 2023,
+      "ay": 9,
+      "sezonluk_alim": 3
+    },
+    {
+      "yil": 2023,
+      "ay": 12,
+      "sezonluk_alim": 1
+    },
+    {
+      "yil": 2024,
+      "ay": 1,
+      "sezonluk_alim": 1
+    },
+    {
+      "yil": 2024,
+      "ay": 2,
+      "sezonluk_alim": 1
+    },
+    {
+      "yil": 2024,
+      "ay": 4,
+      "sezonluk_alim": 1
+    },
+    {
+      "yil": 2024,
+      "ay": 6,
+      "sezonluk_alim": 2
+    },
+    {
+      "yil": 2024,
+      "ay": 7,
+      "sezonluk_alim": 14
+    },
+    {
+      "yil": 2024,
+      "ay": 8,
+      "sezonluk_alim": 57
+    },
+    {
+      "yil": 2024,
+      "ay": 9,
+      "sezonluk_alim": 17
+    },
+    {
+      "yil": 2024,
+      "ay": 10,
+      "sezonluk_alim": 1
+    },
+    {
+      "yil": 2025,
+      "ay": 1,
+      "sezonluk_alim": 2
+    },
+    {
+      "yil": 2025,
+      "ay": 6,
+      "sezonluk_alim": 1
+    },
+    {
+      "yil": 2025,
+      "ay": 7,
+      "sezonluk_alim": 7
+    },
+    {
+      "yil": 2025,
+      "ay": 8,
+      "sezonluk_alim": 71
+    },
+    {
+      "yil": 2025,
+      "ay": 9,
+      "sezonluk_alim": 15
+    },
+    {
+      "yil": 2026,
+      "ay": 7,
+      "sezonluk_alim": 4
+    },
+    {
+      "yil": 2026,
+      "ay": 8,
+      "sezonluk_alim": 73
+    },
+    {
+      "yil": 2026,
+      "ay": 9,
+      "sezonluk_alim": 9
+    }
+  ],
+  "kadro_dagilim": [
+    {
+      "kadro": "KADRO",
+      "toplam": 968,
+      "aktif": 268,
+      "ilk_giris": "2009-01-03",
+      "son_giris": "2026-09-03"
+    },
+    {
+      "kadro": "SEZONLUK",
+      "toplam": 288,
+      "aktif": 77,
+      "ilk_giris": "2023-08-01",
+      "son_giris": "2026-09-01"
+    },
+    {
+      "kadro": "(NULL)",
+      "toplam": 9,
+      "aktif": 0,
+      "ilk_giris": "2024-08-10",
+      "son_giris": "2026-08-06"
+    },
+    {
+      "kadro": "(bos)",
+      "toplam": 3,
+      "aktif": 1,
+      "ilk_giris": "2025-06-23",
+      "son_giris": "2026-07-01"
+    },
+    {
+      "kadro": "STAJYER",
+      "toplam": 2,
+      "aktif": 0,
+      "ilk_giris": "2025-07-07",
+      "son_giris": "2026-02-16"
+    },
+    {
+      "kadro": "PART-TIME",
+      "toplam": 1,
+      "aktif": 0,
+      "ilk_giris": "2024-07-24",
+      "son_giris": "2024-07-24"
+    },
+    {
+      "kadro": "PART TIME",
+      "toplam": 1,
+      "aktif": 0,
+      "ilk_giris": "2025-12-20",
+      "son_giris": "2025-12-20"
+    },
+    {
+      "kadro": "KISMI",
+      "toplam": 1,
+      "aktif": 0,
+      "ilk_giris": "2024-07-12",
+      "son_giris": "2024-07-12"
+    }
+  ],
+  "yontem": [
+    "Sezon personeli = vw_PersonelDepartman.Kadro = 'SEZONLUK' (Zirve IK alaninda tanimli bayrak). Giris tarihi penceresi tek basina kullanilmaz; kadrolu alimlari da kapsar ve olcumu bozar.",
+    "Kohort penceresi: Igt 1 Temmuz - 2 Eylul. Uc yil ayni takvim gununde kesildi.",
+    "AKTIF = Ict IS NULL (Personeldurumu kolonu DEGIL).",
+    "'Bugun aktif' yillar arasi KIYASLANAMAZ: 2026 kohortu henuz Eylul tahliye dalgasini gormedi. Adil olcut: (a) esit-kidem tutunma (risk14/kalan14 - h gun icin risk kumesi Igt <= anchor - h), (b) Eylul oncesi kayip (Tem-Agu penceresi her yil tam kapanmis).",
+    "60 gun ve ustu tutunma sube seviyesinde raporlanmadi: risk kumesi 10 kisinin altina duser.",
+    "Sezonluktan kadroya gecis Kadro alaninda iz BIRAKMAZ (tarihce yok) - donusum orani bu veriyle olculemez.",
+    "Ayrilis sebebi: IstenCikisKodu = SGK cikis kodu, Zirve'de kod-aciklama tablosu YOK. IK teyidi olmadan yorumlanmadi.",
+    "Ucret/maliyet dahil edilmedi: vw_PersonelDepartman.Ucret'te GUNLUK ve AYLIK birim karisik (30x sessiz hata riski, ayrac dbo.puanbil.Ucretsekli).",
+    "Kisisel veri: yalnizca toplulastirilmis sayi. Ad-soyad, personel no, ucret satiri yok.",
+    "Haftalik seri: sezon haftasi = 1 Temmuz baslangicli 7 gunluk dilim (ISO hafta degil) -- yillar ayni takvim dilimine hizalanir. Cikislar cerceve (18 hafta) icinde sayilir; sonraki ayrilislar ayri raporlanir.",
+    "Is hacmi olcutu UC KATMANLI: fis (islem sayisi) · kalem/urun adedi (fiziksel elleclenen mal) · net ciro (KDV haric). Ciro fiyat artisindan sisebilir; ADET sismez -> kadro savunmasinda birincil olcut adet."
+  ],
+  "haftalik": {
+    "hafta_etiketi": [
+      "01.07",
+      "08.07",
+      "15.07",
+      "22.07",
+      "29.07",
+      "05.08",
+      "12.08",
+      "19.08",
+      "26.08",
+      "02.09",
+      "09.09",
+      "16.09",
+      "23.09",
+      "30.09",
+      "07.10",
+      "14.10",
+      "21.10",
+      "28.10"
+    ],
+    "hafta_tanimi": "Sezon haftasi: 1 Temmuz = 1. hafta (7 gunluk dilim). Yillar arasi hizalanir; ISO hafta DEGIL.",
+    "seriler": {
+      "2025_SEZONLUK": {
+        "n": 83,
+        "giris": [
+          3,
+          1,
+          0,
+          2,
+          4,
+          6,
+          40,
+          16,
+          8,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cikis": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          2,
+          1,
+          4,
+          6,
+          11,
+          20,
+          15,
+          8,
+          1,
+          1,
+          0,
+          1
+        ],
+        "sahada": [
+          3,
+          3,
+          3,
+          5,
+          9,
+          14,
+          52,
+          67,
+          71,
+          68,
+          57,
+          37,
+          22,
+          14,
+          13,
+          12,
+          12,
+          11
+        ],
+        "cerceve_disi_cikis": 10,
+        "son_hafta": 18
+      },
+      "2025_KADROLU": {
+        "n": 49,
+        "giris": [
+          6,
+          6,
+          4,
+          5,
+          7,
+          4,
+          7,
+          1,
+          8,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cikis": [
+          2,
+          0,
+          0,
+          1,
+          0,
+          2,
+          0,
+          0,
+          2,
+          0,
+          1,
+          2,
+          3,
+          6,
+          0,
+          0,
+          0,
+          1
+        ],
+        "sahada": [
+          4,
+          10,
+          14,
+          18,
+          25,
+          27,
+          34,
+          35,
+          41,
+          42,
+          41,
+          39,
+          36,
+          30,
+          30,
+          30,
+          30,
+          29
+        ],
+        "cerceve_disi_cikis": 15,
+        "son_hafta": 18
+      },
+      "2026_SEZONLUK": {
+        "n": 86,
+        "giris": [
+          1,
+          0,
+          3,
+          0,
+          10,
+          16,
+          28,
+          14,
+          14,
+          0
+        ],
+        "cikis": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          3,
+          4,
+          0
+        ],
+        "sahada": [
+          1,
+          1,
+          4,
+          4,
+          14,
+          29,
+          55,
+          66,
+          76,
+          76
+        ],
+        "cerceve_disi_cikis": 0,
+        "son_hafta": 10
+      },
+      "2026_KADROLU": {
+        "n": 64,
+        "giris": [
+          10,
+          10,
+          8,
+          2,
+          10,
+          5,
+          7,
+          4,
+          8,
+          0
+        ],
+        "cikis": [
+          0,
+          3,
+          2,
+          2,
+          3,
+          3,
+          1,
+          3,
+          3,
+          0
+        ],
+        "sahada": [
+          10,
+          17,
+          23,
+          23,
+          30,
+          32,
+          38,
+          39,
+          44,
+          44
+        ],
+        "cerceve_disi_cikis": 0,
+        "son_hafta": 10
+      }
+    },
+    "not": "Cikislar 18. hafta (03.11) ile sinirli cerceve icinde sayildi; sonrasi cerceve_disi_cikis'ta (2025 sezonluk 10, kadrolu 15 kisi). 2026 kesim 02.09 = 10. hafta."
+  },
+  "magaza_is_hacmi": {
+    "pencere": "1 Temmuz - 31 Agustos, perakende satis fisi (DocumentsTypeId=1), SalesProducts.IsValid=1",
+    "kaynak": "EncoreMerkez dbo.Sales + dbo.SalesProducts (MCP: sqlserver)",
+    "kadro_tanimi": "31 Agustos'ta o subede aktif calisan (Zirve, kafe personeli haric)",
+    "satirlar": [
+      {
+        "magaza": "IST. YOLU",
+        "stores_id": 1,
+        "kadro25": 50,
+        "kadro26": 61,
+        "fis25": 26266,
+        "fis26": 41656,
+        "kalem25": 122521,
+        "kalem26": 193759,
+        "adet25": 148478,
+        "adet26": 232555.5,
+        "net25": 19439731.87,
+        "net26": 33862497.13,
+        "sinav_belge25": 3457,
+        "sinav_belge26": 2056,
+        "sinav_net25": 156280732.15,
+        "sinav_net26": 121764592.09,
+        "iade25": 1400,
+        "iade26": 2102,
+        "kadrolu_30Haz25": 28,
+        "kadrolu_30Haz26": 34
+      },
+      {
+        "magaza": "FSM",
+        "stores_id": 2,
+        "kadro25": 40,
+        "kadro26": 43,
+        "fis25": 28121,
+        "fis26": 50936,
+        "kalem25": 105423,
+        "kalem26": 196374,
+        "adet25": 127903,
+        "adet26": 235604,
+        "net25": 14408386.04,
+        "net26": 32211784.7,
+        "sinav_belge25": 0,
+        "sinav_belge26": 0,
+        "sinav_net25": 0,
+        "sinav_net26": 0,
+        "iade25": 1124,
+        "iade26": 2044,
+        "kadrolu_30Haz25": 33,
+        "kadrolu_30Haz26": 34
+      },
+      {
+        "magaza": "OZLUCE",
+        "stores_id": 3,
+        "kadro25": 50,
+        "kadro26": 55,
+        "fis25": 36179,
+        "fis26": 62188,
+        "kalem25": 166018,
+        "kalem26": 276307,
+        "adet25": 200399.7,
+        "adet26": 326764.05,
+        "net25": 24059037.3,
+        "net26": 48262531.76,
+        "sinav_belge25": 0,
+        "sinav_belge26": 0,
+        "sinav_net25": 0,
+        "sinav_net26": 0,
+        "iade25": 1643,
+        "iade26": 2678,
+        "kadrolu_30Haz25": 37,
+        "kadrolu_30Haz26": 43
+      }
+    ],
+    "not": "Heykel ve Sura EncoreMerkez POS'unda YOK -> bu tabloda yer almaz; kadro karsilastirmasi da ayni 3 magaza (140 -> 159 kisi). Kafe fisi magaza StoresId'sine dusuyorsa kisi-basi oran hafif sisebilir. Urun adedi ENFLASYONDAN BAGIMSIZ olcut."
+  },
+  "kadro_gruplari": {
+    "kapsam": "Yalniz MAGAZALAR (Lokasyon='MAGAZALAR'); kafe/depo/merkez haric",
+    "kesimler": [
+      "30.06.2025",
+      "30.06.2026",
+      "31.08.2025",
+      "31.08.2026"
+    ],
+    "grup_tanimi": {
+      "SEZONLUK": "Kadro='SEZONLUK' (Zirve bayragi)",
+      "ENGELLI": "perbilgi.Kanun='14857' (4857/30 tesviki) VEYA Ozurlulukkodu='E'; hepsi kadrolu",
+      "ETKINLIK": "Departman='ETKINLIK' (engelli olmayanlar)",
+      "DIGER KADROLU": "kalan kadrolu + stajyer/part-time/bos"
+    },
+    "satirlar": [
+      {
+        "magaza": "IST. YOLU",
+        "SEZONLUK": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 23,
+          "d31Agu26": 25
+        },
+        "ENGELLI": {
+          "d30Haz25": 1,
+          "d30Haz26": 2,
+          "d31Agu25": 1,
+          "d31Agu26": 2
+        },
+        "ETKINLIK": {
+          "d30Haz25": 1,
+          "d30Haz26": 1,
+          "d31Agu25": 1,
+          "d31Agu26": 1
+        },
+        "DIGER KADROLU": {
+          "d30Haz25": 26,
+          "d30Haz26": 31,
+          "d31Agu25": 25,
+          "d31Agu26": 33
+        }
+      },
+      {
+        "magaza": "OZLUCE",
+        "SEZONLUK": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 15,
+          "d31Agu26": 13
+        },
+        "ENGELLI": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 0,
+          "d31Agu26": 0
+        },
+        "ETKINLIK": {
+          "d30Haz25": 0,
+          "d30Haz26": 1,
+          "d31Agu25": 0,
+          "d31Agu26": 1
+        },
+        "DIGER KADROLU": {
+          "d30Haz25": 37,
+          "d30Haz26": 42,
+          "d31Agu25": 35,
+          "d31Agu26": 41
+        }
+      },
+      {
+        "magaza": "FSM",
+        "SEZONLUK": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 8,
+          "d31Agu26": 11
+        },
+        "ENGELLI": {
+          "d30Haz25": 1,
+          "d30Haz26": 1,
+          "d31Agu25": 1,
+          "d31Agu26": 1
+        },
+        "ETKINLIK": {
+          "d30Haz25": 1,
+          "d30Haz26": 1,
+          "d31Agu25": 1,
+          "d31Agu26": 0
+        },
+        "DIGER KADROLU": {
+          "d30Haz25": 31,
+          "d30Haz26": 32,
+          "d31Agu25": 30,
+          "d31Agu26": 31
+        }
+      },
+      {
+        "magaza": "HEYKEL",
+        "SEZONLUK": {
+          "d30Haz25": 0,
+          "d30Haz26": 1,
+          "d31Agu25": 12,
+          "d31Agu26": 8
+        },
+        "ENGELLI": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 0,
+          "d31Agu26": 0
+        },
+        "ETKINLIK": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 0,
+          "d31Agu26": 0
+        },
+        "DIGER KADROLU": {
+          "d30Haz25": 27,
+          "d30Haz26": 29,
+          "d31Agu25": 27,
+          "d31Agu26": 26
+        }
+      },
+      {
+        "magaza": "SURA",
+        "SEZONLUK": {
+          "d30Haz25": 0,
+          "d30Haz26": 1,
+          "d31Agu25": 6,
+          "d31Agu26": 4
+        },
+        "ENGELLI": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 0,
+          "d31Agu26": 0
+        },
+        "ETKINLIK": {
+          "d30Haz25": 0,
+          "d30Haz26": 0,
+          "d31Agu25": 0,
+          "d31Agu26": 0
+        },
+        "DIGER KADROLU": {
+          "d30Haz25": 8,
+          "d30Haz26": 10,
+          "d31Agu25": 11,
+          "d31Agu26": 12
+        }
+      }
+    ],
+    "not": "ENGELLI ayraci ALT SINIR: tesviksiz engelli yalniz Ozurlulukkodu'nda gorunur, o alan guncel doldurulmuyor; ayrica perbilgi sadece BKM_GENEL firmasini kapsar. KVKK m.6 ozel nitelikli -> magaza seviyesinde birakildi, reyon/isim yok. 30.06 = sezon oncesi TABAN (magazalarda sezonluk pratikte 0)."
+  },
+  "patron_ozet": {
+    "tez": "Kadro farki 1 Temmuz'dan ONCE olustu: sezon-oncesi taban 139 -> 153 (+14). Sezon doneminde kadro buyutulmedi: kadrolu 153 -> 150, sezonluk 65 -> 62.",
+    "donem_tanimi": "TABAN = 30 Haziran (sezon oncesi) · SEZON = 1 Temmuz - 31 Agustos · iki yil ayni takvim gunu",
+    "akis": [
+      {
+        "adim": "2025 tabani (30.06.2025)",
+        "deger": 139
+      },
+      {
+        "adim": "1 Temmuz oncesi eklenen",
+        "deger": 14
+      },
+      {
+        "adim": "2026 tabani (30.06.2026)",
+        "deger": 153
+      },
+      {
+        "adim": "Sezon ici degisim (1 Tem - 31 Agu)",
+        "deger": -3
+      },
+      {
+        "adim": "31 Agustos 2026",
+        "deger": 150
+      }
+    ],
+    "magaza": [
+      {
+        "magaza": "IST. YOLU",
+        "sez25": 23,
+        "sez26": 25,
+        "taban25": 29,
+        "taban26": 35,
+        "kad25": 27,
+        "kad26": 36,
+        "ici25": -2,
+        "ici26": 1,
+        "engelli25": 1,
+        "engelli26": 2,
+        "etkinlik25": 1,
+        "etkinlik26": 1
+      },
+      {
+        "magaza": "OZLUCE",
+        "sez25": 15,
+        "sez26": 13,
+        "taban25": 39,
+        "taban26": 44,
+        "kad25": 36,
+        "kad26": 42,
+        "ici25": -3,
+        "ici26": -2,
+        "engelli25": 0,
+        "engelli26": 0,
+        "etkinlik25": 0,
+        "etkinlik26": 1
+      },
+      {
+        "magaza": "FSM",
+        "sez25": 9,
+        "sez26": 11,
+        "taban25": 34,
+        "taban26": 35,
+        "kad25": 33,
+        "kad26": 34,
+        "ici25": -1,
+        "ici26": -1,
+        "engelli25": 1,
+        "engelli26": 1,
+        "etkinlik25": 1,
+        "etkinlik26": 1
+      },
+      {
+        "magaza": "HEYKEL",
+        "sez25": 12,
+        "sez26": 9,
+        "taban25": 28,
+        "taban26": 29,
+        "kad25": 28,
+        "kad26": 26,
+        "ici25": 0,
+        "ici26": -3,
+        "engelli25": 0,
+        "engelli26": 0,
+        "etkinlik25": 0,
+        "etkinlik26": 0
+      },
+      {
+        "magaza": "SURA",
+        "sez25": 6,
+        "sez26": 4,
+        "taban25": 9,
+        "taban26": 10,
+        "kad25": 11,
+        "kad26": 12,
+        "ici25": 2,
+        "ici26": 2,
+        "engelli25": 0,
+        "engelli26": 0,
+        "etkinlik25": 0,
+        "etkinlik26": 0
+      }
+    ],
+    "itirazlar": [
+      {
+        "soru": "Ama toplam ciro ayni kaldi",
+        "cevap": "251,1M -> 249,0M TL. Sebebi Sinav Okullari: kurumsal ciro 189,5M -> 132,0M (-%30), belge 4.187 -> 2.220. O dusus kasada/rafta/depoda is yuku azaltmaz. Magaza tarafi +%97."
+      },
+      {
+        "soru": "Ciro enflasyonla sisti",
+        "cevap": "Kismen: birim fiyat 121,5 -> 143,8 TL (+%18). Bu yuzden olcut ADET: urun adedi +%67 ve adet fiyattan etkilenmez."
+      },
+      {
+        "soru": "Fisi bolduniz, islem sayisi yapay artti",
+        "cevap": "Sepet basina urun 5,26 -> 5,14 (ayni), sepet tutari 640 -> 739 TL (artti). Bolunme olsaydi ikisi de duserdi."
+      }
+    ],
+    "zayif": "Kadrolu alimlarda 14 gun tutunma %92 -> %75; 18 kisi Eylul'u gormeden ayrildi (gecen yil 6) = ayni pozisyonu iki kez doldurma maliyeti. En bozuk uc nokta: Ozluce, Heykel, Merkez Depo. Aksiyon: ilk hafta karsilama protokolu + Idari Isler pozisyonunda ucret-vardiya revizyonu. Olcut: gelecek sezon Eylul oncesi kayip %20 -> %12.",
+    "pencere_notu": "Kadro sayilari: SEZONLUK ve KADROLU = 31 Agustos'ta fiilen calisan · TABAN = 30 Haziran (sezon oncesi) · SEZON ICI = 31 Agu kadrolu - 30 Haz kadrolu. Is hacmi (fis/kalem/adet/ciro) penceresi: 1 TEMMUZ - 31 AGUSTOS, her iki yil ayni.",
+    "akis25": [
+      {
+        "adim": "2025 tabani (30.06.2025)",
+        "deger": 139
+      },
+      {
+        "adim": "Sezon ici degisim",
+        "deger": -4
+      },
+      {
+        "adim": "31 Agustos 2025",
+        "deger": 135
+      }
+    ],
+    "konvansiyon": "AS-OF AKTIF = Igt <= T AND (Ict IS NULL OR Ict >= T) — Zirve dbo.sp_PersonelKarsilastirma_Ozet ile BIREBIR. Mutabakat 02.09.2026: tum lokasyon 31.08.2025=322, 31.08.2026=335, fark +13 (SP ile ayni). Onceki surumde Ict > T kullanilmisti (magaza kadrolu 148 vs 150)."
+  }
+}
