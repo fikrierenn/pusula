@@ -762,18 +762,23 @@ if nrm:
         "%s tarihli norm · dört mağaza" % nrm["tarih"], MGREY, 32, ikon="users")
     kpi(s, 4.68, 1.5, 3.9, "GERÇEK KADROLU · 31.08", "%d" % tp["kadrolu_kesim26"],
         "30.06 tabanında %d kişi" % tp["kadrolu_taban26"], MGREY, 32, ikon="users")
-    kpi(s, 8.75, 1.5, 3.9, "NORM FARKI · 31.08",
-        ("%+d kişi" % fark_kesim), "kadro normun ALTINDA" if fark_kesim < 0 else "normun üzerinde",
-        DRED, 30, ikon="check")
+    acik_toplam = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
+    kpi(s, 8.75, 1.5, 3.9, "NORM AÇIĞI · 31.08", "%d kişi" % acik_toplam,
+        "kadrolu olarak DOLDURULMADI", DRED, 30, ikon="alert-triangle")
 
-    satir = [["Mağaza", "Norm (sezon dışı)", "Kadrolu 30.06", "Kadrolu 31.08", "Norm farkı 31.08"]]
+    satir = [["Mağaza", "Norm", "Kadrolu 31.08", "Norm açığı", "Sezonluk 31.08",
+              "Sezon takviyesi"]]
+    top_acik = top_sez = top_tak = 0
     for r in nrm["sube"]:
-        satir.append([tr_title(r["sube"]), str(r["norm"]), str(r["kadrolu_taban26"]),
-                      str(r["kadrolu_kesim26"]), "%+d" % (r["kadrolu_kesim26"] - r["norm"])])
-    satir.append(["TOPLAM", str(tp["norm"]), str(tp["kadrolu_taban26"]),
-                  str(tp["kadrolu_kesim26"]), "%+d" % fark_kesim])
-    t = s.shapes.add_table(len(satir), 5, Inches(0.6), Inches(3.75), Inches(7.6), Inches(2.2)).table
-    for i, gen in enumerate((1.8, 1.6, 1.45, 1.45, 1.3)):
+        acik = max(0, r["norm"] - r["kadrolu_kesim26"])
+        sez = r["sezonluk_kesim26"]
+        top_acik += acik; top_sez += sez; top_tak += max(0, sez - acik)
+        satir.append([tr_title(r["sube"]), str(r["norm"]), str(r["kadrolu_kesim26"]),
+                      ("%d" % acik) if acik else "—", str(sez), "%d" % max(0, sez - acik)])
+    satir.append(["TOPLAM", str(tp["norm"]), str(tp["kadrolu_kesim26"]),
+                  str(top_acik), str(top_sez), str(top_tak)])
+    t = s.shapes.add_table(len(satir), 6, Inches(0.6), Inches(3.75), Inches(7.6), Inches(2.2)).table
+    for i, gen in enumerate((1.55, 0.95, 1.35, 1.15, 1.35, 1.25)):
         t.columns[i].width = Inches(gen)
     for r, row in enumerate(satir):
         for c, val in enumerate(row):
@@ -784,8 +789,8 @@ if nrm:
                 for run in para.runs:
                     run.font.size = Pt(9 if r == 0 else 10.5)
                     run.font.name = "Calibri"
-                    run.font.bold = (r == 0 or son_satir or c == 4)
-                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 4 else INK)
+                    run.font.bold = (r == 0 or son_satir or c in (3, 5))
+                    run.font.color.rgb = WHITE if r == 0 else (DRED if c in (3, 5) else INK)
             cell.fill.solid()
             cell.fill.fore_color.rgb = RED if r == 0 else (
                 LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)))
@@ -793,11 +798,10 @@ if nrm:
     rrect(s, 8.45, 3.85, 4.2, 2.0, LGREY, RED, lw=1.5)
     tb(s, 8.7, 3.97, 3.75, 1.8,
        [("Değerlendirme", 13, True, DRED),
-        ("31 Ağustos'ta kadrolu personel norm kadronun %d kişi altındadır (30.06 tabanında %+d). "
-         "Normun üzerinde olan tek mağaza İst. Yolu (+%d) ve iş hacmi en çok büyüyen mağaza da odur."
-         % (abs(fark_kesim), fark_taban,
-            [r["kadrolu_kesim26"] - r["norm"] for r in nrm["sube"] if r["sube"] == "İST. YOLU"][0]),
-         10.5, False, INK)], sp=1.12)
+        ("Norm kadro EKSİK: %d kadrolu pozisyon açık (net %+d). Bu açık kalıcı kadroyla "
+         "doldurulmadı; sezonluk personelle geçici olarak kapatıldı. Yani sezonluk sayısının bir "
+         "kısmı sezon takviyesi değil, NORM AÇIĞININ karşılığıdır — kalıcı maliyet artırılmadı."
+         % (acik_toplam, fark_kesim), 10.5, False, INK)], sp=1.12)
 
     dipnot(s, "* Norm SEZON DIŞI kadroyu tanımlar; sezonluk personel norma dahil değildir, kıyas yalnız "
               "kadrolu ile yapılır · Norm kaynağı: %s (%s), yönetim parametresi · Kapsam dışı: %s norm "
@@ -846,8 +850,8 @@ if al and ay2:
               "%d kişi" % a26.get("aktif_donem", {}).get("3_agustos_1_14", 0), "iş +%25,1 büyüyen dönem"],
              ["   — 15–31 Ağustos alımı", "%d kişi" % a25.get("aktif_donem", {}).get("4_agustos_15_31", 0),
               "%d kişi" % a26.get("aktif_donem", {}).get("4_agustos_15_31", 0), "iş −%2,9 → alım azaltıldı"],
-             ["   — önceki yıldan devreden", "%d kişi" % a25.get("aktif_donem", {}).get("0_onceki_yildan", 0),
-              "%d kişi" % a26.get("aktif_donem", {}).get("0_onceki_yildan", 0), "2025 alımı, hâlâ sezonluk"]]
+             ]  # NOT: "önceki yıldan devreden" satırı patron sunumuna KONULMADI — 2025 alımlı
+                #       tek kayıt hâlâ Kadro='SEZONLUK' görünüyor, veri düzeltmesi İK'da (02.09.2026).
     t = s.shapes.add_table(len(satir), 4, Inches(0.6), Inches(3.75), Inches(12.05), Inches(2.3)).table
     for i, gen in enumerate((3.6, 1.9, 1.9, 4.65)):
         t.columns[i].width = Inches(gen)
