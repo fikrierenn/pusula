@@ -7,10 +7,11 @@ VERIYI KENDI CEKER (elle rakam YOK):
 Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
 Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
 
-Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Yillar · Oca-Agu · Yontem
+Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Kategori · Yillar · Oca-Agu · Yontem [+ Personel: --kisi]
 Kullanim:
   python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
   python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
+  python scripts/verimlilik_excel.py --cek --kisi <veri.json> <KISILI.xlsx>   # + personel listesi (KVKK: gitignore'da)
 """
 import json
 import os
@@ -48,6 +49,13 @@ SUBE = {4478: "İST. YOLU", 4477: "ÖZLÜCE", 1: "FSM"}   # Zirve AltLokasyon ka
 SINAV = "(N'Sınav Okulları', N'Sınav Kıyafet')"
 YILLAR = [2023, 2024, 2025, 2026]
 ONCEKI, CARI = 2025, 2026
+
+
+def maskele(ad):
+    """Ad Soyad -> her parcanin ilk 3 harfi. KVKK: dogrudan kimlik yerine tanima-yeterli kisaltma."""
+    if not ad:
+        return ""
+    return " ".join((p[:3] + ".") if len(p) > 3 else p for p in str(ad).split())
 
 
 def _env():
@@ -96,7 +104,7 @@ def _hizali_kosul(alias="bs.eTarihS"):
     return "(" + " OR ".join(parcalar) + ")"
 
 
-def cek(env):
+def cek(env, kisi=False):
     """Tum rakamlari canli ceker. Elle girilen sayi YOK."""
     veri = {"meta": {}, "magaza": [], "yillar": [], "notlar": NOTLAR}
     erp = _cn(env, "erp")
@@ -164,7 +172,35 @@ def cek(env):
           AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
         GROUP BY YEAR(bs.eTarihS)""", YILLAR[0], YILLAR[-1])
     yil_adet = {int(y): float(a) for y, a in cur.fetchall()}
+
+    # 3b) KATEGORI x yil — hangi kategori ne kadar buyudu (bolum kadrosuyla eslestirmek icin)
+    print("DerinSIS: kategori büyümesi (okul-hizalı pencere)...", flush=True)
+    cur.execute("""
+        SELECT COALESCE(kat.Kategori3, N'(tanımsız)') AS kategori, YEAR(bs.eTarihS) AS yil,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS ciro
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + _hizali_kosul() + """
+        GROUP BY COALESCE(kat.Kategori3, N'(tanımsız)'), YEAR(bs.eTarihS)""")
+    kt = {}
+    for k, yil, adet, ciro in cur.fetchall():
+        d = kt.setdefault(k, {"kategori": k})
+        ek = int(yil) % 100
+        d["adet%d" % ek] = float(adet)
+        d["ciro%d" % ek] = float(ciro)
+    # iki yili birden olan ve anlamli buyuklukteki kategoriler (adet>=2000) — kuyruk gurultusu haric
+    veri["kategori"] = sorted(
+        [d for d in kt.values()
+         if d.get("adet25", 0) >= 2000 and d.get("adet26", 0) >= 2000],
+        key=lambda d: -d["adet26"])
+
     erp.close()
+
 
     # 4) kadro — Zirve
     print("Zirve: kadro as-of sayımları...", flush=True)
@@ -270,6 +306,79 @@ def cek(env):
     veri["bolum"] = [{"bolum": b, "kadrolu25": int(k25), "kadrolu26": int(k26),
                       "sezonluk25": int(s25), "sezonluk26": int(s26)}
                      for b, k25, k26, s25, s26 in zc.fetchall()]
+
+    # 7) MAGAZA x BOLUM capraz kirilim — hangi magazada hangi reyon buyudu
+    print("Zirve: mağaza × bölüm çapraz kırılımı...", flush=True)
+    zc.execute("""
+        SELECT v.AltLokasyon AS sube, COALESCE(v.Departman, N'(tanımsız)') AS bolum,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kadrolu25,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kadrolu26,
+               SUM(CASE WHEN v.Kadro = 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS sezonluk26
+        FROM dbo.vw_PersonelDepartman v
+        WHERE v.Lokasyon LIKE 'MA%'
+        GROUP BY v.AltLokasyon, COALESCE(v.Departman, N'(tanımsız)')
+        HAVING SUM(CASE WHEN v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END)
+             + SUM(CASE WHEN v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) > 0""",
+               "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI,
+               "%d0831" % CARI, "%d0831" % CARI,
+               "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI)
+    veri["magaza_bolum"] = [{"sube": s_, "bolum": b_, "kadrolu25": int(k25), "kadrolu26": int(k26),
+                             "sezonluk26": int(s26)}
+                            for s_, b_, k25, k26, s26 in zc.fetchall()]
+
+    # 8) ARKA OFIS HARIC kadro — Muhasebe/On Muhasebe/Bilgi Islem mağaza kadrosunda KAYITLI ama
+    #    is magaza isi degil (2026'da merkeze kaydilar). Seffaflik icin ikinci kapsam olarak tutulur.
+    print("Zirve: arka ofis hariç kadro (ikinci kapsam)...", flush=True)
+    ARKA_OFIS = ("MUHASEBE", "ÖN MUHASEBE", "BİLGİ İŞLEM")
+    zc.execute("""
+        SELECT SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS taban25,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS taban26,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kesim25,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kesim26
+        FROM dbo.vw_PersonelDepartman v
+        WHERE v.Lokasyon LIKE 'MA%'
+          AND COALESCE(v.Departman, '') NOT IN (?, ?, ?)""",
+               "%d0630" % ONCEKI, "%d0630" % ONCEKI, "%d0630" % CARI, "%d0630" % CARI,
+               "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI,
+               *ARKA_OFIS)
+    t25, t26, s25v, s26v = (int(x or 0) for x in zc.fetchone())
+    veri["arka_ofis_haric"] = {"bolumler": list(ARKA_OFIS),
+                               "kadrolu_taban25": t25, "kadrolu_taban26": t26,
+                               "kadrolu_kesim25": s25v, "kadrolu_kesim26": s26v}
+
+    # 9) PERSONEL LISTESI (kisi-duzeyi) — YALNIZ --kisi bayragiyla. KVKK: ucret/TCKN/IBAN ALINMAZ.
+    #    Cikti dosyasi gitignore'da (briefings/**/*KISILI*.xlsx) — commit'lenmez.
+    if kisi:
+        print("Zirve: personel listesi (kişi düzeyi)...", flush=True)
+        zc.execute("""
+            SELECT v.AdSoyad, v.AltLokasyon, COALESCE(v.Departman, N'(tanımsız)') AS Departman,
+                   COALESCE(v.Unvan, N'') AS Unvan, COALESCE(v.Kadro, N'(tanımsız)') AS Kadro,
+                   v.Igt, v.Ict,
+                   CASE WHEN v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END AS aktif25,
+                   CASE WHEN v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END AS aktif26,
+                   DATEDIFF(DAY, v.Igt, COALESCE(v.Ict, ?)) AS kidem_gun
+            FROM dbo.vw_PersonelDepartman v
+            WHERE v.Lokasyon LIKE 'MA%'
+              AND (   (v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?))
+                   OR (v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?)))
+            ORDER BY v.AltLokasyon, COALESCE(v.Departman, N''), v.Igt""",
+                   "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI,
+                   "%d0831" % CARI,
+                   "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI)
+        veri["personel"] = [
+            {"ad": maskele(ad), "sube": sube, "bolum": bol, "unvan": unv, "kadro": kad,
+             "giris": igt.strftime("%d.%m.%Y") if igt else "",
+             "cikis": ict.strftime("%d.%m.%Y") if ict else "",
+             "aktif25": int(a25), "aktif26": int(a26), "kidem_gun": int(kg or 0)}
+            for ad, sube, bol, unv, kad, igt, ict, a25, a26, kg in zc.fetchall()]
+        print("  %d kişi" % len(veri["personel"]), flush=True)
 
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
@@ -842,6 +951,70 @@ def sayfa_bolum(wb, veri):
     return ws
 
 
+
+# ------------------------------------------------------------------ Kategori
+def sayfa_kategori(wb, veri):
+    """Hangi kategori ne kadar buyudu — bolum kadro artisiyla ESLESTIRME sayfasi."""
+    ws = wb.create_sheet("Kategori")
+    # kategori -> hangi bolumun (reyonun) isi (BKM reyon/kategori eslesmesi)
+    ESLES = {
+        "Hazırlık Kitapları": "YARDIMCI KİTAP", "Kırtasiye": "KIRTASİYE", "Kitap": "KÜLTÜR",
+        "Çocuk Kitabı": "ÇOCUK", "Oyuncak": "OYUNCAK", "Akademi": "AKADEMİ",
+        "Hediyelik": "KIRTASİYE / OYUNCAK", "Gıda": "KAFE / GIDA",
+    }
+    kadro_delta = {b["bolum"]: b["kadrolu26"] - b["kadrolu25"] for b in veri["bolum"]}
+
+    kolonlar = [("Kategori", 20, None), ("İlgili bölüm", 20, None),
+                ("Adet 2025", 13, ADET), ("Adet 2026", 13, ADET), ("Adet Δ", 10, YUZDE),
+                ("Ciro 2025 (M ₺)", 14, ADET1), ("Ciro 2026 (M ₺)", 14, ADET1), ("Ciro Δ", 10, YUZDE),
+                ("Bölüm kadro Δ", 12, "+0;-0;0")]
+    ws.cell(1, 1, "Kategori büyümesi ve o kategoriye bakan bölümün kadro değişimi").font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for k in veri["kategori"]:
+        bolum = ESLES.get(k["kategori"], "—")
+        ws.cell(s, 1, k["kategori"]).border = KENAR
+        ws.cell(s, 2, bolum).border = KENAR
+        for kol, v_ in ((3, k["adet25"]), (4, k["adet26"])):
+            c = ws.cell(s, kol, v_); c.number_format = ADET; c.border = KENAR
+        for kol, v_ in ((6, k["ciro25"] / 1e6), (7, k["ciro26"] / 1e6)):
+            c = ws.cell(s, kol, v_); c.number_format = ADET1; c.border = KENAR
+        for kol, f in ((5, "=D%d/C%d-1" % (s, s)), (8, "=G%d/F%d-1" % (s, s))):
+            c = ws.cell(s, kol, f); c.number_format = YUZDE; c.border = KENAR
+            c.font = Font(bold=True)
+        kd = kadro_delta.get(bolum)
+        c = ws.cell(s, 9, kd if kd is not None else "—")
+        c.number_format = "+0;-0;0"
+        c.border = KENAR
+        if kd:
+            c.fill = VURGU
+        s += 1
+    son = s - 1
+
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True)
+    ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
+    ws.cell(s, 2).fill = GRI; ws.cell(s, 2).border = KENAR
+    for kol in (3, 4, 6, 7):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = ADET if kol in (3, 4) else ADET1
+        c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
+    for kol, f in ((5, "=D%d/C%d-1" % (s, s)), (8, "=G%d/F%d-1" % (s, s))):
+        c = ws.cell(s, kol, f); c.number_format = YUZDE; c.border = KENAR
+        c.fill = GRI; c.font = Font(bold=True)
+
+    s += 2
+    _notlar(ws, [
+        "ESLESME: kategori (urun) -> o urune bakan reyon (bolum). Kadro Δ o BOLUMUN kadrolu degisimidir.",
+        "OKUNACAK: kadro artisi en hizli buyuyen kategorilere gitti (Hazirlik Kitaplari, Kirtasiye, Akademi);",
+        "   en yavas buyuyen kategoride (Cocuk Kitabi) kadro AZALTILDI. Yani alim rastgele degil.",
+        "Kapsam: uc POS magazasi, okul-hizali pencere, Sinav haric, KDV dahil, iadeler dusulmus.",
+        "Toplam satiri yalniz bu tablodaki kategorilerin toplami (adet>=2000 esigi altindaki kuyruk haric).",
+    ], s)
+    return ws
+
+
 # ------------------------------------------------------------------ Yillar
 def sayfa_yillar(wb, veri):
     ws = wb.create_sheet("Yillar")
@@ -938,6 +1111,42 @@ def sayfa_oca_agu(wb, veri):
     return ws
 
 
+
+# ------------------------------------------------------------------ Personel (kisi duzeyi, KVKK)
+def sayfa_personel(wb, veri):
+    """Kisi listesi — YALNIZ --kisi ile. Ucret/TCKN/IBAN YOK. Cikti dosyasi gitignore'da."""
+    ws = wb.create_sheet("Personel")
+    kolonlar = [("Ad Soyad", 26, None), ("Şube", 13, None), ("Bölüm", 18, None), ("Ünvan", 30, None),
+                ("Kadro", 11, None), ("Giriş", 11, None), ("Çıkış", 11, None),
+                ("31.08.2025", 10, None), ("31.08.2026", 10, None), ("Kıdem (yıl)", 10, "0.0")]
+    ws.cell(1, 1, "Mağaza personeli — 31.08.2025 veya 31.08.2026'da çalışanlar").font = Font(bold=True, size=12)
+    ws.cell(2, 1, "KVKK: ücret / TC no / IBAN yok. Bu sayfa yalnız iç kullanım; patron sunumunda YER ALMAZ.").font = NOT_YAZI
+    _basliklar(ws, kolonlar, satir=4)
+
+    s = 5
+    for p in veri.get("personel", []):
+        deger = [p["ad"], p["sube"], p["bolum"], p["unvan"], p["kadro"], p["giris"], p["cikis"],
+                 "✓" if p["aktif25"] else "", "✓" if p["aktif26"] else "", p["kidem_gun"] / 365.0]
+        for i, (kol, v_) in enumerate(zip(kolonlar, deger), start=1):
+            c = ws.cell(s, i, v_)
+            c.border = KENAR
+            if kol[2]:
+                c.number_format = kol[2]
+            if i in (8, 9):
+                c.alignment = Alignment(horizontal="center")
+            if p["kadro"] == "SEZONLUK":
+                c.font = Font(size=10, color="A6001A")
+        s += 1
+    ws.auto_filter.ref = "A4:J%d" % (s - 1)
+    ws.freeze_panes = "A5"
+    _notlar(ws, [
+        "Kadro = SEZONLUK satirlar kirmizi. Bos cikis = halen calisiyor.",
+        "31.08.YYYY kolonu: o tarihte fiilen calisiyor muydu (as-of Igt <= T AND (Ict IS NULL OR Ict >= T)).",
+        "%d kisi listelendi." % len(veri.get("personel", [])),
+    ], s + 1)
+    return ws
+
+
 # ------------------------------------------------------------------ Yontem
 def sayfa_yontem(wb, veri):
     ws = wb.create_sheet("Yontem")
@@ -977,6 +1186,7 @@ def sayfa_yontem(wb, veri):
 
 def main(argv):
     cek_mod = "--cek" in argv
+    kisi_mod = "--kisi" in argv
     args = [a for a in argv[1:] if not a.startswith("--")]
     if len(args) != 2:
         print(__doc__)
@@ -984,10 +1194,18 @@ def main(argv):
     veri_yolu, cikti = Path(args[0]), Path(args[1])
 
     if cek_mod:
-        veri = cek(_env())
+        veri = cek(_env(), kisi=kisi_mod)
         veri_yolu.parent.mkdir(parents=True, exist_ok=True)
-        veri_yolu.write_text(json.dumps(veri, ensure_ascii=False, indent=2), encoding="utf-8")
-        print("Veri yazıldı: %s" % veri_yolu, flush=True)
+        # KVKK: kisi-duzeyi satirlar PAYLASILAN json'a YAZILMAZ (o dosya git'te izleniyor).
+        # Ayri *KISILI*.json dosyasina gider; gitignore o deseni yakalar.
+        paylasilan = {k: val for k, val in veri.items() if k != "personel"}
+        veri_yolu.write_text(json.dumps(paylasilan, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("Veri yazıldı: %s (toplulaştırılmış)" % veri_yolu, flush=True)
+        if veri.get("personel"):
+            kisi_yolu = veri_yolu.with_name(veri_yolu.stem + "-KISILI.json")
+            kisi_yolu.write_text(json.dumps({"personel": veri["personel"]}, ensure_ascii=False, indent=2),
+                                 encoding="utf-8")
+            print("Kişi listesi ayrı dosyada: %s (gitignore)" % kisi_yolu, flush=True)
     else:
         veri = json.loads(veri_yolu.read_text(encoding="utf-8"))
 
@@ -996,9 +1214,12 @@ def main(argv):
     sayfa_magaza(wb, veri)
     sayfa_kadro(wb, veri)
     sayfa_bolum(wb, veri)
+    sayfa_kategori(wb, veri)
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
     sayfa_yontem(wb, veri)
+    if veri.get("personel"):
+        sayfa_personel(wb, veri)
     sayfa_sunum(wb, veri)   # EN SONDA: index 0'a girer, capraz-sayfa formulleri hedeflerini bulur
     # cikti yukarida cozuldu
     cikti.parent.mkdir(parents=True, exist_ok=True)
