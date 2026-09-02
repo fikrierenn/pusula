@@ -62,6 +62,10 @@ SINAV_DAHIL = ("(COALESCE(kat.Kategori3, N'x') IN " + SINAV +
 YILLAR = [2023, 2024, 2025, 2026]
 ONCEKI, CARI = 2025, 2026
 
+# ---- K-22 yasal fazla mesai cercevesi (4857/41 + 63) — is hukuku sabitleri
+AY_NORMAL_SAAT = 195.0     # 45 saat/hafta x 52 / 12 ay
+FM_YILLIK_SINIR = 270.0    # kisi basi yillik fazla mesai ust siniri (saat)
+
 
 def maskele(ad):
     """Ad Soyad -> her parcanin ilk 3 harfi. KVKK: dogrudan kimlik yerine tanima-yeterli kisaltma."""
@@ -417,6 +421,25 @@ def cek(env, kisi=False):
                        "son tam gün %s." % (g_adet * 100, g_ciro * 100, son_tam.strftime("%d.%m.%Y")))
     veri["kayma"] = kayma
 
+
+    # 3g) AYLIK CIRO (KDV HARIC) — personel maliyeti/ciro orani icin (K-21).
+    #   ⚠ Maliyet KDV'siz bir gider; ciro da KDV-HARIC net alinir (KDV-dahil oran yaniltir).
+    #   Sinav DAHIL: o satisi da ayni magaza personeli yapiyor — oranin dogru paydasi.
+    print("DerinSIS: aylık ciro (KDV hariç, maliyet oranı için)...", flush=True)
+    cur.execute("""
+        SELECT YEAR(bs.eTarihS) AS yil, MONTH(bs.eTarihS) AS ay,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim AS float))                 AS net_kdvharic,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND YEAR(bs.eTarihS) IN (?, ?)
+          AND MONTH(bs.eTarihS) BETWEEN 1 AND 12
+        GROUP BY YEAR(bs.eTarihS), MONTH(bs.eTarihS)""", ONCEKI, CARI)
+    ciro_ay = {}
+    for yil, ay_, net, adet in cur.fetchall():
+        ciro_ay[(int(yil), int(ay_))] = (float(net or 0), float(adet or 0))
 
     # 3f) AGUSTOS YARIM-AY is hacmi — sezonluk alimin 1-14 Agustos'a kaymasinin gerekcesi
     print("DerinSIS: Ağustos yarım-ay iş hacmi...", flush=True)
@@ -889,6 +912,131 @@ def cek(env, kisi=False):
                 "oran30": (k30 / r30) if r30 else None}
     veri["tutunma"] = tutunma
 
+    # 12) PERSONEL MALIYETI + FAZLA MESAI (K-21 + K-22) — Zirve bordro (vw_PuanBil).
+    #   Pencere DINAMIK: son TAM bordro ayina kadar. (2026 Agustos bordrosu henuz kosmamis:
+    #   31 kisi vs Temmuz 256 -> o ayi almak maliyeti %88 eksik gosterirdi.)
+    print("Zirve: bordro maliyet + fazla mesai...", flush=True)
+    zc.execute("""
+        SELECT b.Yil, b.Ayindex, COUNT(*) AS kisi
+        FROM dbo.vw_PuanBil b
+        INNER JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno
+        WHERE b.Yil IN (?, ?) AND p.Lokasyon LIKE 'MA%'
+        GROUP BY b.Yil, b.Ayindex""", ONCEKI, CARI)
+    bordro_ay = {}
+    for yil, ay_, kisi in zc.fetchall():
+        bordro_ay[(int(yil), int(ay_))] = int(kisi)
+    if not bordro_ay:
+        sys.exit("BORDRO VERİSİ YOK (vw_PuanBil) — maliyet bloğu üretilemez.")
+    zirve_max = {y: max((k for (yy, _a), k in bordro_ay.items() if yy == y), default=0)
+                 for y in (ONCEKI, CARI)}
+    son_ay = 0
+    for ay_ in range(1, 13):
+        tam = all(bordro_ay.get((y, ay_), 0) >= 0.6 * zirve_max[y] for y in (ONCEKI, CARI))
+        if not tam:
+            break
+        son_ay = ay_
+    if son_ay < 3:
+        sys.exit("BORDRO PENCERESİ ÇOK KISA (son tam ay %d) — maliyet kıyası yapılamaz." % son_ay)
+
+    zc.execute("""
+        SELECT b.Yil, p.AltLokasyon,
+               COUNT(*)                                      AS kisi_ay,
+               SUM(b.Bt)                                      AS brut,
+               SUM(b.Isskk)                                   AS isv_sgk,
+               SUM(b.Iisk)                                    AS isv_issizlik,
+               SUM(b.Bt + b.Isskk + b.Iisk)                   AS maliyet,
+               SUM(b.Netu)                                    AS net,
+               SUM(b.fm1 + b.fm2 + b.fm3)                     AS fm_saat,
+               SUM(b.fmtutar1 + b.fmtutar2 + b.fmtutar3)      AS fm_tutar,
+               SUM(CASE WHEN (b.fm1 + b.fm2 + b.fm3) > 0 THEN 1 ELSE 0 END)  AS fm_yapan_kisi_ay,
+               SUM(CASE WHEN (b.fm1 + b.fm2 + b.fm3) > ? THEN 1 ELSE 0 END)  AS fm_sinir_hizinda,
+               MAX(b.fm1 + b.fm2 + b.fm3)                     AS fm_en_yuksek
+        FROM dbo.vw_PuanBil b
+        INNER JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno
+        WHERE b.Yil IN (?, ?) AND b.Ayindex BETWEEN 1 AND ? AND p.Lokasyon LIKE 'MA%'
+        GROUP BY b.Yil, p.AltLokasyon""",
+               FM_YILLIK_SINIR / 12.0, ONCEKI, CARI, son_ay)
+    mal_sube = {}
+    for (yil, sube, kisi_ay, brut, isvs, isvi, mal, net_, fms, fmt, fmy, fmsn, fmmax) in zc.fetchall():
+        mal_sube[(int(yil), sube)] = {
+            "kisi_ay": int(kisi_ay), "brut": float(brut or 0),
+            "isveren_sgk": float(isvs or 0), "isveren_issizlik": float(isvi or 0),
+            "maliyet": float(mal or 0), "net": float(net_ or 0),
+            "fm_saat": float(fms or 0), "fm_tutar": float(fmt or 0),
+            "fm_yapan_kisi_ay": int(fmy or 0), "fm_sinir_hizinda_kisi_ay": int(fmsn or 0),
+            "fm_en_yuksek_kisi_ay": float(fmmax or 0)}
+    for yil in (ONCEKI, CARI):
+        if not any(y == yil for (y, _s) in mal_sube):
+            sys.exit("BORDRO KAPSAMI BOŞ: %d yılında mağaza personeli bulunamadı." % yil)
+
+    def _mtop(yil, subeler):
+        alanlar = ("kisi_ay", "brut", "isveren_sgk", "isveren_issizlik", "maliyet", "net",
+                   "fm_saat", "fm_tutar", "fm_yapan_kisi_ay", "fm_sinir_hizinda_kisi_ay")
+        d = {a: sum(mal_sube.get((yil, sb), {}).get(a, 0) for sb in subeler) for a in alanlar}
+        d["fm_en_yuksek_kisi_ay"] = max(
+            [mal_sube.get((yil, sb), {}).get("fm_en_yuksek_kisi_ay", 0) for sb in subeler] or [0])
+        return d
+
+    POS_SUBELER = [SUBE[m] for m in MEKAN]
+    TUM_SUBELER = sorted({sb for (_y, sb) in mal_sube})
+    maliyet = {"pencere_ay": son_ay,
+               "pencere": "01-%02d ay (Oca–%s), her iki yıl" % (son_ay, AY_AD_KISA[son_ay]),
+               "kapsam_pos": POS_SUBELER, "kapsam_tum": TUM_SUBELER,
+               "sube": {"%s|%d" % (sb, y): mal_sube[(y, sb)] for (y, sb) in sorted(
+                   mal_sube, key=lambda t: (t[1], t[0]))},
+               "pos": {}, "tum": {}, "formul": "Personel maliyeti = Brüt Toplam (Bt) + İşveren "
+               "SGK Hissesi (Isskk) + İşveren İşsizlik Payı (Iisk) — Zirve bordro vw_PuanBil, "
+               "yönetimin kendi bordro kontrol raporundaki formül."}
+    for yil in (ONCEKI, CARI):
+        ek = yil % 100
+        maliyet["pos"]["%d" % ek] = _mtop(yil, POS_SUBELER)
+        maliyet["tum"]["%d" % ek] = _mtop(yil, TUM_SUBELER)
+        ciro = sum(ciro_ay.get((yil, a_), (0.0, 0.0))[0] for a_ in range(1, son_ay + 1))
+        adet_ = sum(ciro_ay.get((yil, a_), (0.0, 0.0))[1] for a_ in range(1, son_ay + 1))
+        if ciro <= 0:
+            sys.exit("CİRO PENCERESİ BOŞ (%d, 1-%d ay) — maliyet oranı hesaplanamaz." % (yil, son_ay))
+        p_ = maliyet["pos"]["%d" % ek]
+        p_["ciro_kdvharic"] = ciro
+        p_["adet"] = adet_
+        p_["maliyet_ciro_orani"] = p_["maliyet"] / ciro
+        p_["kisi_ay_basi_maliyet"] = p_["maliyet"] / p_["kisi_ay"] if p_["kisi_ay"] else 0.0
+        p_["kisi_ay_basi_ciro"] = ciro / p_["kisi_ay"] if p_["kisi_ay"] else 0.0
+        p_["fm_kisi_ay_basi_saat"] = p_["fm_saat"] / p_["kisi_ay"] if p_["kisi_ay"] else 0.0
+        p_["fm_yillik_kisi_basi_saat"] = p_["fm_kisi_ay_basi_saat"] * 12.0
+
+    # K-22: "kadro almasaydik ne olurdu" — eksik kisi-ay kapasitesi fazla mesaiye biner.
+    #   Model: kadro ONCEKI yilin kisi-ay seviyesinde kalsaydi, aradaki kisi-ay farki
+    #   AY_NORMAL_SAAT kadar calisma kapasitesi eksigi demektir; bu eksik ancak fazla mesai
+    #   ile kapanirdi. VARSAYIM: is hacmi ayni kalir ve isgucu ihtiyaci kisiyle dogru orantili.
+    p25 = maliyet["pos"]["%d" % (ONCEKI % 100)]
+    p26 = maliyet["pos"]["%d" % (CARI % 100)]
+    eksik_kisi_ay = p26["kisi_ay"] - p25["kisi_ay"]
+    ek_fm = max(0.0, eksik_kisi_ay) * AY_NORMAL_SAAT
+    varsayim_fm = p26["fm_saat"] + ek_fm
+    kisi_ay_taban = p25["kisi_ay"] or 1
+    veri["fazla_mesai"] = {
+        "pencere_ay": son_ay,
+        "yasal_yillik_sinir_saat": FM_YILLIK_SINIR,
+        "ay_normal_saat": AY_NORMAL_SAAT,
+        "fiili": {"fm_saat26": p26["fm_saat"], "fm_saat25": p25["fm_saat"],
+                  "kisi_ay26": p26["kisi_ay"], "kisi_ay25": p25["kisi_ay"],
+                  "kisi_basi_yillik26": p26["fm_yillik_kisi_basi_saat"],
+                  "kisi_basi_yillik25": p25["fm_yillik_kisi_basi_saat"],
+                  "sinir_hizinda_kisi_ay26": p26["fm_sinir_hizinda_kisi_ay"],
+                  "sinir_hizinda_kisi_ay25": p25["fm_sinir_hizinda_kisi_ay"]},
+        "kadro_artmasaydi": {
+            "eksik_kisi_ay": eksik_kisi_ay,
+            "ek_fm_saat": ek_fm,
+            "toplam_fm_saat": varsayim_fm,
+            "kisi_basi_yillik_saat": (varsayim_fm / kisi_ay_taban) * 12.0,
+            "sinir_asimi": (varsayim_fm / kisi_ay_taban) * 12.0 > FM_YILLIK_SINIR},
+        "varsayim": ("İşgücü ihtiyacı kişi sayısıyla doğru orantılı kabul edilir; %d kişi-aylık "
+                     "kapasite eksiği ancak fazla mesaiyle kapanırdı (kişi-ay başına %.0f saat "
+                     "normal çalışma). Yasal çerçeve: 4857 s.K. m.41 yıllık %d saat üst sınır."
+                     % (eksik_kisi_ay, AY_NORMAL_SAAT, int(FM_YILLIK_SINIR))),
+        "kaynak": "Zirve BKM_GENEL dbo.vw_PuanBil — fm1+fm2+fm3 (saat), fmtutar1..3 (tutar)"}
+    veri["maliyet"] = maliyet
+
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
     k5 = veri["kadro_5magaza"]
@@ -938,6 +1086,9 @@ def cek(env, kisi=False):
     })
     return veri
 
+
+AY_AD_KISA = {1: "Oca", 2: "Şub", 3: "Mar", 4: "Nis", 5: "May", 6: "Haz",
+              7: "Tem", 8: "Ağu", 9: "Eyl", 10: "Eki", 11: "Kas", 12: "Ara"}
 
 NOTLAR = [
     "Ürün adedi enflasyondan bağımsız — kadro kıyasında birincil ölçüt. Ciro ikincil (fiyat endeksi +%19,8, Fisher, eşleşen ürün).",
@@ -1919,6 +2070,125 @@ def sayfa_norm(wb, veri):
     return ws
 
 
+# ------------------------------------------------------------------ Maliyet (bordro) + fazla mesai
+def sayfa_maliyet(wb, veri):
+    """Personel maliyeti / ciro orani (K-21) + fazla mesai yasal sinir (K-22).
+
+    Kaynak: Zirve bordro vw_PuanBil — maliyet = Brut Toplam + Isveren SGK + Isveren Issizlik.
+    ⚠ Pencere son TAM bordro ayina kadar (Agustos bordrosu kosmadan alinirsa maliyet eksik cikar).
+    """
+    m = veri.get("maliyet")
+    f = veri.get("fazla_mesai")
+    if not m or not f:
+        return None
+    ws = wb.create_sheet("Maliyet")
+    p25, p26 = m["pos"]["%d" % (ONCEKI % 100)], m["pos"]["%d" % (CARI % 100)]
+    ws.cell(1, 1, "Personel maliyeti ve ciro orani — %s, uc POS magazasi (%s)"
+            % (m["pencere"], " · ".join(x.title() for x in m["kapsam_pos"]))).font = Font(bold=True, size=12)
+
+    kolonlar = [("Olcu", 30, None), ("%d" % ONCEKI, 16, TL), ("%d" % CARI, 16, TL),
+                ("Degisim", 11, YUZDE)]
+    _basliklar(ws, kolonlar, satir=3)
+    s = 4
+    satirlar = [
+        ("Kisi-ay (bordro satiri)", p25["kisi_ay"], p26["kisi_ay"], ADET),
+        ("Brut ucret toplami", p25["brut"], p26["brut"], TL),
+        ("Isveren SGK hissesi", p25["isveren_sgk"], p26["isveren_sgk"], TL),
+        ("Isveren issizlik payi", p25["isveren_issizlik"], p26["isveren_issizlik"], TL),
+        ("PERSONEL MALIYETI (brut isveren)", p25["maliyet"], p26["maliyet"], TL),
+        ("Net odenen (bilgi)", p25["net"], p26["net"], TL),
+        ("Ciro (KDV haric, Sinav dahil)", p25["ciro_kdvharic"], p26["ciro_kdvharic"], TL),
+        ("Kisi-ay basina maliyet", p25["kisi_ay_basi_maliyet"], p26["kisi_ay_basi_maliyet"], TL),
+        ("Kisi-ay basina ciro", p25["kisi_ay_basi_ciro"], p26["kisi_ay_basi_ciro"], TL),
+    ]
+    for etiket, a, b, fmt in satirlar:
+        vurgu = etiket.startswith("PERSONEL")
+        c0 = ws.cell(s, 1, etiket); c0.border = KENAR
+        if vurgu:
+            c0.font = Font(bold=True)
+        for kol, val in ((2, a), (3, b)):
+            c = ws.cell(s, kol, val); c.number_format = fmt; c.border = KENAR
+            if vurgu:
+                c.font = Font(bold=True)
+        c = ws.cell(s, 4, "=C%d/B%d-1" % (s, s))
+        c.number_format = YUZDE; c.border = KENAR; c.font = Font(bold=True)
+        if vurgu:
+            c.fill = VURGU
+        s += 1
+    # ORAN satiri — yuzde PUAN farki (oranin orani yaniltir)
+    c0 = ws.cell(s, 1, "MALIYET / CIRO ORANI"); c0.border = KENAR; c0.font = Font(bold=True)
+    for kol, val in ((2, p25["maliyet_ciro_orani"]), (3, p26["maliyet_ciro_orani"])):
+        c = ws.cell(s, kol, val); c.number_format = "0.00%"; c.border = KENAR
+        c.font = Font(bold=True)
+    c = ws.cell(s, 4, "=C%d-B%d" % (s, s))
+    c.number_format = "+0.00%;-0.00%"; c.border = KENAR; c.font = Font(bold=True); c.fill = VURGU
+    ws.cell(s, 5, "yuzde PUAN farki (eksi = ciro icindeki personel yuku azaldi)").font = Font(
+        italic=True, size=9)
+    s += 2
+
+    # --- SUBE BAZINDA
+    ws.cell(s, 1, "SUBE BAZINDA MALIYET VE FAZLA MESAI (bes magaza)").font = BOLUM_YAZI
+    s += 1
+    bkolon = [("Sube", 14, None), ("Kisi-ay %d" % ONCEKI, 11, ADET), ("Kisi-ay %d" % CARI, 11, ADET),
+              ("Maliyet %d" % ONCEKI, 15, TL), ("Maliyet %d" % CARI, 15, TL), ("Maliyet Δ", 10, YUZDE),
+              ("FM saat %d" % ONCEKI, 11, ADET1), ("FM saat %d" % CARI, 11, ADET1),
+              ("FM tutar %d" % CARI, 13, TL)]
+    for i, (ad, gen, _f) in enumerate(bkolon, start=1):
+        h = ws.cell(s, i, ad); h.fill = BASLIK; h.font = BASLIK_YAZI; h.border = KENAR
+        h.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[get_column_letter(i)].width = max(
+            gen, ws.column_dimensions[get_column_letter(i)].width or 0)
+    s += 1
+    for sube in m["kapsam_tum"]:
+        a = m["sube"].get("%s|%d" % (sube, ONCEKI), {})
+        b = m["sube"].get("%s|%d" % (sube, CARI), {})
+        ws.cell(s, 1, sube.title()).border = KENAR
+        for kol, val, fmt in ((2, a.get("kisi_ay", 0), ADET), (3, b.get("kisi_ay", 0), ADET),
+                              (4, a.get("maliyet", 0), TL), (5, b.get("maliyet", 0), TL),
+                              (7, a.get("fm_saat", 0), ADET1), (8, b.get("fm_saat", 0), ADET1),
+                              (9, b.get("fm_tutar", 0), TL)):
+            c = ws.cell(s, kol, val); c.number_format = fmt; c.border = KENAR
+        c = ws.cell(s, 6, "=E%d/D%d-1" % (s, s)); c.number_format = YUZDE; c.border = KENAR
+        s += 1
+    s += 1
+
+    # --- FAZLA MESAI / YASAL SINIR
+    ws.cell(s, 1, "FAZLA MESAI VE YASAL SINIR (4857 s.K. m.41 — yillik %d saat)"
+            % int(f["yasal_yillik_sinir_saat"])).font = BOLUM_YAZI
+    s += 1
+    fi, kv = f["fiili"], f["kadro_artmasaydi"]
+    for etiket, val, fmt in (
+            ("Fiili FM saat %d (uc POS)" % ONCEKI, fi["fm_saat25"], ADET1),
+            ("Fiili FM saat %d (uc POS)" % CARI, fi["fm_saat26"], ADET1),
+            ("Kisi basi YILLIK FM %d (saat)" % ONCEKI, fi["kisi_basi_yillik25"], ADET1),
+            ("Kisi basi YILLIK FM %d (saat)" % CARI, fi["kisi_basi_yillik26"], ADET1),
+            ("Yillik sinir hizinda kisi-ay %d" % ONCEKI, fi["sinir_hizinda_kisi_ay25"], ADET),
+            ("Yillik sinir hizinda kisi-ay %d" % CARI, fi["sinir_hizinda_kisi_ay26"], ADET),
+            ("VARSAYIM: kadro %d seviyesinde kalsaydi eksik kisi-ay" % ONCEKI,
+             kv["eksik_kisi_ay"], ADET),
+            ("VARSAYIM: gereken EK fazla mesai (saat)", kv["ek_fm_saat"], ADET1),
+            ("VARSAYIM: kisi basi YILLIK FM (saat)", kv["kisi_basi_yillik_saat"], ADET1),
+            ("YASAL UST SINIR (saat/yil/kisi)", f["yasal_yillik_sinir_saat"], ADET1)):
+        c0 = ws.cell(s, 1, etiket); c0.border = KENAR
+        c = ws.cell(s, 2, val); c.number_format = fmt; c.border = KENAR
+        if etiket.startswith("VARSAYIM: kisi basi") or etiket.startswith("YASAL"):
+            c0.font = Font(bold=True); c.font = Font(bold=True); c.fill = VURGU
+        s += 1
+    s += 1
+    _notlar(ws, [
+        "FORMUL: %s" % m["formul"],
+        "PENCERE: %s — Agustos bordrosu henuz kosmadigi icin son TAM bordro ayina kadar alinir "
+        "(eksik ay maliyeti %%80+ dusuk gosterir)." % m["pencere"],
+        "ORAN: maliyet/ciro yuzde PUAN olarak kiyaslanir. Ciro KDV HARIC (maliyet de KDV'siz), "
+        "Sinav DAHIL (o satisi da ayni magaza personeli yapiyor).",
+        "K-22 VARSAYIM: %s" % f["varsayim"],
+        "⚠ Sube dagilimi personelin BUGUNKU subesine gore yapilir (bordro ayindaki subesi degil) — "
+        "toplamlar dogru, sube kirilimi yer degistirenlerde kayabilir.",
+        "KVKK: kisi bazli ucret/maliyet YOK; tum rakamlar sube/kapsam duzeyinde toplulastirilmis.",
+    ], s)
+    return ws
+
+
 # ------------------------------------------------------------------ Yontem
 def sayfa_yontem(wb, veri):
     ws = wb.create_sheet("Yontem")
@@ -1994,6 +2264,7 @@ def main(argv):
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
     sayfa_norm(wb, veri)
+    sayfa_maliyet(wb, veri)
     sayfa_yontem(wb, veri)
     if veri.get("personel"):
         sayfa_personel(wb, veri)

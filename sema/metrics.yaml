@@ -457,6 +457,19 @@ metrics:
     last_verified: "2026-08-25"
     evidence: "2026-08-25 — ayni sepette SonAlis/fat5 yan yana olculdu (sorgular/2026-08-25-... blok 6 vs 12); SonAlis-FIFO sapmasi blok 6b vs bu dosyadaki fifo Ocak-2026 (%35,4)."
 
+  personel_maliyet_ve_fazla_mesai:   # 2026-09-03 — kadro savunmasinin MALIYET + UYUM tarafi (K-21/K-22)
+    kaynak: "Zirve `BKM_GENEL.dbo.vw_PuanBil` (bordro, kisi x ay) + DerinSIS `irs/irsAyr eTip=100` (ciro). Kapsam ayraci `vw_PersonelDepartman.Lokasyon LIKE 'MA%'`."
+    MALIYET_FORMULU: "personel maliyeti = `SUM(Bt + Isskk + Iisk)` (brut toplam + isveren SGK hissesi + isveren issizlik payi). Kidem karsiligi + yan haklar HARIC -> ALT SINIR. Net odenen (`Netu`) maliyet DEGILDIR (isveren yukunu gostermez)."
+    ORAN_KURALI: "⚠ Karsilastirma olcusu **maliyet / ciro** ve YUZDE PUAN olarak okunur (oranin yuzde degisimi yaniltir). Payda CIRO **KDV HARIC** (maliyet de KDV'siz) ve **Sinav DAHIL** (o satisi da ayni magaza personeli yapar). Olcum 2026-09-03 (Oca-Tem, uc POS): %12,85 -> %12,15 = **-0,70 puan** — maliyet +%51,5 artmasina ragmen cironun personel yuku DUSTU. Artisin ana kaynagi kisi basi ucret (+%38,3), kadro (+%9,6 kisi-ay) degil."
+    FAZLA_MESAI_AYRACI: "fazla mesai SAAT = `fm1+fm2+fm3`, TUTAR = `fmtutar1+fmtutar2+fmtutar3` (uc dilim = normal/hafta-tatili/genel-tatil carpanlari). Yillik kisi basi = (FM saat / kisi-ay) x 12."
+    YASAL_CERCEVE: "4857 s.K. m.41: kisi basi **yillik 270 saat** fazla mesai ust siniri; m.63 normal calisma 45 saat/hafta -> kisi-ay normal calisma **195 saat** (45x52/12). Bu iki sabit modelin cercevesi; hukuki yorum (fesih/uyum yaptirimi) IK+avukat isidir, rapora YAZILMAZ."
+    KADRO_ALINMASAYDI_MODELI: "K-22 karsi-argumani: eksik_kisi_ay = kisi_ay(cari) - kisi_ay(onceki); ek_FM = eksik_kisi_ay x 195; varsayim_FM = fiili_FM(cari) + ek_FM; kisi_basi_yillik = varsayim_FM / kisi_ay(onceki) x 12. Olcum 2026-09-03: 75 kisi-ay eksik -> +14.625 saat -> **342 saat/yil/kisi > 270 yasal sinir (ASILIR)**. Fiili 2026: 107 saat/yil (sinirin icinde), 2025: 97. **VARSAYIM:** isgucu ihtiyaci kisi sayisiyla dogru orantili + eksik kapasite ancak FM ile kapanir; kismi-sureli/hafta-sonu duzenlemesi ve verim artisi modelde YOK -> UST SINIR tahmini olarak sunulur."
+    KARSI_METRIK: "Fiili FM sinirin altinda diye 'kadro yeterli' SONUCU CIKARILMAZ: yillik sinir hizinda calisan kisi-ay sayisi 32 -> 95'e cikti (2026-09-03 olcumu) — kadro darligi FM'ye degil kisi sayisina yayilmis demektir. Norm acigiyla (bolum bazinda 15 kisi) birlikte okunur."
+    confidence: 0.9
+    last_verified: "2026-09-03"
+    ttl_days: 180
+    evidence: "2026-09-03 canli — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql (4 blok). Emitter: scripts/verimlilik_excel.py cek() 3g+12 -> JSON maliyet/fazla_mesai; Excel «Maliyet» sayfasi + sunum 2 slayt; 94/94 tutarlilik kontrolu."
+
   sezon_personel_kohort:    # 2026-09-02 — sezon (okul) alım kohortunun seyri; MAĞAZA BAZLI kıyas
     kaynak: "Zirve `BKM_GENEL.dbo.vw_PersonelDepartman` (MCP: zirve). Aktif = `Ict IS NULL` (Personeldurumu DEĞİL). Şube boyutu = `AltLokasyon`, grup = `Lokasyon` (MAĞAZALAR / KAFELER / GENEL MÜDÜRLÜK)."
     AYRAC_KADRO_SEZONLUK: "⚠⚠ SEZON PERSONELİ AYRACI = `Kadro = 'SEZONLUK'` — Zirve'nin KENDİ bayrağı (view kolonu). Giriş-tarihi penceresi TEK BAŞINA ayraç DEĞİL: aynı pencerede kadrolu alım da yapılır ve ölçüm sessizce bozulur. 2026-09-02 ölçümü: karışık pencere 14g tutunma %83,2 ('sezon kadrosu eriyor' YANLIŞ sonucu) · `Kadro='SEZONLUK'` %91,8 (geçen yıl %93,3 = normal) · `Kadro<>'SEZONLUK'` %75,5 (geçen yıl %92,1 = bozulma BURADA). Bayrak 01.08.2023'ten beri kullanılıyor → 2023 öncesi kohort bu alanla izlenemez. Kadro değerleri: KADRO · SEZONLUK · STAJYER · PART-TIME/PART TIME (aynı şey iki yazım) · KISMİ + 12 NULL/boş kayıt (veri kalitesi borcu)."

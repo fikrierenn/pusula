@@ -141,6 +141,59 @@ def main(argv):
             sonuc.append((True, "bölüm açığı (%d) ≥ mağaza açığı (%d)" % (acik_b, acik_s),
                           acik_b, acik_b, "mağaza içi fazlalar açığı maskeler"))
 
+    # ---------------------------------------------------------------- MALİYET + FAZLA MESAİ (K-21/22)
+    m = v.get("maliyet")
+    f = v.get("fazla_mesai")
+    if m and f:
+        for ek in ("25", "26"):
+            p_ = m["pos"][ek]
+            # maliyet = brüt + işveren SGK + işveren işsizlik (yönetimin bordro formülü)
+            kontrol("maliyet%s = brüt + işveren SGK + işsizlik" % ek,
+                    round(p_["maliyet"], 2),
+                    round(p_["brut"] + p_["isveren_sgk"] + p_["isveren_issizlik"], 2))
+            # POS toplamı = şube satırlarının toplamı (tek kaynak)
+            for alan in ("kisi_ay", "maliyet", "fm_saat"):
+                kontrol("POS %s%s = üç şube toplamı" % (alan, ek), round(p_[alan], 2),
+                        round(sum(m["sube"]["%s|20%s" % (sb, ek)][alan]
+                                  for sb in m["kapsam_pos"]), 2))
+            kontrol("maliyet/ciro oranı%s yeniden hesaplandı" % ek,
+                    round(p_["maliyet_ciro_orani"], 6),
+                    round(p_["maliyet"] / p_["ciro_kdvharic"], 6))
+            kontrol("kişi-ay başı maliyet%s" % ek, round(p_["kisi_ay_basi_maliyet"], 2),
+                    round(p_["maliyet"] / p_["kisi_ay"], 2))
+            # net ödenen brütten BÜYÜK olamaz (bordro tutarlılığı)
+            sonuc.append((p_["net"] < p_["brut"], "net ödenen%s < brüt ücret%s" % (ek, ek),
+                          "net<brüt", "net %.0f / brüt %.0f" % (p_["net"], p_["brut"]),
+                          "tersi olursa kolon eşlemesi kaymış demektir"))
+        # pencere iki yılda AYNI olmalı (eksik bordro ayı maliyeti %80 düşük gösterir)
+        kontrol("bordro penceresi = fazla mesai penceresi", m["pencere_ay"], f["pencere_ay"])
+        sonuc.append((1 <= m["pencere_ay"] <= 12, "bordro penceresi makul (1-12 ay)",
+                      "1-12", m["pencere_ay"], "son TAM bordro ayı"))
+        # 5 mağaza toplamı ≥ 3 POS toplamı (kapsam içerme)
+        for ek in ("25", "26"):
+            sonuc.append((m["tum"][ek]["maliyet"] >= m["pos"][ek]["maliyet"],
+                          "5 mağaza maliyet%s ≥ 3 POS maliyet%s" % (ek, ek), "≥",
+                          "%.0f vs %.0f" % (m["tum"][ek]["maliyet"], m["pos"][ek]["maliyet"]), ""))
+        # K-22 varsayım aritmetiği
+        kv, fi = f["kadro_artmasaydi"], f["fiili"]
+        kontrol("eksik kişi-ay = kişi-ay26 − kişi-ay25", kv["eksik_kisi_ay"],
+                fi["kisi_ay26"] - fi["kisi_ay25"])
+        kontrol("ek FM saat = eksik kişi-ay × normal ay saati", round(kv["ek_fm_saat"], 2),
+                round(max(0, kv["eksik_kisi_ay"]) * f["ay_normal_saat"], 2))
+        kontrol("varsayım toplam FM = fiili + ek", round(kv["toplam_fm_saat"], 2),
+                round(fi["fm_saat26"] + kv["ek_fm_saat"], 2))
+        kontrol("varsayım kişi başı yıllık FM", round(kv["kisi_basi_yillik_saat"], 4),
+                round(kv["toplam_fm_saat"] / fi["kisi_ay25"] * 12.0, 4))
+        sonuc.append((kv["sinir_asimi"] == (kv["kisi_basi_yillik_saat"]
+                                            > f["yasal_yillik_sinir_saat"]),
+                      "sınır aşımı bayrağı hesapla uyumlu", "uyumlu",
+                      "%s (%.0f vs %.0f)" % (kv["sinir_asimi"], kv["kisi_basi_yillik_saat"],
+                                             f["yasal_yillik_sinir_saat"]), ""))
+        sonuc.append((fi["kisi_basi_yillik26"] <= f["yasal_yillik_sinir_saat"],
+                      "FİİLİ kişi başı yıllık FM yasal sınırın altında", "≤270",
+                      "%.0f" % fi["kisi_basi_yillik26"],
+                      "aşıyorsa sunumdaki «sınırın içindeyiz» cümlesi YANLIŞ olur"))
+
     # ---------------------------------------------------------------- KATEGORİ KAPSAMI (K-13)
     if v.get("kategori"):
         ESLES_ADLAR = ("Hazırlık Kitapları", "Kırtasiye", "Kitap", "Çocuk Kitabı",
@@ -226,6 +279,17 @@ def main(argv):
                           ("3 POS kadro", str(pos26)),
                           ("hizalı adet 2026", bin_(sum(m["adet26"] for m in v["magaza"])))):
             sonuc.append((jeton in T, "sunumda «%s» (%s) yazıyor" % (jeton, ad), jeton, jeton, ""))
+        if v.get("maliyet"):
+            for ek in ("25", "26"):
+                jet = ("%.2f" % (v["maliyet"]["pos"][ek]["maliyet_ciro_orani"] * 100)).replace(".", ",")
+                sonuc.append((jet in T, "sunumda maliyet/ciro oranı%s (%%%s) yazıyor" % (ek, jet),
+                              jet, jet, ""))
+            fm_ = v["fazla_mesai"]
+            for ad_, deg_ in (("fiili kişi başı yıllık FM", bin_(fm_["fiili"]["kisi_basi_yillik26"])),
+                              ("varsayım kişi başı yıllık FM",
+                               bin_(fm_["kadro_artmasaydi"]["kisi_basi_yillik_saat"])),
+                              ("yasal sınır", str(int(fm_["yasal_yillik_sinir_saat"])))):
+                sonuc.append((deg_ in T, "sunumda %s (%s) yazıyor" % (ad_, deg_), deg_, deg_, ""))
         bayat = str(n["toplam"]["toplam_kesim26"] - n["toplam"]["norm_toplam"]) + " kişi"
         sonuc.append((bayat not in T,
                       "sunumda BAYAT norm farkı «%s» YOK" % bayat, "yok", "yok",

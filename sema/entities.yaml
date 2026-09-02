@@ -234,6 +234,21 @@ entities:
     confidence: 0.9
     last_verified: "2026-07-02"
     evidence: "2026-07-02 — MCP zirve sql_query: describe perbilgi + Gorevi/Grupkodu/Masrafmerkezi/Subeadi dağılım + Personeldurumu kardinalite."
+  BKM_GENEL.dbo.vw_PuanBil:
+    tip: view
+    key: [Personelno, Yil, Ayindex, Fsk, Puantajno, Bt, Isskk, Iisk, Netu, Au, Sim, Vem,
+          fm1, fm2, fm3, fmtutar1, fmtutar2, fmtutar3, Ucretsekli, Tahakkuksekli, Kanunno]
+    grain: "BORDRO satiri — kisi x ay (Yil + Ayindex). Ham tablo `dbo.puanbil` (27,6K satir)."
+    note: "TARIHSEL personel maliyetinin TEK kaynagi. `vw_PersonelDepartman.Ucret` CARI ve NET orandir -> gecmis ay maliyeti icin KULLANILMAZ (ucret_kurali). Kolon anlamlari (kullanicinin kendi bordro kontrol raporundan teyitli): **Bt=Brut Toplam · Isskk=Isveren SGK hissesi · Iisk=Isveren issizlik payi · Netu=Net odenen · Au=aylik brut ucret · Sim=sigorta matrahi · Vem=gelir vergisi matrahi · Sk/Isk=ISCI kesintileri · Sskindirim=isveren SGK istisnasi (tesvik) · fm1/fm2/fm3=fazla mesai SAAT · fmtutar1..3=fazla mesai TUTAR · Kanunno='14857' engelli tesviki**."
+    maliyet_formulu: "PERSONEL MALIYETI (brut isveren) = `Bt + Isskk + Iisk` — yonetimin kendi formulu (D:\\Belgelerim\\sql\\PERSONEL BORDRO KONTROL v2+.sql son kolonu). Kidem karsiligi ve yan haklar (giyim/yemek/yol) BU FORMULDE YOK -> alt sinir. Olcum 2026-09-03 (Oca-Tem, uc POS magazasi): 31,2M -> 47,2M TL."
+    firma_kapsami: "⚠ `vw_PuanBil.Personelno` FIRMA SONEKLI string ('1108-BKM') -> vw_PersonelDepartman ile DOGRUDAN join edilir ve UC TUZEL KISILIGI birden kapsar. Ham `dbo.puanbil.Personelno` INT'tir ve yalniz BKM_GENEL'dir (firma-arasi numara cakismasi tuzagi orada gecerli). Join `ON p.Personelno = b.Personelno` 1:1 olculdu (satir = kisi-ay, fan-out YOK; 2026-09-03: 5 magaza Oca-Tem 2025=1054, 2026=1143 satir)."
+    bordro_gecikmesi: "⚠⚠ PENCERE TUZAGI: cari ayin bordrosu KOSMADAN once o ay kismi gorunur -> maliyet %80+ eksik cikar. Olculen vaka 2026-09-03: Agustos-2026 = 31 kisi, Temmuz-2026 = 256 kisi. Kural: kiyas penceresi SON TAM BORDRO AYINA kadar alinir; tespit = o yilin en yuksek ay kisi sayisinin %60 altina dusen ilk ay. Iki yil AYNI pencerede kiyaslanir."
+    sube_atfi_kisiti: "Sube kirilimi vw_PersonelDepartman'in BUGUNKU `AltLokasyon`'una gore yapilir (bordro ayindaki sube DEGIL — view snapshot). Toplamlar dogru, sube dagilimi yer degistiren personelde kayar."
+    kvkk: "Kisi bazli ucret/maliyet OZEL nitelikli degil ama kisisel veridir -> rapora yalniz sube/kapsam duzeyinde TOPLULASTIRILMIS girer (ik-danisman SKILL §2)."
+    confidence: 0.9
+    last_verified: "2026-09-03"
+    ttl_days: 365
+    evidence: "2026-09-03 canli MCP zirve — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql blok 1-2. Kolon anlamlari kullanicinin PERSONEL BORDRO KONTROL v2+.sql dosyasindaki Turkce kolon adlariyla eslesti (Isskk='Isv.SGK Hissesi', Bt='Brut Toplam', fm1='1.Fzl.M.(s)')."
   BKM_GENEL.dbo.vw_PersonelDepartman:
     tip: view
     key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Kadro, Igt, Ict, IstenCikisKodu, Ucret, TahakkukSekli, Banka, Iban]
