@@ -198,17 +198,21 @@ def circ(sl, x, y, d, bg, icon):
                           Inches(x + (d - ip) / 2), Inches(y + (d - ip) / 2), Inches(ip), Inches(ip))
 
 
-def card(sl, x, y, w, h, top=None):
-    """Beyaz kart + (opsiyonel) renkli vurgu seridi.
+def card(sl, x, y, w, h, top=None, ikon=None):
+    """KART: KARE kenarli beyaz kutu + SOL dikey vurgu cubugu (+ opsiyonel ikon).
 
-    ⚠ Yerlesim dersi (02.09.2026): serit kartla AYNI x/y'de ve kare koseli ciziliyordu; kart
-    yuvarlak koseli oldugu icin seridin kare uclari kosenin disina tasiyor ve serit kartin
-    USTUNDE ayri bir cizgi gibi duruyordu ("kutular cizginin altina giriyor"). Cozum: serit
-    yatayda kose yaricapi kadar (0.09) ice alinir ve 0.03 asagi indirilir -> karta yapisik durur.
+    ⚠ Tasarim gecmisi (02.09.2026): once yuvarlak kart + UST yatay serit denendi. Serit kare
+    koseli oldugu icin yuvarlak kosenin disina tasti; ice alinca da kartin ustunde ayri bir
+    cizgi gibi durdu ("kutular cizginin altina giriyor"). ÇOZUM: kart KARE kenar (rad=False),
+    vurgu SOL dikeyde ve kartla tam ayni yukseklikte -> kose uyumsuzlugu MATEMATIKSEL OLARAK
+    imkansiz. Yeni kart eklerken bu deseni bozma.
     """
-    rrect(sl, x, y, w, h, WHITE, RGBColor(0xE0, 0xE0, 0xE0))
+    rrect(sl, x, y, w, h, WHITE, RGBColor(0xDC, 0xDC, 0xDC), rad=False)
     if top:
-        rrect(sl, x + 0.09, y + 0.03, w - 0.18, 0.06, top, rad=False)
+        rrect(sl, x, y, 0.075, h, top, rad=False)
+    if ikon:
+        sl.shapes.add_picture(os.path.join(ICOR, ikon + ".png"),
+                              Inches(x + w - 0.52), Inches(y + 0.18), Inches(0.3), Inches(0.3))
 
 
 def sig(sl):
@@ -241,7 +245,7 @@ def dipnot(sl, metin):
     tb(sl, 2.1, 6.2, 10.45, 0.62, [(metin, 8, False, MGREY)], sp=1.05)
 
 
-def kpi(sl, x, y, w, etiket, deger, alt, renk=RED, buyuk=34):
+def kpi(sl, x, y, w, etiket, deger, alt, renk=RED, buyuk=34, ikon=None):
     """KPI kutusu.
 
     ⚠ Yerlesim dersi (02.09.2026): etiket 2 satira sardiginda (uzun etiket, ör. "KADRO · UC POS
@@ -249,10 +253,10 @@ def kpi(sl, x, y, w, etiket, deger, alt, renk=RED, buyuk=34):
     artirildi, kutu 1.75 -> 2.0 buyudu, etiket puntosu 10 -> 9. Etiketi kisa tut (<= 28 karakter):
     ikinci satir icin yer var ama tercih tek satir.
     """
-    card(sl, x, y, w, 2.0, renk)
-    tb(sl, x + 0.22, y + 0.18, w - 0.38, 0.42, [(etiket, 9, True, GREY)], sp=1.05)
-    tb(sl, x + 0.22, y + 0.66, w - 0.38, 0.72, [(deger, buyuk, True, renk)])
-    tb(sl, x + 0.22, y + 1.44, w - 0.38, 0.5, [(alt, 10, False, GREY)], sp=1.05)
+    card(sl, x, y, w, 2.0, renk, ikon=ikon)
+    tb(sl, x + 0.28, y + 0.18, w - 0.95, 0.42, [(etiket, 9, True, GREY)], sp=1.05)
+    tb(sl, x + 0.28, y + 0.66, w - 0.45, 0.72, [(deger, buyuk, True, renk)])
+    tb(sl, x + 0.28, y + 1.44, w - 0.45, 0.5, [(alt, 10, False, GREY)], sp=1.05)
 
 
 def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2026", yuzde_etiket=False):
@@ -288,7 +292,7 @@ ag = [("users", "Kadro gelişimi", "Taban 30.06 · sezon içi hareket · sezonlu
       ("alert-triangle", "İyileştirme alanı", "Yeni alınan personelin ilk iki haftada kalma oranı.")]
 for i, (ic, h, d) in enumerate(ag):
     x = 0.6 + (i % 3) * 4.15; y = 1.5 + (i // 3) * 2.15
-    card(s, x, y, 3.9, 1.95, SET[i % len(SET)]); circ(s, x + 0.25, y + 0.22, 0.58, RED, ic)
+    card(s, x, y, 3.9, 1.95, RED); circ(s, x + 0.25, y + 0.22, 0.58, RED, ic)
     tb(s, x + 0.25, y + 0.9, 3.4, 0.4, [(h, 14, True, CHAR)])
     tb(s, x + 0.25, y + 1.28, 3.45, 0.6, [(d, 11, False, GREY)])
 sig(s)
@@ -296,13 +300,14 @@ sig(s)
 # ================================================================= 3 TEK SAYFA OZET
 s = add("Yalnızca Başlık"); setph(s, 0, "Yönetici Özeti")
 kpi(s, 0.6, 1.5, 2.9, "TABAN FARKI · 30.06", "%+d" % taban_fark,
-    "kadrolu %d → %d kişi" % (k5["kadrolu_taban25"], k5["kadrolu_taban26"]))
+    "kadrolu %d → %d kişi" % (k5["kadrolu_taban25"], k5["kadrolu_taban26"]), ikon="users")
 kpi(s, 3.65, 1.5, 2.9, "SEZON İÇİ KADROLU", "%+d" % sezon_ici_26,
-    "%d → %d · geçen yıl %+d" % (k5["kadrolu_taban26"], k5["kadrolu_kesim26"], sezon_ici_25))
+    "%d → %d · geçen yıl %+d" % (k5["kadrolu_taban26"], k5["kadrolu_kesim26"], sezon_ici_25),
+    ikon="users")
 kpi(s, 6.7, 1.5, 2.9, "ÜRÜN ADEDİ", yzd(d_adet),
-    "%s → %s adet" % (bin(adet25), bin(adet26)), YESIL, 30)
+    "%s → %s adet" % (bin(adet25), bin(adet26)), YESIL, 30, ikon="package")
 kpi(s, 9.75, 1.5, 2.9, "KİŞİ BAŞI ÜRÜN", yzd(d_kb),
-    "%s → %s adet" % (bin(kb25), bin(kb26)), YESIL, 30)
+    "%s → %s adet" % (bin(kb25), bin(kb26)), YESIL, 30, ikon="zap")
 
 rrect(s, 0.6, 3.75, 12.05, 0.95, LGREY, RED, lw=1.5)
 tb(s, 0.9, 3.75, 11.5, 0.95,
@@ -405,11 +410,12 @@ sig(s)
 
 # ================================================================= 8 IS HACMI
 s = add("Yalnızca Başlık"); setph(s, 0, "Dönem İş Hacmi")
-kpi(s, 0.6, 1.5, 3.9, "ELLEÇLENEN ÜRÜN", yzd(d_adet), "%s → %s adet" % (bin(adet25), bin(adet26)), YESIL, 32)
+kpi(s, 0.6, 1.5, 3.9, "ELLEÇLENEN ÜRÜN", yzd(d_adet), "%s → %s adet" % (bin(adet25), bin(adet26)),
+    YESIL, 32, ikon="package")
 kpi(s, 4.68, 1.5, 3.9, "CİRO · KDV DAHİL", yzd(d_ciro),
-    "%s → %s milyon TL" % (bin(kd25 / 1e6, 1), bin(kd26 / 1e6, 1)), YESIL, 32)
+    "%s → %s milyon TL" % (bin(kd25 / 1e6, 1), bin(kd26 / 1e6, 1)), YESIL, 32, ikon="layers")
 kpi(s, 8.75, 1.5, 3.9, "KADRO · 3 MAĞAZA", yzd(d_kadro),
-    "%d → %d kişi (sezonluk dahil)" % (kadro25, kadro26), MGREY, 32)
+    "%d → %d kişi (sezonluk dahil)" % (kadro25, kadro26), MGREY, 32, ikon="users")
 
 cift_bar(s, 0.6, 3.5, 6.1, 2.15, ["Ürün adedi (bin)", "Ciro (milyon TL)", "Kadro (kişi)"],
          (adet25 / 1000, kd25 / 1e6, kadro25), (adet26 / 1000, kd26 / 1e6, kadro26))
@@ -682,11 +688,13 @@ if ky:
     ay_adet_d = ky["y26_agu_tam"]["adet"] / ky["y25_agu_tam"]["adet"] - 1
 
     kpi(s, 0.6, 1.5, 3.9, "AĞUSTOS · GERÇEK", yzd(ay_adet_d),
-        "%s → %s adet" % (bin(ky["y25_agu_tam"]["adet"]), bin(ky["y26_agu_tam"]["adet"])), MGREY, 30)
+        "%s → %s adet" % (bin(ky["y25_agu_tam"]["adet"]), bin(ky["y26_agu_tam"]["adet"])),
+        MGREY, 30, ikon="workflow")
     kpi(s, 4.68, 1.5, 3.9, "AĞUSTOS · KAYMASIZ", bin(ky["agustos_kaymasiz_tahmin"]["adet"]),
-        "adet tahmini · %s M TL" % bin(ky["agustos_kaymasiz_tahmin"]["ciro"] / 1e6, 1), DRED, 26)
+        "adet tahmini · %s M TL" % bin(ky["agustos_kaymasiz_tahmin"]["ciro"] / 1e6, 1), DRED, 26,
+        ikon="rocket")
     kpi(s, 8.75, 1.5, 3.9, "EYLÜL'E KAYAN", bin(ky["eylule_kayan"]["adet"]),
-        "adet · %s M TL" % bin(ky["eylule_kayan"]["ciro"] / 1e6, 1), DRED, 26)
+        "adet · %s M TL" % bin(ky["eylule_kayan"]["ciro"] / 1e6, 1), DRED, 26, ikon="workflow")
 
     cd = CategoryChartData(); cd.categories = ["Ağustos (adet, bin)"]
     cd.add_series("2025 gerçekleşen", (ky["y25_agu_tam"]["adet"] / 1000,))
@@ -739,7 +747,7 @@ itiraz = [
 ]
 y = 1.45
 for i, (bas, cev) in enumerate(itiraz):
-    card(s, 0.6, y, 12.05, 1.08, SET[i % 2])
+    card(s, 0.6, y, 12.05, 1.08, RED)
     s.shapes.add_picture(os.path.join(ICOR, "circle-check.png"), Inches(0.85), Inches(y + 0.17),
                          Inches(0.3), Inches(0.3))
     tb(s, 1.28, y + 0.1, 11.0, 0.36, [(bas, 13, True, DRED)])
