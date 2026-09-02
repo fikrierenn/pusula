@@ -833,37 +833,55 @@ if nrm and nrm.get("bolum"):
     s = add("Yalnızca Başlık"); setph(s, 0, "Norm Açığı — Bölüm Bazında")
     bl = nrm["bolum"]
     acik_bolum = nrm["acik_bolum_toplam"]
-    acik_sube = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
+    ayr_b = nrm.get("ayrik", {})
+    acik_sube = sum(max(0, r["norm"] - (r["kadrolu_kesim26"]
+                                        - ayr_b.get(r["sube"], {}).get("etkinlik", 0)
+                                        - ayr_b.get(r["sube"], {}).get("engelli", 0)))
+                    for r in nrm["sube"])
 
-    satir = [["Bölüm", "Norm", "Kadrolu 31.08", "Açık", "Fazla", "Sezonluk 31.08"]]
-    for r in bl:
+    satir = [["Bölüm", "Norm", "Operasyonel" + chr(10) + "kadrolu", "Engelli" + chr(10) + "(norm dışı)",
+              "Açık", "Fazla", "Sezonluk" + chr(10) + "31.08"]]
+    bl_norm = [r for r in bl if not r.get("norm_disi")]
+    for r in bl_norm:
         satir.append([tr_title(r["bolum"]), str(r["norm"]), str(r["kadrolu26"]),
+                      str(r["engelli26"]) if r["engelli26"] else "—",
                       str(r["acik"]) if r["acik"] else "—",
                       str(r["fazla"]) if r["fazla"] else "—",
                       str(r["sezonluk26"]) if r["sezonluk26"] else "—"])
-    satir.append(["TOPLAM", str(sum(r["norm"] for r in bl)), str(sum(r["kadrolu26"] for r in bl)),
+    satir.append(["TOPLAM", str(sum(r["norm"] for r in bl_norm)),
+                  str(sum(r["kadrolu26"] for r in bl_norm)),
+                  str(sum(r["engelli26"] for r in bl_norm)),
                   str(acik_bolum), str(nrm["fazla_bolum_toplam"]),
-                  str(sum(r["sezonluk26"] for r in bl))])
-    yuk = min(4.35, 0.30 * len(satir))
-    t = s.shapes.add_table(len(satir), 6, Inches(0.6), Inches(1.5), Inches(7.9), Inches(yuk)).table
-    for i, gen in enumerate((2.15, 0.95, 1.35, 0.9, 0.9, 1.35)):
+                  str(sum(r["sezonluk26"] for r in bl_norm))])
+    for r in bl:
+        if r.get("norm_disi"):
+            satir.append([tr_title(r["bolum"]) + " (norm dışı)", "—", str(r["kadrolu26"]), "—", "—",
+                          "—", str(r["sezonluk26"]) if r["sezonluk26"] else "—"])
+    t = s.shapes.add_table(len(satir), 7, Inches(0.6), Inches(1.5), Inches(7.9),
+                           Inches(0.34 + 0.2 * (len(satir) - 1))).table
+    for i, gen in enumerate((1.85, 0.8, 1.25, 1.05, 0.75, 0.75, 1.05)):
         t.columns[i].width = Inches(gen)
+    t.rows[0].height = Inches(0.34)
+    for r_ in list(t.rows)[1:]:
+        r_.height = Inches(0.2)
     for r, row in enumerate(satir):
         for c, val in enumerate(row):
             cell = t.cell(r, c); cell.text = val
-            son_satir = (r == len(satir) - 1)
+            son_satir = (satir[r][0] == "TOPLAM")
             for para in cell.text_frame.paragraphs:
                 para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
                 for run in para.runs:
-                    run.font.size = Pt(8.5 if r == 0 else 9.5)
+                    run.font.size = Pt(7.5 if r == 0 else 9)
                     run.font.name = "Calibri"
-                    run.font.bold = (r == 0 or son_satir or c == 3)
-                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 3 else INK)
+                    run.font.bold = (r == 0 or son_satir or c == 4)
+                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 4 else INK)
             cell.fill.solid()
+            norm_disi_satir = (r == len(satir) - 1 and "norm dışı" in satir[r][0])
             cell.fill.fore_color.rgb = RED if r == 0 else (
-                LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)))
+                RGBColor(0xFF, 0xF6, 0xE6) if norm_disi_satir else
+                (LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA))))
 
-    en_buyuk = [r for r in bl if r["acik"]][:4]
+    en_buyuk = [r for r in bl if r["acik"] and not r.get("norm_disi")][:4]
     card(s, 8.7, 1.5, 3.95, 2.15, DRED, ikon="alert-triangle")
     tb(s, 8.95, 1.62, 3.0, 0.32, [("EN BÜYÜK AÇIKLAR", 10, True, GREY)])
     tb(s, 8.95, 1.98, 3.5, 1.6,
@@ -877,11 +895,13 @@ if nrm and nrm.get("bolum"):
          "fazlasının başka bölümün açığını maskelemesinden gelir. Gerçek ihtiyaç bölüm bazında "
          "okunur." % (acik_bolum, acik_sube), 10, False, INK)], sp=1.12)
 
-    dipnot(s, "* Kapsam: norm tablosundaki dört mağaza (Şura yok) · Norm %s tarihli · ETKİNLİK zaten "
-              "ayrı bölüm satırı (normda 0) · ⚠ ENGELLİ bu tabloda düşülmedi: bölüm dağılımı "
-              "ölçülmemiştir, bu yüzden ilgili bölümlerin açığı toplamda 3 kişiye kadar daha büyük "
-              "olabilir · Mağaza toplamı ve operasyonel kıyas için 'Norm Kadro — Mağaza Detayı' "
-              "slaytına bakılır." % nrm["tarih"])
+    dipnot(s, "* Norm = engelli DIŞINDAKİ personel (yönetim kararı) — engelli bölüm bazında da "
+              "DÜŞÜLDÜ: %s · ETKİNLİK normda tanımlı olmadığı için norm dışı satır olarak en altta "
+              "· Kapsam: norm tablosundaki dört mağaza (Şura yok) · Norm %s tarihli · Gerçek sayılar "
+              "31.08 as-of."
+           % (" · ".join("%s %d" % (tr_title(b), k) for b, k in
+                         sorted(nrm.get("engelli_bolum", {}).items(), key=lambda x: -x[1])) or "yok",
+              nrm["tarih"]))
     sig(s)
 
 # ================================================================= SEZONLUK ALIM ZAMANLAMASI

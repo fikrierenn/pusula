@@ -630,6 +630,26 @@ def cek(env, kisi=False):
                              "toplam_kesim26": m["kadrolu_kesim26"] + m["sezonluk_kesim26"]})
         # BOLUM bazinda norm vs gercek (yalniz norm tablosundaki magazalar)
         norm_subeler = set(norm_sube)
+        # ⚠ KARAR: engelli norm DISI -> bolum bazinda da dusulur. Bolum dagilimi canli olculur.
+        zc.execute("""
+            SELECT x.bolum, SUM(x.eng)
+            FROM (
+                SELECT COALESCE(v.Departman, N'(tanımsız)') AS bolum,
+                       CASE WHEN EXISTS (SELECT 1 FROM dbo.perbilgi p
+                                          WHERE p.Personelno = CASE WHEN CHARINDEX('-', v.Personelno) > 1
+                                                     AND ISNUMERIC(LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) = 1
+                                                THEN CONVERT(int, LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) END
+                                            AND v.Personelno LIKE '%-BKM'
+                                            AND (LTRIM(RTRIM(CAST(p.Kanun AS nvarchar(20)))) = '14857'
+                                              OR LTRIM(RTRIM(CAST(p.Ozurlulukkodu AS nvarchar(10)))) = 'E'))
+                            THEN 1 ELSE 0 END AS eng
+                FROM dbo.vw_PersonelDepartman v
+                WHERE v.AltLokasyon IN (?, ?, ?, ?)
+                  AND COALESCE(v.Kadro,'') <> 'SEZONLUK'
+                  AND v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?)
+            ) x
+            GROUP BY x.bolum""", *(list(norm_subeler) + ["%d0831" % CARI, "%d0831" % CARI]))
+        eng_bolum = {b: int(k) for b, k in zc.fetchall() if k}
         ger_bolum, sez_bolum = {}, {}
         for r in veri["magaza_bolum"]:
             if r["sube"] in norm_subeler:
@@ -638,10 +658,13 @@ def cek(env, kisi=False):
         bolum_kars = []
         for b in sorted(set(norm_bolum) | set(ger_bolum),
                         key=lambda x: -max(0, norm_bolum.get(x, 0) - ger_bolum.get(x, 0))):
-            nm, gr, sz = norm_bolum.get(b, 0), ger_bolum.get(b, 0), sez_bolum.get(b, 0)
-            if not (nm or gr or sz):
+            nm, gr0, sz = norm_bolum.get(b, 0), ger_bolum.get(b, 0), sez_bolum.get(b, 0)
+            if not (nm or gr0 or sz):
                 continue
-            bolum_kars.append({"bolum": b, "norm": nm, "kadrolu26": gr,
+            eng = eng_bolum.get(b, 0)
+            gr = gr0 - eng                      # engelli norm disi -> operasyonel kadrolu
+            bolum_kars.append({"bolum": b, "norm": nm, "kadrolu26": gr, "kayit_kadrolu26": gr0,
+                               "engelli26": eng, "norm_disi": (b == "ETKİNLİK"),
                                "acik": max(0, nm - gr), "fazla": max(0, gr - nm), "sezonluk26": sz})
         veri["norm"] = {
             "tarih": nd["meta"]["tarih"], "kaynak_dosya": norm_dosya[-1].name,
@@ -650,8 +673,9 @@ def cek(env, kisi=False):
             "bolum": bolum_kars,
             # ⚠ Bolum bazinda acik toplami, magaza bazindan BUYUK olur: magaza icinde bir bolumun
             #   fazlasi baska bolumun acigini maskeler (net -8, magaza-acik 11, bolum-acik 15).
-            "acik_bolum_toplam": sum(r["acik"] for r in bolum_kars),
-            "fazla_bolum_toplam": sum(r["fazla"] for r in bolum_kars),
+            "acik_bolum_toplam": sum(r["acik"] for r in bolum_kars if not r["norm_disi"]),
+            "fazla_bolum_toplam": sum(r["fazla"] for r in bolum_kars if not r["norm_disi"]),
+            "engelli_bolum": eng_bolum,
             "toplam": {"norm": sum(r["norm"] for r in satirlar),
                        "norm_sezonluk": sum(r["norm_sezonluk"] for r in satirlar),
                        "norm_toplam": sum(r["norm_toplam"] for r in satirlar),
