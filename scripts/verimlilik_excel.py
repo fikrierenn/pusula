@@ -204,6 +204,27 @@ def cek(env, kisi=False):
         ek = int(yil) % 100
         d["adet%d" % ek] = float(adet)
         d["ciro%d" % ek] = float(ciro)
+    # 3b-2) ayni kategoriler icin OCAK-AGUSTOS kumulatif (kullanici: "01.01-31.08 arasini da yapsak")
+    print("DerinSIS: kategori büyümesi (Ocak-Ağustos)...", flush=True)
+    cur.execute("""
+        SELECT COALESCE(kat.Kategori3, N'(tanımsız)') AS kategori, YEAR(bs.eTarihS) AS yil,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS ciro
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND YEAR(bs.eTarihS) IN (?, ?)
+          AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
+        GROUP BY COALESCE(kat.Kategori3, N'(tanımsız)'), YEAR(bs.eTarihS)""", ONCEKI, CARI)
+    for k_, yil, adet, ciro in cur.fetchall():
+        d = kt.setdefault(k_, {"kategori": k_})
+        ek = int(yil) % 100
+        d["oa_adet%d" % ek] = float(adet)
+        d["oa_ciro%d" % ek] = float(ciro)
+
     # iki yili birden olan ve anlamli buyuklukteki kategoriler (adet>=2000) — kuyruk gurultusu haric
     veri["kategori"] = sorted(
         [d for d in kt.values()
@@ -1073,11 +1094,14 @@ def sayfa_kategori(wb, veri):
     }
     kadro_delta = {b["bolum"]: b["kadrolu26"] - b["kadrolu25"] for b in veri["bolum"]}
 
-    kolonlar = [("Kategori", 20, None), ("İlgili bölüm", 20, None),
-                ("Adet 2025", 13, ADET), ("Adet 2026", 13, ADET), ("Adet Δ", 10, YUZDE),
-                ("Ciro 2025 (M ₺)", 14, ADET1), ("Ciro 2026 (M ₺)", 14, ADET1), ("Ciro Δ", 10, YUZDE),
-                ("Bölüm kadro Δ", 12, "+0;-0;0")]
-    ws.cell(1, 1, "Kategori büyümesi ve o kategoriye bakan bölümün kadro değişimi").font = Font(bold=True, size=12)
+    kolonlar = [("Kategori", 19, None), ("İlgili bölüm", 18, None),
+                ("Adet 2025", 12, ADET), ("Adet 2026", 12, ADET), ("Adet Δ", 9, YUZDE),
+                ("Ciro 2025 (M ₺)", 13, ADET1), ("Ciro 2026 (M ₺)", 13, ADET1), ("Ciro Δ", 9, YUZDE),
+                ("Oca-Ağu adet 2025", 14, ADET), ("Oca-Ağu adet 2026", 14, ADET), ("Oca-Ağu adet Δ", 12, YUZDE),
+                ("Oca-Ağu ciro Δ", 12, YUZDE),
+                ("Bölüm kadro Δ", 11, "+0;-0;0")]
+    ws.cell(1, 1, "Kategori büyümesi (okul-hizalı pencere VE Ocak-Ağustos) + o kategoriye bakan bölümün "
+                  "kadro değişimi").font = Font(bold=True, size=12)
     _basliklar(ws, kolonlar, satir=3)
 
     s = 4
@@ -1093,8 +1117,21 @@ def sayfa_kategori(wb, veri):
         for kol, f in ((5, "=D%d/C%d-1" % (s, s)), (8, "=G%d/F%d-1" % (s, s))):
             c = ws.cell(s, kol, f); c.number_format = YUZDE; c.border = KENAR
             c.font = Font(bold=True)
+        for kol, v_ in ((9, k.get("oa_adet25")), (10, k.get("oa_adet26"))):
+            c = ws.cell(s, kol, v_ if v_ is not None else "—")
+            c.number_format = ADET
+            c.border = KENAR
+        for kol, f in ((11, "=IF(OR(I%d=\"—\",J%d=\"—\"),\"\",J%d/I%d-1)" % (s, s, s, s)),
+                       (12, "=IF(OR(I%d=\"—\",J%d=\"—\"),\"\",%s)" % (s, s, "0"))):
+            c = ws.cell(s, kol, f)
+            c.number_format = YUZDE
+            c.border = KENAR
+        if k.get("oa_ciro25"):
+            c = ws.cell(s, 12, (k["oa_ciro26"] / k["oa_ciro25"]) - 1)
+            c.number_format = YUZDE
+            c.border = KENAR
         kd = kadro_delta.get(bolum)
-        c = ws.cell(s, 9, kd if kd is not None else "—")
+        c = ws.cell(s, 13, kd if kd is not None else "—")
         c.number_format = "+0;-0;0"
         c.border = KENAR
         if kd:
@@ -1105,16 +1142,18 @@ def sayfa_kategori(wb, veri):
     ws.cell(s, 1, "TOPLAM").font = Font(bold=True)
     ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
     ws.cell(s, 2).fill = GRI; ws.cell(s, 2).border = KENAR
-    for kol in (3, 4, 6, 7):
+    for kol in (3, 4, 6, 7, 9, 10):
         c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
-        c.number_format = ADET if kol in (3, 4) else ADET1
+        c.number_format = ADET if kol in (3, 4, 9, 10) else ADET1
         c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
-    for kol, f in ((5, "=D%d/C%d-1" % (s, s)), (8, "=G%d/F%d-1" % (s, s))):
+    for kol, f in ((5, "=D%d/C%d-1" % (s, s)), (8, "=G%d/F%d-1" % (s, s)),
+                   (11, "=J%d/I%d-1" % (s, s))):
         c = ws.cell(s, kol, f); c.number_format = YUZDE; c.border = KENAR
         c.fill = GRI; c.font = Font(bold=True)
 
     s += 2
     _notlar(ws, [
+        "IKI PENCERE: sol blok OKUL-HIZALI pencere (sezon kiyasi), sag blok OCAK-AGUSTOS kumulatif (yil geneli).",
         "ESLESME: kategori (urun) -> o urune bakan reyon (bolum). Kadro Δ o BOLUMUN kadrolu degisimidir.",
         "OKUNACAK: kadro artisi en hizli buyuyen kategorilere gitti (Hazirlik Kitaplari, Kirtasiye, Akademi);",
         "   en yavas buyuyen kategoride (Cocuk Kitabi) kadro AZALTILDI. Yani alim rastgele degil.",

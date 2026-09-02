@@ -358,7 +358,8 @@ basliklar = ["Mağaza",
              "Kadrolu 30.06\n2025", "Kadrolu 30.06\n2026",
              "Kadrolu 31.08\n2025", "Kadrolu 31.08\n2026",
              "Sezon içi\n2025", "Sezon içi\n2026",
-             "Sezonluk 31.08\n2025", "Sezonluk 31.08\n2026"]
+             "Sezonluk 31.08\n2025", "Sezonluk 31.08\n2026",
+             "GENEL TOPLAM" + chr(10) + "31.08 · 2025", "GENEL TOPLAM" + chr(10) + "31.08 · 2026"]
 satirlar = [basliklar]
 for m in v["magaza_kadro"]:
     satirlar.append([tr_title(m["sube"]),
@@ -366,14 +367,17 @@ for m in v["magaza_kadro"]:
                      str(m["kadrolu_kesim25"]), str(m["kadrolu_kesim26"]),
                      "%+d" % (m["kadrolu_kesim25"] - m["kadrolu_taban25"]),
                      "%+d" % (m["kadrolu_kesim26"] - m["kadrolu_taban26"]),
-                     str(m["sezonluk_kesim25"]), str(m["sezonluk_kesim26"])])
+                     str(m["sezonluk_kesim25"]), str(m["sezonluk_kesim26"]),
+                     str(m["kadrolu_kesim25"] + m["sezonluk_kesim25"]),
+                     str(m["kadrolu_kesim26"] + m["sezonluk_kesim26"])])
 satirlar.append(["TOPLAM",
                  str(k5["kadrolu_taban25"]), str(k5["kadrolu_taban26"]),
                  str(k5["kadrolu_kesim25"]), str(k5["kadrolu_kesim26"]),
                  "%+d" % sezon_ici_25, "%+d" % sezon_ici_26,
-                 str(k5["sezonluk_kesim25"]), str(k5["sezonluk_kesim26"])])
-t = s.shapes.add_table(len(satirlar), 9, Inches(0.6), Inches(1.55), Inches(12.05), Inches(3.3)).table
-for w, gen in zip(range(9), (2.05, 1.3, 1.3, 1.3, 1.3, 1.1, 1.1, 1.3, 1.3)):
+                 str(k5["sezonluk_kesim25"]), str(k5["sezonluk_kesim26"]),
+                 str(k5["toplam_kesim25"]), str(k5["toplam_kesim26"])])
+t = s.shapes.add_table(len(satirlar), 11, Inches(0.6), Inches(1.55), Inches(12.05), Inches(3.3)).table
+for w, gen in zip(range(11), (1.55, 1.1, 1.1, 1.1, 1.1, 0.92, 0.92, 1.1, 1.1, 1.03, 1.03)):
     t.columns[w].width = Inches(gen)
 t.rows[0].height = Inches(0.55)
 for r, row in enumerate(satirlar):
@@ -383,13 +387,19 @@ for r, row in enumerate(satirlar):
         for para in cell.text_frame.paragraphs:
             para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
             for run in para.runs:
-                run.font.size = Pt(9.5 if r == 0 else 11)
+                run.font.size = Pt(8.5 if r == 0 else 10.5)
                 run.font.name = "Calibri"
-                run.font.bold = (r == 0 or son_satir or c in (5, 6))
-                run.font.color.rgb = WHITE if r == 0 else (DRED if c in (5, 6) else INK)
+                run.font.bold = (r == 0 or son_satir or c in (5, 6, 9, 10))
+                run.font.color.rgb = WHITE if r == 0 else (DRED if c in (5, 6, 9, 10) else INK)
         cell.fill.solid()
-        cell.fill.fore_color.rgb = RED if r == 0 else (
-            LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)))
+        if r == 0:
+            cell.fill.fore_color.rgb = RED
+        elif son_satir:
+            cell.fill.fore_color.rgb = LGREY
+        elif c in (9, 10):
+            cell.fill.fore_color.rgb = RGBColor(0xFD, 0xF2, 0xF3)   # genel toplam kolonu vurgusu
+        else:
+            cell.fill.fore_color.rgb = WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)
 pos_kadrolu = {y_: sum(m["kadrolu_kesim%d" % (y_ % 100)] for m in v["magaza_kadro"]
                        if m["sube"] in POS_SUBE) for y_ in (2025, 2026)}
 pos_sezonluk = {y_: sum(m["sezonluk_kesim%d" % (y_ % 100)] for m in v["magaza_kadro"]
@@ -632,17 +642,25 @@ kadro_delta = {b["bolum"]: b["kadrolu26"] - b["kadrolu25"] for b in v["bolum"]}
 kat_veri = [k for k in v["kategori"] if k["kategori"] in ESLES]
 kat_veri.sort(key=lambda k: -kadro_delta.get(ESLES[k["kategori"]], 0))
 
-satir = [["Kategori", "Bakan bölüm", "Ürün adedi 2025 → 2026", "Adet Δ", "Ciro Δ", "Bölüm kadro Δ"]]
+NL = chr(10)
+satir = [["Kategori", "Bakan bölüm", "Ürün adedi 2025 → 2026",
+          "SEZON" + NL + "adet Δ", "SEZON" + NL + "ciro Δ",
+          "OCA-AĞU" + NL + "adet Δ", "OCA-AĞU" + NL + "ciro Δ",
+          "Bölüm" + NL + "kadro Δ"]]
 for k in kat_veri:
     b = ESLES[k["kategori"]]
+    oa_adet = yzd(k["oa_adet26"] / k["oa_adet25"] - 1) if k.get("oa_adet25") else "—"
+    oa_ciro = yzd(k["oa_ciro26"] / k["oa_ciro25"] - 1) if k.get("oa_ciro25") else "—"
     satir.append([k["kategori"], tr_title(b),
                   "%s → %s" % (bin(k["adet25"]), bin(k["adet26"])),
                   yzd(k["adet26"] / k["adet25"] - 1),
                   yzd(k["ciro26"] / k["ciro25"] - 1),
+                  oa_adet, oa_ciro,
                   "%+d kişi" % kadro_delta.get(b, 0)])
-t = s.shapes.add_table(len(satir), 6, Inches(0.6), Inches(1.5), Inches(12.05), Inches(2.6)).table
-for i, gen in enumerate((2.6, 2.2, 2.9, 1.5, 1.5, 1.35)):
+t = s.shapes.add_table(len(satir), 8, Inches(0.6), Inches(1.5), Inches(12.05), Inches(2.7)).table
+for i, gen in enumerate((2.15, 1.75, 2.35, 1.2, 1.15, 1.25, 1.15, 1.05)):
     t.columns[i].width = Inches(gen)
+t.rows[0].height = Inches(0.5)
 for r, row in enumerate(satir):
     for c, val in enumerate(row):
         cell = t.cell(r, c); cell.text = val
@@ -659,8 +677,8 @@ kats3 = [k["kategori"] for k in kat_veri]
 # tek seri: adet buyumesi (kadro Δ tabloda — ayni grafikte olcek farki cubuklari yok ediyordu)
 cd = CategoryChartData(); cd.categories = kats3
 cd.add_series("ürün adedi Δ%", tuple((k["adet26"] / k["adet25"] - 1) * 100 for k in kat_veri))
-ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(4.44),
-                        Inches(7.4), Inches(1.56), cd).chart
+ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(4.62),
+                        Inches(7.4), Inches(1.42), cd).chart
 ch.has_title = False; ch.has_legend = False
 ch.font.size = Pt(9); ch.font.name = "Calibri"
 ch.plots[0].gap_width = 70; ch.plots[0].has_data_labels = True
@@ -669,15 +687,15 @@ ch.plots[0].data_labels.number_format_is_linked = False
 ch.plots[0].data_labels.number_format = '0"%"'
 ch.plots[0].data_labels.font.size = Pt(8.5)
 ch.series[0].format.fill.solid(); ch.series[0].format.fill.fore_color.rgb = RED
-tb(s, 0.6, 4.16, 7.4, 0.26, [("Ürün adedi büyümesi (%) — kategori bazında", 10, True, GREY)])
+tb(s, 0.6, 4.34, 7.4, 0.26, [("Ürün adedi büyümesi (%) — kategori bazında", 10, True, GREY)])
 
-rrect(s, 8.2, 4.4, 4.45, 1.7, LGREY, RED, lw=1.5)
-tb(s, 8.45, 4.5, 4.0, 1.5,
+rrect(s, 8.2, 4.42, 4.45, 1.62, LGREY, RED, lw=1.5)
+tb(s, 8.45, 4.5, 4.0, 1.48,
    [("Değerlendirme", 13.5, True, DRED),
-    ("Kadro artışı, ürün adedi en hızlı artan kategorilere yönlendirilmiştir. Artışın en düşük "
-     "olduğu kategoride (Çocuk Kitabı) kadro azaltılmıştır.", 11.5, False, INK)], sp=1.15)
-dipnot(s, DIP_POS)
-sig(s)
+    ("Kadro artışı, ürün adedi en hızlı artan kategorilere yönlendirilmiştir. SEZON kolonları "
+     "okul-hizalı pencereyi, OCA-AĞU kolonları yılın tamamını (01.01–31.08) gösterir; sıralama "
+     "iki pencerede de aynıdır.", 10.5, False, INK)], sp=1.15)
+dipnot(s, DIP_POS + " · OCA-AĞU kolonları: 01.01 – 31.08 kümülatif (her iki yıl)")
 
 # ================================================================= TAKVIM KAYMASI
 ky = v.get("kayma")
