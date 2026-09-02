@@ -259,7 +259,8 @@ def kpi(sl, x, y, w, etiket, deger, alt, renk=RED, buyuk=34, ikon=None):
     tb(sl, x + 0.28, y + 1.44, w - 0.45, 0.5, [(alt, 10, False, GREY)], sp=1.05)
 
 
-def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2026", yuzde_etiket=False):
+def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2026",
+             yuzde_etiket=False, sifirdan=False):
     cd = CategoryChartData(); cd.categories = kategoriler
     cd.add_series(etiket25, s25); cd.add_series(etiket26, s26)
     ch = sl.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(x), Inches(y),
@@ -273,6 +274,10 @@ def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2
     pl.data_labels.font.size = Pt(9)
     ch.series[0].format.fill.solid(); ch.series[0].format.fill.fore_color.rgb = MGREY
     ch.series[1].format.fill.solid(); ch.series[1].format.fill.fore_color.rgb = RED
+    if sifirdan:
+        # ⚠ KESIK EKSEN YASAK: kadro grafiginde eksen 125'ten basliyordu, 139-153 farki
+        # olcusuz buyuk gorunuyordu. Patron sunumunda "eksen kesik" itirazi acik hedef.
+        ch.value_axis.minimum_scale = 0
     return ch
 
 
@@ -342,7 +347,7 @@ for i, (h, deger, alt, col) in enumerate(akis):
 
 cift_bar(s, 0.6, 3.7, 6.1, 2.05, ["Taban 30.06", "Kesim 31.08"],
          (k5["kadrolu_taban25"], k5["kadrolu_kesim25"]),
-         (k5["kadrolu_taban26"], k5["kadrolu_kesim26"]))
+         (k5["kadrolu_taban26"], k5["kadrolu_kesim26"]), sifirdan=True)
 rrect(s, 7.0, 3.8, 5.65, 1.75, LGREY, RED, lw=1.5)
 tb(s, 7.25, 3.92, 5.2, 1.55,
    [("Sezon döneminde kadro artışı yoktur.", 15, True, DRED),
@@ -745,6 +750,63 @@ if ky:
               yzd(h["adet"])))
     sig(s)
 
+# ================================================================= SEZONLUK ALIM ZAMANLAMASI
+al = v.get("sezonluk_alim")
+ay2 = v.get("agustos_yarim")
+if al and ay2:
+    s = add("Yalnızca Başlık"); setph(s, 0, "Sezonluk Alım Zamanlaması")
+    a25, a26 = al[str(ONCEKI)], al[str(CARI)]
+    gun_fark = a26["ort_yil_gunu"] - a25["ort_yil_gunu"]
+
+    kpi(s, 0.6, 1.5, 3.9, "ORTALAMA ALIM GÜNÜ",
+        (("%.1f" % gun_fark).replace(".", ",") + " gün geç") if gun_fark > 0
+        else (("%.1f" % abs(gun_fark)).replace(".", ",") + " gün erken"),
+        "takvim ölçüsü · %d. → %d. gün" % (round(a25["ort_yil_gunu"]), round(a26["ort_yil_gunu"])),
+        MGREY, 22, ikon="workflow")
+    kpi(s, 4.68, 1.5, 3.9, "TEMMUZ VE ÖNCESİ ALIM", "%d → %d" % (a25["temmuz_ve_oncesi"], a26["temmuz_ve_oncesi"]),
+        "gerçek erken alım azaldı", DRED, 30, ikon="users")
+    kpi(s, 8.75, 1.5, 3.9, "1–14 AĞUSTOS İŞ HACMİ",
+        yzd(ay2["1"]["adet26"] / ay2["1"]["adet25"] - 1),
+        "%s → %s adet" % (bin(ay2["1"]["adet25"]), bin(ay2["1"]["adet26"])), DRED, 30, ikon="package")
+
+    satir = [["Ölçü", "%d" % ONCEKI, "%d" % CARI, "Yorum"],
+             ["Ortalama alım günü (takvim)", "%d. gün" % round(a25["ort_yil_gunu"]),
+              "%d. gün" % round(a26["ort_yil_gunu"]),
+              "2026 alımı ortalama %s gün DAHA GEÇ" % ("%.1f" % gun_fark).replace(".", ",")],
+             ["Temmuz ve öncesi alınan", "%d kişi" % a25["temmuz_ve_oncesi"],
+              "%d kişi" % a26["temmuz_ve_oncesi"], "erken alım azaldı"],
+             ["Açılıştan 45+ gün önce alınan", "%d kişi" % a25["gun45_oncesi"],
+              "%d kişi" % a26["gun45_oncesi"], "çok erken alım azaldı"],
+             ["1–14 Ağustos alınan", "%d kişi" % a25["agustos_1_14"], "%d kişi" % a26["agustos_1_14"],
+              "artış bu iki haftada"],
+             ["1–14 Ağustos ürün adedi", bin(ay2["1"]["adet25"]), bin(ay2["1"]["adet26"]),
+              "iş %s büyüdü — alım işi takip etti" % yzd(ay2["1"]["adet26"] / ay2["1"]["adet25"] - 1)],
+             ["15–31 Ağustos ürün adedi", bin(ay2["2"]["adet25"]), bin(ay2["2"]["adet26"]),
+              "%s — dalga Eylül'e kaydı" % yzd(ay2["2"]["adet26"] / ay2["2"]["adet25"] - 1)],
+             ["31.08'de çalışan sezonluk", "%d kişi" % k5["sezonluk_kesim25"],
+              "%d kişi" % k5["sezonluk_kesim26"], "kesimde 3 kişi DAHA AZ"]]
+    t = s.shapes.add_table(len(satir), 4, Inches(0.6), Inches(3.75), Inches(12.05), Inches(2.3)).table
+    for i, gen in enumerate((3.6, 1.9, 1.9, 4.65)):
+        t.columns[i].width = Inches(gen)
+    for r, row in enumerate(satir):
+        for c, val in enumerate(row):
+            cell = t.cell(r, c); cell.text = val
+            for para in cell.text_frame.paragraphs:
+                para.alignment = PP_ALIGN.LEFT if c in (0, 3) else PP_ALIGN.CENTER
+                for run in para.runs:
+                    run.font.size = Pt(9 if r == 0 else 10)
+                    run.font.name = "Calibri"
+                    run.font.bold = (r == 0 or c == 2)
+                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 3 else INK)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = RED if r == 0 else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA))
+
+    dipnot(s, "* Kapsam: beş mağaza (%s) · Kohortlar okul açılışına göre AYNI ofsette kesildi "
+              "(T−12: 27.08.2025 ve 02.09.2026) · İş hacmi üç POS mağazası · ⚠ \"açılıştan kaç gün önce\" "
+              "ölçüsü açılış 6 gün kaydığı için 2026'yı mekanik olarak erken gösterir, takvim ölçüsü esastır."
+           % BES_ADLARI)
+    sig(s)
+
 # ================================================================= 13 ITIRAZLAR
 s = add("Yalnızca Başlık"); setph(s, 0, "Yöntem ve Açıklamalar")
 itiraz = [
@@ -759,18 +821,27 @@ itiraz = [
     ("Kasa sistemi değişti, karşılaştırma geçerli mi?",
      "Bu yüzden ölçüm POS'tan değil ERP'den (DerinSIS) alındı — iki yılda da aynı kaynak, aynı belge tipi. "
      "Temmuz 2025 kasa geçişi ölçüye girmiyor."),
+    ("Sezonluk personel erken mi alındı?",
+     "Hayır: takvim ölçüsünde 2026 alımı ortalama 2,5 gün DAHA GEÇ; Temmuz ve öncesi alım 6 kişiden "
+     "2'ye indi. Artış 1–14 Ağustos'ta ve o iki haftada ürün adedi +%25,1 büyüdü — alım işi takip etti."),
     ("Ağustos ayında ivme düşüşü var mı?",
      "Takvim etkisi: okullar 2025'te 8 Eylül, 2026'da 14 Eylül açıldı — sezon 6 gün geriye kaydı. "
      "Açılışa hizalanınca haftalık büyüme %65–79 bandında düz seyrediyor."),
 ]
-y = 1.45
+# kart yuksekligi kart SAYISINA gore otomatik: alt sinir y6.00 (dipnot/logo bandi serbest kalsin)
+ust, alt_sinir = 1.45, 6.00
+adim = (alt_sinir - ust) / len(itiraz)
+kh = adim - 0.10
+punto_bas = 12.5 if len(itiraz) <= 4 else 11.5
+punto_cev = 11 if len(itiraz) <= 4 else 9.5
+y = ust
 for i, (bas, cev) in enumerate(itiraz):
-    card(s, 0.6, y, 12.05, 1.08, RED)
-    s.shapes.add_picture(os.path.join(ICOR, "circle-check.png"), Inches(0.85), Inches(y + 0.17),
-                         Inches(0.3), Inches(0.3))
-    tb(s, 1.28, y + 0.1, 11.0, 0.36, [(bas, 13, True, DRED)])
-    tb(s, 1.28, y + 0.45, 11.0, 0.58, [(cev, 11, False, INK)], sp=1.08)
-    y += 1.18
+    card(s, 0.6, y, 12.05, kh, RED)
+    s.shapes.add_picture(os.path.join(ICOR, "circle-check.png"), Inches(0.85), Inches(y + 0.14),
+                         Inches(0.28), Inches(0.28))
+    tb(s, 1.25, y + 0.07, 11.0, 0.32, [(bas, punto_bas, True, DRED)])
+    tb(s, 1.25, y + 0.38, 11.0, kh - 0.42, [(cev, punto_cev, False, INK)], sp=1.06)
+    y += adim
 dipnot(s, DIP_OCA_AGU + " (kurumsal/mağaza kıyası) · hizalı dönem: %s" % DONEM_POS)
 sig(s)
 
@@ -801,8 +872,9 @@ sig(s)
 # ================================================================= 15 KAPANIS
 s = add("Başlık Slaydı")
 setph(s, 0, "Sonuç")
-setph(s, 1, "Sezon dönemi kadrolu %+d · ürün adedi %s · personel başına iş %s"
-            % (sezon_ici_26, yzd(d_adet), yzd(d_kb)))
+setph(s, 1, "Kadrolu %s · ürün adedi %s · personel başına iş %s"
+            % (("−%d" % abs(sezon_ici_26)) if sezon_ici_26 < 0 else "+%d" % sezon_ici_26,
+               yzd(d_adet), yzd(d_kb)))
 
 pr.save(OUT)
 print("Yazildi: %s (%d slayt)" % (OUT, len(pr.slides._sldIdLst)))

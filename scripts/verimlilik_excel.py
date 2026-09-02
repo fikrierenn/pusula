@@ -323,6 +323,30 @@ def cek(env, kisi=False):
                        "son tam gün %s." % (g_adet * 100, g_ciro * 100, son_tam.strftime("%d.%m.%Y")))
     veri["kayma"] = kayma
 
+
+    # 3f) AGUSTOS YARIM-AY is hacmi — sezonluk alimin 1-14 Agustos'a kaymasinin gerekcesi
+    print("DerinSIS: Ağustos yarım-ay iş hacmi...", flush=True)
+    cur.execute("""
+        SELECT YEAR(bs.eTarihS) AS yil,
+               CASE WHEN DAY(bs.eTarihS) <= 14 THEN 1 ELSE 2 END AS yarim,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS ciro
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND MONTH(bs.eTarihS) = 8
+          AND YEAR(bs.eTarihS) IN (?, ?)
+        GROUP BY YEAR(bs.eTarihS), CASE WHEN DAY(bs.eTarihS) <= 14 THEN 1 ELSE 2 END""",
+                ONCEKI, CARI)
+    yarim = {"1": {}, "2": {}}
+    for yil, y_, adet, ciro in cur.fetchall():
+        yarim[str(int(y_))]["adet%d" % (int(yil) % 100)] = float(adet)
+        yarim[str(int(y_))]["ciro%d" % (int(yil) % 100)] = float(ciro)
+    veri["agustos_yarim"] = yarim
+
     erp.close()
 
 
@@ -504,6 +528,37 @@ def cek(env, kisi=False):
              "aktif25": int(a25), "aktif26": int(a26), "kidem_gun": int(kg or 0)}
             for ad, sube, bol, unv, kad, igt, ict, a25, a26, kg in zc.fetchall()]
         print("  %d kişi" % len(veri["personel"]), flush=True)
+
+
+    # 3e) SEZONLUK ALIM ZAMANLAMASI — "erken aldiniz" itirazinin testi
+    # Kohortlar okul acilisina gore AYNI ofsette kesilir (T-12): 2025 -> 27.08, 2026 -> 02.09.
+    # Iki olcu birlikte verilir:
+    #   (a) TAKVIM olcusu  = ortalama alim gunu (yilin kacinci gunu) -> takvim olarak erken mi?
+    #   (b) ACILIS olcusu  = acilistan kac gun once -> ⚠ acilis 6 gun kaydigi icin bu olcu
+    #       2026'yi mekanik olarak 6 gun "erken" gosterir; tek basina kullanilamaz.
+    print("Zirve: sezonluk alım zamanlaması...", flush=True)
+    alim = {}
+    for yil, kesim_ofset in ((ONCEKI, 12), (CARI, 12)):
+        acilis = OKUL_ACILIS[yil]
+        zc.execute("""
+            SELECT COUNT(*),
+                   AVG(CAST(DATEPART(DAYOFYEAR, v.Igt) AS float)),
+                   AVG(CAST(DATEDIFF(DAY, v.Igt, ?) AS float)),
+                   SUM(CASE WHEN MONTH(v.Igt) <= 7 THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN MONTH(v.Igt) = 8 AND DAY(v.Igt) <= 14 THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN DATEDIFF(DAY, v.Igt, ?) > 45 THEN 1 ELSE 0 END)
+            FROM dbo.vw_PersonelDepartman v
+            WHERE v.Lokasyon LIKE 'MA%' AND v.Kadro = 'SEZONLUK'
+              AND v.Igt >= ? AND v.Igt <= DATEADD(DAY, -?, ?)""",
+                   acilis, acilis, "%d0601" % yil, kesim_ofset, acilis)
+        n, ort_gun, ort_once, temmuz, agu1_14, cok_erken = zc.fetchone()
+        alim[str(yil)] = {"kohort": int(n or 0),
+                          "ort_yil_gunu": float(ort_gun or 0),
+                          "ort_acilistan_once_gun": float(ort_once or 0),
+                          "temmuz_ve_oncesi": int(temmuz or 0),
+                          "agustos_1_14": int(agu1_14 or 0),
+                          "gun45_oncesi": int(cok_erken or 0)}
+    veri["sezonluk_alim"] = alim
 
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
