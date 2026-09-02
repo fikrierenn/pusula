@@ -292,7 +292,7 @@ setph(s, 1, "Sezon 2026 · Mağazalar · kadro 30.06 ve 31.08 · iş hacmi %s �
 # EKSIK calisiliyor. Bu yuzden kapaktan hemen sonra gelir; sonraki slaytlar bu cerceveye baglanir.
 nrm0 = v.get("norm")
 if nrm0:
-    s = add("Yalnızca Başlık"); setph(s, 0, "Norma Göre Durum")
+    s = add("Yalnızca Başlık"); setph(s, 0, "Yönetici Özeti — Norma Göre Durum")
     tp0 = nrm0["toplam"]
     fark0 = tp0["toplam_kesim26"] - tp0["norm_toplam"]
 
@@ -313,83 +313,22 @@ if nrm0:
          "%d KİŞİ ALTINDADIR." % abs(fark0), 15, True, DRED)], align=PP_ALIGN.CENTER,
        anchor=MSO_ANCHOR.MIDDLE)
 
-    mini = [["Mağaza", "Norm", "Gerçek 31.08", "Norma göre"]]
-    for r in nrm0["sube"]:
-        mini.append([tr_title(r["sube"]), str(r["norm_toplam"]), str(r["toplam_kesim26"]),
-                     "%+d" % (r["toplam_kesim26"] - r["norm_toplam"])])
-    mini.append(["TOPLAM", str(tp0["norm_toplam"]), str(tp0["toplam_kesim26"]), "%+d" % fark0])
-    t = s.shapes.add_table(len(mini), 4, Inches(0.6), Inches(4.6), Inches(6.5), Inches(1.35)).table
-    for i, gen in enumerate((2.0, 1.4, 1.6, 1.5)):
-        t.columns[i].width = Inches(gen)
-    for r, row in enumerate(mini):
-        for c, val in enumerate(row):
-            cell = t.cell(r, c); cell.text = val
-            son_satir = (r == len(mini) - 1)
-            for para in cell.text_frame.paragraphs:
-                para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
-                for run in para.runs:
-                    run.font.size = Pt(8 if r == 0 else 9)
-                    run.font.name = "Calibri"
-                    run.font.bold = (r == 0 or son_satir or c == 3)
-                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 3 else INK)
-            cell.fill.solid()
-            cell.fill.fore_color.rgb = RED if r == 0 else (
-                LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)))
-
-    card(s, 7.4, 4.6, 5.25, 1.35, RED, ikon="package")
-    tb(s, 7.65, 4.72, 4.2, 0.3, [("AYNI DÖNEMDE İŞ HACMİ", 9.5, True, GREY)])
-    tb(s, 7.65, 5.08, 4.5, 0.72,
-       [("ürün adedi %s · ciro %s" % (yzd(d_adet), yzd(d_ciro)), 14, True, DRED)])
+    card(s, 0.6, 4.52, 12.05, 1.22, RED, ikon="package")
+    tb(s, 0.95, 4.64, 6.0, 0.3, [("AYNI DÖNEMDE İŞ HACMİ · ÜÇ POS MAĞAZASI", 9.5, True, GREY)])
+    tb(s, 0.95, 4.98, 11.2, 0.68,
+       [("ürün adedi %s (%s → %s) · ciro %s — eksik kadroyla üretildi"
+         % (yzd(d_adet), bin(adet25), bin(adet26), yzd(d_ciro)), 14, True, DRED)])
+    tb(s, 0.6, 5.82, 12.05, 0.26,
+       [("Kadro farkı sezon ÖNCESİNDE oluştu (taban 30.06: %d → %d, %+d) · sezon içinde kadrolu %+d · "
+         "personel başına iş %s · mağaza ve grup kırılımı detay slaytlarında."
+         % (k5["kadrolu_taban25"], k5["kadrolu_taban26"], taban_fark, sezon_ici_26, yzd(d_kb)),
+         9.5, False, GREY)])
 
     dipnot(s, "* Norm: BKMKİTAP Mağaza Kadro ve Sezon Takip Tablosu, %s (kadrolu norm departman "
               "bazında, sezonluk norm mağaza toplamı; engelli kadro dahil) · Kapsam: dört mağaza — "
               "Şura norm tablosunda yok · Gerçek sayılar 31.08 as-of · İş hacmi üç POS mağazası."
            % nrm0["tarih"])
     sig(s)
-
-# ================================================================= 2 GUNDEM
-s = add("Yalnızca Başlık"); setph(s, 0, "Kapsam ve İçerik")
-ag = [("alert-triangle", "Norma göre durum", "Norm 217 · gerçek 195 → 22 kişi eksik."),
-      ("users", "Kadro gelişimi", "Taban 30.06 · sezon içi hareket · sezonluk kadro."),
-      ("package", "İş hacmi gelişimi", "Elleçlenen ürün adedi ve ciro, aynı dönemde."),
-      ("zap", "Personel başına iş", "Kadro büyümesiyle iş büyümesinin karşılaştırması."),
-      ("layers", "Kadro dağılımı", "Bölüm ve mağaza bazında artışın dağılımı."),
-      ("shield-check", "Yöntem ve açıklamalar", "Enflasyon · kurumsal kanal · sistem geçişi · takvim."),
-      ("alert-triangle", "İyileştirme alanı", "Yeni alınan personelin ilk iki haftada kalma oranı.")]
-ag = ag[:6]   # ızgara 2x3 — fazlası taşar
-for i, (ic, h, d) in enumerate(ag):
-    x = 0.6 + (i % 3) * 4.15; y = 1.5 + (i // 3) * 2.15
-    card(s, x, y, 3.9, 1.95, RED); circ(s, x + 0.25, y + 0.22, 0.58, RED, ic)
-    tb(s, x + 0.25, y + 0.9, 3.4, 0.4, [(h, 14, True, CHAR)])
-    tb(s, x + 0.25, y + 1.28, 3.45, 0.6, [(d, 11, False, GREY)])
-sig(s)
-
-# ================================================================= 3 TEK SAYFA OZET
-s = add("Yalnızca Başlık"); setph(s, 0, "Yönetici Özeti")
-kpi(s, 0.6, 1.5, 2.9, "TABAN FARKI · 30.06", "%+d" % taban_fark,
-    "kadrolu %d → %d kişi" % (k5["kadrolu_taban25"], k5["kadrolu_taban26"]), ikon="users")
-kpi(s, 3.65, 1.5, 2.9, "SEZON İÇİ KADROLU", "%+d" % sezon_ici_26,
-    "%d → %d · geçen yıl %+d" % (k5["kadrolu_taban26"], k5["kadrolu_kesim26"], sezon_ici_25),
-    ikon="users")
-kpi(s, 6.7, 1.5, 2.9, "ÜRÜN ADEDİ", yzd(d_adet),
-    "%s → %s adet" % (bin(adet25), bin(adet26)), YESIL, 30, ikon="package")
-kpi(s, 9.75, 1.5, 2.9, "KİŞİ BAŞI ÜRÜN", yzd(d_kb),
-    "%s → %s adet" % (bin(kb25), bin(kb26)), YESIL, 30, ikon="zap")
-
-rrect(s, 0.6, 3.75, 12.05, 0.95, LGREY, RED, lw=1.5)
-tb(s, 0.9, 3.75, 11.5, 0.95,
-   [("Kadro farkı sezon öncesinde oluşmuştur; sezon döneminde kadro azalırken iş hacmi %s artmıştır."
-     % yzd(d_adet).replace("+", ""), 15, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
-
-card(s, 0.6, 4.85, 5.9, 1.1, MGREY)
-tb(s, 0.85, 4.95, 5.4, 0.3, [("KADRO · ÜÇ POS MAĞAZASI (SEZONLUK DAHİL)", 10, True, GREY)])
-tb(s, 0.85, 5.25, 5.4, 0.6, [("%d → %d kişi  (%s)" % (kadro25, kadro26, yzd(d_kadro)), 15, True, CHAR)])
-card(s, 6.75, 4.85, 5.9, 1.1, RED)
-tb(s, 7.0, 4.95, 5.4, 0.3, [("İŞ HACMİ", 10, True, GREY)])
-tb(s, 7.0, 5.25, 5.4, 0.6,
-   [("iş hacmi, kadronun %s katı oranında artmıştır" % ("%.1f" % kat).replace(".", ","), 15, True, RED)])
-dipnot(s, DIP_KARMA)
-sig(s)
 
 # ================================================================= 5 KADRO AKISI
 s = add("Yalnızca Başlık"); setph(s, 0, "Kadro Farkının Oluşum Dönemi")
@@ -598,51 +537,6 @@ tb(s, 0.9, 5.28, 11.5, 0.72,
 dipnot(s, DIP_BES)
 sig(s)
 
-# ================================================================= 12b MAGAZA x BOLUM MATRISI
-s = add("Yalnızca Başlık"); setph(s, 0, "Mağaza × Bölüm Kadro Değişimi")
-SUBE_SIRA = ["İST. YOLU", "ÖZLÜCE", "FSM", "HEYKEL", "ŞURA"]
-mb = {(r["sube"], r["bolum"]): r for r in v["magaza_bolum"]}
-def delta(sube, bolum):
-    r = mb.get((sube, bolum))
-    return None if r is None else r["kadrolu26"] - r["kadrolu25"]
-
-
-bolumler = sorted({r["bolum"] for r in v["magaza_bolum"]},
-                  key=lambda b: -sum((delta(x, b) or 0) for x in SUBE_SIRA))
-onemli = [b for b in bolumler
-          if any((delta(x, b) or 0) != 0 for x in SUBE_SIRA)
-          or b in ("MAĞAZA", "MAL KABUL", "İDARİ İŞLER")][:12]
-
-satir = [["Bölüm"] + [tr_title(x) for x in SUBE_SIRA] + ["Toplam"]]
-for b in onemli:
-    hucre = []
-    for x in SUBE_SIRA:
-        d = delta(x, b)
-        hucre.append("—" if d is None else ("%+d" % d if d else "0"))
-    satir.append([tr_title(b)] + hucre + ["%+d" % sum((delta(x, b) or 0) for x in SUBE_SIRA)])
-t = s.shapes.add_table(len(satir), 7, Inches(0.6), Inches(1.5), Inches(12.05),
-                       Inches(min(4.3, 0.32 * len(satir)))).table
-for i, gen in enumerate((3.0, 1.65, 1.5, 1.35, 1.55, 1.35, 1.65)):
-    t.columns[i].width = Inches(gen)
-for r, row in enumerate(satir):
-    for c, val in enumerate(row):
-        cell = t.cell(r, c); cell.text = val
-        son = (r == len(satir) - 1)
-        for para in cell.text_frame.paragraphs:
-            para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
-            for run in para.runs:
-                run.font.size = Pt(10.5); run.font.name = "Calibri"
-                run.font.bold = (r == 0 or c == 6 or son)
-                run.font.color.rgb = WHITE if r == 0 else (
-                    DRED if (c == 6 and r > 0 and val.startswith("+")) else INK)
-        cell.fill.solid()
-        cell.fill.fore_color.rgb = RED if r == 0 else (LGREY if son or r % 2 == 0 else WHITE)
-tb(s, 0.6, min(5.74, 1.5 + min(4.3, 0.32 * len(satir)) + 0.10), 12.05, 0.32,
-   [("'—' ilgili mağazada o bölüm yoktur · Yönetim, Mal Kabul ve İdari İşler satırları tüm "
-     "mağazalarda sıfır veya negatiftir.", 9.5, False, GREY)], sp=1.1)
-dipnot(s, DIP_BES)
-sig(s)
-
 # ================================================================= 12c MAGAZA PERFORMANS
 s = add("Yalnızca Başlık"); setph(s, 0, "Mağaza Performans Karşılaştırması")
 perf = [["Mağaza", "Kadro 31.08", "Kadro Δ", "Ürün adedi Δ", "Ciro Δ", "Adet/kişi Δ", "İş ÷ kadro"]]
@@ -820,17 +714,13 @@ if nrm:
     fark_kesim = tp["kadrolu_kesim26"] - tp["norm"]
     fark_taban = tp["kadrolu_taban26"] - tp["norm"]
 
-    kpi(s, 0.6, 1.5, 3.9, "NORM TOPLAM · KADRO+SEZON", "%d" % tp["norm_toplam"],
-        "kadrolu %d + sezonluk %d · %s" % (tp["norm"], tp["norm_sezonluk"], nrm["tarih"]),
-        MGREY, 32, ikon="users")
-    kpi(s, 4.68, 1.5, 3.9, "GERÇEK TOPLAM · 31.08", "%d" % tp["toplam_kesim26"],
-        "kadrolu %d + sezonluk %d" % (tp["kadrolu_kesim26"], tp["sezonluk_kesim26"]),
-        MGREY, 32, ikon="users")
     acik_toplam = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
     toplam_fark = tp["toplam_kesim26"] - tp["norm_toplam"]
-    kpi(s, 8.75, 1.5, 3.9, "NORMA GÖRE DURUM", "%+d kişi" % toplam_fark,
-        "toplam personel normun ALTINDA" if toplam_fark < 0 else "normun üzerinde",
-        DRED, 28, ikon="alert-triangle")
+    tb(s, 0.6, 1.5, 12.05, 0.34,
+       [("Norm %d (kadrolu %d + sezonluk %d) · gerçek %d (kadrolu %d + sezonluk %d) · fark %+d kişi — "
+         "aşağıda mağaza ve grup kırılımı."
+         % (tp["norm_toplam"], tp["norm"], tp["norm_sezonluk"], tp["toplam_kesim26"],
+            tp["kadrolu_kesim26"], tp["sezonluk_kesim26"], toplam_fark), 12, True, DRED)])
 
     NL2 = chr(10)
     ayr = nrm.get("ayrik", {})
@@ -862,7 +752,7 @@ if nrm:
                   "%+d" % (tp["sezonluk_kesim26"] - tp["norm_sezonluk"]),
                   str(tp["norm_toplam"]), str(tp["toplam_kesim26"]), "%+d" % toplam_fark])
 
-    t = s.shapes.add_table(len(satir), 10, Inches(0.6), Inches(3.55), Inches(12.05), Inches(1.78)).table
+    t = s.shapes.add_table(len(satir), 10, Inches(0.6), Inches(2.0), Inches(12.05), Inches(1.78)).table
     for i, gen in enumerate((2.35, 1.02, 1.08, 0.82, 1.05, 1.14, 0.82, 1.15, 1.25, 0.82)):
         t.columns[i].width = Inches(gen)
     t.rows[0].height = Inches(0.38)
@@ -894,11 +784,11 @@ if nrm:
 
     # ENGELLI / ETKINLIK: mağaza satirlarinin ICINDE sayilir; burada bilgi amaçli AYRI gosterilir.
     #   Engelli tespiti perbilgi'ye dayanir -> yalniz BKM_GENEL firmasinda mumkun (Heykel/Sura kor).
-    tb(s, 0.6, 5.60, 12.05, 0.22,
+    tb(s, 0.6, 4.1, 12.05, 0.22,
        [("** Engelli mağaza satırlarından düşülmedi (norm tablosu engelliyi departmanlara dağıtmış) · Heykel ve Şura'da engelli kadro YOK: 50 çalışan altı, 4857/30 yükümlülüğü doğmuyor.",
          8.5, False, GREY)])
-    rrect(s, 0.6, 5.84, 12.05, 0.3, LGREY, RED, lw=1.5)
-    tb(s, 0.9, 5.84, 11.6, 0.3,
+    rrect(s, 0.6, 4.42, 12.05, 0.5, LGREY, RED, lw=1.5)
+    tb(s, 0.9, 4.42, 11.6, 0.5,
        [("Şirketin kendi norm tablosuna göre 31 Ağustos'ta toplam personel %d kişi EKSİK "
          "(norm %d · gerçek %d): kadrolu %+d, sezonluk %+d — etkinlik hariç kadrolu açığı %+d."
          % (abs(toplam_fark), tp["norm_toplam"], tp["toplam_kesim26"],
