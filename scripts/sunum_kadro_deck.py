@@ -819,6 +819,21 @@ if nrm:
             kad_ops - tp["norm"], tp["sezonluk_kesim26"] - tp["norm_sezonluk"]),
          11, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
 
+    # KAPSAM SOZLUGU: destede uc kapsam dolasiyor; etiket dusunce rakamlar birbirini tutmuyor
+    # gorunuyor. Tutarlilik denetcisi (scripts/tutarlilik_kontrol.py) bu uc kapsami her calismada dogrular.
+    rrect(s, 0.6, 5.34, 12.05, 0.74, WHITE, RGBColor(0xDC, 0xDC, 0xDC), rad=False)
+    rrect(s, 0.6, 5.34, 0.075, 0.74, MGREY, rad=False)
+    tb(s, 0.85, 5.36, 11.6, 0.24, [("KAPSAM SÖZLÜĞÜ — bu destede üç ayrı kapsam kullanılır", 9.5, True, GREY)])
+    tb(s, 0.85, 5.58, 11.85, 0.5,
+       [(("• 3 POS mağazası (FSM · Özlüce · İst. Yolu) — iş hacminin ölçülebildiği kapsam: "
+          "kadro %d → %d" + chr(10) +
+          "• 4 norm mağazası (+ Heykel) — norm karşılaştırması: norm %d · kayıt %d · operasyonel %d"
+          + chr(10) +
+          "• 5 mağaza (+ Şura) — İK kadro raporu: kadrolu %d + sezonluk %d = %d")
+         % (sum(m["kadro25"] for m in v["magaza"]), sum(m["kadro26"] for m in v["magaza"]),
+            tp["norm_toplam"], tp["toplam_kesim26"], kad_ops + tp["sezonluk_kesim26"],
+            k5["kadrolu_kesim26"], k5["sezonluk_kesim26"], k5["toplam_kesim26"]),
+         8, False, INK)], sp=1.08)
     dipnot(s, "* Norm = ENGELLİ DIŞINDAKİ personel sayısı (yönetim kararı); etkinlik de norm dışı. "
               "Mağaza satırları operasyonel kadroyu gösterir (kadrolu − engelli − etkinlik). "
               "Engelli %d · etkinlik %d kişi ayrı satırda; en alttaki kayıt toplamı İK'nın resmi "
