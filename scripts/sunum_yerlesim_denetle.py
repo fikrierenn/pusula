@@ -34,8 +34,26 @@ def inc(v):
     return Emu(v).inches if v is not None else 0.0
 
 
+SATIR_MIN = 0.22   # PowerPoint tablo satirinin pratik minimum yuksekligi (10pt metin + kenar)
+
+
 def kutu(sh):
-    return (inc(sh.left), inc(sh.top), inc(sh.left) + inc(sh.width), inc(sh.top) + inc(sh.height))
+    """Sekil sinirlari. TABLOLARDA gercek yukseklik satir yuksekliklerinden hesaplanir.
+
+    ⚠ 02.09.2026 dersi: python-pptx'te tabloya verilen `height` yalnizca BASLANGIC degeri;
+    PowerPoint satirlari icerige gore buyutur. Bildirilen yuksekligi kullanan denetci, TOPLAM
+    satiri dipnotun uzerine binen tabloyu KACIRDI. Artik satir yuksekliklerinin toplami (veya
+    satir sayisi x SATIR_MIN, hangisi buyukse) esas alinir.
+    """
+    yuk = inc(sh.height)
+    if getattr(sh, "has_table", False):
+        try:
+            satirlar = sh.table.rows
+            toplam = sum(max(inc(r.height), SATIR_MIN) for r in satirlar)
+            yuk = max(yuk, toplam)
+        except Exception:
+            pass
+    return (inc(sh.left), inc(sh.top), inc(sh.left) + inc(sh.width), inc(sh.top) + yuk)
 
 
 def metin(sh):
