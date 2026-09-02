@@ -26,9 +26,8 @@ namespace GmDashboard.Data;
 /// • <b>Engelli ayracı</b> <c>perbilgi.Kanun='14857'</c> (4857/30 teşviki) VEYA <c>Ozurlulukkodu='E'</c>
 ///   (teşviksiz engelli izi). ALT SINIR: teşviksiz engelli güncel doldurulmuyor. KVKK m.6 özel
 ///   nitelikli → panelde yalnız ŞUBE toplamı; reyon/isim/ücret YOK.
-/// • <b>perbilgi JOIN</b>: <c>vw_PersonelDepartman.Personelno</c> ('179-BKM') string, <c>perbilgi.Personelno</c>
-///   INT → doğrudan join conversion error. Parse + <c>LIKE '%-BKM'</c> firma daraltması ZORUNLU
-///   (yoksa numara çakışması fan-out). perbilgi yalnız BKM_GENEL firmasını tutar.
+/// • <b>perbilgi EXISTS, JOIN DEĞİL</b>: LEFT JOIN kişiyi çoğaltıyordu (Özlüce 42 vs doğrusu 41 →
+///   mağaza toplamı 149 değil 150 görünüyordu). Personelno köprüsü parse + <c>LIKE '%-BKM'</c> ile.
 /// • <b>Zirve SQL 2008</b>: <c>TRY_CONVERT</c>/<c>IIF</c>/<c>STRING_AGG</c> YOK. Tarihler ISO literal
 ///   ('20260831') — Zirve bağlantısında <c>SET DATEFORMAT</c> uygulanmaz.
 /// • <b>İş hacmi</b> EncoreMerkez'den (<c>Db.OpenAsync</c>, 3-parçalı isim ZORUNLU — varsayılan katalog
@@ -37,26 +36,31 @@ namespace GmDashboard.Data;
 /// </summary>
 public sealed class KadroQueries(Db db)
 {
-    /// <summary>Engelli bayrağı (teşvikli VEYA teşviksiz iz). perbilgi LEFT JOIN ile gelir.</summary>
+    /// <summary>
+    /// Engelli bayrağı (teşvikli VEYA teşviksiz iz) — <b>EXISTS, JOIN DEĞİL</b>.
+    /// ⚠ 02.09.2026 dersi: <c>LEFT JOIN dbo.perbilgi</c> aynı personel numarasına birden çok
+    /// perbilgi satırı düştüğünde kişiyi ÇOĞALTIR (fan-out) → sayım sessizce şişer. Ölçülen vaka:
+    /// Özlüce 31.08.2026 kadrolu <b>42 görünüyordu, doğrusu 41</b> (mağaza toplamı 150 değil 149,
+    /// sezon içi hareket −3 değil −4). EXISTS bire-bir kalır: bir kişi = bir satır.
+    /// Personelno köprüsü: <c>vw_PersonelDepartman.Personelno</c> ('179-BKM') string,
+    /// <c>perbilgi.Personelno</c> INT → parse + <c>LIKE '%-BKM'</c> firma daraltması ZORUNLU.
+    /// </summary>
     private const string EngelliKosul = """
-        (LTRIM(RTRIM(CAST(p.Kanun AS nvarchar(20)))) = '14857'
-         OR LTRIM(RTRIM(CAST(p.Ozurlulukkodu AS nvarchar(10)))) = 'E')
-        """;
-
-    /// <summary>vw_PersonelDepartman → perbilgi join (parse + firma daraltması). Fan-out önlemi.</summary>
-    private const string PerbilgiJoin = """
-        LEFT JOIN dbo.perbilgi p
-               ON p.Personelno = CASE WHEN CHARINDEX('-', v.Personelno) > 1
-                                       AND ISNUMERIC(LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) = 1
-                                      THEN CONVERT(int, LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) END
-              AND v.Personelno LIKE '%-BKM'
+        EXISTS (SELECT 1
+                  FROM dbo.perbilgi p
+                 WHERE p.Personelno = CASE WHEN CHARINDEX('-', v.Personelno) > 1
+                                            AND ISNUMERIC(LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) = 1
+                                           THEN CONVERT(int, LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) END
+                   AND v.Personelno LIKE '%-BKM'
+                   AND (LTRIM(RTRIM(CAST(p.Kanun AS nvarchar(20)))) = '14857'
+                     OR LTRIM(RTRIM(CAST(p.Ozurlulukkodu AS nvarchar(10)))) = 'E'))
         """;
 
     /// <summary>
     /// As-of aktif sayım — <b>Zirve İK raporuyla (sp_PersonelKarsilastirma_Ozet) BİREBİR aynı konvansiyon</b>:
     /// <c>Ict &gt;= T</c> (çıkış tarihi kesim günü olan kişi O GÜN ÇALIŞMIŞTIR, sayılır).
     /// ⚠ <c>Ict &gt; T</c> yazılırsa kurumsal rapordan düşük çıkar (02.09.2026 mutabakat: 31.08.2026
-    /// tüm lokasyon 335 vs 330; mağazalarda kadrolu 150 vs 148). SP referanstır, sapma YASAK.
+    /// tüm lokasyon 335 vs 330; mağazalarda kadrolu 149 vs 147). SP referanstır, sapma YASAK.
     /// </summary>
     private static string AsOf(string tarih) =>
         $"v.Igt <= '{tarih}' AND (v.Ict IS NULL OR v.Ict >= '{tarih}')";
@@ -77,24 +81,26 @@ public sealed class KadroQueries(Db db)
         var kesimC = Iso(kesim);
         var magazaFiltre = yalnizMagaza ? "WHERE v.Lokasyon LIKE 'MA%'" : "";
 
+        // ⚠ Grup ifadesi TÜRETİLMİŞ TABLODA hesaplanır: EngelliKosul bir EXISTS alt-sorgusudur ve
+        // SQL Server GROUP BY listesinde alt-sorgu KABUL ETMEZ (Err 144). Dış sorgu yalnız alias'ı gruplar.
+        // Türetilmiş tablo alias'ı bilinçli olarak "v" — AsOf() ürettiği koşullar v.Igt/v.Ict'e bakar.
         var sql = $"""
-            SELECT ISNULL(v.AltLokasyon, '(tanımsız)') AS Sube,
-                   CASE WHEN v.Kadro = 'SEZONLUK' THEN 'SEZONLUK'
-                        WHEN {EngelliKosul} THEN 'ENGELLI'
-                        WHEN v.Departman = N'ETKİNLİK' THEN 'ETKINLIK'
-                        ELSE 'DIGER KADROLU' END AS Grup,
+            SELECT v.Sube, v.Grup,
                    SUM(CASE WHEN {AsOf(tabanO)} THEN 1 ELSE 0 END) AS TabanOnceki,
                    SUM(CASE WHEN {AsOf(tabanC)} THEN 1 ELSE 0 END) AS TabanCari,
                    SUM(CASE WHEN {AsOf(kesimO)} THEN 1 ELSE 0 END) AS KesimOnceki,
                    SUM(CASE WHEN {AsOf(kesimC)} THEN 1 ELSE 0 END) AS KesimCari
-            FROM dbo.vw_PersonelDepartman v
-            {PerbilgiJoin}
-            {magazaFiltre}
-            GROUP BY v.AltLokasyon,
-                     CASE WHEN v.Kadro = 'SEZONLUK' THEN 'SEZONLUK'
-                          WHEN {EngelliKosul} THEN 'ENGELLI'
-                          WHEN v.Departman = N'ETKİNLİK' THEN 'ETKINLIK'
-                          ELSE 'DIGER KADROLU' END
+            FROM (
+                SELECT ISNULL(v.AltLokasyon, '(tanımsız)') AS Sube,
+                       CASE WHEN v.Kadro = 'SEZONLUK' THEN 'SEZONLUK'
+                            WHEN {EngelliKosul} THEN 'ENGELLI'
+                            WHEN v.Departman = N'ETKİNLİK' THEN 'ETKINLIK'
+                            ELSE 'DIGER KADROLU' END AS Grup,
+                       v.Igt, v.Ict
+                FROM dbo.vw_PersonelDepartman v
+                {magazaFiltre}
+            ) v
+            GROUP BY v.Sube, v.Grup
             HAVING SUM(CASE WHEN {AsOf(kesimO)} THEN 1 ELSE 0 END)
                  + SUM(CASE WHEN {AsOf(kesimC)} THEN 1 ELSE 0 END)
                  + SUM(CASE WHEN {AsOf(tabanO)} THEN 1 ELSE 0 END)

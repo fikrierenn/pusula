@@ -16,10 +16,10 @@
       "kadro26": 61,
       "adet25": 173398.0,
       "adet26": 258168.5,
-      "kdvharic25": 20455158.429999724,
-      "kdvharic26": 40444611.77000099,
-      "kdvdahil25": 22053802.74999932,
-      "kdvdahil26": 43253793.71999836
+      "kdvharic25": 20455158.42999981,
+      "kdvharic26": 40444611.769999765,
+      "kdvdahil25": 22053802.74999852,
+      "kdvdahil26": 43253793.71999843
     },
     {
       "ad": "Özlüce",
@@ -28,10 +28,10 @@
       "kadro26": 54,
       "adet25": 230764.7,
       "adet26": 301250.05000000005,
-      "kdvharic25": 28347121.589998703,
-      "kdvharic26": 44784483.15000022,
-      "kdvdahil25": 30475719.769993685,
-      "kdvdahil26": 48017124.649997264
+      "kdvharic25": 28347121.589998823,
+      "kdvharic26": 44784483.149999455,
+      "kdvdahil25": 30475719.76999394,
+      "kdvdahil26": 48017124.64999706
     },
     {
       "ad": "FSM",
@@ -40,10 +40,10 @@
       "kadro26": 45,
       "adet25": 170555.0,
       "adet26": 215773.0,
-      "kdvharic25": 18127443.55000037,
-      "kdvharic26": 29458690.660001278,
-      "kdvdahil25": 19307906.600001127,
-      "kdvdahil26": 31330462.47999936
+      "kdvharic25": 18127443.549999885,
+      "kdvharic26": 29458690.66000078,
+      "kdvdahil25": 19307906.600000978,
+      "kdvdahil26": 31330462.479999263
     }
   ],
   "yillar": [
@@ -80,15 +80,15 @@
   "ocak_agustos": {
     "magaza": {
       "adet25": 2752385.04,
-      "kdvdahil25": 316059798.22026265,
+      "kdvdahil25": 316059798.22028106,
       "adet26": 3607308.91,
-      "kdvdahil26": 489433287.7802441
+      "kdvdahil26": 489433287.78028667
     },
     "sinav": {
       "adet25": 33584.0,
-      "kdvdahil25": 136108071.44999975,
+      "kdvdahil25": 136108071.44999987,
       "adet26": 21693.0,
-      "kdvdahil26": 105575646.11000009
+      "kdvdahil26": 105575646.11000037
     }
   },
   "kadro_5magaza": {
@@ -146,6 +146,120 @@
       "kadrolu_taban26": 10,
       "kadrolu_kesim26": 12,
       "sezonluk_kesim26": 4
+    }
+  ],
+  "bolum": [
+    {
+      "bolum": "YARDIMCI KİTAP",
+      "kadrolu25": 24,
+      "kadrolu26": 30,
+      "sezonluk25": 23,
+      "sezonluk26": 19
+    },
+    {
+      "bolum": "KIRTASİYE",
+      "kadrolu25": 22,
+      "kadrolu26": 25,
+      "sezonluk25": 25,
+      "sezonluk26": 22
+    },
+    {
+      "bolum": "KÜLTÜR",
+      "kadrolu25": 19,
+      "kadrolu26": 20,
+      "sezonluk25": 0,
+      "sezonluk26": 2
+    },
+    {
+      "bolum": "KASA",
+      "kadrolu25": 13,
+      "kadrolu26": 15,
+      "sezonluk25": 9,
+      "sezonluk26": 9
+    },
+    {
+      "bolum": "ÇOCUK",
+      "kadrolu25": 15,
+      "kadrolu26": 14,
+      "sezonluk25": 3,
+      "sezonluk26": 5
+    },
+    {
+      "bolum": "OYUNCAK",
+      "kadrolu25": 9,
+      "kadrolu26": 10,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "AKADEMİ",
+      "kadrolu25": 7,
+      "kadrolu26": 9,
+      "sezonluk25": 1,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "MAĞAZA",
+      "kadrolu25": 8,
+      "kadrolu26": 8,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "MAL KABUL",
+      "kadrolu25": 6,
+      "kadrolu26": 6,
+      "sezonluk25": 1,
+      "sezonluk26": 1
+    },
+    {
+      "bolum": "İDARİ İŞLER",
+      "kadrolu25": 6,
+      "kadrolu26": 6,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "ETKİNLİK",
+      "kadrolu25": 2,
+      "kadrolu26": 3,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "ŞURA",
+      "kadrolu25": 1,
+      "kadrolu26": 3,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "ÖN MUHASEBE",
+      "kadrolu25": 1,
+      "kadrolu26": 0,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "MUHASEBE",
+      "kadrolu25": 1,
+      "kadrolu26": 0,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "BİLGİ İŞLEM",
+      "kadrolu25": 1,
+      "kadrolu26": 0,
+      "sezonluk25": 0,
+      "sezonluk26": 0
+    },
+    {
+      "bolum": "KIYAFET",
+      "kadrolu25": 0,
+      "kadrolu26": 0,
+      "sezonluk25": 3,
+      "sezonluk26": 4
     }
   ]
 }

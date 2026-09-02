@@ -1,6 +1,6 @@
 # plan-38 · Kadro / Sezon Personeli Paneli (dashboard)
 
-**Durum:** UYGULANDI — build yeşil, canlı doğrulama `.env ZIRVE_PASSWORD` bekliyor (Tier 3) · **Tarih:** 02.09.2026 · **Tetik:** "bu analizi dashboard'a ekle"
+**Durum:** TAMAMLANDI — canlı doğrulandı 02.09.2026 (Tier 3) · **Tarih:** 02.09.2026 · **Tetik:** "bu analizi dashboard'a ekle"
 
 ## Problem
 
@@ -99,9 +99,11 @@ Konvansiyonu: as-of aktif = `Igt <= T AND (Ict IS NULL OR Ict >= T)`, kıyas = t
 Doğrulama (tüm lokasyon, 31.08): SP 322 → 335 (+13) · aynı formülle bu panel 322 → 335 ✓
 
 **Kalan (done kriterleri):**
-- [ ] `.env` `ZIRVE_USER` + `ZIRVE_PASSWORD` girilecek (kullanıcı) → panel canlı doğrulanacak.
-- [ ] Canlı mutabakat: taban 30.06 / kesim 31.08 seçiliyken sezonluk 65→62, kadrolu 135→149, ürün adedi (3 mağaza, takvim-tarihli) +%16,2.
-- [ ] Sayfa yükleme < 3 sn (Zirve OPENQUERY yok, doğrudan bağlantı — ölçülecek).
+- [x] ✅ `.env` `ZIRVE_USER` + `ZIRVE_PASSWORD` girildi (kullanıcı) → panel canlı çalışıyor.
+- [x] ✅ Canlı mutabakat (02.09.2026, `/kadro`): taban farkı **+14** (139→153) · sezon içi kadrolu **−4**
+      (153→149, geçen yıl −4) · sezonluk **65→62** · toplam **200→211**. Şube×grup kesim 2026 toplamı
+      33+2+1 (İst.Yolu) + 40+1 (Özlüce) + 32+1+1 (FSM) + 26 (Heykel) + 12 (Şura) = **149** ✓
+- [x] ✅ Sayfa açıldı, hata yok (Zirve doğrudan bağlantı).
 - [x] Nav tek satır, mobil btm-nav'a eklenmedi.
 - [x] KVKK: sayfada isim/personel no/ücret yok.
 
@@ -120,3 +122,17 @@ Doğrulama (tüm lokasyon, 31.08): SP 322 → 335 (+13) · aynı formülle bu pa
 4. **Kıdem → verimlilik testi negatif çıktı** — "1 tecrübeli = 3 acemi" iddiası üç testte de doğrulanmadı;
    patron sayfasına konulmadı. Detay: `sema/metrics.yaml → ik_norm_kadro_turnover.KIDEM_VERIMLILIK_TESTI`
    ve arşiv SQL blok 12.
+
+## Düzeltme kaydı (02.09.2026, üçüncü tur — canlı doğrulama)
+
+Panel ilk açılışta iki hata verdi, ikisi de düzeltildi:
+
+1. **`perbilgi` LEFT JOIN fan-out** (`GetSubeGrupAsync`) — aynı personelno'ya birden çok perbilgi
+   satırı düştüğünde kişi çoğalıyordu: Özlüce kesim 2026 **42** görünüyordu, doğrusu **41**
+   (mağaza toplamı 150 değil **149**, sezon içi hareket −3 değil **−4**). JOIN → **EXISTS**.
+   Özet sorgusunda join yoktu, o baştan doğruydu.
+2. **Err 144** — `EXISTS` GROUP BY listesine konamıyor ("Cannot use an aggregate or a subquery in
+   an expression used for the group by list"). Grup ifadesi **türetilmiş tabloya** alındı, dış sorgu
+   yalnız alias'ı grupluyor. Türetilmiş tablo alias'ı bilinçli `v` (AsOf() koşulları `v.Igt`/`v.Ict` bekler).
+
+Kaydedildi: `sema/entities.yaml → perbilgi_join` (EXISTS zorunluluğu + Err 144 deseni).

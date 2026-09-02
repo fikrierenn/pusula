@@ -7,7 +7,7 @@ VERIYI KENDI CEKER (elle rakam YOK):
 Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
 Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
 
-Sayfalar: Ozet · Magaza · Kadro · Yillar · Oca-Agu · Yontem
+Sayfalar: Ozet · Magaza · Kadro · Bolum · Yillar · Oca-Agu · Yontem
 Kullanim:
   python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
   python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
@@ -246,6 +246,31 @@ def cek(env):
                    SUBE[4478], SUBE[4477], SUBE[1])
         veri["yillar"].append({"yil": yil, "kadrolu": int(zc.fetchone()[0]),
                                "adet": yil_adet.get(yil, 0.0)})
+    # 6) BOLUM (departman) kirilimi — kadro nereye gitti: yonetim / kasa / mal kabul / satis reyonlari
+    print("Zirve: bölüm (departman) kırılımı...", flush=True)
+    zc.execute("""
+        SELECT COALESCE(v.Departman, N'(tanımsız)') AS departman,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kadrolu25,
+               SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kadrolu26,
+               SUM(CASE WHEN v.Kadro = 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS sezonluk25,
+               SUM(CASE WHEN v.Kadro = 'SEZONLUK' AND v.Igt <= ?
+                         AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS sezonluk26
+        FROM dbo.vw_PersonelDepartman v
+        WHERE v.Lokasyon LIKE 'MA%'
+        GROUP BY COALESCE(v.Departman, N'(tanımsız)')
+        HAVING SUM(CASE WHEN v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END)
+             + SUM(CASE WHEN v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) > 0
+        ORDER BY 3 DESC""",
+               "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI,
+               "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI,
+               "%d0831" % ONCEKI, "%d0831" % ONCEKI, "%d0831" % CARI, "%d0831" % CARI)
+    veri["bolum"] = [{"bolum": b, "kadrolu25": int(k25), "kadrolu26": int(k26),
+                      "sezonluk25": int(s25), "sezonluk26": int(s26)}
+                     for b, k25, k26, s25, s26 in zc.fetchall()]
+
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
     k5 = veri["kadro_5magaza"]
@@ -258,7 +283,14 @@ def cek(env):
             sys.exit("MUTABAKAT HATASI %s: şube toplamı %d, kapsam sayımı %d — "
                      "bir kişi yanlış kapsamda (ör. Lokasyon='GENEL MÜDÜRLÜK' ama AltLokasyon şube)."
                      % (anahtar, sube_toplam, k5[anahtar]))
-    print("Mutabakat OK: şube toplamları kapsam sayımıyla birebir.", flush=True)
+    for alan in ("kadrolu_kesim", "sezonluk_kesim"):
+        for yil in (ONCEKI, CARI):
+            ek = yil % 100
+            bolum_toplam = sum(b["%s%d" % (alan.split("_")[0], ek)] for b in veri["bolum"])
+            if bolum_toplam != k5["%s%d" % (alan, ek)]:
+                sys.exit("MUTABAKAT HATASI bölüm/%s%d: bölüm toplamı %d, kapsam sayımı %d."
+                         % (alan, ek, bolum_toplam, k5["%s%d" % (alan, ek)]))
+    print("Mutabakat OK: şube ve bölüm toplamları kapsam sayımıyla birebir.", flush=True)
 
     zrv.close()
 
@@ -615,6 +647,70 @@ def sayfa_kadro(wb, veri):
     return ws
 
 
+# ------------------------------------------------------------------ Bolum (departman)
+def sayfa_bolum(wb, veri):
+    """Kadro NEREYE gitti: yonetim / kasa / mal kabul / satis reyonlari."""
+    ws = wb.create_sheet("Bolum")
+    kolonlar = [
+        ("Bolum", 20, None),
+        ("Kadrolu 2025", 11, ADET), ("Kadrolu 2026", 11, ADET), ("Kadrolu Δ", 10, "+0;-0;0"),
+        ("Sezonluk 2025", 11, ADET), ("Sezonluk 2026", 11, ADET), ("Sezonluk Δ", 10, "+0;-0;0"),
+        ("Toplam 2025", 11, ADET), ("Toplam 2026", 11, ADET), ("Toplam Δ", 10, "+0;-0;0"),
+        ("Sezonluk payi 2026", 12, "0.0%"),
+    ]
+    ws.cell(1, 1, "Bölüm bazında kadro — 31.08 kesimi, beş mağaza").font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for b in veri["bolum"]:
+        ws.cell(s, 1, b["bolum"]).border = KENAR
+        for kol, v in ((2, b["kadrolu25"]), (3, b["kadrolu26"]),
+                       (5, b["sezonluk25"]), (6, b["sezonluk26"])):
+            c = ws.cell(s, kol, v)
+            c.number_format = ADET
+            c.border = KENAR
+        s += 1
+    son = s - 1
+
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True)
+    ws.cell(s, 1).fill = GRI
+    ws.cell(s, 1).border = KENAR
+    for kol in (2, 3, 5, 6):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = ADET
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    toplam = s
+
+    for r in list(range(ilk, son + 1)) + [toplam]:
+        dolgu = GRI if r == toplam else None
+        for kol, f in {4: "=C%d-B%d" % (r, r), 7: "=F%d-E%d" % (r, r),
+                       8: "=B%d+E%d" % (r, r), 9: "=C%d+F%d" % (r, r),
+                       10: "=I%d-H%d" % (r, r),
+                       11: "=IF(I%d=0,\"\",F%d/I%d)" % (r, r, r)}.items():
+            c = ws.cell(r, kol, f)
+            c.number_format = kolonlar[kol - 1][2]
+            c.border = KENAR
+            if dolgu:
+                c.fill = dolgu
+                c.font = Font(bold=True)
+        if r == toplam:
+            ws.cell(r, 4).fill = VURGU
+
+    s = toplam + 2
+    _notlar(ws, [
+        "OKUNACAK NOKTA: yonetim (MAGAZA departmani) ve MAL KABUL BUYUMEDI — artis satis/kasa tarafinda.",
+        "Sezonluk payi yuksek bolumler (KIRTASIYE, YARDIMCI KITAP, KIYAFET) sezon yuku tasiyan reyonlar;",
+        "   oradaki kisi artisi kalici kadro degil, Eylul sonunda tahliye edilir.",
+        "Bolum = Zirve 'Departman' alani (reyon). Bir kisi tek bolumde sayilir; toplam kapsam sayimiyla mutabik.",
+        "Devir (turnover) bolum bazinda AYRI olculdu: en bozuk COCUK %179 · IDARI ISLER %183 · KASA %160;",
+        "   MAGAZA (yonetim) %25 ve ayrilanin ortalama kidemi 4,7 yil -> yonetim katmani stabil.",
+    ], s)
+    return ws
+
+
 # ------------------------------------------------------------------ Yillar
 def sayfa_yillar(wb, veri):
     ws = wb.create_sheet("Yillar")
@@ -768,6 +864,7 @@ def main(argv):
     sayfa_ozet(wb, veri)
     sayfa_magaza(wb, veri)
     sayfa_kadro(wb, veri)
+    sayfa_bolum(wb, veri)
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
     sayfa_yontem(wb, veri)
