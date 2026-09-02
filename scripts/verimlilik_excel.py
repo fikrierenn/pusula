@@ -661,6 +661,39 @@ def cek(env, kisi=False):
                        "toplam_kesim26": sum(r["toplam_kesim26"] for r in satirlar)},
         }
 
+
+        # ENGELLI / ETKINLIK sube bazinda (kadrolu, kesim gunu) — ayri satir gosterimi icin.
+        # ⚠ Engelli tespiti perbilgi'ye dayanir -> yalniz BKM_GENEL; diger firmalarda ALT SINIR.
+        zc.execute("""
+            SELECT x.sube, SUM(x.etk) AS etkinlik, SUM(x.eng) AS engelli, SUM(x.bkm) AS bkm_genel_kisi
+            FROM (
+                SELECT v.AltLokasyon AS sube,
+                       CASE WHEN v.Departman = N'ETKİNLİK' THEN 1 ELSE 0 END AS etk,
+                       CASE WHEN EXISTS (SELECT 1 FROM dbo.perbilgi p
+                                          WHERE p.Personelno = CASE WHEN CHARINDEX('-', v.Personelno) > 1
+                                                     AND ISNUMERIC(LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) = 1
+                                                THEN CONVERT(int, LEFT(v.Personelno, CHARINDEX('-', v.Personelno) - 1)) END
+                                            AND v.Personelno LIKE '%-BKM'
+                                            AND (LTRIM(RTRIM(CAST(p.Kanun AS nvarchar(20)))) = '14857'
+                                              OR LTRIM(RTRIM(CAST(p.Ozurlulukkodu AS nvarchar(10)))) = 'E'))
+                            THEN 1 ELSE 0 END AS eng,
+                       CASE WHEN v.Firma = 'BKM_GENEL' THEN 1 ELSE 0 END AS bkm
+                FROM dbo.vw_PersonelDepartman v
+                WHERE v.Lokasyon LIKE 'MA%' AND COALESCE(v.Kadro,'') <> 'SEZONLUK'
+                  AND v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?)
+            ) x
+            GROUP BY x.sube""", "%d0831" % CARI, "%d0831" % CARI)
+        ayrik = {}
+        for sube, etk, eng, bkm in zc.fetchall():
+            ayrik[sube] = {"etkinlik": int(etk or 0), "engelli": int(eng or 0),
+                           "bkm_genel_kisi": int(bkm or 0)}
+        veri["norm"]["ayrik"] = ayrik
+        veri["norm"]["engelli_kapsam_uyarisi"] = (
+            "Engelli kadro yalnız BKM_GENEL firmasında vardır (FSM · İst. Yolu · Özlüce). Heykel "
+            "(Bursa Kültür Merkezi, 35 kişi) ve Şura (Asiye Bingölbalı, 16 kişi) ayrı tüzel "
+            "kişiliktir ve çalışan sayıları 50'nin ALTINDA olduğu için 4857/30 engelli istihdam "
+            "yükümlülüğü doğmaz — o mağazalarda engelli kadro yoktur (veri eksikliği değildir).")
+
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
     k5 = veri["kadro_5magaza"]
