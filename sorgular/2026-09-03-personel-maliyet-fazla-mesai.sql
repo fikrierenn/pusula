@@ -10,11 +10,11 @@
             raporu (D:\Belgelerim\sql\PERSONEL BORDRO KONTROL v2+.sql)
 
    BULGU — SEZON (Temmuz; Ağustos 2026 bordrosu koşmadı), üç POS mağazası:
-     kişi-ay 110 → 127 (+%15,5) · maliyet 4,4M → 6,8M ₺ (+%54,6)
+     FTE 97,1 → 112,4 (+%15,8; bordro kaydı 110 → 127) · maliyet 4,4M → 6,8M ₺ (+%54,6)
      ciro (KDV hariç) 30,7M → 53,4M ₺ (+%73,9)
      MALİYET / CİRO: %14,30 → %12,71  (−1,59 puan)
-     kadro 2025 seviyesinde kalsaydı: 17 kişi-ay eksik → +3.315 saat FM →
-     kişi başı yıllık 447 saat → 270 saatlik YASAL SINIR AŞILIR (fiili 74 sa/yıl)
+     kadro 2025 seviyesinde kalsaydı: 15,3 FTE eksik → +2.984 saat FM →
+     FTE başı yıllık 465 saat → 270 saatlik YASAL SINIR AŞILIR (fiili 84 sa/yıl)
 
    REFERANS — KÜMÜLATİF (Oca–Tem, üç POS mağazası):
      personel maliyeti 31,2M → 47,2M ₺ (+%51,5) · kişi-ay 781 → 856 (+%9,6)
@@ -31,6 +31,11 @@
       Sezon 2026 icin Agustos bordrosu kosmadigindan Temmuz ile sinirli — bu, cikti dosyalarinda
       ACIKCA yazilir. Sezon olcumu (Tem, uc POS): maliyet/ciro %14,30 -> %12,71 (-1,59 puan);
       kadro alinmasaydi FM 447 sa/yil > 270 yasal sinir.
+
+   ⚠⚠ ÖLÇÜ BİRİMİ **FTE** = SUM(Primgunu)/30 (SGK prim günü, tam ay 30). Bordro SATIRI
+      sayılırsa ay içinde 1 gün çalışan da 1 sayılır → sezonluk giriş/çıkışın yoğun olduğu
+      aylarda kadro şişer (ölçülen: 5 mağaza Ağu-2025 211 kayıt vs 168,9 FTE; üç POS
+      Tem-2026 127 kayıt vs 112,4 FTE). Kişi-başı tüm metrikler FTE'ye bölünür.
 
    ⚠ TUZAKLAR
    1) `Ucret` (vw_PersonelDepartman) NET ve CARİ orandır — geçmiş ay maliyeti
@@ -70,7 +75,8 @@ DECLARE @SonAy tinyint = 7;
 DECLARE @FmAylikSinir float = 270.0 / 12.0;   -- yıllık 270 saatin aylık hızı
 
 SELECT b.Yil, p.AltLokasyon AS Sube,
-       COUNT(*)                                                            AS KisiAy,
+       COUNT(*)                                                            AS KayitSayisi,
+       SUM(CAST(b.Primgunu AS float)) / 30.0                                AS FTE,
        SUM(b.Bt)                                                           AS Brut,
        SUM(b.Isskk)                                                        AS IsverenSgk,
        SUM(b.Iisk)                                                         AS IsverenIssizlik,
@@ -119,10 +125,10 @@ ORDER BY Yil, Ay;
 -- ---------------------------------------------------------------------------
 -- BLOK 4 — K-22 MODELİ (Python tarafında hesaplanır, burada belgelenir)
 --   (SEZON penceresinde kurulur; kümülatif rakamlar parantezde)
---   eksik_kisi_ay   = kisi_ay(2026) − kisi_ay(2025)              = 17   (kümülatif 75)
---   ek_fm_saat      = eksik_kisi_ay × 195   (45 sa/hafta × 52 / 12) = 3.315  (küm. 14.625)
---   varsayim_fm     = fiili_fm(2026) + ek_fm_saat                = 4.098  (küm. 22.253,5)
---   kisi_basi_yil   = varsayim_fm / kisi_ay(2025) × 12            = 447 sa  (küm. 342 sa)
+--   eksik_fte       = FTE(2026) − FTE(2025)                     = 15,3 (kayıt farkı 17)
+--   ek_fm_saat      = eksik_fte × 195       (45 sa/hafta × 52 / 12) = 2.984
+--   varsayim_fm     = fiili_fm(2026) + ek_fm_saat                = 3.767
+--   fte_basi_yil    = varsayim_fm / FTE(2025) × 12                = 465 sa
 --   yasal_sinir     = 270 saat/yıl/kişi  (4857 s.K. m.41)                  → AŞILIR
 --
 --   VARSAYIM: işgücü ihtiyacı kişi sayısıyla doğru orantılıdır ve eksik kapasite

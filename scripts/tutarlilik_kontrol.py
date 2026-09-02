@@ -150,17 +150,15 @@ def main(argv):
         for ek in ("25", "26"):
             yil_ = 2000 + int(ek)
             s_ = sz["pos"][ek]
-            for alan in ("kisi_ay", "maliyet", "fm_saat"):
+            for alan in ("kisi_ay", "fte", "maliyet", "fm_saat"):
                 kontrol("sezon %s%s = sezon aylarinin toplami" % (alan, ek), round(s_[alan], 2),
-                        round(sum(r[{"kisi_ay": "kisi_ay", "maliyet": "maliyet",
-                                     "fm_saat": "fm_saat"}[alan] + ek]
-                                  for r in m["ay"] if r["ay"] in sz["aylar"]), 2))
+                        round(sum(r[alan + ek] for r in m["ay"] if r["ay"] in sz["aylar"]), 2))
             kontrol("sezon maliyet/ciro orani%s yeniden hesaplandi" % ek,
                     round(s_["maliyet_ciro_orani"], 6),
                     round(s_["maliyet"] / s_["ciro_kdvharic"], 6))
         # aylik toplam = kumulatif pencere
         for ek in ("25", "26"):
-            for alan in ("kisi_ay", "maliyet", "fm_saat"):
+            for alan in ("kisi_ay", "fte", "maliyet", "fm_saat"):
                 kontrol("aylik %s%s toplami = kumulatif pencere" % (alan, ek),
                         round(m["pos"][ek][alan], 2),
                         round(sum(r[alan + ek] for r in m["ay"]), 2))
@@ -170,20 +168,29 @@ def main(argv):
                       "sezon aylari 7-8 icinde", "[7,8]", sz["aylar"], ""))
         for ek in ("25", "26"):
             p_ = m["pos"][ek]
+            # FTE = prim günü / 30 · FTE ≤ kayıt sayısı (yarım ay çalışan tam sayılmaz)
+            kontrol("FTE%s = prim günü / 30" % ek, round(p_["fte"], 4),
+                    round(p_["prim_gun"] / 30.0, 4))
+            sonuc.append((p_["fte"] <= p_["kisi_ay"] + 1e-6,
+                          "FTE%s ≤ bordro kaydı (yarım ay çalışan tam sayılmaz)" % ek,
+                          "≤", "%.1f vs %d" % (p_["fte"], p_["kisi_ay"]), ""))
+            kontrol("FTE başına maliyet%s" % ek, round(p_["fte_basi_maliyet"], 2),
+                    round(p_["maliyet"] / p_["fte"], 2))
+            sonuc.append((p_["ort_prim_gun"] <= 30.0001, "ortalama prim günü%s ≤ 30" % ek,
+                          "≤30", round(p_["ort_prim_gun"], 2), ""))
             # maliyet = brüt + işveren SGK + işveren işsizlik (yönetimin bordro formülü)
             kontrol("maliyet%s = brüt + işveren SGK + işsizlik" % ek,
                     round(p_["maliyet"], 2),
                     round(p_["brut"] + p_["isveren_sgk"] + p_["isveren_issizlik"], 2))
             # POS toplamı = şube satırlarının toplamı (tek kaynak)
-            for alan in ("kisi_ay", "maliyet", "fm_saat"):
+            for alan in ("kisi_ay", "fte", "maliyet", "fm_saat"):
                 kontrol("POS %s%s = üç şube toplamı" % (alan, ek), round(p_[alan], 2),
                         round(sum(m["sube"]["%s|20%s" % (sb, ek)][alan]
                                   for sb in m["kapsam_pos"]), 2))
             kontrol("maliyet/ciro oranı%s yeniden hesaplandı" % ek,
                     round(p_["maliyet_ciro_orani"], 6),
                     round(p_["maliyet"] / p_["ciro_kdvharic"], 6))
-            kontrol("kişi-ay başı maliyet%s" % ek, round(p_["kisi_ay_basi_maliyet"], 2),
-                    round(p_["maliyet"] / p_["kisi_ay"], 2))
+
             # net ödenen brütten BÜYÜK olamaz (bordro tutarlılığı)
             sonuc.append((p_["net"] < p_["brut"], "net ödenen%s < brüt ücret%s" % (ek, ek),
                           "net<brüt", "net %.0f / brüt %.0f" % (p_["net"], p_["brut"]),
@@ -199,14 +206,14 @@ def main(argv):
                           "%.0f vs %.0f" % (m["tum"][ek]["maliyet"], m["pos"][ek]["maliyet"]), ""))
         # K-22 varsayım aritmetiği
         kv, fi = f["kadro_artmasaydi"], f["fiili"]
-        kontrol("eksik kişi-ay = kişi-ay26 − kişi-ay25", kv["eksik_kisi_ay"],
-                fi["kisi_ay26"] - fi["kisi_ay25"])
-        kontrol("ek FM saat = eksik kişi-ay × normal ay saati", round(kv["ek_fm_saat"], 2),
-                round(max(0, kv["eksik_kisi_ay"]) * f["ay_normal_saat"], 2))
+        kontrol("eksik FTE = FTE26 − FTE25", round(kv["eksik_fte"], 4),
+                round(fi["fte26"] - fi["fte25"], 4))
+        kontrol("ek FM saat = eksik FTE × normal ay saati", round(kv["ek_fm_saat"], 2),
+                round(max(0, kv["eksik_fte"]) * f["ay_normal_saat"], 2))
         kontrol("varsayım toplam FM = fiili + ek", round(kv["toplam_fm_saat"], 2),
                 round(fi["fm_saat26"] + kv["ek_fm_saat"], 2))
-        kontrol("varsayım kişi başı yıllık FM", round(kv["kisi_basi_yillik_saat"], 4),
-                round(kv["toplam_fm_saat"] / fi["kisi_ay25"] * 12.0, 4))
+        kontrol("varsayım FTE başı yıllık FM", round(kv["kisi_basi_yillik_saat"], 4),
+                round(kv["toplam_fm_saat"] / fi["fte25"] * 12.0, 4))
         sonuc.append((kv["sinir_asimi"] == (kv["kisi_basi_yillik_saat"]
                                             > f["yasal_yillik_sinir_saat"]),
                       "sınır aşımı bayrağı hesapla uyumlu", "uyumlu",

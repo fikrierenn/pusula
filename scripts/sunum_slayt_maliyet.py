@@ -32,18 +32,21 @@ def slayt_maliyet_ve_fazla_mesai(C):
             "%s puan %s" % (("%.2f" % abs(puan)).replace(".", ","),
                             "azaldı" if puan < 0 else "arttı"),
             DRED if puan > 0 else YESIL, 22, ikon="layers")
-        kpi(s, 4.68, 1.5, 3.9, "KİŞİ-AY BAŞINA CİRO",
-            yzd(mp26["kisi_ay_basi_ciro"] / mp25["kisi_ay_basi_ciro"] - 1),
-            "%s → %s bin TL" % (bin(mp25["kisi_ay_basi_ciro"] / 1000),
-                                bin(mp26["kisi_ay_basi_ciro"] / 1000)), YESIL, 30, ikon="package")
-        kpi(s, 8.75, 1.5, 3.9, "KİŞİ-AY BAŞINA MALİYET",
-            yzd(mp26["kisi_ay_basi_maliyet"] / mp25["kisi_ay_basi_maliyet"] - 1),
-            "%s → %s bin TL (ücret artışı)" % (bin(mp25["kisi_ay_basi_maliyet"] / 1000),
-                                               bin(mp26["kisi_ay_basi_maliyet"] / 1000)),
+        kpi(s, 4.68, 1.5, 3.9, "FTE BAŞINA CİRO",
+            yzd(mp26["fte_basi_ciro"] / mp25["fte_basi_ciro"] - 1),
+            "%s → %s bin TL" % (bin(mp25["fte_basi_ciro"] / 1000),
+                                bin(mp26["fte_basi_ciro"] / 1000)), YESIL, 30, ikon="package")
+        kpi(s, 8.75, 1.5, 3.9, "FTE BAŞINA MALİYET",
+            yzd(mp26["fte_basi_maliyet"] / mp25["fte_basi_maliyet"] - 1),
+            "%s → %s bin TL (ücret artışı)" % (bin(mp25["fte_basi_maliyet"] / 1000),
+                                               bin(mp26["fte_basi_maliyet"] / 1000)),
             MGREY, 30, ikon="users")
 
         satir = [["Ölçü", "SEZON %d" % ONCEKI, "SEZON %d" % CARI, "SEZON Δ", "Yıl geneli Δ"],
-                 ["Kişi-ay (bordro)", bin(mp25["kisi_ay"]), bin(mp26["kisi_ay"]),
+                 ["FTE (tam zaman eşdeğer)", bin(mp25["fte"], 1), bin(mp26["fte"], 1),
+                  yzd(mp26["fte"] / mp25["fte"] - 1),
+                  yzd(ku26["fte"] / ku25["fte"] - 1)],
+                 ["  — bordro kaydı (bilgi)", bin(mp25["kisi_ay"]), bin(mp26["kisi_ay"]),
                   yzd(mp26["kisi_ay"] / mp25["kisi_ay"] - 1),
                   yzd(ku26["kisi_ay"] / ku25["kisi_ay"] - 1)],
                  ["Brüt ücret", "%s M TL" % bin(mp25["brut"] / 1e6, 1),
@@ -98,15 +101,16 @@ def slayt_maliyet_ve_fazla_mesai(C):
         rrect(s, 8.7, 3.6, 3.95, 2.05, LGREY, RED, lw=1.5)
         tb(s, 8.95, 3.72, 3.5, 1.9,
            [("Maliyet arttı, yükü azaldı", 12.5, True, DRED),
-            ("Personel maliyeti %s artmıştır; artışın ana kaynağı kişi başına ücret (%s). Buna karşın "
+            ("Personel maliyeti %s artmıştır; artışın ana kaynağı FTE başına ücret (%s). Buna karşın "
              "cironun içindeki personel yükü %s puan gerilemiştir: %%%s → %%%s."
              % (yzd(mp26["maliyet"] / mp25["maliyet"] - 1),
-                yzd(mp26["kisi_ay_basi_maliyet"] / mp25["kisi_ay_basi_maliyet"] - 1),
+                yzd(mp26["fte_basi_maliyet"] / mp25["fte_basi_maliyet"] - 1),
                 puan_s, o25, o26), 9.5, False, INK),
             ("Ölçüm SEZON penceresindedir; yıl geneli (%s) oranı da %s puan gerilemiştir."
              % (mal["pencere"], ("%+.2f" % puan_ku).replace(".", ",")), 9, False, MGREY)], sp=1.1)
 
-        dipnot(s, "* Kaynak: Zirve bordro (vw_PuanBil) — maliyet = brüt toplam + işveren SGK "
+        dipnot(s, "* Ölçü birimi FTE (tam zaman eşdeğer) = SGK prim günü ÷ 30 — ay içinde yarım "
+                  "çalışan tam sayılmaz · Kaynak: Zirve bordro (vw_PuanBil) — maliyet = brüt toplam + işveren SGK "
                   "hissesi + işveren işsizlik payı · ESAS DÖNEM: %s · Yıl geneli referansı: %s · %s · "
                   "Kapsam: üç POS mağazası · Ciro KDV HARİÇ ve Sınav DAHİL (o satışı da aynı mağaza "
                   "personeli yapar) · Kıdem karşılığı ve yan haklar hariç → maliyet alt sınır."
@@ -123,7 +127,8 @@ def slayt_maliyet_ve_fazla_mesai(C):
             "kişi başına (sezon hızı × 12) · yıl geneli %s sa"
             % bin(fm["kumulatif"]["kisi_basi_yillik26"]), MGREY, 26, ikon="workflow")
         kpi(s, 4.68, 1.5, 3.9, "KADRO ARTMASAYDI", "%s sa/yıl" % bin(kv["kisi_basi_yillik_saat"]),
-            "aynı iş, %d kişi-ay eksik kapasite" % kv["eksik_kisi_ay"], DRED, 26, ikon="alert-triangle")
+            "aynı iş, %s FTE eksik kapasite" % bin(kv["eksik_fte"], 1), DRED, 26,
+            ikon="alert-triangle")
         kpi(s, 8.75, 1.5, 3.9, "YASAL ÜST SINIR", "%d sa/yıl" % int(fm["yasal_yillik_sinir_saat"]),
             "4857 s.K. m.41 · kişi başına", DRED, 26, ikon="shield-check")
 
@@ -266,24 +271,25 @@ def slayt_aylik_kadro_maliyet(C):
     setph(s, 0, "Aylık Kadro ve Personel Maliyeti")
 
     son = ay[-1]
-    kpi(s, 0.6, 1.5, 3.9, "SEZON AYI KADRO",
-        "%d → %d" % (son["kisi_ay%s" % ek25], son["kisi_ay%s" % ek26]),
-        "%s kişi-ay (bordro) · %s" % (son["ad"], yzd(son["kisi_ay%s" % ek26]
-                                                     / son["kisi_ay%s" % ek25] - 1)),
-        RED, 30, ikon="users")
+    kpi(s, 0.6, 1.5, 3.9, "SEZON AYI KADRO (FTE)",
+        "%s → %s" % (bin(son["fte%s" % ek25], 1), bin(son["fte%s" % ek26], 1)),
+        "%s · %s · bordro kaydı %d → %d" % (son["ad"],
+                                            yzd(son["fte%s" % ek26] / son["fte%s" % ek25] - 1),
+                                            son["kisi_ay%s" % ek25], son["kisi_ay%s" % ek26]),
+        RED, 26, ikon="users")
     kpi(s, 4.68, 1.5, 3.9, "SEZON AYI MALİYET/CİRO",
         "%%%s → %%%s" % (("%.1f" % (son["oran%s" % ek25] * 100)).replace(".", ","),
                          ("%.1f" % (son["oran%s" % ek26] * 100)).replace(".", ",")),
         "%s ayı · %s puan" % (son["ad"],
                               ("%+.1f" % ((son["oran%s" % ek26] - son["oran%s" % ek25]) * 100))
                               .replace(".", ",")), YESIL, 24, ikon="layers")
-    art = [r for r in ay if r["kisi_ay%s" % ek26] > r["kisi_ay%s" % ek25]]
+    art = [r for r in ay if r["fte%s" % ek26] > r["fte%s" % ek25]]
     kpi(s, 8.75, 1.5, 3.9, "KADRO ARTIŞI OLAN AY", "%d / %d" % (len(art), len(ay)),
         "artış tek ayda değil, tüm aylara yayılı", MGREY, 30, ikon="workflow")
 
     cd = CategoryChartData(); cd.categories = kats
-    cd.add_series("%d kişi-ay" % ONCEKI, tuple(r["kisi_ay%s" % ek25] for r in ay))
-    cd.add_series("%d kişi-ay" % CARI, tuple(r["kisi_ay%s" % ek26] for r in ay))
+    cd.add_series("%d FTE" % ONCEKI, tuple(round(r["fte%s" % ek25], 1) for r in ay))
+    cd.add_series("%d FTE" % CARI, tuple(round(r["fte%s" % ek26], 1) for r in ay))
     ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(3.85),
                             Inches(6.0), Inches(2.15), cd).chart
     ch.has_title = False
@@ -292,11 +298,12 @@ def slayt_aylik_kadro_maliyet(C):
     ch.font.size = Pt(9); ch.font.name = "Calibri"
     ch.plots[0].gap_width = 60; ch.plots[0].has_data_labels = True
     ch.plots[0].data_labels.number_format_is_linked = False
-    ch.plots[0].data_labels.number_format = '#,##0'
+    ch.plots[0].data_labels.number_format = '#,##0.0'
     ch.plots[0].data_labels.font.size = Pt(8)
     for i, col in enumerate((MGREY, RED)):
         ch.series[i].format.fill.solid(); ch.series[i].format.fill.fore_color.rgb = col
-    tb(s, 0.6, 3.6, 6.0, 0.24, [("Kadro — aylık kişi-ay (bordro satırı)", 9.5, True, GREY)])
+    tb(s, 0.6, 3.6, 6.0, 0.24,
+       [("Kadro — aylık FTE (tam zaman eşdeğer = prim günü ÷ 30)", 9.5, True, GREY)])
 
     cd2 = CategoryChartData(); cd2.categories = kats
     cd2.add_series("%d" % ONCEKI, tuple((r["oran%s" % ek25] or 0) * 100 for r in ay))
@@ -316,9 +323,10 @@ def slayt_aylik_kadro_maliyet(C):
     tb(s, 6.75, 3.6, 5.9, 0.24,
        [("Personel maliyetinin ciro içindeki payı (%) — aylık", 9.5, True, GREY)])
 
-    dipnot(s, "* Kaynak: Zirve bordro (vw_PuanBil) aylık · ciro DerinSIS KDV hariç, Sınav dahil · "
+    dipnot(s, "* Ölçü FTE = SGK prim günü ÷ 30 (bordro kaydı sayılsaydı ay içinde 1 gün çalışan "
+              "da 1 sayılırdı) · Kaynak: Zirve bordro (vw_PuanBil) aylık · ciro DerinSIS KDV hariç, Sınav dahil · "
               "Kapsam: üç POS mağazası · * işaretli ay = sezon ayı (01.07–31.08) · %s · "
-              "Kişi-ay = o ay bordrosu koşan kişi sayısı."
+              "Bordro kaydı ve ortalama prim günü Excel «Maliyet» sayfasında."
            % ((", ".join(AY_ADLARI.get(a_, str(a_)) for a_ in sz["eksik_aylar"])
                + " bordrosu işlendiğinde tabloya eklenir") if sz["eksik_aylar"]
               else "tüm sezon ayları işlenmiş"))

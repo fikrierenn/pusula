@@ -15,10 +15,10 @@ def _maliyet_itiraz(C):
     kb_ = C.v["maliyet"]["pos"]["%d" % (CARI % 100)]
     pn_ku = (kb_["maliyet_ciro_orani"] - ka_["maliyet_ciro_orani"]) * 100
     pn = (b_["maliyet_ciro_orani"] - a_["maliyet_ciro_orani"]) * 100
-    return ("Sezonda maliyet %s artmıştır; artışın ana kaynağı kişi başına ücret (%s), kadro "
+    return ("Sezonda maliyet %s artmıştır; artışın ana kaynağı FTE başına ücret (%s), kadro "
             "artışı değil. Cironun içindeki personel yükü %s puan %s: %%%s → %%%s"
             % (yzd(b_["maliyet"] / a_["maliyet"] - 1),
-               yzd(b_["kisi_ay_basi_maliyet"] / a_["kisi_ay_basi_maliyet"] - 1),
+               yzd(b_["fte_basi_maliyet"] / a_["fte_basi_maliyet"] - 1),
                ("%.2f" % abs(pn)).replace(".", ","),
                "GERİLEMİŞTİR" if pn < 0 else "YÜKSELMİŞTİR",
                ("%.2f" % (a_["maliyet_ciro_orani"] * 100)).replace(".", ","),
