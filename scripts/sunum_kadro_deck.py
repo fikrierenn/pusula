@@ -1054,7 +1054,11 @@ sig(s)
 s = add("Başlık Slaydı")
 setph(s, 0, "Sonuç")
 setph(s, 1, "Norma göre %+d kişi · kadrolu %s · ürün adedi %s · personel başına iş %s"
-            % ((v["norm"]["toplam"]["toplam_kesim26"] - v["norm"]["toplam"]["norm_toplam"]) if v.get("norm") else 0,
+            % ((lambda nn: (nn["toplam"]["kadrolu_kesim26"]
+                            - sum(a.get("engelli", 0) + a.get("etkinlik", 0)
+                                  for a in nn.get("ayrik", {}).values())
+                            + nn["toplam"]["sezonluk_kesim26"]) - nn["toplam"]["norm_toplam"])(v["norm"])
+               if v.get("norm") else 0,
                ("−%d" % abs(sezon_ici_26)) if sezon_ici_26 < 0 else "+%d" % sezon_ici_26,
                yzd(d_adet), yzd(d_kb)))
 

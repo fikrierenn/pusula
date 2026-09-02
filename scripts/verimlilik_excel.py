@@ -1610,8 +1610,8 @@ def sayfa_norm(wb, veri):
     if not n:
         return None
     ws = wb.create_sheet("Norm")
-    kolonlar = [("Mağaza", 13, None),
-                ("Norm kadrolu", 12, ADET), ("Kadrolu 31.08", 12, ADET), ("Kadrolu farkı", 12, "+0;-0;0"),
+    kolonlar = [("Mağaza / Grup", 15, None),
+                ("Norm kadrolu", 12, ADET), ("Operasyonel kadrolu", 15, ADET), ("Kadrolu farkı", 12, "+0;-0;0"),
                 ("Norm sezonluk", 12, ADET), ("Sezonluk 31.08", 12, ADET), ("Sezonluk farkı", 12, "+0;-0;0"),
                 ("NORM TOPLAM", 12, ADET), ("GERÇEK TOPLAM", 13, ADET), ("TOPLAM FARK", 12, "+0;-0;0")]
     ws.cell(1, 1, "Norm kadro (%s, sezon dışı) ile gerçek kadrolu karşılaştırması" % n["tarih"]).font = Font(bold=True, size=12)
@@ -1619,11 +1619,14 @@ def sayfa_norm(wb, veri):
 
     s = 4
     ilk = s
+    ayr_ = n.get("ayrik", {})
     for r in n["sube"]:
+        a_ = ayr_.get(r["sube"], {})
+        ops_ = r["kadrolu_kesim26"] - a_.get("engelli", 0) - a_.get("etkinlik", 0)
         ws.cell(s, 1, r["sube"].title()).border = KENAR
-        for kol, v_ in ((2, r["norm"]), (3, r["kadrolu_kesim26"]),
+        for kol, v_ in ((2, r["norm"]), (3, ops_),
                         (5, r["norm_sezonluk"]), (6, r["sezonluk_kesim26"]),
-                        (8, r["norm_toplam"]), (9, r["toplam_kesim26"])):
+                        (8, r["norm_toplam"]), (9, ops_ + r["sezonluk_kesim26"])):
             c = ws.cell(s, kol, v_); c.number_format = ADET; c.border = KENAR
         for kol, f in ((4, "=C%d-B%d" % (s, s)), (7, "=F%d-E%d" % (s, s)), (10, "=I%d-H%d" % (s, s))):
             c = ws.cell(s, kol, f)
@@ -1671,8 +1674,24 @@ def sayfa_norm(wb, veri):
                     (6, sum(r["sezonluk26"] for r in n["bolum"]))):
         c = ws.cell(s, kol, v_)
         c.number_format = ADET; c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
+    # NORM DISI gruplar + IK kayit toplami (sunumla ayni katmanlar)
+    s += 1
+    eng_t = sum(a.get("engelli", 0) for a in ayr_.values())
+    etk_t = sum(a.get("etkinlik", 0) for a in ayr_.values())
+    for etiket, adet_ in (("Etkinlik (norm dışı)", etk_t), ("Engelli (norm dışı)", eng_t)):
+        c = ws.cell(s, 1, etiket); c.border = KENAR; c.font = Font(italic=True, size=10)
+        c2 = ws.cell(s, 3, adet_); c2.number_format = ADET; c2.border = KENAR
+        c2.fill = PatternFill("solid", fgColor="FFF6E6")
+        ws.cell(s, 1).fill = PatternFill("solid", fgColor="FFF6E6")
+        s += 1
+    c = ws.cell(s, 1, "Kayıt toplamı (İK, tüm gruplar)"); c.border = KENAR; c.font = Font(italic=True, size=10)
+    for kol, v_ in ((3, n["toplam"]["kadrolu_kesim26"]), (6, n["toplam"]["sezonluk_kesim26"]),
+                    (9, n["toplam"]["kadrolu_kesim26"] + n["toplam"]["sezonluk_kesim26"])):
+        c2 = ws.cell(s, kol, v_); c2.number_format = ADET; c2.border = KENAR
     s += 2
     _notlar(ws, [
+        "KURAL: norm = ENGELLI DISINDAKI personel (yonetim karari). Magaza satirlari OPERASYONEL "
+        "kadroyu gosterir (kadrolu - engelli - etkinlik); en altta IK'nin kayit toplami durur.",
         "⚠ BOLUM acigi (%d) MAGAZA acigindan (%d) BUYUK: magaza icinde bir bolumun fazlasi baska "
         "bolumun acigini maskeler." % (n["acik_bolum_toplam"],
                                        sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in n["sube"])),

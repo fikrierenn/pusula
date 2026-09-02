@@ -117,6 +117,61 @@ def main(argv):
         kontrol("Oca-Ağu mağaza adedi (yıllar ↔ kanal tablosu)",
                 round(v["ocak_agustos"]["magaza"]["adet26"]), round(y26["adet"]))
 
+    # ---------------------------------------------------------------- ÇIKTI KATMANI (sunum + Excel)
+    # ⚠ 02.09.2026 dersi: JSON aritmetigi dogru olsa bile EMITTER KAYABILIR. Bu bolum, sunumda ve
+    #   Excel'de FIILEN YAZAN rakami arar; eski (bayat) rakamlarin kalmadigini da dogrular.
+    #   Yakalanan gercek hata: norm kurali degistiginde Sonuc slayti -22'de kalmis, Excel Norm
+    #   sayfasi kayit kadrolusunu (137) gostermeye devam etmisti.
+    kok = yol.parent
+    pptx = next(iter(sorted(kok.glob("sunum-*.pptx"))), None)
+    xlsx = next(iter(sorted(kok.glob("verimlilik-*.xlsx"))), None)
+    ops_toplam = ops_kadrolu + n["toplam"]["sezonluk_kesim26"] if n else 0
+    pos26 = sum(m["kadro26"] for m in v["magaza"])
+
+    def bin_(x):
+        return format(int(round(x)), ",").replace(",", ".")
+
+    if pptx:
+        from pptx import Presentation
+        parca = []
+        for sl in Presentation(str(pptx)).slides:
+            for sh in sl.shapes:
+                if getattr(sh, "has_table", False):
+                    parca += [c.text for r in sh.table.rows for c in r.cells]
+                elif getattr(sh, "has_text_frame", False):
+                    parca.append(sh.text_frame.text)
+        T = " | ".join(parca)
+        for ad, jeton in (("norm toplam", str(n["toplam"]["norm_toplam"])),
+                          ("operasyonel toplam", str(ops_toplam)),
+                          ("operasyonel kadrolu", str(ops_kadrolu)),
+                          ("kayıt kadrolu", str(n["toplam"]["kadrolu_kesim26"])),
+                          ("3 POS kadro", str(pos26)),
+                          ("hizalı adet 2026", bin_(sum(m["adet26"] for m in v["magaza"])))):
+            sonuc.append((jeton in T, "sunumda «%s» (%s) yazıyor" % (jeton, ad), jeton, jeton, ""))
+        bayat = str(n["toplam"]["toplam_kesim26"] - n["toplam"]["norm_toplam"]) + " kişi"
+        sonuc.append((bayat not in T,
+                      "sunumda BAYAT norm farkı «%s» YOK" % bayat, "yok", "yok",
+                      "engelli düşülmeden hesaplanan eski fark"))
+
+    if xlsx:
+        from openpyxl import load_workbook
+        wb = load_workbook(str(xlsx))
+        sayilar = set()
+        for ws in wb.worksheets:
+            for row in ws.iter_rows():
+                for c in row:
+                    if isinstance(c.value, (int, float)):
+                        sayilar.add(round(float(c.value), 2))
+        for ad, deger in (("norm kadrolu", n["toplam"]["norm"]),
+                          ("operasyonel kadrolu (şube satırları toplamı değil, satır değeri)",
+                           max(r["kadrolu_kesim26"] - v["norm"]["ayrik"].get(r["sube"], {}).get("engelli", 0)
+                               - v["norm"]["ayrik"].get(r["sube"], {}).get("etkinlik", 0)
+                               for r in n["sube"])),
+                          ("hizalı adet 2026", round(sum(m["adet26"] for m in v["magaza"]), 2)),
+                          ("hizalı adet 2025", round(sum(m["adet25"] for m in v["magaza"]), 2))):
+            sonuc.append((round(float(deger), 2) in sayilar,
+                          "Excel'de %s (%s) var" % (ad, deger), deger, deger, ""))
+
     # ---------------------------------------------------------------- ÇIKTI
     print("Tutarlılık denetimi: %s" % yol.name)
     hata = [x for x in sonuc if not x[0]]
