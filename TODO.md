@@ -524,5 +524,61 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **K-01 İK kayıt düzeltmesi (87-ABG)** — 02.09. Personel 87-ABG (Şura, Yardımcı Kitap) çıkış tarihi işlenmemiş, 377 gündür `Kadro='SEZONLUK'` aktif görünüyor. Düzeltilince 31.08 sezonluk 62 → 61, 5 mağaza toplamı 211 → 210. Kayıt ASİYE_BİNGÖLBALI firmasında; `perbilgi` yalnız BKM_GENEL tuttuğu için bu DB'den teyit edilemiyor. Rakamlar İK'nın resmi kaydıyla birebir kalsın diye elle düzeltilmedi, sunumda dipnot var.
 - [ ] **K-02 Heykel sezonluk alım açığı** — 02.09. Norm 20, alınan 13 (−7), aktif 9. Alım en geç Heykel'de başladı (10.08; 14.08'e kadar 2 kişi) ve ayrılma oranı en yüksek (3/13 = %23). Sebep (aday bulunamadı / onay / ihtiyaç görülmedi) veriyle ayrılamıyor — operasyonla konuşulacak.
 - [ ] **K-03 Heykel/Şura POS raporlama kör noktası** — 02.09. İkisi ayrı tüzel kişilik (Bursa Kültür Merkezi / Asiye Bingölbalı) ve DerinSIS eTip 100'de satışları YOK → iş hacmi, kişi başı verimlilik ve "norm gerçekten gerekli mi" soruları o iki mağaza için ölçülemiyor. Çözüm seçenekleri: (a) o firmaların POS'unu DerinSIS'e bağlamak, (b) ayrı kaynaktan aylık özet almak.
-- [ ] **K-04 Üç denetim ajanı bulgularının işlenmesi** — 02.09. python-reviewer · silent-failure-hunter · sql-denetci `scripts/verimlilik_excel.py`, `scripts/sunum_kadro_deck.py`, iki denetçi script ve 02.09 SQL arşivi üzerinde çalıştırıldı; raporlar işlenecek.
+- [x] **K-04 Üç denetim ajanı bulgularının işlenmesi** ✅ 03.09.2026 (commit c884efb + 0eca76c kritik, eb96f7f orta/düşük) — python-reviewer · silent-failure-hunter · sql-denetci bulguları işlendi; kalan tek madde dosya-boyutu borcu (K-20).
 - [ ] **K-05 Sezonluk tutunma aksiyonu** — 02.09. Kadrolu alımın 14 gün tutunması %95,7 → %75,0 (32 alımdan 10'u ayrıldı). En bozuk: Özlüce, Heykel, Merkez Depo. Aksiyon: ilk hafta karşılama protokolü + İdari İşler ücret–vardiya revizyonu. Ölçüt: gelecek sezon Eylül öncesi kayıp %20 → %12.
+
+#### Denetim ajanı orta/düşük bulguları (03.09.2026 — commit eb96f7f ile DÜZELTİLDİ)
+
+Rakamlar değişmedi (kadro 143→160 · adet 574.655→775.031 · norm 217 vs operasyonel 189 = −28);
+tek anlamsal düzeltme bölüm açığında (17 → 15 + 2 teyit bekleyen). Doğrulama: 65/65 tutarlılık ✓ ·
+yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle kontrol edildi.
+
+- [x] **K-06 Normda tanımlı ama kayıtta hiç personeli olmayan bölüm "açık" sayılıyordu** ✅ 03.09 —
+  OYUN ALANI + MUHASEBE ayrı "teyit bekliyor" satırına alındı (bölüm açığı 17 → 15, teyit 2).
+  ⚠ **Kalan iş:** OYUN ALANI Zirve `Departman` listesinde HİÇ yok → ya bölüm gerçekten boş ya
+  bölüm adı farklı yazılı (key-mismatch). İK ile teyit edilecek.
+- [x] **K-07 Kayma dilimlerinde boş-dilim / gün-eşitliği / büyüme-bandı guard'ı yoktu** ✅ 03.09 —
+  boş dilim veya eşitsiz pencere artık `sys.exit`; bant dışı büyüme (−%50..+%200) durduruyor;
+  negatif "Eylül'e kayan" uyarı basıyor.
+- [x] **K-08 `gunler[yil]` mağaza döngüsünde eziliyordu** ✅ 03.09 — gün sayısı mağaza×yıl bazında
+  ölçülüyor, yıllar arası eşitsizlik → çıkış, pencereden az gün → uyarı + JSON'a kayıt.
+- [x] **K-09 Engelli taramasında Personelno biçim guard'ı sessiz kayıp üretiyordu** ✅ 03.09 —
+  atlanan kayıt sayısı ölçülüyor (bugün 0), denetçi 0 değilse sapma veriyor.
+- [x] **K-10 Destede donmuş yorum rakamları** ✅ 03.09 — 4 yıllık trend (60→91, +%11,3, +%28,8),
+  mağaza performans oranı (2,2x), 1–14/15–31 Ağustos büyümesi, sezonluk kesim farkı, itiraz
+  slaytındaki 2,5 gün / 6→2 / +%25,1 hepsi JSON'dan türetiliyor.
+- [x] **K-11 3 POS kadrosu iki ayrı sorgudan geliyordu (2025 hiç sınanmıyordu)** ✅ 03.09 — kadro
+  tek kaynak (`magaza_kadro`); denetçi her iki yılı mutabık kılıyor.
+- [x] **K-12 Kategori "Oca-Ağu ciro Δ" sıfır dolgusu** ✅ 03.09 — bilinmeyen değer "—".
+- [x] **K-13 Sunum kategori tablosu adedin %78'ini gösteriyordu** ✅ 03.09 — eşleşmesiz 6 kategori
+  DİĞER satırında toplandı + kapsam dipnotu; denetçi kapsam oranını sınıyor.
+- [x] **K-14 Şablon değişirse sessizce başlıksız slayt** ✅ 03.09 — `L()`/`setph()` bulamazsa çıkış.
+- [x] **K-15 Bölüm slaytında taban farkı ile kesim farkı karışıyordu** ✅ 03.09 — cümle grafiğin
+  kaynağıyla eşitlendi (31.08 kesim farkı).
+- [x] **K-16 Aynı destede iki farklı "kişi başı iş" ölçeği** ✅ 03.09 — başlıklarda ölçü adlandırıldı
+  (okul-hizalı ÷ TÜM kadro · Oca-Ağu ÷ kadrolu) + seviyelerin kıyaslanmayacağı yazıldı.
+- [x] **K-17 pyodbc bağlantıları try/finally içinde değildi** ✅ 03.09 — mutabakat çıkışında da kapanır.
+- [x] **K-18 As-of literalleri %-format ile gömülüydü** ✅ 03.09 — parametreli (`?`).
+- [x] **K-19 Toplamlar iki emitter'da ayrı hesaplanıyordu** ✅ 03.09 — `veri["toplam"]` çekirdekte,
+  emitter'lar okuyor (emitter-ayrımı); denetçi eşitliği sınıyor.
+- [x] **Denetçi borçları** ✅ 03.09 — `tutarlilik_kontrol.py`'de kopyalanmış çapraz-sayfa formül
+  bloğu silindi, 35 → 65 kontrol; `sunum_yerlesim_denetle.py` iki çıplak except → tipli + uyarı;
+  üç scriptte Windows cp1254 UnicodeEncodeError → stdout utf-8.
+
+- [ ] **K-20 Dosya boyutu kırmızı çizgisi (Tier 3 refactor)** — `scripts/verimlilik_excel.py`
+  ~1.860 satır, `scripts/sunum_kadro_deck.py` ~1.100 satır (`file-size-discipline.md` sınırı 500).
+  Split planı: `verimlilik_cek.py` (DB çekirdeği) + `verimlilik_xlsx.py` (Excel emitter); sunum
+  slayt gruplarına bölünür. Tek commit'e sığmaz — plan yazılıp ayrı ele alınacak.
+
+#### İK danışman denetimi — desteyi güçlendirecek eksik eksenler (03.09.2026)
+
+- [ ] **K-21 Maliyet ekseni destede YOK** — patronun sorusu ("neden fazla eleman aldınız") özünde
+  MALİYET sorusu; deste kişi sayısı + iş hacmiyle cevap veriyor. Eksik: brüt işveren maliyeti
+  (SGK işveren payı + yan hak + izin karşılığı + kıdem tahakkuku) ve **personel maliyeti / ciro**
+  oranının iki yıl kıyası. "Kadro %11,9 arttı ama personel maliyeti/ciro oranı düştü" cümlesi
+  savunmayı bir kat güçlendirir. Veri: bordro (KVKK — rol/kademe bazında toplulaştırılmış, isimsiz).
+  Kaynak netleşmeli (Zirve bordro mu, muhasebe 770 hesap mı).
+- [ ] **K-22 "Kadro almasaydık ne olurdu" karşı-argümanı ölçülmedi** — fazla mesai / PDKS aşımı
+  ekseni: mevcut kadroyla aynı işi çıkarmak yasal fazla mesai sınırını aşar mıydı? Ölçülürse
+  "alım tercih değil zorunluluktu" iddiası veriyle desteklenir (İK danışman: uyum riski masada).
+  Veri: Zirve PDKS (plan vs fiili mesai) — biyometrik/kişisel veri olabilir, amaç+erişim netleşmeli.

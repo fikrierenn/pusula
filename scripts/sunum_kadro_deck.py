@@ -546,7 +546,9 @@ tb(s, 0.6, 5.65, 12.05, 0.5,
    [("Ölçü: Ocak–Ağustos ürün adedi ÷ 31.08 kadrolu (sezonluk HARİÇ; yıllar arası sezonluk "
      "zamanlaması kıyası bozar). «Okul-hizalı pencere ÷ TÜM kadro» ölçüsü ayrı slayttadır — iki "
      "ölçünün seviyeleri karşılaştırılmaz, yönleri karşılaştırılır.", 10, False, MGREY)])
-dipnot(s, DIP_OCA_AGU + " · kadro: 31.08 kesimi, her yıl")
+dipnot(s, DIP_OCA_AGU + " · kadro: 31.08 kesimi, her yıl · Sınav Okulları satışı ürün adedinden "
+          "HARİÇ tutulur; o operasyona bakan personel İK kaydında kanal bazında ayrıştırılamadığı "
+          "için kadroda kalır — oran her yıl aynı yönde etkilenir, yıllar arası kıyas geçerlidir")
 sig(s)
 
 # ================================================================= 12 BOLUM KIRILIMI
