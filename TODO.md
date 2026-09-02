@@ -565,20 +565,34 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   bloğu silindi, 35 → 65 kontrol; `sunum_yerlesim_denetle.py` iki çıplak except → tipli + uyarı;
   üç scriptte Windows cp1254 UnicodeEncodeError → stdout utf-8.
 
-- [ ] **K-20 Dosya boyutu kırmızı çizgisi (Tier 3 refactor)** — `scripts/verimlilik_excel.py`
-  ~1.860 satır, `scripts/sunum_kadro_deck.py` ~1.100 satır (`file-size-discipline.md` sınırı 500).
-  Split planı: `verimlilik_cek.py` (DB çekirdeği) + `verimlilik_xlsx.py` (Excel emitter); sunum
-  slayt gruplarına bölünür. Tek commit'e sığmaz — plan yazılıp ayrı ele alınacak.
+- [x] **K-20 Dosya boyutu — veri + Excel tarafı bölündü** ✅ 03.09.2026 (plan: 39) —
+  `verimlilik_excel.py` 2.283 satır → **11 modül**, en büyüğü 459 (hepsi <500): `verimlilik_ortak`
+  (sabit + bağlantı + ASOF) · `verimlilik_cek_hacim` / `_kadro` / `_norm` / `_maliyet` ·
+  `verimlilik_cek` (orkestrasyon, sorgu içermez) · `verimlilik_xlsx_ortak` / `_ozet` / `_hacim` /
+  `_kadro` · `verimlilik_excel` (yalnız CLI — ad ve kullanım DEĞİŞMEDİ). Regresyon kanıtı: Excel
+  hücre değerleri baseline ile **birebir (0 fark)**, JSON 1e-6 toleransında aynı, 94/94 tutarlılık ✓,
+  deste 19 slayt ✓. Yan bulgu: `norm.bolum` sıralaması eşit açıkta çalışma-arası değişiyordu
+  (set + PYTHONHASHSEED) → ikincil anahtar eklendi, çıktı tekrar-üretilebilir oldu.
+- [ ] **K-23 Sunum destesi split (Tier 3 — K-20'nin kalan yarısı)** — `scripts/sunum_kadro_deck.py`
+  1.333 satır. Modül düzeyinde akış: slaytlar sırayla oluşuyor, ~30 türetilmiş global paylaşılıyor
+  (`mag`, `k5`, `d_adet`, `bolum`, `nrm`, `mal`, `fm`…). Bölmek için bağlam nesnesi sözleşmesi
+  gerekir (`C = hesapla(v)` → `slayt_*(pr, C)`); yardımcılar (`card/kpi/tb/rrect/setph/add/dipnot/
+  sig` + palet + şablon yükleme ≈300 satır) `sunum_ortak.py`'ye çıkar. Plan 39 kapsamı dışında
+  bırakıldı: veri tarafı doğrulanmadan iki büyük refactor aynı commit'e sığmaz.
 
 #### İK danışman denetimi — desteyi güçlendirecek eksik eksenler (03.09.2026)
 
-- [ ] **K-21 Maliyet ekseni destede YOK** — patronun sorusu ("neden fazla eleman aldınız") özünde
-  MALİYET sorusu; deste kişi sayısı + iş hacmiyle cevap veriyor. Eksik: brüt işveren maliyeti
-  (SGK işveren payı + yan hak + izin karşılığı + kıdem tahakkuku) ve **personel maliyeti / ciro**
-  oranının iki yıl kıyası. "Kadro %11,9 arttı ama personel maliyeti/ciro oranı düştü" cümlesi
-  savunmayı bir kat güçlendirir. Veri: bordro (KVKK — rol/kademe bazında toplulaştırılmış, isimsiz).
-  Kaynak netleşmeli (Zirve bordro mu, muhasebe 770 hesap mı).
-- [ ] **K-22 "Kadro almasaydık ne olurdu" karşı-argümanı ölçülmedi** — fazla mesai / PDKS aşımı
-  ekseni: mevcut kadroyla aynı işi çıkarmak yasal fazla mesai sınırını aşar mıydı? Ölçülürse
-  "alım tercih değil zorunluluktu" iddiası veriyle desteklenir (İK danışman: uyum riski masada).
-  Veri: Zirve PDKS (plan vs fiili mesai) — biyometrik/kişisel veri olabilir, amaç+erişim netleşmeli.
+- [x] **K-21 Maliyet ekseni destede** ✅ 03.09.2026 (commit e3226d9) — kaynak Zirve bordro
+  `vw_PuanBil`, maliyet = Bt + Isskk + Iisk (brüt + işveren SGK + işveren işsizlik). Oca–Tem, üç
+  POS mağazası: maliyet 31,2M → 47,2M ₺ (+%51,5) · kişi-ay başına maliyet 39.893 → 55.160 ₺
+  (+%38,3 → artışın ana kaynağı ÜCRET, kadro değil) · **maliyet/ciro %12,85 → %12,15 = −0,70 puan**
+  · kişi-ay başına ciro +%46,2. Excel «Maliyet» sayfası + sunum slaytı + itiraz maddesi.
+  ⚠ Kalan iş: kıdem karşılığı ve yan haklar (giyim/yemek/yol) formülde YOK → maliyet ALT SINIR;
+  tam işveren maliyeti isteniyorsa 740/760/770 GL kalemleriyle mutabakat gerekir.
+- [x] **K-22 "Kadro alınmasaydı" karşı-argümanı** ✅ 03.09.2026 (commit e3226d9) — bordro fazla
+  mesai saatlerinden (fm1+fm2+fm3), PDKS'ye gerek kalmadı. Fiili kişi başı yıllık FM 97 → 107 saat
+  (yasal 270'in altında); kadro 2025 seviyesinde kalsaydı 75 kişi-ay eksik kapasite → +14.625 saat
+  FM → **342 saat/yıl → 4857 s.K. m.41 sınırı AŞILIRDI**. Karşı-metrik dürüstçe yazıldı: yıllık
+  sınır hızında çalışan kişi-ay 32 → 95 (kadro hâlâ dar). ⚠ Kalan iş: model işgücü ihtiyacını kişi
+  sayısıyla doğru orantılı varsayar; kısmi süreli/hafta sonu düzenlemesi ve verim artışı yok →
+  ÜST SINIR tahmini olarak sunulur.
