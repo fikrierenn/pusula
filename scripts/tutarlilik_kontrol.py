@@ -13,6 +13,11 @@ import json
 import sys
 from pathlib import Path
 
+try:                                    # Windows cp1254 konsolunda ✓/✗ basarken cokuyordu (bulgu 17)
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 KOK = Path(__file__).resolve().parent.parent
 VARSAYILAN = KOK / "briefings" / "sezon-kadro-20260902" / "verimlilik-veri.json"
 POS = ("İST. YOLU", "ÖZLÜCE", "FSM")          # DerinSIS POS satışı olan üç mağaza (BKM_GENEL)
@@ -123,8 +128,18 @@ def main(argv):
     #   Yakalanan gercek hata: norm kurali degistiginde Sonuc slayti -22'de kalmis, Excel Norm
     #   sayfasi kayit kadrolusunu (137) gostermeye devam etmisti.
     kok = yol.parent
-    pptx = next(iter(sorted(kok.glob("sunum-*.pptx"))), None)
-    xlsx = next(iter(sorted(kok.glob("verimlilik-*.xlsx"))), None)
+    # ⚠ EN YENI dosya (alfabetik ilk DEGIL — bulgu 16: "verimlilik-2026-ESKI.xlsx" denetlenirdi)
+    def _yeni(desen):
+        adaylar = [x for x in kok.glob(desen) if "KISILI" not in x.name]
+        return max(adaylar, key=lambda x: x.stat().st_mtime) if adaylar else None
+
+    pptx = _yeni("sunum-*.pptx")
+    xlsx = _yeni("verimlilik-*.xlsx")
+    # cikti JSON'dan YENI olmali; degilse bayat dosya dogrulanir
+    for dosya in (pptx, xlsx):
+        if dosya and dosya.stat().st_mtime < yol.stat().st_mtime - 1:
+            sonuc.append((False, "%s JSON'dan ESKI (bayat çıktı)" % dosya.name,
+                          "yeniden üret", "eski", "emitter'ı tekrar çalıştır"))
     ops_toplam = ops_kadrolu + n["toplam"]["sezonluk_kesim26"] if n else 0
     pos26 = sum(m["kadro26"] for m in v["magaza"])
 
@@ -171,6 +186,54 @@ def main(argv):
                           ("hizalı adet 2025", round(sum(m["adet25"] for m in v["magaza"]), 2))):
             sonuc.append((round(float(deger), 2) in sayilar,
                           "Excel'de %s (%s) var" % (ad, deger), deger, deger, ""))
+
+    # ÇAPRAZ-SAYFA FORMÜL REFERANSI (bulgu 15): openpyxl formül hücrelerini sayı olarak görmez,
+    # bu yüzden "kaç kat" hücresi CİRO oranını (6,0x) gösterirken denetim 33/33 ✓ veriyordu.
+    # Artık Sunum sayfasının işaret ettiği Ozet hücresinin FORMÜLÜ sınanıyor.
+    if xlsx:
+        from openpyxl import load_workbook as _lw
+        wb2 = _lw(str(xlsx))
+        if "Sunum" in wb2.sheetnames and "Ozet" in wb2.sheetnames:
+            sn, oz = wb2["Sunum"], wb2["Ozet"]
+            bulundu = False
+            for r in range(1, sn.max_row + 1):
+                etiket, ref = sn.cell(r, 2).value, sn.cell(r, 3).value
+                if not (etiket and ref and isinstance(ref, str) and "KAT" in str(etiket).upper()):
+                    continue
+                hucre = str(ref).replace("='Ozet'!", "").strip()
+                formul = str(oz[hucre].value or "")
+                bulundu = True
+                # adet-tabanli oran: E8/E7 (adet Δ ÷ kadro Δ). Ciro tabanli (E9/E7) YANLIS.
+                sonuc.append((formul.replace(" ", "") == "=E8/E7",
+                              "Sunum «kaç kat» → Ozet!%s formülü adet tabanlı" % hucre,
+                              "=E8/E7", formul,
+                              "ciro tabanlı (=E9/E7) olursa oran 2,9x yerine 6,0x görünür"))
+            if not bulundu:
+                sonuc.append((False, "Sunum sayfasında «kaç kat» satırı bulunamadı", "var", "yok", ""))
+
+    # ÇAPRAZ-SAYFA FORMÜL REFERANSI (bulgu 15): openpyxl formül hücrelerini sayı olarak görmez,
+    # bu yüzden "kaç kat" hücresi CİRO oranını (6,0x) gösterirken denetim 33/33 ✓ veriyordu.
+    # Artık Sunum sayfasının işaret ettiği Ozet hücresinin FORMÜLÜ sınanıyor.
+    if xlsx:
+        from openpyxl import load_workbook as _lw
+        wb2 = _lw(str(xlsx))
+        if "Sunum" in wb2.sheetnames and "Ozet" in wb2.sheetnames:
+            sn, oz = wb2["Sunum"], wb2["Ozet"]
+            bulundu = False
+            for r in range(1, sn.max_row + 1):
+                etiket, ref = sn.cell(r, 2).value, sn.cell(r, 3).value
+                if not (etiket and ref and isinstance(ref, str) and "KAT" in str(etiket).upper()):
+                    continue
+                hucre = str(ref).replace("='Ozet'!", "").strip()
+                formul = str(oz[hucre].value or "")
+                bulundu = True
+                # adet-tabanli oran: E8/E7 (adet Δ ÷ kadro Δ). Ciro tabanli (E9/E7) YANLIS.
+                sonuc.append((formul.replace(" ", "") == "=E8/E7",
+                              "Sunum «kaç kat» → Ozet!%s formülü adet tabanlı" % hucre,
+                              "=E8/E7", formul,
+                              "ciro tabanlı (=E9/E7) olursa oran 2,9x yerine 6,0x görünür"))
+            if not bulundu:
+                sonuc.append((False, "Sunum sayfasında «kaç kat» satırı bulunamadı", "var", "yok", ""))
 
     # ---------------------------------------------------------------- ÇIKTI
     print("Tutarlılık denetimi: %s" % yol.name)

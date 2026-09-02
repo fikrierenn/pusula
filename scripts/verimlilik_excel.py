@@ -617,18 +617,45 @@ def cek(env, kisi=False):
     if norm_dosya:
         nd = json.loads(norm_dosya[-1].read_text(encoding="utf-8"))
         print("Norm kadro dosyası: %s" % norm_dosya[-1].name, flush=True)
+        # ⚠ sube_esleme UYGULANIR (norm dosyasi "İSTANBUL YOLU" yazarsa Zirve "İST. YOLU" ile
+        #   eslesmez ve o subenin normu SESSIZCE dusardi — silent-failure-hunter bulgusu 3).
+        esleme = nd.get("sube_esleme", {})
         norm_sube, norm_bolum = {}, {}
         for bol, subeler in nd["norm"].items():
             norm_bolum[bol] = sum(subeler.values())
             for sube, adet in subeler.items():
+                sube = esleme.get(sube, sube)
                 norm_sube[sube] = norm_sube.get(sube, 0) + adet
+        # BEYAN DOGRULAMASI (bulgu 4): elle girilen norm tablosunun kendi toplam satiriyla
+        # departman toplamlari tutmali. Tek hucre yanlis girilirse burada patlar.
+        beyan = nd.get("beyan_edilen_toplam", {})
+        for sube, bekl in beyan.items():
+            if sube == "GENEL":
+                continue
+            hedef = esleme.get(sube, sube)
+            if norm_sube.get(hedef) != bekl:
+                sys.exit("NORM DOSYASI TUTARSIZ: %s departman toplamı %s, beyan %s (dosya: %s)"
+                         % (hedef, norm_sube.get(hedef), bekl, norm_dosya[-1].name))
+        if beyan.get("GENEL") not in (None, sum(norm_sube.values())):
+            sys.exit("NORM DOSYASI TUTARSIZ: genel toplam %d, beyan %s"
+                     % (sum(norm_sube.values()), beyan.get("GENEL")))
+        beyan_sez = nd.get("beyan_edilen_toplam_sezonluk", {})
+        nsez_top = sum(v_ for k_, v_ in nd.get("norm_sezonluk", {}).items())
+        if beyan_sez.get("GENEL") not in (None, nsez_top):
+            sys.exit("NORM DOSYASI TUTARSIZ: sezonluk norm toplamı %d, beyan %s"
+                     % (nsez_top, beyan_sez.get("GENEL")))
         mk = {m["sube"]: m for m in veri["magaza_kadro"]}
         satirlar = []
         for sube, nm in sorted(norm_sube.items(), key=lambda x: -x[1]):
             m = mk.get(sube)
             if not m:
-                continue
+                sys.exit("NORM ŞUBESİ EŞLEŞMEDİ: '%s' Zirve şube listesinde yok (%s). "
+                         "norm dosyasındaki sube_esleme sözlüğünü güncelle — aksi halde o şubenin "
+                         "normu sessizce düşer." % (sube, ", ".join(sorted(mk))))
             nsez = nd.get("norm_sezonluk", {}).get(sube, 0)
+            if not nsez:   # esleme uygulanmis adla da dene
+                nsez = next((v_ for k_, v_ in nd.get("norm_sezonluk", {}).items()
+                             if esleme.get(k_, k_) == sube), 0)
             satirlar.append({"sube": sube, "norm": nm, "norm_sezonluk": nsez,
                              "norm_toplam": nm + nsez,
                              "kadrolu_taban26": m["kadrolu_taban26"],
@@ -652,6 +679,7 @@ def cek(env, kisi=False):
                             THEN 1 ELSE 0 END AS eng
                 FROM dbo.vw_PersonelDepartman v
                 WHERE v.AltLokasyon IN (?, ?, ?, ?)
+                  AND v.Lokasyon LIKE 'MA%'          -- ⚠ kapsam sizintisi guard'i (bulgu 5)
                   AND COALESCE(v.Kadro,'') <> 'SEZONLUK'
                   AND v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?)
             ) x
@@ -718,7 +746,18 @@ def cek(env, kisi=False):
         for sube, etk, eng, bkm in zc.fetchall():
             ayrik[sube] = {"etkinlik": int(etk or 0), "engelli": int(eng or 0),
                            "bkm_genel_kisi": int(bkm or 0)}
+        # ⚠ ayrik BES magaza kapsaminda olculur ama DORT norm magazasinin toplamindan dusulur;
+        #   norm disi subeleri (Sura) ayikla, yoksa kapsam disi bir kisi norm acigini kaydirir
+        #   (silent-failure-hunter bulgusu 6).
+        ayrik = {k_: val for k_, val in ayrik.items() if k_ in norm_sube}
         veri["norm"]["ayrik"] = ayrik
+        # magaza acigi TEK KAYNAK: iki emitter da bunu okur (bulgu 7 — Excel 11, deste 14 diyordu).
+        # ayrik atandiktan SONRA hesaplanir (operasyonel kadro = kayit - engelli - etkinlik).
+        veri["norm"]["acik_sube_toplam"] = sum(
+            max(0, r["norm"] - (r["kadrolu_kesim26"]
+                                - ayrik.get(r["sube"], {}).get("engelli", 0)
+                                - ayrik.get(r["sube"], {}).get("etkinlik", 0)))
+            for r in veri["norm"]["sube"])
         veri["norm"]["engelli_kapsam_uyarisi"] = (
             "Engelli kadro yalnız BKM_GENEL firmasında vardır (FSM · İst. Yolu · Özlüce). Heykel "
             "(Bursa Kültür Merkezi, 35 kişi) ve Şura (Asiye Bingölbalı, 16 kişi) ayrı tüzel "
@@ -863,27 +902,37 @@ def sayfa_sunum(wb, veri):
     b.font = Font(bold=True, size=16, color="1F5B57")
     ws.cell(3, 2, "Beş mağaza kadrosu · üç POS mağazası iş hacmi · 2025 ile aynı takvim dönemi").font = NOT_YAZI
 
+    # ⚠ Ozet referanslari SABIT satir numarasiyla yazilmisti; blok buyuyunce sessizce yanlis
+    #   hucreyi okuyordu ve "kaç kat" hucresi CIRO oranini (6,0x) gosteriyordu (metin 2,9x diyor).
+    #   Artik sayfa_ozet'in dondurdugu indeks sozlugu kullanilir.
+    ix = getattr(wb["Ozet"], "_indeks", {})
+
+    def _oz(anahtar, kolon="E"):
+        satir = ix.get(anahtar)
+        return ("='Ozet'!%s%d" % (kolon, satir)) if satir else None
+
     satirlar = [
         ("1", "Kadro farkı sezon başlamadan ÖNCE oluştu.",
-         "30 Haziran'da kadrolu personel 139'dan 153'e çıkmıştı.", "='Ozet'!D20", "+0 kişi;-0 kişi"),
+         "30 Haziran'da kadrolu personel 139'dan 153'e çıkmıştı.", _oz("taban_b", "D"), "+0 kişi;-0 kişi"),
         ("2", "Sezon boyunca kadro büyümedi, KÜÇÜLDÜ.",
-         "1 Temmuz – 31 Ağustos: kadrolu 153 → 149. Geçen yıl da aynı yönde (−4).", "='Ozet'!C22", "+0 kişi;-0 kişi"),
+         "1 Temmuz – 31 Ağustos: kadrolu 153 → 149. Geçen yıl da aynı yönde (−4).",
+         _oz("sezon_ici_b", "C"), "+0 kişi;-0 kişi"),
         ("3", "Sezonluk personel geçen yıldan AZ.",
-         "31 Ağustos'ta çalışan sezonluk: 65 → 62 kişi.", "='Ozet'!D23", "+0 kişi;-0 kişi"),
-        ("4", "Aynı dönemde elleçlenen ürün adedi %35 arttı.",
-         "574.718 → 775.192 adet. Adet enflasyondan etkilenmez — fiilen kasadan geçen, rafa dizilen mal.",
-         "='Ozet'!E8", "+0,0%"),
-        ("5", "Ciro %71 arttı.",
-         "71,8 milyon → 122,6 milyon ₺ (KDV dahil, iadeler düşülmüş).", "='Ozet'!E10", "+0,0%"),
+         "31 Ağustos'ta çalışan sezonluk: 65 → 62 kişi.", _oz("sezonluk_b", "D"), "+0 kişi;-0 kişi"),
+        ("4", "Aynı dönemde elleçlenen ürün adedi arttı.",
+         "Adet enflasyondan etkilenmez — fiilen kasadan geçen, rafa dizilen mal.",
+         _oz("adet"), "+0,0%"),
+        ("5", "Ciro arttı.",
+         "KDV dahil, iadeler düşülmüş.", _oz("kdvharic"), "+0,0%"),
         ("6", "KİŞİ BAŞINA düşen iş de arttı.",
-         "Kişi başı ürün 4.019 → 4.845 adet; günlük 71,8 → 86,5 adet.", "='Ozet'!E13", "+0,0%"),
+         "Kişi başı ürün adedi ve günlük adet birlikte yükseldi.", _oz("adet_kisi"), "+0,0%"),
         ("7", "İş hacmi, kadronun yaklaşık 3 KATI hızla büyüdü.",
-         "Ürün adedi +%34,9 · kadro +%11,9.", "='Ozet'!B17", "0,0\"x\""),
+         "Ürün adedi ÷ kadro büyümesi (ciro oranı değil).", _oz("kat_adet", "B"), "0,0\"x\""),
         ("8", "Artış yönetimde değil, RAFIN ÖNÜNDE.",
-         "Yönetim +0 · Mal Kabul +0 · İdari İşler +0. Artış: Yardımcı Kitap +6 · Kırtasiye +3 · Kasa +2.",
+         "Yönetim · Mal Kabul · İdari İşler kadrosu değişmedi; artış satış ve kasa reyonlarında.",
          None, None),
         ("9", "Büyüme kurumsaldan gelmedi, mağazadan geldi.",
-         "Sınav Okulları Ocak–Ağustos cirosu −%22,4 küçüldü; mağaza tarafı +%54,9 büyüdü.",
+         "Sınav Okulları Ocak–Ağustos cirosu küçüldü; mağaza tarafı büyüdü.",
          "='Oca-Agu'!G4", "+0,0%"),
     ]
 
@@ -1014,6 +1063,7 @@ def sayfa_ozet(wb, veri):
 
     # ---------------- KISI BASI (kapsam A)
     s = blok(s, "KISI BASI — asil olcu · kapsam A toplam kadrosuna bolunur (satir %d)" % r_toplam_a)
+    r_adet_kisi = s      # ilk kisi-basi satiri (indeks sozlugu icin)
     for etiket, fmt, f25, f26 in [
         ("Urun adedi / kisi", ADET, "=B%d/B%d" % (r_adet, r_toplam_a), "=C%d/C%d" % (r_adet, r_toplam_a)),
         ("Urun adedi / kisi / gun", ADET1, "=B%d/B%d/%d" % (r_adet, r_toplam_a, gun), "=C%d/C%d/%d" % (r_adet, r_toplam_a, gun)),
@@ -1029,6 +1079,7 @@ def sayfa_ozet(wb, veri):
         dd = ws.cell(s, 5, "=C%d/B%d-1" % (s, s)); dd.number_format = YUZDE; dd.border = KENAR
         dd.fill = GRI; dd.font = YESIL_YAZI
         s += 1
+    r_kat_adet = s       # "kac kat" (ADET ÷ kadro) satiri — Sunum sayfasi BURAYI referans alir
     ws.cell(s, 1, "   Is buyumesi kadro buyumesinin kac kati (adet ÷ kadro)").border = KENAR
     kat = ws.cell(s, 2, "=E%d/E%d" % (r_adet, r_toplam_a))
     kat.number_format = KAT; kat.fill = VURGU; kat.border = KENAR; kat.font = Font(bold=True, size=12)
@@ -1047,6 +1098,7 @@ def sayfa_ozet(wb, veri):
     r_kesim_b = s
     s = satir(s, "Kadrolu — KESIM 31.08", k5["kadrolu_kesim%d" % (ONCEKI % 100)],
               k5["kadrolu_kesim%d" % (CARI % 100)], ADET)
+    r_sezon_ici_b = s    # sezon ici degisim satiri (Sunum referansi)
     ws.cell(s, 1, "   Sezon ici kadrolu degisim (kesim - taban)").border = KENAR
     for kol, h in ((2, "B"), (3, "C")):
         c = ws.cell(s, kol, "=%s%d-%s%d" % (h, r_kesim_b, h, r_taban_b))
@@ -1056,6 +1108,7 @@ def sayfa_ozet(wb, veri):
         c.font = Font(bold=True)
     ws.cell(s, 4, "iki yilda da -4: sezon icinde kadro BUYUMEDI").font = NOT_YAZI
     s += 1
+    r_sez_b = s          # sezonluk 31.08 satiri (Sunum referansi)
     s = satir(s, "Sezonluk — 31.08", k5["sezonluk_kesim%d" % (ONCEKI % 100)],
               k5["sezonluk_kesim%d" % (CARI % 100)], ADET)
     r_toplam_b = s
@@ -1093,6 +1146,12 @@ def sayfa_ozet(wb, veri):
         c.font = Font(bold=True)
     s += 2
 
+    # ⚠ Sunum sayfasi bu satir numaralarina SABIT referansla bagliydi; blok buyudugunde sessizce
+    #   yanlis hucreyi okuyordu (silent-failure-hunter bulgusu 2). Artik indeksler DONDURULUR.
+    ws._indeks = {"kadro_a": r_toplam_a, "adet": r_adet, "kdvharic": r_kh,
+                  "adet_kisi": r_adet_kisi, "kat_adet": r_kat_adet,
+                  "taban_b": r_taban_b, "kesim_b": r_kesim_b,
+                  "sezon_ici_b": r_sezon_ici_b, "sezonluk_b": r_sez_b}
     _notlar(ws, [
         "NEDEN IKI KAPSAM: is hacmi (adet/ciro) yalniz POS raporlamasi olan UC magazada olculebilir;",
         "   kadro hareketi ise bes magazanin tamaminda anlamli. Karismasin diye bloklar ayri + kopru var.",
@@ -1735,13 +1794,16 @@ def sayfa_norm(wb, veri):
         "KURAL: norm = ENGELLI DISINDAKI personel (yonetim karari). Magaza satirlari OPERASYONEL "
         "kadroyu gosterir (kadrolu - engelli - etkinlik); en altta IK'nin kayit toplami durur.",
         "⚠ BOLUM acigi (%d) MAGAZA acigindan (%d) BUYUK: magaza icinde bir bolumun fazlasi baska "
-        "bolumun acigini maskeler." % (n["acik_bolum_toplam"],
-                                       sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in n["sube"])),
+        "bolumun acigini maskeler." % (n["acik_bolum_toplam"], n.get("acik_sube_toplam", 0)),
         "NORM SEZON DISI kadroyu tanimlar -> sezonluk personel norma DAHIL DEGIL; kiyas yalniz KADROLU ile.",
         "Norm kaynagi: %s (%s). Yonetim parametresi, Zirve'den sorgulanmaz." % (n["kaynak_dosya"], n["tarih"]),
         "KAPSAM DISI: %s norm tablosunda yok." % (", ".join(x.title() for x in n["kapsam_disi"]) or "—"),
-        "Eksi fark = normun ALTINDA calisiliyor. Toplamda 31.08'de norm %d, gercek kadrolu %d." % (
-            n["toplam"]["norm"], n["toplam"]["kadrolu_kesim26"]),
+        "Eksi fark = normun ALTINDA calisiliyor. 31.08'de norm %d, OPERASYONEL kadrolu %d "
+        "(kayit %d - engelli/etkinlik). Ustteki tablo operasyonel rakami gosterir." % (
+            n["toplam"]["norm"],
+            n["toplam"]["kadrolu_kesim26"] - sum(a.get("engelli", 0) + a.get("etkinlik", 0)
+                                                 for a in n.get("ayrik", {}).values()),
+            n["toplam"]["kadrolu_kesim26"]),
     ], s)
     return ws
 
