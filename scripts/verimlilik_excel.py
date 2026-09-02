@@ -7,7 +7,7 @@ VERIYI KENDI CEKER (elle rakam YOK):
 Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
 Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
 
-Sayfalar: Ozet · Magaza · Kadro · Bolum · Yillar · Oca-Agu · Yontem
+Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Yillar · Oca-Agu · Yontem
 Kullanim:
   python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
   python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
@@ -352,6 +352,85 @@ def _notlar(ws, notlar, satir, kol=1):
     return satir
 
 
+# --------------------------------------------------- Sunum (patrona gosterilen)
+def sayfa_sunum(wb, veri):
+    """PATRONA GOSTERILEN sayfa — ilk sirada. Tek ekran, dumduz Turkce, jargon yok.
+
+    Rakamlar Ozet sayfasindan FORMULLE gelir (tek kaynak): Ozet'te ham rakam degisirse burasi da doner.
+    Teknik bloklar (kapsam etiketleri, kopru kontrolu, mutabakat) arkadaki sayfalarda kalir.
+    """
+    ws = wb.create_sheet("Sunum", 0)
+    ws.column_dimensions["A"].width = 4
+    ws.column_dimensions["B"].width = 82
+    ws.column_dimensions["C"].width = 26
+    ws.sheet_view.showGridLines = False
+
+    b = ws.cell(2, 2, "Sezon 2026 — kadro mu büyüdü, iş mi büyüdü?")
+    b.font = Font(bold=True, size=16, color="1F5B57")
+    ws.cell(3, 2, "Beş mağaza kadrosu · üç POS mağazası iş hacmi · 2025 ile aynı takvim dönemi").font = NOT_YAZI
+
+    satirlar = [
+        ("1", "Kadro farkı sezon başlamadan ÖNCE oluştu.",
+         "30 Haziran'da kadrolu personel 139'dan 153'e çıkmıştı.", "='Ozet'!D20", "+0 kişi;-0 kişi"),
+        ("2", "Sezon boyunca kadro büyümedi, KÜÇÜLDÜ.",
+         "1 Temmuz – 31 Ağustos: kadrolu 153 → 149. Geçen yıl da aynı yönde (−4).", "='Ozet'!C22", "+0 kişi;-0 kişi"),
+        ("3", "Sezonluk personel geçen yıldan AZ.",
+         "31 Ağustos'ta çalışan sezonluk: 65 → 62 kişi.", "='Ozet'!D23", "+0 kişi;-0 kişi"),
+        ("4", "Aynı dönemde elleçlenen ürün adedi %35 arttı.",
+         "574.718 → 775.192 adet. Adet enflasyondan etkilenmez — fiilen kasadan geçen, rafa dizilen mal.",
+         "='Ozet'!E8", "+0,0%"),
+        ("5", "Ciro %71 arttı.",
+         "71,8 milyon → 122,6 milyon ₺ (KDV dahil, iadeler düşülmüş).", "='Ozet'!E10", "+0,0%"),
+        ("6", "KİŞİ BAŞINA düşen iş de arttı.",
+         "Kişi başı ürün 4.019 → 4.845 adet; günlük 71,8 → 86,5 adet.", "='Ozet'!E13", "+0,0%"),
+        ("7", "İş hacmi, kadronun yaklaşık 3 KATI hızla büyüdü.",
+         "Ürün adedi +%34,9 · kadro +%11,9.", "='Ozet'!B17", "0,0\"x\""),
+        ("8", "Artış yönetimde değil, RAFIN ÖNÜNDE.",
+         "Yönetim +0 · Mal Kabul +0 · İdari İşler +0. Artış: Yardımcı Kitap +6 · Kırtasiye +3 · Kasa +2.",
+         None, None),
+        ("9", "Büyüme kurumsaldan gelmedi, mağazadan geldi.",
+         "Sınav Okulları Ocak–Ağustos cirosu −%22,4 küçüldü; mağaza tarafı +%54,9 büyüdü.",
+         "='Oca-Agu'!G4", "+0,0%"),
+    ]
+
+    s = 5
+    for no, baslik, aciklama, formul, fmt in satirlar:
+        n = ws.cell(s, 1, no)
+        n.font = Font(bold=True, size=11, color="FFFFFF")
+        n.fill = PatternFill("solid", fgColor="1F5B57")
+        n.alignment = Alignment(horizontal="center", vertical="center")
+        t = ws.cell(s, 2, baslik)
+        t.font = Font(bold=True, size=11.5)
+        t.alignment = Alignment(vertical="center")
+        if formul:
+            c = ws.cell(s, 3, formul)
+            c.number_format = fmt
+            c.font = Font(bold=True, size=14, color="1F7A4D")
+            c.alignment = Alignment(horizontal="right", vertical="center")
+        s += 1
+        a = ws.cell(s, 2, aciklama)
+        a.font = Font(size=10, color="444444")
+        a.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[s].height = 26
+        s += 1
+
+    s += 1
+    k = ws.cell(s, 2, "TEK CÜMLE: Kadro farkı 1 Temmuz'dan önce kurulmuştu; sezon içinde kadro küçülürken "
+                      "iş hacmi %35 büyüdü, kişi başına düşen iş %21 arttı.")
+    k.font = Font(bold=True, size=11, color="1F5B57")
+    k.alignment = Alignment(wrap_text=True, vertical="center")
+    ws.cell(s, 1).fill = PatternFill("solid", fgColor="FFF3CD")
+    ws.row_dimensions[s].height = 34
+    s += 2
+
+    ws.cell(s, 2, "Rakamların kaynağı ve kontrolü: Ozet · Magaza · Kadro · Bolum · Yillar · Oca-Agu · Yontem "
+                  "sayfaları. Kadro = Zirve İK (İK'nın kendi karşılaştırma raporuyla birebir), iş hacmi = "
+                  "DerinSIS mağaza satışı (Sınav hariç).").font = NOT_YAZI
+    ws.cell(s, 2).alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[s].height = 28
+    return ws
+
+
 # ------------------------------------------------------------------ Ozet
 def sayfa_ozet(wb, veri):
     """Kapsam ETIKETLI ozet + KOPRU kontrolu.
@@ -469,7 +548,7 @@ def sayfa_ozet(wb, veri):
     # ---------------- KAPSAM B — bes magaza
     s = blok(s, "KAPSAM B — BES MAGAZA (+ Heykel, Sura: POS raporlamasinda YOK -> is hacmi olculemez)")
     r_taban_b = s
-    s = satir(s, "Kadrolu — TABAN 30.06  <<< patrona soylenen +14 BU SATIR",
+    s = satir(s, "Kadrolu — TABAN 30.06 (sezon oncesi kurulu kadro)",
               k5["kadrolu_taban%d" % (ONCEKI % 100)], k5["kadrolu_taban%d" % (CARI % 100)], ADET, vurgu=True)
     r_kesim_b = s
     s = satir(s, "Kadrolu — KESIM 31.08", k5["kadrolu_kesim%d" % (ONCEKI % 100)],
@@ -920,6 +999,7 @@ def main(argv):
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
     sayfa_yontem(wb, veri)
+    sayfa_sunum(wb, veri)   # EN SONDA: index 0'a girer, capraz-sayfa formulleri hedeflerini bulur
     # cikti yukarida cozuldu
     cikti.parent.mkdir(parents=True, exist_ok=True)
     wb.save(cikti)
