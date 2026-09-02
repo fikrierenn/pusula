@@ -1,0 +1,232 @@
+@page "/kadro"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject KadroQueries Q
+@inject Db Db
+@inject ILogger<Kadro> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Kadro / Sezon Personeli — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">
+        Zirve İK (<b>vw_PersonelDepartman</b>) · sezon personeli = <b>Kadro='SEZONLUK'</b> ·
+        as-of aktif <b>Ict &gt;= tarih</b> — <b>sp_PersonelKarsilastirma_Ozet</b> ile birebir ·
+        toplulaştırılmış (isim/ücret yok)
+    </div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Kadro / Sezon Personeli</h1>
+</div>
+
+@if (!Db.ZirveEnabled)
+{
+    <div class="alert alert-warning mb-4">
+        <div>
+            <div class="font-semibold">Zirve bağlantısı yapılandırılmamış</div>
+            <div class="text-xs">
+                <code>.env</code> içine <code>ZIRVE_USER</code> ve <code>ZIRVE_PASSWORD</code> girilmeli
+                (host + database zaten tanımlı). Girildikten sonra uygulama yeniden başlatılır (plan-38).
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
+        <div class="flex flex-wrap items-end gap-4">
+            <label class="form-control">
+                <span class="label-text text-xs">Taban (sezon öncesi)</span>
+                <input type="date" class="input input-bordered input-sm" @bind="_taban" @bind:after="Yukle" />
+            </label>
+            <label class="form-control">
+                <span class="label-text text-xs">Kesim (ölçüm günü)</span>
+                <input type="date" class="input input-bordered input-sm" @bind="_kesim" @bind:after="Yukle" />
+            </label>
+            <label class="form-control">
+                <span class="label-text text-xs">Sezon başı (kohort)</span>
+                <input type="date" class="input input-bordered input-sm" @bind="_sezonBasi" @bind:after="Yukle" />
+            </label>
+            <label class="label cursor-pointer gap-2">
+                <input type="checkbox" class="checkbox checkbox-sm" @bind="_yalnizMagaza" @bind:after="Yukle" />
+                <span class="label-text text-xs">Yalnız mağazalar</span>
+            </label>
+            <div class="text-[11px] text-base-content/50 max-w-md">
+                Önceki yıl aynı takvim gününden otomatik türetilir. <b>"Bugün aktif" yıllar arası kıyaslanamaz</b>
+                (cari yıl Eylül tahliyesini görmedi) — bu yüzden taban → kesim modeli kullanılır.
+            </div>
+        </div>
+    </div>
+
+    @if (_hata is not null)
+    {
+        <div class="alert alert-error mb-4"><span>@_hata</span></div>
+    }
+    else if (_ozet is null)
+    {
+        <div class="flex items-center gap-2 text-sm text-base-content/60 mb-4">
+            <span class="loading loading-spinner loading-sm"></span> Yükleniyor…
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            @Kpi("Taban farkı", $"{_ozet.TabanFark:+#;-#;0}", $"{_taban:dd.MM} · {_ozet.TabanKadroluOnceki} → {_ozet.TabanKadroluCari}", "Sezon başlamadan önce kurulu kadrolu fark")
+            @Kpi("Sezon içi kadrolu", $"{_ozet.SezonIciCari:+#;-#;0}", $"{_ozet.TabanKadroluCari} → {_ozet.KesimKadroluCari} · geçen yıl {_ozet.SezonIciOnceki:+#;-#;0}", "Taban → kesim arası kadrolu değişim")
+            @Kpi("Sezonluk", $"{_ozet.SezonlukFark:+#;-#;0}", $"{_ozet.KesimSezonlukOnceki} → {_ozet.KesimSezonlukCari} kişi", "Kesim gününde çalışan sezonluk personel")
+            @Kpi("Toplam kadro", $"{_ozet.ToplamCari}", $"geçen yıl {_ozet.ToplamOnceki} · fark {_ozet.ToplamCari - _ozet.ToplamOnceki:+#;-#;0}", "Sezonluk + kadrolu")
+        </div>
+
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
+            <h3 class="text-sm font-semibold mb-1">Şube × grup — @_kesim.ToString("dd.MM.yyyy") kesimi</h3>
+            <p class="text-[11px] text-base-content/50 mb-3">
+                Gruplar birbirini kesmez. <b>Engelli</b> = 4857/30 teşviki veya özürlülük kodu izi (alt sınır;
+                teşviksiz engelli görünmez) — KVKK m.6 gereği yalnız şube toplamı.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="table table-sm table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Şube</th><th>Grup</th>
+                            <th class="text-right">Taban @(_taban.Year - 1)</th><th class="text-right">Taban @_taban.Year</th>
+                            <th class="text-right">Kesim @(_kesim.Year - 1)</th><th class="text-right">Kesim @_kesim.Year</th>
+                            <th class="text-right">Fark</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _subeGrup)
+                        {
+                            var fark = r.KesimCari - r.KesimOnceki;
+                            <tr>
+                                <td class="font-medium">@r.Sube</td>
+                                <td><span class="badge badge-sm @GrupRenk(r.Grup)">@r.Grup</span></td>
+                                <td class="text-right tabular-nums">@r.TabanOnceki</td>
+                                <td class="text-right tabular-nums">@r.TabanCari</td>
+                                <td class="text-right tabular-nums">@r.KesimOnceki</td>
+                                <td class="text-right tabular-nums font-semibold">@r.KesimCari</td>
+                                <td class="text-right tabular-nums @(fark > 0 ? "text-warning" : fark < 0 ? "text-success" : "opacity-40")">@fark.ToString("+#;-#;0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+                <h3 class="text-sm font-semibold mb-1">Tutunma — eşit kıdemde</h3>
+                <p class="text-[11px] text-base-content/50 mb-3">
+                    Kohort = @_sezonBasi.ToString("dd.MM") – @_kesim.ToString("dd.MM") girişli. Risk kümesi h gün için
+                    <b>giriş ≤ kesim − h</b> → iki yıl aynı takvim penceresinde kıyaslanır.
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Segment</th><th>Yıl</th><th class="text-right">Alınan</th><th class="text-right">Ayrılan</th><th class="text-right">14 gün</th><th class="text-right">30 gün</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in _tutunma.OrderBy(x => x.Segment).ThenBy(x => x.Yil))
+                            {
+                                <tr>
+                                    <td class="font-medium">@t.Segment</td>
+                                    <td class="tabular-nums">@t.Yil</td>
+                                    <td class="text-right tabular-nums">@t.Alinan</td>
+                                    <td class="text-right tabular-nums">@t.KesimeKadarAyrilan</td>
+                                    <td class="text-right tabular-nums">@Yuzde(t.Tutunma14) <span class="opacity-40 text-[10px]">(@t.Kalan14/@t.Risk14)</span></td>
+                                    <td class="text-right tabular-nums">@Yuzde(t.Tutunma30) <span class="opacity-40 text-[10px]">(@t.Kalan30/@t.Risk30)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+                <h3 class="text-sm font-semibold mb-1">İş hacmi — kadro ile kıyas</h3>
+                <p class="text-[11px] text-base-content/50 mb-3">
+                    @_sezonBasi.ToString("dd.MM") – @_kesim.ToString("dd.MM"), DerinSIS mağaza satışı (eTip 100,
+                    Sınav hariç, KDV hariç). <b>Ürün adedi enflasyondan bağımsız</b> — kadro kıyasında birincil ölçüt.
+                    Fiş sayısı bu kaynakta yok (eTip 100 günlük özet).
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Mağaza</th>
+                                <th class="text-right">Ürün adedi @(_kesim.Year - 1) → @_kesim.Year</th><th class="text-right">Δ</th>
+                                <th class="text-right">Ciro (M ₺)</th><th class="text-right">Δ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in _isHacmi)
+                            {
+                                <tr>
+                                    <td class="font-medium">@h.Magaza</td>
+                                    <td class="text-right tabular-nums opacity-70">@h.AdetOnceki.ToString("N0") → @h.AdetCari.ToString("N0")</td>
+                                    <td class="text-right tabular-nums font-semibold @(h.AdetDegisim > 0 ? "text-success" : "")">@Yuzde(h.AdetDegisim)</td>
+                                    <td class="text-right tabular-nums opacity-70">@Milyon(h.NetOnceki) → @Milyon(h.NetCari)</td>
+                                    <td class="text-right tabular-nums @(h.NetDegisim > 0 ? "text-success" : "")">@Yuzde(h.NetDegisim)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-[11px] text-warning/80 mt-3">
+                    ⚠ Kıyas <b>takvim tarihine göre</b> yapılır. Okul sezonunda açılış günü kayarsa (2025: 8 Eylül ·
+                    2026: 14 Eylül) bu yöntem Ağustos'ta yapay düşüş gösterir — sezon yorumunda okul-hizalı
+                    ölçümü kullan (<code>sorgular/2026-09-02-kadro-vs-is-hacmi-savunma.sql</code> blok 11).
+                </p>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private DateOnly _taban = new(DateTime.Today.Year, 6, 30);
+    private DateOnly _kesim = new(DateTime.Today.Year, 8, 31);
+    private DateOnly _sezonBasi = new(DateTime.Today.Year, 7, 1);
+    private bool _yalnizMagaza = true;
+
+    private KadroOzet? _ozet;
+    private IReadOnlyList<KadroSubeGrup> _subeGrup = [];
+    private IReadOnlyList<KadroTutunma> _tutunma = [];
+    private IReadOnlyList<KadroIsHacmi> _isHacmi = [];
+    private string? _hata;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        if (!Db.ZirveEnabled) return;
+        _hata = null;
+        _ozet = null;
+        try
+        {
+            _ozet = await Q.GetOzetAsync(_taban, _kesim, _yalnizMagaza);
+            _subeGrup = await Q.GetSubeGrupAsync(_taban, _kesim, _yalnizMagaza);
+            _tutunma = await Q.GetTutunmaAsync(_sezonBasi, _kesim, _yalnizMagaza);
+            _isHacmi = await Q.GetIsHacmiAsync(_sezonBasi, _kesim);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Kadro paneli yüklenemedi (taban {Taban}, kesim {Kesim})", _taban, _kesim);
+            _hata = "Kadro verisi alınamadı. Zirve bağlantısı veya yetki sorunu olabilir — log'a bakılmalı.";
+        }
+    }
+
+    private static string Yuzde(decimal? d) => d is null ? "—" : $"{d.Value:P1}";
+
+    private static string Milyon(decimal tl) => (tl / 1_000_000m).ToString("N1");
+
+    private static string GrupRenk(string grup) => grup switch
+    {
+        "SEZONLUK" => "badge-primary",
+        "ENGELLI" => "badge-info",
+        "ETKINLIK" => "badge-accent",
+        _ => "badge-ghost",
+    };
+
+    private RenderFragment Kpi(string etiket, string deger, string alt, string ipucu) => @<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4" title="@ipucu">
+        <div class="text-[10px] uppercase tracking-wider text-base-content/50">@etiket</div>
+        <div class="text-3xl font-bold tabular-nums leading-none mt-2">@deger</div>
+        <div class="text-[11px] text-base-content/50 mt-2">@alt</div>
+    </div>;
+}

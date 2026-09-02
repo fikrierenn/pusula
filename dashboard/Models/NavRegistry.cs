@@ -41,6 +41,7 @@ public static class NavRegistry
         new NavItem("gelir-tablosu", "Gelir Tablosu", "receipt-text"),
         new NavItem("cari-risk", "Cari / Risk", "wallet"),
         new NavItem("trafik", "Trafik & Kasiyer", "activity"),
+        new NavItem("kadro", "Kadro / Sezon Personeli", "users-round"),
         new NavItem("musteri", "Müşteri", "users", InBottomNav: true),
         new NavItem("sadakat", "Sadakat", "heart"),
         new NavItem("hediye-ceki", "Hediye Çeki", "ticket"),

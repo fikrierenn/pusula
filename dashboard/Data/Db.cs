@@ -10,6 +10,7 @@ public sealed class Db
 {
     private readonly string _connStr;
     private readonly string? _jokerConnStr;
+    private readonly string? _zirveConnStr;
     private readonly string? _panelConnStr;
     private readonly ILogger<Db> _logger;
 
@@ -43,6 +44,26 @@ public sealed class Db
             b.Password = pass;
         }
         _connStr = b.ConnectionString;
+
+        // ZIRVE bordro/İK DB direkt bağlantı (plan-38 yol B). Linked server [ZIRVE] remote login
+        // 'kutlama' İK objelerinde yetkisiz (02.09.2026 test: SELECT denied) → OPENQUERY kullanılamıyor.
+        // SALT-OKUMA: bu bağlantıyla yalnız SELECT yapılır (erp-write-policy.md — Zirve yazma YASAK).
+        var zHost = env.GetValueOrDefault("ZIRVE_HOST");
+        if (!string.IsNullOrWhiteSpace(zHost) && !string.IsNullOrWhiteSpace(env.GetValueOrDefault("ZIRVE_PASSWORD")))
+        {
+            var zPort = env.GetValueOrDefault("ZIRVE_PORT");
+            var zb = new SqlConnectionStringBuilder
+            {
+                DataSource = string.IsNullOrWhiteSpace(zPort) ? zHost : $"{zHost},{zPort}",
+                InitialCatalog = env.GetValueOrDefault("ZIRVE_DATABASE") ?? "BKM_GENEL",
+                UserID = env.GetValueOrDefault("ZIRVE_USER") ?? user,
+                Password = env.GetValueOrDefault("ZIRVE_PASSWORD") ?? pass,
+                TrustServerCertificate = true,
+                ConnectTimeout = 20,
+                CommandTimeout = 120,
+            };
+            _zirveConnStr = zb.ConnectionString;
+        }
 
         // JOKER e-ticaret DB direkt bağlantı (linked server ODAKJOKER yerine — B-74 perf).
         // User/pass JOKER_* yoksa MSSQL_* ile aynı (Fikri teyit: aynı sa).
@@ -99,6 +120,18 @@ public sealed class Db
 
     /// <summary>Her çağrıda yeni açık bağlantı (Dapper using ile kapatır). DMY zorunlu sorgular için SET DATEFORMAT dmy.</summary>
     public Task<SqlConnection> OpenAsync() => OpenWithRetryAsync(_connStr, dateformat: true);
+
+    /// <summary>Zirve bordro/İK yapılandırıldı mı (.env ZIRVE_HOST + ZIRVE_PASSWORD).</summary>
+    public bool ZirveEnabled => _zirveConnStr is not null;
+
+    /// <summary>Zirve (BKM_GENEL) İK DB'ye direkt bağlantı — SALT-OKUMA. .env'de ZIRVE_HOST/PASSWORD yoksa hata.</summary>
+    public Task<SqlConnection> OpenZirveAsync()
+    {
+        if (_zirveConnStr is null)
+            throw new InvalidOperationException(
+                ".env içinde ZIRVE_HOST / ZIRVE_PASSWORD yok — Zirve İK bağlantısı yapılandırılmamış (plan-38).");
+        return OpenWithRetryAsync(_zirveConnStr, dateformat: false);  // Zirve SQL2008; tarihler ISO literal ile verilir.
+    }
 
     /// <summary>JOKER e-ticaret DB'ye direkt bağlantı (linked server ODAKJOKER yerine). .env'de JOKER_HOST yoksa hata.</summary>
     public Task<SqlConnection> OpenJokerAsync()
