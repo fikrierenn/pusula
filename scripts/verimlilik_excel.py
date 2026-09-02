@@ -621,18 +621,44 @@ def cek(env, kisi=False):
             m = mk.get(sube)
             if not m:
                 continue
-            satirlar.append({"sube": sube, "norm": nm,
+            nsez = nd.get("norm_sezonluk", {}).get(sube, 0)
+            satirlar.append({"sube": sube, "norm": nm, "norm_sezonluk": nsez,
+                             "norm_toplam": nm + nsez,
                              "kadrolu_taban26": m["kadrolu_taban26"],
                              "kadrolu_kesim26": m["kadrolu_kesim26"],
-                             "sezonluk_kesim26": m["sezonluk_kesim26"]})
+                             "sezonluk_kesim26": m["sezonluk_kesim26"],
+                             "toplam_kesim26": m["kadrolu_kesim26"] + m["sezonluk_kesim26"]})
+        # BOLUM bazinda norm vs gercek (yalniz norm tablosundaki magazalar)
+        norm_subeler = set(norm_sube)
+        ger_bolum, sez_bolum = {}, {}
+        for r in veri["magaza_bolum"]:
+            if r["sube"] in norm_subeler:
+                ger_bolum[r["bolum"]] = ger_bolum.get(r["bolum"], 0) + r["kadrolu26"]
+                sez_bolum[r["bolum"]] = sez_bolum.get(r["bolum"], 0) + r["sezonluk26"]
+        bolum_kars = []
+        for b in sorted(set(norm_bolum) | set(ger_bolum),
+                        key=lambda x: -max(0, norm_bolum.get(x, 0) - ger_bolum.get(x, 0))):
+            nm, gr, sz = norm_bolum.get(b, 0), ger_bolum.get(b, 0), sez_bolum.get(b, 0)
+            if not (nm or gr or sz):
+                continue
+            bolum_kars.append({"bolum": b, "norm": nm, "kadrolu26": gr,
+                               "acik": max(0, nm - gr), "fazla": max(0, gr - nm), "sezonluk26": sz})
         veri["norm"] = {
             "tarih": nd["meta"]["tarih"], "kaynak_dosya": norm_dosya[-1].name,
             "kapsam_disi": [x for x in mk if x not in norm_sube],
             "sube": satirlar,
-            "bolum": [{"bolum": b, "norm": norm_bolum[b]} for b in sorted(norm_bolum, key=lambda x: -norm_bolum[x])],
+            "bolum": bolum_kars,
+            # ⚠ Bolum bazinda acik toplami, magaza bazindan BUYUK olur: magaza icinde bir bolumun
+            #   fazlasi baska bolumun acigini maskeler (net -8, magaza-acik 11, bolum-acik 15).
+            "acik_bolum_toplam": sum(r["acik"] for r in bolum_kars),
+            "fazla_bolum_toplam": sum(r["fazla"] for r in bolum_kars),
             "toplam": {"norm": sum(r["norm"] for r in satirlar),
+                       "norm_sezonluk": sum(r["norm_sezonluk"] for r in satirlar),
+                       "norm_toplam": sum(r["norm_toplam"] for r in satirlar),
                        "kadrolu_taban26": sum(r["kadrolu_taban26"] for r in satirlar),
-                       "kadrolu_kesim26": sum(r["kadrolu_kesim26"] for r in satirlar)},
+                       "kadrolu_kesim26": sum(r["kadrolu_kesim26"] for r in satirlar),
+                       "sezonluk_kesim26": sum(r["sezonluk_kesim26"] for r in satirlar),
+                       "toplam_kesim26": sum(r["toplam_kesim26"] for r in satirlar)},
         }
 
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
@@ -1527,10 +1553,10 @@ def sayfa_norm(wb, veri):
     if not n:
         return None
     ws = wb.create_sheet("Norm")
-    kolonlar = [("Mağaza", 14, None), ("Norm (sezon dışı)", 15, ADET),
-                ("Kadrolu 30.06", 13, ADET), ("Norm farkı 30.06", 15, "+0;-0;0"),
-                ("Kadrolu 31.08", 13, ADET), ("Norm farkı 31.08", 15, "+0;-0;0"),
-                ("Sezonluk 31.08", 13, ADET), ("Toplam 31.08", 13, ADET)]
+    kolonlar = [("Mağaza", 13, None),
+                ("Norm kadrolu", 12, ADET), ("Kadrolu 31.08", 12, ADET), ("Kadrolu farkı", 12, "+0;-0;0"),
+                ("Norm sezonluk", 12, ADET), ("Sezonluk 31.08", 12, ADET), ("Sezonluk farkı", 12, "+0;-0;0"),
+                ("NORM TOPLAM", 12, ADET), ("GERÇEK TOPLAM", 13, ADET), ("TOPLAM FARK", 12, "+0;-0;0")]
     ws.cell(1, 1, "Norm kadro (%s, sezon dışı) ile gerçek kadrolu karşılaştırması" % n["tarih"]).font = Font(bold=True, size=12)
     _basliklar(ws, kolonlar, satir=3)
 
@@ -1538,27 +1564,61 @@ def sayfa_norm(wb, veri):
     ilk = s
     for r in n["sube"]:
         ws.cell(s, 1, r["sube"].title()).border = KENAR
-        for kol, v_ in ((2, r["norm"]), (3, r["kadrolu_taban26"]), (5, r["kadrolu_kesim26"]),
-                        (7, r["sezonluk_kesim26"])):
+        for kol, v_ in ((2, r["norm"]), (3, r["kadrolu_kesim26"]),
+                        (5, r["norm_sezonluk"]), (6, r["sezonluk_kesim26"]),
+                        (8, r["norm_toplam"]), (9, r["toplam_kesim26"])):
             c = ws.cell(s, kol, v_); c.number_format = ADET; c.border = KENAR
-        for kol, f in ((4, "=C%d-B%d" % (s, s)), (6, "=E%d-B%d" % (s, s)), (8, "=E%d+G%d" % (s, s))):
+        for kol, f in ((4, "=C%d-B%d" % (s, s)), (7, "=F%d-E%d" % (s, s)), (10, "=I%d-H%d" % (s, s))):
             c = ws.cell(s, kol, f)
-            c.number_format = kolonlar[kol - 1][2]
+            c.number_format = "+0;-0;0"
             c.border = KENAR
-            if kol in (4, 6):
-                c.font = Font(bold=True)
+            c.font = Font(bold=True)
+            if kol == 10:
+                c.fill = VURGU
         s += 1
     son = s - 1
     ws.cell(s, 1, "TOPLAM").font = Font(bold=True); ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
-    for kol in (2, 3, 5, 7):
+    for kol in (2, 3, 5, 6, 8, 9):
         c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
         c.number_format = ADET; c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
-    for kol, f in ((4, "=C%d-B%d" % (s, s)), (6, "=E%d-B%d" % (s, s)), (8, "=E%d+G%d" % (s, s))):
-        c = ws.cell(s, kol, f); c.number_format = kolonlar[kol - 1][2]
+    for kol, f in ((4, "=C%d-B%d" % (s, s)), (7, "=F%d-E%d" % (s, s)), (10, "=I%d-H%d" % (s, s))):
+        c = ws.cell(s, kol, f); c.number_format = "+0;-0;0"
         c.border = KENAR; c.fill = VURGU; c.font = Font(bold=True)
 
+    # --- BOLUM BAZINDA norm acigi
+    s += 2
+    ws.cell(s, 1, "BÖLÜM BAZINDA NORM AÇIĞI").font = BOLUM_YAZI
+    s += 1
+    bkolon = [("Bölüm", 18, None), ("Norm", 9, ADET), ("Kadrolu 31.08", 12, ADET),
+              ("Açık", 9, ADET), ("Fazla", 9, ADET), ("Sezonluk 31.08", 13, ADET)]
+    for i, (ad, gen, _f) in enumerate(bkolon, start=1):
+        h = ws.cell(s, i, ad)
+        h.fill = BASLIK; h.font = BASLIK_YAZI; h.border = KENAR
+        h.alignment = Alignment(horizontal="center")
+    s += 1
+    for r in n["bolum"]:
+        ws.cell(s, 1, r["bolum"].title()).border = KENAR
+        for kol, v_ in ((2, r["norm"]), (3, r["kadrolu26"]),
+                        (4, r["acik"] or "—"), (5, r["fazla"] or "—"), (6, r["sezonluk26"])):
+            c = ws.cell(s, kol, v_)
+            c.number_format = ADET
+            c.border = KENAR
+            if kol == 4 and r["acik"]:
+                c.font = Font(bold=True, color="A6001A")
+                c.fill = VURGU
+        s += 1
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True); ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
+    for kol, v_ in ((2, sum(r["norm"] for r in n["bolum"])),
+                    (3, sum(r["kadrolu26"] for r in n["bolum"])),
+                    (4, n["acik_bolum_toplam"]), (5, n["fazla_bolum_toplam"]),
+                    (6, sum(r["sezonluk26"] for r in n["bolum"]))):
+        c = ws.cell(s, kol, v_)
+        c.number_format = ADET; c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
     s += 2
     _notlar(ws, [
+        "⚠ BOLUM acigi (%d) MAGAZA acigindan (%d) BUYUK: magaza icinde bir bolumun fazlasi baska "
+        "bolumun acigini maskeler." % (n["acik_bolum_toplam"],
+                                       sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in n["sube"])),
         "NORM SEZON DISI kadroyu tanimlar -> sezonluk personel norma DAHIL DEGIL; kiyas yalniz KADROLU ile.",
         "Norm kaynagi: %s (%s). Yonetim parametresi, Zirve'den sorgulanmaz." % (n["kaynak_dosya"], n["tarih"]),
         "KAPSAM DISI: %s norm tablosunda yok." % (", ".join(x.title() for x in n["kapsam_disi"]) or "—"),

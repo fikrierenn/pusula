@@ -758,27 +758,95 @@ if nrm:
     fark_kesim = tp["kadrolu_kesim26"] - tp["norm"]
     fark_taban = tp["kadrolu_taban26"] - tp["norm"]
 
-    kpi(s, 0.6, 1.5, 3.9, "NORM KADRO · SEZON DIŞI", "%d" % tp["norm"],
-        "%s tarihli norm · dört mağaza" % nrm["tarih"], MGREY, 32, ikon="users")
-    kpi(s, 4.68, 1.5, 3.9, "GERÇEK KADROLU · 31.08", "%d" % tp["kadrolu_kesim26"],
-        "30.06 tabanında %d kişi" % tp["kadrolu_taban26"], MGREY, 32, ikon="users")
+    kpi(s, 0.6, 1.5, 3.9, "NORM TOPLAM · KADRO+SEZON", "%d" % tp["norm_toplam"],
+        "kadrolu %d + sezonluk %d · %s" % (tp["norm"], tp["norm_sezonluk"], nrm["tarih"]),
+        MGREY, 32, ikon="users")
+    kpi(s, 4.68, 1.5, 3.9, "GERÇEK TOPLAM · 31.08", "%d" % tp["toplam_kesim26"],
+        "kadrolu %d + sezonluk %d" % (tp["kadrolu_kesim26"], tp["sezonluk_kesim26"]),
+        MGREY, 32, ikon="users")
     acik_toplam = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
-    kpi(s, 8.75, 1.5, 3.9, "NORM AÇIĞI · 31.08", "%d kişi" % acik_toplam,
-        "kadrolu olarak DOLDURULMADI", DRED, 30, ikon="alert-triangle")
+    toplam_fark = tp["toplam_kesim26"] - tp["norm_toplam"]
+    kpi(s, 8.75, 1.5, 3.9, "NORMA GÖRE DURUM", "%+d kişi" % toplam_fark,
+        "toplam personel normun ALTINDA" if toplam_fark < 0 else "normun üzerinde",
+        DRED, 28, ikon="alert-triangle")
 
-    satir = [["Mağaza", "Norm", "Kadrolu 31.08", "Norm açığı", "Sezonluk 31.08",
-              "Sezon takviyesi"]]
-    top_acik = top_sez = top_tak = 0
+    NL2 = chr(10)
+    satir = [["Mağaza",
+              "Norm" + NL2 + "kadrolu", "Gerçek" + NL2 + "kadrolu", "Fark",
+              "Norm" + NL2 + "sezonluk", "Gerçek" + NL2 + "sezonluk", "Fark",
+              "NORM" + NL2 + "TOPLAM", "GERÇEK" + NL2 + "TOPLAM", "FARK"]]
     for r in nrm["sube"]:
-        acik = max(0, r["norm"] - r["kadrolu_kesim26"])
-        sez = r["sezonluk_kesim26"]
-        top_acik += acik; top_sez += sez; top_tak += max(0, sez - acik)
-        satir.append([tr_title(r["sube"]), str(r["norm"]), str(r["kadrolu_kesim26"]),
-                      ("%d" % acik) if acik else "—", str(sez), "%d" % max(0, sez - acik)])
+        satir.append([tr_title(r["sube"]),
+                      str(r["norm"]), str(r["kadrolu_kesim26"]),
+                      "%+d" % (r["kadrolu_kesim26"] - r["norm"]),
+                      str(r["norm_sezonluk"]), str(r["sezonluk_kesim26"]),
+                      "%+d" % (r["sezonluk_kesim26"] - r["norm_sezonluk"]),
+                      str(r["norm_toplam"]), str(r["toplam_kesim26"]),
+                      "%+d" % (r["toplam_kesim26"] - r["norm_toplam"])])
     satir.append(["TOPLAM", str(tp["norm"]), str(tp["kadrolu_kesim26"]),
-                  str(top_acik), str(top_sez), str(top_tak)])
-    t = s.shapes.add_table(len(satir), 6, Inches(0.6), Inches(3.75), Inches(7.6), Inches(2.2)).table
-    for i, gen in enumerate((1.55, 0.95, 1.35, 1.15, 1.35, 1.25)):
+                  "%+d" % (tp["kadrolu_kesim26"] - tp["norm"]),
+                  str(tp["norm_sezonluk"]), str(tp["sezonluk_kesim26"]),
+                  "%+d" % (tp["sezonluk_kesim26"] - tp["norm_sezonluk"]),
+                  str(tp["norm_toplam"]), str(tp["toplam_kesim26"]), "%+d" % toplam_fark])
+    t = s.shapes.add_table(len(satir), 10, Inches(0.6), Inches(3.62), Inches(12.05), Inches(1.85)).table
+    for i, gen in enumerate((1.5, 1.12, 1.18, 0.9, 1.18, 1.24, 0.9, 1.28, 1.35, 0.9)):
+        t.columns[i].width = Inches(gen)
+    t.rows[0].height = Inches(0.44)
+    for r, row in enumerate(satir):
+        for c, val in enumerate(row):
+            cell = t.cell(r, c); cell.text = val
+            son_satir = (r == len(satir) - 1)
+            for para in cell.text_frame.paragraphs:
+                para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
+                for run in para.runs:
+                    run.font.size = Pt(8 if r == 0 else 10)
+                    run.font.name = "Calibri"
+                    run.font.bold = (r == 0 or son_satir or c in (3, 6, 9))
+                    run.font.color.rgb = WHITE if r == 0 else (DRED if c in (3, 6, 9) else INK)
+            cell.fill.solid()
+            if r == 0:
+                cell.fill.fore_color.rgb = RED
+            elif son_satir:
+                cell.fill.fore_color.rgb = LGREY
+            elif c in (7, 8, 9):
+                cell.fill.fore_color.rgb = RGBColor(0xFD, 0xF2, 0xF3)
+            else:
+                cell.fill.fore_color.rgb = WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)
+
+    rrect(s, 0.6, 5.56, 12.05, 0.54, LGREY, RED, lw=1.5)
+    tb(s, 0.9, 5.56, 11.6, 0.54,
+       [("Şirketin kendi norm tablosuna göre 31 Ağustos'ta toplam personel %d kişi EKSİK "
+         "(norm %d · gerçek %d): kadrolu %+d, sezonluk %+d."
+         % (abs(toplam_fark), tp["norm_toplam"], tp["toplam_kesim26"],
+            tp["kadrolu_kesim26"] - tp["norm"], tp["sezonluk_kesim26"] - tp["norm_sezonluk"]),
+         11.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
+
+    dipnot(s, "* Norm kaynağı: BKMKİTAP Mağaza Kadro ve Sezon Takip Tablosu, %s (%s) — kadrolu normu "
+              "departman bazında, sezonluk normu mağaza toplamı olarak verir; engelli kadro dahildir · "
+              "Kapsam dışı: %s norm tablosunda yok · Gerçek sayılar 31.08 as-of."
+           % (nrm["tarih"], nrm["kaynak_dosya"],
+              ", ".join(tr_title(x) for x in nrm["kapsam_disi"]) or "—"))
+    sig(s)
+
+# ================================================================= NORM ACIGI · BOLUM
+if nrm and nrm.get("bolum"):
+    s = add("Yalnızca Başlık"); setph(s, 0, "Norm Açığı — Bölüm Bazında")
+    bl = nrm["bolum"]
+    acik_bolum = nrm["acik_bolum_toplam"]
+    acik_sube = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
+
+    satir = [["Bölüm", "Norm", "Kadrolu 31.08", "Açık", "Fazla", "Sezonluk 31.08"]]
+    for r in bl:
+        satir.append([tr_title(r["bolum"]), str(r["norm"]), str(r["kadrolu26"]),
+                      str(r["acik"]) if r["acik"] else "—",
+                      str(r["fazla"]) if r["fazla"] else "—",
+                      str(r["sezonluk26"]) if r["sezonluk26"] else "—"])
+    satir.append(["TOPLAM", str(sum(r["norm"] for r in bl)), str(sum(r["kadrolu26"] for r in bl)),
+                  str(acik_bolum), str(nrm["fazla_bolum_toplam"]),
+                  str(sum(r["sezonluk26"] for r in bl))])
+    yuk = min(4.35, 0.30 * len(satir))
+    t = s.shapes.add_table(len(satir), 6, Inches(0.6), Inches(1.5), Inches(7.9), Inches(yuk)).table
+    for i, gen in enumerate((2.15, 0.95, 1.35, 0.9, 0.9, 1.35)):
         t.columns[i].width = Inches(gen)
     for r, row in enumerate(satir):
         for c, val in enumerate(row):
@@ -787,26 +855,31 @@ if nrm:
             for para in cell.text_frame.paragraphs:
                 para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
                 for run in para.runs:
-                    run.font.size = Pt(9 if r == 0 else 10.5)
+                    run.font.size = Pt(8.5 if r == 0 else 9.5)
                     run.font.name = "Calibri"
-                    run.font.bold = (r == 0 or son_satir or c in (3, 5))
-                    run.font.color.rgb = WHITE if r == 0 else (DRED if c in (3, 5) else INK)
+                    run.font.bold = (r == 0 or son_satir or c == 3)
+                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 3 else INK)
             cell.fill.solid()
             cell.fill.fore_color.rgb = RED if r == 0 else (
                 LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)))
 
-    rrect(s, 8.45, 3.85, 4.2, 2.0, LGREY, RED, lw=1.5)
-    tb(s, 8.7, 3.97, 3.75, 1.8,
-       [("Değerlendirme", 13, True, DRED),
-        ("Norm kadro EKSİK: %d kadrolu pozisyon açık (net %+d). Bu açık kalıcı kadroyla "
-         "doldurulmadı; sezonluk personelle geçici olarak kapatıldı. Yani sezonluk sayısının bir "
-         "kısmı sezon takviyesi değil, NORM AÇIĞININ karşılığıdır — kalıcı maliyet artırılmadı."
-         % (acik_toplam, fark_kesim), 10.5, False, INK)], sp=1.12)
+    en_buyuk = [r for r in bl if r["acik"]][:4]
+    card(s, 8.7, 1.5, 3.95, 2.15, DRED, ikon="alert-triangle")
+    tb(s, 8.95, 1.62, 3.0, 0.32, [("EN BÜYÜK AÇIKLAR", 10, True, GREY)])
+    tb(s, 8.95, 1.98, 3.5, 1.6,
+       [("\n".join("%s  %d kişi" % (tr_title(r["bolum"]), r["acik"]) for r in en_buyuk),
+         12, True, DRED)], sp=1.35)
 
-    dipnot(s, "* Norm SEZON DIŞI kadroyu tanımlar; sezonluk personel norma dahil değildir, kıyas yalnız "
-              "kadrolu ile yapılır · Norm kaynağı: %s (%s), yönetim parametresi · Kapsam dışı: %s norm "
-              "tablosunda yok" % (nrm["kaynak_dosya"], nrm["tarih"],
-                                  ", ".join(tr_title(x) for x in nrm["kapsam_disi"]) or "—"))
+    rrect(s, 8.7, 3.85, 3.95, 2.15, LGREY, RED, lw=1.5)
+    tb(s, 8.95, 3.97, 3.5, 1.95,
+       [("Neden mağaza toplamından büyük?", 12, True, DRED),
+        ("Bölüm bazında açık %d kişi, mağaza bazında %d. Aradaki fark, bir mağazada bir bölümün "
+         "fazlasının başka bölümün açığını maskelemesinden gelir. Gerçek ihtiyaç bölüm bazında "
+         "okunur." % (acik_bolum, acik_sube), 10, False, INK)], sp=1.12)
+
+    dipnot(s, "* Kapsam: norm tablosundaki dört mağaza (FSM · İst. Yolu · Özlüce · Heykel; Şura norm "
+              "tablosunda yok) · Norm %s tarihli, SEZON DIŞI kadroyu tanımlar · Kıyas yalnız kadrolu "
+              "personel ile; sezonluk kolonu açığın nasıl kapatıldığını gösterir." % nrm["tarih"])
     sig(s)
 
 # ================================================================= SEZONLUK ALIM ZAMANLAMASI
@@ -868,7 +941,9 @@ if al and ay2:
             cell.fill.solid()
             cell.fill.fore_color.rgb = RED if r == 0 else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA))
 
-    dipnot(s, "* Kapsam: beş mağaza (%s) · Kohortlar okul açılışına göre AYNI ofsette kesildi "
+    dipnot(s, "* İK'da düzeltme bekleyen 1 kayıt: 2025 girişli bir sezonluk personel çıkış tarihi "
+              "işlenmediği için 31.08'de aktif görünüyor; düzeltilince sezonluk 62 → 61 olur (rakamlar "
+              "İK'nın resmi kaydıyla birebir tutulsun diye şimdilik düzeltilmedi) · Kapsam: beş mağaza (%s) · Kohortlar okul açılışına göre AYNI ofsette kesildi "
               "(T−12: 27.08.2025 ve 02.09.2026) · İş hacmi üç POS mağazası · ⚠ \"açılıştan kaç gün önce\" "
               "ölçüsü açılış 6 gün kaydığı için 2026'yı mekanik olarak erken gösterir, takvim ölçüsü esastır."
            % BES_ADLARI)

@@ -1,10 +1,10 @@
 {
   "meta": {
-    "baslik": "Norm kadro — sezon DIŞI",
+    "baslik": "Norm kadro — BKMKİTAP Mağaza Kadro ve Sezon Takip Tablosu",
     "tarih": "11.08.2026",
     "kaynak": "Kullanıcı (GMY) tarafından verilen norm kadro tablosu — İK/operasyon parametresi, Zirve'den sorgulanmaz",
     "kapsam": "Mağaza kadrolu norm; Şura tabloda YOK",
-    "not": "Norm SEZON DIŞI kadroyu tanımlar. Sezon içi sezonluk personel norma dahil değildir."
+    "not": "Tablo iki bölüm: MAĞAZA-KADROLU (sezon dışı norm, departman bazında) ve MAĞAZA-SEZONLUK (sezonluk norm, yalnız mağaza toplamı). Engelli kadro sayıları raporlamaya DAHİL. Şura tabloda yok."
   },
   "sube_esleme": {
     "FSM": "FSM",
@@ -13,20 +13,116 @@
     "HEYKEL": "HEYKEL"
   },
   "norm": {
-    "AKADEMİ":        { "FSM": 2, "İST. YOLU": 2, "ÖZLÜCE": 2, "HEYKEL": 4 },
-    "ÇOCUK":          { "FSM": 4, "İST. YOLU": 5, "ÖZLÜCE": 6, "HEYKEL": 4 },
-    "İDARİ İŞLER":    { "FSM": 3, "İST. YOLU": 2, "ÖZLÜCE": 3, "HEYKEL": 0 },
-    "KASA":           { "FSM": 5, "İST. YOLU": 5, "ÖZLÜCE": 6, "HEYKEL": 0 },
-    "KIYAFET":        { "FSM": 0, "İST. YOLU": 0, "ÖZLÜCE": 0, "HEYKEL": 0 },
-    "KIRTASİYE":      { "FSM": 6, "İST. YOLU": 5, "ÖZLÜCE": 7, "HEYKEL": 6 },
-    "KÜLTÜR":         { "FSM": 5, "İST. YOLU": 4, "ÖZLÜCE": 7, "HEYKEL": 6 },
-    "MAĞAZA":         { "FSM": 3, "İST. YOLU": 2, "ÖZLÜCE": 3, "HEYKEL": 2 },
-    "MAL KABUL":      { "FSM": 2, "İST. YOLU": 1, "ÖZLÜCE": 2, "HEYKEL": 1 },
-    "MUHASEBE":       { "FSM": 0, "İST. YOLU": 0, "ÖZLÜCE": 0, "HEYKEL": 1 },
-    "OYUN ALANI":     { "FSM": 0, "İST. YOLU": 0, "ÖZLÜCE": 1, "HEYKEL": 0 },
-    "OYUNCAK":        { "FSM": 3, "İST. YOLU": 3, "ÖZLÜCE": 4, "HEYKEL": 0 },
-    "YARDIMCI KİTAP": { "FSM": 4, "İST. YOLU": 4, "ÖZLÜCE": 4, "HEYKEL": 6 },
-    "ETKİNLİK":       { "FSM": 0, "İST. YOLU": 0, "ÖZLÜCE": 0, "HEYKEL": 0 }
+    "AKADEMİ": {
+      "FSM": 2,
+      "İST. YOLU": 2,
+      "ÖZLÜCE": 2,
+      "HEYKEL": 4
+    },
+    "ÇOCUK": {
+      "FSM": 4,
+      "İST. YOLU": 5,
+      "ÖZLÜCE": 6,
+      "HEYKEL": 4
+    },
+    "İDARİ İŞLER": {
+      "FSM": 3,
+      "İST. YOLU": 2,
+      "ÖZLÜCE": 3,
+      "HEYKEL": 0
+    },
+    "KASA": {
+      "FSM": 5,
+      "İST. YOLU": 5,
+      "ÖZLÜCE": 6,
+      "HEYKEL": 0
+    },
+    "KIYAFET": {
+      "FSM": 0,
+      "İST. YOLU": 0,
+      "ÖZLÜCE": 0,
+      "HEYKEL": 0
+    },
+    "KIRTASİYE": {
+      "FSM": 6,
+      "İST. YOLU": 5,
+      "ÖZLÜCE": 7,
+      "HEYKEL": 6
+    },
+    "KÜLTÜR": {
+      "FSM": 5,
+      "İST. YOLU": 4,
+      "ÖZLÜCE": 7,
+      "HEYKEL": 6
+    },
+    "MAĞAZA": {
+      "FSM": 3,
+      "İST. YOLU": 2,
+      "ÖZLÜCE": 3,
+      "HEYKEL": 2
+    },
+    "MAL KABUL": {
+      "FSM": 2,
+      "İST. YOLU": 1,
+      "ÖZLÜCE": 2,
+      "HEYKEL": 1
+    },
+    "MUHASEBE": {
+      "FSM": 0,
+      "İST. YOLU": 0,
+      "ÖZLÜCE": 0,
+      "HEYKEL": 1
+    },
+    "OYUN ALANI": {
+      "FSM": 0,
+      "İST. YOLU": 0,
+      "ÖZLÜCE": 1,
+      "HEYKEL": 0
+    },
+    "OYUNCAK": {
+      "FSM": 3,
+      "İST. YOLU": 3,
+      "ÖZLÜCE": 4,
+      "HEYKEL": 0
+    },
+    "YARDIMCI KİTAP": {
+      "FSM": 4,
+      "İST. YOLU": 4,
+      "ÖZLÜCE": 4,
+      "HEYKEL": 6
+    },
+    "ETKİNLİK": {
+      "FSM": 0,
+      "İST. YOLU": 0,
+      "ÖZLÜCE": 0,
+      "HEYKEL": 0
+    }
   },
-  "beyan_edilen_toplam": { "FSM": 37, "İST. YOLU": 33, "ÖZLÜCE": 45, "HEYKEL": 30, "GENEL": 145 }
+  "beyan_edilen_toplam": {
+    "FSM": 37,
+    "İST. YOLU": 33,
+    "ÖZLÜCE": 45,
+    "HEYKEL": 30,
+    "GENEL": 145
+  },
+  "norm_sezonluk": {
+    "FSM": 10,
+    "İST. YOLU": 25,
+    "ÖZLÜCE": 17,
+    "HEYKEL": 20
+  },
+  "beyan_edilen_toplam_sezonluk": {
+    "FSM": 10,
+    "İST. YOLU": 25,
+    "ÖZLÜCE": 17,
+    "HEYKEL": 20,
+    "GENEL": 72
+  },
+  "beyan_edilen_kadro_artı_sezon": {
+    "FSM": 47,
+    "İST. YOLU": 58,
+    "ÖZLÜCE": 62,
+    "HEYKEL": 50,
+    "GENEL": 217
+  }
 }

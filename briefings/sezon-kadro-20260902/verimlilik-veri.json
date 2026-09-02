@@ -26,10 +26,10 @@
       "kadro26": 61,
       "adet25": 173398.0,
       "adet26": 258168.5,
-      "kdvharic25": 20455158.429999955,
-      "kdvharic26": 40444611.77000087,
-      "kdvdahil25": 22053802.749999013,
-      "kdvdahil26": 43253793.719998285
+      "kdvharic25": 20455158.430000123,
+      "kdvharic26": 40444611.769999884,
+      "kdvdahil25": 22053802.75000135,
+      "kdvdahil26": 43253793.71999872
     },
     {
       "ad": "Özlüce",
@@ -38,10 +38,10 @@
       "kadro26": 54,
       "adet25": 230764.7,
       "adet26": 301250.05000000005,
-      "kdvharic25": 28347121.589999348,
-      "kdvharic26": 44784483.15000021,
-      "kdvdahil25": 30475719.769994043,
-      "kdvdahil26": 48017124.649997026
+      "kdvharic25": 28347121.589998964,
+      "kdvharic26": 44784483.15000012,
+      "kdvdahil25": 30475719.769993626,
+      "kdvdahil26": 48017124.64999742
     },
     {
       "ad": "FSM",
@@ -50,17 +50,17 @@
       "kadro26": 45,
       "adet25": 170555.0,
       "adet26": 215773.0,
-      "kdvharic25": 18127443.55000037,
-      "kdvharic26": 29458690.66000102,
-      "kdvdahil25": 19307906.60000109,
-      "kdvdahil26": 31330462.479999363
+      "kdvharic25": 18127443.54999987,
+      "kdvharic26": 29458690.660000812,
+      "kdvdahil25": 19307906.600000955,
+      "kdvdahil26": 31330462.479999132
     }
   ],
   "yillar": [
     {
       "yil": 2023,
       "kadrolu": 60,
-      "adet": 2064284.4300000002
+      "adet": 2064284.43
     },
     {
       "yil": 2024,
@@ -90,50 +90,50 @@
   "ocak_agustos": {
     "magaza": {
       "adet25": 2752385.04,
-      "kdvdahil25": 316059798.220339,
+      "kdvdahil25": 316059798.2201345,
       "adet26": 3607308.91,
-      "kdvdahil26": 489433287.7802692
+      "kdvdahil26": 489433287.7802142
     },
     "sinav": {
       "adet25": 33584.0,
-      "kdvdahil25": 136108071.44999936,
+      "kdvdahil25": 136108071.44999972,
       "adet26": 21693.0,
-      "kdvdahil26": 105575646.11000018
+      "kdvdahil26": 105575646.10999997
     }
   },
   "kategori": [
     {
       "kategori": "Kırtasiye",
       "adet25": 222233.0,
-      "ciro25": 18504324.970001377,
+      "ciro25": 18504324.970000304,
       "adet26": 296797.0,
-      "ciro26": 32380866.90000177,
+      "ciro26": 32380866.90000193,
       "oa_adet25": 1069622.3,
-      "oa_ciro25": 76768401.44994408,
+      "oa_ciro25": 76768401.44995019,
       "oa_adet26": 1312972.0,
-      "oa_ciro26": 105535404.84997666
+      "oa_ciro26": 105535404.84995687
     },
     {
       "kategori": "Çocuk Kitabı",
       "adet25": 73247.0,
-      "ciro25": 10023708.440000003,
+      "ciro25": 10023708.440000035,
       "adet26": 85696.0,
-      "ciro26": 15504229.089999992,
+      "ciro26": 15504229.08999997,
       "oa_adet25": 358316.0,
-      "oa_ciro25": 45499379.90999994,
+      "oa_ciro25": 45499379.91000041,
       "oa_adet26": 440372.0,
-      "oa_ciro26": 71753809.59000008
+      "oa_ciro26": 71753809.58999892
     },
     {
       "kategori": "Kitap",
       "adet25": 66399.0,
-      "ciro25": 14491065.989999749,
+      "ciro25": 14491065.989999808,
       "adet26": 83655.0,
-      "ciro26": 23140587.889999807,
+      "ciro26": 23140587.889999803,
       "oa_adet25": 298822.0,
-      "oa_ciro25": 61707973.9900049,
+      "oa_ciro25": 61707973.9900054,
       "oa_adet26": 348758.0,
-      "oa_ciro26": 92077305.79000247
+      "oa_ciro26": 92077305.79000017
     },
     {
       "kategori": "Genel",
@@ -142,97 +142,97 @@
       "adet26": 65475.55,
       "ciro26": 75350.18,
       "oa_adet25": 239529.74,
-      "oa_ciro25": 130925.48999999999,
-      "oa_adet26": 320282.91,
-      "oa_ciro26": 366286.76
+      "oa_ciro25": 130925.49000000002,
+      "oa_adet26": 320282.91000000003,
+      "oa_ciro26": 366286.76000000007
     },
     {
       "kategori": "Oyuncak",
       "adet25": 37135.0,
-      "ciro25": 11136312.680000013,
+      "ciro25": 11136312.67999999,
       "adet26": 58662.0,
-      "ciro26": 16748849.720000066,
+      "ciro26": 16748849.720000057,
       "oa_adet25": 208095.0,
-      "oa_ciro25": 51459212.219999194,
+      "oa_ciro25": 51459212.22000152,
       "oa_adet26": 302422.0,
-      "oa_ciro26": 85710445.57999855
+      "oa_ciro26": 85710445.57999916
     },
     {
       "kategori": "Hediyelik",
       "adet25": 39836.0,
-      "ciro25": 1475290.2600000065,
+      "ciro25": 1475290.2600000072,
       "adet26": 57747.0,
-      "ciro26": 2616103.030000003,
+      "ciro26": 2616103.0300000017,
       "oa_adet25": 147554.0,
-      "oa_ciro25": 7019068.689999694,
+      "oa_ciro25": 7019068.689999698,
       "oa_adet26": 295058.0,
-      "oa_ciro26": 15849099.380000053
+      "oa_ciro26": 15849099.380000051
     },
     {
       "kategori": "Hazırlık Kitapları",
       "adet25": 38847.0,
-      "ciro25": 11665122.53999998,
+      "ciro25": 11665122.539999992,
       "adet26": 54032.0,
-      "ciro26": 22357944.57999997,
+      "ciro26": 22357944.57999999,
       "oa_adet25": 218946.0,
-      "oa_ciro25": 55216741.23000014,
+      "oa_ciro25": 55216741.230000705,
       "oa_adet26": 266564.0,
-      "oa_ciro26": 80734442.2800015
+      "oa_ciro26": 80734442.28000128
     },
     {
       "kategori": "Gıda",
       "adet25": 23729.0,
-      "ciro25": 692117.33,
+      "ciro25": 692117.3299999998,
       "adet26": 30608.0,
-      "ciro26": 1187673.7800000005,
+      "ciro26": 1187673.7800000003,
       "oa_adet25": 115494.0,
-      "oa_ciro25": 3966038.880000014,
+      "oa_ciro25": 3966038.8799999673,
       "oa_adet26": 138337.0,
-      "oa_ciro26": 5804839.819999995
+      "oa_ciro26": 5804839.819999999
     },
     {
       "kategori": "Akademi",
       "adet25": 7328.0,
-      "ciro25": 1942142.2499999977,
+      "ciro25": 1942142.2499999988,
       "adet26": 24841.0,
-      "ciro26": 6643827.519999995,
+      "ciro26": 6643827.52,
       "oa_adet25": 31118.0,
-      "oa_ciro25": 8032063.310000006,
+      "oa_ciro25": 8032063.31000004,
       "oa_adet26": 78701.0,
       "oa_ciro26": 22241533.930000015
     },
     {
       "kategori": "Kişisel Bakım",
       "adet25": 4249.0,
-      "ciro25": 284625.56999999983,
+      "ciro25": 284625.57,
       "adet26": 9191.0,
-      "ciro26": 420362.1899999998,
+      "ciro26": 420362.18999999977,
       "oa_adet25": 19711.0,
-      "oa_ciro25": 1246589.9800000032,
+      "oa_ciro25": 1246589.9800000023,
       "oa_adet26": 46133.0,
-      "oa_ciro26": 1897835.6800000067
+      "oa_ciro26": 1897835.6800000055
     },
     {
       "kategori": "Elektronik",
       "adet25": 7873.0,
-      "ciro25": 1257655.950000001,
+      "ciro25": 1257655.9500000011,
       "adet26": 5015.0,
-      "ciro26": 996193.7400000001,
+      "ciro26": 996193.7400000002,
       "oa_adet25": 21609.0,
-      "oa_ciro25": 3403257.070000005,
+      "oa_ciro25": 3403257.070000021,
       "oa_adet26": 24495.0,
-      "oa_ciro26": 4767428.029999998
+      "oa_ciro26": 4767428.029999992
     },
     {
       "kategori": "Dergi",
       "adet25": 2570.0,
-      "ciro25": 265629.8399999998,
+      "ciro25": 265629.83999999973,
       "adet26": 2440.0,
-      "ciro26": 378485.8199999995,
+      "ciro26": 378485.8199999996,
       "oa_adet25": 12790.0,
-      "oa_ciro25": 1139273.6700000064,
+      "oa_ciro25": 1139273.670000006,
       "oa_adet26": 13387.0,
-      "oa_ciro26": 1708894.4400000095
+      "oa_ciro26": 1708894.4400000102
     }
   ],
   "aylik": [
@@ -240,7 +240,7 @@
       "ay": 6,
       "ad": "Haziran",
       "adet25": 286587.64,
-      "ciro25": 33370958.16000334,
+      "ciro25": 33370958.160003338,
       "adet26": 376252.0,
       "ciro26": 49927455.200000554
     },
@@ -877,94 +877,168 @@
       {
         "sube": "ÖZLÜCE",
         "norm": 45,
+        "norm_sezonluk": 17,
+        "norm_toplam": 62,
         "kadrolu_taban26": 44,
         "kadrolu_kesim26": 41,
-        "sezonluk_kesim26": 13
+        "sezonluk_kesim26": 13,
+        "toplam_kesim26": 54
       },
       {
         "sube": "FSM",
         "norm": 37,
+        "norm_sezonluk": 10,
+        "norm_toplam": 47,
         "kadrolu_taban26": 35,
         "kadrolu_kesim26": 34,
-        "sezonluk_kesim26": 11
+        "sezonluk_kesim26": 11,
+        "toplam_kesim26": 45
       },
       {
         "sube": "İST. YOLU",
         "norm": 33,
+        "norm_sezonluk": 25,
+        "norm_toplam": 58,
         "kadrolu_taban26": 35,
         "kadrolu_kesim26": 36,
-        "sezonluk_kesim26": 25
+        "sezonluk_kesim26": 25,
+        "toplam_kesim26": 61
       },
       {
         "sube": "HEYKEL",
         "norm": 30,
+        "norm_sezonluk": 20,
+        "norm_toplam": 50,
         "kadrolu_taban26": 29,
         "kadrolu_kesim26": 26,
-        "sezonluk_kesim26": 9
+        "sezonluk_kesim26": 9,
+        "toplam_kesim26": 35
       }
     ],
     "bolum": [
       {
-        "bolum": "KIRTASİYE",
-        "norm": 24
+        "bolum": "ÇOCUK",
+        "norm": 19,
+        "kadrolu26": 14,
+        "acik": 5,
+        "fazla": 0,
+        "sezonluk26": 5
       },
       {
         "bolum": "KÜLTÜR",
-        "norm": 22
-      },
-      {
-        "bolum": "ÇOCUK",
-        "norm": 19
-      },
-      {
-        "bolum": "YARDIMCI KİTAP",
-        "norm": 18
-      },
-      {
-        "bolum": "KASA",
-        "norm": 16
-      },
-      {
-        "bolum": "AKADEMİ",
-        "norm": 10
+        "norm": 22,
+        "kadrolu26": 20,
+        "acik": 2,
+        "fazla": 0,
+        "sezonluk26": 2
       },
       {
         "bolum": "MAĞAZA",
-        "norm": 10
-      },
-      {
-        "bolum": "OYUNCAK",
-        "norm": 10
+        "norm": 10,
+        "kadrolu26": 8,
+        "acik": 2,
+        "fazla": 0,
+        "sezonluk26": 0
       },
       {
         "bolum": "İDARİ İŞLER",
-        "norm": 8
+        "norm": 8,
+        "kadrolu26": 6,
+        "acik": 2,
+        "fazla": 0,
+        "sezonluk26": 0
       },
       {
-        "bolum": "MAL KABUL",
-        "norm": 6
-      },
-      {
-        "bolum": "MUHASEBE",
-        "norm": 1
+        "bolum": "AKADEMİ",
+        "norm": 10,
+        "kadrolu26": 9,
+        "acik": 1,
+        "fazla": 0,
+        "sezonluk26": 0
       },
       {
         "bolum": "OYUN ALANI",
-        "norm": 1
+        "norm": 1,
+        "kadrolu26": 0,
+        "acik": 1,
+        "fazla": 0,
+        "sezonluk26": 0
+      },
+      {
+        "bolum": "MUHASEBE",
+        "norm": 1,
+        "kadrolu26": 0,
+        "acik": 1,
+        "fazla": 0,
+        "sezonluk26": 0
+      },
+      {
+        "bolum": "KASA",
+        "norm": 16,
+        "kadrolu26": 15,
+        "acik": 1,
+        "fazla": 0,
+        "sezonluk26": 9
+      },
+      {
+        "bolum": "MAL KABUL",
+        "norm": 6,
+        "kadrolu26": 6,
+        "acik": 0,
+        "fazla": 0,
+        "sezonluk26": 1
+      },
+      {
+        "bolum": "YARDIMCI KİTAP",
+        "norm": 18,
+        "kadrolu26": 21,
+        "acik": 0,
+        "fazla": 3,
+        "sezonluk26": 15
       },
       {
         "bolum": "KIYAFET",
-        "norm": 0
+        "norm": 0,
+        "kadrolu26": 0,
+        "acik": 0,
+        "fazla": 0,
+        "sezonluk26": 4
+      },
+      {
+        "bolum": "OYUNCAK",
+        "norm": 10,
+        "kadrolu26": 10,
+        "acik": 0,
+        "fazla": 0,
+        "sezonluk26": 0
+      },
+      {
+        "bolum": "KIRTASİYE",
+        "norm": 24,
+        "kadrolu26": 25,
+        "acik": 0,
+        "fazla": 1,
+        "sezonluk26": 22
       },
       {
         "bolum": "ETKİNLİK",
-        "norm": 0
+        "norm": 0,
+        "kadrolu26": 3,
+        "acik": 0,
+        "fazla": 3,
+        "sezonluk26": 0
       }
     ],
+    "acik_bolum_toplam": 15,
+    "fazla_bolum_toplam": 7,
     "toplam": {
       "norm": 145,
+      "norm_sezonluk": 72,
+      "norm_toplam": 217,
       "kadrolu_taban26": 143,
-      "kadrolu_kesim26": 137
+      "kadrolu_kesim26": 137,
+      "sezonluk_kesim26": 58,
+      "toplam_kesim26": 195
     }
   }
 }
