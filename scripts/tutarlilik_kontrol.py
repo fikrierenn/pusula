@@ -145,6 +145,29 @@ def main(argv):
     m = v.get("maliyet")
     f = v.get("fazla_mesai")
     if m and f:
+        # SEZON penceresi (esas) — aylik kirilim ile mutabik olmali
+        sz = m["sezon"]
+        for ek in ("25", "26"):
+            yil_ = 2000 + int(ek)
+            s_ = sz["pos"][ek]
+            for alan in ("kisi_ay", "maliyet", "fm_saat"):
+                kontrol("sezon %s%s = sezon aylarinin toplami" % (alan, ek), round(s_[alan], 2),
+                        round(sum(r[{"kisi_ay": "kisi_ay", "maliyet": "maliyet",
+                                     "fm_saat": "fm_saat"}[alan] + ek]
+                                  for r in m["ay"] if r["ay"] in sz["aylar"]), 2))
+            kontrol("sezon maliyet/ciro orani%s yeniden hesaplandi" % ek,
+                    round(s_["maliyet_ciro_orani"], 6),
+                    round(s_["maliyet"] / s_["ciro_kdvharic"], 6))
+        # aylik toplam = kumulatif pencere
+        for ek in ("25", "26"):
+            for alan in ("kisi_ay", "maliyet", "fm_saat"):
+                kontrol("aylik %s%s toplami = kumulatif pencere" % (alan, ek),
+                        round(m["pos"][ek][alan], 2),
+                        round(sum(r[alan + ek] for r in m["ay"]), 2))
+        sonuc.append((len(m["ay"]) == m["pencere_ay"], "aylik satir sayisi = pencere ayi",
+                      m["pencere_ay"], len(m["ay"]), "eksik ay = sessiz dusuk maliyet"))
+        sonuc.append((sz["aylar"] and all(a_ in (7, 8) for a_ in sz["aylar"]),
+                      "sezon aylari 7-8 icinde", "[7,8]", sz["aylar"], ""))
         for ek in ("25", "26"):
             p_ = m["pos"][ek]
             # maliyet = brüt + işveren SGK + işveren işsizlik (yönetimin bordro formülü)
@@ -280,10 +303,17 @@ def main(argv):
                           ("hizalı adet 2026", bin_(sum(m["adet26"] for m in v["magaza"])))):
             sonuc.append((jeton in T, "sunumda «%s» (%s) yazıyor" % (jeton, ad), jeton, jeton, ""))
         if v.get("maliyet"):
+            # ESAS PENCERE SEZON: destede sezon orani yazili olmali (kumulatif yalniz Δ puan olarak)
             for ek in ("25", "26"):
-                jet = ("%.2f" % (v["maliyet"]["pos"][ek]["maliyet_ciro_orani"] * 100)).replace(".", ",")
-                sonuc.append((jet in T, "sunumda maliyet/ciro oranı%s (%%%s) yazıyor" % (ek, jet),
-                              jet, jet, ""))
+                jet = ("%.2f" % (v["maliyet"]["sezon"]["pos"][ek]["maliyet_ciro_orani"] * 100)
+                       ).replace(".", ",")
+                sonuc.append((jet in T, "sunumda SEZON maliyet/ciro oranı%s (%%%s) yazıyor"
+                              % (ek, jet), jet, jet, ""))
+            ku = v["maliyet"]["pos"]
+            puan_ku = ("%+.2f" % ((ku["26"]["maliyet_ciro_orani"]
+                                   - ku["25"]["maliyet_ciro_orani"]) * 100)).replace(".", ",")
+            sonuc.append((puan_ku in T, "sunumda yıl geneli oran farkı (%s puan) yazıyor" % puan_ku,
+                          puan_ku, puan_ku, "kümülatif pencere referans olarak durmalı"))
             fm_ = v["fazla_mesai"]
             for ad_, deg_ in (("fiili kişi başı yıllık FM", bin_(fm_["fiili"]["kisi_basi_yillik26"])),
                               ("varsayım kişi başı yıllık FM",

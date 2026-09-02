@@ -8,17 +8,22 @@ def _maliyet_itiraz(C):
     """Itiraz slaytindaki maliyet cevabi — rakamlar cekirdekten, ondalik ayraci sayilarda."""
     if not C.v.get("maliyet"):
         return "Bordro verisi bu üretimde yok."
-    a_ = C.v["maliyet"]["pos"]["%d" % (ONCEKI % 100)]
-    b_ = C.v["maliyet"]["pos"]["%d" % (CARI % 100)]
+    # ⚠ ESAS PENCERE SEZON (kullanici uyarisi 03.09) — yil geneli parantez icinde verilir
+    a_ = C.v["maliyet"]["sezon"]["pos"]["%d" % (ONCEKI % 100)]
+    b_ = C.v["maliyet"]["sezon"]["pos"]["%d" % (CARI % 100)]
+    ka_ = C.v["maliyet"]["pos"]["%d" % (ONCEKI % 100)]
+    kb_ = C.v["maliyet"]["pos"]["%d" % (CARI % 100)]
+    pn_ku = (kb_["maliyet_ciro_orani"] - ka_["maliyet_ciro_orani"]) * 100
     pn = (b_["maliyet_ciro_orani"] - a_["maliyet_ciro_orani"]) * 100
-    return ("Maliyet %s artmıştır; artışın ana kaynağı kişi başına ücret (%s), kadro artışı değil. "
-            "Cironun içindeki personel yükü ise %s puan %s: %%%s → %%%s."
+    return ("Sezonda maliyet %s artmıştır; artışın ana kaynağı kişi başına ücret (%s), kadro "
+            "artışı değil. Cironun içindeki personel yükü %s puan %s: %%%s → %%%s"
             % (yzd(b_["maliyet"] / a_["maliyet"] - 1),
                yzd(b_["kisi_ay_basi_maliyet"] / a_["kisi_ay_basi_maliyet"] - 1),
                ("%.2f" % abs(pn)).replace(".", ","),
                "GERİLEMİŞTİR" if pn < 0 else "YÜKSELMİŞTİR",
                ("%.2f" % (a_["maliyet_ciro_orani"] * 100)).replace(".", ","),
-               ("%.2f" % (b_["maliyet_ciro_orani"] * 100)).replace(".", ",")))
+               ("%.2f" % (b_["maliyet_ciro_orani"] * 100)).replace(".", ","))
+            + " (yıl geneli %s puan)." % ("%+.2f" % pn_ku).replace(".", ","))
 
 def slayt_itirazlar(C):
     """Yontem ve aciklamalar — itirazlar + veriye dayali cevaplar."""

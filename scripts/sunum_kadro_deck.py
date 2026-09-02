@@ -30,7 +30,8 @@ from sunum_slayt_hacim import (slayt_bolum_kirilimi, slayt_dort_yil, slayt_is_ha
 from sunum_slayt_kadro import (slayt_bes_magaza, slayt_kadro_akisi, slayt_kapak,
                                slayt_norma_gore_durum)
 from sunum_slayt_kapanis import slayt_itirazlar, slayt_iyilestirme, slayt_kapanis
-from sunum_slayt_maliyet import slayt_maliyet_ve_fazla_mesai, slayt_sezonluk_alim
+from sunum_slayt_maliyet import (slayt_aylik_kadro_maliyet, slayt_maliyet_ve_fazla_mesai,
+                                slayt_sezonluk_alim)
 from sunum_slayt_norm import slayt_norm_acigi_bolum, slayt_norm_detay
 
 KOK = Path(__file__).resolve().parent.parent
@@ -44,7 +45,7 @@ SIRA = [slayt_kapak, slayt_norma_gore_durum, slayt_kadro_akisi, slayt_bes_magaza
         slayt_is_hacmi, slayt_kisi_basi, slayt_dort_yil, slayt_bolum_kirilimi,
         slayt_magaza_performans, slayt_kategori, slayt_takvim_kaymasi,
         slayt_norm_detay, slayt_norm_acigi_bolum,
-        slayt_maliyet_ve_fazla_mesai, slayt_sezonluk_alim,
+        slayt_maliyet_ve_fazla_mesai, slayt_aylik_kadro_maliyet, slayt_sezonluk_alim,
         slayt_itirazlar, slayt_iyilestirme, slayt_kapanis]
 
 

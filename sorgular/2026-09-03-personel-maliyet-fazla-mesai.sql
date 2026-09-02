@@ -9,7 +9,14 @@
    Tarih  : 03.09.2026 · Kaynak formül: kullanıcının kendi bordro kontrol
             raporu (D:\Belgelerim\sql\PERSONEL BORDRO KONTROL v2+.sql)
 
-   BULGU (Oca–Tem, üç POS mağazası):
+   BULGU — SEZON (Temmuz; Ağustos 2026 bordrosu koşmadı), üç POS mağazası:
+     kişi-ay 110 → 127 (+%15,5) · maliyet 4,4M → 6,8M ₺ (+%54,6)
+     ciro (KDV hariç) 30,7M → 53,4M ₺ (+%73,9)
+     MALİYET / CİRO: %14,30 → %12,71  (−1,59 puan)
+     kadro 2025 seviyesinde kalsaydı: 17 kişi-ay eksik → +3.315 saat FM →
+     kişi başı yıllık 447 saat → 270 saatlik YASAL SINIR AŞILIR (fiili 74 sa/yıl)
+
+   REFERANS — KÜMÜLATİF (Oca–Tem, üç POS mağazası):
      personel maliyeti 31,2M → 47,2M ₺ (+%51,5) · kişi-ay 781 → 856 (+%9,6)
      kişi-ay başı maliyet 39.893 → 55.160 ₺ (+%38,3 — ücret artışı)
      ciro (KDV hariç) 242,5M → 388,7M ₺ (+%60,3)
@@ -17,6 +24,13 @@
      fazla mesai 6.328,5 → 7.628,5 saat · kişi başı yıllık 97 → 107 saat
      kadro 2025 seviyesinde kalsaydı: +14.625 saat FM gerekir → kişi başı
      yıllık 342 saat → 270 saatlik YASAL SINIR AŞILIR.
+
+   ⚠⚠ PENCERE (03.09.2026 kullanici uyarisi): ESAS pencere **SEZON (01.07-31.08)**; kadro
+      sezonda artiyor, yilbasindan kumulatif pencere sezonu sulandirir ve artisin ZAMANINI
+      gizler. Uc cikti birden uretilir: sezon (esas) · kumulatif (referans) · AY kirilimi.
+      Sezon 2026 icin Agustos bordrosu kosmadigindan Temmuz ile sinirli — bu, cikti dosyalarinda
+      ACIKCA yazilir. Sezon olcumu (Tem, uc POS): maliyet/ciro %14,30 -> %12,71 (-1,59 puan);
+      kadro alinmasaydi FM 447 sa/yil > 270 yasal sinir.
 
    ⚠ TUZAKLAR
    1) `Ucret` (vw_PersonelDepartman) NET ve CARİ orandır — geçmiş ay maliyeti
@@ -77,6 +91,14 @@ GROUP BY b.Yil, p.AltLokasyon
 ORDER BY p.AltLokasyon, b.Yil;
 
 -- ---------------------------------------------------------------------------
+-- BLOK 2b — AY x YIL x ŞUBE (sezon/kümülatif pencereler bundan TÜRETİLİR).
+--          Aynı SELECT, GROUP BY'a Ayindex eklenir:
+--            GROUP BY b.Yil, b.Ayindex, p.AltLokasyon
+--          Sezon  = Ayindex IN (7,8) ∩ bordrosu koşmuş aylar
+--          Kümülatif = Ayindex 1..@SonAy
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
 -- BLOK 3 — CİRO (KDV HARİÇ) aylık, üç POS mağazası. Maliyet oranının paydası.
 --          Sınav DAHİL (aynı personel yapıyor). DerinSISBkm'de çalıştırılır.
 -- ---------------------------------------------------------------------------
@@ -96,17 +118,18 @@ ORDER BY Yil, Ay;
 
 -- ---------------------------------------------------------------------------
 -- BLOK 4 — K-22 MODELİ (Python tarafında hesaplanır, burada belgelenir)
---   eksik_kisi_ay   = kisi_ay(2026) − kisi_ay(2025)                        = 75
---   ek_fm_saat      = eksik_kisi_ay × 195   (45 sa/hafta × 52 / 12)        = 14.625
---   varsayim_fm     = fiili_fm(2026) + ek_fm_saat                          = 22.253,5
---   kisi_basi_yil   = varsayim_fm / kisi_ay(2025) × 12                     = 341,9 saat
+--   (SEZON penceresinde kurulur; kümülatif rakamlar parantezde)
+--   eksik_kisi_ay   = kisi_ay(2026) − kisi_ay(2025)              = 17   (kümülatif 75)
+--   ek_fm_saat      = eksik_kisi_ay × 195   (45 sa/hafta × 52 / 12) = 3.315  (küm. 14.625)
+--   varsayim_fm     = fiili_fm(2026) + ek_fm_saat                = 4.098  (küm. 22.253,5)
+--   kisi_basi_yil   = varsayim_fm / kisi_ay(2025) × 12            = 447 sa  (küm. 342 sa)
 --   yasal_sinir     = 270 saat/yıl/kişi  (4857 s.K. m.41)                  → AŞILIR
 --
 --   VARSAYIM: işgücü ihtiyacı kişi sayısıyla doğru orantılıdır ve eksik kapasite
 --   ancak fazla mesaiyle kapanır. Kısmi süreli/hafta sonu düzenlemeleri, verim
 --   artışı ve mağaza içi kaydırmalar modelde YOKTUR — bu yüzden üst sınır
 --   tahmini olarak okunmalıdır. Karşı-metrik: fiili FM 107 sa/yıl (sınırın
---   içinde) ama sınır hızında çalışan kişi-ay 32 → 95'e çıkmıştır.
+--   içinde) ama sınır hızında çalışan kişi-ay sezonda 1 → 2, kümülatifte 32 → 95.
 -- ---------------------------------------------------------------------------
 
 -- Emitter: scripts/verimlilik_excel.py (cek() 3g + 12 blokları) → JSON
