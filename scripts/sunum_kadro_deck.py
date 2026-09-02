@@ -197,6 +197,19 @@ def sig(sl):
     tb(sl, 9.3, 6.95, 3.4, 0.3, [("© Fikri Eren 2026", 9, False, MGREY)], align=PP_ALIGN.RIGHT)
 
 
+POS_ADLARI = "FSM · Özlüce · İst. Yolu"
+BES_ADLARI = "FSM · Özlüce · İst. Yolu · Heykel · Şura"
+DIP_POS = "* Kapsam: üç POS mağazası — %s. Heykel ve Şura POS raporlamasında olmadığı için iş hacmi ölçümlerine girmez." % POS_ADLARI
+DIP_BES = "* Kapsam: beş mağazanın tamamı — %s." % BES_ADLARI
+DIP_KARMA = ("* Kapsam: kadro rakamları beş mağaza (%s); iş hacmi ve personel başına rakamlar "
+             "üç POS mağazası (%s)." % (BES_ADLARI, POS_ADLARI))
+
+
+def dipnot(sl, metin):
+    """Logo bandinin ustune ince kapsam notu. Her rakamli slaytta ZORUNLU."""
+    tb(sl, 0.6, 6.02, 8.5, 0.32, [(metin, 9, False, MGREY)], sp=1.0)
+
+
 def kpi(sl, x, y, w, etiket, deger, alt, renk=RED, buyuk=34):
     card(sl, x, y, w, 1.75, renk)
     tb(sl, x + 0.22, y + 0.22, w - 0.4, 0.3, [(etiket, 10, True, GREY)])
@@ -223,8 +236,8 @@ def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2
 
 # ================================================================= 1 KAPAK
 s = add("Başlık Slaydı")
-setph(s, 0, "Sezon 2026 Kadro ve İş Hacmi Değerlendirmesi")
-setph(s, 1, "Beş mağaza kadrosu · üç POS mağazası iş hacmi · 2025 karşılaştırmalı · 2 Eylül 2026")
+setph(s, 0, "Kadro ve İş Hacmi Değerlendirmesi")
+setph(s, 1, "Sezon 2026 · Mağazalar · 2025 karşılaştırmalı · 2 Eylül 2026")
 
 # ================================================================= 2 GUNDEM
 s = add("Yalnızca Başlık"); setph(s, 0, "Kapsam ve İçerik")
@@ -264,6 +277,7 @@ card(s, 6.75, 4.8, 5.9, 1.15, RED)
 tb(s, 7.0, 4.92, 5.4, 0.3, [("İŞ HACMİ", 10, True, GREY)])
 tb(s, 7.0, 5.22, 5.4, 0.65,
    [("iş hacmi, kadronun %s katı oranında artmıştır" % ("%.1f" % kat).replace(".", ","), 15, True, RED)])
+dipnot(s, DIP_KARMA)
 sig(s)
 
 # ================================================================= 5 KADRO AKISI
@@ -291,6 +305,7 @@ tb(s, 7.25, 3.92, 5.2, 1.55,
     ("Kadrolu personel %d → %d (%+d). Önceki yıl da aynı yönde (%+d): sezon döneminde alınan "
      "kadrolu personel ayrılanların yerine gelmiş, kadroyu büyütmemiştir."
      % (k5["kadrolu_taban26"], k5["kadrolu_kesim26"], sezon_ici_26, sezon_ici_25), 12, False, INK)], sp=1.15)
+dipnot(s, DIP_BES)
 sig(s)
 
 # ================================================================= 6 BES MAGAZA TABLOSU
@@ -343,10 +358,10 @@ tb(s, 0.85, 4.95, 11.6, 0.75,
         pos_kadrolu[2025] + pos_sezonluk[2025], pos_kadrolu[2026] + pos_sezonluk[2026],
         pos_kadrolu[2025] + pos_sezonluk[2025], pos_kadrolu[2026] + pos_sezonluk[2026]),
      11.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
-tb(s, 0.6, 5.78, 12.05, 0.45,
+tb(s, 0.6, 5.78, 12.05, 0.3,
    [("Kadrolu = sezonluk dışı personel · Sezon içi = 31.08 kesimi ile 30.06 tabanı arasındaki değişim "
-     "(her iki yılda da negatif: %+d ve %+d) · Heykel ve Şura POS raporlamasında yok, kadro tablosunda "
-     "beş mağazanın tamamı yer alır." % (sezon_ici_25, sezon_ici_26), 10, False, GREY)], sp=1.15)
+     "(her iki yılda da negatif: %+d ve %+d)." % (sezon_ici_25, sezon_ici_26), 10, False, GREY)], sp=1.15)
+dipnot(s, DIP_BES + " İş hacmi kapsamı üç POS mağazasıdır (%s)." % POS_ADLARI)
 sig(s)
 
 # ================================================================= 8 IS HACMI
@@ -367,6 +382,7 @@ tb(s, 7.25, 3.85, 5.2, 1.75,
 tb(s, 0.6, 5.95, 12.05, 0.4,
    [("Kıyas okul açılışına hizalı: 2025 açılış 8 Eylül, 2026 açılış 14 Eylül — her iki yıl da açılıştan "
      "geriye %d gün. Kaynak: DerinSIS mağaza satışı, Sınav hariç, iadeler düşülmüş." % gun, 10, False, MGREY)])
+dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 9 KISI BASI MAGAZA
@@ -388,6 +404,7 @@ tb(s, 0.6, 5.6, 12.05, 0.7,
    [("Kişi başı = o mağazada 31 Ağustos'ta fiilen çalışan TÜM personel (sezonluk dahil). En çok kadro "
      "büyüyen mağazada (İst. Yolu %d → %d kişi) bile kişi başı iş arttı."
      % (mag["İst. Yolu"]["kadro25"], mag["İst. Yolu"]["kadro26"]), 11, False, GREY)])
+dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 10 4 YILLIK TREND
@@ -418,6 +435,7 @@ for h, d, col in notlar:
 tb(s, 0.6, 5.65, 12.05, 0.5,
    [("Ocak–Ağustos kümülatif, üç POS mağazası, Sınav hariç. Kadro = 31.08 itibarıyla kadrolu "
      "(sezonluk hariç — yıllar arası tahliye zamanlaması kıyası bozar).", 10.5, False, MGREY)])
+dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 12 BOLUM KIRILIMI
@@ -451,6 +469,7 @@ rrect(s, 0.6, 5.4, 12.05, 0.85, LGREY, RED, lw=1.5)
 tb(s, 0.9, 5.4, 11.5, 0.85,
    [("Kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerindedir; yönetim kadrosunda değişim "
      "yoktur." % taban_fark, 13.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
+dipnot(s, DIP_BES)
 sig(s)
 
 # ================================================================= 12b MAGAZA x BOLUM MATRISI
@@ -495,6 +514,7 @@ for r, row in enumerate(satir):
 tb(s, 0.6, 1.5 + min(4.3, 0.32 * len(satir)) + 0.12, 12.05, 0.85,
    [("'—' ilgili mağazada o bölümün bulunmadığını gösterir. Yönetim (Mağaza), Mal Kabul ve İdari İşler "
      "satırları tüm mağazalarda sıfır veya negatiftir.", 10.5, False, GREY)], sp=1.15)
+dipnot(s, DIP_BES)
 sig(s)
 
 # ================================================================= 12c MAGAZA PERFORMANS
@@ -552,6 +572,7 @@ tb(s, 8.45, 3.95, 4.0, 1.7,
    [("Değerlendirme", 13.5, True, DRED),
     ("Üç mağazanın tamamında iş hacmi artışı kadro artışının üzerindedir. Kadro artışı en yüksek "
      "olan İst. Yolu'nda dahi oran 2,2 katıdır.", 11.5, False, INK)], sp=1.15)
+dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 12d KATEGORI x BOLUM ESLESME
@@ -606,6 +627,7 @@ tb(s, 8.45, 4.5, 4.0, 1.5,
    [("Değerlendirme", 13.5, True, DRED),
     ("Kadro artışı, ürün adedi en hızlı artan kategorilere yönlendirilmiştir. Artışın en düşük "
      "olduğu kategoride (Çocuk Kitabı) kadro azaltılmıştır.", 11.5, False, INK)], sp=1.15)
+dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 13 ITIRAZLAR
@@ -634,6 +656,7 @@ for i, (bas, cev) in enumerate(itiraz):
     tb(s, 1.28, y + 0.1, 11.0, 0.36, [(bas, 13, True, DRED)])
     tb(s, 1.28, y + 0.45, 11.0, 0.58, [(cev, 11, False, INK)], sp=1.08)
     y += 1.18
+dipnot(s, DIP_POS)
 sig(s)
 
 # ================================================================= 14 DUZELTILECEK
@@ -657,13 +680,14 @@ tb(s, 0.9, 4.35, 11.5, 1.5,
     ("• En bozuk üç nokta: Özlüce, Heykel, Merkez Depo → ilk hafta karşılama protokolü.\n"
      "• İdari İşler pozisyonunda ücret–vardiya revizyonu.\n"
      "• Ölçüt: gelecek sezon Eylül öncesi kayıp %20'den %12'ye (2025 seviyesi).", 12, False, INK)], sp=1.25)
+dipnot(s, DIP_BES + " Tutunma ölçümü mağaza kadrosu üzerinden yapılmıştır.")
 sig(s)
 
 # ================================================================= 15 KAPANIS
 s = add("Başlık Slaydı")
 setph(s, 0, "Sonuç")
-setph(s, 1, "Kadro farkı sezon öncesinde oluşmuştur · sezon dönemi kadrolu %+d · ürün adedi %s · "
-            "personel başına iş %s" % (sezon_ici_26, yzd(d_adet), yzd(d_kb)))
+setph(s, 1, "Sezon dönemi kadrolu %+d · ürün adedi %s · personel başına iş %s"
+            % (sezon_ici_26, yzd(d_adet), yzd(d_kb)))
 
 pr.save(OUT)
 print("Yazildi: %s (%d slayt)" % (OUT, len(pr.slides._sldIdLst)))
