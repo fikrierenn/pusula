@@ -354,127 +354,179 @@ def _notlar(ws, notlar, satir, kol=1):
 
 # ------------------------------------------------------------------ Ozet
 def sayfa_ozet(wb, veri):
+    """Kapsam ETIKETLI ozet + KOPRU kontrolu.
+
+    ⚠ 02.09.2026 kullanici uyarisi: onceki surumde iki kapsam (3 POS magazasi vs 5 magaza) ve iki tarih
+    (30.06 taban vs 31.08 kesim) etiketsiz yan yana duruyordu -> "rakamlar birbiriyle tutmuyor" goruntusu.
+    Simdi her blok kapsamini yaziyor, altta KOPRU blogu aritmetigi formulle ispatliyor (kontrol = 0).
+    """
     ws = wb.active
     ws.title = "Ozet"
     mag = veri["magaza"]
     gun = veri["meta"]["gun"]
+    k5 = veri["kadro_5magaza"]
+    POS = {"İST. YOLU", "ÖZLÜCE", "FSM"}
 
-    kolonlar = [("Olcu", 34, None), ("2025", 16, None), ("2026", 16, None),
+    # 3 POS magazasinin kadrolu/sezonluk ayrimi — magaza_kadro'dan (ayni kaynak, ayni as-of konvansiyonu)
+    pos_kadrolu = {y: sum(m["kadrolu_kesim%d" % (y % 100)] for m in veri["magaza_kadro"] if m["sube"] in POS)
+                   for y in (ONCEKI, CARI)}
+    pos_sezonluk = {y: sum(m["sezonluk_kesim%d" % (y % 100)] for m in veri["magaza_kadro"] if m["sube"] in POS)
+                    for y in (ONCEKI, CARI)}
+    disi = {y: (k5["kadrolu_kesim%d" % (y % 100)] - pos_kadrolu[y]
+                + k5["sezonluk_kesim%d" % (y % 100)] - pos_sezonluk[y]) for y in (ONCEKI, CARI)}
+
+    kolonlar = [("Olcu", 44, None), ("%d" % ONCEKI, 16, None), ("%d" % CARI, 16, None),
                 ("Fark", 15, None), ("Degisim", 11, YUZDE)]
-    ws.cell(1, 1, "Ayni kadro, daha cok is — uc POS magazasi (okul-hizali pencere, %d gun)" % gun).font = Font(bold=True, size=12)
+    ws.cell(1, 1, "Ayni kadro, daha cok is — kapsamlar AYRI etiketli, altta kopru kontrolu").font = Font(bold=True, size=12)
     _basliklar(ws, kolonlar, satir=3)
 
-    kadro25 = sum(m["kadro25"] for m in mag)
-    kadro26 = sum(m["kadro26"] for m in mag)
-    adet25 = sum(m["adet25"] for m in mag)
-    adet26 = sum(m["adet26"] for m in mag)
-    kh25 = sum(m["kdvharic25"] for m in mag)
-    kh26 = sum(m["kdvharic26"] for m in mag)
-    kd25 = sum(m["kdvdahil25"] for m in mag)
-    kd26 = sum(m["kdvdahil26"] for m in mag)
+    def blok(s, metin):
+        c = ws.cell(s, 1, metin)
+        c.font = Font(bold=True, size=10, color="FFFFFF")
+        for k in range(1, 6):
+            ws.cell(s, k).fill = PatternFill("solid", fgColor="1F5B57")
+        return s + 1
 
-    s = 4
-    # ham buyuklukler (fark + degisim FORMUL)
-    for etiket, v25, v26, fmt in [
-        ("Kadro — 31.08 (kisi)", kadro25, kadro26, ADET),
-        ("Urun adedi (elleclenen)", adet25, adet26, ADET),
-        ("Ciro — KDV haric (TL)", kh25, kh26, TL),
-        ("Ciro — KDV dahil (TL)", kd25, kd26, TL),
-    ]:
-        ws.cell(s, 1, etiket).border = KENAR
+    def satir(s, etiket, v25, v26, fmt, oran=True, vurgu=False):
+        ws.cell(s, 1, "   " + etiket).border = KENAR
         for kol, v in ((2, v25), (3, v26)):
-            c = ws.cell(s, kol, v)
-            c.number_format = fmt
-            c.border = KENAR
+            h = ws.cell(s, kol, v)
+            h.number_format = fmt
+            h.border = KENAR
+            if vurgu:
+                h.fill = GRI
+                h.font = Font(bold=True)
         f = ws.cell(s, 4, "=C%d-B%d" % (s, s))
-        f.number_format = fmt
+        f.number_format = "+#,##0;-#,##0;0" if fmt in (ADET, TL) else fmt
         f.border = KENAR
-        d = ws.cell(s, 5, "=IF(B%d=0,\"\",C%d/B%d-1)" % (s, s, s))
-        d.number_format = YUZDE
-        d.border = KENAR
-        s += 1
+        if vurgu:
+            f.fill = VURGU
+            f.font = Font(bold=True)
+        if oran:
+            d = ws.cell(s, 5, '=IF(B%d=0,"",C%d/B%d-1)' % (s, s, s))
+            d.number_format = YUZDE
+            d.border = KENAR
+        return s + 1
 
-    r_kadro, r_adet, r_kh = 4, 5, 6
+    # ---------------- KAPSAM A — uc POS magazasi
+    s = blok(4, "KAPSAM A — UC POS MAGAZASI (FSM · Ozluce · Ist. Yolu) · is hacmi YALNIZ burada olculebilir")
+    r_kad_a = s
+    s = satir(s, "Kadrolu — 31.08", pos_kadrolu[ONCEKI], pos_kadrolu[CARI], ADET)
+    r_sez_a = s
+    s = satir(s, "Sezonluk — 31.08", pos_sezonluk[ONCEKI], pos_sezonluk[CARI], ADET)
+    r_toplam_a = s
+    ws.cell(s, 1, "= TOPLAM KADRO — 31.08 (kisi)").font = Font(bold=True)
+    ws.cell(s, 1).border = KENAR
+    for kol, h in ((2, "B"), (3, "C")):
+        c = ws.cell(s, kol, "=%s%d+%s%d" % (h, r_kad_a, h, r_sez_a))
+        c.number_format = ADET
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    f = ws.cell(s, 4, "=C%d-B%d" % (s, s)); f.number_format = "+#,##0;-#,##0;0"; f.border = KENAR; f.fill = GRI
+    d = ws.cell(s, 5, "=C%d/B%d-1" % (s, s)); d.number_format = YUZDE; d.border = KENAR; d.fill = GRI
     s += 1
-    ws.cell(s, 1, "KISI BASI — asil olcu").font = BOLUM_YAZI
+    r_adet = s
+    s = satir(s, "Urun adedi (elleclenen) — %d gun" % gun,
+              sum(m["adet%d" % (ONCEKI % 100)] for m in mag),
+              sum(m["adet%d" % (CARI % 100)] for m in mag), ADET)
+    r_kh = s
+    s = satir(s, "Ciro — KDV haric (TL)",
+              sum(m["kdvharic%d" % (ONCEKI % 100)] for m in mag),
+              sum(m["kdvharic%d" % (CARI % 100)] for m in mag), TL)
+    s = satir(s, "Ciro — KDV dahil (TL)",
+              sum(m["kdvdahil%d" % (ONCEKI % 100)] for m in mag),
+              sum(m["kdvdahil%d" % (CARI % 100)] for m in mag), TL)
     s += 1
 
-    # kisi basi satirlar: TAMAMI formul (ham satirlara referansli)
-    kisi_basi = [
-        ("Urun adedi / kisi", "=B%d/B%d" % (r_adet, r_kadro), "=C%d/C%d" % (r_adet, r_kadro), ADET),
-        ("Urun adedi / kisi / gun", "=B%d/B%d/%d" % (r_adet, r_kadro, gun), "=C%d/C%d/%d" % (r_adet, r_kadro, gun), ADET1),
-        ("Ciro (KDV haric) / kisi (TL)", "=B%d/B%d" % (r_kh, r_kadro), "=C%d/C%d" % (r_kh, r_kadro), TL),
-    ]
-    ilk_kisi = s
-    for etiket, f25, f26, fmt in kisi_basi:
-        ws.cell(s, 1, etiket).border = KENAR
+    # ---------------- KISI BASI (kapsam A)
+    s = blok(s, "KISI BASI — asil olcu · kapsam A toplam kadrosuna bolunur (satir %d)" % r_toplam_a)
+    for etiket, fmt, f25, f26 in [
+        ("Urun adedi / kisi", ADET, "=B%d/B%d" % (r_adet, r_toplam_a), "=C%d/C%d" % (r_adet, r_toplam_a)),
+        ("Urun adedi / kisi / gun", ADET1, "=B%d/B%d/%d" % (r_adet, r_toplam_a, gun), "=C%d/C%d/%d" % (r_adet, r_toplam_a, gun)),
+        ("Ciro (KDV haric) / kisi (TL)", TL, "=B%d/B%d" % (r_kh, r_toplam_a), "=C%d/C%d" % (r_kh, r_toplam_a)),
+    ]:
+        ws.cell(s, 1, "   " + etiket).border = KENAR
         for kol, f in ((2, f25), (3, f26)):
             c = ws.cell(s, kol, f)
             c.number_format = fmt
             c.border = KENAR
             c.fill = GRI
-        fk = ws.cell(s, 4, "=C%d-B%d" % (s, s))
-        fk.number_format = fmt
-        fk.border = KENAR
-        fk.fill = GRI
-        d = ws.cell(s, 5, "=C%d/B%d-1" % (s, s))
-        d.number_format = YUZDE
-        d.border = KENAR
-        d.fill = GRI
-        d.font = YESIL_YAZI
+        fk = ws.cell(s, 4, "=C%d-B%d" % (s, s)); fk.number_format = fmt; fk.border = KENAR; fk.fill = GRI
+        dd = ws.cell(s, 5, "=C%d/B%d-1" % (s, s)); dd.number_format = YUZDE; dd.border = KENAR
+        dd.fill = GRI; dd.font = YESIL_YAZI
         s += 1
-
+    ws.cell(s, 1, "   Is buyumesi kadro buyumesinin kac kati (adet ÷ kadro)").border = KENAR
+    kat = ws.cell(s, 2, "=E%d/E%d" % (r_adet, r_toplam_a))
+    kat.number_format = KAT; kat.fill = VURGU; kat.border = KENAR; kat.font = Font(bold=True, size=12)
+    ws.cell(s, 3, "adet degisimi ÷ kadro degisimi").font = NOT_YAZI
     s += 1
-    ws.cell(s, 1, "Is buyumesi kadro buyumesinin kac kati").border = KENAR
-    ws.cell(s, 1).font = BOLUM_YAZI
-    kat = ws.cell(s, 2, "=E%d/E%d" % (r_adet, r_kadro))
-    kat.number_format = KAT
-    kat.fill = VURGU
-    kat.border = KENAR
-    kat.font = Font(bold=True, size=12)
-    ws.cell(s, 3, "urun adedi / kadro").font = NOT_YAZI
-    s += 1
-    ws.cell(s, 1, "  ayni oran ciro ile").border = KENAR
-    kat2 = ws.cell(s, 2, "=E%d/E%d" % (r_kh, r_kadro))
-    kat2.number_format = KAT
-    kat2.border = KENAR
-    ws.cell(s, 3, "ciro (KDV haric) / kadro").font = NOT_YAZI
+    ws.cell(s, 1, "   ayni oran ciro ile (ciro ÷ kadro)").border = KENAR
+    kat2 = ws.cell(s, 2, "=E%d/E%d" % (r_kh, r_toplam_a))
+    kat2.number_format = KAT; kat2.border = KENAR
     s += 2
 
-    ws.cell(s, 1, "BES MAGAZA KADRO HAREKETI (POS'ta olmayan Heykel + Sura dahil)").font = BOLUM_YAZI
+    # ---------------- KAPSAM B — bes magaza
+    s = blok(s, "KAPSAM B — BES MAGAZA (+ Heykel, Sura: POS raporlamasinda YOK -> is hacmi olculemez)")
+    r_taban_b = s
+    s = satir(s, "Kadrolu — TABAN 30.06  <<< patrona soylenen +14 BU SATIR",
+              k5["kadrolu_taban%d" % (ONCEKI % 100)], k5["kadrolu_taban%d" % (CARI % 100)], ADET, vurgu=True)
+    r_kesim_b = s
+    s = satir(s, "Kadrolu — KESIM 31.08", k5["kadrolu_kesim%d" % (ONCEKI % 100)],
+              k5["kadrolu_kesim%d" % (CARI % 100)], ADET)
+    ws.cell(s, 1, "   Sezon ici kadrolu degisim (kesim - taban)").border = KENAR
+    for kol, h in ((2, "B"), (3, "C")):
+        c = ws.cell(s, kol, "=%s%d-%s%d" % (h, r_kesim_b, h, r_taban_b))
+        c.number_format = "+0;-0;0"
+        c.border = KENAR
+        c.fill = VURGU
+        c.font = Font(bold=True)
+    ws.cell(s, 4, "iki yilda da -4: sezon icinde kadro BUYUMEDI").font = NOT_YAZI
     s += 1
-    k5 = veri["kadro_5magaza"]
-    for etiket, v25, v26 in [
-        ("Kadrolu — taban 30.06", k5["kadrolu_taban25"], k5["kadrolu_taban26"]),
-        ("Kadrolu — kesim 31.08", k5["kadrolu_kesim25"], k5["kadrolu_kesim26"]),
-        ("Sezonluk — kesim 31.08", k5["sezonluk_kesim25"], k5["sezonluk_kesim26"]),
-        ("Toplam — kesim 31.08", k5["toplam_kesim25"], k5["toplam_kesim26"]),
-    ]:
-        ws.cell(s, 1, etiket).border = KENAR
-        for kol, v in ((2, v25), (3, v26)):
-            c = ws.cell(s, kol, v)
-            c.number_format = ADET
-            c.border = KENAR
-        f = ws.cell(s, 4, "=C%d-B%d" % (s, s))
-        f.number_format = "+0;-0;0"
-        f.border = KENAR
-        s += 1
-    r_taban = s - 4
-    r_kesim = s - 3
-    ws.cell(s, 1, "Sezon ici kadrolu degisim (taban -> kesim)").border = KENAR
-    sez = ws.cell(s, 2, "=B%d-B%d" % (r_kesim, r_taban))
-    sez.number_format = "+0;-0;0"
-    sez.border = KENAR
-    sez2 = ws.cell(s, 3, "=C%d-C%d" % (r_kesim, r_taban))
-    sez2.number_format = "+0;-0;0"
-    sez2.border = KENAR
-    sez2.fill = VURGU
-    ws.cell(s, 4, "sezon icinde kadro BUYUMEDI").font = NOT_YAZI
+    s = satir(s, "Sezonluk — 31.08", k5["sezonluk_kesim%d" % (ONCEKI % 100)],
+              k5["sezonluk_kesim%d" % (CARI % 100)], ADET)
+    r_toplam_b = s
+    s = satir(s, "= Toplam kadro — 31.08", k5["toplam_kesim%d" % (ONCEKI % 100)],
+              k5["toplam_kesim%d" % (CARI % 100)], ADET)
+    s += 1
+
+    # ---------------- KOPRU
+    s = blok(s, "KOPRU — A ile B nasil bagli (KONTROL satiri 0 olmali)")
+    r_k1 = s
+    ws.cell(s, 1, "   Kapsam A toplam kadro (31.08)").border = KENAR
+    for kol, h in ((2, "B"), (3, "C")):
+        c = ws.cell(s, kol, "=%s%d" % (h, r_toplam_a))
+        c.number_format = ADET
+        c.border = KENAR
+    s += 1
+    r_k2 = s
+    s = satir(s, "+ Heykel + Sura (kadrolu + sezonluk)", disi[ONCEKI], disi[CARI], ADET, oran=False)
+    r_k3 = s
+    ws.cell(s, 1, "   = Kapsam B toplam kadro (hesap)").border = KENAR
+    for kol, h in ((2, "B"), (3, "C")):
+        c = ws.cell(s, kol, "=%s%d+%s%d" % (h, r_k1, h, r_k2))
+        c.number_format = ADET
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    s += 1
+    ws.cell(s, 1, "   KONTROL: hesap - B blogundaki toplam (0 OLMALI)").font = Font(bold=True)
+    ws.cell(s, 1).border = KENAR
+    for kol, h in ((2, "B"), (3, "C")):
+        c = ws.cell(s, kol, "=%s%d-%s%d" % (h, r_k3, h, r_toplam_b))
+        c.number_format = "0"
+        c.border = KENAR
+        c.fill = VURGU
+        c.font = Font(bold=True)
     s += 2
 
     _notlar(ws, [
-        "Kadro farki 1 Temmuz'dan ONCE olustu: kadrolu taban 30.06'da 139 -> 153. Sezon icinde (1 Tem - 31 Agu) kadro kucumustu.",
-        "Kisi basi satirlar ve tum yuzdeler Excel FORMULUDUR — ham rakami degistirin, oran kendini gunceller.",
+        "NEDEN IKI KAPSAM: is hacmi (adet/ciro) yalniz POS raporlamasi olan UC magazada olculebilir;",
+        "   kadro hareketi ise bes magazanin tamaminda anlamli. Karismasin diye bloklar ayri + kopru var.",
+        "NEDEN IKI TARIH: 30.06 = sezon baslamadan onceki kurulu kadro (+14 farki BURADA olustu),",
+        "   31.08 = sezon zirvesindeki fiili kadro. Ayni yilin iki farkli gunu; birbirinin yerine gecmez.",
+        "Kadrolu = Kadro <> 'SEZONLUK' · Sezonluk = Kadro = 'SEZONLUK' · Toplam = ikisinin toplami.",
+        "Tum yuzde / oran / kopru satirlari Excel FORMULU — ham rakami degistir, hepsi kendini gunceller.",
     ], s)
     return ws
 
