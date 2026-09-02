@@ -184,6 +184,47 @@ entities:
     last_verified: "2026-06-29"
     evidence: "2026-06-29 — MCP DerinSISBkm, SELECT kolon/COUNT/örnek. 1.864 satır, toplam 140.102 müşteri."
 
+  dbo.irsAyr:
+    pk: "(ehID, satir)"
+    key: [ehID, ehStkID, ehAdet, ehAdetN, ehTutar, ehIndirim, ehTutarKDV, ehKDV]
+    grain: "evrak satiri (irs.eID -> irsAyr.ehID)"
+    KDV_KURALI: "⚠ `ehTutar` KDV **HARIC**; KDV ayri kolonda `ehTutarKDV`. NET KDV-HARIC = `ehTutar - ehIndirim` · NET KDV-DAHIL (fis tutari, patronun gordugu rakam) = `ehTutar - ehIndirim + ehTutarKDV`. `ehKDV` = satir KDV orani (tinyint). Fis/kasa tutari KDV DAHILDIR -> POS mutabakatinda KDV eklenmeden kiyas YAPILMAZ. Kanit (15.06.2025 Ozluce): net 575.194,70 + KDV 48.832,81 = 624.027,51 KDV-dahil ≈ INTER_BOS fis toplami 632.669,95 (%1,4 fark). Blended KDV orani ~%7 (kitap %0 + kirtasiye %20 mix)."
+    adet_isareti: "`ehAdet` satista NEGATIF (cikis) -> `ABS()` kullan. `ehAdetN` net adet; eTip 4'te 0 olabilir (15.06.2025 ornegi) -> adet olcumunde `ehAdet` daha guvenli."
+    olcum_2026_09_02: "Buyume KDV'den ETKILENMEZ: Tem-Agu KDV-haric +%44,10 / KDV-dahil +%43,30 · Oca-Agu KDV-haric +%54,93 / KDV-dahil +%54,85 (3 magaza, eTip 100, Sinav haric). Mutlak tutar farki ~%7."
+    confidence: 0.95
+    last_verified: "2026-09-02"
+    evidence: "2026-09-02 canli MCP — sys.columns + 15.06.2025 gun mutabakati (INTER_BOS vs DerinSIS) + Oca-Agu 2025/2026 KDV dahil-haric kiyasi."
+  # === INTER_BOS — ESKI KASA (ENPOS) POS veritabani (2026-09-02 kesif; 192.168.40.201, 83 GB) ===
+  # EncoreMerkez'den ONCEKI POS sistemi. 2025 Ocak-Temmuz verisi YALNIZ burada.
+  INTER_BOS.dbo.BELGE:
+    pk: Belge_ID
+    key: [Belge_ID, Kasa_No, Tarih, Belge_Tipi, Belge_No, Iptal, BELGETARIH]
+    grain: "fis/belge basligi (6.404.267 satir)"
+    filter: "Belge_Tipi='FIS' AND Iptal <> 1 ZORUNLU (fis disi tipler: GPS/HDY/ZRP/EAR/EFA/XRP)"
+    sube_koprusu: "Kasa_No -> SERVER_CASHREGISTER.CASHREGISTERNO -> SERVER_AFFILIATE.AFFILIATENO. AFFILIATENO: 1=FSM · 2=OZLUCE · 3=ISTANBUL YOLU (EncoreMerkez StoresId ile TERS: orada 1=Ist.Yolu, 2=FSM, 3=Ozluce -> KARISTIRMA TUZAGI)."
+    kapanis: "Son FIS 22.07.2025 21:59. Sube bazli son fis: Ist.Yolu 11.07.2025 18:35 · Ozluce 20.07.2025 21:58 · FSM 22.07.2025 21:59."
+    confidence: 0.95
+    last_verified: "2026-09-02"
+    evidence: "2026-09-02 canli MCP (master uzerinden 3-parcali; INTER_BOS MCP izin listesinde YOK). Aylik fis: FSM 33.103(Oca)->14.859(Tem) · Ozluce 38.286->16.211 · Ist.Yolu 23.290->4.436."
+  INTER_BOS.dbo.HAREKET:
+    pk: HAREKETID
+    key: [Belge_ID, Satir, Tip, Stok_Kodu, Barkod, PLUNO, Kdv, Adet, Fiyat, Tutar, Ind_Miktar, Tarih, Kasiyer_No]
+    grain: "fis satiri (39.084.989 satir)"
+    tip_semantigi: "⚠⚠ Tip kolonu 5 deger, HER BIRI FARKLI ISLER (Haziran-2025 olcumu, 3 sube): SAT=satis satiri (263.812 satir · adet +299.327 · tutar +43,13M) · PRI=promosyon/fiyat indirimi (103.078 · adet +113.678 · tutar −6,57M) · IND=indirim satiri (74.999 · adet 0 · tutar −7,29M, Ind_Miktar −6,91M) · IPT=iptal/iade (8.052 · adet −9.188 · tutar −1,79M) · ART=artirim (343 · +25K)."
+    ADET_KURALI: "⚠ ADET TOPLAMINDA YALNIZ Tip='SAT' (gerekiyorsa IPT negatif ile). PRI satirinin adedi SAT'ta ZATEN SAYILMIS -> PRI dahil edilirse adet ~%38 SISER. Kanit: SAT adedi 299.327 vs DerinSIS eTip100 ayni ay/sube 286.896 (%4 fark, uyumlu); SAT+PRI 413.005 olurdu (uyumsuz)."
+    TUTAR_KURALI: "Tutar = KDV DAHIL (Kdv = satir KDV orani; Haziran-2025 agirlikli ort %11,2). ⚠⚠ NET CIRO'DA **PRI ve IND BIRLIKTE DUSULMEZ — AYNI INDIRIMI IKI KEZ TEMSIL EDERLER**. Fis-duzeyi kanit (15.06.2025 Ozluce, 7 satirli fis): ayni barkod icin PRI Tutar=-10,90 · SAT Tutar=39,90 ama Belge_Fiyat=29,00 · IND Tutar=-10,90. Gercek fis toplami 78,20; SAT+IND+IPT+ART=78,20 ✓ · SAT+PRI+IND=67,30 ✗ (%14 eksik). GUVENLI IKI FORMUL: (1) `SUM(CASE WHEN Tip IN (''SAT'',''IPT'') THEN Adet*Belge_Fiyat END)` — Belge_Fiyat GERCEK satis fiyatidir (en temiz) · (2) SAT+IND+IPT+ART (PRI HARIC). Gun mutabakati: 632.669,95 KDV-dahil vs DerinSIS eTip100 624.027,51 (net 575.194,70 + KDV 48.832,81) -> %1,4 fark."
+    MUTABAKAT_15062025: "Ozluce/mekan 4477, 15.06.2025 — INTER_BOS SAT+IPT adet 4.868 vs DerinSIS eTip100 adet 4.870 (2 adet fark, %0,04) ✓ ADET_KURALI boylece fis-duzeyinde dogrulandi (SAT+PRI olsaydi 6.910 = %42 sapma). DerinSIS o gun POS'u TEK belgede tutuyor (eTip100: 1 belge / 2.608 satir) — gunluk aggregate, fis-duzeyi degil."
+    urun_koprusu: "HAREKET.Barkod / Stok_Kodu -> POS_BARKOD(Barkod,Stok_Kodu) / POS_URUN(Stok_Kodu,PLUNO,Urun_Adi). ⚠ DerinSIS stkID'ye DOGRUDAN kopru YOK: barkod uzerinden `urnBrkd.urnBarkod -> urnBrkdStkID` (urnBrkdOnce=0) kullanilir; stkKod ile join YASAK (sql-server-conventions)."
+    confidence: 0.9
+    last_verified: "2026-09-02"
+    evidence: "2026-09-02 canli MCP — Tip dagilimi + tutar bilesenleri Haziran-2025 (FIS, Iptal<>1); DerinSIS eTip100 ile adet capraz kontrolu."
+  INTER_BOS.dbo.ODEME:
+    pk: ODEMEID
+    key: [Belge_ID, Satir, Tus_No, Tutar, Taksit, Kart_Tipi, Terminal_No, Onay_No, Kredi_Kart_No]
+    grain: "fis odeme satiri (6.341.393)"
+    note: "Odeme tipi = Tus_No (kod sozlugu TEYIT BEKLIYOR), kart tipi = Kart_Tipi. EncoreMerkez karsiligi SalesPayments.PaymentTypesId."
+    confidence: 0.7
+    last_verified: "2026-09-02"
   # === Zirve BKM_GENEL — bordro/personel (2026-07-02 keşif; MCP zirve). Görev-tanımı projesi: D:\Dev\gorevtanimlari\bkm ===
   BKM_GENEL.dbo.perbilgi:
     pk: Personelno
@@ -195,8 +236,13 @@ entities:
     evidence: "2026-07-02 — MCP zirve sql_query: describe perbilgi + Gorevi/Grupkodu/Masrafmerkezi/Subeadi dağılım + Personeldurumu kardinalite."
   BKM_GENEL.dbo.vw_PersonelDepartman:
     tip: view
-    key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Igt, Ict, Ucret, TahakkukSekli, Banka, Iban]
+    key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Kadro, Igt, Ict, IstenCikisKodu, Ucret, TahakkukSekli, Banka, Iban]
     grain: "personel (normalize; ham perbilgi üstüne temiz katman)"
+    kadro_alani: "`Kadro` = istihdam tipi bayragi: KADRO(968) · SEZONLUK(288, 01.08.2023'ten beri) · STAJYER(2) · PART-TIME/PART TIME(1+1, ayni sey iki yazim) · KISMI(1) + 12 NULL/bos. **Sezon personeli analizi bu alanla yapilir**, giris-tarihi penceresiyle DEGIL (pencere kadrolu alimi da kapsar -> sessiz yanlis sonuc; kanit metrics.sezon_personel_kohort.AYRAC_KADRO_SEZONLUK). Kadro degisikligi TARIHLENMEZ -> sezonluk->kadro donusumu izlenemez. last_verified 2026-09-02."
+    engelli_ayraci: "ENGELLI personel ayraci = `dbo.perbilgi.Kanun = '14857'` (SGK APHB kanun turu 14857 = 4857/30 engelli istihdam tesviki); aylik teyit `dbo.puanbil.Kanunno='14857'` (Yil+Ayindex). ⚠ `perbilgi.Ozurlulukkodu` ('E'=13/'H'=57 kayit) BUGUN AKTIF kadroda HIC dolu DEGIL ve `Malulluk` tamamen 0 -> tek basina ayrac OLAMAZ, AMA 14857 ile BIRLIKTE bakilir: Ozurlulukkodu='E' + Kanun='00000' kombinasyonu = TESVIKSIZ ENGELLI calisan (2 tarihsel kayit: MERKEZ DEPO 12.02.2025-30.11.2025 · HEYKEL 21.10.2023-10.11.2024, ikisi de artik aktif degil). Yani 14857 tek basina ALT SINIR: tesvikten yararlanilmayan engelli yalniz Ozurlulukkodu'nda gorunur ve o alan da guncel doldurulmuyor -> engelli envanteri Zirve'den TAM cikarilamaz, IK teyidi sart. ⚠ ALT SINIR: bayrak tesvikten yararlanilan engelliyi gosterir; tesvik kullanilmayan engelli calisan gorunmez. ⚠ perbilgi YALNIZ BKM_GENEL firmasini tutar -> diger 2 firmadaki (BURSA_KULTUR_MERKEZI/ASIYE_BINGOLBALI) engelli bu yolla sayilmaz. Olcum 2026-09-02: aktif 4 kisi (puanbil Tem-2026: 5). ⚠ KVKK m.6 OZEL NITELIKLI (saglik verisi) -> yalniz toplulastirilmis sayi, isim/reyon kirilimi paylasilmaz. last_verified 2026-09-02."
+    perbilgi_join: "vw_PersonelDepartman.Personelno ('179-BKM') ile perbilgi.Personelno (INT) DOGRUDAN JOIN EDILEMEZ (conversion error). Firma son-eki: BKM_GENEL='-BKM' · BURSA_KULTUR_MERKEZI='-BKMH' · ASIYE_BINGOLBALI='-ABG'. Dogru join (SQL2008, TRY_CONVERT YOK): `ON p.Personelno = CASE WHEN CHARINDEX('-',v.Personelno)>1 AND ISNUMERIC(LEFT(v.Personelno,CHARINDEX('-',v.Personelno)-1))=1 THEN CONVERT(int,LEFT(v.Personelno,CHARINDEX('-',v.Personelno)-1)) END` + `WHERE v.Personelno LIKE '%-BKM'` (firma daraltmasi ZORUNLU, yoksa numara cakismasi fan-out). last_verified 2026-09-02."
+    etkinlik_personeli: "ETKINLIK personeli = `Departman='ETKİNLİK'` (unvan 'ETKINLIK ORGANIZASYON SORUML.' / 'ETKINLIK TAKIM LIDERI'). KUCUK KADRO: 31.08 itibariyla magazalarda 2 kisi (2025: FSM+Ist.Yolu · 2026: Ozluce+Ist.Yolu), tamami Kadro='KADRO' (sezonluk DEGIL). Kardes departman `OKUL TEMSILCISI` (unvan 'OKUL TEMSILCISI ETK. TK. LDR.') 31.08'de aktif 0. Bordro-disi promotor/etkinlik destegi varsa Zirve'de IZ YOK. last_verified 2026-09-02."
+    isten_cikis_kodu: "`IstenCikisKodu` (nvarchar) = SGK isten cikis kodu ('01'..'05' + seyrek yuksek kodlar). Zirve'de kod->aciklama LOOKUP TABLOSU YOK (INFORMATION_SCHEMA + tablo adi taramasi bos). IK teyidi olmadan 'istifa/fesih/sozlesme bitisi' olarak yorumlanmaz. last_verified 2026-09-02."
     ucret_kurali: "⚠️ ÜCRET DE BURADA (bordro için ayrı tabloya gitme). `Ucret` = CARİ oran, `dbo.puanbil` cari ay ile birebir tutar. `TahakkukSekli`='NET' (tüm kadro) → tutarlar NET, BRÜT DEĞİL. İKİ BİRİM VAR ve view `Ucretsekli`'yi TAŞIMAZ: GÜNLÜK (kadronun ~%99, aylık = Ucret×30) vs AYLIK (avuç içi üst yönetim, doğrudan). Birimi karıştırmak sessiz 30× hata üretir. Ayrım: `dbo.puanbil.Ucretsekli` (doğru yol) veya büyüklük eşiği (GÜNLÜK üst sınırı ile AYLIK alt sınırı arasında ~30× uçurum var — eşik ölçümle teyit edilerek kullanılır). ⚠️ `dbo.perbilgi.Maas` BAYAT (yıllar öncesinin değerleri) — ÜCRET İÇİN KULLANMA."
     firma_kapsami: "View 3 firmayı BİRLEŞTİRİR (BKM_GENEL + BURSA_KÜLTÜR_MERKEZİ + ASİYE_BİNGÖLBALİ); `dbo.perbilgi` yalnız BKM_GENEL'i tutar. perbilgi'ye INNER JOIN edersen diğer iki firmanın personeli SESSİZCE düşer. Firma ayracı = `Firma` kolonu; `Personelno` zaten no+firma birleşimi ('179-BKMH')."
     beyaz_yaka: "Sema'da hazır beyaz/mavi yaka bayrağı YOK — türetilir: Lokasyon='GENEL MÜDÜRLÜK' (ofis) eksi saha ünvanları (depo/forklift/şoför/bekçi/temizlik/bakım). Mağaza-kafe yönetimi ve şef kadroları KAPSAM KARARI (kullanıcıya sorulur, sabit değil). Kapsam seçimi sonucu ciddi değiştirir → rapor başlığında hangi tanımın kullanıldığı YAZILIR."
