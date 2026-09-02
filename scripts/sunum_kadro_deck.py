@@ -1028,18 +1028,40 @@ sig(s)
 
 # ================================================================= 14 DUZELTILECEK
 s = add("Yalnızca Başlık"); setph(s, 0, "İyileştirme Alanı")
-card(s, 0.6, 1.5, 5.9, 2.5, DRED)
-tb(s, 0.85, 1.65, 5.4, 0.4, [("KADROLU ALIMDA KALMA ORANI", 11, True, GREY)])
-tb(s, 0.85, 2.05, 5.4, 0.9, [("%95,7 → %75,0", 32, True, DRED)])
-tb(s, 0.85, 2.95, 5.4, 0.95,
-   [("İlk 14 günü tamamlama oranı. 32 alımdan 10'u kesim tarihine kadar ayrılmıştır (önceki yıl "
-     "24 alımdan 2). Aynı pozisyonun iki kez doldurulması maliyet yaratmaktadır.", 11, False, INK)], sp=1.1)
-card(s, 6.75, 1.5, 5.9, 2.5, MGREY)
-tb(s, 7.0, 1.65, 5.4, 0.4, [("SEZONLUK KADRODA KALMA ORANI", 11, True, GREY)])
-tb(s, 7.0, 2.05, 5.4, 0.9, [("%93,9 → %95,1", 32, True, YESIL)])
-tb(s, 7.0, 2.95, 5.4, 0.95,
-   [("Sezonluk kadroda kalma oranı yükselmiştir. Sorun sezonluk alımda değil, kadrolu alımın "
-     "ilk haftasındadır.", 11, False, INK)], sp=1.1)
+# ⚠ Rakamlar JSON'dan (canlı ölçüm) gelir — python-reviewer 02.09: önce hardcode yazılıydı,
+#   hiçbir sorgudan gelmiyordu ve denetçi de görmüyordu; sessizce bayatlayacak KPI'ydı.
+tt = v.get("tutunma", {})
+
+
+def _t(seg, yil):
+    d_ = tt.get(seg, {}).get(str(yil), {})
+    o = d_.get("oran14")
+    return {"oran": ("%%%.1f" % (o * 100)).replace(".", ",") if o is not None else "—",
+            "alinan": d_.get("alinan", 0), "ayrilan": d_.get("ayrilan", 0),
+            "kalan": d_.get("kalan14", 0), "risk": d_.get("risk14", 0)}
+
+
+kad25, kad26 = _t("KADROLU", ONCEKI), _t("KADROLU", CARI)
+sez25, sez26 = _t("SEZONLUK", ONCEKI), _t("SEZONLUK", CARI)
+
+card(s, 0.6, 1.5, 5.9, 2.5, DRED, ikon="alert-triangle")
+tb(s, 0.85, 1.62, 5.0, 0.36, [("KADROLU ALIMDA KALMA ORANI", 10, True, GREY)])
+tb(s, 0.85, 2.02, 5.4, 0.86, [("%s → %s" % (kad25["oran"], kad26["oran"]), 30, True, DRED)])
+tb(s, 0.85, 2.92, 5.4, 0.95,
+   [("İlk 14 günü tamamlama oranı (%d/%d → %d/%d). %d alımdan %d'si kesim tarihine kadar "
+     "ayrılmıştır (önceki yıl %d alımdan %d). Aynı pozisyonun iki kez doldurulması maliyet "
+     "yaratmaktadır." % (kad25["kalan"], kad25["risk"], kad26["kalan"], kad26["risk"],
+                         kad26["alinan"], kad26["ayrilan"], kad25["alinan"], kad25["ayrilan"]),
+     10.5, False, INK)], sp=1.1)
+
+card(s, 6.75, 1.5, 5.9, 2.5, MGREY, ikon="users")
+tb(s, 7.0, 1.62, 5.0, 0.36, [("SEZONLUK KADRODA KALMA ORANI", 10, True, GREY)])
+tb(s, 7.0, 2.02, 5.4, 0.86, [("%s → %s" % (sez25["oran"], sez26["oran"]), 30, True, MGREY)])
+tb(s, 7.0, 2.92, 5.4, 0.95,
+   [("Sezonluk kadroda kalma oranı yükselmiştir (%d/%d → %d/%d). Sorun sezonluk alımda değil, "
+     "kadrolu alımın ilk haftasındadır."
+     % (sez25["kalan"], sez25["risk"], sez26["kalan"], sez26["risk"]), 10.5, False, INK)], sp=1.1)
+
 
 rrect(s, 0.6, 4.2, 12.05, 1.75, LGREY, RED, lw=1.5)
 tb(s, 0.9, 4.35, 11.5, 1.5,
@@ -1062,5 +1084,9 @@ setph(s, 1, "Norma göre %+d kişi · kadrolu %s · ürün adedi %s · personel 
                ("−%d" % abs(sezon_ici_26)) if sezon_ici_26 < 0 else "+%d" % sezon_ici_26,
                yzd(d_adet), yzd(d_kb)))
 
-pr.save(OUT)
+try:
+    pr.save(OUT)
+except PermissionError:
+    sys.exit("Dosya açık görünüyor, kaydedilemedi. PowerPoint'te kapatıp tekrar çalıştır: "
+                 "%s" % OUT)
 print("Yazildi: %s (%d slayt)" % (OUT, len(pr.slides._sldIdLst)))

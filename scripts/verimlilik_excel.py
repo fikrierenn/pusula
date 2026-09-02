@@ -47,6 +47,13 @@ OFSET_BAS, OFSET_SON = -69, -14                      # acilistan geriye 9. -> 2.
 MEKAN = {4478: "İst. Yolu", 4477: "Özlüce", 1: "FSM"}
 SUBE = {4478: "İST. YOLU", 4477: "ÖZLÜCE", 1: "FSM"}   # Zirve AltLokasyon karsiligi
 SINAV = "(N'Sınav Okulları', N'Sınav Kıyafet')"
+# ⚠ sema/metrics.yaml → sinav_okullari_SATIS: ayiklama IKI KOLLU olmali —
+#   Kategori3 IN (...) VEYA KatAna LIKE N'Sınav Okul%'. Yalniz Kategori3 ile 2026'da
+#   160 adet / 67 bin TL kaciyordu (toplamin %0,02'si; tez degismiyor ama kural bu).
+SINAV_HARIC = ("(COALESCE(kat.Kategori3, N'x') NOT IN " + SINAV +
+               " AND COALESCE(kat.KatAna, N'x') NOT LIKE N'Sınav Okul%')")
+SINAV_DAHIL = ("(COALESCE(kat.Kategori3, N'x') IN " + SINAV +
+               " OR COALESCE(kat.KatAna, N'x') LIKE N'Sınav Okul%')")
 YILLAR = [2023, 2024, 2025, 2026]
 ONCEKI, CARI = 2025, 2026
 
@@ -144,7 +151,7 @@ def cek(env, kisi=False):
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
         WHERE bs.eTip = 100
           AND bs.eMekan IN (1, 4477, 4478)
-          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + SINAV_HARIC + """
           AND """ + _hizali_kosul() + """
         GROUP BY bs.eMekan, YEAR(bs.eTarihS)""")
     hacim, gunler, pencere_tarih = {}, {}, {}
@@ -168,7 +175,7 @@ def cek(env, kisi=False):
     print("DerinSIS: Ocak-Ağustos kanal kırılımı...", flush=True)
     cur.execute("""
         SELECT YEAR(bs.eTarihS) AS yil,
-               CASE WHEN COALESCE(kat.Kategori3, N'x') IN """ + SINAV + """ THEN 'sinav' ELSE 'magaza' END AS kanal,
+               CASE WHEN """ + SINAV_DAHIL + """ THEN 'sinav' ELSE 'magaza' END AS kanal,
                SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
                SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS kdvdahil
         FROM dbo.irs bs WITH(NOLOCK)
@@ -179,7 +186,7 @@ def cek(env, kisi=False):
           AND YEAR(bs.eTarihS) IN (?, ?)
           AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
         GROUP BY YEAR(bs.eTarihS),
-                 CASE WHEN COALESCE(kat.Kategori3, N'x') IN """ + SINAV + """ THEN 'sinav' ELSE 'magaza' END""",
+                 CASE WHEN """ + SINAV_DAHIL + """ THEN 'sinav' ELSE 'magaza' END""",
                 ONCEKI, CARI)
     oa = {"magaza": {}, "sinav": {}}
     for yil, kanal, adet, kd in cur.fetchall():
@@ -197,7 +204,7 @@ def cek(env, kisi=False):
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
         WHERE bs.eTip = 100
           AND bs.eMekan IN (1, 4477, 4478)
-          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + SINAV_HARIC + """
           AND YEAR(bs.eTarihS) BETWEEN ? AND ?
           AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
         GROUP BY YEAR(bs.eTarihS)""", YILLAR[0], YILLAR[-1])
@@ -214,7 +221,7 @@ def cek(env, kisi=False):
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
         WHERE bs.eTip = 100
           AND bs.eMekan IN (1, 4477, 4478)
-          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + SINAV_HARIC + """
           AND """ + _hizali_kosul() + """
         GROUP BY COALESCE(kat.Kategori3, N'(tanımsız)'), YEAR(bs.eTarihS)""")
     kt = {}
@@ -234,7 +241,7 @@ def cek(env, kisi=False):
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
         WHERE bs.eTip = 100
           AND bs.eMekan IN (1, 4477, 4478)
-          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + SINAV_HARIC + """
           AND YEAR(bs.eTarihS) IN (?, ?)
           AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
         GROUP BY COALESCE(kat.Kategori3, N'(tanımsız)'), YEAR(bs.eTarihS)""", ONCEKI, CARI)
@@ -261,7 +268,7 @@ def cek(env, kisi=False):
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
         WHERE bs.eTip = 100
           AND bs.eMekan IN (1, 4477, 4478)
-          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + SINAV_HARIC + """
           AND YEAR(bs.eTarihS) IN (?, ?)
           AND MONTH(bs.eTarihS) IN (6, 7, 8)
         GROUP BY YEAR(bs.eTarihS), MONTH(bs.eTarihS)""", ONCEKI, CARI)
@@ -308,7 +315,7 @@ def cek(env, kisi=False):
             LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
             WHERE bs.eTip = 100
               AND bs.eMekan IN (1, 4477, 4478)
-              AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+              AND """ + SINAV_HARIC + """
               AND bs.eTarihS >= ? AND bs.eTarihS <= ?""", bas, son)
         adet, ciro, gunn = cur.fetchone()
         kayma[ad] = {"adet": float(adet or 0), "ciro": float(ciro or 0), "gun": int(gunn or 0)}
@@ -355,7 +362,7 @@ def cek(env, kisi=False):
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
         WHERE bs.eTip = 100
           AND bs.eMekan IN (1, 4477, 4478)
-          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + SINAV_HARIC + """
           AND MONTH(bs.eTarihS) = 8
           AND YEAR(bs.eTarihS) IN (?, ?)
         GROUP BY YEAR(bs.eTarihS), CASE WHEN DAY(bs.eTarihS) <= 14 THEN 1 ELSE 2 END""",
@@ -717,6 +724,41 @@ def cek(env, kisi=False):
             "(Bursa Kültür Merkezi, 35 kişi) ve Şura (Asiye Bingölbalı, 16 kişi) ayrı tüzel "
             "kişiliktir ve çalışan sayıları 50'nin ALTINDA olduğu için 4857/30 engelli istihdam "
             "yükümlülüğü doğmaz — o mağazalarda engelli kadro yoktur (veri eksikliği değildir).")
+
+
+    # 11) KOHORT TUTUNMA — "yeni alinanin ilk 14/30 gunde kalma orani" (sunum KPI'si)
+    #   ⚠ Bu rakamlar ONCE sunuma HARDCODE yazilmisti (python-reviewer bulgusu 02.09.2026).
+    #   Artik canli olculur; tutarlilik denetcisi sunumda yazani JSON ile karsilastirir.
+    print("Zirve: kohort tutunma (14/30 gün)...", flush=True)
+    tutunma = {}
+    for yil in (ONCEKI, CARI):
+        bas = "%d0701" % yil
+        son = "%d0831" % yil
+        for segment, kosul in (("KADROLU", "COALESCE(v.Kadro,'') <> 'SEZONLUK'"),
+                               ("SEZONLUK", "v.Kadro = 'SEZONLUK'")):
+            zc.execute("""
+                SELECT COUNT(*) AS alinan,
+                       SUM(CASE WHEN v.Ict IS NOT NULL AND v.Ict < ? THEN 1 ELSE 0 END) AS ayrilan,
+                       SUM(CASE WHEN v.Igt <= DATEADD(DAY, -14, ?) THEN 1 ELSE 0 END) AS risk14,
+                       SUM(CASE WHEN v.Igt <= DATEADD(DAY, -14, ?)
+                                 AND (v.Ict IS NULL OR DATEDIFF(DAY, v.Igt, v.Ict) >= 14)
+                                THEN 1 ELSE 0 END) AS kalan14,
+                       SUM(CASE WHEN v.Igt <= DATEADD(DAY, -30, ?) THEN 1 ELSE 0 END) AS risk30,
+                       SUM(CASE WHEN v.Igt <= DATEADD(DAY, -30, ?)
+                                 AND (v.Ict IS NULL OR DATEDIFF(DAY, v.Igt, v.Ict) >= 30)
+                                THEN 1 ELSE 0 END) AS kalan30
+                FROM dbo.vw_PersonelDepartman v
+                WHERE v.Lokasyon LIKE 'MA%' AND """ + kosul + """
+                  AND v.Igt >= ? AND v.Igt <= ?""",
+                       son, son, son, son, son, bas, son)
+            alinan, ayrilan, r14, k14, r30, k30 = (int(x or 0) for x in zc.fetchone())
+            tutunma.setdefault(segment, {})[str(yil)] = {
+                "alinan": alinan, "ayrilan": ayrilan,
+                "risk14": r14, "kalan14": k14,
+                "oran14": (k14 / r14) if r14 else None,
+                "risk30": r30, "kalan30": k30,
+                "oran30": (k30 / r30) if r30 else None}
+    veri["tutunma"] = tutunma
 
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
@@ -1782,7 +1824,10 @@ def main(argv):
     sayfa_sunum(wb, veri)   # EN SONDA: index 0'a girer, capraz-sayfa formulleri hedeflerini bulur
     # cikti yukarida cozuldu
     cikti.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(cikti)
+    try:
+        wb.save(cikti)
+    except PermissionError:
+        sys.exit("Dosya açık görünüyor, kaydedilemedi. Excel'de kapatıp tekrar çalıştır: %s" % cikti)
     print("Yazildi: %s (%d sayfa)" % (cikti, len(wb.worksheets)))
     return 0
 

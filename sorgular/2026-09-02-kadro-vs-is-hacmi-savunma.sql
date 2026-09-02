@@ -19,7 +19,7 @@
       14g tutunma kadroluda %92,1 -> %75,5. Brut alimin bir kismi IKAME.
 
   ⚠ Yontem notlari:
-    - "Aktif kisi" as-of tarih: Igt <= T AND (Ict IS NULL OR Ict > T). Bugunku snapshot DEGIL.
+    - "Aktif kisi" as-of tarih: Igt <= T AND (Ict IS NULL OR Ict >= T). Bugunku snapshot DEGIL.
     - EncoreMerkez net KDV-haric (header) = GrossTotal - DiscountTotal - VatTotal (sema: entities.Sales).
       Iade (tip 3) sign'li dusulur. Sales'te IsValid YOK (o SalesProducts'ta).
     - Toplam ciro/kisi metrigi YANILTIR (Sinav kurumsal cirosu kadro-yogun degil) -> perakende ayri olculur.
@@ -28,24 +28,27 @@
       -> sube bazli "fis/kisi" oranini kafe dahil/haric ayrimiyla yorumla.
 */
 
+-- ⚠ AS-OF KANONIK TANIM: aktif = Igt <= T AND (Ict IS NULL OR Ict >= T) — IK'nin
+--   sp_PersonelKarsilastirma_Ozet konvansiyonu. Bu dosyada 02.09.2026'da "Ict > T" kullanan
+--   bloklar >= ile duzeltildi (sapma: cikisi tam kesim gunu olan kisi, 1 kisilik fark).
 -- ============ 1) ZIRVE: as-of aktif kadro (2 Eylul + sezon oncesi 30 Haziran) ============
 -- MCP: zirve · DB: BKM_GENEL
 SELECT
-    SUM(CASE WHEN Igt <= '20250902' AND (Ict IS NULL OR Ict > '20250902') THEN 1 ELSE 0 END) AS aktif_02Eyl25,
-    SUM(CASE WHEN Igt <= '20260902' AND (Ict IS NULL OR Ict > '20260902') THEN 1 ELSE 0 END) AS aktif_02Eyl26,
-    SUM(CASE WHEN Kadro = 'SEZONLUK' AND Igt <= '20250902' AND (Ict IS NULL OR Ict > '20250902') THEN 1 ELSE 0 END) AS sezonluk_02Eyl25,
-    SUM(CASE WHEN Kadro = 'SEZONLUK' AND Igt <= '20260902' AND (Ict IS NULL OR Ict > '20260902') THEN 1 ELSE 0 END) AS sezonluk_02Eyl26,
-    SUM(CASE WHEN ISNULL(Kadro,'X') <> 'SEZONLUK' AND Igt <= '20250902' AND (Ict IS NULL OR Ict > '20250902') THEN 1 ELSE 0 END) AS kadrolu_02Eyl25,
-    SUM(CASE WHEN ISNULL(Kadro,'X') <> 'SEZONLUK' AND Igt <= '20260902' AND (Ict IS NULL OR Ict > '20260902') THEN 1 ELSE 0 END) AS kadrolu_02Eyl26,
-    SUM(CASE WHEN Igt <= '20250630' AND (Ict IS NULL OR Ict > '20250630') THEN 1 ELSE 0 END) AS aktif_30Haz25,
-    SUM(CASE WHEN Igt <= '20260630' AND (Ict IS NULL OR Ict > '20260630') THEN 1 ELSE 0 END) AS aktif_30Haz26
+    SUM(CASE WHEN Igt <= '20250902' AND (Ict IS NULL OR Ict >= '20250902') THEN 1 ELSE 0 END) AS aktif_02Eyl25,
+    SUM(CASE WHEN Igt <= '20260902' AND (Ict IS NULL OR Ict >= '20260902') THEN 1 ELSE 0 END) AS aktif_02Eyl26,
+    SUM(CASE WHEN Kadro = 'SEZONLUK' AND Igt <= '20250902' AND (Ict IS NULL OR Ict >= '20250902') THEN 1 ELSE 0 END) AS sezonluk_02Eyl25,
+    SUM(CASE WHEN Kadro = 'SEZONLUK' AND Igt <= '20260902' AND (Ict IS NULL OR Ict >= '20260902') THEN 1 ELSE 0 END) AS sezonluk_02Eyl26,
+    SUM(CASE WHEN ISNULL(Kadro,'X') <> 'SEZONLUK' AND Igt <= '20250902' AND (Ict IS NULL OR Ict >= '20250902') THEN 1 ELSE 0 END) AS kadrolu_02Eyl25,
+    SUM(CASE WHEN ISNULL(Kadro,'X') <> 'SEZONLUK' AND Igt <= '20260902' AND (Ict IS NULL OR Ict >= '20260902') THEN 1 ELSE 0 END) AS kadrolu_02Eyl26,
+    SUM(CASE WHEN Igt <= '20250630' AND (Ict IS NULL OR Ict >= '20250630') THEN 1 ELSE 0 END) AS aktif_30Haz25,
+    SUM(CASE WHEN Igt <= '20260630' AND (Ict IS NULL OR Ict >= '20260630') THEN 1 ELSE 0 END) AS aktif_30Haz26
 FROM dbo.vw_PersonelDepartman;
 
 -- ============ 2) ZIRVE: sube bazli as-of kadro (artis nereye gitti) ============
 SELECT ISNULL(AltLokasyon,'(bos)') AS sube,
        MIN(Igt) AS ilk_personel_girisi,          -- yeni sube var mi? (yok: en yenisi 2022)
-       SUM(CASE WHEN Igt <= '20250902' AND (Ict IS NULL OR Ict > '20250902') THEN 1 ELSE 0 END) AS aktif_02Eyl25,
-       SUM(CASE WHEN Igt <= '20260902' AND (Ict IS NULL OR Ict > '20260902') THEN 1 ELSE 0 END) AS aktif_02Eyl26
+       SUM(CASE WHEN Igt <= '20250902' AND (Ict IS NULL OR Ict >= '20250902') THEN 1 ELSE 0 END) AS aktif_02Eyl25,
+       SUM(CASE WHEN Igt <= '20260902' AND (Ict IS NULL OR Ict >= '20260902') THEN 1 ELSE 0 END) AS aktif_02Eyl26
 FROM dbo.vw_PersonelDepartman
 GROUP BY AltLokasyon
 ORDER BY 4 DESC;
@@ -77,6 +80,11 @@ WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
     OR (s.Date >= '20260701' AND s.Date < '20260903'))
 GROUP BY YEAR(s.Date);
 
+-- ⚠⚠ BLOK 5 UYARISI (sql-denetci 02.09.2026): asagidaki net hesabinda IADE SIGN'I YOK
+--   (DocumentsTypeId=3 negatife cevrilmiyor) -> "net" SISIK cikar. Ayrica bu blok EncoreMerkez
+--   tabanlidir ve POS gecisi yuzunden 2025 tarafi eksiktir (bkz. BLOK 10 SUPERSEDED notu).
+--   KULLANMA. Nihai rakamlar BLOK 11'de (DerinSIS eTip 100) ve scripts/verimlilik_excel.py'de.
+--   Dogru desen: SUM(CASE WHEN s.DocumentsTypeId = 3 THEN -(net) ELSE (net) END)
 -- ============ 5) ENCOREMERKEZ: magaza bazli hacim (kadro artisiyla eslestir) ============
 SELECT YEAR(s.Date) AS yil, s.StoresId AS magaza,
        COUNT(*) AS adet,
@@ -95,13 +103,13 @@ ORDER BY 2, 1;
 -- ============ 6) MAGAZALAR · 31 AGUSTOS kesimi · sezonluk / kadrolu ayri ============
 -- Lokasyon LIKE 'MA%' = yalniz MAGAZALAR (kafe/depo/merkez haric)
 SELECT ISNULL(AltLokasyon,'(bos)') AS sube,
-       SUM(CASE WHEN Kadro='SEZONLUK' AND Igt <= '20250831' AND (Ict IS NULL OR Ict > '20250831') THEN 1 ELSE 0 END) AS sez_31Agu25,
-       SUM(CASE WHEN Kadro='SEZONLUK' AND Igt <= '20260831' AND (Ict IS NULL OR Ict > '20260831') THEN 1 ELSE 0 END) AS sez_31Agu26,
-       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20250831' AND (Ict IS NULL OR Ict > '20250831') THEN 1 ELSE 0 END) AS kad_31Agu25,
-       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20260831' AND (Ict IS NULL OR Ict > '20260831') THEN 1 ELSE 0 END) AS kad_31Agu26,
+       SUM(CASE WHEN Kadro='SEZONLUK' AND Igt <= '20250831' AND (Ict IS NULL OR Ict >= '20250831') THEN 1 ELSE 0 END) AS sez_31Agu25,
+       SUM(CASE WHEN Kadro='SEZONLUK' AND Igt <= '20260831' AND (Ict IS NULL OR Ict >= '20260831') THEN 1 ELSE 0 END) AS sez_31Agu26,
+       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20250831' AND (Ict IS NULL OR Ict >= '20250831') THEN 1 ELSE 0 END) AS kad_31Agu25,
+       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20260831' AND (Ict IS NULL OR Ict >= '20260831') THEN 1 ELSE 0 END) AS kad_31Agu26,
        -- 30 Haziran sezon-oncesi TABAN (kadrolu; magazalarda sezonluk pratikte 0)
-       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20250630' AND (Ict IS NULL OR Ict > '20250630') THEN 1 ELSE 0 END) AS kad_30Haz25,
-       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20260630' AND (Ict IS NULL OR Ict > '20260630') THEN 1 ELSE 0 END) AS kad_30Haz26
+       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20250630' AND (Ict IS NULL OR Ict >= '20250630') THEN 1 ELSE 0 END) AS kad_30Haz25,
+       SUM(CASE WHEN ISNULL(Kadro,'X')<>'SEZONLUK' AND Igt <= '20260630' AND (Ict IS NULL OR Ict >= '20260630') THEN 1 ELSE 0 END) AS kad_30Haz26
 FROM dbo.vw_PersonelDepartman
 WHERE Lokasyon LIKE 'MA%'
 GROUP BY AltLokasyon
@@ -114,8 +122,8 @@ ORDER BY 3 DESC;
 -- Ayrac: perbilgi.Kanun='14857' (4857/30 engelli istihdam tesviki). Ozurlulukkodu OLU (aktifte 0 dolu).
 -- perbilgi YALNIZ BKM_GENEL -> firma daraltmasi zorunlu (join fan-out onlemi).
 SELECT ISNULL(v.Lokasyon,'(bos)') AS grup, ISNULL(v.AltLokasyon,'(bos)') AS sube,
-       SUM(CASE WHEN v.Igt <= '20250831' AND (v.Ict IS NULL OR v.Ict > '20250831') THEN 1 ELSE 0 END) AS engelli_31Agu25,
-       SUM(CASE WHEN v.Igt <= '20260831' AND (v.Ict IS NULL OR v.Ict > '20260831') THEN 1 ELSE 0 END) AS engelli_31Agu26
+       SUM(CASE WHEN v.Igt <= '20250831' AND (v.Ict IS NULL OR v.Ict >= '20250831') THEN 1 ELSE 0 END) AS engelli_31Agu25,
+       SUM(CASE WHEN v.Igt <= '20260831' AND (v.Ict IS NULL OR v.Ict >= '20260831') THEN 1 ELSE 0 END) AS engelli_31Agu26
 FROM dbo.vw_PersonelDepartman v
 INNER JOIN dbo.perbilgi p
         ON p.Personelno = CASE WHEN CHARINDEX('-', v.Personelno) > 1
@@ -146,8 +154,8 @@ ORDER BY 1, 2, 4 DESC;
 
 -- ============ 8) ETKINLIK personeli ============
 SELECT ISNULL(Departman,'(bos)') AS departman, ISNULL(Unvan,'(bos)') AS unvan, ISNULL(AltLokasyon,'(bos)') AS sube,
-       SUM(CASE WHEN Igt <= '20250831' AND (Ict IS NULL OR Ict > '20250831') THEN 1 ELSE 0 END) AS aktif_31Agu25,
-       SUM(CASE WHEN Igt <= '20260831' AND (Ict IS NULL OR Ict > '20260831') THEN 1 ELSE 0 END) AS aktif_31Agu26
+       SUM(CASE WHEN Igt <= '20250831' AND (Ict IS NULL OR Ict >= '20250831') THEN 1 ELSE 0 END) AS aktif_31Agu25,
+       SUM(CASE WHEN Igt <= '20260831' AND (Ict IS NULL OR Ict >= '20260831') THEN 1 ELSE 0 END) AS aktif_31Agu26
 FROM dbo.vw_PersonelDepartman
 WHERE Departman LIKE '%ETK%' OR Unvan LIKE '%ETK%' OR Unvan LIKE '%ORGAN%'
 GROUP BY Departman, Unvan, AltLokasyon
@@ -160,11 +168,11 @@ ORDER BY 5 DESC;
 -- Ayrac birlesik: Kanun='14857' (tesvikli) VEYA Ozurlulukkodu='E' (tesviksiz engelli izi).
 -- KVKK m.6 ozel nitelikli -> yalniz sayim; isim/unvan raporda paylasilmaz.
 SELECT ISNULL(v.AltLokasyon,'(bos)') AS sube,
-       SUM(CASE WHEN v.Igt <= '20250630' AND (v.Ict IS NULL OR v.Ict > '20250630') THEN 1 ELSE 0 END) AS d_30Haz25,
-       SUM(CASE WHEN v.Igt <= '20250831' AND (v.Ict IS NULL OR v.Ict > '20250831') THEN 1 ELSE 0 END) AS d_31Agu25,
-       SUM(CASE WHEN v.Igt <= '20251231' AND (v.Ict IS NULL OR v.Ict > '20251231') THEN 1 ELSE 0 END) AS d_31Ara25,
-       SUM(CASE WHEN v.Igt <= '20260630' AND (v.Ict IS NULL OR v.Ict > '20260630') THEN 1 ELSE 0 END) AS d_30Haz26,
-       SUM(CASE WHEN v.Igt <= '20260831' AND (v.Ict IS NULL OR v.Ict > '20260831') THEN 1 ELSE 0 END) AS d_31Agu26,
+       SUM(CASE WHEN v.Igt <= '20250630' AND (v.Ict IS NULL OR v.Ict >= '20250630') THEN 1 ELSE 0 END) AS d_30Haz25,
+       SUM(CASE WHEN v.Igt <= '20250831' AND (v.Ict IS NULL OR v.Ict >= '20250831') THEN 1 ELSE 0 END) AS d_31Agu25,
+       SUM(CASE WHEN v.Igt <= '20251231' AND (v.Ict IS NULL OR v.Ict >= '20251231') THEN 1 ELSE 0 END) AS d_31Ara25,
+       SUM(CASE WHEN v.Igt <= '20260630' AND (v.Ict IS NULL OR v.Ict >= '20260630') THEN 1 ELSE 0 END) AS d_30Haz26,
+       SUM(CASE WHEN v.Igt <= '20260831' AND (v.Ict IS NULL OR v.Ict >= '20260831') THEN 1 ELSE 0 END) AS d_31Agu26,
        SUM(CASE WHEN v.Ict IS NULL THEN 1 ELSE 0 END) AS bugun
 FROM dbo.vw_PersonelDepartman v
 INNER JOIN dbo.perbilgi p

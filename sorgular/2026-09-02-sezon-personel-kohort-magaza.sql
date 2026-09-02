@@ -1,3 +1,10 @@
+-- ⚠ KAPSAM NOTU (sql-denetci 02.09.2026): bu dosyadaki sube/grup kirilimlari TUM AltLokasyon
+--   degerlerini icerir (Merkez Depo, kafe, GM dahil) — `Lokasyon LIKE 'MA%'` filtresi YOKTUR.
+--   Bu KASITLIDIR (destek birimlerinin kaybi da gorunsun diye). Yalniz magaza rakami gerekiyorsa
+--   filtreyi ekle; patron cikti rakamlari (137/149/62 ...) MAGAZA kapsaminda uretilir
+--   (scripts/verimlilik_excel.py).
+-- ⚠ AS-OF: aktif = Igt <= T AND (Ict IS NULL OR Ict >= T) — IK SP konvansiyonu (02.09 duzeltildi).
+
 /*
   Soru: Gecen yil sezon icin alinan personelin seyri ile bu yil alinanin seyri -- MAGAZA BAZLI.
   DB: Zirve BKM_GENEL (MCP: zirve) -- kanonik IK kaynagi dbo.vw_PersonelDepartman.
