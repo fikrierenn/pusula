@@ -13,6 +13,7 @@ kullanilir (taban 30.06 vs sezon 01.07-31.08) — rakam kendi hikayesini anlatir
 ⚠ KVKK: kisi adi / personel no / ucret YOK; tum rakamlar toplulastirilmis.
 
 Kullanim: python scripts/sunum_kadro_deck.py [cikti.pptx]
+Varsayilan cikti: briefings/sezon-kadro-20260902/sunum-kadro-sezon2026.pptx
 """
 import json
 import os
@@ -33,7 +34,9 @@ from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 KOK = Path(__file__).resolve().parent.parent
 VERI = KOK / "briefings" / "sezon-kadro-20260902" / "verimlilik-veri.json"
 TPL = r"C:\Users\fikri.eren\Desktop\Sunum.pptx"
-OUT = sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\fikri.eren\Desktop\Sunum_Kadro_Sezon2026.pptx"
+# varsayilan cikti BRIEF klasoru (repo icinde, veriyle ayni yerde). Masaustu icin yol argumani ver.
+OUT = sys.argv[1] if len(sys.argv) > 1 else str(
+    KOK / "briefings" / "sezon-kadro-20260902" / "sunum-kadro-sezon2026.pptx")
 IKON = Path(os.path.expanduser("~")) / ".claude" / "skills" / "bkm-sunum" / "assets"
 ICOW, ICOR = str(IKON / "_icons"), str(IKON / "_icons_red")
 
