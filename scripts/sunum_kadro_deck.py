@@ -199,9 +199,16 @@ def circ(sl, x, y, d, bg, icon):
 
 
 def card(sl, x, y, w, h, top=None):
+    """Beyaz kart + (opsiyonel) renkli vurgu seridi.
+
+    ⚠ Yerlesim dersi (02.09.2026): serit kartla AYNI x/y'de ve kare koseli ciziliyordu; kart
+    yuvarlak koseli oldugu icin seridin kare uclari kosenin disina tasiyor ve serit kartin
+    USTUNDE ayri bir cizgi gibi duruyordu ("kutular cizginin altina giriyor"). Cozum: serit
+    yatayda kose yaricapi kadar (0.09) ice alinir ve 0.03 asagi indirilir -> karta yapisik durur.
+    """
     rrect(sl, x, y, w, h, WHITE, RGBColor(0xE0, 0xE0, 0xE0))
     if top:
-        rrect(sl, x, y, w, 0.07, top, rad=False)
+        rrect(sl, x + 0.09, y + 0.03, w - 0.18, 0.06, top, rad=False)
 
 
 def sig(sl):
