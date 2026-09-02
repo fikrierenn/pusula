@@ -412,6 +412,18 @@ metrics:
     ttl_days: 180
     evidence: "2026-09-02 canli MCP zirve (vw_PersonelDepartman as-of + ayrilis yili + kidem dilimleri) + DerinSIS eTip100 Oca-Agu adet/net 2023-2026."
 
+  norm_kadro_karsilastirma:    # 2026-09-02 — NORM DOLULUGU: yonetim karari + hesap kurali
+    kural: "⚠⚠ NORM = **ENGELLI DISINDAKI** personel sayisi (yonetim karari, 2026-09-02 teyidi). ETKINLIK de norm disi (norm tablosunda 0 tanimli). Karsilastirma: `operasyonel kadrolu = kayit kadrolu - engelli - etkinlik` vs norm. Bu karar, norm tablosunun kendi notunu ('Engelli kadro sayilari raporlamaya dahil edilmistir') GECERSIZ KILAR — tablo notunu okuyup engelliyi dahil sayma."
+    kaynak: "Norm bir YONETIM PARAMETRESIDIR, Zirve'den sorgulanmaz. Dosya: `briefings/<klasor>/norm-kadro-YYYYMMDD.json` (tarihli; kadrolu norm departman x sube, sezonluk norm sube toplami, karar metni meta.karar'da). Kaynak tablo: 'BKMKITAP Magaza Kadro ve Sezon Takip Tablosu'. Norm guncellenince YALNIZ bu dosya degisir; emitter'lar (sunum/Excel) otomatik uyar."
+    olcum_2026_08_31: "Norm 217 (kadrolu 145 + sezonluk 72) vs operasyonel gercek 189 (kadrolu 131 + sezonluk 58) -> **-28 kisi EKSIK**. Magaza: Ozluce -9 · FSM -4 · Ist.Yolu 0 · Heykel -15. Kayit toplami (IK resmi, 4 magaza) kadrolu 137 + sezonluk 58 = 195. Engelli 3 (FSM 1 · Ist.Yolu 2 | bolum: KIRTASIYE 2 · MAL KABUL 1) · Etkinlik 3 (FSM/Ist.Yolu/Ozluce)."
+    BOLUM_vs_MAGAZA: "⚠ Bolum bazli acik toplami MAGAZA bazlindan BUYUKTUR (17 vs 14): magaza icinde bir bolumun fazlasi (Yardimci Kitap +3) baska bolumun acigini maskeler. Gercek ihtiyac BOLUM bazinda okunur. Bolum acigi 2026-08-31: COCUK 5 · MAGAZA 2 · IDARI ISLER 2 · KULTUR 2 · KASA/MUHASEBE/AKADEMI/OYUN ALANI/MAL KABUL/KIRTASIYE 1'er."
+    UC_KAPSAM: "⚠ Ayni raporda UC KAPSAM dolasir, etiketsiz kullanilirsa rakamlar birbirini tutmuyor gorunur: (a) **3 POS magazasi** (FSM·Ozluce·Ist.Yolu = BKM_GENEL) — is hacminin olculebildigi kapsam, kadro 143->160 · (b) **4 norm magazasi** (+Heykel) — norm karsilastirmasi, norm 217/kayit 195/operasyonel 189 · (c) **5 magaza** (+Sura) — IK kadro raporu, kadrolu 149 + sezonluk 62 = 211. Her tabloda kapsam YAZILIR; sunumda 'Kapsam Sozlugu' blogu zorunlu."
+    denetim: "scripts/tutarlilik_kontrol.py — 33 kontrol: JSON aritmetigi (sube=kapsam=bolum toplamlari), canli DB ile bagimsiz yeniden olcum, PPTX/XLSX'te FIILEN YAZAN rakam + bayat rakam avi. Cikis kodu sapmada 1. ⚠ JSON dogru olsa bile EMITTER KAYABILIR: norm kurali degistiginde Sonuc slayti -22'de, Excel Norm sayfasi kayit kadrolusunda (137) kalmisti."
+    confidence: 0.95
+    last_verified: "2026-09-02"
+    ttl_days: 120
+    evidence: "2026-09-02 canli Zirve + DerinSIS olcumu; norm dosyasi kullanici (GMY) tarafindan verildi. Arsiv: briefings/sezon-kadro-20260902/ (sunum + Excel + veri/norm JSON)."
+
   sezon_kiyas_takvim_hizalama:    # 2026-09-02 — OKUL ACILISINA HIZALAMA (kritik metodoloji)
     kural: "⚠⚠ Okul sezonu (Tem-Eyl) YoY kiyasi TAKVIM TARIHIYLE DEGIL, **OKUL ACILIS GUNUNE HIZALI** yapilir. Hafta ofseti = DATEDIFF(DAY, o_yilin_okul_acilisi, tarih)/7. Takvim-tarihli kiyas yaniltir: acilis 6 gun kayinca satin alma dalgasi tamamen baska aya duser."
     okul_acilis: "MEB calisma takvimi: 2025-2026 -> **08.09.2025** (uyum egitimi 01-05.09.2025) · 2026-2027 -> **14.09.2026** (uyum haftasi 07-11.09.2026). Yani 2026'da acilis 6 GUN GEC. Yeni yil kiyasi oncesi MEB takvimi DOGRULANIR (meb.gov.tr calisma takvimi genelgesi)."

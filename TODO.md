@@ -518,3 +518,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-NEW-04** Excel 7 sheet (xlsx skill).
 - [ ] **B-NEW-05** Doğrulama (top10/dağılım/outlier).
 - [ ] **B-NEW-06** (ops.) Stok ihtiyacı türevi.
+
+### Sezon kadro savunması (02.09.2026) — takip maddeleri
+
+- [ ] **K-01 İK kayıt düzeltmesi (87-ABG)** — 02.09. Personel 87-ABG (Şura, Yardımcı Kitap) çıkış tarihi işlenmemiş, 377 gündür `Kadro='SEZONLUK'` aktif görünüyor. Düzeltilince 31.08 sezonluk 62 → 61, 5 mağaza toplamı 211 → 210. Kayıt ASİYE_BİNGÖLBALI firmasında; `perbilgi` yalnız BKM_GENEL tuttuğu için bu DB'den teyit edilemiyor. Rakamlar İK'nın resmi kaydıyla birebir kalsın diye elle düzeltilmedi, sunumda dipnot var.
+- [ ] **K-02 Heykel sezonluk alım açığı** — 02.09. Norm 20, alınan 13 (−7), aktif 9. Alım en geç Heykel'de başladı (10.08; 14.08'e kadar 2 kişi) ve ayrılma oranı en yüksek (3/13 = %23). Sebep (aday bulunamadı / onay / ihtiyaç görülmedi) veriyle ayrılamıyor — operasyonla konuşulacak.
+- [ ] **K-03 Heykel/Şura POS raporlama kör noktası** — 02.09. İkisi ayrı tüzel kişilik (Bursa Kültür Merkezi / Asiye Bingölbalı) ve DerinSIS eTip 100'de satışları YOK → iş hacmi, kişi başı verimlilik ve "norm gerçekten gerekli mi" soruları o iki mağaza için ölçülemiyor. Çözüm seçenekleri: (a) o firmaların POS'unu DerinSIS'e bağlamak, (b) ayrı kaynaktan aylık özet almak.
+- [ ] **K-04 Üç denetim ajanı bulgularının işlenmesi** — 02.09. python-reviewer · silent-failure-hunter · sql-denetci `scripts/verimlilik_excel.py`, `scripts/sunum_kadro_deck.py`, iki denetçi script ve 02.09 SQL arşivi üzerinde çalıştırıldı; raporlar işlenecek.
+- [ ] **K-05 Sezonluk tutunma aksiyonu** — 02.09. Kadrolu alımın 14 gün tutunması %95,7 → %75,0 (32 alımdan 10'u ayrıldı). En bozuk: Özlüce, Heykel, Merkez Depo. Aksiyon: ilk hafta karşılama protokolü + İdari İşler ücret–vardiya revizyonu. Ölçüt: gelecek sezon Eylül öncesi kayıp %20 → %12.
