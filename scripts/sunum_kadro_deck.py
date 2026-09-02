@@ -83,8 +83,8 @@ def tr_title(metin):
     kucuk = {"I": "ı", "İ": "i", "Ş": "ş", "Ğ": "ğ", "Ü": "ü", "Ö": "ö", "Ç": "ç"}
     out = []
     for kelime in metin.split():
-        if len(kelime) <= 3 and kelime.isupper():      # FSM, ŞURA gibi kisaltmalar aynen
-            out.append(kelime)
+        if kelime in ("FSM", "POS", "ERP", "KDV", "İK"):   # gercek kisaltmalar aynen kalir
+            out.append(kelime)                             # ("MAL" gibi 3 harfli kelimeler DEGIL)
             continue
         ilk, kalan = kelime[0], kelime[1:]
         out.append(ilk + "".join(kucuk.get(ch, ch.lower()) for ch in kalan))
@@ -147,9 +147,19 @@ def add(name):
 
 
 def setph(sl, idx, text):
+    """Placeholder metni. Icerik slaytlarinda BASLIK KUTUSU SABITLENIR.
+
+    ⚠ Yerlesim dersi (02.09.2026): sablonun "Yalnizca Baslik" layout'unda baslik placeholder'i
+    y~0.3'ten y~2.5'e kadar uzuyor. Icerik y1.5'te basladigi icin kart/KPI kutulari basligin
+    KUTUSUNUN icine giriyordu (gorsel olarak ust bant basligin altinda kaliyor). Cozum: icerik
+    slaytlarinda baslik kutusu y0.30-1.30 arasina sabitlenir; icerik y1.45'ten sonra serbest.
+    """
     for ph in sl.placeholders:
         if ph.placeholder_format.idx == idx:
             ph.text = text
+            if idx == 0 and sl.slide_layout.name == "Yalnızca Başlık":
+                ph.left, ph.top = Inches(0.6), Inches(0.30)
+                ph.width, ph.height = Inches(12.05), Inches(1.00)
             return ph
     return None
 
@@ -394,14 +404,14 @@ kpi(s, 4.68, 1.5, 3.9, "CİRO · KDV DAHİL", yzd(d_ciro),
 kpi(s, 8.75, 1.5, 3.9, "KADRO · 3 MAĞAZA", yzd(d_kadro),
     "%d → %d kişi (sezonluk dahil)" % (kadro25, kadro26), MGREY, 32)
 
-cift_bar(s, 0.6, 3.5, 6.1, 2.4, ["Ürün adedi (bin)", "Ciro (milyon TL)", "Kadro (kişi)"],
+cift_bar(s, 0.6, 3.5, 6.1, 2.15, ["Ürün adedi (bin)", "Ciro (milyon TL)", "Kadro (kişi)"],
          (adet25 / 1000, kd25 / 1e6, kadro25), (adet26 / 1000, kd26 / 1e6, kadro26))
 rrect(s, 7.0, 3.7, 5.65, 2.0, LGREY, RED, lw=1.5)
 tb(s, 7.25, 3.85, 5.2, 1.75,
    [("Ürün adedi birincil ölçüdür", 14, True, DRED),
     ("Adet enflasyondan etkilenmez; kasadan geçen, rafa dizilen ve depodan çıkan fiili mal "
      "miktarını gösterir. Ciro fiyat artışını içerir, adet içermez.", 12, False, INK)], sp=1.15)
-tb(s, 0.6, 5.95, 12.05, 0.4,
+tb(s, 0.6, 5.72, 12.05, 0.32,
    [("Kaynak: DerinSIS mağaza satışı · Sınav hariç · iadeler düşülmüş · KDV dahil.", 10, False, MGREY)])
 dipnot(s, DIP_POS)
 sig(s)
@@ -417,14 +427,14 @@ y = 1.75
 for ad, a, b in zip(kats, s1, s2):
     card(s, 7.2, y, 5.45, 1.15, RED)
     tb(s, 7.45, y + 0.12, 3.0, 0.35, [(ad, 13, True, CHAR)])
-    tb(s, 7.45, y + 0.5, 4.9, 0.5,
+    tb(s, 7.45, y + 0.5, 3.05, 0.5,
        [("%s → %s adet/kişi" % (bin(a), bin(b)), 12.5, False, INK)])
     tb(s, 10.7, y + 0.12, 1.85, 0.5, [(yzd(b / a - 1), 17, True, YESIL)], align=PP_ALIGN.RIGHT)
     y += 1.3
-tb(s, 0.6, 5.6, 12.05, 0.7,
+tb(s, 0.6, 5.68, 12.05, 0.34,
    [("Kişi başı = 31 Ağustos'ta o mağazada fiilen çalışan TÜM personel (sezonluk dahil). Kadrosu en çok "
-     "büyüyen mağazada (İst. Yolu %d → %d) dahi kişi başı iş artmıştır."
-     % (mag["İst. Yolu"]["kadro25"], mag["İst. Yolu"]["kadro26"]), 10, False, GREY)])
+     "büyüyen mağazada dahi kişi başı iş artmıştır (İst. Yolu %d → %d)."
+     % (mag["İst. Yolu"]["kadro25"], mag["İst. Yolu"]["kadro26"]), 9.5, False, GREY)])
 dipnot(s, DIP_POS)
 sig(s)
 
@@ -491,8 +501,8 @@ tb(s, 8.35, 3.62, 4.05, 0.35, [("KADROSU ARTAN BÖLÜMLER", 10.5, True, GREY)])
 tb(s, 8.35, 3.98, 4.05, 1.15,
    [("  ·  ".join("%s %+d" % (tr_title(b["bolum"]), b["kadrolu26"] - b["kadrolu25"]) for b in ilk5),
      12, True, DRED)], sp=1.15)
-rrect(s, 0.6, 5.4, 12.05, 0.85, LGREY, RED, lw=1.5)
-tb(s, 0.9, 5.4, 11.5, 0.85,
+rrect(s, 0.6, 5.28, 12.05, 0.72, LGREY, RED, lw=1.5)
+tb(s, 0.9, 5.28, 11.5, 0.72,
    [("Kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerindedir; yönetim kadrosunda değişim "
      "yoktur." % taban_fark, 13.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
 dipnot(s, DIP_BES)
@@ -537,9 +547,9 @@ for r, row in enumerate(satir):
                     DRED if (c == 6 and r > 0 and val.startswith("+")) else INK)
         cell.fill.solid()
         cell.fill.fore_color.rgb = RED if r == 0 else (LGREY if son or r % 2 == 0 else WHITE)
-tb(s, 0.6, 1.5 + min(4.3, 0.32 * len(satir)) + 0.12, 12.05, 0.85,
-   [("'—' ilgili mağazada o bölümün bulunmadığını gösterir. Yönetim (Mağaza), Mal Kabul ve İdari İşler "
-     "satırları tüm mağazalarda sıfır veya negatiftir.", 10.5, False, GREY)], sp=1.15)
+tb(s, 0.6, min(5.74, 1.5 + min(4.3, 0.32 * len(satir)) + 0.10), 12.05, 0.32,
+   [("'—' ilgili mağazada o bölüm yoktur · Yönetim, Mal Kabul ve İdari İşler satırları tüm "
+     "mağazalarda sıfır veya negatiftir.", 9.5, False, GREY)], sp=1.1)
 dipnot(s, DIP_BES)
 sig(s)
 
@@ -636,8 +646,8 @@ kats3 = [k["kategori"] for k in kat_veri]
 # tek seri: adet buyumesi (kadro Δ tabloda — ayni grafikte olcek farki cubuklari yok ediyordu)
 cd = CategoryChartData(); cd.categories = kats3
 cd.add_series("ürün adedi Δ%", tuple((k["adet26"] / k["adet25"] - 1) * 100 for k in kat_veri))
-ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(4.35),
-                        Inches(7.4), Inches(1.75), cd).chart
+ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(4.44),
+                        Inches(7.4), Inches(1.56), cd).chart
 ch.has_title = False; ch.has_legend = False
 ch.font.size = Pt(9); ch.font.name = "Calibri"
 ch.plots[0].gap_width = 70; ch.plots[0].has_data_labels = True
@@ -646,7 +656,7 @@ ch.plots[0].data_labels.number_format_is_linked = False
 ch.plots[0].data_labels.number_format = '0"%"'
 ch.plots[0].data_labels.font.size = Pt(8.5)
 ch.series[0].format.fill.solid(); ch.series[0].format.fill.fore_color.rgb = RED
-tb(s, 0.6, 4.05, 7.4, 0.28, [("Ürün adedi büyümesi (%) — kategori bazında", 10, True, GREY)])
+tb(s, 0.6, 4.16, 7.4, 0.26, [("Ürün adedi büyümesi (%) — kategori bazında", 10, True, GREY)])
 
 rrect(s, 8.2, 4.4, 4.45, 1.7, LGREY, RED, lw=1.5)
 tb(s, 8.45, 4.5, 4.0, 1.5,
