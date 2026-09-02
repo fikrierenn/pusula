@@ -7,7 +7,7 @@ VERIYI KENDI CEKER (elle rakam YOK):
 Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
 Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
 
-Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Kategori · Aylik · Yillar · Oca-Agu · Yontem [+ Personel: --kisi]
+Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Kategori · Aylik · Yillar · Oca-Agu · Norm · Yontem [+ Personel: --kisi]
 Kullanim:
   python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
   python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
@@ -87,11 +87,30 @@ def _cn(env, sunucu):
         if not re.fullmatch(r"[A-Za-z0-9._\\\-]+", host):
             sys.exit("Geçersiz ZIRVE_HOST (.env)")
         adres = host
-    cn = pyodbc.connect(
-        "Driver={ODBC Driver 18 for SQL Server};Server=%s;Database=%s;UID=%s;PWD=%s;"
-        "TrustServerCertificate=yes;Timeout=30" % (adres, db, kullanici, sifre), timeout=30)
-    cn.timeout = 600
-    return cn
+    # Bağlantı kurulumu SINIRLI retry ile (error-handling.md: transient → bounded retry + log).
+    # 02.09.2026: aynı sunucuya MCP ulaşırken pyodbc'nin yeni TCP bağlantısı iki kez zaman aşımına
+    # düştü (login timeout). Tek denemede script çöküyordu; 3 deneme + artan bekleme ile geçiyor.
+    import time
+    conn_str = ("Driver={ODBC Driver 18 for SQL Server};Server=%s;Database=%s;UID=%s;PWD=%s;"
+                "TrustServerCertificate=yes;Timeout=30" % (adres, db, kullanici, sifre))
+    son_hata = None
+    for deneme in (1, 2, 3):
+        try:
+            cn = pyodbc.connect(conn_str, timeout=30)
+            if deneme > 1:
+                print("  bağlantı %d. denemede kuruldu (%s)" % (deneme, sunucu), flush=True)
+            cn.timeout = 600
+            return cn
+        except pyodbc.Error as e:
+            son_hata = e
+            gecici = any(k in str(e) for k in ("08001", "HYT00", "timeout", "zaman aşımı"))
+            if not gecici or deneme == 3:
+                break
+            bekle = 3 * deneme
+            print("  ⚠ %s bağlantısı kurulamadı (deneme %d/3) — %d sn sonra tekrar"
+                  % (sunucu, deneme, bekle), flush=True)
+            time.sleep(bekle)
+    sys.exit("%s bağlantısı kurulamadı (3 deneme): %s" % (sunucu, son_hata))
 
 
 def _hizali_kosul(alias="bs.eTarihS"):
@@ -559,6 +578,62 @@ def cek(env, kisi=False):
                           "agustos_1_14": int(agu1_14 or 0),
                           "gun45_oncesi": int(cok_erken or 0)}
     veri["sezonluk_alim"] = alim
+
+    # 3e-2) 31.08'de CALISAN sezonlugun alim donemi dagilimi ("62 kisi ne zaman alinmis")
+    #  ⚠ Kohort (donem icinde alinan) ile AKTIF (o gun calisan) AYRI kumeler: kohort 73, aktif 62.
+    #     Fark: 31.08'den once ayrilanlar + 01-02 Eylul alimlari.
+    for yil in (CARI, ONCEKI):
+        zc.execute("""
+            SELECT x.donem, COUNT(*)
+            FROM (
+                SELECT CASE WHEN YEAR(v.Igt) < ? THEN '0_onceki_yildan'
+                            WHEN MONTH(v.Igt) <= 6 THEN '1_haziran_ve_oncesi'
+                            WHEN MONTH(v.Igt) = 7 THEN '2_temmuz'
+                            WHEN MONTH(v.Igt) = 8 AND DAY(v.Igt) <= 14 THEN '3_agustos_1_14'
+                            ELSE '4_agustos_15_31' END AS donem
+                FROM dbo.vw_PersonelDepartman v
+                WHERE v.Lokasyon LIKE 'MA%' AND v.Kadro = 'SEZONLUK'
+                  AND v.Igt <= ? AND (v.Ict IS NULL OR v.Ict >= ?)
+            ) x
+            GROUP BY x.donem""", yil, "%d0831" % yil, "%d0831" % yil)
+        veri["sezonluk_alim"][str(yil)]["aktif_donem"] = {d: int(k) for d, k in zc.fetchall()}
+
+
+
+
+    # 10) NORM KADRO karsilastirmasi — norm bir YONETIM PARAMETRESI, Zirve'den sorgulanmaz.
+    #     Dosya: briefings/<klasor>/norm-kadro-YYYYMMDD.json (kullanici/IK verir, tarihli).
+    #     ⚠ Norm SEZON DISI kadroyu tanimlar -> sezonluk personel norma dahil DEGIL; kiyas
+    #     yalnizca KADROLU sayilarla yapilir. Sura norm tablosunda yok, kapsam disi tutulur.
+    norm_dosya = sorted(Path(__file__).resolve().parent.parent.joinpath(
+        "briefings", "sezon-kadro-20260902").glob("norm-kadro-*.json"))
+    if norm_dosya:
+        nd = json.loads(norm_dosya[-1].read_text(encoding="utf-8"))
+        print("Norm kadro dosyası: %s" % norm_dosya[-1].name, flush=True)
+        norm_sube, norm_bolum = {}, {}
+        for bol, subeler in nd["norm"].items():
+            norm_bolum[bol] = sum(subeler.values())
+            for sube, adet in subeler.items():
+                norm_sube[sube] = norm_sube.get(sube, 0) + adet
+        mk = {m["sube"]: m for m in veri["magaza_kadro"]}
+        satirlar = []
+        for sube, nm in sorted(norm_sube.items(), key=lambda x: -x[1]):
+            m = mk.get(sube)
+            if not m:
+                continue
+            satirlar.append({"sube": sube, "norm": nm,
+                             "kadrolu_taban26": m["kadrolu_taban26"],
+                             "kadrolu_kesim26": m["kadrolu_kesim26"],
+                             "sezonluk_kesim26": m["sezonluk_kesim26"]})
+        veri["norm"] = {
+            "tarih": nd["meta"]["tarih"], "kaynak_dosya": norm_dosya[-1].name,
+            "kapsam_disi": [x for x in mk if x not in norm_sube],
+            "sube": satirlar,
+            "bolum": [{"bolum": b, "norm": norm_bolum[b]} for b in sorted(norm_bolum, key=lambda x: -norm_bolum[x])],
+            "toplam": {"norm": sum(r["norm"] for r in satirlar),
+                       "kadrolu_taban26": sum(r["kadrolu_taban26"] for r in satirlar),
+                       "kadrolu_kesim26": sum(r["kadrolu_kesim26"] for r in satirlar)},
+        }
 
     # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
     # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
@@ -1444,6 +1519,55 @@ def sayfa_personel(wb, veri):
     return ws
 
 
+
+# ------------------------------------------------------------------ Norm
+def sayfa_norm(wb, veri):
+    """Norm kadro (sezon disi) vs gercek kadrolu."""
+    n = veri.get("norm")
+    if not n:
+        return None
+    ws = wb.create_sheet("Norm")
+    kolonlar = [("Mağaza", 14, None), ("Norm (sezon dışı)", 15, ADET),
+                ("Kadrolu 30.06", 13, ADET), ("Norm farkı 30.06", 15, "+0;-0;0"),
+                ("Kadrolu 31.08", 13, ADET), ("Norm farkı 31.08", 15, "+0;-0;0"),
+                ("Sezonluk 31.08", 13, ADET), ("Toplam 31.08", 13, ADET)]
+    ws.cell(1, 1, "Norm kadro (%s, sezon dışı) ile gerçek kadrolu karşılaştırması" % n["tarih"]).font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for r in n["sube"]:
+        ws.cell(s, 1, r["sube"].title()).border = KENAR
+        for kol, v_ in ((2, r["norm"]), (3, r["kadrolu_taban26"]), (5, r["kadrolu_kesim26"]),
+                        (7, r["sezonluk_kesim26"])):
+            c = ws.cell(s, kol, v_); c.number_format = ADET; c.border = KENAR
+        for kol, f in ((4, "=C%d-B%d" % (s, s)), (6, "=E%d-B%d" % (s, s)), (8, "=E%d+G%d" % (s, s))):
+            c = ws.cell(s, kol, f)
+            c.number_format = kolonlar[kol - 1][2]
+            c.border = KENAR
+            if kol in (4, 6):
+                c.font = Font(bold=True)
+        s += 1
+    son = s - 1
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True); ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
+    for kol in (2, 3, 5, 7):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = ADET; c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
+    for kol, f in ((4, "=C%d-B%d" % (s, s)), (6, "=E%d-B%d" % (s, s)), (8, "=E%d+G%d" % (s, s))):
+        c = ws.cell(s, kol, f); c.number_format = kolonlar[kol - 1][2]
+        c.border = KENAR; c.fill = VURGU; c.font = Font(bold=True)
+
+    s += 2
+    _notlar(ws, [
+        "NORM SEZON DISI kadroyu tanimlar -> sezonluk personel norma DAHIL DEGIL; kiyas yalniz KADROLU ile.",
+        "Norm kaynagi: %s (%s). Yonetim parametresi, Zirve'den sorgulanmaz." % (n["kaynak_dosya"], n["tarih"]),
+        "KAPSAM DISI: %s norm tablosunda yok." % (", ".join(x.title() for x in n["kapsam_disi"]) or "—"),
+        "Eksi fark = normun ALTINDA calisiliyor. Toplamda 31.08'de norm %d, gercek kadrolu %d." % (
+            n["toplam"]["norm"], n["toplam"]["kadrolu_kesim26"]),
+    ], s)
+    return ws
+
+
 # ------------------------------------------------------------------ Yontem
 def sayfa_yontem(wb, veri):
     ws = wb.create_sheet("Yontem")
@@ -1515,6 +1639,7 @@ def main(argv):
     sayfa_aylik(wb, veri)
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
+    sayfa_norm(wb, veri)
     sayfa_yontem(wb, veri)
     if veri.get("personel"):
         sayfa_personel(wb, veri)

@@ -750,6 +750,61 @@ if ky:
               yzd(h["adet"])))
     sig(s)
 
+# ================================================================= NORM KADRO
+nrm = v.get("norm")
+if nrm:
+    s = add("Yalnızca Başlık"); setph(s, 0, "Norm Kadro Karşılaştırması")
+    tp = nrm["toplam"]
+    fark_kesim = tp["kadrolu_kesim26"] - tp["norm"]
+    fark_taban = tp["kadrolu_taban26"] - tp["norm"]
+
+    kpi(s, 0.6, 1.5, 3.9, "NORM KADRO · SEZON DIŞI", "%d" % tp["norm"],
+        "%s tarihli norm · dört mağaza" % nrm["tarih"], MGREY, 32, ikon="users")
+    kpi(s, 4.68, 1.5, 3.9, "GERÇEK KADROLU · 31.08", "%d" % tp["kadrolu_kesim26"],
+        "30.06 tabanında %d kişi" % tp["kadrolu_taban26"], MGREY, 32, ikon="users")
+    kpi(s, 8.75, 1.5, 3.9, "NORM FARKI · 31.08",
+        ("%+d kişi" % fark_kesim), "kadro normun ALTINDA" if fark_kesim < 0 else "normun üzerinde",
+        DRED, 30, ikon="check")
+
+    satir = [["Mağaza", "Norm (sezon dışı)", "Kadrolu 30.06", "Kadrolu 31.08", "Norm farkı 31.08"]]
+    for r in nrm["sube"]:
+        satir.append([tr_title(r["sube"]), str(r["norm"]), str(r["kadrolu_taban26"]),
+                      str(r["kadrolu_kesim26"]), "%+d" % (r["kadrolu_kesim26"] - r["norm"])])
+    satir.append(["TOPLAM", str(tp["norm"]), str(tp["kadrolu_taban26"]),
+                  str(tp["kadrolu_kesim26"]), "%+d" % fark_kesim])
+    t = s.shapes.add_table(len(satir), 5, Inches(0.6), Inches(3.75), Inches(7.6), Inches(2.2)).table
+    for i, gen in enumerate((1.8, 1.6, 1.45, 1.45, 1.3)):
+        t.columns[i].width = Inches(gen)
+    for r, row in enumerate(satir):
+        for c, val in enumerate(row):
+            cell = t.cell(r, c); cell.text = val
+            son_satir = (r == len(satir) - 1)
+            for para in cell.text_frame.paragraphs:
+                para.alignment = PP_ALIGN.LEFT if c == 0 else PP_ALIGN.CENTER
+                for run in para.runs:
+                    run.font.size = Pt(9 if r == 0 else 10.5)
+                    run.font.name = "Calibri"
+                    run.font.bold = (r == 0 or son_satir or c == 4)
+                    run.font.color.rgb = WHITE if r == 0 else (DRED if c == 4 else INK)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = RED if r == 0 else (
+                LGREY if son_satir else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA)))
+
+    rrect(s, 8.45, 3.85, 4.2, 2.0, LGREY, RED, lw=1.5)
+    tb(s, 8.7, 3.97, 3.75, 1.8,
+       [("Değerlendirme", 13, True, DRED),
+        ("31 Ağustos'ta kadrolu personel norm kadronun %d kişi altındadır (30.06 tabanında %+d). "
+         "Normun üzerinde olan tek mağaza İst. Yolu (+%d) ve iş hacmi en çok büyüyen mağaza da odur."
+         % (abs(fark_kesim), fark_taban,
+            [r["kadrolu_kesim26"] - r["norm"] for r in nrm["sube"] if r["sube"] == "İST. YOLU"][0]),
+         10.5, False, INK)], sp=1.12)
+
+    dipnot(s, "* Norm SEZON DIŞI kadroyu tanımlar; sezonluk personel norma dahil değildir, kıyas yalnız "
+              "kadrolu ile yapılır · Norm kaynağı: %s (%s), yönetim parametresi · Kapsam dışı: %s norm "
+              "tablosunda yok" % (nrm["kaynak_dosya"], nrm["tarih"],
+                                  ", ".join(tr_title(x) for x in nrm["kapsam_disi"]) or "—"))
+    sig(s)
+
 # ================================================================= SEZONLUK ALIM ZAMANLAMASI
 al = v.get("sezonluk_alim")
 ay2 = v.get("agustos_yarim")
@@ -784,7 +839,15 @@ if al and ay2:
              ["15–31 Ağustos ürün adedi", bin(ay2["2"]["adet25"]), bin(ay2["2"]["adet26"]),
               "%s — dalga Eylül'e kaydı" % yzd(ay2["2"]["adet26"] / ay2["2"]["adet25"] - 1)],
              ["31.08'de çalışan sezonluk", "%d kişi" % k5["sezonluk_kesim25"],
-              "%d kişi" % k5["sezonluk_kesim26"], "kesimde 3 kişi DAHA AZ"]]
+              "%d kişi" % k5["sezonluk_kesim26"], "kesimde 3 kişi DAHA AZ"],
+             ["   — Temmuz alımı", "%d kişi" % a25.get("aktif_donem", {}).get("2_temmuz", 0),
+              "%d kişi" % a26.get("aktif_donem", {}).get("2_temmuz", 0), "erken alım payı düştü"],
+             ["   — 1–14 Ağustos alımı", "%d kişi" % a25.get("aktif_donem", {}).get("3_agustos_1_14", 0),
+              "%d kişi" % a26.get("aktif_donem", {}).get("3_agustos_1_14", 0), "iş +%25,1 büyüyen dönem"],
+             ["   — 15–31 Ağustos alımı", "%d kişi" % a25.get("aktif_donem", {}).get("4_agustos_15_31", 0),
+              "%d kişi" % a26.get("aktif_donem", {}).get("4_agustos_15_31", 0), "iş −%2,9 → alım azaltıldı"],
+             ["   — önceki yıldan devreden", "%d kişi" % a25.get("aktif_donem", {}).get("0_onceki_yildan", 0),
+              "%d kişi" % a26.get("aktif_donem", {}).get("0_onceki_yildan", 0), "2025 alımı, hâlâ sezonluk"]]
     t = s.shapes.add_table(len(satir), 4, Inches(0.6), Inches(3.75), Inches(12.05), Inches(2.3)).table
     for i, gen in enumerate((3.6, 1.9, 1.9, 4.65)):
         t.columns[i].width = Inches(gen)
