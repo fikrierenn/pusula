@@ -47,6 +47,7 @@ YESIL = RGBColor(0xA6, 0x00, 0x1A)   # marka: yesil YASAK -> "artis" rakami koyu
 SET = [RED, ROSE, RGBColor(0x7A, 0x10, 0x20), RGBColor(0x4A, 0x4A, 0x4A), RGBColor(0x8C, 0x8C, 0x8C)]
 
 # ----------------------------------------------------------------- veri
+ONCEKI, CARI = 2025, 2026        # kiyas yillari (verimlilik_excel.py ile ayni)
 v = json.loads(VERI.read_text(encoding="utf-8"))
 mag = {m["ad"]: m for m in v["magaza"]}
 k5 = v["kadro_5magaza"]
@@ -197,12 +198,20 @@ def sig(sl):
     tb(sl, 9.3, 6.95, 3.4, 0.3, [("© Fikri Eren 2026", 9, False, MGREY)], align=PP_ALIGN.RIGHT)
 
 
+PT = v["meta"]["pencere_tarih"]
+DONEM_POS = "%s – %s (%d) · %s – %s (%d), her iki yıl %d gün, okul açılışına hizalı" % (
+    PT[str(ONCEKI)][0][:5], PT[str(ONCEKI)][1], ONCEKI,
+    PT[str(CARI)][0][:5], PT[str(CARI)][1], CARI, gun)
+DONEM_OCA_AGU = "01.01 – 31.08 (her iki yıl, kümülatif)"
 POS_ADLARI = "FSM · Özlüce · İst. Yolu"
 BES_ADLARI = "FSM · Özlüce · İst. Yolu · Heykel · Şura"
-DIP_POS = "* Kapsam: üç POS mağazası — %s. Heykel ve Şura POS raporlamasında olmadığı için iş hacmi ölçümlerine girmez." % POS_ADLARI
-DIP_BES = "* Kapsam: beş mağazanın tamamı — %s." % BES_ADLARI
-DIP_KARMA = ("* Kapsam: kadro rakamları beş mağaza (%s); iş hacmi ve personel başına rakamlar "
-             "üç POS mağazası (%s)." % (BES_ADLARI, POS_ADLARI))
+DIP_POS = ("* Kapsam: üç POS mağazası — %s (Heykel ve Şura POS raporlamasında yok) · Dönem: %s"
+           % (POS_ADLARI, DONEM_POS))
+DIP_OCA_AGU = "* Kapsam: üç POS mağazası — %s · Dönem: %s" % (POS_ADLARI, DONEM_OCA_AGU)
+DIP_BES = ("* Kapsam: beş mağazanın tamamı — %s · Ölçüm noktaları: 30.06 tabanı ve 31.08 kesimi "
+           "(tarih aralığı değil, o gün fiilen çalışan kişi)" % BES_ADLARI)
+DIP_KARMA = ("* Kadro: beş mağaza (%s), ölçüm noktaları 30.06 ve 31.08 · İş hacmi ve personel başına: "
+             "üç POS mağazası (%s), dönem %s" % (BES_ADLARI, POS_ADLARI, DONEM_POS))
 
 
 def dipnot(sl, metin):
@@ -237,7 +246,8 @@ def cift_bar(sl, x, y, w, h, kategoriler, s25, s26, etiket25="2025", etiket26="2
 # ================================================================= 1 KAPAK
 s = add("Başlık Slaydı")
 setph(s, 0, "Kadro ve İş Hacmi Değerlendirmesi")
-setph(s, 1, "Sezon 2026 · Mağazalar · 2025 karşılaştırmalı · 2 Eylül 2026")
+setph(s, 1, "Sezon 2026 · Mağazalar · kadro 30.06 ve 31.08 · iş hacmi %s – %s ile %s – %s"
+            % (PT[str(ONCEKI)][0], PT[str(ONCEKI)][1], PT[str(CARI)][0], PT[str(CARI)][1]))
 
 # ================================================================= 2 GUNDEM
 s = add("Yalnızca Başlık"); setph(s, 0, "Kapsam ve İçerik")
@@ -380,8 +390,10 @@ tb(s, 7.25, 3.85, 5.2, 1.75,
     ("Adet enflasyondan etkilenmez; kasadan geçen, rafa dizilen ve depodan çıkan fiili mal "
      "miktarını gösterir. Ciro fiyat artışını içerir, adet içermez.", 12, False, INK)], sp=1.15)
 tb(s, 0.6, 5.95, 12.05, 0.4,
-   [("Kıyas okul açılışına hizalı: 2025 açılış 8 Eylül, 2026 açılış 14 Eylül — her iki yıl da açılıştan "
-     "geriye %d gün. Kaynak: DerinSIS mağaza satışı, Sınav hariç, iadeler düşülmüş." % gun, 10, False, MGREY)])
+   [("Kıyas okul açılışına hizalı: 2025 açılış 8 Eylül → dönem %s – %s · 2026 açılış 14 Eylül → dönem "
+     "%s – %s (her iki yıl %d gün). Kaynak: DerinSIS mağaza satışı, Sınav hariç, iadeler düşülmüş."
+     % (PT[str(ONCEKI)][0], PT[str(ONCEKI)][1], PT[str(CARI)][0], PT[str(CARI)][1], gun),
+     10, False, MGREY)])
 dipnot(s, DIP_POS)
 sig(s)
 
@@ -435,7 +447,7 @@ for h, d, col in notlar:
 tb(s, 0.6, 5.65, 12.05, 0.5,
    [("Ocak–Ağustos kümülatif, üç POS mağazası, Sınav hariç. Kadro = 31.08 itibarıyla kadrolu "
      "(sezonluk hariç — yıllar arası tahliye zamanlaması kıyası bozar).", 10.5, False, MGREY)])
-dipnot(s, DIP_POS)
+dipnot(s, DIP_OCA_AGU + " · kadro: 31.08 kesimi, her yıl")
 sig(s)
 
 # ================================================================= 12 BOLUM KIRILIMI
@@ -630,6 +642,52 @@ tb(s, 8.45, 4.5, 4.0, 1.5,
 dipnot(s, DIP_POS)
 sig(s)
 
+# ================================================================= TAKVIM KAYMASI
+ky = v.get("kayma")
+if ky:
+    s = add("Yalnızca Başlık"); setph(s, 0, "Takvim Kayması: Ağustos ve Eylül")
+    h = ky["hizali_buyume"]
+    dg = ky["eylul_dalga_beklentisi"]
+    ay_adet_d = ky["y26_agu_tam"]["adet"] / ky["y25_agu_tam"]["adet"] - 1
+
+    kpi(s, 0.6, 1.5, 3.9, "AĞUSTOS · GERÇEKLEŞEN", yzd(ay_adet_d),
+        "%s → %s adet" % (bin(ky["y25_agu_tam"]["adet"]), bin(ky["y26_agu_tam"]["adet"])), MGREY, 30)
+    kpi(s, 4.68, 1.5, 3.9, "AĞUSTOS · KAYMA OLMASAYDI", bin(ky["agustos_kaymasiz_tahmin"]["adet"]),
+        "adet tahmini · %s M TL" % bin(ky["agustos_kaymasiz_tahmin"]["ciro"] / 1e6, 1), DRED, 26)
+    kpi(s, 8.75, 1.5, 3.9, "EYLÜL'E KAYAN", bin(ky["eylule_kayan"]["adet"]),
+        "adet · %s M TL" % bin(ky["eylule_kayan"]["ciro"] / 1e6, 1), DRED, 26)
+
+    cd = CategoryChartData(); cd.categories = ["Ağustos (adet, bin)"]
+    cd.add_series("2025 gerçekleşen", (ky["y25_agu_tam"]["adet"] / 1000,))
+    cd.add_series("2026 gerçekleşen", (ky["y26_agu_tam"]["adet"] / 1000,))
+    cd.add_series("2026 kayma olmasaydı", (ky["agustos_kaymasiz_tahmin"]["adet"] / 1000,))
+    ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(3.5),
+                            Inches(6.1), Inches(2.35), cd).chart
+    ch.has_title = False
+    ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.TOP; ch.legend.include_in_layout = False
+    ch.font.size = Pt(9.5); ch.font.name = "Calibri"
+    ch.plots[0].gap_width = 80; ch.plots[0].has_data_labels = True
+    ch.plots[0].data_labels.number_format_is_linked = False
+    ch.plots[0].data_labels.number_format = '#,##0'
+    ch.plots[0].data_labels.font.size = Pt(9)
+    for i, col in enumerate((MGREY, RED, RGBColor(0x7A, 0x10, 0x20))):
+        ch.series[i].format.fill.solid(); ch.series[i].format.fill.fore_color.rgb = col
+
+    rrect(s, 7.0, 3.6, 5.65, 2.15, LGREY, RED, lw=1.5)
+    tb(s, 7.25, 3.72, 5.2, 1.95,
+       [("Eylül'de beklenen dalga", 13.5, True, DRED),
+        ("2025'te okul öncesi alış dalgası %s aralığındaydı: %s adet · %s M TL. Aynı dalga 2026'da "
+         "%s aralığına denk geliyor; hizalı büyüme oranıyla %s adet · %s M TL beklenmektedir."
+         % (dg["pencere_2025"], bin(dg["adet_2025"]), bin(dg["ciro_2025"] / 1e6, 1),
+            dg["pencere_2026"], bin(dg["adet_2026_tahmin"]), bin(dg["ciro_2026_tahmin"] / 1e6, 1)),
+         11, False, INK)], sp=1.15)
+
+    dipnot(s, "* Kapsam: üç POS mağazası — %s · Hizalı pencere %s ile %s (%d gün; bugün hariç, son tam "
+              "gün %s) · Tahmin yöntemi: hizalı büyüme %s, talep kaybı olmadığı varsayımıyla."
+           % (POS_ADLARI, h["pencere_2025"], h["pencere_2026"], h["gun"], h["son_tam_gun"],
+              yzd(h["adet"])))
+    sig(s)
+
 # ================================================================= 13 ITIRAZLAR
 s = add("Yalnızca Başlık"); setph(s, 0, "Yöntem ve Açıklamalar")
 itiraz = [
@@ -656,7 +714,7 @@ for i, (bas, cev) in enumerate(itiraz):
     tb(s, 1.28, y + 0.1, 11.0, 0.36, [(bas, 13, True, DRED)])
     tb(s, 1.28, y + 0.45, 11.0, 0.58, [(cev, 11, False, INK)], sp=1.08)
     y += 1.18
-dipnot(s, DIP_POS)
+dipnot(s, DIP_OCA_AGU + " (kurumsal/mağaza kıyası) · hizalı dönem: %s" % DONEM_POS)
 sig(s)
 
 # ================================================================= 14 DUZELTILECEK

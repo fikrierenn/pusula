@@ -7,7 +7,7 @@ VERIYI KENDI CEKER (elle rakam YOK):
 Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
 Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
 
-Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Kategori · Yillar · Oca-Agu · Yontem [+ Personel: --kisi]
+Sayfalar: Sunum (patrona) · Ozet · Magaza · Kadro · Bolum · Kategori · Aylik · Yillar · Oca-Agu · Yontem [+ Personel: --kisi]
 Kullanim:
   python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
   python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
@@ -117,7 +117,9 @@ def cek(env, kisi=False):
                SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
                SUM(CAST(dt.ehTutar - dt.ehIndirim AS float))                 AS kdvharic,
                SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS kdvdahil,
-               COUNT(DISTINCT CAST(bs.eTarihS AS date))                      AS gun
+               COUNT(DISTINCT CAST(bs.eTarihS AS date))                      AS gun,
+               MIN(CAST(bs.eTarihS AS date))                                 AS ilk_gun,
+               MAX(CAST(bs.eTarihS AS date))                                 AS son_gun
         FROM dbo.irs bs WITH(NOLOCK)
         INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
         LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
@@ -126,13 +128,22 @@ def cek(env, kisi=False):
           AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
           AND """ + _hizali_kosul() + """
         GROUP BY bs.eMekan, YEAR(bs.eTarihS)""")
-    hacim, gunler = {}, {}
-    for mekan, yil, adet, kh, kd, gun in cur.fetchall():
+    hacim, gunler, pencere_tarih = {}, {}, {}
+    for mekan, yil, adet, kh, kd, gun, ilk, son in cur.fetchall():
         hacim[(int(mekan), int(yil))] = (float(adet), float(kh), float(kd))
         gunler[int(yil)] = int(gun)
+        # fiili ilk/son gun (magazalar arasi ayni pencerede; genis olani al)
+        eski = pencere_tarih.get(int(yil))
+        ilk_s, son_s = ilk.strftime("%d.%m.%Y"), son.strftime("%d.%m.%Y")
+        if eski is None:
+            pencere_tarih[int(yil)] = [ilk_s, son_s]
+        else:
+            pencere_tarih[int(yil)] = [min(eski[0], ilk_s, key=lambda d: d[6:] + d[3:5] + d[:2]),
+                                       max(eski[1], son_s, key=lambda d: d[6:] + d[3:5] + d[:2])]
     if len(gunler) != 2 or len(set(gunler.values())) != 1:
         sys.exit("Pencere eşit değil (gün sayıları %s) — kıyas yapılamaz." % gunler)
     veri["meta"]["gun"] = next(iter(gunler.values()))
+    veri["meta"]["pencere_tarih"] = {str(k): val for k, val in sorted(pencere_tarih.items())}
 
     # 2) Ocak-Agustos, magaza vs Sinav
     print("DerinSIS: Ocak-Ağustos kanal kırılımı...", flush=True)
@@ -199,7 +210,100 @@ def cek(env, kisi=False):
          if d.get("adet25", 0) >= 2000 and d.get("adet26", 0) >= 2000],
         key=lambda d: -d["adet26"])
 
+    # 3c) AYLIK kirilim (Haz-Tem-Agu, takvim ayi) — Agustos'u okul kaymasi geri cekiyor, gorunur olsun
+    print("DerinSIS: aylık kırılım (Haz/Tem/Ağu)...", flush=True)
+    cur.execute("""
+        SELECT YEAR(bs.eTarihS) AS yil, MONTH(bs.eTarihS) AS ay,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS ciro
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND YEAR(bs.eTarihS) IN (?, ?)
+          AND MONTH(bs.eTarihS) IN (6, 7, 8)
+        GROUP BY YEAR(bs.eTarihS), MONTH(bs.eTarihS)""", ONCEKI, CARI)
+    ay_ad = {6: "Haziran", 7: "Temmuz", 8: "Ağustos"}
+    ay = {}
+    for yil, a, adet, ciro in cur.fetchall():
+        d = ay.setdefault(int(a), {"ay": int(a), "ad": ay_ad[int(a)]})
+        ek = int(yil) % 100
+        d["adet%d" % ek] = float(adet)
+        d["ciro%d" % ek] = float(ciro)
+    veri["aylik"] = [ay[k] for k in sorted(ay)]
+
+    # 3d) OKUL KAYMASI DUZELTMESI — "kayma olmasaydi Agustos ne kapanirdi, ne kadari Eylul'e kaydi"
+    # Yontem: 2026 gunleri 2025'in 6 gun ONCESINE denk gelir (acilis 08.09.2025 -> 14.09.2026).
+    #   (a) HIZALI 27 GUN: 2025 01-27 Agu  <->  2026 07 Agu - 02 Eyl (veri sonu) -> gercek buyume orani g
+    #   (b) 2025'in 28-31 Agu dilimi 2026'da 03-06 Eyl'e denk gelir -> HENUZ GERCEKLESMEDI
+    #   (c) Kayma-arindirilmis Agustos 2026 = 2025 Agustos toplami x (1+g)
+    #   (d) Eylul'e kayan = (c) - gercek Agustos 2026
+    #   (e) 2025'te okul-oncesi dalga 28 Agu - 07 Eyl idi; 2026'da 03-13 Eyl'e denk gelir -> beklenen hacim
+    print("DerinSIS: okul kayması düzeltmesi (Ağustos → Eylül)...", flush=True)
+    # ⚠ BUGUN HARIC: eTip 100 GUNLUK OZET belgesidir, gun icinde yeniden yazilir -> son TAM gun esas.
+    #   (02.09.2026'da iki olcum arasinda 6.225 adet oynadi; bugunu almak rakami oynak yapar.)
+    import datetime as _dt
+    son_tam = _dt.date.today() - _dt.timedelta(days=1)
+    # 2026'nin son tam gunu, 2025'te 6 gun once + 1 yil once gune denk gelir (okul kaymasi)
+    esli_2025 = son_tam.replace(year=son_tam.year - 1) - _dt.timedelta(days=6)
+    hizali_gun = (son_tam - _dt.date(son_tam.year, 8, 7)).days + 1
+    dilimler = {
+        "y25_hizali":    ("20250801", esli_2025.strftime("%Y%m%d")),
+        "y25_agu_kalan": ((esli_2025 + _dt.timedelta(days=1)).strftime("%Y%m%d"), "20250831"),
+        "y25_eyl_1_7":   ("20250901", "20250907"),
+        "y25_agu_tam":   ("20250801", "20250831"),
+        "y26_agu_tam":   ("20260801", "20260831"),
+        "y26_hizali":    ("20260807", son_tam.strftime("%Y%m%d")),
+    }
+    kayma = {}
+    for ad, (bas, son) in dilimler.items():
+        cur.execute("""
+            SELECT SUM(ABS(CAST(dt.ehAdet AS float))),
+                   SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)),
+                   COUNT(DISTINCT CAST(bs.eTarihS AS date))
+            FROM dbo.irs bs WITH(NOLOCK)
+            INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+            LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+            WHERE bs.eTip = 100
+              AND bs.eMekan IN (1, 4477, 4478)
+              AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+              AND bs.eTarihS >= ? AND bs.eTarihS <= ?""", bas, son)
+        adet, ciro, gunn = cur.fetchone()
+        kayma[ad] = {"adet": float(adet or 0), "ciro": float(ciro or 0), "gun": int(gunn or 0)}
+
+    g_adet = kayma["y26_hizali"]["adet"] / kayma["y25_hizali"]["adet"] - 1
+    g_ciro = kayma["y26_hizali"]["ciro"] / kayma["y25_hizali"]["ciro"] - 1
+    kayma["hizali_buyume"] = {"adet": g_adet, "ciro": g_ciro,
+                              "gun": kayma["y26_hizali"]["gun"],
+                              "pencere_2025": "01.08 – %s.2025" % esli_2025.strftime("%d.%m"),
+                              "pencere_2026": "07.08 – %s.2026" % son_tam.strftime("%d.%m"),
+                              "son_tam_gun": son_tam.strftime("%d.%m.%Y")}
+    kayma["agustos_kaymasiz_tahmin"] = {
+        "adet": kayma["y25_agu_tam"]["adet"] * (1 + g_adet),
+        "ciro": kayma["y25_agu_tam"]["ciro"] * (1 + g_ciro)}
+    kayma["eylule_kayan"] = {
+        "adet": kayma["agustos_kaymasiz_tahmin"]["adet"] - kayma["y26_agu_tam"]["adet"],
+        "ciro": kayma["agustos_kaymasiz_tahmin"]["ciro"] - kayma["y26_agu_tam"]["ciro"]}
+    # 2025 okul-oncesi dalga (28 Agu - 07 Eyl) -> 2026'da 03-13 Eyl beklentisi
+    dalga25_adet = kayma["y25_agu_kalan"]["adet"] + kayma["y25_eyl_1_7"]["adet"]
+    dalga25_ciro = kayma["y25_agu_kalan"]["ciro"] + kayma["y25_eyl_1_7"]["ciro"]
+    kayma["eylul_dalga_beklentisi"] = {
+        "pencere_2025": "%s - 07.09.2025" % (esli_2025 + _dt.timedelta(days=1)).strftime("%d.%m"),
+        "pencere_2026": "%s - 13.09.2026" % (son_tam + _dt.timedelta(days=1)).strftime("%d.%m"),
+        "adet_2025": dalga25_adet, "ciro_2025": dalga25_ciro,
+        "adet_2026_tahmin": dalga25_adet * (1 + g_adet),
+        "ciro_2026_tahmin": dalga25_ciro * (1 + g_ciro)}
+    kayma["yontem"] = ("2026 günleri 2025'in 6 gün öncesine denk gelir (açılış 08.09.2025 → 14.09.2026). "
+                       "Hizalı 27 günde ölçülen büyüme (adet %%%.1f · ciro %%%.1f) 2025 Ağustos toplamına "
+                       "uygulanarak kayma-arındırılmış Ağustos bulunur. VARSAYIM: talep kaybı yok, yalnız "
+                       "zamanlama kaydı. Bugünün verisi HARİÇ (eTip 100 gün içinde yeniden yazılır); "
+                       "son tam gün %s." % (g_adet * 100, g_ciro * 100, son_tam.strftime("%d.%m.%Y")))
+    veri["kayma"] = kayma
+
     erp.close()
+
 
 
     # 4) kadro — Zirve
@@ -410,9 +514,14 @@ def cek(env, kisi=False):
         "kadro_kaynak": "Zirve BKM_GENEL.dbo.vw_PersonelDepartman — as-of Igt <= T AND (Ict IS NULL OR Ict >= T), "
                         "sp_PersonelKarsilastirma_Ozet ile birebir",
         "hacim_kaynak": "DerinSIS irs/irsAyr eTip=100 (POS satışı), Sınav Okulları/Kıyafet hariç, iade netlenmiş",
-        "pencere": "Okul açılışına hizalı: %s açılış %s, %s açılış %s; gün ofseti %d..%d = her iki yıl %d gün"
-                   % (ONCEKI, OKUL_ACILIS[ONCEKI], CARI, OKUL_ACILIS[CARI],
-                      OFSET_BAS, OFSET_SON, veri["meta"]["gun"]),
+        "pencere": "Okul açılışına hizalı — %s: %s – %s · %s: %s – %s (her iki yıl %d gün; açılış %s ve %s, "
+                   "gün ofseti %d..%d)"
+                   % (ONCEKI, veri["meta"]["pencere_tarih"][str(ONCEKI)][0],
+                      veri["meta"]["pencere_tarih"][str(ONCEKI)][1],
+                      CARI, veri["meta"]["pencere_tarih"][str(CARI)][0],
+                      veri["meta"]["pencere_tarih"][str(CARI)][1],
+                      veri["meta"]["gun"], OKUL_ACILIS[ONCEKI], OKUL_ACILIS[CARI],
+                      OFSET_BAS, OFSET_SON),
     })
     return veri
 
@@ -1015,6 +1124,100 @@ def sayfa_kategori(wb, veri):
     return ws
 
 
+
+# ------------------------------------------------------------------ Aylik (takvim ayi)
+def sayfa_aylik(wb, veri):
+    """Haz/Tem/Agu ay ay — Agustos'un neden zayif gorundugu (okul kaymasi) burada gorunur."""
+    ws = wb.create_sheet("Aylik")
+    kolonlar = [("Ay", 12, None), ("Adet 2025", 13, ADET), ("Adet 2026", 13, ADET), ("Adet Δ", 10, YUZDE),
+                ("Ciro 2025 (M ₺)", 14, ADET1), ("Ciro 2026 (M ₺)", 14, ADET1), ("Ciro Δ", 10, YUZDE)]
+    ws.cell(1, 1, "Aylık seyir — takvim ayı (üç POS mağazası, Sınav hariç, KDV dahil)").font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for a in veri.get("aylik", []):
+        ws.cell(s, 1, a["ad"]).border = KENAR
+        for kol, v_ in ((2, a["adet25"]), (3, a["adet26"])):
+            c = ws.cell(s, kol, v_); c.number_format = ADET; c.border = KENAR
+        for kol, v_ in ((5, a["ciro25"] / 1e6), (6, a["ciro26"] / 1e6)):
+            c = ws.cell(s, kol, v_); c.number_format = ADET1; c.border = KENAR
+        for kol, f in ((4, "=C%d/B%d-1" % (s, s)), (7, "=F%d/E%d-1" % (s, s))):
+            c = ws.cell(s, kol, f); c.number_format = YUZDE; c.border = KENAR; c.font = Font(bold=True)
+        s += 1
+    son = s - 1
+
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True); ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
+    for kol in (2, 3, 5, 6):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = ADET if kol in (2, 3) else ADET1
+        c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
+    for kol, f in ((4, "=C%d/B%d-1" % (s, s)), (7, "=F%d/E%d-1" % (s, s))):
+        c = ws.cell(s, kol, f); c.number_format = YUZDE; c.border = KENAR; c.fill = GRI; c.font = Font(bold=True)
+
+    # --- KAYMA DUZELTMESI blogu
+    k = veri.get("kayma")
+    if k:
+        s += 2
+        ws.cell(s, 1, "OKUL KAYMASI DÜZELTMESİ").font = BOLUM_YAZI
+        s += 1
+        h = k["hizali_buyume"]
+        satirlar = [
+            ("Hizalı pencere (aynı talep gününe denk gelen günler)",
+             "%s  vs  %s  (%d gün)" % (h["pencere_2025"], h["pencere_2026"], h["gun"])),
+            ("Hizalı pencerede büyüme",
+             "adet +%%%.1f · ciro +%%%.1f" % (h["adet"] * 100, h["ciro"] * 100)),
+            ("Ağustos 2025 (gerçek)",
+             "%s adet · %.1f M TL" % ("{:,.0f}".format(k["y25_agu_tam"]["adet"]).replace(",", "."),
+                                      k["y25_agu_tam"]["ciro"] / 1e6)),
+            ("Ağustos 2026 (gerçek)",
+             "%s adet · %.1f M TL  (adet +%%%.1f)"
+             % ("{:,.0f}".format(k["y26_agu_tam"]["adet"]).replace(",", "."),
+                k["y26_agu_tam"]["ciro"] / 1e6,
+                (k["y26_agu_tam"]["adet"] / k["y25_agu_tam"]["adet"] - 1) * 100)),
+            ("Ağustos 2026 — KAYMA OLMASAYDI (tahmin)",
+             "%s adet · %.1f M TL"
+             % ("{:,.0f}".format(k["agustos_kaymasiz_tahmin"]["adet"]).replace(",", "."),
+                k["agustos_kaymasiz_tahmin"]["ciro"] / 1e6)),
+            ("EYLÜL'E KAYAN (tahmin)",
+             "%s adet · %.1f M TL"
+             % ("{:,.0f}".format(k["eylule_kayan"]["adet"]).replace(",", "."),
+                k["eylule_kayan"]["ciro"] / 1e6)),
+            ("Okul öncesi dalga — 2025 gerçekleşen (%s)" % k["eylul_dalga_beklentisi"]["pencere_2025"],
+             "%s adet · %.1f M TL"
+             % ("{:,.0f}".format(k["eylul_dalga_beklentisi"]["adet_2025"]).replace(",", "."),
+                k["eylul_dalga_beklentisi"]["ciro_2025"] / 1e6)),
+            ("Okul öncesi dalga — 2026 beklenen (%s)" % k["eylul_dalga_beklentisi"]["pencere_2026"],
+             "%s adet · %.1f M TL"
+             % ("{:,.0f}".format(k["eylul_dalga_beklentisi"]["adet_2026_tahmin"]).replace(",", "."),
+                k["eylul_dalga_beklentisi"]["ciro_2026_tahmin"] / 1e6)),
+        ]
+        for etiket, deger in satirlar:
+            a = ws.cell(s, 1, etiket); a.border = KENAR
+            b = ws.cell(s, 2, deger); b.border = KENAR
+            ws.merge_cells(start_row=s, start_column=2, end_row=s, end_column=7)
+            if "KAYMA OLMASAYDI" in etiket or "KAYAN" in etiket or "beklenen" in etiket:
+                a.font = Font(bold=True); b.font = Font(bold=True, color="A6001A")
+                a.fill = VURGU; b.fill = VURGU
+            s += 1
+        s += 1
+        ws.cell(s, 1, "Yöntem: " + k["yontem"]).font = NOT_YAZI
+        ws.cell(s, 1).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.merge_cells(start_row=s, start_column=1, end_row=s, end_column=7)
+        ws.row_dimensions[s].height = 42
+        s += 1
+
+    s += 2
+    _notlar(ws, [
+        "AGUSTOS NEDEN ZAYIF GORUNUYOR: okullar 2025'te 8 Eylul, 2026'da 14 Eylul acildi (6 gun kayma).",
+        "   2025'in son-Agustos alis dalgasi 2026'da EYLUL'e kaydi -> takvim ayi kiyasinda Agustos dusuk cikar.",
+        "   Temmuz +%36,3 adet, Agustos +%5,5 adet: fark talep kaybi degil, TAKVIM.",
+        "Dogru kiyas okul-acilisina hizali penceredir (Ozet sayfasi): adet +%34,9 · ciro +%70,7.",
+        "Bu sayfa 'ay ay ne oldu' sorusunun cevabidir; kadro kiyasinda hizali pencere kullanilir.",
+    ], s)
+    return ws
+
+
 # ------------------------------------------------------------------ Yillar
 def sayfa_yillar(wb, veri):
     ws = wb.create_sheet("Yillar")
@@ -1215,6 +1418,7 @@ def main(argv):
     sayfa_kadro(wb, veri)
     sayfa_bolum(wb, veri)
     sayfa_kategori(wb, veri)
+    sayfa_aylik(wb, veri)
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
     sayfa_yontem(wb, veri)
