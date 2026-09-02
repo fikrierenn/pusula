@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "gun": 56,
+    "baslik": "Kişi başı iş hacmi — sezon 2026 vs 2025",
+    "kesim": "otomatik (veri sonu, okul-hizalı pencerede)",
+    "cekirdek_sql": "sorgular/2026-09-02-kadro-vs-is-hacmi-savunma.sql (blok 11)",
+    "kadro_kaynak": "Zirve BKM_GENEL.dbo.vw_PersonelDepartman — as-of Igt <= T AND (Ict IS NULL OR Ict >= T), sp_PersonelKarsilastirma_Ozet ile birebir",
+    "hacim_kaynak": "DerinSIS irs/irsAyr eTip=100 (POS satışı), Sınav Okulları/Kıyafet hariç, iade netlenmiş",
+    "pencere": "Okul açılışına hizalı: 2025 açılış 20250908, 2026 açılış 20260914; gün ofseti -69..-14 = her iki yıl 56 gün"
+  },
+  "magaza": [
+    {
+      "ad": "İst. Yolu",
+      "mekan": 4478,
+      "kadro25": 50,
+      "kadro26": 61,
+      "adet25": 173398.0,
+      "adet26": 258168.5,
+      "kdvharic25": 20455158.42999977,
+      "kdvharic26": 40444611.76999984,
+      "kdvdahil25": 22053802.749998555,
+      "kdvdahil26": 43253793.71999866
+    },
+    {
+      "ad": "Özlüce",
+      "mekan": 4477,
+      "kadro25": 51,
+      "kadro26": 54,
+      "adet25": 230764.7,
+      "adet26": 301250.05000000005,
+      "kdvharic25": 28347121.589998726,
+      "kdvharic26": 44784483.14999981,
+      "kdvdahil25": 30475719.769993767,
+      "kdvdahil26": 48017124.64999739
+    },
+    {
+      "ad": "FSM",
+      "mekan": 1,
+      "kadro25": 42,
+      "kadro26": 45,
+      "adet25": 170555.0,
+      "adet26": 215773.0,
+      "kdvharic25": 18127443.54999987,
+      "kdvharic26": 29458690.66000083,
+      "kdvdahil25": 19307906.600000955,
+      "kdvdahil26": 31330462.479999293
+    }
+  ],
+  "yillar": [
+    {
+      "yil": 2023,
+      "kadrolu": 60,
+      "adet": 2064284.43
+    },
+    {
+      "yil": 2024,
+      "kadrolu": 91,
+      "adet": 2296833.43
+    },
+    {
+      "yil": 2025,
+      "kadrolu": 96,
+      "adet": 2752385.04
+    },
+    {
+      "yil": 2026,
+      "kadrolu": 111,
+      "adet": 3607308.91
+    }
+  ],
+  "notlar": [
+    "Ürün adedi enflasyondan bağımsız — kadro kıyasında birincil ölçüt. Ciro ikincil (fiyat endeksi +%19,8, Fisher, eşleşen ürün).",
+    "Kıyas okul açılışına hizalı yapılır. Takvim tarihine göre kıyas 2026'da yapay düşüş gösterir: açılış 8 Eylül 2025'ten 14 Eylül 2026'ya, 6 gün kaydı.",
+    "İş hacmi EncoreMerkez POS'tan DEĞİL DerinSIS'ten alınır: POS Temmuz 2025'te değişti (ENPOS → EncoreMerkez), EncoreMerkez'in 2025 tabanı eksik.",
+    "Heykel ve Şura POS raporlamasında yok — mağaza sayfası üç POS mağazası (FSM · Özlüce · İst. Yolu). Beş mağaza kadro hareketi Özet'te ayrı.",
+    "Kadro = o tarihte fiilen çalışan kişi (sezonluk + kadrolu). Kişi başı oranlar kasiyer değil TÜM mağaza kadrosu üzerinden.",
+    "Fiş sayısı bu kaynakta yok: eTip 100 günlük özet belgedir (bir gün = bir belge).",
+    "Kıdem → verimlilik testi NEGATİF çıktı: aynı kasiyerin öğrenme eğrisi düz (220 → 256 → 242 fiş/gün), mağaza kıdem sıralaması verimlilikle uyuşmuyor. 'Tecrübeli 1 kişi = acemi 3 kişi' iddiası bu veriyle savunulamaz."
+  ],
+  "ocak_agustos": {
+    "magaza": {
+      "adet25": 2752385.04,
+      "kdvdahil25": 316059798.22011757,
+      "adet26": 3607308.91,
+      "kdvdahil26": 489433287.7801854
+    },
+    "sinav": {
+      "adet25": 33584.0,
+      "kdvdahil25": 136108071.4499996,
+      "adet26": 21693.0,
+      "kdvdahil26": 105575646.10999995
+    }
+  },
+  "kadro_5magaza": {
+    "kadrolu_taban25": 139,
+    "kadrolu_taban26": 153,
+    "kadrolu_kesim25": 135,
+    "kadrolu_kesim26": 149,
+    "sezonluk_kesim25": 65,
+    "sezonluk_kesim26": 62,
+    "toplam_kesim25": 200,
+    "toplam_kesim26": 211
+  }
+}

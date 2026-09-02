@@ -1,0 +1,663 @@
+# -*- coding: utf-8 -*-
+"""Kisi basi is hacmi (verimlilik) -> Excel. "Ayni kadro daha cok is yapti" dosyasi.
+
+VERIYI KENDI CEKER (elle rakam YOK):
+  hacim -> DerinSIS irs/irsAyr eTip=100, Sinav haric  (cekirdek: sorgular/2026-09-02-kadro-vs-is-hacmi-savunma.sql blok 11)
+  kadro -> Zirve BKM_GENEL.dbo.vw_PersonelDepartman, as-of Igt<=T AND (Ict IS NULL OR Ict>=T)
+Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
+Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
+
+Sayfalar: Ozet · Magaza · Yillar · Oca-Agu · Yontem
+Kullanim:
+  python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
+  python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
+"""
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+from openpyxl import Workbook
+from openpyxl.chart import BarChart, LineChart, Reference
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+
+ADET = "#,##0"
+ADET1 = "#,##0.0"
+TL = "#,##0"
+YUZDE = "+0.0%;-0.0%"
+KAT = "0.0\"x\""
+
+BASLIK = PatternFill("solid", fgColor="E30622")
+BASLIK_YAZI = Font(bold=True, color="FFFFFF", size=10)
+GRI = PatternFill("solid", fgColor="F2F2F2")
+VURGU = PatternFill("solid", fgColor="FFF3CD")
+YESIL_YAZI = Font(bold=True, color="1F7A4D")
+INCE = Side(style="thin", color="D9D9D9")
+KENAR = Border(left=INCE, right=INCE, top=INCE, bottom=INCE)
+NOT_YAZI = Font(italic=True, size=9, color="666666")
+BOLUM_YAZI = Font(bold=True, size=10)
+
+
+# ================================================================= VERI CEKME
+OKUL_ACILIS = {2025: "20250908", 2026: "20260914"}   # MEB calisma takvimi (dogrulanmis)
+OFSET_BAS, OFSET_SON = -69, -14                      # acilistan geriye 9. -> 2. hafta = 56 gun
+MEKAN = {4478: "İst. Yolu", 4477: "Özlüce", 1: "FSM"}
+SUBE = {4478: "İST. YOLU", 4477: "ÖZLÜCE", 1: "FSM"}   # Zirve AltLokasyon karsiligi
+SINAV = "(N'Sınav Okulları', N'Sınav Kıyafet')"
+YILLAR = [2023, 2024, 2025, 2026]
+ONCEKI, CARI = 2025, 2026
+
+
+def _env():
+    yol = Path(__file__).resolve().parent.parent / ".env"
+    env = {}
+    with open(yol, encoding="utf-8") as f:
+        for ln in f:
+            m = re.match(r"\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$", ln)
+            if m and not ln.lstrip().startswith("#"):
+                env[m.group(1)] = m.group(2).strip().strip('"')
+    return env
+
+
+def _cn(env, sunucu):
+    """sunucu: 'erp' (DerinSIS) veya 'zirve' (İK)."""
+    import pyodbc
+
+    if sunucu == "erp":
+        host, port, db = env["MSSQL_HOST"], env.get("MSSQL_PORT", "1433"), "DerinSISBkm"
+        kullanici, sifre = env["MSSQL_USER"], env["MSSQL_PASSWORD"]
+        if not re.fullmatch(r"[A-Za-z0-9._\-]+", host) or not re.fullmatch(r"\d+", port):
+            sys.exit("Geçersiz MSSQL_HOST/PORT (.env)")
+        adres = "%s,%s" % (host, port)
+    else:
+        host, db = env.get("ZIRVE_HOST", ""), env.get("ZIRVE_DATABASE", "BKM_GENEL")
+        kullanici, sifre = env.get("ZIRVE_USER", ""), env.get("ZIRVE_PASSWORD", "")
+        if not sifre:
+            sys.exit("ZIRVE_PASSWORD .env'de yok — kadro verisi çekilemez (plan-38).")
+        if not re.fullmatch(r"[A-Za-z0-9._\\\-]+", host):
+            sys.exit("Geçersiz ZIRVE_HOST (.env)")
+        adres = host
+    cn = pyodbc.connect(
+        "Driver={ODBC Driver 18 for SQL Server};Server=%s;Database=%s;UID=%s;PWD=%s;"
+        "TrustServerCertificate=yes;Timeout=30" % (adres, db, kullanici, sifre), timeout=30)
+    cn.timeout = 600
+    return cn
+
+
+def _hizali_kosul(alias="bs.eTarihS"):
+    """Iki yilin okul-hizali penceresi (OR'lu), kesim = veri sonu."""
+    parcalar = []
+    for yil, acilis in OKUL_ACILIS.items():
+        parcalar.append(
+            "(YEAR(%s) = %d AND DATEDIFF(DAY, '%s', %s) BETWEEN %d AND %d)"
+            % (alias, yil, acilis, alias, OFSET_BAS, OFSET_SON))
+    return "(" + " OR ".join(parcalar) + ")"
+
+
+def cek(env):
+    """Tum rakamlari canli ceker. Elle girilen sayi YOK."""
+    veri = {"meta": {}, "magaza": [], "yillar": [], "notlar": NOTLAR}
+    erp = _cn(env, "erp")
+    cur = erp.cursor()
+
+    # 1) okul-hizali pencere, magaza x yil
+    print("DerinSIS: okul-hizalı pencere (mağaza × yıl)...", flush=True)
+    cur.execute("""
+        SELECT bs.eMekan, YEAR(bs.eTarihS) AS yil,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim AS float))                 AS kdvharic,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS kdvdahil,
+               COUNT(DISTINCT CAST(bs.eTarihS AS date))                      AS gun
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND """ + _hizali_kosul() + """
+        GROUP BY bs.eMekan, YEAR(bs.eTarihS)""")
+    hacim, gunler = {}, {}
+    for mekan, yil, adet, kh, kd, gun in cur.fetchall():
+        hacim[(int(mekan), int(yil))] = (float(adet), float(kh), float(kd))
+        gunler[int(yil)] = int(gun)
+    if len(gunler) != 2 or len(set(gunler.values())) != 1:
+        sys.exit("Pencere eşit değil (gün sayıları %s) — kıyas yapılamaz." % gunler)
+    veri["meta"]["gun"] = next(iter(gunler.values()))
+
+    # 2) Ocak-Agustos, magaza vs Sinav
+    print("DerinSIS: Ocak-Ağustos kanal kırılımı...", flush=True)
+    cur.execute("""
+        SELECT YEAR(bs.eTarihS) AS yil,
+               CASE WHEN COALESCE(kat.Kategori3, N'x') IN """ + SINAV + """ THEN 'sinav' ELSE 'magaza' END AS kanal,
+               SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)) AS kdvdahil
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND YEAR(bs.eTarihS) IN (?, ?)
+          AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
+        GROUP BY YEAR(bs.eTarihS),
+                 CASE WHEN COALESCE(kat.Kategori3, N'x') IN """ + SINAV + """ THEN 'sinav' ELSE 'magaza' END""",
+                ONCEKI, CARI)
+    oa = {"magaza": {}, "sinav": {}}
+    for yil, kanal, adet, kd in cur.fetchall():
+        ek = "%d" % (int(yil) % 100)
+        oa[kanal]["adet" + ek] = float(adet)
+        oa[kanal]["kdvdahil" + ek] = float(kd)
+    veri["ocak_agustos"] = oa
+
+    # 3) yillik trend: Oca-Agu adet (Sinav haric)
+    print("DerinSIS: 4 yıllık Ocak-Ağustos adet...", flush=True)
+    cur.execute("""
+        SELECT YEAR(bs.eTarihS) AS yil, SUM(ABS(CAST(dt.ehAdet AS float))) AS adet
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND COALESCE(kat.Kategori3, N'x') NOT IN """ + SINAV + """
+          AND YEAR(bs.eTarihS) BETWEEN ? AND ?
+          AND MONTH(bs.eTarihS) BETWEEN 1 AND 8
+        GROUP BY YEAR(bs.eTarihS)""", YILLAR[0], YILLAR[-1])
+    yil_adet = {int(y): float(a) for y, a in cur.fetchall()}
+    erp.close()
+
+    # 4) kadro — Zirve
+    print("Zirve: kadro as-of sayımları...", flush=True)
+    zrv = _cn(env, "zirve")
+    zc = zrv.cursor()
+    asof = "v.Igt <= '%s' AND (v.Ict IS NULL OR v.Ict >= '%s')"
+
+    def kadro_sube(tarih, sube):
+        zc.execute("SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v WHERE v.AltLokasyon = ? AND "
+                   + (asof % (tarih, tarih)), sube)
+        return int(zc.fetchone()[0])
+
+    for mekan, ad in MEKAN.items():
+        h_o = hacim[(mekan, ONCEKI)]
+        h_c = hacim[(mekan, CARI)]
+        veri["magaza"].append({
+            "ad": ad, "mekan": mekan,
+            "kadro%d" % (ONCEKI % 100): kadro_sube("%d0831" % ONCEKI, SUBE[mekan]),
+            "kadro%d" % (CARI % 100): kadro_sube("%d0831" % CARI, SUBE[mekan]),
+            "adet%d" % (ONCEKI % 100): h_o[0], "adet%d" % (CARI % 100): h_c[0],
+            "kdvharic%d" % (ONCEKI % 100): h_o[1], "kdvharic%d" % (CARI % 100): h_c[1],
+            "kdvdahil%d" % (ONCEKI % 100): h_o[2], "kdvdahil%d" % (CARI % 100): h_c[2],
+        })
+
+    # 5 magaza kadrolu taban/kesim + sezonluk (POS'ta olmayan Heykel/Sura dahil)
+    def kadro_5(tarih, sezonluk=None):
+        kosul = "v.Lokasyon LIKE 'MA%'"
+        if sezonluk is True:
+            kosul += " AND v.Kadro = 'SEZONLUK'"
+        elif sezonluk is False:
+            kosul += " AND COALESCE(v.Kadro, '') <> 'SEZONLUK'"
+        zc.execute("SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v WHERE " + kosul
+                   + " AND " + (asof % (tarih, tarih)))
+        return int(zc.fetchone()[0])
+
+    veri["kadro_5magaza"] = {
+        "kadrolu_taban%d" % (ONCEKI % 100): kadro_5("%d0630" % ONCEKI, False),
+        "kadrolu_taban%d" % (CARI % 100): kadro_5("%d0630" % CARI, False),
+        "kadrolu_kesim%d" % (ONCEKI % 100): kadro_5("%d0831" % ONCEKI, False),
+        "kadrolu_kesim%d" % (CARI % 100): kadro_5("%d0831" % CARI, False),
+        "sezonluk_kesim%d" % (ONCEKI % 100): kadro_5("%d0831" % ONCEKI, True),
+        "sezonluk_kesim%d" % (CARI % 100): kadro_5("%d0831" % CARI, True),
+        "toplam_kesim%d" % (ONCEKI % 100): kadro_5("%d0831" % ONCEKI),
+        "toplam_kesim%d" % (CARI % 100): kadro_5("%d0831" % CARI),
+    }
+
+    # yillik trend kadrolu (3 POS magazasi)
+    for yil in YILLAR:
+        zc.execute("""SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v
+                      WHERE v.AltLokasyon IN (?, ?, ?)
+                        AND COALESCE(v.Kadro, '') <> 'SEZONLUK'
+                        AND """ + (asof % ("%d0831" % yil, "%d0831" % yil)),
+                   SUBE[4478], SUBE[4477], SUBE[1])
+        veri["yillar"].append({"yil": yil, "kadrolu": int(zc.fetchone()[0]),
+                               "adet": yil_adet.get(yil, 0.0)})
+    zrv.close()
+
+    veri["meta"].update({
+        "baslik": "Kişi başı iş hacmi — sezon %d vs %d" % (CARI, ONCEKI),
+        "kesim": "otomatik (veri sonu, okul-hizalı pencerede)",
+        "cekirdek_sql": "sorgular/2026-09-02-kadro-vs-is-hacmi-savunma.sql (blok 11)",
+        "kadro_kaynak": "Zirve BKM_GENEL.dbo.vw_PersonelDepartman — as-of Igt <= T AND (Ict IS NULL OR Ict >= T), "
+                        "sp_PersonelKarsilastirma_Ozet ile birebir",
+        "hacim_kaynak": "DerinSIS irs/irsAyr eTip=100 (POS satışı), Sınav Okulları/Kıyafet hariç, iade netlenmiş",
+        "pencere": "Okul açılışına hizalı: %s açılış %s, %s açılış %s; gün ofseti %d..%d = her iki yıl %d gün"
+                   % (ONCEKI, OKUL_ACILIS[ONCEKI], CARI, OKUL_ACILIS[CARI],
+                      OFSET_BAS, OFSET_SON, veri["meta"]["gun"]),
+    })
+    return veri
+
+
+NOTLAR = [
+    "Ürün adedi enflasyondan bağımsız — kadro kıyasında birincil ölçüt. Ciro ikincil (fiyat endeksi +%19,8, Fisher, eşleşen ürün).",
+    "Kıyas okul açılışına hizalı yapılır. Takvim tarihine göre kıyas 2026'da yapay düşüş gösterir: açılış 8 Eylül 2025'ten 14 Eylül 2026'ya, 6 gün kaydı.",
+    "İş hacmi EncoreMerkez POS'tan DEĞİL DerinSIS'ten alınır: POS Temmuz 2025'te değişti (ENPOS → EncoreMerkez), EncoreMerkez'in 2025 tabanı eksik.",
+    "Heykel ve Şura POS raporlamasında yok — mağaza sayfası üç POS mağazası (FSM · Özlüce · İst. Yolu). Beş mağaza kadro hareketi Özet'te ayrı.",
+    "Kadro = o tarihte fiilen çalışan kişi (sezonluk + kadrolu). Kişi başı oranlar kasiyer değil TÜM mağaza kadrosu üzerinden.",
+    "Fiş sayısı bu kaynakta yok: eTip 100 günlük özet belgedir (bir gün = bir belge).",
+    "Kıdem → verimlilik testi NEGATİF çıktı: aynı kasiyerin öğrenme eğrisi düz (220 → 256 → 242 fiş/gün), mağaza kıdem sıralaması verimlilikle uyuşmuyor. 'Tecrübeli 1 kişi = acemi 3 kişi' iddiası bu veriyle savunulamaz.",
+]
+
+
+def _basliklar(ws, kolonlar, satir=1):
+    """kolonlar = [(baslik, genislik, format), ...]"""
+    for i, (ad, gen, _f) in enumerate(kolonlar, start=1):
+        h = ws.cell(satir, i, ad)
+        h.fill = BASLIK
+        h.font = BASLIK_YAZI
+        h.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        h.border = KENAR
+        ws.column_dimensions[get_column_letter(i)].width = gen
+    ws.row_dimensions[satir].height = 30
+    ws.freeze_panes = ws.cell(satir + 1, 2)
+
+
+def _yaz(ws, satir, kolonlar, degerler):
+    for i, ((_ad, _gen, fmt), deger) in enumerate(zip(kolonlar, degerler), start=1):
+        c = ws.cell(satir, i, deger)
+        c.border = KENAR
+        if fmt:
+            c.number_format = fmt
+        if i == 1:
+            c.alignment = Alignment(horizontal="left")
+    return satir + 1
+
+
+def _notlar(ws, notlar, satir, kol=1):
+    for n in notlar:
+        c = ws.cell(satir, kol, n)
+        c.font = NOT_YAZI
+        c.alignment = Alignment(wrap_text=False)
+        satir += 1
+    return satir
+
+
+# ------------------------------------------------------------------ Ozet
+def sayfa_ozet(wb, veri):
+    ws = wb.active
+    ws.title = "Ozet"
+    mag = veri["magaza"]
+    gun = veri["meta"]["gun"]
+
+    kolonlar = [("Olcu", 34, None), ("2025", 16, None), ("2026", 16, None),
+                ("Fark", 15, None), ("Degisim", 11, YUZDE)]
+    ws.cell(1, 1, "Ayni kadro, daha cok is — uc POS magazasi (okul-hizali pencere, %d gun)" % gun).font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    kadro25 = sum(m["kadro25"] for m in mag)
+    kadro26 = sum(m["kadro26"] for m in mag)
+    adet25 = sum(m["adet25"] for m in mag)
+    adet26 = sum(m["adet26"] for m in mag)
+    kh25 = sum(m["kdvharic25"] for m in mag)
+    kh26 = sum(m["kdvharic26"] for m in mag)
+    kd25 = sum(m["kdvdahil25"] for m in mag)
+    kd26 = sum(m["kdvdahil26"] for m in mag)
+
+    s = 4
+    # ham buyuklukler (fark + degisim FORMUL)
+    for etiket, v25, v26, fmt in [
+        ("Kadro — 31.08 (kisi)", kadro25, kadro26, ADET),
+        ("Urun adedi (elleclenen)", adet25, adet26, ADET),
+        ("Ciro — KDV haric (TL)", kh25, kh26, TL),
+        ("Ciro — KDV dahil (TL)", kd25, kd26, TL),
+    ]:
+        ws.cell(s, 1, etiket).border = KENAR
+        for kol, v in ((2, v25), (3, v26)):
+            c = ws.cell(s, kol, v)
+            c.number_format = fmt
+            c.border = KENAR
+        f = ws.cell(s, 4, "=C%d-B%d" % (s, s))
+        f.number_format = fmt
+        f.border = KENAR
+        d = ws.cell(s, 5, "=IF(B%d=0,\"\",C%d/B%d-1)" % (s, s, s))
+        d.number_format = YUZDE
+        d.border = KENAR
+        s += 1
+
+    r_kadro, r_adet, r_kh = 4, 5, 6
+    s += 1
+    ws.cell(s, 1, "KISI BASI — asil olcu").font = BOLUM_YAZI
+    s += 1
+
+    # kisi basi satirlar: TAMAMI formul (ham satirlara referansli)
+    kisi_basi = [
+        ("Urun adedi / kisi", "=B%d/B%d" % (r_adet, r_kadro), "=C%d/C%d" % (r_adet, r_kadro), ADET),
+        ("Urun adedi / kisi / gun", "=B%d/B%d/%d" % (r_adet, r_kadro, gun), "=C%d/C%d/%d" % (r_adet, r_kadro, gun), ADET1),
+        ("Ciro (KDV haric) / kisi (TL)", "=B%d/B%d" % (r_kh, r_kadro), "=C%d/C%d" % (r_kh, r_kadro), TL),
+    ]
+    ilk_kisi = s
+    for etiket, f25, f26, fmt in kisi_basi:
+        ws.cell(s, 1, etiket).border = KENAR
+        for kol, f in ((2, f25), (3, f26)):
+            c = ws.cell(s, kol, f)
+            c.number_format = fmt
+            c.border = KENAR
+            c.fill = GRI
+        fk = ws.cell(s, 4, "=C%d-B%d" % (s, s))
+        fk.number_format = fmt
+        fk.border = KENAR
+        fk.fill = GRI
+        d = ws.cell(s, 5, "=C%d/B%d-1" % (s, s))
+        d.number_format = YUZDE
+        d.border = KENAR
+        d.fill = GRI
+        d.font = YESIL_YAZI
+        s += 1
+
+    s += 1
+    ws.cell(s, 1, "Is buyumesi kadro buyumesinin kac kati").border = KENAR
+    ws.cell(s, 1).font = BOLUM_YAZI
+    kat = ws.cell(s, 2, "=E%d/E%d" % (r_adet, r_kadro))
+    kat.number_format = KAT
+    kat.fill = VURGU
+    kat.border = KENAR
+    kat.font = Font(bold=True, size=12)
+    ws.cell(s, 3, "urun adedi / kadro").font = NOT_YAZI
+    s += 1
+    ws.cell(s, 1, "  ayni oran ciro ile").border = KENAR
+    kat2 = ws.cell(s, 2, "=E%d/E%d" % (r_kh, r_kadro))
+    kat2.number_format = KAT
+    kat2.border = KENAR
+    ws.cell(s, 3, "ciro (KDV haric) / kadro").font = NOT_YAZI
+    s += 2
+
+    ws.cell(s, 1, "BES MAGAZA KADRO HAREKETI (POS'ta olmayan Heykel + Sura dahil)").font = BOLUM_YAZI
+    s += 1
+    k5 = veri["kadro_5magaza"]
+    for etiket, v25, v26 in [
+        ("Kadrolu — taban 30.06", k5["kadrolu_taban25"], k5["kadrolu_taban26"]),
+        ("Kadrolu — kesim 31.08", k5["kadrolu_kesim25"], k5["kadrolu_kesim26"]),
+        ("Sezonluk — kesim 31.08", k5["sezonluk_kesim25"], k5["sezonluk_kesim26"]),
+        ("Toplam — kesim 31.08", k5["toplam_kesim25"], k5["toplam_kesim26"]),
+    ]:
+        ws.cell(s, 1, etiket).border = KENAR
+        for kol, v in ((2, v25), (3, v26)):
+            c = ws.cell(s, kol, v)
+            c.number_format = ADET
+            c.border = KENAR
+        f = ws.cell(s, 4, "=C%d-B%d" % (s, s))
+        f.number_format = "+0;-0;0"
+        f.border = KENAR
+        s += 1
+    r_taban = s - 4
+    r_kesim = s - 3
+    ws.cell(s, 1, "Sezon ici kadrolu degisim (taban -> kesim)").border = KENAR
+    sez = ws.cell(s, 2, "=B%d-B%d" % (r_kesim, r_taban))
+    sez.number_format = "+0;-0;0"
+    sez.border = KENAR
+    sez2 = ws.cell(s, 3, "=C%d-C%d" % (r_kesim, r_taban))
+    sez2.number_format = "+0;-0;0"
+    sez2.border = KENAR
+    sez2.fill = VURGU
+    ws.cell(s, 4, "sezon icinde kadro BUYUMEDI").font = NOT_YAZI
+    s += 2
+
+    _notlar(ws, [
+        "Kadro farki 1 Temmuz'dan ONCE olustu: kadrolu taban 30.06'da 139 -> 153. Sezon icinde (1 Tem - 31 Agu) kadro kucumustu.",
+        "Kisi basi satirlar ve tum yuzdeler Excel FORMULUDUR — ham rakami degistirin, oran kendini gunceller.",
+    ], s)
+    return ws
+
+
+# ------------------------------------------------------------------ Magaza
+def sayfa_magaza(wb, veri):
+    ws = wb.create_sheet("Magaza")
+    gun = veri["meta"]["gun"]
+    kolonlar = [
+        ("Magaza", 13, None),
+        ("Kadro 2025", 9, ADET), ("Kadro 2026", 9, ADET), ("Kadro Δ%", 9, YUZDE),
+        ("Urun adedi 2025", 13, ADET), ("Urun adedi 2026", 13, ADET), ("Adet Δ%", 9, YUZDE),
+        ("Adet/kisi 2025", 11, ADET), ("Adet/kisi 2026", 11, ADET), ("Adet/kisi Δ%", 11, YUZDE),
+        ("Adet/kisi/gun 2025", 12, ADET1), ("Adet/kisi/gun 2026", 12, ADET1),
+        ("Ciro 2025 (KDV haric)", 15, TL), ("Ciro 2026 (KDV haric)", 15, TL), ("Ciro Δ%", 9, YUZDE),
+        ("Ciro/kisi 2025", 13, TL), ("Ciro/kisi 2026", 13, TL), ("Ciro/kisi Δ%", 11, YUZDE),
+        ("Is / kadro (kac kat)", 11, KAT),
+    ]
+    ws.cell(1, 1, "Magaza bazinda kisi basi is — okul-hizali pencere (%d gun, Sinav haric)" % gun).font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for m in veri["magaza"]:
+        ws.cell(s, 1, m["ad"]).border = KENAR
+        ham = {2: m["kadro25"], 3: m["kadro26"], 5: m["adet25"], 6: m["adet26"],
+               13: m["kdvharic25"], 14: m["kdvharic26"]}
+        for kol, v in ham.items():
+            c = ws.cell(s, kol, v)
+            c.number_format = kolonlar[kol - 1][2]
+            c.border = KENAR
+        s += 1
+    son = s - 1
+
+    # TOPLAM satiri — ham kolonlar SUM
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True)
+    ws.cell(s, 1).fill = GRI
+    ws.cell(s, 1).border = KENAR
+    for kol in (2, 3, 5, 6, 13, 14):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = kolonlar[kol - 1][2]
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    toplam = s
+
+    # tureme kolonlari (formul) — hem magaza satirlari hem TOPLAM
+    for r in list(range(ilk, son + 1)) + [toplam]:
+        kalin = Font(bold=True) if r == toplam else None
+        dolgu = GRI if r == toplam else None
+        turemeler = {
+            4: "=C%d/B%d-1" % (r, r),
+            7: "=F%d/E%d-1" % (r, r),
+            8: "=E%d/B%d" % (r, r),
+            9: "=F%d/C%d" % (r, r),
+            10: "=I%d/H%d-1" % (r, r),
+            11: "=E%d/B%d/%d" % (r, r, gun),
+            12: "=F%d/C%d/%d" % (r, r, gun),
+            15: "=N%d/M%d-1" % (r, r),
+            16: "=M%d/B%d" % (r, r),
+            17: "=N%d/C%d" % (r, r),
+            18: "=Q%d/P%d-1" % (r, r),
+            19: "=G%d/D%d" % (r, r),
+        }
+        for kol, f in turemeler.items():
+            c = ws.cell(r, kol, f)
+            c.number_format = kolonlar[kol - 1][2]
+            c.border = KENAR
+            if dolgu:
+                c.fill = dolgu
+            if kalin:
+                c.font = kalin
+            if kol in (10, 18, 19):
+                c.font = Font(bold=True, color="1F7A4D")
+
+    # grafik: kisi basi urun adedi, magaza bazinda 2025 vs 2026
+    g = BarChart()
+    g.type = "col"
+    g.title = "Kisi basi urun adedi — 2025 vs 2026"
+    g.y_axis.title = "adet / kisi"
+    g.height, g.width = 8, 16
+    g.add_data(Reference(ws, min_col=8, max_col=9, min_row=3, max_row=son), titles_from_data=True)
+    g.set_categories(Reference(ws, min_col=1, min_row=ilk, max_row=son))
+    ws.add_chart(g, "A%d" % (toplam + 3))
+
+    s = toplam + 22
+    _notlar(ws, [
+        "Kadro = 31.08 itibariyla o magazada fiilen calisan TUM personel (sezonluk + kadrolu).",
+        "'Is / kadro' = urun adedi buyumesi / kadro buyumesi. 1,0x'in uzeri: is kadrodan hizli buyudu.",
+        "Ist. Yolu kadrosu en cok buyuyen magaza (50 -> 61) ama ise ragmen kisi basi adedi de artti.",
+    ], s)
+    return ws
+
+
+# ------------------------------------------------------------------ Yillar
+def sayfa_yillar(wb, veri):
+    ws = wb.create_sheet("Yillar")
+    kolonlar = [("Yil", 8, None), ("Kadrolu (31.08)", 13, ADET), ("Urun adedi (Oca-Agu)", 16, ADET),
+                ("Adet / kisi", 12, ADET), ("Onceki yila gore", 13, YUZDE)]
+    ws.cell(1, 1, "Kisi basi is — 4 yillik trend (uc POS magazasi, Ocak-Agustos kumulatif, Sinav haric)").font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for y in veri["yillar"]:
+        ws.cell(s, 1, y["yil"]).border = KENAR
+        for kol, v in ((2, y["kadrolu"]), (3, y["adet"])):
+            c = ws.cell(s, kol, v)
+            c.number_format = ADET
+            c.border = KENAR
+        c = ws.cell(s, 4, "=C%d/B%d" % (s, s))
+        c.number_format = ADET
+        c.border = KENAR
+        c.font = Font(bold=True)
+        if s > ilk:
+            d = ws.cell(s, 5, "=D%d/D%d-1" % (s, s - 1))
+            d.number_format = YUZDE
+            d.border = KENAR
+        else:
+            ws.cell(s, 5, "—").border = KENAR
+        s += 1
+    son = s - 1
+
+    g = LineChart()
+    g.title = "Kisi basi urun adedi — 4 yillik trend"
+    g.y_axis.title = "adet / kisi"
+    g.height, g.width = 8, 16
+    g.add_data(Reference(ws, min_col=4, min_row=3, max_row=son), titles_from_data=True)
+    g.set_categories(Reference(ws, min_col=1, min_row=ilk, max_row=son))
+    ws.add_chart(g, "G3")
+
+    s += 1
+    _notlar(ws, [
+        "2024 ATLAMASI: kadrolu 60 -> 91, adet yalniz +%11 -> kisi basi is -%27. Kadro sismesi 2024'te oldu.",
+        "AMA 2023 verimliligi 'norm' DEGIL: 2023'te FSM kasada 0 kisi, Ozluce kasada 1 kisi vardi (eksik kadroyla calisma).",
+        "2024 -> 2026: kisi basi is +%28,8 toparlanma. Bu yil kadro +15 kisi buyurken kisi basi is de artti.",
+        "Bu sayfada kadro yalniz KADROLU (sezonluk haric) — yillar arasi sezonluk tahliye zamanlamasi kiyasi bozuyor.",
+    ], s)
+    return ws
+
+
+# ------------------------------------------------------------------ Oca-Agu (itiraz cevabi)
+def sayfa_oca_agu(wb, veri):
+    ws = wb.create_sheet("Oca-Agu")
+    oa = veri["ocak_agustos"]
+    kolonlar = [("Kanal", 24, None), ("Adet 2025", 14, ADET), ("Adet 2026", 14, ADET), ("Adet Δ%", 10, YUZDE),
+                ("Ciro 2025 (KDV dahil)", 17, TL), ("Ciro 2026 (KDV dahil)", 17, TL), ("Ciro Δ%", 10, YUZDE)]
+    ws.cell(1, 1, "\"Buyume kurumsaldan geldi\" itirazinin cevabi — Ocak-Agustos, uc POS magazasi").font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    for etiket, blok in (("Magaza (perakende raf)", oa["magaza"]), ("Sinav Okullari (kurumsal)", oa["sinav"])):
+        ws.cell(s, 1, etiket).border = KENAR
+        for kol, v in ((2, blok["adet25"]), (3, blok["adet26"]),
+                       (5, blok["kdvdahil25"]), (6, blok["kdvdahil26"])):
+            c = ws.cell(s, kol, v)
+            c.number_format = kolonlar[kol - 1][2]
+            c.border = KENAR
+        for kol, f in ((4, "=C%d/B%d-1" % (s, s)), (7, "=F%d/E%d-1" % (s, s))):
+            c = ws.cell(s, kol, f)
+            c.number_format = YUZDE
+            c.border = KENAR
+        s += 1
+    ilk, son = 4, s - 1
+
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True)
+    ws.cell(s, 1).fill = GRI
+    ws.cell(s, 1).border = KENAR
+    for kol in (2, 3, 5, 6):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = kolonlar[kol - 1][2]
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    for kol, f in ((4, "=C%d/B%d-1" % (s, s)), (7, "=F%d/E%d-1" % (s, s))):
+        c = ws.cell(s, kol, f)
+        c.number_format = YUZDE
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    s += 2
+
+    _notlar(ws, [
+        "Sinav Okullari KUCULDU (adet -%35, ciro -%22). Buyumenin tamami magaza rafindan geldi.",
+        "Magaza tarafi kurumsal dususu de kapatti: toplam yine buyudu.",
+        "Sinav = Kategori3 'Sinav Okullari' + 'Sinav Kiyafet'; ayni POS belgesi icinde geldigi icin AYIKLANMASI zorunlu.",
+    ], s)
+    return ws
+
+
+# ------------------------------------------------------------------ Yontem
+def sayfa_yontem(wb, veri):
+    ws = wb.create_sheet("Yontem")
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 118
+    m = veri["meta"]
+    ws.cell(1, 1, "Yontem ve kaynaklar").font = Font(bold=True, size=12)
+
+    s = 3
+    for etiket, deger in [
+        ("Baslik", m["baslik"]),
+        ("Kesim tarihi", m["kesim"]),
+        ("Pencere", m["pencere"]),
+        ("Kadro kaynagi", m["kadro_kaynak"]),
+        ("Is hacmi kaynagi", m["hacim_kaynak"]),
+        ("Cekirdek SQL", m["cekirdek_sql"]),
+    ]:
+        a = ws.cell(s, 1, etiket)
+        a.font = BOLUM_YAZI
+        a.alignment = Alignment(vertical="top")
+        b = ws.cell(s, 2, deger)
+        b.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[s].height = 30
+        s += 1
+
+    s += 1
+    ws.cell(s, 1, "Dikkat edilecekler").font = BOLUM_YAZI
+    s += 1
+    for n in veri["notlar"]:
+        c = ws.cell(s, 2, "• " + n)
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+        c.font = Font(size=9)
+        ws.row_dimensions[s].height = 28
+        s += 1
+    return ws
+
+
+def main(argv):
+    cek_mod = "--cek" in argv
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    if len(args) != 2:
+        print(__doc__)
+        return 2
+    veri_yolu, cikti = Path(args[0]), Path(args[1])
+
+    if cek_mod:
+        veri = cek(_env())
+        veri_yolu.parent.mkdir(parents=True, exist_ok=True)
+        veri_yolu.write_text(json.dumps(veri, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("Veri yazıldı: %s" % veri_yolu, flush=True)
+    else:
+        veri = json.loads(veri_yolu.read_text(encoding="utf-8"))
+
+    wb = Workbook()
+    sayfa_ozet(wb, veri)
+    sayfa_magaza(wb, veri)
+    sayfa_yillar(wb, veri)
+    sayfa_oca_agu(wb, veri)
+    sayfa_yontem(wb, veri)
+    # cikti yukarida cozuldu
+    cikti.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(cikti)
+    print("Yazildi: %s (%d sayfa)" % (cikti, len(wb.worksheets)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
