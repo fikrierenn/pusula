@@ -16,10 +16,10 @@
       "kadro26": 61,
       "adet25": 173398.0,
       "adet26": 258168.5,
-      "kdvharic25": 20455158.42999977,
-      "kdvharic26": 40444611.76999984,
-      "kdvdahil25": 22053802.749998555,
-      "kdvdahil26": 43253793.71999866
+      "kdvharic25": 20455158.429999724,
+      "kdvharic26": 40444611.77000099,
+      "kdvdahil25": 22053802.74999932,
+      "kdvdahil26": 43253793.71999836
     },
     {
       "ad": "Özlüce",
@@ -28,10 +28,10 @@
       "kadro26": 54,
       "adet25": 230764.7,
       "adet26": 301250.05000000005,
-      "kdvharic25": 28347121.589998726,
-      "kdvharic26": 44784483.14999981,
-      "kdvdahil25": 30475719.769993767,
-      "kdvdahil26": 48017124.64999739
+      "kdvharic25": 28347121.589998703,
+      "kdvharic26": 44784483.15000022,
+      "kdvdahil25": 30475719.769993685,
+      "kdvdahil26": 48017124.649997264
     },
     {
       "ad": "FSM",
@@ -40,10 +40,10 @@
       "kadro26": 45,
       "adet25": 170555.0,
       "adet26": 215773.0,
-      "kdvharic25": 18127443.54999987,
-      "kdvharic26": 29458690.66000083,
-      "kdvdahil25": 19307906.600000955,
-      "kdvdahil26": 31330462.479999293
+      "kdvharic25": 18127443.55000037,
+      "kdvharic26": 29458690.660001278,
+      "kdvdahil25": 19307906.600001127,
+      "kdvdahil26": 31330462.47999936
     }
   ],
   "yillar": [
@@ -55,7 +55,7 @@
     {
       "yil": 2024,
       "kadrolu": 91,
-      "adet": 2296833.43
+      "adet": 2296833.4299999997
     },
     {
       "yil": 2025,
@@ -80,15 +80,15 @@
   "ocak_agustos": {
     "magaza": {
       "adet25": 2752385.04,
-      "kdvdahil25": 316059798.22011757,
+      "kdvdahil25": 316059798.22026265,
       "adet26": 3607308.91,
-      "kdvdahil26": 489433287.7801854
+      "kdvdahil26": 489433287.7802441
     },
     "sinav": {
       "adet25": 33584.0,
-      "kdvdahil25": 136108071.4499996,
+      "kdvdahil25": 136108071.44999975,
       "adet26": 21693.0,
-      "kdvdahil26": 105575646.10999995
+      "kdvdahil26": 105575646.11000009
     }
   },
   "kadro_5magaza": {
@@ -100,5 +100,52 @@
     "sezonluk_kesim26": 62,
     "toplam_kesim25": 200,
     "toplam_kesim26": 211
-  }
+  },
+  "magaza_kadro": [
+    {
+      "sube": "İST. YOLU",
+      "kadrolu_taban25": 29,
+      "kadrolu_kesim25": 27,
+      "sezonluk_kesim25": 23,
+      "kadrolu_taban26": 35,
+      "kadrolu_kesim26": 36,
+      "sezonluk_kesim26": 25
+    },
+    {
+      "sube": "ÖZLÜCE",
+      "kadrolu_taban25": 39,
+      "kadrolu_kesim25": 36,
+      "sezonluk_kesim25": 15,
+      "kadrolu_taban26": 44,
+      "kadrolu_kesim26": 41,
+      "sezonluk_kesim26": 13
+    },
+    {
+      "sube": "FSM",
+      "kadrolu_taban25": 34,
+      "kadrolu_kesim25": 33,
+      "sezonluk_kesim25": 9,
+      "kadrolu_taban26": 35,
+      "kadrolu_kesim26": 34,
+      "sezonluk_kesim26": 11
+    },
+    {
+      "sube": "HEYKEL",
+      "kadrolu_taban25": 28,
+      "kadrolu_kesim25": 28,
+      "sezonluk_kesim25": 12,
+      "kadrolu_taban26": 29,
+      "kadrolu_kesim26": 26,
+      "sezonluk_kesim26": 9
+    },
+    {
+      "sube": "ŞURA",
+      "kadrolu_taban25": 9,
+      "kadrolu_kesim25": 11,
+      "sezonluk_kesim25": 6,
+      "kadrolu_taban26": 10,
+      "kadrolu_kesim26": 12,
+      "sezonluk_kesim26": 4
+    }
+  ]
 }

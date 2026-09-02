@@ -7,7 +7,7 @@ VERIYI KENDI CEKER (elle rakam YOK):
 Pencere OKUL ACILISINA HIZALI: gun ofseti -69..-14 (her iki yil 56 gun). Takvim-tarihli kiyas yaniltir.
 Oranlarin hepsi Excel FORMULU olarak yazilir (patron ham rakamdan dogrulayabilsin).
 
-Sayfalar: Ozet · Magaza · Yillar · Oca-Agu · Yontem
+Sayfalar: Ozet · Magaza · Kadro · Yillar · Oca-Agu · Yontem
 Kullanim:
   python scripts/verimlilik_excel.py --cek <veri.json> <cikti.xlsx>   # DB'den ceker, ikisini de yazar
   python scripts/verimlilik_excel.py <veri.json> <cikti.xlsx>         # mevcut json'dan sadece Excel
@@ -173,7 +173,8 @@ def cek(env):
     asof = "v.Igt <= '%s' AND (v.Ict IS NULL OR v.Ict >= '%s')"
 
     def kadro_sube(tarih, sube):
-        zc.execute("SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v WHERE v.AltLokasyon = ? AND "
+        zc.execute("SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v "
+                   "WHERE v.AltLokasyon = ? AND v.Lokasyon LIKE 'MA%' AND "
                    + (asof % (tarih, tarih)), sube)
         return int(zc.fetchone()[0])
 
@@ -211,15 +212,54 @@ def cek(env):
         "toplam_kesim%d" % (CARI % 100): kadro_5("%d0831" % CARI),
     }
 
+    # 5 magaza kadro tablosu (taban kadrolu · kesim sezonluk/kadrolu/toplam) — TEK TABLO, join yok
+    print("Zirve: 5 mağaza kadro tablosu...", flush=True)
+    veri["magaza_kadro"] = []
+    for sube in ("İST. YOLU", "ÖZLÜCE", "FSM", "HEYKEL", "ŞURA"):
+        satir = {"sube": sube}
+        for yil in (ONCEKI, CARI):
+            ek = yil % 100
+            zc.execute("""
+                SELECT SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                                 AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kadrolu_taban,
+                       SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= ?
+                                 AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS kadrolu_kesim,
+                       SUM(CASE WHEN v.Kadro = 'SEZONLUK' AND v.Igt <= ?
+                                 AND (v.Ict IS NULL OR v.Ict >= ?) THEN 1 ELSE 0 END) AS sezonluk_kesim
+                FROM dbo.vw_PersonelDepartman v
+                WHERE v.AltLokasyon = ? AND v.Lokasyon LIKE 'MA%'""",
+                       "%d0630" % yil, "%d0630" % yil,
+                       "%d0831" % yil, "%d0831" % yil,
+                       "%d0831" % yil, "%d0831" % yil, sube)
+            kt, kk, sk = (int(x or 0) for x in zc.fetchone())
+            satir["kadrolu_taban%d" % ek] = kt
+            satir["kadrolu_kesim%d" % ek] = kk
+            satir["sezonluk_kesim%d" % ek] = sk
+        veri["magaza_kadro"].append(satir)
+
     # yillik trend kadrolu (3 POS magazasi)
     for yil in YILLAR:
         zc.execute("""SELECT COUNT(*) FROM dbo.vw_PersonelDepartman v
-                      WHERE v.AltLokasyon IN (?, ?, ?)
+                      WHERE v.AltLokasyon IN (?, ?, ?) AND v.Lokasyon LIKE 'MA%'
                         AND COALESCE(v.Kadro, '') <> 'SEZONLUK'
                         AND """ + (asof % ("%d0831" % yil, "%d0831" % yil)),
                    SUBE[4478], SUBE[4477], SUBE[1])
         veri["yillar"].append({"yil": yil, "kadrolu": int(zc.fetchone()[0]),
                                "adet": yil_adet.get(yil, 0.0)})
+    # MUTABAKAT: sube-bazli toplam ile kapsam-bazli sayim BIREBIR tutmali.
+    # Tutmuyorsa bir kisi iki kapsamda birden ya da hic sayilmiyor -> sessiz yanlis rakam.
+    k5 = veri["kadro_5magaza"]
+    for alan, yil in (("kadrolu_taban", ONCEKI), ("kadrolu_taban", CARI),
+                      ("kadrolu_kesim", ONCEKI), ("kadrolu_kesim", CARI),
+                      ("sezonluk_kesim", ONCEKI), ("sezonluk_kesim", CARI)):
+        anahtar = "%s%d" % (alan, yil % 100)
+        sube_toplam = sum(m[anahtar] for m in veri["magaza_kadro"])
+        if sube_toplam != k5[anahtar]:
+            sys.exit("MUTABAKAT HATASI %s: şube toplamı %d, kapsam sayımı %d — "
+                     "bir kişi yanlış kapsamda (ör. Lokasyon='GENEL MÜDÜRLÜK' ama AltLokasyon şube)."
+                     % (anahtar, sube_toplam, k5[anahtar]))
+    print("Mutabakat OK: şube toplamları kapsam sayımıyla birebir.", flush=True)
+
     zrv.close()
 
     veri["meta"].update({
@@ -497,6 +537,84 @@ def sayfa_magaza(wb, veri):
     return ws
 
 
+# ------------------------------------------------------------------ Kadro (5 magaza)
+def sayfa_kadro(wb, veri):
+    """Eski magaza-tablo-sp.xlsx'in DOGRU halefi: kadro tablosu, tek-tablo sayimi (join fan-out yok)."""
+    ws = wb.create_sheet("Kadro")
+    kolonlar = [
+        ("Magaza", 13, None),
+        ("Kadrolu taban 30.06 · 2025", 12, ADET), ("Kadrolu taban 30.06 · 2026", 12, ADET), ("Taban Δ", 9, "+0;-0;0"),
+        ("Kadrolu 31.08 · 2025", 11, ADET), ("Kadrolu 31.08 · 2026", 11, ADET),
+        ("Sezon ici hareket 2025", 11, "+0;-0;0"), ("Sezon ici hareket 2026", 11, "+0;-0;0"),
+        ("Sezonluk 31.08 · 2025", 11, ADET), ("Sezonluk 31.08 · 2026", 11, ADET),
+        ("Toplam 31.08 · 2025", 11, ADET), ("Toplam 31.08 · 2026", 11, ADET), ("Toplam Δ", 9, "+0;-0;0"),
+    ]
+    ws.cell(1, 1, "Bes magaza kadro tablosu — as-of Igt <= T AND (Ict IS NULL OR Ict >= T)").font = Font(bold=True, size=12)
+    _basliklar(ws, kolonlar, satir=3)
+
+    s = 4
+    ilk = s
+    for m in veri["magaza_kadro"]:
+        ws.cell(s, 1, m["sube"]).border = KENAR
+        ham = {2: m["kadrolu_taban25"], 3: m["kadrolu_taban26"],
+               5: m["kadrolu_kesim25"], 6: m["kadrolu_kesim26"],
+               9: m["sezonluk_kesim25"], 10: m["sezonluk_kesim26"]}
+        for kol, v in ham.items():
+            c = ws.cell(s, kol, v)
+            c.number_format = ADET
+            c.border = KENAR
+        s += 1
+    son = s - 1
+
+    ws.cell(s, 1, "TOPLAM").font = Font(bold=True)
+    ws.cell(s, 1).fill = GRI
+    ws.cell(s, 1).border = KENAR
+    for kol in (2, 3, 5, 6, 9, 10):
+        c = ws.cell(s, kol, "=SUM(%s%d:%s%d)" % (get_column_letter(kol), ilk, get_column_letter(kol), son))
+        c.number_format = ADET
+        c.border = KENAR
+        c.fill = GRI
+        c.font = Font(bold=True)
+    toplam = s
+
+    for r in list(range(ilk, son + 1)) + [toplam]:
+        dolgu = GRI if r == toplam else None
+        turemeler = {
+            4: "=C%d-B%d" % (r, r),          # taban farki (patrona soylenen +14 bu satirdan)
+            7: "=E%d-B%d" % (r, r),          # 2025 sezon ici
+            8: "=F%d-C%d" % (r, r),          # 2026 sezon ici
+            11: "=E%d+I%d" % (r, r),         # toplam 2025
+            12: "=F%d+J%d" % (r, r),         # toplam 2026
+            13: "=L%d-K%d" % (r, r),
+        }
+        for kol, f in turemeler.items():
+            c = ws.cell(r, kol, f)
+            c.number_format = kolonlar[kol - 1][2]
+            c.border = KENAR
+            if dolgu:
+                c.fill = dolgu
+                c.font = Font(bold=True)
+        if r == toplam:
+            ws.cell(r, 4).fill = VURGU
+            ws.cell(r, 8).fill = VURGU
+
+    s = toplam + 2
+    _notlar(ws, [
+        "TABAN FARKI (D kolonu, TOPLAM satiri) = patrona soylenen +14: kadrolu 139 -> 153, 1 TEMMUZ'DAN ONCE olustu.",
+        "SEZON ICI HAREKET = kesim - taban. 2026'da -4; 2025'te de -4 -> sezon icinde kadro buyutulmedi, iki yilin deseni ayni.",
+        "Sayim TEK TABLO uzerinden (vw_PersonelDepartman). Onceki surumde perbilgi LEFT JOIN'i bir kisiyi iki kez saymis:",
+        "   Ozluce 31.08.2026 kadrolu 42 gorunuyordu, DOGRUSU 41 (teyit: KADRO 41 + SEZONLUK 13 = 54 kisi).",
+        "   Bu yuzden magaza toplami 150 degil 149; sezon ici hareket -3 degil -4.",
+        "Heykel ve Sura POS raporlamasinda yok -> is hacmi sayfalarinda yer almaz, kadro tablosunda VARDIR.",
+        "KAPSAM: Lokasyon = MAGAZALAR. Cift gorevli 1 kisi (GM satinalma 'KITAP DISI S.A' + Heykel) bu",
+        "   kapsamda GORUNMEZ. O kisi Heykel'e eklenirse taban 140 -> 154, kesim 136 -> 150 olur;",
+        "   TABAN FARKI yine +14, SEZON ICI HAREKET yine -4. Yani cift gorev savunmayi DEGISTIRMIYOR.",
+        "Kaynak view anlik durumu tutar (kadro gecmisi yok): kisinin BUGUNKU lokasyon etiketi her iki yila",
+        "   da uygulanir. Bu yuzden kapsam iki yilda tutarli, ama gecmis unvan/lokasyon degisimi izlenemez.",
+    ], s)
+    return ws
+
+
 # ------------------------------------------------------------------ Yillar
 def sayfa_yillar(wb, veri):
     ws = wb.create_sheet("Yillar")
@@ -649,6 +767,7 @@ def main(argv):
     wb = Workbook()
     sayfa_ozet(wb, veri)
     sayfa_magaza(wb, veri)
+    sayfa_kadro(wb, veri)
     sayfa_yillar(wb, veri)
     sayfa_oca_agu(wb, veri)
     sayfa_yontem(wb, veri)
