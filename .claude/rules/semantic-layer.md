@@ -150,6 +150,39 @@ olduğu ve kapsam içinde `PART TIME`/boş etiketli kayıtların bulunduğu
 böyle görüldü — 30.06 tabanındaki 153 kişinin 1'i part-time, 2025
 tabanındaki 135'in 1'i boş etiketli. Rakamlar doğruydu, gerekçesi eksikti.
 
+### Katalog da koşar — `queries.yaml` (03.09 genişletme)
+
+Değişmezler şema gerçeğini koşturuyordu; `queries.yaml` hâlâ "saklanan ama
+koşmayan" taraftaydı. `tools/sema_sorgu_dumani.py` her kaydın SQL'ini
+`SELECT COUNT(*) FROM (<sql>) t` içine sarıp çalıştırır: sorgu ayakta mı?
+Satır sayısı ÖLÇÜMDÜR, iddia edilmez — iddia edilen tek şey sorgunun koştuğu.
+
+**İlk koşuda 15 sorgunun 3'ü kırıktı** ve sebep aynıydı:
+`EncoreMerkez.dbo.Sales.SaleDate` diye bir kolon yok, doğrusu **`Date`**.
+Dahası `entities.yaml` bunu zaten yazmıştı ("Date=satış datetime (SaleDate
+DEĞİL)") — sema kendi içinde çelişiyordu ve `last_verified: 2026-06-09`
+damgası bunu gizliyordu. Düzeltince iki katman daha çıktı: header'da
+`DiscountTotalDirect` yok (**`DiscountTotal`**), `SalesProducts`ta `Quantity`/
+`RowTotal` yok (**`Amount`** / **`TotalPrice`**).
+
+> **Kırık sorgu SİLİNMEZ.** Doğru ad ölçülür, SQL düzeltilir, damga bugüne
+> çekilir, sonra o sorguyu koruyan bir değişmez yazılır. Silmek öğrenilen
+> sorguyu unutmaktır; atmak değil sağlamlaştırmak gerekir.
+
+Düzeltirken ölçülen yeni gerçek: `SUM(SalesProducts.TotalPrice)` =
+`GrossTotal − DiscountTotal` (KDV dahil, indirim düşülmüş) → **net KDV-hariç =
+`TotalPrice − VatTotal`**; 01–03.09 penceresinde kalem ve header birebir aynı
+(7.760.175,16). Bu kimlik artık `pos-kalem-header-mutabakati` değişmeziyle
+korunuyor: kalem raporu ile KPI farklı ciro göstermeye başlarsa kırmızı verir.
+
+### `korur` alanı — değişmez hangi sorguyu koruyor
+
+Katalog sorgularının taşıyıcı yapısı 9 değişmeze çevrildi (kod kümesi kapalı ·
+köprü ayakta · kolon duruyor · linked server canlı · kalem-header mutabakatı).
+Her kayıt `korur: [<query-id>…]` taşır ve koşucu bunu `queries.yaml` ile
+**çapraz denetler** — yazım hatalı referans sessizce bağlantısız kalmasın diye.
+Tutar değişmez olamaz (ölçüm); çevrilen şey sorgunun DAYANDIĞI yapıdır.
+
 ### Araştırma dayanağı (2026-09-03)
 
 | Bulgu | Kaynak |

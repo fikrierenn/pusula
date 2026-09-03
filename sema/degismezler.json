@@ -19,7 +19,7 @@
   ],
   "_surum": 1,
   "_guncelleme": "2026-09-03",
-  "_kosum": "tools/sema_degismez.py",
+  "_kosum": "python tools/sema_degismez.py (yapısal değişmezler) + python tools/sema_sorgu_dumani.py (queries.yaml katalog dumanı)",
   "degismezler": [
     {
       "id": "urn-urnTip-uc-deger",
@@ -174,6 +174,134 @@
       "sql": "SELECT COUNT(*) FROM dbo.irsHrk h WHERE h.ehstkID IN (SELECT stkID FROM dbo.urn WHERE urnTip IN (1, 2))",
       "karsilastirma": "esit",
       "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "belge-tipi-kumesi-kapali",
+      "db": "DerinSISBkm",
+      "korur": [
+        "encore-pos-gunluk-ciro",
+        "pos-urun-kategori-koprusu"
+      ],
+      "soru": "EncoreMerkez.Sales.DocumentsTypeId {1,2,3,6,7,8} kümesinin dışına çıktı mı?",
+      "neden": "Tüm POS ciro sorguları bu altı tipi sayar. Yeni bir belge tipi açılırsa (ör. 9) cirosu SESSİZCE hiçbir rapora girmez — hata vermez, eksik gösterir.",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Sales WITH(NOLOCK) WHERE DocumentsTypeId NOT IN (1,2,3,6,7,8)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "pos-urun-koprusu-eslesme",
+      "db": "DerinSISBkm",
+      "korur": [
+        "pos-urun-kategori-koprusu"
+      ],
+      "soru": "Products.Code = urn.stkID köprüsü hâlâ ürünlerin ezici çoğunluğunu eşliyor mu?",
+      "neden": "POS satışını DerinSIS kategorisine bağlayan tek köprü. Çökerse kategori ciro raporu sessizce boşalır (stkKod=barkod vakasının aynısı: Oyuncak cirosu 700K görünüp gerçeğin 10,96M olması).",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products p WITH(NOLOCK) WHERE ISNUMERIC(p.Code)=1 AND CONVERT(int,p.Code) IN (SELECT stkID FROM dbo.urn)",
+      "karsilastirma": "enaz",
+      "beklenen": 800000,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "pos-kalem-header-mutabakati",
+      "db": "DerinSISBkm",
+      "korur": [
+        "encore-pos-gunluk-ciro",
+        "pos-urun-kategori-koprusu"
+      ],
+      "soru": "Son 7 günde kalem düzeyi net (TotalPrice−VatTotal) ile header net (GrossTotal−DiscountTotal−VatTotal) 1 TL içinde tutuyor mu?",
+      "neden": "Ölçülen kimlik (2026-09-03): SUM(TotalPrice) = GrossTotal − indirim, yani net KDV-hariç = TotalPrice − VatTotal. Kategori/ürün raporu kalemden, KPI header'dan okur; kimlik bozulursa iki rapor farklı ciro gösterir ve hangisinin doğru olduğu belli olmaz.",
+      "sql": "SELECT CASE WHEN ABS(ISNULL(k.kalem,0) - ISNULL(h.header,0)) < 1 THEN 0 ELSE 1 END FROM (SELECT SUM(sp.TotalPrice - sp.VatTotal) kalem FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE sp.IsValid = 1 AND s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))) k CROSS JOIN (SELECT SUM(s.GrossTotal - s.DiscountTotal - s.VatTotal) header FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))) h",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "joker-linked-server-canli",
+      "db": "DerinSISBkm",
+      "korur": [
+        "eticaret-marka-satis",
+        "eticaret-haftalik-net-kanal",
+        "il-teslimat-perf",
+        "ay-cikis-trend",
+        "cod-teslim-performans",
+        "cod-iade-maliyet-ozet"
+      ],
+      "soru": "ODAKJOKER linked server üstünden J_ITEMS okunuyor mu?",
+      "neden": "Altı e-ticaret sorgusu linked server üstünden gidiyor. Linked server düşerse veya izin kalkarsa e-ticaret raporları SIFIR/boş döner — bu, 'satış olmadı' diye okunur. Boş dönmek ile koşmamak ekranda aynı görünür.",
+      "sql": "SELECT COUNT(*) FROM ODAKJOKER.JOKER.dbo.J_ITEMS",
+      "karsilastirma": "enaz",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "joker-kanal-dort-deger",
+      "db": "DerinSISBkm",
+      "korur": [
+        "eticaret-haftalik-net-kanal"
+      ],
+      "soru": "J_ORDERS.APPLICATION dört kanal değerinin hepsi hâlâ mevcut mu?",
+      "neden": "Kanal kırılımı bu dört değeri isimle sayar, gerisini 'Diğer'e atar. Bir kanalın adı değişirse (ör. 'Mobil Uygulama (Android)' → 'Android App') o kanalın cirosu sessizce Diğer'e düşer ve kanal analizi yanlış olur.",
+      "sql": "SELECT COUNT(DISTINCT o.APPLICATION) FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')",
+      "karsilastirma": "esit",
+      "beklenen": 4,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "cod-durum-kodlari-duruyor",
+      "db": "DerinSISBkm",
+      "korur": [
+        "cod-teslim-performans",
+        "cod-iade-maliyet-ozet"
+      ],
+      "soru": "COD teslim (STATUS=1005) ve kargo iade (CARGODELIVERYSTATUS=2) kodları hâlâ dolu mu?",
+      "neden": "Kapıda ödeme ekonomisi bu iki kodu sayar. Kod değişirse teslim oranı 0, iade maliyeti 0 görünür — rapor 'her şey yolunda' der.",
+      "sql": "SELECT CASE WHEN SUM(CASE WHEN o.STATUS=1005 THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) > 0 THEN 1 ELSE 0 END FROM ODAKJOKER.JOKER.dbo.J_ORDERS o",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "irshrk-ciro-kolonlari-duruyor",
+      "db": "DerinSISBkm",
+      "korur": [
+        "aylik-magaza-net-ciro",
+        "okul-hizali-pencere-hacim"
+      ],
+      "soru": "irsHrk ciro sorgusunun beş kolonu (ehTrhS, ehTip, ehTutarN, ehMekan, ehstkID) duruyor mu?",
+      "neden": "Mağaza net cirosu ve hizalı pencere hacmi bu beş kolona dayanıyor. Kolon adı büyük/küçük harf ya da ek farkıyla değişince (ehstkID vs ehStkID vakası) sorgu patlar; erken yakalanması gerekir.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsHrk') AND name IN ('ehTrhS','ehTip','ehTutarN','ehMekan','ehstkID')",
+      "karsilastirma": "esit",
+      "beklenen": 5,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "pos-uc-magaza-satis-uretiyor",
+      "db": "DerinSISBkm",
+      "korur": [
+        "aylik-magaza-net-ciro",
+        "okul-hizali-pencere-hacim"
+      ],
+      "soru": "Üç POS mağazası (1 FSM · 4477 Özlüce · 4478 İst.Yolu) hâlâ satış hareketi üretiyor mu?",
+      "neden": "İş hacmi ve kişi-başı verimlilik analizleri bu üç mekanı sayar. Biri mekan kodu değiştirir veya POS'u başka sisteme geçerse o mağazanın cirosu sessizce sıfırlanır ve verimlilik yapay olarak yükselir.",
+      "sql": "SELECT COUNT(DISTINCT h.ehMekan) FROM dbo.irsHrk h WHERE h.ehTip IN (4,100) AND h.ehMekan IN (1,4477,4478)",
+      "karsilastirma": "esit",
+      "beklenen": 3,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "depo-emirayr-kolonlari-duruyor",
+      "db": "DerinSISBkm",
+      "korur": [
+        "depo-toplama-verim",
+        "depo-hareket-kategori"
+      ],
+      "soru": "depo.emirAyr toplama verimi kolonları (emTamam, emKisi, emAdet, emTarih) duruyor mu?",
+      "neden": "Depo işgücü verimi bu dört kolondan hesaplanır (tamamlanan emir · operatör · adet · tarih). WMS sürümü kolon adını değiştirirse rapor patlar; sessiz değişimde ise yanlış operatör/adet sayılır.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('depo.emirAyr') AND name IN ('emTamam','emKisi','emAdet','emTarih')",
+      "karsilastirma": "esit",
+      "beklenen": 4,
       "dogrulandi": "2026-09-03"
     }
   ]

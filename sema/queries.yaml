@@ -26,30 +26,35 @@ queries:
     question: "EncoreMerkez POS günlük ciro (iade düşülmüş, indirim Direct)"
     mcp_safe: true
     verified_sql: |
-      SELECT CONVERT(date, s.SaleDate) gun,
+      SELECT CONVERT(date, s.Date) gun,
              SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.GrossTotal ELSE s.GrossTotal END) brut,
-             SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.DiscountTotalDirect ELSE s.DiscountTotalDirect END) indirim
+             SUM(CASE WHEN s.DocumentsTypeId=3 THEN -s.DiscountTotal ELSE s.DiscountTotal END) indirim,
+       SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal - s.DiscountTotal - s.VatTotal)
+                ELSE (s.GrossTotal - s.DiscountTotal - s.VatTotal) END) net_kdvharic
       FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
       WHERE s.DocumentsTypeId IN (1,2,3,6,7,8)
-        AND s.SaleDate >= CONVERT(date,'01.06.2026',104)
-      GROUP BY CONVERT(date, s.SaleDate)
-    last_verified: 2026-06-08
+        AND s.Date >= CONVERT(date,'01.06.2026',104)
+      GROUP BY CONVERT(date, s.Date)
+    last_verified: 2026-09-03
 
   - id: pos-urun-kategori-koprusu
     question: "POS satışını DerinSIS kategorisine bağla (Products.Code=stkID)"
     bridges: [products-code-stkid, salesproducts-products]
     mcp_safe: true
     verified_sql: |
-      SELECT ub.KatAna, SUM(sp.Quantity) adet, SUM(sp.RowTotal) ciro
+      SELECT ub.KatAna,
+       SUM(CASE WHEN s.DocumentsTypeId=3 THEN -sp.Amount ELSE sp.Amount END) adet,
+       SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(sp.TotalPrice - sp.VatTotal)
+                ELSE (sp.TotalPrice - sp.VatTotal) END) net_kdvharic
       FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
       JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id=sp.SalesId
       JOIN EncoreMerkez.dbo.Products p WITH(NOLOCK) ON p.Id=sp.ProductsId
       JOIN DerinSISBkm.bkm.Urunbilgi ub ON ub.stkID = CONVERT(int, p.Code)
       WHERE sp.IsValid=1 AND s.DocumentsTypeId IN (1,2,3,6,7,8)
         AND ISNUMERIC(p.Code)=1
-        AND s.SaleDate >= CONVERT(date,'01.06.2026',104)
+        AND s.Date >= CONVERT(date,'01.06.2026',104)
       GROUP BY ub.KatAna
-    last_verified: 2026-06-09
+    last_verified: 2026-09-03
     note: "compat 110: TRY_CONVERT yok → ISNUMERIC guard. Oyuncak ciro 700K→10,96M bu köprüyle düzeldi."
 
   - id: eticaret-marka-satis
@@ -131,8 +136,8 @@ queries:
       SELECT TOP 100 s.Id, ISNULL(c.Name, s.CustomerCardNo) musteri, c.PhoneNumber
       FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
       LEFT JOIN DerinCrm.dbo.Customer c ON c.Id=s.CustomersId
-      WHERE s.SaleDate >= CONVERT(date,'01.06.2026',104)
-    last_verified: 2026-06-09
+      WHERE s.Date >= CONVERT(date,'01.06.2026',104)
+    last_verified: 2026-09-03
     note: "Group1Id=2 = personel müşteri. İç kartlar (Mağaza/Kumbara/599-699 tel) RFM'de filtrele."
 
   - id: eticaret-haftalik-net-kanal

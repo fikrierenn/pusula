@@ -89,6 +89,21 @@ def get_db_config(sunucu="erp"):
     sys.exit("'%s' sunucusu icin config yok — %s env degiskeni gerek." % (sunucu, h))
 
 
+def _katalog_kimlikleri():
+    """`queries.yaml` sorgu id'leri — `korur` alanini capraz denetlemek icin.
+    Katalog yoksa veya pyyaml kurulu degilse bos kume doner (denetim atlanir, PATLAMAZ:
+    katalogsuz depo da gecerli)."""
+    yol = REPO / "sema" / "queries.yaml"
+    if not yol.exists():
+        return set()
+    try:
+        import yaml
+    except ImportError:
+        return set()
+    veri = yaml.safe_load(yol.read_text(encoding="utf-8")) or {}
+    return {q.get("id") for q in veri.get("queries", []) if q.get("id")}
+
+
 def ac_baglanti(cfg, db):
     """Hedefe gore surucu secer.
 
@@ -148,6 +163,15 @@ def main():
             kusur.append("%s: karsilastirma gecersiz (%s)" % (k["id"], k.get("karsilastirma")))
         if k.get("sunucu", "erp") not in SUNUCULAR:
             kusur.append("%s: sunucu gecersiz (%s)" % (k["id"], k.get("sunucu")))
+    # `korur` alani queries.yaml'daki sorgu id'sine isaret eder. Yazim hatasi olan
+    # referans SESSIZCE baglantisiz kalir -> degismez hangi sorguyu korudugunu soylemez.
+    katalog = _katalog_kimlikleri()
+    if katalog:
+        for k in kayitlar:
+            for qid in k.get("korur", []):
+                if qid not in katalog:
+                    kusur.append("%s: korur -> queries.yaml'da yok (%s)" % (k["id"], qid))
+
     if kusur:
         sys.exit("Degismez kaydi kusurlu:\n  " + "\n  ".join(kusur))
 

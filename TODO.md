@@ -623,3 +623,17 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   stok hareketi girerse yakalar. Arşiv: `sorgular/2026-09-03-urntip-mal-olmayan-kalem.sql`.
   ⚠ GL/fatura analizinde (fatAyr, mizan) bu kalemler MEŞRU gelir/gider → orada urnTip filtresi
   uygulanmaz (codes.yaml'a yazıldı).
+- [x] **K-26 `queries.yaml` kataloğu koşulabilir hale getirildi + 9 yapısal değişmez** ✅ 03.09.2026
+  — `tools/sema_sorgu_dumani.py`: her kaydın SQL'i `COUNT(*) FROM (<sql>)` içine sarılıp koşar.
+  **İlk koşu 15/15 değil 12/15 verdi**: `Sales.SaleDate` kolonu yok (doğrusu `Date` — ve
+  `entities.yaml` bunu zaten yazmıştı, sema kendi içinde çelişiyordu). Düzeltince iki katman daha
+  çıktı: header'da `DiscountTotalDirect` yok (`DiscountTotal`), `SalesProducts`ta `Quantity`/
+  `RowTotal` yok (`Amount`/`TotalPrice`). **Kırık sorgular silinmedi** — doğru adlar ölçüldü, SQL
+  düzeltildi (+ iade işareti + net KDV-hariç), damga bugüne çekildi → 15/15 koşuyor. Ölçülen yeni
+  kimlik: `SUM(TotalPrice) = GrossTotal − DiscountTotal`, net KDV-hariç = `TotalPrice − VatTotal`
+  (kalem ve header birebir: 7.760.175,16). Katalogun taşıyıcı yapısı 9 değişmeze çevrildi
+  (belge tipi kümesi · POS-ürün köprüsü · kalem-header mutabakatı · JOKER linked server · kanal
+  4 değeri · COD durum kodları · irsHrk kolonları · üç POS mağazası · depo emirAyr kolonları),
+  dokuzu da kırmızıya düşürülüp geri alındı. Her değişmez `korur: [query-id]` taşıyor, koşucu
+  bunu katalogla çapraz denetliyor (yazım hatalı referans yakalanıyor). **24 değişmez / 2 hedef,
+  0 kırık.**
