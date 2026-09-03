@@ -714,6 +714,20 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   ve çalışanın hak/ödenek durumu **mevzuat + İK teyidi** gerektirir (biz hüküm vermiyoruz);
   (c) sözlükte olmayan 3 kod kullanılıyor: 45 (4 kişi) · 46 (1) · 48 (5) — SGK'nın sonradan
   eklediği kodlar, sözlük 36'ya kadar.
-  **Sorulacak:** sezonluk çıkışlarda hangi kod kullanılmalı, mevcut kayıtlar düzeltilecek mi.
+  **DIŞ KAYNAK (web araştırması 03.09, ÖLÇÜM DEĞİL — iki bağımsız kaynakta örtüştü):**
+  · Kod 19 Mevsim bitimi = mevsim sonu çıkış + takip eden mevsimde tekrar giriş (akit askıda);
+    kıdem/ihbar/işsizlik ödeneği doğmaz. **Personel bir sonraki sezon geri alınmayacaksa
+    kod 4 kullanılmalı** (kod 4 ödeneğe hak kazandıran kodlar arasında).
+  · Yani bugünkü pratik (03 istifa) ile 19 arasında ÖDENEK açısından fark yok; asıl ayrım
+    "geri alınacak mı" (19) vs "alınmayacak" (4).
+  · **Ayrıca 45/46/48 = İş Kanunu m.25 (işçinin kusuru) kapsamı:** 45 sataşma/alkol-uyuşturucu ·
+    46 güveni kötüye kullanma-hırsızlık · 48 izinsiz devamsızlık. Bu kodlarda kıdem/ihbar/ödenek
+    doğmaz. **Bizim veride 10 kişi bunlarla çıkmış (45→4 · 46→1 · 48→5)** — "istifa" değil
+    DİSİPLİN; devir/ayrılma analizinde ayrı sayılmalı.
+  · Kaynaklar özel hukuk/muhasebe siteleri (muhasebetr, kadimhukuk) — **SGK resmî yayını değil**;
+    hukuki sonuç için İK + mevzuat teyidi şart. Biz hüküm vermiyoruz.
+  **Sorulacak:** (a) sezonluk çıkışlarda hangi kod kullanılmalı (19 mu 4 mü — geri alım
+  niyetine göre), (b) mevcut kayıtlar düzeltilecek mi, (c) 45/46/48 ile çıkan 10 kişi
+  gerçekten disiplin vakası mı (kod yanlış girilmiş olabilir).
   Arşiv: `sorgular/2026-09-03-zirve-cikis-kodlari.sql` · sema: `vw_PersonelDepartman`
   → `isten_cikis_kodu` + `sezon_cikis_kodu_tuzagi`.
