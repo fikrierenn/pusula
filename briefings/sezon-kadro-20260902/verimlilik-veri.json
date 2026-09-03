@@ -33,36 +33,36 @@
       "mekan": 4478,
       "kadro25": 50,
       "adet25": 173336.0,
-      "kdvharic25": 20434775.08,
-      "kdvdahil25": 22033419.400000006,
+      "kdvharic25": 20434775.080000326,
+      "kdvdahil25": 22033419.400000982,
       "kadro26": 61,
       "adet26": 258008.5,
-      "kdvharic26": 40377406.53,
-      "kdvdahil26": 43186588.48000002
+      "kdvharic26": 40377406.52999959,
+      "kdvdahil26": 43186588.47999818
     },
     {
       "ad": "Özlüce",
       "mekan": 4477,
       "kadro25": 51,
       "adet25": 230764.7,
-      "kdvharic25": 28347121.589999977,
-      "kdvdahil25": 30475719.770000108,
+      "kdvharic25": 28347121.58999967,
+      "kdvdahil25": 30475719.7699934,
       "kadro26": 54,
       "adet26": 301250.05000000005,
-      "kdvharic26": 44784483.150000066,
-      "kdvdahil26": 48017124.65000005
+      "kdvharic26": 44784483.149999954,
+      "kdvdahil26": 48017124.6499974
     },
     {
       "ad": "FSM",
       "mekan": 1,
       "kadro25": 42,
       "adet25": 170555.0,
-      "kdvharic25": 18127443.549999982,
-      "kdvdahil25": 19307906.6,
+      "kdvharic25": 18127443.54999987,
+      "kdvdahil25": 19307906.600001086,
       "kadro26": 45,
       "adet26": 215773.0,
-      "kdvharic26": 29458690.66,
-      "kdvdahil26": 31330462.480000008
+      "kdvharic26": 29458690.660000827,
+      "kdvdahil26": 31330462.479999173
     }
   ],
   "yillar": [
@@ -74,7 +74,7 @@
     {
       "yil": 2024,
       "kadrolu": 91,
-      "adet": 2295719.4299999997
+      "adet": 2295719.43
     },
     {
       "yil": 2025,
@@ -99,149 +99,149 @@
   "ocak_agustos": {
     "magaza": {
       "adet25": 2752131.04,
-      "kdvdahil25": 315972605.87983286,
+      "kdvdahil25": 315972605.8803364,
       "adet26": 3607142.91,
-      "kdvdahil26": 489364071.84992415
+      "kdvdahil26": 489364071.85018444
     },
     "sinav": {
       "adet25": 33838.0,
-      "kdvdahil25": 136195263.78999996,
+      "kdvdahil25": 136195263.78999987,
       "adet26": 21859.0,
-      "kdvdahil26": 105644862.04000002
+      "kdvdahil26": 105644862.04000014
     }
   },
   "kategori": [
     {
       "kategori": "Kırtasiye",
       "adet25": 222233.0,
-      "ciro25": 18504324.96999892,
+      "ciro25": 18504324.970001176,
       "adet26": 296797.0,
-      "ciro26": 32380866.89999967,
+      "ciro26": 32380866.90000175,
       "oa_adet25": 1069622.3,
-      "oa_ciro25": 76768401.45003581,
+      "oa_ciro25": 76768401.44997737,
       "oa_adet26": 1312972.0,
-      "oa_ciro26": 105535404.85001275
+      "oa_ciro26": 105535404.84997344
     },
     {
       "kategori": "Çocuk Kitabı",
       "adet25": 73247.0,
-      "ciro25": 10023708.439999977,
+      "ciro25": 10023708.439999985,
       "adet26": 85696.0,
-      "ciro26": 15504229.089999922,
+      "ciro26": 15504229.089999974,
       "oa_adet25": 358316.0,
-      "oa_ciro25": 45499379.91000015,
+      "oa_ciro25": 45499379.90999979,
       "oa_adet26": 440372.0,
-      "oa_ciro26": 71753809.5900005
+      "oa_ciro26": 71753809.59000012
     },
     {
       "kategori": "Kitap",
       "adet25": 66399.0,
-      "ciro25": 14491065.990000136,
+      "ciro25": 14491065.989999749,
       "adet26": 83655.0,
-      "ciro26": 23140587.88999987,
+      "ciro26": 23140587.889999874,
       "oa_adet25": 298822.0,
-      "oa_ciro25": 61707973.98999786,
+      "oa_ciro25": 61707973.99000522,
       "oa_adet26": 348758.0,
-      "oa_ciro26": 92077305.79000172
+      "oa_ciro26": 92077305.7900013
     },
     {
       "kategori": "Genel",
       "adet25": 50963.7,
-      "ciro25": 27401.519999999997,
+      "ciro25": 27401.52,
       "adet26": 65475.55,
       "ciro26": 75350.18,
       "oa_adet25": 239529.74,
-      "oa_ciro25": 130925.49000000002,
+      "oa_ciro25": 130925.49000000005,
       "oa_adet26": 320282.91000000003,
-      "oa_ciro26": 366286.76000000007
+      "oa_ciro26": 366286.76
     },
     {
       "kategori": "Oyuncak",
       "adet25": 37135.0,
-      "ciro25": 11136312.680000002,
+      "ciro25": 11136312.679999994,
       "adet26": 58662.0,
-      "ciro26": 16748849.719999991,
+      "ciro26": 16748849.720000047,
       "oa_adet25": 208095.0,
-      "oa_ciro25": 51459212.22000137,
+      "oa_ciro25": 51459212.22000039,
       "oa_adet26": 302422.0,
-      "oa_ciro26": 85710445.58000049
+      "oa_ciro26": 85710445.57999879
     },
     {
       "kategori": "Hediyelik",
       "adet25": 39836.0,
-      "ciro25": 1475290.2599999993,
+      "ciro25": 1475290.2600000058,
       "adet26": 57747.0,
-      "ciro26": 2616103.029999999,
+      "ciro26": 2616103.030000003,
       "oa_adet25": 147554.0,
-      "oa_ciro25": 7019068.690000118,
+      "oa_ciro25": 7019068.689999742,
       "oa_adet26": 295058.0,
-      "oa_ciro26": 15849099.379999898
+      "oa_ciro26": 15849099.380000029
     },
     {
       "kategori": "Hazırlık Kitapları",
       "adet25": 38785.0,
-      "ciro25": 11644739.190000016,
+      "ciro25": 11644739.18999999,
       "adet26": 53872.0,
-      "ciro26": 22290739.34000001,
+      "ciro26": 22290739.339999933,
       "oa_adet25": 218692.0,
-      "oa_ciro25": 55129548.889999986,
+      "oa_ciro25": 55129548.89000054,
       "oa_adet26": 266398.0,
-      "oa_ciro26": 80665226.3500001
+      "oa_ciro26": 80665226.35000208
     },
     {
       "kategori": "Gıda",
       "adet25": 23729.0,
-      "ciro25": 692117.3300000001,
+      "ciro25": 692117.3299999998,
       "adet26": 30608.0,
-      "ciro26": 1187673.7799999998,
+      "ciro26": 1187673.7800000007,
       "oa_adet25": 115494.0,
-      "oa_ciro25": 3966038.8800000064,
+      "oa_ciro25": 3966038.8800000018,
       "oa_adet26": 138337.0,
-      "oa_ciro26": 5804839.820000002
+      "oa_ciro26": 5804839.819999993
     },
     {
       "kategori": "Akademi",
       "adet25": 7328.0,
-      "ciro25": 1942142.2500000005,
+      "ciro25": 1942142.2499999967,
       "adet26": 24841.0,
-      "ciro26": 6643827.520000001,
+      "ciro26": 6643827.52,
       "oa_adet25": 31118.0,
-      "oa_ciro25": 8032063.309999979,
+      "oa_ciro25": 8032063.310000017,
       "oa_adet26": 78701.0,
-      "oa_ciro26": 22241533.93000001
+      "oa_ciro26": 22241533.930000033
     },
     {
       "kategori": "Kişisel Bakım",
       "adet25": 4249.0,
-      "ciro25": 284625.5699999998,
+      "ciro25": 284625.56999999995,
       "adet26": 9191.0,
-      "ciro26": 420362.19000000006,
+      "ciro26": 420362.1899999996,
       "oa_adet25": 19711.0,
-      "oa_ciro25": 1246589.9800000014,
+      "oa_ciro25": 1246589.9800000011,
       "oa_adet26": 46133.0,
-      "oa_ciro26": 1897835.6800000016
+      "oa_ciro26": 1897835.6800000076
     },
     {
       "kategori": "Elektronik",
       "adet25": 7873.0,
-      "ciro25": 1257655.95,
+      "ciro25": 1257655.9500000011,
       "adet26": 5015.0,
-      "ciro26": 996193.7400000001,
+      "ciro26": 996193.7400000002,
       "oa_adet25": 21609.0,
-      "oa_ciro25": 3403257.070000011,
+      "oa_ciro25": 3403257.0700000003,
       "oa_adet26": 24495.0,
-      "oa_ciro26": 4767428.030000003
+      "oa_ciro26": 4767428.029999996
     },
     {
       "kategori": "Dergi",
       "adet25": 2570.0,
-      "ciro25": 265629.84000000026,
+      "ciro25": 265629.83999999973,
       "adet26": 2440.0,
-      "ciro26": 378485.8199999999,
+      "ciro26": 378485.8199999995,
       "oa_adet25": 12790.0,
-      "oa_ciro25": 1139273.6699999974,
+      "oa_ciro25": 1139273.6700000083,
       "oa_adet26": 13387.0,
-      "oa_ciro26": 1708894.4399999972
+      "oa_ciro26": 1708894.4400000102
     }
   ],
   "aylik": [
@@ -249,61 +249,61 @@
       "ay": 6,
       "ad": "Haziran",
       "adet25": 286587.64,
-      "ciro25": 33370958.15999884,
+      "ciro25": 33370958.16000493,
       "adet26": 376252.0,
-      "ciro26": 49927455.199999645
+      "ciro26": 49927455.19999929
     },
     {
       "ay": 7,
       "ad": "Temmuz",
       "adet25": 269478.0,
-      "ciro25": 32146020.509998865,
+      "ciro25": 32146020.510004632,
       "adet26": 367352.0,
-      "ciro26": 55819009.08999956
+      "ciro26": 55819009.089999236
     },
     {
       "ay": 8,
       "ad": "Ağustos",
       "adet25": 458258.7,
-      "ciro25": 61261231.980002195,
+      "ciro25": 61261231.97999352,
       "adet26": 483499.55,
-      "ciro26": 78086211.44000019
+      "ciro26": 78086211.4399969
     }
   ],
   "kayma": {
     "y25_hizali": {
       "adet": 343593.7,
-      "ciro": 45038824.54998295,
+      "ciro": 45038824.54998367,
       "gun": 27
     },
     "y25_agu_kalan": {
       "adet": 114665.0,
-      "ciro": 16222407.430001505,
+      "ciro": 16222407.430001348,
       "gun": 4
     },
     "y25_eyl_1_7": {
       "adet": 297547.05000000005,
-      "ciro": 37856267.22999363,
+      "ciro": 37856267.22999334,
       "gun": 7
     },
     "y25_agu_tam": {
       "adet": 458258.7,
-      "ciro": 61261231.97996998,
+      "ciro": 61261231.97997364,
       "gun": 31
     },
     "y26_agu_tam": {
       "adet": 483499.55000000005,
-      "ciro": 78086211.4399973,
+      "ciro": 78086211.4399992,
       "gun": 31
     },
     "y26_hizali": {
       "adet": 461082.1,
-      "ciro": 74782638.46999742,
+      "ciro": 74782638.46999744,
       "gun": 27
     },
     "hizali_buyume": {
       "adet": 0.34193991333368445,
-      "ciro": 0.6604038674900483,
+      "ciro": 0.6604038674900219,
       "gun": 27,
       "pencere_2025": "01.08 – 27.08.2025",
       "pencere_2026": "07.08 – 02.09.2026",
@@ -311,34 +311,34 @@
     },
     "agustos_kaymasiz_tahmin": {
       "adet": 614955.640162407,
-      "ciro": 101718386.50674719
+      "ciro": 101718386.50675164
     },
     "eylule_kayan": {
       "adet": 131456.0901624069,
-      "ciro": 23632175.066749886
+      "ciro": 23632175.06675245
     },
     "eylul_dalga_beklentisi": {
       "pencere_2025": "28.08 - 07.09.2025",
       "pencere_2026": "03.09 - 13.09.2026",
       "adet_2025": 412212.05000000005,
-      "ciro_2025": 54078674.65999513,
+      "ciro_2025": 54078674.65999469,
       "adet_2026_tahmin": 553163.8026521005,
-      "ciro_2026_tahmin": 89792440.55419199
+      "ciro_2026_tahmin": 89792440.55418983
     },
     "yontem": "2026 günleri 2025'in 6 gün öncesine denk gelir (açılış 08.09.2025 → 14.09.2026). Hizalı 27 günde ölçülen büyüme (adet %34.2 · ciro %66.0) 2025 Ağustos toplamına uygulanarak kayma-arındırılmış Ağustos bulunur. VARSAYIM: talep kaybı yok, yalnız zamanlama kaydı. Bugünün verisi HARİÇ (eTip 100 gün içinde yeniden yazılır); son tam gün 02.09.2026."
   },
   "agustos_yarim": {
     "1": {
       "adet25": 137483.0,
-      "ciro25": 17439365.109999724,
+      "ciro25": 17439365.110000245,
       "adet26": 171957.45,
-      "ciro26": 26226433.04999989
+      "ciro26": 26226433.05000022
     },
     "2": {
       "adet25": 320775.7,
-      "ciro25": 43821866.87000013,
+      "ciro25": 43821866.87000273,
       "adet26": 311542.1,
-      "ciro26": 51859778.38999996
+      "ciro26": 51859778.39000039
     }
   },
   "kadro_5magaza": {
@@ -1409,11 +1409,11 @@
         "fm_yapan_kisi_ay": 558,
         "fm_sinir_hizinda_kisi_ay": 32,
         "fm_en_yuksek_kisi_ay": 54.5,
-        "ciro_kdvharic": 242487002.9100002,
+        "ciro_kdvharic": 242487002.90999627,
         "adet": 2299072.34,
-        "maliyet_ciro_orani": 0.12848700345091818,
+        "maliyet_ciro_orani": 0.12848700345092026,
         "fte_basi_maliyet": 44696.48294715954,
-        "fte_basi_ciro": 347867.73562069656,
+        "fte_basi_ciro": 347867.7356206909,
         "fm_fte_basi_saat": 9.078758607498088,
         "fm_yillik_fte_saat": 108.94510328997706,
         "ort_prim_gun": 26.775928297055057
@@ -1432,11 +1432,11 @@
         "fm_yapan_kisi_ay": 519,
         "fm_sinir_hizinda_kisi_ay": 95,
         "fm_en_yuksek_kisi_ay": 72.0,
-        "ciro_kdvharic": 388687036.5200025,
+        "ciro_kdvharic": 388687036.52001286,
         "adet": 3127392.36,
-        "maliyet_ciro_orani": 0.12147912478879425,
+        "maliyet_ciro_orani": 0.121479124788791,
         "fte_basi_maliyet": 60834.04897556368,
-        "fte_basi_ciro": 500777.80097058514,
+        "fte_basi_ciro": 500777.80097059853,
         "fm_fte_basi_saat": 9.828443203779258,
         "fm_yillik_fte_saat": 117.9413184453511,
         "ort_prim_gun": 27.202102803738317
@@ -1507,17 +1507,17 @@
           "fm_tutar": 75867.76,
           "fm_yapan_kisi_ay": 81,
           "fm_sinir_hizinda_kisi_ay": 1,
-          "ciro_kdvharic": 30679569.860000182,
+          "ciro_kdvharic": 30679569.859999184,
           "adet": 270214.0,
           "aylar": [
             7
           ],
           "fte_basi_maliyet": 45157.19081159919,
-          "fte_basi_ciro": 315850.06719286396,
+          "fte_basi_ciro": 315850.06719285366,
           "fm_fte_basi_saat": 6.619766643788608,
           "fm_yillik_fte_saat": 79.43719972546329,
           "ort_prim_gun": 26.490909090909092,
-          "maliyet_ciro_orani": 0.1429703378344554
+          "maliyet_ciro_orani": 0.14297033783446003
         },
         "26": {
           "kisi_ay": 127,
@@ -1532,17 +1532,17 @@
           "fm_tutar": 125026.74999999993,
           "fm_yapan_kisi_ay": 90,
           "fm_sinir_hizinda_kisi_ay": 2,
-          "ciro_kdvharic": 53355722.4200003,
+          "ciro_kdvharic": 53355722.42000187,
           "adet": 368053.0,
           "aylar": [
             7
           ],
           "fte_basi_maliyet": 60323.47577823897,
-          "fte_basi_ciro": 474554.30554402876,
+          "fte_basi_ciro": 474554.3055440427,
           "fm_fte_basi_saat": 6.9641268900088935,
           "fm_yillik_fte_saat": 83.56952268010673,
           "ort_prim_gun": 26.559055118110237,
-          "maliyet_ciro_orani": 0.12711606463897568
+          "maliyet_ciro_orani": 0.12711606463897193
         }
       },
       "tum": {
@@ -1559,17 +1559,17 @@
           "fm_tutar": 100941.36,
           "fm_yapan_kisi_ay": 109,
           "fm_sinir_hizinda_kisi_ay": 1,
-          "ciro_kdvharic": 30679569.860000182,
+          "ciro_kdvharic": 30679569.859999184,
           "adet": 270214.0,
           "aylar": [
             7
           ],
           "fte_basi_maliyet": 46421.513073201015,
-          "fte_basi_ciro": 228383.89473945549,
+          "fte_basi_ciro": 228383.89473944803,
           "fm_fte_basi_saat": 6.349875930521093,
           "fm_yillik_fte_saat": 76.19851116625311,
           "ort_prim_gun": 27.046979865771814,
-          "maliyet_ciro_orani": 0.20326088722744448
+          "maliyet_ciro_orani": 0.2032608872274511
         },
         "26": {
           "kisi_ay": 170,
@@ -1584,17 +1584,17 @@
           "fm_tutar": 155345.68999999992,
           "fm_yapan_kisi_ay": 116,
           "fm_sinir_hizinda_kisi_ay": 2,
-          "ciro_kdvharic": 53355722.4200003,
+          "ciro_kdvharic": 53355722.42000187,
           "adet": 368053.0,
           "aylar": [
             7
           ],
           "fte_basi_maliyet": 61799.6534087415,
-          "fte_basi_ciro": 351564.17144739925,
+          "fte_basi_ciro": 351564.1714474096,
           "fm_fte_basi_saat": 6.434219196134416,
           "fm_yillik_fte_saat": 77.210630353613,
           "ort_prim_gun": 26.78235294117647,
-          "maliyet_ciro_orani": 0.17578484506629513
+          "maliyet_ciro_orani": 0.17578484506628994
         }
       },
       "segment": {
@@ -1612,17 +1612,17 @@
             "fm_tutar": 73436.25,
             "fm_yapan_kisi_ay": 77,
             "fm_sinir_hizinda_kisi_ay": 1,
-            "ciro_kdvharic": 30679569.860000182,
+            "ciro_kdvharic": 30679569.859999184,
             "adet": 270214.0,
             "aylar": [
               7
             ],
             "fte_basi_maliyet": 45504.16187522219,
-            "fte_basi_ciro": 327190.5779594758,
+            "fte_basi_ciro": 327190.57795946515,
             "fm_fte_basi_saat": 6.601493067899041,
             "fm_yillik_fte_saat": 79.21791681478848,
             "ort_prim_gun": 27.048076923076923,
-            "maliyet_ciro_orani": 0.13907540418495215
+            "maliyet_ciro_orani": 0.13907540418495667
           },
           "26": {
             "kisi_ay": 125,
@@ -1637,17 +1637,17 @@
             "fm_tutar": 124090.89999999994,
             "fm_yapan_kisi_ay": 89,
             "fm_sinir_hizinda_kisi_ay": 2,
-            "ciro_kdvharic": 53355722.4200003,
+            "ciro_kdvharic": 53355722.42000187,
             "adet": 368053.0,
             "aylar": [
               7
             ],
             "fte_basi_maliyet": 60517.94562669072,
-            "fte_basi_ciro": 481115.6214607782,
+            "fte_basi_ciro": 481115.6214607923,
             "fm_fte_basi_saat": 6.992786293958521,
             "fm_yillik_fte_saat": 83.91343552750226,
             "ort_prim_gun": 26.616,
-            "maliyet_ciro_orani": 0.12578669851322696
+            "maliyet_ciro_orani": 0.12578669851322324
           }
         },
         "SEZONLUK": {
@@ -1664,17 +1664,17 @@
             "fm_tutar": 2431.51,
             "fm_yapan_kisi_ay": 4,
             "fm_sinir_hizinda_kisi_ay": 0,
-            "ciro_kdvharic": 30679569.860000182,
+            "ciro_kdvharic": 30679569.859999184,
             "adet": 270214.0,
             "aylar": [
               7
             ],
             "fte_basi_maliyet": 35493.53138613861,
-            "fte_basi_ciro": 9112743.52277233,
+            "fte_basi_ciro": 9112743.522772035,
             "fm_fte_basi_saat": 7.128712871287129,
             "fm_yillik_fte_saat": 85.54455445544555,
             "ort_prim_gun": 16.833333333333332,
-            "maliyet_ciro_orani": 0.003894933649503236
+            "maliyet_ciro_orani": 0.0038949336495033627
           },
           "26": {
             "kisi_ay": 2,
@@ -1689,17 +1689,17 @@
             "fm_tutar": 935.85,
             "fm_yapan_kisi_ay": 1,
             "fm_sinir_hizinda_kisi_ay": 0,
-            "ciro_kdvharic": 53355722.4200003,
+            "ciro_kdvharic": 53355722.42000187,
             "adet": 368053.0,
             "aylar": [
               7
             ],
             "fte_basi_maliyet": 46258.23260869565,
-            "fte_basi_ciro": 34797210.273913234,
+            "fte_basi_ciro": 34797210.27391426,
             "fm_fte_basi_saat": 4.891304347826087,
             "fm_yillik_fte_saat": 58.69565217391305,
             "ort_prim_gun": 23.0,
-            "maliyet_ciro_orani": 0.0013293661257487218
+            "maliyet_ciro_orani": 0.0013293661257486825
           }
         }
       },
@@ -1723,7 +1723,7 @@
           "fm_tutar": 1066656.6800000002,
           "fm_yapan_kisi_ay": 478,
           "fm_sinir_hizinda_kisi_ay": 94,
-          "ciro_kdvharic": 602003224.0700146,
+          "ciro_kdvharic": 602003224.0700126,
           "adet": 2234666.2,
           "aylar": [
             7,
@@ -1732,11 +1732,11 @@
             10
           ],
           "fte_basi_maliyet": 46442.31803931115,
-          "fte_basi_ciro": 1312316.2855762562,
+          "fte_basi_ciro": 1312316.2855762518,
           "fm_fte_basi_saat": 16.11611684348205,
           "fm_yillik_fte_saat": 193.39340212178462,
           "ort_prim_gun": 25.57992565055762,
-          "maliyet_ciro_orani": 0.0353895768495456
+          "maliyet_ciro_orani": 0.03538957684954572
         },
         "segment": {
           "KADROLU": {
@@ -1752,7 +1752,7 @@
             "fm_tutar": 764952.55,
             "fm_yapan_kisi_ay": 367,
             "fm_sinir_hizinda_kisi_ay": 58,
-            "ciro_kdvharic": 602003224.0700146,
+            "ciro_kdvharic": 602003224.0700126,
             "adet": 2234666.2,
             "aylar": [
               7,
@@ -1761,11 +1761,11 @@
               10
             ],
             "fte_basi_maliyet": 47647.62593194906,
-            "fte_basi_ciro": 1575649.6878468364,
+            "fte_basi_ciro": 1575649.687846831,
             "fm_fte_basi_saat": 13.577473390333274,
             "fm_yillik_fte_saat": 162.9296806839993,
             "ort_prim_gun": 27.29047619047619,
-            "maliyet_ciro_orani": 0.030239986907915236
+            "maliyet_ciro_orani": 0.030239986907915337
           },
           "SEZONLUK": {
             "kisi_ay": 118,
@@ -1780,7 +1780,7 @@
             "fm_tutar": 301704.13,
             "fm_yapan_kisi_ay": 111,
             "fm_sinir_hizinda_kisi_ay": 36,
-            "ciro_kdvharic": 602003224.0700146,
+            "ciro_kdvharic": 602003224.0700126,
             "adet": 2234666.2,
             "aylar": [
               7,
@@ -1789,11 +1789,11 @@
               10
             ],
             "fte_basi_maliyet": 40435.69235869565,
-            "fte_basi_ciro": 7852215.9661306245,
+            "fte_basi_ciro": 7852215.966130598,
             "fm_fte_basi_saat": 28.767391304347825,
             "fm_yillik_fte_saat": 345.2086956521739,
             "ort_prim_gun": 19.491525423728813,
-            "maliyet_ciro_orani": 0.005149589941630368
+            "maliyet_ciro_orani": 0.005149589941630385
           }
         }
       },
@@ -1814,7 +1814,7 @@
           "fm_tutar": 738847.2000000001,
           "fm_yapan_kisi_ay": 554,
           "fm_sinir_hizinda_kisi_ay": 32,
-          "ciro_kdvharic": 242487002.9100002,
+          "ciro_kdvharic": 242487002.90999627,
           "adet": 2299072.34,
           "aylar": [
             1,
@@ -1826,11 +1826,11 @@
             7
           ],
           "fte_basi_maliyet": 44741.14673590889,
-          "fte_basi_ciro": 349556.00823122414,
+          "fte_basi_ciro": 349556.0082312185,
           "fm_fte_basi_saat": 9.088222574599971,
           "fm_yillik_fte_saat": 109.05867089519965,
           "ort_prim_gun": 26.85290322580645,
-          "maliyet_ciro_orani": 0.12799421461041957
+          "maliyet_ciro_orani": 0.12799421461042162
         },
         "26": {
           "kisi_ay": 833,
@@ -1845,7 +1845,7 @@
           "fm_tutar": 1159522.98,
           "fm_yapan_kisi_ay": 502,
           "fm_sinir_hizinda_kisi_ay": 94,
-          "ciro_kdvharic": 388687036.5200025,
+          "ciro_kdvharic": 388687036.52001286,
           "adet": 3127392.36,
           "aylar": [
             1,
@@ -1857,11 +1857,11 @@
             7
           ],
           "fte_basi_maliyet": 61120.81280314126,
-          "fte_basi_ciro": 514453.85580164456,
+          "fte_basi_ciro": 514453.85580165824,
           "fm_fte_basi_saat": 9.846038118768199,
           "fm_yillik_fte_saat": 118.15245742521839,
           "ort_prim_gun": 27.210084033613445,
-          "maliyet_ciro_orani": 0.11880718185676757
+          "maliyet_ciro_orani": 0.11880718185676441
         }
       },
       "SEZONLUK": {
@@ -1878,7 +1878,7 @@
           "fm_tutar": 2431.51,
           "fm_yapan_kisi_ay": 4,
           "fm_sinir_hizinda_kisi_ay": 0,
-          "ciro_kdvharic": 242487002.9100002,
+          "ciro_kdvharic": 242487002.90999627,
           "adet": 2299072.34,
           "aylar": [
             1,
@@ -1890,11 +1890,11 @@
             7
           ],
           "fte_basi_maliyet": 35493.53138613861,
-          "fte_basi_ciro": 72025842.44851491,
+          "fte_basi_ciro": 72025842.44851375,
           "fm_fte_basi_saat": 7.128712871287129,
           "fm_yillik_fte_saat": 85.54455445544555,
           "ort_prim_gun": 16.833333333333332,
-          "maliyet_ciro_orani": 0.0004927888404986015
+          "maliyet_ciro_orani": 0.0004927888404986095
         },
         "26": {
           "kisi_ay": 23,
@@ -1909,7 +1909,7 @@
           "fm_tutar": 24405.55,
           "fm_yapan_kisi_ay": 17,
           "fm_sinir_hizinda_kisi_ay": 1,
-          "ciro_kdvharic": 388687036.5200025,
+          "ciro_kdvharic": 388687036.52001286,
           "adet": 3127392.36,
           "aylar": [
             1,
@@ -1921,11 +1921,11 @@
             7
           ],
           "fte_basi_maliyet": 50333.58222940226,
-          "fte_basi_ciro": 18837820.8329565,
+          "fte_basi_ciro": 18837820.832957003,
           "fm_fte_basi_saat": 9.184168012924072,
           "fm_yillik_fte_saat": 110.21001615508887,
           "ort_prim_gun": 26.91304347826087,
-          "maliyet_ciro_orani": 0.002671942932026637
+          "maliyet_ciro_orani": 0.002671942932026566
         }
       }
     },
@@ -1948,8 +1948,8 @@
         "sezonluk_fm_saat25": 0,
         "maliyet25": 4474024.3825,
         "fm_saat25": 620.0,
-        "ciro25": 42047378.750000566,
-        "oran25": 0.10640435897564578,
+        "ciro25": 42047378.74999699,
+        "oran25": 0.10640435897565483,
         "kisi_ay26": 121,
         "fte26": 109.93333333333332,
         "ort_prim_gun26": 27.25619834710744,
@@ -1963,8 +1963,8 @@
         "sezonluk_fm_saat26": 22.5,
         "maliyet26": 6217410.874999999,
         "fm_saat26": 727.5,
-        "ciro26": 66547637.51000127,
-        "oran26": 0.09342797291737968
+        "ciro26": 66547637.51000418,
+        "oran26": 0.0934279729173756
       },
       {
         "ay": 2,
@@ -1984,8 +1984,8 @@
         "sezonluk_fm_saat25": 0,
         "maliyet25": 4224075.9997,
         "fm_saat25": 46.0,
-        "ciro25": 38500825.16000035,
-        "oran25": 0.10971390826419268,
+        "ciro25": 38500825.159999624,
+        "oran25": 0.10971390826419475,
         "kisi_ay26": 123,
         "fte26": 110.93333333333334,
         "ort_prim_gun26": 27.056910569105693,
@@ -1999,8 +1999,8 @@
         "sezonluk_fm_saat26": 0.0,
         "maliyet26": 6437880.404999999,
         "fm_saat26": 65.0,
-        "ciro26": 57032461.58000022,
-        "oran26": 0.11288098438412124
+        "ciro26": 57032461.58000356,
+        "oran26": 0.11288098438411463
       },
       {
         "ay": 3,
@@ -2020,8 +2020,8 @@
         "sezonluk_fm_saat25": 0,
         "maliyet25": 4600008.1925,
         "fm_saat25": 1361.5,
-        "ciro25": 33135399.0899999,
-        "oran25": 0.13882458998021424,
+        "ciro25": 33135399.090000406,
+        "oran25": 0.1388245899802121,
         "kisi_ay26": 119,
         "fte26": 112.56666666666666,
         "ort_prim_gun26": 28.3781512605042,
@@ -2035,8 +2035,8 @@
         "sezonluk_fm_saat26": 57.0,
         "maliyet26": 6842756.383199998,
         "fm_saat26": 1681.0,
-        "ciro26": 58470467.62000047,
-        "oran26": 0.11702927412298235
+        "ciro26": 58470467.62000075,
+        "oran26": 0.11702927412298178
       },
       {
         "ay": 4,
@@ -2056,8 +2056,8 @@
         "sezonluk_fm_saat25": 0,
         "maliyet25": 4282833.829500001,
         "fm_saat25": 746.0,
-        "ciro25": 37234820.78999957,
-        "oran25": 0.11502227588672251,
+        "ciro25": 37234820.78999949,
+        "oran25": 0.11502227588672273,
         "kisi_ay26": 124,
         "fte26": 110.03333333333333,
         "ort_prim_gun26": 26.620967741935484,
@@ -2071,8 +2071,8 @@
         "sezonluk_fm_saat26": 23.5,
         "maliyet26": 7013152.140000001,
         "fm_saat26": 786.5,
-        "ciro26": 52981728.15000034,
-        "oran26": 0.1323692598350995
+        "ciro26": 52981728.14999941,
+        "oran26": 0.13236925983510184
       },
       {
         "ay": 5,
@@ -2092,8 +2092,8 @@
         "sezonluk_fm_saat25": 0,
         "maliyet25": 4743646.205499999,
         "fm_saat25": 1144.5,
-        "ciro25": 29713022.559999898,
-        "oran25": 0.15964872627552756,
+        "ciro25": 29713022.55999972,
+        "oran25": 0.15964872627552854,
         "kisi_ay26": 124,
         "fte26": 112.03333333333333,
         "ort_prim_gun26": 27.10483870967742,
@@ -2107,8 +2107,8 @@
         "sezonluk_fm_saat26": 75.5,
         "maliyet26": 7453386.71,
         "fm_saat26": 3553.01,
-        "ciro26": 53821155.819999926,
-        "oran26": 0.1384843301196873
+        "ciro26": 53821155.8200009,
+        "oran26": 0.1384843301196848
       },
       {
         "ay": 6,
@@ -2128,8 +2128,8 @@
         "sezonluk_fm_saat25": 0,
         "maliyet25": 4445571.3025,
         "fm_saat25": 1767.5,
-        "ciro25": 31175986.699999742,
-        "oran25": 0.1425960097198796,
+        "ciro25": 31175986.70000087,
+        "oran25": 0.14259600971987443,
         "kisi_ay26": 118,
         "fte26": 108.23333333333333,
         "ort_prim_gun26": 27.516949152542374,
@@ -2143,8 +2143,8 @@
         "sezonluk_fm_saat26": 3.5,
         "maliyet26": 6470405.039999998,
         "fm_saat26": 32.5,
-        "ciro26": 46477863.41999994,
-        "oran26": 0.13921476943829802
+        "ciro26": 46477863.420002155,
+        "oran26": 0.13921476943829142
       },
       {
         "ay": 7,
@@ -2164,8 +2164,8 @@
         "sezonluk_fm_saat25": 24.0,
         "maliyet25": 4386268.467500001,
         "fm_saat25": 643.0,
-        "ciro25": 30679569.860000182,
-        "oran25": 0.1429703378344554,
+        "ciro25": 30679569.859999184,
+        "oran25": 0.14297033783446003,
         "kisi_ay26": 127,
         "fte26": 112.43333333333334,
         "ort_prim_gun26": 26.559055118110237,
@@ -2179,8 +2179,8 @@
         "sezonluk_fm_saat26": 7.5,
         "maliyet26": 6782369.460000002,
         "fm_saat26": 783.0,
-        "ciro26": 53355722.4200003,
-        "oran26": 0.12711606463897568
+        "ciro26": 53355722.42000187,
+        "oran26": 0.12711606463897193
       },
       {
         "ay": 8,
@@ -2200,8 +2200,8 @@
         "sezonluk_fm_saat25": 630.0,
         "maliyet25": 5442547.3939000005,
         "fm_saat25": 2139.5,
-        "ciro25": 186875143.90000063,
-        "oran25": 0.029123977005804366,
+        "ciro25": 186875143.89999953,
+        "oran25": 0.02912397700580454,
         "kisi_ay26": 16,
         "fte26": 8.466666666666667,
         "ort_prim_gun26": 15.875,
@@ -2215,8 +2215,8 @@
         "sezonluk_fm_saat26": 23.0,
         "maliyet26": 444146.98000000004,
         "fm_saat26": 55.5,
-        "ciro26": 172114527.4800017,
-        "oran26": 0.0025805316175394103
+        "ciro26": 172114527.48,
+        "oran26": 0.002580531617539436
       },
       {
         "ay": 9,
@@ -2236,8 +2236,8 @@
         "sezonluk_fm_saat25": 1447.0,
         "maliyet25": 6568880.7995,
         "fm_saat25": 3495.0,
-        "ciro25": 313049992.77001745,
-        "oran25": 0.020983488104808348,
+        "ciro25": 313049992.7700272,
+        "oran25": 0.020983488104807692,
         "kisi_ay26": 0,
         "fte26": 0,
         "ort_prim_gun26": 0.0,
@@ -2251,7 +2251,7 @@
         "sezonluk_fm_saat26": 0,
         "maliyet26": 0,
         "fm_saat26": 0,
-        "ciro26": 20742785.499999978,
+        "ciro26": 20742785.500000034,
         "oran26": 0.0
       },
       {
@@ -2272,8 +2272,8 @@
         "sezonluk_fm_saat25": 104.5,
         "maliyet25": 4906942.701,
         "fm_saat25": 1115.5,
-        "ciro25": 71398517.53999633,
-        "oran25": 0.06872611463187885,
+        "ciro25": 71398517.53998658,
+        "oran25": 0.06872611463188823,
         "kisi_ay26": 0,
         "fte26": 0,
         "ort_prim_gun26": 0.0,
@@ -2293,13 +2293,128 @@
     ],
     "pencere_aciklama": "SEZON = Tem–Eki (Temmuz hazırlık; asıl hacim ve sezonluk kadro Ağustos–Ekim). 2026 sezonu henüz tamamlanmadığı için KIYAS tamamlanan ortak ay(lar) ile yapılır: Tem. KÜMÜLATİF pencere (01-07 ay (Oca–Tem), her iki yıl) yıl geneli referansıdır; aylık kırılım artışın hangi ayda oluştuğunu gösterir; geçen yılın tam sezonu ayrı blokta durur."
   },
+  "tahmin": {
+    "yontem": "okul-hizalı gün eşleme (ciro) + sezon şekli×seviye (FTE) + FTE başına maliyet",
+    "son_gercek_gun": "02.09.2026",
+    "taban_ay": 7,
+    "taban_ay_ad": "Tem",
+    "buyume_orani_ciro": 0.6604038674900219,
+    "fte_seviye_katsayisi": 1.15751544269046,
+    "fte_basi_maliyet_taban": 60323.47577823897,
+    "acilis": {
+      "2025": "08.09.2025",
+      "2026": "14.09.2026"
+    },
+    "ay": [
+      {
+        "ay": 7,
+        "ad": "Tem",
+        "ciro_gerceklesen": 53355722.42000007,
+        "ciro_tahmin": 0.0,
+        "ciro_toplam": 53355722.42000007,
+        "ciro_tahmin_gun": 0,
+        "ciro_gecen_yil": 30679569.859999184,
+        "ciro_tip": "gerçek",
+        "fte": 112.43333333333334,
+        "fte_tip": "gerçek",
+        "fte_kadrolu": 110.9,
+        "fte_sezonluk": 1.5333333333333334,
+        "fte_gecen_yil": 97.13333333333333,
+        "maliyet": 6782369.460000002,
+        "maliyet_tip": "gerçek",
+        "maliyet_gecen_yil": 4386268.467500001
+      },
+      {
+        "ay": 8,
+        "ad": "Ağu",
+        "ciro_gerceklesen": 172114527.48,
+        "ciro_tahmin": 0.0,
+        "ciro_toplam": 172114527.48,
+        "ciro_tahmin_gun": 0,
+        "ciro_gecen_yil": 186875143.89999953,
+        "ciro_tip": "gerçek",
+        "fte": 139.63494623655916,
+        "fte_tip": "tahmin",
+        "fte_kadrolu": 108.96078700526196,
+        "fte_sezonluk": 30.67415923129719,
+        "fte_gecen_yil": 120.63333333333334,
+        "maliyet": 8423265.297096778,
+        "maliyet_tip": "tahmin",
+        "maliyet_gecen_yil": 5442547.3939000005
+      },
+      {
+        "ay": 9,
+        "ad": "Eyl",
+        "ciro_gerceklesen": 20742785.500000007,
+        "ciro_tahmin": 611161123.44835,
+        "ciro_toplam": 631903908.94835,
+        "ciro_tahmin_gun": 28,
+        "ciro_gecen_yil": 313049992.7700272,
+        "ciro_tip": "kısmi",
+        "fte": 153.75663463738275,
+        "fte_tip": "tahmin",
+        "fte_kadrolu": 110.85139556165637,
+        "fte_sezonluk": 42.90523907572638,
+        "fte_gecen_yil": 132.83333333333331,
+        "maliyet": 9275134.625291698,
+        "maliyet_tip": "tahmin",
+        "maliyet_gecen_yil": 6568880.7995
+      },
+      {
+        "ay": 10,
+        "ad": "Eki",
+        "ciro_gerceklesen": 0.0,
+        "ciro_tahmin": 133016523.33798593,
+        "ciro_toplam": 133016523.33798593,
+        "ciro_tahmin_gun": 31,
+        "ciro_gecen_yil": 71398517.53998658,
+        "ciro_tip": "tahmin",
+        "fte": 125.16600320292841,
+        "fte_tip": "tahmin",
+        "fte_kadrolu": 113.89951956074127,
+        "fte_sezonluk": 11.266483642187142,
+        "fte_gecen_yil": 108.13333333333334,
+        "maliyet": 7550448.362470834,
+        "maliyet_tip": "tahmin",
+        "maliyet_gecen_yil": 4906942.701
+      }
+    ],
+    "sezon_toplam": {
+      "ciro": 990390682.1863359,
+      "ciro_gecen_yil": 602003224.0700126,
+      "maliyet": 32031217.74485931,
+      "maliyet_gecen_yil": 21304639.3619,
+      "fte": 530.9909174102037,
+      "fte_gecen_yil": 458.73333333333335,
+      "maliyet_ciro_orani": 0.03234200232392012,
+      "maliyet_ciro_orani_gecen_yil": 0.03538957684954572,
+      "fte_basi_ciro": 1865174.430886234,
+      "fte_basi_ciro_gecen_yil": 1312316.2855762518
+    },
+    "kayma_notu": "⚠ TAKVİM AYI KIYASI KAYMAYI YANSITIR: okul 08.09.2025'de değil 14.09.2026'te açıldı — 2025'te Ağustos sonunda gerçekleşen yoğunluk 2026'da Eylül başına düştü. Bu yüzden Ağustos -8%, Eylül +102% görünür; ay ay okumak yanıltır, SEZON TOPLAMI (veya Ağustos+Eylül birlikte) esas alınır.",
+    "birlesik_agu_eyl": {
+      "ciro": 804018436.42835,
+      "ciro_gecen_yil": 499925136.6700268,
+      "fte": 293.3915808739419,
+      "fte_gecen_yil": 253.46666666666664,
+      "maliyet": 17698399.922388475
+    },
+    "varsayimlar": [
+      "Sezon şekli yıl üzerinden aynı: 2025'in gün-bazlı satış dağılımı okul açılışına hizalanarak 2026 takvimine taşındı (açılış 08.09.2025 → 14.09.2026).",
+      "Seviye: hizalı pencerede ÖLÇÜLEN ciro büyümesi (%66.0) uygulandı — ayrı bir büyüme varsayımı yapılmadı.",
+      "FTE: sezon şekli 2025'ten, seviye 2026'nın Tem ayından (katsayı 1.158).",
+      "Maliyet: tahmini FTE × 2026 Tem ayının FTE başına maliyeti (60.323 ₺). Ücret seviyesi sabit varsayıldı → zam/asgari ücret artışı olursa maliyet tahmini ALT SINIRDIR.",
+      "Gerçekleşen günler tahminle değiştirilmedi: 02.09.2026 tarihine kadar gerçek veri, sonrası tahmindir.",
+      "Bayram/tatil kayması ve mağaza açılış-kapanışı modellenmedi."
+    ]
+  },
   "toplam": {
     "adet25": 574655.7,
     "adet26": 775031.55,
-    "kdvharic25": 66909340.219999954,
-    "kdvharic26": 114620580.34000006,
-    "kdvdahil25": 71817045.77000012,
-    "kdvdahil26": 122534175.61000007,
+    "kdvharic25": 66909340.219999865,
+    "kdvharic26": 114620580.34000038,
+    "kdvdahil25": 71817045.76999547,
+    "kdvdahil26": 122534175.60999475,
     "kadro25": 143,
     "kadro26": 160
   }

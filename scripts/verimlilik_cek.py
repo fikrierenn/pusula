@@ -5,6 +5,7 @@ Blok modulleri: cek_hacim (DerinSIS) · cek_kadro/cek_tutunma/mutabakat + cek_no
 (Zirve). Bu dosya yalnizca siralama, toplamlar ve meta yazar; SORGU ICERMEZ.
 """
 from verimlilik_cek_hacim import cek_hacim
+from verimlilik_cek_tahmin import cek_tahmin
 from verimlilik_cek_kadro import cek_kadro, cek_tutunma, mutabakat
 from verimlilik_cek_maliyet import cek_maliyet
 from verimlilik_cek_norm import cek_norm
@@ -17,7 +18,7 @@ def cek(env, kisi=False):
     veri = {"meta": {}, "magaza": [], "yillar": [], "notlar": NOTLAR}
 
     erp = _cn(env, "erp")
-    hacim, yil_adet, ciro_ay = cek_hacim(erp.cursor(), veri)
+    hacim, yil_adet, ciro_ay, gunluk = cek_hacim(erp.cursor(), veri)
     _kapat(erp)
 
     zrv = _cn(env, "zirve")
@@ -27,6 +28,7 @@ def cek(env, kisi=False):
     cek_norm(zc, veri)
     cek_tutunma(zc, veri)
     cek_maliyet(zc, veri, ciro_ay)
+    cek_tahmin(veri, gunluk, ciro_ay)     # sezonun kalani (Eyl-Eki) tahmini
     mutabakat(veri)
     _kapat(zrv)
 

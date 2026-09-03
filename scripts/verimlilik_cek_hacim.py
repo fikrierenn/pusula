@@ -312,4 +312,21 @@ def cek_hacim(cur, veri):
     veri["agustos_yarim"] = yarim
 
 
-    return hacim, yil_adet, ciro_ay
+    # 3h) GUNLUK CIRO — sezonun kalani icin okul-hizali TAHMIN modelinin girdisi.
+    #   2025'in gunluk satisi 2026 takvimine ofsetlenerek tasinir (verimlilik_cek_tahmin).
+    print("DerinSIS: günlük ciro (tahmin modeli girdisi)...", flush=True)
+    cur.execute("""
+        SELECT CAST(bs.eTarihS AS date) AS gun,
+               SUM(CAST(dt.ehTutar - dt.ehIndirim AS float)) AS net_kdvharic
+        FROM dbo.irs bs WITH(NOLOCK)
+        INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+        WHERE bs.eTip = 100
+          AND bs.eMekan IN (1, 4477, 4478)
+          AND bs.eTarihS >= ? AND bs.eTarihS < ?
+        GROUP BY CAST(bs.eTarihS AS date)""",
+                "%d0601" % ONCEKI, "%d1201" % CARI)
+    gunluk = {}
+    for gun, net in cur.fetchall():
+        gunluk[(gun.year, gun.isoformat())] = float(net or 0)
+
+    return hacim, yil_adet, ciro_ay, gunluk

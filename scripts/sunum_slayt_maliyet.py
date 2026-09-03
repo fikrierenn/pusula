@@ -370,3 +370,106 @@ def slayt_aylik_kadro_maliyet(C):
                + " bordrosu işlendiğinde tabloya eklenir") if sz["eksik_aylar"]
               else "tüm sezon ayları işlenmiş"))
     sig(s)
+
+
+def slayt_sezon_tahmini(C):
+    """Sezonun kalani (Eyl-Eki) tahmini — okul-hizali gun esleme + FTE sekli/seviyesi.
+
+    Kullanici istegi 03.09.2026. TAHMIN oldugu her yerde ETIKETLI; varsayimlar dipnotta.
+    """
+    th = C.v.get("tahmin")
+    if not th or th.get("gerek_yok"):
+        return
+    t_ = th["sezon_toplam"]
+
+    s = add("Yalnızca Başlık")
+    setph(s, 0, "Sezonun Kalanı — Eylül–Ekim Tahmini")
+
+    kpi(s, 0.6, 1.5, 3.9, "SEZON CİROSU (TAHMİN)",
+        "%s M TL" % bin(t_["ciro"] / 1e6),
+        "%d: %s M · %s" % (ONCEKI, bin(t_["ciro_gecen_yil"] / 1e6),
+                           yzd(t_["ciro"] / t_["ciro_gecen_yil"] - 1)), DRED, 26, ikon="package")
+    kpi(s, 4.68, 1.5, 3.9, "SEZON KADROSU (TAHMİN)",
+        "%s FTE" % bin(t_["fte"], 1),
+        "%d: %s FTE · %s" % (ONCEKI, bin(t_["fte_gecen_yil"], 1),
+                             yzd(t_["fte"] / t_["fte_gecen_yil"] - 1)), MGREY, 26, ikon="users")
+    kpi(s, 8.75, 1.5, 3.9, "SEZON MALİYET / CİRO",
+        "%%%s" % ("%.2f" % (t_["maliyet_ciro_orani"] * 100)).replace(".", ","),
+        "%d: %%%s · tahmini personel yükü"
+        % (ONCEKI, ("%.2f" % (t_["maliyet_ciro_orani_gecen_yil"] * 100)).replace(".", ",")),
+        YESIL, 26, ikon="layers")
+
+    # ⚠ CIRO ve MALIYET tipi AYRI kolon: Agustos cirosu GERCEK (ay kapandi) ama bordrosu
+    #   kosmadigi icin maliyeti TAHMIN. Tek "tip" kolonu bunu yanlis gosterirdi.
+    satir = [["Ay", "Ciro", "Maliyet", "Ciro %d" % ONCEKI, "Ciro %d" % CARI, "Δ",
+              "FTE %d" % CARI, "Maliyet %d" % CARI]]
+    for r in th["ay"]:
+        satir.append([r["ad"],
+                      "gerçek" if r["ciro_tip"] == "gerçek" else r["ciro_tip"].upper(),
+                      "gerçek" if r["maliyet_tip"] == "gerçek" else "TAHMİN",
+                      "%s M" % bin(r["ciro_gecen_yil"] / 1e6, 1),
+                      "%s M" % bin(r["ciro_toplam"] / 1e6, 1),
+                      yzd(r["ciro_toplam"] / r["ciro_gecen_yil"] - 1) if r["ciro_gecen_yil"] else "—",
+                      bin(r["fte"], 1),
+                      "%s M" % bin(r["maliyet"] / 1e6, 1)])
+    b_ = th["birlesik_agu_eyl"]
+    satir.append(["Ağu+Eyl", "kayma", "nötr", "%s M" % bin(b_["ciro_gecen_yil"] / 1e6, 1),
+                  "%s M" % bin(b_["ciro"] / 1e6, 1),
+                  yzd(b_["ciro"] / b_["ciro_gecen_yil"] - 1) if b_["ciro_gecen_yil"] else "—",
+                  bin(b_["fte"], 1), "%s M" % bin(b_["maliyet"] / 1e6, 1)])
+    satir.append(["TOPLAM", "", "", "%s M" % bin(t_["ciro_gecen_yil"] / 1e6, 1),
+                  "%s M" % bin(t_["ciro"] / 1e6, 1),
+                  yzd(t_["ciro"] / t_["ciro_gecen_yil"] - 1),
+                  bin(t_["fte"], 1), "%s M" % bin(t_["maliyet"] / 1e6, 1)])
+    t = s.shapes.add_table(len(satir), 8, Inches(0.6), Inches(3.65), Inches(7.9),
+                           Inches(1.75)).table
+    for i, gen in enumerate((0.85, 0.85, 0.95, 1.15, 1.15, 0.85, 0.9, 1.2)):
+        t.columns[i].width = Inches(gen)
+    for r_ in t.rows:
+        r_.height = Inches(0.22)
+    for r, row in enumerate(satir):
+        for c, val in enumerate(row):
+            cell = t.cell(r, c); cell.text = val
+            son_satir = (satir[r][0] in ("TOPLAM", "Ağu+Eyl"))
+            tahmin_satir = any(x in ("TAHMİN", "KISMI", "TAHMIN") for x in satir[r][1:3])
+            for para in cell.text_frame.paragraphs:
+                para.alignment = PP_ALIGN.LEFT if c <= 1 else PP_ALIGN.CENTER
+                for run in para.runs:
+                    run.font.size = Pt(8.5 if r else 8)
+                    run.font.name = "Calibri"
+                    run.font.bold = (r == 0 or son_satir or (c in (1, 2) and tahmin_satir))
+                    run.font.color.rgb = WHITE if r == 0 else (
+                        DRED if (c in (1, 2) and tahmin_satir) else INK)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = RED if r == 0 else (
+                LGREY if son_satir else (RGBColor(0xFF, 0xF6, 0xE6) if tahmin_satir else WHITE))
+
+    cd = CategoryChartData(); cd.categories = [r["ad"] for r in th["ay"]]
+    cd.add_series("%d gerçekleşen" % ONCEKI,
+                  tuple(round(r["ciro_gecen_yil"] / 1e6, 1) for r in th["ay"]))
+    cd.add_series("%d gerçekleşen" % CARI,
+                  tuple(round(r["ciro_gerceklesen"] / 1e6, 1) for r in th["ay"]))
+    cd.add_series("%d tahmin" % CARI,
+                  tuple(round(r["ciro_tahmin"] / 1e6, 1) for r in th["ay"]))
+    ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_STACKED, Inches(8.7), Inches(3.85),
+                            Inches(3.95), Inches(2.1), cd).chart
+    ch.has_title = False
+    ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.TOP
+    ch.legend.include_in_layout = False
+    ch.font.size = Pt(8); ch.font.name = "Calibri"
+    ch.plots[0].gap_width = 60
+    for i, col in enumerate((MGREY, RED, RGBColor(0xE8, 0xA0, 0xA8))):
+        ch.series[i].format.fill.solid(); ch.series[i].format.fill.fore_color.rgb = col
+    tb(s, 8.7, 3.6, 3.95, 0.24, [("Ciro (M TL) — gerçekleşen + tahmin", 9, True, GREY)])
+
+    tb(s, 0.6, 5.52, 7.9, 0.44, [(th["kayma_notu"].replace("⚠ ", ""), 8.5, False, DRED)],
+       sp=1.05)
+
+    dipnot(s, "* TAHMİN — %s tarihine kadar gerçek veri, sonrası model. Yöntem: %s · Büyüme "
+              "oranı ayrıca varsayılmadı, okul-hizalı pencerede ÖLÇÜLEN %s ciro büyümesi "
+              "uygulandı · Okul açılışı %s → %s (6 gün kayma gün eşlemesinde dikkate alındı) · "
+              "Ücret seviyesi sabit varsayıldı → maliyet tahmini ALT SINIR · Kapsam: üç POS "
+              "mağazası, ciro KDV hariç ve Sınav dahil."
+           % (th["son_gercek_gun"], th["yontem"], yzd(th["buyume_orani_ciro"]),
+              th["acilis"]["%d" % ONCEKI], th["acilis"]["%d" % CARI]))
+    sig(s)

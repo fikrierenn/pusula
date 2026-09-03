@@ -535,6 +535,75 @@ def sayfa_maliyet(wb, veri):
             c0.font = Font(bold=True); c.font = Font(bold=True); c.fill = VURGU
         s += 1
     s += 1
+
+    # --- SEZONUN KALANI: TAHMIN (kullanici istegi 03.09)
+    th = veri.get("tahmin") or {}
+    if th and not th.get("gerek_yok"):
+        ws.cell(s, 1, "SEZONUN KALANI — TAHMIN (%s sonrasi tahmindir)"
+                % th["son_gercek_gun"]).font = BOLUM_YAZI
+        s += 1
+        tkol = [("Ay", 8, None), ("Ciro tipi", 10, None), ("Maliyet tipi", 12, None),
+                ("Ciro %d (gercek)" % ONCEKI, 15, TL), ("Ciro %d" % CARI, 15, TL),
+                ("Ciro Δ", 9, YUZDE), ("  gerceklesen", 14, TL), ("  tahmin", 14, TL),
+                ("Tahmin gunu", 11, ADET), ("FTE %d" % ONCEKI, 10, ADET1),
+                ("FTE %d" % CARI, 10, ADET1), ("Maliyet %d" % CARI, 14, TL),
+                ("Maliyet/ciro %d" % CARI, 13, None)]
+        for i, (ad, gen, _f) in enumerate(tkol, start=1):
+            h = ws.cell(s, i, ad); h.fill = BASLIK; h.font = BASLIK_YAZI; h.border = KENAR
+            h.alignment = Alignment(horizontal="center")
+        s += 1
+        for r in th["ay"]:
+            tahmin_mi = (r["fte_tip"] == "tahmin")
+            ws.cell(s, 1, r["ad"]).border = KENAR
+            for kol, tip in ((2, r["ciro_tip"]), (3, r["maliyet_tip"])):
+                c = ws.cell(s, kol, tip.upper() if tip != "gerçek" else "gercek")
+                c.border = KENAR
+                if tip != "gerçek":
+                    c.font = Font(bold=True, color="A6001A")
+            for kol, val, fmt in ((4, r["ciro_gecen_yil"], TL), (5, r["ciro_toplam"], TL),
+                                  (7, r["ciro_gerceklesen"], TL), (8, r["ciro_tahmin"], TL),
+                                  (9, r["ciro_tahmin_gun"], ADET),
+                                  (10, r["fte_gecen_yil"], ADET1), (11, r["fte"], ADET1),
+                                  (12, r["maliyet"], TL),
+                                  (13, (r["maliyet"] / r["ciro_toplam"]) if r["ciro_toplam"] else "—",
+                                   "0.00%")):
+                cc = ws.cell(s, kol, val); cc.number_format = fmt; cc.border = KENAR
+                if tahmin_mi:
+                    cc.fill = PatternFill("solid", fgColor="FFF6E6")
+            cc = ws.cell(s, 6, "=E%d/D%d-1" % (s, s)); cc.number_format = YUZDE; cc.border = KENAR
+            s += 1
+        # kayma etkisini notrleyen birlesik satir (Agu+Eyl birlikte okunur)
+        b_ = th["birlesik_agu_eyl"]
+        c0 = ws.cell(s, 1, "Agu+Eyl"); c0.font = Font(bold=True); c0.border = KENAR
+        ws.cell(s, 2, "kayma notr").font = Font(italic=True, size=9)
+        for kol, val, fmt in ((4, b_["ciro_gecen_yil"], TL), (5, b_["ciro"], TL),
+                              (10, b_["fte_gecen_yil"], ADET1), (11, b_["fte"], ADET1),
+                              (12, b_["maliyet"], TL)):
+            cc = ws.cell(s, kol, val); cc.number_format = fmt; cc.border = KENAR
+            cc.fill = PatternFill("solid", fgColor="EFEFEF")
+        cc = ws.cell(s, 6, "=E%d/D%d-1" % (s, s)); cc.number_format = YUZDE; cc.border = KENAR
+        s += 1
+        t_ = th["sezon_toplam"]
+        ws.cell(s, 1, "SEZON TOPLAM").font = Font(bold=True)
+        ws.cell(s, 1).fill = GRI; ws.cell(s, 1).border = KENAR
+        for kol, val, fmt in ((4, t_["ciro_gecen_yil"], TL), (5, t_["ciro"], TL),
+                              (10, t_["fte_gecen_yil"], ADET1), (11, t_["fte"], ADET1),
+                              (12, t_["maliyet"], TL),
+                              (13, t_["maliyet_ciro_orani"] or "—", "0.00%")):
+            cc = ws.cell(s, kol, val); cc.number_format = fmt; cc.border = KENAR
+            cc.fill = GRI; cc.font = Font(bold=True)
+        cc = ws.cell(s, 6, "=E%d/D%d-1" % (s, s)); cc.number_format = YUZDE
+        cc.border = KENAR; cc.fill = GRI; cc.font = Font(bold=True)
+        s += 2
+        ws.cell(s, 1, th["kayma_notu"]).font = Font(bold=True, size=9, color="A6001A")
+        s += 1
+        ws.cell(s, 1, "YONTEM: %s" % th["yontem"]).font = Font(italic=True, size=9)
+        s += 1
+        for vs in th["varsayimlar"]:
+            ws.cell(s, 1, "VARSAYIM: %s" % vs).font = Font(italic=True, size=9)
+            s += 1
+        s += 1
+
     _notlar(ws, [
         "FORMUL: %s" % m["formul"],
         "OLCU BIRIMI **FTE** (tam zaman esdeger) = SGK prim gunu / 30. Bordro SATIRI (kayit) "

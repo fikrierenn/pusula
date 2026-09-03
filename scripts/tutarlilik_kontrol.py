@@ -258,6 +258,37 @@ def main(argv):
                       "%.0f" % fi["kisi_basi_yillik26"],
                       "aşıyorsa sunumdaki «sınırın içindeyiz» cümlesi YANLIŞ olur"))
 
+    # ---------------------------------------------------------------- TAHMİN (sezonun kalanı)
+    th = v.get("tahmin")
+    if th and not th.get("gerek_yok"):
+        for r in th["ay"]:
+            kontrol("tahmin %s: ciro toplam = gerçekleşen + tahmin" % r["ad"],
+                    round(r["ciro_toplam"], 2),
+                    round(r["ciro_gerceklesen"] + r["ciro_tahmin"], 2))
+            sonuc.append((r["fte_tip"] in ("gerçek", "tahmin"),
+                          "tahmin %s: tip etiketi var" % r["ad"], "gerçek|tahmin", r["fte_tip"],
+                          "her satır gerçek mi tahmin mi olduğunu söylemeli"))
+            if r["fte_tip"] == "gerçek":
+                sonuc.append((r["ciro_tahmin"] == 0, "tahmin %s: gerçek ayda tahmin payı yok"
+                              % r["ad"], 0, round(r["ciro_tahmin"], 2), ""))
+        t_ = th["sezon_toplam"]
+        for alan, anahtar in (("ciro", "ciro_toplam"), ("fte", "fte"), ("maliyet", "maliyet")):
+            kontrol("tahmin sezon toplam %s = ayların toplamı" % alan, round(t_[alan], 2),
+                    round(sum(r[anahtar] for r in th["ay"]), 2))
+        kontrol("tahmin sezon maliyet/ciro oranı yeniden hesaplandı",
+                round(t_["maliyet_ciro_orani"], 6), round(t_["maliyet"] / t_["ciro"], 6))
+        sonuc.append((-0.5 <= th["buyume_orani_ciro"] <= 2.0,
+                      "tahminde kullanılan büyüme oranı makul bantta", "-%50..+%200",
+                      "%%%.1f" % (th["buyume_orani_ciro"] * 100),
+                      "bant dışı oran tüm sezon tahminini bozar"))
+        sonuc.append((0.5 <= th["fte_seviye_katsayisi"] <= 2.0,
+                      "FTE seviye katsayısı makul bantta", "0,5-2,0",
+                      round(th["fte_seviye_katsayisi"], 3), "taban ay oranı"))
+        sonuc.append((th["fte_basi_maliyet_taban"] > 0, "FTE başına maliyet tabanı > 0", ">0",
+                      round(th["fte_basi_maliyet_taban"], 2), ""))
+        sonuc.append((len(th["varsayimlar"]) >= 4, "tahmin varsayımları yazılı", "≥4",
+                      len(th["varsayimlar"]), "model varsayımı görünmeden tahmin sunulmaz"))
+
     # ---------------------------------------------------------------- KATEGORİ KAPSAMI (K-13)
     if v.get("kategori"):
         ESLES_ADLAR = ("Hazırlık Kitapları", "Kırtasiye", "Kitap", "Çocuk Kitabı",
@@ -361,6 +392,12 @@ def main(argv):
                                bin_(fm_["kadro_artmasaydi"]["kisi_basi_yillik_saat"])),
                               ("yasal sınır", str(int(fm_["yasal_yillik_sinir_saat"])))):
                 sonuc.append((deg_ in T, "sunumda %s (%s) yazıyor" % (ad_, deg_), deg_, deg_, ""))
+        if v.get("tahmin") and not v["tahmin"].get("gerek_yok"):
+            jt = bin_(v["tahmin"]["sezon_toplam"]["ciro"] / 1e6)
+            sonuc.append((jt in T, "sunumda sezon ciro tahmini (%s M) yazıyor" % jt, jt, jt, ""))
+            sonuc.append(("TAHMİN" in T, "sunumda TAHMİN etiketi var", "var",
+                          "var" if "TAHMİN" in T else "yok",
+                          "tahmin gerçek gibi sunulmamalı"))
         bayat = str(n["toplam"]["toplam_kesim26"] - n["toplam"]["norm_toplam"]) + " kişi"
         sonuc.append((bayat not in T,
                       "sunumda BAYAT norm farkı «%s» YOK" % bayat, "yok", "yok",
