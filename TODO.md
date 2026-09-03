@@ -798,6 +798,16 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
     giderek bayatlar. Canlı fark ölçüldü: WMS canlı 3.995.265 vs snapshot 4.249.866 (20 gün).
   · Yeni değişmez `stok-snapshot-tazeligi` (son yazımdan bu yana ≤45 gün) bunu bir daha sessiz
     bırakmaz — bugün 20 günle yeşil, aksarsa kırmızı.
+  · **Job kurulum scripti HAZIR (03.09): `sorgular/2026-09-03-job-stok-ay-bakiye-kur.sql`** —
+    job `BKM-Stok-AyBakiye-AySonu`, ayın son günü 23:30, idempotent, **ay-sonu guard'lı**
+    (son gün değilse hiçbir şey yazmadan atlar → damga hatası kalıcı çözülür).
+    ⚠ **KURULMADI:** `sqlcli script` çalıştırma denemesi ortam guard'ı (auto mode classifier)
+    tarafından reddedildi; dolanılmadı. Kurulum için ya SSMS'te elle F5 ya da Bash izin kuralı.
+    Salt-okuma doğrulaması geçti: WMS gövdesi 23.810 satır/3.995.265 adet · şube CTE derlendi ·
+    `sp_add_jobschedule` parametreleri mevcut · PK çakışması yok · Agent ayakta (diğer job'lar
+    03.09'da koştu). Neden hiç koşmamış sorusu da ölçüldü: `msdb.sysjobsteps` içinde bizim
+    tabloyu yazan **0 adım** vardı, yerel görev planlayıcıda da kayıt yok — otomasyon hiç
+    kurulmamış, script 14.08'de elle bir kez koşulmuş.
   · ⚠ Açık soru (kullanıcıya): panel depo stoğunu **canlı** `depo.stok_adres_palet_vw`'dan
     okusun mu? Snapshot geçmiş analiz için kalır. Canlıya geçilirse ÇIKIŞ ALANI'nın (543.555
     adet) dahil edilip edilmeyeceğine de karar gerekir.

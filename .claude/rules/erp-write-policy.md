@@ -10,6 +10,24 @@ Kullanıcı direktifi (verbatim): _"sadece o tabloya yazacaksın, başkası yasa
 
 > **İlke:** `bkm` şeması = Fikri'nin app-owned namespace'i (DerinSIS native `dbo`/`mhs`/`ent` DEĞİL). Yeni app-owned `bkm.*` tablosu yazımı yalnız kullanıcı açık onayıyla + bu kurala eklenerek. DerinSIS native tablo (car/fat/irsHrk/mhsFis…) yazımı MUTLAK YASAK.
 
+## Sunucu-seviyesi değişiklik: SQL Agent job (kullanıcı onayı 03.09.2026)
+
+Kullanıcı onayı verdi ("sql agent job kur") → `bkm.StokAyBakiyeMekanBazli` tablosunu aylık
+dolduran **SQL Agent job'u** kurulmasına izin verildi. Bu, tablo yazmasından farklı bir
+sınıftır (sunucu-seviyesi obje) ve **ayrıca onay ister**; bu onay TEK bu job için geçerlidir.
+
+- Kurulum scripti: `sorgular/2026-09-03-job-stok-ay-bakiye-kur.sql` (idempotent — job varsa
+  siler, yeniden kurar). Job: `BKM-Stok-AyBakiye-AySonu`, sahip `sa`, ayın son günü 23:30.
+- **Durum: KURULMADI.** `sqlcli script` ile çalıştırma denemesi ortam guard'ı (auto mode
+  classifier) tarafından reddedildi. Dolanılmadı. Kurulum ya SSMS'te elle yapılır ya da
+  Bash izin kuralı eklenirse buradan yapılır.
+- Salt-okuma doğrulaması yapıldı (03.09.2026): WMS snapshot gövdesi 23.810 satır/3.995.265
+  adet · şube CTE + window fonksiyonu derlendi · `sp_add_jobschedule` parametreleri mevcut ·
+  PK (Donem,stkID,ehMekan) çakışması yok (WMS mekan 12, şube 1/4477/4478) · Agent ayakta
+  (diğer job'lar 03.09'da koştu).
+- **Yeni job/SP/trigger istenirse bu bölüme eklenir.** Genel kural değişmedi: ERP'de tablo
+  yazması yalnız izin listesindeki app-owned `bkm.*` tablolarına.
+
 ## Bağlantı Bazlı Yetki
 
 | Bağlantı (Db.cs) | Hedef | Yazma izni |
