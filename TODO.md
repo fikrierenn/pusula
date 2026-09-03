@@ -657,7 +657,7 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   SatisPaydaMi · AlisMi · TransferMi · SirketIciMi · SayimMi…) bizim app-owned `bkm` şemamızda ama
   **0 satır**. Raporlardaki hardcoded `ehTip IN (4,100)` / `IN (5,101)` listeleri buradan
   okunabilir (tek kaynak). Doldurmak ERP yazması → `erp-write-policy.md` izin listesinde değil,
-  **kullanıcı onayı gerekiyor**.
+  **kullanıcı onayı gerekiyor**. → **Öneri hazır: `plans/41-irstipgrupmap.md`** (34 kodun canlı giriş/çıkış ölçümü + grup/bayrak taslağı + 4 açık soru). Yazma YAPILMADI; onay + `erp-write-policy` izin listesine ekleme bekliyor.
 - [x] **K-30 Ödeme tipi kümeleri ayrıştırıldı + kart/havale etiket hatası düzeltildi** ✅ 03.09.2026
   — kullanıcı düzeltmesi: üç ayrı sistem karıştırılmamalı. `joker.J_ORDER_PAY_TYPES` = **e-ticaret**
   (`J_ORDERS.PAYDEFREF`; -13 iyzico 4,19M · -3 COD 485K · -1 havale 6,5K) · `dbo.posOdmTip` =
