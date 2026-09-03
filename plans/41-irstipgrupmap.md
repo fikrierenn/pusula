@@ -75,7 +75,7 @@ türetildi, İK/muhasebe teyidi yok. Onaydan önce tartışılacak satırlar ⚠
 | 0, 10 | `ALIS` | `AlisMi`, `OzetHesabaDahil` | giriş(+); 10 Yerel Alım tedarikçi girişi |
 | 2, 12 | `IADE_TEDARIKCI` | `AlisMi`=0, `OzetHesabaDahil` | çıkış(−); alışın negatifi |
 | 8, 9, 11, 13 | `TRANSFER` | `TransferMi` | net ≈ 0 (kendi içinde kapanıyor); ciroya girmez |
-| 16, 90, 99 | `SAYIM` | `SayimMi`, `OzetHesabaDahil`=**0** ⚠ | sayım düzeltme çifti; toplamı domine ediyor (yukarıdaki ölçüm) |
+| 16, 90, 99 | `SAYIM` | `SayimMi`, `OzetHesabaDahil`=**1** (düzeltildi) | ÖLÇÜLDÜ 03.09: hacmin %99'u 2021 ilk WMS yüklemesi, ayna çift halinde (Eyl +329,0M ↔ −328,8M, net +164.566). 2026'da mekanizma WMS senkronu (`eNot='WMS'`, günlük, +1,05M / −0,58M) ve ayna çifti YOK. Bunlar gerçek stok etkisi → **özete DAHİL**; taslaktaki `=0` önerisi ölçümle çürütüldü (dışlamak bakiyeyi bozar). Operasyonel analizde grup HALİNDE dışlanır |
 | 17 | `DUZELTME` | `DuzeltmeMi` | merkezi düzeltme, 1.750 hareket |
 | 88 | `DUZELTME_GIRIS` | `DigerGirisMi`, `DuzeltmeMi`, `OzetHesabaDahil`=1 | ÖLÇÜLDÜ: manuel düzeltme kanalı, %85'i 31.12.2025 WMS–ERP eşitlemesi. Bakiyenin gerçek parçası → özete dahil; operasyonel analizde `DuzeltmeMi` ile dışlanır. ⚠ Sahaf alımı da bu kodda (bkz. açık soru 1) |
 | 89, 92 | `DUZELTME_CIKIS` | `DigerCikisMi`, `DuzeltmeMi`, `OzetHesabaDahil`=1 | ÖLÇÜLDÜ: aynı kanalın çıkış tarafı (%91 aynı WMS olayı). 92 Boş Paket Çıkışı ayrı iş ama hacmi küçük (2.963 satır) |
@@ -108,8 +108,15 @@ türetildi, İK/muhasebe teyidi yok. Onaydan önce tartışılacak satırlar ⚠
      `ehTip IN (0,10)` dışında olması yerinde. Kalan iş maliyet tarafında (K-32): 4.844
      satırın tamamı `ehMlyt=0`, yani stoğa sıfır maliyetle giriyor.
    Arşiv: `sorgular/2026-09-03-irstip-88-89-diger-giris-cikis.sql`
-2. **16 + 90 çifti** gerçekten sayım mekanizması mı, yoksa WMS'in başka bir işlemi mi?
-   Toplamı domine ettiği için yanlış bayrak tüm stok özetini bozar.
+2. ~~**16 + 90 çifti** sayım mı, WMS'in başka işlemi mi?~~ **CEVAPLANDI 03.09.2026
+   (ÖLÇÜLDÜ)** — ikisi de WMS kaynaklı stok düzeltmesi; 2021'de ayna çift (defter çıkar /
+   sayılan gir, net = gerçek düzeltme), 2026'da günlük WMS senkronu (`eNot='WMS'`) ve ayna
+   çifti yok. Ölçek: 2026'da 16 → +1.052.596 adet; alış (0) +3.775.253 ve yerel alım (10)
+   +2.595.439 ile aynı mertebede → girişi `ehTip IN (0,10)` sanan analiz yılda ~1M adet
+   kaçırıyor (TODO K-36). Bayrak kararı: `OzetHesabaDahilMi=1` + `SayimMi=1` (yukarıdaki
+   tabloda düzeltildi). **Ayrıca ortaya çıktı:** merkez depo stoğu irsHrk'den değil
+   **WMS**'ten okunuyor (`bkm.StokAyBakiyeMekanBazli.Kaynak`); irsHrk kümülatifi merkez
+   depoda 2 kat sapıyor. Arşiv: `sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql`
 3. `SatisPaydaMi`'ya `1 Satış` (sevk/fatura) dahil mi? Bulunurluk/OSA oranlarında bugün
    yalnız 4/100 kullanılıyor; 1'i eklemek B2B'yi perakende paydasına karıştırır.
 4. `95 Dönüşüm` set bozma mı, ürün değişimi mi (86 ayrı kod olduğu için belirsiz).

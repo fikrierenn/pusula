@@ -360,6 +360,16 @@
       "karsilastirma": "enaz",
       "beklenen": 33,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "stok-bakiye-iki-kaynak",
+      "db": "DerinSISBkm",
+      "soru": "bkm.StokAyBakiyeMekanBazli son dönemde hem irsHrk hem WMS kaynağını taşıyor mu?",
+      "neden": "Mağaza stoğu irsHrk hareketlerinden, MERKEZ DEPO stoğu WMS'ten geliyor (ölçüm 2026-09-03: depo irsHrk kümülatifi 1,99M vs WMS 4,25M — 2 kat sapma). Kaynaklardan biri düşerse (job kısmi koşarsa) stok tablosu sessizce eksik kalır ve 'depo stoğu yarıya indi' gibi okunur.",
+      "sql": "SELECT COUNT(DISTINCT Kaynak) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE Donem = (SELECT MAX(Donem) FROM bkm.StokAyBakiyeMekanBazli)",
+      "karsilastirma": "esit",
+      "beklenen": 2,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }

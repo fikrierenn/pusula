@@ -152,6 +152,15 @@ entities:
     kapsam: "POS satisi YALNIZ BKM_GENEL uc magazasinda (eMekan 1=FSM · 4477=Ozluce ·
       4478=Ist.Yolu). Heykel/Sura ayri tuzel kisilik -> eTip=100'de YOK (bkz.
       vw_PersonelDepartman.sube_firma_eslesmesi)."
+    stok_bakiyesi_kaynak_ayrimi: "⚠⚠ **MERKEZ DEPO STOĞU irsHrk'DEN HESAPLANMAZ**
+      (ölçüm 2026-09-03). Resmî tablo `bkm.StokAyBakiyeMekanBazli` iki kaynak taşır (`Kaynak`
+      kolonu): mağazalar **irsHrk** (31.08.2026: FSM 1.012.071 · Özlüce 1.444.442 ·
+      İst.Yolu 1.207.213), merkez depo (mekan 12) **WMS** (4.249.866, 25.190 ürün).
+      irsHrk kümülatifi (tüm ehTip) ile kıyas: mağazalarda TUTUYOR (%0,3-4,8 fark = üç günlük
+      hareket), merkez depoda 1.987.630 vs 4.249.866 → **2,26M adet / 2 KAT sapma**.
+      Yani 'depo stoğunu hareketlerden toplarım' yaklaşımı merkez depoda yanlış sonuç verir;
+      WMS kaynağı esastır. Mağaza stoğu için irsHrk kümülatifi meşru (16/90/99 dahil edilerek).
+      Arşiv: sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql"
     baslik_satir_koprusu: "**irsHrk.ehID = irs.eID** (ölçüm 2026-09-03). ⚠ `irs.eIrsID` alanı
       0 dolu — onunla join SESSİZCE 0 satır döndürür (bu tuzağa düşüldü). Satır filtrelemesinde
       `x.ehTip = i.eTip` de eklenir (aynı ehID başka tiple de geçebilir)."

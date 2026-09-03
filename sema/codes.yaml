@@ -100,6 +100,19 @@ codes:
       99: 'Sayım — 2.865.110 kayıt'
       100: 'POS Satış — 11.636.380 kayıt'
       101: 'POS Satış İade — 216.872 kayıt'
+    sayim_wms_16_90_99: "**16 Stok EKLE · 90 Ürün SAY · 99 Sayım = WMS/sayım stok düzeltmesi**
+      (ölçüm 2026-09-03). ⚠ HACMİN %99'U 2021'DE ve AYNA ÇİFT halinde: 2021 Eylül 16 +329,0M ↔
+      90 −328,8M (net +164.566), Ağustos +100,0M ↔ −99,6M. Mekanizma o dönem 'defter çıkar (90),
+      sayılan gir (16)' → net = gerçek düzeltme; dev rakamlar ilk WMS yüklemesi.
+      **2026'da mekanizma FARKLI:** ikisinin de belge notu `eNot='WMS'`, günlük akıyor
+      (16 → 184 belge/+1.052.596 adet · 90 → 227 belge/−576.637) ve aynı ürün/mekan/gün için
+      birlikte yalnız 192 grupta geçiyor → ayna çifti YOK, WMS tek yönlü düzeltiyor.
+      **Ölçek:** 2026 alış (0) +3.775.253 · yerel alım (10) +2.595.439 · 16 WMS +1.052.596 →
+      girişi yalnız `ehTip IN (0,10)` sayan analiz yılda ~1M adet girişi KAÇIRIR.
+      99 ayrı mekanizma (2026: 74.700 satır · 4 mekan · 52.866 ürün · −810.613).
+      **Bayrak kararı:** bunlar GERÇEK stok etkisi → özet/bakiye hesabına DAHİL; operasyonel
+      analizde 16+90+99 ÇİFT/GRUP HALİNDE dışlanır (birini dışlayıp ötekini bırakmak bakiyeyi
+      bozar). Arşiv: sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql"
     duzeltme_kanali_88_89: "**88 Diğer Giriş / 89 Diğer Çıkış = MANUEL STOK DÜZELTME kanalı**
       (ölçüm 2026-09-03). Sebep kodu `irs.Neden`/`NedenAlt` HİÇ kullanılmıyor (tümü 0) — sebep
       serbest metin **`irs.eNot`**'a yazılıyor, sınıflandırma ancak metinle yapılır. 88 → 364.226

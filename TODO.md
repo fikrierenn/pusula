@@ -757,3 +757,14 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   kaydın bir yıldan uzun aktif kalması ya çıkışın işlenmemesi ya fiilen çalışmaya devam etmesi
   demek (Kadro hâlâ 'SEZONLUK'). Düzeltilirse sezonluk 62 → 61. Rakamlar İK'nın resmî kaydıyla
   birebir tutulsun diye deste bugünkü hâliyle bırakıldı. Arşiv: `sorgular/2026-09-03-zirve-cikis-kodlari.sql`
+
+- [ ] **K-36 WMS stok eklemesi (ehTip 16) giriş analizlerinin dışında** — 16/90/99 ölçümünde
+  çıktı. 2026'da `16 Stok EKLE` **+1.052.596 adet** (184 belge, `eNot='WMS'`, günlük); kıyas:
+  alış (0) +3.775.253 · yerel alım (10) +2.595.439. Yani **girişi `ehTip IN (0,10)` diye
+  tanımlayan analizler yılda ~1M adet girişi kaçırıyor** (satınalma performansı, devir hızı
+  payda/pay tutarlılığı, bulunurluk besleme analizi). Yapılacak: (a) hangi raporlar `IN (0,10)`
+  kullanıyor — `grep` ile listele, (b) her biri için WMS eklemesinin dahil olup olmaması
+  gerektiğine karar ver (WMS eklemesi çoğu zaman transfer/sayım düzeltmesi olabilir — sebep
+  kırılımı `eNot`'ta yalnız 'WMS' yazıyor, daha ince ayrım için WMS tarafına bakmak gerekir),
+  (c) karar plan 41'in `AlisMi` bayrağına yansır. Arşiv:
+  `sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql`
