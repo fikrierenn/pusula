@@ -29,6 +29,33 @@ _Her stack'te geçerli ilke. `paths:` yok — compact sonrası survive._
 
 5. **Hata sınıflandırması tutarlı.** Projede hata kodu/aralığı veya tip hiyerarşisi varsa ona uy.
 
+## Reddet mi, Say mı? — Doğrulama Sınırının Ölçütü
+
+> Belinza deposundan uyarlandı (`D:\Dev\bel/.claude/rules/dogrulama-siniri.md`, 03.09.2026).
+> Bir doğrulayıcı ne zaman KOŞUYU DURDURUR, ne zaman RAPORLAYIP devam eder?
+
+**REDDET** — durum **ÇELİŞKİLİYSE**. İki doğru bilgi aynı anda tutamıyorsa.
+**SAY** — durum **EKSİKSE**. Bilgi doğru ama tam değil.
+
+Tek cümlede: *"bu iki şey aynı anda doğru olabilir mi?"* Olamazsa reddet.
+
+**Neden:** çelişki bir VERİ durumu değil, bir **KOD hatasıdır**. Çalıştırmaya devam
+etmek onu gizler — gizlenen kod hatası tam olarak "sessiz yanlış rakam" sınıfıdır.
+Eksiklik ise meşru olabilir: bordro son kapanan aya kadar gelir, ötesi henüz yoktur;
+reddetmek doğru veriyi de atar.
+
+| Durum | Tanı | Karar |
+|---|---|---|
+| `net != brüt − indirim` | ikisi aynı anda doğru olamaz | **REDDET** (tutarlılık kontrolü patlar) |
+| `fte > kayıt sayısı` | tam gün karşılığı, kişi sayısını geçemez | **REDDET** |
+| Sezon toplamı ≠ sezon aylarının toplamı | aritmetik çelişki | **REDDET** |
+| Ağustos bordrosu henüz işlenmemiş | henüz gelmemiş olabilir | **SAY** (`tam_mi: false` + uyarı) |
+| Norm tablosunda personeli olmayan satır | kadro boş olabilir | **SAY** (açığa katmadan "teyit bekliyor") |
+| Eylül–Ekim satışı yok | gelecek | **SAY** (tahmin, `ciro_tip` etiketli) |
+
+**Sınırın bittiği yer: eksiklik çelişkiye döndüğü an.** O an sayma — reddet ya da
+tamamla. Örnek: "bu ay çekildi" + "bu ayın eski kayıtları duruyor" çelişkidir.
+
 ## Anti-pattern
 
 1. `throw` ile business validation (beklenen sonucu exception yapma).

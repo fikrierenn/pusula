@@ -135,13 +135,14 @@ Kullanıcı "iyi geceler" / "/handoff" / "kaydet ve kapat" derse → `session-ha
 
 ### İlişkili Dosyalar
 
-> **Rule katmanları (plan-12 WS-2):** `core` (her oturum birincil — session-protocol/memory, commit, sql-server-conventions, semantic-layer, before-major-change, response-style, error-handling, security-principles) vs `on-demand` (konu-bazlı — renk-standardi, turkish-ui, file-size, agent-usage, coding, test, todo-verification; ilgili iş/skill tetiklenince birincil). Hepsi yüklü kalır (compact-survival); etiket = öncelik. Yeni yetenek → `.claude/rules/footprint-ladder.md` (en dar basamak).
+> **Rule katmanları (plan-12 WS-2):** `core` (her oturum birincil — session-protocol/memory, commit, sql-server-conventions, semantic-layer, olctum-mu-cikardim-mi, before-major-change, response-style, error-handling, security-principles) vs `on-demand` (konu-bazlı — renk-standardi, turkish-ui, file-size, agent-usage, coding, test, todo-verification; ilgili iş/skill tetiklenince birincil). Hepsi yüklü kalır (compact-survival); etiket = öncelik. Yeni yetenek → `.claude/rules/footprint-ladder.md` (en dar basamak).
 
 - `.claude/rules/session-memory.md` — Üç katman ayrımı, eşikler.
 - `.claude/rules/session-protocol.md` — Oturum başı/orta/sonu ritüel.
 - `.claude/rules/commit-discipline.md` — 15 dosya eşiği, scope kullanımı.
 - `.claude/rules/sql-server-conventions.md` — DMY, EncoreMerkez compat, IsValid, J_ORDER_CLIENTS.
 - `.claude/rules/semantic-layer.md` — sorgu öncesi `sema/`'ya bak; keşif → sema-ogren (ECC continuous-learning).
+- `.claude/rules/olctum-mu-cikardim-mi.md` — her sayının arkasında komut: ÖLÇÜLDÜ / ÇIKARIM etiketi (Belinza'dan uyarlandı).
 - `.claude/rules/before-major-change.md` § Fact-Force Gate — bilinmeyen tabloya ilk sorgu / scripte ilk edit öncesi keşif zorunlu.
 - `.claude/skills/session-handoff/SKILL.md` — Oturum sonu skill ("İşe YARAMAYANLAR" bölümü dahil).
 - `.claude/skills/sema-ogren/SKILL.md` — şema keşfi → sema/*.yaml.
