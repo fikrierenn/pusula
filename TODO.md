@@ -731,3 +731,28 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   gerçekten disiplin vakası mı (kod yanlış girilmiş olabilir).
   Arşiv: `sorgular/2026-09-03-zirve-cikis-kodlari.sql` · sema: `vw_PersonelDepartman`
   → `isten_cikis_kodu` + `sezon_cikis_kodu_tuzagi`.
+
+- [x] **K-06 kalıntısı ÇÖZÜLDÜ — norm'un iki karşılıksız satırı ölçüldü** ✅ 03.09.2026 —
+  ikisi de veri hatası değil, sebepleri AYRI:
+  · **OYUN ALANI (norm Özlüce 1):** departman Zirve'de VAR — önceki oturumda "Departman
+    listesinde yok" sanılmıştı, **yanlıştı**. ÖZLÜCE / Kadro=KADRO / ünvan "ÇOCUK GELİŞ. VE
+    EĞİT. ELEMANI" / giriş 13.11.2024 → çıkış 04.05.2025 (kod 03 istifa). Pozisyon Mayıs
+    2025'ten beri boş → **GERÇEK AÇIK (1 kişi)**, bölüm açığına eklenebilir.
+  · **MUHASEBE (norm Heykel 1):** HEYKEL'de 1 kişi vardı, çıkış 26.10.2025. ŞURA ÖN MUHASEBE
+    4 kişinin tamamı çıkmış (son 31.10.2025). GENEL YÖNETİM MUHASEBE 4 aktif → muhasebe
+    **Ekim 2025'te merkeze taşınmış**; Heykel normundaki satır **BAYAT NORM**, açık değil.
+- [ ] **K-34 Deste rakam kararı: norm 145 içindeki bayat MUHASEBE satırı + OYUN ALANI açığı** —
+  K-06 ölçümü iki deste rakamını etkiliyor, **karar kullanıcıda** (norm yönetim parametresi):
+  · Bölüm bazlı açık **15 → 16** (OYUN ALANI gerçek açık olarak eklenirse).
+  · Norm kadrolu **145 → 144** ve norm toplamı **217 → 216**, dolayısıyla "norm vs gerçek"
+    farkı **28 → 27** (Heykel MUHASEBE satırı bayat sayılıp düşülürse).
+  · Karar verilirse: `briefings/sezon-kadro-*/norm-kadro-*.json` notu güncellenir (satır
+    SİLİNMEZ, "bayat: muhasebe merkeze taşındı 10.2025" notu eklenir), `verimlilik_cek_norm.py`
+    yeniden koşar, deste + Excel yeniden üretilir, tutarlılık kontrolü (167) yeşil doğrulanır.
+  · Karar verilmezse deste bugünkü hâliyle doğru kalır — dipnotta "normda yazılı olup kayıtta
+    personeli olmayan 2 satır açığa katılmadı" cümlesi zaten var, ölçüm artık gerekçeyi biliyor.
+- [ ] **K-35 Çıkışı işlenmemiş olabilecek 1 sezonluk kayıt (İK teyidi)** — 31.08.2026 aktif
+  sezonluk 62 = 61 (2026 girişli) + **1 (ŞURA, giriş 21.08.2025, 375 gün kıdem)**. Bir sezonluk
+  kaydın bir yıldan uzun aktif kalması ya çıkışın işlenmemesi ya fiilen çalışmaya devam etmesi
+  demek (Kadro hâlâ 'SEZONLUK'). Düzeltilirse sezonluk 62 → 61. Rakamlar İK'nın resmî kaydıyla
+  birebir tutulsun diye deste bugünkü hâliyle bırakıldı. Arşiv: `sorgular/2026-09-03-zirve-cikis-kodlari.sql`
