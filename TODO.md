@@ -666,3 +666,22 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   ve ÇEK'i "Kredi/Banka Kartı" sayıyordu (BANKA HAVALE 486 · BURFAŞ ÇEK 48; ~%0,03 — küçük ama
   yanlış etiket). `MagazaQueries.cs OdemeGrubu()` düzeltildi (Havale · Çek · Para Üstü), **build
   0 hata**. Ders: `_default` bir kova değil, ÖLÇÜLMEMİŞ kalan demek.
+
+- [x] **K-31 sqlcli v2.2 — dört yeni yetenek (cross-repo: `D:\Dev\sqlcli`)** ✅ 03.09.2026 —
+  kullanıcı isteği ("ilave özelliklere ihtiyacı varsa eklemelisin"). **`assert`** (skaler sorgu +
+  `--eq/--ne/--ge/--le/--gt/--lt`, `--label`, `--why`; **exit 0 geçti · 1 KIRIK · 2 KOŞAMADI** —
+  koşamamak yeşil sayılmaz) · **`lookup`** (kod tablosu → YAML/JSON + `--count-from` canlı kullanım
+  sayısı; kullanılmayan kod "canlıda yok" işaretlenir) · **`--read-only` / `SQLCLI_READONLY`**
+  (yazma reddi; string ve yorumlar elenerek taranır → `erp-write-policy` araç düzeyinde zorlanır) ·
+  **`--param ad[:tip]=deger`** (str/int/dec/date/datetime/bool/guid; tarih TAHMİN EDİLMEZ,
+  `dd.MM.yyyy` reddedilir — ölçülen vaka: `20260901` tam sayıya düşünce datetime karşılaştırması
+  patlıyordu) · **`--timeout` / `--retry`** (yalnız geçici hata 10053/10060/-2/1205, sınırlı ve
+  görünür) · **`${ENV}` genişletmesi** (şifre `sqlcli.json`'da durmaz; karşılığı yoksa hata verir) ·
+  **UTF-8 çıktı** (konsol cp857 yazıyordu, belgeye aktarılan Türkçe bozuluyordu).
+  Depo **git altına alındı** — `.git` yoktu, v2.1 çok-sağlayıcı işi de commit'siz duruyordu:
+  `68e02d5` taban + `50ad562` v2.2. Build 0 hata/0 uyarı, global tool 2.2.0, altı yol canlı test
+  edildi (ERP + Zirve). Pusula tarafı (commit `13f8993`): `sqlcli.json` 4 profil (şifresiz →
+  gitignore'dan çıkarıldı, commit'lenir) · `tools/sq.sh` kodlama-esnek (UTF-8 dene → cp857) ·
+  kural `sql-server-conventions.md § SORGU ARACI` yetenek tablosuyla güncellendi.
+  ⚠ Kalan: `tools/sema_degismez.py` hâlâ kendi Python koşucusu — 28 değişmez `sqlcli assert`e
+  taşınabilir (JSON-sürücülü toplu koşum ve çok-sunucu orada yok, o yüzden acil değil).
