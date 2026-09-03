@@ -601,3 +601,17 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   sınır hızında çalışan kişi-ay 32 → 95 (kadro hâlâ dar). ⚠ Kalan iş: model işgücü ihtiyacını kişi
   sayısıyla doğru orantılı varsayar; kısmi süreli/hafta sonu düzenlemesi ve verim artışı yok →
   ÜST SINIR tahmini olarak sunulur.
+- [x] **K-24 Sema değişmez mekanizması genişletildi (çok sunucu + bordro)** ✅ 03.09.2026 —
+  `tools/sema_degismez.py` başka oturumda doğdu (tek sunucu, 8 kayıt). Genişletme: `sunucu` alanı
+  (`erp`/`zirve`/`joker`) + adlandırılmış örnek için pyodbc (Zirve'ye pymssql portsuz erişemiyor,
+  bağlantı asılıyordu) + hedef başına tek bağlantı + yapısal denetim (`neden`/`soru`/`db` boş
+  olamaz, `karsilastirma` whitelist — Belinza xUnit koşucusundan) + `--sadece <id>`. Bu oturumun
+  6 bordro/kadro/Sınav değişmezi eklendi, **altısı da kırmızıya düşürülüp geri alındı**. Toplam
+  14 değişmez / 2 hedef, 0 kırık. Kurallar Belinza'dan uyarlandı:
+  `.claude/rules/olctum-mu-cikardim-mi.md` (ÖLÇÜLDÜ/ÇIKARIM etiketi) + `error-handling.md`
+  § Reddet mi Say mı (çelişki → reddet, eksik → say).
+- [ ] **K-25 `urnTip=2` ölü stok/kategori raporlarını etkiliyor mu** — başka oturumun bulgusu:
+  `dbo.urn.urnTip` üçüncü değer alıyor (`2` = demirbaş/araç satışı, 52 kayıt). Ölü stok filtresi
+  `urnTip=0` bunları dışlıyor (B-105). Dışlama KASITLI mı (demirbaş satışı ölü stok değil) yoksa
+  kaza mı — teyit edilip sema/metrics'e gerekçe yazılacak. Etkilenen rapor: ölü stok, kategori
+  ciro (irsHrk tarafı urnTip filtresiz mi kontrol edilecek).

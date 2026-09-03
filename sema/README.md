@@ -11,6 +11,7 @@ Makine-okunur, canonical semantik katman. Script + MCP sorgu + rapor üretimi bu
 | `bridges.yaml` | **Köprüler** — cross-table/cross-db join tanımları (her biri confidence+evidence) |
 | `codes.yaml` | Enum/lookup kodları (ehTip, eTip, emTip, COD durum, ödeme tipi, mekan/firma) |
 | `metrics.yaml` | Türetilmiş iş mantığı (net ciro, depo hareket kategori, işgücü, COD ekonomi) |
+| `degismezler.json` | **Koşulan** değişmezler — `python tools/sema_degismez.py`. Bayatlarsa kırmızı. `queries.yaml`'ın eksik yarısı: orada SQL saklanır, burada YENİDEN KOŞAR. Her kayıt `sunucu` taşır (`erp` · `zirve` · `joker`); yeni kayıt eklenince `--sadece <id>` ile **kırmızıya düştüğü kanıtlanır**. |
 | `queries.yaml` | **Doğrulanmış sorgu kataloğu** — soru + golden SQL + last_verified (Vanna/dbt saved_queries pattern). Yeni sorgu yazarken ÖNCE buraya bak; yeni doğrulanan değerli SQL'i buraya ekle. |
 
 ## Esin kaynakları (10.06 araştırması)

@@ -1,0 +1,170 @@
+{
+  "_aciklama": "BKM semantik katmanı — DEĞİŞMEZLER (invariants). Koşulur, saklanmaz.",
+  "_neden": [
+    "`queries.yaml` doğrulanmış SQL'i SAKLAR ama kimse YENİDEN KOŞMAZ.",
+    "Kayıt bayatlayınca kimse fark etmez — decay/TTL bir BAYRAKTIR, bir",
+    "ÖLÇÜM değil. Bu dosya o boşluğu kapatır: her kayıt komutla yeniden",
+    "koşar ve bayatlarsa KIRMIZI olur.",
+    "",
+    "Araştırma (2026-09-03) aynı yeri gösteriyor: ölçüt SQL METNİ değil",
+    "ÇALIŞTIRMA SONUCU olmalı (promptfoo text-to-SQL eval); davranış",
+    "baseline kaydedilip her değişiklikte regresyon aranmalı (Arthur AI);",
+    "semantik katman doğruluğu %84-90'dan %98-100'e çıkarıyor (dbt 2026).",
+    "",
+    "DEĞİŞMEZ != ÖLÇÜM. Ayrım testi: 'bu iddia yarınki veriyle de doğru mu?'",
+    "  yazılır  → 'urnTip yalnız 0/1/2 olabilir'",
+    "  yazılmaz → 'ölü stok 12,4M TL' (bu bir ölçüm, değişir)",
+    "",
+    "Koşum: python tools/sema_degismez.py"
+  ],
+  "_surum": 1,
+  "_guncelleme": "2026-09-03",
+  "_kosum": "tools/sema_degismez.py",
+  "degismezler": [
+    {
+      "id": "urn-urnTip-uc-deger",
+      "db": "DerinSISBkm",
+      "soru": "dbo.urn.urnTip yalnız 0, 1 ve 2 değerlerini mi alır?",
+      "neden": "Ölü stok sorgusunda `WHERE urnTip=0` ZORUNLU. Dördüncü bir tip çıkarsa o kayıtlar sessizce dışarıda kalır ya da yanlış sınıflanır.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn WHERE urnTip NOT IN (0,1,2)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03 → 0=868.094 (normal ürün) · 1=252 (gider/hizmet) · 2=52 (demirbaş/araç satışı, örn. '16 BFF 90 BMW OTOMOBİL SATIŞI')"
+    },
+    {
+      "id": "urn-urnTip-2-belgelendi",
+      "db": "DerinSISBkm",
+      "soru": "urnTip=2 kayıtları hâlâ var mı?",
+      "neden": "sema'da 2026-09-03'e kadar YOKTU — yalnız 0 ve 1 belgeliydi. Bu satır, o eksiğin kapandığının kanıtı. Sayı sıfıra düşerse kayıt sadeleştirilebilir.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn WHERE urnTip = 2",
+      "karsilastirma": "enaz",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03 → 52"
+    },
+    {
+      "id": "encore-compat-110",
+      "db": "DerinSISBkm",
+      "soru": "EncoreMerkez uyumluluk düzeyi hâlâ 110 mu?",
+      "neden": "110'da STRING_AGG / TRIM / IIF / TRY_CONVERT YOK. Yükseltilirse bütün workaround'lar (STUFF+FOR XML, LTRIM(RTRIM())) gereksiz hale gelir ve sema güncellenmelidir.",
+      "sql": "SELECT compatibility_level FROM sys.databases WHERE name = 'EncoreMerkez'",
+      "karsilastirma": "esit",
+      "beklenen": 110,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "irsHrk-kolon-kucuk-s",
+      "db": "DerinSISBkm",
+      "soru": "irsHrk kolonu `ehstkID` (küçük s) mi?",
+      "neden": "fatAyr/irsAyr'da `ehStkID` (büyük S). SQL Server case-insensitive olduğu için ikisi de çalışır, ama case-sensitive collation'a taşınırsa kopyala-yapıştır sorgu KIRILIR.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsHrk') AND name COLLATE Latin1_General_BIN = 'ehstkID'",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "fatAyr-kolon-buyuk-S",
+      "db": "DerinSISBkm",
+      "soru": "fatAyr kolonu `ehStkID` (büyük S) mi?",
+      "neden": "irsHrk ile TERS. Aynı anlamdaki kolon iki tabloda farklı yazılıyor.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.fatAyr') AND name COLLATE Latin1_General_BIN = 'ehStkID'",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "irsAyr-kolon-buyuk-S",
+      "db": "DerinSISBkm",
+      "soru": "irsAyr kolonu `ehStkID` (büyük S) mi?",
+      "neden": "fatAyr ile aynı, irsHrk ile ters.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsAyr') AND name COLLATE Latin1_General_BIN = 'ehStkID'",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "olu-stok-iskonto-kalemi-urnTip0",
+      "db": "DerinSISBkm",
+      "soru": "stkID 81809 (İskonto ve Fiyat Farkı) hâlâ urnTip=0 mı?",
+      "neden": "Ölü stok sorgusundaki elle dışlamanın GEREKÇESİ bu. Muhasebe kalemi yanlış kategoride ve urnTip=0 olduğu için `urnTip` filtresi yakalamıyor. urnTip=1'e çekilirse dışlama GEREKSİZ hale gelir ve kaldırılmalıdır.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn WHERE stkID = 81809 AND urnTip = 0",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "omurga-nesneler-duruyor",
+      "db": "DerinSISBkm",
+      "soru": "Sema'nın dayandığı omurga nesneler duruyor mu?",
+      "neden": "`ent.odak_depo_Stok` (ODAK stok otoritesi), `bkm.StokAyBakiyeMekanBazli` (ay-sonu bakiye), `bkm.UrunBilgi` (ürün master). Biri kalkarsa ona dayanan bütün raporlar sessizce boş döner.",
+      "sql": "SELECT (CASE WHEN OBJECT_ID('ent.odak_depo_Stok') IS NULL THEN 0 ELSE 1 END) + (CASE WHEN OBJECT_ID('bkm.StokAyBakiyeMekanBazli') IS NULL THEN 0 ELSE 1 END) + (CASE WHEN OBJECT_ID('bkm.UrunBilgi') IS NULL THEN 0 ELSE 1 END)",
+      "karsilastirma": "esit",
+      "beklenen": 3,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "kadro-etiket-kumesi-kapali",
+      "sunucu": "zirve",
+      "db": "BKM_GENEL",
+      "soru": "vw_PersonelDepartman.Kadro bilinen etiket kümesinin dışına çıktı mı?",
+      "neden": "Kod sezonluğu YALNIZ Kadro='SEZONLUK' ile ayırır; geri kalan her etiket KADROLU sayılır. İK yeni bir etiket açarsa (ör. 'SEZON', 'GEÇİCİ') sessizce kadroluya düşer ve kadrolu/sezonluk ayrımı bozulur — hata vermez.",
+      "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE ISNULL(Kadro,N'') NOT IN (N'', N'KADRO', N'SEZONLUK', N'KISMİ', N'PART-TIME', N'PART TIME', N'STAJYER')",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "sezonluk-etiketi-duruyor",
+      "sunucu": "zirve",
+      "db": "BKM_GENEL",
+      "soru": "Mağaza kapsamında Kadro='SEZONLUK' kaydı hâlâ var mı?",
+      "neden": "Etiket yeniden adlandırılırsa sezonluk sayısı SIFIRA düşer ve herkes kadrolu görünür. Sıfır sonuç hata vermez, makul görünür.",
+      "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE Kadro = N'SEZONLUK' AND Lokasyon LIKE 'MA%'",
+      "karsilastirma": "enaz",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "primgunu-30-tavani",
+      "sunucu": "zirve",
+      "db": "BKM_GENEL",
+      "soru": "vw_PuanBil.Primgunu 31'i aşan satır var mı?",
+      "neden": "Tam gün karşılığı çalışan = SUM(Primgunu)/30. 31'i aşan bir satır bu ölçüyü sessizce şişirir; personel sayısı olduğundan fazla görünür.",
+      "sql": "SELECT COUNT(*) FROM dbo.vw_PuanBil WHERE Primgunu > 31",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "puanbil-kisi-ay-tekilligi",
+      "sunucu": "zirve",
+      "db": "BKM_GENEL",
+      "soru": "Mağaza kapsamında bir kişi-ay bordroda iki kez sayılıyor mu?",
+      "neden": "Maliyet ve çalışan sayısı bordro × personel join'inden toplanır. Mükerrer bordro satırı VEYA personelin iki departman kaydı (fan-out) toplamı iki katına çıkarır — rakam makul görünür, hata vermez.",
+      "sql": "SELECT COUNT(*) FROM (SELECT b.Personelno, b.Yil, b.Ayindex FROM dbo.vw_PuanBil b JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno WHERE p.Lokasyon LIKE 'MA%' GROUP BY b.Personelno, b.Yil, b.Ayindex HAVING COUNT(*) > 1) t",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "maliyet-kolonlari-duruyor",
+      "sunucu": "zirve",
+      "db": "BKM_GENEL",
+      "soru": "Maliyet formülünün dayandığı üç kolon (Bt, Isskk, Iisk) duruyor mu?",
+      "neden": "Personel maliyeti = Bt + Isskk + Iisk (brüt + işveren SGK + işveren işsizlik). Kolon adı Zirve sürümüyle değişirse formül başka bir kolona kayabilir.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vw_PuanBil') AND name IN ('Bt', 'Isskk', 'Iisk')",
+      "karsilastirma": "esit",
+      "beklenen": 3,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "sinav-ikinci-kol-gerekli",
+      "db": "DerinSISBkm",
+      "soru": "KatAna 'Sınav Okul%' olup Kategori3 Sınav listesinde OLMAYAN ürün var mı?",
+      "neden": "Sınav ayrıştırması iki kolludur: Kategori3 IN (Sınav Okulları, Sınav Kıyafet) VEYA KatAna LIKE 'Sınav Okul%'. Bu sayı sıfır olmadıkça ikinci kol ZORUNLU; tek kolla ayrıştırma Sınav cirosunu mağazaya yazar.",
+      "sql": "SELECT COUNT(*) FROM bkm.UrunBilgi WHERE COALESCE(KatAna, N'x') LIKE N'Sınav Okul%' AND COALESCE(Kategori3, N'x') NOT IN (N'Sınav Okulları', N'Sınav Kıyafet')",
+      "karsilastirma": "enaz",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
+    }
+  ]
+}

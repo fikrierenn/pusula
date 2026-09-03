@@ -59,6 +59,121 @@ _BKM şema bilgisi `sema/*.yaml`'da canonical, makine-okunur tutulur. `paths:` y
 
 **Anti-pattern:** liste yazıp `last_verified` damgasıyla kendini güvende sanmak. Liste TTL ile korunmaz — bir kampüs kapanınca kayıt sessizce yanlış olur, kimse fark etmez.
 
+## DEĞİŞMEZ — decay'in eksik yarısı (2026-09-03)
+
+_Belinza deposunda (`D:\Devel`) tek oturumda dört ölçüm hatası
+yapıldı ve dördü de "bir kez öğrenilip unutulmuş şema gerçeği"nden
+doğdu. Oradan dönen ders burayı da ilgilendiriyor._
+
+`last_verified` + `ttl_days` bir **bayraktır**, bir **ölçüm** değil:
+süresi dolduğunu görmek için birinin bakması gerekir — ve bakılmaz.
+`queries.yaml` doğrulanmış SQL'i **saklar**, kimse **yeniden koşmaz**.
+
+> **Yazılan gerçek, komutla yeniden koşturulabiliyorsa koşturulur.**
+
+`sema/degismezler.json` + `tools/sema_degismez.py`:
+
+```bash
+python tools/sema_degismez.py
+```
+
+Bayatlarsa çıkış kodu 1. Bağlanamazsa **patlar, atlamaz** — bir ölçümün
+BOŞ dönmesi ile KOŞMAMASI ekranda aynı görünür.
+
+### DEĞİŞMEZ ≠ ÖLÇÜM
+
+Ayrım testi: *"bu iddia yarınki veriyle de doğru mu?"*
+
+| Yazılır (değişmez) | Yazılmaz (ölçüm) |
+|---|---|
+| `urnTip` yalnız 0/1/2 olabilir | "ölü stok 12,4M TL" |
+| `irsHrk` kolonu `ehstkID` (küçük s) | "Haziran net kâr 2,04M" |
+| EncoreMerkez compat 110 | "1.787 sipariş hatalı ödendi" |
+
+Ölçümler `evidence` alanına tarih damgasıyla yazılır; değişmezler
+`degismezler.json`'a koşulmak üzere.
+
+### Kırılabildiği kanıtlanmadan değişmez yazılmaz
+
+Yeni değişmez eklendiğinde beklenen değer **bilerek bozulur**, kırmızı
+olduğu **görülür**, sonra geri alınır. Kırılabildiği kanıtlanmamış bir
+test, test değildir. (Yapıldı 2026-09-03: `encore-compat-110`
+beklenen 110→150 → kırmızı → geri alındı.)
+
+### İlk koşuda ne buldu
+
+Sekiz değişmezin sekizi geçti, **ama yazarken bir eksik ortaya çıktı**:
+`dbo.urn.urnTip` iki değil **üç** değer alıyor. Sema `0=normal ürün,
+1=gider/hizmet` diyordu; **`2` = demirbaş/araç satışı, 52 kayıt**
+(örn. "16 BFF 90 BMW OTOMOBİL SATIŞI") hiç belgelenmemişti. Ölü stok
+sorgusu `WHERE urnTip=0` kullandığı için bu 52 kayıt sessizce dışarıda
+kalıyordu.
+
+Yani mekanizmanın değeri kırmızı vermesinden önce **yazarken ölçmeye
+zorlamasında**.
+
+### Çok sunucu — bordro da değişmez taşır (03.09 genişletme)
+
+Değişmezler tek sunucuda başladı; bordro/İK gerçekleri **ayrı sunucuda**
+(`192.168.40.25\ZRVSQL2008`, adlandırılmış örnek) olduğu için hiç
+ölçülemiyordu. Her kayıt artık `sunucu` alanı taşır:
+
+| `sunucu` | Hedef | Sürücü |
+|---|---|---|
+| `erp` (varsayılan) | DerinSIS / EncoreMerkez / BKM | pymssql |
+| `zirve` | BKM_GENEL (bordro + İK) | **pyodbc** — adlandırılmış örneğe pymssql portsuz ulaşamaz, bağlantı asılır |
+| `joker` | JOKER e-ticaret | pymssql |
+
+Aynı hedefe tek bağlantı açılır. Sürücü seçimi sunucu adında ters bölü
+olup olmamasına bakar (`scripts/verimlilik_ortak.py` ile aynı desen).
+
+### Yapısal denetim — gerekçesiz değişmez kabul edilmez
+
+Koşucu, SQL'leri çalıştırmadan önce kayıtları denetler (Belinza'nın xUnit
+koşucusundan alındı): `id` tekil · `soru`/`neden`/`db` boş olamaz ·
+`karsilastirma` ∈ {esit, enaz, encok} · `sunucu` tanımlı. Gerekçesi
+yazılmayan bir değişmez, kırıldığında ne yapılacağını söylemez.
+
+### Bordro/kadro değişmezleri (03.09, 6 kayıt — altısı da kırmızıya düşürülüp geri alındı)
+
+| Kayıt | Neyi korur |
+|---|---|
+| `kadro-etiket-kumesi-kapali` | Kod yalnız `Kadro='SEZONLUK'`u ayırır, gerisini KADROLU sayar → yeni etiket sessizce kadroluya düşer |
+| `sezonluk-etiketi-duruyor` | Etiket yeniden adlandırılırsa sezonluk **sıfırlanır**, herkes kadrolu görünür |
+| `primgunu-30-tavani` | Tam gün karşılığı = `SUM(Primgunu)/30`; 31'i aşan satır personel sayısını şişirir |
+| `puanbil-kisi-ay-tekilligi` | Mükerrer bordro satırı **veya** ikinci departman kaydı (fan-out) maliyeti iki katına çıkarır |
+| `maliyet-kolonlari-duruyor` | Maliyet = `Bt + Isskk + Iisk`; kolon adı değişirse formül başka kolona kayar |
+| `sinav-ikinci-kol-gerekli` | Sınav ayrıştırması iki kollu; tek kol Sınav cirosunu mağazaya yazar (55.100 ürün ikinci kola bağlı) |
+
+Yazarken yine ölçüm zorladı: `Kadro`nun `KADROLU` değil **`KADRO`**
+olduğu ve kapsam içinde `PART TIME`/boş etiketli kayıtların bulunduğu
+böyle görüldü — 30.06 tabanındaki 153 kişinin 1'i part-time, 2025
+tabanındaki 135'in 1'i boş etiketli. Rakamlar doğruydu, gerekçesi eksikti.
+
+### Araştırma dayanağı (2026-09-03)
+
+| Bulgu | Kaynak |
+|---|---|
+| Semantik katman doğruluğu %84-90 → %98-100 | dbt 2026 benchmark |
+| 4 KB iş-anlamı belgesi +17-23 puan | arXiv 2604.25149 |
+| Öz-doğrulama şema eşlemede +%10,4 | BDCC 10040104 |
+| Ölçüt SQL metni değil **çalıştırma sonucu** | promptfoo text-to-SQL eval |
+| Baseline kaydet, her değişiklikte regresyon ara | Arthur AI |
+
+## "Başka ne olabilir?" kapısı
+
+Belinza'daki dört hatanın en tehlikelisi **yorum** hatasıydı: ölçüm
+doğruydu, ona konan **ad** yanlıştı ve ölçülmüş gibi sunuldu.
+
+> Bir bulgu rapora/sema'ya girmeden önce **en az bir alternatif
+> açıklama** yazılıp elenir. Elenemiyorsa bulgu **ÇIKARIM** etiketiyle
+> yazılır.
+
+Somut: üretimde plandan sapma "fire ölçülmeye başladı" sanıldı. Sekiz
+malzemenin sekizinde de oran **tam 4,67**'ydi — fire her malzemede aynı
+orana denk gelmez. Gerçek sebep bölünmüş üretim emri hatasıydı. Tek
+soru ("başka ne olabilir?") bunu ilk bakışta çıkarırdı.
+
 ## Confidence ölçeği
 `1.0` kalıcı (PK/FK) · `0.9-0.99` canlı %99+ eşleşme · `0.5-0.8` gözlem ama tam teyit yok · `0.3-0.5` hipotez/teyit bekliyor.
 
