@@ -783,3 +783,21 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son dönem) üzerinden oku; mağaza tarafı view'da
   kalsın. Sonra eski/yeni rakam mutabakatı + etkilenen ekranların smoke testi. ⚠ Dikkat: WMS
   snapshot AYLIK (ay sonu) — anlık depo stoğu isteniyorsa WMS canlı tablosu gerekir, o ayrı iş.
+
+- [ ] **K-38 Stok snapshot job'u aylık koşmuyor + WMS damgası yanlış** — `bkm.StokAyBakiyeMekanBazli`
+  detay ölçümü (03.09.2026): 29.234.965 satır · 64 dönem · 1,87 GB · 0 negatif · 0 mükerrer,
+  ama **tüm tabloda tek yazım günü var: 14.08.2026**.
+  · **Damga hatası:** `sorgular/2026-08-12-stok-ay-bakiye-mekan-tablo.sql` WMS satırını
+    `Donem = EOMONTH(GETDATE())` ile yazıyor. 14 Ağustos'ta koşulduğu için satır **31.08.2026**
+    damgalı, oysa değer **14 Ağustos anlık** stoğu. Panel (K-37) bunu "31 Ağustos depo stoğu"
+    diye gösteriyor. Düzeltme seçenekleri: (a) ay-sonu koşum zorunlu kıl, (b) `Donem` yerine
+    koşum tarihini damgala, (c) WMS satırlarına ayrı `AnlikTarih` kolonu ekle (bkm.* app-owned,
+    ama şema değişikliği → onay).
+  · **Job otomasyonu yok:** script elle çalıştırılıyor. Aylık SQL job/görev planlanmalı; yoksa
+    depo geçmişi birikmiyor (şu an WMS için TEK dönem var, yani depo geçmişi YOK) ve panel
+    giderek bayatlar. Canlı fark ölçüldü: WMS canlı 3.995.265 vs snapshot 4.249.866 (20 gün).
+  · Yeni değişmez `stok-snapshot-tazeligi` (son yazımdan bu yana ≤45 gün) bunu bir daha sessiz
+    bırakmaz — bugün 20 günle yeşil, aksarsa kırmızı.
+  · ⚠ Açık soru (kullanıcıya): panel depo stoğunu **canlı** `depo.stok_adres_palet_vw`'dan
+    okusun mu? Snapshot geçmiş analiz için kalır. Canlıya geçilirse ÇIKIŞ ALANI'nın (543.555
+    adet) dahil edilip edilmeyeceğine de karar gerekir.

@@ -100,7 +100,17 @@ entities:
       GİRİŞ 195.470 (4.633) · ÇIKIŞ 543.555 (12.082). Toplam ~4,54M."
     snapshot: "`bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', ehMekan=12) bu view'dan
       `adrsAlanTipID IN (0,1)` ile doldurulur → **ÇIKIŞ ALANI hariç** (sevke hazırlanmış mal).
-      Ay-sonu (EOMONTH) çalışır; geçmiş depo bakiyesi yalnız buradan okunur."
+      ⚠⚠ **DAMGA TUZAĞI (ölçüm 2026-09-03):** script `Donem = EOMONTH(GETDATE())` yazıyor, yani
+      AYIN SONU damgası vuruyor ama WMS değeri KOŞTUĞU ANIN anlık stoğudur. Tek koşum
+      14.08.2026 13:53'te yapılmış ve satır **31.08.2026** damgalı → 'Ağustos sonu depo stoğu'
+      sanılan değer aslında **14 Ağustos**. Ay içinde koşulursa damga yanıltır; ay-sonu koşulmalı
+      ya da damga koşum tarihi olmalı (TODO K-38).
+      ⚠ **JOB AYLIK KOŞMUYOR:** tüm tabloda tek yazım günü var (14.08.2026); WMS için tek dönem
+      (31.08.2026), yani DEPO GEÇMİŞİ YOK. Mağaza tarafı (Kaynak='irsHrk') defterden backfill
+      edildiği için 2021→2026 tüm aylar dolu (2026 Oca-Ağu eksiksiz).
+      Ölçüm 2026-09-03: 29.234.965 satır · 64 dönem · 1,87 GB (PK 1.244,6 MB + IX 624,0 MB) ·
+      0 negatif · 0 mükerrer. Canlı WMS (RAF+GİRİŞ) 3.995.265 vs snapshot 4.249.866 → 20 günde
+      254.601 fark."
     confidence: 1.0
     last_verified: "2026-09-03"
   stokSonAltDepo_vw: {tip: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}

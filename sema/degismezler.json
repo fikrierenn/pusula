@@ -391,6 +391,16 @@
       "karsilastirma": "enaz",
       "beklenen": 1000000,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "stok-snapshot-tazeligi",
+      "db": "DerinSISBkm",
+      "soru": "bkm.StokAyBakiyeMekanBazli son kaç gün önce yazıldı?",
+      "neden": "Panel merkez depo stoğunu bu tablodan okuyor (K-37). Tablo aylık koşmalı ama ölçüm 2026-09-03: TEK koşum var (14.08.2026) → 20 gün eski. Job unutulursa panel giderek bayat stok gösterir ve bunu HATA VERMEDEN yapar. Eşik 45 gün: aylık koşum aksarsa kırmızıya döner.",
+      "sql": "SELECT DATEDIFF(day, MAX(KayitTarihi), GETDATE()) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK)",
+      "karsilastirma": "encok",
+      "beklenen": 45,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }
