@@ -758,7 +758,7 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   demek (Kadro hâlâ 'SEZONLUK'). Düzeltilirse sezonluk 62 → 61. Rakamlar İK'nın resmî kaydıyla
   birebir tutulsun diye deste bugünkü hâliyle bırakıldı. Arşiv: `sorgular/2026-09-03-zirve-cikis-kodlari.sql`
 
-- [ ] **K-36 WMS stok eklemesi (ehTip 16) giriş analizlerinin dışında** — 16/90/99 ölçümünde
+- [x] **K-36 ÇÖZÜLDÜ — çerçeve yanlıştı: 16 alış değil, kod zaten doğru** ✅ 03.09.2026 — ölçüm: 2026'da 16 hareketlerinin yalnız **%0,05'i** (33 satır / 525 adet) aynı ürün+mekan+gün'de bir alışla birlikte geçiyor → WMS eklemesi alışın kopyası değil, ama 'alış' da değil. Kod zaten amaç bazlı ayırıyor: alış metriği `IN (0,10)` (`SatinalmaQueries` #a, `RefQueries.Envanter` AlisAdet) · ürünün ilk stok girişi `IN (0,10,13,16,99)` (#ilk). **Düzeltme gerekmiyor**; K-36'nın ilk çerçevesi ('1M adet giriş kaçıyor') yanlıştı. Ama araştırma asıl sorunu buldu → K-37. Arşiv: `sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql` (K-36 eki). Eski metin: — 16/90/99 ölçümünde
   çıktı. 2026'da `16 Stok EKLE` **+1.052.596 adet** (184 belge, `eNot='WMS'`, günlük); kıyas:
   alış (0) +3.775.253 · yerel alım (10) +2.595.439. Yani **girişi `ehTip IN (0,10)` diye
   tanımlayan analizler yılda ~1M adet girişi kaçırıyor** (satınalma performansı, devir hızı
@@ -768,3 +768,18 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   kırılımı `eNot`'ta yalnız 'WMS' yazıyor, daha ince ayrım için WMS tarafına bakmak gerekir),
   (c) karar plan 41'in `AlisMi` bayrağına yansır. Arşiv:
   `sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql`
+
+- [ ] **K-37 Panel merkez depo stoğunu YANLIŞ kaynaktan okuyor (~yarı gösteriyor)** — K-36
+  araştırmasının asıl çıktısı. `dbo.stokSonAltDepo_vw` mekan 12 için **1.987.630** adet
+  veriyor; resmî `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', 31.08.2026) **4.249.866** →
+  **2,26M adet / 2,1 kat sapma**. Mağazalarda iki kaynak tutuyor (%0,3-4,8). Alt depo filtresi
+  sebep değil (mekan 12'de yalnız `ehAltDepo=0` satır var). Sebep Ağustos'ta zaten yazılmıştı:
+  *"DEPO (mekan 12): irsHrk ledger geçmişte BOZUK … WMS = tek doğru kaynak"*
+  (`sorgular/2026-08-12-stok-ay-bakiye-mekan-tablo.sql` başlığı) — o zaman tek ürün örneğiyle,
+  şimdi toplamda ölçüldü.
+  **Etkilenen yerler:** `dashboard/Data/OdakQueries.cs:176` (Mrkz kolonu) ·
+  `dashboard/Data/RefQueries.Envanter.cs:554` (Depo kolonu) · `scripts/export_odak_stok.py:46`.
+  **Yapılacak (kullanıcı onayı gerekir — panel rakamı değişecek):** depo stoğunu
+  `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son dönem) üzerinden oku; mağaza tarafı view'da
+  kalsın. Sonra eski/yeni rakam mutabakatı + etkilenen ekranların smoke testi. ⚠ Dikkat: WMS
+  snapshot AYLIK (ay sonu) — anlık depo stoğu isteniyorsa WMS canlı tablosu gerekir, o ayrı iş.

@@ -159,7 +159,7 @@ entities:
       irsHrk kümülatifi (tüm ehTip) ile kıyas: mağazalarda TUTUYOR (%0,3-4,8 fark = üç günlük
       hareket), merkez depoda 1.987.630 vs 4.249.866 → **2,26M adet / 2 KAT sapma**.
       Yani 'depo stoğunu hareketlerden toplarım' yaklaşımı merkez depoda yanlış sonuç verir;
-      WMS kaynağı esastır. Mağaza stoğu için irsHrk kümülatifi meşru (16/90/99 dahil edilerek).
+      WMS kaynağı esastır. Mağaza stoğu için irsHrk kümülatifi meşru (16/90/99 dahil edilerek). ⚠ **`dbo.stokSonAltDepo_vw` de depo için AYNI HATAYI taşır**: mekan 12 → 1.987.630 (WMS 4.249.866). Yani panelin stok view'ı depo stoğunu ~yarı gösteriyor; mağazalarda doğru. Alt depo filtresi sebep DEĞİL (mekan 12'de yalnız ehAltDepo=0 var). Sebep Ağustos'ta belgelenmişti: irsHrk depo defteri bozuk (bkz. sorgular/2026-08-12-stok-ay-bakiye-mekan-tablo.sql başlığı). Panel düzeltmesi TODO K-37.
       Arşiv: sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql"
     baslik_satir_koprusu: "**irsHrk.ehID = irs.eID** (ölçüm 2026-09-03). ⚠ `irs.eIrsID` alanı
       0 dolu — onunla join SESSİZCE 0 satır döndürür (bu tuzağa düşüldü). Satır filtrelemesinde

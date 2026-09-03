@@ -370,6 +370,16 @@
       "karsilastirma": "esit",
       "beklenen": 2,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "depo-bakiyesi-irshrk-den-doldurulmaz",
+      "db": "DerinSISBkm",
+      "soru": "bkm.StokAyBakiyeMekanBazli'de merkez depo (mekan 12) için irsHrk kaynaklı satır var mı?",
+      "neden": "Depo defteri (irsHrk) bozuk: mekan 12 için view/kümülatif 1.987.630 derken WMS 4.249.866 diyor (2,26M / 2,1 kat, ölçüm 2026-09-03). Bu yüzden stok tablosu depoyu YALNIZ WMS snapshot'ından doldurur. Biri irsHrk backfill'i depoya da uygularsa depo geçmişi sessizce yarılanır ve devir/bulunurluk bozulur.",
+      "sql": "SELECT COUNT(*) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE ehMekan = 12 AND Kaynak = 'irsHrk'",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }
