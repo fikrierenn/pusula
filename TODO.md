@@ -702,3 +702,18 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   atanmalı (0 mı, tahmini alış mı, kategori marjı mı), (b) K/Z ve envanter raporlarında
   ayrı satır mı gösterilsin, (c) plan 41'de grup ataması buna göre kesinleşir.
   Arşiv: `sorgular/2026-09-03-irstip-88-89-diger-giris-cikis.sql`
+
+- [ ] **K-33 Sezon sonu ayrılmaları SGK'da "istifa" olarak yazılıyor — İK'ya sorulacak** —
+  ÖLÇÜLDÜ 03.09.2026. Çıkış kodu sözlüğünde (`DerinSISBkm.iky.ayrilma_neden`) `18 İşin sona
+  ermesi` · `19 Mevsim bitimi` · `20 Kampanya bitimi` kodları VAR, ama Zirve'de bu üçünün
+  kullanımı **tüm zaman 0**; karşılığında 212 sezonluk çıkış kaydı var. 2025-2026 mağaza
+  sezonluk çıkışları: **03 istifa 60 · 02 deneme süreli işçi feshi 26 · 01 deneme süreli
+  işveren feshi 4 · 05 belirli süreli sözleşme bitimi 1**.
+  **Neden önemli:** (a) sezonluk devir/istifa oranı yorumlanırken "istifa" sayısı yapay
+  yüksek görünüyor — kadro savunmasında bu çıkarım yapılamaz; (b) kod seçiminin doğruluğu
+  ve çalışanın hak/ödenek durumu **mevzuat + İK teyidi** gerektirir (biz hüküm vermiyoruz);
+  (c) sözlükte olmayan 3 kod kullanılıyor: 45 (4 kişi) · 46 (1) · 48 (5) — SGK'nın sonradan
+  eklediği kodlar, sözlük 36'ya kadar.
+  **Sorulacak:** sezonluk çıkışlarda hangi kod kullanılmalı, mevcut kayıtlar düzeltilecek mi.
+  Arşiv: `sorgular/2026-09-03-zirve-cikis-kodlari.sql` · sema: `vw_PersonelDepartman`
+  → `isten_cikis_kodu` + `sezon_cikis_kodu_tuzagi`.

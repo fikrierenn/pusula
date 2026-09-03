@@ -350,6 +350,16 @@
       "karsilastirma": "esit",
       "beklenen": 1,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "ayrilma-neden-sozlugu-duruyor",
+      "db": "DerinSISBkm",
+      "soru": "İşten çıkış kodu sözlüğü (iky.ayrilma_neden) hâlâ dolu mu?",
+      "neden": "Zirve yalnız KODU tutuyor ('03'); açıklama sözlüğü ERP'deki kullanılmayan iky modülünün lookup tablosunda. Bu tablo boşalırsa/silinirse çıkış kodları yorumlanamaz hale gelir ve 'istifa mı mevsim bitimi mi' ayrımı kaybolur. Ölçüm 2026-09-03: 33 satır.",
+      "sql": "SELECT COUNT(*) FROM iky.ayrilma_neden",
+      "karsilastirma": "enaz",
+      "beklenen": 33,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }
