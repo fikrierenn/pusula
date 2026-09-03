@@ -154,6 +154,24 @@ v2.1 ve öncesi cp857 yazıyordu — `tools/sq.sh` ikisini de okur (UTF-8 dene, 
 
 **Yazma:** `sq.sh` yalnız SELECT içindir. ERP'ye yazma yasak (`erp-write-policy.md`).
 
+### Dört sözleşme (araç sınırı — 03.09.2026 kararı)
+
+Bir başka depoda (Belinza/Odoo) aynı ihtiyaçlar çıktı ve **sqlcli'ye Odoo yeteneği
+EKLENMEDİ**: `ISqlDialect` dikişi SQL lehçeleri içindir, `search_read`/`fields_get` oraya
+sokulursa soyutlama yalan söyler. sqlcli kanonik ve paylaşımlıdır (README "kaynak
+fork'lamayın" diyor; `MIMBAL/tools/sqlcli` ve `fifo/sqlcli` kopyaları zaten drift olmuş).
+**Taşınan şey kod değil, dört sözleşme** — hangi araçla çalışıyorsak bunlar geçerli:
+
+| Sözleşme | Bu depoda karşılığı |
+|---|---|
+| **Tek kimlik yolu** | Kimlik yalnız `.env` (+ `sqlcli.json` içindeki `${ENV}` yer tutucusu). Başka dosyaya kopyalanmaz, komut satırına yazılmaz, ekrana basılmaz. Karşılığı olmayan yer tutucu **hata verir** — sessizce boş şifreyle bağlanmaz |
+| **Salt-okuma muhafızı = İZİN LİSTESİ** | `--read-only` yalnız `SELECT` ve `WITH…SELECT` geçirir; **tanınmayan her şey reddedilir**. Yasak listesi yaklaşımı yanlıştı: listede olmayan yazma yolunu (Odoo'da `action_post`/`button_validate`, SQL'de `EXEC`/`SET`) kaçırır ve **kaçırdığını söylemez**. Red mesajı neyi tanımadığını yazar |
+| **Çıkış kodu 0/1/2** | `assert`: 0 geçti · 1 KIRIK · **2 = KOŞAMADI**. İkisi ayrı: bir ölçümün boş dönmesiyle hiç koşmaması ekranda aynı görünür; "koşamadı" asla yeşil sayılmaz |
+| **Görünür retry** | Yeniden deneme yalnız geçici hatada, sınırlı ve **her deneme yazdırılır**. Sessiz retry "yavaş" ile "ağ kopuyor"u ayırt edilemez yapar |
+
+**Sonuç:** yeni bir veri kaynağı (Odoo, REST, dosya) sqlcli'ye eklenmez — o kaynağın kendi
+aracı yazılır ve bu dört sözleşmeye uyar.
+
 ## MCP Sunucu Seçimi
 
 - `sqlserver` (192.168.40.201) → BKM/ERP varsayılan.
