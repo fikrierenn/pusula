@@ -102,6 +102,44 @@ CROSS APPLY (
 - **Kural:** Dashboard Dapper sorgularında ERP nesnesi her zaman **3-parçalı**: `DerinSISBkm.bkm.Fin_AyKapanis`, `DerinSISBkm.mhs.mhsMizan_vw`, `DerinSISBkm.dbo.irsHrk`. (RefQueries zaten böyle; MuhasebeQueries/MizanQueries 2-parçalı yazıldı → login-arkası 208 patladı: Mizan/Kontrol/Ayarlar.)
 - **MCP test YANILTIR:** `mcp__sqlserver__sql_query` `database=DerinSISBkm` ile çağrılır → 2-parçalı orada ÇALIŞIR ama app (master) bağlamında ÇALIŞMAZ. "MCP'de doğrulandı" ≠ "app'te çalışır". 3-parçalı yaz, gerekirse `database=master` ile doğrula.
 
+## SORGU ARACI: `sqlcli` VARSAYILAN (kullanıcı direktifi 03.09.2026)
+
+**Tek-sorgu keşif/ölçüm için varsayılan araç `sqlcli`** — ad-hoc pymssql/pyodbc
+snippet'i yazma. Kullanıcı iki kez hatırlatmak zorunda kaldı ("sqlcli neden
+kullanmıyorsun", "kullanmayı sürekli unutuyorsun").
+
+**Sarmalayıcı (en kısa yol):**
+```bash
+bash tools/sq.sh "SELECT TOP 5 * FROM dbo.urn"                    # erp, tablo
+bash tools/sq.sh --zirve --json "SELECT COUNT(*) FROM dbo.vw_PuanBil"
+bash tools/sq.sh --db EncoreMerkez --json "SELECT TOP 3 * FROM dbo.Sales"
+bash tools/sq.sh --joker "SELECT COUNT(*) FROM dbo.J_ORDERS"
+```
+Bağlantı `.env`'den okunur (şifre komut satırına yazılmaz), çıktı UTF-8'e çevrilir.
+
+**KANONİK KOPYA = `D:\Dev\sqlcli`** (global dotnet tool, `sqlcli` PATH'te; v2.1).
+`D:\Dev\fifo\sqlcli` ve `MIMBAL/tools/sqlcli` **eski birebir fork**'lardır (README
+"drift" diyor) — onları çağırma. Kurulum gerekirse:
+`cd D:/Dev/sqlcli && dotnet pack && dotnet tool install -g --add-source ./nupkg SqlCli`.
+
+**Kodlama tuzağı:** sqlcli çıktısı konsol kod sayfasında (**cp857**) akar. Dosyaya
+alıp okuyacaksan `decode('cp857')` — `utf-8` patlar, `cp1254` de patlar. `tools/sq.sh`
+bunu zaten yapar. (pymssql'in tersi: o CP1254 kolonları BOZAR — "Alýþ". Veri doğru
+Türkçe isteniyorsa sqlcli veya pyodbc.)
+
+**Hangi araç ne zaman:**
+
+| İş | Araç |
+|---|---|
+| Tek sorgu keşif/ölçüm/sayım | **`bash tools/sq.sh`** (sqlcli) |
+| Şema keşfi (kolon/FK/index/ilişki) | `sqlcli describe` / `relationships` / `search`, ya da MCP `sql_describe_table` |
+| Değişmez koşumu | `tools/sema_degismez.py` (kendi bağlantısını açar — sqlcli'ye bağımlı değil) |
+| Katalog dumanı | `tools/sema_sorgu_dumani.py` |
+| Rapor/Excel üretimi (script içi çekim) | **pyodbc** (Türkçe doğru, `coding-discipline.md`) |
+| Çok adımlı MCP oturumu, hızlı tek-satır sanity | MCP `mcp__sqlserver__*` / `mcp__zirve__*` |
+
+**Yazma:** `sq.sh` yalnız SELECT içindir. ERP'ye yazma yasak (`erp-write-policy.md`).
+
 ## MCP Sunucu Seçimi
 
 - `sqlserver` (192.168.40.201) → BKM/ERP varsayılan.

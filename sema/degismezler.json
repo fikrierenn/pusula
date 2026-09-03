@@ -303,6 +303,53 @@
       "karsilastirma": "esit",
       "beklenen": 4,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "irs-tip-kodlari-lookupta",
+      "db": "DerinSISBkm",
+      "korur": [
+        "aylik-magaza-net-ciro",
+        "okul-hizali-pencere-hacim"
+      ],
+      "soru": "irsHrk.ehTip ve irs.eTip'teki her kod dbo.irsTip_vw'de tanımlı mı?",
+      "neden": "Kod kümesi ELLE yazılmaz, lookup'tan okunur. Lookup'ta olmayan bir kod çıkarsa adı bilinmez ve rapor filtreleri (satış 4/100, iade 5/101) onu sessizce dışarıda bırakır. 2026-09-03 ölçümü: 8 kod (18·88·89·90·92·95·96·98) sema'da YOKTU ama lookup'ta vardı — 364K kayıtlık 'Diğer Giriş' dahil.",
+      "sql": "SELECT (SELECT COUNT(DISTINCT h.ehTip) FROM dbo.irsHrk h WITH(NOLOCK) WHERE h.ehTip NOT IN (SELECT tipID FROM dbo.irsTip_vw)) + (SELECT COUNT(DISTINCT i.eTip) FROM dbo.irs i WITH(NOLOCK) WHERE i.eTip NOT IN (SELECT tipID FROM dbo.irsTip_vw))",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "fat-tip-kodlari-lookupta",
+      "db": "DerinSISBkm",
+      "korur": [
+        "aylik-magaza-net-ciro"
+      ],
+      "soru": "fat.eTip'teki her kod dbo.fatTip_vw'de tanımlı mı?",
+      "neden": "Maliyet zinciri eTip=0'ı (Alış) kullanır; fiyat farkı faturaları (8·9·10) ayrı kodlardır. Tanımsız yeni bir kod çıkarsa hangi sınıfa girdiği bilinmeden maliyet ve alış analizleri onu atlar.",
+      "sql": "SELECT COUNT(DISTINCT f.eTip) FROM dbo.fat f WITH(NOLOCK) WHERE f.eTip NOT IN (SELECT tipID FROM dbo.fatTip_vw)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "sip-tip-kodlari-lookupta",
+      "db": "DerinSISBkm",
+      "soru": "sip.eTip'teki her kod dbo.sipTip_vw'de tanımlı mı?",
+      "neden": "Sipariş tipi kümesi satınalma/sevk analizlerinin ayracı. Tanımsız kod, sipariş akışında görünmeyen bir tür demek.",
+      "sql": "SELECT COUNT(DISTINCT s.eTip) FROM dbo.sip s WITH(NOLOCK) WHERE s.eTip NOT IN (SELECT tipID FROM dbo.sipTip_vw)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "depo-emtip-yeni-orphan-yok",
+      "db": "DerinSISBkm",
+      "soru": "depo.emir'de depo.emTip lookup'ında OLMAYAN kaç ayrı kod var?",
+      "neden": "Bugün 1 tanesi var: emTip=5 (478 emir, 2021 'Sayım-NNN' kayıtları) lookup'ta tanımsız — bilinen, tarihli borç. Değişmez YENİ bir tanımsız kod çıkarsa kırmızı verir; bilinen borcu papatya yapmadan sabitler.",
+      "sql": "SELECT COUNT(DISTINCT e.emTip) FROM depo.emir e WITH(NOLOCK) WHERE e.emTip NOT IN (SELECT emTipID FROM depo.emTip)",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }

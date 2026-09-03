@@ -637,3 +637,24 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   dokuzu da kırmızıya düşürülüp geri alındı. Her değişmez `korur: [query-id]` taşıyor, koşucu
   bunu katalogla çapraz denetliyor (yazım hatalı referans yakalanıyor). **24 değişmez / 2 hedef,
   0 kırık.**
+- [x] **K-27 `codes.yaml` tip kümeleri lookup'tan yeniden yazıldı** ✅ 03.09.2026 — 12 kod kümesi
+  canlı ölçüldü. **`irsHrk.ehTip`: 8 kod belgelenmemişti** (18 Mağaza İçi İşlemler · 88 Diğer
+  Giriş **364K kayıt** · 89 Diğer Çıkış · 90 Ürün SAY 160K · 92 Boş Paket · 95 Dönüşüm · 96 Bozuk
+  Ürün · 98 Şirket İçi Kullanım); ciro filtreleri (4/100, 5/101) etkilenmiyor ama stok tarafı bu
+  kodlarla dolu. **`fat.eTip`: 13 kodun 7'si eksikti** (6 Hizmet · 7 Gider · 8 Fiyat Farkı ·
+  9 Fiyat Farkı Düzeltmesi · 10 İade Fark Faturası · 11-12 satış fiyat farkı). `sip.eTip` elle
+  yazılan liste ile birebir tuttu. `irs.eTip` (başlık) ile `irsHrk.ehTip` (satır) AYNI küme
+  (ölçüldü). Kümeler artık `irsTip_vw`/`fatTip_vw`/`sipTip_vw`'den okunuyor, canlıda
+  kullanılmayanlar "canlıda yok" diye işaretli. 4 kapanma değişmezi eklendi (referans bütünlüğü,
+  elle liste değil) → **28 değişmez, 0 kırık**. `posOdmTip` + `J_ORDERS.PAYDEFREF` kolon adı da
+  belgelendi.
+- [ ] **K-28 Fiyat farkı faturaları ürün maliyetine girmiyor** — maliyet zinciri (B-104 ölü stok
+  ORT_ALIS, `olu_stok_excel.py:84`) `fat.eTip=0` kullanıyor; `8 Fiyat Farkı` · `9 Fiyat Farkı
+  Düzeltmesi` · `10 İade Fark Faturası` dışarıda. Tedarikçi sonradan fiyat farkı kestiğinde ürün
+  maliyeti EKSİK kalıyor (alt sınır). Ölç: 2026'da fiyat farkı faturalarının alış tutarına oranı;
+  materyal ise ORT_ALIS zincirine ekle. `codes.yaml` fat.eTip'e yazıldı.
+- [ ] **K-29 `bkm.IrsTipGrupMap` boş duruyor** — 21 kolonlu gruplama tablosu (TipId · AnaGrupKodu ·
+  SatisPaydaMi · AlisMi · TransferMi · SirketIciMi · SayimMi…) bizim app-owned `bkm` şemamızda ama
+  **0 satır**. Raporlardaki hardcoded `ehTip IN (4,100)` / `IN (5,101)` listeleri buradan
+  okunabilir (tek kaynak). Doldurmak ERP yazması → `erp-write-policy.md` izin listesinde değil,
+  **kullanıcı onayı gerekiyor**.

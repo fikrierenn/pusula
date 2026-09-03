@@ -66,31 +66,60 @@ codes:
     kdv: "ehTutarN = KDV HARİÇ (net). 13.06 işlem-seviye kanıt: stkID 1716577 irsHrk 1491,67 × 1,20 = 1790 EncoreMerkez TP (KDV dahil). Kitap KDV %0, oyuncak/kırtasiye %20."
     iade_netleme_kritik: "Dashboard storeSql ehTip(4,100) alıp 101'i DÜŞMÜYOR → iade kalemi satış sayılıyor. DOĞRU net = ehTip(4,100) ehTutarN − ehTip 101 ehTutarN. 13.06 FSM: ehTip 100 (-3827 ad/512.727), 101 (+80,78 ad/4.893 iade), 4 (-29/3.575), 13=mal kabul (giriş, satış DEĞİL), 8=transfer (ehTutarN 0). ehTutarOzl kolonu da var (0)."
     values:
-      0: Alış
-      1: Satış
-      2: Alış İade
-      3: Satış İade
-      4: Mağaza Satış
-      5: Mağaza Satış İade
-      6: Hizmet
-      7: Gider
-      8: Mağaza Mağaza (mağazalar arası transfer)
-      9: Mağaza Depo
-      10: Yerel Alım (tedarikçi giriş)
-      11: Depo Depo
-      12: Alış Mağaza İade
-      13: Depo Mağaza (sipariş; eTarih≠eTarihS olabilir)
-      14: İade ve İmha
-      16: Stok EKLE
-      17: Merkezi Düzeltme
-      99: Sayım (geriye dönük yazılır, max 189 gün)
-      100: POS Satış (yazar kasa perakende)
-      101: POS Satış İade
-
+      0: 'Alış — 1.458.421 kayıt'
+      1: 'Satış — 31.193.033 kayıt'
+      2: 'Alış İade — 154.928 kayıt'
+      3: 'Satış İade — 510.578 kayıt'
+      4: 'Mağaza Satış — 245.675 kayıt'
+      5: 'Mağaza Satış İade — 2.634 kayıt'
+      6: 'Hizmet — canlıda yok'
+      7: 'Gider — canlıda yok'
+      8: 'Mağaza Mağaza — 113.142 kayıt'
+      9: 'Mağaza Depo — 1.356.363 kayıt'
+      10: 'Yerel Alım — 2.370.431 kayıt'
+      11: 'Depo Depo — 4.196.550 kayıt'
+      12: 'Alış Mağaza İade — 145.366 kayıt'
+      13: 'Depo Mağaza — 984.403 kayıt'
+      14: 'İade ve İmha — 1 kayıt'
+      15: 'Örnek Alımı — canlıda yok'
+      16: 'Stok EKLE — 1.002.914 kayıt'
+      17: 'Merkezi Düzeltme — 1.750 kayıt'
+      18: 'Mağaza İçi İşlemler — 12 kayıt'
+      86: 'Ürün Değişim — canlıda yok'
+      88: 'Diğer Giriş — 364.226 kayıt'
+      89: 'Diğer Çıkış — 28.935 kayıt'
+      90: 'Ürün SAY — 160.257 kayıt'
+      91: 'Rakipten Ürün Alış — canlıda yok'
+      92: 'Boş Paket Çıkışı — 2.963 kayıt'
+      93: 'Müşteriden Bozuk İade — canlıda yok'
+      94: 'SKT Nedeniyle — canlıda yok'
+      95: 'Dönüşüm — 570 kayıt'
+      96: 'Bozuk Ürün — 31.749 kayıt'
+      97: 'Devir — canlıda yok'
+      98: 'Şirket İçi Kullanım — 8.667 kayıt'
+      99: 'Sayım — 2.865.110 kayıt'
+      100: 'POS Satış — 11.636.380 kayıt'
+      101: 'POS Satış İade — 216.872 kayıt'
+    kume_kaynagi: "dbo.irsTip_vw (34 kod) — LİSTE ELLE YAZILMAZ, lookup'tan okunur. Canlı veri bunun 26'sını kullanıyor (ölçüm 2026-09-03); kullanılmayanlar silinmedi, 'canlıda yok' diye işaretli. ⚠ irs.eTip (başlık) ile irsHrk.ehTip (satır) AYNI kümedir (ölçüldü: iki taraf da tam aynı 26 kod). ⚠ fatTip/sipTip AYRI kümelerdir — aynı sayı farklı şey demek (ör. 100 yalnız irs tarafında var). Koruma: degismezler.json → irs-tip-kodlari-lookupta."
+    last_verified: '2026-09-03'
   fat.eTip:            # dbo.fatTip_vw — fat SADECE faturalar (perakende kasa YOK → irsHrk 100)
     lookup: dbo.fatTip_vw
-    values: {0: Alış, 1: Satış (B2B), 2: Alış İade, 3: Satış İade, 4: Mağaza Satış, 5: Mağaza Satış İade}
-
+    values:
+      0: 'Alış — 131.834 kayıt'
+      1: 'Satış — 6.664.207 kayıt'
+      2: 'Alış İade — 8.925 kayıt'
+      3: 'Satış İade — 166.295 kayıt'
+      4: 'Mağaza Satış — 16.301 kayıt'
+      5: 'Mağaza Satış İade — 157 kayıt'
+      6: 'Hizmet — 4.209 kayıt'
+      7: 'Gider — 39.184 kayıt'
+      8: 'Fiyat Farkı — 9.024 kayıt'
+      9: 'Fiyat Farkı Düzeltmesi — 2.268 kayıt'
+      10: 'İade Fark Faturası — 7.257 kayıt'
+      11: 'Satış Fiyat Farkı — canlıda yok'
+      12: 'Satış Fiyat Farkı Düzeltme — canlıda yok'
+    kume_kaynagi: "dbo.fatTip_vw (13 kod). ⚠️ Sema 2026-09-03'e kadar yalnız 0-5'i belgeliyordu; 6-12 EKSİKTİ. Maliyet zinciri (ölü stok ORT_ALIS, B-104) `eTip=0` kullanıyor → 8 Fiyat Farkı · 9 Fiyat Farkı Düzeltmesi · 10 İade Fark Faturası ürün maliyetine GİRMİYOR (alt sınır). 11/12 satış tarafı fiyat farkı. Koruma: degismezler.json → fat-tip-kodlari-lookupta."
+    last_verified: '2026-09-03'
   depo.emir.emTip:     # depo.emTip — WMS iş emri = GÖREV
     lookup: depo.emTip
     values:
@@ -327,7 +356,23 @@ codes:
   sip.eTip:                          # lookup: dbo.sipTip_vw (canlı okundu 2026-08-19)
     lookup: dbo.sipTip_vw
     join: "LEFT JOIN dbo.sipTip_vw st ON st.tipID = sip.eTip -> st.tipAD"
-    values: {0: "Alış", 1: "Satış", 2: "Mağaza Depo", 3: "Yerel Alım", 4: "Depo Depo", 5: "Gider", 6: "Hizmet", 7: "Mağaza Satış", 8: "Mağaza Mağaza", 9: "Alış İade Emri", 10: "Satış İade Emri", 11: "Mağaza Satış İade Emri", 12: "Alış Mağaza İade Emri", 13: "Depo Mağaza"}
+    values:
+      0: 'Alış — 41.729 kayıt'
+      1: 'Satış — 6.997.573 kayıt'
+      2: 'Mağaza Depo — 950 kayıt'
+      3: 'Yerel Alım — 3.460 kayıt'
+      4: 'Depo Depo — 931 kayıt'
+      5: 'Gider — canlıda yok'
+      6: 'Hizmet — canlıda yok'
+      7: 'Mağaza Satış — canlıda yok'
+      8: 'Mağaza Mağaza — 64 kayıt'
+      9: 'Alış İade Emri — 27.595 kayıt'
+      10: 'Satış İade Emri — 1 kayıt'
+      11: 'Mağaza Satış İade Emri — canlıda yok'
+      12: 'Alış Mağaza İade Emri — canlıda yok'
+      13: 'Depo Mağaza — 21.898 kayıt'
+    kume_kaynagi: "dbo.sipTip_vw (14 kod) — elle yazılan liste ile birebir tuttu (ölçüm 2026-09-03). Canlıda 9'u kullanılıyor. Koruma: degismezler.json → sip-tip-kodlari-lookupta."
+    last_verified: '2026-09-03'
     hesap_sorma_ayrimi: "**DIŞ ALIM KARARI = eTip 0 (Alış) + 3 (Yerel Alım).** eTip 13 (Depo->Mağaza) = mağaza sevk siparişi, satınalma değil. eTip 9 (Alış İade Emri) = MAL KABUL işlemi, alım DEĞİL."
     tuzak: "⚠️ eTip 9'u 'alım' sanmak Samet Tılcı'yı (MAL KABULCÜ, 1.869 kayıt / 97 tedarikçi) en büyük satınalmacı gösterir — 2026-08-19'da bu hataya düşüldü, sipTip_vw okunarak düzeltildi. Tedarikçi çeşitliliği yüksek olması alım anlamına GELMEZ (iade de çok tedarikçiye yapılır)."
     canli_dagilim: "2025-02-01+ pencere: eTip 13 -> 7.877 sipariş (3 tedarikçi, şube hesapları) · 9 -> 2.141 (107 ted., Samet) · 3 -> 1.952 (19 ted., %99 grup-içi, entegrasyon kullanıcısı) · 1 -> 1.930 (16 ted., %98 grup-içi) · 0 -> 1.566 (139 ted., Onurhan+Aydın)."
