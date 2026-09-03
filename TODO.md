@@ -657,7 +657,8 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   SatisPaydaMi · AlisMi · TransferMi · SirketIciMi · SayimMi…) bizim app-owned `bkm` şemamızda ama
   **0 satır**. Raporlardaki hardcoded `ehTip IN (4,100)` / `IN (5,101)` listeleri buradan
   okunabilir (tek kaynak). Doldurmak ERP yazması → `erp-write-policy.md` izin listesinde değil,
-  **kullanıcı onayı gerekiyor**. → **Öneri hazır: `plans/41-irstipgrupmap.md`** (34 kodun canlı giriş/çıkış ölçümü + grup/bayrak taslağı + 4 açık soru). Yazma YAPILMADI; onay + `erp-write-policy` izin listesine ekleme bekliyor.
+  **kullanıcı onayı gerekiyor**. → **Öneri hazır: `plans/41-irstipgrupmap.md`** (açık soru 1 CEVAPLANDI: 88/89 =
+  manuel düzeltme kanalı, %85-91'i 31.12.2025 WMS–ERP eşitlemesi; sebep `eNot` metninde) (34 kodun canlı giriş/çıkış ölçümü + grup/bayrak taslağı + 4 açık soru). Yazma YAPILMADI; onay + `erp-write-policy` izin listesine ekleme bekliyor.
 - [x] **K-30 Ödeme tipi kümeleri ayrıştırıldı + kart/havale etiket hatası düzeltildi** ✅ 03.09.2026
   — kullanıcı düzeltmesi: üç ayrı sistem karıştırılmamalı. `joker.J_ORDER_PAY_TYPES` = **e-ticaret**
   (`J_ORDERS.PAYDEFREF`; -13 iyzico 4,19M · -3 COD 485K · -1 havale 6,5K) · `dbo.posOdmTip` =
@@ -685,3 +686,19 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   kural `sql-server-conventions.md § SORGU ARACI` yetenek tablosuyla güncellendi.
   ⚠ Kalan: `tools/sema_degismez.py` hâlâ kendi Python koşucusu — 28 değişmez `sqlcli assert`e
   taşınabilir (JSON-sürücülü toplu koşum ve çok-sunucu orada yok, o yüzden acil değil).
+
+- [ ] **K-32 Sahaf girişi: resmi evraksız giriş, stoğa SIFIR maliyetle giriyor** — 88/89
+  ölçümünde çıktı. `SahafGiris` belgeleri `ehTip=88` (Diğer Giriş) ile yazılıyor; **kullanıcı
+  teyidi (03.09): sahaf resmi olmayan giriştir, resmi evrak yoktur** → alış faturası olmadığı
+  için `ehTip IN (0,10)` dışında olması YERİNDE, hata değil.
+  **ÖLÇÜLDÜ:** 2026'da 12 belge / 4.844 satır / 4.234 ayrı ürün / +5.480 adet (06.05–27.08.2026);
+  **4.844 satırın 4.844'ü `ehMlyt=0`** — yani sahaf ürünü stoğa sıfır maliyetle giriyor.
+  **Sonuç (ÇIKARIM, teyit bekliyor):** maliyet tabanı olmayan bu ürünler satıldığında SMM
+  görünmez → brüt kâr olduğundan yüksek çıkar; envanter TL değeri de eksik kalır. Ölü stok
+  maliyet imputation'ı (B-104: `fiyatS` × kategori oranı) bunları fiyatlıyor olabilir.
+  ⚠ Ölçüm KARIŞIK: aynı `stkID`'ler resmi alışla da satılıyor, o yüzden "sahaf satışı = şu
+  kadar kâr şişmesi" DENEMEDİ — ayrıştırma partiye/FIFO katmanına bakmayı gerektirir.
+  **Kullanıcı yarın süreç bilgisini getirecek** (03.09 notu); ondan sonra: (a) maliyet nasıl
+  atanmalı (0 mı, tahmini alış mı, kategori marjı mı), (b) K/Z ve envanter raporlarında
+  ayrı satır mı gösterilsin, (c) plan 41'de grup ataması buna göre kesinleşir.
+  Arşiv: `sorgular/2026-09-03-irstip-88-89-diger-giris-cikis.sql`

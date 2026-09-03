@@ -152,6 +152,12 @@ entities:
     kapsam: "POS satisi YALNIZ BKM_GENEL uc magazasinda (eMekan 1=FSM · 4477=Ozluce ·
       4478=Ist.Yolu). Heykel/Sura ayri tuzel kisilik -> eTip=100'de YOK (bkz.
       vw_PersonelDepartman.sube_firma_eslesmesi)."
+    baslik_satir_koprusu: "**irsHrk.ehID = irs.eID** (ölçüm 2026-09-03). ⚠ `irs.eIrsID` alanı
+      0 dolu — onunla join SESSİZCE 0 satır döndürür (bu tuzağa düşüldü). Satır filtrelemesinde
+      `x.ehTip = i.eTip` de eklenir (aynı ehID başka tiple de geçebilir)."
+    neden_alani: "`irs.Neden`/`NedenAlt` kolonları DOLDURULMUYOR (tümü 0). Düzeltme belgelerinin
+      sebebi serbest metin **`irs.eNot`**'ta ('WMS - ERP EŞİTLEME', 'SahafGiris', 'HASARLI ÜRÜN
+      STOK DÜZELTME'…). Sebep bazlı analiz metin eşlemesi gerektirir; kod bazlı yapılamaz."
     sezon_konsantrasyonu: "Sezon (Tem-Eki) yilin buyuk kismini tasir. Olcum 2025 (3 POS,
       KDV-haric): Tem 30,7M · **Agu 186,9M · Eyl 313,0M · Eki 71,4M** · Kas 54,6M · Ara 60,6M
       -> sezon 4 ayi 602,0M = yilin ~%65'i. SONUC: yil-geneli oranlar (or. maliyet/ciro) sezon

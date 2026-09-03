@@ -100,6 +100,16 @@ codes:
       99: 'Sayım — 2.865.110 kayıt'
       100: 'POS Satış — 11.636.380 kayıt'
       101: 'POS Satış İade — 216.872 kayıt'
+    duzeltme_kanali_88_89: "**88 Diğer Giriş / 89 Diğer Çıkış = MANUEL STOK DÜZELTME kanalı**
+      (ölçüm 2026-09-03). Sebep kodu `irs.Neden`/`NedenAlt` HİÇ kullanılmıyor (tümü 0) — sebep
+      serbest metin **`irs.eNot`**'a yazılıyor, sınıflandırma ancak metinle yapılır. 88 → 364.226
+      satır/423 belge, %85'i tek olay ('WMS - ERP EŞİTLEME', 31.12.2025, +21,3M adet); 89 →
+      28.935 satır, %91'i aynı olay (−35,85M). Mekan %87-91 Merkez Depo (12). ⚠ TEK KOD ÜÇ İŞ
+      TAŞIR: sistem eşitleme · ODAK e-fatura istisnası · **SahafGiris = gerçek mal girişi**
+      (2026'da aktif: 12 belge/4.844 satır/+5.480 adet). Yani ehTip=88'i toptan 'düzeltme'
+      saymak sahaf alımını yanlış sınıflar. Ciro filtreleri etkilenmez (88/89 satış değil);
+      etkilenen: satınalma/maliyet analizleri `ehTip IN (0,10)` kullandığı için sahaf girişi
+      DIŞARIDA kalır (TODO K-32). Arşiv: sorgular/2026-09-03-irstip-88-89-diger-giris-cikis.sql"
     kume_kaynagi: "dbo.irsTip_vw (34 kod) — LİSTE ELLE YAZILMAZ, lookup'tan okunur. Canlı veri bunun 26'sını kullanıyor (ölçüm 2026-09-03); kullanılmayanlar silinmedi, 'canlıda yok' diye işaretli. ⚠ irs.eTip (başlık) ile irsHrk.ehTip (satır) AYNI kümedir (ölçüldü: iki taraf da tam aynı 26 kod). ⚠ fatTip/sipTip AYRI kümelerdir — aynı sayı farklı şey demek (ör. 100 yalnız irs tarafında var). Koruma: degismezler.json → irs-tip-kodlari-lookupta."
     last_verified: '2026-09-03'
   fat.eTip:            # dbo.fatTip_vw — fat SADECE faturalar (perakende kasa YOK → irsHrk 100)

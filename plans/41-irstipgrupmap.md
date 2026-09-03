@@ -77,8 +77,8 @@ türetildi, İK/muhasebe teyidi yok. Onaydan önce tartışılacak satırlar ⚠
 | 8, 9, 11, 13 | `TRANSFER` | `TransferMi` | net ≈ 0 (kendi içinde kapanıyor); ciroya girmez |
 | 16, 90, 99 | `SAYIM` | `SayimMi`, `OzetHesabaDahil`=**0** ⚠ | sayım düzeltme çifti; toplamı domine ediyor (yukarıdaki ölçüm) |
 | 17 | `DUZELTME` | `DuzeltmeMi` | merkezi düzeltme, 1.750 hareket |
-| 88 | `DIGER_GIRIS` | `DigerGirisMi` ⚠ | +24,5M giriş — **ne olduğu bilinmiyor**, İK/IT teyidi gerek |
-| 89, 92 | `DIGER_CIKIS` | `DigerCikisMi` ⚠ | −40,8M çıkış; 89'un ort −1.408 olması toplu/parti çıkış işareti |
+| 88 | `DUZELTME_GIRIS` | `DigerGirisMi`, `DuzeltmeMi`, `OzetHesabaDahil`=1 | ÖLÇÜLDÜ: manuel düzeltme kanalı, %85'i 31.12.2025 WMS–ERP eşitlemesi. Bakiyenin gerçek parçası → özete dahil; operasyonel analizde `DuzeltmeMi` ile dışlanır. ⚠ Sahaf alımı da bu kodda (bkz. açık soru 1) |
+| 89, 92 | `DUZELTME_CIKIS` | `DigerCikisMi`, `DuzeltmeMi`, `OzetHesabaDahil`=1 | ÖLÇÜLDÜ: aynı kanalın çıkış tarafı (%91 aynı WMS olayı). 92 Boş Paket Çıkışı ayrı iş ama hacmi küçük (2.963 satır) |
 | 14, 94, 96 | `IMHA_BOZUK` | `ImhaBozukMi`, `BozukIadePayMi` (96) | 96 Bozuk Ürün 31.749 hareket; 14/94 kullanılmıyor |
 | 93 | `IADE_BOZUK` | `BozukIadePayMi` | tanımlı ama kullanılmıyor |
 | 95 | `DONUSUM` | `SirketIciMi`=0, `DuzeltmeMi` ⚠ | 570 hareket, ort −238,8; muhtemelen set/paket bozma |
@@ -88,8 +88,26 @@ türetildi, İK/muhasebe teyidi yok. Onaydan önce tartışılacak satırlar ⚠
 
 ## Açık sorular (onaydan önce)
 
-1. **88 Diğer Giriş / 89 Diğer Çıkış nedir?** İkisi birlikte ±65M adet. İş anlamı
-   bilinmeden `OzetHesabaDahilMi` kararı verilemez → **teyit gerekiyor** (IT/depo).
+1. ~~**88 Diğer Giriş / 89 Diğer Çıkış nedir?**~~ **CEVAPLANDI 03.09.2026 (ÖLÇÜLDÜ)** —
+   ikisi de **manuel stok düzeltme kanalı**. Sebep kodu `irs.Neden`/`NedenAlt` hiç
+   kullanılmıyor (tümü 0); sebep serbest metin **`irs.eNot`** alanına yazılıyor.
+   · 88 → 364.226 satır / 423 belge; **%85'i TEK OLAY**: "WMS - ERP EŞİTLEME" (2 belge,
+     310.096 satır, 31.12.2025, +21,3M adet).
+   · 89 → 28.935 satır / 158 belge; **%91'i aynı olay** (26.278 satır, −35,85M adet).
+   · Mekan: 88 %87 · 89 %91 **Merkez Depo (12)**; mağaza payı küçük düzeltmeler.
+   · Diğer kalemler: ODAK e-faturasında olmayan ürün (104 belge/41.851 satır, Ağu–Eki 2023) ·
+     SINAV OKULLARI STOK DÜZELTME · HASARLI/SİGORTA HASARLI · KAMPANYALI ÜRÜN · HEDİYE ÇEKİ
+     ÜRETİM · İST.YOLU SEVK (88/89 aynı gün ±10.872 = transfer düzeltmesi) ·
+     **SahafGiris** (12 belge/4.844 satır, +5.480 adet, 06.05–27.08.2026, **hâlâ aktif**).
+   · ⚠ **TEK KOD ALTINDA ÜÇ AYRI İŞ**: sistem eşitleme · e-fatura istisnası · **sahaf alımı
+     (gerçek mal girişi)**. Yani `ehTip=88` "düzeltme" demek DEĞİL → kod bazlı grup ataması
+     sahafı düzeltme sayar. Karar gerekiyor: (a) sahaf için AYRI ehTip kodu açılsın, ya da
+     (b) `IrsTipGrupMap`'e ek olarak `eNot` kuralı tanımlanır, ya da (c) sahaf düzeltme
+     sayılmayı kabul eder (2026'da 5.480 adet — küçük ama artıyor). **Kullanıcı teyidi
+     (03.09): sahaf RESMİ OLMAYAN giriştir, resmi evrak yoktur** → faturasız olduğu için
+     `ehTip IN (0,10)` dışında olması yerinde. Kalan iş maliyet tarafında (K-32): 4.844
+     satırın tamamı `ehMlyt=0`, yani stoğa sıfır maliyetle giriyor.
+   Arşiv: `sorgular/2026-09-03-irstip-88-89-diger-giris-cikis.sql`
 2. **16 + 90 çifti** gerçekten sayım mekanizması mı, yoksa WMS'in başka bir işlemi mi?
    Toplamı domine ettiği için yanlış bayrak tüm stok özetini bozar.
 3. `SatisPaydaMi`'ya `1 Satış` (sevk/fatura) dahil mi? Bulunurluk/OSA oranlarında bugün
