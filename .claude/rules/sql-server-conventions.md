@@ -108,24 +108,36 @@ CROSS APPLY (
 snippet'i yazma. Kullanıcı iki kez hatırlatmak zorunda kaldı ("sqlcli neden
 kullanmıyorsun", "kullanmayı sürekli unutuyorsun").
 
-**Sarmalayıcı (en kısa yol):**
+**Profil (en kısa yol — `sqlcli.json` depoda, şifresiz):**
 ```bash
-bash tools/sq.sh "SELECT TOP 5 * FROM dbo.urn"                    # erp, tablo
-bash tools/sq.sh --zirve --json "SELECT COUNT(*) FROM dbo.vw_PuanBil"
-bash tools/sq.sh --db EncoreMerkez --json "SELECT TOP 3 * FROM dbo.Sales"
-bash tools/sq.sh --joker "SELECT COUNT(*) FROM dbo.J_ORDERS"
+sqlcli query  --profile erp   --format json "SELECT COUNT(*) FROM dbo.urn"
+sqlcli query  --profile zirve "SELECT TOP 5 * FROM dbo.vw_PuanBil"
+sqlcli lookup --profile erp   dbo.irsTip_vw --count-from dbo.irsHrk.ehTip
+sqlcli assert --profile zirve --eq 0 --label primgunu "SELECT COUNT(*) FROM dbo.vw_PuanBil WHERE Primgunu > 31"
 ```
-Bağlantı `.env`'den okunur (şifre komut satırına yazılmaz), çıktı UTF-8'e çevrilir.
+Profiller: `erp` (DerinSISBkm) · `encore` (EncoreMerkez) · `zirve` (BKM_GENEL) · `panel`.
+Şifre `sqlcli.json`'da DURMAZ — `${MSSQL_PASSWORD}` yer tutucusu `.env`'den doldurulur
+(v2.2 `${ENV}` genişletmesi); karşılığı yoksa **hata verir**, sessizce boş bağlanmaz.
 
-**KANONİK KOPYA = `D:\Dev\sqlcli`** (global dotnet tool, `sqlcli` PATH'te; v2.1).
-`D:\Dev\fifo\sqlcli` ve `MIMBAL/tools/sqlcli` **eski birebir fork**'lardır (README
-"drift" diyor) — onları çağırma. Kurulum gerekirse:
-`cd D:/Dev/sqlcli && dotnet pack && dotnet tool install -g --add-source ./nupkg SqlCli`.
+`bash tools/sq.sh [--zirve|--joker] [--json] [--db X] "<SELECT>"` sarmalayıcısı hâlâ
+çalışır (profil yoksa/başka depoda işe yarar) ama profil varken gerek kalmaz.
 
-**Kodlama tuzağı:** sqlcli çıktısı konsol kod sayfasında (**cp857**) akar. Dosyaya
-alıp okuyacaksan `decode('cp857')` — `utf-8` patlar, `cp1254` de patlar. `tools/sq.sh`
-bunu zaten yapar. (pymssql'in tersi: o CP1254 kolonları BOZAR — "Alýþ". Veri doğru
-Türkçe isteniyorsa sqlcli veya pyodbc.)
+**v2.2 yetenekleri (03.09.2026 eklendi — `D:\Dev\sqlcli`, git altında, v2.2.0):**
+
+| Yetenek | Kullanım | Ne için |
+|---|---|---|
+| **`assert`** | `sqlcli assert --eq 0 --label x --why "..." "SELECT COUNT(*)…"` | Öğrenilen şema gerçeğini koşulabilir denetime çevirir. **exit 0 geçti · 1 KIRIK · 2 KOŞAMADI** — üçüncüsü bilinçli: koşamamak yeşil değildir |
+| **`lookup`** | `sqlcli lookup dbo.fatTip_vw --count-from dbo.fat.eTip` | Kod kümesini lookup'tan YAML/JSON döker + canlı kullanım sayısı; kullanılmayanı "canlıda yok" işaretler. "Liste elle yazılmaz" kuralının aracı |
+| **`--read-only`** | bayrak veya `SQLCLI_READONLY=1` | Yazma anahtar kelimesi içeren sorguyu reddeder (string/yorum elenerek taranır) → `erp-write-policy` araç düzeyinde zorlanır |
+| **`--param ad[:tip]=deger`** | `--param bas:date=2026-09-01` · `--param kod:str=20260901` | String birleştirme yok (injection + tarih tuzağı). **`dd.MM.yyyy` REDDEDİLİR** (gün/ay belirsiz) — ISO yaz ya da `:str` + `CONVERT(...,104)` |
+| **`--timeout` / `--retry`** | `--timeout 60 --retry 2` | Yalnız geçici hatada (10053/10060/-2/1205) sınırlı ve **görünür** yeniden deneme; kalıcı hata (207) denenmez |
+
+**Kodlama:** v2.2'den beri sqlcli **UTF-8** yazar (Türkçe doğru, dosyaya/pipe'a alınabilir).
+v2.1 ve öncesi cp857 yazıyordu — `tools/sq.sh` ikisini de okur (UTF-8 dene, olmazsa cp857).
+
+**KANONİK KOPYA = `D:\Dev\sqlcli`** (global dotnet tool; 03.09'da `git init` edildi).
+`D:\Dev\fifo\sqlcli` ve `MIMBAL/tools/sqlcli` **eski fork**'lar — çağırma. Yeniden kurulum:
+`cd D:/Dev/sqlcli && dotnet pack && cp bin/Release/SqlCli.*.nupkg nupkg/ && dotnet tool update -g --add-source ./nupkg SqlCli`.
 
 **Hangi araç ne zaman:**
 
@@ -133,7 +145,9 @@ Türkçe isteniyorsa sqlcli veya pyodbc.)
 |---|---|
 | Tek sorgu keşif/ölçüm/sayım | **`bash tools/sq.sh`** (sqlcli) |
 | Şema keşfi (kolon/FK/index/ilişki) | `sqlcli describe` / `relationships` / `search`, ya da MCP `sql_describe_table` |
-| Değişmez koşumu | `tools/sema_degismez.py` (kendi bağlantısını açar — sqlcli'ye bağımlı değil) |
+| Değişmez koşumu (28 kayıt, çok sunucu) | `tools/sema_degismez.py` |
+| Tek denetim / CI kapısı | **`sqlcli assert`** (exit 1/2) |
+| Kod kümesini sema'ya yazma | **`sqlcli lookup --count-from`** |
 | Katalog dumanı | `tools/sema_sorgu_dumani.py` |
 | Rapor/Excel üretimi (script içi çekim) | **pyodbc** (Türkçe doğru, `coding-discipline.md`) |
 | Çok adımlı MCP oturumu, hızlı tek-satır sanity | MCP `mcp__sqlserver__*` / `mcp__zirve__*` |

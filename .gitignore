@@ -95,3 +95,7 @@ briefings/**/sezon-kadro-2026*.xlsx
 # Kisi-duzeyi personel listesi iceren Excel (KVKK)
 briefings/**/*KISILI*.xlsx
 briefings/**/*KISILI*.json
+
+# sqlcli.json COMMIT EDİLİR: içinde şifre yok, yalnız ${ENV} yer tutucusu
+# (sqlcli v2.2 bunları ortamdan/.env'den doldurur). Profillerin paylaşılması tekrar
+# üretilebilirlik için gerekli.

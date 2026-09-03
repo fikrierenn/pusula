@@ -1,0 +1,11 @@
+{
+  "_aciklama": "sqlcli profilleri (v2.2+). ŞİFRE BURADA DURMAZ — ${ENV} yer tutucusu sqlcli tarafından ortam değişkeninden, yoksa depo kökündeki .env'den doldurulur. Karşılığı bulunamayan yer tutucu sessiz geçmez, hata verir.",
+  "_kullanim": "sqlcli query --profile erp \"SELECT ...\"  ·  sqlcli assert --profile zirve --eq 0 \"...\"  ·  sqlcli lookup --profile erp dbo.irsTip_vw --count-from dbo.irsHrk.ehTip",
+  "Profiles": {
+    "erp": "Server=${MSSQL_HOST},${MSSQL_PORT};Database=DerinSISBkm;User Id=${MSSQL_USER};Password=${MSSQL_PASSWORD};TrustServerCertificate=true",
+    "encore": "Server=${MSSQL_HOST},${MSSQL_PORT};Database=EncoreMerkez;User Id=${MSSQL_USER};Password=${MSSQL_PASSWORD};TrustServerCertificate=true",
+    "zirve": "Server=${ZIRVE_HOST};Database=${ZIRVE_DATABASE};User Id=${ZIRVE_USER};Password=${ZIRVE_PASSWORD};TrustServerCertificate=true",
+    "panel": "Server=${PANEL_DB_HOST};Database=${PANEL_DB_NAME};Integrated Security=true;TrustServerCertificate=true"
+  },
+  "DefaultProfile": "erp"
+}

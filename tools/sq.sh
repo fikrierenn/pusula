@@ -56,12 +56,17 @@ DB="${DB:-$DEFDB}"
 
 CONN="Server=${SRV};Database=${DB};User Id=${USR};Password=${PWD_};TrustServerCertificate=true"
 
-# Çıktı cp857 (konsol kod sayfası) → UTF-8. Banner ANSI dizileri de temizlenir.
+# Çıktı kodlaması: sqlcli v2.2+ UTF-8 yazar (Program.cs OutputEncoding); eski sürümler
+# konsol kod sayfasında (Türkçe'de cp857) yazıyordu. İkisi de doğru okunsun diye önce
+# UTF-8 denenir, olmazsa cp857. Banner ANSI dizileri temizlenir.
 "$SQLCLI" query --conn "$CONN" --format "$FORMAT" --max-rows "$MAXROWS" "$SQL" 2>&1 \
   | python -c "
 import re, sys
 ham = sys.stdin.buffer.read()
-metin = ham.decode('cp857', errors='replace')
+try:
+    metin = ham.decode('utf-8')            # sqlcli v2.2+
+except UnicodeDecodeError:
+    metin = ham.decode('cp857', 'replace')  # eski sürüm / OEM konsol
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.stdout.write(re.sub(r'\x1b\[[0-9;]*m', '', metin))
 "
