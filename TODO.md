@@ -658,3 +658,11 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   **0 satır**. Raporlardaki hardcoded `ehTip IN (4,100)` / `IN (5,101)` listeleri buradan
   okunabilir (tek kaynak). Doldurmak ERP yazması → `erp-write-policy.md` izin listesinde değil,
   **kullanıcı onayı gerekiyor**.
+- [x] **K-30 Ödeme tipi kümeleri ayrıştırıldı + kart/havale etiket hatası düzeltildi** ✅ 03.09.2026
+  — kullanıcı düzeltmesi: üç ayrı sistem karıştırılmamalı. `joker.J_ORDER_PAY_TYPES` = **e-ticaret**
+  (`J_ORDERS.PAYDEFREF`; -13 iyzico 4,19M · -3 COD 485K · -1 havale 6,5K) · `dbo.posOdmTip` =
+  **kasa** (Nakit/Kredi Kartı/Döviz/Diğer) · `encore_odeme_grup` = **EncoreMerkez kasa üst-grubu**
+  (PaymentTypes 14 satır ölçüldü). Üçüne kapsam uyarısı yazıldı. **Bulgu:** `_default` kuralı HAVALE
+  ve ÇEK'i "Kredi/Banka Kartı" sayıyordu (BANKA HAVALE 486 · BURFAŞ ÇEK 48; ~%0,03 — küçük ama
+  yanlış etiket). `MagazaQueries.cs OdemeGrubu()` düzeltildi (Havale · Çek · Para Üstü), **build
+  0 hata**. Ders: `_default` bir kova değil, ÖLÇÜLMEMİŞ kalan demek.
