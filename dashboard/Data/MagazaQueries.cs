@@ -13,11 +13,16 @@ public sealed class MagazaQueries(Db db)
     // Mağaza adı LokasyonConfig.Mekan'dan (posMagaza dinamik — hardcode değil).
 
     // Ödeme tipi → üst-grup. TÜRK LİRASI=Nakit, çekler ayrı, geri kalan banka adları=Kredi/Banka Kartı.
+    // 03.09.2026: PaymentTypes'ın 14 satırı ölçüldü — HAVALE ve ÇEK adlı tipler `_default`
+    // yüzünden "Kredi/Banka Kartı" sayılıyordu (BANKA HAVALE 486 · BURFAŞ ÇEK 48 kayıt).
     static string OdemeGrubu(string tip) => tip?.ToUpperInvariant() switch
     {
         "TÜRK LİRASI" => "Nakit",
         "İADE ÇEKİ" => "İade Çeki",
         "HEDİYE ÇEKİ" => "Hediye Çeki",
+        "BANKA HAVALE" => "Havale",
+        "BURFAŞ ÇEK" => "Çek",
+        "BOZUK PARA ÜSTÜ" => "Para Üstü",
         _ => "Kredi/Banka Kartı",
     };
 

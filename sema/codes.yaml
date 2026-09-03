@@ -149,12 +149,18 @@ codes:
   encore.SalesProducts.BarcodeNo_1001:
     note: "BarcodeNo='1001' = GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ tut (sp.BarcodeNo<>'1001'). Fiş-düzeyi dışlama: LEFT JOIN spb ON BarcodeNo='1001' ... WHERE spb.Id IS NULL."
 
-  joker.J_ORDER_PAY_TYPES:    # PAYDEFREF=ID
+  joker.J_ORDER_PAY_TYPES:    # E-TİCARET ödemesi
+    kolon: "J_ORDERS.**PAYDEFREF** (PAYTYPEREF DEĞİL — 2026-09-03'te o adla arandı, Err 207)"
+    kapsam: "⚠️ YALNIZ E-TİCARET (JOKER siparişi). Kasa/yazarkasa ödemesi BURADA DEĞİL →
+      `dbo.posOdmTip`; EncoreMerkez ödeme üst-grubu → `encore_odeme_grup`. Üç ayrı sistem,
+      üç ayrı kod kümesi; 'ödeme tipi' adı ortak diye birleştirilmez."
     lookup: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES
     values:
-      -1: Havale/EFT
-      -3: Kapıda Ödeme (COD)
-      -13: iyzico (tüm online kart, ~%94)
+      -1: 'Havale/EFT — 6.463 sipariş'
+      -3: 'Kapıda Ödeme (COD) — 485.495 sipariş'
+      -13: 'iyzico (tüm online kart) — 4.186.061 sipariş'
+    last_verified: '2026-09-03'
+    evidence: "2026-09-03 — sqlcli: GROUP BY o.PAYDEFREF (tüm zaman). Üç kod, belgelenenle birebir."
   joker.J_ORDER_CARGO_STATUS: # CARGODELIVERYSTATUS
     values:
       0: İşlem görmemiş
@@ -228,6 +234,17 @@ codes:
       2010: Ürün İade Geldi (teslimat sonrası)
     note: "Satır seviye (J_ORDERS.STATUS ana sipariş; bu DETAY). ⚠ İPTAL/İADE ANALİZİ SATIR GRAIN'DE YAPILIR — header J_ORDERS.STATUS kısmi iptali KAÇIRIR: bir sipariş header'da 1005 'Kargoya Verildi' iken bir kalemi 2004/2005 iptal olabilir (ör. TS110730641852: header 1005, 1 kalem 2004). İptal=2005, İade=2010, Baskısı-yok(fiili iptal)=2004. Sebep kolonları: IPTALSEBEP/IPTALTARIH (2005) · IADESEBEPNO/IADEACIKLAMA/IADEMIKTAR/IADETALEPTARIH (2010). İptallerin ~%38'i tedarik/operasyon kaynaklı (müşteri değil). Bekleyen toplama: WMSAKTARMA=1 AND ORDERS.STATUS=1000 AND DETAILS.STATUS IN (2000,2002,2003,2007). Sorgu: sorgular/2026-07-30-etic-kart-iptal-detay.sql. 2026-07-30 canlı keşif (Temmuz kart iptal raporu)."
 
+  dbo.posOdmTip:            # KASA (yazarkasa) ödeme tipleri — DerinSIS
+    kapsam: "⚠️ KASA ödemesi (mağaza yazarkasa). E-ticaret ödemesi DEĞİL (o
+      `joker.J_ORDER_PAY_TYPES`), EncoreMerkez ödeme üst-grubu da DEĞİL (`encore_odeme_grup`)."
+    lookup: dbo.posOdmTip
+    values:
+      0: 'Nakit'
+      1: 'Kredi Kartı'
+      2: 'Döviz'
+      3: 'Diğer'
+    kume_kaynagi: "dbo.posOdmTip — 4 kod, lookup'tan okundu (elle yazılmadı)."
+    last_verified: '2026-09-03'
   mekanID:
     # isim kaynağı = posMagaza.mekanAd (dbo.mekan YOK). 24.06 teyit.
     values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: "İade Deposu (ODAK)", 4835: Ek Depo, 26142: "İPTAL-Transfer Deposu (transit)", 60398: HEYKEL TRANSFER}
