@@ -741,7 +741,8 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   · **MUHASEBE (norm Heykel 1):** HEYKEL'de 1 kişi vardı, çıkış 26.10.2025. ŞURA ÖN MUHASEBE
     4 kişinin tamamı çıkmış (son 31.10.2025). GENEL YÖNETİM MUHASEBE 4 aktif → muhasebe
     **Ekim 2025'te merkeze taşınmış**; Heykel normundaki satır **BAYAT NORM**, açık değil.
-- [ ] **K-34 Deste rakam kararı: norm 145 içindeki bayat MUHASEBE satırı + OYUN ALANI açığı** —
+- [x] **K-34 KARAR VERİLDİ: norm olduğu gibi kalıyor** ✅ 03.09.2026 (kullanıcı: "kalsın şimdilik norm o şekilde") — norm kadrolu **145**, toplam **217**, fark **28**, bölüm açığı **15** DEĞİŞMEDİ; deste ve Excel yeniden üretilmeyecek. Ölçüm gerekçe olarak duruyor (OYUN ALANI gerçek açık · Heykel MUHASEBE bayat norm) ama **rakama yansıtılmıyor** — norm bir yönetim parametresi ve kullanıcı olduğu gibi bırakmayı seçti. Destedeki dipnot zaten "normda yazılı olup kayıtta personeli olmayan 2 satır açığa katılmadı; teyit bekliyor" diyor, o cümle doğru kalıyor. ⚠ Sonraki oturum bu satırları "düzeltmeye" kalkmasın: sapma değil, KARAR. Yeniden açılırsa uygulama sırası: norm JSON'una satır SİLMEDEN bayat notu → `verimlilik_cek_norm.py` → deste+Excel yeniden üretim → 167 kontrol yeşil.
+- [ ] ~~K-34 eski hâli~~ —
   K-06 ölçümü iki deste rakamını etkiliyor, **karar kullanıcıda** (norm yönetim parametresi):
   · Bölüm bazlı açık **15 → 16** (OYUN ALANI gerçek açık olarak eklenirse).
   · Norm kadrolu **145 → 144** ve norm toplamı **217 → 216**, dolayısıyla "norm vs gerçek"
