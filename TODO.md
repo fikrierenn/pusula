@@ -521,7 +521,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### Sezon kadro savunması (02.09.2026) — takip maddeleri
 
-- [ ] **K-01 İK kayıt düzeltmesi (87-ABG)** — 02.09. Personel 87-ABG (Şura, Yardımcı Kitap) çıkış tarihi işlenmemiş, 377 gündür `Kadro='SEZONLUK'` aktif görünüyor. Düzeltilince 31.08 sezonluk 62 → 61, 5 mağaza toplamı 211 → 210. Kayıt ASİYE_BİNGÖLBALI firmasında; `perbilgi` yalnız BKM_GENEL tuttuğu için bu DB'den teyit edilemiyor. Rakamlar İK'nın resmi kaydıyla birebir kalsın diye elle düzeltilmedi, sunumda dipnot var.
+- [x] **K-01 KAPANDI — kayıt hatası YOK, kişi çalışmaya devam ediyor** ✅ 03.09.2026 (kullanıcı: "k-35 devam ediyor kontrol ettirdim") — Şura'daki 2025 girişli sezonluk personelin çıkışı işlenmemiş DEĞİL; fiilen çalışıyor. **Sezonluk 62 ve 5 mağaza 211 DOĞRU**, düzeltme gerekmiyor. Ders: 375 günlük kıdem tek başına 'çıkış işlenmemiş' kanıtı değildi — iki oturum boyunca ÇIKARIM ölçüm gibi taşındı ve desteye dipnot olarak girdi. Dipnot `scripts/sunum_slayt_maliyet.py`'de düzeltildi (yeni metin: 62'nin 61'i bu yıl, 1'i geçen yıl girişli ve çalışmaya devam ediyor — İK teyidi).
 - [ ] **K-02 Heykel sezonluk alım açığı** — 02.09. Norm 20, alınan 13 (−7), aktif 9. Alım en geç Heykel'de başladı (10.08; 14.08'e kadar 2 kişi) ve ayrılma oranı en yüksek (3/13 = %23). Sebep (aday bulunamadı / onay / ihtiyaç görülmedi) veriyle ayrılamıyor — operasyonla konuşulacak.
 - [ ] **K-03 Heykel/Şura POS raporlama kör noktası** — 02.09. İkisi ayrı tüzel kişilik (Bursa Kültür Merkezi / Asiye Bingölbalı) ve DerinSIS eTip 100'de satışları YOK → iş hacmi, kişi başı verimlilik ve "norm gerçekten gerekli mi" soruları o iki mağaza için ölçülemiyor. Çözüm seçenekleri: (a) o firmaların POS'unu DerinSIS'e bağlamak, (b) ayrı kaynaktan aylık özet almak.
 - [x] **K-04 Üç denetim ajanı bulgularının işlenmesi** ✅ 03.09.2026 (commit c884efb + 0eca76c kritik, eb96f7f orta/düşük) — python-reviewer · silent-failure-hunter · sql-denetci bulguları işlendi; kalan tek madde dosya-boyutu borcu (K-20).
@@ -752,7 +752,7 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
     yeniden koşar, deste + Excel yeniden üretilir, tutarlılık kontrolü (167) yeşil doğrulanır.
   · Karar verilmezse deste bugünkü hâliyle doğru kalır — dipnotta "normda yazılı olup kayıtta
     personeli olmayan 2 satır açığa katılmadı" cümlesi zaten var, ölçüm artık gerekçeyi biliyor.
-- [ ] **K-35 Çıkışı işlenmemiş olabilecek 1 sezonluk kayıt (İK teyidi)** — 31.08.2026 aktif
+- [x] **K-35 KAPANDI (⚠ K-01 ile AYNI İŞ — dup)** ✅ 03.09.2026 — İK kontrol etti, kişi çalışmaya devam ediyor; 62 doğru. **Süreç hatası:** bu madde açılırken `todo-verification.md` S3 dup-grep adımı atlandı; K-01 zaten aynı kaydı anlatıyordu. Detay K-01'de. Eski metin: — 31.08.2026 aktif
   sezonluk 62 = 61 (2026 girişli) + **1 (ŞURA, giriş 21.08.2025, 375 gün kıdem)**. Bir sezonluk
   kaydın bir yıldan uzun aktif kalması ya çıkışın işlenmemesi ya fiilen çalışmaya devam etmesi
   demek (Kadro hâlâ 'SEZONLUK'). Düzeltilirse sezonluk 62 → 61. Rakamlar İK'nın resmî kaydıyla

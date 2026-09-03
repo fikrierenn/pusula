@@ -259,10 +259,12 @@ def slayt_sezonluk_alim(C):
                 cell.fill.solid()
                 cell.fill.fore_color.rgb = RED if r == 0 else (WHITE if r % 2 else RGBColor(0xFA, 0xFA, 0xFA))
 
-        dipnot(s, "* İK'da bir kayıt düzeltme bekliyor: 2025 girişli bir sezonluk personelin çıkışı "
-                  "işlenmemiş, 31 Ağustos'ta aktif görünüyor (düzeltilince sezonluk 62 → 61). Beş "
-                  "mağaza; iki yıl aynı ofsette kesildi. «Açılıştan kaç gün önce» ölçüsü 6 günlük "
-                  "kaymadan etkilenir, bu yüzden takvim ölçüsü esas alınmıştır.")
+        # 03.09.2026: eski dipnot "İK'da düzeltme bekleyen 1 kayıt (çıkış işlenmemiş)" diyordu.
+        # İK kontrol etti: 2025 girişli sezonluk personel FİİLEN ÇALIŞMAYA DEVAM EDİYOR →
+        # veri hatası yok, 62 doğru. Yanlış olan dipnottu, kaldırıldı.
+        dipnot(s, "* Sezonluk 62 kişinin 61'i bu yıl, 1'i geçen yıl işe girmiş ve çalışmaya devam "
+                  "ediyor (İK teyidi). Beş mağaza; iki yıl aynı ofsette kesildi. «Açılıştan kaç gün "
+                  "önce» ölçüsü 6 günlük kaymadan etkilenir, bu yüzden takvim ölçüsü esas alınmıştır.")
         sig(s)
 
 
