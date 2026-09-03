@@ -168,11 +168,11 @@ def slayt_maliyet_ve_fazla_mesai(C):
 
         rrect(s, 7.1, 3.7, 5.55, 1.95, LGREY, RED, lw=1.5)
         tb(s, 7.35, 3.82, 5.05, 1.78,
-           [("Alım tercih değil, zorunluluktu", 12.5, True, DRED),
+           [("Kadro artmasaydı ne olurdu?", 12.5, True, DRED),
             ("Kadro %d seviyesinde kalsaydı, aynı işi çıkarmak %s saat ek fazla mesai isterdi. "
-             "Kişi başına yılda %s saat eder; yasal sınır %d saat, yani sınır aşılırdı. Bugünkü "
-             "fazla mesai %s saat ve sınırın içinde. Ama sınıra yaklaşan kişi sayısı %d'den "
-             "%d'ye çıktı; kadro hâlâ dar."
+             "Kişi başına yılda %s saat eder; yasal sınır %d saat. Bugünkü fazla mesai %s saat, "
+             "sınırın içinde. Sınıra yaklaşan kişi sayısı %d'den "
+             "%d'ye çıktı."
              % (ONCEKI, bin(kv["ek_fm_saat"]), bin(kv["kisi_basi_yillik_saat"]),
                 int(fm["yasal_yillik_sinir_saat"]), bin(fi["kisi_basi_yillik26"]),
                 fi["sinir_hizinda_kisi_ay25"], fi["sinir_hizinda_kisi_ay26"]), 10, False, INK)],

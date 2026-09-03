@@ -101,12 +101,12 @@ def slayt_norm_detay(C):
         # ENGELLI / ETKINLIK: mağaza satirlarinin ICINDE sayilir; burada bilgi amaçli AYRI gosterilir.
         #   Engelli tespiti perbilgi'ye dayanir -> yalniz BKM_GENEL firmasinda mumkun (Heykel/Sura kor).
         tb(s, 0.6, 4.28, 12.05, 0.34,
-           [("** YÖNETİM KARARI: engelli ve etkinlik kadrosu NORM DIŞIDIR — norm doluluğuna sayılmaz, "
+           [("** Yönetim kararı: engelli ve etkinlik kadrosu norm dışıdır; norm doluluğuna sayılmaz, "
              "mağaza satırlarından düşülmüştür. Heykel ve Şura'da engelli kadro yoktur (ayrı tüzel "
              "kişilik, 50 çalışan altı → 4857/30 yükümlülüğü doğmaz).", 8.5, False, GREY)])
         rrect(s, 0.6, 4.78, 12.05, 0.52, LGREY, RED, lw=1.5)
         tb(s, 0.9, 4.78, 11.6, 0.52,
-           [("Norm %d kişi, fiilen çalışan %d kişi → %+d KİŞİ EKSİK "
+           [("Norm %d kişi · fiilen çalışan %d kişi · fark %+d kişi "
              "(kadrolu %+d · sezonluk %+d)."
              % (tp["norm_toplam"], kad_ops + tp["sezonluk_kesim26"],
                 (kad_ops + tp["sezonluk_kesim26"]) - tp["norm_toplam"],

@@ -31,18 +31,18 @@ def slayt_itirazlar(C):
     s = add("Yalnızca Başlık"); setph(s, 0, "Yöntem ve Açıklamalar")
     itiraz = [
         ("Büyüme kurumsal kanaldan mı geldi?",
-         "Tersi oldu: Sınav Okulları küçüldü. Ocak–Ağustos satışı %s → %s milyon TL (%s). Mağaza %s büyüdü. "
-         "Büyümenin tamamı raftan geldi."
+         "Sınav Okulları küçüldü: Ocak–Ağustos satışı %s → %s milyon TL (%s). Mağaza tarafı %s "
+         "büyüdü; büyüme mağaza satışından geldi."
          % (bin(C.oa["sinav"]["kdvdahil25"] / 1e6, 1), bin(C.oa["sinav"]["kdvdahil26"] / 1e6, 1),
             yzd(C.d_sinav), yzd(C.d_mag_oa))),
         ("Ciro artışı enflasyon kaynaklı mı?",
-         "Kısmen doğru: aynı ürünlerde fiyatlar %%19,8 arttı. Bu yüzden ciroya değil ADEDE "
-         "bakıyoruz: ürün adedi %s ve adede zam karışmaz." % yzd(C.d_adet)),
+         "Aynı ürünlerde fiyatlar %%19,8 arttı. Bu yüzden ciroya değil adede "
+         "bakıyoruz: ürün adedi %s; adede zam karışmaz." % yzd(C.d_adet)),
         ("Kasa sistemi değişti, karşılaştırma geçerli mi?",
          "Bu yüzden rakamlar kasa sisteminden değil ERP'den alındı; iki yılda da aynı kaynak. "
          "Temmuz 2025 kasa değişimi rakamları etkilemiyor."),
         ("Sezonluk personel erken mi alındı?",
-         "Hayır: takvime göre %s alımı ortalama %s gün DAHA GEÇ. Temmuz ve öncesi alım %d kişiden "
+         "Takvime göre %s alımı ortalama %s gün daha geç. Temmuz ve öncesi alım %d kişiden "
          "%d'ye indi. Artış 1–14 Ağustos'ta; o iki haftada ürün adedi %s büyüdü. Alım işi takip etti."
          % (CARI, ("%.1f" % (C.al[str(CARI)]["ort_yil_gunu"] - C.al[str(ONCEKI)]["ort_yil_gunu"]))
             .replace(".", ","), C.al[str(ONCEKI)]["temmuz_ve_oncesi"], C.al[str(CARI)]["temmuz_ve_oncesi"],
@@ -124,7 +124,7 @@ def slayt_kapanis(C):
     # ================================================================= 15 KAPANIS
     s = add("Başlık Slaydı")
     setph(s, 0, "Sonuç")
-    setph(s, 1, "Norma göre %+d kişi eksik · kadrolu %s · ürün adedi %s · personel başına iş %s"
+    setph(s, 1, "Norm tablosuna göre fark %+d kişi · kadrolu %s · ürün adedi %s · personel başına iş %s"
                 % ((lambda nn: (nn["toplam"]["kadrolu_kesim26"]
                                 - sum(a.get("engelli", 0) + a.get("etkinlik", 0)
                                       for a in nn.get("ayrik", {}).values())

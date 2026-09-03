@@ -92,7 +92,7 @@ def slayt_dort_yil(C):
                   yzd(_yl[_atl_y]["adet"] / _yl[_atl_o]["adet"] - 1),
                   "düştü" if _kb[_atl_y] < _kb[_atl_o] else "arttı"), DRED),
               ("Ama %d 'norm' değil" % _atl_o,
-               "O yıl FSM kasada 0, Özlüce kasada 1 kişi vardı — eksik kadroyla çalışma.", GREY),
+               "O yıl FSM kasada 0, Özlüce kasada 1 kişi çalışıyordu.", GREY),
               ("%d → %d toparlanma" % (_atl_y, _yrs[-1]),
                "Kişi başı iş %s arttı; bu yıl kadro büyürken verim de arttı."
                % yzd(_kb[_yrs[-1]] / _kb[_atl_y] - 1), RED)]
@@ -143,7 +143,7 @@ def slayt_bolum_kirilimi(C):
     rrect(s, 0.6, 5.28, 12.05, 0.72, LGREY, RED, lw=1.5)
     tb(s, 0.9, 5.28, 11.5, 0.72,
        [("31 Ağustos'ta kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerinde; "
-         "yönetim kadrosunda değişim yoktur." % C.kesim_fark, 13.5, True, DRED)],
+         "yönetim kadrosu değişmedi." % C.kesim_fark, 13.5, True, DRED)],
        anchor=MSO_ANCHOR.MIDDLE)
     dipnot(s, C.DIP_BES)
     sig(s)

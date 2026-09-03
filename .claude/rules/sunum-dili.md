@@ -32,6 +32,28 @@ Slaytı ilk kez gören biri **bir kez okuyup** anlamalı. İkinci okuma gerekiyo
 | pencere | **dönem** |
 | grain / kapsam | **hangi mağazalar / hangi tarihler** |
 
+## Ton — İddia Değil Olgu (kullanıcı direktifi 03.09.2026)
+
+_"'Kadro fazlası yok…' çok iddialı bir laf, patronu iğreti edecektir; bu tarz söylemden
+kaçınmak lazım."_ Rakamı koy, hükmü okuyucuya bırak.
+
+| Yazma ❌ | Yaz ✅ |
+|---|---|
+| Kadro fazlası **yok** | 31 Ağustos'ta çalışan 189 kişi; norm tablosunda 217. Fark 28 kişi. |
+| Alım tercih değil, **zorunluluktu** | Kadro artmasaydı ne olurdu? (sonra model sonucu) |
+| **Tersi oldu:** Sınav küçüldü | Sınav Okulları küçüldü: … |
+| **Hayır:** takvime göre daha geç | Takvime göre alım ortalama 2,5 gün daha geç. |
+| hem de **eksik kadroyla** | (sitem cümlesini sil, rakamı bırak) |
+| kadro **hâlâ dar** | sınıra yaklaşan kişi sayısı 1'den 2'ye çıktı |
+| artış **yoktur** / değişim **yoktur** | artmadı / değişmedi |
+| **28 KİŞİ EKSİK** (büyük harf vurgu) | fark 28 kişi |
+| büyümenin **tamamı** raftan geldi | büyüme mağaza satışından geldi |
+
+**Kural:** patronun iddiasını doğrudan reddeden cümle kurma (savunmaya çekiyor). İki rakamı
+yan yana koy, farkı yaz, kaynağı belirt. "Yok / zorunluydu / tamamı / kesinlikle" gibi kesin
+ifadeler ve BÜYÜK HARF vurgusu iddia sinyali verir; slayt zaten şirketin kendi norm tablosunu
+gösteriyorsa hükme gerek kalmaz.
+
 ## Sayı Anlatımı
 
 - Yüzde puan yerine para dili: `%12,85 → %12,15` değil → **"100 TL satışta 12,85 TL'den 12,15 TL'ye indi"**.
