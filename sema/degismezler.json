@@ -380,6 +380,17 @@
       "karsilastirma": "esit",
       "beklenen": 0,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "wms-hucresel-stok-kaynagi-ayakta",
+      "db": "DerinSISBkm",
+      "korur": [],
+      "soru": "WMS hücresel stok kaynağı (depo.stok_adres_palet_vw) RAF alanında stok gösteriyor mu?",
+      "neden": "Merkez depo stoğunun TEK doğru kaynağı bu view (ERP defteri senkron değil, −4,24M negatif taşıyor). View boşalırsa/erişilemezse panel depo stoğunu SIFIR gösterir ve bu 'depo boşaldı' diye okunur. Ölçüm 2026-09-03: RAF 3.799.795.",
+      "sql": "SELECT CAST(SUM(CAST(Stok AS float)) AS bigint) FROM depo.stok_adres_palet_vw WITH(NOLOCK) WHERE adrsAlanTipID = 0",
+      "karsilastirma": "enaz",
+      "beklenen": 1000000,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }

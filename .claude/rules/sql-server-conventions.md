@@ -67,6 +67,32 @@ AVG iade hariç:
 CASE WHEN s.DocumentsTypeId <> 3 THEN ... END
 ```
 
+## MERKEZ DEPO STOĞU = HER ZAMAN WMS (KRİTİK — kullanıcı direktifi 03.09.2026)
+
+_"ERP merkez depo defteri senkron sorunu var, her zaman WMS stoklarına bakmalısın."_
+
+- **Merkez depo (mekan 12) stoğu ERP defterinden OKUNMAZ.** `dbo.stokSonAltDepo_vw` mekan 12
+  değeri ERP defteridir ve WMS ile senkron değildir: ölçüm 03.09.2026 → pozitifler 6.230.071,
+  negatifler **−4.242.441** (fiziksel olarak imkânsız), net 1.987.630.
+- **Kaynak = WMS hücresel stok:** `depo.stok_adres_palet_vw` (adres + palet düzeyi;
+  kolonlar `adrsAlanTipID · adrsID · adrsAd · PaletID · stkID · Stok`). Alan tipleri
+  (`depo.adresAlanTip`): **0 RAF ALANI** (03.09: 3.799.795 / 21.842 ürün) · **1 GİRİŞ ALANI**
+  (195.470 / 4.633) · **2 ÇIKIŞ ALANI** (543.555 / 12.082).
+- **Ay-sonu snapshot:** `bkm.StokAyBakiyeMekanBazli` (`Kaynak='WMS'`, `ehMekan=12`) — bu tablo
+  aynı view'dan `adrsAlanTipID IN (0,1)` ile doldurulur, yani **ÇIKIŞ ALANI hariç** (sevke
+  hazırlanmış mal). Geçmiş depo bakiyesi YALNIZ bu snapshot'tan okunur; irsHrk ile backfill
+  edilmez (değişmez: `depo-bakiyesi-irshrk-den-doldurulmaz`).
+- **Mağaza stoğu farklı:** mekan 1/4477/4478 için `stokSonAltDepo_vw` DOĞRUdur (irsHrk ve
+  snapshot ile %0,3-4,8 içinde tutuyor). Kural yalnız merkez depo için geçerli.
+- **Kapsam farkı bilinsin:** ERP defteri ambalaj/sarf da taşır (ör. "Geri Dönüşüm Kağıt Madde
+  Alımı" 1.758.386 + poşetler ~370K, `Genel` kategorisi); WMS hücresel stok satılabilir malı
+  tutar. Kitap tarafında ERP defteri kalıntı taşır (çeşit 1.254 vs WMS 127).
+- **Uygulanan yerler (K-37):** `dashboard/Data/OdakQueries.cs` (`depo` CTE) ·
+  `dashboard/Data/RefQueries.Envanter.cs` (kategori-çeşit UNION ALL) ·
+  `scripts/export_odak_stok.py`. Yeni bir depo-stok sorgusu yazarken bu deseni izle.
+- ⚠ `ent.odak_depo_Stok` BAŞKA BİR ŞEY: ODAK (e-ticaret fulfillment) deposu, ~7,2M adet.
+  Merkez depo ile karıştırılmaz.
+
 ## MÜŞTERİ RAPORLARI = FİŞ BAZLI (KRİTİK — 16.06.2026 CFO direktifi)
 
 **Tüm müşteri/sadakat raporları SADECE perakende fiş üzerinden çalışır.** Fatura(2)/Personel(6,7)/**Sınav Okulları(8)** belge tipleri HARİÇ — bunlar kurumsal/B2B, perakende müşteri davranışı değil (Sınav tek başına "kartsız"ı 266M şişiriyordu, B-102).
