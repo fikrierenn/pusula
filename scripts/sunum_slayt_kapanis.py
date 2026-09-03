@@ -15,15 +15,15 @@ def _maliyet_itiraz(C):
     kb_ = C.v["maliyet"]["pos"]["%d" % (CARI % 100)]
     pn_ku = (kb_["maliyet_ciro_orani"] - ka_["maliyet_ciro_orani"]) * 100
     pn = (b_["maliyet_ciro_orani"] - a_["maliyet_ciro_orani"]) * 100
-    return ("Sezonda maliyet %s artmıştır; artışın ana kaynağı FTE başına ücret (%s), kadro "
-            "artışı değil. Cironun içindeki personel yükü %s puan %s: %%%s → %%%s"
+    return ("Sezonda maliyet %s arttı. Sebebi kişi başına ücret artışı (%s), kadro "
+            "değil. 100 TL satışta personele giden para %s ₺ %s: %s ₺ → %s ₺"
             % (yzd(b_["maliyet"] / a_["maliyet"] - 1),
                yzd(b_["fte_basi_maliyet"] / a_["fte_basi_maliyet"] - 1),
                ("%.2f" % abs(pn)).replace(".", ","),
                "GERİLEMİŞTİR" if pn < 0 else "YÜKSELMİŞTİR",
                ("%.2f" % (a_["maliyet_ciro_orani"] * 100)).replace(".", ","),
                ("%.2f" % (b_["maliyet_ciro_orani"] * 100)).replace(".", ","))
-            + " (yıl geneli %s puan)." % ("%+.2f" % pn_ku).replace(".", ","))
+            + " (yılbaşından bu yana %s ₺)." % ("%+.2f" % pn_ku).replace(".", ","))
 
 def slayt_itirazlar(C):
     """Yontem ve aciklamalar — itirazlar + veriye dayali cevaplar."""
@@ -31,26 +31,26 @@ def slayt_itirazlar(C):
     s = add("Yalnızca Başlık"); setph(s, 0, "Yöntem ve Açıklamalar")
     itiraz = [
         ("Büyüme kurumsal kanaldan mı geldi?",
-         "Tersi: Sınav Okulları küçüldü. Ocak–Ağustos cirosu %s → %s milyon TL (%s). Mağaza tarafı %s büyüdü — "
-         "büyümenin tamamı raftan geldi."
+         "Tersi oldu: Sınav Okulları küçüldü. Ocak–Ağustos satışı %s → %s milyon TL (%s). Mağaza %s büyüdü. "
+         "Büyümenin tamamı raftan geldi."
          % (bin(C.oa["sinav"]["kdvdahil25"] / 1e6, 1), bin(C.oa["sinav"]["kdvdahil26"] / 1e6, 1),
             yzd(C.d_sinav), yzd(C.d_mag_oa))),
         ("Ciro artışı enflasyon kaynaklı mı?",
-         "Kısmen doğru: eşleşen ürünlerde fiyat endeksi +%%19,8. Bu yüzden savunma ciroya değil ADEDE "
-         "dayanıyor: ürün adedi %s ve adet fiyattan etkilenmez." % yzd(C.d_adet)),
+         "Kısmen doğru: aynı ürünlerde fiyatlar %%19,8 arttı. Bu yüzden ciroya değil ADEDE "
+         "bakıyoruz: ürün adedi %s ve adede zam karışmaz." % yzd(C.d_adet)),
         ("Kasa sistemi değişti, karşılaştırma geçerli mi?",
-         "Bu yüzden ölçüm POS'tan değil ERP'den (DerinSIS) alındı — iki yılda da aynı kaynak, aynı belge tipi. "
-         "Temmuz 2025 kasa geçişi ölçüye girmiyor."),
+         "Bu yüzden rakamlar kasa sisteminden değil ERP'den alındı; iki yılda da aynı kaynak. "
+         "Temmuz 2025 kasa değişimi rakamları etkilemiyor."),
         ("Sezonluk personel erken mi alındı?",
-         "Hayır: takvim ölçüsünde %s alımı ortalama %s gün DAHA GEÇ; Temmuz ve öncesi alım %d kişiden "
-         "%d'ye indi. Artış 1–14 Ağustos'ta ve o iki haftada ürün adedi %s büyüdü — alım işi takip etti."
+         "Hayır: takvime göre %s alımı ortalama %s gün DAHA GEÇ. Temmuz ve öncesi alım %d kişiden "
+         "%d'ye indi. Artış 1–14 Ağustos'ta; o iki haftada ürün adedi %s büyüdü. Alım işi takip etti."
          % (CARI, ("%.1f" % (C.al[str(CARI)]["ort_yil_gunu"] - C.al[str(ONCEKI)]["ort_yil_gunu"]))
             .replace(".", ","), C.al[str(ONCEKI)]["temmuz_ve_oncesi"], C.al[str(CARI)]["temmuz_ve_oncesi"],
             yzd(C.v["agustos_yarim"]["1"]["adet26"] / C.v["agustos_yarim"]["1"]["adet25"] - 1))),
         ("Personel maliyeti çok mu arttı?", _maliyet_itiraz(C)),
         ("Ağustos ayında ivme düşüşü var mı?",
-         "Takvim etkisi: okullar 2025'te 8 Eylül, 2026'da 14 Eylül açıldı — sezon 6 gün geriye kaydı. "
-         "Açılışa hizalanınca haftalık büyüme %65–79 bandında düz seyrediyor."),
+         "Takvim etkisi: okul 2025'te 8 Eylül, 2026'da 14 Eylül açıldı; sezon 6 gün geriye kaydı. "
+         "Açılış gününe göre hizalanınca haftalık büyüme %65–79 arasında sabit."),
     ]
     # kart yuksekligi kart SAYISINA gore otomatik: alt sinir y6.00 (dipnot/logo bandi serbest kalsin)
     ust, alt_sinir = 1.45, 6.00
@@ -94,9 +94,9 @@ def slayt_iyilestirme(C):
     tb(s, 0.85, 1.62, 5.0, 0.36, [("KADROLU ALIMDA KALMA ORANI", 10, True, GREY)])
     tb(s, 0.85, 2.02, 5.4, 0.86, [("%s → %s" % (kad25["oran"], kad26["oran"]), 30, True, DRED)])
     tb(s, 0.85, 2.92, 5.4, 0.95,
-       [("İlk 14 günü tamamlama oranı (%d/%d → %d/%d). %d alımdan %d'si kesim tarihine kadar "
-         "ayrılmıştır (önceki yıl %d alımdan %d). Aynı pozisyonun iki kez doldurulması maliyet "
-         "yaratmaktadır." % (kad25["kalan"], kad25["risk"], kad26["kalan"], kad26["risk"],
+       [("İlk 14 günü tamamlayanlar (%d/%d → %d/%d). %d yeni alımdan %d'si 31 Ağustos'a kadar "
+         "ayrıldı (geçen yıl %d alımdan %d). Aynı pozisyonu iki kez doldurmak maliyet "
+         "demek." % (kad25["kalan"], kad25["risk"], kad26["kalan"], kad26["risk"],
                              kad26["alinan"], kad26["ayrilan"], kad25["alinan"], kad25["ayrilan"]),
          10.5, False, INK)], sp=1.1)
 
@@ -104,8 +104,8 @@ def slayt_iyilestirme(C):
     tb(s, 7.0, 1.62, 5.0, 0.36, [("SEZONLUK KADRODA KALMA ORANI", 10, True, GREY)])
     tb(s, 7.0, 2.02, 5.4, 0.86, [("%s → %s" % (sez25["oran"], sez26["oran"]), 30, True, MGREY)])
     tb(s, 7.0, 2.92, 5.4, 0.95,
-       [("Sezonluk kadroda kalma oranı yükselmiştir (%d/%d → %d/%d). Sorun sezonluk alımda değil, "
-         "kadrolu alımın ilk haftasındadır."
+       [("Sezonlukta kalma oranı yükseldi (%d/%d → %d/%d). Sorun sezonluk alımda değil, "
+         "kadrolu alımın ilk haftasında."
          % (sez25["kalan"], sez25["risk"], sez26["kalan"], sez26["risk"]), 10.5, False, INK)], sp=1.1)
 
 
@@ -115,7 +115,7 @@ def slayt_iyilestirme(C):
         ("• En bozuk üç nokta: Özlüce, Heykel, Merkez Depo → ilk hafta karşılama protokolü.\n"
          "• İdari İşler pozisyonunda ücret–vardiya revizyonu.\n"
          "• Ölçüt: gelecek sezon Eylül öncesi kayıp %20'den %12'ye (2025 seviyesi).", 12, False, INK)], sp=1.25)
-    dipnot(s, C.DIP_BES + " Tutunma ölçümü mağaza kadrosu üzerinden yapılmıştır.")
+    dipnot(s, C.DIP_BES + " Ölçüm mağaza kadrosu üzerinden yapıldı.")
     sig(s)
 
 
@@ -124,7 +124,7 @@ def slayt_kapanis(C):
     # ================================================================= 15 KAPANIS
     s = add("Başlık Slaydı")
     setph(s, 0, "Sonuç")
-    setph(s, 1, "Norma göre %+d kişi · kadrolu %s · ürün adedi %s · personel başına iş %s"
+    setph(s, 1, "Norma göre %+d kişi eksik · kadrolu %s · ürün adedi %s · personel başına iş %s"
                 % ((lambda nn: (nn["toplam"]["kadrolu_kesim26"]
                                 - sum(a.get("engelli", 0) + a.get("etkinlik", 0)
                                       for a in nn.get("ayrik", {}).values())

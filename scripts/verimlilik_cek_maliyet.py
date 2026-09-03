@@ -130,7 +130,7 @@ def cek_maliyet(zc, veri, ciro_ay):
     POS_SUBELER = [SUBE[m] for m in MEKAN]
     TUM_SUBELER = sorted({sb for (_y, sb) in mal_sube})
     maliyet = {"pencere_ay": son_ay,
-               "pencere": "01-%02d ay (Oca–%s), her iki yıl" % (son_ay, AY_AD_KISA[son_ay]),
+               "pencere": "Oca–%s (yılbaşından bu yana)" % AY_AD_KISA[son_ay],
                "kapsam_pos": POS_SUBELER, "kapsam_tum": TUM_SUBELER,
                "sube": {"%s|%d" % (sb, y): mal_sube[(y, sb)] for (y, sb) in sorted(
                    mal_sube, key=lambda t: (t[1], t[0]))},
@@ -212,12 +212,9 @@ def cek_maliyet(zc, veri, ciro_ay):
                     for sg in SEGMENTLER}}
     if not maliyet["sezon"]["tam_mi"]:
         maliyet["sezon"]["uyari"] = (
-            "⚠ %d SEZONU HENÜZ TAMAMLANMADI. Sezon = %s ayları; %s ayı/ayları için bordro henüz "
-            "işlenmedi (Ağustos bordrosu koşmadı, Eylül–Ekim daha gelmedi). Karşılaştırma "
-            "tamamlanan ortak ay(lar) ile sınırlıdır: %s. Geçen yılın TAM sezonu ayrıca "
-            "referans olarak verilmiştir."
-            % (CARI, "%s–%s" % (AY_AD_KISA[SEZON_AYLAR[0]], AY_AD_KISA[SEZON_AYLAR[-1]]),
-               ", ".join(AY_AD_KISA[a_] for a_ in maliyet["sezon"]["eksik_aylar"]),
+            "⚠ %d sezonu bitmedi: %s ayları henüz bordroya girmedi. Karşılaştırma %s ayı ile "
+            "yapıldı; geçen yılın tam sezonu ayrıca gösteriliyor."
+            % (CARI, ", ".join(AY_AD_KISA[a_] for a_ in maliyet["sezon"]["eksik_aylar"]),
                ", ".join(AY_AD_KISA[a_] for a_ in sezon_aylar)))
 
     maliyet["segment_kumulatif"] = {

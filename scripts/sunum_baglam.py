@@ -48,19 +48,19 @@ def hesapla(v):
              and b["bolum"] in ("MAĞAZA", "MAL KABUL", "İDARİ İŞLER")]
 
     PT = v["meta"]["pencere_tarih"]
-    DONEM_POS = "%s – %s (%d) · %s – %s (%d), her iki yıl %d gün, okul açılışına hizalı" % (
-        PT[str(ONCEKI)][0][:5], PT[str(ONCEKI)][1], ONCEKI,
-        PT[str(CARI)][0][:5], PT[str(CARI)][1], CARI, gun)
-    DONEM_OCA_AGU = "01.01 – 31.08 (her iki yıl, kümülatif)"
+    DONEM_POS = ("%d: %s – %s · %d: %s – %s (her iki yıl %d gün, okul dönemine göre eşleşen "
+                 "günler)" % (ONCEKI, PT[str(ONCEKI)][0][:5], PT[str(ONCEKI)][1],
+                              CARI, PT[str(CARI)][0][:5], PT[str(CARI)][1], gun))
+    DONEM_OCA_AGU = "1 Ocak – 31 Ağustos (her iki yıl)"
     POS_ADLARI = "FSM · Özlüce · İst. Yolu"
     BES_ADLARI = "FSM · Özlüce · İst. Yolu · Heykel · Şura"
-    DIP_POS = ("* Kapsam: üç POS mağazası — %s (Heykel ve Şura POS raporlamasında yok) · Dönem: %s"
+    DIP_POS = ("* Mağazalar: %s (Heykel ve Şura'nın kasa verisi bu sistemde yok) · %s"
                % (POS_ADLARI, DONEM_POS))
-    DIP_OCA_AGU = "* Kapsam: üç POS mağazası — %s · Dönem: %s" % (POS_ADLARI, DONEM_OCA_AGU)
-    DIP_BES = ("* Kapsam: beş mağazanın tamamı — %s · Ölçüm noktaları: 30.06 tabanı ve 31.08 kesimi "
-               "(tarih aralığı değil, o gün fiilen çalışan kişi)" % BES_ADLARI)
-    DIP_KARMA = ("* Kadro: beş mağaza (%s), ölçüm noktaları 30.06 ve 31.08 · İş hacmi ve personel başına: "
-                 "üç POS mağazası (%s), dönem %s" % (BES_ADLARI, POS_ADLARI, DONEM_POS))
+    DIP_OCA_AGU = "* Mağazalar: %s · %s" % (POS_ADLARI, DONEM_OCA_AGU)
+    DIP_BES = ("* Beş mağazanın tamamı: %s · Rakamlar 30 Haziran ve 31 Ağustos günü çalışan "
+               "kişi sayısıdır." % BES_ADLARI)
+    DIP_KARMA = ("* Kadro: beş mağaza (%s), 30 Haziran ve 31 Ağustos günü · Satış rakamları: "
+                 "%s · %s" % (BES_ADLARI, POS_ADLARI, DONEM_POS))
 
     # cekirdek bloklarina kisayol (slaytlar arasinda paylasilir; yoksa None -> slayt atlanir)
     nrm = nrm0 = v.get("norm")

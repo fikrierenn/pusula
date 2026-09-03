@@ -20,9 +20,9 @@ def slayt_is_hacmi(C):
              (C.adet25 / 1000, C.kd25 / 1e6, C.kadro25), (C.adet26 / 1000, C.kd26 / 1e6, C.kadro26))
     rrect(s, 7.0, 3.7, 5.65, 2.0, LGREY, RED, lw=1.5)
     tb(s, 7.25, 3.85, 5.2, 1.75,
-       [("Ürün adedi birincil ölçüdür", 14, True, DRED),
-        ("Adet enflasyondan etkilenmez; kasadan geçen, rafa dizilen ve depodan çıkan fiili mal "
-         "miktarını gösterir. Ciro fiyat artışını içerir, adet içermez.", 12, False, INK)], sp=1.15)
+       [("Neden adet sayıyoruz?", 14, True, DRED),
+        ("Adet, fiyat artışından etkilenmez. Kasadan geçen, rafa dizilen, depodan çıkan gerçek "
+         "mal miktarını gösterir. Ciroya zam karışır, adede karışmaz.", 12, False, INK)], sp=1.15)
     tb(s, 0.6, 5.72, 12.05, 0.32,
        [("Kaynak: DerinSIS mağaza satışı · Sınav hariç · iadeler düşülmüş · KDV dahil.", 10, False, MGREY)])
     dipnot(s, C.DIP_POS)
@@ -47,8 +47,8 @@ def slayt_kisi_basi(C):
         tb(s, 10.7, y + 0.12, 1.85, 0.5, [(yzd(b / a - 1), 17, True, YESIL)], align=PP_ALIGN.RIGHT)
         y += 1.3
     tb(s, 0.6, 5.68, 12.05, 0.34,
-       [("Kişi başı = 31 Ağustos'ta o mağazada fiilen çalışan TÜM personel (sezonluk dahil). Kadrosu en çok "
-         "büyüyen mağazada dahi kişi başı iş artmıştır (İst. Yolu %d → %d)."
+       [("Kişi = 31 Ağustos'ta o mağazada çalışan tüm personel (sezonluk dahil). Kadrosu en çok "
+         "büyüyen mağazada bile kişi başına iş arttı (İst. Yolu %d → %d kişi)."
          % (C.mag["İst. Yolu"]["kadro25"], C.mag["İst. Yolu"]["kadro26"]), 9.5, False, GREY)])
     dipnot(s, C.DIP_POS)
     sig(s)
@@ -103,12 +103,11 @@ def slayt_dort_yil(C):
         tb(s, 8.35, y + 0.48, 4.05, 0.7, [(d, 10.5, False, GREY)])
         y += 1.35
     tb(s, 0.6, 5.65, 12.05, 0.5,
-       [("Ölçü: Ocak–Ağustos ürün adedi ÷ 31.08 kadrolu (sezonluk HARİÇ; yıllar arası sezonluk "
-         "zamanlaması kıyası bozar). «Okul-hizalı pencere ÷ TÜM kadro» ölçüsü ayrı slayttadır — iki "
-         "ölçünün seviyeleri karşılaştırılmaz, yönleri karşılaştırılır.", 10, False, MGREY)])
-    dipnot(s, C.DIP_OCA_AGU + " · kadro: 31.08 kesimi, her yıl · Sınav Okulları satışı ürün adedinden "
-              "HARİÇ tutulur; o operasyona bakan personel İK kaydında kanal bazında ayrıştırılamadığı "
-              "için kadroda kalır — oran her yıl aynı yönde etkilenir, yıllar arası kıyas geçerlidir")
+       [("Ölçü: Ocak–Ağustos ürün adedi ÷ kadrolu personel (sezonluk hariç). Diğer slayttaki "
+         "ölçüyle seviyeler değil, yönler karşılaştırılır.", 10, False, MGREY)])
+    dipnot(s, C.DIP_OCA_AGU + " · Kadro her yıl 31 Ağustos günü sayılır · Sınav Okulları satışı adede "
+              "girmiyor; o işe bakan personel kadroda kalıyor. Etki her yıl aynı yönde, "
+              "karşılaştırma geçerli.")
     sig(s)
 
 
@@ -143,7 +142,7 @@ def slayt_bolum_kirilimi(C):
          12, True, DRED)], sp=1.15)
     rrect(s, 0.6, 5.28, 12.05, 0.72, LGREY, RED, lw=1.5)
     tb(s, 0.9, 5.28, 11.5, 0.72,
-       [("31 Ağustos kesiminde kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerindedir; "
+       [("31 Ağustos'ta kadrolu %+d kişilik artışın tamamı satış ve kasa bölümlerinde; "
          "yönetim kadrosunda değişim yoktur." % C.kesim_fark, 13.5, True, DRED)],
        anchor=MSO_ANCHOR.MIDDLE)
     dipnot(s, C.DIP_BES)
@@ -212,8 +211,8 @@ def slayt_magaza_performans(C):
     rrect(s, 8.2, 3.8, 4.45, 1.95, LGREY, RED, lw=1.5)
     tb(s, 8.45, 3.95, 4.0, 1.7,
        [("Değerlendirme", 13.5, True, DRED),
-        ("Üç mağazanın tamamında iş hacmi artışı kadro artışının üzerindedir. Kadro artışı en yüksek "
-         "olan %s mağazasında dahi oran %s katıdır." % (_en_kadro, _en_kadro_oran), 11.5, False, INK)], sp=1.15)
+        ("Üç mağazada da iş, kadrodan daha hızlı arttı. En çok kadro alan "
+         "%s mağazasında bile iş artışı kadronun %s katı." % (_en_kadro, _en_kadro_oran), 11.5, False, INK)], sp=1.15)
     dipnot(s, C.DIP_POS)
     sig(s)
 
@@ -299,14 +298,11 @@ def slayt_kategori(C):
     rrect(s, 8.2, 4.42, 4.45, 1.62, LGREY, RED, lw=1.5)
     tb(s, 8.45, 4.5, 4.0, 1.48,
        [("Değerlendirme", 13.5, True, DRED),
-        ("Kadro artışı, ürün adedi en hızlı artan kategorilere yönlendirilmiştir. SEZON kolonları "
-         "okul-hizalı pencereyi, OCA-AĞU kolonları yılın tamamını (01.01–31.08) gösterir; sıralama "
-         "iki pencerede de aynıdır. DİĞER satırı, tek bir reyona atfedilemeyen kategorilerin "
-         "toplamıdır (kadro eşleşmesi yapılamaz); kapsam bütünlüğü için gösterilir.",
-         10, False, INK)], sp=1.12)
-    dipnot(s, C.DIP_POS + " · OCA-AĞU kolonları: 01.01 – 31.08 kümülatif (her iki yıl) · Bölüm "
-              "eşleşmesi olan %d kategori ayrı satırda = hizalı pencere adedinin %s'i; kalan %d "
-              "kategori DİĞER satırında toplandı (eşik: iki yılda da ≥2.000 adet)"
+        ("Kadro, satışı en hızlı artan kategorilere gitti. SEZON kolonları okul dönemini, "
+         "OCA-AĞU kolonları yılın tamamını gösterir; sıralama ikisinde de aynı. DİĞER satırı, "
+         "tek bir reyona bağlanamayan kategorilerin toplamı.", 10, False, INK)], sp=1.12)
+    dipnot(s, C.DIP_POS + " · OCA-AĞU kolonları 1 Ocak – 31 Ağustos · Reyona bağlanabilen %d "
+              "kategori ayrı satırda (satışın %s'i); kalan %d kategori DİĞER satırında."
               % (len(kat_veri), _kapsam_yzd, len(_dis)))
 
 
@@ -348,8 +344,8 @@ def slayt_takvim_kaymasi(C):
         rrect(s, 7.0, 3.6, 5.65, 2.15, LGREY, RED, lw=1.5)
         tb(s, 7.25, 3.72, 5.2, 1.95,
            [("Eylül'de beklenen dalga", 13.5, True, DRED),
-            ("2025'te okul öncesi alış dalgası %s aralığındaydı: %s adet · %s M TL. Aynı dalga 2026'da "
-             "%s aralığına denk geliyor; hizalı büyüme oranıyla %s adet · %s M TL beklenmektedir."
+            ("Geçen yıl okul öncesi alış dalgası %s arasındaydı: %s adet, %s milyon TL. Bu yıl aynı "
+             "dalga %s arasına düşüyor. Aynı büyüme oranıyla %s adet, %s milyon TL bekliyoruz."
              % (dg["pencere_2025"], bin(dg["adet_2025"]), bin(dg["ciro_2025"] / 1e6, 1),
                 dg["pencere_2026"], bin(dg["adet_2026_tahmin"]), bin(dg["ciro_2026_tahmin"] / 1e6, 1)),
              11, False, INK)], sp=1.15)

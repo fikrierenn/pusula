@@ -20,8 +20,8 @@ def slayt_norm_detay(C):
         acik_toplam = sum(max(0, r["norm"] - r["kadrolu_kesim26"]) for r in nrm["sube"])
         toplam_fark = tp["toplam_kesim26"] - tp["norm_toplam"]
         tb(s, 0.6, 1.5, 12.05, 0.34,
-           [("Norm %d (kadrolu %d + sezonluk %d) · operasyonel gerçek %d (kadrolu %d + sezonluk %d) · "
-             "fark %+d kişi — engelli ve etkinlik norm dışı tutuldu."
+           [("Norm %d kişi (kadrolu %d + sezonluk %d). Fiilen çalışan %d kişi (kadrolu %d + sezonluk %d). "
+             "Fark %+d kişi. Engelli ve etkinlik sayılmadı."
              % (tp["norm_toplam"], tp["norm"], tp["norm_sezonluk"],
                 tp["kadrolu_kesim26"] - sum(a.get("etkinlik", 0) + a.get("engelli", 0)
                                             for a in nrm.get("ayrik", {}).values()) + tp["sezonluk_kesim26"],
@@ -106,7 +106,7 @@ def slayt_norm_detay(C):
              "kişilik, 50 çalışan altı → 4857/30 yükümlülüğü doğmaz).", 8.5, False, GREY)])
         rrect(s, 0.6, 4.78, 12.05, 0.52, LGREY, RED, lw=1.5)
         tb(s, 0.9, 4.78, 11.6, 0.52,
-           [("Norm doluluğu (engelli ve etkinlik hariç): norm %d · operasyonel gerçek %d → %+d KİŞİ EKSİK "
+           [("Norm %d kişi, fiilen çalışan %d kişi → %+d KİŞİ EKSİK "
              "(kadrolu %+d · sezonluk %+d)."
              % (tp["norm_toplam"], kad_ops + tp["sezonluk_kesim26"],
                 (kad_ops + tp["sezonluk_kesim26"]) - tp["norm_toplam"],
@@ -128,11 +128,9 @@ def slayt_norm_detay(C):
                 tp["norm_toplam"], tp["toplam_kesim26"], kad_ops + tp["sezonluk_kesim26"],
                 C.k5["kadrolu_kesim26"], C.k5["sezonluk_kesim26"], C.k5["toplam_kesim26"]),
              8, False, INK)], sp=1.08)
-        dipnot(s, "* Norm = ENGELLİ DIŞINDAKİ personel sayısı (yönetim kararı); etkinlik de norm dışı. "
-                  "Mağaza satırları operasyonel kadroyu gösterir (kadrolu − engelli − etkinlik). "
-                  "Engelli %d · etkinlik %d kişi ayrı satırda; en alttaki kayıt toplamı İK'nın resmi "
-                  "rakamıdır (kadrolu %d · sezonluk %d) · Norm kaynağı: BKMKİTAP Mağaza Kadro ve Sezon "
-                  "Takip Tablosu, %s · Kapsam dışı: %s · Gerçek sayılar 31.08 as-of."
+        dipnot(s, "* Norm, engelli dışındaki personeli sayar; etkinlik de norm dışı (engelli %d, "
+                  "etkinlik %d kişi ayrı satırda). En alttaki satır İK'nın resmi kaydı: kadrolu %d, "
+                  "sezonluk %d. Norm tablosu %s tarihli; %s kapsam dışı."
                % (eng_top, etk_top, tp["kadrolu_kesim26"], tp["sezonluk_kesim26"], nrm["tarih"],
                   ", ".join(tr_title(x) for x in nrm["kapsam_disi"]) or "—"))
         sig(s)
@@ -209,19 +207,19 @@ def slayt_norm_acigi_bolum(C):
         rrect(s, 8.7, 3.85, 3.95, 2.15, LGREY, RED, lw=1.5)
         tb(s, 8.95, 3.97, 3.5, 1.95,
            [("Neden mağaza toplamından büyük?", 12, True, DRED),
-            ("Bölüm bazında açık %d kişi, mağaza bazında %d. Aradaki fark, bir mağazada bir bölümün "
-             "fazlasının başka bölümün açığını maskelemesinden gelir. Gerçek ihtiyaç bölüm bazında "
-             "okunur.%s" % (acik_bolum, acik_sube,
+            ("Bölüm bölüm bakınca açık %d kişi, mağaza toplamında %d. Bir bölümdeki fazla, başka "
+             "bölümün açığını kapatıyor gibi görünüyor. Gerçek ihtiyaç bölüm bazında okunur.%s"
+             % (acik_bolum, acik_sube,
                             ("" if not acik_teyit else
-                             " Ayrıca normda tanımlı olduğu hâlde kayıtta hiç personeli olmayan %d "
-                             "kişilik satır (%s) açığa DAHİL EDİLMEDİ — teyit bekliyor."
+                             " Normda yazılı olup kayıtta personeli olmayan %d kişilik satır "
+                             "(%s) açığa katılmadı; teyit bekliyor."
                              % (acik_teyit, " · ".join(tr_title(x) for x in teyit_adlar)))),
              10, False, INK)], sp=1.12)
 
-        dipnot(s, "* Norm = engelli DIŞINDAKİ personel (yönetim kararı) — engelli bölüm bazında da "
-                  "DÜŞÜLDÜ: %s · ETKİNLİK normda tanımlı olmadığı için norm dışı satır olarak en altta "
-                  "· Kapsam: norm tablosundaki dört mağaza (Şura yok) · Norm %s tarihli · Gerçek sayılar "
-                  "31.08 as-of."
+        dipnot(s, "* Norm, engelli dışındaki personeli sayar (yönetim kararı); engelli bölüm bazında da "
+                  "düşüldü: %s · Etkinlik normda yok, en altta ayrı satır "
+                  "· Norm tablosundaki dört mağaza (Şura yok) · Norm %s tarihli · Gerçek sayılar "
+                  "31 Ağustos günü."
                % (" · ".join("%s %d" % (tr_title(b), k) for b, k in
                              sorted(C.nrm.get("engelli_bolum", {}).items(), key=lambda x: -x[1])) or "yok",
                   C.nrm["tarih"]))

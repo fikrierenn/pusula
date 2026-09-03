@@ -333,17 +333,17 @@ def sayfa_maliyet(wb, veri):
     _basliklar(ws, kolonlar, satir=3)
     s = 4
     satirlar = [
-        ("FTE — tam zaman esdeger (prim gunu/30)", "fte", ADET1),
-        ("Kayit sayisi (bordro satiri, bilgi)", "kisi_ay", ADET),
-        ("Ortalama prim gunu (kayit basina)", "ort_prim_gun", ADET1),
+        ("Calisan (tam gun karsiligi)", "fte", ADET1),
+        ("Bordroda gorunen kisi (bilgi)", "kisi_ay", ADET),
+        ("Kisi basina ortalama calisilan gun", "ort_prim_gun", ADET1),
         ("Brut ucret toplami", "brut", TL),
         ("Isveren SGK hissesi", "isveren_sgk", TL),
         ("Isveren issizlik payi", "isveren_issizlik", TL),
         ("PERSONEL MALIYETI (brut isveren)", "maliyet", TL),
         ("Net odenen (bilgi)", "net", TL),
         ("Ciro (KDV haric, Sinav dahil)", "ciro_kdvharic", TL),
-        ("FTE basina maliyet", "fte_basi_maliyet", TL),
-        ("FTE basina ciro", "fte_basi_ciro", TL),
+        ("Kisi basina maliyet", "fte_basi_maliyet", TL),
+        ("Kisi basina satis", "fte_basi_ciro", TL),
         ("Fazla mesai (saat)", "fm_saat", ADET1),
     ]
     for etiket, alan, fmt in satirlar:
@@ -606,10 +606,9 @@ def sayfa_maliyet(wb, veri):
 
     _notlar(ws, [
         "FORMUL: %s" % m["formul"],
-        "OLCU BIRIMI **FTE** (tam zaman esdeger) = SGK prim gunu / 30. Bordro SATIRI (kayit) "
-        "yaniltir: ay icinde 1 gun calisan da 1 sayilir; sezonluk giris/cikis yogun oldugu icin "
-        "sisme en cok sezon ayinda olur. Kayit sayisi ve ortalama prim gunu seffaflik icin ayri "
-        "satirlarda/kolonlarda durur.",
+        "CALISAN SAYISI TAM GUN KARSILIGIDIR (SGK prim gunu / 30): yarim ay calisan yarim "
+        "sayilir. Bordroda gorunen kisi sayisi yaniltir — ay icinde 1 gun calisan da 1 sayilir. "
+        "Iki rakam da tabloda yan yana durur.",
         "PENCERE: %s" % m["pencere_aciklama"],
         "SEZON ESAS: kadro sezonda (01.07-31.08) artiyor -> maliyet/FM kiyasi SEZON penceresinde "
         "yapilir. Kumulatif (yilbasindan itibaren) pencere sezonu sulandirir, referans olarak durur.",

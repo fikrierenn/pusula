@@ -27,41 +27,41 @@ def slayt_norma_gore_durum(C):
         kpi(s, 0.6, 1.5, 3.9, "NORM · KADRO + SEZON", "%d" % tp0["norm_toplam"],
             "kadrolu %d + sezonluk %d · %s tarihli norm" % (tp0["norm"], tp0["norm_sezonluk"], nrm0["tarih"]),
             MGREY, 34, ikon="users")
-        kpi(s, 4.68, 1.5, 3.9, "GERÇEK · 31 AĞUSTOS (OPERASYONEL)",
+        kpi(s, 4.68, 1.5, 3.9, "GERÇEK · 31 AĞUSTOS",
             "%d" % (tp0["kadrolu_kesim26"] - sum(a.get("etkinlik", 0) + a.get("engelli", 0)
                                                  for a in nrm0.get("ayrik", {}).values())
                     + tp0["sezonluk_kesim26"]),
-            "engelli ve etkinlik norm dışı tutuldu", MGREY, 34, ikon="users")
+            "engelli ve etkinlik sayılmadı", MGREY, 34, ikon="users")
         ayr0 = nrm0.get("ayrik", {})
         dis0 = sum(a.get("etkinlik", 0) + a.get("engelli", 0) for a in ayr0.values())
         kad_ops0 = tp0["kadrolu_kesim26"] - dis0
         fark0 = (kad_ops0 + tp0["sezonluk_kesim26"]) - tp0["norm_toplam"]
         kpi(s, 8.75, 1.5, 3.9, "NORMA GÖRE", "%+d kişi" % fark0,
-            "kadrolu %+d · sezonluk %+d (engelli/etkinlik norm dışı)"
+            "kadrolu %+d · sezonluk %+d"
             % (kad_ops0 - tp0["norm"], tp0["sezonluk_kesim26"] - tp0["norm_sezonluk"]),
             DRED, 28, ikon="alert-triangle")
 
         rrect(s, 0.6, 3.62, 12.05, 0.82, LGREY, RED, lw=2)
         tb(s, 0.9, 3.62, 11.5, 0.82,
-           [("Kadro fazlası yok: 31 Ağustos'ta toplam personel şirketin kendi norm tablosunun "
-             "%d KİŞİ ALTINDADIR." % abs(fark0), 15, True, DRED)], align=PP_ALIGN.CENTER,
+           [("Kadro fazlası yok. 31 Ağustos'ta personel sayısı, şirketin kendi norm tablosunun "
+             "%d KİŞİ ALTINDA." % abs(fark0), 15, True, DRED)], align=PP_ALIGN.CENTER,
            anchor=MSO_ANCHOR.MIDDLE)
 
         card(s, 0.6, 4.52, 12.05, 1.22, RED, ikon="package")
-        tb(s, 0.95, 4.64, 6.0, 0.3, [("AYNI DÖNEMDE İŞ HACMİ · ÜÇ POS MAĞAZASI", 9.5, True, GREY)])
+        tb(s, 0.95, 4.64, 6.0, 0.3, [("AYNI DÖNEMDE YAPILAN İŞ · ÜÇ MAĞAZA", 9.5, True, GREY)])
         tb(s, 0.95, 4.98, 11.2, 0.68,
-           [("ürün adedi %s (%s → %s) · ciro %s — eksik kadroyla üretildi"
+           [("ürün adedi %s (%s → %s) · ciro %s · hem de eksik kadroyla"
              % (yzd(C.d_adet), bin(C.adet25), bin(C.adet26), yzd(C.d_ciro)), 14, True, DRED)])
         tb(s, 0.6, 5.82, 12.05, 0.26,
-           [("Kadro farkı sezon ÖNCESİNDE oluştu (taban 30.06: %d → %d, %+d) · sezon içinde kadrolu %+d · "
-             "personel başına iş %s · mağaza ve grup kırılımı detay slaytlarında."
+           [("Fark sezondan ÖNCE oluştu: 30 Haziran'da %d → %d (%+d). Sezon içinde kadrolu %+d kişi. "
+             "Personel başına iş %s."
              % (C.k5["kadrolu_taban25"], C.k5["kadrolu_taban26"], C.taban_fark, C.sezon_ici_26, yzd(C.d_kb)),
              9.5, False, GREY)])
 
-        dipnot(s, "* Norm = ENGELLİ DIŞINDAKİ personel sayısı (yönetim kararı); etkinlik kadrosu da norm "
-                  "dışı — gerçek rakamdan düşüldü (engelli %d · etkinlik %d kişi). İK'nın kayıt toplamı "
-                  "kadrolu %d + sezonluk %d = %d · Norm kaynağı: BKMKİTAP Mağaza Kadro ve Sezon Takip "
-                  "Tablosu, %s · Kapsam: dört mağaza (Şura norm tablosunda yok) · İş hacmi üç POS mağazası."
+        dipnot(s, "* Norm, engelli dışındaki personeli sayar (yönetim kararı). Etkinlik kadrosu da norm "
+                  "dışı; gerçek rakamdan düşüldü (engelli %d, etkinlik %d kişi). İK kaydında "
+                  "kadrolu %d + sezonluk %d = %d kişi var. Norm tablosu: BKMKİTAP Mağaza Kadro ve Sezon "
+                  "Takip Tablosu, %s · Dört mağaza (Şura yok) · Satış: üç POS mağazası."
                % (sum(a.get("engelli", 0) for a in ayr0.values()),
                   sum(a.get("etkinlik", 0) for a in ayr0.values()),
                   tp0["kadrolu_kesim26"], tp0["sezonluk_kesim26"], tp0["toplam_kesim26"], nrm0["tarih"]))
@@ -92,8 +92,8 @@ def slayt_kadro_akisi(C):
     rrect(s, 7.0, 3.8, 5.65, 1.75, LGREY, RED, lw=1.5)
     tb(s, 7.25, 3.92, 5.2, 1.55,
        [("Sezon döneminde kadro artışı yoktur.", 15, True, DRED),
-        ("Kadrolu personel %d → %d (%+d). Önceki yıl da aynı yönde (%+d): sezon döneminde alınan "
-         "kadrolu personel ayrılanların yerine gelmiş, kadroyu büyütmemiştir."
+        ("Kadrolu personel %d → %d (%+d). Geçen yıl da aynı yönde (%+d). Sezonda alınan kadrolu "
+         "personel ayrılanların yerine geldi, kadroyu büyütmedi."
          % (C.k5["kadrolu_taban26"], C.k5["kadrolu_kesim26"], C.sezon_ici_26, C.sezon_ici_25), 12, False, INK)], sp=1.15)
     dipnot(s, C.DIP_BES)
     sig(s)
@@ -156,13 +156,13 @@ def slayt_bes_magaza(C):
     rrect(s, 0.6, 4.95, 12.05, 0.75, LGREY, RED, lw=1.5)
     tb(s, 0.85, 4.95, 11.6, 0.75,
        [("İŞ HACMİ KAPSAMI — üç POS mağazası (FSM · Özlüce · İst. Yolu): kadrolu %d → %d · sezonluk %d → %d · "
-         "TOPLAM KADRO %d → %d.  Diğer slaytlardaki %d → %d kadro rakamı bu satırdır."
+         "toplam %d → %d kişi. Diğer slaytlardaki %d → %d rakamı budur."
          % (pos_kadrolu[2025], pos_kadrolu[2026], pos_sezonluk[2025], pos_sezonluk[2026],
             pos_kadrolu[2025] + pos_sezonluk[2025], pos_kadrolu[2026] + pos_sezonluk[2026],
             pos_kadrolu[2025] + pos_sezonluk[2025], pos_kadrolu[2026] + pos_sezonluk[2026]),
          11.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
     tb(s, 0.6, 5.78, 12.05, 0.3,
-       [("Kadrolu = sezonluk dışı personel · Sezon içi = 31.08 kesimi ile 30.06 tabanı arasındaki değişim "
-         "(her iki yılda da negatif: %+d ve %+d)." % (C.sezon_ici_25, C.sezon_ici_26), 10, False, GREY)], sp=1.15)
+       [("Kadrolu = sezonluk olmayan personel. Sezon içi değişim, 30 Haziran ile 31 Ağustos "
+         "arasındaki fark: %+d ve %+d — iki yıl da azalış." % (C.sezon_ici_25, C.sezon_ici_26), 10, False, GREY)], sp=1.15)
     dipnot(s, C.DIP_BES + " İş hacmi kapsamı üç POS mağazasıdır (%s)." % C.POS_ADLARI)
     sig(s)
