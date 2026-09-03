@@ -610,8 +610,16 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   14 değişmez / 2 hedef, 0 kırık. Kurallar Belinza'dan uyarlandı:
   `.claude/rules/olctum-mu-cikardim-mi.md` (ÖLÇÜLDÜ/ÇIKARIM etiketi) + `error-handling.md`
   § Reddet mi Say mı (çelişki → reddet, eksik → say).
-- [ ] **K-25 `urnTip=2` ölü stok/kategori raporlarını etkiliyor mu** — başka oturumun bulgusu:
-  `dbo.urn.urnTip` üçüncü değer alıyor (`2` = demirbaş/araç satışı, 52 kayıt). Ölü stok filtresi
-  `urnTip=0` bunları dışlıyor (B-105). Dışlama KASITLI mı (demirbaş satışı ölü stok değil) yoksa
-  kaza mı — teyit edilip sema/metrics'e gerekçe yazılacak. Etkilenen rapor: ölü stok, kategori
-  ciro (irsHrk tarafı urnTip filtresiz mi kontrol edilecek).
+- [x] **K-25 `urnTip=2` dışlaması kasıtlı mı — ÖLÇÜLDÜ, dışlama DOĞRU** ✅ 03.09.2026 —
+  urnTip 1 ve 2 **aynı sınıf, ikisi de mal değil**: irsHrk stok hareketi **0**, `bkm.UrunBilgi`
+  master'ında **0** kayıt, yalnız `fatAyr` fatura kaleminde var (1 → 97.165 · 2 → 5.888 kalem).
+  Yani `WHERE urnTip=0` dışlaması kasıtlı, sessiz veri kaybı YOK; hiçbir rapor düzeltmesi
+  gerekmiyor. **Etiket düzeltildi:** "demirbaş/araç satışı" yanlıştı — 52 kaydın 38'i `H-0xx`
+  fatura hizmet/gelir kalemi (Ciro Prim Geliri · Kampanya Fiyat Farkı · Hizmet Bedeli · Fiyat
+  Farkı · Hasar Tazmin · Tevkifatlı Satış · Kira Geliri, hepsi KDV oranı varyantlı), 14'ü
+  `252.10.xxx` gayrimenkul/arsa kartı (252=Binalar); araç satışı yalnız 2 kayıt. Tek örnekten
+  türetilen etiket sınıfı yanlış tanımlıyordu ("başka ne olabilir?" kapısı). Yeni değişmez
+  `mal-olmayan-kalem-stok-hareketsiz` (kırmızıya düşürülüp geri alındı) → bir gün bu kartlara
+  stok hareketi girerse yakalar. Arşiv: `sorgular/2026-09-03-urntip-mal-olmayan-kalem.sql`.
+  ⚠ GL/fatura analizinde (fatAyr, mizan) bu kalemler MEŞRU gelir/gider → orada urnTip filtresi
+  uygulanmaz (codes.yaml'a yazıldı).

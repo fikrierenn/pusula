@@ -51,7 +51,7 @@ codes:
       0: "Normal ürün (856K kayıt) — stok/satış sorgularında varsayılan"
       1: "Gider/hizmet kalemi (250 kayıt — Elektrik, Temizlik, Reklam vb. muhasebe). Hepsi Tanımsız kategorisinde."
       2: "Bilinmiyor (52 kayıt, ürün tablosunda yok)"
-    filtre: "Ölü stok dahil tüm ürün sorgularında WHERE urnTip=0 ZORUNLU — gider kalemleri aksi halde sızdı"
+    filtre: "Ölü stok dahil tüm STOK/ürün sorgularında WHERE urnTip=0 ZORUNLU — gider/hizmet kalemleri aksi halde sızdı. urnTip 1 ve 2 mal DEĞİL (stok hareketi yok, yalnız fatura kalemi) → dışlama kasıtlı, veri kaybı değil. FATURA/GL analizinde (fatAyr, mizan) bu kalemler MEŞRU gelir/giderdir → orada urnTip filtresi uygulanmaz. Koruma: degismezler.json → mal-olmayan-kalem-stok-hareketsiz"
     confidence: 1.0
     evidence: "2026-06-17 — MCP SELECT urnTip, COUNT(*) FROM urn GROUP BY urnTip"
 

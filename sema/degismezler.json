@@ -165,6 +165,16 @@
       "karsilastirma": "enaz",
       "beklenen": 1,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "mal-olmayan-kalem-stok-hareketsiz",
+      "db": "DerinSISBkm",
+      "soru": "urnTip 1/2 (mal olmayan kalem) stok hareketi (irsHrk) taşıyor mu?",
+      "neden": "Stok/ölü stok/kategori raporları `WHERE urnTip=0` ile bu kalemleri dışlar. Dışlama ancak bu kalemler stok taşımadığı sürece doğrudur; bir gün bir urnTip=1/2 kartına stok hareketi girerse gerçek mal sessizce raporun dışında kalır (K-25 ölçümü: bugün 0 hareket).",
+      "sql": "SELECT COUNT(*) FROM dbo.irsHrk h WHERE h.ehstkID IN (SELECT stkID FROM dbo.urn WHERE urnTip IN (1, 2))",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-03"
     }
   ]
 }

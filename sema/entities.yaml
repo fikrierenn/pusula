@@ -33,8 +33,8 @@ entities:
     pk: stkID
     key: [stkKod, stkAd, urnMrkID, urnKtgr2ID, urnTip, fiyatS]
     note: "stkKod barkod DEĞİL → eşleme stkID üstünden"
-    urnTip: "0=normal ürün · 1=gider/hizmet kalemi (muhasebe, hepsi Tanımsız kategoride) · **2=demirbaş/araç satışı** (örn. '16 BFF 90 BMW OTOMOBİL SATIŞI'). Ölü stok sorgusunda WHERE urnTip=0 ZORUNLU. **2 değeri 2026-09-03'e kadar sema'da YOKTU** — yalnız 0/1 belgeliydi; `degismezler.json` → urn-urnTip-uc-deger artık dördüncü bir tip çıkarsa yakalar."
-    urnTip_olculdu: "2026-09-03 → 0=868.094 · 1=252 · 2=52 (GROUP BY, canlı)"
+    urnTip: "0=STOK ÜRÜNÜ (mal) · 1=gider/hizmet kalemi (muhasebe) · 2=FATURA HİZMET/GELİR + SABİT KIYMET kartı. **1 ve 2 aynı sınıf**: ikisi de stok taşımaz — `irsHrk`'de 0 hareket, `bkm.UrunBilgi` master'ında 0 kayıt, yalnız `fatAyr` fatura kaleminde var (ölçüm 2026-09-03: urnTip=1 → 97.165 kalem · urnTip=2 → 5.888). Bu yüzden stok/ölü stok/kategori raporlarında `WHERE urnTip=0` ZORUNLU ve dışlama KASITLI — sessiz veri kaybı yok. ⚠️ 2 değeri 2026-09-03'e kadar sema'da yoktu; ilk yazımda '**demirbaş/araç satışı**' diye etiketlendi, ÖLÇÜM bunu düzeltti: 52 kaydın 38'i `H-0xx` fatura kalemi (Ciro Prim Geliri · Kampanya Fiyat Farkı · Hizmet Bedeli · Fiyat Farkı · Hasar Tazmin · Tevkifatlı Satış · Kira Geliri · Dergi-Gazete İade · İMM Alış İade — hepsi KDV oranına göre varyantlı), 14'ü `252.10.xxx` gayrimenkul/arsa kartı (252=Binalar hesabı); araç satışı yalnız 2 kayıt (H-031, H-040). Tek örnekten türetilen etiket sınıfı yanlış tanımlar."
+    urnTip_olculdu: "2026-09-03 → 0=868.094 · 1=252 · 2=52 (GROUP BY, canlı). urnTip 1+2 için irsHrk stok hareketi = 0, bkm.UrunBilgi kaydı = 0, fatAyr kalemi = 97.165 + 5.888. Arşiv: sorgular/2026-09-03-urntip-mal-olmayan-kalem.sql"
     fiyatS: "satış/liste fiyatı (KDV dahil). Sıfır-maliyetli imputation anchor: AVG(ORT_ALIS/fiyatS) kategori bazında → ürün maliyeti = fiyatS × oran. Filtre: fiyatS>0 AND ORT_ALIS<fiyatS."
     olu_stok_exclusions:
       stkID: [81809]
