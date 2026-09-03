@@ -412,13 +412,26 @@ metrics:
     ttl_days: 180
     evidence: "2026-09-02 canli MCP zirve (vw_PersonelDepartman as-of + ayrilis yili + kidem dilimleri) + DerinSIS eTip100 Oca-Agu adet/net 2023-2026."
 
+  hizali_pencere_gun_esitligi:   # 2026-09-03 (K-08) — okul-hizali kiyasin on kosulu
+    kural: "Okul-hizali pencere kiyasi ancak GUN SAYILARI ESITSE gecerlidir. Gun sayisi
+      **MAGAZA x YIL** bazinda olculur; tek sozlukte tutulursa yalniz SON magazanin gunu
+      kiyaslanir ve bir magazanin eksik gunu (kapanis/ariza) SESSIZCE gecer -> o magazanin
+      Δ%% ve kisi-basi rakami sapar. Kural: yillar arasi esitsizlik -> DUR (sys.exit);
+      pencereden az gun -> uyari + JSON'a kayit (`meta.gun_uyari`)."
+    olcum: "2026-09-03: uc POS magazasinin her ikisinde de 56 gun (FSM/Ozluce/Ist.Yolu x
+      2025/2026), uyari yok."
+    ayrica: "eTip=100 kayma dilimlerinde de ayni kural: hizali dilimlerin gun sayisi esit
+      olmali, bos dilim (adet/ciro/gun = 0) hesap yapilamaz demektir -> DUR."
+    confidence: 1.0
+    last_verified: "2026-09-03"
+
   norm_kadro_karsilastirma:    # 2026-09-02 — NORM DOLULUGU: yonetim karari + hesap kurali
     kural: "⚠⚠ NORM = **ENGELLI DISINDAKI** personel sayisi (yonetim karari, 2026-09-02 teyidi). ETKINLIK de norm disi (norm tablosunda 0 tanimli). Karsilastirma: `operasyonel kadrolu = kayit kadrolu - engelli - etkinlik` vs norm. Bu karar, norm tablosunun kendi notunu ('Engelli kadro sayilari raporlamaya dahil edilmistir') GECERSIZ KILAR — tablo notunu okuyup engelliyi dahil sayma."
     kaynak: "Norm bir YONETIM PARAMETRESIDIR, Zirve'den sorgulanmaz. Dosya: `briefings/<klasor>/norm-kadro-YYYYMMDD.json` (tarihli; kadrolu norm departman x sube, sezonluk norm sube toplami, karar metni meta.karar'da). Kaynak tablo: 'BKMKITAP Magaza Kadro ve Sezon Takip Tablosu'. Norm guncellenince YALNIZ bu dosya degisir; emitter'lar (sunum/Excel) otomatik uyar."
     olcum_2026_08_31: "Norm 217 (kadrolu 145 + sezonluk 72) vs operasyonel gercek 189 (kadrolu 131 + sezonluk 58) -> **-28 kisi EKSIK**. Magaza: Ozluce -9 · FSM -4 · Ist.Yolu 0 · Heykel -15. Kayit toplami (IK resmi, 4 magaza) kadrolu 137 + sezonluk 58 = 195. Engelli 3 (FSM 1 · Ist.Yolu 2 | bolum: KIRTASIYE 2 · MAL KABUL 1) · Etkinlik 3 (FSM/Ist.Yolu/Ozluce)."
-    BOLUM_vs_MAGAZA: "⚠ Bolum bazli acik toplami MAGAZA bazlindan BUYUKTUR (17 vs 14): magaza icinde bir bolumun fazlasi (Yardimci Kitap +3) baska bolumun acigini maskeler. Gercek ihtiyac BOLUM bazinda okunur. Bolum acigi 2026-08-31: COCUK 5 · MAGAZA 2 · IDARI ISLER 2 · KULTUR 2 · KASA/MUHASEBE/AKADEMI/OYUN ALANI/MAL KABUL/KIRTASIYE 1'er."
+    BOLUM_vs_MAGAZA: "⚠ Bolum bazli acik toplami MAGAZA bazlindan BUYUKTUR (15 vs 14): magaza icinde bir bolumun fazlasi baska bolumun acigini maskeler; gercek ihtiyac BOLUM bazinda okunur. ⚠⚠ TEYIT KURALI (2026-09-03, K-06): normda tanimli ama KAYITTA HIC PERSONELI OLMAYAN bolum (norm>0 & kayit=0) acik SAYILMAZ — ayri 'teyit bekliyor' satirina alinir. Iki olasilik ayirt edilemiyor: (a) bolum gercekten bos, (b) bolum adi Zirve Departman alaninda BASKA yazili (key-mismatch). Olcum 2026-09-03: MUHASEBE (norm 1/kayit 0) + OYUN ALANI (norm 1/kayit 0) -> bolum acigi 17 degil **15 + 2 teyit bekleyen**. OYUN ALANI Zirve departman listesinde HIC yok; IK teyidi bekliyor (TODO K-06)."
     UC_KAPSAM: "⚠ Ayni raporda UC KAPSAM dolasir, etiketsiz kullanilirsa rakamlar birbirini tutmuyor gorunur: (a) **3 POS magazasi** (FSM·Ozluce·Ist.Yolu = BKM_GENEL) — is hacminin olculebildigi kapsam, kadro 143->160 · (b) **4 norm magazasi** (+Heykel) — norm karsilastirmasi, norm 217/kayit 195/operasyonel 189 · (c) **5 magaza** (+Sura) — IK kadro raporu, kadrolu 149 + sezonluk 62 = 211. Her tabloda kapsam YAZILIR; sunumda 'Kapsam Sozlugu' blogu zorunlu."
-    denetim: "scripts/tutarlilik_kontrol.py — 33 kontrol: JSON aritmetigi (sube=kapsam=bolum toplamlari), canli DB ile bagimsiz yeniden olcum, PPTX/XLSX'te FIILEN YAZAN rakam + bayat rakam avi. Cikis kodu sapmada 1. ⚠ JSON dogru olsa bile EMITTER KAYABILIR: norm kurali degistiginde Sonuc slayti -22'de, Excel Norm sayfasi kayit kadrolusunda (137) kalmisti."
+    denetim: "IKI KATMAN: (1) `scripts/tutarlilik_kontrol.py` — 2026-09-03 itibariyla **167 kontrol** (JSON aritmetigi + sezon/kumulatif/aylik pencere mutabakati + segment toplamlari + FTE=prim_gun/30 + tahmin aritmetigi + CIKTI katmani: sunum/Excel'de fiilen yazan rakam). (2) **BAGIMSIZ CANLI DOGRULAMA** (2026-09-03, 49 kontrol / 0 sapma): script hattindan AYRI MCP SQL'leri yazilip uc katman karsilastirildi (MCP olcumu ↔ JSON ↔ sunum metni). Denetci JSON↔cikti uyumunu, bagimsiz tur JSON'un kendisini DB'ye karsi sinar; ikisi ayni sey DEGIL, ikisi de gerekli."
     confidence: 0.95
     last_verified: "2026-09-02"
     ttl_days: 120

@@ -139,6 +139,25 @@ entities:
   BKMMaliyet.dbo.OrtalamaAylikMaliyet: {pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
   # ERP kaynak (FIFO tüketir): DerinSIS irsHrk(stok/çıkış), fat+fatAyr(alış), fytOzl(satınalma şartı fiyatı), bkm.UrunBilgi(stkID/SatisFiyat/SonAlis/Kategori3/KatAna)
 
+  dbo.irs:
+    pk: eID
+    key: [eTip, eMekan, eTarihS, eID]
+    grain: "belge basligi; eTip=100 -> POS GUNLUK OZET (bir gun = bir belge, fis sayisi YOK)"
+    gun_ici_yeniden_yazma: "⚠⚠ eTip=100 belgesi GUN ICINDE YENIDEN YAZILIR: bugunun satiri gun
+      boyunca degisir. Olculen sapma 2026-09-02: iki olcum arasinda 6.225 adet oynadi. KURAL:
+      gunluk/kisa pencere analizlerinde **BUGUNU HARIC TUT**, son TAM gunu esas al (script
+      `son_tam = bugun - 1 gun`). Aksi halde ayni sorgu iki kez kosunca farkli rakam verir ve
+      'rapor tutmuyor' sanilir."
+    kapsam: "POS satisi YALNIZ BKM_GENEL uc magazasinda (eMekan 1=FSM · 4477=Ozluce ·
+      4478=Ist.Yolu). Heykel/Sura ayri tuzel kisilik -> eTip=100'de YOK (bkz.
+      vw_PersonelDepartman.sube_firma_eslesmesi)."
+    sezon_konsantrasyonu: "Sezon (Tem-Eki) yilin buyuk kismini tasir. Olcum 2025 (3 POS,
+      KDV-haric): Tem 30,7M · **Agu 186,9M · Eyl 313,0M · Eki 71,4M** · Kas 54,6M · Ara 60,6M
+      -> sezon 4 ayi 602,0M = yilin ~%65'i. SONUC: yil-geneli oranlar (or. maliyet/ciro) sezon
+      oranlariyla KIYASLANAMAZ; her pencere kendi yil-onceki esiyle kiyaslanir."
+    confidence: 1.0
+    last_verified: "2026-09-03"
+
   # === MUHASEBE / GL + FİNANS/CARİ (22.06 keşif — B-117 GL forensic) ===
   mhs.mhsFis:
     pk: fsID

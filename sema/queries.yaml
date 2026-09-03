@@ -3,7 +3,7 @@
 # Her kayıt: soru (doğal dil) + canlı doğrulanmış SQL + tarih. LLM yeni sorgu yazarken örnek alır.
 # MCP kısıtı: CTE/top-level ORDER BY/multi-statement YOK → mcp_safe: true olanlar MCP'de direkt çalışır.
 version: 1
-updated: 2026-06-10
+updated: 2026-09-03
 
 queries:
   - id: aylik-magaza-net-ciro
@@ -218,3 +218,75 @@ queries:
     sample_result: "Mayıs'26: 2.690 COD sip · 2.397 teslim · 291 iade (%10,8) · iade maliyeti 52.322₺ · kapıda bedel 228.381₺. Yıllık ~628K₺ iade kargo gideri BKM yutar."
     source: "dashboard EticQueries.GetCodOzetAsync · KARGO KAPIDA ÖDEME RAPOR.sql (B-41)"
     note: "İade maliyeti = 2×CARGOPRICE (gidiş+geri getirme, teslim edilmeyen COD). SERVICEPRICE pass-through (firmaya, kâr değil). CARGODELIVERYSTATUS=2=iade. Çıkış (SENDDATE) dönemi — kısmi son ay iade oranını düşük gösterir (iade gecikmeli gelir)."
+
+  - id: kadro-as-of-sube-yil
+    question: "Sube bazinda as-of kadro: 30.06 taban ve 31.08 kesim, kadrolu/sezonluk (iki yil)"
+    entities: [BKM_GENEL.dbo.vw_PersonelDepartman]
+    mcp_safe: true
+    verified_sql: |
+      SELECT v.AltLokasyon AS sube,
+             SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= '20260630'
+                       AND (v.Ict IS NULL OR v.Ict >= '20260630') THEN 1 ELSE 0 END) AS kadrolu_taban,
+             SUM(CASE WHEN COALESCE(v.Kadro,'') <> 'SEZONLUK' AND v.Igt <= '20260831'
+                       AND (v.Ict IS NULL OR v.Ict >= '20260831') THEN 1 ELSE 0 END) AS kadrolu_kesim,
+             SUM(CASE WHEN v.Kadro = 'SEZONLUK' AND v.Igt <= '20260831'
+                       AND (v.Ict IS NULL OR v.Ict >= '20260831') THEN 1 ELSE 0 END) AS sezonluk_kesim
+      FROM dbo.vw_PersonelDepartman v
+      WHERE v.Lokasyon LIKE 'MA%'
+      GROUP BY v.AltLokasyon
+    notlar: "as-of = Igt <= T AND (Ict IS NULL OR Ict >= T) — sp_PersonelKarsilastirma_Ozet ile
+      birebir. Kapsam ayraci Lokasyon LIKE 'MA%' (GM/merkez disi). Olcum 2026-09-03: taban
+      139 -> 153, kesim 135 -> 149, sezonluk 65 -> 62 (bes magaza)."
+    last_verified: 2026-09-03
+
+  - id: bordro-fte-maliyet-fazla-mesai
+    question: "Bordrodan FTE (tam gun karsiligi), personel maliyeti ve fazla mesai (ay bazli)"
+    entities: [BKM_GENEL.dbo.vw_PuanBil]
+    metrics: [personel_maliyet_ve_fazla_mesai]
+    mcp_safe: true
+    verified_sql: |
+      SELECT b.Yil, COUNT(*) AS kayit,
+             SUM(CAST(b.Primgunu AS float)) / 30.0            AS fte,
+             SUM(b.Bt + b.Isskk + b.Iisk)                     AS maliyet,
+             SUM(b.fm1 + b.fm2 + b.fm3)                       AS fm_saat,
+             SUM(CASE WHEN p.Kadro = 'SEZONLUK' THEN CAST(b.Primgunu AS float) ELSE 0 END) / 30.0
+                                                              AS sezonluk_fte
+      FROM dbo.vw_PuanBil b
+      INNER JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno
+      WHERE b.Yil IN (2025, 2026) AND b.Ayindex = 7
+        AND p.Lokasyon LIKE 'MA%'
+        AND p.AltLokasyon IN (N'FSM', N'İST. YOLU', N'ÖZLÜCE')
+      GROUP BY b.Yil
+    notlar: "FTE = Primgunu/30 (bordro SATIRI degil — yarim ay calisan tam sayilmaz). Maliyet =
+      Bt + Isskk + Iisk (brut + isveren SGK + isveren issizlik). Join 1:1 olculdu (fan-out yok).
+      ⚠ Cari ayin bordrosu KOSMADAN alinirsa maliyet %80+ eksik gorunur -> son TAM bordro ayi.
+      Olcum 2026-09-03 (Temmuz, uc POS): FTE 97,13 -> 112,43 · maliyet 4,39M -> 6,78M TL ·
+      FM 643 -> 783 saat."
+    last_verified: 2026-09-03
+
+  - id: okul-hizali-pencere-hacim
+    question: "Okul acilisina hizali pencerede adet + ciro (iki yil, esit gun)"
+    entities: [dbo.irs, dbo.irsAyr, bkm.UrunBilgi]
+    mcp_safe: true
+    verified_sql: |
+      SELECT YEAR(bs.eTarihS) AS yil,
+             COUNT(DISTINCT CAST(bs.eTarihS AS date))                      AS gun,
+             SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
+             SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float))  AS ciro_kdvdahil
+      FROM dbo.irs bs WITH(NOLOCK)
+      INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
+      LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
+      WHERE bs.eTip = 100
+        AND bs.eMekan IN (1, 4477, 4478)
+        AND (COALESCE(kat.Kategori3, N'x') NOT IN (N'Sınav Okulları', N'Sınav Kıyafet')
+             AND COALESCE(kat.KatAna, N'x') NOT LIKE N'Sınav Okul%')
+        AND ((YEAR(bs.eTarihS) = 2025
+              AND DATEDIFF(DAY, '20250908', CAST(bs.eTarihS AS date)) BETWEEN -69 AND -14)
+          OR (YEAR(bs.eTarihS) = 2026
+              AND DATEDIFF(DAY, '20260914', CAST(bs.eTarihS AS date)) BETWEEN -69 AND -14))
+      GROUP BY YEAR(bs.eTarihS)
+    notlar: "Okul acilisi ofseti -69..-14 -> her iki yil 56 gun (gun esitligi ON KOSUL, bkz.
+      metrics.hizali_pencere_gun_esitligi). Sinav ayiklamasi IKI KOLLU (Kategori3 + KatAna).
+      Takvim-tarihli kiyas 2026'yi yapay dusuk gosterir (acilis 6 gun kaydi). Olcum 2026-09-03:
+      adet 574.655,7 -> 775.031,55 · KDV-dahil ciro 71,82M -> 122,53M TL. ⚠ AGIR sorgu (~17 sn)."
+    last_verified: 2026-09-03
