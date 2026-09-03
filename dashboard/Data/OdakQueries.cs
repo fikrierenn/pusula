@@ -168,16 +168,27 @@ public sealed class OdakQueries(Db db)
                     JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
                     WHERE o.ORDERDATE >= ''{Iso12()}'' AND i.DERINSIS_ID > 0 GROUP BY i.DERINSIS_ID')
             ),
+            -- MERKEZ DEPO (mekan 12) WMS ay-sonu snapshot'indan gelir; mağaza rafı view'dan.
+            -- Sebep (K-37, ölçüm 03.09.2026): stokSonAltDepo_vw mekan 12 defterini taşıyor ve
+            -- o defter BOZUK — pozitifler 6,23M, negatifler −4,24M (fiziksel olarak imkânsız),
+            -- net 1.987.630. WMS ise 4.249.866 diyor (2,1 kat). Mağazalarda iki kaynak tutuyor.
+            depo AS (
+                SELECT b.stkID sID, SUM(CONVERT(int, b.Stok)) Mrkz
+                FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli b WITH(NOLOCK)
+                WHERE b.Kaynak = 'WMS' AND b.ehMekan = 12
+                  AND b.Donem = (SELECT MAX(Donem) FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli
+                                 WITH(NOLOCK) WHERE Kaynak = 'WMS')
+                GROUP BY b.stkID
+            ),
             mgz AS (
                 SELECT v.ehstkID sID,
                     SUM(CASE WHEN v.ehMekan=1 THEN v.stok ELSE 0 END) Fsm,
                     SUM(CASE WHEN v.ehMekan=4477 THEN v.stok ELSE 0 END) Ozl,
-                    SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) Ist,
-                    SUM(CASE WHEN v.ehMekan=12 THEN v.stok ELSE 0 END) Mrkz
+                    SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) Ist
                 FROM DerinSISBkm.dbo.stokSonAltDepo_vw v
                 JOIN DerinSISBkm.dbo.urn u2 ON u2.stkID = v.ehstkID
                 JOIN DerinSISBkm.dbo.urnKtgr2 k2 ON k2.ktgrID = u2.urnKtgr2ID AND k2.ktgrAd = @kategori
-                WHERE v.ehAltDepo = 0 AND v.ehMekan IN (1,4477,4478,12)
+                WHERE v.ehAltDepo = 0 AND v.ehMekan IN (1,4477,4478)
                 GROUP BY v.ehstkID
             ),
             sat AS (
@@ -198,15 +209,15 @@ public sealed class OdakQueries(Db db)
                 LTRIM(RTRIM(ub.Yazar)) AS Yazar,
                 u.stkKod AS Kod, u.stkAd AS Urun,
                 CAST(ISNULL(mgz.Fsm,0) AS int) AS StokFsm, CAST(ISNULL(mgz.Ozl,0) AS int) AS StokOzl, CAST(ISNULL(mgz.Ist,0) AS int) AS StokIst,
-                CAST(ISNULL(mgz.Mrkz,0) AS int) AS StokMrkz, CAST(ISNULL(o.StokMiktar,0) AS int) AS StokOdak,
-                CAST(ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(mgz.Mrkz,0)+ISNULL(o.StokMiktar,0) AS int) AS StokToplam,
+                CAST(ISNULL(dp.Mrkz,0) AS int) AS StokMrkz, CAST(ISNULL(o.StokMiktar,0) AS int) AS StokOdak,
+                CAST(ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(dp.Mrkz,0)+ISNULL(o.StokMiktar,0) AS int) AS StokToplam,
                 CAST(ISNULL(sat.sFsm,0) AS int) AS SatisFsm, CAST(ISNULL(sat.sOzl,0) AS int) AS SatisOzl, CAST(ISNULL(sat.sIst,0) AS int) AS SatisIst,
                 CAST(ISNULL(ecom.Qty,0) AS int) AS EcomSiparis,
                 CAST(ISNULL(sat.sFsm,0)+ISNULL(sat.sOzl,0)+ISNULL(sat.sIst,0)+ISNULL(ecom.Qty,0) AS int) AS SatisToplam,
                 CAST(ub.SonAlis AS decimal(18,2)) AS Maliyet,
                 CAST(ub.SatisFiyat AS decimal(18,2)) AS Fiyat,
                 CASE WHEN (ISNULL(sat.sFsm,0)+ISNULL(sat.sOzl,0)+ISNULL(sat.sIst,0)+ISNULL(ecom.Qty,0)) > 0
-                     THEN CAST((ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(mgz.Mrkz,0)+ISNULL(o.StokMiktar,0))
+                     THEN CAST((ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(dp.Mrkz,0)+ISNULL(o.StokMiktar,0))
                           / ((ISNULL(sat.sFsm,0)+ISNULL(sat.sOzl,0)+ISNULL(sat.sIst,0)+ISNULL(ecom.Qty,0))/12.0) AS decimal(10,1)) END AS AyKapsam,
                 COUNT(*) OVER() AS ToplamSatir
             FROM DerinSISBkm.dbo.urn u
@@ -215,10 +226,11 @@ public sealed class OdakQueries(Db db)
             LEFT JOIN DerinSISBkm.bkm.UrunBilgi ub ON ub.stkID = u.stkID
             LEFT JOIN DerinSISBkm.dbo.urnMrk m ON m.mrkID = u.urnMrkID
             LEFT JOIN mgz ON mgz.sID = u.stkID
+            LEFT JOIN depo dp ON dp.sID = u.stkID
             LEFT JOIN sat ON sat.sID = u.stkID
             LEFT JOIN ecom ON ecom.stkID = u.stkID
             WHERE u.urnTip = 0
-              AND (ISNULL(o.StokMiktar,0) > 0 OR ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(mgz.Mrkz,0) > 0)
+              AND (ISNULL(o.StokMiktar,0) > 0 OR ISNULL(mgz.Fsm,0)+ISNULL(mgz.Ozl,0)+ISNULL(mgz.Ist,0)+ISNULL(dp.Mrkz,0) > 0)
               AND (@marka IS NULL OR ISNULL(m.mrkAd, N'-') = @marka)
               AND (@araLike IS NULL OR u.stkAd LIKE @araLike OR ub.Yazar LIKE @araLike)
             ORDER BY StokToplam DESC

@@ -41,10 +41,17 @@ WITH ecom AS (
     JOIN JOKER.dbo.J_ORDERS o ON o.ORDERID=d.ORDERREF JOIN JOKER.dbo.J_ITEMS i ON i.LOGICALREF=d.ITEMREF
     WHERE o.ORDERDATE >= ''{iso12}'' AND i.DERINSIS_ID > 0 GROUP BY i.DERINSIS_ID')
 ),
+-- MERKEZ DEPO WMS snapshot'indan (K-37): stokSonAltDepo_vw mekan 12 defteri bozuk
+-- (poz 6,23M / neg -4,24M / net 1,99M; WMS 4,25M). Magaza rafi view'da dogru.
+depo AS (SELECT b.stkID sID, SUM(CONVERT(int, b.Stok)) Mrkz
+  FROM bkm.StokAyBakiyeMekanBazli b WITH(NOLOCK)
+  WHERE b.Kaynak='WMS' AND b.ehMekan=12
+    AND b.Donem=(SELECT MAX(Donem) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE Kaynak='WMS')
+  GROUP BY b.stkID),
 mgz AS (SELECT v.ehstkID sID,
     SUM(CASE WHEN v.ehMekan=1 THEN v.stok ELSE 0 END) Fsm, SUM(CASE WHEN v.ehMekan=4477 THEN v.stok ELSE 0 END) Ozl,
-    SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) Ist, SUM(CASE WHEN v.ehMekan=12 THEN v.stok ELSE 0 END) Mrkz
-  FROM dbo.stokSonAltDepo_vw v WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478,12) GROUP BY v.ehstkID),
+    SUM(CASE WHEN v.ehMekan=4478 THEN v.stok ELSE 0 END) Ist
+  FROM dbo.stokSonAltDepo_vw v WHERE v.ehAltDepo=0 AND v.ehMekan IN (1,4477,4478) GROUP BY v.ehstkID),
 sat AS (SELECT h.ehstkID sID,
     -SUM(CASE WHEN h.ehMekan=1 AND h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) sFsm,
     -SUM(CASE WHEN h.ehMekan=4477 AND h.ehTip IN (4,100) THEN h.ehAdetN ELSE 0 END) sOzl,

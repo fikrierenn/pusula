@@ -769,7 +769,7 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   (c) karar plan 41'in `AlisMi` bayrağına yansır. Arşiv:
   `sorgular/2026-09-03-irstip-16-90-99-sayim-wms.sql`
 
-- [ ] **K-37 Panel merkez depo stoğunu YANLIŞ kaynaktan okuyor (~yarı gösteriyor)** — K-36
+- [x] **K-37 DÜZELTİLDİ — merkez depo stoğu WMS ay-sonu snapshot'ından okunuyor** ✅ 03.09.2026 (kullanıcı: "aylık snapshot ile düzelt") — üç yer değişti: `OdakQueries.cs` (yeni `depo` CTE + `dp.Mrkz`, mağazalar view'da kaldı) · `RefQueries.Envanter.cs` kategori-çeşit (UNION ALL: mağaza view + depo WMS) · `scripts/export_odak_stok.py`. **Build 0 hata.** Ölçülen etki: merkez depo toplamı 1.987.630 → **4.249.866**; kategori çeşidi ana kalemlerde yakın (Kırtasiye 3,04M→3,01M · Kişisel Bakım 393K→399K · Hediyelik 242K→207K · Oyuncak 219K→179K) ama **kitap tarafında belirgin düşüş** (Kitap çeşit 1.254→127 · Hazırlık 31→2) ve **'Genel' kategorisi düşüyor** (view'daki 2,16M = Geri Dönüşüm Kağıt 1.758.386 + poşetler; WMS satılabilir mal tutuyor). Gerekçe: view'ın depo defteri −4,24M negatif taşıyor (imkânsız). ⚠ WMS snapshot AYLIK (31.08.2026) — panelde ay-içi hareket görünmez; anlık depo stoğu istenirse WMS canlı tablosu ayrı iş. Eski metin: — K-36
   araştırmasının asıl çıktısı. `dbo.stokSonAltDepo_vw` mekan 12 için **1.987.630** adet
   veriyor; resmî `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', 31.08.2026) **4.249.866** →
   **2,26M adet / 2,1 kat sapma**. Mağazalarda iki kaynak tutuyor (%0,3-4,8). Alt depo filtresi

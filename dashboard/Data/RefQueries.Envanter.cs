@@ -553,10 +553,22 @@ public sealed partial class RefQueries
                    COUNT(DISTINCT CASE WHEN s.ehMekan=4478 AND s.stok>0 THEN s.ehstkID END) AS IstYolu,
                    COUNT(DISTINCT CASE WHEN s.ehMekan=12   AND s.stok>0 THEN s.ehstkID END) AS Depo,
                    COUNT(DISTINCT CASE WHEN s.stok>0 THEN s.ehstkID END) AS Toplam
-            FROM DerinSISBkm.dbo.stokSonAltDepo_vw s WITH(NOLOCK)
+            FROM (
+                -- Mağaza rafı: anlık view (doğru). MERKEZ DEPO: WMS ay-sonu snapshot (K-37) —
+                -- view'ın mekan 12 defteri bozuk (poz 6,23M / neg −4,24M / net 1,99M vs WMS 4,25M).
+                SELECT v.ehstkID, v.ehMekan, v.stok
+                FROM DerinSISBkm.dbo.stokSonAltDepo_vw v WITH(NOLOCK)
+                WHERE v.ehAltDepo = 0 AND v.ehMekan IN (1,4477,4478)
+                UNION ALL
+                SELECT b.stkID AS ehstkID, 12 AS ehMekan, CONVERT(int, b.Stok) AS stok
+                FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli b WITH(NOLOCK)
+                WHERE b.Kaynak = 'WMS' AND b.ehMekan = 12
+                  AND b.Donem = (SELECT MAX(Donem) FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli
+                                 WITH(NOLOCK) WHERE Kaynak = 'WMS')
+            ) s
             JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID = s.ehstkID
             JOIN DerinSISBkm.dbo.urnKtgr2 k WITH(NOLOCK) ON k.ktgrID = u.urnKtgr2ID
-            WHERE s.ehAltDepo = 0 AND s.ehMekan IN (12,1,4477,4478)
+            WHERE 1 = 1
               AND k.ktgrAd NOT IN (N'Sınav Okulları', N'Hediye Çeki', N'Etkinlik', N'Zkargo', N'KARGO')
             GROUP BY CAST(k.ktgrAd AS nvarchar(50))
             """);
