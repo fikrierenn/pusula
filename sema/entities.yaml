@@ -807,3 +807,28 @@ Belge_Tipi: FIS 6,0M · GPS 181K · EAR 88K · HDY 53.798 (kasadan basilan hediy
     confidence: 0.9
     last_verified: "2026-08-28"
     evidence: "2026-08-28 canli — BELGE yil bazli sayim (2014-2025), tablo satir sayilari sys.partitions, Belge_Tipi dagilimi, Cek_Kodu/Ref_No/Barkod '2141%' negatif aramalari, POS_CEK_TIP + HEDIYEDEGISIM ornekleri."
+
+  # ── ent.DEPOLARDAKISTOKLAR — depo özet view'ı (2026-09-08 keşfi) ──
+  ent.DEPOLARDAKISTOKLAR:
+    tip: view
+    key: [StkID, MerkezDepoStok, FSMStok, OZLStok, OdakStok]
+    note: "urn bazlı depo özeti; satır yalnız bir stok sıfır-dışıysa gelir. **Merkez** = `depo.paletUrnTnm + paletTnm + adres` (pUAdetN>0, `adrsAd NOT IN ('CK01','iADE')`, `pUID<>42560`) — yani palet düzeyi, `depo.stok_adres_palet_vw` adres-alan-tipi kırılımıyla AYNI DEĞİL (`adrsAlanTipID` süzgeci yok). **OdakStok** = `ent.odak_depo_Stok.StokMiktar`.
+⚠ **Bu view FSM/ÖZL için `ehMekan` 4480 ve 4835 kullanıyor — mağaza mekanID 1/4477/4478 DEĞİL.** 4480/4835 depo-tarafı mağaza alt-mekanları; mağaza raf stoğu sanıp mağaza satışıyla oranlarsan yanlış devir üretir. Mağaza stoğu için `stokSonAltDepo_vw` mekan 1/4477/4478 kullan.
+⚠ `ent.odak_depo_Stok`ta **tarih/damga kolonu YOK** (PK sadece stkID) → tazeliği ölçülemez; 08.09.2026 ölçümü 496.708 satır / 7.294.239 adet. 'ODAK stoğu var' demek 'bugün var' demek değildir."
+    confidence: 0.95
+    last_verified: "2026-09-08"
+    evidence: "2026-09-08 canlı — OBJECT_DEFINITION okundu (sys.sql_modules), ent.odak_depo_Stok COUNT/SUM ölçüldü. 'Satış Analizi 07.09.2026.xlsx' denetimi sırasında; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql"
+
+  # ── Merkez depo ÇIKIŞI ayrı bir satış kanalıdır (2026-09-08) ──
+  irsHrk.MERKEZ_DEPO_CIKISI:
+    note: "**`ehMekan=12` + `ehTip=1` = merkez depo çıkışı** — mağazaya sevk DEĞİL (o `ehTip=13` Depo-Mağaza, aynı pencerede 3.762.140 adet). Ölçüm 08.09.2026, 365 gün (08.09.2025–07.09.2026): **1.903.462 adet / 31.511 satır / 31.511**, iade netlenince 1.883.926 adet / 17.810 çeşit. Aynı pencerede 3 mağaza POS (ehTip 100+4) 6.084.450 adet.
+**Karşı taraf (`irs.eFirma` → `dbo.frm.frmAd`):** frmID **56 BURSA KÜLTÜR MERKEZİ KİTAP KIRTASİYE GIDA %72** (1.375.700 adet / 34,55M ₺ / 443 belge, yıl boyu düzenli — grup-içi/toptan, birim ~25 ₺) · **9525 ODAK KİTAP-POİNT %16** (302.908 adet / 33,43M ₺, birim ~110 ₺) · **120 SINAV BASIN YAYIN** (110.100 adet, tek belge 04.06.2026). Yani merkez depo aynı zamanda **toptan/grup-içi dağıtım deposu**.
+**frmID 56 = AYRI TÜZEL KİŞİ, grup şirketi (muhasebeden teyit 08.09.2026):** *Bursa Kültür Merkezi Kitap Kırtasiye Gıda San. Tic. Ltd. Şti.*, VN **1910376739**, VD Setbaşı/Bursa. Defterin sahibi AYRI: `mhs.mhsSirket` → **'BKM Kitap Kırtasiye'** (`sirketID` = mali yıl; 6=2026, 5=2025…). Muhasebe konumu: **`320.10.B010` YURT İÇİ SATICILAR** (`frmKod` zaten bu hesap kodu) + **`159.10.B003` Verilen Sipariş Avansları**; **alıcı (120) kartı YOK** — ona yapılan satış `600.10.009 Yurtiçi Satışlar %20`'ye yazılıyor (2026: 13,73M ₺ / 250 satır).
+Mal akışı **iki yönlü** (fat+fatAyr, 365g): alış 1.008 fatura / +1.447.008 adet / 52,01M ₺ · satış 498 fatura / −1.384.130 adet / 35,82M ₺ → net **+62.878 adet bize giriş**. 11.093 çeşidin yalnız **1.368'i iki yönlü** (satışın %29'u) → saf al-geri ver döngüsü DEĞİL, %71 tek yönlü çıkış.
+Finansal hacim yanıltıcı: 320.10.B010 2026/8ay borç 773,53M / alacak 799,01M ₺ (net borç 25,48M) ama toplam hareketin **%48,7'si (765,2M ₺) yalnız 19 satır '320/159 HESAP VİRMAN'** — ticari değil, hesap yer değiştirmesi. `159.10.B003` net **288,78M ₺ verilen sipariş avansı**. Yani ilişki = grup-içi ticaret **+ finansman**.
+⚠ Sezon/alım analizinde firma 56 çıkışı **tüketici talebi sayılmaz** — ayrı gösterilir. Grup-dışı merkez çıkışı ≈ ODAK 302.908 + SINAV 110.100 + diğer ≈ **528K adet** (toplam 1,90M'in %28'i).
+⚠ frmID 56 BKM'nin kendi adını taşır (frmTip=0; 38093 aynı ad frmTip=1) → 'kendi firmasına satış' gibi görünür, ama **3 mağazaya geri girmiyor**: aynı pencerede mağaza girişleri yalnız Yerel Alım 4.226.674 + Depo-Mağaza 3.766.166; 1,38M'lik karşılık giriş HİÇBİR mekanda yok (irsHrk'da toplam 8 mekan var). Dolayısıyla çift sayım değil, gerçek çıkış.
+⚠ **Devir/gün-stok hesabında kapsam tuzağı:** merkez depo stoğu (WMS ~4,0M adet) toplam stoğun yarısı; ama 'mağaza satışı' metriği bu 1,88M adetlik çıkışı SAYMAZ. Stoğa merkezi katıp satışa merkez çıkışını katmazsan gün-stok sistematik şişer (ölçüm: 459 gün → merkez dahil 371 gün; Kırtasiye 734 → 518)."
+    confidence: 0.95
+    last_verified: "2026-09-08"
+    evidence: "2026-09-08 canlı — irsHrk ehMekan×ehTip 365g kırılımı + stkID bazlı mekan-12 çıkışı; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql"
