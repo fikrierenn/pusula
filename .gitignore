@@ -99,3 +99,8 @@ briefings/**/*KISILI*.json
 # sqlcli.json COMMIT EDİLİR: içinde şifre yok, yalnız ${ENV} yer tutucusu
 # (sqlcli v2.2 bunları ortamdan/.env'den doldurur). Profillerin paylaşılması tekrar
 # üretilebilirlik için gerekli.
+.claude/.marks/
+
+# "Satis Analizi <tarih>.xlsx" — 40-60 MB ham/uretim dosyasi.
+# scripts/satis_analizi_excel.py yeniden uretir, repoya girmez.
+/Sat*Analizi*.xlsx

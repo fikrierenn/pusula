@@ -59,6 +59,23 @@ Yukarıdaki 4 adım **sessizce** yapılır. Kullanıcıya "şunu okudum şunu ok
 ### 3 paralel feature eşiği
 Aynı anda 3'ten fazla feature branch açıksa birini bitirmeden yenisine geçme. Context kayar, bağlam dağılır.
 
+### Ara journal (kullanıcı direktifi 08.09.2026)
+
+**Oturum sonunu beklemeden, iş sürerken journal'a ara kayıt düş.** Kullanıcı direktifi:
+_"arada bir session journal kaydet otomatik olarak"_ — handoff tetiklenmese bile.
+
+Tetik (herhangi biri):
+- Anlamlı bir bulgu/ölçüm tamamlandı (sema'ya yazılacak seviyede),
+- Bir dosya/script üretildi veya arşiv SQL yazıldı,
+- Uzun/ağır bir iş başlatıldı (arka plan koşumu) — beklerken kayıt,
+- ~30-40 tool çağrısı geçti ve journal'a hiç yazılmadı.
+
+Nasıl: `docs/journal/<proje>/YYYY-MM-DD.md`'ye **append** (üzerine yazma), başlık
+`## <saat> — <konu>`. Kısa: ne ölçüldü, ne üretildi, ne açık kaldı. Sonda tam handoff
+yine yazılır; ara kayıtlar onun hammaddesi olur.
+
+Commit: ara journal **kendiliğinden commit edilmez** (yalnız handoff commit eder).
+
 ### Kural değişikliği → dosyaya yaz
 Kullanıcı yeni bir kural söylüyorsa konuşmada kalmaz, hemen ilgili `.claude/rules/*.md` dosyasına eklenir. "Aklında tut" demez — konuşma hafızasından kural çekilmez.
 

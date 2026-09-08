@@ -41,6 +41,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash D:/Dev/pusula/.claude/hooks/session-checkpoint.sh"
+          }
+        ]
+      }
     ]
   }
 }
