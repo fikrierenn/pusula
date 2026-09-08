@@ -35,17 +35,6 @@ else
     var u = _urun;
 
     <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
-        <div class="flex gap-4 items-start">
-        @* Görsel: ent.tsoft_urun → cdn.bkmkitap.com (sema bridges.yaml tsoft-urun-resim).
-           ⚠ referrerpolicy="no-referrer" ŞART — CDN hotlink korumalı, referer'lı istek
-           placeholder döner. Slug %0,2 vakada ürünle uyuşmuyor → karara dayanak yapılmaz. *@
-        @if (_resimUrl is not null)
-        {
-            <img src="@_resimUrl" alt="" loading="lazy" referrerpolicy="no-referrer"
-                 class="w-20 h-20 object-contain rounded-lg border border-base-300 bg-base-200 shrink-0"
-                 onerror="this.style.display='none'" />
-        }
-        <div class="min-w-0">
         <h1 class="text-xl font-bold tracking-tight m-0">@u.StkAd</h1>
         <div class="flex gap-x-4 gap-y-1 flex-wrap text-xs text-base-content/70 mt-1.5">
             <span>stkID <b class="font-mono">@u.StkId</b></span>
@@ -58,12 +47,31 @@ else
             }
             <span>fiyat <b class="font-mono">@u.SatisFiyat.ToString("N0") ₺</b></span>
         </div>
-        </div>
-        </div>
     </div>
 
     @* ── 3. SORU EN ÜSTTE: yeniden almam gerekir mi? Drill'in asıl cevabı. ──────── *@
     <div class="card bg-base-100 border-2 @KararRengi shadow-sm rounded-2xl p-[18px] mb-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        @* SOL YARI — ürün görseli (kullanıcı isteği 09.09: "resim çok küçük, sipariş kararı
+           kısmını yarıya böl resmi oraya koy").
+           Kaynak: ent.tsoft_urun → cdn.bkmkitap.com (sema bridges.yaml tsoft-urun-resim).
+           ⚠ referrerpolicy="no-referrer" ŞART — CDN hotlink korumalı, referer'lı istek
+           placeholder döner. Slug %0,2 vakada ürünle uyuşmuyor → karara dayanak yapılmaz. *@
+        <div class="flex items-center justify-center bg-base-200 rounded-xl border border-base-300 p-2 min-h-[220px]">
+            @if (_resimUrl is not null)
+            {
+                <img src="@_resimUrl" alt="@u.StkAd" loading="lazy" referrerpolicy="no-referrer"
+                     class="max-h-[260px] w-auto object-contain rounded-lg"
+                     onerror="this.parentElement.innerHTML='<span class=\'text-xs text-base-content/50\'>görsel yüklenemedi</span>'" />
+            }
+            else
+            {
+                <span class="text-xs text-base-content/50">görsel yok</span>
+            }
+        </div>
+
+        @* SAĞ YARI — karar cümlesi + dört ölçü *@
+        <div class="min-w-0">
         <div class="text-[11px] uppercase tracking-wider font-bold text-primary mb-1">
             Sipariş kararı
         </div>
@@ -83,7 +91,7 @@ else
                 </div>
             </div>
         }
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+        <div class="grid grid-cols-2 gap-3 mt-3">
             <div>
                 <div class="text-[11px] text-base-content/60">ODAK temin</div>
                 <div class="text-lg font-bold font-mono">@(u.LeadTime?.ToString() ?? "—") <span class="text-xs font-normal">gün</span></div>
@@ -106,6 +114,8 @@ else
                 <div class="text-[10px] text-base-content/40">365g satışa göre</div>
             </div>
         </div>
+        </div>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
@@ -201,29 +211,50 @@ else
                     satış zirvesi: <b>@ZirveAy()</b> · satış @_aylik.Sum(x => x.Adet).ToString("N0") · alış @((_aylikAlis ?? []).Sum(x => x.Adet).ToString("N0")) adet
                 </span>
             </div>
-            @* SATIŞ + ALIŞ yan yana — "alım talebi takip ediyor mu" sorusu.
-               Ölçek ikisinin maksimumu (alış satıştan büyük olabilir; ölçüm 09.09: bir üründe
-               365g satış 22 adet, Eylül alışı 9.960 adet). *@
+            @* İKİ AYRI GRAFİK, HER SERİ KENDİ ÖLÇEĞİNDE.
+               ⚠ İlk sürüm ikisini aynı eksende yan yana çiziyordu ve OKUNMUYORDU — ölçüldü
+               09.09: bir üründe alış 9.960 / satış 18 = 450 kat fark → satış çubuklarının hepsi
+               %2'ye çöküyor, tek alış çubuğu ekranı kaplıyor. İki seri kıyaslanamaz ölçekte
+               olduğu için karşılaştırma ÇUBUK YÜKSEKLİĞİYLE değil SAYIYLA yapılır. *@
             @{
-                var alisHarita = (_aylikAlis ?? []).ToDictionary(x => x.Ay, x => x.Adet);
-                var aylikMax = Math.Max(1, Math.Max(_aylik.Max(x => x.Adet),
-                                                    alisHarita.Values.DefaultIfEmpty(0).Max()));
+                var alisSeri = _aylikAlis ?? [];
+                var alisHarita = alisSeri.ToDictionary(x => x.Ay, x => x.Adet);
+                var satisMax = Math.Max(1, _aylik.Max(x => x.Adet));
+                var alisMax = Math.Max(1, alisHarita.Values.DefaultIfEmpty(0).Max());
             }
-            <div class="flex items-end gap-1.5 h-36">
+
+            <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold mb-1">
+                Satış · en yüksek ay @satisMax.ToString("N0") adet
+            </div>
+            <div class="flex items-end gap-1.5 h-24 mb-1">
                 @foreach (var a in _aylik)
                 {
                     var sezonAyiMi = a.Ay.Month is 8 or 9 or 10;
                     <div class="flex-1 flex flex-col items-center justify-end h-full min-w-0"
-                         title="@a.Ay.ToString("MMMM yyyy"): @a.Adet.ToString("N0") adet">
+                         title="@a.Ay.ToString("MMMM yyyy") — satış @a.Adet.ToString("N0")">
                         <span class="text-[10px] font-mono mb-0.5 truncate w-full text-center">
                             @(a.Adet > 0 ? a.Adet.ToString("N0") : "")
                         </span>
-                        <div class="w-full flex items-end gap-px h-full">
-                            <div class="flex-1 rounded-t @(sezonAyiMi ? "bg-primary" : "bg-info")"
-                                 style="height:@(Math.Max(2, a.Adet * 100.0 / aylikMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                            <div class="flex-1 rounded-t bg-warning"
-                                 style="height:@(Math.Max(alisHarita.GetValueOrDefault(a.Ay) > 0 ? 2 : 0, alisHarita.GetValueOrDefault(a.Ay) * 100.0 / aylikMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                        </div>
+                        <div class="w-full rounded-t @(sezonAyiMi ? "bg-primary" : "bg-info")"
+                             style="height:@(a.Adet <= 0 ? "0" : Math.Max(3, a.Adet * 100.0 / satisMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                }
+            </div>
+
+            <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold mb-1 mt-3">
+                Alış (mal kabulü) · en yüksek ay @alisMax.ToString("N0") adet
+            </div>
+            <div class="flex items-end gap-1.5 h-24">
+                @foreach (var a in _aylik)
+                {
+                    var alis = alisHarita.GetValueOrDefault(a.Ay);
+                    <div class="flex-1 flex flex-col items-center justify-end h-full min-w-0"
+                         title="@a.Ay.ToString("MMMM yyyy") — alış @alis.ToString("N0")">
+                        <span class="text-[10px] font-mono mb-0.5 truncate w-full text-center">
+                            @(alis > 0 ? alis.ToString("N0") : "")
+                        </span>
+                        <div class="w-full rounded-t bg-warning"
+                             style="height:@(alis <= 0 ? "0" : Math.Max(3, alis * 100.0 / alisMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                         <span class="text-[10px] text-base-content/60 mt-1">@a.Ay.ToString("MMM")</span>
                     </div>
                 }
@@ -231,7 +262,8 @@ else
             <div class="flex gap-4 text-[11px] mt-1.5 flex-wrap">
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-primary inline-block"></span>satış · sezon ayı</span>
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-info inline-block"></span>satış</span>
-                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-warning inline-block"></span>alış (mal kabulü)</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-warning inline-block"></span>alış</span>
+                <span class="text-base-content/50">iki grafik AYRI ölçekte — yüksekliklerini birbiriyle kıyaslama</span>
             </div>
             <p class="text-xs text-base-content/60 mt-2 mb-0">
                 Koyu sütunlar sezon aylarını (Ağustos-Ekim) gösterir. Zirve sezon dışındaysa
