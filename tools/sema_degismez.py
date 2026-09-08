@@ -42,6 +42,14 @@ Kullanım:
 import json
 import os
 import sys
+
+# Konsol cp1254 ise KIRIK raporundaki ASCII-disi karakter (ornegin U+2192) yazdirmayi
+# COKERTIYORDU -> kirmizi sonuc gorunmeden betik patliyordu. Ciktiyi UTF-8'e sabitle.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]

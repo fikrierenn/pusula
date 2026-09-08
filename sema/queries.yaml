@@ -276,12 +276,14 @@ queries:
     verified_sql: |
       SELECT YEAR(bs.eTarihS) AS yil,
              COUNT(DISTINCT CAST(bs.eTarihS AS date))                      AS gun,
-             SUM(ABS(CAST(dt.ehAdet AS float)))                            AS adet,
-             SUM(CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float))  AS ciro_kdvdahil
+             SUM(CASE WHEN bs.eTip IN (5,101) THEN -ABS(CAST(dt.ehAdet AS float))
+                      ELSE ABS(CAST(dt.ehAdet AS float)) END)               AS adet,
+             SUM(CASE WHEN bs.eTip IN (5,101) THEN -CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float)
+                      ELSE CAST(dt.ehTutar - dt.ehIndirim + dt.ehTutarKDV AS float) END) AS ciro_kdvdahil
       FROM dbo.irs bs WITH(NOLOCK)
       INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
       LEFT JOIN bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
-      WHERE bs.eTip = 100
+      WHERE bs.eTip IN (4, 5, 100, 101)
         AND bs.eMekan IN (1, 4477, 4478)
         AND (COALESCE(kat.Kategori3, N'x') NOT IN (N'Sınav Okulları', N'Sınav Kıyafet')
              AND COALESCE(kat.KatAna, N'x') NOT LIKE N'Sınav Okul%')
@@ -290,7 +292,9 @@ queries:
           OR (YEAR(bs.eTarihS) = 2026
               AND DATEDIFF(DAY, '20260914', CAST(bs.eTarihS AS date)) BETWEEN -69 AND -14))
       GROUP BY YEAR(bs.eTarihS)
-    notlar: "Okul acilisi ofseti -69..-14 -> her iki yil 56 gun (gun esitligi ON KOSUL, bkz.
+    notlar: "⚠ 08.09.2026 DUZELTME (B-162/B-164): eTip TEK BASINA 100 idi -> Ist.Yolu Sinav-haric
+      olcumde +%2,7..4,4 eksik, iade netlenmiyordu. Artik 100−101+4−5 (MEKAN_CIRO_MUTABAKAT_FORMULU).
+      Okul acilisi ofseti -69..-14 -> her iki yil 56 gun (gun esitligi ON KOSUL, bkz.
       metrics.hizali_pencere_gun_esitligi). Sinav ayiklamasi IKI KOLLU (Kategori3 + KatAna).
       Takvim-tarihli kiyas 2026'yi yapay dusuk gosterir (acilis 6 gun kaydi). Olcum 2026-09-03:
       adet 574.655,7 -> 775.031,55 · KDV-dahil ciro 71,82M -> 122,53M TL. ⚠ AGIR sorgu (~17 sn)."

@@ -175,7 +175,8 @@ public sealed class KadroQueries(Db db)
     }
 
     /// <summary>
-    /// Mağaza iş hacmi — <b>DerinSIS `irs`/`irsAyr`, eTip=100 (POS satışı)</b>. Pencere [sezon başı .. kesim],
+    /// Mağaza iş hacmi — <b>DerinSIS `irs`/`irsAyr`, eTip 100+4 (POS + Mağaza Satış), iade (101/5) düşülür</b>.
+    /// Pencere [sezon başı .. kesim],
     /// iki yıl aynı takvim günü. <b>Sınav Okulları + Sınav Kıyafet AYIKLANIR</b> (aksi halde İst. Yolu
     /// cirosunun %77'si Sınav'dan gelir → mağaza iş yükü ölçülmez).
     ///
@@ -188,6 +189,12 @@ public sealed class KadroQueries(Db db)
     /// ⚠ FİŞ SAYISI DerinSIS'ten ALINAMAZ: eTip 100 günlük aggregate'tir (bir gün = bir belge, 2.608 satır).
     /// Bu yüzden ölçü KALEM (satır) + ADET + NET CİRO. Fiş adedi gerekiyorsa Ağustos-2025 ve sonrası için
     /// EncoreMerkez kullanılır (öncesi eksik).
+    ///
+    /// ⚠ eTip 100 TEK BAŞINA YETMEZ (B-162, 08.09.2026): `eTip 4` "Mağaza Satış" ayrı bir kanal ve
+    /// pratikte sadece İst. Yolu'nda (2025 20,2M / 2026 29,8M; %86-89'u Sınav kategorisi — kurumsal
+    /// toplu fatura). Sınav ayıklandıktan SONRA bile İst. Yolu +%2,7..+4,4 eksik kalıyordu; iade
+    /// (101/5) da netlenmiyordu (-%0,4..-1,0). Kanonik: `eTip 100 − 101 + 4 − 5`
+    /// (`sema/metrics.yaml → MEKAN_CIRO_MUTABAKAT_FORMULU`). EncoreMerkez'e karşı mutabakat %0,08-1,28.
     ///
     /// Mekan eşlemesi: 1=FSM · 4477=Özlüce · 4478=İst. Yolu (EncoreMerkez StoresId ile FARKLI).
     /// Net ciro KDV-hariç = `ehTutar - ehIndirim`. Adet `ABS(ehAdet)` (satış çıkış → negatif).
@@ -204,17 +211,21 @@ public sealed class KadroQueries(Db db)
                    MAX(mk.mekanAd) AS Magaza,
                    0 AS FisOnceki,
                    0 AS FisCari,
-                   SUM(CASE WHEN bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}' THEN 1 ELSE 0 END) AS KalemOnceki,
-                   SUM(CASE WHEN bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}' THEN 1 ELSE 0 END) AS KalemCari,
-                   SUM(CASE WHEN bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}' THEN ABS(dt.ehAdet) ELSE 0 END) AS AdetOnceki,
-                   SUM(CASE WHEN bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}' THEN ABS(dt.ehAdet) ELSE 0 END) AS AdetCari,
-                   SUM(CASE WHEN bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}' THEN dt.ehTutar - dt.ehIndirim ELSE 0 END) AS NetOnceki,
-                   SUM(CASE WHEN bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}' THEN dt.ehTutar - dt.ehIndirim ELSE 0 END) AS NetCari
+                   SUM(CASE WHEN bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}' AND bs.eTip IN (4,100) THEN 1 ELSE 0 END) AS KalemOnceki,
+                   SUM(CASE WHEN bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}' AND bs.eTip IN (4,100) THEN 1 ELSE 0 END) AS KalemCari,
+                   SUM(CASE WHEN bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}'
+                            THEN CASE WHEN bs.eTip IN (5,101) THEN -ABS(dt.ehAdet) ELSE ABS(dt.ehAdet) END ELSE 0 END) AS AdetOnceki,
+                   SUM(CASE WHEN bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}'
+                            THEN CASE WHEN bs.eTip IN (5,101) THEN -ABS(dt.ehAdet) ELSE ABS(dt.ehAdet) END ELSE 0 END) AS AdetCari,
+                   SUM(CASE WHEN bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}'
+                            THEN CASE WHEN bs.eTip IN (5,101) THEN -(dt.ehTutar - dt.ehIndirim) ELSE dt.ehTutar - dt.ehIndirim END ELSE 0 END) AS NetOnceki,
+                   SUM(CASE WHEN bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}'
+                            THEN CASE WHEN bs.eTip IN (5,101) THEN -(dt.ehTutar - dt.ehIndirim) ELSE dt.ehTutar - dt.ehIndirim END ELSE 0 END) AS NetCari
             FROM DerinSISBkm.dbo.irs bs WITH(NOLOCK)
             INNER JOIN DerinSISBkm.dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
             LEFT JOIN DerinSISBkm.bkm.UrunBilgi kat WITH(NOLOCK) ON kat.stkID = dt.ehStkID
             LEFT JOIN DerinSISBkm.dbo.mekan_vw mk WITH(NOLOCK) ON mk.mekanID = bs.eMekan
-            WHERE bs.eTip = 100
+            WHERE bs.eTip IN (4, 5, 100, 101)   -- B-162: 100 tek başına İst. Yolu'nu eksik verir
               AND bs.eMekan IN (1, 4477, 4478)
               AND ((bs.eTarihS >= '{basO}' AND bs.eTarihS < '{sonO}')
                 OR (bs.eTarihS >= '{basC}' AND bs.eTarihS < '{sonC}'))

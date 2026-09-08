@@ -401,6 +401,21 @@
       "karsilastirma": "encok",
       "beklenen": 45,
       "dogrulandi": "2026-09-03"
+    },
+    {
+      "id": "etip4-magaza-satis-istyolu-anlamli",
+      "db": "DerinSISBkm",
+      "sunucu": "erp",
+      "soru": "eTip 4 (Mağaza Satış) İst.Yolu'nda hâlâ anlamlı hacim taşıyor mu — yani `eTip=100` tek başına şube cirosunu eksik verir mi?",
+      "neden": "B-162 (08.09.2026): eTip 4, eTip 100'ün DIŞINDA ayrı bir satış kanalı ve pratikte yalnız İst.Yolu'nda (Sınav Okulları toplu faturaları). `eTip=100` tek başına kullanılırsa İst.Yolu toplam cirosu %8-10, Sınav-hariç perakendesi %3-4 EKSİK çıkar. Bu değişmez kırıldığında (0'a düştüğünde) kanal kapanmış demektir ve MEKAN_CIRO_MUTABAKAT_FORMULU gözden geçirilir; kırılmadığı sürece `eTip 100 − 101 + 4 − 5` zorunludur.",
+      "sql": "SELECT CONVERT(int, SUM(CAST(dt.ehTutar - dt.ehIndirim AS float)) / 1000000.0) FROM dbo.irs bs WITH(NOLOCK) INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID WHERE bs.eTip = 4 AND bs.eMekan = 4478 AND bs.eTarihS >= DATEADD(MONTH,-12,GETDATE())",
+      "karsilastirma": "enaz",
+      "beklenen": 20,
+      "korur": [
+        "okul-hizali-pencere-hacim",
+        "aylik-magaza-net-ciro"
+      ],
+      "dogrulandi": "2026-09-08 → son 12 ay (09.09.2025-08.09.2026) İst.Yolu eTip 4 net 50.000.903,84 TL / 2.170 belge / 39.028 satır. Eşik 20M seçildi: ölçülen değerin ~%40'ı — kanal küçülse bile erken alarm vermez, kapanırsa kırılır. Aynı pencerede FSM/Özlüce eTip 4 ihmal edilebilir. Kırılabilirlik sınandı (beklenen 20→60 yapıldı, KIRIK verdi, geri alındı)."
     }
   ]
 }

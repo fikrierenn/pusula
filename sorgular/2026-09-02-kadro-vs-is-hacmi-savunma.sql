@@ -224,6 +224,14 @@ ORDER BY 1, 2;
 -- Dogru olcum: DerinSIS eTip 100 (iki yilda da tam), Sinav haric, OKUL-HIZALI pencere -> BLOK 11.
 -- ##############################################################################
 
+-- ⚠ 08.09.2026 DUZELTME NOTU (B-162/B-164): asagidaki blok `eTip = 100` TEK BASINA kullaniyor.
+--   Olculdu: `eTip 4` (Magaza Satis) eTip 100'un DISINDA ayri kanal ve pratikte sadece Ist.Yolu'nda
+--   (Sinav toplu faturalari). Sinav AYIKLANDIKTAN sonra bile Ist.Yolu +%2,7..4,4 eksik kaliyor;
+--   iade (101/5) da netlenmiyor (-%0,4..1,0). Kanonik: eTip 100 − 101 + 4 − 5.
+--   ETKI: 3 magaza TOPLAMINDA sapma +%0,5-0,6 -> bu bloktan cikan SONUC DEGISMEZ
+--   (adet +%34,9 / ciro +%70,7 / kadro +%11,9 karsilastirmasi ayakta). Sube bazinda Ist.Yolu
+--   bir miktar yukari kayar. Rakamlar patrona sunuldugu icin GERIYE DONUK DEGISTIRILMEDI;
+--   yeniden uretilirse dogru formul kullanilmali. Bkz. sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql blok 9.
 -- ============ 11) DOGRU IS HACMI: DerinSIS eTip 100 + Sinav haric + OKUL-HIZALI ============
 -- Kaynak DerinSIS (POS gecisinden bagimsiz). eTip 100 = POS satisi, gunluk ozet (fis sayisi YOK).
 -- ehTutar KDV-HARIC; KDV-dahil icin + ehTutarKDV. Satista ehAdet negatif -> ABS.

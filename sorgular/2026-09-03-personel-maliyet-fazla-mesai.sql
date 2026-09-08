@@ -117,12 +117,20 @@ ORDER BY p.AltLokasyon, b.Yil;
 -- ---------------------------------------------------------------------------
 /*
 USE DerinSISBkm;
+-- ⚠⚠ DÜZELTİLDİ 08.09.2026 (B-162/B-164). ÖNCEKİ SÜRÜM `bs.eTip = 100` kullanıyordu ve
+--    İst. Yolu'nu Sınav DAHİL ölçümde %8,2-9,8 EKSİK veriyordu -> maliyet oranının PAYDASI
+--    küçük çıkıyor, personel maliyet oranı OLDUĞUNDAN YÜKSEK görünüyordu.
+--    Sebep: `eTip 4` (Mağaza Satış) eTip 100'ün dışında ayrı kanal, pratikte sadece İst. Yolu'nda
+--    (Sınav Okulları toplu faturaları). Ayrıca iade (101/5) netlenmiyordu.
+--    Kanonik: eTip 100 − 101 + 4 − 5 (sema: MEKAN_CIRO_MUTABAKAT_FORMULU).
 SELECT YEAR(bs.eTarihS) AS Yil, MONTH(bs.eTarihS) AS Ay,
-       SUM(CAST(dt.ehTutar - dt.ehIndirim AS float)) AS NetKdvHaric,
-       SUM(ABS(CAST(dt.ehAdet AS float)))            AS Adet
+       SUM(CASE WHEN bs.eTip IN (5,101) THEN -CAST(dt.ehTutar - dt.ehIndirim AS float)
+                ELSE CAST(dt.ehTutar - dt.ehIndirim AS float) END)  AS NetKdvHaric,
+       SUM(CASE WHEN bs.eTip IN (5,101) THEN -ABS(CAST(dt.ehAdet AS float))
+                ELSE ABS(CAST(dt.ehAdet AS float)) END)             AS Adet
 FROM dbo.irs bs WITH(NOLOCK)
 INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
-WHERE bs.eTip = 100                       -- POS günlük özet belgesi
+WHERE bs.eTip IN (4, 5, 100, 101)         -- POS satış+iade + Mağaza Satış+iade (100 TEK BAŞINA YETMEZ)
   AND bs.eMekan IN (1, 4477, 4478)        -- FSM · Özlüce · İst. Yolu
   AND YEAR(bs.eTarihS) IN (2025, 2026)
 GROUP BY YEAR(bs.eTarihS), MONTH(bs.eTarihS)

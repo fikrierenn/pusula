@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
-"""DerinSIS is hacmi bloklari (POS eTip=100): hizali pencere · kanal · trend · kategori ·
+"""⚠ 08.09.2026 (B-162/B-164): bu dosyadaki 10 blok `bs.eTip = 100` TEK BASINA kullaniyor.
+Olculdu: `eTip 4` (Magaza Satis) ayri kanal, pratikte sadece Ist.Yolu'nda (Sinav toplu faturasi);
+iade (101/5) netlenmiyor. Sinav-haric olcumde sapma: FSM -%0,5 · Ozluce -%0,4 · Ist.Yolu +%2,7..4,4
+(3 magaza toplaminda +%0,5). Kanonik: eTip 100 − 101 + 4 − 5 (sema MEKAN_CIRO_MUTABAKAT_FORMULU).
+Bu script 02.09 sezon-kadro sunumunu uretti; rakamlar teslim edildigi icin OLDUGU GIBI BIRAKILDI.
+YENIDEN URETILIRSE once WHERE'ler duzeltilecek (KadroQueries.GetIsHacmiAsync duzeltilmis ornek).
+
+DerinSIS is hacmi bloklari (POS eTip=100): hizali pencere · kanal · trend · kategori ·
 aylik · okul kaymasi · Agustos yarim-ay · aylik KDV-haric ciro.
 
 cek_hacim(cur, veri) -> (hacim, yil_adet, ciro_ay)  — sonrasinda kadro ve maliyet bloklari kullanir.

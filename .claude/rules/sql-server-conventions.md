@@ -67,6 +67,38 @@ AVG iade hariç:
 CASE WHEN s.DocumentsTypeId <> 3 THEN ... END
 ```
 
+## ŞUBE CİROSU: `eTip = 100` TEK BAŞINA YETMEZ (B-162/B-164, 08.09.2026)
+
+**Kanonik formül: `eTip 100 − 101 + 4 − 5`.** (`irsHrk` tarafında `ehTip` aynı kodlar.)
+
+- `eTip 4` **"Mağaza Satış"**, `eTip 100` (POS Satış) ile AYRI bir kanal — ikisi kesişmez.
+  Pratikte **yalnız İst.Yolu'nda** anlamlı: son 12 ay 50,0M ₺ / 2.170 belge; FSM ve Özlüce
+  0,3-0,6M/ay (ihmal). İçeriğinin %86-89'u Sınav kategorisi → **Sınav Okulları toplu faturaları
+  buradan akar.** `eTip 101/5` = POS / Mağaza Satış İadesi, ayrı satır — `100` içinde netlenmez.
+- **Ölçülen sapma** (Oca-2025..Eyl-2026, yalnız `100` vs kanonik formül):
+  · Sınav **hariç** (perakende): FSM −%0,5..1,0 · Özlüce −%0,4..0,8 · **İst.Yolu +%2,7..4,4** · 3 mağaza toplamı +%0,5
+  · Sınav **dahil** (toplam ciro): **İst.Yolu +%8,2..9,8** · Sınav kanalı +%12,4
+  Yani maliyet/ciro oranı gibi Sınav-dahil paydalarda hata BÜYÜK, Sınav-hariç perakende
+  metriklerinde küçük ama İst.Yolu'nda hâlâ gürültü üstü.
+- **Mutabakat kanıtı:** kanonik formül EncoreMerkez toplamıyla üç şubede de %0,08-1,28 içinde
+  tutuyor; yalnız `eTip 100` ile İst.Yolu −%10,24 sapıyordu.
+- **Zaten doğru olan kalıp:** `ehTip IN (4,100)` / `IN (1,4,100)` yazan sorgular etkilenmez
+  (dashboard'un çoğu böyle). Tehlikeli olan `eTip = 100` **tek başına**.
+- ⚠ İstisna: `CASE WHEN ehTip=100 ...` bir alt-metrik ayırmak için kullanılıyorsa (satınalma
+  retail-cap, kanal kırılması analizi) ve WHERE zaten geniş küme ise DOĞRUdur — dokunma.
+
+### KANAL AYRACI: belge tipi ≠ ürün kategorisi
+
+- **Kanal sorusu** (raf/walk-in vs kurumsal Sınav) → **belge bazlı**: EncoreMerkez
+  `DocumentsTypeId = 8`. DerinSIS'ten belge-bazlı ayrım **YAPILAMAZ** (`eTip 100` günlük ÖZET
+  belge, ayda 32 satır). Belge-bazlı ölçüm yalnız **Ağu-2025 sonrası** güvenli (POS geçişi).
+- **Ürün/kategori sorusu** → **ürün bazlı**: `bkm.UrunBilgi.Kategori3` (+ `KatAna LIKE 'Sınav Okul%'`).
+- İkisi aynı tabloda karıştırılmaz. Ölçülen fark: Sınav faturasında satılan kitap/kırtasiye
+  21,8M ₺ (2026 · 32 gün), perakende fişindeki Sınav ürünü 0,2M → İst.Yolu Eyl-2025 perakendesi
+  belge bazlı 26,0M, ürün bazlı 43,1M. Ekim'de yakınsar (Sınav sezonu bittiği için).
+- Değişmez: `etip4-magaza-satis-istyolu-anlamli` · sema: `MEKAN_CIRO_MUTABAKAT_FORMULU`,
+  `KANAL_AYRACI_KANONIK`. Kanıt: `sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql` blok 9.
+
 ## MERKEZ DEPO STOĞU = HER ZAMAN WMS (KRİTİK — kullanıcı direktifi 03.09.2026)
 
 _"ERP merkez depo defteri senkron sorunu var, her zaman WMS stoklarına bakmalısın."_
@@ -157,6 +189,12 @@ Profiller: `erp` (DerinSISBkm) · `encore` (EncoreMerkez) · `zirve` (BKM_GENEL)
 | **`--read-only`** | bayrak veya `SQLCLI_READONLY=1` | Yazma anahtar kelimesi içeren sorguyu reddeder (string/yorum elenerek taranır) → `erp-write-policy` araç düzeyinde zorlanır |
 | **`--param ad[:tip]=deger`** | `--param bas:date=2026-09-01` · `--param kod:str=20260901` | String birleştirme yok (injection + tarih tuzağı). **`dd.MM.yyyy` REDDEDİLİR** (gün/ay belirsiz) — ISO yaz ya da `:str` + `CONVERT(...,104)` |
 | **`--timeout` / `--retry`** | `--timeout 60 --retry 2` | Yalnız geçici hatada (10053/10060/-2/1205) sınırlı ve **görünür** yeniden deneme; kalıcı hata (207) denenmez |
+
+⚠ **`--max-rows` varsayılanı 1000 ve SESSİZ keser** (server-side TOP wrap; uyarı satırı yok).
+Toplu çekimde (kişi-gün, segment, saat×mağaza matrisi) 1000'e dayanırsan eksik veriyi TAM sanırsın —
+04.09 vardiya çekiminde tam bu oldu: 1.217 satırlık sonuç 1.000'de kesildi, son gün hiç görünmedi.
+**Kural:** satır sayısı belirsiz her çekimde `--max-rows` açıkça ver ve dönen satır sayısını beklenenle
+karşılaştır (tam 1000/verilen değer = kesilme şüphesi).
 
 **Kodlama:** v2.2'den beri sqlcli **UTF-8** yazar (Türkçe doğru, dosyaya/pipe'a alınabilir).
 v2.1 ve öncesi cp857 yazıyordu — `tools/sq.sh` ikisini de okur (UTF-8 dene, olmazsa cp857).
