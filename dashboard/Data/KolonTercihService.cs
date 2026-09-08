@@ -54,31 +54,52 @@ public sealed class KolonTercihService
     }
 
     /// <summary>
-    /// Kullanıcının seçtiği kolon anahtarları. Kayıt yoksa/bozuksa varsayılan küme döner.
-    /// Bilinmeyen anahtarlar ATILIR (kolon kaldırılmışsa tercih onu taşımaya devam etmesin).
+    /// Kullanıcının seçtiği kolon anahtarları + NE DÜŞTÜĞÜ.
+    ///
+    /// ⚠ SESSİZ DÜŞÜRME YOK (ölçüldü 09.09.2026, Solum karşı-sorusu üzerine):
+    /// kayıtlı bir anahtar artık hiçbir kolona karşılık gelmiyorsa (kolon kaldırılmış /
+    /// yeniden adlandırılmış) atılır — ama HANGİSİ atıldı çağırana bildirilir ve ekranda
+    /// söylenir. Yoksa kullanıcı "kolonum kayboldu" der ve sebebi görünmez olur; bu tam olarak
+    /// error-handling.md § "fallback sessiz olmasın" vakası (ve kendi çip kuralımızın aynası).
+    ///
+    /// Ölçülen iki hal:
+    ///   · 5 anahtar (3 geçerli + 2 olmayan) → 3 kolon kalıyor, 2'si düşüyor.
+    ///   · Hepsi geçersiz → varsayılan kümeye dönülüyor (tablo kolonsuz çizilmiyor).
     /// </summary>
-    public async Task<IReadOnlySet<string>> OkuAsync(string kullanici, string ekran)
+    public async Task<KolonTercihSonuc> OkuAsync(string kullanici, string ekran)
     {
-        if (!_tabloHazir) return SatisAnaliziKolonlar.VarsayilanAnahtarlar;
+        if (!_tabloHazir) return KolonTercihSonuc.Varsayilan();
         try
         {
             await using var c = _db.OpenPanel();
             var ham = await c.ExecuteScalarAsync<string?>(
                 "SELECT Kolonlar FROM dbo.PanelKolonTercih WHERE Kullanici = @k AND Ekran = @e",
                 new { k = kullanici, e = ekran });
-            if (string.IsNullOrWhiteSpace(ham)) return SatisAnaliziKolonlar.VarsayilanAnahtarlar;
+            if (string.IsNullOrWhiteSpace(ham)) return KolonTercihSonuc.Varsayilan();
 
-            var secili = ham.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                            .Where(a => SatisAnaliziKolonlar.Bul(a) is not null)
-                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var anahtarlar = ham.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var secili = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var dusen = new List<string>();
+            foreach (var a in anahtarlar)
+            {
+                if (SatisAnaliziKolonlar.Bul(a) is not null) secili.Add(a);
+                else dusen.Add(a);
+            }
+
+            if (dusen.Count > 0)
+                _log.LogWarning("Kolon tercihinde tanınmayan anahtar düştü ({Kullanici}/{Ekran}): {Dusen}",
+                    kullanici, ekran, string.Join(", ", dusen));
+
             // Hepsi geçersizse tercih boş kalmasın — tablo kolonsuz çizilmez.
-            return secili.Count > 0 ? secili : SatisAnaliziKolonlar.VarsayilanAnahtarlar;
+            return secili.Count > 0
+                ? new KolonTercihSonuc(secili, dusen, false)
+                : new KolonTercihSonuc(SatisAnaliziKolonlar.VarsayilanAnahtarlar, dusen, true);
         }
         catch (Exception ex)
         {
             _log.LogError(ex, "Kolon tercihi okunamadı ({Kullanici}/{Ekran}) — varsayılan kullanılıyor",
                 kullanici, ekran);
-            return SatisAnaliziKolonlar.VarsayilanAnahtarlar;
+            return KolonTercihSonuc.Varsayilan();
         }
     }
 
@@ -106,4 +127,15 @@ public sealed class KolonTercihService
             _log.LogError(ex, "Kolon tercihi kaydedilemedi ({Kullanici}/{Ekran})", kullanici, ekran);
         }
     }
+}
+
+/// <summary>
+/// Kolon tercihi okuma sonucu. <paramref name="DusenAnahtarlar"/> boş değilse ekranda söylenir
+/// (sessiz düşürme yasak). <paramref name="VarsayilanaDondu"/> = kayıt tamamen geçersizdi.
+/// </summary>
+public sealed record KolonTercihSonuc(
+    IReadOnlySet<string> Secili, IReadOnlyList<string> DusenAnahtarlar, bool VarsayilanaDondu)
+{
+    public static KolonTercihSonuc Varsayilan() =>
+        new(SatisAnaliziKolonlar.VarsayilanAnahtarlar, [], false);
 }

@@ -52,6 +52,15 @@
     </div>
 </div>
 
+@if (_kolonUyari is not null)
+{
+    @* Kolon tercihi bozulduysa SESSİZ kalmaz — "kolonum kayboldu" sorusu cevapsız bırakılmaz. *@
+    <div class="alert alert-info text-xs mb-3 py-2">
+        <span>@_kolonUyari</span>
+        <button class="btn btn-xs btn-ghost" @onclick="() => _kolonUyari = null">tamam</button>
+    </div>
+}
+
 @* ── Kapsam uyarıları — ölçülmüş sınırlar, gizlenmez ──────────────────────── *@
 <details class="collapse collapse-arrow bg-warning/15 border border-warning/40 rounded-2xl mb-3">
     <summary class="collapse-title text-xs font-semibold py-2.5 min-h-0 cursor-pointer">
@@ -201,7 +210,9 @@ else
                 <label class="block text-xs text-base-content/60 mb-1">Kategori3</label>
                 <select class="select select-bordered select-sm" @onchange="Kategori3Degis">
                     <option value="">(hepsi)</option>
-                    @foreach (var r in _ozet.Kategori3)
+                    @* Kırılım tablosu TUTARA göre sıralı (büyük yük üstte); combo İSME göre
+                       (kullanıcı isteği 09.09) — combo'da isimle aranır, tutarla değil. *@
+                    @foreach (var r in _ozet.Kategori3.OrderBy(x => x.Ad, StringComparer.CurrentCulture))
                     {
                         <option value="@r.Ad" selected="@(_filtre.Kategori3 == r.Ad)">@r.Ad</option>
                     }
@@ -279,6 +290,7 @@ else
     private SayfaSonucu<SatisAnaliziSatir>? _liste;
     private TabanDurum? _tabanDurum;
     private IReadOnlySet<string> _secili = SatisAnaliziKolonlar.VarsayilanAnahtarlar;
+    private string? _kolonUyari;
     private string _kullanici = "gm";
     private bool _yukleniyor;
     private string? _hata;
@@ -286,7 +298,12 @@ else
     protected override async Task OnInitializedAsync()
     {
         _filtre = new SatisAnaliziFiltre(_kesim, _sezonYil);
-        _secili = await KolonTercih.OkuAsync(_kullanici, EkranAdi);
+        var tercih = await KolonTercih.OkuAsync(_kullanici, EkranAdi);
+        _secili = tercih.Secili;
+        _kolonUyari = tercih.DusenAnahtarlar.Count == 0 ? null
+            : tercih.VarsayilanaDondu
+                ? $"Kayıtlı kolon tercihiniz artık geçerli değil ({string.Join(", ", tercih.DusenAnahtarlar)}) — varsayılan kolonlara dönüldü."
+                : $"Kayıtlı tercihinizdeki {tercih.DusenAnahtarlar.Count} kolon artık yok ({string.Join(", ", tercih.DusenAnahtarlar)}) — listeden çıkarıldı.";
         await Yukle();
     }
 

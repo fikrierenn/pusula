@@ -35,6 +35,17 @@ else
     var u = _urun;
 
     <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
+        <div class="flex gap-4 items-start">
+        @* Görsel: ent.tsoft_urun → cdn.bkmkitap.com (sema bridges.yaml tsoft-urun-resim).
+           ⚠ referrerpolicy="no-referrer" ŞART — CDN hotlink korumalı, referer'lı istek
+           placeholder döner. Slug %0,2 vakada ürünle uyuşmuyor → karara dayanak yapılmaz. *@
+        @if (_resimUrl is not null)
+        {
+            <img src="@_resimUrl" alt="" loading="lazy" referrerpolicy="no-referrer"
+                 class="w-20 h-20 object-contain rounded-lg border border-base-300 bg-base-200 shrink-0"
+                 onerror="this.style.display='none'" />
+        }
+        <div class="min-w-0">
         <h1 class="text-xl font-bold tracking-tight m-0">@u.StkAd</h1>
         <div class="flex gap-x-4 gap-y-1 flex-wrap text-xs text-base-content/70 mt-1.5">
             <span>stkID <b class="font-mono">@u.StkId</b></span>
@@ -47,6 +58,8 @@ else
             }
             <span>fiyat <b class="font-mono">@u.SatisFiyat.ToString("N0") ₺</b></span>
         </div>
+        </div>
+        </div>
     </div>
 
     @* ── 3. SORU EN ÜSTTE: yeniden almam gerekir mi? Drill'in asıl cevabı. ──────── *@
@@ -55,6 +68,21 @@ else
             Sipariş kararı
         </div>
         <p class="text-base font-semibold m-0 leading-snug">@KararCumlesi(u)</p>
+        @if (_acikSiparis is { } sip)
+        {
+            @* Kurulun "en kritik eksik" dediği madde: elde stok varken sipariş de verilmiş olabilir. *@
+            <div class="alert alert-warning text-xs mt-2 py-2 items-start">
+                <div>
+                    <b>Açık sipariş var:</b> son 120 günde @sip.Belge belgede
+                    <b class="font-mono">@(sip.SiparisAdet?.ToString("N0") ?? "?")</b> adet sipariş edilmiş
+                    (son @(sip.SonSiparis?.ToString("dd.MM.yyyy") ?? "—")).
+                    <span class="block opacity-80 mt-0.5">
+                        Bu adet <b>sipariş edilen</b>dir, "yolda kalan" değil — karşılanma oranı
+                        veriden ölçülemiyor. Yeni alım kararı bunun üstüne verilir.
+                    </span>
+                </div>
+            </div>
+        }
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
             <div>
                 <div class="text-[11px] text-base-content/60">ODAK temin</div>
@@ -170,10 +198,17 @@ else
             <div class="flex items-baseline gap-2 mb-3 flex-wrap">
                 <h3 class="text-sm font-bold m-0">Aylık Satış (365 gün)</h3>
                 <span class="text-xs text-base-content/60">
-                    zirve: <b>@ZirveAy()</b> · toplam @_aylik.Sum(x => x.Adet).ToString("N0") adet
+                    satış zirvesi: <b>@ZirveAy()</b> · satış @_aylik.Sum(x => x.Adet).ToString("N0") · alış @((_aylikAlis ?? []).Sum(x => x.Adet).ToString("N0")) adet
                 </span>
             </div>
-            @{ var aylikMax = Math.Max(1, _aylik.Max(x => x.Adet)); }
+            @* SATIŞ + ALIŞ yan yana — "alım talebi takip ediyor mu" sorusu.
+               Ölçek ikisinin maksimumu (alış satıştan büyük olabilir; ölçüm 09.09: bir üründe
+               365g satış 22 adet, Eylül alışı 9.960 adet). *@
+            @{
+                var alisHarita = (_aylikAlis ?? []).ToDictionary(x => x.Ay, x => x.Adet);
+                var aylikMax = Math.Max(1, Math.Max(_aylik.Max(x => x.Adet),
+                                                    alisHarita.Values.DefaultIfEmpty(0).Max()));
+            }
             <div class="flex items-end gap-1.5 h-36">
                 @foreach (var a in _aylik)
                 {
@@ -183,11 +218,20 @@ else
                         <span class="text-[10px] font-mono mb-0.5 truncate w-full text-center">
                             @(a.Adet > 0 ? a.Adet.ToString("N0") : "")
                         </span>
-                        <div class="w-full rounded-t @(sezonAyiMi ? "bg-primary" : "bg-info")"
-                             style="height:@(Math.Max(2, a.Adet * 100.0 / aylikMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        <div class="w-full flex items-end gap-px h-full">
+                            <div class="flex-1 rounded-t @(sezonAyiMi ? "bg-primary" : "bg-info")"
+                                 style="height:@(Math.Max(2, a.Adet * 100.0 / aylikMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                            <div class="flex-1 rounded-t bg-warning"
+                                 style="height:@(Math.Max(alisHarita.GetValueOrDefault(a.Ay) > 0 ? 2 : 0, alisHarita.GetValueOrDefault(a.Ay) * 100.0 / aylikMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        </div>
                         <span class="text-[10px] text-base-content/60 mt-1">@a.Ay.ToString("MMM")</span>
                     </div>
                 }
+            </div>
+            <div class="flex gap-4 text-[11px] mt-1.5 flex-wrap">
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-primary inline-block"></span>satış · sezon ayı</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-info inline-block"></span>satış</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-warning inline-block"></span>alış (mal kabulü)</span>
             </div>
             <p class="text-xs text-base-content/60 mt-2 mb-0">
                 Koyu sütunlar sezon aylarını (Ağustos-Ekim) gösterir. Zirve sezon dışındaysa
@@ -356,6 +400,9 @@ else
     private SatisAnaliziSatir? _urun;
     private UrunMaliyet? _maliyet;
     private IReadOnlyList<AylikSatis>? _aylik;
+    private IReadOnlyList<AylikSatis>? _aylikAlis;
+    private AcikSiparis? _acikSiparis;
+    private string? _resimUrl;
     private AkranOzet? _akran;
     private DateOnly _kesim = DateOnly.FromDateTime(DateTime.Today.AddDays(-1));
     private int _sezonYil = DateTime.Today.Year - 1;
@@ -376,6 +423,9 @@ else
                 _akran = await Q.GetAkranAsync(_urun.Kategori1, _kesim, _sezonYil);
                 _maliyet = await Q.GetMaliyetAsync(StkId);
                 _aylik = await Q.GetAylikSatisAsync(StkId, _kesim);
+                _aylikAlis = await Q.GetAylikAlisAsync(StkId, _kesim);
+                _acikSiparis = await Q.GetAcikSiparisAsync(StkId);
+                _resimUrl = await Q.GetResimUrlAsync(StkId);
             }
         }
         catch (Exception ex)

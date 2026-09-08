@@ -273,6 +273,102 @@ public sealed partial class SatisAnaliziQueries
         return tam;
     }
 
+    /// <summary>
+    /// AÇIK SİPARİŞ (yolda mal) — kurulun "en kritik eksik" dediği madde (satinalma-danisman 08.09).
+    ///
+    /// KAYNAK sema'dan (metrics.yaml → bulunurluk_osa.mal_yolda_kontrolu): <c>dbo.sip</c> +
+    /// <c>dbo.sipAyr</c>, <c>eDurum &lt;&gt; 2</c>.
+    /// ⚠ TARİH TUZAĞI: <c>s.eTarih</c> kullanılır — <c>eTarihS</c> DEĞİL (sema'da belgeli).
+    /// ⚠ SINIR (sema, birebir): "Yalnız VAR/YOK okunur; karşılanma oranı ölçülemiyor
+    ///   (ehSevkAdet NULL)". Bu adet SİPARİŞ EDİLEN'dir, "yolda kalan" DEĞİL — bir kısmı gelmiş
+    ///   olabilir. Ekranda böyle yazılır.
+    /// Ölçüm 09.09 (stkID 1701128): 8 belge / 10.528 adet, son 04.09.2026 — elde 9.846 stok varken.
+    /// </summary>
+    public async Task<AcikSiparis?> GetAcikSiparisAsync(
+        int stkId, int gunPenceresi = 120, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT COUNT(DISTINCT s.eID)                  AS Belge,
+                   CONVERT(decimal(18,2), SUM(sa.ehAdet)) AS SiparisAdet,
+                   MAX(s.eTarih)                          AS SonSiparis
+            FROM DerinSISBkm.dbo.sip s WITH (NOLOCK)
+            JOIN DerinSISBkm.dbo.sipAyr sa WITH (NOLOCK) ON sa.ehID = s.eID
+            WHERE sa.ehstkID = @stkId AND s.eDurum <> 2
+              AND s.eTarih >= DATEADD(DAY, -@gun, GETDATE())
+            """;
+        await using var conn = await db.OpenAsync();
+        var r = await conn.QuerySingleOrDefaultAsync<AcikSiparis>(new CommandDefinition(sql,
+            new { stkId, gun = gunPenceresi }, commandTimeout: 60, cancellationToken: ct));
+        return r is null || r.Belge == 0 ? null : r;
+    }
+
+    /// <summary>
+    /// AYLIK ALIŞ SERİSİ — satışın yanına konur ki "alım talebi takip ediyor mu" görünsün.
+    /// Alış = <c>ehTip IN (0, 10)</c> (Alış + Yerel Alım), adet POZİTİF (giriş).
+    /// Mekan: 3 mağaza + merkez depo (12) — mal merkeze de gelir, dışlanırsa alım görünmez.
+    /// </summary>
+    public async Task<IReadOnlyList<AylikSatis>> GetAylikAlisAsync(
+        int stkId, DateOnly kesim, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1) AS Ay,
+                   CONVERT(int, SUM(h.ehAdetN)) AS Adet
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehstkID = @stkId AND h.ehTip IN (0, 10)
+              AND h.ehMekan IN (1, 4477, 4478, 12)
+              AND h.ehTrhS >= @bas AND h.ehTrhS < DATEADD(DAY, 1, @kesim)
+            GROUP BY DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1)
+            ORDER BY 1
+            """;
+        await using var conn = await db.OpenAsync();
+        var ham = (await conn.QueryAsync<AylikSatis>(new CommandDefinition(sql,
+            new
+            {
+                stkId,
+                bas = kesim.AddDays(-364).ToDateTime(TimeOnly.MinValue),
+                kesim = kesim.ToDateTime(TimeOnly.MinValue),
+            }, commandTimeout: 60, cancellationToken: ct))).ToList();
+
+        var basAy = new DateTime(kesim.AddDays(-364).Year, kesim.AddDays(-364).Month, 1);
+        var sonAy = new DateTime(kesim.Year, kesim.Month, 1);
+        var harita = ham.ToDictionary(x => x.Ay, x => x.Adet);
+        var tam = new List<AylikSatis>();
+        for (var a = basAy; a <= sonAy; a = a.AddMonths(1))
+            tam.Add(new AylikSatis(a, harita.GetValueOrDefault(a)));
+        return tam;
+    }
+
+    /// <summary>
+    /// ÜRÜN GÖRSELİ — <c>ent.tsoft_urun.stkid = urn.stkID</c>, tam URL
+    /// <c>https://cdn.bkmkitap.com/</c> + <c>ImageUrl</c>.
+    ///
+    /// KAYNAK sema'dan (bridges.yaml → tsoft-urun-resim): "Satınalma ürün-detay görseli bunu
+    /// kullanır" — yerleşik desen, yeniden icat edilmedi. Kullanıcı da oraya işaret etti.
+    /// ⚠ CDN HOTLINK korumalı → <c>&lt;img referrerpolicy="no-referrer"&gt;</c> ŞART
+    ///   (referer'lı istek placeholder döner, sema notu).
+    ///
+    /// NEDEN BKMDATA binary DEĞİL: <c>odak_urun_tam.urun_gorsel_url</c> sorgu dizesinde
+    /// <b>authToken</b> taşıyor — tarayıcıya verilemez (security-principles). Binary'yi servis
+    /// etmek ayrı endpoint gerektiriyordu; tsoft yolu hem belgeli hem doğrudan stkID.
+    /// Alternatif (kullanılmadı): DerinSISBkmWeb.web.urnWeb.urnWebResim — DB-içi binary, kapsamı ölçülmedi.
+    ///
+    /// ÖLÇÜM 09.09: 438.360 satır = 438.360 tekil stkID (fan-out YOK) · 438.335'inde görsel var ·
+    /// slug ürün adıyla %99,8 uyuşuyor (1.987 örnekte 4 uyumsuz) → nadir vakada yanlış görsel
+    /// görünebilir, o yüzden ekranda küçük tutulur ve karara dayanak yapılmaz.
+    /// </summary>
+    public async Task<string?> GetResimUrlAsync(int stkId, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT TOP 1 t.ImageUrl
+            FROM DerinSISBkm.ent.tsoft_urun t WITH (NOLOCK)
+            WHERE t.stkid = @stkId AND t.ImageUrl IS NOT NULL AND t.ImageUrl <> ''
+            """;
+        await using var conn = await db.OpenAsync();
+        var ad = await conn.ExecuteScalarAsync<string?>(
+            new CommandDefinition(sql, new { stkId }, commandTimeout: 30, cancellationToken: ct));
+        return string.IsNullOrWhiteSpace(ad) ? null : "https://cdn.bkmkitap.com/" + ad;
+    }
+
     /// <summary>WHERE + parametreler. Tek yerde kurulur → liste/sayım/Excel AYRIŞMAZ.</summary>
     private static (string Nerede, DynamicParameters P) Filtre(SatisAnaliziFiltre f)
     {
@@ -342,3 +438,10 @@ public sealed record UrunMaliyet(
 
 /// <summary>Bir ayın net satış adedi (iade netlenmiş, 3 mağaza).</summary>
 public sealed record AylikSatis(DateTime Ay, int Adet);
+
+/// <summary>
+/// Açık sipariş özeti. ⚠ SiparisAdet = SİPARİŞ EDİLEN adet, "yolda kalan" değil
+/// (karşılanma oranı ölçülemiyor — sema: ehSevkAdet NULL).
+/// </summary>
+public sealed record AcikSiparis(int Belge, decimal? SiparisAdet, DateTime? SonSiparis);
+
