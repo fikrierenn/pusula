@@ -851,3 +851,33 @@ AÇIK SORU: `frmIadeKural` 0/1/2 gerçekten iade var/kısmi/yok mu? DerinSIS sat
     confidence: 0.95
     last_verified: "2026-09-08"
     evidence: "2026-09-08 canlı — urn.alimIadeYok/soIadeVar dağılımı, frm.frmIadeKural dağılımı + aktif tedarikçi kesişimi, lookup obje araması (0 sonuç). SQL: §11a"
+
+  # ── BKMDATA — ODAK katalog + temin süresi (2026-09-08, kullanıcı gösterdi) ──
+  BKMDATA.dbo.OdakUrunDurum:
+    tip: tablo
+    key: [ProductCode, saleStatus, leadTime]
+    note: "**ODAK ürün durumu + TEMİN SÜRESİ.** 646.129 ürün, `leadTime` **NULL YOK**, 2-40 gün, ortalama **5,03**, mod 5 (152.216) ve 4 (112.514) gün. `saleStatus` 1/2/3/4/5/6 (metin karşılığı `BKMDATA.ent.OdakSatisDurumlari.SatisDurum` — TEYİT BEKLİYOR).
+⚠⚠ **`ProductCode` stkID DEĞİL — ODAK'ın kendi ürün kodudur.** `CAST(u.stkID AS varchar)=ProductCode` **511.040 eşleşme verir ve HEPSİ SAYISAL TESADÜF** (ODAK kod aralığı stkID aralığıyla çakışıyor). `stkKod=barkod` ile AYNI hata sınıfı.
+**KANONİK ZİNCİR (barkod üstünden):** `OdakUrunDurum.ProductCode` = `BKMDATA.ent.odak_urun_tam.urun_id` → `odak_urun_tam.barkod` = `DerinSISBkm.dbo.urnBrkd.urnBarkod` (`urnBrkdOnce=0`) → `urnBrkd.urnBrkdStkID`. Ölçüm 08.09.2026: **644.107 / 644.638 = %99,9**. Kullanıcının kendi rapor SQL'leri de bu zinciri kullanıyor.
+Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6**'sını kapsar (209.625/273.515) — kalan ürünler ODAK katalogunda yok.
+⚠ **BKMDATA aynı sunucuda ama `erp` profilinin `sys.databases` çıktısında GÖRÜNMEDİ** (sqlcli TOP-wrap + ORDER BY tuzağı). `encore` profili + 3-parçalı isimle erişilir."
+    confidence: 0.95
+    last_verified: "2026-09-08"
+    evidence: "2026-09-08 canlı — köprü karşılaştırması (511.040 sahte vs 644.107 doğru), leadTime profili, kohort kırılımı. SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql §12"
+
+  BKMDATA.ent.odak_urun_tam:
+    tip: view
+    key: [urun_id, barkod, etiket_fiyat, KDV, marka_id, marka_ad, satis_durum, on_siparis, kategori_id_1..5, SadeceMagaza, SilinecekUrun]
+    note: "**ODAK katalog verisi (tam)** — 644.638 satır. `urun_id` = `OdakUrunDurum.ProductCode`; `barkod` DerinSIS'e köprü (bkz. BKMDATA.dbo.OdakUrunDurum). Kitap meta verisi zengin (basım tarihi/sayısı, sayfa, cilt tipi, kağıt cinsi, çevirmen, editör, çıkış tarihi) + 5 seviyeli kategori ağacı + `SadeceMagaza` / `SilinecekUrun` bayrakları + `on_siparis`/`on_siparis_tarih`. `etiket_fiyat` + `KDV` ODAK tarafının fiyatı (BKM `UrunBilgi.SatisFiyat` ile AYNI DEĞİL, karıştırma)."
+    confidence: 0.85
+    last_verified: "2026-09-08"
+    evidence: "Kullanıcı kolon dökümü + satır sayımı 08.09.2026 (644.638). Kolon anlamları henüz tek tek doğrulanmadı."
+
+  BKMDATA.ent.OdakSatisDurumlari:
+    tip: tablo
+    key: [barkod, SatisDurum, DataDurum]
+    note: "ODAK satış/data durumu, **barkod bazlı** (`sd.barkod = urnBrkd.urnBarkod`). `SatisDurum` METİN ('Satışta' vb.) — kullanıcının yerleşik raporları `SatisDurum='Satışta'` ve `SatisDurum<>'Satışta'` filtreleriyle 'satılamaz durumda ama stok veren ürün' analizini bunun üstünden yapıyor. `OdakUrunDurum.saleStatus` sayısal kodunun metin karşılığı buradan çözülür (eşleme TEYİT BEKLİYOR).
+İlişkili yerleşik desen: `dbo.tmpSIPARISOZET (BARKOD, MIKTAR)` ile birlikte 'hiç satılmamış + stok veren' kohortu kuruluyor; stok yaşı `UrunBilgi.gTarih`ten."
+    confidence: 0.8
+    last_verified: "2026-09-08"
+    evidence: "Kullanıcının kendi rapor SQL'leri (08.09.2026 paylaşıldı) + barkod zinciri ölçümü. Kod↔metin eşlemesi ölçülmedi."

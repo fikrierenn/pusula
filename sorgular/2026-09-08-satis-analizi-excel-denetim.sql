@@ -370,3 +370,54 @@ WHERE f.frmIadeKural IN (0,1) GROUP BY f.frmID, f.frmAd, f.frmIadeKural ORDER BY
 --   ODAK'ta yok    : 6.996 çeşit / 108,54M ₺
 -- ⚠ SINIR: ent.odak_depo_Stok damgasız → "ODAK'ta var" bugünkü doğruluğu ölçülemez;
 --   ayrıca "var" ≠ "bana ayrılmış". Karar metriği olarak kullanılırken bu yazılır.
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- 12) ODAK TEMİN SÜRESİ (leadTime) — BKMDATA veritabanı (kullanıcı gösterdi 08.09)
+-- ══════════════════════════════════════════════════════════════════════════════
+-- ⚠ BKMDATA aynı sunucuda ama `erp` profilinin sys.databases çıktısında görünmedi
+--   (sqlcli TOP-wrap + ORDER BY tuzağı). `encore` profiliyle 3-parçalı isimle erişilir.
+
+-- 12a) KÖPRÜ — ProductCode stkID DEĞİL, ODAK'ın kendi ürün kodu (kullanıcı düzeltmesi)
+SELECT 'sahte_stkID_koprusu' AS test, COUNT(*) AS eslesen
+FROM BKMDATA.dbo.OdakUrunDurum o
+JOIN DerinSISBkm.bkm.UrunBilgi u ON CAST(u.stkID AS varchar(20)) = o.ProductCode
+UNION ALL
+SELECT 'dogru_barkod_zinciri', COUNT(*)
+FROM BKMDATA.dbo.OdakUrunDurum d
+JOIN BKMDATA.ent.odak_urun_tam t ON CAST(t.urun_id AS varchar(30)) COLLATE Turkish_CI_AS = d.ProductCode COLLATE Turkish_CI_AS
+JOIN DerinSISBkm.dbo.urnBrkd b ON b.urnBarkod COLLATE Turkish_CI_AS = t.barkod COLLATE Turkish_CI_AS AND b.urnBrkdOnce = 0;
+-- sahte köprü 511.040 · doğru zincir 644.107 (ODAK katalogunun %99,9'u)
+-- ⇒ 511.040 SAYISAL TESADÜF: ODAK ürün kodları DerinSIS stkID aralığıyla çakışıyor.
+--   `stkKod=barkod` ile AYNI hata sınıfı. Kullanıcının kendi SQL'leri de barkod zinciri kullanıyor.
+
+-- 12b) leadTime profili
+SELECT COUNT(*) AS satir, COUNT(DISTINCT ProductCode) AS urun,
+       SUM(CASE WHEN leadTime IS NULL THEN 1 ELSE 0 END) AS null_lt,
+       MIN(leadTime) AS min_lt, MAX(leadTime) AS max_lt, AVG(CAST(leadTime AS float)) AS ort_lt
+FROM BKMDATA.dbo.OdakUrunDurum;
+-- 646.129 ürün · NULL YOK · 2-40 gün · ortalama 5,03 · mod 5 (152.216) ve 4 (112.514)
+
+-- 12c) stkID bazlı leadTime (panel/analiz için kanonik çekim)
+SELECT b.urnBrkdStkID AS stkID, MIN(d.leadTime) AS leadTime, MAX(d.saleStatus) AS saleStatus
+FROM BKMDATA.dbo.OdakUrunDurum d
+JOIN BKMDATA.ent.odak_urun_tam t ON CAST(t.urun_id AS varchar(30)) COLLATE Turkish_CI_AS = d.ProductCode COLLATE Turkish_CI_AS
+JOIN DerinSISBkm.dbo.urnBrkd b ON b.urnBarkod COLLATE Turkish_CI_AS = t.barkod COLLATE Turkish_CI_AS AND b.urnBrkdOnce = 0
+GROUP BY b.urnBrkdStkID;
+-- 644.073 stkID. Rapor evreninin %76,6'sını kapsıyor (209.625/273.515) — kalanı katalogda yok.
+
+-- 12d) BULGU — aşırı stok, 5 GÜNDE GELEN mal için tutuluyor
+-- Kohort: sezon satışının >5 katı stok + ODAK'ta da var = 9.766 çeşit / 135.436.174 ₺
+--   ≤3 gün      96 çeşit /   1.652.380 ₺  (%1)
+--   4-5 gün  8.569 çeşit / 129.756.127 ₺  (%96)   ← yoğunluk
+--   6-7 gün    814 çeşit /   3.250.454 ₺  (%2)
+--   8-10 gün   252 çeşit /     733.855 ₺
+--   16+ gün     30 çeşit /      28.908 ₺
+--   leadTime bilinmeyen: 5 çeşit / 14.450 ₺ → bulgu veri boşluğuna DAYANMIYOR
+-- ⇒ %97,0 (8.665 çeşit / 131.408.508 ₺) 5 gün ve altı temin süreli.
+-- TERS YÖN: stoksuz sezon ürününün ODAK'ta olan 840 çeşidi 4-5 günde gelir (2,57M ₺ kayıp)
+--   → sezon kaçmadan sipariş edilebilir; 12 çeşit ≤3 gün (0,10M ₺).
+
+-- 12e) saleStatus kod anlamı — ent.OdakSatisDurumlari.SatisDurum metniyle eşlenecek
+--   1 → 159.250 çeşit / 5.454.515 ad ODAK stoğu · 2 → 40.575 / 107.314 · 4 → 7.232 · 6 → 2.343
+--   (kullanıcının kendi SQL'i: BKMDATA.ent.OdakSatisDurumlari sd ON sd.barkod = b.urnBarkod,
+--    SatisDurum='Satışta' filtresi kullanıyor → metin karşılığı oradan alınır. TEYİT BEKLİYOR.)
