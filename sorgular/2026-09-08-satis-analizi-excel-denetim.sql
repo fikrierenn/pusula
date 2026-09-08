@@ -336,3 +336,37 @@ WHERE ehMekan IN (1,4477,4478) AND ehTrhS = '20260907' GROUP BY ehstkID;
 -- ⚠ İst.Yolu'nda küçük açıklanamayan artık (165 stok / 61 satış): İst.Yolu eTip 4
 --   (Mağaza Satış / Sınav faturaları) taşıyor ve irs kayıtları gün içinde yeniden
 --   yazılabiliyor (sema: "Değeri gördüm, tarihini görmedim"). Teyit bekliyor.
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- 11) DANIŞMA SONRASI — ODAK = grup şirketi AMA TEDARİKÇİ (kullanıcı teyidi 08.09)
+--     ⇒ ent.odak_depo_Stok BKM'nin ENVANTERİ DEĞİL, TEMİN EDİLEBİLİRLİK sinyalidir.
+--     Raporun OdakStok'u ToplamStok'a katmaması DOĞRU. (Önceki §"en kritik" notu YANLIŞTI.)
+-- ══════════════════════════════════════════════════════════════════════════════
+
+-- 11a) İADE HAKKI VERİDE İZLİ Mİ? (kullanıcı: "her kitapta yok iade")
+SELECT u.alimIadeYok, u.soIadeVar, COUNT(*) AS cesit
+FROM dbo.urn u WHERE u.urnTip=0 GROUP BY u.alimIadeYok, u.soIadeVar;
+-- ÖLÇÜM: alimIadeYok = 2 → 844.017/844.017 (SABİT, bilgi taşımıyor) · soIadeVar = 1 (498 istisna).
+-- ⇒ ÜRÜN seviyesinde iade hakkı İZLİ DEĞİL.
+
+SELECT frmIadeKural, COUNT(*) AS firma FROM dbo.frm GROUP BY frmIadeKural;
+-- 2 → 48.795 (varsayılan) · 0 → 1.584 · 1 → 99. Lookup view YOK (adı '%IadeKural%' arandı: 0 obje).
+SELECT TOP 10 f.frmID, f.frmAd, f.frmIadeKural, COUNT(*) AS alis_faturasi
+FROM dbo.frm f JOIN dbo.fat t ON t.eFirma=f.frmID AND t.eTip=0 AND t.eTarih>='20250908'
+WHERE f.frmIadeKural IN (0,1) GROUP BY f.frmID, f.frmAd, f.frmIadeKural ORDER BY COUNT(*) DESC;
+-- 0/1 taşıyan firmalar arasında GERÇEK aktif yayınevi/dağıtımcı var (Akademis, Phenomenon,
+-- İşler Yayın, Güven Tedarik...). Yani alan kısmen kullanılıyor ama anlamı BELGELİ DEĞİL.
+-- ⇒ ÇIKARIM: iade hakkı bilgisi sözleşmede/insanda, sistemde güvenilir biçimde YOK.
+--   Aşırı-stok metriği bugün iade hakkına göre KIRILAMAZ.
+
+-- 11b) ODAK'ı TEDARİKÇİ olarak okuyunca iki yeni karar metriği doğuyor
+--      (hesap Excel/pandas tarafında; kaynak kolonlar OdakStok + SezonToplam + ToplamStok)
+-- STOKSUZ SEZON ÜRÜNÜ 6.666 çeşit / 21,1M ₺ ayrışıyor:
+--   ODAK'ta VAR (hızlı temin) : 1.006 çeşit ·  6.783 ad · kayıp  3,10M ₺ (ODAK'ta 42.178 ad mevcut)
+--   ODAK'ta YOK (gerçek risk) : 5.660 çeşit · 44.016 ad · kayıp 18,01M ₺  ← ASIL RİSK
+--   Gerçek risk yoğunluğu: Hazırlık Kitapları 8,35M · Kırtasiye 4,78M · Oyuncak 2,56M ₺
+-- AŞIRI STOK (>5x sezon) 16.762 çeşit / 244,0M ₺ ayrışıyor:
+--   ODAK'ta da var : 9.766 çeşit / 135,44M ₺  ← GRUP İÇİNDE ÇİFT STOK (kontrol edilebilir karar)
+--   ODAK'ta yok    : 6.996 çeşit / 108,54M ₺
+-- ⚠ SINIR: ent.odak_depo_Stok damgasız → "ODAK'ta var" bugünkü doğruluğu ölçülemez;
+--   ayrıca "var" ≠ "bana ayrılmış". Karar metriği olarak kullanılırken bu yazılır.

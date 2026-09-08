@@ -832,3 +832,22 @@ Finansal hacim yanıltıcı: 320.10.B010 2026/8ay borç 773,53M / alacak 799,01M
     confidence: 0.95
     last_verified: "2026-09-08"
     evidence: "2026-09-08 canlı — irsHrk ehMekan×ehTip 365g kırılımı + stkID bazlı mekan-12 çıkışı; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql"
+
+  # ── ODAK = GRUP ŞİRKETİ AMA TEDARİKÇİ (kullanıcı teyidi 2026-09-08) ──
+  ent.odak_depo_Stok.ROL:
+    note: "**ODAK (ODAK KİTAP-POİNT İNTERNET TEKNOLOJİLERİ, frmID 9525) grup şirketidir AMA BKM'ye TEDARİKÇİDİR** (kullanıcı teyidi 08.09.2026). ⇒ `ent.odak_depo_Stok` **BKM'nin envanteri DEĞİL**; tedarikçi elindeki **temin edilebilirlik** sinyalidir. Ölçüm 08.09.2026: 496.708 stkID / 7.294.239 adet.
+**Karar sonucu:** stok toplamına KATILMAZ (Kübra'nın raporu da katmıyor — DOĞRU). Ama iki karar metriği üretir: (a) stoksuz sezon ürünü ODAK'ta VAR → hızlı temin, gerçek kayıp değil; (b) elde bol stok + ODAK'ta da bol → **grup içinde çift stok**, sermaye bağlar. Ölçüm 08.09: stoksuz sezon 6.666 çeşit/21,1M ₺'nin yalnız 5.660 çeşit/18,0M ₺'si gerçek risk (1.006 çeşit ODAK'ta var); aşırı stok 244,0M ₺'nin **135,4M ₺'si (9.766 çeşit) ODAK'ta da var**.
+⚠ İki sınır: tablo **damgasız** (tazelik ölçülemez, PK yalnız stkID) ve 'ODAK'ta var' ≠ 'bana ayrılmış'. Karar metriğinde bu yazılır.
+⚠ Çift yönlü akış: BKM merkez depodan ODAK'a da mal çıkıyor (365g 302.908 adet / 33,43M ₺, 593 belge) — yani ODAK aynı zamanda sevk noktası. Tek yönlü 'tedarikçi' sanma."
+    confidence: 0.9
+    last_verified: "2026-09-08"
+    evidence: "Kullanıcı teyidi 08.09.2026 (grup firması ama tedarikçi) + irsHrk/fat ölçümleri; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql §11"
+
+  # ── İADE HAKKI VERİDE İZLİ DEĞİL (2026-09-08 ölçümü) ──
+  urn.IADE_HAKKI_IZLI_DEGIL:
+    note: "**Kitapta iade hakkı ürün bazında değişiyor (kullanıcı: 'her kitapta yok iade') ama VERİDE İZLİ DEĞİL.** Ölçüm 08.09.2026: `dbo.urn.alimIadeYok` = **2 sabit** (844.017/844.017 → bilgi taşımıyor) · `soIadeVar` = 1 (yalnız 498 istisna). Tedarikçi tarafında `dbo.frm.frmIadeKural` VAR (2→48.795 varsayılan · 0→1.584 · 1→99) ama **lookup view'ı yok** ve anlamı belgeli değil; 0/1 taşıyanlar arasında gerçek aktif yayınevi/dağıtımcı bulunuyor (Akademis, Phenomenon, İşler Yayın).
+⇒ **Aşırı-stok / ölü-stok metriği bugün iade hakkına göre KIRILAMAZ.** 'Aşırı stok N ₺' cümlesi kurulurken bu sınır yazılmalı: iade hakkı olan üründe aşırı stok riski çok daha küçüktür. Kırılım şimdilik **yayınevi bazında** sunulur (koşul yayınevi bazlı olduğu için kategori yöneticisi yorumlayabilir).
+AÇIK SORU: `frmIadeKural` 0/1/2 gerçekten iade var/kısmi/yok mu? DerinSIS satıcısına/satınalmaya teyit ettirilecek — doğrulanırsa metrik kırılabilir hale gelir."
+    confidence: 0.95
+    last_verified: "2026-09-08"
+    evidence: "2026-09-08 canlı — urn.alimIadeYok/soIadeVar dağılımı, frm.frmIadeKural dağılımı + aktif tedarikçi kesişimi, lookup obje araması (0 sonuç). SQL: §11a"
