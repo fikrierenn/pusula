@@ -1,0 +1,197 @@
+@using GmDashboard.Data
+@using GmDashboard.Models
+
+@* Satış Analizi ürün tablosu + KULLANICI SEÇMELİ KOLONLAR (plan-42).
+   Ayrı bileşen: .razor split = sub-component (code-behind DEĞİL — markup RenderFragment
+   içeren @code düz C#'ta derlenmez, file-size-discipline notu). *@
+
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+    <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="text-sm font-semibold m-0">Ürün Listesi</h3>
+            <span class="text-xs text-base-content/50">@Sonuc.ToplamSatir.ToString("N0") çeşit</span>
+            @if (SiraliGizli is not null)
+            {
+                @* Sıraladığı kolonu gizlemek SESSİZ kalmaz (Solum'un ölçtüğü tuzak):
+                   sıralama devam eder ama görünür bir çip söyler. *@
+                <button class="badge badge-warning badge-sm gap-1" @onclick="SiraliKolonuGeriGetir"
+                        title="Bu kolona göre sıralı ama kolon gizli — tıkla, geri getir">
+                    sıralama: @SiraliGizli (gizli)
+                </button>
+            }
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="dropdown dropdown-end">
+                <button tabindex="0" class="btn btn-xs btn-ghost border-base-300 gap-1">
+                    Kolonlar (@Secili.Count/@SatisAnaliziKolonlar.Hepsi.Count)
+                </button>
+                <div tabindex="0" class="dropdown-content z-[20] mt-1 w-72 max-h-96 overflow-y-auto
+                                         bg-base-100 border border-base-300 rounded-xl shadow-lg p-2">
+                    <div class="flex items-center justify-between px-1 pb-2 border-b border-base-200 mb-1">
+                        <span class="text-xs font-semibold">Görünür kolonlar</span>
+                        <button class="btn btn-ghost btn-xs" @onclick="Varsayilana">varsayılan</button>
+                    </div>
+                    @foreach (var k in SatisAnaliziKolonlar.Hepsi)
+                    {
+                        <label class="flex items-start gap-2 px-1 py-1 rounded hover:bg-base-200 cursor-pointer">
+                            <input type="checkbox" class="checkbox checkbox-xs mt-0.5"
+                                   checked="@Secili.Contains(k.Anahtar)"
+                                   @onchange="e => KolonDegis(k.Anahtar, (bool?)e.Value == true)" />
+                            <span class="text-xs leading-tight">
+                                @k.Baslik
+                                @if (k.Ipucu is not null)
+                                {
+                                    <span class="block text-base-content/40">@k.Ipucu</span>
+                                }
+                            </span>
+                        </label>
+                    }
+                </div>
+            </div>
+            <ExcelButton FileName="satis-analizi" SayfaAd="Satis Analizi" Rows="ExcelSatirlari" />
+        </div>
+    </div>
+
+    @if (Sonuc.SayfaAsildi)
+    {
+        <div class="alert alert-warning text-sm">
+            Bu sayfada kayıt yok ama filtreye uyan @Sonuc.ToplamSatir.ToString("N0") çeşit var.
+            <button class="btn btn-xs" @onclick="() => SayfaDegis(1)">Başa dön</button>
+        </div>
+    }
+    else if (Sonuc.Bos)
+    {
+        <p class="text-sm text-base-content/50 py-6 text-center">Filtreye uyan ürün yok.</p>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-xs w-full">
+                <thead>
+                    <tr class="text-base-content/50">
+                        @foreach (var k in GorunurKolonlar)
+                        {
+                            <th class="@(k.Sayisal ? "text-right" : "")">
+                                @if (k.Siralanabilir)
+                                {
+                                    <button class="link link-hover" @onclick="() => SiralaDegis(k.Anahtar)">
+                                        @k.Baslik@(Filtre.Sirala == k.Anahtar ? (Filtre.Azalan ? " ↓" : " ↑") : "")
+                                    </button>
+                                }
+                                else
+                                {
+                                    @k.Baslik
+                                }
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Sonuc.Satirlar)
+                    {
+                        <tr class="hover cursor-pointer" @onclick="() => SatirTikla.InvokeAsync(s.StkId)"
+                            title="Ürün detayına git">
+                            @foreach (var k in GorunurKolonlar)
+                            {
+                                <td class="@(k.Sayisal ? "text-right font-mono" : "")">@Hucre(s, k.Anahtar)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 mt-3 flex-wrap">
+            <span class="text-xs text-base-content/50">
+                sayfa @Sonuc.Sayfa / @Sonuc.SayfaSayisi.ToString("N0")
+            </span>
+            <div class="join">
+                <button class="btn btn-xs join-item" disabled="@(Sonuc.Sayfa <= 1)"
+                        @onclick="() => SayfaDegis(1)">«</button>
+                <button class="btn btn-xs join-item" disabled="@(Sonuc.Sayfa <= 1)"
+                        @onclick="() => SayfaDegis(Sonuc.Sayfa - 1)">‹</button>
+                <button class="btn btn-xs join-item btn-ghost pointer-events-none">@Sonuc.Sayfa</button>
+                <button class="btn btn-xs join-item" disabled="@(Sonuc.Sayfa >= Sonuc.SayfaSayisi)"
+                        @onclick="() => SayfaDegis(Sonuc.Sayfa + 1)">›</button>
+                <button class="btn btn-xs join-item" disabled="@(Sonuc.Sayfa >= Sonuc.SayfaSayisi)"
+                        @onclick="() => SayfaDegis(Sonuc.SayfaSayisi)">»</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SayfaSonucu<SatisAnaliziSatir> Sonuc { get; set; } = default!;
+    [Parameter, EditorRequired] public SatisAnaliziFiltre Filtre { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlySet<string> Secili { get; set; } = default!;
+    [Parameter] public EventCallback<IReadOnlySet<string>> SeciliDegisti { get; set; }
+    [Parameter] public EventCallback<SatisAnaliziFiltre> FiltreDegisti { get; set; }
+    [Parameter] public Func<Task<IEnumerable<IDictionary<string, object?>>>>? ExcelSatirlari { get; set; }
+    /// <summary>Satıra tıklanınca ürün drill sayfasına git (kullanıcı isteği 09.09).</summary>
+    [Parameter] public EventCallback<int> SatirTikla { get; set; }
+
+    private IEnumerable<KolonTanim> GorunurKolonlar =>
+        SatisAnaliziKolonlar.Hepsi.Where(k => Secili.Contains(k.Anahtar));
+
+    /// <summary>Sıralanan kolon gizliyse başlığı; değilse null.</summary>
+    private string? SiraliGizli =>
+        !Secili.Contains(Filtre.Sirala) ? SatisAnaliziKolonlar.Bul(Filtre.Sirala)?.Baslik : null;
+
+    private async Task KolonDegis(string anahtar, bool acik)
+    {
+        var yeni = new HashSet<string>(Secili, StringComparer.OrdinalIgnoreCase);
+        if (acik) yeni.Add(anahtar); else yeni.Remove(anahtar);
+        if (yeni.Count == 0) return;   // kolonsuz tablo çizilmez
+        await SeciliDegisti.InvokeAsync(yeni);
+    }
+
+    private Task Varsayilana() =>
+        SeciliDegisti.InvokeAsync(new HashSet<string>(
+            SatisAnaliziKolonlar.VarsayilanAnahtarlar, StringComparer.OrdinalIgnoreCase));
+
+    private async Task SiraliKolonuGeriGetir()
+    {
+        var yeni = new HashSet<string>(Secili, StringComparer.OrdinalIgnoreCase) { Filtre.Sirala };
+        await SeciliDegisti.InvokeAsync(yeni);
+    }
+
+    private Task SiralaDegis(string anahtar) => FiltreDegisti.InvokeAsync(
+        Filtre with { Sirala = anahtar, Azalan = Filtre.Sirala == anahtar ? !Filtre.Azalan : true, Sayfa = 1 });
+
+    private Task SayfaDegis(int sayfa) => FiltreDegisti.InvokeAsync(Filtre with { Sayfa = sayfa });
+
+    private static string Hucre(SatisAnaliziSatir s, string anahtar) => anahtar switch
+    {
+        "kategori3" => s.Kategori3,
+        "stkid" => s.StkId.ToString(),
+        "barkod" => s.BarkodAna ?? "—",
+        "ad" => s.StkAd,
+        "kategori1" => s.Kategori1,
+        "yayinevi" => s.Yayinevi ?? "—",
+        "yazar" => s.Yazar ?? "—",
+        "fiyat" => s.SatisFiyat.ToString("N0"),
+        "tutar" => s.ToplamStokTutar.ToString("N0"),
+        "stok" => s.ToplamStok.ToString("N0"),
+        "odak" => s.OdakStok.ToString("N0"),
+        "leadtime" => s.LeadTime?.ToString() ?? "—",
+        "ilkgiris" => s.IlkGirisTarihi?.ToString("dd.MM.yyyy") ?? "—",
+        "songiris" => s.SonGirisTarihi?.ToString("dd.MM.yyyy") ?? "—",
+        "stok_fsm" => s.StokFsm.ToString("N0"),
+        "stok_ozl" => s.StokOzluce.ToString("N0"),
+        "stok_ist" => s.StokIstyolu.ToString("N0"),
+        "magaza_stok" => s.MagazaStok.ToString("N0"),
+        "merkez_stok" => s.MerkezStok.ToString("N0"),
+        "satis_fsm" => s.SatisFsm.ToString("N0"),
+        "satis_ozl" => s.SatisOzluce.ToString("N0"),
+        "satis_ist" => s.SatisIstyolu.ToString("N0"),
+        "satis" => s.SatisToplam.ToString("N0"),
+        "gunluk" => s.GunlukOrtalamaSatis.ToString("N2"),
+        "sezon_ay1" => s.SezonAy1.ToString("N0"),
+        "sezon_ay2" => s.SezonAy2.ToString("N0"),
+        "sezon_ay3" => s.SezonAy3.ToString("N0"),
+        "sezon" => s.SezonToplam.ToString("N0"),
+        // ?? burada ISE YARAMAZDI: string birleştirme null dönmez → "—" hiç çıkmazdı.
+        "kapsama" => s.SezonKapsama is { } kp ? kp.ToString("N1") + "x" : "—",
+        _ => "",
+    };
+}

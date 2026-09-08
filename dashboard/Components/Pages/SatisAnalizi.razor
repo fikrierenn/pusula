@@ -1,0 +1,510 @@
+@page "/satis-analizi"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject SatisAnaliziQueries Q
+@inject SatisAnaliziTabanService Taban
+@inject KolonTercihService KolonTercih
+@inject NavigationManager Nav
+@inject ILogger<SatisAnalizi> Logger
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+
+<PageTitle>Satış Analizi — BKM GM</PageTitle>
+
+<div class="flex items-center gap-3 mb-2 flex-wrap">
+    <h1 class="text-2xl font-bold tracking-tight m-0">Satış Analizi</h1>
+    <span class="text-sm font-semibold text-base-content/50">
+        stok × 365 günlük satış × geçen sezon (Ağu-Eki) · ürün bazlı
+    </span>
+</div>
+
+@* ── Tarih seçimi ─────────────────────────────────────────────────────────── *@
+<div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[14px] mb-3">
+    <div class="flex items-end gap-3 flex-wrap">
+        <div>
+            <label class="block text-xs text-base-content/60 mb-1">Kesim tarihi (son kapalı gün)</label>
+            <input type="date" class="input input-bordered input-sm" value="@_kesim.ToString("yyyy-MM-dd")"
+                   max="@DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd")"
+                   @onchange="KesimDegis" />
+            <span class="block text-[11px] text-base-content/40 mt-0.5">
+                satış penceresi: @_kesim.AddDays(-364).ToString("dd.MM.yyyy") – @_kesim.ToString("dd.MM.yyyy")
+            </span>
+        </div>
+        <div>
+            <label class="block text-xs text-base-content/60 mb-1">Sezon yılı (Ağu-Eki)</label>
+            <select class="select select-bordered select-sm" @onchange="SezonDegis">
+                @for (var y = DateTime.Today.Year; y >= DateTime.Today.Year - 4; y--)
+                {
+                    <option value="@y" selected="@(y == _sezonYil)">@y</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-sm btn-primary" disabled="@_yukleniyor" @onclick="() => Yukle(true)">
+            <span class="loading loading-spinner loading-xs @(_yukleniyor ? "" : "hidden")"></span>
+            Tabanı yenile
+        </button>
+        @if (_tabanDurum?.Uretim is { } u)
+        {
+            <span class="text-xs text-base-content/50 self-center">
+                taban: @_tabanDurum.Satir.ToString("N0") satır · @u.ToString("dd.MM HH:mm")
+            </span>
+        }
+    </div>
+</div>
+
+@* ── Kapsam uyarıları — ölçülmüş sınırlar, gizlenmez ──────────────────────── *@
+<details class="collapse collapse-arrow bg-warning/15 border border-warning/40 rounded-2xl mb-3">
+    <summary class="collapse-title text-xs font-semibold py-2.5 min-h-0 cursor-pointer">
+        Bu tablonun sınırları — <b>merkez stok anlık</b> · <b>ODAK bizim envanterimiz değil</b>
+        <span class="opacity-60">(7 ölçülmüş sınır · aç)</span>
+    </summary>
+    <div class="collapse-content text-xs">
+        <ul class="list-disc ml-4 space-y-0.5 pb-1">
+            <li><b>Merkez depo stoğu ANLIK</b> — geçmiş kesim seçilse bile bugünün WMS değeri
+                (WMS geçmiş snapshot tutmuyor).</li>
+            <li><b>ODAK stoğu toplama dâhil değil</b> — ODAK grup şirketi ama <b>tedarikçi</b>;
+                o stok bizim envanterimiz değil, <b>temin edilebilirlik</b> sinyali.</li>
+            <li><b>Satış 3 mağaza</b> — merkez depo çıkışı (yılda @_ozet?.Kpi.MerkezCikis365.ToString("N0") adet)
+                sayılmaz; %72'si grup şirketine gittiği için tüketici talebi değil.</li>
+            <li><b>365g satış ile sezon kısmen örtüşür</b> — toplanmaz/çıkarılmaz.</li>
+            <li><b>Stok tutarı SATIŞ fiyatıyla</b> — bağlanan para (maliyet) değil.</li>
+            <li><b>İade hakkı veride izli değil</b> (<code>urn.alimIadeYok</code> sabit) → "aşırı stok"
+                iade hakkına göre kırılamıyor. Eşikler sayfasında iade kuralı kodları girilirse açılır.</li>
+            <li><b>Aşırı stok eşiği 5× sezon</b> — geçici; hedef gün-stok politikası
+                (<code>bkm.OneriSiparisKtg3Ondeger</code>) tanımlı ama <b>boş</b>.</li>
+            <li><b>Veri kirli satırlar</b> listede duruyor: negatif stok / fiyat 0 —
+                filtreden "Veri kirli" seçilerek görülür.</li>
+        </ul>
+    </div>
+</details>
+
+@if (_hata is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_hata</p>
+}
+else if (_ozet is null)
+{
+    <p class="text-base-content/50">
+        @(_yukleniyor ? "Taban hazırlanıyor (ilk kesimde ~30 saniye)…" : "Yükleniyor…")
+    </p>
+}
+else
+{
+    var k = _ozet.Kpi;
+    @* KPI — 4 KART, karşı-metrik ÇİFTİ AYNI KARTTA iki satır.
+       NEDEN 8 değil: "Perakende Gün-Stok" kategori tablosunda zaten var, "Veri Kirli" bir karar
+       kartı değil uyarı → banda indi (dashboard-oneri değer merceği: kararı değiştirir mi).
+       NEDEN çift aynı kartta: karşı-metrik ayrı karta konunca ekran taşıyordu ve çift ayrılabiliyordu;
+       satinalma-danisman şartı "karşı-metrik YAN YANA" böyle korunuyor.
+       İKONLAR INLINE SVG — `<i data-lucide>` dinamik alanda circuit çökertiyor (29.08 dersi). *@
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        @foreach (var kart in Kartlar(k))
+        {
+            <div class="rounded-2xl p-4 bg-gradient-to-br @kart.Gradyan text-white shadow-md flex flex-col min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                    <span class="opacity-85 text-[11px] uppercase tracking-wider font-semibold">@kart.Baslik</span>
+                    <span class="opacity-70 shrink-0">@Ikon(kart.Ikon)</span>
+                </div>
+                <button type="button" class="text-left mt-1.5 min-w-0 @(kart.Durum is null ? "cursor-default" : "hover:opacity-90")"
+                        @onclick="() => KartTikla(kart.Durum, kart.OdakVar, kart.MinYas)">
+                    <span class="block text-2xl font-extrabold leading-none tracking-tight truncate">@kart.Deger</span>
+                    <span class="block text-[11px] opacity-85 mt-1 leading-snug">@kart.Alt</span>
+                </button>
+                @if (kart.CiftBaslik is not null)
+                {
+                    <button type="button" class="text-left mt-2.5 pt-2.5 border-t border-white/25 min-w-0 hover:opacity-90"
+                            @onclick="() => KartTikla(kart.CiftDurum, kart.CiftOdakVar, null)">
+                        <span class="block text-[10px] uppercase tracking-wider opacity-75 font-semibold">@kart.CiftBaslik</span>
+                        <span class="block text-lg font-bold leading-tight truncate">@kart.CiftDeger</span>
+                        <span class="block text-[11px] opacity-85 leading-snug">@kart.CiftAlt</span>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    @* ── Kategori kırılımı ──────────────────────────────────────────────── *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
+        <h3 class="text-sm font-semibold mb-3">Kategori Kırılımı</h3>
+        <table class="table table-xs w-full">
+            <thead><tr class="text-base-content/50">
+                <th>Kategori3</th><th class="text-right">Çeşit</th><th class="text-right">Stok</th>
+                <th class="text-right">Tutar</th><th class="text-right">Satış 365g</th>
+                <th class="text-right">Sezon</th><th class="text-right">Gün-Stok</th>
+                <th class="text-right">Stoksuz</th><th class="text-right">Aşırı ₺</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var r in _ozet.Kategori3)
+            {
+                <tr class="hover cursor-pointer @(_filtre.Kategori3 == r.Ad ? "bg-base-200" : "")"
+                    @onclick="() => KategoriSec(r.Ad)">
+                    <td class="font-semibold">@r.Ad</td>
+                    <td class="text-right font-mono">@r.Cesit.ToString("N0")</td>
+                    <td class="text-right font-mono">@r.Stok.ToString("N0")</td>
+                    <td class="text-right font-mono">@Tl(r.Tutar)</td>
+                    <td class="text-right font-mono">@r.Satis365.ToString("N0")</td>
+                    <td class="text-right font-mono">@r.Sezon.ToString("N0")</td>
+                    <td class="text-right font-mono @(r.GunStok > 400 ? "text-error" : "")">
+                        @(r.GunStok?.ToString("N0") ?? "—")
+                    </td>
+                    <td class="text-right font-mono">@r.StoksuzCesit.ToString("N0")</td>
+                    <td class="text-right font-mono">@Tl(r.AsiriTutar)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    @* ── ODAK temin süresi: "5 günde gelen mal için ne kadar stok?" ─────── *@
+    @if (_temin is { Count: > 0 })
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
+            <div class="flex items-baseline gap-2 mb-3 flex-wrap">
+                <h3 class="text-sm font-semibold m-0">Aşırı Stok × ODAK Temin Süresi</h3>
+                <span class="text-xs text-base-content/50">
+                    ODAK'ta da bulunan aşırı stok — tedarikçiden gelme süresine göre
+                </span>
+            </div>
+            <table class="table table-xs w-full">
+                <thead><tr class="text-base-content/50">
+                    <th>Temin</th><th class="text-right">Çeşit</th><th class="text-right">Stok Tutarı</th>
+                    <th class="text-right">Pay</th><th class="text-right">ODAK adet</th>
+                </tr></thead>
+                <tbody>
+                @{ var teminToplam = _temin.Sum(x => x.Tutar); }
+                @foreach (var t in _temin)
+                {
+                    <tr class="hover">
+                        <td class="font-semibold @(t.Sira <= 5 ? "text-error" : "")">@t.Ad</td>
+                        <td class="text-right font-mono">@t.Cesit.ToString("N0")</td>
+                        <td class="text-right font-mono">@Tl(t.Tutar)</td>
+                        <td class="text-right font-mono">
+                            @(teminToplam > 0 ? "%" + (t.Tutar / teminToplam * 100).ToString("N1") : "—")
+                        </td>
+                        <td class="text-right font-mono">@t.OdakStok.ToString("N0")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ── Filtreler ─────────────────────────────────────────────────────── *@
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[14px] mb-3">
+        <div class="flex items-end gap-2 flex-wrap">
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">Ara (ad / barkod / stkID)</label>
+                <input type="text" class="input input-bordered input-sm w-56" value="@_filtre.Arama"
+                       @onchange="AramaDegis" placeholder="örn. kalem, 9789..." />
+            </div>
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">Kategori3</label>
+                <select class="select select-bordered select-sm" @onchange="Kategori3Degis">
+                    <option value="">(hepsi)</option>
+                    @foreach (var r in _ozet.Kategori3)
+                    {
+                        <option value="@r.Ad" selected="@(_filtre.Kategori3 == r.Ad)">@r.Ad</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">Mağaza</label>
+                <select class="select select-bordered select-sm" @onchange="MekanDegis">
+                    <option value="0" selected="@(_filtre.Mekan == 0)">(hepsi)</option>
+                    <option value="1" selected="@(_filtre.Mekan == 1)">FSM</option>
+                    <option value="4477" selected="@(_filtre.Mekan == 4477)">Özlüce</option>
+                    <option value="4478" selected="@(_filtre.Mekan == 4478)">İst.Yolu</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">Durum</label>
+                <select class="select select-bordered select-sm" @onchange="DurumDegis">
+                    <option value="Hepsi">(hepsi)</option>
+                    <option value="StoksuzSezon" selected="@(_filtre.Durum == SatisDurumFiltre.StoksuzSezon)">Stoksuz sezon ürünü</option>
+                    <option value="AsiriStok" selected="@(_filtre.Durum == SatisDurumFiltre.AsiriStok)">Aşırı stok (&gt;5× sezon)</option>
+                    <option value="Hareketsiz" selected="@(_filtre.Durum == SatisDurumFiltre.Hareketsiz)">Hareketsiz (365g satış yok)</option>
+                    <option value="VeriKirli" selected="@(_filtre.Durum == SatisDurumFiltre.VeriKirli)">Veri kirli</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">
+                    Taze stok
+                    <span class="text-base-content/40" title="Son N günde mal kabulü olan ürünler değerlendirmeden çıkar — yeni gelen mal aşırı/hareketsiz sayılmaz">ⓘ</span>
+                </label>
+                <select class="select select-bordered select-sm" @onchange="TazeDegis">
+                    <option value="0" selected="@(_filtre.TazeGunHaric == 0)">dahil (hepsi)</option>
+                    <option value="30" selected="@(_filtre.TazeGunHaric == 30)">son 30 günü hariç tut</option>
+                    <option value="60" selected="@(_filtre.TazeGunHaric == 60)">son 60 günü hariç tut</option>
+                    <option value="90" selected="@(_filtre.TazeGunHaric == 90)">son 90 günü hariç tut</option>
+                    <option value="180" selected="@(_filtre.TazeGunHaric == 180)">son 180 günü hariç tut</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">ODAK'ta</label>
+                <select class="select select-bordered select-sm" @onchange="OdakDegis">
+                    <option value="" selected="@(_filtre.OdakVar is null)">(hepsi)</option>
+                    <option value="true" selected="@(_filtre.OdakVar == true)">var (hızlı temin)</option>
+                    <option value="false" selected="@(_filtre.OdakVar == false)">yok (gerçek risk)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">Sayfa boyu</label>
+                <select class="select select-bordered select-sm" @onchange="BoyDegis">
+                    @foreach (var b in new[] { 25, 50, 100, 200 })
+                    {
+                        <option value="@b" selected="@(_filtre.SayfaBoyu == b)">@b</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (_liste is not null)
+    {
+        <SatisAnaliziTablo Sonuc="_liste" Filtre="_filtre" Secili="_secili"
+                           SeciliDegisti="KolonlarDegisti" FiltreDegisti="FiltreDegisti"
+                           ExcelSatirlari="ExcelSatirlari" SatirTikla="UrunAc" />
+    }
+}
+
+@code {
+    private const string EkranAdi = "satis-analizi";
+
+    private DateOnly _kesim = DateOnly.FromDateTime(DateTime.Today.AddDays(-1));
+    private int _sezonYil = DateTime.Today.Year - 1;
+
+    private SatisAnaliziFiltre _filtre = default!;
+    private SatisAnaliziOzet? _ozet;
+    private IReadOnlyList<TeminKirilim>? _temin;
+    private SayfaSonucu<SatisAnaliziSatir>? _liste;
+    private TabanDurum? _tabanDurum;
+    private IReadOnlySet<string> _secili = SatisAnaliziKolonlar.VarsayilanAnahtarlar;
+    private string _kullanici = "gm";
+    private bool _yukleniyor;
+    private string? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _filtre = new SatisAnaliziFiltre(_kesim, _sezonYil);
+        _secili = await KolonTercih.OkuAsync(_kullanici, EkranAdi);
+        await Yukle();
+    }
+
+    private async Task Yukle(bool zorla = false)
+    {
+        _yukleniyor = true; _hata = null;
+        try
+        {
+            _filtre = _filtre with { Kesim = _kesim, SezonYil = _sezonYil, Sayfa = 1 };
+            _tabanDurum = await Taban.HazirlaAsync(_kesim, _sezonYil, zorla);
+            _ozet = await Q.GetOzetAsync(_filtre);
+            _temin = await Q.GetTeminKirilimAsync(_filtre);
+            _liste = await Q.GetListeAsync(_filtre);
+        }
+        catch (Exception ex)
+        {
+            // Kullanıcıya generic mesaj, detay log'a (security-principles §6).
+            Logger.LogError(ex, "Satış Analizi yüklenemedi (kesim {Kesim}, sezon {Sezon})", _kesim, _sezonYil);
+            _hata = "Beklenmedik bir hata oluştu. Lütfen sistem yöneticisine bildirin.";
+        }
+        finally { _yukleniyor = false; }
+    }
+
+    private async Task ListeYenile()
+    {
+        try { _liste = await Q.GetListeAsync(_filtre); }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Satış Analizi listesi yenilenemedi");
+            _hata = "Beklenmedik bir hata oluştu. Lütfen sistem yöneticisine bildirin.";
+        }
+    }
+
+    private async Task KesimDegis(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var d)) { _kesim = d; await Yukle(); }
+    }
+
+    private async Task SezonDegis(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var y)) { _sezonYil = y; await Yukle(); }
+    }
+
+    private Task FiltreDegisti(SatisAnaliziFiltre f) { _filtre = f; return ListeYenile(); }
+
+    private Task KategoriSec(string ad)
+    {
+        _filtre = _filtre with { Kategori3 = _filtre.Kategori3 == ad ? null : ad, Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    private Task AramaDegis(ChangeEventArgs e)
+    {
+        _filtre = _filtre with { Arama = e.Value?.ToString(), Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    private Task Kategori3Degis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        _filtre = _filtre with { Kategori3 = string.IsNullOrWhiteSpace(v) ? null : v, Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    private Task MekanDegis(ChangeEventArgs e)
+    {
+        _filtre = _filtre with { Mekan = int.TryParse(e.Value?.ToString(), out var m) ? m : 0, Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    private Task DurumDegis(ChangeEventArgs e)
+    {
+        var d = Enum.TryParse<SatisDurumFiltre>(e.Value?.ToString(), out var v) ? v : SatisDurumFiltre.Hepsi;
+        _filtre = _filtre with { Durum = d, Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    private Task BoyDegis(ChangeEventArgs e)
+    {
+        _filtre = _filtre with { SayfaBoyu = int.TryParse(e.Value?.ToString(), out var b) ? b : 50, Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    /// <summary>
+    /// KPI kartı — bir ana metrik + (varsa) KARŞI-METRİK aynı kartta. İkisi ayrı tıklanabilir.
+    /// </summary>
+    private sealed record KpiKart(
+        string Baslik, string Deger, string Alt, string Gradyan, string Ikon,
+        SatisDurumFiltre? Durum = null, bool? OdakVar = null, int? MinYas = null,
+        string? CiftBaslik = null, string? CiftDeger = null, string? CiftAlt = null,
+        SatisDurumFiltre? CiftDurum = null, bool? CiftOdakVar = null);
+
+    private IEnumerable<KpiKart> Kartlar(SatisAnaliziKpi k) =>
+    [
+        new("Bağlanan Stok", Tl(k.ToplamStokTutar),
+            $"{k.Cesit:N0} çeşit · satış fiyatıyla (maliyet değil)",
+            "from-primary to-primary/80", "kutu", SatisDurumFiltre.Hepsi,
+            CiftBaslik: "Perakende gün-stok",
+            CiftDeger: (k.PerakendeGunStok?.ToString("N0") ?? "—") + " gün",
+            CiftAlt: "3 mağaza talebi · eşik tanımlı değil"),
+
+        new("Aşırı Stok", Tl(k.AsiriStokTutar),
+            $"{k.AsiriStokCesit:N0} çeşit · stok > 5× sezon satışı",
+            "from-warning to-warning/80", "katman", SatisDurumFiltre.AsiriStok,
+            CiftBaslik: "ODAK'ta da var → grup içinde çift stok",
+            CiftDeger: Tl(k.AsiriStokOdakVarTutar),
+            CiftAlt: $"{k.AsiriStokOdakVarCesit:N0} çeşit · %96'sı 4-5 günde geliyor",
+            CiftDurum: SatisDurumFiltre.AsiriStok, CiftOdakVar: true),
+
+        new("Stoksuz Sezon Ürünü", Tl(k.StoksuzSezonKayip),
+            $"{k.StoksuzSezonCesit:N0} çeşit · geçen sezon sattı, bugün stok yok",
+            "from-error to-error/80", "uyari", SatisDurumFiltre.StoksuzSezon,
+            CiftBaslik: "ODAK'ta var → hızlı temin",
+            CiftDeger: Tl(k.StoksuzSezonOdakVarKayip),
+            CiftAlt: $"{k.StoksuzSezonOdakVarCesit:N0} çeşit · gerçek kayıp değil, sipariş edilebilir",
+            CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true),
+
+        new("Hareketsiz Stok", Tl(k.HareketsizTutar),
+            $"{k.HareketsizCesit:N0} çeşit · 365 günde satış yok",
+            "from-error to-error/80", "arsiv", SatisDurumFiltre.Hareketsiz,
+            CiftBaslik: "3 yıldan eski + satışsız → tasfiye adayı",
+            CiftDeger: "listele",
+            CiftAlt: "ürün kartı 3+ yıl önce açılmış olanlar",
+            CiftDurum: SatisDurumFiltre.Hareketsiz),
+    ];
+
+    /// <summary>
+    /// KPI kartına (ya da karşı-metrik satırına) tıkla → listeyi o kohorta filtrele.
+    /// Kullanıcı isteği 09.09: "üstüne tıklayınca liste gelmeli".
+    /// </summary>
+    private async Task KartTikla(SatisDurumFiltre? durum, bool? odakVar, int? minYas)
+    {
+        if (durum is null) return;
+        _filtre = _filtre with
+        {
+            Durum = durum.Value,
+            OdakVar = odakVar,
+            MinYasYil = minYas ?? 0,
+            Kategori1 = null,
+            Sayfa = 1,
+        };
+        await ListeYenile();
+    }
+
+    /// <summary>
+    /// KPI ikonları — INLINE SVG. `<i data-lucide>` KULLANILMIYOR: lucide `<i>` düğümünü `<svg>`
+    /// ile değiştiriyor, Blazor kendi diff'inde onu bulamayınca circuit çöküyor (29.08 dersi).
+    /// İçerik sabit ve bize ait (kullanıcı verisi yok) → MarkupString güvenli.
+    /// </summary>
+    private static MarkupString Ikon(string ad)
+    {
+        const string bas = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">""";
+        var govde = ad switch
+        {
+            "kutu" => """<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>""",
+            "katman" => """<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m6.08 9.5-3.48 1.58a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83L17.92 9.5"/><path d="m6.08 14.5-3.48 1.58a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.42-1.59"/>""",
+            "uyari" => """<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>""",
+            "arsiv" => """<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>""",
+            _ => """<circle cx="12" cy="12" r="9"/>""",
+        };
+        return new MarkupString(bas + govde + "</svg>");
+    }
+
+    private Task TazeDegis(ChangeEventArgs e)
+    {
+        _filtre = _filtre with { TazeGunHaric = int.TryParse(e.Value?.ToString(), out var g) ? g : 0, Sayfa = 1 };
+        return Yukle();   // taze filtresi KPI'yı da değiştirir → özet yeniden alınır
+    }
+
+    private Task OdakDegis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        _filtre = _filtre with
+        {
+            OdakVar = string.IsNullOrEmpty(v) ? null : bool.TryParse(v, out var b) ? b : null,
+            Sayfa = 1,
+        };
+        return ListeYenile();
+    }
+
+    /// <summary>Ürün drill sayfasını aç — kesim/sezon bağlamı query ile taşınır.</summary>
+    private void UrunAc(int stkId) => Nav.NavigateTo(
+        $"/satis-analizi/urun/{stkId}?kesim={_kesim:yyyy-MM-dd}&sezon={_sezonYil}");
+
+    private async Task KolonlarDegisti(IReadOnlySet<string> yeni)
+    {
+        _secili = yeni;
+        await KolonTercih.YazAsync(_kullanici, EkranAdi, yeni);
+    }
+
+    /// <summary>Excel: TÜM filtreli satırlar, SEÇİLİ kolon sırasıyla (ekranda ne varsa o).</summary>
+    private async Task<IEnumerable<IDictionary<string, object?>>> ExcelSatirlari()
+    {
+        var hepsi = await Q.GetTumListeAsync(_filtre);
+        var kolonlar = SatisAnaliziKolonlar.Hepsi.Where(x => _secili.Contains(x.Anahtar)).ToList();
+        return hepsi.Select(s =>
+        {
+            IDictionary<string, object?> d = new Dictionary<string, object?>();
+            foreach (var kol in kolonlar) d[kol.Baslik] = HucreDeger(s, kol.Anahtar);
+            return d;
+        });
+    }
+
+    private static object? HucreDeger(SatisAnaliziSatir s, string anahtar) => anahtar switch
+    {
+        "kategori3" => s.Kategori3, "stkid" => s.StkId, "barkod" => s.BarkodAna, "ad" => s.StkAd,
+        "kategori1" => s.Kategori1, "yayinevi" => s.Yayinevi, "yazar" => s.Yazar,
+        "fiyat" => s.SatisFiyat, "tutar" => s.ToplamStokTutar, "stok" => s.ToplamStok,
+        "odak" => s.OdakStok, "leadtime" => s.LeadTime, "ilkgiris" => s.IlkGirisTarihi,
+        "songiris" => s.SonGirisTarihi,
+        "stok_fsm" => s.StokFsm, "stok_ozl" => s.StokOzluce, "stok_ist" => s.StokIstyolu,
+        "magaza_stok" => s.MagazaStok, "merkez_stok" => s.MerkezStok,
+        "satis_fsm" => s.SatisFsm, "satis_ozl" => s.SatisOzluce, "satis_ist" => s.SatisIstyolu,
+        "satis" => s.SatisToplam, "gunluk" => s.GunlukOrtalamaSatis,
+        "sezon_ay1" => s.SezonAy1, "sezon_ay2" => s.SezonAy2, "sezon_ay3" => s.SezonAy3,
+        "sezon" => s.SezonToplam, "kapsama" => s.SezonKapsama,
+        _ => null,
+    };
+
+    private static string Tl(decimal v) => v.ToString("N0") + " ₺";
+}

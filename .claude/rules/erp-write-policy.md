@@ -4,9 +4,25 @@
 
 ## Mutlak Kural
 
-**ERP / production veritabanlarına izinli yazma hedefleri = SADECE app-owned `bkm.*` tabloları: `bkm.Fin_AyKapanis` (dashboard) + `bkm.BankaOgrenme` (muhasebe app) + `bkm.StokAyBakiyeMekanBazli` (stok geçmiş, SQL job) + `bkm.BulunurlukOzet` + `bkm.BulunurlukKayip` (bulunurluk pre-agg, SQL job). Başka HİÇBİR tabloya / DerinSIS native tabloya / başka şemaya yazma YOK.**
+**ERP / production veritabanlarına izinli yazma hedefleri = SADECE app-owned `bkm.*` tabloları: `bkm.Fin_AyKapanis` (dashboard) + `bkm.BankaOgrenme` (muhasebe app) + `bkm.StokAyBakiyeMekanBazli` (stok geçmiş, SQL job) + `bkm.BulunurlukOzet` + `bkm.BulunurlukKayip` (bulunurluk pre-agg, SQL job) + `bkm.SatisAnaliziTaban` (satış analizi paneli ön-agrega, plan-42). Başka HİÇBİR tabloya / DerinSIS native tabloya / başka şemaya yazma YOK.**
 
 Kullanıcı direktifi (verbatim): _"sadece o tabloya yazacaksın, başkası yasak"_ (23.06 Fin_AyKapanis) · _"bkm şeması olarak"_ (04.07 BankaOgrenme) · _"pre-agg tabloları oluştur"_ (14.08 Bulunurluk — plan-33, OSA özet deposu; dense StokAyBakiyeMekanBazli + BulunurlukOzet/Kayip SQL job'la yazılır, dashboard salt-okur).
+
+### `bkm.SatisAnaliziTaban` — ön-agrega (kullanıcı onayı 08-09.09.2026)
+
+Kullanıcı onayı: _"ERP'de app-owned tablo"_ + _"o zaman bir tablo ismi belirle onu kullan temp tablo
+değil de"_. Panel tabanı CTE ile her istekte yeniden hesaplanıyordu; **ölçüldü** (274.933 ürün):
+sayfa çevirme 5,31-5,44 s → **15-27 ms**, KPI+kırılım 3,15-3,76 s → **54 ms**, arama 5,8 s riski →
+**16 ms**. Kurulum 6,86 s + index 2,85 s, kesim başına tek sefer.
+
+`#temp` YETMEZ (ölçüldü): temp tablo bağlantı kapsamlı, Dapper her çağrıda yeni bağlantı açıyor;
+ayrıca parametreli batch ODBC'de `sp_executesql` ile koşuyor ve `#temp` orada da kalmıyor.
+
+- Kurulum scripti: `sorgular/2026-09-09-satis-analizi-taban-tablo-kur.sql` (idempotent).
+- Anahtar `(Kesim, SezonYil, stkID)`; **son 3 kesim** saklanır, eskisi silinir (kullanıcı kararı).
+- Yazma yolu: dashboard `SatisAnaliziTabanService` — DELETE (o kesim) + INSERT…SELECT. Başka
+  hiçbir tabloya dokunmaz. Okuma tarafı salt-SELECT.
+- **SQL job KURULMADI** — taban uygulama içinden, istek üzerine dolar. Job istenirse ayrıca onay gerekir.
 
 > **İlke:** `bkm` şeması = Fikri'nin app-owned namespace'i (DerinSIS native `dbo`/`mhs`/`ent` DEĞİL). Yeni app-owned `bkm.*` tablosu yazımı yalnız kullanıcı açık onayıyla + bu kurala eklenerek. DerinSIS native tablo (car/fat/irsHrk/mhsFis…) yazımı MUTLAK YASAK.
 

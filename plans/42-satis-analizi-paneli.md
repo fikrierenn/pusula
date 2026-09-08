@@ -3,7 +3,7 @@
 **Tarih:** 2026-09-08
 **Proje:** `bkm`
 **Yazan:** Claude (oturum `ecc43bbf`)
-**Durum:** `Taslak` — onay bekliyor
+**Durum:** `Tamamlandı` — 09.09.2026 (kullanıcı onayı + danışma revizyonlarıyla)
 
 ---
 
@@ -141,3 +141,32 @@ belleğe alınmaz. Ölçülen 17s yalnız Excel yolunda kalır ve orada kabul ed
 
 - [x] Plan kullanıcıya gösterildi
 - [ ] Kullanıcı onayladı → uygulamaya geçilir
+
+---
+
+## 10. Uygulama sonucu (09.09.2026)
+
+Plan onaylandı ve uygulandı; **danışma turları planı üç yerde değiştirdi**:
+
+### Değişen kararlar
+| Plan (08.09) | Uygulanan (09.09) | Sebep |
+|---|---|---|
+| CTE ile canlı hesap | **`bkm.SatisAnaliziTaban` ön-agrega** (ERP app-owned tablo, kullanıcı onaylı) | Ölçüldü: sayfa çevirme 5,3-5,4 s → **15-27 ms**, KPI 3,2-3,8 s → **54 ms**, arama 5,8 s riski → **16 ms**. `#temp` yetmedi (bağlantı kapsamlı) |
+| KPI 8 kart | **4 kart, karşı-metrik aynı kartta iki satır** | Kullanıcı: "taşıyorlar, çok sıkışık". Carousel 8 kartı tek satıra sığdırıyordu |
+| Orijinali birebir yansıt | + **taze stok / stok yaşı / ODAK temin süresi / giriş maliyeti** eklendi | Danışma: adil-atıf (yeni mal aşırı sayılmaz) · 131,4M ₺'lik bulgu leadTime'la ortaya çıktı · "tutar satış fiyatıyla" eksiği maliyetle kapandı |
+
+### Eklenenler (planda yoktu)
+- Kullanıcı seçmeli kolon (30 kolon, tercih `dbo.PanelKolonTercih`'te kişi başına) — Solum danışmasıyla tasarlandı
+- Ürün drill sayfası `/satis-analizi/urun/{stkId}` — beş soruya cevap
+- Aylık satış grafiği (365 gün) — sezon kapsamasının yanıltmasını düzeltiyor
+- Giriş maliyeti + bağlanan para (kanonik `birim_maliyet` MLYT şelalesi)
+
+### Kurul incelemesinde bulunan ve düzeltilen üç hata
+1. **Taze tanımı yanlıştı** — son partiye bağlıydı; hızlı devreden her ürün "değerlendirilemez" görünüyordu. Doğrusu ürünün mağazadaki ilk girişi.
+2. **Karar cümlesi sırası ters** — tazelik kontrolü stok/satış dengesinden önce geliyordu.
+3. **Dengesizlik ölçütü kaçırıyordu** — `min stok <= 0` yerine mağazalar arası stok/satış oranı 3 kat farkı.
+
+### Açık kalan (kullanıcı kararı bekliyor)
+- **KPI adı vs içerik:** "Bağlanan Stok 1.025.664.281 ₺" satış fiyatıyla; ölçülen tek üründe bağlanan para 823.457 ₺ vs satış fiyatıyla 3.763.090 ₺ (**4,6 kat**). Ya ad değişir ya maliyet şelalesi tabana konur.
+- **Marj KDV karışık** — satış KDV dahil, maliyet hariç olabilir; kitap %0 / kırtasiye %20.
+- **Açık sipariş (yolda mal) hâlâ yok** — kurulun "en kritik eksik" dediği madde.

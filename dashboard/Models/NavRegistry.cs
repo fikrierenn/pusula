@@ -33,6 +33,7 @@ public static class NavRegistry
         new NavItem("baskisi-yok", "Baskısı Yok", "printer"),
         new NavItem("operasyon", "Operasyon", "store", InBottomNav: true),
         new NavItem("envanter", "Envanter", "package", InBottomNav: true),
+        new NavItem("satis-analizi", "Satış Analizi", "table-2"),   // plan-42 stok × satış × sezon (tarih seçmeli)
         new NavItem("stok-hareket", "Stok Hareket", "history"),
         new NavItem("odak-stok", "ODAK Stok", "warehouse"),
         new NavItem("muhasebe", "Muhasebe / Kontrol", "landmark"),

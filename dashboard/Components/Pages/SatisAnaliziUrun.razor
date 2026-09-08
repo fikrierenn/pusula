@@ -1,0 +1,497 @@
+@page "/satis-analizi/urun/{StkId:int}"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject SatisAnaliziQueries Q
+@inject NavigationManager Nav
+@inject ILogger<SatisAnaliziUrun> Logger
+@rendermode InteractiveServer
+
+@* Ürün drill — AYRI SAYFA, modal DEĞİL.
+   Gerekçe (repo dersi): modal-üstü-modal Blazor'da çalışmıyor (ikinci modal aynı z-index'te
+   arkada kalıyor) ve buradan hareket geçmişine gidilmesi gerekiyor. Filtre bağlamı query ile taşınır.
+
+   Drill BEŞ SORUYA cevap verir (dashboard-oneri danışması 09.09):
+     1. Ne kadar bağlı, nerede?      2. Ne kadar hızlı eriyor?
+     3. YENİDEN ALMAM GEREKİR Mİ?    4. Bu stok neden burada (yaş/tazelik)?
+     5. Mağaza dengesizliği var mı → transfer mi alım mı? *@
+
+<PageTitle>@(_urun?.StkAd ?? "Ürün") — Satış Analizi</PageTitle>
+
+<div class="flex items-center gap-2 mb-3 flex-wrap">
+    <button class="btn btn-ghost btn-sm" @onclick="Geri">← Listeye dön</button>
+    <span class="text-xs text-base-content/50">kesim @_kesim.ToString("dd.MM.yyyy") · sezon @_sezonYil</span>
+</div>
+
+@if (_hata is not null)
+{
+    <p class="text-error font-semibold">Veri alınamadı: @_hata</p>
+}
+else if (_urun is null)
+{
+    <p class="text-base-content/50">@(_yukleniyor ? "Yükleniyor…" : "Bu kesimde bu ürün tabanda yok.")</p>
+}
+else
+{
+    var u = _urun;
+
+    <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
+        <h1 class="text-xl font-bold tracking-tight m-0">@u.StkAd</h1>
+        <div class="flex gap-x-4 gap-y-1 flex-wrap text-xs text-base-content/70 mt-1.5">
+            <span>stkID <b class="font-mono">@u.StkId</b></span>
+            <span>barkod <b class="font-mono">@(u.BarkodAna ?? "—")</b></span>
+            <span>@u.Kategori3 › @u.Kategori1</span>
+            <span>yayınevi <b>@(u.Yayinevi ?? "—")</b></span>
+            @if (!string.IsNullOrWhiteSpace(u.Yazar) && u.Yazar != "Genel")
+            {
+                <span>yazar <b>@u.Yazar</b></span>
+            }
+            <span>fiyat <b class="font-mono">@u.SatisFiyat.ToString("N0") ₺</b></span>
+        </div>
+    </div>
+
+    @* ── 3. SORU EN ÜSTTE: yeniden almam gerekir mi? Drill'in asıl cevabı. ──────── *@
+    <div class="card bg-base-100 border-2 @KararRengi shadow-sm rounded-2xl p-[18px] mb-3">
+        <div class="text-[11px] uppercase tracking-wider font-bold text-primary mb-1">
+            Sipariş kararı
+        </div>
+        <p class="text-base font-semibold m-0 leading-snug">@KararCumlesi(u)</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+            <div>
+                <div class="text-[11px] text-base-content/60">ODAK temin</div>
+                <div class="text-lg font-bold font-mono">@(u.LeadTime?.ToString() ?? "—") <span class="text-xs font-normal">gün</span></div>
+            </div>
+            <div>
+                <div class="text-[11px] text-base-content/60">ODAK'ta stok</div>
+                <div class="text-lg font-bold font-mono">@u.OdakStok.ToString("N0")</div>
+                <div class="text-[10px] text-base-content/40">tedarikçi · bizim değil</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-base-content/60">Bizim stok</div>
+                <div class="text-lg font-bold font-mono">@u.ToplamStok.ToString("N0")</div>
+                <div class="text-[10px] text-base-content/40">mağaza + merkez</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-base-content/60">Gün-stok</div>
+                <div class="text-lg font-bold font-mono @(GunStok(u) is > 400 ? "text-error" : "")">
+                    @(GunStok(u)?.ToString("N0") ?? "—")
+                </div>
+                <div class="text-[10px] text-base-content/40">365g satışa göre</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+        @* ── 1. + 5. SORU: ne kadar bağlı, nerede · mağaza dengesizliği ────────── *@
+        <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px]">
+            <h3 class="text-sm font-bold mb-3">Stok Nerede</h3>
+            @{ var enBuyuk = Math.Max(1, new[] { u.StokFsm, u.StokOzluce, u.StokIstyolu, u.MerkezStok }.Max()); }
+            @foreach (var (ad, adet, satis) in new[]
+            {
+                ("FSM", u.StokFsm, (int?)u.SatisFsm),
+                ("Özlüce", u.StokOzluce, u.SatisOzluce),
+                ("İst.Yolu", u.StokIstyolu, u.SatisIstyolu),
+                ("Merkez depo (WMS)", u.MerkezStok, null),
+            })
+            {
+                <div class="mb-2.5">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span>@ad</span>
+                        <span class="font-mono">
+                            @adet.ToString("N0")
+                            @if (satis is not null)
+                            {
+                                <span class="text-base-content/40"> · satış @satis.Value.ToString("N0")</span>
+                            }
+                        </span>
+                    </div>
+                    <div class="h-2 rounded-full bg-base-200 overflow-hidden">
+                        <div class="h-full rounded-full @(adet < 0 ? "bg-error" : "bg-primary")"
+                             style="width:@(Math.Min(100, Math.Abs(adet) * 100.0 / enBuyuk).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                </div>
+            }
+            @if (Dengesiz(u))
+            {
+                <div class="alert alert-info text-xs mt-1 py-2">
+                    Mağazaların stok/satış oranı arasında en az 3 kat fark var →
+                    önce <b>transfer</b> sorusu, sonra alım.
+                </div>
+            }
+            @if (u.OdakStok > 0)
+            {
+                <div class="text-xs text-base-content/50 mt-1 pt-2 border-t border-base-200">
+                    ODAK'ta @u.OdakStok.ToString("N0") adet — <b>toplama dâhil değil</b>,
+                    ODAK grup şirketi ama tedarikçi.
+                </div>
+            }
+        </div>
+
+        @* ── 2. SORU: ne kadar hızlı eriyor · sezon deseni ─────────────────────── *@
+        <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px]">
+            <h3 class="text-sm font-bold mb-1">Satış</h3>
+            <div class="text-xs text-base-content/50 mb-3">
+                365 gün: <b class="font-mono text-base-content">@u.SatisToplam.ToString("N0")</b> adet ·
+                günlük ortalama <b class="font-mono text-base-content">@u.GunlukOrtalamaSatis.ToString("N2")</b>
+            </div>
+            <div class="text-[11px] uppercase tracking-wider text-base-content/50 font-semibold mb-2">
+                Geçen sezon (@_sezonYil)
+            </div>
+            @{ var ayMax = Math.Max(1, new[] { u.SezonAy1, u.SezonAy2, u.SezonAy3 }.Max()); }
+            <div class="flex items-end gap-3 h-28">
+                @foreach (var (ay, adet) in new[] { ("Ağustos", u.SezonAy1), ("Eylül", u.SezonAy2), ("Ekim", u.SezonAy3) })
+                {
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <span class="text-xs font-mono mb-1">@adet.ToString("N0")</span>
+                        <div class="w-full rounded-t bg-info"
+                             style="height:@(Math.Max(2, adet * 100.0 / ayMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        <span class="text-[11px] text-base-content/50 mt-1">@ay</span>
+                    </div>
+                }
+            </div>
+            <div class="text-xs text-base-content/50 mt-3 pt-2 border-t border-base-200">
+                Sezon toplamı <b class="font-mono text-base-content">@u.SezonToplam.ToString("N0")</b> ·
+                sezon kapsaması
+                <b class="font-mono text-base-content">@(u.SezonKapsama?.ToString("N1") + "x" ?? "—")</b>
+                <span class="block text-base-content/40 mt-0.5">
+                    Kapsama tek başına yanıltır — yanındaki 365 günlük satışa bak.
+                    365g pencere ile sezon KISMEN ÖRTÜŞÜR, toplanmaz.
+                </span>
+            </div>
+        </div>
+    </div>
+
+    @* ── AYLIK SATIŞ — 365 günlük pencerenin ay ay dağılımı ──────────────────────
+       NEDEN: sezon kapsaması tek başına yanıltıyor. Ölçüldü 09.09: bir üründe kapsama 8,5x
+       görünürken zirve Ocak-Mart çıktı (ürün sezonluk değil). Aylık desen bunu düzeltiyor.
+       Çizgi değil SÜTUN: 12 nokta için çizgi sahte süreklilik hissi verir. *@
+    @if (_aylik is { Count: > 0 })
+    {
+        <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
+            <div class="flex items-baseline gap-2 mb-3 flex-wrap">
+                <h3 class="text-sm font-bold m-0">Aylık Satış (365 gün)</h3>
+                <span class="text-xs text-base-content/60">
+                    zirve: <b>@ZirveAy()</b> · toplam @_aylik.Sum(x => x.Adet).ToString("N0") adet
+                </span>
+            </div>
+            @{ var aylikMax = Math.Max(1, _aylik.Max(x => x.Adet)); }
+            <div class="flex items-end gap-1.5 h-36">
+                @foreach (var a in _aylik)
+                {
+                    var sezonAyiMi = a.Ay.Month is 8 or 9 or 10;
+                    <div class="flex-1 flex flex-col items-center justify-end h-full min-w-0"
+                         title="@a.Ay.ToString("MMMM yyyy"): @a.Adet.ToString("N0") adet">
+                        <span class="text-[10px] font-mono mb-0.5 truncate w-full text-center">
+                            @(a.Adet > 0 ? a.Adet.ToString("N0") : "")
+                        </span>
+                        <div class="w-full rounded-t @(sezonAyiMi ? "bg-primary" : "bg-info")"
+                             style="height:@(Math.Max(2, a.Adet * 100.0 / aylikMax).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        <span class="text-[10px] text-base-content/60 mt-1">@a.Ay.ToString("MMM")</span>
+                    </div>
+                }
+            </div>
+            <p class="text-xs text-base-content/60 mt-2 mb-0">
+                Koyu sütunlar sezon aylarını (Ağustos-Ekim) gösterir. Zirve sezon dışındaysa
+                bu ürün <b>sezonluk değildir</b> ve sezon kapsaması onun için ölçü olmaz.
+            </p>
+        </div>
+    }
+
+    @* ── GİRİŞ MALİYETİ — "bağlanan para" burada gerçek oluyor ────────────────────
+       Kanonik tanım: son 5 alış faturası ağırlıklı birim (sema birim_maliyet MLYT).
+       Maliyet kaydı yoksa 0 GÖSTERİLMEZ — "kayıt yok" yazılır (0 marjı %100 gösterirdi). *@
+    <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
+        <div class="flex items-baseline gap-2 mb-3 flex-wrap">
+            <h3 class="text-sm font-bold m-0">Giriş Maliyeti ve Bağlanan Para</h3>
+            @if (_maliyet?.BirimMaliyet is not null)
+            {
+                <span class="badge badge-sm badge-ghost">son @_maliyet.FaturaSayisi alış faturası</span>
+            }
+        </div>
+        @if (_maliyet?.BirimMaliyet is { } bm && bm > 0)
+        {
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                    <div class="text-[11px] text-base-content/60">Birim maliyet</div>
+                    <div class="text-xl font-extrabold font-mono">@bm.ToString("N2") ₺</div>
+                    <div class="text-[11px] text-base-content/60">
+                        son alış @(_maliyet.SonAlis?.ToString("dd.MM.yyyy") ?? "—")
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[11px] text-base-content/60">Bağlanan para</div>
+                    <div class="text-xl font-extrabold font-mono text-primary">
+                        @((u.ToplamStok * bm).ToString("N0")) ₺
+                    </div>
+                    <div class="text-[11px] text-base-content/60">@u.ToplamStok.ToString("N0") adet × maliyet</div>
+                </div>
+                <div>
+                    <div class="text-[11px] text-base-content/60">Satış fiyatıyla</div>
+                    <div class="text-xl font-bold font-mono text-base-content/70">
+                        @u.ToplamStokTutar.ToString("N0") ₺
+                    </div>
+                    <div class="text-[11px] text-base-content/60">paneldeki "stok tutarı"</div>
+                </div>
+                <div>
+                    <div class="text-[11px] text-base-content/60">Marj</div>
+                    @{ var marj = u.SatisFiyat > 0 ? (u.SatisFiyat - bm) / u.SatisFiyat * 100m : (decimal?)null; }
+                    <div class="text-xl font-extrabold font-mono @(marj is null ? "" : marj < 0 ? "text-error" : marj < 20 ? "text-warning" : "text-success")">
+                        @(marj is null ? "—" : "%" + marj.Value.ToString("N1"))
+                    </div>
+                    <div class="text-[11px] text-base-content/60">
+                        @u.SatisFiyat.ToString("N0") ₺ satış · KDV hariç değil
+                    </div>
+                </div>
+            </div>
+            @if (u.SatisFiyat > 0 && bm > u.SatisFiyat)
+            {
+                <div class="alert alert-error text-xs mt-3 py-2">
+                    Maliyet satış fiyatının üstünde — ya fiyat güncellenmemiş ya maliyet kaydı kirli.
+                    Karara dayanak yapılmadan kontrol edilmeli.
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-sm text-base-content/70 m-0">
+                <b>Maliyet kaydı yok.</b> Bu ürün için alış faturası bulunamadı
+                (<code>fat.eTip=0</code>, iptal hariç) → birim maliyet hesaplanamıyor.
+                Sıfır <b>gösterilmiyor</b>: 0 maliyet marjı %100 gibi okutur.
+            </p>
+        }
+        <p class="text-xs text-base-content/50 mt-3 mb-0 pt-2 border-t border-base-200">
+            Kanonik tanım: son 5 alış faturasının ağırlıklı birimi
+            (<code>SUM(tutar)/SUM(adet)</code>, fatura bazında). Panelin diğer tutarları
+            <b>satış fiyatıyla</b>; bağlanan para yalnız buradaki maliyetle hesaplanır.
+        </p>
+    </div>
+
+    @* ── 4. SORU: bu stok neden burada? (yaş / tazelik) ────────────────────────── *@
+    <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
+        <h3 class="text-sm font-bold mb-3">Bu Stok Neden Burada</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+                <div class="text-[11px] text-base-content/60">Ürün kartı açılışı</div>
+                <div class="font-semibold">@(u.AcilisTarihi?.ToString("dd.MM.yyyy") ?? "—")</div>
+                <div class="text-[11px] text-base-content/40">
+                    yaş @(u.YasYil?.ToString("N1") ?? "—") yıl
+                </div>
+            </div>
+            <div>
+                <div class="text-[11px] text-base-content/60">Mağazaya ilk giriş</div>
+                <div class="font-semibold">@(u.IlkGirisTarihi?.ToString("dd.MM.yyyy") ?? "—")</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-base-content/60">Son mal kabulü</div>
+                <div class="font-semibold">@(u.SonGirisTarihi?.ToString("dd.MM.yyyy") ?? "—")</div>
+                <div class="text-[11px] @(SonPartiYeniMi(u) ? "text-info font-semibold" : "text-base-content/60")">
+                    @(SonPartiYeniMi(u) ? "son parti 90 günden yeni" : "son parti 90 günden eski")
+                </div>
+            </div>
+            <div>
+                <div class="text-[11px] text-base-content/60">Durum</div>
+                <div class="badge badge-sm font-semibold @DurumBadge(u)">@DurumEtiketi(u)</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Akran kıyası — YALNIZ GÜN-STOK ──────────────────────────────────────────
+       İlk sürümde stok/satış/sezon MUTLAK değerleri de kıyaslanıyordu; kullanıcı "anlamsız gibi"
+       dedi ve haklıydı: çok-satanın mutlak stoğu uzun-kuyruklu kategorinin medyanıyla
+       kıyaslanınca "×859" gibi bilgi vermeyen sayı çıkıyor (ölçüldü: Hobi ve Oyuncak medyan
+       22 adet, gerçek ürün 18.910). Karşılaştırılabilir tek ölçü GÜN-STOK — o zaten ürünün
+       KENDİ satışına bölünmüş, yani talep farkı normalize edilmiş.
+       LeadTime kıyası da çıkarıldı: tedarikçinin belirlediği süre, bizim kararımız değil. *@
+    @if (_akran is { Cesit: > 30, OrtGunStok: not null } ak && GunStok(u) is { } benimGun)
+    {
+        <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl p-[18px] mb-3">
+            <h3 class="text-sm font-semibold mb-1">Akranına Göre Eriyor mu</h3>
+            <p class="text-sm m-0 leading-snug">
+                Bu ürün <b class="font-mono">@benimGun.ToString("N0")</b> günlük stok tutuyor;
+                <b>@u.Kategori1</b> kategorisinin medyanı
+                <b class="font-mono">@ak.OrtGunStok.Value.ToString("N0")</b> gün
+                (@ak.Cesit.ToString("N0") çeşit).
+                @if (benimGun < ak.OrtGunStok.Value * 0.75m)
+                {
+                    <span class="text-success font-semibold">Akranından hızlı eriyor.</span>
+                }
+                else if (benimGun > ak.OrtGunStok.Value * 1.25m)
+                {
+                    <span class="text-warning font-semibold">Akranından yavaş eriyor.</span>
+                }
+                else
+                {
+                    <span class="text-base-content/60">Akranıyla benzer.</span>
+                }
+            </p>
+            <p class="text-xs text-base-content/40 mt-2 mb-0">
+                Gün-stok ürünün kendi satışına bölünmüş olduğu için kıyaslanabilir; mutlak stok/satış
+                kıyası uzun kuyrukta anlam taşımadığı için gösterilmiyor. Medyan kullanılıyor (ortalama değil).
+                Tek ürünün sapması gürültü olabilir; karar sistematik desende verilir.
+            </p>
+        </div>
+    }
+
+    <details class="collapse collapse-arrow bg-warning/15 border border-warning/40 rounded-2xl">
+        <summary class="collapse-title text-xs font-semibold py-2.5 min-h-0 cursor-pointer">
+            Bu ekrandaki sayıların sınırları (aç)
+        </summary>
+        <div class="collapse-content text-xs">
+            <ul class="list-disc ml-4 space-y-0.5 pb-1">
+                <li>Merkez depo stoğu <b>anlık</b> (WMS geçmiş tutmuyor); mağaza stoğu kesim tarihine göre.</li>
+                <li>ODAK stoğu <b>bizim envanterimiz değil</b> — tedarikçi (grup şirketi) elindeki mal.
+                    Tazeliği ölçülemiyor (kaynak tabloda damga yok).</li>
+                <li>Tutarlar <b>satış fiyatıyla</b>; maliyet/marj bu ekranda yok.</li>
+                <li>365 günlük satış <b>3 mağaza</b>; merkez depo çıkışı ve e-ticaret sayılmıyor.</li>
+                <li>Satın alan kişi (alıcı) veride izli değil → bu ekran kimseye <b>atıf yapmaz</b>.</li>
+            </ul>
+        </div>
+    </details>
+}
+
+@code {
+    [Parameter] public int StkId { get; set; }
+    [SupplyParameterFromQuery(Name = "kesim")] public string? KesimQ { get; set; }
+    [SupplyParameterFromQuery(Name = "sezon")] public int? SezonQ { get; set; }
+
+    private SatisAnaliziSatir? _urun;
+    private UrunMaliyet? _maliyet;
+    private IReadOnlyList<AylikSatis>? _aylik;
+    private AkranOzet? _akran;
+    private DateOnly _kesim = DateOnly.FromDateTime(DateTime.Today.AddDays(-1));
+    private int _sezonYil = DateTime.Today.Year - 1;
+    private bool _yukleniyor = true;
+    private string? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (DateOnly.TryParse(KesimQ, out var d)) _kesim = d;
+        if (SezonQ is > 2000) _sezonYil = SezonQ.Value;
+
+        _yukleniyor = true; _hata = null;
+        try
+        {
+            _urun = await Q.GetUrunAsync(StkId, _kesim, _sezonYil);
+            if (_urun is not null)
+            {
+                _akran = await Q.GetAkranAsync(_urun.Kategori1, _kesim, _sezonYil);
+                _maliyet = await Q.GetMaliyetAsync(StkId);
+                _aylik = await Q.GetAylikSatisAsync(StkId, _kesim);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Ürün drill yüklenemedi (stkID {StkId})", StkId);
+            _hata = "Beklenmedik bir hata oluştu. Lütfen sistem yöneticisine bildirin.";
+        }
+        finally { _yukleniyor = false; }
+    }
+
+    private void Geri() => Nav.NavigateTo("/satis-analizi");
+
+    /// <summary>En çok satan ay — sezonluk mu değil mi sorusunun tek satırlık cevabı.</summary>
+    private string ZirveAy()
+    {
+        if (_aylik is null || _aylik.Count == 0) return "—";
+        var z = _aylik.MaxBy(x => x.Adet);
+        return z is null || z.Adet <= 0 ? "satış yok" : z.Ay.ToString("MMMM yyyy");
+    }
+
+    private static decimal? GunStok(SatisAnaliziSatir u) =>
+        u.SatisToplam <= 0 ? null : Math.Round((decimal)u.ToplamStok / (u.SatisToplam / 365m), 0);
+
+    /// <summary>
+    /// YENİ ÜRÜN mü — değerlendirmeye hazır değil demek için ölçüt.
+    ///
+    /// ⚠ DÜZELTME (kurul incelemesi 09.09): ilk sürüm tazeliği SON MAL KABULÜNE bağlıyordu ve
+    /// YANLIŞTI. Ölçülen vaka: bir ürün 07.07.2025'ten beri mağazada, 365 günde 31.407 adet
+    /// satmış, ama son partisi 2 gün önce geldiği için "değerlendirmeye hazır değil" görünüyordu.
+    /// Sonuç: HIZLI DEVREDEN her ürün sürekli sipariş aldığı için hiç değerlendirilemez olur.
+    ///
+    /// Doğrusu: ürünün MAĞAZADAKİ İLK GİRİŞİ 90 günden yeniyse yeni üründür (satacak zamanı
+    /// olmamıştır). Son partinin tazeliği ayrı bilgi — ekranda gösterilir, karar ölçütü değildir.
+    /// </summary>
+    private static bool YeniUrunMu(SatisAnaliziSatir u) =>
+        u.IlkGirisTarihi is { } ig && (DateTime.Today - ig).TotalDays <= 90;
+
+    /// <summary>Son partisi yeni mi — bilgi amaçlı, karar ölçütü DEĞİL.</summary>
+    private static bool SonPartiYeniMi(SatisAnaliziSatir u) =>
+        u.SonGirisTarihi is { } sg && (DateTime.Today - sg).TotalDays <= 90;
+
+    /// <summary>
+    /// Mağaza dengesizliği — ORAN bazlı.
+    ///
+    /// ⚠ DÜZELTME (kurul incelemesi 09.09): ilk ölçüt <c>min stok &lt;= 0</c> idi ve gerçek
+    /// dengesizliği kaçırıyordu. Ölçülen vaka: FSM 599 stok / 11.987 satış (satışının ~1/20'si),
+    /// İst.Yolu 1.056 / 6.657 (~1/6) — hiçbir mağazada stok sıfır değil ama dağılım satışla
+    /// uyumsuz. Doğrusu: mağazaların "stok / satış" oranı arasında en az 3 kat fark.
+    /// Satışı olmayan mağaza kıyasa girmez (0'a bölme + yanlış sinyal).
+    /// </summary>
+    private static bool Dengesiz(SatisAnaliziSatir u)
+    {
+        var oranlar = new[]
+        {
+            (stok: u.StokFsm, satis: u.SatisFsm),
+            (stok: u.StokOzluce, satis: u.SatisOzluce),
+            (stok: u.StokIstyolu, satis: u.SatisIstyolu),
+        }
+        .Where(x => x.satis > 0)
+        .Select(x => (double)x.stok / x.satis)
+        .ToArray();
+
+        if (oranlar.Length < 2) return false;
+        var enAz = oranlar.Min();
+        var enCok = oranlar.Max();
+        // Stok hiç yoksa (0 oran) tek başına sinyal: o mağaza satıyor ama stoğu yok.
+        return enAz <= 0 || enCok >= enAz * 3;
+    }
+
+    /// <summary>Kararın tek cümlesi — iddia değil olgu (sunum-dili).</summary>
+    private static string KararCumlesi(SatisAnaliziSatir u)
+    {
+        var gun = GunStok(u);
+        if (u.ToplamStok <= 0 && u.SezonToplam > 0)
+            return u.OdakStok > 0
+                ? $"Stok yok, geçen sezon {u.SezonToplam:N0} adet sattı. ODAK'ta {u.OdakStok:N0} adet var, temin {u.LeadTime?.ToString() ?? "?"} gün."
+                : $"Stok yok, geçen sezon {u.SezonToplam:N0} adet sattı. ODAK'ta da yok.";
+        // ⚠ SIRA: yeni-ürün kontrolü stok/satış dengesinden SONRA gelir. İlk sürümde önce
+        // geliyordu ve 220 günlük stoğu olan hızlı devreden ürüne "erken" diyordu (09.09 düzeltme).
+        if (YeniUrunMu(u) && u.SatisToplam <= 0)
+            return "Mağazaya 90 gün içinde girdi ve henüz satış yok — satacak zamanı olmadı.";
+        if (u.SatisToplam <= 0 && u.ToplamStok > 0)
+            return $"365 günde satış yok, stokta {u.ToplamStok:N0} adet duruyor" +
+                   (u.YasYil is { } y ? $" (ürün {y:N1} yıl önce açılmış)." : ".");
+        if (u.SezonToplam > 0 && u.ToplamStok > 5 * u.SezonToplam)
+            return u.LeadTime is { } lt && lt <= 5
+                ? $"Stok sezon satışının {u.SezonKapsama:N1} katı; ODAK'tan temin {lt} gün."
+                : $"Stok sezon satışının {u.SezonKapsama:N1} katı.";
+        return gun is null
+            ? "Satış yok; gün-stok hesaplanamıyor."
+            : $"Eldeki stok {gun:N0} günlük satışa denk.";
+    }
+
+    private string KararRengi => _urun is null ? "border-base-200"
+        : _urun.ToplamStok <= 0 && _urun.SezonToplam > 0 ? "border-error"
+        : YeniUrunMu(_urun) && _urun.SatisToplam <= 0 ? "border-info"
+        : _urun.SatisToplam <= 0 && _urun.ToplamStok > 0 ? "border-error"
+        : _urun.SezonToplam > 0 && _urun.ToplamStok > 5 * _urun.SezonToplam ? "border-warning"
+        : "border-success";
+
+    private static string DurumEtiketi(SatisAnaliziSatir u) =>
+        u.ToplamStok < 0 || u.SatisFiyat <= 0 ? "veri kirli"
+        : YeniUrunMu(u) && u.SatisToplam <= 0 ? "yeni ürün"
+        : u.ToplamStok <= 0 && u.SezonToplam > 0 ? "stoksuz sezon ürünü"
+        : u.SatisToplam <= 0 && u.ToplamStok > 0 ? "hareketsiz"
+        : u.SezonToplam > 0 && u.ToplamStok > 5 * u.SezonToplam ? "aşırı stok"
+        : "normal";
+
+    private static string DurumBadge(SatisAnaliziSatir u) => DurumEtiketi(u) switch
+    {
+        "veri kirli" => "badge-warning",
+        "yeni ürün" => "badge-info",
+        "stoksuz sezon ürünü" => "badge-error",
+        "hareketsiz" => "badge-error",
+        "aşırı stok" => "badge-warning",
+        _ => "badge-success",
+    };
+
+}
