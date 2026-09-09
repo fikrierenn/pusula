@@ -104,3 +104,6 @@ briefings/**/*KISILI*.json
 # "Satis Analizi <tarih>.xlsx" — 40-60 MB ham/uretim dosyasi.
 # scripts/satis_analizi_excel.py yeniden uretir, repoya girmez.
 /Sat*Analizi*.xlsx
+
+# GR palet supheli stok raporlari (uretilen cikti; scripts/gr_palet_supheli_excel.py ile yeniden uretilir)
+/GR Palet Supheli Stok*.xlsx

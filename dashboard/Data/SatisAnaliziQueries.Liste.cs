@@ -221,10 +221,13 @@ public sealed partial class SatisAnaliziQueries
             SELECT m.Adet, m.Tutar,
                    CONVERT(decimal(18,4), m.Tutar / NULLIF(m.Adet, 0)) AS BirimMaliyet,
                    m.FaturaSayisi, m.SonAlis, m.SonAlisAdet,
-                   -- CAST AS int ZORUNLU: kdvYuzdesi tinyint → record int? ile eşleşmez
+                   -- CAST AS int ZORUNLU: kdvYuzde tinyint → record int? ile eşleşmez
                    -- (sql-server-conventions § Dapper Record smallint/tinyint). Ölçüldü: patladı.
-                   (SELECT CONVERT(int, MAX(k.kdvYuzdesi)) FROM DerinSISBkm.dbo.urn u WITH (NOLOCK)
-                    JOIN DerinSISBkm.dbo.kdvYuzde_vw k ON k.ilkKDVID = u.KDVs
+                   -- ⚠ LOOKUP dbo.urnKDV — kdvYuzde_vw DEĞİL: o view her orana ait yalnız İLK
+                   -- kodu verip Hizmet/Hammadde varyantlarını (5,8,9,10) atıyordu → 41 üründe
+                   -- oran çözülemiyordu (26'sının satışı var, 376.028 ₺ stok). urnKDV'de öksüz 0.
+                   (SELECT CONVERT(int, MAX(k.kdvYuzde)) FROM DerinSISBkm.dbo.urn u WITH (NOLOCK)
+                    JOIN DerinSISBkm.dbo.urnKDV k ON k.kdvID = u.KDVs
                     WHERE u.stkID = @stkId) AS KdvOran
             FROM (
                 SELECT SUM(x.adet) AS Adet, SUM(x.tutar) AS Tutar, COUNT(*) AS FaturaSayisi,
@@ -728,9 +731,16 @@ public sealed record AkranOzet(
 /// Giriş maliyeti — son 5 alış faturasının ağırlıklı birimi (kanonik MLYT).
 /// <c>BirimMaliyet</c> null ise maliyet kaydı YOK; 0 gösterilmez.
 ///
-/// <c>KdvOran</c> = <c>urn.KDVs</c> → <c>dbo.kdvYuzde_vw</c> (ürün bazında; sabit oran YASAK —
-/// kitap %0, kırtasiye/oyuncak %20, bir kısmı %10). Ölçüldü 09.09.2026: 29.912 ürünün
-/// 29.912'sinde bu eşleme POS <c>SalesProducts.VatPercent</c> ile birebir tutuyor, 0 sapma.
+/// <c>KdvOran</c> = <c>urn.KDVs</c> → <c>dbo.urnKDV.kdvYuzde</c> (ürün bazında; sabit oran
+/// YASAK — kitap %0, kırtasiye/oyuncak %20, bir kısmı %10).
+///
+/// ⚠ İLK SÜRÜM <c>kdvYuzde_vw</c> KULLANIYORDU ve YANLIŞTI: o view her orana ait yalnız İLK
+/// kdvID'yi veriyor (1,2,3,4,6,7) ve Hizmet/Hammadde varyantlarını (5=Hizmet %18, 8=Hizmet %20,
+/// 9=Hammadde %1, 10=Hammadde %10) DIŞARIDA bırakıyor → 41 üründe oran çözülemiyordu; 26'sının
+/// satışı var, 376.028 ₺ stok. Değişmez <c>kdv-kod-kumesi-lookupta</c> bunu yazıldığı anda
+/// yakaladı. <c>dbo.urnKDV</c> öksüz kod bırakmıyor (ölçüldü: 0).
+/// ⚠ DERS: "29.912/29.912 POS eşleşmesi" YANILTICIYDI — o kesişimde öksüz kod yoktu.
+/// %100 eşleşme KAPSAMI kanıtlamaz.
 /// Oran çözülemezse (null) marj HESAPLANMAZ — "KDV oranı yok" yazılır.
 /// </summary>
 public sealed record UrunMaliyet(

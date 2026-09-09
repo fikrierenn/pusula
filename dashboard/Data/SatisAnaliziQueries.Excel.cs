@@ -85,10 +85,11 @@ public sealed partial class SatisAnaliziQueries
                   AND fa.ehStkID IN (SELECT stkID FROM hedef)
                 GROUP BY fa.ehStkID
             ),
-            kdv AS (
-                SELECT u.stkID, CONVERT(int, k.kdvYuzdesi) AS Oran
+            kdv AS (   -- ⚠ dbo.urnKDV (kanonik), kdvYuzde_vw DEĞİL: o view Hizmet/Hammadde
+                       -- varyantlarını (5,8,9,10) atıyor → 41 üründe oran çözülemiyordu.
+                SELECT u.stkID, CONVERT(int, k.kdvYuzde) AS Oran
                 FROM DerinSISBkm.dbo.urn u WITH (NOLOCK)
-                JOIN DerinSISBkm.dbo.kdvYuzde_vw k ON k.ilkKDVID = u.KDVs
+                JOIN DerinSISBkm.dbo.urnKDV k ON k.kdvID = u.KDVs
                 WHERE u.stkID IN (SELECT stkID FROM hedef)
             )
             SELECT h.stkID, h.stkAd, h.Kategori3, h.SatisFiyat,
