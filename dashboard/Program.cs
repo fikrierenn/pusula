@@ -65,6 +65,12 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 // HTTPS redirect KAPALI (dev/mobil): http (5112) + https (5443) paralel.
 // Telefon CA'yı HTTP'den indirir, güvenir, sonra HTTPS'ten standalone açar.
 
+// Development'ta FallbackPolicy YOK (yukarıdaki bilinçli karar: "local preview için anonim").
+// Endpoint'lerde AÇIK RequireAuthorization o kararla ÇELİŞİYORDU: sayfa anonim açılırken
+// /api/* login'e atıyordu (ölçüldü 09.09 — Excel bağlantısı /login?ReturnUrl=... döndü).
+// Prod'da koruma AYNEN duruyor; yalnız dev'de sayfalarla aynı davranış.
+var korumaGerekli = !app.Environment.IsDevelopment();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -138,6 +144,146 @@ app.MapGet("/auth/google/callback", async (GmDashboard.Data.Asistan.GoogleAuthSe
 });
 
 // Ölü stok Excel indirme — MiniExcel streaming, büyük liste için uygun.
+// SATIŞ ANALİZİ EXCEL — circuit üstünden DEĞİL, doğrudan indirme.
+//
+// ⚠ NEDEN ENDPOINT: ExcelButton dosyayı base64'e çevirip JS'e gönderiyordu; 275.059 satırlık
+// çıktıda circuit ÇÖKÜYORDU (log: JSDisconnectedException "circuit has disconnected").
+// Circuit ölünce sayfa tümden ölü kalıyor — satır tıklama bile çalışmıyor (kullanıcı 09.09).
+// Endpoint akışta yazdığı için satır sayısı SignalR mesaj boyutuna bağlı değil.
+//
+// Filtre URL'den okunur (SatisAnaliziFiltre.Coz) → ekranda ne görünüyorsa o iner.
+// Kolonlar `kolon=a,b,c` ile gelir; gelmezse varsayılan kolon seti.
+var satisAnaliziExcel = app.MapGet("/api/satis-analizi-excel", async (
+    GmDashboard.Data.SatisAnaliziQueries q, HttpContext ctx) =>
+{
+    var sozluk = ctx.Request.Query.ToDictionary(x => x.Key, x => x.Value.ToString());
+    var filtre = GmDashboard.Models.SatisAnaliziFiltre.Coz(
+        sozluk,
+        DateOnly.FromDateTime(DateTime.Today.AddDays(-1)),
+        DateTime.Today.Year - 1,
+        out var atlanan);
+
+    var anahtarlar = (sozluk.GetValueOrDefault("kolon") ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var kolonlar = GmDashboard.Models.SatisAnaliziKolonlar.Hepsi
+        .Where(k => anahtarlar.Count == 0 ? k.Varsayilan : anahtarlar.Contains(k.Anahtar))
+        .ToList();
+    if (kolonlar.Count == 0)
+        kolonlar = GmDashboard.Models.SatisAnaliziKolonlar.Hepsi.Where(k => k.Varsayilan).ToList();
+
+    var satirlar = await q.GetTumListeAsync(filtre, ct: ctx.RequestAborted);
+    var data = satirlar.Select(s =>
+    {
+        IDictionary<string, object?> d = new Dictionary<string, object?>();
+        foreach (var k in kolonlar) d[k.Baslik] = GmDashboard.Data.SatisAnaliziHucre.Deger(s, k.Anahtar);
+        // Detay BAĞLANTISI kaldırıldı 09.09 (kullanıcı: "detay linkinide kaldır").
+        // Gerekçe: detay artık Excel'in İÇİNDE — Detay/Mağaza/Depo Adres sayfaları.
+        // Tarayıcıya götüren köprü o sayfalar varken gereksiz kolon.
+        return d;
+    }).ToList();
+
+    // ── ÇOK SAYFALI ÇIKTI (kullanıcı 09.09: "ben excel içinde istiyorum" — drill'e bağlantı
+    //    değil, detayın kendisi). Sayfa sayısı SABİT 4; ürün başına sayfa YOK.
+    //    Detay sayfaları FİLTREYE BAĞLI: eşiği geçerse yazılmaz ve nedeni "Bilgi" sayfasına
+    //    yazılır — sessiz atlama yasak (error-handling § sessiz fallback).
+    var sayfalar = new Dictionary<string, object> { ["Liste"] = data };
+    var bilgi = new List<IDictionary<string, object?>>();
+    const int DetayTavani = 20_000;
+
+    if (data.Count == 0)
+    {
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "Boş sonuç",
+            ["Açıklama"] = "Bu filtrede satır yok — detay sayfaları da boş.",
+        });
+    }
+    else if (data.Count > DetayTavani)
+    {
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "Detay sayfaları YAZILMADI",
+            ["Açıklama"] = $"Filtrede {data.Count:N0} ürün var, sınır {DetayTavani:N0}. " +
+                "Detay sayfaları (Detay · Mağaza · Depo Adres) ürün başına 1 + 3 + ~2 satır " +
+                "üretir; bu boyutta dosya kullanılamaz hale gelir. Panelde kategori/durum " +
+                "filtresi uygulayıp tekrar indirin.",
+        });
+    }
+    else
+    {
+        var detay = await q.GetExcelDetayAsync(filtre, ctx.RequestAborted);
+        var magaza = await q.GetExcelMagazaAsync(filtre, ctx.RequestAborted);
+        var adres = await q.GetExcelAdresAsync(filtre, ctx.RequestAborted);
+
+        sayfalar["Detay"] = detay.Select(x => GmDashboard.Data.ExcelDetayCevir.Satir(x, filtre)).ToList();
+        sayfalar["Mağaza"] = magaza.Select(x => (IDictionary<string, object?>)new Dictionary<string, object?>
+        {
+            ["stkID"] = x.StkId,
+            ["Ürün"] = x.StkAd,
+            ["Mağaza"] = x.MekanAd,
+            ["Stok"] = x.Stok,
+            ["Satış 365g"] = x.Satis,
+            ["Son satış"] = x.SonSatis,
+            ["Kaç gündür satmıyor"] = x.GunOnce,
+            ["Not"] = x.SonSatis is null ? "bu mağazada hiç satılmamış"
+                     : x.Stok < 0 ? "EKSİ STOK — sayım hatası"
+                     : x.Stok > 0 && x.GunOnce >= 90 ? "stok var, 90+ gündür satmıyor"
+                     : "",
+        }).ToList();
+        sayfalar["Depo Adres"] = adres.Select(x => (IDictionary<string, object?>)new Dictionary<string, object?>
+        {
+            ["stkID"] = x.StkId,
+            ["Ürün"] = x.StkAd,
+            ["Alan tipi"] = x.AlanTip,
+            ["Adres"] = x.Adres,
+            ["Palet"] = x.PaletID,
+            ["Adet"] = x.Adet,
+            ["Palete giriş"] = x.PaleteGiris,
+            ["Merkez stoğuna dahil"] = x.MerkezStokaGiriyor == 1 ? "evet" : "HAYIR (çıkış alanı)",
+        }).ToList();
+
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "Kapsam",
+            ["Açıklama"] = $"Kesim {filtre.Kesim:dd.MM.yyyy} · sezon {filtre.SezonYil} · " +
+                $"{data.Count:N0} ürün. Satış penceresi son 365 gün. Merkez stoğu WMS hücresel " +
+                "stoktan (ERP defteri negatif taşıdığı için kullanılmaz); ÇIKIŞ ALANI merkez " +
+                "stoğuna dahil DEĞİL, Depo Adres sayfasında işaretli.",
+        });
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "Marj",
+            ["Açıklama"] = "Maliyet son 5 alış faturasının ağırlıklı birimi, KDV HARİÇ. Satış " +
+                "fiyatı KDV DAHİL olduğu için KDV'den arındırıldı (oran ürün bazında). Bu LİSTE " +
+                "marjıdır — kampanya, iade ve sezon-sonu indirimi içinde yok.",
+        });
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "Tükenme",
+            ["Açıklama"] = "Hızlar ölçüldü; tükenme tarihi ÇIKARIM (geçmiş hızın tekrarı " +
+                "varsayılır). Merkez çıkışı sıçramalı olduğu için (çeşitlerin %67'si tek günde) " +
+                "merkez için gün-stok hesaplanmaz.",
+        });
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "ODAK temin süresi",
+            ["Açıklama"] = "leadTime ODAK'ın KATALOG süresidir. Ürünü ODAK'tan almıyorsak bizim " +
+                "tedarik süremiz DEĞİL — Detay sayfasında 'Tedarik kaynağı' sütununa bakın.",
+        });
+    }
+    sayfalar["Bilgi"] = bilgi;
+
+    ctx.Response.ContentType = GmDashboard.Data.ExcelExport.ContentType;
+    ctx.Response.Headers.ContentDisposition =
+        $"attachment; filename=\"satis-analizi-{filtre.Kesim:yyyy-MM-dd}.xlsx\"";
+    using var ms = new MemoryStream();
+    await MiniExcel.SaveAsAsync(ms, sayfalar, printHeader: true);
+    ms.Position = 0;
+    await ms.CopyToAsync(ctx.Response.Body);
+});
+if (korumaGerekli) satisAnaliziExcel.RequireAuthorization();
+
 app.MapGet("/api/olustok-excel", async (RefQueries ref_, HttpContext ctx) =>
 {
     var rows = await ref_.GetOluStokTumAsync();

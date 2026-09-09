@@ -48,7 +48,21 @@
                     }
                 </div>
             </div>
-            <ExcelButton FileName="satis-analizi" SayfaAd="Satis Analizi" Rows="ExcelSatirlari" />
+            @* ⚠ ExcelButton DEĞİL: o bileşen dosyayı base64'e çevirip circuit'ten geçiriyor ve
+               275 bin satırda circuit ÇÖKÜYOR (JSDisconnectedException — ölçüldü 09.09; çöken
+               circuit sayfayı tümden ölü bırakıyor, satır tıklama bile çalışmıyor).
+               Doğrudan indirme bağlantısı: dosya akışta üretilir, boyut sınırı yok. *@
+            @* Boyut/süre ÖLÇÜLDÜ 09.09: filtresiz 275.059 satır → 37,4 MB / 22 saniye.
+               Kullanıcı ne beklediğini bilsin — sessiz 22 saniye "çalışmadı" gibi okunuyor. *@
+            <a class="btn btn-sm btn-outline gap-1" href="@ExcelBaglantisi" target="_blank"
+               rel="noopener"
+               title="@($"Filtredeki {Sonuc?.ToplamSatir ?? 0:N0} satırın tamamı inecek" + (Sonuc?.ToplamSatir > 50_000 ? " — büyük dosya, 20 saniyeyi aşabilir" : ""))">
+                Excel
+                @if (Sonuc?.ToplamSatir > 50_000)
+                {
+                    <span class="text-[10px] opacity-70">@((Sonuc.ToplamSatir / 1000)) bin satır</span>
+                }
+            </a>
         </div>
     </div>
 
@@ -126,7 +140,7 @@
     [Parameter, EditorRequired] public IReadOnlySet<string> Secili { get; set; } = default!;
     [Parameter] public EventCallback<IReadOnlySet<string>> SeciliDegisti { get; set; }
     [Parameter] public EventCallback<SatisAnaliziFiltre> FiltreDegisti { get; set; }
-    [Parameter] public Func<Task<IEnumerable<IDictionary<string, object?>>>>? ExcelSatirlari { get; set; }
+    [Parameter] public string ExcelBaglantisi { get; set; } = "";
     /// <summary>Satıra tıklanınca ürün drill sayfasına git (kullanıcı isteği 09.09).</summary>
     [Parameter] public EventCallback<int> SatirTikla { get; set; }
 
