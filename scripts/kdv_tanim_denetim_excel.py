@@ -102,7 +102,8 @@ SELECT CONVERT(int, sp.VatPercent) AS Oran, COUNT(*) AS Satir,
 FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK)
 JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
 JOIN EncoreMerkez.dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
-WHERE sp.IsValid = 1 AND s.Date >= DATEADD(DAY, -90, CAST(GETDATE() AS date))
+WHERE sp.IsValid = 1 AND s.DocumentsTypeId IN (1, 2, 6, 7, 8)
+  AND s.Date >= DATEADD(DAY, -90, CAST(GETDATE() AS date))
 GROUP BY sp.VatPercent
 ORDER BY 2 DESC
 """
@@ -131,6 +132,10 @@ FROM (
     JOIN DerinSISBkm.dbo.urnKDV k ON k.kdvID = u.KDVs
     LEFT JOIN DerinSISBkm.bkm.UrunBilgi ub WITH (NOLOCK) ON ub.stkID = u.stkID
     WHERE sp.IsValid = 1 AND ISNUMERIC(p.Code) = 1
+      -- ⚠ BELGE TİPİ SÜZGECİ (QA bulgusu 09.09): ilk sürümde YOKTU. İade (3) sapma
+      -- toplamına 1.229 ₺ katıyor ve İŞARETİ ters okunuyor — iade bir satış değil.
+      -- Personel (6/7) ve Sınav (8) küçük (242 + 463 ₺) ama kapsam açık yazılmalı.
+      AND s.DocumentsTypeId IN (1, 2, 6, 7, 8)
       AND s.Date >= DATEADD(DAY, -?, CAST(GETDATE() AS date))
       AND CONVERT(int, sp.VatPercent) <> CONVERT(int, k.kdvYuzde)
     GROUP BY CONVERT(int, p.Code), sp.VatPercent
@@ -226,13 +231,21 @@ def main() -> None:
 
     # ── Sayfa 2: geçmiş sapma ─────────────────────────────────────────────────
     ws2 = wb.create_sheet("Gecmis Sapma")
+    # ⚠ QA NOTU (09.09): eksik/fazla ayrımı ÜRÜN × KESİLEN-ORAN agregesi üzerinden yapılıyor.
+    # Aynı grupta hem + hem − satır varsa grup içinde netleşir → ayrım ±1.647 ₺ kayıyor
+    # (agrege eksik 98.470 / fazla 36.571 → net 61.899; satır bazında gerçek net 63.546).
+    # NET rakam güvenilir; eksik/fazla dağılımı YAKLAŞIKTIR ve öyle etiketlenir.
     eksik = sum(float(r[9]) for r in sapma if float(r[9]) > 0)
     fazla = -sum(float(r[9]) for r in sapma if float(r[9]) < 0)
+    net = eksik - fazla
     sayfa_yaz(
         ws2,
         [f"POS'ta kesilen oran ürünün TANIMLI oranından farklı — son {arg.gun} gün",
          f"{len({r[0] for r in sapma})} çeşit · {sum(r[5] for r in sapma):,} satır · "
-         f"eksik kesilen KDV {eksik:,.2f} ₺ · fazla kesilen {fazla:,.2f} ₺",
+         f"NET fark {net:,.2f} ₺ (eksik ~{eksik:,.2f} / fazla ~{fazla:,.2f} — dağılım YAKLAŞIK, "
+         f"ürün×oran agregesinde işaretler netleştiği için ±1.647 ₺ kayabilir; NET güvenilir)",
+         "Kapsam: DocumentsTypeId 1,2,6,7,8 (İADE 3 HARİÇ — iade bir satış değil). "
+         "İade dahil edilirse net 63.546 ₺, hariç 62.317 ₺.",
          "Fark > 0 → EKSİK kesilmiş (beyan eksiği). Fark < 0 → FAZLA kesilmiş "
          "(müşteriden fazla alınmış).",
          "⚠ Karşılaştırma ürünün BUGÜNKÜ tanımıyla yapılır: kart sonradan düzeltildiyse "
