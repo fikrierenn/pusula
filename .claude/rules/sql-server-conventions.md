@@ -279,7 +279,7 @@ DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 ## DerinSIS Adet İşareti + Alış/Satış Kodları (17.06 KESİN DÜZELTME — eski ADR-004 TERSTİ)
 
 **201 kanıt (irsHrk + fatAyr, son 30g):** `tipID` lookup = `irsTip_vw`. Adet işareti **giriş(+)/çıkış(−)** mantığı:
-- **Alış = ehTip/eTip `0`** (+ Yerel Alım `10`). `ehAdetN` **POZİTİF** (giriş). irsHrk ehTip=0 ort +216; fatAyr eTip=0 ort +17,5.
+- **Alış = ehTip/eTip `0`.** ⚠ **`10` İKİ SÖZLÜKTE FARKLI ŞEY** (ölçüldü 09.09.2026, `sqlcli lookup --count-from`): `irsHrk.ehTip=10` = **Yerel Alım** (2.378.016 kayıt, alıştır) ama `fat.eTip=10` = **İade Fark Faturası** (7.262 kayıt, alış DEĞİL). `dbo.irsTip_vw` (34 kod) ve `dbo.fatTip_vw` (13 kod) **AYRI** sözlüklerdir; biri diğerine kopyalanmıştı. Fatura tarafında alış = yalnız `eTip=0` (131.903 kayıt). `ehAdetN` **POZİTİF** (giriş). irsHrk ehTip=0 ort +216; fatAyr eTip=0 ort +17,5.
 - **Satış = ehTip `1, 4, 100`** (Satış / Mağaza Satış / POS Satış). `ehAdetN` **NEGATİF** (çıkış). Net ciro `ehTutarN` daima pozitif (mutlak tutar).
 - **İade:** Satış İade `3,5,101` / Alış İade `2`.
 - ⚠️ **eski ADR-004 satırı YANLIŞTI** ("ehTip=1 alış, alış ehAdet negatif") — gerçeğin TAM TERSİ. `ehTip=1=Satış` (alış değil), alış POZİTİF. SEMANTIK_KATMAN.md ("ehAdetN çıkışta negatif") doğruydu.
