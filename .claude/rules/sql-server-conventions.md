@@ -125,6 +125,35 @@ _"ERP merkez depo defteri senkron sorunu var, her zaman WMS stoklarına bakmalı
 - ⚠ `ent.odak_depo_Stok` BAŞKA BİR ŞEY: ODAK (e-ticaret fulfillment) deposu, ~7,2M adet.
   Merkez depo ile karıştırılmaz.
 
+### ⚠ WMS DE MUTLAK DOĞRU DEĞİL — kural ÇİFT YÖNLÜ (09.09.2026 genişletme)
+
+Yukarıdaki kural "defter bozuk, WMS'i kullan" diyor ve bu **tek yönlü** okunuyordu. Ters yön
+de ölçüldü: **satış ERP'de kesilip WMS'ten düşülmediğinde WMS şişik kalıyor.**
+
+| Yön | Çeşit | Adet | Anlamı |
+|---|---|---|---|
+| Defter pozitif, WMS'te yok | 9.146 | 1.996.995 | Defter kalıntı/negatif taşıyor → WMS'in tercih sebebi |
+| **WMS pozitif, defter ≤ 0** | **349** | **3.757** | **HAYALET** — mal fiilen olmayabilir |
+
+Hayaletin 261'inde merkez satışı, 342'sinde belgesiz palet hareketi var. **KİTAP tarafında
+yığılı:** Akademi 84 çeşidin 76'sı (%90) · Kitap 127'nin 77'si (%61) · Kırtasiye %0,9 ·
+Oyuncak %0,8. Merkez depo kitap tutmuyor; oradaki tek-adetler kalıntı.
+
+**Mekanizma** (stkID 248104 uçtan uca izlendi): 23.02.2026 İst.Yolu→merkez transfer (+1,
+irsaliye 7121400, WMS'e de işlendi) → 22.05.2026 merkez **satış −1** (belge 7135278, WMS'te
+karşılığı YOK) → 10.07.2026 elle palet taşıması raf 44711 → GR01 37250 (`piIrsID=0`, belgesiz).
+Sonuç: ERP 0, WMS 1 adet.
+
+**Kural:** merkez stoğunu WMS'ten oku **ama defterle karşılaştır**; çelişiyorsa sayı
+ŞÜPHELİ'dir ve fiziksel sayım yapılmadan karara dayanak alınmaz. Panelde bu uyarı ekranda
+(`GetDepoAdresAsync` adresleri + defter bakiyesini birlikte döner); liste raporu
+`scripts/gr_palet_supheli_excel.py`.
+
+**Palet defteri okuma kuralı:** `depo.paletIcHrk`'da `piİlkID` hareketin SAHİBİ palet,
+`piSonID` karşı palet (iki hipotez view ile kıyaslandı, yalnız bu tuttu). `pGC` 0=giriş /
+1=çıkış · `pHrkTip` 0 KULLANICI · 1 EMİR · 2 SAYIM · 3 GERİ AL · `piIrsID=0` belgesiz taşıma.
+⚠ Kolon adı Türkçe İ ile: **`piİlkID`** — ASCII `piIlkID` Err 207 verir.
+
 ## MÜŞTERİ RAPORLARI = FİŞ BAZLI (KRİTİK — 16.06.2026 CFO direktifi)
 
 **Tüm müşteri/sadakat raporları SADECE perakende fiş üzerinden çalışır.** Fatura(2)/Personel(6,7)/**Sınav Okulları(8)** belge tipleri HARİÇ — bunlar kurumsal/B2B, perakende müşteri davranışı değil (Sınav tek başına "kartsız"ı 266M şişiriyordu, B-102).

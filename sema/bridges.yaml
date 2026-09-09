@@ -6,6 +6,24 @@ version: 1
 updated: 2026-08-20
 
 bridges:
+  - id: urn-kdv-oran
+    from: dbo.urn.KDVs
+    to: dbo.urnKDV.kdvID
+    scope: derinsis
+    confidence: 0.99
+    note: >-
+      Ürünün KDV oranı (satış tarafı KDVs, alış tarafı KDVa). MARJ HESABI BU KÖPRÜ OLMADAN
+      KURULAMAZ: satış fiyatı KDV DAHİL, alış maliyeti KDV HARİÇ — bkz. metrics marj_kdv_tabani.
+      Oran ürün bazında; sabit oran varsayımı YASAK (kitap %0, kırtasiye/oyuncak %20).
+    view_tuzagi: >-
+      ⚠ `dbo.kdvYuzde_vw` ile join ETME: her orana ait yalnız ilk kodu verir, Hizmet/Hammadde
+      varyantlarını (5,8,9,10) atar → 41 üründe oran çözülemez.
+    evidence: >-
+      2026-09-09 — POS SalesProducts.VatPercent ile 29.912/29.912 eşleşme (0 sapma), ANCAK
+      kapsam eksikti: değişmez `kdv-kod-kumesi-lookupta` 41 öksüz ürün yakaladı → köprü
+      kdvYuzde_vw'den dbo.urnKDV'ye taşındı (öksüz 0).
+    last_verified: "2026-09-09"
+
   # --- ERP iç (DerinSISBkm) ---
   - id: irshrk-stk
     from: dbo.irsHrk.ehstkID

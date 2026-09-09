@@ -436,10 +436,42 @@ codes:
     evidence: "2026-08-19 — SELECT * FROM dbo.sipTip_vw (14 satır) + sip eTip dağılımı canlı."
     last_verified: "2026-08-19"
   urn.KDVs / urn.KDVa:               # KDV KOD'u — YÜZDE DEĞİL (2026-08-19)
-    values: {1: "%0", 2: "%1", 6: "%10", 7: "%20"}
+    lookup: dbo.urnKDV          # ⚠ kdvYuzde_vw DEĞİL — view_tuzagi'na bak
+    join: "JOIN dbo.urnKDV k ON k.kdvID = urn.KDVs → k.kdvYuzde"
+    values:
+      1: "KDV %0"
+      2: "KDV %1"
+      3: "KDV %8 (eski oran)"
+      4: "KDV %18 (eski oran)"
+      5: "Hizmet %18"
+      6: "KDV %10"
+      7: "KDV %20"
+      8: "Hizmet %20"
+      9: "Hammadde %1"
+      10: "Hammadde %10"
+    view_tuzagi: >-
+      ⚠ `dbo.kdvYuzde_vw` KULLANMA. O view her ORANA ait yalnız İLK kdvID'yi döndürür
+      (1,2,3,4,6,7) ve Hizmet/Hammadde varyantlarını (5,8,9,10) DIŞARIDA bırakır.
+      Ölçüldü 09.09.2026: view ile join edilince 41 üründe oran çözülemiyor — KDVs=8 olan
+      34 ürün (33'ü normal ürün, en son açılış 07.09.2026), 5 olan 6, 9 olan 1. Bunların
+      26'sı panelde ve 26'sının SATIŞI var (376.028 ₺ stok) → marj hesaplanamıyordu.
+      `dbo.urnKDV` öksüz kod bırakmıyor (ölçüldü: 0).
+    kapsam_dersi: >-
+      İlk kayıtta "29.912 üründe POS VatPercent ile 29.912/29.912 eşleşti" yazılmıştı ve bu
+      YANILTICIYDI: o kesişimde öksüz kod yoktu. %100 eşleşme KAPSAMI kanıtlamaz
+      (olctum-mu-cikardim-mi § ölçümün kapsamı kodun kapsamıyla aynı olmalı). POS teyidi:
+      KDVs=8 ürünleri POS'ta %20 (1.303 satır / 30 çeşit, tek oran) — urnKDV'nin "Hizmet %20"
+      tanımıyla tutuyor.
+    tinyint_tuzagi: >-
+      kdvYuzde TINYINT → Dapper record int? ile EŞLEŞMEZ, CONVERT(int, ...) şart.
+      Ölçüldü 09.09: atlanınca "one matching signature (… System.Byte KdvOran) is required".
     note: "**urn.KDVs (satış) / urn.KDVa (alış) bir LOOKUP KODUDUR, oran değildir.** `SP.VatPercent <> U.KDVs` şeklinde karşılaştırmak TÜM satırları 'uyumsuz' gösterir (ben 2026-08-19'da bu hataya düştüm). Doğru kontrol: kod→yüzde eşlemesi üstünden. Yüzde tablosu: dbo.kdvYuzde_vw."
     canli_dogrulama: "18.08.2026 Sınav fişleri 721/721 satır POS↔ERP TUTARLI: kod 1→%0 (253 satır) · 2→%1 (1) · 6→%10 (172) · 7→%20 (295). Sapma YOK."
     kdv_dagilimi_tuzagi: "Sınav/kitap ağırlıklı günlerde blended KDV %1-2 görünür — HATA DEĞİL: cironun ~%87'si %0 KDV'li süreli yayın + kitap (18.08: Sınav Okulları 1.021.517 ₺ · Hazırlık Kitapları 37.081 ₺ · Çocuk Kitabı 13.752 ₺ hepsi %0). 'KDV çok düşük' alarmı vermeden önce kategori × VatPercent kırılımına bak."
-    confidence: 0.95
-    evidence: "2026-08-19 — sorgular/2026-08-19-sinav-encore-kdv-denetim.sql blok 4-5."
-    last_verified: "2026-08-19"
+    confidence: 0.99
+    evidence: >-
+      2026-08-19 — sorgular/2026-08-19-sinav-encore-kdv-denetim.sql blok 4-5.
+      2026-09-09 ÇAPRAZ DOĞRULAMA: eşleşen 29.912 üründe urn.KDVs→oran ile POS
+      SalesProducts.VatPercent 29.912/29.912 AYNI, 0 sapma (arşiv
+      sorgular/2026-09-09-kdv-tabani-marj-olcumu.sql). Kod kümesi 4 → 6 değere tamamlandı.
+    last_verified: "2026-09-09"

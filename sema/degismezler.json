@@ -18,7 +18,7 @@
     "Koşum: python tools/sema_degismez.py"
   ],
   "_surum": 1,
-  "_guncelleme": "2026-09-03",
+  "_guncelleme": "2026-09-09",
   "_kosum": "python tools/sema_degismez.py (yapısal değişmezler) + python tools/sema_sorgu_dumani.py (queries.yaml katalog dumanı)",
   "degismezler": [
     {
@@ -416,6 +416,39 @@
         "aylik-magaza-net-ciro"
       ],
       "dogrulandi": "2026-09-08 → son 12 ay (09.09.2025-08.09.2026) İst.Yolu eTip 4 net 50.000.903,84 TL / 2.170 belge / 39.028 satır. Eşik 20M seçildi: ölçülen değerin ~%40'ı — kanal küçülse bile erken alarm vermez, kapanırsa kırılır. Aynı pencerede FSM/Özlüce eTip 4 ihmal edilebilir. Kırılabilirlik sınandı (beklenen 20→60 yapıldı, KIRIK verdi, geri alındı)."
+    },
+    {
+      "id": "fiyats-kdv-dahil-ic-yuzde",
+      "db": "EncoreMerkez",
+      "soru": "POS satis fiyatinda KDV fiyatin ICINDEN mi cikiyor (ic yuzde)? urn.fiyatS = TotalPrice oldugu icin bu fiyatS'in KDV DAHIL olmasi demek.",
+      "neden": "Marj hesabinin tabani buna bagli: satis KDV DAHIL, maliyet (fatAyr.ehTutarN) KDV HARIC. Kimlik bozulursa (POS ust-yuzdeye gecerse) marj sessizce ~17 puan sasar. Kirilirsa metrics.yaml marj_kdv_tabani yeniden olculur.",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id=sp.SalesId WHERE sp.IsValid=1 AND s.Date >= DATEADD(DAY,-30,CAST(GETDATE() AS date)) AND sp.VatPercent > 1 AND ABS(sp.VatTotal - sp.TotalPrice * sp.VatPercent / (100.0 + sp.VatPercent)) > 0.02 * sp.Amount + 0.02",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "korur": [],
+      "dogrulandi": "2026-09-09 → %20'de 89.888/89.888 · %10'da 39.426/39.426 ic yuzde kimligi tutuyor; ust yuzde olsaydi 199 TL'de VatTotal 39,80 cikardi, 33,17 cikti"
+    },
+    {
+      "id": "palet-yon-ilkid-sahibi",
+      "db": "DerinSISBkm",
+      "soru": "depo.paletIcHrk'da piIlkID hareketin SAHIBI palet mi (piSonID karsi palet)? Yani palet bakiyesi piIlkID'e gore toplanirsa WMS view'i ile tutar mi?",
+      "neden": "Palet defteri yonu belgelenmemisti; ters okunursa 'urun hangi palete ne zaman konuldu' cevabi TERS cikar ve hayalet stok tesbiti yanlislanir. Kirilirsa entities.yaml depo.paletIcHrk yon_kurali yeniden kanitlanir.",
+      "sql": "SELECT COUNT(*) FROM (SELECT v.stkID, v.PaletID, CONVERT(int,SUM(v.Stok)) AS ViewStok, (SELECT ISNULL(SUM(pi.piAdet),0) FROM DerinSISBkm.depo.paletIcHrk pi WITH (NOLOCK) WHERE pi.piStkID=v.stkID AND pi.piİlkID=v.PaletID) AS DefterStok FROM DerinSISBkm.depo.stok_adres_palet_vw v WITH (NOLOCK) WHERE v.stkID IN (235636, 248104) GROUP BY v.stkID, v.PaletID) x WHERE x.ViewStok <> x.DefterStok",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "korur": [],
+      "dogrulandi": "2026-09-09 → stkID 235636 palet 37250=2, palet 230598=3; piIlkID hipotezi view ile birebir, piSonID hipotezi -2/-3 veriyordu"
+    },
+    {
+      "id": "kdv-kod-kumesi-lookupta",
+      "db": "DerinSISBkm",
+      "soru": "urn.KDVs'te dbo.urnKDV'de KARSILIGI OLMAYAN kod var mi?",
+      "neden": "KDV orani bu lookup'tan okunuyor; karsiligi olmayan kod cikarsa o urunde marj SESSIZCE hesaplanamaz. ⚠ Bu degismez yazildigi anda KIRDI: ilk hali dbo.kdvYuzde_vw'ye bakiyordu ve 41 oksuz urun buldu — o view Hizmet/Hammadde varyantlarini (5,8,9,10) atiyor. Kanonik kaynak dbo.urnKDV.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn u WITH (NOLOCK) WHERE u.KDVs IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.urnKDV k WHERE k.kdvID = u.KDVs)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "korur": [],
+      "dogrulandi": "2026-09-09 → dbo.urnKDV 10 kod, oksuz 0. kdvYuzde_vw ile 41 oksuz cikiyordu (KDVs 8→34 urun, 5→6, 9→1; 26'sinin satisi var, 376.028 TL stok)"
     }
   ]
 }

@@ -4,6 +4,31 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  marj_kdv_tabani:
+    soru: "Brüt marj / markup hesaplanırken satış ve maliyet aynı KDV tabanında mı?"
+    kural: >-
+      HAYIR — iki taraf FARKLI tabandadır ve düzeltilmeden marj hesaplanamaz.
+      Satış fiyatı (urn.fiyatS) KDV DAHİL; alış maliyeti (fatAyr.ehTutarN) KDV HARİÇ.
+      Doğrusu net_satis = fiyatS / (1 + oran/100); oran ürün bazında (köprü urn-kdv-oran → dbo.urnKDV; kdvYuzde_vw KULLANMA, Hizmet/Hammadde varyantlarını atıyor).
+    iki_yon:
+      brut_marj: "(net_satis − birim_maliyet) / net_satis — 'yukarıdan aşağı'; perakendede 'marj' budur"
+      markup: "(net_satis − birim_maliyet) / birim_maliyet — 'aşağıdan yukarı'; satınalma pazarlığının dili"
+      bagintisi: "markup = marj/(1−marj) · marj = markup/(1+markup)"
+    sinir: >-
+      Bu bir LİSTE marjıdır, GERÇEKLEŞEN marj DEĞİL: kampanya/3al2öde indirimi, iade,
+      sezon-sonu fiyatı ve sonradan gelen ciro primi içinde yok. Alıcıya hesap sorarken
+      tek başına kullanılmaz (satinalma-danisman § overclaim yasak).
+    evidence: >-
+      2026-09-09 ÖLÇÜLDÜ (arşiv sorgular/2026-09-09-kdv-tabani-marj-olcumu.sql).
+      (a) fatAyr KDV HARİÇ: stkID 1672852 son 5 alış — ehTutarN 12.501,00 yanında
+      ehTutarKDV 2.500,20 = tam %20, KDV ayrı kolonda.
+      (b) fiyatS KDV DAHİL: POS'ta VatTotal = TotalPrice × oran/(100+oran) kimliği %20'de
+      89.888/89.888, %10'da 39.426/39.426 tutuyor — KDV fiyatın İÇİNDEN çıkıyor. Üst-yüzde
+      olsaydı 199 ₺'de VatTotal 39,80 çıkardı; 33,17 çıktı. TotalPrice = urn.fiyatS (199,00).
+      (c) Uygulama 1672852: maliyet 43,55 · net satış 165,83 · kâr 122,29 → brüt marj %73,7 ·
+      markup %280,8; 0,737/0,263 = 2,808 bağıntı tuttu.
+    last_verified: "2026-09-09"
+
   gelir_tablosu_pl:
     kaynak: "mhs.mhsFis signed fisTutar (gelir BA=0→+, gider BA=1→−). Dashboard /gelir-tablosu (GelirTabloQueries). Merkez: fisGdrMerkez (köprü mhsfis-gdrmerkez)."
     yapi: "Net Satış(60−61) → Faaliyet Gideri(740/760/770, kategori .YY: 10 işçi ücret·20 yönetim·30 dışarıdan fayda·40 çeşitli·50 vergi-harç·60 amortisman) → FAALİYET KÂRI = NetSatış−gider → +Finansman(780/66/653)+Diğer(64/65/67)+KKEG(689/68) → NET KÂR = tüm 6xx+7xx signed toplam."
