@@ -73,8 +73,21 @@
                 (WMS geçmiş snapshot tutmuyor).</li>
             <li><b>ODAK stoğu toplama dâhil değil</b> — ODAK grup şirketi ama <b>tedarikçi</b>;
                 o stok bizim envanterimiz değil, <b>temin edilebilirlik</b> sinyali.</li>
-            <li><b>Satış 3 mağaza</b> — merkez depo çıkışı (yılda @_ozet?.Kpi.MerkezCikis365.ToString("N0") adet)
-                sayılmaz; %72'si grup şirketine gittiği için tüketici talebi değil.</li>
+            <li><b>Gün-stok RAF bazında</b> — pay mağaza stoğu, payda mağaza satışı (aynı kapsam).
+                Merkez depo <b>ayrı</b> ölçülür: yılda @_ozet?.Kpi.MerkezCikis365.ToString("N0") adet çıkış,
+                ama bu çıkış <b>sıçramalı</b> (ölçüldü: çeşitlerin %67'si tek günde çıkmış) →
+                merkez için gün-stok <b>hesaplanmıyor</b>; ortalamaya bölmek sahte güven üretir. Bu çıkış
+                <b>tüketici talebi değil</b>: %72 grup şirketi · %16 ODAK (e-ticaret) · %6 Sınav.
+                <b>E-ticaret stoğu bizde değil ODAK'ta</b> → o talep paydaya eklenmez; bizim payımız
+                ODAK'a yapılan satış olarak merkez çıkışının içinde.
+                @if (_ozet?.Kpi.MerkezCikisEvrenDisi > 0)
+                {
+                    <span class="block mt-0.5">
+                        ⚠ Bu sayı <b>panelin evreni</b> içindir. Kategori filtresi yüzünden
+                        görünmeyen ürünlerde <b>@_ozet.Kpi.MerkezCikisEvrenDisi.ToString("N0")</b> adet
+                        daha merkez çıkışı var (ölçüldü) — listede ve KPI'da yok.
+                    </span>
+                }</li>
             <li><b>365g satış ile sezon kısmen örtüşür</b> — toplanmaz/çıkarılmaz.</li>
             <li><b>Stok tutarı SATIŞ fiyatıyla</b> — bağlanan para (maliyet) değil.</li>
             <li><b>İade hakkı veride izli değil</b> (<code>urn.alimIadeYok</code> sabit) → "aşırı stok"
@@ -229,12 +242,13 @@ else
             </div>
             <div>
                 <label class="block text-xs text-base-content/60 mb-1">Durum</label>
+                @* Seçenekler ENUM'DAN üretilir — elle liste tutulmaz (yeni durum eklenince
+                   ekranda kendiliğinden çıkar; eski elle yazılı liste 3 üyeyi kaçırıyordu). *@
                 <select class="select select-bordered select-sm" @onchange="DurumDegis">
-                    <option value="Hepsi">(hepsi)</option>
-                    <option value="StoksuzSezon" selected="@(_filtre.Durum == SatisDurumFiltre.StoksuzSezon)">Stoksuz sezon ürünü</option>
-                    <option value="AsiriStok" selected="@(_filtre.Durum == SatisDurumFiltre.AsiriStok)">Aşırı stok (&gt;5× sezon)</option>
-                    <option value="Hareketsiz" selected="@(_filtre.Durum == SatisDurumFiltre.Hareketsiz)">Hareketsiz (365g satış yok)</option>
-                    <option value="VeriKirli" selected="@(_filtre.Durum == SatisDurumFiltre.VeriKirli)">Veri kirli</option>
+                    @foreach (var d in Enum.GetValues<SatisDurumFiltre>())
+                    {
+                        <option value="@d" selected="@(_filtre.Durum == d)">@DurumAdlari.Ad(d)</option>
+                    }
                 </select>
             </div>
             <div>
@@ -274,7 +288,7 @@ else
     {
         <SatisAnaliziTablo Sonuc="_liste" Filtre="_filtre" Secili="_secili"
                            SeciliDegisti="KolonlarDegisti" FiltreDegisti="FiltreDegisti"
-                           ExcelSatirlari="ExcelSatirlari" SatirTikla="UrunAc" />
+                           ExcelBaglantisi="@ExcelBaglantisi()" SatirTikla="UrunAc" />
     }
 }
 
@@ -291,6 +305,7 @@ else
     private TabanDurum? _tabanDurum;
     private IReadOnlySet<string> _secili = SatisAnaliziKolonlar.VarsayilanAnahtarlar;
     private string? _kolonUyari;
+    private bool _ilkYukleme = true;   // ilk yüklemede URL'den gelen sayfa korunur
     private string _kullanici = "gm";
     private bool _yukleniyor;
     private string? _hata;
@@ -298,6 +313,9 @@ else
     protected override async Task OnInitializedAsync()
     {
         _filtre = new SatisAnaliziFiltre(_kesim, _sezonYil);
+        // URL'de filtre varsa uygula — drill'den "Listeye dön" ile geliniyorsa kullanıcı
+        // bıraktığı görünüme döner (kullanıcı bildirimi 09.09: ayarlar sıfırlanıyordu).
+        FiltreyiUrldenAl();
         var tercih = await KolonTercih.OkuAsync(_kullanici, EkranAdi);
         _secili = tercih.Secili;
         _kolonUyari = tercih.DusenAnahtarlar.Count == 0 ? null
@@ -312,7 +330,12 @@ else
         _yukleniyor = true; _hata = null;
         try
         {
-            _filtre = _filtre with { Kesim = _kesim, SezonYil = _sezonYil, Sayfa = 1 };
+            // ⚠ Sayfa=1'e SIFIRLAMA yalnız kullanıcı filtre değiştirdiğinde doğru; ilk
+            // yüklemede URL'den gelen sayfayı ezmemeli (drill'den 3. sayfaya dönmek gibi).
+            _filtre = _ilkYukleme
+                ? _filtre with { Kesim = _kesim, SezonYil = _sezonYil }
+                : _filtre with { Kesim = _kesim, SezonYil = _sezonYil, Sayfa = 1 };
+            _ilkYukleme = false;
             _tabanDurum = await Taban.HazirlaAsync(_kesim, _sezonYil, zorla);
             _ozet = await Q.GetOzetAsync(_filtre);
             _temin = await Q.GetTeminKirilimAsync(_filtre);
@@ -401,9 +424,9 @@ else
         new("Bağlanan Stok", Tl(k.ToplamStokTutar),
             $"{k.Cesit:N0} çeşit · satış fiyatıyla (maliyet değil)",
             "from-primary to-primary/80", "kutu", SatisDurumFiltre.Hepsi,
-            CiftBaslik: "Perakende gün-stok",
+            CiftBaslik: "Raf gün-stoğu",
             CiftDeger: (k.PerakendeGunStok?.ToString("N0") ?? "—") + " gün",
-            CiftAlt: "3 mağaza talebi · eşik tanımlı değil"),
+            CiftAlt: "mağaza stoğu ÷ mağaza satışı · merkez hariç (çıkışı sıçramalı)"),
 
         new("Aşırı Stok", Tl(k.AsiriStokTutar),
             $"{k.AsiriStokCesit:N0} çeşit · stok > 5× sezon satışı",
@@ -421,8 +444,19 @@ else
             CiftAlt: $"{k.StoksuzSezonOdakVarCesit:N0} çeşit · gerçek kayıp değil, sipariş edilebilir",
             CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true),
 
+        @* YENİ KART — kullanıcı isteği 09.09: "gelmiş ama mağazaya gitmemiş te bir kpi olmalı".
+           Satın alınmış, depoda duruyor, rafa HİÇ çıkmamış → satması imkânsız.
+           Karşı-metrik: rafı boşalmış ama depoda malı olanlar (transfer sorusu). *@
+        new("Rafa Çıkmamış Stok", Tl(k.RafsizTutar),
+            $"{k.RafsizCesit:N0} çeşit · merkezde var, mağazaya hiç girmemiş",
+            "from-error to-error/80", "uyari", SatisDurumFiltre.Rafsiz,
+            CiftBaslik: "Rafı boş, depoda var → transfer",
+            CiftDeger: Tl(k.RafBosTutar),
+            CiftAlt: $"{k.RafBosCesit:N0} çeşit · {k.RafBosSatisliCesit:N0}'inin satışı var (kanıtlı talep)",
+            CiftDurum: SatisDurumFiltre.RafBos),
+
         new("Hareketsiz Stok", Tl(k.HareketsizTutar),
-            $"{k.HareketsizCesit:N0} çeşit · 365 günde satış yok",
+            $"{k.HareketsizCesit:N0} çeşit · {SatisAnaliziFiltre.YeniUrunGunVarsayilan}+ gündür rafta, satış yok",
             "from-error to-error/80", "arsiv", SatisDurumFiltre.Hareketsiz,
             CiftBaslik: "3 yıldan eski + satışsız → tasfiye adayı",
             CiftDeger: "listele",
@@ -484,9 +518,40 @@ else
         return ListeYenile();
     }
 
-    /// <summary>Ürün drill sayfasını aç — kesim/sezon bağlamı query ile taşınır.</summary>
-    private void UrunAc(int stkId) => Nav.NavigateTo(
-        $"/satis-analizi/urun/{stkId}?kesim={_kesim:yyyy-MM-dd}&sezon={_sezonYil}");
+    /// <summary>
+    /// Ürün drill sayfasını aç. TÜM filtre durumu <c>geri</c> parametresinde taşınır ki
+    /// "Listeye dön" aynı görünüme dönsün.
+    ///
+    /// ⚠ Eski sürüm yalnız kesim+sezon taşıyordu VE panel query'den hiçbir şey okumuyordu →
+    /// geri dönünce her şey sıfırlanıyordu (kullanıcı bildirimi 09.09: "detaya girip çıkıyorum
+    /// seçtiğim ayarlar sıfırlanıyor" · "taşınırsa geri geldiğinde ilk hali oluyor, mantıkta
+    /// sorun var"). Haklıydı: taşımak tek başına yetmez, geri okumak da gerekir.
+    /// </summary>
+    private void UrunAc(int stkId)
+    {
+        var q = _filtre.SorguDizesi();
+        Nav.NavigateTo($"/satis-analizi/urun/{stkId}?kesim={_kesim:yyyy-MM-dd}&sezon={_sezonYil}" +
+                       $"&geri={Uri.EscapeDataString(q)}");
+    }
+
+    /// <summary>
+    /// URL'deki filtre durumunu uygula (drill'den geri dönüş + paylaşılan bağlantı).
+    /// Bozuk değer sessizce yutulmaz — kullanıcıya yazılır.
+    /// </summary>
+    private void FiltreyiUrldenAl()
+    {
+        var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(
+            new Uri(Nav.Uri).Query);
+        if (q.Count == 0) return;
+
+        var sozluk = q.ToDictionary(x => x.Key, x => x.Value.ToString() ?? "");
+        _filtre = SatisAnaliziFiltre.Coz(sozluk, _kesim, _sezonYil, out var atlanan);
+        _kesim = _filtre.Kesim;
+        _sezonYil = _filtre.SezonYil;
+        if (atlanan.Count > 0)
+            _kolonUyari = $"Bağlantıdaki bazı değerler okunamadı ({string.Join(", ", atlanan)}) — " +
+                     "o filtreler varsayılanda kaldı.";
+    }
 
     private async Task KolonlarDegisti(IReadOnlySet<string> yeni)
     {
@@ -494,34 +559,14 @@ else
         await KolonTercih.YazAsync(_kullanici, EkranAdi, yeni);
     }
 
-    /// <summary>Excel: TÜM filtreli satırlar, SEÇİLİ kolon sırasıyla (ekranda ne varsa o).</summary>
-    private async Task<IEnumerable<IDictionary<string, object?>>> ExcelSatirlari()
-    {
-        var hepsi = await Q.GetTumListeAsync(_filtre);
-        var kolonlar = SatisAnaliziKolonlar.Hepsi.Where(x => _secili.Contains(x.Anahtar)).ToList();
-        return hepsi.Select(s =>
-        {
-            IDictionary<string, object?> d = new Dictionary<string, object?>();
-            foreach (var kol in kolonlar) d[kol.Baslik] = HucreDeger(s, kol.Anahtar);
-            return d;
-        });
-    }
+    /// <summary>
+    /// Excel indirme bağlantısı — filtre + seçili kolonlar query'de taşınır.
+    /// Dosya endpoint'te akışta üretilir (circuit'ten GEÇMEZ; 275 bin satırda çöküyordu).
+    /// Hücre eşlemesi ortak <see cref="SatisAnaliziHucre"/>'de — ekran ve Excel ayrışmasın.
+    /// </summary>
+    private string ExcelBaglantisi() =>
+        $"/api/satis-analizi-excel?{_filtre.SorguDizesi()}&kolon={Uri.EscapeDataString(string.Join(",", _secili))}";
 
-    private static object? HucreDeger(SatisAnaliziSatir s, string anahtar) => anahtar switch
-    {
-        "kategori3" => s.Kategori3, "stkid" => s.StkId, "barkod" => s.BarkodAna, "ad" => s.StkAd,
-        "kategori1" => s.Kategori1, "yayinevi" => s.Yayinevi, "yazar" => s.Yazar,
-        "fiyat" => s.SatisFiyat, "tutar" => s.ToplamStokTutar, "stok" => s.ToplamStok,
-        "odak" => s.OdakStok, "leadtime" => s.LeadTime, "ilkgiris" => s.IlkGirisTarihi,
-        "songiris" => s.SonGirisTarihi,
-        "stok_fsm" => s.StokFsm, "stok_ozl" => s.StokOzluce, "stok_ist" => s.StokIstyolu,
-        "magaza_stok" => s.MagazaStok, "merkez_stok" => s.MerkezStok,
-        "satis_fsm" => s.SatisFsm, "satis_ozl" => s.SatisOzluce, "satis_ist" => s.SatisIstyolu,
-        "satis" => s.SatisToplam, "gunluk" => s.GunlukOrtalamaSatis,
-        "sezon_ay1" => s.SezonAy1, "sezon_ay2" => s.SezonAy2, "sezon_ay3" => s.SezonAy3,
-        "sezon" => s.SezonToplam, "kapsama" => s.SezonKapsama,
-        _ => null,
-    };
 
     private static string Tl(decimal v) => v.ToString("N0") + " ₺";
 }
