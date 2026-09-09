@@ -142,3 +142,48 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SatisAnaliziTaban_Taze
         ON bkm.SatisAnaliziTaban (Kesim, SezonYil, SonGiris)
         INCLUDE (ToplamStok, SezonToplam, SatisToplam, Tutar, OdakStok);
 GO
+
+/* ────────────────────────────────────────────────────────────────────────────
+   09.09.2026 — MERKEZ DEPO ÇIKIŞI (ürün bazında, 365 gün)
+
+   NEDEN: gün-stok KAPSAM ASİMETRİSİ taşıyordu (kurul bulgusu 09.09) — payda
+   `ToplamStok` = mağaza + merkez, paydada satış = YALNIZ 3 mağaza. Merkezden
+   yılda 1.895.799 adet çıkıyor (17.713 çeşit, ölçüldü) ve paydada yoktu →
+   gün-stok sistematik olarak "stok yeter" yönünde sapıyordu.
+
+   NEDEN E-TİCARET PAYDAYA EKLENMEDİ (kullanıcı, 09.09): "e-ticaret stoğu bizde
+   değil ODAK tarafında". E-tic talebi ODAK'ın kendi stoğunu tüketir; bizim
+   payımız ODAK'a yaptığımız SATIŞ olarak zaten merkez çıkışının içinde
+   (frm 9525 ODAK Kitap-Point: 302.908 adet/yıl, ölçüldü).
+
+   Merkez çıkışının karşı tarafı (ölçüldü, 365 gün):
+     frm 56   Bursa Kültür Merkezi (GRUP ŞİRKETİ)  1.375.700  %72
+     frm 9525 ODAK Kitap-Point (e-tic fulfillment)   302.908  %16
+     frm 120  Sınav Basın Yayın                      110.100   %6
+   → Merkez depo bir TOPTAN/GRUP DAĞITIM deposu. Çıkışı gerçek stok erimesidir
+     ama TÜKETİCİ TALEBİ DEĞİLDİR → mağaza hızıyla KARIŞTIRILMAZ, ayrı ölçülür.
+
+   ⚠ Kaynak ERP defteri (mekan 12). Merkez STOĞU için defter YASAK (negatifli,
+   sql-server-conventions § MERKEZ DEPO STOĞU) ama ÇIKIŞ HAREKETİ için defter
+   tek kaynak — WMS hareket geçmişi tutmuyor. Stok=WMS, hareket=defter.
+   ──────────────────────────────────────────────────────────────────────────── */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'MerkezCikis') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD MerkezCikis int NULL;
+GO
+
+/* ────────────────────────────────────────────────────────────────────────────
+   09.09.2026 — MERKEZ ÇIKIŞI KAÇ AYRI GÜNDE OLDU
+
+   NEDEN: kullanıcı uyarısı "merkez çıkış spontane". ÖLÇÜLDÜ ve doğrulandı —
+   merkez çıkışı bir HIZ DEĞİL, SIÇRAMA:
+     17.713 çeşidin 11.855'i (%67) TEK GÜNDE çıkmış · 5.335'i 2-5 günde ·
+     522'si 6-30 günde · yalnız 1 ürün 30 günden fazla.
+     Çıkışın ortalama %82,7'si tek güne yığılmış; 15.569 çeşitte (%88)
+     yarısından fazlası tek gün. Uç örnek: Sınav Basın Yayın 110.100 adet,
+     TEK BELGE (04.06.2026).
+   → "merkez gün-stoğu = stok / ortalama çıkış hızı" ANLAMSIZ, kaldırıldı.
+     Onun yerine hacim + kaç günde olduğu + parti büyüklüğü gösterilir.
+   ──────────────────────────────────────────────────────────────────────────── */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'MerkezCikisGun') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD MerkezCikisGun int NULL;
+GO

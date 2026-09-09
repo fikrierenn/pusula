@@ -164,6 +164,19 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                  ON b.urnBarkod COLLATE Turkish_CI_AS = t.barkod COLLATE Turkish_CI_AS AND b.urnBrkdOnce = 0
             GROUP BY b.urnBrkdStkID
         ),
+        mcik AS (  -- MERKEZ DEPO ÇIKIŞI (365g) — gün-stok kapsam asimetrisini kapatmak için.
+            -- Toptan/grup dağıtımı: %72 grup şirketi · %16 ODAK (e-tic) · %6 Sınav (ölçüldü 09.09).
+            -- TÜKETİCİ TALEBİ DEĞİL → mağaza hızıyla toplanmaz, ayrı gösterilir.
+            -- Kaynak ERP defteri: merkez STOĞU için yasak (negatifli) ama HAREKET için tek kaynak.
+            -- Gun = çıkışın kaç AYRI günde olduğu. Çıkış HIZ DEĞİL SIÇRAMA (ölçüldü:
+            -- çeşitlerin %67'si tek günde) → ortalama hıza bölünmez, sıçramalılık gösterilir.
+            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Cikis,
+                   COUNT(DISTINCT CONVERT(date, h.ehTrhS)) AS Gun
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan = 12 AND h.ehTip IN (1, 3, 5, 101)
+              AND h.ehTrhS >= @bas AND h.ehTrhS < DATEADD(DAY, 1, @kesim)
+            GROUP BY h.ehstkID
+        ),
         ilk AS (   -- IlkGiris = ürünün MAĞAZAYA ilk girişi (ölçüm 399/400) · SonGiris = SON mal kabulü
             -- TAZE STOK için SonGiris şart: IlkGiris 2021'e kadar gidebilir, tazeliği ölçmez.
             SELECT g.ehstkID AS stkID, MIN(g.ehTrhS) AS IlkGiris, MAX(g.ehTrhS) AS SonGiris
@@ -174,7 +187,8 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
         INSERT INTO DerinSISBkm.bkm.SatisAnaliziTaban
             (Kesim, SezonYil, stkID, Kategori3, Kategori1, BarkodAna, stkAd, Yayinevi, Yazar, SatisFiyat,
              StokFsm, StokOzl, StokIst, MerkezStok, OdakStok, SatisFsm, SatisOzl, SatisIst, Ay1, Ay2, Ay3,
-             MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum)
+             MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum,
+             MerkezCikis, MerkezCikisGun)
         SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.BarkodAna,
                CAST(k.stkAd AS nvarchar(120)), k.Yayinevi, k.Yazar, k.SatisFiyat,
                CONVERT(int, ISNULL(m.Fsm, 0)), CONVERT(int, ISNULL(m.Ozl, 0)), CONVERT(int, ISNULL(m.Ist, 0)),
@@ -187,7 +201,8 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                CONVERT(int, ISNULL(z.Ay1,0) + ISNULL(z.Ay2,0) + ISNULL(z.Ay3,0)),
                CONVERT(decimal(18,2),
                    (ISNULL(m.Fsm,0) + ISNULL(m.Ozl,0) + ISNULL(m.Ist,0) + ISNULL(d.Merkez,0)) * k.SatisFiyat),
-               i.IlkGiris, i.SonGiris, k.AcilisTarihi, CAST(lt.leadTime AS int), CAST(lt.saleStatus AS int)
+               i.IlkGiris, i.SonGiris, k.AcilisTarihi, CAST(lt.leadTime AS int), CAST(lt.saleStatus AS int),
+               CONVERT(int, ISNULL(mc.Cikis, 0)), CONVERT(int, ISNULL(mc.Gun, 0))
         FROM kat k
         LEFT JOIN mgz  m ON m.stkID = k.stkID
         LEFT JOIN depo d ON d.stkID = k.stkID
@@ -195,6 +210,7 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
         LEFT JOIN sat  s ON s.stkID = k.stkID
         LEFT JOIN sezon z ON z.stkID = k.stkID
         LEFT JOIN lt     ON lt.stkID = k.stkID
+        LEFT JOIN mcik mc ON mc.stkID = k.stkID
         LEFT JOIN ilk  i ON i.stkID = k.stkID
         WHERE ISNULL(m.Fsm,0) <> 0 OR ISNULL(m.Ozl,0) <> 0 OR ISNULL(m.Ist,0) <> 0 OR ISNULL(d.Merkez,0) <> 0
            OR ISNULL(s.Fsm,0) <> 0 OR ISNULL(s.Ozl,0) <> 0 OR ISNULL(s.Ist,0) <> 0
