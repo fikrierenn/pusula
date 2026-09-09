@@ -36,10 +36,142 @@ public sealed record SatisAnaliziFiltre(
     int Sayfa = 1,
     int SayfaBoyu = 50)
 {
+    /// <summary>
+    /// YENİ ÜRÜN EŞİĞİ (gün) — bundan yeni ürün "hareketsiz" sayılmaz (satacak zamanı olmadı).
+    /// Kullanıcı kararı 09.09.2026: 90 gün çok uzun → 45. Ekrandaki "taze gün" kutusu doluysa
+    /// o değer kullanılır; bu yalnız varsayılan. TEK YER — KPI ve liste süzgeci ikisi de bunu alır.
+    /// </summary>
+    public const int YeniUrunGunVarsayilan = 45;
+
+    /// <summary>
+    /// Filtreyi URL sorgu dizesine çevirir — drill'e gidip GERİ DÖNÜNCE aynı görünüm.
+    ///
+    /// ⚠ TEK YER: <see cref="SorguDizesi"/> yazar, <see cref="Coz"/> okur. İkisi ayrışırsa
+    /// kullanıcı "geri geldim ayarlarım gitti" der (bu kod tam o hatayı kapatmak için yazıldı:
+    /// eski sürüm yalnız kesim+sezon taşıyordu, panel de onları hiç okumuyordu).
+    ///
+    /// Varsayılan değerler YAZILMAZ — URL kısa kalsın ve "boş = varsayılan" tek anlam taşısın.
+    /// </summary>
+    public string SorguDizesi()
+    {
+        var q = new List<string>
+        {
+            $"kesim={Kesim:yyyy-MM-dd}",
+            $"sezon={SezonYil}",
+        };
+        if (!string.IsNullOrWhiteSpace(Arama)) q.Add($"arama={Uri.EscapeDataString(Arama)}");
+        if (!string.IsNullOrWhiteSpace(Kategori3)) q.Add($"kat3={Uri.EscapeDataString(Kategori3)}");
+        if (!string.IsNullOrWhiteSpace(Kategori1)) q.Add($"kat1={Uri.EscapeDataString(Kategori1)}");
+        if (Mekan != 0) q.Add($"mekan={Mekan}");
+        if (Durum != SatisDurumFiltre.Hepsi) q.Add($"durum={(int)Durum}");
+        if (TazeGunHaric > 0) q.Add($"taze={TazeGunHaric}");
+        if (OdakVar is not null) q.Add($"odak={(OdakVar.Value ? 1 : 0)}");
+        if (MinYasYil > 0) q.Add($"yas={MinYasYil}");
+        if (Sirala != "tutar") q.Add($"sirala={Uri.EscapeDataString(Sirala)}");
+        if (!Azalan) q.Add("azalan=0");
+        if (Sayfa > 1) q.Add($"sayfa={Sayfa}");
+        if (SayfaBoyu != 50) q.Add($"boyut={SayfaBoyu}");
+        return string.Join("&", q);
+    }
+
+    /// <summary>
+    /// Sorgu dizesinden filtre kurar. Tanınmayan/bozuk değer SESSİZCE YUTULMAZ:
+    /// o alan varsayılanda kalır ve <paramref name="atlanan"/> listesine yazılır — çağıran
+    /// isterse kullanıcıya söyler (sessiz fallback yasağı, error-handling kuralı).
+    /// </summary>
+    public static SatisAnaliziFiltre Coz(
+        IReadOnlyDictionary<string, string> q, DateOnly kesimVarsayilan, int sezonVarsayilan,
+        out List<string> atlanan)
+    {
+        var atl = new List<string>();
+
+        var kesim = kesimVarsayilan;
+        if (q.TryGetValue("kesim", out var kv))
+        {
+            if (DateOnly.TryParse(kv, System.Globalization.CultureInfo.InvariantCulture, out var k2)) kesim = k2;
+            else atl.Add($"kesim={kv}");
+        }
+
+        var sezon = sezonVarsayilan;
+        if (q.TryGetValue("sezon", out var sv))
+        {
+            if (int.TryParse(sv, out var s2) && s2 is >= 2000 and <= 2100) sezon = s2;
+            else atl.Add($"sezon={sv}");
+        }
+
+        int Sayi(string ad, int varsayilan)
+        {
+            if (!q.TryGetValue(ad, out var v)) return varsayilan;
+            if (int.TryParse(v, out var n)) return n;
+            atl.Add($"{ad}={v}");
+            return varsayilan;
+        }
+
+        var durum = SatisDurumFiltre.Hepsi;
+        if (q.TryGetValue("durum", out var dv))
+        {
+            if (int.TryParse(dv, out var d2) && Enum.IsDefined(typeof(SatisDurumFiltre), d2))
+                durum = (SatisDurumFiltre)d2;
+            else atl.Add($"durum={dv}");
+        }
+
+        bool? odak = null;
+        if (q.TryGetValue("odak", out var ov))
+        {
+            if (ov == "1") odak = true;
+            else if (ov == "0") odak = false;
+            else atl.Add($"odak={ov}");
+        }
+
+        atlanan = atl;
+        return new SatisAnaliziFiltre(
+            Kesim: kesim,
+            SezonYil: sezon,
+            Arama: q.GetValueOrDefault("arama"),
+            Kategori3: q.GetValueOrDefault("kat3"),
+            Kategori1: q.GetValueOrDefault("kat1"),
+            Mekan: Sayi("mekan", 0),
+            Durum: durum,
+            TazeGunHaric: Sayi("taze", 0),
+            OdakVar: odak,
+            MinYasYil: Sayi("yas", 0),
+            Sirala: q.GetValueOrDefault("sirala") ?? "tutar",
+            Azalan: q.GetValueOrDefault("azalan") != "0",
+            Sayfa: Math.Max(1, Sayi("sayfa", 1)),
+            SayfaBoyu: Sayi("boyut", 50));
+    }
+
     /// <summary>365 gün DAHİL → bas = kesim − 364. (Ölçüldü: orijinal rapor 07.09.2025–06.09.2026.)</summary>
     public DateOnly Baslangic => Kesim.AddDays(-364);
     public DateOnly SezonBas => new(SezonYil, 8, 1);
     public DateOnly SezonSon => new(SezonYil, 10, 31);
+}
+
+/// <summary>
+/// Durum süzgeci görünen adları — ekrandaki açılır liste BUNDAN üretilir.
+///
+/// ⚠ Açılır liste eskiden Razor'da ELLE yazılıydı: enum 8 üyeye çıkmıştı ama listede 5
+/// seçenek vardı → yeni eklenen <c>Rafsiz</c>/<c>RafBos</c>/<c>SadeceTaze</c> SEÇİLEMİYORDU
+/// (ölçüldü 09.09, tarayıcıdan: 5 option). "Liste elle yazılmaz" kuralı — yeni enum üyesi
+/// buraya bir satır ekleyince ekranda kendiliğinden çıkar.
+/// Haritada karşılığı olmayan üye <c>Enum.GetValues</c> ile yine listelenir (adı ham gelir),
+/// yani sessizce KAYBOLMAZ.
+/// </summary>
+public static class DurumAdlari
+{
+    public static readonly IReadOnlyDictionary<SatisDurumFiltre, string> Hepsi = new Dictionary<SatisDurumFiltre, string>
+    {
+        [SatisDurumFiltre.Hepsi] = "(hepsi)",
+        [SatisDurumFiltre.StoksuzSezon] = "Stoksuz sezon ürünü",
+        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (>5× sezon)",
+        [SatisDurumFiltre.Hareketsiz] = "Hareketsiz (satış yok)",
+        [SatisDurumFiltre.VeriKirli] = "Veri kirli",
+        [SatisDurumFiltre.SadeceTaze] = "Yalnız taze stok",
+        [SatisDurumFiltre.Rafsiz] = "Rafa hiç çıkmamış",
+        [SatisDurumFiltre.RafBos] = "Rafı boş, depoda var",
+    };
+
+    public static string Ad(SatisDurumFiltre d) => Hepsi.TryGetValue(d, out var a) ? a : d.ToString();
 }
 
 public enum SatisDurumFiltre
@@ -55,15 +187,24 @@ public enum SatisDurumFiltre
     VeriKirli,
     /// <summary>YALNIZ taze stok (son N günde mal kabulü olanlar) — filtrenin tersi.</summary>
     SadeceTaze,
+
+    /// <summary>Rafa hiç çıkmamış — merkezde var, mağazaya hiç girmemiş (satması imkânsız).</summary>
+    Rafsiz,
+
+    /// <summary>Rafta yok, merkezde var — daha önce çıkmış; transfer sorusu.</summary>
+    RafBos
 }
 
-/// <summary>KPI şeridi. Karşı-metrikler YAN YANA durur (satinalma-danisman: tek yönlü metrik yasak).</summary
+/// <summary>KPI şeridi. Karşı-metrikler YAN YANA durur (satinalma-danisman: tek yönlü metrik yasak).</summary>
 public sealed record SatisAnaliziKpi(
     long ToplamStok,
     decimal ToplamStokTutar,      // ⚠ SATIŞ fiyatıyla — bağlanan para DEĞİL
     int Cesit,
+    long MagazaStok,              // raf stoğu — gün-stok payı BUDUR (kapsam asimetrisi 09.09)
+    long MerkezStok,              // toptan/grup deposu — ayrı ölçülür
     long PerakendeSatis365,       // 3 mağaza (tüketici talebi)
-    long MerkezCikis365,          // grup-içi/toptan + e-tic sevk — TALEP DEĞİL
+    long MerkezCikis365,          // panel evreni içi — ürün bazlı MerkezCikis toplamıyla TUTAR
+    long MerkezCikisEvrenDisi,    // Kategori3 filtresi yüzünden görünmeyen kısım (ölçüm: 670.659)          // grup-içi/toptan + e-tic sevk — TALEP DEĞİL
     int StoksuzSezonCesit,
     decimal StoksuzSezonKayip,
     int StoksuzSezonOdakVarCesit, // ODAK'ta var → hızlı temin, gerçek kayıp değil
@@ -74,12 +215,42 @@ public sealed record SatisAnaliziKpi(
     decimal AsiriStokOdakVarTutar,
     int HareketsizCesit,
     decimal HareketsizTutar,
+    /// <summary>
+    /// RAFA HİÇ ÇIKMAMIŞ — merkeze girmiş, mağazaya hiç girmemiş, merkezde stoğu var.
+    /// Kullanıcı isteği 09.09: "gelmiş ama mağazaya gitmemiş te bir kpi olmalı".
+    /// Satması İMKÂNSIZ: raf yoksa satış olmaz. ÖLÇÜLDÜ: 1.182 çeşit / 24,17M ₺.
+    /// </summary>
+    int RafsizCesit,
+    decimal RafsizTutar,
+    /// <summary>
+    /// RAFTA YOK ama MERKEZDE VAR — daha önce rafa çıkmış, şimdi raf boş, depoda mal duruyor.
+    /// Satışı olanlar kanıtlı talep + boş raf = kayıp satış. TRANSFER sorusu, alım değil.
+    /// ÖLÇÜLDÜ: 3.539 çeşit / 10,46M ₺, 1.218'inin satışı var.
+    /// </summary>
+    int RafBosCesit,
+    decimal RafBosTutar,
+    int RafBosSatisliCesit,
     int VeriKirliCesit,
-    decimal VeriKirliTutar)
+    decimal VeriKirliTutar,
+    // Ürün bazında ETKİN GÜNE bölünüp toplanmış günlük hız (adet/gün). SQL'de hesaplanır;
+    // burada yeniden bölme YAPILMAZ (kullanıcı uyarısı 09.09 — aşağıdaki nota bak).
+    double PerakendeGunlukHiz = 0)
 {
-    /// <summary>Gün-stok — YALNIZ perakende talebine göre. Karma rakam üretilmez (danışma kararı).</summary
-    public decimal? PerakendeGunStok => PerakendeSatis365 <= 0 ? null
-        : Math.Round((decimal)ToplamStok / ((decimal)PerakendeSatis365 / 365m), 0);
+    /// <summary>
+    /// Gün-stok — YALNIZ perakende talebine göre. Karma rakam üretilmez (danışma kararı).
+    ///
+    /// ⚠ DÜZELTME 09.09.2026 (kullanıcı uyarısı: "stok gireli 365 gün olmadıysa satış
+    /// ortalaması için 365'e bölmek mantıksız"). Eski hâli <c>Satis365 / 365</c> idi ve
+    /// rafa yeni girmiş ürünün hızını olduğundan DÜŞÜK gösteriyordu → gün-stok şişiyordu.
+    /// ÖLÇÜLDÜ (kesim 08.09.2026, 275.059 ürün): 38.180 ürün (%13,9) pencereden yeni;
+    /// bunların 22.385'i hem satışlı hem stoklu. O 22.385'te ortalama gün-stok
+    /// <b>1.644 → 524</b> (ortalama 1.120 gün şişme); <b>4.468</b> ürün haksız yere
+    /// "&gt;400 gün" kırmızısında, <b>9.851</b> ürün en az 2 kat şişmiş.
+    /// Doğrusu: her ürünün hızı KENDİ raf süresine bölünür, sonra toplanır.
+    /// </summary>
+    public decimal? PerakendeGunStok => PerakendeGunlukHiz <= 0 ? null
+        : Math.Round((decimal)MagazaStok / (decimal)PerakendeGunlukHiz, 0);
+
 }
 
 /// <summary>Kategori/kırılım satırı.</summary>
@@ -91,9 +262,13 @@ public sealed record SatisAnaliziKirilim(
     long Satis365,
     long Sezon,
     int StoksuzCesit,
-    decimal AsiriTutar)
+    decimal AsiriTutar,
+    // Ürün bazında etkin güne bölünüp toplanmış günlük hız — bkz. SatisAnaliziKpi.PerakendeGunStok
+    double GunlukHiz = 0)
 {
-    public decimal? GunStok => Satis365 <= 0 ? null : Math.Round((decimal)Stok / ((decimal)Satis365 / 365m), 0);
+    /// <summary>Gün-stok. Etkin güne göre (365'e sabit bölme YOK — 09.09 düzeltmesi).</summary>
+    public decimal? GunStok => GunlukHiz <= 0 ? null
+        : Math.Round((decimal)Stok / (decimal)GunlukHiz, 0);
     public decimal? SezonKapsama => Sezon <= 0 ? null : Math.Round((decimal)Stok / Sezon, 1);
 }
 
@@ -131,9 +306,78 @@ public sealed record SatisAnaliziSatir(
     int SezonAy3,
     int SezonToplam,
     int? LeadTime,
-    int? OdakSatisDurum)
+    int? OdakSatisDurum,
+    /// <summary>
+    /// Merkez depodan 365 günde çıkan adet — TOPTAN/GRUP dağıtımı, tüketici talebi DEĞİL
+    /// (%72 grup şirketi · %16 ODAK e-tic · %6 Sınav; ölçüldü 09.09.2026).
+    /// Mağaza satışıyla TOPLANMAZ: iki ayrı talep kanalı, iki ayrı hız.
+    /// </summary>
+    int MerkezCikis,
+    /// <summary>
+    /// Merkez çıkışı kaç AYRI günde oldu (365g). Sıçramalılık ölçüsü — ölçüldü 09.09:
+    /// 17.713 çeşidin %67'si TEK GÜNDE çıkmış, çıkışın ortalama %82,7'si tek güne yığılı.
+    /// </summary>
+    int MerkezCikisGun,
+    /// <summary>
+    /// SATIŞ HIZI PAYDASI (gün). = min(365, mağazaya ilk girişten kesime kadar geçen gün).
+    /// İlk giriş bilinmiyorsa 365 (1.186 ürün — ölçüldü 09.09).
+    /// ⚠ SIRA SÖZLEŞMESİ: Dapper positional record — SELECT'te de EN SON kolon olmalı.
+    /// </summary>
+    int EtkinGun)
 {
-    public decimal GunlukOrtalamaSatis => SatisToplam / 365m;
+    /// <summary>
+    /// Günlük ortalama satış. ⚠ 365'e SABİT bölünmez (09.09 düzeltmesi, kullanıcı uyarısı):
+    /// ürün rafa 4 ay önce girdiyse paydası 365 değil ~120'dir. Ölçülen etki:
+    /// 22.385 üründe gün-stok ortalama 1.644 → 524. Orijinal Excel raporu 365'e bölüyordu;
+    /// bu kolon bilinçli olarak ondan AYRIŞIR (ekranda ipucu ile yazılı).
+    /// </summary>
+    public decimal GunlukOrtalamaSatis => SatisToplam / (decimal)Math.Max(1, EtkinGun);
+
+    /// <summary>Raf süresi 365 günden kısa mı — hız paydası daralmış demektir (ekranda işaretlenir).</summary>
+    public bool RafKisa => EtkinGun < 365;
+
+    /// <summary>
+    /// RAF GÜN-STOĞU — mağaza stoğu, mağaza satış hızına göre.
+    ///
+    /// ⚠ DÜZELTME 09.09.2026 (kurul bulgusu + kullanıcı bilgisi). Eski hâli
+    /// <c>ToplamStok / mağaza hızı</c> idi ve KAPSAM ASİMETRİSİ taşıyordu: payda mağaza
+    /// + merkez stoğu, paydada yalnız 3 mağaza satışı. Merkezden yılda 1.895.799 adet
+    /// çıkıyor (ölçüldü) ve paydada yoktu → rakam sistematik olarak "stok yeter" yönünde
+    /// sapıyor, alıcıyı az almaya itiyordu.
+    ///
+    /// E-ticaret paydaya EKLENMEDİ çünkü (kullanıcı 09.09) "e-ticaret stoğu bizde değil
+    /// ODAK tarafında" — o talep ODAK'ın stoğunu tüketir. Bizim payımız ODAK'a yapılan
+    /// satış olarak <see cref="MerkezCikis"/> içinde.
+    ///
+    /// Artık pay ve payda AYNI KAPSAM: raf stoğu ÷ raf hızı. Merkez ayrı
+    /// (<see cref="MerkezGunStok"/>), toplanmaz.
+    /// Raf süresi &lt; 28 gün ise hız güvenilmez → null (sessiz sayı üretilmez).
+    /// </summary>
+    public decimal? GunStok => SatisToplam <= 0 || EtkinGun < 28 ? null
+        : Math.Round((decimal)MagazaStok / GunlukOrtalamaSatis, 0);
+
+    /// <summary>
+    /// MERKEZ ÇIKIŞI SIÇRAMALI MI — kullanıcı uyarısı 09.09: "merkez çıkış spontane".
+    ///
+    /// ⚠ BURADA BİR "MERKEZ GÜN-STOĞU" YOK ve olmayacak. Yazıldı, ölçüldü, KALDIRILDI:
+    /// merkez çıkışını ortalama bir hıza bölmek anlamsız, çünkü çıkış hız değil sıçrama.
+    /// ÖLÇÜLDÜ (365g, 17.713 çeşit): %67'si TEK GÜNDE çıkmış · %30'u 2-5 günde ·
+    /// yalnız 1 ürün 30+ günde. Çıkışın ortalama %82,7'si tek güne yığılı; 15.569
+    /// çeşitte (%88) yarısından fazlası tek gün. Uç: 110.100 adet / TEK belge.
+    /// Ortalamaya bölmek "merkez şu kadar gün yeter" diye sahte güven üretirdi.
+    /// </summary>
+    public bool MerkezCikisSicramali => MerkezCikis > 0 && MerkezCikisGun <= 5;
+
+    /// <summary>Çıkış olan günlerdeki ortalama parti büyüklüğü (adet/gün). Hız DEĞİL.</summary>
+    public decimal? MerkezPartiBuyuklugu => MerkezCikisGun <= 0 ? null
+        : Math.Round((decimal)MerkezCikis / MerkezCikisGun, 0);
+
+    /// <summary>
+    /// ESKİ (kapsam karışık) gün-stok — yalnız orijinal Excel raporuyla mutabakat için.
+    /// Karara dayanak YAPILMAZ; ekranda gösterilmez.
+    /// </summary>
+    public decimal? GunStokKarisikKapsam => SatisToplam <= 0 ? null
+        : Math.Round((decimal)ToplamStok / (SatisToplam / 365m), 0);
 
     /// <summary>Stok yaşı (yıl) — ürün kartı açılışından bugüne. Açılış yoksa null.</summary>
     public decimal? YasYil => AcilisTarihi is null ? null
@@ -197,7 +441,7 @@ public static class SatisAnaliziKolonlar
         new("satis_ist",  "Satış İst.Yolu", Sayisal: true, Varsayilan: false, Siralanabilir: true),
         new("satis",      "Satış 365g", Sayisal: true, Varsayilan: true, Siralanabilir: true,
             Ipucu: "3 mağaza · iade netlenmiş. Merkez depo çıkışı DAHİL DEĞİL"),
-        new("gunluk",     "Günlük Ort.", Sayisal: true, Varsayilan: false),
+        new("gunluk", "Günlük Ort.", Sayisal: true, Varsayilan: false, Ipucu: "Payda = raf süresi (en çok 365 gün), 365 sabit DEĞİL. Rafa yeni giren üründe 365'e bölmek hızı düşük gösterirdi — ölçüldü: 22.385 üründe gün-stok 1.644 yerine 524."),
         new("sezon_ay1",  "Ağustos",    Sayisal: true, Varsayilan: false, Siralanabilir: true),
         new("sezon_ay2",  "Eylül",      Sayisal: true, Varsayilan: false, Siralanabilir: true),
         new("sezon_ay3",  "Ekim",       Sayisal: true, Varsayilan: false, Siralanabilir: true),
