@@ -764,7 +764,7 @@ public sealed partial class SatisAnaliziQueries
         var durumSart = f.Durum switch
         {
             SatisDurumFiltre.StoksuzSezon => "(t.SezonToplam > 0 AND t.ToplamStok <= 0)",
-            SatisDurumFiltre.AsiriStok => "(t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam)",
+            SatisDurumFiltre.AsiriStok => AsiriStokSart,
             // ⚠ KPI'daki HareketsizCesit ile AYNI ifade olmalı (ayrışırsa kart ve liste
             // farklı sayı gösterir). Yenilik koruması: yeni açılan ürün haksız damgalanmasın —
             // ölçüldü 09.09, stkID 1739163 vakası (kart 04.09.2026, mağazaya hiç girmemiş).

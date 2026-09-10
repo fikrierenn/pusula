@@ -162,16 +162,16 @@ public static class DurumAdlari
     public static readonly IReadOnlyDictionary<SatisDurumFiltre, string> Hepsi = new Dictionary<SatisDurumFiltre, string>
     {
         [SatisDurumFiltre.Hepsi] = "(hepsi)",
-        [SatisDurumFiltre.StoksuzSezon] = "Stoksuz sezon ürünü",
-        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (>5× sezon)",
-        [SatisDurumFiltre.Hareketsiz] = "Hareketsiz (satış yok)",
+        [SatisDurumFiltre.StoksuzSezon] = "Stokta yokluk — sezon ürünü",
+        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (>3× sezon)",
+        [SatisDurumFiltre.Hareketsiz] = "Ölü stok (satış yok)",
         [SatisDurumFiltre.VeriKirli] = "Veri kirli",
         [SatisDurumFiltre.SadeceTaze] = "Yalnız taze stok",
-        [SatisDurumFiltre.Rafsiz] = "Rafa hiç çıkmamış",
-        [SatisDurumFiltre.RafBos] = "Rafı boş, depoda var",
+        [SatisDurumFiltre.Rafsiz] = "Rafa hiç çıkmamış envanter",
+        [SatisDurumFiltre.RafBos] = "Raf bulunurluk kaybı (merkezde var)",
         [SatisDurumFiltre.Yeni] = "Yeni ürün (değerlendirilemez)",
-        [SatisDurumFiltre.Dengesiz] = "Mağazalar arası dengesizlik → transfer",
-        [SatisDurumFiltre.SezonAcik] = "Sezon hazırlığı açığı",
+        [SatisDurumFiltre.Dengesiz] = "Mağaza arası dengesizlik → transfer",
+        [SatisDurumFiltre.SezonAcik] = "Sezon stok açığı",
     };
 
     public static string Ad(SatisDurumFiltre d) => Hepsi.TryGetValue(d, out var a) ? a : d.ToString();
@@ -182,7 +182,7 @@ public enum SatisDurumFiltre
     Hepsi,
     /// <summary>Sezonda sattı, bugün stok yok.</summary>
     StoksuzSezon,
-    /// <summary>Sezonda sattı, stok &gt; 5× sezon satışı.</summary>
+    /// <summary>Sezonda sattı, stok &gt; 3× sezon satışı (eşik veriden türetildi 10.09).</summary>
     AsiriStok,
     /// <summary>365 günde hiç satmadı, stok var.</summary>
     Hareketsiz,

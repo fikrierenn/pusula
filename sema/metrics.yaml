@@ -761,3 +761,61 @@ metrics:
     koruma: "degismezler.json → muhasebe-hesap-kodu-panelde-yok (kırılabilirliği sınandı)"
     evidence: "2026-09-10 — urn.stkKod desen taraması (837.688 kayıt) + hareket kontrolü"
     last_verified: "2026-09-10"
+
+  asiri_stok_esigi_turetildi:
+    ad: "AŞIRI STOK EŞİĞİ — 5× seçilmişti, 3× ölçüldü"
+    kural: >-
+      Aşırı stok ölçütü: `SezonToplam > 0 AND ToplamStok > 3 * SezonToplam`. Eşik **3×**
+      (eski 5× SEÇİLMİŞTİ, gevşek çıktı). Kodda tek sabitte —
+      `SatisAnaliziQueries.AsiriStokSart` (KPI, kategori kırılımı, ODAK temin tablosu ve
+      liste filtresi aynı sabitten okur; önce altı yerde ayrı `5 *` yazılıydı).
+    nasil_turetildi: >-
+      Sonuç değişkeni **yıllık devir** = 01.08.2025 başlangıç stoğunun SONRAKİ 12 AYDA
+      satılan oranı; kapsama katına (stok ÷ 2024 sezon satışı) göre bantlandı:
+      <2× → 6,36 (~2 ay stok) · 2-3× → 1,04 (~12 ay) · 3-5× → 0,71 (~17 ay) ·
+      5-8× → 0,51 (~24 ay) · 8-15× → 0,40 (~30 ay) · 15×+ → 0,23 (~4,3 yıl).
+      Hiç satmayan payı aynı yönde: <2× %16,2 → 15×+ %2,7.
+      Devir 1,0'ın ALTINA **3×'te** düşüyor ⇒ 3× = "bir yıldan fazla stok". 5× ≈ 24 ay:
+      aşırılığı ancak iki yılı geçince yakalıyordu.
+    etki: >-
+      Kesim 09.09.2026 (ölçüldü): 5× → 16.697 çeşit / 238,0M ₺ ·
+      3× → **29.647 çeşit / 309,9M ₺** etiket; maliyetle **107,3M ₺** bağlı sermaye.
+    confound: >-
+      GİDERİLMEDİ, beyan edildi. (a) "Yıllık devir" hem stok düzeyini hem talep değişimini
+      taşır — <2× bandının 6,36'sı sürekli takviye edilen hızlı ürünlerdir; ölçüt aşırılığı
+      değil DEVRİ ölçüyor (ama karar değişkeni de devir). (b) TERS NEDENSELLİK: alıcı çok
+      satmasını beklediğine çok stok koyar. (c) 15×+ bandı adet kütlesinin çoğunu taşıyor ve
+      onu 5× de yakalıyordu; 5×→3× değişimi ~12.950 çeşit / ~72M ₺ etiket EKLİYOR.
+    politika_borcu: >-
+      Kategori bazlı hedef gün-stok (`bkm.OneriSiparisKtg3Ondeger`) hâlâ BOŞ. Dolunca eşik
+      kategoriye göre farklılaşır (Kırtasiye 725 gün ile Kitap aynı eşiği paylaşmamalı).
+    evidence: "2026-09-10 — sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql blok 2 + 3"
+    last_verified: "2026-09-10"
+
+  sezon_hazirlik_esigi_turetildi:
+    ad: "SEZON STOK AÇIĞI EŞİĞİ — 0,50 ölçümle doğrulandı"
+    kural: >-
+      Sezon açığı ölçütü: `SezonToplam > 0 AND ToplamStok > 0 AND ToplamStok < 0.50 * SezonToplam`
+      (`SatisAnaliziQueries.SezonHazirlikSart`). "Stokta yokluk" kartından FARKLI: orada stok
+      SIFIR, burada VAR ama yetmez. 0,50 artık SEÇİM değil ÖLÇÜM.
+    nasil_turetildi: >-
+      Sonuç değişkeni **gerçekleşme oranı** = 2025 sezon satışı ÷ 2024 sezon satışı, AYNI
+      TALEP BANDI içinde (2024 Ağu–Eki satışı 10-200 adet; talep vekili önceki yıl).
+      Kapsama = 01.08.2025 mağaza rafı ÷ 2024 sezon satışı:
+      <0,25 → 0,34 · 0,25-0,50 → 0,61 · 0,50-0,75 → 0,75 · 0,75-1,00 → 0,84 ·
+      1,00-1,50 → 0,93 · 1,50-3,00 → 1,24 · 3,00+ → 2,22.
+      Tek yönlü, alt uçta dik, 1,00 kapsamada doyuyor (0,93). **0,50** = gerçekleşmenin
+      çöktüğü çizgi (altında önceki yıl talebinin en az %39'u gerçekleşmiyor).
+      "Yeterli" çizgisi 1,00; panel eşiği kritik çizgide tutuldu (kayıp listesi şişmesin).
+    elenen_olcut: >-
+      "Sezon sonunda stok ≤ 0" tükenme vekili olarak DENENDİ, ELENDİ: bantlara göre %0,4-6,6
+      ve TEK YÖNLÜ DEĞİL — depo sezon içinde takviye ediyor, sezon-sonu stoğu tükenmeyi
+      göstermiyor. Karşılanmamış talep GÖZLENEMEZ (satmadığının kaydı yok).
+    confound: >-
+      GİDERİLMEDİ. TERS NEDENSELLİK: yüksek kapsama zaten yüksek beklenti taşıyor (3,00+
+      bandı 2,22). ORTALAMAYA DÖNÜŞ: <0,25 bandı en yüksek 2024 talebine sahip (54 adet) —
+      o ürünler zaten aşağı çekilecekti. Tablo saf "bulunurluk etkisi" DEĞİL; ama alt uçtaki
+      0,34 yalnız ortalamaya dönüşle açıklanamayacak kadar dik.
+    etki: "Kesim 09.09.2026: 0,50 → 7.491 çeşit / 152,5M ₺ · 1,00 → 15.402 çeşit / 171,3M ₺"
+    evidence: "2026-09-10 — sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql blok 1 + 3"
+    last_verified: "2026-09-10"

@@ -94,9 +94,56 @@ public sealed partial class SatisAnaliziQueries(
     /// SEZON HAZIRLIĞI — geçen sezon sattı, bugün stoğu o satışın YARISINDAN az.
     /// "Stoksuz sezon" kartından FARKLI: orada stok SIFIR, burada VAR ama yetmez.
     /// Panelin son-tarihi olan tek kohortu (sezon Ağu–Eki; sipariş penceresi şimdi).
-    /// ⚠ 0,5 katsayısı SEÇİLDİ, ölçülmedi — hedef gün-stok politikası
-    /// (<c>bkm.OneriSiparisKtg3Ondeger</c>) boş olduğu için tüm eşikler geçici.
+    /// ✅ 0,50 katsayısı ARTIK ÖLÇÜLDÜ (10.09.2026) — seçilmiş değil, türetilmiş.
+    /// Yöntem: AYNI TALEP BANDI içinde gerçekleşme oranı. Talep vekili önceki yılın aynı
+    /// sezonu (2024 Ağu–Eki satışı 10-200 adet); kapsama = 01.08.2025 rafı ÷ 2024 satışı;
+    /// sonuç = 2025 sezon satışı ÷ 2024. Bantlara göre gerçekleşme:
+    ///   &lt;0,25 → <b>0,34</b> · 0,25-0,50 → <b>0,61</b> · 0,50-0,75 → 0,75 · 0,75-1,00 → 0,84
+    ///   · 1,00-1,50 → 0,93 · 1,50-3,00 → 1,24 · 3,00+ → 2,22
+    /// Tek yönlü ve alt uçta dik; 1,00 kapsamada doyuyor (0,93). <b>0,50</b> = gerçekleşmenin
+    /// çöktüğü çizgi (altında önceki yıl talebinin en az %39'u kaybediliyor).
+    ///
+    /// ⚠ CONFOUND (giderilmedi): TERS NEDENSELLİK — alıcı çok satmasını beklediğine çok stok
+    /// koyar, yüksek kapsama zaten yüksek beklentiyi taşır (3,00+ bandı 2,22). Ayrıca
+    /// ORTALAMAYA DÖNÜŞ: &lt;0,25 bandı en yüksek 2024 talebine sahip (54 adet). Tablo saf
+    /// "bulunurluk etkisi" DEĞİL; ama alt uçtaki 0,34 yalnız bununla açıklanamayacak kadar dik.
+    ///
+    /// ⛔ ELENEN ÖLÇÜT: "sezon sonunda stok ≤ 0" tükenme vekili olarak denendi — bantlara göre
+    /// %0,4-6,6 ve TEK YÖNLÜ DEĞİL (depo sezon içinde takviye ediyor). Karşılanmamış talep
+    /// gözlenemez (satmadığının kaydı yok), o yüzden gerçekleşme oranı kullanıldı.
+    ///
+    /// Türetme SQL'i: <c>sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql</c> blok 1.
     /// </summary>
+    /// <summary>
+    /// AŞIRI STOK — sezon satışının katından fazla stok. Eşik <b>3×</b>.
+    ///
+    /// ✅ 3× ÖLÇÜLDÜ (10.09.2026), eski 5× SEÇİLMİŞTİ ve gevşek çıktı. Yöntem: 01.08.2025
+    /// başlangıç stoğunun SONRAKİ 12 AYDA satılan oranı (yıllık devir), kapsama katına göre:
+    ///   &lt;2× → <b>6,36</b> (~2 ay stok) · 2-3× → <b>1,04</b> (~12 ay) · 3-5× → 0,71 (~17 ay)
+    ///   · 5-8× → 0,51 (~24 ay) · 8-15× → 0,40 (~30 ay) · 15×+ → 0,23 (~4,3 yıl)
+    /// Yıllık devir 1,0'ın ALTINA 3×'te düşüyor — yani 3× "bir yıldan fazla stok" demek.
+    /// 5× ise ~24 aylık stok: aşırılığı ancak iki yılı geçince yakalıyordu.
+    /// Hiç satmayan payı da aynı yönde: &lt;2× %16,2 → 15×+ %2,7 (uçta mal kilitli kalıyor).
+    ///
+    /// Etki (kesim 09.09.2026, ölçüldü): 5× → 16.697 çeşit / 238,0M ₺ ·
+    /// <b>3× → 29.647 çeşit / 309,9M ₺</b> etiket; maliyetle <b>107,3M ₺</b> bağlı sermaye.
+    ///
+    /// ⚠ CONFOUND: "yıllık devir" hem stok düzeyini hem talep değişimini taşır (&lt;2× bandının
+    /// 6,36'sı sürekli takviye edilen hızlı ürünler). Ölçüt aşırılığı değil DEVRİ ölçüyor —
+    /// ama karar değişkeni de devir: 1,0 altı = bir yıldan fazla stok.
+    ///
+    /// Türetme SQL'i: <c>sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql</c> blok 2.
+    /// </summary>
+    private const string AsiriStokKat = "3";
+
+    /// <summary>
+    /// Aşırı stok ölçütü — <b>TEK KAYNAK</b>. KPI, kategori kırılımı, ODAK temin tablosu ve
+    /// liste filtresi bunu kullanır; eşik burada değişince hepsi birlikte değişir (önce altı
+    /// yerde ayrı ayrı <c>5 *</c> yazılıydı — ayrışma riski).
+    /// </summary>
+    private const string AsiriStokSart =
+        "(t.SezonToplam > 0 AND t.ToplamStok > " + AsiriStokKat + " * t.SezonToplam)";
+
     private const string SezonHazirlikSart =
         "(t.SezonToplam > 0 AND t.ToplamStok > 0 AND t.ToplamStok < 0.5 * t.SezonToplam)";
 
@@ -174,9 +221,9 @@ public sealed partial class SatisAnaliziQueries(
 
     /// <summary>
     /// KPI + Kategori3 kırılımı — tek geçiş, 196 ms.
-    /// Aşırı stok eşiği: stok &gt; 5 × sezon satışı. ⚠ GEÇİCİ: hedef gün-stok politikası
-    /// <c>bkm.OneriSiparisKtg3Ondeger</c>'de tanımlı ama BOŞ (ölçüldü 08.09) → eşik girilene
-    /// kadar 5× kullanılıyor ve ekranda "eşik tanımlı değil" etiketi çıkar.
+    /// Aşırı stok eşiği <c>AsiriStokSart</c>'tan gelir (3×, veriden türetildi 10.09).
+    /// Kategori bazlı hedef gün-stok politikası (<c>bkm.OneriSiparisKtg3Ondeger</c>) hâlâ BOŞ;
+    /// dolduğunda eşik kategoriye göre farklılaşabilir — panel geneli eşiği o zamana kadar tek.
     /// </summary>
     public async Task<SatisAnaliziOzet> GetOzetAsync(SatisAnaliziFiltre f, CancellationToken ct = default)
     {
@@ -198,11 +245,11 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS StoksuzOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 AND t.OdakStok > 0
                         THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))                     AS StoksuzOdakKayip,
-                   SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam THEN 1 ELSE 0 END) AS AsiriCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam
+                   SUM(CASE WHEN {AsiriStokSart} THEN 1 ELSE 0 END) AS AsiriCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
                         THEN t.Tutar ELSE 0 END))                                          AS AsiriTutar,
-                   SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS AsiriOdakCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam AND t.OdakStok > 0
+                   SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS AsiriOdakCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0
                         THEN t.Tutar ELSE 0 END))                                          AS AsiriOdakTutar,
                    -- Hareketsiz: satış yok + stok var + DEĞERLENDİRİLECEK kadar zamanı olmuş.
                    -- Yenilik koruması olmadan yeni açılan ürün haksız damgalanıyordu (ölçüldü).
@@ -374,7 +421,7 @@ public sealed partial class SatisAnaliziQueries(
                    CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
                    SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
                         THEN t.Tutar ELSE 0 END)) AS AsiriTutar
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
@@ -405,7 +452,7 @@ public sealed partial class SatisAnaliziQueries(
                    CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
                    SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
                         THEN t.Tutar ELSE 0 END)) AS AsiriTutar
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
@@ -441,7 +488,7 @@ public sealed partial class SatisAnaliziQueries(
                    CONVERT(bigint, SUM(CONVERT(bigint, t.OdakStok))) AS OdakStok
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
-              AND t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam AND t.OdakStok > 0{TazeSart(f)}
+              AND {AsiriStokSart} AND t.OdakStok > 0{TazeSart(f)}
             GROUP BY CASE WHEN t.LeadTime IS NULL THEN N'bilinmiyor'
                           WHEN t.LeadTime <= 3  THEN N'≤3 gün'
                           WHEN t.LeadTime <= 5  THEN N'4-5 gün'
