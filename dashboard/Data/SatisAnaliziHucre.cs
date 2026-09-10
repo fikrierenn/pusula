@@ -27,27 +27,55 @@ public static class SatisAnaliziHucre
         "leadtime" => s.LeadTime,
         "ilkgiris" => s.IlkGirisTarihi,
         "sonsatis" => s.SonSatisTarihi,
+        "talepdeseni" => s.TalepDeseniAd,
+        "satanay" => s.SatanAy,
         "songiris" => s.SonGirisTarihi,
         "stok_fsm" => s.StokFsm,
         "stok_ozl" => s.StokOzluce,
         "stok_ist" => s.StokIstyolu,
         "magaza_stok" => s.MagazaStok,
         "merkez_stok" => s.MerkezStok,
+        // ⚠ Kolon tanımı YOK (Models.SatisAnaliziKolonlar) → hiçbir çıktıda seçilemez.
+        // Silinmedi: satırda veri var, kolon eklenirse çalışır. Silmek öğrenilen eşlemeyi
+        // atmak olurdu.
         "merkez_cikis" => s.MerkezCikis,
         "satis_fsm" => s.SatisFsm,
         "satis_ozl" => s.SatisOzluce,
         "satis_ist" => s.SatisIstyolu,
         "satis" => s.SatisToplam,
         "gunluk" => s.GunlukOrtalamaSatis,
-        "ay1" => s.SezonAy1,
-        "ay2" => s.SezonAy2,
-        "ay3" => s.SezonAy3,
+        "sezon_ay1" => s.SezonAy1,
+        "sezon_ay2" => s.SezonAy2,
+        "sezon_ay3" => s.SezonAy3,
         "sezon" => s.SezonToplam,
-        "sezon_kapsama" => s.SezonKapsama,
+        "kapsama" => s.SezonKapsama,
         "gun_stok" => s.GunStok,
         "acilis" => s.AcilisTarihi,
         "yas" => s.YasYil,
         "odak_durum" => s.OdakSatisDurum,
         _ => null,
+    };
+
+    /// <summary>
+    /// EKRAN METNİ — <see cref="Deger"/>'in üstüne biçim. Razor'daki yerel kopya
+    /// kaldırıldı (10.09.2026); orada anahtarlar da FARKLI yazılmıştı ve iki yönlü sessiz
+    /// veri kaybı üretiyordu: ekranda <c>sonsatis</c>/<c>talepdeseni</c>/<c>satanay</c> boş,
+    /// Excel'de <c>kapsama</c> ve <c>sezon_ay1..3</c> boş. Anahtar kümesi artık tek:
+    /// kanonik kaynak <c>Models.SatisAnaliziKolonlar</c>.
+    /// </summary>
+    public static string Metin(SatisAnaliziSatir s, string anahtar) => Deger(s, anahtar) switch
+    {
+        null => "—",
+        string t => string.IsNullOrWhiteSpace(t) ? "—" : t,
+        DateTime d => d.ToString("dd.MM.yyyy"),
+        // Kapsama "x" ile yazılır (5,2x = sezon satışının 5,2 katı stok)
+        decimal v when anahtar == "kapsama" => v.ToString("N1") + "x",
+        double v when anahtar == "gunluk" => v.ToString("N2"),
+        decimal v when anahtar == "gunluk" => v.ToString("N2"),
+        decimal v => v.ToString("N0"),
+        double v => v.ToString("N2"),
+        int v => v.ToString("N0"),
+        long v => v.ToString("N0"),
+        var o => o.ToString() ?? "—",
     };
 }

@@ -173,6 +173,8 @@ public static class DurumAdlari
         [SatisDurumFiltre.Dengesiz] = "Mağaza arası dengesizlik → transfer",
         [SatisDurumFiltre.SezonAcik] = "Sezon stok açığı",
         [SatisDurumFiltre.SezonRafAcigi] = "Sezonluk raf açığı → transfer",
+        [SatisDurumFiltre.AraliklıTalep] = "Aralıklı talep (gün-stok geçersiz)",
+        [SatisDurumFiltre.DuzgunTalep] = "Düzgün talep (gün-stok geçerli)",
     };
 
     public static string Ad(SatisDurumFiltre d) => Hepsi.TryGetValue(d, out var a) ? a : d.ToString();
@@ -212,7 +214,16 @@ public enum SatisDurumFiltre
     /// <c>SezonAcik</c>'tan FARKLI: orada TOPLAM stok yetmiyor (sipariş gerekebilir),
     /// burada mal şirketin elinde ama yanlış yerde — eylem TRANSFER.
     /// </summary>
-    SezonRafAcigi
+    SezonRafAcigi,
+
+    /// <summary>
+    /// Talep-arası aralık ADI &gt; 1,32 (aralıklı/sıçramalı) — gün-stok ve günlük ortalama
+    /// satış bu ürünlerde GEÇERSİZ. Syntetos/Boylan/Croston 2005 eşiği.
+    /// </summary>
+    AraliklıTalep,
+
+    /// <summary>ADI ≤ 1,32 (düzgün/değişken) — panelin hız metrikleri yalnız burada geçerli.</summary>
+    DuzgunTalep
 }
 
 /// <summary>KPI şeridi. Karşı-metrikler YAN YANA durur (satinalma-danisman: tek yönlü metrik yasak).</summary>
@@ -296,6 +307,12 @@ public sealed record SatisAnaliziKpi(
     decimal SezonRafTutar,
     /// <summary>Sezonluk raf açığı olan ürünlerin merkezde bekleyen adedi (transferin hammaddesi).</summary>
     long SezonRafMerkezAdet,
+    /// <summary>Düzgün/değişken talepli çeşit (ADI ≤ 1,32) — gün-stok YALNIZ burada güvenilir.</summary>
+    int DuzgunTalepCesit,
+    decimal DuzgunTalepTutar,
+    /// <summary>Aralıklı/sıçramalı talepli çeşit (ADI &gt; 1,32) — gün-stok yanıltıcı.</summary>
+    int ArelikliTalepCesit,
+    decimal ArelikliTalepTutar,
     // Ürün bazında ETKİN GÜNE bölünüp toplanmış günlük hız (adet/gün). SQL'de hesaplanır;
     // burada yeniden bölme YAPILMAZ (kullanıcı uyarısı 09.09 — aşağıdaki nota bak).
     double PerakendeGunlukHiz = 0)
@@ -388,6 +405,10 @@ public sealed record SatisAnaliziSatir(
     /// ⚠ SIRA SÖZLEŞMESİ: Dapper konumsal record — SELECT'te de SatisToplam'dan
     /// hemen sonra gelmeli (yanlış yer → materialization patlar).</summary>
     DateTime? SonSatisTarihi,
+    /// <summary>Son 12 tam ayda satış olan ay sayısı (ADI = 12 / SatanAy). NULL = hiç satmadı.</summary>
+    int? SatanAy,
+    /// <summary>Sıfır-olmayan aylık talep büyüklüklerinin kareli değişim katsayısı (CV²).</summary>
+    decimal? TalepCV2,
     int SezonAy1,
     int SezonAy2,
     int SezonAy3,
@@ -448,8 +469,25 @@ public sealed record SatisAnaliziSatir(
     /// stoğun kendisi "Veri Kirli" KPI'sında ve mağaza kırılımında zaten görünüyor.
     /// (0 stok null DEĞİL: "0 gün" doğru ve bilgilendirici — raf boş demektir.)
     /// </summary>
-    public decimal? GunStok => SatisToplam <= 0 || EtkinGun < 28 || MagazaStok < 0 ? null
+    /// <summary>
+    /// Raf gün-stoğu. <b>ARALIKLI TALEPTE HESAPLANMAZ</b> (düzeltme 10.09.2026):
+    /// çeşitlerin %91,9'unda talep aralıklı ve orada "günlük ortalama satış" çoğu SIFIR olan
+    /// aylara yayılıyor → gün-stok anlamını yitiriyor. Ölçüt ADI ≤ 1,32
+    /// (Syntetos/Boylan/Croston 2005, yayınlanmış eşik). Sayı basmak yerine <c>null</c>
+    /// döner ve ekranda sebebi yazılır — uydurma sayıdan iyidir.
+    /// </summary>
+    public decimal? GunStok => SatisToplam <= 0 || EtkinGun < 28 || MagazaStok < 0
+            || !DuzgunTalep ? null
         : Math.Round((decimal)MagazaStok / GunlukOrtalamaSatis, 0);
+
+    /// <summary>Talep deseni düzgün/değişken mi (ADI ≤ 1,32)? Gün-stok yalnız o zaman geçerli.</summary>
+    public bool DuzgunTalep => SatanAy is > 0 && 12.0m / SatanAy.Value <= 1.32m;
+
+    /// <summary>Talep deseni adı — ekranda ve Excel'de.</summary>
+    public string TalepDeseniAd => SatanAy is null or 0 ? "satış yok"
+        : 12.0m / SatanAy.Value <= 1.32m
+            ? ((TalepCV2 ?? 0) <= 0.49m ? "düzgün" : "değişken")
+            : ((TalepCV2 ?? 0) <= 0.49m ? "aralıklı" : "sıçramalı");
 
     /// <summary>
     /// MERKEZ ÇIKIŞI SIÇRAMALI MI — kullanıcı uyarısı 09.09: "merkez çıkış spontane".
@@ -519,6 +557,16 @@ public static class SatisAnaliziKolonlar
             Ipucu: "BKMDATA.OdakUrunDurum.leadTime — ODAK'tan gelme süresi (ort. 5,03 gün)"),
         new("ilkgiris",   "İlk Giriş",  Varsayilan: false,
             Ipucu: "Ürünün MAĞAZAYA ilk girişi (merkez depoya giriş sayılmaz)"),
+        new("talepdeseni", "Talep Deseni", Varsayilan: false, Siralanabilir: false,
+            Ipucu: "Syntetos/Boylan/Croston sınıfı — düzgün · değişken · aralıklı · sıçramalı. "
+                 + "Ölçüt: talep-arası aralık ADI = 12 / (satış olan ay sayısı), eşik 1,32; "
+                 + "büyüklük değişkenliği CV², eşik 0,49. Bu eşikler YAYINLANMIŞTIR, bizim "
+                 + "verimizden türetilmedi. GÜN-STOK YALNIZ düzgün/değişken sınıfta geçerli — "
+                 + "ölçüldü 10.09.2026: çeşitlerin %91,9'u aralıklı ya da hiç satmıyor, orada "
+                 + "ortalama çoğu sıfır olan aylara yayılıyor."),
+        new("satanay",    "Satan Ay",   Varsayilan: false, Siralanabilir: true,
+            Ipucu: "Son 12 TAM ayda satış olan ay sayısı. 12 = her ay satmış; 1-2 = şiddetli "
+                 + "aralıklı. Gün-stok ve günlük ortalama satış bu sayı düşükken yanıltıcı."),
         new("sonsatis",   "Son Satış",  Varsayilan: false, Siralanabilir: true,
             Ipucu: "Son satış tarihi — 365 günlük pencere YOK. Boş = hiç satılmamış. "
                  + "Hareketsiz stokta asıl soru bu: hiç satmadı mı, satıyordu da durdu mu?"),

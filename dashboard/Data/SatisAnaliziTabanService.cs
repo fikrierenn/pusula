@@ -68,6 +68,10 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                 s2b = new DateTime(sezonYil, 9, 1),
                 s3b = new DateTime(sezonYil, 10, 1),
                 s3s = new DateTime(sezonYil, 10, 31),
+                // TALEP DESENİ penceresi — son 12 TAM ay (kesim ayı DIŞARIDA). Yarım ay
+                // "satış olan ay" sayısını bozar: ADI hem paydayı hem sınıfı kaydırırdı.
+                t12b = new DateTime(kesim.Year, kesim.Month, 1).AddMonths(-12),
+                t12s = new DateTime(kesim.Year, kesim.Month, 1),
                 Kategoriler = SatisAnaliziQueries.Kategori3Evreni,
             };
             var cmd = new CommandDefinition(DoldurSql, p, commandTimeout: 900, cancellationToken: ct);
@@ -185,6 +189,32 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
               AND h.ehTrhS >= @s1b AND h.ehTrhS < DATEADD(DAY, 1, @s3s)
             GROUP BY h.ehstkID
         ),
+        tdes AS (  -- TALEP DESENİ (Syntetos-Boylan-Croston) — son 12 TAM ay, aylık grain.
+            -- ⚠ NEDEN GEREKLİ (ölçüldü 10.09.2026): çeşitlerin %91,9'unda talep ARALIKLI ve
+            -- "günlük ortalama satış"/"gün-stok" orada YANILTICI — ortalama, çoğu SIFIR olan
+            -- aylara yayılıyor. Literatür talep BÜYÜKLÜĞÜNÜ ve TALEP-ARASI ARALIĞI ayrı
+            -- tahmin eder: Croston 1972 · Syntetos-Boylan 2005 (SBA) ·
+            -- Syntetos/Boylan/Croston 2005 (sınıflandırma) · Teunter/Syntetos/Babai 2011 (TSB).
+            -- Ham iki değer saklanır (SatanAy, CV²); SINIF kodda hesaplanır ki eşikler
+            -- (ADI 1,32 · CV² 0,49) tek yerde dursun ve taban yeniden kurulmadan değişebilsin.
+            -- ⚠ EŞİKLER YAYINLANMIŞ, veriden türetilmedi — Altman & Royston uyarısının
+            -- (veriden seçilen kesim farkı abartır) dışında kalmanın tek yolu bu.
+            SELECT a.stkID,
+                   COUNT(*) AS SatanAy,
+                   CONVERT(decimal(10,3), CASE WHEN AVG(a.Adet) > 0 AND COUNT(*) > 1
+                        THEN POWER(STDEV(a.Adet) / AVG(a.Adet), 2) ELSE 0 END) AS TalepCV2
+            FROM (
+                SELECT h.ehstkID AS stkID,
+                       DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1) AS Ay,
+                       CONVERT(decimal(18,4), -SUM(h.ehAdetN)) AS Adet
+                FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+                WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+                  AND h.ehTrhS >= @t12b AND h.ehTrhS < @t12s
+                GROUP BY h.ehstkID, DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1)
+                HAVING -SUM(h.ehAdetN) > 0
+            ) a
+            GROUP BY a.stkID
+        ),
         lt AS (    -- ODAK temin süresi. ⚠ ProductCode stkID DEĞİL → barkod zinciri (ölçüm %99,9)
             SELECT b.urnBrkdStkID AS stkID, MIN(d2.leadTime) AS leadTime, MAX(d2.saleStatus) AS saleStatus
             FROM BKMDATA.dbo.OdakUrunDurum d2 WITH (NOLOCK)
@@ -288,7 +318,7 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
              MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum,
              MerkezCikis, MerkezCikisGun,
              BirimMaliyet, PosAdet, PosNet, PosKdv, PosBrut, SonSatis,
-             SezonFsm, SezonOzl, SezonIst, MaliyetTarih)
+             SezonFsm, SezonOzl, SezonIst, MaliyetTarih, SatanAy, TalepCV2)
         SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.BarkodAna,
                CAST(k.stkAd AS nvarchar(120)), k.Yayinevi, k.Yazar, k.SatisFiyat,
                CONVERT(int, ISNULL(m.Fsm, 0)), CONVERT(int, ISNULL(m.Ozl, 0)), CONVERT(int, ISNULL(m.Ist, 0)),
@@ -310,7 +340,9 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                -- Mağaza bazlı sezon satışı — "Sezonluk Raf Açığı" kartının payı.
                CONVERT(int, ISNULL(z.SezonFsm, 0)), CONVERT(int, ISNULL(z.SezonOzl, 0)),
                CONVERT(int, ISNULL(z.SezonIst, 0)),
-               ml.MaliyetTarih
+               ml.MaliyetTarih,
+               -- Talep deseni ham girdileri (sınıf kodda hesaplanır)
+               td.SatanAy, td.TalepCV2
         FROM kat k
         LEFT JOIN mgz  m ON m.stkID = k.stkID
         LEFT JOIN depo d ON d.stkID = k.stkID
@@ -323,6 +355,7 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
         LEFT JOIN mlyt ml ON ml.stkID = k.stkID
         LEFT JOIN pos  ps ON ps.stkID = k.stkID
         LEFT JOIN sonsat ss ON ss.stkID = k.stkID
+        LEFT JOIN tdes td ON td.stkID = k.stkID
         WHERE ISNULL(m.Fsm,0) <> 0 OR ISNULL(m.Ozl,0) <> 0 OR ISNULL(m.Ist,0) <> 0 OR ISNULL(d.Merkez,0) <> 0
            OR ISNULL(s.Fsm,0) <> 0 OR ISNULL(s.Ozl,0) <> 0 OR ISNULL(s.Ist,0) <> 0
            OR ISNULL(z.Ay1,0) <> 0 OR ISNULL(z.Ay2,0) <> 0 OR ISNULL(z.Ay3,0) <> 0;

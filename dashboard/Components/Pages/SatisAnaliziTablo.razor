@@ -174,38 +174,16 @@
 
     private Task SayfaDegis(int sayfa) => FiltreDegisti.InvokeAsync(Filtre with { Sayfa = sayfa });
 
-    private static string Hucre(SatisAnaliziSatir s, string anahtar) => anahtar switch
-    {
-        "kategori3" => s.Kategori3,
-        "stkid" => s.StkId.ToString(),
-        "barkod" => s.BarkodAna ?? "—",
-        "ad" => s.StkAd,
-        "kategori1" => s.Kategori1,
-        "yayinevi" => s.Yayinevi ?? "—",
-        "yazar" => s.Yazar ?? "—",
-        "fiyat" => s.SatisFiyat.ToString("N0"),
-        "tutar" => s.ToplamStokTutar.ToString("N0"),
-        "stok" => s.ToplamStok.ToString("N0"),
-        "odak" => s.OdakStok.ToString("N0"),
-        "leadtime" => s.LeadTime?.ToString() ?? "—",
-        "ilkgiris" => s.IlkGirisTarihi?.ToString("dd.MM.yyyy") ?? "—",
-        "songiris" => s.SonGirisTarihi?.ToString("dd.MM.yyyy") ?? "—",
-        "stok_fsm" => s.StokFsm.ToString("N0"),
-        "stok_ozl" => s.StokOzluce.ToString("N0"),
-        "stok_ist" => s.StokIstyolu.ToString("N0"),
-        "magaza_stok" => s.MagazaStok.ToString("N0"),
-        "merkez_stok" => s.MerkezStok.ToString("N0"),
-        "satis_fsm" => s.SatisFsm.ToString("N0"),
-        "satis_ozl" => s.SatisOzluce.ToString("N0"),
-        "satis_ist" => s.SatisIstyolu.ToString("N0"),
-        "satis" => s.SatisToplam.ToString("N0"),
-        "gunluk" => s.GunlukOrtalamaSatis.ToString("N2"),
-        "sezon_ay1" => s.SezonAy1.ToString("N0"),
-        "sezon_ay2" => s.SezonAy2.ToString("N0"),
-        "sezon_ay3" => s.SezonAy3.ToString("N0"),
-        "sezon" => s.SezonToplam.ToString("N0"),
-        // ?? burada ISE YARAMAZDI: string birleştirme null dönmez → "—" hiç çıkmazdı.
-        "kapsama" => s.SezonKapsama is { } kp ? kp.ToString("N1") + "x" : "—",
-        _ => "",
-    };
+    /// <summary>
+    /// Hücre metni — ORTAK eşlemeden (<see cref="GmDashboard.Data.SatisAnaliziHucre"/>).
+    ///
+    /// ⚠ ÖNCE BURADA YEREL BİR KOPYA VARDI VE BAYATLAMIŞTI (düzeltildi 10.09.2026).
+    /// Excel ortak eşlemeyi kullanıyordu, ekran bu kopyayı — ikisi çatallandı: kopyada
+    /// `sonsatis` hiç yoktu ve yeni `talepdeseni` / `satanay` kolonları `_ => ""` dalına
+    /// düşüp ekranda BOŞ görünüyordu (Excel'de doğru geliyordu). Kolon eklenince iki yeri
+    /// güncellemek gerektiği hiçbir yerde yazılı değildi → sessiz boş kolon.
+    /// `emitter-ayrimi.md`: tek hesap çekirdeği, çoklu emitter — biçim tek yerde.
+    /// </summary>
+    private static string Hucre(SatisAnaliziSatir s, string anahtar) =>
+        GmDashboard.Data.SatisAnaliziHucre.Metin(s, anahtar);
 }

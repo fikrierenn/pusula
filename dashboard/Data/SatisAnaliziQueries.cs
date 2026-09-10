@@ -270,6 +270,51 @@ public sealed partial class SatisAnaliziQueries(
     /// </summary>
     private const string DefterGuvenilmezSart = "(NOT " + DefterGuvenilirSart + ")";
 
+    /// <summary>
+    /// TALEP DESENİ SINIFLARI — Syntetos/Boylan/Croston (2005) dörtlü sınıflandırması.
+    /// Eşikler <b>ADI = 1,32</b> (ortalama talep-arası aralık, ay) ve <b>CV² = 0,49</b>
+    /// (sıfır-olmayan talep büyüklüklerinin kareli değişim katsayısı).
+    ///
+    /// ⚠⚠ BU EŞİKLER YAYINLANMIŞTIR, VERİDEN TÜRETİLMEDİ — ve bu bilinçli bir seçim.
+    /// Altman &amp; Royston (2006) uyarısı: veriden seçilen "optimal kesim" gruplar arası
+    /// farkı abartır ve tekrarlanabilirliği düşüktür. Panelin diğer üç eşiği (aşırı stok 3× ·
+    /// sezon 0,50 · raf kaybı 5 satış) o uyarıya tabidir; bu ikisi DEĞİL, çünkü dışarıdan
+    /// gelir ve BKM verisine bakılarak seçilmemiştir.
+    ///
+    /// NEDEN GEREKLİ — ÖLÇÜLDÜ 10.09.2026 (Eyl 2025 – Ağu 2026, 12 tam ay, 275.385 çeşit):
+    ///   hiç satmadı  121.411 (%44,1) · stok <b>194,6M ₺</b> (%19,1) · satış 4.027
+    ///   DÜZGÜN        11.156  (%4,1) · stok 139,7M (%13,7) · satış <b>1.946.808</b>
+    ///   DEĞİŞKEN       6.671  (%2,4) · stok 160,6M (%15,7) · satış 1.572.201
+    ///   ARALIKLI     121.590 (%44,2) · stok <b>396,6M ₺</b> (%38,8) · satış 944.251
+    ///   SIÇRAMALI     14.557  (%5,3) · stok 129,4M (%12,7) · satış 667.757
+    /// ⇒ Satışın <b>%68,5'i</b> yalnız %6,5 çeşitten (DÜZGÜN+DEĞİŞKEN) geliyor; stoğun
+    ///   <b>%57,9'u (591,2M ₺)</b> aralıklı ya da hiç satmayan çeşitlerde ve satışın oradan
+    ///   payı yalnız %18,5.
+    /// ⇒ "Gün-stok" ve "günlük ortalama satış" YALNIZ ADI ≤ 1,32 olan %6,5'te güvenilir.
+    ///
+    /// Kaynak: Croston 1972 · Syntetos-Boylan 2005 (SBA, Croston'ın yanlılığını düzeltir) ·
+    /// Syntetos/Boylan/Croston 2005 (sınıflandırma) · Teunter/Syntetos/Babai 2011 (TSB,
+    /// eskime için sıfır-talep olasılığını ayrı izler).
+    /// ⚠ SBA/TSB TAHMİNİ YAPILMADI — panel yalnız SINIFLANDIRMAYI kullanıyor; sipariş
+    /// önerisi üretmiyor. Sınıflandırma "bu metrik burada geçerli mi" sorusunu cevaplar.
+    /// </summary>
+    private const string TalepADI = "(12.0 / NULLIF(t.SatanAy, 0))";
+
+    /// <summary>Talep deseni sınıfı — 0 hiç satmadı · 1 düzgün · 2 değişken · 3 aralıklı · 4 sıçramalı.</summary>
+    private const string TalepSinifiSql =
+        "CASE WHEN t.SatanAy IS NULL OR t.SatanAy = 0 THEN 0 " +
+        "     WHEN " + TalepADI + " <= 1.32 AND ISNULL(t.TalepCV2, 0) <= 0.49 THEN 1 " +
+        "     WHEN " + TalepADI + " <= 1.32 THEN 2 " +
+        "     WHEN ISNULL(t.TalepCV2, 0) <= 0.49 THEN 3 " +
+        "     ELSE 4 END";
+
+    /// <summary>
+    /// GÜN-STOK GÜVENİLİR Mİ — yalnız ADI ≤ 1,32 (düzgün/değişken talep). Aralıklı talepte
+    /// ortalama çoğu SIFIR olan aylara yayılır ve gün-stok anlamını yitirir.
+    /// </summary>
+    private const string GunStokGuvenilirSart =
+        "(t.SatanAy IS NOT NULL AND t.SatanAy > 0 AND " + TalepADI + " <= 1.32)";
+
     private const string DefterGuvenilirSart =
         "(t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 " +
         "AND t.MerkezStok >= 0 AND t.SatisFiyat > 0)";
@@ -568,6 +613,13 @@ public sealed partial class SatisAnaliziQueries(
                    -- birincil değerde; ikinci kez tutar göstermek bilgi eklemiyordu).
                    CONVERT(bigint, SUM(CASE WHEN {RafsizSart}
                         THEN t.MerkezStok ELSE 0 END))                                AS RafsizAdet,
+                   -- TALEP DESENİ — "gün-stok burada geçerli mi" sorusunun cevabı.
+                   SUM(CASE WHEN ({TalepSinifiSql}) IN (1, 2) THEN 1 ELSE 0 END)      AS DuzgunTalepCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN ({TalepSinifiSql}) IN (1, 2)
+                        THEN t.Tutar ELSE 0 END))                                     AS DuzgunTalepTutar,
+                   SUM(CASE WHEN ({TalepSinifiSql}) IN (3, 4) THEN 1 ELSE 0 END)      AS ArelikliTalepCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN ({TalepSinifiSql}) IN (3, 4)
+                        THEN t.Tutar ELSE 0 END))                                     AS ArelikliTalepTutar,
                    -- SEZONLUK RAF AÇIĞI (ölçüt: SezonRafAcigiSart, tek yer)
                    SUM(CASE WHEN {SezonRafAcigiSart} THEN 1 ELSE 0 END)               AS SezonRafCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart}
@@ -635,6 +687,10 @@ public sealed partial class SatisAnaliziQueries(
             SezonRafCesit: satirlar.Sum(x => x.SezonRafCesit),
             SezonRafTutar: satirlar.Sum(x => x.SezonRafTutar),
             SezonRafMerkezAdet: satirlar.Sum(x => x.SezonRafMerkezAdet),
+            DuzgunTalepCesit: satirlar.Sum(x => x.DuzgunTalepCesit),
+            DuzgunTalepTutar: satirlar.Sum(x => x.DuzgunTalepTutar),
+            ArelikliTalepCesit: satirlar.Sum(x => x.ArelikliTalepCesit),
+            ArelikliTalepTutar: satirlar.Sum(x => x.ArelikliTalepTutar),
             // Hızlar ürün bazında kendi raf süresine bölünüp SQL'de toplandı → burada topla, BÖLME.
             PerakendeGunlukHiz: satirlar.Sum(x => x.GunlukHiz));
 
@@ -800,6 +856,11 @@ public sealed partial class SatisAnaliziQueries(
         decimal PosNetKdvHaric, decimal SatilanMaliyet,
         decimal PosBrutToplam, decimal PosNetToplam, int MarjCesit,
         int HicSatilmamisCesit, decimal HicSatilmamisTutar, long RafsizAdet,
+        // ⚠ SIRA SQL SELECT SIRASIYLA AYNI OLMAK ZORUNDA — Dapper pozisyonel record'da
+        // isim değil SIRA eşler. Talep deseni agregaları SQL'de RafsizAdet'ten HEMEN SONRA
+        // geliyor; burada SezonRaf'tan sonraya yazılınca materialization patladı (10.09).
+        int DuzgunTalepCesit, decimal DuzgunTalepTutar,
+        int ArelikliTalepCesit, decimal ArelikliTalepTutar,
         int SezonRafCesit, decimal SezonRafTutar, long SezonRafMerkezAdet);
 }
 

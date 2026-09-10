@@ -40,6 +40,7 @@ public sealed partial class SatisAnaliziQueries
         ["sezon_ay3"] = "t.Ay3",
         ["ilkgiris"] = "t.IlkGiris",
         ["sonsatis"] = "t.SonSatis",
+        ["satanay"] = "t.SatanAy",
         ["songiris"] = "t.SonGiris",
         ["acilis"] = "t.AcilisTarihi",
     };
@@ -58,6 +59,8 @@ public sealed partial class SatisAnaliziQueries
         t.StokFsm, t.StokOzl AS StokOzluce, t.StokIst AS StokIstyolu, t.MagazaStok, t.MerkezStok,
         t.SatisFsm, t.SatisOzl AS SatisOzluce, t.SatisIst AS SatisIstyolu, t.SatisToplam,
         t.SonSatis AS SonSatisTarihi,
+        -- TALEP DESENİ ham girdileri (sınıf kodda hesaplanır; ADI = 12 / SatanAy)
+        t.SatanAy, t.TalepCV2,
         t.Ay1 AS SezonAy1, t.Ay2 AS SezonAy2, t.Ay3 AS SezonAy3, t.SezonToplam,
         t.LeadTime, t.OdakDurum AS OdakSatisDurum,
         -- MERKEZ ÇIKIŞI (365g) — toptan/grup, tüketici talebi DEĞİL. Gün-stok kapsam
@@ -856,6 +859,10 @@ public sealed partial class SatisAnaliziQueries
             SatisDurumFiltre.Dengesiz => DengesizSart,
             SatisDurumFiltre.SezonAcik => SezonHazirlikSart,
             SatisDurumFiltre.SezonRafAcigi => SezonRafAcigiSart,
+            // Talep deseni — panelin hız metriklerinin geçerli olduğu/olmadığı küme.
+            SatisDurumFiltre.DuzgunTalep => GunStokGuvenilirSart,
+            SatisDurumFiltre.AraliklıTalep =>
+                "(t.SatanAy IS NOT NULL AND t.SatanAy > 0 AND NOT " + GunStokGuvenilirSart + ")",
             _ => null,
         };
         if (durumSart is not null) sartlar.Add(durumSart);

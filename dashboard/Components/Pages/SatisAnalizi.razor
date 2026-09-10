@@ -61,168 +61,119 @@
     </div>
 }
 
-@* ── Kapsam uyarıları — ölçülmüş sınırlar, gizlenmez ──────────────────────── *@
+@* ── Kapsam bandı — DÖRT BÖLÜM ───────────────────────────────────────────────
+   YENİDEN KURULDU 10.09.2026. Kullanıcı: "burası çok fazla ve çok karışık değil mi" —
+   haklıydı: 20 madde tek listede birikmişti, başlık hâlâ "7 ölçülmüş sınır" diyordu
+   (ekranda YANLIŞ SAYI) ve üç ayrı tür içerik karışmıştı:
+     (a) panelin neyi ölçmediği · (b) sayıların ne kadar güvenilir olduğu ·
+     (c) eşiklerin nasıl kurulduğu · (d) o gün yapılan düzeltmeler.
+   `sunum-dili` kuralı ihlal edilmişti (cümle ≤15 kelime, dipnot ≤2 cümle).
+   ⚠ AYRINTI SİLİNMEDİ, TAŞINDI: her ölçümün tam dökümü ilgili ölçüt sabitinin XML
+   yorumunda, sema/metrics.yaml'da ve sorgular/2026-09-10-*.sql arşivinde duruyor.
+   Ekranda karar için gereken kalıyor. *@
 <details class="collapse collapse-arrow bg-warning/15 border border-warning/40 rounded-2xl mb-3">
     <summary class="collapse-title text-xs font-semibold py-2.5 min-h-0 cursor-pointer">
-        Bu tablonun sınırları — <b>merkez stok anlık</b> · <b>ODAK bizim envanterimiz değil</b>
-        <span class="opacity-60">(7 ölçülmüş sınır · aç)</span>
+        Bu tablonun sınırları — <b>merkez stok anlık</b> · <b>çeşitlerin %92'si aralıklı talep</b>
+        <span class="opacity-60">(4 bölüm · aç)</span>
     </summary>
     <div class="collapse-content text-xs">
+
+        <p class="font-semibold uppercase tracking-wider opacity-60 mt-1 mb-1">
+            Panel neyi ölçmez
+        </p>
+        <ul class="list-disc ml-4 space-y-0.5">
+            <li><b>Kişi performansını ölçmez.</b> Kararı kimin verdiği bu veride yok
+                (alıcı boyutu yalnız <code>bkm.OneriSiparisTalep</code>'te). Hiçbir sayı
+                kişiye atfedilemez.</li>
+            <li><b>Merkez stoğu anlık.</b> Geçmiş kesim seçilse bile bugünün WMS değeri —
+                WMS geçmiş snapshot tutmuyor.</li>
+            <li><b>ODAK stoğu bizim değil.</b> Grup şirketi ama tedarikçi; toplama girmez,
+                yalnız "temin edilebilir" sinyali.</li>
+            <li><b>Stok tutarı satış fiyatıyla.</b> Bağlanan para değil; maliyetli değer ayrı
+                ölçülüyor (kapsam %94,7).</li>
+            <li><b>Yolda stok hiçbir mekanda görünmez.</b> Depodan çıkmış, mağaza kabul
+                etmemiş mal. Ölçüldü: 1.869 çeşit / 53.602 adet, tamamı son 2 günden.</li>
+            <li><b>İade hakkı veride izli değil</b> (<code>urn.alimIadeYok</code> sabit) →
+                aşırı stok iade hakkına göre kırılamıyor.</li>
+            <li><b>Merkez için gün-stok hesaplanmıyor.</b> Çıkış sıçramalı (çeşitlerin %67'si
+                tek günde) ve tüketici talebi değil: %72 grup şirketi · %16 ODAK · %6 Sınav.</li>
+            <li><b>365 günlük satış ile sezon kısmen örtüşür</b> — toplanmaz, çıkarılmaz.</li>
+        </ul>
+
+        <p class="font-semibold uppercase tracking-wider opacity-60 mt-3 mb-1">
+            Sayılar ne kadar güvenilir
+        </p>
+        <ul class="list-disc ml-4 space-y-0.5">
+            <li><b>Çeşitlerin %91,9'unda gün-stok geçersiz.</b> Talep aralıklı; düzgün talepli
+                yalnız %8,1. Aralıklı talepte ortalama, çoğu sıfır olan aylara yayılır. Panel
+                o ürünlerde gün-stok basmaz.
+                <span class="opacity-60">(Croston 1972 · Syntetos-Boylan 2005)</span></li>
+            <li><b>Defter doğruluğu ölçülmüş değil.</b> Ayıklanan 327 çeşit yalnız aritmetik
+                olarak imkânsız kayıtlar. Literatürde kayıt-fiziksel uyuşmazlığı SKU'ların
+                %50-70'inde; gerçek sapma yalnız fiziksel sayımla bilinir.
+                <span class="opacity-60">(DeHoratius &amp; Raman)</span></li>
+            <li><b>Kayıp satış tutarları alt sınırdır.</b> Talep vekili geçen yılın satışı; o
+                satış da stok tükenince kesilmiş (sağdan sansürlü).
+                <span class="opacity-60">(Anupindi/Dada/Gupta 1998)</span></li>
+            <li><b>Marj maliyetin yaşını taşır.</b> Satış 365 günlük, maliyet bugünkü. Maliyet
+                yaşına göre marj %24,4 (&lt;3 ay) → %63,0 (2+ yıl). Enflasyon ile yavaş devir
+                ayrıştırılamıyor; net satışta etkisi %9,3.</li>
+            <li><b>Kart tutarları TOPLANMAZ.</b> Üç ayrı taban: stok değeri · kayıp potansiyeli ·
+                kâr. Aynı çeşit birden çok kartta olabilir (6.170 çeşit ≥2 kartta; Aşırı Stok ∩
+                Ölü Stok 1.842 çeşit / 6,2M ₺). Çelişki değil teşhis.</li>
+            <li><b>Devir hızımız sektör hedefinin altında.</b> Kitap 1,28 · Kırtasiye 1,25 ·
+                Dergi 5,95; yayınlanmış kitapçı hedefi 3,0-4,0.
+                <span class="opacity-60">Kıyas ticari kaynak, akademik ölçüm değil; BKM saf
+                kitapçı değil. Eşik bu yüzden sektöre çekilmedi.</span></li>
+        </ul>
+
+        <p class="font-semibold uppercase tracking-wider opacity-60 mt-3 mb-1">
+            Eşikler nasıl kuruldu
+        </p>
+        <ul class="list-disc ml-4 space-y-0.5">
+            <li><b>Aşırı stok 3×</b> — stoğun sonraki 12 ayda satılan oranı 3×'te 1,0'ın altına
+                düşüyor, yani 3× "bir yıldan fazla stok" demek.</li>
+            <li><b>Sezon açığı 0,50</b> — altında önceki yıl talebinin en az %39'u
+                gerçekleşmiyor.</li>
+            <li><b>Raf kaybı: yılda 5+ satış.</b> Ayraç talep, merkez stoğu değil — merkez
+                ekseninde desen monoton bile değildi, o ölçüt reddedildi. Talep kanıtı olmayan
+                8.736 çeşit bulunurluk kaybı değil <b>ölü stok</b>.</li>
+            <li><b>Talep sınıfı eşikleri dışarıdan</b> (ADI 1,32 · CV² 0,49) — bizim verimizden
+                türetilmedi.</li>
+            <li><b>Veriden seçilen eşiğin bedeli:</b> ilk üçü aynı veriden seçildi. Bu yöntem
+                gruplar arası farkı abartır ve tekrarlanabilirliği düşüktür. Eşikler kohort
+                <b>listesi</b> üretir; kesimdeki oran farkı bir <b>etki ölçüsü değildir</b>.
+                Trendler Cochran-Armitage ve Wilson aralıklarıyla sınandı.
+                <span class="opacity-60">(Altman &amp; Royston 2006)</span></li>
+            <li><b>Kategori bazlı eşik henüz yok</b> — <code>bkm.OneriSiparisKtg3Ondeger</code>
+                boş. Dolunca Kırtasiye ile Dergi aynı 3×'i paylaşmaz.</li>
+            <li><b>Ters nedensellik giderilmedi:</b> alıcı çok satmasını beklediğine çok stok
+                koyar.</li>
+        </ul>
+
+        <p class="font-semibold uppercase tracking-wider opacity-60 mt-3 mb-1">
+            10.09.2026 düzeltmeleri
+        </p>
         <ul class="list-disc ml-4 space-y-0.5 pb-1">
-            @* ATIF SINIRI — kurulun 6. sorusu (satinalma-danisman 09.09). KPI şeridinin
-               ÜSTÜNDE ayrı satır olarak duruyordu; kalıcı bir METODOLOJİ beyanı olduğu için
-               (durum değil) her yüklemede birinci sınıf yer tutmasına gerek yok → bandın
-               İLK maddesi. Yazılmazsa "154M ₺ hareketsiz stok"u okuyan yönetici birini arar
-               ve panel, taşıyamadığı bir atfı mümkün kılmış olur. *@
-            <li><b>Bu panel stok DURUMUNU ölçer, kişi performansını ölçmez</b> — kararı kimin
-                verdiği bu veride yok (alıcı boyutu yalnız <code>bkm.OneriSiparisTalep</code>'te).
-                Hiçbir sayı kişiye atfedilemez.</li>
-            <li><b>Merkez depo stoğu ANLIK</b> — geçmiş kesim seçilse bile bugünün WMS değeri
-                (WMS geçmiş snapshot tutmuyor).</li>
-            <li><b>ODAK stoğu toplama dâhil değil</b> — ODAK grup şirketi ama <b>tedarikçi</b>;
-                o stok bizim envanterimiz değil, <b>temin edilebilirlik</b> sinyali.</li>
-            <li><b>Gün-stok RAF bazında</b> — pay mağaza stoğu, payda mağaza satışı (aynı kapsam).
-                Merkez depo <b>ayrı</b> ölçülür: yılda @_ozet?.Kpi.MerkezCikis365.ToString("N0") adet çıkış,
-                ama bu çıkış <b>sıçramalı</b> (ölçüldü: çeşitlerin %67'si tek günde çıkmış) →
-                merkez için gün-stok <b>hesaplanmıyor</b>; ortalamaya bölmek sahte güven üretir. Bu çıkış
-                <b>tüketici talebi değil</b>: %72 grup şirketi · %16 ODAK (e-ticaret) · %6 Sınav.
-                <b>E-ticaret stoğu bizde değil ODAK'ta</b> → o talep paydaya eklenmez; bizim payımız
-                ODAK'a yapılan satış olarak merkez çıkışının içinde.
-                @if (_ozet?.Kpi.MerkezCikisEvrenDisi > 0)
-                {
-                    <span class="block mt-0.5">
-                        ⚠ Bu sayı <b>panelin evreni</b> içindir. Kategori filtresi yüzünden
-                        görünmeyen ürünlerde <b>@_ozet.Kpi.MerkezCikisEvrenDisi.ToString("N0")</b> adet
-                        daha merkez çıkışı var (ölçüldü) — listede ve KPI'da yok.
-                    </span>
-                }</li>
-            <li><b>365g satış ile sezon kısmen örtüşür</b> — toplanmaz/çıkarılmaz.</li>
-            @* YOLDA STOK — kart YAPILMADI, açıklama olarak duruyor (ölçüm kararı verdi).
-               Kurul (satinalma-danisman 09.09) "kart mı" diye sormuştu; ölçüm 10.09:
-               eşleşmeyen transfer 2.389 satır / 1.869 çeşit / 53.602 adet, TAMAMI son
-               2 günden (en eski 08.09), 14 GÜNDEN ESKİ HİÇ YOK. Yani kabul ~2 günde
-               tamamlanıyor → yönetim problemi değil zamanlama artefaktı; kart hak etmiyor.
-               Ama toplamda görünmediği için beyan edilir. Aynı ölçüm, "Mağazalar Arası
-               Transfer" kartındaki 14 günlük muhafızın YETERLİ olduğunu da kanıtlıyor. *@
-            <li><b>Yolda stok toplamda YOK</b> — depodan çıkmış, mağaza henüz kabul etmemiş
-                mal hiçbir mekanda görünmez (transferin karşı bacağı kabulde oluşuyor).
-                Ölçüldü 10.09.2026: <b>1.869 çeşit / 53.602 adet</b>; tamamı son 2 günden,
-                14 günden eski yok → kabul normalde ~2 günde tamamlanıyor.</li>
-            <li><b>Stok tutarı SATIŞ fiyatıyla</b> — bağlanan para (maliyet) değil.</li>
-            <li><b>İade hakkı veride izli değil</b> (<code>urn.alimIadeYok</code> sabit) → "aşırı stok"
-                iade hakkına göre kırılamıyor. Eşikler sayfasında iade kuralı kodları girilirse açılır.</li>
-            <li><b>Veriden türetilen eşiklerin bedeli beyan edilir.</b> Panelin üç eşiği
-                (aşırı stok 3× · sezon açığı 0,50 · raf kaybı yılda 5 satış) aynı veriden
-                seçildi. Bu yöntem literatürde eleştirilir: veriden seçilen "optimal kesim"
-                gruplar arası farkı <b>abartır</b> ve tekrarlanabilirliği düşüktür
-                (Altman &amp; Royston 2006 · Royston/Altman/Sauerbrei 2006). Eşikler kohort
-                LİSTESİ üretmek için kullanılır; kesimdeki oran farkı bir <b>etki ölçüsü
-                değildir</b>. Trendler Cochran-Armitage testi ve Wilson güven aralıklarıyla
-                sınandı — merkez stoğu ekseninde p çok küçük olmasına rağmen desen monoton
-                olmadığı için o ölçüt REDDEDİLDİ.</li>
-            <li><b>Aşırı stok eşiği 3× sezon</b> — veriden türetildi (10.09.2026): 2024
-                stoğunun sonraki 12 ayda satılan oranı 3×'te 1,0'ın altına düşüyor, yani 3×
-                "bir yıldan fazla stok" demek. Sezon açığı eşiği <b>0,50</b> da ölçüldü: altında
-                önceki yıl talebinin en az %39'u gerçekleşmiyor. İkisinde de <b>ters nedensellik</b>
-                giderilmedi — alıcı çok satmasını beklediğine çok stok koyar. Kategori bazlı hedef
-                gün-stok politikası (<code>bkm.OneriSiparisKtg3Ondeger</code>) hâlâ <b>boş</b>;
-                dolduğunda eşik kategoriye göre farklılaşır.</li>
-            <li><b>Aylık grafikler son 12 TAM ay</b> (10.09.2026 düzeltmesi) — eskiden
-                <code>kesim−364</code> idi ve iki yarım ay üretiyordu: Eyl 2025 21/30 gün,
-                Eyl 2026 9/30 gün. Grafikten okunan yıllık düşüş −%38,5 görünüyordu, aynı
-                9 güne göre gerçek −%20,9. <b>Manşetteki 365 günlük satış DEĞİŞMEDİ</b>
-                (kaynak Excel raporuyla süreklilik) — 12 tam ay olsa +%1,5 fark.</li>
-            <li><b>Açık sipariş yalnız satın alma</b> (10.09.2026 düzeltmesi) —
-                <code>dbo.sip</code> tüm sipariş türlerini taşıyor ve süzgeç yoktu; gösterilen
-                adedin <b>%86'sı</b> satın alma değildi (alış iade emri, müşteri siparişi, iç
-                transfer). Uyarı alan 37.168 ürünün 17.139'unda (%46) gerçek alış siparişi
-                sıfırdı. Karşılanma oranı hâlâ ölçülemiyor (<code>ehSevkAdet</code> boş).</li>
-            <li><b>Sezonluk raf açığı yalnız TAM karşılananları sayar</b> (10.09.2026
-                düzeltmesi) — merkez stoğu eksik adedi karşılamıyorsa eylem transfer değil
-                <b>alım</b>dır; o çeşitler Sezon Stok Açığı kartında. Ölçüldü: eski ölçütte
-                622 çeşit / 5,79M ₺ (tutarın %74'ü) yanlış grupta görünüyordu; en uçta 120
-                çeşidin kaybı 3,49M ₺ iken merkezde topu topu 306 adet vardı.
-                Negatif raf stoğu da artık "boş raf" sayılmıyor — negatif defter hatasıdır,
-                fiziksel boşluk kanıtı değil.</li>
-            <li><b>"Gir çık" kartları rakamı bozabilir</b> — bazı ürünler tek fiyat kartından
-                satılıyor, mal girişi o karta yazılmıyor: defter kronik negatife gidiyor
-                (ölçüldü stkID 643638 "Missim Bijuteri 49,50 Tl": 11 alış hareketi karşısında
-                1.106 satış hareketi, raf −502, merkez 1). Evrende <b>313 çeşit / 931.395 ₺</b>
-                negatif raf taşıyor; "Veri kirli" filtresinden görülür.</li>
-            <li><b>ÇEŞİTLERİN %91,9'U ARALIKLI TALEP — "günlük ortalama satış" ve
-                "gün-stok" onlarda yanıltıcı.</b> Ölçüldü (Eyl 2025 – Ağu 2026, 12 tam ay,
-                satış olan ay sayısı): hiç satmayan <b>%44,1</b> (121.411 çeşit) · yılda
-                1-2 ay satan <b>%27,9</b> (76.912) · 3-4 ay %10,0 · 5-8 ay %9,8 ·
-                <b>düzgün talep yalnız %8,1</b> (22.430 çeşit; talep-arası aralık ADI ≤ 1,33 —
-                Syntetos/Boylan/Croston sınıflandırma eşiği). Aralıklı talepte ortalama, çoğu
-                SIFIR olan aylara yayılır; literatür bu yüzden talep büyüklüğünü ve
-                talep-arası aralığı AYRI tahmin eder (Croston 1972 · Syntetos-Boylan 2005;
-                eskime için Teunter/Syntetos/Babai 2011). Panelde bu ayrıştırma YAPILMADI →
-                ürün bazlı gün-stok yalnız düzgün talepli %8,1'de güvenilir; kategori
-                toplamlarında (agregada) daha savunulabilir.</li>
-            <li><b>Devir hızımız sektör hedef aralığının altında.</b> Ölçülen yıllık devir
-                (mağaza stoğu ÷ 365 günlük mağaza satışı, adet): Dergi 5,95 · Oyuncak 3,29 ·
-                Hazırlık Kitapları 3,16 · Hediyelik 2,11 · Çocuk Kitabı 2,09 · Elektronik 1,91 ·
-                Akademi 1,35 · <b>Kitap 1,28</b> · <b>Kırtasiye 1,25</b>. Yayınlanmış kitapçı
-                hedefi <b>3,0-4,0</b> (yüksek performanslı 4-6). Kitap ve Kırtasiye hedefin
-                ~%32-42'sinde dönüyor; Kitap'ta 285 gün-stok ≈ 9,4 ay.
-                ⚠ Kıyas kaynağı ticari/sektör yayını, akademik ölçüm DEĞİL — ve BKM saf
-                kitapçı değil (kırtasiye + sınav okulları + grup şirketi mal akışı).
-                <b>Bu yüzden aşırı stok eşiği sektör hedefine çekilmedi:</b> 3× eşiğimiz
-                yıllık devir 1,0'a denk, sektör hedefi ise ~0,25-0,33× kapsamaya karşılık
-                gelirdi ve kohorta 200 binden fazla çeşit girip liste işe yaramaz hâle gelirdi.
-                Fark bilinçli ve burada beyan ediliyor.</li>
-            <li><b>Defter doğruluğu ÖLÇÜLMÜŞ DEĞİL — yalnız aritmetik olarak imkânsız
-                kayıtlar ayıklandı.</b> Panelin "doğrulanamıyor" sayısı (327 çeşit, %0,12)
-                negatif stok / fiyatı 0 olanlardır. Literatürde perakendede kayıt-fiziksel
-                uyuşmazlığı (<i>inventory record inaccuracy</i>) SKU'ların <b>%50-70'inde</b>
-                görülüyor (DeHoratius &amp; Raman: 369.567 kaydın %65'i hatalı; hataların
-                %41'i "fiziksel stok kayıttan fazla" yönünde) ve "hayalet stok" kaynaklı
-                satış kaybı yıllık cironun ~%4'ü olarak ölçülmüş. Bizim %0,12 rakamı
-                DOĞRULUK ORANI DEĞİL, işaret ihlali oranıdır — gerçek sapma yalnız
-                <b>fiziksel sayımla</b> bilinir ve muhtemelen çok daha büyüktür.</li>
-            <li><b>Kayıp satış tahminleri ALT SINIRDIR</b> — talep vekili olarak geçen yılın
-                GERÇEKLEŞEN satışı kullanılıyor, ama o satış da stok tükendiği günlerde
-                kesilmiş (istatistikte <i>sağdan sansürlü</i>). Sansürlü talebi geri
-                kazanmanın kabul görmüş yolu EM tabanlı talep tahmini ve ikame modellemesidir
-                (Anupindi/Dada/Gupta 1998 · Conlon &amp; Mortimer); panelde uygulanmadı.
-                Dolayısıyla Sezon Stok Açığı ve Stokta Yokluk tutarları gerçek kaybın
-                <b>altındadır</b>, üstünde değil.</li>
-            <li><b>Raf bulunurluk kaybında ayraç TALEP, merkez stoğu değil</b>
-                (10.09.2026, geriye dönük ölçüm) — 01.08.2025 as-of'unda rafı boş + merkezinde
-                mal olan ürünlerin sonraki 12 ayda satma oranı: merkez adedine göre %3,2-11,9
-                arası dolanıyor ve <b>tek yönlü bile değil</b>; önceki yıl talebine göre ise
-                talep kanıtı yok <b>%3,5</b> → 1-4 adet %13,3 → <b>5-19 adet %38,4</b> →
-                20-49 %57,4 → 50+ %60,0. Ölçüt bu yüzden <b>yılda 5+ satış</b>; eski
-                "merkezde 5+ adet" şartı ölçümle desteklenmiyordu. Talep kanıtı olmayan
-                8.736 çeşit bulunurluk kaybı DEĞİL ölü stoktur.</li>
-            <li><b>Gerçekleşen marj maliyetin YAŞINI taşır</b> (10.09.2026 denetimi, B11) —
-                birim maliyet tarih penceresi olmadan "son 5 alış faturası"ndan gelir, yani
-                BUGÜNKÜ maliyettir; payı olan POS satışı ise 365 günlüktür. Maliyet yaşına
-                göre ölçülen marj: <b>&lt;3 ay %24,4</b> (net satışın %58'i) · 3-6 ay %36,5 ·
-                6-12 ay %40,0 · 1-2 yıl %44,1 · <b>2+ yıl %63,0</b>. İki mekanizma aynı yöne
-                çalışıyor ve <b>ayrıştırılamıyor</b>: enflasyon (eski maliyet düşük → marj
-                şişkin) ve yavaş dönen ürünün zaten yüksek marjlı olması. Maliyet yeniden
-                değerlenmedi — uydurma olurdu. Etki sınırlı: maliyeti 1 yıldan eski çeşit payı
-                %28,7 ama net satış payı yalnız <b>%9,3</b>.</li>
-            <li><b>Kartların tutar tabanı ÜÇ FARKLI ŞEY</b> — her kartta yazılı, toplanamaz:
-                <i>stok değeri</i> (elimizdeki malın etiketi) · <i>kayıp potansiyeli</i>
-                (olmayan satış) · <i>kâr</i>. Aynı çeşit birden çok kartta görünebilir —
-                ölçüldü: <b>6.170 çeşit ≥2 kartta</b>, 278'i ≥3'te; Aşırı Stok ∩ Ölü Stok
-                1.842 çeşit / <b>6,2M ₺ iki kartta birden</b>. Bu çelişki değil teşhistir
-                (aynı mal hem fazla hem satmıyor), ama tutarlar TOPLANMAZ.</li>
-            <li><b>Defteri şüpheli kayıtlar kayıp/eylem kartlarından ÇIKARILDI</b>
-                (10.09.2026 denetimi) — negatif raf/merkez stoğu ya da fiyatı 0 olan
-                <b>327 çeşit</b>. Negatif stok fiziksel bir durum değil, defter hatasıdır:
-                mal girişi karta yazılmamış, satış yazılmıştır. Etkisi orantısızdı — Stokta
-                Yokluk kartında 49 çeşit <b>1.972.350 ₺</b> (kartın %8,5'i) şişirme yapıyordu.
-                Envanter Değeri kartı bu şartı UYGULAMAZ (toplam bilanço tüm evreni gösterir).</li>
-            <li><b>Ölü stok POS ile çapraz denetlendi</b> — ERP defteri "satış yok" derken
-                POS'ta satmış <b>348 çeşit / 1.686.915 ₺</b> vardı, çıkarıldı. Rafa hiç
-                çıkmamış <b>895 çeşit / 9.711.542 ₺</b> de ayrıldı: onların eylemi "iade/imha"
-                değil "rafa çıkar" (Rafa Çıkmamış Envanter kartı).</li>
-            <li><b>Veri kirli satırlar</b> listede duruyor: negatif stok / fiyat 0 —
-                filtreden "Veri kirli" seçilerek görülür.</li>
+            <li><b>Açık sipariş yalnız satın alma.</b> Süzgeç yoktu; gösterilen adedin %86'sı
+                satın alma değildi. Uyarı alan 37.168 ürünün 17.139'unda gerçek alış siparişi
+                sıfırdı.</li>
+            <li><b>Aylık grafikler son 12 tam ay.</b> Eskiden iki yarım ay üretiyordu; grafikten
+                okunan yıllık düşüş −%38,5 görünüyordu, gerçek −%20,9. Manşetteki 365 günlük
+                satış değişmedi.</li>
+            <li><b>Defteri şüpheli kayıtlar kayıp kartlarından çıkarıldı</b> (327 çeşit). Stokta
+                Yokluk kartında 49 çeşit 1.972.350 ₺ şişirme yapıyordu. Envanter Değeri kartı bu
+                şartı uygulamaz — toplam bilanço tüm evreni gösterir.</li>
+            <li><b>Ölü stok POS ile çapraz denetlendi.</b> ERP "satış yok" derken POS'ta satmış
+                348 çeşit / 1.686.915 ₺ çıkarıldı. Rafa hiç çıkmamış 895 çeşit / 9,7M ₺ ayrıldı:
+                eylemi "iade/imha" değil "rafa çıkar".</li>
+            <li><b>Sezonluk raf açığı yalnız tam karşılananları sayar.</b> Merkez eksiği
+                karşılamıyorsa eylem transfer değil alımdır (622 çeşit / 5,79M ₺ yanlış
+                gruptaydı).</li>
+            <li><b>"Gir çık" kartları rakamı bozabilir.</b> Bazı ürünler tek fiyat kartından
+                satılıyor, mal girişi o karta yazılmıyor → defter kronik negatife gidiyor
+                (stkID 643638: 11 alış hareketine karşı 1.106 satış hareketi). Evrende 313
+                çeşit / 931.395 ₺; "Veri kirli" filtresinden görülür.</li>
         </ul>
     </div>
 </details>
@@ -326,6 +277,32 @@ else
        ⚠ ADI "kirli" DEĞİL: ölçüldü 09.09 (stkID 1739183) — negatif mağaza stoğu çoğu
        zaman veri kiri DEĞİL, transfer kabulünün gecikmesi + geriye dönük kayıt
        (`irsHrk.hrkTarih` ile `ehTrhS` ayrışıyor). "Kirli" demek overclaim olurdu. *@
+    @* ══ TALEP DESENİ ŞERİDİ (10.09.2026) ═════════════════════════════════════════
+       Bu bir KPI kartı DEĞİL, bir GEÇERLİLİK BEYANI: panelin hız metrikleri (gün-stok,
+       günlük ortalama satış) yalnız düzgün/değişken talepte anlamlı. Kart yapmadım çünkü
+       bir "kayıp" ya da "bağlı sermaye" ölçmüyor — hangi ölçümün NEREDE geçerli olduğunu
+       söylüyor. Eşikler YAYINLANMIŞ (ADI 1,32 · CV² 0,49), veriden türetilmedi. *@
+    <div class="rounded-xl bg-base-200/60 border border-base-300 px-4 py-3 mb-3 text-[11px]">
+        <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <span class="uppercase tracking-wider font-semibold text-base-content/55">
+                Talep deseni · hız metrikleri nerede geçerli
+            </span>
+            <button type="button" class="hover:underline text-left"
+                    @onclick="() => KartTikla(SatisDurumFiltre.DuzgunTalep, null, null)">
+                <b class="text-success">@k.DuzgunTalepCesit.ToString("N0")</b> çeşit düzgün/değişken
+                <span class="text-base-content/45">(@TlKisa(k.DuzgunTalepTutar))</span>
+            </button>
+            <button type="button" class="hover:underline text-left"
+                    @onclick="() => KartTikla(SatisDurumFiltre.AraliklıTalep, null, null)">
+                <b class="text-warning">@k.ArelikliTalepCesit.ToString("N0")</b> çeşit aralıklı/sıçramalı
+                <span class="text-base-content/45">(@TlKisa(k.ArelikliTalepTutar))</span>
+            </button>
+            <span class="text-base-content/45">
+                Gün-stok yalnız ilk grupta hesaplanır; aralıklı talepte ortalama çoğu
+                <b>sıfır</b> olan aylara yayılır (Syntetos/Boylan/Croston 2005).
+            </span>
+        </div>
+    </div>
     @if (k.VeriKirliCesit > 0)
     {
         <button type="button" class="flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content mb-3"

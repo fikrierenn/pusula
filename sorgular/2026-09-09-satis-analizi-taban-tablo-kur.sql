@@ -269,3 +269,15 @@ GO
 IF COL_LENGTH('bkm.SatisAnaliziTaban', 'MaliyetTarih') IS NULL
     ALTER TABLE bkm.SatisAnaliziTaban ADD MaliyetTarih datetime NULL;
 GO
+
+/* ── 10.09.2026 — TALEP DESENİ (Syntetos-Boylan-Croston) ────────────────────────
+   Ölçüldü: çeşitlerin %91,9'unda talep ARALIKLI → "gün-stok" orada yanıltıcı.
+   Ham iki girdi saklanır; SINIF kodda hesaplanır (eşikler ADI 1,32 · CV² 0,49
+   YAYINLANMIŞ, veriden türetilmedi). SatanAy = son 12 tam ayda satış olan ay sayısı;
+   ADI = 12 / SatanAy. TalepCV2 = sıfır-olmayan aylık talep büyüklüklerinin kareli
+   değişim katsayısı. */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SatanAy') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SatanAy int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'TalepCV2') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD TalepCV2 decimal(10,3) NULL;
+GO
