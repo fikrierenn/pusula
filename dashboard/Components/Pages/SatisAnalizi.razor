@@ -235,22 +235,58 @@ else
             <div class="grid grid-cols-1 gap-3 @(kartlar.Count == 2 ? "md:grid-cols-2" : "md:grid-cols-3")">
                 @foreach (var kart in kartlar)
                 {
-                    <div class="rounded-2xl bg-base-100 border border-base-300 overflow-hidden flex flex-col min-w-0
-                                hover:border-base-content/20 transition-colors">
+                    @* ══ ANA SAYFA DİLİYLE HARMAN (10.09.2026) ═══════════════════════════
+                       Kullanıcı: "ana sayfadaki kpi kartları daha güzel gibi görünüyor
+                       raporda da benzer kartlar kullansak uyumlayarak". dashboard-icerik
+                       danışmasıyla ÖĞE ÖĞE karar verildi — kısıtlar pazarlıksız:
+
+                       ANA SAYFADAN ALINAN: rounded-3xl · py-5 dikey ferahlık ·
+                         hover:-translate-y-0.5 + hover:shadow-md lift · dip şeritte üst
+                         AYRAÇ (border-t) · kahraman kartta 34px sayı ve GRADYAN.
+                       ALINMAYAN, gerekçeli:
+                         · px-5 → md:grid-cols-3'te kart ~230px; px-5 + 34px sayı 375px'te
+                           sıkışıyor. px-4 kaldı.
+                         · shadow-lg → border ile birlikte ağır; shadow-sm yeter.
+                         · 10 KARTA GRADYAN → 09-10.09'da ölçüldü: "her şey aynı sesle
+                           bağırıyor, hiyerarşi yok". Renk en fazla 3 ayrım taşır; ayrım
+                           GRUPTAN gelir. Gradyan yalnız KAHRAMAN kartta → ana sayfa hissi
+                           gelir, gürültü gelmez, üstelik hiyerarşi GÜÇLENİR (şu ana kadar
+                           kahraman yalnız punto ile ayrışıyordu).
+                         · DEĞİŞİM ROZETİ → panel tek kesim fotoğrafı, zaman serisi yok.
+                           "Evrene oran" ölçülebilir bir sayı AMA ana sayfadaki rozet
+                           DEĞİŞİM anlatıyor; aynı görsel dilde farklı anlam yanıltır.
+                           Sağ üstte nötr ikon kaldı.
+                         · Dip şeritte grid-cols-2 → ikinci hücreye meşru içerik yok. Taban
+                           etiketi başlığın ALTINDA kalmalı (sayı → başlık → taban okuma
+                           sırası) ve grid tıklama hedefini bölerdi. Ana sayfada iki metrik
+                           var çünkü orada iki gerçek alt-kırılım (Mağaza/Online).
+                         · CAROUSEL → 10 kart = 10 swipe ve grup başlıkları kaybolur; onlar
+                           mobilde navigasyon işlevi taşıyor.
+                       ⚠ Kahraman kart gradyanlı olduğu için İÇ RENKLER beyaza uyarlanır
+                       (ikon/başlık/taban/alt/dip şerit) — yoksa base-content tokenları
+                       gradyan üstünde okunmaz. *@
+                    <div class="@(kart.Kahraman
+                                    ? "bg-gradient-to-br from-primary to-primary/80 text-white shadow-md"
+                                    : "bg-base-100 border border-base-300 shadow-sm hover:border-base-content/20")
+                                rounded-3xl overflow-hidden flex flex-col min-w-0
+                                transition-all hover:-translate-y-0.5 hover:shadow-lg">
                         @* ÜST BLOK — tıklanınca listeyi o kohorta filtreler. *@
                         <button type="button"
-                                class="text-left p-4 min-w-0 @(kart.Durum is null ? "cursor-default" : "active:scale-[.98] transition-transform")"
+                                class="text-left px-4 py-5 min-w-0 @(kart.Durum is null ? "cursor-default" : "active:scale-[.98]")"
                                 @onclick="() => KartTikla(kart.Durum, kart.OdakVar, kart.MinYas)">
                             @* Sayı ÜSTTE (Able Pro düzeni) · tabular-nums: rakamlar hizalı,
                                kolonlar arası kıyas mümkün. TlKisa sayesinde taşma riski yok.
                                İkon sağ üstte, NÖTR — sayının hizasını bozmasın diye float değil
                                ayrı akışta (absolute konumlandırma yok, kart relative değil). *@
-                            <span class="float-right text-base-content/25 -mt-0.5">@Ikon(kart.Ikon)</span>
-                            <span class="block font-extrabold tabular-nums tracking-tight leading-none text-@kart.Vurgu
-                                         @(kart.Kahraman ? "text-[32px]" : "text-[26px]")">
+                            <span class="float-right -mt-0.5 @(kart.Kahraman ? "text-white/35" : "text-base-content/25")">
+                                @Ikon(kart.Ikon)
+                            </span>
+                            <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                                         @(kart.Kahraman ? "text-[34px] text-white" : $"text-[26px] text-{kart.Vurgu}")">
                                 @kart.Deger
                             </span>
-                            <span class="block text-[11px] uppercase tracking-wider font-semibold text-base-content/55 mt-2">
+                            <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                                         @(kart.Kahraman ? "text-white/75" : "text-base-content/55")">
                                 @kart.Baslik
                             </span>
                             @* B4 (10.09 denetimi): ŞERİT TOPLANABİLİR GÖRÜNÜYORDU. Üç ayrı
@@ -258,25 +294,30 @@ else
                                kayıp potansiyeli (olmayan satış) ve kâr. Toplamı anlamsız;
                                ölçüldü: 6.170 çeşit ≥2 kartta, K8∩K3 1.842 çeşit / 6,2M ₺ iki
                                kartta birden. Taban artık her kartta yazılı. *@
-                            <span class="block text-[10px] text-base-content/35 mt-0.5">
+                            <span class="block text-[10px] mt-0.5 @(kart.Kahraman ? "text-white/55" : "text-base-content/35")">
                                 @kart.Taban
                             </span>
-                            <span class="block text-[11px] text-base-content/50 leading-snug mt-0.5">
+                            <span class="block text-[11px] leading-snug mt-0.5 @(kart.Kahraman ? "text-white/70" : "text-base-content/50")">
                                 @kart.Alt
                             </span>
                         </button>
                         @* DİP ŞERİT = karşı-metrik. AYNI KARTTA kalmak zorunda
                            (satinalma-danisman şartı: karşı-metrik yan yana, ayrı karta
                            konunca çift ayrılabiliyor). Şeridin rengi kartın vurgusunun
-                           soluk hali — okunur, bağırmıyor. *@
+                           soluk hali — okunur, bağırmıyor.
+                           ÜST AYRAÇ ana sayfadan alındı (border-t): önce yalnız arka plan
+                           rengiyle ayrışıyordu, ayraç yapıyı netleştiriyor. *@
                         @if (kart.CiftBaslik is not null)
                         {
                             <button type="button"
-                                    class="mt-auto px-4 py-2.5 bg-@kart.Vurgu/10 hover:bg-@kart.Vurgu/20
-                                           flex items-baseline justify-between gap-2 text-left min-w-0
-                                           active:scale-[.98] transition-all"
+                                    class="mt-auto px-4 py-3 flex items-baseline justify-between gap-2 text-left min-w-0
+                                           active:scale-[.98] transition-all border-t
+                                           @(kart.Kahraman
+                                                ? "bg-white/15 hover:bg-white/25 border-white/25"
+                                                : $"bg-{kart.Vurgu}/10 hover:bg-{kart.Vurgu}/20 border-base-300")"
                                     @onclick="() => KartTikla(kart.CiftDurum, kart.CiftOdakVar, null)">
-                                <span class="text-[10px] uppercase tracking-wider text-base-content/55 font-semibold min-w-0">
+                                <span class="text-[10px] uppercase tracking-wider font-semibold min-w-0
+                                             @(kart.Kahraman ? "text-white/75" : "text-base-content/55")">
                                     @kart.CiftBaslik
                                 </span>
                                 <span class="text-base font-bold tabular-nums shrink-0">@kart.CiftDeger</span>

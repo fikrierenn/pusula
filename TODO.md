@@ -205,6 +205,32 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   - **YAN BULGU — negatif stok jenerik fiyat-kartlarında yığılı:** Missim Bijuteri fiyat-noktası SKU'ları (`satisTur=1`) −499 / −368 / −281 / −170 adet taşıyor ve satışları yüksek (830 / 532 / 279). "Veri Kirli" KPI'sının en büyük kalemleri bunlar; gerçek sayım hatası mı yoksa jenerik kart kullanımının doğal sonucu mu — ayrı ölçüm.
   - ⚠ TABAN YENİDEN KURULMALI: (ii)(iii)(iv) yalnız yeni taban kurulumunda etkir; mevcut kesim satırları eski evrenle yazılmış. Panelde "taban kur" düğmesi.
   - ⚠ NEGATİF MAĞAZA STOĞU "VERİ KİRİ" DEĞİLDİ: taban 09.09 08:44'te kuruldu; POS satışları (08.09 23:45 `hrkTarih`) girdi, mağaza girişleri (09.09 10:12 ve 16:36) girmedi → StokFsm −27 / StokOzl −10. Sebep geriye dönük kayıt + kabul gecikmesi. Sema: `irsHrk_zaman_kolonlari` (ehTrhS = belge, hrkTarih = satırın deftere düşme anı). **Veri Kirli KPI'sı bu iki durumu ayırmalı.**
+- [ ] **B-172 Satış Analizi — DANIŞMAN İTİRAZLARI (satinalma-danisman 10.09, UYGULANMADI)** —
+  Dört ölçüt değişikliği adil-atıf ve perverse-incentive açısından denetlendi; üç ağır bulgu:
+  (a) **KARŞI-METRİK DENGESİ TERS** (en ciddi). Aşırı Stok'un karşı-metriği "ODAK'ta da var"
+  = ceza AĞIRLAŞTIRICI; Stokta Yokluk/Sezon Açığı'nın "ODAK'ta var → hızlı temin" = ceza
+  HAFİFLETİCİ. Üstüne aşırı stok TAM ölçülüyor (etiket değeri), stokta yokluk ALT SINIR
+  (sansürlü talep) → rasyonel alıcı **az alır**, görünmez kayıp büyür. Düzeltme: Aşırı Stok'a
+  iade-hakkı HAFİFLETİCİSİ (vekil zaten ölçüldü), Stokta Yokluk'a kanıtlı-talep AĞIRLAŞTIRICISI.
+  (b) **AŞIRI STOK KARTI ETİKET FİYATIYLA** — 329,0M ₺ gösteriyor, maliyetle 107,3M ₺;
+  alıcıya ~3 kat şişik ceza. Envanter Değeri kartında maliyetli değer VAR, Aşırı Stok'ta YOK.
+  En kolay ve en büyük düzeltme bu.
+  (c) **EŞİK KATEGORİNİN KENDİ GEÇMİŞİNDEN türetiliyor** → başarısızlığı normalleştiriyor:
+  Kırtasiye devri 1,25 (sektör hedefi 3-4) ve eşik oradan geliyor. Ters uçta iyi dönen
+  kategoriye (Hazırlık 8×) daha GEVŞEK eşik — teşvik ters. Eşik iş modelinden gelmeli
+  (LeadTime · sezon ağırlığı · iade hakkı — üçü de veride var, kullanılmıyor).
+  (d) Panel geneli 3× artık DESTEKLENMİYOR: karma örneklemden türetilmişti ve onu Kırtasiye
+  domine ediyordu (bantlarında 7.480 çeşit). Kırtasiye ayrıldı → kalan sekiz kategori başka
+  bir kategorinin eşiğiyle yargılanıyor. 3× Kırtasiye HARİÇ yeniden ölçülmeli.
+  (e) **GAMING:** `PosAdet > 0` adet eşiği taşımıyor → TEK satış ürünü ölü stok kohortundan
+  çıkarır (personel/iç kart satışı yeter). Düzeltme: `PosAdet >= 2` ve farklı günlerde.
+  (f) **GAMING:** kategori ürün kartında değiştirilebilir; 2× kategoriden 8×'e taşınan ürün
+  kohorttan çıkar. Kategori değişimi izlenmiyor. (ŞÜPHELİ — fiilen olup olmadığı ölçülmedi.)
+  (g) Sorumluluk sahibi etiketi yok: "ölü stok → iade/imha" satınalma+finans, "raf bulunurluk
+  → transfer" operasyon; 8.736 çeşit el değiştirdi ve kohort sahibi panelde yazılı değil.
+  (h) "Gir çık" kartları Veri Kirli'ye taşındı ama o bir EYLEM kartı değil — 327 çeşit /
+  931K ₺ orada birikip kimsenin işi olmuyor.
+
 - [ ] **B-171 Satış Analizi — BEYAN EDİLDİ ama DÜZELTİLMEDİ (bilinçli borç listesi)** — 10.09.
   Hepsi panel kapsam bandında yazılı; kapatmak ek iş/karar ister:
   (a) **Aralıklı talep tahmini yok** — sınıflandırma var (ADI 1,32 · CV² 0,49), Croston/SBA/TSB
