@@ -236,6 +236,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   (a) **Aralıklı talep tahmini yok** — sınıflandırma var (ADI 1,32 · CV² 0,49), Croston/SBA/TSB
   ayrıştırması YOK. Çeşitlerin %91,9'unda gün-stok hesaplanmıyor ("—" gösteriyor); sipariş
   önerisi üretilmiyor. Kapatmak: SBA tahmini + emniyet stoğu → yeni hesap katmanı.
+  ⚙ **KISMEN 10.09:** `siparis-karari` skill'i (miktar formülü + emniyet stoğu + taahhüt +
+  çıkış planı) yazıldı ve kitapdışında elle koştu (416 çeşit / 2.291 adet / 376.516 ₺).
+  KALAN: hesap KODA girmedi — SBA/TSB beklenen değeri hâlâ yok, skill 365g/sezon hızını
+  vekil alıyor ve emniyet σ'sını CV²'den türetiyor. Panelde sipariş kolonu YOK.
   (b) **Maliyet yaşı sapması** (B11) — satış 365 günlük, maliyet bugünkü. Maliyet yaşına göre
   marj %24,4 (<3 ay) → %63,0 (2+ yıl). Enflasyon ile yavaş devir AYRIŞTIRILAMIYOR; maliyet
   yeniden DEĞERLENMEYECEK (uydurma olurdu). ✅ **GÖRÜNÜR KILINDI 10.09:** `MaliyetTarih`
