@@ -163,7 +163,7 @@ public static class DurumAdlari
     {
         [SatisDurumFiltre.Hepsi] = "(hepsi)",
         [SatisDurumFiltre.StoksuzSezon] = "Stokta yokluk — sezon ürünü",
-        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (>3× sezon)",
+        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (kategori eşiği 2-8×)",
         [SatisDurumFiltre.Hareketsiz] = "Ölü stok (satış yok)",
         [SatisDurumFiltre.VeriKirli] = "Veri kirli",
         [SatisDurumFiltre.SadeceTaze] = "Yalnız taze stok",
@@ -185,7 +185,8 @@ public enum SatisDurumFiltre
     Hepsi,
     /// <summary>Sezonda sattı, bugün stok yok.</summary>
     StoksuzSezon,
-    /// <summary>Sezonda sattı, stok &gt; 3× sezon satışı (eşik veriden türetildi 10.09).</summary>
+    /// <summary>Sezonda sattı, stok kategori eşiğini aşıyor — panel geneli 3×, Kırtasiye 2×,
+    /// Hazırlık Kitapları 8× (hepsi ölçümle türetildi 10.09.2026).</summary>
     AsiriStok,
     /// <summary>365 günde hiç satmadı, stok var.</summary>
     Hareketsiz,

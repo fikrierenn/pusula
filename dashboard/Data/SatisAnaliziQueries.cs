@@ -409,12 +409,53 @@ public sealed partial class SatisAnaliziQueries(
     private const string AsiriStokKat = "3";
 
     /// <summary>
+    /// KATEGORİ BAZLI AŞIRI STOK KATSAYISI — ölçümle türetildi 10.09.2026.
+    ///
+    /// Panel geneli 3× eşiği bir sorun taşıyordu: <b>Kırtasiye devir 1,25</b> ile
+    /// <b>Dergi 5,95</b> aynı eşiği paylaşıyordu. Aynı yöntem kategori bazında koşuldu
+    /// (01.08.2025 kapsama katı → sonraki 12 ayın yıllık devri; devrin 1,0 ALTINA düştüğü
+    /// kat = o kategorinin eşiği). Bant başına en az 30 çeşit şartı kondu.
+    ///
+    /// ÖLÇÜM (yıllık devir, bant sırasıyla &lt;2× · 2-3× · 3-5× · 5-8× · 8×+):
+    ///   Kırtasiye          4,78 · <b>0,93</b> · 0,64 · 0,49 · 0,31   MONOTON ⇒ eşik <b>2×</b>
+    ///   Hazırlık Kitapları 11,68 · 2,14 · 1,93 · <b>1,20</b> · 0,28  MONOTON ⇒ eşik <b>8×</b>
+    ///   Çocuk Kitabı       5,57 · 1,36 · 1,06 · (n&lt;30) · 0,30      bant EKSİK ⇒ değişmedi
+    ///   Oyuncak            3,21 · 0,94 · <b>1,13</b> · 0,61 · 0,42   MONOTON DEĞİL ⇒ değişmedi
+    ///   Hediyelik          4,81 · (n&lt;30) · 0,42 · (n&lt;30) · 0,38  bant EKSİK ⇒ değişmedi
+    ///   Akademi · Dergi · Elektronik · Kitap: yalnız &lt;2× bandı n≥30 ⇒ TÜRETİLEMEDİ
+    ///
+    /// ⇒ Yalnız <b>iki kategori</b> değişti; kanıtı monoton ve bantları dolu olanlar.
+    /// Kalan sekizde panel geneli 3× duruyor — "ölçemediğimi değiştirmem" kuralı.
+    ///
+    /// ETKİ (kesim 09.09.2026, ölçüldü):
+    ///   Kırtasiye 9.897 → <b>11.679 çeşit</b> · 219,8M → <b>247,6M ₺</b> (eşik SIKILAŞTI,
+    ///     çünkü devri yavaş: 1,25)
+    ///   Hazırlık Kitapları 1.427 → <b>460 çeşit</b> · 11,9M → <b>4,9M ₺</b> (eşik GEVŞEDİ,
+    ///     çünkü devri hızlı: 3,16 — haksız "aşırı" damgası kalktı)
+    ///
+    /// ⚠ Bu bir LİSTE değil ÖLÇÜM SONUCU eşlemesi; kategori adları panel evreninin
+    /// (<c>Kategori3Evreni</c>) parçası ve zaten sabit. Yeni kategori eklenirse ELSE dalına
+    /// düşer (3×) — sessiz kalmaz, panel geneli eşiğini alır.
+    /// ⚠ <c>bkm.OneriSiparisKtg3Ondeger</c> politika tablosuna BAĞLANMADI — kullanıcı o
+    /// tabloyu iptal etti (10.09.2026). Eşik ölçümden gelir, politika tablosundan değil.
+    /// ⚠ Aynı confound geçerli: ters nedensellik (alıcı çok satmasını beklediğine çok stok
+    /// koyar) ve veriden seçilen kesimin bedeli (Altman &amp; Royston) — beyan edildi.
+    ///
+    /// Türetme SQL'i: <c>sorgular/2026-09-10-kategori-bazli-asiri-stok-esigi.sql</c>
+    /// </summary>
+    private const string AsiriStokKatSql =
+        "(CASE t.Kategori3 " +
+        "WHEN N'Kırtasiye' THEN 2 " +
+        "WHEN N'Hazırlık Kitapları' THEN 8 " +
+        "ELSE " + AsiriStokKat + " END)";
+
+    /// <summary>
     /// Aşırı stok ölçütü — <b>TEK KAYNAK</b>. KPI, kategori kırılımı, ODAK temin tablosu ve
     /// liste filtresi bunu kullanır; eşik burada değişince hepsi birlikte değişir (önce altı
     /// yerde ayrı ayrı <c>5 *</c> yazılıydı — ayrışma riski).
     /// </summary>
     private const string AsiriStokSart =
-        "(t.SezonToplam > 0 AND t.ToplamStok > " + AsiriStokKat + " * t.SezonToplam " +
+        "(t.SezonToplam > 0 AND t.ToplamStok > " + AsiriStokKatSql + " * t.SezonToplam " +
         // Kaçak ÖLÇÜLDÜ = 0 (negatif toplam pozitif eşiği geçemez); şart tutarlılık için,
         // rakamı değiştirmiyor: 29.656 → 29.625 (fark yalnız fiyatı 0 olanlar).
         "AND " + DefterGuvenilirSart + ")";
@@ -504,8 +545,9 @@ public sealed partial class SatisAnaliziQueries(
     /// <summary>
     /// KPI + Kategori3 kırılımı — tek geçiş, 196 ms.
     /// Aşırı stok eşiği <c>AsiriStokSart</c>'tan gelir (3×, veriden türetildi 10.09).
-    /// Kategori bazlı hedef gün-stok politikası (<c>bkm.OneriSiparisKtg3Ondeger</c>) hâlâ BOŞ;
-    /// dolduğunda eşik kategoriye göre farklılaşabilir — panel geneli eşiği o zamana kadar tek.
+    /// Eşik KATEGORİ BAZLI (<c>AsiriStokKatSql</c>): panel geneli 3×, Kırtasiye 2×, Hazırlık
+    /// Kitapları 8× — üçü de ölçümle türetildi. <c>bkm.OneriSiparisKtg3Ondeger</c> politika
+    /// tablosu kullanıcı kararıyla İPTAL (10.09.2026); eşik ölçümden gelir.
     /// </summary>
     public async Task<SatisAnaliziOzet> GetOzetAsync(SatisAnaliziFiltre f, CancellationToken ct = default)
     {

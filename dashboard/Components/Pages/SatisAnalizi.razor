@@ -144,8 +144,12 @@
             Eşikler nasıl kuruldu
         </p>
         <ul class="list-disc ml-4 space-y-0.5">
-            <li><b>Aşırı stok 3×</b> — stoğun sonraki 12 ayda satılan oranı 3×'te 1,0'ın altına
-                düşüyor, yani 3× "bir yıldan fazla stok" demek.</li>
+            <li><b>Aşırı stok eşiği KATEGORİ BAZLI.</b> Ölçüt: stoğun sonraki 12 ayda satılan
+                oranı (yıllık devir) 1,0'ın altına düştüğü kat. Panel geneli <b>3×</b>; ölçümle
+                ayrışan iki kategori <b>Kırtasiye 2×</b> (devri 1,25 → eşik sıkılaştı) ve
+                <b>Hazırlık Kitapları 8×</b> (devri 3,16 → haksız "aşırı" damgası kalktı).
+                Kalan sekizde 3× duruyor: bantları eksik, monoton değil ya da örneklem yetersiz —
+                <b>ölçemediğimizi değiştirmiyoruz</b>.</li>
             <li><b>Sezon açığı 0,50</b> — altında önceki yıl talebinin en az %39'u
                 gerçekleşmiyor.</li>
             <li><b>Raf kaybı: yılda 5+ satış.</b> Ayraç talep, merkez stoğu değil — merkez
@@ -158,8 +162,9 @@
                 <b>listesi</b> üretir; kesimdeki oran farkı bir <b>etki ölçüsü değildir</b>.
                 Trendler Cochran-Armitage ve Wilson aralıklarıyla sınandı.
                 <span class="opacity-60">(Altman &amp; Royston 2006)</span></li>
-            <li><b>Kategori bazlı eşik henüz yok</b> — <code>bkm.OneriSiparisKtg3Ondeger</code>
-                boş. Dolunca Kırtasiye ile Dergi aynı 3×'i paylaşmaz.</li>
+            <li><b>Politika tablosu iptal.</b> <code>bkm.OneriSiparisKtg3Ondeger</code> hedef
+                gün-stok tablosu kullanıcı kararıyla iptal edildi (10.09.2026); eşikler artık
+                ölçümden gelir, politika tablosundan değil.</li>
             <li><b>Ters nedensellik giderilmedi:</b> alıcı çok satmasını beklediğine çok stok
                 koyar.</li>
         </ul>
@@ -738,7 +743,7 @@ else
             CiftDurum: SatisDurumFiltre.SezonRafAcigi),
 
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokTutar),
-            $"{k.AsiriStokCesit:N0} çeşit · stok > 3× sezon satışı",
+            $"{k.AsiriStokCesit:N0} çeşit · stok > kategori eşiği (2-8× sezon)",
             "warning", "katman", SatisDurumFiltre.AsiriStok,
             Taban: "stok değeri · fazlası dahil",
             CiftBaslik: "ODAK'ta da var → grup içinde çift stok",
