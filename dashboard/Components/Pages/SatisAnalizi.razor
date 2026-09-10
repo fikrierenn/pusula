@@ -128,6 +128,18 @@
                 adedin <b>%86'sı</b> satın alma değildi (alış iade emri, müşteri siparişi, iç
                 transfer). Uyarı alan 37.168 ürünün 17.139'unda (%46) gerçek alış siparişi
                 sıfırdı. Karşılanma oranı hâlâ ölçülemiyor (<code>ehSevkAdet</code> boş).</li>
+            <li><b>Sezonluk raf açığı yalnız TAM karşılananları sayar</b> (10.09.2026
+                düzeltmesi) — merkez stoğu eksik adedi karşılamıyorsa eylem transfer değil
+                <b>alım</b>dır; o çeşitler Sezon Stok Açığı kartında. Ölçüldü: eski ölçütte
+                622 çeşit / 5,79M ₺ (tutarın %74'ü) yanlış grupta görünüyordu; en uçta 120
+                çeşidin kaybı 3,49M ₺ iken merkezde topu topu 306 adet vardı.
+                Negatif raf stoğu da artık "boş raf" sayılmıyor — negatif defter hatasıdır,
+                fiziksel boşluk kanıtı değil.</li>
+            <li><b>"Gir çık" kartları rakamı bozabilir</b> — bazı ürünler tek fiyat kartından
+                satılıyor, mal girişi o karta yazılmıyor: defter kronik negatife gidiyor
+                (ölçüldü stkID 643638 "Missim Bijuteri 49,50 Tl": 11 alış hareketi karşısında
+                1.106 satış hareketi, raf −502, merkez 1). Evrende <b>313 çeşit / 931.395 ₺</b>
+                negatif raf taşıyor; "Veri kirli" filtresinden görülür.</li>
             <li><b>Veri kirli satırlar</b> listede duruyor: negatif stok / fiyat 0 —
                 filtreden "Veri kirli" seçilerek görülür.</li>
         </ul>
@@ -626,8 +638,13 @@ else
         // eylem TRANSFER. Sipariş grubuna koymak yanlış karara iterdi.
         // ⚠ Sezon Stok Açığı ile ÖRTÜŞÜR (186/389) ama aynı şey değil: orada TOPLAM stok
         // yetmiyor (alım gerekebilir), burada stok var ama yanlış yerde.
+        // ⚠ ÖLÇÜT DÜZELTİLDİ 10.09 (kullanıcı denetimi, stkID 643638): kart 2.116 → 1.494.
+        // (a) negatif raf "boş" sayılmıyor artık — negatif defter hatası, fiziksel boşluk
+        //     kanıtı değil (o kayıtlar Veri Kirli kartında). (b) merkez eksiği KARŞILAMALI:
+        //     eski ölçütte 622 çeşit / 5,79M ₺ (tutarın %74'ü) "transfer yeter" görünüyordu
+        //     ama merkez yetmiyordu — onlar Sezon Stok Açığı'nda (eylem ALIM).
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Sezonluk Raf Açığı", TlKisa(k.SezonRafTutar),
-            $"{k.SezonRafCesit:N0} çeşit · geçen sezon o mağazada sattı, rafı boş",
+            $"{k.SezonRafCesit:N0} çeşit · rafı boş, merkez tamamını karşılıyor",
             "warning", "raf", SatisDurumFiltre.SezonRafAcigi,
             CiftBaslik: "Merkezde bekleyen → transfer",
             CiftDeger: $"{k.SezonRafMerkezAdet:N0} adet",

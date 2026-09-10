@@ -169,23 +169,56 @@ public sealed partial class SatisAnaliziQueries(
     /// ⚠ SINIR: <c>MerkezStok</c> WMS anlık (sql-server-conventions § MERKEZ DEPO) — hayalet
     /// stok riski var; adet küçükse fiziksel teyit ister.
     ///
+    /// ══ DÜZELTME 10.09.2026 (aynı gün, kullanıcı denetimi) ═════════════════════════
+    /// Kullanıcı örnek istedi: <b>stkID 643638</b> "Missim Bijuteri 49,50 Tl" — kart bunu
+    /// "depoda var → transfer" diye gösteriyordu. Gerçek: raf FSM <b>−216</b> · Özlüce
+    /// <b>−250</b> · İst.Yolu <b>−36</b>, merkezde <b>1 adet</b>, tutar −24.799,50 ₺.
+    /// Bu bir FİYAT KARTI (adında fiyat var) ve "gir çık" deseni taşıyor: 11 alış hareketi /
+    /// 1.113 adet karşısında <b>1.106 satış hareketi / 1.889 adet</b> — mal girişi bu karta
+    /// yazılmıyor, satış yazılıyor, defter kronik negatife gidiyor.
+    ///
+    /// İki ölçüt hatası birleşiyordu:
+    ///   (a) <c>StokFsm &lt;= 0</c> negatifi de "boş raf" sayıyordu → 21 çeşit / 208.169 ₺
+    ///   (b) <c>MerkezStok &gt; 0</c> "transfer yeter" sanılıyordu → <b>622 çeşit /
+    ///       5.793.010 ₺ = tutarın %74'ü</b> aslında ALIM gerektiriyordu
+    /// Merkez karşılama bantları (ölçüldü): &lt;%10 → 120 çeşit / 3.490.966 ₺ ama merkezde
+    /// topu topu 306 adet (eksik 11.563) · %10-25 → 143 / 1.038.225 · %25-50 → 157 / 607.033
+    /// · %50-100 → 202 / 656.786 · <b>%100+ → 1.494 çeşit / 2.082.380 ₺, merkezde 47.800</b>.
+    /// ⇒ Ölçüte <c>MerkezStok >= eksikAdet</c> eklendi; kart 2.116 → <b>1.494 çeşit / 2,08M ₺</b>.
+    /// Karşılamayanlar (622 çeşit) Sezon Stok Açığı kartının işi — orada eylem ALIM.
+    ///
+    /// ⚠ "Adında fiyat" KURAL OLARAK KULLANILMADI: evrende 54 çeşit ve 313 negatif raflının
+    /// yalnız 26'sını yakalıyor — liste-benzeri, zayıf ayraç. Kullanılan ayraç NEGATİF DEFTER
+    /// STOĞU (evrende 313 çeşit / 931.395 ₺).
+    ///
     /// Türetme SQL'i: <c>sorgular/2026-09-10-acik-siparis-etip-ve-sezon-raf-acigi.sql</c> blok 2.
     /// </summary>
+    /// <remarks>
+    /// Eksik adet — YALNIZ rafı boş olan mağazanın geçen sezon satışı. Ölçüt ve tutar AYNI
+    /// ifadeyi kullanır (ayrışırsa kart kendi eşiğini ihlal eder).
+    /// </remarks>
+    private const string SezonRafEksikAdet =
+        "(CASE WHEN t.SezonFsm > 0 AND t.StokFsm = 0 THEN t.SezonFsm ELSE 0 END " +
+        " + CASE WHEN t.SezonOzl > 0 AND t.StokOzl = 0 THEN t.SezonOzl ELSE 0 END " +
+        " + CASE WHEN t.SezonIst > 0 AND t.StokIst = 0 THEN t.SezonIst ELSE 0 END)";
+
     private const string SezonRafAcigiSart =
         "(t.MerkezStok > 0 " +
         "AND (t.SonGiris IS NULL OR t.SonGiris < DATEADD(DAY, -14, @kesim)) " +
-        "AND ((t.SezonFsm > 0 AND t.StokFsm <= 0) " +
-        "  OR (t.SezonOzl > 0 AND t.StokOzl <= 0) " +
-        "  OR (t.SezonIst > 0 AND t.StokIst <= 0)))";
+        // NEGATİF RAF "BOŞ" DEĞİL: negatif defter stoğu fiziksel boşluk kanıtı değil, defter
+        // hatasıdır (panelin Veri Kirli kartı onları ayrı gösteriyor). Ölçüt "= 0" (boş),
+        // "<= 0" (boş VEYA bozuk) değil.
+        "AND ((t.SezonFsm > 0 AND t.StokFsm = 0) " +
+        "  OR (t.SezonOzl > 0 AND t.StokOzl = 0) " +
+        "  OR (t.SezonIst > 0 AND t.StokIst = 0)) " +
+        // MERKEZ EKSİĞİ KARŞILAMALI — kartın adı, grubu ve önerdiği eylem ancak o zaman doğru.
+        "AND t.MerkezStok >= " + SezonRafEksikAdet + ")";
 
     /// <summary>
     /// Sezonluk raf açığının KAYIP TUTARI — yalnız açığı olan mağazanın sezon adedi sayılır.
     /// Rafı dolu mağazanın satışı kayıp değildir; toplam sezon adedi kullanmak tutarı şişirirdi.
     /// </summary>
-    private const string SezonRafAcigiTutar =
-        "((CASE WHEN t.SezonFsm > 0 AND t.StokFsm <= 0 THEN t.SezonFsm ELSE 0 END " +
-        " + CASE WHEN t.SezonOzl > 0 AND t.StokOzl <= 0 THEN t.SezonOzl ELSE 0 END " +
-        " + CASE WHEN t.SezonIst > 0 AND t.StokIst <= 0 THEN t.SezonIst ELSE 0 END) * t.SatisFiyat)";
+    private const string SezonRafAcigiTutar = "(" + SezonRafEksikAdet + " * t.SatisFiyat)";
 
     private const string AsiriStokKat = "3";
 
