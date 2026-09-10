@@ -261,3 +261,11 @@ IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SezonOzl') IS NULL
 IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SezonIst') IS NULL
     ALTER TABLE bkm.SatisAnaliziTaban ADD SezonIst int NULL;
 GO
+
+/* ── 10.09.2026 — MALİYETİN TARİHİ (denetim bulgusu B11) ────────────────────────
+   Birim maliyet tarih penceresi olmadan "son 5 alış faturası"ndan gelir = BUGÜNKÜ
+   maliyet; payı olan POS satışı ise 365 GÜNLÜK. Enflasyonda marj olduğundan düşük
+   görünür. Tarih tabanda olmadığı için sapma ÖLÇÜLEMİYORDU. */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'MaliyetTarih') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD MaliyetTarih datetime NULL;
+GO

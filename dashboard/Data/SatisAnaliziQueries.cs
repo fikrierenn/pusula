@@ -135,6 +135,106 @@ public sealed partial class SatisAnaliziQueries(
     /// Türetme SQL'i: <c>sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql</c> blok 2.
     /// </summary>
     /// <summary>
+    /// DEFTER GÜVENİLİR ÖN-ŞARTI — <b>tek kaynak</b>, bulunurluk/kayıp/eylem kartlarının
+    /// hepsinde uygulanır.
+    ///
+    /// Kullanıcı denetimi 10.09.2026 ("diğerlerinde de benzer tuzaklar olabilir tüm kpi ları
+    /// bir danışmana kontrol ettir"). Bulunan desen: <c>StokX &lt;= 0</c> yazan her ölçüt
+    /// NEGATİF defter stoğunu da "boş/yok" sayıyordu. Negatif stok fiziksel bir durum DEĞİL,
+    /// defter hatasıdır: mal girişi karta yazılmamış, satış yazılmıştır (vaka stkID 643638
+    /// "Missim Bijuteri 49,50 Tl" — 11 alış hareketi karşısında 1.106 satış hareketi).
+    /// Böyle bir kayıttan "raf boş" ya da "stok yok" sonucu çıkarılamaz.
+    ///
+    /// ÖLÇÜLDÜ (kesim 09.09.2026, evren 275.385): güvenilmez <b>327 çeşit</b> (%0,12) —
+    /// küçük ama tutar etkisi orantısız, çünkü bu kartlar yüksek satışlı fiyat kartları:
+    ///   · Stokta Yokluk: 49 çeşidi negatif, kayıp <b>1.972.350 ₺</b> = kartın %8,5'i
+    ///   · Raf Bulunurluk: 11 çeşit · Sezon Açığı: 62 çeşitte bir raf negatif
+    ///   · Aşırı Stok: <b>0</b> kaçak (matematik zaten koruyordu)
+    ///
+    /// ⚠ KART 1 (Envanter Değeri) bu şartı UYGULAMAZ — o kart evrenin TOPLAM değerini
+    /// gösterir; güvenilmez kayıtları çıkarmak toplam bilançoyu yanlış yapar. Onlar
+    /// "doğrulanamıyor" satırında ayrıca beyan edilir.
+    /// </summary>
+    /// <summary>
+    /// ÖLÜ STOK ölçütü — 365 günde satmadı, stok var, değerlendirilecek kadar zamanı olmuş.
+    ///
+    /// ⚠ ÜÇ DÜZELTME 10.09.2026 denetiminden (B3 + B6):
+    /// (1) <b>POS ÇELİŞKİSİ</b> — bağımsız kaynak. ERP defteri "365 günde satış yok" derken
+    ///     POS'ta satış görünen <b>348 çeşit / 1.686.915 ₺</b> vardı (ölçüldü). İki kaynak
+    ///     çelişiyorsa ürün ÖLÜ sayılamaz; kararı (iade/imha) yanlış çeşit üstüne kurar.
+    ///     Ek olarak 61 çeşitte <c>SatisToplam &lt; 0</c> (iade &gt; satış) — onlar da satmış.
+    /// (2) <b>RAFA HİÇ ÇIKMAMIŞ ayrıldı</b> — <b>895 çeşit / 9.711.542 ₺</b> aynı anda
+    ///     "ölü stok" ve "Rafa Çıkmamış Envanter" kartındaydı. İki kart ZIT eylem öneriyor:
+    ///     ölü stok "iade/imha", rafa çıkmamış "rafa çıkar". Satması imkânsız olan mala
+    ///     ölü damgası vurmak haksız — <c>IlkGiris IS NOT NULL</c> şartı onları ayırıyor.
+    /// (3) Defter güvenilir ön-şartı.
+    /// Etki: 116.924 → <b>115.670 çeşit</b> · 154,0M → <b>142,6M ₺</b>.
+    /// </summary>
+    private const string OluStokSart =
+        "(t.SatisToplam <= 0 AND t.ToplamStok > 0 " +
+        "AND (t.PosAdet IS NULL OR t.PosAdet <= 0) " +
+        "AND t.IlkGiris IS NOT NULL " +
+        "AND " + YeniDegilSart + " AND " + DefterGuvenilirSart + ")";
+
+    /// <summary>
+    /// STOKTA YOKLUK — geçen sezon sattı, bugün hiç stok yok. <b>B1 düzeltmesi 10.09.2026:</b>
+    /// ölçüt <c>ToplamStok &lt;= 0</c> idi ve NEGATİF defteri de "yok" sayıyordu.
+    /// ÖLÇÜLDÜ: 8.102 çeşidin 49'u negatif ve kayıp tutarı <b>1.972.350 ₺</b> = kartın
+    /// 23,1M ₺'sinin <b>%8,5'i</b>. Çeşit başına ortalama 40.252 ₺ — evren ortalamasının çok
+    /// üstünde, çünkü bunlar yüksek satışlı FİYAT KARTLARI (bkz. <c>DefterGuvenilirSart</c>).
+    /// Gerçek yokluk <c>= 0</c>; negatif olan defter hatasıdır ve o kayıtlar
+    /// "doğrulanamıyor" satırında sayılır. Kart 8.102 → <b>8.041 çeşit / 21,0M ₺</b>.
+    /// </summary>
+    private const string StoksuzSezonSart =
+        "(t.SezonToplam > 0 AND t.ToplamStok = 0 AND " + DefterGuvenilirSart + ")";
+
+    /// <summary>
+    /// RAF BULUNURLUK KAYBI — daha önce rafa çıkmış, bugün ÜÇ rafın hepsi boş, merkezde mal var.
+    ///
+    /// ⚠ <b>B2 düzeltmesi 10.09.2026 — varlık şartı yeterlilik şartı sanılıyordu.</b>
+    /// <c>MerkezStok &gt; 0</c> "merkezde mal var → transfer" diye okunuyordu; ÖLÇÜLDÜ:
+    /// 3.476 çeşidin <b>1.808'i (%52) merkezde ≤2 adet</b> taşıyor (1.896.000 ₺). Kart
+    /// yarısında transfer edilecek mal olmadan "mal var" diyordu.
+    ///
+    /// Yeterlilik ölçütü ARANDI, ölçümle seçildi (aynı kesim, güvenilir defter):
+    ///   mevcut <c>&gt; 0</c> → 3.464 çeşit / 9,97M ₺ · satışı olan 1.165
+    ///   14 günlük talep kapsaması → 3.426 — <b>neredeyse hiç elemiyor</b>; yavaş üründe
+    ///     14 gün bir adedin altına düşüyor (Mağaza Arası Dengesizlik kartında bulunan
+    ///     aynı tuzak: "yılda 10 satanda 14 gün = 0,38 adet, HER stok geçiyor")
+    ///   mutlak <c>&gt;= 5</c> → <b>1.152 çeşit / 6,75M ₺</b> · satışı olan 435  ← SEÇİLEN
+    ///   ikisi birlikte → 1.151 (göreli şart bağlayıcı DEĞİL, eklenmedi)
+    /// ⚠ 5 eşiği ÖLÇÜMLE TÜRETİLMEDİ: panel içi tutarlılıktan geliyor —
+    /// <c>DengesizSart</c> de "anlamlı miktar" için 5 kullanıyor (kırtasiyede 20 fazla yüksek).
+    /// Aynı panelde aynı anlam için aynı taban.
+    /// </summary>
+    private const string RafBosSart =
+        "(t.IlkGiris IS NOT NULL AND t.MerkezStok >= 5 " +
+        "AND t.StokFsm <= 0 AND t.StokOzl <= 0 AND t.StokIst <= 0 " +
+        "AND " + DefterGuvenilirSart + ")";
+
+    /// <summary>
+    /// RAFA ÇIKMAMIŞ ENVANTER — merkeze girmiş, mağazaya HİÇ girmemiş. Satması imkânsız.
+    /// ⚠ B9: 1.068 çeşidin 129'unda (%12) merkezde ≤2 adet var; karşı-metrik ADET
+    /// gösterdiği için yanıltma sınırlı, ölçüt daraltılmadı — beyan yeterli sayıldı.
+    /// Defter güvenilir ön-şartı eklendi (1.068 → 1.065).
+    /// </summary>
+    private const string RafsizSart =
+        "(t.IlkGiris IS NULL AND t.MerkezStok > 0 AND " + DefterGuvenilirSart + ")";
+
+    /// <summary>
+    /// DOĞRULANAMAYAN KAYIT — negatif stok ya da fiyatı 0. <b>B5 düzeltmesi 10.09.2026:</b>
+    /// çeşit sayısı 6 koşuldan geliyordu ama TUTAR yalnız 2 koşuldan
+    /// (<c>ToplamStok &lt; 0 OR SatisFiyat &lt;= 0</c>) → ekranda "327 çeşit … −2.142.316 ₺"
+    /// derken sayı ile para AYNI KÜMEDEN DEĞİLDİ (tutar yalnız 106 çeşidi kapsıyordu).
+    /// Artık ikisi de bu tek ifadeden gelir; tam tutar <b>931.395 ₺</b>.
+    /// </summary>
+    private const string DefterGuvenilmezSart = "(NOT " + DefterGuvenilirSart + ")";
+
+    private const string DefterGuvenilirSart =
+        "(t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 " +
+        "AND t.MerkezStok >= 0 AND t.SatisFiyat > 0)";
+
+    /// <summary>
     /// SEZONLUK RAF AÇIĞI — geçen sezon BU mağazada sattı · bugün BU rafta stok yok ·
     /// merkez depoda mal var. Eylem <b>TRANSFER</b>, sipariş DEĞİL (mal zaten şirketin).
     ///
@@ -212,7 +312,8 @@ public sealed partial class SatisAnaliziQueries(
         "  OR (t.SezonOzl > 0 AND t.StokOzl = 0) " +
         "  OR (t.SezonIst > 0 AND t.StokIst = 0)) " +
         // MERKEZ EKSİĞİ KARŞILAMALI — kartın adı, grubu ve önerdiği eylem ancak o zaman doğru.
-        "AND t.MerkezStok >= " + SezonRafEksikAdet + ")";
+        "AND t.MerkezStok >= " + SezonRafEksikAdet + " " +
+        "AND " + DefterGuvenilirSart + ")";
 
     /// <summary>
     /// Sezonluk raf açığının KAYIP TUTARI — yalnız açığı olan mağazanın sezon adedi sayılır.
@@ -228,10 +329,16 @@ public sealed partial class SatisAnaliziQueries(
     /// yerde ayrı ayrı <c>5 *</c> yazılıydı — ayrışma riski).
     /// </summary>
     private const string AsiriStokSart =
-        "(t.SezonToplam > 0 AND t.ToplamStok > " + AsiriStokKat + " * t.SezonToplam)";
+        "(t.SezonToplam > 0 AND t.ToplamStok > " + AsiriStokKat + " * t.SezonToplam " +
+        // Kaçak ÖLÇÜLDÜ = 0 (negatif toplam pozitif eşiği geçemez); şart tutarlılık için,
+        // rakamı değiştirmiyor: 29.656 → 29.625 (fark yalnız fiyatı 0 olanlar).
+        "AND " + DefterGuvenilirSart + ")";
 
     private const string SezonHazirlikSart =
-        "(t.SezonToplam > 0 AND t.ToplamStok > 0 AND t.ToplamStok < 0.5 * t.SezonToplam)";
+        "(t.SezonToplam > 0 AND t.ToplamStok > 0 AND t.ToplamStok < 0.5 * t.SezonToplam " +
+        // ⚠ `ToplamStok > 0` negatif TOPLAMI zaten dışlıyordu, ama 62 çeşitte bir RAF
+        // negatifti ve toplamı küçültüp eksik adedi ŞİŞİRİYORDU (kayıp olduğundan fazla).
+        "AND " + DefterGuvenilirSart + ")";
 
     /// <summary>
     /// MAĞAZALAR ARASI DENGESİZLİK — bir rafta stok yok, ötekinde TALEBE GÖRE fazla,
@@ -258,6 +365,10 @@ public sealed partial class SatisAnaliziQueries(
     /// </summary>
     private const string DengesizSart =
         "(t.SezonToplam > 0 AND t.SatisToplam > 0 AND t.MagazaStok > 0 " +
+        // B7 (10.09 denetimi): `StokFsm <= 0` negatifi de "boş raf" sayıyordu ve
+        // `MagazaStok > 0` negatif bir rafı pozitif bir rafla maskeliyordu — 193 çeşit.
+        // Ön-şart ikisini birden kapatıyor; "<= 0" ifadeleri artık yalnız 0'a denk gelir.
+        "AND " + DefterGuvenilirSart + " " +
         "AND (t.SonGiris IS NULL OR t.SonGiris < DATEADD(DAY, -14, @kesim)) AND (" +
         "(t.StokFsm <= 0 AND ((t.StokOzl >= 5 AND t.StokOzl * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam) OR (t.StokIst >= 5 AND t.StokIst * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam))) OR " +
         "(t.StokOzl <= 0 AND ((t.StokFsm >= 5 AND t.StokFsm * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam) OR (t.StokIst >= 5 AND t.StokIst * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam))) OR " +
@@ -325,11 +436,11 @@ public sealed partial class SatisAnaliziQueries(
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SatisToplam))) AS Satis365,
                    CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
-                   SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0
+                   SUM(CASE WHEN {StoksuzSezonSart} THEN 1 ELSE 0 END) AS StoksuzCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart}
                         THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))                     AS StoksuzKayip,
-                   SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS StoksuzOdakCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 AND t.OdakStok > 0
+                   SUM(CASE WHEN {StoksuzSezonSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS StoksuzOdakCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.OdakStok > 0
                         THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))                     AS StoksuzOdakKayip,
                    SUM(CASE WHEN {AsiriStokSart} THEN 1 ELSE 0 END) AS AsiriCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
@@ -339,18 +450,15 @@ public sealed partial class SatisAnaliziQueries(
                         THEN t.Tutar ELSE 0 END))                                          AS AsiriOdakTutar,
                    -- Hareketsiz: satış yok + stok var + DEĞERLENDİRİLECEK kadar zamanı olmuş.
                    -- Yenilik koruması olmadan yeni açılan ürün haksız damgalanıyordu (ölçüldü).
-                   SUM(CASE WHEN t.SatisToplam <= 0 AND t.ToplamStok > 0
-                                 AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim)
-                            THEN 1 ELSE 0 END) AS HareketsizCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SatisToplam <= 0 AND t.ToplamStok > 0
-                        AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim)
+                   SUM(CASE WHEN {OluStokSart} THEN 1 ELSE 0 END) AS HareketsizCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart}
                         THEN t.Tutar ELSE 0 END))                                          AS HareketsizTutar,
                    -- RAFA HİÇ ÇIKMAMIŞ (kullanıcı isteği 09.09: "gelmiş ama mağazaya gitmemiş
                    -- te bir kpi olmalı"). Merkeze girmiş, mağazaya HİÇ girmemiş → satması
                    -- imkânsız. IlkGiris NULL = mağaza defterinde tek giriş kaydı yok.
                    -- ÖLÇÜLDÜ 09.09: 1.182 çeşit / 142.714 adet / 24,17M ₺; 802'si 90 günden eski.
-                   SUM(CASE WHEN t.IlkGiris IS NULL AND t.MerkezStok > 0 THEN 1 ELSE 0 END) AS RafsizCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.IlkGiris IS NULL AND t.MerkezStok > 0
+                   SUM(CASE WHEN {RafsizSart} THEN 1 ELSE 0 END) AS RafsizCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafsizSart}
                         THEN t.Tutar ELSE 0 END))                                          AS RafsizTutar,
                    -- RAFTA YOK ama MERKEZDE VAR — daha önce rafa çıkmış, şimdi rafı boş.
                    -- Satışı olanlar KANITLI TALEP + boş raf = kayıp satış (ölçüldü: 3.539
@@ -360,20 +468,15 @@ public sealed partial class SatisAnaliziQueries(
                    -- ama İst.Yolu −13 (veri kiri) toplamı −8 yapıyor, ürün "rafı boş" görünüyordu.
                    -- Doğrusu: ÜÇ RAFIN HEPSİ boş. Ölçüldü: 3.539 → 3.533 çeşit (6'sı aslında
                    -- rafta vardı), tutar 10,46M → 10,27M ₺.
-                   SUM(CASE WHEN t.IlkGiris IS NOT NULL AND t.MerkezStok > 0
-                                 AND t.StokFsm <= 0 AND t.StokOzl <= 0 AND t.StokIst <= 0
-                            THEN 1 ELSE 0 END)                                             AS RafBosCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.IlkGiris IS NOT NULL AND t.MerkezStok > 0
-                        AND t.StokFsm <= 0 AND t.StokOzl <= 0 AND t.StokIst <= 0 THEN t.Tutar ELSE 0 END))                      AS RafBosTutar,
-                   SUM(CASE WHEN t.IlkGiris IS NOT NULL AND t.MerkezStok > 0
-                            AND t.StokFsm <= 0 AND t.StokOzl <= 0 AND t.StokIst <= 0
-                            AND t.SatisToplam > 0 THEN 1 ELSE 0 END)                       AS RafBosSatisliCesit,
+                   SUM(CASE WHEN {RafBosSart} THEN 1 ELSE 0 END)                                             AS RafBosCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafBosSart} THEN t.Tutar ELSE 0 END))            AS RafBosTutar,
+                   SUM(CASE WHEN {RafBosSart} AND t.SatisToplam > 0 THEN 1 ELSE 0 END)                       AS RafBosSatisliCesit,
                    -- ⚠ GENİŞLETİLDİ 09.09: eski ölçüt yalnız TOPLAM negatifi görüyordu; merkez
                    -- pozitifse mağaza rafındaki eksi stok gizleniyordu (ölçüldü: 187 çeşit /
                    -- 4,89M ₺ hiçbir ölçütte görünmüyordu; mağaza raflarında −8.160 adet negatif).
                    -- Vaka: stkID 1697931 FSM 5 · İst.Yolu −13 · merkez 600 → toplam 592 "temiz".
-                   SUM(CASE WHEN t.StokFsm < 0 OR t.StokOzl < 0 OR t.StokIst < 0 OR t.MerkezStok < 0 OR t.ToplamStok < 0 OR t.SatisFiyat <= 0 THEN 1 ELSE 0 END)  AS KirliCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.ToplamStok < 0 OR t.SatisFiyat <= 0
+                   SUM(CASE WHEN {DefterGuvenilmezSart} THEN 1 ELSE 0 END)  AS KirliCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {DefterGuvenilmezSart}
                         THEN t.Tutar ELSE 0 END))                                          AS KirliTutar,
                    -- YENİ ÜRÜN — "henüz değerlendirilemez" kovası (adil-atıf). Hareketsiz/aşırı
                    -- ölçütleri bu ürünleri KASITLI dışlıyor; kaç çeşit ve ne kadar para o
@@ -416,15 +519,12 @@ public sealed partial class SatisAnaliziQueries(
                    -- HAREKETSİZLERİN KAÇI HİÇ SATILMAMIŞ (kullanıcı isteği 10.09).
                    -- İki AYRI problem: hiç satılmamış = ALIM hatası · satıyordu durdu =
                    -- TALEP kaybı. Aynı kartta tek sayı olarak toplanınca ayrım kayboluyordu.
-                   SUM(CASE WHEN t.SatisToplam <= 0 AND t.ToplamStok > 0
-                                 AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim)
-                                 AND t.SonSatis IS NULL THEN 1 ELSE 0 END)              AS HicSatilmamisCesit,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SatisToplam <= 0 AND t.ToplamStok > 0
-                        AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim)
+                   SUM(CASE WHEN {OluStokSart} AND t.SonSatis IS NULL THEN 1 ELSE 0 END)              AS HicSatilmamisCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart}
                         AND t.SonSatis IS NULL THEN t.Tutar ELSE 0 END))                AS HicSatilmamisTutar,
                    -- Rafa çıkmamış stoğun ADEDİ — o kartın karşı-metriği (tutar zaten
                    -- birincil değerde; ikinci kez tutar göstermek bilgi eklemiyordu).
-                   CONVERT(bigint, SUM(CASE WHEN t.IlkGiris IS NULL AND t.MerkezStok > 0
+                   CONVERT(bigint, SUM(CASE WHEN {RafsizSart}
                         THEN t.MerkezStok ELSE 0 END))                                AS RafsizAdet,
                    -- SEZONLUK RAF AÇIĞI (ölçüt: SezonRafAcigiSart, tek yer)
                    SUM(CASE WHEN {SezonRafAcigiSart} THEN 1 ELSE 0 END)               AS SezonRafCesit,
@@ -516,7 +616,7 @@ public sealed partial class SatisAnaliziQueries(
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SatisToplam))) AS Satis365,
                    CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
-                   SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
+                   SUM(CASE WHEN {StoksuzSezonSart} THEN 1 ELSE 0 END) AS StoksuzCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
                         THEN t.Tutar ELSE 0 END)) AS AsiriTutar
             FROM {Taban} t WITH (NOLOCK)
@@ -547,7 +647,7 @@ public sealed partial class SatisAnaliziQueries(
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SatisToplam))) AS Satis365,
                    CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
-                   SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
+                   SUM(CASE WHEN {StoksuzSezonSart} THEN 1 ELSE 0 END) AS StoksuzCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
                         THEN t.Tutar ELSE 0 END)) AS AsiriTutar
             FROM {Taban} t WITH (NOLOCK)

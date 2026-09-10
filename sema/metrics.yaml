@@ -918,3 +918,109 @@ metrics:
     hizalanmayan: "GetGerceklesenAsync (POS 365g) · GetTedarikAsync (alış faturası 365g) · GetMerkezKarsiTarafAsync (365g tek toplam) — aylık seri DEĞİL"
     evidence: "2026-09-10 — sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql yanında ölçüldü; ay-gün tablosu journal'da"
     last_verified: "2026-09-10"
+
+  defter_guvenilir_onsarti:
+    ad: "DEFTER GÜVENİLİR ÖN-ŞARTI — negatif stok fiziksel durum değil, defter hatası"
+    kural: >-
+      Bulunurluk / kayıp / eylem kartlarının HEPSİ şu ön-şartı taşır:
+      `StokFsm >= 0 AND StokOzl >= 0 AND StokIst >= 0 AND MerkezStok >= 0 AND SatisFiyat > 0`.
+      Negatif defter stoğundan "raf boş" veya "stok yok" sonucu ÇIKARILAMAZ — mal girişi karta
+      yazılmamış, satış yazılmıştır. `StokX <= 0` yazan her ölçüt bu tuzağı taşır.
+    neden: >-
+      Vaka stkID 643638 "Missim Bijuteri 49,50 Tl" (FİYAT KARTI, "gir çık" deseni):
+      11 alış hareketi / 1.113 adet karşısında 1.106 satış hareketi / 1.889 adet →
+      raf FSM -216 · Özlüce -250 · İst.Yolu -36, merkez 1 adet, tutar -24.799,50 ₺.
+    olcum: >-
+      2026-09-10, kesim 09.09.2026, evren 275.385: güvenilmez 327 çeşit (%0,12) ama TUTAR
+      ETKİSİ ORANTISIZ (yüksek satışlı fiyat kartları): Stokta Yokluk kartında 49 çeşit
+      1.972.350 ₺ = kartın %8,5'i · Raf Bulunurluk 11 çeşit · Sezon Açığı 62 çeşitte bir raf
+      negatif (eksik adedi şişiriyordu) · Mağaza Arası Dengesizlik 193 çeşitte MagazaStok
+      pozitifken bir raf negatif (maskeleme) · Aşırı Stok 0 kaçak (matematik zaten koruyordu).
+    istisna: >-
+      ENVANTER DEĞERİ kartı bu şartı UYGULAMAZ — evrenin TOPLAM değerini gösterir, güvenilmez
+      kayıtları çıkarmak bilançoyu yanlış yapar. Onlar "doğrulanamıyor" satırında beyan edilir.
+    kart_etkisi: >-
+      Ölü Stok 154,0M → 142,6M ₺ (116.924 → 115.670 çeşit) · Stokta Yokluk 23,1M → 21,1M
+      (8.102 → 8.046) · Raf Bulunurluk 10,0M → 6,8M (3.476 → 1.152, B2 dahil) · Sezon Stok
+      Açığı 152,5M → 150,4M · Aşırı Stok 309,4M → 308,3M · Dengesizlik 25,4M → 25,0M.
+    uygulandi: "dashboard/Data/SatisAnaliziQueries.cs → DefterGuvenilirSart (tek kaynak, 6 kart + liste filtreleri)"
+    evidence: "2026-09-10 — sorgular/2026-09-10-acik-siparis-etip-ve-sezon-raf-acigi.sql + KPI denetimi (veri-dogrula)"
+    last_verified: "2026-09-10"
+
+  varlik_degil_yeterlilik:
+    ad: "VARLIK ŞARTI ≠ YETERLİLİK ŞARTI (transfer/temin kartlarında)"
+    kural: >-
+      "Merkezde mal var → transfer yeter" iddiası `MerkezStok > 0` ile kurulamaz. Kartın
+      önerdiği EYLEM gerçekleşebilir olmalı: eksik adedi karşılayan miktar (Sezonluk Raf
+      Açığı: `MerkezStok >= eksikAdet`) ya da anlamlı transfer miktarı (Raf Bulunurluk Kaybı:
+      `MerkezStok >= 5`).
+    olcum: >-
+      2026-09-10: Sezonluk Raf Açığı'nda 2.116 çeşidin 622'si (5.793.010 ₺ = tutarın %74'ü)
+      merkez eksiği karşılamıyordu; uçta 120 çeşidin kaybı 3,49M ₺ iken merkezde 306 adet.
+      Raf Bulunurluk Kaybı'nda 3.476'nın 1.808'i (%52) merkezde <=2 adet taşıyordu (1.896.000 ₺).
+    esik_secimi: >-
+      Raf Bulunurluk için yeterlilik ölçütü ARANDI: `> 0` → 3.464 çeşit / 9,97M ₺ ·
+      14 GÜNLÜK TALEP KAPSAMASI → 3.426 (neredeyse hiç elemiyor — yavaş üründe eşik bir adedin
+      altına düşüyor, Dengesizlik kartındaki AYNI tuzak) · mutlak `>= 5` → 1.152 / 6,75M ₺
+      (SEÇİLEN) · ikisi birlikte → 1.151 (göreli şart bağlayıcı DEĞİL, eklenmedi).
+      ⚠ 5 eşiği ÖLÇÜMLE TÜRETİLMEDİ; panel içi tutarlılıktan geliyor (DengesizSart da
+      "anlamlı miktar" için 5 kullanıyor). Bu açıkça beyan edilir.
+    evidence: "2026-09-10 — bant ölçümü (mevcut / 14g / >=5 / ikisi / +satışı var)"
+    last_verified: "2026-09-10"
+
+  olu_stok_pos_capraz_denetimi:
+    ad: "ÖLÜ STOK — POS ile çapraz denetlenir, rafa çıkmamış AYRILIR"
+    kural: >-
+      Ölü stok ölçütü `SatisToplam <= 0 AND ToplamStok > 0 AND yeniDegil` YETMEZ. Üç ek şart:
+      (a) `PosAdet IS NULL OR PosAdet <= 0` — POS bağımsız kaynaktır, ERP defteriyle çelişirse
+      ürün ölü sayılamaz; (b) `IlkGiris IS NOT NULL` — mağazaya hiç girmemiş mal satamaz,
+      ona ölü damgası haksızdır ve eylemi ZITTIR ("rafa çıkar" vs "iade/imha");
+      (c) defter güvenilir ön-şartı.
+    olcum: >-
+      2026-09-10, kesim 09.09.2026: 116.924 çeşidin 348'i POS'ta satmış (1.686.915 ₺) — ERP
+      "365 günde satış yok" derken POS "sattı" diyor. 61 çeşitte `SatisToplam < 0`
+      (iade > satış) — onlar da satmış. 895 çeşit / 9.711.542 ₺ aynı anda "Rafa Çıkmamış
+      Envanter" kartındaydı (iki kart ZIT eylem öneriyordu).
+      Sonuç: 116.924 → 115.670 çeşit · 154,0M → 142,6M ₺.
+      ✅ "Hiç satılmamış" alt ölçütü POS ile HİÇ çelişmiyor (0 çeşit) — temiz.
+    evidence: "2026-09-10 — KPI denetimi (veri-dogrula), taban PosAdet çapraz kontrolü"
+    last_verified: "2026-09-10"
+
+  kpi_tutar_tabani_ayrimi:
+    ad: "KPI ŞERİDİNDE TUTAR TABANI ÜÇ FARKLI ŞEY — toplanamaz"
+    kural: >-
+      Kartların ₺ değeri üç ayrı tabandan gelir ve HER KARTTA YAZILI olmalı:
+      **stok değeri** (elimizdeki malın etiketi) · **kayıp potansiyeli** (olmayan satış:
+      eksik adet × etiket) · **kâr** (365 günde kazanılan). Yan yana duran bu üç taban
+      toplanabilir GÖRÜNÜR ama toplamı anlamsızdır.
+    olcum: >-
+      2026-09-10: 6.170 çeşit ≥2 kartta, 278'i ≥3 kartta görünüyor. Aşırı Stok ∩ Ölü Stok
+      1.842 çeşit / 6.207.815 ₺ İKİ KARTTA BİRDEN sayılıyor. Ölü Stok ∩ Rafa Çıkmamış
+      895 çeşit / 9.711.542 ₺ (bu ayrıldı — bkz. olu_stok_pos_capraz_denetimi).
+      Çakışma ÇELİŞKİ DEĞİL teşhistir (aynı mal hem fazla hem satmıyor), ama tutarlar toplanmaz.
+    ayrica: >-
+      "Doğrulanamıyor" satırında ÇEŞİT 6 koşuldan, TUTAR yalnız 2 koşuldan geliyordu
+      (327 çeşit vs 106) → sayı ile para AYNI KÜMEDEN DEĞİLDİ. İkisi de artık
+      `DefterGuvenilmezSart`'tan gelir; tam tutar 931.395 ₺.
+    evidence: "2026-09-10 — kart-kesişim matrisi ölçümü"
+    last_verified: "2026-09-10"
+
+  gerceklesen_marj_maliyet_yasi:
+    ad: "GERÇEKLEŞEN MARJ maliyetin YAŞINI taşır — ayrıştırılamayan sapma"
+    kural: >-
+      Birim maliyet tarih penceresi OLMADAN "son 5 alış faturası"ndan gelir = BUGÜNKÜ maliyet;
+      payı olan POS satışı ise 365 GÜNLÜK. Marj bu asimetriyi taşır. Maliyet YENİDEN
+      DEĞERLENMEZ (uydurma olur) — beyan edilir. `MaliyetTarih` kolonu bu sapmayı ölçülebilir
+      kılmak için tabana eklendi (önce ölçülemiyordu).
+    olcum: >-
+      2026-09-10, kesim 09.09.2026, maliyeti+POS satışı olan 143.799 çeşit — maliyet yaşına
+      göre marj: <3 ay %24,4 (net satışın %58'i, 433,3M ₺) · 3-6 ay %36,5 (126,7M) ·
+      6-12 ay %40,0 (119,1M) · 1-2 yıl %44,1 (52,3M) · 2+ yıl %63,0 (17,4M, %2,3).
+    iki_mekanizma_ayristirilamaz: >-
+      (1) ENFLASYON: eski maliyet düşük → marj şişkin (ÖLÇÜM HATASI).
+      (2) DEVİR HIZI: 2 yıldır alınmayan ama satan ürün yavaş dönendir ve zaten yüksek
+      marjlıdır (GERÇEK). İkisi AYNI YÖNE çalışıyor; hangi payın hangisi olduğu ölçülemiyor.
+      Bu yüzden düzeltme YAPILMADI, panel bandında beyan edildi.
+    etki_sinirli: "Maliyeti 1 yıldan eski çeşit payı %28,7 ama NET SATIŞ payı yalnız %9,3"
+    evidence: "2026-09-10 — taban MaliyetTarih kolonu + yaş bandı × marj ölçümü"
+    last_verified: "2026-09-10"

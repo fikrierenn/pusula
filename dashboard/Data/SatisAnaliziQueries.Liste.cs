@@ -831,26 +831,20 @@ public sealed partial class SatisAnaliziQueries
 
         var durumSart = f.Durum switch
         {
-            SatisDurumFiltre.StoksuzSezon => "(t.SezonToplam > 0 AND t.ToplamStok <= 0)",
+            SatisDurumFiltre.StoksuzSezon => StoksuzSezonSart,
             SatisDurumFiltre.AsiriStok => AsiriStokSart,
             // ⚠ KPI'daki HareketsizCesit ile AYNI ifade olmalı (ayrışırsa kart ve liste
             // farklı sayı gösterir). Yenilik koruması: yeni açılan ürün haksız damgalanmasın —
             // ölçüldü 09.09, stkID 1739163 vakası (kart 04.09.2026, mağazaya hiç girmemiş).
             // KPI'daki RafsizCesit / RafBosCesit ile AYNI ifadeler (ayrışma yasak).
-            SatisDurumFiltre.Rafsiz => "(t.IlkGiris IS NULL AND t.MerkezStok > 0)",
+            SatisDurumFiltre.Rafsiz => RafsizSart,
             // KPI ile AYNI: üç rafın HEPSİ boş. Toplam kullanmak negatif stoğu maskeliyordu
             // (stkID 1697931: FSM 5 · İst.Yolu −13 → toplam −8 "boş" görünüyordu).
-            SatisDurumFiltre.RafBos =>
-                "(t.IlkGiris IS NOT NULL AND t.MerkezStok > 0 " +
-                "AND t.StokFsm <= 0 AND t.StokOzl <= 0 AND t.StokIst <= 0)",
-            SatisDurumFiltre.Hareketsiz =>
-                "(t.SatisToplam <= 0 AND t.ToplamStok > 0 " +
-                "AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim))",
+            SatisDurumFiltre.RafBos => RafBosSart,
+            SatisDurumFiltre.Hareketsiz => OluStokSart,
             // KPI KirliCesit ile AYNI ifade. Mekan bazlı negatif dahil — merkez pozitifken
             // mağaza rafındaki eksi stok gizleniyordu (ölçüldü: 187 çeşit / 4,89M ₺).
-            SatisDurumFiltre.VeriKirli =>
-                "(t.StokFsm < 0 OR t.StokOzl < 0 OR t.StokIst < 0 OR t.MerkezStok < 0 " +
-                "OR t.ToplamStok < 0 OR t.SatisFiyat <= 0)",
+            SatisDurumFiltre.VeriKirli => DefterGuvenilmezSart,
             // Filtrenin TERSİ: yalnız taze stok. TazeGunHaric ile birlikte kullanılmaz (biri diğerini boşaltır).
             SatisDurumFiltre.SadeceTaze =>
                 "(COALESCE(t.SonGiris, t.IlkGiris, t.AcilisTarihi) >= DATEADD(DAY, -@tazeGun, @kesim))",

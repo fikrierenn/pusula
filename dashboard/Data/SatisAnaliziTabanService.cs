@@ -229,9 +229,16 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
             -- çağırıyor; 275K ürün için satır-başı UDF = timeout (sql-server-conventions
             -- § TVF'i korelasyonlu alt-sorguda çağırma). Set-bazlı ÖLÇÜLDÜ: 9,1 s /
             -- 433.682 çeşit / ort. birim 139,78 ₺.
-            SELECT f5.stkID, CONVERT(decimal(18,4), SUM(f5.tutar) / NULLIF(SUM(f5.adet), 0)) AS BirimMaliyet
+            -- ⚠ MALİYETİN TARİHİ DE ÖLÇÜLÜR (B11, 10.09.2026 denetimi): birim maliyet
+            -- tarih penceresi OLMADAN "son 5 fatura"dan gelir, yani BUGÜNKÜ maliyettir;
+            -- payı olan POS satışı ise 365 GÜNLÜK. Enflasyonda geçen yılın satışını bugünün
+            -- maliyetiyle bölmek marjı OLDUĞUNDAN DÜŞÜK gösterir. Tarih tabanda olmadığı
+            -- için bu sapma ÖLÇÜLEMİYORDU; MaliyetTarih ile ölçülebilir hâle geliyor.
+            SELECT f5.stkID, CONVERT(decimal(18,4), SUM(f5.tutar) / NULLIF(SUM(f5.adet), 0)) AS BirimMaliyet,
+                   MAX(f5.eTarih) AS MaliyetTarih
             FROM (
                 SELECT fa.ehstkID AS stkID, SUM(fa.ehAdetN) AS adet, SUM(fa.ehTutarN) AS tutar,
+                       f.eTarih,
                        ROW_NUMBER() OVER (PARTITION BY fa.ehstkID
                                           ORDER BY f.eTarih DESC, f.eID DESC) AS sira
                 FROM DerinSISBkm.dbo.fatAyr fa WITH (NOLOCK)
@@ -281,7 +288,7 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
              MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum,
              MerkezCikis, MerkezCikisGun,
              BirimMaliyet, PosAdet, PosNet, PosKdv, PosBrut, SonSatis,
-             SezonFsm, SezonOzl, SezonIst)
+             SezonFsm, SezonOzl, SezonIst, MaliyetTarih)
         SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.BarkodAna,
                CAST(k.stkAd AS nvarchar(120)), k.Yayinevi, k.Yazar, k.SatisFiyat,
                CONVERT(int, ISNULL(m.Fsm, 0)), CONVERT(int, ISNULL(m.Ozl, 0)), CONVERT(int, ISNULL(m.Ist, 0)),
@@ -302,7 +309,8 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                ss.SonSatis,
                -- Mağaza bazlı sezon satışı — "Sezonluk Raf Açığı" kartının payı.
                CONVERT(int, ISNULL(z.SezonFsm, 0)), CONVERT(int, ISNULL(z.SezonOzl, 0)),
-               CONVERT(int, ISNULL(z.SezonIst, 0))
+               CONVERT(int, ISNULL(z.SezonIst, 0)),
+               ml.MaliyetTarih
         FROM kat k
         LEFT JOIN mgz  m ON m.stkID = k.stkID
         LEFT JOIN depo d ON d.stkID = k.stkID
