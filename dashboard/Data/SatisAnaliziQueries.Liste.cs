@@ -55,20 +55,32 @@ public sealed partial class SatisAnaliziQueries
     /// Kolon eklerken <see cref="SatisAnaliziSatir"/> ctor sırasını takip et.
     /// </summary>
     private const string ListeKolonlar = """
-        t.stkID AS StkId, t.Kategori3, t.BarkodAna, t.stkAd AS StkAd, t.Kategori1,
-        t.Yayinevi, t.Yazar, t.SatisFiyat, t.Tutar AS ToplamStokTutar, t.ToplamStok,
-        t.OdakStok, t.IlkGiris AS IlkGirisTarihi, t.SonGiris AS SonGirisTarihi, t.AcilisTarihi,
-        t.StokFsm, t.StokOzl AS StokOzluce, t.StokIst AS StokIstyolu, t.MagazaStok, t.MerkezStok,
-        t.SatisFsm, t.SatisOzl AS SatisOzluce, t.SatisIst AS SatisIstyolu, t.SatisToplam,
+        -- ⚠ HER KOLONA AÇIK ALIAS (10.09.2026, silent-failure-hunter madde 9).
+        -- Önce 18 kolon alias'sızdı ve `tools/panel_kolon_denetimi.py` sıra kıyasını
+        -- YALNIZ alias'lı kolonlarda yapıyordu → araya ALIAS'SIZ kolon eklenince
+        -- alias'ların GÖRELİ sırası değişmiyor, sapma yakalanmıyor ama Dapper'da tüm
+        -- alt pozisyonlar KAYIYORDU. Alias adı = record parametre adı; davranış değişmez,
+        -- denetim körlüğü kapanır.
+        t.stkID AS StkId, t.Kategori3 AS Kategori3, t.BarkodAna AS BarkodAna,
+        t.stkAd AS StkAd, t.Kategori1 AS Kategori1,
+        t.Yayinevi AS Yayinevi, t.Yazar AS Yazar, t.SatisFiyat AS SatisFiyat,
+        t.Tutar AS ToplamStokTutar, t.ToplamStok AS ToplamStok,
+        t.OdakStok AS OdakStok, t.IlkGiris AS IlkGirisTarihi, t.SonGiris AS SonGirisTarihi,
+        t.AcilisTarihi AS AcilisTarihi,
+        t.StokFsm AS StokFsm, t.StokOzl AS StokOzluce, t.StokIst AS StokIstyolu,
+        t.MagazaStok AS MagazaStok, t.MerkezStok AS MerkezStok,
+        t.SatisFsm AS SatisFsm, t.SatisOzl AS SatisOzluce, t.SatisIst AS SatisIstyolu,
+        t.SatisToplam AS SatisToplam,
         t.SonSatis AS SonSatisTarihi,
         -- TALEP DESENİ ham girdileri (sınıf kodda hesaplanır; ADI = 12 / SatanAy)
-        t.SatanAy, t.TalepCV2,
+        t.SatanAy AS SatanAy, t.TalepCV2 AS TalepCV2,
         -- MALİYETİN TARİHİ + YAŞI (B11) — marj bu yaşı taşıyor; süzülebilir olsun diye listede.
         -- ⚠ Yaş KESİM TARİHİNE göre, bugüne göre DEĞİL: geçmiş kesim seçilirse yaş kaymasın.
-        t.MaliyetTarih,
+        t.MaliyetTarih AS MaliyetTarih,
         CONVERT(int, DATEDIFF(DAY, t.MaliyetTarih, t.Kesim)) AS MaliyetYasGun,
-        t.Ay1 AS SezonAy1, t.Ay2 AS SezonAy2, t.Ay3 AS SezonAy3, t.SezonToplam,
-        t.LeadTime, t.OdakDurum AS OdakSatisDurum,
+        t.Ay1 AS SezonAy1, t.Ay2 AS SezonAy2, t.Ay3 AS SezonAy3,
+        t.SezonToplam AS SezonToplam,
+        t.LeadTime AS LeadTime, t.OdakDurum AS OdakSatisDurum,
         -- MERKEZ ÇIKIŞI (365g) — toptan/grup, tüketici talebi DEĞİL. Gün-stok kapsam
         -- asimetrisini kapatmak için ayrı ölçülür (bkz. SatisAnaliziSatir.MerkezGunStok).
         ISNULL(t.MerkezCikis, 0) AS MerkezCikis,
@@ -309,29 +321,54 @@ public sealed partial class SatisAnaliziQueries
     ///
     /// KAYNAK POS (EncoreMerkez) — <c>irsHrk</c> DEĞİL: indirim kırılımı yalnız POS'ta var.
     /// Köprü <c>Products.Code = stkID</c> (barkod DEĞİL; sql-server-conventions).
-    /// <c>IsValid = 1</c> zorunlu. Belge tipleri 1,2,6,7,8 — <b>iade (3) HARİÇ</b>: ortalama
-    /// fiyat sorusunda iade satırı fiyatı bozar (veri-dogrula §2/2: AVG'de iade hariç).
+    /// <c>IsValid = 1</c> zorunlu.
+    ///
+    /// ══ İKİ KURAL, İKİ ÖLÇÜ SETİ (düzeltme 10.09.2026, sql-denetci bulgusu) ═══════════
+    /// Bu sorgu İKİ farklı soruyu besliyor ve <c>veri-dogrula §2/2</c> ikisine AYRI kural
+    /// koyuyor:
+    ///   · <b>ORTALAMA FİYAT</b> (birim fiyat, indirim oranı, birim kâr, marj) → AVG sorusu,
+    ///     <b>iade HARİÇ</b>: iade satırı fiyatı bozar.
+    ///   · <b>TOPLAM TUTAR</b> (365 günlük kâr, satılan adet) → SUM sorusu, <b>iade NEGATİF
+    ///     SIGN ile DÜŞÜLÜR</b>: dışlamak tutarı ŞİŞİRİR.
+    /// Önce tek set vardı (iade tamamen dışlanmış) ve TOPLAM KÂR şişiyordu — aynı hata
+    /// tabanda da vardı, orada ölçüldü: kâr 4.322.551 ₺ / net satış 13.265.831 ₺ şişme
+    /// (marj oranı yalnız 0,03 puan, çünkü iade satışı ve maliyeti orantılı düşürüyor).
+    /// ⇒ Sorgu artık İKİ SET döndürüyor: <c>Adet/NetKdvDahil/Kdv/...</c> (iade hariç, AVG için)
+    /// ve <c>AdetNet/NetNet/KdvNet</c> (iade netli, SUM için). Türev ölçüler doğru setten okur.
     /// KDV: <c>VatTotal</c> POS'un kendi hesabı — ürün kartındaki orandan türetilmez.
     /// </summary>
     public async Task<UrunGerceklesen?> GetGerceklesenAsync(
         int stkId, DateOnly kesim, CancellationToken ct = default)
     {
         const string sql = """
-            SELECT CONVERT(decimal(18,3), SUM(sp.Amount))                        AS Adet,
-                   CONVERT(decimal(18,2), SUM(sp.TotalPrice))                    AS NetKdvDahil,
-                   CONVERT(decimal(18,2), SUM(sp.TotalPrice + sp.DiscountTotalDirect)) AS BrutKdvDahil,
-                   CONVERT(decimal(18,2), SUM(sp.VatTotal))                      AS Kdv,
-                   CONVERT(decimal(18,2), SUM(sp.DiscountTotalCampaign))         AS IndirimKampanya,
-                   COUNT(*)                                                      AS Kalem
+            SELECT -- ① İADE HARİÇ set — ORTALAMA fiyat/marj soruları için (AVG kuralı)
+                   CONVERT(decimal(18,3), SUM(CASE WHEN s.DocumentsTypeId <> 3
+                        THEN sp.Amount ELSE 0 END))                              AS Adet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId <> 3
+                        THEN sp.TotalPrice ELSE 0 END))                          AS NetKdvDahil,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId <> 3
+                        THEN sp.TotalPrice + sp.DiscountTotalDirect ELSE 0 END))  AS BrutKdvDahil,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId <> 3
+                        THEN sp.VatTotal ELSE 0 END))                            AS Kdv,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId <> 3
+                        THEN sp.DiscountTotalCampaign ELSE 0 END))               AS IndirimKampanya,
+                   SUM(CASE WHEN s.DocumentsTypeId <> 3 THEN 1 ELSE 0 END)       AS Kalem,
+                   -- ② İADE NETLİ set — TOPLAM tutar soruları için (SUM kuralı)
+                   CONVERT(decimal(18,3), SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -sp.Amount ELSE sp.Amount END))                     AS AdetNet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -sp.TotalPrice ELSE sp.TotalPrice END))             AS NetNet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -sp.VatTotal ELSE sp.VatTotal END))                 AS KdvNet
             FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK)
             JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
             JOIN EncoreMerkez.dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
             WHERE sp.IsValid = 1
-              AND s.DocumentsTypeId IN (1, 2, 6, 7, 8)
+              AND s.DocumentsTypeId IN (1, 2, 3, 6, 7, 8)   -- 3 = İADE (set ②'de negatiflenir)
               AND s.[Date] >= @bas AND s.[Date] < DATEADD(DAY, 1, @kesim)
               AND ISNUMERIC(p.Code) = 1 AND p.Code NOT LIKE '%.%' AND p.Code NOT LIKE '%e%'
               AND CONVERT(int, p.Code) = @stkId
-            HAVING SUM(sp.Amount) > 0
+            HAVING SUM(CASE WHEN s.DocumentsTypeId <> 3 THEN sp.Amount ELSE 0 END) > 0
             """;
         await using var conn = await db.OpenAsync();
         return await conn.QuerySingleOrDefaultAsync<UrunGerceklesen>(new CommandDefinition(sql,
@@ -920,7 +957,10 @@ public sealed record UrunMaliyet(
 /// </summary>
 public sealed record UrunGerceklesen(
     decimal Adet, decimal NetKdvDahil, decimal BrutKdvDahil, decimal Kdv,
-    decimal IndirimKampanya, int Kalem)
+    decimal IndirimKampanya, int Kalem,
+    // ⚠ SIRA SQL SELECT SIRASIYLA AYNI — Dapper pozisyonel record'da isim değil SIRA eşler.
+    // İade NETLİ set (SUM soruları için); iade HARİÇ set yukarıda (AVG soruları için).
+    decimal AdetNet, decimal NetNet, decimal KdvNet)
 {
     /// <summary>Gerçekleşen ortalama satış fiyatı, KDV DAHİL (müşterinin ödediği).</summary>
     public decimal BirimKdvDahil => Adet <= 0 ? 0 : NetKdvDahil / Adet;
@@ -957,8 +997,19 @@ public sealed record UrunGerceklesen(
         BirimKar(birimMaliyet) is not { } k || birimMaliyet is null or <= 0 ? null : k / birimMaliyet.Value;
 
     /// <summary>Satılan adet üzerinden TOPLAM kâr (365 gün).</summary>
+    /// <summary>
+    /// 365 günlük kâr — <b>İADE NETLİ adetle</b> (düzeltme 10.09.2026). Birim kâr iade
+    /// HARİÇ ortalamadan gelir (AVG kuralı), toplam ise NETLİ adetle çarpılır (SUM kuralı).
+    /// Eskiden iade-hariç adet kullanılıyordu ve tutar şişiyordu.
+    /// </summary>
     public decimal? ToplamKar(decimal? birimMaliyet) =>
-        BirimKar(birimMaliyet) is not { } k ? null : k * Adet;
+        BirimKar(birimMaliyet) is not { } k ? null : k * AdetNet;
+
+    /// <summary>İade netli net satış, KDV hariç — toplam tutar soruları için.</summary>
+    public decimal NetKdvHaricNet => NetNet - KdvNet;
+
+    /// <summary>İade oranı (adet) — netli ÷ hariç. 1'e yakın = iade yok.</summary>
+    public decimal? IadeOrani => Adet <= 0 ? null : 1m - AdetNet / Adet;
 }
 
 /// <summary>Bir ayın net satış adedi (iade netlenmiş, 3 mağaza).</summary>

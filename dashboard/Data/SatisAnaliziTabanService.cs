@@ -280,30 +280,52 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
             GROUP BY f5.stkID
             HAVING SUM(f5.adet) <> 0
         ),
-        pos AS (   -- GERÇEKLEŞEN SATIŞ: POS'ta fiilen alınan para, 365 gün, İADE HARİÇ.
+        pos AS (   -- GERÇEKLEŞEN SATIŞ: POS'ta fiilen alınan para, 365 gün, İADE NETLENMİŞ.
             -- ⚠ KART FİYATI YANILTIYOR (ölçüldü 09.09, 90 gün): POS brütü kart fiyatına
             -- EŞİT (%95,4-99,5) ama gerçekleşen NET çok altında — Kitap %71,1 · Çocuk
             -- Kitabı %72,3 · Kırtasiye %80,3 · Oyuncak %88,6. Etiketle 1.022,2M ₺,
             -- kategori oranlarıyla 807,3M ₺ → 214,9M ₺ (%21,03) şişme.
-            -- İade (DocumentsTypeId=3) HARİÇ: ortalama fiyat sorusunda iade satırı fiyatı
-            -- bozar (veri-dogrula §2/2 — AVG'de iade hariç).
+            -- ══ İADE NETLEME DÜZELTMESİ 10.09.2026 (sql-denetci bulgusu) ═══════════════
+            -- ⚠ ÖNCE İADE TAMAMEN DIŞLANMIŞTI (`IN (1,2,6,7,8)`) ve gerekçe olarak
+            -- "veri-dogrula §2/2 — AVG'de iade hariç" yazılmıştı. GEREKÇE YANLIŞ YERE
+            -- TAŞINMIŞTI: kural AVG için "hariç tut", SUM için "negatif sign ile DÜŞ" der.
+            -- Bu kolonlar (PosAdet/PosNet/PosKdv/PosBrut) panel genelinde SUM edilip
+            -- "Gerçekleşen Kâr" KPI'sını besliyor → dışlama TUTARI ŞİŞİRİYORDU.
+            --
+            -- ÖLÇÜLDÜ 10.09.2026 (marj alt kümesi: BirimMaliyet > 0 olan çeşitler):
+            --   iade HARİÇ  : 143.799 çeşit · net 748.824.435 ₺ · kâr 233.404.828 ₺ · marj %31,17
+            --   iade NETLİ  : 143.480 çeşit · net 735.558.604 ₺ · kâr 229.082.277 ₺ · marj %31,14
+            --   ⇒ kâr <b>4.322.551 ₺</b>, net satış <b>13.265.831 ₺</b> ŞİŞİKTİ.
+            -- ⚠ NÜANS: MARJ ORANI neredeyse etkilenmiyor (0,03 puan) çünkü iade satışı ve
+            -- maliyeti ORANTILI düşürüyor. Hata TUTARDA, oranda değil — kartın birincil
+            -- değeri kâr TUTARI olduğu için düzeltme gerekliydi.
+            --
+            -- Ortalama fiyat sorusu (drill'deki gerçekleşen birim fiyat) AYRI sorguda
+            -- (`GetGerceklesenAsync`) ve orada iade HARİÇ kalmalı — AVG'de kural farklı.
             -- Köprü Products.Code = stkID (barkod DEĞİL; %99,98 eşleşme). IsValid=1 zorunlu.
             -- EncoreMerkez compat 110 → TRY_CONVERT YOK; ISNUMERIC guard + desen süzgeci.
             -- ÖLÇÜLDÜ: 3,0 s / 154.225 çeşit / 6.062.582 adet / 1.131.231.099 ₺ net.
             SELECT CONVERT(int, p.Code) AS stkID,
-                   CONVERT(int, SUM(sp.Amount))                              AS PosAdet,
-                   CONVERT(decimal(18,2), SUM(sp.TotalPrice))                AS PosNet,
-                   CONVERT(decimal(18,2), SUM(sp.VatTotal))                  AS PosKdv,
-                   CONVERT(decimal(18,2), SUM(sp.TotalPrice + sp.DiscountTotalDirect)) AS PosBrut
+                   CONVERT(int, SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -sp.Amount ELSE sp.Amount END))                  AS PosAdet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -sp.TotalPrice ELSE sp.TotalPrice END))          AS PosNet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -sp.VatTotal ELSE sp.VatTotal END))              AS PosKdv,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId = 3
+                        THEN -(sp.TotalPrice + sp.DiscountTotalDirect)
+                        ELSE   sp.TotalPrice + sp.DiscountTotalDirect END))   AS PosBrut
             FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK)
             JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
             JOIN EncoreMerkez.dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
             WHERE sp.IsValid = 1
-              AND s.DocumentsTypeId IN (1, 2, 6, 7, 8)
+              AND s.DocumentsTypeId IN (1, 2, 3, 6, 7, 8)   -- 3 = İADE, negatif sign ile düşülür
               AND s.[Date] >= @bas AND s.[Date] < DATEADD(DAY, 1, @kesim)
               AND ISNUMERIC(p.Code) = 1 AND p.Code NOT LIKE '%.%' AND p.Code NOT LIKE '%e%'
             GROUP BY CONVERT(int, p.Code)
-            HAVING SUM(sp.Amount) > 0
+            -- NETLENMİŞ adet pozitif olmalı: iadesi satışından fazla olan ürün (net ≤ 0)
+            -- marj hesabına giremez — negatif adetle maliyet çarpımı anlamsız olurdu.
+            HAVING SUM(CASE WHEN s.DocumentsTypeId = 3 THEN -sp.Amount ELSE sp.Amount END) > 0
         ),
         ilk AS (   -- IlkGiris = ürünün MAĞAZAYA ilk girişi (ölçüm 399/400) · SonGiris = SON mal kabulü
             -- TAZE STOK için SonGiris şart: IlkGiris 2021'e kadar gidebilir, tazeliği ölçmez.

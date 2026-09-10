@@ -23,10 +23,22 @@ Bu oturumda (10.09.2026) ikisi de İKİ KEZ oldu ve build yeşil kaldı:
 Kullanım:
     python tools/panel_kolon_denetimi.py
 
-⚠ SINIR: bu denetim BİÇİMSEL. Alias'sız SELECT kolonlarını (ör. `ml.BirimMaliyet`)
-atlar, çünkü adı ifadeden çıkarmak parse gerektirir — atlananlar rapor edilir.
-Yani "0 kırık" bütün eşleşmenin doğru olduğunu KANITLAMAZ; yalnız bu iki desenin
-temiz olduğunu söyler.
+⚠ SINIRLAR (silent-failure-hunter denetimi 10.09.2026 — neyi HÂLÂ görmüyor):
+· BİÇİMSEL denetim. Anahtar DOĞRU ama YANLIŞ ALANA bağlıysa (`"sonsatis" => s.SonGirisTarihi`)
+  bunu ASLA göremez — CFO'nun gördüğü yanlış rakam tam bu sınıftır.
+· Kolon TİPİ değişimini görmez (`SatanAy int→varchar`) — Dapper eşlemeyi bozan asıl şey.
+· Alias'sız SELECT kolonlarını atlar; atlanan oranı %50'yi geçerse artık KIRIK verir
+  (önce yalnız uyarıydı ve sıra kıyası sessizce körleşiyordu).
+· Yalnız CIFTLER/ANAHTAR_CIFTLERI'nda listelenen çiftleri denetler. Repoda başka pozisyonel
+  record var (UrunMaliyet · UrunGerceklesen · AkranOzet · DepoAdres · UrunHiz · ExcelDetaySatir …)
+  ve BUNLAR DENETİM DIŞI.
+· Python emitter (scripts/satis_analizi_excel.py) hiç denetlenmiyor: orada da başlık listesi
+  ile SELECT kolon sayısı karşılaştırılmıyor (aynı pozisyonel kayma sınıfı).
+· TESLİM YOLU: bu araç `.claude/hooks/pre-commit-antipattern.sh` üzerinden yalnız Claude'un
+  Bash `git commit` çağrısında koşar. `.git/hooks/pre-commit` kurulmadıkça kullanıcının kendi
+  terminalinden / IDE'den attığı commit denetimi GÖRMEZ.
+⇒ "0 kırık" şunu söyler: listelenen çiftlerin alias sırası kaymamış ve kolon anahtarları
+  eşlemede var. Bunun ötesi ölçülmemiştir.
 """
 from __future__ import annotations
 
@@ -36,6 +48,9 @@ import sys
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
+# stderr DE utf-8 olmalı: Türkçe içeren traceback cp1254 konsolda UnicodeEncodeError
+# verip ASIL SEBEBİ gizliyordu (silent-failure-hunter madde 17).
+sys.stderr.reconfigure(encoding="utf-8")
 
 KOK = Path(__file__).resolve().parent.parent
 
@@ -48,6 +63,19 @@ CIFTLER = [
         "public async Task<SatisAnaliziOzet> GetOzetAsync",
         "dashboard/Data/SatisAnaliziQueries.cs",
         "OzetSatirRow",
+    ),
+    # ⚠ EKLENDİ 10.09.2026 (silent-failure-hunter madde 1): bugün patlayan İKİ hatadan
+    # biri (SonSatisTarihi) TAM BU ÇİFTTEYDİ ve denetim onu hiç görmüyordu. Daha kötüsü:
+    # hook deseni `SatisAnaliziQueries`'i yakaladığı için Liste.cs düzenlenince denetim
+    # KOŞUP "OK" basıyordu → yanlış onay.
+    # ⚠ Bu çiftte alias'sız kolon ÇOK (ölçüldü: ~35 öğenin 18'i) → göreli sıra kıyası
+    # KISMEN KÖR. Bu yüzden atlanan sayısı artık UYARI değil, oranı yüksekse KIRIK.
+    (
+        "Ürün listesi satırı",
+        "dashboard/Data/SatisAnaliziQueries.Liste.cs",
+        "private const string ListeKolonlar",
+        "dashboard/Models/SatisAnaliziModels.cs",
+        "SatisAnaliziSatir",
     ),
 ]
 
@@ -64,6 +92,26 @@ ANAHTAR_CIFTLERI = [
 
 kirik: list[str] = []
 uyari: list[str] = []
+
+# ⚠ VACUOUS PASS MUHAFIZI (silent-failure-hunter madde 3, KANITLANDI).
+# Regex bir şey bulamazsa (sözdizimi değişti, SQL bir const'a taşındı, anahtarlar
+# BÜYÜK harfe döndü) kıyas BOŞ KÜME ile yapılıyordu ve "OK 0 kolon" + exit 0 çıkıyordu.
+# Yani denetimi devre dışı bırakmanın yolu onu bozmak DEĞİL, sözdizimini değiştirmekti.
+# Artık her taraf için ALT SINIR var; altına düşen KOŞAMADI (exit 2) sayılır.
+ASGARI_ALIAS = 20      # OzetSatirRow'da 51 alias ölçüldü; Liste'de de 15+ var
+ASGARI_ANAHTAR = 20    # kolon tanımı 37 ölçüldü
+
+
+def kosamadi(mesaj: str) -> None:
+    """Ölçemedik — YEŞİL SAYILMAZ. sqlcli dört sözleşmesi: exit 2 = KOŞAMADI."""
+    print("KOŞAMADI  " + mesaj)
+    sys.exit(2)
+
+
+if not CIFTLER:
+    kosamadi("CIFTLER listesi BOŞ — hiçbir sıra denetimi yapılmadı")
+if not ANAHTAR_CIFTLERI:
+    kosamadi("ANAHTAR_CIFTLERI listesi BOŞ — hiçbir anahtar denetimi yapılmadı")
 
 
 def oku(rel: str) -> str:
@@ -128,6 +176,14 @@ print("═" * 74)
 for etiket, sql_dosya, im, rec_dosya, rec_ad in CIFTLER:
     aliaslar, _ = sql_aliaslari(oku(sql_dosya), im)
     params = record_parametreleri(oku(rec_dosya), rec_ad)
+    # Vacuous pass muhafızı — boş küme ile kıyas YEŞİL SAYILMAZ
+    if len(aliaslar) < ASGARI_ALIAS:
+        kosamadi(f"{etiket}: SQL'de yalnız {len(aliaslar)} alias bulundu (asgari "
+                 f"{ASGARI_ALIAS}). Sözdizimi değişmiş ya da SQL başka yere taşınmış "
+                 f"olabilir — boş kıyas yapıp 'geçti' demek yerine durduruldu.")
+    if len(params) < ASGARI_ALIAS:
+        kosamadi(f"{etiket}: record'da yalnız {len(params)} parametre bulundu (asgari "
+                 f"{ASGARI_ALIAS}). Record adı/sözdizimi değişmiş olabilir.")
     # Yalnız İKİ TARAFTA DA olan adları kıyasla; alias'sız kolonlar atlanır
     ortak_sql = [a for a in aliaslar if a in params]
     ortak_rec = [p for p in params if p in aliaslar]
@@ -147,11 +203,16 @@ for etiket, sql_dosya, im, rec_dosya, rec_ad in CIFTLER:
         else:
             kirik.append(f"{etiket}: uzunluk farkı — SQL {len(ortak_sql)}, record {len(ortak_rec)}")
     if atlanan:
-        uyari.append(
-            f"{etiket}: {len(atlanan)} record parametresi SQL'de alias olarak bulunamadı "
-            f"(alias'sız kolon olabilir, denetim dışı): {', '.join(atlanan[:6])}"
-            + (" …" if len(atlanan) > 6 else "")
-        )
+        # ⚠ ATLANAN ORANI YÜKSEKSE SIRA KIYASI KÖR (silent-failure-hunter madde 9):
+        # araya ALIAS'SIZ bir kolon eklenirse alias'ların GÖRELİ sırası değişmez →
+        # sapma yakalanmaz, ama Dapper'da tüm alt pozisyonlar kayar. Yarıdan fazlası
+        # atlanıyorsa denetim güvence VERMİYOR; bunu uyarı değil KIRIK olarak bildir.
+        oran = len(atlanan) / max(len(params), 1)
+        mesaj = (f"{etiket}: {len(atlanan)}/{len(params)} record parametresi SQL'de alias "
+                 f"olarak bulunamadı (%{100 * oran:.0f}) → sıra kıyası bu kadar kolonda KÖR: "
+                 + ", ".join(atlanan[:6]) + (" …" if len(atlanan) > 6 else ""))
+        (kirik if oran > 0.5 else uyari).append(
+            mesaj + (" ⇒ SQL'de bu kolonlara AS <Ad> yazılmalı." if oran > 0.5 else ""))
 
 print()
 print("═" * 74)
@@ -160,7 +221,23 @@ print("═" * 74)
 
 for etiket, tanim_dosya, tanim_re, esle_dosya, esle_re in ANAHTAR_CIFTLERI:
     tanimli = set(re.findall(tanim_re, oku(tanim_dosya)))
-    eslenen = set(re.findall(esle_re, oku(esle_dosya)))
+    esle_metin = oku(esle_dosya)
+    # ⚠ `when` SATIRLARI ELENİYOR (silent-failure-hunter madde 2, KANITLANDI).
+    # `Metin()` içindeki `decimal v when anahtar == "kapsama" =>` satırı desene UYUYORDU;
+    # bu yüzden `Deger()` switch'inden "kapsama" kolu SİLİNSE bile (kolon gerçekten boşalır)
+    # denetim OK diyordu. Yani bugün Excel'de boş çıkan kolonun regresyonuna karşı
+    # HİÇ KORUMA YOKTU. Anahtar yalnız GERÇEK switch kolundan sayılır.
+    esle_satirlar = [x for x in esle_metin.splitlines()
+                     if " when " not in x and not x.strip().startswith("//")]
+    eslenen = set(re.findall(esle_re, "\n".join(esle_satirlar)))
+    if len(tanimli) < ASGARI_ANAHTAR:
+        kosamadi(f"{etiket}: yalnız {len(tanimli)} kolon tanımı bulundu (asgari "
+                 f"{ASGARI_ANAHTAR}). `new(\"anahtar\"` sözdizimi değişmiş olabilir — "
+                 f"boş kümeyle kıyas 'geçti' sayılmaz.")
+    if len(eslenen) < ASGARI_ANAHTAR:
+        kosamadi(f"{etiket}: eşlemede yalnız {len(eslenen)} anahtar bulundu (asgari "
+                 f"{ASGARI_ANAHTAR}).")
+
     eksik = sorted(tanimli - eslenen)     # kolon seçilebilir ama değer gelmez → BOŞ
     fazla = sorted(eslenen - tanimli)     # eşleme var, kolon tanımı yok → ölü dal
 

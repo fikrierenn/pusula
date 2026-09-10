@@ -1245,3 +1245,34 @@ metrics:
       8 kategoride eşik türetilemedi. Daha ince kırılım (kategori × mağaza) taşımaz.
     evidence: "2026-09-10 — sorgular/2026-09-10-kategori-bazli-asiri-stok-esigi.sql blok 1 + 2"
     last_verified: "2026-09-10"
+
+  pos_iade_netleme:
+    ad: "POS TOPLAMLARI İADE NETLİ — AVG kuralı SUM'a taşınmıştı (düzeltildi)"
+    kural: >-
+      `veri-dogrula §2/2` iki AYRI kural koyar ve ikisi karıştırılmamalı:
+      **SUM/tutar** sorularında iade NEGATİF SIGN ile düşülür
+      (`CASE WHEN DocumentsTypeId = 3 THEN -x ELSE x END`, belge tipi `IN (1,2,3,6,7,8)`);
+      **AVG/ortalama fiyat** sorularında iade HARİÇ tutulur (iade satırı fiyatı bozar).
+    ne_olmustu: >-
+      Taban `pos` CTE'si ve drill `GetGerceklesenAsync` iadeyi TAMAMEN dışlıyordu
+      (`IN (1,2,6,7,8)`) ve gerekçe olarak "AVG'de iade hariç" yazılmıştı — GEREKÇE YANLIŞ
+      YERE TAŞINMIŞTI. O kolonlar (PosAdet/PosNet/PosKdv/PosBrut) panel genelinde SUM edilip
+      "Gerçekleşen Kâr" KPI'sını besliyor; dışlama TUTARI ŞİŞİRİYORDU. sql-denetci bulgusu.
+    olcum: >-
+      2026-09-10, marj alt kümesi (BirimMaliyet > 0 AND PosAdet > 0), kesim 09.09.2026:
+      iade HARİÇ → 143.799 çeşit · net 748.824.435 ₺ · kâr 233.404.828 ₺ · marj %31,17
+      iade NETLİ → 143.480 çeşit · net 735.558.604 ₺ · kâr 229.082.277 ₺ · marj %31,14
+      ⇒ kâr **4.322.551 ₺**, net satış **13.265.831 ₺** şişikti.
+      Yeniden kurulan tabanda doğrulandı: 143.482 çeşit · 735.567.613 ₺ · 229.230.717 ₺ · %31,16
+      (küçük fark canlı verinin gün içinde ilerlemesinden).
+    kritik_nuans: >-
+      MARJ ORANI neredeyse etkilenmiyor (%31,17 → %31,14, 0,03 puan) çünkü iade satışı ve
+      maliyeti ORANTILI düşürüyor. Hata TUTARDA, oranda değil. Kartın birincil değeri kâr
+      TUTARI olduğu için düzeltme gerekliydi — "marj şişik" demek overclaim olurdu.
+    drill_iki_set: >-
+      `GetGerceklesenAsync` artık İKİ SET döndürür çünkü tek sorgu iki kurala hizmet edemiyor:
+      `Adet/NetKdvDahil/Kdv/BrutKdvDahil/IndirimKampanya/Kalem` (iade HARİÇ → ortalama fiyat,
+      birim kâr, marj, indirim oranı) ve `AdetNet/NetNet/KdvNet` (iade NETLİ → 365 günlük kâr).
+      `ToplamKar` artık `BirimKar * AdetNet`.
+    evidence: "2026-09-10 — sql-denetci bulgusu + kendi ölçümü (EncoreMerkez iade 58.244 belge / 17,2M ₺ net, marj alt kümesindeki tam etkisi ayrıca ölçüldü)"
+    last_verified: "2026-09-10"
