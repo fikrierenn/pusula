@@ -681,3 +681,28 @@ metrics:
       kılmaktır.
     evidence: "2026-09-09 — hareketsiz-grup mutabıklık testi + 2026 delta karşılaştırması + pHrkTip/ehTip kırılımları; plans/43 §3.5"
     last_verified: "2026-09-09"
+
+  yolda_stok_transfer_kabul_gecikmesi:
+    ad: "YOLDA STOK — depo çıkışı ile mağaza kabulü arasındaki mal"
+    kural: >-
+      Transferin ALIM bacağı, mağaza kabulüne kadar `irsHrk`'da OLUŞMAZ. O aralıkta mal
+      hiçbir mekanda görünmez: depodan düşülmüş, mağazaya girmemiş. Panel/rapor stok
+      toplamı bu kadar EKSİKTİR ve bu bir hata değil, defterin çalışma biçimidir.
+      Eşleştirme anahtarı `irs.eNo` + `stkID`; iki bacak da `ehTip = 13`, yön `ehMekan`
+      ve işaretle ayrılır (mekan 12 negatif çıkış, mağaza mekanı pozitif giriş).
+    olcum: >-
+      ÖLÇÜLDÜ 10.09.2026 (kesim 09.09, son 120 gün): eşleşmeyen 2.389 satır ·
+      **1.869 çeşit / 53.602 adet** · hepsinde kabul HİÇ yok (kısmi kabul 0) ·
+      en eski çıkış 08.09.2026 (2 gün) · **14 günden eski 0**.
+    yorum: >-
+      120 günlük pencerede yalnız son 2 günün transferleri eşleşmemiş → mağaza kabulü
+      normalde ~2 günde tamamlanıyor. Bu bir yönetim problemi DEĞİL, zamanlama artefaktı.
+      Karar: KPI kartı YAPILMADI (satinalma-danisman kurulu madde E), panel bandında
+      beyan edildi. Aynı ölçüm "Mağazalar Arası Transfer" kartındaki 14 günlük SonGiris
+      muhafızının YETERLİ olduğunu kanıtlıyor (14 > 2).
+    anahtar_dogrulamasi: >-
+      Elenen alternatif açıklama: "eNo+stkID yanlış anahtar olabilir". Yanlış olsaydı
+      120 günün TAMAMI eşleşmemiş görünürdü; yalnız son 2 gün çıkması anahtarın tuttuğunu
+      gösteriyor.
+    evidence: "2026-09-10 — sorgular/2026-09-10-yolda-stok-transfer-eslesmesi.sql; vaka stkID 1739183 (720 adet)"
+    last_verified: "2026-09-10"
