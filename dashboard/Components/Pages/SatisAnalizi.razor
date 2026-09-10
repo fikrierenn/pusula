@@ -93,8 +93,21 @@
                 ölçülüyor (kapsam %94,7).</li>
             <li><b>Yolda stok hiçbir mekanda görünmez.</b> Depodan çıkmış, mağaza kabul
                 etmemiş mal. Ölçüldü: 1.869 çeşit / 53.602 adet, tamamı son 2 günden.</li>
-            <li><b>İade hakkı veride izli değil</b> (<code>urn.alimIadeYok</code> sabit) →
-                aşırı stok iade hakkına göre kırılamıyor.</li>
+            <li><b>İade HAKKI veride yok, ama iade DAVRANIŞI ölçülebiliyor.</b>
+                <code>urn.alimIadeYok</code> sabit (844.017/844.017 aynı değer) ve
+                <code>frm.frmIadeKural</code> 0/1/2 kodunun anlamı belgesiz — ölçüldü
+                10.09.2026: üç kodun HEPSİNDE fiilî iade var, komşu Wilson aralıkları
+                çakışıyor, kod fiilî davranışı öngörmüyor.
+                Vekil olarak tedarikçinin <b>gözlenen 2 yıllık iade oranı</b> kullanılabilir;
+                aşırı stok (308,3M ₺) bu orana göre: hiç iade yok %6,7 (20,7M ₺) ·
+                %0-2 → %18,5 (56,9M) · %2-10 → %44,7 (137,9M) · %10-25 → %14,6 (45,1M) ·
+                %25+ → %0,7 · tedarikçisi bilinmeyen %14,8 (45,6M).
+                ⇒ Aşırı stoğun <b>%25,2'si (77,6M ₺)</b> iadesi %2'nin altındaki
+                tedarikçilerden: orada "iade ile çözülür" savunması zayıf.
+                <span class="opacity-60">⚠ Vekil, hak değil: hakkı olup kullanmayan tedarikçi
+                "iade yok" görünür; oran ürün değil TEDARİKÇİ düzeyinde (kullanıcı "her
+                kitapta yok iade" demişti); aşırı stok biriken üründe iade yapılmış olabilir
+                → oran kısmen sonucun kendisi. Panelde kırılım YAPILMADI, beyan edildi.</span></li>
             <li><b>Merkez için gün-stok hesaplanmıyor.</b> Çıkış sıçramalı (çeşitlerin %67'si
                 tek günde) ve tüketici talebi değil: %72 grup şirketi · %16 ODAK · %6 Sınav.</li>
             <li><b>365 günlük satış ile sezon kısmen örtüşür</b> — toplanmaz, çıkarılmaz.</li>

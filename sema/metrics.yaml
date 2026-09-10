@@ -1162,3 +1162,40 @@ metrics:
       Denetim komutu: kolon tanımı anahtarları ile eşleme anahtarlarını `comm` ile karşılaştır.
     evidence: "2026-09-10 — anahtar kümesi karşılaştırması + panelde doğrulama (Son Satış/Talep Deseni/Satan Ay/Kapsama dolu)"
     last_verified: "2026-09-10"
+
+  iade_davranisi_vekili:
+    ad: "İADE HAKKI — kod anlamı çıkmadı, GÖZLENEN iade oranı vekil olarak çalışıyor"
+    kod_anlami_cikmadi: >-
+      `dbo.frm.frmIadeKural` 0/1/2 anlamı VERİDEN ÇIKARILAMADI (ölçüldü 2026-09-10).
+      Hipotez "iade hakkı olmayan kodda fiilî iade de olmaz" idi; ölçüm çürüttü:
+      frmTip=0 tedarikçilerde son 365 gün — kod 0 → 87 alışın 16'sına iade (%18,4
+      [11,6-27,8]) · kod 1 → 11 alışın 4'üne (%36,4 [15,2-64,6]) · kod 2 → 90 alışın
+      36'sına (%40,0 [30,5-50,3]). Adet bazında iade/alış: %19,26 / %1,40 / %5,42.
+      Cochran-Armitage chi2(1)=9,86 p=0,00169 ANLAMLI ama komşu Wilson aralıklarının
+      HEPSİ ÇAKIŞIK ve kod 1'de n=11.
+      ⇒ `olctum-mu-cikardim-mi.md` § EŞİK TÜRETME kuralına göre AYRIM DESTEKLENMEDİ.
+      Üç kodun hepsinde fiilî iade var; hiçbiri "iade yok" demiyor. Kod fiilî davranışı
+      ÖNGÖRMÜYOR. B-150 veriden kapatılamaz — muhasebe/satınalma teyidi şart.
+      ⚠ SORU DEĞİŞTİ: "hangi kod iade hakkı var?" yerine "bu alan bugün bir kural mı
+      taşıyor, yoksa terk edilmiş bir varsayılan mı?"
+    vekil_kural: >-
+      Koda ihtiyaç duymadan: tedarikçinin **gözlenen 2 yıllık iade oranı**
+      (iade ehTip 2 adedi ÷ alış ehTip 0+10 adedi). Ürünün tedarikçisi = son alış
+      faturasının firması (730 gün içinde, `fat.eTip=0 AND eDurum<>2`).
+    olcum: >-
+      2026-09-10, aşırı stok kohortu (3× eşiği, güvenilir defter, 308,3M ₺):
+      hiç iade yok 905 çeşit / 20,7M ₺ (%6,7) · %0-2 → 2.379 / 56,9M (%18,5) ·
+      %2-10 → 20.171 / 137,9M (%44,7) · %10-25 → 1.124 / 45,1M (%14,6) ·
+      %25+ → 26 / 2,1M (%0,7) · tedarikçi bilinmiyor 5.019 / 45,6M (%14,8).
+      ⇒ Aşırı stoğun %25,2'si (77,6M ₺) iadesi %2'nin ALTINDAKİ tedarikçilerden:
+      orada "iade ile çözülür" savunması ZAYIF. %15,3'ünde (47,1M ₺) tedarikçi fiilen
+      iade kabul ediyor → orada risk gerçekten daha küçük.
+    dort_sinir: >-
+      VEKİL, HAK DEĞİL: (a) hakkı olup kullanmayan tedarikçi "hiç iade yok" görünür
+      (yanlış negatif) · (b) oran ÜRÜN değil TEDARİKÇİ düzeyinde, kullanıcı "her kitapta
+      yok iade" demişti · (c) TERS NEDENSELLİK — aşırı stok biriken üründe iade yapılmış
+      olabilir, oran kısmen sonucun kendisi · (d) "tedarikçi bilinmiyor" %14,8, son 2 yılda
+      alış faturası olmayan eski stok.
+    uygulama_durumu: "Panelde KIRILIM YAPILMADI; kapsam bandında ölçümle beyan edildi."
+    evidence: "2026-09-10 — sorgular/2026-09-10-iade-hakki-vekili.sql blok 1 + 2"
+    last_verified: "2026-09-10"
