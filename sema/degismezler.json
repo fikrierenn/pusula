@@ -471,6 +471,50 @@
       "beklenen": 0,
       "korur": [],
       "dogrulandi": "2026-09-10 → filtre oncesi kaynak evreninde 1 kayit (441270, 260.GENEL.010 Akademi); filtre sonrasi tabanda 0. Kod: dashboard/Data/SatisAnaliziTabanService.cs kat CTE + scripts/satis_analizi_excel.py"
+    },
+    {
+      "id": "satis-analizi-taban-yeni-kolonlar",
+      "db": "DerinSISBkm",
+      "soru": "Satis Analizi tabaninda 10.09.2026'da eklenen alti kolon duruyor mu?",
+      "neden": "Panel bu kolonlara BAGLI ve biri silinirse SESSIZ bozulur, cunku Dapper pozisyonel record'da eksik kolon 'signature required' hatasi verir ama kolon TIPI uyusuyorsa deger KAYAR ve hata cikmaz. SezonFsm/SezonOzl/SezonIst = Sezonluk Raf Acigi karti (magaza bazli sezon satisi; Ay1/Ay2/Ay3 UC MAGAZANIN TOPLAMI oldugu icin o soruyu cevaplayamiyordu). MaliyetTarih = maliyet yasi (B11: satis 365 gunluk, maliyet bugunku; marj yasa gore %24,4 → %63,0). SatanAy + TalepCV2 = talep deseni siniflandirmasi (Syntetos/Boylan/Croston; cesitlerin %91,9'unda gun-stok GECERSIZ, panel orada '—' gosteriyor). Kolon dusunce panel ya patlar ya yanlis rakam basar.",
+      "sql": "SELECT COUNT(*) FROM DerinSISBkm.sys.columns WHERE object_id = OBJECT_ID('DerinSISBkm.bkm.SatisAnaliziTaban') AND name IN ('SezonFsm','SezonOzl','SezonIst','MaliyetTarih','SatanAy','TalepCV2')",
+      "karsilastirma": "esit",
+      "beklenen": 6,
+      "korur": [],
+      "dogrulandi": "2026-09-10 → 6 kolon mevcut. Kurulum: sorgular/2026-09-09-satis-analizi-taban-tablo-kur.sql (idempotent ALTER bloklari)"
+    },
+    {
+      "id": "talep-deseni-tabanda-dolu",
+      "db": "DerinSISBkm",
+      "soru": "Son kesimde talep deseni girdisi (SatanAy) dolu olan satir var mi?",
+      "neden": "SESSIZLIK KANIT DEGIL: tdes CTE'si patlarsa ya da pencere yanlis hesaplanirsa SatanAy TAMAMEN NULL kalir. O zaman TalepSinifiSql her urunu 'hic satmadi' (sinif 0) sayar, GunStok her yerde NULL doner ve panel 'cesitlerin %100'u aralikli talep' gibi MAKUL ama yanlis bir tablo gosterir — hata mesaji YOK. Olculdu 2026-09-10: 153.974 satirda dolu (275.385 satirin %55,9'u; kalan %44,1 gercekten hic satmayan urun).",
+      "sql": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban WITH (NOLOCK) WHERE Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban) AND SatanAy IS NOT NULL",
+      "karsilastirma": "enaz",
+      "beklenen": 50000,
+      "korur": [],
+      "dogrulandi": "2026-09-10 → 153.974 satir dolu. Kod: dashboard/Data/SatisAnaliziTabanService.cs tdes CTE"
+    },
+    {
+      "id": "urn-alimIadeYok-hala-bilgi-tasimiyor",
+      "db": "DerinSISBkm",
+      "soru": "urn.alimIadeYok kolonu kac AYRI deger tasiyor?",
+      "neden": "FIRSAT SINYALI — bu degismez 'bozulmasini ISTEDIGIMIZ' turden. Olculdu 2026-09-08 ve 2026-09-10: kolon TEK deger tasiyor (844.017/844.017 ayni), yani urun bazinda iade hakki bilgisi YOK ve panel 'asiri stok iade hakkina gore kirilamiyor' demek zorunda. Kullanici 'her kitapta yok iade' dedi — yani gercek hayatta urun bazinda DEGISIYOR ama veriye yazilmiyor. Biri doldurmaya baslarsa bu degismez KIRILIR ve o gun asiri/olu stok metrigi iade hakkina gore kirilabilir hale gelir. Kirmizi = kotu haber DEGIL, 'yeni yetenek acildi' haberi.",
+      "sql": "SELECT COUNT(DISTINCT alimIadeYok) FROM DerinSISBkm.dbo.urn WITH (NOLOCK)",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "korur": [],
+      "dogrulandi": "2026-09-10 → 1 ayri deger (bilgi tasimiyor). Panelde beyan edildi; vekil olarak tedarikcinin gozlenen iade orani kullaniliyor (sema: iade_davranisi_vekili)"
+    },
+    {
+      "id": "frmIadeKural-kod-kumesi-kapali",
+      "db": "DerinSISBkm",
+      "soru": "frm.frmIadeKural kac ayri kod tasiyor?",
+      "neden": "Kod kumesi {0,1,2} olarak KAPALI ve anlami BELGESIZ (lookup view YOK). Olculdu 2026-09-10: uc kodun HEPSINDE fiili alis iadesi var (kod 0 → %18,4 [11,6-27,8] · kod 1 → %36,4 [15,2-64,6] · kod 2 → %40,0 [30,5-50,3]); Cochran-Armitage chi2(1)=9,86 p=0,0017 anlamli AMA komsu Wilson araliklarinin hepsi cakisik ve kod 1'de n=11 → ayrim DESTEKLENMEDI. Yani kod fiili davranisi ONGORMUYOR. DORDUNCU bir kod cikarsa yorumu yine bilinmez olur ve muhasebeye sorulacak soru degisir — haber almak gerekir. B-150 acik.",
+      "sql": "SELECT COUNT(DISTINCT frmIadeKural) FROM DerinSISBkm.dbo.frm WITH (NOLOCK)",
+      "karsilastirma": "esit",
+      "beklenen": 3,
+      "korur": [],
+      "dogrulandi": "2026-09-10 → 3 kod (0/1/2). Arsiv: sorgular/2026-09-10-iade-hakki-vekili.sql blok 1"
     }
   ]
 }
