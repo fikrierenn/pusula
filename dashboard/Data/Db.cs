@@ -33,6 +33,16 @@ public sealed class Db
             TrustServerCertificate = true,
             ConnectTimeout = 20,
             CommandTimeout = 240,
+            // DMY garantisi LOGIN'de veriliyor — fazladan round-trip YOK (B-168, 09.09.2026).
+            // Eskiden her OpenAsync() ayrı komut olarak "SET DATEFORMAT dmy;" çalıştırıyordu.
+            // ÖLÇÜLDÜ: o SET bir NO-OP'tu — login 'sa' varsayılan dili zaten 'Türkçe'
+            // (sys.server_principals.default_language_name), @@LANGUAGE='Türkçe' ve
+            // sys.syslanguages'a göre Türkçe dateformat = dmy. SET'siz CONVERT(date,'13.06.2026')
+            // doğru parse ediyor. Ama sunucu/login varsayılanına SESSİZCE güvenmek kırılgan:
+            // Current Language ile aynı garanti açıkça ve BEDELSİZ veriliyor (login sırasında).
+            // Maliyet ölçümü: DB'ye RTT ort 30 ms / min 16 ms; drill sayfası 9 bağlantı açıyordu
+            // → 9 gereksiz gidiş-dönüş ≈ 225 ms. App'te 135 db.OpenAsync() çağrısı var.
+            CurrentLanguage = "Turkish",
         };
         if (string.Equals(trusted, "true", StringComparison.OrdinalIgnoreCase))
         {
@@ -105,7 +115,7 @@ public sealed class Db
 
     /// <summary>Panel auth DB bağlantısı (localhost BkmPanel). .env'de PANEL_DB_HOST yoksa null → auth kapalı.</summary>
     public Task<SqlConnection>? OpenPanelAsync() =>
-        _panelConnStr is null ? null : OpenWithRetryAsync(_panelConnStr, dateformat: false);
+        _panelConnStr is null ? null : OpenWithRetryAsync(_panelConnStr);
 
     /// <summary>Panel DB senkron bağlantı (auth + app-state servisleri — localhost, hızlı, retry'sız).</summary>
     public SqlConnection OpenPanel()
@@ -118,8 +128,12 @@ public sealed class Db
 
     public bool PanelEnabled => _panelConnStr is not null;
 
-    /// <summary>Her çağrıda yeni açık bağlantı (Dapper using ile kapatır). DMY zorunlu sorgular için SET DATEFORMAT dmy.</summary>
-    public Task<SqlConnection> OpenAsync() => OpenWithRetryAsync(_connStr, dateformat: true);
+    /// <summary>
+    /// Her çağrıda yeni açık bağlantı (Dapper using ile kapatır).
+    /// DMY, bağlantı dizesindeki <c>Current Language=Turkish</c> ile LOGIN'de sağlanır —
+    /// ayrıca <c>SET DATEFORMAT</c> komutu GÖNDERİLMEZ (B-168: gereksiz round-trip'ti).
+    /// </summary>
+    public Task<SqlConnection> OpenAsync() => OpenWithRetryAsync(_connStr);
 
     /// <summary>Zirve bordro/İK yapılandırıldı mı (.env ZIRVE_HOST + ZIRVE_PASSWORD).</summary>
     public bool ZirveEnabled => _zirveConnStr is not null;
@@ -130,7 +144,7 @@ public sealed class Db
         if (_zirveConnStr is null)
             throw new InvalidOperationException(
                 ".env içinde ZIRVE_HOST / ZIRVE_PASSWORD yok — Zirve İK bağlantısı yapılandırılmamış (plan-38).");
-        return OpenWithRetryAsync(_zirveConnStr, dateformat: false);  // Zirve SQL2008; tarihler ISO literal ile verilir.
+        return OpenWithRetryAsync(_zirveConnStr);  // Zirve SQL2008; tarihler ISO literal ile verilir.
     }
 
     /// <summary>JOKER e-ticaret DB'ye direkt bağlantı (linked server ODAKJOKER yerine). .env'de JOKER_HOST yoksa hata.</summary>
@@ -138,13 +152,13 @@ public sealed class Db
     {
         if (_jokerConnStr is null)
             throw new InvalidOperationException(".env içinde JOKER_HOST yok — direkt JOKER bağlantısı yapılandırılmamış.");
-        return OpenWithRetryAsync(_jokerConnStr, dateformat: false);  // JOKER ISO YYYYMMDD — DATEFORMAT gerekmez.
+        return OpenWithRetryAsync(_jokerConnStr);  // JOKER ISO YYYYMMDD — DATEFORMAT gerekmez.
     }
 
-    // Bağlantı açma + (opsiyonel) SET DATEFORMAT, transient hatada retry (plan-12 WS-5).
+    // Bağlantı açma + transient hatada retry (plan-12 WS-5). DMY login'de (Current Language).
     // Server restart / ağ blip = baskın transient (SignalR-drop senaryosu). max 2 retry + backoff.
     // Fatal (syntax/izin) veya tükenmiş transient → exception PROPAGATE (çağıranın catch'i banner gösterir; sessiz değil).
-    private async Task<SqlConnection> OpenWithRetryAsync(string connStr, bool dateformat)
+    private async Task<SqlConnection> OpenWithRetryAsync(string connStr)
     {
         const int maxRetry = 2;
         for (int attempt = 0; ; attempt++)
@@ -154,12 +168,8 @@ public sealed class Db
             {
                 conn = new SqlConnection(connStr);
                 await conn.OpenAsync();
-                if (dateformat)
-                {
-                    using var cmd = conn.CreateCommand();
-                    cmd.CommandText = "SET DATEFORMAT dmy;";  // yerel DMY (sql-server-conventions.md)
-                    await cmd.ExecuteNonQueryAsync();
-                }
+                // SET DATEFORMAT YOK: DMY artık bağlantı dizesindeki Current Language ile
+                // login'de geliyor (B-168). Eski hali her bağlantıda fazladan bir round-trip'ti.
                 return conn;
             }
             catch (Exception ex) when (attempt < maxRetry && SqlErrorClassifier.ShouldRetry(ex))

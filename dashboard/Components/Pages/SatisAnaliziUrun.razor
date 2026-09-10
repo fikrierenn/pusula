@@ -804,6 +804,142 @@ else
                 Sıfır <b>gösterilmiyor</b>: 0 maliyet marjı %100 gibi okutur.
             </p>
         }
+        @* ── GERÇEKLEŞEN FİYATLA KÂR/MARJ (kullanıcı isteği 09.09) ──────────────────
+           Üstteki kutular KART fiyatına dayanır; burası POS'ta FİİLEN alınan paraya.
+           ÖLÇÜLDÜ 09.09 (90 gün, panel evreni): POS brütü kart fiyatına EŞİT (%95,4-99,5 →
+           urn.fiyatS gerçekten raf fiyatı) ama gerçekleşen NET çok altında — Kitap %71,1 ·
+           Çocuk Kitabı %72,3 · Elektronik %77,3 · Kırtasiye %80,3 · Oyuncak %88,6 · Dergi %98,0.
+           Panel stok değeri kart fiyatıyla 1.022,2M ₺, kategori oranlarıyla 807,3M ₺ →
+           214,9M ₺ (%21,03) şişme. ⇒ KART MARJI İYİMSER; karar bu kutuya bakılarak verilir.
+
+           ⚠ MALİYET KARTININ İÇİNDE DEĞİL, DIŞINDA: içine konunca yalnız alış faturası olan
+           ürünlerde görünüyordu (ölçüldü — stkID 1739183'te fatura yok, yalnız irsaliye var).
+           Ortalama fiyat ve indirim maliyetten BAĞIMSIZ bilgidir; kâr/marj hücreleri maliyet
+           yoksa "—" olur ve sebebi yazılır. Satılmamış üründe POS kaydı yoktur → kutu hiç
+           gösterilmez (0 marj uydurulmaz). *@
+        @if (_gerceklesen is { } gp && gp.Adet > 0)
+        {
+            var bm2 = _maliyet?.BirimMaliyet;                  @* null = alış faturası yok *@
+            var maliyetVar = bm2 is > 0;
+            @* Kart marjı — karşılaştırma için burada YENİDEN hesaplanır (blok kendi kendine
+               yetsin diye). Aynı tanım: satış KDV'den arındırılır, maliyet KDV hariç. *@
+            var oran2 = _maliyet?.KdvOran;
+            decimal? kartNet = oran2 is { } o2 && o2 >= 0 && u.SatisFiyat > 0
+                ? u.SatisFiyat / (1m + o2 / 100m) : null;
+            decimal? kartMarj = maliyetVar && kartNet is { } kn && kn > 0
+                ? (kn - bm2!.Value) / kn * 100m : null;
+            <div class="mt-3 pt-3 border-t border-base-200">
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold">
+                        Gerçekleşen fiyatla (POS · 365 gün · iade hariç)
+                    </span>
+                    <span class="badge badge-sm badge-ghost">@gp.Adet.ToString("N0") adet satıldı</span>
+                    @if (!maliyetVar)
+                    {
+                        <span class="badge badge-sm badge-warning">maliyet kaydı yok</span>
+                    }
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div class="rounded-xl bg-base-200/60 p-3">
+                        <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold">
+                            Ort. satış fiyatı
+                        </div>
+                        <div class="text-xl font-extrabold font-mono">@gp.BirimKdvDahil.ToString("N2") ₺</div>
+                        <div class="text-[11px] text-base-content/60 mt-0.5">
+                            KDV dahil · kart @u.SatisFiyat.ToString("N2") ₺
+                            @if (gp.KartOrani(u.SatisFiyat) is { } ko)
+                            {
+                                <span class="@(ko < 0.9m ? "text-warning font-semibold" : "")">
+                                    (kartın %@((ko * 100m).ToString("N0")) kadarı)
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="rounded-xl bg-base-200/60 p-3">
+                        <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold">
+                            Birim kâr
+                        </div>
+                        <div class="text-xl font-extrabold font-mono @(maliyetVar && gp.BirimKar(bm2) < 0 ? "text-error" : "")">
+                            @(gp.BirimKar(bm2) is { } bk ? bk.ToString("N2") + " ₺" : "—")
+                        </div>
+                        <div class="text-[11px] text-base-content/60 mt-0.5">
+                            KDV hariç @gp.BirimKdvHaric.ToString("N2") ₺
+                            @(maliyetVar ? "− maliyet " + bm2!.Value.ToString("N2") + " ₺"
+                                         : "· alış faturası yok → kâr hesaplanamadı")
+                        </div>
+                    </div>
+                    <div class="rounded-xl bg-base-200/60 p-3">
+                        <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold">
+                            Gerçekleşen brüt marj
+                        </div>
+                        <div class="text-2xl font-extrabold font-mono @(gp.Marj(bm2) is not { } mj ? "" : mj < 0 ? "text-error" : mj < 0.20m ? "text-warning" : "text-success")">
+                            @(gp.Marj(bm2) is { } mj2 ? "%" + (mj2 * 100m).ToString("N1") : "—")
+                        </div>
+                        <div class="text-[11px] text-base-content/60 mt-0.5">
+                            markup %@(gp.Markup(bm2) is { } mk ? (mk * 100m).ToString("N1") : "—")
+                            @if (kartMarj is { } km && gp.Marj(bm2) is { } mj3)
+                            {
+                                <span class="block">
+                                    kart marjı %@km.ToString("N1") →
+                                    <b class="@((mj3 * 100m) < km ? "text-warning" : "text-success")">
+                                        @(((mj3 * 100m) - km).ToString("+0.0;-0.0")) puan
+                                    </b>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="rounded-xl bg-base-200/60 p-3">
+                        <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold">
+                            365 günlük kâr
+                        </div>
+                        <div class="text-xl font-extrabold font-mono @(maliyetVar && gp.ToplamKar(bm2) < 0 ? "text-error" : "")">
+                            @(gp.ToplamKar(bm2) is { } tk ? tk.ToString("N0") + " ₺" : "—")
+                        </div>
+                        <div class="text-[11px] text-base-content/60 mt-0.5">
+                            satılan @gp.Adet.ToString("N0") adet × birim kâr
+                        </div>
+                    </div>
+                    @* YAPILAN İNDİRİM ORANI — kullanıcı isteği 09.09: "yapılan indirim oranı da olmalı".
+                       Kendi hücresi: marjı düşüren asıl kalem bu. POS'un KENDİ indirim kolonundan
+                       (DiscountTotalDirect = TOPLAM indirim; Campaign onun ALT KÜMESİ — ikisi
+                       TOPLANMAZ, sql-server-conventions § İndirim Kolonları).
+                       Kampanya payı = kampanya indirimi ÷ toplam indirim: fiyat kararı mı
+                       kampanya kararı mı ayrımı. *@
+                    <div class="rounded-xl bg-base-200/60 p-3">
+                        <div class="text-[11px] uppercase tracking-wider text-base-content/60 font-semibold">
+                            Yapılan indirim
+                        </div>
+                        <div class="text-2xl font-extrabold font-mono @(gp.IndirimOrani is not { } ind ? "" : ind >= 0.25m ? "text-error" : ind >= 0.10m ? "text-warning" : "")">
+                            @(gp.IndirimOrani is { } ind2 ? "%" + (ind2 * 100m).ToString("N1") : "—")
+                        </div>
+                        <div class="text-[11px] text-base-content/60 mt-0.5">
+                            @if (gp.IndirimOrani is { } ind3 && ind3 > 0)
+                            {
+                                <span>brüt @gp.BrutKdvDahil.ToString("N0") ₺ → net @gp.NetKdvDahil.ToString("N0") ₺</span>
+                                @if (gp.KampanyaPayi is { } kp)
+                                {
+                                    <span class="block">
+                                        %@((kp * 100m).ToString("N0"))'ı kampanya indirimi
+                                        @(kp >= 0.99m ? "(tamamı)" : kp <= 0.01m ? "(elle indirim)" : "")
+                                    </span>
+                                }
+                            }
+                            else
+                            {
+                                <span>indirimsiz satılmış</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                @if (gp.Marj(bm2) is { } mjU && mjU < 0)
+                {
+                    <div class="alert alert-error text-xs mt-3 py-2">
+                        <b>Gerçekleşen fiyat maliyetin ALTINDA</b> — bu ürün satıldıkça zarar
+                        yazıyor. Kart marjı pozitif göründüğü için tek başına yanıltıcı.
+                    </div>
+                }
+            </div>
+        }
         <p class="text-xs text-base-content/50 mt-3 mb-0 pt-2 border-t border-base-200">
             Maliyet: son @(_maliyet?.FaturaSayisi ?? 0) alış faturasının ağırlıklı birimi (<code>SUM(tutar)/SUM(adet)</code>,
             fatura bazında, KDV hariç). Satış KDV'den arındırıldı (oran ürün bazında).
@@ -861,6 +997,8 @@ else
 
     private SatisAnaliziSatir? _urun;
     private UrunMaliyet? _maliyet;
+    /// <summary>POS'ta FİİLEN gerçekleşen satış (365g, iade hariç) — kart fiyatı değil.</summary>
+    private UrunGerceklesen? _gerceklesen;
     private IReadOnlyList<AylikSatis>? _aylik;
     private IReadOnlyList<AylikSatis>? _aylikAlis;
     private IReadOnlyList<AylikSatis>? _aylikStok;
@@ -890,6 +1028,7 @@ else
             {
                 _akran = await Q.GetAkranAsync(_urun.Kategori1, _kesim, _sezonYil);
                 _maliyet = await Q.GetMaliyetAsync(StkId);
+                _gerceklesen = await Q.GetGerceklesenAsync(StkId, _kesim);
                 _aylik = await Q.GetAylikSatisAsync(StkId, _kesim);
                 _aylikAlis = await Q.GetAylikAlisAsync(StkId, _kesim);
                 _aylikStok = await Q.GetAylikStokAsync(StkId, _kesim);

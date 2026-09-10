@@ -18,21 +18,117 @@ namespace GmDashboard.Data;
 /// TANIM KANITI: sorgular/2026-09-08-satis-analizi-excel-denetim.sql §10-12.
 /// Kardeş emitter: scripts/satis_analizi_excel.py — ikisi AYRIŞMAMALI.
 /// </summary>
-public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueries> logger)
+public sealed partial class SatisAnaliziQueries(
+    Db db,
+    ILogger<SatisAnaliziQueries> logger,
+    Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
 {
     /// <summary>
     /// Rapor evreni — ÖLÇÜLDÜ: liste dışı 59.826 çeşidin HİÇBİRİ orijinal raporda yok.
     /// ⚠ Satılabilir ürün kaçırıyor (ıslak mendil 'Kişisel Bakım', WMS'te ~366K adet). Panel
     /// orijinali birebir yansıtsın diye AYNEN korunuyor; düzeltme ayrı iş (plan-42 §8).
     /// </summary>
+    /// <remarks>
+    /// ⚠ "Kafe Hammede" ÇIKARILDI (kullanıcı kararı 09.09.2026: "kafe hammadde devre dışı
+    /// bırakalım"). ÖLÇÜLDÜ (kesim 08.09.2026): kategoride yalnız <b>2 çeşit</b> vardı —
+    /// stkID 89918 "KAFE RESTAURANT SATIŞLARI" (hizmet/toplayıcı kalem, MagazaStok −46;
+    /// kategori agregasını −21'e düşüren tek sebep) ve 1721975 "Wınboss 20 W. Silikon
+    /// Tabanca" (95 adet, yanlış kategorilenmiş gerçek ürün). Toplam 26.504,54 ₺ / 49 adet.
+    /// Kafe/restoran operasyonu perakende raf analizinin konusu değil; negatif agrega da
+    /// gün-stok gibi türev metrikleri anlamsızlaştırıyordu.
+    /// ⚠ "Zkargo" da ÇIKARILDI (aynı gün, kullanıcı: "giderlere ait stoklarda olmamalı
+    /// listede o grubu da devre dışı bırak"). ÖLÇÜLDÜ: kategorinin TEK üyesi stkID 79405
+    /// <b>"ALIŞ KARGO GİDERİ"</b> — <c>stkKod = '153.10'</c> (muhasebe hesap kodu deseni,
+    /// 153 = Ticari Mallar), 12.571 adet, <b>Tutar 0,00 ₺</b>, satış 0. Bir gider kalemi,
+    /// mal değil. Panel evrenindeki 275.059 çeşit içinde noktalı stkKod taşıyan TEK kayıt.
+    ///
+    /// ⚠ ELENEN İKİ ÖLÇÜT (ölçüldü, ikisi de yanlış çıktı — sema'ya bakıp körü körüne
+    /// uygulamamak için): (a) <c>urnTip &lt;&gt; 0</c> — tabandaki 275.059 satırın TAMAMI
+    /// urnTip=0; gider/hizmet kalemleri bu yoldan hiç sızmıyor (kaynak <c>bkm.UrunBilgi</c>
+    /// zaten taşımıyor), süzgeç yalnız ileriye dönük emniyet. (b) <c>satisTur &lt;&gt; 0</c> —
+    /// 32 kayıt çıktı ama hepsi GERÇEK ürün (Missim/Çilek Bijuteri fiyat-noktası kartları,
+    /// soru bankası); gider işareti DEĞİL.
+    /// </remarks>
     public static readonly string[] Kategori3Evreni =
     [
         "Kitap", "Kırtasiye", "Oyuncak", "Çocuk Kitabı", "Hazırlık Kitapları",
         "Akademi", "Hediyelik", "Elektronik", "Dergi", "Spor & Outdoor",
-        "Kafe Hammede", "Zkargo",
     ];
 
     private const string Taban = "DerinSISBkm.bkm.SatisAnaliziTaban";
+
+    /// <summary>
+    /// SATIŞ HIZI PAYDASI (etkin gün) — <b>TEK TANIM</b>, beş yerde kullanılır (KPI · kırılım ·
+    /// temin kırılımı · liste kolonu · akran medyanı). Ayrı ayrı yazılırsa biri düzeltilir
+    /// öteki bayatlar.
+    ///
+    /// = min(365, COALESCE(mağazaya ilk giriş, kart açılışı)'ndan kesime kadar geçen gün),
+    /// <b>en az 1</b>.
+    ///
+    /// ⚠ ALT SINIR 1 ŞART — yoksa SQL 8134 "sıfıra bölünme" patlar. Ölçüldü 09.09.2026:
+    /// `IlkGiris` NULL olduğunda devreye giren `AcilisTarihi`, kesimden SONRA olabiliyor
+    /// (kart 09.09'da açıldı, kesim 08.09) → <c>DATEDIFF + 1 = 0</c>. Panel "Veri alınamadı"
+    /// hatası verdi. Sadece `IlkGiris` kullanılırken bu mümkün değildi (mağaza girişi kesimden
+    /// sonra olamaz), COALESCE fallback'i açtı. İlk ölçümüm <c>MIN = 1</c> demişti ama o
+    /// ESKİ tabandı — taban yenilenince 09.09 kartları girdi ve sınır aşıldı.
+    ///
+    /// ⚠ 365'e SABİT bölmek YANLIŞ (kullanıcı uyarısı 09.09): rafa yeni girenin hızı düşük
+    /// çıkar, gün-stok şişer. Ölçüldü: 22.385 üründe ort. gün-stok 1.644 → 524.
+    /// Her iki tarih de NULL ise 365 (pencerenin tamamı varsayılır).
+    /// </summary>
+    /// <summary>Tek satır hali — const birleştirmede kullanılır (satır sonu sorunu olmasın).</summary>
+    private const string EtkinGunTekSatir =
+        "CASE WHEN COALESCE(t.IlkGiris, t.AcilisTarihi) IS NULL THEN 365 " +
+        "WHEN DATEDIFF(DAY, COALESCE(t.IlkGiris, t.AcilisTarihi), t.Kesim) + 1 < 1 THEN 1 " +
+        "WHEN DATEDIFF(DAY, COALESCE(t.IlkGiris, t.AcilisTarihi), t.Kesim) + 1 < 365 " +
+        "THEN DATEDIFF(DAY, COALESCE(t.IlkGiris, t.AcilisTarihi), t.Kesim) + 1 ELSE 365 END";
+
+    private const string EtkinGunSql = """
+        CASE WHEN COALESCE(t.IlkGiris, t.AcilisTarihi) IS NULL THEN 365
+             WHEN DATEDIFF(DAY, COALESCE(t.IlkGiris, t.AcilisTarihi), t.Kesim) + 1 < 1   THEN 1
+             WHEN DATEDIFF(DAY, COALESCE(t.IlkGiris, t.AcilisTarihi), t.Kesim) + 1 < 365 THEN DATEDIFF(DAY, COALESCE(t.IlkGiris, t.AcilisTarihi), t.Kesim) + 1
+             ELSE 365 END
+        """;
+
+    /// <summary>
+    /// SEZON HAZIRLIĞI — geçen sezon sattı, bugün stoğu o satışın YARISINDAN az.
+    /// "Stoksuz sezon" kartından FARKLI: orada stok SIFIR, burada VAR ama yetmez.
+    /// Panelin son-tarihi olan tek kohortu (sezon Ağu–Eki; sipariş penceresi şimdi).
+    /// ⚠ 0,5 katsayısı SEÇİLDİ, ölçülmedi — hedef gün-stok politikası
+    /// (<c>bkm.OneriSiparisKtg3Ondeger</c>) boş olduğu için tüm eşikler geçici.
+    /// </summary>
+    private const string SezonHazirlikSart =
+        "(t.SezonToplam > 0 AND t.ToplamStok > 0 AND t.ToplamStok < 0.5 * t.SezonToplam)";
+
+    /// <summary>
+    /// MAĞAZALAR ARASI DENGESİZLİK — bir rafta stok yok, ötekinde TALEBE GÖRE fazla,
+    /// ürün sezonda satıyor. Eylemi transfer; sipariş açmak yanlış karar (mal şirkette).
+    ///
+    /// ⚠ İKİ EŞİK BİRLİKTE — biri tek başına yetmiyor, İKİSİ DE ÖLÇÜLDÜ 09.09.2026
+    /// (kesim 08.09, SonGiris muhafızı açık):
+    ///   · yalnız GÖRELİ (≥14 günlük kapsama)     → <b>22.839 çeşit</b> — kohort taşıyor.
+    ///     Sebep: yavaş üründe eşik çöküyor; yılda 10 satanda 14 gün = 0,38 adet, yani
+    ///     HER stok geçiyor. Göreli ölçüt yavaş-hareketi ayıklamıyor, tam tersini yapıyor.
+    ///   · yalnız MUTLAK (≥20 adet)               → 1.241 çeşit. satinalma-danisman itirazı:
+    ///     günde 5 satanla yılda 5 satanı aynı sayıyor, talebi hiç görmüyor.
+    ///   · GÖRELİ <b>ve</b> MUTLAK ≥5 adet        → <b>4.826 çeşit / 24,78M ₺</b>  ← SEÇİLEN
+    ///   · GÖRELİ ve MUTLAK ≥20 adet              → 1.229 çeşit / 10,56M ₺
+    /// Seçim: anlamlı MİKTAR (≥5) <b>ve</b> anlamlı KAPSAMA (≥14 gün). Taban 5 seçildi,
+    /// ölçülmedi — 20 daralttığı için değil, kırtasiyede 20 adet fazla yüksek olduğu için.
+    /// Kapsama çarpımla kurulur (sıfıra bölünme yok): <c>rafStok × etkinGün ≥ 14 × satış365</c>.
+    ///
+    /// ⚠ YOLDAKİ TRANSFER MUHAFIZI: dengesizlik çoğu zaman "yolda olan mal"dır — ölçüldü
+    /// 09.09 (stkID 1739183): Özlüce'ye +480, belge 07.09 ama deftere 09.09 10:12'de düştü.
+    /// Yaş filtresi olmadan bu kart en hızlı ürünlerde yanlış-pozitif üretir. Tam çözüm
+    /// tek-bacaklı <c>ehTip 13</c> satırlarını ölçmek (tabanda YOK); buradaki
+    /// <c>SonGiris &lt; kesim−14</c> bir VEKİL — son 14 günde mal kabulü olan ürün hariç.
+    /// </summary>
+    private const string DengesizSart =
+        "(t.SezonToplam > 0 AND t.SatisToplam > 0 AND t.MagazaStok > 0 " +
+        "AND (t.SonGiris IS NULL OR t.SonGiris < DATEADD(DAY, -14, @kesim)) AND (" +
+        "(t.StokFsm <= 0 AND ((t.StokOzl >= 5 AND t.StokOzl * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam) OR (t.StokIst >= 5 AND t.StokIst * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam))) OR " +
+        "(t.StokOzl <= 0 AND ((t.StokFsm >= 5 AND t.StokFsm * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam) OR (t.StokIst >= 5 AND t.StokIst * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam))) OR " +
+        "(t.StokIst <= 0 AND ((t.StokFsm >= 5 AND t.StokFsm * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam) OR (t.StokOzl >= 5 AND t.StokOzl * (" + EtkinGunTekSatir + ") >= 14 * t.SatisToplam)))))";
 
     /// <summary>
     /// TAZE STOK süzgeci. <c>TazeGunHaric &gt; 0</c> ise son N günde mal kabulü olan ürünler
@@ -94,10 +190,7 @@ public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueri
                    CONVERT(bigint, SUM(CONVERT(bigint, t.MerkezStok)))  AS MerkezStok,
                    CONVERT(decimal(18,2), SUM(t.Tutar))           AS Tutar,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SatisToplam))) AS Satis365,
-                   CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / CASE
-                       WHEN t.IlkGiris IS NULL THEN 365.0
-                       WHEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1 < 365 THEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1
-                       ELSE 365.0 END)) AS GunlukHiz,
+                   CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
                    SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0
@@ -148,7 +241,26 @@ public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueri
                    -- Vaka: stkID 1697931 FSM 5 · İst.Yolu −13 · merkez 600 → toplam 592 "temiz".
                    SUM(CASE WHEN t.StokFsm < 0 OR t.StokOzl < 0 OR t.StokIst < 0 OR t.MerkezStok < 0 OR t.ToplamStok < 0 OR t.SatisFiyat <= 0 THEN 1 ELSE 0 END)  AS KirliCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN t.ToplamStok < 0 OR t.SatisFiyat <= 0
-                        THEN t.Tutar ELSE 0 END))                                          AS KirliTutar
+                        THEN t.Tutar ELSE 0 END))                                          AS KirliTutar,
+                   -- YENİ ÜRÜN — "henüz değerlendirilemez" kovası (adil-atıf). Hareketsiz/aşırı
+                   -- ölçütleri bu ürünleri KASITLI dışlıyor; kaç çeşit ve ne kadar para o
+                   -- kararın DIŞINDA kaldığı görünmeli, yoksa dışlama sessiz kalır.
+                   -- Eşik @yeniGun ile AYNI (varsayılan 45) → kartla liste ayrışmaz.
+                   SUM(CASE WHEN COALESCE(t.IlkGiris, t.AcilisTarihi) >= DATEADD(DAY, -@yeniGun, @kesim)
+                                 AND t.ToplamStok > 0 THEN 1 ELSE 0 END)                   AS YeniCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN COALESCE(t.IlkGiris, t.AcilisTarihi) >= DATEADD(DAY, -@yeniGun, @kesim)
+                        AND t.ToplamStok > 0 THEN t.Tutar ELSE 0 END))                     AS YeniTutar,
+                   -- MAĞAZALAR ARASI DENGESİZLİK → TRANSFER (ölçüt: DengesizSart, tek yer)
+                   SUM(CASE WHEN {DengesizSart} THEN 1 ELSE 0 END)                         AS DengesizCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {DengesizSart}
+                        THEN t.Tutar ELSE 0 END))                                          AS DengesizTutar,
+                   -- SEZON HAZIRLIĞI (ölçüt: SezonHazirlikSart, tek yer) — eksik adet × fiyat
+                   SUM(CASE WHEN {SezonHazirlikSart} THEN 1 ELSE 0 END)                    AS SezonAcikCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart}
+                        THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikTutar,
+                   SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS SezonAcikOdakCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0
+                        THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikOdakTutar
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon{TazeSart(f)}
             GROUP BY t.Kategori3
@@ -188,6 +300,14 @@ public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueri
             RafBosSatisliCesit: satirlar.Sum(x => x.RafBosSatisliCesit),
             VeriKirliCesit: satirlar.Sum(x => x.KirliCesit),
             VeriKirliTutar: satirlar.Sum(x => x.KirliTutar),
+            YeniCesit: satirlar.Sum(x => x.YeniCesit),
+            YeniTutar: satirlar.Sum(x => x.YeniTutar),
+            DengesizCesit: satirlar.Sum(x => x.DengesizCesit),
+            DengesizTutar: satirlar.Sum(x => x.DengesizTutar),
+            SezonAcikCesit: satirlar.Sum(x => x.SezonAcikCesit),
+            SezonAcikTutar: satirlar.Sum(x => x.SezonAcikTutar),
+            SezonAcikOdakCesit: satirlar.Sum(x => x.SezonAcikOdakCesit),
+            SezonAcikOdakTutar: satirlar.Sum(x => x.SezonAcikOdakTutar),
             // Hızlar ürün bazında kendi raf süresine bölünüp SQL'de toplandı → burada topla, BÖLME.
             PerakendeGunlukHiz: satirlar.Sum(x => x.GunlukHiz));
 
@@ -209,10 +329,7 @@ public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueri
                    CONVERT(bigint, SUM(CONVERT(bigint, t.ToplamStok)))  AS Stok,
                    CONVERT(decimal(18,2), SUM(t.Tutar))           AS Tutar,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SatisToplam))) AS Satis365,
-                   CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / CASE
-                       WHEN t.IlkGiris IS NULL THEN 365.0
-                       WHEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1 < 365 THEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1
-                       ELSE 365.0 END)) AS GunlukHiz,
+                   CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
                    SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam
@@ -243,10 +360,7 @@ public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueri
                    CONVERT(bigint, SUM(CONVERT(bigint, t.ToplamStok)))  AS Stok,
                    CONVERT(decimal(18,2), SUM(t.Tutar))           AS Tutar,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SatisToplam))) AS Satis365,
-                   CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / CASE
-                       WHEN t.IlkGiris IS NULL THEN 365.0
-                       WHEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1 < 365 THEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1
-                       ELSE 365.0 END)) AS GunlukHiz,
+                   CONVERT(float, SUM(CONVERT(float, t.SatisToplam) / {EtkinGunSql})) AS GunlukHiz,
                    CONVERT(bigint, SUM(CONVERT(bigint, t.SezonToplam))) AS Sezon,
                    SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok <= 0 THEN 1 ELSE 0 END) AS StoksuzCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN t.SezonToplam > 0 AND t.ToplamStok > 5 * t.SezonToplam
@@ -350,7 +464,11 @@ public sealed partial class SatisAnaliziQueries(Db db, ILogger<SatisAnaliziQueri
         int HareketsizCesit, decimal HareketsizTutar,
         int RafsizCesit, decimal RafsizTutar,
         int RafBosCesit, decimal RafBosTutar, int RafBosSatisliCesit,
-        int KirliCesit, decimal KirliTutar);
+        int KirliCesit, decimal KirliTutar,
+        int YeniCesit, decimal YeniTutar,
+        int DengesizCesit, decimal DengesizTutar,
+        int SezonAcikCesit, decimal SezonAcikTutar,
+        int SezonAcikOdakCesit, decimal SezonAcikOdakTutar);
 }
 
 /// <summary>Sayfa açılışında tek geçişte gelen özet: KPI + Kategori3 kırılımı.</summary>

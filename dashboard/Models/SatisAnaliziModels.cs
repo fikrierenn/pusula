@@ -169,6 +169,9 @@ public static class DurumAdlari
         [SatisDurumFiltre.SadeceTaze] = "Yalnız taze stok",
         [SatisDurumFiltre.Rafsiz] = "Rafa hiç çıkmamış",
         [SatisDurumFiltre.RafBos] = "Rafı boş, depoda var",
+        [SatisDurumFiltre.Yeni] = "Yeni ürün (değerlendirilemez)",
+        [SatisDurumFiltre.Dengesiz] = "Mağazalar arası dengesizlik → transfer",
+        [SatisDurumFiltre.SezonAcik] = "Sezon hazırlığı açığı",
     };
 
     public static string Ad(SatisDurumFiltre d) => Hepsi.TryGetValue(d, out var a) ? a : d.ToString();
@@ -192,7 +195,16 @@ public enum SatisDurumFiltre
     Rafsiz,
 
     /// <summary>Rafta yok, merkezde var — daha önce çıkmış; transfer sorusu.</summary>
-    RafBos
+    RafBos,
+
+    /// <summary>YENİ ürün — değerlendirilecek kadar zamanı olmamış (hareketsiz/aşırı dışı).</summary>
+    Yeni,
+
+    /// <summary>Mağazalar arası dengesizlik — bir rafta yok, ötekinde talebe göre fazla.</summary>
+    Dengesiz,
+
+    /// <summary>Sezon hazırlığı açığı — geçen sezon sattı, stoğu o satışın yarısından az.</summary>
+    SezonAcik
 }
 
 /// <summary>KPI şeridi. Karşı-metrikler YAN YANA durur (satinalma-danisman: tek yönlü metrik yasak).</summary>
@@ -232,6 +244,20 @@ public sealed record SatisAnaliziKpi(
     int RafBosSatisliCesit,
     int VeriKirliCesit,
     decimal VeriKirliTutar,
+    /// <summary>YENİ ÜRÜN — hareketsiz/aşırı ölçütlerinin KASITLI dışladığı kova.
+    /// Dışlama sessiz kalmasın diye ayrı gösterilir (adil-atıf).</summary>
+    int YeniCesit,
+    decimal YeniTutar,
+    /// <summary>Bir mağazada stok yok, başka mağazada 20+ adet var ve sezonda satıyor →
+    /// TRANSFER sorusu, alım sorusu DEĞİL. Mal şirkette, yeri yanlış.</summary>
+    int DengesizCesit,
+    decimal DengesizTutar,
+    /// <summary>SEZON HAZIRLIĞI — geçen sezon sattı, stoğu o satışın yarısından az.
+    /// Tutar = EKSİK adet × fiyat (kayıp potansiyeli), stok değeri değil.</summary>
+    int SezonAcikCesit,
+    decimal SezonAcikTutar,
+    int SezonAcikOdakCesit,
+    decimal SezonAcikOdakTutar,
     // Ürün bazında ETKİN GÜNE bölünüp toplanmış günlük hız (adet/gün). SQL'de hesaplanır;
     // burada yeniden bölme YAPILMAZ (kullanıcı uyarısı 09.09 — aşağıdaki nota bak).
     double PerakendeGunlukHiz = 0)
@@ -352,8 +378,16 @@ public sealed record SatisAnaliziSatir(
     /// Artık pay ve payda AYNI KAPSAM: raf stoğu ÷ raf hızı. Merkez ayrı
     /// (<see cref="MerkezGunStok"/>), toplanmaz.
     /// Raf süresi &lt; 28 gün ise hız güvenilmez → null (sessiz sayı üretilmez).
+    ///
+    /// ⚠ NEGATİF STOK GUARD'I (09.09.2026, kullanıcı: "-365 falan yazıyor ama saçma sapan
+    /// bir şekilde"). Eksi mağaza stoğu hıza bölününce ANLAMSIZ NEGATİF GÜN üretiyordu:
+    /// stkID 1739183'te MagazaStok −37, hız 37/365 = 0,101 → gün-stok tam <b>−365</b>.
+    /// Bu sayı bir kapsam değil, bölme artığı. ÖLÇÜLDÜ (kesim 08.09.2026): 93 üründe
+    /// negatif gün-stok gösteriliyordu. Eksi stok bir kapsama çevrilemez → null; eksi
+    /// stoğun kendisi "Veri Kirli" KPI'sında ve mağaza kırılımında zaten görünüyor.
+    /// (0 stok null DEĞİL: "0 gün" doğru ve bilgilendirici — raf boş demektir.)
     /// </summary>
-    public decimal? GunStok => SatisToplam <= 0 || EtkinGun < 28 ? null
+    public decimal? GunStok => SatisToplam <= 0 || EtkinGun < 28 || MagazaStok < 0 ? null
         : Math.Round((decimal)MagazaStok / GunlukOrtalamaSatis, 0);
 
     /// <summary>

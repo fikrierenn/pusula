@@ -119,6 +119,15 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                    u.Yazar, u.BarkodAna, u.SatisFiyat, u.gTarih AS AcilisTarihi
             FROM DerinSISBkm.bkm.UrunBilgi u WITH (NOLOCK)
             WHERE u.Kategori3 IN @Kategoriler
+              -- GİDER/HİZMET KALEMİ DIŞLAMASI (kullanıcı 09.09.2026: "giderlere ait stoklarda
+              -- olmamalı"). Sema bunu ZORUNLU kılıyordu ve panelde EKSİKTİ:
+              --   sema/codes.yaml → urn.urnTip: "tüm STOK/ürün sorgularında WHERE urnTip=0
+              --   ZORUNLU — gider/hizmet kalemleri aksi halde sızdı"
+              --   sema/entities.yaml → 0=STOK ÜRÜNÜ · 1=gider/hizmet kalemi · 2=fatura
+              --   hizmet/gelir + sabit kıymet. 1 ve 2 stok TAŞIMAZ (irsHrk'de 0 hareket).
+              --   Ölçüldü 2026-09-03: 0 → 868.094 · 1 → 252 · 2 → 52 çeşit.
+              -- Değişmez: mal-olmayan-kalem-stok-hareketsiz.
+              AND u.urnTip = 0
         ),
         mgz AS (   -- mağaza rafı: hareket defterinden as-of (canlı view ANLIK, geçmiş üretemez)
             SELECT h.ehstkID AS stkID,

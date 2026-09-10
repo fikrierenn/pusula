@@ -1,5 +1,6 @@
 using Dapper;
 using GmDashboard.Models;
+using Microsoft.Extensions.Caching.Memory;   // TryGetValue<T> / Set genişletmeleri (B-168 akran cache)
 
 namespace GmDashboard.Data;
 
@@ -62,15 +63,13 @@ public sealed partial class SatisAnaliziQueries
         ISNULL(t.MerkezCikis, 0) AS MerkezCikis,
         -- Kaç ayrı günde çıktı = SIÇRAMALILIK. Hız değil (ölçüldü: %67 tek günde).
         ISNULL(t.MerkezCikisGun, 0) AS MerkezCikisGun,
-        -- ETKİN GÜN = satış hızının paydası. min(365, ilk girişten kesime kadar).
-        -- ⚠ 365'e SABİT bölmek YANLIŞ (kullanıcı uyarısı 09.09): rafa yeni giren ürünün hızı
-        -- düşük çıkıyor, gün-stok şişiyor. ÖLÇÜLDÜ: 22.385 üründe ort. gün-stok 1.644 → 524,
-        -- 4.468 ürün haksız yere ">400 gün" kırmızısında.
-        -- İlk giriş NULL ise 365 (1.186 ürün) — bilinmeyen için pencerenin tamamı varsayılır.
-        CASE WHEN t.IlkGiris IS NULL THEN 365
-             WHEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1 < 365 THEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1
-             ELSE 365 END AS EtkinGun
-        """;
+        -- ETKİN GÜN = satış hızının paydası. Tanım TEK YERDE: EtkinGunSql (alt sınır 1).
+        """
+        // ⚠ "\n" ŞART: ham dizge kapanış tırnağından ÖNCEKİ satır sonunu İÇERMEZ. O yüzden
+        // birleştirilen ifade, üstteki `--` yorumunun AYNI satırına düşüp yorum içinde
+        // kayboluyordu; SQL'de yalnız orphan `WHEN` satırları kalıp "156: 'WHEN' yakınında
+        // sözdizimi yanlış" veriyordu (09.09.2026'da bu hataya düşüldü).
+        + "\n" + EtkinGunSql + " AS EtkinGun";
 
     /// <summary>
     /// Filtreli + sayfalı ürün listesi — ön-agrega tablosundan, index seek.
@@ -171,9 +170,42 @@ public sealed partial class SatisAnaliziQueries
     /// 22 adet çıkıyor (uzun kuyruk: binlerce çeşit 0-2 adet). Tek bir gerçek ürün 18.910 adetle
     /// "+%87.003" gibi anlamsız bir fark üretiyordu. Medyan uzun kuyruğa dayanıklı.
     /// </summary>
+    /// <remarks>
+    /// PERF (B-168, ölçüldü 09.09.2026): bu sorgu drill'in TEK ağır kalemiydi —
+    /// DMV'de ort. <b>1.096 ms / 462.305 mantıksal okuma</b>. Drill sayfası toplam 1,36 s
+    /// sürüyordu; çerçeve tabanı (/login) 0,22 s, diğer 8 drill sorgusu 13-17 ms.
+    /// Yani gecikmenin ~%80'i buradaydı.
+    ///
+    /// MALİYET İZOLE EDİLDİ (taban 1.389 ms sqlcli açılışı düşülmüş):
+    /// yalnız COUNT(*) 64 ms · TEK PERCENTILE_CONT 376 ms · COUNT OVER + 4 PERCENTILE 692 ms.
+    /// ⇒ Suçlu <c>COUNT(*) OVER ()</c> DEĞİL, <b>PERCENTILE_CONT pencere fonksiyonları</b>
+    /// (TOP 1 sonucu atsa bile her satır için hesaplanıyor).
+    ///
+    /// REDDEDİLEN ÇÖZÜMLER (ikisi de ÖLÇÜLDÜ, ikisi de daha kötü):
+    /// (a) <b>9 sorguyu tek QueryMultiple'a toplamak</b> — B-168'in ilk önerisiydi. Gerekçesi
+    ///     ("round-trip birikir") YANLIŞ: 9 round-trip LAN'da ~45 ms, kazanç yok. Gecikme
+    ///     round-trip'te değil TEK sorgunun ÇALIŞMA süresinde.
+    /// (b) <b>ROW_NUMBER tabanlı medyan</b> — 5 metrik için CTE'ye 5 kez başvuruyor; SQL Server
+    ///     CTE'yi materialize ETMEDİĞİ için taban 5 kez taranıp sıralanıyor: >40 s (60 s
+    ///     timeout'a dayandı, iptal edildi). PERCENTILE_CONT bu alternatiften çok daha iyi.
+    ///
+    /// UYGULANAN: sorgu AYNEN kaldı, <b>tekrar hesaplanması</b> engellendi. Akran medyanı
+    /// (Kesim, SezonYil, Kategori1) üçlüsü için SABİTTİR — aynı kategorideki her ürün aynı
+    /// medyanı görür. 42 Kategori1 var, yani kesim başına en fazla 42 kayıt.
+    ///
+    /// ⚠ BAYATLAMA SINIRI: taban AYNI kesim için yeniden kurulursa (DELETE+INSERT) cache
+    /// en fazla <see cref="AkranCacheSuresi"/> kadar eski medyanı gösterir. Bilinçli kabul:
+    /// akran medyanı bir BAĞLAM metriğidir (kıyas çubuğu), sipariş kararının girdisi değil.
+    /// Ürünün kendi rakamları cache'lenmiyor. Kesim değişince anahtar da değişir.
+    /// </remarks>
+    private static readonly TimeSpan AkranCacheSuresi = TimeSpan.FromMinutes(30);
+
     public async Task<AkranOzet?> GetAkranAsync(
         string kategori1, DateOnly kesim, int sezonYil, CancellationToken ct = default)
     {
+        var anahtar = $"akran|{kesim:yyyyMMdd}|{sezonYil}|{kategori1}";
+        if (cache.TryGetValue(anahtar, out AkranOzet? onbellek)) return onbellek;
+
         var sql = $"""
             SELECT TOP 1
                    COUNT(*) OVER ()                                                        AS Cesit,
@@ -189,17 +221,19 @@ public sealed partial class SatisAnaliziQueries
                         CASE WHEN t.SatisToplam > 0
                              -- Etkin güne göre (365 sabit DEĞİL — 09.09 düzeltmesi).
                              THEN CAST(t.ToplamStok AS float) / (CAST(t.SatisToplam AS float) /
-                                  CASE WHEN t.IlkGiris IS NULL THEN 365.0
-                                       WHEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1 < 365 THEN DATEDIFF(DAY, t.IlkGiris, t.Kesim) + 1
-                                       ELSE 365.0 END) END)
+                                  {EtkinGunSql}) END)
                         OVER (PARTITION BY t.Kategori1))                                   AS OrtGunStok
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon AND t.Kategori1 = @kategori1
             """;
         await using var conn = await db.OpenAsync();
-        return await conn.QuerySingleOrDefaultAsync<AkranOzet>(new CommandDefinition(sql,
+        var sonuc = await conn.QuerySingleOrDefaultAsync<AkranOzet>(new CommandDefinition(sql,
             new { kesim = kesim.ToDateTime(TimeOnly.MinValue), sezon = (short)sezonYil, kategori1 },
             commandTimeout: 120, cancellationToken: ct));
+
+        // NULL da cache'lenir: akranı olmayan kategori her drill'de 700 ms'i yeniden ödemesin.
+        cache.Set(anahtar, sonuc, AkranCacheSuresi);
+        return sonuc;
     }
 
     /// <summary>
@@ -249,6 +283,54 @@ public sealed partial class SatisAnaliziQueries
         await using var conn = await db.OpenAsync();
         return await conn.QuerySingleOrDefaultAsync<UrunMaliyet>(
             new CommandDefinition(sql, new { stkId }, commandTimeout: 60, cancellationToken: ct));
+    }
+
+    /// <summary>
+    /// GERÇEKLEŞEN SATIŞ FİYATI — POS'ta fiilen ne kadara satıldı (kullanıcı isteği 09.09:
+    /// "detay kartına gerçekleşen ortalama satış fiyatına göre kâr ve kâr marjı da olsa").
+    ///
+    /// NEDEN ŞART (ölçüldü 09.09.2026, 90 gün, panel evreni): POS brütü kart fiyatına EŞİT
+    /// (%95,4–99,5 → <c>urn.fiyatS</c> gerçekten raf fiyatı) ama <b>gerçekleşen NET</b> çok
+    /// altında: Kitap %71,1 · Çocuk Kitabı %72,3 · Elektronik %77,3 · Hazırlık %78,9 ·
+    /// Akademi %79,5 · Kırtasiye %80,3 · Hediyelik %81,6 · Oyuncak %88,6 · Dergi %98,0.
+    /// Panelin stok değeri kart fiyatıyla 1.022,2M ₺; kategori oranlarıyla 807,3M ₺ →
+    /// <b>214,9M ₺ / %21,03 şişme</b>. Kart fiyatıyla hesaplanan marj bu yüzden fazla iyimser.
+    ///
+    /// KAYNAK POS (EncoreMerkez) — <c>irsHrk</c> DEĞİL: indirim kırılımı yalnız POS'ta var.
+    /// Köprü <c>Products.Code = stkID</c> (barkod DEĞİL; sql-server-conventions).
+    /// <c>IsValid = 1</c> zorunlu. Belge tipleri 1,2,6,7,8 — <b>iade (3) HARİÇ</b>: ortalama
+    /// fiyat sorusunda iade satırı fiyatı bozar (veri-dogrula §2/2: AVG'de iade hariç).
+    /// KDV: <c>VatTotal</c> POS'un kendi hesabı — ürün kartındaki orandan türetilmez.
+    /// </summary>
+    public async Task<UrunGerceklesen?> GetGerceklesenAsync(
+        int stkId, DateOnly kesim, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT CONVERT(decimal(18,3), SUM(sp.Amount))                        AS Adet,
+                   CONVERT(decimal(18,2), SUM(sp.TotalPrice))                    AS NetKdvDahil,
+                   CONVERT(decimal(18,2), SUM(sp.TotalPrice + sp.DiscountTotalDirect)) AS BrutKdvDahil,
+                   CONVERT(decimal(18,2), SUM(sp.VatTotal))                      AS Kdv,
+                   CONVERT(decimal(18,2), SUM(sp.DiscountTotalCampaign))         AS IndirimKampanya,
+                   COUNT(*)                                                      AS Kalem
+            FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK)
+            JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id = sp.SalesId
+            JOIN EncoreMerkez.dbo.Products p WITH (NOLOCK) ON p.Id = sp.ProductsId
+            WHERE sp.IsValid = 1
+              AND s.DocumentsTypeId IN (1, 2, 6, 7, 8)
+              AND s.[Date] >= @bas AND s.[Date] < DATEADD(DAY, 1, @kesim)
+              AND ISNUMERIC(p.Code) = 1 AND p.Code NOT LIKE '%.%' AND p.Code NOT LIKE '%e%'
+              AND CONVERT(int, p.Code) = @stkId
+            HAVING SUM(sp.Amount) > 0
+            """;
+        await using var conn = await db.OpenAsync();
+        return await conn.QuerySingleOrDefaultAsync<UrunGerceklesen>(new CommandDefinition(sql,
+            new
+            {
+                stkId,
+                kesim = kesim.ToDateTime(TimeOnly.MinValue),
+                bas = kesim.AddDays(-364).ToDateTime(TimeOnly.MinValue),
+            },
+            commandTimeout: 60, cancellationToken: ct));
     }
 
     /// <summary>
@@ -702,6 +784,13 @@ public sealed partial class SatisAnaliziQueries
             // Filtrenin TERSİ: yalnız taze stok. TazeGunHaric ile birlikte kullanılmaz (biri diğerini boşaltır).
             SatisDurumFiltre.SadeceTaze =>
                 "(COALESCE(t.SonGiris, t.IlkGiris, t.AcilisTarihi) >= DATEADD(DAY, -@tazeGun, @kesim))",
+            // ⚠ KPI'daki YeniCesit ile AYNI ifade (ayrışırsa kart ve liste farklı sayı verir).
+            SatisDurumFiltre.Yeni =>
+                "(COALESCE(t.IlkGiris, t.AcilisTarihi) >= DATEADD(DAY, -@yeniGun, @kesim) " +
+                "AND t.ToplamStok > 0)",
+            // ⚠ Kohort ölçütleri KPI ile AYNI SABİTTEN gelir (ayrışma imkânsız).
+            SatisDurumFiltre.Dengesiz => DengesizSart,
+            SatisDurumFiltre.SezonAcik => SezonHazirlikSart,
             _ => null,
         };
         if (durumSart is not null) sartlar.Add(durumSart);
@@ -746,6 +835,53 @@ public sealed record AkranOzet(
 public sealed record UrunMaliyet(
     decimal Adet, decimal Tutar, decimal? BirimMaliyet, int FaturaSayisi,
     DateTime? SonAlis, decimal? SonAlisAdet, int? KdvOran);
+
+/// <summary>
+/// POS'ta FİİLEN gerçekleşen satış — kart fiyatı değil. 365 gün, iade hariç.
+/// Türev ölçüler burada; SQL yalnız ham toplamı verir (emitter-ayrimi).
+/// </summary>
+public sealed record UrunGerceklesen(
+    decimal Adet, decimal NetKdvDahil, decimal BrutKdvDahil, decimal Kdv,
+    decimal IndirimKampanya, int Kalem)
+{
+    /// <summary>Gerçekleşen ortalama satış fiyatı, KDV DAHİL (müşterinin ödediği).</summary>
+    public decimal BirimKdvDahil => Adet <= 0 ? 0 : NetKdvDahil / Adet;
+
+    /// <summary>KDV HARİÇ birim — maliyetle aynı tabana getirilmiş hâli (marj burada hesaplanır).</summary>
+    public decimal BirimKdvHaric => Adet <= 0 ? 0 : (NetKdvDahil - Kdv) / Adet;
+
+    /// <summary>Kart fiyatına göre gerçekleşme oranı. 1'in altı = indirimle satılıyor.</summary>
+    public decimal? KartOrani(decimal kartFiyat) =>
+        kartFiyat <= 0 || Adet <= 0 ? null : NetKdvDahil / Adet / kartFiyat;
+
+    /// <summary>Ortalama indirim oranı (brüt→net). POS'un kendi indirim kolonundan.</summary>
+    public decimal? IndirimOrani =>
+        BrutKdvDahil <= 0 ? null : (BrutKdvDahil - NetKdvDahil) / BrutKdvDahil;
+
+    /// <summary>
+    /// İndirimin ne kadarı KAMPANYA kaynaklı (geri kalanı elle/kasa indirimi).
+    /// ⚠ <c>DiscountTotalCampaign</c>, <c>DiscountTotalDirect</c>'in ALT KÜMESİdir —
+    /// toplanmaz (sql-server-conventions § İndirim Kolonları). Payda toplam indirim.
+    /// </summary>
+    public decimal? KampanyaPayi =>
+        BrutKdvDahil - NetKdvDahil is var toplam && toplam <= 0 ? null : IndirimKampanya / toplam;
+
+    /// <summary>BİRİM KÂR (KDV hariç) — gerçekleşen fiyat − alış maliyeti.</summary>
+    public decimal? BirimKar(decimal? birimMaliyet) =>
+        birimMaliyet is null or <= 0 || Adet <= 0 ? null : BirimKdvHaric - birimMaliyet.Value;
+
+    /// <summary>BRÜT MARJ = kâr ÷ satış (yukarıdan aşağı). Satıştan ne kadarı kâr.</summary>
+    public decimal? Marj(decimal? birimMaliyet) =>
+        BirimKar(birimMaliyet) is not { } k || BirimKdvHaric <= 0 ? null : k / BirimKdvHaric;
+
+    /// <summary>MARKUP = kâr ÷ maliyet (aşağıdan yukarı). Maliyetin üstüne ne kondu.</summary>
+    public decimal? Markup(decimal? birimMaliyet) =>
+        BirimKar(birimMaliyet) is not { } k || birimMaliyet is null or <= 0 ? null : k / birimMaliyet.Value;
+
+    /// <summary>Satılan adet üzerinden TOPLAM kâr (365 gün).</summary>
+    public decimal? ToplamKar(decimal? birimMaliyet) =>
+        BirimKar(birimMaliyet) is not { } k ? null : k * Adet;
+}
 
 /// <summary>Bir ayın net satış adedi (iade netlenmiş, 3 mağaza).</summary>
 public sealed record AylikSatis(DateTime Ay, int Adet);

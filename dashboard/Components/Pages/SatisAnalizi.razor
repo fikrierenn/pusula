@@ -119,6 +119,32 @@ else
        NEDEN çift aynı kartta: karşı-metrik ayrı karta konunca ekran taşıyordu ve çift ayrılabiliyordu;
        satinalma-danisman şartı "karşı-metrik YAN YANA" böyle korunuyor.
        İKONLAR INLINE SVG — `<i data-lucide>` dinamik alanda circuit çökertiyor (29.08 dersi). *@
+    @* GÜVEN SATIRI — "Veri Kirli" KART OLMADI (kurul kararı): iş kararı değil, diğer
+       bütün kartların güvenilirlik kapısı. Akran kart olarak konunca gerçek para
+       problemleriyle yarışıp görmezden geliniyordu.
+       ⚠ ADI "kirli" DEĞİL: ölçüldü 09.09 (stkID 1739183) — negatif mağaza stoğu çoğu zaman
+       veri kiri DEĞİL, transfer kabulünün gecikmesi + geriye dönük kayıt. `irsHrk.hrkTarih`
+       (satırın deftere düşme anı) ile `ehTrhS` (belge tarihi) ayrışıyor. "Kirli" demek
+       overclaim olurdu. *@
+    @if (k.VeriKirliCesit > 0)
+    {
+        <button type="button" class="w-full text-left mb-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 hover:bg-warning/20"
+                @onclick="() => KartTikla(SatisDurumFiltre.VeriKirli, null, null)">
+            <span class="text-xs">
+                <b>@k.VeriKirliCesit.ToString("N0") çeşit doğrulanamıyor</b>
+                (negatif stok ya da fiyat 0 · @Tl(k.VeriKirliTutar)) — aşağıdaki kartlar o kadar
+                hatalı olabilir. Negatif stok her zaman veri kiri DEĞİL: transfer kabulü
+                gecikmişse de böyle görünür. <span class="underline">listele</span>
+            </span>
+        </button>
+    }
+    @* ATIF SINIRI — kurulun 6. sorusu. Yazılmazsa "154,8M ₺ hareketsiz stok"u okuyan
+       yönetici birini arar ve panel, taşıyamadığı bir atfı mümkün kılmış olur. *@
+    <p class="text-[11px] text-base-content/50 mb-3">
+        Bu panel stok <b>durumunu</b> ölçer, kişi performansını ölçmez — kararı kimin verdiği
+        bu veride yok (alıcı boyutu yalnız <code>bkm.OneriSiparisTalep</code>'te). Hiçbir sayı
+        kişiye atfedilemez.
+    </p>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
         @foreach (var kart in Kartlar(k))
         {
@@ -421,8 +447,13 @@ else
 
     private IEnumerable<KpiKart> Kartlar(SatisAnaliziKpi k) =>
     [
-        new("Bağlanan Stok", Tl(k.ToplamStokTutar),
-            $"{k.Cesit:N0} çeşit · satış fiyatıyla (maliyet değil)",
+        @* ADI DEĞİŞTİ (B-167a, ölçümle kapandı 09.09): "Bağlanan Stok" maliyet ima ediyordu
+           ama sayı ETİKET fiyatıyla. Dahası etiket, gerçekleşen fiyatın da üstünde —
+           ÖLÇÜLDÜ (90 gün, POS): net/kart oranı Kitap %71,1 · Çocuk Kitabı %72,3 ·
+           Kırtasiye %80,3 · Oyuncak %88,6 → 1.022,2M ₺ etiket, 807,3M ₺ gerçekleşen
+           (214,9M ₺ / %21,03 şişme). Ad artık tabanını söylüyor. *@
+        new("Stok Değeri · etiket", Tl(k.ToplamStokTutar),
+            $"{k.Cesit:N0} çeşit · gerçekleşen fiyata göre ~%21 şişik (ölçüldü)",
             "from-primary to-primary/80", "kutu", SatisDurumFiltre.Hepsi,
             CiftBaslik: "Raf gün-stoğu",
             CiftDeger: (k.PerakendeGunStok?.ToString("N0") ?? "—") + " gün",
@@ -460,8 +491,34 @@ else
             "from-error to-error/80", "arsiv", SatisDurumFiltre.Hareketsiz,
             CiftBaslik: "3 yıldan eski + satışsız → tasfiye adayı",
             CiftDeger: "listele",
-            CiftAlt: "ürün kartı 3+ yıl önce açılmış olanlar",
+            CiftAlt: $"ürün kartı 3+ yıl önce açılmış · {k.YeniCesit:N0} yeni çeşit ({Tl(k.YeniTutar)}) HARİÇ",
             CiftDurum: SatisDurumFiltre.Hareketsiz),
+
+        @* SEZON HAZIRLIĞI — kurulun 1 numaralı önerisi (satinalma-danisman 09.09).
+           Panelin SON TARİHİ OLAN tek kartı: sezon Ağu–Eki, sipariş penceresi şimdi.
+           "Stoksuz sezon"dan FARKLI: orada stok SIFIR, burada VAR ama geçen sezon
+           satışının yarısını bile karşılamıyor. Tutar = EKSİK adet × fiyat (kayıp
+           potansiyeli), stok değeri değil. ⚠ 0,5 katsayısı SEÇİLDİ, ölçülmedi. *@
+        new("Sezon Hazırlığı Açığı", Tl(k.SezonAcikTutar),
+            $"{k.SezonAcikCesit:N0} çeşit · stok, geçen sezon satışının yarısından az · eksik adet × etiket fiyatı",
+            "from-warning to-warning/80", "uyari", SatisDurumFiltre.SezonAcik,
+            CiftBaslik: "ODAK'ta var → hızlı temin",
+            CiftDeger: Tl(k.SezonAcikOdakTutar),
+            CiftAlt: $"{k.SezonAcikOdakCesit:N0} çeşit · sipariş edilebilir",
+            CiftDurum: SatisDurumFiltre.SezonAcik, CiftOdakVar: true),
+
+        @* MAĞAZALAR ARASI TRANSFER — eylemi BEDAVA olan tek kart (mal şirkette, para çıkmıyor).
+           ⚠ Kart 4'ün karşı-metriği MERKEZDEN transferdir; bu MAĞAZALAR ARASI. Toplanmaz.
+           ⚠ Eşik mutlak değil TALEBE GÖRELİ (kurul itirazı): veren rafta ≥14 günlük kapsama.
+           ⚠ Yoldaki transfer vekili: son 14 günde mal kabulü olan ürün HARİÇ (ölçüldü 09.09,
+              stkID 1739183 — transferin karşı bacağı deftere 2 gün sonra düşüyor). *@
+        new("Mağazalar Arası Transfer", Tl(k.DengesizTutar),
+            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, ötekinde 5+ adet ve 14+ günlük stok",
+            "from-info to-info/80", "katman", SatisDurumFiltre.Dengesiz,
+            CiftBaslik: "Eylem: sipariş DEĞİL, transfer",
+            CiftDeger: "listele",
+            CiftAlt: "sezonda satıyor → talep kanıtlı; mal şirkette, yeri yanlış",
+            CiftDurum: SatisDurumFiltre.Dengesiz),
     ];
 
     /// <summary>

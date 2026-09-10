@@ -47,10 +47,18 @@ from openpyxl.styles import Font
 
 # Kategori3 evreni — OLCULDU (orijinal dosyadan cikarilip UrunBilgi'ye karsi dogrulandi:
 # liste disi 59.826 cesidin hicbiri raporda yok).
+#
+# "Kafe Hammede" CIKARILDI (kullanici karari 09.09.2026). Kategoride yalniz 2 cesit vardi:
+# 89918 "KAFE RESTAURANT SATISLARI" (hizmet/toplayici kalem, magaza stogu -46 -> kategori
+# agregasi -21) ve 1721975 "Winboss 20 W. Silikon Tabanca" (95 adet, yanlis kategorili).
+# Toplam 26.504,54 TL / 49 adet. Dashboard ile AYNI kalmali:
+# dashboard/Data/SatisAnaliziQueries.cs -> Kategori3Evreni (emitter-ayrimi: tek evren).
+# "Zkargo" da CIKARILDI (ayni gun): tek uyesi stkID 79405 "ALIS KARGO GIDERI",
+# stkKod='153.10' (muhasebe hesap kodu deseni), 12.571 adet, Tutar 0,00 TL, satis 0.
+# Gider kalemi, mal degil.
 KATEGORI3 = [
     "Kitap", "Kırtasiye", "Oyuncak", "Çocuk Kitabı", "Hazırlık Kitapları",
     "Akademi", "Hediyelik", "Elektronik", "Dergi", "Spor & Outdoor",
-    "Kafe Hammede", "Zkargo",
 ]
 
 BASLIKLAR = [
@@ -69,6 +77,12 @@ WITH kat AS (
            u.mrkAd AS Yayinevi, u.Yazar, u.SatisFiyat
     FROM bkm.UrunBilgi u WITH (NOLOCK)
     WHERE u.Kategori3 IN ({kat_yer})
+      -- GIDER/HIZMET KALEMI DISLAMASI (kullanici 09.09.2026). sema/codes.yaml urn.urnTip:
+      -- "tum STOK/urun sorgularinda WHERE urnTip=0 ZORUNLU - gider/hizmet kalemleri
+      -- aksi halde sizdi". 0=stok urunu / 1=gider-hizmet / 2=fatura hizmet-gelir + sabit
+      -- kiymet; 1 ve 2 stok TASIMAZ. Olculdu 03.09.2026: 868.094 / 252 / 52.
+      -- Dashboard ile AYNI olmali: dashboard/Data/SatisAnaliziTabanService.cs kat CTE.
+      AND u.urnTip = 0
 ),
 mgz AS (   -- magaza rafi = HAREKET DEFTERINDEN as-of (kumulatif SUM ehAdetN, ehTrhS <= kesim)
     -- NEDEN view DEGIL: stokSonAltDepo_vw ANLIK -- gecmis bir tarih icin YANLIS deger verir,

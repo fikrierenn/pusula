@@ -31,6 +31,7 @@ public static class ServiceRegistration
         s.AddScoped<HediyeCekiQueries>(); // plan-36 hediye çeki kârlılık/indirim tavanı (kanal+barem+bonus)
         s.AddScoped<KadroQueries>();      // plan-38 kadro/sezon personeli (Zirve İK, salt-okuma)
         s.AddScoped<PatronSorulariQueries>(); // plan-37 Faz B patron soruları mini-metrikleri (SQL yok, servis çağırır)
+        s.AddMemoryCache();                       // B-168: akran medyanı (PERCENTILE_CONT, ölçüldü 692 ms) kesim içinde sabit → tekrar hesaplanmasın
         s.AddScoped<SatisAnaliziQueries>();       // plan-42 satış analizi paneli (bkm.SatisAnaliziTaban ön-agregasından okur)
         s.AddScoped<SatisAnaliziTabanService>();  // plan-42 ön-agrega doldurucu — ERP'ye yazan TEK yer (erp-write-policy istisnası)
         s.AddScoped<KolonTercihService>();        // plan-42 kullanıcı başına görünür kolon kümesi (BkmPanel, app-local)
