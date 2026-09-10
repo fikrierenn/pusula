@@ -557,3 +557,127 @@ metrics:
     last_verified: "2026-09-02"
     ttl_days: 365
     evidence: "2026-09-02 canlı MCP zirve — sorgular/2026-09-02-sezon-personel-kohort-magaza.sql (9 blok: Kadro dağılımı, aylık profil, SEGMENT kıyası, kohort survival, şube×kohort sezonluk + kadrolu, şube×reyon, çözülme ofseti, çıkış kodu, kadro bileşimi). SEZONLUK ölçümü: 3 kohort (2024:73 / 2025:83 / 2026:86 kişi), 14-gün tutunma %92,7/%93,3/%91,8, Eylül-öncesi kayıp 7/9/10. Aynı pencerede KADROLU: 54/48/61 kişi, %90,7/%92,1/%75,5, kayıp 9/6/18. Rapor: briefings/sezon-kadro-20260902/ (xlsx + veri.json)."
+
+  stok_farki_deger_tabani:
+    ad: "Stok farkının parasal büyüklüğü — taban MALİYET, etiket fiyatı DEĞİL"
+    kural: >-
+      Stok değeri/farkı tutarı `urn.fiyatS` (etiket, KDV dahil) ile ÖLÇÜLMEZ. Stok maliyetle
+      taşınır; doğru taban `bkm.UrunMaliyet` zinciri (ya da set-bazlı proxy
+      `Aktarim.dbo.BKM_STOKLAR_MALIYETLI.ORT_ALIS`). Etiket tabanı yalnız "raf değeri"
+      sorusunda meşrudur.
+    neden: >-
+      Etiketle maliyet arasındaki fark, ürün karması yüzünden tutarın YÖNÜNÜ bile
+      değiştirebiliyor. ÖLÇÜLDÜ 2026-09-09 (merkez WMS↔ERP farkı, RAF+GİRİŞ):
+      ERP azalır 13.465 çeşit / 2.254.001 adet → etiket 70.434.250 ₺ ama maliyet 1.639.833 ₺ ·
+      ERP artar 3.562 çeşit / 4.258.229 adet → etiket 6.835.396 ₺ ama maliyet 32.154.572 ₺.
+      Net: etiketle −63,6M ₺ DÜŞÜŞ, maliyetle +30,5M ₺ ARTIŞ. Az sayıda pahalı ürün ERP'de
+      eksik, çok sayıda ucuz ürün ERP'de fazla.
+    kapsam_uyarisi: >-
+      Aynı ölçümde 9.611 çeşitte ORT_ALIS YOK (7.201 + 2.410). `bkm.UrunMaliyet` bunların bir
+      kısmını fatura/fiyat listesinden kurtarır, kurtarmadığını **0** döndürür → o ürünler
+      deftere 0 ₺ ile girer. "Maliyetle ölçtüm" demek "tam ölçtüm" demek değildir; maliyeti
+      bilinmeyen çeşit sayısı her zaman rapora yazılır.
+    evidence: "2026-09-09 — sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql §3.1 / plans/43-wms-erp-defter-esitleme.md"
+    last_verified: "2026-09-09"
+
+  merkez_defter_mutabakat_kapsami:
+    ad: "Merkez depo defter mutabakatı — kapsam TÜM ALANLAR (panel stoğundan FARKLI)"
+    kural: >-
+      İki AYRI soru, iki AYRI kapsam. Karıştırılmaz:
+      · "Satılabilir merkez stoğu" (panel, KPI, gün-stok) → `adrsAlanTipID IN (0,1)`
+        RAF + GİRİŞ. ÇIKIŞ ALANI sevke hazırlanmış/ayrılmış mal, satılabilir sayılmaz.
+      · "ERP defteri mutabakatı" → `adrsAlanTipID` süzgeci **YOK** (0+1+2 hepsi). Mal ÇIKIŞ
+        alanında da hâlâ bizimdir ve ERP defterinde durur; hariç bırakmak sahte "ERP fazla"
+        üretir.
+    kanit: >-
+      ÖLÇÜLDÜ 2026-09-09, mutabık (WMS == ERP defteri) ürün sayısı:
+      RAF+GİRİŞ 409.229 · TÜM ALANLAR 417.812. Yalnız ÇIKIŞ dahil olunca mutabık olan
+      9.820 ürün; yalnız ÇIKIŞ hariç olunca mutabık olan 1.237. Asimetri 8×
+      (tesadüf açıklaması bu yüzden elendi). Uyumsuz çeşit 17.027 → **8.476**.
+    fark_buyuklugu: >-
+      TÜM ALANLAR kapsamıyla: ERP eksik 5.518 çeşit / 4.389.670 adet (maliyet proxy
+      32.304.553 ₺, 3.833 çeşitte maliyet yok) · ERP fazla 2.958 çeşit / 1.843.671 adet
+      (180.134 ₺, 1.454 maliyetsiz). Net defter etkisi +2.545.999 adet / ~+32,1M ₺.
+      Tümünün `urn` kartı var ve `urnTip = 0`.
+    ek_gercek: "mekan 12 defterinde `ehAltDepo` tek değer 0 (39.858.210 satır) → alt depo süzgeci gereksiz."
+    evidence: "2026-09-09 — sorgular/2026-09-09-wms-erp-sayim-evraki-URET.sql Blok 1; plans/43."
+    last_verified: "2026-09-09"
+
+  mutabakat_evreni_hizmet_sarf_haric:
+    ad: "WMS↔ERP mutabakat evreni — hizmet/sarf kalemleri ÇIKARILIR"
+    kural: >-
+      Mutabakata giren ürün evreni `urnTip = 0` ile SÜZÜLEMEZ. ÖLÇÜLDÜ 2026-09-09:
+      `KARGO GELİRİ` (stkID 144860) urnTip=0, satisTur=0, urnKtgrID=10 ("Çocuk Kitapları" —
+      veri kiri) → guard'a takılmıyor. Doğru süzgeç kategori bazlı:
+      `bkm.UrunBilgi.Kategori3 NOT IN ('KARGO','Genel','Tanımsız','Zkargo')`.
+      Bu kalemler WMS'te HİÇ durmaz (Wms=0); "düzeltilmez", evrenden çıkarılır.
+    kanit: >-
+      Farkın iki tarafını da 5 kalem taşıyordu: 144860 KARGO GELİRİ (ERP −2.798.582) ·
+      583160 Geri Dönüşüm Kağıt Madde Alımı (+1.764.200) · 144963 KAPIDA ÖDEME GELİRİ
+      (−1.194.588) · 436306 KOMİSYON BEDELİ (−207.999) · 1543633 TANIMSIZ ÜRÜN %20 (+37.504).
+      Hariç bırakmadan: GİRİŞ 5.518 çeşit/4.389.670 adet/32.304.553 ₺ · ÇIKIŞ 2.958/1.843.671/180.134 ₺.
+      Hariç bırakınca: **GİRİŞ 5.443/152.105/231.979 ₺ · ÇIKIŞ 2.952/41.952/177.172 ₺**
+      → net +110.153 adet / ~54.806 ₺. Kapsam hatası tutarı **590 kat** şişiriyordu.
+    ders: >-
+      "urnTip=0 → gerçek ürün" ÇIKARIMDIR, ölçüm değil. Hizmet kalemi ürün kartıyla
+      açılmış ve stok hareketi görüyorsa urnTip onu ayırmaz. Büyük bir farkın az sayıda
+      kaleme yığılması (5 kalem = %96) her zaman "bunlar gerçek ürün mü?" sorusunu tetikler.
+    evidence: "2026-09-09 — sorgular/2026-09-09-wms-erp-sayim-evraki-URET.sql Blok 2a"
+    last_verified: "2026-09-09"
+
+  merkez_defter_negatif_temizligi_ara2025:
+    ad: "Merkez defter negatiflerinin Aralık 2025 temizliği — eTip 88/89 ile yapıldı"
+    olcum: >-
+      Merkez (mekan 12) defterinde NEGATİF bakiyeli çeşit sayısı, yıl sonları itibarıyla:
+      31.12.2021 11.896 (−1.023.505 adet) · 2022 171.143 (−6.236.968) · 2023 243.606
+      (−12.988.784) · 2024 298.353 (−19.656.508) · **2025 37 (−4.221.086)**.
+      Aralık 2025 içinde: 01.12.2025'te 302.859 çeşit → 31.12.2025'te 37.
+    mekanizma: >-
+      Sayım evrakıyla (eTip 99) DEĞİL: Aralık 2025'te mekan 12'de `ehTip=88 'Diğer Giriş'`
+      310.116 satır / 310.100 çeşit / +22.859.643 adet ve `ehTip=89 'Diğer Çıkış'`
+      26.291 satır / −40.073.558 adet işlendi. Aynı ayın eTip 99 hacmi yalnız 44 satır.
+    kalici_olmadi: >-
+      Negatif çeşit sayısı yeniden tırmandı: 31.12.2025 **37** → 31.01.2026 27 →
+      31.03.2026 80 → 30.06.2026 584 → 09.09.2026 **2.545**. Yani sızıntı sürüyor;
+      tek seferlik temizlik kalıcı çözüm olmadı. Kalan −4,22M adedin %99,5'i hizmet
+      kalemi (KARGO GELİRİ / KAPIDA ÖDEME / KOMİSYON — mutabakat evreni dışı).
+    dogrulanamayan: >-
+      O temizliğin WMS'e mi eşitlendiği GERİYE DÖNÜK ÖLÇÜLEMEZ: `bkm.StokAyBakiyeMekanBazli`
+      mekan 12 için yalnız TEK dönem taşıyor (2026-08-31) → Aralık-2025 WMS snapshot'ı yok.
+    ek_gercek: >-
+      `depo.sayım` zinciri (JOKER eşitleme deseni) 22.01.2024'te DURMUŞ — o tarihe kadar
+      her gün kKisi=323/sDepoID=12/paletBazliSifirlansin=1 kaydı var. Sonrası yalnız iki
+      başıboş satır: 08.04.2025 (1 satır) ve 13.01.2026 (sNo='reyreu', 0 satır, sDurum=0).
+    evidence: "2026-09-09 — irsHrk as-of bakiye sayımları + Aralık 2025 ehTip kırılımı + depo.sayım tam dökümü"
+    last_verified: "2026-09-09"
+
+  merkez_defter_sizinti_kaynagi:
+    ad: "WMS↔ERP farkı süregelen SIZINTIDAN doğuyor — tarihsel kirden değil"
+    kanit_esitleme_tuttu: >-
+      Aralık 2025 eşitlemesinin WMS'e yapıldığı DOLAYLI ölçümle kanıtlandı (geriye dönük WMS
+      snapshot yok): 2026'da ne ERP'de ne WMS'te hiç hareket görmemiş 6.182 çeşidin **6.181'i
+      hâlâ mutabık (%99,98)**; hareket görenlerde mutabıklık %71,86. Dokunulmayan eşit kaldı.
+    kanit_delta: >-
+      2026 delta farkı mevcut farkı birebir açıklıyor: MUTABIK 27.192 çeşit → ERP Δ +487.879 /
+      WMS Δ +493.176 (fark −5.297, fark 0) · ERP-EKSİK 5.224 → +161.327 / +306.224
+      (Δ farkı −144.897, mevcut fark +151.670) · ERP-FAZLA 2.952 → −36.129 / −72.074
+      (+35.945, −37.791). WMS her iki yönde de ERP'den fazla hareket ediyor.
+    sizinti_kanallari: >-
+      (1) `paletIcHrk.pHrkTip = 0` KULLANICI (manuel) baskın: ERP-eksik grubunda belgeli
+      +745.077 · belgesiz −357.759 · SAYIM(2) −81.094 = net +306.224. `pHrkTip=1` EMİR net 0.
+      (2) `irsHrk.ehTip = 2` Alış İade **%84,65 uyumsuz** (2.358→1.996); baskın yön ERP-fazla
+      1.748 çeşit / 21.602 adet = tüm ERP-fazla farkının %51'i.
+      (3) Onaysız irsaliye katkı sağlıyor ama tek sebep değil: onaysız belgede geçen 1.881
+      çeşidin %44,28'i uyumsuz (taban %28). Onaysız hacim eTip 13 → 1.974 satır/+52.989 adet.
+      Onay job'ı yalnız eTip IN (16,90,99) işliyor; **eTip 13 onaysız kalıyor.**
+    uyumsuzluk_orani_hareket_tipine_gore: >-
+      Alış İade %84,7 · Diğer Giriş %76,6 · Sayım %66,1 · Ürün SAY %50,7 · Satış %39,7 ·
+      Alış %36,4 · Mağaza Depo %30,9 · Depo Mağaza %29,6 · Stok EKLE %27,3.
+      ⚠ 88/99/90 düzeltme belgeleridir; yüksek oranları kısmen dairesel.
+    ders: >-
+      Yeniden eşitleme (± sayım evrakı) SAYACI SIFIRLAR, sızıntıyı kapatmaz. Aralık 2025'te
+      negatif çeşit 302.859 → 37 indi, dokuz ayda 2.545'e çıktı. Kalıcı çözüm periyodik
+      fark izleme + manuel WMS hareketi ile alış-iade süreçlerinin ERP eşleşmesini zorunlu
+      kılmaktır.
+    evidence: "2026-09-09 — hareketsiz-grup mutabıklık testi + 2026 delta karşılaştırması + pHrkTip/ehTip kırılımları; plans/43 §3.5"
+    last_verified: "2026-09-09"

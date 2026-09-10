@@ -449,6 +449,17 @@
       "beklenen": 0,
       "korur": [],
       "dogrulandi": "2026-09-09 → dbo.urnKDV 10 kod, oksuz 0. kdvYuzde_vw ile 41 oksuz cikiyordu (KDVs 8→34 urun, 5→6, 9→1; 26'sinin satisi var, 376.028 TL stok)"
+    },
+    {
+      "id": "turkish-dili-dmy-verir",
+      "db": "DerinSISBkm",
+      "soru": "Sunucudaki 'Turkish' dil tanimi dmy dateformat veriyor mu?",
+      "neden": "Dashboard artik her baglantida 'SET DATEFORMAT dmy' KOMUTU GONDERMIYOR (B-168: DB'ye RTT ort 30 ms / min 16 ms; drill 9 baglanti aciyordu = 9 gereksiz gidis-donus ~225 ms; app'te 135 db.OpenAsync() cagrisi var). DMY garantisi artik baglanti dizesindeki 'Current Language=Turkish' ile LOGIN'de veriliyor (dashboard/Data/Db.cs). Bu garanti TAMAMEN sunucudaki Turkish dil tanimina dayaniyor: o tanim dmy vermezse dmy tarih literali SESSIZCE ters parse edilir (gun/ay yer degistirir) ve asistanin urettigi SQL dmy literali tasiyabilir. KIRILABILIRLIGI KANITLANDI 09.09.2026: pyodbc ile Language=English verilince CONVERT(date,'13.06.2026') 'Conversion failed' hatasi verdi; Turkish ve varsayilan ile dogru parse etti. ⚠ KAPSAM DERSI: ilk hali @@LANGUAGE'a bakiyordu ve KIRDI — cunku bu kosucu (pymssql) us_english/mdy oturumu aciyor. Yani olcum KOSUCUNUN oturumunu olcuyordu, uygulamanin degil (olctum-mu-cikardim-mi: olcumun kapsami kodun kapsamiyla ayni olmali). Baglanti-bagimsiz olan gercek bagimlilik sys.syslanguages'daki Turkish tanimidir.",
+      "sql": "SELECT CASE WHEN (SELECT dateformat FROM sys.syslanguages WHERE alias = 'Turkish') = 'dmy' THEN 1 ELSE 0 END",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "korur": [],
+      "dogrulandi": "2026-09-09 → sys.syslanguages alias='Turkish' dateformat=dmy, datefirst=1. Login sa varsayilan dili de Turkce (app artik buna guvenmiyor, Current Language ile aciktan veriyor). pyodbc ucgen testi: dil verilmezse dmy OK, Turkish dmy OK, English 'Conversion failed'."
     }
   ]
 }

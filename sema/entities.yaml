@@ -942,3 +942,99 @@ Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6
       verir (2026-09-09'da bu hataya düşüldü).
     evidence: "2026-09-09 — stkID 235636 ve 248104 üzerinde yön kanıtı + kod kümesi sayımı."
     last_verified: "2026-09-09"
+
+  DerinSISBkm.depo.stok_adres_palet_vw:
+    rol: "WMS hücresel stok — merkez depo stoğunun KANONİK kaynağı (adres × palet × ürün)"
+    tanim: >-
+      View gövdesi okundu: paletUrnTnm ⋈ paletTnm(pID=pUID) ⋈ adres(pSonPozID=adrsID),
+      WHERE pUAdetN > 0, Stok = SUM(pUAdetN). Yani "WMS Stok" ile paletUrnTnm.pUAdetN
+      AYNI ŞEYDİR — ayrı bir sayım değil, aynı kolonun gruplanmışı.
+    gizli_kalan: >-
+      ⚠ `pUAdetN > 0` süzgeci yüzünden view SIFIR ve NEGATİF satırları GÖSTERMEZ.
+      ÖLÇÜLDÜ 2026-09-09: paletUrnTnm 136.945 satırın 80.108'i sıfır, 43'ü negatif
+      (−907 adet). "WMS'te yok" demek "paletUrnTnm'de kaydı yok" demek DEĞİL.
+    grain: "(pUID, pUStkID) TEKİL — mükerrer ikili 0. View'deki SUM kozmetik."
+    adres_kapisi: "adres JOIN'i INNER → pSonPozID'si depo.adres'te olmayan palet view'de görünmez."
+    evidence: "2026-09-09 — sys.sql_modules view gövdesi + paletUrnTnm sayımları."
+    last_verified: "2026-09-09"
+
+  DerinSISBkm.depo.emir + emirAyr:
+    rol: "WMS iş emri (sayım / toplama / yerleştirme). Sayım emri = emTip 5."
+    isim_tuzagi: >-
+      ⚠⚠ `emirAyr.emSonPozID` bir POZİSYON DEĞİL, **stkID (ÜRÜN)**. Kanıt:
+      `paletUrnTnm ON pUID = emİlkPozID AND pUStkID = emSonPozID`. `emİlkPozID` = PALET
+      (Türkçe İ ile; ASCII yazım Err 207). `emAyrID` = EMİR id (satır id değil; satır no
+      `emSira`). Bu üç ad karıştırılırsa sorgu sessizce boş/yanlış döner.
+    sayim_emri_deseni: >-
+      Fiziki sayım emri: emIlkAdres = emSonAdres = adrsID (YERİNDE sayım, taşıma yok) ·
+      emAdet = sistemin iddia ettiği adet · emTamam = 0 · emDurum 0 açık / 1 kapalı.
+      Emir kapanışı ve sayacak terminaller `dbo.BKM_TerminalSayimKullaniciEkle` ile
+      `depo.emirTerm`e yazılır (o SP'de termID + 17 termKod GÖMÜLÜ — kadro değişince bayatlar).
+    evidence: "2026-09-09 — WMS-GunlukSayimEmiri job gövdesi + BKM_TerminalSayimKullaniciEkle (667 krk)."
+    last_verified: "2026-09-09"
+
+  DerinSISBkm.depo.adresSnl:
+    rol: "Adres koordinat/şablon tablosu — sayım emri süzgeci buradan geçer"
+    kural: >-
+      `adrs3` adresin koordinatı (kat/sıra), ÖLÇÜLEN küme 0..12.
+      ⚠ `WMS-GunlukSayimEmiri` son DELETE'i `adrs3 = 0` olan kaynak adresleri emirden ATAR.
+      ÖLÇÜLDÜ 2026-09-09: adrs3=0 → 3.231 adres, **3.224'ü RAF ALANI** (ÇIKIŞ 2 · HAVUZ 3 ·
+      GİRİŞ 1 · İADE 1). Yani sıfır-koordinatlı raflar günlük sayıma HİÇ girmiyor; sayım
+      kapsamını genişletirken bu kapı bilinçli aşılmalı.
+    evidence: "2026-09-09 — adrs3 GROUP BY + alanTip kırılımı."
+    last_verified: "2026-09-09"
+
+  BKM_SAYIM_EVRAKI_SP_SOZLESMESI:
+    rol: "ERP defterine sayım farkı yazan app-owned yol — WMS'e DOKUNMAZ"
+    kural: >-
+      `bkm.SayimIrsaliyeBaslikOlustur(@SUBE,@EVRAKNO,@TARIH,@KULLANICI,@GC,@belgeNot='',
+      @eTip=99,@frmID=0,@eNot='')` → `dbo.irs_ekle`'yi **@onay=1** ile çağırır (belge ANINDA
+      onaylı), RETURN irsaliye no, hata **-1** + BKMDATA.dbo.EXCEPTION_LOG. @GC 0=giriş 1=çıkış
+      → eksik ve fazla için İKİ AYRI belge gerekir.
+      `bkm.SayimIrsaliyeSatirEkle(@IRSALIYE_NO,@STKID,@ADET,...)` → KDV'yi KANONİK yoldan
+      (`urn.KDVs → urnKDV.kdvYuzde`) alır; eTip=99 ise tutarı KENDİ hesaplar:
+      `ehTutar = bkm.UrunMaliyet(stkID, eTarih) * ABS(adet)`, `ehTutarKDV = ehTutar*kdvOran/100`.
+      ehSira'yı MAX+1 ile kendisi verir. RETURN 1 / -1.
+    karsit_desen: >-
+      `depo.sayimIsle` (WMS beyan yolu) irsAyr'a **ehTutar = 0** yazar → tutar üretmez ve
+      aynı koşuda WMS'i de oynatır. "ERP'yi düzelt, WMS'e dokunma" YALNIZ bkm.SayimIrsaliye*
+      ile mümkündür.
+    maliyet_zinciri: >-
+      `bkm.UrunMaliyet(@STKID,@TARIH)` dört kademe: (1) son 5 alış faturası satırı
+      (fat.eTip=0, eDurum<>2, Neden<>243; eFirma 9525 için yalnız 01.09.2022 sonrası) ∪
+      son 5 BKMDATA..ODAK_FATURA satırı → SUM(ehTutarN)/SUM(ehAdetN) · (2) Aktarim.dbo.
+      BKM_STOKLAR_MALIYETLI.ORT_ALIS · (3) fytOzl (fTur=1,fTip=1) × 5 kademe iskonto ·
+      (4) hâlâ NULL ise **0** → maliyeti bilinmeyen ürün deftere 0 ₺ ile girer, SESSİZ.
+    okunamayan: >-
+      `dbo.irs_ekle`, `dbo.irsSatir_ekle`, `dbo.irsSatirHrk_ekle` → sys.sql_modules.definition
+      NULL (obje var, tip SP, şema dbo → yanlış şema değil): ŞİFRELİ. Her iki sayım yolunun da
+      SON MİLİ okunamıyor.
+    evidence: "2026-09-09 — bkm.SayimIrsaliyeBaslikOlustur (1.833 krk) · SayimIrsaliyeSatirEkle (1.542) · UrunMaliyet (2.243) gövdeleri; plan-43."
+    last_verified: "2026-09-09"
+
+  DerinSISBkm.dbo.irsHrk_zaman_kolonlari:
+    rol: "irsHrk'da İKİ zaman var — biri belgenin, biri satırın. Karıştırılırsa as-of ölçüm bozulur."
+    kural: >-
+      `ehTrhS` (smalldatetime) = BELGE tarihi (saat 00:00, geriye dönük yazılabilir).
+      `hrkTarih` (datetime) = SATIRIN DEFTERE DÜŞTÜĞÜ AN (gerçek zaman, saat dahil).
+      As-of ölçüm (`WHERE ehTrhS < kesim+1`) belge tarihine bakar; o satır kesimden SONRA
+      oluşmuş olabilir. Yani "kesim anındaki durumu" yeniden üretmek isteyen bir ön-agrega,
+      sonradan girilen geriye dönük satırları GÖREMEZ ve tekrar kurulduğunda başka sonuç verir.
+    kanit: >-
+      ÖLÇÜLDÜ 2026-09-09, stkID 1739183 (Maxx MX-617 Tahta Kalem Seti):
+      Özlüce'ye +480 → belge 07.09, satır **09.09 10:12:14** · FSM'ye +480 → belge 07.09,
+      satır **09.09 16:36:45** · merkez satış −480 (grup şirketi) → belge 07.09, satır
+      **09.09 14:12:21**. POS satışları −27/−10 → belge 08.09, satır 08.09 23:45.
+      `bkm.SatisAnaliziTaban` üretimi 09.09 **08:44:57** → POS satışları girdi, mağaza
+      girişleri girmedi → StokFsm −27 / StokOzl −10 / MagazaStok −37 (NEGATİF).
+      Panel doğru çalıştı; veri o an gerçekten öyleydi.
+    sonuc: >-
+      Mağaza stoğunun negatif görünmesi her zaman "veri kiri" DEĞİLDİR; transfer kabulünün
+      gecikmesi + geriye dönük kayıt da aynı görüntüyü üretir. Ayrım için `hrkTarih` ile
+      `ehTrhS` karşılaştırılır.
+    transfer_tek_bacak: >-
+      Transferin karşı bacağı mağaza kabulüne kadar OLUŞMAZ. Aynı üründe İst.Yolu'na 08.09'da
+      çıkan 480 ve FSM'ye 09.09'da çıkan 240 adetin alım bacağı hiç yok → 720 adet "yolda",
+      hiçbir mekanda görünmüyor. Depo çıkışı ile mağaza girişi arasındaki fark bu.
+    evidence: "2026-09-09 — irsHrk hrkTarih vs ehTrhS dökümü (stkID 1739183) + taban Uretim damgası"
+    last_verified: "2026-09-09"
