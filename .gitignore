@@ -108,3 +108,6 @@ briefings/**/*KISILI*.json
 # GR palet supheli stok raporlari (uretilen cikti; scripts/gr_palet_supheli_excel.py ile yeniden uretilir)
 /GR Palet Supheli Stok*.xlsx
 /KDV Tanim Denetimi*.xlsx
+
+# WMS-ERP mutabakat Excel cikitisi — scripts/wms_erp_mutabakat_excel.py ile yeniden uretilir
+WMS-ERP Mutabakat*.xlsx
