@@ -39,6 +39,7 @@ public sealed partial class SatisAnaliziQueries
         ["sezon_ay2"] = "t.Ay2",
         ["sezon_ay3"] = "t.Ay3",
         ["ilkgiris"] = "t.IlkGiris",
+        ["sonsatis"] = "t.SonSatis",
         ["songiris"] = "t.SonGiris",
         ["acilis"] = "t.AcilisTarihi",
     };
@@ -56,6 +57,7 @@ public sealed partial class SatisAnaliziQueries
         t.OdakStok, t.IlkGiris AS IlkGirisTarihi, t.SonGiris AS SonGirisTarihi, t.AcilisTarihi,
         t.StokFsm, t.StokOzl AS StokOzluce, t.StokIst AS StokIstyolu, t.MagazaStok, t.MerkezStok,
         t.SatisFsm, t.SatisOzl AS SatisOzluce, t.SatisIst AS SatisIstyolu, t.SatisToplam,
+        t.SonSatis AS SonSatisTarihi,
         t.Ay1 AS SezonAy1, t.Ay2 AS SezonAy2, t.Ay3 AS SezonAy3, t.SezonToplam,
         t.LeadTime, t.OdakDurum AS OdakSatisDurum,
         -- MERKEZ ÇIKIŞI (365g) — toptan/grup, tüketici talebi DEĞİL. Gün-stok kapsam

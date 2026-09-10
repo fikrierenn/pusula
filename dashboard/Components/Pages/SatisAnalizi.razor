@@ -69,6 +69,14 @@
     </summary>
     <div class="collapse-content text-xs">
         <ul class="list-disc ml-4 space-y-0.5 pb-1">
+            @* ATIF SINIRI — kurulun 6. sorusu (satinalma-danisman 09.09). KPI şeridinin
+               ÜSTÜNDE ayrı satır olarak duruyordu; kalıcı bir METODOLOJİ beyanı olduğu için
+               (durum değil) her yüklemede birinci sınıf yer tutmasına gerek yok → bandın
+               İLK maddesi. Yazılmazsa "154M ₺ hareketsiz stok"u okuyan yönetici birini arar
+               ve panel, taşıyamadığı bir atfı mümkün kılmış olur. *@
+            <li><b>Bu panel stok DURUMUNU ölçer, kişi performansını ölçmez</b> — kararı kimin
+                verdiği bu veride yok (alıcı boyutu yalnız <code>bkm.OneriSiparisTalep</code>'te).
+                Hiçbir sayı kişiye atfedilemez.</li>
             <li><b>Merkez depo stoğu ANLIK</b> — geçmiş kesim seçilse bile bugünün WMS değeri
                 (WMS geçmiş snapshot tutmuyor).</li>
             <li><b>ODAK stoğu toplama dâhil değil</b> — ODAK grup şirketi ama <b>tedarikçi</b>;
@@ -124,63 +132,97 @@ else if (_ozet is null)
 else
 {
     var k = _ozet.Kpi;
-    @* KPI — 4 KART, karşı-metrik ÇİFTİ AYNI KARTTA iki satır.
-       NEDEN 8 değil: "Perakende Gün-Stok" kategori tablosunda zaten var, "Veri Kirli" bir karar
-       kartı değil uyarı → banda indi (dashboard-oneri değer merceği: kararı değiştirir mi).
-       NEDEN çift aynı kartta: karşı-metrik ayrı karta konunca ekran taşıyordu ve çift ayrılabiliyordu;
-       satinalma-danisman şartı "karşı-metrik YAN YANA" böyle korunuyor.
-       İKONLAR INLINE SVG — `<i data-lucide>` dinamik alanda circuit çökertiyor (29.08 dersi). *@
-    @* GÜVEN SATIRI — "Veri Kirli" KART OLMADI (kurul kararı): iş kararı değil, diğer
-       bütün kartların güvenilirlik kapısı. Akran kart olarak konunca gerçek para
-       problemleriyle yarışıp görmezden geliniyordu.
-       ⚠ ADI "kirli" DEĞİL: ölçüldü 09.09 (stkID 1739183) — negatif mağaza stoğu çoğu zaman
-       veri kiri DEĞİL, transfer kabulünün gecikmesi + geriye dönük kayıt. `irsHrk.hrkTarih`
-       (satırın deftere düşme anı) ile `ehTrhS` (belge tarihi) ayrışıyor. "Kirli" demek
-       overclaim olurdu. *@
-    @if (k.VeriKirliCesit > 0)
-    {
-        <button type="button" class="w-full text-left mb-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 hover:bg-warning/20"
-                @onclick="() => KartTikla(SatisDurumFiltre.VeriKirli, null, null)">
-            <span class="text-xs">
-                <b>@k.VeriKirliCesit.ToString("N0") çeşit doğrulanamıyor</b>
-                (negatif stok ya da fiyat 0 · @Tl(k.VeriKirliTutar)) — aşağıdaki kartlar o kadar
-                hatalı olabilir. Negatif stok her zaman veri kiri DEĞİL: transfer kabulü
-                gecikmişse de böyle görünür. <span class="underline">listele</span>
-            </span>
-        </button>
-    }
-    @* ATIF SINIRI — kurulun 6. sorusu. Yazılmazsa "154,8M ₺ hareketsiz stok"u okuyan
-       yönetici birini arar ve panel, taşıyamadığı bir atfı mümkün kılmış olur. *@
-    <p class="text-[11px] text-base-content/50 mb-3">
-        Bu panel stok <b>durumunu</b> ölçer, kişi performansını ölçmez — kararı kimin verdiği
-        bu veride yok (alıcı boyutu yalnız <code>bkm.OneriSiparisTalep</code>'te). Hiçbir sayı
-        kişiye atfedilemez.
-    </p>
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
-        @foreach (var kart in Kartlar(k))
+    @* ══ KPI ŞERİDİ — 8 KART, 3 GRUP ══════════════════════════════════════════════
+       TASARIM 10.09.2026. Kullanıcı: "kpi kartlarını daha iyi yapabilirsin çok çirkinler"
+       + Able Pro referansı paylaştı. dashboard-icerik danışması + referanstan alınanlar:
+
+       ALINAN (referans):  sayı ÜSTTE / etiket ALTTA (eskiden tersiydi — etiket önce
+                           okunuyordu, sayı ikinci planda) · karşı-metrik RENKLİ DİP ŞERİT
+                           (düz ayraç yerine) · zemin sakin beyaz, renk yalnız vurguda.
+       ALINMAYAN:          sparkline — KPI TOPLAMINDA zaman serisi yok, çizmek uydurma olur.
+                           Nötr gri ikon — 8 kartta yine gürültü kaldı, tamamen kalktı.
+       DANIŞMANDAN:        sol kenar vurgusu ÖNERİLDİ ama renk zaten sayıda + dip şeritte;
+                           üçüncü kez tekrar etmesi gereksiz → alınmadı.
+
+       NEDEN GRUP: renk en fazla 3 ayrım taşır, 8 taşımaz. Ayrım GRUPTAN gelir. Grup
+       başlıkları mobilde (tek kolon, ~8×96px kaydırma) NAVİGASYON işlevi görür — süs değil.
+       ⚠ Izgara sabit 4 kolon DEĞİL: 3+2+3 kesimi 4'lü ızgarada ragged satır bırakıyordu. *@
+    <div class="mb-4">
+        @foreach (var grup in KpiGruplari)
         {
-            <div class="rounded-2xl p-4 bg-gradient-to-br @kart.Gradyan text-white shadow-md flex flex-col min-w-0">
-                <div class="flex items-start justify-between gap-2">
-                    <span class="opacity-85 text-[11px] uppercase tracking-wider font-semibold">@kart.Baslik</span>
-                    <span class="opacity-70 shrink-0">@Ikon(kart.Ikon)</span>
-                </div>
-                <button type="button" class="text-left mt-1.5 min-w-0 @(kart.Durum is null ? "cursor-default" : "hover:opacity-90")"
-                        @onclick="() => KartTikla(kart.Durum, kart.OdakVar, kart.MinYas)">
-                    <span class="block text-2xl font-extrabold leading-none tracking-tight truncate">@kart.Deger</span>
-                    <span class="block text-[11px] opacity-85 mt-1 leading-snug">@kart.Alt</span>
-                </button>
-                @if (kart.CiftBaslik is not null)
+            var kartlar = Kartlar(k).Where(x => x.Grup == grup).ToList();
+            if (kartlar.Count == 0) continue;
+            <h3 class="text-[11px] uppercase tracking-wider text-base-content/45 font-semibold mt-4 mb-2 first:mt-0">
+                @grup
+            </h3>
+            <div class="grid grid-cols-1 gap-3 @(kartlar.Count == 2 ? "md:grid-cols-2" : "md:grid-cols-3")">
+                @foreach (var kart in kartlar)
                 {
-                    <button type="button" class="text-left mt-2.5 pt-2.5 border-t border-white/25 min-w-0 hover:opacity-90"
-                            @onclick="() => KartTikla(kart.CiftDurum, kart.CiftOdakVar, null)">
-                        <span class="block text-[10px] uppercase tracking-wider opacity-75 font-semibold">@kart.CiftBaslik</span>
-                        <span class="block text-lg font-bold leading-tight truncate">@kart.CiftDeger</span>
-                        <span class="block text-[11px] opacity-85 leading-snug">@kart.CiftAlt</span>
-                    </button>
+                    <div class="rounded-2xl bg-base-100 border border-base-300 overflow-hidden flex flex-col min-w-0
+                                hover:border-base-content/20 transition-colors">
+                        @* ÜST BLOK — tıklanınca listeyi o kohorta filtreler. *@
+                        <button type="button"
+                                class="text-left p-4 min-w-0 @(kart.Durum is null ? "cursor-default" : "active:scale-[.98] transition-transform")"
+                                @onclick="() => KartTikla(kart.Durum, kart.OdakVar, kart.MinYas)">
+                            @* Sayı ÜSTTE (Able Pro düzeni) · tabular-nums: rakamlar hizalı,
+                               kolonlar arası kıyas mümkün. TlKisa sayesinde taşma riski yok.
+                               İkon sağ üstte, NÖTR — sayının hizasını bozmasın diye float değil
+                               ayrı akışta (absolute konumlandırma yok, kart relative değil). *@
+                            <span class="float-right text-base-content/25 -mt-0.5">@Ikon(kart.Ikon)</span>
+                            <span class="block font-extrabold tabular-nums tracking-tight leading-none text-@kart.Vurgu
+                                         @(kart.Kahraman ? "text-[32px]" : "text-[26px]")">
+                                @kart.Deger
+                            </span>
+                            <span class="block text-[11px] uppercase tracking-wider font-semibold text-base-content/55 mt-2">
+                                @kart.Baslik
+                            </span>
+                            <span class="block text-[11px] text-base-content/50 leading-snug mt-0.5">
+                                @kart.Alt
+                            </span>
+                        </button>
+                        @* DİP ŞERİT = karşı-metrik. AYNI KARTTA kalmak zorunda
+                           (satinalma-danisman şartı: karşı-metrik yan yana, ayrı karta
+                           konunca çift ayrılabiliyor). Şeridin rengi kartın vurgusunun
+                           soluk hali — okunur, bağırmıyor. *@
+                        @if (kart.CiftBaslik is not null)
+                        {
+                            <button type="button"
+                                    class="mt-auto px-4 py-2.5 bg-@kart.Vurgu/10 hover:bg-@kart.Vurgu/20
+                                           flex items-baseline justify-between gap-2 text-left min-w-0
+                                           active:scale-[.98] transition-all"
+                                    @onclick="() => KartTikla(kart.CiftDurum, kart.CiftOdakVar, null)">
+                                <span class="text-[10px] uppercase tracking-wider text-base-content/55 font-semibold min-w-0">
+                                    @kart.CiftBaslik
+                                </span>
+                                <span class="text-base font-bold tabular-nums shrink-0">@kart.CiftDeger</span>
+                            </button>
+                        }
+                    </div>
                 }
             </div>
         }
     </div>
+
+    @* GÜVEN SATIRI — KPI ŞERİDİNİN ALTINDA (kurul kararı 10.09): sarı alarm kutusu
+       olarak ŞERİDİN ÜSTÜNDEYDİ ve kullanıcı henüz hiçbir metrik görmeden dikkatini
+       çalıyordu. 356/275.384 = %0,13 — kutu bunu fazla ağırlıklandırıyor. Doğru sıra:
+       ne ölçüldüğünü gör → sonra ne kadar güvenilir olduğunu oku.
+       ⚠ ADI "kirli" DEĞİL: ölçüldü 09.09 (stkID 1739183) — negatif mağaza stoğu çoğu
+       zaman veri kiri DEĞİL, transfer kabulünün gecikmesi + geriye dönük kayıt
+       (`irsHrk.hrkTarih` ile `ehTrhS` ayrışıyor). "Kirli" demek overclaim olurdu. *@
+    @if (k.VeriKirliCesit > 0)
+    {
+        <button type="button" class="flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content mb-3"
+                @onclick="() => KartTikla(SatisDurumFiltre.VeriKirli, null, null)">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-warning shrink-0"></span>
+            <span>
+                <b>@k.VeriKirliCesit.ToString("N0") çeşit doğrulanamıyor</b>
+                (negatif stok ya da fiyat 0 · @Tl(k.VeriKirliTutar)) —
+                negatif stok her zaman veri kiri değil, transfer kabulü gecikmişse de böyle görünür.
+                <span class="underline">listele</span>
+            </span>
+        </button>
+    }
 
     @* ── Kategori kırılımı ──────────────────────────────────────────────── *@
     <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-3 overflow-x-auto">
@@ -450,86 +492,134 @@ else
     /// <summary>
     /// KPI kartı — bir ana metrik + (varsa) KARŞI-METRİK aynı kartta. İkisi ayrı tıklanabilir.
     /// </summary>
+    /// <summary>
+    /// KPI kartı. TASARIM KARARI 10.09.2026 (dashboard-icerik danışması + kullanıcının
+    /// paylaştığı Able Pro referansı; kullanıcı: "kpi kartlarını daha iyi yapabilirsin çok
+    /// çirkinler").
+    ///
+    /// ÇIKARILANLAR ve NEDENİ:
+    /// · <c>Gradyan</c> + <c>text-white</c> — 7 kartın 5'i doygun kırmızı/sarıydı, her şey
+    ///   aynı sesle bağırıyordu. Dahası beyaz ayraç + 10px karşı-metrik başlığı doygun
+    ///   zeminde okunmuyordu: tasarım kendi en kritik parçasıyla (karşı-metrik = adalet
+    ///   mekanizması) kavga ediyordu. renk-standardi "özelleştirme minimum" diyor;
+    ///   7 el-seçimi gradyan maksimum özelleştirmeydi.
+    /// · <c>Ikon</c> string'i + <c>Ikon()</c> SVG üreticisi — dekoratifti ("Aşırı Stok"
+    ///   yanındaki katman ikonu hiçbir şey söylemiyor). Referanstaki gibi NÖTR gri ikon
+    ///   denendi ama 8 kartta gürültü kaldı → tamamen kalktı.
+    ///
+    /// GELENLER:
+    /// · <c>Grup</c> — 8 kart tek şeritte okunmuyor. Renk en fazla 3 ayrım taşır, 8 taşımaz;
+    ///   ayrım GRUPTAN gelir: "PARA NEREDE" · "SATIŞ KAYBI" · "ELDE ÇÖZÜLÜR".
+    /// · <c>Vurgu</c> — DaisyUI token, YALNIZ 3 şiddet: error (riskte/ölü para) ·
+    ///   warning (karar bekliyor) · primary/success (nötr olgu / sağlıklı).
+    /// · <c>Kahraman</c> — tek kart büyük tipografi. Yedi kahraman = kahraman yok.
+    /// </summary>
     private sealed record KpiKart(
-        string Baslik, string Deger, string Alt, string Gradyan, string Ikon,
+        string Grup, string Baslik, string Deger, string Alt, string Vurgu, string Ikon,
         SatisDurumFiltre? Durum = null, bool? OdakVar = null, int? MinYas = null,
-        string? CiftBaslik = null, string? CiftDeger = null, string? CiftAlt = null,
-        SatisDurumFiltre? CiftDurum = null, bool? CiftOdakVar = null);
+        string? CiftBaslik = null, string? CiftDeger = null,
+        SatisDurumFiltre? CiftDurum = null, bool? CiftOdakVar = null,
+        bool Kahraman = false);
+
+    /// <summary>Grup sırası — ekranda bu sırayla çıkar (para → kayıp → eylem).</summary>
+    private static readonly string[] KpiGruplari =
+        ["PARA NEREDE", "SATIŞ KAYBI", "ELDE ÇÖZÜLÜR"];
 
     private IEnumerable<KpiKart> Kartlar(SatisAnaliziKpi k) =>
     [
-        @* ADI DEĞİŞTİ (B-167a, ölçümle kapandı 09.09): "Bağlanan Stok" maliyet ima ediyordu
-           ama sayı ETİKET fiyatıyla. Dahası etiket, gerçekleşen fiyatın da üstünde —
-           ÖLÇÜLDÜ (90 gün, POS): net/kart oranı Kitap %71,1 · Çocuk Kitabı %72,3 ·
-           Kırtasiye %80,3 · Oyuncak %88,6 → 1.022,2M ₺ etiket, 807,3M ₺ gerçekleşen
-           (214,9M ₺ / %21,03 şişme). Ad artık tabanını söylüyor. *@
-        new("Stok Değeri · etiket", Tl(k.ToplamStokTutar),
-            $"{k.Cesit:N0} çeşit · gerçekleşen fiyata göre ~%21 şişik (ölçüldü)",
-            "from-primary to-primary/80", "kutu", SatisDurumFiltre.Hepsi,
-            CiftBaslik: "Raf gün-stoğu",
-            CiftDeger: (k.PerakendeGunStok?.ToString("N0") ?? "—") + " gün",
-            CiftAlt: "mağaza stoğu ÷ mağaza satışı · merkez hariç (çıkışı sıçramalı)"),
+        // ══ PARA NEREDE ═══════════════════════════════════════════════════════════
+        // Kahraman kart. ADI "Bağlanan Stok" DEĞİL (B-167a, ölçümle kapandı): o ad maliyeti
+        // ima ediyordu, sayı ETİKET fiyatıydı. Karşı-metriği artık MALİYETLİ değer —
+        // düzelttiği sayının tam yanında. Ölçüldü 10.09: etiket 1.018,5M ₺ · maliyet 409,1M ₺
+        // (etiket, maliyetin ~2,5 katı). Eski karşı-metrik "raf gün-stoğu" düştü: gün-stok
+        // Kategori kırılım tablosunda kategori bazında ZATEN var ve orada daha kullanışlı.
+        new("PARA NEREDE", "Stok Değeri · etiket", TlKisa(k.ToplamStokTutar),
+            $"{k.Cesit:N0} çeşit", "primary", "kutu", SatisDurumFiltre.Hepsi,
+            CiftBaslik: "Maliyetle · bağlanan para",
+            CiftDeger: TlKisa(k.MaliyetliDeger),
+            Kahraman: true),
 
-        new("Aşırı Stok", Tl(k.AsiriStokTutar),
-            $"{k.AsiriStokCesit:N0} çeşit · stok > 5× sezon satışı",
-            "from-warning to-warning/80", "katman", SatisDurumFiltre.AsiriStok,
-            CiftBaslik: "ODAK'ta da var → grup içinde çift stok",
-            CiftDeger: Tl(k.AsiriStokOdakVarTutar),
-            CiftAlt: $"{k.AsiriStokOdakVarCesit:N0} çeşit · %96'sı 4-5 günde geliyor",
-            CiftDurum: SatisDurumFiltre.AsiriStok, CiftOdakVar: true),
+        // Kurulun 2 numaralı önerisi — panelin EKSİK olan asıl ekseni.
+        // ⚠ Birincil değer PARA, oran karşı-metrikte: yüzdeyi ₺ sütununda birincil yapmak
+        // yanıltıyor (göz % işaretini kırpılmış tutar sanıyor). Oranların yeri bir kademe alt.
+        new("PARA NEREDE", "Gerçekleşen Kâr · 365g", TlKisa(k.GerceklesenKar),
+            $"net {TlKisa(k.PosNetKdvHaric)} satıştan · {k.MarjCesit:N0} çeşit",
+            k.GerceklesenMarj is null ? "primary"
+                : k.GerceklesenMarj < 0 ? "error"
+                : k.GerceklesenMarj < 0.25m ? "warning" : "success",
+            "kar",
+            CiftBaslik: "Gerçekleşen brüt marj",
+            CiftDeger: k.GerceklesenMarj is { } mj ? "%" + (mj * 100m).ToString("N1") : "—"),
 
-        new("Stoksuz Sezon Ürünü", Tl(k.StoksuzSezonKayip),
-            $"{k.StoksuzSezonCesit:N0} çeşit · geçen sezon sattı, bugün stok yok",
-            "from-error to-error/80", "uyari", SatisDurumFiltre.StoksuzSezon,
-            CiftBaslik: "ODAK'ta var → hızlı temin",
-            CiftDeger: Tl(k.StoksuzSezonOdakVarKayip),
-            CiftAlt: $"{k.StoksuzSezonOdakVarCesit:N0} çeşit · gerçek kayıp değil, sipariş edilebilir",
-            CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true),
-
-        @* YENİ KART — kullanıcı isteği 09.09: "gelmiş ama mağazaya gitmemiş te bir kpi olmalı".
-           Satın alınmış, depoda duruyor, rafa HİÇ çıkmamış → satması imkânsız.
-           Karşı-metrik: rafı boşalmış ama depoda malı olanlar (transfer sorusu). *@
-        new("Rafa Çıkmamış Stok", Tl(k.RafsizTutar),
-            $"{k.RafsizCesit:N0} çeşit · merkezde var, mağazaya hiç girmemiş",
-            "from-error to-error/80", "uyari", SatisDurumFiltre.Rafsiz,
-            CiftBaslik: "Rafı boş, depoda var → transfer",
-            CiftDeger: Tl(k.RafBosTutar),
-            CiftAlt: $"{k.RafBosCesit:N0} çeşit · {k.RafBosSatisliCesit:N0}'inin satışı var (kanıtlı talep)",
-            CiftDurum: SatisDurumFiltre.RafBos),
-
-        new("Hareketsiz Stok", Tl(k.HareketsizTutar),
-            $"{k.HareketsizCesit:N0} çeşit · {SatisAnaliziFiltre.YeniUrunGunVarsayilan}+ gündür rafta, satış yok",
-            "from-error to-error/80", "arsiv", SatisDurumFiltre.Hareketsiz,
-            CiftBaslik: "3 yıldan eski + satışsız → tasfiye adayı",
-            CiftDeger: "listele",
-            CiftAlt: $"ürün kartı 3+ yıl önce açılmış · {k.YeniCesit:N0} yeni çeşit ({Tl(k.YeniTutar)}) HARİÇ",
+        // Karşı-metrik DEĞİŞTİ 10.09 (kullanıcı: "hareketsiz stokta sanki son satış tarihi
+        // gibi bir bilgi de lazım"): "3 yıldan eski → listele" bir SAYI vermiyordu.
+        // Yerine ASIL AYRIM — ÖLÇÜLDÜ 10.09: hiç satılmamış 44.728 çeşit / 62,4M ₺ ·
+        // satıyordu-durdu 72.196 çeşit. İkisi AYRI problem: birincisi ALIM hatası
+        // (yanlış ürün alındı), ikincisi TALEP kaybı (ne zaman durdu). Tek sayıda
+        // toplanınca bu ayrım kayboluyordu. Listede "Son Satış" kolonu sıralanabilir.
+        new("PARA NEREDE", "Hareketsiz Stok", TlKisa(k.HareketsizTutar),
+            $"{k.HareketsizCesit:N0} çeşit · {SatisAnaliziFiltre.YeniUrunGunVarsayilan}+ gündür satış yok",
+            "error", "arsiv", SatisDurumFiltre.Hareketsiz,
+            CiftBaslik: $"Hiç satılmamış · {k.HicSatilmamisCesit:N0} çeşit",
+            CiftDeger: TlKisa(k.HicSatilmamisTutar),
             CiftDurum: SatisDurumFiltre.Hareketsiz),
 
-        @* SEZON HAZIRLIĞI — kurulun 1 numaralı önerisi (satinalma-danisman 09.09).
-           Panelin SON TARİHİ OLAN tek kartı: sezon Ağu–Eki, sipariş penceresi şimdi.
-           "Stoksuz sezon"dan FARKLI: orada stok SIFIR, burada VAR ama geçen sezon
-           satışının yarısını bile karşılamıyor. Tutar = EKSİK adet × fiyat (kayıp
-           potansiyeli), stok değeri değil. ⚠ 0,5 katsayısı SEÇİLDİ, ölçülmedi. *@
-        new("Sezon Hazırlığı Açığı", Tl(k.SezonAcikTutar),
-            $"{k.SezonAcikCesit:N0} çeşit · stok, geçen sezon satışının yarısından az · eksik adet × etiket fiyatı",
-            "from-warning to-warning/80", "uyari", SatisDurumFiltre.SezonAcik,
+        // ══ SATIŞ KAYBI ═══════════════════════════════════════════════════════════
+        // 2 → 3 KART (kullanıcı 10.09: "satış kaybı iki tane olunca çok yayılmış durumda").
+        // "Rafı Boş, Depoda Var" karşı-metrik olmaktan çıkıp KENDİ kartı oldu — hak ediyordu:
+        // kanıtlı talep + boş raf = doğrudan kayıp satış, eylemi de ayrı (transfer).
+        // ⚠ ÇİFTE SAYMA YOK: üç kohort ayrık — sezon açığı (stok var ama yetmez) ·
+        // stoksuz (stok SIFIR) · rafı boş (mağaza rafı boş, merkezde var).
+        // ⚠ EKLENMEYEN 4. KART: "raf 15 günde tükenir" kohortu ÖLÇÜLDÜ (947 çeşit /
+        // 1,59M ₺) — 152M'nin yanında kart olmayı hak etmiyor, eklenmedi. Tek öngörücü
+        // kohort olması onu kart yapmaya yetmedi; büyüklük kararı ölçüm verdi.
+        new("SATIŞ KAYBI", "Sezon Hazırlığı Açığı", TlKisa(k.SezonAcikTutar),
+            $"{k.SezonAcikCesit:N0} çeşit · eksik adet × etiket",
+            "error", "takvim", SatisDurumFiltre.SezonAcik,
             CiftBaslik: "ODAK'ta var → hızlı temin",
-            CiftDeger: Tl(k.SezonAcikOdakTutar),
-            CiftAlt: $"{k.SezonAcikOdakCesit:N0} çeşit · sipariş edilebilir",
+            CiftDeger: TlKisa(k.SezonAcikOdakTutar),
             CiftDurum: SatisDurumFiltre.SezonAcik, CiftOdakVar: true),
 
-        @* MAĞAZALAR ARASI TRANSFER — eylemi BEDAVA olan tek kart (mal şirkette, para çıkmıyor).
-           ⚠ Kart 4'ün karşı-metriği MERKEZDEN transferdir; bu MAĞAZALAR ARASI. Toplanmaz.
-           ⚠ Eşik mutlak değil TALEBE GÖRELİ (kurul itirazı): veren rafta ≥14 günlük kapsama.
-           ⚠ Yoldaki transfer vekili: son 14 günde mal kabulü olan ürün HARİÇ (ölçüldü 09.09,
-              stkID 1739183 — transferin karşı bacağı deftere 2 gün sonra düşüyor). *@
-        new("Mağazalar Arası Transfer", Tl(k.DengesizTutar),
-            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, ötekinde 5+ adet ve 14+ günlük stok",
-            "from-info to-info/80", "katman", SatisDurumFiltre.Dengesiz,
+        new("SATIŞ KAYBI", "Stoksuz Sezon Ürünü", TlKisa(k.StoksuzSezonKayip),
+            $"{k.StoksuzSezonCesit:N0} çeşit · geçen sezon sattı, stok yok",
+            "error", "uyari", SatisDurumFiltre.StoksuzSezon,
+            CiftBaslik: "ODAK'ta var → hızlı temin",
+            CiftDeger: TlKisa(k.StoksuzSezonOdakVarKayip),
+            CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true),
+
+        new("SATIŞ KAYBI", "Rafı Boş, Depoda Var", TlKisa(k.RafBosTutar),
+            $"{k.RafBosCesit:N0} çeşit · mağaza rafı boş, merkezde mal var",
+            "error", "raf", SatisDurumFiltre.RafBos,
+            CiftBaslik: "Satışı olan → talep kanıtlı",
+            CiftDeger: $"{k.RafBosSatisliCesit:N0} çeşit",
+            CiftDurum: SatisDurumFiltre.RafBos),
+
+        // ══ ELDE ÇÖZÜLÜR ══════════════════════════════════════════════════════════
+        // Bu grubun tanımı: SATIN ALMA GEREKMEZ, mal zaten bizim. Aşırı Stok buraya ait —
+        // eylemi durdurmak/iade, para çıkmıyor (satinalma-danisman kesimi).
+        new("ELDE ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokTutar),
+            $"{k.AsiriStokCesit:N0} çeşit · stok > 5× sezon satışı",
+            "warning", "katman", SatisDurumFiltre.AsiriStok,
+            CiftBaslik: "ODAK'ta da var → grup içinde çift stok",
+            CiftDeger: TlKisa(k.AsiriStokOdakVarTutar),
+            CiftDurum: SatisDurumFiltre.AsiriStok, CiftOdakVar: true),
+
+        new("ELDE ÇÖZÜLÜR", "Mağazalar Arası Transfer", TlKisa(k.DengesizTutar),
+            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, ötekinde 5+ adet",
+            "warning", "transfer", SatisDurumFiltre.Dengesiz,
             CiftBaslik: "Eylem: sipariş DEĞİL, transfer",
             CiftDeger: "listele",
-            CiftAlt: "sezonda satıyor → talep kanıtlı; mal şirkette, yeri yanlış",
             CiftDurum: SatisDurumFiltre.Dengesiz),
+
+        // Karşı-metrik ADET oldu: "rafı boş, depoda var" artık kendi kartında (SATIŞ KAYBI).
+        // İkinci kez tutar göstermek bilgi eklemiyordu; adet "ne kadar mal bekliyor" diyor.
+        new("ELDE ÇÖZÜLÜR", "Rafa Çıkmamış Stok", TlKisa(k.RafsizTutar),
+            $"{k.RafsizCesit:N0} çeşit · mağazaya hiç girmemiş",
+            "warning", "paket", SatisDurumFiltre.Rafsiz,
+            CiftBaslik: "Merkezde bekleyen",
+            CiftDeger: $"{k.RafsizAdet:N0} adet",
+            CiftDurum: SatisDurumFiltre.Rafsiz),
+
     ];
 
     /// <summary>
@@ -555,15 +645,40 @@ else
     /// ile değiştiriyor, Blazor kendi diff'inde onu bulamayınca circuit çöküyor (29.08 dersi).
     /// İçerik sabit ve bize ait (kullanıcı verisi yok) → MarkupString güvenli.
     /// </summary>
+
+    /// <summary>
+    /// KPI ikonları — INLINE SVG. <c>&lt;i data-lucide&gt;</c> KULLANILMIYOR: lucide o düğümü
+    /// <c>&lt;svg&gt;</c> ile değiştiriyor, Blazor kendi diff'inde bulamayınca circuit çöküyor
+    /// (coding-discipline, 29.08 dersi). İçerik sabit ve bize ait → MarkupString güvenli.
+    ///
+    /// ⚠ NÖTR RENK (<c>text-base-content/25</c>), kartın vurgu rengiyle BOYANMAZ: renk zaten
+    /// sayıda ve dip şeritte: üçüncü kez tekrar edince ikon gürültüye dönüşüyordu. Danışman
+    /// "ikonu tamamen at" demişti; kullanıcı geri istedi (10.09) — soluk ve tek renk olarak
+    /// döndü, tarama kolaylığı sağlıyor, dikkat çalmıyor.
+    /// </summary>
     private static MarkupString Ikon(string ad)
     {
-        const string bas = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">""";
+        const string bas = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">""";
         var govde = ad switch
         {
-            "kutu" => """<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>""",
-            "katman" => """<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m6.08 9.5-3.48 1.58a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83L17.92 9.5"/><path d="m6.08 14.5-3.48 1.58a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.42-1.59"/>""",
-            "uyari" => """<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>""",
+            // kutu — stok değeri
+            "kutu" => """<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>""",
+            // yükselen çizgi — kâr
+            "kar" => """<path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/>""",
+            // arşiv — hareketsiz
             "arsiv" => """<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>""",
+            // takvim — sezon (SON TARİHİ olan tek kart)
+            "takvim" => """<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>""",
+            // uyarı — stoksuz
+            "uyari" => """<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>""",
+            // boş raf — rafı boş, depoda var
+            "raf" => """<path d="M2 20h20"/><path d="M4 20V8h6v12"/><path d="M14 20v-6h6v6"/><path d="M4 8 12 3l8 5"/>""",
+            // katman — aşırı stok
+            "katman" => """<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m6.08 9.5-3.48 1.58a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83L17.92 9.5"/>""",
+            // iki yönlü ok — transfer
+            "transfer" => """<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>""",
+            // paket — rafa çıkmamış
+            "paket" => """<path d="M16.5 9.4 7.5 4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>""",
             _ => """<circle cx="12" cy="12" r="9"/>""",
         };
         return new MarkupString(bas + govde + "</svg>");
@@ -637,4 +752,20 @@ else
 
 
     private static string Tl(decimal v) => v.ToString("N0") + " ₺";
+
+    /// <summary>
+    /// KISA PARA BİÇİMİ — KPI kartları için. <c>sunum-dili.md</c>: "Büyük tutar:
+    /// 990.400.000 ₺ değil → 990 milyon TL". 13 karakterlik dizeleri göz KIYASLAYAMAZ;
+    /// 8 kartlık şeritte kıyas mümkün olsun diye kısaltılır. Tam hane tabloda ve drill'de.
+    /// Negatif değer de doğru biçimlenir (mutlak değere kısaltma uygulanır, işaret korunur).
+    /// </summary>
+    private static string TlKisa(decimal v)
+    {
+        var m = Math.Abs(v);
+        var isaret = v < 0 ? "−" : "";
+        return m >= 1_000_000_000m ? $"{isaret}{m / 1_000_000_000m:N2} milyar ₺"
+             : m >= 1_000_000m     ? $"{isaret}{m / 1_000_000m:N1} milyon ₺"
+             : m >= 1_000m         ? $"{isaret}{m / 1_000m:N0} bin ₺"
+             : $"{isaret}{m:N0} ₺";
+    }
 }

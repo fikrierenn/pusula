@@ -258,6 +258,30 @@ public sealed record SatisAnaliziKpi(
     decimal SezonAcikTutar,
     int SezonAcikOdakCesit,
     decimal SezonAcikOdakTutar,
+    /// <summary>Stoğun MALİYETLE değeri — "bağlanan para" sorusunun gerçek cevabı.
+    /// Etiket değeri bunun ~2,5 katı görünüyor (ölçüldü 10.09.2026: 1.018,5M ₺ vs 409,1M ₺).
+    /// Maliyeti bilinmeyen ürün toplama GİRMEZ; kapsam <see cref="MaliyetKapsamEtiket"/>.</summary>
+    decimal MaliyetliDeger,
+    /// <summary>Maliyeti BİLİNEN ürünlerin etiket değeri — kapsam beyanı için.
+    /// Ölçüldü 10.09: etiket değerinin %94,73'ü (33.723 çeşit / 53,7M ₺ kapsam dışı).</summary>
+    decimal MaliyetKapsamEtiket,
+    /// <summary>365 gün POS net satışı, KDV HARİÇ — yalnız maliyeti DE bilinen ürünler.</summary>
+    decimal PosNetKdvHaric,
+    /// <summary>Satılan malın maliyeti (POS adedi × birim maliyet).</summary>
+    decimal SatilanMaliyet,
+    decimal PosBrutToplam,
+    decimal PosNetToplam,
+    /// <summary>Marj hesabına giren çeşit — maliyeti VE POS satışı olanlar.</summary>
+    int MarjCesit,
+    /// <summary>
+    /// HAREKETSİZ ama HİÇ SATILMAMIŞ — <c>SonSatis IS NULL</c>. Hareketsiz kartının içindeki
+    /// ayrım (kullanıcı isteği 10.09.2026): "hiç satılmamış" ALIM hatasıdır, "satıyordu
+    /// durdu" TALEP kaybıdır. Tek sayıda toplanınca bu ayrım kayboluyordu.
+    /// </summary>
+    int HicSatilmamisCesit,
+    decimal HicSatilmamisTutar,
+    /// <summary>Rafa çıkmamış stoğun adedi (merkezde bekleyen).</summary>
+    long RafsizAdet,
     // Ürün bazında ETKİN GÜNE bölünüp toplanmış günlük hız (adet/gün). SQL'de hesaplanır;
     // burada yeniden bölme YAPILMAZ (kullanıcı uyarısı 09.09 — aşağıdaki nota bak).
     double PerakendeGunlukHiz = 0)
@@ -276,6 +300,25 @@ public sealed record SatisAnaliziKpi(
     /// </summary>
     public decimal? PerakendeGunStok => PerakendeGunlukHiz <= 0 ? null
         : Math.Round((decimal)MagazaStok / (decimal)PerakendeGunlukHiz, 0);
+
+    /// <summary>
+    /// GERÇEKLEŞEN KÂR (365 gün) = POS net satış (KDV hariç) − satılan malın maliyeti.
+    /// Kart fiyatıyla hesaplanan marj İYİMSER: ölçüldü 09.09 (90 gün), gerçekleşen net kart
+    /// fiyatının %71-88'i. Bu ölçü POS'ta fiilen alınan paraya dayanır.
+    /// </summary>
+    public decimal GerceklesenKar => PosNetKdvHaric - SatilanMaliyet;
+
+    /// <summary>Gerçekleşen brüt marj = kâr ÷ satış. Null = hesaplanacak satış yok.</summary>
+    public decimal? GerceklesenMarj =>
+        PosNetKdvHaric <= 0 ? null : GerceklesenKar / PosNetKdvHaric;
+
+    /// <summary>Ortalama indirim oranı (brüt→net, POS'un kendi indirim kolonundan).</summary>
+    public decimal? IndirimOrani =>
+        PosBrutToplam <= 0 ? null : (PosBrutToplam - PosNetToplam) / PosBrutToplam;
+
+    /// <summary>Maliyet kapsamı — etiket değerinin ne kadarında maliyet biliniyor.</summary>
+    public decimal? MaliyetKapsamOrani =>
+        ToplamStokTutar <= 0 ? null : MaliyetKapsamEtiket / ToplamStokTutar;
 
 }
 
@@ -327,6 +370,10 @@ public sealed record SatisAnaliziSatir(
     int SatisOzluce,
     int SatisIstyolu,
     int SatisToplam,
+    /// <summary>SON SATIŞ TARİHİ — pencere YOK. NULL = hiç satılmamış.
+    /// ⚠ SIRA SÖZLEŞMESİ: Dapper konumsal record — SELECT'te de SatisToplam'dan
+    /// hemen sonra gelmeli (yanlış yer → materialization patlar).</summary>
+    DateTime? SonSatisTarihi,
     int SezonAy1,
     int SezonAy2,
     int SezonAy3,
@@ -458,6 +505,9 @@ public static class SatisAnaliziKolonlar
             Ipucu: "BKMDATA.OdakUrunDurum.leadTime — ODAK'tan gelme süresi (ort. 5,03 gün)"),
         new("ilkgiris",   "İlk Giriş",  Varsayilan: false,
             Ipucu: "Ürünün MAĞAZAYA ilk girişi (merkez depoya giriş sayılmaz)"),
+        new("sonsatis",   "Son Satış",  Varsayilan: false, Siralanabilir: true,
+            Ipucu: "Son satış tarihi — 365 günlük pencere YOK. Boş = hiç satılmamış. "
+                 + "Hareketsiz stokta asıl soru bu: hiç satmadı mı, satıyordu da durdu mu?"),
         new("songiris",   "Son Giriş",  Varsayilan: false, Siralanabilir: true,
             Ipucu: "Son mal kabulü — TAZE STOK ölçütü. Yeni gelen mal aşırı/hareketsiz sayılmaz"),
         new("acilis",     "Açılış",     Varsayilan: false, Siralanabilir: true,

@@ -187,3 +187,64 @@ GO
 IF COL_LENGTH('bkm.SatisAnaliziTaban', 'MerkezCikisGun') IS NULL
     ALTER TABLE bkm.SatisAnaliziTaban ADD MerkezCikisGun int NULL;
 GO
+
+/* ────────────────────────────────────────────────────────────────────────────
+   10.09.2026 — GERÇEKLEŞEN MARJ İÇİN BEŞ KOLON (satinalma-danisman kurulu #2)
+
+   NEDEN: panelin en büyük sayısı (stok değeri) ETİKET fiyatıyla hesaplanıyordu
+   ve marj yalnız DRILL'de vardı. ÖLÇÜLDÜ 09.09 (90 gün, POS, panel evreni):
+   POS brütü kart fiyatına eşit (%95,4-99,5 → urn.fiyatS gerçekten raf fiyatı)
+   ama gerçekleşen NET çok altında — Kitap %71,1 · Çocuk Kitabı %72,3 ·
+   Elektronik %77,3 · Kırtasiye %80,3 · Oyuncak %88,6 · Dergi %98,0.
+   Etiketle 1.022,2M ₺ · kategori oranlarıyla 807,3M ₺ → 214,9M ₺ (%21,03) şişme.
+   Kurul kararı: "gerçekleşen marj panelin eksik olan ASIL ekseni" (madde #2).
+
+   MALİYET NEDEN TABANDA: drill tek ürün için bkm.UrunMaliyet çağırıyor; 275K
+   ürün için satır-başı UDF timeout demek (sql-server-conventions § TVF'i
+   korelasyonlu alt-sorguda çağırma). Set-bazlı ön-hesap ölçüldü: 9,1 s /
+   433.682 çeşit. POS agregası 3,0 s / 154.225 çeşit. Kurulum 31-45 s → ~55 s.
+
+   TANIM (drill ile AYNI olmalı — emitter-ayrimi):
+     BirimMaliyet = son 5 ALIŞ faturasının ağırlıklı birimi, KDV HARİÇ
+                    (fat.eTip=0, eDurum<>2; fatura bazında topla-böl)
+     PosAdet/PosNet/PosKdv/PosBrut = 365 gün POS, iade (DocumentsTypeId=3)
+                    HARİÇ — ortalama fiyat sorusunda iade satırı fiyatı bozar.
+                    Köprü Products.Code = stkID (barkod DEĞİL).
+   ⚠ PosNet KDV DAHİL (TotalPrice), PosKdv ayrı → KDV-hariç birim =
+     (PosNet − PosKdv) / PosAdet. Maliyetle aynı tabana ancak böyle gelir.
+   ──────────────────────────────────────────────────────────────────────────── */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'BirimMaliyet') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD BirimMaliyet decimal(18,4) NULL;
+GO
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'PosAdet') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD PosAdet int NULL;
+GO
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'PosNet') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD PosNet decimal(18,2) NULL;
+GO
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'PosKdv') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD PosKdv decimal(18,2) NULL;
+GO
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'PosBrut') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD PosBrut decimal(18,2) NULL;
+GO
+
+/* ────────────────────────────────────────────────────────────────────────────
+   10.09.2026 — SON SATIŞ TARİHİ (kullanıcı isteği)
+
+   Kullanıcı: "hareketsiz stokta sanki son satış tarihi gibi bir bilgi de lazım".
+
+   NEDEN TABANDA VE NEDEN PENCERESİZ: "hareketsiz" tanımı 365 günde satış YOK
+   demek — yani son satış, tanımı gereği pencerenin DIŞINDA. `SatisToplam` bu
+   soruyu cevaplayamaz (o hep 0). Ve iki durum AYRI problemdir:
+     · hiç satılmamış      → alım hatası (yanlış ürün alındı)
+     · satıyordu, durdu    → talep kaybı (ne zaman durdu, neden)
+   NULL = hiç satılmamış. 0 ya da bir tarih UYDURULMAZ.
+
+   Kapsam `SatisToplam` ile AYNI: ehTip IN (1,4,100), mekan 1/4477/4478, çıkış.
+   Merkez çıkışı DAHİL DEĞİL — tüketici talebi değil (%72'si grup şirketine).
+   ÖLÇÜLDÜ: 3,1 s / 315.607 çeşit · en eski 01.06.2021 · en yeni 09.09.2026.
+   ──────────────────────────────────────────────────────────────────────────── */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SonSatis') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SonSatis datetime NULL;
+GO

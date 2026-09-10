@@ -706,3 +706,58 @@ metrics:
       gösteriyor.
     evidence: "2026-09-10 — sorgular/2026-09-10-yolda-stok-transfer-eslesmesi.sql; vaka stkID 1739183 (720 adet)"
     last_verified: "2026-09-10"
+
+  gerceklesen_marj_panel_geneli:
+    ad: "GERÇEKLEŞEN MARJ — kart fiyatı değil, POS'ta fiilen alınan para"
+    kural: >-
+      Marj ve stok değeri KART fiyatıyla hesaplanamaz. POS brütü kart fiyatına EŞİT
+      (%95,4-99,5 → `urn.fiyatS` gerçekten raf fiyatı) ama gerçekleşen NET çok altında:
+      Kitap %71,1 · Çocuk Kitabı %72,3 · Elektronik %77,3 · Hazırlık %78,9 · Akademi %79,5 ·
+      Kırtasiye %80,3 · Hediyelik %81,6 · Oyuncak %88,6 · Dergi %98,0 (90 gün, panel evreni).
+      Etiketle 1.022,2M ₺ · kategori oranlarıyla 807,3M ₺ → 214,9M ₺ (%21,03) şişme.
+    taban_kolonlari: >-
+      `bkm.SatisAnaliziTaban`a 10.09.2026'da beş kolon eklendi: `BirimMaliyet` (son 5 ALIŞ
+      faturasının ağırlıklı birimi, KDV hariç — sema birim_maliyet MLYT tanımı) ·
+      `PosAdet`/`PosNet`/`PosKdv`/`PosBrut` (365 gün POS, iade DocumentsTypeId=3 HARİÇ,
+      köprü Products.Code = stkID). PosNet KDV DAHİL, PosKdv ayrı → KDV-hariç birim =
+      (PosNet − PosKdv) / PosAdet. Maliyetle aynı tabana ancak böyle gelir.
+      Kurulum maliyeti ÖLÇÜLDÜ: maliyet CTE 9,1 s (433.682 çeşit) · POS CTE 3,0 s
+      (154.225 çeşit); taban kurulumu 31-45 s → ~55 s.
+    olcum: >-
+      ÖLÇÜLDÜ 10.09.2026 (kesim 09.09): maliyet dolu 241.661/275.384 çeşit (%87,8) —
+      ETİKET DEĞERİNİN %94,73'ü (kapsam dışı 33.723 çeşit / 53,7M ₺). POS dolu 152.360.
+      Maliyetli stok değeri **409,1M ₺** (etiket 1.018,5M ₺ → etiket, maliyetin ~2,5 katı).
+      Marj (maliyeti VE POS satışı olan 143.799 çeşit): net KDV-hariç 748,8M ₺ − satılan
+      maliyet 515,4M ₺ = **kâr 233,4M ₺ · brüt marj %31,17** · ortalama indirim %19,31.
+    kapsam_disi_sessiz_kalmaz: >-
+      Maliyeti veya POS satışı bilinmeyen ürün toplama GİRMEZ — 0 maliyetle toplamak marjı
+      %100 gösterirdi (sessiz yanlış rakam). Kapsam oranı ayrı ölçülüp ekranda yazılır.
+    evidence: "2026-09-10 — taban kolonları + KPI toplamları; kurulum sorgusu sorgular/2026-09-09-satis-analizi-taban-tablo-kur.sql"
+    last_verified: "2026-09-10"
+
+  muhasebe_hesap_kodu_urun_degil:
+    ad: "MUHASEBE HESAP KODU DESENİ — urnTip'in kaçırdığı sınıf"
+    kural: >-
+      `urn.stkKod` **3 hane + nokta** ile başlıyorsa (`[0-9][0-9][0-9].%`) o kayıt bir ürün
+      kartı DEĞİL, muhasebe hesabı / demirbaş kartıdır. Stok/ürün evreni kurulurken
+      `urnTip = 0` YANINDA bu desen de dışlanır.
+    neden_urntip_yetmiyor: >-
+      Deseni taşıyan 58 kaydın **TAMAMI urnTip=0**. Yakalanan sınıf: 150.xx ilk madde ·
+      153.xx ticari mal (79405 "ALIŞ KARGO GİDERİ") · 253/254/255 tesis-taşıt-DEMİRBAŞ
+      (OTOMASYON · TAŞITLAR · BİLGİSAYAR · KLİMA · YAZARKASA · TRANSPALET · CEP TELEFONU) ·
+      260.xx haklar (441270 "DERİNSİS MUHASEBE PROGRAMI" — **Akademi** kategorisinde duruyor).
+    yanlis_pozitif_yok: >-
+      ÖLÇÜLDÜ 10.09.2026: 58 kaydın yalnız 2'sinde hareket var (150.01 YEMEK ÜR. 22 adet,
+      153.10 KARGO GİDERİ 16) — ikisi de muhasebe kalemi, toplam 38 adet gürültü. Gerçek
+      perakende ürünü bu deseni taşımıyor.
+      ⚠ NAİF KURAL YANLIŞ OLURDU: "nokta içeriyorsa at" 339151 "İş ve Sosyal Güvenlik
+      Mevzuatı"nı da atardı — gerçek kitap, stkKod'u bozuk ISBN (978605300102.07), noktası
+      4. karakterde DEĞİL. Desen 3-hane sınırı sayesinde onu yakalamıyor.
+    liste_degil_kural: >-
+      Elle stkID listesi TUTULMUYOR (bu kaydın kendisi de liste değil DESEN taşıyor —
+      semantic-layer § ŞEMA GERÇEĞİ ≠ SATIR VERİSİ). Yukarıdaki stkID'ler desenin KANITI,
+      dışlama ölçütü değil.
+    uygulandi: "dashboard/Data/SatisAnaliziTabanService.cs kat CTE · scripts/satis_analizi_excel.py"
+    koruma: "degismezler.json → muhasebe-hesap-kodu-panelde-yok (kırılabilirliği sınandı)"
+    evidence: "2026-09-10 — urn.stkKod desen taraması (837.688 kayıt) + hareket kontrolü"
+    last_verified: "2026-09-10"

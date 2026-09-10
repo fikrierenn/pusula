@@ -83,6 +83,13 @@ WITH kat AS (
       -- kiymet; 1 ve 2 stok TASIMAZ. Olculdu 03.09.2026: 868.094 / 252 / 52.
       -- Dashboard ile AYNI olmali: dashboard/Data/SatisAnaliziTabanService.cs kat CTE.
       AND u.urnTip = 0
+      -- MUHASEBE HESAP KODU DESENI — urnTip'in KACIRDIGI sinif (B-170, olculdu 10.09.2026).
+      -- stkKod 3 hane + nokta ile basliyorsa urun karti degil muhasebe hesabi/demirbas:
+      -- 150.xx ilk madde, 153.xx ticari mal, 253/254/255 demirbas, 260.xx haklar.
+      -- 58 kayit yakaliyor, hepsi urnTip=0; yanlis-pozitif SIFIR. Bozuk ISBN'i (nokta 4.
+      -- karakterde degil) yakalamiyor. Dashboard ile AYNI olmali:
+      -- dashboard/Data/SatisAnaliziTabanService.cs kat CTE.
+      AND u.stkKod NOT LIKE '[0-9][0-9][0-9].%'
 ),
 mgz AS (   -- magaza rafi = HAREKET DEFTERINDEN as-of (kumulatif SUM ehAdetN, ehTrhS <= kesim)
     -- NEDEN view DEGIL: stokSonAltDepo_vw ANLIK -- gecmis bir tarih icin YANLIS deger verir,

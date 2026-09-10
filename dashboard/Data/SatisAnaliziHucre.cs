@@ -26,6 +26,7 @@ public static class SatisAnaliziHucre
         "odak" => s.OdakStok,
         "leadtime" => s.LeadTime,
         "ilkgiris" => s.IlkGirisTarihi,
+        "sonsatis" => s.SonSatisTarihi,
         "songiris" => s.SonGirisTarihi,
         "stok_fsm" => s.StokFsm,
         "stok_ozl" => s.StokOzluce,

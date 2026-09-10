@@ -260,7 +260,39 @@ public sealed partial class SatisAnaliziQueries(
                         THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikTutar,
                    SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS SezonAcikOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0
-                        THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikOdakTutar
+                        THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikOdakTutar,
+                   -- ── GERÇEKLEŞEN MARJ + MALİYETLİ DEĞER (kurul #2, 10.09.2026) ──────────
+                   -- Kaynak tabandaki yeni kolonlar (BirimMaliyet · PosAdet/Net/Kdv/Brut).
+                   -- ⚠ NULL olanlar toplama GİRMEZ: maliyeti bilinmeyen ürünü 0 maliyetle
+                   -- toplamak marjı %100 gösterir (sessiz yanlış rakam). Kapsam AYRI ölçülür
+                   -- ve ekranda yazılır — dışlama sessiz kalmaz.
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet ELSE 0 END)) AS MaliyetliDeger,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0
+                        THEN t.Tutar ELSE 0 END))                                          AS MaliyetKapsamEtiket,
+                   -- Marj yalnız İKİSİ de bilinen üründe hesaplanır (maliyet VE POS satışı).
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                        THEN t.PosNet - t.PosKdv ELSE 0 END))                              AS PosNetKdvHaric,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                        THEN CONVERT(decimal(18,4), t.PosAdet) * t.BirimMaliyet ELSE 0 END)) AS SatilanMaliyet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                        THEN t.PosBrut ELSE 0 END))                                        AS PosBrutToplam,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                        THEN t.PosNet ELSE 0 END))                                         AS PosNetToplam,
+                   SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0 THEN 1 ELSE 0 END)   AS MarjCesit,
+                   -- HAREKETSİZLERİN KAÇI HİÇ SATILMAMIŞ (kullanıcı isteği 10.09).
+                   -- İki AYRI problem: hiç satılmamış = ALIM hatası · satıyordu durdu =
+                   -- TALEP kaybı. Aynı kartta tek sayı olarak toplanınca ayrım kayboluyordu.
+                   SUM(CASE WHEN t.SatisToplam <= 0 AND t.ToplamStok > 0
+                                 AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim)
+                                 AND t.SonSatis IS NULL THEN 1 ELSE 0 END)              AS HicSatilmamisCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN t.SatisToplam <= 0 AND t.ToplamStok > 0
+                        AND COALESCE(t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@yeniGun, @kesim)
+                        AND t.SonSatis IS NULL THEN t.Tutar ELSE 0 END))                AS HicSatilmamisTutar,
+                   -- Rafa çıkmamış stoğun ADEDİ — o kartın karşı-metriği (tutar zaten
+                   -- birincil değerde; ikinci kez tutar göstermek bilgi eklemiyordu).
+                   CONVERT(bigint, SUM(CASE WHEN t.IlkGiris IS NULL AND t.MerkezStok > 0
+                        THEN t.MerkezStok ELSE 0 END))                                AS RafsizAdet
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon{TazeSart(f)}
             GROUP BY t.Kategori3
@@ -308,6 +340,16 @@ public sealed partial class SatisAnaliziQueries(
             SezonAcikTutar: satirlar.Sum(x => x.SezonAcikTutar),
             SezonAcikOdakCesit: satirlar.Sum(x => x.SezonAcikOdakCesit),
             SezonAcikOdakTutar: satirlar.Sum(x => x.SezonAcikOdakTutar),
+            MaliyetliDeger: satirlar.Sum(x => x.MaliyetliDeger),
+            MaliyetKapsamEtiket: satirlar.Sum(x => x.MaliyetKapsamEtiket),
+            PosNetKdvHaric: satirlar.Sum(x => x.PosNetKdvHaric),
+            SatilanMaliyet: satirlar.Sum(x => x.SatilanMaliyet),
+            PosBrutToplam: satirlar.Sum(x => x.PosBrutToplam),
+            PosNetToplam: satirlar.Sum(x => x.PosNetToplam),
+            MarjCesit: satirlar.Sum(x => x.MarjCesit),
+            HicSatilmamisCesit: satirlar.Sum(x => x.HicSatilmamisCesit),
+            HicSatilmamisTutar: satirlar.Sum(x => x.HicSatilmamisTutar),
+            RafsizAdet: satirlar.Sum(x => x.RafsizAdet),
             // Hızlar ürün bazında kendi raf süresine bölünüp SQL'de toplandı → burada topla, BÖLME.
             PerakendeGunlukHiz: satirlar.Sum(x => x.GunlukHiz));
 
@@ -468,7 +510,11 @@ public sealed partial class SatisAnaliziQueries(
         int YeniCesit, decimal YeniTutar,
         int DengesizCesit, decimal DengesizTutar,
         int SezonAcikCesit, decimal SezonAcikTutar,
-        int SezonAcikOdakCesit, decimal SezonAcikOdakTutar);
+        int SezonAcikOdakCesit, decimal SezonAcikOdakTutar,
+        decimal MaliyetliDeger, decimal MaliyetKapsamEtiket,
+        decimal PosNetKdvHaric, decimal SatilanMaliyet,
+        decimal PosBrutToplam, decimal PosNetToplam, int MarjCesit,
+        int HicSatilmamisCesit, decimal HicSatilmamisTutar, long RafsizAdet);
 }
 
 /// <summary>Sayfa açılışında tek geçişte gelen özet: KPI + Kategori3 kırılımı.</summary>

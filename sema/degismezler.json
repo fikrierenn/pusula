@@ -460,6 +460,17 @@
       "beklenen": 1,
       "korur": [],
       "dogrulandi": "2026-09-09 → sys.syslanguages alias='Turkish' dateformat=dmy, datefirst=1. Login sa varsayilan dili de Turkce (app artik buna guvenmiyor, Current Language ile aciktan veriyor). pyodbc ucgen testi: dil verilmezse dmy OK, Turkish dmy OK, English 'Conversion failed'."
+    },
+    {
+      "id": "muhasebe-hesap-kodu-panelde-yok",
+      "db": "DerinSISBkm",
+      "soru": "Satis Analizi tabaninda muhasebe hesap kodu deseni (3 hane + nokta) tasiyan urun var mi?",
+      "neden": "Panel evrenine muhasebe hesabi / demirbas karti sizabiliyor ve urnTip filtresi BUNU KACIRIYOR: 58 kaydin TAMAMI urnTip=0. Yakalanan sinif 150.xx ilk madde · 153.xx ticari mal (ALIS KARGO GIDERI) · 253/254/255 tesis-tasit-DEMIRBAS (BILGISAYAR, KLIMA, YAZARKASA, TRANSPALET) · 260.xx haklar — 441270 'DERINSIS MUHASEBE PROGRAMI' Akademi kategorisinde duruyor. Sizarsa stok tutari ve cesit sayisi sessizce sisiyor; 'Kafe Hammede' vakasinda tek kalem kategori agregasini -21 yapmisti. ⚠ ELLE stkID LISTESI TUTULMUYOR (semantic-layer § SEMA GERCEGI != SATIR VERISI) — kural DESEN. Naif 'nokta iceriyorsa at' YANLIS olurdu: 339151 'Is ve Sosyal Guvenlik Mevzuati' gercek kitap, stkKod'u bozuk ISBN (978605300102.07), noktasi 4. karakterde degil. YANLIS-POZITIF SIFIR olculdu: desenin yakaladigi 58 kaydin yalniz 2'sinde hareket var (150.01 YEMEK UR. 22 adet, 153.10 KARGO GIDERI 16) — ikisi de muhasebe kalemi.",
+      "sql": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK) JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID WHERE t.Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban) AND u.stkKod LIKE '[0-9][0-9][0-9].%'",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "korur": [],
+      "dogrulandi": "2026-09-10 → filtre oncesi kaynak evreninde 1 kayit (441270, 260.GENEL.010 Akademi); filtre sonrasi tabanda 0. Kod: dashboard/Data/SatisAnaliziTabanService.cs kat CTE + scripts/satis_analizi_excel.py"
     }
   ]
 }
