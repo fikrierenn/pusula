@@ -87,6 +87,27 @@ for f in $staged; do
   fi
 done
 
+# ── PANEL KOLON/KAYIT DENETIMI (derleyicinin gormedigi iki sessiz hata sinifi) ──
+# Tetik: Satis Analizi katmaninda degisiklik staged ise. Bu denetim ELLE kosulmaz
+# diye hook'a baglandi: (A) Dapper pozisyonel record sirasi, (B) kolon anahtari
+# catallanmasi. Ikisi de 10.09.2026'da IKI KEZ oldu ve build yesil kaldi.
+# Ayrinti: tools/panel_kolon_denetimi.py basligi.
+if echo "$staged" | grep -qE 'SatisAnalizi(Queries|Models|Hucre|Tablo)'; then
+  if command -v python >/dev/null 2>&1 && [ -f tools/panel_kolon_denetimi.py ]; then
+    if ! kolon_out=$(python tools/panel_kolon_denetimi.py 2>&1); then
+      echo "=== PANEL KOLON DENETIMI: BLOKLANDI ===" >&2
+      echo "$kolon_out" | grep -E '^(KIRIK|KOSAMADI)' >&2
+      echo "" >&2
+      echo "Dapper pozisyonel sira ya da kolon anahtari catallanmasi var." >&2
+      echo "Ikisi de SESSIZ hata uretir: bos kolon veya kaymis deger." >&2
+      echo "Gecici bypass: CLAUDE_PRECOMMIT_SKIP=1 git commit ..." >&2
+      exit 2
+    fi
+  else
+    warn_issues+=("panel kolon denetimi KOSMADI (python ya da script yok) - sessizlik kanit degil")
+  fi
+fi
+
 # UYARILAR (bloklamaz)
 if [ ${#warn_issues[@]} -gt 0 ]; then
   echo "=== PRE-COMMIT UYARI (bloklamaz) ===" >&2

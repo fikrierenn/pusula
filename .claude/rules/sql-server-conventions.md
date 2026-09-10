@@ -335,6 +335,30 @@ DATEDIFF(DAY, '20251229', CAST(ORDERDATE AS date)) / 7 + 1
 - **Çözüm:** 8+ kolonlu Dapper sorgusunda ValueTuple yerine **düz `record`** (isimle map, Rest yok). ≤7 eleman ValueTuple güvenli.
 - Genel: çok-kolonlu Dapper materialization = record (positional ctor, isim eşleşmesi) > ValueTuple.
 
+## Dapper POZİSYONEL RECORD: SIRA sözleşmedir, isim DEĞİL (10.09.2026 dersi — 2 kez)
+
+**Positional record'da Dapper SIRA eşler.** SQL SELECT'e araya yeni kolon eklenip record'un
+SONUNA yazılınca iki sonuçtan biri olur:
+- tipler uyuşmazsa → `InvalidOperationException: A parameterless default constructor or one
+  matching signature ... is required` (patlar, en azından görülür),
+- **tipler uyuşursa → DEĞER SESSİZCE KAYAR** (hata yok, rakam yanlış).
+
+Bu oturumda **iki kez** oldu (`SonSatisTarihi` ve talep deseni agregaları) ve **build ikisini
+de yakalamadı**. Derleyici SQL metnini bilmez.
+
+**Kural:** yeni kolon SQL'de nereye eklendiyse record'da AYNI yere eklenir. Ekleme yerine
+yorum düşülür ("SQL'de X'ten hemen sonra").
+
+**Koşulabilir denetim (elle koşulmaz diye pre-commit hook'a bağlı):**
+```bash
+python tools/panel_kolon_denetimi.py
+```
+`AS Alias` sırasını record parametre sırasıyla karşılaştırır; ilk sapmayı konumuyla yazar.
+Çıkış 0 geçti · 1 KIRIK · **2 KOŞAMADI** (koşamamak yeşil sayılmaz). Kırılabilirliği
+kanıtlandı: iki parametre yer değiştirildi → 44. konumda sapma bildirdi, geri alındı.
+⚠ SINIR: alias'sız SELECT kolonlarını atlar (adı ifadeden çıkarmak parse ister) — atlananlar
+uyarı olarak yazılır. "0 kırık" tüm eşleşmenin doğruluğunu KANITLAMAZ.
+
 ## Dapper Record Materialization: smallint/tinyint → CAST AS int (23.06 dersi)
 
 - **Positional record (`record Foo(int X, ...)`) Dapper'da ctor tipi tam eşleşme ister.** SQL `smallint`→Int16, `tinyint`→Byte; record `int`(Int32) ile EŞLEŞMEZ → `InvalidOperationException: parameterless default constructor or one matching signature (Int16, Byte, ...) required`.

@@ -36,6 +36,27 @@
 
 Üçü de AYNI iş mantığını (STATUS 2004/2005/2010, brüt+net, türeme filtresi) çekirdekten alır — üç kez yazılmaz.
 
+## BİÇİM DE TEK YERDE — anahtar çatallanması (10.09.2026 vakası)
+
+Emitter'lar hesabı paylaşınca iş bitmiyor: **kolon anahtarı → değer eşlemesi** de tek yerde
+olmalı. Aksi hâlde çatallanma **sessiz boş kolon** üretir — derleyici görmez, test yoksa
+kimse görmez, hücre sadece boş kalır.
+
+**Ölçülmüş vaka:** Satış Analizi'nde ekran tablosu Razor içinde YEREL bir eşleme taşıyordu,
+Excel endpoint'i ortak `SatisAnaliziHucre`'yi kullanıyordu. Çift yönlü kayıp:
+- ekranda `sonsatis` hiç yoktu; yeni `talepdeseni`/`satanay` `_ => ""` dalına düşüp **boş**tu
+  → kullanıcının istediği "Son Satış" kolonu ekranda **çalışmıyordu**,
+- Excel'de anahtar adları farklı yazıldığı için (`sezon_kapsama` vs `kapsama`,
+  `ay1..3` vs `sezon_ay1..3`) o kolonlar **boş** çıkıyordu.
+
+**Kural:** ham değer ve ekran metni AYNI sınıfta (`Deger()` / `Metin()`); kanonik anahtar
+kümesi kolon tanımıdır. Yeni kolon = tek dosya değişikliği.
+
+**Koşulabilir denetim** (pre-commit hook'a bağlı): `python tools/panel_kolon_denetimi.py`
+— kolon tanımı ↔ eşleme anahtar farkını yazar. "Tanımlı ama eşlemede yok" = KIRIK (o kolon
+boş görünür); "eşlemede var ama tanımı yok" = UYARI (hiçbir çıktıda seçilemez, ölü dal).
+Kırılabilirliği kanıtlandı: bir anahtar bozuldu → hook `exit 2` ile commit'i bloklandı.
+
 ## Anti-pattern
 
 - ❌ Her script kendi SQL'ini gömer + kendi Excel'ini basar → aynı metrik 3 dosyada, biri düzeltilir öteki bayatlar (sql-denetci/veri-dogrula yükü, sessiz sapma).

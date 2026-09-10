@@ -557,6 +557,20 @@ public static class SatisAnaliziKolonlar
             Ipucu: "BKMDATA.OdakUrunDurum.leadTime — ODAK'tan gelme süresi (ort. 5,03 gün)"),
         new("ilkgiris",   "İlk Giriş",  Varsayilan: false,
             Ipucu: "Ürünün MAĞAZAYA ilk girişi (merkez depoya giriş sayılmaz)"),
+        // ⚠ Bu üçü EŞLEMEDE VARDI ama kolon tanımı YOKTU → hiçbir çıktıda seçilemiyordu
+        // (10.09.2026, tools/panel_kolon_denetimi.py uyarısı ile bulundu).
+        new("gun_stok",   "Gün-Stok",   Varsayilan: false, Siralanabilir: false, Sayisal: true,
+            Ipucu: "Raf gün-stoğu = mağaza stoğu ÷ günlük ortalama mağaza satışı. "
+                 + "ARALIKLI TALEPTE HESAPLANMAZ, '—' gösterir: çeşitlerin %91,9'unda ortalama "
+                 + "çoğu sıfır olan aylara yayılıyor (Syntetos/Boylan/Croston eşiği ADI 1,32). "
+                 + "Yeni ürün koruması: mağazada 28 günden az olan üründe de hesaplanmaz."),
+        new("merkez_cikis", "Merkez Çıkış", Varsayilan: false, Siralanabilir: false, Sayisal: true,
+            Ipucu: "Merkez deponun 365 günlük çıkış adedi. TÜKETİCİ TALEBİ DEĞİL: %72'si grup "
+                 + "şirketine (frmID 56), %16 ODAK e-ticaret, %6 Sınav. Gün-stok paydasına "
+                 + "girmez; buradaki büyük sayı mağaza talebi anlamına gelmez."),
+        new("odak_durum", "ODAK Durum", Varsayilan: false, Siralanabilir: false, Sayisal: true,
+            Ipucu: "ODAK satış durumu kodu (saleStatus). ODAK grup şirketi ama TEDARİKÇİ — "
+                 + "o stok bizim envanterimiz değil, temin edilebilirlik sinyali."),
         new("talepdeseni", "Talep Deseni", Varsayilan: false, Siralanabilir: false,
             Ipucu: "Syntetos/Boylan/Croston sınıfı — düzgün · değişken · aralıklı · sıçramalı. "
                  + "Ölçüt: talep-arası aralık ADI = 12 / (satış olan ay sayısı), eşik 1,32; "
