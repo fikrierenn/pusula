@@ -212,7 +212,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   önerisi üretilmiyor. Kapatmak: SBA tahmini + emniyet stoğu → yeni hesap katmanı.
   (b) **Maliyet yaşı sapması** (B11) — satış 365 günlük, maliyet bugünkü. Maliyet yaşına göre
   marj %24,4 (<3 ay) → %63,0 (2+ yıl). Enflasyon ile yavaş devir AYRIŞTIRILAMIYOR; maliyet
-  yeniden değerlenmedi (uydurma olurdu). `MaliyetTarih` kolonu eklendi, artık ölçülebilir.
+  yeniden DEĞERLENMEYECEK (uydurma olurdu). ✅ **GÖRÜNÜR KILINDI 10.09:** `MaliyetTarih`
+  tabanda · drill'in maliyet kutusunda son alış tarihi yazılı · listede **Maliyet Tarihi +
+  Maliyet Yaşı** kolonları (sıralanabilir; yaş KESİM tarihine göre, bugüne göre değil).
+  Marjı şişkin olabilecek ürünler artık süzülebiliyor. KALAN: sapmanın enflasyon payı
+  ölçülemiyor — bu bir veri sınırı, kapanmayacak.
   (c) ✅ **KAPANDI 10.09** — kategori bazlı eşik ölçümle türetildi: Kırtasiye **2×**
   (devir 1,25, monoton) · Hazırlık Kitapları **8×** (devir 3,16, monoton) · kalan sekizde
   panel geneli 3× (bant eksik / monoton değil / n<30 → "ölçemediğimi değiştirmem").
