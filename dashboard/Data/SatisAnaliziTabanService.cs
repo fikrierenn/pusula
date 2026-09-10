@@ -169,10 +169,17 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
             GROUP BY h.ehstkID
         ),
         sezon AS (
+            -- ⚠ MAĞAZA KIRILIMI ZORUNLU (10.09.2026): Ay1/Ay2/Ay3 üç mağazanın TOPLAMIdır ve
+            -- "geçen sezon BU mağazada sattı, bugün BU rafta yok" sorusunu cevaplayamıyordu.
+            -- Ölçüldü: kohortun 337/389'unda BAŞKA mağazada stok var → toplamla bakınca
+            -- "stok yeterli" görünüyor ve raf boşluğu kayboluyor (kartların %46'sı kaçırıyordu).
             SELECT h.ehstkID AS stkID,
                    -SUM(CASE WHEN h.ehTrhS <  @s2b THEN h.ehAdetN ELSE 0 END) AS Ay1,
                    -SUM(CASE WHEN h.ehTrhS >= @s2b AND h.ehTrhS < @s3b THEN h.ehAdetN ELSE 0 END) AS Ay2,
-                   -SUM(CASE WHEN h.ehTrhS >= @s3b THEN h.ehAdetN ELSE 0 END) AS Ay3
+                   -SUM(CASE WHEN h.ehTrhS >= @s3b THEN h.ehAdetN ELSE 0 END) AS Ay3,
+                   -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END) AS SezonFsm,
+                   -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END) AS SezonOzl,
+                   -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END) AS SezonIst
             FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
             WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
               AND h.ehTrhS >= @s1b AND h.ehTrhS < DATEADD(DAY, 1, @s3s)
@@ -273,7 +280,8 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
              StokFsm, StokOzl, StokIst, MerkezStok, OdakStok, SatisFsm, SatisOzl, SatisIst, Ay1, Ay2, Ay3,
              MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum,
              MerkezCikis, MerkezCikisGun,
-             BirimMaliyet, PosAdet, PosNet, PosKdv, PosBrut, SonSatis)
+             BirimMaliyet, PosAdet, PosNet, PosKdv, PosBrut, SonSatis,
+             SezonFsm, SezonOzl, SezonIst)
         SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.BarkodAna,
                CAST(k.stkAd AS nvarchar(120)), k.Yayinevi, k.Yazar, k.SatisFiyat,
                CONVERT(int, ISNULL(m.Fsm, 0)), CONVERT(int, ISNULL(m.Ozl, 0)), CONVERT(int, ISNULL(m.Ist, 0)),
@@ -291,7 +299,10 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                -- GERÇEKLEŞEN MARJ İÇİN (kurul #2). NULL = kaydı yok; 0 YAZILMAZ —
                -- 0 maliyet marjı %100 gösterir, 0 satış marjı −sonsuz (sessiz yanlış rakam).
                ml.BirimMaliyet, ps.PosAdet, ps.PosNet, ps.PosKdv, ps.PosBrut,
-               ss.SonSatis
+               ss.SonSatis,
+               -- Mağaza bazlı sezon satışı — "Sezonluk Raf Açığı" kartının payı.
+               CONVERT(int, ISNULL(z.SezonFsm, 0)), CONVERT(int, ISNULL(z.SezonOzl, 0)),
+               CONVERT(int, ISNULL(z.SezonIst, 0))
         FROM kat k
         LEFT JOIN mgz  m ON m.stkID = k.stkID
         LEFT JOIN depo d ON d.stkID = k.stkID

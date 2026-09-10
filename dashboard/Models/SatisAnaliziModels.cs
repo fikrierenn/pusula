@@ -172,6 +172,7 @@ public static class DurumAdlari
         [SatisDurumFiltre.Yeni] = "Yeni ürün (değerlendirilemez)",
         [SatisDurumFiltre.Dengesiz] = "Mağaza arası dengesizlik → transfer",
         [SatisDurumFiltre.SezonAcik] = "Sezon stok açığı",
+        [SatisDurumFiltre.SezonRafAcigi] = "Sezonluk raf açığı → transfer",
     };
 
     public static string Ad(SatisDurumFiltre d) => Hepsi.TryGetValue(d, out var a) ? a : d.ToString();
@@ -204,7 +205,14 @@ public enum SatisDurumFiltre
     Dengesiz,
 
     /// <summary>Sezon hazırlığı açığı — geçen sezon sattı, stoğu o satışın yarısından az.</summary>
-    SezonAcik
+    SezonAcik,
+
+    /// <summary>
+    /// Geçen sezon O MAĞAZADA sattı · bugün O RAFTA stok yok · merkez depoda mal var.
+    /// <c>SezonAcik</c>'tan FARKLI: orada TOPLAM stok yetmiyor (sipariş gerekebilir),
+    /// burada mal şirketin elinde ama yanlış yerde — eylem TRANSFER.
+    /// </summary>
+    SezonRafAcigi
 }
 
 /// <summary>KPI şeridi. Karşı-metrikler YAN YANA durur (satinalma-danisman: tek yönlü metrik yasak).</summary>
@@ -282,6 +290,12 @@ public sealed record SatisAnaliziKpi(
     decimal HicSatilmamisTutar,
     /// <summary>Rafa çıkmamış stoğun adedi (merkezde bekleyen).</summary>
     long RafsizAdet,
+    /// <summary>Sezonluk raf açığı — geçen sezon o mağazada sattı, bugün o rafta yok, merkezde var.</summary>
+    int SezonRafCesit,
+    /// <summary>Sezonluk raf açığının kayıp tutarı — yalnız açığı olan mağazanın sezon adedi.</summary>
+    decimal SezonRafTutar,
+    /// <summary>Sezonluk raf açığı olan ürünlerin merkezde bekleyen adedi (transferin hammaddesi).</summary>
+    long SezonRafMerkezAdet,
     // Ürün bazında ETKİN GÜNE bölünüp toplanmış günlük hız (adet/gün). SQL'de hesaplanır;
     // burada yeniden bölme YAPILMAZ (kullanıcı uyarısı 09.09 — aşağıdaki nota bak).
     double PerakendeGunlukHiz = 0)

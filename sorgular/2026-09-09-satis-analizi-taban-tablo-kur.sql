@@ -248,3 +248,16 @@ GO
 IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SonSatis') IS NULL
     ALTER TABLE bkm.SatisAnaliziTaban ADD SonSatis datetime NULL;
 GO
+
+/* ── 10.09.2026 — MAĞAZA BAZLI SEZON SATIŞI ─────────────────────────────────────
+   "Sezonluk Raf Açığı" kartı için: geçen sezon BU mağazada sattı mı? Ay1/Ay2/Ay3 üç
+   mağazanın TOPLAMI olduğu için bu soruyu cevaplayamıyordu — kohortun 337/389'unda
+   başka mağazada stok var, toplamla bakınca raf boşluğu kayboluyordu.
+   İlgili: sorgular/2026-09-10-acik-siparis-etip-ve-sezon-raf-acigi.sql blok 2 */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SezonFsm') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SezonFsm int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SezonOzl') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SezonOzl int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SezonIst') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SezonIst int NULL;
+GO

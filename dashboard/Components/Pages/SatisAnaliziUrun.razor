@@ -135,12 +135,16 @@ else
             @* Kurulun "en kritik eksik" dediği madde: elde stok varken sipariş de verilmiş olabilir. *@
             <div class="alert alert-warning text-xs mt-2 py-2 items-start">
                 <div>
-                    <b>Açık sipariş var:</b> son 120 günde @sip.Belge belgede
+                    <b>Açık alış siparişi var:</b> son 120 günde @sip.Belge belgede
                     <b class="font-mono">@(sip.SiparisAdet?.ToString("N0") ?? "?")</b> adet sipariş edilmiş
                     (son @(sip.SonSiparis?.ToString("dd.MM.yyyy") ?? "—")).
                     <span class="block opacity-80 mt-0.5">
-                        Bu adet <b>sipariş edilen</b>dir, "yolda kalan" değil — karşılanma oranı
-                        veriden ölçülemiyor. Yeni alım kararı bunun üstüne verilir.
+                        Yalnız <b>satın alma</b> siparişi (Alış + Yerel Alım). İç transfer, müşteri
+                        siparişi ve alış iade emri sayılmaz — düzeltilene kadar sayılıyordu ve
+                        gösterilen adedin %86'sı satın alma değildi (ölçüldü 10.09.2026).
+                        Bu adet <b>sipariş edilen</b>dir, "yolda kalan" değil: karşılanma oranı
+                        veriden ölçülemiyor (<code>ehSevkAdet</code> satırların %100'ünde boş).
+                        Yeni alım kararı bunun üstüne verilir.
                     </span>
                 </div>
             </div>
@@ -1037,7 +1041,7 @@ else
                 _tedarik = await Q.GetTedarikAsync(StkId, _kesim);
                 _merkezKarsi = await Q.GetMerkezKarsiTarafAsync(StkId, _kesim);
                 _depoAdres = await Q.GetDepoAdresAsync(StkId);
-                _acikSiparis = await Q.GetAcikSiparisAsync(StkId);
+                _acikSiparis = await Q.GetAcikSiparisAsync(StkId, _kesim);
                 _resimUrl = await Q.GetResimUrlAsync(StkId);
             }
         }

@@ -118,6 +118,16 @@
                 giderilmedi — alıcı çok satmasını beklediğine çok stok koyar. Kategori bazlı hedef
                 gün-stok politikası (<code>bkm.OneriSiparisKtg3Ondeger</code>) hâlâ <b>boş</b>;
                 dolduğunda eşik kategoriye göre farklılaşır.</li>
+            <li><b>Aylık grafikler son 12 TAM ay</b> (10.09.2026 düzeltmesi) — eskiden
+                <code>kesim−364</code> idi ve iki yarım ay üretiyordu: Eyl 2025 21/30 gün,
+                Eyl 2026 9/30 gün. Grafikten okunan yıllık düşüş −%38,5 görünüyordu, aynı
+                9 güne göre gerçek −%20,9. <b>Manşetteki 365 günlük satış DEĞİŞMEDİ</b>
+                (kaynak Excel raporuyla süreklilik) — 12 tam ay olsa +%1,5 fark.</li>
+            <li><b>Açık sipariş yalnız satın alma</b> (10.09.2026 düzeltmesi) —
+                <code>dbo.sip</code> tüm sipariş türlerini taşıyor ve süzgeç yoktu; gösterilen
+                adedin <b>%86'sı</b> satın alma değildi (alış iade emri, müşteri siparişi, iç
+                transfer). Uyarı alan 37.168 ürünün 17.139'unda (%46) gerçek alış siparişi
+                sıfırdı. Karşılanma oranı hâlâ ölçülemiyor (<code>ehSevkAdet</code> boş).</li>
             <li><b>Veri kirli satırlar</b> listede duruyor: negatif stok / fiyat 0 —
                 filtreden "Veri kirli" seçilerek görülür.</li>
         </ul>
@@ -608,6 +618,21 @@ else
         // ══ İÇ KAYNAKLA ÇÖZÜLÜR ═══════════════════════════════════════════════════
         // Bu grubun tanımı: SATIN ALMA GEREKMEZ, mal zaten bizim. Aşırı Stok buraya ait —
         // eylemi durdurmak/iade, para çıkmıyor (satinalma-danisman kesimi).
+        // YENİ KART 10.09 — kullanıcı istedi: "şubelerde geçen sezon çok iyi satmış ama bu
+        // sezon rafında olmayan ama depoda olanlar" + "satış kaybı olanlar bu tanıma mı giriyor".
+        // Cevap ÖLÇÜLDÜ: girmiyordu. 389 çeşidin 179'u (%46) hiçbir kartta görünmüyordu —
+        // kartlar TOPLAM stoğa bakıyor, merkezi "var" sayıyor, raf boşluğu kayboluyor.
+        // Grup seçimi: BULUNURLUK KAYBI değil İÇ KAYNAKLA ÇÖZÜLÜR — mal şirketin elinde,
+        // eylem TRANSFER. Sipariş grubuna koymak yanlış karara iterdi.
+        // ⚠ Sezon Stok Açığı ile ÖRTÜŞÜR (186/389) ama aynı şey değil: orada TOPLAM stok
+        // yetmiyor (alım gerekebilir), burada stok var ama yanlış yerde.
+        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Sezonluk Raf Açığı", TlKisa(k.SezonRafTutar),
+            $"{k.SezonRafCesit:N0} çeşit · geçen sezon o mağazada sattı, rafı boş",
+            "warning", "raf", SatisDurumFiltre.SezonRafAcigi,
+            CiftBaslik: "Merkezde bekleyen → transfer",
+            CiftDeger: $"{k.SezonRafMerkezAdet:N0} adet",
+            CiftDurum: SatisDurumFiltre.SezonRafAcigi),
+
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokTutar),
             $"{k.AsiriStokCesit:N0} çeşit · stok > 3× sezon satışı",
             "warning", "katman", SatisDurumFiltre.AsiriStok,

@@ -819,3 +819,102 @@ metrics:
     etki: "Kesim 09.09.2026: 0,50 → 7.491 çeşit / 152,5M ₺ · 1,00 → 15.402 çeşit / 171,3M ₺"
     evidence: "2026-09-10 — sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql blok 1 + 3"
     last_verified: "2026-09-10"
+
+  acik_siparis_etip_suzgeci:
+    ad: "AÇIK SİPARİŞ — dbo.sip satın alma tablosu DEĞİL, eTip süzgeci ZORUNLU"
+    kural: >-
+      "Yolda mal" / açık sipariş ölçümü `dbo.sip` + `dbo.sipAyr` üzerinden yapılırken
+      **`s.eTip IN (0, 3)`** (Alış + Yerel Alım) süzgeci ZORUNLUDUR. Süzgeç olmadan tablo
+      satın almayla ilgisi olmayan belgeleri döner — hem de bir kısmı TERS YÖNLÜ.
+    kod_kumesi: >-
+      `dbo.sipTip_vw` 14 kod (sqlcli lookup --count-from ile okundu, elle yazılmadı):
+      0 Alış 41.743 · 1 Satış 6.997.606 · 2 Mağaza Depo 950 · 3 Yerel Alım 3.495 ·
+      4 Depo Depo 931 · 8 Mağaza Mağaza 64 · 9 Alış İade Emri 27.614 ·
+      10 Satış İade Emri 1 · 13 Depo Mağaza 22.100 · (5,6,7,11,12 canlıda yok).
+      Alış tüm kayıtların yalnız %0,6'sı.
+    neden_ters_yonlu: >-
+      eTip 9 Alış İade Emri = tedarikçiye GERİ GÖNDERME (stok AZALTICI) · eTip 1 Satış =
+      müşteri siparişi (stok AZALTICI) · eTip 2/4/8/13 = iç transfer (şirket stoğunu
+      DEĞİŞTİRMEZ). Süzgeçsiz kart "yolda mal geliyor, üstüne alım yapma" derken mal
+      aslında gidiyordu.
+    olcum: >-
+      2026-09-10, kesim 09.09.2026, 120 gün, panel geneli: uyarı alan 37.168 ürün ·
+      17.139'unda (%46,1) gerçek alış siparişi SIFIR. Adet: filtresiz 4.543.969 ·
+      GERÇEK ALIŞ 630.682 (%13,9) · alış iade emri 683.186 · müşteri siparişi 1.570.466 ·
+      iç transfer 1.659.635 ⇒ gösterilen adedin %86'sı satın alma DEĞİLDİ.
+      Örnek stkID 1672852: "33.262 adet" → gerçekte 0 alış (%68 iade emri, %25 iç transfer,
+      %7 müşteri siparişi).
+    iki_sinir: >-
+      (a) `sipAyr.ehSevkAdet` alış satırlarının %100'ünde NULL (37.537/37.537) → karşılanma
+      oranı ÖLÇÜLEMEZ; adet SİPARİŞ EDİLEN'dir, "yolda kalan" DEĞİL.
+      (b) `eDurum = 2` (kapalı) 24.02.2025'ten beri HİÇ kullanılmamış (5.334 belgenin tamamı
+      o tarihten eski) → "açık" iddiası eDurum'a güvenemez; tarih penceresi kısmi çözüm.
+    tarih_tuzagi: "`s.eTarih` kullanılır — `eTarihS` DEĞİL. Pencere GETDATE() değil kesim tarihi."
+    uygulandi: "dashboard/Data/SatisAnaliziQueries.Liste.cs → GetAcikSiparisAsync"
+    evidence: "2026-09-10 — sorgular/2026-09-10-acik-siparis-etip-ve-sezon-raf-acigi.sql blok 1a-1e"
+    last_verified: "2026-09-10"
+
+  sezonluk_raf_acigi_merkezde:
+    ad: "SEZONLUK RAF AÇIĞI — mal merkezde, raf boş (eylem transfer)"
+    kural: >-
+      Kohort: geçen sezon **O MAĞAZADA** sattı (`SezonFsm/SezonOzl/SezonIst > 0`) ·
+      bugün **O RAFTA** stok yok (`StokFsm/StokOzl/StokIst <= 0`) · merkez depoda mal var
+      (`MerkezStok > 0`) · takviye muhafızı (`SonGiris IS NULL OR SonGiris < kesim-14`).
+      Kayıp tutarı YALNIZ açığı olan mağazanın sezon adedi × fiyat (toplam sezon adedi
+      kullanmak tutarı şişirir).
+    neden_yeni_olcut: >-
+      Panelin mevcut kartları TOPLAM stoğa bakıyor ve merkez stoğunu "var" sayıyor → raf boş
+      olsa da "stok yeterli" görünüyor. ÖLÇÜLDÜ 2026-09-10 (mağaza bazlı, sezonda ≥10 adet):
+      kohort 389 çeşit / 459 mağaza-ürün / geçen sezon 35.291 adet = 5.616.497 ₺ · merkezde
+      74.830 adet. Kapsama: Sezon Stok Açığı 186 (%48, ama eylemi SİPARİŞ gibi okunuyor) ·
+      Raf Bulunurluk Kaybı 52 (%13, ÜÇ rafın da boş olmasını şart koşuyor; 337'sinde başka
+      mağazada stok var) · Stokta Yokluk 4 (%1) · Aşırı Stok 61 (%16, çelişki değil teşhis) ·
+      **HİÇBİRİ 179 (%46)** = 15.507 adet / 1.135.340 ₺ panelde hiç görünmüyordu.
+    talep_esigi_yok_olcum: >-
+      Eşik ARANDI ve gerekçelenemedi. Gerçekleşme oranı (bu sezon Ağu+Eyl1-9 ÷ geçen yıl aynı
+      pencere), sezon talep bandına göre — raf boş: 1-2 → 0,10 · 3-4 → 0,09 · 5-9 → 0,08 ·
+      10-24 → 0,08 · 25-49 → 0,03 · 50+ → 0,06; raf dolu: 1,04-1,24 (her bantta).
+      Boşluk HER BANTTA aynı derinlikte (~%92 kayıp) ⇒ talep eşiği listeyi değil SIRALAMAYI
+      belirler; kart kayıp tutarına göre okunur.
+    takviye_muhafizi_zorunlu: >-
+      ANLIK-RAF TUZAĞI. Muhafızsız ölçümde 50+ bandı **2,93** çıkıyordu (raf boş olanlar raf
+      dolu olanlardan İYİ satmış gibi): hızlı dönen üründe raf o gün boş ama ay içinde takviye
+      gelmiş ve bol satmış — "bugün boş" kayıp DEĞİL, "hızlı tükendi" demek. SonGiris
+      muhafızı ile 2,93 → 0,06.
+    sinirlar: >-
+      (a) `SonGiris` ÜRÜN düzeyinde (mağaza kırılımı yok) → "bu ürüne hiçbir mağazada takviye
+      gelmedi" demek; muhafız TEMKİNLİ, gerçek kohortun bir kısmını dışarıda bırakır ama
+      yanlış pozitif üretmez. (b) `MerkezStok` WMS anlık → hayalet stok riski (bkz.
+      sql-server-conventions § WMS DE MUTLAK DOĞRU DEĞİL); adet küçükse fiziksel teyit ister.
+    taban_genislemesi: >-
+      `bkm.SatisAnaliziTaban` + `SezonFsm/SezonOzl/SezonIst` (int NULL). Ay1/Ay2/Ay3 üç
+      mağazanın TOPLAMI olduğu için bu soruyu cevaplayamıyordu.
+    panel_degeri: "Kesim 09.09.2026: 2.116 çeşit / 7.875.390,61 ₺ kayıp · merkezde 50.741 adet"
+    uygulandi: "SatisAnaliziQueries.cs → SezonRafAcigiSart/SezonRafAcigiTutar · SatisAnaliziTabanService.cs sezon CTE"
+    evidence: "2026-09-10 — sorgular/2026-09-10-acik-siparis-etip-ve-sezon-raf-acigi.sql blok 2a-2b"
+    last_verified: "2026-09-10"
+
+  aylik_seri_tam_ay_hizasi:
+    ad: "AYLIK SERİLER TAM AY HİZALI — kesim−364 iki yarım ay üretiyordu"
+    kural: >-
+      Aylık grafik/seri pencereleri **son 12 TAM ay**: kesim ayının 1'inden 12 ay geriye,
+      kesim ayı DIŞARIDA (`TamAyPenceresi`). Rolling `kesim−364` penceresi ile
+      `DATEFROMPARTS(YEAR, MONTH, 1)` gruplaması 13 bar üretir ve ilk/son bar kırpıktır.
+    olcum: >-
+      2026-09-10, kesim 09.09.2026, 3 mağaza: Eyl 2025 21/30 gün → 512.619 adet (tam ayı
+      910.765, yani %56'sı) · Eyl 2026 9/30 gün → 315.093. Eyl 2026'nın günlük hızı
+      35.010/gün ile YILIN EN HIZLISI'ydı ama grafikte Ağustos'un (446.767) altında "düşük
+      ay" gibi duruyordu. Grafikten okunan YoY −%38,5; aynı 9 güne göre gerçek −%20,9
+      (398.146 → 315.093) — sapma iki kat.
+      Sezon/dışı ayrımı (`MONTH IN (8,9,10)`) İKİ AYRI SEZONUN parçasını topluyordu:
+      Eyl'25 kırpık + Eki'25 + Ağu'26 + Eyl'26 kırpık = 1.781.788 (tam 2025 sezonu
+      1.843.439 — sayı yakın, ANLAMI yanlış). Tam-ay hizasında sezon günü tam 92 = üç tam ay.
+    kapsam_ayrimi_bilincli: >-
+      Yalnız AYLIK SERİLER hizalandı. Tabandaki `SatisToplam` hâlâ 365 gün — manşet KPI'ın ve
+      kaynak Excel raporunun (Kübra) tanımı; 12 tam ay olsa 5.655.586 → 5.738.639 (+%1,5) ve
+      her KPI kayardı. İki tanım bilerek ayrı: grafik ölçüm doğruluğu için hizalı, manşet
+      süreklilik için 365 gün. Ekranda kapsam bandında yazılı.
+    hizalanan: "GetAylikSatisAsync · GetAylikAlisAsync · GetAylikStokAsync · GetHizAsync"
+    hizalanmayan: "GetGerceklesenAsync (POS 365g) · GetTedarikAsync (alış faturası 365g) · GetMerkezKarsiTarafAsync (365g tek toplam) — aylık seri DEĞİL"
+    evidence: "2026-09-10 — sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql yanında ölçüldü; ay-gün tablosu journal'da"
+    last_verified: "2026-09-10"

@@ -359,7 +359,7 @@ public sealed partial class SatisAnaliziQueries
             WHERE h.ehstkID = @stkId
               AND h.ehMekan IN (1, 4477, 4478)
               AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @bas AND h.ehTrhS < DATEADD(DAY, 1, @kesim)
+              AND h.ehTrhS >= @bas AND h.ehTrhS < @son
             GROUP BY DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1)
             ORDER BY 1
             """;
@@ -368,13 +368,13 @@ public sealed partial class SatisAnaliziQueries
             new
             {
                 stkId,
-                bas = kesim.AddDays(-364).ToDateTime(TimeOnly.MinValue),
-                kesim = kesim.ToDateTime(TimeOnly.MinValue),
+                bas = TamAyPenceresi(kesim).Bas,
+                son = TamAyPenceresi(kesim).Son,
             }, commandTimeout: 60, cancellationToken: ct))).ToList();
 
         // Boş ayları 0 ile doldur — "veri yok" ile "satış yok" karışmasın.
-        var basAy = new DateTime(kesim.AddDays(-364).Year, kesim.AddDays(-364).Month, 1);
-        var sonAy = new DateTime(kesim.Year, kesim.Month, 1);
+        var (basAy, sonAyHaric) = TamAyPenceresi(kesim);
+        var sonAy = sonAyHaric.AddMonths(-1);   // son TAM ay (kesim ayı dışarıda)
         var harita = ham.ToDictionary(x => x.Ay, x => x.Adet);
         var tam = new List<AylikSatis>();
         for (var a = basAy; a <= sonAy; a = a.AddMonths(1))
@@ -383,18 +383,75 @@ public sealed partial class SatisAnaliziQueries
     }
 
     /// <summary>
+    /// TAM-AY PENCERESİ — aylık serilerin başlangıcı. Son 12 <b>TAM</b> ay:
+    /// kesim ayının 1'inden 12 ay geriye; kesim ayının kendisi DIŞARIDA kalır.
+    ///
+    /// ⚠ NEDEN (kullanıcı 10.09.2026: "ayın bir kısmı dışarda kalıyor bir kısmı içerde"):
+    /// eski pencere <c>kesim−364</c> idi ve aylık gruplama iki YARIM ay üretiyordu.
+    /// ÖLÇÜLDÜ (kesim 09.09.2026, 3 mağaza): 13 bar çıkıyordu, ikisi kırpık —
+    ///   Eyl 2025 <b>21/30 gün</b> → 512.619 adet (tam ayı <b>910.765</b>, yani %56'sı)
+    ///   Eyl 2026 <b>9/30 gün</b>  → 315.093 adet
+    /// Eyl 2026'nın günlük hızı 35.010/gün ile <b>yılın en hızlısı</b>ydı ama grafikte
+    /// Ağustos'un (446.767) altında "düşük ay" gibi duruyordu.
+    /// Grafikten okunan YoY <b>−%38,5</b>; aynı 9 güne göre gerçek <b>−%20,9</b>
+    /// (398.146 → 315.093) — sapma iki kat.
+    /// Ayrıca sezon/dışı ayrımı (<c>MONTH IN (8,9,10)</c>) İKİ AYRI SEZONUN parçasını
+    /// topluyordu: Eyl'25 kırpık + Eki'25 + Ağu'26 + Eyl'26 kırpık = 1.781.788
+    /// (tam 2025 sezonu 1.843.439 — sayı yakın, <b>anlamı yanlış</b>).
+    ///
+    /// ⚠ KAPSAM SINIRI — bu yalnız AYLIK SERİLER için. Tabandaki <c>SatisToplam</c> hâlâ
+    /// 365 gün (manşet KPI + Kübra'nın Excel raporunun tanımı; 12 tam ay olsa
+    /// 5.655.586 → 5.738.639, <b>+%1,5</b>). İki tanım bilerek ayrı: grafik ölçüm doğruluğu
+    /// için hizalı, manşet kaynak raporla süreklilik için 365 gün.
+    /// </summary>
+    private static (DateTime Bas, DateTime Son) TamAyPenceresi(DateOnly kesim)
+    {
+        var sonAy = new DateTime(kesim.Year, kesim.Month, 1);   // dışlanan üst sınır
+        return (sonAy.AddMonths(-12), sonAy);
+    }
+
+    /// <summary>
     /// AÇIK SİPARİŞ (yolda mal) — kurulun "en kritik eksik" dediği madde (satinalma-danisman 08.09).
     ///
     /// KAYNAK sema'dan (metrics.yaml → bulunurluk_osa.mal_yolda_kontrolu): <c>dbo.sip</c> +
     /// <c>dbo.sipAyr</c>, <c>eDurum &lt;&gt; 2</c>.
     /// ⚠ TARİH TUZAĞI: <c>s.eTarih</c> kullanılır — <c>eTarihS</c> DEĞİL (sema'da belgeli).
-    /// ⚠ SINIR (sema, birebir): "Yalnız VAR/YOK okunur; karşılanma oranı ölçülemiyor
-    ///   (ehSevkAdet NULL)". Bu adet SİPARİŞ EDİLEN'dir, "yolda kalan" DEĞİL — bir kısmı gelmiş
-    ///   olabilir. Ekranda böyle yazılır.
-    /// Ölçüm 09.09 (stkID 1701128): 8 belge / 10.528 adet, son 04.09.2026 — elde 9.846 stok varken.
+    ///
+    /// ══ DÜZELTME 10.09.2026 — <c>eTip</c> SÜZGECİ YOKTU, SAYI YANLIŞTI ═══════════════
+    /// Kullanıcı uyardı ("sipariş kısmını kontrol etmelisin"). <c>dbo.sip</c> SATIN ALMA
+    /// siparişi tablosu DEĞİL, tüm sipariş türlerini taşıyor — <c>dbo.sipTip_vw</c> (14 kod,
+    /// <c>sqlcli lookup --count-from</c> ile okundu, elle yazılmadı):
+    ///   0 Alış <b>41.743</b> · 1 Satış <b>6.997.606</b> · 3 Yerel Alım 3.495 ·
+    ///   9 Alış İade Emri 27.614 · 13 Depo Mağaza 22.100 · 2/4/8 iç transfer.
+    /// Alış tüm kayıtların yalnız <b>%0,6</b>'sı. Süzgeç olmadığı için kart, satın almayla
+    /// ilgisi olmayan belgeleri "yolda mal" sayıyordu — hem de <b>TERS YÖNLÜ</b> olanları:
+    /// <b>Alış İade Emri</b> tedarikçiye GERİ GÖNDERME (stok azaltıcı) ve <b>Satış</b> müşteri
+    /// siparişi (stok azaltıcı). Kart "üstüne alım yapma" derken mal aslında gidiyordu.
+    ///
+    /// ÖLÇÜLDÜ 10.09 (kesim 09.09.2026, 120 gün, panel geneli):
+    ///   uyarı alan 37.168 ürün · <b>17.139'unda (%46,1) gerçek alış siparişi SIFIR</b> →
+    ///   yanlış uyarı. Adet: filtresiz 4.543.969 · <b>gerçek alış 630.682 (%13,9)</b> ·
+    ///   alış iade emri 683.186 · müşteri siparişi 1.570.466 · iç transfer 1.659.635.
+    ///   Yani gösterilen adedin <b>%86'sı</b> satın alma siparişi değildi.
+    ///   Örnek stkID 1672852 (Bricks Lego, aşırı stoğun en büyük kalemi): "33.262 adet açık
+    ///   sipariş" → gerçekte <b>0 alış</b>; %68'i alış iade emri, %25'i iç transfer, %7'si
+    ///   müşteri siparişi.
+    /// ⇒ Süzgeç <c>s.eTip IN (0, 3)</c> (Alış + Yerel Alım).
+    ///
+    /// ══ İKİNCİ DÜZELTME — pencere <c>GETDATE()</c> değil <c>@kesim</c> ════════════════
+    /// Drill seçilen kesime göre ölçüyor; sipariş penceresi ise makinenin BUGÜNÜNÜ
+    /// kullanıyordu. Eski bir kesim seçildiğinde pencere onu takip etmiyordu — ölçümün
+    /// kapsamı kodun kapsamıyla aynı olmalı (olctum-mu-cikardim-mi § 2).
+    ///
+    /// ⚠ SINIR — DEĞİŞMEDİ, ÖLÇÜMLE TEYİT EDİLDİ: bu adet SİPARİŞ EDİLEN'dir, "yolda kalan"
+    /// DEĞİL. <c>sipAyr.ehSevkAdet</c> alış siparişi satırlarının <b>%100'ünde NULL</b>
+    /// (37.537/37.537 satır, ölçüldü 10.09) → karşılanma oranı ölçülemiyor. Ekranda böyle yazılır.
+    /// ⚠ SINIR — <c>eDurum = 2</c> (kapalı) 24.02.2025'ten beri HİÇ kullanılmamış (5.334 belgenin
+    /// tamamı o tarihten eski). Yani "açık" iddiası eDurum'a güvenemez; 120 günlük pencere
+    /// bunu kısmen sınırlıyor, tamamen çözmüyor.
     /// </summary>
     public async Task<AcikSiparis?> GetAcikSiparisAsync(
-        int stkId, int gunPenceresi = 120, CancellationToken ct = default)
+        int stkId, DateOnly kesim, int gunPenceresi = 120, CancellationToken ct = default)
     {
         const string sql = """
             SELECT COUNT(DISTINCT s.eID)                  AS Belge,
@@ -403,11 +460,15 @@ public sealed partial class SatisAnaliziQueries
             FROM DerinSISBkm.dbo.sip s WITH (NOLOCK)
             JOIN DerinSISBkm.dbo.sipAyr sa WITH (NOLOCK) ON sa.ehID = s.eID
             WHERE sa.ehstkID = @stkId AND s.eDurum <> 2
-              AND s.eTarih >= DATEADD(DAY, -@gun, GETDATE())
+              -- Yalnız SATIN ALMA: 0 Alış · 3 Yerel Alım. Süzgeç olmadan 9 Alış İade Emri,
+              -- 1 Satış ve 13 Depo-Mağaza da "yolda mal" sayılıyordu (adetin %86'sı).
+              AND s.eTip IN (0, 3)
+              AND s.eTarih >= DATEADD(DAY, -@gun, @kesim)
             """;
         await using var conn = await db.OpenAsync();
         var r = await conn.QuerySingleOrDefaultAsync<AcikSiparis>(new CommandDefinition(sql,
-            new { stkId, gun = gunPenceresi }, commandTimeout: 60, cancellationToken: ct));
+            new { stkId, gun = gunPenceresi, kesim = kesim.ToDateTime(TimeOnly.MinValue) },
+            commandTimeout: 60, cancellationToken: ct));
         return r is null || r.Belge == 0 ? null : r;
     }
 
@@ -425,7 +486,7 @@ public sealed partial class SatisAnaliziQueries
             FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
             WHERE h.ehstkID = @stkId AND h.ehTip IN (0, 10)
               AND h.ehMekan IN (1, 4477, 4478, 12)
-              AND h.ehTrhS >= @bas AND h.ehTrhS < DATEADD(DAY, 1, @kesim)
+              AND h.ehTrhS >= @bas AND h.ehTrhS < @son
             GROUP BY DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1)
             ORDER BY 1
             """;
@@ -434,12 +495,12 @@ public sealed partial class SatisAnaliziQueries
             new
             {
                 stkId,
-                bas = kesim.AddDays(-364).ToDateTime(TimeOnly.MinValue),
-                kesim = kesim.ToDateTime(TimeOnly.MinValue),
+                bas = TamAyPenceresi(kesim).Bas,
+                son = TamAyPenceresi(kesim).Son,
             }, commandTimeout: 60, cancellationToken: ct))).ToList();
 
-        var basAy = new DateTime(kesim.AddDays(-364).Year, kesim.AddDays(-364).Month, 1);
-        var sonAy = new DateTime(kesim.Year, kesim.Month, 1);
+        var (basAy, sonAyHaric) = TamAyPenceresi(kesim);
+        var sonAy = sonAyHaric.AddMonths(-1);   // son TAM ay (kesim ayı dışarıda)
         var harita = ham.ToDictionary(x => x.Ay, x => x.Adet);
         var tam = new List<AylikSatis>();
         for (var a = basAy; a <= sonAy; a = a.AddMonths(1))
@@ -504,14 +565,14 @@ public sealed partial class SatisAnaliziQueries
                    CONVERT(int, SUM(h.ehAdetN)) AS Adet
             FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
             WHERE h.ehstkID = @stkId AND h.ehMekan IN (1, 4477, 4478)
-              AND h.ehTrhS >= @bas AND h.ehTrhS < DATEADD(DAY, 1, @kesim)
+              AND h.ehTrhS >= @bas AND h.ehTrhS < @son
             GROUP BY DATEFROMPARTS(YEAR(h.ehTrhS), MONTH(h.ehTrhS), 1)
             ORDER BY 1
             """;
-        var bas = kesim.AddDays(-364).ToDateTime(TimeOnly.MinValue);
+        var (bas, son) = TamAyPenceresi(kesim);
         await using var conn = await db.OpenAsync();
         await using var grid = await conn.QueryMultipleAsync(new CommandDefinition(sql,
-            new { stkId, bas, kesim = kesim.ToDateTime(TimeOnly.MinValue) },
+            new { stkId, bas, son },
             commandTimeout: 60, cancellationToken: ct));
         var taban = await grid.ReadSingleAsync<int>();
         var delta = (await grid.ReadAsync<AylikSatis>()).ToDictionary(x => x.Ay, x => x.Adet);
@@ -557,13 +618,18 @@ public sealed partial class SatisAnaliziQueries
             WHERE h.ehstkID = @stkId
               AND h.ehMekan IN (1, 4477, 4478)
               AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @bas AND h.ehTrhS < DATEADD(DAY, 1, @kesim)
+              AND h.ehTrhS >= @bas AND h.ehTrhS < @son
             """;
-        var bas = kesim.AddDays(-364);
+        // ⚠ TAM AY (10.09.2026): yarım ay hem sezona hem dışına yazılıyordu. Eski pencerede
+        // MONTH IN (8,9,10) İKİ AYRI SEZONUN parçasını topluyordu (Eyl'25 kırpık + Eki'25 +
+        // Ağu'26 + Eyl'26 kırpık). Pay ve payda BİRLİKTE hizalanır — oran bozulmaz.
+        var (basDt, sonDt) = TamAyPenceresi(kesim);
+        var bas = DateOnly.FromDateTime(basDt);
+        var sonHaric = DateOnly.FromDateTime(sonDt);
         await using var conn = await db.OpenAsync();
         var ham = await conn.QuerySingleAsync<(int SezonAdet, int DisiAdet)>(
             new CommandDefinition(sql,
-                new { stkId, bas = bas.ToDateTime(TimeOnly.MinValue), kesim = kesim.ToDateTime(TimeOnly.MinValue) },
+                new { stkId, bas = basDt, son = sonDt },
                 commandTimeout: 60, cancellationToken: ct));
 
         // ⚠ PAYDA RAF PENCERESİ (düzeltme 09.09 — kullanıcı uyarısı "stok gireli 365 gün
@@ -574,7 +640,7 @@ public sealed partial class SatisAnaliziQueries
         var sayimBas = ilk > bas ? ilk : bas;
 
         int sezonGun = 0, disiGun = 0;
-        for (var g = sayimBas; g <= kesim; g = g.AddDays(1))
+        for (var g = sayimBas; g < sonHaric; g = g.AddDays(1))
         {
             if (g.Month is 8 or 9 or 10) sezonGun++; else disiGun++;
         }
@@ -685,6 +751,8 @@ public sealed partial class SatisAnaliziQueries
             ORDER BY 3 DESC
             """;
         await using var conn = await db.OpenAsync();
+        // ⚠ Bu AYLIK SERİ DEĞİL — 365 günlük tek toplam. Tam-ay hizası yalnız aylık
+        // grafiklere uygulanır; buradaki pencere kasten 365 gün (manşetle aynı tanım).
         return (await conn.QueryAsync<MerkezKarsiTaraf>(new CommandDefinition(sql,
             new
             {
@@ -793,6 +861,7 @@ public sealed partial class SatisAnaliziQueries
             // ⚠ Kohort ölçütleri KPI ile AYNI SABİTTEN gelir (ayrışma imkânsız).
             SatisDurumFiltre.Dengesiz => DengesizSart,
             SatisDurumFiltre.SezonAcik => SezonHazirlikSart,
+            SatisDurumFiltre.SezonRafAcigi => SezonRafAcigiSart,
             _ => null,
         };
         if (durumSart is not null) sartlar.Add(durumSart);

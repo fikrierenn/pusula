@@ -134,6 +134,59 @@ public sealed partial class SatisAnaliziQueries(
     ///
     /// Türetme SQL'i: <c>sorgular/2026-09-10-esik-turetme-asiri-stok-ve-sezon.sql</c> blok 2.
     /// </summary>
+    /// <summary>
+    /// SEZONLUK RAF AÇIĞI — geçen sezon BU mağazada sattı · bugün BU rafta stok yok ·
+    /// merkez depoda mal var. Eylem <b>TRANSFER</b>, sipariş DEĞİL (mal zaten şirketin).
+    ///
+    /// Kullanıcı istedi (10.09.2026): "şubelerde geçen sezon çok iyi satmış ama bu sezon
+    /// rafında olmayan ama depoda olanlar" + "satış kaybı olanlar bu tanıma mı giriyor".
+    /// Cevap ÖLÇÜLDÜ: hayır, tam girmiyordu. Kohort 389 çeşit / 459 mağaza-ürün satırı,
+    /// geçen sezon 35.291 adet = <b>5.616.497 ₺</b>, merkezde bekleyen 74.830 adet
+    /// (talebin ~2 katı). Mevcut kartların kapsaması:
+    ///   Sezon Stok Açığı 186 (%48) — yakalıyor ama eylemi SİPARİŞ gibi okunuyor
+    ///   Raf Bulunurluk Kaybı 52 (%13) — ÜÇ rafın da boş olmasını şart koşuyor; 337'sinde
+    ///     başka mağazada stok var
+    ///   Stokta Yokluk 4 (%1) — tanım <c>ToplamStok&lt;=0</c>, depoda mal olduğu için dışlıyor
+    ///   Aşırı Stok 61 (%16) — çelişki DEĞİL, teşhis: merkez şişik, raf boş
+    ///   <b>HİÇBİRİ 179 (%46)</b> — 15.507 adet / 1.135.340 ₺ panelde hiç görünmüyordu
+    /// Sebep: kartlar TOPLAM stoğa bakıyor, merkezi "var" sayıyor → raf boş olsa da
+    /// "stok yeterli" görünüyor.
+    ///
+    /// ⚠ TALEP EŞİĞİ YOK — ve bu bir SEÇİM değil ÖLÇÜM sonucu. Eşik aranırken bantlara göre
+    /// gerçekleşme oranı ölçüldü (bu sezon Ağu+Eyl1-9 ÷ geçen yıl aynı pencere):
+    ///   raf boş: 1-2 → 0,10 · 3-4 → 0,09 · 5-9 → 0,08 · 10-24 → 0,08 · 25-49 → 0,03 · 50+ → 0,06
+    ///   raf dolu: 1,04 – 1,24 (her bantta)
+    /// Boşluk HER BANTTA aynı derinlikte (~%92 kayıp) → talep eşiği gerekçelenemiyor.
+    /// Eşik listeyi değil SIRALAMAYI belirler; kart kayıp tutarına göre okunur.
+    ///
+    /// ⚠ TAKVİYE MUHAFIZI ZORUNLU — anlık-raf tuzağını kapatıyor. Muhafızsız ölçümde 50+
+    /// bandı <b>2,93</b> çıkıyordu (raf boş olanlar raf dolu olanlardan İYİ satmış gibi):
+    /// hızlı dönen üründe raf o gün boş ama ay içinde takviye gelmiş ve bol satmış — "bugün
+    /// boş" kayıp DEĞİL, "hızlı tükendi" demek. <c>SonGiris</c> muhafızı ile 2,93 → 0,06.
+    /// ⚠ SINIR: <c>SonGiris</c> ÜRÜN düzeyinde (mağaza kırılımı yok) → "bu rafa takviye
+    /// gelmedi" değil "bu ürüne hiçbir mağazada takviye gelmedi" demek. Muhafız bu yüzden
+    /// TEMKİNLİ: gerçek kohortun bir kısmını dışarıda bırakır, yanlış pozitif üretmez.
+    /// ⚠ SINIR: <c>MerkezStok</c> WMS anlık (sql-server-conventions § MERKEZ DEPO) — hayalet
+    /// stok riski var; adet küçükse fiziksel teyit ister.
+    ///
+    /// Türetme SQL'i: <c>sorgular/2026-09-10-acik-siparis-etip-ve-sezon-raf-acigi.sql</c> blok 2.
+    /// </summary>
+    private const string SezonRafAcigiSart =
+        "(t.MerkezStok > 0 " +
+        "AND (t.SonGiris IS NULL OR t.SonGiris < DATEADD(DAY, -14, @kesim)) " +
+        "AND ((t.SezonFsm > 0 AND t.StokFsm <= 0) " +
+        "  OR (t.SezonOzl > 0 AND t.StokOzl <= 0) " +
+        "  OR (t.SezonIst > 0 AND t.StokIst <= 0)))";
+
+    /// <summary>
+    /// Sezonluk raf açığının KAYIP TUTARI — yalnız açığı olan mağazanın sezon adedi sayılır.
+    /// Rafı dolu mağazanın satışı kayıp değildir; toplam sezon adedi kullanmak tutarı şişirirdi.
+    /// </summary>
+    private const string SezonRafAcigiTutar =
+        "((CASE WHEN t.SezonFsm > 0 AND t.StokFsm <= 0 THEN t.SezonFsm ELSE 0 END " +
+        " + CASE WHEN t.SezonOzl > 0 AND t.StokOzl <= 0 THEN t.SezonOzl ELSE 0 END " +
+        " + CASE WHEN t.SezonIst > 0 AND t.StokIst <= 0 THEN t.SezonIst ELSE 0 END) * t.SatisFiyat)";
+
     private const string AsiriStokKat = "3";
 
     /// <summary>
@@ -339,7 +392,14 @@ public sealed partial class SatisAnaliziQueries(
                    -- Rafa çıkmamış stoğun ADEDİ — o kartın karşı-metriği (tutar zaten
                    -- birincil değerde; ikinci kez tutar göstermek bilgi eklemiyordu).
                    CONVERT(bigint, SUM(CASE WHEN t.IlkGiris IS NULL AND t.MerkezStok > 0
-                        THEN t.MerkezStok ELSE 0 END))                                AS RafsizAdet
+                        THEN t.MerkezStok ELSE 0 END))                                AS RafsizAdet,
+                   -- SEZONLUK RAF AÇIĞI (ölçüt: SezonRafAcigiSart, tek yer)
+                   SUM(CASE WHEN {SezonRafAcigiSart} THEN 1 ELSE 0 END)               AS SezonRafCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart}
+                        THEN {SezonRafAcigiTutar} ELSE 0 END))                        AS SezonRafTutar,
+                   -- Karşı-metrik: merkezde bekleyen adet — transferin hammaddesi
+                   CONVERT(bigint, SUM(CASE WHEN {SezonRafAcigiSart}
+                        THEN t.MerkezStok ELSE 0 END))                                AS SezonRafMerkezAdet
             FROM {Taban} t WITH (NOLOCK)
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon{TazeSart(f)}
             GROUP BY t.Kategori3
@@ -397,6 +457,9 @@ public sealed partial class SatisAnaliziQueries(
             HicSatilmamisCesit: satirlar.Sum(x => x.HicSatilmamisCesit),
             HicSatilmamisTutar: satirlar.Sum(x => x.HicSatilmamisTutar),
             RafsizAdet: satirlar.Sum(x => x.RafsizAdet),
+            SezonRafCesit: satirlar.Sum(x => x.SezonRafCesit),
+            SezonRafTutar: satirlar.Sum(x => x.SezonRafTutar),
+            SezonRafMerkezAdet: satirlar.Sum(x => x.SezonRafMerkezAdet),
             // Hızlar ürün bazında kendi raf süresine bölünüp SQL'de toplandı → burada topla, BÖLME.
             PerakendeGunlukHiz: satirlar.Sum(x => x.GunlukHiz));
 
@@ -561,7 +624,8 @@ public sealed partial class SatisAnaliziQueries(
         decimal MaliyetliDeger, decimal MaliyetKapsamEtiket,
         decimal PosNetKdvHaric, decimal SatilanMaliyet,
         decimal PosBrutToplam, decimal PosNetToplam, int MarjCesit,
-        int HicSatilmamisCesit, decimal HicSatilmamisTutar, long RafsizAdet);
+        int HicSatilmamisCesit, decimal HicSatilmamisTutar, long RafsizAdet,
+        int SezonRafCesit, decimal SezonRafTutar, long SezonRafMerkezAdet);
 }
 
 /// <summary>Sayfa açılışında tek geçişte gelen özet: KPI + Kategori3 kırılımı.</summary>
