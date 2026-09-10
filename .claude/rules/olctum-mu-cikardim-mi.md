@@ -88,3 +88,49 @@ kontroller koşmasaydı sapma bir sonraki sunumda çıkardı.
 - `.claude/rules/semantic-layer.md` § DEĞİŞMEZ — öğrenilen gerçek komutla yeniden koşar.
 - `.claude/skills/veri-dogrula/SKILL.md` — bağımsız rakam mutabakatı.
 - `sema/degismezler.json` · `tools/sema_degismez.py` — koşulan değişmezler.
+
+## EŞİK TÜRETME — "veriden çıkardım" da bir yöntem gerektirir (10.09.2026)
+
+_Kullanıcı direktifi: **"bence bunlar için kabul görmüş istatistik yöntemleri varsa onları da
+kullanarak değerlendirme yapmak gerekiyor sanki litaratür araştırmalısın"**. Aşağıdaki dört
+kural o araştırmadan çıktı ve BKM'nin kendi ölçümleriyle sınandı._
+
+Bir eşik (aşırı stok 3× · sezon 0,50 · raf kaybı 5 adet) "veriden türetildi" denilerek
+ÖLÇÜLDÜ sınıfına yazılamaz. Bantlara gözle bakıp kırılma noktası seçmek bir yöntem değil.
+
+**1. Trend testi ZORUNLU, ama tek başına YETMEZ.** Sıralı bantlarda oran trendi
+**Cochran-Armitage** ile sınanır (ki-kare 1 sd; omnibus ki-kareden güçlü çünkü sıralamayı
+kullanır). ⚠ Yalnız DOĞRUSAL trende karşı güçlüdür — U-şeklini ve monoton olmayanı KAÇIRIR.
+BKM vakası: "merkez stoğu" ekseninde `chi2(1)=95,6 · p=1,4e-22` çıktı ama desen
+`3,2 → 4,9 → 8,2 → 7,4 → 6,4 → 11,9` yani monoton DEĞİLDİ ve ölçüt REDDEDİLDİ.
+**Küçük p bir ölçütü doğrulamaz.** Monotonluk ayrıca kontrol edilir.
+
+**2. Oranlara güven aralığı — Wilson skor aralığı.** Bant n'leri uçlarda çok farklı olur
+(BKM: 10 ile 8.736 arası) ve normal yaklaşım orada güvenilmez. Kesim ancak **komşu bantların
+GA'ları ÇAKIŞMIYORSA** desteklenmiş sayılır. BKM: `1-4 → %13,3 [11,6-15,2]` ile
+`5-19 → %38,4 [32,4-44,9]` ayrık → 5 kesimi destekli; `20-49` (n=47) ile `50+` (n=10)
+çakışık → aralarında ayrım YAPILMADI.
+
+**3. Veriden seçilen kesimin bedeli BEYAN EDİLİR.** Literatür bu yöntemi eleştirir: veriden
+türetilen "optimal kesim" gruplar arası farkı **abartır**, spuriously significant sonuç üretir
+ve tekrarlanabilirliği düşüktür — Altman & Royston 2006 (BMJ, _The cost of dichotomising
+continuous variables_) · Royston, Altman & Sauerbrei 2006 (Stat Med, _Dichotomizing continuous
+predictors in multiple regression: a bad idea_); medyandan bölmek verinin üçte birini atmakla
+aynı güç kaybını verir. ⇒ **Kesimdeki oran farkı bir ETKİ ÖLÇÜSÜ olarak sunulmaz**, yalnız
+kohort seçiminde kullanılır. Sürekli değişken korunabiliyorsa (spline/kesirli polinom) kesim
+hiç yapılmaz; bir LİSTE üretmek zorunluysa kesim kaçınılmazdır ama bedeli yazılır.
+
+**4. Alan literatürünün sınırını da yaz.** Kendi ölçümünü alanın bilinen büyüklükleriyle
+karşılaştır; sapma varsa neyi ölçmediğini anlamışsın demektir:
+- **Kayıt doğruluğu:** perakendede kayıt-fiziksel uyuşmazlığı (_inventory record inaccuracy_)
+  SKU'ların %50-70'inde görülür (DeHoratius & Raman: 369.567 kaydın %65'i; hataların %41'i
+  "fiziksel > kayıt" yönünde), hayalet stok kaynaklı kayıp ~yıllık cironun %4'ü. BKM panelinin
+  "doğrulanamıyor" oranı %0,12 — bu DOĞRULUK ORANI DEĞİL, yalnız aritmetik olarak imkânsız
+  (negatif stok / fiyat 0) kayıtların oranı. Gerçek sapma yalnız **fiziksel sayımla** bilinir.
+- **Kayıp satış:** gözlenen satış stok tükenen günlerde kesilir (**sağdan sansürlü**). Geçen
+  yılın satışını talep vekili yapmak kaybı ALT SINIRDAN tahmin eder. Kabul görmüş düzeltme
+  EM tabanlı sansürlü-talep tahmini ve ikame modellemesidir (Anupindi/Dada/Gupta 1998 ·
+  Conlon & Mortimer). Uygulanmadıysa "tahminimiz alt sınırdır" yazılır.
+
+**Sınama:** _"eşiği bir başkası aynı veriyle bağımsız türetse aynı sayıyı bulur muydu?"_
+Bulamayacaksa eşik SEÇİLMİŞTİR — öyle yazılır.

@@ -249,7 +249,7 @@ public sealed record SatisAnaliziKpi(
     /// </summary>
     int RafBosCesit,
     decimal RafBosTutar,
-    int RafBosSatisliCesit,
+    long RafBosSatisliCesit,
     int VeriKirliCesit,
     decimal VeriKirliTutar,
     /// <summary>YENİ ÜRÜN — hareketsiz/aşırı ölçütlerinin KASITLI dışladığı kova.

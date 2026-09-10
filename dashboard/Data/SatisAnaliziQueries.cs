@@ -196,19 +196,59 @@ public sealed partial class SatisAnaliziQueries(
     /// 3.476 çeşidin <b>1.808'i (%52) merkezde ≤2 adet</b> taşıyor (1.896.000 ₺). Kart
     /// yarısında transfer edilecek mal olmadan "mal var" diyordu.
     ///
-    /// Yeterlilik ölçütü ARANDI, ölçümle seçildi (aynı kesim, güvenilir defter):
-    ///   mevcut <c>&gt; 0</c> → 3.464 çeşit / 9,97M ₺ · satışı olan 1.165
-    ///   14 günlük talep kapsaması → 3.426 — <b>neredeyse hiç elemiyor</b>; yavaş üründe
-    ///     14 gün bir adedin altına düşüyor (Mağaza Arası Dengesizlik kartında bulunan
-    ///     aynı tuzak: "yılda 10 satanda 14 gün = 0,38 adet, HER stok geçiyor")
-    ///   mutlak <c>&gt;= 5</c> → <b>1.152 çeşit / 6,75M ₺</b> · satışı olan 435  ← SEÇİLEN
-    ///   ikisi birlikte → 1.151 (göreli şart bağlayıcı DEĞİL, eklenmedi)
-    /// ⚠ 5 eşiği ÖLÇÜMLE TÜRETİLMEDİ: panel içi tutarlılıktan geliyor —
-    /// <c>DengesizSart</c> de "anlamlı miktar" için 5 kullanıyor (kırtasiyede 20 fazla yüksek).
-    /// Aynı panelde aynı anlam için aynı taban.
+    /// ══ AYRAÇ MERKEZ STOĞU DEĞİL, TALEP — geriye dönük ölçümle bulundu ═══════════
+    /// İlk düzeltmede yeterlilik ölçütü <c>MerkezStok &gt;= 5</c> seçilmişti ve bu ÖLÇÜMLE
+    /// TÜRETİLMEMİŞTİ (panel içi tutarlılıktan geliyordu). Borç kapatıldı: 01.08.2025
+    /// as-of'unda rafı boş + merkezinde mal olan ürünler bulundu, SONRAKİ 12 AYDA satıldı mı
+    /// ölçüldü.
+    ///
+    /// MERKEZ STOĞU AYIRT ETMİYOR (sonraki yıl satma oranı, merkez adedine göre):
+    ///   1 adet %3,2 · 2 %4,9 · 3-4 %8,2 · <b>5-9 %7,4</b> · 10-24 %6,4 · 25+ %11,9
+    ///   → tek yönlü DEĞİL (3-4 → 5-9 düşüyor) ve hiçbir bant %12'yi geçmiyor.
+    ///
+    /// ÖNCEKİ YIL TALEBİ AYIRT EDİYOR (aynı kohort, aynı sonuç değişkeni):
+    ///   talep kanıtı YOK → <b>%3,5</b> (8.736 çeşit) · 1-4 adet → %13,3 (1.330) ·
+    ///   <b>5-19 → %38,4</b> (229) · 20-49 → %57,4 (47) · 50+ → %60,0 (10)
+    ///   → tek yönlü, dik ve 1-4 → 5-19 arasında ÜÇ KAT sıçrama var.
+    /// ⇒ Eşik doğru yerdeydi (5) ama YANLIŞ DEĞİŞKENDE. Ölçüt <c>SatisToplam &gt;= 5</c>.
+    /// <c>MerkezStok &gt;= 5</c> eklenmedi — ölçüm desteklemiyor (200 çeşide düşürüp
+    /// ayırt edici güç katmıyor).
+    ///
+    /// ⚠ EN ÖNEMLİ SONUÇ: talep kanıtı OLMAYAN 8.736 çeşidin sonraki yıl satma oranı %3,5 —
+    /// bu bir BULUNURLUK KAYBI değil ÖLÜ STOK'tur. Eski ölçüt onları kartta tutuyordu.
+    /// Kart 3.464 → <b>448 çeşit / 2.069.830 ₺</b> · merkezde 8.021 adet.
+    ///
+    /// ══ İSTATİSTİK — kabul görmüş yöntemle sınandı (kullanıcı isteği 10.09.2026) ═══
+    /// Bantlara gözle bakmak yetmez; iki ölçüt <b>Cochran-Armitage trend testi</b> (ki-kare
+    /// 1 sd, sıralı gruplarda oran trendi) ve oranlara <b>Wilson skor aralığı</b> ile sınandı
+    /// (n 10 ile 8.736 arasında değişiyor; normal yaklaşım bu uçlarda güvenilmez):
+    ///   MERKEZ STOĞU:  chi2(1) = <b>95,6</b> · p = 1,4e-22 — ama desen <b>MONOTON DEĞİL</b>
+    ///     (3,2 → 4,9 → 8,2 → <b>7,4 → 6,4</b> → 11,9) ve iki komşu bant GA'sı ÇAKIŞIK.
+    ///   ÖNCEKİ YIL TALEBİ: chi2(1) = <b>873,0</b> · p = 7,2e-192 · <b>MONOTON</b>
+    ///     (3,5 → 13,3 → 38,4 → 57,4 → 60,0); 1-4 %13,3 [11,6-15,2] ile 5-19 %38,4
+    ///     [32,4-44,9] GA'ları ÇAKIŞMIYOR → 5 kesimi destekli.
+    /// ⚠ DERS: merkez ekseninde p değeri son derece küçük OLDUĞU HÂLDE ölçüt geçersiz —
+    /// Cochran-Armitage yalnız DOĞRUSAL trende karşı güçlüdür, U-şeklini/monoton olmayanı
+    /// kaçırır. Küçük p tek başına bir ölçütü doğrulamaz; monotonluk + GA ayrışması şart.
+    /// ⚠ Üst iki bant (n=47 ve n=10) TEK BAŞINA güvenilmez — GA'ları çakışıyor; 20-49 ile
+    /// 50+ arasında ayrım yapılmadı, ikisi de "5+" içinde.
+    ///
+    /// ⚠⚠ KESİM VERİDEN SEÇİLDİ → ETKİ BÜYÜKLÜĞÜ ŞİŞKİN (Altman &amp; Royston 2006, BMJ
+    /// "The cost of dichotomising continuous variables"; Royston/Altman/Sauerbrei 2006,
+    /// Stat Med "Dichotomizing continuous predictors in multiple regression: a bad idea").
+    /// Veriden türetilen "optimal kesim" spuriously significant sonuç ve gruplar arası farkın
+    /// AŞIRI tahmini riski taşır. Bu yüzden kesimdeki oran farkı (%13,3 → %38,4) bir ETKİ
+    /// ölçüsü olarak SUNULMAZ — yalnız kohort seçiminde kullanılır. Aynı literatür sürekli
+    /// değişkeni ikiye bölmemeyi (spline/kesirli polinom) önerir; panel bir KOHORT LİSTESİ
+    /// ürettiği için kesim zorunlu, ama bedeli beyan edilir.
+    ///
+    /// ⚠ ÖLÇÜM SINIRI: as-of merkez stoğu WMS'ten DEĞİL defterden alındı (WMS geçmişi yok) —
+    /// merkez tarafı bu yüzden zaten şüpheliydi; sonuç değişkeni (mağaza satışı) etkilenmiyor.
+    /// Bir bantta merkez adet toplamı absürt çıktı (33,8M) → tek üründe defter patlaması;
+    /// çeşit-bazlı oranı bozmuyor.
     /// </summary>
     private const string RafBosSart =
-        "(t.IlkGiris IS NOT NULL AND t.MerkezStok >= 5 " +
+        "(t.IlkGiris IS NOT NULL AND t.MerkezStok > 0 AND t.SatisToplam >= 5 " +
         "AND t.StokFsm <= 0 AND t.StokOzl <= 0 AND t.StokIst <= 0 " +
         "AND " + DefterGuvenilirSart + ")";
 
@@ -470,7 +510,9 @@ public sealed partial class SatisAnaliziQueries(
                    -- rafta vardı), tutar 10,46M → 10,27M ₺.
                    SUM(CASE WHEN {RafBosSart} THEN 1 ELSE 0 END)                                             AS RafBosCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {RafBosSart} THEN t.Tutar ELSE 0 END))            AS RafBosTutar,
-                   SUM(CASE WHEN {RafBosSart} AND t.SatisToplam > 0 THEN 1 ELSE 0 END)                       AS RafBosSatisliCesit,
+                   -- Karşı-metrik DEĞİŞTİ: "satışı olan" artık ANA ölçütte (talep >= 5), tekrar
+                   -- göstermek bilgi eklemiyor. Yerine merkezde bekleyen adet.
+                   CONVERT(bigint, SUM(CASE WHEN {RafBosSart} THEN t.MerkezStok ELSE 0 END)) AS RafBosSatisliCesit,
                    -- ⚠ GENİŞLETİLDİ 09.09: eski ölçüt yalnız TOPLAM negatifi görüyordu; merkez
                    -- pozitifse mağaza rafındaki eksi stok gizleniyordu (ölçüldü: 187 çeşit /
                    -- 4,89M ₺ hiçbir ölçütte görünmüyordu; mağaza raflarında −8.160 adet negatif).
@@ -748,7 +790,7 @@ public sealed partial class SatisAnaliziQueries(
         int AsiriCesit, decimal AsiriTutar, int AsiriOdakCesit, decimal AsiriOdakTutar,
         int HareketsizCesit, decimal HareketsizTutar,
         int RafsizCesit, decimal RafsizTutar,
-        int RafBosCesit, decimal RafBosTutar, int RafBosSatisliCesit,
+        int RafBosCesit, decimal RafBosTutar, long RafBosSatisliCesit,
         int KirliCesit, decimal KirliTutar,
         int YeniCesit, decimal YeniTutar,
         int DengesizCesit, decimal DengesizTutar,

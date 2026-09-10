@@ -1024,3 +1024,93 @@ metrics:
     etki_sinirli: "Maliyeti 1 yıldan eski çeşit payı %28,7 ama NET SATIŞ payı yalnız %9,3"
     evidence: "2026-09-10 — taban MaliyetTarih kolonu + yaş bandı × marj ölçümü"
     last_verified: "2026-09-10"
+
+  esik_turetme_istatistigi:
+    ad: "EŞİK TÜRETME — Cochran-Armitage + Wilson, ve veriden-seçilen-kesimin bedeli"
+    kural: >-
+      Bir eşik "veriden türetildi" denilerek ÖLÇÜLDÜ sınıfına yazılamaz. Sıralı bantlarda
+      oran trendi **Cochran-Armitage** ile (ki-kare 1 sd), oranlar **Wilson skor aralığı** ile
+      sınanır. Kesim ancak (a) desen MONOTON ve (b) komşu bantların GA'ları ÇAKIŞMIYORSA
+      desteklenmiş sayılır.
+    kritik_ders: >-
+      KÜÇÜK p BİR ÖLÇÜTÜ DOĞRULAMAZ. BKM vakası: "merkez stoğu" ekseninde chi2(1)=95,57 ·
+      p=1,43e-22 çıktı ama desen monoton DEĞİLDİ (3,2 → 4,9 → 8,2 → 7,4 → 6,4 → 11,9) ve iki
+      komşu bant GA'sı çakışıktı → ölçüt REDDEDİLDİ. Cochran-Armitage yalnız DOĞRUSAL trende
+      karşı güçlüdür; U-şeklini/monoton olmayanı kaçırır.
+      Kabul edilen eksen "önceki yıl talebi": chi2(1)=873,01 · p=7,24e-192 · MONOTON
+      (%3,5 → 13,3 → 38,4 → 57,4 → 60,0); 1-4 [11,6-15,2] ile 5-19 [32,4-44,9] çakışmıyor.
+      Üst iki bant (n=47, n=10) tek başına güvenilmez → aralarında ayrım yapılmadı.
+    veriden_secilen_kesimin_bedeli: >-
+      Altman & Royston 2006 (BMJ, "The cost of dichotomising continuous variables") ·
+      Royston/Altman/Sauerbrei 2006 (Stat Med, "Dichotomizing continuous predictors in
+      multiple regression: a bad idea"): veriden türetilen "optimal kesim" gruplar arası farkı
+      ABARTIR, spuriously significant sonuç riski taşır, tekrarlanabilirliği düşüktür;
+      medyandan bölmek verinin üçte birini atmakla aynı güç kaybını verir. Sürekli değişkeni
+      korumak (spline/kesirli polinom) önerilir.
+      ⇒ Kesimdeki oran farkı bir ETKİ ÖLÇÜSÜ olarak SUNULMAZ, yalnız kohort seçiminde
+      kullanılır. Panelin üç eşiği de (aşırı stok 3× · sezon 0,50 · raf kaybı 5 satış) bu
+      uyarıya tabidir ve ekranda beyan edilir.
+    sinama: "\"Eşiği bir başkası aynı veriyle bağımsız türetse aynı sayıyı bulur muydu?\" Bulamayacaksa eşik SEÇİLMİŞTİR."
+    evidence: "2026-09-10 — sorgular/2026-09-10-esik-istatistik-ve-talep-deseni.sql blok 1"
+    last_verified: "2026-09-10"
+
+  talep_deseni_aralikli:
+    ad: "TALEP DESENİ — çeşitlerin %91,9'u ARALIKLI, gün-stok onlarda yanıltıcı"
+    kural: >-
+      BKM ürün tabanı ağırlıkla **aralıklı talep** (intermittent demand) taşır. Aralıklı
+      talepte ortalama, çoğu SIFIR olan dönemlere yayılır → "günlük ortalama satış" ve
+      "gün-stok" ÜRÜN bazında yanıltıcıdır. Literatür talep BÜYÜKLÜĞÜNÜ ve TALEP-ARASI
+      ARALIĞI ayrı tahmin eder: Croston 1972 · Syntetos-Boylan 2005 (SBA — Croston'ın
+      yanlılığını düzeltir) · Syntetos/Boylan/Croston 2005 (sınıflandırma: ADI + CV², ADI
+      eşiği ~1,32) · Teunter/Syntetos/Babai 2011 (TSB — eskime için sıfır-talep olasılığı).
+    olcum: >-
+      2026-09-10, Eyl 2025 – Ağu 2026 (12 TAM ay), satış olan ay sayısına göre, 275.385 çeşit:
+      hiç satmadı 121.411 (%44,1) · 1-2 ay ADI>=6 → 76.912 (%27,9) · 3-4 ay → 27.587 (%10,0) ·
+      5-8 ay → 27.045 (%9,8) · **9-12 ay, ADI<=1,33 DÜZGÜN → 22.430 (%8,1)**.
+    uygulama_durumu: >-
+      Croston/SBA ayrıştırması panelde YAPILMADI. Ürün bazlı gün-stok yalnız düzgün talepli
+      %8,1'de güvenilir; kategori agregasında daha savunulabilir. Panel bandında beyan edildi.
+    evidence: "2026-09-10 — sorgular/2026-09-10-esik-istatistik-ve-talep-deseni.sql blok 2"
+    last_verified: "2026-09-10"
+
+  devir_hizi_sektor_kiyasi:
+    ad: "DEVİR HIZI — kategori bazlı ölçüm ve sektör hedef aralığı"
+    olcum: >-
+      2026-09-10, kesim 09.09.2026, güvenilir defter (mağaza stoğu ÷ 365 günlük mağaza satışı,
+      adet): Dergi 5,95 · Oyuncak 3,29 · Hazırlık Kitapları 3,16 · Hediyelik 2,11 ·
+      Çocuk Kitabı 2,09 · Elektronik 1,91 · Akademi 1,35 · **Kitap 1,28** · **Kırtasiye 1,25**.
+      Gün-stok: Kırtasiye 291 · Kitap 285 · Akademi 270 · Dergi 61.
+      Yaklaşık GMROI: 0,32-1,38 (Hazırlık 1,38 en yüksek).
+    sektor_hedefi_CIKARIM: >-
+      Yayınlanmış kitapçı hedefi 3,0-4,0 devir/yıl (yüksek performanslı 4-6); GMROI hedefi
+      çoğu perakende kategorisinde 3,0+, tipik aralık 1,0-4,0. Kitap ve Kırtasiye hedefin
+      ~%32-42'sinde dönüyor.
+      ⚠ Bu bir ÇIKARIM/kıyastır, ölçüm değil: kaynak TİCARİ/SEKTÖR YAYINI (akademik ölçüm
+      değil) ve BKM saf kitapçı DEĞİL — kırtasiye + sınav okulları + grup şirketi mal akışı
+      (merkez çıkışının %72'si frmID 56, tüketici talebi değil).
+      ⚠ GMROI hesabı STANDART DEĞİL: payda ANLIK stok maliyeti (ortalama stok değil), pay
+      365 günlük POS kârı, maliyet kapsamı etiket bazında %94,7 → "yaklaşık" etiketiyle.
+    esik_karari: >-
+      Aşırı stok eşiği sektör hedefine ÇEKİLMEDİ. 3× eşiği yıllık devir 1,0'a denk; sektör
+      hedefi ~0,25-0,33× kapsamaya karşılık gelir ve kohorta 200 binden fazla çeşit sokup
+      listeyi işe yaramaz hâle getirir. Fark bilinçli ve panelde beyan edildi.
+    evidence: "2026-09-10 — sorgular/2026-09-10-esik-istatistik-ve-talep-deseni.sql blok 3"
+    last_verified: "2026-09-10"
+
+  kayit_dogrulugu_ve_sansurlu_talep:
+    ad: "KAYIT DOĞRULUĞU ölçülmüş değil · KAYIP SATIŞ tahminleri ALT SINIR"
+    kayit_dogrulugu: >-
+      Panelin "doğrulanamıyor" oranı %0,12 (327/275.385) bir DOĞRULUK ORANI DEĞİLDİR — yalnız
+      aritmetik olarak imkânsız kayıtların (negatif stok / fiyat 0) oranıdır. Literatürde
+      kayıt-fiziksel uyuşmazlığı (inventory record inaccuracy) SKU'ların %50-70'inde görülür;
+      DeHoratius & Raman 369.567 kaydın %65'ini hatalı bulmuş, hataların %41'i "fiziksel >
+      kayıt" yönünde; hayalet stok kaynaklı kayıp ~yıllık cironun %4'ü. Gerçek sapma yalnız
+      FİZİKSEL SAYIMLA bilinir ve muhtemelen çok daha büyüktür.
+    sansurlu_talep: >-
+      Kayıp satış tahminleri (Sezon Stok Açığı · Stokta Yokluk) ALT SINIRDIR: talep vekili
+      olarak geçen yılın GERÇEKLEŞEN satışı kullanılıyor, o satış da stok tükenen günlerde
+      kesilmiş (istatistikte SAĞDAN SANSÜRLÜ). Kabul görmüş düzeltme EM tabanlı sansürlü-talep
+      tahmini + stok-tükenmesi kaynaklı ikame modellemesidir (Anupindi/Dada/Gupta 1998 ·
+      Conlon & Mortimer). Panelde uygulanmadı → tutarlar gerçek kaybın ALTINDA, üstünde değil.
+    evidence: "2026-09-10 — literatür taraması + panel oranlarının karşılaştırılması"
+    last_verified: "2026-09-10"

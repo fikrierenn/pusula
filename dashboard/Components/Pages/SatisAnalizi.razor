@@ -111,6 +111,15 @@
             <li><b>Stok tutarı SATIŞ fiyatıyla</b> — bağlanan para (maliyet) değil.</li>
             <li><b>İade hakkı veride izli değil</b> (<code>urn.alimIadeYok</code> sabit) → "aşırı stok"
                 iade hakkına göre kırılamıyor. Eşikler sayfasında iade kuralı kodları girilirse açılır.</li>
+            <li><b>Veriden türetilen eşiklerin bedeli beyan edilir.</b> Panelin üç eşiği
+                (aşırı stok 3× · sezon açığı 0,50 · raf kaybı yılda 5 satış) aynı veriden
+                seçildi. Bu yöntem literatürde eleştirilir: veriden seçilen "optimal kesim"
+                gruplar arası farkı <b>abartır</b> ve tekrarlanabilirliği düşüktür
+                (Altman &amp; Royston 2006 · Royston/Altman/Sauerbrei 2006). Eşikler kohort
+                LİSTESİ üretmek için kullanılır; kesimdeki oran farkı bir <b>etki ölçüsü
+                değildir</b>. Trendler Cochran-Armitage testi ve Wilson güven aralıklarıyla
+                sınandı — merkez stoğu ekseninde p çok küçük olmasına rağmen desen monoton
+                olmadığı için o ölçüt REDDEDİLDİ.</li>
             <li><b>Aşırı stok eşiği 3× sezon</b> — veriden türetildi (10.09.2026): 2024
                 stoğunun sonraki 12 ayda satılan oranı 3×'te 1,0'ın altına düşüyor, yani 3×
                 "bir yıldan fazla stok" demek. Sezon açığı eşiği <b>0,50</b> da ölçüldü: altında
@@ -140,6 +149,53 @@
                 (ölçüldü stkID 643638 "Missim Bijuteri 49,50 Tl": 11 alış hareketi karşısında
                 1.106 satış hareketi, raf −502, merkez 1). Evrende <b>313 çeşit / 931.395 ₺</b>
                 negatif raf taşıyor; "Veri kirli" filtresinden görülür.</li>
+            <li><b>ÇEŞİTLERİN %91,9'U ARALIKLI TALEP — "günlük ortalama satış" ve
+                "gün-stok" onlarda yanıltıcı.</b> Ölçüldü (Eyl 2025 – Ağu 2026, 12 tam ay,
+                satış olan ay sayısı): hiç satmayan <b>%44,1</b> (121.411 çeşit) · yılda
+                1-2 ay satan <b>%27,9</b> (76.912) · 3-4 ay %10,0 · 5-8 ay %9,8 ·
+                <b>düzgün talep yalnız %8,1</b> (22.430 çeşit; talep-arası aralık ADI ≤ 1,33 —
+                Syntetos/Boylan/Croston sınıflandırma eşiği). Aralıklı talepte ortalama, çoğu
+                SIFIR olan aylara yayılır; literatür bu yüzden talep büyüklüğünü ve
+                talep-arası aralığı AYRI tahmin eder (Croston 1972 · Syntetos-Boylan 2005;
+                eskime için Teunter/Syntetos/Babai 2011). Panelde bu ayrıştırma YAPILMADI →
+                ürün bazlı gün-stok yalnız düzgün talepli %8,1'de güvenilir; kategori
+                toplamlarında (agregada) daha savunulabilir.</li>
+            <li><b>Devir hızımız sektör hedef aralığının altında.</b> Ölçülen yıllık devir
+                (mağaza stoğu ÷ 365 günlük mağaza satışı, adet): Dergi 5,95 · Oyuncak 3,29 ·
+                Hazırlık Kitapları 3,16 · Hediyelik 2,11 · Çocuk Kitabı 2,09 · Elektronik 1,91 ·
+                Akademi 1,35 · <b>Kitap 1,28</b> · <b>Kırtasiye 1,25</b>. Yayınlanmış kitapçı
+                hedefi <b>3,0-4,0</b> (yüksek performanslı 4-6). Kitap ve Kırtasiye hedefin
+                ~%32-42'sinde dönüyor; Kitap'ta 285 gün-stok ≈ 9,4 ay.
+                ⚠ Kıyas kaynağı ticari/sektör yayını, akademik ölçüm DEĞİL — ve BKM saf
+                kitapçı değil (kırtasiye + sınav okulları + grup şirketi mal akışı).
+                <b>Bu yüzden aşırı stok eşiği sektör hedefine çekilmedi:</b> 3× eşiğimiz
+                yıllık devir 1,0'a denk, sektör hedefi ise ~0,25-0,33× kapsamaya karşılık
+                gelirdi ve kohorta 200 binden fazla çeşit girip liste işe yaramaz hâle gelirdi.
+                Fark bilinçli ve burada beyan ediliyor.</li>
+            <li><b>Defter doğruluğu ÖLÇÜLMÜŞ DEĞİL — yalnız aritmetik olarak imkânsız
+                kayıtlar ayıklandı.</b> Panelin "doğrulanamıyor" sayısı (327 çeşit, %0,12)
+                negatif stok / fiyatı 0 olanlardır. Literatürde perakendede kayıt-fiziksel
+                uyuşmazlığı (<i>inventory record inaccuracy</i>) SKU'ların <b>%50-70'inde</b>
+                görülüyor (DeHoratius &amp; Raman: 369.567 kaydın %65'i hatalı; hataların
+                %41'i "fiziksel stok kayıttan fazla" yönünde) ve "hayalet stok" kaynaklı
+                satış kaybı yıllık cironun ~%4'ü olarak ölçülmüş. Bizim %0,12 rakamı
+                DOĞRULUK ORANI DEĞİL, işaret ihlali oranıdır — gerçek sapma yalnız
+                <b>fiziksel sayımla</b> bilinir ve muhtemelen çok daha büyüktür.</li>
+            <li><b>Kayıp satış tahminleri ALT SINIRDIR</b> — talep vekili olarak geçen yılın
+                GERÇEKLEŞEN satışı kullanılıyor, ama o satış da stok tükendiği günlerde
+                kesilmiş (istatistikte <i>sağdan sansürlü</i>). Sansürlü talebi geri
+                kazanmanın kabul görmüş yolu EM tabanlı talep tahmini ve ikame modellemesidir
+                (Anupindi/Dada/Gupta 1998 · Conlon &amp; Mortimer); panelde uygulanmadı.
+                Dolayısıyla Sezon Stok Açığı ve Stokta Yokluk tutarları gerçek kaybın
+                <b>altındadır</b>, üstünde değil.</li>
+            <li><b>Raf bulunurluk kaybında ayraç TALEP, merkez stoğu değil</b>
+                (10.09.2026, geriye dönük ölçüm) — 01.08.2025 as-of'unda rafı boş + merkezinde
+                mal olan ürünlerin sonraki 12 ayda satma oranı: merkez adedine göre %3,2-11,9
+                arası dolanıyor ve <b>tek yönlü bile değil</b>; önceki yıl talebine göre ise
+                talep kanıtı yok <b>%3,5</b> → 1-4 adet %13,3 → <b>5-19 adet %38,4</b> →
+                20-49 %57,4 → 50+ %60,0. Ölçüt bu yüzden <b>yılda 5+ satış</b>; eski
+                "merkezde 5+ adet" şartı ölçümle desteklenmiyordu. Talep kanıtı olmayan
+                8.736 çeşit bulunurluk kaybı DEĞİL ölü stoktur.</li>
             <li><b>Gerçekleşen marj maliyetin YAŞINI taşır</b> (10.09.2026 denetimi, B11) —
                 birim maliyet tarih penceresi olmadan "son 5 alış faturası"ndan gelir, yani
                 BUGÜNKÜ maliyettir; payı olan POS satışı ise 365 günlüktür. Maliyet yaşına
@@ -660,11 +716,11 @@ else
             CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true),
 
         new("BULUNURLUK KAYBI", "Raf Bulunurluk Kaybı", TlKisa(k.RafBosTutar),
-            $"{k.RafBosCesit:N0} çeşit · üç raf da boş, merkezde 5+ adet var",
+            $"{k.RafBosCesit:N0} çeşit · üç raf da boş, yılda 5+ satıyor",
             "error", "raf", SatisDurumFiltre.RafBos,
             Taban: "stok değeri · merkezde bekleyen",
-            CiftBaslik: "Satışı olan → talep kanıtlı",
-            CiftDeger: $"{k.RafBosSatisliCesit:N0} çeşit",
+            CiftBaslik: "Merkezde bekleyen → transfer",
+            CiftDeger: $"{k.RafBosSatisliCesit:N0} adet",
             CiftDurum: SatisDurumFiltre.RafBos),
 
         // ══ İÇ KAYNAKLA ÇÖZÜLÜR ═══════════════════════════════════════════════════
