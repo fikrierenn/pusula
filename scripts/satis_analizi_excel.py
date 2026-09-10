@@ -23,7 +23,9 @@ Kaynak eslemesi TERS MUHENDISLIKLE OLCULDU (08.09.2026) — kanit:
       08.09.2025-06.09.2026  369/400  %92,2
       08.09.2025-07.09.2026  364/400  %91,0
     ⇒ 07.09.2026 tarihli raporu uretmek icin: --bitis 2026-09-06
-  · Evren: Kategori3 12-deger listesi (olculdu: liste disi 59.826 cesidin 0'i raporda)
+  · Evren: Kategori3 10-deger listesi (09.09.2026'da 12'den 10'a dustu: "Kafe Hammede"
+           ve "Zkargo" cikarildi - kullanici karari, ikisi de gider/hizmet kalemi).
+           Olculdu: liste disi 59.826 cesidin 0'i raporda.
            + en az bir stok/satis/sezon degeri sifirdan farkli (OdakStok kosul DEGIL)
 
 Kullanim:

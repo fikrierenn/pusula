@@ -410,6 +410,20 @@ public sealed record SatisAnaliziSatir(
     int? SatanAy,
     /// <summary>Sıfır-olmayan aylık talep büyüklüklerinin kareli değişim katsayısı (CV²).</summary>
     decimal? TalepCV2,
+    /// <summary>
+    /// Birim maliyetin kaynağı olan SON alış faturasının tarihi (B11). Marj bu yaşı taşır:
+    /// satış 365 günlük, maliyet bu tarihten. Enflasyonda eski maliyet marjı şişirir.
+    /// NULL = alış faturası yok → maliyet ve marj hesaplanmaz.
+    /// </summary>
+    DateTime? MaliyetTarih,
+    /// <summary>
+    /// Maliyetin yaşı (gün) — <b>SQL'de KESİM TARİHİNE göre</b> hesaplanır, bugüne göre değil
+    /// (satır kaydı kesimi taşımıyor; geçmiş kesim seçilirse yaş kaymasın).
+    /// B11: marj bu yaşı taşıyor — ölçüldü 10.09.2026, maliyet yaşına göre gerçekleşen marj
+    /// %24,4 (&lt;3 ay) → %63,0 (2+ yıl). Enflasyon ile yavaş devir AYRIŞTIRILAMIYOR; bu
+    /// yüzden maliyet yeniden DEĞERLENMEDİ, yaşı görünür kılındı.
+    /// </summary>
+    int? MaliyetYasGun,
     int SezonAy1,
     int SezonAy2,
     int SezonAy3,
@@ -579,6 +593,16 @@ public static class SatisAnaliziKolonlar
                  + "verimizden türetilmedi. GÜN-STOK YALNIZ düzgün/değişken sınıfta geçerli — "
                  + "ölçüldü 10.09.2026: çeşitlerin %91,9'u aralıklı ya da hiç satmıyor, orada "
                  + "ortalama çoğu sıfır olan aylara yayılıyor."),
+        new("maliyettarih", "Maliyet Tarihi", Varsayilan: false, Siralanabilir: true,
+            Ipucu: "Birim maliyetin kaynağı olan SON alış faturasının tarihi. Boş = alış "
+                 + "faturası yok, maliyet ve marj hesaplanmıyor."),
+        new("maliyetyas", "Maliyet Yaşı", Varsayilan: false, Siralanabilir: true, Sayisal: true,
+            Ipucu: "Maliyetin kaç gün önceki faturadan geldiği. MARJ BU YAŞI TAŞIYOR: satış "
+                 + "365 günlük, maliyet bu tarihten. Ölçüldü 10.09.2026 — maliyet yaşına göre "
+                 + "gerçekleşen marj %24,4 (<3 ay) → %63,0 (2+ yıl). İki mekanizma aynı yöne "
+                 + "çalışıyor ve ayrıştırılamıyor: enflasyon (eski maliyet düşük → marj şişkin) "
+                 + "ve yavaş dönen ürünün zaten yüksek marjlı olması. Maliyet yeniden "
+                 + "değerlenmedi; yaşı görünür kılındı ki marj okunurken bilinsin."),
         new("satanay",    "Satan Ay",   Varsayilan: false, Siralanabilir: true,
             Ipucu: "Son 12 TAM ayda satış olan ay sayısı. 12 = her ay satmış; 1-2 = şiddetli "
                  + "aralıklı. Gün-stok ve günlük ortalama satış bu sayı düşükken yanıltıcı."),

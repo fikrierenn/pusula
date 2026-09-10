@@ -41,6 +41,8 @@ public sealed partial class SatisAnaliziQueries
         ["ilkgiris"] = "t.IlkGiris",
         ["sonsatis"] = "t.SonSatis",
         ["satanay"] = "t.SatanAy",
+        ["maliyettarih"] = "t.MaliyetTarih",
+        ["maliyetyas"] = "t.MaliyetTarih",   // yaş tarihin tersi sırası; aynı kolondan sırala
         ["songiris"] = "t.SonGiris",
         ["acilis"] = "t.AcilisTarihi",
     };
@@ -61,6 +63,10 @@ public sealed partial class SatisAnaliziQueries
         t.SonSatis AS SonSatisTarihi,
         -- TALEP DESENİ ham girdileri (sınıf kodda hesaplanır; ADI = 12 / SatanAy)
         t.SatanAy, t.TalepCV2,
+        -- MALİYETİN TARİHİ + YAŞI (B11) — marj bu yaşı taşıyor; süzülebilir olsun diye listede.
+        -- ⚠ Yaş KESİM TARİHİNE göre, bugüne göre DEĞİL: geçmiş kesim seçilirse yaş kaymasın.
+        t.MaliyetTarih,
+        CONVERT(int, DATEDIFF(DAY, t.MaliyetTarih, t.Kesim)) AS MaliyetYasGun,
         t.Ay1 AS SezonAy1, t.Ay2 AS SezonAy2, t.Ay3 AS SezonAy3, t.SezonToplam,
         t.LeadTime, t.OdakDurum AS OdakSatisDurum,
         -- MERKEZ ÇIKIŞI (365g) — toptan/grup, tüketici talebi DEĞİL. Gün-stok kapsam

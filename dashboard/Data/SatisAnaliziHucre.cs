@@ -29,6 +29,8 @@ public static class SatisAnaliziHucre
         "sonsatis" => s.SonSatisTarihi,
         "talepdeseni" => s.TalepDeseniAd,
         "satanay" => s.SatanAy,
+        "maliyettarih" => s.MaliyetTarih,
+        "maliyetyas" => s.MaliyetYasGun,
         "songiris" => s.SonGirisTarihi,
         "stok_fsm" => s.StokFsm,
         "stok_ozl" => s.StokOzluce,
