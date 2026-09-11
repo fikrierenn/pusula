@@ -126,7 +126,80 @@ entities:
   BKMDATA.dbo.Hedef: {type: table, key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", uses: [bridges:hedef-kategori], note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
 
   # PDKS (işgücü — OPENQUERY)
-  pdks: {type: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
+  # ── PDKS (personel devam kontrol) — kolonlar 2026-09-11'de CANLI ÖLÇÜLDÜ ──
+  # Erişim: ERP bağlantısından `OPENQUERY([PDKS], '...')`. Linked server `PDKS` YALNIZ erp
+  # profilinde tanımlı (zirve'de YOK, ölçüldü). Kolon listeleri INFORMATION_SCHEMA.COLUMNS'tan
+  # alındı, elle yazılmadı. ⚠ TAM LİSTE YAZILMADI (TPerTab tek başına 219 kolon): sema'ya
+  # KURAL yazılır, döküm değil. Aşağıdaki `key` listeleri KODDA FİİLEN KULLANILAN kolonlardır
+  # (sorgular/pdks/*.sql + scripts + dashboard tarandı); tam liste gerekirse yeniden ölçülür.
+  PDKS.dbo.TTagZei:
+    type: openquery
+    pk: IdNr
+    key: [TZe_PersNr, TZe_Datum, TZe_VonZeit, TZe_BisZeit, TZe_IstZeit, TZe_ZeitArt, TZe_AbwArt, TZe_TagSollzeit, TZe_TagMod, TZe_InfKz]
+    grain: "kişi × gün × zaman SEGMENTİ — bir günde birden çok satır olur (öğle molası satırı kırar)"
+    note: "Günlük çalışma kaydı (46 kolon, ölçüldü). ⚠ GRAIN TUZAĞI: segment-bazlı saymak mola saatinde SAHTE DÜŞÜŞ üretir — kişi-gün aralığı MIN(TZe_VonZeit)→MAX(dolu saat) olarak alınır (bkz. entities:pdks_saatlik_personel). `TZe_Datum` datetime, `TZe_VonZeit`/`TZe_BisZeit` de datetime (saat taşır). `TZe_IstZeit`/`TZe_TagSollzeit` decimal (saat ondalık)."
+    confidence: 1.0
+    evidence: "2026-09-11 — OPENQUERY([PDKS]) INFORMATION_SCHEMA.COLUMNS; 46 kolon sayıldı. Kullanılan kolonlar kod taramasıyla belirlendi (TZe_Datum 80 geçiş, TZe_PersNr 63, TZe_BisZeit 56, TZe_VonZeit 49)."
+    last_verified: "2026-09-11"
+  PDKS.dbo.TTagLes:
+    type: openquery
+    key: [TLe_PersNr, TLe_Datum, TLe_VonZeit, TLe_BisZeit, TLe_IstZeit, TLe_AbwArt, TLe_BeginnKz]
+    grain: "kişi × gün × ham okuma (kart basma) satırı"
+    note: "Ham kart okuma kaydı (29 kolon, ölçüldü). `TLe_BeginnKz` giriş/çıkış yön işareti. TTagZei İŞLENMİŞ günlük özet, TTagLes HAM okuma — ikisini karıştırma."
+    confidence: 1.0
+    evidence: "2026-09-11 — OPENQUERY([PDKS]) INFORMATION_SCHEMA.COLUMNS, 29 kolon."
+    last_verified: "2026-09-11"
+  PDKS.dbo.TPerTab:
+    type: openquery
+    pk: Per_PersNr
+    key: [Per_PersNr, Per_Name, Per_Vorname, Per_Grp0, Per_Grp1, Per_Grp2, Per_Grp3, Per_Grp4, Per_Grp5, Per_ZeitAktiv, Per_TagMod]
+    grain: "personel kartı (kişi başına tek satır)"
+    note: "Personel master, **219 kolon** (ölçüldü) — tam liste sema'ya yazılmaz. Kapsam ayracı `Per_Grp1='MAĞAZALAR'`, mağaza eşleşmesi `Per_Grp2` = mağaza adı. `Per_ZeitAktiv` aktiflik bayrağı."
+    confidence: 1.0
+    evidence: "2026-09-11 — OPENQUERY([PDKS]) INFORMATION_SCHEMA.COLUMNS, 219 kolon."
+    last_verified: "2026-09-11"
+  PDKS.dbo.TAbwArt: {type: openquery, key: [AbwArt], grain: "devamsızlık/izin tipi lookup", note: "89 kolon (ölçüldü). İzin/devamsızlık kodlarının sözlüğü; TZe_AbwArt / TLe_AbwArt buraya bakar. Kod kümesi HENÜZ ÇIKARILMADI — gerektiğinde `sqlcli lookup` ile ölçülür.", confidence: 0.8, evidence: "2026-09-11 — kolon sayımı ölçüldü, kod kümesi ölçülmedi.", last_verified: "2026-09-11"}
+  PDKS.dbo.TPerInd: {type: openquery, grain: "personel ek/endeks kaydı", note: "93 kolon (ölçüldü). Bu depodaki sorgularda KULLANILMIYOR — varlığı kayıtlı, anlamı ölçülmedi.", confidence: 0.5, evidence_status: pending, last_verified: "2026-09-11"}
+  PDKS.bkm.SubeListe:
+    type: openquery
+    key: [SubeNo, SubeAd, Per_Grp0, Per_Grp1, Per_Grp2]
+    grain: "şube"
+    note: "⚠⚠ AD ÇAKIŞMASI — `BKM.vrd.SubeListe` ile AYNI ADI TAŞIR ama BAŞKA TABLODUR. Bu kayıt PDKS tarafındadır ve PDKS grup alanlarını (`Per_Grp0..2`) şube no/ada bağlar; `BKM.vrd.SubeListe` ise vardiya planındaki şube listesidir (SubeNo, SubeAd, GrupNo, EkBilgi1/2). İkisini aynı sanıp join etmek sessizce yanlış şube eşler."
+    confidence: 1.0
+    evidence: "2026-09-11 — iki tarafın kolonları AYRI AYRI ölçülüp karşılaştırıldı: PDKS bkm.SubeListe = [SubeNo, SubeAd, Per_Grp0, Per_Grp1, Per_Grp2]; BKM.vrd.SubeListe = [SubeNo, SubeAd, GrupNo, EkBilgi1, EkBilgi2]."
+    last_verified: "2026-09-11"
+
+  # ── VARDİYA PLANI — `BKM` veritabanı, `vrd` şeması (PDKS'te DEĞİL, 2026-09-11 ölçüldü) ──
+  BKM.vrd.Vardiya:
+    type: table
+    pk: VardiyaNo
+    key: [VardiyaNo, SubeNo, Tarih, BitisTarih, Kesin]
+    grain: "şube × hafta (vardiya planı başlığı; Tarih→BitisTarih aralığı)"
+    note: "Haftalık vardiya planı başlığı. `Kesin` int — planın kesinleşme durumu (kod kümesi ÖLÇÜLMEDİ). Şube `SubeNo` → BKM.vrd.SubeListe."
+    confidence: 1.0
+    evidence: "2026-09-11 — BKM.sys.columns + sys.indexes (PK_Vardiya = VardiyaNo)."
+    last_verified: "2026-09-11"
+  BKM.vrd.VardiyaDetay:
+    type: table
+    pk: Id
+    key: [VardiyaNo, SicilNo, Bolum, Gorev, Personel, PartTime, ToplamCalismaDk, Pazartesi, Sali, Carsamba, Persembe, Cuma, Cumartesi, Pazar]
+    grain: "kişi × hafta — GENİŞ (wide) biçim: 7 gün AYRI KOLON"
+    note: "⚠ GENİŞ BİÇİM: Pazartesi..Pazar her biri ayrı `int` kolondur (vardiya kodu → BKM.vrd.VardiyaZaman.VardiyaId). Gün bazlı analiz için UNPIVOT gerekir; satır sayısı kişi-gün DEĞİL kişi-haftadır. `SicilNo` varchar — PDKS `Per_PersNr` int ile join edilecekse tip dönüşümü ve eşleşme oranı ÖLÇÜLMELİ (henüz ölçülmedi)."
+    confidence: 1.0
+    evidence: "2026-09-11 — BKM.sys.columns + PK (Id)."
+    last_verified: "2026-09-11"
+  BKM.vrd.VardiyaZaman:
+    type: table
+    pk: VardiyaId
+    key: [VardiyaId, Aciklama, GrupNo, Aktif, Baslama, Bitis, MolaSureDk, ToplamCalismaDk, Izin]
+    grain: "vardiya kodu (saat aralığı tanımı)"
+    note: "Vardiya kodu → saat aralığı + mola. `Baslama`/`Bitis` datetime. Mola alanları ayrı: MolaSureDk + Dinlenme1/2 + Yemek başlangıç/bitiş. `Izin` bit = izin vardiyası."
+    confidence: 1.0
+    evidence: "2026-09-11 — BKM.sys.columns + PK (VardiyaId)."
+    last_verified: "2026-09-11"
+  BKM.vrd.SubeListe: {type: table, key: [SubeNo, SubeAd, GrupNo], grain: "şube", note: "Vardiya planı şube listesi. ⚠ PDKS.bkm.SubeListe ile AYNI ADLI FARKLI TABLO — orada Per_Grp0..2 vardır, burada GrupNo. Karıştırılırsa yanlış şube eşleşir.", confidence: 1.0, evidence: "2026-09-11 — BKM.sys.columns.", last_verified: "2026-09-11"}
+
+  pdks: {type: openquery, uses: [entities:PDKS.dbo.TTagZei, entities:PDKS.dbo.TPerTab], key: [Per_Grp1, Per_Grp2], filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
   # PDKS saatlik çalışan headcount — KABUL EDİLEN MANTIK (2026-06-30, TrafikQueries.GetPdksPersonelAsync)
   pdks_saatlik_personel:
     source: "OPENQUERY([PDKS]) TTagZei z JOIN TPerTab p ON p.Per_PersNr=z.TZe_PersNr; filter Per_Grp1='MAĞAZALAR' AND Per_Grp2='FSM' AND TZe_VonZeit/BisZeit NOT NULL"
