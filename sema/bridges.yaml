@@ -54,9 +54,9 @@ bridges:
     evidence: "2026-08-06 — canlı posMagaza JOIN frm (3 mağaza 1:1 temiz) + ERP kontrol view'leri."
     last_verified: "2026-08-06"
   - id: irshrk-mekan
-    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 265 / 59.150.337 satır (%0,0004). Hepsi tek değer: ehMekan=14. `dbo.mekan_vw` 11 satır döndürüyor ve 14 İÇİNDE YOK (12=Merkez Depo var, 13/14/15 yok). Yıl dağılımı: 2026→248 · 2024→1 · 2022→3 · 2021→13 — yani TARİHSEL ARTIK DEĞİL, 2026'da aktif kullanılıyor."
-    orphans_expected: "AÇIK SORU — beklenen değil, açıklanamadı. mekanID 14 canlıda kullanılıyor ama kanonik `mekan_vw` onu tanımıyor. Bu köprüyle INNER JOIN yapan her sorgu o 265 satırı SESSİZCE düşürür. Ne olduğu ölçülmeli (view'ın filtresi mi, tanımsız mekan mı); ölçülene kadar bu alan 'beklenen' anlamına GELMEZ, açık soruyu görünür tutar."
-    evidence_status: pending
+    evidence: "2026-09-11 — sema kopru canli olcumu: 265 oksuz / 59.150.348; oksuzlerin tamami ehMekan=14 ve o yer posMagaza'da TANIMLI (Merkez Ofis, mekanTip=2). Kod kumesi: codes:posMagaza.mekanTip."
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 265 / 59.150.348 (%0,0004) — hepsi ehMekan=14. Canlıda kullanılan 10 mekanID'nin 9'u mekan_vw'de VAR, yalnız 14 YOK. view kullanılmayan yerleri de listeliyor (4479 Eticaret, 55375 sorunlu iade irsHrk'da hiç geçmiyor) → view bir 'kullanımda olanlar' süzgeci DEĞİL. ÇIKARIM (ölçüm değil): view muhtemelen `mekanTip IN (0,1)` süzüyor; `mekan_vw` tanımı OKUNAMIYOR (sys.sql_modules.definition NULL — şifreli ya da VIEW DEFINITION izni yok), o yüzden süzgecin kendisi DOĞRULANMADI, yalnız SONUCU ölçüldü."
+    orphans_expected: "EVET, TEK DEĞER: `ehMekan = 14` = **Merkez Ofis** (ÖLÇÜLDÜ 2026-09-11: `dbo.posMagaza` mekanID 14 · mekanAd 'Merkez Ofis' · mekanKod 'OFİS' · mekanTip **2** · açılış 2009-09-01). Yani hayalet değil, TANIMLI bir yer — ama `mekan_vw` onu göstermiyor. AYRIM ÖLÇÜLDÜ: posMagaza 12 satır, mekan_vw 11; tek fark mekanTip=2 olan bu satır. `mekanDurum` ayraç DEĞİL (view hem 0 hem 1 durumlu yerleri taşıyor). ⚠ SONUÇ: `mekan_vw` ile INNER JOIN yapan her sorgu Merkez Ofis hareketlerini SESSİZCE düşürür — irsHrk'da 265 satır (yalnız transfer: ehTip 13 Depo→Mağaza 200 satır, ehTip 9 Mağaza→Depo 65 satır; satış/alış YOK) ve `stokSonAltDepo_vw`'de 265 satır CANLI STOK. Yer listesi gerekiyorsa kaynak `posMagaza`, `mekan_vw` değil."
     from: dbo.irsHrk.ehMekan
     to: dbo.mekan_vw.mekanID
     scope: derinsis
@@ -99,8 +99,9 @@ bridges:
     note: "Fatura → tedarikçi/cari firma adı (frm.frmAd). Alış faturasında (eTip=0) eFirma=tedarikçi. irs-firma ile aynı desen (evrak→frm). Satınalma ürün-detay drill (dashboard SatinalmaQueries.UrunDetay) bunu kullanır. Belge no = fat.eNo."
     last_verified: "2026-08-13"
   - id: tsoft-urun-resim
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 438.999 — öksüz YOK. ⚠ Bu köprü 2026-08-13'ten beri kayıtlıydı ama HİÇ ÖLÇÜLEMİYORDU: `to` alanı `urn.stkID` diye 2 parçalı yazılmıştı, motorun en az `<şema>.<tablo>.<kolon>` istediği yerde. Eksik nitelik `dbo.` eklenerek düzeltildi — anlam değişmedi, kayıt makine-sınanabilir hâle geldi."
     from: ent.tsoft_urun.stkid
-    to: urn.stkID
+    to: "dbo.urn.stkID"
     scope: derinsis
     confidence: 1.0
     note: "E-ticaret (T-Soft) ürün görseli: ent.tsoft_urun.stkid=urn.stkID; ImageUrl=dosya adı → tam URL 'https://cdn.bkmkitap.com/'+ImageUrl (250px K variant; büyük=-B.jpg). CDN HOTLINK korumalı → <img referrerpolicy=no-referrer> gerekli (referer'lı istek placeholder döner). Satınalma ürün-detay görseli bunu kullanır. ent.tsoft_urun_vw de aynı ImageUrl."
@@ -323,13 +324,14 @@ bridges:
     scope: joker
     confidence: 1.0
   - id: orders-delivery
+    evidence: "2026-09-11 — sema kopru canli olcumu (ODAKJOKER linked server, OPENQUERY): 0 oksuz / 4.704.484."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
-    uses: [bridges:bekleyen-siparis-il]
+    uses: [entities:bekleyen_siparis_il_proxy]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.DELIVERYREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS.LOGICALREF
     scope: joker
     confidence: 1.0
-    note: "DCITY (il), DTOWN (ilçe). ORDERCODE join Odak-bekleyen siparişlerde BOŞ → bekleyen sipariş ili için CCITY proxy (bekleyen-siparis-il)."
+    note: "DCITY (il), DTOWN (ilçe). ORDERCODE join Odak-bekleyen siparişlerde BOŞ → bekleyen sipariş ili için CCITY vekili kullanılır; kural entities:bekleyen_siparis_il_proxy."
   - id: orders-client
     evidence: "2026-09-11 — `sema kopru` canlı ölçümü: 0 öksüz / 4.704.484 (ODAKJOKER linked server üstünden OPENQUERY)."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
@@ -391,8 +393,9 @@ bridges:
     confidence: 1.0
     note: "Palet ürün → DerinSIS ürün. pUBarkod da var (ürünün palet barkodu)."
   - id: stoksonaltdepo-stk
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 1.572.495 — öksüz YOK. Aynı yazım kusuru: `from` alanı `stokSonAltDepo_vw.ehstkID` diye 2 parçalıydı, `dbo.` eklendi. ⚠ Bu ölçüm view'in ÜRÜNE bağlandığını doğrular; merkez depo BAKİYESİNİN doğruluğunu DOĞRULAMAZ (kayıttaki UYARI hâlâ geçerli: ehMekan=12 için WMS kullan)."
     uses: [bridges:wms-depo-stok]
-    from: stokSonAltDepo_vw.ehstkID
+    from: "dbo.stokSonAltDepo_vw.ehstkID"
     to: dbo.urn.stkID
     scope: derinsis
     confidence: 1.0
@@ -437,7 +440,10 @@ bridges:
 
   # ── BKMMaliyet ↔ DerinSIS köprüleri (FIFO maliyet, 2026-06-19) ──
   - id: maliyet-stkid-urn
-    from: BKMMaliyet.dbo.FifoKatman.StkId  (FifoCikisDetay/AcilisEnvanter/Sorunlu de aynı)
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 65 / 550.387 katman (%0,012) — 45 ürün. Ağırlık küçük değil: kalan 10.209 adet ve kalan maliyet değeri **2.786.815 ₺** (havuzun tamamı 749.295.869 ₺ → %0,37). Giriş tarihleri 2021-05-31 ile 2026-01-23 arasına yayılmış; en büyük 6 kalem (toplam ~2,7M ₺, stkID 1673447-1673526 bloğu) 2025-12-31 AÇILIŞ snapshot'ından. Kayıt `from` alanındaki parantezli açıklama yüzünden bugüne kadar hiç ölçülememişti."
+    orphans_expected: "AÇIK SORU — beklenen değil. 45 ürünün DerinSISBkm.dbo.urn'de karşılığı yok; maliyet havuzunda 2,79M ₺ değer taşıyorlar ve ürün kartı olmadan kategori/marj raporuna BAĞLANAMAZLAR. ⚠ ELENEMEYEN ALTERNATİF: FIFO çalışması yerel kopya `DerinSIS_Local` üzerinde yapılmıştı (bkz. entities.yaml BKMMaliyet bloğu); bu stkID'ler ORADA var olup buraya taşınmamış olabilir — o sunucu `.env`'de olmadığı için sınanamadı. İkinci alternatif: ürün birleştirme sonrası stkID değişmiş olabilir. Hangisi olduğu ölçülmeden 'silinmiş ürün' DENMEZ. Asıl proje D:\\Dev\\fifo — bulgu oraya da taşınmalı."
+    evidence_status: pending
+    from: "BKMMaliyet.dbo.FifoKatman.StkId"
     to: DerinSISBkm.dbo.urn.stkID
     scope: maliyet
     confidence: 1.0
@@ -495,11 +501,13 @@ bridges:
     evidence: "2026-06-22 sys.foreign_keys: fat/car/posHedef.gKisi → drn1.insID. 2026-06-25 canlı: mhsFisBaslik+fat audit dashboard'da gösterildi (yevmiye/fatura sayfası)."
     last_verified: 2026-06-25
   - id: car-frm
-    from: "dbo.car.cKod / cKodKarsi"
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 23.716.920 — öksüz YOK (yalnız `cKod` ucu; `cKodKarsi` ayrı kayıtta ve o da 0 öksüz ölçüldü). Kayıt 2026-06-22'den beri duruyordu ama `from` alanında iki kolon slash ile yazıldığı için hiç ölçülememişti."
+    uses: [bridges:car-karsi-frm]
+    from: "dbo.car.cKod"
     to: dbo.frm.frmID
     scope: derinsis
     confidence: 1.0
-    note: "Cari hareket → firma/cari master. Gider carisi frm.frmKod LIKE 'G-%'."
+    note: "Cari hareket → firma/cari master. Gider carisi frm.frmKod LIKE 'G-%'. ⚠ `cKodKarsi` (karşı cari) AYRI bir köprüdür: bridges:car-karsi-frm — bu kayıt YALNIZ cKod'u anlatır. İkisi tek `from` alanında slash ile yazılıydı; o yazım makine-sınanabilir değildi, köprü hiç ölçülemiyordu (2026-09-11)."
     last_verified: 2026-06-22
   - id: fat-mhsfis
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 13.551 / 7.050.661 (%0,19). Ayrıştırıldı: 11.965'i `eMhsFisID = 0` (henüz muhasebeleşmemiş fatura) · kalan 1.586 GERÇEK öksüz — sıfırdan farklı bir fisbID'ye işaret ediyor ama mhs.mhsFisBaslik'te karşılığı yok (silinmiş yevmiye fişi)."

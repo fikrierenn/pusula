@@ -158,9 +158,11 @@ metrics:
     note: "ehTutarN KDV hariç, = ehTutar-ehIndirim. Tüm tutarlar KDV hariç."
 
   encore_ciro:
+    evidence: "2026-09-11 — Sales fisi 1333910/1333912 uzerinde KDV kimligi dogrulandi (GrossTotal / 1,20 = VatTotal farki, birebir). Taban: vat_incl."
+    measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `Sales.GrossTotal` KDV DAHİLDİR. Kanıt — fiş 1333910: GrossTotal 2.789,00 · DiscountTotal 0 · VatTotal 464,83; 2.789 ÷ 1,20 = 2.324,17 ve 2.789 − 2.324,17 = 464,83 (birebir). Fiş 1333912: 187,00 − 13,80 = 173,20 = kalem toplamı; 173,20 ÷ 1,20 = 144,33, KDV 28,87 ✓. `SalesProducts.TotalPrice` de KDV dahil (kalem toplamı = GrossTotal − DiscountTotal). ⚠ BU METRİK KDV DAHİL ÖLÇER — KDV-hariç net ciro isteniyorsa `GrossTotal − DiscountTotal − VatTotal`. `birim_maliyet`/`fifo_birim_maliyet` KDV HARİÇ olduğu için bu metrikle doğrudan marj hesaplanamaz (bkz. metrics:marj_kdv_tabani)."
     type: simple
     unit: TL
-    basis: unknown
+    basis: vat_incl
     additivity: full
     source: EncoreMerkez.dbo.Sales
     filters: ["SalesProducts WHERE IsValid=1", "DocumentsTypeId IN (1,2,3,6,7,8)"]
@@ -200,9 +202,12 @@ metrics:
     applied_in: scripts/depo_isgucu_raporu.py
 
   birim_maliyet:            # 15.06 — KANONİK maliyet sistemi (TEK KAYNAK, her yerde bu)
+    measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı, YALNIZ ana yol): MLYT = `SUM(fatAyr.ehTutarN)/SUM(ehAdetN)` ve `ehTutarN` KDV HARİÇtir (codes:irsHrk.ehTip, işlem-seviye kanıt). Fallback yollarının tabanı ölçülemedi — ORT_ALIS'ta bayatlık sinyali KDV sinyalini bastırıyor (aşağıya bak). `basis: vat_excl` ANA YOL için geçerlidir."
+    ORT_ALIS_CURUDU: "2026-09-11 — kayıttaki `DIKKAT` alanı 'stok kolonları BAYAT ama ORT_ALIS maliyet OK' diyordu; ÖLÇÜM BUNU ÇÜRÜTTÜ. (1) Kapsam: `Aktarim.dbo.BKM_STOKLAR_MALIYETLI` 359.161 satır / 321.283 ürün ve **MAX(STKID) = 485.140**, oysa `urn` 1.740.224'e kadar gidiyor → tabloda yeni ürün YOK. (2) Seviye: 12 üründe ORT_ALIS / (son 90 günün KDV-hariç fatura birimi) oranı **0,07-0,27** çıktı (ör. stkID 195: 19,20 ₺ vs 279,00 ₺). (3) Join doğrulandı — `m.STKID = urn.stkID` ürün adları BİREBİR eşleşiyor, yanlış köprü değil. ÇIKARIM (ölçüm değil): oran KDV ilişkisi (1,00 ya da 0,833) DEĞİL, eski fiyat seviyesi; snapshot yıllar öncesinden. ⚠ SONUÇ: MLYT bulunamayıp ORT_ALIS'a düşen ürünlerde maliyet MERTEBE OLARAK düşük çıkar → ölü stok değeri ve marj yanlış. AÇIK: kaç üründe fiilen bu fallback'e düşülüyor ÖLÇÜLMEDİ; etkinin büyüklüğü bilinmiyor."
+    evidence_status: pending
     type: derived
     unit: TL
-    basis: unknown
+    basis: vat_excl
     additivity: none
     kaynak_job: "SQL Agent job 'MaliyetRaporu-Ceren' → step 'Maliyet_Rapor' (DerinSISBkm, gece otomatik → bkm.ENVANTER_RAPORU)"
     formula: "COALESCE(MLYT, ORT_ALIS, SONRAKI, 0)"
@@ -429,9 +434,11 @@ metrics:
     ocak_2026: "Gelir 72.35M · SMM 46.71M · Brüt 25.64M · Marj %35.4 (yeni master, rev2 ile birebir). Top: Kırtasiye %43, Oyuncak %38, Akademi %38, Kitap %33, Çocuk %32, Hazırlık %29."
     last_verified: 2026-06-19
   fifo_birim_maliyet:
+    evidence: "2026-09-11 — FifoKatman ALIS katmani ile 30 gun icindeki alis faturasi birimi (fatAyr ehTutarN/ehAdetN, KDV haric) 8 uruncte oran 1,0000. Taban: vat_excl."
+    measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `FifoKatman.BirimMaliyet` (KaynakTip='ALIS') ile aynı ürünün 30 gün içindeki alış faturası birimi (`SUM(fatAyr.ehTutarN)/SUM(ehAdetN)`, KDV HARİÇ olduğu codes:irsHrk.ehTip'te kanıtlı) karşılaştırıldı: 8 üründe oran **tam 1,0000**. Yani FIFO katman maliyeti KDV HARİÇtir, KDV eklenmemiş."
     type: ratio
     unit: TL
-    basis: unknown
+    basis: vat_excl
     additivity: none
     rule: >-
       eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND

@@ -293,6 +293,15 @@ codes:
     depo_grubu: [12, 4480, 4835]    # cari/envanter sorgularında "Depo"
     magaza_grubu: [1, 4477, 4478]   # "Mağaza"
     transit_haric: [26142, 4480, 4835]   # stokSonAltDepo_vw'da transit/sanal — anlık stok toplamında HARİÇ (26142=129K Hazırlık sahte over-count tuzağı, 24.06)
+  posMagaza.mekanTip:
+    confidence: 0.9
+    uses: [bridges:irshrk-mekan, entities:dbo.mekan_vw]
+    lookup: dbo.posMagaza
+    values: {0: Mağaza, 1: Depo, 2: Ofis}
+    closed_set: true
+    note: "⚠ `dbo.mekan_vw` yer listesinin TAMAMI DEĞİLDİR: `posMagaza` 12 satır, view 11 döner ve eksik olan tek satır `mekanTip = 2` olandır (mekanID 14 'Merkez Ofis', kod OFİS). `mekanDurum` ayraç değil — view hem 0 hem 1 durumlu yerleri taşır. Yer listesi gerektiğinde kaynak `posMagaza`; `mekan_vw` ile INNER JOIN Merkez Ofis hareketlerini SESSİZCE düşürür (irsHrk'da 265 satır + stokSonAltDepo_vw'de 265 satır canlı stok)."
+    evidence: "2026-09-11 — posMagaza × mekan_vw karşılaştırması (12 vs 11 satır) + irsHrk'da kullanılan 10 mekanID'nin view'de olup olmadığı ölçüldü. ⚠ view TANIMI okunamadı (sys.sql_modules.definition NULL) → süzgecin `mekanTip IN (0,1)` olduğu ÇIKARIMdır, ölçüm değil; ölçülen şey SONUÇtur."
+    last_verified: "2026-09-11"
   frmID_onemli:
     values:
       0: GENEL
