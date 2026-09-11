@@ -809,7 +809,7 @@ entities:
     grain: "müşteri (bireysel + kurumsal)"
     note: "`Id` = `EncoreMerkez.dbo.Sales.CustomersId` (bilinen köprü). **YENİ (2026-08-27): kurumsal müşteri ayracı = `Code` alanı.** Bireysel müşteride `Code` = `Id` (sıralı numara) ve `CardNumber` = '2025…' sadakat kartı; KURUMSAL müşteride `Code` = **VERGİ NUMARASI** ve `CardNumber` de aynı vergi numarası. Örnek: Id 9316 'İNALLAR OTOMOTİV…' → Code = CardNumber = '4750606249'. Aynı desen diğer kurumsallarda da (ÖZENİR/EN HAYAT/AKAN 16 sigorta vb.). ⚠ `TaxNumber` kolonu VAR ama pratikte BOŞ — vergi numarası `Code`'a yazılıyor. **DerinSIS ↔ DerinCrm köprüsü:** `frm.VN` (veya kurumsal kayıtta `frm.frmKod`) = `Customer.Code`; doğrudan ID eşleşmesi YOK (frmID 24922 ≠ CustomerId 9316).
 
-⚠ İsimle arama YANILTIR: `Code`/`Id` sıralı olduğu için '24922' gibi bir frmID araması alakasız bireysel müşteri döndürür (Id 24922 = 'İBRAHİM'). Kurumsal arama VERGİ NUMARASI ile yapılır."
+      ⚠ İsimle arama YANILTIR: `Code`/`Id` sıralı olduğu için '24922' gibi bir frmID araması alakasız bireysel müşteri döndürür (Id 24922 = 'İBRAHİM'). Kurumsal arama VERGİ NUMARASI ile yapılır."
     confidence: 0.9
     last_verified: "2026-08-27"
     evidence: "2026-08-27 canlı — İNALLAR OTOMOTİV Customer kaydı (Id 9316) + kurumsal/bireysel Code deseni + frmID araması gürültü testi."
@@ -849,14 +849,14 @@ entities:
   INTER_BOS:
     rol: "**Eski kasa (POS) sistemi** — 11.07.2025'teki kasa degisiminden onceki tum satis verisi burada. 83 GB, ayni sunucu (192.168.40.201). MCP allowlist'te DEGIL; `database=master` + 3-parcali isimle erisilir (`INTER_BOS.dbo.BELGE`)."
     note: "**Tarih araligi 01.09.2014 – 31.05.2025.** Ana tablolar: `BELGE` 6.404.267 fis basligi (Belge_ID PK-benzeri nvarchar, Tarih, Belge_Tipi, Matrah/Kdv/Toplam, Musteri_Kart_No) · `HAREKET` 39.084.989 satir kalemi (Belge_ID, Barkod, Stok_Kodu, Adet, Fiyat, Tutar, Tip: SAT/IND/IPT/PRI/GAL/ART) · `ODEME` 6.341.393 (Belge_ID, Tus_No, Tutar) · `ISKONTO` 476.078.
-Belge_Tipi: FIS 6,0M · GPS 181K · EAR 88K · HDY 53.798 (kasadan basilan hediye cegi, 2017+) · ZRP 45.728 · FAT 15K · EFA 9.551.
+      Belge_Tipi: FIS 6,0M · GPS 181K · EAR 88K · HDY 53.798 (kasadan basilan hediye cegi, 2017+) · ZRP 45.728 · FAT 15K · EFA 9.551.
 
-⚠⚠ **~40 GUNLUK VERI BOSLUGU:** eski sistem 31.05.2025'te bitiyor, EncoreMerkez 11.07.2025'te basliyor. 01.06–10.07.2025 arasi fisler HICBIR sistemde yok.
+      ⚠⚠ **~40 GUNLUK VERI BOSLUGU:** eski sistem 31.05.2025'te bitiyor, EncoreMerkez 11.07.2025'te basliyor. 01.06–10.07.2025 arasi fisler HICBIR sistemde yok.
 
-⚠ **Kurumsal hediye cegi (PUAN barkodu 2141…) izi YOK.** Arandi ve bulunamadi: ODEME.Cek_Kodu (0 dolu), ISKONTO.Cek_Kodu (476K'da 2 dolu), HAREKET.Barkod '2141%' (3.038 satir ama bunlar 24,90 TL'lik GERCEK BIR URUN, cek degil), ODEME.Ref_No '2141%' (40 satir gurultu). Eski kasada kurumsal cek barkod okutulmadan elle indirim/odeme giriliyordu -> hangi cegin ne zaman harcandigi GERI GETIRILEMEZ.
-`HEDIYEDEGISIM` (17.897, 2016+) HDY_Belge_ID -> BELGE_Belge_ID eslesmesi tutar; ama HDY kasa-GUID bazli kampanya/iade cegi, PUAN matbaa cegi DEGIL.
+      ⚠ **Kurumsal hediye cegi (PUAN barkodu 2141…) izi YOK.** Arandi ve bulunamadi: ODEME.Cek_Kodu (0 dolu), ISKONTO.Cek_Kodu (476K'da 2 dolu), HAREKET.Barkod '2141%' (3.038 satir ama bunlar 24,90 TL'lik GERCEK BIR URUN, cek degil), ODEME.Ref_No '2141%' (40 satir gurultu). Eski kasada kurumsal cek barkod okutulmadan elle indirim/odeme giriliyordu -> hangi cegin ne zaman harcandigi GERI GETIRILEMEZ.
+      `HEDIYEDEGISIM` (17.897, 2016+) HDY_Belge_ID -> BELGE_Belge_ID eslesmesi tutar; ama HDY kasa-GUID bazli kampanya/iade cegi, PUAN matbaa cegi DEGIL.
 
-✅ **Yan deger:** 2014'e uzanan magaza/kategori/musteri satis gecmisi. Dashboard'daki tum tarihsel karsilastirmalar bugun 11.07.2025'te basliyor; bu kaynakla 11 yil geriye gidilebilir (ayri is)."
+      ✅ **Yan deger:** 2014'e uzanan magaza/kategori/musteri satis gecmisi. Dashboard'daki tum tarihsel karsilastirmalar bugun 11.07.2025'te basliyor; bu kaynakla 11 yil geriye gidilebilir (ayri is)."
     confidence: 0.9
     last_verified: "2026-08-28"
     evidence: "2026-08-28 canli — BELGE yil bazli sayim (2014-2025), tablo satir sayilari sys.partitions, Belge_Tipi dagilimi, Cek_Kodu/Ref_No/Barkod '2141%' negatif aramalari, POS_CEK_TIP + HEDIYEDEGISIM ornekleri."
@@ -866,8 +866,8 @@ Belge_Tipi: FIS 6,0M · GPS 181K · EAR 88K · HDY 53.798 (kasadan basilan hediy
     tip: view
     key: [StkID, MerkezDepoStok, FSMStok, OZLStok, OdakStok]
     note: "urn bazlı depo özeti; satır yalnız bir stok sıfır-dışıysa gelir. **Merkez** = `depo.paletUrnTnm + paletTnm + adres` (pUAdetN>0, `adrsAd NOT IN ('CK01','iADE')`, `pUID<>42560`) — yani palet düzeyi, `depo.stok_adres_palet_vw` adres-alan-tipi kırılımıyla AYNI DEĞİL (`adrsAlanTipID` süzgeci yok). **OdakStok** = `ent.odak_depo_Stok.StokMiktar`.
-⚠ **Bu view FSM/ÖZL için `ehMekan` 4480 ve 4835 kullanıyor — mağaza mekanID 1/4477/4478 DEĞİL.** 4480/4835 depo-tarafı mağaza alt-mekanları; mağaza raf stoğu sanıp mağaza satışıyla oranlarsan yanlış devir üretir. Mağaza stoğu için `stokSonAltDepo_vw` mekan 1/4477/4478 kullan.
-⚠ `ent.odak_depo_Stok`ta **tarih/damga kolonu YOK** (PK sadece stkID) → tazeliği ölçülemez; 08.09.2026 ölçümü 496.708 satır / 7.294.239 adet. 'ODAK stoğu var' demek 'bugün var' demek değildir."
+      ⚠ **Bu view FSM/ÖZL için `ehMekan` 4480 ve 4835 kullanıyor — mağaza mekanID 1/4477/4478 DEĞİL.** 4480/4835 depo-tarafı mağaza alt-mekanları; mağaza raf stoğu sanıp mağaza satışıyla oranlarsan yanlış devir üretir. Mağaza stoğu için `stokSonAltDepo_vw` mekan 1/4477/4478 kullan.
+      ⚠ `ent.odak_depo_Stok`ta **tarih/damga kolonu YOK** (PK sadece stkID) → tazeliği ölçülemez; 08.09.2026 ölçümü 496.708 satır / 7.294.239 adet. 'ODAK stoğu var' demek 'bugün var' demek değildir."
     confidence: 0.95
     last_verified: "2026-09-08"
     evidence: "2026-09-08 canlı — OBJECT_DEFINITION okundu (sys.sql_modules), ent.odak_depo_Stok COUNT/SUM ölçüldü. 'Satış Analizi 07.09.2026.xlsx' denetimi sırasında; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql"
@@ -875,13 +875,13 @@ Belge_Tipi: FIS 6,0M · GPS 181K · EAR 88K · HDY 53.798 (kasadan basilan hediy
   # ── Merkez depo ÇIKIŞI ayrı bir satış kanalıdır (2026-09-08) ──
   irsHrk.MERKEZ_DEPO_CIKISI:
     note: "**`ehMekan=12` + `ehTip=1` = merkez depo çıkışı** — mağazaya sevk DEĞİL (o `ehTip=13` Depo-Mağaza, aynı pencerede 3.762.140 adet). Ölçüm 08.09.2026, 365 gün (08.09.2025–07.09.2026): **1.903.462 adet / 31.511 satır / 31.511**, iade netlenince 1.883.926 adet / 17.810 çeşit. Aynı pencerede 3 mağaza POS (ehTip 100+4) 6.084.450 adet.
-**Karşı taraf (`irs.eFirma` → `dbo.frm.frmAd`):** frmID **56 BURSA KÜLTÜR MERKEZİ KİTAP KIRTASİYE GIDA %72** (1.375.700 adet / 34,55M ₺ / 443 belge, yıl boyu düzenli — grup-içi/toptan, birim ~25 ₺) · **9525 ODAK KİTAP-POİNT %16** (302.908 adet / 33,43M ₺, birim ~110 ₺) · **120 SINAV BASIN YAYIN** (110.100 adet, tek belge 04.06.2026). Yani merkez depo aynı zamanda **toptan/grup-içi dağıtım deposu**.
-**frmID 56 = AYRI TÜZEL KİŞİ, grup şirketi (muhasebeden teyit 08.09.2026):** *Bursa Kültür Merkezi Kitap Kırtasiye Gıda San. Tic. Ltd. Şti.*, VN **1910376739**, VD Setbaşı/Bursa. Defterin sahibi AYRI: `mhs.mhsSirket` → **'BKM Kitap Kırtasiye'** (`sirketID` = mali yıl; 6=2026, 5=2025…). Muhasebe konumu: **`320.10.B010` YURT İÇİ SATICILAR** (`frmKod` zaten bu hesap kodu) + **`159.10.B003` Verilen Sipariş Avansları**; **alıcı (120) kartı YOK** — ona yapılan satış `600.10.009 Yurtiçi Satışlar %20`'ye yazılıyor (2026: 13,73M ₺ / 250 satır).
-Mal akışı **iki yönlü** (fat+fatAyr, 365g): alış 1.008 fatura / +1.447.008 adet / 52,01M ₺ · satış 498 fatura / −1.384.130 adet / 35,82M ₺ → net **+62.878 adet bize giriş**. 11.093 çeşidin yalnız **1.368'i iki yönlü** (satışın %29'u) → saf al-geri ver döngüsü DEĞİL, %71 tek yönlü çıkış.
-Finansal hacim yanıltıcı: 320.10.B010 2026/8ay borç 773,53M / alacak 799,01M ₺ (net borç 25,48M) ama toplam hareketin **%48,7'si (765,2M ₺) yalnız 19 satır '320/159 HESAP VİRMAN'** — ticari değil, hesap yer değiştirmesi. `159.10.B003` net **288,78M ₺ verilen sipariş avansı**. Yani ilişki = grup-içi ticaret **+ finansman**.
-⚠ Sezon/alım analizinde firma 56 çıkışı **tüketici talebi sayılmaz** — ayrı gösterilir. Grup-dışı merkez çıkışı ≈ ODAK 302.908 + SINAV 110.100 + diğer ≈ **528K adet** (toplam 1,90M'in %28'i).
-⚠ frmID 56 BKM'nin kendi adını taşır (frmTip=0; 38093 aynı ad frmTip=1) → 'kendi firmasına satış' gibi görünür, ama **3 mağazaya geri girmiyor**: aynı pencerede mağaza girişleri yalnız Yerel Alım 4.226.674 + Depo-Mağaza 3.766.166; 1,38M'lik karşılık giriş HİÇBİR mekanda yok (irsHrk'da toplam 8 mekan var). Dolayısıyla çift sayım değil, gerçek çıkış.
-⚠ **Devir/gün-stok hesabında kapsam tuzağı:** merkez depo stoğu (WMS ~4,0M adet) toplam stoğun yarısı; ama 'mağaza satışı' metriği bu 1,88M adetlik çıkışı SAYMAZ. Stoğa merkezi katıp satışa merkez çıkışını katmazsan gün-stok sistematik şişer (ölçüm: 459 gün → merkez dahil 371 gün; Kırtasiye 734 → 518)."
+      **Karşı taraf (`irs.eFirma` → `dbo.frm.frmAd`):** frmID **56 BURSA KÜLTÜR MERKEZİ KİTAP KIRTASİYE GIDA %72** (1.375.700 adet / 34,55M ₺ / 443 belge, yıl boyu düzenli — grup-içi/toptan, birim ~25 ₺) · **9525 ODAK KİTAP-POİNT %16** (302.908 adet / 33,43M ₺, birim ~110 ₺) · **120 SINAV BASIN YAYIN** (110.100 adet, tek belge 04.06.2026). Yani merkez depo aynı zamanda **toptan/grup-içi dağıtım deposu**.
+      **frmID 56 = AYRI TÜZEL KİŞİ, grup şirketi (muhasebeden teyit 08.09.2026):** *Bursa Kültür Merkezi Kitap Kırtasiye Gıda San. Tic. Ltd. Şti.*, VN **1910376739**, VD Setbaşı/Bursa. Defterin sahibi AYRI: `mhs.mhsSirket` → **'BKM Kitap Kırtasiye'** (`sirketID` = mali yıl; 6=2026, 5=2025…). Muhasebe konumu: **`320.10.B010` YURT İÇİ SATICILAR** (`frmKod` zaten bu hesap kodu) + **`159.10.B003` Verilen Sipariş Avansları**; **alıcı (120) kartı YOK** — ona yapılan satış `600.10.009 Yurtiçi Satışlar %20`'ye yazılıyor (2026: 13,73M ₺ / 250 satır).
+      Mal akışı **iki yönlü** (fat+fatAyr, 365g): alış 1.008 fatura / +1.447.008 adet / 52,01M ₺ · satış 498 fatura / −1.384.130 adet / 35,82M ₺ → net **+62.878 adet bize giriş**. 11.093 çeşidin yalnız **1.368'i iki yönlü** (satışın %29'u) → saf al-geri ver döngüsü DEĞİL, %71 tek yönlü çıkış.
+      Finansal hacim yanıltıcı: 320.10.B010 2026/8ay borç 773,53M / alacak 799,01M ₺ (net borç 25,48M) ama toplam hareketin **%48,7'si (765,2M ₺) yalnız 19 satır '320/159 HESAP VİRMAN'** — ticari değil, hesap yer değiştirmesi. `159.10.B003` net **288,78M ₺ verilen sipariş avansı**. Yani ilişki = grup-içi ticaret **+ finansman**.
+      ⚠ Sezon/alım analizinde firma 56 çıkışı **tüketici talebi sayılmaz** — ayrı gösterilir. Grup-dışı merkez çıkışı ≈ ODAK 302.908 + SINAV 110.100 + diğer ≈ **528K adet** (toplam 1,90M'in %28'i).
+      ⚠ frmID 56 BKM'nin kendi adını taşır (frmTip=0; 38093 aynı ad frmTip=1) → 'kendi firmasına satış' gibi görünür, ama **3 mağazaya geri girmiyor**: aynı pencerede mağaza girişleri yalnız Yerel Alım 4.226.674 + Depo-Mağaza 3.766.166; 1,38M'lik karşılık giriş HİÇBİR mekanda yok (irsHrk'da toplam 8 mekan var). Dolayısıyla çift sayım değil, gerçek çıkış.
+      ⚠ **Devir/gün-stok hesabında kapsam tuzağı:** merkez depo stoğu (WMS ~4,0M adet) toplam stoğun yarısı; ama 'mağaza satışı' metriği bu 1,88M adetlik çıkışı SAYMAZ. Stoğa merkezi katıp satışa merkez çıkışını katmazsan gün-stok sistematik şişer (ölçüm: 459 gün → merkez dahil 371 gün; Kırtasiye 734 → 518)."
     confidence: 0.95
     last_verified: "2026-09-08"
     evidence: "2026-09-08 canlı — irsHrk ehMekan×ehTip 365g kırılımı + stkID bazlı mekan-12 çıkışı; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql"
@@ -889,9 +889,9 @@ Finansal hacim yanıltıcı: 320.10.B010 2026/8ay borç 773,53M / alacak 799,01M
   # ── ODAK = GRUP ŞİRKETİ AMA TEDARİKÇİ (kullanıcı teyidi 2026-09-08) ──
   ent.odak_depo_Stok.ROL:
     note: "**ODAK (ODAK KİTAP-POİNT İNTERNET TEKNOLOJİLERİ, frmID 9525) grup şirketidir AMA BKM'ye TEDARİKÇİDİR** (kullanıcı teyidi 08.09.2026). ⇒ `ent.odak_depo_Stok` **BKM'nin envanteri DEĞİL**; tedarikçi elindeki **temin edilebilirlik** sinyalidir. Ölçüm 08.09.2026: 496.708 stkID / 7.294.239 adet.
-**Karar sonucu:** stok toplamına KATILMAZ (Kübra'nın raporu da katmıyor — DOĞRU). Ama iki karar metriği üretir: (a) stoksuz sezon ürünü ODAK'ta VAR → hızlı temin, gerçek kayıp değil; (b) elde bol stok + ODAK'ta da bol → **grup içinde çift stok**, sermaye bağlar. Ölçüm 08.09: stoksuz sezon 6.666 çeşit/21,1M ₺'nin yalnız 5.660 çeşit/18,0M ₺'si gerçek risk (1.006 çeşit ODAK'ta var); aşırı stok 244,0M ₺'nin **135,4M ₺'si (9.766 çeşit) ODAK'ta da var**.
-⚠ İki sınır: tablo **damgasız** (tazelik ölçülemez, PK yalnız stkID) ve 'ODAK'ta var' ≠ 'bana ayrılmış'. Karar metriğinde bu yazılır.
-⚠ Çift yönlü akış: BKM merkez depodan ODAK'a da mal çıkıyor (365g 302.908 adet / 33,43M ₺, 593 belge) — yani ODAK aynı zamanda sevk noktası. Tek yönlü 'tedarikçi' sanma."
+      **Karar sonucu:** stok toplamına KATILMAZ (Kübra'nın raporu da katmıyor — DOĞRU). Ama iki karar metriği üretir: (a) stoksuz sezon ürünü ODAK'ta VAR → hızlı temin, gerçek kayıp değil; (b) elde bol stok + ODAK'ta da bol → **grup içinde çift stok**, sermaye bağlar. Ölçüm 08.09: stoksuz sezon 6.666 çeşit/21,1M ₺'nin yalnız 5.660 çeşit/18,0M ₺'si gerçek risk (1.006 çeşit ODAK'ta var); aşırı stok 244,0M ₺'nin **135,4M ₺'si (9.766 çeşit) ODAK'ta da var**.
+      ⚠ İki sınır: tablo **damgasız** (tazelik ölçülemez, PK yalnız stkID) ve 'ODAK'ta var' ≠ 'bana ayrılmış'. Karar metriğinde bu yazılır.
+      ⚠ Çift yönlü akış: BKM merkez depodan ODAK'a da mal çıkıyor (365g 302.908 adet / 33,43M ₺, 593 belge) — yani ODAK aynı zamanda sevk noktası. Tek yönlü 'tedarikçi' sanma."
     confidence: 0.9
     last_verified: "2026-09-08"
     evidence: "Kullanıcı teyidi 08.09.2026 (grup firması ama tedarikçi) + irsHrk/fat ölçümleri; SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql §11"
@@ -899,8 +899,8 @@ Finansal hacim yanıltıcı: 320.10.B010 2026/8ay borç 773,53M / alacak 799,01M
   # ── İADE HAKKI VERİDE İZLİ DEĞİL (2026-09-08 ölçümü) ──
   urn.IADE_HAKKI_IZLI_DEGIL:
     note: "**Kitapta iade hakkı ürün bazında değişiyor (kullanıcı: 'her kitapta yok iade') ama VERİDE İZLİ DEĞİL.** Ölçüm 08.09.2026: `dbo.urn.alimIadeYok` = **2 sabit** (844.017/844.017 → bilgi taşımıyor) · `soIadeVar` = 1 (yalnız 498 istisna). Tedarikçi tarafında `dbo.frm.frmIadeKural` VAR (2→48.795 varsayılan · 0→1.584 · 1→99) ama **lookup view'ı yok** ve anlamı belgeli değil; 0/1 taşıyanlar arasında gerçek aktif yayınevi/dağıtımcı bulunuyor (Akademis, Phenomenon, İşler Yayın).
-⇒ **Aşırı-stok / ölü-stok metriği bugün iade hakkına göre KIRILAMAZ.** 'Aşırı stok N ₺' cümlesi kurulurken bu sınır yazılmalı: iade hakkı olan üründe aşırı stok riski çok daha küçüktür. Kırılım şimdilik **yayınevi bazında** sunulur (koşul yayınevi bazlı olduğu için kategori yöneticisi yorumlayabilir).
-AÇIK SORU: `frmIadeKural` 0/1/2 gerçekten iade var/kısmi/yok mu? DerinSIS satıcısına/satınalmaya teyit ettirilecek — doğrulanırsa metrik kırılabilir hale gelir."
+      ⇒ **Aşırı-stok / ölü-stok metriği bugün iade hakkına göre KIRILAMAZ.** 'Aşırı stok N ₺' cümlesi kurulurken bu sınır yazılmalı: iade hakkı olan üründe aşırı stok riski çok daha küçüktür. Kırılım şimdilik **yayınevi bazında** sunulur (koşul yayınevi bazlı olduğu için kategori yöneticisi yorumlayabilir).
+      AÇIK SORU: `frmIadeKural` 0/1/2 gerçekten iade var/kısmi/yok mu? DerinSIS satıcısına/satınalmaya teyit ettirilecek — doğrulanırsa metrik kırılabilir hale gelir."
     confidence: 0.95
     last_verified: "2026-09-08"
     evidence: "2026-09-08 canlı — urn.alimIadeYok/soIadeVar dağılımı, frm.frmIadeKural dağılımı + aktif tedarikçi kesişimi, lookup obje araması (0 sonuç). SQL: §11a"
@@ -910,10 +910,10 @@ AÇIK SORU: `frmIadeKural` 0/1/2 gerçekten iade var/kısmi/yok mu? DerinSIS sat
     tip: tablo
     key: [ProductCode, saleStatus, leadTime]
     note: "**ODAK ürün durumu + TEMİN SÜRESİ.** 646.129 ürün, `leadTime` **NULL YOK**, 2-40 gün, ortalama **5,03**, mod 5 (152.216) ve 4 (112.514) gün. `saleStatus` 1/2/3/4/5/6 (metin karşılığı `BKMDATA.ent.OdakSatisDurumlari.SatisDurum` — TEYİT BEKLİYOR).
-⚠⚠ **`ProductCode` stkID DEĞİL — ODAK'ın kendi ürün kodudur.** `CAST(u.stkID AS varchar)=ProductCode` **511.040 eşleşme verir ve HEPSİ SAYISAL TESADÜF** (ODAK kod aralığı stkID aralığıyla çakışıyor). `stkKod=barkod` ile AYNI hata sınıfı.
-**KANONİK ZİNCİR (barkod üstünden):** `OdakUrunDurum.ProductCode` = `BKMDATA.ent.odak_urun_tam.urun_id` → `odak_urun_tam.barkod` = `DerinSISBkm.dbo.urnBrkd.urnBarkod` (`urnBrkdOnce=0`) → `urnBrkd.urnBrkdStkID`. Ölçüm 08.09.2026: **644.107 / 644.638 = %99,9**. Kullanıcının kendi rapor SQL'leri de bu zinciri kullanıyor.
-Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6**'sını kapsar (209.625/273.515) — kalan ürünler ODAK katalogunda yok.
-⚠ **BKMDATA aynı sunucuda ama `erp` profilinin `sys.databases` çıktısında GÖRÜNMEDİ** (sqlcli TOP-wrap + ORDER BY tuzağı). `encore` profili + 3-parçalı isimle erişilir."
+      ⚠⚠ **`ProductCode` stkID DEĞİL — ODAK'ın kendi ürün kodudur.** `CAST(u.stkID AS varchar)=ProductCode` **511.040 eşleşme verir ve HEPSİ SAYISAL TESADÜF** (ODAK kod aralığı stkID aralığıyla çakışıyor). `stkKod=barkod` ile AYNI hata sınıfı.
+      **KANONİK ZİNCİR (barkod üstünden):** `OdakUrunDurum.ProductCode` = `BKMDATA.ent.odak_urun_tam.urun_id` → `odak_urun_tam.barkod` = `DerinSISBkm.dbo.urnBrkd.urnBarkod` (`urnBrkdOnce=0`) → `urnBrkd.urnBrkdStkID`. Ölçüm 08.09.2026: **644.107 / 644.638 = %99,9**. Kullanıcının kendi rapor SQL'leri de bu zinciri kullanıyor.
+      Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6**'sını kapsar (209.625/273.515) — kalan ürünler ODAK katalogunda yok.
+      ⚠ **BKMDATA aynı sunucuda ama `erp` profilinin `sys.databases` çıktısında GÖRÜNMEDİ** (sqlcli TOP-wrap + ORDER BY tuzağı). `encore` profili + 3-parçalı isimle erişilir."
     confidence: 0.95
     last_verified: "2026-09-08"
     evidence: "2026-09-08 canlı — köprü karşılaştırması (511.040 sahte vs 644.107 doğru), leadTime profili, kohort kırılımı. SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql §12"
@@ -932,7 +932,7 @@ Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6
     tip_duzeltme: "2026-09-11 canli sys.objects.type_desc ile CELISIYORDU (sema ile canli TERS takilmis); katalogdan duzeltildi. view mi tablo mu ayrimi onemli: view her zaman taze, tablo yenilenmesi gereken snapshot."
     key: [barkod, SatisDurum, DataDurum]
     note: "ODAK satış/data durumu, **barkod bazlı** (`sd.barkod = urnBrkd.urnBarkod`). `SatisDurum` METİN ('Satışta' vb.) — kullanıcının yerleşik raporları `SatisDurum='Satışta'` ve `SatisDurum<>'Satışta'` filtreleriyle 'satılamaz durumda ama stok veren ürün' analizini bunun üstünden yapıyor. `OdakUrunDurum.saleStatus` sayısal kodunun metin karşılığı buradan çözülür (eşleme TEYİT BEKLİYOR).
-İlişkili yerleşik desen: `dbo.tmpSIPARISOZET (BARKOD, MIKTAR)` ile birlikte 'hiç satılmamış + stok veren' kohortu kuruluyor; stok yaşı `UrunBilgi.gTarih`ten."
+      İlişkili yerleşik desen: `dbo.tmpSIPARISOZET (BARKOD, MIKTAR)` ile birlikte 'hiç satılmamış + stok veren' kohortu kuruluyor; stok yaşı `UrunBilgi.gTarih`ten."
     confidence: 0.8
     last_verified: "2026-09-08"
     evidence: "Kullanıcının kendi rapor SQL'leri (08.09.2026 paylaşıldı) + barkod zinciri ölçümü. Kod↔metin eşlemesi ölçülmedi."

@@ -103,6 +103,16 @@ esanlamli_dosya_bazli:
   metrics: {kaynak: [source]}     # metrics'te source = veri kaynağı tablo/view
   queries: {koken: [source]}      # queries'te source = sorgunun nereden geldiği (provenance)
 
+# BÖLÜM adı eş-anlamlıları — repolar aynı kavramı farklı adlandırıyor (ölçüm 2026-09-11:
+# pusula İngilizce `bridges/codes/metrics/entities`, bel Türkçe `kopruler/kodlar/metrikler/
+# kaynaklar`). Motor UYUM SAĞLAR, verinin yeniden adlandırılması İSTENMEZ — veri repo-yerel.
+# Eşlenmeyen bölümler `bilinmeyen_tip` olarak raporlanır; sessizce "tanıdım" demez.
+bolum_esanlamli:
+  entities: [kaynaklar]
+  bridges: [kopruler]
+  codes: [kodlar]
+  metrics: [metrikler]
+
 # Alan DEĞERİ düzeyinde eş-anlamlılar (alan adı değil, içindeki değer).
 deger_esanlamli:
   tip:
