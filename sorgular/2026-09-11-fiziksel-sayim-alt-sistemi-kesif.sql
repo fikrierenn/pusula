@@ -534,3 +534,46 @@ ORDER BY satir DESC;
    KALAN GERÇEK AYKIRI: 31.05.2025 · tip 3 Serbest · tek satır · stkID 63968 ·
    865 -> 1081 (+216), birleştirme bağlamı YOK.
    ⇒ PRATİK SONUÇ: `Kayıp-Çalıntı` satırları TOPLANARAK kayıp çıkarılamaz. */
+
+/* ============================================================================
+   30-32) TEK KALAN AYKIRI: stkID 63968, 31.05.2025 Özlüce +216 "Kayıp-Çalıntı"
+   ============================================================================ */
+
+/* 30) Ürün kim? */
+SELECT u.stkID, u.stkAd, u.stkKod, u.urnTip, u.satisTur, u.urnKtgrID,
+       ISNULL(ub.KatAna,N'(yok)') AS kat_ana, ISNULL(ub.Kategori3,N'(yok)') AS kat3,
+       ISNULL(ub.SatisFiyat,0) AS satis_fiyat
+FROM   dbo.urn u WITH(NOLOCK)
+LEFT JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.StkID = u.stkID
+WHERE  u.stkID = 63968;
+/* "Hot Wheels Tekli Arabalar" · Oyuncak · 139 ₺ · stkKod 074299057854.
+   TEK KODA ÇOK MODEL bağlayan JENERİK/TOPLU SKU — fiziksel sayımı tasarımı gereği zor. */
+
+/* 31) Bu SKU için TÜM sayım emri satırları — neden kodları birbirinin yerine mi? */
+SELECT CONVERT(varchar(10),b.SayimTarihi,120) AS tarih, b.SayimTipId, b.MekanId,
+       d.MiktarEski, d.Miktar, (d.Miktar - d.MiktarEski) AS fark,
+       ISNULL(d.SayimDuzeltmeNedenId,0) AS neden, d.OlusturanKullaniciId AS kul
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  d.StokId = 63968 AND b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+ORDER BY b.SayimTarihi;
+/* 54 satır · 9+ kullanıcı · DÖRT KODUN HEPSİ birbirinin yerine kullanılmış:
+   Kayıp-Çalıntı 18 · Mal Giriş Hatası 17 · Sayım Hatası 13 · nedensiz 6.
+   Aynı büyüklükteki eksilmeler (-2/-3/-5/-22/-33) farklı günlerde farklı kodlarla.
+   ⚠ Üç adet "0 -> büyük" satırı NEDENSİZ: 2025-08-05 Özlüce 0->556 ·
+     2026-05-24 FSM 0->1134 · 2026-06-22 İst.Yolu 0->896 (rebaseline gibi). */
+
+/* 32) ★ DEFTERDEN DOĞRULAMA — +216 hayalet ekleme mi, düzeltme mi? */
+SELECT CONVERT(varchar(10),h.ehTrhS,120) AS tarih, h.ehTip, t.tipAd,
+       CONVERT(int,h.ehAdetN) AS adet
+FROM   dbo.irsHrk h WITH(NOLOCK)
+LEFT JOIN dbo.irsTip_vw t ON t.tipID = h.ehTip
+WHERE  h.ehstkID = 63968 AND h.ehMekan = 4477
+  AND  h.ehTrhS >= '20250520' AND h.ehTrhS < '20250610'
+ORDER BY h.ehTrhS, h.ehTip;
+/* 29.05: `ehTip 13 Depo->Mağaza +288` VE AYNI GÜN `ehTip 99 Sayım -263`
+   31.05: `ehTip 99 Sayım +216`      →  iki sayımın NETİ -47.
+   ⇒ +216 bir hayalet ekleme DEĞİL; yoldaki 288 adetlik sevkiyat rafta görünmeden
+     yapılmış bir sayımın geri alınmasıdır. Yanlış olan RAKAM değil ETİKET
+     (doğrusu `Sayım Hatası` olurdu). */

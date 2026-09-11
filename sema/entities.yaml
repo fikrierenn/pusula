@@ -216,11 +216,31 @@ entities:
         ELENEN AÇIKLAMALAR: (a) "taban etkisi, `MiktarEski` 0'dır" — yalnız 12 satırda
         öyle; 70'inde pozitif. (b) 3 satır NEGATİF'ten 0'a çekiyor (−41→0, −5→0) ki bu
         imkânsız bakiyeyi düzeltmektir, meşrudur.
-        KALAN GERÇEK AYKIRI: 31.05.2025 · Özlüce · `tip 3 Serbest` · tek satır ·
-        stkID 63968 · 865 → 1081 (**+216**). Birleştirme bağlamı YOK; bu tek satır
-        gerçekten yanlış etiketlenmiş görünüyor. Sahibine sorulmadı.
+        TEK KALAN AYKIRI DA İNCELENDİ VE AYKIRI ÇIKMADI: 31.05.2025 · Özlüce ·
+        stkID 63968 = **"Hot Wheels Tekli Arabalar"** (Oyuncak, 139 ₺, `stkKod`
+        074299057854) — TEK KODA ÇOK MODEL bağlayan JENERİK/TOPLU SKU. Defterden
+        ölçüldü: 29.05'te `ehTip 13 Depo→Mağaza +288` geldi ve AYNI GÜN `ehTip 99
+        Sayım −263` yazıldı; 31.05'te `ehTip 99 Sayım +216` ile düzeltildi.
+        **İki sayımın neti −47.** Yani +216 bir hayalet ekleme değil, YOLDAKİ 288
+        ADETLİK SEVKİYAT RAFTA GÖRÜNMEDEN yapılmış bir sayımın geri alınmasıdır.
+        Yanlış olan RAKAM değil ETİKET: doğrusu `Sayım Hatası` olurdu.
         ⇒ PRATİK SONUÇ: `Kayıp-Çalıntı` satırları TOPLANARAK kayıp tutarı çıkarılamaz;
         kod işlem düzeyinde seçiliyor, satır düzeyinde değil.
+      jenerik_SKU_sayim_gurultusunun_kaynagi: >-
+        stkID 63968 ("Hot Wheels Tekli Arabalar") tek başına bu sorunun canlı örneği.
+        ÖLÇÜLDÜ 2026-09-11: 2025-01'den beri 3 mağazada **54 sayım emri satırı**,
+        9'dan fazla ayrı kullanıcı, ve DÖRT NEDEN KODUNUN HEPSİ birbirinin yerine
+        kullanılmış — `Kayıp-Çalıntı` 18 · `Mal Giriş Hatası` 17 · `Sayım Hatası` 13 ·
+        nedensiz 6. Aynı büyüklükteki küçük eksilmeler (−2 · −3 · −5 · −22 · −33)
+        farklı günlerde farklı kodlarla etiketlenmiş. Artışlar da olağan: +97 · +207 ·
+        +122 · +71 · +34 · +32 (hepsi farklı kodlarla).
+        ⚠ AYRICA ÜÇ "0 → büyük" SATIRI VAR, ÜÇÜ DE NEDENSİZ: 2025-08-05 Özlüce 0→556 ·
+        2026-05-24 FSM 0→1134 · 2026-06-22 İst.Yolu 0→896. Bunlar yeniden-taban alma
+        (rebaseline) gibi duruyor; ölçüldü, SEBEBİ sorulmadı.
+        ⇒ YAPISAL SEBEP: jenerik SKU fiziksel sayımı tasarımı gereği zor kılar (tek kod,
+        çok model), bu yüzden sürekli düzeltilir; düzeltme sıklaştıkça neden kodu da
+        anlamını yitirir. Neden kodlarını ciddiye almak isteyen bir ölçüm, önce jenerik
+        SKU'ları ayırmalı.
       neden_yazili_olmasi_ne_demek_DEGIL: >-
         Bir düzeltmede neden kodu bulunması, o nedenin sınandığı anlamına gelmez.
         Sistemde neden kodunu gerçekle karşılaştıran HİÇBİR kontrol yok (ölçüldü: yön
