@@ -29,6 +29,9 @@ Kullanım:
 · Kolon TİPİ değişimini görmez (`SatanAy int→varchar`) — Dapper eşlemeyi bozan asıl şey.
 · Alias'sız SELECT kolonlarını atlar; atlanan oranı %50'yi geçerse artık KIRIK verir
   (önce yalnız uyarıydı ve sıra kıyası sessizce körleşiyordu).
+· İfade birleştirmeli SQL (12.09.2026) ARTIK ÇÖZÜLÜYOR: `const string X = A + " AS Y"`
+  biçimindeki bildirimler string parçalarına ayrılır ve referans ettiği const'lar açılır.
+  Öncesinde bu yolla eklenen 4 alias denetim DIŞINDAYDI.
 · Yalnız CIFTLER/ANAHTAR_CIFTLERI'nda listelenen çiftleri denetler. Repoda başka pozisyonel
   record var (UrunMaliyet · UrunGerceklesen · AkranOzet · DepoAdres · UrunHiz · ExcelDetaySatir …)
   ve BUNLAR DENETİM DIŞI.
@@ -73,7 +76,9 @@ CIFTLER = [
     (
         "Ürün listesi satırı",
         "dashboard/Data/SatisAnaliziQueries.Liste.cs",
-        "private const string ListeKolonlar",
+        # ⚠ İM `ListeKolonlarSql` (12.09.2026): `ListeKolonlar`ı referansla içerir VE
+        # sipariş kolonlarını ekler. Eski im dört alias'ı kaçırıyordu.
+        "private const string ListeKolonlarSql",
         "dashboard/Models/SatisAnaliziModels.cs",
         "SatisAnaliziSatir",
     ),
@@ -122,23 +127,105 @@ def oku(rel: str) -> str:
     return io.open(p, encoding="utf-8-sig").read()
 
 
+# ── SQL metnini ÇÖZ: raw-string + ifade birleştirme + sabit referansı ──────────
+# ⚠ NEDEN GEREKLİ (ölçüldü 11-12.09.2026): kolonların bir kısmı raw-string'de DEĞİL,
+# C# ifade birleştirmesiyle ekleniyor:
+#     private const string ListeKolonlarSql =
+#         ListeKolonlar + ",\n" + SiparisOneriSql + " AS SiparisOneri" + …;
+# Eski çözümleyici yalnız İLK raw-string bloğunu okuyordu → bu yolla eklenen dört alias
+# (EtkinGun · SiparisOneri · SiparisKapak · SiparisTaban) "SQL'de yok" sayılıyordu ve
+# denetim tam da kayma üreten yerde KÖR kalıyordu. Uyarı metni bunu söylüyordu ama
+# uyarı bir KAPI DEĞİLDİR — kapı ancak çözümleyici o metni okuyunca kurulur.
+_STR_RE = re.compile(r'"""(.*?)"""|"((?:[^"\\]|\\.)*)"', re.S)
+
+
+def _bildirim_govdesi(metin: str, im: str) -> str:
+    """`im` ile başlayan bildirimin `=` sonrası gövdesi, deyim sonundaki `;`e kadar.
+
+    ⚠ SATIR TABANLI ve RAW-STRING FARKINDA: çok satırlı `\"\"\"…\"\"\"` bloğunun İÇİNDEKİ
+    `;` deyim sonu DEĞİLDİR. İlk sürüm karakter maskesiyle yazılmıştı, `;`i hiç bulamadı
+    ve gövde 30.884 karaktere (dosyanın geri kalanı) taştı → 576 sahte alias üretti.
+    """
+    i = metin.find(im)
+    if i < 0:
+        return ""
+    esit = metin.find("=", i)
+    if esit < 0:
+        return ""
+    ham, blok_icinde = [], False
+    for satir in metin[esit + 1:].splitlines():
+        ham.append(satir)
+        if satir.count('\"\"\"') % 2 == 1:      # blok açıldı ya da kapandı
+            blok_icinde = not blok_icinde
+            continue
+        if blok_icinde:
+            continue
+        # Tek satırlık string'leri sil, KALAN kodda `;` var mı bak
+        # ⚠ `//` YORUMU DA ELENİR (12.09.2026): elenmezse gövde erken biter —
+        # `ListeKolonlar` altındaki açıklama satırı "… kayboluyordu; SQL'de …"
+        # içeriyor ve o `;` deyim sonu sanılıyordu → `+ " AS EtkinGun"` satırına
+        # HİÇ ulaşılmıyor, alias sessizce kayboluyordu (atlanan 4 → 1 → 0).
+        kod = re.sub(r'"(?:[^"\\]|\\.)*"', "·", satir)
+        kod = kod.split("//", 1)[0]
+        if ";" in kod:
+            break
+    return "\n".join(ham)
+
+
+def _sql_coz(metin: str, im: str, derinlik: int = 0) -> str:
+    """Bildirimdeki TÜM string parçalarını SIRAYLA birleştirir; gövdede geçen
+    `const string X` referanslarını aynı dosyada açar (derinlik ≤ 3).
+
+    Sıra korunur — Dapper pozisyonel eşlediği için kıyasın anlamı sıradadır."""
+    govde = _bildirim_govdesi(metin, im)
+    if not govde:
+        return ""
+    parcalar = []
+    son = 0
+    for m in _STR_RE.finditer(govde):
+        for ad in re.findall(r"\b([A-Z][A-Za-z0-9_]*)\b", govde[son:m.start()]):
+            if derinlik < 3:
+                ic = _sql_coz(metin, "const string " + ad + " =", derinlik + 1)
+                if ic:
+                    parcalar.append(ic)
+        parcalar.append(m.group(1) if m.group(1) is not None else (m.group(2) or ""))
+        son = m.end()
+    for ad in re.findall(r"\b([A-Z][A-Za-z0-9_]*)\b", govde[son:]):
+        if derinlik < 3:
+            ic = _sql_coz(metin, "const string " + ad + " =", derinlik + 1)
+            if ic:
+                parcalar.append(ic)
+    return "\n".join(parcalar)
+
+
 def sql_aliaslari(metin: str, baslangic: str) -> tuple[list[str], int]:
-    """Metodun ilk raw-string SQL'inden `AS Alias` adlarını SIRAYLA topla."""
+    """SQL'den `AS Alias` adlarını SIRAYLA topla.
+
+    Kaynak iki biçimden biri: (a) metot içindeki ilk raw-string, (b) ifade
+    birleştirmeli `const string` bildirimi (12.09.2026'da eklendi)."""
     i = metin.find(baslangic)
     if i < 0:
-        print(f"KOŞAMADI  SQL başlangıç imi bulunamadı: {baslangic[:50]}")
+        print("KOŞAMADI  SQL başlangıç imi bulunamadı: " + baslangic[:50])
         sys.exit(2)
-    a = metin.find('"""', i)
-    b = metin.find('"""', a + 3)
-    if a < 0 or b < 0:
-        print("KOŞAMADI  raw-string SQL sınırları bulunamadı")
-        sys.exit(2)
-    sql = metin[a + 3 : b]
-    # Yorum satırlarını at — `-- ... AS ...` yanlış alias üretir
-    satirlar = [s for s in sql.splitlines() if not s.strip().startswith("--")]
+
+    if "const string" in baslangic:
+        sql = _sql_coz(metin, baslangic)
+        if not sql:
+            print("KOŞAMADI  const SQL gövdesi çözülemedi: " + baslangic[:50])
+            sys.exit(2)
+    else:
+        a = metin.find('"""', i)
+        b = metin.find('"""', a + 3)
+        if a < 0 or b < 0:
+            print("KOŞAMADI  raw-string SQL sınırları bulunamadı")
+            sys.exit(2)
+        sql = metin[a + 3:b]
+
+    # Yorum satırlarını at — `-- … AS …` ve `// …` yanlış alias üretir
+    satirlar = [x for x in sql.splitlines()
+                if not x.strip().startswith("--") and not x.strip().startswith("//")]
     sql = "\n".join(satirlar)
     aliaslar = re.findall(r"\bAS\s+([A-Za-z_][A-Za-z0-9_]*)", sql)
-    # Alias'sız kolon sayısı kabaca: virgülle ayrılmış üst düzey öğe − alias sayısı
     return aliaslar, sql.count("\n")
 
 
