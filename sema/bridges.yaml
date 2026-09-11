@@ -444,9 +444,9 @@ bridges:
 
   # ── BKMMaliyet ↔ DerinSIS köprüleri (FIFO maliyet, 2026-06-19) ──
   - id: maliyet-stkid-urn
-    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 65 / 550.387 katman (%0,012) — 45 ürün. Ağırlık küçük değil: kalan 10.209 adet ve kalan maliyet değeri **2.786.815 ₺** (havuzun tamamı 749.295.869 ₺ → %0,37). Giriş tarihleri 2021-05-31 ile 2026-01-23 arasına yayılmış; en büyük 6 kalem (toplam ~2,7M ₺, stkID 1673447-1673526 bloğu) 2025-12-31 AÇILIŞ snapshot'ından. Kayıt `from` alanındaki parantezli açıklama yüzünden bugüne kadar hiç ölçülememişti."
-    orphans_expected: "AÇIK SORU — beklenen değil. 45 ürünün DerinSISBkm.dbo.urn'de karşılığı yok; maliyet havuzunda 2,79M ₺ değer taşıyorlar ve ürün kartı olmadan kategori/marj raporuna BAĞLANAMAZLAR. ⚠ ELENEMEYEN ALTERNATİF: FIFO çalışması yerel kopya `DerinSIS_Local` üzerinde yapılmıştı (bkz. entities.yaml BKMMaliyet bloğu); bu stkID'ler ORADA var olup buraya taşınmamış olabilir — o sunucu `.env`'de olmadığı için sınanamadı. İkinci alternatif: ürün birleştirme sonrası stkID değişmiş olabilir. Hangisi olduğu ölçülmeden 'silinmiş ürün' DENMEZ. Asıl proje D:\\Dev\\fifo — bulgu oraya da taşınmalı."
-    evidence_status: pending
+    canli_kopya: "⚠ FIFO MOTORUNUN CANLI KOPYASI **YEREL**: localhost `BKMMaliyet` + `DerinSIS_Local`. ERP sunucusundaki `BKMMaliyet` AYNI ŞEY DEĞİL (bkz. entities:BKMMaliyet_kopya_ayrimi — 269M ₺ fark). Bu köprüyü ve tüm FIFO ölçümlerini YEREL kopyada koştur; ERP kopyası tarihsel bir anlık görüntüdür."
+    measurement: "2026-09-11 — İKİ AYRI KOPYADA ÖLÇÜLDÜ, SONUÇLAR ÇOK FARKLI. (a) ERP kopyası (192.168.40.201 `BKMMaliyet`) × `DerinSISBkm.dbo.urn`: **65 katman / 45 ürün / 2.786.815 ₺** öksüz. (b) YEREL kopya (localhost `BKMMaliyet`) × motorun KENDİ master'ı `DerinSIS_Local.bkm.UrunBilgi`: **3 katman / 3 ürün / 11.529 ₺**. ⚠ İLK ÖLÇÜM YANILTICIYDI — doğru ölçülmüştü ama YANLIŞ ÇİFT üzerinde: bayat bir BKMMaliyet kopyası ile motorun kullanmadığı bir ürün master'ı. Kullanıcı uyarısı (2026-09-11: 'bkmmaliyet son hali sanırım lokalde') olmasa bu 2,79M ₺'lik 'bulgu' rapora girecekti. DERS: ölçümün doğruluğu kadar HANGİ KOPYADA ölçüldüğü de ölçümün parçasıdır."
+    orphans_expected: "YEREL kopyada 3 ürün / 11.529 ₺ — ihmal edilebilir ama sıfır değil. ERP kopyasındaki 45 ürünün tamamı `EncoreMerkez.Products`ta VAR, `irsHrk` hareketi SIFIR, `urn`/`bkm.UrunBilgi`de YOK; değerin %97'si 6 kalemde ('Options 1/2/3 Student's Book + Workbook' — Sınav ders kitapları). Bunlar POS'ta açılmış ama DerinSIS'te kartı olmayan ürünlerdir."
     from: "BKMMaliyet.dbo.FifoKatman.StkId"
     to: DerinSISBkm.dbo.urn.stkID
     scope: maliyet
@@ -465,8 +465,7 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-kategori3-urnktgr2
-    not_measurable: "ERİŞİLEMEYEN SUNUCU: hedef `DerinSIS_Local`, FIFO çalışmasında alınan YEREL KOPYAdır (entities.yaml BKMMaliyet bloğu: 'DerinSISBkm (prod) / DerinSIS_Local (BT-FIKRI demo)') ve o sunucu `.env`'de tanımlı değil. Köprünün KENDİSİ kolon eşitliğidir ve doğrudur; ölçülemezlik ORTAM kaynaklıdır, kayıt kusuru değil. Üretim karşılığı ölçüldü: `DerinSISBkm.bkm.UrunBilgi` içinde Kategori2+Kategori3 kolonları VAR."
-    measurement: "2026-09-11 — ÖLÇÜLEMEDİ (köprü YANLIŞ DEĞİL). `sema kopru` bu sunucuda 'Geçersiz nesne adı DerinSIS_Local.bkm.UrunBilgi' verdi. Sebep: `DerinSIS_Local` bu ERP sunucusunda değil — FIFO çalışmasında alınan YEREL KOPYA (entities.yaml 'BT-FIKRI demo' diye zaten yazıyor). O sunucunun bilgisi `.env`'de yok, dolayısıyla köprü BURADAN temellendirilemez; `from` düzeltilecek bir yazım hatası DEĞİLDİR. Üretim karşılığı ayrıca ölçüldü: `DerinSISBkm.bkm.UrunBilgi` içinde Kategori2 + Kategori3 kolonları VAR (sys.columns). Ölçüm ancak yerel kopyanın sunucusu profillenirse yapılabilir."
+    measurement: "2026-09-11 ÖLÇÜLDÜ — **0 ÖKSÜZ**. İKİ ADIMDA: (1) `DerinSIS_Local.bkm.UrunBilgi`de 22 ayrı `Kategori3` değeri var (localhost'tan sayıldı: Kitap 352.099 · Akademi 117.005 · Çocuk Kitabı 99.937 · Kırtasiye 93.531 …); (2) 22 değerin **22'si de** `DerinSISBkm.dbo.urnKtgr2.ktgrAd` içinde VAR. Köprü sağlam. ⚠ BU KAYIT İKİ KEZ YANLIŞ BEYAN EDİLDİ: önce 'DerinSIS_Local diye bir DB yok, yazım hatası' sanıldı (kullanıcı düzeltti), sonra 'erişilemeyen sunucu, ölçülemez' diye `not_measurable` yazıldı — O DA YANLIŞTI: sunucu bu makinede (`localhost`) ve erişilebiliyor. Tek sorguyla ölçülememesinin sebebi sunucuya erişememek DEĞİL, iki ucun AYRI SUNUCUDA olmasıdır."
     from: DerinSIS_Local.bkm.UrunBilgi.Kategori3
     to: DerinSISBkm.dbo.urnKtgr2.ktgrAd
     scope: maliyet

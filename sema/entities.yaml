@@ -295,7 +295,51 @@ entities:
 
   # ── BKMMaliyet — FIFO maliyet sistemi (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
   # ERP kaynağı: DerinSISBkm (prod) / DerinSIS_Local (BT-FIKRI demo). SP master: fifo/v2-production/00_V2_MASTER_FULL.sql
+  # ── FIFO MOTORUNUN CANLI KOPYASI YERELDEDİR — 2026-09-11 ölçüldü ──
+  BKMMaliyet_kopya_ayrimi:
+    uses: [entities:BKMMaliyet.dbo.FifoKatman, entities:DerinSIS_Local]
+    type: measurement
+    note: >-
+      ⚠⚠ `BKMMaliyet` İKİ YERDE VAR VE AYNI ŞEY DEĞİL. Hangi kopyada ölçtüğünü yazmayan
+      her FIFO rakamı eksiktir. Kullanıcı uyarısı (2026-09-11): "bkmmaliyet son hali
+      sanırım lokalde".
+    measurement: >-
+      YEREL (localhost, Integrated Security): 658.518 katman · kalan maliyet değeri
+      **480.528.320 ₺**. ERP (192.168.40.201): 550.387 katman · **749.295.869 ₺**.
+      Fark **269 MİLYON ₺**. İkisinin de son `GirisTarihi` aynı (2026-01-31), yani kesim
+      tarihi aynı — fark İÇERİKTE.
+    details: >-
+      YEREL DAHA YENİ (kanıt: `KaynakTip = 'IADE'` YALNIZ yerelde var — 707 katman /
+      165.249 ₺; ERP kopyasında bu tip HİÇ YOK, yani iade katmanı üretimi sonradan
+      eklenmiş). Yapı farkı da bunu destekliyor: ERP'de `ACILIS_TAMAMLA` 89.611 katman /
+      **466,1M ₺** (maliyeti bulunamayıp tamamlanan, en pahalı ve en şüpheli sınıf),
+      yerelde 35.750 katman / 51,9M ₺. Yerelde bu blok büyük ölçüde gerçek maliyetli
+      `ACILIS` katmanlarıyla yer değiştirmiş (567.675 / 375,9M vs ERP 387.074 / 197,6M).
+      AÇIK SORU — HANGİSİNİN DOĞRU OLDUĞU BURADA KARARA BAĞLANMADI. Ölçülen şey iki kopyanın FARKLI olduğu ve yerelin daha yeni bir şema taşıdığıdır. "Yerel doğrudur" demek için yerel koşumun mutabakatı (üretim/satış SMM'siyle) ayrıca ölçülmeli — asıl proje `D:/Dev/fifo`. ERP kopyasındaki 466M ₺'lik `ACILIS_TAMAMLA` bloğu tek başına bir inceleme konusudur.
+    evidence_status: pending
+    confidence: 1.0
+    evidence: "2026-09-11 — iki kopyada da `FifoKatman GROUP BY KaynakTip` + toplam sayım; localhost'a Integrated Security ile bağlanıldı."
+    last_verified: "2026-09-11"
+  DerinSIS_Local:
+    uses: [entities:BKMMaliyet.dbo.FifoKatman, bridges:maliyet-stkid-urn]
+    type: schema
+    db: DerinSIS_Local
+    grain: "FIFO motorunun girdi ayıklaması (localhost)"
+    note: >-
+      ⚠ TAM BİR DerinSIS KOPYASI DEĞİL — **8 tablodan ibaret AMAÇLI AYIKLAMA** (ölçüldü
+      2026-09-11): `bkm.UrunBilgi` · `dbo.UrunBilgi` · `dbo.fat` · `dbo.fatAyr` ·
+      `dbo.fytOzl` · `dbo.irs` · `dbo.irsAyr` · `dbo.irsHrk`. Yani tam olarak FIFO
+      maliyetlendirmesinin girdileri. `urn` ve `urnKtgr2` BURADA YOK — bu yüzden motorun
+      ürün master'ı `bkm.UrunBilgi`dir, `urn` değil (bkz. bridges:maliyet-stkid-urn).
+      Sunucu: `localhost` varsayılan örneği, Integrated Security (şifre yok).
+      Daha önce iki kez yanlış tarif edildi: bir kez "böyle bir DB yok" (kullanıcı
+      düzeltti), bir kez "erişilemeyen sunucu" — ikisi de yanlıştı.
+    confidence: 1.0
+    evidence: "2026-09-11 — localhost `DerinSIS_Local.sys.tables` sayımı (8) + şema/ad listesi."
+    last_verified: "2026-09-11"
   BKMMaliyet.dbo.FifoKatman:
+    cross_checked: "2026-09-11"
+    cross_checked_sonuc: "2026-09-11 — FifoKatman hakkındaki kayıtlar birlikte okundu: `BKMMaliyet_kopya_ayrimi` (iki kopya farkı), `DerinSIS_Local` (motorun girdi ayıklaması), `bridges:maliyet-stkid-urn` (öksüz ölçümü) ve `metrics:fifo_marj`. Çelişki yok; üçü aynı ölçüm turundan çıktı ve birbirini tamamlıyor. Taşınan 'düzeltme izi', bugün düzeltilen iki iddianın kaydıdır (ERP kopyası canlı sanılmıştı · DerinSIS_Local erişilemez sanılmıştı)."
     type: table
     pk: KatmanId
     key: [StkId, GirisTarihi, KaynakTip, GirisMiktar, KalanMiktar, BirimMaliyet, Durum]

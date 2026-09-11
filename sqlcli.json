@@ -5,7 +5,8 @@
     "erp": "Server=${MSSQL_HOST},${MSSQL_PORT};Database=DerinSISBkm;User Id=${MSSQL_USER};Password=${MSSQL_PASSWORD};TrustServerCertificate=true",
     "encore": "Server=${MSSQL_HOST},${MSSQL_PORT};Database=EncoreMerkez;User Id=${MSSQL_USER};Password=${MSSQL_PASSWORD};TrustServerCertificate=true",
     "zirve": "Server=${ZIRVE_HOST};Database=${ZIRVE_DATABASE};User Id=${ZIRVE_USER};Password=${ZIRVE_PASSWORD};TrustServerCertificate=true",
-    "panel": "Server=${PANEL_DB_HOST};Database=${PANEL_DB_NAME};Integrated Security=true;TrustServerCertificate=true"
+    "panel": "Server=${PANEL_DB_HOST};Database=${PANEL_DB_NAME};Integrated Security=true;TrustServerCertificate=true",
+    "yerel": "Server=localhost;Integrated Security=true;TrustServerCertificate=true"
   },
   "DefaultProfile": "erp"
 }
