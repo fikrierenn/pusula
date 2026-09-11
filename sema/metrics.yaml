@@ -5,6 +5,10 @@ updated: 2026-08-06
 
 metrics:
   marj_kdv_tabani:
+    tip: oran
+    birim: oran
+    taban: kdv_haric
+    additivity: yok
     kullanir: [bridges:urn-kdv-oran, metrics:birim_maliyet]
     soru: "Brüt marj / markup hesaplanırken satış ve maliyet aynı KDV tabanında mı?"
     kural: >-
@@ -31,6 +35,10 @@ metrics:
     last_verified: "2026-09-09"
 
   gelir_tablosu_pl:
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     kullanir: [bridges:mhsfis-gdrmerkez]
     kaynak: "mhs.mhsFis signed fisTutar (gelir BA=0→+, gider BA=1→−). Dashboard /gelir-tablosu (GelirTabloQueries). Merkez: fisGdrMerkez (köprü mhsfis-gdrmerkez)."
     yapi: "Net Satış(60−61) → Faaliyet Gideri(740/760/770, kategori .YY: 10 işçi ücret·20 yönetim·30 dışarıdan fayda·40 çeşitli·50 vergi-harç·60 amortisman) → FAALİYET KÂRI = NetSatış−gider → +Finansman(780/66/653)+Diğer(64/65/67)+KKEG(689/68) → NET KÂR = tüm 6xx+7xx signed toplam."
@@ -40,6 +48,10 @@ metrics:
     last_verified: "2026-08-06"
 
   gider_mizan_dagitim:
+    tip: basit
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     kullanir: [bridges:mhsfis-gdrmerkez]
     kaynak: "mhs.mhsFis (GL satır) + mhsHsp; köprü mhsfis-gdrmerkez → frm (gider merkezi). MizanQueries ile aynı çekirdek."
     gider_tanimi: "hspKod '7%' TÜMÜ (740 hizmet/kafe · 760 pazarlama · 770 genel yönetim · 780 finansman) + gider-6xx (LEFT(hspKod,2) IN 62,63,65,66,68 → 653 komisyon · 689 ÖİV/olağandışı). Gelir 6xx (600 satış/602 kira geliri/642 mevduat/679 teşvik) HARİÇ. BKM 7/A yöntemi → yansıtma (7x1) aktif değil, 6xx+7xx çift-sayım YOK."
@@ -49,6 +61,10 @@ metrics:
     last_verified: "2026-08-06"
 
   satinalma_birim_maliyet:
+    tip: oran
+    birim: TL
+    taban: kdv_haric
+    additivity: yok
     kaynak: "dbo.fatAyr + dbo.fat (eTip=0 alış faturası, eDurum<>2). Yoksa 2021-05-31 devir (irsHrk ehTip=99). Yoksa bu-ay alış birimi (alis_tutar/alis_adet)."
     kural: "Birim maliyet = EN SON alış faturasında (eID) SUM(fa.ehTutarN)/SUM(fa.ehAdetN) — FATURA-BAZINDA topla-böl, satır-bazında DEĞİL. Sıra: en son fatura (ORDER BY MAX(f.eTarih) DESC, f.eID DESC), GROUP BY ehstkID, eID."
     kritik_grain: "⚠️ Aynı faturada (aynı eID+eTarih) bir ürünün BİRDEN ÇOK fatAyr satırı olabilir — biri gerçek fiyatlı, biri ehTutarN=0 (bedava/promo/bonus adet). ROW_NUMBER(...ORDER BY eTarih,eID) tek satır seçmek TIE (non-deterministik: pymssql vs SSMS farklı satır → farklı birim). DOĞRU: faturayı topla (SUM/SUM) → bedava adetler ortalamaya girer, gerçek landed-cost. 0-birim satırı ELEME (57 verir, şişik); TOPLA (52.25 verir, doğru)."
@@ -61,6 +77,10 @@ metrics:
     last_verified: "2026-08-13"
 
   bulunurluk_osa:
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
     note: "Şube-bazlı raf bulunurluğu (On-Shelf Availability). Bir SKU bir şubede M ayında 'bulunur' = GİRİŞ-bakiyesi (M-1 ay-sonu) ≥ min-stok(3). Kaynak: bkm.StokAyBakiyeMekanBazli (ay-sonu bakiye, carry-forward — bkz entities). Amaç: kuru-raf = kayıp satış görünür kıl + satınalma forecast tabanını düzelt (plan-33)."
     availability_gate: "GİRİŞ-bakiyesi kullan (M-1 ay-sonu), same-month-end DEĞİL — son-gün-gelen stok o ay satılamaz, ay-sonu 'stoklu' der (şişme). Satır sadece hareketli aya yazılır → carry-forward (Donem<=@ay ORDER BY Donem DESC) ŞART."
     oos_orani: "Şube×kategori OOS = (kuru-SKU / o şubede-taşınan-aktif-SKU). Aktif = son12 satan. Taşınan = geçmişte o şubede raf açılmış (kasıtlı-assortment ele — hiç taşınmayan SKU 'gap' değil)."
@@ -78,6 +98,10 @@ metrics:
     last_verified: "2026-08-14"
 
   banka_ekstresi_siniflandirma:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kullanir: [bridges:car-karsi-frm, bridges:frm-mhsent-glhesap]
     kaynak: "dbo.car cTip=122 (Banka Ekstresi); köprü car-karsi-frm; kod car.cFatTip=122"
     problem: "Banka ekstresi satır açıklamasından (cNot) doğru cari (cKodKarsi) atama. Şule (insID 1897) elle yapıyor; oto-import/SP YOK. Pilot: muhasebe app (plan-27)."
@@ -88,6 +112,10 @@ metrics:
     evidence: "2026-07-04 — 807.600 satır zaman-bazlı holdout (son 30g) + canlı browser test (perspektif doğrulandı)."
     last_verified: "2026-07-04"
   car_acik_kalem_ve_gl_zinciri:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ckalan: "dbo.car_isle(@frmID) (WITH ENCRYPTION): cari net bakiye (bakiye_vw / sağlayıcı ise carSatOde_vw) → satırlara vade DESC, cID DESC (LIFO-by-vade) dağıt → cKalan = kapanmamış kalıntı. Açık kalem = cKalan<>0."
     car_gl_zinciri: "car_ekle (giriş + cKodKarsi ata) → mhs.mhsEntKontrolCar (uygun cBA=0 seç, iki taraf mhsEntFrm-tanımlı) → mhs.mhsEnt_car (yevmiye mhsFis borç/alacak) → mhs.cariIsle_oto (günlük zamanlayıcı, cCrmID>0)."
     trigger: "car/carAyr/carNot/carSatOde/carCek üzerinde TRIGGER YOK → yazma footprint'i car_ekle'nin açık yazdığı kadar."
@@ -96,6 +124,10 @@ metrics:
     evidence: "2026-07-04 — car_isle/car_ekle/mhsEnt_car/mhsEntKontrolCar decrypted kaynak (Fikri); trigger sorgusu 0 satır."
     last_verified: "2026-07-04"
   olu_stok_maliyet_zinciri:
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: yari
     kaynak: "dashboard/Data/RefQueries.Envanter.cs OluStokSql"
     chain: "COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN fiyatS>0 THEN fiyatS * avgml.AvgCostOran END)"
     step1:
@@ -115,6 +147,10 @@ metrics:
     evidence: "2026-06-17 — dashboard build yeşil, OluStokSql OUTER APPLY fat5 eklendi"
 
   net_ciro:
+    tip: basit
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     kaynak: dbo.irsHrk
     grain: "ehTrhS (=irs.eTarihS) — stok/ciro daima bu tarih"
     formula: "SUM(CASE WHEN ehTip IN (1,4,100) THEN ehTutarN END) - SUM(CASE WHEN ehTip IN (3,5,101) THEN ehTutarN END)"
@@ -122,6 +158,10 @@ metrics:
     note: "ehTutarN KDV hariç, = ehTutar-ehIndirim. Tüm tutarlar KDV hariç."
 
   encore_ciro:
+    tip: basit
+    birim: TL
+    taban: belirsiz
+    additivity: tam
     kaynak: EncoreMerkez.dbo.Sales
     filters: ["SalesProducts WHERE IsValid=1", "DocumentsTypeId IN (1,2,3,6,7,8)"]
     iade_sign: "CASE WHEN DocumentsTypeId=3 THEN -GrossTotal ELSE GrossTotal END"
@@ -130,6 +170,10 @@ metrics:
     compat110: "STRING_AGG/TRIM/IIF/TRY_CONVERT YOK"
 
   depo_hareket_kategori:    # 10.06 — merkez depo (mekan 12) hareket sınıflaması
+    tip: basit
+    birim: adet
+    taban: yok
+    additivity: tam
     kaynak: "depo.paletIcHrk p JOIN dbo.irs i ON i.eID=p.piIrsID"
     grain: "p.pikTarih, p.pGC (0=giriş 1=çıkış), i.eTip, i.eFirma"
     adet: "SUM(ABS(p.piAdet))"
@@ -143,6 +187,10 @@ metrics:
     deger_2026_ocamay: {Mal Kabul: 1923096, Heykel: 330663, İade Kabul: 61330, GENEL Giriş: 330593, Mağaza Sevk: 1412174, İade-GENEL Sevk: 136055}
 
   depo_isgucu:              # gerçek operatör verimi
+    tip: basit
+    birim: adet
+    taban: yok
+    additivity: tam
     gorevler:
       Raflama:  {source: "depo.paletIcHrk pHrkTip=0 pGC=0", personel: "COUNT(DISTINCT pikKisi)", adet: "SUM(piAdet)"}
       Toplama:  {source: "depo.emirAyr emTamam=1", personel: "COUNT(DISTINCT emKisi)", adet: "SUM(emAdet)", note: "%99.97 emTip=2 picking"}
@@ -152,6 +200,10 @@ metrics:
     uygulama: scripts/depo_isgucu_raporu.py
 
   birim_maliyet:            # 15.06 — KANONİK maliyet sistemi (TEK KAYNAK, her yerde bu)
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: yok
     kaynak_job: "SQL Agent job 'MaliyetRaporu-Ceren' → step 'Maliyet_Rapor' (DerinSISBkm, gece otomatik → bkm.ENVANTER_RAPORU)"
     formula: "COALESCE(MLYT, ORT_ALIS, SONRAKI, 0)"
     MLYT: "son 5 alış faturası SUM(ehTutarN)/SUM(ehAdetN) — fatAyr fa JOIN fat f ON fa.ehID=f.eID AND f.eTip=0 AND f.eDurum<>2 AND f.eTarih<=@tarih, WHERE fa.ehstkID=stkID ORDER BY f.eTarih DESC, TOP 5"
@@ -168,6 +220,10 @@ metrics:
     evidence: "15.06 — job msdb.sysjobsteps'ten okundu; Kitap (Kategori3='Kitap') 97.962 SKU = 65,8M kilitli, S90=0 ölü 72.904 SKU = 30,4M."
 
   envanter_exclusions:      # stok/envanter raporlarında ZORUNLU dışlamalar
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     sinav_okullari:
       filter: "urnKtgr2ID=19 HARİÇ"
       neden: "paket-koduyla-giriş / parça-koduyla-çıkış → İst.Yolu'nda sahte ÜstFiyat −190M, Ort.Maliyet +149M"
@@ -192,6 +248,10 @@ metrics:
       evidence: "2026-08-25 — aynı koşu, adet DESC ham liste."
 
   eticaret_net:             # haftalık brief + G7 net tanımı
+    tip: basit
+    birim: TL
+    taban: belirsiz
+    additivity: tam
     kaynak: ODAKJOKER.JOKER.dbo.J_ORDERS
     formula: "SUM(CASE WHEN STATUS NOT IN (1001,1006,1007,3000,4000) THEN TOTALPRICE END)"
     grain: "ORDERDATE (ISO YYYYMMDD param!)"
@@ -199,6 +259,10 @@ metrics:
     uygulama: "scripts/generate_brief.py SQL_ETICARET (v1.1.0)"
 
   cod_ekonomi:              # kapıda ödeme
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
     cod_filter: "PAYDEFREF=-3"
     service_fee: "SERVICEPRICE = pass-through (firmaya ödenir, kâr DEĞİL)"
     iade_maliyet: "2 × CARGOPRICE (gidiş+geri getirme), teslim edilmeyen sipariş → BKM yutar"
@@ -207,6 +271,10 @@ metrics:
     uygulama: scripts/kapida_odeme_analiz.py
 
   etic_iptal_iade:          # e-ticaret iptal/iade analizi (2026-07-30 keşif)
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     grain: "SATIR (J_ORDER_DETAILS.STATUS) — header J_ORDERS.STATUS kısmi iptali kaçırır"
     kategoriler: "İptal=2005 · İade=2010 · Baskısı-yok/fiili-iptal=2004 · Normal=diğer (2009 kargoya verildi)"
     turemis_filtre: "AND NOT EXISTS(SELECT 1 FROM J_ORDERS b WHERE b.BASEORDERID=o.ORDERID) — superseded asılı çıkar (çift-sayım)"
@@ -222,6 +290,10 @@ metrics:
     last_verified: 2026-07-30
 
   depo_stok_dagilim:        # WMS depo stok kovaları (12.06 — gerçek prod sorgu)
+    tip: basit
+    birim: adet
+    taban: yok
+    additivity: yari
     kaynak: "depo.paletUrnTnm + paletTnm + adres (palet→adres→tip), PIVOT adrsAlanTip × pUStkID"
     filter: "pUAdetN>0, adrsAlanTipID IN (0,1,5)"
     kovalar:
@@ -232,6 +304,10 @@ metrics:
     uygulama: "DEPO ÖZET DURUM.sql / BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql"
 
   wms_bekleyen_toplama:     # WMS raflanmamış sipariş ihtiyacı
+    tip: basit
+    birim: adet
+    taban: yok
+    additivity: yari
     kaynak: "J_DEPO_TOPLANACAK + J_ORDERS(WMSAKTARMA=1,STATUS=1000) + J_ORDER_DETAILS(STATUS IN 2000,2002,2003,2007) + J_DETAIL_BOXES(raflanmış)"
     formula: "ihtiyaç = SUM(QUANTITY sipariş) − ISNULL(SUM(raflanmış koli),0); depodan_toplanacak = ihtiyaç − JokerHavuz mevcut"
     note: "J_ORDER_DETAILS_COMP ile set/kompozit ürün açılır (COMPBARCODE/COMPITEMREF). DETAILS.STATUS=2003 (rafta) tarihi NULL'lanır."
@@ -240,6 +316,10 @@ metrics:
     last_verified: 2026-06-18
 
   cari_firma_stok_hareket:  # firma bazlı stok + 3 ay alış/satış (cari özet)
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
     kaynak: "stokSonAltDepo_vw (depo+mağaza stok) + irsHrk (3 ay alış/satış pivot) + bakiye_vw"
     firma_filter: "urn.stkFirma=570 (BKM ana yayın firması — cari özette)"
     alis_ehtip: [0, 10, 2, 12]   # alış+yerel alım+alış iade+alış mağaza iade
@@ -249,6 +329,10 @@ metrics:
     uygulama: "CARİ ÖZET DURUM.sql"
 
   upt_sepet_adedi:          # UPT = unit per transaction (sepet derinliği) — 12.06 doğrulandı
+    tip: oran
+    birim: adet
+    taban: yok
+    additivity: yok
     formula: "SUM(SalesProducts.Amount) / COUNT(DISTINCT Sales.Id)"
     kaynak: "EncoreMerkez.SalesProducts.Amount (decimal 18,3 = SATILAN MİKTAR/adet) · IsValid=1 · BarcodeNo<>'1001'"
     filter: "Sales.DocumentsTypeId IN (1,2,6,7,8) (iade hariç), tek mağaza mekanID"
@@ -257,6 +341,10 @@ metrics:
     uygulama: "dashboard MagazaQueries.GetDetayAsync · gm-rapor G1"
 
   kampanya_indirim_orani:   # 12.06 — kampanya yükü / efektif indirim
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
     formula: "indirim_orani = SUM(-spc.TotalDiscount) / (SUM(sp.TotalPrice) + SUM(-spc.TotalDiscount))"
     kural: "Brüt = kampanyalı kalemlerin net satışı (TotalPrice indirimli) + indirim. Oran = indirim/brüt."
     kopru: "bridges.yaml encore_kampanya_kalem (spc.SalesId+ProductSequence=sp.Sequence)"
@@ -266,6 +354,10 @@ metrics:
     uygulama: "MagazaQueries.GetDetayAsync kampSql/kampFisSql · scripts/build_3al2ode_belge_excel.py · gm-rapor M2"
 
   stockout_sku:             # 13.06 — SKU-bazlı stockout SİNYAL KALİTESİ (MIMBAL pilot bulgusu)
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
     kullanir: [metrics:envanter_exclusions]
     kaynak: "irsHrk per-SKU bakiye≤0 / son 30g satışı olan (E8), kategori bazlı"
     formula: "100.0 * COUNT(bakiye≤0) / COUNT(satılan çeşit)"
@@ -280,6 +372,10 @@ metrics:
     uygulama: "gm-rapor E8 + MIMBAL docs/pilot/examples/2026-06-13-attention-list.md"
 
   il_teslimat_perf:         # 13.06 — B-41 il bazlı kargo teslimat hızı
+    tip: basit
+    birim: gun
+    taban: yok
+    additivity: yok
     kaynak: "J_ORDERS o JOIN J_ORDER_DELIVERY_ADDRESS mus ON mus.LOGICALREF=o.DELIVERYREF"
     formula: "cikis_isgunu = takvim − hafta_sonu(DATEDIFF WEEK*2 + Pazar-baş/Cmt-bitiş edge) − araya giren hafta-içi resmi tatil (CROSS APPLY VALUES tatil tablosu) · teslim_gun=AVG(DATEDIFF(HOUR,SENDDATE,CARGODELIVERYDATE)/24) takvim"
     filter: "SENDDATE dönemi, CARGODELIVERYDATE NOT NULL, STATUS=1005, DCITY NOT NULL. GROUP BY DCITY."
@@ -289,6 +385,10 @@ metrics:
     uygulama: "dashboard EticQueries.GetIlTeslimatAsync/GetAyKargoAsync/GetKargoPerfAsync (CikisIsGunu+TatilApply) · KARGO İL TESLİMAT PERFORMANSLARI.sql"
 
   encore_irshrk_mutabakat:   # 14.06 — EncoreMerkez ↔ irsHrk ciro mutabakatı (FSM 13.06 işlem-seviye KESİN)
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kullanir: [metrics:tum_ciro_kdv_kargo_haric]
     soru: "Dashboard kategori ciro (EncoreMerkez) drill (irsHrk) ile neden ~%14 (Oyuncak) farklı?"
     kdv_bazi: "EncoreMerkez SalesProducts.TotalPrice + Sales.GrossTotal = KDV DAHİL. SalesProducts.VatTotal = KDV. KDV hariç = TotalPrice−VatTotal. irsHrk ehTutarN = KDV HARİÇ. Kitap %0, oyuncak/kırtasiye %20 → kategori bazında fark; blended mağaza ~%5-6."
@@ -299,6 +399,10 @@ metrics:
     uygulama: "Queries.cs katSql/skatSql · MagazaQueries.cs · RefQueries.GetUrunlerAsync"
 
   tum_ciro_kdv_kargo_haric:   # 16.06 — KULLANICI DİREKTİFİ: tüm dashboard/rapor ciro KDV-hariç + kargo-hariç (plan-16)
+    tip: basit
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     karar: "TÜM ciro/tutar KDV-HARİÇ + KARGO-HARİÇ. 14.06 'ana ciro KDV-dahil DOKUNMA' kararı İPTAL. CFO net ciro istiyor (kasanın aldığı perakende-brüt değil)."
     encore_haric: "EncoreMerkez KDV-hariç = SalesProducts.TotalPrice − SalesProducts.VatTotal (per-satır, IsValid=1). Sales.GrossTotal−DiscountTotal (başlık, KDV-dahil) KULLANMA → SalesProducts grubuna geç."
     etic_haric: "E-ticaret KDV+kargo-hariç = SUM(J_ORDER_DETAILS.QUANTITY × SELLINGPRICEWITHOUTVAT). 16.06 KESİN: J_ORDER_DETAILS'te temiz KDV alanları var — VAT(oran), VATPRICE(KDV tutarı), SELLINGPRICEWITHOUTVAT(KDV-hariç birim), SELLINGPRICE(KDV-dahil birim). J_ORDERS.TOTALPRICE = SUM(QTY×SELLINGPRICE) + CARGOPRICE + SERVICEPRICE (birebir doğrulandı). TOTALPRICE/SELLINGPRICE KULLANMA (KDV+kargo dahil) → SELLINGPRICEWITHOUTVAT."
@@ -311,6 +415,10 @@ metrics:
 
   # ── BKMMaliyet — FIFO maliyet/marj metrikleri (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
   fifo_karlilik:
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     kaynak: "BKMMaliyet.dbo.FifoCikisDetay (HareketTipi='SATIS')"
     gelir: "SUM(SatisTutar)  — satış geliri (irsHrk ehTutarN, KDV-hariç, miktar-oranlı çıkış segmentine dağıtılmış)"
     smm: "SUM(CikisTutar)  — satılan malın maliyeti (CikisTutar COMPUTED = Miktar × BirimMaliyet)"
@@ -323,6 +431,10 @@ metrics:
   fifo_birim_maliyet: "eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND KalanMiktar>0"
   fifo_acilis_stok: "GEÇMİŞ-doğru: irsHrk KÜMÜLATİF SUM(ehAdetN) WHERE ehTrhS<=@devir AND ehAltDepo=0 AND ehMekan IN(1,12,4477,4478) HAVING>0. ANLIK stok view (stokSonAltDepo_vw) KULLANMA — devir-tarihi stoğunu bugünkü stokla bozar (19.06 bug)."
   fifo_garanti_tier:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     note: "Açılış SP (sp_Fifo_AcilisCalistir_V2 ADIM 5.5) — tüm tier sonrası maliyetsiz/katmansız stok için FİYAT 0 OLAMAZ garantisi."
     oncelik: "1) UrunBilgi.SonAlis>0 (gerçek son-alış = gerçek-ürün ayracı) → 2) SatisFiyat × kategori-marj oranı (AVG cost/satış per KatAna, ≥20 ürün) → 3) kategori ortalama mutlak maliyet → 4) impute-EDİLEMEZ → DEVRE DIŞI (non-inventory)"
     sabit_kaldirildi: "1-TL @GarantiSabitFiyat KALDIRILDI (19.06): non-inventory'yi (sınav süreli yayın/hediye çeki/kafe) %100 marj sayıp Ocak'ı +1.37M şişiriyordu (272 kalem). Artık impute-edilemez=devre-dışı."
@@ -331,6 +443,10 @@ metrics:
   fifo_fiyat_0_olamaz: "FifoKatman.BirimMaliyet<=0 KESİNLİKLE yasak (fifo-domain §6). 0 = sessiz %100-marj. GATE: SELECT COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı hariç) = 0."
   fifo_non_inventory: "Devre-dışı = stkID-CURATED (isim-pattern DEĞİL — fifo-domain §3): 'Geri Dönüşüm' çocuk kitabı, 'Poşet Dosya' kırtasiye, 'Big Babol Poşet' sakız GERÇEK ürün. Gerçek non-inventory: BKM bagging-poşet, kargo gideri (Zkargo), hediye çeki, iskonto/fiyat-farkı, demirbaş, yemek-ilk-madde, isimsiz-obsolete."
   marka_devir:   # 22.06 — B-110 tedarikçi/yayınevi performans scorecard
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
     note: "Marka/yayınevi (urn.urnMrkID → urnMrk.mrkID) bazında sermaye verimliliği = stok devir hızı + iade oranı."
     devir: "son 12 ay satış adet / anlık stok adet. Satış adet = -SUM(ehAdetN) ehTip IN(4,100). Stok = SUM(stokSonAltDepo_vw.stok) ehAltDepo=0, mekan 1/4477/4478/12. <1,5× = sermaye tuzağı (sipariş-kes sinyali), 1,5–3× izle, >3× sağlıklı. stok=0 → null (tükenmiş)."
     iade_orani: "iade tutar / brüt satış tutar. iade = ehTip IN(3,5,101) ehTutarN; brüt = ehTip IN(4,100). >%10 kırmızı bayrak."
@@ -339,6 +455,10 @@ metrics:
     bulgu: "22.06: Faber-Castell devir 0,46× (636K stok, sermaye tuzağı) · Yapı Kredi 1,28× · Bilgi Sarmal 9,7× ama iade %12,4. PARAF/Fenomen/Timaş Çocuk sağlıklı."
     last_verified: 2026-06-22
   kapanis_mudahale:   # 22.06 — B-117 GL forensic
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     note: "Kapanmış muhasebe ayına SONRADAN dokunma (ISA 240 post-closing). Kaynak: dbo.car + dbo.fat(eTip 6,7,8) + mhs.mhsFisBaslik."
     mudahale: "giriş(gTarih/cgTarih) VEYA değişim(kTarih/ckTarih) > Fin_AyKapanis.KapanisDT (belge ayının kapanış tarihi). GecGiris/SonradanDeg bayrak."
     severity: "3=ikisi · 2=sonradan-değişim · 1=geç-giriş · 0=yok. RiskSkor = severity×100 + min(GunSonra,90) + round-number(25) + giren=onaylayan(20) + mükerrer(15)."
@@ -349,6 +469,10 @@ metrics:
     confidence: 0.95
     last_verified: 2026-06-22
   kesin_mizan:   # 23.06 — B-118 mizan/likidite dashboard
+    tip: basit
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     note: "Genel muhasebe mizanı — ana(3-hane)→alt(100.10)→en alt(100.10.001) hiyerarşi. Dönem = fisSirketID (yıl−2020)."
     formula: "Bakiye = Borç − Alacak (borç-pozitif). Borç=SUM(fisBA=1 → -fisTutar), Alacak=SUM(fisBA=0 → fisTutar). Kaynak mhsFis (mhsMizan_vw DEĞİL — kapanış içeriyor)."
     kapanis_haric: "Kapanmış yıl: 'Kapanış' bilanço fişi HARİÇ (codes mhsFisBaslik.fisAd_sistem) → gerçek bakiye. NOT EXISTS(fisAd=N'Kapanış'). Açık yıl etkisiz (Kapanış yok). VİRMAN'lar DAHİL (590 dönem kârı görünür)."
@@ -360,6 +484,10 @@ metrics:
     last_verified: 2026-06-23
 
   reorder_oneri_motoru:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     proc: "bkm.OneriSiparisHesaplaSapmaDuzeltmeli (gece batch → entity bkm.OneriSiparis). Şube 1/4477/4478."
     model: "min-max (s,S): Minimum = günlük_hız × min_stok_gün(15); Maximum = × max_stok_gün(30); OneriSiparisAdet = (Stok ≤ Minimum ve Miktar180>0) ? Maximum−Stok : 0. GunStok = Stok×90/Miktar180. Açık PO bakiye (sipBakiye_vw) stoğa eklenir (çift-sipariş önler). Kategori3 (OneriSiparisKtg3Ondeger) min/max override."
     gunluk_hiz: "DuzeltilmisOrt = irsHrk satış (ehTip 1/4/100, -ehAdetN) / gün, ortTarih penceresi (kategori OrtSatisGun ya da 90g)."
@@ -370,6 +498,10 @@ metrics:
     evidence: "2026-07-30 — proc gövdesi (13KB) okundu + bkm.OneriSiparis self-join backtest (mağaza 1, 6 tarih D→D+30, SMAPE bucket). Arşiv: sorgular/2026-07-30-oneri-siparis-backtest.sql."
 
   satinalma_accountability:   # 2026-07-30 — satinalma-danisman fact-force keşfi (alıcıya hesap sorma zinciri)
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     zincir: "Öneri (OneriSiparis.OneriSiparisAdet, s,S nötr taban) → Talep/Sipariş (OneriSiparisTalep.SiparisMiktar = ALICI kararı) → Mal Kabul (MalKabulSatirLog.Miktar = gerçek gelen) → Stok/Satış (outcome: devir/ölü-stok/stockout)"
     kose_tasi: "ÖNERİ-SAPMASI = SiparisMiktar − OneriSiparisAdet (aynı Tarih/MekanId/StkId). Kontrol-edilebilir+ölçülebilir+adil. Alıcı öneriyi ezip fazla aldı & SKU ölü kaldı → alıcı sorumlu; öneriyi izledi & kötü → SİSTEM sorumlu (s,S nötr taban confound'u çözer)."
     fill_rate: "gelen/sipariş = MalKabulSatirLog.Miktar / OneriSiparisTalep.SiparisMiktar. Kısa-fill = EksikIrsaliyeNo/IadeIrsaliyeNo → TEDARİKÇİ başarısızlığı (alıcı değil); kronik+alıcı o tedarikçide ısrar → alıcı (tedarikçi-seçimi)."
@@ -382,6 +514,10 @@ metrics:
     evidence: "2026-07-30 canlı sqlcli — OneriSiparisTalep/KullaniciKategori/MalKabulBaslik/SatirLog profil + EvrakNo köprü testi (0 örtüşme). Eksen tam-tasarımı bekliyor (öneri-sapması→ölü-stok)."
     last_verified: "2026-07-30"
   oneri_sapmasi:
+    tip: basit
+    birim: adet
+    taban: yok
+    additivity: tam
     note: "ÖNERİ-SAPMASI = bkm.OneriSiparisTalep.SiparisMiktar − bkm.OneriSiparis.OneriSiparisAdet, join (Tarih, MekanId, StkId). Öneri motoru bir adet önerir, insan değiştirir → sapma = kontrol edilebilir karar."
     neden_adil: "Ham talep hacmi ŞUBE BENİMSEMESİNE bağlı (İst.Yolu %70) → kişi kıyasında haksız. Sapma ORANI benimsemeden bağımsız; aynı kişinin kendi kararını öneriyle kıyaslar."
     join_perf: "OneriSiparis PK CLUSTERED (Tarih, MekanId, StkId) = tam join anahtarı → talep tarafından SEEK. CAST(t.Tarih AS date) KÜÇÜK tarafta yapılır (208M satırlık tabloda CAST seek'i bozar). Canlı: 111K talep × 208M öneri ≈ 2,2s."
@@ -395,6 +531,10 @@ metrics:
     last_verified: "2026-08-19"
 
   hediye_ceki:                # 2026-08-25 — cek nominalinden indirim talebi (karlilik/tavan). v2: kanal + fat5 duzeltmesi
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
     nitelik: "Cek SATISI hasilat DEGIL AVANS — KDV=0. Kar cekin HARCANDIGI anda dogar; nominalden verilen indirim dogrudan o kardan duser. Urun tanimi: `urnKtgr2.ktgrAd = N'Hediye Çeki'` (kupur-SKU 50/100/200/500/750/1000 + acik-tutarli stkID 551353, fiyatS=0 = fatura kanalinin ana kalemi)."
     KANAL_KURALI: "⚠ CEK SATISI POS'TAN OLCULMEZ — uc kanal var ve POS AZINLIK. Tek dogru kaynak `dbo.irsHrk` (ehTip bazli): `1` Satis(fatura, ~%55) · `100` POS Satis (~%35) · `4` Magaza Satis (~%10); iade `3`/`5`/`101` dusulur. POS-only olcum hacmi ~3 KAT EKSIK gosterir ve sahte 'yukumluluk acigi' uretir (v1 hatasi). Kanal disi: `88` Diger Giris = cek BASIMI/stok girisi (satis DEGIL) · `89`+`98` = imha/merkeze iade/kisiye hediye (bedelsiz)."
     fatura_kanali_indirim: "Fatura kanalinda indirim ZATEN uygulaniyor: `fatAyr.ehIndirim` / `ehTutar` (eTip=1). Ortalama %4,99 ama KURALSIZ — ayni pencerede %0, %4,15, %5 ve %15 birlikte. ⚠ MUSTERI GRUP KONSOLIDASYONU SART: INALLAR OTOMOTIV(24922) + INALLAR SIGORTA(56291) + GONYE OTOMOTIV(56292) AYNI GRUP (kullanici teyidi + ucu de Ovaakca Cesmebasi/Istanbul Cad.) -> konsolide 480.000 TL/%15 = EN BUYUK alici (%26 brut payi) ve indirim butcesinin %78,4'u orada. Konsolide edilmezse uc orta-olcekli musteri gibi gorunur ve 'indirim-hacim ters iliskili' YANLIS yorumu cikar. En buyuk ikinci/ucuncu alici (250.000 / 227.550 TL) %0 oduyor -> asil bulgu KADEME YOKLUGU. Grup-ici taraflar (Bursa Kultur Merkezi) AYRI KOVA."
@@ -429,6 +569,10 @@ metrics:
     evidence: "2026-08-25 canli MCP — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql (blok 1-12; 9=kanal, 10=fatura indirimi, 11=geri-donusum ayrimi, 12=fat5 marj); docs/2026-08-25-hediye-ceki-indirim-raporu.md v2."
 
   ik_norm_kadro_turnover:    # 2026-09-02 — norm kadro / sirkulasyon / yetismis adam olcumu
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
     note: "Norm kadro testi = kisi basi FIZIKSEL hacim (adet/kisi) trendi. Ciro/kisi enflasyonla sisiyor, adet sismez -> norm kadro sorgusunda BIRINCIL olcut adet/kisi. Kadro as-of 31.08 (Ict>=T), hacim Oca-Agu kumulatif, 3 POS magazasi (mekan 1/4477/4478), Sinav haric."
     olcum_2026_09_02: "Yil | kadrolu | adet | adet/kisi -> 2023: 60 · 2.064.284 · 34.405 | 2024: 91 · 2.296.833 · 25.240 | 2025: 96 · 2.752.385 · 28.671 | 2026: 111 · 3.607.309 · 32.498. YORUM: kadro sismesi 2024'te oldu (kadro +%52, adet +%11 -> verimlilik -%27); 2024->2026 toparlanma (+%28,8). 3 yil net: kadro +%85, adet +%74,7, kisi basi adet -%5,5 (2023 seviyesine donulmedi)."
     TURNOVER: "⚠ KRONIK YUKSEK. Ayrilan kadrolu (magazalar): 2024=144 · 2025=161 · 2026-YTD(8 ay)=97. Ortalama kadro ile oranlanmis devir: 2024 ~%134 · 2025 ~%123 · 2026 yilliklandirilmis ~%102. Perakende normu %40-70 -> BKM iki kati. Ayrilan kadrolunun ORT. KIDEMI 281 -> 300 -> 313 gun (~10 ay): kisi yetismeden gidiyor. Sezonluk ort. kidem 57/37/137 gun (2026 yuksek cunku kohort henuz tahliye edilmedi -> censoring, yillar arasi kiyaslanamaz)."
@@ -444,6 +588,10 @@ metrics:
     evidence: "2026-09-02 canli MCP zirve (vw_PersonelDepartman as-of + ayrilis yili + kidem dilimleri) + DerinSIS eTip100 Oca-Agu adet/net 2023-2026."
 
   hizali_pencere_gun_esitligi:   # 2026-09-03 (K-08) — okul-hizali kiyasin on kosulu
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kural: "Okul-hizali pencere kiyasi ancak GUN SAYILARI ESITSE gecerlidir. Gun sayisi
       **MAGAZA x YIL** bazinda olculur; tek sozlukte tutulursa yalniz SON magazanin gunu
       kiyaslanir ve bir magazanin eksik gunu (kapanis/ariza) SESSIZCE gecer -> o magazanin
@@ -457,6 +605,10 @@ metrics:
     last_verified: "2026-09-03"
 
   norm_kadro_karsilastirma:    # 2026-09-02 — NORM DOLULUGU: yonetim karari + hesap kurali
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kural: "⚠⚠ NORM = **ENGELLI DISINDAKI** personel sayisi (yonetim karari, 2026-09-02 teyidi). ETKINLIK de norm disi (norm tablosunda 0 tanimli). Karsilastirma: `operasyonel kadrolu = kayit kadrolu - engelli - etkinlik` vs norm. Bu karar, norm tablosunun kendi notunu ('Engelli kadro sayilari raporlamaya dahil edilmistir') GECERSIZ KILAR — tablo notunu okuyup engelliyi dahil sayma."
     kaynak: "Norm bir YONETIM PARAMETRESIDIR, Zirve'den sorgulanmaz. Dosya: `briefings/<klasor>/norm-kadro-YYYYMMDD.json` (tarihli; kadrolu norm departman x sube, sezonluk norm sube toplami, karar metni meta.karar'da). Kaynak tablo: 'BKMKITAP Magaza Kadro ve Sezon Takip Tablosu'. Norm guncellenince YALNIZ bu dosya degisir; emitter'lar (sunum/Excel) otomatik uyar."
     olcum_2026_08_31: "Norm 217 (kadrolu 145 + sezonluk 72) vs operasyonel gercek 189 (kadrolu 131 + sezonluk 58) -> **-28 kisi EKSIK**. Magaza: Ozluce -9 · FSM -4 · Ist.Yolu 0 · Heykel -15. Kayit toplami (IK resmi, 4 magaza) kadrolu 137 + sezonluk 58 = 195. Engelli 3 (FSM 1 · Ist.Yolu 2 | bolum: KIRTASIYE 2 · MAL KABUL 1) · Etkinlik 3 (FSM/Ist.Yolu/Ozluce)."
@@ -469,6 +621,10 @@ metrics:
     evidence: "2026-09-02 canli Zirve + DerinSIS olcumu; norm dosyasi kullanici (GMY) tarafindan verildi. Arsiv: briefings/sezon-kadro-20260902/ (sunum + Excel + veri/norm JSON)."
 
   sezon_kiyas_takvim_hizalama:    # 2026-09-02 — OKUL ACILISINA HIZALAMA (kritik metodoloji)
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kullanir: [metrics:pos_sistem_gecisi_2025]
     kural: "⚠⚠ Okul sezonu (Tem-Eyl) YoY kiyasi TAKVIM TARIHIYLE DEGIL, **OKUL ACILIS GUNUNE HIZALI** yapilir. Hafta ofseti = DATEDIFF(DAY, o_yilin_okul_acilisi, tarih)/7. Takvim-tarihli kiyas yaniltir: acilis 6 gun kayinca satin alma dalgasi tamamen baska aya duser."
     okul_acilis: "MEB calisma takvimi: 2025-2026 -> **08.09.2025** (uyum egitimi 01-05.09.2025) · 2026-2027 -> **14.09.2026** (uyum haftasi 07-11.09.2026). Yani 2026'da acilis 6 GUN GEC. Yeni yil kiyasi oncesi MEB takvimi DOGRULANIR (meb.gov.tr calisma takvimi genelgesi)."
@@ -481,6 +637,10 @@ metrics:
     evidence: "2026-09-02 canli MCP (DerinSIS eTip100, 3 magaza, Sinav haric) haftalik seri + MEB 2025-2026 ve 2026-2027 calisma takvimi (web dogrulama). Ilgili: pos_sistem_gecisi_2025 (ayni analizde ikinci artefakt)."
 
   sezon_ciro_tahmini_okul_hizali:    # 2026-09-08 — OKUL KAYMASI VARKEN CIRO TAHMINI
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
     kullanir: [metrics:pos_sistem_gecisi_2025, metrics:sezon_kiyas_takvim_hizalama]
     kural: "Okul acilisi kayan yilda ciro tahmini TAKVIM AYI uzerinden yapilmaz. Yontem: (1) gunluk seriyi okul acilisina hizala (ofset = DATEDIFF(DAY, acilis, gun)); (2) buyume carpani k'yi SON TAM hizali gunlerden olc (k = 2026(T-x..T-son)/2025(ayni ofsetler)); (3) tahmin(o) = 2025(o) x k, o > son_ofset; (4) tahmini gunleri CARI yilin takvimine geri yaz -> ay tahmini. Kesim gunu de hizalidir: bugunun eTip 100 belgesi gun ici yeniden yazildigi icin son TAM gun esas alinir."
     okul_acilis_olculdu: "2024-2025 -> 09.09.2024 · 2025-2026 -> 08.09.2025 · 2026-2027 -> 14.09.2026. 2024 tarihi VARSAYILMADI: 2025 sezon sekline en iyi oturan pazartesi arandi (T-56..T+28 normalize gunluk egri, L1 sapma) -> 09.09=0,1027 · 02.09=0,2051 · 16.09=0,2695. MEB takvimiyle birebir tuttu. Yeni yilda ayni sinama tekrarlanir (takvimi web'den de dogrula)."
@@ -504,6 +664,10 @@ metrics:
     evidence: "sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql (DerinSIS eTip 100, 3 magaza, Sinav Kategori3 ile ayrilmis, 01.06.2024-07.09.2026 gunluk). Mutabakat: Eyl-2025 313,0M ve Agu-2025 186,9M onceki olcumlerle BIREBIR. Ilgili: sezon_kiyas_takvim_hizalama (hizalama kurali) · pos_sistem_gecisi_2025 (kaynak secimi)."
 
   pos_sistem_gecisi_2025:    # 2026-09-02 — KASA DEGISIMI: YoY kiyasi bozan yapisal kirilma
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ozet: "⚠⚠ POS sistemi Temmuz 2025'te degisti (ENPOS/INTER_BOS -> EncoreMerkez). EncoreMerkez'de 2025 Ocak-Haziran verisi HIC YOK; Temmuz 2025 KISMI. Bu yuzden EncoreMerkez tek basina 2025 vs 2026 kiyasi YAPILAMAZ."
     gecis_takvimi: "Sube bazli (eski son fis -> yeni ilk fis): IST. YOLU 11.07.2025 18:35 -> 11.07.2025 05:15 (AYNI GUN, ortusme var) · OZLUCE 20.07.2025 21:58 -> 21.07.2025 · FSM 22.07.2025 21:59 -> 23.07.2025. Sinav (DocType 8) EncoreMerkez'de 29.07.2025'te basliyor. 16-18.07'de FSM/Ozluce'de 2-4 fis var = TEST kayitlari, gercek baslangic degil."
     SESSIZ_HATA: "Bu kirilma fark edilmeden EncoreMerkez uzerinden Tem-Agu 2025 vs 2026 olculdugunde: fis +%70,9 · urun adedi +%67 · ciro +%97 cikar. GERCEK degil — 2025 tabani yapay kucuk. Dogru olculer: fis +%22,7 (iki sistem birlestirilerek) · urun adedi +%16,2 (DerinSIS, Sinav haric) · ciro +%44,6. Kisi basi urun adedi hatali olcumde +%48, gercekte +%3,2."
@@ -515,6 +679,10 @@ metrics:
     ttl_days: 365
     evidence: "2026-09-02 canli MCP — EncoreMerkez aylik fis (2025-07 basliyor: Ist.Yolu 9.483 · FSM 5.331 · Ozluce 7.792, Eylul'de 28.642/42.809/46.280'e oturuyor) + INTER_BOS BELGE aylik fis + DerinSIS irs/irsAyr eTip100 kontrol grubu. Arsiv: sorgular/2026-09-02-kadro-vs-is-hacmi-savunma.sql."
   maliyet_proxy_sapmalari:    # 2026-08-25 — hangi maliyet proxy'si ne kadar sapiyor (OLCULDU)
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kullanir: [metrics:birim_maliyet, metrics:olu_stok_maliyet_zinciri]
     kanonik: "Birim maliyet = **fat5** (son 5 alis faturasi `SUM(ehTutarN)/SUM(ehAdetN)`, DerinSIS `fatAyr`+`fat` eTip=0/eDurum<>2 + `BKMDATA..ODAK_FATURA` UNION). Tanim: bu dosyada `birim_maliyet.MLYT` · uygulama ornegi `olu_stok_maliyet_zinciri`. Analizde varsayilan BUDUR."
     sapma_SonAlis: "`bkm.UrunBilgi.SonAlis` (TEK son alis) marji DUSUK gosterir. Ayni sepette olculdu (hediye-cekli sepet, 12 ay): SonAlis %27,3 vs fat5 %32,4 -> **−5,1 puan**. Sebep: enflasyonda tek son alis, son 5 faturanin ortalamasindan yuksek."
@@ -527,6 +695,10 @@ metrics:
     evidence: "2026-08-25 — ayni sepette SonAlis/fat5 yan yana olculdu (sorgular/2026-08-25-... blok 6 vs 12); SonAlis-FIFO sapmasi blok 6b vs bu dosyadaki fifo Ocak-2026 (%35,4)."
 
   personel_maliyet_ve_fazla_mesai:   # 2026-09-03 — kadro savunmasinin MALIYET + UYUM tarafi (K-21/K-22)
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
     kullanir: [metrics:sezon_personel_kohort]
     kaynak: "Zirve `BKM_GENEL.dbo.vw_PuanBil` (bordro, kisi x ay) + DerinSIS `irs/irsAyr eTip=100` (ciro). Kapsam ayraci `vw_PersonelDepartman.Lokasyon LIKE 'MA%'`."
     OLCU_BIRIMI_FTE: "⚠⚠ Kadro/kapasite olcusu **FTE (tam zaman esdeger) = SUM(Primgunu)/30**, bordro SATIRI DEGIL. Bordro satiri (kisi-ay) sayilirsa ay icinde 1 gun calisan da 1 sayilir ve sezonluk giris/cikis yogun aylarda kadro SISER (kullanici uyarisi 03.09.2026). Olculen sapma: 5 magaza Agustos-2025 = 211 kayit vs 168,9 FTE (%25); uc POS Temmuz-2026 = 127 kayit vs 112,4 FTE (ort. prim gunu 26,6). Kisi-basi TUM metrikler (maliyet, ciro, fazla mesai) FTE ile bolunur; kayit sayisi + ortalama prim gunu seffaflik icin JSON/Excel'de kalir. `Primgunu` = SGK prim gunu (tam ay 30); ucretsiz izin zaten dusuk gelir."
@@ -554,6 +726,10 @@ metrics:
     evidence: "2026-09-03 canli — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql (4 blok). Emitter: scripts/verimlilik_excel.py cek() 3g+12 -> JSON maliyet/fazla_mesai; Excel «Maliyet» sayfasi + sunum 2 slayt; 94/94 tutarlilik kontrolu."
 
   sezon_personel_kohort:    # 2026-09-02 — sezon (okul) alım kohortunun seyri; MAĞAZA BAZLI kıyas
+    tip: basit
+    birim: kisi
+    taban: yok
+    additivity: yari
     kaynak: "Zirve `BKM_GENEL.dbo.vw_PersonelDepartman` (MCP: zirve). Aktif = `Ict IS NULL` (Personeldurumu DEĞİL). Şube boyutu = `AltLokasyon`, grup = `Lokasyon` (MAĞAZALAR / KAFELER / GENEL MÜDÜRLÜK)."
     AYRAC_KADRO_SEZONLUK: "⚠⚠ SEZON PERSONELİ AYRACI = `Kadro = 'SEZONLUK'` — Zirve'nin KENDİ bayrağı (view kolonu). Giriş-tarihi penceresi TEK BAŞINA ayraç DEĞİL: aynı pencerede kadrolu alım da yapılır ve ölçüm sessizce bozulur. 2026-09-02 ölçümü: karışık pencere 14g tutunma %83,2 ('sezon kadrosu eriyor' YANLIŞ sonucu) · `Kadro='SEZONLUK'` %91,8 (geçen yıl %93,3 = normal) · `Kadro<>'SEZONLUK'` %75,5 (geçen yıl %92,1 = bozulma BURADA). Bayrak 01.08.2023'ten beri kullanılıyor → 2023 öncesi kohort bu alanla izlenemez. Kadro değerleri: KADRO · SEZONLUK · STAJYER · PART-TIME/PART TIME (aynı şey iki yazım) · KISMİ + 12 NULL/boş kayıt (veri kalitesi borcu)."
     KADROYA_GECIS_OLCULEMEZ: "Bir sezonluk kadroya alındığında `Kadro` alanı DEĞİŞİR ve tarihçe tutulmaz → sezonluk→kadro dönüşüm oranı bu veriyle ölçülemez. 'Geçen sezondan N kişi kaldı' rakamı ALT SINIR (dönüşenler KADRO kovasında görünür, ayırt edilemez). Ölçüm istenirse İK'nın kadro değişikliğini tarihlemesi şart."
@@ -569,6 +745,10 @@ metrics:
     evidence: "2026-09-02 canlı MCP zirve — sorgular/2026-09-02-sezon-personel-kohort-magaza.sql (9 blok: Kadro dağılımı, aylık profil, SEGMENT kıyası, kohort survival, şube×kohort sezonluk + kadrolu, şube×reyon, çözülme ofseti, çıkış kodu, kadro bileşimi). SEZONLUK ölçümü: 3 kohort (2024:73 / 2025:83 / 2026:86 kişi), 14-gün tutunma %92,7/%93,3/%91,8, Eylül-öncesi kayıp 7/9/10. Aynı pencerede KADROLU: 54/48/61 kişi, %90,7/%92,1/%75,5, kayıp 9/6/18. Rapor: briefings/sezon-kadro-20260902/ (xlsx + veri.json)."
 
   stok_farki_deger_tabani:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "Stok farkının parasal büyüklüğü — taban MALİYET, etiket fiyatı DEĞİL"
     kural: >-
       Stok değeri/farkı tutarı `urn.fiyatS` (etiket, KDV dahil) ile ÖLÇÜLMEZ. Stok maliyetle
@@ -591,6 +771,10 @@ metrics:
     last_verified: "2026-09-09"
 
   merkez_defter_mutabakat_kapsami:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "Merkez depo defter mutabakatı — kapsam TÜM ALANLAR (panel stoğundan FARKLI)"
     kural: >-
       İki AYRI soru, iki AYRI kapsam. Karıştırılmaz:
@@ -614,6 +798,10 @@ metrics:
     last_verified: "2026-09-09"
 
   mutabakat_evreni_hizmet_sarf_haric:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "WMS↔ERP mutabakat evreni — hizmet/sarf kalemleri ÇIKARILIR"
     kural: >-
       Mutabakata giren ürün evreni `urnTip = 0` ile SÜZÜLEMEZ. ÖLÇÜLDÜ 2026-09-09:
@@ -636,6 +824,10 @@ metrics:
     last_verified: "2026-09-09"
 
   merkez_defter_negatif_temizligi_ara2025:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "Merkez defter negatiflerinin Aralık 2025 temizliği — eTip 88/89 ile yapıldı"
     olcum: >-
       Merkez (mekan 12) defterinde NEGATİF bakiyeli çeşit sayısı, yıl sonları itibarıyla:
@@ -662,6 +854,10 @@ metrics:
     last_verified: "2026-09-09"
 
   merkez_defter_sizinti_kaynagi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "WMS↔ERP farkı süregelen SIZINTIDAN doğuyor — tarihsel kirden değil"
     kanit_esitleme_tuttu: >-
       Aralık 2025 eşitlemesinin WMS'e yapıldığı DOLAYLI ölçümle kanıtlandı (geriye dönük WMS
@@ -693,6 +889,10 @@ metrics:
     last_verified: "2026-09-09"
 
   yolda_stok_transfer_kabul_gecikmesi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "YOLDA STOK — depo çıkışı ile mağaza kabulü arasındaki mal"
     kural: >-
       Transferin ALIM bacağı, mağaza kabulüne kadar `irsHrk`'da OLUŞMAZ. O aralıkta mal
@@ -718,6 +918,10 @@ metrics:
     last_verified: "2026-09-10"
 
   gerceklesen_marj_panel_geneli:
+    tip: oran
+    birim: oran
+    taban: kdv_haric
+    additivity: yok
     kullanir: [metrics:birim_maliyet]
     ad: "GERÇEKLEŞEN MARJ — kart fiyatı değil, POS'ta fiilen alınan para"
     kural: >-
@@ -747,6 +951,10 @@ metrics:
     last_verified: "2026-09-10"
 
   muhasebe_hesap_kodu_urun_degil:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "MUHASEBE HESAP KODU DESENİ — urnTip'in kaçırdığı sınıf"
     kural: >-
       `urn.stkKod` **3 hane + nokta** ile başlıyorsa (`[0-9][0-9][0-9].%`) o kayıt bir ürün
@@ -774,6 +982,10 @@ metrics:
     last_verified: "2026-09-10"
 
   asiri_stok_esigi_turetildi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kullanir: [metrics:asiri_stok_esigi_kategori_bazli]
     ad: "AŞIRI STOK EŞİĞİ — 5× seçilmişti, 3× ölçüldü"
     kural: >-
@@ -807,6 +1019,10 @@ metrics:
     last_verified: "2026-09-10"
 
   sezon_hazirlik_esigi_turetildi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "SEZON STOK AÇIĞI EŞİĞİ — 0,50 ölçümle doğrulandı"
     kural: >-
       Sezon açığı ölçütü: `SezonToplam > 0 AND ToplamStok > 0 AND ToplamStok < 0.50 * SezonToplam`
@@ -835,6 +1051,10 @@ metrics:
     last_verified: "2026-09-10"
 
   acik_siparis_etip_suzgeci:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "AÇIK SİPARİŞ — dbo.sip satın alma tablosu DEĞİL, eTip süzgeci ZORUNLU"
     kural: >-
       "Yolda mal" / açık sipariş ölçümü `dbo.sip` + `dbo.sipAyr` üzerinden yapılırken
@@ -869,6 +1089,10 @@ metrics:
     last_verified: "2026-09-10"
 
   sezonluk_raf_acigi_merkezde:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "SEZONLUK RAF AÇIĞI — mal merkezde, raf boş (eylem transfer)"
     kural: >-
       Kohort: geçen sezon **O MAĞAZADA** sattı (`SezonFsm/SezonOzl/SezonIst > 0`) ·
@@ -909,6 +1133,10 @@ metrics:
     last_verified: "2026-09-10"
 
   aylik_seri_tam_ay_hizasi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "AYLIK SERİLER TAM AY HİZALI — kesim−364 iki yarım ay üretiyordu"
     kural: >-
       Aylık grafik/seri pencereleri **son 12 TAM ay**: kesim ayının 1'inden 12 ay geriye,
@@ -934,6 +1162,10 @@ metrics:
     last_verified: "2026-09-10"
 
   defter_guvenilir_onsarti:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "DEFTER GÜVENİLİR ÖN-ŞARTI — negatif stok fiziksel durum değil, defter hatası"
     kural: >-
       Bulunurluk / kayıp / eylem kartlarının HEPSİ şu ön-şartı taşır:
@@ -962,6 +1194,10 @@ metrics:
     last_verified: "2026-09-10"
 
   varlik_degil_yeterlilik:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "VARLIK ŞARTI ≠ YETERLİLİK ŞARTI (transfer/temin kartlarında)"
     kural: >-
       "Merkezde mal var → transfer yeter" iddiası `MerkezStok > 0` ile kurulamaz. Kartın
@@ -983,6 +1219,10 @@ metrics:
     last_verified: "2026-09-10"
 
   olu_stok_pos_capraz_denetimi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "ÖLÜ STOK — POS ile çapraz denetlenir, rafa çıkmamış AYRILIR"
     kural: >-
       Ölü stok ölçütü `SatisToplam <= 0 AND ToplamStok > 0 AND yeniDegil` YETMEZ. Üç ek şart:
@@ -1001,6 +1241,10 @@ metrics:
     last_verified: "2026-09-10"
 
   kpi_tutar_tabani_ayrimi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     kullanir: [metrics:olu_stok_pos_capraz_denetimi]
     ad: "KPI ŞERİDİNDE TUTAR TABANI ÜÇ FARKLI ŞEY — toplanamaz"
     kural: >-
@@ -1021,6 +1265,10 @@ metrics:
     last_verified: "2026-09-10"
 
   gerceklesen_marj_maliyet_yasi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "GERÇEKLEŞEN MARJ maliyetin YAŞINI taşır — ayrıştırılamayan sapma"
     kural: >-
       Birim maliyet tarih penceresi OLMADAN "son 5 alış faturası"ndan gelir = BUGÜNKÜ maliyet;
@@ -1041,6 +1289,10 @@ metrics:
     last_verified: "2026-09-10"
 
   esik_turetme_istatistigi:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "EŞİK TÜRETME — Cochran-Armitage + Wilson, ve veriden-seçilen-kesimin bedeli"
     kural: >-
       Bir eşik "veriden türetildi" denilerek ÖLÇÜLDÜ sınıfına yazılamaz. Sıralı bantlarda
@@ -1070,6 +1322,10 @@ metrics:
     last_verified: "2026-09-10"
 
   talep_deseni_aralikli:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "TALEP DESENİ — çeşitlerin %91,9'u ARALIKLI, gün-stok onlarda yanıltıcı"
     kural: >-
       BKM ürün tabanı ağırlıkla **aralıklı talep** (intermittent demand) taşır. Aralıklı
@@ -1089,6 +1345,10 @@ metrics:
     last_verified: "2026-09-10"
 
   devir_hizi_sektor_kiyasi:
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
     ad: "DEVİR HIZI — kategori bazlı ölçüm ve sektör hedef aralığı"
     olcum: >-
       2026-09-10, kesim 09.09.2026, güvenilir defter (mağaza stoğu ÷ 365 günlük mağaza satışı,
@@ -1113,6 +1373,10 @@ metrics:
     last_verified: "2026-09-10"
 
   kayit_dogrulugu_ve_sansurlu_talep:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "KAYIT DOĞRULUĞU ölçülmüş değil · KAYIP SATIŞ tahminleri ALT SINIR"
     kayit_dogrulugu: >-
       Panelin "doğrulanamıyor" oranı %0,12 (327/275.385) bir DOĞRULUK ORANI DEĞİLDİR — yalnız
@@ -1131,6 +1395,10 @@ metrics:
     last_verified: "2026-09-10"
 
   talep_sinifi_panelde:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "TALEP SINIFI panelde ölçüt oldu — gün-stok geçerlilik kapısı"
     kural: >-
       Taban `SatanAy` (son 12 TAM ayda satış olan ay sayısı) ve `TalepCV2` (sıfır-olmayan
@@ -1158,6 +1426,10 @@ metrics:
     last_verified: "2026-09-10"
 
   hucre_eslemesi_tek_kaynak:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "HÜCRE EŞLEMESİ ÇATALLANMASI — iki yönlü sessiz boş kolon (düzeltildi)"
     kural: >-
       Kolon anahtarı → değer eşlemesi TEK yerde: `Data/SatisAnaliziHucre`. Ham değer
@@ -1179,6 +1451,10 @@ metrics:
     last_verified: "2026-09-10"
 
   iade_davranisi_vekili:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "İADE HAKKI — kod anlamı çıkmadı, GÖZLENEN iade oranı vekil olarak çalışıyor"
     kod_anlami_cikmadi: >-
       `dbo.frm.frmIadeKural` 0/1/2 anlamı VERİDEN ÇIKARILAMADI (ölçüldü 2026-09-10).
@@ -1216,6 +1492,10 @@ metrics:
     last_verified: "2026-09-10"
 
   asiri_stok_esigi_kategori_bazli:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "AŞIRI STOK EŞİĞİ KATEGORİ BAZLI — panel geneli 3×, iki kategori ayrıştı"
     kural: >-
       Eşik kategoriye göre: `CASE Kategori3 WHEN 'Kırtasiye' THEN 2 WHEN 'Hazırlık Kitapları'
@@ -1260,6 +1540,10 @@ metrics:
     last_verified: "2026-09-10"
 
   pos_iade_netleme:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "POS TOPLAMLARI İADE NETLİ — AVG kuralı SUM'a taşınmıştı (düzeltildi)"
     kural: >-
       `veri-dogrula §2/2` iki AYRI kural koyar ve ikisi karıştırılmamalı:
@@ -1291,6 +1575,9 @@ metrics:
     last_verified: "2026-09-10"
 
   gider_konvansiyonu:
+    birim: yok
+    taban: yok
+    additivity: yok
     ad: "Gider ayracı (üç sistemde gider nasıl ayıklanır)"
     tip: kural
     kural: >-

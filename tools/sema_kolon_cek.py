@@ -141,6 +141,7 @@ def beyan_edilen_kolonlar(govde):
 
 def main():
     ayrintili = "--ayrintili" in sys.argv
+    tip_oner = "--tip-oner" in sys.argv
     doldur = None
     if "--doldur" in sys.argv:
         i = sys.argv.index("--doldur")
@@ -177,6 +178,47 @@ def main():
 
     if not gruplar:
         kosamadi("hedef entity bulunamadi%s" % (" (--doldur %s)" % doldur if doldur else ""))
+
+    # ── --tip-oner: entity `tip`'ini CANLI KATALOGDAN türet (elle yazma) ──
+    if tip_oner:
+        import json as _json
+        NESNE_TIP = {
+            "USER_TABLE": "tablo", "VIEW": "view",
+            "SQL_STORED_PROCEDURE": "sp", "EXTENDED_STORED_PROCEDURE": "sp",
+            "SQL_TABLE_VALUED_FUNCTION": "tvf", "SQL_INLINE_TABLE_VALUED_FUNCTION": "tvf",
+            "SQL_SCALAR_FUNCTION": "tvf", "SYNONYM": "view",
+        }
+        istek, bulunamadi = [], []
+        for (profil, db), nesneler in gruplar.items():
+            onek = "" if profil == "zirve" else "%s." % db
+            liste = ", ".join("'%s'" % a.replace("'", "''") for a in sorted(nesneler))
+            sql = ("SELECT s.name AS sema_adi, o.name AS nesne, o.type_desc AS nesne_tipi "
+                   "FROM {p}sys.objects o JOIN {p}sys.schemas s ON s.schema_id=o.schema_id "
+                   "WHERE o.name IN ({liste})".format(p=onek, liste=liste))
+            canli_tip = {}
+            for r in sqlcli(profil, db, sql, max_satir=5000):
+                canli_tip[(str(r["sema_adi"]), str(r["nesne"]))] = str(r["nesne_tipi"])
+            for nesne, kayitlar in nesneler.items():
+                for kid, sema_adi, govde in kayitlar:
+                    td = canli_tip.get((sema_adi, nesne))
+                    if td is None:
+                        bulunamadi.append(kid)
+                        continue
+                    esl = NESNE_TIP.get(td)
+                    if esl is None:
+                        bulunamadi.append("%s (bilinmeyen type_desc: %s)" % (kid, td))
+                        continue
+                    if govde.get("tip") == esl:
+                        continue
+                    istek.append({"dosya": "entities", "id": kid, "alanlar": {"tip": esl}})
+        print("# %d entity tipi CANLI KATALOGDAN turetildi (sys.objects.type_desc)"
+              % len(istek), file=sys.stderr)
+        print("# ATANMADI (canlida yok — kural/olcum notu olabilir): %d" % len(bulunamadi),
+              file=sys.stderr)
+        for k in bulunamadi:
+            print("#   %s" % k, file=sys.stderr)
+        print(_json.dumps(istek, ensure_ascii=False, indent=1))
+        return
 
     # ── canlı katalog ──
     canli = defaultdict(dict)   # (profil,db,sema,nesne) -> {kolon: tip}

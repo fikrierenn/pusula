@@ -323,6 +323,8 @@ def main():
                     break
             if deger not in k_kume:
                 continue
+            if govde.get("status") in (kural.get("muaf_status") or []):
+                continue
             gerek = kural.get("gerek", {})
             if "en_az_biri" in gerek and not any(a in alanlar for a in gerek["en_az_biri"]):
                 ekle(kural.get("seviye", "uyari"), kural.get("ad", "kosullu"), yer,

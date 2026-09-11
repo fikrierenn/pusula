@@ -108,6 +108,18 @@ def alanlari_bul(satirlar, bas, son):
     return bulunan
 
 
+def blok_haritasi(baslik_satiri):
+    """Kaydın gövdesi BLOK harita mı (altına 4 boşluklu alan eklenebilir mi)?
+
+    Hayır olduğu iki hâl var ve ikisi de araya satır eklenince YAML'ı bozar:
+      `  X: {a: 1}`      → satır-içi (flow) harita
+      `  X: "bir metin"` → skaler değer (sema'da 4 fifo_* kaydı böyle)
+    İkisi de ATLANIR ve raporlanır — atlanan iş yapılmış sayılmaz.
+    """
+    kalan = baslik_satiri.split(":", 1)[-1].strip()
+    return kalan == "" or kalan.startswith("#")
+
+
 def baglari_kur(uygula, tek_dosya):
     """`kullanir:` referans grafını kur — prose'a gömülü bağları AÇIK alana taşı.
 
@@ -159,9 +171,8 @@ def baglari_kur(uygula, tek_dosya):
                 continue
             # Satır-içi (flow) harita: `  X: {key: [...], grain: "..."}`. Altına blok anahtar
             # eklenemez — YAML "expected <block end>" verir. ATLANIR, raporlanır.
-            basliksiz = satirlar[bas].split(":", 1)[-1].strip()
-            if basliksiz.startswith("{"):
-                atlanan.append((kid, "satir-ici (flow) harita — `kullanir:` elle eklenmeli"))
+            if not blok_haritasi(satirlar[bas]):
+                atlanan.append((kid, "blok harita degil (satir-ici deger/flow) — elle ekle"))
                 continue
             alanlar = alanlari_bul(satirlar, bas, son)
             if "kullanir" in alanlar:
@@ -221,6 +232,162 @@ def baglari_kur(uygula, tek_dosya):
         print("yazildi: %s" % yol.name)
 
 
+def alan_ekle(uygula, json_yolu):
+    """Genel ilkel: verilen kayıtlara verilen alanları ekle (JSON'dan).
+
+    JSON: [{"dosya": "metrics", "id": "net_ciro", "alanlar": {"tip": "basit", ...}}, …]
+    Var olan alanın ÜSTÜNE YAZMAZ — atlar ve raporlar (elle yazılmış değer korunur).
+    Aynı eşdeğerlik kapısı: safe_load(yeni) == beklenen(eski) değilse hiçbir şey yazılmaz.
+    """
+    import json
+    import yaml
+
+    yol = Path(json_yolu)
+    if not yol.exists():
+        kosamadi("json yok: %s" % yol)
+    try:
+        istek = json.loads(yol.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as ex:
+        kosamadi("json bozuk: %s" % ex)
+
+    per_dosya = defaultdict(dict)
+    for o in istek:
+        per_dosya[o["dosya"]][str(o["id"])] = o["alanlar"]
+
+    toplam, atlanan_top = 0, 0
+    yazilacak = {}
+    for dosya, hedefler in sorted(per_dosya.items()):
+        if dosya not in DOSYALAR:
+            kosamadi("bilinmeyen dosya: %s" % dosya)
+        p = SEMA / ("%s.yaml" % dosya)
+        ham_bayt = p.read_bytes()
+        se = "\r\n" if ham_bayt.count(b"\r\n") > ham_bayt.count(b"\n") // 2 else "\n"
+        ham = ham_bayt.decode("utf-8")
+        satirlar = ham.replace("\r\n", "\n").split("\n")
+        eski_yapi = yaml.safe_load(ham)
+
+        ekleme = []        # (satir_no, metinler)
+        beklenen_ek = {}
+        atlanan = []
+        bulunan = set()
+        for kid, bas, son in kayit_tara(satirlar):
+            alanlar_istek = hedefler.get(kid)
+            if not alanlar_istek:
+                continue
+            bulunan.add(kid)
+            if not blok_haritasi(satirlar[bas]):
+                # Satır-içi (flow) harita `  X: {a: 1, b: 2}` → süslü parantezin İÇİNE yaz.
+                # Tek satırda açılıp kapanmıyorsa dokunma (çok satırlı flow riskli).
+                satir = satirlar[bas]
+                kalan = satir.split(":", 1)[-1].strip()
+                if not (kalan.startswith("{") and kalan.endswith("}")):
+                    atlanan.append((kid, "coklu-satir/flow olmayan deger — elle ekle"))
+                    continue
+                ic_mevcut = set(re.findall(r"[{,]\s*([A-Za-z0-9_]+)\s*:", kalan))
+                yaz = {a: v for a, v in alanlar_istek.items() if a not in ic_mevcut}
+                kor = [a for a in alanlar_istek if a in ic_mevcut]
+                if kor:
+                    atlanan.append((kid, "zaten var, korundu: %s" % ", ".join(kor)))
+                if not yaz:
+                    continue
+                ek = ", ".join("%s: %s" % (a, yaml_deger(v)) for a, v in yaz.items())
+                aci = satir.index("{")
+                satirlar[bas] = satir[:aci + 1] + ek + ", " + satir[aci + 1:].lstrip()
+                beklenen_ek[kid] = yaz
+                continue
+            mevcut = set(alanlari_bul(satirlar, bas, son))
+            yazilacak_alan = {a: v for a, v in alanlar_istek.items() if a not in mevcut}
+            korunan = [a for a in alanlar_istek if a in mevcut]
+            if korunan:
+                atlanan.append((kid, "zaten var, korundu: %s" % ", ".join(korunan)))
+            if not yazilacak_alan:
+                continue
+            metinler = ["    %s: %s" % (a, yaml_deger(v)) for a, v in yazilacak_alan.items()]
+            ekleme.append((bas + 1, metinler))
+            beklenen_ek[kid] = yazilacak_alan
+        eksik = sorted(set(hedefler) - bulunan)
+        for kid in eksik:
+            atlanan.append((kid, "KAYIT BULUNAMADI"))
+
+        # `beklenen_ek` flow-harita yazımını da kapsar (o kayıtlarda `ekleme` boş kalır ama
+        # `satirlar` yerinde değişmiştir) — ikisinden biri doluysa yazma yapılmalı.
+        if not ekleme and not beklenen_ek:
+            print("%-10s eklenecek alan yok" % dosya)
+            for kid, sebep in atlanan:
+                print("    ATLANDI  %s — %s" % (kid, sebep))
+            atlanan_top += len(atlanan)
+            continue
+
+        yeni_satirlar = list(satirlar)
+        for n, metinler in sorted(ekleme, reverse=True):
+            for m in reversed(metinler):
+                yeni_satirlar.insert(n, m)
+        yeni_metin = "\n".join(yeni_satirlar)
+
+        try:
+            yeni_yapi = yaml.safe_load(yeni_metin)
+        except Exception as ex:
+            kosamadi("%s: alan eklenince YAML bozuldu: %s" % (dosya, str(ex)[:200]))
+        beklenen = alan_beklenen(eski_yapi, beklenen_ek)
+        if yeni_yapi != beklenen:
+            fark_yaz(dosya, beklenen, yeni_yapi)
+            kosamadi("%s: esdegerlik kanitlanamadi — HICBIR SEY yazilmadi" % dosya)
+
+        n_alan = sum(len(m) for _, m in ekleme)
+        print("%-10s %d kayda %d alan eklenecek" % (dosya, len(ekleme), n_alan))
+        for kid, sebep in atlanan:
+            print("    ATLANDI  %s — %s" % (kid, sebep))
+        toplam += n_alan
+        atlanan_top += len(atlanan)
+        yazilacak[p] = (yeni_metin, se)
+
+    print()
+    print("Toplam %d alan · %d atlanan." % (toplam, atlanan_top))
+    if not uygula:
+        print("KURU KOSU — yazilmadi. Uygulamak icin: --alan-ekle <json> --uygula")
+        return
+    for p, (metin, se) in yazilacak.items():
+        p.write_bytes(metin.replace("\n", se).encode("utf-8"))
+        print("yazildi: %s" % p.name)
+
+
+def yaml_deger(v):
+    """Skaler değeri güvenli YAML'a çevir (tırnaklama gerekirse tırnakla)."""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, (int, float)):
+        return str(v)
+    s = str(v)
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", s):
+        return s
+    return '"%s"' % s.replace('"', '\\"')
+
+
+def alan_beklenen(yapi, beklenen_ek):
+    if not isinstance(yapi, dict):
+        return yapi
+    sonuc = {}
+    for bolum, icerik in yapi.items():
+        if isinstance(icerik, dict):
+            sonuc[bolum] = {k: _alan_uygula(v, beklenen_ek.get(str(k)))
+                            for k, v in icerik.items()}
+        elif isinstance(icerik, list):
+            sonuc[bolum] = [_alan_uygula(v, beklenen_ek.get(str(v.get("id"))
+                                                            if isinstance(v, dict) else None))
+                            for v in icerik]
+        else:
+            sonuc[bolum] = icerik
+    return sonuc
+
+
+def _alan_uygula(govde, alanlar):
+    if not alanlar or not isinstance(govde, dict):
+        return govde
+    yeni = dict(govde)
+    yeni.update(alanlar)
+    return yeni
+
+
 def bag_beklenen(yapi, beklenen_ek):
     """Eski yapı + yalnız `kullanir` anahtarı eklenmiş/genişletilmiş hâli."""
     if not isinstance(yapi, dict):
@@ -261,6 +428,11 @@ def main():
 
     if "--baglari-kur" in sys.argv:
         return baglari_kur(uygula, tek)
+    if "--alan-ekle" in sys.argv:
+        i = sys.argv.index("--alan-ekle")
+        if i + 1 >= len(sys.argv):
+            kosamadi("--alan-ekle <json-yolu> gerekli")
+        return alan_ekle(uygula, sys.argv[i + 1])
 
     genel, dosyaya_ozel = eslemeyi_oku()
     hedefler = [tek] if tek else DOSYALAR

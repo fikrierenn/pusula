@@ -197,8 +197,27 @@ Motor ayrı depo → repo'lar eski `tools/sema_*.py`'yi bir faz boyunca **yanın
 (paralel koşum), motor yeşil verince eskisi silinir. Veri dosyalarına dokunulmuyor.
 Geri dönüş = motoru çağırmayı bırakmak.
 
-## 9. Açık karar (kullanıcıya)
+## 9. Kararlar (kullanıcı onayı 2026-09-11)
 
-1. **Konum/ad:** `D:\Dev\sema` mı, başka? (sqlcli `D:\Dev\sqlcli` ile simetrik olsun diye bu önerildi.)
-2. **Dil:** Python (mevcut 4 araç Python, pyyaml/pymssql/pyodbc hazır) — yoksa sqlcli gibi .NET global tool mu?
-3. **G0 mı G1 mi önce:** plan-44'ü bitirip motora taşımak (önerilen) vs motoru hemen kurup göçü orada yapmak.
+1. **Konum:** `D:\Dev\sema` — ONAYLANDI. sqlcli (`D:\Dev\sqlcli`) ile simetrik, aynı kurulum
+   deseni (`dotnet pack` → `dotnet tool update -g`).
+2. **Dil: .NET** — ONAYLANDI. İlk öneri Python'du (5 araç hazır), **değiştirildi.** Belirleyici
+   olan tutarlılık değil, ÖLÇÜLMÜŞ bir hata oldu: `sema_kolon_cek.py` sqlcli'yi alt-süreç
+   olarak çağırıp stdout'undan JSON ayıklıyor ve 2026-09-11'de sqlcli'nin ANSI renk kodundaki
+   `[` karakteri JSON başlangıcı sanıldığı için patladı. **Bu hata dil sınırının semptomu.**
+   .NET'te alt-süreç/stdout ayrıştırma/ANSI temizleme yok; sqlcli'nin profil + `${ENV}` +
+   salt-okuma guard + retry kodu DOĞRUDAN paylaşılır → dört sözleşme iki dilde iki kez değil,
+   tek yerde uygulanır.
+   Python'un tek gerçek üstünlüğü sanılan Odoo/XML-RPC kolaylığı da geçersiz çıktı: Odoo
+   `/jsonrpc` sunuyor, HttpClient + System.Text.Json yeter. İstatistik tarafı MathNet.Numerics
+   (Wilson kapalı formül, Cochran-Armitage = ki-kare 1sd).
+3. **Sıra: G0 önce** — plan-44 bitirilip motora taşınacak.
+
+### Port kapısı (regresyon ölçülebilir olmalı)
+
+| Sıra | Araç | Kapı |
+|---|---|---|
+| 1 | `denetim` · `goc` · `kolon_cek` | Bugün yazıldılar, kırılabilirlik kanıtları var → .NET sürümü AYNI kanıtları geçmeli (sahte referans → KIRIK, sözleşme gizli → KOŞAMADI, bozuk dönüştürücü → eşdeğerlik reddi) |
+| 2 | `degismez` (43 kayıt) · `sorgu_dumani` (15 sorgu) | Python'da KALIR; .NET sürümü aynı veriyle **birebir aynı çıktıyı** verene kadar paralel koşar. Kapı: 43/43 ve 15/15 aynı sonuç. Eşleşince Python silinir |
+
+Python araçlar bir faz boyunca yanında durur (§8 rollback).

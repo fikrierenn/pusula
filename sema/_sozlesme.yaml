@@ -148,7 +148,12 @@ tipler:
         kosul: {alan: tip, deger_kumesi: [kural, olcum]}
         gerek: {referans_dosyasi: entities}
         seviye: uyari
-        aciklama: "Not, hakkında olduğu nesneyi `kullanir: [entities:<id>]` ile bildirmeli."
+        muaf_status: [superseded]
+        aciklama: >-
+          Not, hakkında olduğu nesneyi `kullanir: [entities:<id>]` ile bildirmeli.
+          `status: superseded` kayıtlar MUAF — yerini bir araca/kayda bırakmış tarihsel not
+          yeni bağ kurmaz (ör. `_sema_dogrulama_2026_08_18` elle yapılan kolon kontrolüydü,
+          artık `tools/sema_kolon_cek.py` her koşuda yapıyor).
     atomiklik: {tavan_char: 4000, seviye: uyari}
 
   entities.databases:
@@ -219,11 +224,17 @@ tipler:
           Yanlış toplama sessiz yanlış rakamın en yaygın kaynağı.
         seviye: uyari            # F5 sonrası kirik
       birim:
-        degerler: [TL, adet, oran, gun, kisi, carpan]
+        degerler: [TL, adet, oran, gun, kisi, carpan, yok]
+        aciklama: "`yok` = ölçü değil (tip: kural kayıtlarında). Ölçüyse birim ZORUNLU."
         seviye: uyari            # F5 sonrası kirik
       taban:
-        degerler: [kdv_haric, kdv_dahil, yok]
-        aciklama: "Para metriklerinde ZORUNLU. marj_kdv_tabani vakası: iki taraf farklı tabandaydı."
+        degerler: [kdv_haric, kdv_dahil, belirsiz, yok]
+        aciklama: >-
+          Para metriklerinde ZORUNLU. `yok` = para metriği değil.
+          `belirsiz` = PARA metriği ama tabanı BEYAN EDİLMEMİŞ → kullanmadan önce ÖLÇ.
+          Ölçüm 2026-09-11: 32 para metriğinin yalnız 7'si tabanını söylüyordu. Sessiz
+          eksik yerine BEYAN EDİLMİŞ eksik: `marj_kdv_tabani` vakası iki tarafın farklı
+          tabanda olmasından doğdu ve hiçbir alan bunu göstermiyordu.
         seviye: uyari            # F5 sonrası kirik
       grain:
         aciklama: "Hangi düzeyde tek satır: ürün×ay, mağaza×gün, fiş, kişi×ay…"
