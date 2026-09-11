@@ -505,3 +505,31 @@ codes:
       SalesProducts.VatPercent 29.912/29.912 AYNI, 0 sapma (arşiv
       sorgular/2026-09-09-kdv-tabani-marj-olcumu.sql). Kod kümesi 4 → 6 değere tamamlandı.
     last_verified: "2026-09-09"
+
+  PDKS.TAbwArt.Abw_AbwArt:
+    uses: [entities:PDKS.wtimserv.dbo.TAbwArt, entities:PDKS.wtimserv.dbo.TTagZei]
+    lookup: PDKS.wtimserv.dbo.TAbwArt
+    closed_set: true
+    values:
+      NG: "NORMAL GÜN — 437.879 kayıt"
+      DESIZ: "DEVAMSIZ — 531.341 kayıt"
+      HTAT1: "HAFTA TATİLİ 1 — 8.461 kayıt"
+      HTAT2: "HAFTA TATİLİ 2 — 55.222 kayıt"
+      RESTA: "RESMİ TATİL — 18.435 kayıt"
+      YILIZ: "YILLIK İZİN — 11.282 kayıt"
+      UCSIZ: "UCRETSİZ İZİN — 8.806 kayıt"
+      HASTA: "UCRETSİZ İZİN (⚠ ad HASTA ama açıklama UCRETSİZ İZİN; Krank=1 işaretli) — 8.362 kayıt"
+      UCRLI: "UCRETLİ İZİN — 224 kayıt"
+      DOGUM: "DOGUM — 442 kayıt"
+      EVLEN: "EVLEN — 64 kayıt"
+      OLUM: "OLUM — 16 kayıt"
+      VIZIT: "VİZİTE — 7 kayıt"
+      SUT: "SÜT İZNİ — 2 kayıt"
+      GOREV: "GÖREVLİ — 2 kayıt"
+      OFF: "OFF — canlıda YOK (lookup'ta tanımlı, TTagZei'de hiç kullanılmamış)"
+    bos_deger: "⚠ EN BÜYÜK GRUP BOŞ: 1.162.704 kayıtta `TZe_AbwArt` BOŞ ('') ve bu EKSİK VERİ DEĞİL — normal çalışılan gün demektir. Devamsızlık/izin analizinde boşu 'bilinmiyor' saymak yanlış; `<> ''` süzgeci izinli günleri ayırır."
+    ad_aciklama_celiskisi: "⚠ `HASTA` kodunun AÇIKLAMASI 'UCRETSİZ İZİN' (kısa ad HA, Krank=1) — yani kod adı ile etiketi ÇELİŞİYOR ve `UCSIZ` ile AYNI etiketi taşıyor. Rapor kod ADIYLA değil, hangi ayrımı istediğini bilerek yazılmalı: hastalık ayrımı için `Abw_AbwArtKrank=1` süzgeci kod adından güvenilirdir. Bu bir VERİ KURULUM sorunudur, ölçüm hatası değil."
+    tarih_kirliligi: "⚠ `TZe_Datum` alanında **2053** tarihli satırlar var (DESIZ max 2053-01-09 · HTAT2 2053-01-05 · RESTA 2053-01-01 — ölçüldü). Gelecek tarihli bu kayıtlar üst sınırsız tarih aralığı kullanan her sorguya sızar. Devamsızlık/izin sayımında `TZe_Datum <= GETDATE()` üst sınırı KONULMALI."
+    confidence: 1.0
+    evidence: "2026-09-11 — lookup OPENQUERY([PDKS]) dbo.TAbwArt'tan okundu (16 kod, elle yazılmadı) + canlı kullanım `TTagZei GROUP BY TZe_AbwArt` ile sayıldı. Kullanılmayan kod 'canlıda YOK' diye işaretlendi."
+    last_verified: "2026-09-11"
