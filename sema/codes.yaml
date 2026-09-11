@@ -60,7 +60,6 @@ codes:
     lookup: dbo.irsTip_vw
     irs_eTip_ayni: "irs.eTip (belge başlık) AYNI lookup (irsTip_vw) — aynı kodlar. 17.06 201-doğrulama: eTip 1=Satış (7.9M), 0=Alış (29.6M), 100=POS Satış. ⚠️ DENETİM TUZAĞI: irs.eTip=1'i 'alış' SANMA — 1=Satış. (sql-denetci 17.06 GetMarjAsync'i bu yüzden yanlış KIRMIZI işaretledi → eTip IN(1,4,100) hepsi SATIŞ, doğru.)"
     adet_isareti: "17.06 201-kanıt: Alış (ehTip 0, +Yerel Alım 10) ehAdetN POZİTİF (giriş); Satış (1,4,100) NEGATİF (çıkış). irsHrk + fatAyr aynı. ehTutarN daima pozitif. (Eski ADR-004 'ehTip=1 alış/negatif' TERSTİ → sql-server-conventions.md 17.06 düzeltildi.)"
-    last_verified: "2026-06-17"
     satis_gross: [1, 4, 100]
     iade: [3, 5, 101]
     net_ciro: "SUM(gross) - SUM(iade); ehTutarN daima pozitif"
@@ -464,7 +463,6 @@ codes:
     canli_dagilim: "2025-02-01+ pencere: eTip 13 -> 7.877 sipariş (3 tedarikçi, şube hesapları) · 9 -> 2.141 (107 ted., Samet) · 3 -> 1.952 (19 ted., %99 grup-içi, entegrasyon kullanıcısı) · 1 -> 1.930 (16 ted., %98 grup-içi) · 0 -> 1.566 (139 ted., Onurhan+Aydın)."
     confidence: 1.0
     evidence: "2026-08-19 — SELECT * FROM dbo.sipTip_vw (14 satır) + sip eTip dağılımı canlı."
-    last_verified: "2026-08-19"
   urn.KDVs / urn.KDVa:               # KDV KOD'u — YÜZDE DEĞİL (2026-08-19)
     lookup: dbo.urnKDV          # ⚠ kdvYuzde_vw DEĞİL — view_tuzagi'na bak
     join: "JOIN dbo.urnKDV k ON k.kdvID = urn.KDVs → k.kdvYuzde"

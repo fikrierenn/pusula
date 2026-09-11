@@ -58,7 +58,7 @@ BKM rapor doğrulamasında: "bu hafta X satır geldi" değil — "satır ≥1 VE
 - `.claude/rules/todo-verification.md` — "kapalı" iddiasını kanıtla.
 - `.claude/rules/before-major-change.md` — refactor öncesi güvenlik.
 
-## YAZILI KURAL ≠ UYGULANAN KURAL (2026-09-11, altı vakayla ölçüldü)
+## YAZILI KURAL ≠ UYGULANAN KURAL (2026-09-11, sekiz vakayla ölçüldü)
 
 `test-discipline`in "kırılabilirliği kanıtlanmamış test, test değildir" kuralının daha
 genel hâli. Bir kuralın METİN olarak var olması, ONU ÇİĞNEYENİN YAKALANDIĞI anlamına
@@ -81,10 +81,39 @@ gelmez. Aradaki boşluk sessizdir ve kural "var" göründüğü için kimse arka
 | bel ZF-11 "üretim çıktısı cost_layers'ta olmamalı" | silme dönem-pencereli JOIN'e bağlıydı | 127.155 satırın 1'i kaçtı |
 | bel plan-21 "atlandığı YAZILIR" | `WriteLine` → `dotnet test` çıktısında görünmüyor | şart kâğıt üstünde |
 | bel değişmezi "asıl koruma metin ayrışması" | konum yeniden adlandırılırsa `LIKE` boş döner | YANLIŞ GÜVEN verdi |
+| sema sözleşmesi "emekli kayıt MUAF" (`exempt_status`) | motor bunu yalnız `conditional` yolunda okuyordu | `codes`ta emekli kayıt **temizlenemiyordu** |
+| "kayıt SİLİNMEZ, superseded yapılır" | `codes` tipinde muafiyet yok | kuralı UYGULAYAN kişi kalıcı KIRIK'la kalıyordu |
 
 **Alt-kural — yarım taşıma:** bir soyutlama taşınırken TÜM yolları taşınmalı. Yarım
 yapılmış taşıma, hiç yapılmamış olandan **kötüdür**: kural "taşındı" görünür, geride kalan
 yol sessizce eski davranışı sürdürür ve kimse oraya bakmaz.
+
+### DOKUZUNCU VAKA — kapının GÖREMEDİĞİ kayıp (2026-09-11, en sinsisi)
+
+Yukarıdaki sekizinde bir yerde **bakan** vardı ama yanlış yere bakıyordu. Bunda hiç
+bakan yoktu ve **bakılamazdı da**.
+
+`sema yaz --esanlamli-goc` beş Türkçe adı tek `measurement`a katlıyor. Bir kayıtta iki
+eş-anlamlı birden varsa ikisi de katlanıyor ve **mükerrer YAML anahtarı** yazılıyordu.
+Yazıcının eşdeğerlik kapısı (`safe_load(yeni) == beklenen(eski)`, yoksa hiçbir şey
+yazılmaz) bunu **göremez**: beklenen ağaç da bir sözlüktür ve ikinci anahtarı görünce
+birinciyi aynı şekilde ezer. İki taraf **aynı veriyi aynı şekilde kaybedince fark SIFIR**
+görünür ve kapı yeşil verir.
+
+> **Bir kapı, her iki temsilin AYNI ŞEKİLDE kaybettiği veriyi yakalayamaz.**
+> Karşılaştırma yalnız temsillerin AYRILDIĞI yerde iş görür.
+
+Ölçüldü: bel'de 7 kayıt, pusula'nın kendi sema'sında 3 kayıt bozulmuştu ve `sema denetle`
+hiçbiri için tek kelime etmedi. Biri zararsız değildi — `codes:sip.eTip` kendini
+2026-08-19 diye gösteriyordu, oysa 2026-09-03'te yeniden ölçülmüştü.
+
+**Çözüm iki katlı, çünkü tek kat yetmez:** (a) yazıcı çarpışmayı REDDEDİYOR — ikinci
+katlamayı `Korunan`a yazıp elle karara bırakıyor; (b) denetçi **ham satırdan** tarıyor
+(`mukerrer_alan`, KIRIK) — çünkü hâlihazırda bozulmuş dosyalarda kayıp ağaçta YOK.
+
+**Türetilen kural:** bir doğrulama, doğruladığı şeyle **aynı kütüphaneyi/aynı veri
+yapısını** kullanıyorsa o kütüphanenin kör noktalarını miras alır. En az bir denetim
+ham girdiye (metin/satır/bayt) bakmalı.
 
 **Uygulama:** yeni bir kural yazarken aynı commit'te şu üçünden birini göster —
 (a) kuralı çiğneyeni yakalayan bir denetim/test/constraint, (b) kırmızı verdiği ölçülmüş

@@ -557,7 +557,6 @@ metrics:
     confidence: 0.7
     last_verified: 2026-07-30
     evidence: "2026-07-30 canlı sqlcli — OneriSiparisTalep/KullaniciKategori/MalKabulBaslik/SatirLog profil + EvrakNo köprü testi (0 örtüşme). Eksen tam-tasarımı bekliyor (öneri-sapması→ölü-stok)."
-    last_verified: "2026-07-30"
   oneri_sapmasi:
     type: simple
     unit: count
