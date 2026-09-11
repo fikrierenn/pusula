@@ -331,16 +331,22 @@ bridges:
     confidence: 1.0
     note: "DCITY (il), DTOWN (ilçe). ORDERCODE join Odak-bekleyen siparişlerde BOŞ → bekleyen sipariş ili için CCITY proxy (bekleyen-siparis-il)."
   - id: orders-client
+    evidence: "2026-09-11 — `sema kopru` canlı ölçümü: 0 öksüz / 4.704.484 (ODAKJOKER linked server üstünden OPENQUERY)."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
-    uses: [bridges:bekleyen-siparis-il]
+    uses: [entities:ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.LOGICALREF
     scope: joker
     confidence: 1.0
-    note: "→ CUSTOMERREF (0/NULL=misafir). J_ORDER_CLIENTS standart (J_CLCARD değil). Bekleyen sipariş ili için CCITY proxy (bkz. bekleyen-siparis-il)."
+    note: "→ CUSTOMERREF (0/NULL=misafir). J_ORDER_CLIENTS standart (J_CLCARD değil). Bekleyen sipariş ili için CCITY vekil kolonu OKUNUR — kural entities:bekleyen_siparis_il_proxy (CCITY bir join anahtarı DEĞİL, nvarchar şehir adı)."
   - id: bekleyen-siparis-il
+    uses: [bridges:orders-client, entities:bekleyen_siparis_il_proxy]
+    last_verified: "2026-09-11"
+    status: superseded
+    superseded_by: "entities:bekleyen_siparis_il_proxy"
+    superseded_on: "2026-09-11"
+    superseded_why: "Kayıt bir JOIN değil, bir KURAL anlatıyordu: `to: J_ORDER_CLIENTS.CCITY` join hedefi değil, okunan değer kolonu (nvarchar şehir adı). `sema kopru` canlı koşunca ortaya çıktı — \"nvarchar değeri 'Eskişehir' int veri türüne dönüştürülürken işlem başarısız oldu\". Gerçek join zaten `bridges:orders-client` (CLIENTREF → LOGICALREF, 0 öksüz / 4.704.484 ölçüldü). `to`yu düzeltmek bu kaydı orders-client'ın kopyası yapardı (duplikasyon yasak) → bilgi `entities:bekleyen_siparis_il_proxy` kaydına `type: rule` olarak taşındı. Kullanıcı kararı 2026-09-11: \"evet ayır, type: rule olsun\". Kayıt SİLİNMEDİ: hatanın kendisi de bir ders (bir köprü kaydı bir kuralı taşıyabiliyormuş) ve `uses:` grafında izi korunuyor."
     measurement: "2026-09-11 ÖLÇÜLEMEDİ — ve sebebi kaydın KENDİ KUSURU: `sema kopru` canlı koşunca \"nvarchar değeri 'Eskişehir' int veri türüne dönüştürülürken işlem başarısız oldu\" verdi. Yani `to: J_ORDER_CLIENTS.CCITY` bir JOIN HEDEFİ DEĞİL — CCITY şehir ADI taşıyan nvarchar kolon, CLIENTREF ise int. Kaydın kendi `note`u da bunu söylüyor: CCITY 'İL kaynağı', yani OKUNAN DEĞER kolonu. Gerçek join ayrı kayıtta ve ölçülmüş: `bridges:orders-client` (CLIENTREF → LOGICALREF, 0 öksüz / 4.704.484). Bu kayıt bir join değil, bir KURAL anlatıyor (bekleyen siparişte DCITY boş → CCITY proxy). AÇIK KARAR: `to`yu LOGICALREF'e çekmek kaydı orders-client'ın kopyası yapar (duplikasyon yasak); doğrusu muhtemelen `type: rule` olarak ayrılıp `uses: [bridges:orders-client]` demesi. Kayıt YENİDEN YAZILMADI — yapı kararı beklemede."
-    evidence_status: pending
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.CCITY
     scope: joker
