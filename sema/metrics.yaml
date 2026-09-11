@@ -2497,3 +2497,22 @@ metrics:
       KIRIK verdi ve haklıydı).
     confidence: 1.0
     last_verified: "2026-06-22"
+
+  # --- FIFO MARJ — 2026-09-11'de bridges.yaml'dan taşındı (orada bir köprü gibi duruyordu
+  #     ama `to` alanı bir FORMÜLdü, join hedefi değil; `sema kopru` hiç ölçemiyordu) ---
+  fifo_marj:
+    uses: [entities:BKMMaliyet.dbo.FifoCikisDetay, metrics:fifo_birim_maliyet, metrics:encore_ciro, metrics:birim_maliyet]
+    type: ratio
+    title: "FIFO brüt marj (ürün/kategori/dönem)"
+    unit: TL
+    basis: vat_excl
+    additivity: full
+    source: BKMMaliyet.dbo.FifoCikisDetay
+    formula: "brüt = SUM(SatisTutar) − SUM(CikisTutar) · marj% = brüt / SUM(SatisTutar) × 100"
+    filter: "HareketTipi = 'SATIS'; dönem için HareketTarihi ay-filtresi. Kategori = bkm.UrunBilgi.Kategori3."
+    note: "Ürün/kategori/dönem kârlılığı TEK TABLODAN gelir — gelir ve maliyet aynı satırda durur, iki kaynağı eşleştirme hatası olmaz. Ocak-2026: gelir 72,35M · SMM 46,71M · brüt 25,64M (%35,4)."
+    measurement: "2026-09-11 — İKİ TARAF DA KDV HARİÇ, bu yüzden marj DOĞRU çıkar: `CikisTutar` = Miktar × BirimMaliyet ve BirimMaliyet alış faturası birimiyle oran 1,0000 ölçüldü (metrics:fifo_birim_maliyet); `SatisTutar` irsHrk `ehTutarN` miktar-oranlıdır ve o kolon KDV hariçtir (codes:irsHrk.ehTip § kdv). ⚠ KARŞITI: `encore_ciro` KDV DAHİL ölçer — POS cirosuyla bu marjın payını karıştırma."
+    confidence: 1.0
+    evidence: "2026-06-19 — FIFO üretim master doğrulaması (asıl proje D:/Dev/fifo). Taban ölçümü 2026-09-11."
+    last_verified: "2026-09-11"
+    ttl_days: 180

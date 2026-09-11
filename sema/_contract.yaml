@@ -271,6 +271,17 @@ types:
     special:
       from: {format: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
       to:   {format: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
+      not_measurable:
+        description: >-
+          Bu köprü bir KOLON EŞİTLİĞİ değildir, o yüzden öksüz sayılamaz — NEDENİ buraya
+          yazılır (bileşik anahtar · metin eşleşmesi · YEAR/MONTH gibi türetilmiş koşul ·
+          önek/prefix eşleşmesi · farklı sunucularda metin join). `sema kopru` bunları AYRI
+          listede gösterir; gerekçesi yazılı OLMAYAN ölçülemezlik GERÇEK BOŞLUKtur ve
+          "atlanan iş yapılmış sayılmaz" kuralına tabidir. ⚠ Bu alan bir SUSTURMA düğmesi
+          değildir: kayıt yine ekrana basılır, yalnız boşluk sayısından ayrılır. Köprü
+          aslında kolon eşitliğiyse alan YAZILMAZ — `from`/`to` düzeltilir (2026-09-11'de
+          "ölçülemez" sanılan 5 köprünün 5'i de yalnızca eksik nitelenmiş çıktı).
+        level: uyari
       orphans_expected:
         description: >-
           Bu köprüde ÖKSÜZ satır (soldaki değer sağda yok) BEKLENİYORSA nedeni burada YAZILI

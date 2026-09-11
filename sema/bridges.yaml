@@ -77,6 +77,7 @@ bridges:
     last_verified: "2026-08-18"   # Serve Deep evrak-dökümünde fiilen kullanıldı (evrak 007287 + HP 8 evrak, doğru sonuç)
     note: "irsHrk hareket → irsaliye başlık. irs.eNo = EVRAK NO (depo sevk 'D01…' gerçek belge), irs.eCrmID = cari (POS satışta 0 — cari EncoreMerkez'de). ehTip 100 POS satışta eNo='POS Satış' (yazarkasa, gerçek fiş DerinSIS'te değil EncoreMerkez.Sales'te). Satınalma TOPTAN-KANAL drill (SatinalmaQueries.UrunDetay.GetBulkHareketAsync) bunu kullanır — bulk hareketin evrak-no'sunu gösterir. irsHrk KOLONLARI: ehID/ehstkID/ehMekan/ehTrhS/ehAdetN/ehTutarN/ehMlyt/ehAltDepo/hrkID/ehTip/ehTutarOzl/hrkTarih (cari/belge-no YOK → irs join şart)."
   - id: irshrk-pos-encore
+    not_measurable: "BU BİR JOIN DEĞİL, BİR GRAIN UYARISI: `irsHrk` POS satırı (ehTip=100) bir GÜNÜN o üründeki TÜM POS satışının TOPLAMIdır, tek fiş değil — `to` alanı da tek kolon değil, iki tablo (`SalesProducts + Sales`). Öksüz sayılamaz. İçeriği yüksek değerli bir TUZAK kaydıdır (POS satırını 'tek işlem' sanıp cap'lemek retail'i bulk sanar) ve bu yüzden silinmedi. ⚠ BORÇ: yeri `entities` altında `type: rule` olmalı; taşıma 2026-09-11'de kapsam dışı bırakıldı."
     from: dbo.irsHrk (ehTip=100)
     to: EncoreMerkez.dbo.SalesProducts + Sales
     scope: cross-db
@@ -230,6 +231,7 @@ bridges:
 
   # --- E-ticaret (ODAKJOKER.JOKER) ---
   - id: joker-direct-conn
+    not_measurable: "BU BİR JOIN DEĞİL, BİR BAĞLANTI YOLU BEYANI: `dashboard.OpenJokerAsync` → 192.168.40.70 (linked server yerine doğrudan). Öksüz kavramı uygulanamaz. ⚠ BORÇ: kayıt yanlış dosyada duruyor — içeriği bir altyapı/veritabanı notudur (`entities` databases bölümü), köprü değil. Taşınması 2026-09-11'de kapsam dışı bırakıldı, ölçülemezliği burada BEYAN edildi ki gerçek boşluklarla karışmasın."
     from: dashboard.OpenJokerAsync
     to: "192.168.40.70 JOKER (direkt)"
     scope: joker
@@ -291,6 +293,7 @@ bridges:
     confidence: 1.0
     note: "E-ticaret ürün → DerinSIS (stkID). Marka direkt J_ITEMS.BRAND. KATEGORİ için bu cross-server hop GEREKMEZ → items-logogrup-kategori3 kullan."
   - id: items-logogrup-kategori3
+    not_measurable: "METİN EŞLEŞMESİ + FARKLI SUNUCU: `J_ITEMS.DERINSIS_LOGOGRUP` (JOKER, nvarchar) ile DerinSIS Kategori3 METNİ birebir eşleşiyor. Kolon adı-değil-değer eşleşmesi olduğu için `to` bir kolon yolu değil; ayrıca iki uç ayrı sunucuda ve collation farkı öksüz sayısını sahte şişirebilir. Ölçüm istenirse OPENQUERY + COLLATE ile elle yazılmalı."
     from: ODAKJOKER.JOKER.dbo.J_ITEMS.DERINSIS_LOGOGRUP
     to: "DerinSIS Kategori3 (metin, birebir)"
     scope: joker
@@ -424,6 +427,7 @@ bridges:
     confidence: 1.0
     note: "Toplanacak sipariş → sipariş. WMS bekleyen raflama. J_DETAIL_BOXES (raflanmış) ile ihtiyaç=sipariş−raflanmış."
   - id: encore-kampanya-kalem
+    not_measurable: "BİLEŞİK ANAHTAR: join iki kolon çiftiyle kurulur (`SalesId + ProductSequence` ↔ `SalesId + Sequence`). Motor tek-kolon eşitliği ölçer; bileşik anahtarda öksüz sayısı tek kolonla ölçülürse YANLIŞ çıkar (tek kolon eşleşir, çift eşleşmez). Ölçmek isteyen elle iki-kolonlu NOT EXISTS yazmalı."
     from: EncoreMerkez.SalesProductCampaigns.SalesId+ProductSequence
     to: EncoreMerkez.SalesProducts.SalesId+Sequence
     scope: encore
@@ -449,6 +453,10 @@ bridges:
     confidence: 1.0
     note: "BKMMaliyet tüm Fifo* tabloları StkId = urn.stkID (int, 1:1). Ürün/kategori için urn.stkID üstünden (stkKod/barkod DEĞİL)."
   - id: maliyet-marj-cikis
+    status: superseded
+    superseded_by: "metrics:fifo_marj"
+    superseded_on: "2026-09-11"
+    superseded_why: "Bu bir KÖPRÜ değildi: `to` alanı bir join hedefi değil, bir FORMÜLdü (`marj = SUM(SatisTutar) − SUM(CikisTutar)`). Köprü kaydında durduğu için `sema kopru` onu hiç ölçemedi ve metrik arayan hiç kimse bakmadığı dosyada buldu. İçerik `metrics:fifo_marj` kaydına taşındı ve orada KDV tabanı da ölçülüp yazıldı (iki taraf da KDV hariç → marj doğru çıkıyor). Kayıt SİLİNMEDİ."
     from: BKMMaliyet.dbo.FifoCikisDetay (SatisTutar, CikisTutar)
     to: "marj = SUM(SatisTutar) − SUM(CikisTutar); marj% = brüt/gelir×100"
     scope: maliyet
@@ -457,6 +465,7 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-kategori3-urnktgr2
+    not_measurable: "ERİŞİLEMEYEN SUNUCU: hedef `DerinSIS_Local`, FIFO çalışmasında alınan YEREL KOPYAdır (entities.yaml BKMMaliyet bloğu: 'DerinSISBkm (prod) / DerinSIS_Local (BT-FIKRI demo)') ve o sunucu `.env`'de tanımlı değil. Köprünün KENDİSİ kolon eşitliğidir ve doğrudur; ölçülemezlik ORTAM kaynaklıdır, kayıt kusuru değil. Üretim karşılığı ölçüldü: `DerinSISBkm.bkm.UrunBilgi` içinde Kategori2+Kategori3 kolonları VAR."
     measurement: "2026-09-11 — ÖLÇÜLEMEDİ (köprü YANLIŞ DEĞİL). `sema kopru` bu sunucuda 'Geçersiz nesne adı DerinSIS_Local.bkm.UrunBilgi' verdi. Sebep: `DerinSIS_Local` bu ERP sunucusunda değil — FIFO çalışmasında alınan YEREL KOPYA (entities.yaml 'BT-FIKRI demo' diye zaten yazıyor). O sunucunun bilgisi `.env`'de yok, dolayısıyla köprü BURADAN temellendirilemez; `from` düzeltilecek bir yazım hatası DEĞİLDİR. Üretim karşılığı ayrıca ölçüldü: `DerinSISBkm.bkm.UrunBilgi` içinde Kategori2 + Kategori3 kolonları VAR (sys.columns). Ölçüm ancak yerel kopyanın sunucusu profillenirse yapılabilir."
     from: DerinSIS_Local.bkm.UrunBilgi.Kategori3
     to: DerinSISBkm.dbo.urnKtgr2.ktgrAd
@@ -466,6 +475,7 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-songecerli-fiyat
+    not_measurable: "FONKSİYON DELEGASYONU, KOLON EŞİTLİĞİ DEĞİL: `fn_SonGecerliFiyat(@AsOf,@FiyatTuru)` sarmalayıcısı `fn_SonGecerliFiyat_Adv(...,1,1)` çağırır. Öksüz sayılamaz. AYRICA hedef `DerinSIS_Local`, yani FIFO çalışmasının YEREL KOPYASI; o sunucu `.env`'de olmadığı için buradan zaten erişilemez (bkz. bridges:maliyet-kategori3-urnktgr2). ⚠ BORÇ: içeriği bir TVF kullanım kuralıdır (korelasyonlu çağırma → timeout; restrict-then-rownumber), köprü değil."
     from: DerinSIS_Local.bkm.fn_SonGecerliFiyat(@AsOf,@FiyatTuru)
     to: "wrapper → fn_SonGecerliFiyat_Adv(@AsOf,@FiyatTuru,1,1); fytOzl fTur=1/fTip=1 kanonik"
     scope: maliyet
@@ -492,8 +502,30 @@ bridges:
     confidence: 1.0
     note: "Yevmiye satır → hesap planı. +hspSirketID şart. hspKod Tek Düzen."
     last_verified: 2026-06-22
+  # --- EVRAK KİŞİSİ → KULLANICI: tek kayıtta ÜÇ köprü duruyordu, 2026-09-11'de bölündü.
+  #     `from` slash'la üç kolon sayıyordu; makine-sınanabilir olmadığı için üçü de HİÇ
+  #     ölçülememişti. Bölünce üçü de canlı ölçülebilir hâle geldi. Ortak anlatım kisi-drn1'de.
+  - id: kisi-drn1-car
+    uses: [bridges:kisi-drn1]
+    from: dbo.car.cgKisi
+    to: dbo.drn1.insID
+    scope: derinsis
+    confidence: 1.0
+    note: "Cari hareketi GİREN kullanıcı. Ortak kural + diğer kolonlar (kKisi/oKisi) için bridges:kisi-drn1."
+    evidence: "2026-09-11 — kisi-drn1 kaydından atomik olarak ayrıldı; kolon varlığı sys.columns ile doğrulandı."
+    last_verified: "2026-09-11"
+  - id: kisi-drn1-mhsfis
+    uses: [bridges:kisi-drn1]
+    from: mhs.mhsFisBaslik.gKisi
+    to: dbo.drn1.insID
+    scope: derinsis
+    confidence: 1.0
+    note: "Yevmiye fişini GİREN kullanıcı. Kapanış-sonrası müdahale denetiminin kişi ayağı. Ortak kural: bridges:kisi-drn1."
+    evidence: "2026-09-11 — kisi-drn1 kaydından atomik olarak ayrıldı; kolon varlığı sys.columns ile doğrulandı."
+    last_verified: "2026-09-11"
   - id: kisi-drn1
-    from: "dbo.fat.gKisi / dbo.car.cgKisi / mhs.mhsFisBaslik.gKisi (+ ckKisi/coKisi/oKisi)"
+    bolunme: "2026-09-11 — bu kayıt `from` alanında ÜÇ kolonu slash ile sayıyordu (`dbo.fat.gKisi / dbo.car.cgKisi / mhs.mhsFisBaslik.gKisi`) ve makine-sınanabilir olmadığı için hiçbiri CANLI ÖLÇÜLEMİYORDU. Atomikleştirildi: bu kayıt artık YALNIZ `dbo.fat.gKisi`; kardeşleri `bridges:kisi-drn1-car` ve `bridges:kisi-drn1-mhsfis`. Notta anlatılan ortak kural (giren/değiştiren/onaylayan kolon ailesi, denetimde ID değil İSİM göster) üçü için de geçerlidir ve burada kalır."
+    from: dbo.fat.gKisi
     to: dbo.drn1.insID
     scope: derinsis
     confidence: 1.0
@@ -520,6 +552,7 @@ bridges:
     evidence: "2026-06-25 canlı: fat eID 7050402(eNo 25225839)→fisbID 15466371(yevmiye 35802), eID 7050409(eNo '25225839.')→fisbID 15466372(yevmiye 35803). fisbID global-unique HAVING COUNT(DISTINCT fisbSirketID)>1 = 0."
     last_verified: 2026-06-25
   - id: hesap-usthesap
+    not_measurable: "ÖNEK EŞLEŞMESİ: `mhsHsp.hspKod` kendi kendine bağlanıyor ama koşul eşitlik değil — üst hesap, kodun son '.segment'i atılmış ÖNEKİdir (+ `hspSirketID`). Kolon eşitliği olmadığı için öksüz sayılamaz; doğrulaması ayrı bir sorgu ister (her kodun önekinin tabloda var olup olmadığı)."
     from: mhs.mhsHsp.hspKod (bir üst kırılım — son '.segment' atılmış prefix)
     to: mhs.mhsHsp.hspKod (+ hspSirketID)
     scope: derinsis
@@ -528,6 +561,7 @@ bridges:
     evidence: "2026-06-25 canlı fiş 35803: 320.10.B019(Buski A.Ş.)→320.10(YURT İÇİ SATICILAR), 740.30.002(Su Giderleri)→740.30(DIŞARDAN SAĞLANAN FAYDA VE HİZMETLER), 191.10.020→191.10(YURTİÇİ ALIMLARA AİT KDV)."
     last_verified: 2026-06-25
   - id: evrak-finaykapanis
+    not_measurable: "TÜRETİLMİŞ KOŞUL: join `YEAR()/MONTH()` ile dönemden kurulur (`car.cTarih`/`fat.eTarihS`/`mhsFisBaslik.fisTarih` → `Fin_AyKapanis.DonemYil, DonemAy`). Ne tek kolon ne de kolon eşitliği; tarihten türetilen iki alanla eşleşir. Öksüz kavramı burada 'kapanışı girilmemiş dönem' demektir ve ayrı ölçülür."
     from: "YEAR/MONTH(car.cTarih / fat.eTarihS / mhsFisBaslik.fisTarih)"
     to: "bkm.Fin_AyKapanis (DonemYil, DonemAy)"
     scope: derinsis
