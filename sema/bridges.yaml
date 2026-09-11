@@ -156,6 +156,7 @@ bridges:
     note: "İç hareket → irsaliye (tip+firma için). pGC 0=giriş 1=çıkış."
     evidence: "10.06"
   - id: emirayr-emir
+    fan_out: "2026-09-11 ÖLÇÜLDÜ (sema kopru fan-out): ×3, 26 tekrarlı anahtar. `emirSat.satPID` tekil değil — aynı palet birden çok emir satırında geçiyor. Toplama/görev analizinde palet bazlı toplam alınırken ön-toplama gerekir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru, yalnız İLK HOP emirAyr.emPaletID→emirSat.satPID): 2.376.658 / 5.393.667 (%44,06). Sıfır sentinel DEĞİL (emPaletID=0 yalnız 1.389). Yıl dağılımı sebebi gösteriyor: 2021 2.186.656/4.131.660 (%52,9) · 2022 188.903/806.118 (%23,4) · 2023 600/106.823 (%0,56) · 2024 422 · 2025 60 · 2026 17 (%0,015). Palet bazında: emirAyr 14.261 tekil palet kullanıyor, emirSat 12.188 tanıyor → 2.084 palet hiç emir'e bağlanmamış."
     orphans_expected: "EVET, 2021-2022 için: WMS'in ilk döneminde palet hareketi emir kaydına bağlanmadan yapılmış. 2023'ten itibaren oran %0,5'in altına düşüyor → köprü GÜNCEL veride sağlam. Geçmişe dönük toplama/görev analizinde 2021-22 kapsam dışı sayılmalı."
     from: depo.emirAyr.emPaletID
@@ -465,6 +466,7 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-kategori3-urnktgr2
+    not_measurable: "İKİ UÇ AYRI SUNUCUDA: sol uç `DerinSIS_Local` (localhost, FIFO motorunun 8 tablolık girdi ayıklaması), sağ uç `DerinSISBkm.dbo.urnKtgr2` (ERP sunucusu). Motorun tek-sorgu kolon-eşitliği ölçümü iki sunucuyu birleştiremez. ⚠ ÖNCEKİ BEYAN YANLIŞTI ('erişilemeyen sunucu'): sunucu ERİŞİLEBİLİR, bu makinede. Ölçüm İKİ ADIMDA elle YAPILDI ve köprü TEMİZ çıktı — 22 Kategori3 değerinin 22'si de `urnKtgr2.ktgrAd`'de var, 0 öksüz (bkz. `measurement`)."
     measurement: "2026-09-11 ÖLÇÜLDÜ — **0 ÖKSÜZ**. İKİ ADIMDA: (1) `DerinSIS_Local.bkm.UrunBilgi`de 22 ayrı `Kategori3` değeri var (localhost'tan sayıldı: Kitap 352.099 · Akademi 117.005 · Çocuk Kitabı 99.937 · Kırtasiye 93.531 …); (2) 22 değerin **22'si de** `DerinSISBkm.dbo.urnKtgr2.ktgrAd` içinde VAR. Köprü sağlam. ⚠ BU KAYIT İKİ KEZ YANLIŞ BEYAN EDİLDİ: önce 'DerinSIS_Local diye bir DB yok, yazım hatası' sanıldı (kullanıcı düzeltti), sonra 'erişilemeyen sunucu, ölçülemez' diye `not_measurable` yazıldı — O DA YANLIŞTI: sunucu bu makinede (`localhost`) ve erişilebiliyor. Tek sorguyla ölçülememesinin sebebi sunucuya erişememek DEĞİL, iki ucun AYRI SUNUCUDA olmasıdır."
     from: DerinSIS_Local.bkm.UrunBilgi.Kategori3
     to: DerinSISBkm.dbo.urnKtgr2.ktgrAd
@@ -568,6 +570,8 @@ bridges:
     note: "Belge ayı → kapanış tarihi. Müdahale = giriş/değişim (gTarih/kTarih) > KapanisDT. Kapanış-sonrası forensic kontrolün ana köprüsü."
     last_verified: 2026-06-22
   - id: sinav-fis-encore
+    cardinality: "N:N"
+    fan_out: "2026-09-11 ÖLÇÜLDÜ (sema kopru fan-out): sağ uç `EncoreMerkez.dbo.Sales.DocumentNo` **TEKİL DEĞİL** — ×77 en çok tekrar, 189 tekrarlı anahtar. İKİ AYRI SEBEP, karıştırma: (a) **77 satırda `DocumentNo = ''`** (BOŞ STRING, NULL DEĞİL → `IS NOT NULL` ELEMEZ; süzgeç `<> ''` olmalı) — 2 mağaza, 3 belge tipi, 2 yıl; (b) **188 gerçek mükerrer numara, 376 satır** ve dağılımı tam olarak **DocumentsTypeId 1 (Fiş) 188 + 3 (İade) 188** — yani İADE, orijinal FİŞİN AYNI `DocumentNo`sunu taşıyor. ⚠ SONUÇ: `DocumentNo` TEK BAŞINA ANAHTAR DEĞİLDİR; doğru anahtar `DocumentNo + DocumentsTypeId`. Yalnız numarayla join yapan sorgu satışı kendi iadesiyle EŞLEŞTİRİR ve satırı ikiye katlar — kayıttaki 'yalnız satış tarafı için güvenli' uyarısının ÖLÇÜLMÜŞ sebebi budur."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 19 / 14.072 (%0,135). Sınav sipariş fişinin 19'unun EncoreMerkez'de karşılığı yok."
     orphans_expected: "19 satır — açıklanmadı. Az olduğu için karara etkisi yok ama SIFIR değil; Sınav↔POS mutabakatında bu 19 fiş tek tek bakılmalı."
     uses: [bridges:sales-iade-linked]
@@ -590,6 +594,8 @@ bridges:
     satir_eslesme: "İade satırı ↔ orijinal satır anahtarı = LinkedDocumentId + ProductsId + TotalPrice + Amount. **Sequence EŞLEŞMEZ** (iade fişi kendi sıra numarasını kullanır)."
     evidence: "2026-08-19 — sorgular/2026-08-19-sinav-iade-zinciri.sql; 298 iade fişi %100 bağlı, satır eşleşmesi 92725↔85249 kuruşu kuruşuna."
   - id: siparisdetay-sales
+    cardinality: "N:N"
+    fan_out: "2026-09-11 ÖLÇÜLDÜ (sema kopru fan-out): ÖKSÜZ 0 / 173.688 — yani köprü 'TEMİZ' görünüyor — AMA sağ uçta ×77 fan-out var. Bu tam olarak en sinsi durum: satır KAYBI yok, satır ÇOĞALMASI var ve çıkan toplam MAKUL görünür. Sebep `sinav-fis-encore` ile AYNI (aynı sağ uç): `Sales.DocumentNo` boş-string sentineli (77 satır) + iade ile fişin numara paylaşması (188 numara / 376 satır, tip 1+3). ⚠ `SiparisDetay.FisId` üzerinden tutar/adet TOPLAYAN her sorgu önce `DocumentsTypeId` ile ayırmalı ya da ön-toplama/DISTINCT kullanmalı."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 171.027 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: BKM.snv.SiparisDetay.FisId
     to: EncoreMerkez.dbo.Sales.DocumentNo
@@ -688,7 +694,7 @@ bridges:
     evidence: "2026-09-11 — BKM.vrd NOT EXISTS sayımı, Pazartesi kolonu."
     last_verified: "2026-09-11"
   - id: vardiya-pdks-tc
-    fan_out_ayrica: "FAN-OUT AYRI BİR OLGU ve öksüz oranıyla karıştırılmamalı: 11 TC, `TPerInd`de iki kez kayıtlı (ölçüldü) → TC ile LEFT JOIN 16.735 satırı 17.159'a çıkarır (+424). Öksüz ölçümü NOT EXISTS ile yapıldığı için fan-out'tan ETKİLENMEZ; ama TOPLAM alan (adet/süre/maliyet) her sorgu etkilenir ve o kişilerin vardiyası ÇİFT SAYILIR."
+    fan_out: "2026-09-11 ÖLÇÜLDÜ (sema kopru fan-out): ×2, 11 tekrarlı anahtar — elle yapılan ölçümle BİREBİR aynı (11 TC, TPerInd'de iki kez). Motor artık bunu her koşuda ölçüyor; elle fark etmeye gerek yok.  — ESKI KAYITTAN KATLANDI (`fan_out_ayrica`): FAN-OUT AYRI BİR OLGU ve öksüz oranıyla karıştırılmamalı: 11 TC, `TPerInd`de iki kez kayıtlı (ölçüldü) → TC ile LEFT JOIN 16.735 satırı 17.159'a çıkarır (+424). Öksüz ölçümü NOT EXISTS ile yapıldığı için fan-out'tan ETKİLENMEZ; ama TOPLAM alan (adet/süre/maliyet) her sorgu etkilenir ve o kişilerin vardiyası ÇİFT SAYILIR."
     uses: [entities:BKM.vrd.VardiyaDetay, entities:PDKS.wtimserv.dbo.TPerInd]
     from: BKM.vrd.VardiyaDetay.SicilNo
     to: PDKS.wtimserv.dbo.TPerInd.PIn_SteuerNr
@@ -702,6 +708,7 @@ bridges:
     last_verified: "2026-09-11"
 
   - id: pdks-sube-bolum
+    fan_out: "2026-09-11 ÖLÇÜLDÜ (sema kopru fan-out): **×1110**, 26 tekrarlı anahtar. Sağ uç `TPerTab.Per_Grp2` bir BÖLÜM ADIdır ve o bölümdeki HER PERSONELDE tekrar eder — en kalabalık bölümde 1110 kişi. Şube/bölüm eşlemesini personel tablosuna bağlayan her sorgu satırları o kadar çoğaltır. Kayıt zaten `cardinality: N:N` beyan ettiği için ÇELİŞKİ değil; ama büyüklük mertebesi burada yazılı olmalı — 'N:N' demek '×1110' demekle aynı şey değildir.  — ESKI KAYITTAN KATLANDI (`fan_out_uyarisi`): "
     uses: [entities:PDKS.wtimserv.bkm.SubeListe, entities:PDKS.wtimserv.dbo.TPerTab]
     from: PDKS.wtimserv.bkm.SubeListe.Per_Grp2
     to: PDKS.wtimserv.dbo.TPerTab.Per_Grp2
@@ -714,12 +721,6 @@ bridges:
       yan yana tutar. reporthub `Mosaik/Database/sp_PdksPano.sql` yetki filtresini tam da
       bunun üstünden kurar (satır 49-56). Eşleşme METİN üzerinden ve `RTRIM` + `COLLATE
       Turkish_CI_AS` gerektirir.
-    fan_out_uyarisi: >-
-      ⚠ `SubeNo` TEKİL DEĞİL — 38 satır / 9 şube / 33 bölüm (ölçüldü 2026-09-11). Tek başına
-      `SubeNo=1` (GENEL MÜDÜRLÜK) ONLARCA bölüm satırı taşır (FİNANS, İÇ DENETİM, BİLGİ
-      TEKNOLOJİLERİ, MERKEZ DEPO…). `SubeNo` ile join eden her sorgu o şubenin satırlarını
-      BÖLÜM SAYISI KADAR ÇOĞALTIR. Şube bazlı toplam alınacaksa önce bölüm düzeyinde
-      ön-toplama yapılmalı ya da DISTINCT kullanılmalı.
     measurement: "2026-09-11 MOTOR ÖLÇÜMÜ: 5 öksüz / **37** (`Per_Grp2 IS NOT NULL` olanlar). Tablo toplamı 38 satır — bir satırda `Per_Grp2` NULL. Yapı: 9 tekil `SubeNo`, 33 tekil `Per_Grp2`."
     orphans_expected: "EVET, 5 bölüm: `bkm.SubeListe`de tanımlı ama `TPerTab`ta o bölümde personel yok. Yetki/filtre listesi bu 5 bölümü boş gösterir — bu bir hata değil, kadrosuz bölümdür."
     evidence: "2026-09-11 — OPENQUERY([PDKS]) bkm.SubeListe sayımı + TPerTab'a NOT EXISTS. Kullanım kanıtı: D:/Dev/reporthub/Mosaik/Database/sp_PdksPano.sql satır 49-56."

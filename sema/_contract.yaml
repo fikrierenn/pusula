@@ -291,7 +291,23 @@ types:
         level: uyari
       cardinality:
         values: ["1:1", "1:N", "N:1", "N:N"]
-        description: "JOIN patlaması (fan-out) riskini görünür kılar. N:N ise sorguda DISTINCT/agg zorunlu."
+        description: >-
+          JOIN patlaması (fan-out) riskini görünür kılar. N:N ise sorguda DISTINCT/agg zorunlu.
+          ⚠ ARTIK BİR İDDİADIR VE ÇÜRÜTÜLEBİLİR: `1:1` ya da `N:1` (sağ uç TEKİL) yazan bir
+          kayıtta `sema kopru` sağ uçta tekrar ölçerse ÇELİŞKİ verir (exit 1). Beyan yoksa
+          ölçüm yine yapılır, yalnız ekrana yazılır.
+        level: uyari
+      fan_out:
+        description: >-
+          ÖKSÜZDEN AYRI RİSK — burada satır KAYBI değil, satır ÇOĞALMASI yazılır: sağ uçtaki
+          anahtar kaç kez tekrar ediyor ve SEBEBİ ne. `orphans_expected` "eksik satır meşru"
+          derken bu "çoğalma şu büyüklükte ve şu yüzden" der.
+          ⚠ NEDEN AYRI BİR ALAN: öksüzü SIFIR olan, yani kusursuz görünen bir köprü de
+          toplamı katlayabilir ve çıkan sayı MAKUL görünür (ölçüldü 2026-09-11:
+          `siparisdetay-sales` 0 öksüz / 173.688 ama ×77 fan-out). "TEMİZ" etiketi çoğalma
+          riskini KAPATMAZ.
+          ⚠ `cardinality: N:N` yazmak yetmez — büyüklük mertebesi de yazılır: "N:N" demek
+          "×1110" demekle aynı şey değildir (`pdks-sube-bolum`).
         level: uyari
     atomicity: {max_chars: 4000, level: uyari, exempt_field: atomiklik_gerekcesi}
 
