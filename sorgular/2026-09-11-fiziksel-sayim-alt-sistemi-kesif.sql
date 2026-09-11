@@ -489,3 +489,48 @@ OUTER APPLY (SELECT TOP 1 1 AS v FROM dbo.irsHrk h WITH(NOLOCK)
 /* 413 ürün · önceki 30 günde mal girişi olan 3 (%0,7) · 6 ayda 247 (%59,8).
    ⇒ 166 ürün (%40,2) o mağazada 6 AYDA HİÇ mal girişi görmemiş, ama stoğu
      "Mal Giriş Hatası" diye düşülmüş. ETİKET BİR İDDİADIR, KANIT DEĞİL. */
+
+/* ============================================================================
+   28-29) `Kayıp-Çalıntı` etiketli ama stoğu ARTIRAN 85 satır — tek tek incelendi.
+   ============================================================================ */
+
+/* 28) 85 satırın kendisi. Önce "taban etkisi mi" diye bak: MiktarEski 0/negatif ise
+       artış yapay olabilir (çelişki değil). */
+SELECT b.MekanId, CONVERT(varchar(10),b.SayimTarihi,120) AS tarih, b.SayimTipId,
+       d.StokId, d.MiktarEski, d.Miktar, (d.Miktar - d.MiktarEski) AS fark,
+       ISNULL(d.RafNo,N'') AS raf, d.OlusturanKullaniciId AS kul,
+       CONVERT(int,ISNULL(d.Onay,0)) AS onay, CONVERT(int,ISNULL(d.Iptal,0)) AS iptal,
+       ISNULL(d.GirisMiktar,-1) AS giris, ISNULL(d.CikisMiktar,-1) AS cikis
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+  AND  d.SayimDuzeltmeNedenId = 5 AND d.Miktar > d.MiktarEski
+ORDER BY (d.Miktar - d.MiktarEski) DESC;
+/* 85 satır · toplam +447 adet · hepsi Onay=1, Iptal=0.
+   MiktarEski: 70 pozitif · 12 sıfır · 3 NEGATİF (−41→0, −5→0 = imkânsız bakiye
+   düzeltmesi, meşru). ⇒ "taban etkisi" açıklaması yalnız 15 satırı kapsıyor.
+   YIĞILMA: 81 Özlüce · 68 adet 2025-05 · 68 tek kullanıcı (1605) ·
+            67 `tip 9 Reyon Birleştirme` · raflar CO-12xx. */
+
+/* 29) ★ AYNI İŞLEMİN TAMAMI — artan satırlar bir NET KAYIP işleminin içinde mi? */
+SELECT CONVERT(varchar(10),b.SayimTarihi,120) AS tarih, b.SayimTipId,
+       d.OlusturanKullaniciId AS kul, COUNT(*) AS satir,
+       SUM(CASE WHEN d.Miktar > d.MiktarEski THEN 1 ELSE 0 END) AS artiran,
+       SUM(CASE WHEN d.Miktar < d.MiktarEski THEN 1 ELSE 0 END) AS azaltan,
+       CONVERT(bigint, SUM(CONVERT(bigint,d.Miktar) - CONVERT(bigint,d.MiktarEski))) AS net,
+       COUNT(DISTINCT d.RafNo) AS raf
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  b.MekanId = 4477 AND b.SayimTarihi >= '20250501' AND b.SayimTarihi < '20250601'
+  AND  d.SayimDuzeltmeNedenId = 5
+GROUP BY CONVERT(varchar(10),b.SayimTarihi,120), b.SayimTipId, d.OlusturanKullaniciId
+ORDER BY satir DESC;
+/* 13.05.2025 · tip 9 · kul 1605 · 403 satır / 81 raf · 332 düşüş / 67 artış ·
+   NET -498. ⇒ Artışlar, net KAYIP veren bir raf birleştirmesinin içindeki
+   "yanlış rafta bulunmuş mal" satırları. Etiket İŞLEM düzeyinde seçilmiş, 403
+   satırın hepsine miras kalmış — TEST A'daki tek-nedenli emir bulgusunun mekanizması.
+   KALAN GERÇEK AYKIRI: 31.05.2025 · tip 3 Serbest · tek satır · stkID 63968 ·
+   865 -> 1081 (+216), birleştirme bağlamı YOK.
+   ⇒ PRATİK SONUÇ: `Kayıp-Çalıntı` satırları TOPLANARAK kayıp çıkarılamaz. */

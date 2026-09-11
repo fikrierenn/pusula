@@ -187,6 +187,7 @@ entities:
       stoğu ARTIRMIŞ**. Kayıp stok ekleyemez; bu eksik veri değil, ÇELİŞKİDİR
       (`error-handling` § Reddet mi Say mı). Ayrıca beş nedende toplam ~5.000 satırda
       `Miktar = MiktarEski` — hiçbir şeyi değiştirmeyen "düzeltme"ye neden yazılmış.
+      ⭐ 85 SATIR İNCELENDİ, SEBEBİ BULUNDU → `ayrinti.kayip_calinti_85_satir`.
       ⚠ TEST A (emir içi çeşitlenme) — ZAYIF: 20+ satırlı emirlerin %38,8'i TEK nedenli.
       Toplu bir düzeltmenin tek sebebi olabilir; tek başına delil değil, ama D ile
       birlikte "satır satır düşünülmüyor" yönünde okunur.
@@ -200,6 +201,26 @@ entities:
         Kalan **166 ürün (%40,2) o mağazada 6 AYDA HİÇ mal girişi görmemiş.**
         ⇒ Etiket "yakın zamanlı hatalı giriş" anlamında DOĞRULANMIYOR. Olayın ne olduğu
         hâlâ açık; etiket bir İDDİADIR, kanıt değil.
+      kayip_calinti_85_satir: >-
+        85 SATIR TEK TEK İNCELENDİ (2026-09-11) — SAHTECİLİK YA DA VERİ BOZULMASI DEĞİL,
+        ETİKET GRANÜLERLİĞİ SORUNU. Toplam artış yalnız **+447 adet**; hepsi `Onay=1`,
+        hiçbiri iptal değil.
+        YIĞILMA: 81'i Özlüce · 68'i 2025-05 · 68'i TEK kullanıcı (1605) · 67'si
+        `tip 9 Reyon Birleştirme`. Yani dağınık özensizlik değil, TEK BİR İŞLEM.
+        O işlem ölçüldü: **13.05.2025 · Özlüce · 81 rafta 403 satır · 332 düşüş /
+        67 artış · net −498.** Raf kodları `CO-12xx`.
+        ⇒ Artışlar, NET KAYIP veren bir raf birleştirmesinin içindeki "yanlış rafta
+        bulunmuş mal" satırlarıdır. Operatör nedeni İŞLEM için seçmiş (net kayıp →
+        Kayıp-Çalıntı) ve etiket 403 satırın HEPSİNE miras kalmış. Bu, TEST A'daki
+        "20+ satırlı emirlerin %38,8'i tek nedenli" bulgusunun mekanizmasıdır.
+        ELENEN AÇIKLAMALAR: (a) "taban etkisi, `MiktarEski` 0'dır" — yalnız 12 satırda
+        öyle; 70'inde pozitif. (b) 3 satır NEGATİF'ten 0'a çekiyor (−41→0, −5→0) ki bu
+        imkânsız bakiyeyi düzeltmektir, meşrudur.
+        KALAN GERÇEK AYKIRI: 31.05.2025 · Özlüce · `tip 3 Serbest` · tek satır ·
+        stkID 63968 · 865 → 1081 (**+216**). Birleştirme bağlamı YOK; bu tek satır
+        gerçekten yanlış etiketlenmiş görünüyor. Sahibine sorulmadı.
+        ⇒ PRATİK SONUÇ: `Kayıp-Çalıntı` satırları TOPLANARAK kayıp tutarı çıkarılamaz;
+        kod işlem düzeyinde seçiliyor, satır düzeyinde değil.
       neden_yazili_olmasi_ne_demek_DEGIL: >-
         Bir düzeltmede neden kodu bulunması, o nedenin sınandığı anlamına gelmez.
         Sistemde neden kodunu gerçekle karşılaştıran HİÇBİR kontrol yok (ölçüldü: yön
