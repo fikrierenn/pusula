@@ -77,6 +77,29 @@ Bir düzeltmenin **tuttuğu** ayrıca ölçülür. FTE'ye geçtikten sonra tutar
 kontrolüne `fte = prim_gun/30` ve `fte <= kayit_sayisi` kontrolleri eklendi; o
 kontroller koşmasaydı sapma bir sonraki sunumda çıkardı.
 
+## NÜFUS SIFIRSA "GEÇTİ" DEĞİL "BAKAMADIM" (2026-09-11, iki vaka ölçüldü)
+
+`sema kostur` NULL sonucu zaten KOŞAMADI sayıyordu. Eksik olan yarısı şuydu:
+**boş nüfus NULL döndürmez, 0 döndürür** — ve `eq 0` bekleyen bir kapı için 0 "ihlal
+yok" demektir. INNER JOIN, tarih penceresi ya da sabit id listesi taşıyan her denetim
+bu sınıftadır: karşı taraf boşalınca kapı sessizce yeşile döner.
+
+| Değişmez | Nüfusu ne boşaltır | Boşalınca ne okunurdu |
+|---|---|---|
+| `pos-kalem-header-mutabakati` | son 7 günde satış yok (ERP kesintisi) | `ABS(0−0) < 1` → **kusursuz ciro mutabakatı** |
+| `muhasebe-hesap-kodu-panelde-yok` | `bkm.SatisAnaliziTaban` boş (istek üzerine dolar) | `MAX(Kesim)` NULL → hiç satır → temiz |
+| `palet-yon-ilkid-sahibi` | sabit iki `stkID` view'i terk eder | fark yok |
+| `puanbil-kisi-ay-tekilligi` | `Lokasyon LIKE 'MA%'` adlandırması değişir | mükerrer bordro satırı yok |
+| fifo'nun 10 kapısı | master deploy tabloları DROP eder (yaşandı) | on kapı birden temiz |
+
+**Kural:** `eq 0` bekleyen her değişmez ya bir `population` sorgusu taşır (ihlal koşulu
+ATILMIŞ hâli; JOIN korunur, çünkü JOIN'in daralması da ölçülmeli) ya da
+`population_exempt` ile boşalamayacağını YAZAR. Nüfus 0 dönerse **KOŞAMADI (çıkış 2)** —
+KIRIK değil, yeşil hiç değil.
+
+**Bir soru olarak:** *bu sayı "ihlal yok" mu diyor, "bakamadım" mı?* Ayırt edemiyorsan
+kapı yoktur; nüfusu ölç.
+
 ## Sınır testi
 
 > *"Bu cümlenin arkasında bir komut çıktısı var mı, yoksa 'olması gereken' mi?"*

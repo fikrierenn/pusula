@@ -1,520 +1,535 @@
 {
- "_description": "BKM semantik katmanı — DEĞİŞMEZLER (invariants). Koşulur, saklanmaz.",
- "_why": [
-  "`queries.yaml` doğrulanmış SQL'i SAKLAR ama kimse YENİDEN KOŞMAZ.",
-  "Kayıt bayatlayınca kimse fark etmez — decay/TTL bir BAYRAKTIR, bir",
-  "ÖLÇÜM değil. Bu dosya o boşluğu kapatır: her kayıt komutla yeniden",
-  "koşar ve bayatlarsa KIRMIZI olur.",
-  "",
-  "Araştırma (2026-09-03) aynı yeri gösteriyor: ölçüt SQL METNİ değil",
-  "ÇALIŞTIRMA SONUCU olmalı (promptfoo text-to-SQL eval); davranış",
-  "baseline kaydedilip her değişiklikte regresyon aranmalı (Arthur AI);",
-  "semantik katman doğruluğu %84-90'dan %98-100'e çıkarıyor (dbt 2026).",
-  "",
-  "DEĞİŞMEZ != ÖLÇÜM. Ayrım testi: 'bu iddia yarınki veriyle de doğru mu?'",
-  "  yazılır  → 'urnTip yalnız 0/1/2 olabilir'",
-  "  yazılmaz → 'ölü stok 12,4M TL' (bu bir ölçüm, değişir)",
-  "",
-  "Koşum: python tools/sema_degismez.py"
- ],
- "_version": 1,
- "_updated": "2026-09-09",
- "_run": "python tools/sema_degismez.py (yapısal değişmezler) + python tools/sema_sorgu_dumani.py (queries.yaml katalog dumanı)",
- "invariants": [
-  {
-   "id": "urn-urnTip-uc-deger",
-   "db": "DerinSISBkm",
-   "question": "dbo.urn.urnTip yalnız 0, 1 ve 2 değerlerini mi alır?",
-   "why": "Ölü stok sorgusunda `WHERE urnTip=0` ZORUNLU. Dördüncü bir tip çıkarsa o kayıtlar sessizce dışarıda kalır ya da yanlış sınıflanır.",
-   "sql": "SELECT COUNT(*) FROM dbo.urn WHERE urnTip NOT IN (0,1,2)",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03 → 0=868.094 (normal ürün) · 1=252 (gider/hizmet) · 2=52 (demirbaş/araç satışı, örn. '16 BFF 90 BMW OTOMOBİL SATIŞI')"
-  },
-  {
-   "id": "urn-urnTip-2-belgelendi",
-   "db": "DerinSISBkm",
-   "question": "urnTip=2 kayıtları hâlâ var mı?",
-   "why": "sema'da 2026-09-03'e kadar YOKTU — yalnız 0 ve 1 belgeliydi. Bu satır, o eksiğin kapandığının kanıtı. Sayı sıfıra düşerse kayıt sadeleştirilebilir.",
-   "sql": "SELECT COUNT(*) FROM dbo.urn WHERE urnTip = 2",
-   "comparison": "min",
-   "expected": 1,
-   "verified": "2026-09-03 → 52"
-  },
-  {
-   "id": "encore-compat-110",
-   "db": "DerinSISBkm",
-   "question": "EncoreMerkez uyumluluk düzeyi hâlâ 110 mu?",
-   "why": "110'da STRING_AGG / TRIM / IIF / TRY_CONVERT YOK. Yükseltilirse bütün workaround'lar (STUFF+FOR XML, LTRIM(RTRIM())) gereksiz hale gelir ve sema güncellenmelidir.",
-   "sql": "SELECT compatibility_level FROM sys.databases WHERE name = 'EncoreMerkez'",
-   "comparison": "eq",
-   "expected": 110,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "irsHrk-kolon-kucuk-s",
-   "db": "DerinSISBkm",
-   "question": "irsHrk kolonu `ehstkID` (küçük s) mi?",
-   "why": "fatAyr/irsAyr'da `ehStkID` (büyük S). SQL Server case-insensitive olduğu için ikisi de çalışır, ama case-sensitive collation'a taşınırsa kopyala-yapıştır sorgu KIRILIR.",
-   "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsHrk') AND name COLLATE Latin1_General_BIN = 'ehstkID'",
-   "comparison": "eq",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "fatAyr-kolon-buyuk-S",
-   "db": "DerinSISBkm",
-   "question": "fatAyr kolonu `ehStkID` (büyük S) mi?",
-   "why": "irsHrk ile TERS. Aynı anlamdaki kolon iki tabloda farklı yazılıyor.",
-   "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.fatAyr') AND name COLLATE Latin1_General_BIN = 'ehStkID'",
-   "comparison": "eq",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "irsAyr-kolon-buyuk-S",
-   "db": "DerinSISBkm",
-   "question": "irsAyr kolonu `ehStkID` (büyük S) mi?",
-   "why": "fatAyr ile aynı, irsHrk ile ters.",
-   "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsAyr') AND name COLLATE Latin1_General_BIN = 'ehStkID'",
-   "comparison": "eq",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "olu-stok-iskonto-kalemi-urnTip0",
-   "db": "DerinSISBkm",
-   "question": "stkID 81809 (İskonto ve Fiyat Farkı) hâlâ urnTip=0 mı?",
-   "why": "Ölü stok sorgusundaki elle dışlamanın GEREKÇESİ bu. Muhasebe kalemi yanlış kategoride ve urnTip=0 olduğu için `urnTip` filtresi yakalamıyor. urnTip=1'e çekilirse dışlama GEREKSİZ hale gelir ve kaldırılmalıdır.",
-   "sql": "SELECT COUNT(*) FROM dbo.urn WHERE stkID = 81809 AND urnTip = 0",
-   "comparison": "eq",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "omurga-nesneler-duruyor",
-   "db": "DerinSISBkm",
-   "question": "Sema'nın dayandığı omurga nesneler duruyor mu?",
-   "why": "`ent.odak_depo_Stok` (ODAK stok otoritesi), `bkm.StokAyBakiyeMekanBazli` (ay-sonu bakiye), `bkm.UrunBilgi` (ürün master). Biri kalkarsa ona dayanan bütün raporlar sessizce boş döner.",
-   "sql": "SELECT (CASE WHEN OBJECT_ID('ent.odak_depo_Stok') IS NULL THEN 0 ELSE 1 END) + (CASE WHEN OBJECT_ID('bkm.StokAyBakiyeMekanBazli') IS NULL THEN 0 ELSE 1 END) + (CASE WHEN OBJECT_ID('bkm.UrunBilgi') IS NULL THEN 0 ELSE 1 END)",
-   "comparison": "eq",
-   "expected": 3,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "kadro-etiket-kumesi-kapali",
-   "server": "zirve",
-   "db": "BKM_GENEL",
-   "question": "vw_PersonelDepartman.Kadro bilinen etiket kümesinin dışına çıktı mı?",
-   "why": "Kod sezonluğu YALNIZ Kadro='SEZONLUK' ile ayırır; geri kalan her etiket KADROLU sayılır. İK yeni bir etiket açarsa (ör. 'SEZON', 'GEÇİCİ') sessizce kadroluya düşer ve kadrolu/sezonluk ayrımı bozulur — hata vermez.",
-   "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE ISNULL(Kadro,N'') NOT IN (N'', N'KADRO', N'SEZONLUK', N'KISMİ', N'PART-TIME', N'PART TIME', N'STAJYER')",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "sezonluk-etiketi-duruyor",
-   "server": "zirve",
-   "db": "BKM_GENEL",
-   "question": "Mağaza kapsamında Kadro='SEZONLUK' kaydı hâlâ var mı?",
-   "why": "Etiket yeniden adlandırılırsa sezonluk sayısı SIFIRA düşer ve herkes kadrolu görünür. Sıfır sonuç hata vermez, makul görünür.",
-   "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE Kadro = N'SEZONLUK' AND Lokasyon LIKE 'MA%'",
-   "comparison": "min",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "primgunu-30-tavani",
-   "server": "zirve",
-   "db": "BKM_GENEL",
-   "question": "vw_PuanBil.Primgunu 31'i aşan satır var mı?",
-   "why": "Tam gün karşılığı çalışan = SUM(Primgunu)/30. 31'i aşan bir satır bu ölçüyü sessizce şişirir; personel sayısı olduğundan fazla görünür.",
-   "sql": "SELECT COUNT(*) FROM dbo.vw_PuanBil WHERE Primgunu > 31",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "puanbil-kisi-ay-tekilligi",
-   "server": "zirve",
-   "db": "BKM_GENEL",
-   "question": "Mağaza kapsamında bir kişi-ay bordroda iki kez sayılıyor mu?",
-   "why": "Maliyet ve çalışan sayısı bordro × personel join'inden toplanır. Mükerrer bordro satırı VEYA personelin iki departman kaydı (fan-out) toplamı iki katına çıkarır — rakam makul görünür, hata vermez.",
-   "sql": "SELECT COUNT(*) FROM (SELECT b.Personelno, b.Yil, b.Ayindex FROM dbo.vw_PuanBil b JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno WHERE p.Lokasyon LIKE 'MA%' GROUP BY b.Personelno, b.Yil, b.Ayindex HAVING COUNT(*) > 1) t",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "maliyet-kolonlari-duruyor",
-   "server": "zirve",
-   "db": "BKM_GENEL",
-   "question": "Maliyet formülünün dayandığı üç kolon (Bt, Isskk, Iisk) duruyor mu?",
-   "why": "Personel maliyeti = Bt + Isskk + Iisk (brüt + işveren SGK + işveren işsizlik). Kolon adı Zirve sürümüyle değişirse formül başka bir kolona kayabilir.",
-   "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vw_PuanBil') AND name IN ('Bt', 'Isskk', 'Iisk')",
-   "comparison": "eq",
-   "expected": 3,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "sinav-ikinci-kol-gerekli",
-   "db": "DerinSISBkm",
-   "question": "KatAna 'Sınav Okul%' olup Kategori3 Sınav listesinde OLMAYAN ürün var mı?",
-   "why": "Sınav ayrıştırması iki kolludur: Kategori3 IN (Sınav Okulları, Sınav Kıyafet) VEYA KatAna LIKE 'Sınav Okul%'. Bu sayı sıfır olmadıkça ikinci kol ZORUNLU; tek kolla ayrıştırma Sınav cirosunu mağazaya yazar.",
-   "sql": "SELECT COUNT(*) FROM bkm.UrunBilgi WHERE COALESCE(KatAna, N'x') LIKE N'Sınav Okul%' AND COALESCE(Kategori3, N'x') NOT IN (N'Sınav Okulları', N'Sınav Kıyafet')",
-   "comparison": "min",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "mal-olmayan-kalem-stok-hareketsiz",
-   "db": "DerinSISBkm",
-   "question": "urnTip 1/2 (mal olmayan kalem) stok hareketi (irsHrk) taşıyor mu?",
-   "why": "Stok/ölü stok/kategori raporları `WHERE urnTip=0` ile bu kalemleri dışlar. Dışlama ancak bu kalemler stok taşımadığı sürece doğrudur; bir gün bir urnTip=1/2 kartına stok hareketi girerse gerçek mal sessizce raporun dışında kalır (K-25 ölçümü: bugün 0 hareket).",
-   "sql": "SELECT COUNT(*) FROM dbo.irsHrk h WHERE h.ehstkID IN (SELECT stkID FROM dbo.urn WHERE urnTip IN (1, 2))",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "belge-tipi-kumesi-kapali",
-   "db": "DerinSISBkm",
-   "protects": [
-    "encore-pos-gunluk-ciro",
-    "pos-urun-kategori-koprusu"
-   ],
-   "question": "EncoreMerkez.Sales.DocumentsTypeId {1,2,3,6,7,8} kümesinin dışına çıktı mı?",
-   "why": "Tüm POS ciro sorguları bu altı tipi sayar. Yeni bir belge tipi açılırsa (ör. 9) cirosu SESSİZCE hiçbir rapora girmez — hata vermez, eksik gösterir.",
-   "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Sales WITH(NOLOCK) WHERE DocumentsTypeId NOT IN (1,2,3,6,7,8)",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "pos-urun-koprusu-eslesme",
-   "db": "DerinSISBkm",
-   "protects": [
-    "pos-urun-kategori-koprusu"
-   ],
-   "question": "Products.Code = urn.stkID köprüsü hâlâ ürünlerin ezici çoğunluğunu eşliyor mu?",
-   "why": "POS satışını DerinSIS kategorisine bağlayan tek köprü. Çökerse kategori ciro raporu sessizce boşalır (stkKod=barkod vakasının aynısı: Oyuncak cirosu 700K görünüp gerçeğin 10,96M olması).",
-   "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products p WITH(NOLOCK) WHERE ISNUMERIC(p.Code)=1 AND CONVERT(int,p.Code) IN (SELECT stkID FROM dbo.urn)",
-   "comparison": "min",
-   "expected": 800000,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "pos-kalem-header-mutabakati",
-   "db": "DerinSISBkm",
-   "protects": [
-    "encore-pos-gunluk-ciro",
-    "pos-urun-kategori-koprusu"
-   ],
-   "question": "Son 7 günde kalem düzeyi net (TotalPrice−VatTotal) ile header net (GrossTotal−DiscountTotal−VatTotal) 1 TL içinde tutuyor mu?",
-   "why": "Ölçülen kimlik (2026-09-03): SUM(TotalPrice) = GrossTotal − indirim, yani net KDV-hariç = TotalPrice − VatTotal. Kategori/ürün raporu kalemden, KPI header'dan okur; kimlik bozulursa iki rapor farklı ciro gösterir ve hangisinin doğru olduğu belli olmaz.",
-   "sql": "SELECT CASE WHEN ABS(ISNULL(k.kalem,0) - ISNULL(h.header,0)) < 1 THEN 0 ELSE 1 END FROM (SELECT SUM(sp.TotalPrice - sp.VatTotal) kalem FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE sp.IsValid = 1 AND s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))) k CROSS JOIN (SELECT SUM(s.GrossTotal - s.DiscountTotal - s.VatTotal) header FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))) h",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "joker-linked-server-canli",
-   "db": "DerinSISBkm",
-   "protects": [
-    "eticaret-marka-satis",
-    "eticaret-haftalik-net-kanal",
-    "il-teslimat-perf",
-    "ay-cikis-trend",
-    "cod-teslim-performans",
-    "cod-iade-maliyet-ozet"
-   ],
-   "question": "ODAKJOKER linked server üstünden J_ITEMS okunuyor mu?",
-   "why": "Altı e-ticaret sorgusu linked server üstünden gidiyor. Linked server düşerse veya izin kalkarsa e-ticaret raporları SIFIR/boş döner — bu, 'satış olmadı' diye okunur. Boş dönmek ile koşmamak ekranda aynı görünür.",
-   "sql": "SELECT COUNT(*) FROM ODAKJOKER.JOKER.dbo.J_ITEMS",
-   "comparison": "min",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "joker-kanal-dort-deger",
-   "db": "DerinSISBkm",
-   "protects": [
-    "eticaret-haftalik-net-kanal"
-   ],
-   "question": "J_ORDERS.APPLICATION dört kanal değerinin hepsi hâlâ mevcut mu?",
-   "why": "Kanal kırılımı bu dört değeri isimle sayar, gerisini 'Diğer'e atar. Bir kanalın adı değişirse (ör. 'Mobil Uygulama (Android)' → 'Android App') o kanalın cirosu sessizce Diğer'e düşer ve kanal analizi yanlış olur.",
-   "sql": "SELECT COUNT(DISTINCT o.APPLICATION) FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')",
-   "comparison": "eq",
-   "expected": 4,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "cod-durum-kodlari-duruyor",
-   "db": "DerinSISBkm",
-   "protects": [
-    "cod-teslim-performans",
-    "cod-iade-maliyet-ozet"
-   ],
-   "question": "COD teslim (STATUS=1005) ve kargo iade (CARGODELIVERYSTATUS=2) kodları hâlâ dolu mu?",
-   "why": "Kapıda ödeme ekonomisi bu iki kodu sayar. Kod değişirse teslim oranı 0, iade maliyeti 0 görünür — rapor 'her şey yolunda' der.",
-   "sql": "SELECT CASE WHEN SUM(CASE WHEN o.STATUS=1005 THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) > 0 THEN 1 ELSE 0 END FROM ODAKJOKER.JOKER.dbo.J_ORDERS o",
-   "comparison": "eq",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "irshrk-ciro-kolonlari-duruyor",
-   "db": "DerinSISBkm",
-   "protects": [
-    "aylik-magaza-net-ciro",
-    "okul-hizali-pencere-hacim"
-   ],
-   "question": "irsHrk ciro sorgusunun beş kolonu (ehTrhS, ehTip, ehTutarN, ehMekan, ehstkID) duruyor mu?",
-   "why": "Mağaza net cirosu ve hizalı pencere hacmi bu beş kolona dayanıyor. Kolon adı büyük/küçük harf ya da ek farkıyla değişince (ehstkID vs ehStkID vakası) sorgu patlar; erken yakalanması gerekir.",
-   "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsHrk') AND name IN ('ehTrhS','ehTip','ehTutarN','ehMekan','ehstkID')",
-   "comparison": "eq",
-   "expected": 5,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "pos-uc-magaza-satis-uretiyor",
-   "db": "DerinSISBkm",
-   "protects": [
-    "aylik-magaza-net-ciro",
-    "okul-hizali-pencere-hacim"
-   ],
-   "question": "Üç POS mağazası (1 FSM · 4477 Özlüce · 4478 İst.Yolu) hâlâ satış hareketi üretiyor mu?",
-   "why": "İş hacmi ve kişi-başı verimlilik analizleri bu üç mekanı sayar. Biri mekan kodu değiştirir veya POS'u başka sisteme geçerse o mağazanın cirosu sessizce sıfırlanır ve verimlilik yapay olarak yükselir.",
-   "sql": "SELECT COUNT(DISTINCT h.ehMekan) FROM dbo.irsHrk h WHERE h.ehTip IN (4,100) AND h.ehMekan IN (1,4477,4478)",
-   "comparison": "eq",
-   "expected": 3,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "depo-emirayr-kolonlari-duruyor",
-   "db": "DerinSISBkm",
-   "protects": [
-    "depo-toplama-verim",
-    "depo-hareket-kategori"
-   ],
-   "question": "depo.emirAyr toplama verimi kolonları (emTamam, emKisi, emAdet, emTarih) duruyor mu?",
-   "why": "Depo işgücü verimi bu dört kolondan hesaplanır (tamamlanan emir · operatör · adet · tarih). WMS sürümü kolon adını değiştirirse rapor patlar; sessiz değişimde ise yanlış operatör/adet sayılır.",
-   "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('depo.emirAyr') AND name IN ('emTamam','emKisi','emAdet','emTarih')",
-   "comparison": "eq",
-   "expected": 4,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "irs-tip-kodlari-lookupta",
-   "db": "DerinSISBkm",
-   "protects": [
-    "aylik-magaza-net-ciro",
-    "okul-hizali-pencere-hacim"
-   ],
-   "question": "irsHrk.ehTip ve irs.eTip'teki her kod dbo.irsTip_vw'de tanımlı mı?",
-   "why": "Kod kümesi ELLE yazılmaz, lookup'tan okunur. Lookup'ta olmayan bir kod çıkarsa adı bilinmez ve rapor filtreleri (satış 4/100, iade 5/101) onu sessizce dışarıda bırakır. 2026-09-03 ölçümü: 8 kod (18·88·89·90·92·95·96·98) sema'da YOKTU ama lookup'ta vardı — 364K kayıtlık 'Diğer Giriş' dahil.",
-   "sql": "SELECT (SELECT COUNT(DISTINCT h.ehTip) FROM dbo.irsHrk h WITH(NOLOCK) WHERE h.ehTip NOT IN (SELECT tipID FROM dbo.irsTip_vw)) + (SELECT COUNT(DISTINCT i.eTip) FROM dbo.irs i WITH(NOLOCK) WHERE i.eTip NOT IN (SELECT tipID FROM dbo.irsTip_vw))",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "fat-tip-kodlari-lookupta",
-   "db": "DerinSISBkm",
-   "protects": [
-    "aylik-magaza-net-ciro"
-   ],
-   "question": "fat.eTip'teki her kod dbo.fatTip_vw'de tanımlı mı?",
-   "why": "Maliyet zinciri eTip=0'ı (Alış) kullanır; fiyat farkı faturaları (8·9·10) ayrı kodlardır. Tanımsız yeni bir kod çıkarsa hangi sınıfa girdiği bilinmeden maliyet ve alış analizleri onu atlar.",
-   "sql": "SELECT COUNT(DISTINCT f.eTip) FROM dbo.fat f WITH(NOLOCK) WHERE f.eTip NOT IN (SELECT tipID FROM dbo.fatTip_vw)",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "sip-tip-kodlari-lookupta",
-   "db": "DerinSISBkm",
-   "question": "sip.eTip'teki her kod dbo.sipTip_vw'de tanımlı mı?",
-   "why": "Sipariş tipi kümesi satınalma/sevk analizlerinin ayracı. Tanımsız kod, sipariş akışında görünmeyen bir tür demek.",
-   "sql": "SELECT COUNT(DISTINCT s.eTip) FROM dbo.sip s WITH(NOLOCK) WHERE s.eTip NOT IN (SELECT tipID FROM dbo.sipTip_vw)",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "depo-emtip-yeni-orphan-yok",
-   "db": "DerinSISBkm",
-   "question": "depo.emir'de depo.emTip lookup'ında OLMAYAN kaç ayrı kod var?",
-   "why": "Bugün 1 tanesi var: emTip=5 (478 emir, 2021 'Sayım-NNN' kayıtları) lookup'ta tanımsız — bilinen, tarihli borç. Değişmez YENİ bir tanımsız kod çıkarsa kırmızı verir; bilinen borcu papatya yapmadan sabitler.",
-   "sql": "SELECT COUNT(DISTINCT e.emTip) FROM depo.emir e WITH(NOLOCK) WHERE e.emTip NOT IN (SELECT emTipID FROM depo.emTip)",
-   "comparison": "eq",
-   "expected": 1,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "ayrilma-neden-sozlugu-duruyor",
-   "db": "DerinSISBkm",
-   "question": "İşten çıkış kodu sözlüğü (iky.ayrilma_neden) hâlâ dolu mu?",
-   "why": "Zirve yalnız KODU tutuyor ('03'); açıklama sözlüğü ERP'deki kullanılmayan iky modülünün lookup tablosunda. Bu tablo boşalırsa/silinirse çıkış kodları yorumlanamaz hale gelir ve 'istifa mı mevsim bitimi mi' ayrımı kaybolur. Ölçüm 2026-09-03: 33 satır.",
-   "sql": "SELECT COUNT(*) FROM iky.ayrilma_neden",
-   "comparison": "min",
-   "expected": 33,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "stok-bakiye-iki-kaynak",
-   "db": "DerinSISBkm",
-   "question": "bkm.StokAyBakiyeMekanBazli son dönemde hem irsHrk hem WMS kaynağını taşıyor mu?",
-   "why": "Mağaza stoğu irsHrk hareketlerinden, MERKEZ DEPO stoğu WMS'ten geliyor (ölçüm 2026-09-03: depo irsHrk kümülatifi 1,99M vs WMS 4,25M — 2 kat sapma). Kaynaklardan biri düşerse (job kısmi koşarsa) stok tablosu sessizce eksik kalır ve 'depo stoğu yarıya indi' gibi okunur.",
-   "sql": "SELECT COUNT(DISTINCT Kaynak) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE Donem = (SELECT MAX(Donem) FROM bkm.StokAyBakiyeMekanBazli)",
-   "comparison": "eq",
-   "expected": 2,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "depo-bakiyesi-irshrk-den-doldurulmaz",
-   "db": "DerinSISBkm",
-   "question": "bkm.StokAyBakiyeMekanBazli'de merkez depo (mekan 12) için irsHrk kaynaklı satır var mı?",
-   "why": "Depo defteri (irsHrk) bozuk: mekan 12 için view/kümülatif 1.987.630 derken WMS 4.249.866 diyor (2,26M / 2,1 kat, ölçüm 2026-09-03). Bu yüzden stok tablosu depoyu YALNIZ WMS snapshot'ından doldurur. Biri irsHrk backfill'i depoya da uygularsa depo geçmişi sessizce yarılanır ve devir/bulunurluk bozulur.",
-   "sql": "SELECT COUNT(*) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE ehMekan = 12 AND Kaynak = 'irsHrk'",
-   "comparison": "eq",
-   "expected": 0,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "wms-hucresel-stok-kaynagi-ayakta",
-   "db": "DerinSISBkm",
-   "protects": [],
-   "question": "WMS hücresel stok kaynağı (depo.stok_adres_palet_vw) RAF alanında stok gösteriyor mu?",
-   "why": "Merkez depo stoğunun TEK doğru kaynağı bu view (ERP defteri senkron değil, −4,24M negatif taşıyor). View boşalırsa/erişilemezse panel depo stoğunu SIFIR gösterir ve bu 'depo boşaldı' diye okunur. Ölçüm 2026-09-03: RAF 3.799.795.",
-   "sql": "SELECT CAST(SUM(CAST(Stok AS float)) AS bigint) FROM depo.stok_adres_palet_vw WITH(NOLOCK) WHERE adrsAlanTipID = 0",
-   "comparison": "min",
-   "expected": 1000000,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "stok-snapshot-tazeligi",
-   "db": "DerinSISBkm",
-   "question": "bkm.StokAyBakiyeMekanBazli son kaç gün önce yazıldı?",
-   "why": "Panel merkez depo stoğunu bu tablodan okuyor (K-37). Tablo aylık koşmalı ama ölçüm 2026-09-03: TEK koşum var (14.08.2026) → 20 gün eski. Job unutulursa panel giderek bayat stok gösterir ve bunu HATA VERMEDEN yapar. Eşik 45 gün: aylık koşum aksarsa kırmızıya döner.",
-   "sql": "SELECT DATEDIFF(day, MAX(KayitTarihi), GETDATE()) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK)",
-   "comparison": "max",
-   "expected": 45,
-   "verified": "2026-09-03"
-  },
-  {
-   "id": "etip4-magaza-satis-istyolu-anlamli",
-   "db": "DerinSISBkm",
-   "server": "erp",
-   "question": "eTip 4 (Mağaza Satış) İst.Yolu'nda hâlâ anlamlı hacim taşıyor mu — yani `eTip=100` tek başına şube cirosunu eksik verir mi?",
-   "why": "B-162 (08.09.2026): eTip 4, eTip 100'ün DIŞINDA ayrı bir satış kanalı ve pratikte yalnız İst.Yolu'nda (Sınav Okulları toplu faturaları). `eTip=100` tek başına kullanılırsa İst.Yolu toplam cirosu %8-10, Sınav-hariç perakendesi %3-4 EKSİK çıkar. Bu değişmez kırıldığında (0'a düştüğünde) kanal kapanmış demektir ve MEKAN_CIRO_MUTABAKAT_FORMULU gözden geçirilir; kırılmadığı sürece `eTip 100 − 101 + 4 − 5` zorunludur.",
-   "sql": "SELECT CONVERT(int, SUM(CAST(dt.ehTutar - dt.ehIndirim AS float)) / 1000000.0) FROM dbo.irs bs WITH(NOLOCK) INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID WHERE bs.eTip = 4 AND bs.eMekan = 4478 AND bs.eTarihS >= DATEADD(MONTH,-12,GETDATE())",
-   "comparison": "min",
-   "expected": 20,
-   "protects": [
-    "okul-hizali-pencere-hacim",
-    "aylik-magaza-net-ciro"
-   ],
-   "verified": "2026-09-08 → son 12 ay (09.09.2025-08.09.2026) İst.Yolu eTip 4 net 50.000.903,84 TL / 2.170 belge / 39.028 satır. Eşik 20M seçildi: ölçülen değerin ~%40'ı — kanal küçülse bile erken alarm vermez, kapanırsa kırılır. Aynı pencerede FSM/Özlüce eTip 4 ihmal edilebilir. Kırılabilirlik sınandı (beklenen 20→60 yapıldı, KIRIK verdi, geri alındı)."
-  },
-  {
-   "id": "fiyats-kdv-dahil-ic-yuzde",
-   "db": "EncoreMerkez",
-   "question": "POS satis fiyatinda KDV fiyatin ICINDEN mi cikiyor (ic yuzde)? urn.fiyatS = TotalPrice oldugu icin bu fiyatS'in KDV DAHIL olmasi demek.",
-   "why": "Marj hesabinin tabani buna bagli: satis KDV DAHIL, maliyet (fatAyr.ehTutarN) KDV HARIC. Kimlik bozulursa (POS ust-yuzdeye gecerse) marj sessizce ~17 puan sasar. Kirilirsa metrics.yaml marj_kdv_tabani yeniden olculur.",
-   "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id=sp.SalesId WHERE sp.IsValid=1 AND s.Date >= DATEADD(DAY,-30,CAST(GETDATE() AS date)) AND sp.VatPercent > 1 AND ABS(sp.VatTotal - sp.TotalPrice * sp.VatPercent / (100.0 + sp.VatPercent)) > 0.02 * sp.Amount + 0.02",
-   "comparison": "eq",
-   "expected": 0,
-   "protects": [],
-   "verified": "2026-09-09 → %20'de 89.888/89.888 · %10'da 39.426/39.426 ic yuzde kimligi tutuyor; ust yuzde olsaydi 199 TL'de VatTotal 39,80 cikardi, 33,17 cikti"
-  },
-  {
-   "id": "palet-yon-ilkid-sahibi",
-   "db": "DerinSISBkm",
-   "question": "depo.paletIcHrk'da piIlkID hareketin SAHIBI palet mi (piSonID karsi palet)? Yani palet bakiyesi piIlkID'e gore toplanirsa WMS view'i ile tutar mi?",
-   "why": "Palet defteri yonu belgelenmemisti; ters okunursa 'urun hangi palete ne zaman konuldu' cevabi TERS cikar ve hayalet stok tesbiti yanlislanir. Kirilirsa entities.yaml depo.paletIcHrk yon_kurali yeniden kanitlanir.",
-   "sql": "SELECT COUNT(*) FROM (SELECT v.stkID, v.PaletID, CONVERT(int,SUM(v.Stok)) AS ViewStok, (SELECT ISNULL(SUM(pi.piAdet),0) FROM DerinSISBkm.depo.paletIcHrk pi WITH (NOLOCK) WHERE pi.piStkID=v.stkID AND pi.piİlkID=v.PaletID) AS DefterStok FROM DerinSISBkm.depo.stok_adres_palet_vw v WITH (NOLOCK) WHERE v.stkID IN (235636, 248104) GROUP BY v.stkID, v.PaletID) x WHERE x.ViewStok <> x.DefterStok",
-   "comparison": "eq",
-   "expected": 0,
-   "protects": [],
-   "verified": "2026-09-09 → stkID 235636 palet 37250=2, palet 230598=3; piIlkID hipotezi view ile birebir, piSonID hipotezi -2/-3 veriyordu"
-  },
-  {
-   "id": "kdv-kod-kumesi-lookupta",
-   "db": "DerinSISBkm",
-   "question": "urn.KDVs'te dbo.urnKDV'de KARSILIGI OLMAYAN kod var mi?",
-   "why": "KDV orani bu lookup'tan okunuyor; karsiligi olmayan kod cikarsa o urunde marj SESSIZCE hesaplanamaz. ⚠ Bu degismez yazildigi anda KIRDI: ilk hali dbo.kdvYuzde_vw'ye bakiyordu ve 41 oksuz urun buldu — o view Hizmet/Hammadde varyantlarini (5,8,9,10) atiyor. Kanonik kaynak dbo.urnKDV.",
-   "sql": "SELECT COUNT(*) FROM dbo.urn u WITH (NOLOCK) WHERE u.KDVs IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.urnKDV k WHERE k.kdvID = u.KDVs)",
-   "comparison": "eq",
-   "expected": 0,
-   "protects": [],
-   "verified": "2026-09-09 → dbo.urnKDV 10 kod, oksuz 0. kdvYuzde_vw ile 41 oksuz cikiyordu (KDVs 8→34 urun, 5→6, 9→1; 26'sinin satisi var, 376.028 TL stok)"
-  },
-  {
-   "id": "turkish-dili-dmy-verir",
-   "db": "DerinSISBkm",
-   "question": "Sunucudaki 'Turkish' dil tanimi dmy dateformat veriyor mu?",
-   "why": "Dashboard artik her baglantida 'SET DATEFORMAT dmy' KOMUTU GONDERMIYOR (B-168: DB'ye RTT ort 30 ms / min 16 ms; drill 9 baglanti aciyordu = 9 gereksiz gidis-donus ~225 ms; app'te 135 db.OpenAsync() cagrisi var). DMY garantisi artik baglanti dizesindeki 'Current Language=Turkish' ile LOGIN'de veriliyor (dashboard/Data/Db.cs). Bu garanti TAMAMEN sunucudaki Turkish dil tanimina dayaniyor: o tanim dmy vermezse dmy tarih literali SESSIZCE ters parse edilir (gun/ay yer degistirir) ve asistanin urettigi SQL dmy literali tasiyabilir. KIRILABILIRLIGI KANITLANDI 09.09.2026: pyodbc ile Language=English verilince CONVERT(date,'13.06.2026') 'Conversion failed' hatasi verdi; Turkish ve varsayilan ile dogru parse etti. ⚠ KAPSAM DERSI: ilk hali @@LANGUAGE'a bakiyordu ve KIRDI — cunku bu kosucu (pymssql) us_english/mdy oturumu aciyor. Yani olcum KOSUCUNUN oturumunu olcuyordu, uygulamanin degil (olctum-mu-cikardim-mi: olcumun kapsami kodun kapsamiyla ayni olmali). Baglanti-bagimsiz olan gercek bagimlilik sys.syslanguages'daki Turkish tanimidir.",
-   "sql": "SELECT CASE WHEN (SELECT dateformat FROM sys.syslanguages WHERE alias = 'Turkish') = 'dmy' THEN 1 ELSE 0 END",
-   "comparison": "eq",
-   "expected": 1,
-   "protects": [],
-   "verified": "2026-09-09 → sys.syslanguages alias='Turkish' dateformat=dmy, datefirst=1. Login sa varsayilan dili de Turkce (app artik buna guvenmiyor, Current Language ile aciktan veriyor). pyodbc ucgen testi: dil verilmezse dmy OK, Turkish dmy OK, English 'Conversion failed'."
-  },
-  {
-   "id": "muhasebe-hesap-kodu-panelde-yok",
-   "db": "DerinSISBkm",
-   "question": "Satis Analizi tabaninda muhasebe hesap kodu deseni (3 hane + nokta) tasiyan urun var mi?",
-   "why": "Panel evrenine muhasebe hesabi / demirbas karti sizabiliyor ve urnTip filtresi BUNU KACIRIYOR: 58 kaydin TAMAMI urnTip=0. Yakalanan sinif 150.xx ilk madde · 153.xx ticari mal (ALIS KARGO GIDERI) · 253/254/255 tesis-tasit-DEMIRBAS (BILGISAYAR, KLIMA, YAZARKASA, TRANSPALET) · 260.xx haklar — 441270 'DERINSIS MUHASEBE PROGRAMI' Akademi kategorisinde duruyor. Sizarsa stok tutari ve cesit sayisi sessizce sisiyor; 'Kafe Hammede' vakasinda tek kalem kategori agregasini -21 yapmisti. ⚠ ELLE stkID LISTESI TUTULMUYOR (semantic-layer § SEMA GERCEGI != SATIR VERISI) — kural DESEN. Naif 'nokta iceriyorsa at' YANLIS olurdu: 339151 'Is ve Sosyal Guvenlik Mevzuati' gercek kitap, stkKod'u bozuk ISBN (978605300102.07), noktasi 4. karakterde degil. YANLIS-POZITIF SIFIR olculdu: desenin yakaladigi 58 kaydin yalniz 2'sinde hareket var (150.01 YEMEK UR. 22 adet, 153.10 KARGO GIDERI 16) — ikisi de muhasebe kalemi.",
-   "sql": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK) JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID WHERE t.Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban) AND u.stkKod LIKE '[0-9][0-9][0-9].%'",
-   "comparison": "eq",
-   "expected": 0,
-   "protects": [],
-   "verified": "2026-09-10 → filtre oncesi kaynak evreninde 1 kayit (441270, 260.GENEL.010 Akademi); filtre sonrasi tabanda 0. Kod: dashboard/Data/SatisAnaliziTabanService.cs kat CTE + scripts/satis_analizi_excel.py"
-  },
-  {
-   "id": "satis-analizi-taban-yeni-kolonlar",
-   "db": "DerinSISBkm",
-   "question": "Satis Analizi tabaninda 10.09.2026'da eklenen alti kolon duruyor mu?",
-   "why": "Panel bu kolonlara BAGLI ve biri silinirse SESSIZ bozulur, cunku Dapper pozisyonel record'da eksik kolon 'signature required' hatasi verir ama kolon TIPI uyusuyorsa deger KAYAR ve hata cikmaz. SezonFsm/SezonOzl/SezonIst = Sezonluk Raf Acigi karti (magaza bazli sezon satisi; Ay1/Ay2/Ay3 UC MAGAZANIN TOPLAMI oldugu icin o soruyu cevaplayamiyordu). MaliyetTarih = maliyet yasi (B11: satis 365 gunluk, maliyet bugunku; marj yasa gore %24,4 → %63,0). SatanAy + TalepCV2 = talep deseni siniflandirmasi (Syntetos/Boylan/Croston; cesitlerin %91,9'unda gun-stok GECERSIZ, panel orada '—' gosteriyor). Kolon dusunce panel ya patlar ya yanlis rakam basar.",
-   "sql": "SELECT COUNT(*) FROM DerinSISBkm.sys.columns WHERE object_id = OBJECT_ID('DerinSISBkm.bkm.SatisAnaliziTaban') AND name IN ('SezonFsm','SezonOzl','SezonIst','MaliyetTarih','SatanAy','TalepCV2')",
-   "comparison": "eq",
-   "expected": 6,
-   "protects": [],
-   "verified": "2026-09-10 → 6 kolon mevcut. Kurulum: sorgular/2026-09-09-satis-analizi-taban-tablo-kur.sql (idempotent ALTER bloklari)"
-  },
-  {
-   "id": "talep-deseni-tabanda-dolu",
-   "db": "DerinSISBkm",
-   "question": "Son kesimde talep deseni girdisi (SatanAy) dolu olan satir var mi?",
-   "why": "SESSIZLIK KANIT DEGIL: tdes CTE'si patlarsa ya da pencere yanlis hesaplanirsa SatanAy TAMAMEN NULL kalir. O zaman TalepSinifiSql her urunu 'hic satmadi' (sinif 0) sayar, GunStok her yerde NULL doner ve panel 'cesitlerin %100'u aralikli talep' gibi MAKUL ama yanlis bir tablo gosterir — hata mesaji YOK. Olculdu 2026-09-10: 153.974 satirda dolu (275.385 satirin %55,9'u; kalan %44,1 gercekten hic satmayan urun).",
-   "sql": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban WITH (NOLOCK) WHERE Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban) AND SatanAy IS NOT NULL",
-   "comparison": "min",
-   "expected": 50000,
-   "protects": [],
-   "verified": "2026-09-10 → 153.974 satir dolu. Kod: dashboard/Data/SatisAnaliziTabanService.cs tdes CTE"
-  },
-  {
-   "id": "urn-alimIadeYok-hala-bilgi-tasimiyor",
-   "db": "DerinSISBkm",
-   "question": "urn.alimIadeYok kolonu kac AYRI deger tasiyor?",
-   "why": "FIRSAT SINYALI — bu degismez 'bozulmasini ISTEDIGIMIZ' turden. Olculdu 2026-09-08 ve 2026-09-10: kolon TEK deger tasiyor (844.017/844.017 ayni), yani urun bazinda iade hakki bilgisi YOK ve panel 'asiri stok iade hakkina gore kirilamiyor' demek zorunda. Kullanici 'her kitapta yok iade' dedi — yani gercek hayatta urun bazinda DEGISIYOR ama veriye yazilmiyor. Biri doldurmaya baslarsa bu degismez KIRILIR ve o gun asiri/olu stok metrigi iade hakkina gore kirilabilir hale gelir. Kirmizi = kotu haber DEGIL, 'yeni yetenek acildi' haberi.",
-   "sql": "SELECT COUNT(DISTINCT alimIadeYok) FROM DerinSISBkm.dbo.urn WITH (NOLOCK)",
-   "comparison": "eq",
-   "expected": 1,
-   "protects": [],
-   "verified": "2026-09-10 → 1 ayri deger (bilgi tasimiyor). Panelde beyan edildi; vekil olarak tedarikcinin gozlenen iade orani kullaniliyor (sema: iade_davranisi_vekili)"
-  },
-  {
-   "id": "frmIadeKural-kod-kumesi-kapali",
-   "db": "DerinSISBkm",
-   "question": "frm.frmIadeKural kac ayri kod tasiyor?",
-   "why": "Kod kumesi {0,1,2} olarak KAPALI ve anlami BELGESIZ (lookup view YOK). Olculdu 2026-09-10: uc kodun HEPSINDE fiili alis iadesi var (kod 0 → %18,4 [11,6-27,8] · kod 1 → %36,4 [15,2-64,6] · kod 2 → %40,0 [30,5-50,3]); Cochran-Armitage chi2(1)=9,86 p=0,0017 anlamli AMA komsu Wilson araliklarinin hepsi cakisik ve kod 1'de n=11 → ayrim DESTEKLENMEDI. Yani kod fiili davranisi ONGORMUYOR. DORDUNCU bir kod cikarsa yorumu yine bilinmez olur ve muhasebeye sorulacak soru degisir — haber almak gerekir. B-150 acik.",
-   "sql": "SELECT COUNT(DISTINCT frmIadeKural) FROM DerinSISBkm.dbo.frm WITH (NOLOCK)",
-   "comparison": "eq",
-   "expected": 3,
-   "protects": [],
-   "verified": "2026-09-10 → 3 kod (0/1/2). Arsiv: sorgular/2026-09-10-iade-hakki-vekili.sql blok 1"
-  }
- ]
+  "_description": "BKM semantik katmanı — DEĞİŞMEZLER (invariants). Koşulur, saklanmaz.",
+  "_why": [
+    "`queries.yaml` doğrulanmış SQL'i SAKLAR ama kimse YENİDEN KOŞMAZ.",
+    "Kayıt bayatlayınca kimse fark etmez — decay/TTL bir BAYRAKTIR, bir",
+    "ÖLÇÜM değil. Bu dosya o boşluğu kapatır: her kayıt komutla yeniden",
+    "koşar ve bayatlarsa KIRMIZI olur.",
+    "",
+    "Araştırma (2026-09-03) aynı yeri gösteriyor: ölçüt SQL METNİ değil",
+    "ÇALIŞTIRMA SONUCU olmalı (promptfoo text-to-SQL eval); davranış",
+    "baseline kaydedilip her değişiklikte regresyon aranmalı (Arthur AI);",
+    "semantik katman doğruluğu %84-90'dan %98-100'e çıkarıyor (dbt 2026).",
+    "",
+    "DEĞİŞMEZ != ÖLÇÜM. Ayrım testi: 'bu iddia yarınki veriyle de doğru mu?'",
+    "  yazılır  → 'urnTip yalnız 0/1/2 olabilir'",
+    "  yazılmaz → 'ölü stok 12,4M TL' (bu bir ölçüm, değişir)",
+    "",
+    "Koşum: python tools/sema_degismez.py"
+  ],
+  "_version": 1,
+  "_updated": "2026-09-09",
+  "_run": "python tools/sema_degismez.py (yapısal değişmezler) + python tools/sema_sorgu_dumani.py (queries.yaml katalog dumanı)",
+  "invariants": [
+    {
+      "id": "urn-urnTip-uc-deger",
+      "db": "DerinSISBkm",
+      "question": "dbo.urn.urnTip yalnız 0, 1 ve 2 değerlerini mi alır?",
+      "why": "Ölü stok sorgusunda `WHERE urnTip=0` ZORUNLU. Dördüncü bir tip çıkarsa o kayıtlar sessizce dışarıda kalır ya da yanlış sınıflanır.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn WHERE urnTip NOT IN (0,1,2)",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03 → 0=868.094 (normal ürün) · 1=252 (gider/hizmet) · 2=52 (demirbaş/araç satışı, örn. '16 BFF 90 BMW OTOMOBİL SATIŞI')",
+      "population": "SELECT COUNT(*) FROM dbo.urn WITH(NOLOCK)"
+    },
+    {
+      "id": "urn-urnTip-2-belgelendi",
+      "db": "DerinSISBkm",
+      "question": "urnTip=2 kayıtları hâlâ var mı?",
+      "why": "sema'da 2026-09-03'e kadar YOKTU — yalnız 0 ve 1 belgeliydi. Bu satır, o eksiğin kapandığının kanıtı. Sayı sıfıra düşerse kayıt sadeleştirilebilir.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn WHERE urnTip = 2",
+      "comparison": "min",
+      "expected": 1,
+      "verified": "2026-09-03 → 52"
+    },
+    {
+      "id": "encore-compat-110",
+      "db": "DerinSISBkm",
+      "question": "EncoreMerkez uyumluluk düzeyi hâlâ 110 mu?",
+      "why": "110'da STRING_AGG / TRIM / IIF / TRY_CONVERT YOK. Yükseltilirse bütün workaround'lar (STUFF+FOR XML, LTRIM(RTRIM())) gereksiz hale gelir ve sema güncellenmelidir.",
+      "sql": "SELECT compatibility_level FROM sys.databases WHERE name = 'EncoreMerkez'",
+      "comparison": "eq",
+      "expected": 110,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "irsHrk-kolon-kucuk-s",
+      "db": "DerinSISBkm",
+      "question": "irsHrk kolonu `ehstkID` (küçük s) mi?",
+      "why": "fatAyr/irsAyr'da `ehStkID` (büyük S). SQL Server case-insensitive olduğu için ikisi de çalışır, ama case-sensitive collation'a taşınırsa kopyala-yapıştır sorgu KIRILIR.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsHrk') AND name COLLATE Latin1_General_BIN = 'ehstkID'",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "fatAyr-kolon-buyuk-S",
+      "db": "DerinSISBkm",
+      "question": "fatAyr kolonu `ehStkID` (büyük S) mi?",
+      "why": "irsHrk ile TERS. Aynı anlamdaki kolon iki tabloda farklı yazılıyor.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.fatAyr') AND name COLLATE Latin1_General_BIN = 'ehStkID'",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "irsAyr-kolon-buyuk-S",
+      "db": "DerinSISBkm",
+      "question": "irsAyr kolonu `ehStkID` (büyük S) mi?",
+      "why": "fatAyr ile aynı, irsHrk ile ters.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsAyr') AND name COLLATE Latin1_General_BIN = 'ehStkID'",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "olu-stok-iskonto-kalemi-urnTip0",
+      "db": "DerinSISBkm",
+      "question": "stkID 81809 (İskonto ve Fiyat Farkı) hâlâ urnTip=0 mı?",
+      "why": "Ölü stok sorgusundaki elle dışlamanın GEREKÇESİ bu. Muhasebe kalemi yanlış kategoride ve urnTip=0 olduğu için `urnTip` filtresi yakalamıyor. urnTip=1'e çekilirse dışlama GEREKSİZ hale gelir ve kaldırılmalıdır.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn WHERE stkID = 81809 AND urnTip = 0",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "omurga-nesneler-duruyor",
+      "db": "DerinSISBkm",
+      "question": "Sema'nın dayandığı omurga nesneler duruyor mu?",
+      "why": "`ent.odak_depo_Stok` (ODAK stok otoritesi), `bkm.StokAyBakiyeMekanBazli` (ay-sonu bakiye), `bkm.UrunBilgi` (ürün master). Biri kalkarsa ona dayanan bütün raporlar sessizce boş döner.",
+      "sql": "SELECT (CASE WHEN OBJECT_ID('ent.odak_depo_Stok') IS NULL THEN 0 ELSE 1 END) + (CASE WHEN OBJECT_ID('bkm.StokAyBakiyeMekanBazli') IS NULL THEN 0 ELSE 1 END) + (CASE WHEN OBJECT_ID('bkm.UrunBilgi') IS NULL THEN 0 ELSE 1 END)",
+      "comparison": "eq",
+      "expected": 3,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "kadro-etiket-kumesi-kapali",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "vw_PersonelDepartman.Kadro bilinen etiket kümesinin dışına çıktı mı?",
+      "why": "Kod sezonluğu YALNIZ Kadro='SEZONLUK' ile ayırır; geri kalan her etiket KADROLU sayılır. İK yeni bir etiket açarsa (ör. 'SEZON', 'GEÇİCİ') sessizce kadroluya düşer ve kadrolu/sezonluk ayrımı bozulur — hata vermez.",
+      "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE ISNULL(Kadro,N'') NOT IN (N'', N'KADRO', N'SEZONLUK', N'KISMİ', N'PART-TIME', N'PART TIME', N'STAJYER')",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman"
+    },
+    {
+      "id": "sezonluk-etiketi-duruyor",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "Mağaza kapsamında Kadro='SEZONLUK' kaydı hâlâ var mı?",
+      "why": "Etiket yeniden adlandırılırsa sezonluk sayısı SIFIRA düşer ve herkes kadrolu görünür. Sıfır sonuç hata vermez, makul görünür.",
+      "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE Kadro = N'SEZONLUK' AND Lokasyon LIKE 'MA%'",
+      "comparison": "min",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "primgunu-30-tavani",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "vw_PuanBil.Primgunu 31'i aşan satır var mı?",
+      "why": "Tam gün karşılığı çalışan = SUM(Primgunu)/30. 31'i aşan bir satır bu ölçüyü sessizce şişirir; personel sayısı olduğundan fazla görünür.",
+      "sql": "SELECT COUNT(*) FROM dbo.vw_PuanBil WHERE Primgunu > 31",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM dbo.vw_PuanBil"
+    },
+    {
+      "id": "puanbil-kisi-ay-tekilligi",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "Mağaza kapsamında bir kişi-ay bordroda iki kez sayılıyor mu?",
+      "why": "Maliyet ve çalışan sayısı bordro × personel join'inden toplanır. Mükerrer bordro satırı VEYA personelin iki departman kaydı (fan-out) toplamı iki katına çıkarır — rakam makul görünür, hata vermez.",
+      "sql": "SELECT COUNT(*) FROM (SELECT b.Personelno, b.Yil, b.Ayindex FROM dbo.vw_PuanBil b JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno WHERE p.Lokasyon LIKE 'MA%' GROUP BY b.Personelno, b.Yil, b.Ayindex HAVING COUNT(*) > 1) t",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM dbo.vw_PuanBil b JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno WHERE p.Lokasyon LIKE 'MA%'"
+    },
+    {
+      "id": "maliyet-kolonlari-duruyor",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "Maliyet formülünün dayandığı üç kolon (Bt, Isskk, Iisk) duruyor mu?",
+      "why": "Personel maliyeti = Bt + Isskk + Iisk (brüt + işveren SGK + işveren işsizlik). Kolon adı Zirve sürümüyle değişirse formül başka bir kolona kayabilir.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vw_PuanBil') AND name IN ('Bt', 'Isskk', 'Iisk')",
+      "comparison": "eq",
+      "expected": 3,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "sinav-ikinci-kol-gerekli",
+      "db": "DerinSISBkm",
+      "question": "KatAna 'Sınav Okul%' olup Kategori3 Sınav listesinde OLMAYAN ürün var mı?",
+      "why": "Sınav ayrıştırması iki kolludur: Kategori3 IN (Sınav Okulları, Sınav Kıyafet) VEYA KatAna LIKE 'Sınav Okul%'. Bu sayı sıfır olmadıkça ikinci kol ZORUNLU; tek kolla ayrıştırma Sınav cirosunu mağazaya yazar.",
+      "sql": "SELECT COUNT(*) FROM bkm.UrunBilgi WHERE COALESCE(KatAna, N'x') LIKE N'Sınav Okul%' AND COALESCE(Kategori3, N'x') NOT IN (N'Sınav Okulları', N'Sınav Kıyafet')",
+      "comparison": "min",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "mal-olmayan-kalem-stok-hareketsiz",
+      "db": "DerinSISBkm",
+      "question": "urnTip 1/2 (mal olmayan kalem) stok hareketi (irsHrk) taşıyor mu?",
+      "why": "Stok/ölü stok/kategori raporları `WHERE urnTip=0` ile bu kalemleri dışlar. Dışlama ancak bu kalemler stok taşımadığı sürece doğrudur; bir gün bir urnTip=1/2 kartına stok hareketi girerse gerçek mal sessizce raporun dışında kalır (K-25 ölçümü: bugün 0 hareket).",
+      "sql": "SELECT COUNT(*) FROM dbo.irsHrk h WHERE h.ehstkID IN (SELECT stkID FROM dbo.urn WHERE urnTip IN (1, 2))",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM dbo.urn WITH(NOLOCK) WHERE urnTip IN (1,2)"
+    },
+    {
+      "id": "belge-tipi-kumesi-kapali",
+      "db": "DerinSISBkm",
+      "protects": [
+        "encore-pos-gunluk-ciro",
+        "pos-urun-kategori-koprusu"
+      ],
+      "question": "EncoreMerkez.Sales.DocumentsTypeId {1,2,3,6,7,8} kümesinin dışına çıktı mı?",
+      "why": "Tüm POS ciro sorguları bu altı tipi sayar. Yeni bir belge tipi açılırsa (ör. 9) cirosu SESSİZCE hiçbir rapora girmez — hata vermez, eksik gösterir.",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Sales WITH(NOLOCK) WHERE DocumentsTypeId NOT IN (1,2,3,6,7,8)",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Sales WITH(NOLOCK)"
+    },
+    {
+      "id": "pos-urun-koprusu-eslesme",
+      "db": "DerinSISBkm",
+      "protects": [
+        "pos-urun-kategori-koprusu"
+      ],
+      "question": "Products.Code = urn.stkID köprüsü hâlâ ürünlerin ezici çoğunluğunu eşliyor mu?",
+      "why": "POS satışını DerinSIS kategorisine bağlayan tek köprü. Çökerse kategori ciro raporu sessizce boşalır (stkKod=barkod vakasının aynısı: Oyuncak cirosu 700K görünüp gerçeğin 10,96M olması).",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products p WITH(NOLOCK) WHERE ISNUMERIC(p.Code)=1 AND CONVERT(int,p.Code) IN (SELECT stkID FROM dbo.urn)",
+      "comparison": "min",
+      "expected": 800000,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "pos-kalem-header-mutabakati",
+      "db": "DerinSISBkm",
+      "protects": [
+        "encore-pos-gunluk-ciro",
+        "pos-urun-kategori-koprusu"
+      ],
+      "question": "Son 7 günde kalem düzeyi net (TotalPrice−VatTotal) ile header net (GrossTotal−DiscountTotal−VatTotal) 1 TL içinde tutuyor mu?",
+      "why": "Ölçülen kimlik (2026-09-03): SUM(TotalPrice) = GrossTotal − indirim, yani net KDV-hariç = TotalPrice − VatTotal. Kategori/ürün raporu kalemden, KPI header'dan okur; kimlik bozulursa iki rapor farklı ciro gösterir ve hangisinin doğru olduğu belli olmaz.",
+      "sql": "SELECT CASE WHEN ABS(ISNULL(k.kalem,0) - ISNULL(h.header,0)) < 1 THEN 0 ELSE 1 END FROM (SELECT SUM(sp.TotalPrice - sp.VatTotal) kalem FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE sp.IsValid = 1 AND s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))) k CROSS JOIN (SELECT SUM(s.GrossTotal - s.DiscountTotal - s.VatTotal) header FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))) h",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId = 1 AND s.Date >= DATEADD(DAY,-7,CONVERT(date,GETDATE()))"
+    },
+    {
+      "id": "joker-linked-server-canli",
+      "db": "DerinSISBkm",
+      "protects": [
+        "eticaret-marka-satis",
+        "eticaret-haftalik-net-kanal",
+        "il-teslimat-perf",
+        "ay-cikis-trend",
+        "cod-teslim-performans",
+        "cod-iade-maliyet-ozet"
+      ],
+      "question": "ODAKJOKER linked server üstünden J_ITEMS okunuyor mu?",
+      "why": "Altı e-ticaret sorgusu linked server üstünden gidiyor. Linked server düşerse veya izin kalkarsa e-ticaret raporları SIFIR/boş döner — bu, 'satış olmadı' diye okunur. Boş dönmek ile koşmamak ekranda aynı görünür.",
+      "sql": "SELECT COUNT(*) FROM ODAKJOKER.JOKER.dbo.J_ITEMS",
+      "comparison": "min",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "joker-kanal-dort-deger",
+      "db": "DerinSISBkm",
+      "protects": [
+        "eticaret-haftalik-net-kanal"
+      ],
+      "question": "J_ORDERS.APPLICATION dört kanal değerinin hepsi hâlâ mevcut mu?",
+      "why": "Kanal kırılımı bu dört değeri isimle sayar, gerisini 'Diğer'e atar. Bir kanalın adı değişirse (ör. 'Mobil Uygulama (Android)' → 'Android App') o kanalın cirosu sessizce Diğer'e düşer ve kanal analizi yanlış olur.",
+      "sql": "SELECT COUNT(DISTINCT o.APPLICATION) FROM ODAKJOKER.JOKER.dbo.J_ORDERS o WHERE o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')",
+      "comparison": "eq",
+      "expected": 4,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "cod-durum-kodlari-duruyor",
+      "db": "DerinSISBkm",
+      "protects": [
+        "cod-teslim-performans",
+        "cod-iade-maliyet-ozet"
+      ],
+      "question": "COD teslim (STATUS=1005) ve kargo iade (CARGODELIVERYSTATUS=2) kodları hâlâ dolu mu?",
+      "why": "Kapıda ödeme ekonomisi bu iki kodu sayar. Kod değişirse teslim oranı 0, iade maliyeti 0 görünür — rapor 'her şey yolunda' der.",
+      "sql": "SELECT CASE WHEN SUM(CASE WHEN o.STATUS=1005 THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN o.CARGODELIVERYSTATUS=2 THEN 1 ELSE 0 END) > 0 THEN 1 ELSE 0 END FROM ODAKJOKER.JOKER.dbo.J_ORDERS o",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "irshrk-ciro-kolonlari-duruyor",
+      "db": "DerinSISBkm",
+      "protects": [
+        "aylik-magaza-net-ciro",
+        "okul-hizali-pencere-hacim"
+      ],
+      "question": "irsHrk ciro sorgusunun beş kolonu (ehTrhS, ehTip, ehTutarN, ehMekan, ehstkID) duruyor mu?",
+      "why": "Mağaza net cirosu ve hizalı pencere hacmi bu beş kolona dayanıyor. Kolon adı büyük/küçük harf ya da ek farkıyla değişince (ehstkID vs ehStkID vakası) sorgu patlar; erken yakalanması gerekir.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('dbo.irsHrk') AND name IN ('ehTrhS','ehTip','ehTutarN','ehMekan','ehstkID')",
+      "comparison": "eq",
+      "expected": 5,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "pos-uc-magaza-satis-uretiyor",
+      "db": "DerinSISBkm",
+      "protects": [
+        "aylik-magaza-net-ciro",
+        "okul-hizali-pencere-hacim"
+      ],
+      "question": "Üç POS mağazası (1 FSM · 4477 Özlüce · 4478 İst.Yolu) hâlâ satış hareketi üretiyor mu?",
+      "why": "İş hacmi ve kişi-başı verimlilik analizleri bu üç mekanı sayar. Biri mekan kodu değiştirir veya POS'u başka sisteme geçerse o mağazanın cirosu sessizce sıfırlanır ve verimlilik yapay olarak yükselir.",
+      "sql": "SELECT COUNT(DISTINCT h.ehMekan) FROM dbo.irsHrk h WHERE h.ehTip IN (4,100) AND h.ehMekan IN (1,4477,4478)",
+      "comparison": "eq",
+      "expected": 3,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "depo-emirayr-kolonlari-duruyor",
+      "db": "DerinSISBkm",
+      "protects": [
+        "depo-toplama-verim",
+        "depo-hareket-kategori"
+      ],
+      "question": "depo.emirAyr toplama verimi kolonları (emTamam, emKisi, emAdet, emTarih) duruyor mu?",
+      "why": "Depo işgücü verimi bu dört kolondan hesaplanır (tamamlanan emir · operatör · adet · tarih). WMS sürümü kolon adını değiştirirse rapor patlar; sessiz değişimde ise yanlış operatör/adet sayılır.",
+      "sql": "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('depo.emirAyr') AND name IN ('emTamam','emKisi','emAdet','emTarih')",
+      "comparison": "eq",
+      "expected": 4,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "irs-tip-kodlari-lookupta",
+      "db": "DerinSISBkm",
+      "protects": [
+        "aylik-magaza-net-ciro",
+        "okul-hizali-pencere-hacim"
+      ],
+      "question": "irsHrk.ehTip ve irs.eTip'teki her kod dbo.irsTip_vw'de tanımlı mı?",
+      "why": "Kod kümesi ELLE yazılmaz, lookup'tan okunur. Lookup'ta olmayan bir kod çıkarsa adı bilinmez ve rapor filtreleri (satış 4/100, iade 5/101) onu sessizce dışarıda bırakır. 2026-09-03 ölçümü: 8 kod (18·88·89·90·92·95·96·98) sema'da YOKTU ama lookup'ta vardı — 364K kayıtlık 'Diğer Giriş' dahil.",
+      "sql": "SELECT (SELECT COUNT(DISTINCT h.ehTip) FROM dbo.irsHrk h WITH(NOLOCK) WHERE h.ehTip NOT IN (SELECT tipID FROM dbo.irsTip_vw)) + (SELECT COUNT(DISTINCT i.eTip) FROM dbo.irs i WITH(NOLOCK) WHERE i.eTip NOT IN (SELECT tipID FROM dbo.irsTip_vw))",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT CASE WHEN (SELECT COUNT(*) FROM dbo.irsHrk WITH(NOLOCK)) > 0 AND (SELECT COUNT(*) FROM dbo.irs WITH(NOLOCK)) > 0 AND (SELECT COUNT(*) FROM dbo.irsTip_vw) > 0 AND (SELECT COUNT(*) FROM dbo.irsTip_vw WHERE tipID IS NULL) = 0 THEN 1 ELSE 0 END"
+    },
+    {
+      "id": "fat-tip-kodlari-lookupta",
+      "db": "DerinSISBkm",
+      "protects": [
+        "aylik-magaza-net-ciro"
+      ],
+      "question": "fat.eTip'teki her kod dbo.fatTip_vw'de tanımlı mı?",
+      "why": "Maliyet zinciri eTip=0'ı (Alış) kullanır; fiyat farkı faturaları (8·9·10) ayrı kodlardır. Tanımsız yeni bir kod çıkarsa hangi sınıfa girdiği bilinmeden maliyet ve alış analizleri onu atlar.",
+      "sql": "SELECT COUNT(DISTINCT f.eTip) FROM dbo.fat f WITH(NOLOCK) WHERE f.eTip NOT IN (SELECT tipID FROM dbo.fatTip_vw)",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT CASE WHEN (SELECT COUNT(*) FROM dbo.fat WITH(NOLOCK)) > 0 AND (SELECT COUNT(*) FROM dbo.fatTip_vw) > 0 AND (SELECT COUNT(*) FROM dbo.fatTip_vw WHERE tipID IS NULL) = 0 THEN 1 ELSE 0 END"
+    },
+    {
+      "id": "sip-tip-kodlari-lookupta",
+      "db": "DerinSISBkm",
+      "question": "sip.eTip'teki her kod dbo.sipTip_vw'de tanımlı mı?",
+      "why": "Sipariş tipi kümesi satınalma/sevk analizlerinin ayracı. Tanımsız kod, sipariş akışında görünmeyen bir tür demek.",
+      "sql": "SELECT COUNT(DISTINCT s.eTip) FROM dbo.sip s WITH(NOLOCK) WHERE s.eTip NOT IN (SELECT tipID FROM dbo.sipTip_vw)",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT CASE WHEN (SELECT COUNT(*) FROM dbo.sip WITH(NOLOCK)) > 0 AND (SELECT COUNT(*) FROM dbo.sipTip_vw) > 0 AND (SELECT COUNT(*) FROM dbo.sipTip_vw WHERE tipID IS NULL) = 0 THEN 1 ELSE 0 END"
+    },
+    {
+      "id": "depo-emtip-yeni-orphan-yok",
+      "db": "DerinSISBkm",
+      "question": "depo.emir'de depo.emTip lookup'ında OLMAYAN kaç ayrı kod var?",
+      "why": "Bugün 1 tanesi var: emTip=5 (478 emir, 2021 'Sayım-NNN' kayıtları) lookup'ta tanımsız — bilinen, tarihli borç. Değişmez YENİ bir tanımsız kod çıkarsa kırmızı verir; bilinen borcu papatya yapmadan sabitler.",
+      "sql": "SELECT COUNT(DISTINCT e.emTip) FROM depo.emir e WITH(NOLOCK) WHERE e.emTip NOT IN (SELECT emTipID FROM depo.emTip)",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "ayrilma-neden-sozlugu-duruyor",
+      "db": "DerinSISBkm",
+      "question": "İşten çıkış kodu sözlüğü (iky.ayrilma_neden) hâlâ dolu mu?",
+      "why": "Zirve yalnız KODU tutuyor ('03'); açıklama sözlüğü ERP'deki kullanılmayan iky modülünün lookup tablosunda. Bu tablo boşalırsa/silinirse çıkış kodları yorumlanamaz hale gelir ve 'istifa mı mevsim bitimi mi' ayrımı kaybolur. Ölçüm 2026-09-03: 33 satır.",
+      "sql": "SELECT COUNT(*) FROM iky.ayrilma_neden",
+      "comparison": "min",
+      "expected": 33,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "stok-bakiye-iki-kaynak",
+      "db": "DerinSISBkm",
+      "question": "bkm.StokAyBakiyeMekanBazli son dönemde hem irsHrk hem WMS kaynağını taşıyor mu?",
+      "why": "Mağaza stoğu irsHrk hareketlerinden, MERKEZ DEPO stoğu WMS'ten geliyor (ölçüm 2026-09-03: depo irsHrk kümülatifi 1,99M vs WMS 4,25M — 2 kat sapma). Kaynaklardan biri düşerse (job kısmi koşarsa) stok tablosu sessizce eksik kalır ve 'depo stoğu yarıya indi' gibi okunur.",
+      "sql": "SELECT COUNT(DISTINCT Kaynak) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE Donem = (SELECT MAX(Donem) FROM bkm.StokAyBakiyeMekanBazli)",
+      "comparison": "eq",
+      "expected": 2,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "depo-bakiyesi-irshrk-den-doldurulmaz",
+      "db": "DerinSISBkm",
+      "question": "bkm.StokAyBakiyeMekanBazli'de merkez depo (mekan 12) için irsHrk kaynaklı satır var mı?",
+      "why": "Depo defteri (irsHrk) bozuk: mekan 12 için view/kümülatif 1.987.630 derken WMS 4.249.866 diyor (2,26M / 2,1 kat, ölçüm 2026-09-03). Bu yüzden stok tablosu depoyu YALNIZ WMS snapshot'ından doldurur. Biri irsHrk backfill'i depoya da uygularsa depo geçmişi sessizce yarılanır ve devir/bulunurluk bozulur.",
+      "sql": "SELECT COUNT(*) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE ehMekan = 12 AND Kaynak = 'irsHrk'",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-03",
+      "population": "SELECT COUNT(*) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK) WHERE ehMekan = 12"
+    },
+    {
+      "id": "wms-hucresel-stok-kaynagi-ayakta",
+      "db": "DerinSISBkm",
+      "protects": [],
+      "question": "WMS hücresel stok kaynağı (depo.stok_adres_palet_vw) RAF alanında stok gösteriyor mu?",
+      "why": "Merkez depo stoğunun TEK doğru kaynağı bu view (ERP defteri senkron değil, −4,24M negatif taşıyor). View boşalırsa/erişilemezse panel depo stoğunu SIFIR gösterir ve bu 'depo boşaldı' diye okunur. Ölçüm 2026-09-03: RAF 3.799.795.",
+      "sql": "SELECT CAST(SUM(CAST(Stok AS float)) AS bigint) FROM depo.stok_adres_palet_vw WITH(NOLOCK) WHERE adrsAlanTipID = 0",
+      "comparison": "min",
+      "expected": 1000000,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "stok-snapshot-tazeligi",
+      "db": "DerinSISBkm",
+      "question": "bkm.StokAyBakiyeMekanBazli son kaç gün önce yazıldı?",
+      "why": "Panel merkez depo stoğunu bu tablodan okuyor (K-37). Tablo aylık koşmalı ama ölçüm 2026-09-03: TEK koşum var (14.08.2026) → 20 gün eski. Job unutulursa panel giderek bayat stok gösterir ve bunu HATA VERMEDEN yapar. Eşik 45 gün: aylık koşum aksarsa kırmızıya döner.",
+      "sql": "SELECT DATEDIFF(day, MAX(KayitTarihi), GETDATE()) FROM bkm.StokAyBakiyeMekanBazli WITH(NOLOCK)",
+      "comparison": "max",
+      "expected": 45,
+      "verified": "2026-09-03"
+    },
+    {
+      "id": "etip4-magaza-satis-istyolu-anlamli",
+      "db": "DerinSISBkm",
+      "server": "erp",
+      "question": "eTip 4 (Mağaza Satış) İst.Yolu'nda hâlâ anlamlı hacim taşıyor mu — yani `eTip=100` tek başına şube cirosunu eksik verir mi?",
+      "why": "B-162 (08.09.2026): eTip 4, eTip 100'ün DIŞINDA ayrı bir satış kanalı ve pratikte yalnız İst.Yolu'nda (Sınav Okulları toplu faturaları). `eTip=100` tek başına kullanılırsa İst.Yolu toplam cirosu %8-10, Sınav-hariç perakendesi %3-4 EKSİK çıkar. Bu değişmez kırıldığında (0'a düştüğünde) kanal kapanmış demektir ve MEKAN_CIRO_MUTABAKAT_FORMULU gözden geçirilir; kırılmadığı sürece `eTip 100 − 101 + 4 − 5` zorunludur.",
+      "sql": "SELECT CONVERT(int, SUM(CAST(dt.ehTutar - dt.ehIndirim AS float)) / 1000000.0) FROM dbo.irs bs WITH(NOLOCK) INNER JOIN dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID WHERE bs.eTip = 4 AND bs.eMekan = 4478 AND bs.eTarihS >= DATEADD(MONTH,-12,GETDATE())",
+      "comparison": "min",
+      "expected": 20,
+      "protects": [
+        "okul-hizali-pencere-hacim",
+        "aylik-magaza-net-ciro"
+      ],
+      "verified": "2026-09-08 → son 12 ay (09.09.2025-08.09.2026) İst.Yolu eTip 4 net 50.000.903,84 TL / 2.170 belge / 39.028 satır. Eşik 20M seçildi: ölçülen değerin ~%40'ı — kanal küçülse bile erken alarm vermez, kapanırsa kırılır. Aynı pencerede FSM/Özlüce eTip 4 ihmal edilebilir. Kırılabilirlik sınandı (beklenen 20→60 yapıldı, KIRIK verdi, geri alındı)."
+    },
+    {
+      "id": "fiyats-kdv-dahil-ic-yuzde",
+      "db": "EncoreMerkez",
+      "question": "POS satis fiyatinda KDV fiyatin ICINDEN mi cikiyor (ic yuzde)? urn.fiyatS = TotalPrice oldugu icin bu fiyatS'in KDV DAHIL olmasi demek.",
+      "why": "Marj hesabinin tabani buna bagli: satis KDV DAHIL, maliyet (fatAyr.ehTutarN) KDV HARIC. Kimlik bozulursa (POS ust-yuzdeye gecerse) marj sessizce ~17 puan sasar. Kirilirsa metrics.yaml marj_kdv_tabani yeniden olculur.",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH (NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH (NOLOCK) ON s.Id=sp.SalesId WHERE sp.IsValid=1 AND s.Date >= DATEADD(DAY,-30,CAST(GETDATE() AS date)) AND sp.VatPercent > 1 AND ABS(sp.VatTotal - sp.TotalPrice * sp.VatPercent / (100.0 + sp.VatPercent)) > 0.02 * sp.Amount + 0.02",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-09 → %20'de 89.888/89.888 · %10'da 39.426/39.426 ic yuzde kimligi tutuyor; ust yuzde olsaydi 199 TL'de VatTotal 39,80 cikardi, 33,17 cikti",
+      "population": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE sp.IsValid = 1 AND s.Date >= DATEADD(DAY,-30,CAST(GETDATE() AS date)) AND sp.VatPercent > 1"
+    },
+    {
+      "id": "palet-yon-ilkid-sahibi",
+      "db": "DerinSISBkm",
+      "question": "depo.paletIcHrk'da piIlkID hareketin SAHIBI palet mi (piSonID karsi palet)? Yani palet bakiyesi piIlkID'e gore toplanirsa WMS view'i ile tutar mi?",
+      "why": "Palet defteri yonu belgelenmemisti; ters okunursa 'urun hangi palete ne zaman konuldu' cevabi TERS cikar ve hayalet stok tesbiti yanlislanir. Kirilirsa entities.yaml depo.paletIcHrk yon_kurali yeniden kanitlanir.",
+      "sql": "SELECT COUNT(*) FROM (SELECT v.stkID, v.PaletID, CONVERT(int,SUM(v.Stok)) AS ViewStok, (SELECT ISNULL(SUM(pi.piAdet),0) FROM DerinSISBkm.depo.paletIcHrk pi WITH (NOLOCK) WHERE pi.piStkID=v.stkID AND pi.piİlkID=v.PaletID) AS DefterStok FROM DerinSISBkm.depo.stok_adres_palet_vw v WITH (NOLOCK) WHERE v.stkID IN (235636, 248104) GROUP BY v.stkID, v.PaletID) x WHERE x.ViewStok <> x.DefterStok",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-09 → stkID 235636 palet 37250=2, palet 230598=3; piIlkID hipotezi view ile birebir, piSonID hipotezi -2/-3 veriyordu",
+      "population": "SELECT COUNT(*) FROM DerinSISBkm.depo.stok_adres_palet_vw v WITH(NOLOCK) WHERE v.stkID IN (235636, 248104)"
+    },
+    {
+      "id": "kdv-kod-kumesi-lookupta",
+      "db": "DerinSISBkm",
+      "question": "urn.KDVs'te dbo.urnKDV'de KARSILIGI OLMAYAN kod var mi?",
+      "why": "KDV orani bu lookup'tan okunuyor; karsiligi olmayan kod cikarsa o urunde marj SESSIZCE hesaplanamaz. ⚠ Bu degismez yazildigi anda KIRDI: ilk hali dbo.kdvYuzde_vw'ye bakiyordu ve 41 oksuz urun buldu — o view Hizmet/Hammadde varyantlarini (5,8,9,10) atiyor. Kanonik kaynak dbo.urnKDV.",
+      "sql": "SELECT COUNT(*) FROM dbo.urn u WITH (NOLOCK) WHERE u.KDVs IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.urnKDV k WHERE k.kdvID = u.KDVs)",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-09 → dbo.urnKDV 10 kod, oksuz 0. kdvYuzde_vw ile 41 oksuz cikiyordu (KDVs 8→34 urun, 5→6, 9→1; 26'sinin satisi var, 376.028 TL stok)",
+      "population": "SELECT COUNT(*) FROM dbo.urn u WITH(NOLOCK) WHERE u.KDVs IS NOT NULL"
+    },
+    {
+      "id": "turkish-dili-dmy-verir",
+      "db": "DerinSISBkm",
+      "question": "Sunucudaki 'Turkish' dil tanimi dmy dateformat veriyor mu?",
+      "why": "Dashboard artik her baglantida 'SET DATEFORMAT dmy' KOMUTU GONDERMIYOR (B-168: DB'ye RTT ort 30 ms / min 16 ms; drill 9 baglanti aciyordu = 9 gereksiz gidis-donus ~225 ms; app'te 135 db.OpenAsync() cagrisi var). DMY garantisi artik baglanti dizesindeki 'Current Language=Turkish' ile LOGIN'de veriliyor (dashboard/Data/Db.cs). Bu garanti TAMAMEN sunucudaki Turkish dil tanimina dayaniyor: o tanim dmy vermezse dmy tarih literali SESSIZCE ters parse edilir (gun/ay yer degistirir) ve asistanin urettigi SQL dmy literali tasiyabilir. KIRILABILIRLIGI KANITLANDI 09.09.2026: pyodbc ile Language=English verilince CONVERT(date,'13.06.2026') 'Conversion failed' hatasi verdi; Turkish ve varsayilan ile dogru parse etti. ⚠ KAPSAM DERSI: ilk hali @@LANGUAGE'a bakiyordu ve KIRDI — cunku bu kosucu (pymssql) us_english/mdy oturumu aciyor. Yani olcum KOSUCUNUN oturumunu olcuyordu, uygulamanin degil (olctum-mu-cikardim-mi: olcumun kapsami kodun kapsamiyla ayni olmali). Baglanti-bagimsiz olan gercek bagimlilik sys.syslanguages'daki Turkish tanimidir.",
+      "sql": "SELECT CASE WHEN (SELECT dateformat FROM sys.syslanguages WHERE alias = 'Turkish') = 'dmy' THEN 1 ELSE 0 END",
+      "comparison": "eq",
+      "expected": 1,
+      "protects": [],
+      "verified": "2026-09-09 → sys.syslanguages alias='Turkish' dateformat=dmy, datefirst=1. Login sa varsayilan dili de Turkce (app artik buna guvenmiyor, Current Language ile aciktan veriyor). pyodbc ucgen testi: dil verilmezse dmy OK, Turkish dmy OK, English 'Conversion failed'."
+    },
+    {
+      "id": "muhasebe-hesap-kodu-panelde-yok",
+      "db": "DerinSISBkm",
+      "question": "Satis Analizi tabaninda muhasebe hesap kodu deseni (3 hane + nokta) tasiyan urun var mi?",
+      "why": "Panel evrenine muhasebe hesabi / demirbas karti sizabiliyor ve urnTip filtresi BUNU KACIRIYOR: 58 kaydin TAMAMI urnTip=0. Yakalanan sinif 150.xx ilk madde · 153.xx ticari mal (ALIS KARGO GIDERI) · 253/254/255 tesis-tasit-DEMIRBAS (BILGISAYAR, KLIMA, YAZARKASA, TRANSPALET) · 260.xx haklar — 441270 'DERINSIS MUHASEBE PROGRAMI' Akademi kategorisinde duruyor. Sizarsa stok tutari ve cesit sayisi sessizce sisiyor; 'Kafe Hammede' vakasinda tek kalem kategori agregasini -21 yapmisti. ⚠ ELLE stkID LISTESI TUTULMUYOR (semantic-layer § SEMA GERCEGI != SATIR VERISI) — kural DESEN. Naif 'nokta iceriyorsa at' YANLIS olurdu: 339151 'Is ve Sosyal Guvenlik Mevzuati' gercek kitap, stkKod'u bozuk ISBN (978605300102.07), noktasi 4. karakterde degil. YANLIS-POZITIF SIFIR olculdu: desenin yakaladigi 58 kaydin yalniz 2'sinde hareket var (150.01 YEMEK UR. 22 adet, 153.10 KARGO GIDERI 16) — ikisi de muhasebe kalemi.",
+      "sql": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK) JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID WHERE t.Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban) AND u.stkKod LIKE '[0-9][0-9][0-9].%'",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-10 → filtre oncesi kaynak evreninde 1 kayit (441270, 260.GENEL.010 Akademi); filtre sonrasi tabanda 0. Kod: dashboard/Data/SatisAnaliziTabanService.cs kat CTE + scripts/satis_analizi_excel.py",
+      "population": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH(NOLOCK) WHERE t.Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban)"
+    },
+    {
+      "id": "satis-analizi-taban-yeni-kolonlar",
+      "db": "DerinSISBkm",
+      "question": "Satis Analizi tabaninda 10.09.2026'da eklenen alti kolon duruyor mu?",
+      "why": "Panel bu kolonlara BAGLI ve biri silinirse SESSIZ bozulur, cunku Dapper pozisyonel record'da eksik kolon 'signature required' hatasi verir ama kolon TIPI uyusuyorsa deger KAYAR ve hata cikmaz. SezonFsm/SezonOzl/SezonIst = Sezonluk Raf Acigi karti (magaza bazli sezon satisi; Ay1/Ay2/Ay3 UC MAGAZANIN TOPLAMI oldugu icin o soruyu cevaplayamiyordu). MaliyetTarih = maliyet yasi (B11: satis 365 gunluk, maliyet bugunku; marj yasa gore %24,4 → %63,0). SatanAy + TalepCV2 = talep deseni siniflandirmasi (Syntetos/Boylan/Croston; cesitlerin %91,9'unda gun-stok GECERSIZ, panel orada '—' gosteriyor). Kolon dusunce panel ya patlar ya yanlis rakam basar.",
+      "sql": "SELECT COUNT(*) FROM DerinSISBkm.sys.columns WHERE object_id = OBJECT_ID('DerinSISBkm.bkm.SatisAnaliziTaban') AND name IN ('SezonFsm','SezonOzl','SezonIst','MaliyetTarih','SatanAy','TalepCV2')",
+      "comparison": "eq",
+      "expected": 6,
+      "protects": [],
+      "verified": "2026-09-10 → 6 kolon mevcut. Kurulum: sorgular/2026-09-09-satis-analizi-taban-tablo-kur.sql (idempotent ALTER bloklari)"
+    },
+    {
+      "id": "talep-deseni-tabanda-dolu",
+      "db": "DerinSISBkm",
+      "question": "Son kesimde talep deseni girdisi (SatanAy) dolu olan satir var mi?",
+      "why": "SESSIZLIK KANIT DEGIL: tdes CTE'si patlarsa ya da pencere yanlis hesaplanirsa SatanAy TAMAMEN NULL kalir. O zaman TalepSinifiSql her urunu 'hic satmadi' (sinif 0) sayar, GunStok her yerde NULL doner ve panel 'cesitlerin %100'u aralikli talep' gibi MAKUL ama yanlis bir tablo gosterir — hata mesaji YOK. Olculdu 2026-09-10: 153.974 satirda dolu (275.385 satirin %55,9'u; kalan %44,1 gercekten hic satmayan urun).",
+      "sql": "SELECT COUNT(*) FROM DerinSISBkm.bkm.SatisAnaliziTaban WITH (NOLOCK) WHERE Kesim = (SELECT MAX(Kesim) FROM DerinSISBkm.bkm.SatisAnaliziTaban) AND SatanAy IS NOT NULL",
+      "comparison": "min",
+      "expected": 50000,
+      "protects": [],
+      "verified": "2026-09-10 → 153.974 satir dolu. Kod: dashboard/Data/SatisAnaliziTabanService.cs tdes CTE"
+    },
+    {
+      "id": "urn-alimIadeYok-hala-bilgi-tasimiyor",
+      "db": "DerinSISBkm",
+      "question": "urn.alimIadeYok kolonu kac AYRI deger tasiyor?",
+      "why": "FIRSAT SINYALI — bu degismez 'bozulmasini ISTEDIGIMIZ' turden. Olculdu 2026-09-08 ve 2026-09-10: kolon TEK deger tasiyor (844.017/844.017 ayni), yani urun bazinda iade hakki bilgisi YOK ve panel 'asiri stok iade hakkina gore kirilamiyor' demek zorunda. Kullanici 'her kitapta yok iade' dedi — yani gercek hayatta urun bazinda DEGISIYOR ama veriye yazilmiyor. Biri doldurmaya baslarsa bu degismez KIRILIR ve o gun asiri/olu stok metrigi iade hakkina gore kirilabilir hale gelir. Kirmizi = kotu haber DEGIL, 'yeni yetenek acildi' haberi.",
+      "sql": "SELECT COUNT(DISTINCT alimIadeYok) FROM DerinSISBkm.dbo.urn WITH (NOLOCK)",
+      "comparison": "eq",
+      "expected": 1,
+      "protects": [],
+      "verified": "2026-09-10 → 1 ayri deger (bilgi tasimiyor). Panelde beyan edildi; vekil olarak tedarikcinin gozlenen iade orani kullaniliyor (sema: iade_davranisi_vekili)"
+    },
+    {
+      "id": "frmIadeKural-kod-kumesi-kapali",
+      "db": "DerinSISBkm",
+      "question": "frm.frmIadeKural kac ayri kod tasiyor?",
+      "why": "Kod kumesi {0,1,2} olarak KAPALI ve anlami BELGESIZ (lookup view YOK). Olculdu 2026-09-10: uc kodun HEPSINDE fiili alis iadesi var (kod 0 → %18,4 [11,6-27,8] · kod 1 → %36,4 [15,2-64,6] · kod 2 → %40,0 [30,5-50,3]); Cochran-Armitage chi2(1)=9,86 p=0,0017 anlamli AMA komsu Wilson araliklarinin hepsi cakisik ve kod 1'de n=11 → ayrim DESTEKLENMEDI. Yani kod fiili davranisi ONGORMUYOR. DORDUNCU bir kod cikarsa yorumu yine bilinmez olur ve muhasebeye sorulacak soru degisir — haber almak gerekir. B-150 acik.",
+      "sql": "SELECT COUNT(DISTINCT frmIadeKural) FROM DerinSISBkm.dbo.frm WITH (NOLOCK)",
+      "comparison": "eq",
+      "expected": 3,
+      "protects": [],
+      "verified": "2026-09-10 → 3 kod (0/1/2). Arsiv: sorgular/2026-09-10-iade-hakki-vekili.sql blok 1"
+    }
+  ]
 }
