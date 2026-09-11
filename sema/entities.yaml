@@ -190,10 +190,9 @@ entities:
       KESİŞİM = 1 ürün · BİRLEŞİM = **529 ürün** (%0,06). İki ölçüt farklı olguyu
       yakalıyor: A "tek kod altında çok barkod", B "az barkod ama çok fiziksel varyant".
 
-      ⭐ AĞIRLIK — KÜÇÜK KÜME, DEVASA ETKİ: sayım verisinde görünen 391 aday,
-      ürünlerin **%0,15'i** ve sayım satırlarının **%1,13'ü** olduğu hâlde
-      MUTLAK DÜZELTME MİKTARININ **%94,50'sini** taşıyor (81.308.298 / 86.038.853 adet).
-      ⇒ Stok düzeltme BÜYÜKLÜĞÜNÜ anlamak isteyen her ölçüm önce bu kümeyi ayırmalı.
+      ⛔ AĞIRLIK İDDİASI GERİ ÇEKİLDİ — bkz. `ayrinti.geri_cekilen_iddia`.
+      Önce "391 aday mutlak düzeltmenin %94,50'sini taşıyor" yazılmıştı; o rakam TEK BİR
+      HATALI SATIRDAN geliyordu ve iddia GEÇERSİZDİR.
     ayrinti:
       esik_secimi_BEYAN: >-
         ⚠ 11 barkod ve 40 sayım satırı eşikleri VERİDEN SEÇİLDİ (dağılımdaki kopuş
@@ -212,6 +211,36 @@ entities:
         Yani her iki ölçüt de jenerik-adlı ürünü bağımsız biçimde zenginleştiriyor.
         Ad deseni TEK BAŞINA ölçüt yapılmadı: 4.060 ürün desene uyuyor ama ölçütlerin
         dışında — ad bir ipucudur, kanıt değil.
+      geri_cekilen_iddia_ve_OLCUT_B_NIN_CURUMESI: >-
+        ⛔ İKİ DÜZELTME (2026-09-12, kategori dökümü istenince ortaya çıktı):
+
+        1) ÖLÇÜT B JENERİKLİĞİ ÖLÇMÜYOR — DEVİR HIZINI ÖLÇÜYOR. Kategori dökümünde
+        B'nin 349 ürününün 255'i (%73) "Süpermarket" çıktı, A'nın 181'inin 102'si
+        "Sınav Okul Malzemeleri". Süpermarket'te B üyeliği satış desiliyle DÜZENLİ
+        tırmanıyor: desil 1 %0,0 · 4 %6,4 · 7 %23,9 · 10 **%75,2**; ortalama sayım
+        satırı 2,9 → 61,0. Yani çok satanı çok sayıyorlar — bu jeneriklik değil.
+        Devir kontrollü sürüm (kendi satış desilinde sayım bakımından üst %1) de
+        işe yaramadı: 1.204 ürün, çoğu kitap kategorisi — başka bir şeyi ölçüyor.
+        ⇒ JENERİK SKU ÖLÇÜTÜ YALNIZ **A**'dır: barkod ≥ 11 → **181 ürün**.
+        B ayrı bir olgudur ve adı "sürekli sayılan" olmalıdır, "jenerik" değil.
+
+        2) "%94,50" TEK BİR HATALI SATIRDAN GELİYORDU. Ayrıştırınca ağırlık A'da
+        değil B'de çıktı (A: 43 ürün / 23.237 adet = %0,03). B'nin 81.285.061 adetinin
+        80.896.270'i (**%94,02**) TEK ÜRÜNDE: `stkID 194315 "Vivident Storming Çilek"`
+        (sakız, Süpermarket). O ürünün tek satırı **80.894.925**.
+        Satır: **31.05.2026 · Özlüce · tip 3 Serbest · `0 → 80.894.925` · NEDEN YOK ·
+        kullanıcı 1922 · Onay=1 · İptal=0.** 80,9 milyon paket sakız fiziksel olarak
+        imkânsız — miktar alanına barkod/uzun sayı girilmiş bir VERİ GİRİŞİ HATASI.
+        ⭐ DEFTERE GEÇMEMİŞ: `irsHrk`'da Özlüce'nin `ehTip=99` neti **+44**, bakiyesi 52.
+        Yani stok zarar görmemiş; hata YALNIZ `bkm.SayimEmirDetaylari`'nda duruyor.
+        ⇒ AMA ONAYLI VE İPTALSİZ — yani o tabloyu toplayan HER analiz zehirleniyor.
+      SayimEmirDetaylari_TOPLAMA_KURALI: >-
+        `bkm.SayimEmirDetaylari`'ndaki `Miktar`/`MiktarEski` TOPLANIRKEN aykırı-değer
+        koruması ZORUNLUDUR ve sonuç `irsHrk` `ehTip=99` NETİYLE karşılaştırılmalıdır.
+        Tablo onaylı ama deftere geçmemiş kayıt taşıyabiliyor (yukarıdaki 80,9M vakası);
+        `Onay=1 AND Iptal=0` olması satırın GERÇEKLEŞTİĞİ anlamına GELMİYOR.
+        Bu, `veri-dogrula` § tek-aykırı-değerin-ortalamayı-taşıması sınıfının canlı örneği:
+        ben bu tuzağa DÜŞTÜM ve "%94,5" diye bir başlık ürettim.
       neden_onemli: >-
         `bkm.SayımEksiStokGetir` zaten `u.stkAd NOT LIKE 'Sınav okulları'` diye ELLE
         tek bir jenerik SKU'yu dışlıyor — yani sorun biliniyor ama ölçütü yok, tek tek

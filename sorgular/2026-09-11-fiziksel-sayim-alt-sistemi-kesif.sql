@@ -680,3 +680,100 @@ GROUP BY CASE WHEN ISNULL(bk.barkod,1) >= 11 OR say.satir >= 40
 /* JENERIK ADAYI: 391 urun (%0,15) · sayim satiri 21.747 (%1,13) ·
    MUTLAK DUZELTME 81.308.298 (%94,50 — toplam 86.038.853).
    => Stok duzeltme BUYUKLUGUNU olcen her analiz once bu kumeyi ayirmali. */
+
+/* ============================================================================
+   37-40) KATEGORİ DÖKÜMÜ → ÖLÇÜT B ÇÜRÜDÜ + "%94,5" İDDİASI GERİ ÇEKİLDİ
+   ============================================================================ */
+
+/* 37) 529 adayın kategori dökümü — A ve B AYRI sütunda */
+WITH bk AS (SELECT urnBrkdStkID AS stkID, COUNT(DISTINCT urnBarkod) AS barkod
+            FROM dbo.urnBrkd WITH(NOLOCK) GROUP BY urnBrkdStkID),
+     say AS (SELECT d.StokId AS stkID, COUNT(*) AS satir
+             FROM DerinSISBkm.bkm.SayimEmirBaslik b WITH(NOLOCK)
+             JOIN DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+                  ON d.SayimEmirBaslikId=b.SayimEmirBaslikId
+             WHERE b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+               AND ISNULL(d.Iptal,0)=0 GROUP BY d.StokId)
+SELECT ISNULL(ub.KatAna,N'(kategorisiz)') AS kat_ana, COUNT(*) AS urun,
+       SUM(CASE WHEN ISNULL(bk.barkod,1) >= 11 THEN 1 ELSE 0 END) AS A_barkod,
+       SUM(CASE WHEN ISNULL(say.satir,0) >= 40 THEN 1 ELSE 0 END) AS B_sayim
+FROM   dbo.urn u WITH(NOLOCK)
+LEFT JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.StkID = u.stkID
+LEFT JOIN bk  ON bk.stkID  = u.stkID
+LEFT JOIN say ON say.stkID = u.stkID
+WHERE  u.urnTip = 0 AND (ISNULL(bk.barkod,1) >= 11 OR ISNULL(say.satir,0) >= 40)
+GROUP BY ISNULL(ub.KatAna,N'(kategorisiz)') ORDER BY COUNT(*) DESC;
+/* Supermarket 255 (A=1, B=255) · Sinav Okul Malzemeleri 102 (A=102, B=0) ·
+   Hobi ve Oyuncak 59 (36/23) · Periyodik Yayin 42 (0/42) · Kirtasiye 33 (25/8) ·
+   Hediyelik 21 (14/7) · Hediye Ceki 6 (0/6) · kalan 8 urun.
+   => A ve B TAMAMEN FARKLI kategorilere dusuyor. Supermarket'te B supheli. */
+
+/* 38) ★ ÖLÇÜT B ÇÜRÜDÜ — Süpermarket'te B, satış desiliyle tırmanıyor */
+WITH say AS (SELECT d.StokId AS stkID, COUNT(*) AS satir
+             FROM DerinSISBkm.bkm.SayimEmirBaslik b WITH(NOLOCK)
+             JOIN DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+                  ON d.SayimEmirBaslikId=b.SayimEmirBaslikId
+             WHERE b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+               AND ISNULL(d.Iptal,0)=0 GROUP BY d.StokId),
+     sat AS (SELECT h.ehstkID AS stkID, CONVERT(bigint,SUM(ABS(h.ehAdetN))) AS satis
+             FROM dbo.irsHrk h WITH(NOLOCK)
+             WHERE h.ehTip IN (100,4) AND h.ehMekan IN (1,4477,4478)
+               AND h.ehTrhS >= '20250101' GROUP BY h.ehstkID),
+     sup AS (SELECT u.stkID, ISNULL(sat.satis,0) AS satis, ISNULL(say.satir,0) AS sayim,
+                    NTILE(10) OVER (ORDER BY ISNULL(sat.satis,0)) AS desil
+             FROM dbo.urn u WITH(NOLOCK)
+             JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.StkID = u.stkID
+             LEFT JOIN sat ON sat.stkID = u.stkID
+             LEFT JOIN say ON say.stkID = u.stkID
+             WHERE u.urnTip = 0 AND ub.KatAna = N'Süpermarket' AND ISNULL(sat.satis,0) > 0)
+SELECT desil, COUNT(*) AS urun, MIN(satis) AS min_satis, MAX(satis) AS max_satis,
+       SUM(CASE WHEN sayim >= 40 THEN 1 ELSE 0 END) AS B_uyeligi,
+       AVG(CONVERT(decimal(9,2),sayim)) AS ort_sayim
+FROM   sup GROUP BY desil ORDER BY desil;
+/* B uyeligi: desil 1 %0,0 · 4 %6,4 · 7 %23,9 · 10 %75,2. Ort sayim 2,9 -> 61,0.
+   => B JENERIKLIGI DEGIL DEVIR HIZINI olcuyor. Jenerik olcutu YALNIZ A (181 urun). */
+
+/* 39) ★ "%94,5" İDDİASI GERİ ÇEKİLDİ — A ve B ayrılınca ağırlık B'de, ve B'nin
+       hacmi TEK ÜRÜNDE toplanıyor. */
+WITH bk AS (SELECT urnBrkdStkID AS stkID, COUNT(DISTINCT urnBarkod) AS barkod
+            FROM dbo.urnBrkd WITH(NOLOCK) GROUP BY urnBrkdStkID),
+     say AS (SELECT d.StokId AS stkID, COUNT(*) AS satir,
+                    CONVERT(bigint,SUM(ABS(CONVERT(bigint,ISNULL(d.Miktar,0))
+                                         - CONVERT(bigint,ISNULL(d.MiktarEski,0))))) AS mutlak
+             FROM DerinSISBkm.bkm.SayimEmirBaslik b WITH(NOLOCK)
+             JOIN DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+                  ON d.SayimEmirBaslikId=b.SayimEmirBaslikId
+             WHERE b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+               AND ISNULL(d.Iptal,0)=0 GROUP BY d.StokId)
+SELECT CASE WHEN ISNULL(bk.barkod,1) >= 11 THEN 'A barkod>=11'
+            WHEN say.satir >= 40 THEN 'B sayim>=40' ELSE 'diger' END AS sinif,
+       COUNT(*) AS urun, SUM(say.satir) AS sayim_satiri, SUM(say.mutlak) AS mutlak_duzeltme
+FROM   say LEFT JOIN bk ON bk.stkID = say.stkID
+GROUP BY CASE WHEN ISNULL(bk.barkod,1) >= 11 THEN 'A barkod>=11'
+              WHEN say.satir >= 40 THEN 'B sayim>=40' ELSE 'diger' END;
+/* B: 348 urun / 81.285.061 (%94,47) · diger: 264.713 / 4.730.555 · A: 43 / 23.237 (%0,03). */
+
+/* 40) ★★ HACMIN KAYNAGI TEK SATIR — ve DEFTERE HIC GECMEMIS */
+SELECT CONVERT(varchar(10),b.SayimTarihi,120) AS tarih, b.MekanId, b.SayimTipId,
+       d.MiktarEski, d.Miktar, ISNULL(d.SayimDuzeltmeNedenId,0) AS neden,
+       d.OlusturanKullaniciId AS olusturan,
+       CONVERT(int,ISNULL(d.Onay,0)) AS onay, CONVERT(int,ISNULL(d.Iptal,0)) AS iptal
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  d.StokId = 194315
+  AND  ABS(CONVERT(bigint,ISNULL(d.Miktar,0)) - CONVERT(bigint,ISNULL(d.MiktarEski,0))) > 10000;
+
+SELECT h.ehMekan, CONVERT(bigint,SUM(h.ehAdetN)) AS bakiye,
+       CONVERT(bigint,SUM(CASE WHEN h.ehTip = 99 THEN h.ehAdetN ELSE 0 END)) AS sayim_neti
+FROM   dbo.irsHrk h WITH(NOLOCK) WHERE h.ehstkID = 194315 GROUP BY h.ehMekan;
+/* 31.05.2026 · Ozluce · tip 3 Serbest · 0 -> 80.894.925 · NEDEN YOK · kul 1922 ·
+   Onay=1 · Iptal=0.  stkID 194315 = "Vivident Storming Cilek" (sakiz, Supermarket).
+   80,9 MILYON paket sakiz fiziksel olarak imkansiz -> miktar alanina barkod/uzun
+   sayi girilmis VERI GIRISI HATASI.
+   ⭐ DEFTERE GECMEMIS: irsHrk'da Ozluce ehTip=99 neti +44, bakiye 52.
+   => Stok zarar gormemis; hata YALNIZ bkm.SayimEmirDetaylari'nda. AMA ONAYLI ve
+      IPTALSIZ, yani o tabloyu TOPLAYAN her analiz zehirleniyor.
+   => KURAL: SayimEmirDetaylari miktarlari toplanirken aykiri-deger korumasi ZORUNLU
+      ve sonuc irsHrk ehTip=99 netiyle karsilastirilmali. `Onay=1 AND Iptal=0` olmasi
+      satirin GERCEKLESTIGI anlamina GELMIYOR. */
