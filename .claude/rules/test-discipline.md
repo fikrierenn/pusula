@@ -115,6 +115,29 @@ katlamayı `Korunan`a yazıp elle karara bırakıyor; (b) denetçi **ham satırd
 yapısını** kullanıyorsa o kütüphanenin kör noktalarını miras alır. En az bir denetim
 ham girdiye (metin/satır/bayt) bakmalı.
 
+### ONUNCU VAKA — kapı "okudum" sanıyordu (2026-09-11, bel bildirdi)
+
+Dokuzuncu vaka kapının GÖREMEDİĞİ kayıptı. Bu, kapının **okuduğunu sandığı** kayıp.
+
+`protected_by` çapraz denetimi iki dosya okuyor: `degismezler.json` ve
+`canli-degismezler.json`. İkincisinin üst anahtarı Türkçe eski adını taşıyordu
+(`degismezler`, `invariants` değil) ve yükleyici onu atlıyordu. Asıl tehlike burada
+değil — **birinci dosya okunduğu için "okundu" bayrağı kalkıyordu**, yani "ölçemedim"
+uyarısı bile çıkmıyordu. Sonuç: o dosyadaki bir kimliğe işaret eden kayıt
+"böyle bir değişmez YOK" hatası alırdı ve sebep eksik değişmez DEĞİL, okunmayan
+dosya olurdu. Kapı doğru şeyi ölçtüğünü sanıp **yanlış yere baktırırdı.**
+
+> **Bir denetim birden çok kaynak okuyorsa, "hiç okuyamadım" ile "kaynaklardan
+> birini okuyamadım" AYRI raporlanmalı.** Aksi hâlde kısmi körlük, tam görüşle
+> aynı görünür.
+
+Uygulanan: eksik/bozuk kaynaklar ayrı bir listede taşınır ve çözülemeyen her
+işaretçinin mesajına EKLENİR — tanı kendi sınırını söyler.
+
+**Alt-kural — kapı kendi deposunda kırılmalı.** bel'in cümlesi: *"başkasının
+deposunda kırılan kapı benim depomda KURULU olduğunun kanıtı değil."* Kırma testi
+kapının çalıştığı yerde değil, **güvenileceği yerde** koşulur.
+
 **Uygulama:** yeni bir kural yazarken aynı commit'te şu üçünden birini göster —
 (a) kuralı çiğneyeni yakalayan bir denetim/test/constraint, (b) kırmızı verdiği ölçülmüş
 bir koşum, (c) "bunu bugün hiçbir şey yakalamıyor" cümlesinin kuralın YANINA yazılması.
