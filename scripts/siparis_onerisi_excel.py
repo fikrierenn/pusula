@@ -144,6 +144,23 @@ WITH t AS (
       AND CONVERT(decimal(18,4), ToplamStok)
           < (SatisToplam / 365.0) * (CONVERT(decimal(9,2), ISNULL(LeadTime, 7)) + 30)
 ),
+sup_raw AS (
+    -- TEDARİKÇİ: son 24 ayın alımında (ehTip 0 Alış · 10 Yerel Alım) adet bazında BASKIN firma.
+    -- Köprü sema'dan: bridges.yaml → irs-firma (dbo.irs.eFirma → dbo.frm.frmID, confidence 1.0).
+    -- ⚠ 10.09'da bu köprü canlı keşfedilmişti (2 tur kayıp); artık sema'dan alınıyor.
+    SELECT h.ehstkID AS stkID, i.eFirma AS frmID, ISNULL(f.frmAd, '(firma yok)') AS frmAd,
+           SUM(h.ehAdetN) AS adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    JOIN DerinSISBkm.dbo.irs i WITH (NOLOCK) ON i.eID = h.ehID
+    LEFT JOIN DerinSISBkm.dbo.frm f WITH (NOLOCK) ON f.frmID = i.eFirma
+    WHERE h.ehTip IN (0, 10) AND h.ehTrhS >= DATEADD(MONTH, -24, CONVERT(date, ?))
+    GROUP BY h.ehstkID, i.eFirma, f.frmAd
+),
+sup AS (
+    SELECT stkID, frmID, frmAd,
+           ROW_NUMBER() OVER (PARTITION BY stkID ORDER BY adet DESC) AS rn
+    FROM sup_raw
+),
 acik AS (
     SELECT sa.ehstkID AS stkID,
            CONVERT(int, SUM(sa.ehAdet)) AS AcikAdet,
@@ -165,6 +182,8 @@ SELECT t.stkID,
        ISNULL(t.SatanAy, 0)                          AS SatanAy,
        CONVERT(decimal(9,2), ISNULL(t.TalepCV2, 1))  AS CV2,
        CONVERT(int, ISNULL(t.LeadTime, 7))           AS TeminGun,
+       ISNULL(sp.frmID, 0)                           AS TedarikciID,
+       ISNULL(sp.frmAd, '(tedarikçi bilinmiyor)')    AS Tedarikci,
        CONVERT(int, ISNULL(t.Ay1, 0))                AS SezonAgu,
        CONVERT(int, ISNULL(t.Ay2, 0))                AS SezonEyl,
        CONVERT(int, ISNULL(t.Ay3, 0))                AS SezonEki,
@@ -180,6 +199,7 @@ SELECT t.stkID,
        t.SonSatis                                    AS SonSatis
 FROM t
 LEFT JOIN acik a ON a.stkID = t.stkID
+LEFT JOIN sup sp ON sp.stkID = t.stkID AND sp.rn = 1
 ORDER BY t.SatisToplam DESC
 """
 
@@ -201,17 +221,21 @@ WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
 GROUP BY ub.Kategori3
 """
 SEZON_ORAN_TABAN = 200      # bu yıl < 200 adet satmış kategoride oran GÜVENİLMEZ → 1,0
+# Grup/ilişkili taraf firmalar (ODAK-POINT vb). Kaynak: sema bridges.yaml → irs-firma notu.
+# Bunlara verilen sipariş grup İÇİ akış — dış tedarikçiyle aynı pazarlık/vade konusu değil.
+ILISKILI_TARAF = {9525, 22100, 56, 38093, 4841, 23842, 58, 9339, 4694, 7950, 50582}      # bu yıl < 200 adet satmış kategoride oran GÜVENİLMEZ → 1,0
 
 BEKLENEN_KOLONLAR = [
     "stkID", "Barkod", "Urun", "Kategori3", "Marka", "Satis365", "SezonSatis", "SatanAy",
-    "CV2", "TeminGun", "SezonAgu", "SezonEyl", "SezonEki", "ToplamStok", "MagazaStok", "MerkezStok", "OdakStok",
+    "CV2", "TeminGun", "TedarikciID", "Tedarikci", "SezonAgu", "SezonEyl", "SezonEki", "ToplamStok", "MagazaStok", "MerkezStok", "OdakStok",
     "AcikSiparis", "AcikBelge", "SonSiparisTarih",
     "Fiyat", "Maliyet", "SonSatis",
 ]
 
 BASLIKLAR = [
     "stkID", "Barkod", "Ürün", "Kategori", "Marka", "Satış 365g", "Sezon satış",
-    "Satan ay", "CV²", "Talep deseni", "Temin gün", "Hız tabanı", "Eldeki stok", "Mağaza", "Merkez",
+    "Satan ay", "CV²", "Talep deseni", "Temin gün", "Tedarikçi", "İlişkili taraf",
+    "Hız tabanı", "Eldeki stok", "Mağaza", "Merkez",
     "ODAK stok", "Açık sipariş (120g)", "Açık belge", "Aciliyet",
     "Kapak (adet)", "Fiyat ₺", "Birim maliyet ₺", "ÖNERİ ADET", "Yatırım ₺",
     f"Plan {PLAN_HAFTA} hafta adet", f"Plan {PLAN_HAFTA} hafta ₺",
@@ -353,17 +377,18 @@ def yaz(ws, satirlar: list[dict], hedef_metni: str, kesim: dt.date) -> None:
         ws.append([
             r["stkID"], r["Barkod"], r["Urun"], r["Kategori3"], r["Marka"],
             r["Satis365"], r["SezonSatis"], r["SatanAy"], float(r["CV2"]), h["Desen"],
-            r["TeminGun"], h["HizTabani"], r["ToplamStok"], r["MagazaStok"], r["MerkezStok"],
+            r["TeminGun"], r["Tedarikci"],
+            ("EVET" if int(r["TedarikciID"] or 0) in ILISKILI_TARAF else ""), h["HizTabani"], r["ToplamStok"], r["MagazaStok"], r["MerkezStok"],
             r["OdakStok"], r["AcikSiparis"], r["AcikBelge"], h["Aciliyet"], h["Kapak"],
             float(r["Fiyat"]), float(r["Maliyet"]), h["Oneri"], h["Yatirim"],
             h["PlanAdet"], h["PlanTL"], hedef_metni, hedef_tarih,
             cikis_eylemi(r, h), not_metni(r, h),
         ])
-    genislik = [9, 15, 46, 12, 18, 10, 10, 8, 7, 11, 9, 15, 10, 8, 8, 9, 13, 9, 17, 11,
+    genislik = [9, 15, 46, 12, 18, 10, 10, 8, 7, 11, 9, 34, 11, 15, 10, 8, 8, 9, 13, 9, 17, 11,
                 11, 13, 11, 12, 12, 13, 16, 11, 62, 58]
     for i, w in enumerate(genislik, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-    for row in ws.iter_rows(min_row=2, min_col=21, max_col=26):
+    for row in ws.iter_rows(min_row=2, min_col=23, max_col=28):
         for c in row:
             c.number_format = "#,##0.00"
 
@@ -474,7 +499,7 @@ def main() -> None:
                 continue               # ölçülemeyen oran 1,0 sayılır (uydurma yok)
             oranlar[kat] = float(oran)
 
-        cur.execute(SQL, kesim, a.sezon, kesim)
+        cur.execute(SQL, kesim, a.sezon, kesim, kesim)  # t(kesim,sezon) · sup_raw(kesim) · acik(kesim)
         kolonlar = [c[0] for c in cur.description]
         # ŞEMA DENETİMİ: kolon adı/sayısı sessizce kayarsa satırlar yanlış hücreye gider.
         if kolonlar != BEKLENEN_KOLONLAR:
@@ -512,6 +537,40 @@ def main() -> None:
     yaz(wb.create_sheet("B-SEZON (gelecek sezon)"), liste_b, "%60 / sezon sonu", kesim)
     ozet_yaz(wb.create_sheet("OZET + YONTEM"), liste_a, liste_b, a.net_acik_siparis, kesim,
              maliyetsiz, netleme_farki)
+
+    # ── TEDARİKÇİ ÖZETİ — sipariş fişi buradan çıkar (kime ne kadar yazılacak) ──
+    ws3 = wb.create_sheet("TEDARIKCI OZET")
+    ws3.append(["Tedarikçi", "İlişkili taraf", "Liste", "Çeşit", "Sipariş adedi",
+                "Yatırım ₺", f"Plan {PLAN_HAFTA} hafta ₺", "ACİL çeşit", "ACİL adet",
+                "Ort. temin gün"])
+    for c in range(1, 11):
+        h = ws3.cell(row=1, column=c)
+        h.font, h.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F3864")
+        h.alignment = Alignment(wrap_text=True, vertical="center")
+    grup: dict = {}
+    for ad, liste in (("A-SÜREKLİ", liste_a), ("B-SEZON", liste_b)):
+        for r in liste:
+            k = (r["Tedarikci"], ad)
+            g = grup.setdefault(k, dict(id=int(r["TedarikciID"] or 0), cesit=0, adet=0, yat=0.0,
+                                        plan=0.0, acil_c=0, acil_a=0, temin=[]))
+            g["cesit"] += 1
+            g["adet"] += r["_h"]["Oneri"]
+            g["yat"] += r["_h"]["Yatirim"]
+            g["plan"] += r["_h"]["PlanTL"]
+            g["temin"].append(int(r["TeminGun"] or 7))
+            if int(r["ToplamStok"] or 0) <= 0:
+                g["acil_c"] += 1
+                g["acil_a"] += r["_h"]["Oneri"]
+    for (ted, ad), g in sorted(grup.items(), key=lambda x: -x[1]["yat"]):
+        ws3.append([ted, "EVET" if g["id"] in ILISKILI_TARAF else "", ad, g["cesit"], g["adet"],
+                    round(g["yat"], 2), round(g["plan"], 2), g["acil_c"], g["acil_a"],
+                    round(sum(g["temin"]) / len(g["temin"]), 1)])
+    for i, w in enumerate([42, 12, 12, 8, 13, 14, 16, 10, 10, 12], start=1):
+        ws3.column_dimensions[get_column_letter(i)].width = w
+    for row in ws3.iter_rows(min_row=2, min_col=6, max_col=7):
+        for c in row:
+            c.number_format = "#,##0.00"
+    ws3.freeze_panes = "A2"
 
     cikti = a.cikti or os.path.join(
         KOK, "raporlar", f"siparis-onerisi-kitapdisi-{kesim:%Y%m%d}.xlsx")
