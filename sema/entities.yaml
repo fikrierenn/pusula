@@ -159,6 +159,55 @@ entities:
     evidence: "2026-09-11 — sqlcli: sys.objects type IN (P,FN,IF,TF) + sys.sql_modules + msdb.dbo.sysjobservers"
     confidence: 0.8
     last_verified: "2026-09-11"
+  sayim-duzeltme-nedeni-ne-kadar-guvenilir:
+    type: measurement
+    uses: [entities:bkm.SayimTip-liste-sayimi-ne-demek]
+    note: >-
+      DÜZELTME NEDENİ GERÇEKTEN SEÇİLİYOR MU, YOKSA RİTÜEL Mİ — dört testle ölçüldü.
+      SONUÇ İKİ PARÇALI: kodlar rastgele DEĞİL (insanlar ayırt ediyor), AMA baskın kod
+      `Mal Giriş Hatası` gerçeğe karşı DOĞRULANMIYOR. Yani "neden yazılı" olması,
+      "nedeni bilinen" anlamına GELMİYOR.
+    measurement: >-
+      Kapsam: 3 mağaza, 2025-01'den, nedeni yazılı satırlar (tüm sayım tipleri).
+
+      ✅ TEST C (kullanıcı ayrımı) — OLUMLU: ≥200 satırlı 60 kullanıcının 28'i BEŞ
+      nedenin hepsini, 17'si dördünü, 13'ü üçünü kullanmış; tek koda saplanan YOK.
+      Varsayılan tıklama deseni değil.
+      ✅ TEST D-kısmi (ayırt etme gücü) — `Kasiyer Hatası` gerçeği izliyor: satırlarının
+      %62,3'ünde önceki 30 günde satış var (öteki kodlarda %33-44). `LOGO Stok Aktarım`
+      da ayrı duruyor (%4,2 giriş / %9,1 satış) — sistem aktarımı, mağaza hareketiyle
+      ilgisiz olması beklenir.
+
+      ❌ TEST D-asıl (baskın kodun geçerliliği) — `Mal Giriş Hatası` AYIRT ETMİYOR.
+      70.584 satır (hacmin ezici çoğunluğu) ve önceki 30 günde MAL GİRİŞİ bulunma oranı
+      **%16,6** — `Sayım Hatası (önceki dönem)` %16,8 ve `Kayıp-Çalıntı` %19,2 ile
+      AYNI. Yani etiket, gerçekten bir mal girişi olduğunu ÖNGÖRMÜYOR; "stok yanlıştı"
+      için genel-geçer kutu gibi kullanılıyor.
+      ❌ TEST B (yön tutarlılığı) — ÇELİŞKİ VAR: `Kayıp-Çalıntı` 1.144 satırın **85'inde
+      stoğu ARTIRMIŞ**. Kayıp stok ekleyemez; bu eksik veri değil, ÇELİŞKİDİR
+      (`error-handling` § Reddet mi Say mı). Ayrıca beş nedende toplam ~5.000 satırda
+      `Miktar = MiktarEski` — hiçbir şeyi değiştirmeyen "düzeltme"ye neden yazılmış.
+      ⚠ TEST A (emir içi çeşitlenme) — ZAYIF: 20+ satırlı emirlerin %38,8'i TEK nedenli.
+      Toplu bir düzeltmenin tek sebebi olabilir; tek başına delil değil, ama D ile
+      birlikte "satır satır düşünülmüyor" yönünde okunur.
+    ayrinti:
+      01_08_OLAYININ_ETIKETI_DOGRULANMADI: >-
+        ⭐ ÖNEMLİ DÜZELTME — `entities:eksi-stok-2026-artisinin-sebebi` kaydında olayın
+        etiketi (`Mal Giriş Hatası`) SİSTEMİN BEYANI olarak yazılmıştı; o doğru ama
+        etiketin DOĞRULANDIĞI anlamına gelmiyor ve şimdi ölçüldü:
+        01.08.2026 emrindeki 413 üründen önceki 30 günde mal girişi olan yalnız 3 (%0,7).
+        Altı aya bakınca 247 (%59,8) — yani giriş varsa sezon başındaki girişlerdir.
+        Kalan **166 ürün (%40,2) o mağazada 6 AYDA HİÇ mal girişi görmemiş.**
+        ⇒ Etiket "yakın zamanlı hatalı giriş" anlamında DOĞRULANMIYOR. Olayın ne olduğu
+        hâlâ açık; etiket bir İDDİADIR, kanıt değil.
+      neden_yazili_olmasi_ne_demek_DEGIL: >-
+        Bir düzeltmede neden kodu bulunması, o nedenin sınandığı anlamına gelmez.
+        Sistemde neden kodunu gerçekle karşılaştıran HİÇBİR kontrol yok (ölçüldü: yön
+        çelişkisi de, hareket uyumsuzluğu da serbestçe kaydedilebiliyor).
+        Bu, `test-discipline` § YAZILI KURAL ≠ UYGULANAN KURAL'ın veri tarafındaki hâli.
+    evidence: "2026-09-11 — sorgular/2026-09-11-fiziksel-sayim-alt-sistemi-kesif.sql blok 24-27"
+    confidence: 0.9
+    last_verified: "2026-09-11"
   bkm.SayimTip-liste-sayimi-ne-demek:
     type: rule
     uses: [entities:bkm.SayimEmirBaslik, entities:eksi-stok-2026-artisinin-sebebi]
@@ -199,6 +248,9 @@ entities:
         geri alınması. ⚠ BU BİR ÇIKARIM DEĞİL, SİSTEMİN KENDİ NEDEN KODUDUR.
         ⚠ `Kayıp-Çalıntı` kodu TOPLAMDA 75 satır / −544 adet — yani bu olay bir kayıp
         ya da hırsızlık anlatısı DEĞİLDİR ve öyle sunulamaz.
+        ⚠⚠ AMA ETİKET DOĞRULANMADI: `entities:sayim-duzeltme-nedeni-ne-kadar-guvenilir`
+        ölçtü — 413 ürünün yalnız %0,7'sinde önceki 30 günde mal girişi var, %40,2'sinde
+        6 ayda HİÇ yok. Etiket bir İDDİADIR, kanıt değil.
       tipin_kendisi_riskli_DEGIL: >-
         `Liste`nin yüksek negatif oranı (%6,71) İLK BAKIŞTA tipe ait sanılabilir; değil.
         01.08 olayı ayrıldığında: İst.Yolu Liste %6,04 [4,18-8,65] (hâlâ yüksek) ·

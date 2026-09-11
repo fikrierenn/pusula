@@ -400,3 +400,92 @@ GROUP BY e.olay, e.MekanId ORDER BY e.olay, e.MekanId;
 /* Olay hariç: İst.Yolu 27/447 = %6,04 [4,18-8,65] · FSM 0/16 · Özlüce 0/31.
    FSM/Özlüce örneklemi çok küçük (GA %0-19 / %0-11) → KANIT YOK, ve zaten Liste'yi
    Ağu-Eyl'de neredeyse hiç kullanmamışlar. ⇒ Liste, FSM/Özlüce artışını AÇIKLAMAZ. */
+
+/* ============================================================================
+   24-27) DÜZELTME NEDENİ GÜVENİLİR Mİ — rastgele mi seçiliyor, kontrol ediliyor mu?
+   Kullanıcı sorusu (2026-09-11): "nedenlerin doğruluğunu da test etmek lazım".
+   ============================================================================ */
+
+/* 24) TEST B — YÖN TUTARLILIĞI. Kayıp-Çalıntı stok ARTIRAMAZ. */
+SELECT d.SayimDuzeltmeNedenId AS neden, COUNT(*) AS satir,
+       SUM(CASE WHEN d.Miktar < d.MiktarEski THEN 1 ELSE 0 END) AS azaltan,
+       SUM(CASE WHEN d.Miktar > d.MiktarEski THEN 1 ELSE 0 END) AS artiran,
+       SUM(CASE WHEN d.Miktar = d.MiktarEski THEN 1 ELSE 0 END) AS degismeyen
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+  AND  ISNULL(d.SayimDuzeltmeNedenId,0) > 0
+GROUP BY d.SayimDuzeltmeNedenId ORDER BY satir DESC;
+/* ÇELİŞKİ: Kayıp-Çalıntı 1.144 satırın 85'i stoğu ARTIRMIŞ. Ayrıca beş nedende
+   toplam ~5.000 satırda Miktar = MiktarEski (hiçbir şeyi değiştirmeyen "düzeltme"). */
+
+/* 25) TEST C — kullanıcı ayrımı. OLUMLU: kimse tek koda saplanmıyor. */
+SELECT d.OlusturanKullaniciId AS kul, COUNT(*) AS satir,
+       COUNT(DISTINCT d.SayimDuzeltmeNedenId) AS neden_cesidi
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+  AND  ISNULL(d.SayimDuzeltmeNedenId,0) > 0
+GROUP BY d.OlusturanKullaniciId HAVING COUNT(*) >= 200 ORDER BY satir DESC;
+/* 60 kullanıcı: 28'i 5 neden · 17'si 4 · 13'ü 3 · 2'si 2 · TEK kod kullanan YOK. */
+
+/* 26) ★ TEST D — NEDEN GERÇEKLE ÖRTÜŞÜYOR MU.
+   ⚠ `SUM(CASE WHEN EXISTS(...))` SQL Server'da YASAK (aggregate içinde alt sorgu).
+     Bayrak önce OUTER APPLY ile türetilir, SONRA toplanır. (Bu tuzağa bu oturumda
+     4. kez düşüldü — sql-server-conventions § Aggregate + Kolon Gotcha.) */
+WITH sat AS (
+    SELECT b.MekanId, b.SayimTarihi, d.StokId, d.SayimDuzeltmeNedenId AS neden
+    FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+    JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+           ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+    WHERE  b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+      AND  ISNULL(d.SayimDuzeltmeNedenId,0) > 0 AND ISNULL(d.Iptal,0) = 0
+), bayrak AS (
+    SELECT s.neden,
+           CASE WHEN g.v IS NULL THEN 0 ELSE 1 END AS giris,
+           CASE WHEN k.v IS NULL THEN 0 ELSE 1 END AS satis
+    FROM   sat s
+    OUTER APPLY (SELECT TOP 1 1 AS v FROM dbo.irsHrk h WITH(NOLOCK)
+                 WHERE h.ehstkID = s.StokId AND h.ehMekan = s.MekanId
+                   AND h.ehTip IN (10,12,13)              -- mal girişi
+                   AND h.ehTrhS <  s.SayimTarihi
+                   AND h.ehTrhS >= DATEADD(DAY,-30,s.SayimTarihi)) g
+    OUTER APPLY (SELECT TOP 1 1 AS v FROM dbo.irsHrk h WITH(NOLOCK)
+                 WHERE h.ehstkID = s.StokId AND h.ehMekan = s.MekanId
+                   AND h.ehTip IN (100,4)                 -- satış
+                   AND h.ehTrhS <  s.SayimTarihi
+                   AND h.ehTrhS >= DATEADD(DAY,-30,s.SayimTarihi)) k
+)
+SELECT neden, COUNT(*) AS satir, SUM(giris) AS mal_girisi_var, SUM(satis) AS satis_var
+FROM   bayrak GROUP BY neden ORDER BY neden;
+/* Kasiyer Hatası  522 · giriş %14,9 · SATIŞ %62,3   ← gerçeği İZLİYOR
+   Mal Giriş Hatası 70.584 · giriş %16,6            ← AYIRT ETMİYOR
+   Sayım Hatası     29.387 · giriş %16,8            ← aynı oran
+   Kayıp-Çalıntı     1.143 · giriş %19,2            ← DAHA YÜKSEK
+   LOGO Aktarım      1.930 · giriş %4,2 · satış %9,1 ← ayrı duruyor (beklenir)
+   ⇒ Baskın kod `Mal Giriş Hatası` gerçek bir mal girişini ÖNGÖRMÜYOR. */
+
+/* 27) 01.08 OLAYININ ETİKETİ DOĞRULANIYOR MU — HAYIR */
+WITH sat AS (
+    SELECT DISTINCT d.StokId
+    FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+    JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+           ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+    WHERE  b.MekanId = 4478 AND b.SayimTarihi >= '20260801'
+      AND  b.SayimTarihi < '20260802' AND ISNULL(d.Iptal,0) = 0
+)
+SELECT COUNT(*) AS urun,
+       SUM(CASE WHEN g30.v  IS NULL THEN 0 ELSE 1 END) AS giris_30g,
+       SUM(CASE WHEN g180.v IS NULL THEN 0 ELSE 1 END) AS giris_180g
+FROM   sat s
+OUTER APPLY (SELECT TOP 1 1 AS v FROM dbo.irsHrk h WITH(NOLOCK)
+             WHERE h.ehstkID=s.StokId AND h.ehMekan=4478 AND h.ehTip IN (10,12,13)
+               AND h.ehTrhS < '20260801' AND h.ehTrhS >= '20260702') g30
+OUTER APPLY (SELECT TOP 1 1 AS v FROM dbo.irsHrk h WITH(NOLOCK)
+             WHERE h.ehstkID=s.StokId AND h.ehMekan=4478 AND h.ehTip IN (10,12,13)
+               AND h.ehTrhS < '20260801' AND h.ehTrhS >= '20260201') g180;
+/* 413 ürün · önceki 30 günde mal girişi olan 3 (%0,7) · 6 ayda 247 (%59,8).
+   ⇒ 166 ürün (%40,2) o mağazada 6 AYDA HİÇ mal girişi görmemiş, ama stoğu
+     "Mal Giriş Hatası" diye düşülmüş. ETİKET BİR İDDİADIR, KANIT DEĞİL. */
