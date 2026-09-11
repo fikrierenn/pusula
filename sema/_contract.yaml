@@ -103,15 +103,19 @@ esanlamli_dosya_bazli:
   metrics: {kaynak: [source]}     # metrics'te source = veri kaynağı tablo/view
   queries: {koken: [source]}      # queries'te source = sorgunun nereden geldiği (provenance)
 
-# BÖLÜM adı eş-anlamlıları — repolar aynı kavramı farklı adlandırıyor (ölçüm 2026-09-11:
-# pusula İngilizce `bridges/codes/metrics/entities`, bel Türkçe `kopruler/kodlar/metrikler/
-# kaynaklar`). Motor UYUM SAĞLAR, verinin yeniden adlandırılması İSTENMEZ — veri repo-yerel.
-# Eşlenmeyen bölümler `bilinmeyen_tip` olarak raporlanır; sessizce "tanıdım" demez.
-bolum_esanlamli:
-  entities: [kaynaklar]
-  bridges: [kopruler]
-  codes: [kodlar]
-  metrics: [metrikler]
+# ADLANDIRMA KONVANSİYONU (kullanıcı kararı 2026-09-11)
+#   YAPISAL adlar — dosya adları, bölüm başlıkları, `_proje.yaml` anahtarları — İNGİLİZCE.
+#   Kayıt İÇERİĞİ (note / kural / evidence metinleri) TÜRKÇE.
+#   Tek konvansiyon, lehçe anahtarı YOK. Kısa süre `bolum_dili: en|tr` + `bolum_esanlamli`
+#   vardı; bel'in bölümleri İngilizceye çevrilince gereksiz kaldı ve SİLİNDİ. Uymayan bölüm
+#   `bilinmeyen_tip` diye raporlanır — motor sessizce "tanıdım" demez. Makine eklemek yerine
+#   makine silmek.
+#
+#   ⚠ AÇIK BORÇ: kayıt ALAN ADLARI hâlâ karışık — İngilizce (`note`/`evidence`/`confidence`/
+#   `last_verified`) ile Türkçe (`kural`/`kaynak`/`olcum`/`kullanir`/`ayrinti`) bir arada.
+#   Tam İngilizceye çevirmek 373 kaydı + iki koşucuyu + geçiş dönemindeki Python araçları
+#   birden etkiler; bugün DOKUNULMADI. Ayrı ve kapılı bir iş olarak karar bekliyor.
+
 
 # Alan DEĞERİ düzeyinde eş-anlamlılar (alan adı değil, içindeki değer).
 deger_esanlamli:

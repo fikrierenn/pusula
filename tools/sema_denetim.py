@@ -1,4 +1,4 @@
-"""SEMA SÖZLEŞMESİNİ DENETLER — `sema/_sozlesme.yaml` vs `sema/*.yaml`.
+"""SEMA SÖZLEŞMESİNİ DENETLER — `sema/_contract.yaml` vs `sema/*.yaml`.
 
 Neden var (ölçüm 2026-09-11, plan-44): `sema/` 305 kayıtla en değerli kurumsal varlığımız
 ama şemasızdı — entities'te ~100 alan adı yalnız 1 kayıtta, kanıt 4 ayrı adla, 312 kaydın
@@ -31,7 +31,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 REPO = Path(__file__).resolve().parents[1]
 SEMA = REPO / "sema"
-SOZLESME_YOL = SEMA / "_sozlesme.yaml"
+SOZLESME_YOL = SEMA / "_contract.yaml"
 DOSYALAR = ["entities", "bridges", "codes", "metrics", "queries"]
 
 TARIH_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -434,7 +434,7 @@ def main():
         print()
 
     if kirik:
-        print("Sozlesme ihlali var. Duzelt: sema/_sozlesme.yaml kaydin tipini tanimlar;")
+        print("Sozlesme ihlali var. Duzelt: sema/_contract.yaml kaydin tipini tanimlar;")
         print("zengin/tek-kullanimlik alanlar SILINMEZ, `ayrinti:` altina tasinir.")
         sys.exit(1)
 

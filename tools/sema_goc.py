@@ -18,7 +18,7 @@ GÜVENLİK — üç kapı:
      "beklenen dönüşümü" ile BİREBİR karşılaştırılır. Fark varsa HİÇBİR ŞEY yazılmaz.
   3. Varsayılan KURU KOŞU. Yazmak için `--uygula` gerekir.
 
-Eşleme tek kaynaktan gelir: `sema/_sozlesme.yaml` (`esanlamli` + `esanlamli_dosya_bazli`).
+Eşleme tek kaynaktan gelir: `sema/_contract.yaml` (`esanlamli` + `esanlamli_dosya_bazli`).
 Burada ikinci bir liste tutulmaz.
 
 Kullanım:
@@ -63,7 +63,7 @@ def kosamadi(mesaj):
 def eslemeyi_oku():
     """Kanonik eşlemeyi SÖZLEŞMEDEN al — ikinci liste tutma."""
     import yaml
-    yol = SEMA / "_sozlesme.yaml"
+    yol = SEMA / "_contract.yaml"
     if not yol.exists():
         kosamadi("sozlesme yok: %s" % yol)
     soz = yaml.safe_load(yol.read_text(encoding="utf-8"))

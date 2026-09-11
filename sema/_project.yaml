@@ -1,0 +1,9 @@
+# PROJECT IDENTITY — repo-local. The engine is shared (D:\Dev\sema); data and identity are not.
+#
+# CONVENTION: structural names (file names, section headings, the keys in this file) are
+# ENGLISH. Record CONTENT is Turkish. One convention, no dialect switch.
+project: bkm
+name: "BKM Kitap — ERP (DerinSIS) · POS (EncoreMerkez) · WMS · e-ticaret (JOKER)"
+
+# Data sources (same names as sqlcli profiles; credentials come from .env only)
+sources: [erp, encore, zirve, joker]
