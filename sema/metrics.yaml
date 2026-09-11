@@ -1874,7 +1874,7 @@ metrics:
       semantic-layer § ŞEMA GERÇEĞİ ≠ SATIR VERİSİ). Yukarıdaki stkID'ler desenin KANITI,
       dışlama ölçütü değil.
     applied_in: "dashboard/Data/SatisAnaliziTabanService.cs kat CTE · scripts/satis_analizi_excel.py"
-    koruma: "degismezler.json → muhasebe-hesap-kodu-panelde-yok (kırılabilirliği sınandı)"
+    protected_by: [muhasebe-hesap-kodu-panelde-yok]   # kırılabilirliği sınandı 2026-09-10
     evidence: "2026-09-10 — urn.stkKod desen taraması (837.688 kayıt) + hareket kontrolü"
     last_verified: "2026-09-10"
 
