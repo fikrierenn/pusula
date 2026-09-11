@@ -526,7 +526,7 @@ entities:
     type: measurement
     note: "dbo.frm frmID=9525 'ODAK KİTAP-POİNT İNTERNET TEKNOLOJİLERİ' (frmKod 320.10.P060, frmTip=0 satıcı) = alım girişinin ~%40'ı TEK BAŞINA. 2025: 307,7M ₺ (diğer 176 firma 468,1M) · 2026(17.08): 224,7M ₺ (diğer 151 firma 339,6M). Kardeş cari: frmID 22100 'POİNT KİTAP DAĞITIM TİC. A.Ş.' (ihmal edilebilir hacim, 2021-22)."
     etki: "Web kaydında 'BKM KİTAP Point İnternet Tek. ve Lojistik A.Ş.' ayrı tüzel kişi olarak görünüyor → 9525 muhtemelen İLİŞKİLİ TARAF (grup içi dağıtım/e-tic). Öyleyse: transfer-fiyatlama, grup-içi mutabakat, ve satınalma hesap-sorma analizlerinde 'tedarikçi performansı' kıyası ÇARPIK (grup-içi ≠ dış tedarikçi). Alıcı-atıf analizinde ayrı kova yapılmalı."
-    status: "İLİŞKİLİ TARAF — TEYİT EDİLDİ (kullanıcı/GMY, 2026-08-17). Grup-içi dağıtım kanalı; dış tedarikçiyle aynı kovada kıyaslanMAZ."
+    taraf_durumu: "İLİŞKİLİ TARAF — TEYİT EDİLDİ (kullanıcı/GMY, 2026-08-17). Grup-içi dağıtım kanalı; dış tedarikçiyle aynı kovada kıyaslanMAZ."
     rule: "Satınalma/tedarikçi performans analizinde frmID 9525 AYRI KOVA (ilişkili-taraf). Tedarikçi-scorecard, fill-rate, gecikme, iade-oranı kıyaslarında dış tedarikçilerle karıştırma; konsantrasyon raporunda ilişkili-taraf olarak etiketle."
     confidence: 1.0
     evidence: "2026-08-17 — irsHrk ehTip 0/10 × irs.eFirma GROUP BY yıl (sorgular/2026-08-17-sirket-donem-point-kontrol.sql blok 5-6)."
@@ -620,7 +620,8 @@ entities:
   # --- CANLI ŞEMA DOĞRULAMA DAMGASI (curator A10 / TODO B-152) ---
   _sema_dogrulama_2026_08_18:
     status: superseded
-    superseded_note: "Elle yapilan kolon kontroluydu; artik tools/sema_kolon_cek.py her kosuda canli sys.columns ile yapiyor (2026-09-11)."
+    superseded_on: "2026-09-11"
+    superseded_why: "Elle yapilan kolon kontroluydu; artik tools/sema_kolon_cek.py her kosuda canli sys.columns ile yapiyor (2026-09-11)."
     type: measurement
     kapsam: "sema/entities.yaml'daki DerinSISBkm-yerel objelerin canlı varlık + pk/key kolon kontrolü (sys.objects + sys.columns)."
     sonuc: "**60 objeden 59'u MEVCUT.** Tip doğrulaması: bkm.UrunBilgi = VIEW (tablo değil) · bkm.sp_KapanisMudahaleKontrol_v2 = SQL_STORED_PROCEDURE · dbo.mekan_vw/irsTip_vw/stokSon_vw/stokSonAltDepo_vw/bakiyeVDGG_vw/mhsMizan_vw/mhsFisKontrolBakiye_vw/JokerCKStok_vw/stok_adres_palet_vw = VIEW · gerisi USER_TABLE."

@@ -50,6 +50,9 @@ bridges:
     evidence: "2026-08-06 — canlı posMagaza JOIN frm (3 mağaza 1:1 temiz) + ERP kontrol view'leri."
     last_verified: "2026-08-06"
   - id: irshrk-mekan
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 265 / 59.150.337 satır (%0,0004). Hepsi tek değer: ehMekan=14. `dbo.mekan_vw` 11 satır döndürüyor ve 14 İÇİNDE YOK (12=Merkez Depo var, 13/14/15 yok). Yıl dağılımı: 2026→248 · 2024→1 · 2022→3 · 2021→13 — yani TARİHSEL ARTIK DEĞİL, 2026'da aktif kullanılıyor."
+    orphans_expected: "AÇIK SORU — beklenen değil, açıklanamadı. mekanID 14 canlıda kullanılıyor ama kanonik `mekan_vw` onu tanımıyor. Bu köprüyle INNER JOIN yapan her sorgu o 265 satırı SESSİZCE düşürür. Ne olduğu ölçülmeli (view'ın filtresi mi, tanımsız mekan mı); ölçülene kadar bu alan 'beklenen' anlamına GELMEZ, açık soruyu görünür tutar."
+    evidence_status: pending
     from: dbo.irsHrk.ehMekan
     to: dbo.mekan_vw.mekanID
     scope: derinsis
@@ -149,6 +152,8 @@ bridges:
 
   # --- EncoreMerkez POS ↔ DerinSIS ERP ---
   - id: products-code-stkid
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 33.064 / 869.904 (%3,80) → eşleşme %96,20. ⚠ KAYIT 09.06'da '%99,98 eşleşme (798.349/798.527)' diyordu; evren 798K→870K büyürken öksüz de büyümüş. İDDİA BAYATLAMIŞ — ölçüm 3 ayda %99,98'den %96,20'ye düştü."
+    orphans_expected: "KISMEN — EncoreMerkez ürün kartı DerinSIS'te karşılığı olmadan açılabiliyor (33.064 kart). Kategori/marka analizinde bu kartlar INNER JOIN'de DÜŞER; ciro eksik görünür. Oran sabit değil, büyüyor: yeniden ölçmeden 'neredeyse tam eşleşiyor' denmemeli."
     from: EncoreMerkez.dbo.Products.Code
     to: DerinSISBkm.dbo.urn.stkID
     join_type: INNER
@@ -192,6 +197,8 @@ bridges:
     note: "Kasiyer adı = Users.Name. P6 haftalık kasiyer performans köprüsü."
     evidence: "11.06 — hafta 01-07.06: 16 kasiyer, fiş toplamı brief ile tutarlı"
   - id: sales-customer-name
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 598.676 / 1.314.965 (%45,5). Ayrıştırıldı: 590.295'i CustomersId=0 (anonim/yürü-gel müşteri, MEŞRU) · 8.393'ü CustomersId>0 ama DerinCrm.Customer'da YOK (GERÇEK öksüz)."
+    orphans_expected: "EVET, ama yalnız `CustomersId = 0` için: anonim müşteri (sql-server-conventions § MÜŞTERİ RAPORLARI — kartsız = anonim DAHİL). ⚠ 8.393 satır `CustomersId > 0` olduğu hâlde karşılığı yok; LEFT JOIN'de ad NULL gelir, INNER JOIN'de satır düşer. Müşteri sayımı yapan sorgu bu iki grubu AYIRMALI."
     from: EncoreMerkez.dbo.Sales.CustomersId
     to: DerinCrm.dbo.Customer.Id
     scope: cross-db
@@ -472,6 +479,8 @@ bridges:
     note: "Sınav siparişi ↔ POS fişi. COLLATE gerekmedi (aynı collation, canlı doğrulandı). YALNIZ SATIŞ tarafı için güvenli — iade için sales-iade-linked kullan (FE kısmi iadeleri kaydetmiyor, %43 kayıp)."
     evidence: "2026-08-19 — 9.319 fiş / 240.176 satır; header↔satır mutabakatı 0 sapma."
   - id: sales-iade-linked
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 1.294.070 / 1.314.965 (%98,4). Ayrıştırıldı: 1.292.885'i LinkedDocumentId=0 · kalan ~1.185 gerçek öksüz (14 haneli değerler, ayrı id uzayı gibi duruyor)."
+    orphans_expected: "EVET: `LinkedDocumentId = 0` bağlı belge YOK demek. ⚠ TUZAK — sıfır SENTINEL, NULL DEĞİL. `WHERE LinkedDocumentId IS NOT NULL` süzgeci bu 1,29M satırı ELEMEZ; doğru süzgeç `> 0`. Bu köprüyü NULL kontrolüyle kullanan her sorgu sessizce 1,29M sahte eşleşme adayı taşır."
     from: EncoreMerkez.dbo.Sales.LinkedDocumentId
     to: EncoreMerkez.dbo.Sales.Id
     scope: encoremerkez

@@ -353,7 +353,7 @@ codes:
       Çıktı grain: Magaza × Tarih × GrossTotal/DiscountTotal/FisSayisi/SatirSayisi(TotalAmount).
     rapor_grain: "Otomatik rapor: Mağaza × Tarih → Tutar(brüt) · İndirim · Net · İndirim% · Fiş · Ürün adet. Örnek: FSM 21.05.2026 → 18 fiş / 5.650,70 brüt / 1.904,4 ind (%34) / 136 ürün."
     elenen_lead: "Sales.CustomerData LIKE '%Kumbara%' = müşteri-kartı Kumbara (10.389 satış), rapor DEĞİL: FSM 21.05 kart-bazlı 86 fiş/24.436₺ ≠ rapor 18 fiş/5.650₺. Rapor indirim-tipi bazlı alt küme."
-    status: doğrulandı  # 17.06 kullanıcı SQL: SPC.CampaignVersion → RefundReasons.Id köprüsü
+    dogrulama_notu: doğrulandı  # 17.06 kullanıcı SQL: SPC.CampaignVersion → RefundReasons.Id köprüsü
     confidence: 0.95
     evidence: "17.06.2026 — kullanıcı üretim SQL paylaştı: SalesProductCampaigns.CampaignVersion = RefundReasons.Id (CampaignId IS NULL iken). Kumbara Id=17 doğrulandı. Join: Sales→SalesProducts→SPC(CampaignId IS NULL)→RefundReasons(Id=17)."
     last_verified: 2026-06-17

@@ -291,6 +291,38 @@ def main():
                 ekle("uyari", "synonyms", yer,
                      "%s -> `%s` olmali" % (", ".join(kullanilan), kanonik))
 
+        # 2e2. ORTAK alan enum denetimi — eskiden YALNIZ tipe-özel alanlar denetleniyordu,
+        # bu yüzden `status`a serbest prose yazılabiliyordu ve denetçi görmüyordu
+        # (ölçüldü 2026-09-11: 2 kayıt). Kural: ortak_alan_enum.
+        if not muaf:
+            for bolum_ad in ("required", "conditional_required", "optional"):
+                for alan, spec in (ortak.get(bolum_ad, {}) or {}).items():
+                    if not isinstance(spec, dict) or alan not in govde:
+                        continue
+                    izin = spec.get("values")
+                    if not izin or govde[alan] in izin:
+                        continue
+                    ekle(sev(kurallar.get("ortak_alan_enum")), "ortak_alan_enum", yer,
+                         "%s=%r izinli degil: %s" % (alan, govde[alan], ", ".join(map(str, izin))))
+
+        # 2e3. BİTEMPORAL BEYAN — `status: superseded` çıplak bırakılamaz.
+        # Çürüyen gerçek silinmez, geçersizleştirilir; ama neyin lehine ve neden düştüğü
+        # yazılmazsa kayıt sessizce ölü bilgiye döner. Kural: superseded_beyani.
+        if govde.get("status") == "superseded":
+            eksik = []
+            if not govde.get("superseded_on"):
+                eksik.append("superseded_on")
+            if not (govde.get("superseded_by") or govde.get("superseded_why")):
+                eksik.append("superseded_by | superseded_why")
+            if eksik:
+                ekle(sev(kurallar.get("superseded_beyani"), "kirik"), "superseded_beyani", yer,
+                     "ciplak `superseded` — eksik: %s" % ", ".join(eksik))
+            hedef = govde.get("superseded_by")
+            if hedef and ":" in str(hedef):
+                hd, hi = str(hedef).split(":", 1)
+                if hd not in idler or hi not in idler[hd]:
+                    ekle("kirik", "superseded_beyani", yer, "superseded_by hedefi yok: %r" % hedef)
+
         # 2f. enum değer denetimi (+ değer düzeyi eş-anlamlı göçü)
         for alan, spec in (tip.get("special", {}) or {}).items():
             if not isinstance(spec, dict) or alan not in govde:

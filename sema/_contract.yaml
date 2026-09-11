@@ -73,7 +73,29 @@ common:
     details:
       type: harita
       description: "Sözleşme dışı zengin/tek-kullanımlık alanlar. Silme yerine kapsülleme."
-    status: {type: metin, values: [teyit bekliyor, superseded], description: "Yaşam döngüsü işareti."}
+    status:
+      type: metin
+      values: [pending, superseded]
+      description: >-
+        Yaşam döngüsü işareti — SERBEST METİN DEĞİL. Ölçüm 2026-09-11: iki kayıt buraya
+        prose yazmıştı ("İLİŞKİLİ TARAF — TEYİT EDİLDİ…", "doğrulandı") ve denetçi bunu
+        GÖRMÜYORDU, çünkü enum denetimi yalnız tipe-özel alanlarda koşuyordu. Ortak alan
+        enum'ları da artık denetleniyor.
+    superseded_by:
+      type: metin
+      format: "<dosya>:<id>"
+      description: >-
+        Bu kaydın YERİNE GEÇEN kayıt. Bi-temporal ilke (Zep/Graphiti): çürüyen gerçek
+        SİLİNMEZ, geçersizleştirilir — silmek, öğrenilen dersi de silmektir. `ehTip=1 alış`
+        vakası tam buydu: gerçeğin tersi yazılmıştı, düzeltildi; eski kayıt dursaydı aynı
+        hataya ikinci kez düşme riski görünür kalırdı.
+      level_unresolved: kirik
+    superseded_on:
+      type: tarih
+      description: "Geçersizleştirme tarihi (YYYY-MM-DD). Ne zaman öğrendiğimiz, değerin kendisi kadar ölçümdür."
+    superseded_why:
+      type: metin
+      description: "Hangi ÖLÇÜM çürüttü. `superseded_by` yoksa bu zorunlu — çıplak 'superseded' kimseye ne olduğunu söylemez."
     stamp_inherited:
       type: bool
       description: >-
@@ -239,6 +261,13 @@ types:
     special:
       from: {format: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
       to:   {format: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
+      orphans_expected:
+        description: >-
+          Bu köprüde ÖKSÜZ satır (soldaki değer sağda yok) BEKLENİYORSA nedeni burada YAZILI
+          olmalı. Yazılıysa `sema kopru` çelişki saymaz; yazılı değilse ve `confidence: 1.0`
+          ise ÇELİŞKİ verir — "kalıcı, defalarca doğrulandı" ile "öksüz var" aynı anda doğru
+          olamaz. Öksüz sayısı tek başına hata DEĞİLDİR; beyan edilmemiş olması hatadır.
+        level: uyari
       cardinality:
         values: ["1:1", "1:N", "N:1", "N:N"]
         description: "JOIN patlaması (fan-out) riskini görünür kılar. N:N ise sorguda DISTINCT/agg zorunlu."
@@ -340,6 +369,17 @@ rules:
   embedded_reference:
     level: uyari
     description: "Prose içinde başka kaydın id'si geçiyor ama `kullanir:`'de yok → graf eksik."
+  superseded_beyani:
+    level: kirik
+    description: >-
+      `status: superseded` olan kayıt `superseded_on` VE (`superseded_by` ya da
+      `superseded_why`) taşımak zorundadır. Çıplak bir "superseded" işareti, kaydın neden
+      ve neyin lehine düştüğünü söylemez — bu da onu sessizce ölü bilgiye çevirir.
+  ortak_alan_enum:
+    level: uyari
+    description: >-
+      Ortak alanların (`status`, `evidence_status`) `values:` listesi de denetlenir.
+      Eskiden yalnız tipe-özel alanlar denetleniyordu ve `status`a prose yazılabiliyordu.
   date_format:
     level: kirik
     description: "last_verified YYYY-MM-DD. dd.MM.yyyy YASAK (sema makine-okunur, yerel tarih kuralı SQL içindir)."
