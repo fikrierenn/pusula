@@ -7,6 +7,7 @@ updated: 2026-08-20
 
 bridges:
   - id: urn-kdv-oran
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 837.998 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     uses: [metrics:marj_kdv_tabani]
     from: dbo.urn.KDVs
     to: dbo.urnKDV.kdvID
@@ -27,6 +28,7 @@ bridges:
 
   # --- ERP iç (DerinSISBkm) ---
   - id: irshrk-stk
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 59.150.348 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.irsHrk.ehstkID
     to: dbo.urn.stkID
     scope: derinsis
@@ -34,6 +36,7 @@ bridges:
     note: "Satış/stok hareketi → ürün. En temiz ürün/kategori köprüsü. ehTip 1/4/100 satış."
     evidence: "kalıcı"
   - id: mhsfis-gdrmerkez
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 39.552.504 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: mhs.mhsFis.fisGdrMerkez
     to: dbo.frm.frmID
     scope: derinsis
@@ -42,6 +45,7 @@ bridges:
     evidence: "2026-08-06 — (1) resmi 'Gider Merkezi Dağılımlı Mizan' (Haziran.26 xlsx) ile bağımsız pyodbc birebir: grand+109 hesap+19 merkez+365/365 hücre 0 sapma. (2) ERP native SP mhsGelirTabloGiderMerkeziDetayli decrypted kaynak aynı join. (3) orphan fisGdrMerkez=0 (hepsi frmTip=10). (4) ERP kontrol view'leri kontrol_masrafmerkezibosolan6li_vw/7li_vw: hspAnaID LIKE '6%'/'7%' + fisGdrMerkez=0 → 'atanmamış' (GENEL) kontrolü = benim %69 GENEL bulgum ERP-native."
     last_verified: "2026-08-06"
   - id: posmagaza-gdrmerkez
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 12 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.posMagaza.mekanGiderMerkez
     to: dbo.frm.frmID
     scope: derinsis
@@ -58,12 +62,14 @@ bridges:
     scope: derinsis
     confidence: 1.0
   - id: irs-irsayr
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 67.886.965 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.irsAyr.ehID
     to: dbo.irs.eID
     scope: derinsis
     confidence: 1.0
     note: "Evrak satır → başlık. irsHrk birleşik hareket (ehID+ehstkID+ehTip grup)."
   - id: irshrk-irs
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 59.150.348 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.irsHrk.ehID
     to: dbo.irs.eID
     scope: derinsis
@@ -78,11 +84,13 @@ bridges:
     last_verified: "2026-08-14"
     note: "⚠ KRİTİK: irsHrk POS satırı (ehTip=100) bir GÜNÜN o üründeki TÜM POS satışının TOPLAMI (tek satır), bireysel fiş DEĞİL. 26281 İst.Yolu 06.09.25 irsHrk=823 → EncoreMerkez'de 145 fiş satırı, max_tek 26, ort 6.8 (toplam 984 tüm-mağaza). Yani irsHrk POS = günlük-aggregate. SONUÇ: irsHrk POS satırını 'tek işlem' sanıp cap'lemek YANLIŞ (retail'i bulk sanır) — satınalma retail-momentum sadece ehTip 1/4 (sevk/fatura belge-bazlı) cap'ler, ehTip 100 TAM retail. Gerçek POS-fiş granülaritesi (bulk POS tespiti gerekirse): EncoreMerkez.SalesProducts.Amount (miktar) + Products.Code=urn.stkID + Sales.Date/ReceiptNo/CustomersId. SEVK/FATURA (ehTip 1/4) irsHrk satırı = belge-bazlı (matara 405 ehTip 1 depo sevk = gerçek tek-belge bulk)."
   - id: fat-fatayr
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 40.925.948 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.fatAyr.ehID
     to: dbo.fat.eID
     scope: derinsis
     confidence: 1.0
   - id: fat-firma
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.050.661 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     uses: [bridges:irs-firma]
     from: dbo.fat.eFirma
     to: dbo.frm.frmID
@@ -98,6 +106,7 @@ bridges:
     note: "E-ticaret (T-Soft) ürün görseli: ent.tsoft_urun.stkid=urn.stkID; ImageUrl=dosya adı → tam URL 'https://cdn.bkmkitap.com/'+ImageUrl (250px K variant; büyük=-B.jpg). CDN HOTLINK korumalı → <img referrerpolicy=no-referrer> gerekli (referer'lı istek placeholder döner). Satınalma ürün-detay görseli bunu kullanır. ent.tsoft_urun_vw de aynı ImageUrl."
     last_verified: "2026-08-13"
   - id: irs-firma
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.112.975 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.irs.eFirma
     to: dbo.frm.frmID
     scope: derinsis
@@ -105,6 +114,7 @@ bridges:
     last_verified: "2026-08-18"   # Serve Deep + ilişkili-taraf analizinde kullanıldı (PROMARKA/BETA/BUDAK, ODAK-POINT %40 tespiti)
     note: "Evrak → cari/firma. Mağaza frmID=1/4477/4478, GENEL=0, tedarikçi=diğer. İLİŞKİLİ TARAF (grup-içi) frmID'ler: 9525 ODAK-POINT · 22100 POİNT KİTAP · 56/38093 Bursa Kültür Merkezi · 4841/23842 BKM Kitap · 58/9339/4694/7950/50582 Bursa Kültür-Sanat → fiyat kıyasında AYRI KOVA (Ayarlar SatinIliskiliTaraf)."
   - id: bakiyevdgg-frm
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 24.939 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.bakiyeVDGG_vw.cKod
     to: dbo.frm.frmID
     scope: derinsis
@@ -112,6 +122,7 @@ bridges:
     note: "Cari bakiye/yaşlandırma → cari kart. GecenB=vadesi geçmiş, GelecekB=yaklaşan, frmBakiyeLimit=risk limiti. Dashboard /cari-risk (B-124). Aynı kalıp satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı)."
     evidence: "2026-06-25 canlı — bakiyeVDGG_vw JOIN frm ON frmID=cKod, Cari/Risk sayfası."
   - id: car-karsi-frm
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 23.716.885 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.car.cKodKarsi
     to: dbo.frm.frmID
     scope: derinsis
@@ -120,6 +131,7 @@ bridges:
     evidence: "2026-07-04 canlı — car cTip=122, 807.600 satır JOIN frm; 4522=GARANTI (frmTip=5), 223=Yanıt Yay."
     last_verified: "2026-07-04"
   - id: frm-mhsent-glhesap
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 116.940 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: mhs.mhsEntFrm.mefFrmID
     to: dbo.frm.frmID
     then:
@@ -133,6 +145,8 @@ bridges:
 
   # --- WMS / depo (10.06 keşif) ---
   - id: palet-irs
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 1.277.254 / 1.772.553 (%72,06). Ayrıştırıldı: 1.275.953'ü `piIrsID = 0` (belgesiz taşıma — sql-server-conventions § Palet defteri okuma kuralında zaten yazılı), kalan ~1.301 gerçek öksüz."
+    orphans_expected: "EVET: `piIrsID = 0` irsaliyesiz palet hareketi demek (elle taşıma) ve palet hareketlerinin %72'si böyle. ⚠ TUZAK — sıfır SENTINEL, NULL DEĞİL: `WHERE piIrsID IS NOT NULL` bu 1,28M satırı ELEMEZ, doğru süzgeç `> 0`."
     from: depo.paletIcHrk.piIrsID
     to: dbo.irs.eID
     scope: derinsis
@@ -140,6 +154,8 @@ bridges:
     note: "İç hareket → irsaliye (tip+firma için). pGC 0=giriş 1=çıkış."
     evidence: "10.06"
   - id: emirayr-emir
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru, yalnız İLK HOP emirAyr.emPaletID→emirSat.satPID): 2.376.658 / 5.393.667 (%44,06). Sıfır sentinel DEĞİL (emPaletID=0 yalnız 1.389). Yıl dağılımı sebebi gösteriyor: 2021 2.186.656/4.131.660 (%52,9) · 2022 188.903/806.118 (%23,4) · 2023 600/106.823 (%0,56) · 2024 422 · 2025 60 · 2026 17 (%0,015). Palet bazında: emirAyr 14.261 tekil palet kullanıyor, emirSat 12.188 tanıyor → 2.084 palet hiç emir'e bağlanmamış."
+    orphans_expected: "EVET, 2021-2022 için: WMS'in ilk döneminde palet hareketi emir kaydına bağlanmadan yapılmış. 2023'ten itibaren oran %0,5'in altına düşüyor → köprü GÜNCEL veride sağlam. Geçmişe dönük toplama/görev analizinde 2021-22 kapsam dışı sayılmalı."
     from: depo.emirAyr.emPaletID
     to: depo.emirSat.satPID
     then:
@@ -165,12 +181,14 @@ bridges:
     note: "Code stkKod DEĞİL (~%9), barkod hiç değil. POS per-fiş/per-mağaza → doğru kategori/marka."
     evidence: "09.06 — Oyuncak ciro 700K→10,96M doğrulandı"
   - id: salesproducts-products
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 6.202.443 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: EncoreMerkez.dbo.SalesProducts.ProductsId
     to: EncoreMerkez.dbo.Products.Id
     scope: encoremerkez
     confidence: 1.0
     note: "SalesProducts WHERE IsValid=1 ZORUNLU."
   - id: stores-posmagaza
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 3 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: EncoreMerkez.dbo.Stores.Code
     to: DerinSISBkm.dbo.posMagaza.mekanKod
     join_sql: "MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS"
@@ -179,6 +197,8 @@ bridges:
     note: "POS mağaza → mekanID. Zincir: Sales.PosId→Pos.StoreId→Stores.Code→posMagaza.mekanID. Her POS-mağaza raporunun standart join'i."
     evidence: "generate_brief.py + G4 ile sürekli kullanımda"
   - id: urnbrkd-barkod
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 4 / 6.202.443 (%0,0001). Pratikte tam eşleşme — POS barkodu urnBrkd'de karşılıksız kalmıyor."
+    orphans_expected: "4 satır, mertebe olarak ihmal edilebilir; yine de SIFIR DEĞİL — 'her barkod eşleşir' denmez."
     uses: [bridges:products-code-stkid]
     from: EncoreMerkez.dbo.SalesProducts.BarcodeNo
     to: DerinSISBkm.dbo.urnBrkd.urnBarkod
@@ -190,6 +210,7 @@ bridges:
     confidence: 0.9
     note: "Barkod GEREKİYORSA bu zincir; urn.stkKod ile join YASAK (stkKod≠barkod). Tercih: products-code-stkid köprüsü."
   - id: sales-users-kasiyer
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 1.315.084 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: EncoreMerkez.dbo.Sales.UsersId
     to: EncoreMerkez.dbo.Users.Id
     scope: encoremerkez
@@ -220,6 +241,7 @@ bridges:
       MCP/SSMS analizlerde hâlâ ODAKJOKER.JOKER linked kullanılabilir; .70 direkt SADECE dashboard runtime.
     evidence: "16.06 — commit b792f4e. EticQueries.cs 10/10 sorgu .70 direkt. LOGOGRUP kategori 4.1s→0.6s."
   - id: orderdetails-orders
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 17.525.813 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.ORDERREF
     to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
     scope: joker
@@ -227,11 +249,15 @@ bridges:
     note: "ORDERID (LOGICALREF DEĞİL!). ORDERID = 'TS…' kodundaki sayı."
     evidence: "09.06"
   - id: orderdetails-items
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 1 / 17.525.813. Tek satır ölçüldü: LOGICALREF 58294995 · ORDERREF 30985232 · ITEMREF **-1000** · QUANTITY 1 · STATUS 2000. Yani eksik ürün değil, NEGATİF SENTINEL."
+    orphans_expected: "EVET, tek satır: ITEMREF = -1000 (negatif sentinel — gerçek bir J_ITEMS kaydına işaret etmiyor). Köprü 17,5M satırın geri kalanında kusursuz."
     from: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.ITEMREF
     to: ODAKJOKER.JOKER.dbo.J_ITEMS.LOGICALREF
     scope: joker
     confidence: 1.0
   - id: baskisiyok-orderdetail
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru, ODAKJOKER linked server üstünden OPENQUERY): 46.600 / 108.285 (%43,03). YIL DAĞILIMI kesin ayırıyor: 2022 18.722/18.722 · 2023 22.690/22.690 · 2024 5.187/5.187 = %100 öksüz; 2025 1/38.954 · 2026 0/22.732 = temiz. Sebep ölçüldü: J_ORDER_DETAILS'in LOGICALREF uzayı 3.000.000 altında yalnız 6 satır taşıyor (1001-1006), öksüz DETAILREF'ler ise 103.408-2.012.227 aralığında — yani eski sipariş detayları SİLİNMİŞ/arşivlenmiş, BASKISIYOK kendi geçmişini tutmuş. J_ORDERS da 2023-01-01'den başlıyor."
+    orphans_expected: "EVET, 2025 ÖNCESİ için: J_ORDER_DETAILS geçmişi budanmış, BASKISIYOK budanmamış. ⚠ SONUÇ: bu köprüyle Tutar hesaplayan (B.QUANTITY×D.SELLINGPRICE) her sorgu 2022-2024 satırlarını SESSİZCE SIFIRLAR/düşürür — 46.600 satır. Dashboard /baskisi-yok son-30g penceresi kullandığı için etkilenmiyor; geçmişe dönük bir rapor yazılırsa bu sınır ÖNCE belirtilmeli. 2025 içindeki tek öksüz DETAILREF=0."
     from: ODAKJOKER.JOKER.dbo.BASKISIYOK.DETAILREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.LOGICALREF
     scope: joker
@@ -239,18 +265,24 @@ bridges:
     note: "Baskısı yok satır → sipariş detayı (LOGICALREF, ORDERREF DEĞİL). Tutar=B.QUANTITY×D.SELLINGPRICE."
     evidence: "2026-06-26 — kullanıcı çalışan SQL + OPENQUERY kolon teyit. Dashboard /baskisi-yok."
   - id: baskisiyok-user
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 46.187 / 108.285 (%42,65). Aynı yıl deseni: 2022 18.310 · 2023 22.690 · 2024 5.187; 2025-2026 sıfır. Öksüz USERREF değerleri KÜÇÜK ve dar: 2-10 aralığı. Yani eski JOKER panel kullanıcıları EM_USERS'tan silinmiş; hareket kaydı duruyor."
+    orphans_expected: "EVET, 2025 öncesi için: silinen panel kullanıcıları (USERREF 2-10). ⚠ INNER JOIN geçmiş dönemde işlemi yapan kişiyi kaybettirir; LEFT JOIN + ISNULL(FULLNAME,'silinmiş kullanıcı '+CAST(USERREF AS varchar)) kullan."
     from: ODAKJOKER.JOKER.dbo.BASKISIYOK.USERREF
     to: ODAKJOKER.JOKER.dbo.EM_USERS.LOGICALREF
     scope: joker
     confidence: 1.0
     note: "İşlemi yapan kullanıcı → EM_USERS.FULLNAME."
   - id: baskisiyok-item
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 46.600 / 108.285 (%43,03) — baskisiyok-orderdetail ile BİREBİR aynı satır kümesi (aynı sayı, aynı 2022-2024 yılları). Tek kök sebep: JOKER'in 2025 öncesi kayıtları budanmış."
+    orphans_expected: "EVET, 2025 öncesi için: J_ITEMS'ın eski ürün kartları silinmiş (bkz. baskisiyok-orderdetail ölçümü — aynı budama). Güncel veride (2025-2026) öksüz YOK."
     from: ODAKJOKER.JOKER.dbo.BASKISIYOK.ITEMREF
     to: ODAKJOKER.JOKER.dbo.J_ITEMS.LOGICALREF
     scope: joker
     confidence: 1.0
     note: "BASKISIYOK.ITEMREF doğrudan J_ITEMS (detay üzerinden geçmeye gerek yok). NAME/BRAND/CODE/GROUPCODE."
   - id: items-derinsis
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 41.015 / 878.709 (%4,67). Sıfır sentinel DEĞİL (DERINSIS_ID=0 sayısı: 0). Değer aralığı 2-1.740.224; `urn` tablosunun aralığı 4-1.740.224 ve satır sayısı 837.998 — yani ÜST SINIR AYNI, JOKER kataloğu 40.711 kayıt DAHA BÜYÜK. Öksüzler aralık içine dağılmış → DerinSIS ürün kartı SİLİNMİŞ, JOKER kalemi durmuş."
+    orphans_expected: "EVET: JOKER ürün kataloğu DerinSIS'in ÜST KÜMESİ — DerinSIS'te kapatılan/silinen kart JOKER'de kalıyor (41.015 kalem). ⚠ E-ticaret satışını kategori/markaya bağlayan INNER JOIN bu kalemleri düşürür. Kategori için zaten items-logogrup-kategori3 tercih ediliyor (cross-server hop gerekmez)."
     uses: [bridges:items-logogrup-kategori3]
     from: ODAKJOKER.JOKER.dbo.J_ITEMS.DERINSIS_ID
     to: DerinSISBkm.dbo.urn.stkID
@@ -271,23 +303,27 @@ bridges:
         - bkm.UrunBilgi.Kat3 kitapta BOŞ; doğru kolon Kategori3 (≠ Kat3).
     evidence: "16.06 — commit b792f4e. EticQueries.cs kategori = LOGOGRUP GROUP BY; linked urn/urnKtgr2 join ile birebir aynı, 4.1s→0.6s."
   - id: orders-paytype
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.PAYDEFREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES.ID
     scope: joker
     confidence: 1.0
     note: "ID ile (LOGICALREF değil). Kapıda Ödeme=-3, iyzico=-13, Havale=-1."
   - id: orders-cargo
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGOREF
     to: ODAKJOKER.JOKER.dbo.J_CARGO.ID
     scope: joker
     confidence: 1.0
   - id: orders-cargostatus
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     uses: [bridges:orders-cargo]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGODELIVERYSTATUS
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CARGO_STATUS.STATUS
     scope: joker
     confidence: 1.0
   - id: orders-delivery
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     uses: [bridges:bekleyen-siparis-il]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.DELIVERYREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS.LOGICALREF
@@ -295,6 +331,7 @@ bridges:
     confidence: 1.0
     note: "DCITY (il), DTOWN (ilçe). ORDERCODE join Odak-bekleyen siparişlerde BOŞ → bekleyen sipariş ili için CCITY proxy (bekleyen-siparis-il)."
   - id: orders-client
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     uses: [bridges:bekleyen-siparis-il]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.LOGICALREF
@@ -302,6 +339,8 @@ bridges:
     confidence: 1.0
     note: "→ CUSTOMERREF (0/NULL=misafir). J_ORDER_CLIENTS standart (J_CLCARD değil). Bekleyen sipariş ili için CCITY proxy (bkz. bekleyen-siparis-il)."
   - id: bekleyen-siparis-il
+    measurement: "2026-09-11 ÖLÇÜLEMEDİ — ve sebebi kaydın KENDİ KUSURU: `sema kopru` canlı koşunca \"nvarchar değeri 'Eskişehir' int veri türüne dönüştürülürken işlem başarısız oldu\" verdi. Yani `to: J_ORDER_CLIENTS.CCITY` bir JOIN HEDEFİ DEĞİL — CCITY şehir ADI taşıyan nvarchar kolon, CLIENTREF ise int. Kaydın kendi `note`u da bunu söylüyor: CCITY 'İL kaynağı', yani OKUNAN DEĞER kolonu. Gerçek join ayrı kayıtta ve ölçülmüş: `bridges:orders-client` (CLIENTREF → LOGICALREF, 0 öksüz / 4.704.484). Bu kayıt bir join değil, bir KURAL anlatıyor (bekleyen siparişte DCITY boş → CCITY proxy). AÇIK KARAR: `to`yu LOGICALREF'e çekmek kaydı orders-client'ın kopyası yapar (duplikasyon yasak); doğrusu muhtemelen `type: rule` olarak ayrılıp `uses: [bridges:orders-client]` demesi. Kayıt YENİDEN YAZILMADI — yapı kararı beklemede."
+    evidence_status: pending
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.CCITY
     scope: joker
@@ -309,6 +348,8 @@ bridges:
     note: "Bekleyen sipariş (SENDDATE NULL) İL kaynağı = müşteri ili CCITY. ⚠ Teslimat ili J_ORDER_DELIVERY_ADDRESS.DCITY Odak-bekleyen siparişlerde DOLU DEĞİL (kargoya verilmemiş, ORDERCODE join 0 satır) → CCITY proxy. Aşama: STATUS 1000=Toplanma, 3001/3003/3004=Önsipariş-Hazırlanan, 3006=Temin Bekleyen. L3 raporu."
     evidence: "2026-06-12 — MCP: DCITY join 0 satır; CCITY join İstanbul 1.492/Ankara 630/İzmir 343/Bursa 238, toplam ~5.874 bekleyen."
   - id: hedef-kategori
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 6.840 / 135.060 (%5,06). Tamamı iki değerde toplanıyor: `ktgId = 0` → 6.780 · `ktgId = 255` → 60. GERÇEK öksüz YOK (urnKtgr2'de olmayan başka ktgId hiç çıkmadı)."
+    orphans_expected: "EVET, tamamı sentinel: `0` = kategori kırılımsız hedef satırı · `255` = tanımsız/toplu. ⚠ Kategori bazlı hedef-gerçekleşme raporu yazarken bu 6.840 satır INNER JOIN'de düşer; toplam hedef tutturmak isteniyorsa AYRI toplanmalı, yoksa hedef eksik görünür."
     from: BKMDATA.dbo.Hedef.ktgId
     to: DerinSISBkm.dbo.urnKtgr2.ktgrID
     scope: cross-db
@@ -316,6 +357,7 @@ bridges:
     note: "Hedef kategori köprüsü = KTGR2 seviyesi. Aynı zamanda urn.urnKtgrID2 = urnKtgr2.ktgrID (gerçekleşen net'i kategoriye bağlamak için). ktgId örnek: 15=Kitap, 8=Hazırlık Kitapları, 12=Kırtasiye, 2=Çocuk Kitabı. M1 hedef/gerçekleşen raporu."
     evidence: "2026-06-12 — MCP: Hedef yil=2026 ay=6 mekanId=1 → urnKtgr2 join Kitap/Hazırlık/Kırtasiye/Çocuk; ay hedefi SUM(hedef) FSM 14,25M doğrulandı."
   - id: salescampaign-sales
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 2.972.580 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: EncoreMerkez.dbo.SalesProductCampaigns.SalesId
     to: EncoreMerkez.dbo.Sales.Id
     scope: encoremerkez
@@ -325,6 +367,7 @@ bridges:
 
   # --- WMS palet-stok zinciri (12.06 — gerçek üretim sorguları) ---
   - id: palet-urn-adres
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 136.581 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: depo.paletUrnTnm.pUID
     to: depo.paletTnm.pID
     then:
@@ -335,6 +378,7 @@ bridges:
     note: "Palet ürün → palet → son konum adresi → alan tipi (adrsAlanTipID). Depo raf/havuz/transfer stok dağılımı. pUAdetN>0, adrsAlanTipID IN (0,1,5)."
     evidence: "DEPO ÖZET DURUM.sql + BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql (yıllardır prod)"
   - id: paleturn-stk
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 136.581 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: depo.paletUrnTnm.pUStkID
     to: dbo.urn.stkID
     scope: derinsis
@@ -349,6 +393,7 @@ bridges:
     note: "Anlık stok view → ürün. ehAltDepo=0 ZORUNLU. ehMekan ile depo(12,4480,4835)/mağaza(1,4477,4478) ayrımı. Envanter+cari özet."
     UYARI: "MERKEZ DEPO stoğu için ehMekan=12 KULLANMA — irsHrk muhasebe bakiyesi EKSİK (2,14M) gerçek fiziksel WMS palet 4,38M (15.06). Mağaza (1/4477/4478) stoğu bu view'den OK; merkez depo daima WMS palet (id: wms-depo-stok)."
   - id: wms-depo-stok
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 136.581 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: depo.paletUrnTnm.pUStkID
     to: dbo.urn.stkID
     scope: derinsis
@@ -363,6 +408,7 @@ bridges:
       GROUP BY pu.pUStkID
     evidence: "15.06 — job sorgusu + WMS toplam 4.381.910 adet (stokSonAltDepo mekan=12 sadece 2.144.814). Dashboard GetUrunlerAsync + scripts/olu_stok_excel.py bunu kullanır."
   - id: depotoplanacak-orders
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 0 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK.ORDERREF
     to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
     scope: joker
@@ -399,6 +445,7 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-kategori3-urnktgr2
+    measurement: "2026-09-11 — ÖLÇÜLEMEDİ (köprü YANLIŞ DEĞİL). `sema kopru` bu sunucuda 'Geçersiz nesne adı DerinSIS_Local.bkm.UrunBilgi' verdi. Sebep: `DerinSIS_Local` bu ERP sunucusunda değil — FIFO çalışmasında alınan YEREL KOPYA (entities.yaml 'BT-FIKRI demo' diye zaten yazıyor). O sunucunun bilgisi `.env`'de yok, dolayısıyla köprü BURADAN temellendirilemez; `from` düzeltilecek bir yazım hatası DEĞİLDİR. Üretim karşılığı ayrıca ölçüldü: `DerinSISBkm.bkm.UrunBilgi` içinde Kategori2 + Kategori3 kolonları VAR (sys.columns). Ölçüm ancak yerel kopyanın sunucusu profillenirse yapılabilir."
     from: DerinSIS_Local.bkm.UrunBilgi.Kategori3
     to: DerinSISBkm.dbo.urnKtgr2.ktgrAd
     scope: maliyet
@@ -417,6 +464,7 @@ bridges:
 
   # --- MUHASEBE / GL + CARİ (22.06 keşif — B-117) ---
   - id: mhsfis-mhsfisbaslik
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 39.552.504 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: mhs.mhsFis.fisID
     to: mhs.mhsFisBaslik.fisbID
     scope: derinsis
@@ -425,6 +473,7 @@ bridges:
     evidence: "2026-06-22 MCP: fisID=fisbID → 2 satır; yevmiyeNo → 4 (çakışma)"
     last_verified: 2026-06-22
   - id: mhsfis-hsp
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 39.552.504 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: mhs.mhsFis.fisHspID
     to: mhs.mhsHsp.hspID
     scope: derinsis
@@ -447,6 +496,8 @@ bridges:
     note: "Cari hareket → firma/cari master. Gider carisi frm.frmKod LIKE 'G-%'."
     last_verified: 2026-06-22
   - id: fat-mhsfis
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 13.551 / 7.050.661 (%0,19). Ayrıştırıldı: 11.965'i `eMhsFisID = 0` (henüz muhasebeleşmemiş fatura) · kalan 1.586 GERÇEK öksüz — sıfırdan farklı bir fisbID'ye işaret ediyor ama mhs.mhsFisBaslik'te karşılığı yok (silinmiş yevmiye fişi)."
+    orphans_expected: "KISMEN: `eMhsFisID = 0` muhasebeleşmemiş demek, meşru ve sıfır SENTINEL'dir (NULL değil — `IS NOT NULL` süzmez, `> 0` gerekir). ⚠ 1.586 satır sıfır-dışı olduğu hâlde başlığı yok: fatura muhasebeleşmiş görünüp fişi silinmiş. Fatura↔yevmiye çift-yön drill'inde bu satırlar boş açılır."
     from: dbo.fat.eMhsFisID
     to: mhs.mhsFisBaslik.fisbID
     scope: derinsis
@@ -470,6 +521,8 @@ bridges:
     note: "Belge ayı → kapanış tarihi. Müdahale = giriş/değişim (gTarih/kTarih) > KapanisDT. Kapanış-sonrası forensic kontrolün ana köprüsü."
     last_verified: 2026-06-22
   - id: sinav-fis-encore
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 19 / 14.072 (%0,135). Sınav sipariş fişinin 19'unun EncoreMerkez'de karşılığı yok."
+    orphans_expected: "19 satır — açıklanmadı. Az olduğu için karara etkisi yok ama SIFIR değil; Sınav↔POS mutabakatında bu 19 fiş tek tek bakılmalı."
     uses: [bridges:sales-iade-linked]
     from: BKM.snv.SinavSiparisFisEncore.InvoiceNo
     to: EncoreMerkez.dbo.Sales.DocumentNo
@@ -490,6 +543,7 @@ bridges:
     satir_eslesme: "İade satırı ↔ orijinal satır anahtarı = LinkedDocumentId + ProductsId + TotalPrice + Amount. **Sequence EŞLEŞMEZ** (iade fişi kendi sıra numarasını kullanır)."
     evidence: "2026-08-19 — sorgular/2026-08-19-sinav-iade-zinciri.sql; 298 iade fişi %100 bağlı, satır eşleşmesi 92725↔85249 kuruşu kuruşuna."
   - id: siparisdetay-sales
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 171.027 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: BKM.snv.SiparisDetay.FisId
     to: EncoreMerkez.dbo.Sales.DocumentNo
     then:

@@ -369,3 +369,31 @@ uyarı olarak yazılır. "0 kırık" tüm eşleşmenin doğruluğunu KANITLAMAZ.
 
 - `docs/01-baglanti.md`, `docs/02-tablolar-magaza.md`, `docs/03-ciro-filtreleri.md`
 - `docs/05-eticaret-joker.md`, `docs/08-pos-encore.md`
+
+## SIFIR SENTINEL — `IS NOT NULL` bunları ELEMEZ (11.09.2026, beş köprüde ölçüldü)
+
+DerinSIS/EncoreMerkez/JOKER'de "bağlı kayıt YOK" **NULL ile değil, `0` ile** yazılır. Kolon
+`NOT NULL` tanımlıdır; boşluk yerine sıfır konur. Sonuç: `WHERE x IS NOT NULL` süzgeci hiçbir
+şey elemez ve sorgu milyonlarca sahte eşleşme adayı taşır — **hata vermez, rakam yanlış olur.**
+
+`sema kopru` canlı taramasında ölçülen sentineller:
+
+| Kolon | Sıfır sayısı | Anlamı |
+|---|---|---|
+| `EncoreMerkez.Sales.LinkedDocumentId` | 1.292.885 | bağlı belge yok |
+| `depo.paletIcHrk.piIrsID` | 1.275.953 | belgesiz (elle) palet taşıması |
+| `dbo.fat.eMhsFisID` | 11.965 | fatura henüz muhasebeleşmemiş |
+| `BKMDATA.Hedef.ktgId` | 6.780 (+60 adet `255`) | kategori kırılımsız hedef satırı |
+| `EncoreMerkez.Sales.CustomersId` | 590.295 | anonim/yürü-gel müşteri |
+
+**Kural:** bir FK-benzeri kolonu süzerken **`> 0`** yaz, `IS NOT NULL` yazma. Sıfırın anlamı
+yoksa da sıfır gerçek bir satıra işaret etmez — INNER JOIN onu zaten düşürür ve o düşüş
+**sessizdir**; kaç satır düştüğünü bilmiyorsan raporun kapsamını bilmiyorsun demektir.
+
+**Sentinel her zaman 0 da değil:** `hedef-kategori`'de `255`, `orderdetails-items`'ta
+**`-1000`** çıktı. Yeni bir köprü kurarken öksüz dağılımına bak (`sema kopru`), tek bir değerde
+yığılıyorsa o sentineldir — "veri bozuk" deme.
+
+⚠ Öksüz sayısı tek başına HATA DEĞİLDİR; hata, kaydın "kalıcı, defalarca doğrulandı"
+(`confidence: 1.0`) demesiyle ölçümün çelişmesidir. Meşru öksüz `sema/bridges.yaml`
+`orphans_expected` alanına yazılır — yazılınca çelişki sayılmaz.
