@@ -120,7 +120,7 @@ entities:
   ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS_COMP: {key: [DETAILREF, COMPITEMREF, COMPBARCODE, QUANTITY], note: "kompozit/set ürün açılımı (J_ORDER_DETAILS.LOGICALREF=DETAILREF)"}
 
   # Hedef / veri ambarı
-  BKMDATA.dbo.Hedef: {key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
+  BKMDATA.dbo.Hedef: {key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", kullanir: [bridges:hedef-kategori], note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
 
   # PDKS (işgücü — OPENQUERY)
   pdks: {tip: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
@@ -229,6 +229,7 @@ entities:
 
   # === MUHASEBE / GL + FİNANS/CARİ (22.06 keşif — B-117 GL forensic) ===
   mhs.mhsFis:
+    kullanir: [bridges:mhsfis-gdrmerkez]
     pk: fsID
     key: [fisID, fisSirketID, yevmiyeNo, fisTarih, fisTip, fisBA, fisTutar, fisHspID, fisGdrMerkez, fisCari]
     grain: "yevmiye satırı — fiş başına ≥2 satır, borç+alacak dengeli (39,5M)"
@@ -353,6 +354,7 @@ entities:
     ttl_days: 365
     evidence: "2026-09-03 canli MCP zirve — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql blok 1-2. Kolon anlamlari kullanicinin PERSONEL BORDRO KONTROL v2+.sql dosyasindaki Turkce kolon adlariyla eslesti (Isskk='Isv.SGK Hissesi', Bt='Brut Toplam', fm1='1.Fzl.M.(s)')."
   BKM_GENEL.dbo.vw_PersonelDepartman:
+    kullanir: [metrics:sezon_personel_kohort]
     tip: view
     key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Kadro, Igt, Ict, IstenCikisKodu, Ucret, TahakkukSekli, Banka, Iban]
     grain: "personel (normalize; ham perbilgi üstüne temiz katman)"
@@ -625,6 +627,7 @@ entities:
     evidence: "2026-08-19 — sorgular/2026-08-19-sinav-odeme-durumu-pingpong.sql + -sinav-odeme-kismi-model.sql; canlı dönem dağılımı + 1.787 çelişki ölçümü."
     last_verified: "2026-08-20"
   BKM.snv.SiparisDetay:
+    kullanir: [bridges:siparisdetay-sales]
     pk: SiparisDetayId
     key: [SiparisId, StokId, Adet, KasaAdet, BirimFiyat, Alindi, OdemesiYapildi, OkulTeslimat, Iptal, Hazirlandi, FisId, FisIdSiraNo, FisAciklama]
     grain: "sipariş kalemi (SiparisId × StokId)"
@@ -656,6 +659,7 @@ entities:
     evidence: "2026-08-19 — 22 kayıt canlı okundu (dönem 8) + FisteGoster × OdemesiYapildi 3.443 kalemlik çapraz tablo."
     last_verified: "2026-08-20"
   BKM.snv.SinavSiparisFisEncore:
+    kullanir: [bridges:sales-iade-linked]
     pk: Id
     key: [SiparisKod, InvoiceNo, InvoiceTotal, InvoiceDate, InvoiceDateOnly]
     grain: "sipariş ↔ POS fişi eşleşmesi (InvoiceNo = EncoreMerkez.Sales.DocumentNo)"

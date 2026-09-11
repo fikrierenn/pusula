@@ -7,6 +7,7 @@ updated: 2026-08-20
 
 bridges:
   - id: urn-kdv-oran
+    kullanir: [metrics:marj_kdv_tabani]
     from: dbo.urn.KDVs
     to: dbo.urnKDV.kdvID
     scope: derinsis
@@ -79,6 +80,7 @@ bridges:
     scope: derinsis
     confidence: 1.0
   - id: fat-firma
+    kullanir: [bridges:irs-firma]
     from: dbo.fat.eFirma
     to: dbo.frm.frmID
     scope: derinsis
@@ -172,6 +174,7 @@ bridges:
     note: "POS mağaza → mekanID. Zincir: Sales.PosId→Pos.StoreId→Stores.Code→posMagaza.mekanID. Her POS-mağaza raporunun standart join'i."
     evidence: "generate_brief.py + G4 ile sürekli kullanımda"
   - id: urnbrkd-barkod
+    kullanir: [bridges:products-code-stkid]
     from: EncoreMerkez.dbo.SalesProducts.BarcodeNo
     to: DerinSISBkm.dbo.urnBrkd.urnBarkod
     then:
@@ -241,6 +244,7 @@ bridges:
     confidence: 1.0
     note: "BASKISIYOK.ITEMREF doğrudan J_ITEMS (detay üzerinden geçmeye gerek yok). NAME/BRAND/CODE/GROUPCODE."
   - id: items-derinsis
+    kullanir: [bridges:items-logogrup-kategori3]
     from: ODAKJOKER.JOKER.dbo.J_ITEMS.DERINSIS_ID
     to: DerinSISBkm.dbo.urn.stkID
     scope: cross-db
@@ -271,17 +275,20 @@ bridges:
     scope: joker
     confidence: 1.0
   - id: orders-cargostatus
+    kullanir: [bridges:orders-cargo]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGODELIVERYSTATUS
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CARGO_STATUS.STATUS
     scope: joker
     confidence: 1.0
   - id: orders-delivery
+    kullanir: [bridges:bekleyen-siparis-il]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.DELIVERYREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_DELIVERY_ADDRESS.LOGICALREF
     scope: joker
     confidence: 1.0
     note: "DCITY (il), DTOWN (ilçe). ORDERCODE join Odak-bekleyen siparişlerde BOŞ → bekleyen sipariş ili için CCITY proxy (bekleyen-siparis-il)."
   - id: orders-client
+    kullanir: [bridges:bekleyen-siparis-il]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CLIENTREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS.LOGICALREF
     scope: joker
@@ -327,6 +334,7 @@ bridges:
     confidence: 1.0
     note: "Palet ürün → DerinSIS ürün. pUBarkod da var (ürünün palet barkodu)."
   - id: stoksonaltdepo-stk
+    kullanir: [bridges:wms-depo-stok]
     from: stokSonAltDepo_vw.ehstkID
     to: dbo.urn.stkID
     scope: derinsis
@@ -455,6 +463,7 @@ bridges:
     note: "Belge ayı → kapanış tarihi. Müdahale = giriş/değişim (gTarih/kTarih) > KapanisDT. Kapanış-sonrası forensic kontrolün ana köprüsü."
     last_verified: 2026-06-22
   - id: sinav-fis-encore
+    kullanir: [bridges:sales-iade-linked]
     from: BKM.snv.SinavSiparisFisEncore.InvoiceNo
     to: EncoreMerkez.dbo.Sales.DocumentNo
     scope: cross-db

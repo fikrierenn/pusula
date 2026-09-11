@@ -153,9 +153,26 @@ codes:
       4: HAVUZ EMRİ
 
   depo.paletIcHrk.pHrkTip:
-    note: "0=raflama/yerleştirme ana hareket, 1=toplama paleti, 2=besleme. pGC: 0=giriş 1=çıkış."
+    lookup: depo.paletIcHrkTip
+    values: {0: KULLANICI, 1: EMİR, 2: SAYIM, 3: "GERİ AL (canlıda kullanılmıyor)"}
+    kapali_kume: true
+    note: "pGC ayrı bir kolon: 0=giriş · 1=çıkış (783.283 / 987.554)."
+    duzeltme_2026_09_11: >-
+      ÖNCEKİ KAYIT YANLIŞTI — "0=raflama/yerleştirme, 1=toplama paleti, 2=besleme" yazıyordu;
+      üçü de UYDURMA. Kanonik lookup `depo.paletIcHrkTip` ZATEN sema'da doğru değerlerle
+      duruyordu (hemen altındaki kayıt) → sema KENDİ İÇİNDE ÇELİŞİYORDU ve iki kayıt
+      birbirini denetlemiyordu. `sql-server-conventions.md` doğruyu yazmıştı.
+      Ders: aynı kod kümesi iki yerde durursa biri bayatlar — `lookup:` ile tek kaynağa bağla.
+    olcum: "2026-09-11 `sqlcli lookup depo.paletIcHrkTip --count-from depo.paletIcHrk.pHrkTip`: 0 KULLANICI 993.216 · 1 EMİR 667.016 · 2 SAYIM 110.605 · 3 GERİ AL canlıda yok."
+    evidence: "Kanonik lookup tablosundan okundu (elle yazılmadı) — 'liste elle yazılmaz' kuralı."
+    confidence: 1.0
+    last_verified: "2026-09-11"
   depo.paletIcHrkTip:
     values: {0: KULLANICI, 1: EMİR, 2: SAYIM, 3: GERİ AL}
+    kapali_kume: true
+    note: "Kanonik lookup tablosu. `depo.paletIcHrk.pHrkTip` bunu referans alır."
+    confidence: 1.0
+    last_verified: "2026-09-11"
   depo.paletTip:
     values: {0: PALET, 1: KASA, 2: ROT, 3: ÇIKIŞ KASASI}
 
@@ -170,7 +187,8 @@ codes:
     note: "SUM'da iade sign'lı düşülür; AVG'da iade hariç (DocumentsTypeId<>3)."
 
   encore.SalesProducts.BarcodeNo_1001:
-    note: "BarcodeNo='1001' = GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ tut (sp.BarcodeNo<>'1001'). Fiş-düzeyi dışlama: LEFT JOIN spb ON BarcodeNo='1001' ... WHERE spb.Id IS NULL."
+    values: {"1001": "GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ"}
+    note: "Tek sihirli değer (kod kümesi değil, ayrıklama kuralı): `sp.BarcodeNo<>'1001'`. Fiş-düzeyi dışlama: LEFT JOIN spb ON BarcodeNo='1001' … WHERE spb.Id IS NULL."
 
   joker.J_ORDER_PAY_TYPES:    # E-TİCARET ödemesi
     kolon: "J_ORDERS.**PAYDEFREF** (PAYTYPEREF DEĞİL — 2026-09-03'te o adla arandı, Err 207)"
@@ -285,13 +303,14 @@ codes:
       60400: Heykel Transfer
 
   encore_odeme_grup:        # 12.06 — PaymentTypes.Name → ödeme üst-grubu (dashboard ödeme paneli)
-    "TÜRK LİRASI": Nakit
-    "İADE ÇEKİ": İade Çeki
-    "HEDİYE ÇEKİ": Hediye Çeki
-    "BANKA HAVALE": Havale
-    "BURFAŞ ÇEK": Çek
-    "BOZUK PARA ÜSTÜ": Para Üstü
-    _default: Kredi/Banka Kartı   # banka adları (HALK BANKASI, İŞ, AKBANK, ANADOLU, VAKIF, DENİZ, QNB...)
+    values:
+      "TÜRK LİRASI": Nakit
+      "İADE ÇEKİ": İade Çeki
+      "HEDİYE ÇEKİ": Hediye Çeki
+      "BANKA HAVALE": Havale
+      "BURFAŞ ÇEK": Çek
+      "BOZUK PARA ÜSTÜ": Para Üstü
+      _default: Kredi/Banka Kartı   # banka adları (HALK BANKASI, İŞ, AKBANK, ANADOLU, VAKIF, DENİZ, QNB...)
     kapsam: "⚠️ EncoreMerkez KASA ödemesinin ÜST-GRUBU (PaymentTypes.Name → grup). E-ticaret
       ödemesi DEĞİL (`joker.J_ORDER_PAY_TYPES`), DerinSIS kasa kod kümesi de DEĞİL
       (`dbo.posOdmTip`) — üç ayrı sistem."
@@ -343,33 +362,36 @@ codes:
 
   # ── BKMMaliyet FIFO kod sözlükleri (2026-06-19) ──
   BKMMaliyet.FifoKatman.KaynakTip:
-    NORMAL_yok: "(KaynakTip değil, Durum)"
-    ALIS: "alış faturası katmanı"
-    ACILIS: "açılış normal katmanı (gerçek alış fiyatı)"
-    ACILIS_TAMAMLA: "açılış tamamlama (son alış/merkez/sart/kategori-imput)"
-    AYLIK_DEVIR: "geçmiş ay devir katmanı (GirisTarihi=AyBitis, ≤ envanter)"
-    SENTETIK_ALIS: "sentetik katman (fallback fiyat, stok yetersizde)"
+    values:
+      NORMAL_yok: "(KaynakTip değil, Durum)"
+      ALIS: "alış faturası katmanı"
+      ACILIS: "açılış normal katmanı (gerçek alış fiyatı)"
+      ACILIS_TAMAMLA: "açılış tamamlama (son alış/merkez/sart/kategori-imput)"
+      AYLIK_DEVIR: "geçmiş ay devir katmanı (GirisTarihi=AyBitis, ≤ envanter)"
+      SENTETIK_ALIS: "sentetik katman (fallback fiyat, stok yetersizde)"
     note: "FIFO maliyet havuzu giriş kaynağı"
     last_verified: 2026-06-19
   BKMMaliyet.FifoKatman.Durum:
-    NORMAL: "gerçek fatura fiyatı (en güvenilir)"
-    TAMAMLAMA: "son alış fiyatı (UrunBilgi.SonAlis dahil — gerçek son-alış)"
-    MERKEZ_TAMAMLAMA: "merkez depo (12) son alış"
-    SART_TAMAMLAMA: "son geçerli satınalma-şartı (fn_SonGecerliFiyat/fytOzl)"
-    AYLIK_DEVIR: "geçmiş ay stok devri"
-    KATEGORI_IMPUT: "SatisFiyat × kategori-marj oranı (imputation, 19.06 GARANTİ tier)"
-    KATEGORI_ORT: "kategori ortalama mutlak maliyet (SatisFiyat yoksa)"
+    values:
+      NORMAL: "gerçek fatura fiyatı (en güvenilir)"
+      TAMAMLAMA: "son alış fiyatı (UrunBilgi.SonAlis dahil — gerçek son-alış)"
+      MERKEZ_TAMAMLAMA: "merkez depo (12) son alış"
+      SART_TAMAMLAMA: "son geçerli satınalma-şartı (fn_SonGecerliFiyat/fytOzl)"
+      AYLIK_DEVIR: "geçmiş ay stok devri"
+      KATEGORI_IMPUT: "SatisFiyat × kategori-marj oranı (imputation, 19.06 GARANTİ tier)"
+      KATEGORI_ORT: "kategori ortalama mutlak maliyet (SatisFiyat yoksa)"
     note: "BirimMaliyet<=0 OLAMAZ (fifo-domain §6). 1-TL SABIT KALDIRILDI (19.06): impute-edilemez → DEVRE DIŞI (non-inventory), sahte ~%100 marj üretmez."
     last_verified: 2026-06-19
   BKMMaliyet.FifoSorunluStoklar.SorunTipi:
-    ALIS_YOK: "hiç alış bulunamadı"
-    "ALIS_YOK_*_TAMAMLANDI": "fallback (merkez/songecerli) ile çözüldü"
-    ALIS_EKSIK_TAMAMLANDI: "stok>alış, son alışla tamamlandı"
-    STOK_YETERSIZ: "satış katmanları aşıyor (sentetik gerekli)"
-    FIYAT_YOK: "hiçbir kaynak fiyat yok (GARANTİ sonrası → devre-dışı veya imput)"
+    values:
+      ALIS_YOK: "hiç alış bulunamadı"
+      "ALIS_YOK_*_TAMAMLANDI": "fallback (merkez/songecerli) ile çözüldü"
+      ALIS_EKSIK_TAMAMLANDI: "stok>alış, son alışla tamamlandı"
+      STOK_YETERSIZ: "satış katmanları aşıyor (sentetik gerekli)"
+      FIYAT_YOK: "hiçbir kaynak fiyat yok (GARANTİ sonrası → devre-dışı veya imput)"
     note: "log/audit; çözülen 'TAMAMLANDI' tipleri maliyet ATANMIŞ (tahmini)"
     last_verified: 2026-06-19
-  BKMMaliyet.FifoCikisDetay.HareketTipi: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}
+  BKMMaliyet.FifoCikisDetay.HareketTipi: {values: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}}
   # DerinSIS irs/irsHrk eTip (FIFO kullanımı): alış 0,2,10,3,6,102,103 · satış 1,4,5,100,101 (100=POS satış dominant) · iade 3,5,101
 
   # === MUHASEBE / GL (22.06 keşif — B-117) ===
@@ -382,8 +404,9 @@ codes:
     confidence: 1.0
     last_verified: 2026-06-23
   mhs.mhsFisBaslik.fisAd_sistem:   # 23.06 — açılış/kapanış sistem fişleri (B-118 kesin mizan)
-    Açılış: "fisAd=N'Açılış', yevmiyeNo=1 (yıl ilk fişi). Önceki yıl kapanış bakiyelerini devreder → mizanda DAHİL kalır (opening). 01.01 büyük çift-taraflı fiş."
-    Kapanış: "fisAd=N'Kapanış', yevmiyeNo=MAX (yıl son fişi), her KAPANMIŞ yılda TEK. Bilanço-kapanış: tüm hesapları sıfırlar → mhsMizan_vw bunu İÇERDİĞİ için kapanmış yıl her hesap Borç=Alacak=Bakiye 0."
+    values:
+      Açılış: "fisAd=N'Açılış', yevmiyeNo=1 (yıl ilk fişi). Önceki yıl kapanış bakiyelerini devreder → mizanda DAHİL kalır (opening). 01.01 büyük çift-taraflı fiş."
+      Kapanış: "fisAd=N'Kapanış', yevmiyeNo=MAX (yıl son fişi), her KAPANMIŞ yılda TEK. Bilanço-kapanış: tüm hesapları sıfırlar → mhsMizan_vw bunu İÇERDİĞİ için kapanmış yıl her hesap Borç=Alacak=Bakiye 0."
     ayırt: "fisTip Açılış/Kapanış'ı AYIRMAZ (yalnız 0/2; VİRMAN+Kapanış+normal hepsi fisTip=2). Özel kapanış-tip alanı YOK. Ayraç = fisAd (sistem-sabit ad) + pozisyon (Kapanış=max yevmiye). Açık yılda (2026) Kapanış YOK."
     kesin_mizan: "Gerçek mizan = 'Kapanış' fişi HARİÇ (VİRMAN'lar DAHİL: 6xx→690→692→590 kapanır, bilanço bakiyeli, 590 dönem kârı görünür). Sorgu: NOT EXISTS(fisAd=N'Kapanış')."
     confidence: 1.0
@@ -394,13 +417,10 @@ codes:
     confidence: 1.0
     last_verified: 2026-06-22
   mhs.mhsFisTip: {values: {0: Tahsil, 1: Tediye, 2: Mahsup, 3: Yansıtma}, confidence: 1.0, last_verified: 2026-06-22}
-  gider_konvansiyonu:
-    note: "Fikri'nin gider ayracı (kapanış-müdahale/denetim filtresi @SadeceGider)"
-    car_fat: "frm.frmKod LIKE 'G-%' (cari) / urn.stkKod LIKE 'G-%' (fatura satırı)"
-    mhs: "hspKod LIKE '6%' OR '7%' (gelir tablosu / maliyet hesabı)"
-    fat_eTip: "gider/masraf faturası eTip IN (6,7,8)"
-    confidence: 1.0
-    last_verified: 2026-06-22
+  # gider_konvansiyonu BURADAN TAŞINDI → metrics.yaml (2026-09-11).
+  # Gerekçe: bir KOD KÜMESİ değil, üç sistemde gider ayıklayan FİLTRE KURALIydı
+  # (frmKod LIKE 'G-%' · hspKod 6xx/7xx · eTip IN 6,7,8). codes = enum/lookup;
+  # kural metrics'e aittir. Referans veren yer de güncellendi.
   mhsFisBaslik.fisEntTipID:          # lookup: mhs.mhsEntTip (canlı okundu 2026-08-18)
     lookup: mhs.mhsEntTip
     join: "LEFT JOIN mhs.mhsEntTip e ON e.entTipID = mhsFisBaslik.fisEntTipID → e.entTipAd"

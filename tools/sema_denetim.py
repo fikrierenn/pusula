@@ -369,6 +369,23 @@ def main():
                     ekle(sev(kurallar.get("gomulu_referans")), "gomulu_referans", yer,
                          "prose'da geciyor ama kullanir'de yok: %s:%s" % (hedef_dosya, hedef_id))
 
+    # ── öneri modu: makine-okunur bağ önerisi (SALT-OKUMA — yazan taraf sema_goc.py) ──
+    # Tespit mantığı TEK yerde kalsın diye burada duruyor; göç aracı bu JSON'u tüketir
+    # (emitter-ayrimi: hesap çekirdeği bir, emitter çok).
+    if "--oneri-baglar" in sys.argv:
+        import json as _json
+        oneri = defaultdict(list)
+        for b in bulgular:
+            if b.kural != "gomulu_referans":
+                continue
+            hedef = b.mesaj.split("kullanir'de yok:")[-1].strip()
+            oneri[b.yer].append(hedef)
+        cikti = [{"yer": yer, "dosya": yer.split(":", 1)[0], "id": yer.split(":", 1)[1],
+                  "oneriler": sorted(set(refs))}
+                 for yer, refs in sorted(oneri.items())]
+        print(_json.dumps(cikti, ensure_ascii=False, indent=1))
+        sys.exit(0)
+
     # ── rapor ──
     kirik = [b for b in bulgular if b.seviye == "kirik"]
     uyari = [b for b in bulgular if b.seviye != "kirik"]

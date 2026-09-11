@@ -27,6 +27,7 @@ Kullanım:
     python tools/sema_goc.py --dosya metrics --uygula
 """
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -107,6 +108,145 @@ def alanlari_bul(satirlar, bas, son):
     return bulunan
 
 
+def baglari_kur(uygula, tek_dosya):
+    """`kullanir:` referans grafını kur — prose'a gömülü bağları AÇIK alana taşı.
+
+    Tespit BU DOSYADA DEĞİL: `sema_denetim.py --oneri-baglar` üretir (salt-okuma), burası
+    yalnız yazar. Tespiti iki yere kopyalamak `emitter-ayrimi` ihlali olurdu — çekirdek bir,
+    emitter çok.
+
+    Yerleştirme: kaydın BAŞLIK satırından hemen sonra 4 boşluk girintili yeni satır. Kayıtta
+    zaten `kullanir:` varsa yalnız TEK SATIRLIK liste biçimi (`[a, b]`) genişletilir; blok
+    biçim ATLANIR ve raporlanır (atlanan iş yapılmış sayılmaz).
+    """
+    import json
+    import yaml
+
+    p = subprocess.run([sys.executable, str(Path(__file__).with_name("sema_denetim.py")),
+                        "--oneri-baglar"], capture_output=True)
+    if p.returncode != 0:
+        kosamadi("sema_denetim.py --oneri-baglar basarisiz: %s"
+                 % p.stderr.decode("utf-8", "replace")[:300])
+    try:
+        oneriler = json.loads(p.stdout.decode("utf-8", "replace"))
+    except json.JSONDecodeError as ex:
+        kosamadi("oneri JSON bozuk: %s" % ex)
+
+    per_dosya = defaultdict(dict)
+    for o in oneriler:
+        per_dosya[o["dosya"]][o["id"]] = o["oneriler"]
+
+    toplam, atlanan_top = 0, 0
+    yazilacak = {}
+    for dosya in ([tek_dosya] if tek_dosya else DOSYALAR):
+        hedefler = per_dosya.get(dosya)
+        if not hedefler:
+            print("%-10s bag onerisi yok" % dosya)
+            continue
+        yol = SEMA / ("%s.yaml" % dosya)
+        ham_bayt = yol.read_bytes()
+        satir_sonu = "\r\n" if ham_bayt.count(b"\r\n") > ham_bayt.count(b"\n") // 2 else "\n"
+        ham = ham_bayt.decode("utf-8")
+        satirlar = ham.replace("\r\n", "\n").split("\n")
+        eski_yapi = yaml.safe_load(ham)
+
+        eklenecek = []   # (satir_no, metin, kid, refler)
+        atlanan = []
+        beklenen_ek = {}
+        for kid, bas, son in kayit_tara(satirlar):
+            refler = hedefler.get(kid)
+            if not refler:
+                continue
+            # Satır-içi (flow) harita: `  X: {key: [...], grain: "..."}`. Altına blok anahtar
+            # eklenemez — YAML "expected <block end>" verir. ATLANIR, raporlanır.
+            basliksiz = satirlar[bas].split(":", 1)[-1].strip()
+            if basliksiz.startswith("{"):
+                atlanan.append((kid, "satir-ici (flow) harita — `kullanir:` elle eklenmeli"))
+                continue
+            alanlar = alanlari_bul(satirlar, bas, son)
+            if "kullanir" in alanlar:
+                n = alanlar["kullanir"][0]
+                mevcut = satirlar[n]
+                if "[" in mevcut and "]" in mevcut:
+                    ic = mevcut[mevcut.index("[") + 1:mevcut.rindex("]")].strip()
+                    var_olan = [x.strip() for x in ic.split(",") if x.strip()]
+                    yeni = var_olan + [r for r in refler if r not in var_olan]
+                    eklenecek.append((n, "    kullanir: [%s]" % ", ".join(yeni), kid, refler))
+                    beklenen_ek[kid] = yeni
+                else:
+                    atlanan.append((kid, "kullanir blok biciminde — elle ekle"))
+                continue
+            eklenecek.append((bas + 1, "    kullanir: [%s]" % ", ".join(refler), kid, refler))
+            beklenen_ek[kid] = list(refler)
+
+        if not eklenecek and not atlanan:
+            print("%-10s degisiklik yok" % dosya)
+            continue
+
+        yeni_satirlar = list(satirlar)
+        # Var olan satırı DEĞİŞTİR (aynı no) vs YENİ satır EKLE (araya) ayrı işlenir;
+        # ekleme sondan başa yapılır ki satır numaraları kaymasın.
+        degistir = {n: m for n, m, kid, _ in eklenecek if satirlar[n].lstrip().startswith("kullanir:")}
+        ekle_listesi = [(n, m) for n, m, kid, _ in eklenecek if n not in degistir]
+        for n, m in degistir.items():
+            yeni_satirlar[n] = m
+        for n, m in sorted(ekle_listesi, reverse=True):
+            yeni_satirlar.insert(n, m)
+        yeni_metin = "\n".join(yeni_satirlar)
+
+        try:
+            yeni_yapi = yaml.safe_load(yeni_metin)
+        except Exception as ex:
+            kosamadi("%s: bag kurulunca YAML bozuldu: %s" % (dosya, str(ex)[:200]))
+        beklenen = bag_beklenen(eski_yapi, beklenen_ek)
+        if yeni_yapi != beklenen:
+            fark_yaz(dosya, beklenen, yeni_yapi)
+            kosamadi("%s: esdegerlik kanitlanamadi — HICBIR SEY yazilmadi" % dosya)
+
+        print("%-10s %d kayda bag eklendi (%d referans)"
+              % (dosya, len(eklenecek), sum(len(r) for _, _, _, r in eklenecek)))
+        for kid, sebep in atlanan:
+            print("    ATLANDI  %s — %s" % (kid, sebep))
+        toplam += len(eklenecek)
+        atlanan_top += len(atlanan)
+        yazilacak[yol] = (yeni_metin, satir_sonu)
+
+    print()
+    print("Toplam %d kayit baglandi · %d atlandi." % (toplam, atlanan_top))
+    if not uygula:
+        print("KURU KOSU — yazilmadi. Uygulamak icin: --baglari-kur --uygula")
+        return
+    for yol, (metin, se) in yazilacak.items():
+        yol.write_bytes(metin.replace("\n", se).encode("utf-8"))
+        print("yazildi: %s" % yol.name)
+
+
+def bag_beklenen(yapi, beklenen_ek):
+    """Eski yapı + yalnız `kullanir` anahtarı eklenmiş/genişletilmiş hâli."""
+    if not isinstance(yapi, dict):
+        return yapi
+    sonuc = {}
+    for bolum, icerik in yapi.items():
+        if isinstance(icerik, dict):
+            sonuc[bolum] = {k: _bag_uygula(v, beklenen_ek.get(str(k)))
+                            for k, v in icerik.items()}
+        elif isinstance(icerik, list):
+            sonuc[bolum] = [_bag_uygula(v, beklenen_ek.get(str(v.get("id"))
+                                                           if isinstance(v, dict) else None))
+                            for v in icerik]
+        else:
+            sonuc[bolum] = icerik
+    return sonuc
+
+
+def _bag_uygula(govde, refler):
+    if not refler or not isinstance(govde, dict):
+        return govde
+    yeni = dict(govde)
+    yeni["kullanir"] = refler
+    return yeni
+
+
 def main():
     uygula = "--uygula" in sys.argv
     tek = None
@@ -118,6 +258,9 @@ def main():
         import yaml
     except ImportError:
         kosamadi("pyyaml yok: pip install pyyaml")
+
+    if "--baglari-kur" in sys.argv:
+        return baglari_kur(uygula, tek)
 
     genel, dosyaya_ozel = eslemeyi_oku()
     hedefler = [tek] if tek else DOSYALAR

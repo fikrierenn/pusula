@@ -5,6 +5,7 @@ updated: 2026-08-06
 
 metrics:
   marj_kdv_tabani:
+    kullanir: [bridges:urn-kdv-oran, metrics:birim_maliyet]
     soru: "Brüt marj / markup hesaplanırken satış ve maliyet aynı KDV tabanında mı?"
     kural: >-
       HAYIR — iki taraf FARKLI tabandadır ve düzeltilmeden marj hesaplanamaz.
@@ -30,6 +31,7 @@ metrics:
     last_verified: "2026-09-09"
 
   gelir_tablosu_pl:
+    kullanir: [bridges:mhsfis-gdrmerkez]
     kaynak: "mhs.mhsFis signed fisTutar (gelir BA=0→+, gider BA=1→−). Dashboard /gelir-tablosu (GelirTabloQueries). Merkez: fisGdrMerkez (köprü mhsfis-gdrmerkez)."
     yapi: "Net Satış(60−61) → Faaliyet Gideri(740/760/770, kategori .YY: 10 işçi ücret·20 yönetim·30 dışarıdan fayda·40 çeşitli·50 vergi-harç·60 amortisman) → FAALİYET KÂRI = NetSatış−gider → +Finansman(780/66/653)+Diğer(64/65/67)+KKEG(689/68) → NET KÂR = tüm 6xx+7xx signed toplam."
     kritik_cogs: "⚠️ SMM (satılan malın maliyeti/kitap alış) YOK — BKM COGS'u stok hareketiyle tutar, GL 62 hesabına YAZMAZ (62 aktivitesi 0). Net Kâr = SMM-ÖNCESİ katkı, gerçek dip-kâr DEĞİL. Kullanıcı şablonu da COGS'suz."
@@ -38,6 +40,7 @@ metrics:
     last_verified: "2026-08-06"
 
   gider_mizan_dagitim:
+    kullanir: [bridges:mhsfis-gdrmerkez]
     kaynak: "mhs.mhsFis (GL satır) + mhsHsp; köprü mhsfis-gdrmerkez → frm (gider merkezi). MizanQueries ile aynı çekirdek."
     gider_tanimi: "hspKod '7%' TÜMÜ (740 hizmet/kafe · 760 pazarlama · 770 genel yönetim · 780 finansman) + gider-6xx (LEFT(hspKod,2) IN 62,63,65,66,68 → 653 komisyon · 689 ÖİV/olağandışı). Gelir 6xx (600 satış/602 kira geliri/642 mevduat/679 teşvik) HARİÇ. BKM 7/A yöntemi → yansıtma (7x1) aktif değil, 6xx+7xx çift-sayım YOK."
     tutar: "Bakiye = Borç−Alacak = SUM(fisBA=1→-fisTutar) − SUM(fisBA=0→fisTutar). Gider debit → pozitif. Kapanış fişi HARİÇ (mhsFisBaslik.fisAd<>'Kapanış'). Yıl = fisSirketID+2020 (2026→sirket 6). Kümüle MONTH≤ay / tek ay MONTH=ay."
@@ -75,6 +78,7 @@ metrics:
     last_verified: "2026-08-14"
 
   banka_ekstresi_siniflandirma:
+    kullanir: [bridges:car-karsi-frm, bridges:frm-mhsent-glhesap]
     kaynak: "dbo.car cTip=122 (Banka Ekstresi); köprü car-karsi-frm; kod car.cFatTip=122"
     problem: "Banka ekstresi satır açıklamasından (cNot) doğru cari (cKodKarsi) atama. Şule (insID 1897) elle yapıyor; oto-import/SP YOK. Pilot: muhasebe app (plan-27)."
     perspektif: "Çiftin BANKA-OLMAYAN tarafı = gerçek cari — cKod ∈ banka hesabı (frmTip=5) olan satırın cKodKarsi'si. cBA TEK BAŞINA ayraç DEĞİL (aynı işlemde bir satır cBA=0 gerçek tarafken diğeri cBA=1). mhs.mhsEntKontrolCar postalama için cBA=0 tarafını seçer (kanonik, çift-post engeli)."
@@ -262,6 +266,7 @@ metrics:
     uygulama: "MagazaQueries.GetDetayAsync kampSql/kampFisSql · scripts/build_3al2ode_belge_excel.py · gm-rapor M2"
 
   stockout_sku:             # 13.06 — SKU-bazlı stockout SİNYAL KALİTESİ (MIMBAL pilot bulgusu)
+    kullanir: [metrics:envanter_exclusions]
     kaynak: "irsHrk per-SKU bakiye≤0 / son 30g satışı olan (E8), kategori bazlı"
     formula: "100.0 * COUNT(bakiye≤0) / COUNT(satılan çeşit)"
     caveat: "HAM çeşit-sayısı stockout, reorder edilemeyen kalem barındıran kategorilerde YANILTICI — oranı şişirir, sahte ACT üretir. Önce drill-down, sonra ACT."
@@ -284,6 +289,7 @@ metrics:
     uygulama: "dashboard EticQueries.GetIlTeslimatAsync/GetAyKargoAsync/GetKargoPerfAsync (CikisIsGunu+TatilApply) · KARGO İL TESLİMAT PERFORMANSLARI.sql"
 
   encore_irshrk_mutabakat:   # 14.06 — EncoreMerkez ↔ irsHrk ciro mutabakatı (FSM 13.06 işlem-seviye KESİN)
+    kullanir: [metrics:tum_ciro_kdv_kargo_haric]
     soru: "Dashboard kategori ciro (EncoreMerkez) drill (irsHrk) ile neden ~%14 (Oyuncak) farklı?"
     kdv_bazi: "EncoreMerkez SalesProducts.TotalPrice + Sales.GrossTotal = KDV DAHİL. SalesProducts.VatTotal = KDV. KDV hariç = TotalPrice−VatTotal. irsHrk ehTutarN = KDV HARİÇ. Kitap %0, oyuncak/kırtasiye %20 → kategori bazında fark; blended mağaza ~%5-6."
     iki_sebep: "(1) KDV (EncoreMerkez dahil, irsHrk hariç) — ~%5. (2) İADE: EncoreMerkez katSql iade edilen kalemi (SalesProducts.ReturnAmount>0) SATIŞ sayıyor; irsHrk ehTip 100/101 ile netliyor — ~%0,9."
@@ -337,7 +343,7 @@ metrics:
     mudahale: "giriş(gTarih/cgTarih) VEYA değişim(kTarih/ckTarih) > Fin_AyKapanis.KapanisDT (belge ayının kapanış tarihi). GecGiris/SonradanDeg bayrak."
     severity: "3=ikisi · 2=sonradan-değişim · 1=geç-giriş · 0=yok. RiskSkor = severity×100 + min(GunSonra,90) + round-number(25) + giren=onaylayan(20) + mükerrer(15)."
     forensic: "round-number (ABS(tutar)%1000=0 & ≥1000) · mükerrer (kaynak+gider+ABS(tutar)+belge-tarih >1) · giren=onaylayan (kisi giren=onay; küçük ekipte YAPISAL, kişisel şüphe değil)."
-    sadece_gider: "frm/urn 'G-%' (car/fat) · hspKod 6xx/7xx (mhs) — codes.gider_konvansiyonu"
+    sadece_gider: "frm/urn 'G-%' (car/fat) · hspKod 6xx/7xx (mhs) — metrics:gider_konvansiyonu"
     arac: "bkm.sp_KapanisMudahaleKontrol_v2 (@Mod OZET/DETAY, @GiderKod drill). Panel /muhasebe + skill muhasebe-denetci."
     bulgu: "22.06 canlı: 2025-Eki 11,79M ₺ kapanış-sonrası (Şule, açılmadı) · MHS manuel 100-164g geç (pinar.muhasebe1, Ara'25 31 fiş/132g) · 2026 görece temiz (CAR aylık <600K). Tem'25 Özge giren≠onaylayan = nadir gerçek-SoD."
     confidence: 0.95
@@ -463,6 +469,7 @@ metrics:
     evidence: "2026-09-02 canli Zirve + DerinSIS olcumu; norm dosyasi kullanici (GMY) tarafindan verildi. Arsiv: briefings/sezon-kadro-20260902/ (sunum + Excel + veri/norm JSON)."
 
   sezon_kiyas_takvim_hizalama:    # 2026-09-02 — OKUL ACILISINA HIZALAMA (kritik metodoloji)
+    kullanir: [metrics:pos_sistem_gecisi_2025]
     kural: "⚠⚠ Okul sezonu (Tem-Eyl) YoY kiyasi TAKVIM TARIHIYLE DEGIL, **OKUL ACILIS GUNUNE HIZALI** yapilir. Hafta ofseti = DATEDIFF(DAY, o_yilin_okul_acilisi, tarih)/7. Takvim-tarihli kiyas yaniltir: acilis 6 gun kayinca satin alma dalgasi tamamen baska aya duser."
     okul_acilis: "MEB calisma takvimi: 2025-2026 -> **08.09.2025** (uyum egitimi 01-05.09.2025) · 2026-2027 -> **14.09.2026** (uyum haftasi 07-11.09.2026). Yani 2026'da acilis 6 GUN GEC. Yeni yil kiyasi oncesi MEB takvimi DOGRULANIR (meb.gov.tr calisma takvimi genelgesi)."
     KANIT_2026: "Ayni veri, iki yontem: TAKVIM-TARIHLI (Tem+Agu) ciro +%44,1 · adet +%16,9 · kisi basi adet +%3,8 — ve Agustos'ta buyume %70'lerden %7'ye 'cokuyor' gibi gorunur (9. hafta 26 Agu-01 Eyl: 23,33M -> 24,99M). OKUL-HIZALI (T-9..T-2, 8 tam hafta) ciro +%71,3 (66,94M -> 114,69M) · adet +%34,9 (574.718 -> 775.192) · KDV-dahil ciro 71,84M -> 122,60M (+%70,7) · kisi basi adet +%20,6 (4.019 -> 4.845; kadro 143 -> 160) — haftalik buyume %64,9/%73,6/%72,2/%79,2/%67,9/%76,3/%67,8/%71,1 = HIC KIRILMA YOK. 'Agustos coktu' teshisi TAMAMEN ARTEFAKT."
@@ -474,6 +481,7 @@ metrics:
     evidence: "2026-09-02 canli MCP (DerinSIS eTip100, 3 magaza, Sinav haric) haftalik seri + MEB 2025-2026 ve 2026-2027 calisma takvimi (web dogrulama). Ilgili: pos_sistem_gecisi_2025 (ayni analizde ikinci artefakt)."
 
   sezon_ciro_tahmini_okul_hizali:    # 2026-09-08 — OKUL KAYMASI VARKEN CIRO TAHMINI
+    kullanir: [metrics:pos_sistem_gecisi_2025, metrics:sezon_kiyas_takvim_hizalama]
     kural: "Okul acilisi kayan yilda ciro tahmini TAKVIM AYI uzerinden yapilmaz. Yontem: (1) gunluk seriyi okul acilisina hizala (ofset = DATEDIFF(DAY, acilis, gun)); (2) buyume carpani k'yi SON TAM hizali gunlerden olc (k = 2026(T-x..T-son)/2025(ayni ofsetler)); (3) tahmin(o) = 2025(o) x k, o > son_ofset; (4) tahmini gunleri CARI yilin takvimine geri yaz -> ay tahmini. Kesim gunu de hizalidir: bugunun eTip 100 belgesi gun ici yeniden yazildigi icin son TAM gun esas alinir."
     okul_acilis_olculdu: "2024-2025 -> 09.09.2024 · 2025-2026 -> 08.09.2025 · 2026-2027 -> 14.09.2026. 2024 tarihi VARSAYILMADI: 2025 sezon sekline en iyi oturan pazartesi arandi (T-56..T+28 normalize gunluk egri, L1 sapma) -> 09.09=0,1027 · 02.09=0,2051 · 16.09=0,2695. MEB takvimiyle birebir tuttu. Yeni yilda ayni sinama tekrarlanir (takvimi web'den de dogrula)."
     zirve_konumu: "Sezon zirvesi ACILISTAN SONRA: en yuksek tek gun 2024 T+6 (15.09) · 2025 T+5 (13.09). En yuksek 7-gun penceresi ise T-5/T-4'te basliyor. Yani 'acilis gunu zirve' YANLIS — dalga acilistan ~1 hafta sonra tepe yapiyor."
@@ -507,6 +515,7 @@ metrics:
     ttl_days: 365
     evidence: "2026-09-02 canli MCP — EncoreMerkez aylik fis (2025-07 basliyor: Ist.Yolu 9.483 · FSM 5.331 · Ozluce 7.792, Eylul'de 28.642/42.809/46.280'e oturuyor) + INTER_BOS BELGE aylik fis + DerinSIS irs/irsAyr eTip100 kontrol grubu. Arsiv: sorgular/2026-09-02-kadro-vs-is-hacmi-savunma.sql."
   maliyet_proxy_sapmalari:    # 2026-08-25 — hangi maliyet proxy'si ne kadar sapiyor (OLCULDU)
+    kullanir: [metrics:birim_maliyet, metrics:olu_stok_maliyet_zinciri]
     kanonik: "Birim maliyet = **fat5** (son 5 alis faturasi `SUM(ehTutarN)/SUM(ehAdetN)`, DerinSIS `fatAyr`+`fat` eTip=0/eDurum<>2 + `BKMDATA..ODAK_FATURA` UNION). Tanim: bu dosyada `birim_maliyet.MLYT` · uygulama ornegi `olu_stok_maliyet_zinciri`. Analizde varsayilan BUDUR."
     sapma_SonAlis: "`bkm.UrunBilgi.SonAlis` (TEK son alis) marji DUSUK gosterir. Ayni sepette olculdu (hediye-cekli sepet, 12 ay): SonAlis %27,3 vs fat5 %32,4 -> **−5,1 puan**. Sebep: enflasyonda tek son alis, son 5 faturanin ortalamasindan yuksek."
     sapma_SonAlis_vs_FIFO: "Ayni SonAlis yontemi tum perakendede (DocType 1/3, Oca-2026) %25,55 verirken FIFO (`BKMMaliyet`, kanonik SMM) %35,40 -> **−9,8 puan**. SonAlis = muhafazakar taban, FIFO = gercek."
@@ -518,6 +527,7 @@ metrics:
     evidence: "2026-08-25 — ayni sepette SonAlis/fat5 yan yana olculdu (sorgular/2026-08-25-... blok 6 vs 12); SonAlis-FIFO sapmasi blok 6b vs bu dosyadaki fifo Ocak-2026 (%35,4)."
 
   personel_maliyet_ve_fazla_mesai:   # 2026-09-03 — kadro savunmasinin MALIYET + UYUM tarafi (K-21/K-22)
+    kullanir: [metrics:sezon_personel_kohort]
     kaynak: "Zirve `BKM_GENEL.dbo.vw_PuanBil` (bordro, kisi x ay) + DerinSIS `irs/irsAyr eTip=100` (ciro). Kapsam ayraci `vw_PersonelDepartman.Lokasyon LIKE 'MA%'`."
     OLCU_BIRIMI_FTE: "⚠⚠ Kadro/kapasite olcusu **FTE (tam zaman esdeger) = SUM(Primgunu)/30**, bordro SATIRI DEGIL. Bordro satiri (kisi-ay) sayilirsa ay icinde 1 gun calisan da 1 sayilir ve sezonluk giris/cikis yogun aylarda kadro SISER (kullanici uyarisi 03.09.2026). Olculen sapma: 5 magaza Agustos-2025 = 211 kayit vs 168,9 FTE (%25); uc POS Temmuz-2026 = 127 kayit vs 112,4 FTE (ort. prim gunu 26,6). Kisi-basi TUM metrikler (maliyet, ciro, fazla mesai) FTE ile bolunur; kayit sayisi + ortalama prim gunu seffaflik icin JSON/Excel'de kalir. `Primgunu` = SGK prim gunu (tam ay 30); ucretsiz izin zaten dusuk gelir."
     MALIYET_FORMULU: "personel maliyeti = `SUM(Bt + Isskk + Iisk)` (brut toplam + isveren SGK hissesi + isveren issizlik payi). Kidem karsiligi + yan haklar HARIC -> ALT SINIR. Net odenen (`Netu`) maliyet DEGILDIR (isveren yukunu gostermez)."
@@ -708,6 +718,7 @@ metrics:
     last_verified: "2026-09-10"
 
   gerceklesen_marj_panel_geneli:
+    kullanir: [metrics:birim_maliyet]
     ad: "GERÇEKLEŞEN MARJ — kart fiyatı değil, POS'ta fiilen alınan para"
     kural: >-
       Marj ve stok değeri KART fiyatıyla hesaplanamaz. POS brütü kart fiyatına EŞİT
@@ -763,6 +774,7 @@ metrics:
     last_verified: "2026-09-10"
 
   asiri_stok_esigi_turetildi:
+    kullanir: [metrics:asiri_stok_esigi_kategori_bazli]
     ad: "AŞIRI STOK EŞİĞİ — 5× seçilmişti, 3× ölçüldü"
     kural: >-
       Aşırı stok ölçütü: `SezonToplam > 0 AND ToplamStok > 3 * SezonToplam`. Eşik **3×**
@@ -989,6 +1001,7 @@ metrics:
     last_verified: "2026-09-10"
 
   kpi_tutar_tabani_ayrimi:
+    kullanir: [metrics:olu_stok_pos_capraz_denetimi]
     ad: "KPI ŞERİDİNDE TUTAR TABANI ÜÇ FARKLI ŞEY — toplanamaz"
     kural: >-
       Kartların ₺ değeri üç ayrı tabandan gelir ve HER KARTTA YAZILI olmalı:
@@ -1276,3 +1289,26 @@ metrics:
       `ToplamKar` artık `BirimKar * AdetNet`.
     evidence: "2026-09-10 — sql-denetci bulgusu + kendi ölçümü (EncoreMerkez iade 58.244 belge / 17,2M ₺ net, marj alt kümesindeki tam etkisi ayrıca ölçüldü)"
     last_verified: "2026-09-10"
+
+  gider_konvansiyonu:
+    ad: "Gider ayracı (üç sistemde gider nasıl ayıklanır)"
+    tip: kural
+    kural: >-
+      Bir kaydın GİDER olup olmadığı üç sistemde ÜÇ AYRI ÖLÇÜTLE belirlenir; hangisinin
+      geçerli olduğu hangi tabloya baktığına bağlıdır:
+      (a) cari/fatura tarafı → `frm.frmKod LIKE 'G-%'` (cari kart) veya
+          `urn.stkKod LIKE 'G-%'` (fatura satırı kalemi);
+      (b) muhasebe tarafı → `hspKod LIKE '6%' OR hspKod LIKE '7%'` (gelir tablosu / maliyet);
+      (c) fatura belge tipi → `fat.eTip IN (6,7,8)` (gider/masraf faturası).
+      Kapanış-müdahale ve denetim sorgularındaki `@SadeceGider` süzgeci budur.
+    sinir: >-
+      Bu bir AYRAÇTIR, gider TANIMI değil. (b) geniştir — 6xx içinde GELİR hesapları da var
+      (600 satış, 602 kira geliri, 642 mevduat, 679 teşvik); gider tutarı hesaplanırken
+      `gider_mizan_dagitim` kuralı uygulanır, bu ayraç tek başına toplama yapmaz.
+    kullanir: [metrics:gider_mizan_dagitim]
+    tasindi: >-
+      2026-09-11'de `codes.yaml`'dan taşındı. Orada bir kod kümesi gibi duruyordu ama
+      `values`/`lookup` taşımıyordu — enum değil, filtre kuralıdır (sözleşme denetçisi
+      KIRIK verdi ve haklıydı).
+    confidence: 1.0
+    last_verified: "2026-06-22"

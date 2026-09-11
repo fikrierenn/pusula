@@ -38,6 +38,7 @@ queries:
     last_verified: 2026-09-03
 
   - id: pos-urun-kategori-koprusu
+    kullanir: [bridges:products-code-stkid, bridges:salesproducts-products]
     question: "POS satışını DerinSIS kategorisine bağla (Products.Code=stkID)"
     bridges: [products-code-stkid, salesproducts-products]
     mcp_safe: true
@@ -58,6 +59,7 @@ queries:
     note: "compat 110: TRY_CONVERT yok → ISNUMERIC guard. Oyuncak ciro 700K→10,96M bu köprüyle düzeldi."
 
   - id: eticaret-marka-satis
+    kullanir: [bridges:orderdetails-items, bridges:orderdetails-orders]
     question: "E-ticaret marka/yayınevi bazında satış (dönem)"
     bridges: [orderdetails-orders, orderdetails-items]
     mcp_safe: true
@@ -86,6 +88,7 @@ queries:
     note: "Olgun pencere: son 15 gün hariç (kargo süreci bitmemiş olur)."
 
   - id: depo-hareket-kategori
+    kullanir: [bridges:irs-firma, bridges:palet-irs, metrics:depo_isgucu]
     question: "Merkez depo hareket kategorileri (Mal Kabul/Heykel/İade/Sevk) yıl bazında"
     metrics: [depo_hareket_kategori]
     bridges: [palet-irs, irs-firma]
@@ -129,6 +132,7 @@ queries:
     sample_result: {2024: "10p/1.02M", 2025: "9p/1.38M", 2026: "8p/2.82M (+%245 verim)"}
 
   - id: musteri-adi-yazarkasa
+    kullanir: [bridges:sales-customer-name]
     question: "Yazarkasa fişindeki müşteri adı/telefonu"
     bridges: [sales-customer-name]
     mcp_safe: true
@@ -270,6 +274,7 @@ queries:
     last_verified: 2026-09-03
 
   - id: okul-hizali-pencere-hacim
+    kullanir: [metrics:hizali_pencere_gun_esitligi]
     question: "Okul acilisina hizali pencerede adet + ciro (iki yil, esit gun)"
     entities: [dbo.irs, dbo.irsAyr, bkm.UrunBilgi]
     mcp_safe: true
