@@ -205,6 +205,24 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   - **YAN BULGU — negatif stok jenerik fiyat-kartlarında yığılı:** Missim Bijuteri fiyat-noktası SKU'ları (`satisTur=1`) −499 / −368 / −281 / −170 adet taşıyor ve satışları yüksek (830 / 532 / 279). "Veri Kirli" KPI'sının en büyük kalemleri bunlar; gerçek sayım hatası mı yoksa jenerik kart kullanımının doğal sonucu mu — ayrı ölçüm.
   - ⚠ TABAN YENİDEN KURULMALI: (ii)(iii)(iv) yalnız yeni taban kurulumunda etkir; mevcut kesim satırları eski evrenle yazılmış. Panelde "taban kur" düğmesi.
   - ⚠ NEGATİF MAĞAZA STOĞU "VERİ KİRİ" DEĞİLDİ: taban 09.09 08:44'te kuruldu; POS satışları (08.09 23:45 `hrkTarih`) girdi, mağaza girişleri (09.09 10:12 ve 16:36) girmedi → StokFsm −27 / StokOzl −10. Sebep geriye dönük kayıt + kabul gecikmesi. Sema: `irsHrk_zaman_kolonlari` (ehTrhS = belge, hrkTarih = satırın deftere düşme anı). **Veri Kirli KPI'sı bu iki durumu ayırmalı.**
+- [ ] **B-173 Ağu-Eyl 2026 alım röntgeni — ALICIYA SORULACAKLAR (ölçüm bitti, karar bekliyor)**
+  Arşiv `sorgular/2026-09-10-agu-eyl-alim-arz-gunu.sql` · Excel `raporlar/asiri-alim-agu-eyl-2026.xlsx`
+  (emitter `scripts/asiri_alim_excel.py`). Net alım 151,2M ₺ / 34.140 çeşit.
+  (a) **Hesap sorulacak dilim 18,3M ₺ (%12,1)** — 4.501 çeşit, yaşı bilinen eski ürün,
+  >365 gün arz ya da 365 günde hiç satmamış. ⚠ 10.09 akşamı verilen **21,9M YANLIŞTI**:
+  yaş ayracı `IlkGiris NULL`'u ESKİ sayıyordu (307 çeşit / 3,65M ₺ ayrı kovaya taşındı).
+  (b) **Derya / Mopak A4 kağıt 919K ₺** — iç tüketim hipotezi ÇÜRÜDÜ (12 ayda 8 adet);
+  ~3,5 yıllık stok. Soru: *"bu bir fiyat kilidi miydi, ne kadar tasarruf sağladı?"*
+  Cevap yoksa aşırı. Bu bir TALEP kararı değil FİNANSAL karar → finans ile birlikte sorulmalı.
+  (c) **Yanıt / 22 sınav hazırlık kitabı 3,76M ₺** — kurumsal bulk hipotezi ÇÜRÜDÜ
+  (depo→mağaza 12 ayda 2 adet). Hafifletici: sezon başı alım + 3-6 belgeli tekrar-ikmal.
+  Ağırlaştırıcı: **içerik ömrü** — format/müfredat değişirse eski baskı satılamaz.
+  Soru: *"bu baskılar format değişmeden eritilir mi?"*
+  (d) **Yeni ürün bahsi ~39,3M ₺ / 4.599 çeşit** — ölü stok DEĞİL ama riskin yaşadığı yer;
+  sell-through 8-12 haftada izlenmezse gelecek dönemin aşırı stoğu buradan doğar.
+  (e) ⚠ Alıcıya atıf YAPILAMAZ (karar sahibi veride izli değil) — bunlar ürün/tedarikçi
+  kohortu, kişi karnesi değil.
+
 - [ ] **B-172 Satış Analizi — DANIŞMAN İTİRAZLARI (satinalma-danisman 10.09, UYGULANMADI)** —
   Dört ölçüt değişikliği adil-atıf ve perverse-incentive açısından denetlendi; üç ağır bulgu:
   (a) **KARŞI-METRİK DENGESİ TERS** (en ciddi). Aşırı Stok'un karşı-metriği "ODAK'ta da var"
@@ -236,8 +254,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   (a) **Aralıklı talep tahmini yok** — sınıflandırma var (ADI 1,32 · CV² 0,49), Croston/SBA/TSB
   ayrıştırması YOK. Çeşitlerin %91,9'unda gün-stok hesaplanmıyor ("—" gösteriyor); sipariş
   önerisi üretilmiyor. Kapatmak: SBA tahmini + emniyet stoğu → yeni hesap katmanı.
-  ⚙ **KISMEN 10.09:** `siparis-karari` skill'i (miktar formülü + emniyet stoğu + taahhüt +
-  çıkış planı) yazıldı ve kitapdışında elle koştu (416 çeşit / 2.291 adet / 376.516 ₺).
+  ⚙ **KISMEN 10-11.09:** `siparis-karari` skill'i (miktar formülü + emniyet stoğu + taahhüt +
+  çıkış planı) yazıldı, emitter `scripts/siparis_onerisi_excel.py` koştu. **Kohort 11.09'da
+  düzeltildi** (kullanıcı: "çok çok az … emin misin"): ölçüt `ToplamStok = 0` idi ve gerçek
+  ikmal ihtiyacının ~1/13'ünü görüyordu; artık **kapak altı** (`stok < hız × (temin+30)`),
+  eldeki stok öneriden düşülüyor, satırlar ACİL/İKMAL ayrılıyor.
+  Kitapdışı A listesi: 416 çeşit / 2.291 adet / 376.516 ₺ → **1.549 çeşit / 29.295 adet /
+  1.942.711 ₺** (12-hafta plan cirosu 11,77M ₺).
   KALAN: hesap KODA girmedi — SBA/TSB beklenen değeri hâlâ yok, skill 365g/sezon hızını
   vekil alıyor ve emniyet σ'sını CV²'den türetiyor. Panelde sipariş kolonu YOK.
   (b) **Maliyet yaşı sapması** (B11) — satış 365 günlük, maliyet bugünkü. Maliyet yaşına göre
