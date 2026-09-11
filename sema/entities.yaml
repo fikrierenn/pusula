@@ -118,8 +118,31 @@ entities:
     last_verified: "2026-09-03"
   stokSonAltDepo_vw: {type: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
-  ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK: {key: [ORDERREF], note: "depoda toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID)"}
-  ODAKJOKER.JOKER.dbo.J_DETAIL_BOXES: {key: [ITEMREF, DETAILREF, LOGICALREF], note: "raflanmış koli; COUNT=raflanmış adet. İhtiyaç = sipariş − raflanmış."}
+  ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK:
+    key: [ORDERREF]
+    note: >-
+      E-TİCARET (JOKER) tarafında toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID).
+      ⚠ BU WMS DEĞİLDİR — kullanıcı düzeltmesi 2026-09-11: "wms olarak joker yok, DerinSIS
+      içinde wms". BKM'nin WMS'i `DerinSISBkm.depo.*` şemasıdır (`depo.emir`/`emirAyr`/
+      `paletIcHrk`/`stok_adres_palet_vw`). Bu tabloya "WMS" demek ölçümü değil ADI yanlış
+      kılar — en tehlikeli hata sınıfı (`semantic-layer` § "Başka ne olabilir?").
+    measurement: >-
+      2026-09-11 — 0 satır. Kardeşleri `J_DETAIL_BOXES` 0 ve `J_ORDER_DETAILS_COMP` 0 iken
+      `J_ORDERS` 4.705.778 satır; aynı gün DerinSIS WMS tarafı DOLU (`depo.emirAyr` 5.393.915
+      satır, 2.040.414'ü `emTamam=0` açık). Yani JOKER toplama alt sistemi bu ortamda
+      kullanımda değil. NEDEN: ESKİ E-TİCARET OPERASYONUNUN yapısı (kullanıcı 2026-09-11: "bunlar eski eticaret operasyonu varken olan yapılar · aktif olarak kullanılmıyor"). Tablolar duruyor ama BESLENMİYOR.
+    evidence: "2026-09-11 — sqlcli COUNT_BIG karşılaştırması (JOKER 3 tablo vs DerinSIS depo 5 obje)"
+    confidence: 0.9
+    last_verified: "2026-09-11"
+  ODAKJOKER.JOKER.dbo.J_DETAIL_BOXES:
+    key: [ITEMREF, DETAILREF, LOGICALREF]
+    note: >-
+      E-TİCARET tarafında raflanmış koli; COUNT=raflanmış adet. İhtiyaç = sipariş − raflanmış.
+      ⚠ WMS DEĞİL (yukarıdaki kayda bak).
+    measurement: "2026-09-11 — 0 satır."
+    evidence: "2026-09-11 — sqlcli COUNT_BIG"
+    confidence: 0.9
+    last_verified: "2026-09-11"
   ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS_COMP: {key: [DETAILREF, COMPITEMREF, COMPBARCODE, QUANTITY], note: "kompozit/set ürün açılımı (J_ORDER_DETAILS.LOGICALREF=DETAILREF)"}
 
   # Hedef / veri ambarı

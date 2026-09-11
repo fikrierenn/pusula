@@ -313,7 +313,10 @@ metrics:
       Transfer:    {adrsAlanTipID: 5, adrsAd: TRNS}
     applied_in: "DEPO ÖZET DURUM.sql / BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql"
 
-  wms_bekleyen_toplama:     # WMS raflanmamış sipariş ihtiyacı
+  # ⚠ AD DÜZELTİLDİ 2026-09-11 (kullanıcı: "wms olarak joker yok, DerinSIS içinde wms").
+  # Kayıt `wms_` önekiyle duruyor ama KAYNAĞI JOKER (e-ticaret) — yani ADI yanlıştı.
+  # Anahtar DEĞİŞTİRİLMEDİ (kod/rapor referansları kırılmasın); ad hatası burada BEYAN edilir.
+  wms_bekleyen_toplama:     # e-TİCARET (JOKER) raflanmamış sipariş ihtiyacı — WMS DEĞİL
     type: simple
     unit: count
     basis: none
@@ -322,6 +325,22 @@ metrics:
     formula: "ihtiyaç = SUM(QUANTITY sipariş) − ISNULL(SUM(raflanmış koli),0); depodan_toplanacak = ihtiyaç − JokerHavuz mevcut"
     note: "J_ORDER_DETAILS_COMP ile set/kompozit ürün açılır (COMPBARCODE/COMPITEMREF). DETAILS.STATUS=2003 (rafta) tarihi NULL'lanır."
     applied_in: "BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql"
+    measurement: >-
+      2026-09-11 — BU METRİK ŞU AN HESAPLANAMAZ. Kaynak üç tablonun ÜÇÜ DE BOŞ:
+      `J_DEPO_TOPLANACAK` 0 · `J_DETAIL_BOXES` 0 · `J_ORDER_DETAILS_COMP` 0
+      (aynı anda `J_ORDERS` 4.705.778 satır). Formül koşarsa 0 döner ve o 0
+      "bekleyen yok" diye okunur — oysa "bakılacak satır yok" demektir.
+      ⚠ AD HATASI: metrik `wms_` deniyor ama BKM'nin WMS'i `DerinSISBkm.depo.*`tır ve
+      o taraf DOLUDUR (`depo.emirAyr` 5.393.915 satır / 2.040.414 açık). Gerçek WMS
+      bekleyen ihtiyacı ORADAN hesaplanır — aşağıdaki `UYARI_emirAyr` zaten o tarafın
+      kirli olduğunu söylüyor, ama ALTERNATİF değil TEK kaynak olduğu şimdi ölçüldü.
+      NEDEN BOŞ (kullanıcı 2026-09-11): "bunlar eski eticaret operasyonu varken olan
+      yapılar · aktif olarak kullanılmıyor". Yani veri kaybı ya da ETL arızası DEĞİL —
+      operasyon kapandı, tablolar beslenmiyor. Bu kayıt TARİHSEL bilgi olarak durur.
+      ⚠ B-60 zaten 15.06'da (commit 7daf10f) DOĞRU kaynakla — `depo.emirAyr` — yazıldı
+      ve kapandı; bu metriğe bağlanmadı.
+    evidence: "2026-09-11 — sqlcli COUNT_BIG: JOKER 3 tablo (0/0/0) vs DerinSIS depo (12.304 / 5.393.915 / 2.040.414 acik)"
+    evidence_status: pending
     UYARI_emirAyr: "B-111 keşfi (18.06): bu metrik J_ORDERS (e-tic) tarafı. DerinSIS depo.emirAyr.emTamam=0 ALTERNATİF DEĞİL — KİRLİ: 2.422 emir/~2M satır/4,3M kalan adet, header kTarih 2021'e kadar. depo.emir.emDurum=1 hem zombi hem taze kapsar → temiz açık/kapalı bayrağı YOK. emirAyr-tabanlı bekleyen kart için recency-filtre (son ~7g) ZORUNLU + zombi-uyarısı ayrı. Kanıt: sorgular/2026-06-18-wms-bekleyen-kesif.sql"
     last_verified: 2026-06-18
 

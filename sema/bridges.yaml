@@ -421,7 +421,23 @@ bridges:
       GROUP BY pu.pUStkID
     evidence: "15.06 — job sorgusu + WMS toplam 4.381.910 adet (stokSonAltDepo mekan=12 sadece 2.144.814). Dashboard GetUrunlerAsync + scripts/olu_stok_excel.py bunu kullanır."
   - id: depotoplanacak-orders
-    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 0 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
+    measurement: >-
+      2026-09-11 — ÖNCEKİ KAYIT YANLIŞ BİR İDDİA TAŞIYORDU ve düzeltildi. Eskiden
+      "0 / 0 — öksüz YOK, soldaki her değerin sağda karşılığı var" yazıyordu; oysa
+      SOL TARAF BOŞ olduğu için hiçbir şey doğrulanmamıştı. Boş bir ölçümden çıkarılmış
+      bir sonuçtu (`olctum-mu-cikardim-mi` § nüfus sıfırsa "geçti" değil "bakamadım").
+      ÖLÇÜM: `J_DEPO_TOPLANACAK` 0 satır · `J_DETAIL_BOXES` 0 · `J_ORDER_DETAILS_COMP` 0,
+      aynı anda `J_ORDERS` 4.705.778 satır. Yani geçici kuyruk boşluğu DEĞİL — JOKER
+      (e-ticaret) toplama alt sistemi bu ortamda hiç dolmamış. ⚠ Bu WMS DEĞİLDİR:
+      BKM'nin WMS'i `DerinSISBkm.depo.*` ve o taraf DOLU (`emirAyr` 5,39M / 2,04M açık). Köprünün kendisi öksüz açısından
+      DOĞRULANMAMIŞTIR ve tablo dolduğunda yeniden ölçülmelidir.
+    empty_population_expected: >-
+      Kaynak tablo 0 satır (ölçüldü 2026-09-11). Kardeş iki JOKER tablosu da 0 iken
+      `J_ORDERS` 4,7M satır taşıyor → alt sistem kullanımda değil, kuyruk geçici boş değil.
+      NEDEN: ESKİ E-TİCARET OPERASYONUNUN yapısı (kullanıcı 2026-09-11: "bunlar eski eticaret operasyonu varken olan yapılar · aktif olarak kullanılmıyor"). Tablolar duruyor ama BESLENMİYOR.
+      Yani ETL arızası ya da veri kaybı DEĞİL, kapanmış bir operasyonun kalıntısı.
+      ⚠ BU BİR MUAFİYET DEĞİL, TARİHLİ BİR DURUM TESPİTİ: tablo dolduğu gün bu alan
+      SİLİNİR ve köprü gerçekten ölçülür. `sema kopru` o güne kadar NUFUS? diye işaretler.
     from: ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK.ORDERREF
     to: ODAKJOKER.JOKER.dbo.J_ORDERS.ORDERID
     scope: joker
