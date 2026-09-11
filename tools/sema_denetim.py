@@ -267,7 +267,7 @@ def main():
                      "su alanlardan en az biri gerekli: %s" % ", ".join(gerekli))
 
         # 2d. bilinmeyen üst seviye alan
-        bilinen = set(["id", "ayrinti"])
+        bilinen = set(["id", "ayrinti", "atomiklik_gerekcesi"])
         bilinen |= set(ortak["zorunlu"]) | set(ortak["kosullu_zorunlu"]) | set(ortak["opsiyonel"])
         bilinen |= set(tip.get("opsiyonel", []) or [])
         bilinen |= set(tip.get("ozel", {}) or {})
@@ -341,6 +341,11 @@ def main():
         atom = tip.get("atomiklik")
         if atom:
             uzunluk = len(duz_metin(govde))
+            # Gerekçesi YAZILI olan büyük kayıt muaf: tek bir nesnenin dosyası bölünmez.
+            # Beyan edilmiş istisna, sessiz istisnadan iyidir.
+            muaf_alan = atom.get("muaf_alan")
+            if muaf_alan and govde.get(muaf_alan):
+                uzunluk = 0
             if uzunluk > int(atom.get("tavan_char", 4000)):
                 ekle(atom.get("seviye", "uyari"), "atomiklik", yer,
                      "%d karakter — tek kayit = tek gercek degil, bol" % uzunluk)

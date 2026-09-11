@@ -74,6 +74,18 @@ ortak:
       tip: harita
       aciklama: "Sözleşme dışı zengin/tek-kullanımlık alanlar. Silme yerine kapsülleme."
     status: {tip: metin, degerler: [teyit bekliyor, superseded], aciklama: "Yaşam döngüsü işareti."}
+    damga_devralindi:
+      tip: bool
+      aciklama: >-
+        `last_verified` bu kaydın KENDİ doğrulamasından değil, ayrıldığı EBEVEYN kayıttan
+        devralındı — bulgunun gerçek doğrulama tarihi bilinmiyor. Sessizce ebeveynin damgasını
+        takmak yalan olurdu; işaret bunu görünür kılar. Yeniden ölçülünce alan SİLİNİR.
+    atomiklik_gerekcesi:
+      tip: metin
+      aciklama: >-
+        Kayıt atomiklik tavanını aşıyor ama BÖLÜNMEMELİ — neden? Tek bir nesnenin dosyası
+        (bir tablonun tüm kuralları) bölünürse parçalanır. Beyan edilmiş istisna sessiz
+        istisnadan iyidir: gerekçe yazılmadan muafiyet YOK.
 
 # Eş-anlamlı alanlar → kanonik karşılık. Denetçi bunları "göç bekliyor" diye sayar.
 # `source` BİLEREK dosyaya göre farklı çözülür: metrics'te veri kaynağı, queries'te kaydın kökeni.
@@ -154,7 +166,7 @@ tipler:
           `status: superseded` kayıtlar MUAF — yerini bir araca/kayda bırakmış tarihsel not
           yeni bağ kurmaz (ör. `_sema_dogrulama_2026_08_18` elle yapılan kolon kontrolüydü,
           artık `tools/sema_kolon_cek.py` her koşuda yapıyor).
-    atomiklik: {tavan_char: 4000, seviye: uyari}
+    atomiklik: {tavan_char: 4000, seviye: uyari, muaf_alan: atomiklik_gerekcesi}
 
   entities.databases:
     aciklama: "Veritabanı kataloğu — rol, şemalar, tarih biçimi, uyumluluk."
@@ -186,7 +198,7 @@ tipler:
         degerler: ["1:1", "1:N", "N:1", "N:N"]
         aciklama: "JOIN patlaması (fan-out) riskini görünür kılar. N:N ise sorguda DISTINCT/agg zorunlu."
         seviye: uyari
-    atomiklik: {tavan_char: 4000, seviye: uyari}
+    atomiklik: {tavan_char: 4000, seviye: uyari, muaf_alan: atomiklik_gerekcesi}
 
   codes.codes:
     aciklama: "Enum / lookup kod kümesi."
@@ -200,14 +212,14 @@ tipler:
         tip: bool
         aciklama: "true ise küme kapalı — yeni kod çıkarsa değişmez kırmızı vermeli (degismezler.json)."
         seviye: uyari
-    atomiklik: {tavan_char: 4000, seviye: uyari}
+    atomiklik: {tavan_char: 4000, seviye: uyari, muaf_alan: atomiklik_gerekcesi}
 
   metrics.metrics:
     aciklama: "Türetilmiş iş mantığı / hesap modeli."
     zorunlu:
       - alan: [ad]
         seviye: uyari
-      - alan: [kural, formula]   # en az biri
+      - alan: [kural, formula, note]   # en az biri — bulgu kaydi `note` ile de kendini anlatir
         seviye: uyari
     opsiyonel: [kaynak, filter, grain, uygulama, sinir, iki_yon]
     ozel:
@@ -241,7 +253,7 @@ tipler:
         seviye: uyari
       sinir:
         aciklama: "Bu metrik NEYİ ölçmez. Overclaim koruması (satinalma-danisman § adil ölçüm)."
-    atomiklik: {tavan_char: 4000, seviye: uyari}
+    atomiklik: {tavan_char: 4000, seviye: uyari, muaf_alan: atomiklik_gerekcesi}
 
   queries.queries:
     aciklama: "Doğrulanmış sorgu kataloğu (golden SQL)."

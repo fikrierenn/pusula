@@ -366,6 +366,7 @@ entities:
     ttl_days: 365
     evidence: "2026-09-03 canli MCP zirve — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql blok 1-2. Kolon anlamlari kullanicinin PERSONEL BORDRO KONTROL v2+.sql dosyasindaki Turkce kolon adlariyla eslesti (Isskk='Isv.SGK Hissesi', Bt='Brut Toplam', fm1='1.Fzl.M.(s)')."
   BKM_GENEL.dbo.vw_PersonelDepartman:
+    atomiklik_gerekcesi: "Tek bir VIEW'in tum kurallari (ucret birimi, kadro etiketi, engelli ayraci, sezonluk, sube-firma eslesmesi, KVKK). Bolmek tablonun dosyasini parcalar; okuyan kisi bir kolonu kullanirken oteki kurali gormez."
     kullanir: [metrics:sezon_personel_kohort]
     tip: view
     key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Kadro, Igt, Ict, IstenCikisKodu, Ucret, TahakkukSekli, Banka, Iban]
@@ -504,6 +505,7 @@ entities:
     last_verified: "2026-08-17"
   # --- GL kayıt granülaritesi KIRILMASI (2026-08-17 keşif — GL forensic için kritik) ---
   mhs.mhsFis_granulerlik_kirilmasi:
+    atomiklik_gerekcesi: "TEK OLAYIN olcum dosyasi (2025 yevmiye granulariteси kirilmasi): sayim, tutar, sebep ve etki ayni bulgunun parcalari. Bolununce olay parcalanir."
     kullanir: [entities:mhs.mhsFis]
     tip: olcum
     note: "⚠️ 2025'te yevmiye kayıt granülaritesi DEĞİŞTİ: fiş sayısı 2024=2.685.683 → 2025=122.893 (−%95,4) → 2026(17.08)=46.210; satır 7.907.904 → 346.230 → 127.003. AMA TL hacmi DÜŞMEDİ, ARTTI (BA=1 tarafı 2024 24,8 mia → 2025 31,2 mia). Yani detay-fiş yerine TOPLU/ÖZET fiş atılıyor (muhtemelen POS/entegrasyon özet-posting'e geçti)."
@@ -541,6 +543,7 @@ entities:
     last_verified: "2026-08-18"
   # --- ALICI (KARAR-VERİCİ) BOYUTU — accountability temeli, 2026-08-18 keşif ---
   bkm.OneriSiparisTalep:
+    atomiklik_gerekcesi: "Tek tablonun dosyasi — kolon anlamlari + is akisi + tuzaklar birlikte okunmali."
     tip: tablo
     key: [Tarih, MekanId, StkId, SiparisMiktar, Onay, SipId, EkleyenKullanici, OnaylayanKullanici, EvrakNo, OdakAktar]
     grain: "talep satırı — tarih × mekan × ürün (sipariş TALEBİ, mal kabul DEĞİL)"
@@ -560,6 +563,7 @@ entities:
     last_verified: "2026-08-18"
   # --- İADE HAKKI / VADE KOŞULU — 'fazla aldı' iddiasının adalet şartı, 2026-08-18 ---
   frm_iade_vade_kosullari:
+    atomiklik_gerekcesi: "Tek konunun (tedarikci iade hakki + vade) olcum dosyasi; kod dagilimi ile vade kurali ayrilirsa biri otekisiz yanlis yorumlanir."
     kullanir: [entities:dbo.frm]
     tip: olcum
     note: "dbo.frm.frmIadeKural = TEDARİKÇİ bazında iade kuralı, DOLU ve anlamlı: 0→1.248 tedarikçi (ort vade ~0 = peşin) · 1→99 · 2→1.273 (frmVadeTur=1 olanlarda ort vade 130 GÜN). Vade alanları: frmVade + frmVade1..5 + frmVadeTur (0/1/2). Ayrıca frmSiparisSevkAdet."

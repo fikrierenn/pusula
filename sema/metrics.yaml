@@ -428,8 +428,23 @@ metrics:
     ay_filtre: "HareketTarihi >= ay-başı AND < ay-sonu+1"
     ocak_2026: "Gelir 72.35M · SMM 46.71M · Brüt 25.64M · Marj %35.4 (yeni master, rev2 ile birebir). Top: Kırtasiye %43, Oyuncak %38, Akademi %38, Kitap %33, Çocuk %32, Hazırlık %29."
     last_verified: 2026-06-19
-  fifo_birim_maliyet: "eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND KalanMiktar>0"
-  fifo_acilis_stok: "GEÇMİŞ-doğru: irsHrk KÜMÜLATİF SUM(ehAdetN) WHERE ehTrhS<=@devir AND ehAltDepo=0 AND ehMekan IN(1,12,4477,4478) HAVING>0. ANLIK stok view (stokSonAltDepo_vw) KULLANMA — devir-tarihi stoğunu bugünkü stokla bozar (19.06 bug)."
+  fifo_birim_maliyet:
+    tip: oran
+    birim: TL
+    taban: belirsiz
+    additivity: yok
+    kural: >-
+      eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND
+      KalanMiktar>0
+  fifo_acilis_stok:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
+    kural: >-
+      GEÇMİŞ-doğru: irsHrk KÜMÜLATİF SUM(ehAdetN) WHERE ehTrhS<=@devir AND ehAltDepo=0 AND ehMekan
+      IN(1,12,4477,4478) HAVING>0. ANLIK stok view (stokSonAltDepo_vw) KULLANMA — devir-tarihi stoğunu
+      bugünkü stokla bozar (19.06 bug).
   fifo_garanti_tier:
     tip: kural
     birim: yok
@@ -440,8 +455,25 @@ metrics:
     sabit_kaldirildi: "1-TL @GarantiSabitFiyat KALDIRILDI (19.06): non-inventory'yi (sınav süreli yayın/hediye çeki/kafe) %100 marj sayıp Ocak'ı +1.37M şişiriyordu (272 kalem). Artık impute-edilemez=devre-dışı."
     sonalis_dersi: "Salt kategori-imput gerçek ürünleri (SonAlis>0 ama kategori-dışı) yanlış devre-dışı yapıyordu → SonAlis tier eklendi → yanlış-dışlama=0. SonAlis=0 = non-inventory ayracı."
     last_verified: 2026-06-19
-  fifo_fiyat_0_olamaz: "FifoKatman.BirimMaliyet<=0 KESİNLİKLE yasak (fifo-domain §6). 0 = sessiz %100-marj. GATE: SELECT COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı hariç) = 0."
-  fifo_non_inventory: "Devre-dışı = stkID-CURATED (isim-pattern DEĞİL — fifo-domain §3): 'Geri Dönüşüm' çocuk kitabı, 'Poşet Dosya' kırtasiye, 'Big Babol Poşet' sakız GERÇEK ürün. Gerçek non-inventory: BKM bagging-poşet, kargo gideri (Zkargo), hediye çeki, iskonto/fiyat-farkı, demirbaş, yemek-ilk-madde, isimsiz-obsolete."
+  fifo_fiyat_0_olamaz:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
+    kural: >-
+      FifoKatman.BirimMaliyet<=0 KESİNLİKLE yasak (fifo-domain §6). 0 = sessiz %100-marj. GATE: SELECT
+      COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı
+      hariç) = 0.
+  fifo_non_inventory:
+    tip: kural
+    birim: yok
+    taban: yok
+    additivity: yok
+    kural: >-
+      Devre-dışı = stkID-CURATED (isim-pattern DEĞİL — fifo-domain §3): 'Geri Dönüşüm' çocuk kitabı,
+      'Poşet Dosya' kırtasiye, 'Big Babol Poşet' sakız GERÇEK ürün. Gerçek non-inventory: BKM
+      bagging-poşet, kargo gideri (Zkargo), hediye çeki, iskonto/fiyat-farkı, demirbaş,
+      yemek-ilk-madde, isimsiz-obsolete.
   marka_devir:   # 22.06 — B-110 tedarikçi/yayınevi performans scorecard
     tip: oran
     birim: oran
@@ -531,43 +563,426 @@ metrics:
     last_verified: "2026-08-19"
 
   hediye_ceki:                # 2026-08-25 — cek nominalinden indirim talebi (karlilik/tavan). v2: kanal + fat5 duzeltmesi
+    atomiklik_gerekcesi: "Bulgular 2026-09-11'de 20 atomik cocuk kayda AYRILDI (hediye_ceki__*); kalan kisim kanalin kendi tanimidir (nitelik, kaldirac, barem, kullanim olcumu) ve birlikte okunur."
     tip: turev
     birim: TL
     taban: belirsiz
     additivity: tam
     nitelik: "Cek SATISI hasilat DEGIL AVANS — KDV=0. Kar cekin HARCANDIGI anda dogar; nominalden verilen indirim dogrudan o kardan duser. Urun tanimi: `urnKtgr2.ktgrAd = N'Hediye Çeki'` (kupur-SKU 50/100/200/500/750/1000 + acik-tutarli stkID 551353, fiyatS=0 = fatura kanalinin ana kalemi)."
-    KANAL_KURALI: "⚠ CEK SATISI POS'TAN OLCULMEZ — uc kanal var ve POS AZINLIK. Tek dogru kaynak `dbo.irsHrk` (ehTip bazli): `1` Satis(fatura, ~%55) · `100` POS Satis (~%35) · `4` Magaza Satis (~%10); iade `3`/`5`/`101` dusulur. POS-only olcum hacmi ~3 KAT EKSIK gosterir ve sahte 'yukumluluk acigi' uretir (v1 hatasi). Kanal disi: `88` Diger Giris = cek BASIMI/stok girisi (satis DEGIL) · `89`+`98` = imha/merkeze iade/kisiye hediye (bedelsiz)."
     fatura_kanali_indirim: "Fatura kanalinda indirim ZATEN uygulaniyor: `fatAyr.ehIndirim` / `ehTutar` (eTip=1). Ortalama %4,99 ama KURALSIZ — ayni pencerede %0, %4,15, %5 ve %15 birlikte. ⚠ MUSTERI GRUP KONSOLIDASYONU SART: INALLAR OTOMOTIV(24922) + INALLAR SIGORTA(56291) + GONYE OTOMOTIV(56292) AYNI GRUP (kullanici teyidi + ucu de Ovaakca Cesmebasi/Istanbul Cad.) -> konsolide 480.000 TL/%15 = EN BUYUK alici (%26 brut payi) ve indirim butcesinin %78,4'u orada. Konsolide edilmezse uc orta-olcekli musteri gibi gorunur ve 'indirim-hacim ters iliskili' YANLIS yorumu cikar. En buyuk ikinci/ucuncu alici (250.000 / 227.550 TL) %0 oduyor -> asil bulgu KADEME YOKLUGU. Grup-ici taraflar (Bursa Kultur Merkezi) AYRI KOVA."
     grup_haritasi_yok: "⚠ `frm.frmBagID` ve `frmGrup1..5` musteri kayitlarinda HEPSINDE 0 — ERP'de grup alani VAR ama beslenmiyor. Sonuc: her kademe/konsantrasyon analizi ELLE konsolidasyona bagli; ayni grup uc ayri kademeden indirim alabilir. Grup kaniti = ORTAK ADRES + kullanici teyidi. ⚠ VN ONEKI GRUP KANITI DEGIL (CETIN ELEKTRIK 2450383237 / CETIN PROJE 2450012214 ayni onek, farkli adres -> teyit bekliyor). Satinalma tarafindaki grup-ici tedarikci listesi deseninin musteri karsiligi. ✅ COZULDU (plan-36): harita `PanelAyar.musteri_gruplari` parametresinde tutuluyor (Rapor Parametreleri sayfasi), format `Grup Adi=frmID,frmID;...`, varsayilan `İNALLAR / GÖNYE=24922,56291,56292`. Hediye ceki paneli fatura tablosunu bu haritayla konsolide eder; grup-ici taraf isareti `satin_iliskili_taraf` listesinden gelir."
-    URETIM_YAPISI: "⚠ DUZELTILDI 2026-08-27: uretim zincirinin BASI **PUAN.dbo.Siparis + PUAN.dbo.CekListesi** (firma bazli siparis + basilan cek barkodlari); DerinCrm.cmp BAKIYE/KULLANIM katmanidir. Tam zincir: PUAN.Siparis -> PUAN.CekListesi(barcode) -> DerinCrm.cmp.GiftCard(bakiye) -> cmp.GiftCardTransaction+SalesPayments(harcama). Eski (eksik) tespit: yasam-dongusu **`DerinCrm.cmp`** semasinda: `GiftCardHeader` (tanım/parti, 2 kayıt) → `GiftCard` (16.115 üretilmiş çek) → `GiftCardTransaction` (9.934 kullanım). `CouponToBeCreated` otomatik üretim kuyruğu (boş). Göç kaynağı `DerinCrm.dbo._AktarılacakHediyeKartları` (8.266). **Üreten kod DB'de DEĞİL** — GiftCard SP/trigger/job yok, üretim uygulama katmanında (CRM servisi); DB yalnız kayıt tutar. POS'ta harcanan kodların tamamı cmp.GiftCard.Code'da doğrulandı. Kümülatif açık bakiye (Status=100) 5.194.172 TL — 12 aylık pencere farkıyla (471.880) KARISTIRMA. MCP izin listesi DerinCrm'i içermez ama 3-parçalı isimle master baglamindan erisilir."
-    INDIRIM_KURAL_OLARAK_YOK: "⚠ Musteri-ozel cek indirimi (or. INALLAR %15) sistemde KURAL olarak TANIMLI DEGIL — elle fatura satiri indirimi (fatAyr.ehIndirim). Negatif kanit (2026-08-27): DerinCrm cmp.Campaign/CampaignLine/CampaignSegment/CampaignStore/CampaignScale/CampaignCustomer* HEPSI 0 satir (motor kullanilmiyor) · cmp.GiftCardHeader yalniz 2 tanim (INALLAR yok) · EncoreMerkez.dbo.Campaign 26 kayit, INALLAR/%15 yok · frm.frmEkIndIlkAlim/frmEkIndYeniMgz/frmEkIndOzl INALLAR-GONYE dahil hepsi 0. AYRICA cek kullaniminda **kategori kisiti hic tanimli degil** -> cekler zaten her kategoride geciyor; 'kirtasiyede de gecerli olsun' turu mutabakatin sistemde karsiligi YOK, POS zorlamiyor. Sonuc: politika kagit uzerinde, denetim izi yalniz fatura satirinda."
-    KISIT_SIZMASI_DOGRU_OLCUM: "⚠⚠ DUZELTME (kullanici itirazi, 2026-08-27): 'kirtasiye disi harcama = kisit sizmasi' olcumu YANLIS. Fisin kirtasiye-disi kalemleri buyuk olcude CEKIN USTUNE nakit/kart ile odenir -> cekle ilgisi yoktur. DOGRU TEST fis bazli: `kirtasiye_odenen (SUM TotalPrice, KatAna=Kirtasiye) >= cek_odenen (SUM SalesPayments.Amount tip 11)` ise cek tamamen kirtasiyeye gitmis olabilir; degilse sizma = cek - kirtasiye_odenen. INALLAR olcumu: 234 fisin 157si (203.000 TL cek) SIZMA YOK · 77 fiste sizma toplam **25.525 TL** = cekin %8,4u (yanlis yontem %13,2 / 58.270 TL veriyordu, ~2,3 kat sisirme). Sizma bandlari: 0-100 TL 31 fis/1.108 TL (kusurat, ihmal) · 100-500 TL 31 fis/9.856 · 500-1000 TL 11 fis/7.523 · 1000+ TL 4 fis/7.038. NET IHLAL = fiste HIC kirtasiye olmayan 8 fis. Ornek: SalesId 96842 cek 1.000 / kirtasiye 4.377 / kirtasiye-disi 18.089 -> 18.089 TL tamamen GARANTI karti ile odenmis, eski yontem bunu sizma sayiyordu. Gercek ihlal ornegi: SalesId 103709 cek 2.000 / kirtasiye 0 / Is Bankasi 45.570 -> 2.000 TL tam sizma. KARLILIK NOTU: cekin %91,6si kirtasiyeye (en yuksek marjli kategori %45,3) gittigi icin onceki kirilma hesabi (%46,3, sepet bazli/kaldirac dahil) muhafazakar taraftaydi. Cek-payi bazli daha dar metrik ~0,378 TL/TL (kirilma %37,8); tavan karari icin SEPET bazli dogrudur (cek sepeti getiriyor)."
-    KASA_GOCU_11072025_OLCUM_PENCERESI: "⚠⚠ **EncoreMerkez.dbo.Sales TAMAMI 11.07.2025'te BASLIYOR** (1.264.116 fis, oncesi YOK — o tarihte kasa sistemi degisti, eski POS baska sistemde ve 201 sunucusunda yok). DerinCrm.cmp.GiftCard ilk kaydi da 11.07.2025. **SONUC: 11.07.2025 oncesi hicbir satis/cek-harcamasi bu veride GORUNMEZ.** Bundan once yapilan her 'X kullanilmamis / dusuk kullanim / olu stok / musteri gelmemis' cikarimi YANLISTIR — olcum penceresi kesiktir, davranis yok degil KAYIT yok. Ayrica sadakat karti verisi de bu tarihte basliyor ve kademeli yayildi (2025-07: 63 kartli fis, 08: 3.942, 09: 15.616) -> 'cek oncesi musteri bize gelmiyordu' tipi incrementality iddiasi 2025-09 oncesi icin kurulamaz. Her tarihsel karsilastirmada baslangic >= 11.07.2025 olmali; oncesi icin eski POS verisi gerekir."
-    CEK_GOCU_TASINMAYANLAR: "Kasa gocunde (11.07.2025) PUAN'da basili 15.130 goc-oncesi cekin 4.306'si (1.782.504 TL) DerinCrm.cmp.GiftCard'a tasindi, 10.824'u (4.374.370 TL) TASINMADI. Tasinmayanlar IKIYE ayrilir ve karistirilmamalidir: (a) goc aninda vadesi ZATEN GECMIS 6.231 cek / 2.322.000 TL — tasinmamasi normal, olu kayit; (b) goc aninda HALA GECERLI 4.593 cek / 2.052.370 TL — bunlar kayip. (b)'nin 442'si (230.226 TL, hepsi 2025 Ocak-Haziran basimi, SKT 31.12.2026) BUGUN HALA GECERLI ama POS tanimiyor -> musteri gelirse reddedilir, operasyonel risk (163.100 TL'si magazada bireye satilan hediye karti). 'CRM'de yok = izlenemiyor' demek YANLIS; dogrusu 'gocte tasinmadi' + vade ayrimi. Olcum 2026-08-28."
-    CRM_KAPSAMA_KIRIGI: "⚠⚠ YAPISAL: basilan ceklerin buyuk kismi DerinCrm.cmp.GiftCard'a HIC aktarilmamis (Encore/DerinCrm gecisi oncesi partiler, agirlikli 2022-2024). Bu cekler icin harcandi mi bilinemez — ne karsilik ayrilabilir ne gelir yazilabilir. Olcum 2026-08-28: 16.832 basilan cekin 10.824'u (tutar bazinda 4.374.370 / 7.276.174 = %60) CRM'de YOK. Sonuc: kullanim orani YALNIZ izlenebilir kisim uzerinden hesaplanir (1.673.750 / 2.901.804 = %57,7); toplam nominale bolmek (%23) YANILTICI. Her cek raporunda bu ayrim yazilmali."
-    OLCUM_ISWRITE_ZORUNLU: "Her cek olcumunde `cl.isCancel=0 AND cl.isWrite=1`. isWrite=0 = siparis girilmis ama BASILMAMIS. Kanit 2026-08-28: vadesi gecmis bakiyeli cek isWrite=1 -> 583.500 TL / 24 firma, isWrite=0 -> 10.000 TL / 1 firma (ENDERUN 100 cek). Filtresiz ilk olcum 593.500 TL yanlis rakam uretti. Harcama olcumu = `g.OriginalAmount - g.Amount` (GiftCardTransaction SUM(Amount) cift sayar)."
-    FIRMAISMI_SERBEST_METIN_RISKI: "PUAN.dbo.Siparis'te ERP cari bagi (frmID) YOK, `FirmaIsmi` elle yazilir. Uc sonuc: (a) ayni firma coklu yazimla bolunur -> firma bazli rapor LIKE ile yapilmak zorunda, ID ile degil; (b) cari bakiye/tahsilat ile OTOMATIK MUTABAKAT IMKANSIZ; (c) kontrol acigi — 2026-08-28 tespiti: FirmaIsmi='Test' altinda 24.05.2025 tarihli 3 sipariste 250 cek / 100.000 TL GERCEK cek basilmis (yetkili alani 'dasdas asd as das dasd as d'), 46.750 TL harcanmis, 53.250 TL acik, kime verildigi kayitsiz. Ayrica siparis 1243'te tek cek 1.000.000 TL nominal (26.07.2023, CRM'de yok, vade dolmus). Duzeltme: siparis girisinde cari secimi zorunlu olmali."
-    CEK_HARCAMASI_IKI_KAYNAK_FARKLI: "Bir cek partisinin harcamasi iki yerden olculur ve TUTMAZ: (a) `GiftCard.OriginalAmount - Amount` (CRM bakiye farki), (b) `SalesPayments.Amount WHERE PaymentTypesId=11` (POS odeme kaydi). Inallar 2026-08-28: (a) 321.500 TL, (b) 306.000 TL -> 15.500 TL fark, POS izi yok (bakiye dusulmus ama odeme kaydi olusmamis). **Karlilik/sepet analizinde (b) kullan** (fis kirilimi oradan gelir); yukumluluk/bakiye raporunda (a). Hangi kaynagin kullanildigi raporda YAZILMALI."
-    SINAV_FISI_KALDIRAC_BOZAR: "Cek kaldirac olcumunde `DocumentsTypeId=8` (Sinav Okullari) fisleri AYIKLA. Inallar 2026-08-28: 3 adet tip-8 fiste yalniz 4.500 TL cek kullanilmis ama 90.368 TL net ciro var (okul paketi satisi). Dahil edilince kaldirac 1,24x yerine 1,53x, kirilma indirimi %46,5 yerine %54,9 gorunuyor — cekin getirisi 2 kat abartiliyor. Cek analizinde taban = perakende fis (DocumentsTypeId=1)."
-    INALLAR_KESIN_ATIF: "✅ KESIN ATIF (cikarim DEGIL) — 2026-08-27, kullanici PUAN.dbo.Siparis'i gosterdi. `Siparis.FirmaIsmi LIKE '%nallar%'` -> 14 siparis -> CekListesi.barcode -> harcama. BASILAN (isWrite=1): 1.152 cek / 672.000 TL nominal (faturalanan 655.400 TL ile ~16.600 fark). HARCANAN: 234 FIS / 305.500 TL (basilanin %45'i; 366.500 TL hala kullanilmamis). KATEGORI: **KIRTASIYE %86,8 brut / %86,2 net** (223 fiste, 4.132 adet) · KITAP %9,5 · kirtasiye DISI %13,2 = 58.270 TL (⚠ BU SIZMA DEGIL — bkz. KISIT_SIZMASI_DOGRU_OLCUM; gercek sizma 25.525 TL = %8,4). Kaldirac 1,22x · sepet indirimi %15,9 · agirlikli marj **%42,9** · brut kar 141.377 TL · kar/1TL-cek 0,463 -> KIRILMA %46,3. %15 indirim: 45.825 TL verildi, NET KATKI 95.552 TL (marjin %68'i korunuyor). Onceki cikarim (29.08.2025 partisi, %87,8 kirtasiye) DOGRULANDI: siparisId 1567'nin barkod araligi o partiyle birebir ayni. ⚠ Kisit metni 2024 siparislerinde 'KAMPANYA DISI KIRTASIYE', 2025'te 'Sadece Kirtasiye' — yani kisit basindan beri KIRTASIYE odakli. Zorlanmiyor ama sizma %13 DEGIL %8,4 (25.525 TL); fisin kirtasiye-disi kismi cogunlukla cekin USTUNE kart/nakit odenmis."
-    CEK_HARCAMA_IZI_VAR: "✅ Cek TESLIMI kayitli degil AMA cek HARCAMASI zengin izli: `DerinCrm.cmp.GiftCardTransaction` -> StoreCode (M01/M02/M03) + PosCode + CashierCode + CustomerId/CustomerCardNumber (sadakat karti) + **SalesId = Sales.PosDocumentId**. Bu son kolon `SalesPayments.Info` JSON parse etmeye alternatif TEMIZ kopru (compat-110 SUBSTRING zorluklarina gerek yok). Kopru CANLI DOGRULANDI: 15 ornekten 13u eslesti, 2si NULL (iptal fis). StoreCode->StoresId: M01=2 FSM, M02=3 Ozluce, M03=1 Ist.Yolu (CLAUDE.md haritasiyla birebir). ⚠ SUM(Amount) CIFT SAYAR (durum akisi 100->50->200 her adimda ayni Amount ile satir yazar); olcumde COUNT(DISTINCT GiftCardId) veya SalesPayments.Amount kullan. Kimlik izi ZAYIF: 29.08.2025 partisinde 397 hareketin 322si (%81) KARTSIZ, yalniz 23 farkli sadakat karti -> harcayan kisiler cogunlukla anonim, 'cekleri kim kullandi' sorusu da tam cevaplanmiyor."
-    TOPLU_SATISTA_MUSTERI_BAGI_DOLDURULMUYOR: "⚠ Toplu cek satisinda musteri alani HIC doldurulmuyor: `cmp.GiftCard.CustomerId` TUM 16.115 kayitta 0. Kurumsal alicinin CRM kaydi VARSA bile baglanmiyor — ornek: INALLAR OTOMOTIV `DerinCrm.dbo.Customer` Id 9316 olarak KAYITLI (Code = CardNumber = vergi no 4750606249) ama (a) hicbir cek kaydinda gecmiyor, (b) `Sales.CustomersId=9316` ile HIC POS fisi yok (cekleri alip dagitmislar, kendileri magazadan alisveris yapmamis). INALLAR SIGORTA + GONYE icin CRM Customer kaydi hic YOK. `GiftCardTransaction.CustomerId` (4.619 kayitta dolu) HARCAMA anindaki sadakat kartidir, alici degil — INALLAR partisinde 9316 gecmiyor (calisanlar kendi kartlariyla harcamis). ⚠ frmID'yi cek tablolarinda aramak SONUCSUZ: VendorId/CustomerId/CampaignId/CreatedBy/LinkedGiftCardId + VendorDocNumber/SalesId metin aramasi = 0 eslesme. DerinSIS frm <-> DerinCrm Customer koprusu VERGI NUMARASI uzerinden (frm.VN = Customer.Code), ID eslesmesi YOK."
-    CEK_MUSTERI_BAGI_YOK: "⚠⚠ BU MADDE YANLISTI — DUZELTILDI 2026-08-27: bag **PUAN.dbo.Siparis.FirmaIsmi + CekListesi.siparisId** ile VAR (bkz. INALLAR_KESIN_ATIF). Asagidaki negatif kanit yalniz DerinSIS/DerinCrm/Encore icin gecerli; PUAN ilk turda tablo adi gorulup ICINE BAKILMADI (ders: tablo adi taramasi yeterli degil, satir sayisi >0 olan aday tablonun ICERIGINE bakilmali). Eski negatif kanit: cmp.GiftCard CustomerId=0 + UniqueAcquisitionId/ActivationInfo/History/ValidationCode/VendorDocNumber HEPSI BOS + CreatedBy hep 1 · fatAyr seri alani YOK (ehNot serbest metin, ehStrID = stok hareket ID) · irs.eNot Inallar 11 irsaliyede BOS · seri takip tablolari (symSeri/mstr/mstrP/etkKareBarkod) 0 SATIR · kolon adi taramasi (DerinSISBkm+BKM+BKMDATA+DerinCrm) hediye-ceki<->musteri kolonu YOK (carCek.cekNo = BANKA ceki, alakasiz) · _AktarilacakHediyeKartlari yalniz Code/Amount/ValidThru · DerinCrmOutbox tum tablolar 0 · EncoreMerkezLog.job (Hangfire) Gift/Hediye/Coupon YOK · BKMLOG.Log 7,29M satir ilgili pencerede iz YOK. TEK izlenebilir parmak izi: **uretim gunu + kupur + ADET ESITLIGI** (cmp.GiftCard.CreatedAt + OriginalAmount vs fatura adedi). Bu CIKARIM uretir, kesin atif DEGIL — raporda boyle etiketlenmeli."
-    CEK_ALIM_TARIHCESI_CAR_UZERINDEN: "⚠⚠ METODOLOJI: cek alim tarihcesi `fat eTip=1` ile DEGIL **CARI (car) uzerinden** taranir — `car.cNot LIKE %HEDIYE CEKI%` + cKod. Gerekce: Inallar 11.04.2023 alimi (51 adet x 200 TL = 10.200 TL) cFatTip=4 (POS/fis tarafi) oldugu icin eTip=1 filtresinde GORUNMEZ; sadece car'da var. Politika baslangici da bu sayede goruldu: 2023 %0 INDIRIM, 2024-2025 %15. car ayrica cek borcu -> tahsilat eslesmesini kurusu kurusuna verir (cTip 0 = borclandirma, 122 = tahsilat)."
-    INALLAR_PARTI_BULGUSU: "Inallar grubu cek alimlari (car uzerinden TAM): 11.04.2023 200 TL x 51 = 10.200 TL INDIRIMSIZ · 09-16.09.2024 1.000 TL x 165 = 165.000 / 24.750 (%15) · 29.08.2025 500 TL x 320 = 160.000 / 24.000 (%15) · 01.09.2025 500 TL x 640 = 320.000 / 48.000 (%15). TOPLAM 655.400 brut / 96.750 ind = %14,76. VADE: 2024 cek->tahsilat ~5 HAFTA (09-16.09 -> 22-31.10), 2025 ise 1-4 GUN (neredeyse pesin) -> tahsilat davranisi iyilesti, gorusmede koz. TUM cari bakiyeler SIFIR (cKalan=0), acik risk yok. ⚠ CARI KAYIT KALITESI: 24922 INALLAR OTOMOTIV'in frmKod'u sadece VN ('4750606249') — MUHASEBE HESAP KODU YOK; 56291/56292 duzgun (120.10.* = alicilar). Isim aramasi 6 kayit dondurur: 3'u grup, 2197 INALLAR TEMIZLIK TEDARIKCI (320.10.* = saticilar, grup DEGIL), 34694 Inallar Tarim cek almamis (grup? belirsiz), 27257 Onallar ALAKASIZ (isim benzerligi). Parti eslesmesi: 29.08.2025 500 TL uretilen 320 == Inallar 320 (TEK ADAY, izlenebilir) · 01.09.2025 uretilen 1.545 vs 640 (ayirt edilemez) · 26.08.2025 1.000 TL uretilen 320 vs 165 (eslesmiyor, goc). 29.08.2025 PARTISI: 196 cek tukenmis · kalan 55.000 · 84 FIS (GiftCardTransaction 87 fis/3 magaza: M02 95 cek, M03 64, M01 37 -> M02 agirlikli) · cekle odenen 97.500 TL · sepet brut 151.123 · indirim %15,1 · net 113.202 · kaldirac 1,32x · **KIRTASIYE %87,8 brut / %87,4 net** (84 fisin 82sinde, 1.738 adet) · **KITAP yalniz %9,0** (barem-6 %9,2 ile birebir capraz dogrulama) · agirlikli marj %42,6 · brut kar 48.204 TL · kar/1TL-cek 0,494 -> kirilma %49,4. %15 indirim 14.625 TL -> NET KATKI 33.579 TL (marjin %70i korunur). SONUC: kirtasiye ayni zamanda en yuksek marjli kategori (%45,3); kitap-agirlikli tavan riski bu partide GERCEKLESMEDI, %15 fazlasiyla guvenli."
     kullanim_olcumu: "Cek tahsilati = `SalesPayments.PaymentTypesId = 11` + `IsChangeAmount = 0`. Kod/bayrak `Info` JSON'unda (GiftCardCode / IsGiftCard / IsRefundVoucher); compat 110 -> JSON_VALUE YOK, LIKE/CHARINDEX + bos-kod guard."
-    GERI_DONUSUM_AYRIMI: "⚠ Geri donusum cekleri kasada IADE SEBEBI olarak isler, hediye ceki DEGIL. Kimlik: `RefundReasons.Id=12 'Geri Dönüşüm'` (Type=0 iade sebebi) + urun `stkID 583160 'Geri Dönüşüm Kağıt Madde Alımı'` (KatAna 'Tanımsız'/Kategori3 'Genel', kg bazli). Karsiligindaki cek `PaymentTypesId=10` (IADE CEKI) olarak verilir — hediye ceki (tip 11) tahsilatinda HIC gorunmez (tip 11 %100 IsGiftCard, 0 IsRefundVoucher). AYIKLAMA IKI KOSULLU: `sp.RefundReasonId <> 12 AND p.Code <> '583160'` — SKU 416 satirda yanlis sebep koduyla (4/5/1/2) ve 12 satirda DocType=1 ile de gecmis, tek kosul yetmez. Hediye-cekli sepette geri donusum SIFIR (iki yontemle kanitlandi) -> HC marj/kaldirac etkilenmez; kirlenen yalniz KONTROL GRUBU (indirim orani %18,83 -> %18,74). Tip 10'u tip 11 ile toplamak analizi ~6 kat sisirir."
     kaldirac: "KALDIRAC = sepet(odenen) / cekle-odenen, fis bazli (`DocumentsTypeId=1`). ⚠ CEK BUYUDUKCE COKER: <=100 TL 10,66x · 251-500 1,94x · 501-1000 1,47x · 1001-2500 1,22x · 2500+ 1,14x (ort 1,54x). Karar sonucu: indirim isteyen toplu alici, kaldiracin EN AZ oldugu dilim -> indirim neredeyse tamamen marjdan cikar. ORTALAMA kaldiracla tavan hesaplamak YANLIS (dilim bazli hesapla)."
     indirim_istismari_yok: "Cekli sepette urun indirim orani NORMALDEN DUSUK (%18,08 vs %18,83, DocType 1/3); sepet 2,05x buyuk. 'Cekli musteri ustune indirim de aliyor' hipotezi veriyle curutuldu."
-    BAREM_KARLILIK: "⚠ KARARIN MERKEZI TABLO — cek dilimi x ortalama sepet x GERCEK mix marji (2026-08-25, 12 ay). Barem | fis | ort cek | ort sepet | kaldirac | marj | kar/fis | kar/1TL-cek | kitap payi: <=100 |275|61|655|10,66x|%28,2|176|2,858|%22,9 · 101-250 |465|186|737|3,96x|%28,8|200|1,076|%25,4 · 251-500 |788|448|870|1,94x|%29,4|237|0,529|%32,0 · 501-1000 |786|907|1.329|1,47x|%31,1|379|0,418|%27,0 · 1001-2500 |382|1.815|2.221|1,22x|%35,6|714|0,393|%15,8 · 2500+ |159|3.813|4.344|1,14x|%37,4|1.463|0,384|%9,2. **KALDIRAC DUSERKEN MARJ YUKSELIYOR** — cunku kitap payi %23'ten %9'a iner (buyuk cek KIRTASIYE/OYUNCAK aliyor). Kar/fis buyuk cekte EN YUKSEK (1.463 vs 176 TL)."
     indirim_tavani_yontemi: "Kirilma (brut kar=0) = kar/1TL-cek orani = kaldirac x net-oran(0,917) x marj. GERCEK mix ile: 2500+ %38,4 · 1001-2500 %39,3 · 501-1000 %41,8 · 251-500 %52,9. ⚠ ESKI TEZ CURUTULDU: 'buyuk cekin tamami kitaba gider -> kirilma %15,2' varsayimi barem verisiyle YANLIS cikti (2500+ dilimde kitap payi %9,2). Davranissal gerekce: kurumsal alici ceki dagitiyor, alan kisi ne alacagini cek indiriminden BAGIMSIZ seciyor -> indirim mixi kitaba kaydirmaz. Tavan %15 (kademeli %8/%12/%15); %15'te en zayif baremde 0,234 TL/TL kalir (marjin %61'i). IZLEME: barem-6 kitap payi %9,2 -> %25 olursa kirilma ~%25'e iner, tavan daralir."
     BONUS_vs_INDIRIM: "⚠ ENSTRUMAN SECIMI (2026-08-25). Musteri esdegerligi: bonus b = x/(1-x) (ornek %15 indirim = %17,65 bonus; tersi x = b/(1+b) -> %15 bonus = %13,04 indirim). 1 TL NAKIT basina brut kar: indirim = (r-x)/(1-x) · bonus = r_ana + b*(r_bonus - 1). AYNI KUPURDE BONUS = INDIRIM, BIREBIR (0,283 vs 0,283 @ %15) — 'bonus verelim' tek basina kazanc DEGIL. Avantaj UC yerden gelir: (1) KUPUR KUCULTME — bonus 50/100 TL kupurde verilirse r_bonus=1,228>1 -> bonus arttikca kar ARTAR, KIRILMA YOK; %15'te 0,431 vs 0,283 = +%52 (480K olceginde 204.106 vs 115.667 TL). (2) FRAMING — ayni %15 basligi %13,04 indirim maliyetine gelir. (3) KOSULLU MALIYET — kullanilmayan bonus yuzu bedava (mevcut kullanilmamis bakiye satisin ~%15'i), indirim nakdi KESIN; ayrica nakit tam tahsil edilir. ⚠ ARBITRAJ TASARIMI BOZAR: 10 adet 100 TL cek tek fiste harcanirsa sepet 2500+ barem'e doner, r 1,228->0,391 coker, avantaj sifirlanir -> ZORUNLU KURAL 'tek fiste en fazla 1 bonus cek' (POS'ta zorlanmali) + 12 ay sure."
-    BONUS_KANIT_ZAYIFLIGI: "⚠ Bonus tasariminda BAREM-1'in 10,66x kaldiraci KULLANILAMAZ — o 247 fislik KISMI BAKIYE artigi davranisi (musteri zaten alisveristeydi, cek artigini kullandi); tasarimla uretilemez. Basili kupur (Amount %% 50 = 0) gercegi: 50/100 TL 4,75x · 200 TL 3,30x · 500 TL 1,86x · 1.000 TL 1,45x · 2.500+ 1,14x. 50/100 TL orani YALNIZ 28 fis / 2.500 TL'ye dayanir -> mertebe gostergesi, karar kaniti DEGIL. Populasyon da farkli (bugun kucuk cek kullanan perakende musteri; bonus alan kurumsal hediye alicisi). PILOT SART: tek grup 3 ay, olcum = bonus cek gercek kaldiraci + tek-fis kuralinin tutmasi + kullanilmama orani."
     barem_perf: "Dilim x stkID uzerinde fat5 OUTER APPLY MCP'de 30s ASAR (~9K stkID x 6 dilim = 54K APPLY). Cozum: dilim x KATEGORI net cek, kategori fat5 marjini disarida uygula (kategori-ici mix farki ihmal). Tam surum sqlcli/SSMS."
     confidence: 0.9
     last_verified: "2026-08-25"
     evidence: "2026-08-25 canli MCP — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql (blok 1-12; 9=kanal, 10=fatura indirimi, 11=geri-donusum ayrimi, 12=fat5 marj); docs/2026-08-25-hediye-ceki-indirim-raporu.md v2."
 
+  hediye_ceki__kanal_kurali:
+    ad: "hediye_ceki · KANAL_KURALI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ CEK SATISI POS'TAN OLCULMEZ — uc kanal var ve POS AZINLIK. Tek dogru kaynak `dbo.irsHrk`
+      (ehTip bazli): `1` Satis(fatura, ~%55) · `100` POS Satis (~%35) · `4` Magaza Satis (~%10); iade
+      `3`/`5`/`101` dusulur. POS-only olcum hacmi ~3 KAT EKSIK gosterir ve sahte 'yukumluluk acigi'
+      uretir (v1 hatasi). Kanal disi: `88` Diger Giris = cek BASIMI/stok girisi (satis DEGIL) ·
+      `89`+`98` = imha/merkeze iade/kisiye hediye (bedelsiz).
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__uretim_yapisi:
+    ad: "hediye_ceki · URETIM_YAPISI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ DUZELTILDI 2026-08-27: uretim zincirinin BASI **PUAN.dbo.Siparis + PUAN.dbo.CekListesi**
+      (firma bazli siparis + basilan cek barkodlari); DerinCrm.cmp BAKIYE/KULLANIM katmanidir. Tam
+      zincir: PUAN.Siparis -> PUAN.CekListesi(barcode) -> DerinCrm.cmp.GiftCard(bakiye) ->
+      cmp.GiftCardTransaction+SalesPayments(harcama). Eski (eksik) tespit: yasam-dongusu
+      **`DerinCrm.cmp`** semasinda: `GiftCardHeader` (tanım/parti, 2 kayıt) → `GiftCard` (16.115
+      üretilmiş çek) → `GiftCardTransaction` (9.934 kullanım). `CouponToBeCreated` otomatik üretim
+      kuyruğu (boş). Göç kaynağı `DerinCrm.dbo._AktarılacakHediyeKartları` (8.266). **Üreten kod DB'de
+      DEĞİL** — GiftCard SP/trigger/job yok, üretim uygulama katmanında (CRM servisi); DB yalnız kayıt
+      tutar. POS'ta harcanan kodların tamamı cmp.GiftCard.Code'da doğrulandı. Kümülatif açık bakiye
+      (Status=100) 5.194.172 TL — 12 aylık pencere farkıyla (471.880) KARISTIRMA. MCP izin listesi
+      DerinCrm'i içermez ama 3-parçalı isimle master baglamindan erisilir.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__indirim_kural_olarak_yok:
+    ad: "hediye_ceki · INDIRIM_KURAL_OLARAK_YOK"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Musteri-ozel cek indirimi (or. INALLAR %15) sistemde KURAL olarak TANIMLI DEGIL — elle fatura
+      satiri indirimi (fatAyr.ehIndirim). Negatif kanit (2026-08-27): DerinCrm
+      cmp.Campaign/CampaignLine/CampaignSegment/CampaignStore/CampaignScale/CampaignCustomer* HEPSI 0
+      satir (motor kullanilmiyor) · cmp.GiftCardHeader yalniz 2 tanim (INALLAR yok) ·
+      EncoreMerkez.dbo.Campaign 26 kayit, INALLAR/%15 yok ·
+      frm.frmEkIndIlkAlim/frmEkIndYeniMgz/frmEkIndOzl INALLAR-GONYE dahil hepsi 0. AYRICA cek
+      kullaniminda **kategori kisiti hic tanimli degil** -> cekler zaten her kategoride geciyor;
+      'kirtasiyede de gecerli olsun' turu mutabakatin sistemde karsiligi YOK, POS zorlamiyor. Sonuc:
+      politika kagit uzerinde, denetim izi yalniz fatura satirinda.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__kisit_sizmasi_dogru_olcum:
+    ad: "hediye_ceki · KISIT_SIZMASI_DOGRU_OLCUM"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ DUZELTME (kullanici itirazi, 2026-08-27): 'kirtasiye disi harcama = kisit sizmasi' olcumu
+      YANLIS. Fisin kirtasiye-disi kalemleri buyuk olcude CEKIN USTUNE nakit/kart ile odenir -> cekle
+      ilgisi yoktur. DOGRU TEST fis bazli: `kirtasiye_odenen (SUM TotalPrice, KatAna=Kirtasiye) >=
+      cek_odenen (SUM SalesPayments.Amount tip 11)` ise cek tamamen kirtasiyeye gitmis olabilir;
+      degilse sizma = cek - kirtasiye_odenen. INALLAR olcumu: 234 fisin 157si (203.000 TL cek) SIZMA
+      YOK · 77 fiste sizma toplam **25.525 TL** = cekin %8,4u (yanlis yontem %13,2 / 58.270 TL
+      veriyordu, ~2,3 kat sisirme). Sizma bandlari: 0-100 TL 31 fis/1.108 TL (kusurat, ihmal) ·
+      100-500 TL 31 fis/9.856 · 500-1000 TL 11 fis/7.523 · 1000+ TL 4 fis/7.038. NET IHLAL = fiste HIC
+      kirtasiye olmayan 8 fis. Ornek: SalesId 96842 cek 1.000 / kirtasiye 4.377 / kirtasiye-disi
+      18.089 -> 18.089 TL tamamen GARANTI karti ile odenmis, eski yontem bunu sizma sayiyordu. Gercek
+      ihlal ornegi: SalesId 103709 cek 2.000 / kirtasiye 0 / Is Bankasi 45.570 -> 2.000 TL tam sizma.
+      KARLILIK NOTU: cekin %91,6si kirtasiyeye (en yuksek marjli kategori %45,3) gittigi icin onceki
+      kirilma hesabi (%46,3, sepet bazli/kaldirac dahil) muhafazakar taraftaydi. Cek-payi bazli daha
+      dar metrik ~0,378 TL/TL (kirilma %37,8); tavan karari icin SEPET bazli dogrudur (cek sepeti
+      getiriyor).
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__kasa_gocu_11072025_olcum_penceresi:
+    ad: "hediye_ceki · KASA_GOCU_11072025_OLCUM_PENCERESI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ **EncoreMerkez.dbo.Sales TAMAMI 11.07.2025'te BASLIYOR** (1.264.116 fis, oncesi YOK — o
+      tarihte kasa sistemi degisti, eski POS baska sistemde ve 201 sunucusunda yok).
+      DerinCrm.cmp.GiftCard ilk kaydi da 11.07.2025. **SONUC: 11.07.2025 oncesi hicbir
+      satis/cek-harcamasi bu veride GORUNMEZ.** Bundan once yapilan her 'X kullanilmamis / dusuk
+      kullanim / olu stok / musteri gelmemis' cikarimi YANLISTIR — olcum penceresi kesiktir, davranis
+      yok degil KAYIT yok. Ayrica sadakat karti verisi de bu tarihte basliyor ve kademeli yayildi
+      (2025-07: 63 kartli fis, 08: 3.942, 09: 15.616) -> 'cek oncesi musteri bize gelmiyordu' tipi
+      incrementality iddiasi 2025-09 oncesi icin kurulamaz. Her tarihsel karsilastirmada baslangic >=
+      11.07.2025 olmali; oncesi icin eski POS verisi gerekir.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__cek_gocu_tasinmayanlar:
+    ad: "hediye_ceki · CEK_GOCU_TASINMAYANLAR"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Kasa gocunde (11.07.2025) PUAN'da basili 15.130 goc-oncesi cekin 4.306'si (1.782.504 TL)
+      DerinCrm.cmp.GiftCard'a tasindi, 10.824'u (4.374.370 TL) TASINMADI. Tasinmayanlar IKIYE ayrilir
+      ve karistirilmamalidir: (a) goc aninda vadesi ZATEN GECMIS 6.231 cek / 2.322.000 TL —
+      tasinmamasi normal, olu kayit; (b) goc aninda HALA GECERLI 4.593 cek / 2.052.370 TL — bunlar
+      kayip. (b)'nin 442'si (230.226 TL, hepsi 2025 Ocak-Haziran basimi, SKT 31.12.2026) BUGUN HALA
+      GECERLI ama POS tanimiyor -> musteri gelirse reddedilir, operasyonel risk (163.100 TL'si
+      magazada bireye satilan hediye karti). 'CRM'de yok = izlenemiyor' demek YANLIS; dogrusu 'gocte
+      tasinmadi' + vade ayrimi. Olcum 2026-08-28.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__crm_kapsama_kirigi:
+    ad: "hediye_ceki · CRM_KAPSAMA_KIRIGI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ YAPISAL: basilan ceklerin buyuk kismi DerinCrm.cmp.GiftCard'a HIC aktarilmamis
+      (Encore/DerinCrm gecisi oncesi partiler, agirlikli 2022-2024). Bu cekler icin harcandi mi
+      bilinemez — ne karsilik ayrilabilir ne gelir yazilabilir. Olcum 2026-08-28: 16.832 basilan cekin
+      10.824'u (tutar bazinda 4.374.370 / 7.276.174 = %60) CRM'de YOK. Sonuc: kullanim orani YALNIZ
+      izlenebilir kisim uzerinden hesaplanir (1.673.750 / 2.901.804 = %57,7); toplam nominale bolmek
+      (%23) YANILTICI. Her cek raporunda bu ayrim yazilmali.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__olcum_iswrite_zorunlu:
+    ad: "hediye_ceki · OLCUM_ISWRITE_ZORUNLU"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Her cek olcumunde `cl.isCancel=0 AND cl.isWrite=1`. isWrite=0 = siparis girilmis ama BASILMAMIS.
+      Kanit 2026-08-28: vadesi gecmis bakiyeli cek isWrite=1 -> 583.500 TL / 24 firma, isWrite=0 ->
+      10.000 TL / 1 firma (ENDERUN 100 cek). Filtresiz ilk olcum 593.500 TL yanlis rakam uretti.
+      Harcama olcumu = `g.OriginalAmount - g.Amount` (GiftCardTransaction SUM(Amount) cift sayar).
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__firmaismi_serbest_metin_riski:
+    ad: "hediye_ceki · FIRMAISMI_SERBEST_METIN_RISKI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      PUAN.dbo.Siparis'te ERP cari bagi (frmID) YOK, `FirmaIsmi` elle yazilir. Uc sonuc: (a) ayni
+      firma coklu yazimla bolunur -> firma bazli rapor LIKE ile yapilmak zorunda, ID ile degil; (b)
+      cari bakiye/tahsilat ile OTOMATIK MUTABAKAT IMKANSIZ; (c) kontrol acigi — 2026-08-28 tespiti:
+      FirmaIsmi='Test' altinda 24.05.2025 tarihli 3 sipariste 250 cek / 100.000 TL GERCEK cek basilmis
+      (yetkili alani 'dasdas asd as das dasd as d'), 46.750 TL harcanmis, 53.250 TL acik, kime
+      verildigi kayitsiz. Ayrica siparis 1243'te tek cek 1.000.000 TL nominal (26.07.2023, CRM'de yok,
+      vade dolmus). Duzeltme: siparis girisinde cari secimi zorunlu olmali.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__cek_harcamasi_iki_kaynak_farkli:
+    ad: "hediye_ceki · CEK_HARCAMASI_IKI_KAYNAK_FARKLI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Bir cek partisinin harcamasi iki yerden olculur ve TUTMAZ: (a) `GiftCard.OriginalAmount -
+      Amount` (CRM bakiye farki), (b) `SalesPayments.Amount WHERE PaymentTypesId=11` (POS odeme
+      kaydi). Inallar 2026-08-28: (a) 321.500 TL, (b) 306.000 TL -> 15.500 TL fark, POS izi yok
+      (bakiye dusulmus ama odeme kaydi olusmamis). **Karlilik/sepet analizinde (b) kullan** (fis
+      kirilimi oradan gelir); yukumluluk/bakiye raporunda (a). Hangi kaynagin kullanildigi raporda
+      YAZILMALI.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__sinav_fisi_kaldirac_bozar:
+    ad: "hediye_ceki · SINAV_FISI_KALDIRAC_BOZAR"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Cek kaldirac olcumunde `DocumentsTypeId=8` (Sinav Okullari) fisleri AYIKLA. Inallar 2026-08-28:
+      3 adet tip-8 fiste yalniz 4.500 TL cek kullanilmis ama 90.368 TL net ciro var (okul paketi
+      satisi). Dahil edilince kaldirac 1,24x yerine 1,53x, kirilma indirimi %46,5 yerine %54,9
+      gorunuyor — cekin getirisi 2 kat abartiliyor. Cek analizinde taban = perakende fis
+      (DocumentsTypeId=1).
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__inallar_kesin_atif:
+    ad: "hediye_ceki · INALLAR_KESIN_ATIF"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ✅ KESIN ATIF (cikarim DEGIL) — 2026-08-27, kullanici PUAN.dbo.Siparis'i gosterdi.
+      `Siparis.FirmaIsmi LIKE '%nallar%'` -> 14 siparis -> CekListesi.barcode -> harcama. BASILAN
+      (isWrite=1): 1.152 cek / 672.000 TL nominal (faturalanan 655.400 TL ile ~16.600 fark). HARCANAN:
+      234 FIS / 305.500 TL (basilanin %45'i; 366.500 TL hala kullanilmamis). KATEGORI: **KIRTASIYE
+      %86,8 brut / %86,2 net** (223 fiste, 4.132 adet) · KITAP %9,5 · kirtasiye DISI %13,2 = 58.270 TL
+      (⚠ BU SIZMA DEGIL — bkz. KISIT_SIZMASI_DOGRU_OLCUM; gercek sizma 25.525 TL = %8,4). Kaldirac
+      1,22x · sepet indirimi %15,9 · agirlikli marj **%42,9** · brut kar 141.377 TL · kar/1TL-cek
+      0,463 -> KIRILMA %46,3. %15 indirim: 45.825 TL verildi, NET KATKI 95.552 TL (marjin %68'i
+      korunuyor). Onceki cikarim (29.08.2025 partisi, %87,8 kirtasiye) DOGRULANDI: siparisId 1567'nin
+      barkod araligi o partiyle birebir ayni. ⚠ Kisit metni 2024 siparislerinde 'KAMPANYA DISI
+      KIRTASIYE', 2025'te 'Sadece Kirtasiye' — yani kisit basindan beri KIRTASIYE odakli. Zorlanmiyor
+      ama sizma %13 DEGIL %8,4 (25.525 TL); fisin kirtasiye-disi kismi cogunlukla cekin USTUNE
+      kart/nakit odenmis.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__cek_harcama_izi_var:
+    ad: "hediye_ceki · CEK_HARCAMA_IZI_VAR"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ✅ Cek TESLIMI kayitli degil AMA cek HARCAMASI zengin izli: `DerinCrm.cmp.GiftCardTransaction` ->
+      StoreCode (M01/M02/M03) + PosCode + CashierCode + CustomerId/CustomerCardNumber (sadakat karti)
+      + **SalesId = Sales.PosDocumentId**. Bu son kolon `SalesPayments.Info` JSON parse etmeye
+      alternatif TEMIZ kopru (compat-110 SUBSTRING zorluklarina gerek yok). Kopru CANLI DOGRULANDI: 15
+      ornekten 13u eslesti, 2si NULL (iptal fis). StoreCode->StoresId: M01=2 FSM, M02=3 Ozluce, M03=1
+      Ist.Yolu (CLAUDE.md haritasiyla birebir). ⚠ SUM(Amount) CIFT SAYAR (durum akisi 100->50->200 her
+      adimda ayni Amount ile satir yazar); olcumde COUNT(DISTINCT GiftCardId) veya
+      SalesPayments.Amount kullan. Kimlik izi ZAYIF: 29.08.2025 partisinde 397 hareketin 322si (%81)
+      KARTSIZ, yalniz 23 farkli sadakat karti -> harcayan kisiler cogunlukla anonim, 'cekleri kim
+      kullandi' sorusu da tam cevaplanmiyor.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__toplu_satista_musteri_bagi_doldurulmuyor:
+    ad: "hediye_ceki · TOPLU_SATISTA_MUSTERI_BAGI_DOLDURULMUYOR"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Toplu cek satisinda musteri alani HIC doldurulmuyor: `cmp.GiftCard.CustomerId` TUM 16.115
+      kayitta 0. Kurumsal alicinin CRM kaydi VARSA bile baglanmiyor — ornek: INALLAR OTOMOTIV
+      `DerinCrm.dbo.Customer` Id 9316 olarak KAYITLI (Code = CardNumber = vergi no 4750606249) ama (a)
+      hicbir cek kaydinda gecmiyor, (b) `Sales.CustomersId=9316` ile HIC POS fisi yok (cekleri alip
+      dagitmislar, kendileri magazadan alisveris yapmamis). INALLAR SIGORTA + GONYE icin CRM Customer
+      kaydi hic YOK. `GiftCardTransaction.CustomerId` (4.619 kayitta dolu) HARCAMA anindaki sadakat
+      kartidir, alici degil — INALLAR partisinde 9316 gecmiyor (calisanlar kendi kartlariyla
+      harcamis). ⚠ frmID'yi cek tablolarinda aramak SONUCSUZ:
+      VendorId/CustomerId/CampaignId/CreatedBy/LinkedGiftCardId + VendorDocNumber/SalesId metin
+      aramasi = 0 eslesme. DerinSIS frm <-> DerinCrm Customer koprusu VERGI NUMARASI uzerinden (frm.VN
+      = Customer.Code), ID eslesmesi YOK.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__cek_musteri_bagi_yok:
+    ad: "hediye_ceki · CEK_MUSTERI_BAGI_YOK"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ BU MADDE YANLISTI — DUZELTILDI 2026-08-27: bag **PUAN.dbo.Siparis.FirmaIsmi +
+      CekListesi.siparisId** ile VAR (bkz. INALLAR_KESIN_ATIF). Asagidaki negatif kanit yalniz
+      DerinSIS/DerinCrm/Encore icin gecerli; PUAN ilk turda tablo adi gorulup ICINE BAKILMADI (ders:
+      tablo adi taramasi yeterli degil, satir sayisi >0 olan aday tablonun ICERIGINE bakilmali). Eski
+      negatif kanit: cmp.GiftCard CustomerId=0 +
+      UniqueAcquisitionId/ActivationInfo/History/ValidationCode/VendorDocNumber HEPSI BOS + CreatedBy
+      hep 1 · fatAyr seri alani YOK (ehNot serbest metin, ehStrID = stok hareket ID) · irs.eNot
+      Inallar 11 irsaliyede BOS · seri takip tablolari (symSeri/mstr/mstrP/etkKareBarkod) 0 SATIR ·
+      kolon adi taramasi (DerinSISBkm+BKM+BKMDATA+DerinCrm) hediye-ceki<->musteri kolonu YOK
+      (carCek.cekNo = BANKA ceki, alakasiz) · _AktarilacakHediyeKartlari yalniz Code/Amount/ValidThru
+      · DerinCrmOutbox tum tablolar 0 · EncoreMerkezLog.job (Hangfire) Gift/Hediye/Coupon YOK ·
+      BKMLOG.Log 7,29M satir ilgili pencerede iz YOK. TEK izlenebilir parmak izi: **uretim gunu +
+      kupur + ADET ESITLIGI** (cmp.GiftCard.CreatedAt + OriginalAmount vs fatura adedi). Bu CIKARIM
+      uretir, kesin atif DEGIL — raporda boyle etiketlenmeli.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__cek_alim_tarihcesi_car_uzerinden:
+    ad: "hediye_ceki · CEK_ALIM_TARIHCESI_CAR_UZERINDEN"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ METODOLOJI: cek alim tarihcesi `fat eTip=1` ile DEGIL **CARI (car) uzerinden** taranir —
+      `car.cNot LIKE %HEDIYE CEKI%` + cKod. Gerekce: Inallar 11.04.2023 alimi (51 adet x 200 TL =
+      10.200 TL) cFatTip=4 (POS/fis tarafi) oldugu icin eTip=1 filtresinde GORUNMEZ; sadece car'da
+      var. Politika baslangici da bu sayede goruldu: 2023 %0 INDIRIM, 2024-2025 %15. car ayrica cek
+      borcu -> tahsilat eslesmesini kurusu kurusuna verir (cTip 0 = borclandirma, 122 = tahsilat).
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__inallar_parti_bulgusu:
+    ad: "hediye_ceki · INALLAR_PARTI_BULGUSU"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Inallar grubu cek alimlari (car uzerinden TAM): 11.04.2023 200 TL x 51 = 10.200 TL INDIRIMSIZ ·
+      09-16.09.2024 1.000 TL x 165 = 165.000 / 24.750 (%15) · 29.08.2025 500 TL x 320 = 160.000 /
+      24.000 (%15) · 01.09.2025 500 TL x 640 = 320.000 / 48.000 (%15). TOPLAM 655.400 brut / 96.750
+      ind = %14,76. VADE: 2024 cek->tahsilat ~5 HAFTA (09-16.09 -> 22-31.10), 2025 ise 1-4 GUN
+      (neredeyse pesin) -> tahsilat davranisi iyilesti, gorusmede koz. TUM cari bakiyeler SIFIR
+      (cKalan=0), acik risk yok. ⚠ CARI KAYIT KALITESI: 24922 INALLAR OTOMOTIV'in frmKod'u sadece VN
+      ('4750606249') — MUHASEBE HESAP KODU YOK; 56291/56292 duzgun (120.10.* = alicilar). Isim aramasi
+      6 kayit dondurur: 3'u grup, 2197 INALLAR TEMIZLIK TEDARIKCI (320.10.* = saticilar, grup DEGIL),
+      34694 Inallar Tarim cek almamis (grup? belirsiz), 27257 Onallar ALAKASIZ (isim benzerligi).
+      Parti eslesmesi: 29.08.2025 500 TL uretilen 320 == Inallar 320 (TEK ADAY, izlenebilir) ·
+      01.09.2025 uretilen 1.545 vs 640 (ayirt edilemez) · 26.08.2025 1.000 TL uretilen 320 vs 165
+      (eslesmiyor, goc). 29.08.2025 PARTISI: 196 cek tukenmis · kalan 55.000 · 84 FIS
+      (GiftCardTransaction 87 fis/3 magaza: M02 95 cek, M03 64, M01 37 -> M02 agirlikli) · cekle
+      odenen 97.500 TL · sepet brut 151.123 · indirim %15,1 · net 113.202 · kaldirac 1,32x ·
+      **KIRTASIYE %87,8 brut / %87,4 net** (84 fisin 82sinde, 1.738 adet) · **KITAP yalniz %9,0**
+      (barem-6 %9,2 ile birebir capraz dogrulama) · agirlikli marj %42,6 · brut kar 48.204 TL ·
+      kar/1TL-cek 0,494 -> kirilma %49,4. %15 indirim 14.625 TL -> NET KATKI 33.579 TL (marjin %70i
+      korunur). SONUC: kirtasiye ayni zamanda en yuksek marjli kategori (%45,3); kitap-agirlikli tavan
+      riski bu partide GERCEKLESMEDI, %15 fazlasiyla guvenli.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__geri_donusum_ayrimi:
+    ad: "hediye_ceki · GERI_DONUSUM_AYRIMI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Geri donusum cekleri kasada IADE SEBEBI olarak isler, hediye ceki DEGIL. Kimlik:
+      `RefundReasons.Id=12 'Geri Dönüşüm'` (Type=0 iade sebebi) + urun `stkID 583160 'Geri Dönüşüm
+      Kağıt Madde Alımı'` (KatAna 'Tanımsız'/Kategori3 'Genel', kg bazli). Karsiligindaki cek
+      `PaymentTypesId=10` (IADE CEKI) olarak verilir — hediye ceki (tip 11) tahsilatinda HIC gorunmez
+      (tip 11 %100 IsGiftCard, 0 IsRefundVoucher). AYIKLAMA IKI KOSULLU: `sp.RefundReasonId <> 12 AND
+      p.Code <> '583160'` — SKU 416 satirda yanlis sebep koduyla (4/5/1/2) ve 12 satirda DocType=1 ile
+      de gecmis, tek kosul yetmez. Hediye-cekli sepette geri donusum SIFIR (iki yontemle kanitlandi)
+      -> HC marj/kaldirac etkilenmez; kirlenen yalniz KONTROL GRUBU (indirim orani %18,83 -> %18,74).
+      Tip 10'u tip 11 ile toplamak analizi ~6 kat sisirir.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__barem_karlilik:
+    ad: "hediye_ceki · BAREM_KARLILIK"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ KARARIN MERKEZI TABLO — cek dilimi x ortalama sepet x GERCEK mix marji (2026-08-25, 12 ay).
+      Barem | fis | ort cek | ort sepet | kaldirac | marj | kar/fis | kar/1TL-cek | kitap payi: <=100
+      |275|61|655|10,66x|%28,2|176|2,858|%22,9 · 101-250 |465|186|737|3,96x|%28,8|200|1,076|%25,4 ·
+      251-500 |788|448|870|1,94x|%29,4|237|0,529|%32,0 · 501-1000
+      |786|907|1.329|1,47x|%31,1|379|0,418|%27,0 · 1001-2500
+      |382|1.815|2.221|1,22x|%35,6|714|0,393|%15,8 · 2500+
+      |159|3.813|4.344|1,14x|%37,4|1.463|0,384|%9,2. **KALDIRAC DUSERKEN MARJ YUKSELIYOR** — cunku
+      kitap payi %23'ten %9'a iner (buyuk cek KIRTASIYE/OYUNCAK aliyor). Kar/fis buyuk cekte EN YUKSEK
+      (1.463 vs 176 TL).
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
+  hediye_ceki__bonus_kanit_zayifligi:
+    ad: "hediye_ceki · BONUS_KANIT_ZAYIFLIGI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Bonus tasariminda BAREM-1'in 10,66x kaldiraci KULLANILAMAZ — o 247 fislik KISMI BAKIYE artigi
+      davranisi (musteri zaten alisveristeydi, cek artigini kullandi); tasarimla uretilemez. Basili
+      kupur (Amount %% 50 = 0) gercegi: 50/100 TL 4,75x · 200 TL 3,30x · 500 TL 1,86x · 1.000 TL 1,45x
+      · 2.500+ 1,14x. 50/100 TL orani YALNIZ 28 fis / 2.500 TL'ye dayanir -> mertebe gostergesi, karar
+      kaniti DEGIL. Populasyon da farkli (bugun kucuk cek kullanan perakende musteri; bonus alan
+      kurumsal hediye alicisi). PILOT SART: tek grup 3 ay, olcum = bonus cek gercek kaldiraci +
+      tek-fis kuralinin tutmasi + kullanilmama orani.
+    kullanir: [metrics:hediye_ceki]
+    last_verified: "2026-08-25"
+    damga_devralindi: true
   ik_norm_kadro_turnover:    # 2026-09-02 — norm kadro / sirkulasyon / yetismis adam olcumu
     tip: oran
     birim: oran
@@ -575,18 +990,116 @@ metrics:
     additivity: yok
     note: "Norm kadro testi = kisi basi FIZIKSEL hacim (adet/kisi) trendi. Ciro/kisi enflasyonla sisiyor, adet sismez -> norm kadro sorgusunda BIRINCIL olcut adet/kisi. Kadro as-of 31.08 (Ict>=T), hacim Oca-Agu kumulatif, 3 POS magazasi (mekan 1/4477/4478), Sinav haric."
     olcum_2026_09_02: "Yil | kadrolu | adet | adet/kisi -> 2023: 60 · 2.064.284 · 34.405 | 2024: 91 · 2.296.833 · 25.240 | 2025: 96 · 2.752.385 · 28.671 | 2026: 111 · 3.607.309 · 32.498. YORUM: kadro sismesi 2024'te oldu (kadro +%52, adet +%11 -> verimlilik -%27); 2024->2026 toparlanma (+%28,8). 3 yil net: kadro +%85, adet +%74,7, kisi basi adet -%5,5 (2023 seviyesine donulmedi)."
-    TURNOVER: "⚠ KRONIK YUKSEK. Ayrilan kadrolu (magazalar): 2024=144 · 2025=161 · 2026-YTD(8 ay)=97. Ortalama kadro ile oranlanmis devir: 2024 ~%134 · 2025 ~%123 · 2026 yilliklandirilmis ~%102. Perakende normu %40-70 -> BKM iki kati. Ayrilan kadrolunun ORT. KIDEMI 281 -> 300 -> 313 gun (~10 ay): kisi yetismeden gidiyor. Sezonluk ort. kidem 57/37/137 gun (2026 yuksek cunku kohort henuz tahliye edilmedi -> censoring, yillar arasi kiyaslanamaz)."
-    YETISMIS_ADAM: "Kadrolu kidem profili (31.08 as-of, magazalar): 2024 -> 0-6ay 40 · 6-12ay 21 · 1-2y 22 · 2-5y 30 · 5+y 14 (toplam 127) | 2026 -> 46 · 29 · 24 · 36 · 14 (toplam 149). ⚠ **5+ yil kidemli 14 kisi, IKI YILDA HIC DEGISMEDI** — kadro +22 buyurken cekirdek sabit, payi %11 -> %9,4'e seyreldi. 1 yildan az kidemli oran %48 -> %50,3: kadronun YARISI acemi. Bu yapisal (2024'te de ayni), tek yila ozgu degil."
-    SUBE_DEVIR: "Kadrolu devir = o yil ayrilan / 31.08 as-of kadro. Magaza bazli (2024 · 2025 · 2026-YTD-yilliklandirilmis): OZLUCE %133 · %133 · %128 (KRONIK) · FSM %152 · %142 · %128 (KRONIK) · IST. YOLU %117 · %148 · **%71** (DUZELIYOR, ayni donemde kadro 24->36 buyudu) · HEYKEL %40 · %75 · %87 (KOTULESIYOR) · SURA %45 · %45 · %13 (EN IYI). Sezonluk tutunma bulgusuyla TUTARLI: Ist.Yolu sezonlukta da 0 erken kayip, Ozluce/Heykel kaybediyor."
-    REYON_DEVIR: "Son 12 ay (01.09.2025-31.08.2026), kadrolu, magazalar — mevcut / ayrilan / devir / ayrilanin ort. kidemi: COCUK 14/25/%179/255g · IDARI ISLER 6/11/%183/278g · KASA 15/24/%160/250g · OYUNCAK 10/12/%120/**128g** · KULTUR 20/21/%105/266g · KIRTASIYE 25/26/%104/**164g** · YARDIMCI KITAP 30/17/%57/221g · AKADEMI 9/5/%56/272g · MAL KABUL 6/2/%33/**17g** · MAGAZA(yonetim) 8/2/%25/**1.726g (4,7 yil)**. TESHIS: kaybedilen 'yetismis adam' DEGIL, hic yetisemeyen frontline (4-9 ay). Yonetim katmani STABIL."
-    KIDEM_VERIMLILIK_TESTI: "⚠ 'Tecrubeli 1 kisinin isini acemi 3 kisi yapamaz' iddiasi UC TESTTE DE DOGRULANMADI (2026-09-02). (A) Ayni kasiyerin ogrenme egrisi (kohort: ilk satis >=01.10.2025): ilk 14 gun 220 fis/kasiyer-gun · 15-44 gun 256 · 45+ gun 242; ort. sepet 633,67 -> 582,66 -> 602,61 TL (ilk 14 gun EN YUKSEK) -> kidem etkisi yok/karisik. Sebep: kasa isi TALEP-SINIRLI (kuyruk kadar fis) -> beceri farki fis hizina yansimaz. (B) Kasiyer hesabi bazli 2025 vs 2026 kiyasi OLCULEMEZ: UsersId kumeleri neredeyse ayrik (hesaplar yenilenmis). (C) Magaza kidem derinligi vs adet/kisi (n=3): FSM 1,35 yil/4.795 · Ozluce 1,08 yil/5.579 · Ist.Yolu 0,86 yil/4.232 -> siralama tutmuyor (en az tecrubeli-oranli magaza en verimli). KULLANIM: bu iddia patron/kurul sunumuna KONULMAZ. Yerine savunulabilir olan: kisi basi adet +%20,6, sirkulasyon maliyeti (32 kadrolu alimin 9'u 14 gunde ayrildi), Ist.Yolu'nda 5+ yil kidemli 0 kisi (yapisal risk, verimlilige yansimasi olculemedi)."
-    NORM_KADRO_2024_ATLAMASI: "2023->2024 kadrolu 60->91 (3 magaza) atlamasi ŞIŞME DEGIL NORMALLESME: departman kirilimi 2023'te anormal ince kadro gosteriyor — FSM KASA **0 kisi**, OZLUCE KASA 1, OZLUCE/FSM/IST.YOLU KIRTASIYE 2-3, SURA/HEYKEL YARDIMCI KITAP 4-5. 2024'te bunlar 4-9'a cikarilmis. Yani 2023'un 34.405 adet/kisi verimliligi 'surdurulebilir norm' DEGIL, eksik-kadroyla calisma gostergesi. 2024 sonrasi yapisal buyume YOK (departman bazinda +0/+1/+2); artis yalniz Ist.Yolu (Kultur 2->4, Kirtasiye 5->6) ve Ozluce (Kultur 5->7, Kirtasiye 5->7, Oyuncak 2->4)."
     kullanim: "Patron/kurul sunumunda 'kadro sisti mi' sorusuna adet/kisi trendi ile cevap ver; turnover ve kidem profilini AYRI gundem yap (kadro buyumesinin bir kismi ikame alimidir: 2026'da 97 ayrilan + 14 net buyume -> ~111 alim)."
     confidence: 0.9
     last_verified: "2026-09-02"
     ttl_days: 180
     evidence: "2026-09-02 canli MCP zirve (vw_PersonelDepartman as-of + ayrilis yili + kidem dilimleri) + DerinSIS eTip100 Oca-Agu adet/net 2023-2026."
 
+  ik_norm_kadro_turnover__turnover:
+    ad: "ik_norm_kadro_turnover · TURNOVER"
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
+    confidence: 0.9
+    note: >-
+      ⚠ KRONIK YUKSEK. Ayrilan kadrolu (magazalar): 2024=144 · 2025=161 · 2026-YTD(8 ay)=97. Ortalama
+      kadro ile oranlanmis devir: 2024 ~%134 · 2025 ~%123 · 2026 yilliklandirilmis ~%102. Perakende
+      normu %40-70 -> BKM iki kati. Ayrilan kadrolunun ORT. KIDEMI 281 -> 300 -> 313 gun (~10 ay):
+      kisi yetismeden gidiyor. Sezonluk ort. kidem 57/37/137 gun (2026 yuksek cunku kohort henuz
+      tahliye edilmedi -> censoring, yillar arasi kiyaslanamaz).
+    kullanir: [metrics:ik_norm_kadro_turnover]
+    last_verified: "2026-09-02"
+    damga_devralindi: true
+  ik_norm_kadro_turnover__yetismis_adam:
+    ad: "ik_norm_kadro_turnover · YETISMIS_ADAM"
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
+    confidence: 0.9
+    note: >-
+      Kadrolu kidem profili (31.08 as-of, magazalar): 2024 -> 0-6ay 40 · 6-12ay 21 · 1-2y 22 · 2-5y 30
+      · 5+y 14 (toplam 127) | 2026 -> 46 · 29 · 24 · 36 · 14 (toplam 149). ⚠ **5+ yil kidemli 14 kisi,
+      IKI YILDA HIC DEGISMEDI** — kadro +22 buyurken cekirdek sabit, payi %11 -> %9,4'e seyreldi. 1
+      yildan az kidemli oran %48 -> %50,3: kadronun YARISI acemi. Bu yapisal (2024'te de ayni), tek
+      yila ozgu degil.
+    kullanir: [metrics:ik_norm_kadro_turnover]
+    last_verified: "2026-09-02"
+    damga_devralindi: true
+  ik_norm_kadro_turnover__sube_devir:
+    ad: "ik_norm_kadro_turnover · SUBE_DEVIR"
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
+    confidence: 0.9
+    note: >-
+      Kadrolu devir = o yil ayrilan / 31.08 as-of kadro. Magaza bazli (2024 · 2025 ·
+      2026-YTD-yilliklandirilmis): OZLUCE %133 · %133 · %128 (KRONIK) · FSM %152 · %142 · %128
+      (KRONIK) · IST. YOLU %117 · %148 · **%71** (DUZELIYOR, ayni donemde kadro 24->36 buyudu) ·
+      HEYKEL %40 · %75 · %87 (KOTULESIYOR) · SURA %45 · %45 · %13 (EN IYI). Sezonluk tutunma
+      bulgusuyla TUTARLI: Ist.Yolu sezonlukta da 0 erken kayip, Ozluce/Heykel kaybediyor.
+    kullanir: [metrics:ik_norm_kadro_turnover]
+    last_verified: "2026-09-02"
+    damga_devralindi: true
+  ik_norm_kadro_turnover__reyon_devir:
+    ad: "ik_norm_kadro_turnover · REYON_DEVIR"
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
+    confidence: 0.9
+    note: >-
+      Son 12 ay (01.09.2025-31.08.2026), kadrolu, magazalar — mevcut / ayrilan / devir / ayrilanin
+      ort. kidemi: COCUK 14/25/%179/255g · IDARI ISLER 6/11/%183/278g · KASA 15/24/%160/250g · OYUNCAK
+      10/12/%120/**128g** · KULTUR 20/21/%105/266g · KIRTASIYE 25/26/%104/**164g** · YARDIMCI KITAP
+      30/17/%57/221g · AKADEMI 9/5/%56/272g · MAL KABUL 6/2/%33/**17g** · MAGAZA(yonetim)
+      8/2/%25/**1.726g (4,7 yil)**. TESHIS: kaybedilen 'yetismis adam' DEGIL, hic yetisemeyen
+      frontline (4-9 ay). Yonetim katmani STABIL.
+    kullanir: [metrics:ik_norm_kadro_turnover]
+    last_verified: "2026-09-02"
+    damga_devralindi: true
+  ik_norm_kadro_turnover__kidem_verimlilik_testi:
+    ad: "ik_norm_kadro_turnover · KIDEM_VERIMLILIK_TESTI"
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
+    confidence: 0.9
+    note: >-
+      ⚠ 'Tecrubeli 1 kisinin isini acemi 3 kisi yapamaz' iddiasi UC TESTTE DE DOGRULANMADI
+      (2026-09-02). (A) Ayni kasiyerin ogrenme egrisi (kohort: ilk satis >=01.10.2025): ilk 14 gun 220
+      fis/kasiyer-gun · 15-44 gun 256 · 45+ gun 242; ort. sepet 633,67 -> 582,66 -> 602,61 TL (ilk 14
+      gun EN YUKSEK) -> kidem etkisi yok/karisik. Sebep: kasa isi TALEP-SINIRLI (kuyruk kadar fis) ->
+      beceri farki fis hizina yansimaz. (B) Kasiyer hesabi bazli 2025 vs 2026 kiyasi OLCULEMEZ:
+      UsersId kumeleri neredeyse ayrik (hesaplar yenilenmis). (C) Magaza kidem derinligi vs adet/kisi
+      (n=3): FSM 1,35 yil/4.795 · Ozluce 1,08 yil/5.579 · Ist.Yolu 0,86 yil/4.232 -> siralama tutmuyor
+      (en az tecrubeli-oranli magaza en verimli). KULLANIM: bu iddia patron/kurul sunumuna KONULMAZ.
+      Yerine savunulabilir olan: kisi basi adet +%20,6, sirkulasyon maliyeti (32 kadrolu alimin 9'u 14
+      gunde ayrildi), Ist.Yolu'nda 5+ yil kidemli 0 kisi (yapisal risk, verimlilige yansimasi
+      olculemedi).
+    kullanir: [metrics:ik_norm_kadro_turnover]
+    last_verified: "2026-09-02"
+    damga_devralindi: true
+  ik_norm_kadro_turnover__norm_kadro_2024_atlamasi:
+    ad: "ik_norm_kadro_turnover · NORM_KADRO_2024_ATLAMASI"
+    tip: oran
+    birim: oran
+    taban: yok
+    additivity: yok
+    confidence: 0.9
+    note: >-
+      2023->2024 kadrolu 60->91 (3 magaza) atlamasi ŞIŞME DEGIL NORMALLESME: departman kirilimi
+      2023'te anormal ince kadro gosteriyor — FSM KASA **0 kisi**, OZLUCE KASA 1, OZLUCE/FSM/IST.YOLU
+      KIRTASIYE 2-3, SURA/HEYKEL YARDIMCI KITAP 4-5. 2024'te bunlar 4-9'a cikarilmis. Yani 2023'un
+      34.405 adet/kisi verimliligi 'surdurulebilir norm' DEGIL, eksik-kadroyla calisma gostergesi.
+      2024 sonrasi yapisal buyume YOK (departman bazinda +0/+1/+2); artis yalniz Ist.Yolu (Kultur
+      2->4, Kirtasiye 5->6) ve Ozluce (Kultur 5->7, Kirtasiye 5->7, Oyuncak 2->4).
+    kullanir: [metrics:ik_norm_kadro_turnover]
+    last_verified: "2026-09-02"
+    damga_devralindi: true
   hizali_pencere_gun_esitligi:   # 2026-09-03 (K-08) — okul-hizali kiyasin on kosulu
     tip: kural
     birim: yok
@@ -645,24 +1158,226 @@ metrics:
     kural: "Okul acilisi kayan yilda ciro tahmini TAKVIM AYI uzerinden yapilmaz. Yontem: (1) gunluk seriyi okul acilisina hizala (ofset = DATEDIFF(DAY, acilis, gun)); (2) buyume carpani k'yi SON TAM hizali gunlerden olc (k = 2026(T-x..T-son)/2025(ayni ofsetler)); (3) tahmin(o) = 2025(o) x k, o > son_ofset; (4) tahmini gunleri CARI yilin takvimine geri yaz -> ay tahmini. Kesim gunu de hizalidir: bugunun eTip 100 belgesi gun ici yeniden yazildigi icin son TAM gun esas alinir."
     okul_acilis_olculdu: "2024-2025 -> 09.09.2024 · 2025-2026 -> 08.09.2025 · 2026-2027 -> 14.09.2026. 2024 tarihi VARSAYILMADI: 2025 sezon sekline en iyi oturan pazartesi arandi (T-56..T+28 normalize gunluk egri, L1 sapma) -> 09.09=0,1027 · 02.09=0,2051 · 16.09=0,2695. MEB takvimiyle birebir tuttu. Yeni yilda ayni sinama tekrarlanir (takvimi web'den de dogrula)."
     zirve_konumu: "Sezon zirvesi ACILISTAN SONRA: en yuksek tek gun 2024 T+6 (15.09) · 2025 T+5 (13.09). En yuksek 7-gun penceresi ise T-5/T-4'te basliyor. Yani 'acilis gunu zirve' YANLIS — dalga acilistan ~1 hafta sonra tepe yapiyor."
-    AY_KOPRUSU_2026: "6 gunluk kayma tek basina ~92M TL'yi Agustos'tan Eylul-Ekim'e tasiyor (2025 sezonu 2026 takvimine hizali tasinsa: Perakende Agu -14,3M / Eyl +3,4M / Eki +6,1M · Sinav Agu -77,5M / Eyl +74,8M / Eki +2,6M). Sonuc: takvim-ayi YoY Agustos'ta YAPAY KOTU, Eylul'de YAPAY IYI. Olculdu: Agu perakende takvim +%28,1 ama okul-hizali +%71,1 · Agu Sinav takvim -%23,7 ama okul-hizali +%89,1."
-    TAHMIN_2026_09_08: "3 magaza POS, net KDV-haric, e-ticaret HARIC (dusuk/orta/yuksek): Eyl 418,7/464,1/507,4M (2025: 313,0M) · Eki 106,3/117,1/127,5M (71,4M) · Kas 74,1/81,3/88,2M (54,6M) · Ara 79,0/86,7/94,0M (60,6M) · Eyl-Ara 678,0/749,1/817,2M (499,7M, orta +%49,9). k perakende 1,37/1,50/1,62 · k Sinav 0,93/1,11/1,29."
-    UYARILAR: "(a) Buyume NOMINAL — Fisher fiyat endeksi Tem-Agu +%19,8, reel hacim ~+%21-25. (b) Son 12 hizali gunde perakende buyumesi %65-90'dan %36-50'ye indi: ya buyume yavasliyor ya dalga acilisa daha da yaklasti — ACIK SORU, 14.09 sonrasi olculur. (c) Sinav lumpy (kurumsal toplu siparis) -> k bandi genis, gun bazli tahmin yapilmaz. (d) k'yi TEK pencereden secme; en az 3 pencere (son 7 / son 14 / sezon basi) bandi verilir."
-    SUBE_BAZLI_2026_09: "Eyl-2026 sube tahmini (orta senaryo, net KDV-haric): FSM 49,3M (Eyl-25 34,5M, +%43,0) · Ozluce 67,6M (44,3M, +%52,6) · Ist.Yolu 348,7M (234,3M, +%48,9; icinden perakende 69,0M + Sinav 279,7M) · GENEL 465,6M (313,0M, +%48,7). Bant 423,2-507,4M. Bant genisligini Ist.Yolu uretiyor (perakende k 1,24-1,69, Sinav k 0,93-1,29 lumpy); FSM/Ozluce k 1,50-1,60 ile dar. eMekan 1=FSM/4477=Ozluce/4478=Ist.Yolu; Sinav Agu-2024'ten beri yalniz Ist.Yolu'nda."
-    ONCESI_SONRASI_SUBE: "Sezonun acilis-oncesi payi sube bazinda SABIT (2024 -> 2025): FSM %34,6 -> %34,5 · Ozluce %40,9 -> %40,5 · Ist.Yolu perakende %56,0 -> %53,3 · Sinav %78,9 -> %79,1. Iki bagimsiz yilda ayni cikmasi hizalamanin dogrulugunun kanitidir. SONUC: FSM/Ozluce cirosu acilis-SONRASI agirlikli -> kaymadan en cok onlar etkilenir; tek-Eylul kiyasi FSM'i haksiz yere kotu gosterir (Eylul YoY +%43,0 ama Eylul+Ekim +%54,0; Ist.Yolu'nda fark yalniz 1,0 puan). Kayma Eylul'den Ekim'e 28,6M TL tasiyor (T+17..T+22). Sube kiyasi EYLUL+EKIM birlikte ya da okul-hizali pencerede yapilir."
-    KAYMA_NET_ETKISI: "⚠ Kaymanin transferi AGUSTOS -> EYLUL'dur (+87,7M), Eylul -> Ekim DEGIL (+12,2M). Temiz karsi-olgu (ayni egri x ayni k, tek fark acilis 14.09 vs 08.09): Eyl 485,0 vs 397,3M · Eki 119,3 vs 107,1M. 'Hizali 6 gunun brut degeri' (28,6M) transfer OLCUSU DEGILDIR — Eylul kaybettigi 6 gune karsilik basindan 6 gun kazanir. Sube ayrimi: FSM -3,7M / Ozluce -1,3M Eylul KAYBEDIYOR (cirolari acilis-sonrasi agirlikli), Ist.Yolu +9,5M kazaniyor. Kuyrugun ~%60'i Kasim tabani seviyesinde NORMAL IS (kaymaz), ~%40'i dalga artigi."
-    SINAV_AYRI: "Sinav ayri is kolu — perakende ile ayni tabloda toplanmaz. Yalniz Ist.Yolu (Agu-2024'te FSM'den tasindi), yilin %97'si Agu+Eyl. Zirve T-2 (acilistan ONCE), sezonun %50'si T-5/-6'da %90'i T+4/+5'te biter, taban 0,04M/gun -> SAF DALGA, KUYRUKSUZ (Eki/Eyl orani %2,4-3,1). Sezon tahmini 2026: 383,3-419,8M (orta 400,8M) vs 2025 326,1M = +%22,9; Eylul 247,7/279,7/310,3M. 'Sinav kuculuyor' (Oca-Agu takvim -%22,5) ARTEFAKT — okul-hizali +%28,7. RISK: son tam hizali hafta T-2 YoY -%5 (sezon basi +%126 iken); lumpy, gun/hafta bazli tahmin yapilmaz."
-    HACIM_AYRISTIRMASI_2026_09: "Okul-hizali T-63..T-7 (perakende): adet 699.004 -> 917.768 (+%31,3), ciro +%62,2, FISHER fiyat +%20,1 -> REEL hacim +%35,0 (02.09 olcumundeki Tem-Agu +%19,8 ile capraz teyitli). Fis (T-38..T-7, gecis-disi pencere): 74.985 -> 91.400 (+%21,9), sepet 631 -> 824 (+%30,6), fis basina adet 6,46 -> 6,91 (+%6,9). Sinav: adet +%3,3 / belge +%0,0 ama sepet +%32,3 -> Sinav buyumesi TAMAMEN fiyat+sepet, musteri sayisi SABIT. Kategori: Egitim-Sinavlara Hazirlik en hizli (adet +%60,3), Hobi-Oyuncak tek fiyati DUSEN (birim -%6,2), Egitim/Okula Yardimci tek KUCULEN (-%5,8)."
-    CELISKI_KARTLI_MUSTERI: "⚠ EncoreMerkez kartli-musteri YoY OLCULEMEZ (2026-09-08). Kartli fis payi 2025 %0,3-1,4 -> 2026 %77,4-81,9; tekil kartli FSM 69 -> 17.999. Musteri buyumesi DEGIL — sadakat karti yakalamasi 2025 Agustos'ta (POS gecisi sonrasi) heniz calismiyordu. Kartli/kartsiz analizinde TABAN 2026 olmali; 2025 ile kiyas yapilmaz."
-    ISTYOLU_KANAL_AYRIMI_COZULDU: "⚠⚠ (2026-09-08 COZULDU — eski CELISKI kaydinin yerine gecer.) IKI sebep vardi. (1) eTip 4 'Magaza Satis' eTip 100'un DISINDA bir satis kanali ve PRATIKTE SADECE Ist.Yolu'nda: 2025 20,18M / 2026 29,79M (536/638 belge), icerigin %86-89'u Sinav kategorisi; Sinav Okullari toplu faturalari buradan akiyor. FSM 0,26/0,53M, Ozluce 0,28/0,62M (ihmal). (2) BELGE tipi (Encore DocumentsTypeId=8) ile URUN kategorisi (UrunBilgi.Kategori3) ayni sey degil: Sinav faturasinda satilan kitap/kirtasiye 2026'da 21,83M, perakende fisinde satilan Sinav urunu 0,19M -> net bucket farki 21,64M (2025: 13,92M)."
-    MEKAN_CIRO_MUTABAKAT_FORMULU: "DerinSIS'ten sube toplam cirosu = eTip 100 − 101 + 4 − 5. YALNIZ eTip 100 KULLANMA — Ist.Yolu'nu ayda ~28-30M eksik verir. Dogrulandi (T-38..T-7, EncoreMerkez'e karsi): 2025 FSM +%1,15 · Ozluce +%0,24 · Ist.Yolu +%0,08 · 2026 FSM +%1,28 · Ozluce +%0,26 · Ist.Yolu +%0,35. Yalniz eTip 100 ile Ist.Yolu −%10,24 sapiyordu."
-    KANAL_AYRACI_KANONIK: "KANAL sorusu (raf/walk-in vs kurumsal-Sinav) -> BELGE bazli: EncoreMerkez DocumentsTypeId=8. DerinSIS'ten belge-bazli ayrim YAPILAMAZ (eTip 100 gunluk OZET belge, ayda 32 satir). URUN/KATEGORI sorusu -> URUN bazli: bkm.UrunBilgi.Kategori3. Ikisi ayni tabloda KARISTIRILMAZ. Ornek fark: Ist.Yolu Eyl-2025 perakende belge-bazli 26,0M vs urun-bazli 43,1M; Ekim'de yakinsiyor (16,8 vs 16,5M) cunku Sinav sezonu bitmis. Belge-bazli olcum yalniz Agu-2025 sonrasi guvenli (pos_sistem_gecisi_2025)."
-    TAHMIN_BELGE_BAZLI_DUZELTILMIS: "⚠ Bu kaydin ustundeki SUBE_BAZLI_2026_09 ve TAHMIN_2026_09_08 rakamlari eTip 100 TEK BASINA hesaplandi -> Ist.Yolu EKSIK. Duzeltilmis (belge bazli, EncoreMerkez): EYLUL dusuk/ORTA/yuksek — FSM 47,9/49,2/49,7 (2025: 33,9; +%45,2) · Ozluce 65,9/66,0/67,4 (43,7; +%51,0) · Ist.Yolu perakende 42,4/42,7/43,1 (26,0; +%64,3) · Ist.Yolu Sinav 319,0/357,8/397,4 (238,6; +%49,9) · TOPLAM 475,2/515,7/557,5 (342,2; +%50,7). EKIM — FSM 36,1/37,1/37,6 (21,3) · Ozluce 46,6/46,6/47,8 (28,2) · Ist.Yolu perakende 31,0/31,2/31,5 (16,8) · Sinav 7,0/8,3/9,6 (4,2) · TOPLAM 120,6/123,3/126,5 (70,6; +%74,6)."
     confidence: 0.9
     last_verified: "2026-09-08"
     ttl_days: 180
     evidence: "sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql (DerinSIS eTip 100, 3 magaza, Sinav Kategori3 ile ayrilmis, 01.06.2024-07.09.2026 gunluk). Mutabakat: Eyl-2025 313,0M ve Agu-2025 186,9M onceki olcumlerle BIREBIR. Ilgili: sezon_kiyas_takvim_hizalama (hizalama kurali) · pos_sistem_gecisi_2025 (kaynak secimi)."
 
+  sezon_ciro_tahmini_okul_hizali__ay_koprusu_2026:
+    ad: "sezon_ciro_tahmini_okul_hizali · AY_KOPRUSU_2026"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      6 gunluk kayma tek basina ~92M TL'yi Agustos'tan Eylul-Ekim'e tasiyor (2025 sezonu 2026
+      takvimine hizali tasinsa: Perakende Agu -14,3M / Eyl +3,4M / Eki +6,1M · Sinav Agu -77,5M / Eyl
+      +74,8M / Eki +2,6M). Sonuc: takvim-ayi YoY Agustos'ta YAPAY KOTU, Eylul'de YAPAY IYI. Olculdu:
+      Agu perakende takvim +%28,1 ama okul-hizali +%71,1 · Agu Sinav takvim -%23,7 ama okul-hizali
+      +%89,1.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__tahmin_2026_09_08:
+    ad: "sezon_ciro_tahmini_okul_hizali · TAHMIN_2026_09_08"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      3 magaza POS, net KDV-haric, e-ticaret HARIC (dusuk/orta/yuksek): Eyl 418,7/464,1/507,4M (2025:
+      313,0M) · Eki 106,3/117,1/127,5M (71,4M) · Kas 74,1/81,3/88,2M (54,6M) · Ara 79,0/86,7/94,0M
+      (60,6M) · Eyl-Ara 678,0/749,1/817,2M (499,7M, orta +%49,9). k perakende 1,37/1,50/1,62 · k Sinav
+      0,93/1,11/1,29.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__uyarilar:
+    ad: "sezon_ciro_tahmini_okul_hizali · UYARILAR"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      (a) Buyume NOMINAL — Fisher fiyat endeksi Tem-Agu +%19,8, reel hacim ~+%21-25. (b) Son 12 hizali
+      gunde perakende buyumesi %65-90'dan %36-50'ye indi: ya buyume yavasliyor ya dalga acilisa daha
+      da yaklasti — ACIK SORU, 14.09 sonrasi olculur. (c) Sinav lumpy (kurumsal toplu siparis) -> k
+      bandi genis, gun bazli tahmin yapilmaz. (d) k'yi TEK pencereden secme; en az 3 pencere (son 7 /
+      son 14 / sezon basi) bandi verilir.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__sube_bazli_2026_09:
+    ad: "sezon_ciro_tahmini_okul_hizali · SUBE_BAZLI_2026_09"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Eyl-2026 sube tahmini (orta senaryo, net KDV-haric): FSM 49,3M (Eyl-25 34,5M, +%43,0) · Ozluce
+      67,6M (44,3M, +%52,6) · Ist.Yolu 348,7M (234,3M, +%48,9; icinden perakende 69,0M + Sinav 279,7M)
+      · GENEL 465,6M (313,0M, +%48,7). Bant 423,2-507,4M. Bant genisligini Ist.Yolu uretiyor
+      (perakende k 1,24-1,69, Sinav k 0,93-1,29 lumpy); FSM/Ozluce k 1,50-1,60 ile dar. eMekan
+      1=FSM/4477=Ozluce/4478=Ist.Yolu; Sinav Agu-2024'ten beri yalniz Ist.Yolu'nda.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__oncesi_sonrasi_sube:
+    ad: "sezon_ciro_tahmini_okul_hizali · ONCESI_SONRASI_SUBE"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Sezonun acilis-oncesi payi sube bazinda SABIT (2024 -> 2025): FSM %34,6 -> %34,5 · Ozluce %40,9
+      -> %40,5 · Ist.Yolu perakende %56,0 -> %53,3 · Sinav %78,9 -> %79,1. Iki bagimsiz yilda ayni
+      cikmasi hizalamanin dogrulugunun kanitidir. SONUC: FSM/Ozluce cirosu acilis-SONRASI agirlikli ->
+      kaymadan en cok onlar etkilenir; tek-Eylul kiyasi FSM'i haksiz yere kotu gosterir (Eylul YoY
+      +%43,0 ama Eylul+Ekim +%54,0; Ist.Yolu'nda fark yalniz 1,0 puan). Kayma Eylul'den Ekim'e 28,6M
+      TL tasiyor (T+17..T+22). Sube kiyasi EYLUL+EKIM birlikte ya da okul-hizali pencerede yapilir.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__kayma_net_etkisi:
+    ad: "sezon_ciro_tahmini_okul_hizali · KAYMA_NET_ETKISI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Kaymanin transferi AGUSTOS -> EYLUL'dur (+87,7M), Eylul -> Ekim DEGIL (+12,2M). Temiz
+      karsi-olgu (ayni egri x ayni k, tek fark acilis 14.09 vs 08.09): Eyl 485,0 vs 397,3M · Eki 119,3
+      vs 107,1M. 'Hizali 6 gunun brut degeri' (28,6M) transfer OLCUSU DEGILDIR — Eylul kaybettigi 6
+      gune karsilik basindan 6 gun kazanir. Sube ayrimi: FSM -3,7M / Ozluce -1,3M Eylul KAYBEDIYOR
+      (cirolari acilis-sonrasi agirlikli), Ist.Yolu +9,5M kazaniyor. Kuyrugun ~%60'i Kasim tabani
+      seviyesinde NORMAL IS (kaymaz), ~%40'i dalga artigi.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__sinav_ayri:
+    ad: "sezon_ciro_tahmini_okul_hizali · SINAV_AYRI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Sinav ayri is kolu — perakende ile ayni tabloda toplanmaz. Yalniz Ist.Yolu (Agu-2024'te FSM'den
+      tasindi), yilin %97'si Agu+Eyl. Zirve T-2 (acilistan ONCE), sezonun %50'si T-5/-6'da %90'i
+      T+4/+5'te biter, taban 0,04M/gun -> SAF DALGA, KUYRUKSUZ (Eki/Eyl orani %2,4-3,1). Sezon tahmini
+      2026: 383,3-419,8M (orta 400,8M) vs 2025 326,1M = +%22,9; Eylul 247,7/279,7/310,3M. 'Sinav
+      kuculuyor' (Oca-Agu takvim -%22,5) ARTEFAKT — okul-hizali +%28,7. RISK: son tam hizali hafta T-2
+      YoY -%5 (sezon basi +%126 iken); lumpy, gun/hafta bazli tahmin yapilmaz.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__hacim_ayristirmasi_2026_09:
+    ad: "sezon_ciro_tahmini_okul_hizali · HACIM_AYRISTIRMASI_2026_09"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Okul-hizali T-63..T-7 (perakende): adet 699.004 -> 917.768 (+%31,3), ciro +%62,2, FISHER fiyat
+      +%20,1 -> REEL hacim +%35,0 (02.09 olcumundeki Tem-Agu +%19,8 ile capraz teyitli). Fis
+      (T-38..T-7, gecis-disi pencere): 74.985 -> 91.400 (+%21,9), sepet 631 -> 824 (+%30,6), fis
+      basina adet 6,46 -> 6,91 (+%6,9). Sinav: adet +%3,3 / belge +%0,0 ama sepet +%32,3 -> Sinav
+      buyumesi TAMAMEN fiyat+sepet, musteri sayisi SABIT. Kategori: Egitim-Sinavlara Hazirlik en hizli
+      (adet +%60,3), Hobi-Oyuncak tek fiyati DUSEN (birim -%6,2), Egitim/Okula Yardimci tek KUCULEN
+      (-%5,8).
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__celiski_kartli_musteri:
+    ad: "sezon_ciro_tahmini_okul_hizali · CELISKI_KARTLI_MUSTERI"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ EncoreMerkez kartli-musteri YoY OLCULEMEZ (2026-09-08). Kartli fis payi 2025 %0,3-1,4 -> 2026
+      %77,4-81,9; tekil kartli FSM 69 -> 17.999. Musteri buyumesi DEGIL — sadakat karti yakalamasi
+      2025 Agustos'ta (POS gecisi sonrasi) heniz calismiyordu. Kartli/kartsiz analizinde TABAN 2026
+      olmali; 2025 ile kiyas yapilmaz.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__istyolu_kanal_ayrimi_cozuldu:
+    ad: "sezon_ciro_tahmini_okul_hizali · ISTYOLU_KANAL_AYRIMI_COZULDU"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ (2026-09-08 COZULDU — eski CELISKI kaydinin yerine gecer.) IKI sebep vardi. (1) eTip 4
+      'Magaza Satis' eTip 100'un DISINDA bir satis kanali ve PRATIKTE SADECE Ist.Yolu'nda: 2025 20,18M
+      / 2026 29,79M (536/638 belge), icerigin %86-89'u Sinav kategorisi; Sinav Okullari toplu
+      faturalari buradan akiyor. FSM 0,26/0,53M, Ozluce 0,28/0,62M (ihmal). (2) BELGE tipi (Encore
+      DocumentsTypeId=8) ile URUN kategorisi (UrunBilgi.Kategori3) ayni sey degil: Sinav faturasinda
+      satilan kitap/kirtasiye 2026'da 21,83M, perakende fisinde satilan Sinav urunu 0,19M -> net
+      bucket farki 21,64M (2025: 13,92M).
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__mekan_ciro_mutabakat_formulu:
+    ad: "sezon_ciro_tahmini_okul_hizali · MEKAN_CIRO_MUTABAKAT_FORMULU"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      DerinSIS'ten sube toplam cirosu = eTip 100 − 101 + 4 − 5. YALNIZ eTip 100 KULLANMA — Ist.Yolu'nu
+      ayda ~28-30M eksik verir. Dogrulandi (T-38..T-7, EncoreMerkez'e karsi): 2025 FSM +%1,15 · Ozluce
+      +%0,24 · Ist.Yolu +%0,08 · 2026 FSM +%1,28 · Ozluce +%0,26 · Ist.Yolu +%0,35. Yalniz eTip 100
+      ile Ist.Yolu −%10,24 sapiyordu.
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__kanal_ayraci_kanonik:
+    ad: "sezon_ciro_tahmini_okul_hizali · KANAL_AYRACI_KANONIK"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      KANAL sorusu (raf/walk-in vs kurumsal-Sinav) -> BELGE bazli: EncoreMerkez DocumentsTypeId=8.
+      DerinSIS'ten belge-bazli ayrim YAPILAMAZ (eTip 100 gunluk OZET belge, ayda 32 satir).
+      URUN/KATEGORI sorusu -> URUN bazli: bkm.UrunBilgi.Kategori3. Ikisi ayni tabloda KARISTIRILMAZ.
+      Ornek fark: Ist.Yolu Eyl-2025 perakende belge-bazli 26,0M vs urun-bazli 43,1M; Ekim'de
+      yakinsiyor (16,8 vs 16,5M) cunku Sinav sezonu bitmis. Belge-bazli olcum yalniz Agu-2025 sonrasi
+      guvenli (pos_sistem_gecisi_2025).
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
+  sezon_ciro_tahmini_okul_hizali__tahmin_belge_bazli_duzeltilmis:
+    ad: "sezon_ciro_tahmini_okul_hizali · TAHMIN_BELGE_BAZLI_DUZELTILMIS"
+    tip: turev
+    birim: TL
+    taban: belirsiz
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Bu kaydin ustundeki SUBE_BAZLI_2026_09 ve TAHMIN_2026_09_08 rakamlari eTip 100 TEK BASINA
+      hesaplandi -> Ist.Yolu EKSIK. Duzeltilmis (belge bazli, EncoreMerkez): EYLUL dusuk/ORTA/yuksek —
+      FSM 47,9/49,2/49,7 (2025: 33,9; +%45,2) · Ozluce 65,9/66,0/67,4 (43,7; +%51,0) · Ist.Yolu
+      perakende 42,4/42,7/43,1 (26,0; +%64,3) · Ist.Yolu Sinav 319,0/357,8/397,4 (238,6; +%49,9) ·
+      TOPLAM 475,2/515,7/557,5 (342,2; +%50,7). EKIM — FSM 36,1/37,1/37,6 (21,3) · Ozluce
+      46,6/46,6/47,8 (28,2) · Ist.Yolu perakende 31,0/31,2/31,5 (16,8) · Sinav 7,0/8,3/9,6 (4,2) ·
+      TOPLAM 120,6/123,3/126,5 (70,6; +%74,6).
+    kullanir: [metrics:sezon_ciro_tahmini_okul_hizali]
+    last_verified: "2026-09-08"
+    damga_devralindi: true
   pos_sistem_gecisi_2025:    # 2026-09-02 — KASA DEGISIMI: YoY kiyasi bozan yapisal kirilma
     tip: kural
     birim: yok
@@ -701,30 +1416,197 @@ metrics:
     additivity: tam
     kullanir: [metrics:sezon_personel_kohort]
     kaynak: "Zirve `BKM_GENEL.dbo.vw_PuanBil` (bordro, kisi x ay) + DerinSIS `irs/irsAyr eTip=100` (ciro). Kapsam ayraci `vw_PersonelDepartman.Lokasyon LIKE 'MA%'`."
-    OLCU_BIRIMI_FTE: "⚠⚠ Kadro/kapasite olcusu **FTE (tam zaman esdeger) = SUM(Primgunu)/30**, bordro SATIRI DEGIL. Bordro satiri (kisi-ay) sayilirsa ay icinde 1 gun calisan da 1 sayilir ve sezonluk giris/cikis yogun aylarda kadro SISER (kullanici uyarisi 03.09.2026). Olculen sapma: 5 magaza Agustos-2025 = 211 kayit vs 168,9 FTE (%25); uc POS Temmuz-2026 = 127 kayit vs 112,4 FTE (ort. prim gunu 26,6). Kisi-basi TUM metrikler (maliyet, ciro, fazla mesai) FTE ile bolunur; kayit sayisi + ortalama prim gunu seffaflik icin JSON/Excel'de kalir. `Primgunu` = SGK prim gunu (tam ay 30); ucretsiz izin zaten dusuk gelir."
-    MALIYET_FORMULU: "personel maliyeti = `SUM(Bt + Isskk + Iisk)` (brut toplam + isveren SGK hissesi + isveren issizlik payi). Kidem karsiligi + yan haklar HARIC -> ALT SINIR. Net odenen (`Netu`) maliyet DEGILDIR (isveren yukunu gostermez)."
-    SEZON_KALANI_TAHMINI: "Cari sezon tamamlanmadan (bordro/ciro eksikken) sezonun KALANI uc modelle tahmin edilir, her satir GERCEK/TAHMIN etiketli (scripts/verimlilik_cek_tahmin.py): (1) CIRO — gun bazli OKUL-HIZALI esleme: onceki yilin GUNLUK cirosu acilis ofsetiyle cari takvime tasinir ve hizali pencerede OLCULEN buyume orani uygulanir (ayri bir buyume varsayimi YOK); gerceklesen gunler tahminle DEGISTIRILMEZ. (2) FTE — sezon SEKLI onceki yildan, SEVIYE cari yilin son tam bordro ayindan (katsayi = FTE(cari,taban)/FTE(onceki,taban)). (3) MALIYET — tahmini FTE x cari yilin FTE BASINA maliyeti (ucret sabit varsayimi -> ALT SINIR). ⚠ TAKVIM AYI KIYASI KAYMAYI YANSITIR: acilis 6 gun kayinca onceki yilin Agustos-sonu yogunlugu cari yilda Eylul basina duser -> Agustos -%8 / Eylul +%102 gorunur; ay ay okumak yaniltir, SEZON TOPLAMI veya Agu+Eyl BIRLIKTE okunur. Olcum 2026-09-03 (3 POS, sezon Tem-Eki): ciro 602,0M -> 990,4M (+%64,5) · FTE 458,7 -> 531,0 (+%15,8) · maliyet 21,3M -> 32,0M · maliyet/ciro %3,54 -> %3,23."
-    SEZON_TANIMI: "⚠⚠ SEZON = **TEMMUZ-EKIM** (kullanici duzeltmesi 03.09.2026: 'bizim sezon temmuz degil, temmuz olsa da agustos eylul ekim'). Temmuz hazirlik; asil hacim ve sezonluk kadro Agu-Eyl-Eki'de. KANIT (3 POS, KDV-haric ciro 2025): Tem 30,7M · **Agu 186,9M · Eyl 313,0M · Eki 71,4M** · Kas 54,6M — sezon 4 ayi 602M = yilin ~%65'i. Sezonluk FTE 2025: Tem 3,4 · Agu 26,5 · Eyl 37,1 · Eki 9,7. SONUC: maliyet/ciro orani sezon aylarinda cok dusuk (2025 tam sezon %3,54 vs Oca-Tem %12,85) -> **sezon ve yil-geneli oranlari BIRBIRIYLE KIYASLANMAZ**; her biri kendi yil-onceki esiyle kiyaslanir. Cari yil sezonu tamamlanmadan (bordro kosmadan) kiyas yalniz TAMAMLANAN ORTAK AYLARLA yapilir; gecen yilin tam sezonu ayri referans bloktur."
-    SEGMENT_AYRIMI: "KADROLU / SEZONLUK ayri raporlanir (`p.Kadro='SEZONLUK'`). ⚠ Ayrac BUGUNKU durumdur (Kadro alani tarihlenmiyor — entities.sezon_personel_kohort.KADROYA_GECIS_OLCULEMEZ): gecmiste sezonluk calisip kadroya gecen kisi GECMIS ayda da KADROLU gorunur -> gecmis sezonlarin sezonluk agirligi ALT SINIR. Olcum 2026-09-03 (3 POS, Oca-Tem kumulatif): kadrolu FTE 693,7->755,5 · sezonluk FTE 3,4->20,6."
-    PENCERE_KURALI: "⚠⚠ ESAS PENCERE **SEZON** (Tem-Eki) — kadro sezonda artiyor; yilbasindan
-      itibaren kumulatif pencere sezonu SULANDIRIR ve kadro artisinin ZAMANINI gizler (kullanici
-      uyarisi 03.09.2026). Uc pencere birlikte uretilir: (1) `sezon` ESAS, (2) `kumulatif` referans,
-      (3) `ay` kirilimi (kadro/maliyet/FM/oran ay bazinda). Sezon penceresi bordro kosmus aylarla
-      SINIRLIDIR: 2026 Agustos bordrosu 03.09 itibariyla kosmamis -> sezon = yalniz Temmuz, kayit
-      `tam_mi: false` + `uyari` tasir ve ciktilarda AÇIKÇA yazilir. Olcum 2026-09-03 (sezon=Tem, uc
-      POS): FTE 97,1->112,4 (+%15,8; kayit 110->127) · maliyet 4,4M->6,8M (+%54,6) · ciro 30,7M->53,4M (+%73,9) ·
-      **maliyet/ciro %14,30 -> %12,71 = -1,59 puan** (kumulatif Oca-Tem: -0,70 puan). Aylik kirilim:
-      kadro artisi 7 ayin 7'sinde de var (tek aya sikismis degil)."
-    ORAN_KURALI: "⚠ Karsilastirma olcusu **maliyet / ciro** ve YUZDE PUAN olarak okunur (oranin yuzde degisimi yaniltir). Payda CIRO **KDV HARIC** (maliyet de KDV'siz) ve **Sinav DAHIL** (o satisi da ayni magaza personeli yapar). Olcum 2026-09-03 (Oca-Tem, uc POS): %12,85 -> %12,15 = **-0,70 puan** — maliyet +%51,5 artmasina ragmen cironun personel yuku DUSTU. Artisin ana kaynagi kisi basi ucret (+%38,3), kadro (+%9,6 kisi-ay) degil."
-    FAZLA_MESAI_AYRACI: "fazla mesai SAAT = `fm1+fm2+fm3`, TUTAR = `fmtutar1+fmtutar2+fmtutar3` (uc dilim = normal/hafta-tatili/genel-tatil carpanlari). Yillik kisi basi = (FM saat / kisi-ay) x 12."
-    YASAL_CERCEVE: "4857 s.K. m.41: kisi basi **yillik 270 saat** fazla mesai ust siniri; m.63 normal calisma 45 saat/hafta -> kisi-ay normal calisma **195 saat** (45x52/12). Bu iki sabit modelin cercevesi; hukuki yorum (fesih/uyum yaptirimi) IK+avukat isidir, rapora YAZILMAZ."
-    KADRO_ALINMASAYDI_MODELI: "K-22 karsi-argumani, **SEZON penceresinde** kurulur: eksik_kisi_ay = kisi_ay(cari) - kisi_ay(onceki); ek_FM = eksik_kisi_ay x 195; varsayim_FM = fiili_FM(cari) + ek_FM; kisi_basi_yillik = varsayim_FM / kisi_ay(onceki) x 12 (sezon hizinin yila yayilmasi). Olcum 2026-09-03 SEZON (Tem), FTE bazli: **15,3 FTE** eksik (kayit farki 17) -> +2.984 saat -> **465 saat/yil/FTE > 270 yasal sinir (ASILIR)**; fiili sezon 84 saat/yil/FTE. KUMULATIF (Oca-Tem) surum referans: 75 kisi-ay -> +14.625 saat -> 342 saat/yil; fiili 107. **VARSAYIM:** isgucu ihtiyaci kisi sayisiyla dogru orantili + eksik kapasite ancak FM ile kapanir; kismi-sureli/hafta-sonu duzenlemesi ve verim artisi modelde YOK -> UST SINIR tahmini olarak sunulur."
-    KARSI_METRIK: "Fiili FM sinirin altinda diye 'kadro yeterli' SONUCU CIKARILMAZ: yillik sinir hizinda calisan kisi-ay sayisi 32 -> 95'e cikti (2026-09-03 olcumu) — kadro darligi FM'ye degil kisi sayisina yayilmis demektir. Norm acigiyla (bolum bazinda 15 kisi) birlikte okunur."
     confidence: 0.9
     last_verified: "2026-09-03"
     ttl_days: 180
     evidence: "2026-09-03 canli — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql (4 blok). Emitter: scripts/verimlilik_excel.py cek() 3g+12 -> JSON maliyet/fazla_mesai; Excel «Maliyet» sayfasi + sunum 2 slayt; 94/94 tutarlilik kontrolu."
 
+  personel_maliyet_ve_fazla_mesai__olcu_birimi_fte:
+    ad: "personel_maliyet_ve_fazla_mesai · OLCU_BIRIMI_FTE"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ Kadro/kapasite olcusu **FTE (tam zaman esdeger) = SUM(Primgunu)/30**, bordro SATIRI DEGIL.
+      Bordro satiri (kisi-ay) sayilirsa ay icinde 1 gun calisan da 1 sayilir ve sezonluk giris/cikis
+      yogun aylarda kadro SISER (kullanici uyarisi 03.09.2026). Olculen sapma: 5 magaza Agustos-2025 =
+      211 kayit vs 168,9 FTE (%25); uc POS Temmuz-2026 = 127 kayit vs 112,4 FTE (ort. prim gunu 26,6).
+      Kisi-basi TUM metrikler (maliyet, ciro, fazla mesai) FTE ile bolunur; kayit sayisi + ortalama
+      prim gunu seffaflik icin JSON/Excel'de kalir. `Primgunu` = SGK prim gunu (tam ay 30); ucretsiz
+      izin zaten dusuk gelir.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__maliyet_formulu:
+    ad: "personel_maliyet_ve_fazla_mesai · MALIYET_FORMULU"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      personel maliyeti = `SUM(Bt + Isskk + Iisk)` (brut toplam + isveren SGK hissesi + isveren
+      issizlik payi). Kidem karsiligi + yan haklar HARIC -> ALT SINIR. Net odenen (`Netu`) maliyet
+      DEGILDIR (isveren yukunu gostermez).
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__sezon_kalani_tahmini:
+    ad: "personel_maliyet_ve_fazla_mesai · SEZON_KALANI_TAHMINI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Cari sezon tamamlanmadan (bordro/ciro eksikken) sezonun KALANI uc modelle tahmin edilir, her
+      satir GERCEK/TAHMIN etiketli (scripts/verimlilik_cek_tahmin.py): (1) CIRO — gun bazli
+      OKUL-HIZALI esleme: onceki yilin GUNLUK cirosu acilis ofsetiyle cari takvime tasinir ve hizali
+      pencerede OLCULEN buyume orani uygulanir (ayri bir buyume varsayimi YOK); gerceklesen gunler
+      tahminle DEGISTIRILMEZ. (2) FTE — sezon SEKLI onceki yildan, SEVIYE cari yilin son tam bordro
+      ayindan (katsayi = FTE(cari,taban)/FTE(onceki,taban)). (3) MALIYET — tahmini FTE x cari yilin
+      FTE BASINA maliyeti (ucret sabit varsayimi -> ALT SINIR). ⚠ TAKVIM AYI KIYASI KAYMAYI YANSITIR:
+      acilis 6 gun kayinca onceki yilin Agustos-sonu yogunlugu cari yilda Eylul basina duser ->
+      Agustos -%8 / Eylul +%102 gorunur; ay ay okumak yaniltir, SEZON TOPLAMI veya Agu+Eyl BIRLIKTE
+      okunur. Olcum 2026-09-03 (3 POS, sezon Tem-Eki): ciro 602,0M -> 990,4M (+%64,5) · FTE 458,7 ->
+      531,0 (+%15,8) · maliyet 21,3M -> 32,0M · maliyet/ciro %3,54 -> %3,23.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__sezon_tanimi:
+    ad: "personel_maliyet_ve_fazla_mesai · SEZON_TANIMI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ SEZON = **TEMMUZ-EKIM** (kullanici duzeltmesi 03.09.2026: 'bizim sezon temmuz degil, temmuz
+      olsa da agustos eylul ekim'). Temmuz hazirlik; asil hacim ve sezonluk kadro Agu-Eyl-Eki'de.
+      KANIT (3 POS, KDV-haric ciro 2025): Tem 30,7M · **Agu 186,9M · Eyl 313,0M · Eki 71,4M** · Kas
+      54,6M — sezon 4 ayi 602M = yilin ~%65'i. Sezonluk FTE 2025: Tem 3,4 · Agu 26,5 · Eyl 37,1 · Eki
+      9,7. SONUC: maliyet/ciro orani sezon aylarinda cok dusuk (2025 tam sezon %3,54 vs Oca-Tem
+      %12,85) -> **sezon ve yil-geneli oranlari BIRBIRIYLE KIYASLANMAZ**; her biri kendi yil-onceki
+      esiyle kiyaslanir. Cari yil sezonu tamamlanmadan (bordro kosmadan) kiyas yalniz TAMAMLANAN ORTAK
+      AYLARLA yapilir; gecen yilin tam sezonu ayri referans bloktur.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__segment_ayrimi:
+    ad: "personel_maliyet_ve_fazla_mesai · SEGMENT_AYRIMI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      KADROLU / SEZONLUK ayri raporlanir (`p.Kadro='SEZONLUK'`). ⚠ Ayrac BUGUNKU durumdur (Kadro alani
+      tarihlenmiyor — entities.sezon_personel_kohort.KADROYA_GECIS_OLCULEMEZ): gecmiste sezonluk
+      calisip kadroya gecen kisi GECMIS ayda da KADROLU gorunur -> gecmis sezonlarin sezonluk agirligi
+      ALT SINIR. Olcum 2026-09-03 (3 POS, Oca-Tem kumulatif): kadrolu FTE 693,7->755,5 · sezonluk FTE
+      3,4->20,6.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__pencere_kurali:
+    ad: "personel_maliyet_ve_fazla_mesai · PENCERE_KURALI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠⚠ ESAS PENCERE **SEZON** (Tem-Eki) — kadro sezonda artiyor; yilbasindan itibaren kumulatif
+      pencere sezonu SULANDIRIR ve kadro artisinin ZAMANINI gizler (kullanici uyarisi 03.09.2026). Uc
+      pencere birlikte uretilir: (1) `sezon` ESAS, (2) `kumulatif` referans, (3) `ay` kirilimi
+      (kadro/maliyet/FM/oran ay bazinda). Sezon penceresi bordro kosmus aylarla SINIRLIDIR: 2026
+      Agustos bordrosu 03.09 itibariyla kosmamis -> sezon = yalniz Temmuz, kayit `tam_mi: false` +
+      `uyari` tasir ve ciktilarda AÇIKÇA yazilir. Olcum 2026-09-03 (sezon=Tem, uc POS): FTE
+      97,1->112,4 (+%15,8; kayit 110->127) · maliyet 4,4M->6,8M (+%54,6) · ciro 30,7M->53,4M (+%73,9)
+      · **maliyet/ciro %14,30 -> %12,71 = -1,59 puan** (kumulatif Oca-Tem: -0,70 puan). Aylik kirilim:
+      kadro artisi 7 ayin 7'sinde de var (tek aya sikismis degil).
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__oran_kurali:
+    ad: "personel_maliyet_ve_fazla_mesai · ORAN_KURALI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      ⚠ Karsilastirma olcusu **maliyet / ciro** ve YUZDE PUAN olarak okunur (oranin yuzde degisimi
+      yaniltir). Payda CIRO **KDV HARIC** (maliyet de KDV'siz) ve **Sinav DAHIL** (o satisi da ayni
+      magaza personeli yapar). Olcum 2026-09-03 (Oca-Tem, uc POS): %12,85 -> %12,15 = **-0,70 puan** —
+      maliyet +%51,5 artmasina ragmen cironun personel yuku DUSTU. Artisin ana kaynagi kisi basi ucret
+      (+%38,3), kadro (+%9,6 kisi-ay) degil.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__fazla_mesai_ayraci:
+    ad: "personel_maliyet_ve_fazla_mesai · FAZLA_MESAI_AYRACI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      fazla mesai SAAT = `fm1+fm2+fm3`, TUTAR = `fmtutar1+fmtutar2+fmtutar3` (uc dilim =
+      normal/hafta-tatili/genel-tatil carpanlari). Yillik kisi basi = (FM saat / kisi-ay) x 12.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__yasal_cerceve:
+    ad: "personel_maliyet_ve_fazla_mesai · YASAL_CERCEVE"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      4857 s.K. m.41: kisi basi **yillik 270 saat** fazla mesai ust siniri; m.63 normal calisma 45
+      saat/hafta -> kisi-ay normal calisma **195 saat** (45x52/12). Bu iki sabit modelin cercevesi;
+      hukuki yorum (fesih/uyum yaptirimi) IK+avukat isidir, rapora YAZILMAZ.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__kadro_alinmasaydi_modeli:
+    ad: "personel_maliyet_ve_fazla_mesai · KADRO_ALINMASAYDI_MODELI"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      K-22 karsi-argumani, **SEZON penceresinde** kurulur: eksik_kisi_ay = kisi_ay(cari) -
+      kisi_ay(onceki); ek_FM = eksik_kisi_ay x 195; varsayim_FM = fiili_FM(cari) + ek_FM;
+      kisi_basi_yillik = varsayim_FM / kisi_ay(onceki) x 12 (sezon hizinin yila yayilmasi). Olcum
+      2026-09-03 SEZON (Tem), FTE bazli: **15,3 FTE** eksik (kayit farki 17) -> +2.984 saat -> **465
+      saat/yil/FTE > 270 yasal sinir (ASILIR)**; fiili sezon 84 saat/yil/FTE. KUMULATIF (Oca-Tem)
+      surum referans: 75 kisi-ay -> +14.625 saat -> 342 saat/yil; fiili 107. **VARSAYIM:** isgucu
+      ihtiyaci kisi sayisiyla dogru orantili + eksik kapasite ancak FM ile kapanir;
+      kismi-sureli/hafta-sonu duzenlemesi ve verim artisi modelde YOK -> UST SINIR tahmini olarak
+      sunulur.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
+  personel_maliyet_ve_fazla_mesai__karsi_metrik:
+    ad: "personel_maliyet_ve_fazla_mesai · KARSI_METRIK"
+    tip: turev
+    birim: TL
+    taban: kdv_haric
+    additivity: tam
+    confidence: 0.9
+    note: >-
+      Fiili FM sinirin altinda diye 'kadro yeterli' SONUCU CIKARILMAZ: yillik sinir hizinda calisan
+      kisi-ay sayisi 32 -> 95'e cikti (2026-09-03 olcumu) — kadro darligi FM'ye degil kisi sayisina
+      yayilmis demektir. Norm acigiyla (bolum bazinda 15 kisi) birlikte okunur.
+    kullanir: [metrics:personel_maliyet_ve_fazla_mesai]
+    last_verified: "2026-09-03"
+    damga_devralindi: true
   sezon_personel_kohort:    # 2026-09-02 — sezon (okul) alım kohortunun seyri; MAĞAZA BAZLI kıyas
     tip: basit
     birim: kisi
