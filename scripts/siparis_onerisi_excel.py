@@ -24,7 +24,8 @@ B-SEZON/SEYREK (SatanAy < 6) → bu sezon YAZILMAZ. Bugün 10.09; sezon (Tem–E
 
 ═══ MİKTAR ══════════════════════════════════════════════════════════════════════
     hız      = Satis365 / 365                       (gün başına; alt sınır)
-    kapak    = hız × (temin süresi + 30 gün gözden geçirme)
+    kapak    = max(hız, sezon penceresi) × (temin süresi + 30 gün gözden geçirme)
+               ↑ sezon penceresi = geçen yılın AYNI takvim aralığındaki satış (Ağu/Eyl/Eki)
     emniyet  = z × sqrt(CV² / SatanAy) × kapak      (kapağın %100'ünü AŞAMAZ)
     öneri    = ceil(kapak + emniyet)
     tavan    = kategori eşiği × sezon satışı        (Kırtasiye 2× · diğer 3×) — AŞILAMAZ
@@ -164,6 +165,9 @@ SELECT t.stkID,
        ISNULL(t.SatanAy, 0)                          AS SatanAy,
        CONVERT(decimal(9,2), ISNULL(t.TalepCV2, 1))  AS CV2,
        CONVERT(int, ISNULL(t.LeadTime, 7))           AS TeminGun,
+       CONVERT(int, ISNULL(t.Ay1, 0))                AS SezonAgu,
+       CONVERT(int, ISNULL(t.Ay2, 0))                AS SezonEyl,
+       CONVERT(int, ISNULL(t.Ay3, 0))                AS SezonEki,
        CONVERT(int, t.ToplamStok)                    AS ToplamStok,
        CONVERT(int, t.MagazaStok)                    AS MagazaStok,
        CONVERT(int, t.MerkezStok)                    AS MerkezStok,
@@ -179,16 +183,35 @@ LEFT JOIN acik a ON a.stkID = t.stkID
 ORDER BY t.SatisToplam DESC
 """
 
+# BU YIL / GEÇEN YIL aynı takvim penceresi — sezon TEKRARLANABİLİR Mİ?
+# ⚠ Geçen yılın sezonunu olduğu gibi sipariş etmek "bu yıl da aynı" varsayımıdır ve
+# ÖLÇÜLMEDEN yapılamaz. Ölçüldü (1-9 Eylül, adet): Kırtasiye **0,77** · Oyuncak 1,50 ·
+# Hediyelik 1,02 · Elektronik 0,96. Kırtasiye'de geçen yıl kadar almak %30 fazla almaktır.
+SQL_SEZON_ORAN = """
+SELECT ISNULL(ub.Kategori3, '(yok)') AS Kategori,
+       CONVERT(decimal(9,4),
+         -SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN h.ehAdetN ELSE 0 END)
+         / NULLIF(-SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN h.ehAdetN ELSE 0 END), 0)
+       ) AS Oran,
+       CONVERT(int, -SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN h.ehAdetN ELSE 0 END)) AS BuYilAdet
+FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+JOIN DerinSISBkm.bkm.UrunBilgi ub WITH (NOLOCK) ON ub.stkID = h.ehstkID
+WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+  AND ub.Kategori3 IN (N'Kırtasiye', N'Oyuncak', N'Hediyelik', N'Elektronik', N'Spor & Outdoor')
+GROUP BY ub.Kategori3
+"""
+SEZON_ORAN_TABAN = 200      # bu yıl < 200 adet satmış kategoride oran GÜVENİLMEZ → 1,0
+
 BEKLENEN_KOLONLAR = [
     "stkID", "Barkod", "Urun", "Kategori3", "Marka", "Satis365", "SezonSatis", "SatanAy",
-    "CV2", "TeminGun", "ToplamStok", "MagazaStok", "MerkezStok", "OdakStok",
+    "CV2", "TeminGun", "SezonAgu", "SezonEyl", "SezonEki", "ToplamStok", "MagazaStok", "MerkezStok", "OdakStok",
     "AcikSiparis", "AcikBelge", "SonSiparisTarih",
     "Fiyat", "Maliyet", "SonSatis",
 ]
 
 BASLIKLAR = [
     "stkID", "Barkod", "Ürün", "Kategori", "Marka", "Satış 365g", "Sezon satış",
-    "Satan ay", "CV²", "Talep deseni", "Temin gün", "Eldeki stok", "Mağaza", "Merkez",
+    "Satan ay", "CV²", "Talep deseni", "Temin gün", "Hız tabanı", "Eldeki stok", "Mağaza", "Merkez",
     "ODAK stok", "Açık sipariş (120g)", "Açık belge", "Aciliyet",
     "Kapak (adet)", "Fiyat ₺", "Birim maliyet ₺", "ÖNERİ ADET", "Yatırım ₺",
     f"Plan {PLAN_HAFTA} hafta adet", f"Plan {PLAN_HAFTA} hafta ₺",
@@ -210,15 +233,57 @@ def talep_deseni(satan_ay: int, cv2: float) -> str:
     return "sıçramalı"
 
 
-def hesapla(r: dict, net_acik: bool) -> dict:
+SEZON_AY = {8: "SezonAgu", 9: "SezonEyl", 10: "SezonEki"}   # taban Ay1/Ay2/Ay3
+
+
+def pencere_talebi(r: dict, bas: dt.date, gun: int) -> float:
+    """GEÇEN YILIN AYNI TAKVİM PENCERESİNDEKİ satışı (Ağu/Eyl/Eki aylıklarından orantılı).
+
+    ⚠ NEDEN VAR (11.09.2026 ölçümü): düz 365g hızı SEZON ürününde talebi ÇOK düşük sayar.
+    Kırtasiye'de sezon-yoğun 285 çeşit için ölçüldü — 50 günlük pencere talebi düz hızla
+    **7.257 adet**, geçen yılın aynı penceresiyle **29.057 adet**: **4 kat fark**.
+    Sebep: `Satis365` penceresi (Eyl-2025→Eyl-2026) sezonun Ağu-Eyl zirvesini dışarıda
+    bırakıyor; ölçülen aylık dağılım Ağu 10.510 · **Eyl 29.193** · Eki 10.437 — zirve EYLÜL,
+    yani tam şu an. Düz hızla sipariş = sezonun ortasında eksik almak.
+    """
+    toplam = 0.0
+    for i in range(gun):
+        g = bas + dt.timedelta(days=i)
+        alan = SEZON_AY.get(g.month)
+        if not alan:                    # sezon dışı gün (Kas-Tem) — aylık veri yok
+            continue
+        import calendar
+        toplam += float(r[alan] or 0) / calendar.monthrange(g.year, g.month)[1]
+    return toplam
+
+
+def hesapla(r: dict, net_acik: bool, kesim: dt.date | None = None,
+            oranlar: dict | None = None) -> dict:
     kat = r["Kategori3"]
     hiz = r["Satis365"] / 365.0
     temin = max(int(r["TeminGun"] or 7), 1)
     kapak = hiz * (temin + GOZDEN_GECIRME_GUN)
+    # SEZON DÜZELTMESİ: pencere geçen yılın aynı takvim aralığına denk geliyorsa, düz hız
+    # ile sezon talebinin BÜYÜĞÜ alınır. Sezon dışı üründe sezon penceresi zaten küçük →
+    # max() onları etkilemez; yalnız sezon-yoğunu yukarı çeker.
+    hiz_tabani = "365g düz"
+    if kesim is not None:
+        sezon_talep = pencere_talebi(r, kesim, temin + GOZDEN_GECIRME_GUN)
+        # BU YIL / GEÇEN YIL oranı — sezonun tekrarlandığı VARSAYILMAZ, ölçülür.
+        oran = (oranlar or {}).get(kat, 1.0)
+        sezon_talep *= oran
+        if sezon_talep > kapak:
+            kapak = sezon_talep
+            hiz_tabani = "sezon × %.2f" % oran
     z = 1.65 if kat in Z_YUKSEK else 1.04
     ay = max(int(r["SatanAy"] or 1), 1)
     emniyet = z * math.sqrt(max(float(r["CV2"] or 1.0), 0.0) / ay) * kapak
     emniyet = min(emniyet, kapak)          # kapağın %100'ünü aşamaz (sıçramalı koruması)
+    # SEZON SONU EMNİYET TAVANI: taban sezon penceresiyse sezon BİTİYOR demektir; oradaki
+    # asimetri terstir — eksik almanın bedeli kaçan satış, fazla almanınki ÖLÜ STOK (mal
+    # gelecek sezona kalır ve kırtasiyede model/desen değişir). Emniyet %25'e iner.
+    if hiz_tabani.startswith("sezon"):
+        emniyet = min(emniyet, 0.25 * kapak)
     # ELDEKİ STOK DÜŞÜLÜR — kohort artık kapak altı (stok 0 DEĞİL, yetersiz).
     stok = float(r["ToplamStok"] or 0)
     ham = kapak + emniyet - stok
@@ -235,6 +300,7 @@ def hesapla(r: dict, net_acik: bool) -> dict:
     plan_adet = int(math.ceil(hiz * PLAN_HAFTA * 7))
     return dict(
         Oneri=oneri,
+        HizTabani=hiz_tabani,
         Kapak=int(math.ceil(kapak + emniyet)),
         Aciliyet=("ACİL — rafta yok" if stok <= 0 else "ikmal — kapak altı"),
         Yatirim=round(oneri * float(r["Maliyet"] or 0), 2),
@@ -287,17 +353,17 @@ def yaz(ws, satirlar: list[dict], hedef_metni: str, kesim: dt.date) -> None:
         ws.append([
             r["stkID"], r["Barkod"], r["Urun"], r["Kategori3"], r["Marka"],
             r["Satis365"], r["SezonSatis"], r["SatanAy"], float(r["CV2"]), h["Desen"],
-            r["TeminGun"], r["ToplamStok"], r["MagazaStok"], r["MerkezStok"],
+            r["TeminGun"], h["HizTabani"], r["ToplamStok"], r["MagazaStok"], r["MerkezStok"],
             r["OdakStok"], r["AcikSiparis"], r["AcikBelge"], h["Aciliyet"], h["Kapak"],
             float(r["Fiyat"]), float(r["Maliyet"]), h["Oneri"], h["Yatirim"],
             h["PlanAdet"], h["PlanTL"], hedef_metni, hedef_tarih,
             cikis_eylemi(r, h), not_metni(r, h),
         ])
-    genislik = [9, 15, 46, 12, 18, 10, 10, 8, 7, 11, 9, 10, 8, 8, 9, 13, 9, 17, 11,
+    genislik = [9, 15, 46, 12, 18, 10, 10, 8, 7, 11, 9, 15, 10, 8, 8, 9, 13, 9, 17, 11,
                 11, 13, 11, 12, 12, 13, 16, 11, 62, 58]
     for i, w in enumerate(genislik, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-    for row in ws.iter_rows(min_row=2, min_col=20, max_col=25):
+    for row in ws.iter_rows(min_row=2, min_col=21, max_col=26):
         for c in row:
             c.number_format = "#,##0.00"
 
@@ -346,7 +412,10 @@ def ozet_yaz(ws, a: list[dict], b: list[dict], net_acik: bool, kesim: dt.date,
         "Kıyas: --net-acik-siparis ile aynı script bu farkı uygular.")
 
     bas("YÖNTEM")
-    sat("hız", "Satis365 / 365", "gün başına; ALT SINIR (raf boşken satış kesilmiş)")
+    sat("hız", "max(365g düz, sezon penceresi)",
+        "SEZON ÜRÜNÜNDE düz hız talebi 4 KAT az sayıyordu (ölçüldü: Kırtasiye sezon-yoğun "
+        "285 çeşit, 50 günlük pencere 7.257 vs 29.057 adet). Sezon penceresi = geçen yılın "
+        "AYNI takvim aralığındaki satış (Ağu/Eyl/Eki aylıklarından orantılı). Zirve EYLÜL.")
     sat("kapak", f"hız × (temin + {GOZDEN_GECIRME_GUN} gün)", "aylık sipariş turu varsayıldı")
     sat("emniyet", "z × √(CV² / SatanAy) × kapak",
         "kapağın %100'ünü aşamaz. İlk sürüm z·√CV² idi ve sıçramalı üründe stok şişiriyordu "
@@ -395,6 +464,16 @@ def main() -> None:
                 kosamadi("tabanda kesim YOK — panel tabanı doldurulmamış")
             kesim = r[0] if isinstance(r[0], dt.date) else dt.date.fromisoformat(str(r[0])[:10])
 
+        # Sezon oranı: 1 Ağustos → kesim penceresi, bu yıl vs geçen yıl (aynı takvim).
+        by_bas = dt.date(kesim.year, 8, 1)
+        gy_bas, gy_son = dt.date(kesim.year - 1, 8, 1), dt.date(kesim.year - 1, kesim.month, kesim.day)
+        cur.execute(SQL_SEZON_ORAN, by_bas, kesim, gy_bas, gy_son, by_bas, kesim)
+        oranlar = {}
+        for kat, oran, buyil in cur.fetchall():
+            if oran is None or int(buyil or 0) < SEZON_ORAN_TABAN:
+                continue               # ölçülemeyen oran 1,0 sayılır (uydurma yok)
+            oranlar[kat] = float(oran)
+
         cur.execute(SQL, kesim, a.sezon, kesim)
         kolonlar = [c[0] for c in cur.description]
         # ŞEMA DENETİMİ: kolon adı/sayısı sessizce kayarsa satırlar yanlış hücreye gider.
@@ -411,7 +490,7 @@ def main() -> None:
                  f"kontrol et. Bos sonuc 'aday yok' KANITI DEGIL.")
 
     for r in ham:
-        r["_h"] = hesapla(r, a.net_acik_siparis)
+        r["_h"] = hesapla(r, a.net_acik_siparis, kesim, oranlar)
     # Öneri 0 çıkan satır (tavan kırptı ya da elde yeterli) listeye GİRMEZ.
     onerili = [r for r in ham if r["_h"]["Oneri"] > 0]
     liste_a = [r for r in onerili if int(r["SatanAy"] or 0) >= 6]
@@ -419,10 +498,12 @@ def main() -> None:
 
     # Netleme farkı ÖLÇÜLÜR (iddia edilmez): aynı hesap açık sipariş düşülerek yeniden koşar.
     netsiz = sum(r["_h"]["Oneri"] for r in ham)
-    netli = sum(hesapla(dict(r), True)["Oneri"] for r in ham)
+    netli = sum(hesapla(dict(r), True, kesim, oranlar)["Oneri"] for r in ham)
     netleme_farki = netsiz - netli
     maliyetsiz = sum(1 for r in ham if not float(r["Maliyet"] or 0))
 
+    print("  sezon orani (bu yil / gecen yil, ayni takvim penceresi): " +
+          " · ".join("%s %.2f" % (k, v) for k, v in sorted(oranlar.items())))
     wb = Workbook()
     hedef = f"%{int(HEDEF_SELLTHROUGH * 100)} / {PLAN_HAFTA} hafta"
     ws = wb.active
