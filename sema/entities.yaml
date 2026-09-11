@@ -118,6 +118,98 @@ entities:
     last_verified: "2026-09-03"
   stokSonAltDepo_vw: {type: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
+  # ── FİZİKSEL SAYIM ALT SİSTEMİ (keşif 2026-09-11) ───────────────────────────────
+  # ⚠ NEDEN ÖNEMLİ: kurallarımız "WMS ile defter çelişirse sayı ŞÜPHELİdir ve fiziksel
+  # sayım yapılmadan karara dayanak alınmaz" diyordu (sql-server-conventions § WMS DE
+  # MUTLAK DOĞRU DEĞİL) — ama o fiziksel sayımın NEREDE durduğu sema'da HİÇ YOKTU.
+  # 36 obje var; aşağıdakiler CANLI olanlar (satır sayısı ölçüldü 2026-09-11).
+  # ⚠ YAZMA: `bkm.Sayim*` ailesi app-owned'dır ama BU DEPO YAZMAZ — kullanıcı
+  # 2026-09-11: "mağaza sayımlarını bizim yazdığımız yapı yönetiyor". Buradan SALT-OKUMA.
+  sayim-yazma-yolu-SP-uzerinden:
+    type: rule
+    uses: [entities:bkm.SayimEmirBaslik, entities:bkm.SayimLog]
+    note: >-
+      SAYIM ALT SİSTEMİNE YAZMA YOLU SP'DİR, DOĞRUDAN TABLO DEĞİL.
+      Kullanıcı 2026-09-11: "bkm şemasında mağaza sayım yapıları var, hem tablo hem
+      SP'ler" · "mağaza sayımlarını bizim yazdığımız yapı yönetiyor".
+      ⚠ BU DEPO İÇİN SONUÇ: sayım tarafı SALT-OKUMA. `erp-write-policy.md` izin listesinde
+      bu tablolar YOK ve olmamalı — yazan taraf BKM'nin kendi uygulamasıdır, bu depo değil.
+      Bir sayım kaydını "düzeltmek" gerekiyorsa yol SP çağrısıdır ve o da bu deponun işi değil.
+    measurement: >-
+      2026-09-11 — sys.objects taraması: 19 sayım prosedürü/fonksiyonu (bkm 14 · depo 3 ·
+      dbo 2). HİÇBİRİ şifreli değil (`sys.sql_modules.definition` hepsinde okunur).
+      En yeni değişenler: `bkm.ReyonSayimEmriOlustur` 2026-04-14 · `bkm.SayimIrsaliyeBaslikOlustur`
+      2026-04-03 · `bkm.SayımEksiStokGetir` 2026-01-14 · `depo.emirIptaldenSayimEmri` 2026-01-20.
+      JOB→SP eşleşmesi: `ReyonSayimiDuzenle` ve `WMS-GunlukSayimEmiri` canlı (2026-09-11
+      başarılı); `Depo Iptal Emir Satırlarına Sayım oluştur` KAPALI ve hiç koşmamış
+      (`sysjobservers.last_run_date = 0`) — arkasındaki SP `depo.emirIptaldenSayimEmri`.
+    ayrinti:
+      turkce_i_tuzagi: >-
+        SP adında da Türkçe ı var: `bkm.SayımEksiStokGetir` (ASCII `SayimEksiStokGetir`
+        DEĞİL). Tablo tarafındaki `depo.sayım`/`depo.sayımAyr` ile aynı tuzak; ASCII
+        yazım Err 2812/208 verir. `depo.sayimAnlik` · `depo.sayimIslemeLogu` · `bkm.Sayim*`
+        ise gerçekten ASCII — yani şemada İKİ yazım BİR ARADA, tahmin edilemez, `sys`ten okunur.
+      eksi_stok_izi: >-
+        `dbo.SayimYapilipEksiStokVerenler` ve `bkm.SayımEksiStokGetir` — sayım yapıldığı
+        hâlde eksi bakiye veren kalemleri döndürüyorlar. WMS↔defter hayalet-stok sorusunun
+        (`sql-server-conventions` § WMS DE MUTLAK DOĞRU DEĞİL) doğrudan muhatabı; henüz
+        ÇALIŞTIRILMADI, yalnız varlığı ölçüldü.
+    evidence: "2026-09-11 — sqlcli: sys.objects type IN (P,FN,IF,TF) + sys.sql_modules + msdb.dbo.sysjobservers"
+    evidence_status: pending
+    confidence: 0.8
+    last_verified: "2026-09-11"
+  bkm.SayimEmirBaslik:
+    key: [SayimEmirBaslikId, SayimTarihi, MekanId, SayimTipId]
+    note: >-
+      Sayım emri başlığı — mağaza sayımlarını yöneten yapının ana tablosu.
+      Durum bayrakları AYRI ve hepsi bit: `Onay` · `Kesinlesti` · `Tamamlandi` · `Iptal`
+      · `OtomatikOnay`. Zaman damgaları: `BaslangicSaati`/`BitisSaati`/`OnaylamaSaati`/
+      `SonOnaySaati`. Evrak bağı `GirisEvrak`/`CikisEvrak`.
+    measurement: >-
+      2026-09-11 — 49.907 emir · 4 mekan · 2023-07-20'den BUGÜNE (son SayimTarihi
+      2026-09-11, yani canlı). Kesinleşen 15.087 · Tamamlandı 49.366 · İPTAL 35.021 (%70).
+      Son 12 ay: 22.403 emir, 6.588 kesinleşen, 3 mekan.
+      ⚠ %70 İPTAL BİR ARIZA DEĞİL: emirleri otomatik üreten ve kapatan job'lar var
+      (`WMS-GunlukSayimEmiri` günlük emir üretir, `SayimOtoKapatma` kapatır; ikisi de
+      2026-09-11'de başarıyla koştu). Yani iptal oranı ÜRETİM biçiminin sonucudur,
+      "sayımlar yapılmıyor" diye okunamaz. `Tamamlandi` 49.366 iken `Kesinlesti` 15.087
+      olması da aynı sebeple normaldir — ikisi FARKLI aşamalardır, birbirinin yerine geçmez.
+    evidence: "2026-09-11 — sqlcli: sys.columns dokumu + bayrak dagilimi + msdb.dbo.sysjobservers job kosum durumu"
+    confidence: 0.9
+    last_verified: "2026-09-11"
+  bkm.SayimEmirDetaylari:
+    key: [SayimEmirBaslikId]
+    note: "Sayım emri satırları (başlığa bağlı). Sayılacak/sayılan kalem düzeyi."
+    measurement: "2026-09-11 — 2.099.062 satır."
+    evidence: "2026-09-11 — sqlcli COUNT_BIG"
+    confidence: 0.9
+    last_verified: "2026-09-11"
+  bkm.SayimLog:
+    key: [SayimLogId, LogDate, MekanId, RafNo, StokId, Tip]
+    note: >-
+      Sayım hareket logu — RAF düzeyinde (`RafNo`) ve ürün düzeyinde (`StokId`) iz.
+      Yalnız 6 kolon; ADET YOK, yani bu tablo "kim neyi ne zaman saydı" izidir,
+      sayım SONUCU değil. Sonuç için `SayimEmirDetaylari` / `depo.sayımAyr` tarafına bak.
+    measurement: "2026-09-11 — 13.420.242 satır (deponun en büyük sayım izi)."
+    evidence: "2026-09-11 — sqlcli COUNT_BIG + sys.columns"
+    confidence: 0.9
+    last_verified: "2026-09-11"
+  DerinSISBkm.depo.sayım:
+    key: [sID, sNo, sDurum, sDepoID, kTarih]
+    note: >-
+      DerinSIS-NATIVE sayım başlığı (`bkm.Sayim*` ailesinden AYRI — o BKM'nin kendi
+      yapısı, bu ERP'nin yerlisi). ⚠ Tablo adı Türkçe ı ile: `depo.sayım` — ASCII
+      `sayim` BAŞKA tabloları gösterir (`depo.sayimAnlik`, `depo.sayimIslemeLogu`).
+      ⚠ TUZAK: `sTamam` durum alanı DEĞİLDİR — 773 kaydın TAMAMINDA 0. Gerçek durum
+      `sDurum` (761 kayıt=1, 12 kayıt=0). "sTamam=1 yok → hiç sayım tamamlanmamış"
+      çıkarımı YANLIŞ olurdu; alternatif açıklama ölçülerek elendi.
+    measurement: >-
+      2026-09-11 — 773 başlık · tek depo (`sDepoID` 1 çeşit) · 2021-07-01'den
+      2026-01-13'e. `sDurum=1` olanlar 2024-01-22'de bitiyor, `sDurum=0` olan 12 kayıt
+      2026-01-13'e uzanıyor. Satır tarafı `depo.sayımAyr` 6.716.315 satır.
+    evidence: "2026-09-11 — sqlcli: sys.columns + sDurum/sTamam dagilimi + kTarih araligi"
+    confidence: 0.9
+    last_verified: "2026-09-11"
   ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK:
     key: [ORDERREF]
     note: >-
