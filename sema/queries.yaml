@@ -20,7 +20,7 @@ queries:
         AND H.ehAltDepo=0 AND H.ehTip IN (1,3,4,5,100,101)
       GROUP BY FORMAT(H.ehTrhS,'yyyy-MM'), M.mekanAd
     last_verified: 2026-04-15
-    source: "SEMANTIK_KATMAN.md şablonu"
+    koken: "SEMANTIK_KATMAN.md şablonu"
 
   - id: encore-pos-gunluk-ciro
     question: "EncoreMerkez POS günlük ciro (iade düşülmüş, indirim Direct)"
@@ -112,7 +112,7 @@ queries:
              WHEN p.pGC=1 AND i.eTip IN (90,99) THEN 'IadeSevk'
              ELSE 'Diger' END
     last_verified: 2026-06-10
-    source: "scripts/depo_isgucu_raporu.py"
+    koken: "scripts/depo_isgucu_raporu.py"
 
   - id: depo-toplama-verim
     question: "Depo toplama (picking) işgücü verimi — gerçek operatör"
@@ -155,7 +155,7 @@ queries:
                     'Mobil Site','Web Sitesi') THEN o.APPLICATION ELSE 'Diğer' END
     last_verified: 2026-06-11
     sample_result: "Hafta 01-07.06.2026: net 19,1M ₺ / 18.741 sipariş (fiziksel 10,1M'nin ~2 katı)"
-    source: "scripts/generate_brief.py SQL_ETICARET (brief v1.1.0)"
+    koken: "scripts/generate_brief.py SQL_ETICARET (brief v1.1.0)"
     note: "Tarih ISO YYYYMMDD zorunlu. Net = STATUS 1006 (iptal) + 3004/3006 (iade) hariç. TOTALPRICE kargo dahil brüt sipariş — POS net'iyle birebir kıyaslanamaz."
 
   - id: il-teslimat-perf
@@ -181,7 +181,7 @@ queries:
       GROUP BY mus.DCITY ORDER BY Adet DESC
     last_verified: 2026-06-13
     sample_result: "MTD Haz İstanbul 9.662 sip · çıkış takvim 4,1g / iş günü 1,8g · teslim 1,4g · toplam algı 5,5g. Çıkış il-bağımsız (depo), teslim il-bağımlı (kargo)."
-    source: "dashboard EticQueries.GetIlTeslimatAsync · KARGO İL TESLİMAT PERFORMANSLARI.sql (B-41)"
+    koken: "dashboard EticQueries.GetIlTeslimatAsync · KARGO İL TESLİMAT PERFORMANSLARI.sql (B-41)"
     note: "ÇIKIŞ iş günü olmalı (takvim 2x abartı). Depo Pzt-Cuma (Cmt 5/Paz 0). CROSS APPLY tatil tablosu hafta-içi resmi tatil çıkarır. Teslim takvim (kargo hafta sonu çalışır). Tatil sabiti yıllık güncelle."
 
   - id: ay-cikis-trend
@@ -204,7 +204,7 @@ queries:
       GROUP BY YEAR(o.SENDDATE)*100+MONTH(o.SENDDATE)
     last_verified: 2026-06-13
     sample_result: "Aralık'25 158K sip → takvim 4,4 / iş günü 3,1 (yılbaşı zirve); Ağustos 62K → 1,6/1,0. Çıkış sipariş hacmiyle korele = kapasite darboğazı."
-    source: "dashboard EticQueries.GetAyKargoAsync (B-41)"
+    koken: "dashboard EticQueries.GetAyKargoAsync (B-41)"
     note: "Son 13 tam ay, dönem-bağımsız. CROSS APPLY tatil çıkarır (örnekte kısmi liste). Grafik iş günü serisi."
 
   - id: cod-iade-maliyet-ozet
@@ -221,7 +221,7 @@ queries:
       WHERE o.PAYDEFREF=-3 AND o.SENDDATE>='20260501' AND o.SENDDATE<'20260601' AND o.SENDDATE IS NOT NULL
     last_verified: 2026-06-13
     sample_result: "Mayıs'26: 2.690 COD sip · 2.397 teslim · 291 iade (%10,8) · iade maliyeti 52.322₺ · kapıda bedel 228.381₺. Yıllık ~628K₺ iade kargo gideri BKM yutar."
-    source: "dashboard EticQueries.GetCodOzetAsync · KARGO KAPIDA ÖDEME RAPOR.sql (B-41)"
+    koken: "dashboard EticQueries.GetCodOzetAsync · KARGO KAPIDA ÖDEME RAPOR.sql (B-41)"
     note: "İade maliyeti = 2×CARGOPRICE (gidiş+geri getirme, teslim edilmeyen COD). SERVICEPRICE pass-through (firmaya, kâr değil). CARGODELIVERYSTATUS=2=iade. Çıkış (SENDDATE) dönemi — kısmi son ay iade oranını düşük gösterir (iade gecikmeli gelir)."
 
   - id: kadro-as-of-sube-yil

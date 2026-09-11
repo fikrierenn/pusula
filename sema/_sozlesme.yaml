@@ -1,0 +1,285 @@
+# BKM Semantik Katman — SÖZLEŞME (şemanın şeması)
+# Koşar: python tools/sema_denetim.py   → exit 0 geçti · 1 KIRIK · 2 KOŞAMADI
+#
+# NEDEN VAR (ölçüm 2026-09-11, plan-44):
+#   · entities'te ~100 alan adı YALNIZ 1 kayıtta kullanılmış → şema yok, YAML noktalamalı prose.
+#   · Kanıt 4 ayrı adla yazılmış (evidence/olcum/dogrulama/kanit), açıklama 6 ayrı adla.
+#   · 312 kaydın 140'ında kanıt alanı, 102'sinde last_verified yok → decay boşta dönüyor.
+#   · 81 çapraz referansın tamamı prose'a gömülü → köprü adı değişse kimse görmez.
+#
+# TASARIM KARARI: alan adları SIFIRDAN uydurulmadı; her dosyada ZATEN BASKIN olan ad kanonik
+# seçildi (evidence 149× · note 165× · last_verified 210× · confidence). Azınlık eş-anlamlılar
+# bunlara katlanır. Böylece mevcut tüketiciler (tools/sema_degismez.py, tools/sema_sorgu_dumani.py,
+# skill'ler, SEMANTIK_KATMAN.md) kırılmaz.
+#
+# ZENGİNLİK SİLİNMEZ: sözleşme dışı tek-kullanımlık alanlar (urnTip_olculdu, MOLA_OKUTULMUYOR,
+# kural_1_vardiya_araligi …) `ayrinti:` haritasının altına taşınır. Üst seviye sözleşmeye uyar,
+# bilgi kaybı sıfır.
+#
+# KADEMELİ SIKILAŞTIRMA: her kural `seviye: kirik|uyari` taşır. Faz tamamlandıkça uyarı → kırık'a
+# yükseltilir. Bugün kırık olan bir kuralı gevşetmek YASAK (regresyon).
+
+version: 1
+updated: 2026-09-11
+plan: "plans/44-sema-sozlesme-ve-temellendirme.md"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. ORTAK ALANLAR — her kayıt tipinde aynı anlama gelir
+# ─────────────────────────────────────────────────────────────────────────────
+ortak:
+  zorunlu:
+    confidence:
+      tip: sayi
+      aralik: [0.3, 1.0]
+      seviye: uyari            # F2 sonrası kirik
+      aciklama: "1.0 kalıcı (PK/FK) · 0.9-0.99 canlı %99+ · 0.5-0.8 gözlem · 0.3-0.5 hipotez"
+  kosullu_zorunlu:
+    last_verified:
+      tip: tarih               # YYYY-MM-DD
+      seviye: uyari            # F2 sonrası kirik
+      muaf_kosul: "confidence == 1.0"
+      aciklama: "Kaydın canlı sorguyla EN SON teyit tarihi. evidence=ilk keşif, bu=son teyit."
+    evidence:
+      tip: metin
+      seviye: uyari            # kanıt UYDURULAMAZ — ölçülünce yazılır, o yüzden kalıcı uyarı
+      muaf_kosul: "kanit_durumu == 'yok'"
+      aciklama: >-
+        NASIL/NEREDEN doğrulandı — yöntem ve kaynak: tarih + arşiv SQL yolu + hangi karşılaştırma.
+        ÇIKAN SAYILAR buraya değil `olcum:` alanına yazılır (aşağı bak).
+  opsiyonel:
+    olcum:
+      tip: metin
+      aciklama: >-
+        NE ÇIKTI — ölçümün kendisi: tarih + kesim + sayılar.
+        `evidence` ile AYRI ALANLAR, eşanlamlı DEĞİL. Ölçüm 2026-09-11: 20 kayıtta ikisi
+        birlikte kullanılmış ve anlamları tutarlı biçimde farklıydı —
+        `olcum: "2026-09-10 … 143.799 çeşit · net 748.824.435 ₺ · marj %31,17"` vs
+        `evidence: "2026-09-10 — sorgular/2026-09-10-…sql blok 2"`.
+        Birini ötekine katlamak bilgi yok eder. Ayrım, `olctum-mu-cikardim-mi.md`
+        kuralının yapısal karşılığıdır: DEĞER ile onun ARKASINDAKİ KOMUT ayrı durur.
+        Ayrıca `semantic-layer.md` § DEĞİŞMEZ ≠ ÖLÇÜM ile hizalı: `olcum` tarih damgalı ve
+        bayatlayabilir; `evidence` yöntemdir, bayatlamaz.
+    note: {tip: metin, aciklama: "Serbest açıklama / tanım. Kanonik açıklama alanı."}
+    ttl_days: {tip: tamsayi, aciklama: "Yeniden-doğrulama aralığı. Yoksa confidence'tan türetilir."}
+    kanit_durumu:
+      tip: metin
+      degerler: [yok, teyit_bekliyor]
+      aciklama: "Kanıt YOKSA bunu yaz — sessiz eksik yerine BEYAN edilmiş eksik."
+    kullanir:
+      tip: liste
+      bicim: "<dosya>:<id>"    # ör. bridges:irshrk-stk · codes:irsHrk.ehTip · metrics:net_ciro
+      seviye_cozulmeyen: kirik # referans çözülemiyorsa KIRIK — kırık referans sessiz kalmaz
+      aciklama: "Açık çapraz referans. Prose'a gömülü bahis bunun yerine geçmez."
+    ayrinti:
+      tip: harita
+      aciklama: "Sözleşme dışı zengin/tek-kullanımlık alanlar. Silme yerine kapsülleme."
+    status: {tip: metin, degerler: [teyit bekliyor, superseded], aciklama: "Yaşam döngüsü işareti."}
+
+# Eş-anlamlı alanlar → kanonik karşılık. Denetçi bunları "göç bekliyor" diye sayar.
+# `source` BİLEREK dosyaya göre farklı çözülür: metrics'te veri kaynağı, queries'te kaydın kökeni.
+# DİKKAT: `olcum` BİLEREK `evidence`'ın eşanlamlısı DEĞİL (yukarı bak). İlk taslakta öyle
+# yazılmıştı; 20 kaydın içeriği okunarak düzeltildi — `kanit`/`dogrulama` da sayı taşıyor,
+# yani `evidence`'ın değil `olcum`'un eski adları.
+esanlamli:
+  olcum: [kanit, kanıt, dogrulama, olculdu]
+  note: [aciklama, tanim, not, desc]
+  kural: [formul, hesap]
+  kaynak: [kaynak_tablolar]
+  uygulama: [uygulandi, rapor, uygulama_durumu]
+
+esanlamli_dosya_bazli:
+  metrics: {kaynak: [source]}     # metrics'te source = veri kaynağı tablo/view
+  queries: {koken: [source]}      # queries'te source = sorgunun nereden geldiği (provenance)
+
+# Alan DEĞERİ düzeyinde eş-anlamlılar (alan adı değil, içindeki değer).
+deger_esanlamli:
+  tip:
+    olcum: [gozlem, dogrulama_damgasi, olcum_notu]
+    tablo: [table]
+    view: [vw]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. KAYIT TİPLERİ — <dosya>.<bolum>
+# ─────────────────────────────────────────────────────────────────────────────
+tipler:
+
+  entities.entities:
+    aciklama: >-
+      İKİ AYRI ŞEY barındırır ve `tip:` hangisi olduğunu SÖYLEMEK ZORUNDADIR:
+      (a) gerçek DB nesnesi — tablo/view/sp/tvf/openquery/sema;
+      (b) bir nesne HAKKINDA not — kural/olcum.
+      Ölçüm 2026-09-11: 124 kaydın ~25'i (b) sınıfındaydı ama sahte tablo adı taşıyordu
+      (`irsHrk.MERKEZ_DEPO_CIKISI`, `urn.IADE_HAKKI_IZLI_DEGIL`,
+      `EncoreMerkez.dbo.SalesProducts.TUTAR_SEMANTIGI`). Bir not sahte tablo adıyla
+      saklanınca hem entity sayısı şişer hem de o notun HANGİ tabloya ait olduğu
+      yalnız isimden tahmin edilir. Artık `tip: kural|olcum` + `kullanir: [entities:<hedef>]`.
+    zorunlu:
+      - alan: [tip]
+        seviye: uyari            # F2 sonrası kirik
+    opsiyonel: [key, columns, rol, kural, kaynak, biz_key, filter, db, satir_sayisi, uygulama, pk, grain]
+    ozel:
+      tip:
+        degerler: [tablo, view, sp, tvf, openquery, sema, kural, olcum]
+        aciklama: >-
+          tablo/view/sp/tvf/openquery/sema = gerçek DB nesnesi (pk veya grain ister).
+          kural = bir nesne hakkındaki iş kuralı · olcum = tarihli ölçüm notu.
+          Son ikisi `kullanir:` ile HEDEFİNİ bildirmek zorunda.
+        seviye: uyari
+      db:
+        aciklama: >-
+          Hangi veritabanı. Dashboard `master` bağlamında çalıştığı için ERP nesnesi
+          3-parçalı yazılmak zorunda (sql-server-conventions § Err 208); `db` yazılıysa
+          bu kural makine tarafından denetlenebilir hâle gelir.
+        seviye: uyari
+      columns:
+        tip: harita
+        aciklama: "Kolon adı → {label, description}. CANLI sys.columns ile doldurulur (tools/sema_kolon_cek.py), elle YAZILMAZ."
+        seviye_drift: kirik      # sema'da olup canlıda olmayan kolon = KIRIK
+      key:
+        tip: liste
+        aciklama: "Anahtar/önemli kolon adları (açıklamasız). columns'un fakir hâli."
+    kosullu:
+      - ad: db_nesnesi_pk_ister
+        kosul: {alan: tip, deger_kumesi: [tablo, view, openquery, sema]}
+        gerek: {en_az_biri: [pk, grain, key]}
+        seviye: uyari
+        aciklama: "Gerçek nesne grain'ini söylemeli — yoksa JOIN fan-out'u öngörülemez."
+      - ad: not_hedefini_soylemeli
+        kosul: {alan: tip, deger_kumesi: [kural, olcum]}
+        gerek: {referans_dosyasi: entities}
+        seviye: uyari
+        aciklama: "Not, hakkında olduğu nesneyi `kullanir: [entities:<id>]` ile bildirmeli."
+    atomiklik: {tavan_char: 4000, seviye: uyari}
+
+  entities.databases:
+    aciklama: "Veritabanı kataloğu — rol, şemalar, tarih biçimi, uyumluluk."
+    zorunlu:
+      - alan: [rol]
+        seviye: uyari
+    opsiyonel: [semalar, tarih, compat]
+    ortak_muaf: true             # küçük katalog kaydı; confidence/evidence aranmaz
+
+  entities.ai_hints:
+    aciklama: "Sorgu üretirken her zaman geçerli kısa kurallar (düz metin listesi)."
+    kayit_tipi: metin_listesi
+    ortak_muaf: true
+
+  bridges.bridges:
+    aciklama: "Cross-table / cross-db join tanımı."
+    zorunlu:
+      - alan: [from]
+        seviye: kirik
+      - alan: [to]
+        seviye: kirik
+      - alan: [scope]
+        seviye: uyari
+    opsiyonel: [note, view_tuzagi, kosul, yon, kardinalite]
+    ozel:
+      from: {bicim: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
+      to:   {bicim: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
+      kardinalite:
+        degerler: ["1:1", "1:N", "N:1", "N:N"]
+        aciklama: "JOIN patlaması (fan-out) riskini görünür kılar. N:N ise sorguda DISTINCT/agg zorunlu."
+        seviye: uyari
+    atomiklik: {tavan_char: 4000, seviye: uyari}
+
+  codes.codes:
+    aciklama: "Enum / lookup kod kümesi."
+    zorunlu:
+      - alan: [values, lookup]   # en az biri
+        seviye: kirik
+    opsiyonel: [join, note, kapali_kume, kaynak]
+    ozel:
+      lookup: {aciklama: "Kanonik lookup tablosu. Varsa değerler ORADAN okunur, hardcode edilmez."}
+      kapali_kume:
+        tip: bool
+        aciklama: "true ise küme kapalı — yeni kod çıkarsa değişmez kırmızı vermeli (degismezler.json)."
+        seviye: uyari
+    atomiklik: {tavan_char: 4000, seviye: uyari}
+
+  metrics.metrics:
+    aciklama: "Türetilmiş iş mantığı / hesap modeli."
+    zorunlu:
+      - alan: [ad]
+        seviye: uyari
+      - alan: [kural, formula]   # en az biri
+        seviye: uyari
+    opsiyonel: [kaynak, filter, grain, uygulama, sinir, iki_yon]
+    ozel:
+      tip:
+        degerler: [basit, oran, turev, kural]
+        aciklama: "basit=tek agregat · oran=pay/payda · turev=başka metriklerden · kural=hesap değil karar mantığı"
+        seviye: uyari            # F5 sonrası kirik
+      additivity:
+        degerler: [tam, yari, yok]
+        aciklama: >-
+          tam = her boyutta toplanabilir (ciro, adet) ·
+          yari = zaman boyutunda TOPLANMAZ, snapshot'tır (stok bakiyesi, kadro mevcudu) ·
+          yok = hiç toplanmaz, yeniden hesaplanır (oran, ortalama, yüzde).
+          Yanlış toplama sessiz yanlış rakamın en yaygın kaynağı.
+        seviye: uyari            # F5 sonrası kirik
+      birim:
+        degerler: [TL, adet, oran, gun, kisi, carpan]
+        seviye: uyari            # F5 sonrası kirik
+      taban:
+        degerler: [kdv_haric, kdv_dahil, yok]
+        aciklama: "Para metriklerinde ZORUNLU. marj_kdv_tabani vakası: iki taraf farklı tabandaydı."
+        seviye: uyari            # F5 sonrası kirik
+      grain:
+        aciklama: "Hangi düzeyde tek satır: ürün×ay, mağaza×gün, fiş, kişi×ay…"
+        seviye: uyari
+      sinir:
+        aciklama: "Bu metrik NEYİ ölçmez. Overclaim koruması (satinalma-danisman § adil ölçüm)."
+    atomiklik: {tavan_char: 4000, seviye: uyari}
+
+  queries.queries:
+    aciklama: "Doğrulanmış sorgu kataloğu (golden SQL)."
+    ortak_muaf_alanlar: [confidence, evidence]
+    muafiyet_gerekcesi: >-
+      Bir golden SQL'in kanıtı ayrı bir alan DEĞİL, KOŞUYOR olmasıdır:
+      `tools/sema_sorgu_dumani.py` her kaydı `SELECT COUNT(*) FROM (<sql>) t` içine sarıp
+      çalıştırır; bayat kolon/nesne adı kırmızı verir. `confidence: 0.8` yazmak bu ölçümün
+      yerine geçmez, onu gizler. `last_verified` ZORUNLU kalır (damga koşumla tazelenir).
+    zorunlu:
+      - alan: [question]
+        seviye: kirik
+      - alan: [verified_sql]
+        seviye: kirik
+      - alan: [mcp_safe]
+        seviye: uyari
+    opsiyonel: [metrics, koken, db, sunucu, note]
+    ozel:
+      metrics:
+        tip: liste
+        aciklama: "İlgili metrik id'leri. `kullanir:` ile aynı bütünlük denetimine girer."
+      mcp_safe:
+        tip: bool
+        aciklama: "MCP sql_query'de doğrudan koşar mı (CTE/top-level ORDER BY/multi-statement yok)."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. GLOBAL KURALLAR
+# ─────────────────────────────────────────────────────────────────────────────
+kurallar:
+  id_tekilligi:
+    seviye: kirik
+    aciklama: "Aynı dosya içinde id tekrar edemez. Tekrar = sessizce biri kazanır."
+  bilinmeyen_ust_alan:
+    seviye: uyari                # F2 sonrası kirik
+    aciklama: "Sözleşmede olmayan ÜST SEVİYE alan. Çözüm: ayrinti: altına taşı (silme)."
+  cozulmeyen_referans:
+    seviye: kirik
+    aciklama: "`kullanir:`/`metrics:` içindeki <dosya>:<id> hedefi yoksa KIRIK."
+  gomulu_referans:
+    seviye: uyari
+    aciklama: "Prose içinde başka kaydın id'si geçiyor ama `kullanir:`'de yok → graf eksik."
+  tarih_bicimi:
+    seviye: kirik
+    aciklama: "last_verified YYYY-MM-DD. dd.MM.yyyy YASAK (sema makine-okunur, yerel tarih kuralı SQL içindir)."
+  stale:
+    seviye: uyari
+    aciklama: "last_verified + ttl_days < bugün. Bayrak — otomatik aksiyon YOK."
+  ttl_varsayilan:
+    "0.9-0.99": 180
+    "0.5-0.8": 90
+    "0.3-0.5": 30
+    "1.0": null                  # muaf

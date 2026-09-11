@@ -131,8 +131,8 @@ entities:
     kural_1_vardiya_araligi: "Kişi başı GÜN içinde MIN(giriş saati) → MAX(son dolu saat). Öğle molası segmenti satır kırar (ör. 10-13 + 14-18) → segment-bazlı saymak mola saatinde SAHTE DÜŞÜŞ üretir. MIN-MAX span mola saatini de 'vardiyada' sayar (doğru)."
     kural_2_cikis_saati: "Son dolu saat = çıkış dakikası>0 ise DATEPART(hour) (18:30→18 dahil), tam saatte çıktıysa hour-1 (18:00→17, saat 18'de yok). Yoksa 18:30 çalışan saat 18'de hiç sayılmaz = sahte uçurum. Giriş saati floor (10:30→10, açılış kısmi saati sayılır)."
     kural_3_ortalama: "AVG = SUM(o saatteki kişi) / o haftagününün ÇALIŞILAN TOPLAM gün sayısı (opdays). Sadece-dolu-güne bölmek (eski AVG) boş saatleri 0 saymaz → uç saatler şişer. Boş saat 0 paya girer."
-    dogrulama: "2026-06-30, Haziran 4 Salı: 16=24·17=23·18=21·19=16·20=13 (yumuşak iniş). Eski hatalı sürüm 18'de 21→14 keskin uçurum gösteriyordu (çıkış-floor bug). 27.06 Cmt span: 9→27 plato →12 pürüzsüz."
-    not: "Trafik sayfası 'Personel–Trafik Uyumu' haritasının success-bandı/karne hesabı bunu kullanır. Sadece FSM (Per_Grp2='FSM'); diğer mağaza gerekince parametrize."
+    olcum: "2026-06-30, Haziran 4 Salı: 16=24·17=23·18=21·19=16·20=13 (yumuşak iniş). Eski hatalı sürüm 18'de 21→14 keskin uçurum gösteriyordu (çıkış-floor bug). 27.06 Cmt span: 9→27 plato →12 pürüzsüz."
+    note: "Trafik sayfası 'Personel–Trafik Uyumu' haritasının success-bandı/karne hesabı bunu kullanır. Sadece FSM (Per_Grp2='FSM'); diğer mağaza gerekince parametrize."
 
   # PDKS VARDİYA PLANI (TagMod) — 2026-09-05 keşif, sorgular/2026-09-05-vardiya-plani-ciro-uyum.sql
   pdks_vardiya_plani:
@@ -273,8 +273,9 @@ entities:
     evidence: "2026-06-29 — MCP DerinSISBkm, SELECT kolon/COUNT/örnek. 1.864 satır, toplam 140.102 müşteri."
 
   dbo.irsAyr:
-    pk: "(ehID, satir)"
-    key: [ehID, ehStkID, ehAdet, ehAdetN, ehTutar, ehIndirim, ehTutarKDV, ehKDV]
+    pk: "(ehID, ehSira) — MANTIKSAL anahtar; tabloda PK KISITI YOK (sys.indexes is_primary_key=0 kayit)"
+    pk_duzeltme: "2026-09-11 DRIFT: sema `(ehID, satir)` yaziyordu — `satir` diye bir kolon YOK (sys.columns LIKE '%sat%' bos dondu). Gercek satir kolonu `ehSira` (column_id 2). tools/sema_kolon_cek.py ilk kosusunda yakalandi."
+    key: [ehID, ehSira, ehStkID, ehAdet, ehAdetN, ehTutar, ehIndirim, ehTutarKDV, ehKDV]
     grain: "evrak satiri (irs.eID -> irsAyr.ehID)"
     KDV_KURALI: "⚠ `ehTutar` KDV **HARIC**; KDV ayri kolonda `ehTutarKDV`. NET KDV-HARIC = `ehTutar - ehIndirim` · NET KDV-DAHIL (fis tutari, patronun gordugu rakam) = `ehTutar - ehIndirim + ehTutarKDV`. `ehKDV` = satir KDV orani (tinyint). Fis/kasa tutari KDV DAHILDIR -> POS mutabakatinda KDV eklenmeden kiyas YAPILMAZ. Kanit (15.06.2025 Ozluce): net 575.194,70 + KDV 48.832,81 = 624.027,51 KDV-dahil ≈ INTER_BOS fis toplami 632.669,95 (%1,4 fark). Blended KDV orani ~%7 (kitap %0 + kirtasiye %20 mix)."
     adet_isareti: "`ehAdet` satista NEGATIF (cikis) -> `ABS()` kullan. `ehAdetN` net adet; eTip 4'te 0 olabilir (15.06.2025 ornegi) -> adet olcumunde `ehAdet` daha guvenli."
@@ -331,7 +332,14 @@ entities:
   BKM_GENEL.dbo.vw_PuanBil:
     tip: view
     key: [Personelno, Yil, Ayindex, Fsk, Puantajno, Bt, Isskk, Iisk, Netu, Au, Sim, Vem,
-          fm1, fm2, fm3, fmtutar1, fmtutar2, fmtutar3, Ucretsekli, Tahakkuksekli, Kanunno]
+          fm1, fm2, fm3, fmtutar1, fmtutar2, fmtutar3, Kanunno]
+    key_duzeltme: >-
+      2026-09-11 DRIFT: `key` listesi `Ucretsekli` ve `Tahakkuksekli` sayiyordu — IKISI DE
+      BU VIEW'DE YOK (canli sys.columns: '%ek%'/'%Tah%' filtresine yalniz `Kanunno` dondu).
+      Kaydin KENDI prose'u zaten dogruyu yaziyordu (`ucret_kurali`: "view `Ucretsekli`'yi
+      TASIMAZ") — yani kayit KENDI ICINDE CELISIYORDU ve bunu ancak canli katalog yakaladi.
+      Dogru yol: `dbo.puanbil.Ucretsekli` (ham tablo). Silinmedi, BEYAN edildi (bi-temporal:
+      curuyen iddia iz birakir, yoksa ayni yanlis ikinci kez yazilir).
     grain: "BORDRO satiri — kisi x ay (Yil + Ayindex). Ham tablo `dbo.puanbil` (27,6K satir)."
     note: "TARIHSEL personel maliyetinin TEK kaynagi. `vw_PersonelDepartman.Ucret` CARI ve NET orandir -> gecmis ay maliyeti icin KULLANILMAZ (ucret_kurali). Kolon anlamlari (kullanicinin kendi bordro kontrol raporundan teyitli): **Bt=Brut Toplam · Isskk=Isveren SGK hissesi · Iisk=Isveren issizlik payi · Netu=Net odenen · Au=aylik brut ucret · Sim=sigorta matrahi · Vem=gelir vergisi matrahi · Sk/Isk=ISCI kesintileri · Sskindirim=isveren SGK istisnasi (tesvik) · fm1/fm2/fm3=fazla mesai SAAT · fmtutar1..3=fazla mesai TUTAR · Kanunno='14857' engelli tesviki**."
     fte_kurali: "**FTE (tam zaman esdeger) = SUM(Primgunu)/30**. `Primgunu` (smallint) = SGK prim gunu; tam ay = 30, ay icinde giren/cikan ve ucretsiz izinli kisi daha az gun tasir. Kadro/kapasite olcusu OLARAK bordro satiri sayilmaz — ay icinde 1 gun calisan da 1 sayilir ve sezonluk hareketin yogun oldugu aylarda kadro siser (olculen: 5 magaza Agu-2025 211 kayit vs 168,9 FTE). ⚠ view'da `Calismagunu`/`Toplamisgunu` YOK (ham `dbo.puanbil`'de var); `Primgunu` view'da mevcut ve yeterli. **KORUMA:** `degismezler.json` -> `primgunu-30-tavani` (31 ustu satir FTE'yi sisirir)."
@@ -687,8 +695,9 @@ entities:
     evidence: "2026-08-25 canlı örnekleme + PaymentTypes dağılımı (Ağu25-Tem26); sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 1/3."
 
   DerinSISBkm.dbo.fatAyr:
-    pk: ehID_satir
-    key: [ehID, ehstkID, ehAdetN, ehTutar, ehIndirim, ehTutarN, ehKDV, ehMaliyet]
+    pk: "(ehID, ehSira) — MANTIKSAL anahtar; tabloda PK KISITI YOK (is_primary_key sayisi 0)"
+    pk_duzeltme: "2026-09-11 DRIFT: sema `ehID_satir` yaziyordu, boyle bir kolon YOK. irsAyr ile AYNI sekil: satir kolonu `ehSira` (column_id 2). Dedup icin PK kisitina guvenme — kisit yok."
+    key: [ehID, ehSira, ehStkID, ehAdetN, ehTutar, ehIndirim, ehTutarN, ehKDV, ehMaliyet]
     grain: "fatura (fat.eID) × ürün satırı"
     note: "⚠⚠ **eTip=4 (Mağaza Satış) satırlarında `ehTutarN` BESLENMİYOR** — sistematik, 4 yıllık, kötüleşiyor: net=0 satır oranı 2023 %65,4 · 2024 %63,7 · 2025 %72,5 · 2026 %76,8. Diğer tüm eTip'lerde ≤%0,28 (Oca-2026 kontrolü: eTip 0/1/2/3/5/6/7/8/10 hepsi temiz, yalnız 4 kırık). `ehIndirim` de eTip=4'te çoğunlukla 0. Büyüklük: 2025'te ehTutar 67,8M − indirim 2,9M = beklenen 64,9M, okunan ehTutarN 12,7M → **~52 M₺ eksik okuma**. KURAL: eTip=4'te `ehTutarN` KULLANMA → `irsHrk` (ehTip=4, ehTutarN orada DOĞRU) veya `ehTutar − ehIndirim`. Diğer eTip'lerde ehTutarN güvenilir (= ehTutar − ehIndirim, KDV-hariç)."
     confidence: 0.95
@@ -945,7 +954,7 @@ Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6
 
   DerinSISBkm.depo.stok_adres_palet_vw:
     rol: "WMS hücresel stok — merkez depo stoğunun KANONİK kaynağı (adres × palet × ürün)"
-    tanim: >-
+    note: >-
       View gövdesi okundu: paletUrnTnm ⋈ paletTnm(pID=pUID) ⋈ adres(pSonPozID=adrsID),
       WHERE pUAdetN > 0, Stok = SUM(pUAdetN). Yani "WMS Stok" ile paletUrnTnm.pUAdetN
       AYNI ŞEYDİR — ayrı bir sayım değil, aynı kolonun gruplanmışı.
@@ -1020,7 +1029,7 @@ Kapsam: stkID bazında 644.073 kayıt; 'Satış Analizi' rapor evreninin **%76,6
       As-of ölçüm (`WHERE ehTrhS < kesim+1`) belge tarihine bakar; o satır kesimden SONRA
       oluşmuş olabilir. Yani "kesim anındaki durumu" yeniden üretmek isteyen bir ön-agrega,
       sonradan girilen geriye dönük satırları GÖREMEZ ve tekrar kurulduğunda başka sonuç verir.
-    kanit: >-
+    olcum: >-
       ÖLÇÜLDÜ 2026-09-09, stkID 1739183 (Maxx MX-617 Tahta Kalem Seti):
       Özlüce'ye +480 → belge 07.09, satır **09.09 10:12:14** · FSM'ye +480 → belge 07.09,
       satır **09.09 16:36:45** · merkez satış −480 (grup şirketi) → belge 07.09, satır
