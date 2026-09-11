@@ -57,7 +57,12 @@ WITH alim AS (
     GROUP BY h.ehstkID HAVING SUM(h.ehAdetN) > 0
 ),
 sup_raw AS (
-    SELECT h.ehstkID AS stkID, i.eFirma AS frmID, ISNULL(f.frmAd,'(firma yok)') AS frmAd,
+    SELECT h.ehstkID AS stkID, i.eFirma AS frmID,
+           -- ⚠ SIFIR SENTINEL (12.09.2026): eFirma=0 = karşı taraf YOK (iç işlem).
+           -- frm'de frmID=0 satırı VAR, adı 'GENEL' → ISNULL koruması çalışmaz,
+           -- tedarikçi listesine sahte bir firma girer.
+           CASE WHEN i.eFirma = 0 THEN N'(tedarikçi yok — iç işlem)'
+                ELSE ISNULL(f.frmAd, '(firma yok)') END AS frmAd,
            SUM(h.ehAdetN) AS adet
     FROM DerinSISBkm.dbo.irsHrk h
     JOIN DerinSISBkm.dbo.irs i ON i.eID = h.ehID

@@ -91,7 +91,7 @@ bridges:
     scope: derinsis
     confidence: 1.0
   - id: fat-firma
-    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.050.661 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.050.661 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`). ⚠ BU 'TEMİZ' ÖLÇÜMÜ SENTINEL MASKELİYOR (12.09.2026): eFirma=0 'karşı taraf YOK' demektir (46.846 belge — Sayım 25.415 · POS Satış 6.895 · POS Satış İade 6.886 · Bozuk Ürün · Dönüşüm; eFirma IS NULL hiç yok) ve frm'de frmID=0 satırı VAR (adı GENEL) → 0'lar öksüz DÜŞMÜYOR, sahte bir firmaya bağlanıyor. Öksüz %0 burada 'köprü sağlam' DEĞİL, 'sentinel karşılık buluyor' demektir. Tüketici kod 0'ı AYRI etiketlemeli. Kapı: değişmez `efirma-sifir-alim-ve-merkez-cikis-yollarinda-yok` (nüfus kapılı)."
     uses: [bridges:irs-firma]
     from: dbo.fat.eFirma
     to: dbo.frm.frmID
@@ -108,7 +108,7 @@ bridges:
     note: "E-ticaret (T-Soft) ürün görseli: ent.tsoft_urun.stkid=urn.stkID; ImageUrl=dosya adı → tam URL 'https://cdn.bkmkitap.com/'+ImageUrl (250px K variant; büyük=-B.jpg). CDN HOTLINK korumalı → <img referrerpolicy=no-referrer> gerekli (referer'lı istek placeholder döner). Satınalma ürün-detay görseli bunu kullanır. ent.tsoft_urun_vw de aynı ImageUrl."
     last_verified: "2026-08-13"
   - id: irs-firma
-    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.112.975 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
+    measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.112.975 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`). ⚠ BU 'TEMİZ' ÖLÇÜMÜ SENTINEL MASKELİYOR (12.09.2026): eFirma=0 'karşı taraf YOK' demektir (46.846 belge — Sayım 25.415 · POS Satış 6.895 · POS Satış İade 6.886 · Bozuk Ürün · Dönüşüm; eFirma IS NULL hiç yok) ve frm'de frmID=0 satırı VAR (adı GENEL) → 0'lar öksüz DÜŞMÜYOR, sahte bir firmaya bağlanıyor. Öksüz %0 burada 'köprü sağlam' DEĞİL, 'sentinel karşılık buluyor' demektir. Tüketici kod 0'ı AYRI etiketlemeli. Kapı: değişmez `efirma-sifir-alim-ve-merkez-cikis-yollarinda-yok` (nüfus kapılı)."
     from: dbo.irs.eFirma
     to: dbo.frm.frmID
     scope: derinsis

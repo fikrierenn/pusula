@@ -776,7 +776,10 @@ public sealed partial class SatisAnaliziQueries
             SELECT CONVERT(int, ISNULL(SUM(CASE WHEN f.eFirma = 9525 THEN fa.ehAdetN END), 0)) AS OdakAdet,
                    CONVERT(int, ISNULL(SUM(CASE WHEN f.eFirma <> 9525 THEN fa.ehAdetN END), 0)) AS DigerAdet,
                    MAX(f.eTarih) AS SonAlis,
-                   (SELECT TOP 1 ISNULL(fr.frmAd, '(firma adı yok)')
+                   -- ⚠ SIFIR SENTINEL: eFirma=0 → frm'deki "GENEL" satırına bağlanır ve
+                   -- gerçek tedarikçi gibi görünür (ölçüldü 12.09.2026). Ayrı etiketlenir.
+                   (SELECT TOP 1 CASE WHEN f2.eFirma = 0 THEN N'(tedarikçi yok — iç işlem)'
+                                      ELSE ISNULL(fr.frmAd, '(firma adı yok)') END
                     FROM DerinSISBkm.dbo.fatAyr fa2 WITH (NOLOCK)
                     JOIN DerinSISBkm.dbo.fat f2 WITH (NOLOCK) ON f2.eID = fa2.ehID
                     LEFT JOIN DerinSISBkm.dbo.frm fr WITH (NOLOCK) ON fr.frmID = f2.eFirma
@@ -815,7 +818,15 @@ public sealed partial class SatisAnaliziQueries
     {
         const string sql = """
             SELECT TOP 5 CONVERT(int, i.eFirma) AS FrmId,
-                   ISNULL(f.frmAd, '(firma kaydı yok)') AS FirmaAd,
+                   -- ⚠ SIFIR SENTINEL (ölçüldü 12.09.2026): `irs.eFirma = 0` "karşı taraf YOK" demektir
+            -- (Sayım 25.415 · POS Satış 6.895 · POS Satış İade 6.886 · Bozuk Ürün · Dönüşüm —
+            -- hepsi iç işlem). `dbo.frm`'de frmID=0 diye BİR SATIR VAR ve adı **GENEL** →
+            -- LEFT JOIN NULL DÖNMEZ, ISNULL koruması boşa çıkar ve ekranda "GENEL" adlı bir
+            -- ŞİRKET görünür. sql-server-conventions § SIFIR SENTINEL.
+            -- Bugün bu yolda 0 satır (ölçüldü: merkez çıkış 1.125 belgenin 0'ı, alış 9.660'ın 0'ı)
+            -- ama ehTip 101 süzgeçte ve o tip evrende eFirma=0 taşıyor → kapı şimdi kuruluyor.
+            CASE WHEN i.eFirma = 0 THEN N'(karşı taraf yok — iç işlem)'
+                        ELSE ISNULL(f.frmAd, '(firma kaydı yok)') END AS FirmaAd,
                    CONVERT(int, -SUM(h.ehAdetN)) AS Adet,
                    COUNT(DISTINCT i.eID) AS Belge
             FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)

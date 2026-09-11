@@ -530,6 +530,18 @@
       "expected": 3,
       "protects": [],
       "verified": "2026-09-10 → 3 kod (0/1/2). Arsiv: sorgular/2026-09-10-iade-hakki-vekili.sql blok 1"
+    },
+    {
+      "id": "efirma-sifir-alim-ve-merkez-cikis-yollarinda-yok",
+      "db": "DerinSISBkm",
+      "question": "Alim (ehTip 0/10) ve merkez cikis (mekan 12, ehTip 1/3/5/101) yollarinda karsi tarafi yazilmamis (irs.eFirma = 0) belge var mi?",
+      "why": "SIFIR SENTINEL kapisi. `irs.eFirma = 0` \"karsi taraf YOK\" demektir (olculdu 12.09.2026: 46.846 belge — Sayim 25.415 · POS Satis 6.895 · POS Satis Iade 6.886 · Urun SAY · Stok EKLE · Bozuk Urun · Bos Paket · Diger Giris · Donusum; hepsi ic islem, `eFirma IS NULL` HIC yok). Tehlike: `dbo.frm`'de frmID=0 diye BIR SATIR VAR ve adi **GENEL** → LEFT JOIN NULL DONMEZ, ISNULL korumasi bosa cikar ve tedarikci listesine/karsi taraf kutusuna 'GENEL' adli SAHTE bir sirket girer. `sema kopru` bunu goremez: irs-firma %0 oksuz = TEMIZ diyor, cunku 0 gercekten frm'de karsilik buluyor — temizlik sentinelden geliyor. Bugun bu iki yolda 0 satir (olculdu: merkez cikis 1.125 belge · fat alis 9.660 belge · alim irs son 24 ay 0 belge) AMA ehTip 101 zaten suzgecte ve o tip evrende eFirma=0 tasiyor. Kirilirsa: panel drill'inde ve iki Excel emitter'inda tedarikci adi UYDURULUR. Kod: dashboard/Data/SatisAnaliziQueries.Liste.cs (GetMerkezKarsiTarafAsync + GetTedarikAsync) · scripts/siparis_onerisi_excel.py · scripts/asiri_alim_excel.py — ucu de artik 0'i AYRI etiketliyor.",
+      "sql": "SELECT COUNT(DISTINCT i.eID) FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK) JOIN DerinSISBkm.dbo.irs i WITH (NOLOCK) ON i.eID = h.ehID WHERE i.eFirma = 0 AND h.ehTrhS >= DATEADD(MONTH, -24, CONVERT(date, GETDATE())) AND (h.ehTip IN (0, 10) OR (h.ehMekan = 12 AND h.ehTip IN (1, 3, 5, 101)))",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-12 → 0 belge. Kapsam ayni sorgunun eFirma sarti atilmis hali (population) ile olculur; o sifirsa KOSAMADI doner (nufus kapisi).",
+      "population": "SELECT COUNT(DISTINCT i.eID) FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK) JOIN DerinSISBkm.dbo.irs i WITH (NOLOCK) ON i.eID = h.ehID WHERE h.ehTrhS >= DATEADD(MONTH, -24, CONVERT(date, GETDATE())) AND (h.ehTip IN (0, 10) OR (h.ehMekan = 12 AND h.ehTip IN (1, 3, 5, 101)))"
     }
   ]
 }
