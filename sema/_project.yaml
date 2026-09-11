@@ -7,3 +7,14 @@ name: "BKM Kitap — ERP (DerinSIS) · POS (EncoreMerkez) · WMS · e-ticaret (J
 
 # Data sources (same names as sqlcli profiles; credentials come from .env only)
 sources: [erp, encore, zirve, joker]
+
+# Where this repo's CODE lives — `sema kullanim` counts how many files reference a record.
+# The scope is DECLARED, never guessed: a record referenced only from a dead script would
+# otherwise look "in use". Adding a path here is a claim that the code in it is LIVE.
+# NOTE: a high count means REACH, not correctness — a wrong bridge used in 7 files is
+# wrong in 7 files. The counter measures usage and breakage; it cannot measure being right.
+code_paths:
+  - dashboard
+  - scripts
+  - sorgular
+  - tools
