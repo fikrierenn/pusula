@@ -28,6 +28,12 @@ public static class SatisAnaliziHucre
         "ilkgiris" => s.IlkGirisTarihi,
         "sonsatis" => s.SonSatisTarihi,
         "talepdeseni" => s.TalepDeseniAd,
+        // SİPARİŞ (plan-46) — hesap SQL'de (SatisAnaliziQueries.Siparis.cs), burada yalnız eşleme.
+        // 0 öneri "sipariş yok" demek; hücrede "—" görünür (Metin() null/0 ayrımı: 0 sayıdır,
+        // "0" yazılır ve bu DOĞRUdur — ihtiyaç yok demektir).
+        "siparis_oneri" => s.SiparisOneri,
+        "siparis_kapak" => s.SiparisKapak,
+        "siparis_taban" => s.SiparisTaban,
         "satanay" => s.SatanAy,
         "maliyettarih" => s.MaliyetTarih,
         "maliyetyas" => s.MaliyetYasGun,

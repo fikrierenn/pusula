@@ -174,6 +174,8 @@ public static class DurumAdlari
         [SatisDurumFiltre.SezonAcik] = "Sezon stok açığı",
         [SatisDurumFiltre.SezonRafAcigi] = "Sezonluk raf açığı → transfer",
         [SatisDurumFiltre.AraliklıTalep] = "Aralıklı talep (gün-stok geçersiz)",
+        [SatisDurumFiltre.SiparisIhtiyaci] = "Sipariş ihtiyacı (kapak altı)",
+        [SatisDurumFiltre.SiparisAcil] = "Sipariş — ACİL (hiç stok yok)",
         [SatisDurumFiltre.DuzgunTalep] = "Düzgün talep (gün-stok geçerli)",
     };
 
@@ -222,6 +224,16 @@ public enum SatisDurumFiltre
     /// satış bu ürünlerde GEÇERSİZ. Syntetos/Boylan/Croston 2005 eşiği.
     /// </summary>
     AraliklıTalep,
+
+    /// <summary>
+    /// SİPARİŞ İHTİYACI (plan-46) — eldeki stok kapağın (temin + 30 gün) altında ve
+    /// önerilen miktar &gt; 0. ⚠ Kohort "stok = 0" DEĞİL: o ölçüt gerçek ihtiyacın
+    /// ~1/13'ünü görüyordu (Kırtasiye 796 vs 1.687 çeşit / 14.528 adet, ölçüldü 11.09.2026).
+    /// </summary>
+    SiparisIhtiyaci,
+
+    /// <summary>Sipariş gerekiyor VE hiç stok yok — kayıp bugün yaşanıyor, ilk yazılacak liste.</summary>
+    SiparisAcil,
 
     /// <summary>ADI ≤ 1,32 (düzgün/değişken) — panelin hız metrikleri yalnız burada geçerli.</summary>
     DuzgunTalep
@@ -314,6 +326,15 @@ public sealed record SatisAnaliziKpi(
     /// <summary>Aralıklı/sıçramalı talepli çeşit (ADI &gt; 1,32) — gün-stok yanıltıcı.</summary>
     int ArelikliTalepCesit,
     decimal ArelikliTalepTutar,
+    /// <summary>SİPARİŞ İHTİYACI (plan-46) — kapağın altına düşmüş, önerisi &gt; 0 olan çeşit.</summary>
+    int SiparisCesit,
+    /// <summary>Önerilen toplam sipariş adedi (MOQ/koli katı YOK — tedarikçiyle yuvarlanır).</summary>
+    long SiparisAdet,
+    /// <summary>Önerinin maliyeti — bağlanacak para. Birim maliyeti olmayan çeşitte 0 sayılır.</summary>
+    decimal SiparisMaliyet,
+    /// <summary>ACİL: sipariş gerekiyor VE hiç stok yok — kayıp ZATEN yaşanıyor.</summary>
+    int SiparisAcilCesit,
+    long SiparisAcilAdet,
     // Ürün bazında ETKİN GÜNE bölünüp toplanmış günlük hız (adet/gün). SQL'de hesaplanır;
     // burada yeniden bölme YAPILMAZ (kullanıcı uyarısı 09.09 — aşağıdaki nota bak).
     double PerakendeGunlukHiz = 0)
@@ -446,7 +467,14 @@ public sealed record SatisAnaliziSatir(
     /// İlk giriş bilinmiyorsa 365 (1.186 ürün — ölçüldü 09.09).
     /// ⚠ SIRA SÖZLEŞMESİ: Dapper positional record — SELECT'te de EN SON kolon olmalı.
     /// </summary>
-    int EtkinGun)
+    int EtkinGun,
+    // ⚠ SQL'de EtkinGun'dan HEMEN SONRA gelir (Dapper POZİSYONEL — ListeKolonlarSql).
+    /// <summary>Önerilen sipariş adedi (plan-46). 0 = ihtiyaç yok / tavan kırptı.</summary>
+    int SiparisOneri,
+    /// <summary>Kapak: temin + 30 günü karşılayan stok düzeyi (emniyet dahil).</summary>
+    int SiparisKapak,
+    /// <summary>Kapağın hangi hızdan geldiği: "365g düz" | "sezon penceresi".</summary>
+    string? SiparisTaban)
 {
     /// <summary>
     /// Günlük ortalama satış. ⚠ 365'e SABİT bölünmez (09.09 düzeltmesi, kullanıcı uyarısı):
@@ -603,6 +631,22 @@ public static class SatisAnaliziKolonlar
                  + "çalışıyor ve ayrıştırılamıyor: enflasyon (eski maliyet düşük → marj şişkin) "
                  + "ve yavaş dönen ürünün zaten yüksek marjlı olması. Maliyet yeniden "
                  + "değerlenmedi; yaşı görünür kılındı ki marj okunurken bilinsin."),
+        new("siparis_oneri", "Sipariş Önerisi", Varsayilan: false, Siralanabilir: true, Sayisal: true,
+            Ipucu: "Önerilen sipariş adedi = kapak + emniyet − eldeki stok, kategori tavanıyla "
+                 + "kırpılmış. Kapak = max(365g düz hız, SEZON penceresi) × (temin + 30 gün). "
+                 + "Sezon penceresi geçen yılın AYNI takvim aralığındaki satışıdır ve bu yıl/"
+                 + "geçen yıl oranıyla ölçeklenir (ölçüldü 11.09.2026: Kırtasiye 0,82 · Oyuncak "
+                 + "1,50). ⚠ ÖNERİ, SİPARİŞ DEĞİL: MOQ/koli katı veride yok, tedarikçi iade "
+                 + "hakkı izli değil, talep tahmini sağdan sansürlü (ALT SINIR)."),
+        new("siparis_kapak", "Kapak", Varsayilan: false, Siralanabilir: true, Sayisal: true,
+            Ipucu: "Temin süresi + 30 günlük gözden geçirme aralığını karşılayacak stok düzeyi "
+                 + "(emniyet dahil). Eldeki stok bunun altındaysa ürün sipariş kohortuna girer."),
+        new("siparis_taban", "Hız Tabanı", Varsayilan: false, Siralanabilir: false,
+            Ipucu: "Kapağın hangi hızdan hesaplandığı. '365g düz' = yıllık ortalama. 'sezon "
+                 + "penceresi' = geçen yılın aynı takvim aralığı; ölçüldü (11.09.2026) düz hız "
+                 + "sezon ürününde talebi 4 KAT az sayıyor — Kırtasiye'de aylık dağılım "
+                 + "Ağu 10.510 · Eyl 29.193 · Eki 10.437, zirve eylül ve 365 günlük pencere "
+                 + "onu dışarıda bırakıyor."),
         new("satanay",    "Satan Ay",   Varsayilan: false, Siralanabilir: true,
             Ipucu: "Son 12 TAM ayda satış olan ay sayısı. 12 = her ay satmış; 1-2 = şiddetli "
                  + "aralıklı. Gün-stok ve günlük ortalama satış bu sayı düşükken yanıltıcı."),

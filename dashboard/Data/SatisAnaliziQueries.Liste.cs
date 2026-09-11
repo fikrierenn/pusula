@@ -95,6 +95,18 @@ public sealed partial class SatisAnaliziQueries
         + "\n" + EtkinGunSql + " AS EtkinGun";
 
     /// <summary>
+    /// Liste kolonları + SİPARİŞ kolonları (plan-46). Sipariş kolonları ölçülen yıl oranına
+    /// bağlı olduğu için sabit değil, metot.
+    /// ⚠ DAPPER POZİSYONEL: üçü de SELECT'in SONUNA eklenir ve SatisAnaliziSatir record'unun
+    /// SONUNA aynı sırayla yazılır (sql-server-conventions § Dapper pozisyonel record).
+    /// </summary>
+    private const string ListeKolonlarSql =
+        ListeKolonlar
+        + ",\n" + SiparisOneriSql + " AS SiparisOneri"
+        + ",\n" + SiparisKapakSql + " AS SiparisKapak"
+        + ",\n" + SiparisTabanEtiketSql + " AS SiparisTaban";
+
+    /// <summary>
     /// Filtreli + sayfalı ürün listesi — ön-agrega tablosundan, index seek.
     /// ÖLÇÜLDÜ: sayfa 1 → 17 ms · derin sayfa (500.) → 534 ms · arama → 346 ms.
     /// ⚠ <c>COUNT(*) OVER ()</c> YOK: sayfa başına 1,2 s ekliyordu. Toplam ayrı ve YALNIZ
@@ -109,13 +121,15 @@ public sealed partial class SatisAnaliziQueries
         var sayfaBoyu = Math.Clamp(f.SayfaBoyu, 10, 500);
         var sayfa = Math.Max(1, f.Sayfa);
 
+        var oran = SiparisOranSql(await SiparisOranAsync(f, ct));
         var (nerede, p) = Filtre(f);
         p.Add("atla", (sayfa - 1) * sayfaBoyu);
         p.Add("al", sayfaBoyu);
 
         var sql = $"""
-            SELECT {ListeKolonlar}
+            SELECT {ListeKolonlarSql}
             FROM {Taban} t WITH (NOLOCK)
+            {SiparisKaynak(oran)}
             WHERE {nerede}
             ORDER BY {sirala} {yon}, t.stkID
             OFFSET @atla ROWS FETCH NEXT @al ROWS ONLY
@@ -126,7 +140,7 @@ public sealed partial class SatisAnaliziQueries
             new CommandDefinition(sql, p, commandTimeout: 120, cancellationToken: ct))).ToList();
 
         var toplam = bilinenToplam
-            ?? (toplamGerekli || satirlar.Count == 0 ? await SayAsync(conn, nerede, p, ct) : satirlar.Count);
+            ?? (toplamGerekli || satirlar.Count == 0 ? await SayAsync(conn, nerede, p, oran, ct) : satirlar.Count);
 
         return SayfaSonucu<SatisAnaliziSatir>.Olustur(satirlar, toplam, sayfa, sayfaBoyu);
     }
@@ -134,15 +148,27 @@ public sealed partial class SatisAnaliziQueries
     /// <summary>Filtreye uyan toplam satır — sayfa çevirmede TEKRAR sorulmaz (34 ms ama gereksiz).</summary>
     public async Task<int> SayAsync(SatisAnaliziFiltre f, CancellationToken ct = default)
     {
+        var oran = SiparisOranSql(await SiparisOranAsync(f, ct));
         var (nerede, p) = Filtre(f);
         await using var conn = await db.OpenAsync();
-        return await SayAsync(conn, nerede, p, ct);
+        return await SayAsync(conn, nerede, p, oran, ct);
     }
 
+    /// <summary>
+    /// Filtreye uyan satır sayısı. ⚠ <c>oran</c> ŞART: sipariş filtresi <c>sp.Oneri</c>'yi
+    /// okur, o da yalnız <c>SiparisKaynak</c> APPLY'ı ile var olur. Eksikti → sipariş kartına
+    /// tıklayınca "Çok parçacı sp.Oneri tanımlayıcısı bağlanamadı" (SQL 4104) ve liste
+    /// "Veri alınamadı" verdi (ölçüldü 11.09.2026 — build yeşildi, hata çalışma anında çıktı).
+    /// </summary>
     private static async Task<int> SayAsync(
-        System.Data.Common.DbConnection conn, string nerede, DynamicParameters p, CancellationToken ct)
+        System.Data.Common.DbConnection conn, string nerede, DynamicParameters p, string oran,
+        CancellationToken ct)
     {
-        var sql = $"SELECT COUNT(*) FROM {Taban} t WITH (NOLOCK) WHERE {nerede}";
+        var sql = $"""
+            SELECT COUNT(*) FROM {Taban} t WITH (NOLOCK)
+            {SiparisKaynak(oran)}
+            WHERE {nerede}
+            """;
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(sql, p, commandTimeout: 120, cancellationToken: ct));
     }
@@ -153,12 +179,14 @@ public sealed partial class SatisAnaliziQueries
     {
         var sirala = SiralamaHaritasi.TryGetValue(f.Sirala, out var kolon) ? kolon : "t.Tutar";
         var yon = f.Azalan ? "DESC" : "ASC";
+        var oran = SiparisOranSql(await SiparisOranAsync(f, ct));
         var (nerede, p) = Filtre(f);
         p.Add("tavan", tavan);
 
         var sql = $"""
-            SELECT TOP (@tavan) {ListeKolonlar}
+            SELECT TOP (@tavan) {ListeKolonlarSql}
             FROM {Taban} t WITH (NOLOCK)
+            {SiparisKaynak(oran)}
             WHERE {nerede}
             ORDER BY {sirala} {yon}, t.stkID
             """;
@@ -175,9 +203,12 @@ public sealed partial class SatisAnaliziQueries
     public async Task<SatisAnaliziSatir?> GetUrunAsync(
         int stkId, DateOnly kesim, int sezonYil, CancellationToken ct = default)
     {
+        var oran = SiparisOranSql(await SiparisOranAsync(
+            new SatisAnaliziFiltre(kesim, sezonYil), ct));
         var sql = $"""
-            SELECT {ListeKolonlar}
+            SELECT {ListeKolonlarSql}
             FROM {Taban} t WITH (NOLOCK)
+            {SiparisKaynak(oran)}
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon AND t.stkID = @stkId
             """;
         await using var conn = await db.OpenAsync();
@@ -906,6 +937,9 @@ public sealed partial class SatisAnaliziQueries
             SatisDurumFiltre.DuzgunTalep => GunStokGuvenilirSart,
             SatisDurumFiltre.AraliklıTalep =>
                 "(t.SatanAy IS NOT NULL AND t.SatanAy > 0 AND NOT " + GunStokGuvenilirSart + ")",
+            // ⚠ KPI'daki SiparisCesit / SiparisAcilCesit ile AYNI sabitten gelir (ayrışma imkânsız).
+            SatisDurumFiltre.SiparisIhtiyaci => SiparisSart,
+            SatisDurumFiltre.SiparisAcil => SiparisAcilSart,
             _ => null,
         };
         if (durumSart is not null) sartlar.Add(durumSart);

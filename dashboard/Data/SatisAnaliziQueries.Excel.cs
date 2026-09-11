@@ -29,6 +29,7 @@ public sealed partial class SatisAnaliziQueries
     public async Task<IReadOnlyList<ExcelDetaySatir>> GetExcelDetayAsync(
         SatisAnaliziFiltre f, CancellationToken ct = default)
     {
+        var oran = SiparisOranSql(await SiparisOranAsync(f, ct));
         var (nerede, p) = Filtre(f);
         // ⚠ KesimP `bas`i TASIMAZ (yalniz kesim/sezon/taze/yeniGun) — 365 gunluk pencere
         // kullanan sorgular ONU AYRICA eklemek zorunda. Atlanınca "@bas bildirilmelidir" (137).
@@ -43,6 +44,7 @@ public sealed partial class SatisAnaliziQueries
                        t.ToplamStok, t.SatisToplam, t.MerkezCikis, t.MerkezCikisGun,
                        t.IlkGiris, t.LeadTime
                 FROM {Taban} t WITH (NOLOCK)
+            {SiparisKaynak(oran)}
                 WHERE {nerede}
             ),
             hiz AS (   -- sezon (Ağu-Eki) / sezon dışı adet; gün sayıları C# tarafında takvimden
@@ -115,12 +117,14 @@ public sealed partial class SatisAnaliziQueries
     public async Task<IReadOnlyList<ExcelMagazaSatir>> GetExcelMagazaAsync(
         SatisAnaliziFiltre f, CancellationToken ct = default)
     {
+        var oran = SiparisOranSql(await SiparisOranAsync(f, ct));
         var (nerede, p) = Filtre(f);
         var sql = $"""
             WITH hedef AS (
                 SELECT t.stkID, t.stkAd, t.StokFsm, t.StokOzl, t.StokIst,
                        t.SatisFsm, t.SatisOzl, t.SatisIst
                 FROM {Taban} t WITH (NOLOCK)
+            {SiparisKaynak(oran)}
                 WHERE {nerede}
             ),
             son AS (   -- SON SATIŞ: iade (3/5/101) HARİÇ — iade satış değildir, tarihi ileri taşımaz
@@ -170,6 +174,7 @@ public sealed partial class SatisAnaliziQueries
     public async Task<IReadOnlyList<ExcelAdresSatir>> GetExcelAdresAsync(
         SatisAnaliziFiltre f, CancellationToken ct = default)
     {
+        var oran = SiparisOranSql(await SiparisOranAsync(f, ct));
         var (nerede, p) = Filtre(f);
         var sql = $"""
             WITH hedef AS (

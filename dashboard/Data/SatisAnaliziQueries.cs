@@ -540,7 +540,27 @@ public sealed partial class SatisAnaliziQueries(
         // Kullanıcı kararı 09.09: 90 çok uzun, 30-45 aralığı → 45 seçildi (ortası).
         // Ölçüldü: 30g 2.040 çeşit/22,0M ₺ · 45g 2.658/24,6M ₺ · 90g 4.374/31,3M ₺ korur.
         yeniGun = f.TazeGunHaric > 0 ? f.TazeGunHaric : SatisAnaliziFiltre.YeniUrunGunVarsayilan,
+        // SİPARİŞ sezon penceresi (plan-46) — takvim matematiği C#'ta yapılır, SQL'de DEĞİL.
+        // ⚠ NEDEN: ay örtüşmesini SQL ifadesiyle kurmak DATEFROMPARTS/DATEADD/DATEDIFF
+        // zincirini 12+ kez iç içe yazdırıyordu ve SQL Server 8632 "deyim hizmetleri sınırına
+        // ulaşıldı" ile sorguyu REDDETTİ (ölçüldü 11.09.2026, panel hiç açılmadı).
+        // pbas = kesimin SEZON YILINA taşınmış hâli (Ay1/Ay2/Ay3 o yıla ait).
+        pbas = SezonPencereBasi(f),
+        a8 = new DateTime(f.SezonYil, 8, 1),
+        a9 = new DateTime(f.SezonYil, 9, 1),
+        a10 = new DateTime(f.SezonYil, 10, 1),
+        a11 = new DateTime(f.SezonYil, 11, 1),
     };
+
+    /// <summary>
+    /// Kesimin sezon yılına taşınmış karşılığı. 29 Şubat tuzağı: sezon yılı artık yıl
+    /// değilse gün 28'e çekilir (yoksa ArgumentOutOfRange).
+    /// </summary>
+    private static DateTime SezonPencereBasi(SatisAnaliziFiltre f)
+    {
+        var gun = Math.Min(f.Kesim.Day, DateTime.DaysInMonth(f.SezonYil, f.Kesim.Month));
+        return new DateTime(f.SezonYil, f.Kesim.Month, gun);
+    }
 
     /// <summary>
     /// KPI + Kategori3 kırılımı — tek geçiş, 196 ms.
@@ -682,6 +702,12 @@ public sealed partial class SatisAnaliziQueries(
         // Merkez depo çıkışı — TALEP DEĞİL, ayrı kutu (danışma kararı 08.09: %72'si grup şirketine).
         var merkezCikis = await MerkezCikisAsync(conn, f, ct);
 
+        // SİPARİŞ ÖZETİ AYRI SORGU (plan-46). ⚠ NEDEN AYRI: KPI sorgusu 56 agregayla zaten
+        // sınırdaydı; sipariş ifadeleri eklenince SQL Server 8632 "deyim hizmetleri sınırına
+        // ulaşıldı" verdi ve panel HİÇ açılmadı (ölçüldü 11.09.2026). Ayrı sorgu hem sınırı
+        // aşmıyor hem maliyeti izole ediyor.
+        var siparis = await SiparisOzetAsync(conn, f, ct);
+
         var kpi = new SatisAnaliziKpi(
             ToplamStok: satirlar.Sum(x => x.Stok),
             ToplamStokTutar: satirlar.Sum(x => x.Tutar),
@@ -733,6 +759,11 @@ public sealed partial class SatisAnaliziQueries(
             DuzgunTalepTutar: satirlar.Sum(x => x.DuzgunTalepTutar),
             ArelikliTalepCesit: satirlar.Sum(x => x.ArelikliTalepCesit),
             ArelikliTalepTutar: satirlar.Sum(x => x.ArelikliTalepTutar),
+            SiparisCesit: siparis.Cesit,
+            SiparisAdet: siparis.Adet,
+            SiparisMaliyet: siparis.Maliyet,
+            SiparisAcilCesit: siparis.AcilCesit,
+            SiparisAcilAdet: siparis.AcilAdet,
             // Hızlar ürün bazında kendi raf süresine bölünüp SQL'de toplandı → burada topla, BÖLME.
             PerakendeGunlukHiz: satirlar.Sum(x => x.GunlukHiz));
 

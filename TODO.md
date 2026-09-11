@@ -254,6 +254,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   (a) **Aralıklı talep tahmini yok** — sınıflandırma var (ADI 1,32 · CV² 0,49), Croston/SBA/TSB
   ayrıştırması YOK. Çeşitlerin %91,9'unda gün-stok hesaplanmıyor ("—" gösteriyor); sipariş
   önerisi üretilmiyor. Kapatmak: SBA tahmini + emniyet stoğu → yeni hesap katmanı.
+  ✅ **PANELE GİRDİ 11.09 (plan-46, commit sonraki satırda):** sipariş çekirdeği
+  `dashboard/Data/SatisAnaliziQueries.Siparis.cs`; SATINALMA grubu + Sipariş İhtiyacı kartı
+  (40,7M ₺ · 13.246 çeşit · 272.382 adet · ACİL 3.151) + 3 liste kolonu + 2 durum filtresi.
+  KALAN: SBA/TSB beklenen değeri hâlâ yok (365g/sezon hızı vekil) · MOQ/koli katı veride yok ·
+  panel↔Excel çeşit farkı %1,5 (yuvarlama, beyan edildi).
   ⚙ **KISMEN 10-11.09:** `siparis-karari` skill'i (miktar formülü + emniyet stoğu + taahhüt +
   çıkış planı) yazıldı, emitter `scripts/siparis_onerisi_excel.py` koştu. **Kohort 11.09'da
   düzeltildi** (kullanıcı: "çok çok az … emin misin"): ölçüt `ToplamStok = 0` idi ve gerçek

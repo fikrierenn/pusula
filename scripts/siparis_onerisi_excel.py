@@ -141,8 +141,20 @@ WITH t AS (
       -- gosterirken kapagin altina dusmus 1.687 cesit / 14.528 adet vardi.
       -- Perakende siparisinin GOVDESI "stogu var ama yetersiz"tir; stok=0 onun
       -- yalniz en uc halidir (ve orada kayip ZATEN yasaniyor).
-      AND CONVERT(decimal(18,4), ToplamStok)
-          < (SatisToplam / 365.0) * (CONVERT(decimal(9,2), ISNULL(LeadTime, 7)) + 30)
+      -- ⚠ ÖN-SÜZGEÇ SEZONU DA SAYAR (11.09.2026 düzeltmesi). Eskiden yalnız düz kapağa
+      -- bakıyordu ve sezon talebi yüksek olan ürünü OKUMADAN eliyordu → panel çekirdeğiyle
+      -- ayrıştı: panel 5.415 çeşit / 115.887 adet, Excel 3.277 / 74.621 (kesim 09.09,
+      -- kitapdışı). Kohortun TEK tanımı "öneri > 0"dır; bu süzgeç yalnız performans içindir
+      -- ve CÖMERT olmalı: ham sezon toplamının İKİ KATI alınır çünkü yıl oranı 1'in
+      -- ÜSTÜNDE olabilir (ölçüldü: Oyuncak 1,50) ve orantılı pencere talebi ham toplamı
+      -- aşabilir; ayrıca kapağın üstüne EMNİYET stoğu binaeceği için düz kapak da iki katla
+      -- alınır. 2,0 katsayısı emniyet payıdır, kohortu BELİRLEMEZ (kohort = öneri > 0).
+      AND CONVERT(decimal(18,4), ToplamStok) <
+          (CASE WHEN (ISNULL(Ay1,0) + ISNULL(Ay2,0) + ISNULL(Ay3,0))
+               * 2.0 > (SatisToplam / 365.0) * (CONVERT(decimal(9,2), ISNULL(LeadTime, 7)) + 30)
+                THEN 2.0 * (ISNULL(Ay1,0) + ISNULL(Ay2,0) + ISNULL(Ay3,0))
+                ELSE 2.0 * (SatisToplam / 365.0)
+                     * (CONVERT(decimal(9,2), ISNULL(LeadTime, 7)) + 30) END)
 ),
 sup_raw AS (
     -- TEDARİKÇİ: son 24 ayın alımında (ehTip 0 Alış · 10 Yerel Alım) adet bazında BASKIN firma.

@@ -682,7 +682,7 @@ else
     /// "SATIŞ KAYBI", "ELDE ÇÖZÜLÜR") aynı şeyi anlatıyordu ama karar masasının dili değildi.
     /// </summary>
     private static readonly string[] KpiGruplari =
-        ["BAĞLI SERMAYE", "BULUNURLUK KAYBI", "İÇ KAYNAKLA ÇÖZÜLÜR"];
+        ["BAĞLI SERMAYE", "BULUNURLUK KAYBI", "İÇ KAYNAKLA ÇÖZÜLÜR", "SATINALMA"];
 
     private IEnumerable<KpiKart> Kartlar(SatisAnaliziKpi k) =>
     [
@@ -801,6 +801,25 @@ else
 
         // Karşı-metrik ADET oldu: "raf bulunurluk kaybı" artık kendi kartında (BULUNURLUK KAYBI).
         // İkinci kez tutar göstermek bilgi eklemiyordu; adet "ne kadar mal bekliyor" diyor.
+        // ══ SATINALMA ═════════════════════════════════════════════════════════════
+        // plan-46. Karar sırasının SONU: para nerede → kayıp nerede → iç kaynakla ne çözülür →
+        // geriye kalan DIŞARIDAN alınır. Grup ayrı çünkü eylem sahibi ayrı (satınalma) ve
+        // sayının tabanı ayrı: burada MALİYET var (bağlanacak para), etiket fiyatı değil.
+        //
+        // ⚠ Değer MALİYETLE yazılır. Öteki kartlar etiket fiyatıyla çünkü onlar "elde ne var /
+        // ne kaybediyoruz" diyor; bu kart "ne kadar para BAĞLAYACAĞIZ" diyor ve o soru maliyet
+        // sorusudur. Birim maliyeti olmayan çeşit 0 sayılır → rakam ALT SINIR.
+        //
+        // ⚠ ÖNERİ, SİPARİŞ DEĞİL: MOQ/koli yok, iade hakkı veride izli değil, talep tahmini
+        // sağdan sansürlü. Alt satır bunu yazıyor.
+        new("SATINALMA", "Sipariş İhtiyacı", TlKisa(k.SiparisMaliyet),
+            $"{k.SiparisCesit:N0} çeşit · {k.SiparisAdet:N0} adet · kapağın altına düştü",
+            "warning", "sepet", SatisDurumFiltre.SiparisIhtiyaci,
+            Taban: "maliyet · bağlanacak para",
+            CiftBaslik: "ACİL · hiç stok yok",
+            CiftDeger: $"{k.SiparisAcilCesit:N0} çeşit",
+            CiftDurum: SatisDurumFiltre.SiparisAcil),
+
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Rafa Çıkmamış Envanter", TlKisa(k.RafsizTutar),
             $"{k.RafsizCesit:N0} çeşit · mağaza rafına hiç girmemiş",
             "warning", "paket", SatisDurumFiltre.Rafsiz,
@@ -868,6 +887,8 @@ else
             "transfer" => """<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>""",
             // paket — rafa çıkmamış
             "paket" => """<path d="M16.5 9.4 7.5 4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>""",
+            // sepet — sipariş ihtiyacı (satınalma)
+            "sepet" => """<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>""",
             _ => """<circle cx="12" cy="12" r="9"/>""",
         };
         return new MarkupString(bas + govde + "</svg>");
