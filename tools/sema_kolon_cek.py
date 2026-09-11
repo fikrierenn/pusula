@@ -318,7 +318,7 @@ def main():
     if eksik_sayac:
         zengin = sorted(eksik_sayac.items(), key=lambda x: -x[1])[:8]
         print()
-        print("Kapsama bosluğu (canlida olup sema'da anilmayan kolon sayisi — eksiklik, yalan degil):")
+        print("Kapsama boslugu (canlida olup sema'da anilmayan kolon sayisi — eksiklik, yalan degil):")
         for kid, n in zengin:
             print("    %-48s +%d kolon" % (kid, n))
     sys.exit(0)
