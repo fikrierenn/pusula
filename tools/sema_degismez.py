@@ -22,6 +22,17 @@ Veritabanına bağlanamazsa PATLAR, "geçti" demez. Bir ölçümün BOŞ dönmes
 ile KOŞMAMASI ekranda aynı görünür; yeşil çıktı değişmezlerin gerçekten
 koştuğu anlamına gelmeli.
 
+ÇIKIŞ KODU 0 / 1 / 2  (sqlcli assert ile AYNI sözleşme — 10.09.2026)
+--------------------------------------------------------------------
+    0 = hepsi geçti · 1 = KIRIK (ölçüm koştu, değer beklenenden farklı)
+    2 = KOŞAMADI (bağlantı yok · sürücü yok · SQL patladı · sonuç YOK/NULL ·
+        kayıt kusurlu). Koşamamak yeşil DEĞİLDİR, kırık da değildir; ikisini
+        ayırmayan çıkış kodu "ölçmedik"i "ölçtük, tuttu" gibi gösterir.
+
+⚠ NULL / satır yok artık 0 SAYILMAZ. Eskiden `deger = 0 if satir is None ...`
+yazılıydı; `karsilastirma: esit, beklenen: 0` olan kayıtlarda bu **hiç ölçmeden
+YEŞİL** veriyordu. Şimdi KOŞAMADI (çıkış 2).
+
 YENİ DEĞİŞMEZ EKLERKEN
 ----------------------
 Beklenen değeri bilerek boz, KIRMIZI olduğunu gör, sonra geri al.
@@ -56,6 +67,21 @@ REPO = Path(__file__).resolve().parents[1]
 DOSYA = REPO / "sema" / "degismezler.json"
 
 
+def kosamadi(mesaj):
+    """KOSAMADI -> cikis 2. `kosamadi("...")` cikis 1 verir ve KIRIK ile karisir;
+    'olcum hic yapilamadi' hallerinin HEPSI buradan gecer (sqlcli assert sozlesmesi)."""
+    print("KOSAMADI: %s" % mesaj, file=sys.stderr)
+    raise SystemExit(2)
+
+
+def kapat(baglantilar):
+    for c in baglantilar.values():
+        try:
+            c.close()
+        except Exception:
+            pass
+
+
 def load_env_file():
     """`.env` dosyasını ortama yükler — diğer betiklerle aynı desen."""
     yol = REPO / ".env"
@@ -81,7 +107,7 @@ def get_db_config(sunucu="erp"):
     """`sunucu` etiketine göre bağlantı bilgisi. Eksikse PATLAR — sessiz atlama yok."""
     load_env_file()
     if sunucu not in SUNUCULAR:
-        sys.exit("Bilinmeyen sunucu etiketi: %s (gecerli: %s)"
+        kosamadi("Bilinmeyen sunucu etiketi: %s (gecerli: %s)"
                  % (sunucu, ", ".join(sorted(SUNUCULAR))))
     h, u, p, d = SUNUCULAR[sunucu]
     host = os.environ.get(h)
@@ -94,7 +120,7 @@ def get_db_config(sunucu="erp"):
         cfg = REPO / ".secrets" / "db.json"
         if cfg.exists():
             return json.loads(cfg.read_text(encoding="utf-8"))
-    sys.exit("'%s' sunucusu icin config yok — %s env degiskeni gerek." % (sunucu, h))
+    kosamadi("'%s' sunucusu icin config yok — %s env degiskeni gerek." % (sunucu, h))
 
 
 def _katalog_kimlikleri():
@@ -129,7 +155,7 @@ def ac_baglanti(cfg, db):
     try:
         import pymssql
     except ImportError:
-        sys.exit("pymssql yok: pip install pymssql")
+        kosamadi("pymssql yok: pip install pymssql")
     return pymssql.connect(server=sunucu_adi, user=cfg["user"],
                            password=cfg["password"], database=db)
 
@@ -140,22 +166,22 @@ def main():
     if "--sadece" in sys.argv:
         i = sys.argv.index("--sadece")
         if i + 1 >= len(sys.argv):
-            sys.exit("--sadece <id> bekleniyor.")
+            kosamadi("--sadece <id> bekleniyor.")
         sadece = sys.argv[i + 1]
 
     if not DOSYA.exists():
-        sys.exit("Bulunamadi: %s" % DOSYA)
+        kosamadi("Bulunamadi: %s" % DOSYA)
     veri = json.loads(DOSYA.read_text(encoding="utf-8"))
     kayitlar = veri.get("degismezler", [])
     if not kayitlar:
-        sys.exit("degismezler bos — koşacak bir şey yok.")
+        kosamadi("degismezler bos — koşacak bir şey yok.")
 
     # KIMLIK TEKILLIGI: ayni id iki kez yazilirsa biri golgelenir
     # ve "kostu" sanilir.
     kimlikler = [k["id"] for k in kayitlar]
     tekrar = {x for x in kimlikler if kimlikler.count(x) > 1}
     if tekrar:
-        sys.exit("Tekrarlayan degismez kimligi: %s" % ", ".join(sorted(tekrar)))
+        kosamadi("Tekrarlayan degismez kimligi: %s" % ", ".join(sorted(tekrar)))
 
     # YAPISAL DENETIM (bel/Belinza xUnit kosucusundan alindi): gerekcesi
     # yazilmayan bir degismez, kirildiginda ne yapilacagini soylemez.
@@ -181,12 +207,12 @@ def main():
                     kusur.append("%s: korur -> queries.yaml'da yok (%s)" % (k["id"], qid))
 
     if kusur:
-        sys.exit("Degismez kaydi kusurlu:\n  " + "\n  ".join(kusur))
+        kosamadi("Degismez kaydi kusurlu:\n  " + "\n  ".join(kusur))
 
     if sadece:
         kayitlar = [k for k in kayitlar if k["id"] == sadece]
         if not kayitlar:
-            sys.exit("Boyle bir degismez yok: %s" % sadece)
+            kosamadi("Boyle bir degismez yok: %s" % sadece)
 
     kirik = []
     baglantilar = {}   # (sunucu, db) -> conn ; ayni hedef icin tek baglanti
@@ -199,12 +225,8 @@ def main():
                 baglantilar[anahtar] = ac_baglanti(cfg, db or cfg.get("database"))
             except Exception as ex:
                 # SESSIZ ATLAMA YOK.
-                for c in baglantilar.values():
-                    try:
-                        c.close()
-                    except Exception:
-                        pass
-                sys.exit("%s/%s baglanilamadi — degismezler KOSMADI.\n  %s"
+                kapat(baglantilar)
+                kosamadi("%s/%s baglanilamadi — degismezler KOSMADI.\n  %s"
                          % (sunucu, db, ex))
         return baglantilar[anahtar]
 
@@ -213,9 +235,19 @@ def main():
         sunucu = k.get("sunucu", "erp")
         conn = baglan(sunucu, db)
         imlec = conn.cursor()
-        imlec.execute(k["sql"])
-        satir = imlec.fetchone()
-        deger = 0 if satir is None or satir[0] is None else float(satir[0])
+        try:
+            imlec.execute(k["sql"])
+            satir = imlec.fetchone()
+        except Exception as ex:
+            kapat(baglantilar)
+            kosamadi("[%s] SQL patladi — bu degismez OLCULMEDI. %s" % (k["id"], ex))
+        # SESSIZLIK KANIT DEGIL: satir yok / NULL ise OLCUM YAPILMAMISTIR.
+        # Eskiden 0 sayiliyordu -> `esit 0` bekleyen kayitta YALANCI YESIL.
+        if satir is None or satir[0] is None:
+            kapat(baglantilar)
+            kosamadi("[%s] sonuc YOK/NULL — olcum yapilmadi (eskiden 0 sayiliyordu). soru: %s"
+                     % (k["id"], k["soru"]))
+        deger = float(satir[0])
 
         bek = float(k["beklenen"])
         kars = k["karsilastirma"]
@@ -233,11 +265,7 @@ def main():
         if not gecti:
             kirik.append(k)
 
-    for c in baglantilar.values():
-        try:
-            c.close()
-        except Exception:
-            pass
+    kapat(baglantilar)
 
     print()
     print("%d degismez kostu (%d hedef), %d kirik."

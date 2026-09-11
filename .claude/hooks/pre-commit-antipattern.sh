@@ -92,7 +92,10 @@ done
 # diye hook'a baglandi: (A) Dapper pozisyonel record sirasi, (B) kolon anahtari
 # catallanmasi. Ikisi de 10.09.2026'da IKI KEZ oldu ve build yesil kaldi.
 # Ayrinti: tools/panel_kolon_denetimi.py basligi.
-if echo "$staged" | grep -qE 'SatisAnalizi(Queries|Models|Hucre|Tablo)'; then
+# Tetik GENIS: 'SatisAnalizi' ile baslayan her dosya. Eski desen
+# (Queries|Models|Hucre|Tablo) SatisAnaliziTabanService.cs ve SatisAnalizi.razor'u
+# KACIRIYORDU -> tabana kolon eklenen commit denetimsiz geciyordu (10.09.2026 bulgusu).
+if echo "$staged" | grep -qE 'SatisAnalizi'; then
   if command -v python >/dev/null 2>&1 && [ -f tools/panel_kolon_denetimi.py ]; then
     if ! kolon_out=$(python tools/panel_kolon_denetimi.py 2>&1); then
       echo "=== PANEL KOLON DENETIMI: BLOKLANDI ===" >&2
