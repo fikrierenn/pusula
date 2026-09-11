@@ -152,11 +152,57 @@ entities:
       eksi_stok_izi: >-
         `dbo.SayimYapilipEksiStokVerenler` ve `bkm.SayımEksiStokGetir` — sayım yapıldığı
         hâlde eksi bakiye veren kalemleri döndürüyorlar. WMS↔defter hayalet-stok sorusunun
-        (`sql-server-conventions` § WMS DE MUTLAK DOĞRU DEĞİL) doğrudan muhatabı; henüz
-        ÇALIŞTIRILMADI, yalnız varlığı ölçüldü.
+        (`sql-server-conventions` § WMS DE MUTLAK DOĞRU DEĞİL) doğrudan muhatabı.
+        2026-09-11'de ÇALIŞTIRILDI — sonuç `entities:sayim-sonrasi-eksi-stok-hukmu`.
+        İkisi de SALT-OKUMA (yalnız `#temp` tabloya yazıp DROP ediyorlar; tanımları
+        `sys.sql_modules`ten okunup DOĞRULANDI, sonra çalıştırıldı).
     evidence: "2026-09-11 — sqlcli: sys.objects type IN (P,FN,IF,TF) + sys.sql_modules + msdb.dbo.sysjobservers"
-    evidence_status: pending
     confidence: 0.8
+    last_verified: "2026-09-11"
+  sayim-sonrasi-eksi-stok-hukmu:
+    type: measurement
+    uses: [entities:sayim-yazma-yolu-SP-uzerinden, codes:irsHrk.ehTip]
+    note: >-
+      SAYIM YAPILDIĞI HÂLDE EKSİ BAKİYE — iki SP çalıştırıldı, hüküm ÖLÇÜLDÜ.
+      ⚠ SONUÇ MAĞAZALARDA DEĞİL DEPODA: mağaza tarafı büyük görünüyor ama neredeyse
+      tamamı kendini düzeltmiş; ayakta duran sorun merkez depo defterinde.
+    measurement: >-
+      2026-09-11, `dbo.SayimYapilipEksiStokVerenler` (9.628 satır) + `bkm.SayımEksiStokGetir`
+      (mekan başına) + aynı kapsamda doğrulama sorgusu.
+
+      MAĞAZA (mekan 1 · 4477 · 4478, `ehTip=99` sayımı olan çiftler, 31.05.2022'den):
+      448.396 (mekan,ürün) çifti sayılmış · 253.397 pozitif · 194.624 sıfır ·
+      **375'i HÂLÂ NEGATİF, toplam −19.546 adet**. Yani sayım sonrası bir kez negatife
+      düşen 9.628 çiftin %96'sı kendini düzeltmiş; kalıcı sorun 375 üründe.
+
+      MERKEZ DEPO (mekan 12, aynı SP süzgeci): **1.555 ürün negatif, −4.243.276 adet.**
+      Bunların **1.403'ü (%90) WMS'te HİÇ YOK**; 152'si WMS'te POZİTİF (7.517 adet) —
+      hayalet sınıfı. Depodaki negatif adet, üç mağazanın toplamının **217 katı**.
+    ayrinti:
+      liste_degil_hukum: >-
+        Buraya ürün listesi YAZILMAZ (`semantic-layer` § ŞEMA GERÇEĞİ ≠ SATIR VERİSİ) —
+        liste her gün değişir. Yazılan şey KURAL: "mağaza eksi bakiyesi geçicidir ve
+        kendini düzeltir; merkez depo eksi bakiyesi KALICIDIR ve WMS ile örtüşmez."
+        Listeyi üretmek gerekirse SP'ler canlıda koşar (arşiv SQL'de).
+      gecici_negatif_tuzagi: >-
+        ⚠ `SayimYapilipEksiStokVerenler` bir KAYIP LİSTESİ DEĞİL, ŞÜPHE LİSTESİDİR.
+        Çünkü İLK negatif günü işaretler (`CROSS APPLY TOP 1 ... ORDER BY TARIH`) ve
+        ertesi gün düzelen sapmayı da sayar. ÖLÇÜLEN ÖRNEK: 03.08.2026 İst.Yolu'nda dört
+        kitap −597..−600 göründü; drill ettim → 03.08 `ehTip=95 Dönüşüm −600`, 04.08
+        `ehTip=10 Yerel Alım +600`. Borç bir gün ÖNCE, alacak bir gün SONRA düşüyor.
+        Stok kaybı değil, ÇİFT-KAYIT GECİKMESİ. "Dört kitapta 600'er adet eksik" demek
+        MAKUL ama YANLIŞ olurdu.
+        ⚠ Ama bu mekanizma geneli AÇIKLAMAZ: `ehTip=95` 2025'ten beri yalnız 81
+        kayıt/74 ürün. Tek vakayı kurala çevirmedim, ölçtüm.
+      neden_artis: >-
+        Negatife düşüş yılı: 2021→4.800 · 2022→3.075 · 2023→464 · 2024→199 · 2025→336 ·
+        2026→754 (8,5 ayda). 2026 artışı ÖLÇÜLDÜ ama SEBEBİ ölçülmedi — açık soru.
+      sayimdan_sonra_gecen_sure: "medyan 166 gün · ortalama 216 · 1.046 kayıt 365 günden fazla"
+    evidence: >-
+      2026-09-11 — sorgular/2026-09-11-fiziksel-sayim-alt-sistemi-kesif.sql.
+      SP'ler ÖNCE `sys.sql_modules`ten okunup salt-okuma oldukları doğrulandı
+      (yalnız `#temp` yazıp DROP ediyorlar), SONRA çalıştırıldı.
+    confidence: 0.9
     last_verified: "2026-09-11"
   bkm.SayimEmirBaslik:
     key: [SayimEmirBaslikId, SayimTarihi, MekanId, SayimTipId]

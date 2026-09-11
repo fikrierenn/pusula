@@ -106,3 +106,87 @@ ORDER BY s.name, o.name;
    `bkm.Sayim*` ailesi ve `depo.sayimAnlik` ASCII. Tahmin edilemez — sys'ten okunur.
    ⚠ YAZMA YOLU SP'DİR: bu depo sayım tablolarına YAZMAZ (erp-write-policy izin
    listesinde yoklar ve olmamalılar); yazan taraf BKM'nin kendi uygulamasıdır. */
+
+/* ============================================================================
+   8) SP'LERİ ÇALIŞTIR — ama ÖNCE TANIMLARINI OKU.
+      Bir SP'yi "adı GETİR/VERENLER, demek ki okur" diye çalıştırmak varsayımdır.
+      İkisi de `sys.sql_modules`ten okundu: yalnız `#temp` tabloya yazıp DROP
+      ediyorlar, gerçek tabloya dokunmuyorlar → salt-okuma DOĞRULANDI, sonra koştu.
+      ⚠ `SayimYapilipEksiStokVerenler` AĞIR: 120 sn zaman aşımına düştü,
+        `--timeout 900` ile koştu (irsHrk 59M satır + pencere fonksiyonu).
+      ⚠ `--max-rows` EXEC'e UYGULANMAZ (server-side TOP sarmalanamıyor) — dönen
+        satır sayısı kesilmemiştir, ama bunu varsayma, say.
+   ============================================================================ */
+EXEC dbo.SayimYapilipEksiStokVerenler;               -- 9.628 satır (2026-09-11)
+EXEC bkm.[SayımEksiStokGetir] @MekanId = 1;          --   137 ürün
+EXEC bkm.[SayımEksiStokGetir] @MekanId = 4477;       --   116 ürün
+EXEC bkm.[SayımEksiStokGetir] @MekanId = 4478;       --   165 ürün
+EXEC bkm.[SayımEksiStokGetir] @MekanId = 12;         -- 1.552 ürün  ← DEPO
+
+/* 9) HÜKÜM: mağaza eksisi GEÇİCİ, depo eksisi KALICI.
+      SP #1 İLK negatif günü işaretler, ertesi gün düzeleni de sayar — yani ŞÜPHE
+      listesidir, kayıp listesi değil. Kalıcı olanı ölçmek için AYNI KAPSAMDA
+      (ehTip=99 sayımı olan çiftler) GÜNCEL bakiye hesaplanır. */
+WITH sayilan AS (
+    SELECT DISTINCT ih.ehstkID AS StkID, ih.ehMekan AS mekanID
+    FROM   dbo.irsHrk ih WITH(NOLOCK)
+    WHERE  ih.ehTip = 99                     -- 99 = Sayım
+      AND  ih.hrkTarih >= '20220531'
+      AND  ih.ehMekan IN (1, 4477, 4478)
+), bakiye AS (
+    SELECT h.ehstkID, h.ehMekan, SUM(h.ehAdetN) AS Bakiye
+    FROM   dbo.irsHrk h WITH(NOLOCK)
+    JOIN   sayilan s ON s.StkID = h.ehstkID AND s.mekanID = h.ehMekan
+    GROUP BY h.ehstkID, h.ehMekan
+)
+SELECT COUNT(*)                                              AS sayilan_cift,
+       SUM(CASE WHEN Bakiye <  0 THEN 1      ELSE 0 END)     AS hala_negatif,
+       SUM(CASE WHEN Bakiye <  0 THEN Bakiye ELSE 0 END)     AS negatif_adet,
+       SUM(CASE WHEN Bakiye =  0 THEN 1      ELSE 0 END)     AS sifir,
+       SUM(CASE WHEN Bakiye >  0 THEN 1      ELSE 0 END)     AS pozitif
+FROM   bakiye;
+/* Ölçüm 2026-09-11: 448.396 çift · pozitif 253.397 · sıfır 194.624 ·
+   HÂLÂ NEGATİF 375 (−19.546 adet). Yani 9.628'in %96'sı kendini düzeltmiş. */
+
+/* 10) DEPO — aynı SP süzgeciyle, WMS karşılığı ile birlikte */
+WITH eksi AS (
+    SELECT stk.ehstkID AS StokId, SUM(stk.ehAdetN) AS Defter
+    FROM   dbo.irsHrk stk WITH(NOLOCK)
+    JOIN   dbo.urn u WITH(NOLOCK) ON u.stkID = stk.ehstkID
+    WHERE  u.stkAd NOT LIKE N'Sınav okulları'
+      AND  stk.ehTrhS <= CONVERT(DATE, GETDATE()-1)
+      AND  stk.ehAltDepo = 0
+      AND  stk.ehMekan   = 12
+      AND  u.urnKtgrID  <> 78
+      AND  u.stkID NOT IN (SELECT su.StokId FROM bkm.SINAV_URUN su)
+      AND  u.urnTip = 0 AND u.satisTur = 0
+    GROUP BY stk.ehstkID
+    HAVING SUM(stk.ehAdetN) < 0
+), wms AS (
+    SELECT v.stkID, SUM(v.Stok) AS WmsStok
+    FROM   DerinSISBkm.depo.stok_adres_palet_vw v WITH(NOLOCK)
+    GROUP BY v.stkID
+)
+SELECT COUNT(*)                                                AS urun,
+       SUM(e.Defter)                                           AS defter_toplam_adet,
+       SUM(CASE WHEN w.WmsStok > 0 THEN 1 ELSE 0 END)          AS wms_de_POZITIF_hayalet,
+       SUM(CASE WHEN w.stkID IS NULL THEN 1 ELSE 0 END)        AS wms_de_HIC_YOK,
+       SUM(CASE WHEN w.WmsStok > 0 THEN w.WmsStok ELSE 0 END)  AS hayalet_adet
+FROM   eksi e
+LEFT JOIN wms w ON w.stkID = e.StokId;
+/* Ölçüm 2026-09-11: 1.555 ürün · −4.243.276 adet · WMS'te hiç yok 1.403 (%90) ·
+   WMS'te pozitif 152 (7.517 adet). Depo negatifi mağazanın 217 KATI. */
+
+/* 11) GEÇİCİ NEGATİF TUZAĞI — 03.08.2026 İst.Yolu kümesi (dört kitap −597..−600).
+      "600'er adet eksik" MAKUL ama YANLIŞ okuma olurdu. */
+SELECT CONVERT(varchar(10), h.ehTrhS, 120) AS tarih, h.ehstkID, h.ehTip, t.tipAd,
+       h.ehAdetN, h.hrkID
+FROM   dbo.irsHrk h WITH(NOLOCK)
+LEFT JOIN dbo.irsTip_vw t ON t.tipID = h.ehTip
+WHERE  h.ehMekan = 4478
+  AND  h.ehstkID IN (645931, 140494, 140093, 142859)
+  AND  h.ehTrhS >= '20260701'
+ORDER BY h.ehstkID, h.ehTrhS;
+/* Ölçüm: 03.08 `ehTip=95 Dönüşüm −600` · 04.08 `ehTip=10 Yerel Alım +600`.
+   Borç bir gün ÖNCE, alacak bir gün SONRA → tek günlük çift-kayıt gecikmesi.
+   ⚠ Ama geneli açıklamaz: ehTip=95 2025'ten beri yalnız 81 kayıt / 74 ürün. */
