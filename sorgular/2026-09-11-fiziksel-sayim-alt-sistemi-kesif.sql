@@ -577,3 +577,106 @@ ORDER BY h.ehTrhS, h.ehTip;
    ⇒ +216 bir hayalet ekleme DEĞİL; yoldaki 288 adetlik sevkiyat rafta görünmeden
      yapılmış bir sayımın geri alınmasıdır. Yanlış olan RAKAM değil ETİKET
      (doğrusu `Sayım Hatası` olurdu). */
+
+/* ============================================================================
+   33-36) JENERİK (TOPLU) SKU TESPİTİ — kaç tane var?
+   ⚠ Eşikler (11 barkod · 40 sayım satırı) VERİDEN SEÇİLDİ. Bedeli beyan edilir:
+     veriden türetilen kesim farkı ABARTIR (Altman & Royston 2006) — bu sayılar
+     KOHORT SEÇİMİ içindir, etki ölçüsü değildir.
+   ============================================================================ */
+
+/* 33) ÖLÇÜT A — barkod toplayıcı. stkID başına kaç ayrı barkod?
+   ⚠ `urnBrkdOnce=0` süzgeci KULLANILMAZ: o "birincil barkod" demek ve herkeste 1 verir
+     (ilk denemede bu tuzağa düşüldü — sinyal tamamen kayboluyordu). */
+WITH bk AS (
+    SELECT urnBrkdStkID AS stkID, COUNT(DISTINCT urnBarkod) AS barkod
+    FROM   dbo.urnBrkd WITH(NOLOCK) GROUP BY urnBrkdStkID
+)
+SELECT CASE WHEN barkod=1 THEN '1' WHEN barkod=2 THEN '2'
+            WHEN barkod BETWEEN 3 AND 5 THEN '3-5'
+            WHEN barkod BETWEEN 6 AND 10 THEN '6-10'
+            WHEN barkod BETWEEN 11 AND 50 THEN '11-50' ELSE '50+' END AS bant,
+       COUNT(*) AS urun, MAX(barkod) AS en_cok
+FROM   bk
+GROUP BY CASE WHEN barkod=1 THEN '1' WHEN barkod=2 THEN '2'
+              WHEN barkod BETWEEN 3 AND 5 THEN '3-5'
+              WHEN barkod BETWEEN 6 AND 10 THEN '6-10'
+              WHEN barkod BETWEEN 11 AND 50 THEN '11-50' ELSE '50+' END
+ORDER BY MIN(barkod);
+/* 1->827.082 · 2->9.132 · 3-5->846 · 6-10->269 · 11-50->72 · 50+->109  => >=11: 181 urun.
+   Uc: stkID 465253 "Sinav okullari" = 31.734 BARKOD tek stok kodu altinda. */
+
+/* 34) ÖLÇÜT B — sürekli sayılan. Bant + "3+ farklı neden" sinyali */
+WITH say AS (
+    SELECT d.StokId, COUNT(*) AS satir,
+           COUNT(DISTINCT NULLIF(d.SayimDuzeltmeNedenId,0)) AS neden_cesidi
+    FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+    JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+           ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+    WHERE  b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+      AND  ISNULL(d.Iptal,0) = 0
+    GROUP BY d.StokId
+)
+SELECT CASE WHEN satir=1 THEN '1' WHEN satir BETWEEN 2 AND 3 THEN '2-3'
+            WHEN satir BETWEEN 4 AND 9 THEN '4-9'
+            WHEN satir BETWEEN 10 AND 19 THEN '10-19'
+            WHEN satir BETWEEN 20 AND 39 THEN '20-39' ELSE '40+' END AS bant,
+       COUNT(*) AS urun,
+       SUM(CASE WHEN neden_cesidi >= 3 THEN 1 ELSE 0 END) AS uc_farkli_neden
+FROM   say
+GROUP BY CASE WHEN satir=1 THEN '1' WHEN satir BETWEEN 2 AND 3 THEN '2-3'
+              WHEN satir BETWEEN 4 AND 9 THEN '4-9'
+              WHEN satir BETWEEN 10 AND 19 THEN '10-19'
+              WHEN satir BETWEEN 20 AND 39 THEN '20-39' ELSE '40+' END
+ORDER BY MIN(satir);
+/* 40+ -> 349 urun. "3+ farkli neden" orani: <=19 %0,0-0,2 · 20-39 %3,4 · 40+ %11,7. */
+
+/* 35) BİRLEŞİM + BAĞIMSIZ DOĞRULAMA (ad deseni ÖLÇÜTE GİRMEZ, yalnız sınama) */
+WITH bk AS (SELECT urnBrkdStkID AS stkID, COUNT(DISTINCT urnBarkod) AS barkod
+            FROM dbo.urnBrkd WITH(NOLOCK) GROUP BY urnBrkdStkID),
+     say AS (SELECT d.StokId AS stkID, COUNT(*) AS satir
+             FROM DerinSISBkm.bkm.SayimEmirBaslik b WITH(NOLOCK)
+             JOIN DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+                  ON d.SayimEmirBaslikId=b.SayimEmirBaslikId
+             WHERE b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+               AND ISNULL(d.Iptal,0)=0 GROUP BY d.StokId),
+     ad AS (SELECT u.stkID,
+                   CASE WHEN u.stkAd LIKE N'%Tekli%' OR u.stkAd LIKE N'%Çeşitli%'
+                          OR u.stkAd LIKE N'%Karışık%' OR u.stkAd LIKE N'%Asorti%'
+                          OR u.stkAd LIKE N'%Muhtelif%' OR u.stkAd LIKE N'%Modelleri%'
+                          OR u.stkAd LIKE N'%Çeşitleri%' THEN 1 ELSE 0 END AS ad_deseni
+            FROM dbo.urn u WITH(NOLOCK) WHERE u.urnTip = 0)
+SELECT CASE WHEN ISNULL(bk.barkod,1) >= 11 THEN 1 ELSE 0 END AS barkod_toplayici,
+       CASE WHEN ISNULL(say.satir,0) >= 40 THEN 1 ELSE 0 END AS surekli_sayilan,
+       COUNT(*) AS urun, SUM(ad.ad_deseni) AS ad_deseni_uyan
+FROM   ad
+LEFT JOIN bk  ON bk.stkID  = ad.stkID
+LEFT JOIN say ON say.stkID = ad.stkID
+GROUP BY CASE WHEN ISNULL(bk.barkod,1) >= 11 THEN 1 ELSE 0 END,
+         CASE WHEN ISNULL(say.satir,0) >= 40 THEN 1 ELSE 0 END;
+/* KESISIM 1 · A-only 180 · B-only 348 · BIRLESIM 529 (837.760 icinde %0,06).
+   Ad deseni: taban %0,48 · A %5,56 (Wilson [3,05-9,91]) · B %1,44 ([0,62-3,32]).
+   Ikisi de tabanla AYRIK -> olcutler jenerik-adli urunu bagimsiz zenginlestiriyor. */
+
+/* 36) ★ AĞIRLIK — küçük küme, devasa etki */
+WITH bk AS (SELECT urnBrkdStkID AS stkID, COUNT(DISTINCT urnBarkod) AS barkod
+            FROM dbo.urnBrkd WITH(NOLOCK) GROUP BY urnBrkdStkID),
+     say AS (SELECT d.StokId AS stkID, COUNT(*) AS satir,
+                    SUM(CASE WHEN ISNULL(d.SayimDuzeltmeNedenId,0)>0 THEN 1 ELSE 0 END) AS nedenli,
+                    CONVERT(bigint,SUM(ABS(CONVERT(bigint,ISNULL(d.Miktar,0))
+                                         - CONVERT(bigint,ISNULL(d.MiktarEski,0))))) AS mutlak_duzeltme
+             FROM DerinSISBkm.bkm.SayimEmirBaslik b WITH(NOLOCK)
+             JOIN DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+                  ON d.SayimEmirBaslikId=b.SayimEmirBaslikId
+             WHERE b.MekanId IN (1,4477,4478) AND b.SayimTarihi >= '20250101'
+               AND ISNULL(d.Iptal,0)=0 GROUP BY d.StokId)
+SELECT CASE WHEN ISNULL(bk.barkod,1) >= 11 OR say.satir >= 40
+            THEN 'JENERIK ADAYI' ELSE 'diger' END AS sinif,
+       COUNT(*) AS urun, SUM(say.satir) AS sayim_satiri,
+       SUM(say.nedenli) AS nedenli_satir, SUM(say.mutlak_duzeltme) AS mutlak_duzeltme
+FROM   say LEFT JOIN bk ON bk.stkID = say.stkID
+GROUP BY CASE WHEN ISNULL(bk.barkod,1) >= 11 OR say.satir >= 40
+              THEN 'JENERIK ADAYI' ELSE 'diger' END;
+/* JENERIK ADAYI: 391 urun (%0,15) · sayim satiri 21.747 (%1,13) ·
+   MUTLAK DUZELTME 81.308.298 (%94,50 — toplam 86.038.853).
+   => Stok duzeltme BUYUKLUGUNU olcen her analiz once bu kumeyi ayirmali. */

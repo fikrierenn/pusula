@@ -159,6 +159,66 @@ entities:
     evidence: "2026-09-11 — sqlcli: sys.objects type IN (P,FN,IF,TF) + sys.sql_modules + msdb.dbo.sysjobservers"
     confidence: 0.8
     last_verified: "2026-09-11"
+  jenerik-sku-tespiti:
+    type: rule
+    uses: [entities:sayim-duzeltme-nedeni-ne-kadar-guvenilir]
+    note: >-
+      JENERİK (TOPLU) SKU NASIL TESPİT EDİLİR — tek stok koduna çok fiziksel ürün bağlı
+      kayıtlar. Fiziksel sayımı tasarımı gereği zorlaştırırlar; sürekli düzeltilirler ve
+      düzeltme sıklaştıkça neden kodu anlamını yitirir (`sayim-duzeltme-nedeni-*`).
+      ⚠ BURAYA LİSTE YAZILMAZ — ÖLÇÜT yazılır (`semantic-layer` § ŞEMA GERÇEĞİ ≠ SATIR
+      VERİSİ). Liste her gün değişir; ölçüt sorguyla yeniden üretilir.
+      ⚠ İKİ AYRI JENERİKLİK VAR ve neredeyse HİÇ ÖRTÜŞMÜYORLAR (kesişim: 1 ürün).
+    measurement: >-
+      2026-09-11 ölçümü (837.760 `urnTip=0` ürün · sayım verisi 3 mağaza, 2025-01'den):
+
+      ÖLÇÜT A — BARKOD TOPLAYICI: `dbo.urnBrkd`'de stkID başına ≥ 11 ayrı `urnBarkod`.
+        → **181 ürün.** Dağılım: 1 barkod 827.082 · 2 barkod 9.132 · 3-5 846 ·
+          6-10 269 · 11-50 72 · 50+ 109.
+        En uçtaki: **stkID 465253 "Sınav okulları" = 31.734 BARKOD** (tek stok kodu).
+        Sonra `Ekstrafix Poster` 391/378/265 · `Bricks Lego Modelleri` 180 ·
+        onlarca `BKM SINAV SİPARİŞ` (100'er barkod).
+
+      ÖLÇÜT B — SÜREKLİ SAYILAN: 2025-01'den beri ≥ 40 sayım emri satırı.
+        → **349 ürün.** Bant dağılımı: 1 satır 14.225 · 2-3 38.034 · 4-9 124.153 ·
+          10-19 87.492 · 20-39 851 · 40+ 349. Kuyruk gerçek ve kopuk.
+        Bu bandın işareti: "3+ FARKLI neden kodu kullanılmış" oranı bantla sıçrıyor —
+        ≤19 satırda %0,0-0,2 · 20-39'da %3,4 · **40+'ta %11,7**.
+        Örnek: stkID 63968 "Hot Wheels Tekli Arabalar" (54 satır, 9+ kullanıcı,
+        dört neden kodunun hepsi birbirinin yerine kullanılmış).
+
+      KESİŞİM = 1 ürün · BİRLEŞİM = **529 ürün** (%0,06). İki ölçüt farklı olguyu
+      yakalıyor: A "tek kod altında çok barkod", B "az barkod ama çok fiziksel varyant".
+
+      ⭐ AĞIRLIK — KÜÇÜK KÜME, DEVASA ETKİ: sayım verisinde görünen 391 aday,
+      ürünlerin **%0,15'i** ve sayım satırlarının **%1,13'ü** olduğu hâlde
+      MUTLAK DÜZELTME MİKTARININ **%94,50'sini** taşıyor (81.308.298 / 86.038.853 adet).
+      ⇒ Stok düzeltme BÜYÜKLÜĞÜNÜ anlamak isteyen her ölçüm önce bu kümeyi ayırmalı.
+    ayrinti:
+      esik_secimi_BEYAN: >-
+        ⚠ 11 barkod ve 40 sayım satırı eşikleri VERİDEN SEÇİLDİ (dağılımdaki kopuş
+        noktalarından). `olctum-mu-cikardim-mi` § EŞİK TÜRETME uyarınca bedeli beyan
+        edilir: veriden seçilen kesim grup farkını ABARTIR ve tekrarlanabilirliği
+        düşürür (Altman & Royston 2006). Bu sayılar bir ETKİ ÖLÇÜSÜ olarak sunulamaz;
+        yalnız KOHORT SEÇİMİ içindir — "kaç tane jenerik SKU var" sorusunun cevabı
+        eşiğe bağlıdır ve eşik seçilmiştir.
+      bagimsiz_dogrulama: >-
+        Ölçütler ad desenine karşı sınandı (`Tekli`/`Çeşitli`/`Karışık`/`Asorti`/
+        `Muhtelif`/`Modelleri`/`Çeşitleri` geçen adlar — bu desen ölçüte GİRMEDİ,
+        yalnız doğrulama için kullanıldı):
+          taban (hiçbir ölçüt)  %0,48
+          barkod ≥ 11           %5,56  → 11,6× (Wilson %95: [3,05-9,91], tabanla AYRIK)
+          sayım ≥ 40            %1,44  →  3,0× (Wilson %95: [0,62-3,32], tabanla AYRIK)
+        Yani her iki ölçüt de jenerik-adlı ürünü bağımsız biçimde zenginleştiriyor.
+        Ad deseni TEK BAŞINA ölçüt yapılmadı: 4.060 ürün desene uyuyor ama ölçütlerin
+        dışında — ad bir ipucudur, kanıt değil.
+      neden_onemli: >-
+        `bkm.SayımEksiStokGetir` zaten `u.stkAd NOT LIKE 'Sınav okulları'` diye ELLE
+        tek bir jenerik SKU'yu dışlıyor — yani sorun biliniyor ama ölçütü yok, tek tek
+        ad yazılarak çözülmüş. Bu kayıt o elle-dışlamanın ÖLÇÜLEBİLİR karşılığıdır.
+    evidence: "2026-09-11 — sorgular/2026-09-11-fiziksel-sayim-alt-sistemi-kesif.sql blok 33-36"
+    confidence: 0.8
+    last_verified: "2026-09-11"
   sayim-duzeltme-nedeni-ne-kadar-guvenilir:
     type: measurement
     uses: [entities:bkm.SayimTip-liste-sayimi-ne-demek]
