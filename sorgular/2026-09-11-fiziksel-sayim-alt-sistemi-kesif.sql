@@ -329,3 +329,74 @@ GROUP BY e.SayimTipId ORDER BY e.SayimTipId;
    ⇒ Bileşim kayması YANLIŞ YÖNDE: büyüyen tip en temiz olan. Hipotez ELENDİ.
    ⇒ FSM/Özlüce artışının sebebi AÇIK SORU. 2025 tarafı yaş-eşitli kıyaslanamadığı
      için tip bazlı oranlar BİRLİKTELİKTİR, neden değildir. */
+
+/* ============================================================================
+   20-23) `SayimTipId = 1 Liste Sayımı` NE DEMEK
+   ============================================================================ */
+
+/* 20) Tip sözlüğü — LİSTE ELLE YAZILMAZ */
+SELECT * FROM DerinSISBkm.bkm.SayimTip ORDER BY SayimTipId;
+/* 1 Liste · 2 Reyon · 3 Serbest · 4 Eksi Stok · 5 Mağaza Kontrol · 6 Birleştirilmiş ·
+   7 Emir Birleştirme · 8 Reyon Düzeltme · 9 Reyon Birleştirme ·
+   10 Sayım Reyon Ayrıştırma · 11 Genel Raf · 14 Kontrol · 15 Çok Satan */
+
+/* 21) YAPISAL PARMAK İZİ — tipi adından değil DAVRANIŞINDAN tanı */
+SELECT b.SayimTipId,
+       COUNT(DISTINCT b.SayimEmirBaslikId)                     AS emir,
+       COUNT(*)                                                AS satir,
+       SUM(CASE WHEN ISNULL(d.RafNo,N'')=N'' THEN 1 ELSE 0 END) AS rafsiz_satir,
+       COUNT(DISTINCT NULLIF(d.RafNo,N''))                     AS raf_cesidi,
+       SUM(CASE WHEN ISNULL(d.SayimDuzeltmeNedenId,0)>0 THEN 1 ELSE 0 END) AS neden_yazili
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  b.SayimTarihi >= '20260101' AND b.MekanId IN (1,4477,4478)
+GROUP BY b.SayimTipId ORDER BY satir DESC;
+/* Liste  : 41,4 satır/emir · %60,8 RAFSIZ · %34,4 nedenli  → hedefli DÜZELTME
+   Reyon  : 27,2 satır/emir · %0,0  rafsız · %0,5  nedenli  → sistematik RAF SÜPÜRME
+   Serbest: %100 rafsız, hiç raf yok                        → serbest/ad-hoc
+   Yani Liste bir sayım YÖNTEMİ değil, bir DÜZELTME KANALI. */
+
+/* 22) ★ DÜZELTME NEDENİ — sistemin KENDİ beyanı, benim çıkarımım değil */
+SELECT * FROM DerinSISBkm.bkm.SayimDuzeltmeNedenleri;
+SELECT d.SayimDuzeltmeNedenId, COUNT(*) AS satir,
+       CONVERT(bigint, SUM(CONVERT(bigint,ISNULL(d.Miktar,0))
+                         - CONVERT(bigint,ISNULL(d.MiktarEski,0)))) AS net
+FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+       ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+WHERE  b.SayimTipId = 1 AND b.MekanId IN (1,4477,4478)
+  AND  b.SayimTarihi >= '20260101' AND ISNULL(d.SayimDuzeltmeNedenId,0) > 0
+GROUP BY d.SayimDuzeltmeNedenId ORDER BY satir DESC;
+/* 2 Mal Giriş Hatası  2.050 satır / net -642.711  ← 01.08 olayının KENDİ ETİKETİ
+   3 Sayım Hatası(Önceki Dönem) 394 / +1.460 · 4 LOGO Stok Aktarımı 234 / -12.310
+   5 Kayıp-Çalıntı 75 / -544 · 1 Kasiyer Hatası 18 / +35
+   ⇒ Olay hatalı MAL KABULÜNÜN geri alınmasıdır. KAYIP/ÇALINTI DEĞİLDİR
+     (o kod toplamda 75 satır / -544 adet). */
+
+/* 23) Tipin kendisi riskli mi? HAYIR — olay ayrılınca İST.YOLU'NA ÖZGÜ kalıyor */
+WITH emir AS (
+    SELECT b.MekanId, d.StokId,
+           CASE WHEN b.MekanId = 4478 AND b.SayimTarihi >= '20260801'
+                                      AND b.SayimTarihi <  '20260802' THEN 1 ELSE 0 END AS olay
+    FROM   DerinSISBkm.bkm.SayimEmirBaslik    b WITH(NOLOCK)
+    JOIN   DerinSISBkm.bkm.SayimEmirDetaylari d WITH(NOLOCK)
+           ON d.SayimEmirBaslikId = b.SayimEmirBaslikId
+    WHERE  b.SayimTipId = 1 AND b.MekanId IN (1,4477,4478)
+      AND  b.SayimTarihi >= '20260801' AND b.SayimTarihi < '20260910'
+      AND  ISNULL(d.Iptal,0) = 0
+    GROUP BY b.MekanId, d.StokId,
+             CASE WHEN b.MekanId = 4478 AND b.SayimTarihi >= '20260801'
+                                        AND b.SayimTarihi <  '20260802' THEN 1 ELSE 0 END
+), bak AS (
+    SELECT h.ehstkID AS StokId, h.ehMekan AS MekanId, SUM(h.ehAdetN) AS Bakiye
+    FROM   dbo.irsHrk h WITH(NOLOCK) WHERE h.ehMekan IN (1,4477,4478)
+    GROUP BY h.ehstkID, h.ehMekan
+)
+SELECT e.olay, e.MekanId, COUNT(*) AS cift,
+       SUM(CASE WHEN b.Bakiye < 0 THEN 1 ELSE 0 END) AS negatif
+FROM   emir e LEFT JOIN bak b ON b.StokId = e.StokId AND b.MekanId = e.MekanId
+GROUP BY e.olay, e.MekanId ORDER BY e.olay, e.MekanId;
+/* Olay hariç: İst.Yolu 27/447 = %6,04 [4,18-8,65] · FSM 0/16 · Özlüce 0/31.
+   FSM/Özlüce örneklemi çok küçük (GA %0-19 / %0-11) → KANIT YOK, ve zaten Liste'yi
+   Ağu-Eyl'de neredeyse hiç kullanmamışlar. ⇒ Liste, FSM/Özlüce artışını AÇIKLAMAZ. */

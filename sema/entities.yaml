@@ -159,6 +159,59 @@ entities:
     evidence: "2026-09-11 — sqlcli: sys.objects type IN (P,FN,IF,TF) + sys.sql_modules + msdb.dbo.sysjobservers"
     confidence: 0.8
     last_verified: "2026-09-11"
+  bkm.SayimTip-liste-sayimi-ne-demek:
+    type: rule
+    uses: [entities:bkm.SayimEmirBaslik, entities:eksi-stok-2026-artisinin-sebebi]
+    note: >-
+      `SayimTipId = 1 Liste Sayımı` NE DEMEK — ölçülerek karakterize edildi.
+      13 sayım tipi var (`bkm.SayimTip`): 1 Liste · 2 Reyon · 3 Serbest · 4 Eksi Stok ·
+      5 Mağaza Kontrol · 6 Birleştirilmiş · 7 Emir Birleştirme · 8 Reyon Düzeltme ·
+      9 Reyon Birleştirme · 10 Sayım Reyon Ayrıştırma · 11 Genel Raf · 14 Kontrol ·
+      15 Çok Satan.
+      **Liste Sayımı = ELLE SEÇİLMİŞ ÜRÜN LİSTESİ ÜZERİNDEN DÜZELTME ARACI.**
+      Raf taramasına bağlı DEĞİL ve bir sayım YÖNTEMİ değil, bir DÜZELTME kanalıdır.
+    measurement: >-
+      2026, üç mağaza — yapısal parmak izi (`bkm.SayimEmirDetaylari`):
+        tip  1 Liste          195 emir /  8.065 satır · 41,4 satır/emir · **%60,8 RAFSIZ**
+                              · **%34,4 satırda düzeltme nedeni yazılı**
+        tip  2 Reyon       16.394 emir / 445.634 satır · %0,0 rafsız · %0,5 nedenli
+        tip  3 Serbest      2.169 emir /  59.064 satır · %100 rafsız · %14,7 nedenli
+        tip  4 Eksi Stok        5 emir /     321 satır · %77,6 rafsız · %40,2 nedenli
+        tip 10 ReyonAyrıştır  598 emir /   5.671 satır ·  9,5 satır/emir · %28,0 nedenli
+      Yani `Reyon` sistematik raf süpürmesidir (her satır rafa bağlı, neredeyse hiç
+      düzeltme gerekçesi yok); `Liste` ise hedefli düzeltmedir (çoğu rafsız, üçte biri
+      gerekçeli). `Eksi Stok Sayımı` gerekçe oranında en yüksek — tanımı gereği.
+
+      ÜRETEN İNSANDIR, JOB DEĞİL: 2025-06'dan beri onlarca ayrı `OlusturanKullaniciId`
+      (en çok üreten 66 emir). `Reyon` tarafını `ReyonSayimiDuzenle` job'ı besler.
+
+      DÜZELTME NEDENLERİ (`bkm.SayimDuzeltmeNedenleri`, 5 kod) ve Liste'deki dağılımı:
+        2 Mal Giriş Hatası            2.050 satır · net **−642.711**
+        3 Sayım Hatası (Önceki Dönem)   394 satır · net +1.460
+        4 LOGO Stok Aktarımı            234 satır · net −12.310
+        5 Kayıp-Çalıntı                  75 satır · net −544
+        1 Kasiyer Hatası                 18 satır · net +35
+    ayrinti:
+      2026_olayinin_SISTEMIN_KENDI_BEYANI: >-
+        ⭐ 01.08.2026 İst.Yolu'ndaki −652.451 adetlik toplu düşüm BU KANALDAN geçti
+        (İst.Yolu 2026-08 Liste neti −646.252) ve işi yapanlar nedenini
+        **`Mal Giriş Hatası`** diye işaretlemiş. Yani hatalı girilmiş bir mal kabulünün
+        geri alınması. ⚠ BU BİR ÇIKARIM DEĞİL, SİSTEMİN KENDİ NEDEN KODUDUR.
+        ⚠ `Kayıp-Çalıntı` kodu TOPLAMDA 75 satır / −544 adet — yani bu olay bir kayıp
+        ya da hırsızlık anlatısı DEĞİLDİR ve öyle sunulamaz.
+      tipin_kendisi_riskli_DEGIL: >-
+        `Liste`nin yüksek negatif oranı (%6,71) İLK BAKIŞTA tipe ait sanılabilir; değil.
+        01.08 olayı ayrıldığında: İst.Yolu Liste %6,04 [4,18-8,65] (hâlâ yüksek) ·
+        FSM 0/16 · Özlüce 0/31 (örneklem çok küçük, GA %0-19 ve %0-11 → KANIT YOK).
+        Yani yüksek oran İST.YOLU'NA ÖZGÜ, tipe değil. FSM/Özlüce Ağu-Eyl'de Liste'yi
+        neredeyse hiç kullanmamış — bu yüzden `Liste` onların artışını AÇIKLAMAZ.
+      hacim_dalgalanmasi: >-
+        Liste emri normalde mağaza başına ayda ~25-35. 2026 Oca-Haz'da 2-13'e düştü,
+        Temmuz'da toparladı (22-32), Ağustos'ta yine çöktü (FSM 1 · Özlüce 3 · İst.Yolu 12).
+        Dalgalanma ÖLÇÜLDÜ, sebebi ölçülmedi.
+    evidence: "2026-09-11 — sorgular/2026-09-11-fiziksel-sayim-alt-sistemi-kesif.sql blok 20-23"
+    confidence: 0.9
+    last_verified: "2026-09-11"
   eksi-stok-2026-artisinin-sebebi:
     type: measurement
     uses: [entities:sayim-sonrasi-eksi-stok-hukmu, codes:irsHrk.ehTip]
