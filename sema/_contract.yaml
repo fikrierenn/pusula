@@ -96,6 +96,15 @@ common:
     superseded_why:
       type: metin
       description: "Hangi ÖLÇÜM çürüttü. `superseded_by` yoksa bu zorunlu — çıplak 'superseded' kimseye ne olduğunu söylemez."
+    cross_checked:
+      type: tarih               # YYYY-MM-DD
+      description: >-
+        Bu NESNE hakkındaki kayıtların yan yana OKUNDUĞU ve çelişmediğinin görüldüğü tarih.
+        `sema aday` `ayni_nesne_coklu_kayit` sorusunu bu damga varsa üretmez — AMA damga
+        bayatlayınca soru KENDİ KENDİNE geri gelir: ilgili kayıtlardan birinin
+        `last_verified`i bu tarihten yeniyse denetim geçersiz sayılır.
+        Yani bir kapatma düğmesi DEĞİL, tarihli bir denetim izidir; çözülemeyen/okunamayan
+        damga taze SAYILMAZ. Hedef kayda (nesnenin kendisine) yazılır, notlara değil.
     stamp_inherited:
       type: bool
       description: >-
@@ -135,6 +144,7 @@ synonyms:
   stamp_inherited: [damga_devralindi]
   atomicity_reason: [atomiklik_gerekcesi]
   closed_set: [kapali_kume]
+  cross_checked: [capraz_denetlendi]
   view_trap: [view_tuzagi]
   cardinality: [kardinalite]
   row_count: [satir_sayisi]
@@ -309,15 +319,29 @@ types:
           yok = hiç toplanmaz, yeniden hesaplanır (oran, ortalama, yüzde).
           Yanlış toplama sessiz yanlış rakamın en yaygın kaynağı.
         level: uyari            # F5 sonrası kirik
+      additivity_audit:
+        description: >-
+          `additivity: full` bir kayıt, `uses:` ile `semi` bir ölçüye bağlıysa `sema aday`
+          ÇELİŞKİ ADAYI üretir. Riskin UYGULAMADA gerçekleşmediği ÖLÇÜLDÜYSE (arşiv SQL
+          okunup ne toplandığı görüldüyse) sonuç buraya yazılır ve aday yeniden üretilmez —
+          `orphans_expected` ile AYNI desen: beyan edilmiş istisna, sessiz istisnadan iyidir.
+          ⚠ Kapatılamayan bir uyarı okunmayan uyarıdır; ama beyan YANLIŞSA alan silinir ve
+          aday geri gelir. Boş/gerekçesiz beyan bu alanın amacını bozar.
+        level: uyari
       unit:
         values: [TL, count, ratio, days, people, multiplier, none]
         description: "`yok` = ölçü değil (tip: kural kayıtlarında). Ölçüyse birim ZORUNLU."
         level: uyari            # F5 sonrası kirik
       basis:
-        values: [vat_excl, vat_incl, unknown, none]
+        values: [vat_excl, vat_incl, mixed, unknown, none]
         description: >-
-          Para metriklerinde ZORUNLU. `yok` = para metriği değil.
-          `belirsiz` = PARA metriği ama tabanı BEYAN EDİLMEMİŞ → kullanmadan önce ÖLÇ.
+          Para metriklerinde ZORUNLU. `none` = para metriği değil.
+          `unknown` = PARA metriği ama tabanı BEYAN EDİLMEMİŞ → kullanmadan önce ÖLÇ.
+          `mixed` = kayıt AYNI ANDA iki tabanda kolon taşıyor (ör. `cari_firma_stok_hareket`:
+          alış/satış pivotu `irsHrk.ehTutarN` KDV HARİÇ, cari bakiye fatura toplamı KDV DAHİL).
+          `mixed` yazan kayıt HANGİ KOLONUN HANGİ TABANDA olduğunu da yazmak zorundadır —
+          yoksa `unknown`dan farkı kalmaz. `mixed` bir kusur DEĞİL, bir rapor birden çok
+          para kolonu gösterebilir; KUSUR bu kolonları TOPLAMAK ya da BİRBİRİNE BÖLMEKtir.
           Ölçüm 2026-09-11: 32 para metriğinin yalnız 7'si tabanını söylüyordu. Sessiz
           eksik yerine BEYAN EDİLMİŞ eksik: `marj_kdv_tabani` vakası iki tarafın farklı
           tabanda olmasından doğdu ve hiçbir alan bunu göstermiyordu.

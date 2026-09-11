@@ -124,9 +124,11 @@ metrics:
     evidence: "2026-07-04 — car_isle/car_ekle/mhsEnt_car/mhsEntKontrolCar decrypted kaynak (Fikri); trigger sorgusu 0 satır."
     last_verified: "2026-07-04"
   olu_stok_maliyet_zinciri:
+    measurement: "2026-09-11 — ANA YOL (`step1`) `fatAyr.ehTutarN` tabanlıdır ve o kolon KDV HARİÇtir (codes:irsHrk.ehTip § kdv). ⚠ ŞELALENİN ALT BASAMAKLARI AYNI GÜVENDE DEĞİL: fallback `ORT_ALIS` hem tabanı doğrulanmamış hem BAYAT (bkz. metrics:birim_maliyet § ORT_ALIS_CURUDU — tablo MAX(STKID) 485.140'ta bitiyor, değerler son-90-gün faturasının %7-27'si); üçüncü basamak `fiyatS × AvgCostOran` bir SATIŞ fiyatından türetildiği için tabanını kalibrasyon kaynağından DEVRALIR. `basis: vat_excl` ANA YOL için geçerlidir; ölü stok değerinin ne kadarının 2. ve 3. basamaktan geldiği ÖLÇÜLMEDİ."
+    evidence_status: pending
     type: derived
     unit: TL
-    basis: unknown
+    basis: vat_excl
     additivity: semi
     source: "dashboard/Data/RefQueries.Envanter.cs OluStokSql"
     chain: "COALESCE(fat5.Maliyet, ml.ORT_ALIS, CASE WHEN fiyatS>0 THEN fiyatS * avgml.AvgCostOran END)"
@@ -253,9 +255,11 @@ metrics:
       evidence: "2026-08-25 — aynı koşu, adet DESC ham liste."
 
   eticaret_net:             # haftalık brief + G7 net tanımı
+    measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `J_ORDERS.TOTALPRICE` KDV DAHİLDİR. İki adımda ölçüldü — (1) kalem kimliği: TOTALPRICE = SUM(QUANTITY×SELLINGPRICE) + CARGOPRICE + SERVICEPRICE, 4 siparişte kuruşu kuruşuna (ör. ORDERID 110016494: 831,40 + 89,90 + 0 = 921,30); (2) kalem tabanı: `SELLINGPRICE = SELLINGPRICEWITHOUTVAT + VATPRICE` birebir tutuyor (VAT 10 ve 20 örneklerinde). ⚠ POS `encore_ciro` de KDV DAHİL olduğu için ikisi AYNI tabanda — doğrudan kıyaslanabilir (kayıttaki 'birebir kıyaslanamaz' uyarısı KARGO/kapsam farkı yüzündendir, KDV yüzünden değil). KDV-hariç e-ticaret cirosu isteniyorsa kalem düzeyindeki `SELLINGPRICEWITHOUTVAT` kullanılır."
+    kolon_tuzagi: "⚠ `J_ORDERS.PRICEWITHVAT` ÖLÜ KOLON: 4.704.735 siparişin **TAMAMINDA 0** (ölçüldü 2026-09-11). `J_ORDERS.PRICEWITHOUTVAT` ise adına rağmen TOTALPRICE'ın KDV-hariç hâli DEĞİL — 4.382 siparişte TOTALPRICE'tan BÜYÜK çıkıyor; anlamı DOĞRULANMADI. KDV-hariç tutar için başlık kolonlarına GÜVENME, kalem düzeyine in (`J_ORDER_DETAILS.SELLINGPRICEWITHOUTVAT`)."
     type: simple
     unit: TL
-    basis: unknown
+    basis: vat_incl
     additivity: full
     source: ODAKJOKER.JOKER.dbo.J_ORDERS
     formula: "SUM(CASE WHEN STATUS NOT IN (1001,1006,1007,3000,4000) THEN TOTALPRICE END)"
@@ -264,9 +268,10 @@ metrics:
     applied_in: "scripts/generate_brief.py SQL_ETICARET (v1.1.0)"
 
   cod_ekonomi:              # kapıda ödeme
+    measurement: "2026-09-11 — `CARGOPRICE` ve `SERVICEPRICE` müşteriden tahsil edilen tutarlardır ve KDV DAHİL `TOTALPRICE` kimliğinin İÇİNDE yer alırlar (TOTALPRICE = kalem + CARGOPRICE + SERVICEPRICE, ölçüldü; bkz. metrics:eticaret_net). Bu yüzden taban KDV DAHİL. ⚠ ÇIKARIM SINIRI: kargo/hizmet bedelinin KDV oranı AYRICA ölçülmedi (JOKER başlıkta kargo için ayrı KDV kolonu yok); 'KDV dahil' olduğu kimlikten geliyor, oranı değil. İade maliyeti 2×CARGOPRICE hesabı da aynı tabanda."
     type: derived
     unit: TL
-    basis: unknown
+    basis: vat_incl
     additivity: full
     cod_filter: "PAYDEFREF=-3"
     service_fee: "SERVICEPRICE = pass-through (firmaya ödenir, kâr DEĞİL)"
@@ -321,9 +326,10 @@ metrics:
     last_verified: 2026-06-18
 
   cari_firma_stok_hareket:  # firma bazlı stok + 3 ay alış/satış (cari özet)
+    measurement: "2026-09-11 — kayıt AYNI RAPORDA iki farklı tabanda para kolonu taşıyor. KOLON HARİTASI: (a) 3 aylık alış/satış pivotu → `irsHrk.ehTutarN` = **KDV HARİÇ** (codes:irsHrk.ehTip § kdv); (b) cari bakiye → `bakiye_vw` fatura toplamlarından gelir = **KDV DAHİL** (fatura tutarı müşteriye kesilen tutardır); (c) stok adetleri para DEĞİL. ⚠ KUSUR RAPORUN KENDİSİNDE DEĞİL: iki kolonu yan yana göstermek meşru. KUSUR bunları TOPLAMAK ya da 'bakiye / 3 aylık satış' gibi BÖLMEKtir — oran KDV oranı kadar sapar. Sözleşmeye bu vaka için `basis: mixed` değeri eklendi (2026-09-11)."
     type: derived
     unit: TL
-    basis: unknown
+    basis: mixed
     additivity: full
     source: "stokSonAltDepo_vw (depo+mağaza stok) + irsHrk (3 ay alış/satış pivot) + bakiye_vw"
     firma_filter: "urn.stkFirma=570 (BKM ana yayın firması — cari özette)"
@@ -570,10 +576,11 @@ metrics:
     last_verified: "2026-08-19"
 
   hediye_ceki:                # 2026-08-25 — cek nominalinden indirim talebi (karlilik/tavan). v2: kanal + fat5 duzeltmesi
+    measurement: "2026-09-11 — KDV tabanı YOK, çünkü çek SATIŞI hasılat değil AVANStır ve **KDV=0** (kaydın kendi `nitelik` alanında yazılı). Kâr çekin HARCANDIĞI anda doğar; o an POS tarafında ölçülür ve orada taban `encore_ciro` ile aynıdır (KDV DAHİL). Yani `none` çekin KENDİSİ için geçerlidir, çekle yapılan satış için değil."
     atomicity_reason: "Bulgular 2026-09-11'de 20 atomik cocuk kayda AYRILDI (hediye_ceki__*); kalan kisim kanalin kendi tanimidir (nitelik, kaldirac, barem, kullanim olcumu) ve birlikte okunur."
     type: derived
     unit: TL
-    basis: unknown
+    basis: none
     additivity: full
     nitelik: "Cek SATISI hasilat DEGIL AVANS — KDV=0. Kar cekin HARCANDIGI anda dogar; nominalden verilen indirim dogrudan o kardan duser. Urun tanimi: `urnKtgr2.ktgrAd = N'Hediye Çeki'` (kupur-SKU 50/100/200/500/750/1000 + acik-tutarli stkID 551353, fiyatS=0 = fatura kanalinin ana kalemi)."
     fatura_kanali_indirim: "Fatura kanalinda indirim ZATEN uygulaniyor: `fatAyr.ehIndirim` / `ehTutar` (eTip=1). Ortalama %4,99 ama KURALSIZ — ayni pencerede %0, %4,15, %5 ve %15 birlikte. ⚠ MUSTERI GRUP KONSOLIDASYONU SART: INALLAR OTOMOTIV(24922) + INALLAR SIGORTA(56291) + GONYE OTOMOTIV(56292) AYNI GRUP (kullanici teyidi + ucu de Ovaakca Cesmebasi/Istanbul Cad.) -> konsolide 480.000 TL/%15 = EN BUYUK alici (%26 brut payi) ve indirim butcesinin %78,4'u orada. Konsolide edilmezse uc orta-olcekli musteri gibi gorunur ve 'indirim-hacim ters iliskili' YANLIS yorumu cikar. En buyuk ikinci/ucuncu alici (250.000 / 227.550 TL) %0 oduyor -> asil bulgu KADEME YOKLUGU. Grup-ici taraflar (Bursa Kultur Merkezi) AYRI KOVA."
@@ -1157,9 +1164,10 @@ metrics:
     evidence: "2026-09-02 canli MCP (DerinSIS eTip100, 3 magaza, Sinav haric) haftalik seri + MEB 2025-2026 ve 2026-2027 calisma takvimi (web dogrulama). Ilgili: pos_sistem_gecisi_2025 (ayni analizde ikinci artefakt)."
 
   sezon_ciro_tahmini_okul_hizali:    # 2026-09-08 — OKUL KAYMASI VARKEN CIRO TAHMINI
+    measurement: "2026-09-11 — kaynak `DerinSIS eTip 100` günlük serisi, yani `irsHrk/irs` tarafı ve `ehTutarN` KDV HARİÇtir (codes:irsHrk.ehTip § kdv, işlem-seviye kanıt: stkID 1716577 → 1.491,67 × 1,20 = 1.790 EncoreMerkez KDV-dahil). ⚠ SONUÇ: bu tahmin KDV-HARİÇ ciro tahminidir; KDV-DAHİL ölçen `encore_ciro` ile doğrudan kıyaslanamaz."
     type: derived
     unit: TL
-    basis: unknown
+    basis: vat_excl
     additivity: full
     uses: [metrics:pos_sistem_gecisi_2025, metrics:sezon_kiyas_takvim_hizalama]
     rule: "Okul acilisi kayan yilda ciro tahmini TAKVIM AYI uzerinden yapilmaz. Yontem: (1) gunluk seriyi okul acilisina hizala (ofset = DATEDIFF(DAY, acilis, gun)); (2) buyume carpani k'yi SON TAM hizali gunlerden olc (k = 2026(T-x..T-son)/2025(ayni ofsetler)); (3) tahmin(o) = 2025(o) x k, o > son_ofset; (4) tahmini gunleri CARI yilin takvimine geri yaz -> ay tahmini. Kesim gunu de hizalidir: bugunun eTip 100 belgesi gun ici yeniden yazildigi icin son TAM gun esas alinir."
@@ -1417,6 +1425,7 @@ metrics:
     evidence: "2026-08-25 — ayni sepette SonAlis/fat5 yan yana olculdu (sorgular/2026-08-25-... blok 6 vs 12); SonAlis-FIFO sapmasi blok 6b vs bu dosyadaki fifo Ocak-2026 (%35,4)."
 
   personel_maliyet_ve_fazla_mesai:   # 2026-09-03 — kadro savunmasinin MALIYET + UYUM tarafi (K-21/K-22)
+    additivity_audit: "2026-09-11 — `sema aday` bu kaydı 'tam-toplanır ama yarı-toplanır bir ölçüyü (sezon_personel_kohort) kullanıyor' diye işaretledi. UYGULAMA OKUNDU (sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql): RİSK GERÇEKLEŞMİYOR. (a) Kişi ölçüsü anlık kadro DEĞİL, `FTE = SUM(Primgunu)/30` — yapısı gereği toplanabilir. (b) Kişi sayımı yapılan yerde ad açıkça `FmYapanKisiAy` (kişi-ay), yani toplanan şeyin kişi olmadığı ETİKETTE yazılı. (c) `sezon_personel_kohort` anlık kesiti bu hesaba HİÇ girmiyor; bağ kapsam ayracı (`vw_PersonelDepartman`) ortaklığından geliyor. SONUÇ: `additivity: full` doğru; yarı-toplanır ölçü zaman boyunca SUM'lanmıyor."
     type: derived
     unit: TL
     basis: vat_excl
