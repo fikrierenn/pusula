@@ -144,6 +144,11 @@ synonyms:
   stamp_inherited: [damga_devralindi]
   atomicity_reason: [atomiklik_gerekcesi]
   closed_set: [kapali_kume]
+  # `degerler` — bel deposunda 16 `codes` kaydı bu adı taşıyor ve kanonik ad `values`
+  # olduğu için hepsi KIRIK sayılıyordu (bildirildi 2026-09-11). pusula'da bu adı kullanan
+  # kayıt YOK (ölçüldü: 4 dosyada 0 geçiş), yani burada etkisi yok; eş-anlamlı ileriye
+  # zorlayıcıdır — `--esanlamli-goc` eskiyi okumaya devam etmez, `values`a KATLAR.
+  values: [degerler]
   cross_checked: [capraz_denetlendi]
   view_trap: [view_tuzagi]
   cardinality: [kardinalite]

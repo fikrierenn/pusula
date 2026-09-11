@@ -57,3 +57,36 @@ BKM rapor doğrulamasında: "bu hafta X satır geldi" değil — "satır ≥1 VE
 ## İlişkili
 - `.claude/rules/todo-verification.md` — "kapalı" iddiasını kanıtla.
 - `.claude/rules/before-major-change.md` — refactor öncesi güvenlik.
+
+## YAZILI KURAL ≠ UYGULANAN KURAL (2026-09-11, altı vakayla ölçüldü)
+
+`test-discipline`in "kırılabilirliği kanıtlanmamış test, test değildir" kuralının daha
+genel hâli. Bir kuralın METİN olarak var olması, ONU ÇİĞNEYENİN YAKALANDIĞI anlamına
+gelmez. Aradaki boşluk sessizdir ve kural "var" göründüğü için kimse arkasına bakmaz.
+
+**SINAMA — tek soru:**
+
+> *"Bu kuralı çiğneyen bir durumu bugün KİM, NEREDE görür?"*
+> Cevap **"hiç kimse"** ise kural **yoktur**; yalnız bir niyet beyanı vardır.
+
+("Yazılı mı?" sorusu yetmez — yazılı olan tam da yanıltan şeydir.)
+
+### Aynı gün ödenen altı vaka
+
+| Yazılı kural | Kodda karşılığı | Sonuç |
+|---|---|---|
+| `fifo-domain.md` §6 "FİYAT 0 OLAMAZ" | CHECK constraint `>= 0` | sıfıra izin veriyordu |
+| sema sözleşmesi "koşamamak yeşil değildir" | `sema kopru` exit **0** dönüyordu | CI "temiz" okurdu |
+| "sunucu adı çekirdekte değil, profilde" | köprü tarafı hâlâ gömülü haritadan | bel köprüleri HİÇ ölçemedi |
+| bel ZF-11 "üretim çıktısı cost_layers'ta olmamalı" | silme dönem-pencereli JOIN'e bağlıydı | 127.155 satırın 1'i kaçtı |
+| bel plan-21 "atlandığı YAZILIR" | `WriteLine` → `dotnet test` çıktısında görünmüyor | şart kâğıt üstünde |
+| bel değişmezi "asıl koruma metin ayrışması" | konum yeniden adlandırılırsa `LIKE` boş döner | YANLIŞ GÜVEN verdi |
+
+**Alt-kural — yarım taşıma:** bir soyutlama taşınırken TÜM yolları taşınmalı. Yarım
+yapılmış taşıma, hiç yapılmamış olandan **kötüdür**: kural "taşındı" görünür, geride kalan
+yol sessizce eski davranışı sürdürür ve kimse oraya bakmaz.
+
+**Uygulama:** yeni bir kural yazarken aynı commit'te şu üçünden birini göster —
+(a) kuralı çiğneyeni yakalayan bir denetim/test/constraint, (b) kırmızı verdiği ölçülmüş
+bir koşum, (c) "bunu bugün hiçbir şey yakalamıyor" cümlesinin kuralın YANINA yazılması.
+Üçü de yoksa kural yazılmasın — yanlış güven, güvensizlikten pahalıdır.
