@@ -172,7 +172,7 @@ def main():
     if not DOSYA.exists():
         kosamadi("Bulunamadi: %s" % DOSYA)
     veri = json.loads(DOSYA.read_text(encoding="utf-8"))
-    kayitlar = veri.get("degismezler", [])
+    kayitlar = veri.get("invariants", [])
     if not kayitlar:
         kosamadi("degismezler bos — koşacak bir şey yok.")
 
@@ -187,22 +187,22 @@ def main():
     # yazilmayan bir degismez, kirildiginda ne yapilacagini soylemez.
     kusur = []
     for k in kayitlar:
-        if not (k.get("neden") or "").strip():
+        if not (k.get("why") or "").strip():
             kusur.append("%s: `neden` bos" % k["id"])
-        if not (k.get("soru") or "").strip():
+        if not (k.get("question") or "").strip():
             kusur.append("%s: `soru` bos" % k["id"])
         if not (k.get("db") or "").strip():
             kusur.append("%s: `db` bos" % k["id"])
-        if k.get("karsilastirma") not in ("esit", "enaz", "encok"):
-            kusur.append("%s: karsilastirma gecersiz (%s)" % (k["id"], k.get("karsilastirma")))
-        if k.get("sunucu", "erp") not in SUNUCULAR:
-            kusur.append("%s: sunucu gecersiz (%s)" % (k["id"], k.get("sunucu")))
+        if k.get("comparison") not in ("eq", "min", "max"):
+            kusur.append("%s: karsilastirma gecersiz (%s)" % (k["id"], k.get("comparison")))
+        if k.get("server", "erp") not in SUNUCULAR:
+            kusur.append("%s: sunucu gecersiz (%s)" % (k["id"], k.get("server")))
     # `korur` alani queries.yaml'daki sorgu id'sine isaret eder. Yazim hatasi olan
     # referans SESSIZCE baglantisiz kalir -> degismez hangi sorguyu korudugunu soylemez.
     katalog = _katalog_kimlikleri()
     if katalog:
         for k in kayitlar:
-            for qid in k.get("korur", []):
+            for qid in k.get("protects", []):
                 if qid not in katalog:
                     kusur.append("%s: korur -> queries.yaml'da yok (%s)" % (k["id"], qid))
 
@@ -232,7 +232,7 @@ def main():
 
     for k in kayitlar:
         db = k.get("db")
-        sunucu = k.get("sunucu", "erp")
+        sunucu = k.get("server", "erp")
         conn = baglan(sunucu, db)
         imlec = conn.cursor()
         try:
@@ -246,21 +246,21 @@ def main():
         if satir is None or satir[0] is None:
             kapat(baglantilar)
             kosamadi("[%s] sonuc YOK/NULL — olcum yapilmadi (eskiden 0 sayiliyordu). soru: %s"
-                     % (k["id"], k["soru"]))
+                     % (k["id"], k["question"]))
         deger = float(satir[0])
 
-        bek = float(k["beklenen"])
-        kars = k["karsilastirma"]
-        gecti = (deger == bek if kars == "esit"
-                 else deger >= bek if kars == "enaz"
-                 else deger <= bek if kars == "encok"
+        bek = float(k["expected"])
+        kars = k["comparison"]
+        gecti = (deger == bek if kars == "eq"
+                 else deger >= bek if kars == "min"
+                 else deger <= bek if kars == "max"
                  else False)
 
         isaret = "OK   " if gecti else "KIRIK"
         etiket = k["id"] if sunucu == "erp" else "%s:%s" % (sunucu, k["id"])
         print("%s %-38s %s (%s %s)" % (isaret, etiket, _sayi(deger), kars, _sayi(bek)))
         if ayrintili:
-            print("        %s" % k["soru"])
+            print("        %s" % k["question"])
 
         if not gecti:
             kirik.append(k)
@@ -275,9 +275,9 @@ def main():
         print()
         for k in kirik:
             print("KIRIK [%s]" % k["id"])
-            print("  soru          : %s" % k["soru"])
-            print("  son dogrulama : %s" % k["dogrulandi"])
-            print("  NEDEN ONEMLI  : %s" % k["neden"])
+            print("  soru          : %s" % k["question"])
+            print("  son dogrulama : %s" % k["verified"])
+            print("  NEDEN ONEMLI  : %s" % k["why"])
             print()
         print("Veri degismis olabilir — once OLC, sonra ya kodu ya")
         print("`sema/degismezler.json`'u duzelt. Kaydi sessizce silmek,")

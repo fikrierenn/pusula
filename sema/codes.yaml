@@ -56,7 +56,7 @@ codes:
     evidence: "2026-06-17 — MCP SELECT urnTip, COUNT(*) FROM urn GROUP BY urnTip"
 
   irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
-    atomiklik_gerekcesi: "34 kodluk lookup + kullanım kuralları. `values` bölünemez (kod kümesi tek parçadır); kurallar da o kümeye bağlıdır."
+    atomicity_reason: "34 kodluk lookup + kullanım kuralları. `values` bölünemez (kod kümesi tek parçadır); kurallar da o kümeye bağlıdır."
     lookup: dbo.irsTip_vw
     irs_eTip_ayni: "irs.eTip (belge başlık) AYNI lookup (irsTip_vw) — aynı kodlar. 17.06 201-doğrulama: eTip 1=Satış (7.9M), 0=Alış (29.6M), 100=POS Satış. ⚠️ DENETİM TUZAĞI: irs.eTip=1'i 'alış' SANMA — 1=Satış. (sql-denetci 17.06 GetMarjAsync'i bu yüzden yanlış KIRMIZI işaretledi → eTip IN(1,4,100) hepsi SATIŞ, doğru.)"
     adet_isareti: "17.06 201-kanıt: Alış (ehTip 0, +Yerel Alım 10) ehAdetN POZİTİF (giriş); Satış (1,4,100) NEGATİF (çıkış). irsHrk + fatAyr aynı. ehTutarN daima pozitif. (Eski ADR-004 'ehTip=1 alış/negatif' TERSTİ → sql-server-conventions.md 17.06 düzeltildi.)"
@@ -156,7 +156,7 @@ codes:
   depo.paletIcHrk.pHrkTip:
     lookup: depo.paletIcHrkTip
     values: {0: KULLANICI, 1: EMİR, 2: SAYIM, 3: "GERİ AL (canlıda kullanılmıyor)"}
-    kapali_kume: true
+    closed_set: true
     note: "pGC ayrı bir kolon: 0=giriş · 1=çıkış (783.283 / 987.554)."
     duzeltme_2026_09_11: >-
       ÖNCEKİ KAYIT YANLIŞTI — "0=raflama/yerleştirme, 1=toplama paleti, 2=besleme" yazıyordu;
@@ -164,13 +164,13 @@ codes:
       duruyordu (hemen altındaki kayıt) → sema KENDİ İÇİNDE ÇELİŞİYORDU ve iki kayıt
       birbirini denetlemiyordu. `sql-server-conventions.md` doğruyu yazmıştı.
       Ders: aynı kod kümesi iki yerde durursa biri bayatlar — `lookup:` ile tek kaynağa bağla.
-    olcum: "2026-09-11 `sqlcli lookup depo.paletIcHrkTip --count-from depo.paletIcHrk.pHrkTip`: 0 KULLANICI 993.216 · 1 EMİR 667.016 · 2 SAYIM 110.605 · 3 GERİ AL canlıda yok."
+    measurement: "2026-09-11 `sqlcli lookup depo.paletIcHrkTip --count-from depo.paletIcHrk.pHrkTip`: 0 KULLANICI 993.216 · 1 EMİR 667.016 · 2 SAYIM 110.605 · 3 GERİ AL canlıda yok."
     evidence: "Kanonik lookup tablosundan okundu (elle yazılmadı) — 'liste elle yazılmaz' kuralı."
     confidence: 1.0
     last_verified: "2026-09-11"
   depo.paletIcHrkTip:
     values: {0: KULLANICI, 1: EMİR, 2: SAYIM, 3: GERİ AL}
-    kapali_kume: true
+    closed_set: true
     note: "Kanonik lookup tablosu. `depo.paletIcHrk.pHrkTip` bunu referans alır."
     confidence: 1.0
     last_verified: "2026-09-11"
@@ -470,7 +470,7 @@ codes:
       8: "Hizmet %20"
       9: "Hammadde %1"
       10: "Hammadde %10"
-    view_tuzagi: >-
+    view_trap: >-
       ⚠ `dbo.kdvYuzde_vw` KULLANMA. O view her ORANA ait yalnız İLK kdvID'yi döndürür
       (1,2,3,4,6,7) ve Hizmet/Hammadde varyantlarını (5,8,9,10) DIŞARIDA bırakır.
       Ölçüldü 09.09.2026: view ile join edilince 41 üründe oran çözülemiyor — KDVs=8 olan

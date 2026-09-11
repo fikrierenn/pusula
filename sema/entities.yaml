@@ -4,19 +4,19 @@ version: 1
 updated: 2026-08-20
 
 databases:
-  DerinSISBkm: {rol: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
+  DerinSISBkm: {role: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
   EncoreMerkez:
-    rol: "POS (yazar kasa)"
+    role: "POS (yazar kasa)"
     compat:
       sql_compat_level: 110
       unavailable: [STRING_AGG, TRIM, IIF, TRY_CONVERT]
       alternatives: {STRING_AGG: "STUFF + FOR XML PATH", TRIM: "LTRIM(RTRIM())", IIF: "CASE WHEN", TRY_CONVERT: "ISNUMERIC + CONVERT"}
-  DerinCrm: {rol: "yeni sadakat CRM (müşteri adı)"}
-  ODAKJOKER.JOKER: {rol: "e-ticaret (linked server)", tarih: "YYYYMMDD ISO — DMY burada SESSİZ HATA"}
-  BKMDATA: {rol: "Hedef tablosu + veri ambarı"}
-  BKMMaliyet: {rol: "maliyet/marj"}
-  BKM_GENEL: {rol: "Zirve ERP — BORDRO/PERSONEL/SGK (ayrı sunucu; MCP: zirve). DerinSIS'ten AYRI sistem. Personel görev-ünvan otoritesi (perbilgi.Gorevi serbest metin)."}
-  Mosaik: {rol: "Mosaik portal (reporthub, .NET modüler; MCP: portalhub) DB — SOP/Kvkk/Forms/Circular + görev-tanımı modülü (planlı). ReportHUB DB DEĞİL (o recovery_pending/eski). Doküman/versiyon/onay/workflow + AppModules kayıt + ModuleRoleAccess yetki + AuditLog + Kvkk envanteri."}
+  DerinCrm: {role: "yeni sadakat CRM (müşteri adı)"}
+  ODAKJOKER.JOKER: {role: "e-ticaret (linked server)", tarih: "YYYYMMDD ISO — DMY burada SESSİZ HATA"}
+  BKMDATA: {role: "Hedef tablosu + veri ambarı"}
+  BKMMaliyet: {role: "maliyet/marj"}
+  BKM_GENEL: {role: "Zirve ERP — BORDRO/PERSONEL/SGK (ayrı sunucu; MCP: zirve). DerinSIS'ten AYRI sistem. Personel görev-ünvan otoritesi (perbilgi.Gorevi serbest metin)."}
+  Mosaik: {role: "Mosaik portal (reporthub, .NET modüler; MCP: portalhub) DB — SOP/Kvkk/Forms/Circular + görev-tanımı modülü (planlı). ReportHUB DB DEĞİL (o recovery_pending/eski). Doküman/versiyon/onay/workflow + AppModules kayıt + ModuleRoleAccess yetki + AuditLog + Kvkk envanteri."}
 
 ai_hints:   # sorgu üretirken her zaman geçerli
   - "yyyy-MM-dd tarih formatı HİÇBİR yerde kullanılmaz."
@@ -30,7 +30,7 @@ ai_hints:   # sorgu üretirken her zaman geçerli
 entities:
   # ERP çekirdek
   dbo.urn:
-    tip: tablo
+    type: table
     pk: stkID
     key: [stkKod, stkAd, urnMrkID, urnKtgr2ID, urnTip, fiyatS]
     note: "stkKod barkod DEĞİL → eşleme stkID üstünden"
@@ -44,7 +44,7 @@ entities:
       kategoriler_ek_note: "Zkargo=alış kargo giderleri; KARGO=gelir kalemleri (stkKod KARGO1/KARGO2, stkID 144860/144963)"
     last_verified: "2026-06-17"
   dbo.irsHrk:
-    tip: tablo
+    type: table
     pk: ehID
     grain: "birleşik hareket (ehID+ehstkID+ehTip)"
     note: "ciro/stok ana kaynağı"
@@ -55,13 +55,13 @@ entities:
       ehTutarN: {label: "Tutar KDV hariç", description: "= ehTutar−ehIndirim. DAIMA POZİTİF — iade sign'ı CASE ile çevir"}
       ehAltDepo: {label: "Alt depo", description: "ehAltDepo=0 filtresi ZORUNLU (raporlarda)"}
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
-  dbo.irs: {tip: tablo, pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık", last_verified: "2026-08-18"}
-  dbo.mekan_vw: {tip: view, key: [mekanID, mekanAd, mekanTip], last_verified: "2026-08-18"}
+  dbo.irs: {type: table, pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık", last_verified: "2026-08-18"}
+  dbo.mekan_vw: {type: view, key: [mekanID, mekanAd, mekanTip], last_verified: "2026-08-18"}
 
   # POS
-  EncoreMerkez.dbo.Sales: {tip: tablo, pk: Id, key: [Date, CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotal, VatTotal], note: "Date=satış datetime (SaleDate DEĞİL); header indirim=DiscountTotal (DiscountTotalDirect/Campaign SalesProducts kalem-düzeyinde, header'da YOK); net KDV-hariç=GrossTotal-DiscountTotal-VatTotal. Sales'te IsValid YOK (o SalesProducts'ta). 18.06 sys.columns doğrulandı"}
+  EncoreMerkez.dbo.Sales: {type: table, pk: Id, key: [Date, CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotal, VatTotal], note: "Date=satış datetime (SaleDate DEĞİL); header indirim=DiscountTotal (DiscountTotalDirect/Campaign SalesProducts kalem-düzeyinde, header'da YOK); net KDV-hariç=GrossTotal-DiscountTotal-VatTotal. Sales'te IsValid YOK (o SalesProducts'ta). 18.06 sys.columns doğrulandı"}
   EncoreMerkez.dbo.SalesProducts:
-    tip: tablo
+    type: table
     pk: Id
     key: [SalesId, Sequence, ProductsId, VatPercent, Amount, TotalPrice, VatTotal, DiscountTotalDirect, DiscountTotalIndirect, DiscountTotalCampaign, BarcodeNo, IsValid]
     filter: "IsValid=1 ZORUNLU"
@@ -73,26 +73,26 @@ entities:
     confidence: 0.95
     evidence: "2026-08-19 — sorgular/2026-08-19-sinav-encore-kdv-denetim.sql blok 1-3; 721 satır / 24 fiş canlı mutabakat."
     last_verified: "2026-08-19"
-  EncoreMerkez.dbo.Products: {tip: tablo, pk: Id, key: [Code], note: "Code=urn.stkID köprüsü"}
-  DerinCrm.dbo.Customer: {tip: tablo, pk: Id, key: [Name, PhoneNumber, CardNumber, Group1Id], note: "Id=Sales.CustomersId; Group1Id=2 personel"}
+  EncoreMerkez.dbo.Products: {type: table, pk: Id, key: [Code], note: "Code=urn.stkID köprüsü"}
+  DerinCrm.dbo.Customer: {type: table, pk: Id, key: [Name, PhoneNumber, CardNumber, Group1Id], note: "Id=Sales.CustomersId; Group1Id=2 personel"}
 
   # WMS / depo (10.06)
-  depo.emir: {tip: tablo, pk: emID, key: [emTip, emBhTip, kTarih, emDepoID], note: "iş emri; emTip=görev (depo.emTip lookup)", last_verified: "2026-08-18"}
-  depo.emirAyr: {tip: tablo, pk: emAyrID, key: [emPaletID, emAdet, emTamam, emKisi, emTarih], grain: "TOPLAMA operasyonu (picking)", note: "emKisi=gerçek operatör", last_verified: "2026-08-18"}
-  depo.emirSat: {tip: tablo, key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)", last_verified: "2026-08-18"}
-  depo.paletIcHrk: {tip: tablo, key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör", last_verified: "2026-08-18"}
-  depo.paletSevkLog: {tip: tablo, key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)", last_verified: "2026-08-18"}
+  depo.emir: {type: table, pk: emID, key: [emTip, emBhTip, kTarih, emDepoID], note: "iş emri; emTip=görev (depo.emTip lookup)", last_verified: "2026-08-18"}
+  depo.emirAyr: {type: table, pk: emAyrID, key: [emPaletID, emAdet, emTamam, emKisi, emTarih], grain: "TOPLAMA operasyonu (picking)", note: "emKisi=gerçek operatör", last_verified: "2026-08-18"}
+  depo.emirSat: {type: table, key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)", last_verified: "2026-08-18"}
+  depo.paletIcHrk: {type: table, key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör", last_verified: "2026-08-18"}
+  depo.paletSevkLog: {type: table, key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)", last_verified: "2026-08-18"}
   # WMS palet-stok (12.06 — gerçek üretim sorguları D:\Belgelerim\sql\)
-  depo.paletUrnTnm: {tip: tablo, key: [pUStkID, pUBarkod, pUAdetN, pUID], grain: "palet × ürün satırı", note: "pUStkID=urn.stkID, pUAdetN>0=dolu, pUID=palet ref (paletTnm.pID). Depo anlık raf/havuz stoğu kaynağı.", last_verified: "2026-08-18"}
-  depo.paletTnm: {tip: tablo, pk: pID, key: [pSonPozID], note: "palet başlık; pSonPozID=adres.adrsID (paletin son konumu)", last_verified: "2026-08-18"}
-  depo.adres: {tip: tablo, pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')", last_verified: "2026-08-18"}
-  depo.stok_adres_palet_vw: {tip: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)", last_verified: "2026-08-18"}
-  ent.JokerCKStok_vw: {tip: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view", last_verified: "2026-08-18"}
-  ent.odak_depo_Stok: {tip: tablo, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 487.567 satır, 349.756 çeşit stokta, ~7,0-7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. ⚠ 'ODAK stok' sorulduğunda KANONİK = BU TABLO; stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA (24.06 vakası: vw mekan 26142 İPTAL-Transfer 129K dahil edilip sessiz over-count yapıldı). 14.06 keşif, 24.06 teyit.", last_verified: "2026-08-18"}
-  bkm.UrunBilgi: {tip: view, pk: stkID, key: [stkID, mrkAd, Yazar, SatisFiyat, SonAlis, Kategori3], note: "Denormalize ÜRÜN MASTER VIEW (sys.objects=VIEW) — en pratik ürün lookup; tek view'dan marka+yazar+maliyet+fiyat+kategori (urn+urnMrk join'e gerek yok, rapor scriptleri buradan). Kolonlar: stkKod/BarkodAna/stkAd, mrkID/mrkAd(marka=yayınevi), YazarId/Yazar, frmID/FirmaAd(ana tedarikçi), KatAna/Kat1..5/Kategori2/Kategori3(metin hiyerarşi; Kategori3=urnKtgr2.ktgrAd ör 'Hazırlık Kitapları'), SatisFiyat(üst/liste fiyat birim), SonAlis(son alış maliyet birim, 0=güncellenmemiş), OzelWebFiyat, AlisKDVYuzde/SatisKDVYuzde, urnTip(0=normal), AnaTedarikciId. 24.06 kolon+tip teyit (eski kısa stub ile birleşti).", last_verified: "2026-08-18"}
-  dbo.bakiyeVDGG_vw: {tip: view, key: [cKod, borc, alacak, bakiye, GecenB, GelecekB], note: "Cari bazlı bakiye + vade yaşlandırma. cKod=frm.frmID. bakiye=net (alacak+borç-işaretli; borç negatif depolanır). GecenB=vadesi GEÇMİŞ tutar, GelecekB=YAKLAŞAN (henüz vadesi gelmemiş). Risk limiti = frm.frmBakiyeLimit (aşım = ABS(bakiye)>limit). Dashboard /cari-risk (B-124). ⚠ AĞIR ~8s (tüm car agg). frmKod prefix: 320=satıcı,120=alıcı,100/101/103/300=banka/çek,6xx/7xx=gider. Diğer: bakiye_vw/bakiyeGrup_vw, satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı), cek_vw (çek). 2026-06-25 canlı.", last_verified: "2026-08-18"}
+  depo.paletUrnTnm: {type: table, key: [pUStkID, pUBarkod, pUAdetN, pUID], grain: "palet × ürün satırı", note: "pUStkID=urn.stkID, pUAdetN>0=dolu, pUID=palet ref (paletTnm.pID). Depo anlık raf/havuz stoğu kaynağı.", last_verified: "2026-08-18"}
+  depo.paletTnm: {type: table, pk: pID, key: [pSonPozID], note: "palet başlık; pSonPozID=adres.adrsID (paletin son konumu)", last_verified: "2026-08-18"}
+  depo.adres: {type: table, pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')", last_verified: "2026-08-18"}
+  depo.stok_adres_palet_vw: {type: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)", last_verified: "2026-08-18"}
+  ent.JokerCKStok_vw: {type: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view", last_verified: "2026-08-18"}
+  ent.odak_depo_Stok: {type: table, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 487.567 satır, 349.756 çeşit stokta, ~7,0-7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. ⚠ 'ODAK stok' sorulduğunda KANONİK = BU TABLO; stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA (24.06 vakası: vw mekan 26142 İPTAL-Transfer 129K dahil edilip sessiz over-count yapıldı). 14.06 keşif, 24.06 teyit.", last_verified: "2026-08-18"}
+  bkm.UrunBilgi: {type: view, pk: stkID, key: [stkID, mrkAd, Yazar, SatisFiyat, SonAlis, Kategori3], note: "Denormalize ÜRÜN MASTER VIEW (sys.objects=VIEW) — en pratik ürün lookup; tek view'dan marka+yazar+maliyet+fiyat+kategori (urn+urnMrk join'e gerek yok, rapor scriptleri buradan). Kolonlar: stkKod/BarkodAna/stkAd, mrkID/mrkAd(marka=yayınevi), YazarId/Yazar, frmID/FirmaAd(ana tedarikçi), KatAna/Kat1..5/Kategori2/Kategori3(metin hiyerarşi; Kategori3=urnKtgr2.ktgrAd ör 'Hazırlık Kitapları'), SatisFiyat(üst/liste fiyat birim), SonAlis(son alış maliyet birim, 0=güncellenmemiş), OzelWebFiyat, AlisKDVYuzde/SatisKDVYuzde, urnTip(0=normal), AnaTedarikciId. 24.06 kolon+tip teyit (eski kısa stub ile birleşti).", last_verified: "2026-08-18"}
+  dbo.bakiyeVDGG_vw: {type: view, key: [cKod, borc, alacak, bakiye, GecenB, GelecekB], note: "Cari bazlı bakiye + vade yaşlandırma. cKod=frm.frmID. bakiye=net (alacak+borç-işaretli; borç negatif depolanır). GecenB=vadesi GEÇMİŞ tutar, GelecekB=YAKLAŞAN (henüz vadesi gelmemiş). Risk limiti = frm.frmBakiyeLimit (aşım = ABS(bakiye)>limit). Dashboard /cari-risk (B-124). ⚠ AĞIR ~8s (tüm car agg). frmKod prefix: 320=satıcı,120=alıcı,100/101/103/300=banka/çek,6xx/7xx=gider. Diğer: bakiye_vw/bakiyeGrup_vw, satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı), cek_vw (çek). 2026-06-25 canlı.", last_verified: "2026-08-18"}
   depo.stok_adres_palet_vw:
-    tip: view
+    type: view
     key: [adrsAlanTipID, adrsID, adrsAd, PaletID, stkID, Stok]
     grain: "adres (hücre) × palet × ürün — WMS HÜCRESEL stok"
     note: "**MERKEZ DEPO STOĞUNUN TEK DOĞRU KAYNAĞI** (kullanıcı direktifi 03.09.2026:
@@ -116,30 +116,30 @@ entities:
       254.601 fark."
     confidence: 1.0
     last_verified: "2026-09-03"
-  stokSonAltDepo_vw: {tip: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
+  stokSonAltDepo_vw: {type: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
   ODAKJOKER.JOKER.dbo.J_DEPO_TOPLANACAK: {key: [ORDERREF], note: "depoda toplanacak sipariş listesi (ORDERREF=J_ORDERS.ORDERID)"}
   ODAKJOKER.JOKER.dbo.J_DETAIL_BOXES: {key: [ITEMREF, DETAILREF, LOGICALREF], note: "raflanmış koli; COUNT=raflanmış adet. İhtiyaç = sipariş − raflanmış."}
   ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS_COMP: {key: [DETAILREF, COMPITEMREF, COMPBARCODE, QUANTITY], note: "kompozit/set ürün açılımı (J_ORDER_DETAILS.LOGICALREF=DETAILREF)"}
 
   # Hedef / veri ambarı
-  BKMDATA.dbo.Hedef: {tip: tablo, key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", kullanir: [bridges:hedef-kategori], note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
+  BKMDATA.dbo.Hedef: {type: table, key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", uses: [bridges:hedef-kategori], note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
 
   # PDKS (işgücü — OPENQUERY)
-  pdks: {tip: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
+  pdks: {type: openquery, filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
   # PDKS saatlik çalışan headcount — KABUL EDİLEN MANTIK (2026-06-30, TrafikQueries.GetPdksPersonelAsync)
   pdks_saatlik_personel:
-    kaynak: "OPENQUERY([PDKS]) TTagZei z JOIN TPerTab p ON p.Per_PersNr=z.TZe_PersNr; filter Per_Grp1='MAĞAZALAR' AND Per_Grp2='FSM' AND TZe_VonZeit/BisZeit NOT NULL"
+    source: "OPENQUERY([PDKS]) TTagZei z JOIN TPerTab p ON p.Per_PersNr=z.TZe_PersNr; filter Per_Grp1='MAĞAZALAR' AND Per_Grp2='FSM' AND TZe_VonZeit/BisZeit NOT NULL"
     grain: "haftagünü(0=Pzt..6=Paz) × saat(0-23) → ort. eş-zamanlı çalışan personel"
     kural_1_vardiya_araligi: "Kişi başı GÜN içinde MIN(giriş saati) → MAX(son dolu saat). Öğle molası segmenti satır kırar (ör. 10-13 + 14-18) → segment-bazlı saymak mola saatinde SAHTE DÜŞÜŞ üretir. MIN-MAX span mola saatini de 'vardiyada' sayar (doğru)."
     kural_2_cikis_saati: "Son dolu saat = çıkış dakikası>0 ise DATEPART(hour) (18:30→18 dahil), tam saatte çıktıysa hour-1 (18:00→17, saat 18'de yok). Yoksa 18:30 çalışan saat 18'de hiç sayılmaz = sahte uçurum. Giriş saati floor (10:30→10, açılış kısmi saati sayılır)."
     kural_3_ortalama: "AVG = SUM(o saatteki kişi) / o haftagününün ÇALIŞILAN TOPLAM gün sayısı (opdays). Sadece-dolu-güne bölmek (eski AVG) boş saatleri 0 saymaz → uç saatler şişer. Boş saat 0 paya girer."
-    olcum: "2026-06-30, Haziran 4 Salı: 16=24·17=23·18=21·19=16·20=13 (yumuşak iniş). Eski hatalı sürüm 18'de 21→14 keskin uçurum gösteriyordu (çıkış-floor bug). 27.06 Cmt span: 9→27 plato →12 pürüzsüz."
+    measurement: "2026-06-30, Haziran 4 Salı: 16=24·17=23·18=21·19=16·20=13 (yumuşak iniş). Eski hatalı sürüm 18'de 21→14 keskin uçurum gösteriyordu (çıkış-floor bug). 27.06 Cmt span: 9→27 plato →12 pürüzsüz."
     note: "Trafik sayfası 'Personel–Trafik Uyumu' haritasının success-bandı/karne hesabı bunu kullanır. Sadece FSM (Per_Grp2='FSM'); diğer mağaza gerekince parametrize."
 
   # PDKS VARDİYA PLANI (TagMod) — 2026-09-05 keşif, sorgular/2026-09-05-vardiya-plani-ciro-uyum.sql
   pdks_vardiya_plani:
-    kaynak: "OPENQUERY([PDKS]): TTagZei.TZe_TagMod (kişi-güne ATANAN PLAN kodu) → TTagMod (model tanımı). Plan penceresi = Tag_KernVonZeit–Tag_KernBisZeit, planlı mola = Tag_Pau1VonZeit–Tag_Pau1BisZeit."
+    source: "OPENQUERY([PDKS]): TTagZei.TZe_TagMod (kişi-güne ATANAN PLAN kodu) → TTagMod (model tanımı). Plan penceresi = Tag_KernVonZeit–Tag_KernBisZeit, planlı mola = Tag_Pau1VonZeit–Tag_Pau1BisZeit."
     grain: "kişi × gün → 1 plan kodu (TagMod). Fiili = aynı satırların TZe_VonZeit/BisZeit segmentleri."
     plan_vs_fiili: "PLAN = TagMod modeli (TTagMod). FİİLİ = segmentler. İkisi AYRI ölçüm — 'vardiya planı doğru mu' sorusu plan eğrisiyle, 'plana uyuldu mu' sorusu segmentlerle cevaplanır. TZe_TagSollzeit = planlı saat (7.3 = 7s30dk, ondalık DEĞİL saat.dakika)."
     zeitart_kodlari: "TZe_ZeitArt: NCAL = normal çalışma segmenti · FM1/FM3 = fazla mesai dilimleri (FM3 hafta tatili/genel tatil ağırlıklı). TZe_AbwArt: NG = NORMAL GÜN (devamsızlık DEĞİL, herkeste var) · RESTA = resmî tatil · DESIZ = 'DEVAMSIZ' · DOGUM/UCSIZ/HASTA."
@@ -153,7 +153,7 @@ entities:
 
   # PDKS HAM KART OKUTMASI (TZeiBuf) — 2026-09-05, TTagZei'nin türetilmiş olduğunu kanıtladı
   pdks_kart_okutma:
-    kaynak: "OPENQUERY([PDKS]) TZeiBuf: ZBu_ErfDatum (tarih) + ZBu_ErfZeit (saat) + ZBu_PersNr + ZBu_LesNr (okuyucu) + ZBu_Storniert (iptal) + ZBu_Benutzer (elle giriş; BKM'de HEP NULL = sahte okutma yok). Tam geçmiş tutuluyor, buffer değil."
+    source: "OPENQUERY([PDKS]) TZeiBuf: ZBu_ErfDatum (tarih) + ZBu_ErfZeit (saat) + ZBu_PersNr + ZBu_LesNr (okuyucu) + ZBu_Storniert (iptal) + ZBu_Benutzer (elle giriş; BKM'de HEP NULL = sahte okutma yok). Tam geçmiş tutuluyor, buffer değil."
     grain: "tek kart okutması (kişi × an)"
     okuyucu_magaza: "LesNr → mağaza: 1=FSM · 2=ÖZLÜCE · 4,5=Y.YOLU (İst.Yolu) · 3=HEYKEL · 10=ŞURA Heykel. TLesTab.Les_LesOrt'tan canlı okunur."
     giris_cikis_ayrimi_YOK: "⚠ `ZBu_ErfFunk` BKM'de TEK DEĞER (20) — giriş/çıkış kodu AYRIMI YOK. Yön, gün içi sıraya göre çıkarılır (ilk=giriş, son=çıkış). 'ErfFunk=1 giriş / 2 çıkış' varsayımı burada GEÇERSİZ."
@@ -173,33 +173,33 @@ entities:
   ODAKJOKER.JOKER.dbo.EM_USERS: {pk: LOGICALREF, key: [FULLNAME], note: "JOKER panel kullanıcıları; BASKISIYOK.USERREF→LOGICALREF, FULLNAME=işlemi yapan."}
 
   # EncoreMerkez kampanya
-  EncoreMerkez.dbo.SalesProductCampaigns: {tip: tablo, pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
+  EncoreMerkez.dbo.SalesProductCampaigns: {type: table, pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
 
   # ── BKMMaliyet — FIFO maliyet sistemi (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
   # ERP kaynağı: DerinSISBkm (prod) / DerinSIS_Local (BT-FIKRI demo). SP master: fifo/v2-production/00_V2_MASTER_FULL.sql
   BKMMaliyet.dbo.FifoKatman:
-    tip: tablo
+    type: table
     pk: KatmanId
     key: [StkId, GirisTarihi, KaynakTip, GirisMiktar, KalanMiktar, BirimMaliyet, Durum]
     grain: "ürün × giriş katmanı (FIFO maliyet havuzu, mekan-bağımsız PARTITION BY StkId)"
     note: "BirimMaliyet<=0 OLAMAZ (fifo-domain §6). KaynakTip→codes. Eldeki birim maliyet=SUM(KalanMiktar*BirimMaliyet)/SUM(KalanMiktar) WHERE KalanMiktar>0."
     last_verified: "2026-06-19"
   BKMMaliyet.dbo.FifoCikisDetay:
-    tip: tablo
+    type: table
     pk: CikisId
     key: [StkId, HareketTarihi, HareketTipi, MekanId, KatmanId, Miktar, BirimMaliyet, CikisTutar, SatisTutar]
     grain: "satış/iade çıkış × tüketilen katman segmenti"
     note: "marj = SatisTutar(gelir) − CikisTutar(SMM). CikisTutar COMPUTED=Miktar×BirimMaliyet (UPDATE edilemez). SatisTutar=irsHrk ehTutarN miktar-oranlı. HareketTipi SATIS/IADE. çıkış SMM=irsHrk kaynaklı (irs/irsAyr DEĞİL)."
     last_verified: "2026-06-19"
-  BKMMaliyet.dbo.FifoAcilisEnvanter: {tip: tablo, pk: "(EnvanterTarihi,MekanId,StkId)", key: [StokMiktar], note: "açılış stok snapshot=irsHrk KÜMÜLATİF (ehTrhS<=devir, ehAltDepo=0, mekan 1/12/4477/4478) — GEÇMİŞ-doğru, anlık-stok view DEĞİL."}
-  BKMMaliyet.dbo.FifoSorunluStoklar: {tip: tablo, pk: "(EnvanterTarihi,MekanId,StkId,SorunTipi)", key: [StokMiktar, Aciklama], note: "SorunTipi→codes (FIYAT_YOK/ALIS_YOK/...TAMAMLANDI)"}
-  BKMMaliyet.dbo.FifoDevreDisiUrunler: {tip: tablo, pk: StkId, key: [Sebep, EkleyenKullanici], note: "non-inventory (poşet-bagging/gider/hediye-çeki/demirbaş). Envanterde KALIR, FIFO katmanı kurulMAZ. fifo-domain §2/§3: stkID-curated (isim-pattern DEĞİL — 'Geri Dönüşüm' çocuk kitabı/'Poşet Dosya' kırtasiye gerçek ürün)."}
-  BKMMaliyet.dbo.FifoFallbackFiyatlari: {tip: tablo, pk: "(StkId,SatinalmaSarti,MekanId)", key: [BirimMaliyet], note: "fallback fiyat; SatinalmaSarti='DEVIR_FALLBACK' açılışta devreye girer"}
-  BKMMaliyet.dbo.OrtalamaAylikMaliyet: {tip: tablo, pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
+  BKMMaliyet.dbo.FifoAcilisEnvanter: {type: table, pk: "(EnvanterTarihi,MekanId,StkId)", key: [StokMiktar], note: "açılış stok snapshot=irsHrk KÜMÜLATİF (ehTrhS<=devir, ehAltDepo=0, mekan 1/12/4477/4478) — GEÇMİŞ-doğru, anlık-stok view DEĞİL."}
+  BKMMaliyet.dbo.FifoSorunluStoklar: {type: table, pk: "(EnvanterTarihi,MekanId,StkId,SorunTipi)", key: [StokMiktar, Aciklama], note: "SorunTipi→codes (FIYAT_YOK/ALIS_YOK/...TAMAMLANDI)"}
+  BKMMaliyet.dbo.FifoDevreDisiUrunler: {type: table, pk: StkId, key: [Sebep, EkleyenKullanici], note: "non-inventory (poşet-bagging/gider/hediye-çeki/demirbaş). Envanterde KALIR, FIFO katmanı kurulMAZ. fifo-domain §2/§3: stkID-curated (isim-pattern DEĞİL — 'Geri Dönüşüm' çocuk kitabı/'Poşet Dosya' kırtasiye gerçek ürün)."}
+  BKMMaliyet.dbo.FifoFallbackFiyatlari: {type: table, pk: "(StkId,SatinalmaSarti,MekanId)", key: [BirimMaliyet], note: "fallback fiyat; SatinalmaSarti='DEVIR_FALLBACK' açılışta devreye girer"}
+  BKMMaliyet.dbo.OrtalamaAylikMaliyet: {type: table, pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
   # ERP kaynak (FIFO tüketir): DerinSIS irsHrk(stok/çıkış), fat+fatAyr(alış), fytOzl(satınalma şartı fiyatı), bkm.UrunBilgi(stkID/SatisFiyat/SonAlis/Kategori3/KatAna)
 
   dbo.irs:
-    tip: tablo
+    type: table
     pk: eID
     key: [eTip, eMekan, eTarihS, eID]
     grain: "belge basligi; eTip=100 -> POS GUNLUK OZET (bir gun = bir belge, fis sayisi YOK)"
@@ -235,46 +235,46 @@ entities:
 
   # === MUHASEBE / GL + FİNANS/CARİ (22.06 keşif — B-117 GL forensic) ===
   mhs.mhsFis:
-    tip: tablo
-    kullanir: [bridges:mhsfis-gdrmerkez]
+    type: table
+    uses: [bridges:mhsfis-gdrmerkez]
     pk: fsID
     key: [fisID, fisSirketID, yevmiyeNo, fisTarih, fisTip, fisBA, fisTutar, fisHspID, fisGdrMerkez, fisCari]
     grain: "yevmiye satırı — fiş başına ≥2 satır, borç+alacak dengeli (39,5M)"
     note: "fisBA 0/1 iki taraf; fisTutar BA=1'de NEGATİF saklı → bakiye=SUM(fisTutar) (defter dengeli, toplam 0). Gelir 6xx hep BA=0, gider 7xx hep BA=1 (codes mhsFis.fisBA). fisGdrMerkez = gider merkezi (köprü mhsfis-gdrmerkez → frm; 0=GENEL). DMY."
     last_verified: "2026-08-06"
   mhs.mhsFisBaslik:
-    tip: tablo
+    type: table
     pk: fisbID
     key: [fisbSirketID, yevmiyeNo, fisTarih, fisEntTipID, gKisi, kKisi, oKisi, gTarih, kTarih, oTarih, fiscID]
     grain: "yevmiye fiş başlığı (15,3M)"
     note: "fisEntTipID=0 MANUEL, 1/3/4 otomatik entegrasyon (codes mhsEntTip). gTarih=giriş/kTarih=değişim/fisTarih=muhasebe tarihi → kapanış-sonrası kontrol. gKisi/oKisi → drn1.insID."
     last_verified: "2026-06-22"
-  mhs.mhsHsp: {tip: tablo, pk: "(hspID, hspSirketID)", key: [hspKod, hspAd, hspAnaID, hspTur], note: "hesap planı 24,5K. hspKod hiyerarşik 'AAA.YY.ZZZ' (100.10=KASA, 100.10.001=Merkez TL.Kasa). ⚠️ 3-HANELİ ana hesap (100/120/600) mhsHsp'de SATIR DEĞİL — yalnız noktalı alt hesaplar var. 3-haneli Tek Düzen adı (Kasa/Bankalar) DIŞ kaynak → dashboard/Data/TekDuzenHesap.cs (79 ad). hspSirketID JOIN ZORUNLU.", last_verified: "2026-08-18"}
-  mhs.mhsAnaHsp: {tip: tablo, pk: aHspID, key: [aHspAd, aHspTur, aHspBA], note: "ana hesap grupları (390)", last_verified: "2026-08-18"}
-  mhs.mzn: {tip: tablo, key: [hspKod, hspAd, h1..h8, h1Ad..h8Ad, hspBA], note: "hesap kırılım/seviye tanımı (23,5K)", last_verified: "2026-08-18"}
+  mhs.mhsHsp: {type: table, pk: "(hspID, hspSirketID)", key: [hspKod, hspAd, hspAnaID, hspTur], note: "hesap planı 24,5K. hspKod hiyerarşik 'AAA.YY.ZZZ' (100.10=KASA, 100.10.001=Merkez TL.Kasa). ⚠️ 3-HANELİ ana hesap (100/120/600) mhsHsp'de SATIR DEĞİL — yalnız noktalı alt hesaplar var. 3-haneli Tek Düzen adı (Kasa/Bankalar) DIŞ kaynak → dashboard/Data/TekDuzenHesap.cs (79 ad). hspSirketID JOIN ZORUNLU.", last_verified: "2026-08-18"}
+  mhs.mhsAnaHsp: {type: table, pk: aHspID, key: [aHspAd, aHspTur, aHspBA], note: "ana hesap grupları (390)", last_verified: "2026-08-18"}
+  mhs.mzn: {type: table, key: [hspKod, hspAd, h1..h8, h1Ad..h8Ad, hspBA], note: "hesap kırılım/seviye tanımı (23,5K)", last_verified: "2026-08-18"}
   mhs.mhsMizan_vw:
-    tip: view
+    type: view
     key: [fisSirketID, fisTarih, hspKod, fisHspID, Alacak, Borc]
     grain: "fiş-tarih × hesap (leaf) — Borc/Alacak HAZIR kolon (fisBA çözmeye gerek yok)"
     def: "WITH ENCRYPTION. Alacak=SUM((1-fisBA)*fisTutar), Borc=SUM(-(fisBA*fisTutar)). Bakiye=SUM(Borc)-SUM(Alacak)."
     uyari: "⚠️ KAPANIŞ FİŞİNİ İÇERİR → kapanmış yıl (sirket 1-5) her hesap Borç=Alacak=Bakiye 0 (işe yaramaz). Kesin mizan için view DEĞİL → mhsFis'ten 'Kapanış' fişi hariç hesapla (codes mhsFisBaslik.fisAd_sistem). Açık yıl (2026) view OK. fisID/fisAd kolonu YOK → kapanış-hariç view ile yapılamaz."
     last_verified: 2026-06-23
-  mhs.mhsFisKontrolBakiye_vw: {tip: view, note: "fiş borç=alacak denge kontrol (K3)", last_verified: "2026-08-18"}
+  mhs.mhsFisKontrolBakiye_vw: {type: view, note: "fiş borç=alacak denge kontrol (K3)", last_verified: "2026-08-18"}
   dbo.car:
-    tip: tablo
+    type: table
     pk: cID
     key: [cTarih, cTarihVade, cBA, cTutar, cTip, cKod, cKodKarsi, cOnay, cgKisi, ckKisi, coKisi, cgTarih, ckTarih, cEvrakNo, cNot]
     grain: "cari hareket (23,7M, bugüne kadar canlı)"
     note: "cBA borç/alacak; cTarihVade=VADE (yaşlandırma). cKod/cKodKarsi→frm.frmID. cOnay=1 onaylı. cgKisi/ckKisi/coKisi→drn1. Gider carisi: frm.frmKod LIKE 'G-%'."
     last_verified: "2026-06-22"
-  dbo.carAyr: {tip: tablo, note: "cari ayrıntı (18,4M); cKDVTutar", last_verified: "2026-08-18"}
-  dbo.carCek: {tip: tablo, pk: "(çek)", note: "çek/senet portföyü (11,5K). fn_odenmemisCekler ile ödenmemiş/vade.", last_verified: "2026-08-18"}
-  dbo.frm: {tip: tablo, pk: frmID, key: [frmKod, frmAd, frmTip, VD, VN, frmIadeKural, frmVade, frmVadeTur, frmSiparisSevkAdet], note: "cari/firma master (49,9K). frmTip lookup=dbo.frmTipTnm (0=satıcı/tedarikçi, 1=müşteri, 9=?, 5=banka…). VD=vergi dairesi, VN=vergi no. frmKod 'G-%'=gider carisi, '320.10.%'=satıcılar hesabı. frmIadeKural + frmVade/frmVadeTur = iade hakkı + vade koşulu (satınalma adalet şartı → frm_iade_vade_kosullari). MÜKERRER KAYIT BİRLEŞTİRİLDİ 2026-08-18 (iki ayrı dbo.frm entry vardı, YAML sessizce sonrakini kullanıyordu).", last_verified: "2026-08-18"}
-  dbo.drn1: {tip: tablo, pk: insID, key: [insAd], note: "KULLANICI/personel master. gKisi/cgKisi/ckKisi/coKisi/oKisi → drn1.insID. Ekip: Şule(1897)/Pınar(16)/pinar.muhasebe1(449)/2(450)/Özge.", last_verified: "2026-08-18"}
-  bkm.Fin_AyKapanis: {tip: tablo, pk: "(DonemYil, DonemAy)", key: [KapanisDT, KapanisKisi, Aciklama], note: "muhasebe ay-kapanış tarihleri. 2025 Oca–2026 May DOLU (22.06). Kapanış-sonrası müdahale kontrolünün anahtarı; evrak YEAR/MONTH(belge) ile join.", last_verified: "2026-08-18"}
-  bkm.sp_KapanisMudahaleKontrol_v2: {tip: sp, note: "GL forensic — CAR+FAT+MHS kapanış-sonrası müdahale. @Yil/@Ay (NULL=tüm dönem), @Kaynak, @Mod OZET/DETAY, @GiderKod drill, @SadeceGider. severity+forensic+drn1 isim. Fikri'nin 3 SP'sini konsolide eder. Panel /muhasebe + skill muhasebe-denetci sarar."}
+  dbo.carAyr: {type: table, note: "cari ayrıntı (18,4M); cKDVTutar", last_verified: "2026-08-18"}
+  dbo.carCek: {type: table, pk: "(çek)", note: "çek/senet portföyü (11,5K). fn_odenmemisCekler ile ödenmemiş/vade.", last_verified: "2026-08-18"}
+  dbo.frm: {type: table, pk: frmID, key: [frmKod, frmAd, frmTip, VD, VN, frmIadeKural, frmVade, frmVadeTur, frmSiparisSevkAdet], note: "cari/firma master (49,9K). frmTip lookup=dbo.frmTipTnm (0=satıcı/tedarikçi, 1=müşteri, 9=?, 5=banka…). VD=vergi dairesi, VN=vergi no. frmKod 'G-%'=gider carisi, '320.10.%'=satıcılar hesabı. frmIadeKural + frmVade/frmVadeTur = iade hakkı + vade koşulu (satınalma adalet şartı → frm_iade_vade_kosullari). MÜKERRER KAYIT BİRLEŞTİRİLDİ 2026-08-18 (iki ayrı dbo.frm entry vardı, YAML sessizce sonrakini kullanıyordu).", last_verified: "2026-08-18"}
+  dbo.drn1: {type: table, pk: insID, key: [insAd], note: "KULLANICI/personel master. gKisi/cgKisi/ckKisi/coKisi/oKisi → drn1.insID. Ekip: Şule(1897)/Pınar(16)/pinar.muhasebe1(449)/2(450)/Özge.", last_verified: "2026-08-18"}
+  bkm.Fin_AyKapanis: {type: table, pk: "(DonemYil, DonemAy)", key: [KapanisDT, KapanisKisi, Aciklama], note: "muhasebe ay-kapanış tarihleri. 2025 Oca–2026 May DOLU (22.06). Kapanış-sonrası müdahale kontrolünün anahtarı; evrak YEAR/MONTH(belge) ile join.", last_verified: "2026-08-18"}
+  bkm.sp_KapanisMudahaleKontrol_v2: {type: sp, note: "GL forensic — CAR+FAT+MHS kapanış-sonrası müdahale. @Yil/@Ay (NULL=tüm dönem), @Kaynak, @Mod OZET/DETAY, @GiderKod drill, @SadeceGider. severity+forensic+drn1 isim. Fikri'nin 3 SP'sini konsolide eder. Panel /muhasebe + skill muhasebe-denetci sarar."}
   bkm.MusteriSayi:
-    tip: tablo
+    type: table
     pk: "[MekanId, Tarih]"
     key: [MekanId, Tarih, MusteriSayi]
     grain: "mekan × saat — kapı giriş sayacı, saatlik yazım"
@@ -284,7 +284,7 @@ entities:
     evidence: "2026-06-29 — MCP DerinSISBkm, SELECT kolon/COUNT/örnek. 1.864 satır, toplam 140.102 müşteri."
 
   dbo.irsAyr:
-    tip: tablo
+    type: table
     pk: "(ehID, ehSira) — MANTIKSAL anahtar; tabloda PK KISITI YOK (sys.indexes is_primary_key=0 kayit)"
     pk_duzeltme: "2026-09-11 DRIFT: sema `(ehID, satir)` yaziyordu — `satir` diye bir kolon YOK (sys.columns LIKE '%sat%' bos dondu). Gercek satir kolonu `ehSira` (column_id 2). tools/sema_kolon_cek.py ilk kosusunda yakalandi."
     key: [ehID, ehSira, ehStkID, ehAdet, ehAdetN, ehTutar, ehIndirim, ehTutarKDV, ehKDV]
@@ -328,7 +328,7 @@ entities:
     last_verified: "2026-09-02"
   # === Zirve BKM_GENEL — bordro/personel (2026-07-02 keşif; MCP zirve). Görev-tanımı projesi: D:\Dev\gorevtanimlari\bkm ===
   BKM_GENEL.dbo.perbilgi:
-    tip: tablo
+    type: table
     pk: Personelno
     key: [Adsoyad, Gorevi, Grupkodu, Subekodu, Subeadi, Masrafmerkezi, Cbgorev, Cbmeslek, Personeldurumu, Firmakodu]
     grain: "personel (3447 satır; tarihçe/ayrılan dahil)"
@@ -337,13 +337,13 @@ entities:
     last_verified: "2026-07-02"
     evidence: "2026-07-02 — MCP zirve sql_query: describe perbilgi + Gorevi/Grupkodu/Masrafmerkezi/Subeadi dağılım + Personeldurumu kardinalite."
   DerinSISBkm.iky.*:
-    tip: sema
+    type: schema
     durum: "**KULLANILMIYOR — veri kaynağı DEĞİL** (ölçüm 2026-09-03 + kullanıcı teyidi: 'orası kullanılmıyor, insan kaynakları tarafı Zirve'de sadece'). ERP'de tam bir İK modülü şeması duruyor (personel · personel_ucret · bordro · puantaj · izintip · isyeri …) ama TABLOLAR BOŞ: yalnız lookup tabloları dolu → `ayrilma_neden` 33 · `ebildirge_belgeturu` 34 · `ebildirge_eksikgunneden` 23 · `ayar` 2 · `personel_meslekkod` 1. Geri kalan hepsi 0 satır."
     kullanim: "Yalnızca **kod sözlüğü** olarak kullanılır (SGK kodları ulusal, o yüzden geçerli): `iky.ayrilma_neden` ↔ `BKM_GENEL.dbo.vw_PersonelDepartman.IstenCikisKodu`. Personel/bordro/puantaj verisi için BURAYA BAKMA — İK tek kaynağı Zirve (BKM_GENEL)."
     confidence: 1.0
     last_verified: "2026-09-03"
   BKM_GENEL.dbo.vw_PuanBil:
-    tip: view
+    type: view
     key: [Personelno, Yil, Ayindex, Fsk, Puantajno, Bt, Isskk, Iisk, Netu, Au, Sim, Vem,
           fm1, fm2, fm3, fmtutar1, fmtutar2, fmtutar3, Kanunno]
     key_duzeltme: >-
@@ -366,9 +366,9 @@ entities:
     ttl_days: 365
     evidence: "2026-09-03 canli MCP zirve — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql blok 1-2. Kolon anlamlari kullanicinin PERSONEL BORDRO KONTROL v2+.sql dosyasindaki Turkce kolon adlariyla eslesti (Isskk='Isv.SGK Hissesi', Bt='Brut Toplam', fm1='1.Fzl.M.(s)')."
   BKM_GENEL.dbo.vw_PersonelDepartman:
-    atomiklik_gerekcesi: "Tek bir VIEW'in tum kurallari (ucret birimi, kadro etiketi, engelli ayraci, sezonluk, sube-firma eslesmesi, KVKK). Bolmek tablonun dosyasini parcalar; okuyan kisi bir kolonu kullanirken oteki kurali gormez."
-    kullanir: [metrics:sezon_personel_kohort]
-    tip: view
+    atomicity_reason: "Tek bir VIEW'in tum kurallari (ucret birimi, kadro etiketi, engelli ayraci, sezonluk, sube-firma eslesmesi, KVKK). Bolmek tablonun dosyasini parcalar; okuyan kisi bir kolonu kullanirken oteki kurali gormez."
+    uses: [metrics:sezon_personel_kohort]
+    type: view
     key: [Personelno, AdSoyad, Firma, Lokasyon, AltLokasyon, Departman, Unvan, Kadro, Igt, Ict, IstenCikisKodu, Ucret, TahakkukSekli, Banka, Iban]
     grain: "personel (normalize; ham perbilgi üstüne temiz katman)"
     kadro_alani: "`Kadro` = istihdam tipi bayragi: KADRO(968) · SEZONLUK(288, 01.08.2023'ten beri) · STAJYER(2) · PART-TIME/PART TIME(1+1, ayni sey iki yazim) · KISMI(1) + 12 NULL/bos. **Sezon personeli analizi bu alanla yapilir**, giris-tarihi penceresiyle DEGIL (pencere kadrolu alimi da kapsar -> sessiz yanlis sonuc; kanit metrics.sezon_personel_kohort.AYRAC_KADRO_SEZONLUK). Kadro degisikligi TARIHLENMEZ -> sezonluk->kadro donusumu izlenemez. **KORUMA:** `degismezler.json` -> `kadro-etiket-kumesi-kapali` (yeni etiket cikarsa KIRMIZI; cikan etiket sessizce KADROLU sayilirdi) + `sezonluk-etiketi-duruyor` (etiket yeniden adlandirilirsa sezonluk sifira duser). last_verified 2026-09-03."
@@ -450,8 +450,8 @@ entities:
 
   # === Reorder / yeniden-sipariş öneri motoru (ENS backtest keşfi 2026-07-30) ===
   bkm.OneriSiparis:
-    tip: tablo
-    kaynak: "gece proc bkm.OneriSiparisHesaplaSapmaDuzeltmeli üretir → bu tabloya yazar; gündüz desktop .NET arayüzden onaylanır"
+    type: table
+    source: "gece proc bkm.OneriSiparisHesaplaSapmaDuzeltmeli üretir → bu tabloya yazar; gündüz desktop .NET arayüzden onaylanır"
     key: [Tarih, MekanId, StkId]
     grain: "gün × mağaza × ürün — reorder önerisi günlük snapshot"
     kolonlar: "Miktar30/60/90/180/360 (trailing satış adet), GunStok (stok gün-cover), Minimum/Maximum (s,S eşik), OneriSiparisAdet (öneri miktar), FazlaStok, Stok, SubeStok, SatisFiyat, KategoriId, YeniUrun"
@@ -464,24 +464,24 @@ entities:
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
   # --- Satınalma accountability zinciri (2026-07-30 keşif — satinalma-danisman) ---
   bkm.OneriSiparisKullaniciKategori:
-    tip: tablo
+    type: table
     key: [insId, ktgrID, mekanId]
     note: "ALICI ↔ KATEGORİ sahipliği = adil-atıf temeli (alıcı kategorilerinin ölü-stok/stockout'undan sorumlu). 68 satır = 26 alıcı × 11 kategori × 3 şube. insId isim: bkm.SayimKullanici.AdSoyad (iky.personel persId TUTMADI). Kardeş: OneriSiparisKullaniciReyon (reyon)."
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
   bkm.MalKabulBaslik:
-    tip: tablo
+    type: table
     pk: MalKabulBaslikId
     key: [EvrakTarihi, CariId, MekanId, EvrakNo, IrsaliyeNo, IadeIrsaliyeNo, EksikIrsaliyeNo, Onay, Iptal, OlusturanKullaniciId, HareketTip]
     note: "MAL KABUL (gelen mal) başlığı, 4.295 satır. CariId=tedarikçi · MekanId=kabul yeri · EksikIrsaliyeNo/IadeIrsaliyeNo = TEDARİKÇİ başarısızlığı confound-ayırıcı (eksik/geç/iade = alıcı değil tedarikçi; kronik+alıcı o tedarikçide ısrar → alıcı=tedarikçi-seçimi). ⚠ OlusturanKullaniciId = KABUL EDEN PERSONEL, ALICI DEĞİL (→SayimKullanici, atıf tuzağı). Sipariş↔kabul köprüsü çok-hoplu (Talep.SipId→sip→irs/malkabul), doğrudan FK yok — keşif bekliyor."
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
   bkm.MalKabulSatirLog:
-    tip: tablo
+    type: table
     key: [MalKabulBaslikId, StokId, Miktar, KullaniciId, LogDate]
     note: "Mal kabul satır logu, 3.41M satır. StokId×Miktar = GERÇEK GELEN adet → fill-rate = gelen/sipariş (SiparisMiktar). FK: MalKabulBaslikId→MalKabulBaslik. KullaniciId→SayimKullanici (kabul eden, alıcı değil)."
     last_verified: "2026-07-30"
   # --- Bulunurluk (On-Shelf Availability) temeli — plan-33, KOD+VERİ doğrulandı 2026-08-14 ---
   bkm.StokAyBakiyeMekanBazli:
-    tip: tablo
+    type: table
     key: [Donem, stkID, ehMekan]
     grain: "ay-sonu (EOMONTH) × ürün × mekan — kalıcı aylık stok bakiyesi geçmişi"
     kolonlar: "Donem(EOMONTH date), stkID, ehMekan(1/4477/4478 şube · 12 depo), Stok(int), Kaynak('irsHrk' şube | 'WMS' depo)"
@@ -493,7 +493,7 @@ entities:
     last_verified: "2026-08-14"
   # --- ŞİRKET/DÖNEM TUZAĞI (2026-08-17 keşif — isim yanıltıcı) ---
   mhs.mhsSirket:
-    tip: tablo
+    type: table
     pk: sirketID
     key: [sirketAd, sirketDonem, sirketIlkFisID, sirketSonFisID, sirketOnce, sirketEntegre]
     grain: "MALİ DÖNEM (yıl) — ŞİRKET DEĞİL"
@@ -505,9 +505,9 @@ entities:
     last_verified: "2026-08-17"
   # --- GL kayıt granülaritesi KIRILMASI (2026-08-17 keşif — GL forensic için kritik) ---
   mhs.mhsFis_granulerlik_kirilmasi:
-    atomiklik_gerekcesi: "TEK OLAYIN olcum dosyasi (2025 yevmiye granulariteси kirilmasi): sayim, tutar, sebep ve etki ayni bulgunun parcalari. Bolununce olay parcalanir."
-    kullanir: [entities:mhs.mhsFis]
-    tip: olcum
+    atomicity_reason: "TEK OLAYIN olcum dosyasi (2025 yevmiye granulariteси kirilmasi): sayim, tutar, sebep ve etki ayni bulgunun parcalari. Bolununce olay parcalanir."
+    uses: [entities:mhs.mhsFis]
+    type: measurement
     note: "⚠️ 2025'te yevmiye kayıt granülaritesi DEĞİŞTİ: fiş sayısı 2024=2.685.683 → 2025=122.893 (−%95,4) → 2026(17.08)=46.210; satır 7.907.904 → 346.230 → 127.003. AMA TL hacmi DÜŞMEDİ, ARTTI (BA=1 tarafı 2024 24,8 mia → 2025 31,2 mia). Yani detay-fiş yerine TOPLU/ÖZET fiş atılıyor (muhtemelen POS/entegrasyon özet-posting'e geçti)."
     etki: "GL forensic (B-117) ve Benford/mükerrer/round-number analizleri 2024 ile 2025+ arasında KIYASLANAMAZ — satır sayısı temelli her metrik (fiş başına satır, anomali yoğunluğu, SoD) yıl-kırılımı ŞART. Trend grafiğinde 2025 çöküşü GERÇEK İŞ DÜŞÜŞÜ DEĞİL, posting değişikliği."
     kok_sebep: "ÇÖZÜLDÜ 2026-08-18 — GL posting değişikliği DEĞİL, KAYNAK BELGE kaybı. dbo.fat SATIŞ faturası (eTip=1) Ara'24 122.145 → Şub'25 104 (alış eTip=0 SABİT ~1.000/ay). Kaybolan faturaların Ara'24'te %100'ü eMekan=12 MERKEZ DEPO = e-ticaret sevk faturası. Kırılan entegrasyon: mhsEntTip 1=Fatura 409.224→6.297 · 2=Cari 397.014→15.541; 3=POS DEĞİŞMEDİ (1.214→1.181, zaten özet). Giren kişi AYNI (Pınar/Şule) → personel/yetki sebebi elendi. dbo.car 382.563→13.011. irsHrk: sevk/fatura satışı (ehTip 1/4) 94,9M→4,9M ₺ ama POS (100) SABİT 41,0→38,5→33,1→37,2M. Kırılma: Oca'25 geçiş, ŞUBAT 2025 tamamlandı."
@@ -522,29 +522,29 @@ entities:
     last_verified: "2026-08-18"
   # --- TEDARİKÇİ KONSANTRASYONU / ilişkili-taraf adayı (2026-08-17) ---
   frm_9525_odak_point:
-    kullanir: [entities:dbo.frm]
-    tip: olcum
+    uses: [entities:dbo.frm]
+    type: measurement
     note: "dbo.frm frmID=9525 'ODAK KİTAP-POİNT İNTERNET TEKNOLOJİLERİ' (frmKod 320.10.P060, frmTip=0 satıcı) = alım girişinin ~%40'ı TEK BAŞINA. 2025: 307,7M ₺ (diğer 176 firma 468,1M) · 2026(17.08): 224,7M ₺ (diğer 151 firma 339,6M). Kardeş cari: frmID 22100 'POİNT KİTAP DAĞITIM TİC. A.Ş.' (ihmal edilebilir hacim, 2021-22)."
     etki: "Web kaydında 'BKM KİTAP Point İnternet Tek. ve Lojistik A.Ş.' ayrı tüzel kişi olarak görünüyor → 9525 muhtemelen İLİŞKİLİ TARAF (grup içi dağıtım/e-tic). Öyleyse: transfer-fiyatlama, grup-içi mutabakat, ve satınalma hesap-sorma analizlerinde 'tedarikçi performansı' kıyası ÇARPIK (grup-içi ≠ dış tedarikçi). Alıcı-atıf analizinde ayrı kova yapılmalı."
     status: "İLİŞKİLİ TARAF — TEYİT EDİLDİ (kullanıcı/GMY, 2026-08-17). Grup-içi dağıtım kanalı; dış tedarikçiyle aynı kovada kıyaslanMAZ."
-    kural: "Satınalma/tedarikçi performans analizinde frmID 9525 AYRI KOVA (ilişkili-taraf). Tedarikçi-scorecard, fill-rate, gecikme, iade-oranı kıyaslarında dış tedarikçilerle karıştırma; konsantrasyon raporunda ilişkili-taraf olarak etiketle."
+    rule: "Satınalma/tedarikçi performans analizinde frmID 9525 AYRI KOVA (ilişkili-taraf). Tedarikçi-scorecard, fill-rate, gecikme, iade-oranı kıyaslarında dış tedarikçilerle karıştırma; konsantrasyon raporunda ilişkili-taraf olarak etiketle."
     confidence: 1.0
     evidence: "2026-08-17 — irsHrk ehTip 0/10 × irs.eFirma GROUP BY yıl (sorgular/2026-08-17-sirket-donem-point-kontrol.sql blok 5-6)."
     last_verified: "2026-08-17"
   # --- ATIF TUZAĞI: evrak giren kişi ≠ alıcı (GMY teyidi 2026-08-18) ---
   irs_gKisi_atif_tuzagi:
-    kullanir: [entities:dbo.irs]
-    tip: kural
+    uses: [entities:dbo.irs]
+    type: rule
     note: "⚠️ dbo.irs.gKisi (alış evrakı giren kişi) = MAL KABUL YAPAN personel, SATINALMACI DEĞİL. GMY teyidi 2026-08-18. Son 12 ayda yalnız 4 kişi: insID 697 SAMET TILCI 2.320 evrak/118 tedarikçi · 18 Mehmet 517/46 · 25 Mesut 99/27 · 1661 Erkan 53/18 — bu profil depo mal-kabul operatörü, alıcı değil."
-    kural: "Satınalma hesap-sorma / alıcı-atıf analizinde irs.gKisi (ve fat.gKisi, MalKabulBaslik.OlusturanKullaniciId) KİŞİYE ATIF İÇİN KULLANILMAZ. Kullanılırsa mal kabul personeli alıcının kararından sorumlu tutulur = haksız suçlama. Kardeş tuzak: bkm.MalKabulSatirLog.KullaniciId."
+    rule: "Satınalma hesap-sorma / alıcı-atıf analizinde irs.gKisi (ve fat.gKisi, MalKabulBaslik.OlusturanKullaniciId) KİŞİYE ATIF İÇİN KULLANILMAZ. Kullanılırsa mal kabul personeli alıcının kararından sorumlu tutulur = haksız suçlama. Kardeş tuzak: bkm.MalKabulSatirLog.KullaniciId."
     alici_boyutu_durumu: "ÇÖZÜLDÜ 2026-08-18 → bkm.OneriSiparisTalep (EkleyenKullanici + OnaylayanKullanici). Detay: entity bkm.OneriSiparisTalep."
     confidence: 1.0
     evidence: "2026-08-18 — irs eTip=0 GROUP BY gKisi (12 ay, 4 kişi) + kullanıcı (GMY) doğrudan teyidi."
     last_verified: "2026-08-18"
   # --- ALICI (KARAR-VERİCİ) BOYUTU — accountability temeli, 2026-08-18 keşif ---
   bkm.OneriSiparisTalep:
-    atomiklik_gerekcesi: "Tek tablonun dosyasi — kolon anlamlari + is akisi + tuzaklar birlikte okunmali."
-    tip: tablo
+    atomicity_reason: "Tek tablonun dosyasi — kolon anlamlari + is akisi + tuzaklar birlikte okunmali."
+    type: table
     key: [Tarih, MekanId, StkId, SiparisMiktar, Onay, SipId, EkleyenKullanici, OnaylayanKullanici, EvrakNo, OdakAktar]
     grain: "talep satırı — tarih × mekan × ürün (sipariş TALEBİ, mal kabul DEĞİL)"
     note: "**GERÇEK KARAR BOYUTU** — irs.gKisi (mal kabul) yerine atıf buradan yapılır. EkleyenKullanici = talebi açan (karar), OnaylayanKullanici = onaylayan (SoD). SiparisMiktar = istenen adet. SipId/EvrakNo → sipariş zinciri; kardeş tablo bkm.OneriSiparisTalepSiparis (FrmId=tedarikçi, SipAdet, TalepNo, Gonderildi) talebi TEDARİKÇİYE bağlar."
@@ -563,9 +563,9 @@ entities:
     last_verified: "2026-08-18"
   # --- İADE HAKKI / VADE KOŞULU — 'fazla aldı' iddiasının adalet şartı, 2026-08-18 ---
   frm_iade_vade_kosullari:
-    atomiklik_gerekcesi: "Tek konunun (tedarikci iade hakki + vade) olcum dosyasi; kod dagilimi ile vade kurali ayrilirsa biri otekisiz yanlis yorumlanir."
-    kullanir: [entities:dbo.frm]
-    tip: olcum
+    atomicity_reason: "Tek konunun (tedarikci iade hakki + vade) olcum dosyasi; kod dagilimi ile vade kurali ayrilirsa biri otekisiz yanlis yorumlanir."
+    uses: [entities:dbo.frm]
+    type: measurement
     note: "dbo.frm.frmIadeKural = TEDARİKÇİ bazında iade kuralı, DOLU ve anlamlı: 0→1.248 tedarikçi (ort vade ~0 = peşin) · 1→99 · 2→1.273 (frmVadeTur=1 olanlarda ort vade 130 GÜN). Vade alanları: frmVade + frmVade1..5 + frmVadeTur (0/1/2). Ayrıca frmSiparisSevkAdet."
     onemi: "Satınalma hesap-sorma ADALET ŞARTI — iade hakkı olan tedarikçiden alınan fazla stok geri çevrilebilir, donmuş sermaye sayılmaz. 'FAZLA' etiketi iade kuralı bilinmeden alıcı aleyhine kullanılırsa haksız. Vade de gerçek maliyeti değiştirir (aynı fiyat + 130 gün vade ≠ peşin)."
     eksik: "frmIadeKural 0/1/2 kod ANLAMI teyit bekliyor (lookup tablosu bulunamadı — kullanıcı/muhasebe teyidi gerekiyor). ⚠️ dbo.urn.alimIadeYok ÖLÜ KOLON: Kat3 10/12/16 evrenindeki 138.920 ürünün TAMAMI aynı değer (2) → ürün-bazlı iade hakkı bilgisi YOK, kullanma."
@@ -582,18 +582,18 @@ entities:
     rol_zaman_bagimliligi: "⚠️ **ROLLER ZAMAN İÇİNDE DEĞİŞİYOR — atıf ZAMAN-DUYARLI olmalı.** Kanıt: omerfaruk.kirmaci bugün İst.Yolu md yrd, ÖNCEDEN akademi şefiydi (kullanıcı teyidi 2026-08-18). Bugünkü unvanı geçmiş kararlara etiketlemek yanlış fonksiyona atıf üretir (ör. 2025 akademi kararları 'md yrd kararı' diye okunur). GEREKLİ: rol kaydına GEÇERLİLİK TARİHİ (rol_baslangic/rol_bitis) — statik whitelist YETMEZ. Pratik çözüm: (a) atıf raporunda kişi + karar TARİHİ birlikte gösterilir, rol etiketi o tarihteki rolden okunur; (b) rol geçmişi İK tarafında (iky şeması) veya elle tutulan tabloda tutulmalı; (c) rol geçmişi yoksa atıf KİŞİ + ŞUBE + KATEGORİ ile yapılır, UNVAN etiketi kullanılmaz. Kardeş tuzak: hesap_birlestirme (aynı kişi çok hesap) — biri kimlik, bu zaman boyutu."
   # --- ŞEMSİYE (UMBRELLA) SKU TUZAĞI — SKU-bazlı stok/bulunurluk yorumunu kıran desen, 2026-08-25 ---
   semsiye_sku_tuzagi:
-    kullanir: [entities:dbo.urn]
-    tip: kural
+    uses: [entities:dbo.urn]
+    type: rule
     note: "⚠️ Bazı yüksek-hacimli kalemler TEK `stkID` altında ONLARCA FİZİKSEL VARYANT taşıyor (jenerik/şemsiye kart). Kanıt örnekleri (son 12 ay şube): 'Bricks Lego Modelleri' 27.772 ad / 3,47M ₺ (birim 125 ₺ — tek model değil, model ailesi) · 'Key Chain - Süs' 91.270 ad / stok 34.659 · 'Suprise Figüre' · 'Temalı Çorap Serisi'. Bunlar ciro top-50'nin üst sıralarında."
     etki: "SKU-bazlı her raf kararı bu kalemlerde ANLAMSIZ: '34.659 adet Key Chain stoğu var' hangi modelden olduğunu söylemez → bulunurluk/OOS, devir hızı, reorder eşiği, ölü-stok tespiti hepsi yanlış çalışır (raf boşken sistem 'stok var' der). Kategori/marka toplamları etkilenmez, SKU-seviyesi çıkarım etkilenir."
-    kural: "Çok-satan/bulunurluk raporunda bu kalemler AYRI ETİKETLENİR ('şemsiye SKU — model kırılımı yok'); 'raf doluluğu' iddiası bu satırlarda kurulmaz. Kalıcı çözüm model-bazlı barkod/varyant açmak (ürün yönetimi kararı), analitik çözüm yok."
+    rule: "Çok-satan/bulunurluk raporunda bu kalemler AYRI ETİKETLENİR ('şemsiye SKU — model kırılımı yok'); 'raf doluluğu' iddiası bu satırlarda kurulmaz. Kalıcı çözüm model-bazlı barkod/varyant açmak (ürün yönetimi kararı), analitik çözüm yok."
     ayrim_testi: "Şüphe sinyali: (adet çok yüksek) + (birim fiyat yüksek veya çok değişken) + (ad 'Modelleri'/'Serisi'/'Figür'/'Çeşitleri' gibi çoğul-jenerik) + (tek stkID'de aylarca hiç tükenmeyen büyük stok)."
     confidence: 0.8
     evidence: "2026-08-25 — irsHrk şube son12 top-50 ciro/adet listesi; ad deseni + birim fiyat + stok büyüklüğü birlikte incelendi. Varyant sayısı DOĞRULANMADI (ürün tarafında varyant tablosu aranmadı) → confidence 0.8."
     last_verified: "2026-08-25"
   # --- BULUNURLUK (OSA) PRE-AGG — plan-33; A6 borcu kapatıldı 2026-08-18 ---
   bkm.BulunurlukOzet:
-    tip: tablo
+    type: table
     pk: "(Donem, Mekan, Kat3ID)"
     key: [Donem, Mekan, Kat3ID, TasinanAktif, Bulunur, Kuru, KayitTarihi]
     grain: "ay-sonu SNAPSHOT × şube × Kat3 kategori (9 satır/dönem: 3 şube × 3 kategori)"
@@ -605,7 +605,7 @@ entities:
     evidence: "2026-08-18 — kolonlar canlı sys.columns ile doğrulandı (7 kolon); grain/eşik/availability tanımı üretim scriptinden (CREATE TABLE + INSERT bloğu) okundu. Satır sayısı bu koşuda doğrulanmadı (ERP erişimi düştü)."
     last_verified: "2026-08-18"
   bkm.BulunurlukKayip:
-    tip: tablo
+    type: table
     pk: "(Donem, StkID)"
     key: [Donem, StkID, StkAd, Kategori, Marka, StokluSube, KuruSube, KuruSubeAd, GorunurSatis, TahminiKayipAdet, BirimMaliyet, KayitTarihi]
     grain: "ay-sonu snapshot × ürün — YALNIZ kısmi-dağıtım vakaları, TOP 500 (kayıp ₺ azalan)"
@@ -621,7 +621,7 @@ entities:
   _sema_dogrulama_2026_08_18:
     status: superseded
     superseded_note: "Elle yapilan kolon kontroluydu; artik tools/sema_kolon_cek.py her kosuda canli sys.columns ile yapiyor (2026-09-11)."
-    tip: olcum
+    type: measurement
     kapsam: "sema/entities.yaml'daki DerinSISBkm-yerel objelerin canlı varlık + pk/key kolon kontrolü (sys.objects + sys.columns)."
     sonuc: "**60 objeden 59'u MEVCUT.** Tip doğrulaması: bkm.UrunBilgi = VIEW (tablo değil) · bkm.sp_KapanisMudahaleKontrol_v2 = SQL_STORED_PROCEDURE · dbo.mekan_vw/irsTip_vw/stokSon_vw/stokSonAltDepo_vw/bakiyeVDGG_vw/mhsMizan_vw/mhsFisKontrolBakiye_vw/JokerCKStok_vw/stok_adres_palet_vw = VIEW · gerisi USER_TABLE."
     kolon_kontrolu: "Kritik 25 tabloda pk/key kolonları BİREBİR doğrulandı — sema ile canlı arasında EKSİK/YANLIŞ kolon YOK. Doğrulananlar: irs · irsHrk · irsAyr · fat · fatAyr · frm · car · carCek · drn1 · urn · urnKtgr2 · urnMrk · urnBrkd · posMagaza · stokSon_vw · mekan_vw · mhsFis · mhsFisBaslik · mhsHsp · mhsSirket · UrunBilgi · OneriSiparisTalep · OneriSiparisTalepSiparis · StokAyBakiyeMekanBazli · BulunurlukOzet · BulunurlukKayip · MalKabulBaslik · emir · emirAyr · paletIcHrk."
@@ -632,7 +632,7 @@ entities:
     last_verified: "2026-08-18"
   # --- SİPARİŞ (dış alım kararı) — plan-34 B-153, 2026-08-19 ---
   dbo.sip:
-    tip: tablo
+    type: table
     pk: eID
     key: [eNo, eMekan, eFirma, eTip, eTarihS, eDurum, onay, gKisi, oKisi, eOto, eTarihV]
     grain: "sipariş başlığı (satırlar dbo.sipAyr, ehID=sip.eID + ehSira)"
@@ -652,7 +652,7 @@ entities:
     pk: SiparisId
     key: [SiparisKod, OkulId, SinifId, CariId, OgrenciId, Tarih, DonemId, Hazirlandi, Odendi, IrsaliyeId, GuncellemeTarih]
     grain: "öğrenci-dönem siparişi (kalemler snv.SiparisDetay)"
-    satir_sayisi: "27.824 (2026-08-19)"
+    row_count: "27.824 (2026-08-19)"
     donem_kurali: "**DonemId HARDCODE YASAK — ne sabit ID ne sabit liste.** Dönem her sezon yenilenir; sema'ya dönem listesi/sayısı YAZILMAZ (satır verisi, bayatlar). Kalıcı kurallar: (1) Geçerli dönem kümesi = `snv.Donem` tablosu (CANLI okunur; yeni sezon oraya eklendiği an geçerlidir). (2) `snv.Siparis.DonemId`'de `snv.Donem`'de KARŞILIĞI OLMAYAN değerler bulunur (negatif orphan) → dönem listesi Siparis'ten DEĞİL Donem'den türetilir, JOIN ile orphan kendiliğinden düşer. (3) Tek dönem sabitlemek (`DonemId = <n>` INNER JOIN) geçmişin TAMAMINI siler — fiş kütlesinin ezici kısmı önceki sezonlarda. (4) `Tarih` ile `snv.Donem.IslemBaslamaTarih` uyumsuz kayıtlar var (yanlış dönem atanmış) → dönem-bazlı raporda tarih kontrolü ayrı yapılır. Okuyan: `SinavQueries.GetDonemlerAsync` (dinamik)."
     odendi_tuzagi: "⚠️ **Odendi bit KISMİYİ TAM SANIYOR + TARİHÇE TUTMAZ.** Kalem kalem ödenen siparişte (28 kalemin 26'sı alınmış) flag 1 kalıyor. Dönem 7+8'de **1.787 sipariş / 6.475 kalem hatalı ödendi** (%20 sipariş). GuncellemeTarih tek alan, üzerine yazılıyor — 5 hareketli siparişte NULL bile olabiliyor. DOĞRU DURUM SiparisDetay.OdemesiYapildi'dan TÜRETİLİR; flag yalnız denetim kolonu."
     pingpong: "Aynı SiparisKod üzerinde satış-iade-satış dizisi normal: 3812025229833 aynı Z'de 9 dakikada 3 satış + 2 iade (net 50.348 TL, brüt 151.044 TL). Gruplama anahtarı SiparisKod — yeniden kesilen satış fişinin LinkedDocumentId'si 0, öncekiyle bağlı DEĞİL. Ciro daima net; fiş sayısı COUNT(DISTINCT SiparisKod) (tip-8 fiş 9.154 iken gerçek sipariş 9.006)."
@@ -660,11 +660,11 @@ entities:
     evidence: "2026-08-19 — sorgular/2026-08-19-sinav-odeme-durumu-pingpong.sql + -sinav-odeme-kismi-model.sql; canlı dönem dağılımı + 1.787 çelişki ölçümü."
     last_verified: "2026-08-20"
   BKM.snv.SiparisDetay:
-    kullanir: [bridges:siparisdetay-sales]
+    uses: [bridges:siparisdetay-sales]
     pk: SiparisDetayId
     key: [SiparisId, StokId, Adet, KasaAdet, BirimFiyat, Alindi, OdemesiYapildi, OkulTeslimat, Iptal, Hazirlandi, FisId, FisIdSiraNo, FisAciklama]
     grain: "sipariş kalemi (SiparisId × StokId)"
-    satir_sayisi: "365.444 (2026-08-19)"
+    row_count: "365.444 (2026-08-19)"
     odeme_modeli: "**ÖDEME KALEM BAZLI** — OdemesiYapildi bit. Sipariş durumu: ödenmiş=0 -> HİÇ ÖDENMEDİ · ödenmemiş=0 -> TAM ÖDENDİ · ikisi de >0 -> KISMİ. (Iptal=1 paydadan düşer.) Dönem 7+8: TAM 7.224 · KISMİ 1.791 · HİÇ 65 sipariş. Kısmilik İADEDEN GELMİYOR — 1.745/1.791'inde hiç iade yok; sebep kalemin hiç kasadan geçmemesi (KasaAdet=0, FisId NULL, Hazirlandi=0)."
     birimfiyat_tuzagi: "⚠️ **BirimFiyat PRATİKTE NULL** — dönem 7-8'de 112.499 ödenmiş kalemin toplam beklenen tutarı yalnız 599 TL. Tutar için BKM.snv.SinavUrun.Fiyat kullanılır."
     fis_koprusu: "FisId = EncoreMerkez.Sales.DocumentNo · FisIdSiraNo = EncoreMerkez.SalesProducts.Sequence (bridges siparisdetay-sales). Ping-pong sonrası genelde SON geçerli fişe repoint ediliyor ama HER vakada değil: 3812025233328'de fişte 40.828,10 TL geçmiş, SiparisDetay'da 1 kalem ödenmiş ve hiçbir kalemde FisId yok (senkron kopukluğu)."
@@ -692,11 +692,11 @@ entities:
     evidence: "2026-08-19 — 22 kayıt canlı okundu (dönem 8) + FisteGoster × OdemesiYapildi 3.443 kalemlik çapraz tablo."
     last_verified: "2026-08-20"
   BKM.snv.SinavSiparisFisEncore:
-    kullanir: [bridges:sales-iade-linked]
+    uses: [bridges:sales-iade-linked]
     pk: Id
     key: [SiparisKod, InvoiceNo, InvoiceTotal, InvoiceDate, InvoiceDateOnly]
     grain: "sipariş ↔ POS fişi eşleşmesi (InvoiceNo = EncoreMerkez.Sales.DocumentNo)"
-    satir_sayisi: "9.344 satır / 9.337 tekil InvoiceNo / 9.319 tekil Sales.Id (29.07.2025-19.08.2026)"
+    row_count: "9.344 satır / 9.337 tekil InvoiceNo / 9.319 tekil Sales.Id (29.07.2025-19.08.2026)"
     iade_kapsam_tuzagi: "⚠️ **İADELERİN %43'ÜNÜ KAÇIRIYOR.** Sınav fişine bağlı 298 iade fişinin yalnız 171'i FE'de (6.508.993,34 TL); 127'si FE DIŞINDA (371.700,51 TL). Desen: FE **sipariş-seviyesi TAM iade/iptali** kaydeder (171'in 143'ü tam); **kalem-bazlı KISMİ iade FE'ye yazılmaz** (127'nin yalnız 2'si tam) — perakende iade fişi olarak kesilir, bir kısmı GTY… e-fatura formatında, BAŞKA MAĞAZADA (StoresId 2/3) ve satıştan AYLAR sonra. **Doğru iade köprüsü Sales.LinkedDocumentId** (bridges sales-iade-linked). Net ciro = FE satışları − LinkedDocumentId iadeleri; iadeyi FE'den saymak ciroyu yüksek gösterir (dönem 8'de 9.228,00 TL)."
     invoicetotal_tuzagi: "⚠️ InvoiceTotal İADE kaydında da POZİTİF. Toplanırsa ping-pong siparişinde 5 kayıt × 50.348 = 251.740 TL çıkar, gerçek 50.348. **Tutar daima Sales'ten, iade sign'lı.**"
     belge_tipi: "Kapsamdaki fişler: tip 8 Sınav Okulları 9.154 · tip 3 İade 171 · tip 1 Fiş 1. DISTINCT Sales.Id gerekli (9.338 satır / 9.319 tekil fiş)."
@@ -723,7 +723,7 @@ entities:
     last_verified: "2026-08-20"
 
   EncoreMerkez.dbo.SalesPayments:
-    tip: tablo
+    type: table
     pk: Id
     key: [SalesId, PaymentTypesId, Amount, IsChangeAmount, ExchangeAmount, Info]
     grain: "satış x ödeme kalemi (bir fiş N ödeme satırı; para üstü ayrı satır)"
@@ -733,7 +733,7 @@ entities:
     evidence: "2026-08-25 canlı örnekleme + PaymentTypes dağılımı (Ağu25-Tem26); sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 1/3."
 
   DerinSISBkm.dbo.fatAyr:
-    tip: tablo
+    type: table
     pk: "(ehID, ehSira) — MANTIKSAL anahtar; tabloda PK KISITI YOK (is_primary_key sayisi 0)"
     pk_duzeltme: "2026-09-11 DRIFT: sema `ehID_satir` yaziyordu, boyle bir kolon YOK. irsAyr ile AYNI sekil: satir kolonu `ehSira` (column_id 2). Dedup icin PK kisitina guvenme — kisit yok."
     key: [ehID, ehSira, ehStkID, ehAdetN, ehTutar, ehIndirim, ehTutarN, ehKDV, ehMaliyet]
@@ -744,7 +744,7 @@ entities:
     evidence: "2026-08-25 canlı — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 13 (tip kıyası Oca-2026 + yıl kıyası 2023-2026 + satır detayı); hediye çeki kanalında fatAyr 6.000 ₺ vs irsHrk 323.550 ₺ uyuşmazlığından çıktı."
 
   EncoreMerkez.dbo.RefundReasons:
-    tip: tablo
+    type: table
     pk: Id
     key: [Name, Type, IsDeleted]
     grain: "iade/indirim sebep tanımı (lookup)"
@@ -755,12 +755,12 @@ entities:
 
   # ── DerinCrm — hediye çeki üretim/yaşam-döngüsü motoru (2026-08-27 keşif) ──
   DerinCrm:
-    rol: "CRM (Encore POS'un arkasındaki müşteri + hediye çeki + kampanya sistemi). 08.07.2025'te kuruldu, Encore go-live 11.07.2025 ile eş. `dbo.Customer` müşteri master (Sales.CustomersId köprüsü), `cmp` şeması hediye çeki motoru, `ref` şeması ürün aynası (867K ürün)."
+    role: "CRM (Encore POS'un arkasındaki müşteri + hediye çeki + kampanya sistemi). 08.07.2025'te kuruldu, Encore go-live 11.07.2025 ile eş. `dbo.Customer` müşteri master (Sales.CustomersId köprüsü), `cmp` şeması hediye çeki motoru, `ref` şeması ürün aynası (867K ürün)."
     note: "⚠ MCP `database=` izin listesinde YOK ama **3-parçalı isim her VT'ye erişir** — `master` bağlamından `DerinCrm.cmp.GiftCard` sorgulanır. Bu, izin listesinin sorgu kapsamını sınırlamadığı anlamına gelir; keşifte bunu kullan."
     last_verified: "2026-08-27"
 
   DerinCrm.cmp.GiftCardHeader:
-    tip: tablo
+    type: table
     pk: Id
     key: [Name, Begin, End, Type, Usage, SpendType, IsEnabled, HasRemainder, ErpCode, ActivatedCardTtl, IsHeaderDominant, MinBasketAmount, CampaignId]
     grain: "hediye çeki TANIMI / parti şablonu"
@@ -770,7 +770,7 @@ entities:
     evidence: "2026-08-27 canlı — sorgular/2026-08-27-hediye-ceki-uretim-yapisi-kesif.sql blok 2."
 
   DerinCrm.cmp.GiftCard:
-    tip: tablo
+    type: table
     pk: Id
     biz_key: Code
     key: [Code, Status, HeaderId, Amount, OriginalAmount, ValidThru, CustomerId, IsExclusiveToCustomer, ActivatedAt, VendorId, ValidationCode, LinkedGiftCardId]
@@ -781,7 +781,7 @@ entities:
     evidence: "2026-08-27 canlı — kod eşleşme testi (blok 4) + durum/kod-tipi dağılımı (blok 3)."
 
   DerinCrm.cmp.GiftCardTransaction:
-    tip: tablo
+    type: table
     pk: Id
     key: [GiftCardId, TransactionType, Date, PreviousStatus, Status, SalesId, SalesAmount, StoreCode, PosCode, CashierCode, CustomerId, CustomerCardNumber, Amount]
     grain: "çek × harcama hareketi (bir çek için BİRDEN ÇOK satır)"
@@ -802,7 +802,7 @@ entities:
     evidence: "2026-08-27 canlı — TypeId dağılımı (blok 4b) + GiftCardTypes."
 
   DerinCrm.dbo.Customer:
-    tip: tablo
+    type: table
     pk: Id
     biz_key: CardNumber
     key: [Name, Code, RtCode, VendorCode, TaxNumber, TaxOffice, CardNumber, PhoneNumber]
@@ -816,7 +816,7 @@ entities:
 
   # ── PUAN — HEDİYE ÇEKİ SİPARİŞ + BASIM SİSTEMİ (2026-08-27, kullanıcı yönlendirmesiyle) ──
   PUAN:
-    rol: "Hediye çeki SİPARİŞ ve BASIM sistemi + eski bonus/puan sistemi (WINBONUS_*). ⚠ Collation **Turkish_CS_AS** (case-SENSITIVE) — diğer VT'ler Turkish_CI_AS. Cross-db string join'de `COLLATE Turkish_CI_AS` ZORUNLU, yoksa 'Cannot resolve the collation conflict'."
+    role: "Hediye çeki SİPARİŞ ve BASIM sistemi + eski bonus/puan sistemi (WINBONUS_*). ⚠ Collation **Turkish_CS_AS** (case-SENSITIVE) — diğer VT'ler Turkish_CI_AS. Cross-db string join'de `COLLATE Turkish_CI_AS` ZORUNLU, yoksa 'Cannot resolve the collation conflict'."
     note: "⚠ ÇEK ÜRETİM ZİNCİRİNİN BAŞI BURASI, DerinCrm DEĞİL. Doğru zincir: **PUAN.dbo.Siparis (firma bazlı sipariş) → PUAN.dbo.CekListesi (basılan çekler, barcode) → DerinCrm.cmp.GiftCard (bakiye/durum) → cmp.GiftCardTransaction + SalesPayments (harcama)**. İlk keşifte PUAN tablo adlarını görüp içine bakmamak 'çek↔müşteri bağı yok' yanlış sonucunu üretti."
     last_verified: "2026-08-27"
 
@@ -847,7 +847,7 @@ entities:
 
   # ── INTER_BOS — ESKI POS SISTEMI (2026-08-28 kesfi) ──
   INTER_BOS:
-    rol: "**Eski kasa (POS) sistemi** — 11.07.2025'teki kasa degisiminden onceki tum satis verisi burada. 83 GB, ayni sunucu (192.168.40.201). MCP allowlist'te DEGIL; `database=master` + 3-parcali isimle erisilir (`INTER_BOS.dbo.BELGE`)."
+    role: "**Eski kasa (POS) sistemi** — 11.07.2025'teki kasa degisiminden onceki tum satis verisi burada. 83 GB, ayni sunucu (192.168.40.201). MCP allowlist'te DEGIL; `database=master` + 3-parcali isimle erisilir (`INTER_BOS.dbo.BELGE`)."
     note: "**Tarih araligi 01.09.2014 – 31.05.2025.** Ana tablolar: `BELGE` 6.404.267 fis basligi (Belge_ID PK-benzeri nvarchar, Tarih, Belge_Tipi, Matrah/Kdv/Toplam, Musteri_Kart_No) · `HAREKET` 39.084.989 satir kalemi (Belge_ID, Barkod, Stok_Kodu, Adet, Fiyat, Tutar, Tip: SAT/IND/IPT/PRI/GAL/ART) · `ODEME` 6.341.393 (Belge_ID, Tus_No, Tutar) · `ISKONTO` 476.078.
       Belge_Tipi: FIS 6,0M · GPS 181K · EAR 88K · HDY 53.798 (kasadan basilan hediye cegi, 2017+) · ZRP 45.728 · FAT 15K · EFA 9.551.
 
@@ -863,7 +863,7 @@ entities:
 
   # ── ent.DEPOLARDAKISTOKLAR — depo özet view'ı (2026-09-08 keşfi) ──
   ent.DEPOLARDAKISTOKLAR:
-    tip: view
+    type: view
     key: [StkID, MerkezDepoStok, FSMStok, OZLStok, OdakStok]
     note: "urn bazlı depo özeti; satır yalnız bir stok sıfır-dışıysa gelir. **Merkez** = `depo.paletUrnTnm + paletTnm + adres` (pUAdetN>0, `adrsAd NOT IN ('CK01','iADE')`, `pUID<>42560`) — yani palet düzeyi, `depo.stok_adres_palet_vw` adres-alan-tipi kırılımıyla AYNI DEĞİL (`adrsAlanTipID` süzgeci yok). **OdakStok** = `ent.odak_depo_Stok.StokMiktar`.
       ⚠ **Bu view FSM/ÖZL için `ehMekan` 4480 ve 4835 kullanıyor — mağaza mekanID 1/4477/4478 DEĞİL.** 4480/4835 depo-tarafı mağaza alt-mekanları; mağaza raf stoğu sanıp mağaza satışıyla oranlarsan yanlış devir üretir. Mağaza stoğu için `stokSonAltDepo_vw` mekan 1/4477/4478 kullan.
@@ -907,7 +907,7 @@ entities:
 
   # ── BKMDATA — ODAK katalog + temin süresi (2026-09-08, kullanıcı gösterdi) ──
   BKMDATA.dbo.OdakUrunDurum:
-    tip: tablo
+    type: table
     key: [ProductCode, saleStatus, leadTime]
     note: "**ODAK ürün durumu + TEMİN SÜRESİ.** 646.129 ürün, `leadTime` **NULL YOK**, 2-40 gün, ortalama **5,03**, mod 5 (152.216) ve 4 (112.514) gün. `saleStatus` 1/2/3/4/5/6 (metin karşılığı `BKMDATA.ent.OdakSatisDurumlari.SatisDurum` — TEYİT BEKLİYOR).
       ⚠⚠ **`ProductCode` stkID DEĞİL — ODAK'ın kendi ürün kodudur.** `CAST(u.stkID AS varchar)=ProductCode` **511.040 eşleşme verir ve HEPSİ SAYISAL TESADÜF** (ODAK kod aralığı stkID aralığıyla çakışıyor). `stkKod=barkod` ile AYNI hata sınıfı.
@@ -919,7 +919,7 @@ entities:
     evidence: "2026-09-08 canlı — köprü karşılaştırması (511.040 sahte vs 644.107 doğru), leadTime profili, kohort kırılımı. SQL: sorgular/2026-09-08-satis-analizi-excel-denetim.sql §12"
 
   BKMDATA.ent.odak_urun_tam:
-    tip: tablo
+    type: table
     tip_duzeltme: "2026-09-11 canli sys.objects.type_desc ile CELISIYORDU (sema ile canli TERS takilmis); katalogdan duzeltildi. view mi tablo mu ayrimi onemli: view her zaman taze, tablo yenilenmesi gereken snapshot."
     key: [urun_id, barkod, etiket_fiyat, KDV, marka_id, marka_ad, satis_durum, on_siparis, kategori_id_1..5, SadeceMagaza, SilinecekUrun]
     note: "**ODAK katalog verisi (tam)** — 644.638 satır. `urun_id` = `OdakUrunDurum.ProductCode`; `barkod` DerinSIS'e köprü (bkz. BKMDATA.dbo.OdakUrunDurum). Kitap meta verisi zengin (basım tarihi/sayısı, sayfa, cilt tipi, kağıt cinsi, çevirmen, editör, çıkış tarihi) + 5 seviyeli kategori ağacı + `SadeceMagaza` / `SilinecekUrun` bayrakları + `on_siparis`/`on_siparis_tarih`. `etiket_fiyat` + `KDV` ODAK tarafının fiyatı (BKM `UrunBilgi.SatisFiyat` ile AYNI DEĞİL, karıştırma)."
@@ -928,7 +928,7 @@ entities:
     evidence: "Kullanıcı kolon dökümü + satır sayımı 08.09.2026 (644.638). Kolon anlamları henüz tek tek doğrulanmadı."
 
   BKMDATA.ent.OdakSatisDurumlari:
-    tip: view
+    type: view
     tip_duzeltme: "2026-09-11 canli sys.objects.type_desc ile CELISIYORDU (sema ile canli TERS takilmis); katalogdan duzeltildi. view mi tablo mu ayrimi onemli: view her zaman taze, tablo yenilenmesi gereken snapshot."
     key: [barkod, SatisDurum, DataDurum]
     note: "ODAK satış/data durumu, **barkod bazlı** (`sd.barkod = urnBrkd.urnBarkod`). `SatisDurum` METİN ('Satışta' vb.) — kullanıcının yerleşik raporları `SatisDurum='Satışta'` ve `SatisDurum<>'Satışta'` filtreleriyle 'satılamaz durumda ama stok veren ürün' analizini bunun üstünden yapıyor. `OdakUrunDurum.saleStatus` sayısal kodunun metin karşılığı buradan çözülür (eşleme TEYİT BEKLİYOR).
@@ -939,8 +939,8 @@ entities:
 
   # ── Satış Analizi paneli (plan-42) ────────────────────────────────────────────
   DerinSISBkm.bkm.SatisAnaliziTaban:
-    tip: tablo
-    rol: "Satış Analizi panelinin ön-agrega tabanı (app-owned; erp-write-policy izin listesinde)"
+    type: table
+    role: "Satış Analizi panelinin ön-agrega tabanı (app-owned; erp-write-policy izin listesinde)"
     grain: "Kesim × SezonYil × stkID — kesim başına ~275.059 satır"
     pk: "(Kesim, SezonYil, stkID)"
     yazan: "dashboard SatisAnaliziTabanService (DELETE o kesim + INSERT…SELECT). Son 3 kesim tutulur."
@@ -960,7 +960,7 @@ entities:
 
   # ⚠ ÇELİŞKİ KAYDI — merkez stoğunda WMS ve ERP defteri birbirini tutmuyor
   MERKEZ_STOK_WMS_ERP_CELISKISI:
-    kural: >-
+    rule: >-
       Merkez stoğu WMS'ten okunur (sql-server-conventions § MERKEZ DEPO STOĞU) ama WMS de
       MUTLAK DOĞRU DEĞİL. İki yön birlikte bilinir; WMS ile defter çelişiyorsa sayı ŞÜPHELİDİR
       ve fiziksel sayım yapılmadan karara dayanak alınmaz.
@@ -977,15 +977,15 @@ entities:
       Hayalet KİTAP tarafında: Akademi 84 çeşidin 76'sı (%90) · Kitap 127'nin 77'si (%61) ·
       Kırtasiye 15.803'ün 142'si (%0,9) · Oyuncak %0,8. Merkez depo kitap tutmuyor; oradaki
       tek-adetler kalıntı (kullanıcı teyidi: "depoda kitap yok normalde").
-    uygulama:
+    applied_in:
       ekran: "dashboard GetDepoAdresAsync — WMS adresleri + defter bakiyesi birlikte döner, çelişki ekranda uyarı."
       rapor: "scripts/gr_palet_supheli_excel.py — GR 234 satır / 456.525 ₺; tüm alanlar 998 satır / 3.479.742 ₺ (etiket)."
     evidence: "2026-09-09 — arşiv sorgular/2026-09-09-wms-erp-hayalet-stok.sql"
     last_verified: "2026-09-09"
 
   DerinSISBkm.depo.paletIcHrk:
-    tip: tablo
-    rol: "WMS palet iç hareket defteri — bir ürünün paletler/adresler arası dolaşımı"
+    type: table
+    role: "WMS palet iç hareket defteri — bir ürünün paletler/adresler arası dolaşımı"
     yon_kurali: >-
       piİlkID hareketin SAHİBİ palet, piSonID KARŞI palet. KANITLANDI: iki hipotez
       stok_adres_palet_vw ile karşılaştırıldı, yalnız bu tuttu (stkID 235636 → palet 37250: 2,
@@ -1001,8 +1001,8 @@ entities:
     last_verified: "2026-09-09"
 
   DerinSISBkm.depo.stok_adres_palet_vw:
-    tip: view
-    rol: "WMS hücresel stok — merkez depo stoğunun KANONİK kaynağı (adres × palet × ürün)"
+    type: view
+    role: "WMS hücresel stok — merkez depo stoğunun KANONİK kaynağı (adres × palet × ürün)"
     note: >-
       View gövdesi okundu: paletUrnTnm ⋈ paletTnm(pID=pUID) ⋈ adres(pSonPozID=adrsID),
       WHERE pUAdetN > 0, Stok = SUM(pUAdetN). Yani "WMS Stok" ile paletUrnTnm.pUAdetN
@@ -1017,7 +1017,7 @@ entities:
     last_verified: "2026-09-09"
 
   DerinSISBkm.depo.emir + emirAyr:
-    rol: "WMS iş emri (sayım / toplama / yerleştirme). Sayım emri = emTip 5."
+    role: "WMS iş emri (sayım / toplama / yerleştirme). Sayım emri = emTip 5."
     isim_tuzagi: >-
       ⚠⚠ `emirAyr.emSonPozID` bir POZİSYON DEĞİL, **stkID (ÜRÜN)**. Kanıt:
       `paletUrnTnm ON pUID = emİlkPozID AND pUStkID = emSonPozID`. `emİlkPozID` = PALET
@@ -1032,8 +1032,8 @@ entities:
     last_verified: "2026-09-09"
 
   DerinSISBkm.depo.adresSnl:
-    rol: "Adres koordinat/şablon tablosu — sayım emri süzgeci buradan geçer"
-    kural: >-
+    role: "Adres koordinat/şablon tablosu — sayım emri süzgeci buradan geçer"
+    rule: >-
       `adrs3` adresin koordinatı (kat/sıra), ÖLÇÜLEN küme 0..12.
       ⚠ `WMS-GunlukSayimEmiri` son DELETE'i `adrs3 = 0` olan kaynak adresleri emirden ATAR.
       ÖLÇÜLDÜ 2026-09-09: adrs3=0 → 3.231 adres, **3.224'ü RAF ALANI** (ÇIKIŞ 2 · HAVUZ 3 ·
@@ -1043,8 +1043,8 @@ entities:
     last_verified: "2026-09-09"
 
   BKM_SAYIM_EVRAKI_SP_SOZLESMESI:
-    rol: "ERP defterine sayım farkı yazan app-owned yol — WMS'e DOKUNMAZ"
-    kural: >-
+    role: "ERP defterine sayım farkı yazan app-owned yol — WMS'e DOKUNMAZ"
+    rule: >-
       `bkm.SayimIrsaliyeBaslikOlustur(@SUBE,@EVRAKNO,@TARIH,@KULLANICI,@GC,@belgeNot='',
       @eTip=99,@frmID=0,@eNot='')` → `dbo.irs_ekle`'yi **@onay=1** ile çağırır (belge ANINDA
       onaylı), RETURN irsaliye no, hata **-1** + BKMDATA.dbo.EXCEPTION_LOG. @GC 0=giriş 1=çıkış
@@ -1071,14 +1071,14 @@ entities:
     last_verified: "2026-09-09"
 
   DerinSISBkm.dbo.irsHrk_zaman_kolonlari:
-    rol: "irsHrk'da İKİ zaman var — biri belgenin, biri satırın. Karıştırılırsa as-of ölçüm bozulur."
-    kural: >-
+    role: "irsHrk'da İKİ zaman var — biri belgenin, biri satırın. Karıştırılırsa as-of ölçüm bozulur."
+    rule: >-
       `ehTrhS` (smalldatetime) = BELGE tarihi (saat 00:00, geriye dönük yazılabilir).
       `hrkTarih` (datetime) = SATIRIN DEFTERE DÜŞTÜĞÜ AN (gerçek zaman, saat dahil).
       As-of ölçüm (`WHERE ehTrhS < kesim+1`) belge tarihine bakar; o satır kesimden SONRA
       oluşmuş olabilir. Yani "kesim anındaki durumu" yeniden üretmek isteyen bir ön-agrega,
       sonradan girilen geriye dönük satırları GÖREMEZ ve tekrar kurulduğunda başka sonuç verir.
-    olcum: >-
+    measurement: >-
       ÖLÇÜLDÜ 2026-09-09, stkID 1739183 (Maxx MX-617 Tahta Kalem Seti):
       Özlüce'ye +480 → belge 07.09, satır **09.09 10:12:14** · FSM'ye +480 → belge 07.09,
       satır **09.09 16:36:45** · merkez satış −480 (grup şirketi) → belge 07.09, satır

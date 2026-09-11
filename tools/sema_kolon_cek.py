@@ -53,7 +53,7 @@ VARSAYILAN = ("erp", "DerinSISBkm")
 # ATLANMAZ, "atlandi" diye raporlanır (atlanan denetim koşmuş sayılmaz).
 ATLA_ONEK = ("ODAKJOKER",)
 
-GERCEK_NESNE_TIPLERI = {"tablo", "view", "sp", "tvf", "openquery", "sema", None}
+GERCEK_NESNE_TIPLERI = {"table", "view", "sp", "tvf", "openquery", "schema", None}
 
 
 def kosamadi(mesaj):
@@ -165,7 +165,7 @@ def main():
     for kid, govde in entities.items():
         if not isinstance(govde, dict):
             continue
-        if govde.get("tip") not in GERCEK_NESNE_TIPLERI:
+        if govde.get("type") not in GERCEK_NESNE_TIPLERI:
             continue                      # kural/olcum notu — kolonu olmaz
         if doldur and kid != doldur:
             continue
@@ -183,7 +183,7 @@ def main():
     if tip_oner:
         import json as _json
         NESNE_TIP = {
-            "USER_TABLE": "tablo", "VIEW": "view",
+            "USER_TABLE": "table", "VIEW": "view",
             "SQL_STORED_PROCEDURE": "sp", "EXTENDED_STORED_PROCEDURE": "sp",
             "SQL_TABLE_VALUED_FUNCTION": "tvf", "SQL_INLINE_TABLE_VALUED_FUNCTION": "tvf",
             "SQL_SCALAR_FUNCTION": "tvf", "SYNONYM": "view",
@@ -208,9 +208,9 @@ def main():
                     if esl is None:
                         bulunamadi.append("%s (bilinmeyen type_desc: %s)" % (kid, td))
                         continue
-                    if govde.get("tip") == esl:
+                    if govde.get("type") == esl:
                         continue
-                    istek.append({"dosya": "entities", "id": kid, "alanlar": {"tip": esl}})
+                    istek.append({"dosya": "entities", "id": kid, "alanlar": {"type": esl}})
         print("# %d entity tipi CANLI KATALOGDAN turetildi (sys.objects.type_desc)"
               % len(istek), file=sys.stderr)
         print("# ATANMADI (canlida yok — kural/olcum notu olabilir): %d" % len(bulunamadi),

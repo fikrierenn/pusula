@@ -46,6 +46,8 @@ def kosamadi(mesaj):
 
 
 class Bulgu:
+    # NOT: bunlar PYTHON oznitelik adlari, sema alani DEGIL — Ingilizcelestirme
+    # gocunde yanlislikla cevrilmisti (AttributeError verdi), geri alindi.
     __slots__ = ("seviye", "kural", "yer", "mesaj")
 
     def __init__(self, seviye, kural, yer, mesaj):
@@ -128,17 +130,17 @@ def main():
     if not SOZLESME_YOL.exists():
         kosamadi("sozlesme yok: %s" % SOZLESME_YOL)
     soz = yukle(SOZLESME_YOL)
-    for gerekli in ("ortak", "tipler", "kurallar", "esanlamli"):
+    for gerekli in ("common", "types", "rules", "synonyms"):
         if gerekli not in soz:
             kosamadi("sozlesmede '%s' bolumu yok" % gerekli)
 
-    ortak = soz["ortak"]
-    tipler = soz["tipler"]
-    kurallar = soz["kurallar"]
-    esanlamli = soz["esanlamli"]
-    esanlamli_dosya = soz.get("esanlamli_dosya_bazli", {})
-    deger_esanlamli = soz.get("deger_esanlamli", {})
-    ttl_varsayilan = kurallar.get("ttl_varsayilan", {})
+    ortak = soz["common"]
+    tipler = soz["types"]
+    kurallar = soz["rules"]
+    esanlamli = soz["synonyms"]
+    esanlamli_dosya = soz.get("file_synonyms", {})
+    deger_esanlamli = soz.get("value_synonyms", {})
+    ttl_varsayilan = kurallar.get("ttl_defaults", {})
 
     hedef_dosyalar = [tek_dosya] if tek_dosya else DOSYALAR
     for d in hedef_dosyalar:
@@ -164,11 +166,11 @@ def main():
 
     def sev(dugum, varsayilan="uyari"):
         if isinstance(dugum, dict):
-            return dugum.get("seviye", varsayilan)
+            return dugum.get("level", varsayilan)
         return varsayilan
 
     # ── 1. id tekilliği ──
-    sev_id = sev(kurallar.get("id_tekilligi"), "kirik")
+    sev_id = sev(kurallar.get("id_uniqueness"), "kirik")
     for dosya in hedef_dosyalar:
         gorulen = set()
         for d, bolum, kid, _ in kayitlar:
@@ -176,7 +178,7 @@ def main():
                 continue
             anahtar = (bolum, kid)
             if anahtar in gorulen:
-                ekle(sev_id, "id_tekilligi", "%s:%s" % (dosya, kid), "ayni bolumde tekrar eden id")
+                ekle(sev_id, "id_uniqueness", "%s:%s" % (dosya, kid), "ayni bolumde tekrar eden id")
             gorulen.add(anahtar)
 
     # ── 2. kayıt bazlı denetim ──
@@ -189,36 +191,36 @@ def main():
         if tip is None:
             ekle("uyari", "bilinmeyen_tip", yer, "sozlesmede tanimsiz bolum: %s" % tip_anahtar)
             continue
-        if tip.get("kayit_tipi") == "metin_listesi":
+        if tip.get("record_type") == "text_list":
             continue
         if not isinstance(govde, dict):
             ekle("uyari", "yapi", yer, "kayit harita degil (%s)" % type(govde).__name__)
             continue
 
         alanlar = set(govde.keys())
-        muaf = bool(tip.get("ortak_muaf"))
+        muaf = bool(tip.get("common_exempt"))
         # Kısmi muafiyet: o kayıt tipinde kanıt BAŞKA bir mekanizmayla sağlanıyorsa
         # (ör. queries → sorgu dumanı koşumu) ilgili ortak alan aranmaz. Gerekçesi
         # sözleşmede `muafiyet_gerekcesi` alanında YAZILI olmak zorunda.
-        kismi_muaf = set(tip.get("ortak_muaf_alanlar", []) or [])
-        if kismi_muaf and not tip.get("muafiyet_gerekcesi"):
+        kismi_muaf = set(tip.get("common_exempt_fields", []) or [])
+        if kismi_muaf and not tip.get("exemption_reason"):
             ekle("kirik", "gerekcesiz_muafiyet", tip_anahtar,
                  "ortak_muaf_alanlar var ama muafiyet_gerekcesi yazilmamis")
 
         # Açık çapraz referanslar — koşullu kurallar da bunlara bakar, o yüzden burada toplanır.
-        referanslar = [str(r) for r in (govde.get("kullanir", []) or [])]
+        referanslar = [str(r) for r in (govde.get("uses", []) or [])]
         if dosya == "queries":
             referanslar += ["metrics:%s" % m for m in (govde.get("metrics", []) or [])]
 
         # 2a. ortak zorunlu — confidence
         if not muaf and "confidence" not in kismi_muaf:
-            spec = ortak["zorunlu"]["confidence"]
+            spec = ortak["required"]["confidence"]
             if "confidence" not in govde:
                 ekle(sev(spec), "confidence_yok", yer, "confidence alani yok")
             else:
                 try:
                     g = float(govde["confidence"])
-                    alt, ust = spec["aralik"]
+                    alt, ust = spec["range"]
                     if not (alt <= g <= ust):
                         ekle("kirik", "confidence_aralik", yer,
                              "confidence %s araligin disinda [%s, %s]" % (g, alt, ust))
@@ -234,7 +236,7 @@ def main():
             except (TypeError, ValueError):
                 pass
 
-            lv_spec = ortak["kosullu_zorunlu"]["last_verified"]
+            lv_spec = ortak["conditional_required"]["last_verified"]
             lv = govde.get("last_verified")
             if lv is None:
                 if not kalici:
@@ -242,7 +244,7 @@ def main():
             else:
                 lv_s = lv.isoformat() if isinstance(lv, (dt.date, dt.datetime)) else str(lv)
                 if not TARIH_RE.match(lv_s):
-                    ekle(sev(kurallar.get("tarih_bicimi"), "kirik"), "tarih_bicimi", yer,
+                    ekle(sev(kurallar.get("date_format"), "kirik"), "date_format", yer,
                          "last_verified YYYY-MM-DD degil: %r" % lv_s)
                 else:
                     # stale
@@ -253,29 +255,29 @@ def main():
                             ekle(sev(kurallar.get("stale")), "stale", yer,
                                  "bayat: %d gun (ttl %s)" % (yas, ttl))
 
-            ev_spec = ortak["kosullu_zorunlu"]["evidence"]
+            ev_spec = ortak["conditional_required"]["evidence"]
             if ("evidence" not in kismi_muaf and "evidence" not in govde
-                    and govde.get("kanit_durumu") is None):
+                    and govde.get("evidence_status") is None):
                 ekle(sev(ev_spec), "kanit_yok", yer,
                      "evidence yok ve kanit_durumu beyan edilmemis")
 
         # 2c. tipe özel zorunlu
-        for kural in tip.get("zorunlu", []) or []:
-            gerekli = kural.get("alan", [])
+        for kural in tip.get("required", []) or []:
+            gerekli = kural.get("field", [])
             if not any(a in alanlar for a in gerekli):
-                ekle(kural.get("seviye", "uyari"), "zorunlu_alan", yer,
+                ekle(kural.get("level", "uyari"), "zorunlu_alan", yer,
                      "su alanlardan en az biri gerekli: %s" % ", ".join(gerekli))
 
         # 2d. bilinmeyen üst seviye alan
-        bilinen = set(["id", "ayrinti", "atomiklik_gerekcesi"])
-        bilinen |= set(ortak["zorunlu"]) | set(ortak["kosullu_zorunlu"]) | set(ortak["opsiyonel"])
-        bilinen |= set(tip.get("opsiyonel", []) or [])
-        bilinen |= set(tip.get("ozel", {}) or {})
-        for kural in tip.get("zorunlu", []) or []:
-            bilinen |= set(kural.get("alan", []))
+        bilinen = set(["id", "details", "atomicity_reason"])
+        bilinen |= set(ortak["required"]) | set(ortak["conditional_required"]) | set(ortak["optional"])
+        bilinen |= set(tip.get("optional", []) or [])
+        bilinen |= set(tip.get("special", {}) or {})
+        for kural in tip.get("required", []) or []:
+            bilinen |= set(kural.get("field", []))
         bilinmeyen = sorted(alanlar - bilinen)
         if bilinmeyen:
-            ekle(sev(kurallar.get("bilinmeyen_ust_alan")), "bilinmeyen_alan", yer,
+            ekle(sev(kurallar.get("unknown_top_field")), "bilinmeyen_alan", yer,
                  "sozlesme disi ust alan (ayrinti: altina tasi): %s" % ", ".join(bilinmeyen[:8])
                  + (" … +%d" % (len(bilinmeyen) - 8) if len(bilinmeyen) > 8 else ""))
 
@@ -286,14 +288,14 @@ def main():
         for kanonik, eskiler in esler.items():
             kullanilan = [e for e in eskiler if e in alanlar]
             if kullanilan:
-                ekle("uyari", "esanlamli", yer,
+                ekle("uyari", "synonyms", yer,
                      "%s -> `%s` olmali" % (", ".join(kullanilan), kanonik))
 
         # 2f. enum değer denetimi (+ değer düzeyi eş-anlamlı göçü)
-        for alan, spec in (tip.get("ozel", {}) or {}).items():
+        for alan, spec in (tip.get("special", {}) or {}).items():
             if not isinstance(spec, dict) or alan not in govde:
                 continue
-            izin = spec.get("degerler")
+            izin = spec.get("values")
             if not izin:
                 continue
             deger = govde[alan]
@@ -305,16 +307,16 @@ def main():
                     kanonik = hedef
                     break
             if kanonik:
-                ekle("uyari", "deger_esanlamli", yer,
+                ekle("uyari", "value_synonyms", yer,
                      "%s=%r -> %r olmali" % (alan, deger, kanonik))
             else:
-                ekle(spec.get("seviye", "uyari"), "gecersiz_deger", yer,
+                ekle(spec.get("level", "uyari"), "gecersiz_deger", yer,
                      "%s=%r izinli degil: %s" % (alan, deger, ", ".join(map(str, izin))))
 
         # 2f2. koşullu kurallar — "tip şu ise şu alan gerekir"
-        for kural in tip.get("kosullu", []) or []:
-            kosul = kural.get("kosul", {})
-            k_alan, k_kume = kosul.get("alan"), set(kosul.get("deger_kumesi", []))
+        for kural in tip.get("conditional", []) or []:
+            kosul = kural.get("condition", {})
+            k_alan, k_kume = kosul.get("field"), set(kosul.get("value_set", []))
             deger = govde.get(k_alan)
             # değer eş-anlamlıysa kanonik karşılığıyla değerlendir (göç sırasında da doğru çalışsın)
             for hedef, eskiler in (deger_esanlamli.get(k_alan, {}) or {}).items():
@@ -323,31 +325,31 @@ def main():
                     break
             if deger not in k_kume:
                 continue
-            if govde.get("status") in (kural.get("muaf_status") or []):
+            if govde.get("status") in (kural.get("exempt_status") or []):
                 continue
-            gerek = kural.get("gerek", {})
-            if "en_az_biri" in gerek and not any(a in alanlar for a in gerek["en_az_biri"]):
-                ekle(kural.get("seviye", "uyari"), kural.get("ad", "kosullu"), yer,
+            gerek = kural.get("requires", {})
+            if "at_least_one" in gerek and not any(a in alanlar for a in gerek["at_least_one"]):
+                ekle(kural.get("level", "uyari"), kural.get("title", "conditional"), yer,
                      "tip=%s icin su alanlardan biri gerekli: %s"
-                     % (deger, ", ".join(gerek["en_az_biri"])))
-            if "referans_dosyasi" in gerek:
-                istenen = gerek["referans_dosyasi"]
+                     % (deger, ", ".join(gerek["at_least_one"])))
+            if "reference_file" in gerek:
+                istenen = gerek["reference_file"]
                 if not any(r.startswith(istenen + ":") for r in referanslar):
-                    ekle(kural.get("seviye", "uyari"), kural.get("ad", "kosullu"), yer,
+                    ekle(kural.get("level", "uyari"), kural.get("title", "conditional"), yer,
                          "tip=%s icin `kullanir:` altinda en az bir %s: referansi gerekli"
                          % (deger, istenen))
 
         # 2g. atomiklik
-        atom = tip.get("atomiklik")
+        atom = tip.get("atomicity")
         if atom:
             uzunluk = len(duz_metin(govde))
             # Gerekçesi YAZILI olan büyük kayıt muaf: tek bir nesnenin dosyası bölünmez.
             # Beyan edilmiş istisna, sessiz istisnadan iyidir.
-            muaf_alan = atom.get("muaf_alan")
+            muaf_alan = atom.get("exempt_field")
             if muaf_alan and govde.get(muaf_alan):
                 uzunluk = 0
-            if uzunluk > int(atom.get("tavan_char", 4000)):
-                ekle(atom.get("seviye", "uyari"), "atomiklik", yer,
+            if uzunluk > int(atom.get("max_chars", 4000)):
+                ekle(atom.get("level", "uyari"), "atomicity", yer,
                      "%d karakter — tek kayit = tek gercek degil, bol" % uzunluk)
 
         # 2h. referans çözümü — kullanir + queries.metrics (liste yukarıda toplandı)
@@ -358,14 +360,14 @@ def main():
                 continue
             hedef_dosya, hedef_id = ref.split(":", 1)
             if hedef_dosya not in idler:
-                ekle("kirik", "cozulmeyen_referans", yer, "bilinmeyen dosya: %r" % ref)
+                ekle("kirik", "unresolved_reference", yer, "bilinmeyen dosya: %r" % ref)
             elif hedef_id not in idler[hedef_dosya]:
-                ekle(sev(kurallar.get("cozulmeyen_referans"), "kirik"), "cozulmeyen_referans", yer,
+                ekle(sev(kurallar.get("unresolved_reference"), "kirik"), "unresolved_reference", yer,
                      "hedef yok: %r" % ref)
 
         # 2i. prose'a gömülü referans (graf eksik)
         beyan = set(referanslar)
-        metin = duz_metin({k: v for k, v in govde.items() if k not in ("kullanir",)})
+        metin = duz_metin({k: v for k, v in govde.items() if k not in ("uses",)})
         for hedef_dosya in ("bridges", "metrics"):
             for hedef_id in idler[hedef_dosya]:
                 if len(hedef_id) < GOMULU_MIN_UZUNLUK:
@@ -373,7 +375,7 @@ def main():
                 if hedef_dosya == dosya and hedef_id == kid:
                     continue
                 if hedef_id in metin and ("%s:%s" % (hedef_dosya, hedef_id)) not in beyan:
-                    ekle(sev(kurallar.get("gomulu_referans")), "gomulu_referans", yer,
+                    ekle(sev(kurallar.get("embedded_reference")), "embedded_reference", yer,
                          "prose'da geciyor ama kullanir'de yok: %s:%s" % (hedef_dosya, hedef_id))
 
     # ── öneri modu: makine-okunur bağ önerisi (SALT-OKUMA — yazan taraf sema_goc.py) ──
@@ -383,9 +385,9 @@ def main():
         import json as _json
         oneri = defaultdict(list)
         for b in bulgular:
-            if b.kural != "gomulu_referans":
+            if b.kural != "embedded_reference":
                 continue
-            hedef = b.mesaj.split("kullanir'de yok:")[-1].strip()
+            hedef = b.mesaj.split("uses'de yok:")[-1].strip()
             oneri[b.yer].append(hedef)
         cikti = [{"yer": yer, "dosya": yer.split(":", 1)[0], "id": yer.split(":", 1)[1],
                   "oneriler": sorted(set(refs))}

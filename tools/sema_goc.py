@@ -47,8 +47,8 @@ ALAN = re.compile(r"^(    )([A-Za-z0-9_À-ɏ]+)(:)")  # tam 4 boşluk girintili 
 # İçerik okunarak belirlendi (2026-09-11); toplu eşlemeye sokulamaz çünkü kayıtta hem
 # `aciklama` hem `note` var ve ikisi FARKLI şey söylüyor.
 OZEL = {
-    ("metrics", "kampanya_indirim_orani", "aciklama"): (
-        "kural",
+    ("metrics", "kampanya_indirim_orani", "description"): (
+        "rule",
         "icerigi formul ('Brut = ... Oran = indirim/brut'), tanim degil; `note` zaten "
         "ayri bir uyari tasiyor (3al2ode teorik %33 vs efektif %25-26).",
     ),
@@ -68,11 +68,11 @@ def eslemeyi_oku():
         kosamadi("sozlesme yok: %s" % yol)
     soz = yaml.safe_load(yol.read_text(encoding="utf-8"))
     genel = {}
-    for kanonik, eskiler in (soz.get("esanlamli") or {}).items():
+    for kanonik, eskiler in (soz.get("synonyms") or {}).items():
         for e in eskiler:
             genel[e] = kanonik
     dosyaya_ozel = defaultdict(dict)
-    for dosya, harita in (soz.get("esanlamli_dosya_bazli") or {}).items():
+    for dosya, harita in (soz.get("file_synonyms") or {}).items():
         for kanonik, eskiler in (harita or {}).items():
             for e in eskiler:
                 dosyaya_ozel[dosya][e] = kanonik
@@ -175,8 +175,8 @@ def baglari_kur(uygula, tek_dosya):
                 atlanan.append((kid, "blok harita degil (satir-ici deger/flow) — elle ekle"))
                 continue
             alanlar = alanlari_bul(satirlar, bas, son)
-            if "kullanir" in alanlar:
-                n = alanlar["kullanir"][0]
+            if "uses" in alanlar:
+                n = alanlar["uses"][0]
                 mevcut = satirlar[n]
                 if "[" in mevcut and "]" in mevcut:
                     ic = mevcut[mevcut.index("[") + 1:mevcut.rindex("]")].strip()
@@ -235,7 +235,7 @@ def baglari_kur(uygula, tek_dosya):
 def alan_ekle(uygula, json_yolu):
     """Genel ilkel: verilen kayıtlara verilen alanları ekle (JSON'dan).
 
-    JSON: [{"dosya": "metrics", "id": "net_ciro", "alanlar": {"tip": "basit", ...}}, …]
+    JSON: [{"dosya": "metrics", "id": "net_ciro", "alanlar": {"type": "simple", ...}}, …]
     Var olan alanın ÜSTÜNE YAZMAZ — atlar ve raporlar (elle yazılmış değer korunur).
     Aynı eşdeğerlik kapısı: safe_load(yeni) == beklenen(eski) değilse hiçbir şey yazılmaz.
     """
@@ -410,7 +410,7 @@ def _bag_uygula(govde, refler):
     if not refler or not isinstance(govde, dict):
         return govde
     yeni = dict(govde)
-    yeni["kullanir"] = refler
+    yeni["uses"] = refler
     return yeni
 
 
