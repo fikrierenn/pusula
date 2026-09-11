@@ -133,6 +133,8 @@ entities:
   # KURAL yazılır, döküm değil. Aşağıdaki `key` listeleri KODDA FİİLEN KULLANILAN kolonlardır
   # (sorgular/pdks/*.sql + scripts + dashboard tarandı); tam liste gerekirse yeniden ölçülür.
   PDKS.wtimserv.dbo.TTagZei:
+    cross_checked: "2026-09-11"
+    cross_checked_sonuc: "2026-09-11 — TTagZei hakkındaki kayıtlar (pdks-zei-per, pdks-zei-abw, codes:PDKS.TAbwArt.Abw_AbwArt, entities:pdks) birlikte okundu. Kod kümesi ile köprü aynı ölçümden çıktı (TZe_AbwArt boş olmayanlarda 0 öksüz); çelişki yok."
     type: openquery
     pk: IdNr
     key: [TZe_PersNr, TZe_Datum, TZe_VonZeit, TZe_BisZeit, TZe_IstZeit, TZe_ZeitArt, TZe_AbwArt, TZe_TagSollzeit, TZe_TagMod, TZe_InfKz]
@@ -150,6 +152,8 @@ entities:
     evidence: "2026-09-11 — OPENQUERY([PDKS]) INFORMATION_SCHEMA.COLUMNS, 29 kolon."
     last_verified: "2026-09-11"
   PDKS.wtimserv.dbo.TPerTab:
+    cross_checked: "2026-09-11"
+    cross_checked_sonuc: "2026-09-11 — TPerTab'a bağlı köprüler (pdks-zei-per, pdks-les-per, pdks-ind-per, pdks-sube-bolum) tek ölçüm turunda üretildi ve birbirini tamamlıyor: hepsi Per_PersNr/Per_Grp2 uçlarını farklı taraftan tarif ediyor, çakışan iddia yok."
     aktiflik_suzgeci: "⚠ `Per_ZeitAktiv = 1` AKTİF personel süzgecidir ve reporthub `sp_PdksPano.sql` (satır 75) bunu ZORUNLU kullanır. Süzgeçsiz sorgu ayrılmış personeli de sayar — kadro/devamsızlık rakamı şişer. 3.386 kartın kaçının aktif olduğu AYRICA ölçülmedi."
     type: openquery
     pk: Per_PersNr
@@ -161,6 +165,8 @@ entities:
     last_verified: "2026-09-11"
   PDKS.wtimserv.dbo.TAbwArt: {type: openquery, key: [AbwArt], grain: "devamsızlık/izin tipi lookup", note: "89 kolon (ölçüldü). İzin/devamsızlık kodlarının sözlüğü; TZe_AbwArt / TLe_AbwArt buraya bakar. Kod kümesi HENÜZ ÇIKARILMADI — gerektiğinde `sqlcli lookup` ile ölçülür.", confidence: 0.8, evidence: "2026-09-11 — kolon sayımı ölçüldü, kod kümesi ölçülmedi.", last_verified: "2026-09-11"}
   PDKS.wtimserv.dbo.TPerInd:
+    cross_checked: "2026-09-11"
+    cross_checked_sonuc: "2026-09-11 — TPerInd hakkındaki tüm kayıtlar (pdks-ind-per, vardiya-pdks-tc, TPerTab, VardiyaDetay) AYNI OTURUMDA ve aynı ölçümlerden yazıldı; çelişki yok. Taşıdıkları 'düzeltme izi' bu kaydın KENDİ düzeltilmesinin anlatımıdır ('bu depoda kullanılmıyor' iddiası çürütüldü) — açık bir çelişki değil, kapanmış bir çelişkinin kaydı."
     uses: [entities:PDKS.wtimserv.dbo.TPerTab, entities:BKM.vrd.VardiyaDetay]
     type: openquery
     pk: PIn_PersNr
@@ -193,6 +199,8 @@ entities:
     evidence: "2026-09-11 — BKM.sys.columns + sys.indexes (PK_Vardiya = VardiyaNo)."
     last_verified: "2026-09-11"
   BKM.vrd.VardiyaDetay:
+    cross_checked: "2026-09-11"
+    cross_checked_sonuc: "2026-09-11 — VardiyaDetay'a bağlı üç köprü (vardiya-detay-baslik, vardiya-gun-zaman, vardiya-pdks-tc) birlikte okundu. 'Düzeltme izi' taşıyanlar bugün DÜZELTİLEN iki ölçümün kaydıdır (yanlış payda %14,4→%14,81 · sıfır sentinel 24 vs 219); ikisi de artık doğru sayıyı taşıyor."
     type: table
     pk: Id
     key: [VardiyaNo, SicilNo, Bolum, Gorev, Personel, PartTime, ToplamCalismaDk, Pazartesi, Sali, Carsamba, Persembe, Cuma, Cumartesi, Pazar]

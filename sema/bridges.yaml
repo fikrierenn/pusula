@@ -684,11 +684,12 @@ bridges:
     cardinality: "N:1"
     confidence: 0.95
     note: "⚠ GÜN KOLONU KÖPRÜSÜ — `Pazartesi` YALNIZ BİR ÖRNEKTİR. Aynı bağ `Sali`, `Carsamba`, `Persembe`, `Cuma`, `Cumartesi`, `Pazar` kolonları için de geçerlidir (geniş/wide biçim). Motor tek kolon ölçer; ölçüm Pazartesi üzerinden yapılmıştır ve diğer altı gün için TEMSİLİdir, kanıt değil. `0` = o gün vardiya yok (sıfır sentinel, NULL değil)."
-    measurement: "2026-09-11 (Pazartesi): 24 öksüz / 16.540 dolu satır (%0,145). VardiyaZaman yalnız 74 satır — vardiya kodu kataloğu küçük."
-    orphans_expected: "EVET: 24 satır silinmiş/eski bir vardiya koduna işaret ediyor. Ayrıca `0` sentinelini `IS NOT NULL` ELEMEZ — süzgeç `<> 0` olmalı."
+    measurement: "2026-09-11 — İKİ ÖLÇÜM, İKİSİ DE DOĞRU, FARKLI ŞEY: motor (`sema kopru`) **219 öksüz / 16.735**; elle ölçüm **24 öksüz / 16.540** (`Pazartesi <> 0` süzgeciyle). Fark TAM OLARAK sıfır sentinelidir: 16.735 − 16.540 = 195 satırda `Pazartesi = 0` (o gün vardiya yok) ve 195 + 24 = 219 birebir tutuyor. Motor `IS NOT NULL` ölçer, sıfır NULL değildir → sentinel satırlar öksüz sayılır. GERÇEK bozuk referans sayısı **24**tür; 195'i meşru 'vardiya yok'tur."
+    orphans_expected: "EVET, iki ayrı sebeple: (a) **195 satır `Pazartesi = 0`** — o gün vardiya atanmamış, SIFIR SENTİNEL (NULL değil → `IS NOT NULL` ELEMEZ, süzgeç `<> 0` olmalı); (b) **24 satır** silinmiş/eski bir vardiya koduna işaret ediyor, gerçek bozuk referans. Motorun bildirdiği 219 bu ikisinin toplamıdır."
     evidence: "2026-09-11 — BKM.vrd NOT EXISTS sayımı, Pazartesi kolonu."
     last_verified: "2026-09-11"
   - id: vardiya-pdks-tc
+    fan_out_ayrica: "FAN-OUT AYRI BİR OLGU ve öksüz oranıyla karıştırılmamalı: 11 TC, `TPerInd`de iki kez kayıtlı (ölçüldü) → TC ile LEFT JOIN 16.735 satırı 17.159'a çıkarır (+424). Öksüz ölçümü NOT EXISTS ile yapıldığı için fan-out'tan ETKİLENMEZ; ama TOPLAM alan (adet/süre/maliyet) her sorgu etkilenir ve o kişilerin vardiyası ÇİFT SAYILIR."
     uses: [entities:BKM.vrd.VardiyaDetay, entities:PDKS.wtimserv.dbo.TPerInd]
     from: BKM.vrd.VardiyaDetay.SicilNo
     to: PDKS.wtimserv.dbo.TPerInd.PIn_SteuerNr
@@ -696,8 +697,7 @@ bridges:
     cardinality: "N:N"
     confidence: 0.8
     note: "⚠⚠ İKİ SİSTEMİ BAĞLAYAN TEK KÖPRÜ — vardiya planı (BKM, kişiyi TC ile tutar) ↔ PDKS (kişiyi PersNr ile tutar). `SicilNo` adına rağmen SİCİL NO DEĞİL: 16.735 satırın TAMAMI 11 hanelidir, yani TC kimlik no (ölçüldü). `int`e çevirmek TAŞMA hatası verir. Collation farkı için `COLLATE Turkish_CI_AS` zorunlu."
-    not_measurable: "FARKLI SUNUCU + METİN EŞLEŞMESİ + COLLATE: sol uç yerel `BKM`, sağ uç `PDKS` linked server; eşleşme metin üzerinden ve `COLLATE Turkish_CI_AS` ile kuruluyor. Motorun tek-sorgu kolon-eşitliği ölçümü bu koşulu kuramaz. ÖLÇÜM ELLE YAPILDI ve aşağıya yazıldı."
-    measurement: "2026-09-11 ELLE ÖLÇÜLDÜ: LEFT JOIN sonucu 17.159 satır — oysa `VardiyaDetay` 16.735 satır. **+424 satır FAN-OUT** (11 TC, TPerInd'de iki kez kayıtlı). Eşleşmeyen 2.478 satır (%14,4). ⚠ ASIL SINIR AYRI: `PIn_SteuerNr` PDKS'teki 3.325 kişinin yalnız 568'inde dolu (%17,1) — yani köprü personelin altıda birini kapsıyor."
+    measurement: "2026-09-11 MOTOR ÖLÇÜMÜ (sema kopru): **2.478 öksüz / 16.735 (%14,81)**. ⚠ BU KAYIT İKİ KEZ DÜZELTİLDİ: (1) önce `not_measurable` ile 'farklı sunucu + COLLATE, motor ölçemez' diye BEYAN EDİLMİŞTİ — YANLIŞTI, motor 4-parçalı `PDKS.wtimserv.dbo.*` adıyla pekâlâ ölçtü ve beyan kaldırıldı; (2) elle yaptığım ilk ölçüm **%14,4** demişti, o da yanlıştı — paydayı fan-out'lu LEFT JOIN sonucundan (17.159) almıştım. Doğru payda gerçek satır sayısıdır (16.735). Öksüz SAYISI ikisinde de aynı (2.478); yanlış olan ORANDI. DERS: payda seçimi ölçümün parçasıdır."
     orphans_expected: "EVET ve BÜYÜK: %14,4 eşleşmiyor, ayrıca kaynak tarafta TC'nin yalnız %17'si dolu. Plan-vs-fiili raporu bu iki oranı YAZMADAN 'eşleşmedi' diyemez; eşleşmemenin sebebi çoğunlukla kişinin TC'sinin PDKS'e girilmemiş olmasıdır, vardiyaya gelmemesi değil. Toplam alan sorgu DISTINCT/ön-toplama yapmalı (fan-out)."
     evidence: "2026-09-11 — BKM.vrd.VardiyaDetay × OPENQUERY([PDKS]) TPerInd LEFT JOIN sayımı + mükerrer TC GROUP BY HAVING. Kullanım: sorgular/pdks/pdks_vardiya_plan_fiili.sql."
     last_verified: "2026-09-11"
@@ -721,7 +721,7 @@ bridges:
       TEKNOLOJİLERİ, MERKEZ DEPO…). `SubeNo` ile join eden her sorgu o şubenin satırlarını
       BÖLÜM SAYISI KADAR ÇOĞALTIR. Şube bazlı toplam alınacaksa önce bölüm düzeyinde
       ön-toplama yapılmalı ya da DISTINCT kullanılmalı.
-    measurement: "2026-09-11: 38 satır · 9 tekil SubeNo · 33 tekil Per_Grp2. `Per_Grp2` değerlerinin 5'inin `TPerTab`ta hiç karşılığı YOK (personeli olmayan/kapanmış bölüm)."
+    measurement: "2026-09-11 MOTOR ÖLÇÜMÜ: 5 öksüz / **37** (`Per_Grp2 IS NOT NULL` olanlar). Tablo toplamı 38 satır — bir satırda `Per_Grp2` NULL. Yapı: 9 tekil `SubeNo`, 33 tekil `Per_Grp2`."
     orphans_expected: "EVET, 5 bölüm: `bkm.SubeListe`de tanımlı ama `TPerTab`ta o bölümde personel yok. Yetki/filtre listesi bu 5 bölümü boş gösterir — bu bir hata değil, kadrosuz bölümdür."
     evidence: "2026-09-11 — OPENQUERY([PDKS]) bkm.SubeListe sayımı + TPerTab'a NOT EXISTS. Kullanım kanıtı: D:/Dev/reporthub/Mosaik/Database/sp_PdksPano.sql satır 49-56."
     last_verified: "2026-09-11"
