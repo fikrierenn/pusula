@@ -76,3 +76,5 @@ Soru kalıbı: **"X hâlâ kullanılıyor mu? Silersem Y kırılır — onaylıy
 - SQL içeriyorsa: tarih formatı (DMY/ISO), compat 110, IsValid kurallarını `sql-server-conventions.md` ile doğrula.
 
 **Gerekçe:** Okumadan/keşfetmeden yapılan ilk dokunuş sessiz yanlış rakam üretir (stkKod=barkod vakası, depo TOPLAM key-mismatch vakası). "Tablo adı tanıdık, direkt sorgularım" istisna değildir.
+
+**Vaka (10.09.2026 — köprü canlı keşif ≠ sema'ya bakma):** Alım tedarikçisi için `irsHrk → irs → frm` join'i CANLI keşfedildi (`hrkID` yanlış denendi, sonra `ehID` bulundu) — iki tur kaybı. Halbuki köprü sema'da **tam tanımlıydı**: `bridges.yaml` `irs-firma` (`dbo.irs.eFirma → dbo.frm.frmID`, confidence 1.0) + `fat-firma`, hatta ilişkili-taraf frmID listesiyle (9525 ODAK-POINT vb). **Sema'ya bakmadan sorgu/köprü keşfi yasak** — join adı sema'da varsa oradan alınır, canlı re-keşfedilmez. "Kolon adını hatırlıyorum" ilk dokunuşta yeterli değil; sema ilk, canlı doğrulama sonra.
