@@ -18,3 +18,18 @@ code_paths:
   - scripts
   - sorgular
   - tools
+
+# CATALOGS — veritabanı adı → yukarıdaki `servers:` adlarından biri.
+# ⚠ Bu harita ÇEKİRDEKTE DEĞİL, burada olmalı: "DerinSISBkm → erp" eşlemesi başka bir
+# depoda ANLAMSIZDIR ve sessizce yanlış sunucuya gider (bel 2026-09-11 bildirdi: köprüleri
+# hiç ölçemiyordu, çünkü kendi `dbo` öneki çekirdeğin BKM haritasında yoktu).
+# Burada yazılmazsa çekirdeğin yerleşik haritası devreye girer — yalnız bu depo için doğru.
+catalogs:
+  DerinSISBkm: erp
+  EncoreMerkez: erp
+  DerinCrm: erp
+  BKMDATA: erp
+  BKMMaliyet: erp
+  BKM: erp
+  Aktarim: erp
+  BKM_GENEL: zirve

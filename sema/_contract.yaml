@@ -267,7 +267,7 @@ types:
         level: kirik
       - field: [scope]
         level: uyari
-    optional: [note, view_trap, condition, direction, cardinality]
+    optional: [note, view_trap, condition, direction, cardinality, server]
     special:
       from: {format: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
       to:   {format: "<sema>.<tablo>.<kolon>", seviye_bicim: uyari}
