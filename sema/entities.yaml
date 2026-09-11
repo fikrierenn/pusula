@@ -190,10 +190,28 @@ entities:
         ürünün bugün 32'si negatif (−7.857 adet). İst.Yolu'nun TÜM negatifi 237 ürün /
         −18.620 adet. Yani olay negatif ADEDİN %42,2'sini, ürün SAYISININ yalnız %13,5'ini
         açıklıyor. Büyüklüğün en büyük tek sebebi, ürün sayısının değil.
-      digor_magazalar_ACIK_SORU: >-
-        Ağustos hazardının mekan kırılımı: İst.Yolu 71 · Özlüce 14 · FSM 13. İst.Yolu
-        %73 ile baskın ve 01.08 olayıyla uyumlu. AMA FSM ve Özlüce de kendi Oca-Tem
-        seviyelerinin (1-9) üstüne çıktı — bu artış ÖLÇÜLDÜ, SEBEBİ ÖLÇÜLMEDİ. Açık soru.
+      digor_magazalar_OLCULDU_SEBEP_BULUNAMADI: >-
+        FSM VE ÖZLÜCE'DEKİ ARTIŞ DA GERÇEK — ama sebebi BULUNAMADI ve bu yazılı.
+        Mağaza bazlı 30-gün hazard (Ağu+Eyl), Wilson %95 GA ile:
+          FSM     %0,34 [0,15-0,80]  →  %3,42 [2,29-5,08]   AYRIK (10×)
+          Özlüce  %0,12 [0,03-0,45]  →  %4,27 [2,91-6,22]   AYRIK (34×)
+          İst.Yolu %0,00 [0,00-0,48] →  %7,23 [5,92-8,80]   AYRIK
+        Üç aralık da ayrık → küçük-sayı yanılsaması DEĞİL.
+        ⛔ ELENEN: 01.08 olayı (yalnız İst.Yolu'nda; FSM Ağustos net düzeltmesi **+3.103**,
+        Özlüce **+7.310** — ikisinde de toplu düşüm YOK).
+        ⛔ ELENEN: kategori karışımı. Sayılan üründe Sınav payı FSM %7,5→%6,7 · Özlüce
+        %8,0→%9,8 (İst.Yolu %8,9→%37,6 — olay orada).
+        ⛔ ELENEN (kendi hipotezim, ölçüm çürüttü): "sayım tipi değişti, hedefli sayıma
+        geçildi" — FSM ve Özlüce'de gerçekten değişti (FSM `Mağaza Kontrol` 59→5,
+        `Reyon Ayrıştırma` 2→65; Özlüce `Reyon` 123→0, `Reyon Ayrıştırma` 3→25) AMA
+        tip bazlı ölçümde `Reyon Ayrıştırma` EN TEMİZ tip çıktı: %0,38 [0,07-2,15].
+        Yani bileşim kayması yanlış yönde — açıklamıyor.
+        ✅ ÖLÇÜLEN AMA SEBEP SAYILAMAYAN: tip bazlı negatif oranı (01.08-09.09.2026
+        emirleri, yaş eşit): `Eksi Stok Sayımı` %8,89 (tanımı gereği negatif seçer) ·
+        `Liste Sayımı` %6,71 [5,24-8,56] (879 çift — hacimce en büyük blok) ·
+        `Serbest` %2,13 · `Mağaza Kontrol` %1,59 · `Reyon` %0,00.
+        Bu bir BİRLİKTELİKTİR; 2025 tarafı yaş-eşitli kıyaslanamadığı için NEDEN
+        sayılamaz. FSM/Özlüce artışının sebebi AÇIK SORUDUR.
       duzeltmenin_KASITLI_olup_olmadigi: >-
         Bu ölçüm olayın OLDUĞUNU söyler, DOĞRU ya da YANLIŞ olduğunu söylemez.
         Sınav sezonu başında toplu bir sayım düzeltmesi meşru bir iş olabilir; negatif
