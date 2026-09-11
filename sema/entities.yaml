@@ -159,6 +159,54 @@ entities:
     evidence: "2026-09-11 — sqlcli: sys.objects type IN (P,FN,IF,TF) + sys.sql_modules + msdb.dbo.sysjobservers"
     confidence: 0.8
     last_verified: "2026-09-11"
+  eksi-stok-2026-artisinin-sebebi:
+    type: measurement
+    uses: [entities:sayim-sonrasi-eksi-stok-hukmu, codes:irsHrk.ehTip]
+    note: >-
+      2026'DAKİ ARTIŞIN SEBEBİ ÖLÇÜLDÜ — ve üç makul açıklama SIRAYLA ELENDİ.
+      Artış gerçek; kademeli DEĞİL, AĞUSTOS 2026'da BASAMAK. Tek bir olay en büyük pay.
+    measurement: >-
+      ⛔ ELENEN 1 — "daha çok saydık, o yüzden daha çok gördük": PAYDA DÜŞTÜ.
+      Sayılan ürün 2025-08 2.105 / 2025-09 1.655 iken 2026-08 1.924 / 2026-09 489.
+      ⛔ ELENEN 2 — "sezon": şekli açıklıyor (iki yılda da Ağu-Eyl zirvesi), SEVİYEYİ
+      açıklamıyor. 100K satış adedi başına negatif: 2025-08 6,5 · 2026-08 32,0 ·
+      2025-09 9,1 · 2026-09 62,5. Beş-yedi kat fark satış hacmiyle kapanmıyor.
+      ⛔ ELENEN 3 — "`ehTip=4` (Sınav toplu satış) patladı": 2025 Ağu-Eyl'de DAHA YÜKSEKTİ
+      (İst.Yolu 11.751 / 22.667 hareket) ama hazard %0,285 / %0,060'tı. Sebep değil.
+
+      ✅ YAŞ-EŞİTLİ ÖLÇÜ (sayımdan sonraki 30 GÜN içinde negatife düşme — tanımı gereği
+      yaş-eşitli): 2025 %0,089 · 2026 %0,374 (4,2×). Ama asıl şey ortalamada değil ŞEKİLDE:
+      2026-01..06 %0,11–0,23 (2025 seviyesinde) · 2026-07 %0,486 · **2026-08 %5,094** ·
+      2026-09 %8,180. Yani yıl içinde 30 KAT basamak.
+
+      ✅ SEBEP: **01.08.2026, İst.Yolu (mekan 4478), tek gün, 396 ürün, `ehTip=99 Sayım`
+      olarak kaydedilmiş −652.451 adetlik toplu düşüm.** Diğer her ayın net `ehTip=99`
+      düzeltmesi ±40K bandında; Ağustos 2026 −641.898 (16 kat). Kategori kırılımı: %94'ü
+      Sınav — Sınav Okul Malzemeleri −330.879 · Sınavlara Hazırlık Kitapları −281.163 ·
+      Eğitim-Sınavlara Hazırlık −22.007. 2025'te dengi YOK (2025-08 net **+9.976**).
+    ayrinti:
+      sebebin_KAPSAMI_sinirli: >-
+        ⚠ BU OLAY HER ŞEYİ AÇIKLAMAZ, açıklamadığı yer YAZILI: 01.08'de düzeltilen 396
+        ürünün bugün 32'si negatif (−7.857 adet). İst.Yolu'nun TÜM negatifi 237 ürün /
+        −18.620 adet. Yani olay negatif ADEDİN %42,2'sini, ürün SAYISININ yalnız %13,5'ini
+        açıklıyor. Büyüklüğün en büyük tek sebebi, ürün sayısının değil.
+      digor_magazalar_ACIK_SORU: >-
+        Ağustos hazardının mekan kırılımı: İst.Yolu 71 · Özlüce 14 · FSM 13. İst.Yolu
+        %73 ile baskın ve 01.08 olayıyla uyumlu. AMA FSM ve Özlüce de kendi Oca-Tem
+        seviyelerinin (1-9) üstüne çıktı — bu artış ÖLÇÜLDÜ, SEBEBİ ÖLÇÜLMEDİ. Açık soru.
+      duzeltmenin_KASITLI_olup_olmadigi: >-
+        Bu ölçüm olayın OLDUĞUNU söyler, DOĞRU ya da YANLIŞ olduğunu söylemez.
+        Sınav sezonu başında toplu bir sayım düzeltmesi meşru bir iş olabilir; negatif
+        bakiye üretmesi ise ayrı bir sorundur (düşüm mevcut stoktan FAZLA olmuş demektir).
+        "Hatalı" demek için işin sahibine sorulmalı — ÖLÇÜLMEDİ.
+      kalicilik: >-
+        Yaş eşitlenmiş kalıcılık: 2025 kohortu (≥9 ay) 336'nın 8'i = %2,4 · 2026-01..03
+        kohortu (≥6 ay) 161'in 31'i = %19,3. Sekiz kat. Yani sorun yalnız "negatife
+        düşüyor" değil, "DÜZELTİLMİYOR". 2026-08/09 kohortlarının %48'i hâlâ negatif ama
+        o sayı yaş-karışık (düzeltilmeye vakit bulamadılar) — tek başına delil DEĞİL.
+    evidence: "2026-09-11 — sorgular/2026-09-11-fiziksel-sayim-alt-sistemi-kesif.sql blok 12-16"
+    confidence: 0.9
+    last_verified: "2026-09-11"
   sayim-sonrasi-eksi-stok-hukmu:
     type: measurement
     uses: [entities:sayim-yazma-yolu-SP-uzerinden, codes:irsHrk.ehTip]

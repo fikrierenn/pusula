@@ -190,3 +190,79 @@ ORDER BY h.ehstkID, h.ehTrhS;
 /* Ölçüm: 03.08 `ehTip=95 Dönüşüm −600` · 04.08 `ehTip=10 Yerel Alım +600`.
    Borç bir gün ÖNCE, alacak bir gün SONRA → tek günlük çift-kayıt gecikmesi.
    ⚠ Ama geneli açıklamaz: ehTip=95 2025'ten beri yalnız 81 kayıt / 74 ürün. */
+
+/* ============================================================================
+   12-16) 2026 ARTIŞININ SEBEBİ — üç makul açıklama SIRAYLA elendi, sonra bulundu.
+   ============================================================================ */
+
+/* 12) PAYDA — "daha çok saydık" mı? HAYIR, sayım DÜŞTÜ. */
+SELECT FORMAT(h.ehTrhS,'yyyy-MM') AS ay, COUNT_BIG(*) AS sayim_hareketi,
+       COUNT(DISTINCT h.ehstkID) AS sayilan_urun
+FROM   dbo.irsHrk h WITH(NOLOCK)
+WHERE  h.ehTip = 99 AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS >= '20250101'
+GROUP BY FORMAT(h.ehTrhS,'yyyy-MM') ORDER BY ay;
+/* 2025-08 2.105 · 2025-09 1.655  vs  2026-08 1.924 · 2026-09 489 → payda ARTMADI. */
+
+/* 13) SEZON — şekli açıklıyor, seviyeyi açıklamıyor (satış hacmiyle normalize et) */
+SELECT FORMAT(h.ehTrhS,'yyyy-MM') AS ay, CONVERT(bigint,SUM(ABS(h.ehAdetN))) AS satis_adet
+FROM   dbo.irsHrk h WITH(NOLOCK)
+WHERE  h.ehTip IN (100,4) AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS >= '20250101'
+GROUP BY FORMAT(h.ehTrhS,'yyyy-MM') ORDER BY ay;
+/* 100K satışta negatif: 2025-08 6,5 · 2026-08 32,0 · 2025-09 9,1 · 2026-09 62,5. */
+
+/* 14) ehTip=4 (Sınav toplu satış) mı? HAYIR — 2025'te DAHA yüksekti, hazard düşüktü. */
+SELECT FORMAT(h.ehTrhS,'yyyy-MM') AS ay, h.ehMekan, COUNT_BIG(*) AS hrk,
+       CONVERT(bigint,SUM(ABS(h.ehAdetN))) AS adet
+FROM   dbo.irsHrk h WITH(NOLOCK)
+WHERE  h.ehTip = 4 AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS >= '20250601'
+GROUP BY FORMAT(h.ehTrhS,'yyyy-MM'), h.ehMekan ORDER BY ay, h.ehMekan;
+/* İst.Yolu 2025-08 11.751 hrk · 2025-09 22.667  >  2026-08 8.603 · 2026-09 16.242. */
+
+/* 15) ★ SEBEP — `ehTip=99` NET DÜZELTME YÖNÜ. Ağustos 2026 bandın 16 KATI. */
+SELECT FORMAT(h.ehTrhS,'yyyy-MM') AS ay, COUNT_BIG(*) AS hrk,
+       CONVERT(bigint,SUM(h.ehAdetN)) AS net_duzeltme,
+       CONVERT(bigint,SUM(CASE WHEN h.ehAdetN < 0 THEN h.ehAdetN ELSE 0 END)) AS eksilten
+FROM   dbo.irsHrk h WITH(NOLOCK)
+WHERE  h.ehTip = 99 AND h.ehMekan IN (1,4477,4478) AND h.ehTrhS >= '20250601'
+GROUP BY FORMAT(h.ehTrhS,'yyyy-MM') ORDER BY ay;
+/* Her ay ±40K bandında; 2026-08 = -641.898. 2025-08 ise +9.976 (dengi YOK). */
+
+/* 15b) Tek gün, tek mağaza */
+SELECT CONVERT(varchar(10),h.ehTrhS,120) AS gun, h.ehMekan, COUNT_BIG(*) AS hrk,
+       CONVERT(bigint,SUM(h.ehAdetN)) AS net, COUNT(DISTINCT h.ehstkID) AS urun
+FROM   dbo.irsHrk h WITH(NOLOCK)
+WHERE  h.ehTip = 99 AND h.ehMekan IN (1,4477,4478)
+  AND  h.ehTrhS >= '20260801' AND h.ehTrhS < '20260901'
+GROUP BY CONVERT(varchar(10),h.ehTrhS,120), h.ehMekan
+ORDER BY net;
+/* 01.08.2026 · mekan 4478 (İst.Yolu) · 396 hareket · -652.451 adet · 396 ürün. */
+
+/* 15c) Ne düşüldü — %94'ü Sınav */
+SELECT ISNULL(ub.KatAna, N'(yok)') AS kat_ana, COUNT(*) AS urun,
+       CONVERT(bigint,SUM(h.ehAdetN)) AS net_adet
+FROM   dbo.irsHrk h WITH(NOLOCK)
+LEFT JOIN bkm.UrunBilgi ub WITH(NOLOCK) ON ub.StkID = h.ehstkID
+WHERE  h.ehTip = 99 AND h.ehMekan = 4478
+  AND  h.ehTrhS >= '20260801' AND h.ehTrhS < '20260802'
+GROUP BY ub.KatAna ORDER BY net_adet;
+/* Sınav Okul Malzemeleri -330.879 · Sınavlara Hazırlık Kitapları -281.163 ·
+   Eğitim-Sınavlara Hazırlık -22.007  → -634.049 / -652.451 = %94. */
+
+/* 16) SEBEBİN KAPSAMI — her şeyi açıklamıyor, açıklamadığı yer YAZILIR. */
+WITH duzeltme AS (
+    SELECT DISTINCT h.ehstkID AS stkID
+    FROM   dbo.irsHrk h WITH(NOLOCK)
+    WHERE  h.ehTip = 99 AND h.ehMekan = 4478
+      AND  h.ehTrhS >= '20260801' AND h.ehTrhS < '20260802'
+), bak AS (
+    SELECT h.ehstkID AS stkID, SUM(h.ehAdetN) AS Bakiye
+    FROM   dbo.irsHrk h WITH(NOLOCK) WHERE h.ehMekan = 4478 GROUP BY h.ehstkID
+)
+SELECT (SELECT COUNT(*) FROM duzeltme)                          AS duzeltilen_urun,
+       SUM(CASE WHEN b.Bakiye < 0 THEN 1 ELSE 0 END)            AS bunlardan_negatif,
+       CONVERT(bigint,SUM(CASE WHEN b.Bakiye<0 THEN b.Bakiye ELSE 0 END)) AS negatif_adet
+FROM   duzeltme d JOIN bak b ON b.stkID = d.stkID;
+/* 396 üründen 32'si bugün negatif (-7.857). İst.Yolu'nun TÜM negatifi 237 ürün
+   / -18.620 adet → olay ADEDİN %42,2'sini, ÜRÜN SAYISININ %13,5'ini açıklıyor.
+   ⚠ AÇIK SORU: FSM (13) ve Özlüce (14) de Ağustos'ta kendi seviyelerinin üstüne
+   çıktı; 01.08 olayı İst.Yolu'na özgü olduğu için ONLARI AÇIKLAMAZ. Ölçülmedi. */
