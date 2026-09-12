@@ -28,6 +28,173 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  zirve_vw_persdept_tanimi:
+    type: view
+    grain: "BKM_GENEL.dbo.vw_PersonelDepartman — TAM TANIM (kullanıcı 2026-09-12'de verdi)"
+    key: [Personelno, Vatno, Lokasyon, AltLokasyon, AltAltLokasyon, Departman, Unvan, Kadro, Firma, Igt, Ict]
+    note: >-
+      ⭐ **VIEW TANIMI ARTIK BİLİNİYOR.** `VIEW DEFINITION` izni yok diye okunamıyordu;
+      kullanıcı tanımı doğrudan verdi. Üç şey birden çözüldü:
+
+      **(1) ÜÇ AYRI VERİTABANININ UNION'U.** View üç `perbilgi` tablosunu birleştiriyor:
+      `[BURSA_KÜLTÜR_MERKEZİ_GENEL].dbo.perbilgi` · `[ASİYE_BİNGÖLBALI_GENEL].dbo.perbilgi` ·
+      yerel `perbilgi` (BKM_GENEL). `Firma` kolonu her kolda SABİT METİN olarak yazılıyor.
+      ⇒ Rapor login'i yalnız `BKM_GENEL`e erişse bile **diğer iki firmanın verisi bu
+      view üzerinden GÖRÜLÜR** — view sahibinin yetkisiyle çalışır. Zirve'de "124 DB
+      okunamıyor" sınırı burada DELİNİYOR ve bu tek yol.
+
+      **(2) `Personelno` EKİ VIEW'DE ÜRETİLİYOR, SAKLANMIYOR:**
+      `CAST(p.Personelno AS VARCHAR(10)) + '-BKMH' | '-ABG' | '-BKM'`.
+      Ham tabloda ek YOKTUR. Ham `perbilgi`ye inen bir sorgu `1108-BKM` diye arama
+      yaparsa BOŞ döner.
+
+      **(3) KOLON EŞLEMESİ (satıcı adı → view adı) — hepsi yeniden amaçlandırılmış:**
+        `SeriNo`       → Lokasyon        (satıcı: nüfus cüzdanı seri no)
+        `Grupkodu`     → AltLokasyon
+        `Ckn`          → AltAltLokasyon  (satıcı: cüzdan kayıt no)
+        `Meslekilcesi` → Departman       (satıcı: meslek ilçesi)
+        `Gorevi`       → Unvan
+        **`A4`         → Kadro**         (satıcı: nüfusa kayıtlı olduğu mah/köy)
+        `Icn`→IstenCikisKodu · `Kanun`→KanunNo · `ts`→TahakkukSekli · `Od`→OgrenimDurumu ·
+        `Bankaadi`→Banka · `A7`→PrimTutari · `Maas`→Ucret
+      ⇒ Kullanıcının kontrol sorgusundaki takma adlar (`Kadro AS [Nüf.Kay.Old.Mah/Köy]`)
+      **BAYAT DEĞİL, ESKİDEN DOĞRUYDU** — satıcının orijinal anlamı buydu.
+
+      **(4) PENCERE DONMUŞ:** `WHERE p.Ict > DATEFROMPARTS(2023,12,31) OR p.Ict IS NULL`.
+      Sabit tarih, KAYAN PENCERE DEĞİL. Yani view zamanla yalnız BÜYÜR (ayrılanlar
+      birikir) ve **2024 öncesi ayrılanlar KALICI OLARAK GÖRÜNMEZ**. 2023 ve öncesine
+      dair kadro/devir sorusu bu view'dan SORULAMAZ.
+    measurement: "2026-09-12 — tanım kullanıcıdan alındı; eşleme canlı veriyle doğrulandı (A4→Kadro ve SeriNo→Lokasyon ölçümle teyit edildi, bkz. `zirve_perbilgi_a4_iki_anlamli`). View 1.296 satır; yerel perbilgi kolu 1.103."
+    evidence: "2026-09-12 — kullanıcının verdiği ALTER VIEW metni + canlı doğrulama (perbilgi.A4 ve Serino GROUP BY). Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  zirve_perbilgi_a4_iki_anlamli:
+    type: measurement
+    grain: "BKM_GENEL.dbo.perbilgi — A4 ve SeriNo kolonlarının satır yaşına göre İKİ FARKLI anlamı (2026-09-12)"
+    note: >-
+      ⚠⚠⚠ **AYNI KOLON, İKİ ANLAM — AYIRICI SATIRIN YAŞI.** Bu, "makul ama yanlış"
+      sınıfının en temiz örneği: sorgu hata vermez, sayı makul görünür, kova yanlıştır.
+
+      `perbilgi.A4` (view'de `Kadro`):
+        · `Ict > 2023-12-31 OR NULL` (1.103 satır) → İSTİHDAM TİPİ: KADRO 875 · SEZONLUK 212 · NULL 8 · '' 3
+        · ESKİ satırlar (2.475)                    → KARIŞIK: KADRO 1.370 · PART-TİME 214 ·
+          SEZONLUK 183 · ÜCRETSİZ 26 · STAJYER 19 · BELİRLİ 5 · **AMA AYRICA KÖY/MAHALLE
+          ADLARI**: ELMASBAHÇELER · KALEDERE · KALBURCU · KÜÇÜKDERE · VAKIF MAHALLESİ ·
+          YOĞUNOLUK MAHALLESİ · ADABÜK MAHALLESİ · AKIMLI KÖYÜ · BAŞKÖY KÖYÜ ·
+          BULUGÖZE KÖYÜ · ÇİRİŞHANE · TEPE · BAHAR …
+
+      `perbilgi.SeriNo` (view'de `Lokasyon`): pencere İÇİNDE **3 tekil** (GENEL MÜDÜRLÜK ·
+      MAĞAZALAR · KAFELER) · pencere DIŞINDA **146 tekil**, gerçek kimlik seri numaraları
+      (`Z11-221600` gibi).
+
+      ⇒ **İK bu kolonları bir tarihte DEVRALDI**; eski kayıtlar satıcının orijinal
+      anlamını taşımaya devam ediyor. View'in `Ict > 2023-12-31` süzgeci — amacı bu
+      olmasa da — pratikte **anlam sınırıyla çakışıyor**.
+      ⇒ **KURAL: `perbilgi`ye DOĞRUDAN inen hiçbir kadro/istihdam sorgusu yazılmaz.**
+      Ham tabloda `GROUP BY A4` yapan bir kadro raporu "ELMASBAHÇELER"i bir istihdam
+      tipi olarak sayar. Kadro daima `vw_PersonelDepartman` üzerinden okunur; oradaki
+      pencere bu kirliliği zaten dışarıda bırakıyor.
+      ⚠ Bu aynı zamanda `kadro-etiket-kumesi-kapali` değişmezinin NEDEN view üstünde
+      koşması gerektiğinin kanıtı: ham tabloda koşsaydı onlarca sahte "etiket" görüp
+      sürekli kırmızı verirdi.
+      ⚠ `PART-TİME` (Türkçe İ) burada üçüncü yazım: view'de `PART TIME` ve `PART-TIME`
+      da var. Aynı kavram, üç yazım — mükerrer-etiket tuzağı (bugün DerinSIS'te
+      `urn.kod2ID` alıcı kodunda da ölçüldü).
+    measurement: "2026-09-12 — perbilgi.A4 ve Serino, `Ict > DATEFROMPARTS(2023,12,31) OR Ict IS NULL` penceresine göre iki kova hâlinde GROUP BY. Toplam 3.578 satır (1.103 içeride, 2.475 dışarıda)."
+    evidence: "2026-09-12 — iki kovalı GROUP BY ölçümü (sqlcli --profile zirve). Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  zirve_ik_organizasyon_ve_kafeler_istisnasi:
+    type: measurement
+    grain: "vw_PersonelDepartman — organizasyon kırılımı ve KAFELER istisnası (2026-09-12)"
+    note: >-
+      **ORGANİZASYON ÜÇ KADEMELİ**: `Lokasyon` → `AltLokasyon` → `AltAltLokasyon`
+      (ham: `SeriNo` → `Grupkodu` → `Ckn`). `Departman` ve `Unvan` bu hiyerarşiden AYRI.
+      Canlı: MAĞAZALAR 816 kişi (8 alt / 6 alt-alt) · KAFELER 315 (3/3) ·
+      GENEL MÜDÜRLÜK 162 (3/18) · Lokasyon NULL 3.
+      ⚠⚠ **KAFELER İSTİSNASI.** Kullanıcının kendi raporu
+      (`D:/Belgelerim/sql/Zirve - Kadro Analiz Raporu.sql`) şunu yazıyor:
+      `CASE WHEN d.Lokasyon = 'KAFELER' THEN d.Unvan ELSE d.Departman END AS Departman`
+      SEBEBİ ÖLÇÜLDÜ: KAFELER'de `Departman` yalnız üç kaba değer taşıyor
+      (KAFE · KASA · MUTFAK) ve 315 kişiyi ayırt etmiyor; anlamlı kırılım `Unvan`da —
+      GARSON 137 · BARİSTA 55 · KASİYER 44 · AŞÇI YARDIMCISI 34 · ŞEF GARSON 16 ·
+      MUTFAK ŞEFİ 6 · BULAŞIKÇI 6 · AŞÇI 2 …
+      ⇒ "Kolon yeniden amaçlandırma" DEĞİL, **kırılım derinliği uyuşmazlığı**: aynı
+      kolon konuma göre farklı ayrıntı düzeyi taşıyor.
+      ⇒ Departman bazlı kadro/maliyet kırılımı yazan her sorgu bu CASE'i taşımalı;
+      taşımayan rapor 315 kişilik kafe kadrosunu üç kovaya yığar ve **hata vermez**.
+      Doluluk: KAFELER'de Departman/Unvan boş kayıt YOK (0/315); diğerlerinde 3 ve 4 boş.
+    measurement: "2026-09-12 — Lokasyon GROUP BY (4 değer) + KAFELER'de Departman×Unvan çapraz dökümü + boşluk sayımı."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Kaynak iş kuralı: D:/Belgelerim/sql/Zirve - Kadro Analiz Raporu.sql. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  zirve_as_of_kadro_sarti:
+    type: rule
+    grain: "BKM_GENEL — 'şu tarihte çalışan kimdi' kanonik şartı"
+    note: >-
+      ⭐ **AS-OF KADRO ŞARTI (kullanıcının kendi raporundan, tahmin değil):**
+      ```sql
+      WHERE (d.Ict >= @Tarih OR d.Ict IS NULL) AND d.Igt <= @Tarih
+      ```
+      `Igt` işe giriş · `Ict` işten çıkış · `Ict IS NULL` = hâlâ çalışıyor.
+      Kadro karşılaştırması iki as-of tarihi için AYNI şartla koşturulup PIVOT edilir
+      (bu yıl / geçen yıl), fark alınır.
+      ⭐ **KİŞİ ANAHTARI `Vatno` (TC kimlik).** Kullanıcının raporu iki yılı
+      `FULL OUTER JOIN ... ON gy.[Tc Kimlik No] = buyil.[Tc Kimlik No]` ile eşliyor,
+      `Personelno` ile DEĞİL — çünkü `Personelno` çalışma DÖNEMİ kimliğidir
+      (1.296 numara ↔ 1.162 TC). Tekrar işe girenler `Personelno` ile eşlenirse
+      **İKİ AYRI KİŞİ** sayılır.
+      ⚠ Bu şart `vw_PersonelDepartman` üstünde koşar ve o view'in penceresi
+      **2023-12-31'de DONMUŞTUR** — 2024 öncesi ayrılanlar hiç görünmez. 2023 ve
+      öncesine dair as-of sorusu bu view'dan sorulamaz; sorulursa SESSİZCE eksik döner.
+    evidence: "2026-09-12 — D:/Belgelerim/sql/Zirve - Kadro Analiz Raporu.sql + view tanımı + Vatno/Personelno tekillik ölçümü. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  zirve_bordro_kalem_join_anahtari:
+    type: measurement
+    grain: "vw_PuanBil ↔ vw_PerKBil / vw_PerOBil kanonik join anahtarı (2026-09-12)"
+    note: >-
+      ⭐ **KANONİK BEŞ KOLONLU ANAHTAR** (kullanıcının kontrol sorgusundan):
+      `Personelno + Yil + Ayindex + Fsk + Puantajno`.
+      `vw_PuanBil` bordro BAŞLIĞI (kişi × ay) · `vw_PerKBil` KESİNTİ · `vw_PerOBil` ÖDEME
+      kalemleri. Kalem tabloları **LEFT JOIN** edilir (kalem olmayabilir).
+      Kalem türleri: KESİNTİ → BES_KESINTISI · EK_KESINTI · ICRA_KESINTISI · AVANS ·
+      PRIM_AVANS · TRAFIK_CEZASI · YILLIK_IZIN_AVANS · ÖDEME → PRIM · YILLIK_IZIN ·
+      YOL_UCRETI · YEMEK · EK_ODEME.
+      ⚠ **ANAHTAR TAM TEKİL DEĞİL**: beşlide 1 mükerrer grup; `Puantajno` çıkarılınca
+      sayı DEĞİŞMİYOR (yine 1) — `Puantajno` bu veride ayırt edicilik KATMIYOR. Tek grup
+      olduğu için etkisi küçük ama LEFT JOIN o kişi-ayda satır ÇOĞALTIR. Sebebi ÖLÇÜLMEDİ.
+      ⭐ **Personel maliyeti = `Bt + Isskk + Iisk`** — sema'da yazılı formül kullanıcının
+      kendi sorgusunda BİREBİR aynı. Bağımsız teyit.
+    measurement: "2026-09-12 — vw_PerKBil 5'li anahtar mükerrer grubu 1 · 4'lü (Puantajno'suz) 1 (fark YOK)."
+    evidence: "2026-09-12 — mükerrer anahtar sayımı (iki varyant). Kaynak: D:/Belgelerim/sql/PERSONEL BORDRO KONTROL v2+.sql. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  elle_yazilmis_sorgu_arsivi_belgelerim:
+    type: measurement
+    grain: "D:/Belgelerim/sql — kullanıcının elle yazdığı SQL arşivi (keşif 2026-09-12)"
+    note: >-
+      ⭐ **DEPO DIŞINDA, MADENCİLİĞİ YAPILMAMIŞ BİLGİ KAYNAĞI: 322 `.sql`** (2020-09 ..
+      2026-05) + `_JOKER` alt klasörü. Kullanıcının kendi yazdığı sorgular.
+      DEĞERİ: sema şemanın **NE OLDUĞUNU** söyler; bu dosyalar **NASIL KULLANILDIĞINI** —
+      hangi join, hangi süzgeç, hangi istisna gerçekten iş görüyor.
+      Kullanıcı 2026-09-12: *"başka yerlere başka bilgiler"* · *"view sorgusu vardır
+      benimkilerin içinde"* · *"PERSONEL diye başlayanların tamamı zirve sorgusu"* (13 dosya).
+      İLK İKİ DOSYADAN ÇIKAN, SEMA'DA OLMAYAN DÖRT GERÇEK:
+      (a) bordro kalem join'inin beş kolonlu kanonik anahtarı,
+      (b) as-of kadro şartı + kişi anahtarının `Vatno` olduğu,
+      (c) KAFELER'de departman kırılımının `Unvan`dan okunması,
+      (d) `Kadro AS [Nüf.Kay.Old.Mah/Köy]` takma adı — **bayat sanıldı, ÖLÇÜLDÜ ve
+          ESKİ VERİDE DOĞRU ÇIKTI** (bkz. `zirve_perbilgi_a4_iki_anlamli`). Yani bu
+          dosyalardaki "yanlış görünen" ayrıntı bile bir GERÇEĞİN İZİ olabiliyor.
+      ⚠ **BU DOSYALAR KANIT DEĞİL, İPUCUDUR.** Buradan çıkan her iddia CANLI ÖLÇÜMLE
+      doğrulanır, sonra sema'ya yazılır.
+      ⚠ Dosyalar depo dışında ve versiyonlanmıyor. `PERSONEL *` dosyaları KİŞİSEL VERİ
+      bağlamı taşır (ad/TC/ücret) — depoya KOPYALANMAZ; yalnız ŞEMA GERÇEĞİ ve İŞ KURALI alınır.
+    measurement: "2026-09-12 — kökte 322 dosya. `PERSONEL*` 13 dosya (kullanıcı: tamamı Zirve). Zirve/bordro grep eşleşmesi 10. `vw_PersonelDepartman` geçen 8. CREATE/ALTER VIEW geçen 14 (ERP tarafı)."
+    evidence: "2026-09-12 — dizin listesi + üç grep + iki dosyanın tam okunması + kullanıcının verdiği view tanımı. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
   # ── MODÜL 2: dbo.urn KOMŞULUĞU — ÜRÜN TAKSONOMİSİ (2026-09-12) ────────────
   # Hub #2 (`dbo.urn`, 22 tablo referans veriyor). Komşuluk 32 tekil tablo;
   # 13'ü sema'da vardı, 19'u burada. Yine 7'si TAMAMEN BOŞ.
@@ -1051,7 +1218,7 @@ entities:
   depo.emirSat: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 2 kolon · 12.223 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor.", type: table, key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)", last_verified: "2026-08-18"}
   depo.paletIcHrk: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 13 kolon · 1.773.987 satir · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "7 dosyada geciyor (ornek: sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-hayalet-stok.sql · dashboard/Data/SatisAnaliziQueries.Excel.cs). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör", last_verified: "2026-08-18"}
   depo.paletSevkLog: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 10 kolon · 303.920 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor.", type: table, key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)", last_verified: "2026-08-18"}
-  # WMS palet-stok (12.06 — gerçek üretim sorguları D:\Belgelerim\sql\)
+  # WMS palet-stok (12.06 — gerçek üretim sorguları D:/Belgelerim/sql/)
   depo.paletUrnTnm: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 19 kolon · 136.547 satir · kayittaki 4 pk/key kolonunun 4 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "7 dosyada geciyor (ornek: sorgular/2026-09-08-satis-analizi-excel-denetim.sql · sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, key: [pUStkID, pUBarkod, pUAdetN, pUID], grain: "palet × ürün satırı", note: "pUStkID=urn.stkID, pUAdetN>0=dolu, pUID=palet ref (paletTnm.pID). Depo anlık raf/havuz stoğu kaynağı.", last_verified: "2026-08-18"}
   depo.paletTnm: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 25 kolon · 209.842 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "4 dosyada geciyor (ornek: sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/envanter_raporu_job_sorgusu.sql · dashboard/Data/RefQueries.Envanter.cs). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: pID, key: [pSonPozID], note: "palet başlık; pSonPozID=adres.adrsID (paletin son konumu)", last_verified: "2026-08-18"}
   depo.adres: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 18 kolon · 177.070 satir · kayittaki 3 pk/key kolonunun 3 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "10 dosyada geciyor (ornek: sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql · sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')", last_verified: "2026-08-18"}
@@ -1986,7 +2153,7 @@ entities:
       entities:zirve_persdept_ayrilan_penceresi.
     note: "TARIHSEL personel maliyetinin TEK kaynagi. `vw_PersonelDepartman.Ucret` CARI ve NET orandir -> gecmis ay maliyeti icin KULLANILMAZ (ucret_kurali). Kolon anlamlari (kullanicinin kendi bordro kontrol raporundan teyitli): **Bt=Brut Toplam · Isskk=Isveren SGK hissesi · Iisk=Isveren issizlik payi · Netu=Net odenen · Au=aylik brut ucret · Sim=sigorta matrahi · Vem=gelir vergisi matrahi · Sk/Isk=ISCI kesintileri · Sskindirim=isveren SGK istisnasi (tesvik) · fm1/fm2/fm3=fazla mesai SAAT · fmtutar1..3=fazla mesai TUTAR · Kanunno='14857' engelli tesviki**."
     fte_kurali: "**FTE (tam zaman esdeger) = SUM(Primgunu)/30**. `Primgunu` (smallint) = SGK prim gunu; tam ay = 30, ay icinde giren/cikan ve ucretsiz izinli kisi daha az gun tasir. Kadro/kapasite olcusu OLARAK bordro satiri sayilmaz — ay icinde 1 gun calisan da 1 sayilir ve sezonluk hareketin yogun oldugu aylarda kadro siser (olculen: 5 magaza Agu-2025 211 kayit vs 168,9 FTE). ⚠ view'da `Calismagunu`/`Toplamisgunu` YOK (ham `dbo.puanbil`'de var); `Primgunu` view'da mevcut ve yeterli. **KORUMA:** `degismezler.json` -> `primgunu-30-tavani` (31 ustu satir FTE'yi sisirir)."
-    maliyet_formulu: "PERSONEL MALIYETI (brut isveren) = `Bt + Isskk + Iisk` — yonetimin kendi formulu (D:\\Belgelerim\\sql\\PERSONEL BORDRO KONTROL v2+.sql son kolonu). Kidem karsiligi ve yan haklar (giyim/yemek/yol) BU FORMULDE YOK -> alt sinir. Olcum 2026-09-03 (Oca-Tem, uc POS magazasi): 31,2M -> 47,2M TL."
+    maliyet_formulu: "PERSONEL MALIYETI (brut isveren) = `Bt + Isskk + Iisk` — yonetimin kendi formulu (D:\\Belgelerim\\sql/\PERSONEL BORDRO KONTROL v2+.sql son kolonu). Kidem karsiligi ve yan haklar (giyim/yemek/yol) BU FORMULDE YOK -> alt sinir. Olcum 2026-09-03 (Oca-Tem, uc POS magazasi): 31,2M -> 47,2M TL."
     firma_kapsami: "⚠ `vw_PuanBil.Personelno` FIRMA SONEKLI string ('1108-BKM') -> vw_PersonelDepartman ile DOGRUDAN join edilir ve UC TUZEL KISILIGI birden kapsar. Ham `dbo.puanbil.Personelno` INT'tir ve yalniz BKM_GENEL'dir (firma-arasi numara cakismasi tuzagi orada gecerli). Join `ON p.Personelno = b.Personelno` 1:1 olculdu (satir = kisi-ay, fan-out YOK; 2026-09-03: 5 magaza Oca-Tem 2025=1054, 2026=1143 satir). **KORUMA:** `degismezler.json` -> `puanbil-kisi-ay-tekilligi` (mukerrer bordro satiri VEYA personelin ikinci departman kaydi maliyeti iki katina cikarir) + `maliyet-kolonlari-duruyor` (Bt/Isskk/Iisk)."
     bordro_gecikmesi: "⚠⚠ PENCERE TUZAGI: cari ayin bordrosu KOSMADAN once o ay kismi gorunur -> maliyet %80+ eksik cikar. Olculen vaka 2026-09-03: Agustos-2026 = 31 kisi, Temmuz-2026 = 256 kisi. Kural: kiyas penceresi SON TAM BORDRO AYINA kadar alinir; tespit = o yilin en yuksek ay kisi sayisinin %60 altina dusen ilk ay. Iki yil AYNI pencerede kiyaslanir."
     sube_atfi_kisiti: "Sube kirilimi vw_PersonelDepartman'in BUGUNKU `AltLokasyon`'una gore yapilir (bordro ayindaki sube DEGIL — view snapshot). Toplamlar dogru, sube dagilimi yer degistiren personelde kayar."
