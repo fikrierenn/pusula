@@ -14,6 +14,13 @@ _BKM Kitap projesinde T-SQL yazımı için kalıcı kurallar._
 - **Kural:** Ürün/kategori/marka eşleşmesi **her zaman stkID üstünden**.
   - DerinSIS-içi: `irsHrk.ehstkID = urn.stkID` (en temiz; satış ehTip 4/100).
   - Barkod gerekiyorsa: `SalesProducts.BarcodeNo = urnBrkd.urnBarkod` → `urnBrkd.urnBrkdStkID = urn.stkID` (`urnBrkdOnce=0`). **stkKod ile join etme.**
+    - ⭐ **`urnBrkdOnce=0` süzgeci ÖLÇÜLDÜ (2026-09-12), artık varsayım değil:** 837.547 ürünün
+      **hepsinde tam olarak 1 tane** `Once=0` satırı var (0 veya 2+ olan ürün YOK), `urn`e öksüz 0.
+      Yani süzgeç ürün başına tek satır seçer — fan-out yapmaz.
+      **Süzgeci UNUTURSAN fan-out GERÇEKTEN olur:** 10.428 ürün çok barkodlu, o ürünlerin cirosu/adedi
+      katlanır ve SQL hata vermez. `Once=1`i birincil sanmak daha beter: 828.413 üründe bozulur.
+      Kapı: değişmez `urnbrkd-birincil-barkod-tekil`. Kanıt: `sorgular/2026-09-12-sema-supurme-parti3.sql` blok 5.
+    - ⚠ `urnBrkdAltStkId` 894.994 satırın hepsinde **0** — tanımlı ama kullanılmıyor (sıfır sentinel).
 - Kategori/marka ciro raporlarını mümkünse **irsHrk** (stkID) üzerinden al → envanter/devir ile tek kaynak, tutarlı.
 - ✅ Tüm stkKod=BarcodeNo hataları düzeltildi (09.06): `generate_brief.py` (SQL_CATEGORY+TOTAL), `G4-kategori-magaza.sql`, `A6-marka-yayinevi.sql`, `04-karzarar/2026-05-07-...maliyet-karsilastirma.sql` (u_b) → hepsi Products.Code=stkID. Dashboard `gm_dashboard.py` → irsHrk. (Eski `briefings/*/brief.html` çıktıları tarihsel, regenerate ile düzelir.)
 

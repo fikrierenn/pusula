@@ -28,6 +28,242 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  # ── ŞEMA SÜPÜRMESİ 3. PARTİ (2026-09-12) ──────────────────────────────────
+  # Kuyruk: 403 iş tablosu · parti 1: 9 · parti 2: 10 · bu parti 10 → kalan 374.
+  # ⚠ BU PARTİNİN BULGUSU: veritabanının EN BÜYÜK objesi bir iş tablosu değil,
+  #   silinmeyen bir ENTEGRASYON LOGU — 1,82 milyar satır / 213 GB.
+  ent.api_log:
+    type: table
+    pk: []
+    key: [ktarih, api_tarih, barkod, api_entegrasyon_tip, api_durum, api_cevap, stkid, tsoft_urun_id]
+    note: >-
+      ⚠⚠ **VERİTABANININ EN BÜYÜK OBJESİ** — 1.816.513.551 satır / **213,4 GB**.
+      HEAP (kümelenmiş indeks YOK); tek indeks `ktarihdesc` (ktarih üzerinde), o yüzden
+      tarih aralığı sorgusu ucuz ama başka her erişim 213 GB taramasıdır.
+      İÇERİĞİ: T-Soft e-ticaret entegrasyonunun **stok push logu**. Tipik satır
+      `api_cevap = "Ürün stoğu başarıyla güncellendi! - 999999"`, ürün anahtarı
+      **`barkod`** (stkid ile DEĞİL).
+      ⭐ `stkid` ve `tsoft_urun_id` kolonları **HER SATIRDA NULL** (son 1 günün
+      3.571.998 satırının 3.571.998'i) — iki ürün-kimlik kolonu var ve ikisi de
+      kullanılmıyor. `urn`e bağlanmak isteyen `barkod` → `urnBrkd` yolundan gitmek
+      zorunda.
+      ⇒ SAKLAMA POLİTİKASI YOK: ilk kayıt 2024-05-15, budama hiç yapılmamış.
+    measurement: >-
+      2026-09-12 — 1.816.513.551 satır · 213,4 GB · HEAP · 8 kolon · PK YOK.
+      Yazma hızı: son 7 gün **22.213.810 satır** (~3,17M/gün ≈ 37 satır/saniye).
+      Son 1 gün kırılımı: `api_entegrasyon_tip=5` **3.559.286** satır (%99,6),
+      tip 2 = 7.480 · tip 1 = 3.749 · tip 3 = 218.
+      `api_durum`: **2 = başarılı 3.559.286 (%99,64)** · **3 = hata 12.712 (%0,36)**.
+      Başka durum değeri YOK (1 hiç görülmedi).
+      Hataların dökümü: "ProductCode sistemde bulunamadı!" 11.629 · "Geçersiz token,
+      lütfen giriş yapın!" 495 · "DefaultCategoryCode boş bırakılamaz!" 84 ·
+      "ProductName min 2 karakter olmalıdır!" ~83.
+      Günde 72.245 tekil barkod için 3,55M push = **ürün başına ~49 push/gün**.
+      `api_cevap` ortalama 37 bayt — 213 GB'ın neredeyse tamamı satır sayısından.
+      Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — sys.partitions/allocation_units + ktarih aralık sorguları + kırılım + örnek satır + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  depo.sayımAyr:
+    type: table
+    pk: []
+    key: [sAyrID, spID, spStkID, sAdet, sAdrsID, sSonPozAdrsID, termID, gKisi, kKisi, saID]
+    note: >-
+      ⚠ **ÖLÜ KAMPANYA KALINTISI** — 2021 yazındaki TEK bir fiziksel sayımın palet
+      bazlı detayı. 6,7M satır, **SIFIR İNDEKS** (kümelenmiş de değil), okunması
+      zorunlu olarak tam tarama.
+      GRAIN: palet × ürün. `spID` = palet (**`depo.paletTnm.pID`**, 6,7M satırın
+      **sıfır öksüzü** — ölçüldü), `spStkID` = ürün, `sAdet` = sayılan adet,
+      `sAdrsID` = adres.
+      ⚠ **TUZAK — `saID` başlık DEĞİL, satır kimliğidir** (6.716.315 satırda
+      6.716.315 tekil değer). `depo.sayım` (773 satır, sID 1..1772) ile eşleştirmeye
+      kalkışılırsa 773 satır SAHTE eşleşir (düşük id çakışması) ve 6,71M satır
+      "öksüz" görünür. Bu hipotez denendi ve ÇÜRÜTÜLDÜ.
+      ⇒ Bugünkü mağaza/depo sayımı **`bkm.Sayim*`** alt sisteminde (ayrı, FK'lı,
+      canlı). Bu tablo onunla KARIŞTIRILMAZ.
+    measurement: >-
+      2026-09-12 — 6.716.315 satır · 0,3 GB · 10 kolon · PK YOK · **indeks sayısı 0**.
+      3.708 palet · 185.255 ürün · 2 terminal · toplam sayılan 33.921.282 adet.
+      Paletlerin oluşma aralığı (paletTnm.pkTarih): **2021-06-30 .. 2021-08-04** —
+      tek kampanya, beş hafta. Obje son değişim 2021-08-02.
+      `spID -> depo.paletTnm.pID` öksüz **0**. `saID -> depo.sayım.sID` öksüz
+      6.715.542 (hipotez çürütüldü). Kod erişimi: 3 dosya (üçü de bu deponun
+      kendi keşif/öneri arşivi, üretim kodu değil).
+    evidence: "2026-09-12 — sys.indexes + iki ebeveyn hipotezinin karşılaştırması + paletTnm tarih aralığı + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.urnBrkd:
+    type: table
+    pk: [urnBarkod]
+    key: [urnBrkdStkID, urnBarkod, urnBrkdOnce, urnBrkdAdet, urnBrkdBrm, urnBrkdSira, urnBrkdFiyat, urnBrkdAltStkId]
+    note: >-
+      ⭐ **BARKOD ↔ ÜRÜN KÖPRÜSÜ** — `CLAUDE.md`/`sql-server-conventions.md`'nin
+      "stkKod barkod DEĞİL" kuralının dayandığı tablo. PK **`urnBarkod`**: bir barkod
+      en fazla bir ürüne aittir (veritabanı zorlar).
+      ⭐ ÖLÇÜLDÜ — **`urnBrkdOnce = 0` BİRİNCİL BARKODU TEKİL SEÇER**: 837.547 ürünün
+      **hepsinde tam olarak 1 tane** `Once=0` satırı var (0 veya 2+ olan ürün YOK).
+      Yani `WHERE urnBrkdOnce=0` yazan sorgu ürün başına tek satır alır — fan-out
+      riski yoktur. Bu, kuralın bugüne kadar SÖYLENEN ama ÖLÇÜLMEYEN yarısıydı;
+      artık `urnbrkd-birincil-barkod-tekil` değişmeziyle korunuyor.
+      `urnBrkdStkID -> urn.stkID` öksüz **0**.
+      ⚠ `urnBrkdAltStkId` kolonu 894.994 satırın hepsinde **0** — tanımlı ama
+      kullanılmıyor (sıfır sentinel, bkz. sql-server-conventions § SIFIR SENTINEL).
+    measurement: >-
+      2026-09-12 — 894.994 satır · 8 kolon · PK (urnBarkod) · 5 indeks.
+      837.547 tekil ürün → ürün başına ort. 1,07 barkod. `urnBrkdOnce=0` satır
+      sayısı **837.547** = ürün sayısı; "ürün başına kaç adet Once=0" dağılımı
+      **tek grup: 1 → 837.547 ürün**. `urn`e öksüz 0. `urnBrkdAltStkId>0`: **0**.
+      Kod erişimi: 13 dosya (dashboard 3 + arşiv sorgu 9 + sema özeti).
+    evidence: "2026-09-12 — tekillik dağılımı + öksüz taraması + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql. Değişmez: urnbrkd-birincil-barkod-tekil"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  ist.istAyr:
+    type: table
+    pk: []
+    key: [ehID, ehSira, ehStkID, ehAdet, ehTutar, ehIndirim, ehSipID, ehSipSira, sipAdet, sevkAdet, ehFirma, istStok, istKritikStok, istOrtSatis]
+    note: >-
+      **SATINALMA İSTEK (talep) SATIRLARI** — `irsHrk`/`fatAyr` ile aynı adlandırmayı
+      taşır (`ehID`/`ehSira`/`ehStkID`), ama ayrı bir belge ailesidir: sipariş
+      OLUŞMADAN önceki talep. `ist*` önekli kolonlar talebin ÜRETİLDİĞİ ANDAKİ karar
+      girdilerini dondurur: `istStok` (o anki stok), `istKritikStok`, `istOrtSatis`,
+      `istAltAdet`/`istUstAdet` (sipariş katı), `istKoli`.
+      ⚠⚠ **TUZAK — `sevkAdet` 1.907.254 SATIRIN HEPSİNDE NULL.** Kolon var, adı
+      "sevk edilen adet" vaat ediyor, hiç doldurulmamış. `sipAdet - sevkAdet` gibi
+      bir "kalan" hesabı **sessizce NULL** döner (SQL'de NULL aritmetiği hata vermez).
+      Sevk bilgisi buradan okunmaz.
+      GRAIN: `(ehID, ehSira)` — 1,9M satırda **mükerrer yok** (ölçüldü), yani doğal
+      anahtar tekil ama PK olarak TANIMLANMAMIŞ.
+    measurement: >-
+      2026-09-12 — 1.907.254 satır · 0,6 GB · 30 kolon · PK YOK · 4 indeks.
+      82.061 talep başlığı · 345 tedarikçi · 186.573 ürün.
+      `(ehID,ehSira)` mükerrer: **0**. `ehSipID>0` (siparişe bağlanmış) 1.142.888
+      satır (%59,9). `sevkAdet IS NULL`: **1.907.254 (%100)**. Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — doğal anahtar tekillik testi + kolon doluluk + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  eftr.efatFirma:
+    type: table
+    pk: [Id]
+    key: [Id, VergiNo, Etiket, Isim, FirmaTipi, RemoteId, KatilimTarihi]
+    note: >-
+      **E-FATURA MÜKELLEF KAYITLI KULLANICI LİSTESİ** (GİB tarafı) — Türkiye
+      genelindeki e-fatura kullanıcılarının vergi no / GİB etiketi / unvan kaydı.
+      BKM'nin kendi müşterisi değil; bir fatura kesilmeden önce "bu vergi no
+      e-faturaya kayıtlı mı, hangi etikete gönderilecek" sorusunu yanıtlar.
+      ⚠ **AYNI VERGİ NO BİRDEN ÇOK SATIRDA OLABİLİR** — 2.378.247 satır, 2.188.856
+      tekil `VergiNo`. Bir mükellefin birden çok GİB etiketi (posta kutusu) olabilir.
+      `VergiNo` ile JOIN yazan sorgu **FAN-OUT** üretir; etiket seçimi ek kural ister
+      (hangi etiket güncel — bu tabloda YAZILI DEĞİL, ölçülmedi).
+      CANLI: son katılım 2026-09-11.
+    measurement: >-
+      2026-09-12 — 2.378.247 satır · 0,5 GB · 7 kolon · PK (Id) · kümelenmiş.
+      Tekil VergiNo 2.188.856 (fark 189.391 satır = çok-etiketli mükellef).
+      Tekil Etiket 1.471.101. `FirmaTipi`: **1 → 2.295.563 (%96,5)** · 0 → 82.684.
+      `KatilimTarihi` aralığı 2010-01-01 .. **2026-09-11** (canlı besleniyor).
+      Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — tekillik sayımı + FirmaTipi dağılımı + tarih aralığı + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  bkm.Enf_OrtakUrunler:
+    type: table
+    pk: [SecilenAy, stkID, Kaynak]
+    key: [SecilenAy, stkID, Kaynak, Kategori, WebAnaKategori, stkAd, Yazar, mrkAd, BaslangicAy_ToplamAdet, SecilenAy_ToplamAdet, BaslangicAy_UstFiyatOrtalamaFiyat, SecilenAy_UstFiyatOrtalamaFiyat, BaslangicAy_NetFiyatOrtalamaFiyat, SecilenAy_NetFiyatOrtalamaFiyat]
+    note: >-
+      **ENFLASYON SEPETİ** — "hem başlangıç ayında hem seçilen ayda satılmış" ortak
+      ürünler, iki ayın fiyat/adetleri YAN YANA. Bu, fiyat endeksinin doğru kurgusu:
+      sepet sabitlenerek karşılaştırma yapılır (ürün karması değişiminin fiyat artışı
+      gibi görünmesini engeller).
+      ⭐ `Kaynak` KANAL ayracıdır ve kümesi KAPALI ÖLÇÜLDÜ: **`bkmkitapcom`** (e-ticaret)
+      ve **`Magazalar`**. Yani endeks iki kanal için AYRI hesaplanabiliyor.
+      ⭐ İKİ FİYAT TABANI AÇIK: `UstFiyat*` (etiket/liste) ve `NetFiyat*` (indirim
+      sonrası) — kardeşi `bkm.Enf_AylikUrunSatislari` ile aynı ayrım.
+      Karşılaştırma yaparken `Baslangic*` ve `Secilen*` öneklerini karıştırmak sessiz
+      ters-yön hatası üretir.
+    measurement: >-
+      2026-09-12 — 1.550.006 satır · 0,6 GB · 18 kolon · PK (SecilenAy, stkID, Kaynak).
+      `SecilenAy` aralığı 2024-01-01 .. **2026-08-01** (aylık, canlı).
+      `Kaynak`: bkmkitapcom 916.738 · Magazalar 633.268 — başka değer YOK.
+      Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — kod kümesi GROUP BY + tarih aralığı + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  ent.fiyat_tarihce:
+    type: table
+    pk: []
+    key: [stkId, tarih, fiyatliste, fiyatnet]
+    note: >-
+      ⚠ **DONMUŞ — son kayıt 2023-12-25.** E-ticaret fiyat tarihçesinin ESKİ hâli.
+      Halefi `ent.fiyat_tarihce_tsoft` (6,59M satır, 2. partide ölçüldü); ikisi aynı
+      kavramı taşır, aynı iki fiyat tabanını (`fiyatliste`/`fiyatnet`) kullanır ve
+      **isim benzerliği yüzünden karıştırılmaya açıktır**. 2024 ve sonrası için bu
+      tabloyu sorgulayan bir rapor BOŞ döner — ve boş dönmek "fiyat değişmemiş" gibi
+      okunur.
+      İkisinin iş bölümü ve geçiş tarihi YAZILI DEĞİL (ölçülen tek şey: bu 2023-12-25'te
+      susmuş).
+    measurement: >-
+      2026-09-12 — 3.752.472 satır · 0,3 GB · 4 kolon · PK YOK · 2 indeks (stkId+tarih, tarih).
+      `tarih` aralığı **2022-02-01 .. 2023-12-25**. Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — MIN/MAX(tarih) + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.fatFFOzet:
+    type: table
+    pk: []
+    key: [feID, fefID, femID, feTarih, feSira, feStkID, feAdet, feTutar, feKDV, feGdrMerkez, feNeden, fButceTutar]
+    note: >-
+      ⚠ **DONMUŞ — son `feTarih` 2022-06-18**, obje son değişim 2022-11-25.
+      Fatura/fiş üzerinden gider-merkezi bazlı ÖZET (bütçe tutarı da taşıyor:
+      `fButceTutar`, `feGdrMerkez`, `feNeden`). 1,45M satır ve **8 indeks** —
+      bir zamanlar yoğun sorgulanmış, sonra terk edilmiş.
+      ⇒ Bütçe/gider-merkezi analizi bu tablodan YAPILMAZ; dört yıl önceki dünyayı
+      gösterir. Halefi ÖLÇÜLMEDİ (açık soru).
+    measurement: >-
+      2026-09-12 — 1.451.068 satır · 0,5 GB · 20 kolon · PK YOK · 8 indeks.
+      `feTarih` aralığı **2021-06-01 .. 2022-06-18** (13 ay, sonra sessiz).
+      Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — MIN/MAX(feTarih) + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  depo.emirTrh:
+    type: table
+    pk: []
+    key: [emTrhID, mekan, urun, tarih, stok, depoS, depoST, sip, emir, emirNo, emirTop, stokEtiket]
+    note: >-
+      **İŞ EMRİ ANINDAKİ FOTOĞRAF** — bir sevk/ikmal emri üretildiğinde o anki
+      stok (`stok`), depo stoğu (`depoS`/`depoST`), açık sipariş (`sip`) ve emir
+      miktarı (`emirTop`) birlikte dondurulur. Emrin NEDEN o miktarda açıldığını
+      sonradan açıklayan tek kayıt — bugünün stoğuyla yeniden hesaplanamaz.
+      ⚠⚠ **TUZAK — `emTrhID` TEKİL DEĞİL.** Adı kimlik gibi (`...ID`) ve tek indeks
+      onun üzerinde, ama 4.515 değer birden çok satırda tekrar ediyor. JOIN anahtarı
+      yapılırsa **fan-out** üretir. PK YOK; gerçek tekil anahtar ÖLÇÜLMEDİ.
+      CANLI: son kayıt 2026-09-12.
+    measurement: >-
+      2026-09-12 — 1.384.508 satır · 0,2 GB · 12 kolon · PK YOK · 1 indeks (emTrhID).
+      `emTrhID` mükerrer değer sayısı **4.515**. `tarih` aralığı 2021-07-01 ..
+      **2026-09-12** (canlı). Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — mükerrer anahtar taraması + tarih aralığı + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  drs.derinus2_palet:
+    type: table
+    pk: [dpId]
+    key: [dpId, dpDrs2Id, dpAdet, dpPaletId]
+    note: >-
+      **EL TERMİNALİ OKUMASI ↔ PALET DAĞILIMI** — `drs.derinus2` (5,98M satır,
+      2. partide ölçüldü) bir okuma/işlem satırıdır; bu tablo o satırın hangi
+      palet(ler)e kaç adet dağıldığını yazar.
+      ⭐ **BİRE-ÇOK ÖLÇÜLDÜ**: 121.029 `dpDrs2Id` birden çok palete bölünmüş.
+      Yani `derinus2` ile bu tabloyu JOIN'leyip `derinus2` alanlarını toplayan bir
+      sorgu **ÇİFT SAYAR**. Adet daima buradan (`dpAdet`) alınır.
+      `(dpDrs2Id, dpPaletId)` üzerinde TEKİL indeks var (UC_derinus2_palet) —
+      aynı okuma aynı palete iki kez yazılamaz.
+    measurement: >-
+      2026-09-12 — 1.594.089 satır · 0,1 GB · 4 kolon · PK (dpId) · 4 indeks
+      (biri `(dpDrs2Id,dpPaletId)` üzerinde UNIQUE).
+      Birden çok palete dağılan `dpDrs2Id` sayısı **121.029**. Kod erişimi: 0 dosya.
+    evidence: "2026-09-12 — fan-out sayımı + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti3.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
   # ── ŞEMA SÜPÜRMESİ 2. PARTİ (2026-09-12) ──────────────────────────────────
   # Kuyruk: 403 iş tablosu · 1. parti 9 · bu parti 10 → kalan 384.
   # ⚠ BU PARTİNİN EN ÖNEMLİ BULGUSU BİR TABLO DEĞİL, BİR DURUM: iki büyük

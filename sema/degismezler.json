@@ -554,6 +554,18 @@
       "protects": [],
       "verified": "2026-09-12 -> olculdu. Ist.Yolu Agu-2026 tam ay: fark +5,44 TL (satis) ve +0,24 TL (iade). Arsiv: sorgular/2026-09-12-posozeturun-irshrk-kimlik.sql",
       "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK) WHERE p.posMekan IN (1,4477,4478)   AND p.posTarih >= DATEADD(DAY,-30,CONVERT(date,GETDATE()))   AND p.posTarih <  CONVERT(date,GETDATE())"
+    },
+    {
+      "id": "urnbrkd-birincil-barkod-tekil",
+      "db": "DerinSISBkm",
+      "question": "Her urunun `dbo.urnBrkd`'de TAM OLARAK BIR tane `urnBrkdOnce=0` satiri var mi? (0 veya 2+ olan urun sayisi kac?)",
+      "why": "`CLAUDE.md` ve `sql-server-conventions.md` barkod eslemesinin kanonik yolunu soyle yaziyor: `SalesProducts.BarcodeNo = urnBrkd.urnBarkod` -> `urnBrkd.urnBrkdStkID = urn.stkID` **AND `urnBrkdOnce=0`**. Bu kuralin DOGRULUGU bugune kadar SOYLENDI ama OLCULMEDI. Kuralin tasidigi sessiz varsayim: `urnBrkdOnce=0` urun basina TEK satir secer. Bozulursa iki yonde de sessiz yanlis rakam uretir: (a) bir uruniin iki `Once=0` satiri olursa JOIN **FAN-OUT** yapar ve o urunun cirosu/adedi IKI KATINA cikar (hata yok, rakam yanlis); (b) hic `Once=0` satiri olmayan urun JOIN'den SESSIZCE DUSER ve cirosu sifir gorunur — tam olarak 09.06'da yasanan stkKod=barkod vakasinin (Oyuncak cirosu 700K sanildi, gercegi 10,96M) tekrari olur. OLCULDU 2026-09-12: 837.547 urunun HEPSINDE tam 1 tane; 894.994 barkodun 10.428 uruniu cok-barkodlu, yani suzgec olmadan fan-out GERCEKTEN olusur. KIRILABILIRLIK KANITI (paylasilan dosyaya dokunmadan, iki hatali formul dogrudan kosuldu): dogru formul 0 · `Once=1` birincil sanilirsa 828.413 · suzgec hic kullanilmazsa 10.428. Kapi kirmiziya donebiliyor.",
+      "sql": "SELECT COUNT_BIG(*) FROM ( SELECT urnBrkdStkID FROM DerinSISBkm.dbo.urnBrkd WITH(NOLOCK) GROUP BY urnBrkdStkID HAVING SUM(CASE WHEN urnBrkdOnce=0 THEN 1 ELSE 0 END) <> 1) z",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu, 0. 894.994 satir / 837.547 urun; `urnBrkdStkID -> urn.stkID` oksuz 0. Arsiv: sorgular/2026-09-12-sema-supurme-parti3.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.urnBrkd WITH(NOLOCK)"
     }
   ]
 }
