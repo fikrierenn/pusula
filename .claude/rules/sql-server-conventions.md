@@ -73,8 +73,24 @@ CASE WHEN s.DocumentsTypeId <> 3 THEN ... END
 
 - `eTip 4` **"Mağaza Satış"**, `eTip 100` (POS Satış) ile AYRI bir kanal — ikisi kesişmez.
   Pratikte **yalnız İst.Yolu'nda** anlamlı: son 12 ay 50,0M ₺ / 2.170 belge; FSM ve Özlüce
-  0,3-0,6M/ay (ihmal). İçeriğinin %86-89'u Sınav kategorisi → **Sınav Okulları toplu faturaları
-  buradan akar.** `eTip 101/5` = POS / Mağaza Satış İadesi, ayrı satır — `100` içinde netlenmez.
+  0,3-0,6M/ay (ihmal). İçeriğinin %86-89'u Sınav kategorisi. `eTip 101/5` = POS / Mağaza
+  Satış İadesi, ayrı satır — `100` içinde netlenmez.
+  ⚠ **ORANIN YÖNÜNE DİKKAT — bu satır önce "Sınav Okulları toplu faturaları buradan akar"
+  diyordu ve YANILTICIYDI (düzeltildi 2026-09-12).** İki ayrı iddia var ve ikisi de doğru
+  ama YÖNLERİ ters: *"eTip 4'ün içeriğinin %86-89'u Sınav'dır"* ≠ *"Sınav'ın çoğu eTip 4'ten
+  akar"*. Ölçüldü (Ağu-2026, İst.Yolu): EncoreMerkez `DocumentsTypeId=8` (Sınav) **121,0M ₺**
+  / 2.031 belge iken irsHrk `ehTip=4` yalnız **14,1M ₺** — **8,6 kat fark.** Yani Sınav'ın
+  ~107M'si `ehTip=100`'ün İÇİNDE. Bu zaten aşağıdaki "eTip 100 günlük ÖZET belge, belge-bazlı
+  ayrım YAPILAMAZ" kuralıyla tutarlı; ama "buradan akar" ifadesi okuyanı `eTip 4`'ü Sınav
+  vekili sanmaya iter. Sınav'ı ayırmak isteyen **belge bazlı** (`DocumentsTypeId=8`) ya da
+  **ürün bazlı** (`KatAna LIKE 'Sınav Okul%'`) gitmek zorundadır — `eTip 4` vekil DEĞİLDİR.
+  Kanıt: `sorgular/2026-09-12-net-ciro-mutabakat.sql` blok 4.
+- **KASA MUTABAKATINDA `100−101` TEK BAŞINA YETMEZ** (ölçüldü 2026-09-12, Ağu-2026):
+  yalnız `100−101` ile EncoreMerkez toplamı FSM −%0,98 · Özlüce −%1,13 · **İst.Yolu −%9,50**
+  sapar; `4` eklenince +%1,35 / +%0,27 / **+%0,57**'ye iner. Sebep: kasa (Encore) Sınav
+  faturasını da kaydeder, ERP tarafında o tutarın bir kısmı `eTip 4`'tedir.
+  ⭐ Buna karşılık **`ehTip=101` ↔ Encore `DocumentsTypeId=3` KURUŞU KURUŞUNA tutar**
+  (üç mağazada fark 0,33-0,37 ₺, yuvarlama). İade tarafı birebir eşleşen tek uçtur.
 - **Ölçülen sapma** (Oca-2025..Eyl-2026, yalnız `100` vs kanonik formül):
   · Sınav **hariç** (perakende): FSM −%0,5..1,0 · Özlüce −%0,4..0,8 · **İst.Yolu +%2,7..4,4** · 3 mağaza toplamı +%0,5
   · Sınav **dahil** (toplam ciro): **İst.Yolu +%8,2..9,8** · Sınav kanalı +%12,4

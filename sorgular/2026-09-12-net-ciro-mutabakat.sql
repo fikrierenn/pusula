@@ -69,3 +69,52 @@ ORDER BY s.StoresId;
      ÖLÇÜLMEDİ (bilinen adaylar: iade zamanlama farkı, adet düzeltmeleri, gün sınırı).
      Sapmayı sıfırlamak ayrı bir iştir; burada iddia edilen tek şey İKİ BAĞIMSIZ
      YOLUN AYNI BÜYÜKLÜĞÜ VERDİĞİdir. */
+
+/* ============================================================================
+   4) KASA AYRIMI — kullanıcı sorusu: "kasa ile bakacaksan 100/101 bakman lazım"
+   Ölçüldü ve cevap BEKLENENDEN FARKLI çıktı.
+   ============================================================================ */
+
+/* 4a) Encore tarafını BELGE TİPİNE göre aç — kasanın içinde ne var? */
+SELECT s.StoresId, s.DocumentsTypeId,
+       CONVERT(decimal(18,2), SUM(CASE WHEN s.DocumentsTypeId = 3
+              THEN -(s.GrossTotal - s.DiscountTotal - s.VatTotal)
+              ELSE  (s.GrossTotal - s.DiscountTotal - s.VatTotal) END)) AS net,
+       COUNT_BIG(*) AS belge
+FROM   EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+WHERE  s.DocumentsTypeId IN (1,2,3,6,7,8)
+  AND  s.Date >= '20260801' AND s.Date < '20260901'
+GROUP BY s.StoresId, s.DocumentsTypeId
+ORDER BY s.StoresId, s.DocumentsTypeId;
+/* Stores 1 (İst.Yolu): Fiş 19.372.671 · Fatura 759.549 · İade −1.677.234 ·
+   PersFiş 136.533 · PersFatura 76.776 · **SINAV(8) 121.028.643** (2.031 belge).
+   Stores 2 (FSM) ve 3 (Özlüce): SINAV kaydı YOK. */
+
+/* 4b) ÜÇ VARYANT — hangisi kasayla tutuyor? (Ağu-2026, KDV hariç)
+
+     mağaza    100−101        sapma     100−101+4−3−5    sapma     Encore (kasa)
+     FSM       16.970.003    −%0,98     17.368.276      +%1,35     17.137.630
+     Özlüce    26.081.231    −%1,13     26.451.485      +%0,27     26.380.601
+     İst.Yolu 126.420.476    −%9,50    140.497.682      +%0,57    139.696.939
+
+   ⇒ YALNIZ `100−101` İST.YOLU'NDA %9,5 AÇIK VERİR. Sebep: kasa (Encore) Sınav
+     faturasını da kaydediyor; ERP tarafında o tutarın bir kısmı `eTip 4`'te.
+     Kasa mutabakatı için `4` DIŞARIDA BIRAKILAMAZ. */
+
+/* 4c) ★ KANAL EŞLEŞMESİ — iki uç var, biri mükemmel biri hiç tutmuyor */
+/*  İADE UCU — KURUŞU KURUŞUNA:
+      Encore DocumentsTypeId=3   ↔   irsHrk ehTip=101
+        İst.Yolu  1.677.233,65   ↔   1.677.234   (fark 0,35 ₺)
+        FSM         393.405,63   ↔     393.406   (fark 0,37 ₺)
+        Özlüce      572.176,67   ↔     572.177   (fark 0,33 ₺)
+      ⇒ Sema'daki `irshrk-pos-encore` köprüsü "grain uyarısı" diye ölçülemez
+        işaretliydi; İADE UCU için ölçülebilir ve BİREBİR tutuyor.
+
+    SINAV UCU — HİÇ TUTMUYOR:
+      Encore DocumentsTypeId=8 (Sınav) 121.028.642,80
+      irsHrk ehTip=4                    14.084.423,00   → 8,6 KAT fark
+      ⇒ Sınav'ın ~107M'si `ehTip=100`'ün İÇİNDE (günlük ÖZET belge).
+      ⚠ Bu, kuraldaki "Sınav Okulları toplu faturaları eTip 4'ten akar" ifadesini
+        YANILTICI kılıyordu ve düzeltildi (sql-server-conventions 2026-09-12).
+        İki iddia ters yönde: "eTip 4'ün İÇERİĞİNİN %86-89'u Sınav" DOĞRU olabilir;
+        ama "SINAV'IN çoğu eTip 4" YANLIŞ. `eTip 4` Sınav VEKİLİ DEĞİLDİR. */
