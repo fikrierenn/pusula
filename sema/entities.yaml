@@ -28,6 +28,133 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  # ── MODÜL 2: dbo.urn KOMŞULUĞU — ÜRÜN TAKSONOMİSİ (2026-09-12) ────────────
+  # Hub #2 (`dbo.urn`, 22 tablo referans veriyor). Komşuluk 32 tekil tablo;
+  # 13'ü sema'da vardı, 19'u burada. Yine 7'si TAMAMEN BOŞ.
+  # Kod kümelerinin kendisi `codes.yaml`da (urn.kod1ID..kod5ID).
+  dbo.urnkod5:
+    type: table
+    pk: [kod5ID]
+    key: [kod5ID, kod5Ad, kod5Grp, kod5Ondeger]
+    note: >-
+      **YAZAR / ESER SAHİBİ BOYUT TABLOSU** — 173.629 satır. `urn`in taksonomi
+      komşuluğundaki tek BÜYÜK tablo; kardeşleri (kod1/2/3/4, Ktgr, Grp, Brm, Donem)
+      3-82 satırlık enum'lar.
+      ⚠ Değerler çok-yazarlı tek metin ("Bahtiyar Akyılmaz, Murat Sezginer") — `kod5ID`
+      bir KİŞİYİ değil bir YAZAR KÜMESİNİ adresler. Mükerrer yazım ÖLÇÜLMEDİ.
+    measurement: "2026-09-12 — 173.629 satır · 4 kolon · PK kod5ID. Obje son değişim 2021-08-20."
+    evidence: "2026-09-12 — satır/kolon/PK + örnek değerler. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.urnKtgr:
+    type: table
+    pk: [ktgrID]
+    key: [ktgrID, ktgrAd, ktgrGrup, ktgrOndeger]
+    note: >-
+      82 satırlık kategori lookup'ı — ama içeriği KATEGORİ DEĞİL, **e-ticaret vitrin
+      listesi**: "Çok Satan Kitaplar", "Ramazan Şenliği", "1 Milyon Kitap Kampanyası",
+      "2021 YKS TYT ve AYT Kitapları", "[DELCACHEFONKS]" gibi kayıtlar var.
+      ⚠ Ürün taksonomisi sanıp analiz ekseni yapmak YANLIŞ: aynı kitap hem "Edebiyat
+      Kitapları" hem "Çok Satan Kitaplar" mantığına girer ama bu kolon TEK değer tutar.
+      Kanonik ürün kategorisi için `bkm.UrunBilgi.KatAna/Kategori3` kullanılır
+      (`sql-server-conventions.md` § KANAL AYRACI) — bu tablo onun yerine GEÇMEZ.
+      ⚠ `urnKtgr2` AYRI BİR TABLODUR (`ktgrAd` kolonuyla, CLAUDE.md'de yazılı) —
+      karıştırma.
+    measurement: "2026-09-12 — 82 satır · 4 kolon · PK ktgrID."
+    evidence: "2026-09-12 — tam döküm. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.urnGrp:
+    type: table
+    pk: [grpID]
+    key: [grpID, grpAd, grpMrkID, grpFiyatS, grpKDVs, grpHdfKar, grpKod4GrupID, grpKod5GrupID, grpDonemID]
+    note: >-
+      ⭐ **ÜRÜN GRUBU = ŞABLON.** 27 kolon taşıyor ve kolonların çoğu `urn`in kendi
+      alanlarının ikizi (`grpKDVs`, `grpFiyatS`, `grpHdfKar`, `grpKod1ID`..`grpKod3ID`,
+      `grpDonemID`, `grpKtgrID1..7`) — yani grup, yeni ürüne ÖN DEĞER basan bir kalıp.
+      ⚠ **YALNIZ 5 SATIR** ("GENEL" + 4 ürün kampanyası: Stabilo Boss Pastel, Faber-Castell
+      Asetat, Faber Castell Fosforlu, Bekir Çelik Tarih). Yani mekanizma kurulu ama
+      pratikte KULLANILMIYOR. `grpHdfKar` (hedef kâr) gibi alanlar marj analizinde
+      cazip görünür — 5 satırla temsil gücü YOKTUR.
+    measurement: "2026-09-12 — 5 satır · 27 kolon · PK grpID."
+    evidence: "2026-09-12 — tam döküm + kolon yapısı. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.urnBrm:
+    type: table
+    pk: [brmKod]
+    key: [brmKod, brmAd, brmVirgul, brmGosterKoli, brmGosterPalet, eftrUnitCode]
+    note: >-
+      BİRİM lookup'ı — **4 değer: AD (adet) · DZN (düzine) · KG (kilo) · KL (koli)**.
+      PK metin (`brmKod`), sayı değil. `urn` üç ayrı birim kolonu taşır ve ÜÇÜ DE buraya
+      bakar: `urnBrm` (satış birimi) · `urnKoliBrm` (koli birimi) · `paketBrm` (paket).
+      ⚠ Adet toplamı alırken hangi birimin kastedildiği belirsizse rakam ANLAMSIZDIR —
+      "12 DZN" ile "12 AD" aynı sayıdır, farklı maldır. Bu depodaki stok/satış
+      metriklerinin birim varsayımı ÖLÇÜLMEDİ (açık soru).
+      `eftrUnitCode` e-fatura birim kodu (GİB) — e-belge tarafına köprü.
+    measurement: "2026-09-12 — 4 satır · 12 kolon · PK brmKod (varchar)."
+    evidence: "2026-09-12 — tam döküm + urn'in üç birim kolonunun FK'sı. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.urnDonem:
+    type: table
+    pk: [donemID]
+    key: [donemID, donemAd]
+    note: >-
+      Ürün DÖNEM lookup'ı — **TEK SATIR: `0 = "Dönemsel değil"`.** Yani dönemsellik
+      (sezonluk ürün) mekanizması ERP'de kurulu ama HİÇ KULLANILMAMIŞ.
+      ⚠ Sezon analizi (B-172 sezon ekseni) bu kolondan YAPILAMAZ; sezon satıştan
+      türetilir. "Sezonluk ürün" bilgisi ERP'de YOK — bu, panelin sezon ölçütünü
+      satış verisinden türetmek zorunda olmasının SEBEBİDİR.
+    measurement: "2026-09-12 — 1 satır · 2 kolon · PK donemID. `urn.urnDonemID` canlı: tek değer."
+    evidence: "2026-09-12 — tam döküm. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.urnMrk:
+    type: table
+    pk: [mrkID]
+    key: [mrkID]
+    note: >-
+      MARKA/YAYINEVİ lookup'ı — 10.300 kayıt. `urn.urnMrkID` ile bağlanır.
+      `dbo.frmMrk` (firma↔marka, 162.690 satır) ile birlikte "hangi tedarikçi hangi
+      markayı veriyor" sorusunu yanıtlar; frmMrk'te 10.150 ayrı marka geçiyor, yani
+      markaların **%98,5'inin en az bir tedarikçisi var**.
+    measurement: "2026-09-12 — 10.300 satır · 8 kolon · PK mrkID. frmMrk'te geçen tekil marka: 10.150."
+    evidence: "2026-09-12 — satır/PK + frmMrk çapraz sayımı. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  mhs.mhsEntUrn:
+    type: table
+    pk: [mhsEntUrnID]
+    key: [mhsEntUrnID, meuStkID]
+    note: >-
+      ÜRÜN → MUHASEBE hesap eşlemesi (1.605 satır, 11 kolon). `mhs.mhsEntFrm`in
+      (cari→hesap, 116.966 satır) ürün tarafındaki kardeşi.
+      ⚠ Yalnız 1.605 kayıt — 838.292 ürünün %0,2'si. Yani ürün bazlı hesap ataması
+      İSTİSNA; varsayılan eşleme başka bir yerden (grup/kategori) geliyor olmalı —
+      NEREDEN OLDUĞU ÖLÇÜLMEDİ (açık soru).
+    measurement: "2026-09-12 — 1.605 satır · 11 kolon · PK mhsEntUrnID."
+    evidence: "2026-09-12 — satır/kolon/PK. Varsayılan eşleme kaynağı ÖLÇÜLMEDİ (beyan). Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.6
+    last_verified: "2026-09-12"
+  urn_komsulugu_bos_tablolar:
+    type: measurement
+    grain: "dbo.urn FK komşuluğunda satır sayısı SIFIR olan 7 tablo (ölçüm 2026-09-12)"
+    note: >-
+      `frm` komşuluğundaki desen `urn`de de tekrarladı: 19 yeni komşunun **7'si BOŞ** —
+      `dbo.satBldrmAyr` (12 kolon) · `dbo.irsTshAyr` (7) · `dbo.b2bSepetAyr` (4) ·
+      `b2b.sepetAyr` (4) · `hal.Kunyeler` (15) · `dbo.posOzetKsyrIptalDetay` (13) ·
+      `dbo.fatAyrIhr` (10 — İHRACAT fatura satırı).
+      ⇒ **B2B sepet** ve **ihracat** alt sistemleri kurulu ama boş; `frm` tarafındaki
+      ithalat/mutabakat/demirbaş boşluğuyla aynı sınıf.
+      ⚠ `posOzetKsyrIptalDetay` boş olması özellikle dikkat çekici: POS kasiyer İPTAL
+      detayı tutulmuyor demektir — kasiyer bazlı iptal/iade denetimi bu tablodan
+      YAPILAMAZ. (Bu bir ÖLÇÜMDÜR; iptal verisinin başka yerde tutulup tutulmadığı
+      ölçülmedi.)
+    measurement: "2026-09-12 — 19 komşu tablonun toplu satır ölçümü; 7'si 0. Dolu olanlar: urnkod5 173.629 · urnMrk 10.300 · mhsEntUrn 1.605 · urnKtgr 82 · urnkod4 46 · urnKDV 11 · urnkod2 11 · urnGrp 5 · urnBrm 4 · urnKod1 3 · urnkod3 3 · urnDonem 1."
+    evidence: "2026-09-12 — sys.partitions toplu ölçümü. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
   # ── MODÜL 1: dbo.frm KOMŞULUĞU (2026-09-12) ───────────────────────────────
   # Yöntem: modül dışarıdan tahmin EDİLMEDİ, FK grafiğinden TÜRETİLDİ.
   # `dbo.frm` en büyük çapa (46 tablo referans veriyor). Komşuluk 48 tekil tablo;
@@ -293,7 +420,7 @@ entities:
     confidence: 0.7
     last_verified: "2026-09-12"
   frm_komsulugu_bos_tablolar:
-    type: note
+    type: measurement
     grain: "dbo.frm FK komşuluğunda satır sayısı SIFIR olan 15 tablo (ölçüm 2026-09-12)"
     note: >-
       ⭐ **MODÜL 1'İN EN ŞAŞIRTICI ÖLÇÜMÜ.** `dbo.frm` 46 tablodan referans alıyor —

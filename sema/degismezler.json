@@ -579,6 +579,18 @@
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 0. posMagaza 12 satir; frm frmTip 2/3/4 12 satir; irsHrk son 24 ay mekan kumesi disari cikmiyor. Arsiv: sorgular/2026-09-12-frm-mekan-taraf-master.sql",
       "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.posMagaza WITH(NOLOCK)"
+    },
+    {
+      "id": "alici-kodu-mukerrer-ad-artmiyor",
+      "db": "DerinSISBkm",
+      "question": "`dbo.urnkod2` (ALICI lookup'i) icinde NORMALIZE edilmis adi ayni olan kac kod GRUBU var? (noktalama/bosluk farki elenerek)",
+      "why": "`urn.kod2ID` urunun ALICISIDIR (satinalmaci) — alici bazli hesap-sormanin (B-172, satinalma-danisman) ERP tarafindaki atif anahtari. OLCULDU 2026-09-12: lookup'ta bir ad YALNIZ NOKTALAMA FARKIYLA iki kez geciyor (kod2ID 1 ve 6; normalize edilince ayni). IKISI DE CANLI — ikisinde de 2026-09-12'ye kadar urun kaydi ve aktif urunu var (43.218 + 9.356 aktif, toplam 170.854 urun). SONUC: `GROUP BY kod2ID` yapan bir alici karnesi bu kisiyi IKIYE BOLER — hem is yuku hem sorumluluk YARI YARIYA gorunur. Hata vermez, rakam yanlis olur. ⇒ Alici bazli gruplama kod2ID ile DEGIL, NORMALIZE EDILMIS ADLA yapilir. BU KAPI 'DAHA KOTUYE GITMESIN' KAPISIDIR: beklenen 1, bugunku bilinen tek cakisma. 2'ye cikarsa YENI bir mukerrer alici kaydi acilmis demektir ve her alici raporu o gun sessizce bolunmeye baslar. 0'a duserse cakisma COZULMUS demektir — o zaman beklenen 0'a cekilir ve bu not guncellenir. KIRILABILIRLIK / KORLUK KANITI (paylasilan dosyaya dokunmadan kosuldu): ayni sorgunun NORMALIZE ETMEYEN hali (`GROUP BY kod2Ad`) **0** donuyor — yani naif kontrol bu hatayi GOREMEZ. Kapinin degeri tam olarak normalize adimindadir. Nufus 11 (lookup satiri); bosalirsa KOSAMADI.",
+      "sql": "SELECT COUNT_BIG(*) FROM ( SELECT UPPER(REPLACE(REPLACE(LTRIM(RTRIM(kod2Ad)),'.',''),' ','')) AS norm FROM DerinSISBkm.dbo.urnkod2 WITH(NOLOCK) GROUP BY UPPER(REPLACE(REPLACE(LTRIM(RTRIM(kod2Ad)),'.',''),' ','')) HAVING COUNT(*) > 1) z",
+      "comparison": "eq",
+      "expected": 1,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu, 1 (grup: normalize 'ERENBORAN', kod2ID 1 ve 6). Normalize etmeyen kontrol 0 donuyor (kor). Arsiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.urnkod2 WITH(NOLOCK)"
     }
   ]
 }

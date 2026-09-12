@@ -4,6 +4,106 @@ version: 1
 updated: 2026-08-20
 
 codes:
+  urn.kod1ID:
+    lookup: dbo.urnKod1
+    join: "JOIN dbo.urnKod1 k ON k.kod1ID = urn.kod1ID → k.kod1Ad"
+    values: {0: Pasif, 1: Aktif, 2: Tükendi}
+    kume_kaynagi: "dbo.urnKod1 — 3 kod, lookup'tan okundu (elle yazılmadı)."
+    closed_set: true
+    note: >-
+      ⭐ **ÜRÜN DURUMU** — `urn`de ayrı bir "aktif mi" bayrağı aramaya gerek yok, burada.
+      Canlı: **Pasif 356.310 · Aktif 324.940 · Tükendi 157.046** (2026-09-12).
+      ⚠ Katalogun yalnız **%38'i AKTİF**. "Ürün sayısı" diyen her metrik hangi kod1'i
+      kapsadığını YAZMALI; 838.292'lik ham sayı aktif katalog DEĞİLDİR.
+      ⚠ `Tükendi` (2) ile `Pasif` (0) AYRI: tükenen ürün geri gelebilir, pasif edilen
+      kasıtlı kapatılmıştır. İkisini tek kovaya atmak ölü-stok/bulunurluk analizini bozar.
+    evidence: "2026-09-12 — lookup dökümü + urn GROUP BY. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+
+  urn.kod2ID:
+    lookup: dbo.urnkod2
+    join: "JOIN dbo.urnkod2 k ON k.kod2ID = urn.kod2ID → k.kod2Ad"
+    kume_kaynagi: "dbo.urnkod2 — 11 kayıt, lookup'tan CANLI okunur. Kadro değişir; isim listesi sema'ya YAZILMAZ."
+    closed_set: true
+    note: >-
+      ⭐⭐ **`urn.kod2ID` ÜRÜNÜN ALICISIDIR (satınalmacı).** Yani her ürün kartı, o ürünün
+      sorumlusu olan satınalmacıyı TAŞIYOR. Alıcı bazlı hesap-sorma (B-172,
+      `satinalma-danisman`) için doğrudan atıf anahtarı — "alıcı kadrosu Ayarlar'dan
+      parametrik okunur" notunun ERP tarafındaki karşılığı budur.
+      `0 = Genel` alıcı-atanmamış demektir (41.554 ürün) — sıfır burada gerçek bir
+      kategori değil, ATAMA YOKLUĞUDUR; alıcı kırılımında ayrı gösterilmeli, bir
+      alıcıya yazılmamalı.
+      ⚠⚠ **TUZAK — AYNI KİŞİ İKİ KODDA.** Lookup'ta bir ad yalnız noktalama farkıyla iki
+      kez geçiyor (`kod2ID` 1 ve 6, normalize edilmiş ad aynı). **İKİSİ DE CANLI**:
+      ikisinde de 2026-09-12'ye kadar ürün kaydı ve aktif ürünü var (43.218 + 9.356).
+      `GROUP BY kod2ID` yapan bir alıcı karnesi bu kişiyi **İKİYE BÖLER** — hem iş yükü
+      hem sorumluluk yarı yarıya görünür (toplam 170.854 ürün, 52.574'ü aktif).
+      ⇒ **ALICI BAZLI GRUPLAMA kod2ID İLE DEĞİL, NORMALİZE EDİLMİŞ ADLA yapılır**
+      (`UPPER(REPLACE(REPLACE(ad,'.',''),' ',''))`). Kapı: `alici-kodu-mukerrer-ad-artmiyor`.
+      ⚠ Ad listesi PERSONEL VERİSİDİR — sema'ya yazılmaz, lookup'tan canlı okunur.
+    evidence: "2026-09-12 — lookup + urn GROUP BY + iki kodun kTarih/aktif-ürün karşılaştırması + normalize çakışma sayımı (1 grup). Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+
+  urn.kod3ID:
+    lookup: dbo.urnkod3
+    join: "JOIN dbo.urnkod3 k ON k.kod3ID = urn.kod3ID → k.kod3Ad"
+    values: {0: "Öneri Yok", 1: "Öneri Var", 2: "Ön Sipariş"}
+    kume_kaynagi: "dbo.urnkod3 — 3 kod, lookup'tan okundu."
+    closed_set: true
+    note: >-
+      **SİPARİŞ ÖNERİ DURUMU** — ürünün otomatik ikmal önerisine girip girmediği.
+      Canlı: Öneri Yok 802.367 (%95,7) · **Ön Sipariş 29.542** · Öneri Var 6.387.
+      ⚠ `Ön Sipariş` (2) henüz yayınlanmamış/çıkmamış ürün demektir ve stok/bulunurluk
+      metriğinde **talep vekili olarak kullanılamaz** (satışı yok, stoğu yok, ama ölü
+      stok da değil). Bulunurluk ve aşırı-stok kartlarının bu 29.542'yi nasıl ele
+      aldığı ÖLÇÜLMEDİ — açık soru.
+    evidence: "2026-09-12 — lookup dökümü + urn GROUP BY. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+
+  urn.kod4ID:
+    lookup: dbo.urnkod4
+    join: "JOIN dbo.urnkod4 k ON k.kod4ID = urn.kod4ID → k.kod4Ad"
+    kume_kaynagi: "dbo.urnkod4 — 46 kayıt, lookup'tan CANLI okunur. Kampanya seti sık değişir; liste sema'ya YAZILMAZ."
+    closed_set: true
+    note: >-
+      ⭐⭐ **`urn.kod4ID` ÜRÜNÜN KAMPANYA/ÖZEL-FİYAT ETİKETİDİR** — `3 AL 2 ÖDE`,
+      `%50 INDIRIM`, `Kampanya Dışı`, `199.00 TL ÖZEL FİYAT` gibi 46 değer.
+      ⇒ **KAMPANYA ÜYELİĞİ ÜRÜN KARTINDA DURUYOR** ve `bkm.urnkod4log` bunun TAM
+      DEĞİŞİM TARİHÇESİNİ tutuyor (1,34M satır, 2026-04-18'den beri, `kod4eski`/
+      `kod4yeni`/`kisi`/`tarih`). Bu, deponun sahip olduğunu bilmediği bir yetenek:
+      **ürün bazında kampanya üyeliği geçmişi**. CLAUDE.md'nin açık maddesi
+      "3AL2ÖDE gerçek kârlılık etkisi" bu iki kaynakla ölçülebilir hale gelir.
+      Canlı dağılım (2026-09-12): **3 AL 2 ÖDE 427.291 ürün (katalogun ~yarısı)** ·
+      Kampanya Dışı 286.096 · Tanımsız 81.918 · %50 INDIRIM 16.687.
+      ⚠⚠ **TARİHSEL SÜREKSİZLİK — 2026-05-06 ve 2026-05-12'de KATALOG TOPLU YENİDEN
+      ETİKETLENDİ**: iki günde 610.335 ve 610.027 ürün. Etiket bazlı bir zaman serisi
+      bu iki günde KIRILIR; öncesiyle sonrası karşılaştırılamaz.
+      ⚠ `kod4ID` ANLIK durumdur, geçmiş değil. "Bu ürün X kampanyasındaydı" sorusu
+      `urn`den DEĞİL `bkm.urnkod4log`dan yanıtlanır.
+    evidence: "2026-09-12 — lookup örneklemi + urn GROUP BY + urnkod4log'un 2026-05-06/12 günlerinin hedef-kod dökümü (%50 INDIRIM 611.150 · 3 AL 2 ÖDE 412.689). Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+
+  urn.kod5ID:
+    lookup: dbo.urnkod5
+    join: "JOIN dbo.urnkod5 k ON k.kod5ID = urn.kod5ID → k.kod5Ad"
+    kume_kaynagi: "dbo.urnkod5 — 173.629 kayıt. LOOKUP DEĞİL, BOYUT TABLOSU; liste asla yazılmaz, canlı join edilir."
+    closed_set: false
+    note: >-
+      **`urn.kod5ID` = YAZAR / ESER SAHİBİ.** Diğer kodların aksine küçük bir enum değil,
+      **173.629 satırlık bir boyut tablosu** (örn. "Bahtiyar Akyılmaz, Murat Sezginer").
+      ⚠ Değerler ÇOK YAZARLI tek metin olarak tutulmuş — "yazar bazında" analiz yapmak
+      için ayrıştırma gerekir; `kod5ID` tek bir kişiyi DEĞİL bir yazar-kümesini
+      adresler. Yazar bazlı satış analizi yapmadan önce bu beyan edilmeli.
+      Aynı kişi farklı yazımlarla birden çok `kod5ID` taşıyor olabilir (alıcı kodundaki
+      mükerrer-ad tuzağının büyük ölçekli hâli) — ÖLÇÜLMEDİ, açık soru.
+    evidence: "2026-09-12 — satır sayısı + örnek değerler + kolon yapısı. Mükerrerlik ÖLÇÜLMEDİ (beyan). Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+
   frm.frmTip:          # dbo.frmTipTnm (kanonik lookup — hardcode ETME)
     lookup: dbo.frmTipTnm
     join: "LEFT JOIN dbo.frmTipTnm tp ON tp.frmTipID = frm.frmTip → tp.frmTipAd"
