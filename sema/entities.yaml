@@ -28,6 +28,156 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  # ── ŞEMA SÜPÜRMESİ 1. PARTİ (2026-09-12) ──────────────────────────────────
+  # Ölçüm: DerinSISBkm'de 568 DOLU tablo var, sema 45'ini biliyordu (%8);
+  # satır ağırlığında %20. Yedek/temp (124 tablo) elendi → 403 iş tablosu kuyruğu.
+  # Bu parti en AĞIR 8'i (log hariç). Her kayıt sys.columns + sys.indexes + satır
+  # sayısıyla ÖLÇÜLDÜ; iş anlamı ölçülemeyen yerde ÇIKARIM diye işaretlendi.
+  dbo.fytOzl:
+    type: table
+    pk: [fID]
+    key: [fStkID, fTarih, fTarihSon, fTur, fTip, oncekiFiyat, sonrakiFiyat, fFrmID, onay]
+    note: >-
+      FİYAT DEĞİŞİM TARİHÇESİ (özet/geniş sürüm, 27 kolon — indirim kademeleri
+      fInd1..fInd5 + fIndO1.. ile birlikte). `fyt` ile kardeş: `fyt` 12 kolonluk dar
+      sürüm. ⚠ ÇIKARIM: ikisinin iş bölümü ÖLÇÜLMEDİ (hangisi kanonik, hangisi türev).
+    measurement: "2026-09-12 — 155.649.829 satır · 27 kolon · PK fID. DerinSISBkm'in EN BÜYÜK ikinci tablosu."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + dm_db_partition_stats. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  dbo.fyt:
+    type: table
+    pk: [fID]
+    key: [fStkID, fTarih, fYer, fTur, oncekiFiyat, sonrakiFiyat, fFrmID]
+    note: >-
+      FİYAT DEĞİŞİM TARİHÇESİ (dar sürüm, 12 kolon). `fStkID` zaten `sema kapsam`
+      öğrenme kuyruğunda çıkmıştı (8 geçiş / 4 dosya) — kaynağı bu tablo ailesi.
+      `fn_SonGecerliFiyat` TVF'i bu aileyi window'lar (sql-server-conventions § TVF tuzağı).
+    measurement: "2026-09-12 — 15.737.428 satır · 12 kolon · PK fID."
+    evidence: "2026-09-12 — sys.columns + sys.indexes. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.sipAyr:
+    type: table
+    key: [ehID, ehSira, ehStkID, ehAdet, ehAdetN, ehTutar, ehIndirim, ehKDV, ehDurum, ehSevkAdet, ehSipBag]
+    note: >-
+      SİPARİŞ SATIRI (`sip` başlığının ayrıntısı). Kolon adları `irsHrk`/`fatAyr` ile
+      AYNI ÖNEKİ taşır (`eh*`) — aynı tablo sanılmasın.
+      ⚠ PK YOK: 41,7M satırlık tabloda tanımlı birincil anahtar bulunmuyor (ölçüldü).
+      Doğal anahtar `(ehID, ehSira)` görünüyor ama TEKİLLİĞİ SINANMADI — sınanmadan
+      join anahtarı olarak kullanılırsa fan-out riski vardır.
+    measurement: "2026-09-12 — 41.742.913 satır · 25 kolon · PRIMARY KEY TANIMLI DEĞİL."
+    evidence: "2026-09-12 — sys.indexes is_primary_key=1 sorgusu BOŞ döndü. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.fat:
+    type: table
+    pk: [eID]
+    key: [eNo, eMekan, eFirma, eTarihS, eTarih, eGC, eTip, eDurum, eMhsFisID, onay]
+    uses: [codes:fat.eTip]
+    note: >-
+      FATURA BAŞLIĞI. ⚠ SEMA BOŞLUĞUYDU: `codes:fat.eTip` kod kümesi kayıtlıydı ama
+      TABLONUN KENDİSİ entities'te YOKTU (ölçüldü 2026-09-12). Yani kod sözlüğü vardı,
+      kodun ait olduğu nesne yoktu. `eGC` giriş/çıkış · `eTarihS` stok tarihi ·
+      `eFirma → dbo.frm` · `eMhsFisID` muhasebe fişi bağı (SIFIR SENTINEL taşır —
+      11.965 satırda 0 = henüz muhasebeleşmemiş).
+    measurement: "2026-09-12 — 7.050.770 satır · 52 kolon · PK eID."
+    evidence: "2026-09-12 — sys.columns + sys.indexes. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.posOzetUrun:
+    type: table
+    pk: [posMekan, posTarih, posStkID]
+    key: [satAdet, satTutar, satIndirim, iadeAdet, iadeTutar, iadeIndirim, posMaliyet, posKDV]
+    note: >-
+      ⭐ POS ÜRÜN-GÜN ÖZETİ — `irsHrk` ile POS arasındaki KANONİK KÖPRÜ.
+      ERP satıcısı bu köprü için İKİ KONTROL VIEW'I da yazmış:
+      `dbo.kontrol_posOzetUrunirsHrk_vw` (POS'ta var, irsHrk'da YOK = öksüz) ve
+      `dbo.kontrol_posOzetUrunirsHrkAdet_vw` (ikisi var ama ADET uyuşmuyor).
+      Join: `posMekan=ehMekan AND posTarih=ehTrhS AND posStkID=ehstkID`, `ehTip IN (100,101)`.
+      ⚠ `posKDV` **tinyint ve KDV ORANI DEĞİL, KDV KODU** — `dbo.urnKDV.kdvID`e karşılık
+      gelir (1=%0 · 2=%1 · 6=%10 · 7=%20). `urn.KDVs` için sema'nın zaten yazdığı tuzağın
+      POS tarafındaki ikizi. Oran sanıp `/(1+posKDV/100)` yazmak sessiz yanlış rakam üretir
+      (bu oturumda tam bu hata yapıldı ve ölçümle yakalandı).
+    measurement: >-
+      2026-09-12 — 13.151.756 satır · 11 kolon · PK (posMekan, posTarih, posStkID).
+      İst.Yolu Ağu-2026: 77.417 satır · ÖKSÜZ SIFIR (kontrol view'ı 0 satır döndü) ·
+      ürün-gün adetleri irsHrk ile BİREBİR (05.08'de 1.767 ürünün adet uyuşmazlığı 0).
+      posKDV dağılımı: kod 1 → 102,0M ₺ · kod 6 → 8,0M · kod 7 → 10,0M · kod 2 → 161K.
+    ayrinti:
+      ACIK_UC_tutar_tabani: >-
+        ⚠ ADET BİREBİR TUTUYOR AMA TUTAR TUTMUYOR ve SEBEBİ ÖLÇÜLMEDİ.
+        05.08.2026 İst.Yolu, eşleşen 1.767 ürün: POS `satTutar−satIndirim` 367.491,60 ₺
+        vs irsHrk `ehTutarN` 549.066,04 ₺. KDV %0 kodlu (kitap) ürünlerde bile
+        POS 179.239,52 vs irsHrk 353.241,33 — yani **~1,97 KAT**, ve KDV açıklaması YOK.
+        Aylık: POS 120.173.457 vs irsHrk ehTip100 128.097.710.
+        Aynı adet + farklı tutar ⇒ FİYAT TABANI FARKLI. Hangi tarafın hangi tabanı
+        taşıdığı (liste fiyatı / kampanya sonrası / kasiyer indirimi) AÇIK SORUDUR.
+        Bu çözülmeden POS tutarı ciro olarak kullanılamaz.
+    evidence: "2026-09-12 — sorgular/2026-09-12-sema-supurme-parti1.sql + net-ciro-mutabakat blok 5"
+    evidence_status: pending
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.urnBilgi:
+    type: table
+    pk: [bVeriID, bBilgiID]
+    key: [bDeger]
+    note: >-
+      ÜRÜN EK BİLGİ — EAV (entity-attribute-value) deseni: `bVeriID` hangi kayıt,
+      `bBilgiID` hangi alan, `bDeger` değer. Tek kolonda metin; tip yok.
+      ⚠⚠ İSİM ÇAKIŞMASI — `bkm.UrunBilgi` İLE AYNI ŞEY DEĞİLDİR. `bkm.UrunBilgi` BKM'nin
+      kendi zenginleştirilmiş ürün view'ıdır (37 kolon: KatAna/Kategori3/SatisFiyat…);
+      `dbo.urnBilgi` DerinSIS'in yerli EAV tablosudur (3 kolon). Sorguda biri diğerinin
+      yerine yazılırsa hata VERMEZ, yalnız boş/yanlış sonuç döner.
+    measurement: "2026-09-12 — 10.431.581 satır · 3 kolon · PK (bVeriID, bBilgiID)."
+    evidence: "2026-09-12 — sys.columns + sys.indexes. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.urnOzt:
+    type: table
+    pk: [oztStkID, oztMekan]
+    key: [stok, hiz, devir, ilkAlis, ilkSatis, sonAlis, sonSatis, sonCikis, sonAIade, sonSIade, oztEtkin, oztGun, alimYeri, oztFrmID]
+    note: >-
+      ÜRÜN × MEKAN ÖN-AGREGA — stok, hız, devir, ilk/son alış-satış tarihleri tek satırda.
+      PK (oztStkID, oztMekan) yani ürün-mekan grain'i. Ölü stok / devir hızı / son satış
+      gibi sorular için hazır taban; bugüne kadar sema'da YOKTU ve panel bu bilgileri
+      `irsHrk`ten yeniden hesaplıyor olabilir.
+      ⚠ ÇIKARIM: tazeliği ve hangi job'la dolduğu ÖLÇÜLMEDİ — ön-agrega bayatsa sessiz
+      yanlış rakam üretir. Kullanmadan önce `sonSatis` canlı `irsHrk` ile karşılaştırılmalı.
+    measurement: "2026-09-12 — 8.377.810 satır · 47 kolon · PK (oztStkID, oztMekan)."
+    evidence: "2026-09-12 — sys.columns + sys.indexes. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    evidence_status: pending
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  dbo.drn2:
+    type: table
+    pk: [izID]
+    key: [izTrh, izProgID, izTip, izBlg, izBlgID, izKisi, islem, islemNot]
+    note: >-
+      DERİNSİS İZLEME/DENETİM KAYDI (audit trail) — kim, ne zaman, hangi programdan,
+      hangi belgede ne işlem yaptı. `izKisi` kullanıcı · `izBlgID` belge · `islem`/`islemNot`
+      metin. Kapanış-sonrası müdahale ve yetki denetimi için doğrudan muhatap.
+      ⚠ ÇIKARIM: `izTip`/`izProgID` kod kümeleri ÖLÇÜLMEDİ — lookup'ları aranmalı.
+    measurement: "2026-09-12 — 60.571.406 satır · 9 kolon · PK izID. DerinSISBkm'in en büyük üçüncü tablosu."
+    evidence: "2026-09-12 — sys.columns + sys.indexes. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  eftr.efatAyr:
+    type: table
+    pk: [efatID, Sira]
+    key: [Urun, Adet, BrutTutar, KDVHaricNetTutar, KdvYuzdesi, KdvTutari, KDVDahilNetTutar, IndirimTutar, IndirimYuzde, SatirEslesmeDurum, AliciUrunKodu, SaticiUrunKodu]
+    note: >-
+      E-FATURA SATIRI. ⭐ KDV ÜÇ AYRI KOLONDA AÇIK YAZILI: `KDVHaricNetTutar` ·
+      `KdvTutari` · `KDVDahilNetTutar` (+ `KdvYuzdesi` GERÇEK YÜZDE, kod değil).
+      Bu, DerinSIS'in geri kalanından FARKLIDIR: `urn.KDVs` ve `posOzetUrun.posKDV`
+      KOD taşır, burada yüzde doğrudan yazılıdır. Taban karıştırmadan okunabilen tek yer.
+      `SatirEslesmeDurum` gelen faturayı kendi siparişiyle eşleştirme durumu (kod kümesi
+      ÖLÇÜLMEDİ). Kardeşleri: `eftr.efat` başlık (269.624) · `earsv.efatArsv` e-arşiv
+      (6.667.883) · `earsv.eArsvPosSatislar` POS e-arşiv satışı (61.474).
+    measurement: "2026-09-12 — 8.159.668 satır · 27 kolon · PK (efatID, Sira)."
+    evidence: "2026-09-12 — sys.columns + sys.indexes. Arşiv: sorgular/2026-09-12-sema-supurme-parti1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
   # ERP çekirdek
   dbo.urn:
     evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 87 kolon · 838.065 satir · kayittaki 7 pk/key kolonunun 7 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
