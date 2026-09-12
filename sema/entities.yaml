@@ -28,6 +28,103 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  rakip_fiyat_motoru_korlesmis:
+    type: measurement
+    grain: "Rakip fiyat izleme + otomatik yeniden fiyatlama zinciri (2026-09-12)"
+    note: >-
+      ⭐⭐⭐ **BKM'NİN OTOMATİK RAKİP-FİYAT MOTORU VAR VE SEMA ONU HİÇ BİLMİYORDU.**
+      Kullanıcı teyidi: *"otomatik çalışıyordu o sistem örümcek çekip otomatik değişip
+      siteye gidiyor"*. Zincir:
+        `BKMDATA.bkmdata.list_has_price` (ham kazıma: Barcode · Source · Price · CreatedDate)
+        → `BKMDATA.ent.RakipFiyatlari` (PIVOT, **9 rakip sütunu**, `CreatedDate = bugün` süzgeci)
+        → `BKMDATA.dbo.RakipFiyatAnalizBugun` (öneri view'ı)
+        → `ent.OrumcekFiyatAktar2` (SP, aktarım) → `ent.OrumcekBugunDegisenFiyatlar`
+      Girdi listesi `DerinSISBkm.ent.tsoft_rakip_takip` (3.707 ürün — katalogun küçük
+      bir seçkisi, tüm ürünler değil).
+
+      ⭐ **FİYATLAMA KURALI KODDA YAZILI** (view tanımından okundu, tahmin değil):
+        `RakipFiyat = MIN(D&R, KitapYurdu)` — en ucuz rakip
+        `DusulebilirFiyat = ustFiyat / 2` — **liste fiyatının YARISI taban** (max %50 indirim)
+        `YeniFiyat = IIF(DusulebilirFiyat < RakipFiyat, RakipFiyat + 0.01, DusulebilirFiyat)`
+        Süzgeç: yalnız `ustFiyat > RakipFiyat` olan ürünler
+      ⚠ `+ 0.01` yani rakibin **bir kuruş ÜSTÜ**. View'de yoruma alınmış bir
+      `RakipFiyat - 0.01` satırı da duruyor — yönün bilinçli mi kaza mı olduğu
+      ÖLÇÜLEMEZ, bir İŞ KARARIDIR; kullanıcıya sorulmalı.
+
+      ⚠⚠⚠ **MOTOR ÖLMEMİŞ, KÖRLEŞMİŞ — VE SESSİZ.** `RakipFiyatAnalizBugun` bugün
+      **0 satır** döndürüyor. Sebep veri hatası değil: view yalnız `D&R` ve `KitapYurdu`
+      sütunlarını kullanıyor ve **ikisinin de beslemesi durmuş**. Hata YOK, uyarı YOK —
+      ekranda "değişecek fiyat yok" gibi görünüyor.
+      ⇒ Otomatik yeniden fiyatlama pratikte **D&R için 2024-03'ten, KitapYurdu için
+      2025-12'den beri hiçbir öneri üretmiyor.**
+
+      ⭐ **AMA TOPLAMA ALTYAPISI ÇALIŞIYOR**: `Kitapsepeti` bugün dahil her gün akıyor
+      (~7.430 satır/gün, 2 kaynak). Yani sorun "kazıyıcı bozuk" değil, **hedef listesi
+      daralmış**.
+      ⇒ EN UCUZ ONARIM: öneri view'ını `Kitapsepeti`yi de kullanacak şekilde
+      genişletmek. Veri ZATEN geliyor; tek satırlık bir `IIF`/`MIN` değişikliği.
+      Bu, güvenlik duvarı/kazıma sorununa HİÇ dokunmadan motoru diriltir.
+    measurement: >-
+      2026-09-12 — `list_has_price` kaynak bazında son veri tarihi:
+      BKM Kitap 6.899.082 satır → **bugün** · **Kitapsepeti 5.808.482 → bugün** ·
+      Kitap Yurdu 3.164.391 → 2025-12-15 · İdefix 2.577.168 → 2025-12-15 ·
+      Kitap Seç 2.035.188 → 2025-12-15 · Amazon.com.tr 1.891.648 → 2025-12-15 ·
+      D&R 1.389.315 → 2024-03-04 · Ravza Kitap 1.500.818 → 2023-08-13 ·
+      Kidega 810.384 → 2023-08-13 · Kitap365 392.145 → 2022-09-02.
+      ⭐ DÖRT KAYNAK AYNI GÜN (2025-12-15) BİRDEN SUSMUŞ → tek tek bloklanma değil,
+      TEK BİR OLAY (ağ/altyapı/sağlayıcı değişikliği). Sebebi veritabanından
+      ÖLÇÜLEMEZ — beyan edildi.
+      Son 7 gün: günde 7.416-7.434 satır, **2 kaynak**.
+      Canlı satır: tsoft_rakip_takip 3.707 · RakipFiyatlari 3.710 ·
+      **RakipFiyatAnalizBugun 0** · BKMDATA.ent.OdakUrunMaliyet 643.951.
+    evidence: "2026-09-12 — view tanımları okundu (RakipFiyatAnalizBugun, RakipFiyatlari) + kaynak bazında tazelik + günlük hacim ölçümü. Arşiv: sorgular/2026-09-12-rakip-fiyat-motoru.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  fiyat_hedef_marji_iki_kademeli:
+    type: measurement
+    grain: "Hedef marj: ürün bazlı (urn.piyasaMarj) + marka bazlı öndeğer (urnMrk.mrkPiyasaMarjOndeger)"
+    note: >-
+      ⭐ **HEDEF MARJ VERİDE KAYITLI VE YAYGIN — sema bunu bilmiyordu.**
+      İki kademe: `dbo.urn.piyasaMarj` (ürün bazlı) ve
+      `dbo.urnMrk.mrkPiyasaMarjOndeger` (marka bazlı ÖNDEĞER).
+      Ürün bazlı dağılım (yalnız `urnTip=0`): %35 → 131.816 ürün · %20 → 97.479 ·
+      %30 → 83.026 · **%0 → 81.035 (yalnız ~%10)** · %25 → 49.776 · %40 → 45.803 ·
+      %23 → 36.742 · %15 → 33.338 · %10 → 29.982 …
+      ⇒ Katalogun **yaklaşık %90'ında bir hedef marj yazılı.** Fiili marjı hedefle
+      karşılaştıran bir analiz bugün YAPILMIYOR ama veri hazır.
+      Marka bazlı: 10.300 markanın 4.840'ında öndeğer var (%27 → 746 marka · %17 → 655 ·
+      %22 → 542 · %25 → 378 …), 5.460'ında 0.
+      ⚠ İkisi arasındaki ÖNCELİK (ürün mü markayı ezer, boşsa markadan mı düşer)
+      ÖLÇÜLMEDİ — şifreli fiyat fonksiyonlarının içinde. Açık soru.
+      ⚠ `piyasaMarj` bir HEDEFtir, gerçekleşen marj DEĞİL; ikisi karıştırılmaz.
+    measurement: "2026-09-12 — urn.piyasaMarj GROUP BY (urnTip=0) + urnMrk.mrkPiyasaMarjOndeger GROUP BY. Kaynak ipucu: D:/Belgelerim/sql/PiyasaMarjListesi.sql."
+    evidence: "2026-09-12 — iki GROUP BY ölçümü. Arşiv: sorgular/2026-09-12-rakip-fiyat-motoru.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.fytB:
+    type: table
+    pk: [feID]
+    key: [feID, feTip, feTur, feNeden, feOnay, feDurum, feTarihA, feTarihS, feMekansal, feFrmID, gKisi, kKisi, oKisi, oTarih]
+    note: >-
+      ⭐ **FİYAT DEĞİŞİM BELGESİNİN BAŞLIĞI** — `fyt.fhID` ve `fytOzl.fhID` buraya
+      (`feID`) bağlanır; `fytMkn.fhmID` ise belgenin MEKAN listesini taşır
+      (`fytTip=2` "Mekansal Fiyat" mekanizması).
+      Bir ONAY AKIŞI taşıyor: `gKisi/gTarih` (giren) · `kKisi/kTarih` (kaydeden) ·
+      **`oKisi/oTarih` (ONAYLAYAN)** · `feOnay` · `feDurum`.
+      `feNeden` → `dbo.fytNdn` (fiyat değişim nedeni).
+      ⚠⚠ **ÖLÇÜLDÜ — FİYAT DEĞİŞİMLERİNİN %94'Ü OTOMATİK.** Son 2 yılda 86.192 belge:
+      **"Emek Entegrasyon" 81.113 (%94,1)** · "Normal fiyat geçiş" 5.077 (%5,9) ·
+      "Firma Marka Otomatik" 2. **"Rekabet" nedeni HİÇ KULLANILMAMIŞ (0).**
+      ⇒ Fiyat kararlarının ezici çoğunluğu bir ENTEGRASYONDAN geliyor, insan
+      kararından değil. "Rekabet" kodu tanımlı ama ölü — rakip-fiyat motorunun
+      körleşmesiyle (`rakip_fiyat_motoru_korlesmis`) tutarlı.
+      ⚠ Belgelerin **tamamı `feOnay=1`** (86.192/86.192) → onay adımı pratikte bir
+      KONTROL DEĞİL, otomatik bir damga. Bu bir ÖLÇÜMDÜR; tasarım mı arıza mı
+      olduğu ölçülmedi.
+    measurement: "2026-09-12 — 516.632 satır · 28 kolon · PK feID. Son 2 yıl feNeden kırılımı: 4 → 81.113 · 0 → 5.077 · 5 → 2; hepsi feOnay=1."
+    evidence: "2026-09-12 — sys.columns + feNeden×feOnay GROUP BY + fytNdn join. Arşiv: sorgular/2026-09-12-rakip-fiyat-motoru.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
   zirve_view_tanimlari_artik_okunuyor:
     type: measurement
     grain: "BKM_GENEL — 11 view tanımı (GRANT VIEW DEFINITION sonrası, 2026-09-12)"
