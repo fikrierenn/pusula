@@ -18,7 +18,7 @@
     "Koşum: python tools/sema_degismez.py"
   ],
   "_version": 1,
-  "_updated": "2026-09-09",
+  "_updated": "2026-09-12",
   "_run": "python tools/sema_degismez.py (yapısal değişmezler) + python tools/sema_sorgu_dumani.py (queries.yaml katalog dumanı)",
   "invariants": [
     {
@@ -118,12 +118,12 @@
       "id": "sezonluk-etiketi-duruyor",
       "server": "zirve",
       "db": "BKM_GENEL",
-      "question": "Mağaza kapsamında Kadro='SEZONLUK' kaydı hâlâ var mı?",
-      "why": "Etiket yeniden adlandırılırsa sezonluk sayısı SIFIRA düşer ve herkes kadrolu görünür. Sıfır sonuç hata vermez, makul görünür.",
-      "sql": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE Kadro = N'SEZONLUK' AND Lokasyon LIKE 'MA%'",
+      "question": "Mağaza kadrosu taşıyan HER firmada en az bir SEZONLUK etiketi duruyor mu? (vw_PersonelDepartman ÜÇ firmayı birleştirir — firma bazında MIN alınır)",
+      "why": "Etiket yeniden adlandırılırsa sezonluk SIFIRLANIR ve herkes kadrolu görünür. ⚠ ESKİ HALİ DELİKLİYDİ (ölçüldü 2026-09-12): kapı `COUNT(*) ... Lokasyon LIKE 'MA%'` idi ve view üç firmayı birleştirdiği için toplam 257 sayıyordu (BKM_GENEL 167 · BURSA_KÜLTÜR_MERKEZİ 67 · ASİYE_BİNGÖLBALİ 23). BKM_GENEL'in etiketi yeniden adlandırılsa sayı 257→90'a düşer, `min 1` HÂLÂ GEÇER → kapı korumak istediği şey bozulmuşken YEŞİL kalırdı. Karşı-olgu doğrudan koşularak ölçüldü (paylaşılan dosya bozulmadan): eski formül 90 (yeşil) · yeni formül MIN=0 (KIRMIZI). Firma bazında MIN alan hâli, HANGİ firmada etiket kaybolursa kırılır.",
+      "sql": "SELECT MIN(n) FROM (SELECT Firma, SUM(CASE WHEN Kadro = N'SEZONLUK' THEN 1 ELSE 0 END) AS n FROM dbo.vw_PersonelDepartman WHERE Lokasyon LIKE 'MA%' GROUP BY Firma) t",
       "comparison": "min",
       "expected": 1,
-      "verified": "2026-09-03"
+      "verified": "2026-09-12 → MIN=23 (ASİYE_BİNGÖLBALİ taban) · BKM_GENEL 167 · BURSA_KÜLTÜR_MERKEZİ 67. Kırılabilirlik kanıtlandı: BKM_GENEL yeniden adlandırılmış varsayılarak koşuldu → MIN=0 (kırmızı)."
     },
     {
       "id": "primgunu-30-tavani",
@@ -591,6 +591,42 @@
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 1 (grup: normalize 'ERENBORAN', kod2ID 1 ve 6). Normalize etmeyen kontrol 0 donuyor (kor). Arsiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql",
       "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.urnkod2 WITH(NOLOCK)"
+    },
+    {
+      "id": "zirve-aktif-kadroda-personelno-kisiye-esit",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "Aktif kadroda tekil Personelno sayısı, tekil TC kimlik (Vatno) sayısına EŞİT mi?",
+      "why": "⚠ `Personelno` KİŞİ kimliği DEĞİL, ÇALIŞMA DÖNEMİ kimliğidir (ölçüldü 2026-09-12): 1.296 Personelno karşılığında yalnız 1.162 tekil TC kimlik var; 113 kimlik birden çok Personelno taşıyor, bir kişi en fazla 4 tanesini taşıyor (yeniden işe alım + grup içi firma transferi). Bugün AYNI ANDA aktif iki dönem YOK (357 = 357), bu yüzden as-of kadro sayımı Personelno ile GÜVENLİ. Bu kapı o güvenceyi korur: bir kişinin iki dönemi birden aktif görünmeye başlarsa kadro sayımı sessizce şişer ve kimse fark etmez. Kırılabilirlik kanıtlandı: aynı formül tüm kayıtlara (aktif süzgeci olmadan) koşuldu → fark 134 (kırmızı).",
+      "sql": "SELECT (SELECT COUNT(DISTINCT Personelno) FROM dbo.vw_PersonelDepartman WHERE Ict IS NULL) - (SELECT COUNT(DISTINCT Vatno) FROM dbo.vw_PersonelDepartman WHERE Ict IS NULL)",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-12 → 0 (aktif Personelno 357 = aktif Vatno 357). Tüm kayıtta fark 134.",
+      "population": "SELECT COUNT(*) FROM dbo.vw_PersonelDepartman WHERE Ict IS NULL"
+    },
+    {
+      "id": "zirve-kisi-ay-prim-31-tavani",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "Bir KİŞİNİN (TC kimlik) bir aydaki TÜM bordro satırlarının prim günü toplamı 31'i aşıyor mu?",
+      "why": "Kardeş kayıt `primgunu-30-tavani` SATIR bazında bakar ve bir kişinin aynı ay İKİ Personelno ile bordroya girdiği durumu GÖREMEZ (ölçüldü 2026-09-12: 13 kişi-ay böyle, 7'si mağaza; 10'u aynı firma içinde yeniden işe alım, 3'ü grup içi transfer). FTE = SUM(Primgunu)/30 bu satırları TOPLAR; toplam 31'i aşarsa tam gün karşılığı bir kişiyi bir aydan fazla sayar. Bugün aşan YOK (en yüksek tam 31), yani FTE şişmiyor — ama bu bir ÖLÇÜMDÜR, garanti değil. Kırılabilirlik kanıtlandı: eşik 25'e indirilerek koşuldu → 12.327 ihlal (kırmızı).",
+      "sql": "SELECT COUNT(*) FROM (SELECT p.Vatno, b.Yil, b.Ayindex FROM dbo.vw_PuanBil b JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno GROUP BY p.Vatno, b.Yil, b.Ayindex HAVING SUM(CONVERT(int, ISNULL(b.Primgunu, 0))) > 31) t",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-12 → 0. Nüfus 14.309 kişi-ay. Eşik 25 ile 12.327 (kırılabilir).",
+      "population": "SELECT COUNT(*) FROM (SELECT p.Vatno, b.Yil, b.Ayindex FROM dbo.vw_PuanBil b JOIN dbo.vw_PersonelDepartman p ON p.Personelno = b.Personelno GROUP BY p.Vatno, b.Yil, b.Ayindex) t"
+    },
+    {
+      "id": "zirve-vw-puanbil-bkm-dilimi-tabana-esit",
+      "server": "zirve",
+      "db": "BKM_GENEL",
+      "question": "vw_PuanBil'in Firma='BKM_GENEL' dilimi, ham dbo.puanbil satır sayısına eşit mi?",
+      "why": "⭐ `vw_PuanBil` ÜÇ FİRMAYI birleştirir (34.397), ham `dbo.puanbil` yalnız BKM_GENEL'dir (27.931) — ölçüldü 2026-09-12, aritmetik birebir kapanıyor. View, bu kimliğin (rapor_readonly) DOĞRUDAN OKUYAMADIĞI diğer firma veritabanlarını sahiplik zinciriyle okur; yani kapsamı dışarıdan görünmez. Bu kapı iki şeyi birden korur: (a) view bir firmayı sessizce DÜŞÜRÜRSE (izin/bağlantı değişikliği) fark açılır, (b) ham tabloya BKM dışı satır sızarsa fark açılır. İkisi de bordro kapsamını sessizce kaydırır. Kırılabilirlik kanıtlandı: BKM süzgeci kaldırılarak koşuldu → fark 6.466 (kırmızı).",
+      "sql": "SELECT ABS((SELECT COUNT(*) FROM dbo.vw_PuanBil WHERE Firma = 'BKM_GENEL') - (SELECT COUNT(*) FROM dbo.puanbil))",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-12 → 0 (27.931 = 27.931). Süzgeçsiz fark 6.466.",
+      "population": "SELECT COUNT(*) FROM dbo.puanbil"
     }
   ]
 }
