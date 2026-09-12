@@ -732,12 +732,26 @@ else
         // satıyordu-durdu 72.196 çeşit. İkisi AYRI problem: birincisi ALIM hatası
         // (yanlış ürün alındı), ikincisi TALEP kaybı (ne zaman durdu). Tek sayıda
         // toplanınca bu ayrım kayboluyordu. Listede "Son Satış" kolonu sıralanabilir.
-        new("BAĞLI SERMAYE", "Ölü Stok", TlKisa(k.HareketsizTutar),
-            $"{k.HareketsizCesit:N0} çeşit · 365 günde hiç satmadı, rafa çıkmış",
+        // ══ KULLANICI OKUYAMADI (12.09.2026) ══════════════════════════════════════
+        // Soru birebir: "satmayan çeşit 115 bin mi 43 bin mi · 144,7 milyon mu 52,7 milyon mu".
+        // Kart İKİ İÇ İÇE kohortu yan yana koyuyordu ve hangi sayının hangisiyle eşleştiği
+        // belli değildi. 43.715, 115.932'nin ALT KÜMESİ (SonSatis NULL) — ayrı bir kart değil.
+        // Düzeltme: dip şerit başlığı "İÇİNDEN" diyor, alt satır iki kohortu AYRI yazıyor.
+        //
+        // ⚠ TABAN MALİYETE GEÇTİ (B-172(b) tutarlılığı): Aşırı Stok maliyete geçmişti, bu kart
+        // etikette kalmıştı → iki kart farklı dil konuşuyordu.
+        // ⚠ ÖLÇÜM SÜRPRİZİ — etiket bu kohortu YANLIŞ TARTIYOR:
+        //     eskiden satmış, durmuş : 72.217 çeşit · etiket 92,0M · maliyet 24,2M (3,8×)
+        //     hiç satılmamış         : 43.715 çeşit · etiket 52,7M · maliyet 46,8M (1,1×)
+        // Yani hiç satılmamışlar çeşidin %38'i, etiketin %36'sı ama MALİYETİN %66'sı.
+        // Etiket fiyatıyla "küçük" görünen kohort, bağlanan paranın üçte ikisi.
+        new("BAĞLI SERMAYE", "Ölü Stok", TlKisa(k.HareketsizMaliyet),
+            $"{k.HareketsizCesit:N0} çeşit · 365 günde satış yok · etiketle "
+            + $"{TlKisa(k.HareketsizTutar)} · bunun {k.HicSatilmamisCesit:N0} çeşidi HİÇ satmamış",
             "error", "arsiv", SatisDurumFiltre.Hareketsiz,
-            Taban: "stok değeri · POS'ta da satmayanlar",
-            CiftBaslik: $"Hiç satılmamış · {k.HicSatilmamisCesit:N0} çeşit",
-            CiftDeger: TlKisa(k.HicSatilmamisTutar),
+            Taban: "maliyet · POS'ta da satmayanlar",
+            CiftBaslik: $"İÇİNDEN hiç satmamış · {k.HicSatilmamisCesit:N0} çeşit",
+            CiftDeger: TlKisa(k.HicSatilmamisMaliyet),
             CiftDurum: SatisDurumFiltre.Hareketsiz,
             Sahip: "satınalma + finans"),
 

@@ -686,6 +686,20 @@ public sealed partial class SatisAnaliziQueries(
                    -- HAREKETSİZLERİN KAÇI HİÇ SATILMAMIŞ (kullanıcı isteği 10.09).
                    -- İki AYRI problem: hiç satılmamış = ALIM hatası · satıyordu durdu =
                    -- TALEP kaybı. Aynı kartta tek sayı olarak toplanınca ayrım kayboluyordu.
+                   -- B-172(b) devamı (12.09.2026): ölü stok da MALİYETLE. Aşırı Stok maliyete
+                   -- geçince bu kart etikette kalmıştı → iki kart farklı taban konuşuyordu.
+                   -- ÖLÇÜLDÜ: etiket 144,7M ₺ · maliyet 71,0M ₺.
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS HareketsizMaliyet,
+                   -- ⚠ ÖLÇÜM SÜRPRİZİ: "hiç satılmamış" çeşidin %38'i ve etiketin %36'sı AMA
+                   -- MALİYETİN %66'sı (46,8M / 71,0M). Etiket fiyatıyla bakınca küçük görünüyor;
+                   -- bağlanan para asıl ORADA. Eskiden satmış kohortta etiket/maliyet 3,8×,
+                   -- hiç satmamışta 1,1× — ikisi AYNI kartta tek sayıyla anlatılamaz.
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart} AND t.SonSatis IS NULL
+                        AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS HicSatilmamisMaliyet,
                    SUM(CASE WHEN {OluStokSart} AND t.SonSatis IS NULL THEN 1 ELSE 0 END)              AS HicSatilmamisCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart}
                         AND t.SonSatis IS NULL THEN t.Tutar ELSE 0 END))                AS HicSatilmamisTutar,
@@ -769,6 +783,8 @@ public sealed partial class SatisAnaliziQueries(
             PosBrutToplam: satirlar.Sum(x => x.PosBrutToplam),
             PosNetToplam: satirlar.Sum(x => x.PosNetToplam),
             MarjCesit: satirlar.Sum(x => x.MarjCesit),
+            HareketsizMaliyet: satirlar.Sum(x => x.HareketsizMaliyet),
+            HicSatilmamisMaliyet: satirlar.Sum(x => x.HicSatilmamisMaliyet),
             HicSatilmamisCesit: satirlar.Sum(x => x.HicSatilmamisCesit),
             HicSatilmamisTutar: satirlar.Sum(x => x.HicSatilmamisTutar),
             RafsizAdet: satirlar.Sum(x => x.RafsizAdet),
@@ -951,6 +967,8 @@ public sealed partial class SatisAnaliziQueries(
         decimal MaliyetliDeger, decimal MaliyetKapsamEtiket,
         decimal PosNetKdvHaric, decimal SatilanMaliyet,
         decimal PosBrutToplam, decimal PosNetToplam, int MarjCesit,
+        // ⚠ SQL'de HicSatilmamisCesit'ten ÖNCE geliyorlar (Dapper pozisyonel).
+        decimal HareketsizMaliyet, decimal HicSatilmamisMaliyet,
         int HicSatilmamisCesit, decimal HicSatilmamisTutar, long RafsizAdet,
         // ⚠ SIRA SQL SELECT SIRASIYLA AYNI OLMAK ZORUNDA — Dapper pozisyonel record'da
         // isim değil SIRA eşler. Talep deseni agregaları SQL'de RafsizAdet'ten HEMEN SONRA

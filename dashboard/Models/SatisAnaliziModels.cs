@@ -267,6 +267,13 @@ public sealed record SatisAnaliziKpi(
     decimal AsiriStokOdakVarTutar,
     int HareketsizCesit,
     decimal HareketsizTutar,
+    /// <summary>Ölü stoğun MALİYETİ (B-172(b) devamı) — etiket 144,7M ₺ iken 71,0M ₺.</summary>
+    decimal HareketsizMaliyet,
+    /// <summary>
+    /// Hiç satılmamışların maliyeti. ⚠ Çeşidin %38'i, etiketin %36'sı ama MALİYETİN %66'sı
+    /// (46,8M / 71,0M) — etiket fiyatı bu kohortu küçük gösteriyordu.
+    /// </summary>
+    decimal HicSatilmamisMaliyet,
     /// <summary>
     /// RAFA HİÇ ÇIKMAMIŞ — merkeze girmiş, mağazaya hiç girmemiş, merkezde stoğu var.
     /// Kullanıcı isteği 09.09: "gelmiş ama mağazaya gitmemiş te bir kpi olmalı".
