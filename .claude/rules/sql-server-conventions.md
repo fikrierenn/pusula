@@ -115,6 +115,36 @@ CASE WHEN s.DocumentsTypeId <> 3 THEN ... END
 - Değişmez: `etip4-magaza-satis-istyolu-anlamli` · sema: `MEKAN_CIRO_MUTABAKAT_FORMULU`,
   `KANAL_AYRACI_KANONIK`. Kanıt: `sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql` blok 9.
 
+## POS ÖZET ↔ STOK DEFTERİ: KURUŞU KURUŞUNA KİMLİK (12.09.2026 ölçüldü)
+
+`dbo.posOzetUrun` DerinSIS'in **POS ürün-gün özeti**dir ve `irsHrk` ile kanonik
+köprüyü kurar. ERP satıcısı bu köprü için iki kontrol view'ı da yazmış:
+`dbo.kontrol_posOzetUrunirsHrk_vw` (POS'ta var, defterde YOK = öksüz) ve
+`dbo.kontrol_posOzetUrunirsHrkAdet_vw` (ikisi var, ADET uyuşmuyor).
+Ölçüm (İst.Yolu Ağu-2026): **öksüz 0 · adet uyuşmazlığı 0.**
+
+**Kanonik formül:**
+```sql
+-- join: posMekan=ehMekan AND posTarih=ehTrhS AND posStkID=ehstkID
+-- KDV:   posOzetUrun.posKDV = urnKDV.kdvID
+irsHrk.ehTutarN (ehTip=100) = SUM( posOzetUrun.satTutar  / (1 + urnKDV.kdvYuzde/100) )
+irsHrk.ehTutarN (ehTip=101) = SUM( posOzetUrun.iadeTutar / (1 + urnKDV.kdvYuzde/100) )
+```
+Tam-ay koşumu: POS 128.097.715,43 ↔ defter 128.097.709,99 → **fark +5,44 ₺**
+(128 milyon üzerinde; satır-başı yuvarlama). İade: 1.677.233,89 ↔ 1.677.233,65.
+
+⚠ **ÜÇ TUZAK BİR ARADA** (üçü de 12.09'da yaşandı, ölçümle yakalandı):
+1. **`posKDV` ORAN DEĞİL KOD** — `tinyint`, `urnKDV.kdvID`e karşılık gelir
+   (1=%0 · 2=%1 · 6=%10 · 7=%20). `/(1+posKDV/100)` yazmak sessiz yanlış rakam üretir.
+   `urn.KDVs` için zaten yazılı olan tuzağın POS ikizi.
+2. **`satTutar` KDV DAHİLDİR** — `ehTutarN` KDV hariçtir, doğrudan karşılaştırılamaz.
+3. **`satIndirim` ÇIKARILMAZ** — indirim `satTutar` içinde ZATEN uygulanmıştır; bu kolon
+   yalnız indirimin TUTARINI bildirir. Çıkarınca tutar yarıya iner ve "fiyat tabanı
+   farklı" gibi **SAHTE bir bulgu** doğar (tam bu oldu: "~1,97 kat" diye açık soru
+   yazıldı, sebep ölçüm hatasıydı).
+
+Kanıt: `sorgular/2026-09-12-posozeturun-irshrk-kimlik.sql` · sema: `entities:dbo.posOzetUrun`.
+
 ## MERKEZ DEPO STOĞU = HER ZAMAN WMS (KRİTİK — kullanıcı direktifi 03.09.2026)
 
 _"ERP merkez depo defteri senkron sorunu var, her zaman WMS stoklarına bakmalısın."_

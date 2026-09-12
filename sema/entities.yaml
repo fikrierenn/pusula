@@ -104,18 +104,33 @@ entities:
       İst.Yolu Ağu-2026: 77.417 satır · ÖKSÜZ SIFIR (kontrol view'ı 0 satır döndü) ·
       ürün-gün adetleri irsHrk ile BİREBİR (05.08'de 1.767 ürünün adet uyuşmazlığı 0).
       posKDV dağılımı: kod 1 → 102,0M ₺ · kod 6 → 8,0M · kod 7 → 10,0M · kod 2 → 161K.
+    formula: >-
+      irsHrk.ehTutarN (ehTip=100) = SUM( posOzetUrun.satTutar  / (1 + urnKDV.kdvYuzde/100) )
+      irsHrk.ehTutarN (ehTip=101) = SUM( posOzetUrun.iadeTutar / (1 + urnKDV.kdvYuzde/100) )
+      Join: posKDV = urnKDV.kdvID
     ayrinti:
-      ACIK_UC_tutar_tabani: >-
-        ⚠ ADET BİREBİR TUTUYOR AMA TUTAR TUTMUYOR ve SEBEBİ ÖLÇÜLMEDİ.
-        05.08.2026 İst.Yolu, eşleşen 1.767 ürün: POS `satTutar−satIndirim` 367.491,60 ₺
-        vs irsHrk `ehTutarN` 549.066,04 ₺. KDV %0 kodlu (kitap) ürünlerde bile
-        POS 179.239,52 vs irsHrk 353.241,33 — yani **~1,97 KAT**, ve KDV açıklaması YOK.
-        Aylık: POS 120.173.457 vs irsHrk ehTip100 128.097.710.
-        Aynı adet + farklı tutar ⇒ FİYAT TABANI FARKLI. Hangi tarafın hangi tabanı
-        taşıdığı (liste fiyatı / kampanya sonrası / kasiyer indirimi) AÇIK SORUDUR.
-        Bu çözülmeden POS tutarı ciro olarak kullanılamaz.
-    evidence: "2026-09-12 — sorgular/2026-09-12-sema-supurme-parti1.sql + net-ciro-mutabakat blok 5"
-    evidence_status: pending
+      TUTAR_TABANI_COZULDU: >-
+        ⭐ KURUŞU KURUŞUNA KİMLİK (ölçüldü 2026-09-12, İst.Yolu Ağu-2026 TAM AY):
+          POS satTutar KDV HARİÇ  128.097.715,43  ↔  irsHrk ehTip=100  128.097.709,99
+                                                       fark **+5,44 ₺** (%0,0000)
+          POS iadeTutar KDV HARİÇ   1.677.233,89  ↔  irsHrk ehTip=101    1.677.233,65
+                                                       fark **+0,24 ₺**
+        128 milyon üzerinde 5 lira = satır-başı yuvarlama.
+        ⚠ İKİ KURAL, İKİSİ DE ÖLÇÜLDÜ:
+        (1) `satTutar` **KDV DAHİLDİR** ve `ehTutarN` KDV hariçtir. Ürün bazında oran
+            tam KDV koduna oturuyor: kod 1 (%0) → 1,000 · kod 2 (%1) → 0,990 ·
+            kod 6 (%10) → 0,909 · kod 7 (%20) → 0,833.
+        (2) `satIndirim` **AYRICA DÜŞÜLMEZ** — indirim `satTutar` içinde ZATEN
+            uygulanmıştır; `satIndirim` yalnız uygulanan indirimin TUTARINI bildirir.
+            Örnek (stkID 1732640, 05.08): satTutar 23.275,50 · satIndirim 23.275,50 ·
+            ehTutarN 23.275,50 — yani %50 indirimli satış, ikisi de aynı sayı.
+        ⚠ BU İKİSİ BU OTURUMDA YANLIŞ YAPILDI: `satTutar − satIndirim` hesaplandı ve
+        "~1,97 kat fark, fiyat tabanı farklı" diye AÇIK SORU yazıldı. Sebep tabanın
+        farkı değil, ÇİFT İNDİRİM DÜŞÜMÜYDÜ. Ölçüm düzeltti; kayıt burada tutuluyor
+        çünkü aynı hata bir daha yapılabilir.
+    evidence: >-
+      2026-09-12 — ürün bazında oran sınaması + tam-ay kimlik koşumu.
+      Arşiv: sorgular/2026-09-12-posozeturun-irshrk-kimlik.sql
     confidence: 0.8
     last_verified: "2026-09-12"
   dbo.urnBilgi:
