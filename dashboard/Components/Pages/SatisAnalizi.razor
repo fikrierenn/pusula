@@ -163,6 +163,12 @@
             <li><b>Raf kaybı: yılda 5+ satış.</b> Ayraç talep, merkez stoğu değil — merkez
                 ekseninde desen monoton bile değildi, o ölçüt reddedildi. Talep kanıtı olmayan
                 8.736 çeşit bulunurluk kaybı değil <b>ölü stok</b>.</li>
+            <li><b>Maliyet kapsamı düzgün dağılmıyor.</b> Maliyeti bilinen çeşit oranı
+                evrende %88,5, ölü stokta %79,9, hiç satmamış stokta <b>%76,1</b>. Maliyetli
+                toplamlar bu yüzden <b>alt sınırdır</b> ve eksiklik en çok satmayan malda.
+                Ayrıca maliyeti satış fiyatını aşan kayıtlar değerlemeden çıkarıldı
+                (yukarıda ayrı satır) — 12.09.2026'da bu düzeltilmeden önce "hiç satmamış"
+                rakamının %64'ü iki muhasebe kaleminden geliyordu.</li>
             <li><b>Talep sınıfı eşikleri dışarıdan</b> (ADI 1,32 · CV² 0,49) — bizim verimizden
                 türetilmedi.</li>
             <li><b>Veriden seçilen eşiğin bedeli:</b> ilk üçü aynı veriden seçildi. Bu yöntem
@@ -419,6 +425,24 @@ else
                 (negatif stok ya da fiyat 0 · @Tl(k.VeriKirliTutar)) —
                 negatif stok her zaman veri kiri değil, transfer kabulü gecikmişse de böyle görünür.
                 <span class="underline">listele</span>
+            </span>
+        </button>
+    }
+    @* MALİYET KAYDI ŞÜPHELİ (12.09.2026) — değerlemeden çıkarılan para GİZLENMEZ.
+       Bulundu: "hiç satmamış 46,8M ₺"nin %64'ü 38 çeşitten geliyordu; ikisi ürün bile
+       değildi ("Muhtelif Ürün" 23,2M · "İskonto ve Fiyat Farkı" 6,6M). *@
+    @if (k.MaliyetSupheliCesit > 0)
+    {
+        <button type="button" class="flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content mb-3"
+                @onclick="() => KartTikla(SatisDurumFiltre.MaliyetSupheli, null, null)">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-error shrink-0"></span>
+            <span>
+                <b>@k.MaliyetSupheliCesit.ToString("N0") çeşitte maliyet kaydı şüpheli</b>
+                (maliyet satış fiyatını aşıyor · yazılı maliyet @Tl(k.MaliyetSupheliMaliyet),
+                etiket karşılığı @Tl(k.MaliyetSupheliTutar)) — bu kayıtlar maliyet
+                toplamlarına <b>girmiyor</b>: stok, maliyet ile net gerçekleşebilir değerin
+                düşüğü ile değerlenir. Ya fiyat ya maliyet yanlış; hangisi olduğunu panel
+                bilemez. <span class="underline">listele</span>
             </span>
         </button>
     }

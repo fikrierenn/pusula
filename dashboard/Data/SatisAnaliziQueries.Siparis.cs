@@ -204,7 +204,7 @@ public sealed partial class SatisAnaliziQueries
                 WHERE h.ehTip = 2 AND h.ehTrhS >= DATEADD(MONTH, -24, @kesim)
             )
             SELECT COUNT(*) AS Cesit,
-                   CONVERT(decimal(18,2), ISNULL(SUM(CASE WHEN t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), ISNULL(SUM(CASE WHEN {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriEsikSql})
                              * t.BirimMaliyet ELSE 0 END), 0)) AS FazlaMaliyet
             FROM {Taban} t WITH (NOLOCK)

@@ -223,6 +223,26 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   (e) ⚠ Alıcıya atıf YAPILAMAZ (karar sahibi veride izli değil) — bunlar ürün/tedarikçi
   kohortu, kişi karnesi değil.
 
+- [x] ✅ **B-175 MALİYET KAYDI ŞÜPHELİ — "hiç satmamış 46,8M"in %64'ü iki muhasebe kalemiymiş**
+  12.09.2026, hesap-sorma toplantısı ÖNCESİ `veri-dogrula` QA'sında yakalandı. `stkID 128118
+  "Muhtelif Ürün"` (5 adet × 4.640.370 ₺ = 23,2M) ve `stkID 81809 "İskonto ve Fiyat Farkı"`
+  (6,6M) ürün değil, muhasebe kalemi — ama ERP'de `urnTip=0` normal ürün olduğu için hiçbir
+  süzgece takılmıyordu. Düzeltme: `MaliyetGuvenilirSart` (maliyet ≤ satış fiyatı, TMS 2),
+  20 maliyet toplamı buna geçti; dışlanan para gizlenmedi (ayrı satır + liste filtresi).
+  ETKİ: hiç satmamış 46,8M→16,9M · ölü stok 71,0M→41,0M · envanter 409,6M→378,1M ·
+  aşırı stok 74,7M→73,7M. Kırılabilirlik kanıtlandı. Arşiv:
+  `sorgular/2026-09-12-maliyet-kaydi-supheli.sql`
+- [ ] **B-176 "Muhtelif Ürün" / "İskonto ve Fiyat Farkı" ERP'de `urnTip=0` — BAŞKA analizler?**
+  Bu kalemler ürün master'ında normal ürün olarak duruyor. Satış analizi paneli artık maliyet
+  tarafında eliyor ama ADET/ÇEŞİT sayan ve maliyet kullanmayan başka raporlar bunları hâlâ ürün
+  sayıyor olabilir. Taranacak: `scripts/*.py` rapor scriptleri · `RefQueries.Envanter` ·
+  ölü stok Excel çıktıları. Muhasebeye sorulacak: bu kalemler neden stok kartı taşıyor?
+- [ ] **B-177 KAYIP FORMÜLÜ bugünkü fiyatla şişiyor (ÖLÇÜLDÜ 12.09, düzeltilmedi)**
+  `SezonToplam × SatisFiyat` bugünkü fiyatı geçen sezonun adediyle çarpıyor. Ölçüldü: stoksuz
+  kohort bugünkü fiyatla 20,40M ₺, geçen sezon o ürünlerden FİİLEN yapılan ciro **14,01M ₺**
+  → **%45,6 şişik**. Talebi kanıtlı dilim: 9,37M vs **6,89M** → %36 şişik.
+  Seçenek: kaybı gerçekleşen ciroyla göstermek (tahmin değil, ölçüm) ya da fiyatı sezon
+  tarihine indirgemek. Toplantıda GERÇEKLEŞEN CİRO kullanılıyor.
 - [ ] **B-172 Satış Analizi — DANIŞMAN İTİRAZLARI (satinalma-danisman 10.09, UYGULANMADI)** —
   Dört ölçüt değişikliği adil-atıf ve perverse-incentive açısından denetlendi; üç ağır bulgu:
   (a) ✅ **KAPANDI 12.09** — iki kart da artık ZIT YÖNLÜ iki satır taşıyor.

@@ -279,6 +279,41 @@ public sealed partial class SatisAnaliziQueries(
     private const string DefterGuvenilmezSart = "(NOT " + DefterGuvenilirSart + ")";
 
     /// <summary>
+    /// MALİYET KAYDI GÜVENİLİR — <c>0 &lt; BirimMaliyet ≤ SatisFiyat</c>.
+    ///
+    /// ⚠ NEDEN VAR (veri-dogrula bulgusu 12.09.2026, hesap-sorma toplantısı ÖNCESİ yakalandı):
+    /// "hiç satmamış stok 46,8M ₺" rakamının <b>%64'ü (29,9M ₺) yalnız 38 çeşitten</b>
+    /// geliyordu ve o çeşitlerin etiket karşılığı toplam <b>80 bin ₺</b>ydi. İki tanesi ürün
+    /// bile değil, muhasebe kalemi:
+    ///   · <c>stkID 128118 "Muhtelif Ürün"</c> — 5 adet × 4.640.370 ₺ = <b>23.201.852 ₺</b>
+    ///   · <c>stkID 81809 "İskonto ve Fiyat Farkı"</c> — 1.055 adet × 6.279 ₺ = 6.624.345 ₺
+    /// İkisi de ERP'de <c>urnTip = 0</c> (normal ürün) olarak tanımlı — bu yüzden
+    /// <c>urnTip</c> süzgeci bunları ELEMİYOR (kontrol edildi: <c>urnTip &lt;&gt; 0</c> → 0 kayıt).
+    /// Ölçülen yayılım: 258 çeşit / <b>31,4M ₺</b> yazılı maliyet = tüm evren maliyetinin %7,7'si.
+    /// Hiç satmamış kohortunda ortalama <c>maliyet/fiyat</c> <b>7,32</b> (satan üründe 0,44),
+    /// en uçta <b>232.018×</b>.
+    ///
+    /// ⚠ NEDEN BU ÖLÇÜT MEŞRU (keyfî bir kesim değil): <b>TMS 2 / IAS 2</b> — stok, maliyet
+    /// ile net gerçekleşebilir değerin <b>DÜŞÜĞÜ</b> ile değerlenir. Maliyeti satış fiyatını
+    /// aşan bir kayıt değerleme tabanı olamaz; ya fiyat ya maliyet yanlıştır ve hangisi
+    /// olduğunu panel bilemez. Bu yüzden kayıt <b>dışlanır ve AYRICA SAYILIR</b> (sessizce
+    /// düzeltilmez) — <c>MaliyetSupheliSart</c>.
+    ///
+    /// ⚠ SESSİZ KAPSAM DARALMASI DEĞİL: dışlanan kısım kendi kartını taşıyor. Maliyet
+    /// kapsamı zaten rastgele DEĞİL — evren %88,5 · ölü stok %79,9 · hiç satmamış %76,1
+    /// (yani "alt sınır" beyanı tek başına yetmiyordu, sayısı da yazılmalı).
+    ///
+    /// AŞIRI STOK KARTI BU BULGUDAN ETKİLENMEDİ: kirlilik 0,97M / 74,67M = %1,3 (ölçüldü).
+    /// Arşiv: <c>sorgular/2026-09-12-maliyet-kaydi-supheli.sql</c>
+    /// </summary>
+    private const string MaliyetGuvenilirSart =
+        "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)";
+
+    /// <summary>Maliyeti satış fiyatını AŞAN kayıt — değerlemeye girmez, ayrı sayılır.</summary>
+    private const string MaliyetSupheliSart =
+        "(t.BirimMaliyet > 0 AND t.BirimMaliyet > t.SatisFiyat)";
+
+    /// <summary>
     /// TALEP DESENİ SINIFLARI — Syntetos/Boylan/Croston (2005) dörtlü sınıflandırması.
     /// Eşikler <b>ADI = 1,32</b> (ortalama talep-arası aralık, ay) ve <b>CV² = 0,49</b>
     /// (sıfır-olmayan talep büyüklüklerinin kareli değişim katsayısı).
@@ -698,7 +733,7 @@ public sealed partial class SatisAnaliziQueries(
                         THEN 1 ELSE 0 END)                                        AS StoksuzKanitliCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.SezonToplam >= 20
                         THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))            AS StoksuzKanitliKayip,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.SezonToplam) * t.BirimMaliyet
                         ELSE 0 END))                                                  AS StoksuzMaliyet,
                    SUM(CASE WHEN {StoksuzSezonSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS StoksuzOdakCesit,
@@ -711,10 +746,10 @@ public sealed partial class SatisAnaliziQueries(
                    -- gösteriyordu; maliyetle 111,6M ₺ (2,91 kat şişik ceza). Dahası eşiğe
                    -- KADARKİ stok meşrudur — ceza yalnız FAZLA kısma yazılır: 73,2M ₺.
                    -- Maliyet kapsamı ölçüldü: 28.974/30.403 çeşit (%95,3) · etiketin %97,5'i.
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS AsiriMaliyet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriEsikSql})
                              * t.BirimMaliyet ELSE 0 END))                        AS AsiriFazlaMaliyet,
                    SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS AsiriOdakCesit,
@@ -745,13 +780,13 @@ public sealed partial class SatisAnaliziQueries(
                    -- ⚠ KAYIP POTANSİYELİ kartları (Sezon Stok Açığı · Stokta Yokluk · Sezonluk
                    -- Raf Açığı) ÇEVRİLMEDİ ve çevrilmemeli: kaçan satış SATIŞ FİYATIYLA ölçülür,
                    -- maliyetle değil. Taban farkı orada DOĞRU.
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafBosSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafBosSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS RafBosMaliyet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafsizSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafsizSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS RafsizMaliyet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {DengesizSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {DengesizSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS DengesizMaliyet,
                    SUM(CASE WHEN {RafBosSart} THEN 1 ELSE 0 END)                                             AS RafBosCesit,
@@ -766,6 +801,15 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {DefterGuvenilmezSart} THEN 1 ELSE 0 END)  AS KirliCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {DefterGuvenilmezSart}
                         THEN t.Tutar ELSE 0 END))                                          AS KirliTutar,
+                   -- MALİYET KAYDI ŞÜPHELİ (12.09.2026): maliyet satış fiyatını aşıyor.
+                   -- Değerlemeden ÇIKARILDI ama gizlenmedi — dışlanan para burada görünür.
+                   -- ⚠ Dapper POZİSYONEL: record'da da KirliTutar'dan HEMEN SONRA duruyor.
+                   SUM(CASE WHEN {MaliyetSupheliSart} THEN 1 ELSE 0 END) AS MaliyetSupheliCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetSupheliSart}
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                          AS MaliyetSupheliMaliyet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetSupheliSart}
+                        THEN t.Tutar ELSE 0 END))                             AS MaliyetSupheliTutar,
                    -- YENİ ÜRÜN — "henüz değerlendirilemez" kovası (adil-atıf). Hareketsiz/aşırı
                    -- ölçütleri bu ürünleri KASITLI dışlıyor; kaç çeşit ve ne kadar para o
                    -- kararın DIŞINDA kaldığı görünmeli, yoksa dışlama sessiz kalır.
@@ -782,7 +826,7 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {SezonHazirlikSart} THEN 1 ELSE 0 END)                    AS SezonAcikCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart}
                         THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikTutar,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.SezonToplam - t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                                  AS SezonAcikMaliyet,
                    SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS SezonAcikOdakCesit,
@@ -793,27 +837,27 @@ public sealed partial class SatisAnaliziQueries(
                    -- ⚠ NULL olanlar toplama GİRMEZ: maliyeti bilinmeyen ürünü 0 maliyetle
                    -- toplamak marjı %100 gösterir (sessiz yanlış rakam). Kapsam AYRI ölçülür
                    -- ve ekranda yazılır — dışlama sessiz kalmaz.
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet ELSE 0 END)) AS MaliyetliDeger,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetGuvenilirSart}
                         THEN t.Tutar ELSE 0 END))                                          AS MaliyetKapsamEtiket,
                    -- Marj yalnız İKİSİ de bilinen üründe hesaplanır (maliyet VE POS satışı).
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetGuvenilirSart} AND t.PosAdet > 0
                         THEN t.PosNet - t.PosKdv ELSE 0 END))                              AS PosNetKdvHaric,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetGuvenilirSart} AND t.PosAdet > 0
                         THEN CONVERT(decimal(18,4), t.PosAdet) * t.BirimMaliyet ELSE 0 END)) AS SatilanMaliyet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetGuvenilirSart} AND t.PosAdet > 0
                         THEN t.PosBrut ELSE 0 END))                                        AS PosBrutToplam,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {MaliyetGuvenilirSart} AND t.PosAdet > 0
                         THEN t.PosNet ELSE 0 END))                                         AS PosNetToplam,
-                   SUM(CASE WHEN t.BirimMaliyet > 0 AND t.PosAdet > 0 THEN 1 ELSE 0 END)   AS MarjCesit,
+                   SUM(CASE WHEN {MaliyetGuvenilirSart} AND t.PosAdet > 0 THEN 1 ELSE 0 END)   AS MarjCesit,
                    -- HAREKETSİZLERİN KAÇI HİÇ SATILMAMIŞ (kullanıcı isteği 10.09).
                    -- İki AYRI problem: hiç satılmamış = ALIM hatası · satıyordu durdu =
                    -- TALEP kaybı. Aynı kartta tek sayı olarak toplanınca ayrım kayboluyordu.
                    -- B-172(b) devamı (12.09.2026): ölü stok da MALİYETLE. Aşırı Stok maliyete
                    -- geçince bu kart etikette kalmıştı → iki kart farklı taban konuşuyordu.
                    -- ÖLÇÜLDÜ: etiket 144,7M ₺ · maliyet 71,0M ₺.
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS HareketsizMaliyet,
                    -- ⚠ ÖLÇÜM SÜRPRİZİ: "hiç satılmamış" çeşidin %38'i ve etiketin %36'sı AMA
@@ -821,7 +865,7 @@ public sealed partial class SatisAnaliziQueries(
                    -- bağlanan para asıl ORADA. Eskiden satmış kohortta etiket/maliyet 3,8×,
                    -- hiç satmamışta 1,1× — ikisi AYNI kartta tek sayıyla anlatılamaz.
                    CONVERT(decimal(18,2), SUM(CASE WHEN {OluStokSart} AND t.SonSatis IS NULL
-                        AND t.BirimMaliyet > 0
+                        AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS HicSatilmamisMaliyet,
                    SUM(CASE WHEN {OluStokSart} AND t.SonSatis IS NULL THEN 1 ELSE 0 END)              AS HicSatilmamisCesit,
@@ -842,7 +886,7 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {SezonRafAcigiSart} THEN 1 ELSE 0 END)               AS SezonRafCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart}
                         THEN {SezonRafAcigiTutar} ELSE 0 END))                        AS SezonRafTutar,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart} AND t.BirimMaliyet > 0
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart} AND {MaliyetGuvenilirSart}
                         THEN CONVERT(decimal(18,4), {SezonRafEksikAdet}) * t.BirimMaliyet
                         ELSE 0 END))                                                  AS SezonRafMaliyet,
                    -- Karşı-metrik: merkezde bekleyen adet — transferin hammaddesi
@@ -905,6 +949,9 @@ public sealed partial class SatisAnaliziQueries(
             RafBosSatisliCesit: satirlar.Sum(x => x.RafBosSatisliCesit),
             VeriKirliCesit: satirlar.Sum(x => x.KirliCesit),
             VeriKirliTutar: satirlar.Sum(x => x.KirliTutar),
+            MaliyetSupheliCesit: satirlar.Sum(x => x.MaliyetSupheliCesit),
+            MaliyetSupheliMaliyet: satirlar.Sum(x => x.MaliyetSupheliMaliyet),
+            MaliyetSupheliTutar: satirlar.Sum(x => x.MaliyetSupheliTutar),
             YeniCesit: satirlar.Sum(x => x.YeniCesit),
             YeniTutar: satirlar.Sum(x => x.YeniTutar),
             DengesizCesit: satirlar.Sum(x => x.DengesizCesit),
@@ -1106,6 +1153,8 @@ public sealed partial class SatisAnaliziQueries(
         decimal RafBosMaliyet, decimal RafsizMaliyet, decimal DengesizMaliyet,
         int RafBosCesit, decimal RafBosTutar, long RafBosSatisliCesit,
         int KirliCesit, decimal KirliTutar,
+        // ⚠ SQL'de KirliTutar'dan HEMEN SONRA (pozisyonel — sıra sözleşmedir).
+        int MaliyetSupheliCesit, decimal MaliyetSupheliMaliyet, decimal MaliyetSupheliTutar,
         int YeniCesit, decimal YeniTutar,
         int DengesizCesit, decimal DengesizTutar,
         int SezonAcikCesit, decimal SezonAcikTutar, decimal SezonAcikMaliyet,

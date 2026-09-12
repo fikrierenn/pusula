@@ -163,9 +163,10 @@ public static class DurumAdlari
     {
         [SatisDurumFiltre.Hepsi] = "(hepsi)",
         [SatisDurumFiltre.StoksuzSezon] = "Stokta yokluk — sezon ürünü",
-        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (kategori eşiği 2-8×)",
+        [SatisDurumFiltre.AsiriStok] = "Aşırı stok (2× sezon ve 5× ikmal kapağı)",
         [SatisDurumFiltre.Hareketsiz] = "Ölü stok (satış yok)",
         [SatisDurumFiltre.VeriKirli] = "Veri kirli",
+        [SatisDurumFiltre.MaliyetSupheli] = "Maliyet kaydı şüpheli (maliyet > fiyat)",
         [SatisDurumFiltre.SadeceTaze] = "Yalnız taze stok",
         [SatisDurumFiltre.Rafsiz] = "Rafa hiç çıkmamış envanter",
         [SatisDurumFiltre.RafBos] = "Raf bulunurluk kaybı (merkezde var)",
@@ -196,6 +197,12 @@ public enum SatisDurumFiltre
     Hareketsiz,
     /// <summary>Negatif stok / fiyat 0 — veri kiri.</summary>
     VeriKirli,
+
+    /// <summary>
+    /// Maliyet kaydı şüpheli — <c>BirimMaliyet &gt; SatisFiyat</c>. Değerlemeye girmez,
+    /// ayrı listelenir (muhasebe kalemi / yanlış maliyet güncellemesi adayı).
+    /// </summary>
+    MaliyetSupheli,
     /// <summary>YALNIZ taze stok (son N günde mal kabulü olanlar) — filtrenin tersi.</summary>
     SadeceTaze,
 
@@ -326,6 +333,16 @@ public sealed record SatisAnaliziKpi(
     long RafBosSatisliCesit,
     int VeriKirliCesit,
     decimal VeriKirliTutar,
+    /// <summary>
+    /// MALİYET KAYDI ŞÜPHELİ (12.09.2026): <c>BirimMaliyet &gt; SatisFiyat</c>. TMS 2 gereği
+    /// stok, maliyet ile net gerçekleşebilir değerin DÜŞÜĞÜ ile değerlenir; bu kayıtlar
+    /// değerlemeye GİRMEZ ama gizlenmez — dışlanan para bu alanda görünür.
+    /// ÖLÇÜLDÜ: 258 çeşit / 31,4M ₺ yazılı maliyet (evren maliyetinin %7,7'si). İki kalem
+    /// ürün bile değil: "Muhtelif Ürün" 23,2M ₺ · "İskonto ve Fiyat Farkı" 6,6M ₺.
+    /// </summary>
+    int MaliyetSupheliCesit,
+    decimal MaliyetSupheliMaliyet,
+    decimal MaliyetSupheliTutar,
     /// <summary>YENİ ÜRÜN — hareketsiz/aşırı ölçütlerinin KASITLI dışladığı kova.
     /// Dışlama sessiz kalmasın diye ayrı gösterilir (adil-atıf).</summary>
     int YeniCesit,

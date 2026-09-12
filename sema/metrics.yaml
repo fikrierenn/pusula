@@ -2608,6 +2608,43 @@ metrics:
     evidence: "2026-09-10 — sorgular/2026-09-10-iade-hakki-vekili.sql blok 1 + 2"
     last_verified: "2026-09-10"
 
+  maliyet_kaydi_supheli:
+    type: rule
+    unit: none
+    basis: cost
+    additivity: none
+    title: "MALİYET KAYDI ŞÜPHELİ — maliyet satış fiyatını aşamaz (TMS 2)"
+    rule: >-
+      Maliyetli her toplam `BirimMaliyet > 0 AND BirimMaliyet <= SatisFiyat` ön-şartını taşır
+      (`SatisAnaliziQueries.MaliyetGuvenilirSart`, 20 yerde TEK KAYNAK). Şartı sağlamayan kayıt
+      değerlemeye GİRMEZ ama gizlenmez: `MaliyetSupheliSart` ile ayrı sayılır, ekranda kendi
+      satırı ve `SatisDurumFiltre.MaliyetSupheli` liste filtresi vardır.
+      Gerekçe TMS 2 / IAS 2: stok, maliyet ile net gerçekleşebilir değerin DÜŞÜĞÜ ile değerlenir.
+      Panel hangisinin (fiyat mı maliyet mi) yanlış olduğunu bilemez — düzeltmez, dışlar ve sayar.
+    measurement: >-
+      2026-09-12 (hesap-sorma toplantısı ÖNCESİ veri-dogrula QA'sında yakalandı) —
+      "hiç satmamış stok 46,8M ₺"nin %64'ü (29,9M) yalnız 38 çeşitten geliyordu ve o çeşitlerin
+      etiket karşılığı toplam 80 bin ₺'ydi. İkisi ürün bile değil: stkID 128118 "Muhtelif Ürün"
+      5 adet × 4.640.370 ₺ = 23.201.852 ₺ · stkID 81809 "İskonto ve Fiyat Farkı" 1.055 × 6.279 =
+      6.624.345 ₺. İkisi de ERP'de urnTip=0 (normal ürün) → urnTip süzgeci ELEMİYOR
+      (tabanda urnTip<>0 → 0 kayıt, sızıntı ERP ürün master'ında).
+      Hiç satmamış kohortunda ortalama BirimMaliyet/SatisFiyat = 7,32 (satan üründe 0,44),
+      uçta 232.018×. Yayılım 258 çeşit / 31,4M ₺ = evren maliyetinin %7,7'si.
+      MALİYET KAPSAMI RASTGELE DEĞİL: maliyeti bilinen çeşit oranı evren %88,5 · ölü stok %79,9 ·
+      hiç satmamış %76,1 — "alt sınır" beyanı tek başına yetmiyor, eksiklik en çok konuşulan
+      kohortta yığılı.
+      ETKİ: hiç satmamış 46,8M→16,9M · ölü stok 71,0M→41,0M · envanter maliyet 409,6M→378,1M ·
+      aşırı stok fazla 74,7M→73,7M (kirlilik %1,3, bu kart zaten temizdi) · marj %31,4→%31,5.
+      KIRILABİLİRLİK: şart (BirimMaliyet>0) hâline döndürüldü → 46,8M geri geldi → geri alındı.
+    evidence: "sorgular/2026-09-12-maliyet-kaydi-supheli.sql"
+    last_verified: "2026-09-12"
+    note: >-
+      ⚠ Bu bir VERİ KALİTESİ kapısıdır, iş kuralı değil. Şüpheli kayıt sayısı düşerse sebebi
+      ERP'de düzeltme olabilir; artarsa maliyet güncelleme job'u bozulmuş olabilir — her iki yön
+      de bakılmayı hak eder.
+      ⚠ "Muhtelif Ürün" / "İskonto ve Fiyat Farkı" gibi muhasebe kalemlerinin ürün master'ında
+      urnTip=0 ile durması AYRI bir açık kalem: başka analizler de bunları ürün sayıyor olabilir.
+
   asiri_stok_esigi_medyan:
     type: rule
     unit: none

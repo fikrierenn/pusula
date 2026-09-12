@@ -933,6 +933,8 @@ public sealed partial class SatisAnaliziQueries
             // KPI KirliCesit ile AYNI ifade. Mekan bazlı negatif dahil — merkez pozitifken
             // mağaza rafındaki eksi stok gizleniyordu (ölçüldü: 187 çeşit / 4,89M ₺).
             SatisDurumFiltre.VeriKirli => DefterGuvenilmezSart,
+            // KPI MaliyetSupheliCesit ile AYNI ifade (ayrışırsa kart ve liste ayrı sayı gösterir).
+            SatisDurumFiltre.MaliyetSupheli => MaliyetSupheliSart,
             // Filtrenin TERSİ: yalnız taze stok. TazeGunHaric ile birlikte kullanılmaz (biri diğerini boşaltır).
             SatisDurumFiltre.SadeceTaze =>
                 "(COALESCE(t.SonGiris, t.IlkGiris, t.AcilisTarihi) >= DATEADD(DAY, -@tazeGun, @kesim))",
