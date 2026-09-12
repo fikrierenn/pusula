@@ -21,6 +21,15 @@ metrics:
         doğrulanamaz; kırık değil ama kanıt da değil)
       · **107 kayıt HİÇBİR uygulama dosyasına işaret etmiyor** — ne arşiv SQL,
         ne dashboard kodu. "Bu metrik nerede hesaplanıyor?" sorusunun cevabı sema'da YOK.
+      ── KAPATMA İLERLEMESİ ──
+      2026-09-12: **107 → 106.** İlk kapatılan `net_ciro` (en çok atıf alan metrik —
+      kendi tanımı hariç repoda 36 geçiş / 12 dosya; ölçüldü). Formülü koşturuldu ve
+      EncoreMerkez ile mutabakat yapıldı: Ağu-2026'da üç mağazada +%0,27 / +%0,57 /
+      +%1,35 sapma. Arşiv: sorgular/2026-09-12-net-ciro-mutabakat.sql
+      Sıradaki en çok atıf alanlar (ölçüldü): pos_sistem_gecisi_2025 (8 geçiş) ·
+      marj_kdv_tabani (6) · envanter_exclusions (5) · asiri_stok_esigi_turetildi (5) ·
+      hediye_ceki (5). ⚠ 69 metrik repoda HİÇ atıf almıyor — onlar için soru
+      "kanıt nasıl yazılır" değil, "bu kayıt hâlâ gerekli mi".
       ⇒ `semantic-layer.md` § KEŞİF SQL'İ ARŞİVLE (ikiz yükümlülük) kuralı metrics
       tarafında UYGULANMAMIŞ. Kural yazılı, karşılığı yok — `test-discipline.md`
       § YAZILI KURAL ≠ UYGULANAN KURAL sınıfının bir örneği daha.
@@ -186,8 +195,25 @@ metrics:
     evidence: "2026-06-17 — dashboard build yeşil, OluStokSql OUTER APPLY fat5 eklendi"
 
   net_ciro:
-    evidence_status: pending
-    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
+    evidence: >-
+      2026-09-12 FORMÜL KOŞTURULDU VE BAĞIMSIZ KAYNAKLA MUTABAKAT YAPILDI
+      (Ağustos 2026, KDV hariç, 3 POS mağazası):
+        FSM      sema 17.368.275,52  ↔ EncoreMerkez 17.137.629,93  → +%1,35
+        Özlüce   sema 26.451.485,24  ↔ EncoreMerkez 26.380.600,59  → +%0,27
+        İst.Yolu sema 140.497.681,60 ↔ EncoreMerkez 139.696.939,15 → +%0,57
+      İki taraf AYNI kapsamla ölçüldü (irsHrk `ehAltDepo=0` · Encore
+      `DocumentsTypeId IN (1,2,3,6,7,8)`, iade negatif; Sınav kanalı İKİ tarafta da içeride).
+      ⚠ SAPMA SIFIR DEĞİL — "tuttu" eşit demek değildir. Kalan farkın kaynağı ÖLÇÜLMEDİ
+      (adaylar: iade zamanlaması, adet düzeltmesi, gün sınırı). İddia edilen tek şey
+      İKİ BAĞIMSIZ YOLUN AYNI BÜYÜKLÜĞÜ VERDİĞİdir.
+      Arşiv: sorgular/2026-09-12-net-ciro-mutabakat.sql
+    applied_in: "sorgular/2026-09-12-net-ciro-mutabakat.sql (kanıt koşumu)"
+    kapsam_uyarisi: >-
+      Formülün `ehTip=1` (Satış) terimi POS MAĞAZALARINDA SIFIRDIR (ölçüldü 2026-09-12:
+      mekan 1/4477/4478 için Ağu-2026'da hiç kayıt yok). `ehTip=1` canlıda en büyük tip
+      (31,2M satır) ama başka mekanlarda — depo/merkez. Yani bu metrik ÇOK KANALLIDIR;
+      mağaza ölçümünde `1` terimi taşınır ama katkı vermez. Mağaza-özel ciro için
+      kanonik formül `sql-server-conventions` § ŞUBE CİROSU'ndadır (100−101+4−5).
     type: simple
     unit: TL
     basis: vat_excl
