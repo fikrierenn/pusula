@@ -225,7 +225,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 - [ ] **B-172 Satış Analizi — DANIŞMAN İTİRAZLARI (satinalma-danisman 10.09, UYGULANMADI)** —
   Dört ölçüt değişikliği adil-atıf ve perverse-incentive açısından denetlendi; üç ağır bulgu:
-  (a) **KARŞI-METRİK DENGESİ TERS** (en ciddi). Aşırı Stok'un karşı-metriği "ODAK'ta da var"
+  (a) ✅ **KAPANDI 12.09** — iki kart da artık ZIT YÖNLÜ iki satır taşıyor.
+  Aşırı Stok'a HAFİFLETİCİ: "iade kanalı çalışmış" (son 24 ayda bu üründen fiilen alış
+  iadesi) — ölçüldü 9.501 çeşit / 8,3M ₺ fazla maliyet (%11,5). ⚠ vekil: ürün bazında iade
+  HAKKI veride yok, ölçülen kanalın çalıştığı. Stokta Yokluk'a AĞIRLAŞTIRICI: "talebi
+  KANITLI (sezon ≥20)" — ölçüldü 356 çeşit (%4,4) kaybın %46'sını taşıyor (9,37M ₺).
+  ~~(a) KARŞI-METRİK DENGESİ TERS (en ciddi).~~ Aşırı Stok'un karşı-metriği "ODAK'ta da var"
   = ceza AĞIRLAŞTIRICI; Stokta Yokluk/Sezon Açığı'nın "ODAK'ta var → hızlı temin" = ceza
   HAFİFLETİCİ. Üstüne aşırı stok TAM ölçülüyor (etiket değeri), stokta yokluk ALT SINIR
   (sansürlü talep) → rasyonel alıcı **az alır**, görünmez kayıp büyür. Düzeltme: Aşırı Stok'a

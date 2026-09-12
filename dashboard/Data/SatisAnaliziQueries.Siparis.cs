@@ -173,6 +173,50 @@ public sealed partial class SatisAnaliziQueries
                                  int AcilCesit, long AcilAdet);
 
     /// <summary>
+    /// AŞIRI STOK HAFİFLETİCİSİ (B-172a, 12.09.2026) — bu üründen tedarikçiye FİİLEN iade
+    /// yapılmış mı (son 24 ay, <c>irsHrk.ehTip = 2</c> Alış İade).
+    ///
+    /// ⚠ NEDEN GEREKLİ: `satinalma-danisman` en ciddi itirazı — karşı-metrik dengesi TERSTİ.
+    /// Aşırı Stok'un karşı-metriği ("ODAK'ta da var") cezayı AĞIRLAŞTIRIYOR, Stokta Yokluk'unki
+    /// ("ODAK'ta var → hızlı temin") HAFİFLETİYORDU. Üstüne aşırı stok TAM ölçülüyor, kayıp
+    /// ALT SINIR → rasyonel alıcı AZ ALIR ve görünmez kayıp büyür. Denge için aşırı stoğa
+    /// hafifletici, kayba ağırlaştırıcı eklendi.
+    ///
+    /// ⚠ VEKİL, HAK DEĞİL: `urn.alimIadeYok` tek değer taşıyor (ürün bazında iade hakkı veride
+    /// YOK — değişmez `urn-alimIadeYok-hala-bilgi-tasimiyor`). Bu yüzden ölçülen şey "iade
+    /// HAKKI" değil "iade KANALI fiilen çalışmış" — geçmişte iade edilmiş ürün için o kanalın
+    /// açık olduğu GÖZLENMİŞTİR. Ölçüldü: 9.501 çeşit / fazla maliyet 8,3M ₺ (aşırı stok fazla
+    /// maliyetinin %11,5'i).
+    ///
+    /// ⚠ NEDEN AYRI SORGU: `irsHrk` join'i gerektirir, KPI sorgusu taban-only ve zaten 8632
+    /// sınırına yakın (bkz. SiparisOzetAsync).
+    /// </summary>
+    public async Task<AsiriIadeOzet> AsiriIadeOzetAsync(
+        System.Data.Common.DbConnection conn, SatisAnaliziFiltre f, CancellationToken ct = default)
+    {
+        var sql = $"""
+            WITH iade AS (
+                SELECT DISTINCT h.ehstkID AS stkID
+                FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+                WHERE h.ehTip = 2 AND h.ehTrhS >= DATEADD(MONTH, -24, @kesim)
+            )
+            SELECT COUNT(*) AS Cesit,
+                   CONVERT(decimal(18,2), ISNULL(SUM(CASE WHEN t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriStokKatSql} * t.SezonToplam)
+                             * t.BirimMaliyet ELSE 0 END), 0)) AS FazlaMaliyet
+            FROM {Taban} t WITH (NOLOCK)
+            JOIN iade i ON i.stkID = t.stkID
+            WHERE t.Kesim = @kesim AND t.SezonYil = @sezon{TazeSart(f)}
+              AND {AsiriStokSart}
+            """;
+        return await conn.QuerySingleAsync<AsiriIadeOzet>(new CommandDefinition(sql, KesimP(f),
+            commandTimeout: 120, cancellationToken: ct));
+    }
+
+    /// <summary>Aşırı stoğun iade kanalı gözlenmiş dilimi — hafifletici.</summary>
+    public sealed record AsiriIadeOzet(int Cesit, decimal FazlaMaliyet);
+
+    /// <summary>
     /// KATEGORİ YIL ORANI — bu yıl / geçen yıl AYNI takvim penceresi (1 Ağu → kesim).
     ///
     /// ⚠ "Geçen yıl kadar al" bir VARSAYIMDIR; bu ölçüm onu sayıya çevirir. Ölçüldü

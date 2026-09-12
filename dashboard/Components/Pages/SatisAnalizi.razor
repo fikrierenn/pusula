@@ -840,9 +840,17 @@ else
             "error", "uyari", SatisDurumFiltre.StoksuzSezon,
             Taban: "kayıp potansiyeli · sezon adedi × satış fiyatı",
             IkinciEtiket: "maliyetle", IkinciDeger: TlKisa(k.StoksuzSezonMaliyet),
-            Kirilim: [new("ODAK'ta var · hızlı temin", $"{k.StoksuzSezonOdakVarCesit:N0} çeşit",
-                          TlKisa(k.StoksuzSezonOdakVarKayip), SatisDurumFiltre.StoksuzSezon,
-                          OdakVar: true, AltKume: true)],
+            // B-172(a) DENGE: burada da iki zıt satır — ilki AĞIRLAŞTIRIR (talebi kanıtlı
+            // dilim; ölçüldü: 356 çeşit kaybın %46'sını taşıyor), ikincisi HAFİFLETİR
+            // (ODAK'ta var → hızlı temin). Önceden yalnız hafifletici vardı.
+            Kirilim:
+            [
+                new("Talebi KANITLI (≥20)", $"{k.StoksuzKanitliCesit:N0} çeşit",
+                    TlKisa(k.StoksuzKanitliKayip), SatisDurumFiltre.StoksuzSezon, AltKume: true),
+                new("ODAK'ta var · hızlı temin", $"{k.StoksuzSezonOdakVarCesit:N0} çeşit",
+                    TlKisa(k.StoksuzSezonOdakVarKayip), SatisDurumFiltre.StoksuzSezon,
+                    OdakVar: true, AltKume: true),
+            ],
             Sahip: "satınalma"),
 
         // ⚠ TABAN BİRLEŞTİRME (12.09.2026): STOK DEĞERİ gösteren kartlar MALİYETE geçti.
@@ -905,9 +913,18 @@ else
             // ⚠ TUTAR ÇIKARILDI: ana sayı artık MALİYET, bu karşı-metrik ETİKET tutarıydı —
             // aynı kartta iki farklı taban yan yana duruyordu. Çeşit sayısı belirsizlik taşımaz.
             // ODAK kesişiminin maliyetli karşılığı ölçülmedi (TODO B-172a ile birlikte).
-            Kirilim: [new("ODAK'ta da var · çift stok", null,
-                          $"{k.AsiriStokOdakVarCesit:N0} çeşit", SatisDurumFiltre.AsiriStok,
-                          OdakVar: true, AltKume: true)],
+            // B-172(a) DENGE: bu kartta iki satır artık ZIT yönde çalışıyor —
+            // ilki cezayı HAFİFLETİR (iade kanalı gözlenmiş → geri döndürülebilir),
+            // ikincisi AĞIRLAŞTIRIR (grup içinde çift stok). Önceden yalnız ağırlaştırıcı
+            // vardı ve alıcıyı "az al" yönüne itiyordu (danışmanın en ciddi itirazı).
+            Kirilim:
+            [
+                new("İade kanalı çalışmış", $"{k.AsiriIadeCesit:N0} çeşit",
+                    TlKisa(k.AsiriIadeFazlaMaliyet), SatisDurumFiltre.AsiriStok, AltKume: true),
+                new("ODAK'ta da var · çift stok", null,
+                    $"{k.AsiriStokOdakVarCesit:N0} çeşit", SatisDurumFiltre.AsiriStok,
+                    OdakVar: true, AltKume: true),
+            ],
             Sahip: "satınalma"),
 
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Mağaza Arası Dengesizlik", TlKisa(k.DengesizMaliyet),

@@ -265,6 +265,13 @@ public sealed record SatisAnaliziKpi(
     decimal StoksuzSezonKayip,
     /// <summary>Kaçan adedin MALİYETİ — kayıp ile arasındaki fark KAÇAN BRÜT KÂR.</summary>
     decimal StoksuzSezonMaliyet,
+    /// <summary>
+    /// AĞIRLAŞTIRICI (B-172a): talebi KANITLI dilim — geçen sezon ≥ 20 adet satmış.
+    /// Ölçüldü: 356 çeşit (%4,4) kaybın %46'sını taşıyor. Kayıp tahmini zaten ALT SINIR
+    /// (sağdan sansür) olduğu için bu dilim "kesin kaçan satış"a en yakın olanıdır.
+    /// </summary>
+    int StoksuzKanitliCesit,
+    decimal StoksuzKanitliKayip,
     int StoksuzSezonOdakVarCesit, // ODAK'ta var → hızlı temin, gerçek kayıp değil
     decimal StoksuzSezonOdakVarKayip,
     int AsiriStokCesit,
@@ -277,6 +284,14 @@ public sealed record SatisAnaliziKpi(
     /// ⚠ Maliyeti bilinmeyen çeşit 0 sayılır → rakam ALT SINIR (kapsam %95,3 çeşit / %97,5 etiket).
     /// </summary>
     decimal AsiriStokFazlaMaliyet,
+    /// <summary>
+    /// HAFİFLETİCİ (B-172a): aşırı stoğun tedarikçiye İADE KANALI gözlenmiş dilimi
+    /// (son 24 ayda bu üründen fiilen alış iadesi yapılmış). Ölçüldü: 9.501 çeşit /
+    /// 8,3M ₺ fazla maliyet — toplam fazlanın %11,5'i.
+    /// ⚠ VEKİL: ürün bazında iade HAKKI veride yok; ölçülen şey kanalın çalıştığıdır.
+    /// </summary>
+    int AsiriIadeCesit,
+    decimal AsiriIadeFazlaMaliyet,
     int AsiriStokOdakVarCesit,    // ODAK'ta da var → grup içinde çift stok
     decimal AsiriStokOdakVarTutar,
     int HareketsizCesit,

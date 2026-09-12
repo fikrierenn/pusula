@@ -598,6 +598,17 @@ public sealed partial class SatisAnaliziQueries(
                    -- her şeyde"). Kayıp kartlarında ANA sayı satış fiyatıdır (kaçan ciro);
                    -- maliyet karşılığı = kaçan adet × birim maliyet → aradaki fark KAÇAN BRÜT
                    -- KÂR. İki sayı yan yana durunca kartın parası ölçülebilir hâle geliyor.
+                   -- B-172(a) AĞIRLAŞTIRICI (12.09.2026, satinalma-danisman): karşı-metrik
+                   -- dengesi TERSTİ — aşırı stokun karşı-metriği cezayı ağırlaştırıyor,
+                   -- stokta yokluğunki hafifletiyordu → rasyonel alıcı AZ ALIR, görünmez
+                   -- kayıp büyür. Bu kohortta ağırlaştırıcı: TALEBİ KANITLI dilim.
+                   -- ÖLÇÜLDÜ: sezon ≥ 20 adet satmış 356 çeşit (%4,4) kaybın %46'sını
+                   -- taşıyor (9,37M ₺ / 20,4M ₺). Eşik 20, 10.09 raf-kaybı ölçümünden:
+                   -- 20-49 bandında gerçekleşme %57,4 (Wilson GA komşularıyla ayrık).
+                   SUM(CASE WHEN {StoksuzSezonSart} AND t.SezonToplam >= 20
+                        THEN 1 ELSE 0 END)                                        AS StoksuzKanitliCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.SezonToplam >= 20
+                        THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))            AS StoksuzKanitliKayip,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.BirimMaliyet > 0
                         THEN CONVERT(decimal(18,4), t.SezonToplam) * t.BirimMaliyet
                         ELSE 0 END))                                                  AS StoksuzMaliyet,
@@ -766,6 +777,8 @@ public sealed partial class SatisAnaliziQueries(
         // ulaşıldı" verdi ve panel HİÇ açılmadı (ölçüldü 11.09.2026). Ayrı sorgu hem sınırı
         // aşmıyor hem maliyeti izole ediyor.
         var siparis = await SiparisOzetAsync(conn, f, ct);
+        // B-172(a) hafifletici — irsHrk join'i gerektirdiği için AYRI sorgu.
+        var asiriIade = await AsiriIadeOzetAsync(conn, f, ct);
 
         var kpi = new SatisAnaliziKpi(
             ToplamStok: satirlar.Sum(x => x.Stok),
@@ -779,12 +792,16 @@ public sealed partial class SatisAnaliziQueries(
             StoksuzSezonCesit: satirlar.Sum(x => x.StoksuzCesit),
             StoksuzSezonKayip: satirlar.Sum(x => x.StoksuzKayip),
             StoksuzSezonMaliyet: satirlar.Sum(x => x.StoksuzMaliyet),
+            StoksuzKanitliCesit: satirlar.Sum(x => x.StoksuzKanitliCesit),
+            StoksuzKanitliKayip: satirlar.Sum(x => x.StoksuzKanitliKayip),
             StoksuzSezonOdakVarCesit: satirlar.Sum(x => x.StoksuzOdakCesit),
             StoksuzSezonOdakVarKayip: satirlar.Sum(x => x.StoksuzOdakKayip),
             AsiriStokCesit: satirlar.Sum(x => x.AsiriCesit),
             AsiriStokTutar: satirlar.Sum(x => x.AsiriTutar),
             AsiriStokMaliyet: satirlar.Sum(x => x.AsiriMaliyet),
             AsiriStokFazlaMaliyet: satirlar.Sum(x => x.AsiriFazlaMaliyet),
+            AsiriIadeCesit: asiriIade.Cesit,
+            AsiriIadeFazlaMaliyet: asiriIade.FazlaMaliyet,
             AsiriStokOdakVarCesit: satirlar.Sum(x => x.AsiriOdakCesit),
             AsiriStokOdakVarTutar: satirlar.Sum(x => x.AsiriOdakTutar),
             HareketsizCesit: satirlar.Sum(x => x.HareketsizCesit),
@@ -986,7 +1003,9 @@ public sealed partial class SatisAnaliziQueries(
     private sealed record OzetSatirRow(
         string Ad, int Cesit, long Stok, long MagazaStok, long MerkezStok, decimal Tutar, long Satis365, double GunlukHiz, long Sezon,
         int StoksuzCesit, decimal StoksuzKayip,
-        decimal StoksuzMaliyet,   // ⚠ SQL'de StoksuzKayip'ten HEMEN SONRA
+        // ⚠ SQL SIRASI: StoksuzKayip → KanitliCesit → KanitliKayip → StoksuzMaliyet
+        int StoksuzKanitliCesit, decimal StoksuzKanitliKayip,
+        decimal StoksuzMaliyet,
         int StoksuzOdakCesit, decimal StoksuzOdakKayip,
         int AsiriCesit, decimal AsiriTutar,
         // ⚠ SQL'de AsiriTutar ile AsiriOdakCesit ARASINA girer (Dapper pozisyonel).
