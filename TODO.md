@@ -13,6 +13,21 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-09-12 — B-172 kapanışı · toplantı hazırlığı · gün-içi ciro paneli (10 commit)
+- **B-172(c) eşiğe iş modeli ayağı** (`a9f67e5`): ölçüt iki ayaklı (2× sezon VE 5× ikmal kapağı).
+  Kat 5 veriden değil devir hedefinden. Sezon ekseni yanlış pozitif üretiyormuş (4.904 çeşit,
+  medyan devir 2,25 ↔ temiz grup 2,40). Panelde 40.017 → 37.103 çeşit, 83,3M → 74,7M ₺.
+- **Maliyet kaydı şüpheli** (`a331f1f`): "hiç satmamış 46,8M"in %64'ü iki muhasebe kalemiydi
+  ("Muhtelif Ürün" 23,2M · "İskonto ve Fiyat Farkı" 6,6M, ikisi de ERP'de `urnTip=0`).
+  TMS 2 ön-şartı eklendi → 16,9M. Toplantı öncesi `veri-dogrula` QA'sında yakalandı.
+- **Açık sipariş ölçüldü** (`bf12c2e`): "yolda mal var" itirazı talebi kanıtlı kohortta %85
+  geçersiz (52/356). Fazla maliyetin %85'inde sipariş durmuş — alıcı lehine bulgu.
+- **ODAK ağırlaştırıcısı kaldırıldı** (`ece0290`), yerine yaş satırı (21.282 çeşit / 58,6M ₺).
+- **Toplantı çalışma listeleri** (`7e8d24f`) + **mağaza günlük ciro raporu** (`90f498b`,
+  `ec52e82`) + **Gün Karşılaştırma paneli** (`64d901f`).
+- **İade kaynağına yazılır** (`69597ce`) — iadenin %90'ı Sınav iadesi; **kasa→ERP saatlik
+  aktarım** sema'ya işlendi (`aac41e3`, 52. değişmez).
+
 ### 2026-09-09 — Satış Analizi paneli + ürün drill (plan-42, 3 commit + uncommitted)
 - **Panel canlı:** `/satis-analizi` — 46 MB elle Excel raporunun (273.515 ürün × 26 kolon) yerine ön-agrega `bkm.SatisAnaliziTaban` (kesim başına 275.059 satır, 6 index, son 3 kesim tutulur). Sayfa 17 ms · KPI 196 ms · arama 346 ms. Kullanıcı seçmeli 31 kolon (tercih `dbo.PanelKolonTercih`, düşen anahtar UI'da görünür).
 - **Ürün drill** (`/satis-analizi/urun/{stkId}`, modal DEĞİL — ayrı sayfa): sipariş kararı + görsel · stok nerede · aylık satış/alış (AYRI ölçek) · **mağaza stoğu çizgisi** · giriş maliyeti + **iki yönlü marj** · **sezon ayrımlı tükenme** · yaş/tazelik.
