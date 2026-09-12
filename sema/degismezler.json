@@ -542,6 +542,18 @@
       "protects": [],
       "verified": "2026-09-12 → 0 belge. Kapsam ayni sorgunun eFirma sarti atilmis hali (population) ile olculur; o sifirsa KOSAMADI doner (nufus kapisi).",
       "population": "SELECT COUNT(DISTINCT i.eID) FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK) JOIN DerinSISBkm.dbo.irs i WITH (NOLOCK) ON i.eID = h.ehID WHERE h.ehTrhS >= DATEADD(MONTH, -24, CONVERT(date, GETDATE())) AND (h.ehTip IN (0, 10) OR (h.ehMekan = 12 AND h.ehTip IN (1, 3, 5, 101)))"
+    },
+    {
+      "id": "pos-ozet-defter-kimligi",
+      "db": "DerinSISBkm",
+      "question": "Son 30 gunde POS urun-gun ozeti (posOzetUrun) ile stok defteri (irsHrk ehTip=100) KDV-haric bazda hala kurusuna tutuyor mu? Uc POS magazasinin en buyuk mutlak farki kac TL?",
+      "why": "12.09.2026'da bu kimlik OLCULDU ve kuruşuna kuruluydu: Ist.Yolu Agu-2026 tam ayinda POS 128.097.715,43 <-> defter 128.097.709,99, fark +5,44 TL (128 MILYON uzerinde). Formul: ehTutarN = SUM(satTutar/(1+urnKDV.kdvYuzde/100)), join posKDV=urnKDV.kdvID. Bu kimlik POS'un deftere DOGRU aktarildiginin kanitidir; bozulursa ciro/stok/maliyet zincirinin TAMAMI kayar ve bugun bunu goren HICBIR SEY YOK. Ayrica UC TUZAGI da korur: (a) posKDV KOD'dur, oran degil — oran sanip bolen kod farki patlatir; (b) satTutar KDV DAHIL'dir; (c) satIndirim AYRICA DUSULMEZ — dusulurse tutar yariya iner. Ucu de 12.09'da yapildi ve sahte bir 'fiyat tabani farkli' bulgusu uretti. Esik 500 TL: olculen fark tek magaza-ay icin 5,44 TL; uc magaza 30 gun icin yuvarlama payi birkac on TL mertebesinde kalir. Gercek bir kirilma (KDV kolonu degisimi, indirim mantigi degisimi, POS aktarim hatasi) BINLERCE/MILYONLARCA TL uretir — esik o ikisinin ARASINDA secildi.",
+      "sql": "SELECT CONVERT(int, ISNULL(MAX(ABS(x.pos_net - x.defter)), 0)) FROM (   SELECT pm.mekan,          (SELECT SUM(p.satTutar / (1.0 + k.kdvYuzde/100.0))             FROM DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK)             JOIN DerinSISBkm.dbo.urnKDV k ON k.kdvID = p.posKDV            WHERE p.posMekan = pm.mekan              AND p.posTarih >= DATEADD(DAY,-30,CONVERT(date,GETDATE()))              AND p.posTarih <  CONVERT(date,GETDATE())) AS pos_net,          (SELECT SUM(h.ehTutarN)             FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)            WHERE h.ehMekan = pm.mekan AND h.ehTip = 100 AND h.ehAltDepo = 0              AND h.ehTrhS >= DATEADD(DAY,-30,CONVERT(date,GETDATE()))              AND h.ehTrhS <  CONVERT(date,GETDATE())) AS defter   FROM (SELECT 1 AS mekan UNION ALL SELECT 4477 UNION ALL SELECT 4478) pm ) x",
+      "comparison": "max",
+      "expected": 500,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu. Ist.Yolu Agu-2026 tam ay: fark +5,44 TL (satis) ve +0,24 TL (iade). Arsiv: sorgular/2026-09-12-posozeturun-irshrk-kimlik.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK) WHERE p.posMekan IN (1,4477,4478)   AND p.posTarih >= DATEADD(DAY,-30,CONVERT(date,GETDATE()))   AND p.posTarih <  CONVERT(date,GETDATE())"
     }
   ]
 }
