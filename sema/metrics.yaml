@@ -4,6 +4,61 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  web_indirim_ve_web_marji:
+    tanim: "`urn.piyasaMarj` = WEB İNDİRİM ORANI (marj hedefi DEĞİL) + buradan türeyen web marjı"
+    formul: >-
+      ⭐ ÖLÇÜLDÜ, VARSAYILMADI:
+        web_net_kdvharic ≈ web_liste_kdvharic × (1 − urn.piyasaMarj/100)
+      Kaynak kolonlar `ent.tsoft_urun`da HAZIR ve KDV HARİÇ:
+        `fiyat_liste_kdvharic` · `fiyat_net_kdvharic`
+        (ayrıca KDV dahil ikizleri `fiyat_liste_kdvdahil` / `fiyat_net_kdvdahil`)
+      web_marj = (fiyat_net_kdvharic − BirimMaliyet) / fiyat_net_kdvharic × 100
+    olcum_2026_09_12: >-
+      **KİMLİK TESTİ:** 320.611 ürün (`piyasaMarj>0`, `satis_durum=1`, iki fiyat da >0):
+      ortalama `piyasaMarj` 28,00 · ortalama gerçek web indirimi 28,80 ·
+      **ortalama mutlak sapma 0,23 puan** · **317.971 ürün (%99,2) yarım puandan yakın**.
+      ⇒ Kolon bir HEDEF değil, uygulanan İNDİRİM ORANI.
+
+      WEB MARJI (maliyet son 6 ay · B-175 ön-şartı · satis_durum=1):
+      kategori · ürün · web indirimi · WEB MARJI
+        Kitap              25.914 · %33,3 · **%25,1**
+        Çocuk Kitabı       20.402 · %32,8 · **%26,6**
+        Akademi             4.046 · %25,3 · **%32,0**
+        Hazırlık Kitapları  3.561 · %25,3 · **%34,7**
+        Kırtasiye           3.074 · %27,6 · **%39,3**
+        Oyuncak               561 · %16,9 · **%27,7**
+    bulgu: >-
+      ⭐ **WEB FİYATI ÜRÜN KARTINDAN TÜRETİLİYOR.** Her ürünün kendi web indirim oranı
+      `urn.piyasaMarj`da yazılı ve web net fiyatı bundan çıkıyor. Marka bazlı öndeğer
+      `urnMrk.mrkPiyasaMarjOndeger` (10.300 markanın 4.840'ında dolu) muhtemelen yeni
+      ürüne bu oranı basan kalıp — İLİŞKİ ÖLÇÜLMEDİ, açık soru.
+      ⭐ **`urn.fiyatS2` = WEB FİYATI** (ürün kartında): 837.396 üründe dolu, ortalama
+      `fiyatS`in **0,758**'i. Mağaza fiyatı `fiyatS`, web fiyatı `fiyatS2`.
+      ⇒ İNDİRİM KİTAPTA EN AĞIR: Kitap %33,3 · Çocuk Kitabı %32,8 — kırtasiye (%27,6)
+        ve oyuncaktan (%16,9) belirgin yüksek. Web marjı da buna paralel olarak kitapta
+        en düşük (%25,1) ve kırtasiyede en yüksek (%39,3).
+    sinir: >-
+      ⚠⚠ **BU KAYIT BİR ÖNCEKİNİN DÜZELTMESİDİR.** 2026-09-12'de aynı gün
+      `hedef_marj_vs_fiili` diye bir metrik yazılmıştı ve İKİ HATASI vardı:
+      (1) **ANLAM HATASI** — `piyasaMarj` "hedef marj" sanıldı. Kolonun ADINDAN anlam
+          çıkarıldı, ölçülmedi. (`stkKod`u barkod sanma vakasının aynı sınıfı;
+          bkz. `olctum-mu-cikardim-mi.md`.) Kimlik testi yapılınca indirim oranı çıktı.
+      (2) **KAPSAM HATASI** — web'e ait bir oran, MAĞAZA satışıyla (`PosNet`/`PosAdet`,
+          kasa verisi) karşılaştırıldı. Kullanıcı düzeltti: *"hedef marj sadece web için,
+          mağaza için değil"*. `olctum-mu-cikardim-mi.md` § kapsam eşleşmesi ihlali.
+      ⇒ Eski kayıt SİLİNMEDİ, bu kayıtla DEĞİŞTİRİLDİ; hatanın kendisi burada yazılı.
+      ⚠ **MARJ SEVİYESİ MALİYETE BAĞLI.** `BirimMaliyet` şelalesini devralır
+      (metrics:birim_maliyet § ORT_ALIS_CURUDU). ÖLÇÜLDÜ — maliyet eskidikçe "marj"
+      şişiyor, ölçüm artefaktı imzası (mağaza fiyatı üstünden, etiket marjı):
+        son 6 ay 51,2 · 6-18 ay 57,1 · 18ay-3yıl 66,3 · 3+ yıl 74,6
+      ⇒ Bu yüzden tüm ölçüm **yalnız son 6 aylık maliyetle** yapıldı. İNDİRİM ölçümü
+        maliyetten BAĞIMSIZ ve sağlamdır; MARJ SEVİYESİ değildir.
+      ⚠ `ent.tsoft_urun` **85 KOLON** — ilk dökümde `--max-rows 40` ile kesilmiş ve
+        "fiyat kolonu yok" sanılmıştı. Fiyat kolonları 66-69'da. (`sql-server-conventions.md`
+        § --max-rows sessiz kesme tuzağı, aynı gün ikinci kez.)
+    evidence: "2026-09-12 — kimlik testi (320.611 ürün, sapma 0,23 puan) + kategori bazlı web marjı + fiyatS/fiyatS2 doluluk-oran ölçümü + maliyet yaşı kırılımı. Arşiv: sorgular/2026-09-12-hedef-marj-vs-fiili.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
   _metrik_kanit_durumu_2026_09_12:
     type: rule
     title: "METRİKLERİN KANIT DURUMU — `kanit_yok: 0` NE DEMEK DEĞİL"
