@@ -285,6 +285,16 @@ else
                                          @(kart.Kahraman ? "text-[34px] text-white" : $"text-[26px] text-{kart.Vurgu}")">
                                 @kart.Deger
                             </span>
+                            @if (kart.IkinciDeger is not null)
+                            {
+                                @* İKİNCİ TABAN — ana sayının hemen altında, SABİT konum.
+                                   Küçük ve soluk: ana sayının hiyerarşisini bozmaz ama aynı
+                                   kohortun öteki parası tek bakışta okunur. *@
+                                <span class="block text-[11px] tabular-nums mt-1
+                                             @(kart.Kahraman ? "text-white/70" : "text-base-content/45")">
+                                    @kart.IkinciEtiket <b class="font-semibold">@kart.IkinciDeger</b>
+                                </span>
+                            }
                             <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
                                          @(kart.Kahraman ? "text-white/75" : "text-base-content/55")">
                                 @kart.Baslik
@@ -699,6 +709,15 @@ else
         string Grup, string Baslik, string Deger, string Alt, string Vurgu, string Ikon,
         SatisDurumFiltre? Durum = null, bool? OdakVar = null, int? MinYas = null,
         string Taban = "stok değeri",
+        // İKİLİ TABAN (12.09.2026, kullanıcı: "hem maliyet hem üst fiyat olmalı her şeyde").
+        // Aynı kohort iki farklı parayla ölçülür ve İKİSİ DE karar taşır:
+        //   · maliyet = bağlanan/bağlanacak para (stok kartlarında ANA sayı)
+        //   · satış fiyatı = o malın ciro karşılığı (kayıp kartlarında ANA sayı)
+        // Fark ikisinin arasındaki brüt kârdır. Önce ikinci sayı alt açıklama METNİNE
+        // gömülüydü → her kartta farklı yerde çıkıyordu ve taranamıyordu. Artık sayının
+        // HEMEN ALTINDA sabit konumda.
+        // ⚠ ALT SINIR: birim maliyeti bilinmeyen çeşit 0 sayılır (kapsam ~%95).
+        string? IkinciDeger = null, string? IkinciEtiket = null,
         // B-172(g): KOHORTUN SAHİBİ. Danışman itirazı — "ölü stok → iade/imha" satınalma+finans,
         // "raf bulunurluk → transfer" operasyon işidir; 8.736 çeşit el değiştirdi ve panelde
         // kimin işi olduğu YAZILI DEĞİLDİ. Sahipsiz kohort toplantıda kimseye düşmez.
@@ -742,8 +761,9 @@ else
         // Kategori kırılım tablosunda kategori bazında ZATEN var ve orada daha kullanışlı.
         new("BAĞLI SERMAYE", "Envanter Değeri · etiket", TlKisa(k.ToplamStokTutar),
             $"{k.Cesit:N0} çeşit", "primary", "kutu", SatisDurumFiltre.Hepsi,
-            Taban: "stok değeri · tüm evren",
-            Kirilim: [new("Maliyetle · bağlı sermaye", null, TlKisa(k.MaliyetliDeger))],
+            Taban: "satış fiyatı · tüm evren",
+            IkinciEtiket: "maliyetle", IkinciDeger: TlKisa(k.MaliyetliDeger),
+            Kirilim: [new("Maliyeti bilinen kısım · etiketle", null, TlKisa(k.MaliyetKapsamEtiket))],
             Kahraman: true),
 
         // Kurulun 2 numaralı önerisi — panelin EKSİK olan asıl ekseni.
@@ -756,6 +776,7 @@ else
                 : k.GerceklesenMarj < 0.25m ? "warning" : "success",
             "kar",
             Taban: "365 günde kazanılan kâr",
+            IkinciEtiket: "net satış", IkinciDeger: TlKisa(k.PosNetKdvHaric),
             Kirilim: [new("Gerçekleşen brüt marj", $"{k.MarjCesit:N0} çeşit",
                           k.GerceklesenMarj is { } mj ? "%" + (mj * 100m).ToString("N1") : "—")]),
 
@@ -779,10 +800,10 @@ else
         // Yani hiç satılmamışlar çeşidin %38'i, etiketin %36'sı ama MALİYETİN %66'sı.
         // Etiket fiyatıyla "küçük" görünen kohort, bağlanan paranın üçte ikisi.
         new("BAĞLI SERMAYE", "Ölü Stok", TlKisa(k.HareketsizMaliyet),
-            $"{k.HareketsizCesit:N0} çeşit · 365 günde satış yok · etiketle "
-            + $"{TlKisa(k.HareketsizTutar)} · bunun {k.HicSatilmamisCesit:N0} çeşidi HİÇ satmamış",
+            $"{k.HareketsizCesit:N0} çeşit · 365 günde satış yok",
             "error", "arsiv", SatisDurumFiltre.Hareketsiz,
             Taban: "maliyet · POS'ta da satmayanlar",
+            IkinciEtiket: "satış fiyatıyla", IkinciDeger: TlKisa(k.HareketsizTutar),
             // İki alt kohort ALT ALTA; ikisi de "↳" ile ana sayının İÇİNDEN olduğunu söyler.
             // Satmış-durmuş TÜREV (tamamı − hiç satmamış): ayrı agrega yazmak tek kaynağı bozardı.
             Kirilim:
@@ -807,7 +828,8 @@ else
         new("BULUNURLUK KAYBI", "Sezon Stok Açığı", TlKisa(k.SezonAcikTutar),
             $"{k.SezonAcikCesit:N0} çeşit · stok geçen sezonun yarısından az",
             "error", "takvim", SatisDurumFiltre.SezonAcik,
-            Taban: "kayıp potansiyeli · eksik adet × etiket",
+            Taban: "kayıp potansiyeli · eksik adet × satış fiyatı",
+            IkinciEtiket: "maliyetle", IkinciDeger: TlKisa(k.SezonAcikMaliyet),
             Kirilim: [new("ODAK'ta var · hızlı temin", $"{k.SezonAcikOdakCesit:N0} çeşit",
                           TlKisa(k.SezonAcikOdakTutar), SatisDurumFiltre.SezonAcik, OdakVar: true,
                           AltKume: true)],
@@ -816,7 +838,8 @@ else
         new("BULUNURLUK KAYBI", "Stokta Yokluk · sezon", TlKisa(k.StoksuzSezonKayip),
             $"{k.StoksuzSezonCesit:N0} çeşit · geçen sezon sattı, stok tam sıfır",
             "error", "uyari", SatisDurumFiltre.StoksuzSezon,
-            Taban: "kayıp potansiyeli · sezon adedi × etiket",
+            Taban: "kayıp potansiyeli · sezon adedi × satış fiyatı",
+            IkinciEtiket: "maliyetle", IkinciDeger: TlKisa(k.StoksuzSezonMaliyet),
             Kirilim: [new("ODAK'ta var · hızlı temin", $"{k.StoksuzSezonOdakVarCesit:N0} çeşit",
                           TlKisa(k.StoksuzSezonOdakVarKayip), SatisDurumFiltre.StoksuzSezon,
                           OdakVar: true, AltKume: true)],
@@ -828,9 +851,10 @@ else
         // ⚠ KAYIP POTANSİYELİ kartları ÇEVRİLMEDİ (Sezon Stok Açığı · Stokta Yokluk · Sezonluk
         // Raf Açığı): kaçan satış SATIŞ FİYATIYLA ölçülür. Orada etiket DOĞRU taban.
         new("BULUNURLUK KAYBI", "Raf Bulunurluk Kaybı", TlKisa(k.RafBosMaliyet),
-            $"{k.RafBosCesit:N0} çeşit · üç raf da boş, yılda 5+ satıyor · etiketle {TlKisa(k.RafBosTutar)}",
+            $"{k.RafBosCesit:N0} çeşit · üç raf da boş, yılda 5+ satıyor",
             "error", "raf", SatisDurumFiltre.RafBos,
             Taban: "maliyet · merkezde bekleyen",
+            IkinciEtiket: "satış fiyatıyla", IkinciDeger: TlKisa(k.RafBosTutar),
             Kirilim: [new("Merkezde bekleyen → transfer", null,
                           $"{k.RafBosSatisliCesit:N0} adet", SatisDurumFiltre.RafBos)],
             Sahip: "operasyon"),
@@ -854,7 +878,8 @@ else
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Sezonluk Raf Açığı", TlKisa(k.SezonRafTutar),
             $"{k.SezonRafCesit:N0} çeşit · rafı boş, merkez tamamını karşılıyor",
             "warning", "raf", SatisDurumFiltre.SezonRafAcigi,
-            Taban: "kayıp potansiyeli · eksik adet × etiket",
+            Taban: "kayıp potansiyeli · eksik adet × satış fiyatı",
+            IkinciEtiket: "maliyetle", IkinciDeger: TlKisa(k.SezonRafMaliyet),
             Kirilim: [new("Merkezde bekleyen → transfer", null,
                           $"{k.SezonRafMerkezAdet:N0} adet", SatisDurumFiltre.SezonRafAcigi)],
             Sahip: "operasyon"),
@@ -872,10 +897,11 @@ else
         // ⚠ ALT SINIR: maliyeti bilinmeyen çeşit 0 sayılır. Kapsam ölçüldü —
         // 28.974/30.403 çeşit (%95,3), etiketin %97,5'i. Kalan %4,7 rakama GİRMİYOR.
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokFazlaMaliyet),
-            $"{k.AsiriStokCesit:N0} çeşit · eşik üstü fazla (2-8× sezon) · "
-            + $"tüm stok maliyetle {TlKisa(k.AsiriStokMaliyet)} · etiketle {TlKisa(k.AsiriStokTutar)}",
+            $"{k.AsiriStokCesit:N0} çeşit · eşik üstü fazla (2-8× sezon) · tüm stok "
+            + $"maliyetle {TlKisa(k.AsiriStokMaliyet)}",
             "warning", "katman", SatisDurumFiltre.AsiriStok,
             Taban: "maliyet · eşik ÜSTÜ fazla",
+            IkinciEtiket: "tüm stok satış fiyatıyla", IkinciDeger: TlKisa(k.AsiriStokTutar),
             // ⚠ TUTAR ÇIKARILDI: ana sayı artık MALİYET, bu karşı-metrik ETİKET tutarıydı —
             // aynı kartta iki farklı taban yan yana duruyordu. Çeşit sayısı belirsizlik taşımaz.
             // ODAK kesişiminin maliyetli karşılığı ölçülmedi (TODO B-172a ile birlikte).
@@ -885,9 +911,10 @@ else
             Sahip: "satınalma"),
 
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Mağaza Arası Dengesizlik", TlKisa(k.DengesizMaliyet),
-            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, diğerinde 5+ adet · etiketle {TlKisa(k.DengesizTutar)}",
+            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, diğerinde 5+ adet",
             "warning", "transfer", SatisDurumFiltre.Dengesiz,
             Taban: "maliyet · yanlış mağazadaki",
+            IkinciEtiket: "satış fiyatıyla", IkinciDeger: TlKisa(k.DengesizTutar),
             Kirilim: [new("Eylem: sipariş DEĞİL, transfer", null, "listele",
                           SatisDurumFiltre.Dengesiz)],
             Sahip: "operasyon"),
@@ -909,15 +936,17 @@ else
             $"{k.SiparisCesit:N0} çeşit · {k.SiparisAdet:N0} adet · kapağın altına düştü",
             "warning", "sepet", SatisDurumFiltre.SiparisIhtiyaci,
             Taban: "maliyet · bağlanacak para",
+            IkinciEtiket: "satışa dönerse", IkinciDeger: TlKisa(k.SiparisEtiket),
             Kirilim: [new("ACİL · hiç stok yok", $"{k.SiparisAcilCesit:N0} çeşit",
                           $"{k.SiparisAcilAdet:N0} adet", SatisDurumFiltre.SiparisAcil,
                           AltKume: true)],
             Sahip: "satınalma"),
 
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Rafa Çıkmamış Envanter", TlKisa(k.RafsizMaliyet),
-            $"{k.RafsizCesit:N0} çeşit · mağaza rafına hiç girmemiş · etiketle {TlKisa(k.RafsizTutar)}",
+            $"{k.RafsizCesit:N0} çeşit · mağaza rafına hiç girmemiş",
             "warning", "paket", SatisDurumFiltre.Rafsiz,
             Taban: "maliyet · merkezde bekleyen",
+            IkinciEtiket: "satış fiyatıyla", IkinciDeger: TlKisa(k.RafsizTutar),
             Kirilim: [new("Merkezde bekleyen", null, $"{k.RafsizAdet:N0} adet",
                           SatisDurumFiltre.Rafsiz)],
             Sahip: "operasyon"),

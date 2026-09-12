@@ -263,6 +263,8 @@ public sealed record SatisAnaliziKpi(
     long MerkezCikisEvrenDisi,    // Kategori3 filtresi yüzünden görünmeyen kısım (ölçüm: 670.659)          // grup-içi/toptan + e-tic sevk — TALEP DEĞİL
     int StoksuzSezonCesit,
     decimal StoksuzSezonKayip,
+    /// <summary>Kaçan adedin MALİYETİ — kayıp ile arasındaki fark KAÇAN BRÜT KÂR.</summary>
+    decimal StoksuzSezonMaliyet,
     int StoksuzSezonOdakVarCesit, // ODAK'ta var → hızlı temin, gerçek kayıp değil
     decimal StoksuzSezonOdakVarKayip,
     int AsiriStokCesit,
@@ -321,6 +323,8 @@ public sealed record SatisAnaliziKpi(
     /// Tutar = EKSİK adet × fiyat (kayıp potansiyeli), stok değeri değil.</summary>
     int SezonAcikCesit,
     decimal SezonAcikTutar,
+    /// <summary>Sezon açığının maliyet karşılığı (kaçan adet × birim maliyet).</summary>
+    decimal SezonAcikMaliyet,
     int SezonAcikOdakCesit,
     decimal SezonAcikOdakTutar,
     /// <summary>Stoğun MALİYETLE değeri — "bağlanan para" sorusunun gerçek cevabı.
@@ -351,6 +355,8 @@ public sealed record SatisAnaliziKpi(
     int SezonRafCesit,
     /// <summary>Sezonluk raf açığının kayıp tutarı — yalnız açığı olan mağazanın sezon adedi.</summary>
     decimal SezonRafTutar,
+    /// <summary>Sezonluk raf açığının maliyet karşılığı.</summary>
+    decimal SezonRafMaliyet,
     /// <summary>Sezonluk raf açığı olan ürünlerin merkezde bekleyen adedi (transferin hammaddesi).</summary>
     long SezonRafMerkezAdet,
     /// <summary>Düzgün/değişken talepli çeşit (ADI ≤ 1,32) — gün-stok YALNIZ burada güvenilir.</summary>
@@ -365,6 +371,8 @@ public sealed record SatisAnaliziKpi(
     long SiparisAdet,
     /// <summary>Önerinin maliyeti — bağlanacak para. Birim maliyeti olmayan çeşitte 0 sayılır.</summary>
     decimal SiparisMaliyet,
+    /// <summary>Önerinin satış fiyatıyla karşılığı — bağlanacak paranın döneceği ciro.</summary>
+    decimal SiparisEtiket,
     /// <summary>ACİL: sipariş gerekiyor VE hiç stok yok — kayıp ZATEN yaşanıyor.</summary>
     int SiparisAcilCesit,
     long SiparisAcilAdet,

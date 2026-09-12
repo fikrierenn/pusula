@@ -594,6 +594,13 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {StoksuzSezonSart} THEN 1 ELSE 0 END) AS StoksuzCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart}
                         THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))                     AS StoksuzKayip,
+                   -- İKİLİ TABAN (12.09.2026, kullanıcı: "hem maliyet hem üst fiyat olmalı
+                   -- her şeyde"). Kayıp kartlarında ANA sayı satış fiyatıdır (kaçan ciro);
+                   -- maliyet karşılığı = kaçan adet × birim maliyet → aradaki fark KAÇAN BRÜT
+                   -- KÂR. İki sayı yan yana durunca kartın parası ölçülebilir hâle geliyor.
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.SezonToplam) * t.BirimMaliyet
+                        ELSE 0 END))                                                  AS StoksuzMaliyet,
                    SUM(CASE WHEN {StoksuzSezonSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS StoksuzOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {StoksuzSezonSart} AND t.OdakStok > 0
                         THEN t.SezonToplam * t.SatisFiyat ELSE 0 END))                     AS StoksuzOdakKayip,
@@ -675,6 +682,9 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {SezonHazirlikSart} THEN 1 ELSE 0 END)                    AS SezonAcikCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart}
                         THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikTutar,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.SezonToplam - t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                                  AS SezonAcikMaliyet,
                    SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS SezonAcikOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonHazirlikSart} AND t.OdakStok > 0
                         THEN (t.SezonToplam - t.ToplamStok) * t.SatisFiyat ELSE 0 END))     AS SezonAcikOdakTutar,
@@ -732,6 +742,9 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {SezonRafAcigiSart} THEN 1 ELSE 0 END)               AS SezonRafCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart}
                         THEN {SezonRafAcigiTutar} ELSE 0 END))                        AS SezonRafTutar,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {SezonRafAcigiSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), {SezonRafEksikAdet}) * t.BirimMaliyet
+                        ELSE 0 END))                                                  AS SezonRafMaliyet,
                    -- Karşı-metrik: merkezde bekleyen adet — transferin hammaddesi
                    CONVERT(bigint, SUM(CASE WHEN {SezonRafAcigiSart}
                         THEN t.MerkezStok ELSE 0 END))                                AS SezonRafMerkezAdet
@@ -765,6 +778,7 @@ public sealed partial class SatisAnaliziQueries(
             MerkezCikisEvrenDisi: merkezCikis.EvrenDisi,
             StoksuzSezonCesit: satirlar.Sum(x => x.StoksuzCesit),
             StoksuzSezonKayip: satirlar.Sum(x => x.StoksuzKayip),
+            StoksuzSezonMaliyet: satirlar.Sum(x => x.StoksuzMaliyet),
             StoksuzSezonOdakVarCesit: satirlar.Sum(x => x.StoksuzOdakCesit),
             StoksuzSezonOdakVarKayip: satirlar.Sum(x => x.StoksuzOdakKayip),
             AsiriStokCesit: satirlar.Sum(x => x.AsiriCesit),
@@ -791,6 +805,7 @@ public sealed partial class SatisAnaliziQueries(
             DengesizTutar: satirlar.Sum(x => x.DengesizTutar),
             SezonAcikCesit: satirlar.Sum(x => x.SezonAcikCesit),
             SezonAcikTutar: satirlar.Sum(x => x.SezonAcikTutar),
+            SezonAcikMaliyet: satirlar.Sum(x => x.SezonAcikMaliyet),
             SezonAcikOdakCesit: satirlar.Sum(x => x.SezonAcikOdakCesit),
             SezonAcikOdakTutar: satirlar.Sum(x => x.SezonAcikOdakTutar),
             MaliyetliDeger: satirlar.Sum(x => x.MaliyetliDeger),
@@ -807,6 +822,7 @@ public sealed partial class SatisAnaliziQueries(
             RafsizAdet: satirlar.Sum(x => x.RafsizAdet),
             SezonRafCesit: satirlar.Sum(x => x.SezonRafCesit),
             SezonRafTutar: satirlar.Sum(x => x.SezonRafTutar),
+            SezonRafMaliyet: satirlar.Sum(x => x.SezonRafMaliyet),
             SezonRafMerkezAdet: satirlar.Sum(x => x.SezonRafMerkezAdet),
             DuzgunTalepCesit: satirlar.Sum(x => x.DuzgunTalepCesit),
             DuzgunTalepTutar: satirlar.Sum(x => x.DuzgunTalepTutar),
@@ -815,6 +831,7 @@ public sealed partial class SatisAnaliziQueries(
             SiparisCesit: siparis.Cesit,
             SiparisAdet: siparis.Adet,
             SiparisMaliyet: siparis.Maliyet,
+            SiparisEtiket: siparis.Etiket,
             SiparisAcilCesit: siparis.AcilCesit,
             SiparisAcilAdet: siparis.AcilAdet,
             // Hızlar ürün bazında kendi raf süresine bölünüp SQL'de toplandı → burada topla, BÖLME.
@@ -968,7 +985,9 @@ public sealed partial class SatisAnaliziQueries(
 
     private sealed record OzetSatirRow(
         string Ad, int Cesit, long Stok, long MagazaStok, long MerkezStok, decimal Tutar, long Satis365, double GunlukHiz, long Sezon,
-        int StoksuzCesit, decimal StoksuzKayip, int StoksuzOdakCesit, decimal StoksuzOdakKayip,
+        int StoksuzCesit, decimal StoksuzKayip,
+        decimal StoksuzMaliyet,   // ⚠ SQL'de StoksuzKayip'ten HEMEN SONRA
+        int StoksuzOdakCesit, decimal StoksuzOdakKayip,
         int AsiriCesit, decimal AsiriTutar,
         // ⚠ SQL'de AsiriTutar ile AsiriOdakCesit ARASINA girer (Dapper pozisyonel).
         decimal AsiriMaliyet, decimal AsiriFazlaMaliyet,
@@ -981,7 +1000,7 @@ public sealed partial class SatisAnaliziQueries(
         int KirliCesit, decimal KirliTutar,
         int YeniCesit, decimal YeniTutar,
         int DengesizCesit, decimal DengesizTutar,
-        int SezonAcikCesit, decimal SezonAcikTutar,
+        int SezonAcikCesit, decimal SezonAcikTutar, decimal SezonAcikMaliyet,
         int SezonAcikOdakCesit, decimal SezonAcikOdakTutar,
         decimal MaliyetliDeger, decimal MaliyetKapsamEtiket,
         decimal PosNetKdvHaric, decimal SatilanMaliyet,
@@ -994,7 +1013,9 @@ public sealed partial class SatisAnaliziQueries(
         // geliyor; burada SezonRaf'tan sonraya yazılınca materialization patladı (10.09).
         int DuzgunTalepCesit, decimal DuzgunTalepTutar,
         int ArelikliTalepCesit, decimal ArelikliTalepTutar,
-        int SezonRafCesit, decimal SezonRafTutar, long SezonRafMerkezAdet);
+        int SezonRafCesit, decimal SezonRafTutar,
+        decimal SezonRafMaliyet,   // ⚠ SQL'de SezonRafTutar'dan HEMEN SONRA
+        long SezonRafMerkezAdet);
 }
 
 /// <summary>Sayfa açılışında tek geçişte gelen özet: KPI + Kategori3 kırılımı.</summary>

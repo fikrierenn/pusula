@@ -153,6 +153,9 @@ public sealed partial class SatisAnaliziQueries
             SELECT COUNT(*)                                            AS Cesit,
                    CONVERT(bigint, ISNULL(SUM(sp.Oneri), 0))           AS Adet,
                    CONVERT(decimal(18,2), ISNULL(SUM({SiparisMaliyetSql}), 0)) AS Maliyet,
+                   -- İKİLİ TABAN: aynı öneri satış fiyatıyla ne eder — bağlanacak para ile
+                   -- döneceği ciro yan yana okunsun (kullanıcı 12.09: "hem maliyet hem üst fiyat").
+                   CONVERT(decimal(18,2), ISNULL(SUM(sp.Oneri * t.SatisFiyat), 0))  AS Etiket,
                    SUM(CASE WHEN t.ToplamStok <= 0 THEN 1 ELSE 0 END)  AS AcilCesit,
                    CONVERT(bigint, ISNULL(SUM(CASE WHEN t.ToplamStok <= 0
                         THEN sp.Oneri ELSE 0 END), 0))                 AS AcilAdet
@@ -166,7 +169,8 @@ public sealed partial class SatisAnaliziQueries
     }
 
     /// <summary>KPI kartının beş sayısı — sıfır satır dönerse hepsi 0 (COUNT/SUM garantisi).</summary>
-    public sealed record SiparisOzet(int Cesit, long Adet, decimal Maliyet, int AcilCesit, long AcilAdet);
+    public sealed record SiparisOzet(int Cesit, long Adet, decimal Maliyet, decimal Etiket,
+                                 int AcilCesit, long AcilAdet);
 
     /// <summary>
     /// KATEGORİ YIL ORANI — bu yıl / geçen yıl AYNI takvim penceresi (1 Ağu → kesim).
