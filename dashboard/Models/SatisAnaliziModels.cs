@@ -286,8 +286,8 @@ public sealed record SatisAnaliziKpi(
     decimal AsiriStokFazlaMaliyet,
     /// <summary>
     /// HAFİFLETİCİ (B-172a): aşırı stoğun tedarikçiye İADE KANALI gözlenmiş dilimi
-    /// (son 24 ayda bu üründen fiilen alış iadesi yapılmış). Ölçüldü: 9.501 çeşit /
-    /// 8,3M ₺ fazla maliyet — toplam fazlanın %11,5'i.
+    /// (son 24 ayda bu üründen fiilen alış iadesi yapılmış). Ölçüldü 12.09.2026 (eşik iki
+    /// ayaklı, kohort 37.103): 12.671 çeşit / 10,8M ₺ — fazla maliyetin %14,5'i.
     /// ⚠ VEKİL: ürün bazında iade HAKKI veride yok; ölçülen şey kanalın çalıştığıdır.
     /// </summary>
     int AsiriIadeCesit,

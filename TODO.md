@@ -227,7 +227,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   Dört ölçüt değişikliği adil-atıf ve perverse-incentive açısından denetlendi; üç ağır bulgu:
   (a) ✅ **KAPANDI 12.09** — iki kart da artık ZIT YÖNLÜ iki satır taşıyor.
   Aşırı Stok'a HAFİFLETİCİ: "iade kanalı çalışmış" (son 24 ayda bu üründen fiilen alış
-  iadesi) — ölçüldü 9.501 çeşit / 8,3M ₺ fazla maliyet (%11,5). ⚠ vekil: ürün bazında iade
+  iadesi) — ölçüldü 9.501 çeşit / 8,3M ₺ (%11,5); eşik iki ayaklı olunca yeniden ölçüldü 12.09: 12.671 çeşit / 10,8M ₺ (%14,5). ⚠ vekil: ürün bazında iade
   HAKKI veride yok, ölçülen kanalın çalıştığı. Stokta Yokluk'a AĞIRLAŞTIRICI: "talebi
   KANITLI (sezon ≥20)" — ölçüldü 356 çeşit (%4,4) kaybın %46'sını taşıyor (9,37M ₺).
   ~~(a) KARŞI-METRİK DENGESİ TERS (en ciddi).~~ Aşırı Stok'un karşı-metriği "ODAK'ta da var"
@@ -242,10 +242,25 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   ~~(b) AŞIRI STOK KARTI ETİKET FİYATIYLA~~ — 329,0M ₺ gösteriyor, maliyetle 107,3M ₺;
   alıcıya ~3 kat şişik ceza. Envanter Değeri kartında maliyetli değer VAR, Aşırı Stok'ta YOK.
   En kolay ve en büyük düzeltme bu.
-  (c) **EŞİK KATEGORİNİN KENDİ GEÇMİŞİNDEN türetiliyor** → başarısızlığı normalleştiriyor:
-  Kırtasiye devri 1,25 (sektör hedefi 3-4) ve eşik oradan geliyor. Ters uçta iyi dönen
-  kategoriye (Hazırlık 8×) daha GEVŞEK eşik — teşvik ters. Eşik iş modelinden gelmeli
-  (LeadTime · sezon ağırlığı · iade hakkı — üçü de veride var, kullanılmıyor).
+  (c) ✅ **KAPANDI 12.09 — eşiğe İŞ MODELİ AYAĞI eklendi.** Ölçüt artık iki ayaklı: sezon
+  katı (2×) VE ikmal kapağı (5× · kapak = (LeadTime+30) × max(365g hız, sezon hızı)). Kat 5
+  veriden DEĞİL hedeften: devir hedefi 2,0 (=182 gün stok) ÷ ortalama döngü 35,03 gün = 5,21.
+  ⇒ hızlı temin edilen üründe eşik SIKI, yavaşta GEVŞEK; Altman & Royston "kesimin bedeli"
+  uyarısı bu ayağa işlemez. **Sezon ekseninin yanlış pozitifi ölçüldü:** sezon işaretli ama
+  kapak temiz 4.904 çeşidin medyan yıllık devri **2,25**, temiz grubun medyanı **2,40** —
+  ayırt edilemiyor, yani sağlıklı dönen mal damgalanıyordu. Panelde: 40.017 → **37.103 çeşit**,
+  fazla maliyet 83,3M → **74,7M ₺** (ceza %10 AZALDI). Arşiv:
+  `sorgular/2026-09-12-esik-is-modelinden-kapak.sql`. İADE HAKKI eşiğe girmedi — hafifletici
+  olarak duruyor (B-172a), çünkü ürün bazında iade hakkı veride yok, vekil kullanılıyor.
+- [ ] **B-172(c2) AŞIRI STOK KARTININ KÖR NOKTASI — sezon kapısı (ÖLÇÜLDÜ 12.09, KARAR BEKLİYOR)** —
+  Ölçüt `SezonToplam > 0` şartı taşıyor: sezon DIŞINDA satan **63.565 çeşit / 132,2M ₺**
+  (medyan yıllık devir **0,50** — yani 2 yıllık stok) aşırı stok kartında HİÇ görünmüyor.
+  Ölü Stok da almıyor (satıyorlar). Sezon kapısını kaldırıp tümüyle kapağa geçmek ölçüldü:
+  37.460 → **94.021 çeşit**, fazla maliyet 81,6M → **170,2M ₺** = ceza **2,1 KAT**.
+  Ara seçenekler ölçülü: kapak 8× → 76.091 çeşit / 137,1M ₺ · kapak 12× → 55.570 / 110,1M ₺.
+  ⚠ Alıcıya bakan sayıyı ikiye katladığı için tek taraflı UYGULANMADI (before-major-change §4).
+  Karar kullanıcıda: (i) kalsın, kör nokta kapsam bandında yazılı · (ii) kapak 12×'e geç
+  (ceza +%35) · (iii) tümüyle kapak 5× (ceza 2,1 kat).
   (d) ✅ **KAPANDI 12.09 — itirazdan BÜYÜK çıktı.** Kırtasiye hariç yeniden ölçülünce asıl
   hata göründü: türetme **ORTALAMA** devir kullanıyordu, dağılım sağa çarpık olduğu için eşik
   şişiyordu. MEDYAN ile: panel geneli 3×→**2×**, Hazırlık Kitapları 8×→**2×** (dört kat hata),

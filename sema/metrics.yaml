@@ -2613,12 +2613,16 @@ metrics:
     unit: none
     basis: none
     additivity: none
-    title: "AŞIRI STOK EŞİĞİ — TEK EŞİK 2× (medyan devirle türetildi)"
+    title: "AŞIRI STOK EŞİĞİ — İKİ AYAK: 2× sezon VE 5× ikmal kapağı"
     rule: >-
-      Aşırı stok = `ToplamStok > 2 * SezonToplam` (defter güvenilir ön-şartıyla birlikte).
-      Kod: `SatisAnaliziQueries.AsiriStokKat` / `AsiriStokKatSql` — TEK KAYNAK; KPI, kırılım,
-      liste filtresi, ODAK tablosu ve sipariş TAVANI hepsi buradan okur. Kategori bazlı eşik
-      (3×/2×/8×) 12.09.2026'da KALDIRILDI.
+      Aşırı stok = İKİ AYAK BİRDEN aşılırsa (defter güvenilir ön-şartıyla):
+      (1) SEZON KATI — `ToplamStok > 2 * SezonToplam` (veriden, medyan devirle türetildi);
+      (2) İKMAL KAPAĞI — `ToplamStok > 5 * (LeadTime + 30) * max(SatisToplam/365,
+      (Ay1+Ay2+Ay3)/92)` (İŞ MODELİNDEN: devir hedefi 2,0 ÷ ortalama döngü 35,03 gün = 5,21).
+      Meşru stok tavanı = üç sınırın EN YÜKSEĞİ; ceza yalnız onun üstüne yazılır.
+      Kod: `AsiriStokKat` / `AsiriKapakKat` / `AsiriEsikSql` — TEK KAYNAK; KPI, kırılım, liste
+      filtresi, ODAK tablosu, hafifletici ve sipariş TAVANI hepsi buradan okur.
+      Kategori bazlı eşik (3×/2×/8×) 12.09.2026'da KALDIRILDI.
     measurement: >-
       2026-09-12 · 01.08.2025 kapsama katı bantlarına göre SONRAKİ 12 AYIN yıllık devri,
       bant başına MEDYAN (ortalama DEĞİL — dağılım sağa çarpık).
@@ -2631,14 +2635,27 @@ metrics:
       yalnız <2× ile 2-3× AYRIK ([0,428-0,478] ↔ [0,576-0,714]), sonraki komşular ÇAKIŞIK
       ⇒ istatistiğin desteklediği TEK kesim 2×.
       ETKİ (kesim 11.09.2026): 30.361 → 40.017 çeşit · eşik üstü fazla maliyet 72,5M → 83,3M ₺.
-    evidence: "sorgular/2026-09-12-esik-medyan-ile-yeniden-turetildi.sql"
+      İKİNCİ AYAK (2026-09-12, B-172c): sezon ekseni tek başına YANLIŞ POZİTİF üretiyordu.
+      Dört grup, medyan yıllık devir — A) sezon-dışı satan, kart KÖR: 63.565 çeşit/132,2M ₺/0,50 ·
+      B) sezon işaretli, kapak temiz: 4.904/13,4M/2,25 · C) ikisi de işaretli: 32.556/109,9M/0,48 ·
+      D) ikisi de temiz: 35.273/71,6M/2,40. B'nin devri D'den AYIRT EDİLEMİYOR (2,25↔2,40) ⇒
+      kapak ayağı eklendi, B kohorttan çıktı. Panelde doğrulandı: 40.017 → 37.103 çeşit ·
+      fazla maliyet 83,3M → 74,7M ₺ (hafifletici 12.671 çeşit / 10,8M ₺).
+    evidence: "sorgular/2026-09-12-esik-medyan-ile-yeniden-turetildi.sql · sorgular/2026-09-12-esik-is-modelinden-kapak.sql"
     last_verified: "2026-09-12"
     note: >-
       ⚠ KESİMİN BEDELİ (Altman & Royston 2006): veriden seçilen kesim gruplar arası farkı
       ABARTIR; bu sayı ETKİ ÖLÇÜSÜ olarak sunulmaz, yalnız kohort seçiminde kullanılır.
       ⚠ TERS NEDENSELLİK duruyor: alıcı çok satmasını beklediğine çok stok koyar.
-      ⚠ Eşik hâlâ İŞ MODELİNDEN değil VERİDEN geliyor (danışman itirazı B-172c açık):
-      LeadTime · sezon ağırlığı · iade hakkı üçü de veride var ve eşiğe girmiyor.
+      ⚠ Altman & Royston uyarısı YALNIZ sezon ayağına işler; kapak ayağının kat sayısı veriden
+      DEĞİL devir hedefinden (2,0) geliyor.
+      ⚠ KISMİ TOTOLOJİ: kapak da devir de SatisToplam'ı kullanır — kapak ekseninin bant ölçümü
+      eşik seçiminde DELİL SAYILMADI, yalnız eksenin monotonluğunu gösterir.
+      ⚠ AÇIK (B-172c2): ölçüt `SezonToplam > 0` kapısı taşıyor; sezon DIŞINDA satan 63.565 çeşit
+      (132,2M ₺, medyan devir 0,50) kartta HİÇ görünmüyor. Sezon kapısını kaldırıp tümüyle kapağa
+      geçmek ölçüldü — 37.460 → 94.021 çeşit, fazla maliyet 81,6M → 170,2M ₺ (ceza 2,1 kat);
+      alıcıya bakan sayıyı ikiye katladığı için TEK TARAFLI UYGULANMADI, kullanıcı kararı bekliyor.
+      ⚠ İADE HAKKI hâlâ eşikte değil; hafifletici olarak duruyor (vekil: kanalın fiilen çalışmışlığı).
 
   asiri_stok_esigi_kategori_bazli:
     superseded_on: "2026-09-12"

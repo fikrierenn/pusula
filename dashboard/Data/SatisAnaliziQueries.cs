@@ -472,10 +472,89 @@ public sealed partial class SatisAnaliziQueries(
     /// liste filtresi bunu kullanır; eşik burada değişince hepsi birlikte değişir (önce altı
     /// yerde ayrı ayrı <c>5 *</c> yazılıydı — ayrışma riski).
     /// </summary>
+    /// <summary>
+    /// İŞ MODELİ AYAĞI — <b>kapak katı 5</b> (B-172c, 12.09.2026). Danışman itirazı:
+    /// <i>"eşik iş modelinden gelmeli — LeadTime, sezon ağırlığı, iade hakkı veride var ve
+    /// kullanılmıyor"</i>. Kapak = <c>(temin süresi + 30 gün gözden geçirme)</c> günlük talep;
+    /// talep hızı <c>max(365g düz, sezon penceresi)</c> — sezon ağırlığı ORANDAN girer, ayrı
+    /// bir kapı değil. Bu, sipariş kartının kullandığı kapağın AYNISI (tek tanım).
+    ///
+    /// ⚠ 5 NEREDEN GELİYOR — VERİDEN DEĞİL, HEDEFTEN: şirket devir hedefi <b>2,0</b>
+    /// ⇒ üst sınır gün-stok = 365/2,0 = 182,5 gün. Ortalama döngü = 5,03 (ODAK temin) + 30
+    /// = 35,03 gün. 182,5 / 35,03 = <b>5,21</b> ⇒ 5. Yani ortalama temin süresinde eşik tam
+    /// olarak devir hedefine denk düşer; hızlı temin edilen üründe DAHA SIKI, yavaş temin
+    /// edilende DAHA GEVŞEK olur. Bu, veriden kesim seçmek değildir — Altman &amp; Royston
+    /// uyarısı bu ayağa işlemez.
+    ///
+    /// ═══ NEDEN EKLENDİ: SEZON EŞİĞİ YANLIŞ POZİTİF ÜRETİYORDU (ölçüldü 12.09.2026) ══
+    /// Sezon ekseni tek başına, stoğu ikmal döngüsüne göre NORMAL olan ürünleri de
+    /// işaretliyordu. Dört grup, medyan yıllık devir:
+    ///   A) sezon-dışı satan (kart KÖR)        63.565 çeşit · 132,2M ₺ · medyan devir 0,50
+    ///   B) sezon işaretli, kapak TEMİZ         4.904 çeşit ·  13,4M ₺ · medyan devir 2,25
+    ///   C) ikisi de işaretli                  32.556 çeşit · 109,9M ₺ · medyan devir 0,48
+    ///   D) ikisi de temiz                     35.273 çeşit ·  71,6M ₺ · medyan devir 2,40
+    /// <b>B grubunun devri D'den ayırt edilemiyor</b> (2,25 ↔ 2,40) — yani sağlıklı dönen mal
+    /// "aşırı stok" damgası yiyordu. Kapak ayağı eklenince B kohorttan ÇIKIYOR.
+    ///
+    /// ⚠ AÇIK KALAN (B-172c2): A grubu — <c>SezonToplam &gt; 0</c> kapısı yüzünden kart
+    /// sezon-DIŞI satan malı HİÇ GÖRMÜYOR (63.565 çeşit / 132,2M ₺, medyan devir 0,50).
+    /// Sezon kapısını kaldırıp tümüyle kapağa geçmek ölçüldü: 37.460 → <b>94.021 çeşit</b>,
+    /// fazla maliyet 81,6M → <b>170,2M ₺</b> (ceza 2,1 kat). Alıcıya bakan sayıyı ikiye
+    /// katlayan bu adım KULLANICI KARARI bekliyor — tek taraflı uygulanmadı.
+    ///
+    /// ⚠ KISMİ TOTOLOJİ: kapak da, devir de <c>SatisToplam</c>'ı kullanıyor. Bu yüzden
+    /// "kapak katı arttıkça devir düşüyor" bulgusu bant ölçümü olarak DELİL SAYILMAZ;
+    /// eşik kat sayısı bu ölçümden değil devir hedefinden alındı.
+    ///
+    /// Arşiv: <c>sorgular/2026-09-12-esik-is-modelinden-kapak.sql</c>
+    /// </summary>
+    private const string AsiriKapakKat = "5";
+
+    /// <summary>Kapak penceresi (gün) = temin süresi + gözden geçirme. Sipariş tarafıyla AYNI.</summary>
+    private const string AsiriPencereSql =
+        "(CONVERT(int, ISNULL(t.LeadTime, 7)) + 30)";
+
+    /// <summary>
+    /// <c>stok &gt; max(a, b)</c> ⟺ <c>stok &gt; a AND stok &gt; b</c> — iç içe CASE yerine
+    /// iki düz karşılaştırma. ⚠ Bilinçli: ifade dokuz yerde geçiyor ve iç içe yazım bu
+    /// sorguda İKİ KEZ <b>SQL 8632</b> (deyim hizmetleri sınırı) patlattı; build yakalamıyor.
+    /// Bölme yapılmıyor (365/92 karşı tarafa çarpan olarak geçti) — tamsayı bölme tuzağı yok.
+    /// </summary>
+    private const string AsiriKapakDuzSart =
+        "(CONVERT(float, t.ToplamStok) * 365.0 > " + AsiriKapakKat + " * " + AsiriPencereSql +
+        " * t.SatisToplam)";
+
+    /// <summary>Kapağın sezon ayağı — <c>Ay1+Ay2+Ay3</c> = sezon penceresi (92 gün).</summary>
+    private const string AsiriKapakSezonSart =
+        "(CONVERT(float, t.ToplamStok) * 92.0 > " + AsiriKapakKat + " * " + AsiriPencereSql +
+        " * (ISNULL(t.Ay1, 0) + ISNULL(t.Ay2, 0) + ISNULL(t.Ay3, 0)))";
+
+    /// <summary>
+    /// MEŞRU STOK TAVANI = üç sınırın EN YÜKSEĞİ (sezon katı · kapağın düz ayağı · kapağın
+    /// sezon ayağı). Ceza yalnız bunun ÜSTÜNE yazılır. ⚠ Kapak ayağı eklenince tavan
+    /// YÜKSELİYOR, yani fazla maliyet DÜŞÜYOR — eski formül (yalnız sezon katı) kapak ayağı
+    /// bağladığında cezayı OLDUĞUNDAN FAZLA yazardı.
+    /// </summary>
+    private const string AsiriEsikSql =
+        "(CASE WHEN " + AsiriKapakKat + " * " + AsiriPencereSql + " * t.SatisToplam / 365.0 >= " +
+        AsiriStokKatSql + " * t.SezonToplam " +
+        "AND " + AsiriKapakKat + " * " + AsiriPencereSql + " * t.SatisToplam / 365.0 >= " +
+        AsiriKapakKat + " * " + AsiriPencereSql +
+        " * (ISNULL(t.Ay1, 0) + ISNULL(t.Ay2, 0) + ISNULL(t.Ay3, 0)) / 92.0 " +
+        "THEN " + AsiriKapakKat + " * " + AsiriPencereSql + " * t.SatisToplam / 365.0 " +
+        "WHEN " + AsiriKapakKat + " * " + AsiriPencereSql +
+        " * (ISNULL(t.Ay1, 0) + ISNULL(t.Ay2, 0) + ISNULL(t.Ay3, 0)) / 92.0 >= " +
+        AsiriStokKatSql + " * t.SezonToplam " +
+        "THEN " + AsiriKapakKat + " * " + AsiriPencereSql +
+        " * (ISNULL(t.Ay1, 0) + ISNULL(t.Ay2, 0) + ISNULL(t.Ay3, 0)) / 92.0 " +
+        "ELSE " + AsiriStokKatSql + " * t.SezonToplam END)";
+
     private const string AsiriStokSart =
         "(t.SezonToplam > 0 AND t.ToplamStok > " + AsiriStokKatSql + " * t.SezonToplam " +
         // Kaçak ÖLÇÜLDÜ = 0 (negatif toplam pozitif eşiği geçemez); şart tutarlılık için,
         // rakamı değiştirmiyor: 29.656 → 29.625 (fark yalnız fiyatı 0 olanlar).
+        // B-172(c): İŞ MODELİ AYAĞI — sezon katı TEK BAŞINA yetmiyor (B grubu yanlış pozitif).
+        "AND " + AsiriKapakDuzSart + " AND " + AsiriKapakSezonSart + " " +
         "AND " + DefterGuvenilirSart + ")";
 
     private const string SezonHazirlikSart =
@@ -636,7 +715,7 @@ public sealed partial class SatisAnaliziQueries(
                         THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
                         ELSE 0 END))                                              AS AsiriMaliyet,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.BirimMaliyet > 0
-                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriStokKatSql} * t.SezonToplam)
+                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriEsikSql})
                              * t.BirimMaliyet ELSE 0 END))                        AS AsiriFazlaMaliyet,
                    SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS AsiriOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0

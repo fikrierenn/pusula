@@ -144,12 +144,20 @@
             Eşikler nasıl kuruldu
         </p>
         <ul class="list-disc ml-4 space-y-0.5">
-            <li><b>Aşırı stok eşiği KATEGORİ BAZLI.</b> Ölçüt: stoğun sonraki 12 ayda satılan
-                oranı (yıllık devir) 1,0'ın altına düştüğü kat. Panel geneli <b>3×</b>; ölçümle
-                ayrışan iki kategori <b>Kırtasiye 2×</b> (devri 1,25 → eşik sıkılaştı) ve
-                <b>Hazırlık Kitapları 8×</b> (devri 3,16 → haksız "aşırı" damgası kalktı).
-                Kalan sekizde 3× duruyor: bantları eksik, monoton değil ya da örneklem yetersiz —
-                <b>ölçemediğimizi değiştirmiyoruz</b>.</li>
+            <li><b>Aşırı stok eşiği İKİ AYAKLI.</b> Bir ürün ancak <b>ikisini birden</b>
+                aşarsa aşırı sayılır: (1) sezon satışının <b>2 katı</b> stok, (2) ikmal
+                döngüsünün <b>5 katı</b> — döngü = temin süresi + 30 gün, talep hızı 365 günlük
+                ve sezon penceresinin yükseği. İkinci ayak 12.09.2026'da eklendi, çünkü sezon
+                ayağı tek başına sağlıklı dönen malı damgalıyordu: ölçülen 4.904 çeşidin medyan
+                yıllık devri <b>2,25</b> iken temiz grubun medyanı <b>2,40</b> — ayırt
+                edilemiyordu. <b>5 katı veriden seçilmedi:</b> devir hedefi 2,0 (=182 gün stok)
+                ortalama döngüye (35 gün) bölününce çıkıyor.
+                <b>Kategori bazlı eşik kaldırıldı</b> (12.09): medyanla ölçülünce üç grubun üçü
+                de 2× veriyordu ya da eşik türetilemiyordu.</li>
+            <li><b>Bu kartın görmediği yer:</b> ölçüt sezonda satış şartı arıyor. Sezon
+                <i>dışında</i> satan <b>63.565 çeşit / 132,2 milyon ₺</b> (medyan devir 0,50)
+                bu kartta HİÇ görünmüyor. Sezon şartını kaldırmak cezayı 2,1 kata çıkarıyor
+                (37 bin → 94 bin çeşit) — karar verilmedi, <b>bilerek açık</b>.</li>
             <li><b>Sezon açığı 0,50</b> — altında önceki yıl talebinin en az %39'u
                 gerçekleşmiyor.</li>
             <li><b>Raf kaybı: yılda 5+ satış.</b> Ayraç talep, merkez stoğu değil — merkez
@@ -905,8 +913,12 @@ else
         // ⚠ ALT SINIR: maliyeti bilinmeyen çeşit 0 sayılır. Kapsam ölçüldü —
         // 28.974/30.403 çeşit (%95,3), etiketin %97,5'i. Kalan %4,7 rakama GİRMİYOR.
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokFazlaMaliyet),
-            $"{k.AsiriStokCesit:N0} çeşit · eşik üstü fazla (2× sezon) · tüm stok "
-            + $"maliyetle {TlKisa(k.AsiriStokMaliyet)}",
+            // B-172(c) 12.09.2026: ölçüt İKİ AYAKLI oldu — sezon katı TEK BAŞINA sağlıklı
+            // dönen malı damgalıyordu (ölçüldü: 4.904 çeşit, medyan devir 2,25; temiz
+            // grubun medyanı 2,40 — ayırt edilemiyor). İkinci ayak ikmal döngüsünden
+            // geliyor: stok, (temin + 30 gün) talebinin 5 katını da aşmalı.
+            $"{k.AsiriStokCesit:N0} çeşit · eşik üstü fazla (2× sezon VE 5× ikmal kapağı) · "
+            + $"tüm stok maliyetle {TlKisa(k.AsiriStokMaliyet)}",
             "warning", "katman", SatisDurumFiltre.AsiriStok,
             Taban: "maliyet · eşik ÜSTÜ fazla",
             IkinciEtiket: "tüm stok satış fiyatıyla", IkinciDeger: TlKisa(k.AsiriStokTutar),

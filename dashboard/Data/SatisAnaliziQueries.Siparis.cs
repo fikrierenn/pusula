@@ -185,8 +185,11 @@ public sealed partial class SatisAnaliziQueries
     /// ⚠ VEKİL, HAK DEĞİL: `urn.alimIadeYok` tek değer taşıyor (ürün bazında iade hakkı veride
     /// YOK — değişmez `urn-alimIadeYok-hala-bilgi-tasimiyor`). Bu yüzden ölçülen şey "iade
     /// HAKKI" değil "iade KANALI fiilen çalışmış" — geçmişte iade edilmiş ürün için o kanalın
-    /// açık olduğu GÖZLENMİŞTİR. Ölçüldü: 9.501 çeşit / fazla maliyet 8,3M ₺ (aşırı stok fazla
-    /// maliyetinin %11,5'i).
+    /// açık olduğu GÖZLENMİŞTİR.
+    /// ⚠ SAYI KOHORTLA BİRLİKTE DEĞİŞİR — burada YAZILI tutuluyor ki bayatladığı görülsün:
+    /// 12.09.2026 sabahı 9.501 çeşit / 8,3M ₺ (eşik 3×, kohort 30.361) → aynı gün eşik 2×
+    /// olunca 40.017'lik kohortta büyüdü → iş modeli ayağı (B-172c) eklenince kohort 37.103'e
+    /// indi ve hafifletici <b>12.671 çeşit / 10,8M ₺</b> ölçüldü (fazla maliyetin %14,5'i).
     ///
     /// ⚠ NEDEN AYRI SORGU: `irsHrk` join'i gerektirir, KPI sorgusu taban-only ve zaten 8632
     /// sınırına yakın (bkz. SiparisOzetAsync).
@@ -202,7 +205,7 @@ public sealed partial class SatisAnaliziQueries
             )
             SELECT COUNT(*) AS Cesit,
                    CONVERT(decimal(18,2), ISNULL(SUM(CASE WHEN t.BirimMaliyet > 0
-                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriStokKatSql} * t.SezonToplam)
+                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriEsikSql})
                              * t.BirimMaliyet ELSE 0 END), 0)) AS FazlaMaliyet
             FROM {Taban} t WITH (NOLOCK)
             JOIN iade i ON i.stkID = t.stkID
