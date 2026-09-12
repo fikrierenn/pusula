@@ -159,3 +159,79 @@ UNION ALL SELECT 'vw_PerKBil-4lu (Puantajno YOK)', COUNT(*) FROM (
      ⇒ Hiçbiri 'SEZONLUK' taşımıyordu; doğru cevap (`A4`) ancak VIEW TANIMI görülünce
        çıktı. DERS: tanımı okunamayan bir view'de kaynak kolonu veriden aramak
        pahalı ve eksik kalıyor — `GRANT VIEW DEFINITION` tek sorgu ile çözer. */
+
+/* ============================================================================
+   EK — PERSONEL* DOSYALARININ GERİ KALANI (2026-09-12, ikinci tur)
+   ============================================================================ */
+
+/* 9) ⭐ FTE FORMÜLÜ SEMA'DAKİNDEN GENİŞ — FAZLA MESAİ DE SAYILIYOR
+   sema: SUM(Primgunu)/30
+   kullanıcının raporu (`PERSONEL AYLIK ORTALAMA.sql`):
+     CAST((SUM(Primgunu) + SUM(fm1+fm2)/7.5) / 30 AS DECIMAL(10))
+   ⇒ 7,5 SAAT = 1 GÜN (iş günü sabiti; sema'da YOKTU). `fm3` bilerek dışarıda.
+   ⇒ İki formül AYNI ŞEY DEĞİL — fazla mesai yoğun ayda ikincisi daha yüksek
+     "tam gün çalışan" verir. Hangi soruysa o seçilir ve YAZILIR. */
+
+/* 10) ⭐ KIDEM */
+SELECT TOP 5 Personelno, Igt, Ict,
+       CASE WHEN Ict IS NULL THEN DATEDIFF(DAY, Igt, GETDATE())
+            ELSE DATEDIFF(DAY, Igt, Ict) END AS KidemGun,
+       dbo.fn_FormatKidem(DATEDIFF(DAY, Igt, GETDATE())) AS KidemYilAyGun
+FROM   dbo.vw_PersonelDepartman WHERE Ict IS NULL ORDER BY KidemGun DESC;
+
+SELECT s.name+'.'+o.name AS obje, o.type_desc AS tip
+FROM   sys.objects o JOIN sys.schemas s ON s.schema_id=o.schema_id
+WHERE  o.name LIKE 'fn_%';
+/* BKM_GENEL'de 5 kullanıcı fonksiyonu:
+     dbo.fn_FormatKidem  (SKALER — kıdem biçimleyici, kullanıcı raporunda kullanılıyor)
+     dbo.fn_tbl_6645_personellistesi · dbo.FN_TBL_MATRAH_ARTIRIMI_TAKSIT ·
+     dbo.FN_TBL_7440MATRAH_ARTIRIMI_TAKSIT · dbo.fn_KDVBelgeTurleri  (vergi/teşvik) */
+
+/* 11) ⚠⚠ KAPSAM FARKI — DEMOGRAFİ RAPORLARI ÜÇTE BİR FİRMAYI GÖRMÜYOR
+   `PERSONEL YAŞ GRUBU` ve `PERSONEL CİNSİYET GRUBU` ham `perbilgi`den okuyor. */
+SELECT 'perbilgi (yalniz BKM_GENEL)' AS kaynak, COUNT(*) AS aktif
+FROM   dbo.perbilgi WHERE (Ict IS NULL OR Ict >= GETDATE())
+UNION ALL SELECT 'vw_PersonelDepartman (UC FIRMA)', COUNT(*)
+FROM   dbo.vw_PersonelDepartman WHERE (Ict IS NULL OR Ict >= GETDATE())
+UNION ALL SELECT 'view, yalniz BKM_GENEL', COUNT(*)
+FROM   dbo.vw_PersonelDepartman WHERE (Ict IS NULL OR Ict >= GETDATE()) AND Firma='BKM_GENEL';
+/* perbilgi 292 · view (üç firma) 358 · view BKM dilimi 292
+   ⇒ **66 kişi (%18,4) demografi raporlarının DIŞINDA.** Rakam makul görünür,
+     kapsam eksiktir. Ham tablo tek firma; view üç firma birleşimi. */
+
+/* 12) ⭐⭐ ARŞİVDE BAYAT SORGU VAR — ÖLÇÜLDÜ */
+SELECT c.name AS kolon FROM sys.columns c JOIN sys.objects o ON o.object_id=c.object_id
+WHERE  o.name='vw_PersonelDepartman'
+   AND (c.name LIKE '%rup%' OR c.name LIKE '%Personel%' OR c.name LIKE '%Giri%');
+/* Dönen: Personelno · IstenCikisKodu — YALNIZ BUNLAR.
+   `PERSONEL AYLIK ORTALAMA.sql` şu kolonları kullanıyor ve HİÇBİRİ YOK:
+     p.Grup · p.[Personel No] · p.[İşe Giriş Tarihi] · p.[İşten Çıkış Tarihi]
+   ⇒ O sorgu bugün ÇALIŞMIYOR (Err 207). View bir noktada yeniden tanımlanmış.
+   ⇒ İYİ HABER: kırılma GÜRÜLTÜLÜ, sessiz değil.
+   ⇒ KURAL: arşivden alınan sorgu "çalışıyor" VARSAYILMAZ; kolonları bugünkü şemaya
+     karşı doğrulanır. Arşiv İPUCU verir, GEÇERLİLİK vermez.
+   ⚠ Kaybolan `Grup` bir iş kuralı taşıyordu: `p.grup NOT LIKE '%KAFE'` (kafe kadrosunu
+     mağaza sayımından çıkarma). Bugünkü karşılığı `Lokasyon <> 'KAFELER'`. */
+
+/* 13) ARŞİV ENVANTERİ — 576 DOSYA, SEMA KAPSAMINA GÖRE
+   (betik: os.walk + FROM/JOIN/UPDATE/INTO deseni, sema'nın 329 nesne adıyla kıyas)
+
+   ALT KLASÖRLER GÖÇ TARİHİ TAŞIYOR:
+     _ARSIV_LOGO   → ÖNCEKİ ERP (Logo): lg_220_items · lg_220_01_stline · lg_220_prclist
+     _ARSIV_ENPOS  → ÖNCEKİ POS (ENPOS): ibelge · ihareket · anket_hareket
+     _ARSIV_WMSBKM → eski WMS/JOKER sipariş akışı
+     _JOKER        → e-ticaret · OLAP → yıldız şema denemesi (dimUrun, factSiparisDetayNet)
+
+   SEMA'DA OLMAYAN, EN SIK GEÇEN NESNELER (dosya sayısı):
+     j_cargo 43 · ozet 42* · **urnbarkod_vw 37** · siparisler 35 · j_order_status 33 ·
+     **stokkarti_vw 20** · **depostokdurum_vw 19** · tsoft_urun 19 ·
+     **siparisdetay_vw 16** · urnkod2 16 · **stokson_vw 14** · j_order_pay_types 13 ·
+     asrslokasyonkonum_vw 12 · **urnkategori_vw 12** · stokminmax 11 · j_box_list 11 ·
+     lg_220_items 10 · stok_adres_vw 8
+     (*ozet/liste/rapor/detaylar = geçici tablo/CTE, gerçek nesne değil — gürültü)
+
+   ⇒ **EN ÇOK KULLANILAN ERP VIEW'LARI SEMA'DA YOK.** `urnbarkod_vw` 37 dosyada
+     geçiyor — sema'nın hiç bilmediği bir okuma yüzeyi. ERP satıcısının hazır view
+     katmanı pratikte ham tablodan DAHA ÇOK kullanılıyor.
+   ⇒ Kargo alt sistemi (`j_cargo`, 43 dosya) sema'da neredeyse hiç yok.
+   SIRADAKİ: bu view'lardan başlayarak ERP taraması. */

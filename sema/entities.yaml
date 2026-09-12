@@ -28,6 +28,85 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  zirve_ik_elle_sorgu_dersleri:
+    type: measurement
+    grain: "D:/Belgelerim/sql PERSONEL* (13 dosya) — çıkarılan iş kuralları ve ölçülen sınırlar (2026-09-12)"
+    note: >-
+      Kullanıcı teyidi: *"PERSONEL diye başlayanların tamamı zirve sorgusu"*. Üçü zaten
+      işlendi (bordro kontrol · kadro analiz · zirve personel); kalanlardan çıkanlar:
+
+      ⭐ **FTE FORMÜLÜ SEMA'DAKİNDEN GENİŞ — FAZLA MESAİ DE SAYILIYOR.**
+      Sema `SUM(Primgunu)/30` yazıyor; kullanıcının raporu ikinci bir terim ekliyor:
+      `(SUM(Primgunu) + SUM(fm1+fm2)/7.5) / 30`
+      ⇒ **7,5 saat = 1 gün** (iş günü sabiti, sema'da YOKTU). `fm3` bilerek dışarıda.
+      İki formül AYNI ŞEY DEĞİL: fazla mesai yoğun aylarda ikincisi daha yüksek
+      "tam gün çalışan" verir. Hangi soruyu sorduğuna göre seçilir ve YAZILIR.
+
+      ⭐ **KIDEM = `DATEDIFF(DAY, Igt, ISNULL(Ict, GETDATE()))`**, biçimleme
+      **`dbo.fn_FormatKidem`** (skaler fonksiyon, VAR — ölçüldü). BKM_GENEL'de 5 kullanıcı
+      fonksiyonu var; diğer dördü vergi/teşvik (`fn_tbl_6645_personellistesi` ·
+      `FN_TBL_MATRAH_ARTIRIMI_TAKSIT` · `FN_TBL_7440MATRAH_ARTIRIMI_TAKSIT` ·
+      `fn_KDVBelgeTurleri`).
+
+      ⚠⚠ **KAPSAM FARKI ÖLÇÜLDÜ — DEMOGRAFİ RAPORLARI ÜÇTE BİR FİRMAYI GÖRMÜYOR.**
+      `PERSONEL YAŞ GRUBU` ve `PERSONEL CİNSİYET GRUBU` ham `perbilgi`den okuyor,
+      view'den değil. Aktif çalışan (`Ict IS NULL OR Ict >= GETDATE()`):
+        `perbilgi` (yalnız BKM_GENEL)      → **292**
+        `vw_PersonelDepartman` (üç firma)  → **358**
+      ⇒ **66 kişi (%18,4) demografi raporlarının dışında.** Ham tablo tek firma,
+      view üç firma birleşimi. Rakam makul görünür, kapsam eksiktir.
+
+      ⭐⭐ **ARŞİVDE BAYAT SORGU VAR VE BU ÖLÇÜLDÜ.** `PERSONEL AYLIK ORTALAMA.sql`
+      (iki varyant) bugün **ÇALIŞMIYOR**: `p.Grup`, `p.[Personel No]`,
+      `p.[İşe Giriş Tarihi]`, `p.[İşten Çıkış Tarihi]` kolonlarının HİÇBİRİ bugünkü
+      `vw_PersonelDepartman`da YOK (kontrol edildi). View bir noktada yeniden
+      tanımlanmış ve eski sorgular kırılmış.
+      ⇒ İYİ HABER: bu kırılma **GÜRÜLTÜLÜ** (Err 207 "geçersiz kolon"), sessiz değil.
+      ⇒ KURAL: arşivden alınan hiçbir sorgu "çalışıyor" varsayılmaz; kolonları
+      bugünkü şemaya karşı doğrulanır. Arşiv İPUCU verir, GEÇERLİLİK vermez.
+      ⚠ Kaybolan `Grup` kolonu bir iş kuralı da taşıyordu: `p.grup NOT LIKE '%KAFE'`
+      (kafe kadrosunu mağaza sayımından çıkarma). Bugün aynı ayrımı
+      `Lokasyon <> 'KAFELER'` yapıyor — bkz. `zirve_ik_organizasyon_ve_kafeler_istisnasi`.
+    measurement: "2026-09-12 — view kolon kontrolü (Grup/[Personel No] YOK) · sys.objects fonksiyon taraması (fn_FormatKidem VAR) · aktif çalışan kapsam kıyası 292 vs 358."
+    evidence: "2026-09-12 — sqlcli --profile zirve ölçümleri + PERSONEL AYLIK ORTALAMA / KIDEM LİSTESİ / YAŞ GRUBU / CİNSİYET GRUBU dosyalarının okunması. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  elle_sorgu_arsivi_envanteri:
+    type: measurement
+    grain: "D:/Belgelerim/sql — TAM envanter (alt klasörler dahil), sema kapsamına göre (2026-09-12)"
+    note: >-
+      ⭐ **ARŞİV SANILANDAN BÜYÜK: 576 `.sql`** (kökte 322 + alt klasörler).
+      Alt klasörler başlı başına tarih taşıyor:
+        `_ARSIV_LOGO`  → **ÖNCEKİ ERP (Logo)** — `lg_220_items`, `lg_220_01_stline`,
+                         `lg_220_prclist`, `lv_220_01_stinvtot`
+        `_ARSIV_ENPOS` → **ÖNCEKİ POS (ENPOS)** — `ibelge`, `ihareket`, `anket_hareket`
+        `_ARSIV_WMSBKM`→ eski WMS/JOKER sipariş akışı
+        `_JOKER`       → e-ticaret · `OLAP` → yıldız şema denemesi (`dimUrun`, `factSiparisDetayNet`)
+      ⇒ Bunlar GÖÇ TARİHİDİR: bugünkü veride açıklanamayan kopuklukların (eski POS
+      dönemi, eski ERP dönemi) kaynağı buralarda olabilir.
+
+      **SEMA KAPSAMINA GÖRE ÖLÇÜM** — dosyaların referans verdiği nesnelerden sema'da
+      OLMAYANLAR en sık geçtiği sırayla (dosya sayısı):
+        `j_cargo` 43 · `ozet` 42 (geçici tablo) · **`urnbarkod_vw` 37** · `siparisler` 35 ·
+        `j_order_status` 33 · **`stokkarti_vw` 20** · **`depostokdurum_vw` 19** ·
+        `tsoft_urun` 19 · **`siparisdetay_vw` 16** · `urnkod2` 16 · **`stokson_vw` 14** ·
+        `j_order_pay_types` 13 · `asrslokasyonkonum_vw` 12 · `urnkategori_vw` 12 ·
+        `stokminmax` 11 · `j_box_list` 11 · `lg_220_items` 10 · `stok_adres_vw` 8
+      ⇒ **En çok kullanılan ERP view'ları sema'da YOK**: `urnbarkod_vw` (37 dosya!) ·
+      `stokkarti_vw` · `depostokdurum_vw` · `siparisdetay_vw` · `stokson_vw` ·
+      `urnkategori_vw` · `asrslokasyonkonum_vw`. Bunlar ERP satıcısının hazır
+      okuma yüzeyi ve pratikte ham tablodan DAHA ÇOK kullanılıyor.
+      ⚠ `j_cargo` 43 dosyayla listenin başında ama JOKER tarafı — kargo alt sistemi
+      sema'da neredeyse hiç yok.
+      ⚠ `ozet`/`liste`/`rapor`/`detaylar` gibi adlar GEÇİCİ TABLO/CTE'dir, gerçek nesne
+      değil — envanterde gürültü olarak durur, ayıklanması gerekir.
+
+      SIRADAKİ İŞ (kullanıcı yönlendirmesi: *"sonra tamamını tarayalım erp ve diğerleri
+      için kaynak"*): en sık geçen sema-dışı ERP view'larından başlayarak tarama.
+    measurement: "2026-09-12 — os.walk ile 576 dosya tarandı; FROM/JOIN/UPDATE/INTO deseninden nesne adı çıkarıldı; sema'nın bildiği 329 nesne adıyla karşılaştırıldı. En çok yeni nesne taşıyan dosya: 'DİNAMİK ABC ANALİZİ MİN MAX SEVİYE SİPARİŞ ÖNERİ' (31 nesne / 24 yeni)."
+    evidence: "2026-09-12 — envanter betiği (scratchpad, arsiv_env.json). Dosyalar depoya KOPYALANMADI. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
   zirve_vw_persdept_tanimi:
     type: view
     grain: "BKM_GENEL.dbo.vw_PersonelDepartman — TAM TANIM (kullanıcı 2026-09-12'de verdi)"
@@ -1879,6 +1958,34 @@ entities:
     columns: "2026-09-11 ölçüldü (ODAKJOKER.JOKER.sys.columns, 20 kolon): LOGICALREF int · CUSTOMERREF int · INVOICEADDRESSREF int · CNAME nvarchar(200) · CPHONE nvarchar(20) · CADDRESS nvarchar(max) · CCITY nvarchar(50) · CTOWN nvarchar(150) · CNHOOD nvarchar(150) · CCOUNTRY nvarchar(50) · CZIPCODE nvarchar(10) · CTCNO nvarchar(15) · CCOMPANY nvarchar(150) · CTAXOFFICE nvarchar(50) · CTAXNUMBER nvarchar(50) · CMAIL nvarchar(250) · MODIFIEDUSERREF int · OUTLOGICALREF bigint · LOGOCARICODE nvarchar(50) · ORDERCODE nvarchar(30)."
     confidence: 1.0
     last_verified: "2026-09-11"
+  # --- KURAL: kasa → ERP aktarım gecikmesi (kullanıcı bildirimi + ölçüm 2026-09-12) ---
+  kasa_erp_aktarim_tazeligi:
+    type: rule
+    uses: [entities:EncoreMerkez.dbo.Sales, entities:dbo.irsHrk]
+    note: >-
+      EncoreMerkez (KASA) satışı DerinSIS'e SAATTE BİR aktarılır. Sonucu: GÜN İÇİNDE ERP
+      EKSİKTİR, kasa doğrudur. Kapalı günlerde iki kaynak kuruşu kuruşuna tutar.
+    rule: >-
+      Gün içi / anlık ciro sorusu → EncoreMerkez (kasa). ERP'ye bakan "bugün geride" der ve bu
+      bir VERİ HATASI DEĞİLDİR, aktarılmamış son ~1 saattir.
+      Kapalı gün / geçmiş dönem → iki kaynak da kullanılabilir, mutabakat BEKLENİR.
+      Bir raporda bugünü ERP'den, dünü kasadan almak tabanları karıştırır — TEK KAYNAK seç.
+      ERP tarafı kanonik formül: `eTip 100 − 101 + 4 − 5` (bkz. MEKAN_CIRO_MUTABAKAT_FORMULU).
+    measurement: >-
+      2026-09-12, gün sürerken ölçüldü (Encore net KDV-hariç ↔ irsHrk kanonik formül):
+      06.09.2025 (KAPALI) FSM %0,00 · Özlüce −%0,23 · İst.Yolu −%0,03 ·
+      07.09.2025 (KAPALI) üç mağazada da %0,00 ·
+      12.09.2026 (AÇIK)   FSM +%3,07 · Özlüce +%2,50 · İst.Yolu +%4,18.
+      Yani sapma yalnız açık günde ve büyüklüğü ~1 saatlik ciro kadar.
+    confidence: 0.9
+    evidence: "2026-09-12 — kullanıcı bildirimi (\"1 saatte bir kasalar ERP tarafına aktarım yapıyor\") + üç günlük çapraz kaynak ölçümü."
+    note_hata: >-
+      ⚠ Bu kayıt yazılmadan ÖNCE aynı farka "gün kapanınca yazılıyor" diye ÇIKARIM yapılmıştı
+      ve YANLIŞTI. Aktarım PERİYODİKTİR (saatlik), gün sonuna bağlı değil. Fark bir kez daha
+      gösterdi: mekanizmayı bilmeden gözlemden mekanizma türetilmez.
+    korur: [degismezler:kasa-erp-kapali-gun-mutabakati]
+    last_verified: "2026-09-12"
+
   # --- KURAL: bekleyen siparişte İL kaynağı (eski `bridges:bekleyen-siparis-il`den ayrıldı 2026-09-11) ---
   bekleyen_siparis_il_proxy:
     details: "SINIR: CCITY müşterinin FATURA/kayıt ili, teslimat ili olmayabilir — sipariş başka ile gönderilecekse bu sayı yanıltır. 'Bekleyen sipariş nerede bekliyor' sorusuna değil, 'kime gidecek' sorusuna yaklaşık cevap verir."
