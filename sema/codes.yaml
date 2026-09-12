@@ -4,6 +4,62 @@ version: 1
 updated: 2026-08-20
 
 codes:
+  urnBilgi.bBilgiID:
+    lookup: dbo.urnBilgiTnm
+    join: "JOIN dbo.urnBilgiTnm t ON t.BilgiID = urnBilgi.bBilgiID → t.BilgiAd · grup için JOIN dbo.urnBilgiGrp g ON g.grupID = t.bilgiGrup → g.grupAd"
+    kume_kaynagi: "dbo.urnBilgiTnm — 68 tanım, lookup'tan CANLI okunur. Liste sema'ya YAZILMAZ; aşağıdakiler yalnız İŞ KURALI taşıyan seçkidir."
+    closed_set: true
+    note: >-
+      ⭐⭐ **ÜRÜNÜN ÖZNİTELİK SÖZLÜĞÜ — `dbo.urnBilgi` BİR EAV TABLOSU (10.433.109 satır,
+      3 kolon: `bVeriID` ürün · `bBilgiID` öznitelik · `bDeger` değer).**
+      Tanımlar `dbo.urnBilgiTnm` (68 kayıt), gruplar `dbo.urnBilgiGrp` (9).
+      ⚠ `bDeger` **varchar** — boolean öznitelikler `'True'`/`'False'` METNİ taşır.
+      Süzerken `bDeger='True'` yazılır; `=1` ÇALIŞMAZ.
+      ⚠ Bir öznitelik için hem `True` hem `False` satırı olabilir (ör. 220: 781 True +
+      744 False) ⇒ **`bBilgiID=X` varlığı yeterli DEĞİL**, değeri de süzülür.
+
+      **FİYAT/MARJ KARARINI DOĞRUDAN ETKİLEYEN ÖZNİTELİKLER (ölçülmüş canlı sayılarla):**
+        **228 "Odak Alış Fiyat Güncellenmesin"** — 114.977 `True`.
+            Kullanıcı 2026-09-12: *"odaktan gelen fiyatlar baskın olmasın diye atılan bayrak"*.
+            `ent.odakFiyatAktarim` bu üründe `fTur=1` (Son Alış) satırını YAZMAZ.
+            ⇒ Sema'nın kanonik maliyet yolu `fytOzl fTur=1/fTip=1` olduğu için maliyet
+              bayatlar (ölçüldü: taze maliyet %24,9 vs bayraksız %35,6).
+              Ayrıntı: `entities:odak_fiyat_aktarim_motoru`.
+        **220 "Odak Fiyat Güncellenmesin"** — 1.525 `True`. Ürün fiyat aktarımının
+            TAMAMEN dışında.
+        **225 "Piyasa Marjı Değişmeyecek Ürün"** — 449 `True`. `urn.piyasaMarj`
+            (= WEB İNDİRİM ORANI, bkz. `metrics:web_indirim_ve_web_marji`) dondurulur.
+        **205 "Takip Edilecek Rakip"** — 11.860 satır, ÜÇ değer:
+            "Fiyat Değişmeyecek" 5.423 · **"Kitap Yurdu" 4.874** · **"Kitap Seç" 1.563**
+            ⚠⚠ İki gerçek rakibin de beslemesi **2025-12-15'te durdu**
+              (`entities:rakip_fiyat_motoru_korlesmis`) ⇒ ürün bazında atanmış rakip
+              takibi işaret ettiği kaynağa ULAŞAMIYOR.
+        **206 "Rakip Fiyat Takibi Yapılsın Mı"** — 5.124 `True`, ama
+            `ent.tsoft_rakip_takip` **3.701** satır ⇒ **1.423 ürün işaretli ama listede YOK.**
+            Farkın sebebi ÖLÇÜLMEDİ (açık soru).
+
+      **DİĞER İŞ KURALI TAŞIYAN ÖZNİTELİKLER:**
+        169 "Stok Kontrolü Yok" 541.994 · 204 "Tsoft Stok Güncellemesin" 99.121 ·
+        168 "Odak Stoğunu Sat" 93.180 · 222 "Mağaza Bulunurluk Takibi" 59.126 ·
+        234 "Basım Yılı Gönderilmesin" 51.299 · 224 "Odak Sevkiyat Ürün" 26.993 ·
+        223 "Kapıda Ödeme Yasakla" 17.887 · 233 "İstoç Ürünleri" 1.467 ·
+        11 "Riskli Ürün" 1.659 (Sayım grubu) · 226 "Sınav Ürünü" 700 ·
+        227 "Sınav Okul Teslim" 260 · 221 "Orjinal Set Ürünü" 265 ·
+        252 "Sahaf Grup" 4.239 · 229 "Sepete Ek Ürün" 103 · 230 "Sıralama Dışı" 67
+      **KİMLİK KÖPRÜLERİ (EAV içinde saklı):**
+        173 "Tsoft Ürün ID" 753.953 · **174 "Odak Ürün ID" 647.776**
+        ⇒ ODAK ve T-Soft ürün kimlikleri de burada duruyor.
+      **E-TİCARET İÇERİK ALANLARI** (E-ticaret Odak grubu): 189 Kağıt Cinsi 654.743 ·
+        192 Basım Sayısı 654.479 · 175 Ürün Web Açıklama 659.610 · 190 Cilt Tipi 641.881 ·
+        191 Sayfa Sayısı 622.357 · 193 Basım Tarihi Yıl 570.914 · 181 Editör 124.588 ·
+        183 Çevirmen 107.713 — yani kitap künyesinin çoğu `urn`de değil BURADA.
+      ⚠ **BOŞ TANIMLAR** (tanımlı ama hiç kullanılmamış): 197 Görsel URL · 201 Raf Ömrü ·
+        202 Kabul Edilebilir Raf Ömrü · 231 "100 Temel Eser" · 250 Hazırlık Yeni Ürün
+        StokId · 253 Öneri Sip. Ort. Gün — altısı da 0 satır.
+    evidence: "2026-09-12 — urnBilgiTnm × urnBilgiGrp × canlı satır sayımı (68 tanım) + 205/206/225 değer dağılımları + tsoft_rakip_takip karşılaştırması. Kullanıcı 228'in amacını bildirdi. Arşiv: sorgular/2026-09-12-urnbilgi-oznitelik-sozlugu.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+
   urn.kod1ID:
     lookup: dbo.urnKod1
     join: "JOIN dbo.urnKod1 k ON k.kod1ID = urn.kod1ID → k.kod1Ad"
