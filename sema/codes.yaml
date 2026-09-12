@@ -354,8 +354,12 @@ codes:
     gruplar: >-
       Grup elle yazılmaz, `frmTip`/`mekanTip`ten türetilir:
       MAĞAZA = `frmTip=2` (`mekanTip=0`) · DEPO = `frmTip=3` (`mekanTip=1`) · OFİS = `frmTip=4` (`mekanTip=2`).
-      Aktiflik `frm.frmDurum` (0=aktif, 1=pasif) — ölçümle tutarlı: defterde durmuş
-      depoların hepsi durum=1.
+      Aktiflik `frm.frmDurum` — lookup **`dbo.frmDrm`**, BEŞ değer: 0 Etkin · 1 Etkin Değil ·
+      2 Geçici Kapalı · 3 Onaysız · 4 Kara Liste.
+      ⚠ Bu satır 2026-09-12'de "(0=aktif, 1=pasif)" diye ELLE İKİ DEĞER yazıyordu — EKSİKTİ,
+      aynı gün ölçülüp düzeltildi (üçüncü "liste elle yazma" ihlali). Canlıda yalnız üçü
+      kullanılıyor: 0→50.528 · 1→56 · 2→3; "Onaysız" ve "Kara Liste" tanımlı ama BOŞ.
+      Ölçümle tutarlı: defterde durmuş depoların hepsi durum≠0.
     defterde_kullanilan: >-
       ⚠ **DEFTERDE DOKUZ MEKAN VAR, ÜÇ DEĞİL.** Son 24 ayda `irsHrk`:
       12 Merkez Depo 7,09M satır · 4477 3,72M · 1 2,78M · 4478 2,72M ·

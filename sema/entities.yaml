@@ -28,6 +28,292 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  # ── MODÜL 1: dbo.frm KOMŞULUĞU (2026-09-12) ───────────────────────────────
+  # Yöntem: modül dışarıdan tahmin EDİLMEDİ, FK grafiğinden TÜRETİLDİ.
+  # `dbo.frm` en büyük çapa (46 tablo referans veriyor). Komşuluk 48 tekil tablo;
+  # 10'u sema'da zaten vardı, 38'i burada.
+  # ⭐ EN ÖNEMLİ ÖLÇÜM: komşuluğun 15'i TAMAMEN BOŞ, 18'i minik lookup.
+  #   Yani 46 referanslık dev çapa, pratikte BEŞ tabloyla konuşuyor. "Çok referans
+  #   alan tablo = çok kullanılan alt sistem" ÇIKARIMI YANLIŞ ÇIKTI.
+  dbo.frmMrk:
+    type: table
+    pk: [frmMrkFirmaID, frmMrkMarkaID]
+    key: [frmMrkFirmaID, frmMrkMarkaID, frmMrkCPYuzde]
+    note: >-
+      FİRMA ↔ MARKA yetki/temsil köprüsü — hangi tedarikçi hangi markayı veriyor.
+      Komşuluğun en büyük tablosu (162.690 satır) ve saf çoka-çok.
+      ⚠ **`frmMrkCPYuzde` 162.690 SATIRIN HEPSİNDE 0** — adı ciro-primi yüzdesi vaat
+      ediyor, hiç doldurulmamış. Tedarikçi ciro primi bu kolondan HESAPLANAMAZ.
+      (Aynı desen: `urnBrkd.urnBrkdAltStkId` · `istAyr.sevkAdet` · `api_log.stkid` —
+      tanımlı ama hiç doldurulmayan kolon, şemanın en yaygın sessiz tuzağı.)
+    measurement: "2026-09-12 — 162.690 satır · 3 kolon · PK 2'li. 2.725 firma × 10.150 marka (firma başına ort. 59,7 marka). `frmMrkCPYuzde > 0` olan satır: **0**. Obje son değişim 2015-11-01."
+    evidence: "2026-09-12 — sys.columns + tekillik/doluluk sayımı. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  mhs.mhsEntFrm:
+    type: table
+    pk: [mhsEntFrmID]
+    key: [mhsEntFrmID, mefSirketID, mefFrmID, mefHesap]
+    note: >-
+      ⭐ **CARİ → MUHASEBE HESAP KODU EŞLEMESİ** — `frm` ile hesap planı arasındaki köprü.
+      Bir cari kartın yevmiyede hangi hesaba yazılacağı burada tutulur.
+      Hesap öneki iş anlamını taşıyor: **120 → 99.777 satır (müşteri)** · **320 → 11.721
+      (satıcı)** · 300/770/760/102/740 birkaç yüz.
+      ⚠⚠ **FAN-OUT TUZAĞI: sadece `mefFrmID` ile JOIN ETME.** 424 firmanın birden çok
+      hesabı var (423 firma 2 hesap, 1 firma 3) — aynı cari farklı ŞİRKETTE farklı hesaba
+      yazılıyor. Anahtar `(mefSirketID, mefFrmID)`; `mefSirketID` 6 ayrı şirket taşıyor
+      (`mhs.mhsSirket`, kendisi de 10 referanslı bir hub).
+      ⚠ **2.331 satırda `mefHesap` BOŞ** — eşleme kurulmuş ama hesap yazılmamış.
+    measurement: "2026-09-12 — 116.966 satır · 4 kolon · PK mhsEntFrmID. 27.772 cari · 6 şirket · 3.626 ayrı hesap kodu. Birden çok hesaplı firma: **424**. Boş `mefHesap`: **2.331**. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — hesap öneki GROUP BY + firma başına hesap dağılımı + doluluk. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.sakMrk:
+    type: table
+    pk: [skID]
+    key: [skID, skFrmID]
+    note: >-
+      Firmaya bağlı "sak" kayıtları (20 kolon, 14.230 satır, yalnız **261 firma**).
+      Firma başına ort. 54,5 satır → firma-detay tablosu.
+      ⚠ İÇERİĞİ ÇÖZÜLMEDİ — kolon anlamları okunmadı, iş karşılığı ölçülmedi.
+      `skFrmID` dışındaki alanlar YORUMLANMAMIŞ; kullanmadan önce keşif gerekir.
+    measurement: "2026-09-12 — 14.230 satır · 20 kolon · PK skID · 261 ayrı firma. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK + firma dağılımı. İÇERİK ÖLÇÜLMEDİ (beyan). Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.5
+    last_verified: "2026-09-12"
+  dbo.frmYetkili:
+    type: table
+    pk: [ytkID]
+    key: [ytkID, ytkFrm]
+    note: >-
+      Tedarikçi/cari YETKİLİ KİŞİ kartları (ad, iletişim — 25 kolon). 1.874 firmanın
+      yetkilisi kayıtlı; `frm`in 50.582 carisinin yalnız **%3,7'si**.
+      ⚠ KİŞİSEL VERİ taşır (ad + iletişim) — rapora/dışa aktarıma girerken KVKK
+      değerlendirmesi gerekir. Toplu kişi listesi üretme.
+    measurement: "2026-09-12 — 2.379 satır · 25 kolon · PK ytkID · 1.874 ayrı firma (firma başına 1,27). Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK + firma dağılımı. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.frmSzlm:
+    type: table
+    pk: [frmSzlmID]
+    key: [frmSzlmID, frmSzlmFrmID]
+    note: >-
+      TEDARİKÇİ SÖZLEŞMESİ (50 kolon — koşul/iskonto/vade alanları taşıdığı kolon
+      sayısından anlaşılıyor). 418 firma için 732 sözleşme.
+      ⚠ İÇERİĞİ ÇÖZÜLMEDİ. Satınalma adalet şartı (`frm_iade_vade_kosullari`) için
+      DOĞRUDAN İLGİLİ görünüyor — alıcı kararını sözleşme koşuluyla birlikte okumak
+      gerekiyorsa keşif buradan başlamalı. Obje son değişim 2015-11-01 (şema donmuş,
+      veri tazeliği ÖLÇÜLMEDİ).
+    measurement: "2026-09-12 — 732 satır · 50 kolon · PK frmSzlmID · 418 ayrı firma. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK + firma dağılımı. İÇERİK VE TAZELİK ÖLÇÜLMEDİ (beyan). Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.5
+    last_verified: "2026-09-12"
+  dbo.posHsp:
+    type: table
+    pk: [hspMgzID, hspTarih]
+    key: [hspMgzID, hspTarih, hspDevir, hspTamam, hspNotlar]
+    note: >-
+      ⭐ **MAĞAZA-GÜN KASA DEVRİ** — grain mağaza × gün, `hspDevir` o günün devreden
+      kasa tutarı, `hspTamam` günün kapatılıp kapatılmadığı.
+      `hspMgzID` → `frm.frmID` (mekan). Yalnız **3 mağaza** (merkez depo yok — kasa
+      sadece satış noktasında).
+      ⚠ **CANLI SİNYAL (ölçüm 2026-09-12): 5.783 günün 5.782'si kapatılmış, BİRİ AÇIK —
+      İst.Yolu 2026-09-05, devir 280.263,44 ₺.** Bir haftadır kapanmamış kasa günü;
+      bunu gören bir uyarı YOK. (Bu bir ÖLÇÜMdür, sebebi araştırılmadı.)
+    measurement: "2026-09-12 — 5.783 satır · 6 kolon · PK (hspMgzID, hspTarih) · 3 mekan · 2021-05-24 .. 2026-09-05. `hspTamam <> 1`: **1 satır** (mekan 4478, 2026-09-05, devir 280.263,44 ₺). Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — tarih aralığı + hspTamam dağılımı + açık günün tek tek dökümü. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.posOdemeBanka:
+    type: table
+    pk: [odmBnkID, odmBnkBankaID, odmBnkMagazaID]
+    key: [odmBnkID, odmBnkBankaID, odmBnkMagazaID, odmBnkOnce]
+    note: >-
+      MAĞAZA × ÖDEME TİPİ × BANKA yönlendirmesi — hangi mağazada hangi ödeme hangi
+      bankaya gidiyor. ⚠ **HEM `odmBnkBankaID` HEM `odmBnkMagazaID` `frm.frmID`'ye
+      bakar** (banka `frmTip=5`, mağaza `frmTip=2`); aynı tabloya iki ayrı rolle join.
+      `odmBnkOnce` öncelik sırası.
+    measurement: "2026-09-12 — 75 satır · 4 kolon · PK 3'lü · 3 mağaza × 23 banka. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK + tekil sayım + FK grafiği (iki kolon da dbo.frm'e). Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.frmBnk:
+    type: table
+    pk: [frmBnkID]
+    key: [frmBnkID, frmBnkFirmaID, frmBnkSubeID, frmBnkHesapNo, frmBnkOncelik, frmBnkDvzID]
+    note: >-
+      Cari BANKA HESAPLARI (IBAN/hesap no + şube + döviz + öncelik). Yalnız **41 firma**
+      için kayıt var — 50.582 carinin %0,08'i; ödeme yapılan avuç içi tedarikçi.
+      ⚠ Hesap numarası FİNANSAL VERİDİR; rapora/dışa aktarıma girerken maskele.
+      `frmBnkSubeID` → `dbo.bnkSube`.
+    measurement: "2026-09-12 — 62 satır · 7 kolon · PK frmBnkID · 41 firma · 51 şube. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK + tekil sayım. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.frmKent:
+    type: table
+    pk: [alanKodu]
+    key: [alanKodu]
+    note: >-
+      ⚠⚠ **TUZAK — `frm.il` PLAKA KODU DEĞİL, TELEFON ALAN KODUDUR.** Bu lookup'ın PK'sı
+      `alanKodu` (81 satır) ve `frm.il` ona bakar. Canlı dağılım: **212 → 19.638 firma
+      (İstanbul)** · **224 → 6.756 (Bursa)** · 232 → 2.879 (İzmir) · 312 → 4.455 (Ankara).
+      `il=16` yazıp Bursa beklemek BOŞ döner; `il=34` İstanbul değildir.
+    measurement: "2026-09-12 — 81 satır · 5 kolon · PK alanKodu. `frm.il` dağılımı alan koduyla birebir örtüşüyor (212/224/232/242/262/312/322 en kalabalıklar)."
+    evidence: "2026-09-12 — PK adı + frm.il GROUP BY dağılımı. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.hspTurAlt:
+    type: table
+    pk: [hesapTurID, hesapTurAltID]
+    key: [hesapTurID, hesapTurAltID, hesapTurAltAd, saglayiciTurAltAd, musteriTurAltAd]
+    note: >-
+      `frm.frmHesapTur` + `frm.frmHesapTurAlt` ikilisinin lookup'ı (13 satır).
+      ⚠⚠ **AYNI KOD, TARAFA GÖRE FARKLI AD — ÜÇ PARALEL AD KOLONU VAR:**
+      `hesapTurAltAd` (hesap tarafı) · `saglayiciTurAltAd` (tedarikçi tarafı) ·
+      `musteriTurAltAd` (müşteri tarafı). Örnek: `(0,1)` sağlayıcı için **"Kitap"**,
+      müşteri için **"Diğer Müşteriler"**. Tek bir `Ad` kolonu seçip etiket basmak
+      tarafların yarısını YANLIŞ adlandırır.
+      Hangi kolonun okunacağı `frm.frmTip`'e göre belirlenir.
+    measurement: "2026-09-12 — 13 satır · 24 kolon · PK (hesapTurID, hesapTurAltID). `frm` canlı dağılımı: (0,2) 39.032 · (0,0) 9.743 · (1,0) 1.091 · (1,2) 499 · kalanı üç haneli."
+    evidence: "2026-09-12 — lookup tam dökümü + frm çapraz dağılımı. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.frmDrm:
+    type: table
+    pk: [frmDrmID]
+    key: [frmDrmID, frmDrmAd]
+    note: >-
+      `frm.frmDurum` lookup'ı — **BEŞ değer**: 0 Etkin · 1 Etkin Değil · 2 Geçici Kapalı ·
+      3 Onaysız · **4 Kara Liste**.
+      ⚠ "0=aktif, 1=pasif" diye iki değerli sanmak EKSİKTİR (bu sema'da 2026-09-12'de
+      yapıldı ve aynı gün düzeltildi). Canlıda yalnız 3'ü kullanılıyor:
+      0 → 50.528 · 1 → 56 · 2 → 3. **"Kara Liste" ve "Onaysız" tanımlı ama BOŞ** —
+      yani kara liste mekanizması kurulmuş, işletilmiyor.
+    measurement: "2026-09-12 — 5 satır · 2 kolon · PK frmDrmID. `frm.frmDurum` canlı: 0→50.528 · 1→56 · 2→3 · 3→0 · 4→0."
+    evidence: "2026-09-12 — lookup tam dökümü + frm.frmDurum GROUP BY. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  dbo.frmOdmYon:
+    type: table
+    pk: [frmOdmID]
+    key: [frmOdmID, frmOdmAd]
+    note: >-
+      `frm.frmOdmYontem` lookup'ı — 3 değer: **0 Çek · 1 Nakit · 2 EFT**.
+      ⚠ `0` burada "boş/varsayılan" DEĞİL, **"Çek"** demektir; ve canlıda 50.511 cari
+      (%99,8) bu değerde. Yani ya gerçekten çek ağırlıklı ya da kolon doldurulmuyor ve
+      varsayılan "Çek"e düşüyor — **HANGİSİ OLDUĞU ÖLÇÜLMEDİ**. Ödeme yöntemi kırılımı
+      yapmadan önce bu ayrım netleşmeli (sıfır-sentinel tuzağının tersi: burada sıfırın
+      GERÇEK bir anlamı var).
+    measurement: "2026-09-12 — 3 satır · 2 kolon · PK frmOdmID. `frm.frmOdmYontem` canlı: 0→50.511 · 1→49 · 2→27."
+    evidence: "2026-09-12 — lookup dökümü + frm GROUP BY. 'Varsayılan mı gerçek mi' AYRIMI ÖLÇÜLMEDİ (beyan). Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
+  dbo.frmGrp5:
+    type: table
+    pk: [frmGrp5ID]
+    key: [frmGrp5ID, frmGrp5Ad]
+    note: >-
+      ⭐⭐ **KURAL GİBİ DURAN AMA KURAL OLMAYAN BAYRAK.** İki değer: 0 Genel, **1 "Grup
+      Şirketi"** — yani `frm.frmGrup5=1` ilişkili tarafı işaretliyor GÖRÜNÜYOR.
+      **ÖLÇÜLDÜ VE REDDEDİLDİ:** bayrak yalnız **4 kayıtta** açık (56 · 171 · 9525 ·
+      38093), oysa `bridges.yaml`'ın elle tuttuğu ilişkili-taraf listesi 11 kayıt ve
+      bunların **yalnız 3'ü** bayraklı. Bayrağa geçen biri 58 · 4694 · 4841 · 7950 ·
+      9339 · 22100 · 23842 · 50582'yi **SESSİZCE KAYBEDER** (ilişkili-taraf fiyat
+      kıyaslaması bozulur). Üstelik bayrakta listede olmayan bir şahıs da var (171).
+      ⇒ Elle liste bugün HÂLÂ daha doğru kaynak. Bu, "liste yerine kural bul"
+      arayışının ÖLÇÜLEREK reddedildiği bir vaka — bayrak var ama BAKIMI YAPILMIYOR.
+    measurement: "2026-09-12 — 2 satır · PK frmGrp5ID. `frm.frmGrup5=1`: 4 kayıt. Sema'nın 11 ilişkili tarafından bayraklı olan: 3 (56, 9525, 38093); bayraksız 8."
+    evidence: "2026-09-12 — lookup dökümü + frmGrup5=1 tam listesi + sema listesiyle tek tek karşılaştırma. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.frmGrp1:
+    type: table
+    pk: [frmGrp1ID]
+    key: [frmGrp1ID, frmGrp1Ad]
+    note: >-
+      `frm.frmGrup1` lookup'ı — 2 değer (0 Genel, 1 Aktif) ama **canlıda 50.582 carinin
+      TAMAMI 0**. Ayrım üretmiyor; gruplama için kullanılamaz. `frmGrp2/3/4` ile aynı
+      durumda (hepsi tek değerli "Genel"), `frmGrp5` ise kısmen doldurulmuş (ayrı kayıt).
+    measurement: "2026-09-12 — 2 satır. `frm.frmGrup1` canlı: yalnız 0 (50.582). frmGrp2: 1 satır, canlıda yalnız 0 (50.587). frmGrp3/frmGrp4: 1'er satır (Genel)."
+    evidence: "2026-09-12 — dört lookup dökümü + frm GROUP BY. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.frmUlke:
+    type: table
+    pk: [ulkeID]
+    key: [ulkeID, ulkeAd]
+    note: >-
+      Ülke lookup'ı — **TEK SATIR: 90 Türkiye**, ve `frm.ulke` 50.587 carinin hepsinde 90.
+      İthalat/yurtdışı tedarikçi bu kolondan AYRILAMAZ (kardeş tablo `dbo.ith` de BOŞ).
+      Yurtdışı alım varsa başka bir yerden okunmalı — nereden olduğu ÖLÇÜLMEDİ.
+    measurement: "2026-09-12 — 1 satır · PK ulkeID. `frm.ulke` canlı: yalnız 90 (50.587)."
+    evidence: "2026-09-12 — lookup dökümü + frm GROUP BY. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  dbo.frmButce:
+    type: table
+    pk: [frmButceID]
+    key: [frmButceID, frmButceFrmID]
+    note: >-
+      Cari/gider-merkezi BÜTÇE kaydı — **yalnız 6 satır**. Bütçe takibi bu tablodan
+      YAPILMIYOR; kurulmuş ama kullanılmamış. (Kardeşi `dbo.fatFFOzet` bütçe tutarı
+      taşıyordu ve 2022'de susmuştu — bütçe alt sistemi bir bütün olarak terk edilmiş
+      görünüyor. Bu bir ÇIKARIM, terk sebebi ölçülmedi.)
+    measurement: "2026-09-12 — 6 satır · 8 kolon · PK frmButceID. Obje son değişim 2017-07-12. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  mhs.mhsEntPos:
+    type: table
+    pk: [mhsEntPosID]
+    key: [mhsEntPosID, mepMekanID]
+    note: >-
+      POS → muhasebe entegrasyon tanımı (mağaza bazlı). `mepMekanID` → `frm.frmID`.
+      140 satır. Kardeşleri: `mhsEntPosKsyr` (kasiyer, 18 satır) · `mhsEntPosOdm`
+      (ödeme tipi, 396 satır) — üçü birlikte POS hareketinin hangi muhasebe hesabına
+      yazılacağını belirler. İÇERİK DETAYI ÖLÇÜLMEDİ.
+    measurement: "2026-09-12 — mhsEntPos 140 satır/8 kolon · mhsEntPosKsyr 18/5 · mhsEntPosOdm 396/5. Üçü de PK'lı. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — satır/kolon/PK. İÇERİK ÖLÇÜLMEDİ (beyan). Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.6
+    last_verified: "2026-09-12"
+  dbo.posOdeme:
+    type: table
+    pk: [odemeID]
+    key: [odemeID, odemeBanka]
+    note: >-
+      POS ödeme tipi tanımı (26 satır, 18 kolon). `odemeBanka` → `frm.frmID`
+      (`frmTip=5` banka/kasa). `posOdemeBanka` ile birlikte okunur.
+      Kardeş lookup `dbo.posOdmTip` (4 kod) sema'da ZATEN var — karıştırma:
+      `posOdmTip` ödeme SINIFI (Nakit/Kart/Döviz/Diğer), `posOdeme` ise tek tek
+      tanımlanmış ödeme ARACI.
+    measurement: "2026-09-12 — 26 satır · 18 kolon · PK odemeID. Obje son değişim 2018-07-12."
+    evidence: "2026-09-12 — satır/kolon/PK + FK grafiği. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  frm_komsulugu_bos_tablolar:
+    type: note
+    grain: "dbo.frm FK komşuluğunda satır sayısı SIFIR olan 15 tablo (ölçüm 2026-09-12)"
+    note: >-
+      ⭐ **MODÜL 1'İN EN ŞAŞIRTICI ÖLÇÜMÜ.** `dbo.frm` 46 tablodan referans alıyor —
+      şemanın en büyük çapası. Ama komşuluğun **15'i TAMAMEN BOŞ**:
+      `dbo.irsTsh` (15 kolon) · `dbo.ith` (19 — İTHALAT) · `dbo.carSatOde` (9) ·
+      `dbo.carMtbkt` (13 — cari MUTABAKAT) · `dbo.carOdemePlanAyr` (37) ·
+      `dbo.carOdemePlanOdemeIptalSatir` (6) · `dbo.frmOzt` (24) · `dbo.frmMgzKtlm` (3) ·
+      `dbo.satBldrm` (15) · `dbo.sipTakip` (8 — SİPARİŞ TAKİP) · `dbo.drn2arac` (8) ·
+      `dbo.posMagazaKiraFirmalar` (4) · `depo.sozlesme` (15) · `dmb.dmb` (22 —
+      DEMİRBAŞ) · `prj.projeFrm` (2).
+      ⇒ **"Çok referans alan tablo = çok kullanılan alt sistem" ÇIKARIMI YANLIŞ.**
+      FK sayısı ERP satıcısının kurduğu YAPIYI ölçer, BKM'nin kullandığı yapıyı değil.
+      İş anlamı olan üç alt sistem — **ithalat · cari mutabakat · demirbaş** — şemada
+      kurulu ama BOŞ; yani bu süreçler ya ERP dışında yürüyor ya hiç yürümüyor.
+      ⚠ Bu tablolardan birine dayanan bir rapor yazılırsa HATA VERMEZ, sessizce
+      BOŞ döner — ve boş dönmek "hareket yok" diye okunur.
+    measurement: "2026-09-12 — sys.partitions (index_id 0/1) ile 38 komşu tablonun satır sayısı; 15'i 0. Ayrıca 18'i 100 satırın altında lookup. Gerçekten dolu olan: frmMrk 162.690 · mhsEntFrm 116.966 · sakMrk 14.230 · posHsp 5.783 · frmYetkili 2.379 · frmSzlm 732 · mhsEntPosOdm 396."
+    evidence: "2026-09-12 — 38 tablonun toplu satır/kolon/PK ölçümü. Arşiv: sorgular/2026-09-12-frm-komsulugu-modul1.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
   # ── ŞEMA SÜPÜRMESİ 3. PARTİ (2026-09-12) ──────────────────────────────────
   # Kuyruk: 403 iş tablosu · parti 1: 9 · parti 2: 10 · bu parti 10 → kalan 374.
   # ⚠ BU PARTİNİN BULGUSU: veritabanının EN BÜYÜK objesi bir iş tablosu değil,
