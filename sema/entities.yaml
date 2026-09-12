@@ -11,7 +11,7 @@ databases:
       sql_compat_level: 110
       unavailable: [STRING_AGG, TRIM, IIF, TRY_CONVERT]
       alternatives: {STRING_AGG: "STUFF + FOR XML PATH", TRIM: "LTRIM(RTRIM())", IIF: "CASE WHEN", TRY_CONVERT: "ISNUMERIC + CONVERT"}
-  DerinCrm: {role: "yeni sadakat CRM (müşteri adı)"}
+  DerinCrm: {evidence_status: pending, role: "yeni sadakat CRM (müşteri adı)"}
   ODAKJOKER.JOKER: {role: "e-ticaret (linked server)", tarih: "YYYYMMDD ISO — DMY burada SESSİZ HATA"}
   BKMDATA: {role: "Hedef tablosu + veri ambarı"}
   BKMMaliyet: {role: "maliyet/marj"}
@@ -30,6 +30,8 @@ ai_hints:   # sorgu üretirken her zaman geçerli
 entities:
   # ERP çekirdek
   dbo.urn:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 87 kolon · 838.065 satir · kayittaki 7 pk/key kolonunun 7 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "64 dosyada geciyor (ornek: sorgular/03-kampanya/2026-05-11-kampanya-gun-urun-hiz-katsayisi.sql · sorgular/04-karzarar/2026-05-07-gunluk-kar-zarar-irshrk-magazali.sql · sorgular/04-karzarar/2026-05-07-gunluk-kar-zarar-maliyet-karsilastirma.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: table
     pk: stkID
     key: [stkKod, stkAd, urnMrkID, urnKtgr2ID, urnTip, fiyatS]
@@ -44,6 +46,8 @@ entities:
       kategoriler_ek_note: "Zkargo=alış kargo giderleri; KARGO=gelir kalemleri (stkKod KARGO1/KARGO2, stkID 144860/144963)"
     last_verified: "2026-06-17"
   dbo.irsHrk:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 12 kolon · 59.163.512 satir · kayittaki 1 pk/key kolonunun 1 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "80 dosyada geciyor (ornek: sorgular/01-ciro/2026-05-08-ciro-magaza-kategori-aratoplamli.sql · sorgular/01-ciro/2026-05-08-ciro-magaza-kitap-vs-diger-gunluk.sql · sorgular/03-kampanya/2026-05-11-kampanya-gun-urun-hiz-katsayisi.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: table
     pk: ehID
     grain: "birleşik hareket (ehID+ehstkID+ehTip)"
@@ -55,11 +59,11 @@ entities:
       ehTutarN: {label: "Tutar KDV hariç", description: "= ehTutar−ehIndirim. DAIMA POZİTİF — iade sign'ı CASE ile çevir"}
       ehAltDepo: {label: "Alt depo", description: "ehAltDepo=0 filtresi ZORUNLU (raporlarda)"}
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
-  dbo.irs: {type: table, pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık", last_verified: "2026-08-18"}
-  dbo.mekan_vw: {type: view, key: [mekanID, mekanAd, mekanTip], last_verified: "2026-08-18"}
+  dbo.irs: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 47 kolon · 7.113.101 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "36 dosyada geciyor (ornek: sorgular/04-karzarar/2026-05-07-karzarar-hizli-v4.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v5-tempindex.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v6-prefilter.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık", last_verified: "2026-08-18"}
+  dbo.mekan_vw: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 3 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 3 pk/key kolonunun 3 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "6 dosyada geciyor (ornek: sorgular/2026-06-bayram-izin-analiz.sql · sorgular/2026-08-17-sirket-donem-point-kontrol.sql · sorgular/2026-08-18-alici-boyutu-ve-iade-kurali-kesif.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: view, key: [mekanID, mekanAd, mekanTip], last_verified: "2026-08-18"}
 
   # POS
-  EncoreMerkez.dbo.Sales: {type: table, pk: Id, key: [Date, CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotal, VatTotal], note: "Date=satış datetime (SaleDate DEĞİL); header indirim=DiscountTotal (DiscountTotalDirect/Campaign SalesProducts kalem-düzeyinde, header'da YOK); net KDV-hariç=GrossTotal-DiscountTotal-VatTotal. Sales'te IsValid YOK (o SalesProducts'ta). 18.06 sys.columns doğrulandı"}
+  EncoreMerkez.dbo.Sales: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): EncoreMerkez icinde tablo MEVCUT · 35 kolon · 1.318.039 satir · kayittaki 8 pk/key kolonunun 8 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "87 dosyada geciyor (ornek: sorgular/01-ciro/10_01_gunluk-ciro-kampanya-kirilimi.sql · sorgular/01-ciro/10_02_aylik-ciro-trend.sql · sorgular/01-ciro/10_03_magaza-bazli-ciro.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: Id, key: [Date, CustomersId, UsersId, DocumentsTypeId, GrossTotal, DiscountTotal, VatTotal], note: "Date=satış datetime (SaleDate DEĞİL); header indirim=DiscountTotal (DiscountTotalDirect/Campaign SalesProducts kalem-düzeyinde, header'da YOK); net KDV-hariç=GrossTotal-DiscountTotal-VatTotal. Sales'te IsValid YOK (o SalesProducts'ta). 18.06 sys.columns doğrulandı"}
   EncoreMerkez.dbo.SalesProducts:
     type: table
     pk: Id
@@ -73,25 +77,27 @@ entities:
     confidence: 0.95
     evidence: "2026-08-19 — sorgular/2026-08-19-sinav-encore-kdv-denetim.sql blok 1-3; 721 satır / 24 fiş canlı mutabakat."
     last_verified: "2026-08-19"
-  EncoreMerkez.dbo.Products: {type: table, pk: Id, key: [Code], note: "Code=urn.stkID köprüsü"}
+  EncoreMerkez.dbo.Products: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): EncoreMerkez icinde tablo MEVCUT · 43 kolon · 870.097 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "33 dosyada geciyor (ornek: sorgular/03-kampanya/10_11_kampanya-en-cok-satan.sql · sorgular/03-kampanya/fis_detay_dogrulama.sql · sorgular/03-kampanya/mayis-50indirim-tahmin-tablo.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: Id, key: [Code], note: "Code=urn.stkID köprüsü"}
   DerinCrm.dbo.Customer: {type: table, pk: Id, key: [Name, PhoneNumber, CardNumber, Group1Id], note: "Id=Sales.CustomersId; Group1Id=2 personel"}
 
   # WMS / depo (10.06)
-  depo.emir: {type: table, pk: emID, key: [emTip, emBhTip, kTarih, emDepoID], note: "iş emri; emTip=görev (depo.emTip lookup)", last_verified: "2026-08-18"}
-  depo.emirAyr: {type: table, pk: emAyrID, key: [emPaletID, emAdet, emTamam, emKisi, emTarih], grain: "TOPLAMA operasyonu (picking)", note: "emKisi=gerçek operatör", last_verified: "2026-08-18"}
-  depo.emirSat: {type: table, key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)", last_verified: "2026-08-18"}
-  depo.paletIcHrk: {type: table, key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör", last_verified: "2026-08-18"}
-  depo.paletSevkLog: {type: table, key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)", last_verified: "2026-08-18"}
+  depo.emir: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 21 kolon · 12.307 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "4 dosyada geciyor (ornek: sorgular/2026-06-18-wms-bekleyen-kesif.sql · sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: emID, key: [emTip, emBhTip, kTarih, emDepoID], note: "iş emri; emTip=görev (depo.emTip lookup)", last_verified: "2026-08-18"}
+  depo.emirAyr: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 16 kolon · 5.394.067 satir · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "5 dosyada geciyor (ornek: sorgular/2026-06-18-wms-bekleyen-kesif.sql · sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: emAyrID, key: [emPaletID, emAdet, emTamam, emKisi, emTarih], grain: "TOPLAMA operasyonu (picking)", note: "emKisi=gerçek operatör", last_verified: "2026-08-18"}
+  depo.emirSat: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 2 kolon · 12.223 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor.", type: table, key: [satPID, satEmirID], note: "palet↔emir köprü (2 kolon)", last_verified: "2026-08-18"}
+  depo.paletIcHrk: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 13 kolon · 1.773.987 satir · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "7 dosyada geciyor (ornek: sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-hayalet-stok.sql · dashboard/Data/SatisAnaliziQueries.Excel.cs). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, key: [piAdet, pikKisi, pikTarih, pGC, pHrkTip, piIrsID], grain: "iç hareket (raflama+toplama)", note: "pikKisi=operatör", last_verified: "2026-08-18"}
+  depo.paletSevkLog: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 10 kolon · 303.920 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor.", type: table, key: [psAdet, psKabulİrsID, psSevkİrsID, psEmirID, kKisi], note: "sevk-çıkış; kKisi=sistem-kullanıcısı (operatör DEĞİL)", last_verified: "2026-08-18"}
   # WMS palet-stok (12.06 — gerçek üretim sorguları D:\Belgelerim\sql\)
-  depo.paletUrnTnm: {type: table, key: [pUStkID, pUBarkod, pUAdetN, pUID], grain: "palet × ürün satırı", note: "pUStkID=urn.stkID, pUAdetN>0=dolu, pUID=palet ref (paletTnm.pID). Depo anlık raf/havuz stoğu kaynağı.", last_verified: "2026-08-18"}
-  depo.paletTnm: {type: table, pk: pID, key: [pSonPozID], note: "palet başlık; pSonPozID=adres.adrsID (paletin son konumu)", last_verified: "2026-08-18"}
-  depo.adres: {type: table, pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')", last_verified: "2026-08-18"}
-  depo.stok_adres_palet_vw: {type: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)", last_verified: "2026-08-18"}
-  ent.JokerCKStok_vw: {type: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view", last_verified: "2026-08-18"}
-  ent.odak_depo_Stok: {type: table, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 487.567 satır, 349.756 çeşit stokta, ~7,0-7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. ⚠ 'ODAK stok' sorulduğunda KANONİK = BU TABLO; stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA (24.06 vakası: vw mekan 26142 İPTAL-Transfer 129K dahil edilip sessiz over-count yapıldı). 14.06 keşif, 24.06 teyit.", last_verified: "2026-08-18"}
-  bkm.UrunBilgi: {type: view, pk: stkID, key: [stkID, mrkAd, Yazar, SatisFiyat, SonAlis, Kategori3], note: "Denormalize ÜRÜN MASTER VIEW (sys.objects=VIEW) — en pratik ürün lookup; tek view'dan marka+yazar+maliyet+fiyat+kategori (urn+urnMrk join'e gerek yok, rapor scriptleri buradan). Kolonlar: stkKod/BarkodAna/stkAd, mrkID/mrkAd(marka=yayınevi), YazarId/Yazar, frmID/FirmaAd(ana tedarikçi), KatAna/Kat1..5/Kategori2/Kategori3(metin hiyerarşi; Kategori3=urnKtgr2.ktgrAd ör 'Hazırlık Kitapları'), SatisFiyat(üst/liste fiyat birim), SonAlis(son alış maliyet birim, 0=güncellenmemiş), OzelWebFiyat, AlisKDVYuzde/SatisKDVYuzde, urnTip(0=normal), AnaTedarikciId. 24.06 kolon+tip teyit (eski kısa stub ile birleşti).", last_verified: "2026-08-18"}
-  dbo.bakiyeVDGG_vw: {type: view, key: [cKod, borc, alacak, bakiye, GecenB, GelecekB], note: "Cari bazlı bakiye + vade yaşlandırma. cKod=frm.frmID. bakiye=net (alacak+borç-işaretli; borç negatif depolanır). GecenB=vadesi GEÇMİŞ tutar, GelecekB=YAKLAŞAN (henüz vadesi gelmemiş). Risk limiti = frm.frmBakiyeLimit (aşım = ABS(bakiye)>limit). Dashboard /cari-risk (B-124). ⚠ AĞIR ~8s (tüm car agg). frmKod prefix: 320=satıcı,120=alıcı,100/101/103/300=banka/çek,6xx/7xx=gider. Diğer: bakiye_vw/bakiyeGrup_vw, satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı), cek_vw (çek). 2026-06-25 canlı.", last_verified: "2026-08-18"}
+  depo.paletUrnTnm: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 19 kolon · 136.547 satir · kayittaki 4 pk/key kolonunun 4 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "7 dosyada geciyor (ornek: sorgular/2026-09-08-satis-analizi-excel-denetim.sql · sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, key: [pUStkID, pUBarkod, pUAdetN, pUID], grain: "palet × ürün satırı", note: "pUStkID=urn.stkID, pUAdetN>0=dolu, pUID=palet ref (paletTnm.pID). Depo anlık raf/havuz stoğu kaynağı.", last_verified: "2026-08-18"}
+  depo.paletTnm: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 25 kolon · 209.842 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "4 dosyada geciyor (ornek: sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/envanter_raporu_job_sorgusu.sql · dashboard/Data/RefQueries.Envanter.cs). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: pID, key: [pSonPozID], note: "palet başlık; pSonPozID=adres.adrsID (paletin son konumu)", last_verified: "2026-08-18"}
+  depo.adres: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 18 kolon · 177.070 satir · kayittaki 3 pk/key kolonunun 3 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "10 dosyada geciyor (ornek: sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql · sorgular/2026-09-09-wms-erp-esitleme-DRYRUN.sql · sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: adrsID, key: [adrsAlanTipID, adrsAd], note: "depo lokasyon; adrsAlanTipID=alan tipi (codes), adrsAd özel ('JokerHavuz'/'TRNS'/'CK01')", last_verified: "2026-08-18"}
+  depo.stok_adres_palet_vw: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 6 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "24 dosyada geciyor (ornek: sorgular/2026-07-31-stok-satis-aylik-wide.sql · sorgular/2026-07-31-stok-satis-aylik.sql · sorgular/2026-08-12-satinalma-hesap-DINAMIK.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: view, key: [PaletID, stkID, stok, adrsAlanTipID], note: "palet×adres×stok düz view (palet içerik sorgusu)", last_verified: "2026-08-18"}
+  ent.JokerCKStok_vw: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 2 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor.", type: view, key: [pUStkID, toplamAdet], note: "Joker CK (çıkış kasası) stok view", last_verified: "2026-08-18"}
+  ent.odak_depo_Stok: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 2 kolon · 497.365 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "11 dosyada geciyor (ornek: sorgular/2026-06-23-odak-stok-sube-satis-degerlendirme.sql · sorgular/2026-08-25-cok-satan-50-stok-bulunurluk.sql · sorgular/2026-09-08-satis-analizi-excel-denetim.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, key: [stkID, StokMiktar], note: "ODAK (e-tic) depo fulfillment stoğu. stkID=urn.stkID (1:1, 487.567 satır, 349.756 çeşit stokta, ~7,0-7,16M adet). LOKAL DerinSIS (linked-server BKM_STOKLAR.MERKEZDEPO_STOK'tan AYRI değer/kaynak; bunu kullan — hızlı). Dashboard ürün drill 'ODAK' kolonu. ⚠ 'ODAK stok' sorulduğunda KANONİK = BU TABLO; stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA (24.06 vakası: vw mekan 26142 İPTAL-Transfer 129K dahil edilip sessiz over-count yapıldı). 14.06 keşif, 24.06 teyit.", last_verified: "2026-08-18"}
+  bkm.UrunBilgi: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 37 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 7 pk/key kolonunun 7 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "48 dosyada geciyor (ornek: sorgular/01-ciro/2026-05-08-ciro-magaza-kategori-aratoplamli.sql · sorgular/01-ciro/2026-05-08-ciro-magaza-kitap-vs-diger-gunluk.sql · sorgular/2026-06-23-odak-stok-sube-satis-degerlendirme.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: view, pk: stkID, key: [stkID, mrkAd, Yazar, SatisFiyat, SonAlis, Kategori3], note: "Denormalize ÜRÜN MASTER VIEW (sys.objects=VIEW) — en pratik ürün lookup; tek view'dan marka+yazar+maliyet+fiyat+kategori (urn+urnMrk join'e gerek yok, rapor scriptleri buradan). Kolonlar: stkKod/BarkodAna/stkAd, mrkID/mrkAd(marka=yayınevi), YazarId/Yazar, frmID/FirmaAd(ana tedarikçi), KatAna/Kat1..5/Kategori2/Kategori3(metin hiyerarşi; Kategori3=urnKtgr2.ktgrAd ör 'Hazırlık Kitapları'), SatisFiyat(üst/liste fiyat birim), SonAlis(son alış maliyet birim, 0=güncellenmemiş), OzelWebFiyat, AlisKDVYuzde/SatisKDVYuzde, urnTip(0=normal), AnaTedarikciId. 24.06 kolon+tip teyit (eski kısa stub ile birleşti).", last_verified: "2026-08-18"}
+  dbo.bakiyeVDGG_vw: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 6 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "2 dosyada geciyor (ornek: dashboard/Data/FinansQueries.cs · dashboard/Models/MuhasebeModels.cs). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: view, key: [cKod, borc, alacak, bakiye, GecenB, GelecekB], note: "Cari bazlı bakiye + vade yaşlandırma. cKod=frm.frmID. bakiye=net (alacak+borç-işaretli; borç negatif depolanır). GecenB=vadesi GEÇMİŞ tutar, GelecekB=YAKLAŞAN (henüz vadesi gelmemiş). Risk limiti = frm.frmBakiyeLimit (aşım = ABS(bakiye)>limit). Dashboard /cari-risk (B-124). ⚠ AĞIR ~8s (tüm car agg). frmKod prefix: 320=satıcı,120=alıcı,100/101/103/300=banka/çek,6xx/7xx=gider. Diğer: bakiye_vw/bakiyeGrup_vw, satOdeBakiyeVDGG_vw (satıcı), carOdemePlan_vw (ödeme planı), cek_vw (çek). 2026-06-25 canlı.", last_verified: "2026-08-18"}
   depo.stok_adres_palet_vw:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 6 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "24 dosyada geciyor (ornek: sorgular/2026-07-31-stok-satis-aylik-wide.sql · sorgular/2026-07-31-stok-satis-aylik.sql · sorgular/2026-08-12-satinalma-hesap-DINAMIK.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: view
     key: [adrsAlanTipID, adrsID, adrsAd, PaletID, stkID, Stok]
     grain: "adres (hücre) × palet × ürün — WMS HÜCRESEL stok"
@@ -116,7 +122,7 @@ entities:
       254.601 fark."
     confidence: 1.0
     last_verified: "2026-09-03"
-  stokSonAltDepo_vw: {type: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
+  stokSonAltDepo_vw: {evidence_status: pending, type: view, key: [ehstkID, ehMekan, ehAltDepo, stok], note: "ANLIK mağaza+depo stok (ehAltDepo=0 zorunlu). ⚠⚠ **MEKAN 12 (MERKEZ DEPO) GÜVENİLMEZ — K-37, ölçüm 2026-09-03**: view'ın mekan 12 değeri irsHrk defterini taşıyor; pozitifler 6.230.071, negatifler −4.242.441 (fiziksel olarak imkânsız), net 1.987.630. Resmî WMS snapshot 4.249.866 diyor. **Merkez depo stoğu artık `bkm.StokAyBakiyeMekanBazli` (Kaynak='WMS', son Dönem) üzerinden okunur** (dashboard OdakQueries/RefQueries.Envanter + scripts/export_odak_stok.py düzeltildi). KAPSAM FARKI: WMS rafta duran SATILABİLİR malı tutar; view ayrıca ambalaj/sarf da içerir ('Genel' kategorisi 18 çeşit / 2.161.171 adet = Geri Dönüşüm Kağıt 1.758.386 + poşetler ~370K) ve kitap tarafında defter kalıntısı taşır (Kitap çeşidi view 1.254 → WMS 127; Hazırlık 31 → 2). MAĞAZA mekanları (1/4477/4478) view'da DOĞRU (irsHrk ve WMS snapshot ile %0,3-4,8 içinde tutuyor). ehMekan POZİTİF stok: 1=FSM, 4477=Özlüce, 4478=İst.Yolu, 60398=Heykel. NEGATİF/transit-sanal (hariç tut): 4480 (-348K), 26142 (-2,16M), 4835 (0). Dashboard ürün drill stok dağılımı = mekan IN (1,4477,4478,12) — şube toplamı irsHrk ehAdetN toplamıyla BİREBİR (14.06: 102+144+613=859). Envanter/cari özet kaynağı."}
   # JOKER WMS toplama (bekleyen sipariş raflama)
   # ── FİZİKSEL SAYIM ALT SİSTEMİ (keşif 2026-09-11) ───────────────────────────────
   # ⚠ NEDEN ÖNEMLİ: kurallarımız "WMS ile defter çelişirse sayı ŞÜPHELİdir ve fiziksel
@@ -582,10 +588,10 @@ entities:
     evidence: "2026-09-11 — sqlcli COUNT_BIG"
     confidence: 0.9
     last_verified: "2026-09-11"
-  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS_COMP: {key: [DETAILREF, COMPITEMREF, COMPBARCODE, QUANTITY], note: "kompozit/set ürün açılımı (J_ORDER_DETAILS.LOGICALREF=DETAILREF)"}
+  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS_COMP: {evidence_status: pending, key: [DETAILREF, COMPITEMREF, COMPBARCODE, QUANTITY], note: "kompozit/set ürün açılımı (J_ORDER_DETAILS.LOGICALREF=DETAILREF)"}
 
   # Hedef / veri ambarı
-  BKMDATA.dbo.Hedef: {type: table, key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", uses: [bridges:hedef-kategori], note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
+  BKMDATA.dbo.Hedef: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): BKMDATA icinde tablo MEVCUT · 8 kolon · 135.060 satir · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "17 dosyada geciyor (ornek: sorgular/2026-06-22-muhasebe-kontrol-DUZ.sql · sorgular/gm-rapor/envanter/E8-stockout.sql · sorgular/gm-rapor/gunluk/G1-gm-panosu.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, key: [mekanId, yil, ay, gun, ktgId, hedef], grain: "mekan × kategori × GÜN (günlük satır)", uses: [bridges:hedef-kategori], note: "ay hedefi = SUM(hedef) WHERE yil,ay. mekanId 1/4477/4478 retail, 12=Depo. ktgId=urnKtgr2.ktgrID (bridge hedef-kategori). Haziran 2026: FSM 14,25M/Özlüce 23,5M/İst.Yolu 13M/Depo 77M. M1 paydası."}
 
   # PDKS (işgücü — OPENQUERY)
   # ── PDKS (personel devam kontrol) — kolonlar 2026-09-11'de CANLI ÖLÇÜLDÜ ──
@@ -682,9 +688,10 @@ entities:
     last_verified: "2026-09-11"
   BKM.vrd.SubeListe: {type: table, key: [SubeNo, SubeAd, GrupNo], grain: "şube", note: "Vardiya planı şube listesi. ⚠ PDKS.wtimserv.bkm.SubeListe ile AYNI ADLI FARKLI TABLO — orada Per_Grp0..2 vardır, burada GrupNo. Karıştırılırsa yanlış şube eşleşir.", confidence: 1.0, evidence: "2026-09-11 — BKM.sys.columns.", last_verified: "2026-09-11"}
 
-  pdks: {type: openquery, uses: [entities:PDKS.wtimserv.dbo.TTagZei, entities:PDKS.wtimserv.dbo.TPerTab], key: [Per_Grp1, Per_Grp2], filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
+  pdks: {evidence_status: pending, type: openquery, uses: [entities:PDKS.wtimserv.dbo.TTagZei, entities:PDKS.wtimserv.dbo.TPerTab], key: [Per_Grp1, Per_Grp2], filter: "Per_Grp1='MAĞAZALAR'", magaza_eslesme: "Per_Grp2 = mağaza adı", note: "OPENQUERY iç literal ''..''  — vrd.Vardiya tabloları GEREKMEZ. S1 SPLH + işgücü üçgeni kaynağı."}
   # PDKS saatlik çalışan headcount — KABUL EDİLEN MANTIK (2026-06-30, TrafikQueries.GetPdksPersonelAsync)
   pdks_saatlik_personel:
+    evidence_status: pending
     source: "OPENQUERY([PDKS]) TTagZei z JOIN TPerTab p ON p.Per_PersNr=z.TZe_PersNr; filter Per_Grp1='MAĞAZALAR' AND Per_Grp2='FSM' AND TZe_VonZeit/BisZeit NOT NULL"
     grain: "haftagünü(0=Pzt..6=Paz) × saat(0-23) → ort. eş-zamanlı çalışan personel"
     kural_1_vardiya_araligi: "Kişi başı GÜN içinde MIN(giriş saati) → MAX(son dolu saat). Öğle molası segmenti satır kırar (ör. 10-13 + 14-18) → segment-bazlı saymak mola saatinde SAHTE DÜŞÜŞ üretir. MIN-MAX span mola saatini de 'vardiyada' sayar (doğru)."
@@ -722,11 +729,11 @@ entities:
     ttl_days: 180
 
   # E-ticaret
-  ODAKJOKER.JOKER.dbo.J_ORDERS: {olu_kolon: "2026-09-11 ÖLÇÜLDÜ — KDV başlık kolonlarına GÜVENME: `PRICEWITHVAT` 4.704.735 siparişin TAMAMINDA 0 (ölü kolon). `PRICEWITHOUTVAT` dolu (4.698.311 satır) ama TOTALPRICE'ın KDV-hariç hâli DEĞİL — 4.382 siparişte TOTALPRICE'tan BÜYÜK; anlamı doğrulanmadı. KDV-hariç tutar gerekiyorsa kalem düzeyine in: `J_ORDER_DETAILS.SELLINGPRICEWITHOUTVAT` (+ `VATPRICE`, kimlik SELLINGPRICE = WITHOUTVAT + VATPRICE birebir tutuyor).", pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS, BASEORDERID, SUBORDERS, ORDERTYPE], note: "⚠ TÜREMİŞ SİPARİŞ (çift-sayım tuzağı): BASEORDERID (int, NULL=ana) = türemiş siparişin ana ORDERID'si; SUBORDERS>0 = bu sipariş bölünmüş (çocuğu var, 'asıl'); ORDERTYPE 0=ana · 2=türemiş. Sipariş bölününce hem asıl hem türemiş J_ORDERS'ta durur → RAPOR/ANALİZDE ASILI ÇIKAR (türemiş güncel): AND NOT EXISTS(SELECT 1 FROM ODAKJOKER.JOKER.dbo.J_ORDERS b WHERE b.BASEORDERID=o.ORDERID). Tem-2026 kart: 93.500 sipariş = 139 superseded-ana + 225 türemiş-çocuk (~%0,15, ama iptal-ilişkili → problemli satırda daha yoğun). 2026-07-30 canlı. ⚠ SERVICEPRICE ÇİFT ANLAMLI, PAYDEFREF'e göre okunur: PAYDEFREF=-3 (Kapıda Ödeme) → COD hizmet bedeli (8.167/8.167 dolu, %100). PAYDEFREF=-13 (iyzico/kart) → VADE FARKI (JOKER API'de ayrı alan: Payment.LateChargeAmount; API'nin CashOnDeliveryAmount'ı ayrı ve bu siparişlerde 0). Haz+Tem 2026: 4.266/135.803 iyzico siparişi (%3,1) dolu = 981.754 ₺ — COD toplamının (693.378 ₺) üstünde, ciro/maliyet raporunda COD sanılırsa yanlış sınıflanır. Tutar kimliği: TOTALPRICE = SUM(D.QUANTITY*D.SELLINGPRICE) + CARGOPRICE + SERVICEPRICE (kuruşu kuruşuna, 12 sipariş × JOKER API karşılaştırması). VADE FARKI TARİFESİ (sabit oran, sepetten bağımsız; taban = satır toplamı + CARGOPRICE - VOUCHERVALUE): %10,44 · %13,52 · %16,29 · %19,62 · %31,14 · %38,33 (Tem-2026: 1.331 sipariş bu 6 kademede). ⚠ FAİZSİZ TAKSİT YOK (kullanıcı teyit 2026-07-30) → SERVICEPRICE>0 = KESİN taksitli, =0 = KESİN peşin (kart -13'te; proxy değil tam ayrım). TAKSİT SAYISI HİÇBİR YERDE YAZILI DEĞİL — JOKER'de taksit kolonu YOK (tüm DB kolon taraması: TAKSIT/INSTALLMENT/VADE/KOMISYON = 0 eşleşme); API'nin Payment.InstallmentCount alanı beslenmiyor (vade farkı dolu siparişte bile 1 dönüyor). Kademe→taksit eşlemesi iyzico panelinden doğrulanmayı bekliyor (teyit bekliyor, confidence 0.5). BANK kolonu boş (%94), TRANSACTIONID/ROUND/FIRM/ISLEM_ACIKLAMA da boş — taksit izi yok. 2026-07-17 canlı keşif."}
-  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT, STATUS], note: "ORDERREF=J_ORDERS.ORDERID · ITEMREF=J_ITEMS.LOGICALREF. STATUS=SATIR durumu (2xxx/4xxx, lookup J_ORDER_STATUS) — İPTAL/İADE ANALİZİNİN DOĞRU GRAIN'İ (header J_ORDERS.STATUS kısmi iptali kaçırır, bkz codes.yaml joker.J_ORDER_DETAILS.STATUS). İptal=2005, İade=2010, Baskısı-yok/fiili-iptal=2004. İptal/iade kolonları: IPTALNO, IPTALSEBEP(varchar), IPTALTARIH(datetime), IADESEBEPNO, IADEMIKTAR, IADEACIKLAMA, IADETALEP, IADETALEPTARIH, ODEMEDURUM(smallint). ⚠ DURUM kolonu ölü (hep NULL). 2026-07-30 canlı."}
-  ODAKJOKER.JOKER.dbo.J_ITEMS: {pk: LOGICALREF, key: [NAME, BRAND, DERINSIS_ID], note: "BRAND direkt marka; DERINSIS_ID=urn.stkID"}
-  ODAKJOKER.JOKER.dbo.BASKISIYOK: {key: [LOGICALREF, TARIH, DETAILREF, ORDERREF, ITEMREF, USERREF, BARCODE, QUANTITY], note: "Baskısı yok (etiket basılmadan) yapılan e-tic sipariş satırları. DETAILREF→J_ORDER_DETAILS.LOGICALREF, ITEMREF→J_ITEMS.LOGICALREF, USERREF→EM_USERS.LOGICALREF, ORDERREF→J_ORDERS.ORDERID, TARIH=işlem zamanı (datetime). Adet/Tutar = BASKISIYOK.QUANTITY (B) × D.SELLINGPRICE. ⚠ B.QUANTITY=0 satırları İPTAL kaynaklı (bug, 58/1681 son-30g) → RAPORDA DEVRE DIŞI: WHERE B.QUANTITY>0. (D.QUANTITY iptali sayar, KULLANMA.) çeşit=distinct B.BARCODE. SELLINGPRICE=0=hediye çeki (normal, Tutar 0 Adet dolu). Dashboard /baskisi-yok (B-126) + e-tic 30g trend. 2026-06-26 kolon teyit + iptal-0 filtre."}
-  ODAKJOKER.JOKER.dbo.EM_USERS: {pk: LOGICALREF, key: [FULLNAME], note: "JOKER panel kullanıcıları; BASKISIYOK.USERREF→LOGICALREF, FULLNAME=işlemi yapan."}
+  ODAKJOKER.JOKER.dbo.J_ORDERS: {evidence_status: pending, olu_kolon: "2026-09-11 ÖLÇÜLDÜ — KDV başlık kolonlarına GÜVENME: `PRICEWITHVAT` 4.704.735 siparişin TAMAMINDA 0 (ölü kolon). `PRICEWITHOUTVAT` dolu (4.698.311 satır) ama TOTALPRICE'ın KDV-hariç hâli DEĞİL — 4.382 siparişte TOTALPRICE'tan BÜYÜK; anlamı doğrulanmadı. KDV-hariç tutar gerekiyorsa kalem düzeyine in: `J_ORDER_DETAILS.SELLINGPRICEWITHOUTVAT` (+ `VATPRICE`, kimlik SELLINGPRICE = WITHOUTVAT + VATPRICE birebir tutuyor).", pk: LOGICALREF, biz_key: ORDERID, key: [CLIENTREF, PAYDEFREF, CARGOREF, DELIVERYREF, APPLICATION, TOTALPRICE, CARGOPRICE, SERVICEPRICE, VOUCHERCODE, STATUS, CARGODELIVERYSTATUS, BASEORDERID, SUBORDERS, ORDERTYPE], note: "⚠ TÜREMİŞ SİPARİŞ (çift-sayım tuzağı): BASEORDERID (int, NULL=ana) = türemiş siparişin ana ORDERID'si; SUBORDERS>0 = bu sipariş bölünmüş (çocuğu var, 'asıl'); ORDERTYPE 0=ana · 2=türemiş. Sipariş bölününce hem asıl hem türemiş J_ORDERS'ta durur → RAPOR/ANALİZDE ASILI ÇIKAR (türemiş güncel): AND NOT EXISTS(SELECT 1 FROM ODAKJOKER.JOKER.dbo.J_ORDERS b WHERE b.BASEORDERID=o.ORDERID). Tem-2026 kart: 93.500 sipariş = 139 superseded-ana + 225 türemiş-çocuk (~%0,15, ama iptal-ilişkili → problemli satırda daha yoğun). 2026-07-30 canlı. ⚠ SERVICEPRICE ÇİFT ANLAMLI, PAYDEFREF'e göre okunur: PAYDEFREF=-3 (Kapıda Ödeme) → COD hizmet bedeli (8.167/8.167 dolu, %100). PAYDEFREF=-13 (iyzico/kart) → VADE FARKI (JOKER API'de ayrı alan: Payment.LateChargeAmount; API'nin CashOnDeliveryAmount'ı ayrı ve bu siparişlerde 0). Haz+Tem 2026: 4.266/135.803 iyzico siparişi (%3,1) dolu = 981.754 ₺ — COD toplamının (693.378 ₺) üstünde, ciro/maliyet raporunda COD sanılırsa yanlış sınıflanır. Tutar kimliği: TOTALPRICE = SUM(D.QUANTITY*D.SELLINGPRICE) + CARGOPRICE + SERVICEPRICE (kuruşu kuruşuna, 12 sipariş × JOKER API karşılaştırması). VADE FARKI TARİFESİ (sabit oran, sepetten bağımsız; taban = satır toplamı + CARGOPRICE - VOUCHERVALUE): %10,44 · %13,52 · %16,29 · %19,62 · %31,14 · %38,33 (Tem-2026: 1.331 sipariş bu 6 kademede). ⚠ FAİZSİZ TAKSİT YOK (kullanıcı teyit 2026-07-30) → SERVICEPRICE>0 = KESİN taksitli, =0 = KESİN peşin (kart -13'te; proxy değil tam ayrım). TAKSİT SAYISI HİÇBİR YERDE YAZILI DEĞİL — JOKER'de taksit kolonu YOK (tüm DB kolon taraması: TAKSIT/INSTALLMENT/VADE/KOMISYON = 0 eşleşme); API'nin Payment.InstallmentCount alanı beslenmiyor (vade farkı dolu siparişte bile 1 dönüyor). Kademe→taksit eşlemesi iyzico panelinden doğrulanmayı bekliyor (teyit bekliyor, confidence 0.5). BANK kolonu boş (%94), TRANSACTIONID/ROUND/FIRM/ISLEM_ACIKLAMA da boş — taksit izi yok. 2026-07-17 canlı keşif."}
+  ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS: {evidence_status: pending, key: [ORDERREF, ITEMREF, QUANTITY, SELLINGPRICE, SELLINGPRICEWITHOUTDISCOUNT, STATUS], note: "ORDERREF=J_ORDERS.ORDERID · ITEMREF=J_ITEMS.LOGICALREF. STATUS=SATIR durumu (2xxx/4xxx, lookup J_ORDER_STATUS) — İPTAL/İADE ANALİZİNİN DOĞRU GRAIN'İ (header J_ORDERS.STATUS kısmi iptali kaçırır, bkz codes.yaml joker.J_ORDER_DETAILS.STATUS). İptal=2005, İade=2010, Baskısı-yok/fiili-iptal=2004. İptal/iade kolonları: IPTALNO, IPTALSEBEP(varchar), IPTALTARIH(datetime), IADESEBEPNO, IADEMIKTAR, IADEACIKLAMA, IADETALEP, IADETALEPTARIH, ODEMEDURUM(smallint). ⚠ DURUM kolonu ölü (hep NULL). 2026-07-30 canlı."}
+  ODAKJOKER.JOKER.dbo.J_ITEMS: {evidence_status: pending, pk: LOGICALREF, key: [NAME, BRAND, DERINSIS_ID], note: "BRAND direkt marka; DERINSIS_ID=urn.stkID"}
+  ODAKJOKER.JOKER.dbo.BASKISIYOK: {evidence_status: pending, key: [LOGICALREF, TARIH, DETAILREF, ORDERREF, ITEMREF, USERREF, BARCODE, QUANTITY], note: "Baskısı yok (etiket basılmadan) yapılan e-tic sipariş satırları. DETAILREF→J_ORDER_DETAILS.LOGICALREF, ITEMREF→J_ITEMS.LOGICALREF, USERREF→EM_USERS.LOGICALREF, ORDERREF→J_ORDERS.ORDERID, TARIH=işlem zamanı (datetime). Adet/Tutar = BASKISIYOK.QUANTITY (B) × D.SELLINGPRICE. ⚠ B.QUANTITY=0 satırları İPTAL kaynaklı (bug, 58/1681 son-30g) → RAPORDA DEVRE DIŞI: WHERE B.QUANTITY>0. (D.QUANTITY iptali sayar, KULLANMA.) çeşit=distinct B.BARCODE. SELLINGPRICE=0=hediye çeki (normal, Tutar 0 Adet dolu). Dashboard /baskisi-yok (B-126) + e-tic 30g trend. 2026-06-26 kolon teyit + iptal-0 filtre."}
+  ODAKJOKER.JOKER.dbo.EM_USERS: {evidence_status: pending, pk: LOGICALREF, key: [FULLNAME], note: "JOKER panel kullanıcıları; BASKISIYOK.USERREF→LOGICALREF, FULLNAME=işlemi yapan."}
   ODAKJOKER.JOKER.dbo.J_ORDER_CLIENTS:
     cross_checked: "2026-09-11"
     cross_checked_sonuc: "2026-09-11 — `bekleyen_siparis_il_proxy` (kural) ile `bridges:orders-client` (join) yan yana okundu: ÇELİŞKİ YOK, BİRBİRİNİ TAMAMLIYORLAR. Join CLIENTREF→LOGICALREF'i, kural CCITY'nin bir DEĞER kolonu olduğunu söylüyor. İkisindeki düzeltme izi aynı olayın (bugün yapılan ayrımın) anlatımıdır."
@@ -753,7 +760,7 @@ entities:
     last_verified: "2026-09-11"
 
   # EncoreMerkez kampanya
-  EncoreMerkez.dbo.SalesProductCampaigns: {type: table, pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
+  EncoreMerkez.dbo.SalesProductCampaigns: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): EncoreMerkez icinde tablo MEVCUT · 13 kolon · 2.989.239 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "35 dosyada geciyor (ornek: sorgular/01-ciro/10_01_gunluk-ciro-kampanya-kirilimi.sql · sorgular/01-ciro/10_02_aylik-ciro-trend.sql · sorgular/01-ciro/10_03_magaza-bazli-ciro.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: Id, key: [SalesId, CampaignId, CampaignName, TotalDiscount], grain: "satış × kampanya kalemi", note: "TotalDiscount NEGATİF=indirim. SalesId→Sales.Id. M2 kampanya raporu kaynağı."}
 
   # ── BKMMaliyet — FIFO maliyet sistemi (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
   # ERP kaynağı: DerinSISBkm (prod) / DerinSIS_Local (BT-FIKRI demo). SP master: fifo/v2-production/00_V2_MASTER_FULL.sql
@@ -800,6 +807,7 @@ entities:
     evidence: "2026-09-11 — localhost `DerinSIS_Local.sys.tables` sayımı (8) + şema/ad listesi."
     last_verified: "2026-09-11"
   BKMMaliyet.dbo.FifoKatman:
+    evidence_status: pending
     cross_checked: "2026-09-11"
     cross_checked_sonuc: "2026-09-11 — FifoKatman hakkındaki kayıtlar birlikte okundu: `BKMMaliyet_kopya_ayrimi` (iki kopya farkı), `DerinSIS_Local` (motorun girdi ayıklaması), `bridges:maliyet-stkid-urn` (öksüz ölçümü) ve `metrics:fifo_marj`. Çelişki yok; üçü aynı ölçüm turundan çıktı ve birbirini tamamlıyor. Taşınan 'düzeltme izi', bugün düzeltilen iki iddianın kaydıdır (ERP kopyası canlı sanılmıştı · DerinSIS_Local erişilemez sanılmıştı)."
     type: table
@@ -809,20 +817,23 @@ entities:
     note: "BirimMaliyet<=0 OLAMAZ (fifo-domain §6). KaynakTip→codes. Eldeki birim maliyet=SUM(KalanMiktar*BirimMaliyet)/SUM(KalanMiktar) WHERE KalanMiktar>0."
     last_verified: "2026-06-19"
   BKMMaliyet.dbo.FifoCikisDetay:
+    evidence_status: pending
     type: table
     pk: CikisId
     key: [StkId, HareketTarihi, HareketTipi, MekanId, KatmanId, Miktar, BirimMaliyet, CikisTutar, SatisTutar]
     grain: "satış/iade çıkış × tüketilen katman segmenti"
     note: "marj = SatisTutar(gelir) − CikisTutar(SMM). CikisTutar COMPUTED=Miktar×BirimMaliyet (UPDATE edilemez). SatisTutar=irsHrk ehTutarN miktar-oranlı. HareketTipi SATIS/IADE. çıkış SMM=irsHrk kaynaklı (irs/irsAyr DEĞİL)."
     last_verified: "2026-06-19"
-  BKMMaliyet.dbo.FifoAcilisEnvanter: {type: table, pk: "(EnvanterTarihi,MekanId,StkId)", key: [StokMiktar], note: "açılış stok snapshot=irsHrk KÜMÜLATİF (ehTrhS<=devir, ehAltDepo=0, mekan 1/12/4477/4478) — GEÇMİŞ-doğru, anlık-stok view DEĞİL."}
-  BKMMaliyet.dbo.FifoSorunluStoklar: {type: table, pk: "(EnvanterTarihi,MekanId,StkId,SorunTipi)", key: [StokMiktar, Aciklama], note: "SorunTipi→codes (FIYAT_YOK/ALIS_YOK/...TAMAMLANDI)"}
-  BKMMaliyet.dbo.FifoDevreDisiUrunler: {type: table, pk: StkId, key: [Sebep, EkleyenKullanici], note: "non-inventory (poşet-bagging/gider/hediye-çeki/demirbaş). Envanterde KALIR, FIFO katmanı kurulMAZ. fifo-domain §2/§3: stkID-curated (isim-pattern DEĞİL — 'Geri Dönüşüm' çocuk kitabı/'Poşet Dosya' kırtasiye gerçek ürün)."}
-  BKMMaliyet.dbo.FifoFallbackFiyatlari: {type: table, pk: "(StkId,SatinalmaSarti,MekanId)", key: [BirimMaliyet], note: "fallback fiyat; SatinalmaSarti='DEVIR_FALLBACK' açılışta devreye girer"}
-  BKMMaliyet.dbo.OrtalamaAylikMaliyet: {type: table, pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
+  BKMMaliyet.dbo.FifoAcilisEnvanter: {evidence_status: pending, type: table, pk: "(EnvanterTarihi,MekanId,StkId)", key: [StokMiktar], note: "açılış stok snapshot=irsHrk KÜMÜLATİF (ehTrhS<=devir, ehAltDepo=0, mekan 1/12/4477/4478) — GEÇMİŞ-doğru, anlık-stok view DEĞİL."}
+  BKMMaliyet.dbo.FifoSorunluStoklar: {evidence_status: pending, type: table, pk: "(EnvanterTarihi,MekanId,StkId,SorunTipi)", key: [StokMiktar, Aciklama], note: "SorunTipi→codes (FIYAT_YOK/ALIS_YOK/...TAMAMLANDI)"}
+  BKMMaliyet.dbo.FifoDevreDisiUrunler: {evidence_status: pending, type: table, pk: StkId, key: [Sebep, EkleyenKullanici], note: "non-inventory (poşet-bagging/gider/hediye-çeki/demirbaş). Envanterde KALIR, FIFO katmanı kurulMAZ. fifo-domain §2/§3: stkID-curated (isim-pattern DEĞİL — 'Geri Dönüşüm' çocuk kitabı/'Poşet Dosya' kırtasiye gerçek ürün)."}
+  BKMMaliyet.dbo.FifoFallbackFiyatlari: {evidence_status: pending, type: table, pk: "(StkId,SatinalmaSarti,MekanId)", key: [BirimMaliyet], note: "fallback fiyat; SatinalmaSarti='DEVIR_FALLBACK' açılışta devreye girer"}
+  BKMMaliyet.dbo.OrtalamaAylikMaliyet: {evidence_status: pending, type: table, pk: "(YilAy,StkId)", note: "aylık ortalama maliyet (FIFO'dan bağımsız) = (AyBaşıTutar+GirişTutar)/(AyBaşıMiktar+GirişMiktar)"}
   # ERP kaynak (FIFO tüketir): DerinSIS irsHrk(stok/çıkış), fat+fatAyr(alış), fytOzl(satınalma şartı fiyatı), bkm.UrunBilgi(stkID/SatisFiyat/SonAlis/Kategori3/KatAna)
 
   dbo.irs:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 47 kolon · 7.113.101 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "36 dosyada geciyor (ornek: sorgular/04-karzarar/2026-05-07-karzarar-hizli-v4.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v5-tempindex.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v6-prefilter.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: table
     pk: eID
     key: [eTip, eMekan, eTarihS, eID]
@@ -859,6 +870,8 @@ entities:
 
   # === MUHASEBE / GL + FİNANS/CARİ (22.06 keşif — B-117 GL forensic) ===
   mhs.mhsFis:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 15 kolon · 39.552.520 satir · kayittaki 11 pk/key kolonunun 11 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "13 dosyada geciyor (ornek: sorgular/2026-06-22-muhasebe-kontrol-DUZ.sql · sorgular/2026-06-22-muhasebe-kontrol-v2.sql · sorgular/2026-06-23-mizan-kesif.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: table
     uses: [bridges:mhsfis-gdrmerkez]
     pk: fsID
@@ -867,36 +880,54 @@ entities:
     note: "fisBA 0/1 iki taraf; fisTutar BA=1'de NEGATİF saklı → bakiye=SUM(fisTutar) (defter dengeli, toplam 0). Gelir 6xx hep BA=0, gider 7xx hep BA=1 (codes mhsFis.fisBA). fisGdrMerkez = gider merkezi (köprü mhsfis-gdrmerkez → frm; 0=GENEL). DMY."
     last_verified: "2026-08-06"
   mhs.mhsFisBaslik:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 17 kolon · 15.307.661 satir · kayittaki 12 pk/key kolonunun 12 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "12 dosyada geciyor (ornek: sorgular/2026-06-22-muhasebe-kontrol-DUZ.sql · sorgular/2026-06-22-muhasebe-kontrol-v2.sql · sorgular/2026-06-23-mizan-kesin-kapanis.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: table
     pk: fisbID
     key: [fisbSirketID, yevmiyeNo, fisTarih, fisEntTipID, gKisi, kKisi, oKisi, gTarih, kTarih, oTarih, fiscID]
     grain: "yevmiye fiş başlığı (15,3M)"
     note: "fisEntTipID=0 MANUEL, 1/3/4 otomatik entegrasyon (codes mhsEntTip). gTarih=giriş/kTarih=değişim/fisTarih=muhasebe tarihi → kapanış-sonrası kontrol. gKisi/oKisi → drn1.insID."
     last_verified: "2026-06-22"
-  mhs.mhsHsp: {type: table, pk: "(hspID, hspSirketID)", key: [hspKod, hspAd, hspAnaID, hspTur], note: "hesap planı 24,5K. hspKod hiyerarşik 'AAA.YY.ZZZ' (100.10=KASA, 100.10.001=Merkez TL.Kasa). ⚠️ 3-HANELİ ana hesap (100/120/600) mhsHsp'de SATIR DEĞİL — yalnız noktalı alt hesaplar var. 3-haneli Tek Düzen adı (Kasa/Bankalar) DIŞ kaynak → dashboard/Data/TekDuzenHesap.cs (79 ad). hspSirketID JOIN ZORUNLU.", last_verified: "2026-08-18"}
-  mhs.mhsAnaHsp: {type: table, pk: aHspID, key: [aHspAd, aHspTur, aHspBA], note: "ana hesap grupları (390)", last_verified: "2026-08-18"}
-  mhs.mzn: {type: table, key: [hspKod, hspAd, h1..h8, h1Ad..h8Ad, hspBA], note: "hesap kırılım/seviye tanımı (23,5K)", last_verified: "2026-08-18"}
+  mhs.mhsHsp: {type: table, pk: [hspID, hspSirketID], key: [hspKod, hspAd, hspAnaID, hspTur], evidence: "2026-09-12 CANLI DOGRULAMA — pk TEK METIN yazilmisti ((hspID, hspSirketID)) ve makineyle dogrulanamiyordu; LISTEYE cevrildi. sys.columns: 8 kolon, ikisi de VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", note: "hesap planı 24,5K. hspKod hiyerarşik 'AAA.YY.ZZZ' (100.10=KASA, 100.10.001=Merkez TL.Kasa). ⚠️ 3-HANELİ ana hesap (100/120/600) mhsHsp'de SATIR DEĞİL — yalnız noktalı alt hesaplar var. 3-haneli Tek Düzen adı (Kasa/Bankalar) DIŞ kaynak → dashboard/Data/TekDuzenHesap.cs (79 ad). hspSirketID JOIN ZORUNLU.", last_verified: "2026-08-18"}
+  mhs.mhsAnaHsp: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 4 kolon · 390 satir · kayittaki 4 pk/key kolonunun 4 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "4 dosyada geciyor (ornek: sorgular/2026-08-06-gider-merkezi-mizan-matris.sql · dashboard/Data/GiderMizanQueries.cs · dashboard/Data/MizanQueries.cs). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: aHspID, key: [aHspAd, aHspTur, aHspBA], note: "ana hesap grupları (390)", last_verified: "2026-08-18"}
+  mhs.mzn: {type: table, key: [hspKod, hspAd, hspBA, h1, h2, h3, h4, h5, h6, h7, h8, h1Ad, h2Ad, h3Ad, h4Ad, h5Ad, h6Ad, h7Ad, h8Ad], evidence: "2026-09-12 CANLI DOGRULAMA — key alaninda `h1..h8` / `h1Ad..h8Ad` ARALIK GOSTERIMI vardi, makineyle dogrulanamiyordu; ACILDI. sys.columns: 21 kolon; 16 seviye kolonunun (h1-h8 + h1Ad-h8Ad) hepsi GERCEK. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", note: "hesap kırılım/seviye tanımı (23,5K)", last_verified: "2026-09-12"}
   mhs.mhsMizan_vw:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 6 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 6 pk/key kolonunun 6 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "3 dosyada geciyor (ornek: sorgular/2026-06-23-mizan-kesif.sql · sorgular/2026-06-23-mizan-kesin-kapanis.sql · sorgular/2026-09-08-satis-analizi-excel-denetim.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: view
     key: [fisSirketID, fisTarih, hspKod, fisHspID, Alacak, Borc]
     grain: "fiş-tarih × hesap (leaf) — Borc/Alacak HAZIR kolon (fisBA çözmeye gerek yok)"
     def: "WITH ENCRYPTION. Alacak=SUM((1-fisBA)*fisTutar), Borc=SUM(-(fisBA*fisTutar)). Bakiye=SUM(Borc)-SUM(Alacak)."
     uyari: "⚠️ KAPANIŞ FİŞİNİ İÇERİR → kapanmış yıl (sirket 1-5) her hesap Borç=Alacak=Bakiye 0 (işe yaramaz). Kesin mizan için view DEĞİL → mhsFis'ten 'Kapanış' fişi hariç hesapla (codes mhsFisBaslik.fisAd_sistem). Açık yıl (2026) view OK. fisID/fisAd kolonu YOK → kapanış-hariç view ile yapılamaz."
     last_verified: 2026-06-23
-  mhs.mhsFisKontrolBakiye_vw: {type: view, note: "fiş borç=alacak denge kontrol (K3)", last_verified: "2026-08-18"}
+  mhs.mhsFisKontrolBakiye_vw: {evidence_status: pending, type: view, note: "fiş borç=alacak denge kontrol (K3)", last_verified: "2026-08-18"}
   dbo.car:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 30 kolon · 23.717.133 satir · kayittaki 16 pk/key kolonunun 16 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "6 dosyada geciyor (ornek: sorgular/2026-06-22-muhasebe-kontrol-DUZ.sql · sorgular/2026-06-22-muhasebe-kontrol-v2.sql · sorgular/2026-08-18-gl-kanal-kirilmasi-subat2025.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir."
     type: table
     pk: cID
     key: [cTarih, cTarihVade, cBA, cTutar, cTip, cKod, cKodKarsi, cOnay, cgKisi, ckKisi, coKisi, cgTarih, ckTarih, cEvrakNo, cNot]
     grain: "cari hareket (23,7M, bugüne kadar canlı)"
     note: "cBA borç/alacak; cTarihVade=VADE (yaşlandırma). cKod/cKodKarsi→frm.frmID. cOnay=1 onaylı. cgKisi/ckKisi/coKisi→drn1. Gider carisi: frm.frmKod LIKE 'G-%'."
     last_verified: "2026-06-22"
-  dbo.carAyr: {type: table, note: "cari ayrıntı (18,4M); cKDVTutar", last_verified: "2026-08-18"}
-  dbo.carCek: {type: table, pk: "(çek)", note: "çek/senet portföyü (11,5K). fn_odenmemisCekler ile ödenmemiş/vade.", last_verified: "2026-08-18"}
-  dbo.frm: {cross_checked: "2026-09-11", cross_checked_sonuc: "2026-09-11 — `frm_9525_odak_point` ile `frm_iade_vade_kosullari` yan yana okundu: ÇELİŞKİ YOK, AYRI KONULAR. Birincisi tek bir tedarikçinin (frmID 9525) ilişkili-taraf statüsünü, ikincisi `frmIadeKural`/`frmVade*` kolonlarının anlamını anlatıyor; ortak iddia yok. İkincideki düzeltme izi (`ÖLÜ KOLON`) `dbo.urn.alimIadeYok` hakkındadır, `frm` hakkında değil.", type: table, pk: frmID, key: [frmKod, frmAd, frmTip, VD, VN, frmIadeKural, frmVade, frmVadeTur, frmSiparisSevkAdet], note: "cari/firma master (49,9K). frmTip lookup=dbo.frmTipTnm (0=satıcı/tedarikçi, 1=müşteri, 9=?, 5=banka…). VD=vergi dairesi, VN=vergi no. frmKod 'G-%'=gider carisi, '320.10.%'=satıcılar hesabı. frmIadeKural + frmVade/frmVadeTur = iade hakkı + vade koşulu (satınalma adalet şartı → frm_iade_vade_kosullari). MÜKERRER KAYIT BİRLEŞTİRİLDİ 2026-08-18 (iki ayrı dbo.frm entry vardı, YAML sessizce sonrakini kullanıyordu).", last_verified: "2026-08-18"}
-  dbo.drn1: {type: table, pk: insID, key: [insAd], note: "KULLANICI/personel master. gKisi/cgKisi/ckKisi/coKisi/oKisi → drn1.insID. Ekip: Şule(1897)/Pınar(16)/pinar.muhasebe1(449)/2(450)/Özge.", last_verified: "2026-08-18"}
-  bkm.Fin_AyKapanis: {type: table, pk: "(DonemYil, DonemAy)", key: [KapanisDT, KapanisKisi, Aciklama], note: "muhasebe ay-kapanış tarihleri. 2025 Oca–2026 May DOLU (22.06). Kapanış-sonrası müdahale kontrolünün anahtarı; evrak YEAR/MONTH(belge) ile join.", last_verified: "2026-08-18"}
-  bkm.sp_KapanisMudahaleKontrol_v2: {type: sp, note: "GL forensic — CAR+FAT+MHS kapanış-sonrası müdahale. @Yil/@Ay (NULL=tüm dönem), @Kaynak, @Mod OZET/DETAY, @GiderKod drill, @SadeceGider. severity+forensic+drn1 isim. Fikri'nin 3 SP'sini konsolide eder. Panel /muhasebe + skill muhasebe-denetci sarar."}
+  dbo.carAyr: {evidence_status: pending, type: table, note: "cari ayrıntı (18,4M); cKDVTutar", last_verified: "2026-08-18"}
+  dbo.carCek:
+    type: table
+    pk: [cekID]
+    key: [cekNo, cekTutar, cekTarih, cekTarihVade, cekBA, cekFirma, cekDrmY]
+    note: "çek/senet portföyü (11,5K). fn_odenmemisCekler ile ödenmemiş/vade."
+    evidence: >-
+      2026-09-12 CANLI ÖLÇÜM — ÖNCEKİ KAYIT YANLIŞTI. `pk: "(çek)"` yazıyordu; carCek'te
+      öyle bir kolon YOK (17 kolon: cekID · cekNo · cekTutar · cekTarih · cekTarihVade ·
+      cekBA · cekFirma · cekDrmY · cBanka …). GERÇEK PK ölçüldü —
+      `sys.indexes.is_primary_key = 1` → **cekID**. Tekillik doğrulandı: 12.097 satır =
+      12.097 tekil `cekID`; `cekNo` TEKİL DEĞİL (12.092) yani anahtar olamaz.
+      Arşiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql
+    last_verified: "2026-09-12"
+  dbo.frm: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 105 kolon · 50.561 satir · kayittaki 10 pk/key kolonunun 10 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "36 dosyada geciyor (ornek: sorgular/04-karzarar/2026-05-07-karzarar-hizli-v4.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v5-tempindex.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v6-prefilter.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", cross_checked: "2026-09-11", cross_checked_sonuc: "2026-09-11 — `frm_9525_odak_point` ile `frm_iade_vade_kosullari` yan yana okundu: ÇELİŞKİ YOK, AYRI KONULAR. Birincisi tek bir tedarikçinin (frmID 9525) ilişkili-taraf statüsünü, ikincisi `frmIadeKural`/`frmVade*` kolonlarının anlamını anlatıyor; ortak iddia yok. İkincideki düzeltme izi (`ÖLÜ KOLON`) `dbo.urn.alimIadeYok` hakkındadır, `frm` hakkında değil.", type: table, pk: frmID, key: [frmKod, frmAd, frmTip, VD, VN, frmIadeKural, frmVade, frmVadeTur, frmSiparisSevkAdet], note: "cari/firma master (49,9K). frmTip lookup=dbo.frmTipTnm (0=satıcı/tedarikçi, 1=müşteri, 9=?, 5=banka…). VD=vergi dairesi, VN=vergi no. frmKod 'G-%'=gider carisi, '320.10.%'=satıcılar hesabı. frmIadeKural + frmVade/frmVadeTur = iade hakkı + vade koşulu (satınalma adalet şartı → frm_iade_vade_kosullari). MÜKERRER KAYIT BİRLEŞTİRİLDİ 2026-08-18 (iki ayrı dbo.frm entry vardı, YAML sessizce sonrakini kullanıyordu).", last_verified: "2026-08-18"}
+  dbo.drn1: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 28 kolon · 2.026 satir · kayittaki 2 pk/key kolonunun 2 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "10 dosyada geciyor (ornek: sorgular/2026-06-22-muhasebe-kontrol-DUZ.sql · sorgular/2026-06-22-muhasebe-kontrol-v2.sql · sorgular/2026-06-25-yevmiye-fatura-audit-kopru.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: insID, key: [insAd], note: "KULLANICI/personel master. gKisi/cgKisi/ckKisi/coKisi/oKisi → drn1.insID. Ekip: Şule(1897)/Pınar(16)/pinar.muhasebe1(449)/2(450)/Özge.", last_verified: "2026-08-18"}
+  bkm.Fin_AyKapanis: {type: table, pk: [DonemYil, DonemAy], key: [KapanisDT, KapanisKisi, Aciklama], evidence: "2026-09-12 CANLI DOGRULAMA — pk TEK METIN yazilmisti ((DonemYil, DonemAy)), LISTEYE cevrildi. sys.columns: 6 kolon (DonemYil, DonemAy, KapanisDT, KapanisKisi, Aciklama, KayitDT); ikisi de VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", note: "muhasebe ay-kapanış tarihleri. 2025 Oca–2026 May DOLU (22.06). Kapanış-sonrası müdahale kontrolünün anahtarı; evrak YEAR/MONTH(belge) ile join.", last_verified: "2026-08-18"}
+  bkm.sp_KapanisMudahaleKontrol_v2: {evidence_status: pending, type: sp, note: "GL forensic — CAR+FAT+MHS kapanış-sonrası müdahale. @Yil/@Ay (NULL=tüm dönem), @Kaynak, @Mod OZET/DETAY, @GiderKod drill, @SadeceGider. severity+forensic+drn1 isim. Fikri'nin 3 SP'sini konsolide eder. Panel /muhasebe + skill muhasebe-denetci sarar."}
   bkm.MusteriSayi:
     type: table
     pk: "[MekanId, Tarih]"
@@ -944,6 +975,7 @@ entities:
     last_verified: "2026-09-02"
     evidence: "2026-09-02 canli MCP — Tip dagilimi + tutar bilesenleri Haziran-2025 (FIS, Iptal<>1); DerinSIS eTip100 ile adet capraz kontrolu."
   INTER_BOS.dbo.ODEME:
+    evidence_status: pending
     pk: ODEMEID
     key: [Belge_ID, Satir, Tus_No, Tutar, Taksit, Kart_Tipi, Terminal_No, Onay_No, Kredi_Kart_No]
     grain: "fis odeme satiri (6.341.393)"
@@ -961,6 +993,7 @@ entities:
     last_verified: "2026-07-02"
     evidence: "2026-07-02 — MCP zirve sql_query: describe perbilgi + Gorevi/Grupkodu/Masrafmerkezi/Subeadi dağılım + Personeldurumu kardinalite."
   DerinSISBkm.iky.*:
+    evidence_status: pending
     type: schema
     durum: "**KULLANILMIYOR — veri kaynağı DEĞİL** (ölçüm 2026-09-03 + kullanıcı teyidi: 'orası kullanılmıyor, insan kaynakları tarafı Zirve'de sadece'). ERP'de tam bir İK modülü şeması duruyor (personel · personel_ucret · bordro · puantaj · izintip · isyeri …) ama TABLOLAR BOŞ: yalnız lookup tabloları dolu → `ayrilma_neden` 33 · `ebildirge_belgeturu` 34 · `ebildirge_eksikgunneden` 23 · `ayar` 2 · `personel_meslekkod` 1. Geri kalan hepsi 0 satır."
     kullanim: "Yalnızca **kod sözlüğü** olarak kullanılır (SGK kodları ulusal, o yüzden geçerli): `iky.ayrilma_neden` ↔ `BKM_GENEL.dbo.vw_PersonelDepartman.IstenCikisKodu`. Personel/bordro/puantaj verisi için BURAYA BAKMA — İK tek kaynağı Zirve (BKM_GENEL)."
@@ -1024,7 +1057,7 @@ entities:
     confidence: 0.9
     last_verified: "2026-07-02"
     evidence: "2026-07-02 — MCP portalhub describe OrgPositions + 8 örnek satır."
-  Mosaik.dbo.SopDocuments: {pk: Id, note: "SOP doküman başlık (2 satır). Görev-tanımı modülü ŞABLONU (prosedür ~ görev tanımı). Versiyon → SopVersions."}
+  Mosaik.dbo.SopDocuments: {evidence_status: pending, pk: Id, note: "SOP doküman başlık (2 satır). Görev-tanımı modülü ŞABLONU (prosedür ~ görev tanımı). Versiyon → SopVersions."}
   Mosaik.dbo.SopVersions:
     pk: Id
     key: [SopDocumentId, VersionNumber, ContentJson, PlainTextContent, EffectiveDate, SupersededDate, Status, CreatedBy]
@@ -1088,17 +1121,23 @@ entities:
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
   # --- Satınalma accountability zinciri (2026-07-30 keşif — satinalma-danisman) ---
   bkm.OneriSiparisKullaniciKategori:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 3 kolon · 68 satir · kayittaki 3 pk/key kolonunun 3 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor."
     type: table
     key: [insId, ktgrID, mekanId]
     note: "ALICI ↔ KATEGORİ sahipliği = adil-atıf temeli (alıcı kategorilerinin ölü-stok/stockout'undan sorumlu). 68 satır = 26 alıcı × 11 kategori × 3 şube. insId isim: bkm.SayimKullanici.AdSoyad (iky.personel persId TUTMADI). Kardeş: OneriSiparisKullaniciReyon (reyon)."
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
   bkm.MalKabulBaslik:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 17 kolon · 4.543 satir · kayittaki 12 pk/key kolonunun 12 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor."
     type: table
     pk: MalKabulBaslikId
     key: [EvrakTarihi, CariId, MekanId, EvrakNo, IrsaliyeNo, IadeIrsaliyeNo, EksikIrsaliyeNo, Onay, Iptal, OlusturanKullaniciId, HareketTip]
     note: "MAL KABUL (gelen mal) başlığı, 4.295 satır. CariId=tedarikçi · MekanId=kabul yeri · EksikIrsaliyeNo/IadeIrsaliyeNo = TEDARİKÇİ başarısızlığı confound-ayırıcı (eksik/geç/iade = alıcı değil tedarikçi; kronik+alıcı o tedarikçide ısrar → alıcı=tedarikçi-seçimi). ⚠ OlusturanKullaniciId = KABUL EDEN PERSONEL, ALICI DEĞİL (→SayimKullanici, atıf tuzağı). Sipariş↔kabul köprüsü çok-hoplu (Talep.SipId→sip→irs/malkabul), doğrudan FK yok — keşif bekliyor."
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
   bkm.MalKabulSatirLog:
+    evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 6 kolon · 3.615.403 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql"
+    applied_in: "sorgular/ · dashboard/ · scripts/ altinda HIC gecmiyor (olculdu 2026-09-12). Dar kayit: sema biliyor ama kod kullanmiyor."
     type: table
     key: [MalKabulBaslikId, StokId, Miktar, KullaniciId, LogDate]
     note: "Mal kabul satır logu, 3.41M satır. StokId×Miktar = GERÇEK GELEN adet → fill-rate = gelen/sipariş (SiparisMiktar). FK: MalKabulBaslikId→MalKabulBaslik. KullaniciId→SayimKullanici (kabul eden, alıcı değil)."
@@ -1380,6 +1419,7 @@ entities:
 
   # ── DerinCrm — hediye çeki üretim/yaşam-döngüsü motoru (2026-08-27 keşif) ──
   DerinCrm:
+    evidence_status: pending
     role: "CRM (Encore POS'un arkasındaki müşteri + hediye çeki + kampanya sistemi). 08.07.2025'te kuruldu, Encore go-live 11.07.2025 ile eş. `dbo.Customer` müşteri master (Sales.CustomersId köprüsü), `cmp` şeması hediye çeki motoru, `ref` şeması ürün aynası (867K ürün)."
     note: "⚠ MCP `database=` izin listesinde YOK ama **3-parçalı isim her VT'ye erişir** — `master` bağlamından `DerinCrm.cmp.GiftCard` sorgulanır. Bu, izin listesinin sorgu kapsamını sınırlamadığı anlamına gelir; keşifte bunu kullan."
     last_verified: "2026-08-27"
@@ -1441,6 +1481,7 @@ entities:
 
   # ── PUAN — HEDİYE ÇEKİ SİPARİŞ + BASIM SİSTEMİ (2026-08-27, kullanıcı yönlendirmesiyle) ──
   PUAN:
+    evidence_status: pending
     role: "Hediye çeki SİPARİŞ ve BASIM sistemi + eski bonus/puan sistemi (WINBONUS_*). ⚠ Collation **Turkish_CS_AS** (case-SENSITIVE) — diğer VT'ler Turkish_CI_AS. Cross-db string join'de `COLLATE Turkish_CI_AS` ZORUNLU, yoksa 'Cannot resolve the collation conflict'."
     note: "⚠ ÇEK ÜRETİM ZİNCİRİNİN BAŞI BURASI, DerinCrm DEĞİL. Doğru zincir: **PUAN.dbo.Siparis (firma bazlı sipariş) → PUAN.dbo.CekListesi (basılan çekler, barcode) → DerinCrm.cmp.GiftCard (bakiye/durum) → cmp.GiftCardTransaction + SalesPayments (harcama)**. İlk keşifte PUAN tablo adlarını görüp içine bakmamak 'çek↔müşteri bağı yok' yanlış sonucunu üretti."
     last_verified: "2026-08-27"
@@ -1466,6 +1507,7 @@ entities:
 
   # ── SalesProducts tutar semantigi (2026-08-28, olcum hatasindan ogrenildi) ──
   EncoreMerkez.dbo.SalesProducts.TUTAR_SEMANTIGI:
+    evidence_status: pending
     note: "⚠ **`TotalPrice` INDIRIM SONRASI, KDV DAHIL satir tutaridir.** Dogru turetmeler: **Net (KDV haric) = `TotalPrice - VatTotal`** · **Brut (indirim oncesi, KDV haric) = `TotalPrice - VatTotal + DiscountTotalDirect`**. `TotalPrice - DiscountTotalDirect - VatTotal` YAZMA — indirimi IKI KEZ duser. Kanit 2026-08-28: Inallar cek fisleri satir toplami 351.525 TL cikti, Sales basligi 422.364 TL; fark tam olarak SUM(DiscountTotalDirect)=70.839 idi. SUM(TotalPrice) = SUM(Sales.GrossTotal) - SUM(Sales.DiscountTotal) esitligi dogrulandi (42,20 TL fark = DiscountTotalIndirect). Dashboard sorgulari (Queries/MagazaQueries/RefQueries/HediyeCekiQueries) zaten DOGRU yazilmis."
     confidence: 0.95
     last_verified: "2026-08-28"
