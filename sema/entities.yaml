@@ -1975,7 +1975,15 @@ entities:
       TASIMAZ") — yani kayit KENDI ICINDE CELISIYORDU ve bunu ancak canli katalog yakaladi.
       Dogru yol: `dbo.puanbil.Ucretsekli` (ham tablo). Silinmedi, BEYAN edildi (bi-temporal:
       curuyen iddia iz birakir, yoksa ayni yanlis ikinci kez yazilir).
-    grain: "BORDRO satiri — kisi x ay (Yil + Ayindex). Ham tablo `dbo.puanbil` (27,6K satir)."
+    grain: "BORDRO satiri — kisi x ay (Yil + Ayindex). ⚠ KAPSAM DUZELTILDI 2026-09-12: bu view ham `dbo.puanbil`in IZDUSUMU DEGILDIR — UC FIRMAYI BIRLESTIRIR (34.397 satir), ham tablo yalniz BKM_GENEL'dir (27.931). Ayrinti + olcum: entities:zirve_vw_puanbil_uc_firma_kapsami. Firma ayraci `Firma` kolonu (codes:BKM_GENEL.Firma)."
+    kapsam_duzeltmesi: >-
+      2026-09-12 — bu kaydin eski `grain` metni "Ham tablo dbo.puanbil (27,6K satir)" diyerek
+      view'i taban tablonun izdusumu sayiyordu; OLCUM bunu curuttu (view 34.397 > taban 27.931,
+      aritmetik BKM dilimi = 27.931 ile birebir kapaniyor). Kayit SILINMEDI, kapsami duzeltildi.
+      Etkisi: bu view uzerinde kosan bordro degismezlerinin nufusu UC FIRMADIR; bunlardan
+      `sezonluk-etiketi-duruyor` bu yuzden KIRILGAN cikti ve firma-bazli MIN'e cevrildi.
+      ⚠ vw_PersonelDepartman ile INNER JOIN ayrica gecmisi 2024'e kirpar —
+      entities:zirve_persdept_ayrilan_penceresi.
     note: "TARIHSEL personel maliyetinin TEK kaynagi. `vw_PersonelDepartman.Ucret` CARI ve NET orandir -> gecmis ay maliyeti icin KULLANILMAZ (ucret_kurali). Kolon anlamlari (kullanicinin kendi bordro kontrol raporundan teyitli): **Bt=Brut Toplam · Isskk=Isveren SGK hissesi · Iisk=Isveren issizlik payi · Netu=Net odenen · Au=aylik brut ucret · Sim=sigorta matrahi · Vem=gelir vergisi matrahi · Sk/Isk=ISCI kesintileri · Sskindirim=isveren SGK istisnasi (tesvik) · fm1/fm2/fm3=fazla mesai SAAT · fmtutar1..3=fazla mesai TUTAR · Kanunno='14857' engelli tesviki**."
     fte_kurali: "**FTE (tam zaman esdeger) = SUM(Primgunu)/30**. `Primgunu` (smallint) = SGK prim gunu; tam ay = 30, ay icinde giren/cikan ve ucretsiz izinli kisi daha az gun tasir. Kadro/kapasite olcusu OLARAK bordro satiri sayilmaz — ay icinde 1 gun calisan da 1 sayilir ve sezonluk hareketin yogun oldugu aylarda kadro siser (olculen: 5 magaza Agu-2025 211 kayit vs 168,9 FTE). ⚠ view'da `Calismagunu`/`Toplamisgunu` YOK (ham `dbo.puanbil`'de var); `Primgunu` view'da mevcut ve yeterli. **KORUMA:** `degismezler.json` -> `primgunu-30-tavani` (31 ustu satir FTE'yi sisirir)."
     maliyet_formulu: "PERSONEL MALIYETI (brut isveren) = `Bt + Isskk + Iisk` — yonetimin kendi formulu (D:\\Belgelerim\\sql\\PERSONEL BORDRO KONTROL v2+.sql son kolonu). Kidem karsiligi ve yan haklar (giyim/yemek/yol) BU FORMULDE YOK -> alt sinir. Olcum 2026-09-03 (Oca-Tem, uc POS magazasi): 31,2M -> 47,2M TL."
@@ -2728,3 +2736,286 @@ entities:
       hiçbir mekanda görünmüyor. Depo çıkışı ile mağaza girişi arasındaki fark bu.
     evidence: "2026-09-09 — irsHrk hrkTarih vs ehTrhS dökümü (stkID 1739183) + taban Uretim damgası"
     last_verified: "2026-09-09"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ZİRVE SÜPÜRMESİ — 2026-09-12. Sunucu 192.168.40.25\ZRVSQL2008, DB BKM_GENEL.
+  # Yöntem DerinSIS'ten kopyalandı (yüzey → FK grafiği → hub → modül) ve FK adımı
+  # KIRILDI: Zirve ilişki BEYAN ETMİYOR. Hub kolon-adı yakınsamasından türetildi.
+  # Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql
+  # ═══════════════════════════════════════════════════════════════════════════
+  zirve_sunucu_kapsami:
+    type: measurement
+    grain: "Zirve sunucusunun tamamı — 125 kullanıcı veritabanı, erişilebilen 1"
+    uses: [entities:BKM_GENEL.dbo.vw_PuanBil, entities:BKM_GENEL.dbo.perbilgi]
+    note: >-
+      ⭐ **ZİRVE TEK BİR VERİTABANI DEĞİL, 125 VERİTABANLIK BİR AİLE.** Desen:
+      `<FİRMA>_GENEL` (personel/bordro, yıl-bağımsız) + `<FİRMA>_<YIL>` +
+      `<FİRMA>_<YIL>T` (mali yıl). Firmalar: BKM · BKM_2 · BKM_HEYKEL ·
+      BURSA_KÜLTÜR_MERKEZİ · ASİYE_BİNGÖLBALİ · POINT · KUTBETTİN_BİNGÖLBALİ
+      (09-10.09.2026'da açılmış — ölçüm anında 3 günlük) + SİMÜL/SİMÜLASYON/
+      SİMÜLATÖR/SIMUL22 test kopyaları + zirvegenel (sistem).
+      ⚠⚠ ÖLÇEMEDİĞİMİ YAZIYORUM: bağlantı kimliği `rapor_readonly` YALNIZ
+      `BKM_GENEL`e erişiyor. Kalan 124 DB — yani mali-yıl/muhasebe tarafının TAMAMI —
+      şu hatayı veriyor: "The server principal rapor_readonly is not able to access
+      the database BKM_2026 under the current security context." Bu "veri yok"
+      DEĞİL, "bakamadım". Zirve'de muhasebe var mı sorusu AÇIK.
+      ⚠ MOTOR: sunucu adı ZRVSQL2008 ama motor SQL Server 2014 SP3-GDR
+      (12.0.6179.1), Express Edition, Intel X86 (32-BİT). `BKM_GENEL`
+      compatibility_level 100 → TRY_CONVERT/IIF/STRING_AGG YOK.
+      Sema'nın eski "SQL2008" notu SONUÇ olarak doğruydu, GEREKÇE olarak yanlıştı:
+      kısıtı getiren motor sürümü değil compat seviyesidir. Express = 10 GB/DB sınırı.
+    measurement: "2026-09-12 — sys.databases (125 kullanıcı DB) · @@VERSION · SERVERPROPERTY('ProductVersion') · BKM_2026 erişim reddi. BKM_GENEL yüzeyi: tek şema dbo · 387 tablo · 135 DOLU · 252 boş · 198.767 satır · 11 view · PK 178 · UQ 4 · index 219 · SP 8 · fn 6 · trigger 8."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Bağımsız ikinci ölçüm (pusula-05 oturumu) aynı yüzey rakamlarını verdi: 387/135/198.767 ve 4 FK."
+    confidence: 0.95
+    last_verified: "2026-09-12"
+
+  zirve_fk_grafigi_yok:
+    type: measurement
+    grain: "BKM_GENEL'deki TÜM foreign key'ler — 4 adet"
+    uses: [entities:zirve_sunucu_kapsami]
+    note: >-
+      ⭐⭐ YÖNTEMİN KIRILDIĞI YER. DerinSIS'te işleyen "hub'ı FK grafiğinden türet"
+      adımı Zirve'de KOŞAMAZ: 387 tabloya karşılık 4 foreign key var ve dördü de
+      çevresel bir modülde (tbDamgaVergisi* üçü + tbKDV1IstisnaKodDetay →
+      tbKDV1IstisnaKod). Bağlı bileşen 2 küçük ada; personel/bordro çekirdeğinde
+      SIFIR FK. İlişkiler şemada BEYAN EDİLMEMİŞ, kolon adı konvansiyonuyla taşınıyor.
+      YEDEK YÖNTEM (kullanıldı): dolu tablolarda kolon adı yakınsaması →
+      HUB = `Personelno` (17 dolu tablo, 112.295 satır = DB'nin %56,5'i),
+      dönem ekseni (Yil | Cyili) × (Ayindex | Ay), kapsam ayraçları `Sube` (29 tablo) ·
+      `Firmakodu` (9) · `Fsk` (7).
+      ⚠ `Arti` HUB DEĞİL — 68 tabloda NOT NULL olduğu için çapraz bağ sanılabilir;
+      sys.identity_columns IDENTITY(1,1) diyor, yani tablo-içi satır sayacı.
+      Alternatif açıklama ölçümle ELENDİ. (Yan bulgu: per_k_bil MAX(Arti)=94.775 ama
+      31.978 satır → ağır silme trafiği.)
+      ⚠ Sonuç: bu depoda "FK grafiğinden modül çıkar" tarifi ERP'ye özeldir; yeni bir
+      sunucuya uygulanmadan önce FK SAYISI ölçülmelidir.
+    measurement: "2026-09-12 — sys.foreign_keys COUNT = 4 · sys.foreign_key_columns dökümü · sys.columns × sys.partitions kolon-adı yakınsaması · sys.identity_columns."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 3-5."
+    confidence: 1.0
+    last_verified: "2026-09-12"
+
+  zirve_view_tanimlari_okunamiyor:
+    type: measurement
+    grain: "BKM_GENEL'deki 11 view'ın tanım okunabilirliği"
+    uses: [entities:BKM_GENEL.dbo.vw_PuanBil]
+    note: >-
+      11 view'ın 11'inde sys.sql_modules.definition NULL. AMA SEBEP ŞİFRELEME DEĞİL:
+      OBJECTPROPERTY(...,'IsEncrypted') = 0 ve
+      HAS_PERMS_BY_NAME(...,'OBJECT','VIEW DEFINITION') = 0 →
+      VIEW DEFINITION İZNİ YOK.
+      ⇒ Bu, sql-server-conventions.md'deki "OBJECT_DEFINITION NULL ≠ şifreli" dersinin
+      Zirve'deki ilk örneğidir (orada üç sebep sayılıyor: şifreli / yanlış şema /
+      izin yok — buradaki üçüncüsü). "NULL gördüm, şifreliymiş" kestirmesi bu sunucuda
+      YANLIŞ sonuç verirdi.
+      ⇒ PRATİK SONUÇ: view'ların iç mantığı bu kimlikle OKUNAMAZ; şekilleri yalnız
+      VERİDEN türetilebilir (satır sayısı · kolon listesi · kapsam kırılımı). Bu
+      süpürmedeki tüm view bulguları o yolla kuruldu.
+    measurement: "2026-09-12 — sys.objects × sys.sql_modules × OBJECTPROPERTY × HAS_PERMS_BY_NAME, 11 view. View listesi: MagazaPersoneller · mevcut_personeller · personeler · personelIstenAyrilanlar · v_GetDate · vw_PerKBil · vw_PerOBil · vw_PersonelDepartman · vw_PersonelDepartmanEski · vw_PuanBil · wPerkbil."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 8."
+    confidence: 1.0
+    last_verified: "2026-09-12"
+
+  zirve_vw_puanbil_uc_firma_kapsami:
+    type: measurement
+    grain: "vw_PuanBil (34.397) ile ham dbo.puanbil (27.931) arasındaki kapsam farkı"
+    uses: [entities:BKM_GENEL.dbo.vw_PuanBil, codes:BKM_GENEL.Firma]
+    note: >-
+      ⭐⭐ VIEW TABANINDAN BÜYÜK — SEMA BUNU TERS BİLİYORDU. Kayıtlı entity
+      "Ham tablo dbo.puanbil (27,6K satır)" diyerek view'ı onun izdüşümü sayıyordu.
+      ÖLÇÜM: vw_PuanBil 34.397, dbo.puanbil 27.931 — view %23 BÜYÜK.
+      Firma kırılımı: BKM_GENEL 27.931 (3.559 kişi) · BURSA_KÜLTÜR_MERKEZİ 5.056 (350) ·
+      ASİYE_BİNGÖLBALİ 1.410 (101). Aritmetik birebir kapanıyor: view'ın BKM dilimi
+      = ham tablonun satır sayısı.
+      ⇒ dbo.puanbil TEK firma, vw_PuanBil ÜÇ firma birleşimidir. View, bu bağlantının
+      doğrudan okuyamadığı diğer firma veritabanlarını sahiplik zinciriyle okur — yani
+      kapsamı dışarıdan görünmez ve sys.databases erişim reddi buna aldanmaya yol açar.
+      ⇒ SEMA KAPSAMI %18,8 DAR YAZILMIŞTI. Depodaki bordro değişmezleri bu view üstünde
+      koştuğu için nüfusları sanılandan geniştir (bu düzeltmeden biri KIRILGAN çıktı,
+      bkz. degismezler sezonluk-etiketi-duruyor).
+      ⚠ Yan bulgu: BKM_GENEL diliminde 3 satırın `Personelno`su NULL (Yil/Ayindex de
+      NULL, Primgunu ve Bt 0). LIKE '%-BKM' gibi sonek süzgeçleri onları sessizce düşürür;
+      GROUP BY Personelno,Yil,Ayindex HAVING COUNT(*)>1 ise onları "mükerrer kişi-ay"
+      diye RAPORLAR — gerçek mükerrer değil, NULL-anahtarlı çöptür.
+    measurement: "2026-09-12 — GROUP BY Firma (view'ın kendi Firma kolonu) + ham tablo COUNT. 27.931 = 27.931 birebir."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 9-10."
+    confidence: 1.0
+    last_verified: "2026-09-12"
+
+  zirve_persdept_ayrilan_penceresi:
+    type: measurement
+    grain: "vw_PersonelDepartman'ın zaman kapsamı — kimler var, kimler YOK"
+    uses: [entities:BKM_GENEL.dbo.vw_PersonelDepartman, bridges:zirve-puanbil-persdept]
+    note: >-
+      ⭐⭐ KADRO VIEW'I TAM BİR SİCİL DEĞİL, BİR "AYRILAN PENCERESİ"DİR.
+      Kural ÖLÇÜLDÜ: view yalnız hâlâ çalışanlar (Ict NULL, 357 kişi) artı
+      01.01.2024'ten SONRA ayrılanları taşır. Kanıt: MIN(Ict) = 03.01.2024 ve
+      Ict < 2024-01-01 olan satır SIFIR. Giriş tarihi 2009'a kadar gidiyor, yani
+      süzgeç GİRİŞ değil ÇIKIŞ tarihinde.
+      ⇒ BORDRO İLE INNER JOIN GEÇMİŞİ SESSİZCE 2024'E KIRPAR. Öksüz 20.072 / 34.394
+      (%58,4) ve yıl dağılımı bunu birebir gösteriyor: 2014-2023 arası dolu,
+      2024/2025/2026'da SIFIR öksüz. Kaybolan 2.749 kişi.
+      ⇒ YoY / kıdem / devir / "geçmişte kaç kişiydik" sorularında bu join KULLANILAMAZ;
+      kadro bilgisi 2024 öncesi için dbo.perbilgi'den (3.578 satır) alınmalı.
+      ⚠ Sema'nın "join 1:1 ölçüldü (fan-out yok)" notu DOĞRU ama EKSİK: fan-out ölçülmüş,
+      öksüz hiç ölçülmemişti. Bir join'in tekilliği ile kapsamı AYRI iki sorudur.
+      ⚠ AS-OF SAYIM TUZAĞI: aktif 357 kişinin 1'inin giriş tarihi GELECEKTE
+      (14.09.2026, ölçüm 12.09.2026). Ict IS NULL tek başına "bugün çalışıyor" demek
+      değildir; as-of sayım Igt <= @tarih süzgecini de ister.
+    measurement: "2026-09-12 — MIN(Ict)=03.01.2024 · COUNT(Ict<'20240101')=0 · Ict NULL 357 · MIN(Igt)=03.01.2009 · MAX(Igt)=14.09.2026 · Igt>GETDATE() olan 1 (ve o kişi aktif sayılıyor) · öksüz GROUP BY Yil (2014:120 · 2015:735 · 2016:578 · 2017:450 · 2018:1.344 · 2019:1.891 · 2020:3.242 · 2021:6.744 · 2022:3.660 · 2023:1.308 · 2024+:0)."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 14-15."
+    confidence: 1.0
+    last_verified: "2026-09-12"
+
+  zirve_personelno_calisma_donemi_kimligi:
+    type: measurement
+    grain: "Personelno ↔ gerçek kişi (TC kimlik) ilişkisi"
+    uses: [entities:BKM_GENEL.dbo.vw_PersonelDepartman]
+    note: >-
+      ⭐⭐ `Personelno` KİŞİ KİMLİĞİ DEĞİL, ÇALIŞMA DÖNEMİ KİMLİĞİDİR.
+      1.296 Personelno karşılığında yalnız 1.162 tekil TC kimlik (Vatno). 113 kimlik
+      birden çok Personelno taşıyor, bir kişi en fazla 4 tane taşıyor. Sebep ayrıştırıldı:
+      109 vaka aynı firma içinde (yeniden işe alım), 7 vaka firmalar arası (grup içi
+      transfer). Vatno boş olan satır YOK, yani kişi kimliği her satırda var.
+      ⇒ "Kaç kişi çalıştı / devir hızı / kıdem" gibi KİŞİ soruları Vatno ile sayılır;
+      Personelno ile sayan %10,3 fazla sayar ve bir kişinin kıdemini iki parçaya böler.
+      ⚠ Bu, codes:urn.kod2ID'deki "aynı kişi iki kodda" tuzağının İK tarafındaki ikizidir —
+      naif GROUP BY AdSoyad da işe yaramaz: 1.159 tekil ada karşılık 116 ad birden çok
+      Personelno taşıyor, ama ayrımı yapan AdSoyad değil Vatno'dur (113 vaka).
+      ✅ İYİ HABER — AS-OF SAYIM GÜVENLİ: bugün aynı anda aktif iki dönem YOK
+      (aktif Personelno 357 = aktif Vatno 357). Kapı: zirve-aktif-kadroda-personelno-kisiye-esit.
+      ✅ FTE DE GÜVENLİ: aynı kişinin aynı ayda iki bordro satırı taşıdığı 13 kişi-ay var
+      (7'si mağaza) ama hiçbirinde prim günü toplamı 31'i aşmıyor (en yüksek tam 31) —
+      yani ay iki dönem arasında BÖLÜNÜYOR, çift sayılmıyor. Kapı: zirve-kisi-ay-prim-31-tavani.
+    measurement: "2026-09-12 — COUNT(DISTINCT Personelno)=1.296 vs COUNT(DISTINCT Vatno)=1.162 · MAX(pno/kimlik)=4 · aynı ad+aynı firma 109 · farklı firma 7 · aynı Vatno farklı pno 113 · aktif 357=357 · aynı kişi-ay iki pno 13 (mağaza 7), prim toplamı >31 olan 0 (max 31, min 4)."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 17-19."
+    confidence: 1.0
+    last_verified: "2026-09-12"
+
+  zirve_null_anahtarli_cop_satirlar:
+    type: measurement
+    grain: "BKM_GENEL'de anahtarı NULL olan satırların tablo bazlı sayısı"
+    uses: [entities:BKM_GENEL.dbo.perkbil, entities:BKM_GENEL.dbo.perobil, bridges:zirve-perkbil-puanbil, bridges:zirve-perobil-puanbil]
+    note: >-
+      ⭐ DB GENELİNDE BİR DESEN: ZİRVE TABLOLARI ANAHTARI NULL SATIR BİRİKTİRİYOR.
+      Ölçülen: perobil 2.981 / 12.422 = %24,0 · perkbil 1.821 / 21.837 = %8,3 ·
+      puanbil 3 · mesai 0.
+      Bu satırların Personelno ve/veya Yil/Ayindex alanı NULL'dur; bir kişiye ya da
+      aya bağlı DEĞİLLERDİR.
+      ⚠ İKİ YÖNLÜ TUZAK: (a) her INNER JOIN'de sessizce düşerler → "kaç satır işledim"
+      raporu ile tablo satır sayısı tutmaz; (b) GROUP BY anahtar HAVING COUNT(*)>1
+      yazan bir tekillik denetimi onları sahte mükerrer diye raporlar (puanbil'deki
+      3 satır tam olarak bunu yapıyor).
+      ⇒ Bu köprülerin öksüz oranı (%8,3 ve %24,0) bir veri kalitesi sorunu DEĞİL,
+      TAMAMEN bu çöp satırlardır: NULL-anahtarlılar dışlandığında öksüz 0. İki
+      ölçümün birebir eşitliği bunu kanıtlıyor.
+      ⇒ KURAL: bordro kalem tablolarını sorgularken WHERE Personelno IS NOT NULL AND
+      Yil IS NOT NULL yaz; satır sayısı raporluyorsan hangi paydayı kullandığını söyle.
+      ⚠ AKRABA AMA AYRI: per_k_bil / per_o_bil (alt çizgili) bu sınıfın uç örneğidir —
+      orada anahtar kolonu HİÇ YOKTUR (bkz. entities:BKM_GENEL.dbo.per_k_bil).
+    measurement: "2026-09-12 — her tabloda WHERE <anahtar kolonlar> IS NULL sayımı, üç-kolonlu NOT EXISTS öksüz sayımıyla karşılaştırıldı: perkbil 1.821=1.821 · perobil 2.981=2.981 (birebir)."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 16."
+    confidence: 1.0
+    last_verified: "2026-09-12"
+
+  BKM_GENEL.dbo.mesai:
+    type: table
+    key: [Perno, Yil, Ay, Gun]
+    grain: "kişi × GÜN (fazla mesai / eksik saat günlük kaydı)"
+    uses: [bridges:zirve-mesai-perbilgi]
+    note: >-
+      Fazla mesainin GÜNLÜK dökümü. 19.076 satır (DB'nin 6. büyük tablosu), 3.046 tekil
+      kişi, dönem 2014-09 .. 2026-09 (CANLI). 9 kolon.
+      Kolonlar: Perno · Yil · Ay · Gun · [1fm] [2fm] [3fm] (fazla mesai kademeleri,
+      float saat) · Eksiksaat · Arti (IDENTITY).
+      ⚠⚠ KİŞİ ANAHTARI `Perno`, `Personelno` DEĞİL — DB'nin geri kalanından farklı.
+      ⚠ Kolon adları RAKAMLA BAŞLAR: [1fm] köşeli parantezsiz sözdizimi hatası verir.
+      ⚠ vw_PuanBil.fm1/fm2/fm3 bunun AYLIK toplamıdır; ikisini toplamak çift sayar.
+      Anahtarı NULL olan satır YOK (0) — bu tablo, DB'nin çöp-satır deseninin DIŞINDA.
+    measurement: "2026-09-12 — COUNT 19.076 · COUNT(DISTINCT Perno) 3.046 · MIN/MAX(Yil*100+Ay) 201409/202609 · NULL anahtar 0 · perbilgi'ye öksüz 29 (%0,15) · puanbil kişi-ayına öksüz 218 (%1,1)."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 7/13."
+    confidence: 0.95
+    last_verified: "2026-09-12"
+
+  BKM_GENEL.dbo.perkbil:
+    type: table
+    key: [Personelno, Yil, Ayindex, Fsk, Kesintiadi]
+    grain: "kişi × ay × kesinti kalemi"
+    uses: [bridges:zirve-perkbil-puanbil, entities:zirve_null_anahtarli_cop_satirlar]
+    note: >-
+      BORDRO KESİNTİ KALEMİ (gerçek veri tablosu). 21.837 satır · 3.237 tekil kişi ·
+      2015-09 .. 2026-09 · 11 kolon. 9 tekil Kesintiadi.
+      Kardeşi perobil (ödeme kalemi). Aylık başlık puanbil.
+      ⚠⚠ per_k_bil (ALT ÇİZGİLİ) İLE KARIŞTIRMA — o bordro verisi değildir ve
+      31.978 satır taşır; ikisini birleştirmek kesinti toplamını 1,5 katına çıkarır.
+      ⚠ Satırların %8,3'ü NULL anahtarlıdır (1.821) → WHERE Personelno IS NOT NULL şart.
+      ⚠ Puantajno canlıda tek değerli (bilgi taşımıyor); Fsk 5 tekil değer alıyor (1..7).
+    measurement: "2026-09-12 — COUNT 21.837 · DISTINCT Personelno 3.237 · MIN/MAX 201509/202609 · DISTINCT Kesintiadi 9 · DISTINCT Fsk 5 (1..7) · DISTINCT Puantajno 1 · NULL anahtar 1.821."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 6/13/16."
+    confidence: 0.95
+    last_verified: "2026-09-12"
+
+  BKM_GENEL.dbo.perobil:
+    type: table
+    key: [Personelno, Yil, Ayindex, Fsk, Odemeadi]
+    grain: "kişi × ay × ödeme kalemi"
+    uses: [bridges:zirve-perobil-puanbil, entities:zirve_null_anahtarli_cop_satirlar]
+    note: >-
+      BORDRO EK ÖDEME KALEMİ (gerçek veri tablosu). 12.422 satır · 1.472 tekil kişi ·
+      2016-03 .. 2026-09 · 10 kolon (Brut_toplam dahil). 9 tekil Odemeadi.
+      ⚠⚠ per_o_bil (ALT ÇİZGİLİ) İLE KARIŞTIRMA.
+      ⚠ Satırların %24,0'ı NULL anahtarlıdır (2.981) — perkbil'dekinin üç katı oran.
+    measurement: "2026-09-12 — COUNT 12.422 · DISTINCT Personelno 1.472 · MIN/MAX 201603/202609 · DISTINCT Odemeadi 9 · NULL anahtar 2.981."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 6/13/16."
+    confidence: 0.95
+    last_verified: "2026-09-12"
+
+  BKM_GENEL.dbo.per_k_bil:
+    type: table
+    key: [Kesintiadi]
+    grain: "TANIMSIZ — kişi ve dönem anahtarı YOK (ekran/şablon artığı)"
+    uses: [entities:BKM_GENEL.dbo.perkbil]
+    note: >-
+      ⚠⚠⚠ BU TABLO BORDRO VERİSİ DEĞİLDİR — ADI YÜZÜNDEN ÖYLE SANILIR.
+      DB'nin EN BÜYÜK tablosu (31.978 satır) ama:
+      Personelno YOK · Perno YOK · Yil/Ay YOK · tarih kolonu YOK.
+      Yalnız 9 tekil Kesintiadi taşıyor (BES · İCRA · AVANS · TRAFİK CEZASI ·
+      ÖZEL KESİNTİ · EK KESİNTİ · PRİM-AVANS · Y.İZİN AVANSI · MAAŞ HACZİ) ve
+      Tutar yalnız 2.297 satırda (%7,2) dolu, Py yalnız 8 satırda.
+      MAX(Arti)=94.775 ama 31.978 satır → ağır ekle/sil trafiği. Kullanici alanı
+      "İNSAN KAYNAKLAR". Görünüm: bordro ekranı açıldıkça yazılan şablon satırları.
+      ⇒ GERÇEK KESİNTİ TABLOSU perkbil'dir (alt çizgisiz). İkisini birleştiren
+      ya da per_k_bil'den toplam alan bir rapor SESSİZCE yanlış çıkar — hata vermez,
+      çünkü tablo doludur; yalnız anlamsızdır.
+      Kardeşi per_o_bil (21.194 satır, 10 tekil Odemeadi, aynı desen).
+      ⚠ AÇIK SORU: bu satırların ne zaman/neden üretildiği ÖLÇÜLMEDİ — tarih kolonu
+      olmadığı için ölçülemedi de. "Artık" nitelemesi ÇIKARIMdır, kanıtı yapısaldır
+      (anahtar yokluğu + %92,8 boş tutar), doğrudan gözlem değildir.
+    measurement: "2026-09-12 — COUNT 31.978 · DISTINCT Kesintiadi 9 · Tutar NOT NULL 2.297 (%7,2) · Py dolu 8 · MAX(Arti) 94.775 · Personelno/Perno/Yil/Ay kolonu YOK (sys.columns). per_o_bil: 21.194 satır / 10 tekil Odemeadi."
+    evidence: "2026-09-12 — sqlcli --profile zirve. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 10."
+    confidence: 0.9
+    last_verified: "2026-09-12"
+
+  zirve_perbilgi_olu_kolonlar:
+    type: measurement
+    grain: "perbilgi'nin 188 kolonundan kaçı bilgi taşıyor"
+    uses: [entities:BKM_GENEL.dbo.perbilgi]
+    note: >-
+      188 KOLONUN 62'Sİ (%33,0) BİLGİ TAŞIMIYOR — 20 kolon tamamen boş (0 tekil değer),
+      42 kolon tek değerli. 3.578 satır üzerinden ölçüldü.
+      Tamamen boş olanlar arasında dikkat çekenler: `Firmakodu` (kolon-adı
+      yakınsamasında 9 tabloda görünüp anahtar adayı sanılmıştı — perbilgi'de ÖLÜ),
+      Malulluk · Gelirindirim · Sskindirim · Askerlikbittar · BES_CikisTarihi ·
+      NakilGidilenIsYeri · girisRefNo / cikisRefNo.
+      ⚠ Arti bu tabloda 0 tekil değer veriyor (hepsi NULL) — yani Arti her tabloda
+      IDENTITY DEĞİL; genelleme yapılamaz.
+      ⇒ Bu, DerinSIS tarafında altı kez çıkan "tanımlı ama hiç doldurulmayan kolon"
+      sınıfının Zirve karşılığıdır (api_log.stkid · istAyr.sevkAdet · urnBrkd.urnBrkdAltStkId
+      · MalKabulTanim.MiktarSiparis · frmMrk.frmMrkCPYuzde · urnDonem). Bir kolonun ŞEMADA
+      olması onu veri kaynağı yapmaz; kullanmadan önce tekil değer sayısına bakılır.
+      ⚠ Ozurlulukkodu 3 tekil değer veriyor; sema'nın kayıtlı notu 2 değerden (E/H)
+      söz ediyor — küçük bir sapma, engelli envanteri zaten "Zirve'den tam çıkarılamaz"
+      diye işaretli. Yeniden ölçüm gerekirse buradan başlanır.
+    measurement: "2026-09-12 — 188 kolon için COUNT(DISTINCT <kolon>) tek sorguda (kolon listesi sys.columns'tan üretildi, elle yazılmadı): 0 tekil 20 kolon · 1 tekil 42 · 2-3 tekil 44 · geri kalan 82."
+    evidence: "2026-09-12 — sqlcli --profile zirve, üretilmiş 8.343 karakterlik tarama sorgusu. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 20."
+    confidence: 1.0
+    last_verified: "2026-09-12"

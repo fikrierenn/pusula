@@ -774,3 +774,117 @@ bridges:
     orphans_expected: "EVET, 5 bölüm: `bkm.SubeListe`de tanımlı ama `TPerTab`ta o bölümde personel yok. Yetki/filtre listesi bu 5 bölümü boş gösterir — bu bir hata değil, kadrosuz bölümdür."
     evidence: "2026-09-11 — OPENQUERY([PDKS]) bkm.SubeListe sayımı + TPerTab'a NOT EXISTS. Kullanım kanıtı: D:/Dev/reporthub/Mosaik/Database/sp_PdksPano.sql satır 49-56."
     last_verified: "2026-09-11"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ZİRVE (BKM_GENEL — bordro/İK, 192.168.40.25\ZRVSQL2008). İLK ZİRVE KÖPRÜLERİ.
+  # 2026-09-12 süpürmesi. Bu dosyada 2026-09-12 öncesinde HİÇ zirve kaydı yoktu.
+  # ⚠ Zirve'de FK YOK (387 tabloda 4 FK, hepsi damga vergisi modülünde) — aşağıdaki
+  #   köprülerin HİÇBİRİ şemada beyan edilmiş değildir, ölçümle kuruldu.
+  # Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql
+  # ═══════════════════════════════════════════════════════════════════════════
+  - id: zirve-mesai-perbilgi
+    not_measurable: >-
+      FARKLI SUNUCU — MOTOR YOLLAYAMIYOR (ölçüldü 2026-09-12). `sema kopru` köprü
+      uçlarını HER ZAMAN ERP bağlantısına (DerinSISBkm) çözüyor; bu köprünün iki ucu da
+      Zirve'de (192.168.40.25\ZRVSQL2008, BKM_GENEL). Motor şunu döndürüyor:
+      "Geçersiz nesne adı 'DerinSISBkm.dbo.mesai'". `scope: zirve` yazmak ROTAYI
+      DEĞİŞTİRMİYOR; `server: zirve` alanı da denendi ve ETKİSİ OLMADI (değişmez
+      koşucusunda çalışan `server` alanı köprü tarafında OKUNMUYOR) — yanlış bir izlenim
+      bırakmasın diye o satır geri alındı. ERP'den Zirve'ye linked server da yok.
+      ⇒ Öksüz ELLE ölçüldü (`sqlcli --profile zirve`, sonuç `measurement` alanında);
+      motor bunu yeniden koşamaz. BORÇ: köprü motoruna profil-bazlı yönlendirme
+      eklenene kadar Zirve köprüleri elle ölçülür.
+    from: dbo.mesai.Perno
+    to: dbo.perbilgi.Personelno
+    scope: zirve
+    cardinality: "N:1"
+    confidence: 0.95
+    note: >-
+      ⚠⚠ SESSİZ JOIN TUZAĞI — HUB'IN ADI BURADA `Perno`, `Personelno` DEĞİL.
+      `dbo.mesai` DB'nin 6. büyük tablosudur (19.076 satır) ve `Personelno` kolonu
+      TAŞIMAZ. `Personelno` arayan bir tarama bu tabloyu ATLAR; kolon adını kopyalayan
+      bir sorgu Err 207 alır (bu görünür), ama `Perno`yu başka bir şey sanan sessizce
+      yanlış birleştirir.
+      GRAIN FARKI: `mesai` kişi × **GÜN** (Yil + Ay + Gun), `puanbil` kişi × **AY**.
+      Fazla mesainin GÜNLÜK dökümü yalnız burada; `vw_PuanBil.fm1/fm2/fm3` aynı şeyin
+      aylık toplamıdır. Günlük veriyi aylıkla toplamak çift sayar.
+      ⚠ Kolon adları RAKAMLA BAŞLAR — `[1fm]`, `[2fm]`, `[3fm]`; köşeli parantezsiz sözdizimi hatası.
+    measurement: "2026-09-12 ÖKSÜZ ÖLÇÜMÜ (elle NOT EXISTS): 29 / 19.076 (%0,15). Anahtar NULL olan satır YOK (0). Dönem 2014-09 .. 2026-09 (CANLI). Tekil Perno 3.046."
+    orphans_expected: "EVET, KÜÇÜK: 29 satır. `perbilgi` yalnız BKM_GENEL firmasını tutar (bkz. entities:BKM_GENEL.dbo.perbilgi); diğer iki tüzel kişiliğin personeli bu tabloda yoktur. 29 satır bu sınıfta olabilir — AYRIŞTIRILMADI, açık soru."
+    evidence: "2026-09-12 — sqlcli --profile zirve; NOT EXISTS sayımı + MIN/MAX(Yil*100+Ay) + COUNT(DISTINCT Perno). Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 7."
+    last_verified: "2026-09-12"
+
+  - id: zirve-puanbil-persdept
+    not_measurable: >-
+      FARKLI SUNUCU — MOTOR YOLLAYAMIYOR (ölçüldü 2026-09-12). `sema kopru` köprü
+      uçlarını HER ZAMAN ERP bağlantısına (DerinSISBkm) çözüyor; bu köprünün iki ucu da
+      Zirve'de (192.168.40.25\ZRVSQL2008, BKM_GENEL). Motor şunu döndürüyor:
+      "Geçersiz nesne adı 'DerinSISBkm.dbo.mesai'". `scope: zirve` yazmak ROTAYI
+      DEĞİŞTİRMİYOR; `server: zirve` alanı da denendi ve ETKİSİ OLMADI (değişmez
+      koşucusunda çalışan `server` alanı köprü tarafında OKUNMUYOR) — yanlış bir izlenim
+      bırakmasın diye o satır geri alındı. ERP'den Zirve'ye linked server da yok.
+      ⇒ Öksüz ELLE ölçüldü (`sqlcli --profile zirve`, sonuç `measurement` alanında);
+      motor bunu yeniden koşamaz. BORÇ: köprü motoruna profil-bazlı yönlendirme
+      eklenene kadar Zirve köprüleri elle ölçülür.
+    from: dbo.vw_PuanBil.Personelno
+    to: dbo.vw_PersonelDepartman.Personelno
+    scope: zirve
+    cardinality: "N:1"
+    confidence: 0.99
+    note: >-
+      ⭐⭐ BORDRO → KADRO/DEPARTMAN. Sağ uç TEKİLDİR (1.296 satır = 1.296 tekil
+      Personelno, mükerrer 0) → **fan-out YOK**; sema'nın eski "1:1 ölçüldü" notu bu
+      yönüyle DOĞRU.
+      ⚠⚠ AMA ÖKSÜZ HİÇ ÖLÇÜLMEMİŞTİ VE BÜYÜK: **20.072 / 34.394 = %58,4**.
+      Bu bir veri hatası DEĞİL, bir **KAPSAM UÇURUMU**: `vw_PersonelDepartman`
+      yalnız *hâlâ çalışanlar* + *01.01.2024'ten SONRA çıkanlar*ı taşır
+      (ölçüldü: MIN(Ict) = 03.01.2024 · Ict < 2024-01-01 olan satır **0** · Ict NULL 357).
+      Bordro ise 2014'e kadar gider (4.010 tekil kişi).
+      **SONUÇ: bu köprüyle kurulan her INNER JOIN geçmişi SESSİZCE 2024'e kırpar.**
+      Öksüzlerin yıl dağılımı bunu birebir gösteriyor: 2014-2023 arası 20.072 satır,
+      **2024/2025/2026'da SIFIR öksüz**. YoY / kıdem / devir analizinde 2024 öncesi
+      için bu join KULLANILAMAZ — 2.749 kişi tamamen kaybolur.
+    measurement: "2026-09-12 ÖKSÜZ ÖLÇÜMÜ (elle NOT EXISTS): 20.072 / 34.394 (%58,4) — payda `Personelno IS NOT NULL`. Ters yön: kadro view'ında olup bordroda hiç görünmeyen 35 kişi. Sağ uç tekilliği: 1.296 = 1.296 (fan-out yok)."
+    orphans_expected: "EVET ve YAPISAL: sağ taraf bir 'ayrılan penceresi' view'ıdır (çıkış ≥ 01.01.2024 veya hâlâ aktif). 2024'ten önce ayrılan herkes sağda YOKTUR, dolayısıyla onların TÜM geçmiş bordro satırları öksüzdür. Bu beklenen davranıştır; hata, bunu bilmeden INNER JOIN yazmaktır."
+    evidence: "2026-09-12 — sqlcli --profile zirve: NOT EXISTS sayımı + öksüzlerin GROUP BY Yil dağılımı (2014:120 · 2015:735 · 2016:578 · 2017:450 · 2018:1.344 · 2019:1.891 · 2020:3.242 · 2021:6.744 · 2022:3.660 · 2023:1.308 · 2024+:0) + MIN(Ict)/COUNT(Ict<2024). Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 14-15."
+    last_verified: "2026-09-12"
+
+  - id: zirve-perkbil-puanbil
+    from: dbo.perkbil.Personelno
+    to: dbo.puanbil.Personelno
+    scope: zirve
+    cardinality: "N:1"
+    confidence: 0.95
+    not_measurable: >-
+      BİLEŞİK ANAHTAR: join ÜÇ kolonla kurulur (`Personelno + Yil + Ayindex`). Motor
+      tek-kolon eşitliği ölçer; tek kolonla bakılırsa öksüz YANLIŞ (kişi eşleşir, o ayı
+      eşleşmez) çıkar. Üç-kolonlu NOT EXISTS ile ELLE ölçüldü — sonuç `measurement`'ta.
+    note: >-
+      BORDRO KESİNTİ KALEMİ → bordro başlığı. `perkbil` bir kişi-ayın kesinti dökümüdür
+      (9 tekil `Kesintiadi`: BES · İCRA · AVANS · TRAFİK CEZASI · ÖZEL KESİNTİ · EK
+      KESİNTİ · PRİM-AVANS · Y.İZİN AVANSI · MAAŞ HACZİ).
+      ⚠⚠ `dbo.per_k_bil` (ALT ÇİZGİLİ) BAŞKA BİR ŞEYDİR ve bordro verisi DEĞİLDİR —
+      bkz. entities:BKM_GENEL.dbo.per_k_bil. Adları bir harflik farkla ayrılıyor;
+      karıştırmak kesinti toplamını 1,5 katına çıkarır.
+    measurement: "2026-09-12 ÖKSÜZ ÖLÇÜMÜ (elle 3 kolonlu NOT EXISTS): 1.821 / 21.837 (%8,3). ⭐ ÖKSÜZLERİN TAMAMI ANAHTARI NULL OLAN SATIRLAR: `Yil IS NULL OR Ayindex IS NULL OR Personelno IS NULL` sayısı da tam 1.821. Yani anahtarı dolu satırlarda öksüz **0** — köprü TEMİZ, tablo çöp taşıyor."
+    orphans_expected: "EVET, TAMAMI TEK SINIF: 1.821 NULL-anahtarlı çöp satır (%8,3). Bunlar bir kişiye/aya bağlı DEĞİLDİR ve her INNER JOIN'de sessizce düşerler. Kesinti toplamı alan sorgu `WHERE Personelno IS NOT NULL AND Yil IS NOT NULL` yazmalı, yoksa satır sayısı raporlanırken şişer."
+    evidence: "2026-09-12 — sqlcli --profile zirve; NOT EXISTS (Personelno+Yil+Ayindex) sayımı ile NULL-anahtar sayımının BİREBİR eşitliği. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 13/16."
+    last_verified: "2026-09-12"
+
+  - id: zirve-perobil-puanbil
+    from: dbo.perobil.Personelno
+    to: dbo.puanbil.Personelno
+    scope: zirve
+    cardinality: "N:1"
+    confidence: 0.95
+    not_measurable: >-
+      BİLEŞİK ANAHTAR (`Personelno + Yil + Ayindex`) — `zirve-perkbil-puanbil` ile aynı
+      gerekçe. Elle üç-kolonlu NOT EXISTS ile ölçüldü.
+    note: >-
+      BORDRO ÖDEME KALEMİ → bordro başlığı. `perobil` kişi-ayın ek ödeme dökümüdür
+      (9 tekil `Odemeadi`). Kardeşi `perkbil` (kesinti).
+      ⚠⚠ `dbo.per_o_bil` (ALT ÇİZGİLİ) bordro verisi DEĞİLDİR.
+    measurement: "2026-09-12 ÖKSÜZ ÖLÇÜMÜ (elle 3 kolonlu NOT EXISTS): 2.981 / 12.422 (%24,0). ⭐ ÖKSÜZLERİN TAMAMI NULL-ANAHTARLI: NULL-anahtar sayısı da tam 2.981. Anahtarı dolu satırlarda öksüz **0**."
+    orphans_expected: "EVET, TAMAMI TEK SINIF: 2.981 NULL-anahtarlı çöp satır — tablonun DÖRTTE BİRİ (%24,0). Oran perkbil'dekinin üç katı; aynı tuzak, daha büyük. `WHERE Personelno IS NOT NULL AND Yil IS NOT NULL` zorunlu."
+    evidence: "2026-09-12 — sqlcli --profile zirve; NOT EXISTS sayımı ile NULL-anahtar sayımının birebir eşitliği. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 13/16."
+    last_verified: "2026-09-12"

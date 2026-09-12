@@ -732,3 +732,73 @@ codes:
     confidence: 1.0
     evidence: "2026-09-11 — lookup OPENQUERY([PDKS]) dbo.TAbwArt'tan okundu (16 kod, elle yazılmadı) + canlı kullanım `TTagZei GROUP BY TZe_AbwArt` ile sayıldı. Kullanılmayan kod 'canlıda YOK' diye işaretlendi."
     last_verified: "2026-09-11"
+
+  # ═══ ZİRVE (BKM_GENEL — bordro/İK). İLK ZİRVE KOD KAYITLARI, 2026-09-12. ═══
+  # Bu dosyada 2026-09-12 öncesinde HİÇ zirve kaydı yoktu.
+
+  vw_PersonelDepartman.Kadro:
+    lookup: "YOK — lookup tablosu bulunmuyor, değer serbest metin kolonunda duruyor."
+    kume_kaynagi: "dbo.vw_PersonelDepartman GROUP BY Kadro (canlı, 2026-09-12). Elle yazılmadı."
+    closed_set: true
+    values_rule: >-
+      İki ANLAMLI etiket var: **KADRO** (sürekli) ve **SEZONLUK**. Kod bugün yalnız
+      `Kadro = N'SEZONLUK'`u ayırır, GERİ KALAN HER ŞEYİ KADROLU SAYAR — bu yüzden
+      küme KAPALI tutulmalıdır; yeni bir etiket sessizce "kadrolu"ya düşer.
+      ⚠ `KADROLU` DEĞİL **`KADRO`** (sonda -LU yok). Yanlış yazım sessizce 0 döndürür.
+      Kümede ayrıca marjinal/eski değerler var: boş string · NULL · STAJYER ·
+      PART-TIME · PART TIME (aynı şeyin İKİ YAZIMI) · KISMİ.
+      ⚠ `PART-TIME` ile `PART TIME` ayrı iki değerdir (tire farkı) — veri girişi
+      varyantı; birini süzen diğerini kaçırır.
+    firma_farki: >-
+      ⚠ ETİKET SÖZLÜĞÜ FİRMAYA GÖRE DEĞİŞİYOR (ölçüldü 2026-09-12). Marjinal etiketlerin
+      TAMAMI `BKM_GENEL`dedir; `BURSA_KÜLTÜR_MERKEZİ` yalnız KADRO/SEZONLUK,
+      `ASİYE_BİNGÖLBALİ` KADRO/SEZONLUK/NULL kullanır. Yani "etiket kümesi" tek bir
+      sözleşme değil, firma başına ayrı pratiktir.
+    note: >-
+      Canlı dağılım (2026-09-12, 1.296 satır): KADRO 875+78+23=976 · SEZONLUK
+      212+67+23=302 · NULL 10 · boş 3 · STAJYER 2 · PART-TIME 1 · PART TIME 1 · KISMİ 1.
+      Bu bir ÖLÇÜMDÜR (satır verisi), kural yukarıdaki `values_rule`dur.
+      ⚠ `Kadro` kolonu **`vw_PuanBil`de YOKTUR** — orada aramak Err 207 verir.
+      Kadro/AdSoyad/Lokasyon/Departman/Unvan/Ucret/Firma `vw_PersonelDepartman`da;
+      maliyet (Bt/Isskk/Iisk) + Primgunu + fm1..3 `vw_PuanBil`de.
+    korur: "degismezler: kadro-etiket-kumesi-kapali (küme kapalı mı) · sezonluk-etiketi-duruyor (etiket firma bazında duruyor mu)"
+    evidence: "2026-09-12 — sqlcli --profile zirve: GROUP BY Firma, Kadro. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 12."
+    confidence: 0.95
+    last_verified: "2026-09-12"
+
+  BKM_GENEL.Firma:
+    lookup: "YOK — view'ın kendi türettiği kolon (`vw_PuanBil.Firma`, `vw_PersonelDepartman.Firma`)."
+    kume_kaynagi: "İlgili view'da GROUP BY Firma (canlı). Firma kümesi DEĞİŞİR (2026-09'da yeni tüzel kişilik açıldı) — liste sema'ya YAZILMAZ, canlı okunur."
+    closed_set: false
+    values_rule: >-
+      ⭐ **`vw_PuanBil` ve `vw_PersonelDepartman` ÜÇ TÜZEL KİŞİLİĞİ BİRLEŞTİRİR.**
+      Ayraç `Firma` kolonudur — `Personelno` sonekini (`-BKM` / `-BKMH` / `-ABG`)
+      ayrıştırmaya GEREK YOK, o yol ayrıca kırılgandır (BKM_GENEL diliminde soneksiz
+      3 satır var, `LIKE '%-BKM'` onları sessizce düşürür).
+      ⚠ HAM TABLO İLE VIEW AYNI KAPSAMDA DEĞİL: `dbo.puanbil` YALNIZ BKM_GENEL'dir
+      (27.931), `dbo.vw_PuanBil` üçünün toplamıdır (34.397). View, bu bağlantının
+      (`rapor_readonly`) doğrudan OKUYAMADIĞI diğer firma veritabanlarını sahiplik
+      zinciriyle okur — yani kapsamı dışarıdan görünmez.
+      ⚠ `dbo.perbilgi` yalnız BKM_GENEL'i tutar; view'a INNER JOIN edilirse diğer iki
+      firmanın personeli SESSİZCE düşer.
+    magaza_eslesmesi: >-
+      Mağaza ↔ firma eşlemesi `vw_PersonelDepartman.AltLokasyon` üzerinden kurulur, `Firma`
+      doğrudan mağaza demek DEĞİLDİR. FSM · İST. YOLU · ÖZLÜCE = BKM_GENEL ·
+      HEYKEL = BURSA_KÜLTÜR_MERKEZİ · ŞURA = ASİYE_BİNGÖLBALİ (sema entity'de ayrıntı).
+      Kanonik bordro sorgusu (`queries:bordro-fte-maliyet-fazla-mesai`) kapsamı `Firma` ile
+      DEĞİL `AltLokasyon IN (FSM, İST. YOLU, ÖZLÜCE)` ile daraltır — o yüzden üç-firma
+      bulgusu o metriği KİRLETMEZ (kontrol edildi 2026-09-12).
+    note: >-
+      Ölçülen dağılım (2026-09-12): vw_PuanBil → BKM_GENEL 27.931 (3.559 kişi) ·
+      BURSA_KÜLTÜR_MERKEZİ 5.056 (350) · ASİYE_BİNGÖLBALİ 1.410 (101).
+      vw_PersonelDepartman → 1.103 / 145 / 48, aktif 291 / 46 / 20.
+      ⚠ SUNUCUDA DAHA ÇOK FİRMA VAR: 125 veritabanı, desen `<FİRMA>_GENEL` +
+      `<FİRMA>_<YIL>` + `<FİRMA>_<YIL>T`. BKM · BKM_2 · BKM_HEYKEL ·
+      BURSA_KÜLTÜR_MERKEZİ · ASİYE_BİNGÖLBALİ · POINT · KUTBETTİN_BİNGÖLBALİ
+      (09-10.09.2026'da AÇILMIŞ) + simülasyon kopyaları. Bu view'lar bunların yalnız
+      ÜÇÜNÜ birleştirir; gerisi bu kimlikle OKUNAMIYOR (erişim reddi) — "veri yok"
+      DEĞİL, "bakamadım".
+    korur: "degismezler: zirve-vw-puanbil-bkm-dilimi-tabana-esit (view bir firmayı sessizce düşürürse kırılır)"
+    evidence: "2026-09-12 — sqlcli --profile zirve: GROUP BY Firma (iki view) + sys.databases dökümü + BKM_2026 erişim reddi. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 0/1/9."
+    confidence: 0.95
+    last_verified: "2026-09-12"
