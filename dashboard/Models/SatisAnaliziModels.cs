@@ -174,6 +174,8 @@ public static class DurumAdlari
         [SatisDurumFiltre.SezonAcik] = "Sezon stok açığı",
         [SatisDurumFiltre.SezonRafAcigi] = "Sezonluk raf açığı → transfer",
         [SatisDurumFiltre.AraliklıTalep] = "Aralıklı talep (gün-stok geçersiz)",
+        [SatisDurumFiltre.HicSatilmamis] = "Ölü stok — HİÇ satılmamış",
+        [SatisDurumFiltre.SatmisDurmus] = "Ölü stok — satmış, sonra durmuş",
         [SatisDurumFiltre.SiparisIhtiyaci] = "Sipariş ihtiyacı (kapak altı)",
         [SatisDurumFiltre.SiparisAcil] = "Sipariş — ACİL (hiç stok yok)",
         [SatisDurumFiltre.DuzgunTalep] = "Düzgün talep (gün-stok geçerli)",
@@ -236,7 +238,17 @@ public enum SatisDurumFiltre
     SiparisAcil,
 
     /// <summary>ADI ≤ 1,32 (düzgün/değişken) — panelin hız metrikleri yalnız burada geçerli.</summary>
-    DuzgunTalep
+    DuzgunTalep,
+
+    /// <summary>
+    /// ÖLÜ STOĞUN İKİ ALT KÜMESİ (12.09.2026). Kart ikisini tek sayıda topluyordu ve
+    /// hangisinin hangisi olduğu okunmuyordu. Ölçüldü — aynı kohortun iki yarısı ÇOK farklı:
+    /// hiç satmamış 43.715 çeşit / maliyet 46,8M ₺ (etiket/maliyet 1,1×) · satmış-durmuş
+    /// 72.217 çeşit / 24,2M ₺ (3,8×). Çeşidin %38'i maliyetin %66'sını taşıyor.
+    /// İki AYRI problem: biri alım hatası, öteki talep kaybı.
+    /// </summary>
+    HicSatilmamis,
+    SatmisDurmus
 }
 
 /// <summary>KPI şeridi. Karşı-metrikler YAN YANA durur (satinalma-danisman: tek yönlü metrik yasak).</summary>
@@ -286,6 +298,12 @@ public sealed record SatisAnaliziKpi(
     /// Satışı olanlar kanıtlı talep + boş raf = kayıp satış. TRANSFER sorusu, alım değil.
     /// ÖLÇÜLDÜ: 3.539 çeşit / 10,46M ₺, 1.218'inin satışı var.
     /// </summary>
+    /// <summary>Raf bulunurluk kaybının stok MALİYETİ (12.09.2026 taban birleştirmesi).</summary>
+    decimal RafBosMaliyet,
+    /// <summary>Rafa çıkmamış envanterin MALİYETİ.</summary>
+    decimal RafsizMaliyet,
+    /// <summary>Mağaza arası dengesiz stoğun MALİYETİ.</summary>
+    decimal DengesizMaliyet,
     int RafBosCesit,
     decimal RafBosTutar,
     long RafBosSatisliCesit,

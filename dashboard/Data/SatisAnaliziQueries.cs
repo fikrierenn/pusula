@@ -633,6 +633,20 @@ public sealed partial class SatisAnaliziQueries(
                    -- ama İst.Yolu −13 (veri kiri) toplamı −8 yapıyor, ürün "rafı boş" görünüyordu.
                    -- Doğrusu: ÜÇ RAFIN HEPSİ boş. Ölçüldü: 3.539 → 3.533 çeşit (6'sı aslında
                    -- rafta vardı), tutar 10,46M → 10,27M ₺.
+                   -- STOK DEĞERİ tabanlı üç kart da MALİYETE (12.09.2026). Aşırı/Ölü Stok
+                   -- maliyete geçmişti; bunlar etikette kalınca panel iki dil konuşuyordu.
+                   -- ⚠ KAYIP POTANSİYELİ kartları (Sezon Stok Açığı · Stokta Yokluk · Sezonluk
+                   -- Raf Açığı) ÇEVRİLMEDİ ve çevrilmemeli: kaçan satış SATIŞ FİYATIYLA ölçülür,
+                   -- maliyetle değil. Taban farkı orada DOĞRU.
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafBosSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS RafBosMaliyet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {RafsizSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS RafsizMaliyet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {DengesizSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS DengesizMaliyet,
                    SUM(CASE WHEN {RafBosSart} THEN 1 ELSE 0 END)                                             AS RafBosCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {RafBosSart} THEN t.Tutar ELSE 0 END))            AS RafBosTutar,
                    -- Karşı-metrik DEĞİŞTİ: "satışı olan" artık ANA ölçütte (talep >= 5), tekrar
@@ -763,6 +777,9 @@ public sealed partial class SatisAnaliziQueries(
             HareketsizTutar: satirlar.Sum(x => x.HareketsizTutar),
             RafsizCesit: satirlar.Sum(x => x.RafsizCesit),
             RafsizTutar: satirlar.Sum(x => x.RafsizTutar),
+            RafBosMaliyet: satirlar.Sum(x => x.RafBosMaliyet),
+            RafsizMaliyet: satirlar.Sum(x => x.RafsizMaliyet),
+            DengesizMaliyet: satirlar.Sum(x => x.DengesizMaliyet),
             RafBosCesit: satirlar.Sum(x => x.RafBosCesit),
             RafBosTutar: satirlar.Sum(x => x.RafBosTutar),
             RafBosSatisliCesit: satirlar.Sum(x => x.RafBosSatisliCesit),
@@ -958,6 +975,8 @@ public sealed partial class SatisAnaliziQueries(
         int AsiriOdakCesit, decimal AsiriOdakTutar,
         int HareketsizCesit, decimal HareketsizTutar,
         int RafsizCesit, decimal RafsizTutar,
+        // ⚠ SQL'de RafBosCesit'ten ÖNCE geliyorlar (Dapper pozisyonel).
+        decimal RafBosMaliyet, decimal RafsizMaliyet, decimal DengesizMaliyet,
         int RafBosCesit, decimal RafBosTutar, long RafBosSatisliCesit,
         int KirliCesit, decimal KirliTutar,
         int YeniCesit, decimal YeniTutar,

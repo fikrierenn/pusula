@@ -949,6 +949,10 @@ public sealed partial class SatisAnaliziQueries
             SatisDurumFiltre.AraliklıTalep =>
                 "(t.SatanAy IS NOT NULL AND t.SatanAy > 0 AND NOT " + GunStokGuvenilirSart + ")",
             // ⚠ KPI'daki SiparisCesit / SiparisAcilCesit ile AYNI sabitten gelir (ayrışma imkânsız).
+            // Ölü stoğun iki yarısı — ölçüt KPI ile AYNI sabitten (OluStokSart), ayrım
+            // yalnız SonSatis. "Hiç satmamış" = alım hatası · "satmış, durmuş" = talep kaybı.
+            SatisDurumFiltre.HicSatilmamis => "(" + OluStokSart + " AND t.SonSatis IS NULL)",
+            SatisDurumFiltre.SatmisDurmus => "(" + OluStokSart + " AND t.SonSatis IS NOT NULL)",
             SatisDurumFiltre.SiparisIhtiyaci => SiparisSart,
             SatisDurumFiltre.SiparisAcil => SiparisAcilSart,
             _ => null,

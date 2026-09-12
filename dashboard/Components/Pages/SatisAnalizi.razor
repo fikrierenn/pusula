@@ -316,21 +316,41 @@ else
                            soluk hali — okunur, bağırmıyor.
                            ÜST AYRAÇ ana sayfadan alındı (border-t): önce yalnız arka plan
                            rengiyle ayrışıyordu, ayraç yapıyı netleştiriyor. *@
-                        @if (kart.CiftBaslik is not null)
+                        @* 12.09.2026: eski iki-alanlı `Cift*` alanları SİLİNDİ — 11 kartın
+                           hepsi Kirilim kullanıyor. İki tanım biçimi bırakmak, ileride birine
+                           eklenen kolonun ötekinde görünmemesi demekti (emitter-ayrımı). *@
+                        @if (kart.Kirilim is { Count: > 0 } seritler)
                         {
-                            <button type="button"
-                                    class="mt-auto px-4 py-3 flex items-baseline justify-between gap-2 text-left min-w-0
-                                           active:scale-[.98] transition-all border-t
-                                           @(kart.Kahraman
-                                                ? "bg-white/15 hover:bg-white/25 border-white/25"
-                                                : $"bg-{kart.Vurgu}/10 hover:bg-{kart.Vurgu}/20 border-base-300")"
-                                    @onclick="() => KartTikla(kart.CiftDurum, kart.CiftOdakVar, null)">
-                                <span class="text-[10px] uppercase tracking-wider font-semibold min-w-0
-                                             @(kart.Kahraman ? "text-white/75" : "text-base-content/55")">
-                                    @kart.CiftBaslik
-                                </span>
-                                <span class="text-base font-bold tabular-nums shrink-0">@kart.CiftDeger</span>
-                            </button>
+                            <div class="mt-auto border-t @(kart.Kahraman ? "border-white/25" : "border-base-300")">
+                                @foreach (var (k2, i2) in seritler.Select((x, i) => (x, i)))
+                                {
+                                    <button type="button"
+                                            class="w-full px-4 py-2.5 flex items-baseline gap-2 text-left min-w-0
+                                                   active:scale-[.98] transition-all
+                                                   @(i2 > 0 ? (kart.Kahraman ? "border-t border-white/15" : "border-t border-base-300/60") : "")
+                                                   @(kart.Kahraman
+                                                        ? "bg-white/15 hover:bg-white/25"
+                                                        : $"bg-{kart.Vurgu}/10 hover:bg-{kart.Vurgu}/20")"
+                                            @onclick="() => KartTikla(k2.Durum, k2.OdakVar, null)">
+                                        @* Başlık — alt kümeyse "↳" ile: bu satır ana sayının İÇİNDEN. *@
+                                        <span class="text-[10px] uppercase tracking-wider font-semibold
+                                                     min-w-0 flex-1 truncate
+                                                     @(kart.Kahraman ? "text-white/75" : "text-base-content/55")">
+                                            @(k2.AltKume ? "↳ " : "")@k2.Baslik
+                                        </span>
+                                        @* Çeşit — SOLUK ve değerden AYRI kolonda; eskiden başlık
+                                           metnine gömülüydü ve değerle karışıyordu. *@
+                                        @if (k2.Cesit is not null)
+                                        {
+                                            <span class="text-[10px] tabular-nums shrink-0
+                                                         @(kart.Kahraman ? "text-white/55" : "text-base-content/40")">
+                                                @k2.Cesit
+                                            </span>
+                                        }
+                                        <span class="text-sm font-bold tabular-nums shrink-0">@k2.Deger</span>
+                                    </button>
+                                }
+                            </div>
                         }
                     </div>
                 }
@@ -684,9 +704,23 @@ else
         // kimin işi olduğu YAZILI DEĞİLDİ. Sahipsiz kohort toplantıda kimseye düşmez.
         // null = eylem kartı değil (nötr olgu/ölçüm) — sahip uydurulmaz.
         string? Sahip = null,
-        string? CiftBaslik = null, string? CiftDeger = null,
-        SatisDurumFiltre? CiftDurum = null, bool? CiftOdakVar = null,
+        // ⚠ KIRILIM ŞERİDİ (12.09.2026, kullanıcı: "bunu bu detayda daha anlaşılır bir kart
+        // tasarımı ile yapmak daha mantıklı" + "diğerleri de öyle muhtemelen").
+        // Eski dip şerit İKİ ALANLI idi (başlık · değer) ve çeşit sayısı başlık METNİNİN içine
+        // gömülüydü → "43.715 çeşit" ile "52,7 milyon ₺" yan yana düşünce hangisinin hangisiyle
+        // eşleştiği OKUNMUYORDU (kullanıcı birebir sordu). Şerit artık ÜÇ KOLON: başlık · çeşit ·
+        // değer; ve BİRDEN ÇOK satır alabiliyor, böylece alt kohortlar yan yana değil ALT ALTA.
+        IReadOnlyList<KpiKirilim>? Kirilim = null,
         bool Kahraman = false);
+
+    /// <summary>
+    /// Dip şeridin BİR SATIRI. <c>AltKume</c> = bu satır ana sayının İÇİNDEN bir dilim
+    /// (ekranda "↳" ile gösterilir); false ise ayrı bir ölçü/karşı-metrik.
+    /// <c>Cesit</c> null olabilir — her karşı-metriğin çeşit karşılığı yok (adet/oran olanlar).
+    /// </summary>
+    private sealed record KpiKirilim(
+        string Baslik, string? Cesit, string Deger,
+        SatisDurumFiltre? Durum = null, bool? OdakVar = null, bool AltKume = false);
 
     /// <summary>
     /// Grup sırası — ekranda bu sırayla çıkar (bağlı sermaye → bulunurluk → iç kaynak).
@@ -709,8 +743,7 @@ else
         new("BAĞLI SERMAYE", "Envanter Değeri · etiket", TlKisa(k.ToplamStokTutar),
             $"{k.Cesit:N0} çeşit", "primary", "kutu", SatisDurumFiltre.Hepsi,
             Taban: "stok değeri · tüm evren",
-            CiftBaslik: "Maliyetle · bağlı sermaye",
-            CiftDeger: TlKisa(k.MaliyetliDeger),
+            Kirilim: [new("Maliyetle · bağlı sermaye", null, TlKisa(k.MaliyetliDeger))],
             Kahraman: true),
 
         // Kurulun 2 numaralı önerisi — panelin EKSİK olan asıl ekseni.
@@ -723,8 +756,8 @@ else
                 : k.GerceklesenMarj < 0.25m ? "warning" : "success",
             "kar",
             Taban: "365 günde kazanılan kâr",
-            CiftBaslik: "Gerçekleşen brüt marj",
-            CiftDeger: k.GerceklesenMarj is { } mj ? "%" + (mj * 100m).ToString("N1") : "—"),
+            Kirilim: [new("Gerçekleşen brüt marj", $"{k.MarjCesit:N0} çeşit",
+                          k.GerceklesenMarj is { } mj ? "%" + (mj * 100m).ToString("N1") : "—")]),
 
         // Karşı-metrik DEĞİŞTİ 10.09 (kullanıcı: "hareketsiz stokta sanki son satış tarihi
         // gibi bir bilgi de lazım"): "3 yıldan eski → listele" bir SAYI vermiyordu.
@@ -750,9 +783,16 @@ else
             + $"{TlKisa(k.HareketsizTutar)} · bunun {k.HicSatilmamisCesit:N0} çeşidi HİÇ satmamış",
             "error", "arsiv", SatisDurumFiltre.Hareketsiz,
             Taban: "maliyet · POS'ta da satmayanlar",
-            CiftBaslik: $"İÇİNDEN hiç satmamış · {k.HicSatilmamisCesit:N0} çeşit",
-            CiftDeger: TlKisa(k.HicSatilmamisMaliyet),
-            CiftDurum: SatisDurumFiltre.Hareketsiz,
+            // İki alt kohort ALT ALTA; ikisi de "↳" ile ana sayının İÇİNDEN olduğunu söyler.
+            // Satmış-durmuş TÜREV (tamamı − hiç satmamış): ayrı agrega yazmak tek kaynağı bozardı.
+            Kirilim:
+            [
+                new("Hiç satmamış", $"{k.HicSatilmamisCesit:N0} çeşit",
+                    TlKisa(k.HicSatilmamisMaliyet), SatisDurumFiltre.HicSatilmamis, AltKume: true),
+                new("Satmış, sonra durmuş", $"{k.HareketsizCesit - k.HicSatilmamisCesit:N0} çeşit",
+                    TlKisa(k.HareketsizMaliyet - k.HicSatilmamisMaliyet),
+                    SatisDurumFiltre.SatmisDurmus, AltKume: true),
+            ],
             Sahip: "satınalma + finans"),
 
         // ══ BULUNURLUK KAYBI ══════════════════════════════════════════════════════
@@ -768,27 +808,31 @@ else
             $"{k.SezonAcikCesit:N0} çeşit · stok geçen sezonun yarısından az",
             "error", "takvim", SatisDurumFiltre.SezonAcik,
             Taban: "kayıp potansiyeli · eksik adet × etiket",
-            CiftBaslik: "ODAK'ta var → hızlı temin",
-            CiftDeger: TlKisa(k.SezonAcikOdakTutar),
-            CiftDurum: SatisDurumFiltre.SezonAcik, CiftOdakVar: true,
+            Kirilim: [new("ODAK'ta var · hızlı temin", $"{k.SezonAcikOdakCesit:N0} çeşit",
+                          TlKisa(k.SezonAcikOdakTutar), SatisDurumFiltre.SezonAcik, OdakVar: true,
+                          AltKume: true)],
             Sahip: "satınalma"),
 
         new("BULUNURLUK KAYBI", "Stokta Yokluk · sezon", TlKisa(k.StoksuzSezonKayip),
             $"{k.StoksuzSezonCesit:N0} çeşit · geçen sezon sattı, stok tam sıfır",
             "error", "uyari", SatisDurumFiltre.StoksuzSezon,
             Taban: "kayıp potansiyeli · sezon adedi × etiket",
-            CiftBaslik: "ODAK'ta var → hızlı temin",
-            CiftDeger: TlKisa(k.StoksuzSezonOdakVarKayip),
-            CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true,
+            Kirilim: [new("ODAK'ta var · hızlı temin", $"{k.StoksuzSezonOdakVarCesit:N0} çeşit",
+                          TlKisa(k.StoksuzSezonOdakVarKayip), SatisDurumFiltre.StoksuzSezon,
+                          OdakVar: true, AltKume: true)],
             Sahip: "satınalma"),
 
-        new("BULUNURLUK KAYBI", "Raf Bulunurluk Kaybı", TlKisa(k.RafBosTutar),
-            $"{k.RafBosCesit:N0} çeşit · üç raf da boş, yılda 5+ satıyor",
+        // ⚠ TABAN BİRLEŞTİRME (12.09.2026): STOK DEĞERİ gösteren kartlar MALİYETE geçti.
+        // Kullanıcı: "diğer kartlarda benzer durum yok muydu". Vardı — Aşırı/Ölü Stok maliyete
+        // geçince bu üç kart (Raf Bulunurluk · Dengesizlik · Rafa Çıkmamış) etikette kalmıştı.
+        // ⚠ KAYIP POTANSİYELİ kartları ÇEVRİLMEDİ (Sezon Stok Açığı · Stokta Yokluk · Sezonluk
+        // Raf Açığı): kaçan satış SATIŞ FİYATIYLA ölçülür. Orada etiket DOĞRU taban.
+        new("BULUNURLUK KAYBI", "Raf Bulunurluk Kaybı", TlKisa(k.RafBosMaliyet),
+            $"{k.RafBosCesit:N0} çeşit · üç raf da boş, yılda 5+ satıyor · etiketle {TlKisa(k.RafBosTutar)}",
             "error", "raf", SatisDurumFiltre.RafBos,
-            Taban: "stok değeri · merkezde bekleyen",
-            CiftBaslik: "Merkezde bekleyen → transfer",
-            CiftDeger: $"{k.RafBosSatisliCesit:N0} adet",
-            CiftDurum: SatisDurumFiltre.RafBos,
+            Taban: "maliyet · merkezde bekleyen",
+            Kirilim: [new("Merkezde bekleyen → transfer", null,
+                          $"{k.RafBosSatisliCesit:N0} adet", SatisDurumFiltre.RafBos)],
             Sahip: "operasyon"),
 
         // ══ İÇ KAYNAKLA ÇÖZÜLÜR ═══════════════════════════════════════════════════
@@ -811,9 +855,8 @@ else
             $"{k.SezonRafCesit:N0} çeşit · rafı boş, merkez tamamını karşılıyor",
             "warning", "raf", SatisDurumFiltre.SezonRafAcigi,
             Taban: "kayıp potansiyeli · eksik adet × etiket",
-            CiftBaslik: "Merkezde bekleyen → transfer",
-            CiftDeger: $"{k.SezonRafMerkezAdet:N0} adet",
-            CiftDurum: SatisDurumFiltre.SezonRafAcigi,
+            Kirilim: [new("Merkezde bekleyen → transfer", null,
+                          $"{k.SezonRafMerkezAdet:N0} adet", SatisDurumFiltre.SezonRafAcigi)],
             Sahip: "operasyon"),
 
         // ══ B-172(b) MALİYET TABANI (12.09.2026, satinalma-danisman itirazı) ══════
@@ -833,18 +876,20 @@ else
             + $"tüm stok maliyetle {TlKisa(k.AsiriStokMaliyet)} · etiketle {TlKisa(k.AsiriStokTutar)}",
             "warning", "katman", SatisDurumFiltre.AsiriStok,
             Taban: "maliyet · eşik ÜSTÜ fazla",
-            CiftBaslik: "ODAK'ta da var → grup içinde çift stok",
-            CiftDeger: TlKisa(k.AsiriStokOdakVarTutar),
-            CiftDurum: SatisDurumFiltre.AsiriStok, CiftOdakVar: true,
+            // ⚠ TUTAR ÇIKARILDI: ana sayı artık MALİYET, bu karşı-metrik ETİKET tutarıydı —
+            // aynı kartta iki farklı taban yan yana duruyordu. Çeşit sayısı belirsizlik taşımaz.
+            // ODAK kesişiminin maliyetli karşılığı ölçülmedi (TODO B-172a ile birlikte).
+            Kirilim: [new("ODAK'ta da var · çift stok", null,
+                          $"{k.AsiriStokOdakVarCesit:N0} çeşit", SatisDurumFiltre.AsiriStok,
+                          OdakVar: true, AltKume: true)],
             Sahip: "satınalma"),
 
-        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Mağaza Arası Dengesizlik", TlKisa(k.DengesizTutar),
-            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, diğerinde 5+ adet",
+        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Mağaza Arası Dengesizlik", TlKisa(k.DengesizMaliyet),
+            $"{k.DengesizCesit:N0} çeşit · bir rafta yok, diğerinde 5+ adet · etiketle {TlKisa(k.DengesizTutar)}",
             "warning", "transfer", SatisDurumFiltre.Dengesiz,
-            Taban: "stok değeri · yanlış mağazadaki",
-            CiftBaslik: "Eylem: sipariş DEĞİL, transfer",
-            CiftDeger: "listele",
-            CiftDurum: SatisDurumFiltre.Dengesiz,
+            Taban: "maliyet · yanlış mağazadaki",
+            Kirilim: [new("Eylem: sipariş DEĞİL, transfer", null, "listele",
+                          SatisDurumFiltre.Dengesiz)],
             Sahip: "operasyon"),
 
         // Karşı-metrik ADET oldu: "raf bulunurluk kaybı" artık kendi kartında (BULUNURLUK KAYBI).
@@ -864,18 +909,17 @@ else
             $"{k.SiparisCesit:N0} çeşit · {k.SiparisAdet:N0} adet · kapağın altına düştü",
             "warning", "sepet", SatisDurumFiltre.SiparisIhtiyaci,
             Taban: "maliyet · bağlanacak para",
-            CiftBaslik: "ACİL · hiç stok yok",
-            CiftDeger: $"{k.SiparisAcilCesit:N0} çeşit",
-            CiftDurum: SatisDurumFiltre.SiparisAcil,
+            Kirilim: [new("ACİL · hiç stok yok", $"{k.SiparisAcilCesit:N0} çeşit",
+                          $"{k.SiparisAcilAdet:N0} adet", SatisDurumFiltre.SiparisAcil,
+                          AltKume: true)],
             Sahip: "satınalma"),
 
-        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Rafa Çıkmamış Envanter", TlKisa(k.RafsizTutar),
-            $"{k.RafsizCesit:N0} çeşit · mağaza rafına hiç girmemiş",
+        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Rafa Çıkmamış Envanter", TlKisa(k.RafsizMaliyet),
+            $"{k.RafsizCesit:N0} çeşit · mağaza rafına hiç girmemiş · etiketle {TlKisa(k.RafsizTutar)}",
             "warning", "paket", SatisDurumFiltre.Rafsiz,
-            Taban: "stok değeri · merkezde bekleyen",
-            CiftBaslik: "Merkezde bekleyen",
-            CiftDeger: $"{k.RafsizAdet:N0} adet",
-            CiftDurum: SatisDurumFiltre.Rafsiz,
+            Taban: "maliyet · merkezde bekleyen",
+            Kirilim: [new("Merkezde bekleyen", null, $"{k.RafsizAdet:N0} adet",
+                          SatisDurumFiltre.Rafsiz)],
             Sahip: "operasyon"),
 
     ];
