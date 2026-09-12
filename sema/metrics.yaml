@@ -87,6 +87,45 @@ metrics:
       ⚠ `MarjFarki` bir PUAN FARKIDIR, yüzde marj değil; ikisi karıştırılmaz.
       ⚠ Eşik 11 puan İŞLETMENİN kendi seçimi (view'de yoruma alınmış); nasıl türetildiği
         ÖLÇÜLMEDİ.
+    GERI_ALMA_2026_09_12: >-
+      ⚠⚠⚠ **BU METRİĞİN TABANI ÇÜRÜDÜ — rakamlar AŞAĞI DOĞRU DÜZELTİLDİ.**
+      Kullanıcı direktifi: *"alış iskontosu sıfır olan ürünleri incele, bunları ayrıca
+      alış faturalarından da kontrol et."* Kontrol edildi ve vekil yıkıldı.
+      **1) VEKİL NEREDE YALAN SÖYLÜYOR** (gerçek alış faturası: `fat.eTip=0` + `fatAyr`,
+      son 24 ay; fatura iskontosu = 1 − ΣehTutarN/ΣehTutar):
+        vekil = 0   → fatura **%12,2**  ·  vekil %1,1 (0-10) → fatura **%18,7**
+        vekil %25,9 → fatura %27,9 · %39,5 → %40,7 · %49,8 → %50,5
+      ⇒ Vekil %30 ÜSTÜNDE neredeyse birebir, ama **tam da NEGATİF bandı ürettiği yerde
+        17,6 puan sapıyor**. "Marj sorunlu" listesinin alt ucu bir ÖLÇÜM KUSURUDUR.
+      **2) FATURADAKİ İSKONTO ORANI DA GÜVENİLMEZ** ("başka ne olabilir?" kapısı):
+      faturada iskonto satırı olmaması malın pahalı alındığı anlamına gelmiyor —
+      tedarikçi NET fiyat kesiyor. Ölçüldü (fatura birim net ÷ liste, KDV eşitlenerek,
+      `urnKDV` JOIN'i ile; özel marka `Marka LIKE 'BKM%'` elendi — yalnız 84 ürün):
+        faturada iskonto YOK (<%5)   2.117 ürün ·  32,2M ₺ · **liste −%55,0**
+        faturada %5-30              13.710      · 132,1M ₺ · **liste −%53,9**
+        faturada %30+              136.229      · 802,3M ₺ · **liste −%59,5**
+      ⇒ Aradaki fark 4,5 puan. İskonto ORANI bir SUNUM tercihini ölçüyor, ekonomiyi değil.
+      **3) GÜVENİLİR TABAN = fatura birim net fiyatı ÷ (liste ÷ (1+KDV)).**
+      Bu tabanla `GERCEK_MARJ = ALIS_LISTEDEN_SAPMA − SatisMarji`:
+        vekile göre NEGATİF 10.556 ürün · alış −%53,0 · web ind. %35,5 · **GERÇEK +17,5**
+        vekile göre eşik altı 33.303    · −%56,3 · %36,7 · **+19,5**
+        vekile göre eşik üstü 108.420   · −%57,9 · %26,9 · **+31,0**
+      ⇒ NEGATİF bandın **%81'i doğru tabanla PARA KAZANDIRIYOR.**
+      **ÖNCE → SONRA:**
+        eşiğin altındaki ürün          57.083 → **12.220**
+        gerçekten negatif ürün         15.457 →  **2.190** (ort −12,2 puan)
+        negatifin web cirosu          62,2M ₺ → **31,0M ₺**
+        web cirosunun eşik altı payı      %51 →   **%27,4** (191,8M / 700,5M ₺)
+      ⚠ KAPSAM: bu düzeltme YALNIZ son 24 ayda alış faturası GÖRMÜŞ 152.171 ürün için
+        geçerli. **146.607 ürün 24 ayda hiç alış faturası görmemiş** (ODAK sevkiyat/
+        konsinye şüphesi: `urnBilgi` 168 "Odak Stoğunu Sat" 93.180 · 224 "Odak Sevkiyat
+        Ürün" 26.993) — onlarda marj ÖLÇÜLEMEDİ. "Sıfır" değil, **"bakamadım"**.
+      ⚠ VIEW'IN KENDİ KUSURU: `JOIN urnBrkd` süzgeçsiz (`urnBrkdOnce=0` YOK) ⇒ 323.367
+        satır / 323.223 tekil stkID. Küçük ama gerçek fan-out; `COUNT(*)` ürün sayısı değil.
+      ⚠ AYKIRI DEĞER SÜZGECİ YOK: stkID 1623731'de `SatisMarji = −900` (site fiyatı
+        listenin 10 katı) ortalamalara giriyor.
+      Kapı: değişmez `alis-fatura-net-kimligi`.
+      Arşiv: `sorgular/2026-09-12-alis-iskontosu-sifir-fatura-kontrolu.sql`
     evidence: "2026-09-12 — view tanımı okundu (1.550 karakter, şifresiz) + bant dağılımı + kategori kırılımı + web cirosu (Enf_AylikUrunSatislari Kaynak=bkmkitapcom) + MAĞAZA tarafı posOzetUrun ile ayrıca ölçüldü (kullanıcı düzeltmesi). Arşiv: sorgular/2026-09-12-marji-sorunlu-urunler.sql · sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql"
     confidence: 0.85
     last_verified: "2026-09-12"

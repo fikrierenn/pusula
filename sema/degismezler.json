@@ -662,6 +662,18 @@
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 0. Kasa indirim oranlari: 6847=%1,1 - 6835=%3,4 - 1=%23,9 - 6858=%48,1. Arsiv: sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql",
       "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=p.posStkID WHERE p.posTarih >= DATEADD(MONTH,-12,GETDATE()) AND p.posMekan IN (1,4477,4478) AND p.satAdet>0 AND u.kod4ID IN (6847,6835,1,6858)"
+    },
+    {
+      "id": "alis-fatura-net-kimligi",
+      "db": "DerinSISBkm",
+      "question": "Alis faturasi satirinda (fat.eTip=0) `ehTutarN = ehTutar - ehIndirim` kimligi hala tutuyor mu? Son 12 ayda kimligi bozan satir sayisi (tolerans 0,05 TL).",
+      "why": "2026-09-12'de kullanici 'alis iskontosu sifir olan urunleri alis faturalarindan da kontrol et' dedi; kontrol bir onceki iki commit'in marj tabanini curuttu ve YENI taban bu tabloya dayandi: gercek alis maliyeti `fatAyr.ehTutarN`dir. Olculdu: 641.905 satirin 641.904'u tutuyor; tek istisna ehID 7029330 satir 1 (4.500 -> net 2.700, ehIndirim 0 yazilmis). Kademe kimligi de tutuyor: ehTutarN = ehTutar x (1-ehi1/100)x...x(1-ehi5/100), 186 istisna. NEDEN KAPI: sema'nin ZATEN bildigi bir bozulma sinifi var - `eTip=4` (Magaza Satis) satirlarinda `ehTutarN` BESLENMIYOR ve bu 4 yildir KOTULESIYOR (%65 -> %77). Ayni bozulma alis tarafina sicrarsa her maliyet/marj hesabi SESSIZCE kayar: ehTutarN 0 donerse urun 'bedava alinmis' gorunur ve marj SISER. Bugun bunu hicbir sey izlemiyor. Esik `le 5` secildi: olculen 1, elle girilmis tekil anomalilere pay birakiliyor; sistematik bozulma (eTip=4 orneginde on binlerce satir) bu esigi kat kat asar. KIRILABILIRLIK KANITI (paylasilan dosyaya dokunmadan, hatali formuller dogrudan kosuldu): dogru formul 1 - yalniz `ehi1` kademesi sanilirsa 6.799 - ayni kimlik eTip=4'te 55.879. SINIR: kapi yalnizca ARITMETIK tutarliligi olcer; fiyatin DOGRU olup olmadigini olcmez.",
+      "sql": "SELECT SUM(CASE WHEN ABS(a.ehTutarN-(a.ehTutar-a.ehIndirim))>0.05 THEN 1 ELSE 0 END) FROM DerinSISBkm.dbo.fat f WITH(NOLOCK) JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK) ON a.ehID=f.eID WHERE f.eTip=0 AND f.eTarih >= DATEADD(MONTH,-12,GETDATE()) AND a.ehTutar>0",
+      "comparison": "encok",
+      "expected": 5,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu, 1 (641.905 satirda). Arsiv: sorgular/2026-09-12-alis-iskontosu-sifir-fatura-kontrolu.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.fat f WITH(NOLOCK) JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK) ON a.ehID=f.eID WHERE f.eTip=0 AND f.eTarih >= DATEADD(MONTH,-12,GETDATE()) AND a.ehTutar>0"
     }
   ]
 }

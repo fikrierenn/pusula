@@ -3026,9 +3026,26 @@ entities:
     key: [ehID, ehSira, ehStkID, ehAdetN, ehTutar, ehIndirim, ehTutarN, ehKDV, ehMaliyet]
     grain: "fatura (fat.eID) × ürün satırı"
     note: "⚠⚠ **eTip=4 (Mağaza Satış) satırlarında `ehTutarN` BESLENMİYOR** — sistematik, 4 yıllık, kötüleşiyor: net=0 satır oranı 2023 %65,4 · 2024 %63,7 · 2025 %72,5 · 2026 %76,8. Diğer tüm eTip'lerde ≤%0,28 (Oca-2026 kontrolü: eTip 0/1/2/3/5/6/7/8/10 hepsi temiz, yalnız 4 kırık). `ehIndirim` de eTip=4'te çoğunlukla 0. Büyüklük: 2025'te ehTutar 67,8M − indirim 2,9M = beklenen 64,9M, okunan ehTutarN 12,7M → **~52 M₺ eksik okuma**. KURAL: eTip=4'te `ehTutarN` KULLANMA → `irsHrk` (ehTip=4, ehTutarN orada DOĞRU) veya `ehTutar − ehIndirim`. Diğer eTip'lerde ehTutarN güvenilir (= ehTutar − ehIndirim, KDV-hariç)."
+    alis_iskontosu: >-
+      ⭐ **GERÇEK ALIŞ İSKONTOSU BURADA** (`fat.eTip=0`): `ehi1..ehi5` KADEMELİ iskonto
+      YÜZDELERİDİR ve `ehTutarN = ehTutar × Π(1−ehi_i/100)` kimliğini kurar.
+      Doğrulandı: 597,60 × (1−0,08) × (1−0,20) = **439,83** = `ehTutarN`.
+      Ölçüldü (son 12 ay, eTip=0, 641.905 satır): `ehTutarN = ehTutar − ehIndirim`
+      **641.904'te tutuyor**, tek istisna ehID 7029330/1 (4.500 → net 2.700, `ehIndirim`
+      0 yazılmış). Kademe kimliğinin 186 istisnası var (elle düzeltme/yuvarlama).
+      Kapı: değişmez `alis-fatura-net-kimligi`.
+      ⚠⚠ **İSKONTO ORANI EKONOMİYİ ÖLÇMEZ, SUNUMU ÖLÇER** (2026-09-12): faturada hiç
+      iskonto satırı olmayan alışlar da listenin **%55,0** altından geliyor; "iskontolu"
+      sayılan %30+ bandı %59,5 — fark yalnız 4,5 puan. Tedarikçi net fiyat kesiyor.
+      ⇒ Marj/maliyet sorusunda `ehIndirim` ORANINA BAKMA; **fatura birim net fiyatını
+        liste fiyatına oranla** (`ehTutarN/ehAdetN` ÷ `urn.fiyatS/(1+kdvYuzde/100)`).
+      ⚠ `fat.eTip=10` **İADE FARK FATURASIDIR, alış DEĞİL** — alış yalnız `eTip=0`.
+        (`irsHrk.ehTip=10` ise Yerel Alım; iki sözlük ayrıdır.)
+      ⚠ 24 ayda alış faturası hiç görmeyen 146.607 ürün var (ODAK sevkiyat/konsinye
+        şüphesi) — onlarda bu yol marjı ÖLÇEMEZ; "sıfır" değil "bakamadım".
     confidence: 0.95
-    last_verified: "2026-08-25"
-    evidence: "2026-08-25 canlı — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 13 (tip kıyası Oca-2026 + yıl kıyası 2023-2026 + satır detayı); hediye çeki kanalında fatAyr 6.000 ₺ vs irsHrk 323.550 ₺ uyuşmazlığından çıktı."
+    last_verified: "2026-09-12"
+    evidence: "2026-08-25 canlı — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 13 (tip kıyası Oca-2026 + yıl kıyası 2023-2026 + satır detayı); hediye çeki kanalında fatAyr 6.000 ₺ vs irsHrk 323.550 ₺ uyuşmazlığından çıktı. Alış iskontosu/kademe ölçümü 2026-09-12: sorgular/2026-09-12-alis-iskontosu-sifir-fatura-kontrolu.sql"
 
   EncoreMerkez.dbo.RefundReasons:
     type: table
