@@ -15,9 +15,12 @@ KDV HARİÇ  = GrossTotal − DiscountTotal − VatTotal
 dahili öne alır; iki taban yan yana konursa rakamlar tutmaz. O yüzden İKİSİ DE yazılıyor.
 İndirim yalnız `DiscountTotalDirect` değil `DiscountTotal` — header toplamı (Campaign alt küme).
 
-Belge tipleri: 1 Fiş · 2 Fatura · 3 İade(−) · 6 Personel Fiş · 7 Personel Fatura · 8 Sınav.
-İade İÇİNDEN DÜŞÜLÜR (işaretli) ve AYRICA kendi sütununda gösterilir.
-Sepet ortalama = perakende (tip 1+3, iade işaretli) ÷ FİŞ sayısı — fatura/Sınav hariç.
+Belge tipleri: 1 Fiş · 2 Fatura · 3 İade · 6 Personel Fiş · 7 Personel Fatura · 8 Sınav.
+⚠⚠ **İADE DÜŞÜLMEZ** (kullanıcı direktifi 12.09.2026: _"iade hiç düşme"_). Tip 3 hiçbir ciro
+toplamına girmez; tutarı yalnız `İade` sütununda BİLGİ olarak durur. Bu, projenin varsayılanının
+(iade işaretli düşülür — `veri-dogrula` çek-liste md.2) DIŞIDIR. Başka bir raporla yan yana
+konursa rakamlar tutmaz; ÖZET sayfasında yazılı.
+Sepet ortalama = FİŞ cirosu (tip 1) ÷ FİŞ sayısı — fatura, Sınav ve iade hariç.
 
 ═══ SINAV AYRIMI = BELGE BAZLI ════════════════════════════════════════════════
 `DocumentsTypeId = 8`. Ürün bazlı ayrım (`KatAna LIKE 'Sınav Okul%'`) FARKLI sonuç verir —
@@ -120,17 +123,18 @@ SELECT Magaza,
        SUM(CASE WHEN Tip = 8 THEN 1 ELSE 0 END) AS SinavBelge,
        SUM(CASE WHEN Tip = 3 THEN 1 ELSE 0 END) AS IadeBelge,
        COUNT(*)                                  AS ToplamBelge,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN 0
-            WHEN Tip = 3 THEN -Dahil ELSE Dahil END))    AS SinavHaric_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN Dahil ELSE 0 END)) AS Sinav_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN Dahil ELSE 0 END)) AS Iade_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN -Dahil ELSE Dahil END)) AS Toplam_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN 0
-            WHEN Tip = 3 THEN -Haric ELSE Haric END))    AS SinavHaric_Haric,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN Haric ELSE 0 END)) AS Sinav_Haric,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN -Haric ELSE Haric END)) AS Toplam_Haric,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip IN (1,3)
-            THEN CASE WHEN Tip = 3 THEN -Dahil ELSE Dahil END ELSE 0 END)
+       -- ⚠ İADE DÜŞÜLMEZ (kullanıcı direktifi 12.09.2026: "iade hiç düşme").
+       -- Tip 3 ciro toplamlarının HİÇBİRİNE girmez; tutarı yalnız Iade_* sütununda BİLGİ olarak
+       -- durur. Bu, projenin varsayılanının (iade işaretli düşülür) DIŞIDIR — başka raporla
+       -- yan yana konursa tutmaz.
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip IN (3,8) THEN 0 ELSE Dahil END)) AS SinavHaric_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN Dahil ELSE 0 END))      AS Sinav_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN Dahil ELSE 0 END))      AS Iade_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN 0 ELSE Dahil END))      AS Toplam_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip IN (3,8) THEN 0 ELSE Haric END)) AS SinavHaric_Haric,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN Haric ELSE 0 END))      AS Sinav_Haric,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN 0 ELSE Haric END))      AS Toplam_Haric,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 1 THEN Dahil ELSE 0 END)
             / NULLIF(SUM(CASE WHEN Tip = 1 THEN 1 ELSE 0 END), 0)) AS Sepet_Dahil,
        CONVERT(varchar(5), MAX(Zaman), 108) AS SonHareket
 FROM g GROUP BY Magaza ORDER BY Magaza
@@ -194,10 +198,91 @@ def topla(satirlar: list[list], etiket: str) -> list:
     return t
 
 
+def sade_sayfa(wb: Workbook, tam: list[list], gunler: list[dt.date], kesim: str | None) -> None:
+    """PATRON TABLOSU — tek sayfa, iki blok: CİRO ve MÜŞTERİ SAYISI.
+
+    Kullanıcı geri bildirimi 12.09.2026: _"çok fazla veri olmuş patron sade bir şey sordu"_.
+    Ayrıntılı sayfalar duruyor; bu sayfa yalnız sorulanı gösterir (`sunum-dili.md`).
+    Müşteri sayısı = FİŞ sayısı. ⚠ Tekil müşteri DEĞİL: kartsız satışta `CustomersId = 0`
+    (anonim), tekil sayım kartsızın tamamını tek müşteriye indirir.
+    """
+    ws = wb.create_sheet("PATRON TABLOSU", 0)
+    yillar: dict[int, list[dt.date]] = {}
+    for g in gunler:
+        yillar.setdefault(g.year, []).append(g)
+
+    kolonlar: list[tuple[str, list[dt.date]]] = []
+    for yil in sorted(yillar):
+        for g in yillar[yil]:
+            kolonlar.append((f"{GUN_ADI[g.weekday()][:3]} {g:%d.%m.%y}", [g]))
+        if len(yillar[yil]) > 1:
+            kolonlar.append((f"{yil} TOPLAM", list(yillar[yil])))
+
+    # (etiket, mağaza adı içinde geçen, hangi sütun) — İst.Yolu iki satıra ayrılır.
+    satir_tanim = [
+        ("FSM", "FSM", "haric"),
+        ("Özlüce", "ÖZLÜCE", "haric"),
+        ("İst.Yolu (Sınav hariç)", "IST YOLU", "haric"),
+        ("İst.Yolu — Sınav", "IST YOLU", "sinav"),
+    ]
+
+    def deger(gun: dt.date, magaza: str, hangi: str, blok: str) -> float:
+        idx = {("haric", "ciro"): 7, ("sinav", "ciro"): 8,
+               ("haric", "musteri"): 3, ("sinav", "musteri"): 4}[(hangi, blok)]
+        top = 0.0
+        for r in tam:
+            if str(r[2]).startswith("»"):
+                continue
+            if r[0] == gun.strftime("%d.%m.%Y") and magaza in str(r[2]):
+                top += float(r[idx] or 0)
+        return top
+
+    r = 1
+    ws.cell(r, 1, "OKUL AÇILIŞI ÖNCESİ HAFTA SONU").font = Font(bold=True, size=14)
+    r += 1
+    ws.cell(r, 1, "Ciro KDV dahil, iade düşülmemiş · günün tamamı · kaynak kasa (EncoreMerkez)"
+            ).font = Font(italic=True, size=9, color="555555")
+    r += 2
+
+    for blok, baslik in (("ciro", "CİRO (₺)"), ("musteri", "MÜŞTERİ SAYISI (fiş)")):
+        ws.cell(r, 1, baslik).font = Font(bold=True, size=12)
+        r += 1
+        ws.cell(r, 1, "Mağaza").font = Font(bold=True, color="FFFFFF")
+        ws.cell(r, 1).fill = BASLIK_DOLGU
+        for j, (ad, _) in enumerate(kolonlar, start=2):
+            h = ws.cell(r, j, ad)
+            h.font = Font(bold=True, color="FFFFFF")
+            h.fill = BASLIK_DOLGU
+            h.alignment = Alignment(horizontal="center")
+        r += 1
+        for etiket, mag, hangi in satir_tanim:
+            ws.cell(r, 1, etiket)
+            for j, (_, gs) in enumerate(kolonlar, start=2):
+                c = ws.cell(r, j, sum(deger(g, mag, hangi, blok) for g in gs))
+                c.number_format = "#,##0"
+                if len(gs) > 1:
+                    c.font = Font(bold=True)
+                    c.fill = TOPLAM_DOLGU
+            r += 1
+        r += 1
+
+    ws.cell(r, 1, "Müşteri sayısı = fiş sayısı. Tekil müşteri değil — kartsız satış anonimdir.")
+    ws.cell(r, 1).font = Font(italic=True, size=9, color="555555")
+    r += 1
+    ws.cell(r, 1, f"Son gün ({max(gunler):%d.%m.%Y}) henüz kapanmadı; geçen yılın aynı saatine "
+                  f"göre kıyas ayrı sayfadadır (--kesim).").font = Font(italic=True, size=9,
+                                                                        color="C00000")
+    ws.column_dimensions["A"].width = 24
+    for j in range(2, len(kolonlar) + 2):
+        ws.column_dimensions[get_column_letter(j)].width = 15
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gunler", required=True, help="ISO tarihler, virgülle: 2025-09-06,...")
     ap.add_argument("--kesim", default=None, help="SS:DD — verilirse ikinci sayfa üretilir")
+    ap.add_argument("--sade", action="store_true",
+                    help="YALNIZ patron tablosu (ciro + müşteri sayısı, tek sayfa)")
     ap.add_argument("--cikti", default=None)
     a = ap.parse_args()
 
@@ -254,8 +339,10 @@ def main() -> int:
         ("KDV hariç (yan sütun)", "GrossTotal − DiscountTotal − VatTotal"),
         ("⚠ Taban uyarısı", "Panel ve öteki raporlar CFO direktifiyle (plan-16) KDV HARİÇ çalışır. "
                             "Bu rapor KDV dahili öne alıyor — iki raporu yan yana koyarsan tutmaz."),
-        ("İade", "İÇİNDEN DÜŞÜLDÜ (tip 3 işaretli) ve ayrıca kendi sütununda gösteriliyor."),
-        ("Sepet ortalama", "Perakende (tip 1+3) ÷ FİŞ sayısı. Fatura ve Sınav hariç."),
+        ("⚠ İade", "DÜŞÜLMEDİ (kullanıcı direktifi: 'iade hiç düşme'). Tip 3 hiçbir ciro "
+                 "toplamına girmiyor; tutarı yalnız İade sütununda bilgi olarak duruyor. "
+                 "Projenin varsayılanı iadeyi DÜŞER — bu rapor onun dışında."),
+        ("Sepet ortalama", "Fiş cirosu (tip 1) ÷ fiş sayısı. Fatura, Sınav ve iade hariç."),
         ("Belge tipleri", "1 Fiş · 2 Fatura · 3 İade(−) · 6 Personel Fiş · 7 Personel Fatura · 8 Sınav"),
         ("", ""),
         ("ÖLÇÜLMÜŞ SINIRLAR", ""),
@@ -277,6 +364,21 @@ def main() -> int:
         c.font = Font(bold=True, size=13) if i == 1 else Font(bold=True, size=10)
     ws.column_dimensions["A"].width = 30
     ws.column_dimensions["B"].width = 104
+
+    # Patron tablosu TAM GÜN verisinden kurulur.
+    # ⚠ Bilinçli: geçmiş günlerin GERÇEK cirosu sorulmuştur; saat kesimi yalnız KIYAS içindir
+    # ve kıyas notu altta yazılır. Hizalı veriyle kurulursa geçen yılın gerçek günü olduğundan
+    # DÜŞÜK görünür ve patron yanlış sayıyı hatırlar.
+    sade_sayfa(wb, tam, gunler, None)
+    if a.sade:
+        for ad in [x for x in wb.sheetnames if x != "PATRON TABLOSU"]:
+            del wb[ad]
+        cikti_sade = a.cikti or os.path.join(
+            KOK, "raporlar", f"patron-tablosu-{max(gunler):%Y%m%d}.xlsx")
+        os.makedirs(os.path.dirname(cikti_sade), exist_ok=True)
+        wb.save(cikti_sade)
+        print(f"YAZILDI (sade): {cikti_sade}")
+        return 0
 
     sayfa(wb, "TAM GÜN", tam,
           "Günün tamamı. Kapanmamış gün varsa bu sayfa kıyas için KULLANILMAZ — HİZALI sayfaya bak.")
