@@ -755,6 +755,23 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS AsiriOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0
                         THEN t.Tutar ELSE 0 END))                                          AS AsiriOdakTutar,
+                   -- AĞIRLAŞTIRICI (12.09.2026): fazla stoğa SON 6 AYDA mal girmiş dilim.
+                   -- ⚠ ODAK ağırlaştırıcısının YERİNE geldi. Gerekçe (satinalma-danisman):
+                   -- "ODAK'ta da var" ÇİFT SAYIM — kapak ayağı LeadTime'ı ZATEN içeriyor;
+                   -- üstelik ODAK bizim envanterimiz DEĞİL, tedarikçinin stok tutması alıcının
+                   -- kararı değil (kontrol-edilebilirlik ihlali). Yaş ise kontrol edilebilir:
+                   -- "devraldım" savunmasını kapatır.
+                   -- ÖLÇÜLDÜ: fazla maliyetin %79'u son 6 ayda mal girmiş çeşitlerde
+                   -- (21.022 çeşit / 59,3M ₺). 3+ yıl yalnız 559 çeşit / 0,2M ₺.
+                   -- ⚠ SonGiris = SON mal kabulü. Eski stoğa 1 adet giren ürün de buraya düşer.
+                   -- Doğru okunuşu: "bu çeşitlere son 6 ayda mal GİRMİŞ", "son 6 ayda alındı" DEĞİL.
+                   SUM(CASE WHEN {AsiriStokSart} AND t.SonGiris IS NOT NULL
+                        AND t.SonGiris >= DATEADD(MONTH, -6, @kesim)
+                        THEN 1 ELSE 0 END)                                        AS AsiriYeniGirisCesit,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND {MaliyetGuvenilirSart}
+                        AND t.SonGiris IS NOT NULL AND t.SonGiris >= DATEADD(MONTH, -6, @kesim)
+                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriEsikSql}) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS AsiriYeniGirisMaliyet,
                    -- Hareketsiz: satış yok + stok var + DEĞERLENDİRİLECEK kadar zamanı olmuş.
                    -- Yenilik koruması olmadan yeni açılan ürün haksız damgalanıyordu (ölçüldü).
                    SUM(CASE WHEN {OluStokSart} THEN 1 ELSE 0 END) AS HareketsizCesit,
@@ -936,6 +953,8 @@ public sealed partial class SatisAnaliziQueries(
             AsiriIadeCesit: asiriIade.Cesit,
             AsiriIadeFazlaMaliyet: asiriIade.FazlaMaliyet,
             AsiriStokOdakVarCesit: satirlar.Sum(x => x.AsiriOdakCesit),
+            AsiriYeniGirisCesit: satirlar.Sum(x => x.AsiriYeniGirisCesit),
+            AsiriYeniGirisMaliyet: satirlar.Sum(x => x.AsiriYeniGirisMaliyet),
             AsiriStokOdakVarTutar: satirlar.Sum(x => x.AsiriOdakTutar),
             HareketsizCesit: satirlar.Sum(x => x.HareketsizCesit),
             HareketsizTutar: satirlar.Sum(x => x.HareketsizTutar),
@@ -1147,6 +1166,8 @@ public sealed partial class SatisAnaliziQueries(
         // ⚠ SQL'de AsiriTutar ile AsiriOdakCesit ARASINA girer (Dapper pozisyonel).
         decimal AsiriMaliyet, decimal AsiriFazlaMaliyet,
         int AsiriOdakCesit, decimal AsiriOdakTutar,
+        // ⚠ SQL'de AsiriOdakTutar'dan HEMEN SONRA (pozisyonel).
+        int AsiriYeniGirisCesit, decimal AsiriYeniGirisMaliyet,
         int HareketsizCesit, decimal HareketsizTutar,
         int RafsizCesit, decimal RafsizTutar,
         // ⚠ SQL'de RafBosCesit'ten ÖNCE geliyorlar (Dapper pozisyonel).

@@ -957,9 +957,13 @@ else
             [
                 new("İade kanalı çalışmış", $"{k.AsiriIadeCesit:N0} çeşit",
                     TlKisa(k.AsiriIadeFazlaMaliyet), SatisDurumFiltre.AsiriStok, AltKume: true),
-                new("ODAK'ta da var · çift stok", null,
-                    $"{k.AsiriStokOdakVarCesit:N0} çeşit", SatisDurumFiltre.AsiriStok,
-                    OdakVar: true, AltKume: true),
+                @* ⚠ "ODAK'ta da var · çift stok" satırı KALDIRILDI (12.09.2026,
+                   satinalma-danisman kararı): ÇİFT SAYIM — kapak ayağı LeadTime'ı zaten
+                   içeriyor; ayrıca ODAK bizim envanterimiz değil, tedarikçinin stok tutması
+                   alıcının kararı DEĞİL (kontrol-edilebilirlik ihlali). Yerine YAŞ geldi:
+                   kontrol edilebilir ve "devraldım" savunmasını kapatıyor. *@
+                new("Son 6 ayda mal girmiş", $"{k.AsiriYeniGirisCesit:N0} çeşit",
+                    TlKisa(k.AsiriYeniGirisMaliyet), SatisDurumFiltre.AsiriStok, AltKume: true),
             ],
             Sahip: "satınalma"),
 

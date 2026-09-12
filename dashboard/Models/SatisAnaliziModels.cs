@@ -299,7 +299,16 @@ public sealed record SatisAnaliziKpi(
     /// </summary>
     int AsiriIadeCesit,
     decimal AsiriIadeFazlaMaliyet,
-    int AsiriStokOdakVarCesit,    // ODAK'ta da var → grup içinde çift stok
+    int AsiriStokOdakVarCesit,    // ODAK'ta da var (kartta GÖSTERİLMİYOR — bkz. AsiriYeniGiris*)
+    /// <summary>
+    /// AĞIRLAŞTIRICI (12.09.2026): fazla stoğa SON 6 AYDA mal girmiş dilim.
+    /// ODAK ağırlaştırıcısının yerine geldi — o ÇİFT SAYIMDI (kapak ayağı LeadTime'ı zaten
+    /// içeriyor) ve kontrol-edilebilirliği yoktu (ODAK tedarikçinin envanteri).
+    /// ÖLÇÜLDÜ: 21.022 çeşit / 59,3M ₺ = fazla maliyetin %79'u.
+    /// ⚠ SonGiris = SON mal kabulü → "son 6 ayda mal GİRMİŞ", "son 6 ayda ALINDI" değil.
+    /// </summary>
+    int AsiriYeniGirisCesit,
+    decimal AsiriYeniGirisMaliyet,
     decimal AsiriStokOdakVarTutar,
     int HareketsizCesit,
     decimal HareketsizTutar,
