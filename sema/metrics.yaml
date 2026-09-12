@@ -4,6 +4,39 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  _metrik_kanit_durumu_2026_09_12:
+    type: rule
+    title: "METRİKLERİN KANIT DURUMU — `kanit_yok: 0` NE DEMEK DEĞİL"
+    rule: >-
+      ⚠ BU KAYIT BİR UYARIDIR. 2026-09-12'de `metrics` dosyasındaki 75 kaydın
+      `kanit_yok` uyarısı kapatıldı ve sayaç sıfırlandı. BU, METRİKLERİN DOĞRULANDIĞI
+      ANLAMINA GELMEZ. Hiçbir formül koşturulmadı, hiçbir rakam mutabakatı yapılmadı.
+      Yazılan şey, kaydın UYGULAMASININ BULUNABİLİR OLUP OLMADIĞIDIR — o kadar.
+      Bir metriğin gerçek kanıtı: formülü koştur, sonucu bağımsız bir kaynakla
+      karşılaştır, tarihiyle yaz. Bu 127 kayıt için TEK TEK yapılacak iştir.
+    measurement: >-
+      2026-09-12 ÖLÇÜM (dosya işaretçisi taraması, 127 metrik kaydı):
+      · 16 kayıt repo içi dosyaya işaret ediyor ve İŞARETÇİLERİ ÇÖZÜLÜYOR
+      · 4 kayıt repo DIŞI dosya gösteriyor (`D:/Belgelerim/sql` — sürümlenmemiş,
+        doğrulanamaz; kırık değil ama kanıt da değil)
+      · **107 kayıt HİÇBİR uygulama dosyasına işaret etmiyor** — ne arşiv SQL,
+        ne dashboard kodu. "Bu metrik nerede hesaplanıyor?" sorusunun cevabı sema'da YOK.
+      ⇒ `semantic-layer.md` § KEŞİF SQL'İ ARŞİVLE (ikiz yükümlülük) kuralı metrics
+      tarafında UYGULANMAMIŞ. Kural yazılı, karşılığı yok — `test-discipline.md`
+      § YAZILI KURAL ≠ UYGULANAN KURAL sınıfının bir örneği daha.
+    ayrinti:
+      neden_toplu_kanit_yazilmadi: >-
+        75 kayda tek tip bir `evidence` metni yazmak teknik olarak mümkündü ve sayaç
+        yine sıfırlanırdı. YAZILMADI: şablon kanıt, kanıt değildir — üstelik sayaç
+        sıfırlandığı için sorunu GİZLERDİ. Onun yerine her kayda O KAYIT İÇİN ÖLÇÜLEN
+        şey yazıldı (işaretçi çözüldü / repo dışı / işaretçi yok).
+      kapatma_olcutu: >-
+        Bu kayıt, 107 sayısı düşerken güncellenir; sıfırlandığında `status: superseded`
+        ile emekliye alınır. Tek tek kapatma yolu: metriği hesaplayan sorguyu
+        `sorgular/YYYY-MM-DD-<konu>.sql` altına arşivle, `applied_in` ile bağla,
+        koşum sonucunu `evidence`a tarihiyle yaz.
+    evidence: "2026-09-12 — sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
+    confidence: 1.0
   marj_kdv_tabani:
     type: ratio
     unit: ratio
@@ -35,6 +68,8 @@ metrics:
     last_verified: "2026-09-09"
 
   gelir_tablosu_pl:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: derived
     unit: TL
     basis: vat_excl
@@ -48,6 +83,8 @@ metrics:
     last_verified: "2026-08-06"
 
   gider_mizan_dagitim:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: simple
     unit: TL
     basis: vat_excl
@@ -149,6 +186,8 @@ metrics:
     evidence: "2026-06-17 — dashboard build yeşil, OluStokSql OUTER APPLY fat5 eklendi"
 
   net_ciro:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: simple
     unit: TL
     basis: vat_excl
@@ -174,6 +213,8 @@ metrics:
     compat110: "STRING_AGG/TRIM/IIF/TRY_CONVERT YOK"
 
   depo_hareket_kategori:    # 10.06 — merkez depo (mekan 12) hareket sınıflaması
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: simple
     unit: count
     basis: none
@@ -191,6 +232,7 @@ metrics:
     deger_2026_ocamay: {Mal Kabul: 1923096, Heykel: 330663, İade Kabul: 61330, GENEL Giriş: 330593, Mağaza Sevk: 1412174, İade-GENEL Sevk: 136055}
 
   depo_isgucu:              # gerçek operatör verimi
+    evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/depo_isgucu_raporu.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: simple
     unit: count
     basis: none
@@ -227,6 +269,8 @@ metrics:
     evidence: "15.06 — job msdb.sysjobsteps'ten okundu; Kitap (Kategori3='Kitap') 97.962 SKU = 65,8M kilitli, S90=0 ölü 72.904 SKU = 30,4M."
 
   envanter_exclusions:      # stok/envanter raporlarında ZORUNLU dışlamalar
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -255,6 +299,7 @@ metrics:
       evidence: "2026-08-25 — aynı koşu, adet DESC ham liste."
 
   eticaret_net:             # haftalık brief + G7 net tanımı
+    evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/generate_brief.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `J_ORDERS.TOTALPRICE` KDV DAHİLDİR. İki adımda ölçüldü — (1) kalem kimliği: TOTALPRICE = SUM(QUANTITY×SELLINGPRICE) + CARGOPRICE + SERVICEPRICE, 4 siparişte kuruşu kuruşuna (ör. ORDERID 110016494: 831,40 + 89,90 + 0 = 921,30); (2) kalem tabanı: `SELLINGPRICE = SELLINGPRICEWITHOUTVAT + VATPRICE` birebir tutuyor (VAT 10 ve 20 örneklerinde). ⚠ POS `encore_ciro` de KDV DAHİL olduğu için ikisi AYNI tabanda — doğrudan kıyaslanabilir (kayıttaki 'birebir kıyaslanamaz' uyarısı KARGO/kapsam farkı yüzündendir, KDV yüzünden değil). KDV-hariç e-ticaret cirosu isteniyorsa kalem düzeyindeki `SELLINGPRICEWITHOUTVAT` kullanılır."
     kolon_tuzagi: "⚠ `J_ORDERS.PRICEWITHVAT` ÖLÜ KOLON: 4.704.735 siparişin **TAMAMINDA 0** (ölçüldü 2026-09-11). `J_ORDERS.PRICEWITHOUTVAT` ise adına rağmen TOTALPRICE'ın KDV-hariç hâli DEĞİL — 4.382 siparişte TOTALPRICE'tan BÜYÜK çıkıyor; anlamı DOĞRULANMADI. KDV-hariç tutar için başlık kolonlarına GÜVENME, kalem düzeyine in (`J_ORDER_DETAILS.SELLINGPRICEWITHOUTVAT`)."
     type: simple
@@ -268,6 +313,7 @@ metrics:
     applied_in: "scripts/generate_brief.py SQL_ETICARET (v1.1.0)"
 
   cod_ekonomi:              # kapıda ödeme
+    evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/kapida_odeme_analiz.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     measurement: "2026-09-11 — `CARGOPRICE` ve `SERVICEPRICE` müşteriden tahsil edilen tutarlardır ve KDV DAHİL `TOTALPRICE` kimliğinin İÇİNDE yer alırlar (TOTALPRICE = kalem + CARGOPRICE + SERVICEPRICE, ölçüldü; bkz. metrics:eticaret_net). Bu yüzden taban KDV DAHİL. ⚠ ÇIKARIM SINIRI: kargo/hizmet bedelinin KDV oranı AYRICA ölçülmedi (JOKER başlıkta kargo için ayrı KDV kolonu yok); 'KDV dahil' olduğu kimlikten geliyor, oranı değil. İade maliyeti 2×CARGOPRICE hesabı da aynı tabanda."
     type: derived
     unit: TL
@@ -281,6 +327,8 @@ metrics:
     applied_in: scripts/kapida_odeme_analiz.py
 
   etic_iptal_iade:          # e-ticaret iptal/iade analizi (2026-07-30 keşif)
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: derived
     unit: TL
     basis: vat_excl
@@ -300,6 +348,8 @@ metrics:
     last_verified: 2026-07-30
 
   depo_stok_dagilim:        # WMS depo stok kovaları (12.06 — gerçek prod sorgu)
+    evidence_status: pending
+    evidence: "2026-09-12 — ISARETCI REPO DISINA BAKIYOR: kayit ['DURUM.sql'] gibi dosya adlari gosteriyor; bunlar D:/Belgelerim/sql altindaki (repo disi, surumlenmemis) dosyalardir. Kirik DEGIL ama DOGRULANAMAZ. Cozum: dosya repoya sorgular/ altina arsivlenmeli (semantic-layer § ikiz yukumluluk)."
     type: simple
     unit: count
     basis: none
@@ -345,6 +395,8 @@ metrics:
     last_verified: 2026-06-18
 
   cari_firma_stok_hareket:  # firma bazlı stok + 3 ay alış/satış (cari özet)
+    evidence_status: pending
+    evidence: "2026-09-12 — ISARETCI REPO DISINA BAKIYOR: kayit ['DURUM.sql'] gibi dosya adlari gosteriyor; bunlar D:/Belgelerim/sql altindaki (repo disi, surumlenmemis) dosyalardir. Kirik DEGIL ama DOGRULANAMAZ. Cozum: dosya repoya sorgular/ altina arsivlenmeli (semantic-layer § ikiz yukumluluk)."
     measurement: "2026-09-11 — kayıt AYNI RAPORDA iki farklı tabanda para kolonu taşıyor. KOLON HARİTASI: (a) 3 aylık alış/satış pivotu → `irsHrk.ehTutarN` = **KDV HARİÇ** (codes:irsHrk.ehTip § kdv); (b) cari bakiye → `bakiye_vw` fatura toplamlarından gelir = **KDV DAHİL** (fatura tutarı müşteriye kesilen tutardır); (c) stok adetleri para DEĞİL. ⚠ KUSUR RAPORUN KENDİSİNDE DEĞİL: iki kolonu yan yana göstermek meşru. KUSUR bunları TOPLAMAK ya da 'bakiye / 3 aylık satış' gibi BÖLMEKtir — oran KDV oranı kadar sapar. Sözleşmeye bu vaka için `basis: mixed` değeri eklendi (2026-09-11)."
     type: derived
     unit: TL
@@ -359,6 +411,8 @@ metrics:
     applied_in: "CARİ ÖZET DURUM.sql"
 
   upt_sepet_adedi:          # UPT = unit per transaction (sepet derinliği) — 12.06 doğrulandı
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: ratio
     unit: count
     basis: none
@@ -371,6 +425,7 @@ metrics:
     applied_in: "dashboard MagazaQueries.GetDetayAsync · gm-rapor G1"
 
   kampanya_indirim_orani:   # 12.06 — kampanya yükü / efektif indirim
+    evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/build_3al2ode_belge_excel.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: ratio
     unit: ratio
     basis: none
@@ -402,6 +457,8 @@ metrics:
     applied_in: "gm-rapor E8 + MIMBAL docs/pilot/examples/2026-06-13-attention-list.md"
 
   il_teslimat_perf:         # 13.06 — B-41 il bazlı kargo teslimat hızı
+    evidence_status: pending
+    evidence: "2026-09-12 — ISARETCI REPO DISINA BAKIYOR: kayit ['PERFORMANSLARI.sql'] gibi dosya adlari gosteriyor; bunlar D:/Belgelerim/sql altindaki (repo disi, surumlenmemis) dosyalardir. Kirik DEGIL ama DOGRULANAMAZ. Cozum: dosya repoya sorgular/ altina arsivlenmeli (semantic-layer § ikiz yukumluluk)."
     type: simple
     unit: days
     basis: none
@@ -429,6 +486,7 @@ metrics:
     applied_in: "Queries.cs katSql/skatSql · MagazaQueries.cs · RefQueries.GetUrunlerAsync"
 
   tum_ciro_kdv_kargo_haric:   # 16.06 — KULLANICI DİREKTİFİ: tüm dashboard/rapor ciro KDV-hariç + kargo-hariç (plan-16)
+    evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (dashboard/Data/SadakatQueries.cs (ad esleismesi)). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: simple
     unit: TL
     basis: vat_excl
@@ -445,6 +503,8 @@ metrics:
 
   # ── BKMMaliyet — FIFO maliyet/marj metrikleri (asıl proje D:\Dev\fifo; pusula=sema). 2026-06-19 ──
   fifo_karlilik:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: derived
     unit: TL
     basis: vat_excl
@@ -469,6 +529,8 @@ metrics:
       eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND
       KalanMiktar>0
   fifo_acilis_stok:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -478,6 +540,8 @@ metrics:
       IN(1,12,4477,4478) HAVING>0. ANLIK stok view (stokSonAltDepo_vw) KULLANMA — devir-tarihi stoğunu
       bugünkü stokla bozar (19.06 bug).
   fifo_garanti_tier:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -488,6 +552,8 @@ metrics:
     sonalis_dersi: "Salt kategori-imput gerçek ürünleri (SonAlis>0 ama kategori-dışı) yanlış devre-dışı yapıyordu → SonAlis tier eklendi → yanlış-dışlama=0. SonAlis=0 = non-inventory ayracı."
     last_verified: 2026-06-19
   fifo_fiyat_0_olamaz:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -497,6 +563,8 @@ metrics:
       COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı
       hariç) = 0.
   fifo_non_inventory:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -507,6 +575,8 @@ metrics:
       bagging-poşet, kargo gideri (Zkargo), hediye çeki, iskonto/fiyat-farkı, demirbaş,
       yemek-ilk-madde, isimsiz-obsolete.
   marka_devir:   # 22.06 — B-110 tedarikçi/yayınevi performans scorecard
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: ratio
     unit: ratio
     basis: none
@@ -519,6 +589,8 @@ metrics:
     bulgu: "22.06: Faber-Castell devir 0,46× (636K stok, sermaye tuzağı) · Yapı Kredi 1,28× · Bilgi Sarmal 9,7× ama iade %12,4. PARAF/Fenomen/Timaş Çocuk sağlıklı."
     last_verified: 2026-06-22
   kapanis_mudahale:   # 22.06 — B-117 GL forensic
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -533,6 +605,8 @@ metrics:
     confidence: 0.95
     last_verified: 2026-06-22
   kesin_mizan:   # 23.06 — B-118 mizan/likidite dashboard
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: simple
     unit: TL
     basis: vat_excl
@@ -614,6 +688,8 @@ metrics:
     evidence: "2026-08-25 canli MCP — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql (blok 1-12; 9=kanal, 10=fatura indirimi, 11=geri-donusum ayrimi, 12=fat5 marj); docs/2026-08-25-hediye-ceki-indirim-raporu.md v2."
 
   hediye_ceki__kanal_kurali:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · KANAL_KURALI"
     type: derived
     unit: TL
@@ -630,6 +706,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__uretim_yapisi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · URETIM_YAPISI"
     type: derived
     unit: TL
@@ -652,6 +730,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__indirim_kural_olarak_yok:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · INDIRIM_KURAL_OLARAK_YOK"
     type: derived
     unit: TL
@@ -672,6 +752,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__kisit_sizmasi_dogru_olcum:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · KISIT_SIZMASI_DOGRU_OLCUM"
     type: derived
     unit: TL
@@ -698,6 +780,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__kasa_gocu_11072025_olcum_penceresi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · KASA_GOCU_11072025_OLCUM_PENCERESI"
     type: derived
     unit: TL
@@ -718,6 +802,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__cek_gocu_tasinmayanlar:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · CEK_GOCU_TASINMAYANLAR"
     type: derived
     unit: TL
@@ -737,6 +823,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__crm_kapsama_kirigi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · CRM_KAPSAMA_KIRIGI"
     type: derived
     unit: TL
@@ -754,6 +842,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__olcum_iswrite_zorunlu:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · OLCUM_ISWRITE_ZORUNLU"
     type: derived
     unit: TL
@@ -769,6 +859,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__firmaismi_serbest_metin_riski:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · FIRMAISMI_SERBEST_METIN_RISKI"
     type: derived
     unit: TL
@@ -787,6 +879,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__cek_harcamasi_iki_kaynak_farkli:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · CEK_HARCAMASI_IKI_KAYNAK_FARKLI"
     type: derived
     unit: TL
@@ -804,6 +898,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__sinav_fisi_kaldirac_bozar:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · SINAV_FISI_KALDIRAC_BOZAR"
     type: derived
     unit: TL
@@ -820,6 +916,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__inallar_kesin_atif:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · INALLAR_KESIN_ATIF"
     type: derived
     unit: TL
@@ -844,6 +942,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__cek_harcama_izi_var:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · CEK_HARCAMA_IZI_VAR"
     type: derived
     unit: TL
@@ -865,6 +965,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__toplu_satista_musteri_bagi_doldurulmuyor:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · TOPLU_SATISTA_MUSTERI_BAGI_DOLDURULMUYOR"
     type: derived
     unit: TL
@@ -887,6 +989,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__cek_musteri_bagi_yok:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · CEK_MUSTERI_BAGI_YOK"
     type: derived
     unit: TL
@@ -912,6 +1016,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__cek_alim_tarihcesi_car_uzerinden:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · CEK_ALIM_TARIHCESI_CAR_UZERINDEN"
     type: derived
     unit: TL
@@ -928,6 +1034,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__inallar_parti_bulgusu:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · INALLAR_PARTI_BULGUSU"
     type: derived
     unit: TL
@@ -958,6 +1066,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__geri_donusum_ayrimi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · GERI_DONUSUM_AYRIMI"
     type: derived
     unit: TL
@@ -978,6 +1088,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__barem_karlilik:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · BAREM_KARLILIK"
     type: derived
     unit: TL
@@ -998,6 +1110,8 @@ metrics:
     last_verified: "2026-08-25"
     stamp_inherited: true
   hediye_ceki__bonus_kanit_zayifligi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "hediye_ceki · BONUS_KANIT_ZAYIFLIGI"
     type: derived
     unit: TL
@@ -1029,6 +1143,8 @@ metrics:
     evidence: "2026-09-02 canli MCP zirve (vw_PersonelDepartman as-of + ayrilis yili + kidem dilimleri) + DerinSIS eTip100 Oca-Agu adet/net 2023-2026."
 
   ik_norm_kadro_turnover__turnover:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "ik_norm_kadro_turnover · TURNOVER"
     type: ratio
     unit: ratio
@@ -1045,6 +1161,8 @@ metrics:
     last_verified: "2026-09-02"
     stamp_inherited: true
   ik_norm_kadro_turnover__yetismis_adam:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "ik_norm_kadro_turnover · YETISMIS_ADAM"
     type: ratio
     unit: ratio
@@ -1061,6 +1179,8 @@ metrics:
     last_verified: "2026-09-02"
     stamp_inherited: true
   ik_norm_kadro_turnover__sube_devir:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "ik_norm_kadro_turnover · SUBE_DEVIR"
     type: ratio
     unit: ratio
@@ -1077,6 +1197,8 @@ metrics:
     last_verified: "2026-09-02"
     stamp_inherited: true
   ik_norm_kadro_turnover__reyon_devir:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "ik_norm_kadro_turnover · REYON_DEVIR"
     type: ratio
     unit: ratio
@@ -1094,6 +1216,8 @@ metrics:
     last_verified: "2026-09-02"
     stamp_inherited: true
   ik_norm_kadro_turnover__kidem_verimlilik_testi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "ik_norm_kadro_turnover · KIDEM_VERIMLILIK_TESTI"
     type: ratio
     unit: ratio
@@ -1116,6 +1240,8 @@ metrics:
     last_verified: "2026-09-02"
     stamp_inherited: true
   ik_norm_kadro_turnover__norm_kadro_2024_atlamasi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "ik_norm_kadro_turnover · NORM_KADRO_2024_ATLAMASI"
     type: ratio
     unit: ratio
@@ -1133,6 +1259,8 @@ metrics:
     last_verified: "2026-09-02"
     stamp_inherited: true
   hizali_pencere_gun_esitligi:   # 2026-09-03 (K-08) — okul-hizali kiyasin on kosulu
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
     unit: none
     basis: none
@@ -1197,6 +1325,8 @@ metrics:
     evidence: "sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql (DerinSIS eTip 100, 3 magaza, Sinav Kategori3 ile ayrilmis, 01.06.2024-07.09.2026 gunluk). Mutabakat: Eyl-2025 313,0M ve Agu-2025 186,9M onceki olcumlerle BIREBIR. Ilgili: sezon_kiyas_takvim_hizalama (hizalama kurali) · pos_sistem_gecisi_2025 (kaynak secimi)."
 
   sezon_ciro_tahmini_okul_hizali__ay_koprusu_2026:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · AY_KOPRUSU_2026"
     type: derived
     unit: TL
@@ -1213,6 +1343,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__tahmin_2026_09_08:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · TAHMIN_2026_09_08"
     type: derived
     unit: TL
@@ -1228,6 +1360,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__uyarilar:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · UYARILAR"
     type: derived
     unit: TL
@@ -1244,6 +1378,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__sube_bazli_2026_09:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · SUBE_BAZLI_2026_09"
     type: derived
     unit: TL
@@ -1260,6 +1396,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__oncesi_sonrasi_sube:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · ONCESI_SONRASI_SUBE"
     type: derived
     unit: TL
@@ -1277,6 +1415,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__kayma_net_etkisi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · KAYMA_NET_ETKISI"
     type: derived
     unit: TL
@@ -1294,6 +1434,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__sinav_ayri:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · SINAV_AYRI"
     type: derived
     unit: TL
@@ -1311,6 +1453,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__hacim_ayristirmasi_2026_09:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · HACIM_AYRISTIRMASI_2026_09"
     type: derived
     unit: TL
@@ -1329,6 +1473,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__celiski_kartli_musteri:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · CELISKI_KARTLI_MUSTERI"
     type: derived
     unit: TL
@@ -1344,6 +1490,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__istyolu_kanal_ayrimi_cozuldu:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · ISTYOLU_KANAL_AYRIMI_COZULDU"
     type: derived
     unit: TL
@@ -1362,6 +1510,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__mekan_ciro_mutabakat_formulu:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · MEKAN_CIRO_MUTABAKAT_FORMULU"
     type: derived
     unit: TL
@@ -1377,6 +1527,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__kanal_ayraci_kanonik:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · KANAL_AYRACI_KANONIK"
     type: derived
     unit: TL
@@ -1394,6 +1546,8 @@ metrics:
     last_verified: "2026-09-08"
     stamp_inherited: true
   sezon_ciro_tahmini_okul_hizali__tahmin_belge_bazli_duzeltilmis:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "sezon_ciro_tahmini_okul_hizali · TAHMIN_BELGE_BAZLI_DUZELTILMIS"
     type: derived
     unit: TL
@@ -1456,6 +1610,8 @@ metrics:
     evidence: "2026-09-03 canli — sorgular/2026-09-03-personel-maliyet-fazla-mesai.sql (4 blok). Emitter: scripts/verimlilik_excel.py cek() 3g+12 -> JSON maliyet/fazla_mesai; Excel «Maliyet» sayfasi + sunum 2 slayt; 94/94 tutarlilik kontrolu."
 
   personel_maliyet_ve_fazla_mesai__olcu_birimi_fte:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · OLCU_BIRIMI_FTE"
     type: derived
     unit: TL
@@ -1474,6 +1630,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__maliyet_formulu:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · MALIYET_FORMULU"
     type: derived
     unit: TL
@@ -1488,6 +1646,7 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__sezon_kalani_tahmini:
+    evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/verimlilik_cek_tahmin.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     title: "personel_maliyet_ve_fazla_mesai · SEZON_KALANI_TAHMINI"
     type: derived
     unit: TL
@@ -1510,6 +1669,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__sezon_tanimi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · SEZON_TANIMI"
     type: derived
     unit: TL
@@ -1529,6 +1690,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__segment_ayrimi:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · SEGMENT_AYRIMI"
     type: derived
     unit: TL
@@ -1545,6 +1708,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__pencere_kurali:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · PENCERE_KURALI"
     type: derived
     unit: TL
@@ -1565,6 +1730,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__oran_kurali:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · ORAN_KURALI"
     type: derived
     unit: TL
@@ -1581,6 +1748,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__fazla_mesai_ayraci:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · FAZLA_MESAI_AYRACI"
     type: derived
     unit: TL
@@ -1594,6 +1763,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__yasal_cerceve:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · YASAL_CERCEVE"
     type: derived
     unit: TL
@@ -1608,6 +1779,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__kadro_alinmasaydi_modeli:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · KADRO_ALINMASAYDI_MODELI"
     type: derived
     unit: TL
@@ -1628,6 +1801,8 @@ metrics:
     last_verified: "2026-09-03"
     stamp_inherited: true
   personel_maliyet_ve_fazla_mesai__karsi_metrik:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     title: "personel_maliyet_ve_fazla_mesai · KARSI_METRIK"
     type: derived
     unit: TL
@@ -2491,6 +2666,8 @@ metrics:
     last_verified: "2026-09-10"
 
   gider_konvansiyonu:
+    evidence_status: pending
+    evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     unit: none
     basis: none
     additivity: none
