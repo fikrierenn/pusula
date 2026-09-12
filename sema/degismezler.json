@@ -638,6 +638,18 @@
       "expected": 0,
       "verified": "2026-09-12 → son 8 kapalı günde sapma 0 (birebir). Açık gün BİLEREK dışarıda: pencere dünde bitiyor, aktarım saatlik.",
       "population": "SELECT COUNT(*) FROM ( SELECT CONVERT(date, s.Date) AS Gun, s.StoresId FROM EncoreMerkez.dbo.Sales s WITH (NOLOCK) WHERE s.DocumentsTypeId = 3   AND s.Date >= DATEADD(DAY, -8, CONVERT(date, GETDATE()))   AND s.Date <  CONVERT(date, GETDATE()) GROUP BY CONVERT(date, s.Date), s.StoresId) p"
+    },
+    {
+      "id": "sifreli-erp-viewlari-esdegerligi",
+      "db": "DerinSISBkm",
+      "question": "ERP saticisinin SIFRELI okuma view'lari hala bildigimiz ham sorgunun AYNISINI mi donduruyor? `urnBarkod_vw` == urnBrkd(urnBrkdOnce=0) ve `urnKategori_vw` == urn(urnTip=0) simetrik farklarinin TOPLAMI.",
+      "why": "2026-09-12'de olculdu: kullanicinin elle sorgu arsivinde (576 dosya) EN COK KULLANILAN ERP nesneleri saticinin view katmani — `urnBarkod_vw` 37 dosyada, `urnKategori_vw` 12, `stokSon_vw` 14. Bu view'lar SIFRELI (OBJECTPROPERTY IsEncrypted=1; izin VAR, sema hatasi DEGIL) — mantiklari OKUNAMAZ. Mantik okunamiyorsa DAVRANIS olculur: kume esitligi testiyle ikisinin de ne yaptigi KANITLANDI. `urnBarkod_vw` = `urnBrkd WHERE urnBrkdOnce=0` (837.747 = 837.747, iki yonlu fark 0). `urnKategori_vw` = `urn WHERE urnTip=0` (837.997 = 837.997, iki yonlu fark 0) — yani view SESSIZCE urun-tipi suzgeci uyguluyor ve 304 kayit dusuyor: 252 gider/hizmet (urnTip=1) + 52 demirbas/arac (urnTip=2). O 52, sema'nin 2026-09-03'te bagimsiz buldugu 'urnTip=2 demirbas, 52 kayit' ile BIREBIR AYNI. NEDEN KAPI: sifreli bir view'in ici degisirse HABERIMIZ OLMAZ — kaynak okunamiyor, surum yok, uyari yok. Degisirse o view'i kullanan her sorgu SESSIZCE baska bir kume uzerinde caliismaya baslar. Bu kapi, okunamayan mantigin yerine KOSULABILIR bir sozlesme koyar. KIRILABILIRLIK KANITI (paylasilan dosyaya dokunmadan, hatali formuller dogrudan kosuldu): dogru formul 0 · `urnKategori_vw`de urunTip suzgeci unutulursa 304 · `urnBarkod_vw`in Once=1 tarafi sanilirsa 57.445.",
+      "sql": "SELECT (SELECT COUNT_BIG(*) FROM (SELECT urnBrkdStkID,barkod FROM DerinSISBkm.dbo.urnBarkod_vw EXCEPT SELECT urnBrkdStkID,urnBarkod FROM DerinSISBkm.dbo.urnBrkd WITH(NOLOCK) WHERE urnBrkdOnce=0) a) + (SELECT COUNT_BIG(*) FROM (SELECT urnBrkdStkID,urnBarkod FROM DerinSISBkm.dbo.urnBrkd WITH(NOLOCK) WHERE urnBrkdOnce=0 EXCEPT SELECT urnBrkdStkID,barkod FROM DerinSISBkm.dbo.urnBarkod_vw) b) + (SELECT COUNT_BIG(*) FROM (SELECT stkID FROM DerinSISBkm.dbo.urnKategori_vw EXCEPT SELECT stkID FROM DerinSISBkm.dbo.urn WITH(NOLOCK) WHERE urnTip=0) c) + (SELECT COUNT_BIG(*) FROM (SELECT stkID FROM DerinSISBkm.dbo.urn WITH(NOLOCK) WHERE urnTip=0 EXCEPT SELECT stkID FROM DerinSISBkm.dbo.urnKategori_vw) e)",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu, 0. urnBarkod_vw 837.747 · urnKategori_vw 837.997. Arsiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.urnKategori_vw"
     }
   ]
 }

@@ -28,6 +28,101 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  dbo.urnBarkod_vw:
+    type: view
+    grain: "barkod × ürün — ÜRÜN BAŞINA TEK SATIR (birincil barkod)"
+    key: [urnBrkdStkID, barkod]
+    note: >-
+      ⭐ **ARŞİVDE EN ÇOK KULLANILAN ERP NESNESİ** — kullanıcının 576 dosyalık elle sorgu
+      arşivinde **37 dosyada** geçiyor, ama sema onu HİÇ bilmiyordu.
+      ⚠ **ŞİFRELİ** (`OBJECTPROPERTY IsEncrypted = 1`; izin VAR, şema hatası DEĞİL) —
+      mantığı OKUNAMAZ. Ama davranışı ÖLÇÜLDÜ ve KANITLANDI:
+      **`urnBarkod_vw` ≡ `dbo.urnBrkd WHERE urnBrkdOnce = 0`** — 837.747 = 837.747,
+      **iki yönlü simetrik fark 0**.
+      ⇒ Yani view, `sql-server-conventions.md`de yazılı kanonik birincil-barkod seçimini
+      hazır veriyor. Barkod→ürün için `urnBrkd` + süzgeç yazmak yerine bu view kullanılabilir;
+      süzgeci unutma riski ortadan kalkar.
+      ⚠ Kolon adı DEĞİŞİYOR: ham tabloda `urnBarkod`, view'de **`barkod`**.
+      Kapı: `sifreli-erp-viewlari-esdegerligi`.
+    measurement: "2026-09-12 — 837.747 satır · 2 kolon · ŞİFRELİ. Ham `urnBrkd` 895.194 satır; `urnBrkdOnce=0` olan 837.747 (view ile aynı). EXCEPT iki yönde de 0."
+    evidence: "2026-09-12 — küme eşitliği testi + IsEncrypted/HAS_PERMS_BY_NAME ayrımı. Arşiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  dbo.urnKategori_vw:
+    type: view
+    grain: "ürün — ama YALNIZ `urnTip = 0` (normal ürün)"
+    key: [stkID, KategoriAd, SonDalAd, stkKod, stkAd, KDVs, KDVa, stkFirma, fiyatS, fiyatA, kod1ID, kod2ID, kod3ID, kod4ID, kod5ID, urnKtgrID, urnMrkID, urnTip]
+    note: >-
+      **`urn` + KATEGORİ ADLARI, 75 kolonluk geniş okuma yüzeyi.** Arşivde 12 dosyada
+      geçiyor. `KategoriAd` (2.999 ayrı) ve `SonDalAd` (1.807) insan-okunur kategori
+      metnini hazır veriyor — `urn`de yalnız id'ler var.
+      ⚠ **ŞİFRELİ** (`IsEncrypted=1`) — mantığı okunamaz, davranışı ölçüldü:
+      ⭐⭐ **`urnKategori_vw` ≡ `urn WHERE urnTip = 0`** — 837.997 = 837.997, iki yönlü
+      simetrik fark **0**. Yani view **SESSİZCE ÜRÜN-TİPİ SÜZGECİ UYGULUYOR.**
+      Düşen **304** kayıt rastgele değil: **252 gider/hizmet (`urnTip=1`) + 52
+      demirbaş/araç (`urnTip=2`)** — örnekler: "İndirilebilir Bağış ve Yardımlar",
+      "Belediye Vergileri", "Bursa Nilüfer … Ada 3 Parsel" (gayrimenkul).
+      ⭐ O **52**, sema'nın 2026-09-03'te BAĞIMSIZ olarak bulduğu "`urnTip=2` =
+      demirbaş/araç satışı, 52 kayıt" ölçümüyle BİREBİR AYNI — çapraz teyit.
+      ⇒ İKİ YÖNLÜ SONUÇ: (a) normal-ürün süzgeci isteyen için view BEDAVA doğru sonuç
+      verir; (b) `urn` ile satır sayısı karşılaştıran biri 304'lük farkı görüp sebebini
+      bilemez. Fark ARTIK YAZILI.
+      ⚠ Bu, deponun kanonik kategori kaynağı DEĞİLDİR — o hâlâ `bkm.UrunBilgi.KatAna/
+      Kategori3` (`sql-server-conventions.md` § KANAL AYRACI). İki kategori sistemi
+      YAN YANA duruyor; hangisinin kullanıldığı raporda YAZILIR.
+    measurement: "2026-09-12 — 837.997 satır · 75 kolon · ŞİFRELİ. `urn` 838.301; `urn WHERE urnTip=0` 837.997. EXCEPT iki yönde de 0. Düşenler: urnTip=1 → 252, urnTip=2 → 52. KategoriAd 2.999 ayrı · SonDalAd 1.807."
+    evidence: "2026-09-12 — küme eşitliği testi + düşenlerin urnTip×kod1ID kırılımı. Arşiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  dbo.stokSon_vw:
+    type: view
+    grain: "ürün × mekan (altDepo TOPLANMIŞ)"
+    key: [ehstkID, ehMekan, stok]
+    note: >-
+      Anlık stok — `stokSonAltDepo_vw`in **altDepo kırılımı toplanmış** hâli. Arşivde
+      14 dosyada geçiyor. ⚠ ŞİFRELİ (`IsEncrypted=1`).
+      ÖLÇÜLDÜ: `stokSon_vw` 1.573.693 satır · `stokSonAltDepo_vw` 1.573.699 — fark **6**.
+      Sebep ölçüldü: `stokSonAltDepo_vw`de `(ehstkID, ehMekan)` çifti birden çok satır
+      taşıyan tam **6** durum var. Yani iki view pratikte **6 satır dışında özdeş**;
+      çok-altDepolu ürün neredeyse yok.
+      ⇒ altDepo kırılımı gerekmiyorsa `stokSon_vw` daha güvenli (yanlışlıkla altDepo
+      üzerinden çift sayma riski yok).
+      ⭐ `ehMekan` **10 ayrı değer** taşıyor — "defterde dokuz mekan var" bulgusuyla
+      (bkz. `codes:mekanID`) tutarlı; üç-mağaza süzgeci burada da kapsam SEÇİMİDİR.
+      ⚠ MERKEZ DEPO (mekan 12) İÇİN KULLANILMAZ — `sql-server-conventions.md` § MERKEZ
+      DEPO kuralı geçerli: merkez stoğu WMS'ten okunur.
+    measurement: "2026-09-12 — 1.573.693 satır · 3 kolon · ŞİFRELİ · 10 ayrı ehMekan. stokSonAltDepo_vw 1.573.699; çok-altDepolu (stk,mekan) çifti: 6."
+    evidence: "2026-09-12 — satır kıyası + mükerrer çift sayımı. Arşiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  erp_view_katmani_sifreli:
+    type: measurement
+    grain: "DerinSISBkm — ERP satıcısının okuma view katmanı ŞİFRELİ (2026-09-12)"
+    note: >-
+      ⚠⚠ **ARŞİVİN EN ÇOK KULLANDIĞI ERP NESNELERİ ŞİFRELİ.** `urnBarkod_vw` (37 dosya) ·
+      `stokSon_vw` (14) · `urnKategori_vw` (12) · `fn_fytOzlListe` — dördü de
+      `OBJECTPROPERTY(...,'IsEncrypted') = 1`. İzin VAR
+      (`HAS_PERMS_BY_NAME(...,'VIEW DEFINITION') = 1`), şema hatası da yok — **gerçekten
+      şifreliler**. `sql-server-conventions.md` § OBJECT_DEFINITION NULL kuralının üç
+      şıkkından (a) şıkkı; Zirve'deki örnek (c) şıkkıydı (izin yok). Aynı belirti,
+      farklı sebep — ayrım tek sorguyla yapılıyor.
+      ⇒ **YÖNTEM: mantık okunamıyorsa DAVRANIŞ kanıtlanır.** Küme eşitliği testi
+      (iki yönlü `EXCEPT`) üçünün de ne yaptığını KESİN olarak belirledi. "Şifreli,
+      bilemeyiz" demek gerekmedi.
+      ⇒ Ve okunamayan mantık kalıcı bir risktir: view'in içi değişirse haberimiz OLMAZ
+      (kaynak yok, sürüm yok, uyarı yok). Bu yüzden eşdeğerlikler değişmeze bağlandı:
+      `sifreli-erp-viewlari-esdegerligi`.
+      ⚠ Buna karşılık `depo.stok_adres_vw` ve `ent.markaIndirimEtkin_vw` ŞİFRELİ DEĞİL
+      (tanımları okunuyor, 304 ve 278 karakter) — satıcı her şeyi şifrelememiş.
+      ⚠ Arşivde sık geçen bazı adlar bu veritabanında HİÇ YOK: `stokKarti_vw` ·
+      `depoStokDurum_vw` · `siparisDetay_vw` · `asrsLokasyonKonum_vw` · `stokMinMax` ·
+      `lokasyonlananKalan_vw`. Bunlar `_ARSIV_WMSBKM` klasöründen, yani **artık
+      kullanılmayan eski WMS veritabanına** ait. Arşivde ad görmek nesnenin VAR olduğu
+      anlamına gelmez.
+    measurement: "2026-09-12 — 13 aday nesne sorgulandı: 4'ü şifreli view/fonksiyon, 2'si okunabilir view, 6'sı DerinSISBkm'de YOK (eski WMS), 1'i tablo (`urnDrm`)."
+    evidence: "2026-09-12 — sys.objects + sys.sql_modules + OBJECTPROPERTY/HAS_PERMS_BY_NAME üçlü ayrımı. Arşiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
   zirve_ik_elle_sorgu_dersleri:
     type: measurement
     grain: "D:/Belgelerim/sql PERSONEL* (13 dosya) — çıkarılan iş kuralları ve ölçülen sınırlar (2026-09-12)"
