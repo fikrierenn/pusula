@@ -62,6 +62,7 @@ bridges:
     scope: derinsis
     confidence: 1.0
   - id: irs-irsayr
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 67.900.345 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 67.886.965 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.irsAyr.ehID
     to: dbo.irs.eID
@@ -69,6 +70,7 @@ bridges:
     confidence: 1.0
     note: "Evrak satır → başlık. irsHrk birleşik hareket (ehID+ehstkID+ehTip grup)."
   - id: irshrk-irs
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 59.163.560 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 59.150.348 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.irsHrk.ehID
     to: dbo.irs.eID
@@ -77,6 +79,8 @@ bridges:
     last_verified: "2026-08-18"   # Serve Deep evrak-dökümünde fiilen kullanıldı (evrak 007287 + HP 8 evrak, doğru sonuç)
     note: "irsHrk hareket → irsaliye başlık. irs.eNo = EVRAK NO (depo sevk 'D01…' gerçek belge), irs.eCrmID = cari (POS satışta 0 — cari EncoreMerkez'de). ehTip 100 POS satışta eNo='POS Satış' (yazarkasa, gerçek fiş DerinSIS'te değil EncoreMerkez.Sales'te). Satınalma TOPTAN-KANAL drill (SatinalmaQueries.UrunDetay.GetBulkHareketAsync) bunu kullanır — bulk hareketin evrak-no'sunu gösterir. irsHrk KOLONLARI: ehID/ehstkID/ehMekan/ehTrhS/ehAdetN/ehTutarN/ehMlyt/ehAltDepo/hrkID/ehTip/ehTutarOzl/hrkTarih (cari/belge-no YOK → irs join şart)."
   - id: irshrk-pos-encore
+    evidence_status: none
+    evidence: "2026-09-12 — OKSUZ OLCUMU UYGULANAMAZ: bu kopru bir KOLON ESITLIGI degil (bilesik anahtar · metin eslesmesi · turetilmis kosul · fonksiyon delegasyonu · farkli sunucu · emekli kayit). Gerekcesi `not_measurable` / `status` alanindadir. `sema kopru` bunlari AYRI listede gosterir — beyan edilmis olculemezlik BOSLUK sayilmaz, ama KANIT da sayilmaz."
     not_measurable: "BU BİR JOIN DEĞİL, BİR GRAIN UYARISI: `irsHrk` POS satırı (ehTip=100) bir GÜNÜN o üründeki TÜM POS satışının TOPLAMIdır, tek fiş değil — `to` alanı da tek kolon değil, iki tablo (`SalesProducts + Sales`). Öksüz sayılamaz. İçeriği yüksek değerli bir TUZAK kaydıdır (POS satırını 'tek işlem' sanıp cap'lemek retail'i bulk sanar) ve bu yüzden silinmedi. ⚠ BORÇ: yeri `entities` altında `type: rule` olmalı; taşıma 2026-09-11'de kapsam dışı bırakıldı."
     from: dbo.irsHrk (ehTip=100)
     to: EncoreMerkez.dbo.SalesProducts + Sales
@@ -85,12 +89,14 @@ bridges:
     last_verified: "2026-08-14"
     note: "⚠ KRİTİK: irsHrk POS satırı (ehTip=100) bir GÜNÜN o üründeki TÜM POS satışının TOPLAMI (tek satır), bireysel fiş DEĞİL. 26281 İst.Yolu 06.09.25 irsHrk=823 → EncoreMerkez'de 145 fiş satırı, max_tek 26, ort 6.8 (toplam 984 tüm-mağaza). Yani irsHrk POS = günlük-aggregate. SONUÇ: irsHrk POS satırını 'tek işlem' sanıp cap'lemek YANLIŞ (retail'i bulk sanır) — satınalma retail-momentum sadece ehTip 1/4 (sevk/fatura belge-bazlı) cap'ler, ehTip 100 TAM retail. Gerçek POS-fiş granülaritesi (bulk POS tespiti gerekirse): EncoreMerkez.SalesProducts.Amount (miktar) + Products.Code=urn.stkID + Sales.Date/ReceiptNo/CustomersId. SEVK/FATURA (ehTip 1/4) irsHrk satırı = belge-bazlı (matara 405 ehTip 1 depo sevk = gerçek tek-belge bulk)."
   - id: fat-fatayr
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 40.928.359 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 40.925.948 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: dbo.fatAyr.ehID
     to: dbo.fat.eID
     scope: derinsis
     confidence: 1.0
   - id: fat-firma
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 7.050.770 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.050.661 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`). ⚠ BU 'TEMİZ' ÖLÇÜMÜ SENTINEL MASKELİYOR (12.09.2026): eFirma=0 'karşı taraf YOK' demektir (46.846 belge — Sayım 25.415 · POS Satış 6.895 · POS Satış İade 6.886 · Bozuk Ürün · Dönüşüm; eFirma IS NULL hiç yok) ve frm'de frmID=0 satırı VAR (adı GENEL) → 0'lar öksüz DÜŞMÜYOR, sahte bir firmaya bağlanıyor. Öksüz %0 burada 'köprü sağlam' DEĞİL, 'sentinel karşılık buluyor' demektir. Tüketici kod 0'ı AYRI etiketlemeli. Kapı: değişmez `efirma-sifir-alim-ve-merkez-cikis-yollarinda-yok` (nüfus kapılı)."
     uses: [bridges:irs-firma]
     from: dbo.fat.eFirma
@@ -100,6 +106,7 @@ bridges:
     note: "Fatura → tedarikçi/cari firma adı (frm.frmAd). Alış faturasında (eTip=0) eFirma=tedarikçi. irs-firma ile aynı desen (evrak→frm). Satınalma ürün-detay drill (dashboard SatinalmaQueries.UrunDetay) bunu kullanır. Belge no = fat.eNo."
     last_verified: "2026-08-13"
   - id: tsoft-urun-resim
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 439.070 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 438.999 — öksüz YOK. ⚠ Bu köprü 2026-08-13'ten beri kayıtlıydı ama HİÇ ÖLÇÜLEMİYORDU: `to` alanı `urn.stkID` diye 2 parçalı yazılmıştı, motorun en az `<şema>.<tablo>.<kolon>` istediği yerde. Eksik nitelik `dbo.` eklenerek düzeltildi — anlam değişmedi, kayıt makine-sınanabilir hâle geldi."
     from: ent.tsoft_urun.stkid
     to: "dbo.urn.stkID"
@@ -108,6 +115,7 @@ bridges:
     note: "E-ticaret (T-Soft) ürün görseli: ent.tsoft_urun.stkid=urn.stkID; ImageUrl=dosya adı → tam URL 'https://cdn.bkmkitap.com/'+ImageUrl (250px K variant; büyük=-B.jpg). CDN HOTLINK korumalı → <img referrerpolicy=no-referrer> gerekli (referer'lı istek placeholder döner). Satınalma ürün-detay görseli bunu kullanır. ent.tsoft_urun_vw de aynı ImageUrl."
     last_verified: "2026-08-13"
   - id: irs-firma
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 7.113.104 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 7.112.975 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`). ⚠ BU 'TEMİZ' ÖLÇÜMÜ SENTINEL MASKELİYOR (12.09.2026): eFirma=0 'karşı taraf YOK' demektir (46.846 belge — Sayım 25.415 · POS Satış 6.895 · POS Satış İade 6.886 · Bozuk Ürün · Dönüşüm; eFirma IS NULL hiç yok) ve frm'de frmID=0 satırı VAR (adı GENEL) → 0'lar öksüz DÜŞMÜYOR, sahte bir firmaya bağlanıyor. Öksüz %0 burada 'köprü sağlam' DEĞİL, 'sentinel karşılık buluyor' demektir. Tüketici kod 0'ı AYRI etiketlemeli. Kapı: değişmez `efirma-sifir-alim-ve-merkez-cikis-yollarinda-yok` (nüfus kapılı)."
     from: dbo.irs.eFirma
     to: dbo.frm.frmID
@@ -184,6 +192,7 @@ bridges:
     note: "Code stkKod DEĞİL (~%9), barkod hiç değil. POS per-fiş/per-mağaza → doğru kategori/marka."
     evidence: "09.06 — Oyuncak ciro 700K→10,96M doğrulandı"
   - id: salesproducts-products
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 6.233.841 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 6.202.443 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: EncoreMerkez.dbo.SalesProducts.ProductsId
     to: EncoreMerkez.dbo.Products.Id
@@ -200,6 +209,7 @@ bridges:
     note: "POS mağaza → mekanID. Zincir: Sales.PosId→Pos.StoreId→Stores.Code→posMagaza.mekanID. Her POS-mağaza raporunun standart join'i."
     evidence: "generate_brief.py + G4 ile sürekli kullanımda"
   - id: urnbrkd-barkod
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 4 oksuz / 6.233.841 satir (%0,0001) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 4 / 6.202.443 (%0,0001). Pratikte tam eşleşme — POS barkodu urnBrkd'de karşılıksız kalmıyor."
     orphans_expected: "4 satır, mertebe olarak ihmal edilebilir; yine de SIFIR DEĞİL — 'her barkod eşleşir' denmez."
     uses: [bridges:products-code-stkid]
@@ -253,6 +263,7 @@ bridges:
     note: "ORDERID (LOGICALREF DEĞİL!). ORDERID = 'TS…' kodundaki sayı."
     evidence: "09.06"
   - id: orderdetails-items
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 1 oksuz / 17.533.407 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 1 / 17.525.813. Tek satır ölçüldü: LOGICALREF 58294995 · ORDERREF 30985232 · ITEMREF **-1000** · QUANTITY 1 · STATUS 2000. Yani eksik ürün değil, NEGATİF SENTINEL."
     orphans_expected: "EVET, tek satır: ITEMREF = -1000 (negatif sentinel — gerçek bir J_ITEMS kaydına işaret etmiyor). Köprü 17,5M satırın geri kalanında kusursuz."
     from: ODAKJOKER.JOKER.dbo.J_ORDER_DETAILS.ITEMREF
@@ -269,6 +280,7 @@ bridges:
     note: "Baskısı yok satır → sipariş detayı (LOGICALREF, ORDERREF DEĞİL). Tutar=B.QUANTITY×D.SELLINGPRICE."
     evidence: "2026-06-26 — kullanıcı çalışan SQL + OPENQUERY kolon teyit. Dashboard /baskisi-yok."
   - id: baskisiyok-user
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 46.187 oksuz / 108.285 satir (%42,6532) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 46.187 / 108.285 (%42,65). Aynı yıl deseni: 2022 18.310 · 2023 22.690 · 2024 5.187; 2025-2026 sıfır. Öksüz USERREF değerleri KÜÇÜK ve dar: 2-10 aralığı. Yani eski JOKER panel kullanıcıları EM_USERS'tan silinmiş; hareket kaydı duruyor."
     orphans_expected: "EVET, 2025 öncesi için: silinen panel kullanıcıları (USERREF 2-10). ⚠ INNER JOIN geçmiş dönemde işlemi yapan kişiyi kaybettirir; LEFT JOIN + ISNULL(FULLNAME,'silinmiş kullanıcı '+CAST(USERREF AS varchar)) kullan."
     from: ODAKJOKER.JOKER.dbo.BASKISIYOK.USERREF
@@ -277,6 +289,7 @@ bridges:
     confidence: 1.0
     note: "İşlemi yapan kullanıcı → EM_USERS.FULLNAME."
   - id: baskisiyok-item
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 46.600 oksuz / 108.285 satir (%43,0346) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 46.600 / 108.285 (%43,03) — baskisiyok-orderdetail ile BİREBİR aynı satır kümesi (aynı sayı, aynı 2022-2024 yılları). Tek kök sebep: JOKER'in 2025 öncesi kayıtları budanmış."
     orphans_expected: "EVET, 2025 öncesi için: J_ITEMS'ın eski ürün kartları silinmiş (bkz. baskisiyok-orderdetail ölçümü — aynı budama). Güncel veride (2025-2026) öksüz YOK."
     from: ODAKJOKER.JOKER.dbo.BASKISIYOK.ITEMREF
@@ -285,6 +298,7 @@ bridges:
     confidence: 1.0
     note: "BASKISIYOK.ITEMREF doğrudan J_ITEMS (detay üzerinden geçmeye gerek yok). NAME/BRAND/CODE/GROUPCODE."
   - id: items-derinsis
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 41.015 oksuz / 878.787 satir (%4,6672) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 41.015 / 878.709 (%4,67). Sıfır sentinel DEĞİL (DERINSIS_ID=0 sayısı: 0). Değer aralığı 2-1.740.224; `urn` tablosunun aralığı 4-1.740.224 ve satır sayısı 837.998 — yani ÜST SINIR AYNI, JOKER kataloğu 40.711 kayıt DAHA BÜYÜK. Öksüzler aralık içine dağılmış → DerinSIS ürün kartı SİLİNMİŞ, JOKER kalemi durmuş."
     orphans_expected: "EVET: JOKER ürün kataloğu DerinSIS'in ÜST KÜMESİ — DerinSIS'te kapatılan/silinen kart JOKER'de kalıyor (41.015 kalem). ⚠ E-ticaret satışını kategori/markaya bağlayan INNER JOIN bu kalemleri düşürür. Kategori için zaten items-logogrup-kategori3 tercih ediliyor (cross-server hop gerekmez)."
     uses: [bridges:items-logogrup-kategori3]
@@ -308,6 +322,7 @@ bridges:
         - bkm.UrunBilgi.Kat3 kitapta BOŞ; doğru kolon Kategori3 (≠ Kat3).
     evidence: "16.06 — commit b792f4e. EticQueries.cs kategori = LOGOGRUP GROUP BY; linked urn/urnKtgr2 join ile birebir aynı, 4.1s→0.6s."
   - id: orders-paytype
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 4.706.227 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.PAYDEFREF
     to: ODAKJOKER.JOKER.dbo.J_ORDER_PAY_TYPES.ID
@@ -315,12 +330,14 @@ bridges:
     confidence: 1.0
     note: "ID ile (LOGICALREF değil). Kapıda Ödeme=-3, iyzico=-13, Havale=-1."
   - id: orders-cargo
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 4.706.227 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGOREF
     to: ODAKJOKER.JOKER.dbo.J_CARGO.ID
     scope: joker
     confidence: 1.0
   - id: orders-cargostatus
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 4.706.227 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 4.704.484 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     uses: [bridges:orders-cargo]
     from: ODAKJOKER.JOKER.dbo.J_ORDERS.CARGODELIVERYSTATUS
@@ -390,6 +407,7 @@ bridges:
     note: "Palet ürün → palet → son konum adresi → alan tipi (adrsAlanTipID). Depo raf/havuz/transfer stok dağılımı. pUAdetN>0, adrsAlanTipID IN (0,1,5)."
     evidence: "DEPO ÖZET DURUM.sql + BÜTÜNLEŞİK TOPLAMA DEPO DURUM.sql (yıllardır prod)"
   - id: paleturn-stk
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 136.516 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 136.581 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: depo.paletUrnTnm.pUStkID
     to: dbo.urn.stkID
@@ -397,6 +415,7 @@ bridges:
     confidence: 1.0
     note: "Palet ürün → DerinSIS ürün. pUBarkod da var (ürünün palet barkodu)."
   - id: stoksonaltdepo-stk
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 1.572.802 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 1.572.495 — öksüz YOK. Aynı yazım kusuru: `from` alanı `stokSonAltDepo_vw.ehstkID` diye 2 parçalıydı, `dbo.` eklendi. ⚠ Bu ölçüm view'in ÜRÜNE bağlandığını doğrular; merkez depo BAKİYESİNİN doğruluğunu DOĞRULAMAZ (kayıttaki UYARI hâlâ geçerli: ehMekan=12 için WMS kullan)."
     uses: [bridges:wms-depo-stok]
     from: "dbo.stokSonAltDepo_vw.ehstkID"
@@ -421,6 +440,7 @@ bridges:
       GROUP BY pu.pUStkID
     evidence: "15.06 — job sorgusu + WMS toplam 4.381.910 adet (stokSonAltDepo mekan=12 sadece 2.144.814). Dashboard GetUrunlerAsync + scripts/olu_stok_excel.py bunu kullanır."
   - id: depotoplanacak-orders
+    evidence: "2026-09-12 `sema kopru` OLCUMU: NUFUS BOS — sol tarafta 0 satir. Hicbir sey dogrulanmadi; \"0 oksuz\" TEMIZ DEGILDIR. Bosluk gerekcesi `empty_population_expected` alanindadir."
     measurement: >-
       2026-09-11 — ÖNCEKİ KAYIT YANLIŞ BİR İDDİA TAŞIYORDU ve düzeltildi. Eskiden
       "0 / 0 — öksüz YOK, soldaki her değerin sağda karşılığı var" yazıyordu; oysa
@@ -444,6 +464,8 @@ bridges:
     confidence: 1.0
     note: "Toplanacak sipariş → sipariş. WMS bekleyen raflama. J_DETAIL_BOXES (raflanmış) ile ihtiyaç=sipariş−raflanmış."
   - id: encore-kampanya-kalem
+    evidence_status: none
+    evidence: "2026-09-12 — OKSUZ OLCUMU UYGULANAMAZ: bu kopru bir KOLON ESITLIGI degil (bilesik anahtar · metin eslesmesi · turetilmis kosul · fonksiyon delegasyonu · farkli sunucu · emekli kayit). Gerekcesi `not_measurable` / `status` alanindadir. `sema kopru` bunlari AYRI listede gosterir — beyan edilmis olculemezlik BOSLUK sayilmaz, ama KANIT da sayilmaz."
     not_measurable: "BİLEŞİK ANAHTAR: join iki kolon çiftiyle kurulur (`SalesId + ProductSequence` ↔ `SalesId + Sequence`). Motor tek-kolon eşitliği ölçer; bileşik anahtarda öksüz sayısı tek kolonla ölçülürse YANLIŞ çıkar (tek kolon eşleşir, çift eşleşmez). Ölçmek isteyen elle iki-kolonlu NOT EXISTS yazmalı."
     from: EncoreMerkez.SalesProductCampaigns.SalesId+ProductSequence
     to: EncoreMerkez.SalesProducts.SalesId+Sequence
@@ -461,6 +483,7 @@ bridges:
 
   # ── BKMMaliyet ↔ DerinSIS köprüleri (FIFO maliyet, 2026-06-19) ──
   - id: maliyet-stkid-urn
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 65 oksuz / 550.387 satir (%0,0118) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     canli_kopya: "⚠ FIFO MOTORUNUN CANLI KOPYASI **YEREL**: localhost `BKMMaliyet` + `DerinSIS_Local`. ERP sunucusundaki `BKMMaliyet` AYNI ŞEY DEĞİL (bkz. entities:BKMMaliyet_kopya_ayrimi — 269M ₺ fark). Bu köprüyü ve tüm FIFO ölçümlerini YEREL kopyada koştur; ERP kopyası tarihsel bir anlık görüntüdür."
     measurement: "2026-09-11 — İKİ AYRI KOPYADA ÖLÇÜLDÜ, SONUÇLAR ÇOK FARKLI. (a) ERP kopyası (192.168.40.201 `BKMMaliyet`) × `DerinSISBkm.dbo.urn`: **65 katman / 45 ürün / 2.786.815 ₺** öksüz. (b) YEREL kopya (localhost `BKMMaliyet`) × motorun KENDİ master'ı `DerinSIS_Local.bkm.UrunBilgi`: **3 katman / 3 ürün / 11.529 ₺**. ⚠ İLK ÖLÇÜM YANILTICIYDI — doğru ölçülmüştü ama YANLIŞ ÇİFT üzerinde: bayat bir BKMMaliyet kopyası ile motorun kullanmadığı bir ürün master'ı. Kullanıcı uyarısı (2026-09-11: 'bkmmaliyet son hali sanırım lokalde') olmasa bu 2,79M ₺'lik 'bulgu' rapora girecekti. DERS: ölçümün doğruluğu kadar HANGİ KOPYADA ölçüldüğü de ölçümün parçasıdır."
     orphans_expected: "YEREL kopyada 3 ürün / 11.529 ₺ — ihmal edilebilir ama sıfır değil. ERP kopyasındaki 45 ürünün tamamı `EncoreMerkez.Products`ta VAR, `irsHrk` hareketi SIFIR, `urn`/`bkm.UrunBilgi`de YOK; değerin %97'si 6 kalemde ('Options 1/2/3 Student's Book + Workbook' — Sınav ders kitapları). Bunlar POS'ta açılmış ama DerinSIS'te kartı olmayan ürünlerdir."
@@ -470,6 +493,8 @@ bridges:
     confidence: 1.0
     note: "BKMMaliyet tüm Fifo* tabloları StkId = urn.stkID (int, 1:1). Ürün/kategori için urn.stkID üstünden (stkKod/barkod DEĞİL)."
   - id: maliyet-marj-cikis
+    evidence_status: none
+    evidence: "2026-09-12 — OKSUZ OLCUMU UYGULANAMAZ: bu kopru bir KOLON ESITLIGI degil (bilesik anahtar · metin eslesmesi · turetilmis kosul · fonksiyon delegasyonu · farkli sunucu · emekli kayit). Gerekcesi `not_measurable` / `status` alanindadir. `sema kopru` bunlari AYRI listede gosterir — beyan edilmis olculemezlik BOSLUK sayilmaz, ama KANIT da sayilmaz."
     status: superseded
     superseded_by: "metrics:fifo_marj"
     superseded_on: "2026-09-11"
@@ -482,6 +507,8 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-kategori3-urnktgr2
+    evidence_status: none
+    evidence: "2026-09-12 — OKSUZ OLCUMU UYGULANAMAZ: bu kopru bir KOLON ESITLIGI degil (bilesik anahtar · metin eslesmesi · turetilmis kosul · fonksiyon delegasyonu · farkli sunucu · emekli kayit). Gerekcesi `not_measurable` / `status` alanindadir. `sema kopru` bunlari AYRI listede gosterir — beyan edilmis olculemezlik BOSLUK sayilmaz, ama KANIT da sayilmaz."
     not_measurable: "İKİ UÇ AYRI SUNUCUDA: sol uç `DerinSIS_Local` (localhost, FIFO motorunun 8 tablolık girdi ayıklaması), sağ uç `DerinSISBkm.dbo.urnKtgr2` (ERP sunucusu). Motorun tek-sorgu kolon-eşitliği ölçümü iki sunucuyu birleştiremez. ⚠ ÖNCEKİ BEYAN YANLIŞTI ('erişilemeyen sunucu'): sunucu ERİŞİLEBİLİR, bu makinede. Ölçüm İKİ ADIMDA elle YAPILDI ve köprü TEMİZ çıktı — 22 Kategori3 değerinin 22'si de `urnKtgr2.ktgrAd`'de var, 0 öksüz (bkz. `measurement`)."
     measurement: "2026-09-11 ÖLÇÜLDÜ — **0 ÖKSÜZ**. İKİ ADIMDA: (1) `DerinSIS_Local.bkm.UrunBilgi`de 22 ayrı `Kategori3` değeri var (localhost'tan sayıldı: Kitap 352.099 · Akademi 117.005 · Çocuk Kitabı 99.937 · Kırtasiye 93.531 …); (2) 22 değerin **22'si de** `DerinSISBkm.dbo.urnKtgr2.ktgrAd` içinde VAR. Köprü sağlam. ⚠ BU KAYIT İKİ KEZ YANLIŞ BEYAN EDİLDİ: önce 'DerinSIS_Local diye bir DB yok, yazım hatası' sanıldı (kullanıcı düzeltti), sonra 'erişilemeyen sunucu, ölçülemez' diye `not_measurable` yazıldı — O DA YANLIŞTI: sunucu bu makinede (`localhost`) ve erişilebiliyor. Tek sorguyla ölçülememesinin sebebi sunucuya erişememek DEĞİL, iki ucun AYRI SUNUCUDA olmasıdır."
     from: DerinSIS_Local.bkm.UrunBilgi.Kategori3
@@ -492,6 +519,8 @@ bridges:
     last_verified: 2026-06-19
     ttl_days: 180
   - id: maliyet-songecerli-fiyat
+    evidence_status: none
+    evidence: "2026-09-12 — OKSUZ OLCUMU UYGULANAMAZ: bu kopru bir KOLON ESITLIGI degil (bilesik anahtar · metin eslesmesi · turetilmis kosul · fonksiyon delegasyonu · farkli sunucu · emekli kayit). Gerekcesi `not_measurable` / `status` alanindadir. `sema kopru` bunlari AYRI listede gosterir — beyan edilmis olculemezlik BOSLUK sayilmaz, ama KANIT da sayilmaz."
     not_measurable: "FONKSİYON DELEGASYONU, KOLON EŞİTLİĞİ DEĞİL: `fn_SonGecerliFiyat(@AsOf,@FiyatTuru)` sarmalayıcısı `fn_SonGecerliFiyat_Adv(...,1,1)` çağırır. Öksüz sayılamaz. AYRICA hedef `DerinSIS_Local`, yani FIFO çalışmasının YEREL KOPYASI; o sunucu `.env`'de olmadığı için buradan zaten erişilemez (bkz. bridges:maliyet-kategori3-urnktgr2). ⚠ BORÇ: içeriği bir TVF kullanım kuralıdır (korelasyonlu çağırma → timeout; restrict-then-rownumber), köprü değil."
     from: DerinSIS_Local.bkm.fn_SonGecerliFiyat(@AsOf,@FiyatTuru)
     to: "wrapper → fn_SonGecerliFiyat_Adv(@AsOf,@FiyatTuru,1,1); fytOzl fTur=1/fTip=1 kanonik"
@@ -512,6 +541,7 @@ bridges:
     evidence: "2026-06-22 MCP: fisID=fisbID → 2 satır; yevmiyeNo → 4 (çakışma)"
     last_verified: 2026-06-22
   - id: mhsfis-hsp
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 39.552.520 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 39.552.504 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: mhs.mhsFis.fisHspID
     to: mhs.mhsHsp.hspID
@@ -550,6 +580,7 @@ bridges:
     evidence: "2026-06-22 sys.foreign_keys: fat/car/posHedef.gKisi → drn1.insID. 2026-06-25 canlı: mhsFisBaslik+fat audit dashboard'da gösterildi (yevmiye/fatura sayfası)."
     last_verified: 2026-06-25
   - id: car-frm
+    evidence: "2026-09-12 `sema kopru` CANLI OLCUMU: 0 oksuz / 23.717.133 satir (%0) · fan-out YOK (sag uc tekil). Bu bir OLCUMDUR, iddia degil — `sema kopru` ile yeniden kosturulur. DIKKAT: oksuz sayisi tek basina HATA DEGILDIR; mesru oksuz `orphans_expected` alaninda beyan edilir."
     measurement: "2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 23.716.920 — öksüz YOK (yalnız `cKod` ucu; `cKodKarsi` ayrı kayıtta ve o da 0 öksüz ölçüldü). Kayıt 2026-06-22'den beri duruyordu ama `from` alanında iki kolon slash ile yazıldığı için hiç ölçülememişti."
     uses: [bridges:car-karsi-frm]
     from: "dbo.car.cKod"
@@ -578,6 +609,8 @@ bridges:
     evidence: "2026-06-25 canlı fiş 35803: 320.10.B019(Buski A.Ş.)→320.10(YURT İÇİ SATICILAR), 740.30.002(Su Giderleri)→740.30(DIŞARDAN SAĞLANAN FAYDA VE HİZMETLER), 191.10.020→191.10(YURTİÇİ ALIMLARA AİT KDV)."
     last_verified: 2026-06-25
   - id: evrak-finaykapanis
+    evidence_status: none
+    evidence: "2026-09-12 — OKSUZ OLCUMU UYGULANAMAZ: bu kopru bir KOLON ESITLIGI degil (bilesik anahtar · metin eslesmesi · turetilmis kosul · fonksiyon delegasyonu · farkli sunucu · emekli kayit). Gerekcesi `not_measurable` / `status` alanindadir. `sema kopru` bunlari AYRI listede gosterir — beyan edilmis olculemezlik BOSLUK sayilmaz, ama KANIT da sayilmaz."
     not_measurable: "TÜRETİLMİŞ KOŞUL: join `YEAR()/MONTH()` ile dönemden kurulur (`car.cTarih`/`fat.eTarihS`/`mhsFisBaslik.fisTarih` → `Fin_AyKapanis.DonemYil, DonemAy`). Ne tek kolon ne de kolon eşitliği; tarihten türetilen iki alanla eşleşir. Öksüz kavramı burada 'kapanışı girilmemiş dönem' demektir ve ayrı ölçülür."
     from: "YEAR/MONTH(car.cTarih / fat.eTarihS / mhsFisBaslik.fisTarih)"
     to: "bkm.Fin_AyKapanis (DonemYil, DonemAy)"
