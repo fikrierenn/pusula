@@ -56,6 +56,7 @@ codes:
     evidence: "2026-06-17 — MCP SELECT urnTip, COUNT(*) FROM urn GROUP BY urnTip"
 
   irsHrk.ehTip:        # dbo.irsTip_vw (34 değer)
+    evidence: "2026-09-12 CANLI GROUP BY: sema 34 kod belgeliyor, canlida 26 kod KULLANILIYOR. SEMADA OLMAYAN canli kod: YOK (kume bu yonden KAPALI). Belgelenip canlida HIC gecmeyen 8 kod: 15, 6, 7, 86, 91, 93, 94, 97 — SILINMEDI, \"canlida yok\" olarak durur (silmek ogrenilen gercegi silmektir). DIKKAT: bu olcum kumenin KAPALILIGINI gosterir, kodlarin ANLAMINI degil. Arsiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql"
     atomicity_reason: "34 kodluk lookup + kullanım kuralları. `values` bölünemez (kod kümesi tek parçadır); kurallar da o kümeye bağlıdır."
     lookup: dbo.irsTip_vw
     irs_eTip_ayni: "irs.eTip (belge başlık) AYNI lookup (irsTip_vw) — aynı kodlar. 17.06 201-doğrulama: eTip 1=Satış (7.9M), 0=Alış (29.6M), 100=POS Satış. ⚠️ DENETİM TUZAĞI: irs.eTip=1'i 'alış' SANMA — 1=Satış. (sql-denetci 17.06 GetMarjAsync'i bu yüzden yanlış KIRMIZI işaretledi → eTip IN(1,4,100) hepsi SATIŞ, doğru.)"
@@ -126,6 +127,7 @@ codes:
     kume_kaynagi: "dbo.irsTip_vw (34 kod) — LİSTE ELLE YAZILMAZ, lookup'tan okunur. Canlı veri bunun 26'sını kullanıyor (ölçüm 2026-09-03); kullanılmayanlar silinmedi, 'canlıda yok' diye işaretli. ⚠ irs.eTip (başlık) ile irsHrk.ehTip (satır) AYNI kümedir (ölçüldü: iki taraf da tam aynı 26 kod). ⚠ fatTip/sipTip AYRI kümelerdir — aynı sayı farklı şey demek (ör. 100 yalnız irs tarafında var). Koruma: degismezler.json → irs-tip-kodlari-lookupta."
     last_verified: '2026-09-03'
   fat.eTip:            # dbo.fatTip_vw — fat SADECE faturalar (perakende kasa YOK → irsHrk 100)
+    evidence: "2026-09-12 CANLI GROUP BY: sema 13 kod belgeliyor, canlida 11 kod KULLANILIYOR. SEMADA OLMAYAN canli kod: YOK (kume bu yonden KAPALI). Belgelenip canlida HIC gecmeyen 2 kod: 11, 12 — SILINMEDI, \"canlida yok\" olarak durur (silmek ogrenilen gercegi silmektir). DIKKAT: bu olcum kumenin KAPALILIGINI gosterir, kodlarin ANLAMINI degil. Arsiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql"
     lookup: dbo.fatTip_vw
     values:
       0: 'Alış — 131.834 kayıt'
@@ -146,11 +148,24 @@ codes:
   depo.emir.emTip:     # depo.emTip — WMS iş emri = GÖREV
     lookup: depo.emTip
     values:
-      0: YERLEŞTİRME EMRİ (Raflama / putaway)
-      1: BESLEME EMRİ (replenishment)
-      2: TOPLAMA EMRİ (picking)
-      3: ARAÇ PLANLAMA EMRİ (şoför / sevkiyat planı)
-      4: HAVUZ EMRİ
+      0: YERLEŞTİRME EMRİ (Raflama / putaway) — canlıda 0 kayıt
+      1: BESLEME EMRİ (replenishment) — canlıda 0 kayıt
+      2: TOPLAMA EMRİ (picking) — 10.344 kayıt, 2021-07-13'ten bugüne AKTİF
+      3: ARAÇ PLANLAMA EMRİ (şoför / sevkiyat planı) — canlıda 0 kayıt
+      4: HAVUZ EMRİ — 1.476 kayıt ama 2022-12-07'de DURMUŞ
+      5: "⚠ LOOKUP'TA YOK — 487 kayıt ve 2026-09-12'de HÂLÂ ÜRETİLİYOR. Adı bilinmiyor."
+    evidence: >-
+      2026-09-12 CANLI ÖLÇÜM (GROUP BY depo.emir.emTip + lookup okuması):
+      canlıda YALNIZ ÜÇ değer var — 2 (10.344 · 2021-07-13→2026-09-12) ·
+      4 (1.476 · 2021-07-12→2022-12-07, DURMUŞ) · 5 (487 · 2021-07-29→2026-09-12, AKTİF).
+      ⚠ İKİ YÖNLÜ UYUMSUZLUK ÖLÇÜLDÜ:
+      (a) Sema'nın belgelediği 0 · 1 · 3 kodlarının canlıda SIFIR kaydı var — yani
+          belgelenen şey kullanılmıyor;
+      (b) Canlıda AKTİF olan `5`, `depo.emTip` LOOKUP TABLOSUNDA DA YOK (lookup 0-4).
+          Yani küme kendi sözlüğüne göre bile KAPALI DEĞİL. `5`in ne olduğu
+          ÖLÇÜLMEDİ — adı sorulmalı, uydurulmadı.
+      Arşiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql
+    last_verified: "2026-09-12"
 
   depo.paletIcHrk.pHrkTip:
     lookup: depo.paletIcHrkTip
@@ -168,15 +183,19 @@ codes:
     confidence: 1.0
     last_verified: "2026-09-11"
   depo.paletIcHrkTip:
+    evidence: "2026-09-12 CANLI GROUP BY: sema 4 kod belgeliyor, canlida 3 kod KULLANILIYOR. SEMADA OLMAYAN canli kod: YOK (kume bu yonden KAPALI). Belgelenip canlida HIC gecmeyen 1 kod: 3 — SILINMEDI, \"canlida yok\" olarak durur (silmek ogrenilen gercegi silmektir). DIKKAT: bu olcum kumenin KAPALILIGINI gosterir, kodlarin ANLAMINI degil. Arsiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql"
     values: {0: KULLANICI, 1: EMİR, 2: SAYIM, 3: GERİ AL}
     closed_set: true
     note: "Kanonik lookup tablosu. `depo.paletIcHrk.pHrkTip` bunu referans alır."
     confidence: 1.0
     last_verified: "2026-09-11"
   depo.paletTip:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: {0: PALET, 1: KASA, 2: ROT, 3: ÇIKIŞ KASASI}
 
   encore.Sales.DocumentsTypeId:   # POS belge tipi — rapor filtresi IN (1,2,3,6,7,8)
+    evidence: "2026-09-12 CANLI GROUP BY: sema 6 kod belgeliyor, canlida 6 kod KULLANILIYOR. SEMADA OLMAYAN canli kod: YOK (kume bu yonden KAPALI). DIKKAT: bu olcum kumenin KAPALILIGINI gosterir, kodlarin ANLAMINI degil. Arsiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql"
     values:
       1: Fiş
       2: Fatura
@@ -187,6 +206,8 @@ codes:
     note: "SUM'da iade sign'lı düşülür; AVG'da iade hariç (DocumentsTypeId<>3)."
 
   encore.SalesProducts.BarcodeNo_1001:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: {"1001": "GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ"}
     note: "Tek sihirli değer (kod kümesi değil, ayrıklama kuralı): `sp.BarcodeNo<>'1001'`. Fiş-düzeyi dışlama: LEFT JOIN spb ON BarcodeNo='1001' … WHERE spb.Id IS NULL."
 
@@ -203,6 +224,8 @@ codes:
     last_verified: '2026-09-03'
     evidence: "2026-09-03 — sqlcli: GROUP BY o.PAYDEFREF (tüm zaman). Üç kod, belgelenenle birebir."
   joker.J_ORDER_CARGO_STATUS: # CARGODELIVERYSTATUS
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       0: İşlem görmemiş
       1: TESLİM EDİLDİ
@@ -252,16 +275,36 @@ codes:
     last_verified: 2026-06-15   # 15.06 J_ORDER_STATUS full scan + Mayıs GROUP BY (ttl 180g → 2026-12)
     evidence: "11.06 net-iptal düzeltme + 15.06 J_ORDER_STATUS full scan/Mayıs dağılım. Tek kaynak (curator 17.06 dup birleşti)."
   joker.J_ORDERS.APPLICATION:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi"]
 
-  depo.adres.adrsAlanTipID:    # WMS lokasyon alan tipi (12.06 — gerçek üretim sorguları)
+  depo.adres.adrsAlanTipID:    # WMS lokasyon alan tipi — KÜME `depo.adresAlanTip` LOOKUP'INDAN
+    lookup: depo.adresAlanTip
     values:
-      0: RAF (raf stoğu — toplanabilir)
-      1: "GR (Giriş Rampası / Mal Kabul)"
-      5: "Özel alan — adrsAd ayırır: 'JokerHavuz' (havuz), 'TRNS' (transfer), 'CK01' (çıkış kasası)"
-    note: "Depo stok dağılımı: SUM PIVOT adrsAlanTip × pUStkID. Raf/Mal Kabul/Joker Havuz/Transfer kovaları."
+      0: RAF ALANI — 177.063 adres (raf stoğu, toplanabilir)
+      1: GİRİŞ ALANI — 1 adres (Mal Kabul / GR)
+      2: ÇIKIŞ ALANI — 2 adres
+      3: ETİKETLEME ALANI — canlıda 0 adres
+      4: BLOKAJ ALANI — canlıda 0 adres
+      5: HAVUZ ALANI — 3 adres
+      6: İADE ALANI — 1 adres
+    note: "Depo stok dağılımı: SUM PIVOT adrsAlanTip × pUStkID. Raf/Mal Kabul/Havuz/Çıkış/İade kovaları."
+    evidence: >-
+      2026-09-12 CANLI ÖLÇÜM — ÖNCEKİ KAYIT HEM EKSİK HEM ÇIKARIMDI, düzeltildi.
+      (a) EKSİKTİ: sema 3 kod (0/1/5) belgeliyordu, canlıda BEŞ kod kullanılıyor —
+          `2` (2 adres) ve `6` (1 adres) hiç yazılmamıştı.
+      (b) ÇIKARIMDI: `5` için "özel alan — adrsAd ayırır: JokerHavuz/TRNS/CK01" deniyordu.
+          Oysa `depo.adresAlanTip` LOOKUP TABLOSU doğrudan söylüyor: **5 = HAVUZ ALANI**.
+          Ad tahmininden sözlüğe geçildi (`olctum-mu-cikardim-mi` § liste elle yazılmaz).
+      Lookup TAM küme: 0 RAF · 1 GİRİŞ · 2 ÇIKIŞ · 3 ETİKETLEME · 4 BLOKAJ · 5 HAVUZ ·
+      6 İADE (7 kod). Canlı `depo.adres` dağılımı: 0→177.063 · 5→3 · 2→2 · 1→1 · 6→1.
+      Arşiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql
+    last_verified: "2026-09-12"
 
   joker.J_ORDER_DETAILS.STATUS:   # detay satır: 2xxx=Sipariş detay, 4xxx=Odak detay (kod ailesi yukarıda)
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi
     net_iptal_iade: [2004, 2005, 2010]   # SATIR-BAZLI iptal/iade — rapor bunları saymalı (2004=fiili iptal)
     values:
@@ -276,6 +319,8 @@ codes:
     note: "Satır seviye (J_ORDERS.STATUS ana sipariş; bu DETAY). ⚠ İPTAL/İADE ANALİZİ SATIR GRAIN'DE YAPILIR — header J_ORDERS.STATUS kısmi iptali KAÇIRIR: bir sipariş header'da 1005 'Kargoya Verildi' iken bir kalemi 2004/2005 iptal olabilir (ör. TS110730641852: header 1005, 1 kalem 2004). İptal=2005, İade=2010, Baskısı-yok(fiili iptal)=2004. Sebep kolonları: IPTALSEBEP/IPTALTARIH (2005) · IADESEBEPNO/IADEACIKLAMA/IADEMIKTAR/IADETALEPTARIH (2010). İptallerin ~%38'i tedarik/operasyon kaynaklı (müşteri değil). Bekleyen toplama: WMSAKTARMA=1 AND ORDERS.STATUS=1000 AND DETAILS.STATUS IN (2000,2002,2003,2007). Sorgu: sorgular/2026-07-30-etic-kart-iptal-detay.sql. 2026-07-30 canlı keşif (Temmuz kart iptal raporu)."
 
   dbo.posOdmTip:            # KASA (yazarkasa) ödeme tipleri — DerinSIS
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon bu oturumda OLCULMEDI; kume `dbo.posOdmTip` lookup tablosundan okunmali (`sqlcli lookup --count-from`). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     kapsam: "⚠️ KASA ödemesi (mağaza yazarkasa). E-ticaret ödemesi DEĞİL (o
       `joker.J_ORDER_PAY_TYPES`), EncoreMerkez ödeme üst-grubu da DEĞİL (`encore_odeme_grup`)."
     lookup: dbo.posOdmTip
@@ -287,6 +332,8 @@ codes:
     kume_kaynagi: "dbo.posOdmTip — 4 kod, lookup'tan okundu (elle yazılmadı)."
     last_verified: '2026-09-03'
   mekanID:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     # isim kaynağı = posMagaza.mekanAd (dbo.mekan YOK). 24.06 teyit.
     values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: "İade Deposu (ODAK)", 4835: Ek Depo, 26142: "İPTAL-Transfer Deposu (transit)", 60398: HEYKEL TRANSFER}
     depo_grubu: [12, 4480, 4835]    # cari/envanter sorgularında "Depo"
@@ -302,6 +349,8 @@ codes:
     evidence: "2026-09-11 — posMagaza × mekan_vw karşılaştırması (12 vs 11 satır) + irsHrk'da kullanılan 10 mekanID'nin view'de olup olmadığı ölçüldü. ⚠ view TANIMI okunamadı (sys.sql_modules.definition NULL) → süzgecin `mekanTip IN (0,1)` olduğu ÇIKARIMdır, ölçüm değil; ölçülen şey SONUÇtur."
     last_verified: "2026-09-11"
   frmID_onemli:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       0: GENEL
       1: FSM Mğz
@@ -312,6 +361,8 @@ codes:
       60400: Heykel Transfer
 
   encore_odeme_grup:        # 12.06 — PaymentTypes.Name → ödeme üst-grubu (dashboard ödeme paneli)
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       "TÜRK LİRASI": Nakit
       "İADE ÇEKİ": İade Çeki
@@ -371,6 +422,8 @@ codes:
 
   # ── BKMMaliyet FIFO kod sözlükleri (2026-06-19) ──
   BKMMaliyet.FifoKatman.KaynakTip:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       NORMAL_yok: "(KaynakTip değil, Durum)"
       ALIS: "alış faturası katmanı"
@@ -381,6 +434,8 @@ codes:
     note: "FIFO maliyet havuzu giriş kaynağı"
     last_verified: 2026-06-19
   BKMMaliyet.FifoKatman.Durum:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       NORMAL: "gerçek fatura fiyatı (en güvenilir)"
       TAMAMLAMA: "son alış fiyatı (UrunBilgi.SonAlis dahil — gerçek son-alış)"
@@ -392,6 +447,8 @@ codes:
     note: "BirimMaliyet<=0 OLAMAZ (fifo-domain §6). 1-TL SABIT KALDIRILDI (19.06): impute-edilemez → DEVRE DIŞI (non-inventory), sahte ~%100 marj üretmez."
     last_verified: 2026-06-19
   BKMMaliyet.FifoSorunluStoklar.SorunTipi:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       ALIS_YOK: "hiç alış bulunamadı"
       "ALIS_YOK_*_TAMAMLANDI": "fallback (merkez/songecerli) ile çözüldü"
@@ -400,11 +457,12 @@ codes:
       FIYAT_YOK: "hiçbir kaynak fiyat yok (GARANTİ sonrası → devre-dışı veya imput)"
     note: "log/audit; çözülen 'TAMAMLANDI' tipleri maliyet ATANMIŞ (tahmini)"
     last_verified: 2026-06-19
-  BKMMaliyet.FifoCikisDetay.HareketTipi: {values: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}}
+  BKMMaliyet.FifoCikisDetay.HareketTipi: {evidence_status: pending, evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti.", values: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}}
   # DerinSIS irs/irsHrk eTip (FIFO kullanımı): alış 0,2,10,3,6,102,103 · satış 1,4,5,100,101 (100=POS satış dominant) · iade 3,5,101
 
   # === MUHASEBE / GL (22.06 keşif — B-117) ===
   mhs.mhsFis.fisBA:
+    evidence: "2026-09-12 CANLI GROUP BY: sema 2 kod belgeliyor, canlida 2 kod KULLANILIYOR. SEMADA OLMAYAN canli kod: YOK (kume bu yonden KAPALI). DIKKAT: bu olcum kumenin KAPALILIGINI gosterir, kodlarin ANLAMINI degil. Arsiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql"
     values: {0: "ALACAK (fisTutar POZİTİF)", 1: "BORÇ (fisTutar NEGATİF saklı)"}
     KESİN: "23.06 mhsMizan_vw tanımıyla çürütülemez kanıt: Alacak=SUM((1-fisBA)*fisTutar), Borc=SUM(-(fisBA*fisTutar)) → fisBA=0=Alacak, fisBA=1=Borç."
     bakiye: "Bakiye = Borç − Alacak (borç-pozitif). Borç=SUM(fisBA=1 → -fisTutar), Alacak=SUM(fisBA=0 → fisTutar). Defter dengeli: toplam Borç=toplam Alacak (2025: 28,93 mlr ✓; 2026: 21,48 mlr)."
@@ -413,6 +471,8 @@ codes:
     confidence: 1.0
     last_verified: 2026-06-23
   mhs.mhsFisBaslik.fisAd_sistem:   # 23.06 — açılış/kapanış sistem fişleri (B-118 kesin mizan)
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
       Açılış: "fisAd=N'Açılış', yevmiyeNo=1 (yıl ilk fişi). Önceki yıl kapanış bakiyelerini devreder → mizanda DAHİL kalır (opening). 01.01 büyük çift-taraflı fiş."
       Kapanış: "fisAd=N'Kapanış', yevmiyeNo=MAX (yıl son fişi), her KAPANMIŞ yılda TEK. Bilanço-kapanış: tüm hesapları sıfırlar → mhsMizan_vw bunu İÇERDİĞİ için kapanmış yıl her hesap Borç=Alacak=Bakiye 0."
@@ -421,11 +481,13 @@ codes:
     confidence: 1.0
     last_verified: 2026-06-23
   mhs.mhsEntTip:
+    evidence_status: pending
+    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: {0: "Kullanıcı (MANUEL)", 1: "Fatura", 2: "Cari", 3: "POS", 4: "Mağaza Kasası", 5: "Cari Fiş"}
     filtre: "SoD/zamanlama/kapanış-sonrası kontrollerinde fisEntTipID=0 (manuel) FİLTRELE — 1/3/4 otomatik batch gürültü (%85 'geç kayıt' otomatikti, false-positive)."
     confidence: 1.0
     last_verified: 2026-06-22
-  mhs.mhsFisTip: {values: {0: Tahsil, 1: Tediye, 2: Mahsup, 3: Yansıtma}, confidence: 1.0, last_verified: 2026-06-22}
+  mhs.mhsFisTip: {evidence_status: pending, evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti.", values: {0: Tahsil, 1: Tediye, 2: Mahsup, 3: Yansıtma}, confidence: 1.0, last_verified: 2026-06-22}
   # gider_konvansiyonu BURADAN TAŞINDI → metrics.yaml (2026-09-11).
   # Gerekçe: bir KOD KÜMESİ değil, üç sistemde gider ayıklayan FİLTRE KURALIydı
   # (frmKod LIKE 'G-%' · hspKod 6xx/7xx · eTip IN 6,7,8). codes = enum/lookup;
