@@ -54,10 +54,32 @@ metrics:
       ⚠ **KANAL AYRIMI (kullanıcı düzeltmesi 2026-09-12):** *"tanımlanan alış şartları
       mağaza içinde geçerli"* — yani `AlisIskonto` KANALDAN BAĞIMSIZ. Fark SATIŞ
       tarafında: web indirimli satıyor, mağaza satmıyor.
-      ⇒ Bu yüzden bulgu **WEB'E ÖZGÜDÜR**; aynı ürünün mağaza marjı daha iyidir.
-      ⇒ Yukarıdaki kategori tablosundaki "kasa cirosu" sütunu bu ürünlerin MAĞAZA
-        satışıdır ve zararına satıldıklarını GÖSTERMEZ — yalnız ürünlerin canlı
-        olduğunu gösterir. Zarar iddiası yalnız WEB cirosu için kurulabilir.
+      ⚠⚠ **DÜZELTME 2026-09-12 (aynı gün, kullanıcı ikinci kez düzeltti):** *"mağazada
+      kampanyalı satıyor 3 al 2 öde veya kampanyalı fiyatlar var, ürün kartında reyon
+      tanımından oluyor"* — MAĞAZA DA İNDİRİMLİ SATIYOR (`urn.kod4ID`, kartta adı
+      "Reyon"; bkz. `codes:urn.kod4ID`). Yukarıda yazdığım **"aynı ürünün mağaza marjı
+      daha iyidir" cümlesi ÖLÇÜLMEDEN kurulmuştu ve YARISI YANLIŞTI.**
+      ÖLÇÜLDÜ (`posOzetUrun`, son 12 ay, mekan 1/4477/4478, ciro ağırlıklı, listeden
+      sapma tabanında — view'ın `SatisMarji` tanımıyla AYNI taban):
+        bant          ürün   mağaza cirosu   mağaza ind.  web ind.  alış isk.  MAĞAZA MarjFarkı
+        a) NEGATİF  10.713    97.351.818 ₺      %19,6      %28,1      %5,3      **−14,3**
+        b) eşik altı 23.324   100.710.365       %31,2      %36,3     %42,0        +10,8
+        c) eşik üstü 50.176   276.260.583       %30,6      %23,3     %44,9        +14,3
+      ⇒ ✅ Mağaza web'den DAHA AZ indirim veriyor — cümlenin o yarısı doğruydu.
+      ⇒ ❌ Ama **NEGATİF bantta mağaza da EKSİDE (−14,3 puan): 7.712 ürün / 85.573.406 ₺
+        mağaza cirosu.** Zarar WEB'E ÖZGÜ DEĞİLDİR.
+      ⇒ Dolayısıyla kategori tablosundaki "kasa cirosu" sütunu ürünlerin canlı olduğunu
+        gösterir **ve o cironun büyük kısmı da eşiğin altındadır** — önceki "zararına
+        satıldıklarını GÖSTERMEZ" cümlesi fazla temkinliydi, geri alındı.
+      ⭐ MEKANİZMA AYRIŞTI: NEGATİF bandın en büyük parçası `Kampanya Dışı` (5.997 ürün ·
+        60,3M ₺ mağaza cirosu) ve orada kasa indirimi yalnız %2,6 iken **alış iskontosu
+        %1,3** ⇒ sorun kampanyada değil, ALIŞ TARAFINDA. Buna karşılık **`3 AL 2 ÖDE`
+        KALİBRE**: üç bantta da kasa indirimi %23-24, alış iskontosu %40-45.
+        Zarar üreten kuyruk `%50 INDIRIM` + `ÖZEL FİYAT` etiketleri (≈973 ürün / 11,1M ₺:
+        %35-48 indirimle satılıyor, %0,5-21 iskontoyla alınmış).
+      ⚠ `magaza_ind` listeden sapmadır: kampanya indirimi + fiyat listesi kayması BİRLİKTE.
+        `fiyatS` ANLIK listedir, 12 aylık ciro bugünün listesiyle kıyaslandı ⇒ fiyatı artan
+        üründe indirim OLDUĞUNDAN BÜYÜK görünür (aynı kusur TODO B-177).
       ⚠ `AlisIskonto` **MARKA BAZLI** (`odak_marka.discount`), ürün bazlı gerçek fatura
         iskontosu DEĞİL. İşletmenin kendi vekili; gerçek alış faturasıyla doğrulanmadı.
       ⚠ Diğer maliyetler (kargo, kampanya, ödeme komisyonu, iade) HESABA GİRMİYOR —
@@ -65,7 +87,7 @@ metrics:
       ⚠ `MarjFarki` bir PUAN FARKIDIR, yüzde marj değil; ikisi karıştırılmaz.
       ⚠ Eşik 11 puan İŞLETMENİN kendi seçimi (view'de yoruma alınmış); nasıl türetildiği
         ÖLÇÜLMEDİ.
-    evidence: "2026-09-12 — view tanımı okundu (1.550 karakter, şifresiz) + bant dağılımı + kategori kırılımı + web cirosu (Enf_AylikUrunSatislari Kaynak=bkmkitapcom). Arşiv: sorgular/2026-09-12-marji-sorunlu-urunler.sql"
+    evidence: "2026-09-12 — view tanımı okundu (1.550 karakter, şifresiz) + bant dağılımı + kategori kırılımı + web cirosu (Enf_AylikUrunSatislari Kaynak=bkmkitapcom) + MAĞAZA tarafı posOzetUrun ile ayrıca ölçüldü (kullanıcı düzeltmesi). Arşiv: sorgular/2026-09-12-marji-sorunlu-urunler.sql · sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql"
     confidence: 0.85
     last_verified: "2026-09-12"
   web_indirim_ve_web_marji:

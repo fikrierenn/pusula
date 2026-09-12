@@ -139,7 +139,22 @@ codes:
       bu iki günde KIRILIR; öncesiyle sonrası karşılaştırılamaz.
       ⚠ `kod4ID` ANLIK durumdur, geçmiş değil. "Bu ürün X kampanyasındaydı" sorusu
       `urn`den DEĞİL `bkm.urnkod4log`dan yanıtlanır.
-    evidence: "2026-09-12 — lookup örneklemi + urn GROUP BY + urnkod4log'un 2026-05-06/12 günlerinin hedef-kod dökümü (%50 INDIRIM 611.150 · 3 AL 2 ÖDE 412.689). Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+      ⚠⚠ **AD TUZAĞI — KARTTA BU ALANIN ADI "REYON"** (kullanıcı ekran görüntüsüyle
+      gösterdi, 2026-09-12). DerinSIS "Ürün Düzenleme > Ürün Özellikleri" sağ
+      sütununda sıra: Web=`kod1ID` · Satınalma=`kod2ID` · Öneri Olanlar=`kod3ID` ·
+      **Reyon=`kod4ID`** (sıra birebir tuttuğu için eşleme ÖLÇÜLDÜ, tahmin değil).
+      İçerik reyon DEĞİL kampanyadır. **Gerçek reyon/planogram ayrı şemadadır:**
+      `ryn.reyon` (576) · `ryn.raf` (23.327) · `ryn.rafUrun` (476.923) · `ryn.alan`
+      (40) · `ryn.kat` (16). "Reyon bazlı ciro" isteyen biri `kod4ID` kullanırsa
+      kampanya kırılımı alır, RAF kırılımı değil.
+      ⭐ **ETİKET ÖLÜ DEĞİL — KASADA GERÇEKLEŞİYOR** (son 12 ay, mekan 1/4477/4478,
+      `posOzetUrun`; kasa indirimi = satIndirim/(satTutar+satIndirim)):
+      İNDİRİMSİZ %1,1 · Kampanya Dışı %3,4 · %20 INDIRIM %7,2 · %25 INDIRIM %13,8 ·
+      3 AL 2 ÖDE %23,9 · %30 INDIRIM %25,8 · %50 INDIRIM %48,1 — sıralama MONOTON.
+      Yüzde etiketlerinin altında kalması beklenir: etiket kampanya ÜYELİĞİDİR,
+      her satışta tetiklendiği anlamına gelmez (3 AL 2 ÖDE yalnız 3 adet alınınca).
+      Kapı: değişmez `reyon-kod4-etiketi-kasada-gerceklesiyor`.
+    evidence: "2026-09-12 — lookup örneklemi + urn GROUP BY + urnkod4log'un 2026-05-06/12 günlerinin hedef-kod dökümü (%50 INDIRIM 611.150 · 3 AL 2 ÖDE 412.689). Kart alan adı + kasa gerçekleşmesi: 46 tanım, öksüz kod4ID 0, 838.301 ürün. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql · sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql"
     confidence: 0.9
     last_verified: "2026-09-12"
 

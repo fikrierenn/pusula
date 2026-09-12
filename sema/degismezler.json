@@ -650,6 +650,18 @@
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 0. urnBarkod_vw 837.747 · urnKategori_vw 837.997. Arsiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql",
       "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.urnKategori_vw"
+    },
+    {
+      "id": "reyon-kod4-etiketi-kasada-gerceklesiyor",
+      "db": "DerinSISBkm",
+      "question": "Urun kartindaki 'Reyon' (=urn.kod4ID) kampanya etiketi KASADA hala gerceklesiyor mu? Dort capa etiketin fiili kasa indirim orani beklenen SIRADA mi: INDIRIMSIZ (6847) <= Kampanya Disi (6835) <= 3 AL 2 ODE (1) <= %50 INDIRIM (6858)? Ihlal sayisi.",
+      "why": "2026-09-12'de kullanici ekran goruntusuyle gosterdi: kartta 'Reyon' yazan alan aslinda KAMPANYA etiketidir (urn.kod4ID, 46 tanim, 838.301 urun, oksuz 0) ve magaza fiyati buradan olusur. Olculdu (posOzetUrun, son 12 ay, mekan 1/4477/4478): INDIRIMSIZ %1,1 < Kampanya Disi %3,4 < 3 AL 2 ODE %23,9 < %50 INDIRIM %48,1 - siralama MONOTON, yani etiket olu bir siniflandirma degil, fiyati GERCEKTEN suruyor. NEDEN KAPI: bu alan uzerine kurulmus iki iddia var - (a) '3 AL 2 ODE kalibre calisiyor' (kasa %24 indirim vs alis %40-45 iskonto, katalogun yarisi), (b) 'zarar ureten kuyruk %50 INDIRIM/OZEL FIYAT etiketleridir'. Etiket fiyati surmeyi birakirsa (kampanya motoru degisir, etiket kozmetige doner, POS baska bir kaynaktan fiyatlar) bu iki iddia SESSIZCE yanlislasir ve hicbir sey kirmizi vermez. Ayrica bu kapi bir DUZELTMEYI korur: 'magaza marji her zaman daha iyidir' cumlesi ayni gun olculup curutuldu (NEGATIF bantta magaza da -14,3 puan, 7.712 urun / 85,6M TL). KIRILABILIRLIK KANITI (paylasilan dosyaya dokunulmadan, hatali formuller dogrudan kosuldu): dogru formul 0 - siralama tersine cevrilince 1 - capa etiketlerden biri kaybolunca (ISNULL sentineli sayesinde) 1. SINIR: kapi kod4ID NUMARALARINA bakar, ETIKET METNINE bakmaz; bir etiket yeniden adlandirilirsa bunu HICBIR SEY yakalamaz.",
+      "sql": "WITH a AS (SELECT u.kod4ID, 100.0*SUM(p.satIndirim)/NULLIF(SUM(p.satTutar+p.satIndirim),0) AS ind FROM DerinSISBkm.dbo.urn u WITH(NOLOCK) JOIN DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK) ON p.posStkID=u.stkID WHERE p.posTarih >= DATEADD(MONTH,-12,GETDATE()) AND p.posMekan IN (1,4477,4478) AND p.satAdet>0 AND u.kod4ID IN (6847,6835,1,6858) GROUP BY u.kod4ID) SELECT CASE WHEN ISNULL((SELECT ind FROM a WHERE kod4ID=6835),-999) < ISNULL((SELECT ind FROM a WHERE kod4ID=6847),999) THEN 1 ELSE 0 END + CASE WHEN ISNULL((SELECT ind FROM a WHERE kod4ID=1),-999) < ISNULL((SELECT ind FROM a WHERE kod4ID=6835),999) THEN 1 ELSE 0 END + CASE WHEN ISNULL((SELECT ind FROM a WHERE kod4ID=6858),-999) < ISNULL((SELECT ind FROM a WHERE kod4ID=1),999) THEN 1 ELSE 0 END",
+      "comparison": "esit",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu, 0. Kasa indirim oranlari: 6847=%1,1 - 6835=%3,4 - 1=%23,9 - 6858=%48,1. Arsiv: sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK) JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=p.posStkID WHERE p.posTarih >= DATEADD(MONTH,-12,GETDATE()) AND p.posMekan IN (1,4477,4478) AND p.satAdet>0 AND u.kod4ID IN (6847,6835,1,6858)"
     }
   ]
 }
