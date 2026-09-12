@@ -223,6 +223,23 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   (e) ⚠ Alıcıya atıf YAPILAMAZ (karar sahibi veride izli değil) — bunlar ürün/tedarikçi
   kohortu, kişi karnesi değil.
 
+- [x] ✅ **B-178 AÇIK SİPARİŞ ÖLÇÜLDÜ — toplantının en büyük riski kapandı**
+  12.09.2026. Kurul "alıcı 'yolda mal var' diyecek, cevabın olmayacak, üst üste üç kez
+  'haklısın' demek kalan kartları geçersiz kılar" demişti. Ölçüldü (`eTip 0/3` · `eTarih` ·
+  `ehAdet` — üç sema tuzağı da uygulandı): talebi kanıtlı stoksuz 356 çeşidin yalnız
+  **52'sinde** sipariş var (%14,6) → itiraz %85 geçersiz. Sezon açığında 2.002/7.368 (%27) →
+  itiraz kısmen haklı, kabul edilecek. Aşırı stokta fazla maliyetin **%85'inde (63,0M ₺)
+  sipariş DURMUŞ** (alıcı lehine); son 30 günde hâlâ sipariş girilen 674 çeşit / 0,65M ₺.
+  ⚠ Panel netleme YAPMIYOR (direktif duruyor) — bu yalnız ölçüm.
+  Arşiv: `sorgular/2026-09-12-acik-siparis-kohort-kesisimi.sql`
+- [x] ✅ **B-179 ODAK AĞIRLAŞTIRICISI KALDIRILDI** (commit ece0290) — çift sayım (kapak ayağı
+  LeadTime'ı zaten içeriyor) + kontrol-edilebilirlik ihlali (ODAK tedarikçinin envanteri).
+  Yerine "son 6 ayda mal girmiş" yaş satırı: 21.282 çeşit / 58,6M ₺.
+- [ ] **B-180 SİPARİŞ KARŞILANMA BAĞI — hâlâ ölçülemiyor (sema'daki borç)**
+  `sipAyr.ehSevkAdet` tamamen NULL · `irsAyr.ehSipID/ehSipSira` bağı doğrulanamadı. Bu yüzden
+  "sipariş girilmiş" ile "mal hâlâ yolda" ayrılamıyor ve açık sipariş ancak PENCERE daraltarak
+  okunabiliyor. Çözülürse: (a) "yolda mal" gerçekten netlenebilir, (b) sipariş karşılanma
+  oranı bir hesap-sorma ekseni olur. Keşif: B-154'ün devamı.
 - [x] ✅ **B-175 MALİYET KAYDI ŞÜPHELİ — "hiç satmamış 46,8M"in %64'ü iki muhasebe kalemiymiş**
   12.09.2026, hesap-sorma toplantısı ÖNCESİ `veri-dogrula` QA'sında yakalandı. `stkID 128118
   "Muhtelif Ürün"` (5 adet × 4.640.370 ₺ = 23,2M) ve `stkID 81809 "İskonto ve Fiyat Farkı"`

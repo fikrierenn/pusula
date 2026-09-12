@@ -2608,6 +2608,39 @@ metrics:
     evidence: "2026-09-10 — sorgular/2026-09-10-iade-hakki-vekili.sql blok 1 + 2"
     last_verified: "2026-09-10"
 
+  acik_siparis_kohort_kesisimi:
+    type: rule
+    unit: adet
+    basis: quantity
+    additivity: sum
+    title: "AÇIK SİPARİŞ × hesap-sorma kohortu — 'yolda mal var' itirazının ölçüsü"
+    rule: >-
+      Açık sipariş = `dbo.sipAyr` JOIN `dbo.sip` ON `sip.eID = sipAyr.ehID`, süzgeç
+      `eTip IN (0,3)` (Alış + Yerel Alım) · `eDurum <> 2` · tarih `sip.eTarih` (eTarihS DEĞİL) ·
+      adet `sipAyr.ehAdet` (ehAdetN DEĞİL). Kohortla `ehstkID` üzerinden eşlenir.
+      ⚠ Panel açık siparişi BİLEREK NETLEMEZ (kullanıcı direktifi 10.09.2026); bu ölçüm
+      netleme yapmaz, yalnız itirazın büyüklüğünü bildirir.
+    measurement: >-
+      2026-09-12 (kesim 11.09.2026, son 180 gün) — "yolda mal var" itirazı kohort kohort:
+      TALEBİ KANITLI STOKSUZ 356 çeşidin yalnız 52'sinde (%14,6) sipariş var (1.285 adet)
+      ⇒ itiraz %85 GEÇERSİZ. SEZON STOK AÇIĞI 7.368 çeşidin 2.002'sinde (%27,2) var
+      (35.247 adet) ⇒ itiraz kısmen HAKLI, kabul edilmeli.
+      AŞIRI STOK kohortunda (35.642 çeşit / 73,71M ₺ fazla) sipariş penceresi:
+      30g 674 çeşit / 9.702 adet / 0,65M ₺ · 60g 1.507 / 15.394 / 1,36M ·
+      180g 4.097 / 176.736 / 10,71M · sipariş YOK 31.545 çeşit / 62,99M ₺.
+      ⇒ Fazla maliyetin %85'inde sipariş DURMUŞ — alıcının lehine bulgu.
+    evidence: "sorgular/2026-09-12-acik-siparis-kohort-kesisimi.sql"
+    last_verified: "2026-09-12"
+    note: >-
+      ⚠⚠ PENCERE SEÇİMİ İDDİAYI DEĞİŞTİRİR — bu oturumda önce 180 günlük sayı "hâlâ sipariş
+      veriyor" diye okundu, YANLIŞTI ve daraltılarak düzeltildi. ODAK ortalama temini 5,03 gün;
+      180 gün önceki siparişin malı çoktan gelmiş ve BUGÜNKÜ STOĞUN İÇİNDE olabilir. İki ayrı
+      iddia: "fazlaya rağmen sipariş GİRİLMİŞ" (geçmiş karar, 180g) ≠ "HÂLÂ giriliyor"
+      (süren davranış, 30g). Hangisini iddia ediyorsan o pencereyi kullan.
+      ⚠ KARŞILANMA ÖLÇÜLEMİYOR: `sipAyr.ehSevkAdet` tamamen NULL, `irsAyr.ehSipID` bağı
+      doğrulanamadı (entities `dbo.sip` karsilanma_uyarisi). "Sipariş girilmiş" ≠ "mal yolda".
+      ⚠ `eDurum` 0/1 ayrımının anlamı TEYİT BEKLİYOR; ikisi de açık sayıldı.
+
   maliyet_kaydi_supheli:
     type: rule
     unit: none
