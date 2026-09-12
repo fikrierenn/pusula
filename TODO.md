@@ -246,7 +246,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   Kırtasiye devri 1,25 (sektör hedefi 3-4) ve eşik oradan geliyor. Ters uçta iyi dönen
   kategoriye (Hazırlık 8×) daha GEVŞEK eşik — teşvik ters. Eşik iş modelinden gelmeli
   (LeadTime · sezon ağırlığı · iade hakkı — üçü de veride var, kullanılmıyor).
-  (d) Panel geneli 3× artık DESTEKLENMİYOR: karma örneklemden türetilmişti ve onu Kırtasiye
+  (d) ✅ **KAPANDI 12.09 — itirazdan BÜYÜK çıktı.** Kırtasiye hariç yeniden ölçülünce asıl
+  hata göründü: türetme **ORTALAMA** devir kullanıyordu, dağılım sağa çarpık olduğu için eşik
+  şişiyordu. MEDYAN ile: panel geneli 3×→**2×**, Hazırlık Kitapları 8×→**2×** (dört kat hata),
+  Kırtasiye monoton olmadığı için **türetilemez** (danışmanın (c) itirazının kanıtı).
+  Wilson GA da yalnız 2× kesimini destekliyor. **Kategori bazlı eşik KALDIRILDI, tek eşik 2×.**
+  Etki: 30.361→40.017 çeşit · 72,5M→83,3M ₺. Arşiv
+  `sorgular/2026-09-12-esik-medyan-ile-yeniden-turetildi.sql`.
+  ~~(d) Panel geneli 3× artık DESTEKLENMİYOR:~~ karma örneklemden türetilmişti ve onu Kırtasiye
   domine ediyordu (bantlarında 7.480 çeşit). Kırtasiye ayrıldı → kalan sekiz kategori başka
   bir kategorinin eşiğiyle yargılanıyor. 3× Kırtasiye HARİÇ yeniden ölçülmeli.
   (e) ✅ **KAPANDI 12.09** — eşik 0 → 1. ÖNCE ÖLÇÜLDÜ: tek POS satışıyla kohorttan çıkan

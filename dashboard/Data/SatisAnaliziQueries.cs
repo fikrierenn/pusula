@@ -414,48 +414,58 @@ public sealed partial class SatisAnaliziQueries(
     /// </summary>
     private const string SezonRafAcigiTutar = "(" + SezonRafEksikAdet + " * t.SatisFiyat)";
 
-    private const string AsiriStokKat = "3";
+    /// <summary>
+    /// AŞIRI STOK EŞİĞİ — <b>2×</b> sezon satışı. TEK EŞİK; kategori bazlı eşik 12.09.2026'da
+    /// KALDIRILDI ve gerekçesi aşağıda ölçümle duruyor.
+    ///
+    /// ═══ NEDEN DEĞİŞTİ: ORTALAMA YANILTMIŞ (B-172d) ═══════════════════════════
+    /// 10.09'daki türetme bant başına <b>ORTALAMA</b> yıllık devir kullanıyordu. Devir
+    /// dağılımı SAĞA ÇARPIK: hızlı dönen azınlık ortalamayı yukarı çekiyor ve eşik olduğundan
+    /// YÜKSEK çıkıyor. Aynı bantlarda MEDYAN ölçüldü (12.09.2026):
+    ///
+    ///   Panel geneli (Kırtasiye+Hazırlık hariç, n=2.114):
+    ///     bant      &lt;2×   2-3×  3-4×  4-5×  5-8×  8×+
+    ///     ORTALAMA  5,82  1,11  1,06  0,74  0,47  0,32   → "eşik 4×" derdi
+    ///     MEDYAN    1,00  <b>0,65</b>  0,48  0,50  0,29  0,16   → eşik <b>2×</b>
+    ///
+    ///   Hazırlık Kitapları (bugünkü eşiği 8×):
+    ///     ORTALAMA 11,68 · 2,14 · 1,93 · 1,20 · 0,28    → 8×
+    ///     MEDYAN    3,67 · <b>0,86</b> · 0,83 · 0,35 · 0,38 · 0,07 → <b>2×</b>
+    ///   ⇒ ortalama bu kategoride eşiği <b>DÖRT KAT</b> şişirmişti.
+    ///
+    ///   Kırtasiye — ince bantla (n=7.480): 0,67 · 0,75 · 0,78 · 0,75 · 0,62 · 0,30
+    ///     <b>MONOTON DEĞİL</b> ve ilk banttan itibaren hepsi 1'in ALTINDA ⇒ bu eksende eşik
+    ///     TÜRETİLEMEZ. Kategori kat'tan bağımsız olarak yavaş (ölçülen kategori devri 1,25).
+    ///     Panel geneliyle aynı eşiğe (2×) bırakıldı — ayrıcalıklı eşik gerekçesi kalmadı.
+    ///     ⚠ Bu, danışmanın (c) itirazının kanıtı: eşiği kategorinin KENDİ geçmişinden
+    ///     türetmek başarısızlığı normalleştiriyor.
+    ///
+    /// ═══ İSTATİSTİKSEL SINAMA (olctum-mu-cikardim-mi § EŞİK TÜRETME) ══════════
+    /// Cochran-Armitage trend (devir&lt;1 oranı, 6 sıralı bant): <b>χ²(1)=213,9 · p=2,0e-48</b>.
+    /// Monotonluk: devir azalan ✓ · oran artan ✓ (%45,2 → %64,8 → %74,5 → %83,3 → %83,5 → %93,0).
+    /// Wilson %95 GA: <b>yalnız &lt;2× ile 2-3× AYRIK</b> ([0,428-0,478] ↔ [0,576-0,714]);
+    /// 2-3× sonrası komşu bantların GA'ları ÇAKIŞIK (n=106/72/85) ⇒ 3× ile 4× arasında ayrım
+    /// DESTEKLENMİYOR. İstatistiğin desteklediği TEK kesim 2× ve medyan ölçütü de onu veriyor.
+    ///
+    /// ⚠ KESİMİN BEDELİ (Altman &amp; Royston 2006): veriden seçilen kesim gruplar arası farkı
+    /// ABARTIR. Bu sayı bir ETKİ ÖLÇÜSÜ olarak sunulmaz, yalnız kohort seçiminde kullanılır.
+    /// ⚠ TERS NEDENSELLİK duruyor: alıcı çok satmasını beklediğine çok stok koyar.
+    ///
+    /// ETKİ (kesim 11.09.2026, ölçüldü): 30.361 → <b>40.017 çeşit</b> · fazla maliyet
+    /// 72,5M → <b>83,3M ₺</b>. Ceza %15 ARTIYOR; karşı-metrik dengesi (B-172a) bu yüzden
+    /// önce kuruldu — hafifletici olmadan bu sıkılaştırma alıcıyı "az al"a iterdi.
+    ///
+    /// Arşiv: <c>sorgular/2026-09-12-esik-medyan-ile-yeniden-turetildi.sql</c>
+    /// </summary>
+    private const string AsiriStokKat = "2";
 
     /// <summary>
-    /// KATEGORİ BAZLI AŞIRI STOK KATSAYISI — ölçümle türetildi 10.09.2026.
-    ///
-    /// Panel geneli 3× eşiği bir sorun taşıyordu: <b>Kırtasiye devir 1,25</b> ile
-    /// <b>Dergi 5,95</b> aynı eşiği paylaşıyordu. Aynı yöntem kategori bazında koşuldu
-    /// (01.08.2025 kapsama katı → sonraki 12 ayın yıllık devri; devrin 1,0 ALTINA düştüğü
-    /// kat = o kategorinin eşiği). Bant başına en az 30 çeşit şartı kondu.
-    ///
-    /// ÖLÇÜM (yıllık devir, bant sırasıyla &lt;2× · 2-3× · 3-5× · 5-8× · 8×+):
-    ///   Kırtasiye          4,78 · <b>0,93</b> · 0,64 · 0,49 · 0,31   MONOTON ⇒ eşik <b>2×</b>
-    ///   Hazırlık Kitapları 11,68 · 2,14 · 1,93 · <b>1,20</b> · 0,28  MONOTON ⇒ eşik <b>8×</b>
-    ///   Çocuk Kitabı       5,57 · 1,36 · 1,06 · (n&lt;30) · 0,30      bant EKSİK ⇒ değişmedi
-    ///   Oyuncak            3,21 · 0,94 · <b>1,13</b> · 0,61 · 0,42   MONOTON DEĞİL ⇒ değişmedi
-    ///   Hediyelik          4,81 · (n&lt;30) · 0,42 · (n&lt;30) · 0,38  bant EKSİK ⇒ değişmedi
-    ///   Akademi · Dergi · Elektronik · Kitap: yalnız &lt;2× bandı n≥30 ⇒ TÜRETİLEMEDİ
-    ///
-    /// ⇒ Yalnız <b>iki kategori</b> değişti; kanıtı monoton ve bantları dolu olanlar.
-    /// Kalan sekizde panel geneli 3× duruyor — "ölçemediğimi değiştirmem" kuralı.
-    ///
-    /// ETKİ (kesim 09.09.2026, ölçüldü):
-    ///   Kırtasiye 9.897 → <b>11.679 çeşit</b> · 219,8M → <b>247,6M ₺</b> (eşik SIKILAŞTI,
-    ///     çünkü devri yavaş: 1,25)
-    ///   Hazırlık Kitapları 1.427 → <b>460 çeşit</b> · 11,9M → <b>4,9M ₺</b> (eşik GEVŞEDİ,
-    ///     çünkü devri hızlı: 3,16 — haksız "aşırı" damgası kalktı)
-    ///
-    /// ⚠ Bu bir LİSTE değil ÖLÇÜM SONUCU eşlemesi; kategori adları panel evreninin
-    /// (<c>Kategori3Evreni</c>) parçası ve zaten sabit. Yeni kategori eklenirse ELSE dalına
-    /// düşer (3×) — sessiz kalmaz, panel geneli eşiğini alır.
-    /// ⚠ <c>bkm.OneriSiparisKtg3Ondeger</c> politika tablosuna BAĞLANMADI — kullanıcı o
-    /// tabloyu iptal etti (10.09.2026). Eşik ölçümden gelir, politika tablosundan değil.
-    /// ⚠ Aynı confound geçerli: ters nedensellik (alıcı çok satmasını beklediğine çok stok
-    /// koyar) ve veriden seçilen kesimin bedeli (Altman &amp; Royston) — beyan edildi.
-    ///
-    /// Türetme SQL'i: <c>sorgular/2026-09-10-kategori-bazli-asiri-stok-esigi.sql</c>
+    /// Eşik ifadesi. ⚠ Kategori CASE'i KALDIRILDI (12.09.2026): üç grubun üçü de medyanla
+    /// 2× veriyor ya da türetilemiyor; kategori ayrımını sürdürmek ölçümün söylemediği bir
+    /// ayrımı kodda yaşatmak olurdu. Yeniden kategori bazına çıkılacaksa gerekçe ölçümden
+    /// gelir ve buraya YAZILIR.
     /// </summary>
-    private const string AsiriStokKatSql =
-        "(CASE t.Kategori3 " +
-        "WHEN N'Kırtasiye' THEN 2 " +
-        "WHEN N'Hazırlık Kitapları' THEN 8 " +
-        "ELSE " + AsiriStokKat + " END)";
+    private const string AsiriStokKatSql = AsiriStokKat;
 
     /// <summary>
     /// Aşırı stok ölçütü — <b>TEK KAYNAK</b>. KPI, kategori kırılımı, ODAK temin tablosu ve

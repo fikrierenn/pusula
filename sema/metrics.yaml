@@ -2608,12 +2608,48 @@ metrics:
     evidence: "2026-09-10 — sorgular/2026-09-10-iade-hakki-vekili.sql blok 1 + 2"
     last_verified: "2026-09-10"
 
-  asiri_stok_esigi_kategori_bazli:
+  asiri_stok_esigi_medyan:
     type: rule
     unit: none
     basis: none
     additivity: none
-    title: "AŞIRI STOK EŞİĞİ KATEGORİ BAZLI — panel geneli 3×, iki kategori ayrıştı"
+    title: "AŞIRI STOK EŞİĞİ — TEK EŞİK 2× (medyan devirle türetildi)"
+    rule: >-
+      Aşırı stok = `ToplamStok > 2 * SezonToplam` (defter güvenilir ön-şartıyla birlikte).
+      Kod: `SatisAnaliziQueries.AsiriStokKat` / `AsiriStokKatSql` — TEK KAYNAK; KPI, kırılım,
+      liste filtresi, ODAK tablosu ve sipariş TAVANI hepsi buradan okur. Kategori bazlı eşik
+      (3×/2×/8×) 12.09.2026'da KALDIRILDI.
+    measurement: >-
+      2026-09-12 · 01.08.2025 kapsama katı bantlarına göre SONRAKİ 12 AYIN yıllık devri,
+      bant başına MEDYAN (ortalama DEĞİL — dağılım sağa çarpık).
+      Panel geneli (Kırtasiye+Hazırlık hariç, n=2.114): 1,00 · 0,65 · 0,48 · 0,50 · 0,29 · 0,16
+      → medyan 1,0 altına 2-3× bandında düşüyor ⇒ eşik 2×.
+      Hazırlık Kitapları: 3,67 · 0,86 · 0,83 · 0,35 · 0,38 · 0,07 ⇒ 2× (eski eşik 8×, ortalama
+      hatası DÖRT KAT). Kırtasiye ince bant: 0,67 · 0,75 · 0,78 · 0,75 · 0,62 · 0,30 —
+      MONOTON DEĞİL ve hepsi <1 ⇒ türetilemez, panel geneliyle aynı eşiğe bırakıldı.
+      İstatistik: Cochran-Armitage χ²(1)=213,86 p=2,0e-48 · monotonluk ✓ · Wilson %95 GA
+      yalnız <2× ile 2-3× AYRIK ([0,428-0,478] ↔ [0,576-0,714]), sonraki komşular ÇAKIŞIK
+      ⇒ istatistiğin desteklediği TEK kesim 2×.
+      ETKİ (kesim 11.09.2026): 30.361 → 40.017 çeşit · eşik üstü fazla maliyet 72,5M → 83,3M ₺.
+    evidence: "sorgular/2026-09-12-esik-medyan-ile-yeniden-turetildi.sql"
+    last_verified: "2026-09-12"
+    note: >-
+      ⚠ KESİMİN BEDELİ (Altman & Royston 2006): veriden seçilen kesim gruplar arası farkı
+      ABARTIR; bu sayı ETKİ ÖLÇÜSÜ olarak sunulmaz, yalnız kohort seçiminde kullanılır.
+      ⚠ TERS NEDENSELLİK duruyor: alıcı çok satmasını beklediğine çok stok koyar.
+      ⚠ Eşik hâlâ İŞ MODELİNDEN değil VERİDEN geliyor (danışman itirazı B-172c açık):
+      LeadTime · sezon ağırlığı · iade hakkı üçü de veride var ve eşiğe girmiyor.
+
+  asiri_stok_esigi_kategori_bazli:
+    superseded_on: "2026-09-12"
+    superseded_by: "metrics:asiri_stok_esigi_medyan"
+    superseded_why: "Bant başına ORTALAMA yıllık devir kullanıyordu. Devir dağılımı sağa çarpık: hızlı dönen azınlık ortalamayı yukarı çekiyor ve eşik olduğundan YÜKSEK çıkıyor. MEDYAN ile yeniden ölçüldü (12.09.2026): panel geneli 3x->2x, Hazırlık Kitapları 8x->2x (DÖRT KAT hata), Kırtasiye monoton olmadığı için türetilemiyor. Wilson %95 GA da yalnız 2x kesimini destekliyor (komşu bantlar çakışık). Arşiv: sorgular/2026-09-12-esik-medyan-ile-yeniden-turetildi.sql"
+    status: superseded
+    type: rule
+    unit: none
+    basis: none
+    additivity: none
+    title: "SUPERSEDED 12.09.2026 — kategori bazlı eşik (3x/2x/8x) ORTALAMA ile türetilmişti"
     rule: >-
       Eşik kategoriye göre: `CASE Kategori3 WHEN 'Kırtasiye' THEN 2 WHEN 'Hazırlık Kitapları'
       THEN 8 ELSE 3 END` (`SatisAnaliziQueries.AsiriStokKatSql` — TEK KAYNAK, KPI/kırılım/
