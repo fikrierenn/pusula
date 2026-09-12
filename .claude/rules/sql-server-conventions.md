@@ -162,6 +162,31 @@ Tam-ay koşumu: POS 128.097.715,43 ↔ defter 128.097.709,99 → **fark +5,44 �
 
 Kanıt: `sorgular/2026-09-12-posozeturun-irshrk-kimlik.sql` · sema: `entities:dbo.posOzetUrun`.
 
+## KASA → ERP AKTARIMI SAATTE BİR (kullanıcı bildirimi 12.09.2026)
+
+**EncoreMerkez (kasa) satışı DerinSIS'e saatte bir aktarılır.** Sonucu: **gün içinde ERP
+EKSİKTİR**, kasa doğrudur.
+
+Ölçüldü (12.09.2026, gün sürerken) — Encore ile ERP kanonik formülü (`eTip 100−101+4−5`)
+karşılaştırması:
+
+| Gün | FSM | Özlüce | İst.Yolu |
+|---|--:|--:|--:|
+| 06.09.2025 (kapalı) | **%0,00** | −%0,23 | −%0,03 |
+| 07.09.2025 (kapalı) | **%0,00** | **%0,00** | **%0,00** |
+| 12.09.2026 (AÇIK) | +%3,07 | +%2,50 | **+%4,18** |
+
+Yani **kapalı günlerde iki kaynak kuruşu kuruşuna tutuyor**; açık günde fark yalnız
+aktarılmamış son ~1 saattir. Sapma bir veri hatası DEĞİLDİR.
+
+**Kural:**
+- Gün içi / anlık ciro sorusu → **EncoreMerkez** (kasa). ERP'ye bakan "bugün geride" der.
+- Kapalı gün / geçmiş dönem → ikisi de kullanılabilir, mutabakat beklenir.
+- Bir raporda bugünü ERP'den, dünü Encore'dan almak **tabanları karıştırır** — tek kaynak seç.
+
+⚠ Bu satır yazılmadan önce aynı farka *"gün kapanınca yazılıyor"* diye ÇIKARIM yapılmıştı;
+yanlıştı. Aktarım periyodik (saatlik), gün sonuna bağlı değil.
+
 ## MEKAN = `dbo.frm` İÇİNDEKİ BİR TARAF (2026-09-12 ölçüldü)
 
 **`mekanID` = `dbo.frm.frmID`.** Mekan ayrı bir tablo değil: ERP'nin tek taraf (party)

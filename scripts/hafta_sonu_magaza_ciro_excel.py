@@ -111,9 +111,21 @@ WITH g AS (
     SELECT st.Name AS Magaza, s.DocumentsTypeId AS Tip,
            (s.GrossTotal - s.DiscountTotal)              AS Dahil,
            (s.GrossTotal - s.DiscountTotal - s.VatTotal) AS Haric,
-           s.Date AS Zaman
+           s.Date AS Zaman,
+           -- İADE KAYNAĞINA YAZILIR: kanal, bağlı belgenin tipinden okunur.
+           -- ⚠ Sınav iadesi ancak KAYNAK BELGE AYNI MAĞAZADAYSA Sınav'dan düşülür.
+           -- GMY teyidi 12.09.2026: "Özlüce'de kesilirse Özlüce normal ciro olmalı".
+           -- Ölçüldü: Özlüce'de kaynağı Sınav olan iade var (06.09 −2.651 · 12.09 −1.247);
+           -- mağazasına yazılmazsa Özlüce cirosu olduğundan yüksek, Sınav olduğundan düşük görünür.
+           CASE WHEN s.DocumentsTypeId = 8  THEN 'S'
+                WHEN s.DocumentsTypeId <> 3 THEN 'P'
+                WHEN o.DocumentsTypeId = 8 AND o.StoresId = s.StoresId THEN 'S'
+                WHEN o.Id IS NULL           THEN 'X'   -- kaynağı çözülemedi
+                ELSE 'P' END AS Kanal
     FROM dbo.Sales s WITH (NOLOCK)
     JOIN dbo.Stores st WITH (NOLOCK) ON st.Id = s.StoresId
+    LEFT JOIN dbo.Sales o WITH (NOLOCK)
+           ON o.Id = s.LinkedDocumentId AND s.LinkedDocumentId > 0
     WHERE s.Date >= ? AND s.Date < DATEADD(DAY, 1, ?)
       AND s.DocumentsTypeId IN (1,2,3,6,7,8)
       AND DATEPART(HOUR, s.Date) * 60 + DATEPART(MINUTE, s.Date) < ?
@@ -123,25 +135,34 @@ SELECT Magaza,
        SUM(CASE WHEN Tip = 8 THEN 1 ELSE 0 END) AS SinavBelge,
        SUM(CASE WHEN Tip = 3 THEN 1 ELSE 0 END) AS IadeBelge,
        COUNT(*)                                  AS ToplamBelge,
-       -- ⚠ İADE DÜŞÜLMEZ (kullanıcı direktifi 12.09.2026: "iade hiç düşme").
-       -- Tip 3 ciro toplamlarının HİÇBİRİNE girmez; tutarı yalnız Iade_* sütununda BİLGİ olarak
-       -- durur. Bu, projenin varsayılanının (iade işaretli düşülür) DIŞIDIR — başka raporla
-       -- yan yana konursa tutmaz.
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip IN (3,8) THEN 0 ELSE Dahil END)) AS SinavHaric_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN Dahil ELSE 0 END))      AS Sinav_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN Dahil ELSE 0 END))      AS Iade_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN 0 ELSE Dahil END))      AS Toplam_Dahil,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip IN (3,8) THEN 0 ELSE Haric END)) AS SinavHaric_Haric,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 8 THEN Haric ELSE 0 END))      AS Sinav_Haric,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN 0 ELSE Haric END))      AS Toplam_Haric,
-       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 1 THEN Dahil ELSE 0 END)
+       -- ⚠ İADE KAYNAĞINA YAZILIR (GMY direktifi: "iadeyi düşsen iyi olur ama İLGİLİ
+       -- YERDEN düşmen lazım"). Sınav iadesi Sınav'dan, perakende iadesi perakendeden düşülür.
+       -- Kaynağı çözülemeyen iade HİÇBİR kanaldan düşülmez, Iade_Belirsiz'de ayrı durur.
+       -- ÖLÇÜLDÜ (İst.Yolu, 3 gün): iadenin %90'ı SINAV iadesi (967.472 TL); tutarın %96,3'ü
+       -- çözülüyor, çözülemeyen yalnız %3,7 (39.267 TL).
+       CONVERT(decimal(18,2), SUM(CASE WHEN Kanal <> 'P' THEN 0
+            WHEN Tip = 3 THEN -Dahil ELSE Dahil END))                    AS SinavHaric_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Kanal <> 'S' THEN 0
+            WHEN Tip = 3 THEN -Dahil ELSE Dahil END))                    AS Sinav_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 AND Kanal = 'P' THEN Dahil ELSE 0 END)) AS IadeP_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 AND Kanal = 'S' THEN Dahil ELSE 0 END)) AS IadeS_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 AND Kanal = 'X' THEN Dahil ELSE 0 END)) AS IadeX_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN -Dahil ELSE Dahil END)) AS Toplam_Dahil,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Kanal <> 'P' THEN 0
+            WHEN Tip = 3 THEN -Haric ELSE Haric END))                    AS SinavHaric_Haric,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Kanal <> 'S' THEN 0
+            WHEN Tip = 3 THEN -Haric ELSE Haric END))                    AS Sinav_Haric,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip = 3 THEN -Haric ELSE Haric END)) AS Toplam_Haric,
+       CONVERT(decimal(18,2), SUM(CASE WHEN Tip IN (1,3) AND Kanal = 'P'
+            THEN CASE WHEN Tip = 3 THEN -Dahil ELSE Dahil END ELSE 0 END)
             / NULLIF(SUM(CASE WHEN Tip = 1 THEN 1 ELSE 0 END), 0)) AS Sepet_Dahil,
        CONVERT(varchar(5), MAX(Zaman), 108) AS SonHareket
 FROM g GROUP BY Magaza ORDER BY Magaza
 """
 
 BASLIK = ["Gün", "Gün adı", "Mağaza", "Fiş", "Sınav belge", "İade belge", "Toplam belge",
-          "Sınav hariç (KDV dahil)", "Sınav (KDV dahil)", "İade (KDV dahil)",
+          "Sınav hariç (KDV dahil)", "Sınav (KDV dahil)",
+          "İade — perakende", "İade — Sınav", "İade — kaynağı yok",
           "TOPLAM (KDV dahil)", "Sınav hariç (KDV hariç)", "Sınav (KDV hariç)",
           "TOPLAM (KDV hariç)", "Sepet ort. (KDV dahil)", "Son hareket"]
 GUN_ADI = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
@@ -164,7 +185,7 @@ def sayfa(wb: Workbook, ad: str, satirlar: list[list], not_metni: str) -> None:
     for i, r in enumerate(satirlar, start=3):
         for j, v in enumerate(r, start=1):
             c = ws.cell(i, j, v)
-            if j >= 8 and j <= 15 and isinstance(v, (int, float)):
+            if j >= 8 and j <= 17 and isinstance(v, (int, float)):
                 c.number_format = "#,##0"
             if str(r[2]).startswith("»"):          # toplam satırı
                 c.font = Font(bold=True)
@@ -189,10 +210,10 @@ def topla(satirlar: list[list], etiket: str) -> list:
     toplam fişe bölmekle ÖZDEŞTİR.
     """
     t: list = [satirlar[0][0], satirlar[0][1], etiket]
-    for j in range(3, 14):                       # 14 = Sepet_Dahil → SUM'a GİRMEZ
+    for j in range(3, 16):                       # 16 = Sepet_Dahil → SUM'a GİRMEZ
         t.append(sum(r[j] or 0 for r in satirlar))
     fis = sum(r[3] or 0 for r in satirlar)
-    agirlikli = sum((r[14] or 0) * (r[3] or 0) for r in satirlar)
+    agirlikli = sum((r[16] or 0) * (r[3] or 0) for r in satirlar)
     t.append(round(agirlikli / fis, 2) if fis else None)
     t.append("")
     return t
@@ -227,13 +248,20 @@ def sade_sayfa(wb: Workbook, tam: list[list], gunler: list[dt.date], kesim: str 
     ]
 
     def deger(gun: dt.date, magaza: str, hangi: str, blok: str) -> float:
+        """Her satır MAĞAZA süzgeçlidir — Sınav dahil.
+
+        GMY kararı 12.09.2026: Sınav iadesi başka mağazada kesildiyse O MAĞAZANIN normal
+        cirosudur. Bu yüzden kanal ataması SQL'de mağazaya bağlandı; burada ek bir şey yok.
+        """
         idx = {("haric", "ciro"): 7, ("sinav", "ciro"): 8,
                ("haric", "musteri"): 3, ("sinav", "musteri"): 4}[(hangi, blok)]
         top = 0.0
         for r in tam:
             if str(r[2]).startswith("»"):
                 continue
-            if r[0] == gun.strftime("%d.%m.%Y") and magaza in str(r[2]):
+            if r[0] != gun.strftime("%d.%m.%Y"):
+                continue
+            if magaza in str(r[2]):
                 top += float(r[idx] or 0)
         return top
 
@@ -269,9 +297,13 @@ def sade_sayfa(wb: Workbook, tam: list[list], gunler: list[dt.date], kesim: str 
     ws.cell(r, 1, "Müşteri sayısı = fiş sayısı. Tekil müşteri değil — kartsız satış anonimdir.")
     ws.cell(r, 1).font = Font(italic=True, size=9, color="555555")
     r += 1
-    ws.cell(r, 1, f"Son gün ({max(gunler):%d.%m.%Y}) henüz kapanmadı; geçen yılın aynı saatine "
-                  f"göre kıyas ayrı sayfadadır (--kesim).").font = Font(italic=True, size=9,
-                                                                        color="C00000")
+    ws.cell(r, 1, "İade kaynağına yazıldı: Sınav iadesi Sınav'dan, perakende iadesi "
+                  "perakendeden düşüldü. İade başka mağazada kesildiyse o mağazanın cirosuna "
+                  "yazılır.").font = Font(italic=True, size=9, color="555555")
+    r += 1
+    ws.cell(r, 1, f"Son gün ({max(gunler):%d.%m.%Y}) henüz kapanmadı. Kasa→ERP aktarımı saatte "
+                  f"bir; bu tablo KASA tarafındandır, ERP o yüzden gün içinde geride görünür."
+            ).font = Font(italic=True, size=9, color="C00000")
     ws.column_dimensions["A"].width = 24
     for j in range(2, len(kolonlar) + 2):
         ws.column_dimensions[get_column_letter(j)].width = 15
