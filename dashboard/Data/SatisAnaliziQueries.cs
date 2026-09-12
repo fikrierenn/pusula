@@ -172,7 +172,15 @@ public sealed partial class SatisAnaliziQueries(
     /// </summary>
     private const string OluStokSart =
         "(t.SatisToplam <= 0 AND t.ToplamStok > 0 " +
-        "AND (t.PosAdet IS NULL OR t.PosAdet <= 0) " +
+        // B-172(e) GAMING KAPISI (12.09.2026): eşik 0 → 1. TEK POS satışı ürünü ölü stok
+        // kohortundan çıkarıyordu (personel/iç kart satışı yeter). ÖLÇÜLDÜ: açık fiilen
+        // KÜÇÜK — tek satışla çıkan 9 çeşit / 29.116 ₺ etiket / 14.915 ₺ maliyet, kohort
+        // 115.923 çeşit / 144,2M ₺ (çeşidin %0,008'i). Kapı yine de kapatıldı: maliyeti
+        // sıfır, tersi bir gün ısırır.
+        // ⚠ "FARKLI GÜNLERDE" ŞARTI UYGULANMADI — tabanda POS gün sayısı yok, eklemek
+        // taban şeması değişikliği demek ve 9 çeşitlik evren için orantısız. Bu bir
+        // ÖLÇÜLMÜŞ erteleme (TODO B-172e), tahmin değil.
+        "AND (t.PosAdet IS NULL OR t.PosAdet <= 1) " +
         "AND t.IlkGiris IS NOT NULL " +
         "AND " + YeniDegilSart + " AND " + DefterGuvenilirSart + ")";
 
@@ -592,6 +600,16 @@ public sealed partial class SatisAnaliziQueries(
                    SUM(CASE WHEN {AsiriStokSart} THEN 1 ELSE 0 END) AS AsiriCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart}
                         THEN t.Tutar ELSE 0 END))                                          AS AsiriTutar,
+                   -- B-172(b) MALİYET TABANI (12.09.2026). Kart etiket fiyatıyla 325,3M ₺
+                   -- gösteriyordu; maliyetle 111,6M ₺ (2,91 kat şişik ceza). Dahası eşiğe
+                   -- KADARKİ stok meşrudur — ceza yalnız FAZLA kısma yazılır: 73,2M ₺.
+                   -- Maliyet kapsamı ölçüldü: 28.974/30.403 çeşit (%95,3) · etiketin %97,5'i.
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok) * t.BirimMaliyet
+                        ELSE 0 END))                                              AS AsiriMaliyet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.BirimMaliyet > 0
+                        THEN CONVERT(decimal(18,4), t.ToplamStok - {AsiriStokKatSql} * t.SezonToplam)
+                             * t.BirimMaliyet ELSE 0 END))                        AS AsiriFazlaMaliyet,
                    SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0 THEN 1 ELSE 0 END) AS AsiriOdakCesit,
                    CONVERT(decimal(18,2), SUM(CASE WHEN {AsiriStokSart} AND t.OdakStok > 0
                         THEN t.Tutar ELSE 0 END))                                          AS AsiriOdakTutar,
@@ -723,6 +741,8 @@ public sealed partial class SatisAnaliziQueries(
             StoksuzSezonOdakVarKayip: satirlar.Sum(x => x.StoksuzOdakKayip),
             AsiriStokCesit: satirlar.Sum(x => x.AsiriCesit),
             AsiriStokTutar: satirlar.Sum(x => x.AsiriTutar),
+            AsiriStokMaliyet: satirlar.Sum(x => x.AsiriMaliyet),
+            AsiriStokFazlaMaliyet: satirlar.Sum(x => x.AsiriFazlaMaliyet),
             AsiriStokOdakVarCesit: satirlar.Sum(x => x.AsiriOdakCesit),
             AsiriStokOdakVarTutar: satirlar.Sum(x => x.AsiriOdakTutar),
             HareketsizCesit: satirlar.Sum(x => x.HareketsizCesit),
@@ -916,7 +936,10 @@ public sealed partial class SatisAnaliziQueries(
     private sealed record OzetSatirRow(
         string Ad, int Cesit, long Stok, long MagazaStok, long MerkezStok, decimal Tutar, long Satis365, double GunlukHiz, long Sezon,
         int StoksuzCesit, decimal StoksuzKayip, int StoksuzOdakCesit, decimal StoksuzOdakKayip,
-        int AsiriCesit, decimal AsiriTutar, int AsiriOdakCesit, decimal AsiriOdakTutar,
+        int AsiriCesit, decimal AsiriTutar,
+        // ⚠ SQL'de AsiriTutar ile AsiriOdakCesit ARASINA girer (Dapper pozisyonel).
+        decimal AsiriMaliyet, decimal AsiriFazlaMaliyet,
+        int AsiriOdakCesit, decimal AsiriOdakTutar,
         int HareketsizCesit, decimal HareketsizTutar,
         int RafsizCesit, decimal RafsizTutar,
         int RafBosCesit, decimal RafBosTutar, long RafBosSatisliCesit,

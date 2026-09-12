@@ -255,6 +255,14 @@ public sealed record SatisAnaliziKpi(
     decimal StoksuzSezonOdakVarKayip,
     int AsiriStokCesit,
     decimal AsiriStokTutar,
+    /// <summary>Aşırı stoğun TOPLAM stok maliyeti (B-172(b)). Etiket 325,3M ₺ iken 111,6M ₺.</summary>
+    decimal AsiriStokMaliyet,
+    /// <summary>
+    /// Eşik ÜSTÜ fazla kısmın maliyeti — ADİL CEZA ÖLÇÜSÜ (B-172(b), 12.09.2026).
+    /// Eşiğe kadarki stok meşrudur; alıcıya yazılacak olan yalnız fazlasıdır: 73,2M ₺.
+    /// ⚠ Maliyeti bilinmeyen çeşit 0 sayılır → rakam ALT SINIR (kapsam %95,3 çeşit / %97,5 etiket).
+    /// </summary>
+    decimal AsiriStokFazlaMaliyet,
     int AsiriStokOdakVarCesit,    // ODAK'ta da var → grup içinde çift stok
     decimal AsiriStokOdakVarTutar,
     int HareketsizCesit,

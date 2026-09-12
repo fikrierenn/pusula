@@ -294,8 +294,17 @@ else
                                kayıp potansiyeli (olmayan satış) ve kâr. Toplamı anlamsız;
                                ölçüldü: 6.170 çeşit ≥2 kartta, K8∩K3 1.842 çeşit / 6,2M ₺ iki
                                kartta birden. Taban artık her kartta yazılı. *@
-                            <span class="block text-[10px] mt-0.5 @(kart.Kahraman ? "text-white/55" : "text-base-content/35")">
+                                            <span class="block text-[10px] mt-0.5 @(kart.Kahraman ? "text-white/55" : "text-base-content/35")">
                                 @kart.Taban
+                                @if (kart.Sahip is not null)
+                                {
+                                    @* B-172(g) SAHİP ROZETİ — kohortu KİM kapatacak. Sağa yaslı,
+                                       tabanla aynı satırda: yer kazanır, okuma sırasını bozmaz. *@
+                                    <span class="float-right font-semibold uppercase tracking-wider
+                                                 @(kart.Kahraman ? "text-white/70" : "text-base-content/45")">
+                                        @kart.Sahip
+                                    </span>
+                                }
                             </span>
                             <span class="block text-[11px] leading-snug mt-0.5 @(kart.Kahraman ? "text-white/70" : "text-base-content/50")">
                                 @kart.Alt
@@ -670,6 +679,11 @@ else
         string Grup, string Baslik, string Deger, string Alt, string Vurgu, string Ikon,
         SatisDurumFiltre? Durum = null, bool? OdakVar = null, int? MinYas = null,
         string Taban = "stok değeri",
+        // B-172(g): KOHORTUN SAHİBİ. Danışman itirazı — "ölü stok → iade/imha" satınalma+finans,
+        // "raf bulunurluk → transfer" operasyon işidir; 8.736 çeşit el değiştirdi ve panelde
+        // kimin işi olduğu YAZILI DEĞİLDİ. Sahipsiz kohort toplantıda kimseye düşmez.
+        // null = eylem kartı değil (nötr olgu/ölçüm) — sahip uydurulmaz.
+        string? Sahip = null,
         string? CiftBaslik = null, string? CiftDeger = null,
         SatisDurumFiltre? CiftDurum = null, bool? CiftOdakVar = null,
         bool Kahraman = false);
@@ -724,7 +738,8 @@ else
             Taban: "stok değeri · POS'ta da satmayanlar",
             CiftBaslik: $"Hiç satılmamış · {k.HicSatilmamisCesit:N0} çeşit",
             CiftDeger: TlKisa(k.HicSatilmamisTutar),
-            CiftDurum: SatisDurumFiltre.Hareketsiz),
+            CiftDurum: SatisDurumFiltre.Hareketsiz,
+            Sahip: "satınalma + finans"),
 
         // ══ BULUNURLUK KAYBI ══════════════════════════════════════════════════════
         // 2 → 3 KART (kullanıcı 10.09: "satış kaybı iki tane olunca çok yayılmış durumda").
@@ -741,7 +756,8 @@ else
             Taban: "kayıp potansiyeli · eksik adet × etiket",
             CiftBaslik: "ODAK'ta var → hızlı temin",
             CiftDeger: TlKisa(k.SezonAcikOdakTutar),
-            CiftDurum: SatisDurumFiltre.SezonAcik, CiftOdakVar: true),
+            CiftDurum: SatisDurumFiltre.SezonAcik, CiftOdakVar: true,
+            Sahip: "satınalma"),
 
         new("BULUNURLUK KAYBI", "Stokta Yokluk · sezon", TlKisa(k.StoksuzSezonKayip),
             $"{k.StoksuzSezonCesit:N0} çeşit · geçen sezon sattı, stok tam sıfır",
@@ -749,7 +765,8 @@ else
             Taban: "kayıp potansiyeli · sezon adedi × etiket",
             CiftBaslik: "ODAK'ta var → hızlı temin",
             CiftDeger: TlKisa(k.StoksuzSezonOdakVarKayip),
-            CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true),
+            CiftDurum: SatisDurumFiltre.StoksuzSezon, CiftOdakVar: true,
+            Sahip: "satınalma"),
 
         new("BULUNURLUK KAYBI", "Raf Bulunurluk Kaybı", TlKisa(k.RafBosTutar),
             $"{k.RafBosCesit:N0} çeşit · üç raf da boş, yılda 5+ satıyor",
@@ -757,7 +774,8 @@ else
             Taban: "stok değeri · merkezde bekleyen",
             CiftBaslik: "Merkezde bekleyen → transfer",
             CiftDeger: $"{k.RafBosSatisliCesit:N0} adet",
-            CiftDurum: SatisDurumFiltre.RafBos),
+            CiftDurum: SatisDurumFiltre.RafBos,
+            Sahip: "operasyon"),
 
         // ══ İÇ KAYNAKLA ÇÖZÜLÜR ═══════════════════════════════════════════════════
         // Bu grubun tanımı: SATIN ALMA GEREKMEZ, mal zaten bizim. Aşırı Stok buraya ait —
@@ -781,15 +799,30 @@ else
             Taban: "kayıp potansiyeli · eksik adet × etiket",
             CiftBaslik: "Merkezde bekleyen → transfer",
             CiftDeger: $"{k.SezonRafMerkezAdet:N0} adet",
-            CiftDurum: SatisDurumFiltre.SezonRafAcigi),
+            CiftDurum: SatisDurumFiltre.SezonRafAcigi,
+            Sahip: "operasyon"),
 
-        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokTutar),
-            $"{k.AsiriStokCesit:N0} çeşit · stok > kategori eşiği (2-8× sezon)",
+        // ══ B-172(b) MALİYET TABANI (12.09.2026, satinalma-danisman itirazı) ══════
+        // Kart ETİKET fiyatıyla 325,3M ₺ gösteriyordu; aynı stok maliyetle 111,6M ₺ —
+        // alıcıya 2,91 KAT şişik ceza. Danışman "en kolay ve en büyük düzeltme" dedi.
+        //
+        // ⚠ Düzeltme danışmanın istediğinden BİR ADIM İLERİ: kart artık toplam maliyeti de
+        // değil, **eşik ÜSTÜ FAZLA kısmın maliyetini** gösteriyor (73,2M ₺). Gerekçe:
+        // eşiğe kadarki stok MEŞRUDUR (eşik zaten "bu kadarı normal" demek); alıcıya
+        // yazılabilecek tek tutar fazlasıdır. Üç sayı da ölçüldü, üçü de kartta:
+        //   etiket 325,3M · toplam stok maliyeti 111,6M · FAZLA kısım maliyeti 73,2M.
+        //
+        // ⚠ ALT SINIR: maliyeti bilinmeyen çeşit 0 sayılır. Kapsam ölçüldü —
+        // 28.974/30.403 çeşit (%95,3), etiketin %97,5'i. Kalan %4,7 rakama GİRMİYOR.
+        new("İÇ KAYNAKLA ÇÖZÜLÜR", "Aşırı Stok", TlKisa(k.AsiriStokFazlaMaliyet),
+            $"{k.AsiriStokCesit:N0} çeşit · eşik üstü fazla (2-8× sezon) · "
+            + $"tüm stok maliyetle {TlKisa(k.AsiriStokMaliyet)} · etiketle {TlKisa(k.AsiriStokTutar)}",
             "warning", "katman", SatisDurumFiltre.AsiriStok,
-            Taban: "stok değeri · fazlası dahil",
+            Taban: "maliyet · eşik ÜSTÜ fazla",
             CiftBaslik: "ODAK'ta da var → grup içinde çift stok",
             CiftDeger: TlKisa(k.AsiriStokOdakVarTutar),
-            CiftDurum: SatisDurumFiltre.AsiriStok, CiftOdakVar: true),
+            CiftDurum: SatisDurumFiltre.AsiriStok, CiftOdakVar: true,
+            Sahip: "satınalma"),
 
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Mağaza Arası Dengesizlik", TlKisa(k.DengesizTutar),
             $"{k.DengesizCesit:N0} çeşit · bir rafta yok, diğerinde 5+ adet",
@@ -797,7 +830,8 @@ else
             Taban: "stok değeri · yanlış mağazadaki",
             CiftBaslik: "Eylem: sipariş DEĞİL, transfer",
             CiftDeger: "listele",
-            CiftDurum: SatisDurumFiltre.Dengesiz),
+            CiftDurum: SatisDurumFiltre.Dengesiz,
+            Sahip: "operasyon"),
 
         // Karşı-metrik ADET oldu: "raf bulunurluk kaybı" artık kendi kartında (BULUNURLUK KAYBI).
         // İkinci kez tutar göstermek bilgi eklemiyordu; adet "ne kadar mal bekliyor" diyor.
@@ -818,7 +852,8 @@ else
             Taban: "maliyet · bağlanacak para",
             CiftBaslik: "ACİL · hiç stok yok",
             CiftDeger: $"{k.SiparisAcilCesit:N0} çeşit",
-            CiftDurum: SatisDurumFiltre.SiparisAcil),
+            CiftDurum: SatisDurumFiltre.SiparisAcil,
+            Sahip: "satınalma"),
 
         new("İÇ KAYNAKLA ÇÖZÜLÜR", "Rafa Çıkmamış Envanter", TlKisa(k.RafsizTutar),
             $"{k.RafsizCesit:N0} çeşit · mağaza rafına hiç girmemiş",
@@ -826,7 +861,8 @@ else
             Taban: "stok değeri · merkezde bekleyen",
             CiftBaslik: "Merkezde bekleyen",
             CiftDeger: $"{k.RafsizAdet:N0} adet",
-            CiftDurum: SatisDurumFiltre.Rafsiz),
+            CiftDurum: SatisDurumFiltre.Rafsiz,
+            Sahip: "operasyon"),
 
     ];
 

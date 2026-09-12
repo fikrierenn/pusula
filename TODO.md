@@ -230,7 +230,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   HAFİFLETİCİ. Üstüne aşırı stok TAM ölçülüyor (etiket değeri), stokta yokluk ALT SINIR
   (sansürlü talep) → rasyonel alıcı **az alır**, görünmez kayıp büyür. Düzeltme: Aşırı Stok'a
   iade-hakkı HAFİFLETİCİSİ (vekil zaten ölçüldü), Stokta Yokluk'a kanıtlı-talep AĞIRLAŞTIRICISI.
-  (b) **AŞIRI STOK KARTI ETİKET FİYATIYLA** — 329,0M ₺ gösteriyor, maliyetle 107,3M ₺;
+  (b) ✅ **KAPANDI 12.09** — kart artık **eşik ÜSTÜ fazla kısmın MALİYETİ**ni gösteriyor
+  (72,5M ₺); alt satırda tüm stok maliyeti 110,5M ve etiket 321,5M da yazılı. Kapsam beyanı:
+  maliyeti bilinen 28.974/30.403 çeşit (%95,3) → rakam ALT SINIR. Danışmanın istediği
+  "maliyete geç"ten bir adım ileri: eşiğe kadarki stok meşru, ceza yalnız fazlaya yazılır.
+  ~~(b) AŞIRI STOK KARTI ETİKET FİYATIYLA~~ — 329,0M ₺ gösteriyor, maliyetle 107,3M ₺;
   alıcıya ~3 kat şişik ceza. Envanter Değeri kartında maliyetli değer VAR, Aşırı Stok'ta YOK.
   En kolay ve en büyük düzeltme bu.
   (c) **EŞİK KATEGORİNİN KENDİ GEÇMİŞİNDEN türetiliyor** → başarısızlığı normalleştiriyor:
@@ -240,11 +244,19 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   (d) Panel geneli 3× artık DESTEKLENMİYOR: karma örneklemden türetilmişti ve onu Kırtasiye
   domine ediyordu (bantlarında 7.480 çeşit). Kırtasiye ayrıldı → kalan sekiz kategori başka
   bir kategorinin eşiğiyle yargılanıyor. 3× Kırtasiye HARİÇ yeniden ölçülmeli.
-  (e) **GAMING:** `PosAdet > 0` adet eşiği taşımıyor → TEK satış ürünü ölü stok kohortundan
+  (e) ✅ **KAPANDI 12.09** — eşik 0 → 1. ÖNCE ÖLÇÜLDÜ: tek POS satışıyla kohorttan çıkan
+  **9 çeşit / 29.116 ₺ etiket / 14.915 ₺ maliyet** (kohort 115.923 çeşit / 144,2M ₺ →
+  çeşidin %0,008'i). Açık gerçek ama fiilen küçük; kapı yine de kapatıldı (maliyeti sıfır).
+  ⚠ "FARKLI GÜNLERDE" şartı UYGULANMADI — tabanda POS gün sayısı yok, 9 çeşit için taban
+  şeması değiştirmek orantısız. Ölçülmüş erteleme.
+  ~~(e) GAMING: `PosAdet > 0` adet eşiği taşımıyor~~ → TEK satış ürünü ölü stok kohortundan
   çıkarır (personel/iç kart satışı yeter). Düzeltme: `PosAdet >= 2` ve farklı günlerde.
   (f) **GAMING:** kategori ürün kartında değiştirilebilir; 2× kategoriden 8×'e taşınan ürün
   kohorttan çıkar. Kategori değişimi izlenmiyor. (ŞÜPHELİ — fiilen olup olmadığı ölçülmedi.)
-  (g) Sorumluluk sahibi etiketi yok: "ölü stok → iade/imha" satınalma+finans, "raf bulunurluk
+  (g) ✅ **KAPANDI 12.09** — `KpiKart.Sahip` alanı + taban satırının sağında rozet.
+  Dokuz eylem kartına atandı (satınalma 4 · operasyon 4 · satınalma+finans 1); ölçüm/nötr
+  kartlarda sahip YOK (uydurulmaz).
+  ~~(g) Sorumluluk sahibi etiketi yok:~~ "ölü stok → iade/imha" satınalma+finans, "raf bulunurluk
   → transfer" operasyon; 8.736 çeşit el değiştirdi ve kohort sahibi panelde yazılı değil.
   (h) "Gir çık" kartları Veri Kirli'ye taşındı ama o bir EYLEM kartı değil — 327 çeşit /
   931K ₺ orada birikip kimsenin işi olmuyor.
