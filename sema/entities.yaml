@@ -28,6 +28,91 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  zirve_view_tanimlari_artik_okunuyor:
+    type: measurement
+    grain: "BKM_GENEL — 11 view tanımı (GRANT VIEW DEFINITION sonrası, 2026-09-12)"
+    note: >-
+      ⭐ **İZİN VERİLDİ, 11 VIEW'IN 11'İ OKUNUYOR.** Daha önce `definition` NULL'dı ve
+      sebebi ölçülmüştü: şifreli DEĞİL, **izin yoktu**. Kullanıcı `GRANT VIEW DEFINITION`
+      verdi (2026-09-12, "zirve tamam") → hepsi açıldı.
+      ⇒ `zirve_view_tanimlari_okunamiyor` kaydı ARTIK GEÇERSİZ; bu kayıt onun yerini alır.
+
+      **(1) `vw_PuanBil` SÜZGEÇSİZ.** Üç firmanın `puanbil` tablosunun saf `UNION ALL`'ı,
+      **WHERE YOK**. Kolonlar birebir taşınıyor, yalnız `Personelno`ya firma eki
+      ekleniyor ve `Firma` sabit metin olarak yazılıyor.
+      ⇒ Bu view üstünde koşan **6 bordro değişmezinin nüfusu ÜÇ FİRMANIN TÜM TARİHİ**.
+      "BKM bordrosu" sanmak kapsam hatasıdır — Zirve oturumunun işaret ettiği soru
+      böylece ÖLÇÜLDÜ.
+
+      **(2) `vw_PersonelDepartman` ile `...Eski` ARASINDAKİ FARK: KOLON ADLANDIRMASI.**
+      İkisi de aynı üç veritabanını aynı `Ict > '2023-12-31'` süzgeciyle birleştiriyor,
+      aynı ham kolonları çekiyor. Fark yalnız takma adlarda:
+        Eski (boşluklu):  `[Personel No]` · `[İşe Giriş Tarihi]` · `[İşten Çıkış Tarihi]` ·
+                          `[Alt Lokasyon]` · `[Ad Soyad]` · `[Tc Kimlik No]` · `Ünvan`
+        Yeni (bitişik) :  `Personelno` · `Igt` · `Ict` · `AltLokasyon` · `AdSoyad` ·
+                          `Vatno` · `Unvan`
+      ⇒ Satır sayılarının ikisinde de 1.296 olması bu yüzden — AYNI VERİ, farklı başlık.
+
+      ⚠⚠ **DÜZELTME — 2026-09-12'de (commit dbee641) yazdığım iddia EKSİKTİ.**
+      "`PERSONEL AYLIK ORTALAMA.sql` bugün çalışmıyor, view yeniden tanımlanmış" demiştim.
+      Doğrusu: o sorgu **`...Eski`nin adlandırmasını kullanıyor** ([Personel No],
+      [İşe Giriş Tarihi], [İşten Çıkış Tarihi], Lokasyon) — yani "kırık" değil, ESKİ
+      VIEW'A yazılmış. View adı değiştirilip eskisi `Eski` olarak saklanmış.
+      ⚠ Ama tam da çalışmıyor: kullandığı **`p.Grup` İKİ VIEW'DE DE YOK**. Yani bu
+      görünümün EN AZ ÜÇ KUŞAĞI olmuş ve `Grup` en eskisinde kalmış.
+      ⇒ Ders güncellendi: arşiv sorgusu "kırık" diye ATILMAZ — hangi KUŞAĞA yazıldığı
+      sorulur. Kolon adları bir SÜRÜM PARMAK İZİDİR.
+
+      **(3) YENİ KOLON: `perbilgi.kidbastar` (kıdem başlangıç tarihi).** `mevcut_personeller`
+      view'inde görüldü, `vw_PersonelDepartman`da YOK.
+      ⚠ ÖLÇÜLDÜ: 3.578 satırın **3.513'ünde NULL**; dolu olan 65'in **64'ünde `Igt`den
+      FARKLI**. Yani kıdem başlangıcı işe giriş tarihiyle aynı değil (devir/yeniden
+      giriş/devralınan personel).
+      ⇒ Kıdem ve tazminat hesabı `Igt` ile yapılırsa o 64 kişide YANLIŞ çıkar. Arşivdeki
+      `PERSONEL KIDEM LİSTESİ.sql` `Igt` kullanıyor — kapsamı beyan edilmeli.
+      ⇒ Hangi tarihin doğru olduğu BİR İŞ KARARIDIR, ölçümle belirlenemez; İK'ya sorulur.
+    measurement: "2026-09-12 — 11/11 view definition okundu (vw_PuanBil 2.159 · vw_PerKBil 3.138 · vw_PerOBil 2.375 · vw_PersonelDepartman 2.273 · ...Eski 2.498 karakter). Eski'nin 23 kolonu boşluklu takma adlı. perbilgi.kidbastar: 3.578 satır, 3.513 NULL, Igt'den farklı 64."
+    evidence: "2026-09-12 — sys.sql_modules okundu (GRANT VIEW DEFINITION sonrası) + Eski kolon listesi + kidbastar/Igt karşılaştırması. Arşiv: sorgular/2026-09-12-zirve-ik-elle-sorgulardan.sql"
+    confidence: 0.95
+    last_verified: "2026-09-12"
+  erp_fiyat_alt_sistemi_tamamen_sifreli:
+    type: measurement
+    grain: "DerinSISBkm — fiyat mantığı uçtan uca şifreli (2026-09-12)"
+    note: >-
+      ⚠⚠⚠ **FİYAT ALT SİSTEMİNİN TAMAMI ŞİFRELİ — 60+ NESNE, İSTİSNASIZ.**
+      `fiyat_oku` · `fiyat_yaz` · `fn_fiyat` · `fn_fiyatOzl` · `fn_fiyatMkn` ·
+      `fiyatSatis_vw` · `fiyatAlis_vw` · `fiyatOzelSatis_vw` · `fn_fytListe` ve
+      **14 ayrı `fn_fytOzlListe*` varyantı** (Mekansal · FirmaMekansal · GeriDonus ·
+      TumFirmalar · EkKartFiyat …) — hepsi `IsEncrypted = 1`.
+      ⇒ Bu tek bir okunamayan fonksiyon değil; **fiyatın nasıl belirlendiği uçtan uca
+      kara kutu**. Marj, kampanya ve satınalma işinin tam ortasında duruyor.
+
+      ⭐ **AMA KOD KÜMELERİ AÇIK TABLOLARDA — fiyat sisteminin sözlüğü okunabiliyor:**
+      `dbo.fytTur` (9): 0 Satış Fiyatı · 1 Son Alış Fiyatı · 2 Döviz · 3 Alış Fiyatı 2 ·
+        4 Web · 5 Alış Fiyatı 3 · 6 Liste Web · 7 Alış Fiyatı 4 · 8 Ozl Web
+      `dbo.fytTip` (5): 0 Kart Fiyatı · 1 Tarihsel Fiyat · 2 Mekansal Fiyat ·
+        3 Özel Fiyat · 4 Ek İndirim
+      `dbo.fytNdn` (7) — **FİYAT DEĞİŞİM NEDENİ**: 0 Normal fiyat geçiş · 1 Düzeltme ·
+        2 Firma düzeltmesi · **3 Rekabet** · 4 Emek Entegrasyon ·
+        5 Firma Marka Otomatik (`fnOto=1`) · 6 Grup Fiyat Değiştir
+      ⇒ **"Rekabet" bir NEDEN KODU olarak kayıtlı.** Fiyat kararlarının gerekçesi veride
+      duruyor — bu, fiyat analizinde doğrudan kullanılabilir ve sema'da YOKTU.
+      ⇒ `fytTur` 4/6/8 (Web · Liste Web · Ozl Web) e-ticaret fiyatının AYRI tutulduğunu
+      gösteriyor; mağaza fiyatıyla karıştırılmaz.
+
+      ★ ŞİFRELİ FONKSİYONUN DAVRANIŞI KISMEN ÖLÇÜLDÜ:
+      `fn_fytOzlListe(@tarih, @tur, @tip)` → 13 kolon (`fStkID` · `sonrakiFiyat` ·
+      `sonrakiNet` · `fInd1..fInd5` · `fTarihSon`). Bugünle çağrıldığında:
+        `@tur=0` (Satış) → 776.458 satır · `@tur=1` (Son Alış) → 792.670 · `@tur=2` → 0
+        `@tip` neredeyse etkisiz (0/1/2 hepsi 776.458)
+      ⇒ Sürücü parametre `@tur`; `@tip` bu çağrı biçiminde ayrım üretmiyor. NEDEN
+      üretmediği ÖLÇÜLMEDİ (açık soru).
+      ⚠ Ham tablolar: `fytOzl` **155,8 milyon satır** · `fyt` 15,7M · `fytB` 516K.
+      Fiyat tarihçesi devasa; şifreli fonksiyonlar bunun üstünde çalışıyor.
+    measurement: "2026-09-12 — sys.objects taraması: fyt/fiyat adlı 60+ view/fonksiyon/SP, hepsi IsEncrypted=1. fytTur/fytTip/fytNdn tam dökümü. fn_fytOzlListe parametre+dönüş şeması + 6 çağrı ölçümü."
+    evidence: "2026-09-12 — OBJECTPROPERTY taraması + lookup dökümleri + TVF çağrıları. Arşiv: sorgular/2026-09-12-sifreli-erp-viewlari.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
   dbo.urnBarkod_vw:
     type: view
     grain: "barkod × ürün — ÜRÜN BAŞINA TEK SATIR (birincil barkod)"
