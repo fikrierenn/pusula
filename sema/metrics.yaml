@@ -4,6 +4,70 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  web_marj_farki_odak_iskonto:
+    tanim: "İşletmenin KENDİ marj tanımı: alış iskontosu − satış indirimi (bkm.OdaktaDatasiOlupMarjiSorunluUrunler)"
+    formul: >-
+      ⭐ Bu tanım ERP'de YAZILI, bizim uydurduğumuz değil — view
+      `bkm.OdaktaDatasiOlupMarjiSorunluUrunler` (2025-09-02, şifresiz) içinden okundu:
+        ustFiyat    = urn.fiyatS                         (liste, KDV dahil)
+        SiteFiyati  = ent.tsoft_urun.fiyat_net_kdvdahil  (web satış, KDV dahil)
+        SatisMarji  = (1 − SiteFiyati / ustFiyat) × 100  → SATIŞTA verilen indirim
+        AlisIskonto = BKMDATA.ent.odak_marka.discount    → ALIŞTA alınan iskonto (marka bazlı)
+        **MarjFarki = AlisIskonto − SatisMarji**
+      View'de yoruma alınmış iş eşiği: `WHERE ISKONTO - SatisMarji < 11`
+      ⇒ 11 puanın altı "SORUNLU" kabul ediliyor.
+      Kapsam: `tsoft_urun.satis_durum = 1` (sitede aktif) + ODAK'ta datası olan ürün.
+    olcum_2026_09_12: >-
+      **DAĞILIM (323.367 ürün):**
+        NEGATİF (zararına)     15.457 · ort MarjFarki **−20,7** · satış ind. %35,5 · alış isk. %14,8
+        0-5 puan               20.569 · 2,6  · %36,7 · %39,4
+        5-11 puan (eşik altı)  21.057 · 8,1  · %35,1 · %43,1
+        11-20 puan            248.157 · 14,0 · %27,6 · %41,7
+        20+ puan               18.127 · 29,2 · %16,8 · %46,0
+      ⇒ **57.083 ürün (%17,7) işletmenin KENDİ eşiğinin altında; 15.457'si NEGATİF.**
+
+      **WEB CİROSU (`bkm.Enf_AylikUrunSatislari`, `Kaynak='bkmkitapcom'`, son 12 ay):**
+        NEGATİF            15.425 ürün · **8.357'si web'de satmış** · 344.033 adet · **62.182.583 ₺**
+        eşik altı (0-11)   41.612      · 30.541 satmış · 1.481.210 adet · **308.387.242 ₺**
+        eşik üstü (11+)   266.195      · 108.102       · 1.760.618      · 356.263.821 ₺
+      ⇒ **TOPLAM WEB CİROSUNUN %51'İ (370.569.825 ₺ / 726.833.646 ₺) EŞİĞİN ALTINDAKİ
+        ÜRÜNDEN GELİYOR.**
+
+      **NEGATİF BANDIN KATEGORİ KIRILIMI** (ürün · ort MarjFarki · mağaza satan · kasa cirosu):
+        **Kırtasiye 9.113 · −28,2 · 7.683 satan · 569.825 adet · 68,3M ₺ (kasa)**
+        Kitap 3.198 · −10,6 · 1.200 · 18.922 · 4,8M · Çocuk Kitabı 1.245 · −6,7 · 824 · 2,7M
+        Oyuncak 826 · −14,7 · 738 · 59.380 · 16,5M · Akademi 435 · −6,2 · 45 · 0,2M
+        Hazırlık 410 · −8,5 · 189 · 1,6M
+      ⇒ Sorun ezici çoğunlukla **KIRTASİYE**: listeden ort. %35+ indirim veriliyor ama
+        tedarikçiden yalnız ~%15 iskonto alınıyor.
+    bulgu: >-
+      ⭐⭐⭐ **BU TANIM MALİYET ŞELALESİNE HİÇ İHTİYAÇ DUYMUYOR** — `BirimMaliyet` ve onun
+      bilinen çürümesi (`metrics:birim_maliyet` § ORT_ALIS_CURUDU) devreye girmiyor.
+      Üç girdi de görece sağlam: liste fiyatı · web satış fiyatı · marka iskontosu.
+      ⇒ Marj sorusunun **ölçülebilir hâli budur**; daha önce denenen
+        "hedef marj vs fiili marj" yolu maliyet yüzünden çıkmaza girmişti
+        (bkz. `metrics:web_indirim_ve_web_marji` § sınır).
+      ⭐ **BİRİLERİ BU SORUNU ZATEN TARİF ETMİŞ.** View 2025-09-02'de yazılmış ve adı
+        doğrudan "Odak'ta datası olup marjı sorunlu ürünler". Yani bulgu yeni değil;
+        YENİ OLAN, kaç ürün ve kaç lira olduğunun ÖLÇÜLMESİ.
+    sinir: >-
+      ⚠ **KANAL AYRIMI (kullanıcı düzeltmesi 2026-09-12):** *"tanımlanan alış şartları
+      mağaza içinde geçerli"* — yani `AlisIskonto` KANALDAN BAĞIMSIZ. Fark SATIŞ
+      tarafında: web indirimli satıyor, mağaza satmıyor.
+      ⇒ Bu yüzden bulgu **WEB'E ÖZGÜDÜR**; aynı ürünün mağaza marjı daha iyidir.
+      ⇒ Yukarıdaki kategori tablosundaki "kasa cirosu" sütunu bu ürünlerin MAĞAZA
+        satışıdır ve zararına satıldıklarını GÖSTERMEZ — yalnız ürünlerin canlı
+        olduğunu gösterir. Zarar iddiası yalnız WEB cirosu için kurulabilir.
+      ⚠ `AlisIskonto` **MARKA BAZLI** (`odak_marka.discount`), ürün bazlı gerçek fatura
+        iskontosu DEĞİL. İşletmenin kendi vekili; gerçek alış faturasıyla doğrulanmadı.
+      ⚠ Diğer maliyetler (kargo, kampanya, ödeme komisyonu, iade) HESABA GİRMİYOR —
+        gerçek net marj bu sayıdan DAHA DÜŞÜKTÜR, yani tablo iyimser.
+      ⚠ `MarjFarki` bir PUAN FARKIDIR, yüzde marj değil; ikisi karıştırılmaz.
+      ⚠ Eşik 11 puan İŞLETMENİN kendi seçimi (view'de yoruma alınmış); nasıl türetildiği
+        ÖLÇÜLMEDİ.
+    evidence: "2026-09-12 — view tanımı okundu (1.550 karakter, şifresiz) + bant dağılımı + kategori kırılımı + web cirosu (Enf_AylikUrunSatislari Kaynak=bkmkitapcom). Arşiv: sorgular/2026-09-12-marji-sorunlu-urunler.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
   web_indirim_ve_web_marji:
     tanim: "`urn.piyasaMarj` = WEB İNDİRİM ORANI (marj hedefi DEĞİL) + buradan türeyen web marjı"
     formul: >-
