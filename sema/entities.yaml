@@ -28,6 +28,157 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  # ── ŞEMA SÜPÜRMESİ 2. PARTİ (2026-09-12) ──────────────────────────────────
+  # Kuyruk: 403 iş tablosu · 1. parti 9 · bu parti 10 → kalan 384.
+  # ⚠ BU PARTİNİN EN ÖNEMLİ BULGUSU BİR TABLO DEĞİL, BİR DURUM: iki büyük
+  #   ön-agrega ~9 AY BAYAT ve bunu gören hiçbir şey yok.
+  bkm.Rapor_IrsHrk_GunlukOzet:
+    type: table
+    pk: [GunTarih, ehMekan, ehTip, ehstkID]
+    key: [ToplamAdet, ToplamTutar, IslemSayisi, AbsAdet, AbsTutar, AvgBirimTutar, SonHrkTarih, OlusturmaTarihi]
+    note: >-
+      `irsHrk` ÖN-AGREGASI — gün × mekan × ehTip × ürün grain'inde. `Abs*` kolonları
+      işaretten bağımsız mutlak miktar tutar (irsHrk'da çıkış negatiftir).
+      ⚠⚠ **BAYAT: son gün 2025-12-24** (ölçüldü 2026-09-12) — yaklaşık DOKUZ AY.
+      9,5M satırlık bir ön-agrega duruyor ve bugünün verisini TAŞIMIYOR. Kodda hiç
+      kullanılmıyor (0 dosya, ölçüldü) — bu yüzden kimse fark etmemiş.
+      ⇒ KULLANILMADAN ÖNCE tazeliği sorgulanmalı; "hızlı olsun" diye buraya yönelen
+      bir rapor SESSİZCE 2025 rakamı gösterir.
+    measurement: "2026-09-12 — 9.484.180 satır · 12 kolon · PK 4'lü. MAX(GunTarih)=2025-12-24. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + MAX(GunTarih) + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  bkm.StokBakiyeGunluk:
+    type: table
+    pk: [Tarih, MekanId, AltDepoId, StkId]
+    key: [StokMiktar_HareketEsas, StokMiktar_EvrakEsas, OlusturmaTarihi]
+    note: >-
+      GÜNLÜK STOK BAKİYESİ ön-agregası (tarih × mekan × altdepo × ürün).
+      İKİ TABAN kolonu var: `StokMiktar_HareketEsas` (hareketten türetilen) ve
+      `StokMiktar_EvrakEsas` (evraktan türetilen) — isimleri farklı taban vaat ediyor.
+      ⭐ ÖLÇÜLDÜ: 5.333.738 satırın **SIFIRINDA** ikisi farklı. Yani bugünkü veride
+      iki kolon TAMAMEN ÖZDEŞ; "hangi tabanı kullanmalıyım" sorusu pratikte yok.
+      Ama iki kolon durduğu sürece bir gün ayrışabilirler — ayrıştıkları gün hangisinin
+      doğru olduğu YAZILI DEĞİL.
+      ⚠⚠ **BAYAT: son gün 2025-12-27** (ölçüldü 2026-09-12) — yaklaşık dokuz ay.
+    measurement: >-
+      2026-09-12 — 5.333.738 satır · 7 kolon · PK 4'lü · MAX(Tarih)=2025-12-27.
+      `StokMiktar_HareketEsas <> StokMiktar_EvrakEsas` olan satır: **0** (%0,00).
+      Kod erişimi: 1 dosya.
+    evidence: "2026-09-12 — sys.columns + iki-taban karşılaştırması + MAX(Tarih). Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  bkm.Enf_AylikUrunSatislari:
+    type: table
+    pk: [Ay, stkID, Kaynak]
+    key: [Kategori, WebAnaKategori, stkAd, Yazar, mrkAd, ToplamAdet, UstFiyatToplamCiro, UstFiyatOrtalamaFiyat, NetFiyatToplamCiro, NetFiyatOrtalamaFiyat]
+    note: >-
+      AYLIK ÜRÜN SATIŞI ön-agregası — enflasyon/fiyat analizi için. PK'da `Kaynak`
+      olması KANALI ayırdığını gösterir (mağaza/e-ticaret vb. — kod kümesi ÖLÇÜLMEDİ).
+      ⭐ İKİ FİYAT TABANI AÇIKÇA AYRILMIŞ: `UstFiyat*` (etiket/liste) ve `NetFiyat*`
+      (indirim sonrası). Bu, DerinSIS'in geri kalanında karışan ayrımın burada
+      İSİMLENDİRİLMİŞ hâli — fiyat sorularında doğrudan kullanılabilir.
+    measurement: "2026-09-12 — 4.771.411 satır · 13 kolon · PK (Ay, stkID, Kaynak). Kod erişimi: 1 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  bkm.SiparisOdemeDurum:
+    type: table
+    key: [sipNo, sipId, sipDurum, sipDurumAciklama, odemeTipi, odemeAdi, kargoDurumKod, kargoDurum, sipTutar, faturaTutar, tahsilEdilenTutar, teslimTarihi]
+    note: >-
+      E-TİCARET SİPARİŞ ÖDEME/KARGO DURUMU. ⭐ ÜÇ AYRI TUTAR yan yana:
+      `sipTutar` (sipariş) · `faturaTutar` (faturalanan) · `tahsilEdilenTutar` (tahsil).
+      Bu üçlü doğrudan bir MUTABAKAT ÜÇGENİdir — üçü ayrıştığında para nerede takılı
+      kaldığı görünür. ⚠ PK YOK (1,85M satır); `sipNo`/`sipId` doğal anahtar görünüyor
+      ama TEKİLLİĞİ SINANMADI.
+      ⚠ Kodda HİÇ kullanılmıyor (0 dosya) — "1.787 sipariş hatalı ödendi" gibi geçmiş
+      bulguların doğal evi burası olabilir ama BAĞLANMAMIŞ.
+    measurement: "2026-09-12 — 1.847.633 satır · 12 kolon · PRIMARY KEY YOK. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  bkm.OdakIrsaliyeDetay:
+    type: table
+    key: [Id, BaslikId, Barkod, StkId, StokAdi, Marka, Miktar, KdvOran, BirimFiyat, NetFiyat, Isk1, Isk2, BrutTutar, IskontoTutar, NetTutar, KdvTutar]
+    note: >-
+      ODAK (e-ticaret fulfillment) İRSALİYE SATIRI. ⭐ FİYAT AYRIŞIMI TAM AÇIK:
+      `BirimFiyat` · `Isk1`/`Isk2` (iki kademe iskonto) · `BrutTutar` · `IskontoTutar` ·
+      `NetTutar` · `KdvTutar`. Hesabı yeniden kurmadan okunabilen ender yerlerden.
+      ⭐ `KdvOran` **GERÇEK ORAN** — kod DEĞİL. DerinSIS'in `urn.KDVs` / `posOzetUrun.posKDV`
+      KOD taşıyan tarafından AYRILIR; `eftr.efatAyr.KdvYuzdesi` ile aynı sınıf.
+      ⚠ PK YOK (1,83M satır) · Kodda HİÇ kullanılmıyor (0 dosya).
+    measurement: "2026-09-12 — 1.829.125 satır · 16 kolon · PRIMARY KEY YOK. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  dbo.urnFrm:
+    type: table
+    pk: [urnFrmStkID, urnFrmFirmaID]
+    key: [urnFrmDagitici, urnFrmEsas, urnFrmEtkin]
+    note: >-
+      ÜRÜN ↔ FİRMA (tedarikçi) BAĞI — çoka-çok. `urnFrmEsas` ASIL tedarikçi bayrağı,
+      `urnFrmDagitici` dağıtıcı, `urnFrmEtkin` aktiflik. Bir ürünün "tedarikçisi kim"
+      sorusu bu tablodan çözülür ve **tek satır dönmez** — `urnFrmEsas` ile daraltılmazsa
+      JOIN fan-out üretir (3,8M satır / ürün başına birden çok firma).
+    measurement: "2026-09-12 — 3.824.279 satır · 5 kolon · PK (urnFrmStkID, urnFrmFirmaID). Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
+  drs.derinus2:
+    type: table
+    pk: [d2ID]
+    key: [strID, saySira, stk, tAdet, brkd, sipID, sipSira, ind1, ind2, kTarih, rafNo, uniteNo, paletID, d2Skt]
+    note: >-
+      EL TERMİNALİ OKUMA SATIRI (DerinUS cihaz kaydı) — `brkd` okutulan barkod,
+      `stk` ürün, `tAdet` adet, `rafNo`/`paletID` konum, `d2Skt` son kullanma tarihi.
+      Depo/sayım/toplama işlerinin HAM kaynağı; `depo.*` tabloları bunun türevi.
+      ⚠ ÇIKARIM: `strID` ile hangi işe bağlandığı ÖLÇÜLMEDİ.
+    measurement: "2026-09-12 — 5.979.652 satır · 17 kolon · PK d2ID. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  earsv.efatArsv:
+    type: table
+    pk: [efatArsvID]
+    key: [eID, efatArsvNo, efatArsvTarih, efatArsvVN, efatArsvFirmaIsim, efatArsvDurum, efatArsvTip, efatArsvYontem, zarfId, zarfTarihi, efatArsvETicarimi]
+    note: >-
+      E-ARŞİV FATURA BAŞLIĞI. `eID` ile `dbo.fat`a bağlanır. `efatArsvXmlStr` alanı
+      faturanın TAM XML'ini tutar — yani tutar/KDV ayrışımı istenirse XML'den okunabilir
+      (ama bu sorgu içinde XML parse demektir, pahalıdır).
+      `efatArsvETicarimi` e-ticaret bayrağı · `zarfId`/`zarfTarihi` GİB zarf takibi ·
+      `efatArsvDurum`/`efatArsvTip`/`efatArsvYontem` kod kümeleri ÖLÇÜLMEDİ.
+      Kardeşleri: `eftr.efat` (269.624) · `eftr.efatAyr` (8,16M) ·
+      `earsv.eArsvPosSatislar` (61.474, POS e-arşiv satışı).
+    measurement: "2026-09-12 — 6.667.883 satır · 17 kolon · PK efatArsvID. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  ent.fiyat_tarihce_tsoft:
+    type: table
+    key: [ProductCode, tarih, fiyatliste, fiyatnet]
+    note: >-
+      E-TİCARET (T-Soft) FİYAT TARİHÇESİ. ⭐ İKİ FİYAT AYRI: `fiyatliste` (etiket) ve
+      `fiyatnet` (satış). `ProductCode` T-Soft tarafının kodu — `urn.stkID` ile
+      İLİŞKİSİ ÖLÇÜLMEDİ (JOKER tarafında `J_ITEMS.DERINSIS_ID = urn.stkID` köprüsü var,
+      burada karşılığı doğrulanmadı).
+      ⚠ PK YOK (6,59M satır) · Kodda HİÇ kullanılmıyor (0 dosya).
+      Kardeşi `ent.fiyat_tarihce` (3,75M, son değişim 2024-07) — ikisinin iş bölümü ÖLÇÜLMEDİ.
+    measurement: "2026-09-12 — 6.586.731 satır · 4 kolon · PRIMARY KEY YOK. Kod erişimi: 0 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.7
+    last_verified: "2026-09-12"
+  depo.emirTerm:
+    type: table
+    pk: [emTermID, emTermtermID]
+    key: [emTermID, emTermtermID]
+    note: >-
+      EMİR ↔ TERMİNAL BAĞLANTI TABLOSU — yalnız 2 kolon, saf çoka-çok köprüsü
+      (hangi iş emri hangi el terminaline düştü). 4,6M satır: emir başına çok terminal
+      ataması yapıldığını gösterir. Tek başına anlam taşımaz; `depo.emir` ile okunur.
+    measurement: "2026-09-12 — 4.601.636 satır · 2 kolon · PK (emTermID, emTermtermID). Kod erişimi: 1 dosya."
+    evidence: "2026-09-12 — sys.columns + sys.indexes + grep. Arşiv: sorgular/2026-09-12-sema-supurme-parti2.sql"
+    confidence: 0.8
+    last_verified: "2026-09-12"
   # ── ŞEMA SÜPÜRMESİ 1. PARTİ (2026-09-12) ──────────────────────────────────
   # Ölçüm: DerinSISBkm'de 568 DOLU tablo var, sema 45'ini biliyordu (%8);
   # satır ağırlığında %20. Yedek/temp (124 tablo) elendi → 403 iş tablosu kuyruğu.
