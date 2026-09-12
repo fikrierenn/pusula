@@ -2608,6 +2608,38 @@ metrics:
     evidence: "2026-09-10 — sorgular/2026-09-10-iade-hakki-vekili.sql blok 1 + 2"
     last_verified: "2026-09-10"
 
+  iade_kanal_atamasi:
+    type: rule
+    unit: try
+    basis: revenue
+    additivity: sum
+    title: "İADE KAYNAĞINA YAZILIR — kanal, bağlı belgenin tipinden okunur"
+    rule: >-
+      İade belgesi (`DocumentsTypeId = 3`) KANAL BİLGİSİ TAŞIMAZ. Kanal
+      `LinkedDocumentId → Sales.DocumentsTypeId` ile kaynak belgeden okunur:
+      kaynak tip 8 ise Sınav'dan, değilse perakendeden düşülür.
+      ⚠ SINAV İADESİ ANCAK KAYNAK BELGE AYNI MAĞAZADAYSA Sınav'dan düşülür
+      (`o.StoresId = s.StoresId`) — GMY kararı 2026-09-12: "Özlüce'de kesilirse Özlüce normal
+      ciro olmalı". Başka mağazada kesilen Sınav iadesi O MAĞAZANIN perakende cirosunu eksiltir.
+      Kaynağı ÇÖZÜLEMEYEN iade HİÇBİR kanaldan düşülmez; ayrı bir "kaynağı yok" kaleminde
+      gösterilir. Sessizce perakendeye yazmak tam da düzeltilen hatadır.
+    measurement: >-
+      2026-09-12 (İst.Yolu · 06-07.09.2025 + 12.09.2026) — iade TUTARININ kaynağı:
+      kaynak tip 8 (Sınav) 31 belge / 967.472 ₺ = iadenin %90'ı ·
+      kaynak tip 1 (Fiş) 44 belge / 62.794 ₺ · kaynak tip 2 (Fatura) 2 belge / 4.885 ₺ ·
+      kaynağı YOK 95 belge / 39.267 ₺.
+      ⇒ Tüm iadeyi perakendeden düşmek perakende cirosunu 1,07M ₺ eksiltiyordu; günlük
+      perakende ~1,5-2M olduğu için devasa sapma.
+      Mağaza dışı Sınav iadesi ölçüldü: Özlüce 06.09 −2.651 ₺ · 12.09 −1.247 ₺.
+    evidence: "sorgular/2026-09-12-kasa-erp-tazelik-ve-iade-kanali.sql · scripts/hafta_sonu_magaza_ciro_excel.py"
+    last_verified: "2026-09-12"
+    note: >-
+      ⚠ MATERYALİTE BELGE SAYISIYLA DEĞİL TUTARLA OKUNUR. Bu bulgudan önce "iadenin yarısı
+      çözülemiyor" denmişti (belge sayısı: 77/171) ve YANILTICIYDI — TUTARIN %96,3'ü çözülüyor,
+      çözülemeyen yalnız %3,7. Bir oranın payını/paydasını seçmek bulgunun yönünü değiştirir.
+      ⚠ Ürün bazlı kanal ayrımı (`KatAna LIKE 'Sınav Okul%'`) BU KURALLA KARIŞTIRILMAZ —
+      belge bazlı ve ürün bazlı ayrım farklı sonuç verir (sql-server-conventions § KANAL AYRACI).
+
   acik_siparis_kohort_kesisimi:
     type: rule
     unit: adet

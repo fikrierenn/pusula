@@ -627,6 +627,17 @@
       "expected": 0,
       "verified": "2026-09-12 → 0 (27.931 = 27.931). Süzgeçsiz fark 6.466.",
       "population": "SELECT COUNT(*) FROM dbo.puanbil"
+    },
+    {
+      "id": "kasa-erp-kapali-gun-mutabakati",
+      "db": "DerinSISBkm",
+      "question": "Kapanmış günlerde kasa iadesi (DocumentsTypeId=3) ile ERP iadesi (ehTip=101) 1 ₺'den fazla ayrışıyor mu?",
+      "why": "Kasa→ERP aktarımı SAATTE BİR. Gün içinde fark normaldir, KAPALI GÜNDE DEĞİLDİR — kapalı günde ayrışma aktarımın durduğunu ya da eşlemenin bozulduğunu söyler ve iki kaynaktan beslenen her rapor sessizce ayrışır. ⚠ NEDEN CİRO DEĞİL İADE UCU: ciro tarafı ölçüldü (2026-09-12) ve kapalı günlerde bile %1-4,2 ayrışıyor — sebep VERİ HATASI DEĞİL, `eTip 4` (Mağaza Satış): ERP'de var, kasada karşılığı YOK. Fark yönü ERP LEHİNE (kasa < ERP), yani gecikmenin tersi. FSM/Özlüce'de aylık 0,3-0,6M'lik bu kanal günlük 13-29 bin ₺ sapma üretiyor. Ciro ucunu kapı yapmak ya sürekli kırmızı verir ya toleransı anlamsızca gevşetmeyi gerektirirdi. İADE UCU ise birebir eşleşir (ölçüldü: son 8 günde 0 sapma) — bu yüzden aktarımın çalıştığını sınayan DOĞRU uç odur.",
+      "sql": "SELECT COUNT(*) FROM ( SELECT e.Gun FROM (   SELECT CONVERT(date, s.Date) AS Gun,          CASE st.Code WHEN 'M01' THEN 1 WHEN 'M02' THEN 4477 ELSE 4478 END AS Mekan,          SUM(s.GrossTotal - s.DiscountTotal - s.VatTotal) AS Iade   FROM EncoreMerkez.dbo.Sales s WITH (NOLOCK)   JOIN EncoreMerkez.dbo.Stores st WITH (NOLOCK) ON st.Id = s.StoresId   WHERE s.DocumentsTypeId = 3     AND s.Date >= DATEADD(DAY, -8, CONVERT(date, GETDATE()))     AND s.Date <  CONVERT(date, GETDATE())   GROUP BY CONVERT(date, s.Date), st.Code) e JOIN (   SELECT h.ehTrhS AS Gun, h.ehMekan AS Mekan, SUM(h.ehTutarN) AS Iade   FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)   WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip = 101     AND h.ehTrhS >= DATEADD(DAY, -8, CONVERT(date, GETDATE()))     AND h.ehTrhS <  CONVERT(date, GETDATE())   GROUP BY h.ehTrhS, h.ehMekan) r   ON r.Gun = e.Gun AND r.Mekan = e.Mekan WHERE ABS(e.Iade - r.Iade) > 1) t",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-12 → son 8 kapalı günde sapma 0 (birebir). Açık gün BİLEREK dışarıda: pencere dünde bitiyor, aktarım saatlik.",
+      "population": "SELECT COUNT(*) FROM ( SELECT CONVERT(date, s.Date) AS Gun, s.StoresId FROM EncoreMerkez.dbo.Sales s WITH (NOLOCK) WHERE s.DocumentsTypeId = 3   AND s.Date >= DATEADD(DAY, -8, CONVERT(date, GETDATE()))   AND s.Date <  CONVERT(date, GETDATE()) GROUP BY CONVERT(date, s.Date), s.StoresId) p"
     }
   ]
 }
