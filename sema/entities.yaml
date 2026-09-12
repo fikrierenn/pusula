@@ -58,12 +58,23 @@ entities:
       ⇒ Otomatik yeniden fiyatlama pratikte **D&R için 2024-03'ten, KitapYurdu için
       2025-12'den beri hiçbir öneri üretmiyor.**
 
-      ⭐ **AMA TOPLAMA ALTYAPISI ÇALIŞIYOR**: `Kitapsepeti` bugün dahil her gün akıyor
-      (~7.430 satır/gün, 2 kaynak). Yani sorun "kazıyıcı bozuk" değil, **hedef listesi
-      daralmış**.
-      ⇒ EN UCUZ ONARIM: öneri view'ını `Kitapsepeti`yi de kullanacak şekilde
-      genişletmek. Veri ZATEN geliyor; tek satırlık bir `IIF`/`MIN` değişikliği.
-      Bu, güvenlik duvarı/kazıma sorununa HİÇ dokunmadan motoru diriltir.
+      ⚠⚠⚠ **DIŞ RAKİP KAYNAĞI SIFIR — İLK YAZDIĞIM ONARIM ÖNERİSİ YANLIŞTI.**
+      Günlük akan iki kaynağın İKİSİ DE BİZİM: `BKM Kitap` ve **`Kitapsepeti`**.
+      Kullanıcı 2026-09-12: *"kitapsepeti bizim db'den geliyor"* — yani kazınmış bir
+      rakip gözlemi DEĞİL, kendi/grup içi veri.
+      ⇒ Bu kayıt önce "en ucuz onarım: öneri view'ına Kitapsepeti'yi ekle" diyordu.
+      **O TAVSİYE GERİ ÇEKİLDİ**: motoru kendi fiyatımıza göre fiyatlamaya zorlardı
+      (geri besleme döngüsü). Kaynağın KİM olduğu, akıp akmadığından önce gelir.
+      ⚠ Ölçüm yine de ikisinin AYNI liste olmadığını gösteriyor: bugün 3.706 ortak
+      barkodun 2.126'sı aynı fiyat (%57,4), **1.580'i farklı (%42,6)**, ortalama fark
+      +1,67 ₺ (BKM yüksek; tek tek örneklerde her iki yön de var — 390↔300, 487,50↔562,50).
+      Yani iki ayrı kanal fiyatı, ama İKİSİ DE DIŞ GÖZLEM DEĞİL.
+      ⇒ SONUÇ: motorun **hiçbir canlı dış rakip girdisi yok**. Toplama altyapısı
+      ayakta görünse de dışarıyı göremiyor. Kullanıcı sebebi bildirdi: hedef siteler
+      (Amazon vb.) kazımayı ENGELLİYOR — bizim güvenlik duvarımız değil.
+      ⇒ Motor ancak DIŞ ve MEŞRU bir kaynak bağlanınca dirilir: pazaryeri satıcı
+      API'leri (SP-API `getCompetitivePricing` gibi) · affiliate ürün feed'leri ·
+      ticari fiyat-izleme servisi. Kazıma engelini aşmak bir çözüm olarak YAZILMAZ.
     measurement: >-
       2026-09-12 — `list_has_price` kaynak bazında son veri tarihi:
       BKM Kitap 6.899.082 satır → **bugün** · **Kitapsepeti 5.808.482 → bugün** ·
