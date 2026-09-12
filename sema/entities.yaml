@@ -28,6 +28,94 @@ ai_hints:   # sorgu üretirken her zaman geçerli
   - "'ODAK stok' / e-tic depo stoğu sorulunca → ent.odak_depo_Stok (stkID,StokMiktar). stokSonAltDepo_vw mekan-toplamıyla HESAPLAMA — mekan 26142/4480/4835 transit, dahil edersen sessiz over-count. Ürün master (marka/yazar/maliyet/fiyat/kategori) → bkm.UrunBilgi."
 
 entities:
+  odak_fiyat_aktarim_motoru:
+    type: sp
+    grain: "ent.odakFiyatAktarim — ODAK etiket fiyatını ERP fiyat belgesine çeviren otomat (2026-09-12 okundu)"
+    note: >-
+      ⭐⭐ **FİYAT DEĞİŞİMLERİNİN %94'ÜNÜ YAZAN MOTOR BU.** `fytB`de ölçülen
+      "Emek Entegrasyon" (feNeden=4) belgelerinin kaynağı. Kod ŞİFRESİZ, okundu
+      (7.334 karakter, son değişim 2026-05-22).
+
+      **AKIŞ:** `BKMDATA.ent.odak_urun_tam.etiket_fiyat` → barkod köprüsüyle
+      (`urnBrkd.urnBarkod`) ürüne bağlanır → `urn.fiyatS`ten FARKLI olanlar seçilir →
+      `fytB` başlığı + `fytOzl` satırları yazılır → `EXEC posAktPlanli_yaz 10, @gun`
+      ile tarihsel fiyat ETKİNLEŞTİRİLİR (POS'a iner).
+      Her ürün için **İKİ satır**: `fTur=1` (Son Alış, `fInd1..3` iskontolarıyla) ve
+      `fTur=0` (Satış, indirimsiz) — ikisi de `fTip=1` (Tarihsel).
+      Başlık sabitleri: `feNeden=4` · `feNot = SUBSTRING(frmAd,1,10)+' Odak2 Ent'` ·
+      **`feOnay=1` DOĞRUDAN YAZILIYOR** · `gKisi=kKisi=oKisi=137`.
+      ⇒ **"Onay adımı %100 onaylı" bulgusunun SEBEBİ BU**: onay bir insan kararı değil,
+      SP'nin sabit yazdığı bir 1. `oKisi=137` bir sistem hesabı.
+
+      ⚠ **VARSAYILAN OLARAK KAPALI AMA KOŞUYOR.** İmza `@cikis bit = 1` ve ilk satır
+      `if @cikis = 1 return 0` — yani parametresiz çağrılırsa HİÇBİR ŞEY YAPMAZ.
+      ÖLÇÜLDÜ: `fytB`de `feNot LIKE '%Odak2 Ent%'` belgeleri her ay 1.506-3.539
+      (2026-01..09, Eylül dahil) ⇒ çağıran taraf `@cikis=0` geçiyor. Guard etkisiz.
+      ⚠ Çağıranın kim olduğu (job/başka SP) ÖLÇÜLMEDİ — açık soru.
+
+      **İKİ ELLE HARİÇ TUTMA BAYRAĞI** (`dbo.urnBilgi`, `bDeger='True'`):
+        `bBilgiID = 220` → **781 ürün**: fiyat değişim kümesinden TAMAMEN çıkarılır.
+        `bBilgiID = 228` → **114.967 ürün**: yalnız ALIŞ satırı (`fTur=1`) yazılmaz.
+      ⚠⚠ **228 BAYRAĞI MALİYET TAZELİĞİNİ DÜŞÜRÜYOR — ÖLÇÜLDÜ.** Sema'nın kanonik
+      maliyet yolu `fytOzl fTur=1/fTip=1` olduğu için bu bayrak doğrudan maliyeti
+      besleyen satırı kesiyor. `SatisAnaliziTaban` (Kesim 2026-09-11, maliyeti olan
+      ürünler), maliyeti son 6 ayda güncellenmiş oranı:
+        bayrak 228 + ODAK'ta VAR   14.780 ürün → **%24,9**
+        bayraksız  + ODAK'ta VAR  188.559 ürün → **%35,6**
+        bayrak 228 + ODAK'ta YOK   20.021 ürün → %11,1
+        bayraksız  + ODAK'ta YOK   18.528 ürün → %33,7
+      ⇒ ALTERNATİF AÇIKLAMA SINANDI ve KISMEN ELENDİ: "bayraklı ürünler zaten ODAK'ta
+        yoktur, o yüzden maliyetsizdir" denebilirdi. Ama **ODAK'ta verisi OLAN** ürünler
+        arasında bile bayrak tazeliği %35,6 → %24,9'a düşürüyor (≈11 puan).
+        Bayrağın BAĞIMSIZ bir etkisi var.
+      ⇒ Ama bayrak TEK sebep de değil: ODAK'ta olmayan bayraksız ürünler %33,7 ile
+        sağlıklı — demek ki ODAK dışında da maliyet kaynağı çalışıyor.
+      ⚠ Bayrakların NEDEN konduğu (hangi iş kuralı) ÖLÇÜLMEDİ. 114.967 ürün katalogun
+        ~%14'ü; kaldırılması ya da gözden geçirilmesi bir İŞ KARARIDIR.
+
+      **DİĞER MANTIK AYRINTILARI (kodda yazılı):**
+      · `bkm.CiftUrunlerMaxFyat` — çift (mükerrer) ürünlerde **MAX fiyat** alınır;
+        bir dalda `- 0,01` uygulanır.
+      · `odak.etiket_fiyat < 999999` ve `odak.SilinecekUrun = 0` koruma süzgeçleri.
+      · Marka iskontosu `BKMDATA.ent.odak_marka.discount` → `fInd1`, ama yalnız
+        `firmaID = 9525` (ODAK-POINT) için; diğerlerinde `sakMrk.skY1..3`.
+      · İkinci blok "marka iskonto oranı değişenler"i ayrıca yakalar
+        (`fInd1 <> mar.discount`), yani fiyat aynı kalsa bile İSKONTO değişimi belge üretir.
+      · Koşum sonunda `ent.ProcedureLogEkle` çağrılır → `BKMDATA.dbo.OdakDataProcedureRunTime`.
+    measurement: "2026-09-12 — SP tanımı okundu (7.334 karakter, şifresiz). fytB 'Odak2 Ent' aylık belge: 2026-01 2.559 · 02 3.450 · 03 3.272 · 04 3.292 · 05 2.424 · 06 3.026 · 07 3.075 · 08 3.539 · 09 1.506. urnBilgi 220=True 781 · 228=True 114.967. Dört kovalı tazelik ölçümü yukarıda."
+    evidence: "2026-09-12 — sys.sql_modules okundu + fytB aylık sayım + urnBilgi bayrak sayımı + bayrak×ODAK-varlığı×maliyet-tazeliği çapraz ölçümü. Arşiv: sorgular/2026-09-12-odak-fiyat-urun-otomasyonu.sql"
+    confidence: 0.9
+    last_verified: "2026-09-12"
+  odak_alt_sistemi_yuzeyi:
+    type: measurement
+    grain: "ODAK entegrasyonu — iki veritabanına yayılmış 60+ nesne (2026-09-12)"
+    note: >-
+      ⭐ **ODAK, BKM'NİN EN CANLI VE EN BÜYÜK ENTEGRASYONU — sema neredeyse hiç bilmiyordu.**
+      Kullanıcı işaret etti: *"otomatik odak fiyatlarını çekip aktaran SP'ler var,
+      otomatik ürün açıyor fiyat yapıyor"*.
+      Bugün güncellenen tablolar: `BKMDATA.ent.odak_urun` 644.856 · `odak_urun_tam`
+      645.381 · `odak_urun_magaza_tam` 645.128 · `dbo.OdakUrunDurum` 646.872 ·
+      `dbo.stok_aktarim_odak` 498.054 · `DerinSISBkm.ent.odak_depo_Stok` 497.527.
+      **`BKMDATA.dbo.OdakStokDegisenStok_Log` 92.392.737 satır** (dün güncellenmiş).
+      ⇒ Yani ODAK yalnız fiyat değil STOK ve ÜRÜN AÇMA hattı da.
+
+      **ŞİFRESİZ VE YENİ OTOMASYON SP'LERİ** (hepsi okunabilir):
+        `ent.odakUrunAktar`                    — 2026-09-09 (ÜRÜN AKTARIMI)
+        `bkm.OdakUrunlerineGoreTsoftUrunAc`    — 2026-08-31 (OTOMATİK ÜRÜN AÇMA)
+        `ent.OdakUrunGuncellemeEslestir`       — 2026-07-22
+        `ent.odakFiyatAktarim`                 — 2026-05-22 (ayrı kayıt)
+        `bkm.OdakSatisIrsaliyeFiyatOlustur`    — 2026-02-24
+        `bkm.OdakTukendileriTukendiYap`        — 2025-06-18
+        `bkm.OdaktaDatasiOlupMarjiSorunluUrunler` (VIEW) — 2025-09-02
+      ⚠ Bu SP'lerin İÇERİĞİ HENÜZ OKUNMADI (yalnız `odakFiyatAktarim` okundu).
+        Özellikle otomatik ÜRÜN AÇMA ve `MarjiSorunluUrunler` view'ı doğrudan
+        fiyat/marj işini ilgilendiriyor — sıradaki keşif adayı.
+      ⚠ `BKMDATA.ent.OdakUrunMaliyet` (VIEW) — rakip fiyat motorunun maliyet girdisi,
+        643.951 satır.
+    measurement: "2026-09-12 — iki DB'de 'odak' adlı 60+ nesne tarandı (tip · satır · son değişim · IsEncrypted). Kritik SP'lerin tamamı IsEncrypted=0."
+    evidence: "2026-09-12 — sys.objects + partitions + OBJECTPROPERTY taraması. Arşiv: sorgular/2026-09-12-odak-fiyat-urun-otomasyonu.sql"
+    confidence: 0.85
+    last_verified: "2026-09-12"
   rakip_fiyat_motoru_korlesmis:
     type: measurement
     grain: "Rakip fiyat izleme + otomatik yeniden fiyatlama zinciri (2026-09-12)"
