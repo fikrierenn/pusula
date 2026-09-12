@@ -3,6 +3,7 @@
 @using GmDashboard.Models
 @implements IDisposable
 @inject Queries Queries
+@inject GunKarsilastirQueries GunQ
 @inject PerfState Perf
 @inject ILogger<Magazalar> Logger
 @inject PersistentComponentState AppState
@@ -104,7 +105,156 @@ else if (_data is not null)
     </div>
 }
 
+
+@*  ── GÜN KARŞILAŞTIRMA (12.09.2026, GMY isteği) ─────────────────────────────
+    "geçen yıl okul açılışı öncesi hafta sonu mağaza bazlı cumartesi pazar cirosu lazım,
+     bugün de İstanbul Yolu Sınav ve Sınav hariç ciro" → "aynısını altına müşteri sayısı"
+    Excel ikizi: scripts/hafta_sonu_magaza_ciro_excel.py (AYNI iş mantığı).
+    ⚠ Tasarım GMY tarafından onaylandı: üstte CİRO, altta MÜŞTERİ SAYISI, aynı satırlar.     *@
+<div class="card bg-base-100 border border-base-300 rounded-2xl p-[18px] mt-5">
+    <div class="flex flex-wrap items-end gap-3 mb-1">
+        <div class="min-w-0">
+            <h3 class="text-sm font-semibold m-0">Gün Karşılaştırma</h3>
+            <div class="text-[11px] text-base-content/50">kasa tarafı · KDV dahil · iade kaynağına yazıldı</div>
+        </div>
+        <div class="flex gap-2 items-end ml-auto flex-wrap">
+            <label class="text-[11px] text-base-content/50">
+                Gün<input type="date" class="input input-bordered input-sm text-sm block" @bind="_gun" @bind:after="GunYukle" />
+            </label>
+            <label class="text-[11px] text-base-content/50">
+                Kıyas<input type="date" class="input input-bordered input-sm text-sm block" @bind="_kiyas" @bind:after="GunYukle" />
+            </label>
+        </div>
+    </div>
+
+    @if (_gunHata is not null)
+    {
+        <div class="alert alert-error text-sm mt-2"><span>@_gunHata</span></div>
+    }
+    else if (_gunVeri is null)
+    {
+        <p class="text-base-content/50 text-sm mt-2">Yükleniyor…</p>
+    }
+    else
+    {
+        @foreach (var (baslik, ciro) in new[] { ("CİRO (₺)", true), ("MÜŞTERİ SAYISI (fiş)", false) })
+        {
+            <div class="text-[11px] uppercase tracking-wider text-base-content/45 font-semibold mt-4 mb-1">@baslik</div>
+            <div class="overflow-x-auto">
+                <table class="table table-xs w-full">
+                    <thead>
+                        <tr class="text-base-content/50">
+                            <th>Mağaza</th>
+                            <th class="text-right">@_kiyas.ToString("ddd dd.MM.yy", _tr)</th>
+                            <th class="text-right">@_gun.ToString("ddd dd.MM.yy", _tr)</th>
+                            <th class="text-right">Fark</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (etiket, mag, sinav) in _satirlar)
+                        {
+                            var a = Bul(_gunVeri.Kiyas, mag, sinav, ciro);
+                            var b = Bul(_gunVeri.Bugun, mag, sinav, ciro);
+                            var fark = a == 0 ? (decimal?)null : (b - a) / a * 100m;
+                            <tr>
+                                <td class="whitespace-nowrap">@etiket</td>
+                                <td class="text-right tabular-nums">@Say(a)</td>
+                                <td class="text-right tabular-nums font-semibold">@Say(b)</td>
+                                <td class="text-right tabular-nums @(fark is null ? "text-base-content/40" : fark >= 0 ? "text-success" : "text-error")">
+                                    @(fark is null ? "—" : Pct(fark.Value))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="text-[11px] text-base-content/50 leading-snug mt-3 space-y-1">
+            <div>
+                Müşteri sayısı = <b>fiş sayısı</b>. Tekil müşteri değil — kartsız satış anonimdir.
+            </div>
+            @*  ⚠ Varsayılan kıyas −364 gün = aynı HAFTA GÜNÜ. Sezon başında bu YANILTIR:
+                okul açılışı yıldan yıla kayıyor (2025-26 → 08.09.2025 · 2026-27 → 14.09.2026,
+                6 gün). Ölçülen sonuç: −364 günlük varsayılanla Sınav farkı +%435,9 çıkıyor,
+                çünkü kıyas günü açılıştan SONRAKİ cumartesi. Uyarı ekranda durmalı — yoksa
+                okuyan bu oranı gerçek büyüme sanır.                                            *@
+            <div class="text-warning">
+                Kıyas günü varsayılanı <b>aynı hafta günü</b> (−364). Okul açılışı yıldan yıla
+                kayar (2025 → 08.09 · 2026 → 14.09); sezon başında takvim kıyası yanıltır.
+                Okul-hizalı kıyas için kıyas tarihini <b>elle seç</b>.
+            </div>
+            <div>
+                İade kaynağına yazıldı: Sınav iadesi Sınav'dan, perakende iadesi perakendeden
+                düşüldü. Başka mağazada kesilen iade o mağazanın cirosuna yazılır.
+                @if (_belirsiz > 0)
+                {
+                    <span class="text-warning">Kaynağı çözülemeyen iade @Tl(_belirsiz) — hiçbir kanaldan düşülmedi.</span>
+                }
+            </div>
+            @if (_gunVeri.KesimDk < 24 * 60)
+            {
+                <div class="text-error">
+                    @_gun.ToString("dd.MM.yyyy") henüz kapanmadı — iki gün de
+                    <b>@($"{_gunVeri.KesimDk / 60:00}:{_gunVeri.KesimDk % 60:00}")</b>'a kadar toplandı (adil kıyas).
+                    Kasa→ERP aktarımı saatte bir; bu tablo <b>kasa</b> tarafındandır.
+                </div>
+            }
+        </div>
+    }
+</div>
+
 @code {
+    // ── GÜN KARŞILAŞTIRMA ──────────────────────────────────────────────────────
+    private static readonly System.Globalization.CultureInfo _tr =
+        System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    private DateOnly _gun = DateOnly.FromDateTime(DateTime.Today);
+    // Varsayılan kıyas: BİR YIL ÖNCEKİ AYNI HAFTA GÜNÜ (takvim günü değil).
+    // ⚠ Okul açılışı yıldan yıla kayıyor (2025-26 → 08.09.2025 · 2026-27 → 14.09.2026, 6 gün);
+    // takvim günü kıyası sezon başında YANILTIR. Hafta günü hizası daha yakın bir vekildir,
+    // ama okul-hizalı kıyas isteyen tarihi ELLE seçmelidir (arşiv: okul-hizali-ciro-tahmini).
+    private DateOnly _kiyas = DateOnly.FromDateTime(DateTime.Today).AddDays(-364);
+    private GunKarsilastirSonuc? _gunVeri;
+    private string? _gunHata;
+    private decimal _belirsiz;
+
+    // (etiket, mağaza adı parçası, Sınav satırı mı)
+    private static readonly (string, string, bool)[] _satirlar =
+    [
+        ("FSM", "FSM", false),
+        ("Özlüce", "ÖZLÜCE", false),
+        ("İst.Yolu (Sınav hariç)", "IST YOLU", false),
+        ("İst.Yolu — Sınav", "IST YOLU", true),
+    ];
+
+    private async Task GunYukle()
+    {
+        _gunVeri = null; _gunHata = null; StateHasChanged();
+        try
+        {
+            // Kapanmamış gün varsa İKİ GÜN DE aynı dakikaya kadar toplanır — yoksa kıyas yanıltır.
+            var kesim = GunKarsilastirQueries.BugunIcinKesim(_gun)
+                        ?? GunKarsilastirQueries.BugunIcinKesim(_kiyas);
+            _gunVeri = await GunQ.GetirAsync(_gun, _kiyas, kesim);
+            _belirsiz = _gunVeri.Bugun.Sum(x => x.IadeBelirsiz) + _gunVeri.Kiyas.Sum(x => x.IadeBelirsiz);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Gün karşılaştırma hatası");
+            _gunHata = "Gün karşılaştırma alınamadı.";   // ayrıntı log'a, kullanıcıya generic
+        }
+        finally { StateHasChanged(); }
+    }
+
+    /// <summary>Satırın değeri. Sınav satırı da MAĞAZA süzgeçlidir (kanal mağazaya bağlandı).</summary>
+    private static decimal Bul(IReadOnlyList<GunMagazaSatir> v, string mag, bool sinav, bool ciro)
+        => v.Where(x => x.Magaza.Contains(mag, StringComparison.OrdinalIgnoreCase))
+            .Sum(x => ciro ? (sinav ? x.SinavDahil : x.PerakendeDahil)
+                           : (sinav ? x.SinavBelge : x.Fis));
+
+    private static string Say(decimal n) => n.ToString("#,##0", _tr);
+
     [SupplyParameterFromQuery(Name = "d")] public string? Donem { get; set; }
 
     private string _period = "gunluk";
@@ -165,6 +315,18 @@ else if (_data is not null)
             return;
         }
         await LoadAsync();
+    }
+
+    /// <summary>
+    /// Gün karşılaştırması YALNIZ etkileşimli ilk render'da çekilir.
+    /// ⚠ <c>OnParametersSetAsync</c>'e konmuştu ve ÇALIŞMIYORDU: kalıcı durum (prerender
+    /// state) bulunduğunda o metot erken <c>return</c> ediyor ve çağrı atlanıyordu —
+    /// bölüm ekranda sonsuza dek "Yükleniyor…" kalıyordu. Ayrıca prerender'da da
+    /// koşmasın: sorgu iki kez gider.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _gunVeri is null && _gunHata is null) await GunYukle();
     }
 
     private Task PersistData()

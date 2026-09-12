@@ -768,3 +768,30 @@ public static class SatisAnaliziKolonlar
     public static KolonTanim? Bul(string anahtar) =>
         Hepsi.FirstOrDefault(k => string.Equals(k.Anahtar, anahtar, StringComparison.OrdinalIgnoreCase));
 }
+
+/// <summary>
+/// Bir günün BİR MAĞAZADAKİ kasa özeti (GunKarsilastirQueries).
+/// ⚠ Dapper kolon ADIYLA eşler (pozisyonel değil) — SELECT takma adlarıyla birebir aynı olmalı.
+/// </summary>
+/// <param name="Fis">Perakende fiş sayısı = MÜŞTERİ SAYISI vekili. Tekil müşteri DEĞİL.</param>
+/// <param name="IadeBelirsiz">Kaynağı çözülemeyen iade — hiçbir kanaldan düşülmedi.</param>
+public sealed record GunMagazaSatir(
+    string Magaza,
+    int Fis,
+    int SinavBelge,
+    int IadeBelge,
+    decimal PerakendeDahil,
+    decimal SinavDahil,
+    decimal PerakendeHaric,
+    decimal SinavHaric,
+    decimal IadePerakende,
+    decimal IadeSinav,
+    decimal IadeBelirsiz);
+
+/// <summary>İki günün karşılaştırması. <paramref name="KesimDk"/> 1440 ise gün tamamı.</summary>
+public sealed record GunKarsilastirSonuc(
+    DateOnly Gun,
+    DateOnly KiyasGun,
+    int KesimDk,
+    IReadOnlyList<GunMagazaSatir> Bugun,
+    IReadOnlyList<GunMagazaSatir> Kiyas);
