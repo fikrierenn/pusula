@@ -332,13 +332,48 @@ codes:
     kume_kaynagi: "dbo.posOdmTip — 4 kod, lookup'tan okundu (elle yazılmadı)."
     last_verified: '2026-09-03'
   mekanID:
-    evidence_status: pending
-    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
-    # isim kaynağı = posMagaza.mekanAd (dbo.mekan YOK). 24.06 teyit.
-    values: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: "İade Deposu (ODAK)", 4835: Ek Depo, 26142: "İPTAL-Transfer Deposu (transit)", 60398: HEYKEL TRANSFER}
-    depo_grubu: [12, 4480, 4835]    # cari/envanter sorgularında "Depo"
-    magaza_grubu: [1, 4477, 4478]   # "Mağaza"
+    # 2026-09-12: `evidence_status: pending` KALDIRILDI — kanıt üretildi (aşağıda).
+    lookup: dbo.posMagaza     # ≡ dbo.frm WHERE frmTip IN (2,3,4) — ölçüldü, birebir özdeş
+    join: "JOIN dbo.posMagaza m ON m.mekanID = <ehMekan|posMekan|MekanId> → m.mekanAd"
+    kume_kaynagi: >-
+      ⭐ **`mekanID` = `dbo.frm.frmID`.** Mekan ayrı bir tablo DEĞİL; ERP'nin tek taraf
+      (party) master'ı `dbo.frm` içinde yaşar ve `frmTip` ile ayrılır.
+      KANONİK KÜME İKİ EŞDEĞER YOLDAN OKUNUR (ölçüldü: BİREBİR ÖZDEŞ, 12'ye 12,
+      iki tarafta da tek başına kalan satır YOK):
+        (a) `SELECT mekanID, mekanAd, mekanTip FROM dbo.posMagaza`
+        (b) `SELECT frmID, frmAd, frmTip FROM dbo.frm WHERE frmTip IN (2,3,4)`
+      `posMagaza.mekanTip` ile `frm.frmTip` aynı bölünmenin iki numaralandırmasıdır:
+      0↔2 Mağaza · 1↔3 Depo · 2↔4 Ofis. İsim için `posMagaza.mekanAd` kullan
+      (`frmAd` kozmetik olarak sapabiliyor: "HASARLI DEPO" ↔ "HASARLI ÜRÜN DEPO").
+      ⚠ `dbo.mekan_vw` TAM KÜME DEĞİL (11 satır, Merkez Ofis'i düşürür) — bkz. posMagaza.mekanTip.
+    # ⚠⚠ AŞAĞIDAKİ LİSTE KÜME DEĞİLDİR — yalnız okuyucuya örnektir. Küme yukarıdan
+    #    CANLI okunur. Bu liste 2026-09-12'de 8 kayıtken canlıda 12 vardı (DRIFT ÖLÇÜLDÜ:
+    #    4479 Eticaret · 31359 HASARLI DEPO · 14 Merkez Ofis · 55375 sorunlu iade eksikti).
+    #    "Liste elle yazılmaz" kuralının kendi sema'mızdaki ihlaliydi.
+    ornek_degerler: {1: FSM, 4477: Özlüce, 4478: İst.Yolu, 12: Ana/Merkez Depo, 4480: "İade Deposu (ODAK)", 26142: "İPTAL-Transfer Deposu (transit)", 14: "Merkez Ofis"}
+    gruplar: >-
+      Grup elle yazılmaz, `frmTip`/`mekanTip`ten türetilir:
+      MAĞAZA = `frmTip=2` (`mekanTip=0`) · DEPO = `frmTip=3` (`mekanTip=1`) · OFİS = `frmTip=4` (`mekanTip=2`).
+      Aktiflik `frm.frmDurum` (0=aktif, 1=pasif) — ölçümle tutarlı: defterde durmuş
+      depoların hepsi durum=1.
+    defterde_kullanilan: >-
+      ⚠ **DEFTERDE DOKUZ MEKAN VAR, ÜÇ DEĞİL.** Son 24 ayda `irsHrk`:
+      12 Merkez Depo 7,09M satır · 4477 3,72M · 1 2,78M · 4478 2,72M ·
+      **4480 İade Deposu (ODAK) 124.327** · 26142 5.421 · 60398 2.187 · 31359 437 · 14 Merkez Ofis 249.
+      `WHERE ehMekan IN (1,4477,4478,12)` yazan sorgu son 24 ayda **125.247 satır /
+      53.602.886 ₺** hareketi SESSİZCE düşürür. Üç mağaza + merkez depo bir KAPSAM
+      SEÇİMİDİR, mekan kümesi değil — raporda böyle yazılmalı.
+      `4479 Eticaret` tanımlı (frmTip=2) ama defterde **0 satır** — mekan olarak kurulmuş,
+      kullanılmamış.
     transit_haric: [26142, 4480, 4835]   # stokSonAltDepo_vw'da transit/sanal — anlık stok toplamında HARİÇ (26142=129K Hazırlık sahte over-count tuzağı, 24.06)
+    closed_set: false
+    evidence: >-
+      2026-09-12 — ÖLÇÜLDÜ. `posMagaza` (12) ile `frm WHERE frmTip IN (2,3,4)` (12) FULL OUTER
+      JOIN: simetrik fark **0**. `irsHrk` son 24 ay mekan kümesi `posMagaza` dışına **çıkmıyor** (0).
+      Kırılabilirlik: `frmTip IN (2,3)` (ofis unutulur) → 1 · sema'nın eski 8'li listesi küme
+      sanılırsa → 4 kaçak. Değişmez: `mekan-kumesi-posmagaza-frm-ozdes`.
+      Arşiv: sorgular/2026-09-12-frm-mekan-taraf-master.sql
+    last_verified: "2026-09-12"
   posMagaza.mekanTip:
     confidence: 0.9
     uses: [bridges:irshrk-mekan, entities:dbo.mekan_vw]

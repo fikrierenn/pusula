@@ -141,9 +141,19 @@ Tam-ay koşumu: POS 128.097.715,43 ↔ defter 128.097.709,99 → **fark +5,44 �
 (128 milyon üzerinde; satır-başı yuvarlama). İade: 1.677.233,89 ↔ 1.677.233,65.
 
 ⚠ **ÜÇ TUZAK BİR ARADA** (üçü de 12.09'da yaşandı, ölçümle yakalandı):
-1. **`posKDV` ORAN DEĞİL KOD** — `tinyint`, `urnKDV.kdvID`e karşılık gelir
-   (1=%0 · 2=%1 · 6=%10 · 7=%20). `/(1+posKDV/100)` yazmak sessiz yanlış rakam üretir.
-   `urn.KDVs` için zaten yazılı olan tuzağın POS ikizi.
+1. **`posKDV` ORAN DEĞİL KOD** — `tinyint`, `urnKDV.kdvID`e karşılık gelir.
+   `/(1+posKDV/100)` yazmak sessiz yanlış rakam üretir. `urn.KDVs` için zaten yazılı
+   olan tuzağın POS ikizi.
+   ⚠ **BU SATIR ÖNCE `(1=%0 · 2=%1 · 6=%10 · 7=%20)` DİYE ELLE LİSTE TAŞIYORDU —
+   EKSİKTİ (düzeltildi 2026-09-12, yazdığının ertesi günü ölçüldü).** `dbo.urnKDV`
+   **11 kod** taşır ve eşleme **birebir değildir**: 4 ve 5 → %18 · 7, 8 ve 11 → %20 ·
+   2 ve 9 → %1 · 6 ve 10 → %10 · 3 → %8 · 1 → %0.
+   Dört kodluk elle `CASE` bugünün POS'unda (yalnız 1/2/6/7 kullanılıyor) tesadüfen
+   çalışır ama **geçmiş veride patlar**: `earsv.eArsvPosSatisDetaylari`'nda kod 4 →
+   158.895 satır, kod 3 → 115.589 satır (KDV artışı öncesi %18/%8 dönemi).
+   ⇒ **HER ZAMAN `JOIN dbo.urnKDV k ON k.kdvID = <kod>` yaz; oranı elle YAZMA.**
+   (`dbo.kdvYuzde_vw` de KULLANILMAZ — her orana ait yalnız ilk kodu döndürür,
+   bkz. `sema/codes.yaml: urn.KDVs`.)
 2. **`satTutar` KDV DAHİLDİR** — `ehTutarN` KDV hariçtir, doğrudan karşılaştırılamaz.
 3. **`satIndirim` ÇIKARILMAZ** — indirim `satTutar` içinde ZATEN uygulanmıştır; bu kolon
    yalnız indirimin TUTARINI bildirir. Çıkarınca tutar yarıya iner ve "fiyat tabanı
@@ -151,6 +161,26 @@ Tam-ay koşumu: POS 128.097.715,43 ↔ defter 128.097.709,99 → **fark +5,44 �
    yazıldı, sebep ölçüm hatasıydı).
 
 Kanıt: `sorgular/2026-09-12-posozeturun-irshrk-kimlik.sql` · sema: `entities:dbo.posOzetUrun`.
+
+## MEKAN = `dbo.frm` İÇİNDEKİ BİR TARAF (2026-09-12 ölçüldü)
+
+**`mekanID` = `dbo.frm.frmID`.** Mekan ayrı bir tablo değil: ERP'nin tek taraf (party)
+master'ı `dbo.frm` (50.582 satır) tedarikçiyi, müşteriyi, bankayı, çalışanı, gider
+merkezini **ve mağaza/depo/ofisi** birlikte tutar; ayraç `frmTip`.
+
+- Kanonik mekan kümesi iki eşdeğer yoldan okunur ve **birebir özdeştir** (ölçüldü: 12'ye 12,
+  simetrik fark 0): `dbo.posMagaza` ↔ `dbo.frm WHERE frmTip IN (2,3,4)`.
+  Numaralandırma kayıyor: `mekanTip` 0/1/2 ↔ `frmTip` 2/3/4 (Mağaza/Depo/Ofis).
+  İsim için `posMagaza.mekanAd` (frmAd kozmetik sapıyor).
+- ⚠⚠ **DEFTERDE DOKUZ MEKAN VAR.** `WHERE ehMekan IN (1,4477,4478,12)` son 24 ayda
+  **125.247 satır / 53.602.886 ₺** hareketi sessizce düşürür — en büyüğü
+  **4480 "İade Deposu (ODAK)"** (124.327 satır / 50,0M ₺, 2024-09→2026-01 arası aktif,
+  `frmDurum=1` pasife çekilmiş). Üç mağaza + merkez depo bir **kapsam seçimidir**,
+  mekan kümesi değil; raporda öyle yazılır.
+- `4479 Eticaret` mekan olarak tanımlı (`frmTip=2`) ama defterde **0 satır**.
+- Değişmez: `mekan-kumesi-posmagaza-frm-ozdes` (kırılabilirliği kanıtlandı: ofis
+  unutulursa 1, sema'nın eski elle listesi küme sanılırsa 4 kaçak).
+- Kanıt: `sorgular/2026-09-12-frm-mekan-taraf-master.sql` · sema: `codes:mekanID`.
 
 ## MERKEZ DEPO STOĞU = HER ZAMAN WMS (KRİTİK — kullanıcı direktifi 03.09.2026)
 

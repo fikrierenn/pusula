@@ -566,6 +566,18 @@
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 0. 894.994 satir / 837.547 urun; `urnBrkdStkID -> urn.stkID` oksuz 0. Arsiv: sorgular/2026-09-12-sema-supurme-parti3.sql",
       "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.urnBrkd WITH(NOLOCK)"
+    },
+    {
+      "id": "mekan-kumesi-posmagaza-frm-ozdes",
+      "db": "DerinSISBkm",
+      "question": "Mekan kumesi iki kanonik kaynakta hala BIREBIR AYNI mi (`dbo.posMagaza` ile `dbo.frm WHERE frmTip IN (2,3,4)`), ve `irsHrk.ehMekan` son 24 ayda bu kumenin DISINA cikiyor mu?",
+      "why": "2026-09-12'de olculdu: `mekanID` ayri bir tablo DEGIL, `dbo.frm.frmID`dir. ERP'nin tek taraf (party) master'i `frm` tedarikciyi, musteriyi, bankayi, calisani, gider merkezini VE magaza/depo/ofisi birlikte tutar; ayrac `frmTip`. Iki okuma yolu birebir ozdes cikti (12'ye 12, simetrik fark 0). BU KAPI UC AYRI SESSIZ HATAYI KORUR: (a) yeni bir magaza/depo yalnizca bir tarafta acilirsa kumeler ayrisir ve hangisinin dogru oldugu YAZILI DEGILDIR; (b) deftere `posMagaza`da olmayan bir mekan yazilirsa mekan-bazli her rapor o hareketi SESSIZCE duser (INNER JOIN gorunmez kirpar); (c) sema'nin kendi `codes:mekanID` kaydi bir ZAMAN ELLE LISTE tasiyordu ve 2026-09-12'de 8 kayitken canlida 12 vardi — 4479 Eticaret, 31359 HASARLI DEPO, 14 Merkez Ofis, 55375 sorunlu iade EKSIKTI. Liste artik kume degil ornek; kume bu kapiyla canli tutuluyor. Ayrica olculdu: defterde DOKUZ mekan var: `ehMekan IN (1,4477,4478,12)` suzgeci son 24 ayda 125.247 satir / 53.602.886 TL hareketi sessizce duser (en buyugu 4480 'Iade Deposu (ODAK)' 124.327 satir / 50,0M TL). KIRILABILIRLIK KANITI (paylasilan dosyaya dokunmadan, hatali formuller dogrudan kosuldu): dogru 0 · `frmTip IN (2,3)` (ofis unutulur) 1 · sema'nin eski 8'li listesi kume sanilirsa 4.",
+      "sql": "SELECT (SELECT COUNT_BIG(*) FROM (  SELECT mekanID AS id FROM DerinSISBkm.dbo.posMagaza WITH(NOLOCK)   EXCEPT SELECT frmID FROM DerinSISBkm.dbo.frm WITH(NOLOCK) WHERE frmTip IN (2,3,4)) a)      + (SELECT COUNT_BIG(*) FROM (  SELECT frmID AS id FROM DerinSISBkm.dbo.frm WITH(NOLOCK) WHERE frmTip IN (2,3,4)   EXCEPT SELECT mekanID FROM DerinSISBkm.dbo.posMagaza WITH(NOLOCK)) b)      + (SELECT COUNT_BIG(*) FROM (  SELECT DISTINCT ehMekan AS id FROM DerinSISBkm.dbo.irsHrk WITH(NOLOCK)     WHERE ehTrhS >= DATEADD(MONTH,-24,GETDATE())   EXCEPT SELECT mekanID FROM DerinSISBkm.dbo.posMagaza WITH(NOLOCK)) c)",
+      "comparison": "eq",
+      "expected": 0,
+      "protects": [],
+      "verified": "2026-09-12 -> olculdu, 0. posMagaza 12 satir; frm frmTip 2/3/4 12 satir; irsHrk son 24 ay mekan kumesi disari cikmiyor. Arsiv: sorgular/2026-09-12-frm-mekan-taraf-master.sql",
+      "population": "SELECT COUNT_BIG(*) FROM DerinSISBkm.dbo.posMagaza WITH(NOLOCK)"
     }
   ]
 }
