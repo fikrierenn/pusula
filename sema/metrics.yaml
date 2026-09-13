@@ -38,6 +38,71 @@ metrics:
     last_verified: "2026-09-13"
     ttl_days: 365
 
+  tahmin_modeli_backtest:
+    tanim: "Tahmin modelinin GERİYE DÖNÜK SINAMASI — rolling origin, MASE, sNaive kıyaslı"
+    dogus: >-
+      GMY 2026-09-13: *"bilimsel olarak yapıyorsun değil mi, bununla ilgili literatür
+      çalışmalar vs araştırma yaptın mı"*. DÜRÜST CEVAP: tahmin yazılırken literatür
+      TARANMAMIŞTI ve model HİÇ SINANMAMIŞTI. Bu kayıt o boşluğun kapatılmasıdır.
+      (Aynı direktif daha önce de gelmişti — `olctum-mu-cikardim-mi.md` § EŞİK TÜRETME
+      o turdan doğmuştu. İkinci kez hatırlatılması bir SÜREÇ HATASIDIR.)
+    literatur: >-
+      ⭐ **M5 Accuracy competition (Makridakis/Spiliotis/Assimakopoulos, IJF 2022):**
+      5.507 takımın yalnız **%35,8'i** seasonal-naive (sNaive) temel çizgisini
+      geçebildi; %48,4'ü düz naive'i geçti. ⇒ sNaive GÜÇLÜ bir rakiptir ve onu
+      geçmeyen model karmaşıklığını HAK ETMEZ. Kazananlar ağaç-tabanlı topluluklardı
+      (LightGBM), sNaive'e göre ~%22 iyileşme.
+      ⭐ **Hyndman & Koehler (2006):** ölçekten bağımsız hata için MASE. MAPE sıfıra
+      yakın/değişken ölçekli seride patlar. M5 karesel kardeşi RMSSE'yi kullandı.
+      ⭐ **Hierarchical forecasting (Hyndman ve ark., MinT):** ay×şube×kategori bir
+      HİYERARŞİDİR; her düzeyde bağımsız tahmin + uzlaştırma (reconciliation) çoğu
+      zaman tek düzeyden iyidir. BİZDE UZLAŞTIRMA YOK — yalnız aşağıdan-yukarı toplam.
+      ⭐ **M-yarışmalarının tekrarlanan bulgusu:** basit ORTALAMA kombinasyon çoğu
+      zaman bileşenlerinden iyidir. Bizim veride de DOĞRULANDI (aşağı).
+    olcum_2026_09_13: >-
+      Rolling origin, iki kesim, ay×şube×kategori, perakende ciro. Ölçek =
+      EĞİTİM dönemi sNaive hatası (test verisinden sızmaz).
+        KESİM 2023→2024:  sNaive 2,074 · sNaive+drift **1,239** · BİZİM 1,372 ·
+                          BİZİM(kırpsız) 1,403 · KOMBİNASYON 1,249
+        KESİM 2024→2025:  sNaive 1,109 · sNaive+drift 0,675 · BİZİM 0,702 ·
+                          BİZİM(kırpsız) 0,718 · **KOMBİNASYON 0,621**
+      Yıl toplam sapması: 2024 → drift %0,0 · bizim −%1,6 | 2025 → drift +%14,0 ·
+      bizim **+%9,9** · kombinasyon +%11,9
+    bulgu: >-
+      ⚠⚠ **BİZİM MODEL ay×şube×kategori DÜZEYİNDE sNaive+drift'i GEÇEMİYOR**
+      (1,372 vs 1,239 · 0,702 vs 0,675). Yani hacim×fiyat ayrıştırması, mevsim payı
+      ve takvim katmanı granüler düzeyde "geçen yıl × tek katsayı"dan daha iyi
+      değil. Literatürün uyardığı tam da bu.
+      ⭐ AMA **YIL TOPLAMINDA daha iyi** (2025: +%9,9 vs +%14,0) ⇒ model AYRIMI
+      (hangi ay/şube/kategori) iyi yapıyor, SEVİYEYİ sNaive+drift kadar iyi
+      tutturamıyor. İkisi farklı iştir; rapor hangisine dayanıyorsa o ölçülmeli.
+      ⭐ **KOMBİNASYON (bizim + drift)/2 her iki kesimde de bizim modelden İYİ**
+      ve 2025'te hepsinden iyi (0,621). Literatürün kombinasyon bulgusu BKM
+      verisinde de tuttu.
+      ⭐ Kırpma (0,70-1,60) katkısı POZİTİF ama küçük: 1,372 vs 1,403 · 0,702 vs 0,718.
+    ⚠_senaryo_bandi_dar: >-
+      ⚠⚠ **ÜÇ FİYAT SENARYOSU GERÇEK BELİRSİZLİKTEN DAR.** Ölçülen yıl sapması
+      ±%10-14 iken senaryo bandı ortanın yalnız ±%8'ini kapsıyor. Yani bandın
+      "en kötü"sü bile modelin bilinen hatasını karşılamıyor.
+      ⇒ Rapora ölçülen hataya dayalı gerçekçi bant eklendi (orta ±%12):
+        2027 alt 1.244,5M ₺ · orta 1.414,2M ₺ · üst 1.584,0M ₺
+    sinir: >-
+      ⚠ YALNIZ 2 KESİM NOKTASI. Literatür daha çok origin ister; 2022'den beri 5 yıl
+        veri var ve ilk yıllar POS öncesi. Sonuç YÖN gösterir, kesin hata payı VERMEZ.
+      ⚠ 2024-2025 ÇOK YÜKSEK ENFLASYON yıllarıdır. Bir yöntemin burada iyi çıkması
+        düşük enflasyonda da iyi olacağı anlamına GELMEZ.
+      ⚠ 2 kesimle "kazanan seçmek" zayıf kanıttır — kombinasyonun üstünlüğü
+        TEYİT BEKLİYOR, kesinleşmiş değil.
+      ⚠ HİYERARŞİK UZLAŞTIRMA (MinT vb.) UYGULANMADI — literatürün önerdiği ve
+        bizde OLMAYAN yöntem. Açık iş.
+      ⚠ OLASILIKSAL ARALIK (prediction interval) YOK; ±%12 bandı ampiriktir,
+        istatistiksel bir güven aralığı DEĞİLDİR.
+    uses: [metrics:tahmin_2026_kapanis_2027_sube_kategori]
+    confidence: 0.75
+    evidence: "2026-09-13 — scripts/tahmin_backtest.py (rolling origin, iki kesim, MASE). Literatür: M5 Accuracy competition IJF 2022 · Hyndman & Koehler 2006 · Hyndman ve ark. MinT."
+    last_verified: "2026-09-13"
+    ttl_days: 180
+
   tahmin_2026_kapanis_2027_sube_kategori:
     tanim: "2026 kapanış + 2027 şube/kategori/ay ciro tahmini — adet × birim fiyat ayrık"
     formul: >-

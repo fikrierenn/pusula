@@ -419,6 +419,26 @@ def main() -> int:
          round(t27["orta"] / genel_buyume), ""],
         ["  ⚠ Hacim sabit kalırsa ciro, üç fiyat senaryosunun EN DÜŞÜĞÜNÜN de altına iner.", "", ""],
         [],
+        # ── GERİYE DÖNÜK SINAMA — modelin KENDİ ölçülmüş hatası ──────────────
+        # scripts/tahmin_backtest.py (rolling origin, MASE). Buraya ELLE yazıldı;
+        # sayı değişirse backtest yeniden koşulup bu blok güncellenir.
+        ["GERİYE DÖNÜK SINAMA — modelin ÖLÇÜLEN hatası (scripts/tahmin_backtest.py)", "", ""],
+        ["  Ölçüt MASE (Hyndman & Koehler 2006). M5'te 5.507 takımın yalnız %35,8'i", "", ""],
+        ["  seasonal-naive temel çizgisini geçebildi — sNaive güçlü bir rakiptir.", "", ""],
+        ["  Kesim 2023→2024:  sNaive 2,074 · sNaive+drift 1,239 · BİZİM 1,372 · komb. 1,249", "", ""],
+        ["  Kesim 2024→2025:  sNaive 1,109 · sNaive+drift 0,675 · BİZİM 0,702 · komb. 0,621", "", ""],
+        ["  ⚠ BİZİM MODEL, ay×şube×kategori düzeyinde sNaive+drift'i GEÇEMİYOR.", "", ""],
+        ["  ⚠ Yıl TOPLAMINDA ise daha iyi: 2025 sapması bizim +%9,9 · drift +%14,0.", "", ""],
+        ["  ⇒ Model AYRIMI iyi yapıyor, SEVİYEYİ sNaive+drift kadar iyi tutturamıyor.", "", ""],
+        [],
+        ["⚠⚠ SENARYO BANDI GERÇEK BELİRSİZLİKTEN DAR", "", ""],
+        [f"  Ölçülen yıl sapması ±%10-14. Üç fiyat senaryosu ortanın yalnız "
+         f"±%{100*(t27['yuksek']-t27['dusuk'])/(2*t27['orta']):.0f}'ini kapsıyor.", "", ""],
+        ["  Ölçülen hataya göre GERÇEKÇİ bant (orta ±%12):", "", ""],
+        ["    alt", round(t27["orta"] * 0.88), ""],
+        ["    üst", round(t27["orta"] * 1.12), ""],
+        ["  ⚠ Bu bant yalnız 2 kesim noktasından türedi — YÖN gösterir, kesin değildir.", "", ""],
+        [],
         ["YENİ ŞUBE DUYARLILIĞI (GMY: belirsiz → ikisi de gösterilsin)", "", ""],
         ["  Ortalama bir şubenin 2027 cirosu (orta senaryo)", round(ort_sube), ""],
         ["  ⚠ TAM YIL + OLGUN varsayımı. Açılış ayı ve rampa yoktur; ilk yıl bunun ALTINDA kalır.", "", ""],
