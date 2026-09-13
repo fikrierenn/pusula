@@ -3019,6 +3019,57 @@ entities:
     last_verified: "2026-08-25"
     evidence: "2026-08-25 canlı örnekleme + PaymentTypes dağılımı (Ağu25-Tem26); sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 1/3."
 
+  INTER_BOS.dbo.BELGE:
+    type: table
+    pk: "Belge_ID (nvarchar) — ID bigint kimlik; satırlar dbo.HAREKET.Belge_ID ile bağlanır"
+    key: [Belge_ID, Tarih, Belge_Tipi, Kasa_No, Sicil_No, Iptal, Matrah, Kdv, Toplam, SERVERCOMPANYID]
+    grain: "kasa belgesi (fiş/fatura) başlığı"
+    note: >-
+      ⭐⭐ **ESKİ KASA SİSTEMİ (ENPOS / INTER BOS) — 83 GB, AYNI SUNUCUDA.**
+      GMY bildirdi (2026-09-14): *"eski versiyon kasalar vardı şema da var"* +
+      `D:\Belgelerim\sql\_ARSIV_ENPOS\` (8 hazır sorgu).
+      ⚠⚠ BU KAYIT BİR "ÖLÇEMEDİM" İDDİASINI ÇÜRÜTTÜ: 2026-09-14'te "2026'nın ilk
+      yarısı fiş sayısıyla doğrulanamıyor, POS geçişi boşluğu" YAZILMIŞTI. Yanlıştı —
+      eski kasa erişilebilir durumda. **"Veri yok" demeden önce eski sistemi ara.**
+      KAPSAM: EncoreMerkez'in BOŞ olduğu dönem. 2025 Oca-Tem burada
+      (Oca 98.409 · Şub 81.865 · Mar 74.956 · Nis 83.160 · May 72.052 · Haz 71.300 ·
+      Tem 38.098 geçiş ayı). Ağu-2025'ten sonra Encore devralır.
+      ⭐ MUTABAKAT KURULDU: eski kasa 2025 H1 `Belge_Tipi='FIS'` matrahı
+      **208.152.381 ₺** ↔ `irsHrk` perakende aynı dönem **208.203.257 ₺** —
+      fark **%0,02**. Yani eski kasa üç mağazayı da kapsıyor ve ERP ile tutuyor.
+      Belge tipleri (2025 H1): FIS 459.034 · GPS 10.769 · HDY 6.752 · ZRP 3.374 ·
+      EFA 892 · EAR 877 · XRP 44. Perakende fiş = `Belge_Tipi='FIS'` + `Iptal<>1`.
+      Şube bağı (arşiv sorgusundan): `Kasa_No → SERVER_CASHREGISTER.CASHREGISTERNO`
+      → `SERVERAFFILIATEID → SERVER_AFFILIATE.AFFILIATENO`.
+    confidence: 0.9
+    evidence: "2026-09-14 — sorgular/2026-09-14-hacim-buyumesi-gercekci-mi.sql; ciro mutabakatı irsHrk ile %0,02."
+    last_verified: "2026-09-14"
+
+  INTER_BOS.dbo.HAREKET:
+    type: table
+    pk: "(Belge_ID, Satir)"
+    key: [Belge_ID, Satir, Tip, Stok_Kodu, Barkod, Adet, Fiyat, Tutar, Ind_Miktar, Promo_ID]
+    grain: "kasa belgesi × satır"
+    note: >-
+      ⚠⚠⚠ **SATIR TİPİ (`Tip`) SÜZÜLMEZSE ADET SAHTE OLARAK ŞİŞER — VE BÜYÜME
+      YÖNÜ TERSİNE DÖNER.** GMY uyardı (*"satırlarda sorun olabilir tipler vardı"*),
+      arşiv sorgusu doğruladı: `Tip IN ('SAT','IPT')`.
+      ÖLÇÜLDÜ (2025 H1, `Belge_Tipi='FIS'`):
+        `SAT` 1.894.672 satır · 2.089.768 adet ·  280,5M ₺   ← SATIŞ
+        `PRI`   670.956 satır ·   725.630 adet ·  −38,4M ₺   ← **PROMOSYON, ADET TAŞIR**
+        `IND`   490.538 satır ·         0 adet ·  −43,7M ₺   ← saf indirim, adetsiz
+        `IPT`    54.238 satır ·   −62.762 adet ·  −11,0M ₺   ← satır iptali (negatif)
+        `ART`     2.257 satır ·         0 adet ·  +0,17M ₺
+      ⇒ Doğru net adet = `SAT` + `IPT` = **2.027.006**. Süzülmezse 2.806.734 çıkar.
+      ⇒ BEDELİ ÖLÇÜLDÜ: süzgeçsiz kıyas 2025 H1 → 2026 H1 adet değişimini
+        **−%3** gösteriyordu; doğrusu **+%34,1**. Yani yalnız büyüklük değil YÖN yanlıştı.
+      ⭐ EncoreMerkez'de SİMETRİK DAVRANIŞ YOK: `TotalPrice=0` satır yalnız 2.225 adet
+        (ihmal) — yeni kasa indirimi SATIRA uyguluyor, bedava kalem satırı yazmıyor.
+        ⇒ İki sistem "adet"i AYNI ŞEYİ SAYMAZ; kıyas ancak tip süzgeciyle kurulur.
+    confidence: 0.9
+    evidence: "2026-09-14 — sorgular/2026-09-14-hacim-buyumesi-gercekci-mi.sql. Arşiv kaynağı: D:/Belgelerim/sql/_ARSIV_ENPOS/ENPOS ÜRÜN BAZLI SATIŞLAR.sql (Tip IN ('SAT','IPT'))."
+    last_verified: "2026-09-14"
+
   DerinSISBkm.dbo.fatAyr:
     type: table
     pk: "(ehID, ehSira) — MANTIKSAL anahtar; tabloda PK KISITI YOK (is_primary_key sayisi 0)"

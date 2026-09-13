@@ -478,6 +478,44 @@ uyarı olarak yazılır. "0 kırık" tüm eşleşmenin doğruluğunu KANITLAMAZ.
 - `docs/01-baglanti.md`, `docs/02-tablolar-magaza.md`, `docs/03-ciro-filtreleri.md`
 - `docs/05-eticaret-joker.md`, `docs/08-pos-encore.md`
 
+## ESKİ KASA `INTER_BOS` — SATIR TİPİ SÜZÜLMEZSE ADET ŞİŞER (14.09.2026)
+
+**EncoreMerkez'den ÖNCEKİ kasa sistemi `INTER_BOS` veritabanındadır (83 GB, aynı
+sunucu).** EncoreMerkez Oca-Haz 2025'te BOŞTUR; o dönem buradadır.
+⚠ "EncoreMerkez'de veri yok ⇒ ölçemem" SONUCU YANLIŞTIR — 14.09'da tam bu hata
+yapıldı ve GMY düzeltti (*"eski versiyon kasalar vardı şema da var"*).
+
+- Başlık `INTER_BOS.dbo.BELGE` (6,4M) · satır `dbo.HAREKET` (39,1M), bağ `Belge_ID`.
+- Perakende fiş = **`Belge_Tipi='FIS'` + `ISNULL(Iptal,0)<>1`**.
+- Şube bağı: `BELGE.Kasa_No → SERVER_CASHREGISTER.CASHREGISTERNO`
+  → `SERVERAFFILIATEID → SERVER_AFFILIATE.AFFILIATENO`.
+
+⚠⚠⚠ **`HAREKET.Tip` SÜZÜLMEDEN ADET TOPLAMA — YÖNÜ BİLE TERS ÇEVİRİR.**
+Kanonik süzgeç (arşiv sorgusundan, `D:\Belgelerim\sql\_ARSIV_ENPOS\`):
+**`Tip IN ('SAT','IPT')`**. Ölçüldü (2025 H1, FIS):
+
+| Tip | satır | adet | tutar |
+|---|--:|--:|--:|
+| `SAT` satış | 1.894.672 | 2.089.768 | 280,5M ₺ |
+| **`PRI` promosyon** | 670.956 | **725.630** | −38,4M ₺ |
+| `IND` indirim | 490.538 | 0 | −43,7M ₺ |
+| `IPT` satır iptali | 54.238 | **−62.762** | −11,0M ₺ |
+
+Doğru net adet = `SAT`+`IPT` = **2.027.006**; süzgeçsiz **2.806.734** (%38 şişik).
+**BEDELİ:** süzgeçsiz kıyas 2025→2026 adet değişimini **−%3** gösteriyordu;
+doğrusu **+%34,1**. Yalnız büyüklük değil YÖN yanlıştı.
+
+⭐ **EncoreMerkez'de SİMETRİK DAVRANIŞ YOK:** `TotalPrice=0` satır yalnız 2.225 adet.
+Yeni kasa indirimi SATIRA uygular, bedava kalem satırı yazmaz. ⇒ İki sistemin
+"adet"i AYNI ŞEYİ SAYMAZ; kıyas ancak tip süzgeciyle kurulur.
+
+⭐ **MUTABAKAT KURULABİLİR (ve kuruldu):** eski kasa 2025 H1 `FIS` matrahı
+**208.152.381 ₺** ↔ `irsHrk` perakende aynı dönem **208.203.257 ₺** → fark **%0,02**.
+Yeni bir dönem kıyası yapmadan önce bu mutabakat tekrarlanır.
+
+Kanıt: `sorgular/2026-09-14-hacim-buyumesi-gercekci-mi.sql` ·
+sema `entities:INTER_BOS.dbo.BELGE` / `INTER_BOS.dbo.HAREKET`.
+
 ## SIFIR SENTINEL — `IS NOT NULL` bunları ELEMEZ (11.09.2026, beş köprüde ölçüldü)
 
 DerinSIS/EncoreMerkez/JOKER'de "bağlı kayıt YOK" **NULL ile değil, `0` ile** yazılır. Kolon

@@ -38,6 +38,65 @@ metrics:
     last_verified: "2026-09-13"
     ttl_days: 365
 
+  enflasyon_capasi_fiyat_senaryosu:
+    tanim: "Fiyat senaryolarının çapalanması — kendi geçişkenliğimiz + TÜFE alt kalemi + OVP/dolar"
+    dogus: >-
+      GMY 2026-09-14: *"enflasyon tahminleri dolar OVP diğer tahminleri de baz alarak
+      yapmalısın; her şeyin bir mantığı ve gerekçesi olmalı"*. Öncesinde senaryolar
+      yalnız KENDİ geçmiş fiyat davranışımızın uzantısıydı — dış çıpa YOKTU.
+    ⚠_manset_tufe_yaniltir: >-
+      ⚠⚠ **MANŞET TÜFE İLE KIYAS YANILTIR.** TÜİK Ağu-2026 yıllık: TÜFE **%31,51** ·
+      **TEMEL MALLAR %15,89** · Hizmetler %40,28. Kitap/kırtasiye **TEMEL MALDIR**.
+      Bizim birim fiyat artışımız +%15,0 ⇒ manşetle kıyaslanınca "fiyatı yarı yarıya
+      kırmışız, hacmi ucuzlukla almışız" gibi görünür; DOĞRU alt kalemle kıyaslanınca
+      geçişkenlik **0,94** yani fiyatımız mal enflasyonuyla **BİREBİR**.
+      ⇒ Reel fiyatımız DÜŞMEDİ; hacim büyümesi fiyat kırarak satın alınmadı.
+    capa_2027: >-
+      OVP 2027: enflasyon **%21,0** · dolar **56,05 ₺ (+%19,6)** · 2028: %15,5 / +%13,6.
+      Temel mal / manşet oranı (Ağu-2026) = 15,89/31,51 = **0,50**.
+      Senaryolar:
+        DÜŞÜK  %10 — OVP %21 TUTAR ve mal/manşet oranı 0,50'de kalır (21×0,50≈10,6)
+        ORTA   %15 — OVP bir miktar AŞILIR ya da malın payı yükselir; 2026'mız tekrar eder
+        YÜKSEK %21 — mal-manşet farkı KAPANIR, OVP manşeti doğrudan fiyata yansır;
+                     dolar +%19,6 ile de uyumlu (ithal mal maliyet baskısı)
+    sinir: >-
+      ⚠ **OVP bir HEDEFTİR, tahmin DEĞİL**; geçmişte gerçekleşme hedefin ÜSTÜNDE kaldı.
+        Piyasa/TCMB anket beklentileri OVP'nin üstündedir — YÜKSEK senaryo o yönü temsil eder.
+      ⚠ Geçişkenlik TEK BİR AYDAN (Ağu-2026) türetildi; aylık seri ile doğrulanmadı.
+      ⚠ Ürün karması değişirse (ucuz kaleme kayma) birim fiyat artışı enflasyondan
+        BAĞIMSIZ olarak düşer — bu bir fiyat kararı değil karma etkisidir.
+    confidence: 0.7
+    evidence: "2026-09-14 — TÜİK Ağu-2026 TÜFE/Temel Mallar · OVP 2027-2029. Uygulayan: scripts/tahmin_2027_sube_kategori.py (--dusuk/--orta/--yuksek varsayılanları)."
+    last_verified: "2026-09-14"
+    ttl_days: 120
+
+  kpss_yili_akademi_tek_seferlik:
+    tanim: "Akademi kategorisinin 2026 sıçraması bir SINAV TAKVİMİ olayıdır, trend değil"
+    dogus: "GMY 2026-09-14: *\"akademi bu sene kpss senesiydi seneye olmayacak\"*."
+    olculdu: >-
+      Akademi adet (Oca-Ağu, perakende): 2025 **30.908** → 2026 **78.346** = **+%153**.
+      Model bunu 1,60 ile kırpıyordu — o bile YANLIŞ YÖN: 2027'de büyüme değil
+      DÜŞÜŞ beklenir.
+    uygulanan: >-
+      2026 zirvesi taban ALINMAZ; 2027 = **2025 seviyesi × genel hacim trendi**.
+      Hem model bileşenine (A) hem kaba bileşene (B) uygulandı — yoksa sNaive+drift
+      2026 zirvesini taban alıp düzeltmeyi YARI YARIYA geri alırdı.
+      Sonuç: Akademi 2027 adedi 121.040 → **83.813 (−%31)**. Diğer kategoriler etkilenmedi.
+    sinir: >-
+      ⚠⚠ **BU BİR ÖLÇÜM DEĞİL, İŞ BİLGİSİDİR.** Kaynağı GMY beyanıdır; sınav
+      takviminden bağımsız olarak doğrulanmadı. Sınav takvimi değişirse (KPSS
+      periyodu, YKS/LGS aday sayısı) yeniden ele alınmalı.
+      ⚠ Aynı sınıftan BAŞKA kalemler olabilir ve TARANMADI: müfredat değişimi,
+        kampanya takvimi, mağaza açılışı/tadilatı. Model bunları bilmez.
+    genel_ders: >-
+      ⭐ Tek seferlik takvim olayı TREND SAYILMAZ. Kırpma (0,70-1,60) böyle bir
+      kalemi ehlileştirir ama YÖNÜNÜ düzeltmez — kırpma bir güvenlik ağıdır,
+      iş bilgisinin yerine geçmez.
+    confidence: 0.6
+    evidence: "2026-09-14 — GMY beyanı + sorgular/2026-09-14-hacim-buyumesi-gercekci-mi.sql blok 1. Uygulayan: scripts/tahmin_2027_sube_kategori.py (KPSS_KATEGORILERI)."
+    last_verified: "2026-09-14"
+    ttl_days: 365
+
   hacim_buyumesi_gercekci_mi:
     tanim: "Perakende adet büyümesinin gerçekliği — tahminin en büyük varsayımı sınandı"
     dogus: >-
@@ -81,11 +140,25 @@ metrics:
       müşteri sayısı artıyor); tartışmalı olan SÜRME HIZI.
       ⇒ 3 yıllık CAGR'a (+%22,3) çekilirse 2027 orta ciro 1.434,1M → **~1.389,8M ₺**
         (−%3,1). Karar GMY'nin.
-    olculemeyen: >-
-      ⚠ **2026'nın İLK YARISI FİŞ SAYISIYLA DOĞRULANAMADI.** EncoreMerkez'de
-      Oca-Haz 2025 HİÇ YOK, Tem-2025 eksik (22.602 fiş vs 2026'nın 75.447'si) —
-      POS geçişi yılın ortasında. "Müşteri mi sepet mi" sorusunun TAM YIL cevabı
-      YOK; yalnız Ağustos var. Bu bir VERİ SINIRI, "büyüme yok" demek DEĞİL.
+    ⭐_olculemeyen_CURUTULDU_2026_09_14: >-
+      ⚠⚠ BU KAYIT ÖNCE ŞÖYLE DİYORDU: *"2026'nın ilk yarısı fiş sayısıyla
+      DOĞRULANAMADI; EncoreMerkez'de Oca-Haz 2025 hiç yok, POS geçişi yılın
+      ortasında."* **YANLIŞTI — ölçülebilirmiş.** GMY bildirdi: *"eski versiyon
+      kasalar vardı şema da var"*. Eski kasa **`INTER_BOS`** (83 GB) aynı sunucuda
+      duruyor (bkz. `entities:INTER_BOS.dbo.BELGE`).
+      ⇒ DERS: **"veri yok" demeden önce ESKİ SİSTEMİ ARA.** Bir kaynağın bir
+        dönemde boş olması, o dönemin ölçülemez olduğu anlamına gelmez.
+      ★★ DOĞRULAMA YAPILDI (2025 H1 → 2026 H1, ödemeli satırlar, `Belge_Tipi='FIS'`):
+        fiş   459.034 → 551.303   **+%20,1**
+        adet 2.027.006 → 2.718.792 **+%34,1**
+        sepet     4,42 → 4,93     **+%11,7**
+      ⇒ `irsHrk`'nin +%37,2'si KASADAN TEYİT EDİLDİ (kalan fark Sınav kapsamı).
+        Büyümenin kaynağı: **%20 daha fazla MÜŞTERİ + %12 daha büyük SEPET.**
+      ⚠⚠ AMA ÖNCE YANLIŞ ÖLÇTÜM: satır tipi süzülmeyince 2025 adedi 2.806.734
+        çıkıyor ve büyüme **−%3** görünüyordu. `PRI` (promosyon) satırları ADET
+        TAŞIYOR. Doğrusu `Tip IN ('SAT','IPT')` — bkz. `entities:INTER_BOS.dbo.HAREKET`.
+        GMY uyarmasaydı (*"satırlarda sorun olabilir tipler vardı"*) yanlış yön
+        raporlanacaktı.
     ⚠_onceki_olcumun_iyimserligi: >-
       ⚠⚠ YAN BULGU: 2026-09-13'te 24 AYLIK alış penceresiyle perakende marjı
       **%37,3** ölçülmüş ve "pencere uyuşmazlığı SMM'yi düşük gösterir, marj
