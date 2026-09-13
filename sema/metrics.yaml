@@ -4,6 +4,107 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  magaza_brut_marji_perakende:
+    tanim: "Mağaza BRÜT marjı — kanal ayrık, kasa satırı vs alış faturası birim net"
+    formul: >-
+      SATIS  = EncoreMerkez SalesProducts, KDV hariç, satır bazında:
+               SUM(CASE WHEN DocumentsTypeId=3 THEN -(TotalPrice-VatTotal)
+                        ELSE (TotalPrice-VatTotal) END)   [IsValid=1 ZORUNLU]
+      ALIS   = dbo.fat (eTip=0) + fatAyr: SUM(ehTutarN)/SUM(ehAdetN) = BIRIM NET (KDV hariç)
+      SMM    = net_adet x birim_alis
+      MARJ   = (SATIS - SMM) / SATIS x 100
+      Köprü: EncoreMerkez.Products.Code = urn.stkID (%99,98). stkKod = BARKOD DEGIL.
+      Pencere: satış 12 ay · alış 24 ay. Kapsam: üç mağaza (1 FSM · 4477 Özlüce · 4478 İst.Yolu).
+    neden_bu_taban: >-
+      ⭐ Kullanıcı direktifi: "o kolona takılma, biz kendi hesabımıza bakalım"
+      (`posOzetUrun.posMaliyet` kastedildi). Gerekçe ölçülü: kanonik maliyet yolu
+      `fytOzl` (fTur=1/fTip=1) üzerinden akıyor ve `urnBilgi` 228 "Odak Alış Fiyat
+      Güncellenmesin" bayrağı 114.977 üründe o satırın yazılmasını DURDURUYOR ⇒
+      maliyet bayatlıyor (taze %24,9 vs bayraksız %35,6). Marjı o alandan okumak,
+      bayrağın etkisini sessizce marja taşırdı.
+      ⭐ Ve hiçbir yerde İSKONTO ORANI kullanılmıyor (2026-09-12 dersi, commit
+      524bd02): ne marka vekili `odak_marka.discount`, ne fatura `ehIndirim` oranı
+      ekonomiyi ölçer — ikisi de bir SUNUM tercihini ölçer. Yalnız BİRİM NET FİYAT.
+    kanal_ayrimi: >-
+      ⚠⚠ KANAL AYRIMI `posOzetUrun` İLE YAPILAMAZ — ürün-gün özetidir, belge tipi
+      taşımaz. DerinSIS de yapamaz (`irsHrk.ehTip=100` GÜNLÜK ÖZET belge).
+      ⇒ Taban EncoreMerkez `Sales`+`SalesProducts`. Kullanıcı doğruladı:
+      "sınav da kasadan düzenlenen belge", yani ayrım kasada YAPILABİLİR.
+      PERAKENDE = DocumentsTypeId 1 + 3(iade, negatif netlenir)
+      DİĞER     = 8 Sınav · 2 Fatura · 6/7 Personel — DÖRDÜ AYRI raporlanır.
+      ⚠ Belge-bazlı ölçüm yalnız Ağu-2025 sonrası güvenli (POS geçişi).
+    fis_tavani_olculdu: >-
+      ⭐ Kullanıcı: "fiş kesme limiti var kanunen... 30 değil 12 bin". EŞİK
+      TAHMİN EDİLMEDİ, KASADAN OKUNDU (2024-09 sonrası, GrossTotal-DiscountTotal):
+      fiş (tip 1) maksimum 2025 = **9.900,00 ₺** · 2026 = **12.000,00 ₺**;
+      üstünde TEK FİŞ YOK. Tavan YILA GÖRE DEĞİŞİYOR ⇒ sabit eşik yazmak eski yılı
+      yanlış sınıflar.
+      ⇒ `DocumentsTypeId=2` "kurumsal" DEĞİLDİR: tavanı aşan perakende sepet de
+      faturaya döner. AMA ETKİSİ KÜÇÜK: `2`nin ortalaması 3.095 ₺ (çoğu tavanın
+      ALTINDA — fatura İSTEYEN müşteri), tavanı aşan 236 belge (2026), toplam
+      cirosu 14,0M ₺ = kasa cirosunun %1,2. Marjı da perakendeye çok yakın (%36,4
+      vs %37,3). ⇒ `2` ayrı kanal olarak raporlanır ama İKİYE BÖLÜNMEDİ.
+    olcum_2026_09_13: >-
+      **KANAL BÜYÜKLÜĞÜ (son 12 ay, net KDV hariç, üç mağaza):**
+        PERAKENDE 1.151.296 belge · **709.240.570 ₺**
+        SINAV         7.047 belge · **406.391.952 ₺**  ← kasa cirosunun %36
+        FATURA        5.191 belge ·   13.996.180 ₺
+        PERSONEL      9.542 belge ·   10.657.742 ₺
+        TOPLAM 1.140.286.444 ₺ · 'TANIMSIZ' belge tipi ÇIKMADI (küme kapalı).
+      ⇒ AYIRMAK ŞARTMIŞ: Sınav ayrılmasaydı "mağaza marjı"nın üçte biri okul
+        kanalından gelirdi.
+
+      **BRÜT MARJ:**
+        PERAKENDE ölçülebilir 128.233 ürün · 689.933.105 ₺ · SMM 432.586.658 ₺
+                  · brüt kâr **257.346.447 ₺** · **MARJ %37,3**
+        PERAKENDE ölçülemez    24.124 ürün ·  19.317.128 ₺ (cironun %2,7'si)
+        SINAV ölçülebilir  93.935.743 ₺ · %60,0  ·  SINAV ÖLÇÜLEMEZ 312.456.209 ₺
+        FATURA %36,4 · PERSONEL %31,9 (personel indirimi 5,4 puan düşürüyor)
+
+      **KATEGORİ (perakende):**
+        Hazırlık Kitapları 150,3M ₺ · %38,1 · Kırtasiye 137,3M · **%42,9** ·
+        Kitap 129,1M · %34,2 · Çocuk Kitabı 103,6M · %33,0 · Oyuncak 92,3M · %36,6 ·
+        Akademi 30,7M · %33,9 · Hediyelik 21,8M · %42,6 · Gıda 8,5M · %41,1 ·
+        Sınav Kıyafet 6,3M · %49,4 · Elektronik 4,8M · %39,5 · **Dergi 2,4M · %16,7**
+      ⇒ ⭐ KIRTASİYE MAĞAZADA EN KÂRLI KALEM (%42,9 · 59,0M ₺ brüt kâr) — 2026-09-12
+        ölçümünde WEB tarafında "en sorunlu kategori" görünüyordu. ÇELİŞKİ DEĞİL,
+        KANAL FARKI: web listeden ~%35+ indirimle satıyor, mağaza satmıyor.
+      ⇒ Kırtasiye zararına satışın da yoğunlaştığı yer: 766 ürün / 5,1M ₺
+        (perakende zararına cirosunun ~%60'ı). Kârlı kategori, kusurlu kuyruk.
+
+      **ŞUBE:** Özlüce 299,1M ₺ · %37,0 | FSM 206,7M ₺ · %37,8 | İst.Yolu 184,8M ₺ · %37,3
+      ⇒ ÜÇ ŞUBE 0,8 PUAN İÇİNDE — fark şubeden değil ürün karmasından. "Hangi mağaza
+        daha iyi yönetiliyor" sorusu BU TABLOYLA YANITLANMAZ.
+    sinav_olculemiyor: >-
+      ⚠⚠ SINAV'IN %77'Sİ (312.456.209 ₺ / 1.017 ürün) BU YOLLA ÖLÇÜLEMİYOR ve bu bir
+      VERİ KUSURU DEĞİL, İŞ MODELİ FARKI: ciro "X. SINIF SÜRELİ YAYIN 2026"
+      paketlerinden geliyor (birim ~55.000 ₺; 2.sınıf 28,4M ₺/509 adet · 3.sınıf
+      27,4M/497 · 1.sınıf 24,3M/431 · 9.sınıf 23,6M/448 · 8.sınıf 23,2M/443),
+      marka "SINAV OKULLARI" — kendi yayını/hizmeti, ALIŞ FATURASI YOK.
+      ⇒ Sınav kârlılığı ayrı bir maliyet yolu ister (basım/telif/öğretmen).
+      ⇒ Ölçülen %60,0 yalnız Sınav'ın SATIN ALDIĞI malın marjıdır, KANALIN marjı
+        DEĞİLDİR. İkisi karıştırılmamalı.
+    sinir: >-
+      ⚠ PENCERE UYUŞMAZLIĞI: satış 12 ay, alış 24 ay. Birim alış 24 ayın ağırlıklı
+        ortalamasıdır; enflasyonlu dönemde SMM'yi OLDUĞUNDAN DÜŞÜK gösterir ⇒
+        **%37,3 İYİMSERDİR.** Parti bazlı düzeltme: metrics:fifo_marj.
+      ⚠ Birim alış BASİT ağırlıklı ortalama, FIFO değil.
+      ⚠ BRÜT marjdır — kargo/personel/kira/komisyon/fire HESABA GİRMİYOR, net kâr DEĞİL.
+      ⚠ Kapsam üç mağaza; merkez depo (12) · e-ticaret (4479) · İade Deposu (4480)
+        DIŞARIDA (codes:mekanID: defterde DOKUZ mekan var) — KAPSAM SEÇİMİDİR.
+      ⚠ AÇIK SORU — Dergi %16,7 neden düşük? Dergi iş modeli (sabit fiyat, düşük
+        iskonto, iade hakkı) gereği olabilir ama ÖLÇÜLMEDİ.
+      ⚠ AYKIRI DEĞER: `Genel` (−%204,9 · 15 ürün) ve `Etkinlik` (168 ₺ ciroya
+        82.845 ₺ SMM · 1 ürün) — muhtemelen satış birimi ile fatura birimi farklı
+        (koli vs adet). İNCELENMEDİ.
+      ⚠ MUTABAKAT YAPILMADI: taban posOzetUrun'dan SalesProducts'a taşındı ama
+        taşımanın doğruluğu ölçülerek gösterilmedi. Kapalı gün ile yapılmalı
+        (kasa→ERP aktarımı SAATLİK: açık günde ERP eksik).
+    evidence: "2026-09-13 — Arşiv: sorgular/2026-09-13-magaza-marji-kendi-hesabimiz.sql (blok 0b/1/2/3/4 koştu; 5a zararına ürün listesi ve 5b mutabakat KOŞMADI)"
+    confidence: 0.85
+    last_verified: "2026-09-13"
+    ttl_days: 90
+
   web_marj_farki_odak_iskonto:
     tanim: "İşletmenin KENDİ marj tanımı: alış iskontosu − satış indirimi (bkm.OdaktaDatasiOlupMarjiSorunluUrunler)"
     formul: >-
