@@ -4,6 +4,92 @@ version: 1
 updated: 2026-08-06
 
 metrics:
+  bayram_gun_agirligi:
+    tanim: "Dini bayram günlerinin perakende günlük cirosuna etkisi — ÖLÇÜLDÜ"
+    formul: >-
+      ağırlık = (bayram penceresi TOPLAM cirosu / pencerenin TAKVİM GÜN SAYISI)
+                ÷ (önceki 14 günün günlük ortalaması)
+      Kaynak: `irsHrk` günlük, perakende (KatAna NOT LIKE 'Sınav Okul%'), üç mağaza.
+    olculdu_2026_09_13: >-
+      Ramazan 2025 **×1,30** · Ramazan 2026 **×1,15**
+      Kurban  2025 **×0,89** · Kurban  2026 **×0,85**
+      ⇒ **RAMAZAN BAYRAMI satışı ARTIRIYOR (+%15-30), KURBAN BAYRAMI DÜŞÜRÜYOR
+        (−%11-15).** Modelde kullanılan gün ağırlığı: ramazan 1,22 · kurban 0,87.
+    ⚠_ham_ortalama_yaniltir: >-
+      ⚠⚠ **`AVG(gunluk_ciro)` YANLIŞ SONUÇ VERİR VE YÖNÜ TERS ÇEVİRİR.**
+      Mağaza kapalıyken `irsHrk`'de O GÜNÜN SATIRI HİÇ YOKTUR; `AVG` yalnız satırı
+      olan günleri böler ve kapalı günü görmez. Ham ölçüm: Ramazan25 ×1,95 ·
+      Ramazan26 ×1,54 · Kurban25 ×1,18 · Kurban26 ×1,06 — yani ham sayıya bakan
+      "Kurban da satışı artırıyor" der. TAKVİM GÜNÜNE bölününce Kurban **×0,85-0,89**
+      çıkıyor, yani DÜŞÜRÜYOR. Pencere gün sayısı ile satırlı gün sayısı
+      (Ramazan25 3 gün / 2 satır · Kurban25 4/3 · Kurban26 5/4) farkı bunun kanıtı.
+      ⇒ Bu, `olctum-mu-cikardim-mi.md` § "nüfus sıfırsa geçti değil bakamadım"
+        sınıfının bir örneğidir: eksik satır "etki yok" gibi okunur.
+    takvim_2027: >-
+      Web'den doğrulandı (hafızadan yazılmadı, 2026-09-13):
+      Ramazan Bayramı 2026 → 19-22 Mart · 2027 → 8-11 Mart (AYNI AY)
+      Kurban Bayramı  2026 → 26-30 Mayıs · 2027 → 15-19 Mayıs (AYNI AY)
+      ⇒ ⭐ 2027'de AY SEVİYESİNDE bayram kayması YOK, gün sayıları da aynı ⇒ aylık
+        takvim çarpanı ≈ 1. Bu bir SONUÇTUR (ölçülüp öyle bulundu), ihmal değil.
+      ⚠ 19 Mayıs 2027: Kurban'ın 4. günü ile Atatürk'ü Anma ÇAKIŞIYOR — 2026'da
+        ayrı düşen iki tatil üst üste biniyor, Mayıs'ta bir çalışma günü kazanılıyor.
+    confidence: 0.8
+    evidence: "2026-09-13 — sorgular/2026-09-13-tahmin-2027-taban-olcumleri.sql blok 5-6. Uygulayan: scripts/tahmin_2027_sube_kategori.py (BAYRAM_AGIRLIK)."
+    last_verified: "2026-09-13"
+    ttl_days: 365
+
+  tahmin_2026_kapanis_2027_sube_kategori:
+    tanim: "2026 kapanış + 2027 şube/kategori/ay ciro tahmini — adet × birim fiyat ayrık"
+    formul: >-
+      1) 2026 KAPANIŞ: gerçekleşen (son tam güne kadar) + Eylül kalanı OKUL-HİZALI
+         + Ekim-Aralık takvim YoY. 2) 2027: 2026 tam yıl adet × hacim büyümesi,
+         2026 aylık adet payıyla dağıtılır, takvim çarpanıyla düzeltilir;
+         birim fiyat = 2026 birim × aylık fiyat endeksi × senaryo.
+      3) Ciro satır satır adet × birim (toplamdan TÜRETİLMEZ).
+      Kaynak `irsHrk`, kanonik ciro eTip 100−101+4−5, KDV HARİÇ, üç mağaza.
+    neden_iki_bilesen: >-
+      ⭐ Ciro TEK PARÇA tahmin edilemez — iki kuvvet TERS yönde (ölçüldü, Oca-Ağu):
+        adet  2024/23 +%13,3 · 2025/24 +%21,3 · 2026/25 **+%33,0** (HIZLANIYOR)
+        fiyat 2025/24 ~+%30  · 2026/25 **~+%17,9**                  (YAVAŞLIYOR)
+      Tek büyüme oranı bu ikisini karıştırır ve yanılır.
+    okul_hizalama: >-
+      ⚠⚠ EYLÜL TAKVİMLE KAPATILAMAZ (sema:sezon_ciro_tahmini_okul_hizali).
+      Açılış 2025 → 08.09 · 2026 → **14.09**, yani 6 GÜN GEÇ. 13.09.2026'da okul
+      HENÜZ AÇILMAMIŞTI (T−1); 2025'te aynı takvim gününde 5 gündür açıktı ve zirve
+      (T+5) geçmişti. ÖLÇÜLDÜ: T−1..T+16 penceresinde 2025 87,8M ₺ · 2026 yalnız
+      9,1M ₺ — dalga HENÜZ GELMEMİŞ. Takvim kıyası bunu "talep kaybı" sanar.
+      Hizalı büyüme çarpanı (T−29..T−2): **k_ciro ×1,468 · k_adet ×1,247**.
+    olcum_2026_09_13: >-
+      PERAKENDE (KDV hariç, üç mağaza):
+        2025 GERÇEK    630.967.949 ₺ / 4.862.626 adet
+        2026 KAPANIŞ   950.067.814 ₺ / 6.296.194 adet  (×1,506 ciro · ×1,295 adet)
+        2027 DÜŞÜK   1.306.374.322 ₺ (+%9 fiyat)
+        2027 ORTA    1.414.240.092 ₺ (+%18 fiyat)
+        2027 YÜKSEK  1.534.090.947 ₺ (+%28 fiyat)
+      Şube (2027 orta): Özlüce 550,4M · İst.Yolu 484,9M · FSM 379,0M
+    sinir: >-
+      ⚠⚠ **2026 KAPANIŞININ %41'İ TAHMİNDİR** (gerçekleşen 556,3M / 950,1M). 2027
+        bu kısmen-tahmin tabanın üstüne kuruluyor ⇒ HATA BİRİKİR.
+      ⚠⚠ **HACİM RİSKİ ÜÇ SENARYONUN DIŞINDA**: senaryolar yalnız FİYATI değiştirir.
+        Hacim +%29 ile geliyor. Yarıya inerse 1.253,2M · 2026'da sabit kalırsa
+        **1.092,2M** — yani hacim durursa ciro, EN DÜŞÜK fiyat senaryosunun da ALTINA
+        iner. Belirsizliğin ağırlık merkezi fiyatta DEĞİL, hacimde.
+      ⚠ 2027-2028 OKUL AÇILIŞI MEB'ce AÇIKLANMADI → 13.09.2027 VARSAYILDI. ÇIKARIM,
+        ölçüm değil; takvim açıklanınca yeniden koşulmalı.
+      ⚠ AĞU/EYL sınırı ±1-2 hafta oynar: iki ayın TOPLAMI güvenilir, ayrımı değil.
+      ⚠ KAPASİTE YOK (raf/metrekare/personel kısıtı modelde yok) · kampanya takvimi,
+        rakip, tadilat, hava YOK.
+      ⚠ SINAV AYRI TUTULDU (GMY kararı) — tahmine KARIŞTIRILMADI. Sebebi ölçülü:
+        adet 62.439 (2024) → 49.700 (2025) → 31.767 (2026*) yarıya indi, ciroyu
+        FİYAT taşıyor; perakende modeli oraya UYMAZ.
+      ⚠ Sınav ayrımı ÜRÜN BAZLI (KatAna) — belge bazlı (Encore DocumentsTypeId=8)
+        ayrımdan FARKLI sonuç verir, ikisi karıştırılmaz.
+    uses: [metrics:sezon_ciro_tahmini_okul_hizali, metrics:bayram_gun_agirligi]
+    confidence: 0.7
+    evidence: "2026-09-13 — scripts/tahmin_2027_sube_kategori.py · sorgular/2026-09-13-tahmin-2027-taban-olcumleri.sql · çıktı raporlar/2027-tahmin-ay-sube-kategori.xlsx"
+    last_verified: "2026-09-13"
+    ttl_days: 90
+
   magaza_brut_marji_perakende:
     tanim: "Mağaza BRÜT marjı — kanal ayrık, kasa satırı vs alış faturası birim net"
     formul: >-
