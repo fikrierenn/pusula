@@ -74,9 +74,39 @@ Excel'deki üç sütun ARİTMETİK OLARAK TUTARLIDIR (adet × birim = ciro).
 ⚠ 2027-2028 OKUL AÇILIŞI MEB'ce HENÜZ AÇIKLANMADI → 13.09.2027 (pazartesi)
   VARSAYILDI. Bu bir ÇIKARIMDIR, ölçüm değil; açıklanınca yeniden koşulmalı.
 
+═══ 4. AŞAMA — FİYAT SENARYOLARI: OVP + DOLAR ÇAPALI ═════════════════════════
+⭐ GMY 2026-09-14: _"enflasyon tahminleri dolar OVP diğer tahminleri de baz alarak
+yapmalısın; her şeyin bir mantığı ve gerekçesi olmalı"_. Türetme zinciri:
+  ÖLÇÜLEN 1 — bizim birim fiyat artışımız 2026 (Oca-Ağu): **+%15,0**
+  ÖLÇÜLEN 2 — TÜİK Ağu-2026 yıllık: TÜFE %31,51 · **TEMEL MALLAR %15,89** · Hizmet %40,28
+  ÇIKARIM 1 — kitap/kırtasiye TEMEL MALDIR ⇒ fiyatımız mal enflasyonuyla BİREBİR
+              (geçişkenlik 15,0/15,89 = 0,94). **MANŞET TÜFE İLE KIYAS YANILTIR.**
+  ÇIKARIM 2 — temel mal / manşet oranı = 15,89/31,51 = **0,50**
+  ÇAPA      — OVP 2027: enflasyon **%21,0** · dolar 56,05 ₺ (**+%19,6**) · 2028 %15,5
+  DÜŞÜK  %10 — OVP %21 TUTAR ve mal/manşet oranı 0,50'de kalır (21×0,50≈10,6)
+  ORTA   %15 — OVP bir miktar AŞILIR ya da malın payı yükselir; 2026'mız tekrar eder
+  YÜKSEK %21 — mal-manşet farkı KAPANIR, OVP manşeti doğrudan fiyata yansır;
+               dolar +%19,6 ile de uyumlu (ithal mal maliyet baskısı)
+⚠ OVP bir HEDEFTİR, tahmin değil; geçmişte gerçekleşme hedefin ÜSTÜNDE kaldı.
+  Piyasa/TCMB anket beklentileri OVP'nin ÜSTÜNDEDİR — YÜKSEK senaryo o yöndür.
+
+═══ 5. AŞAMA — KATEGORİ MÜDAHALESİ: KPSS ════════════════════════════════════
+⭐ GMY: _"akademi bu sene kpss senesiydi seneye olmayacak"_.
+ÖLÇÜLEN: Akademi 2026 adet **+%153** (30.908 → 78.346, Oca-Ağu) — bu bir SINAV
+TAKVİMİ olayıdır, trend DEĞİL. Model onu 1,60 ile kırpıyordu; o bile YANLIŞ YÖN.
+UYGULANAN: 2026 zirvesi taban ALINMADI → 2027 = 2025 seviyesi × genel hacim trendi.
+Hem A hem B bileşenine uygulandı (yoksa kaba bileşen düzeltmeyi yarı yarıya geri alırdı).
+Sonuç: Akademi 2027 adedi 2026'ya göre **−%31**.
+⚠ Bu bir ÖLÇÜM DEĞİL, **İŞ BİLGİSİDİR** (kaynak: GMY beyanı). Sınav takvimi
+  değişirse yeniden ele alınmalı.
+
 ═══ SINIRLAR (ölçümden önce yazıldı) ══════════════════════════════════════════
-⚠ HACİM TEK SENARYO: üç senaryo yalnız FİYATI değiştirir. Adet +%25-33 ile geliyor;
-  bu hızın sürmesi garanti DEĞİL. Hacim riski ÖZET'te ayrı duyarlılık olarak yazılır.
+⚠ HACİM TEK SENARYO: üç senaryo yalnız FİYATI değiştirir; hacim tek varsayımdır.
+  ⭐ AMA HACİM ARTIK KASADAN DOĞRULANDI (2026-09-14, eski kasa `INTER_BOS`):
+    2025 H1 → 2026 H1 **fiş +%20,1 · adet +%34,1 · sepet +%11,7**.
+    ⚠ Eski kasada satır TİPİ kritik: `SAT`+`IPT` sayılır; `PRI` (promosyon) ve
+      `IND` satırları ADET TAŞIR ama satış değildir — süzülmezse 2025 şişer ve
+      büyüme SAHTE olarak küçülür (ilk ölçümde tam bu oldu: −%3 çıkmıştı).
 ⚠ KAPASİTE YOK: raf/metrekare/personel kısıtı modele girmiyor.
 ⚠ Ağustos/Eylül SINIRI ±1-2 hafta oynar: iki ayın TOPLAMI güvenilir, ayrı ayrı
   dağılımı değildir. Ağu+Eyl 2025 yılın %26'sı.
@@ -87,7 +117,7 @@ Excel'deki üç sütun ARİTMETİK OLARAK TUTARLIDIR (adet × birim = ciro).
 
 Kullanım:
     python scripts/tahmin_2027_sube_kategori.py
-    python scripts/tahmin_2027_sube_kategori.py --dusuk 5 --orta 12 --yuksek 20
+    python scripts/tahmin_2027_sube_kategori.py --dusuk 8 --orta 14 --yuksek 25
 Çıkış: 0 dosya yazıldı · 2 KOŞAMADI (bağlantı/şema/boş sonuç — sessizlik kanıt değil).
 """
 from __future__ import annotations
@@ -141,6 +171,17 @@ RESMI_TATIL = {
 
 BUYUME_ALT, BUYUME_UST = 0.70, 1.60
 ASGARI_TABAN_ADET = 200
+
+# ── KATEGORİ BAZLI İŞ BİLGİSİ MÜDAHALESİ (GMY girdisi 2026-09-14) ────────────
+# GMY: "akademi bu sene kpss senesiydi seneye olmayacak".
+# Akademi 2026'da +%153 büyüdü (30.908 → 78.346 adet, Oca-Ağu) — bu bir SINAV
+# TAKVİMİ olayıdır, trend DEĞİLDİR. Model bunu 1,60 ile kırpıyordu ama o bile
+# yanlış yön: 2027'de büyüme değil DÜŞÜŞ beklenir.
+# KURAL: KPSS etkisi çıkarılır, kategori 2025 seviyesine döner ve oradan genel
+# hacim trendiyle büyür → 2027 adet = adet2025 × genel_buyume.
+# ⚠ Bu bir ÖLÇÜM DEĞİL, İŞ BİLGİSİDİR. Kaynağı GMY beyanıdır ve Excel'de öyle
+#   işaretlenir. Sınav takvimi değişirse yeniden ele alınmalı.
+KPSS_KATEGORILERI = {"Akademi"}
 
 
 def kosamadi(mesaj: str) -> None:
@@ -255,9 +296,11 @@ def ay_takvim_carpani(yil_yeni: int, yil_eski: int) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dusuk", type=float, default=9.0)
-    ap.add_argument("--orta", type=float, default=18.0)
-    ap.add_argument("--yuksek", type=float, default=28.0)
+    # ── OVP / DOLAR ÇAPALI SENARYOLAR (GMY: "enflasyon tahminleri dolar OVP
+    #    diger tahminleri de baz alarak yapmalisin") — turetme YONTEM sayfasinda.
+    ap.add_argument("--dusuk", type=float, default=10.0)
+    ap.add_argument("--orta", type=float, default=15.0)
+    ap.add_argument("--yuksek", type=float, default=21.0)
     ap.add_argument("--cikti", default=None)
     a = ap.parse_args()
     if not (a.dusuk <= a.orta <= a.yuksek):
@@ -333,7 +376,12 @@ def main() -> int:
         birim26 = c26 / a26
         a25_top = sum(v[1] for (ay, m, k), v in ay25.items() if m == mek and k == ktg)
         isaret = ""
-        if a25_top < ASGARI_TABAN_ADET:
+        if ktg in KPSS_KATEGORILERI and a25_top > 0:
+            # KPSS yılı etkisi çıkarılır: 2026 zirvesi taban alınmaz, 2025'e dönülür.
+            buyume = (a25_top * genel_buyume) / a26
+            isaret = (f"⚠ KPSS DÜZELTMESİ (GMY beyanı): 2026 zirve ({a26/a25_top:.2f}x) "
+                      f"taban alınmadı, 2025 seviyesi × genel trend")
+        elif a25_top < ASGARI_TABAN_ADET:
             buyume, isaret = genel_buyume, "taban küçük → genel büyüme"
         else:
             buyume = a26 / a25_top
@@ -363,7 +411,10 @@ def main() -> int:
                 # ── B) sNaive+drift: o ayın 2026 cirosu × TEK genel katsayı.
                 #    Kategori bazlı büyüme YOK, mevsim payı YOK, takvim YOK —
                 #    backtest'te sınanan hâliyle birebir aynı (sadelik bilinçli).
-                ciro_b = ac * genel_buyume * carp
+                # ⚠ KPSS kategorisinde B de düzeltilir; yoksa kaba bileşen 2026
+                # zirvesini taban alıp düzeltmeyi yarı yarıya geri alırdı.
+                drift = buyume if ktg in KPSS_KATEGORILERI else genel_buyume
+                ciro_b = ac * drift * carp
                 # ── KOMBİNASYON: ikisinin basit ORTALAMASI (M-yarışmaları bulgusu,
                 #    BKM verisinde backtest ile DOĞRULANDI: MASE 0,621 vs 0,702/0,675)
                 ciro_k = 0.5 * ciro_a + 0.5 * ciro_b
@@ -570,8 +621,33 @@ def main() -> int:
         ["", "çalışma günü kazanılıyor. Modele girdi."],
         ["⚠ OKUL 2027 ÇIKARIM", "2027-2028 takvimi MEB'ce AÇIKLANMADI. 13.09.2027 VARSAYILDI."],
         ["", "Bu ÖLÇÜM DEĞİL. Takvim açıklanınca yeniden koşulmalı."],
+        [], ["4. AŞAMA — FİYAT SENARYOLARI (OVP + DOLAR ÇAPALI, GMY isteği)"],
+        ["ÖLÇÜLEN 1", "Bizim birim fiyat artışımız 2026 (Oca-Ağu): +%15,0"],
+        ["ÖLÇÜLEN 2", "TÜİK Ağu-2026 yıllık: TÜFE %31,51 · TEMEL MALLAR %15,89 · Hizmet %40,28"],
+        ["ÇIKARIM 1", "Kitap/kırtasiye TEMEL MALDIR ⇒ fiyatımız mal enflasyonuyla BİREBİR"],
+        ["", "(geçişkenlik 15,0/15,89 = 0,94). MANŞET TÜFE İLE KIYAS YANILTIR."],
+        ["ÇIKARIM 2", "Temel mal / manşet oranı = 15,89 / 31,51 = 0,50"],
+        ["ÇAPA (OVP)", "OVP 2027: enflasyon %21,0 · dolar 56,05 ₺ (+%19,6) · 2028: %15,5 / +%13,6"],
+        ["DÜŞÜK", f"+%{a.dusuk:g} — OVP %21 TUTAR ve mal/manşet oranı 0,50'de kalır"],
+        ["", "  (21 × 0,50 = 10,6 → kendi geçişkenliğimizle ~%10)"],
+        ["ORTA", f"+%{a.orta:g} — OVP bir miktar AŞILIR ya da malın payı yükselir;"],
+        ["", "  2026 gerçekleşmemiz (+%15,0) tekrar eder"],
+        ["YÜKSEK", f"+%{a.yuksek:g} — mal-manşet farkı KAPANIR, OVP manşeti doğrudan fiyata"],
+        ["", "  yansır; dolar +%19,6 ile de uyumlu (ithal mal maliyet baskısı)"],
+        ["⚠ SINIR", "OVP bir HEDEFTİR, tahmin değil; geçmişte gerçekleşme hedefin ÜSTÜNDE kaldı."],
+        ["", "Piyasa/TCMB anket beklentileri OVP'nin ÜSTÜNDEDİR — YÜKSEK senaryo o yöndür."],
+        [], ["5. AŞAMA — KATEGORİ MÜDAHALESİ (KPSS)"],
+        ["GMY beyanı", "akademi bu sene kpss senesiydi seneye olmayacak"],
+        ["Ölçülen", "Akademi 2026 adet +%153 (30.908 → 78.346, Oca-Ağu) — TAKVİM OLAYI, trend DEĞİL"],
+        ["Uygulanan", "2026 zirvesi taban ALINMADI; 2025 seviyesi × genel hacim trendi."],
+        ["", "Hem A hem B bileşenine uygulandı (yoksa kaba bileşen düzeltmeyi geri alırdı)."],
+        ["⚠", "Bu bir ÖLÇÜM DEĞİL, İŞ BİLGİSİDİR (kaynak: GMY). Sınav takvimi değişirse"],
+        ["", "yeniden ele alınmalı."],
         [], ["SINIRLAR"],
         ["HACİM RİSKİ YOK", "Üç senaryo yalnız FİYATI değiştirir; hacim tek varsayım."],
+        ["  ⭐ AMA HACİM KASADAN DOĞRULANDI (2026-09-14)", "eski kasa INTER_BOS ile:"],
+        ["", "2025 H1 → 2026 H1 fiş +%20,1 · adet +%34,1 · sepet +%11,7"],
+        ["", "(eski kasa satır tipi SAT+IPT; PRI/IND satırları adet taşır, sayılmaz)"],
         ["KAPASİTE YOK", "Raf/metrekare/personel kısıtı modelde yok."],
         ["AĞU/EYL SINIRI", "±1-2 hafta oynar: iki ayın TOPLAMI güvenilir, ayrımı değil."],
         ["MODEL SINIRI", "Trend + mevsim + takvim. Kampanya, rakip, tadilat, hava YOK."],
