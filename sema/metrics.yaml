@@ -38,6 +38,67 @@ metrics:
     last_verified: "2026-09-13"
     ttl_days: 365
 
+  hacim_buyumesi_gercekci_mi:
+    tanim: "Perakende adet büyümesinin gerçekliği — tahminin en büyük varsayımı sınandı"
+    dogus: >-
+      GMY 2026-09-14: *"hacim büyümesi gerçekçi mi, onu da ölç"*. 2027 tahmini adedin
+      +%26,2 büyüyeceğini varsayıyor ve üç FİYAT senaryosu bu riski KAPSAMIYOR.
+      İlk şüphe KAYIT ARTEFAKTIYDI: `pos_sistem_gecisi_2025` yapısal kırılması var
+      ve aynı sınıf sahte büyüme daha önce yakalanmıştı (kartlı müşteri payı
+      %0,3-1,4 → %77,4-81,9; müşteri artışı DEĞİL, kart yakalamanın devreye girmesi).
+    lehte_kanit: >-
+      ⭐ **ÜÇ ŞUBEDE DE VAR** (Oca-Ağu adet, 2026/2025): FSM +%31 · Özlüce +%27 ·
+        İst.Yolu +%45 ⇒ tek mağazanın/yerel bir olayın işi değil.
+      ⭐ **ÇEŞİT yalnız +%6-13 arttı** (FSM 68.319→74.260 · Özlüce 82.931→87.904 ·
+        İst.Yolu 64.895→73.281) ⇒ büyüme ÜRÜN BAŞINA SATIŞTAN geliyor, yelpaze
+        genişlemesinden DEĞİL.
+      ⭐⭐ **MARJ SABİT: %29,3 (2024) → %30,6 (2025) → %30,5 (2026)** — aynı-yıl alış
+        fiyatı eşlemesiyle, Oca-Ağu. ⇒ **HACİM MARJLA SATIN ALINMADI.** En güçlü iç kanıt.
+      ⭐ **REEL FİYAT DÜŞMEDİ**: birim satış fiyatımız +%15,0; TÜİK Ağu-2026 yıllık
+        **Temel Mallar %15,89** (TÜFE manşet %31,51 · Hizmetler %40,28). Kitap/kırtasiye
+        TEMEL MALDIR ⇒ fiyatımız mal enflasyonuyla BİREBİR. Manşet TÜFE ile kıyas
+        YANILTIR — hizmet enflasyonu bizim sepetimizde yok.
+      ⭐ **Ağustos (tek temiz fiş kıyası): fiş +%17 · sepet adedi −%1** ⇒ artış
+        SEPETTEN değil MÜŞTERİ SAYISINDAN geliyor.
+    aleyhte_kanit: >-
+      ⚠ **BÜYÜME HIZLANIYOR**: Oca-Ağu adet +%13,3 (24/23) → +%21,3 (25/24) →
+        **+%33,0** (26/25). Hızlanmayı ekstrapole etmek klasik tahmin hatasıdır.
+      ⚠ **3 YILLIK CAGR +%22,3**, model **+%26,2** kullanıyor ⇒ uzun trendin ÜSTÜNDE.
+      ⚠ **MANŞET +%33 KÜÇÜK TABANLARLA ŞİŞİYOR**: Akademi +%153 (31K taban) ·
+        Kişisel Bakım +%133 (20K) · Hediyelik +%102 (147K). Çekirdek çok daha ölçülü:
+        Kitap **+%16** · Hazırlık +%21 · Kırtasiye +%22. Model 1,60 kırpmasıyla
+        sınırlıyor ama o bile yüksek.
+      ⚠ **KAPASİTE SIKIŞIK**: ortalama günlük fiş FSM 1.068 · Özlüce 1.241 ·
+        İst.Yolu 797; zirve günler 1.933-2.389 (ortalamanın 1,9-2,4 katı). +%26 ile
+        Özlüce'nin zirve günü ~3.000 fişe çıkar — **bugüne dek görülen en yoğun
+        günün %26 ÜSTÜ**, ~13 saatte dakikada 4 fiş. Mümkün ama kasa/personel
+        planlaması gerektirir.
+      ⚠ **2026 TABANININ %41'İ ZATEN TAHMİN** ⇒ +%29,5'lik taban büyümesi de
+        kısmen modellenmiş, tamamen gözlenmiş değil.
+    hukum: >-
+      **+%26,2 SAVUNULABİLİR AMA İYİMSER UÇTA.** Büyümenin GERÇEK olduğu güçlü
+      kanıtlarla destekli (marj sabit, reel fiyat düşmemiş, üç şubede de var,
+      müşteri sayısı artıyor); tartışmalı olan SÜRME HIZI.
+      ⇒ 3 yıllık CAGR'a (+%22,3) çekilirse 2027 orta ciro 1.434,1M → **~1.389,8M ₺**
+        (−%3,1). Karar GMY'nin.
+    olculemeyen: >-
+      ⚠ **2026'nın İLK YARISI FİŞ SAYISIYLA DOĞRULANAMADI.** EncoreMerkez'de
+      Oca-Haz 2025 HİÇ YOK, Tem-2025 eksik (22.602 fiş vs 2026'nın 75.447'si) —
+      POS geçişi yılın ortasında. "Müşteri mi sepet mi" sorusunun TAM YIL cevabı
+      YOK; yalnız Ağustos var. Bu bir VERİ SINIRI, "büyüme yok" demek DEĞİL.
+    ⚠_onceki_olcumun_iyimserligi: >-
+      ⚠⚠ YAN BULGU: 2026-09-13'te 24 AYLIK alış penceresiyle perakende marjı
+      **%37,3** ölçülmüş ve "pencere uyuşmazlığı SMM'yi düşük gösterir, marj
+      İYİMSERDİR" diye BEYAN EDİLMİŞTİ. Aynı-yıl eşlemeyle **%30,5** çıkıyor ⇒
+      beyan edilen iyimserlik artık SAYISAL: **6,8 PUAN**. (Kapsam farkı da var:
+      orada 12 ay satış/24 ay alış, burada Oca-Ağu/aynı yıl.)
+      ⇒ `metrics:magaza_brut_marji_perakende` bu sayıyla birlikte okunmalı.
+    uses: [metrics:tahmin_2026_kapanis_2027_sube_kategori, metrics:magaza_brut_marji_perakende]
+    confidence: 0.8
+    evidence: "2026-09-14 — sorgular/2026-09-14-hacim-buyumesi-gercekci-mi.sql (6 blok). Dış çıpa: TÜİK Ağu-2026 TÜFE %31,51 / Temel Mallar %15,89."
+    last_verified: "2026-09-14"
+    ttl_days: 180
+
   tahmin_modeli_backtest:
     tanim: "Tahmin modelinin GERİYE DÖNÜK SINAMASI — rolling origin, MASE, sNaive kıyaslı"
     dogus: >-

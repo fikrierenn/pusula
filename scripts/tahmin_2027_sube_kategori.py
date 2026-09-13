@@ -372,7 +372,10 @@ def main() -> int:
                 s[f"ciro_{ad_s}"] = ciro_k
                 # Adet ve birim fiyat, KOMBİNE ciroyla TUTARLI olacak şekilde
                 # geri türetilir: adet kombine edilir, birim = ciro / adet.
-                adet_b = (ac * genel_buyume) / b if b > 0 else 0.0
+                # ⚠ DÜZELTME 2026-09-14: payda `carp` varken payda YOKTU → adet
+                # olduğundan DÜŞÜK, birim fiyat olduğundan YÜKSEK çıkıyordu (ciro
+                # doğruydu, çünkü ayrı hesaplanıyor). Doğrusu ciro_b / b.
+                adet_b = ciro_b / b if b > 0 else 0.0
                 s[f"adet_{ad_s}"] = 0.5 * adet_a + 0.5 * adet_b
                 s[f"birim_{ad_s}"] = ciro_k / s[f"adet_{ad_s}"] if s[f"adet_{ad_s}"] > 0 else 0.0
             s["adet"] = s["adet_orta"]
