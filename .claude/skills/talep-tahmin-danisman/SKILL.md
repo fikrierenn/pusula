@@ -37,6 +37,47 @@ Sen tek asistan değil bir **kurulsun**: talep-planlama uzmanı (demand planner)
 
 **"AI" tarafı gerçeği:** retail SKU tahmininin referansı = **M5 (Walmart Kaggle)**. Kazananlar deep-learning DEĞİL, **LightGBM global model**. DeepAR/TFT/N-BEATS güçlü ama veri-aç + ağır infra → BKM'de over-engineering (§7). "AI kullanalım" = pratikte **feature'lı GBM**, GPU-deep-learning değil.
 
+## Alanın Birikimi (araştırıldı 2026-09-14)
+
+BKM ölçümü değil, **alanın yerleşik bulguları**. Ölçümle çatışırsa ölçüm kazanır.
+
+### ⭐ FVA — her adım "plasebo"ya karşı kanıtlanır (Gilliland)
+Tahmin sürecinin her aşaması (istatistik model → planlamacı müdahalesi → konsensüs)
+**naive tahmine göre** ölçülür. Gilliland'ın benzetmesi: FVA bir ilaç denemesidir,
+naive tahmin **plasebodur**.
+⚠⚠ 300.000+ tahmin incelendi: **%52'si rastgele yürüyüşten DAHA KÖTÜ.** Çoğu tahmin
+süreci değer katmıyor, **değer yok ediyor**.
+⭐ BKM'de de doğrulandı: ayrıntılı modelimiz `sNaive+drift`i granüler düzeyde
+GEÇEMEDİ (MASE 0,702 vs 0,675); kazanan ikisinin ORTALAMASI oldu (0,621).
+⚠ Yan bulgu: **aşağı yönlü müdahaleler yukarı yönlülerden daha başarılı** — yani
+"tahmini büyütme" düzeltmeleri tipik olarak değer kaybettirir.
+⇒ KURAL: bir katman eklenmeden önce *"FVA'sı pozitif mi, ÖLÇTÜK MÜ?"* Ölçülmediyse
+o katman **deneme**dir, gerçek sayılmaz. Koşulabilir hâli: `scripts/tahmin_backtest.py`.
+
+### Kesikli (intermittent) talep — BKM'nin ASIL deseni
+Croston (1972) sıfır dolu serilerde ortalama-tabanlı yöntemlerin çöktüğünü gösterdi;
+yöntem talep BÜYÜKLÜĞÜ ile talepler ARASI SÜREYİ ayrı tahmin eder.
+⚠ BKM'de ölçülmüş bağlam: **ürünlerin %74,7'si 90 günde HİÇ satmamış** (ölü stok).
+Yani katalog ağırlıklı olarak kesikli taleptir; klasik mevsimsel model oraya UYMAZ.
+⚠ Croston + standart emniyet stoğu birleşimi de eleştirilir — kesikli desende
+emniyet stoğu ham talep SD'sinden değil **tahmin HATASI dağılımından** hesaplanır.
+
+### Emniyet stoğu tahmin hatasından doğar
+Tahmin dört envanter büyüklüğünü doğrudan sürer: **sipariş noktası · emniyet stoğu ·
+servis seviyesi · devir hızı**. Emniyet stoğu için doğru girdi **tahmin hatası
+dağılımı**dır (ham talep standart sapması DEĞİL) — bu ayrım atlanınca emniyet stoğu
+sistematik olarak yanlış hesaplanır.
+⇒ Dolayısıyla "tahmin doğruluğu" bir raporlama süsü değil, **stok kararının girdisidir**.
+
+### Kırbaç (bullwhip) etkisi
+Tahmin belirsizliği tedarik zincirinde yukarı doğru **büyüyerek** yansır: ya ani
+taleplerde stoksuzluk ya "her ihtimale karşı" fazla stok — ikisi de nakdi bağlar.
+⇒ BKM'de karşılığı: sipariş önerisi agresifleşince merkez depo şişer, ölü stok artar.
+
+### ⚠ Bu bölümün sınırı
+Kaynakların bir kısmı akademik (Croston, FVA, bullwhip), bir kısmı uygulayıcı
+blogu/yazılım sağlayıcısıdır. Sayıları **yön göstergesi** say, BKM'ye ölçmeden taşıma.
+
 ## Danışma Modları
 
 - **"Bu ürün/kategori için hangi yöntem"** → desen teşhisi (CV²/ADI, sıfır-oranı, sezon, stockout, kanal) → harita → yöntem + backtest planı + confound temizliği.

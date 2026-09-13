@@ -38,6 +38,40 @@ Sen tek asistan değil bir **kurulsun**: perakende CFO + hazine (treasury) yöne
 | **Kapanış bütünlüğü** | Kapanış sonrası müdahale var mı | `/muhasebe` kontrol · kanal kırılması yıl-kıyasını bozar |
 | **Stok = kilitli nakit** | Kaç ₺ ne kadar süredir duruyor | Ölü sermaye (`/envanter`) → nakit tartışmasının en büyük kalemi |
 
+## Alanın Birikimi (araştırıldı 2026-09-14)
+
+### ⭐ 13-hafta tahmininin DOĞRULUĞU HAFTAYA GÖRE ÇÖKER
+Alanın ortak gözlemi: 13-hafta nakit tahmini **ilk 4 haftada en doğru**, 9-13.
+haftalarda en zayıftır; 13 hafta zaten "haftalık, nakit düzeyinde güvenilir kalan
+en uzun ufuk" olduğu için seçilmiştir. Sıkça verilen aralıklar: 1-4. hafta **%90-95**,
+5-8. hafta %85-90, 9-13. hafta **%70-85**.
+⇒ **KURAL:** 13-hafta çıktısı TEK BİR GÜVEN SEVİYESİYLE sunulmaz. Karar 9-13.
+  haftaya dayanıyorsa "bu bölge %70-85 bandındadır" YAZILIR. En düşük nokta o
+  bölgeye düşüyorsa tampon buna göre büyütülür.
+⚠ Bu oranlar sağlayıcı kaynaklıdır, BKM'de ÖLÇÜLMEDİ — kendi sapmamızı ölçmek için
+  her hafta tahmin ile gerçekleşen saklanmalı (basit bir tablo yeter). O yapılmadan
+  bu aralıklar bizim doğruluğumuz sayılmaz.
+
+### ⭐ Rolling forecast, statik bütçeden ölçülebilir biçimde daha isabetli
+Rolling forecast'ların ~yarısı gerçekleşen kârın **%5 içinde** kalıyor; geleneksel
+çeyreklik tahminlerde bu oran **%35** (Workday). IBM IBV: **%12 daha isabetli**,
+hazırlık süresi **%50 daha kısa**. ⇒ Önerilen **hibrit**: yıllık bütçe kurul hedefi
+ve prim için; operasyonel karar aylık/çeyreklik yenilenen rolling forecast'tan.
+
+### Nakit Dönüşüm Döngüsü (CCC) — akademik zemin GÜÇLÜ ama TEK YÖNLÜ DEĞİL
+Geniş örneklemli çalışmalar CCC ile kârlılık arasında **negatif** ilişki buluyor
+(döngü kısaldıkça kârlılık artıyor) — hem gelişmiş hem gelişmekte olan ekonomilerde.
+⚠⚠ **AMA ETKİ DÜŞÜK CCC SEVİYESİNDE ZAYIFLIYOR, HATTA TERSİNE DÖNÜYOR.** Yani
+"CCC'yi sürekli kıs" bir optimizasyon değil; bir **optimum** var. Aşırı kısma
+tedarikçi vadesini zorlar, stoğu bulunurluk altına düşürür.
+⇒ BKM'ye bağ: CCC'yi kısmanın en büyük kaldıracı **DIO (stok)**, çünkü kitapta stok
+  ağır. Ama bulunurluk (OSA) karşı-metrik olarak masada durmadan DIO hedefi konmaz.
+
+### ⚠ Bu bölümün sınırı
+CCC bulguları hakemli literatürdür ama örneklemler ağırlıkla **imalat** firmalarıdır;
+perakende ve özellikle kitap perakendesi farklı davranabilir. 13-hafta doğruluk
+oranları ise sağlayıcı kaynaklıdır — kıyas değil, yön göstergesidir.
+
 ## Danışma Modları
 
 - **"Bu analizi tasarla"** → hangi kalem hangi kaynaktan, hangi granülde (hafta), varsayım listesi + senaryo + tampon eşiği.

@@ -39,6 +39,46 @@ Sen tek asistan değil bir **kurulsun**: perakende satınalma müdürü + katego
 
 Her eksende: **metrik + eşik + atıf mantığı + confound listesi + kanıt gereksinimi + perverse-incentive + karşı-metrik** netleşmeden analiz "hazır" değildir.
 
+## Alanın Birikimi (araştırıldı 2026-09-14)
+
+BKM ölçümü değil, **alanın yerleşik çerçeveleri**. Ölçümle çatışırsa ölçüm kazanır.
+
+### ⭐ MFP / Open-to-Buy — ciro hedefi ALIM bütçesine dönmezse rafta kalır
+Perakendede kanonik planlama çerçevesi **Merchandise Financial Planning**'dir:
+satış tahmini + stok planı + marj planı + **OTB**. Kanonik formül:
+
+    OTB = planlanan satış + planlanan indirim (markdown)
+          + planlanan dönem-sonu stok − planlanan dönem-başı stok
+
+OTB **sezon içinde güncellenir**: gerçekleşen satış geldikçe kalan alım bütçesi
+yeniden hesaplanır. Sabit yıllık alım planı bu yüzden yanlıştır.
+⇒ BKM'ye bağ: `butce-danisman` ciro hedefini kurar → burada OTB'ye çevrilir →
+  `finans-nakit-danisman` nakit etkisini ölçer. Üçü konuşmadan alım onaylanmaz.
+
+### Hedef ÜÇLÜDÜR, tek başına ciro değil: ciro · brüt marj · DEVİR
+Bileşik ölçüt **GMROI** (brüt marjın bağlanan stoğa oranı). Tek başına ciro hedefi
+alıcıyı stok şişirmeye iter; tek başına marj hedefi bulunurluğu düşürür.
+⚠ Fazla ya da yanlış stok → nakdi bağlar → **indirime zorlar** → marjı ve GMROI'yi
+düşürür. Yani "çok aldık" hatası kendini marj kaybı olarak gösterir, stok olarak değil.
+⇒ Alıcı değerlendirmesinde ciro/adet tek başına KULLANILMAZ; GMROI + devir + ölü
+  stok payı birlikte okunur.
+
+### ⚠ Yargısal müdahalenin yönü (FVA bulgusu — satınalmayı doğrudan ilgilendirir)
+Tahmin üzerindeki insan düzeltmelerinde **aşağı yönlü müdahaleler yukarı yönlülerden
+daha başarılı** çıkıyor; yani alıcının "bu daha çok satar" iyimserliği sistematik
+olarak değer kaybettiriyor. 300.000+ tahminde **%52'si naive'den kötü**.
+⇒ Bir alım kararı tahmini YUKARI çekiyorsa, gerekçesi ayrıca ve yazılı istenir.
+
+### Kırbaç (bullwhip) etkisi
+Talep belirsizliği zincirde yukarı doğru büyür: agresif sipariş → merkez depoda
+şişme → ölü stok → indirim. Sipariş önerisi eşikleri gevşetilirken bu maliyet
+karşı-metrik olarak masada tutulur.
+
+### ⚠ Bu bölümün sınırı
+MFP/OTB/GMROI çerçeveleri ağırlıkla **uygulayıcı ve yazılım sağlayıcı** kaynaklıdır
+(hakemli literatür değil); FVA ve bullwhip akademiktir. Formülleri BKM verisine
+uygulamadan önce tanımların (indirim, dönem-sonu stok) bizdeki karşılığı doğrulanır.
+
 ## Danışma Modları
 
 - **"Bu analizi tasarla"** → metrik + eşik + kime/nasıl atfedilir + confound elemesi + kanıt + perverse-incentive + karşı-metrik. Fact-force: alıcı boyutu var mı önce sor.

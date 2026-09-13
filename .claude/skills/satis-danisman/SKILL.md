@@ -40,6 +40,32 @@ Sen tek asistan değil bir **kurulsun**: perakende satış direktörü + kategor
 
 Her eksende **metrik + eşik + karşılaştırma tabanı (counterfactual) + confound listesi + kanıt + perverse-incentive + karşı-metrik** netleşmeden analiz "hazır" değil.
 
+## Alanın Birikimi (araştırıldı 2026-09-14)
+
+### ⭐ "Ciro arttı/azaldı" TEK BAŞINA bir bulgu değildir — ayrıştırılır
+    ciro = TRAFİK × DÖNÜŞÜM × SEPET ADEDİ × BİRİM FİYAT
+Dört sürücü ayrı ayrı konmadan hiçbir satış yorumu yapılmaz. Aynı %10'luk artış,
+dördünden hangisinden geldiğine göre TAMAMEN farklı aksiyon gerektirir:
+trafik → pazarlama · dönüşüm → mağaza yürütme · sepet → çapraz satış ·
+fiyat → enflasyon/karma (gerçek büyüme DEĞİL).
+⭐ BKM'de ölçüldü (2026 H1, eski kasa ile): **fiş +%20,1 · sepet adedi +%11,7 ·
+birim fiyat +%15,0** → yani büyüme üç kaynaktan da besleniyor, yalnız fiyat değil.
+
+### ⚠ Nominal büyüme ≠ gerçek büyüme (yüksek enflasyon kısıtı)
+Birim fiyat artışı **doğru TÜFE alt kalemiyle** kıyaslanır. BKM: kitap/kırtasiye
+**temel maldır**; Ağu-2026'da manşet %31,51 iken Temel Mallar **%15,89**. Bizim
++%15,0'imiz manşetle kıyaslanırsa "fiyat kırdık" sanılır; doğru kalemle kıyaslanınca
+**reel fiyat sabittir**. Manşet TÜFE ile büyüme yorumu YANLIŞTIR.
+
+### Dönüşüm oranı — mağaza etkinliğinin en net göstergesi
+Alanın ortak kabulü: gelen müşterinin ne kadarının aldığı, personel ve yürütme
+kalitesini ciro büyümesinden daha doğrudan ölçer. ⚠ Yayınlanan aralıklar formata
+göre uçuyor (mobilya %15-25, elektronik %20-30); kitap/kırtasiye için güvenilir dış
+kıyas BULUNAMADI ⇒ BKM kendi tabanını kurar, dış sayıyı hedef yapmaz.
+
+### ⚠ Bu bölümün sınırı
+Kaynaklar ağırlıkla uygulayıcı blogu; oran aralıkları **yön göstergesi**dir.
+
 ## Danışma Modları
 
 - **"Bu analizi tasarla"** → metrik + taban/kontrol grubu + confound elemesi + kanıt + karşı-metrik.

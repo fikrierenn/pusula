@@ -42,6 +42,39 @@ Fikri (BKM Kitap GMY) ile **operasyona veriyle hesap soracak** analizleri tasarl
 | **Birim maliyet değişimi** | Neden arttı: alış fiyatı mı, mix mi, fire mi | Fiyat/mix/fire ayrıştırılmadan "maliyet arttı" boş cümle |
 | **Kasa / gün sonu mutabakat** | Ödeme grubu, kapanış no, açık fark | Manuel indirim ve iade yetkisi = kontrol zaafı |
 
+## Alanın Birikimi (araştırıldı 2026-09-14)
+
+BKM ölçümü değil, **perakende operasyonunun yerleşik ölçüt seti**. Ölçümle
+çatışırsa ölçüm kazanır; kıyas (benchmark) sayıları BKM'ye ölçmeden taşınmaz.
+
+### ⭐ Mağaza performansının kanonik ayrıştırması
+    ciro = TRAFİK × DÖNÜŞÜM × SEPET TUTARI
+Üçü ayrı ayrı ölçülmezse "ciro düştü" sorusu cevaplanamaz: müşteri mi gelmedi,
+gelen mi almadı, alan mı az aldı? BKM'de ölçüldü (2026 H1): büyüme **+%20 trafik
++ %12 sepet adedi** — yani kaynağı biliniyor. Trafik için kapı sayıcı var.
+
+### Yerleşik ölçüt seti (alanın "en çok izlenen" listesi)
+- **Dönüşüm oranı** — mağaza etkinliğinin en net göstergesi sayılıyor; formata göre
+  çok değişiyor (mobilya %15-25, kuyum %10-20, elektronik %20-30 aralıkları veriliyor).
+  ⚠ Kitap/kırtasiye için güvenilir bir dış kıyas BULUNAMADI — BKM kendi tabanını kurmalı.
+- **m² başına ciro** — mağazalar arası kıyasın standardı. ⚠ Kategori karması ve
+  format farkı bu ölçütü kolayca yanıltır; aynı formatta kıyasla.
+- **Çalışan başına ciro** ve **işlem başına işgücü maliyeti** — kadro planlamasının
+  ölçütleri; vardiyayı **trafiğin zirve saatlerine** göre kurmak için kullanılır.
+- **Operasyonel yürütme üçlüsü:** dönüşüm + **raf bulunurluğu (OSA)** + **planogram
+  uyumu**. Birlikte okunduğunda "mağaza tasarlandığı gibi çalışıyor mu" sorusunu verir.
+  ⇒ BKM'de OSA ölçülüyor (`bkm.BulunurlukOzet`); planogram tarafı `ryn.*` şemasında
+    (raf/alan/kat) veri var ama uyum ölçümü YOK — açık iş.
+
+### ⚠ Kıyas (benchmark) tuzağı
+Yayınlanan aralıklar format, ülke, mağaza büyüklüğü ve trafik sayım yöntemine göre
+uçuyor. Dış kıyas bir **hipotez**tir, hedef değil. BKM'nin kendi mağazaları arası ve
+kendi geçmişine göre kıyası daha güvenilirdir.
+
+### ⚠ Bu bölümün sınırı
+Kaynaklar ağırlıkla **uygulayıcı/yazılım sağlayıcı** blogudur, hakemli literatür
+değildir. Oran aralıklarını BKM'ye taşımadan önce kendi tabanımızı ölçelim.
+
 ## Danışma Modları
 
 - **"Bu analizi tasarla"** → metrik + eşit kıyas tabanı + kontrol-edilebilirlik + kalite karşı-metriği.
