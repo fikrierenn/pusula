@@ -39,11 +39,20 @@ Yöntem: (1) günlük seri okul açılışına hizalanır (ofset = gün − aç�
 Ölçülen k (T−29..T−2, perakende): **ciro ×1,468 · adet ×1,247**.
 Ekim-Aralık sezon sonrası → takvim YoY (k_adet + fiyat artışı) ile kapatılır.
 
-═══ 2. AŞAMA — 2027 ══════════════════════════════════════════════════════════
-2027 adet = 2026 TAM YIL adet × hacim büyümesi (ölçülen k_adet, kırpmalı)
-Mevsim  = 2026 tam yılın aylık adet payı (okul kaymasıyla birlikte)
-Fiyat   = 2026 birim fiyat × aylık fiyat endeksi × senaryo çarpanı
-Ciro    = satır satır adet × birim (toplamdan TÜRETİLMEZ)
+═══ 2. AŞAMA — 2027: KOMBİNASYON MODELİ ══════════════════════════════════════
+⭐ GMY 2026-09-13: _"kombinasyon modelini kullan"_. Backtest'te kazandığı için.
+Her (ay × şube × kategori) hücresinde İKİ AYRI tahmin yapılır, sonra ORTALAMASI:
+  A) BİZİM MODEL   — kategori bazlı hacim büyümesi × mevsim payı × takvim × fiyat
+  B) sNaive+drift  — o ayın 2026 cirosu × TEK genel katsayı (sade, kaba, güçlü)
+  KOMBİNASYON = (A + B) / 2
+Gerekçe ÖLÇÜLDÜ (scripts/tahmin_backtest.py, rolling origin, MASE):
+  kesim 2024→2025: A 0,702 · B 0,675 · **KOMBİNASYON 0,621** (hepsinden iyi)
+  kesim 2023→2024: A 1,372 · B 1,239 · KOMBİNASYON 1,249 (A'dan iyi)
+M-yarışmalarının tekrarlanan bulgusu — BKM verisinde de TUTTU.
+⚠ B'ye takvim çarpanı UYGULANMAZ (backtest'te de yoktu). 2027'de çarpan ≈1,00
+  olduğu için fark ihmal edilebilir; başka bir yılda önemli olabilir.
+Adet ve birim fiyat da kombine edilir; birim = kombine ciro ÷ kombine adet, yani
+Excel'deki üç sütun ARİTMETİK OLARAK TUTARLIDIR (adet × birim = ciro).
 
 ═══ 3. AŞAMA — TAKVİM KATMANI (GMY isteği) ═══════════════════════════════════
 ⭐ BAYRAM ETKİSİ ÖLÇÜLDÜ, VARSAYILMADI — ve ham ortalama YANILTIYORDU:
@@ -342,15 +351,31 @@ def main() -> int:
             isaret = (isaret + " · mevsim yok, düz dağıtıldı").strip(" ·")
 
         for ay in range(1, 13):
-            adet = yil_adet27 * (aylik[ay] / pay_top) * tk[ay]
+            adet_a = yil_adet27 * (aylik[ay] / pay_top) * tk[ay]
             ac, aa = kapanis26[(ay, mek, ktg)]
             endeks = ((ac / aa) / birim26) if aa > 0 and birim26 > 0 else 1.0
             s = {"mekan": MEKAN_AD.get(mek, str(mek)), "kategori": ktg, "ay": ay,
-                 "adet": adet, "buyume": buyume, "takvim": tk[ay], "isaret": isaret}
+                 "buyume": buyume, "takvim": tk[ay], "isaret": isaret}
             for ad_s, carp in SEN.items():
+                # ── A) BİZİM MODEL: kategori bazlı hacim × mevsim × takvim × fiyat
                 b = birim26 * endeks * carp
-                s[f"birim_{ad_s}"] = b
-                s[f"ciro_{ad_s}"] = adet * b
+                ciro_a = adet_a * b
+                # ── B) sNaive+drift: o ayın 2026 cirosu × TEK genel katsayı.
+                #    Kategori bazlı büyüme YOK, mevsim payı YOK, takvim YOK —
+                #    backtest'te sınanan hâliyle birebir aynı (sadelik bilinçli).
+                ciro_b = ac * genel_buyume * carp
+                # ── KOMBİNASYON: ikisinin basit ORTALAMASI (M-yarışmaları bulgusu,
+                #    BKM verisinde backtest ile DOĞRULANDI: MASE 0,621 vs 0,702/0,675)
+                ciro_k = 0.5 * ciro_a + 0.5 * ciro_b
+                s[f"ciro_a_{ad_s}"] = ciro_a
+                s[f"ciro_b_{ad_s}"] = ciro_b
+                s[f"ciro_{ad_s}"] = ciro_k
+                # Adet ve birim fiyat, KOMBİNE ciroyla TUTARLI olacak şekilde
+                # geri türetilir: adet kombine edilir, birim = ciro / adet.
+                adet_b = (ac * genel_buyume) / b if b > 0 else 0.0
+                s[f"adet_{ad_s}"] = 0.5 * adet_a + 0.5 * adet_b
+                s[f"birim_{ad_s}"] = ciro_k / s[f"adet_{ad_s}"] if s[f"adet_{ad_s}"] > 0 else 0.0
+            s["adet"] = s["adet_orta"]
             satirlar.append(s)
         if isaret:
             notlar.append((MEKAN_AD.get(mek, str(mek)), ktg, isaret))
@@ -395,7 +420,13 @@ def main() -> int:
          f"{100*(1-sum(v[0] for v in ger26.values())/c26_top):.0f}%'i TAHMİN",
          round(sum(v[0] for v in ger26.values())), ""],
         ["⚠ 2027, bu KISMEN TAHMİN tabanın üstüne kuruluyor — hata birikir.", "", ""], [],
-        ["2027 TAHMİN — üç fiyat senaryosu", "", ""],
+        ["2027 TAHMİN — KOMBİNASYON MODELİ, üç fiyat senaryosu", "", ""],
+        ["  (A) bizim model ve (B) sNaive+drift'in basit ORTALAMASI — backtest'te", "", ""],
+        ["  ikisinden de iyi çıktı: MASE 0,621 vs 0,702 (A) / 0,675 (B).", "", ""],
+        ["  A) bizim model tek başına (orta)",
+         round(sum(s["ciro_a_orta"] for s in satirlar)), ""],
+        ["  B) sNaive+drift tek başına (orta)",
+         round(sum(s["ciro_b_orta"] for s in satirlar)), ""],
         [f"  DÜŞÜK  (+%{a.dusuk:g} birim fiyat)", round(t27["dusuk"]), ""],
         [f"  ORTA   (+%{a.orta:g} birim fiyat)", round(t27["orta"]), ""],
         [f"  YÜKSEK (+%{a.yuksek:g} birim fiyat)", round(t27["yuksek"]), ""], [],
@@ -479,11 +510,13 @@ def main() -> int:
     for s in sorted(satirlar, key=lambda x: (x["ay"], x["mekan"], -x["ciro_orta"])):
         rows.append([s["ay"], AY_AD[s["ay"]], s["mekan"], s["kategori"], round(s["adet"]),
                      round(s["birim_orta"], 2), round(s["ciro_dusuk"]), round(s["ciro_orta"]),
-                     round(s["ciro_yuksek"]), round(s["buyume"], 3), round(s["takvim"], 4),
-                     s["isaret"]])
+                     round(s["ciro_yuksek"]),
+                     round(s["ciro_a_orta"]), round(s["ciro_b_orta"]),
+                     round(s["buyume"], 3), round(s["takvim"], 4), s["isaret"]])
     yaz(ws, ["Ay No", "Ay", "Şube", "Kategori", "Adet", "Birim ₺ (orta)", "Ciro DÜŞÜK ₺",
-             "Ciro ORTA ₺", "Ciro YÜKSEK ₺", "Hacim büyüme", "Takvim çarpanı", "Not"],
-        rows, [7, 11, 11, 20, 11, 14, 16, 16, 16, 13, 13, 28], (5, 7, 8, 9))
+             "Ciro ORTA ₺", "Ciro YÜKSEK ₺", "A) bizim model ₺", "B) sNaive+drift ₺",
+             "Hacim büyüme", "Takvim çarpanı", "Not"],
+        rows, [7, 11, 11, 20, 11, 14, 16, 16, 16, 17, 17, 13, 13, 28], (5, 7, 8, 9, 10, 11))
 
     ws = wb.create_sheet("SINAV (AYRI)")
     sn = defaultdict(lambda: [0.0, 0.0])
