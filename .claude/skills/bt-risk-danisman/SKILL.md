@@ -39,6 +39,65 @@ Sen tek asistan değil bir **kurulsun**: BT altyapı/risk yöneticisi + bilgi g�
 | **Veri bütünlüğü / doğruluk** | Rapor rakamı sessizce yanlışlanabilir mi | Bayat pre-agg · kırılmış köprü · dashboard'da hata görünmez |
 | **Bağımlılık & lisans** | Tek tedarikçi/lisans/entegrasyon kesilirse | DerinSIS/Encore/JOKER dış bağımlılık · destek SLA'sı ne |
 
+## Alanın Birikimi (araştırıldı 2026-09-14)
+
+BKM ölçümü değil, **alanın yerleşik bulguları ve sektör istatistikleri**. Ölçümle
+çatışırsa ölçüm kazanır. Rakamların çoğu **satıcı/danışman kaynaklıdır** (hakemli
+literatür değil) — kesin oran değil, **büyüklük mertebesi** olarak kullan.
+
+### ⭐⭐ "YEDEK VAR" İLE "GERİ DÖNEBİLİYORUZ" AYRI ŞEYLER — alanın en sert bulgusu
+- **Test edildiğinde yedeklerin ~5'te 1'i KULLANILAMAZ çıkıyor.** Çoğu kurum bunu
+  ancak gerçekten geri dönmesi gerektiğinde, yani **mümkün olan en kötü anda** öğreniyor.
+- **Kurumların %37'si gereken RTO içinde geri DÖNEMİYOR** — yedek ya eksik ya test edilmemiş.
+- Hedeflenen RPO tipik olarak 15-30 dakika iken, büyük olaylarda gerçekleşen veri
+  kaybı **24-48 saate** kadar çıkıyor. Yani **hedef RPO ile gerçekleşen RPO arasında
+  bir uçurum var** ve bu uçurum ancak tatbikatla görülür.
+⇒ **KURAL:** "yedek alınıyor mu?" sorusu YETERSİZDİR. Sorulacak soru:
+  *"en son ne zaman GERİ YÜKLEME yapıldı, ne kadar sürdü, kaç saatlik veri kayboldu,
+  kim doğruladı?"* Bu dördü yazılı değilse **RTO/RPO BİLİNMİYOR demektir** —
+  "iyi" de değildir, "kötü" de; ÖLÇÜLMEMİŞTİR.
+⇒ BKM'ye bağ: bu, deponun `olctum-mu-cikardim-mi.md` kuralının BT'deki karşılığıdır.
+  Tatbikat kaydı olmayan bir RTO, ölçüm değil TEMENNİDİR.
+
+### ⭐ Fidye yazılımı artık ÖNCE YEDEĞİ hedefliyor
+- Saldırıların **%96'sı yedekleri hedef alıyor.** ⇒ Aynı ağda, aynı kimlikle
+  erişilebilen yedek, saldırı anında yedek DEĞİLDİR.
+- Kurumların **%63'ü geri yükleme sırasında enfeksiyonu yeniden taşıma riski**
+  taşıyor, çünkü doğrulama adımı atlanıyor.
+- Değişmez (immutable) + saha-dışı yedeği olan kurumlar günler içinde dönerken,
+  olmayanlarda kesinti **haftalara** çıkabiliyor.
+⇒ Üç soru: yedek **değiştirilemez** mi · **ayrı kimlik/ağda** mı · geri yüklerken
+  **temizlik doğrulaması** var mı.
+
+### ⭐ Kesintilerin çoğu teknik değil, PROSEDÜREL
+Uptime Institute: **kesintilerin %48'i prosedürel/insan kaynaklı.** Yani yatırım
+donanıma yapılırken kayıp çoğunlukla "yazılı olmayan adım"dan geliyor.
+⇒ BCP tartışmasında ilk soru donanım yedekliliği değil: **kesintide kim neyi hangi
+  sırayla yapacak, yazılı mı, denenmiş mi.**
+
+### Yetki ayrımı (SoD) — kanonik kontrol kümesi
+Denetimde beklenen ayrımlar: geliştirici/tedarikçi **prod'a erişemez** · kullanıcılar
+ve sistem programcıları **kaynak kodu değiştiremez** · son kullanıcı **prod veriyi
+doğrudan değiştiremez** · DBA'lar **root/admin yetkisi taşımaz**.
+⚠ **Paylaşılan hesap SoD'yi topyekûn geçersiz kılar** — iz sürülemez hâle gelir ve
+denetimde tek başına bulgu olur.
+⇒ BKM'ye bağ: `sa` ile çalışan uygulama tam bu sınıftadır. `erp-write-policy.md`
+  zaten kısıtlı login (`bkm_panel_rw`) öneriyor ama **UYGULANMADI** — kod disiplini
+  bir SoD kontrolü değildir, sunucu-seviyesi yetki kısıtı odur.
+
+### KVKK — envanter bir liste değil, KAYIT YÜKÜMLÜLÜĞÜDÜR
+Saklama ve imha politikası için kayıt altına alınması beklenen alanlar: **işleme
+amacı · veri kategorisi · saklama süresi · imha yöntemi · toplama kaynağı · erişen
+roller.** Kritik yetkiler için **SoD matrisi** ayrıca beklenir.
+⚠ "Hangi kişisel veri nerede" sorusunun cevabı, saklama SÜRESİ ve İMHA yöntemi
+  yazılmadan tamamlanmış sayılmaz — envanterin eksik yarısı budur.
+
+### ⚠ Bu bölümün sınırı
+Yukarıdaki oranlar (1/5, %37, %96, %63, %48) **satıcı/danışman yayınlarından** gelir;
+örneklem ve yöntemleri şeffaf değildir ve sektöre göre değişir. BKM için hiçbiri
+ölçülmemiştir. Bunlar **hangi soruyu soracağını** söyler, cevabı DEĞİL —
+BKM'nin kendi tatbikat kaydı yapılmadan bu sayılar bizim durumumuz sayılamaz.
+
 ## Danışma Modları
 
 - **"Riskimiz ne"** → envanter formatı: **varlık → tek nokta arıza → etki (₺/saat) → mevcut kontrol → boşluk → önerilen adım → sahip**.
