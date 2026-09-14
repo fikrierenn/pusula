@@ -657,7 +657,7 @@
       "question": "Urun kartindaki 'Reyon' (=urn.kod4ID) kampanya etiketi KASADA hala gerceklesiyor mu? Dort capa etiketin fiili kasa indirim orani beklenen SIRADA mi: INDIRIMSIZ (6847) <= Kampanya Disi (6835) <= 3 AL 2 ODE (1) <= %50 INDIRIM (6858)? Ihlal sayisi.",
       "why": "2026-09-12'de kullanici ekran goruntusuyle gosterdi: kartta 'Reyon' yazan alan aslinda KAMPANYA etiketidir (urn.kod4ID, 46 tanim, 838.301 urun, oksuz 0) ve magaza fiyati buradan olusur. Olculdu (posOzetUrun, son 12 ay, mekan 1/4477/4478): INDIRIMSIZ %1,1 < Kampanya Disi %3,4 < 3 AL 2 ODE %23,9 < %50 INDIRIM %48,1 - siralama MONOTON, yani etiket olu bir siniflandirma degil, fiyati GERCEKTEN suruyor. NEDEN KAPI: bu alan uzerine kurulmus iki iddia var - (a) '3 AL 2 ODE kalibre calisiyor' (kasa %24 indirim vs alis %40-45 iskonto, katalogun yarisi), (b) 'zarar ureten kuyruk %50 INDIRIM/OZEL FIYAT etiketleridir'. Etiket fiyati surmeyi birakirsa (kampanya motoru degisir, etiket kozmetige doner, POS baska bir kaynaktan fiyatlar) bu iki iddia SESSIZCE yanlislasir ve hicbir sey kirmizi vermez. Ayrica bu kapi bir DUZELTMEYI korur: 'magaza marji her zaman daha iyidir' cumlesi ayni gun olculup curutuldu (NEGATIF bantta magaza da -14,3 puan, 7.712 urun / 85,6M TL). KIRILABILIRLIK KANITI (paylasilan dosyaya dokunulmadan, hatali formuller dogrudan kosuldu): dogru formul 0 - siralama tersine cevrilince 1 - capa etiketlerden biri kaybolunca (ISNULL sentineli sayesinde) 1. SINIR: kapi kod4ID NUMARALARINA bakar, ETIKET METNINE bakmaz; bir etiket yeniden adlandirilirsa bunu HICBIR SEY yakalamaz.",
       "sql": "WITH a AS (SELECT u.kod4ID, 100.0*SUM(p.satIndirim)/NULLIF(SUM(p.satTutar+p.satIndirim),0) AS ind FROM DerinSISBkm.dbo.urn u WITH(NOLOCK) JOIN DerinSISBkm.dbo.posOzetUrun p WITH(NOLOCK) ON p.posStkID=u.stkID WHERE p.posTarih >= DATEADD(MONTH,-12,GETDATE()) AND p.posMekan IN (1,4477,4478) AND p.satAdet>0 AND u.kod4ID IN (6847,6835,1,6858) GROUP BY u.kod4ID) SELECT CASE WHEN ISNULL((SELECT ind FROM a WHERE kod4ID=6835),-999) < ISNULL((SELECT ind FROM a WHERE kod4ID=6847),999) THEN 1 ELSE 0 END + CASE WHEN ISNULL((SELECT ind FROM a WHERE kod4ID=1),-999) < ISNULL((SELECT ind FROM a WHERE kod4ID=6835),999) THEN 1 ELSE 0 END + CASE WHEN ISNULL((SELECT ind FROM a WHERE kod4ID=6858),-999) < ISNULL((SELECT ind FROM a WHERE kod4ID=1),999) THEN 1 ELSE 0 END",
-      "comparison": "esit",
+      "comparison": "eq",
       "expected": 0,
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 0. Kasa indirim oranlari: 6847=%1,1 - 6835=%3,4 - 1=%23,9 - 6858=%48,1. Arsiv: sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql",
@@ -669,7 +669,7 @@
       "question": "Alis faturasi satirinda (fat.eTip=0) `ehTutarN = ehTutar - ehIndirim` kimligi hala tutuyor mu? Son 12 ayda kimligi bozan satir sayisi (tolerans 0,05 TL).",
       "why": "2026-09-12'de kullanici 'alis iskontosu sifir olan urunleri alis faturalarindan da kontrol et' dedi; kontrol bir onceki iki commit'in marj tabanini curuttu ve YENI taban bu tabloya dayandi: gercek alis maliyeti `fatAyr.ehTutarN`dir. Olculdu: 641.905 satirin 641.904'u tutuyor; tek istisna ehID 7029330 satir 1 (4.500 -> net 2.700, ehIndirim 0 yazilmis). Kademe kimligi de tutuyor: ehTutarN = ehTutar x (1-ehi1/100)x...x(1-ehi5/100), 186 istisna. NEDEN KAPI: sema'nin ZATEN bildigi bir bozulma sinifi var - `eTip=4` (Magaza Satis) satirlarinda `ehTutarN` BESLENMIYOR ve bu 4 yildir KOTULESIYOR (%65 -> %77). Ayni bozulma alis tarafina sicrarsa her maliyet/marj hesabi SESSIZCE kayar: ehTutarN 0 donerse urun 'bedava alinmis' gorunur ve marj SISER. Bugun bunu hicbir sey izlemiyor. Esik `le 5` secildi: olculen 1, elle girilmis tekil anomalilere pay birakiliyor; sistematik bozulma (eTip=4 orneginde on binlerce satir) bu esigi kat kat asar. KIRILABILIRLIK KANITI (paylasilan dosyaya dokunmadan, hatali formuller dogrudan kosuldu): dogru formul 1 - yalniz `ehi1` kademesi sanilirsa 6.799 - ayni kimlik eTip=4'te 55.879. SINIR: kapi yalnizca ARITMETIK tutarliligi olcer; fiyatin DOGRU olup olmadigini olcmez.",
       "sql": "SELECT SUM(CASE WHEN ABS(a.ehTutarN-(a.ehTutar-a.ehIndirim))>0.05 THEN 1 ELSE 0 END) FROM DerinSISBkm.dbo.fat f WITH(NOLOCK) JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK) ON a.ehID=f.eID WHERE f.eTip=0 AND f.eTarih >= DATEADD(MONTH,-12,GETDATE()) AND a.ehTutar>0",
-      "comparison": "encok",
+      "comparison": "max",
       "expected": 5,
       "protects": [],
       "verified": "2026-09-12 -> olculdu, 1 (641.905 satirda). Arsiv: sorgular/2026-09-12-alis-iskontosu-sifir-fatura-kontrolu.sql",
@@ -681,11 +681,23 @@
       "question": "Yasal fis tavani hala baglayici mi? Son 12 ayda tutari 12.000 TL'yi asan FIS (DocumentsTypeId=1) sayisi.",
       "why": "2026-09-13'te kullanici kanal ayrimini istedi ve bir tuzagi bildirdi: 'fis kesme limiti var kanunen... 30 degil 12 bin'. Yani DocumentsTypeId=2 (Fatura) 'kurumsal' DEGILDIR - tavani asan PERAKENDE sepet de faturaya doner. Esik TAHMIN EDILMEDI, kasadan OLCULDU: fis maksimumu 2025'te 9.900,00 TL, 2026'da 12.000,00 TL; ustunde TEK FIS YOK. NEDEN KAPI: uzerine kurulan kanal ayrimi bu tavana dayaniyor. Perakende = tip 1+3 olarak tanimlandi ve o taban uzerinden magaza brut marji %37,3 olculdu (metrics:magaza_brut_marji_perakende). Tavan degisirse (yasal tutar her yil guncellenir) ya da kasa parametresi kayarsa, 'perakende' kumesi SESSIZCE baska bir sey olur: bugun faturaya donen buyuk sepetler fise donmeye baslar, perakende marji kayar ve kimse sebebini bilmez. Bu kapi KIRMIZI VERIRSE dogru tepki 'duzelt' degil, 'yeniden olc ve beklentiyi guncelle'dir - kirmizi, yasanin ya da kasa ayarinin degistigini haber verir. KIRILABILIRLIK KANITI (paylasilan dosyaya dokunmadan, hatali esik dogrudan kosuldu): dogru esik 12.000 -> 0; esik 700 TL sanilirsa 368.330. Nufus: 1.121.332 fis. SINIR: kapi yalnizca TAVANIN BAGLAYICI OLDUGUNU olcer; tavan altindaki bir faturanin kurumsal mi perakende mi oldugunu AYIRT ETMEZ - o ayrim yapilmadi (etkisi olculdu ve kucuk cikti: tip 2 cirosu 14,0M TL = kasa cirosunun %1,2, marji %36,4 ile perakendenin %37,3'une cok yakin).",
       "sql": "SELECT COUNT_BIG(*) FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId=1 AND s.Date >= DATEADD(MONTH,-12,GETDATE()) AND (s.GrossTotal-s.DiscountTotal) > 12000",
-      "comparison": "esit",
+      "comparison": "eq",
       "expected": 0,
       "protects": [],
       "verified": "2026-09-13 -> olculdu, 0 (1.121.332 fis icinde). Fis maksimumu: 2025 = 9.900,00 TL, 2026 = 12.000,00 TL. Arsiv: sorgular/2026-09-13-magaza-marji-kendi-hesabimiz.sql blok 0b",
       "population": "SELECT COUNT_BIG(*) FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK) WHERE s.DocumentsTypeId=1 AND s.Date >= DATEADD(MONTH,-12,GETDATE())"
+    },
+    {
+      "id": "sip-edurum-kapatma-olu",
+      "db": "DerinSISBkm",
+      "question": "Alış siparişlerinde 'kapalı' (eDurum=2) hâlâ hiç yazılmıyor mu?",
+      "why": "Bu kayıt bir gerçeği DEĞİL, bir BOZUKLUĞUN sürdüğünü korur. eDurum=2 son kez 24.02.2025'te yazılmış; bu yüzden 'açık sipariş' eDurum'dan ölçülemiyor ve raporlarda açık sipariş NETLENMİYOR (yalnız 30 günlük bayrak). ERP kapatmayı yeniden kullanmaya başlarsa bu kapı KIRILIR ve o zaman netleme yeniden tartışılır — yani kırmızı burada KÖTÜ HABER DEĞİL, 'varsayımın değişti' demektir.",
+      "sql": "SELECT COUNT(*) FROM dbo.sip WITH(NOLOCK) WHERE eTip IN (0,3) AND eDurum = 2 AND eTarih > '20250224'",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-14 → 0. eDurum dağılımı (eTip 0+3): 0 → 1.634 belge / 6.264.737 adet · 1 → 38.290 / 16.942.872 · 2 → 5.334 / 663.778 (MAX eTarih 24.02.2025). Kırılabilirliği kanıtlandı: tarih '20240224'e çekilince 17 ihlal döndü, geri alındı.",
+      "population": "SELECT COUNT(*) FROM dbo.sip WITH(NOLOCK) WHERE eTip IN (0,3) AND eDurum = 2",
+      "korur": []
     }
   ]
 }

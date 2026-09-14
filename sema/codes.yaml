@@ -735,6 +735,29 @@ codes:
     canli_dagilim: "2025-02-01+ pencere: eTip 13 -> 7.877 sipariş (3 tedarikçi, şube hesapları) · 9 -> 2.141 (107 ted., Samet) · 3 -> 1.952 (19 ted., %99 grup-içi, entegrasyon kullanıcısı) · 1 -> 1.930 (16 ted., %98 grup-içi) · 0 -> 1.566 (139 ted., Onurhan+Aydın)."
     confidence: 1.0
     evidence: "2026-08-19 — SELECT * FROM dbo.sipTip_vw (14 satır) + sip eTip dağılımı canlı."
+  sip.eDurum:                        # ⚠ KAPATMA ALANI ÖLÜ (ölçüldü 2026-09-14)
+    values:
+      0: 'açık (1.634 belge / 6.264.737 adet — alış+yerel alım)'
+      1: 'açık/kısmi (38.290 belge / 16.942.872 adet)'
+      2: 'kapalı — 24.02.2025''ten SONRA HİÇ YAZILMAMIŞ (5.334 belge, hepsi o tarihten eski)'
+    tuzak: "⚠⚠ `eDurum <> 2` ile 'AÇIK SİPARİŞ' ÖLÇÜLEMEZ. Kapatma alanı 24.02.2025'te kullanılmayı
+      bırakmış; o günden beri hiçbir alış siparişi kapatılmıyor. Sonuç: 'açık' görünen alış siparişi
+      adedinin **%86,4'ü bir yıldan eski** (37.065 belge / 19.920.271 adet). Yaş dağılımı (kesim
+      13.09.2026, eTip 0+3): 0-15g 115 belge/131.951 adet · 16-30g 111/39.063 · 31-60g 240/100.877 ·
+      61-120g 469/335.199 · 121-365g 1.921/2.525.817 · 1 yıldan eski 37.065/19.920.271.
+      Son 30 gün toplamın yalnız **%0,74'ü**."
+    kural: "Açık sipariş bir rapordan DÜŞÜLMEZ (netlenmez). Yalnız DAR PENCEREli bir BAYRAK olarak
+      gösterilir — ODAK temin ort. 5,03 gün olduğu için 30 gün kullanılıyor. Netleme yapan rapor
+      20 milyon hayalet adetle yanıltır. GMY direktifi de aynı yönde: 'yeni gelen sezon siparişlerini
+      var olarak görme'."
+    ayrica: "Bayrak 'sipariş edildi'dir, 'yolda' DEĞİL: `sipAyr.ehSevkAdet` alış siparişi satırlarının
+      %100'ünde NULL → karşılanma ölçülemiyor (B-180)."
+    kullanildigi_yer: "scripts/sezon_magaza_stok_excel.py (sp CTE) · dashboard GetAcikSiparisAsync
+      (120 günlük pencere — bu ölçümden sonra dar pencere tartışmalı, B-180'e bağlı)."
+    confidence: 1.0
+    evidence: "2026-09-14 — sorgular/2026-09-14-acik-siparis-edurum-olu.sql blok 1-2 (eDurum dağılımı
+      + yaş bantları). Koruma: degismezler.json → sip-edurum-kapatma-olu."
+    last_verified: '2026-09-14'
   urn.KDVs / urn.KDVa:               # KDV KOD'u — YÜZDE DEĞİL (2026-08-19)
     lookup: dbo.urnKDV          # ⚠ kdvYuzde_vw DEĞİL — view_tuzagi'na bak
     join: "JOIN dbo.urnKDV k ON k.kdvID = urn.KDVs → k.kdvYuzde"
