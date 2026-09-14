@@ -39,7 +39,17 @@ else
         <div class="flex gap-x-4 gap-y-1 flex-wrap text-xs text-base-content/70 mt-1.5">
             <span>stkID <b class="font-mono">@u.StkId</b></span>
             <span>barkod <b class="font-mono">@(u.BarkodAna ?? "—")</b></span>
-            <span>@u.Kategori3 › @u.Kategori1</span>
+            @*  Kategori3 AYRI sözlük (urnKtgr2), ürün ağacı AYRI (KatAna→Kat1→…).
+                Başlıkta ikisi de duruyor ama ARALARINDA "›" YOK — o işaret hiyerarşi
+                iddiasıdır ve burada hiyerarşi yoktur. Ağaç yolu tek kaynaktan
+                (SatisAnaliziHucre "katyol") geliyor; listeyle AYNI metin.            *@
+            <span>@u.Kategori3</span>
+            @{ var yol = SatisAnaliziHucre.Metin(u, "katyol"); }
+            @if (!string.IsNullOrWhiteSpace(yol))
+            {
+                <span class="text-base-content/40">·</span>
+                <span>@yol</span>
+            }
             <span>yayınevi <b>@(u.Yayinevi ?? "—")</b></span>
             @if (!string.IsNullOrWhiteSpace(u.Yazar) && u.Yazar != "Genel")
             {

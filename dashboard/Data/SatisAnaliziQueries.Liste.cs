@@ -255,9 +255,19 @@ public sealed partial class SatisAnaliziQueries
             {SiparisKaynak(oran)}
             WHERE t.Kesim = @kesim AND t.SezonYil = @sezon AND t.stkID = @stkId
             """;
+        // ⚠ PARAMETRELER `KesimP`TEN GELMELİ — elle kurulan anonim nesne YETMEZ.
+        // Vaka 14.09.2026: burada `new { kesim, sezon, stkId }` yazılıydı ve sayfa
+        // "Veri alınamadı" veriyordu. Sebep: `SiparisKaynak` CROSS APPLY zinciri
+        // @pbas · @a8 · @a9 · @a10 · @a11 takvim parametrelerini İSTİYOR (8632'den
+        // kaçmak için takvim matematiği C#'a taşınmıştı) ama bu çağrı onları
+        // VERMİYORDU → SQL 137 "skaler değişken bildirilmelidir" + zincirin her
+        // adımında sözdizimi hatası. Liste sorgusu KesimP kullandığı için çalışıyor,
+        // yalnız ürün drill'i düşüyordu — yani hata TEK SAYFADA görünüyordu.
+        // KURAL: `SiparisKaynak` SQL'e giriyorsa parametre kaynağı da `KesimP` olur.
+        var p = new DynamicParameters(KesimP(new SatisAnaliziFiltre(kesim, sezonYil)));
+        p.Add("stkId", stkId);
         await using var conn = await db.OpenAsync();
-        return await conn.QuerySingleOrDefaultAsync<SatisAnaliziSatir>(new CommandDefinition(sql,
-            new { kesim = kesim.ToDateTime(TimeOnly.MinValue), sezon = (short)sezonYil, stkId },
+        return await conn.QuerySingleOrDefaultAsync<SatisAnaliziSatir>(new CommandDefinition(sql, p,
             commandTimeout: 60, cancellationToken: ct));
     }
 
