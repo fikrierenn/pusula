@@ -169,6 +169,15 @@ RESMI_TATIL = {
     2027: [(1, 1), (4, 23), (5, 1), (5, 19), (7, 15), (8, 30), (10, 29)],
 }
 
+# ── KAPASITE (olculdu 2026-09-14, Eyl2025-Eyl2026, DocumentsTypeId=1) ───────
+# Gozlenen EN YOGUN GUN fis sayisi. Tavan bunun `--kapasite-payi` katidir.
+ZIRVE_GUN_FIS = {1: 2206, 4477: 2389, 4478: 1933}
+SEPET_ADET = 5.16          # olculdu: son 12 ay, odemeli satirlar
+# ── KARSI-METRIK (olculdu 2026-09-14, ayni-yil alis fiyati eslemesi, Oca-Agu) ─
+# 24 aylik pencereyle %37,3 cikiyordu ve "iyimserdir" diye beyan edilmisti;
+# ayni-yil eslemeyle %30,5 -> beyan edilen iyimserlik 6,8 PUAN.
+BRUT_MARJ = 0.305
+
 BUYUME_ALT, BUYUME_UST = 0.70, 1.60
 ASGARI_TABAN_ADET = 200
 
@@ -300,7 +309,19 @@ def main() -> int:
     #    diger tahminleri de baz alarak yapmalisin") — turetme YONTEM sayfasinda.
     ap.add_argument("--dusuk", type=float, default=10.0)
     ap.add_argument("--orta", type=float, default=15.0)
-    ap.add_argument("--yuksek", type=float, default=21.0)
+    # ⚠ KURUL KARARI (2026-09-14): YUKSEK %21 -> %28. Gerekce: OVP'nin SICILI.
+    #   OVP 2026 hedefi %9,7 iken Agu-2026 gerceklesen %31,51 (3,25 kat).
+    #   OVP 2024 hedefi %33 -> %41,5'e revize, gerceklesen ~%44 (1,33 kat).
+    #   Yani OVP manseti TAVAN degil TABAN. %28 = OVP %21 x tarihsel 1-yil-ileri
+    #   sapmasi (~1,33) VE mal-manset farkinin kapanmasi birlikte.
+    ap.add_argument("--yuksek", type=float, default=28.0)
+    # ── (4) KAPASITE TAVANI ─────────────────────────────────────────────────
+    #   Baglayici kisit KASA GECIS HIZI (fis/gun), raf degil: adet zirve/ortalama
+    #   3,99-8,36 iken FIS zirve/ortalama yalniz 1,9-2,4 -> zirve gunlerde magaza
+    #   daha cok ISLEM degil daha buyuk SEPET satiyor. Tavan fisten kurulur.
+    ap.add_argument("--kapasite-payi", type=float, default=1.10,
+                    help="Gozlenen en yogun gunun kac kati fis/gun kabul edilsin "
+                         "(1,10 = %%10 iyilesme varsayimi; SECILMIS sayi, olculmedi)")
     ap.add_argument("--cikti", default=None)
     a = ap.parse_args()
     if not (a.dusuk <= a.orta <= a.yuksek):
@@ -437,6 +458,85 @@ def main() -> int:
     if not satirlar:
         kosamadi("Model hic satir uretmedi")
 
+    # ── (4) KAPASITE TAVANI — ay x sube bazinda fis/gun sinirlanir ───────────
+    ters_mekan = {v: k for k, v in MEKAN_AD.items()}
+    import calendar as _cal
+    ay_adet = defaultdict(float)
+    for sr in satirlar:
+        ay_adet[(sr["ay"], sr["mekan"])] += sr["adet"]
+    kapasite_notu = []
+    for (ay, mek_ad), toplam in sorted(ay_adet.items()):
+        mek = ters_mekan.get(mek_ad)
+        gun = _cal.monthrange(2027, ay)[1]
+        tavan_fis = ZIRVE_GUN_FIS.get(mek, 99999) * a.kapasite_payi
+        ima_fis = toplam / SEPET_ADET / gun
+        if ima_fis > tavan_fis:
+            olcek = tavan_fis / ima_fis
+            for sr in satirlar:
+                if sr["ay"] == ay and sr["mekan"] == mek_ad:
+                    sr["adet"] *= olcek
+                    for ad_s in SEN:
+                        sr[f"adet_{ad_s}"] *= olcek
+                        sr[f"ciro_{ad_s}"] *= olcek
+                        sr[f"ciro_a_{ad_s}"] *= olcek
+                        sr[f"ciro_b_{ad_s}"] *= olcek
+                    sr["isaret"] = (sr["isaret"] + " · KAPASITE TAVANI").strip(" ·")
+            kapasite_notu.append(
+                (AY_AD[ay], mek_ad, round(ima_fis), round(tavan_fis), round(100*(1-olcek), 1)))
+
+    # ── (3) SINAV TAHMINI — AYRI MODEL, kendi surucusu: PAKET ADEDI ─────────
+    # GMY 13.09: "Sinav'i ayri tut, karistirma" -> tahmine KARISTIRILMADI, ama
+    # kurul (CFO) 14.09'da hakli olarak "sirket butcesi olacaksa %36'lik parca bos
+    # kalamaz" dedi. Bu yuzden AYRI bir blok olarak tahmin edilir.
+    # ⚠ SINAV PERAKENDE MODELIYLE TAHMIN EDILEMEZ: surucusu trafik degil OGRENCI/
+    #   PAKET SAYISI. Adet 3 yildir DUSUYOR, ciroyu FIYAT tasiyor.
+    sn_yil = defaultdict(lambda: [0.0, 0.0])          # yil -> [ciro, adet]
+    sn_gun25 = defaultdict(lambda: [0.0, 0.0])        # gun -> [ciro, adet] (2025)
+    for g, _m, _k, c, ad in snv:
+        sn_yil[g.year][0] += c
+        sn_yil[g.year][1] += ad
+        if g.year == 2025:
+            sn_gun25[g][0] += c
+            sn_gun25[g][1] += ad
+    # Sinav'a OZGU okul-hizali k (T-29..T-2) — perakendenin k'si kullanilmaz
+    sn_p = {2025: [0.0, 0.0], 2026: [0.0, 0.0]}
+    for g, _m, _k, c, ad in snv:
+        if g.year in sn_p and ofs_alt <= ofset(g) <= ofs_ust:
+            sn_p[g.year][0] += c
+            sn_p[g.year][1] += ad
+    sn_k_ciro = (sn_p[2026][0] / sn_p[2025][0]) if sn_p[2025][0] else 1.0
+    sn_k_adet = (sn_p[2026][1] / sn_p[2025][1]) if sn_p[2025][1] else 1.0
+    # 2026 kapanisi: gerceklesen + Eylul kalani (2025'in AYNI OFSETLERI x k)
+    sn26_ciro, sn26_adet = sn_yil[2026][0], sn_yil[2026][1]
+    gg = kesim + dt.timedelta(days=1)
+    while gg <= dt.date(2026, 9, 30):
+        esd = OKUL_ACILIS[2025] + dt.timedelta(days=ofset(gg))
+        v = sn_gun25.get(esd)
+        if v:
+            sn26_ciro += v[0] * sn_k_ciro
+            sn26_adet += v[1] * sn_k_adet
+        gg += dt.timedelta(days=1)
+    for ayx in (10, 11, 12):
+        for g, v in sn_gun25.items():
+            if g.month == ayx:
+                sn26_ciro += v[0] * sn_k_ciro
+                sn26_adet += v[1] * sn_k_adet
+    sn26_birim = sn26_ciro / sn26_adet if sn26_adet else 0.0
+    # 2027 adet: MEVCUT EN ESKI yildan CAGR. ⚠ Veri cekimi 2024-01-01'den basliyor,
+    # 2023 YOK. Onceki surumde `a23=0` -> fallback 1,0 donuyordu: HIC DUSUS
+    # UYGULANMIYOR ama etiket "DUSUS" yaziyordu (sessiz yanlis rakam).
+    # Artik taban yili ACIKCA secilir ve raporda YAZILIR.
+    sn_taban_yil = min(y for y in sn_yil if sn_yil[y][1] > 0)
+    sn_taban_adet = sn_yil[sn_taban_yil][1]
+    sn_yil_sayisi = 2026 - sn_taban_yil
+    if sn_taban_adet > 0 and sn26_adet > 0 and sn_yil_sayisi > 0:
+        sn_cagr = (sn26_adet / sn_taban_adet) ** (1.0 / sn_yil_sayisi)
+    else:
+        sn_cagr = 1.0
+    sn27 = {}
+    for ad_s, carp in SEN.items():
+        sn27[ad_s] = (sn26_adet * sn_cagr) * (sn26_birim * carp)
+
     # ── EXCEL ────────────────────────────────────────────────────────────────
     def yaz(ws, basliklar, rows, gen=None, para=()):
         ws.append(basliklar)
@@ -523,6 +623,75 @@ def main() -> int:
         ["    alt", round(t27["orta"] * 0.88), ""],
         ["    üst", round(t27["orta"] * 1.12), ""],
         ["  ⚠ Bu bant yalnız 2 kesim noktasından türedi — YÖN gösterir, kesin değildir.", "", ""],
+        [],
+        ["⭐ KURULUN ALTI MADDESİ UYGULANDI (2026-09-14)", "", ""],
+        [],
+        ["1) DÜRÜST BANT — üç senaryo TEK BAŞINA yetersizdir", "", ""],
+        ["  Senaryo bandı (düşük↔yüksek) ortanın ±%{:.1f}'i".format(
+            100 * (t27["yuksek"] - t27["dusuk"]) / (2 * t27["orta"])), "", ""],
+        ["  Backtest'te ÖLÇÜLEN yıl sapması ±%10-14 ⇒ bant tek başına YETMEZ.", "", ""],
+        ["  ⇒ KARAR BU BANTLA VERİLİR (orta ±%12, ölçülen hatadan):", "", ""],
+        ["    alt", round(t27["orta"] * 0.88), ""],
+        ["    üst", round(t27["orta"] * 1.12), ""],
+        [],
+        ["2) ÜST SENARYO AÇILDI — OVP'nin SİCİLİ nedeniyle", "", ""],
+        ["  OVP 2026 hedefi %9,7 · Ağu-2026 gerçekleşen %31,51 → 3,25 KAT", "", ""],
+        ["  OVP 2024 hedefi %33 → %41,5 revize, gerçekleşen ~%44 → 1,33 kat", "", ""],
+        ["  ⇒ OVP manşeti TAVAN değil TABAN. Yüksek senaryo %21 → %28 açıldı.", "", ""],
+        ["  ⚠ ÇAPANIN GERİYE DÖNÜK TESTİ: OVP 2026 hedefi (%9,7) mal oranıyla", "", ""],
+        ["    bizim fiyatımız için ~%4,9 derdi; GERÇEKLEŞEN +%15,0 (3 kat sapma).", "", ""],
+        ["    ⇒ OVP çapası TEK BAŞINA güvenilmez; yüksek senaryo bu yüzden var.", "", ""],
+        [],
+        ["4) KAPASİTE TAVANI UYGULANDI — bağlayıcı kısıt KASA, raf değil", "", ""],
+        ["  Adet zirve/ortalama 3,99-8,36 iken FİŞ zirve/ortalama 1,9-2,4", "", ""],
+        ["  ⇒ zirve günde mağaza daha çok İŞLEM değil daha büyük SEPET satıyor.", "", ""],
+        ["  Tavan = gözlenen en yoğun gün × {:.2f} (SEÇİLMİŞ pay, ölçülmedi)".format(
+            a.kapasite_payi), "", ""],
+        ["  Gözlenen zirve: FSM 2.206 · Özlüce 2.389 · İst.Yolu 1.933 fiş/gün", "", ""],
+    ] + ([["  ⚠ TAVANA DAYANAN AY × ŞUBE (talep vardı, kapasite yoktu):", "", ""]] +
+         [[f"    {ax} · {mx}: istenen {imx:,} → tavan {tvx:,} fiş/gün (−%{kx})",
+           "", ""] for (ax, mx, imx, tvx, kx) in kapasite_notu]
+         if kapasite_notu else [["  (hiçbir ay tavana dayanmadı)", "", ""]]) + [
+        [],
+        ["5) FVA ETİKETİ — sınanmamış katmanlar AÇIKÇA işaretlendi", "", ""],
+        ["  Backtest (MASE 0,621) KPSS ve OVP katmanları OLMADAN koşuldu.", "", ""],
+        ["  ⇒ KPSS düzeltmesi: FVA ÖLÇÜLMEDİ → **DENEME**", "", ""],
+        ["  ⇒ OVP fiyat çapası: FVA ÖLÇÜLMEDİ (ileriye dönük makro çapa,", "", ""],
+        ["     geçmiş kesimde koşulamaz) → **DENEME**; geriye dönük testi yukarıda.", "", ""],
+        ["  ⇒ Takvim katmanı: 2027'de çarpan ≈1,00 ⇒ katkısı SIFIR (nötr).", "", ""],
+        [],
+        ["6) KARŞI-METRİK — ciro hedefi tek başına konmaz", "", ""],
+        ["  Hedef bir DAVRANIŞ üretir: ciro hedefi → indirimle hacim satın alma.", "", ""],
+        ["  Ölçülen brüt marj %{:.1f} (aynı-yıl alış eşlemesi; 24-aylık pencereyle".format(
+            100 * BRUT_MARJ), "", ""],
+        ["  %37,3 çıkıyordu ve iyimserdi — fark 6,8 PUAN).", "", ""],
+        ["  2027 orta senaryoda BEKLENEN BRÜT KÂR (marj sabit kalırsa)",
+         round(t27["orta"] * BRUT_MARJ), ""],
+        ["  ⚠ Bu bir HEDEF DEĞİL, KARŞI-METRİKTİR: ciro tutup marj bunun altına", "", ""],
+        ["  inerse hacim indirimle satın alınmış demektir.", "", ""],
+        ["  İkinci karşı-metrik: sepet adedi (ölçülen {:.2f}) — düşerse ucuz".format(SEPET_ADET), "", ""],
+        ["  ürüne kayma var demektir.", "", ""],
+        [],
+        ["3) SINAV — AYRI TAHMİN (kurul/CFO talebi)", "", ""],
+        ["  ⚠ Perakende modeliyle tahmin EDİLEMEZ: sürücüsü trafik değil PAKET SAYISI.", "", ""],
+        ["  Paket adedi: 2024 {:,.0f} → 2025 {:,.0f} → 2026 kapanış {:,.0f}".format(
+            sn_yil[2024][1], sn_yil[2025][1], sn26_adet), "", ""],
+        ["  Adet CAGR %{:+.1f}/yıl ({}→2026, {} yıl) · 2026 birim {:,.0f} ₺".format(
+            100 * (sn_cagr - 1), sn_taban_yil, sn_yil_sayisi, sn26_birim), "", ""],
+        ["  ⚠ 2023 verisi çekim penceresi dışında (2024-01-01'den başlıyor);", "", ""],
+        ["    CAGR bu yüzden {} yıl üzerinden. Daha uzun pencere istenirse SQL değişmeli.".format(
+            sn_yil_sayisi), "", ""],
+        ["  2027 paket adedi (trend sürerse)", "", round(sn26_adet * sn_cagr)],
+        ["  SINAV 2026 kapanış", round(sn26_ciro), round(sn26_adet)],
+        ["  SINAV 2027 DÜŞÜK", round(sn27["dusuk"]), ""],
+        ["  SINAV 2027 ORTA", round(sn27["orta"]), ""],
+        ["  SINAV 2027 YÜKSEK", round(sn27["yuksek"]), ""],
+        ["  ⚠⚠ PAKET ADEDİ BİR İŞLETME KARARIDIR (öğrenci sayısı), tahmin değil.", "", ""],
+        ["  Model geçmiş düşüş trendini sürdürür. GMY bir kayıt hedefi verirse", "", ""],
+        ["  adet ona sabitlenip yeniden koşulmalıdır.", "", ""],
+        [],
+        ["★ ŞİRKET TOPLAMI (perakende + Sınav, orta senaryo)",
+         round(t27["orta"] + sn27["orta"]), ""],
         [],
         ["YENİ ŞUBE DUYARLILIĞI (GMY: belirsiz → ikisi de gösterilsin)", "", ""],
         ["  Ortalama bir şubenin 2027 cirosu (orta senaryo)", round(ort_sube), ""],
