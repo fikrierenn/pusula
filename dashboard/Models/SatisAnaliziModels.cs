@@ -13,6 +13,9 @@ public sealed record SatisAnaliziFiltre(
     string? Arama = null,
     string? Kategori3 = null,
     string? Kategori1 = null,
+    /// <summary>ÜRÜN GRUBU (UrunBilgi.Kat1) — "Defterler" gibi. GMY 14.09.2026:
+    /// <i>"defter grubuna nasıl ulaşacağım"</i>. Kategori1 (=KatAna) alt kırılım VERMEZ.</summary>
+    string? Kat1 = null,
     int Mekan = 0,               // 0=hepsi · 1 FSM · 4477 Özlüce · 4478 İst.Yolu
     SatisDurumFiltre Durum = SatisDurumFiltre.Hepsi,
     /// <summary>
@@ -487,6 +490,12 @@ public sealed record SatisAnaliziSatir(
     string? BarkodAna,
     string StkAd,
     string Kategori1,
+    // ⚠ SQL'de Kategori1'den HEMEN SONRA (Dapper pozisyonel — sıra sözleşmedir).
+    /// <summary>Ürün ağacı 2. seviye (UrunBilgi.Kat1) — "Defterler", "Kalemler ve Yazı
+    /// Gereçleri"… Tabanda %90,9 dolu, 553 ayrı değer. Kategori1 (=KatAna) alt kırılım VERMEZ.</summary>
+    string? Kat1,
+    /// <summary>Ürün ağacı 3. seviye (UrunBilgi.Kat2) — "Çizgili Defter"… %29,3 dolu.</summary>
+    string? Kat2,
     string Yayinevi,
     string Yazar,
     decimal SatisFiyat,
@@ -668,6 +677,10 @@ public static class SatisAnaliziKolonlar
         new("barkod",     "BarkodAna",  Varsayilan: false),
         new("ad",         "Ürün",       Varsayilan: true),
         new("kategori1",  "Kategori1",  Varsayilan: false, Siralanabilir: true),
+        new("kat1",       "Ürün Grubu", Varsayilan: true,  Siralanabilir: true,
+            Ipucu: "UrunBilgi.Kat1 — \"Defterler\", \"Kalemler ve Yazı Gereçleri\"… %90,9 dolu. Kategori1 (=KatAna) alt kırılım vermez, bu verir."),
+        new("kat2",       "Alt Grup",   Varsayilan: false, Siralanabilir: true,
+            Ipucu: "UrunBilgi.Kat2 — \"Çizgili Defter\"… yalnız %29,3 dolu, boş görünen ürün normaldir."),
         new("yayinevi",   "Yayınevi",   Varsayilan: true,  Siralanabilir: true,
             Ipucu: "UrunBilgi.mrkAd — iade/konsinye koşulu yayınevi bazlı olduğu için kırılımda önemli"),
         new("yazar",      "Yazar",      Varsayilan: false),
@@ -795,3 +808,6 @@ public sealed record GunKarsilastirSonuc(
     int KesimDk,
     IReadOnlyList<GunMagazaSatir> Bugun,
     IReadOnlyList<GunMagazaSatir> Kiyas);
+
+/// <summary>Ürün grubu (Kat1) ve o gruptaki çeşit sayısı — filtre önerileri.</summary>
+public sealed record KatGrupSatir(string Ad, int Cesit);

@@ -25,6 +25,8 @@ public sealed partial class SatisAnaliziQueries
         ["stkid"] = "t.stkID",
         ["kategori3"] = "t.Kategori3",
         ["kategori1"] = "t.Kategori1",
+        ["kat1"] = "t.Kat1",
+        ["kat2"] = "t.Kat2",
         ["yayinevi"] = "t.Yayinevi",
         ["ad"] = "t.stkAd",
         ["stok_fsm"] = "t.StokFsm",
@@ -63,6 +65,8 @@ public sealed partial class SatisAnaliziQueries
         -- denetim körlüğü kapanır.
         t.stkID AS StkId, t.Kategori3 AS Kategori3, t.BarkodAna AS BarkodAna,
         t.stkAd AS StkAd, t.Kategori1 AS Kategori1,
+        -- ÜRÜN AĞACI (14.09.2026) — Kategori1'den HEMEN SONRA; record'da da aynı yerde.
+        t.Kat1 AS Kat1, t.Kat2 AS Kat2,
         t.Yayinevi AS Yayinevi, t.Yazar AS Yazar, t.SatisFiyat AS SatisFiyat,
         t.Tutar AS ToplamStokTutar, t.ToplamStok AS ToplamStok,
         t.OdakStok AS OdakStok, t.IlkGiris AS IlkGirisTarihi, t.SonGiris AS SonGirisTarihi,
@@ -100,6 +104,40 @@ public sealed partial class SatisAnaliziQueries
     /// ⚠ DAPPER POZİSYONEL: üçü de SELECT'in SONUNA eklenir ve SatisAnaliziSatir record'unun
     /// SONUNA aynı sırayla yazılır (sql-server-conventions § Dapper pozisyonel record).
     /// </summary>
+    /// <summary>
+    /// ÜRÜN GRUBU EVRENİ (Kat1) — filtre kutusunun önerileri.
+    ///
+    /// GMY 14.09.2026: <i>"defter grubuna nasıl ulaşacağım"</i>. <c>Kategori3</c> 11 değerde
+    /// duruyor, <c>Kategori1</c> ise aslında <c>KatAna</c> ve alt kırılım VERMİYOR (Kırtasiye'nin
+    /// 52.021 çeşidinin hepsinde yine "Kırtasiye"). Gerçek grup <c>UrunBilgi.Kat1</c>:
+    /// "Defterler" · "Kalemler ve Yazı Gereçleri" · "Çanta ve Mataralar"…
+    ///
+    /// ÖLÇÜLDÜ 14.09.2026 (kesim tabanı, 276.072 çeşit): Kat1 <b>%90,9 dolu</b>, <b>516</b> ayrı
+    /// değer; "Defterler" 7.933 çeşit. 516 seçenek <c>select</c> için fazla → datalist (yazarak ara).
+    /// ⚠ Boş Kat1 taşıyan %9,1 bu listede görünmez ve gruba göre süzülemez — kapsam kaybı
+    /// GİZLENMEZ, ekranda yazılı.
+    /// </summary>
+    public async Task<IReadOnlyList<KatGrupSatir>> Kat1EvreniAsync(
+        SatisAnaliziFiltre f, CancellationToken ct = default)
+    {
+        await using var conn = await db.OpenAsync();
+        var sql = $"""
+            SELECT t.Kat1 AS Ad, COUNT(*) AS Cesit
+            FROM {Taban} t WITH (NOLOCK)
+            WHERE t.Kesim = @kesim AND t.SezonYil = @sezon AND t.Kat1 IS NOT NULL
+              AND (@kategori3 IS NULL OR t.Kategori3 = @kategori3)
+            GROUP BY t.Kat1
+            ORDER BY COUNT(*) DESC
+            """;
+        var p = new DynamicParameters();
+        p.Add("kesim", f.Kesim.ToDateTime(TimeOnly.MinValue));
+        p.Add("sezon", f.SezonYil);
+        p.Add("kategori3", f.Kategori3);
+        var r = await conn.QueryAsync<KatGrupSatir>(
+            new CommandDefinition(sql, p, commandTimeout: 60, cancellationToken: ct));
+        return r.ToList();
+    }
+
     private const string ListeKolonlarSql =
         ListeKolonlar
         + ",\n" + SiparisOneriSql + " AS SiparisOneri"
@@ -902,6 +940,9 @@ public sealed partial class SatisAnaliziQueries
             sartlar.Add("(COALESCE(t.SonGiris, t.IlkGiris, t.AcilisTarihi) < DATEADD(DAY, -@taze, @kesim))");
 
         if (!string.IsNullOrWhiteSpace(f.Kategori3)) { sartlar.Add("t.Kategori3 = @kategori3"); p.Add("kategori3", f.Kategori3); }
+        // ÜRÜN GRUBU (Kat1) — "defter grubu" gibi sorular bununla cevaplanır.
+        // ⚠ Kategori1 (=KatAna) alt kırılım VERMEZ; Kırtasiye'de 52.021 çeşidin hepsi "Kırtasiye".
+        if (!string.IsNullOrWhiteSpace(f.Kat1)) { sartlar.Add("t.Kat1 = @kat1"); p.Add("kat1", f.Kat1); }
         if (!string.IsNullOrWhiteSpace(f.Kategori1)) { sartlar.Add("t.Kategori1 = @kategori1"); p.Add("kategori1", f.Kategori1); }
 
         if (f.MinYasYil > 0)

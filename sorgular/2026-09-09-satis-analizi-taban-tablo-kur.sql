@@ -43,6 +43,19 @@ BEGIN
         -- Ürün master (bkm.UrunBilgi): Kategori1 = KatAna · Yayinevi = mrkAd (FirmaAd DEĞİL)
         Kategori3    nvarchar(50)  NOT NULL,
         Kategori1    nvarchar(50)  NOT NULL,
+
+        -- ÜRÜN AĞACI — iki seviye daha (14.09.2026, GMY: "defter grubuna nasıl ulaşacağım").
+        -- ⚠ `Kategori1` ADI YANILTICI: o aslında `UrunBilgi.KatAna`dır ve Kırtasiye'nin
+        -- 52.021 çeşidinin HEPSİNDE yine "Kırtasiye" yazar — alt kırılım vermez.
+        -- Gerçek ağaç `KatAna → Kat1 → Kat2`; defter burada: Kat1='Defterler' ·
+        -- Kat2='Çizgili Defter'. ÖLÇÜLDÜ 14.09.2026 (837.990 ürün master):
+        --   Kat1 dolu %88,2 (tabanda %90,9) · 553 ayrı değer   → FİLTRE OLUR
+        --   Kat2 dolu %21,9 (tabanda %29,3) · 568 ayrı değer   → kolon olur, filtre zayıf
+        --   Kat3 dolu  %8,7                                     → ALINMADI
+        -- Defterler: 7.933 çeşit, 3.296'sı ölü stok adayı.
+        -- ⚠ `ReyonAd` REYON DEĞİL: "Kampanya Dışı / %50 İNDİRİM…" taşıyor (kod4=KAMPANYA).
+        Kat1         nvarchar(60)  NULL,
+        Kat2         nvarchar(60)  NULL,
         BarkodAna    varchar(15)   NULL,
         stkAd        nvarchar(120) NOT NULL,
         Yayinevi     nvarchar(300) NULL,

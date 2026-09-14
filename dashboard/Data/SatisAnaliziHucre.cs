@@ -18,6 +18,8 @@ public static class SatisAnaliziHucre
         "barkod" => s.BarkodAna,
         "ad" => s.StkAd,
         "kategori1" => s.Kategori1,
+        "kat1" => s.Kat1,
+        "kat2" => s.Kat2,
         "yayinevi" => s.Yayinevi,
         "yazar" => s.Yazar,
         "fiyat" => s.SatisFiyat,

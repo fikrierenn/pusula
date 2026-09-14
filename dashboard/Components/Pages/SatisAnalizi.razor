@@ -533,6 +533,23 @@ else
                     }
                 </select>
             </div>
+            @*  ÜRÜN GRUBU (Kat1) — GMY 14.09.2026: "defter grubuna nasıl ulaşacağım".
+                516 ayrı değer var; select yerine DATALIST (yazarak ara). Kategori3 seçiliyse
+                liste ona göre daralır. Boş bırakılınca süzgeç kalkar.                        *@
+            <div>
+                <label class="block text-xs text-base-content/60 mb-1">
+                    Ürün grubu
+                    <span class="text-base-content/40">(@_kat1Evren.Count)</span>
+                </label>
+                <input list="kat1-liste" class="input input-bordered input-sm w-full text-sm"
+                       value="@_filtre.Kat1" @onchange="Kat1Degis" placeholder="örn. Defterler" />
+                <datalist id="kat1-liste">
+                    @foreach (var g in _kat1Evren)
+                    {
+                        <option value="@g.Ad">@g.Ad — @g.Cesit.ToString("N0") çeşit</option>
+                    }
+                </datalist>
+            </div>
             <div>
                 <label class="block text-xs text-base-content/60 mb-1">Mağaza</label>
                 <select class="select select-bordered select-sm" @onchange="MekanDegis">
@@ -625,6 +642,7 @@ else
                 ? $"Kayıtlı kolon tercihiniz artık geçerli değil ({string.Join(", ", tercih.DusenAnahtarlar)}) — varsayılan kolonlara dönüldü."
                 : $"Kayıtlı tercihinizdeki {tercih.DusenAnahtarlar.Count} kolon artık yok ({string.Join(", ", tercih.DusenAnahtarlar)}) — listeden çıkarıldı.";
         await Yukle();
+        await Kat1EvrenYenile();   // öneri listesi — ana yüklemeyi bekletmesin diye SONRA
     }
 
     private async Task Yukle(bool zorla = false)
@@ -677,6 +695,27 @@ else
     private Task KategoriSec(string ad)
     {
         _filtre = _filtre with { Kategori3 = _filtre.Kategori3 == ad ? null : ad, Sayfa = 1 };
+        return ListeYenile();
+    }
+
+    // ── ÜRÜN GRUBU (Kat1) ──────────────────────────────────────────────────────
+    private IReadOnlyList<KatGrupSatir> _kat1Evren = [];
+
+    /// <summary>
+    /// Grup listesi Kategori3'e göre daralır — 516 değerin tamamını her seferinde göstermek
+    /// yerine seçili kategorinin grupları önce gelir. Hata olursa liste boş kalır ve filtre
+    /// yine de yazılarak kullanılabilir (öneri yokluğu süzgeci engellemez).
+    /// </summary>
+    private async Task Kat1EvrenYenile()
+    {
+        try { _kat1Evren = await Q.Kat1EvreniAsync(_filtre); }
+        catch (Exception ex) { Logger.LogError(ex, "Kat1 evreni alınamadı"); _kat1Evren = []; }
+    }
+
+    private Task Kat1Degis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        _filtre = _filtre with { Kat1 = string.IsNullOrWhiteSpace(v) ? null : v.Trim(), Sayfa = 1 };
         return ListeYenile();
     }
 
