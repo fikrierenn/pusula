@@ -242,6 +242,42 @@ GROUP BY CAST(h.ehTrhS AS date), h.ehMekan, b.Kategori3
 """
 
 
+# ⭐ OGRENCI KAYITLARI — BKM.snv.Siparis (GMY 2026-09-14: "sepet ogrenci sayisi
+#   tahmininden gidelim"). Olculdu: siparis/ogrenci = 1,00, yani siparis = ogrenci.
+#   ⚠ KISISEL VERI: `snv.Ogrenci` ad-soyad/kimlik/telefon tasir — bu sorgu yalnizca
+#     SAYIM yapar, satir verisi CEKMEZ.
+SQL_OGRENCI = """
+SELECT sn.SinifNo AS Sinif, YEAR(sp.Tarih) AS Yil,
+       CASE WHEN YEAR(sp.Tarih)=2026 THEN DATEDIFF(DAY,'20260914',sp.Tarih)
+            WHEN YEAR(sp.Tarih)=2025 THEN DATEDIFF(DAY,'20250908',sp.Tarih)
+            ELSE DATEDIFF(DAY,'20240909',sp.Tarih) END AS Ofset,
+       COUNT(DISTINCT sp.OgrenciId) AS Ogrenci
+FROM   BKM.snv.Siparis sp WITH (NOLOCK)
+JOIN   BKM.snv.Sinif  sn WITH (NOLOCK) ON sn.SinifId = sp.SinifId
+WHERE  YEAR(sp.Tarih) BETWEEN 2024 AND 2026 AND sn.SinifNo BETWEEN 1 AND 12
+GROUP BY sn.SinifNo, YEAR(sp.Tarih),
+       CASE WHEN YEAR(sp.Tarih)=2026 THEN DATEDIFF(DAY,'20260914',sp.Tarih)
+            WHEN YEAR(sp.Tarih)=2025 THEN DATEDIFF(DAY,'20250908',sp.Tarih)
+            ELSE DATEDIFF(DAY,'20240909',sp.Tarih) END
+"""
+
+
+def ogrenci_cek(cn) -> dict:
+    """(sinif, yil) -> tum yil ogrenci · (sinif, yil, 'T2') -> kesime kadar."""
+    cur = cn.cursor()
+    cur.execute(SQL_OGRENCI)
+    tam = defaultdict(int)
+    t2 = defaultdict(int)
+    for r in cur.fetchall():
+        sf, yl, of_, og = int(r.Sinif), int(r.Yil), int(r.Ofset), int(r.Ogrenci)
+        tam[(sf, yl)] += og
+        if of_ <= -2:
+            t2[(sf, yl)] += og
+    if not tam:
+        kosamadi("BKM.snv.Siparis BOS dondu — ogrenci sayisi olculemedi")
+    return {"tam": tam, "t2": t2}
+
+
 def son_tam_gun(cn) -> dt.date:
     """Bugünün eTip 100 belgesi gün içinde yeniden yazılır → son TAM gün esas."""
     cur = cn.cursor()
@@ -330,9 +366,9 @@ def main() -> int:
     #    DUSUK  %15 — yavaslama HIZLANIR, mal enflasyonuna yaklasir
     #    ORTA   %22 — yavaslama AYNI oranda surer (43,0 x 0,51)
     #    YUKSEK %35 — 2026'nin artisi TEKRARLAR
-    ap.add_argument("--sinav-dusuk", type=float, default=15.0)
-    ap.add_argument("--sinav-orta", type=float, default=22.0)
-    ap.add_argument("--sinav-yuksek", type=float, default=35.0)
+    ap.add_argument("--sinav-dusuk", type=float, default=9.0)
+    ap.add_argument("--sinav-orta", type=float, default=16.0)
+    ap.add_argument("--sinav-yuksek", type=float, default=22.0)
     ap.add_argument("--kapasite-payi", type=float, default=1.10,
                     help="Gozlenen en yogun gunun kac kati fis/gun kabul edilsin "
                          "(1,10 = %%10 iyilesme varsayimi; SECILMIS sayi, olculmedi)")
@@ -349,6 +385,7 @@ def main() -> int:
         kesim = son_tam_gun(cn)
         per = cek(cn, kesim, True)
         snv = cek(cn, kesim, False)
+        ogr = ogrenci_cek(cn)
     finally:
         cn.close()
 
@@ -536,26 +573,57 @@ def main() -> int:
                 sn26_ciro += v[0] * sn_k_ciro
                 sn26_adet += v[1] * sn_k_adet
     sn26_birim = sn26_ciro / sn26_adet if sn26_adet else 0.0
-    # 2027 adet: MEVCUT EN ESKI yildan CAGR. ⚠ Veri cekimi 2024-01-01'den basliyor,
-    # 2023 YOK. Onceki surumde `a23=0` -> fallback 1,0 donuyordu: HIC DUSUS
-    # UYGULANMIYOR ama etiket "DUSUS" yaziyordu (sessiz yanlis rakam).
-    # Artik taban yili ACIKCA secilir ve raporda YAZILIR.
-    sn_taban_yil = min(y for y in sn_yil if sn_yil[y][1] > 0)
-    sn_taban_adet = sn_yil[sn_taban_yil][1]
-    sn_yil_sayisi = 2026 - sn_taban_yil
-    if sn_taban_adet > 0 and sn26_adet > 0 and sn_yil_sayisi > 0:
-        sn_cagr = (sn26_adet / sn_taban_adet) ** (1.0 / sn_yil_sayisi)
+    # ── ⭐ SINAV ARTIK OGRENCI KOHORT MODELIYLE TAHMIN EDILIR ───────────────
+    # GMY 2026-09-14: "sepet ogrenci sayisi tahmininden gidelim".
+    # ⚠⚠ ONCEKI SURUM YANLISTI: paket adedi CAGR'i (-%19,7) kullaniyordu ve bu
+    #    OGRENCI KAYBI ile SEPET INCELMESINI TEK SAYIYA SIKISTIRIYORDU.
+    #    Ayristirilinca (gercek ogrenci verisi, BKM.snv.Siparis):
+    #      ogrenci        7.435 -> 7.250 -> 6.952 kapanis  (yalniz -%4,0/yil)
+    #      ogr.basi paket  8,40 -> 6,86  -> 5,83           (**-%15/yil, SEPET INCELIYOR**)
+    #    Paket adedini tek basina CAGR'lamak bu ikisini ayirt edemiyordu.
+    # YENI YAPI: ciro = OGRENCI x OGRENCI BASINA CIRO (ikisi AYRI tahmin edilir).
+    ORAN_T2 = None   # kesime kadarki kaydin tam yila orani (olculur)
+    o_tam, o_t2 = ogr["tam"], ogr["t2"]
+    _p = [(sum(o_t2[(sf, y)] for sf in range(1, 13)),
+           sum(o_tam[(sf, y)] for sf in range(1, 13))) for y in (2024, 2025)]
+    if all(t > 0 for _k, t in _p):
+        ORAN_T2 = sum(k for k, _t in _p) / sum(t for _k, t in _p)
     else:
-        sn_cagr = 1.0
+        kosamadi("Ogrenci tamamlanma orani olculemedi")
+    # 2026 kapanisi: sinif bazinda T-2 / oran
+    o26 = {sf: o_t2[(sf, 2026)] / ORAN_T2 for sf in range(1, 13)}
+    o25 = {sf: o_tam[(sf, 2025)] for sf in range(1, 13)}
+    o24 = {sf: o_tam[(sf, 2024)] for sf in range(1, 13)}
+    # Kohort gecis oranlari — iki yilin ORTALAMASI (tek yil gurultulu)
+    kohort = {}
+    for sf in range(2, 13):
+        k1 = o25[sf] / o24[sf - 1] if o24[sf - 1] else 1.0
+        k2 = o26[sf] / o25[sf - 1] if o25[sf - 1] else 1.0
+        kohort[sf] = (k1 + k2) / 2
+    # 1. sinif ALIMI ayri: 2 yillik CAGR
+    alim_cagr = (o26[1] / o24[1]) ** 0.5 if o24[1] > 0 else 1.0
+    o27 = {1: o26[1] * alim_cagr}
+    for sf in range(2, 13):
+        o27[sf] = o26[sf - 1] * kohort[sf]
+    ogr26, ogr27 = sum(o26.values()), sum(o27.values())
+    # Ogrenci basina ciro — SEPET. Olculen: +%50,4 (2025) -> +%20,8 (2026)
+    obc = {2024: sn_yil[2024][0] / sum(o24.values()),
+           2025: sn_yil[2025][0] / sum(o25.values()),
+           2026: sn26_ciro / ogr26}
+    obc_art25 = obc[2025] / obc[2024] - 1
+    obc_art26 = obc[2026] / obc[2025] - 1
+    obc_yavas = (obc_art26 / obc_art25) if obc_art25 else 0.5
+    sn_cagr = ogr27 / ogr26 if ogr26 else 1.0   # geriye uyumluluk (adet olceginde)
+    # SEPET (ogrenci basina ciro) senaryolari — SINAV'IN KENDI dinamigi
     SEN_SN = {"dusuk": 1 + a.sinav_dusuk / 100, "orta": 1 + a.sinav_orta / 100,
               "yuksek": 1 + a.sinav_yuksek / 100}
-    sn27_adet = sn26_adet * sn_cagr
-    sn27 = {k_: sn27_adet * (sn26_birim * c_) for k_, c_ in SEN_SN.items()}
-    # ADET DUYARLILIGI — asil surucu bu; fiyat senaryolari bunu KAPSAMAZ
-    sn27_adet_duyar = {
-        "trend sürerse (%{:+.1f}/yıl)".format(100 * (sn_cagr - 1)): sn27_adet,
-        "adet SABİT kalırsa": sn26_adet,
-        "düşüş HIZLANIRSA (trendin 1,5 katı)": sn26_adet * (1 - 1.5 * (1 - sn_cagr)),
+    sn27 = {k_: ogr27 * obc[2026] * c_ for k_, c_ in SEN_SN.items()}
+    # OGRENCI DUYARLILIGI — asil surucu; sepet senaryolari bunu KAPSAMAZ
+    sn27_ogr_duyar = {
+        "kohort modeli (%{:+.1f})".format(100 * (ogr27 / ogr26 - 1)): ogr27,
+        "öğrenci SABİT kalırsa": ogr26,
+        "8→9 sızıntısı KAPANIRSA (0,865→0,95)":
+            ogr27 + o26[8] * (0.95 - kohort[9]),
     }
 
     # ── EXCEL ────────────────────────────────────────────────────────────────
@@ -693,33 +761,33 @@ def main() -> int:
         ["  İkinci karşı-metrik: sepet adedi (ölçülen {:.2f}) — düşerse ucuz".format(SEPET_ADET), "", ""],
         ["  ürüne kayma var demektir.", "", ""],
         [],
-        ["3) SINAV — AYRI TAHMİN (kurul/CFO talebi)", "", ""],
-        ["  ⚠ Perakende modeliyle tahmin EDİLEMEZ: sürücüsü trafik değil PAKET SAYISI.", "", ""],
-        ["  Paket adedi: 2024 {:,.0f} → 2025 {:,.0f} → 2026 kapanış {:,.0f}".format(
-            sn_yil[2024][1], sn_yil[2025][1], sn26_adet), "", ""],
-        ["  Adet CAGR %{:+.1f}/yıl ({}→2026, {} yıl) · 2026 birim {:,.0f} ₺".format(
-            100 * (sn_cagr - 1), sn_taban_yil, sn_yil_sayisi, sn26_birim), "", ""],
-        ["  ⚠ 2023 verisi çekim penceresi dışında (2024-01-01'den başlıyor);", "", ""],
-        ["    CAGR bu yüzden {} yıl üzerinden. Daha uzun pencere istenirse SQL değişmeli.".format(
-            sn_yil_sayisi), "", ""],
-        ["  2027 paket adedi (trend sürerse)", "", round(sn26_adet * sn_cagr)],
-        ["  SINAV 2026 kapanış", round(sn26_ciro), round(sn26_adet)],
-        ["  ⚠ SINAV FİYATI PERAKENDE ÇAPASIYLA TAHMİN EDİLMEZ (düzeltildi 14.09):", "", ""],
-        ["    perakende fiyatı = piyasa/enflasyon · SINAV fiyatı = okulun YILLIK", "", ""],
-        ["    PAKET/ÜCRET KARARI. Ölçülen: 2025 +%84,3 · 2026 +%43,0 (enflasyonun", "", ""],
-        ["    çok üstünde, ama YAVAŞLIYOR — oran 0,51).", "", ""],
-        ["  SINAV 2027 DÜŞÜK  (fiyat +%{:g}: yavaşlama hızlanır)".format(a.sinav_dusuk),
+        ["3) SINAV — ÖĞRENCİ KOHORT MODELİ (GMY: sepet öğrenci sayısından)", "", ""],
+        ["  ⚠⚠ ÖNCEKİ SÜRÜM YANLIŞTI: paket adedi CAGR'ı (−%19,7) ÖĞRENCİ KAYBI ile", "", ""],
+        ["    SEPET İNCELMESİNİ tek sayıya sıkıştırıyordu. Gerçek öğrenci verisiyle", "", ""],
+        ["    (BKM.snv.Siparis; sipariş/öğrenci = 1,00) ikisi AYRIŞTI:", "", ""],
+        ["      öğrenci        7.435 → 7.250 → {:,.0f} kapanış   (yalnız −%4,0/yıl)".format(ogr26), "", ""],
+        ["      öğr.başı paket  8,40 → 6,86 → 5,83          (−%15/yıl, SEPET İNCELİYOR)", "", ""],
+        ["  ⚠ 2026 kapanışı OKUL-HİZALI: kayıt takvimi de açılışa bağlı. Kesime kadarki", "", ""],
+        ["    kaydın tam yıla oranı 2024 ve 2025'te neredeyse aynı (ölçülen {:.3f}).".format(ORAN_T2), "", ""],
+        ["  ÖĞRENCİ BAŞINA CİRO (sepet): 2024 {:,.0f} → 2025 {:,.0f} (+%{:.1f}) → 2026 {:,.0f} (+%{:.1f})".format(
+            obc[2024], obc[2025], 100*obc_art25, obc[2026], 100*obc_art26), "", ""],
+        ["    ⇒ yavaşlama oranı {:.2f} — GMY'nin 'sepette eski oranda artmıyor' gözlemi ÖLÇÜLDÜ".format(obc_yavas), "", ""],
+        ["  ⭐ KOHORT GEÇİŞ ORANLARI (iki yılın ortalaması) — SIZINTI NEREDE:", "", ""],
+        ["    8→9 {:.3f}  ·  9→10 {:.3f}  ·  10→11 {:.3f}  ·  11→12 {:.3f}".format(
+            kohort[9], kohort[10], kohort[11], kohort[12]), "", ""],
+        ["    ⇒ EN BÜYÜK KAYIP ORTAOKUL→LİSE geçişinde (8→9). 1. sınıf alımı:", "", ""],
+        ["      {:,.0f} → {:,.0f} → {:,.0f} (CAGR %{:+.1f})".format(
+            o24[1], o25[1], o26[1], 100*(alim_cagr-1)), "", ""],
+        ["  SINAV 2026 kapanış", round(sn26_ciro), round(ogr26)],
+        ["  2027 öğrenci (kohort)", "", round(ogr27)],
+        ["  SINAV 2027 DÜŞÜK  (sepet +%{:g}: yavaşlama sürer)".format(a.sinav_dusuk),
          round(sn27["dusuk"]), ""],
-        ["  SINAV 2027 ORTA   (fiyat +%{:g}: yavaşlama aynı sürer)".format(a.sinav_orta),
-         round(sn27["orta"]), ""],
-        ["  SINAV 2027 YÜKSEK (fiyat +%{:g}: 2026 tekrarlar)".format(a.sinav_yuksek),
+        ["  SINAV 2027 ORTA   (sepet +%{:g})".format(a.sinav_orta), round(sn27["orta"]), ""],
+        ["  SINAV 2027 YÜKSEK (sepet +%{:g}: 2026 tekrarlar)".format(a.sinav_yuksek),
          round(sn27["yuksek"]), ""],
-        ["  ⚠⚠ ASIL SÜRÜCÜ ADETTİR — fiyat senaryoları bunu KAPSAMAZ:", "", ""],
-    ] + [[f"    {etk}", round(v * sn26_birim * SEN_SN['orta']), round(v)]
-         for etk, v in sn27_adet_duyar.items()] + [
-        ["  ⚠ Düşüş SINAV SINIFLARINDA en sert (Ağu-Eyl 2025→2026, Eylül kısmi):", "", ""],
-        ["    8. sınıf −%42 · 12. Eşit Ağırlık −%57 · 12. Fen −%36 · 1. sınıf −%30", "", ""],
-        ["    ⇒ LGS/YKS sınıfları, yani okulun ÇEKİRDEĞİ. Rekabet/demografi sorusu.", "", ""],
+        ["  ⚠⚠ ASIL SÜRÜCÜ ÖĞRENCİ SAYISIDIR — sepet senaryoları bunu KAPSAMAZ:", "", ""],
+    ] + [[f"    {etk}", round(v * obc[2026] * SEN_SN['orta']), round(v)]
+         for etk, v in sn27_ogr_duyar.items()] + [
         ["  ⚠⚠ PAKET ADEDİ BİR İŞLETME KARARIDIR (öğrenci sayısı), tahmin değil.", "", ""],
         ["  Model geçmiş düşüş trendini sürdürür. GMY bir kayıt hedefi verirse", "", ""],
         ["  adet ona sabitlenip yeniden koşulmalıdır.", "", ""],
