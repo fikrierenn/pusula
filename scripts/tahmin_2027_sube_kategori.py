@@ -319,6 +319,20 @@ def main() -> int:
     #   Baglayici kisit KASA GECIS HIZI (fis/gun), raf degil: adet zirve/ortalama
     #   3,99-8,36 iken FIS zirve/ortalama yalniz 1,9-2,4 -> zirve gunlerde magaza
     #   daha cok ISLEM degil daha buyuk SEPET satiyor. Tavan fisten kurulur.
+    # ── SINAV'IN KENDI FIYAT MERDIVENI (GMY 2026-09-14: "sinav ayri
+    #    degerlendirilmeli ... sepette eski oranda artmiyor") ────────────────
+    #  ⚠ HATA DUZELTMESI: Sinav fiyatina PERAKENDENIN OVP capasi uygulaniyordu.
+    #  Iki is, IKI FARKLI fiyat mekanizmasi:
+    #    perakende fiyati = piyasa/enflasyon (TUFE temel mal capasi dogru)
+    #    SINAV fiyati     = okulun YILLIK PAKET/UCRET KARARI — enflasyonun COK ustu
+    #  Olculen (tam yil): 2024 3.749 TL -> 2025 6.909 (+%84,3) -> 2026 9.883 (+%43,0)
+    #  Yavaslama orani 43,0/84,3 = 0,51.
+    #    DUSUK  %15 — yavaslama HIZLANIR, mal enflasyonuna yaklasir
+    #    ORTA   %22 — yavaslama AYNI oranda surer (43,0 x 0,51)
+    #    YUKSEK %35 — 2026'nin artisi TEKRARLAR
+    ap.add_argument("--sinav-dusuk", type=float, default=15.0)
+    ap.add_argument("--sinav-orta", type=float, default=22.0)
+    ap.add_argument("--sinav-yuksek", type=float, default=35.0)
     ap.add_argument("--kapasite-payi", type=float, default=1.10,
                     help="Gozlenen en yogun gunun kac kati fis/gun kabul edilsin "
                          "(1,10 = %%10 iyilesme varsayimi; SECILMIS sayi, olculmedi)")
@@ -533,9 +547,16 @@ def main() -> int:
         sn_cagr = (sn26_adet / sn_taban_adet) ** (1.0 / sn_yil_sayisi)
     else:
         sn_cagr = 1.0
-    sn27 = {}
-    for ad_s, carp in SEN.items():
-        sn27[ad_s] = (sn26_adet * sn_cagr) * (sn26_birim * carp)
+    SEN_SN = {"dusuk": 1 + a.sinav_dusuk / 100, "orta": 1 + a.sinav_orta / 100,
+              "yuksek": 1 + a.sinav_yuksek / 100}
+    sn27_adet = sn26_adet * sn_cagr
+    sn27 = {k_: sn27_adet * (sn26_birim * c_) for k_, c_ in SEN_SN.items()}
+    # ADET DUYARLILIGI — asil surucu bu; fiyat senaryolari bunu KAPSAMAZ
+    sn27_adet_duyar = {
+        "trend sürerse (%{:+.1f}/yıl)".format(100 * (sn_cagr - 1)): sn27_adet,
+        "adet SABİT kalırsa": sn26_adet,
+        "düşüş HIZLANIRSA (trendin 1,5 katı)": sn26_adet * (1 - 1.5 * (1 - sn_cagr)),
+    }
 
     # ── EXCEL ────────────────────────────────────────────────────────────────
     def yaz(ws, basliklar, rows, gen=None, para=()):
@@ -683,9 +704,22 @@ def main() -> int:
             sn_yil_sayisi), "", ""],
         ["  2027 paket adedi (trend sürerse)", "", round(sn26_adet * sn_cagr)],
         ["  SINAV 2026 kapanış", round(sn26_ciro), round(sn26_adet)],
-        ["  SINAV 2027 DÜŞÜK", round(sn27["dusuk"]), ""],
-        ["  SINAV 2027 ORTA", round(sn27["orta"]), ""],
-        ["  SINAV 2027 YÜKSEK", round(sn27["yuksek"]), ""],
+        ["  ⚠ SINAV FİYATI PERAKENDE ÇAPASIYLA TAHMİN EDİLMEZ (düzeltildi 14.09):", "", ""],
+        ["    perakende fiyatı = piyasa/enflasyon · SINAV fiyatı = okulun YILLIK", "", ""],
+        ["    PAKET/ÜCRET KARARI. Ölçülen: 2025 +%84,3 · 2026 +%43,0 (enflasyonun", "", ""],
+        ["    çok üstünde, ama YAVAŞLIYOR — oran 0,51).", "", ""],
+        ["  SINAV 2027 DÜŞÜK  (fiyat +%{:g}: yavaşlama hızlanır)".format(a.sinav_dusuk),
+         round(sn27["dusuk"]), ""],
+        ["  SINAV 2027 ORTA   (fiyat +%{:g}: yavaşlama aynı sürer)".format(a.sinav_orta),
+         round(sn27["orta"]), ""],
+        ["  SINAV 2027 YÜKSEK (fiyat +%{:g}: 2026 tekrarlar)".format(a.sinav_yuksek),
+         round(sn27["yuksek"]), ""],
+        ["  ⚠⚠ ASIL SÜRÜCÜ ADETTİR — fiyat senaryoları bunu KAPSAMAZ:", "", ""],
+    ] + [[f"    {etk}", round(v * sn26_birim * SEN_SN['orta']), round(v)]
+         for etk, v in sn27_adet_duyar.items()] + [
+        ["  ⚠ Düşüş SINAV SINIFLARINDA en sert (Ağu-Eyl 2025→2026, Eylül kısmi):", "", ""],
+        ["    8. sınıf −%42 · 12. Eşit Ağırlık −%57 · 12. Fen −%36 · 1. sınıf −%30", "", ""],
+        ["    ⇒ LGS/YKS sınıfları, yani okulun ÇEKİRDEĞİ. Rekabet/demografi sorusu.", "", ""],
         ["  ⚠⚠ PAKET ADEDİ BİR İŞLETME KARARIDIR (öğrenci sayısı), tahmin değil.", "", ""],
         ["  Model geçmiş düşüş trendini sürdürür. GMY bir kayıt hedefi verirse", "", ""],
         ["  adet ona sabitlenip yeniden koşulmalıdır.", "", ""],
