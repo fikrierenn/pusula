@@ -1,0 +1,539 @@
+@page "/sezon-aksiyon"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@using System.Globalization
+@inject SezonAksiyonQueries Q
+@inject NavigationManager Nav
+@inject ILogger<SezonAksiyon> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Sezon Aksiyon Listesi</PageTitle>
+
+@*  ══ SEZON AKSİYON LİSTESİ ═════════════════════════════════════════════════════════
+    GMY 14.09.2026: "365 günde satılan, sezonda satılan, sezon büyümesi %20, satılacak
+    miktar, mağaza+depo stok, açık, fazla — daha basit, satınalma ile paylaşıp aksiyon
+    alınacak liste" → "dashboard üstündeki formatta oluştur raporu".
+
+    Kart dili Satış Analizi panelinden ALINDI (10.09 tasarımı): sayı ÜSTTE / etiket ALTTA ·
+    taban etiketi ZORUNLU · karşı-metrik AYNI KARTTA dip şeritte · kahraman kart gradyanlı.
+    FARK: burada iki kohort var, ikisi de eşit ağırlıkta ve ZIT eylem istiyor → ikisi de
+    kahraman değil; renk ayrımı yeterli (error = AÇIK riski, warning = FAZLA bağlı sermaye).
+
+    Excel ikizi: scripts/sezon_aksiyon_listesi_excel.py — İŞ MANTIĞI AYNI.                  *@
+
+<div class="max-w-[1400px] mx-auto px-3 py-4">
+
+    <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
+        <div class="min-w-0">
+            <h1 class="text-lg font-semibold m-0">Sezon Aksiyon Listesi</h1>
+            <p class="text-xs text-base-content/50 m-0 mt-0.5">
+                Satılacak miktar = sezonda satılan × @((1 + _filtre.Buyume).ToString("0.##", _tr)).
+                Elde = mağaza + depo. Fark AÇIK ise sipariş, FAZLA ise indirim/iade/transfer.
+            </p>
+        </div>
+    </div>
+
+    @* ── SÜZGEÇLER ────────────────────────────────────────────────────────────────── *@
+    <div class="card bg-base-100 border border-base-300 rounded-2xl p-3 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+            <label class="text-[11px] text-base-content/50">
+                Kesim
+                @if (_kesimler.Count > 0)
+                {
+                    <select class="select select-bordered select-sm text-sm block min-w-[9rem]"
+                            value="@_filtre.Kesim.ToString("yyyy-MM-dd")"
+                            @onchange="KesimDegis">
+                        @foreach (var k in _kesimler)
+                        {
+                            <option value="@k.ToString("yyyy-MM-dd")">@k.ToString("dd.MM.yyyy")</option>
+                        }
+                    </select>
+                }
+                else
+                {
+                    <span class="block text-error text-sm">taban boş</span>
+                }
+            </label>
+
+            <label class="text-[11px] text-base-content/50">
+                Sezon yılı
+                <input type="number" class="input input-bordered input-sm text-sm block w-24"
+                       value="@_filtre.SezonYil" @onchange="SezonDegis" />
+            </label>
+
+            <label class="text-[11px] text-base-content/50">
+                Büyüme (%)
+                @* Tek tartışılacak parametre — alıcı "bu yıl %20 değil %35 büyür" derse
+                   burada değiştirir, liste anında yeniden kurulur. *@
+                <input type="number" step="5" min="-50" max="300"
+                       class="input input-bordered input-sm text-sm block w-24"
+                       value="@((_filtre.Buyume * 100m).ToString("0.##", _tr))" @onchange="BuyumeDegis" />
+            </label>
+
+            <label class="text-[11px] text-base-content/50">
+                Durum
+                <select class="select select-bordered select-sm text-sm block"
+                        value="@(_filtre.Durum ?? "")" @onchange="DurumDegis">
+                    <option value="">hepsi</option>
+                    <option value="acik">yalnız AÇIK</option>
+                    <option value="fazla">yalnız FAZLA</option>
+                </select>
+            </label>
+
+            <label class="text-[11px] text-base-content/50">
+                Kategori
+                <select class="select select-bordered select-sm text-sm block min-w-[10rem]"
+                        value="@(_filtre.Kategori3 ?? "")" @onchange="KategoriDegis">
+                    <option value="">hepsi</option>
+                    @foreach (var k in _kategoriler)
+                    {
+                        <option value="@k">@k</option>
+                    }
+                </select>
+            </label>
+
+            <label class="text-[11px] text-base-content/50 grow min-w-[12rem]">
+                Ara (ürün adı / barkod)
+                <input type="search" class="input input-bordered input-sm text-sm block w-full"
+                       value="@_filtre.Arama" @onchange="AramaDegis" placeholder="ör. defter" />
+            </label>
+
+            @if (_filtre.Durum is not null || _filtre.Kategori3 is not null
+                 || !string.IsNullOrWhiteSpace(_filtre.Arama))
+            {
+                <button class="btn btn-sm btn-ghost" @onclick="SuzgecTemizle">süzgeci temizle</button>
+            }
+        </div>
+    </div>
+
+    @if (_hata is not null)
+    {
+        <div class="alert alert-error text-sm mb-4"><span>@_hata</span></div>
+    }
+    else if (_ozet is null)
+    {
+        <div class="flex items-center gap-2 text-sm text-base-content/50 py-10 justify-center">
+            <span class="loading loading-spinner loading-sm"></span> Yükleniyor…
+        </div>
+    }
+    else
+    {
+        var k = _ozet.Kpi;
+
+        @* ── KPI: iki kohort ─────────────────────────────────────────────────────── *@
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+
+            @* AÇIK — kaçacak satış. Taban SATIŞ FİYATI. *@
+            <div class="rounded-3xl bg-base-100 border border-base-300 shadow-sm overflow-hidden
+                        flex flex-col min-w-0 transition-all hover:-translate-y-0.5 hover:shadow-lg
+                        hover:border-base-content/20">
+                <button type="button" class="text-left px-4 py-5 min-w-0 active:scale-[.98]"
+                        @onclick='() => DurumSec("acik")'>
+                    <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                                 text-[26px] text-error">@Tl(k.AcikTutar)</span>
+                    <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
+                        adet <b class="font-semibold">@Say(k.AcikAdet)</b>
+                    </span>
+                    <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                                 text-base-content/55">AÇIK — sipariş / transfer</span>
+                    <span class="block text-[10px] mt-0.5 text-base-content/35">
+                        kaçabilecek ciro · eksik adet × SATIŞ fiyatı
+                    </span>
+                    <span class="block text-[11px] leading-snug mt-0.5 text-base-content/50">
+                        Satılacak miktar eldekinden fazla. Sipariş ya da mağazalar arası transfer.
+                    </span>
+                </button>
+                <div class="mt-auto border-t border-base-300">
+                    <div class="w-full px-4 py-2.5 flex items-baseline justify-between gap-2 bg-error/10">
+                        <span class="text-[10px] uppercase tracking-wider font-semibold
+                                     text-base-content/55">ürün sayısı</span>
+                        <span class="text-sm font-bold tabular-nums">@Say(k.AcikUrun)</span>
+                    </div>
+                </div>
+            </div>
+
+            @* FAZLA — bağlı sermaye. Taban MALİYET. *@
+            <div class="rounded-3xl bg-base-100 border border-base-300 shadow-sm overflow-hidden
+                        flex flex-col min-w-0 transition-all hover:-translate-y-0.5 hover:shadow-lg
+                        hover:border-base-content/20">
+                <button type="button" class="text-left px-4 py-5 min-w-0 active:scale-[.98]"
+                        @onclick='() => DurumSec("fazla")'>
+                    <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                                 text-[26px] text-warning">@Tl(k.FazlaTutar)</span>
+                    <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
+                        adet <b class="font-semibold">@Say(k.FazlaAdet)</b>
+                    </span>
+                    <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                                 text-base-content/55">FAZLA — indirim / iade / transfer</span>
+                    <span class="block text-[10px] mt-0.5 text-base-content/35">
+                        bağlı sermaye · fazla adet × MALİYET
+                    </span>
+                    <span class="block text-[11px] leading-snug mt-0.5 text-base-content/50">
+                        Elde satılacaktan fazla. @(k.MaliyetiYok > 0
+                            ? $"{k.MaliyetiYok:N0} üründe maliyet kaydı yok — para ALT SINIR."
+                            : "Tüm satırların maliyeti geçerli.")
+                    </span>
+                </button>
+                <div class="mt-auto border-t border-base-300">
+                    <div class="w-full px-4 py-2.5 flex items-baseline justify-between gap-2 bg-warning/10">
+                        <span class="text-[10px] uppercase tracking-wider font-semibold
+                                     text-base-content/55">ürün sayısı</span>
+                        <span class="text-sm font-bold tabular-nums">@Say(k.FazlaUrun)</span>
+                    </div>
+                </div>
+            </div>
+
+            @* EVREN — iki kartın tabanı AYRI, toplanamaz. Bu kart onu söyler. *@
+            <div class="rounded-3xl bg-base-100 border border-base-300 shadow-sm overflow-hidden
+                        flex flex-col min-w-0">
+                <div class="px-4 py-5 min-w-0">
+                    <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                                 text-[26px] text-primary">@Say(k.Cesit)</span>
+                    <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                                 text-base-content/55">kapsanan çeşit</span>
+                    <span class="block text-[10px] mt-0.5 text-base-content/35">
+                        geçen sezon satmış · defteri güvenilir
+                    </span>
+                    <span class="block text-[11px] leading-snug mt-0.5 text-base-content/50">
+                        İki kartın tabanı AYRI (biri satış fiyatı, öteki maliyet) —
+                        tutarları <b>toplanmaz</b>.
+                    </span>
+                </div>
+                <div class="mt-auto border-t border-base-300">
+                    <div class="w-full px-4 py-2.5 flex items-baseline justify-between gap-2 bg-primary/10">
+                        <span class="text-[10px] uppercase tracking-wider font-semibold
+                                     text-base-content/55">dengede</span>
+                        <span class="text-sm font-bold tabular-nums">
+                            @Say(k.Cesit - k.AcikUrun - k.FazlaUrun)
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ── KATEGORİ KIRILIMI ───────────────────────────────────────────────────── *@
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-[18px] mb-4">
+            <h3 class="text-sm font-semibold m-0 mb-2">Kategoriye Göre</h3>
+            <div class="overflow-x-auto">
+                <table class="table table-xs w-full">
+                    <thead>
+                        <tr class="text-base-content/50">
+                            <th>Kategori</th>
+                            <th class="text-right">Çeşit</th>
+                            <th class="text-right">AÇIK ürün</th>
+                            <th class="text-right">AÇIK adet</th>
+                            <th class="text-right">AÇIK ₺</th>
+                            <th class="text-right">FAZLA ürün</th>
+                            <th class="text-right">FAZLA adet</th>
+                            <th class="text-right">FAZLA ₺</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _ozet.Kategoriler)
+                        {
+                            <tr class="hover cursor-pointer" @onclick="() => KategoriSec(c.Kategori)">
+                                <td class="whitespace-nowrap">@c.Kategori</td>
+                                <td class="text-right tabular-nums">@Say(c.Cesit)</td>
+                                <td class="text-right tabular-nums">@Say(c.AcikUrun)</td>
+                                <td class="text-right tabular-nums">@Say(c.AcikAdet)</td>
+                                <td class="text-right tabular-nums text-error">@Tl(c.AcikTutar)</td>
+                                <td class="text-right tabular-nums">@Say(c.FazlaUrun)</td>
+                                <td class="text-right tabular-nums">@Say(c.FazlaAdet)</td>
+                                <td class="text-right tabular-nums text-warning">@Tl(c.FazlaTutar)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ── ÜRÜN LİSTESİ ────────────────────────────────────────────────────────── *@
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-[18px] mb-4">
+            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="text-sm font-semibold m-0">Ürün Listesi</h3>
+                    <span class="text-xs text-base-content/50">
+                        @(_liste?.ToplamSatir.ToString("N0", _tr) ?? "…") çeşit
+                    </span>
+                </div>
+                @* ⚠ ExcelButton DEĞİL: base64 circuit'ten geçince büyük listede çöküyor
+                   (ölçüldü 09.09, Satış Analizi). Doğrudan indirme bağlantısı akışta yazar. *@
+                <a class="btn btn-sm btn-outline gap-1" target="_blank" rel="noopener"
+                   href="@($"/api/sezon-aksiyon-excel?{_filtre.SorguDizesi()}")"
+                   title="Ekrandaki süzgecin tamamı iner">Excel</a>
+            </div>
+
+            @if (_liste is null)
+            {
+                <div class="flex items-center gap-2 text-sm text-base-content/50 py-6 justify-center">
+                    <span class="loading loading-spinner loading-sm"></span> Yükleniyor…
+                </div>
+            }
+            else if (_liste.SayfaAsildi)
+            {
+                <div class="alert alert-warning text-sm">
+                    Bu sayfada kayıt yok ama süzgece uyan @_liste.ToplamSatir.ToString("N0", _tr) çeşit var.
+                    <button class="btn btn-xs" @onclick="() => SayfaDegis(1)">Başa dön</button>
+                </div>
+            }
+            else if (_liste.Bos)
+            {
+                <p class="text-sm text-base-content/50 py-6 text-center">Süzgece uyan ürün yok.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-xs w-full">
+                        <thead>
+                            <tr class="text-base-content/50">
+                                @foreach (var kol in Kolonlar)
+                                {
+                                    <th class="@(kol.Sag ? "text-right" : "")">
+                                        <button class="link link-hover" @onclick="() => SiralaDegis(kol.Anahtar)">
+                                            @kol.Baslik@(_filtre.Sirala == kol.Anahtar
+                                                ? (_filtre.Azalan ? " ↓" : " ↑") : "")
+                                        </button>
+                                    </th>
+                                }
+                                <th>Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in _liste.Satirlar)
+                            {
+                                <tr class="hover cursor-pointer" @onclick="() => UrunAc(s.StkId)"
+                                    title="Ürün detayına git">
+                                    <td class="whitespace-nowrap">@s.Kategori3</td>
+                                    <td class="max-w-[22rem] truncate" title="@s.KategoriYolu">@s.KategoriYolu</td>
+                                    <td class="max-w-[24rem] truncate" title="@s.StkAd">@s.StkAd</td>
+                                    <td class="whitespace-nowrap text-base-content/50">@s.Barkod</td>
+                                    <td class="text-right tabular-nums">@Tl(s.SatisFiyat)</td>
+                                    <td class="text-right tabular-nums">@Say(s.SatisToplam)</td>
+                                    <td class="text-right tabular-nums">@Say(s.SezonToplam)</td>
+                                    <td class="text-right tabular-nums font-semibold">@Say(s.Satilacak)</td>
+                                    <td class="text-right tabular-nums">@Say(s.MagazaStok)</td>
+                                    <td class="text-right tabular-nums">@Say(s.MerkezStok)</td>
+                                    <td class="text-right tabular-nums font-semibold">@Say(s.ToplamStok)</td>
+                                    <td class="text-right tabular-nums @(s.Acik > 0 ? "text-error font-semibold" : "text-base-content/30")">
+                                        @(s.Acik > 0 ? Say(s.Acik) : "—")
+                                    </td>
+                                    <td class="text-right tabular-nums @(s.Fazla > 0 ? "text-warning font-semibold" : "text-base-content/30")">
+                                        @(s.Fazla > 0 ? Say(s.Fazla) : "—")
+                                    </td>
+                                    <td class="text-right tabular-nums">
+                                        @(s.Acik > 0 ? Tl(s.AcikTutar) : s.Fazla > 0 ? Tl(s.FazlaTutar) : "—")
+                                    </td>
+                                    <td class="whitespace-nowrap">
+                                        @if (s.Acik > 0)
+                                        {
+                                            <span class="badge badge-sm badge-error badge-outline">AÇIK</span>
+                                        }
+                                        else if (s.Fazla > 0)
+                                        {
+                                            <span class="badge badge-sm badge-warning badge-outline">FAZLA</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-sm badge-ghost">denge</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 mt-3 flex-wrap">
+                    <span class="text-xs text-base-content/50">
+                        sayfa @_liste.Sayfa / @_liste.SayfaSayisi.ToString("N0", _tr)
+                    </span>
+                    <div class="join">
+                        <button class="btn btn-xs join-item" disabled="@(_liste.Sayfa <= 1)"
+                                @onclick="() => SayfaDegis(1)">«</button>
+                        <button class="btn btn-xs join-item" disabled="@(_liste.Sayfa <= 1)"
+                                @onclick="() => SayfaDegis(_liste.Sayfa - 1)">‹</button>
+                        <button class="btn btn-xs join-item btn-ghost pointer-events-none">@_liste.Sayfa</button>
+                        <button class="btn btn-xs join-item" disabled="@(_liste.Sayfa >= _liste.SayfaSayisi)"
+                                @onclick="() => SayfaDegis(_liste.Sayfa + 1)">›</button>
+                        <button class="btn btn-xs join-item" disabled="@(_liste.Sayfa >= _liste.SayfaSayisi)"
+                                @onclick="() => SayfaDegis(_liste.SayfaSayisi)">»</button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ── KAPSAM / SINIRLAR — beyan edilmeyen sınır yanıltır ──────────────────── *@
+        <div class="card bg-base-200/50 border border-base-300 rounded-2xl p-[18px] text-[11px]
+                    leading-relaxed text-base-content/70">
+            <h3 class="text-sm font-semibold m-0 mb-2 text-base-content">Nasıl okunur, neyi söylemez</h3>
+            <ul class="list-disc pl-5 space-y-1">
+                <li><b>Satılacak miktar</b> = geçen sezon (Ağu–Eki @_filtre.SezonYil) satılan ×
+                    @((1 + _filtre.Buyume).ToString("0.##", _tr)). Büyüme TEK sayı ve yukarıdan
+                    değiştirilir — ürün ya da kategori bazlı ölçülmüş bir büyüme DEĞİLDİR.</li>
+                <li><b>Açık sipariş DÜŞÜLMEDİ.</b> ERP'de "kapalı" durumu 24.02.2025'ten beri
+                    yazılmıyor; kapatılmamış alış siparişi adedinin %86,4'ü bir yıldan eski
+                    (ölçüldü 14.09.2026). Netleme yapılsaydı liste hayalet siparişle yanıltırdı.</li>
+                <li><b>FAZLA ₺ alt sınırdır.</b> Maliyeti olmayan ya da şüpheli (maliyet &gt; satış
+                    fiyatı) satırlar adet olarak sayılır, paraya girmez.</li>
+                <li><b>AÇIK ₺ ciro, kâr değil</b> — satış fiyatıyla. Müşteri benzerini alırsa
+                    (ikame) ciro kaçmaz; ikame hesaba katılmadı.</li>
+                <li><b>Depo stoğu WMS'ten.</b> ERP defteriyle çelişen satırlar olabilir; fiziksel
+                    sayım yapılmadan kesin sayılmaz.</li>
+                <li><b>Tek gün fotoğrafı</b> (@_filtre.Kesim.ToString("dd.MM.yyyy")). Stok gün
+                    içinde değişir.</li>
+                <li><b>Alıcı boyutu veride yok</b> — bu liste bir kişiye atıf değildir.</li>
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    private SezonAksiyonFiltre _filtre = new(
+        DateOnly.FromDateTime(DateTime.Today.AddDays(-1)), DateTime.Today.Year - 1);
+    private IReadOnlyList<DateOnly> _kesimler = [];
+    private IReadOnlyList<string> _kategoriler = [];
+    private SezonAksiyonOzet? _ozet;
+    private SayfaSonucu<SezonAksiyonSatir>? _liste;
+    private string? _hata;
+
+    private sealed record Kolon(string Anahtar, string Baslik, bool Sag);
+
+    /// <summary>
+    /// Kolon sırası = tablo gövdesindeki &lt;td&gt; sırası. ⚠ Biri değişirse öteki de değişir;
+    /// ikisi ayrışırsa başlık yanlış kolonu adlandırır ve hata VERMEZ.
+    /// </summary>
+    private static readonly Kolon[] Kolonlar =
+    [
+        new("kategori", "Kategori", false),
+        new("kategori", "Kategori yolu", false),
+        new("urun", "Ürün", false),
+        new("urun", "Barkod", false),
+        new("fiyat", "Satış fiyatı", true),
+        new("satis365", "365 günde satılan", true),
+        new("sezon", "Sezonda satılan", true),
+        new("satilacak", "Satılacak", true),
+        new("magaza", "Mağaza stok", true),
+        new("depo", "Depo stok", true),
+        new("stok", "Toplam stok", true),
+        new("acik", "AÇIK", true),
+        new("fazla", "FAZLA", true),
+        new("tutar", "Tutar", true),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Kesim listesi ÖNCE: varsayılan "dün" tabanda olmayabilir → boş ekran sanılırdı.
+        try
+        {
+            _kesimler = await Q.GetKesimlerAsync();
+            if (_kesimler.Count > 0 && !_kesimler.Contains(_filtre.Kesim))
+                _filtre = _filtre with { Kesim = _kesimler[0] };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Kesim listesi alınamadı");
+            _hata = "Kesim listesi alınamadı. Lütfen sistem yöneticisine bildirin.";
+            return;
+        }
+        await Yukle();
+    }
+
+    private async Task Yukle(bool kategoriDe = true)
+    {
+        _hata = null;
+        _ozet = null;
+        _liste = null;
+        StateHasChanged();
+        try
+        {
+            var ozetGorev = Q.GetOzetAsync(_filtre);
+            var listeGorev = Q.GetListeAsync(_filtre);
+            if (kategoriDe) _kategoriler = await Q.GetKategorilerAsync(_filtre);
+            _ozet = await ozetGorev;
+            _liste = await listeGorev;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Sezon aksiyon listesi alınamadı ({Filtre})", _filtre);
+            _hata = "Liste alınamadı. Lütfen sistem yöneticisine bildirin.";
+        }
+        finally { StateHasChanged(); }
+    }
+
+    private Task Uygula(SezonAksiyonFiltre yeni, bool kategoriDe = false)
+    {
+        _filtre = yeni with { Sayfa = 1 };
+        return Yukle(kategoriDe);
+    }
+
+    private Task KesimDegis(ChangeEventArgs e) =>
+        DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d)
+            ? Uygula(_filtre with { Kesim = d }, kategoriDe: true)
+            : Task.CompletedTask;
+
+    private Task SezonDegis(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), out var y) && y is >= 2000 and <= 2100
+            ? Uygula(_filtre with { SezonYil = y }, kategoriDe: true)
+            : Task.CompletedTask;
+
+    private Task BuyumeDegis(ChangeEventArgs e)
+    {
+        // Yüzde girilir, orana çevrilir. Sınır dışı değer SESSİZCE kırpılmaz — yok sayılır.
+        if (!decimal.TryParse(e.Value?.ToString(), NumberStyles.Float, _tr, out var yuzde)
+            && !decimal.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out yuzde))
+            return Task.CompletedTask;
+        var oran = yuzde / 100m;
+        if (oran < SezonAksiyonFiltre.BuyumeAlt || oran > SezonAksiyonFiltre.BuyumeUst)
+            return Task.CompletedTask;
+        return Uygula(_filtre with { Buyume = oran });
+    }
+
+    private Task DurumDegis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        return Uygula(_filtre with { Durum = string.IsNullOrWhiteSpace(v) ? null : v });
+    }
+
+    private Task KategoriDegis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        return Uygula(_filtre with { Kategori3 = string.IsNullOrWhiteSpace(v) ? null : v });
+    }
+
+    private Task AramaDegis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        return Uygula(_filtre with { Arama = string.IsNullOrWhiteSpace(v) ? null : v.Trim() });
+    }
+
+    private Task DurumSec(string durum) =>
+        Uygula(_filtre with { Durum = _filtre.Durum == durum ? null : durum });
+
+    private Task KategoriSec(string kategori) =>
+        Uygula(_filtre with { Kategori3 = _filtre.Kategori3 == kategori ? null : kategori });
+
+    private Task SuzgecTemizle() =>
+        Uygula(_filtre with { Durum = null, Kategori3 = null, Arama = null });
+
+    private Task SiralaDegis(string anahtar) => Uygula(_filtre with
+    {
+        Sirala = anahtar,
+        Azalan = _filtre.Sirala == anahtar ? !_filtre.Azalan : true,
+    });
+
+    private Task SayfaDegis(int sayfa)
+    {
+        _filtre = _filtre with { Sayfa = sayfa };
+        return Yukle(kategoriDe: false);
+    }
+
+    private void UrunAc(int stkId) =>
+        Nav.NavigateTo($"/satis-analizi/urun/{stkId}?kesim={_filtre.Kesim:yyyy-MM-dd}"
+                       + $"&sezon={_filtre.SezonYil}&geri={Uri.EscapeDataString("/sezon-aksiyon")}");
+
+    private static string Say(long n) => n.ToString("N0", _tr);
+
+    private static string Tl(decimal? n) => n is null or 0 ? "—" : n.Value.ToString("N0", _tr) + " ₺";
+}

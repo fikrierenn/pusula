@@ -284,6 +284,98 @@ var satisAnaliziExcel = app.MapGet("/api/satis-analizi-excel", async (
 });
 if (korumaGerekli) satisAnaliziExcel.RequireAuthorization();
 
+// ── SEZON AKSİYON LİSTESİ Excel ───────────────────────────────────────────────
+// Ekrandaki süzgecin AYNISI iner: filtre URL'den çözülür (SezonAksiyonFiltre.Coz),
+// sayfa bileşeni de Excel bağlantısını aynı SorguDizesi()'nden kurar → ekran ile
+// dosya AYRIŞAMAZ (emitter-ayrimi.md).
+// ⚠ ExcelButton/base64 DEĞİL: büyük listede circuit çöküyor (ölçüldü 09.09).
+// Kardeş emitter: scripts/sezon_aksiyon_listesi_excel.py — iş mantığı AYNI.
+var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
+    GmDashboard.Data.SezonAksiyonQueries q, HttpContext ctx) =>
+{
+    var sozluk = ctx.Request.Query.ToDictionary(x => x.Key, x => x.Value.ToString());
+    var filtre = GmDashboard.Models.SezonAksiyonFiltre.Coz(
+        sozluk,
+        DateOnly.FromDateTime(DateTime.Today.AddDays(-1)),
+        DateTime.Today.Year - 1,
+        out var atlanan);
+
+    var satirlar = await q.GetTumListeAsync(filtre, ct: ctx.RequestAborted);
+    var liste = satirlar.Select(r => new Dictionary<string, object?>
+    {
+        ["Kategori"]            = r.Kategori3,
+        ["Kategori yolu"]       = r.KategoriYolu,
+        ["Ürün"]                = r.StkAd,
+        ["Barkod"]              = r.Barkod,
+        ["stkID"]               = r.StkId,
+        ["Yayınevi/Marka"]      = r.Yayinevi,
+        ["Satış fiyatı"]        = r.SatisFiyat,
+        ["365 günde satılan"]   = r.SatisToplam,
+        ["Sezonda satılan"]     = r.SezonToplam,
+        ["Büyüme"]              = filtre.Buyume,
+        ["Satılacak miktar"]    = r.Satilacak,
+        ["Mağaza stok"]         = r.MagazaStok,
+        ["Depo stok"]           = r.MerkezStok,
+        ["Toplam stok"]         = r.ToplamStok,
+        ["AÇIK"]                = r.Acik,
+        ["FAZLA"]               = r.Fazla,
+        ["Durum"]               = r.Acik > 0 ? "AÇIK — sipariş/transfer"
+                                : r.Fazla > 0 ? "FAZLA — indirim/iade/transfer" : "DENGE",
+        ["AÇIK ₺ (satış fiyatı)"] = r.AcikTutar,
+        ["FAZLA ₺ (maliyet)"]     = r.FazlaTutar,
+        ["Birim maliyet"]         = r.BirimMaliyet,
+    }).ToList();
+
+    // BİLGİ sayfası — sınırlar dosyanın İÇİNDE gitsin. Excel elden ele dolaşıyor;
+    // ekranda yazan uyarı dosyayla birlikte gitmezse rakam bağlamsız okunur.
+    var bilgi = new List<Dictionary<string, object?>>
+    {
+        new() { ["Konu"] = "Kapsam",
+                ["Açıklama"] = $"Kesim {filtre.Kesim:dd.MM.yyyy} · sezon {filtre.SezonYil} · " +
+                               $"büyüme %{filtre.Buyume * 100:0.##}. Geçen sezon (Ağu–Eki) satmış, " +
+                               "defteri güvenilir ürünler (negatif stok / fiyatı 0 olanlar hariç)." },
+        new() { ["Konu"] = "Satılacak miktar",
+                ["Açıklama"] = "Sezonda satılan × (1 + büyüme). Büyüme TEK sayıdır; ürün ya da " +
+                               "kategori bazlı ölçülmüş bir büyüme DEĞİLDİR." },
+        new() { ["Konu"] = "AÇIK / FAZLA",
+                ["Açıklama"] = "AÇIK = satılacak − (mağaza + depo) → sipariş/transfer. " +
+                               "FAZLA = (mağaza + depo) − satılacak → indirim/iade/transfer." },
+        new() { ["Konu"] = "⚠ Açık sipariş düşülmedi",
+                ["Açıklama"] = "ERP'de 'kapalı' durumu (sip.eDurum=2) 24.02.2025'ten beri hiç " +
+                               "yazılmıyor; kapatılmamış alış siparişi adedinin %86,4'ü bir " +
+                               "yıldan eski (ölçüldü 14.09.2026). Netleme yapılsaydı liste " +
+                               "hayalet siparişle yanıltırdı." },
+        new() { ["Konu"] = "⚠ FAZLA ₺ alt sınır",
+                ["Açıklama"] = "Maliyeti yok ya da şüpheli (maliyet > satış fiyatı) satırlar adet " +
+                               "olarak sayılır, paraya girmez." },
+        new() { ["Konu"] = "⚠ AÇIK ₺ ciro, kâr değil",
+                ["Açıklama"] = "Satış fiyatıyla. İkame hesaba katılmadı — müşteri benzerini " +
+                               "alırsa ciro kaçmaz." },
+        new() { ["Konu"] = "⚠ Depo stoğu WMS",
+                ["Açıklama"] = "ERP defteriyle çelişen satırlar olabilir; fiziksel sayım " +
+                               "yapılmadan kesin sayılmaz." },
+        new() { ["Konu"] = "⚠ Alıcı boyutu yok",
+                ["Açıklama"] = "Veride satınalmacı boyutu YOK. Bu liste bir kişiye atıf değildir." },
+    };
+    foreach (var a in atlanan)
+        bilgi.Add(new Dictionary<string, object?>
+        {
+            ["Konu"] = "⚠ Atlanan süzgeç",
+            ["Açıklama"] = a,   // sessiz yutma yasak: geçersiz parametre dosyaya yazılır
+        });
+
+    ctx.Response.ContentType = GmDashboard.Data.ExcelExport.ContentType;
+    ctx.Response.Headers.ContentDisposition =
+        $"attachment; filename=\"sezon-aksiyon-{filtre.Kesim:yyyy-MM-dd}.xlsx\"";
+    using var ms = new MemoryStream();
+    await MiniExcel.SaveAsAsync(ms,
+        new Dictionary<string, object> { ["Liste"] = liste, ["Bilgi"] = bilgi },
+        printHeader: true);
+    ms.Position = 0;
+    await ms.CopyToAsync(ctx.Response.Body);
+});
+if (korumaGerekli) sezonAksiyonExcel.RequireAuthorization();
+
 app.MapGet("/api/olustok-excel", async (RefQueries ref_, HttpContext ctx) =>
 {
     var rows = await ref_.GetOluStokTumAsync();

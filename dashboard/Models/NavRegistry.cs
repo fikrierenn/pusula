@@ -50,6 +50,7 @@ public static class NavRegistry
         new NavItem("sinav", "Sınav Okulları", "graduation-cap"),
         new NavItem("satinalma/analiz", "Alım Analizi", "shopping-bag", Section: "SATINALMA"),
         new NavItem("bulunurluk", "Bulunurluk", "store", Section: "SATINALMA"),
+        new NavItem("sezon-aksiyon", "Sezon Aksiyon", "list-checks", Section: "SATINALMA"),   // AÇIK/FAZLA tek liste (GMY 14.09.2026)
         new NavItem("asistan", "Genius", "message-square", Section: "ASİSTAN"),
         new NavItem("gorevler", "Görevler", "check-square", Section: "ASİSTAN", GorevBadge: true),
         new NavItem("bellek", "Bellek", "database", Section: "ASİSTAN"),
