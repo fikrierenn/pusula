@@ -51,11 +51,18 @@ BEGIN
         -- Kat2='Çizgili Defter'. ÖLÇÜLDÜ 14.09.2026 (837.990 ürün master):
         --   Kat1 dolu %88,2 (tabanda %90,9) · 553 ayrı değer   → FİLTRE OLUR
         --   Kat2 dolu %21,9 (tabanda %29,3) · 568 ayrı değer   → kolon olur, filtre zayıf
-        --   Kat3 dolu  %8,7                                     → ALINMADI
+        --   Kat3 dolu  %8,7 · 324 ayrı değer                    → alındı (GMY: "kaç kat varsa")
+        --   Kat4 dolu  %5,7 · 597 ayrı değer                    → alındı
+        --   Kat5 dolu  %0,0 · TEK değer                         → ALINMADI (pratikte boş)
+        -- Derin yol gerçek: "Eğitim - Sınavlara Hazırlık → Ortaokul Yardımcı → 8.Sınıf →
+        -- Soru → Matematik" (392 çeşit). Seyreklik ürünün eksikliği değil, ağacın dengesizliği:
+        -- kırtasiye 2 basamakta biter, sınav hazırlık 5 basamağa iner.
         -- Defterler: 7.933 çeşit, 3.296'sı ölü stok adayı.
         -- ⚠ `ReyonAd` REYON DEĞİL: "Kampanya Dışı / %50 İNDİRİM…" taşıyor (kod4=KAMPANYA).
         Kat1         nvarchar(60)  NULL,
         Kat2         nvarchar(60)  NULL,
+        Kat3         nvarchar(60)  NULL,
+        Kat4         nvarchar(60)  NULL,
         BarkodAna    varchar(15)   NULL,
         stkAd        nvarchar(120) NOT NULL,
         Yayinevi     nvarchar(300) NULL,

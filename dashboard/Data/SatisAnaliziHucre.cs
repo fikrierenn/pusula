@@ -18,6 +18,9 @@ public static class SatisAnaliziHucre
         "barkod" => s.BarkodAna,
         "ad" => s.StkAd,
         "kategori1" => s.Kategori1,
+        "katyol" => KategoriYolu(s),
+        "kat3" => s.Kat3,
+        "kat4" => s.Kat4,
         "kat1" => s.Kat1,
         "kat2" => s.Kat2,
         "yayinevi" => s.Yayinevi,
@@ -88,4 +91,27 @@ public static class SatisAnaliziHucre
         long v => v.ToString("N0"),
         var o => o.ToString() ?? "—",
     };
+
+    /// <summary>
+    /// KATEGORİ YOLU — <c>KatAna → Kat1 → Kat2 → Kat3 → Kat4</c> tek satırda.
+    /// GMY 14.09.2026: <i>"kat ana yı Kırtasiye→Defterler→bla bla diye yazsan satır bazlı"</i>
+    /// + <i>"kaç kat varsa"</i>.
+    ///
+    /// ⚠ <c>Kategori1</c> alanı aslında <c>UrunBilgi.KatAna</c>'dır (taban kolonu öyle kurulmuş,
+    /// ad yanıltıcı). Yolun ilk basamağı odur.
+    /// ⚠ <c>Kategori3</c> BU YOLA GİRMEZ — AYRI bir sözlük (<c>urnKtgr2.ktgrAd</c>); "Çocuk
+    /// Kitabı" derken KatAna "Çocuk Kitapları" diyebiliyor. İkisini tek yolda birleştirmek
+    /// olmayan bir hiyerarşi uydurmak olurdu.
+    /// ⚠ AĞAÇ DENGESİZ, yol kısa görünürse veri eksik demek DEĞİL: doluluk Kat1 %88,2 ·
+    /// Kat2 %21,9 · Kat3 %8,7 · Kat4 %5,7 (Kat5 %0,0 — alınmadı). Kırtasiye iki basamakta
+    /// biter, sınav hazırlık beşe iner.
+    /// Boş basamak ATLANIR; aradaki boşluk yolu kırmaz.
+    /// </summary>
+    private static string KategoriYolu(SatisAnaliziSatir s)
+    {
+        var p = new List<string>(5);
+        void Ek(string? v) { if (!string.IsNullOrWhiteSpace(v)) p.Add(v.Trim()); }
+        Ek(s.Kategori1); Ek(s.Kat1); Ek(s.Kat2); Ek(s.Kat3); Ek(s.Kat4);
+        return p.Count == 0 ? "" : string.Join(" → ", p);
+    }
 }

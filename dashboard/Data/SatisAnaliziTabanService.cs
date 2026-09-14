@@ -123,6 +123,7 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                    -- ÜRÜN AĞACI (14.09.2026): Kategori1=KatAna alt kırılım VERMEZ (Kırtasiye'de
                    -- 52.021 çeşidin hepsi "Kırtasiye"). Defter/kalem ayrımı Kat1/Kat2'de.
                    NULLIF(u.Kat1, '') AS Kat1, NULLIF(u.Kat2, '') AS Kat2,
+                   NULLIF(u.Kat3, '') AS Kat3, NULLIF(u.Kat4, '') AS Kat4,
                    u.Yazar, u.BarkodAna, u.SatisFiyat, u.gTarih AS AcilisTarihi
             FROM DerinSISBkm.bkm.UrunBilgi u WITH (NOLOCK)
             WHERE u.Kategori3 IN @Kategoriler
@@ -338,13 +339,13 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
             GROUP BY g.ehstkID
         )
         INSERT INTO DerinSISBkm.bkm.SatisAnaliziTaban
-            (Kesim, SezonYil, stkID, Kategori3, Kategori1, Kat1, Kat2, BarkodAna, stkAd, Yayinevi, Yazar, SatisFiyat,
+            (Kesim, SezonYil, stkID, Kategori3, Kategori1, Kat1, Kat2, Kat3, Kat4, BarkodAna, stkAd, Yayinevi, Yazar, SatisFiyat,
              StokFsm, StokOzl, StokIst, MerkezStok, OdakStok, SatisFsm, SatisOzl, SatisIst, Ay1, Ay2, Ay3,
              MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum,
              MerkezCikis, MerkezCikisGun,
              BirimMaliyet, PosAdet, PosNet, PosKdv, PosBrut, SonSatis,
              SezonFsm, SezonOzl, SezonIst, MaliyetTarih, SatanAy, TalepCV2)
-        SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.Kat1, k.Kat2, k.BarkodAna,
+        SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.Kat1, k.Kat2, k.Kat3, k.Kat4, k.BarkodAna,
                CAST(k.stkAd AS nvarchar(120)), k.Yayinevi, k.Yazar, k.SatisFiyat,
                CONVERT(int, ISNULL(m.Fsm, 0)), CONVERT(int, ISNULL(m.Ozl, 0)), CONVERT(int, ISNULL(m.Ist, 0)),
                CONVERT(int, ISNULL(d.Merkez, 0)), CONVERT(int, ISNULL(o.StokMiktar, 0)),

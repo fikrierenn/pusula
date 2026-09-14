@@ -27,6 +27,12 @@ public sealed partial class SatisAnaliziQueries
         ["kategori1"] = "t.Kategori1",
         ["kat1"] = "t.Kat1",
         ["kat2"] = "t.Kat2",
+        ["kat3"] = "t.Kat3",
+        ["kat4"] = "t.Kat4",
+        // KATEGORİ YOLU — yalnız SIRALAMA ifadesi. SELECT'e kolon EKLENMEZ:
+        // yol C# tarafında (SatisAnaliziHucre.KategoriYolu) kurulur, böylece
+        // Dapper pozisyonel record sırası değişmez.
+        ["katyol"] = "CONCAT(t.Kategori1, N'>', ISNULL(t.Kat1, N''), N'>', ISNULL(t.Kat2, N''), N'>', ISNULL(t.Kat3, N''), N'>', ISNULL(t.Kat4, N''))",
         ["yayinevi"] = "t.Yayinevi",
         ["ad"] = "t.stkAd",
         ["stok_fsm"] = "t.StokFsm",
@@ -66,7 +72,7 @@ public sealed partial class SatisAnaliziQueries
         t.stkID AS StkId, t.Kategori3 AS Kategori3, t.BarkodAna AS BarkodAna,
         t.stkAd AS StkAd, t.Kategori1 AS Kategori1,
         -- ÜRÜN AĞACI (14.09.2026) — Kategori1'den HEMEN SONRA; record'da da aynı yerde.
-        t.Kat1 AS Kat1, t.Kat2 AS Kat2,
+        t.Kat1 AS Kat1, t.Kat2 AS Kat2, t.Kat3 AS Kat3, t.Kat4 AS Kat4,
         t.Yayinevi AS Yayinevi, t.Yazar AS Yazar, t.SatisFiyat AS SatisFiyat,
         t.Tutar AS ToplamStokTutar, t.ToplamStok AS ToplamStok,
         t.OdakStok AS OdakStok, t.IlkGiris AS IlkGirisTarihi, t.SonGiris AS SonGirisTarihi,
