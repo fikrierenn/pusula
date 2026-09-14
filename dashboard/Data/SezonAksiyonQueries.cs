@@ -75,14 +75,25 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         return p;
     }
 
-    /// <summary>Tabanda hazır kesimler (en yeni önce). Boş dönerse taban doldurulmamıştır.</summary>
-    public async Task<IReadOnlyList<DateOnly>> GetKesimlerAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Tabanda hazır kesimler + o kesimin sezon yılı (en yeni önce).
+    /// ⚠ Sezon yılı EKRANDAN SORULMAZ: ölçüldü (15.09.2026) — her kesimde TEK sezon yılı var
+    /// (13.09/11.09/10.09 → hepsi 2025). Kullanıcıya soru sormak, cevabı tek olan bir soruyu
+    /// ekrana koymaktı. Birden çok çıkarsa en yenisi alınır ve kesim listesi bunu gösterir.
+    /// </summary>
+    public async Task<IReadOnlyList<(DateOnly Kesim, int SezonYil)>> GetKesimlerAsync(
+        CancellationToken ct = default)
     {
-        const string sql = $"SELECT DISTINCT Kesim FROM {Taban} WITH (NOLOCK) ORDER BY Kesim DESC";
+        const string sql = $"""
+            SELECT Kesim, MAX(SezonYil) AS SezonYil
+            FROM {Taban} WITH (NOLOCK)
+            GROUP BY Kesim
+            ORDER BY Kesim DESC
+            """;
         await using var conn = await db.OpenAsync();
-        var d = await conn.QueryAsync<DateTime>(
+        var d = await conn.QueryAsync<(DateTime Kesim, int SezonYil)>(
             new CommandDefinition(sql, commandTimeout: 60, cancellationToken: ct));
-        return d.Select(DateOnly.FromDateTime).ToList();
+        return d.Select(x => (DateOnly.FromDateTime(x.Kesim), x.SezonYil)).ToList();
     }
 
     /// <summary>KPI + kategori kırılımı — tek gidiş dönüş (iki sonuç kümesi).</summary>
