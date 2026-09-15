@@ -37,7 +37,12 @@ public sealed record SezonAksiyonSatir(
     // Sezon dışı = Yillik − SezonToplam (Kas–Tem); EKSİ olabilir (iade fazlası) ve
     // sıfıra KIRPILMAZ — kırpmak iadeyi gizlemek olurdu (ölçüldü: 29 çeşit).
     int Yillik,
-    int Satilacak,
+    // GEÇEN yılın KALAN sezon dilimi — AÇIK/FAZLA'nın tabanı.
+    // ⚠ TÜM SEZON DEĞİL (GMY 15.09.2026: "açık sadece sezonu geçirmek için gerekli olan
+    //   değil mi"). Sezonun geçen günleri ZATEN SATILDI; tüm sezon talebini istemek açığı
+    //   2,4 KAT şişiriyordu — ölçüldü: 254,7M ₺ → 106,9M ₺.
+    int GecenKalan,
+    int Satilacak,          // = CEILING(GecenKalan × (1 + büyüme)) — "kalan sezon talebi"
     int StokFsm,
     int StokOzl,
     int StokIst,
@@ -100,6 +105,29 @@ public sealed record SezonAksiyonFiltre(
 
     /// <summary>Sezon ayları — GMY kararı 15.09.2026: <i>"sezon 8 9 10 olsun"</i>.</summary>
     public const int SezonBasAy = 8;
+
+    /// <summary>
+    /// KALAN sezon dilimi: kesimin ERTESİ günü – 31.10. AÇIK/FAZLA bunun üzerinden ölçülür.
+    /// Geçen yıl karşılığı ay/gün aynasıdır → gün sayısı eşit.
+    /// </summary>
+    public (DateOnly Bas, DateOnly Son) KalanPencere
+    {
+        get
+        {
+            var (_, bs) = BuPencere;
+            return (bs.AddDays(1), new DateOnly(bs.Year, SezonSonAy, 31));
+        }
+    }
+
+    public (DateOnly Bas, DateOnly Son) GecenKalanPencere
+    {
+        get
+        {
+            var (kb, ks) = KalanPencere;
+            var fark = Kesim.Year - SezonYil;
+            return (Aynala(kb, kb.Year - fark), Aynala(ks, ks.Year - fark));
+        }
+    }
 
     /// <summary>YILLIK pencere: 01.08.&lt;sezon&gt; – 31.07.&lt;sezon+1&gt; (365 gün).</summary>
     public (DateOnly Bas, DateOnly Son) YilPencere =>
@@ -271,6 +299,7 @@ public static class SezonAksiyonSiralama
             ["kategori"] = "t.Kategori3",
             ["gecenayni"] = "ISNULL(gh.Adet, 0)",
             ["yillik"] = "ISNULL(yl.Adet, 0)",
+            ["gecenkalan"] = "ISNULL(gk.Adet, 0)",
             ["sezondisi"] = "(ISNULL(yl.Adet, 0) - t.SezonToplam)",
             ["buayni"] = "ISNULL(bh.Adet, 0)",
             // Geçen yıl 0 ise oran YOK — sonsuz büyüme uydurulmaz, en sona düşer.

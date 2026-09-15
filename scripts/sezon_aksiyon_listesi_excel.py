@@ -101,6 +101,17 @@ bh AS (        -- BU yılın penceresi — gün sayısı gh ile BİREBİR aynı 
       AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 ),
+gk AS (        -- GEÇEN yılın KALAN sezon dilimi: (kesim aynası + 1) – 31.10.<sezon>
+    -- GMY 15.09.2026: "açık sadece sezonu geçirmek için gerekli olan değil mi".
+    -- ⚠ Sezonun geçen günleri ZATEN SATILDI; tüm sezon talebini istemek açığı
+    --   ŞİŞİRİR. Ölçüldü: tüm sezon 254,7M ₺ · kalan sezon 106,9M ₺ → 2,4 KAT.
+    -- Bu yılın kalanı ile geçen yılın kalanı AYNI gün sayısıdır (takvim aynası).
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
 yl AS (        -- YILLIK: sezon yılı 01.08.<sezon> – 31.07.<sezon+1> (365 gün)
     -- GMY kararı 15.09.2026: "01/08/2025-31/07/2026 arası olsun 365 gün".
     -- ⚠ Eski "365 günde satılan" [kesim−364, kesim] idi ve geçen sezonun başını
@@ -127,6 +138,7 @@ SELECT t.stkAd                                       AS [Ürün],
        t.Ay1                                         AS [Ağustos],
        t.Ay2                                         AS [Eylül],
        t.Ay3                                         AS [Ekim],
+       CONVERT(int, ISNULL(gk.Adet, 0))              AS [Geçen yıl kalan dönem],
        CONVERT(int, ISNULL(yl.Adet, 0))              AS [Yıllık toplam],
        t.StokFsm                                     AS [FSM],
        t.StokOzl                                  AS [Özlüce],
@@ -141,6 +153,7 @@ FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
 LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
 LEFT JOIN gh ON gh.stkID = t.stkID
 LEFT JOIN bh ON bh.stkID = t.stkID
+LEFT JOIN gk ON gk.stkID = t.stkID
 LEFT JOIN yl ON yl.stkID = t.stkID
 CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
@@ -172,17 +185,18 @@ DUZEN: list[tuple[str, str]] = [
     ("Eylül",                  "ham"),
     ("Ekim",                   "ham"),
     ("Geçen sezon TAMAMI",     "f"),     # =Ağustos+Eylül+Ekim (toplandığı GÖRÜNSÜN)
+    ("Geçen yıl kalan dönem",  "ham"),   # kalan sezon diliminin GEÇEN yılki karşılığı
     ("Yıllık toplam",          "ham"),   # 01.08.<sezon> – 31.07.<sezon+1>, 365 gün (HER ŞEY)
-    ("Sezon dışı",             "f"),     # =Yıllık toplam − Geçen sezon TAMAMI (Kas–Tem)   # Ağu–Eki — "Satılacak"ın tabanı
-    ("Satılacak",              "f"),     # =CEILING(Geçen sezon TAMAMI × (1+büyüme); 1)
+    ("Sezon dışı",             "f"),     # =Yıllık toplam − Geçen sezon TAMAMI (Kas–Tem)
+    ("Kalan sezon talebi",     "f"),     # =CEILING(Geçen yıl kalan dönem × (1+büyüme); 1)
     ("FSM",                    "ham"),
     ("Özlüce",                 "ham"),
     ("İst.Yolu",               "ham"),
     ("Mağaza toplam",          "f"),     # =FSM+Özlüce+İst.Yolu
     ("Depo",                   "ham"),
     ("Toplam stok",            "f"),     # =Mağaza toplam+Depo
-    ("AÇIK",                   "f"),     # =MAX(0; Satılacak−Toplam stok)
-    ("FAZLA",                  "f"),     # =MAX(0; Toplam stok−Satılacak)
+    ("AÇIK",                   "f"),     # =MAX(0; Kalan sezon talebi−Toplam stok)
+    ("FAZLA",                  "f"),     # =MAX(0; Toplam stok−Kalan sezon talebi)
     ("Satış fiyatı",           "ham"),
     ("Birim maliyet",          "ham"),
     ("Tutar",                  "f"),
@@ -390,12 +404,22 @@ def main() -> int:
             except ValueError:
                 return d.replace(year=yil, day=d.day - 1)
 
+        # KALAN sezon dilimi: bu yıl kesimin ERTESİ günü – 31.10; geçen yıl AYNASI.
+        # ⚠ AÇIK'ın tabanı budur, tüm sezon DEĞİL (GMY 15.09.2026). Geçen günlerin malı
+        #   zaten satıldı; tüm sezonu istemek açığı 2,4 kat şişiriyordu (254,7M → 106,9M ₺).
+        sezon_sonu_bu = dt.date(b_son.year, SEZON_SON_AY, 31)
+        gk_bas_bu, gk_son_bu = b_son + dt.timedelta(days=1), sezon_sonu_bu
+        if gk_bas_bu > gk_son_bu:
+            kosamadi(f"Sezon bitmis ({b_son} > {sezon_sonu_bu}) — kalan talep yok")
+
         # YILLIK pencere: sezon başından bir sonraki sezon başının bir gün öncesine.
         y_bas = dt.date(a.sezon, SEZON_BAS_AY, 1)
         y_son = dt.date(a.sezon + 1, SEZON_BAS_AY, 1) - dt.timedelta(days=1)
 
         yil_farki = kesim.year - a.sezon
         g_bas, g_son = aynala(b_bas, b_bas.year - yil_farki), aynala(b_son, b_son.year - yil_farki)
+        gk_bas = aynala(gk_bas_bu, gk_bas_bu.year - yil_farki)
+        gk_son = aynala(gk_son_bu, gk_son_bu.year - yil_farki)
         # ⚠ EŞİT UZUNLUK ZORUNLU: farklı uzunlukta iki pencere SAHTE büyüme üretir ve
         #   hata vermez. Bugün ölçülen 44/45 gün sapmasının sınıfı budur.
         if (b_son - b_bas).days != (g_son - g_bas).days:
@@ -407,6 +431,7 @@ def main() -> int:
         cur.execute(SQL,
                     g_bas, g_son + dt.timedelta(days=1),   # gh — GEÇEN yıl
                     b_bas, b_son + dt.timedelta(days=1),   # bh — BU yıl
+                    gk_bas, gk_son + dt.timedelta(days=1),  # gk — GEÇEN yılın KALAN dilimi
                     y_bas, y_son + dt.timedelta(days=1),   # yl — YILLIK 365 gün
                     a.buyume,                              # CROSS APPLY
                     kesim, a.sezon, yalniz_acik, yalniz_fazla)
@@ -451,7 +476,8 @@ def main() -> int:
         "Geçen sezon TAMAMI":   f"Sezon toplam\n01.08.{a.sezon % 100:02d}–31.10.{a.sezon % 100:02d}",
         "Yıllık toplam":        f"Yıllık toplam\n{y_bas:%d.%m.%y}–{y_son:%d.%m.%y}",
         "Sezon dışı":           f"Sezon dışı\n01.11.{a.sezon % 100:02d}–{y_son:%d.%m.%y}",
-        "Satılacak":            f"Satılacak\n(sezon × {(1 + a.buyume):g})".replace(".", ","),
+        "Geçen yıl kalan dönem": f"Geçen yıl kalan\n{gk_bas:%d.%m.%y}–{gk_son:%d.%m.%y}",
+        "Kalan sezon talebi":   f"KALAN sezon talebi\n{gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y}",
         "FSM":                  f"FSM\n{kesim:%d.%m.%y}",
         "Özlüce":               f"Özlüce\n{kesim:%d.%m.%y}",
         "İst.Yolu":             f"İst.Yolu\n{kesim:%d.%m.%y}",
@@ -472,6 +498,7 @@ def main() -> int:
            f"YILLIK toplam {y_bas:%d.%m.%Y}–{y_son:%d.%m.%Y} ({(y_son - y_bas).days + 1} gün, "
            "HER ŞEY dahil) · Sezon dışı = yıllık − sezon (Kas–Tem; iade fazlaysa EKSİ olur, "
            "29 çeşitte öyle) · "
+           f"KALAN SEZON {gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y} (geçen yıl karşılığı {gk_bas:%d.%m.%y}–{gk_son:%d.%m.%y}) — AÇIK/FAZLA bunun üzerinden; sezonun GEÇEN günleri zaten satıldı · "
            "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
            "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
            "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
@@ -489,7 +516,7 @@ def main() -> int:
     bh.number_format = "0%"
     bh.font = Font(bold=True, size=12)
     bh.fill = SARI
-    ws.cell(2, 3, "bu hücreyi değiştir → Satılacak, AÇIK, FAZLA ve Tutar yeniden hesaplanır"
+    ws.cell(2, 3, "bu hücreyi değiştir → Kalan sezon talebi, AÇIK, FAZLA ve Tutar yeniden hesaplanır"
             ).font = Font(italic=True, size=9, color="555555")
 
     for j, ad in enumerate(kolonlar, start=1):
@@ -513,7 +540,9 @@ def main() -> int:
             # ── FORMÜL — kaynağı hücreden okur, sabit gömmez ─────────────────
             f = {
                 "Geçen sezon TAMAMI": (f'={K["Ağustos"]}{i}+{K["Eylül"]}{i}+{K["Ekim"]}{i}'),
-                "Satılacak":     f'=CEILING({K["Geçen sezon TAMAMI"]}{i}*(1+$B$2),1)',
+                # ⚠ AÇIK'ın tabanı TÜM SEZON DEĞİL, KALAN sezondur (GMY 15.09.2026).
+                #   Geçen günlerin malı zaten satıldı; tüm sezonu istemek açığı 2,4 kat şişiriyordu.
+                "Kalan sezon talebi": f'=CEILING({K["Geçen yıl kalan dönem"]}{i}*(1+$B$2),1)',
                 # AYNI PENCERE olduğu için bu oran kıyaslanabilir. Geçen yıl 0 ise
                 # bölme yapılmaz (BOŞ) — "sonsuz büyüme" uydurmak olurdu.
                 "Değişim": (f'=IF({K["Geçen yıl aynı dönem"]}{i}>0,'
@@ -525,8 +554,8 @@ def main() -> int:
                 "Sezon dışı": (f'={K["Yıllık toplam"]}{i}-{K["Geçen sezon TAMAMI"]}{i}'),
                 "Mağaza toplam": f'={K["FSM"]}{i}+{K["Özlüce"]}{i}+{K["İst.Yolu"]}{i}',
                 "Toplam stok":   f'={K["Mağaza toplam"]}{i}+{K["Depo"]}{i}',
-                "AÇIK":          f'=MAX(0,{K["Satılacak"]}{i}-{K["Toplam stok"]}{i})',
-                "FAZLA":         f'=MAX(0,{K["Toplam stok"]}{i}-{K["Satılacak"]}{i})',
+                "AÇIK":          f'=MAX(0,{K["Kalan sezon talebi"]}{i}-{K["Toplam stok"]}{i})',
+                "FAZLA":         f'=MAX(0,{K["Toplam stok"]}{i}-{K["Kalan sezon talebi"]}{i})',
                 # AÇIK varsa satış fiyatıyla, FAZLA varsa maliyetle. Maliyet boşsa
                 # BOŞ bırakılır — 0 yazmak "fazlası bedava" demek olurdu.
                 "Tutar": (f'=IF({K["AÇIK"]}{i}>0,{K["AÇIK"]}{i}*{K["Satış fiyatı"]}{i},'
@@ -571,8 +600,7 @@ def main() -> int:
     import math as _m
     for r in sat:
         ad = (r[ix["Marka / Yayınevi"]] or "(marka yok)").strip() or "(marka yok)"
-        sezon_top = (r[ix["Ağustos"]] or 0) + (r[ix["Eylül"]] or 0) + (r[ix["Ekim"]] or 0)
-        satilacak = _m.ceil(sezon_top * (1 + a.buyume))
+        satilacak = _m.ceil((r[ix["Geçen yıl kalan dönem"]] or 0) * (1 + a.buyume))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
         g = marka.setdefault(ad, [0, 0, 0, 0.0, 0, 0, 0.0, 0, 0])
@@ -644,8 +672,7 @@ def main() -> int:
     acik_tl = fazla_tl = 0.0
     import math
     for r in sat:
-        sezon_top = (r[ix["Ağustos"]] or 0) + (r[ix["Eylül"]] or 0) + (r[ix["Ekim"]] or 0)
-        satilacak = math.ceil(sezon_top * (1 + a.buyume))
+        satilacak = math.ceil((r[ix["Geçen yıl kalan dönem"]] or 0) * (1 + a.buyume))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
         if satilacak > elde:

@@ -252,6 +252,7 @@
                                     <td class="text-right tabular-nums @(s.Yillik - s.SezonToplam < 0 ? "text-error" : "")">
                                         @Say(s.Yillik - s.SezonToplam)
                                     </td>
+                                    <td class="text-right tabular-nums">@Say(s.GecenKalan)</td>
                                     <td class="text-right tabular-nums font-semibold">@Say(s.Satilacak)</td>
                                     <td class="text-right tabular-nums">@Say(s.MagazaStok)</td>
                                     <td class="text-right tabular-nums">@Say(s.MerkezStok)</td>
@@ -300,7 +301,10 @@
                     <li><b>Satılacak</b> = geçen sezon (Ağu–Eki @_filtre.SezonYil) satılan ×
                         @((1 + _filtre.Buyume).ToString("0.##", _tr)). Büyüme TEK sayıdır, yukarıdan
                         değişir — ürün ya da kategori bazlı ölçülmüş bir büyüme DEĞİLDİR.</li>
-                    <li><b>AÇIK</b> = satılacak − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
+                    <li><b>AÇIK</b> = KALAN sezon talebi − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
+                    <li><b>Taban TÜM SEZON DEĞİL, KALAN sezondur.</b> Sezonun geçen günlerinin
+                        malı zaten satıldı; tüm sezon talebini istemek açığı şişiriyordu.
+                        Ölçüldü: tüm sezonla 254,7M ₺, kalan sezonla 106,9M ₺ — 2,4 kat fark.</li>
                     <li><b>Pencere seçilebilir</b> (varsayılan 1 Ağustos – kesim). Geçen yılın
                         penceresi seçtiğinin ay/gün aynasıdır, uzunluk hep eşittir. Sezon
                         Ağustos–Ekim kabul edilir; pencere 31 Ekim'i aşmaz.</li>
@@ -364,7 +368,10 @@
             yield return new("sezon", $"Sezon toplam 01.08–31.10.{_filtre.SezonYil % 100:00}", true);
             yield return new("yillik", $"Yıllık {T(yb)}–{T(ys)}", true);
             yield return new("sezondisi", $"Sezon dışı 01.11.{_filtre.SezonYil % 100:00}–{T(ys)}", true);
-            yield return new("satilacak", "Satılacak", true);
+            var (gkb, gks) = _filtre.GecenKalanPencere;
+            var (kb, ks) = _filtre.KalanPencere;
+            yield return new("gecenkalan", $"Geçen yıl kalan {T(gkb)}–{T(gks)}", true);
+            yield return new("satilacak", $"KALAN sezon talebi {T(kb)}–{T(ks)}", true);
             yield return new("magaza", $"Mağaza {T(_filtre.Kesim)}", true);
             yield return new("depo", $"Depo {T(_filtre.Kesim)}", true);
             yield return new("stok", $"Toplam stok {T(_filtre.Kesim)}", true);

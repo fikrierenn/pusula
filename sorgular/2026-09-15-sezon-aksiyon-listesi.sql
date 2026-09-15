@@ -7,7 +7,11 @@
 
    ── HESAP ──────────────────────────────────────────────────────────────────────
      Geçen sezon TAMAMI = Ağustos + Eylül + Ekim  (GMY: "sezon 8 9 10 ayrı olsun")
-     Satılacak = CEILING(Geçen sezon TAMAMI × (1 + büyüme))
+     ⚠ AÇIK'IN TABANI TÜM SEZON DEĞİL, **KALAN SEZON**'dur (GMY 15.09.2026:
+       "açık sadece sezonu geçirmek için gerekli olan değil mi"). Sezonun geçen
+       günlerinin malı ZATEN SATILDI; tüm sezonu istemek açığı şişirir.
+       ÖLÇÜLDÜ: tüm sezonla AÇIK 254.733.925 ₺ · kalan sezonla 106.946.260 ₺ → 2,4 KAT.
+     Kalan sezon talebi = CEILING(geçen yılın KALAN dilimi × (1 + büyüme))
      Elde      = FSM + Özlüce + İst.Yolu + Depo(merkez)
      AÇIK      = Satılacak − Elde   (pozitifse)  → sipariş / transfer
      FAZLA     = Elde − Satılacak   (pozitifse)  → indirim / iade / transfer
@@ -57,6 +61,18 @@ DECLARE @yilFarki int  = YEAR(@kesim) - @sezonYil;
 DECLARE @gBas date = DATEADD(YEAR, -@yilFarki, @bBas),                   -- geçen yıl aynası
         @gSon date = DATEADD(YEAR, -@yilFarki, @bSon);
 
+-- KALAN sezon dilimi: bu yıl kesimin ERTESİ günü – 31.10; geçen yıl AYNASI (gün sayısı eşit).
+DECLARE @kBas date = DATEADD(DAY, 1, @bSon),
+        @kSon date = DATEFROMPARTS(YEAR(@bSon), 10, 31);
+DECLARE @gkBas date = DATEADD(YEAR, -@yilFarki, @kBas),
+        @gkSon date = DATEADD(YEAR, -@yilFarki, @kSon);
+
+IF @kBas > @kSon
+BEGIN
+    RAISERROR('Sezon bitmis - kalan talep yok.', 16, 1);
+    RETURN;
+END;
+
 -- YILLIK: sezon başından bir sonraki sezon başının bir gün öncesine (365 gün).
 DECLARE @yBas date = DATEFROMPARTS(@sezonYil, 8, 1),
         @ySon date = DATEADD(DAY, -1, DATEFROMPARTS(@sezonYil + 1, 8, 1));
@@ -85,6 +101,14 @@ bh AS (        -- BU yılın penceresi — gün sayısı gh ile BİREBİR aynı
     WHERE h.ehMekan IN (1, 4477, 4478)
       AND h.ehTip IN (1, 3, 4, 5, 100, 101)
       AND h.ehTrhS >= @bBas AND h.ehTrhS < DATEADD(DAY, 1, @bSon)
+    GROUP BY h.ehstkID
+),
+gk AS (        -- GEÇEN yılın KALAN sezon dilimi — AÇIK/FAZLA'nın TABANI
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1, 4477, 4478)
+      AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+      AND h.ehTrhS >= @gkBas AND h.ehTrhS < DATEADD(DAY, 1, @gkSon)
     GROUP BY h.ehstkID
 ),
 yl AS (        -- YILLIK 365 gün: 01.08.<sezon> – 31.07.<sezon+1>
@@ -130,7 +154,8 @@ SELECT t.stkAd                                         AS [Ürün],
        --   Haz-2026'da 13 adet iade → yıllık −1, sezon dışı −8). Sıfıra KIRPILMIYOR;
        --   kırpmak iadeyi gizlemek olurdu.
        CONVERT(int, ISNULL(yl.Adet, 0) - t.SezonToplam) AS [Sezon dışı],
-       s.Satilacak                                     AS [Satılacak],
+       CONVERT(int, ISNULL(gk.Adet, 0))                AS [Geçen yıl kalan dönem],
+       s.Satilacak                                     AS [KALAN sezon talebi],
 
        -- ── STOK ─────────────────────────────────────────────────────────────
        t.StokFsm                                       AS [FSM],
@@ -161,8 +186,10 @@ FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
 LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID   -- stkKod için
 LEFT JOIN gh ON gh.stkID = t.stkID
 LEFT JOIN bh ON bh.stkID = t.stkID
+LEFT JOIN gk ON gk.stkID = t.stkID
 LEFT JOIN yl ON yl.stkID = t.stkID
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + @buyume))),
+-- ⚠ TABAN KALAN SEZON: gk (geçen yılın kalan dilimi), t.SezonToplam DEĞİL.
+CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = @kesim AND t.SezonYil = @sezonYil
   AND t.SezonToplam > 0                       -- geçen sezon FİİLEN satmış
@@ -177,9 +204,10 @@ ORDER BY CASE WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiy
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ÖLÇÜLDÜ (kesim 13.09.2026 · sezon 2025 · büyüme %20) — 85.274 çeşit
-     AÇIK   31.187 ürün ·   810.638 adet · 254.733.925 ₺ (satış fiyatıyla)
-     FAZLA  47.619 ürün · 2.700.360 adet ·  97.379.080 ₺ (maliyetle)
-     DENGE   6.468 ürün
+     AÇIK   18.368 ürün ·   313.858 adet · 106.946.260 ₺ (satış fiyatıyla)
+     FAZLA  59.724 ürün · 3.247.379 adet · 128.831.137 ₺ (maliyetle)
+   ⚠ Bu rakamlar KALAN sezon tabanlıdır. Tüm sezon tabanıyla AÇIK 254.733.925 ₺
+     çıkıyordu (2,4 kat) — o rakam sezonun geçen günlerini de sipariş ettiriyordu.
    Panel, Excel emitter'ı ve Excel PivotTable'ı bu sorguyla BİREBİR aynı.
    ───────────────────────────────────────────────────────────────────────────── */
 
@@ -200,7 +228,12 @@ SELECT ISNULL(t.Yayinevi, N'(marka yok)')                             AS [Marka 
             AND t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat
             THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END)) AS [FAZLA toplam ₺]
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + @buyume))),
+LEFT JOIN (SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+           FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+           WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+             AND h.ehTrhS >= @gkBas AND h.ehTrhS < DATEADD(DAY,1,@gkSon)
+           GROUP BY h.ehstkID) gk ON gk.stkID = t.stkID
+CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = @kesim AND t.SezonYil = @sezonYil AND t.SezonToplam > 0
   AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0
@@ -231,7 +264,12 @@ SELECT COUNT(*)                                                       AS Cesit,
             AND t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat
             THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END)) AS FazlaTL
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + @buyume))),
+LEFT JOIN (SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+           FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+           WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+             AND h.ehTrhS >= @gkBas AND h.ehTrhS < DATEADD(DAY,1,@gkSon)
+           GROUP BY h.ehstkID) gk ON gk.stkID = t.stkID
+CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = @kesim AND t.SezonYil = @sezonYil AND t.SezonToplam > 0
   AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0

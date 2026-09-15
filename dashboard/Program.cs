@@ -316,7 +316,7 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
         $"bu {filtre.BuPencere.Bas:dd.MM.yyyy}–{filtre.BuPencere.Son:dd.MM.yyyy} ({filtre.PencereGun} gün, " +
         "1 Ağustos'tan itibaren TAKVİM hizalı; sezon Ağu–Eki. ⚠ Okul açılışı kayıyor " +
         "(08.09.2025→14.09.2026), takvim hizası bunu görmez) · " +
-        "AÇIK = satılacak − (mağaza+depo), FAZLA = tersi · Tutar: AÇIK'ta satış fiyatı, " +
+        "AÇIK = KALAN sezon talebi − (mağaza+depo), FAZLA = tersi (taban TÜM SEZON DEĞİL) · Tutar: AÇIK'ta satış fiyatı, " +
         "FAZLA'da maliyet — ikisi toplanmaz · Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı " +
         "24.02.2025'ten beri yazılmıyor) · FAZLA tutarı alt sınır · depo stoğu WMS'ten" +
         (atlanan.Count > 0 ? " · ATLANAN SÜZGEÇ: " + string.Join(" | ", atlanan) : "");
@@ -327,7 +327,7 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     // ⚠ MiniExcel kolon kümesini İLK satırın anahtarlarından alır. Not satırı tek anahtar
     //   taşıyınca dosya TEK KOLON çıkıyordu (tablo sessizce kayboldu, hata YOK — ölçüldü
     //   15.09.2026). Bu yüzden HER satır 12 anahtarın hepsini taşır, boşlar null.
-    const int SezonAksiyonKolonSayisi = 23;
+    const int SezonAksiyonKolonSayisi = 24;
     static Dictionary<string, object?> Satir(params object?[] h)
     {
         var d = new Dictionary<string, object?>(SezonAksiyonKolonSayisi);
@@ -344,14 +344,15 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
               $"Bu yıl {filtre.BuPencere.Bas:dd.MM.yy}–{filtre.BuPencere.Son:dd.MM.yy}",
               "Sezon toplam", $"Yıllık {filtre.YilPencere.Bas:dd.MM.yy}–{filtre.YilPencere.Son:dd.MM.yy}",
               "Sezon dışı",
-              "Satılacak", "FSM", "Özlüce", "İst.Yolu", "Mağaza toplam", "Depo",
+              $"Geçen yıl kalan {filtre.GecenKalanPencere.Bas:dd.MM.yy}–{filtre.GecenKalanPencere.Son:dd.MM.yy}",
+              $"KALAN sezon talebi {filtre.KalanPencere.Bas:dd.MM.yy}–{filtre.KalanPencere.Son:dd.MM.yy}", "FSM", "Özlüce", "İst.Yolu", "Mağaza toplam", "Depo",
               "Toplam stok", "AÇIK", "FAZLA", "Satış fiyatı", "Birim maliyet", "Tutar"),
     };
     foreach (var r in satirlar)
         liste.Add(Satir(
             r.StkAd, r.Kategori3, r.KategoriYolu, r.Yayinevi, r.StkKod, r.Barkod,
             r.GecenAyni, r.BuAyni, r.SezonToplam, r.Yillik, r.Yillik - r.SezonToplam,
-            r.Satilacak,
+            r.GecenKalan, r.Satilacak,
             r.StokFsm, r.StokOzl, r.StokIst, r.MagazaStok, r.MerkezStok, r.ToplamStok,
             r.Acik, r.Fazla, r.SatisFiyat, r.BirimMaliyet,
             // Tek tutar: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
