@@ -14,7 +14,7 @@ Kapsam: geçen sezon (Ağu–Eki) satmış · defter güvenilir (negatif stok / 
 
 Kullanım:
     python scripts/sezon_aksiyon_listesi_excel.py [--kesim 2026-09-13] [--sezon 2025]
-        [--buyume 0.20] [--durum acik|fazla]
+        [--buyume 0.20] [--durum acik|fazla|bitti] [--kategori Kırtasiye]
 Çıkış: 0 dosya yazıldı · 2 KOŞAMADI.
 """
 from __future__ import annotations
@@ -155,16 +155,34 @@ LEFT JOIN gh ON gh.stkID = t.stkID
 LEFT JOIN bh ON bh.stkID = t.stkID
 LEFT JOIN gk ON gk.stkID = t.stkID
 LEFT JOIN yl ON yl.stkID = t.stkID
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
+-- ⚠ TABAN KALAN SEZON (gk), TÜM SEZON DEĞİL. Excel formülü zaten gk'dan hesaplıyordu
+--   ama BURASI hâlâ t.SezonToplam kullanıyordu → SÜZME ve SIRALAMA eski tabana göre
+--   yapılıyordu (düzeltildi 15.09.2026). Değerler doğru, seçim yanlıştı: sessiz sapma.
+-- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır.
+CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
+                        THEN CONVERT(int, CEILING(gk.Adet * (1.0 + ?))) ELSE 0 END,
                     Elde      = t.MagazaStok + t.MerkezStok) s
+CROSS APPLY (SELECT Sinif = CASE
+        WHEN ISNULL(gk.Adet, 0) <= 0 THEN CASE WHEN t.MagazaStok + t.MerkezStok > 0
+                                               THEN 3 ELSE 0 END   -- 3 SEZONU BİTTİ
+        WHEN s.Satilacak > s.Elde THEN 1                           -- 1 AÇIK
+        WHEN s.Elde > s.Satilacak THEN 2                           -- 2 FAZLA
+        ELSE 0 END) g
 WHERE t.Kesim = ? AND t.SezonYil = ?
   AND t.SezonToplam > 0
   AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0
   AND t.SatisFiyat > 0
-  AND (? = 0 OR s.Satilacak > s.Elde)      -- yalnız AÇIK
-  AND (? = 0 OR s.Elde > s.Satilacak)      -- yalnız FAZLA
-ORDER BY CASE WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiyat
-              ELSE (s.Elde - s.Satilacak) * ISNULL(t.BirimMaliyet, 0) END DESC
+  AND (? IS NULL OR t.Kategori3 = ?)       -- kategori süzgeci
+  AND (? = 0 OR g.Sinif = 1)               -- yalnız AÇIK
+  AND (? = 0 OR g.Sinif = 2)               -- yalnız FAZLA
+  AND (? = 0 OR g.Sinif = 3)               -- yalnız SEZONU BİTTİ
+-- SIRALAMA MANTIĞI: PARAYA GÖRE, en büyük etkiden başlayarak.
+--   AÇIK satırda kaçacak ciro (eksik adet × satış fiyatı) — en çok ciro kaçıran üstte.
+--   FAZLA/SEZONU BİTTİ satırda bağlı sermaye (fazla adet × maliyet).
+--   İkinci anahtar: aynı tutarda, bu sezon HAREKETLİ olan üstte (talebi kanıtlı).
+ORDER BY CASE WHEN g.Sinif = 1 THEN (s.Satilacak - s.Elde) * t.SatisFiyat
+              ELSE (s.Elde - s.Satilacak) * ISNULL(t.BirimMaliyet, 0) END DESC,
+         ISNULL(bh.Adet, 0) DESC, t.stkID
 """
 
 # ── SAYFA DÜZENİ ──────────────────────────────────────────────────────────────
@@ -293,7 +311,9 @@ def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
                                     ("AÇIK ₺", "AÇIK toplam ₺", para),
                                     ("FAZLA", "FAZLA adet", tamsayi),
                                     ("FAZLA ₺", "FAZLA toplam ₺", para),
-                                    ("Sezonu bitti ₺", "SEZONU BİTTİ ₺", para)):
+                                    # ⚠ Ad çakışması BÜYÜK/küçük harfe DUYARSIZ: "SEZONU BİTTİ ₺" ile kaynak
+                                    #   kolon "Sezonu bitti ₺" Excel için AYNI addır → 0x800A03EC.
+                                    ("Sezonu bitti ₺", "SEZONU BİTTİ toplam ₺", para)):
                 f = pt.AddDataField(pt.PivotFields(alan), ad, -4157)  # xlSum
                 # ⚠ BİÇİM İSTEĞE BAĞLI: yerel biçim dizgisi reddedilebiliyor (0x800A03EC).
                 #   Pivot'un KENDİSİ biçimden önemli — biçim tutmazsa pivot yine kurulur,
@@ -351,8 +371,10 @@ def main() -> int:
     ap.add_argument("--sezon", type=int, default=2025)
     ap.add_argument("--buyume", type=float, default=0.20,
                     help="sezon buyumesi (0.20 = %%20)")
-    ap.add_argument("--durum", choices=["acik", "fazla"], default=None,
-                    help="yalniz acik ya da yalniz fazla listele")
+    ap.add_argument("--durum", choices=["acik", "fazla", "bitti"], default=None,
+                    help="yalniz acik / fazla / bitti (sezonu bitmis) listele")
+    ap.add_argument("--kategori", default=None,
+                    help="tek Kategori3 (or. Kirtasiye) — bos ise hepsi")
     # PENCERE — GMY kararı 15.09.2026: "okul açılışına takılma, rapor 01/08'den başlasın,
     # sezon 8 9 10 olsun". Sen BU yılın penceresini verirsin; GEÇEN yılınki aynı ay/güne
     # OTOMATİK aynalanır → iki pencere her zaman EŞİT uzunlukta, bozulamaz.
@@ -370,6 +392,8 @@ def main() -> int:
 
     yalniz_acik = 1 if a.durum == "acik" else 0
     yalniz_fazla = 1 if a.durum == "fazla" else 0
+    yalniz_bitti = 1 if a.durum == "bitti" else 0
+    kategori = a.kategori.strip() if a.kategori and a.kategori.strip() else None
     SEZON_BAS_AY, SEZON_SON_AY = 8, 10          # GMY: "sezon 8 9 10 olsun"
 
     env = env_oku(os.path.join(KOK, ".env"))
@@ -436,7 +460,8 @@ def main() -> int:
                     gk_bas, gk_son + dt.timedelta(days=1),  # gk — GEÇEN yılın KALAN dilimi
                     y_bas, y_son + dt.timedelta(days=1),   # yl — YILLIK 365 gün
                     a.buyume,                              # CROSS APPLY
-                    kesim, a.sezon, yalniz_acik, yalniz_fazla)
+                    kesim, a.sezon, kategori, kategori,
+                    yalniz_acik, yalniz_fazla, yalniz_bitti)
         bas = [d[0] for d in cur.description]
         sat = [list(x) for x in cur.fetchall()]
     finally:
@@ -713,7 +738,9 @@ def main() -> int:
             else:
                 fazla_tl += (elde - satilacak) * float(m)
 
-    ek = f"-{a.durum}" if a.durum else ""
+    ek = ("-" + a.durum if a.durum else "")
+    if kategori:
+        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", kategori)
     cikti = a.cikti or os.path.join(
         KOK, "raporlar", f"sezon-aksiyon-listesi-{kesim:%Y%m%d}{ek}.xlsx")
     os.makedirs(os.path.dirname(cikti), exist_ok=True)
