@@ -206,6 +206,7 @@ DUZEN: list[tuple[str, str]] = [
     #    Ayrı iki kolonla pivot düz ve okunur; LİSTE ise tek Tutar ile sade kalıyor.
     ("AÇIK ₺",                 "f"),
     ("FAZLA ₺",                "f"),
+    ("Sezonu bitti ₺",         "f"),
 ]
 
 
@@ -291,7 +292,8 @@ def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
             for alan, ad, bicim in (("AÇIK", "AÇIK adet", tamsayi),
                                     ("AÇIK ₺", "AÇIK toplam ₺", para),
                                     ("FAZLA", "FAZLA adet", tamsayi),
-                                    ("FAZLA ₺", "FAZLA toplam ₺", para)):
+                                    ("FAZLA ₺", "FAZLA toplam ₺", para),
+                                    ("Sezonu bitti ₺", "SEZONU BİTTİ ₺", para)):
                 f = pt.AddDataField(pt.PivotFields(alan), ad, -4157)  # xlSum
                 # ⚠ BİÇİM İSTEĞE BAĞLI: yerel biçim dizgisi reddedilebiliyor (0x800A03EC).
                 #   Pivot'un KENDİSİ biçimden önemli — biçim tutmazsa pivot yine kurulur,
@@ -499,6 +501,7 @@ def main() -> int:
            "HER ŞEY dahil) · Sezon dışı = yıllık − sezon (Kas–Tem; iade fazlaysa EKSİ olur, "
            "29 çeşitte öyle) · "
            f"KALAN SEZON {gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y} (geçen yıl karşılığı {gk_bas:%d.%m.%y}–{gk_son:%d.%m.%y}) — AÇIK/FAZLA bunun üzerinden; sezonun GEÇEN günleri zaten satıldı · "
+           "DURUM dört sınıf: AÇIK · FAZLA · SEZONU BİTTİ (geçen yıl kalan dilimde hiç satmamış → bu sezon talebi yok) · DENGE · "
            "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
            "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
            "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
@@ -542,7 +545,11 @@ def main() -> int:
                 "Geçen sezon TAMAMI": (f'={K["Ağustos"]}{i}+{K["Eylül"]}{i}+{K["Ekim"]}{i}'),
                 # ⚠ AÇIK'ın tabanı TÜM SEZON DEĞİL, KALAN sezondur (GMY 15.09.2026).
                 #   Geçen günlerin malı zaten satıldı; tüm sezonu istemek açığı 2,4 kat şişiriyordu.
-                "Kalan sezon talebi": f'=CEILING({K["Geçen yıl kalan dönem"]}{i}*(1+$B$2),1)',
+                # ⚠ MAX(0;…) ŞART: geçen yıl kalan dilimde iade satıştan fazlaysa "Geçen yıl
+                #   kalan" NEGATİF olur ve talep eksiye düşerdi. Negatif talep anlamsızdır;
+                #   dahası stoğu SIFIR olan ürünü "fazla" göstererek hayalet üretiyordu
+                #   (ölçüldü 15.09.2026: 27 üründe negatif, 4'ü stoksuz, 29 adet hayalet fazla).
+                "Kalan sezon talebi": f'=MAX(0,CEILING({K["Geçen yıl kalan dönem"]}{i}*(1+$B$2),1))',
                 # AYNI PENCERE olduğu için bu oran kıyaslanabilir. Geçen yıl 0 ise
                 # bölme yapılmaz (BOŞ) — "sonsuz büyüme" uydurmak olurdu.
                 "Değişim": (f'=IF({K["Geçen yıl aynı dönem"]}{i}>0,'
@@ -562,13 +569,24 @@ def main() -> int:
                           f'IF(AND({K["FAZLA"]}{i}>0,{K["Birim maliyet"]}{i}<>""),'
                           f'{K["FAZLA"]}{i}*{K["Birim maliyet"]}{i},""))'),
                 # Metin alan: PivotTable AÇIK/FAZLA ürününü bununla SAYAR (koşullu sayım yok).
-                "Durum": (f'=IF({K["AÇIK"]}{i}>0,"AÇIK",IF({K["FAZLA"]}{i}>0,"FAZLA","DENGE"))'),
-                "AÇIK ₺":  f'=IF({K["AÇIK"]}{i}>0,{K["Tutar"]}{i},0)',
-                "FAZLA ₺": f'=IF({K["FAZLA"]}{i}>0,IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)',
+                # ⚠ DÖRT SINIF (GMY 15.09.2026: "kalan sezonda satış olmayanları da ayrı göster").
+                #   Geçen yıl kalan dilimde HİÇ satmamış ürünün bu sezon talebi YOK; stoğu
+                #   "fazla" ama EYLEMİ farklı: indirimle dönmez, iade/gelecek sezon konusudur.
+                #   Ölçüldü: 19.940 çeşit · 215.955 adet · 20,6M ₺ maliyet. FAZLA'nın içindeydi
+                #   ve 128,8M ₺'nin 20,6M'sini tek başına oluşturuyordu.
+                "Durum": (f'=IF({K["Geçen yıl kalan dönem"]}{i}<=0,'
+                          f'IF({K["Toplam stok"]}{i}>0,"SEZONU BİTTİ","DENGE"),'
+                          f'IF({K["AÇIK"]}{i}>0,"AÇIK",IF({K["FAZLA"]}{i}>0,"FAZLA","DENGE")))'),
+                "AÇIK ₺":  f'=IF({K["Durum"]}{i}="AÇIK",{K["Tutar"]}{i},0)',
+                "FAZLA ₺": (f'=IF({K["Durum"]}{i}="FAZLA",'
+                            f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
+                "Sezonu bitti ₺": (f'=IF({K["Durum"]}{i}="SEZONU BİTTİ",'
+                                   f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
             }[ad]
             c = ws.cell(i, j, f)
             c.fill = SARI
-            c.number_format = ('#,##0.00 "₺"' if ad in ("Tutar", "AÇIK ₺", "FAZLA ₺")
+            c.number_format = ('#,##0.00 "₺"' if ad in ("Tutar", "AÇIK ₺", "FAZLA ₺",
+                                                                        "Sezonu bitti ₺")
                                else "0.00" if ad == "Değişim"
                                else "General" if ad == "Durum" else "#,##0")
 
@@ -577,7 +595,7 @@ def main() -> int:
         gor = GOSTER.get(ad, ad)
         en_uzun = max((len(p) for p in gor.split("\n")), default=len(ad))
         ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(en_uzun + 2, 11))
-    for gizli in ("AÇIK ₺", "FAZLA ₺"):
+    for gizli in ("AÇIK ₺", "FAZLA ₺", "Sezonu bitti ₺"):
         ws.column_dimensions[K[gizli]].hidden = True
 
     ws.freeze_panes = f"E{BAS_SATIR}"
@@ -600,7 +618,7 @@ def main() -> int:
     import math as _m
     for r in sat:
         ad = (r[ix["Marka / Yayınevi"]] or "(marka yok)").strip() or "(marka yok)"
-        satilacak = _m.ceil((r[ix["Geçen yıl kalan dönem"]] or 0) * (1 + a.buyume))
+        satilacak = max(0, _m.ceil((r[ix["Geçen yıl kalan dönem"]] or 0) * (1 + a.buyume)))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
         g = marka.setdefault(ad, [0, 0, 0, 0.0, 0, 0, 0.0, 0, 0])
@@ -668,23 +686,30 @@ def main() -> int:
     # ── Konsol özeti — Excel'in hesaplayacağının AYNISI, Python'da ────────────
     #    (dosyada formül olduğu için openpyxl değer okuyamaz; kontrol burada)
     cesit = len(sat)
-    acik_c = acik_a = fazla_c = fazla_a = malsiz = 0
-    acik_tl = fazla_tl = 0.0
+    acik_c = acik_a = fazla_c = fazla_a = malsiz = bitti_c = bitti_a = 0
+    acik_tl = fazla_tl = bitti_tl = 0.0
     import math
     for r in sat:
-        satilacak = math.ceil((r[ix["Geçen yıl kalan dönem"]] or 0) * (1 + a.buyume))
+        satilacak = max(0, math.ceil((r[ix["Geçen yıl kalan dönem"]] or 0) * (1 + a.buyume)))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
-        if satilacak > elde:
+        bitti = (r[ix["Geçen yıl kalan dönem"]] or 0) <= 0
+        if not bitti and satilacak > elde:
             acik_c += 1
             acik_a += satilacak - elde
             acik_tl += (satilacak - elde) * float(r[ix["Satış fiyatı"]] or 0)
         elif elde > satilacak:
-            fazla_c += 1
-            fazla_a += elde - satilacak
             m = r[ix["Birim maliyet"]]
+            if bitti:
+                bitti_c += 1
+                bitti_a += elde - satilacak
+            else:
+                fazla_c += 1
+                fazla_a += elde - satilacak
             if m is None:
                 malsiz += 1
+            elif bitti:
+                bitti_tl += (elde - satilacak) * float(m)
             else:
                 fazla_tl += (elde - satilacak) * float(m)
 
@@ -702,6 +727,7 @@ def main() -> int:
     print(f"  cesit {ayir(cesit)}")
     print(f"  ACIK  {ayir(acik_c)} urun · {ayir(acik_a)} adet · {ayir(acik_tl)} TL")
     print(f"  FAZLA {ayir(fazla_c)} urun · {ayir(fazla_a)} adet · {ayir(fazla_tl)} TL")
+    print(f"  SEZONU BITTI {ayir(bitti_c)} urun · {ayir(bitti_a)} adet · {ayir(bitti_tl)} TL")
     return 0
 
 

@@ -189,7 +189,10 @@ LEFT JOIN bh ON bh.stkID = t.stkID
 LEFT JOIN gk ON gk.stkID = t.stkID
 LEFT JOIN yl ON yl.stkID = t.stkID
 -- ⚠ TABAN KALAN SEZON: gk (geçen yılın kalan dilimi), t.SezonToplam DEĞİL.
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
+-- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır. Kırpılmazsa
+--   stoğu SIFIR olan ürün bile "fazla" görünür (ölçüldü: 27 negatif, 4'ü stoksuz).
+CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
+                         THEN CONVERT(int, CEILING(gk.Adet * (1.0 + @buyume))) ELSE 0 END,
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = @kesim AND t.SezonYil = @sezonYil
   AND t.SezonToplam > 0                       -- geçen sezon FİİLEN satmış
@@ -233,7 +236,10 @@ LEFT JOIN (SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
            WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
              AND h.ehTrhS >= @gkBas AND h.ehTrhS < DATEADD(DAY,1,@gkSon)
            GROUP BY h.ehstkID) gk ON gk.stkID = t.stkID
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
+-- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır. Kırpılmazsa
+--   stoğu SIFIR olan ürün bile "fazla" görünür (ölçüldü: 27 negatif, 4'ü stoksuz).
+CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
+                         THEN CONVERT(int, CEILING(gk.Adet * (1.0 + @buyume))) ELSE 0 END,
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = @kesim AND t.SezonYil = @sezonYil AND t.SezonToplam > 0
   AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0
@@ -269,7 +275,10 @@ LEFT JOIN (SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
            WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
              AND h.ehTrhS >= @gkBas AND h.ehTrhS < DATEADD(DAY,1,@gkSon)
            GROUP BY h.ehstkID) gk ON gk.stkID = t.stkID
-CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
+-- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır. Kırpılmazsa
+--   stoğu SIFIR olan ürün bile "fazla" görünür (ölçüldü: 27 negatif, 4'ü stoksuz).
+CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
+                         THEN CONVERT(int, CEILING(gk.Adet * (1.0 + @buyume))) ELSE 0 END,
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = @kesim AND t.SezonYil = @sezonYil AND t.SezonToplam > 0
   AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0

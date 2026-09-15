@@ -83,6 +83,7 @@
             <option value="">açık + fazla</option>
             <option value="acik">yalnız AÇIK</option>
             <option value="fazla">yalnız FAZLA</option>
+            <option value="bitti">yalnız SEZONU BİTTİ</option>
         </select>
 
         <select class="select select-bordered select-sm text-sm"
@@ -119,7 +120,7 @@
         var k = _ozet.Kpi;
 
         @* ── İKİ KART ────────────────────────────────────────────────────────────── *@
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
 
             <button type="button" @onclick='() => DurumSec("acik")'
                     class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
@@ -144,6 +145,24 @@
                              text-base-content/55">FAZLA — eritmek gerekli</span>
                 <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
                     @Say(k.FazlaUrun) ürün · @Say(k.FazlaAdet) adet · maliyetle
+                </span>
+            </button>
+
+            @*  SEZONU BİTTİ — geçen yıl KALAN dilimde HİÇ satmamış, stoğu duran ürünler.
+                GMY 15.09.2026: "kalan sezonda satış olmayanları da ayrı göster".
+                ⚠ FAZLA'dan AYRI: eylemi farklı. Bunlar indirimle dönmez — bu sezon talebi
+                YOK. Konu iade / gelecek sezona saklama. Önce FAZLA'nın içindeydiler ve
+                128,8M ₺'nin 20,6M'sini tek başına oluşturuyorlardı (ölçüldü).                *@
+            <button type="button" @onclick='() => DurumSec("bitti")'
+                    class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
+                           transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[.98]
+                           @(_filtre.Durum == "bitti" ? "border-neutral" : "hover:border-base-content/20")">
+                <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                             text-[30px] text-base-content/70">@Tl(k.BittiTutar)</span>
+                <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                             text-base-content/55">SEZONU BİTTİ — bu sezon satmaz</span>
+                <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
+                    @Say(k.BittiUrun) ürün · @Say(k.BittiAdet) adet · maliyetle
                 </span>
             </button>
         </div>
@@ -302,6 +321,10 @@
                         @((1 + _filtre.Buyume).ToString("0.##", _tr)). Büyüme TEK sayıdır, yukarıdan
                         değişir — ürün ya da kategori bazlı ölçülmüş bir büyüme DEĞİLDİR.</li>
                     <li><b>AÇIK</b> = KALAN sezon talebi − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
+                    <li><b>SEZONU BİTTİ</b> = geçen yıl kalan dilimde HİÇ satmamış ama stoğu
+                        duran ürün. FAZLA'dan ayrı tutuluyor çünkü eylemi farklı: indirimle
+                        dönmez, bu sezon talebi yok. Ölçüldü: 17.197 ürün · 20,6M ₺ — önce
+                        FAZLA'nın içindeydi.</li>
                     <li><b>Taban TÜM SEZON DEĞİL, KALAN sezondur.</b> Sezonun geçen günlerinin
                         malı zaten satıldı; tüm sezon talebini istemek açığı şişiriyordu.
                         Ölçüldü: tüm sezonla 254,7M ₺, kalan sezonla 106,9M ₺ — 2,4 kat fark.</li>

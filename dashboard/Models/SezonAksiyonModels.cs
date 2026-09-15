@@ -78,6 +78,12 @@ public sealed record SezonAksiyonKpi(
     int FazlaUrun,
     long FazlaAdet,
     decimal FazlaTutar,
+    // SEZONU BİTTİ — geçen yıl KALAN dilimde hiç satmamış, stoğu duran ürünler.
+    // ⚠ FAZLA'dan AYRI tutulur: eylemi farklı (indirimle dönmez; iade / gelecek sezon).
+    //   Ölçüldü 15.09.2026: 17.197 ürün · 215.984 adet · 20.602.846 ₺ — FAZLA'nın içindeydi.
+    int BittiUrun,
+    long BittiAdet,
+    decimal BittiTutar,
     int MaliyetiYok);
 
 public sealed record SezonAksiyonOzet(SezonAksiyonKpi Kpi, IReadOnlyList<SezonAksiyonKategori> Kategoriler);
@@ -251,8 +257,8 @@ public sealed record SezonAksiyonFiltre(
         string? durum = null;
         if (q.TryGetValue("durum", out var ds) && !string.IsNullOrWhiteSpace(ds))
         {
-            if (ds is "acik" or "fazla") durum = ds;
-            else atla.Add($"durum='{ds}' tanınmadı (acik|fazla), süzgeç uygulanmadı");
+            if (ds is "acik" or "fazla" or "bitti") durum = ds;
+            else atla.Add($"durum='{ds}' tanınmadı (acik|fazla|bitti), süzgeç uygulanmadı");
         }
 
         var azalan = true;

@@ -86,14 +86,26 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         LEFT JOIN yl ON yl.stkID = t.stkID
         -- ⚠ TABAN: TÜM SEZON DEĞİL, KALAN SEZON (GMY 15.09.2026). Ölçüldü: tüm sezonla
         --   AÇIK 254,7M ₺, kalan sezonla 106,9M ₺ — 2,4 kat fark.
-        CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(ISNULL(gk.Adet, 0) * (1.0 + @buyume))),
+        -- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır.
+        CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
+                         THEN CONVERT(int, CEILING(gk.Adet * (1.0 + @buyume))) ELSE 0 END,
                             Elde      = t.MagazaStok + t.MerkezStok) s
+        CROSS APPLY (SELECT Sinif = CASE
+                WHEN ISNULL(gk.Adet, 0) <= 0 THEN CASE WHEN t.MagazaStok + t.MerkezStok > 0
+                                                       THEN 3 ELSE 0 END   -- 3 SEZONU BİTTİ
+                WHEN s.Satilacak > s.Elde THEN 1                           -- 1 AÇIK
+                WHEN s.Elde > s.Satilacak THEN 2                           -- 2 FAZLA
+                ELSE 0 END) g
         WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
           AND t.SezonToplam > 0
           AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0
           AND t.SatisFiyat > 0
-          AND (@yalnizAcik  = 0 OR s.Satilacak > s.Elde)
-          AND (@yalnizFazla = 0 OR s.Elde > s.Satilacak)
+          -- ⚠ DÖRT SINIF (GMY 15.09.2026: "kalan sezonda satış olmayanları da ayrı göster").
+          --   "SEZONU BİTTİ" = geçen yıl KALAN dilimde hiç satmamış + stoğu var. AÇIK'a
+          --   giremez (talebi 0) ve FAZLA'dan AYRI tutulur: eylemi farklı.
+          AND (@yalnizAcik  = 0 OR (s.Satilacak > s.Elde AND ISNULL(gk.Adet, 0) > 0))
+          AND (@yalnizFazla = 0 OR (s.Elde > s.Satilacak AND ISNULL(gk.Adet, 0) > 0))
+          AND (@yalnizBitti = 0 OR (ISNULL(gk.Adet, 0) <= 0 AND s.Elde > 0))
           AND (@kategori IS NULL OR t.Kategori3 = @kategori)
           AND (@ara IS NULL OR t.stkAd LIKE @araLike OR t.BarkodAna = @ara OR u.stkKod = @ara)
         """;
@@ -134,6 +146,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         p.Add("ySonEx", ysn.AddDays(1).ToDateTime(TimeOnly.MinValue));
         p.Add("yalnizAcik", f.Durum == "acik" ? 1 : 0);
         p.Add("yalnizFazla", f.Durum == "fazla" ? 1 : 0);
+        p.Add("yalnizBitti", f.Durum == "bitti" ? 1 : 0);
         p.Add("kategori", string.IsNullOrWhiteSpace(f.Kategori3) ? null : f.Kategori3);
         var ara = string.IsNullOrWhiteSpace(f.Arama) ? null : f.Arama.Trim();
         p.Add("ara", ara);
@@ -168,32 +181,37 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         var sql = $"""
             {PencereSql}
             SELECT CONVERT(int, COUNT(*))                                                  AS Cesit,
-                   CONVERT(int,  SUM(CASE WHEN s.Satilacak > s.Elde THEN 1 ELSE 0 END))    AS AcikUrun,
-                   CONVERT(bigint, SUM(CASE WHEN s.Satilacak > s.Elde
+                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 1 THEN 1 ELSE 0 END))            AS AcikUrun,
+                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 1
                                             THEN s.Satilacak - s.Elde ELSE 0 END))         AS AcikAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN s.Satilacak > s.Elde
+                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 1
                         THEN (s.Satilacak - s.Elde) * t.SatisFiyat ELSE 0 END))            AS AcikTutar,
-                   CONVERT(int,  SUM(CASE WHEN s.Elde > s.Satilacak THEN 1 ELSE 0 END))    AS FazlaUrun,
-                   CONVERT(bigint, SUM(CASE WHEN s.Elde > s.Satilacak
+                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 2 THEN 1 ELSE 0 END))            AS FazlaUrun,
+                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 2
                                             THEN s.Elde - s.Satilacak ELSE 0 END))         AS FazlaAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN s.Elde > s.Satilacak AND {MaliyetGecerli}
+                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 2 AND {MaliyetGecerli}
                         THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END))          AS FazlaTutar,
-                   CONVERT(int,  SUM(CASE WHEN s.Elde > s.Satilacak AND NOT {MaliyetGecerli}
+                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 3 THEN 1 ELSE 0 END))            AS BittiUrun,
+                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 3
+                                            THEN s.Elde - s.Satilacak ELSE 0 END))         AS BittiAdet,
+                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 3 AND {MaliyetGecerli}
+                        THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END))          AS BittiTutar,
+                   CONVERT(int,  SUM(CASE WHEN g.Sinif IN (2,3) AND NOT {MaliyetGecerli}
                                           THEN 1 ELSE 0 END))                              AS MaliyetiYok
             {TabanSql};
 
             {PencereSql}
             SELECT ISNULL(t.Kategori3, N'(boş)')                                           AS Kategori,
                    CONVERT(int, COUNT(*))                                                  AS Cesit,
-                   CONVERT(int,  SUM(CASE WHEN s.Satilacak > s.Elde THEN 1 ELSE 0 END))    AS AcikUrun,
-                   CONVERT(bigint, SUM(CASE WHEN s.Satilacak > s.Elde
+                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 1 THEN 1 ELSE 0 END))            AS AcikUrun,
+                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 1
                                             THEN s.Satilacak - s.Elde ELSE 0 END))         AS AcikAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN s.Satilacak > s.Elde
+                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 1
                         THEN (s.Satilacak - s.Elde) * t.SatisFiyat ELSE 0 END))            AS AcikTutar,
-                   CONVERT(int,  SUM(CASE WHEN s.Elde > s.Satilacak THEN 1 ELSE 0 END))    AS FazlaUrun,
-                   CONVERT(bigint, SUM(CASE WHEN s.Elde > s.Satilacak
+                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 2 THEN 1 ELSE 0 END))            AS FazlaUrun,
+                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 2
                                             THEN s.Elde - s.Satilacak ELSE 0 END))         AS FazlaAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN s.Elde > s.Satilacak AND {MaliyetGecerli}
+                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 2 AND {MaliyetGecerli}
                         THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END))          AS FazlaTutar
             {TabanSql}
             GROUP BY t.Kategori3
@@ -204,7 +222,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         await using var g = await conn.QueryMultipleAsync(
             new CommandDefinition(sql, P(f), commandTimeout: 180, cancellationToken: ct));
         var kpi = await g.ReadFirstOrDefaultAsync<SezonAksiyonKpi>()
-                  ?? new SezonAksiyonKpi(0, 0, 0, 0, 0, 0, 0, 0);
+                  ?? new SezonAksiyonKpi(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         var kat = (await g.ReadAsync<SezonAksiyonKategori>()).ToList();
         return new SezonAksiyonOzet(kpi, kat);
     }
