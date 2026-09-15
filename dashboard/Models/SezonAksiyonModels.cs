@@ -18,15 +18,25 @@ namespace GmDashboard.Models;
 /// </remarks>
 public sealed record SezonAksiyonSatir(
     int StkId,
-    string? Barkod,
+    string? StkKod,         // ⚠ urn.stkKod — BARKOD DEĞİL (sql-server-conventions);
+    string? Barkod,         //    ikisi ayrı alan, ikisi de listede
     string StkAd,
     string? Kategori3,
     string? KategoriYolu,
     string? Yayinevi,
     decimal SatisFiyat,
-    int SatisToplam,
-    int SezonToplam,
+    // ── AYNI PENCERE (GMY 15.09.2026: "aynı pencereye getirelim") ──────────────
+    // Eski "365 günde satılan" KALDIRILDI: penceresi [kesim−364, kesim] idi ve
+    // geçen sezonun 1 Ağu–13 Eyl kısmı 365 günden eski olduğu için DIŞINDA kalıyordu.
+    // İki kolon iç içe geçmediği için 365g=33 / sezon=652 gibi satırlar okuyanı
+    // yanıltıyordu (ölçüldü — sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql).
+    int GecenAyni,          // geçen yıl, okul açılışından geriye N gün
+    int BuAyni,             // BU yıl, AYNI N gün — kıyaslanabilir
+    int SezonToplam,        // geçen sezon TAMAMI (Ağu–Eki) — "Satılacak"ın tabanı
     int Satilacak,
+    int StokFsm,
+    int StokOzl,
+    int StokIst,
     int MagazaStok,
     int MerkezStok,
     int ToplamStok,
@@ -68,6 +78,15 @@ public sealed record SezonAksiyonFiltre(
     DateOnly Kesim,
     int SezonYil,
     decimal Buyume = 0.20m,
+    // OKUL AÇILIŞI — SATIR VERİSİ, sema'ya yazılmaz (yıldan yıla değişir).
+    // Arşiv: sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql
+    //   2024-25 → 09.09.2024 · 2025-26 → 08.09.2025 · 2026-27 → 14.09.2026
+    // ⚠ TAKVİM GÜNÜYLE hizalamak YANILTIR: açılış altı gün kaydı ve aynı takvim
+    //   günleri farklı sezon evresini ölçer. Ölçüldü: Hazırlık Kitapları büyümesi
+    //   takvimle 0,727 ("%27 küçüldü"), okula hizalı 1,104 ("%10 büyüdü") — ZIT.
+    DateOnly? AcilisBu = null,
+    DateOnly? AcilisGecen = null,
+    int HizaliGun = 44,
     string? Durum = null,          // "acik" | "fazla" | null (hepsi)
     string? Kategori3 = null,
     string? Arama = null,
@@ -78,6 +97,18 @@ public sealed record SezonAksiyonFiltre(
 {
     public const decimal BuyumeAlt = -0.50m;
     public const decimal BuyumeUst = 3.00m;
+
+    public static readonly DateOnly VarsayilanAcilisBu = new(2026, 9, 14);
+    public static readonly DateOnly VarsayilanAcilisGecen = new(2025, 9, 8);
+
+    public DateOnly AcilisBuVeya => AcilisBu ?? VarsayilanAcilisBu;
+    public DateOnly AcilisGecenVeya => AcilisGecen ?? VarsayilanAcilisGecen;
+
+    /// <summary>Karşılaştırma penceresi — iki yıl için de AYNI uzunlukta.</summary>
+    public (DateOnly Bas, DateOnly Son) GecenPencere =>
+        (AcilisGecenVeya.AddDays(-HizaliGun), AcilisGecenVeya.AddDays(-1));
+    public (DateOnly Bas, DateOnly Son) BuPencere =>
+        (AcilisBuVeya.AddDays(-HizaliGun), AcilisBuVeya.AddDays(-1));
 
     /// <summary>Sorgu dizesine çevir — Excel bağlantısı ekrandakiyle AYNI kohortu indirir.</summary>
     public string SorguDizesi()
@@ -147,11 +178,17 @@ public sealed record SezonAksiyonFiltre(
         }
 
         atlanan = atla;
+        // ⚠ ADLANDIRILMIŞ parametre ZORUNLU: kayda araya yeni alan eklenince konum
+        //   bazlı çağrı SESSİZCE kayar (tipler uyuşursa derleyici de yakalamaz).
         return new SezonAksiyonFiltre(
-            kesim, sezon, buyume, durum,
-            string.IsNullOrWhiteSpace(q.GetValueOrDefault("kategori")) ? null : q["kategori"],
-            string.IsNullOrWhiteSpace(q.GetValueOrDefault("ara")) ? null : q["ara"],
-            sirala, azalan);
+            Kesim: kesim,
+            SezonYil: sezon,
+            Buyume: buyume,
+            Durum: durum,
+            Kategori3: string.IsNullOrWhiteSpace(q.GetValueOrDefault("kategori")) ? null : q["kategori"],
+            Arama: string.IsNullOrWhiteSpace(q.GetValueOrDefault("ara")) ? null : q["ara"],
+            Sirala: sirala,
+            Azalan: azalan);
     }
 }
 
@@ -170,7 +207,10 @@ public static class SezonAksiyonSiralama
             ["fazla"] = "CASE WHEN s.Elde > s.Satilacak THEN s.Elde - s.Satilacak ELSE 0 END",
             ["urun"] = "t.stkAd",
             ["kategori"] = "t.Kategori3",
-            ["satis365"] = "t.SatisToplam",
+            ["gecenayni"] = "ISNULL(gh.Adet, 0)",
+            ["buayni"] = "ISNULL(bh.Adet, 0)",
+            // Geçen yıl 0 ise oran YOK — sonsuz büyüme uydurulmaz, en sona düşer.
+            ["degisim"] = "CASE WHEN ISNULL(gh.Adet,0) > 0 THEN CONVERT(float, ISNULL(bh.Adet,0)) / gh.Adet END",
             ["sezon"] = "t.SezonToplam",
             ["satilacak"] = "s.Satilacak",
             ["magaza"] = "t.MagazaStok",

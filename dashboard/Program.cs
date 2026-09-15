@@ -312,6 +312,9 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     // Kardeş emitter scripts/sezon_aksiyon_listesi_excel.py ile AYNI kolon seti.
     var ustSatir = $"Kesim {filtre.Kesim:dd.MM.yyyy} · satılacak = sezonda satılan × " +
         $"{1 + filtre.Buyume:0.##} (büyüme %{filtre.Buyume * 100:0.##}) · " +
+        $"AYNI PENCERE: geçen {filtre.GecenPencere.Bas:dd.MM.yyyy}–{filtre.GecenPencere.Son:dd.MM.yyyy} · " +
+        $"bu {filtre.BuPencere.Bas:dd.MM.yyyy}–{filtre.BuPencere.Son:dd.MM.yyyy} ({filtre.HizaliGun} gün, " +
+        "okul açılışına hizalı — takvim günüyle hizalamak yanıltır) · " +
         "AÇIK = satılacak − (mağaza+depo), FAZLA = tersi · Tutar: AÇIK'ta satış fiyatı, " +
         "FAZLA'da maliyet — ikisi toplanmaz · Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı " +
         "24.02.2025'ten beri yazılmıyor) · FAZLA tutarı alt sınır · depo stoğu WMS'ten" +
@@ -323,7 +326,7 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     // ⚠ MiniExcel kolon kümesini İLK satırın anahtarlarından alır. Not satırı tek anahtar
     //   taşıyınca dosya TEK KOLON çıkıyordu (tablo sessizce kayboldu, hata YOK — ölçüldü
     //   15.09.2026). Bu yüzden HER satır 12 anahtarın hepsini taşır, boşlar null.
-    const int SezonAksiyonKolonSayisi = 12;
+    const int SezonAksiyonKolonSayisi = 21;
     static Dictionary<string, object?> Satir(params object?[] h)
     {
         var d = new Dictionary<string, object?>(SezonAksiyonKolonSayisi);
@@ -335,13 +338,17 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     var liste = new List<Dictionary<string, object?>>(satirlar.Count + 2)
     {
         Satir(ustSatir),
-        Satir("Ürün", "Kategori", "Barkod", "365 günde satılan", "Sezonda satılan",
-              "Satılacak", "Mağaza", "Depo", "Toplam stok", "AÇIK", "FAZLA", "Tutar"),
+        Satir("Ürün", "Kategori", "Kategori yolu", "Marka / Yayınevi", "Stok kodu", "Barkod",
+              "Geçen sezon aynı dönem", "Bu sezon aynı dönem", "Geçen sezon TAMAMI",
+              "Satılacak", "FSM", "Özlüce", "İst.Yolu", "Mağaza toplam", "Depo",
+              "Toplam stok", "AÇIK", "FAZLA", "Satış fiyatı", "Birim maliyet", "Tutar"),
     };
     foreach (var r in satirlar)
         liste.Add(Satir(
-            r.StkAd, r.Kategori3, r.Barkod, r.SatisToplam, r.SezonToplam, r.Satilacak,
-            r.MagazaStok, r.MerkezStok, r.ToplamStok, r.Acik, r.Fazla,
+            r.StkAd, r.Kategori3, r.KategoriYolu, r.Yayinevi, r.StkKod, r.Barkod,
+            r.GecenAyni, r.BuAyni, r.SezonToplam, r.Satilacak,
+            r.StokFsm, r.StokOzl, r.StokIst, r.MagazaStok, r.MerkezStok, r.ToplamStok,
+            r.Acik, r.Fazla, r.SatisFiyat, r.BirimMaliyet,
             // Tek tutar: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
             r.Acik > 0 ? r.AcikTutar : r.Fazla > 0 ? r.FazlaTutar : null));
 

@@ -104,6 +104,11 @@ bh AS (        -- BU yılın AYNI penceresi — gün sayısı gh ile BİREBİR a
 SELECT t.stkAd                                       AS [Ürün],
        t.Kategori3                                   AS [Kategori],
        {YOL}                                         AS [Kategori yolu],
+       -- ⚠ stkKod BARKOD DEĞİLDİR (sql-server-conventions) — ikisi ayrı alan.
+       --   Tabanda yalnız BarkodAna var; stkKod ürün master'ından okunur.
+       -- ⚠ Taban kolonu 'Yayinevi' ama kaynağı UrunBilgi.mrkAd = MARKA.
+       t.Yayinevi                                    AS [Marka / Yayınevi],
+       u.stkKod                                      AS [Stok kodu],
        t.BarkodAna                                   AS [Barkod],
        CONVERT(int, ISNULL(gh.Adet, 0))              AS [Geçen sezon aynı dönem],
        CONVERT(int, ISNULL(bh.Adet, 0))              AS [Bu sezon aynı dönem],
@@ -118,6 +123,7 @@ SELECT t.stkAd                                       AS [Ürün],
        CONVERT(decimal(18,4), CASE WHEN {MALIYET_GECERLI}
             THEN t.BirimMaliyet END)                 AS [Birim maliyet]
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
+LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
 LEFT JOIN gh ON gh.stkID = t.stkID
 LEFT JOIN bh ON bh.stkID = t.stkID
 CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
@@ -140,6 +146,8 @@ DUZEN: list[tuple[str, str]] = [
     ("Ürün",                   "ham"),
     ("Kategori",               "ham"),
     ("Kategori yolu",          "ham"),
+    ("Marka / Yayınevi",       "ham"),
+    ("Stok kodu",              "ham"),
     ("Barkod",                 "ham"),
     ("Geçen sezon aynı dönem", "ham"),   # okula hizalı N gün, GEÇEN yıl
     ("Bu sezon aynı dönem",    "ham"),   # AYNI N gün, BU yıl
@@ -314,11 +322,92 @@ def main() -> int:
             c.number_format = ('#,##0.00 "₺"' if ad == "Tutar"
                                else "0.00" if ad == "Değişim" else "#,##0")
 
-    genis = {"Ürün": 45, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15}
+    genis = {"Ürün": 45, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15, "Stok kodu": 13, "Marka / Yayınevi": 22}
     for j, ad in enumerate(kolonlar, start=1):
         ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(len(ad) + 2, 11))
     ws.freeze_panes = f"E{BAS_SATIR}"
     ws.auto_filter.ref = f"A3:{get_column_letter(len(kolonlar))}{len(sat) + BAS_SATIR - 1}"
+
+    # ══ MARKA ÖZETİ ═══════════════════════════════════════════════════════════
+    # GMY 15.09.2026: "marka bazlı özet sayfası da yapalım formüllü excel için".
+    #
+    # ⚠ NEDEN FORMÜL DEĞİL, DEĞER: ölçüldü — kohortta 2.636 ayrı marka var ve liste
+    #   85.274 satır. Marka başına SUMIFS/COUNTIFS (7 formül) yazılsaydı Excel her
+    #   yeniden hesapta 2.636 × 7 × 85.274 ≈ 1,6 milyar hücre karşılaştırması yapardı.
+    #   (Excel'de SÜRE ÖLÇÜLMEDİ — bu bir ÇIKARIM; ama risk alınmadı.)
+    #
+    # ⚠ DEĞER OLUNCA BAYATLAMA RİSKİ DOĞAR: LİSTE'de B2 büyümesi değişirse bu sayfa
+    #   ESKİ büyümeye göre kalır ve sessizce yanlış olur. O yüzden sayfada B2'yi izleyen
+    #   TEK CANLI FORMÜL var: büyüme değişirse kırmızı uyarı çıkar. Sessiz bayatlama yok.
+    mws = wb.create_sheet("MARKA")
+
+    marka: dict[str, list] = {}
+    import math as _m
+    for r in sat:
+        ad = (r[ix["Marka / Yayınevi"]] or "(marka yok)").strip() or "(marka yok)"
+        satilacak = _m.ceil((r[ix["Geçen sezon TAMAMI"]] or 0) * (1 + a.buyume))
+        elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
+                + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
+        g = marka.setdefault(ad, [0, 0, 0, 0.0, 0, 0, 0.0, 0, 0])
+        g[0] += 1                                   # çeşit
+        if satilacak > elde:
+            g[1] += 1                               # AÇIK ürün
+            g[2] += satilacak - elde                # AÇIK adet
+            g[3] += (satilacak - elde) * float(r[ix["Satış fiyatı"]] or 0)
+        elif elde > satilacak:
+            g[4] += 1                               # FAZLA ürün
+            g[5] += elde - satilacak                # FAZLA adet
+            mal = r[ix["Birim maliyet"]]
+            if mal is not None:
+                g[6] += (elde - satilacak) * float(mal)
+        g[7] += r[ix["Geçen sezon aynı dönem"]] or 0
+        g[8] += r[ix["Bu sezon aynı dönem"]] or 0
+
+    mbas = ["Marka / Yayınevi", "Çeşit", "AÇIK ürün", "AÇIK adet", "AÇIK ₺",
+            "FAZLA ürün", "FAZLA adet", "FAZLA ₺",
+            "Geçen sezon aynı dönem", "Bu sezon aynı dönem", "Değişim"]
+
+    mnot = (f"Marka bazlı özet · kesim {kesim:%d.%m.%Y} · büyüme %{a.buyume * 100:g} · "
+            f"{len(marka):,} marka".replace(",", ".") + " · "
+            "Tutarlar LİSTE ile aynı tabandan: AÇIK satış fiyatıyla, FAZLA maliyetle — "
+            "İKİSİ TOPLANMAZ. Değişim = bu dönem ÷ geçen dönem (aynı pencere).")
+    mws.cell(1, 1, mnot).font = Font(italic=True, size=9, color="555555")
+    mws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(mbas))
+    mws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
+    mws.row_dimensions[1].height = 30
+
+    # TEK CANLI FORMÜL — LİSTE!B2 değişirse bu sayfanın bayatladığını SÖYLER.
+    uyari = mws.cell(2, 1, f'=IF(ROUND(LİSTE!$B$2,6)<>{round(a.buyume, 6)},'
+                          f'"⚠ LİSTE sayfasında büyüme değiştirildi — bu özet '
+                          f'%{a.buyume * 100:g} ile hesaplandı, YENİDEN ÜRETİN.","")')
+    uyari.font = Font(bold=True, color="C00000", size=10)
+    mws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(mbas))
+
+    for j, b in enumerate(mbas, start=1):
+        h = mws.cell(3, j, b)
+        h.font = Font(bold=True, color="FFFFFF", size=10)
+        h.fill = LACI
+        h.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
+    mws.row_dimensions[3].height = 30
+
+    for i, (ad, g) in enumerate(sorted(marka.items(), key=lambda x: -x[1][3]), start=4):
+        # Değişim: geçen dönem 0 ise oran YOK — sonsuz büyüme uydurulmaz.
+        deg = (g[8] / g[7]) if g[7] > 0 else None
+        for j, v in enumerate([ad, g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8], deg],
+                              start=1):
+            c = mws.cell(i, j, v)
+            if j in (5, 8):
+                c.number_format = '#,##0 "₺"'
+            elif j == 11:
+                c.number_format = "0.00"
+            elif j > 1:
+                c.number_format = "#,##0"
+
+    mgenis = {"Marka / Yayınevi": 34}
+    for j, b in enumerate(mbas, start=1):
+        mws.column_dimensions[get_column_letter(j)].width = mgenis.get(b, max(len(b) + 2, 12))
+    mws.freeze_panes = "B4"
+    mws.auto_filter.ref = f"A3:{get_column_letter(len(mbas))}{len(marka) + 3}"
 
     # ── Konsol özeti — Excel'in hesaplayacağının AYNISI, Python'da ────────────
     #    (dosyada formül olduğu için openpyxl değer okuyamaz; kontrol burada)

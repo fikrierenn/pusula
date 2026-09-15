@@ -104,3 +104,22 @@ WHERE t.Kesim = @k AND t.SezonYil = 2025 AND t.SezonToplam > 0
 -- 08.09.2025 → 14.09.2026, altı gün kaydı. Ölçülmüş bedeli (14.09.2026, arşiv
 -- 2026-09-14-sezon-stok-yaniltici-alti-madde.sql): Hazırlık Kitapları sezon büyümesi
 -- takvimle 0,727 ("%27 küçüldü"), okula hizalı 1,104 ("%10 büyüdü") — ZIT sonuç.
+
+
+-- ── BLOK 5: TimeOnly.MaxValue → datetime YUVARLAMASI pencereyi 45 güne çıkarıyordu ──
+-- Panel "44 gün" yazıp 45 gün ölçüyordu (ekran 606, script/SQL 586). Sebep: C# tarafında
+-- üst sınır "son gün 23:59:59.9999999" olarak veriliyordu; SQL `datetime` kolonu 3,33 ms
+-- çözünürlüklü olduğu için bu değer BİR SONRAKİ GÜNE yuvarlanıyor ve okul AÇILIŞ GÜNÜNÜN
+-- satışı pencereye giriyor. Hata vermiyor, rakam yanlış oluyor.
+SELECT Yuvarlanmis = CONVERT(varchar(30),
+           CONVERT(datetime, CONVERT(datetime2(7), '2025-09-07T23:59:59.9999999')), 121),
+       SekizEylulSatisi = CONVERT(int, (
+           SELECT -SUM(h.ehAdetN) FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+           WHERE h.ehstkID = 486093 AND h.ehMekan IN (1,4477,4478)
+             AND h.ehTip IN (1,3,4,5,100,101)
+             AND h.ehTrhS >= '20250908' AND h.ehTrhS < '20250909'));
+/* SONUÇ: 23:59:59.9999999 → "2025-09-08 00:00:00.000" · 08.09.2025 satışı = 20 adet
+   Panel 606 − script 586 = 20 → farkın TAMAMI bu tek günden geliyordu.
+   ⇒ DÜZELTME: üst sınır DIŞLAYICI olmalı — `< açılış günü` (gece yarısı), asla
+     `<= son gün 23:59:59.9999999` değil. Kural: pencere üst sınırı her zaman
+     dışlayıcı ve GECE YARISI verilir; zaman bileşenli üst sınır yazılmaz. */

@@ -37,8 +37,37 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     /// ⚠ Kohort tanımı TEK yerde: KPI ile listenin ayrışması "kart 100 diyor, listede 80 var"
     /// sınıfı sessiz hatadır.
     /// </summary>
+    /// <summary>
+    /// AYNI PENCERE — iki yılın satışı BİREBİR aynı uzunlukta ölçülür (GMY 15.09.2026:
+    /// "aynı pencereye getirelim"). Pencere okul açılışına HİZALIDIR; takvim günüyle
+    /// hizalamak yanıltır (açılış 08.09.2025 → 14.09.2026, altı gün kaydı).
+    /// ⚠ Tabanda hazır değil — <c>SatisToplam</c> [kesim−364, kesim] penceresindedir ve
+    /// geçen sezonun başını KAÇIRIR. Bu yüzden iki dar CTE (44'er gün) ile canlı ölçülür.
+    /// </summary>
+    private const string PencereSql = $"""
+        WITH gh AS (
+            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @gBas AND h.ehTrhS < @gSonEx
+            GROUP BY h.ehstkID
+        ),
+        bh AS (
+            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @bBas AND h.ehTrhS < @bSonEx
+            GROUP BY h.ehstkID
+        )
+        """;
+
     private const string TabanSql = $"""
         FROM {Taban} t WITH (NOLOCK)
+        -- stkKod tabanda YOK (yalnız BarkodAna var) — ürün master'ından okunur.
+        -- ⚠ stkKod BARKOD DEĞİLDİR; eşleşme her zaman stkID üstünden.
+        LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
+        LEFT JOIN gh ON gh.stkID = t.stkID
+        LEFT JOIN bh ON bh.stkID = t.stkID
         CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + @buyume))),
                             Elde      = t.MagazaStok + t.MerkezStok) s
         WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
@@ -48,7 +77,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
           AND (@yalnizAcik  = 0 OR s.Satilacak > s.Elde)
           AND (@yalnizFazla = 0 OR s.Elde > s.Satilacak)
           AND (@kategori IS NULL OR t.Kategori3 = @kategori)
-          AND (@ara IS NULL OR t.stkAd LIKE @araLike OR t.BarkodAna = @ara)
+          AND (@ara IS NULL OR t.stkAd LIKE @araLike OR t.BarkodAna = @ara OR u.stkKod = @ara)
         """;
 
     /// <summary>Kategori yolu — panelin C# karşılığıyla (SatisAnaliziHucre.KategoriYolu) AYNI kural.</summary>
@@ -66,6 +95,19 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         p.Add("kesim", f.Kesim.ToDateTime(TimeOnly.MinValue));
         p.Add("sezon", f.SezonYil);
         p.Add("buyume", f.Buyume);
+        var (gb, _) = f.GecenPencere;
+        var (bb, _) = f.BuPencere;
+        // ⚠⚠ ÜST SINIR DIŞLAYICI (< açılış günü), "<= son gün 23:59:59.9999999" DEĞİL.
+        //   ÖLÇÜLDÜ 15.09.2026: TimeOnly.MaxValue SQL `datetime` kolonuna yazılırken
+        //   BİR SONRAKİ GÜNE YUVARLANIYOR (23:59:59.9999999 → 08.09.2025 00:00:00.000,
+        //   datetime 3,33 ms çözünürlüklü). Sonuç: pencere 44 değil 45 gün oluyordu ve
+        //   okul AÇILIŞ GÜNÜNÜN satışı içeri giriyordu. stkID 486093'te tam 20 adet fark
+        //   (panel 606 / script 586). Ekran "44 gün" yazıp 45 gün ölçüyordu — sessiz sapma.
+        //   Kanıt: sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql blok 5.
+        p.Add("gBas", gb.ToDateTime(TimeOnly.MinValue));
+        p.Add("gSonEx", f.AcilisGecenVeya.ToDateTime(TimeOnly.MinValue));
+        p.Add("bBas", bb.ToDateTime(TimeOnly.MinValue));
+        p.Add("bSonEx", f.AcilisBuVeya.ToDateTime(TimeOnly.MinValue));
         p.Add("yalnizAcik", f.Durum == "acik" ? 1 : 0);
         p.Add("yalnizFazla", f.Durum == "fazla" ? 1 : 0);
         p.Add("kategori", string.IsNullOrWhiteSpace(f.Kategori3) ? null : f.Kategori3);
@@ -100,6 +142,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     public async Task<SezonAksiyonOzet> GetOzetAsync(SezonAksiyonFiltre f, CancellationToken ct = default)
     {
         var sql = $"""
+            {PencereSql}
             SELECT CONVERT(int, COUNT(*))                                                  AS Cesit,
                    CONVERT(int,  SUM(CASE WHEN s.Satilacak > s.Elde THEN 1 ELSE 0 END))    AS AcikUrun,
                    CONVERT(bigint, SUM(CASE WHEN s.Satilacak > s.Elde
@@ -115,6 +158,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
                                           THEN 1 ELSE 0 END))                              AS MaliyetiYok
             {TabanSql};
 
+            {PencereSql}
             SELECT ISNULL(t.Kategori3, N'(boş)')                                           AS Kategori,
                    CONVERT(int, COUNT(*))                                                  AS Cesit,
                    CONVERT(int,  SUM(CASE WHEN s.Satilacak > s.Elde THEN 1 ELSE 0 END))    AS AcikUrun,
@@ -169,15 +213,20 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     /// </summary>
     private static string KolonlarSql => $"""
             t.stkID                                   AS StkId,
+            u.stkKod                                  AS StkKod,
             t.BarkodAna                               AS Barkod,
             t.stkAd                                   AS StkAd,
             t.Kategori3                               AS Kategori3,
             {YolSql}                                  AS KategoriYolu,
             t.Yayinevi                                AS Yayinevi,
             CONVERT(decimal(18,2), t.SatisFiyat)      AS SatisFiyat,
-            t.SatisToplam                             AS SatisToplam,
+            CONVERT(int, ISNULL(gh.Adet, 0))          AS GecenAyni,
+            CONVERT(int, ISNULL(bh.Adet, 0))          AS BuAyni,
             t.SezonToplam                             AS SezonToplam,
             s.Satilacak                               AS Satilacak,
+            t.StokFsm                                 AS StokFsm,
+            t.StokOzl                                 AS StokOzl,
+            t.StokIst                                 AS StokIst,
             t.MagazaStok                              AS MagazaStok,
             t.MerkezStok                              AS MerkezStok,
             s.Elde                                    AS ToplamStok,
@@ -196,8 +245,10 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         var yon = f.Azalan ? "DESC" : "ASC";
         // ⚠ COUNT(*) OVER () KULLANILMIYOR: Satış Analizi'nde sayfa başına 1,2 s ekliyordu.
         var sql = $"""
+            {PencereSql}
             SELECT CONVERT(int, COUNT(*)) {TabanSql};
 
+            {PencereSql}
             SELECT {KolonlarSql}
             {TabanSql}
             ORDER BY {SezonAksiyonSiralama.Sql(f.Sirala)} {yon}, t.stkID
@@ -224,6 +275,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     {
         var yon = f.Azalan ? "DESC" : "ASC";
         var sql = $"""
+            {PencereSql}
             SELECT {KolonlarSql}
             {TabanSql}
             ORDER BY {SezonAksiyonSiralama.Sql(f.Sirala)} {yon}, t.stkID

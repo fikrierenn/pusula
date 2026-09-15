@@ -28,7 +28,13 @@
 
 <div class="max-w-[1400px] mx-auto px-3 py-4">
 
-    <h1 class="text-lg font-semibold m-0 mb-3">Sezon Aksiyon Listesi</h1>
+    <h1 class="text-lg font-semibold m-0">Sezon Aksiyon Listesi</h1>
+    <p class="text-xs text-base-content/50 m-0 mt-0.5 mb-3">
+        Geçen ve bu sezon <b>aynı pencerede</b> karşılaştırılıyor — okul açılışından geriye
+        @_filtre.HizaliGun gün (@_filtre.GecenPencere.Bas.ToString("dd.MM.yy") –
+        @_filtre.GecenPencere.Son.ToString("dd.MM.yy") · bu yıl
+        @_filtre.BuPencere.Bas.ToString("dd.MM.yy") – @_filtre.BuPencere.Son.ToString("dd.MM.yy")).
+    </p>
 
     @* ── SÜZGEÇLER — tek satır ──────────────────────────────────────────────────── *@
     <div class="flex flex-wrap gap-2 items-center mb-4">
@@ -214,7 +220,14 @@
                                     title="Ürün detayına git">
                                     <td class="max-w-[26rem] truncate" title="@s.StkAd">@s.StkAd</td>
                                     <td class="whitespace-nowrap text-base-content/60">@s.Kategori3</td>
-                                    <td class="text-right tabular-nums">@Say(s.SatisToplam)</td>
+                                    <td class="text-right tabular-nums">@Say(s.GecenAyni)</td>
+                                    @* Bu sezon SIFIR sattıysa kırmızı: "sipariş et" diyen satırın
+                                       aslında talebi olmayabilir. Ölçüldü — AÇIK listesindeki
+                                       10.865 üründe mal RAFTA duruyor ve 44 günde hiç satmamış. *@
+                                    <td class="text-right tabular-nums @(s.BuAyni == 0 && s.GecenAyni > 0 ? "text-error font-semibold" : "")">
+                                        @Say(s.BuAyni)
+                                    </td>
+                                    <td class="text-right tabular-nums @Degisim(s).Renk">@Degisim(s).Metin</td>
                                     <td class="text-right tabular-nums">@Say(s.SezonToplam)</td>
                                     <td class="text-right tabular-nums font-semibold">@Say(s.Satilacak)</td>
                                     <td class="text-right tabular-nums">@Say(s.MagazaStok)</td>
@@ -265,6 +278,13 @@
                         @((1 + _filtre.Buyume).ToString("0.##", _tr)). Büyüme TEK sayıdır, yukarıdan
                         değişir — ürün ya da kategori bazlı ölçülmüş bir büyüme DEĞİLDİR.</li>
                     <li><b>AÇIK</b> = satılacak − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
+                    <li><b>Aynı pencere</b> iki yıl için de okul açılışından geriye
+                        @_filtre.HizaliGun gündür. Takvim günüyle hizalamak yanıltır: açılış
+                        08.09.2025 → 14.09.2026, altı gün kaydı. Ölçüldü — Hazırlık Kitapları
+                        büyümesi takvimle 0,73 ("%27 küçüldü"), hizalı 1,10 ("%10 büyüdü").</li>
+                    <li><b>"Bu sezon aynı dönem" 0 ise dikkat:</b> AÇIK listesindeki 10.865
+                        üründe mal RAFTA duruyor ve 44 günde hiç satmamış (40,4M ₺). Orada
+                        eksik olan stok değil, talep — sipariş yanlış eylem olur.</li>
                     <li><b>İki tutar toplanmaz:</b> AÇIK ₺ satış fiyatıyla, FAZLA ₺ maliyetle.</li>
                     <li><b>Açık sipariş düşülmedi.</b> ERP'de "kapalı" durumu 24.02.2025'ten beri
                         yazılmıyor; kapatılmamış alış siparişi adedinin %86,4'ü bir yıldan eski
@@ -301,8 +321,11 @@
     [
         new("urun", "Ürün", false),
         new("kategori", "Kategori", false),
-        new("satis365", "365 günde satılan", true),
-        new("sezon", "Sezonda satılan", true),
+        // ── AYNI PENCERE: iki yıl da okul açılışından geriye AYNI gün sayısı ──
+        new("gecenayni", "Geçen sezon aynı dönem", true),
+        new("buayni", "Bu sezon aynı dönem", true),
+        new("degisim", "Değişim", true),
+        new("sezon", "Geçen sezon TAMAMI", true),
         new("satilacak", "Satılacak", true),
         new("magaza", "Mağaza", true),
         new("depo", "Depo", true),
@@ -429,6 +452,18 @@
     private void UrunAc(int stkId) =>
         Nav.NavigateTo($"/satis-analizi/urun/{stkId}?kesim={_filtre.Kesim:yyyy-MM-dd}"
                        + $"&sezon={_filtre.SezonYil}&geri={Uri.EscapeDataString("/sezon-aksiyon")}");
+
+    /// <summary>
+    /// Değişim = bu dönem ÷ geçen dönem. Geçen yıl 0 ise oran YOK — "sonsuz büyüme"
+    /// uydurmak yerine "—" yazılır (aynı pencere olduğu için oran meşru, taban yoksa değil).
+    /// </summary>
+    private static (string Metin, string Renk) Degisim(SezonAksiyonSatir s)
+    {
+        if (s.GecenAyni <= 0) return ("—", "text-base-content/25");
+        var o = (decimal)s.BuAyni / s.GecenAyni;
+        var renk = o >= 1m ? "text-success" : o >= 0.5m ? "" : "text-error";
+        return (o.ToString("0.00", _tr), renk);
+    }
 
     private static string Say(long n) => n.ToString("N0", _tr);
 
