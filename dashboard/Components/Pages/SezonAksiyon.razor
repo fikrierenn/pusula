@@ -245,6 +245,13 @@
                                     </td>
                                     <td class="text-right tabular-nums @Degisim(s).Renk">@Degisim(s).Metin</td>
                                     <td class="text-right tabular-nums">@Say(s.SezonToplam)</td>
+                                    <td class="text-right tabular-nums">@Say(s.Yillik)</td>
+                                    @* Sezon dışı = yıllık − sezon. EKSİ olabilir (iade fazlası,
+                                       ölçüldü: 29 çeşit) — sıfıra KIRPILMIYOR, kırpmak iadeyi
+                                       gizlemek olurdu. Eksi değer kırmızı gösteriliyor. *@
+                                    <td class="text-right tabular-nums @(s.Yillik - s.SezonToplam < 0 ? "text-error" : "")">
+                                        @Say(s.Yillik - s.SezonToplam)
+                                    </td>
                                     <td class="text-right tabular-nums font-semibold">@Say(s.Satilacak)</td>
                                     <td class="text-right tabular-nums">@Say(s.MagazaStok)</td>
                                     <td class="text-right tabular-nums">@Say(s.MerkezStok)</td>
@@ -336,23 +343,36 @@
     private sealed record Kolon(string Anahtar, string Baslik, bool Sag);
 
     /// <summary>Kolon sırası = gövdedeki &lt;td&gt; sırası. Biri değişirse öteki de değişir.</summary>
-    private static readonly Kolon[] Kolonlar =
-    [
-        new("urun", "Ürün", false),
-        new("kategori", "Kategori", false),
-        // ── AYNI PENCERE: iki yıl da okul açılışından geriye AYNI gün sayısı ──
-        new("gecenayni", "Geçen sezon aynı dönem", true),
-        new("buayni", "Bu sezon aynı dönem", true),
-        new("degisim", "Değişim", true),
-        new("sezon", "Geçen sezon TAMAMI", true),
-        new("satilacak", "Satılacak", true),
-        new("magaza", "Mağaza", true),
-        new("depo", "Depo", true),
-        new("stok", "Toplam stok", true),
-        new("acik", "AÇIK", true),
-        new("fazla", "FAZLA", true),
-        new("tutar", "₺", true),
-    ];
+    /// <summary>
+    /// Kolon sırası = gövdedeki &lt;td&gt; sırası. Başlıklar TARİHLİ üretilir
+    /// (GMY 15.09.2026: "kolonların içinde tarihler de olsun kafa karışmasın") —
+    /// bu yüzden sabit dizi değil, filtreden türeyen bir metot.
+    /// </summary>
+    private IEnumerable<Kolon> Kolonlar
+    {
+        get
+        {
+            var (gb, gs) = _filtre.GecenPencere;
+            var (bb, bs) = _filtre.BuPencere;
+            var (yb, ys) = _filtre.YilPencere;
+            string T(DateOnly d) => d.ToString("dd.MM.yy");
+            yield return new("urun", "Ürün", false);
+            yield return new("kategori", "Kategori", false);
+            yield return new("gecenayni", $"Geçen yıl {T(gb)}–{T(gs)}", true);
+            yield return new("buayni", $"Bu yıl {T(bb)}–{T(bs)}", true);
+            yield return new("degisim", "Değişim", true);
+            yield return new("sezon", $"Sezon toplam 01.08–31.10.{_filtre.SezonYil % 100:00}", true);
+            yield return new("yillik", $"Yıllık {T(yb)}–{T(ys)}", true);
+            yield return new("sezondisi", $"Sezon dışı 01.11.{_filtre.SezonYil % 100:00}–{T(ys)}", true);
+            yield return new("satilacak", "Satılacak", true);
+            yield return new("magaza", $"Mağaza {T(_filtre.Kesim)}", true);
+            yield return new("depo", $"Depo {T(_filtre.Kesim)}", true);
+            yield return new("stok", $"Toplam stok {T(_filtre.Kesim)}", true);
+            yield return new("acik", "AÇIK", true);
+            yield return new("fazla", "FAZLA", true);
+            yield return new("tutar", "₺", true);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

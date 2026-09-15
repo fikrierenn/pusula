@@ -58,6 +58,13 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
             WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
               AND h.ehTrhS >= @bBas AND h.ehTrhS < @bSonEx
             GROUP BY h.ehstkID
+        ),
+        yl AS (   -- YILLIK 365 gün: 01.08.<sezon> – 31.07.<sezon+1>, HER ŞEY dahil
+            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @yBas AND h.ehTrhS < @ySonEx
+            GROUP BY h.ehstkID
         )
         """;
 
@@ -68,6 +75,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
         LEFT JOIN gh ON gh.stkID = t.stkID
         LEFT JOIN bh ON bh.stkID = t.stkID
+        LEFT JOIN yl ON yl.stkID = t.stkID
         CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + @buyume))),
                             Elde      = t.MagazaStok + t.MerkezStok) s
         WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
@@ -108,6 +116,9 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         p.Add("gSonEx", gsn.AddDays(1).ToDateTime(TimeOnly.MinValue));
         p.Add("bBas", bb.ToDateTime(TimeOnly.MinValue));
         p.Add("bSonEx", bsn.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        var (yb, ysn) = f.YilPencere;
+        p.Add("yBas", yb.ToDateTime(TimeOnly.MinValue));
+        p.Add("ySonEx", ysn.AddDays(1).ToDateTime(TimeOnly.MinValue));
         p.Add("yalnizAcik", f.Durum == "acik" ? 1 : 0);
         p.Add("yalnizFazla", f.Durum == "fazla" ? 1 : 0);
         p.Add("kategori", string.IsNullOrWhiteSpace(f.Kategori3) ? null : f.Kategori3);
@@ -223,6 +234,7 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
             CONVERT(int, ISNULL(gh.Adet, 0))          AS GecenAyni,
             CONVERT(int, ISNULL(bh.Adet, 0))          AS BuAyni,
             t.SezonToplam                             AS SezonToplam,
+            CONVERT(int, ISNULL(yl.Adet, 0))          AS Yillik,
             s.Satilacak                               AS Satilacak,
             t.StokFsm                                 AS StokFsm,
             t.StokOzl                                 AS StokOzl,

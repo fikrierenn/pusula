@@ -19,6 +19,7 @@
         Geçen yılın penceresi bu yılınkinin ay/gün AYNASIDIR → uzunluk her zaman EŞİT.
         ⚠ Farklı uzunlukta iki pencere SAHTE büyüme üretir ve hata vermez.
      2) SEZON AYLARI (taban)  Ağustos · Eylül · Ekim — ayrı kolon, toplamı Satılacak'ın tabanı
+        SEZON DIŞI = Yıllık − Sezon (Kas–Tem). GMY: "ayrıca sezon dışı ... toplam satış".
      3) YILLIK (bağlam)       01.08.2025–31.07.2026, 365 gün. GMY: "01/08/2025-31/07/2026
         arası olsun 365 gün". Geçen sezonu TAM İÇERİR, bu sezona TAŞMAZ.
         ⚠ Eski "365 günde satılan" [kesim−364, kesim] idi ve geçen sezonun başını
@@ -111,8 +112,8 @@ SELECT t.stkAd                                         AS [Ürün],
        t.stkID                                         AS [stkID],
 
        -- ── AYNI PENCERE ─────────────────────────────────────────────────────
-       CONVERT(int, ISNULL(gh.Adet, 0))                AS [Geçen sezon aynı dönem],
-       CONVERT(int, ISNULL(bh.Adet, 0))                AS [Bu sezon aynı dönem],
+       CONVERT(int, ISNULL(gh.Adet, 0))                AS [Geçen yıl aynı dönem],
+       CONVERT(int, ISNULL(bh.Adet, 0))                AS [Bu yıl 01.08-bugün],
        -- Geçen yıl 0 ise oran YOK (NULL) — "sonsuz büyüme" uydurulmaz.
        CONVERT(decimal(10,2), CASE WHEN ISNULL(gh.Adet, 0) > 0
             THEN CONVERT(float, ISNULL(bh.Adet, 0)) / gh.Adet END)      AS [Değişim],
@@ -121,8 +122,14 @@ SELECT t.stkAd                                         AS [Ürün],
        t.Ay1                                           AS [Ağustos],
        t.Ay2                                           AS [Eylül],
        t.Ay3                                           AS [Ekim],
-       t.SezonToplam                                   AS [Geçen sezon TAMAMI],
-       CONVERT(int, ISNULL(yl.Adet, 0))                AS [Yıllık satış],
+       t.SezonToplam                                   AS [Sezon toplam],
+       CONVERT(int, ISNULL(yl.Adet, 0))                AS [Yıllık toplam],
+       -- SEZON DIŞI = yıllık − sezon → Kasım–Temmuz net satışı.
+       -- ⚠ EKSİ ÇIKABİLİR ve bu GERÇEKTİR: o aylarda iade satıştan fazlaysa net negatiftir.
+       --   ÖLÇÜLDÜ 15.09.2026: 85.274 çeşidin 29'unda öyle (stkID 1545705 — sezon 7 adet,
+       --   Haz-2026'da 13 adet iade → yıllık −1, sezon dışı −8). Sıfıra KIRPILMIYOR;
+       --   kırpmak iadeyi gizlemek olurdu.
+       CONVERT(int, ISNULL(yl.Adet, 0) - t.SezonToplam) AS [Sezon dışı],
        s.Satilacak                                     AS [Satılacak],
 
        -- ── STOK ─────────────────────────────────────────────────────────────

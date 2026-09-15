@@ -120,14 +120,14 @@ SELECT t.stkAd                                       AS [Ürün],
        t.Yayinevi                                    AS [Marka / Yayınevi],
        u.stkKod                                      AS [Stok kodu],
        t.BarkodAna                                   AS [Barkod],
-       CONVERT(int, ISNULL(gh.Adet, 0))              AS [Geçen sezon aynı dönem],
-       CONVERT(int, ISNULL(bh.Adet, 0))              AS [Bu sezon aynı dönem],
+       CONVERT(int, ISNULL(gh.Adet, 0))              AS [Geçen yıl aynı dönem],
+       CONVERT(int, ISNULL(bh.Adet, 0))              AS [Bu yıl 01.08–bugün],
        -- SEZON AYLARI AYRI (GMY 15.09.2026: "sezon 8 9 10 ayrı olsun").
        -- Taban Ay1/Ay2/Ay3 = geçen sezonun Ağu/Eyl/Eki'si; toplamları SezonToplam.
        t.Ay1                                         AS [Ağustos],
        t.Ay2                                         AS [Eylül],
        t.Ay3                                         AS [Ekim],
-       CONVERT(int, ISNULL(yl.Adet, 0))              AS [Yıllık satış],
+       CONVERT(int, ISNULL(yl.Adet, 0))              AS [Yıllık toplam],
        t.StokFsm                                     AS [FSM],
        t.StokOzl                                  AS [Özlüce],
        t.StokIst                                     AS [İst.Yolu],
@@ -165,14 +165,15 @@ DUZEN: list[tuple[str, str]] = [
     ("Marka / Yayınevi",       "ham"),
     ("Stok kodu",              "ham"),
     ("Barkod",                 "ham"),
-    ("Geçen sezon aynı dönem", "ham"),   # okula hizalı N gün, GEÇEN yıl
-    ("Bu sezon aynı dönem",    "ham"),   # AYNI N gün, BU yıl
+    ("Geçen yıl aynı dönem",   "ham"),   # 01.08 – kesimin ay/günü, GEÇEN yıl
+    ("Bu yıl 01.08–bugün",     "ham"),   # AYNI pencere, BU yıl
     ("Değişim",                "f"),     # =Bu/Geçen  (aynı pencere → kıyaslanabilir)
     ("Ağustos",                "ham"),   # geçen sezon
     ("Eylül",                  "ham"),
     ("Ekim",                   "ham"),
     ("Geçen sezon TAMAMI",     "f"),     # =Ağustos+Eylül+Ekim (toplandığı GÖRÜNSÜN)
-    ("Yıllık satış",           "ham"),   # 01.08.<sezon> – 31.07.<sezon+1>, 365 gün   # Ağu–Eki — "Satılacak"ın tabanı
+    ("Yıllık toplam",          "ham"),   # 01.08.<sezon> – 31.07.<sezon+1>, 365 gün (HER ŞEY)
+    ("Sezon dışı",             "f"),     # =Yıllık toplam − Geçen sezon TAMAMI (Kas–Tem)   # Ağu–Eki — "Satılacak"ın tabanı
     ("Satılacak",              "f"),     # =CEILING(Geçen sezon TAMAMI × (1+büyüme); 1)
     ("FSM",                    "ham"),
     ("Özlüce",                 "ham"),
@@ -435,6 +436,30 @@ def main() -> int:
     #   seçer, Excel durum çubuğunda görür.
     kolonlar = [ad for ad, _ in DUZEN]
     K = {ad: get_column_letter(j) for j, (ad, _) in enumerate(DUZEN, start=1)}
+
+    # ── BAŞLIKTA TARİH (GMY 15.09.2026: "kolonların içinde tarihler de olsun kafa
+    #    karışmasın"). İÇ ANAHTAR değişmez — yalnız GÖRÜNEN ad tarihlenir; formüller
+    #    K[anahtar] ile kolon harfinden gider, bu yüzden ad değişimi hiçbir şeyi kırmaz.
+    ay_adi = {8: "Ağustos", 9: "Eylül", 10: "Ekim"}
+    GOSTER = {
+        "Geçen yıl aynı dönem": f"Geçen yıl\n{g_bas:%d.%m.%y}–{g_son:%d.%m.%y}",
+        "Bu yıl 01.08–bugün":   f"Bu yıl\n{b_bas:%d.%m.%y}–{b_son:%d.%m.%y}",
+        "Değişim":              "Değişim\n(bu ÷ geçen)",
+        "Ağustos":              f"{ay_adi[8]} {a.sezon}",
+        "Eylül":                f"{ay_adi[9]} {a.sezon}",
+        "Ekim":                 f"{ay_adi[10]} {a.sezon}",
+        "Geçen sezon TAMAMI":   f"Sezon toplam\n01.08.{a.sezon % 100:02d}–31.10.{a.sezon % 100:02d}",
+        "Yıllık toplam":        f"Yıllık toplam\n{y_bas:%d.%m.%y}–{y_son:%d.%m.%y}",
+        "Sezon dışı":           f"Sezon dışı\n01.11.{a.sezon % 100:02d}–{y_son:%d.%m.%y}",
+        "Satılacak":            f"Satılacak\n(sezon × {(1 + a.buyume):g})".replace(".", ","),
+        "FSM":                  f"FSM\n{kesim:%d.%m.%y}",
+        "Özlüce":               f"Özlüce\n{kesim:%d.%m.%y}",
+        "İst.Yolu":             f"İst.Yolu\n{kesim:%d.%m.%y}",
+        "Mağaza toplam":        f"Mağaza toplam\n{kesim:%d.%m.%y}",
+        "Depo":                 f"Depo\n{kesim:%d.%m.%y}",
+        "Toplam stok":          f"Toplam stok\n{kesim:%d.%m.%y}",
+        "Tutar":                "Tutar\n(AÇIK'ta fiyat, FAZLA'da maliyet)",
+    }
     BAS_SATIR = 4                      # 1 not · 2 büyüme · 3 başlık · 4+ veri
 
     wb = Workbook()
@@ -444,8 +469,9 @@ def main() -> int:
     ust = (f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} (Ağu–Eki) · "
            f"AYNI PENCERE: geçen {g_bas:%d.%m.%Y}–{g_son:%d.%m.%Y} · "
            f"bu {b_bas:%d.%m.%Y}–{b_son:%d.%m.%Y} ({(b_son - b_bas).days + 1} gün, eşit) · "
-           f"YILLIK satış {y_bas:%d.%m.%Y}–{y_son:%d.%m.%Y} ({(y_son - y_bas).days + 1} gün, "
-           "geçen sezonu tam içerir, bu sezona taşmaz) · "
+           f"YILLIK toplam {y_bas:%d.%m.%Y}–{y_son:%d.%m.%Y} ({(y_son - y_bas).days + 1} gün, "
+           "HER ŞEY dahil) · Sezon dışı = yıllık − sezon (Kas–Tem; iade fazlaysa EKSİ olur, "
+           "29 çeşitte öyle) · "
            "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
            "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
            "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
@@ -467,11 +493,11 @@ def main() -> int:
             ).font = Font(italic=True, size=9, color="555555")
 
     for j, ad in enumerate(kolonlar, start=1):
-        h = ws.cell(3, j, ad)
+        h = ws.cell(3, j, GOSTER.get(ad, ad))
         h.font = Font(bold=True, color="FFFFFF", size=10)
         h.fill = LACI
         h.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
-    ws.row_dimensions[3].height = 30
+    ws.row_dimensions[3].height = 40
 
     for i, r in enumerate(sat, start=BAS_SATIR):
         for j, (ad, tip) in enumerate(DUZEN, start=1):
@@ -490,8 +516,13 @@ def main() -> int:
                 "Satılacak":     f'=CEILING({K["Geçen sezon TAMAMI"]}{i}*(1+$B$2),1)',
                 # AYNI PENCERE olduğu için bu oran kıyaslanabilir. Geçen yıl 0 ise
                 # bölme yapılmaz (BOŞ) — "sonsuz büyüme" uydurmak olurdu.
-                "Değişim": (f'=IF({K["Geçen sezon aynı dönem"]}{i}>0,'
-                            f'{K["Bu sezon aynı dönem"]}{i}/{K["Geçen sezon aynı dönem"]}{i},"")'),
+                "Değişim": (f'=IF({K["Geçen yıl aynı dönem"]}{i}>0,'
+                            f'{K["Bu yıl 01.08–bugün"]}{i}/{K["Geçen yıl aynı dönem"]}{i},"")'),
+                # SEZON DIŞI = yıllık − sezon → Kasım–Temmuz net satışı.
+                # ⚠ EKSİ ÇIKABİLİR ve bu GERÇEKTİR: o aylarda iade satıştan fazlaysa net
+                #   negatiftir (ölçüldü: 85.274 çeşidin 29'u; stkID 1545705 Haz-2026'da
+                #   13 adet iade). Sıfıra kırpılmıyor — kırpmak iadeyi gizlemek olurdu.
+                "Sezon dışı": (f'={K["Yıllık toplam"]}{i}-{K["Geçen sezon TAMAMI"]}{i}'),
                 "Mağaza toplam": f'={K["FSM"]}{i}+{K["Özlüce"]}{i}+{K["İst.Yolu"]}{i}',
                 "Toplam stok":   f'={K["Mağaza toplam"]}{i}+{K["Depo"]}{i}',
                 "AÇIK":          f'=MAX(0,{K["Satılacak"]}{i}-{K["Toplam stok"]}{i})',
@@ -512,9 +543,11 @@ def main() -> int:
                                else "0.00" if ad == "Değişim"
                                else "General" if ad == "Durum" else "#,##0")
 
-    genis = {"Ürün": 45, "Yıllık satış": 13, "Durum": 10, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15, "Stok kodu": 13, "Marka / Yayınevi": 22}
+    genis = {"Ürün": 45, "Yıllık toplam": 13, "Sezon dışı": 12, "Durum": 10, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15, "Stok kodu": 13, "Marka / Yayınevi": 22}
     for j, ad in enumerate(kolonlar, start=1):
-        ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(len(ad) + 2, 11))
+        gor = GOSTER.get(ad, ad)
+        en_uzun = max((len(p) for p in gor.split("\n")), default=len(ad))
+        ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(en_uzun + 2, 11))
     for gizli in ("AÇIK ₺", "FAZLA ₺"):
         ws.column_dimensions[K[gizli]].hidden = True
 
@@ -554,12 +587,13 @@ def main() -> int:
             mal = r[ix["Birim maliyet"]]
             if mal is not None:
                 g[6] += (elde - satilacak) * float(mal)
-        g[7] += r[ix["Geçen sezon aynı dönem"]] or 0
-        g[8] += r[ix["Bu sezon aynı dönem"]] or 0
+        g[7] += r[ix["Geçen yıl aynı dönem"]] or 0
+        g[8] += r[ix["Bu yıl 01.08–bugün"]] or 0
 
     mbas = ["Marka / Yayınevi", "Çeşit", "AÇIK ürün", "AÇIK adet", "AÇIK ₺",
             "FAZLA ürün", "FAZLA adet", "FAZLA ₺",
-            "Geçen sezon aynı dönem", "Bu sezon aynı dönem", "Değişim"]
+            f"Geçen yıl\n{g_bas:%d.%m.%y}–{g_son:%d.%m.%y}",
+            f"Bu yıl\n{b_bas:%d.%m.%y}–{b_son:%d.%m.%y}", "Değişim"]
 
     mnot = (f"Marka bazlı özet · kesim {kesim:%d.%m.%Y} · büyüme %{a.buyume * 100:g} · "
             f"{len(marka):,} marka".replace(",", ".") + " · "
@@ -582,7 +616,7 @@ def main() -> int:
         h.font = Font(bold=True, color="FFFFFF", size=10)
         h.fill = LACI
         h.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
-    mws.row_dimensions[3].height = 30
+    mws.row_dimensions[3].height = 40
 
     for i, (ad, g) in enumerate(sorted(marka.items(), key=lambda x: -x[1][3]), start=4):
         # Değişim: geçen dönem 0 ise oran YOK — sonsuz büyüme uydurulmaz.

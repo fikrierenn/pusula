@@ -33,6 +33,10 @@ public sealed record SezonAksiyonSatir(
     int GecenAyni,          // geçen yıl, okul açılışından geriye N gün
     int BuAyni,             // BU yıl, AYNI N gün — kıyaslanabilir
     int SezonToplam,        // geçen sezon TAMAMI (Ağu–Eki) — "Satılacak"ın tabanı
+    // YILLIK: 01.08.<sezon> – 31.07.<sezon+1> (365 gün). HER ŞEY dahil.
+    // Sezon dışı = Yillik − SezonToplam (Kas–Tem); EKSİ olabilir (iade fazlası) ve
+    // sıfıra KIRPILMAZ — kırpmak iadeyi gizlemek olurdu (ölçüldü: 29 çeşit).
+    int Yillik,
     int Satilacak,
     int StokFsm,
     int StokOzl,
@@ -96,6 +100,11 @@ public sealed record SezonAksiyonFiltre(
 
     /// <summary>Sezon ayları — GMY kararı 15.09.2026: <i>"sezon 8 9 10 olsun"</i>.</summary>
     public const int SezonBasAy = 8;
+
+    /// <summary>YILLIK pencere: 01.08.&lt;sezon&gt; – 31.07.&lt;sezon+1&gt; (365 gün).</summary>
+    public (DateOnly Bas, DateOnly Son) YilPencere =>
+        (new DateOnly(SezonYil, SezonBasAy, 1),
+         new DateOnly(SezonYil + 1, SezonBasAy, 1).AddDays(-1));
     public const int SezonSonAy = 10;
 
     /// <summary>
@@ -261,6 +270,8 @@ public static class SezonAksiyonSiralama
             ["urun"] = "t.stkAd",
             ["kategori"] = "t.Kategori3",
             ["gecenayni"] = "ISNULL(gh.Adet, 0)",
+            ["yillik"] = "ISNULL(yl.Adet, 0)",
+            ["sezondisi"] = "(ISNULL(yl.Adet, 0) - t.SezonToplam)",
             ["buayni"] = "ISNULL(bh.Adet, 0)",
             // Geçen yıl 0 ise oran YOK — sonsuz büyüme uydurulmaz, en sona düşer.
             ["degisim"] = "CASE WHEN ISNULL(gh.Adet,0) > 0 THEN CONVERT(float, ISNULL(bh.Adet,0)) / gh.Adet END",

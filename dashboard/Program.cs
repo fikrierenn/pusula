@@ -327,7 +327,7 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     // ⚠ MiniExcel kolon kümesini İLK satırın anahtarlarından alır. Not satırı tek anahtar
     //   taşıyınca dosya TEK KOLON çıkıyordu (tablo sessizce kayboldu, hata YOK — ölçüldü
     //   15.09.2026). Bu yüzden HER satır 12 anahtarın hepsini taşır, boşlar null.
-    const int SezonAksiyonKolonSayisi = 21;
+    const int SezonAksiyonKolonSayisi = 23;
     static Dictionary<string, object?> Satir(params object?[] h)
     {
         var d = new Dictionary<string, object?>(SezonAksiyonKolonSayisi);
@@ -340,14 +340,18 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     {
         Satir(ustSatir),
         Satir("Ürün", "Kategori", "Kategori yolu", "Marka / Yayınevi", "Stok kodu", "Barkod",
-              "Geçen sezon aynı dönem", "Bu sezon aynı dönem", "Geçen sezon TAMAMI",
+              $"Geçen yıl {filtre.GecenPencere.Bas:dd.MM.yy}–{filtre.GecenPencere.Son:dd.MM.yy}",
+              $"Bu yıl {filtre.BuPencere.Bas:dd.MM.yy}–{filtre.BuPencere.Son:dd.MM.yy}",
+              "Sezon toplam", $"Yıllık {filtre.YilPencere.Bas:dd.MM.yy}–{filtre.YilPencere.Son:dd.MM.yy}",
+              "Sezon dışı",
               "Satılacak", "FSM", "Özlüce", "İst.Yolu", "Mağaza toplam", "Depo",
               "Toplam stok", "AÇIK", "FAZLA", "Satış fiyatı", "Birim maliyet", "Tutar"),
     };
     foreach (var r in satirlar)
         liste.Add(Satir(
             r.StkAd, r.Kategori3, r.KategoriYolu, r.Yayinevi, r.StkKod, r.Barkod,
-            r.GecenAyni, r.BuAyni, r.SezonToplam, r.Satilacak,
+            r.GecenAyni, r.BuAyni, r.SezonToplam, r.Yillik, r.Yillik - r.SezonToplam,
+            r.Satilacak,
             r.StokFsm, r.StokOzl, r.StokIst, r.MagazaStok, r.MerkezStok, r.ToplamStok,
             r.Acik, r.Fazla, r.SatisFiyat, r.BirimMaliyet,
             // Tek tutar: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
