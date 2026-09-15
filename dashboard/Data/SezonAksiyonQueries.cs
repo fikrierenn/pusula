@@ -95,8 +95,8 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         p.Add("kesim", f.Kesim.ToDateTime(TimeOnly.MinValue));
         p.Add("sezon", f.SezonYil);
         p.Add("buyume", f.Buyume);
-        var (gb, _) = f.GecenPencere;
-        var (bb, _) = f.BuPencere;
+        var (gb, gsn) = f.GecenPencere;
+        var (bb, bsn) = f.BuPencere;
         // ⚠⚠ ÜST SINIR DIŞLAYICI (< açılış günü), "<= son gün 23:59:59.9999999" DEĞİL.
         //   ÖLÇÜLDÜ 15.09.2026: TimeOnly.MaxValue SQL `datetime` kolonuna yazılırken
         //   BİR SONRAKİ GÜNE YUVARLANIYOR (23:59:59.9999999 → 08.09.2025 00:00:00.000,
@@ -105,9 +105,9 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         //   (panel 606 / script 586). Ekran "44 gün" yazıp 45 gün ölçüyordu — sessiz sapma.
         //   Kanıt: sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql blok 5.
         p.Add("gBas", gb.ToDateTime(TimeOnly.MinValue));
-        p.Add("gSonEx", f.AcilisGecenVeya.ToDateTime(TimeOnly.MinValue));
+        p.Add("gSonEx", gsn.AddDays(1).ToDateTime(TimeOnly.MinValue));
         p.Add("bBas", bb.ToDateTime(TimeOnly.MinValue));
-        p.Add("bSonEx", f.AcilisBuVeya.ToDateTime(TimeOnly.MinValue));
+        p.Add("bSonEx", bsn.AddDays(1).ToDateTime(TimeOnly.MinValue));
         p.Add("yalnizAcik", f.Durum == "acik" ? 1 : 0);
         p.Add("yalnizFazla", f.Durum == "fazla" ? 1 : 0);
         p.Add("kategori", string.IsNullOrWhiteSpace(f.Kategori3) ? null : f.Kategori3);

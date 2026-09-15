@@ -78,15 +78,11 @@ public sealed record SezonAksiyonFiltre(
     DateOnly Kesim,
     int SezonYil,
     decimal Buyume = 0.20m,
-    // OKUL AÇILIŞI — SATIR VERİSİ, sema'ya yazılmaz (yıldan yıla değişir).
-    // Arşiv: sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql
-    //   2024-25 → 09.09.2024 · 2025-26 → 08.09.2025 · 2026-27 → 14.09.2026
-    // ⚠ TAKVİM GÜNÜYLE hizalamak YANILTIR: açılış altı gün kaydı ve aynı takvim
-    //   günleri farklı sezon evresini ölçer. Ölçüldü: Hazırlık Kitapları büyümesi
-    //   takvimle 0,727 ("%27 küçüldü"), okula hizalı 1,104 ("%10 büyüdü") — ZIT.
-    DateOnly? AcilisBu = null,
-    DateOnly? AcilisGecen = null,
-    int HizaliGun = 44,
+    // PENCERE — kullanıcı BU yılınkini seçer; geçen yılınki ay/gün AYNASI olarak
+    // TÜRETİLİR. Serbest iki pencere verilseydi 30 güne karşı 60 gün kıyaslanabilir
+    // ve SAHTE büyüme üretirdi (hata vermeden). Aynalama bunu yapısal olarak engeller.
+    DateOnly? PencereBas = null,   // null → 1 Ağustos
+    DateOnly? PencereSon = null,   // null → kesim (sezon sonunu aşmaz)
     string? Durum = null,          // "acik" | "fazla" | null (hepsi)
     string? Kategori3 = null,
     string? Arama = null,
@@ -98,17 +94,59 @@ public sealed record SezonAksiyonFiltre(
     public const decimal BuyumeAlt = -0.50m;
     public const decimal BuyumeUst = 3.00m;
 
-    public static readonly DateOnly VarsayilanAcilisBu = new(2026, 9, 14);
-    public static readonly DateOnly VarsayilanAcilisGecen = new(2025, 9, 8);
+    /// <summary>Sezon ayları — GMY kararı 15.09.2026: <i>"sezon 8 9 10 olsun"</i>.</summary>
+    public const int SezonBasAy = 8;
+    public const int SezonSonAy = 10;
 
-    public DateOnly AcilisBuVeya => AcilisBu ?? VarsayilanAcilisBu;
-    public DateOnly AcilisGecenVeya => AcilisGecen ?? VarsayilanAcilisGecen;
+    /// <summary>
+    /// KARŞILAŞTIRMA PENCERESİ — iki yıl da <b>1 Ağustos'tan</b> başlar ve kesimin
+    /// ay/gününde biter. GMY kararı 15.09.2026: <i>"okul açılışına takılma, rapor 01/08'den
+    /// başlasın, sezon 8 9 10 olsun"</i>.
+    ///
+    /// ⚠ BEYAN: bu TAKVİM hizalamasıdır, okul hizalaması DEĞİL. Okul açılışı yıldan yıla
+    /// kayıyor (08.09.2025 → 14.09.2026, altı gün) ve ölçüldüğünde bu fark bazı kategorilerde
+    /// yönü çevirebiliyor (Hazırlık Kitapları büyümesi takvimle 0,727 · okula hizalı 1,104).
+    /// Karar bilerek takvim yönünde verildi; sayı okunurken bu bilinmeli.
+    /// Kanıt: sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql
+    ///
+    /// Üst sınır sezon sonunu (31 Ekim) AŞMAZ — kesim kasımdaysa pencere sezonda biter.
+    /// İki pencere aynı ay/güne kadar gittiği için uzunlukları EŞİTTİR.
+    /// </summary>
+    public (DateOnly Bas, DateOnly Son) BuPencere
+    {
+        get
+        {
+            var bas = PencereBas ?? new DateOnly(Kesim.Year, SezonBasAy, 1);
+            var son = PencereSon ?? Kesim;
+            var sezonSonu = new DateOnly(son.Year, SezonSonAy, DateTime.DaysInMonth(son.Year, SezonSonAy));
+            if (son > sezonSonu) son = sezonSonu;      // pencere sezon sonunu aşmaz
+            if (son < bas) son = bas;
+            return (bas, son);
+        }
+    }
 
-    /// <summary>Karşılaştırma penceresi — iki yıl için de AYNI uzunlukta.</summary>
-    public (DateOnly Bas, DateOnly Son) GecenPencere =>
-        (AcilisGecenVeya.AddDays(-HizaliGun), AcilisGecenVeya.AddDays(-1));
-    public (DateOnly Bas, DateOnly Son) BuPencere =>
-        (AcilisBuVeya.AddDays(-HizaliGun), AcilisBuVeya.AddDays(-1));
+    /// <summary>GEÇEN yıl — bu yılın penceresinin ay/gün AYNASI. Uzunluk eşit kalır.</summary>
+    public (DateOnly Bas, DateOnly Son) GecenPencere
+    {
+        get
+        {
+            var (bb, bs) = BuPencere;
+            var fark = Kesim.Year - SezonYil;
+            return (Aynala(bb, bb.Year - fark), Aynala(bs, bs.Year - fark));
+        }
+    }
+
+    /// <summary>Ay/günü başka yıla taşı; 29 Şubat gibi olmayan güne düşerse bir gün geri al.</summary>
+    private static DateOnly Aynala(DateOnly d, int yil) =>
+        new(yil, d.Month, Math.Min(d.Day, DateTime.DaysInMonth(yil, d.Month)));
+
+    /// <summary>İki pencere eşit uzunlukta mı — değilse kıyas SAHTEdir, ekranda söylenir.</summary>
+    public bool PencereEsit =>
+        BuPencere.Son.DayNumber - BuPencere.Bas.DayNumber
+        == GecenPencere.Son.DayNumber - GecenPencere.Bas.DayNumber;
+
+    /// <summary>Pencere gün sayısı (ekranda yazılır) — iki yıl için de aynı olmalı.</summary>
+    public int PencereGun => BuPencere.Son.DayNumber - BuPencere.Bas.DayNumber + 1;
 
     /// <summary>Sorgu dizesine çevir — Excel bağlantısı ekrandakiyle AYNI kohortu indirir.</summary>
     public string SorguDizesi()
@@ -119,6 +157,8 @@ public sealed record SezonAksiyonFiltre(
             $"sezon={SezonYil}",
             $"buyume={Buyume.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
         };
+        if (PencereBas is { } pb) p.Add($"pbas={pb:yyyy-MM-dd}");
+        if (PencereSon is { } ps) p.Add($"pson={ps:yyyy-MM-dd}");
         if (!string.IsNullOrWhiteSpace(Durum)) p.Add($"durum={Uri.EscapeDataString(Durum)}");
         if (!string.IsNullOrWhiteSpace(Kategori3)) p.Add($"kategori={Uri.EscapeDataString(Kategori3)}");
         if (!string.IsNullOrWhiteSpace(Arama)) p.Add($"ara={Uri.EscapeDataString(Arama)}");
@@ -160,6 +200,17 @@ public sealed record SezonAksiyonFiltre(
             else atla.Add($"buyume='{bs}' geçersiz (−50% … +300% arası), %20 kullanıldı");
         }
 
+        DateOnly? pbas = null, pson = null;
+        foreach (var (ad, hedef) in new[] { ("pbas", 0), ("pson", 1) })
+        {
+            if (!q.TryGetValue(ad, out var dv) || string.IsNullOrWhiteSpace(dv)) continue;
+            if (DateOnly.TryParse(dv, System.Globalization.CultureInfo.InvariantCulture, out var d))
+            {
+                if (hedef == 0) pbas = d; else pson = d;
+            }
+            else atla.Add($"{ad}='{dv}' okunamadı, varsayılan pencere kullanıldı");
+        }
+
         string? durum = null;
         if (q.TryGetValue("durum", out var ds) && !string.IsNullOrWhiteSpace(ds))
         {
@@ -184,6 +235,8 @@ public sealed record SezonAksiyonFiltre(
             Kesim: kesim,
             SezonYil: sezon,
             Buyume: buyume,
+            PencereBas: pbas,
+            PencereSon: pson,
             Durum: durum,
             Kategori3: string.IsNullOrWhiteSpace(q.GetValueOrDefault("kategori")) ? null : q["kategori"],
             Arama: string.IsNullOrWhiteSpace(q.GetValueOrDefault("ara")) ? null : q["ara"],

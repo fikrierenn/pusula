@@ -313,8 +313,9 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
     var ustSatir = $"Kesim {filtre.Kesim:dd.MM.yyyy} · satılacak = sezonda satılan × " +
         $"{1 + filtre.Buyume:0.##} (büyüme %{filtre.Buyume * 100:0.##}) · " +
         $"AYNI PENCERE: geçen {filtre.GecenPencere.Bas:dd.MM.yyyy}–{filtre.GecenPencere.Son:dd.MM.yyyy} · " +
-        $"bu {filtre.BuPencere.Bas:dd.MM.yyyy}–{filtre.BuPencere.Son:dd.MM.yyyy} ({filtre.HizaliGun} gün, " +
-        "okul açılışına hizalı — takvim günüyle hizalamak yanıltır) · " +
+        $"bu {filtre.BuPencere.Bas:dd.MM.yyyy}–{filtre.BuPencere.Son:dd.MM.yyyy} ({filtre.PencereGun} gün, " +
+        "1 Ağustos'tan itibaren TAKVİM hizalı; sezon Ağu–Eki. ⚠ Okul açılışı kayıyor " +
+        "(08.09.2025→14.09.2026), takvim hizası bunu görmez) · " +
         "AÇIK = satılacak − (mağaza+depo), FAZLA = tersi · Tutar: AÇIK'ta satış fiyatı, " +
         "FAZLA'da maliyet — ikisi toplanmaz · Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı " +
         "24.02.2025'ten beri yazılmıyor) · FAZLA tutarı alt sınır · depo stoğu WMS'ten" +

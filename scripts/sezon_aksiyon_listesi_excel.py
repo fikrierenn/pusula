@@ -87,18 +87,28 @@ MALIYET_GECERLI = "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)"
 SQL = f"""
 -- ⚠ TÜRETİLEN KOLONLAR SQL'DE HESAPLANMAZ — Excel'de FORMÜL olarak kurulur
 --   (GMY: "formüllü olsun ne nerden geliyor gözüksün"). Buradan yalnız HAM girdiler gelir.
-WITH gh AS (   -- GEÇEN yılın AYNI penceresi (okul açılışından geriye N gün)
+WITH gh AS (   -- GEÇEN yılın penceresi — BU yılınkinin ay/gün AYNASI
     SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
     FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
     WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
-      AND h.ehTrhS >= DATEADD(DAY, -?, ?) AND h.ehTrhS < ?
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 ),
-bh AS (        -- BU yılın AYNI penceresi — gün sayısı gh ile BİREBİR aynı
+bh AS (        -- BU yılın penceresi — gün sayısı gh ile BİREBİR aynı (aynalama garantisi)
     SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
     FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
     WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
-      AND h.ehTrhS >= DATEADD(DAY, -?, ?) AND h.ehTrhS < ?
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
+yl AS (        -- YILLIK: sezon yılı 01.08.<sezon> – 31.07.<sezon+1> (365 gün)
+    -- GMY kararı 15.09.2026: "01/08/2025-31/07/2026 arası olsun 365 gün".
+    -- ⚠ Eski "365 günde satılan" [kesim−364, kesim] idi ve geçen sezonun başını
+    --   KAÇIRIYORDU. Bu pencere geçen sezonu (Ağu–Eki) TAM İÇERİR ve bu sezona TAŞMAZ.
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 )
 SELECT t.stkAd                                       AS [Ürün],
@@ -112,7 +122,12 @@ SELECT t.stkAd                                       AS [Ürün],
        t.BarkodAna                                   AS [Barkod],
        CONVERT(int, ISNULL(gh.Adet, 0))              AS [Geçen sezon aynı dönem],
        CONVERT(int, ISNULL(bh.Adet, 0))              AS [Bu sezon aynı dönem],
-       t.SezonToplam                                 AS [Geçen sezon TAMAMI],
+       -- SEZON AYLARI AYRI (GMY 15.09.2026: "sezon 8 9 10 ayrı olsun").
+       -- Taban Ay1/Ay2/Ay3 = geçen sezonun Ağu/Eyl/Eki'si; toplamları SezonToplam.
+       t.Ay1                                         AS [Ağustos],
+       t.Ay2                                         AS [Eylül],
+       t.Ay3                                         AS [Ekim],
+       CONVERT(int, ISNULL(yl.Adet, 0))              AS [Yıllık satış],
        t.StokFsm                                     AS [FSM],
        t.StokOzl                                  AS [Özlüce],
        t.StokIst                                     AS [İst.Yolu],
@@ -126,6 +141,7 @@ FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
 LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
 LEFT JOIN gh ON gh.stkID = t.stkID
 LEFT JOIN bh ON bh.stkID = t.stkID
+LEFT JOIN yl ON yl.stkID = t.stkID
 CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = ? AND t.SezonYil = ?
@@ -152,7 +168,11 @@ DUZEN: list[tuple[str, str]] = [
     ("Geçen sezon aynı dönem", "ham"),   # okula hizalı N gün, GEÇEN yıl
     ("Bu sezon aynı dönem",    "ham"),   # AYNI N gün, BU yıl
     ("Değişim",                "f"),     # =Bu/Geçen  (aynı pencere → kıyaslanabilir)
-    ("Geçen sezon TAMAMI",     "ham"),   # Ağu–Eki — "Satılacak"ın tabanı
+    ("Ağustos",                "ham"),   # geçen sezon
+    ("Eylül",                  "ham"),
+    ("Ekim",                   "ham"),
+    ("Geçen sezon TAMAMI",     "f"),     # =Ağustos+Eylül+Ekim (toplandığı GÖRÜNSÜN)
+    ("Yıllık satış",           "ham"),   # 01.08.<sezon> – 31.07.<sezon+1>, 365 gün   # Ağu–Eki — "Satılacak"ın tabanı
     ("Satılacak",              "f"),     # =CEILING(Geçen sezon TAMAMI × (1+büyüme); 1)
     ("FSM",                    "ham"),
     ("Özlüce",                 "ham"),
@@ -165,6 +185,12 @@ DUZEN: list[tuple[str, str]] = [
     ("Satış fiyatı",           "ham"),
     ("Birim maliyet",          "ham"),
     ("Tutar",                  "f"),
+    ("Durum",                  "f"),   # pivot bu alanla AÇIK/FAZLA sayabiliyor
+    # ── PİVOT YARDIMCILARI — LİSTE'de GİZLİ. Tek "Tutar" kolonuyla pivot, Durum'u
+    #    kolon alanı yapmak zorunda kalıyordu ve 17 kolona yayılıp okunmaz oluyordu.
+    #    Ayrı iki kolonla pivot düz ve okunur; LİSTE ise tek Tutar ile sade kalıyor.
+    ("AÇIK ₺",                 "f"),
+    ("FAZLA ₺",                "f"),
 ]
 
 
@@ -176,6 +202,132 @@ def ayir(n: float, para: bool = False) -> str:
     return f"{s} ₺" if para else s
 
 
+def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
+    """
+    MARKA sayfasını GERÇEK PivotTable'a çevirir (Excel COM).
+
+    GMY 15.09.2026: "marka sayfasını pivot tablo kullanarak veriden oluşturabilir miyiz".
+
+    ⚠ NEDEN COM: openpyxl pivot tabloyu OKUR/KOPYALAR ama SIFIRDAN KURAMAZ (ölçüldü —
+      openpyxl 3.1.2'de pivot.table modülü var, kurma API'si yok). xlsxwriter'da da yok.
+      Excel COM 16.0 bu makinede mevcut (ölçüldü), o yüzden gerçek pivot kurulabiliyor.
+
+    ⚠ PIVOT'UN KAZANCI: LİSTE'deki B2 büyümesi değiştirilip dosya kaydedilince pivot
+      YENİDEN HESAPLANIR (RefreshOnFileOpen + sağ tık > Yenile). Önceki "değer" sayfası
+      bayatlıyordu; canlı uyarı koymak zorunda kalmıştık. Pivot o sorunu KÖKTEN çözer.
+
+    ⚠ SESSİZ BAŞARISIZLIK YASAK: Excel yoksa/meşgulse pivot KURULMAZ ve bu DÖNÜŞ
+      DEĞERİNDE SÖYLENİR; dosya yine geçerli (değer tabanlı MARKA sayfası durur).
+    """
+    try:
+        import win32com.client as win32
+        import pythoncom
+    except ImportError:
+        return "KURULMADI — pywin32 yok (deger tabanli MARKA sayfasi duruyor)"
+
+    son_kolon = get_column_letter(kolon_sayisi)
+    pythoncom.CoInitialize()
+    xl = None
+    try:
+        xl = win32.gencache.EnsureDispatch("Excel.Application")
+        xl.Visible = False
+        xl.DisplayAlerts = False
+        wb = xl.Workbooks.Open(os.path.abspath(yol))
+        try:
+            liste = wb.Worksheets("LİSTE")
+            # Eski DEĞER tabanlı MARKA sayfası gider; yerine pivot gelir.
+            for ws in list(wb.Worksheets):
+                if ws.Name == "MARKA":
+                    ws.Delete()
+            pws = wb.Worksheets.Add(After=liste)
+            pws.Name = "MARKA"
+
+            kaynak = f"LİSTE!$A$3:${son_kolon}${son_satir}"     # 3. satır = başlık
+            cache = wb.PivotCaches().Create(SourceType=1, SourceData=kaynak)  # xlDatabase
+            pt = cache.CreatePivotTable(TableDestination=pws.Range("A3"),
+                                        TableName="MarkaPivot")
+            pt.PivotFields("Marka / Yayınevi").Orientation = 1      # xlRowField
+            # ⚠ Durum KOLON ALANI YAPILMADI: 4 değer × 3 durum = 17 kolona yayılıp
+            #   okunmaz oluyordu (ölçüldü). Ayrı "AÇIK ₺"/"FAZLA ₺" alanlarıyla düz kalıyor.
+            # ⚠ VERİ ALANI ADI, KAYNAK ALAN ADIYLA AYNI OLAMAZ — Excel 0x800A03EC verir
+            #   (ölçüldü 15.09.2026: "AÇIK ₺" data field'ı aynı adlı sütunla çakıştı).
+            #   Bu yüzden başlıklar "… toplam" ile ayrıldı.
+            # ⚠ BİÇİM DİZGİSİ YEREL AYIRAÇLA OKUNUYOR: Türkçe Excel'de "#,##0" yazınca
+            #   "," DECIMAL sayılıyor ve 21688 → "21688,0" görünüyordu (ölçüldü).
+            #   Ayıraçları Excel'in kendisine sorup dizgiyi ona göre kuruyoruz.
+            # ⚠ Application.International ERKEN BAĞLAMADA DEMET döner, çağrılabilir DEĞİL
+            #   (ölçüldü: xl.International(4) → TypeError 'tuple' object is not callable).
+            #   Hem demet hem çağrı biçimi denenir; ikisi de olmazsa Türkçe varsayılana düşer
+            #   ve bu SESSİZ DEĞİL — biçim yine de okunur çıkar.
+            def ayirac(sira: int, varsayilan: str) -> str:
+                try:
+                    return str(xl.International[sira - 1])
+                except Exception:
+                    try:
+                        return str(xl.International(sira))
+                    except Exception:
+                        return varsayilan
+
+            bicim_hata: list[str] = []
+            binlik = ayirac(4, ".")            # xlThousandsSeparator
+            tamsayi = f"#{binlik}##0"
+            para = f'#{binlik}##0 "₺"'
+            cf = pt.AddDataField(pt.PivotFields("Ürün"), "Çeşit", -4112)   # xlCount
+            for alan, ad, bicim in (("AÇIK", "AÇIK adet", tamsayi),
+                                    ("AÇIK ₺", "AÇIK toplam ₺", para),
+                                    ("FAZLA", "FAZLA adet", tamsayi),
+                                    ("FAZLA ₺", "FAZLA toplam ₺", para)):
+                f = pt.AddDataField(pt.PivotFields(alan), ad, -4157)  # xlSum
+                # ⚠ BİÇİM İSTEĞE BAĞLI: yerel biçim dizgisi reddedilebiliyor (0x800A03EC).
+                #   Pivot'un KENDİSİ biçimden önemli — biçim tutmazsa pivot yine kurulur,
+                #   sayı ham görünür. Sessiz değil: aşağıda bicim_hata sayılıp döndürülür.
+                try:
+                    f.NumberFormat = bicim
+                except Exception:
+                    bicim_hata.append(ad)
+            try:
+                cf.NumberFormat = tamsayi
+            except Exception:
+                bicim_hata.append("Çeşit")
+            pt.RowAxisLayout(1)                                       # tablo düzeni
+            # AÇIK tutarına göre büyükten küçüğe — alıcı en büyük açıktan başlasın.
+            try:
+                pt.PivotFields("Marka / Yayınevi").AutoSort(2, "AÇIK toplam ₺")  # xlDescending
+            except Exception:
+                pass   # sıralama kurulamazsa pivot yine geçerli; alfabetik kalır
+            # Kaydedilince yeniden hesapla — büyüme değişirse pivot bayatlamasın.
+            pt.PivotCache().RefreshOnFileOpen = True
+
+            pws.Range("A1").Value = (
+                "MARKA PİVOTU — kaynak LİSTE sayfası. LİSTE'de B2 büyümesini değiştirip "
+                "kaydettikten sonra pivota sağ tık > Yenile (dosya yeniden açılınca "
+                "kendiliğinden yenilenir). ⚠ ₺ sütunu AÇIK'ta satış fiyatı, FAZLA'da "
+                "maliyettir — İKİSİ TOPLANMAZ, o yüzden Durum kırılımı ayrık duruyor.")
+            pws.Range("A1").Font.Italic = True
+            pws.Columns("A").ColumnWidth = 34
+            wb.Save()
+            ek = (f" · biçim uygulanamadı: {", ".join(bicim_hata)}"
+                  if bicim_hata else "")
+            return f"KURULDU — MarkaPivot ({kaynak}){ek}"
+        finally:
+            wb.Close(SaveChanges=False)
+    except Exception as ex:                       # noqa: BLE001 — sebebi DÖNÜŞTE yazılıyor
+        # ⚠ SESSİZ HATA YASAK: yalnız tipi değil, HANGİ SATIRDA patladığı da söylenir.
+        #   Tek satırlık "KURULAMADI" mesajı teşhis ettirmiyordu (üç tur kaybedildi).
+        import traceback
+        iz = traceback.extract_tb(ex.__traceback__)
+        yer = f"{iz[-1].lineno}: {iz[-1].line}" if iz else "?"
+        return (f"KURULAMADI ({type(ex).__name__}: {ex}) @ satir {yer} "
+                "— deger tabanli MARKA sayfasi duruyor")
+    finally:
+        if xl is not None:
+            try:
+                xl.Quit()
+            except Exception:
+                pass
+        pythoncom.CoUninitialize()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--kesim", default=None)
@@ -184,27 +336,24 @@ def main() -> int:
                     help="sezon buyumesi (0.20 = %%20)")
     ap.add_argument("--durum", choices=["acik", "fazla"], default=None,
                     help="yalniz acik ya da yalniz fazla listele")
-    # OKUL AÇILIŞI — arşivden (sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql):
-    # 2024-25 → 09.09.2024 · 2025-26 → 08.09.2025 · 2026-27 → 14.09.2026.
-    # ⚠ TAKVİM GÜNÜYLE hizalamak YANILTIR: açılış kayıyor (6 gün) ve aynı takvim günleri
-    #   farklı sezon evresini ölçer. Ölçüldü 14.09.2026 — Hazırlık Kitapları büyümesi
-    #   takvimle 0,727 ("%27 küçüldü"), okula hizalı 1,104 ("%10 büyüdü"). ZIT sonuç.
-    ap.add_argument("--acilis-bu", default="2026-09-14")
-    ap.add_argument("--acilis-gecen", default="2025-09-08")
-    ap.add_argument("--hizali-gun", type=int, default=44,
-                    help="acilistan geriye kac gun (iki yil icin de AYNI)")
+    # PENCERE — GMY kararı 15.09.2026: "okul açılışına takılma, rapor 01/08'den başlasın,
+    # sezon 8 9 10 olsun". Sen BU yılın penceresini verirsin; GEÇEN yılınki aynı ay/güne
+    # OTOMATİK aynalanır → iki pencere her zaman EŞİT uzunlukta, bozulamaz.
+    # ⚠ BEYAN: bu TAKVİM hizalamasıdır, okul hizalaması DEĞİL. Okul açılışı kayıyor
+    #   (08.09.2025 → 14.09.2026) ve ölçüldüğünde bazı kategorilerde YÖNÜ çeviriyor
+    #   (Hazırlık Kitapları takvimle 0,727 · okula hizalı 1,104). Karar bilerek takvim yönünde.
+    ap.add_argument("--pencere-bas", default=None,
+                    help="bu yilin pencere basi (vars. 01.08.<kesim yili>)")
+    ap.add_argument("--pencere-son", default=None,
+                    help="bu yilin pencere sonu, DAHIL (vars. kesim; sezon sonu 31.10'u asmaz)")
+    ap.add_argument("--pivot", action=argparse.BooleanOptionalAction, default=True,
+                    help="MARKA sayfasini GERCEK PivotTable yap (Excel COM gerekir)")
     ap.add_argument("--cikti", default=None)
     a = ap.parse_args()
 
     yalniz_acik = 1 if a.durum == "acik" else 0
     yalniz_fazla = 1 if a.durum == "fazla" else 0
-    try:
-        acilis_bu = dt.date.fromisoformat(a.acilis_bu)
-        acilis_gecen = dt.date.fromisoformat(a.acilis_gecen)
-    except ValueError as ex:
-        kosamadi(f"Gecersiz acilis tarihi: {ex}")
-    if a.hizali_gun < 1:
-        kosamadi("--hizali-gun en az 1 olmali")
+    SEZON_BAS_AY, SEZON_SON_AY = 8, 10          # GMY: "sezon 8 9 10 olsun"
 
     env = env_oku(os.path.join(KOK, ".env"))
     cn = baglan(env)
@@ -219,11 +368,46 @@ def main() -> int:
                 kosamadi("Taban BOS — kesim okunamadi (sessizlik kanit degil)")
             kesim = r[0] if isinstance(r[0], dt.date) else dt.date.fromisoformat(str(r[0])[:10])
 
+        # ── PENCERE: bu yıl seçilir, geçen yıl AYNALANIR ────────────────────
+        try:
+            b_bas = (dt.date.fromisoformat(a.pencere_bas) if a.pencere_bas
+                     else dt.date(kesim.year, SEZON_BAS_AY, 1))
+            b_son = dt.date.fromisoformat(a.pencere_son) if a.pencere_son else kesim
+        except ValueError as ex:
+            kosamadi(f"Gecersiz pencere tarihi: {ex}")
+        # Sezon sonunu (31 Ekim) aşma.
+        sezon_sonu = dt.date(b_son.year, SEZON_SON_AY, 31)
+        if b_son > sezon_sonu:
+            b_son = sezon_sonu
+        if b_son < b_bas:
+            kosamadi(f"Pencere sonu ({b_son}) basindan ({b_bas}) once olamaz")
+
+        def aynala(d: dt.date, yil: int) -> dt.date:
+            """Ay/günü başka yıla taşı. 29 Şubat gibi olmayan güne düşerse bir gün geri al."""
+            try:
+                return d.replace(year=yil)
+            except ValueError:
+                return d.replace(year=yil, day=d.day - 1)
+
+        # YILLIK pencere: sezon başından bir sonraki sezon başının bir gün öncesine.
+        y_bas = dt.date(a.sezon, SEZON_BAS_AY, 1)
+        y_son = dt.date(a.sezon + 1, SEZON_BAS_AY, 1) - dt.timedelta(days=1)
+
+        yil_farki = kesim.year - a.sezon
+        g_bas, g_son = aynala(b_bas, b_bas.year - yil_farki), aynala(b_son, b_son.year - yil_farki)
+        # ⚠ EŞİT UZUNLUK ZORUNLU: farklı uzunlukta iki pencere SAHTE büyüme üretir ve
+        #   hata vermez. Bugün ölçülen 44/45 gün sapmasının sınıfı budur.
+        if (b_son - b_bas).days != (g_son - g_bas).days:
+            kosamadi(f"Pencereler esit uzunlukta degil: bu {(b_son - b_bas).days + 1} gun, "
+                     f"gecen {(g_son - g_bas).days + 1} gun")
+
         # Sıra SQL'deki ? sırasıdır; biri değişirse ikisi birden değişir.
+        # ⚠ Üst sınır DIŞLAYICI (son + 1 gün, gece yarısı) — "23:59:59" yazılmaz.
         cur.execute(SQL,
-                    a.hizali_gun, acilis_gecen, acilis_gecen,   # gh — GEÇEN yıl
-                    a.hizali_gun, acilis_bu, acilis_bu,         # bh — BU yıl (aynı gün sayısı)
-                    a.buyume,                                   # CROSS APPLY
+                    g_bas, g_son + dt.timedelta(days=1),   # gh — GEÇEN yıl
+                    b_bas, b_son + dt.timedelta(days=1),   # bh — BU yıl
+                    y_bas, y_son + dt.timedelta(days=1),   # yl — YILLIK 365 gün
+                    a.buyume,                              # CROSS APPLY
                     kesim, a.sezon, yalniz_acik, yalniz_fazla)
         bas = [d[0] for d in cur.description]
         sat = [list(x) for x in cur.fetchall()]
@@ -257,17 +441,17 @@ def main() -> int:
     ws = wb.active
     ws.title = "LİSTE"
 
-    ust = (f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} · "
-           f"AYNI PENCERE: 'Geçen sezon aynı dönem' {acilis_gecen - dt.timedelta(days=a.hizali_gun):%d.%m.%Y}"
-           f"–{acilis_gecen - dt.timedelta(days=1):%d.%m.%Y} · 'Bu sezon aynı dönem' "
-           f"{acilis_bu - dt.timedelta(days=a.hizali_gun):%d.%m.%Y}–{acilis_bu - dt.timedelta(days=1):%d.%m.%Y} "
-           f"({a.hizali_gun} gün, okul açılışına hizalı — takvim günüyle hizalamak yanıltır, "
-           f"açılış 6 gün kaydı) · "
+    ust = (f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} (Ağu–Eki) · "
+           f"AYNI PENCERE: geçen {g_bas:%d.%m.%Y}–{g_son:%d.%m.%Y} · "
+           f"bu {b_bas:%d.%m.%Y}–{b_son:%d.%m.%Y} ({(b_son - b_bas).days + 1} gün, eşit) · "
+           f"YILLIK satış {y_bas:%d.%m.%Y}–{y_son:%d.%m.%Y} ({(y_son - y_bas).days + 1} gün, "
+           "geçen sezonu tam içerir, bu sezona taşmaz) · "
            "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
            "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
            "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
            "Birim maliyeti olmayan üründe Tutar boş kalır (para ALT SINIR) · "
-           "depo stoğu WMS'ten, ERP defteriyle çelişebilir · tek gün fotoğrafı")
+           "depo stoğu WMS'ten · tek gün fotoğrafı · "
+           "⚠ TAKVİM hizası — okul açılışı kayıyor (08.09.2025→14.09.2026), bu pencere onu görmez")
     ws.cell(1, 1, ust).font = Font(italic=True, size=9, color="555555")
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(kolonlar))
     ws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
@@ -302,6 +486,7 @@ def main() -> int:
 
             # ── FORMÜL — kaynağı hücreden okur, sabit gömmez ─────────────────
             f = {
+                "Geçen sezon TAMAMI": (f'={K["Ağustos"]}{i}+{K["Eylül"]}{i}+{K["Ekim"]}{i}'),
                 "Satılacak":     f'=CEILING({K["Geçen sezon TAMAMI"]}{i}*(1+$B$2),1)',
                 # AYNI PENCERE olduğu için bu oran kıyaslanabilir. Geçen yıl 0 ise
                 # bölme yapılmaz (BOŞ) — "sonsuz büyüme" uydurmak olurdu.
@@ -316,15 +501,23 @@ def main() -> int:
                 "Tutar": (f'=IF({K["AÇIK"]}{i}>0,{K["AÇIK"]}{i}*{K["Satış fiyatı"]}{i},'
                           f'IF(AND({K["FAZLA"]}{i}>0,{K["Birim maliyet"]}{i}<>""),'
                           f'{K["FAZLA"]}{i}*{K["Birim maliyet"]}{i},""))'),
+                # Metin alan: PivotTable AÇIK/FAZLA ürününü bununla SAYAR (koşullu sayım yok).
+                "Durum": (f'=IF({K["AÇIK"]}{i}>0,"AÇIK",IF({K["FAZLA"]}{i}>0,"FAZLA","DENGE"))'),
+                "AÇIK ₺":  f'=IF({K["AÇIK"]}{i}>0,{K["Tutar"]}{i},0)',
+                "FAZLA ₺": f'=IF({K["FAZLA"]}{i}>0,IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)',
             }[ad]
             c = ws.cell(i, j, f)
             c.fill = SARI
-            c.number_format = ('#,##0.00 "₺"' if ad == "Tutar"
-                               else "0.00" if ad == "Değişim" else "#,##0")
+            c.number_format = ('#,##0.00 "₺"' if ad in ("Tutar", "AÇIK ₺", "FAZLA ₺")
+                               else "0.00" if ad == "Değişim"
+                               else "General" if ad == "Durum" else "#,##0")
 
-    genis = {"Ürün": 45, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15, "Stok kodu": 13, "Marka / Yayınevi": 22}
+    genis = {"Ürün": 45, "Yıllık satış": 13, "Durum": 10, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15, "Stok kodu": 13, "Marka / Yayınevi": 22}
     for j, ad in enumerate(kolonlar, start=1):
         ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(len(ad) + 2, 11))
+    for gizli in ("AÇIK ₺", "FAZLA ₺"):
+        ws.column_dimensions[K[gizli]].hidden = True
+
     ws.freeze_panes = f"E{BAS_SATIR}"
     ws.auto_filter.ref = f"A3:{get_column_letter(len(kolonlar))}{len(sat) + BAS_SATIR - 1}"
 
@@ -345,7 +538,8 @@ def main() -> int:
     import math as _m
     for r in sat:
         ad = (r[ix["Marka / Yayınevi"]] or "(marka yok)").strip() or "(marka yok)"
-        satilacak = _m.ceil((r[ix["Geçen sezon TAMAMI"]] or 0) * (1 + a.buyume))
+        sezon_top = (r[ix["Ağustos"]] or 0) + (r[ix["Eylül"]] or 0) + (r[ix["Ekim"]] or 0)
+        satilacak = _m.ceil(sezon_top * (1 + a.buyume))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
         g = marka.setdefault(ad, [0, 0, 0, 0.0, 0, 0, 0.0, 0, 0])
@@ -416,7 +610,8 @@ def main() -> int:
     acik_tl = fazla_tl = 0.0
     import math
     for r in sat:
-        satilacak = math.ceil((r[ix["Geçen sezon TAMAMI"]] or 0) * (1 + a.buyume))
+        sezon_top = (r[ix["Ağustos"]] or 0) + (r[ix["Eylül"]] or 0) + (r[ix["Ekim"]] or 0)
+        satilacak = math.ceil(sezon_top * (1 + a.buyume))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
         if satilacak > elde:
@@ -437,6 +632,10 @@ def main() -> int:
         KOK, "raporlar", f"sezon-aksiyon-listesi-{kesim:%Y%m%d}{ek}.xlsx")
     os.makedirs(os.path.dirname(cikti), exist_ok=True)
     wb.save(cikti)
+
+    if a.pivot:
+        pivot_durum = pivot_kur(cikti, len(kolonlar), len(sat) + BAS_SATIR - 1)
+        print(f"  PIVOT: {pivot_durum}")
 
     print(f"YAZILDI: {cikti}")
     print(f"  cesit {ayir(cesit)}")

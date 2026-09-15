@@ -30,10 +30,14 @@
 
     <h1 class="text-lg font-semibold m-0">Sezon Aksiyon Listesi</h1>
     <p class="text-xs text-base-content/50 m-0 mt-0.5 mb-3">
-        Geçen ve bu sezon <b>aynı pencerede</b> karşılaştırılıyor — okul açılışından geriye
-        @_filtre.HizaliGun gün (@_filtre.GecenPencere.Bas.ToString("dd.MM.yy") –
-        @_filtre.GecenPencere.Son.ToString("dd.MM.yy") · bu yıl
-        @_filtre.BuPencere.Bas.ToString("dd.MM.yy") – @_filtre.BuPencere.Son.ToString("dd.MM.yy")).
+        Geçen yıl @_filtre.GecenPencere.Bas.ToString("dd.MM.yy") – @_filtre.GecenPencere.Son.ToString("dd.MM.yy")
+        · bu yıl @_filtre.BuPencere.Bas.ToString("dd.MM.yy") – @_filtre.BuPencere.Son.ToString("dd.MM.yy")
+        (@PencereGun gün, eşit). Geçen yılın penceresi seçtiğinin <b>ay/gün aynası</b> —
+        uzunluk hep eşit kalır.
+        @if (!_filtre.PencereEsit)
+        {
+            <span class="text-error font-semibold">⚠ Pencereler eşit değil — kıyas geçersiz.</span>
+        }
     </p>
 
     @* ── SÜZGEÇLER — tek satır ──────────────────────────────────────────────────── *@
@@ -60,6 +64,18 @@
                    class="join-item input input-bordered input-sm text-sm w-20"
                    value="@((_filtre.Buyume * 100m).ToString("0.##", _tr))" @onchange="BuyumeDegis" />
             <span class="join-item btn btn-sm btn-ghost pointer-events-none">%</span>
+        </div>
+
+        @* PENCERE — yalnız BU yılınki seçilir; geçen yıl otomatik aynalanır.
+           İki serbest pencere verilseydi 30 güne karşı 60 gün kıyaslanabilir ve
+           SAHTE büyüme üretirdi (hata vermeden). Aynalama bunu yapısal engeller. *@
+        <div class="join">
+            <span class="join-item btn btn-sm btn-ghost pointer-events-none text-[11px] font-normal
+                         text-base-content/50">pencere</span>
+            <input type="date" class="join-item input input-bordered input-sm text-sm"
+                   value="@_filtre.BuPencere.Bas.ToString("yyyy-MM-dd")" @onchange="PencereBasDegis" />
+            <input type="date" class="join-item input input-bordered input-sm text-sm"
+                   value="@_filtre.BuPencere.Son.ToString("yyyy-MM-dd")" @onchange="PencereSonDegis" />
         </div>
 
         <select class="select select-bordered select-sm text-sm"
@@ -278,10 +294,13 @@
                         @((1 + _filtre.Buyume).ToString("0.##", _tr)). Büyüme TEK sayıdır, yukarıdan
                         değişir — ürün ya da kategori bazlı ölçülmüş bir büyüme DEĞİLDİR.</li>
                     <li><b>AÇIK</b> = satılacak − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
-                    <li><b>Aynı pencere</b> iki yıl için de okul açılışından geriye
-                        @_filtre.HizaliGun gündür. Takvim günüyle hizalamak yanıltır: açılış
-                        08.09.2025 → 14.09.2026, altı gün kaydı. Ölçüldü — Hazırlık Kitapları
-                        büyümesi takvimle 0,73 ("%27 küçüldü"), hizalı 1,10 ("%10 büyüdü").</li>
+                    <li><b>Pencere seçilebilir</b> (varsayılan 1 Ağustos – kesim). Geçen yılın
+                        penceresi seçtiğinin ay/gün aynasıdır, uzunluk hep eşittir. Sezon
+                        Ağustos–Ekim kabul edilir; pencere 31 Ekim'i aşmaz.</li>
+                    <li><b>⚠ Bu bir TAKVİM hizalamasıdır, okul hizalaması değil.</b> Okul açılışı
+                        kayıyor (08.09.2025 → 14.09.2026, altı gün). Ölçüldü: Hazırlık Kitapları
+                        büyümesi takvimle 0,73 ("%27 küçüldü"), okula hizalı 1,10 ("%10 büyüdü") —
+                        aynı veri, zıt sonuç. Takvim yönü bilinçli seçildi.</li>
                     <li><b>"Bu sezon aynı dönem" 0 ise dikkat:</b> AÇIK listesindeki 10.865
                         üründe mal RAFTA duruyor ve 44 günde hiç satmamış (40,4M ₺). Orada
                         eksik olan stok değil, talep — sipariş yanlış eylem olur.</li>
@@ -409,6 +428,19 @@
             return Task.CompletedTask;
         return Uygula(_filtre with { Buyume = oran });
     }
+
+    private int PencereGun =>
+        _filtre.BuPencere.Son.DayNumber - _filtre.BuPencere.Bas.DayNumber + 1;
+
+    private Task PencereBasDegis(ChangeEventArgs e) =>
+        DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d)
+            ? Uygula(_filtre with { PencereBas = d })
+            : Task.CompletedTask;
+
+    private Task PencereSonDegis(ChangeEventArgs e) =>
+        DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d)
+            ? Uygula(_filtre with { PencereSon = d })
+            : Task.CompletedTask;
 
     private Task DurumDegis(ChangeEventArgs e)
     {
