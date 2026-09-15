@@ -36,6 +36,7 @@ if hasattr(sys.stdout, "buffer"):
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LACI = PatternFill("solid", fgColor="1F3864")
+SARI = PatternFill("solid", fgColor="FFF2CC")   # FORMÜL hücresi — göz ayırsın
 
 
 def kosamadi(mesaj: str) -> None:
@@ -84,23 +85,25 @@ YOL = ("STUFF(ISNULL(N' > ' + NULLIF(t.Kategori1, N''), N'')"
 MALIYET_GECERLI = "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)"
 
 SQL = f"""
+-- ⚠ TÜRETİLEN KOLONLAR SQL'DE HESAPLANMAZ — Excel'de FORMÜL olarak kurulur
+--   (GMY 15.09.2026: "formüllü olsun ne nerden geliyor gözüksün").
+--   Buradan yalnız HAM girdiler gelir. Tek istisna: ORDER BY, sıralama için
+--   hesabı sunucuda yapar (dosyaya yazılmaz).
 SELECT t.stkAd                                       AS [Ürün],
        t.Kategori3                                   AS [Kategori],
+       {YOL}                                         AS [Kategori yolu],
        t.BarkodAna                                   AS [Barkod],
        t.SatisToplam                                 AS [365 günde satılan],
        t.SezonToplam                                 AS [Sezonda satılan],
-       s.Satilacak                                   AS [Satılacak],
-       t.MagazaStok                                  AS [Mağaza],
+       t.StokFsm                                     AS [FSM],
+       t.StokOzl                                     AS [Özlüce],
+       t.StokIst                                     AS [İst.Yolu],
        t.MerkezStok                                  AS [Depo],
-       s.Elde                                        AS [Toplam stok],
-       CASE WHEN s.Satilacak > s.Elde THEN s.Satilacak - s.Elde ELSE 0 END AS [AÇIK],
-       CASE WHEN s.Elde > s.Satilacak THEN s.Elde - s.Satilacak ELSE 0 END AS [FAZLA],
-       -- TEK tutar kolonu: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
-       -- İki ayrı kolon vardı; çoğu satırda biri hep boştu ve "toplanabilir" görünüyordu.
-       CONVERT(decimal(18,2), CASE
-            WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiyat
-            WHEN s.Elde > s.Satilacak AND {MALIYET_GECERLI}
-                 THEN (s.Elde - s.Satilacak) * t.BirimMaliyet END)          AS [Tutar]
+       -- ⚠ 4 HANE: 2 haneye yuvarlayıp sonra çarpınca toplam 313 ₺ sapıyordu
+       --   (ölçüldü 15.09.2026). Excel'de GÖRÜNEN sayı, çarpılan sayı olmalı.
+       CONVERT(decimal(18,4), t.SatisFiyat)          AS [Satış fiyatı],
+       CONVERT(decimal(18,4), CASE WHEN {MALIYET_GECERLI}
+            THEN t.BirimMaliyet END)                 AS [Birim maliyet]
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
 CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
@@ -114,7 +117,32 @@ ORDER BY CASE WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiy
               ELSE (s.Elde - s.Satilacak) * ISNULL(t.BirimMaliyet, 0) END DESC
 """
 
-PARA = {"Tutar"}
+# ── SAYFA DÜZENİ ──────────────────────────────────────────────────────────────
+# Türetilen her kolon FORMÜLDÜR; ham girdiler SQL'den gelir. Büyüme TEK HÜCREDE
+# (B2) — değiştirilince tüm liste yeniden hesaplanır.
+#   (ad, tip)  tip: "ham" = SQL kolonu · "f" = Excel formülü
+DUZEN: list[tuple[str, str]] = [
+    ("Ürün",              "ham"),
+    ("Kategori",          "ham"),
+    ("Kategori yolu",     "ham"),
+    ("Barkod",            "ham"),
+    ("365 günde satılan", "ham"),
+    ("Sezonda satılan",   "ham"),
+    ("Satılacak",         "f"),    # =CEILING(Sezonda satılan × (1+büyüme); 1)
+    ("FSM",               "ham"),
+    ("Özlüce",            "ham"),
+    ("İst.Yolu",          "ham"),
+    ("Mağaza toplam",     "f"),    # =FSM+Özlüce+İst.Yolu
+    ("Depo",              "ham"),
+    ("Toplam stok",       "f"),    # =Mağaza toplam+Depo
+    ("AÇIK",              "f"),    # =MAX(0; Satılacak−Toplam stok)
+    ("FAZLA",             "f"),    # =MAX(0; Toplam stok−Satılacak)
+    ("Satış fiyatı",      "ham"),
+    ("Birim maliyet",     "ham"),
+    ("Tutar",             "f"),    # AÇIK varsa ×satış fiyatı, FAZLA varsa ×maliyet
+]
+
+PARA = {"Satış fiyatı", "Birim maliyet"}
 
 
 def ayir(n: float, para: bool = False) -> str:
@@ -161,54 +189,112 @@ def main() -> int:
         kosamadi(f"Liste BOS dondu (kesim {kesim}, sezon {a.sezon})")
 
     ix = {b: i for i, b in enumerate(bas)}
-    cesit = len(sat)
-    acik_c = sum(1 for r in sat if (r[ix["AÇIK"]] or 0) > 0)
-    fazla_c = sum(1 for r in sat if (r[ix["FAZLA"]] or 0) > 0)
-    acik_a = sum(int(r[ix["AÇIK"]] or 0) for r in sat)
-    fazla_a = sum(int(r[ix["FAZLA"]] or 0) for r in sat)
-    acik_tl = sum(float(r[ix["Tutar"]] or 0) for r in sat if (r[ix["AÇIK"]] or 0) > 0)
-    fazla_tl = sum(float(r[ix["Tutar"]] or 0) for r in sat if (r[ix["FAZLA"]] or 0) > 0)
-    malsiz = sum(1 for r in sat
-                 if (r[ix["FAZLA"]] or 0) > 0 and r[ix["Tutar"]] is None)
+    for ad, tip in DUZEN:
+        if tip == "ham" and ad not in ix:
+            kosamadi(f"Ham kolon '{ad}' sorgudan gelmedi — DUZEN ile SQL ayrismis")
 
-    # ══ TEK SAYFA ═════════════════════════════════════════════════════════════
-    # GMY 15.09.2026: "özete gerek yok". ÖZET sayfası (kutular + kategori tablosu +
-    # 5 madde not) KALDIRILDI. Sınırlar SİLİNMEDİ — başlığın üstünde tek satır kaldı;
-    # dosya elden ele dolaşıyor, rakam bağlamsız okunmasın.
+    # ══ FORMÜLLÜ TEK SAYFA ════════════════════════════════════════════════════
+    # GMY 15.09.2026: "formüllü olsun ne nerden geliyor gözüksün" + "mağaza bazlı
+    # stoklarda olmalı" + "katana kısmı da olmalı".
+    #
+    # Türetilen HİÇBİR sayı dosyaya hazır yazılmaz — hepsi hücre formülüdür ve
+    # kaynak hücreye bakar. Büyüme TEK hücrede (B2): değiştirilince 85 bin satır
+    # yeniden hesaplanır. "Bu rakam nereden geliyor?" sorusu hücreye tıklayarak
+    # cevaplanır; bize sormaya gerek kalmaz.
+    #
+    # ⚠ Özet/toplam satırı YOK (GMY: "özete gerek yok"). Toplam isteyen kolonu
+    #   seçer, Excel durum çubuğunda görür.
+    kolonlar = [ad for ad, _ in DUZEN]
+    K = {ad: get_column_letter(j) for j, (ad, _) in enumerate(DUZEN, start=1)}
+    BAS_SATIR = 4                      # 1 not · 2 büyüme · 3 başlık · 4+ veri
+
     wb = Workbook()
     ws = wb.active
     ws.title = "LİSTE"
 
-    ust = (f"Kesim {kesim:%d.%m.%Y} · satılacak = sezonda satılan × {1 + a.buyume:g} "
-           f"(büyüme %{a.buyume * 100:g}) · AÇIK = satılacak − (mağaza+depo), FAZLA = tersi · "
-           f"Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
-           f"Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
-           f"FAZLA tutarı alt sınır ({malsiz} üründe maliyet yok/şüpheli) · depo stoğu WMS'ten")
+    ust = (f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} · "
+           "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
+           "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
+           "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
+           "Birim maliyeti olmayan üründe Tutar boş kalır (para ALT SINIR) · "
+           "depo stoğu WMS'ten, ERP defteriyle çelişebilir · tek gün fotoğrafı")
     ws.cell(1, 1, ust).font = Font(italic=True, size=9, color="555555")
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(bas))
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(kolonlar))
     ws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
-    ws.row_dimensions[1].height = 30
+    ws.row_dimensions[1].height = 32
 
-    for j, b in enumerate(bas, start=1):
-        h = ws.cell(2, j, b)
+    # ── BÜYÜME: tek hücre, tüm sayfanın girdisi ──────────────────────────────
+    ws.cell(2, 1, "Büyüme →").font = Font(bold=True, size=10)
+    bh = ws.cell(2, 2, a.buyume)
+    bh.number_format = "0%"
+    bh.font = Font(bold=True, size=12)
+    bh.fill = SARI
+    ws.cell(2, 3, "bu hücreyi değiştir → Satılacak, AÇIK, FAZLA ve Tutar yeniden hesaplanır"
+            ).font = Font(italic=True, size=9, color="555555")
+
+    for j, ad in enumerate(kolonlar, start=1):
+        h = ws.cell(3, j, ad)
         h.font = Font(bold=True, color="FFFFFF", size=10)
         h.fill = LACI
         h.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
-    ws.row_dimensions[2].height = 30
+    ws.row_dimensions[3].height = 30
 
-    for i, r in enumerate(sat, start=3):
-        for j, (v, ad) in enumerate(zip(r, bas), start=1):
-            c = ws.cell(i, j, v)
-            if ad in PARA:
-                c.number_format = '#,##0 "₺"'
-            elif isinstance(v, int):
-                c.number_format = "#,##0"
+    for i, r in enumerate(sat, start=BAS_SATIR):
+        for j, (ad, tip) in enumerate(DUZEN, start=1):
+            if tip == "ham":
+                v = r[ix[ad]]
+                c = ws.cell(i, j, v)
+                if ad in PARA:
+                    c.number_format = '#,##0.0000 "₺"'
+                elif isinstance(v, int):
+                    c.number_format = "#,##0"
+                continue
 
-    genis = {"Ürün": 45, "Kategori": 18, "Barkod": 15}
-    for j, b in enumerate(bas, start=1):
-        ws.column_dimensions[get_column_letter(j)].width = genis.get(b, max(len(b) + 2, 11))
-    ws.freeze_panes = "D3"
-    ws.auto_filter.ref = f"A2:{get_column_letter(len(bas))}{len(sat) + 2}"
+            # ── FORMÜL — kaynağı hücreden okur, sabit gömmez ─────────────────
+            f = {
+                "Satılacak":     f'=CEILING({K["Sezonda satılan"]}{i}*(1+$B$2),1)',
+                "Mağaza toplam": f'={K["FSM"]}{i}+{K["Özlüce"]}{i}+{K["İst.Yolu"]}{i}',
+                "Toplam stok":   f'={K["Mağaza toplam"]}{i}+{K["Depo"]}{i}',
+                "AÇIK":          f'=MAX(0,{K["Satılacak"]}{i}-{K["Toplam stok"]}{i})',
+                "FAZLA":         f'=MAX(0,{K["Toplam stok"]}{i}-{K["Satılacak"]}{i})',
+                # AÇIK varsa satış fiyatıyla, FAZLA varsa maliyetle. Maliyet boşsa
+                # BOŞ bırakılır — 0 yazmak "fazlası bedava" demek olurdu.
+                "Tutar": (f'=IF({K["AÇIK"]}{i}>0,{K["AÇIK"]}{i}*{K["Satış fiyatı"]}{i},'
+                          f'IF(AND({K["FAZLA"]}{i}>0,{K["Birim maliyet"]}{i}<>""),'
+                          f'{K["FAZLA"]}{i}*{K["Birim maliyet"]}{i},""))'),
+            }[ad]
+            c = ws.cell(i, j, f)
+            c.fill = SARI
+            c.number_format = '#,##0.00 "₺"' if ad == "Tutar" else "#,##0"
+
+    genis = {"Ürün": 45, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15}
+    for j, ad in enumerate(kolonlar, start=1):
+        ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(len(ad) + 2, 11))
+    ws.freeze_panes = f"E{BAS_SATIR}"
+    ws.auto_filter.ref = f"A3:{get_column_letter(len(kolonlar))}{len(sat) + BAS_SATIR - 1}"
+
+    # ── Konsol özeti — Excel'in hesaplayacağının AYNISI, Python'da ────────────
+    #    (dosyada formül olduğu için openpyxl değer okuyamaz; kontrol burada)
+    cesit = len(sat)
+    acik_c = acik_a = fazla_c = fazla_a = malsiz = 0
+    acik_tl = fazla_tl = 0.0
+    import math
+    for r in sat:
+        satilacak = math.ceil((r[ix["Sezonda satılan"]] or 0) * (1 + a.buyume))
+        elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
+                + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
+        if satilacak > elde:
+            acik_c += 1
+            acik_a += satilacak - elde
+            acik_tl += (satilacak - elde) * float(r[ix["Satış fiyatı"]] or 0)
+        elif elde > satilacak:
+            fazla_c += 1
+            fazla_a += elde - satilacak
+            m = r[ix["Birim maliyet"]]
+            if m is None:
+                malsiz += 1
+            else:
+                fazla_tl += (elde - satilacak) * float(m)
 
     ek = f"-{a.durum}" if a.durum else ""
     cikti = a.cikti or os.path.join(
