@@ -51,16 +51,32 @@ public sealed record SezonAksiyonSatir(
     decimal? KategoriBuyume,
     /// <summary>Satıra FİİLEN uygulanan oran. Gizli sabit yok; gösterilen = çarpılan.</summary>
     decimal UygulananBuyume,
-    int Satilacak,          // = CEILING(GecenKalan × (1 + büyüme)) — "kalan sezon talebi"
+    // ── İKİ TABAN (GMY 15.09.2026, Mopak A4 vakası) ───────────────────────────
+    // Talep tek tabandan gelmez. GECEN tabanı sağdan SANSÜRLÜdür: ürün geçen yıl
+    // tükendiyse gözlenen satış talebi değil, rafın bittiği yeri gösterir.
+    // HIZ tabanı bu yılın gerçekleşen günlük hızıdır (sansürsüz) ama sezonu henüz
+    // başlamamış ürünü küçük gösterir. ⇒ Satilacak = ikisinin BÜYÜĞÜ.
+    int GecenTabani,
+    int HizTabani,
+    int Satilacak,          // = MAX(GecenTabani, HizTabani) — "kalan sezon talebi"
     int StokFsm,
     int StokOzl,
     int StokIst,
     int MagazaStok,
     int MerkezStok,
     int ToplamStok,
-    /// <summary>Stoğu 0 olan ama geçen yıl aynı dilimde satmış mağaza sayısı.
-    /// &gt;0 ise eylem SİPARİŞ değil TRANSFER'dir (mal zaten elde).</summary>
-    int BosRaf,
+    // ── MAĞAZA BAZLI İHTİYAÇ (GMY 15.09.2026: "'var' dediğinde de 1 var zaten") ──
+    // "Stok = 0" ölçütü kabaydı: ihtiyacı 30 olan mağazada 1 adet bulunmak "var"
+    // sayılıyordu. Artık her mağaza KENDİ ihtiyacıyla karşılaştırılır.
+    // ÖLÇÜLDÜ: eski ölçüt taşınabilecek 113.923 adedin yalnız 13.304'ünü görüyordu.
+    int FsmIhtiyac,
+    int OzlIhtiyac,
+    int IstIhtiyac,
+    /// <summary>Σ max(0, mağaza ihtiyacı − mağaza stoğu).</summary>
+    int MagazaEksigi,
+    /// <summary>Σ max(0, mağaza stoğu − mağaza ihtiyacı) — taşınabilir kaynak.</summary>
+    int MagazaFazlasi,
+    /// <summary>min(eksik, fazla + depo) — ÖNCE eldeki taşınır.</summary>
     int TransferAdet,
     int Acik,
     int Fazla,
@@ -330,7 +346,7 @@ public static class SezonAksiyonSiralama
             ["gecenayni"] = "ISNULL(gh.Adet, 0)",
             ["yillik"] = "ISNULL(yl.Adet, 0)",
             ["gecenkalan"] = "ISNULL(gk.Adet, 0)",
-            ["bosraf"] = "g.BosRaf",
+            ["eksik"] = "m.Eksik",
             ["transfer"] = "g.TransferAdet",
             ["sezondisi"] = "(ISNULL(yl.Adet, 0) - t.SezonToplam)",
             ["buayni"] = "ISNULL(bh.Adet, 0)",
@@ -338,6 +354,8 @@ public static class SezonAksiyonSiralama
             ["degisim"] = "CASE WHEN ISNULL(gh.Adet,0) > 0 THEN CONVERT(float, ISNULL(bh.Adet,0)) / gh.Adet END",
             ["sezon"] = "t.SezonToplam",
             ["satilacak"] = "s.Satilacak",
+            ["gecentaban"] = "b.GecT",
+            ["hiztaban"] = "b.HizT",
             ["magaza"] = "t.MagazaStok",
             ["depo"] = "t.MerkezStok",
             ["stok"] = "s.Elde",

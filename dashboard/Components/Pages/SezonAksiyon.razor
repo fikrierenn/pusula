@@ -57,13 +57,29 @@
             <span class="text-error text-sm">taban boş</span>
         }
 
+        @*  BÜYÜME ARTIK TEK KADRAN DEĞİL (satinalma-danisman 15.09.2026): "tek kadran
+            hem AÇIK'ı büyütüp hem FAZLA'yı küçültüyor — bir parametre, iki savunma."
+            Varsayılan = KATEGORİ BAZLI ÖLÇÜLEN oran. Elle girmek İSTİSNADIR ve ekranda
+            kırmızı yazar; ölçüme dönmek tek tık.                                       *@
         <div class="join">
             <span class="join-item btn btn-sm btn-ghost pointer-events-none text-[11px] font-normal
                          text-base-content/50">büyüme</span>
-            <input type="number" step="5" min="-50" max="300"
-                   class="join-item input input-bordered input-sm text-sm w-20"
-                   value="@((_filtre.Buyume * 100m).ToString("0.##", _tr))" @onchange="BuyumeDegis" />
-            <span class="join-item btn btn-sm btn-ghost pointer-events-none">%</span>
+            @if (_filtre.Buyume is { } bo)
+            {
+                <input type="number" step="5" min="-50" max="300"
+                       class="join-item input input-bordered input-sm text-sm w-20 text-error font-semibold"
+                       value="@((bo * 100m).ToString("0.##", _tr))" @onchange="BuyumeDegis" />
+                <span class="join-item btn btn-sm btn-ghost pointer-events-none">%</span>
+                <button class="join-item btn btn-sm btn-ghost text-[11px]" @onclick="OlcumeDon"
+                        title="Kategori bazlı ÖLÇÜLEN orana dön">ölçüme dön</button>
+            }
+            else
+            {
+                <span class="join-item btn btn-sm btn-ghost pointer-events-none text-[11px]
+                             font-normal text-success">kategori bazlı ÖLÇÜLDÜ</span>
+                <button class="join-item btn btn-sm btn-ghost text-[11px]" @onclick="ElleBaslat"
+                        title="Ölçüm yerine düz oran gir">elle gir</button>
+            }
         </div>
 
         @* PENCERE — yalnız BU yılınki seçilir; geçen yıl otomatik aynalanır.
@@ -84,6 +100,7 @@
             <option value="acik">yalnız AÇIK</option>
             <option value="fazla">yalnız FAZLA</option>
             <option value="bitti">yalnız SEZONU BİTTİ</option>
+            <option value="transfer">yalnız TRANSFER (taşı)</option>
         </select>
 
         <select class="select select-bordered select-sm text-sm"
@@ -120,7 +137,7 @@
         var k = _ozet.Kpi;
 
         @* ── İKİ KART ────────────────────────────────────────────────────────────── *@
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
 
             <button type="button" @onclick='() => DurumSec("acik")'
                     class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
@@ -163,6 +180,23 @@
                              text-base-content/55">SEZONU BİTTİ — bu sezon satmaz</span>
                 <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
                     @Say(k.BittiUrun) ürün · @Say(k.BittiAdet) adet · maliyetle
+                </span>
+            </button>
+
+            @*  TRANSFER — SATINALMA DEĞİL. Mal zaten elde; bir mağazada eksik, ötekinde
+                ya da depoda fazla. GMY 15.09.2026: "ona bakarsan diğerlerine de transfer
+                yapmak gerek; 'var' dediğinde de 1 var zaten" — "stok = 0" ölçütü kabaydı,
+                taşınabilecek 113.923 adedin yalnız 13.304'ünü görüyordu.                 *@
+            <button type="button" @onclick='() => DurumSec("transfer")'
+                    class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
+                           transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[.98]
+                           @(_filtre.Durum == "transfer" ? "border-info" : "hover:border-base-content/20")">
+                <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                             text-[30px] text-info">@Tl(k.TransferTutar)</span>
+                <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                             text-base-content/55">TAŞI — sipariş gerekmiyor</span>
+                <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
+                    @Say(k.TransferUrun) ürün · @Say(k.TransferAdet) adet · satış fiyatıyla
                 </span>
             </button>
         </div>
@@ -272,6 +306,17 @@
                                         @Say(s.Yillik - s.SezonToplam)
                                     </td>
                                     <td class="text-right tabular-nums">@Say(s.GecenKalan)</td>
+                                    @* Geçen yıl KALAN dilimde stoksuz kaldıysa bu taban
+                                       SANSÜRLÜDÜR — gerçek talebi değil, rafın bittiği yeri
+                                       gösterir. Bayrak varsa uyarı rengi + yıldız. *@
+                                    <td class="text-right tabular-nums @(s.StoksuzKaldi ? "text-warning" : "")"
+                                        title="@(s.StoksuzKaldi ? "Geçen yıl bu dilimde stok tükenmiş — taban SANSÜRLÜ, alt sınır" : "")">
+                                        @Say(s.GecenTabani)@(s.StoksuzKaldi ? "*" : "")
+                                    </td>
+                                    @* Bağlayan taban KOYU: sayının nereden geldiği tek bakışta. *@
+                                    <td class="text-right tabular-nums @(s.HizTabani > s.GecenTabani ? "font-semibold" : "text-base-content/50")">
+                                        @Say(s.HizTabani)
+                                    </td>
                                     <td class="text-right tabular-nums font-semibold">@Say(s.Satilacak)</td>
                                     <td class="text-right tabular-nums">@Say(s.MagazaStok)</td>
                                     <td class="text-right tabular-nums">@Say(s.MerkezStok)</td>
@@ -317,9 +362,20 @@
             </summary>
             <div class="collapse-content text-[11px] leading-relaxed text-base-content/70">
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b>Satılacak</b> = geçen sezon (Ağu–Eki @_filtre.SezonYil) satılan ×
-                        @((1 + _filtre.Buyume).ToString("0.##", _tr)). Büyüme TEK sayıdır, yukarıdan
-                        değişir — ürün ya da kategori bazlı ölçülmüş bir büyüme DEĞİLDİR.</li>
+                    <li><b>Satılacak</b> = iki tabanın <b>BÜYÜĞÜ</b>.
+                        (1) <i>Geçen yıl tabanı</i> = geçen yılın kalan sezon dilimi ×
+                        @(_filtre.Buyume is { } b2 ? "elle girilen " + (1 + b2).ToString("0.##", _tr)
+                                                   : "kategori bazlı ÖLÇÜLEN oran").
+                        (2) <i>Bu yıl hız tabanı</i> = bu yılın gerçekleşen günlük hızı × kalan gün.
+                        <b>Neden iki taban:</b> geçen yıl tükenen ürünün gözlenen satışı talep değil,
+                        rafın bittiği yerdir. Ölçüldü (Mopak A4 fotokopi kâğıdı): geçen yıl kalan
+                        dilim 15 adet, bu yıl aynı pencerede 1.791 — tek tabanla
+                        "FAZLA 4.527 adet / 529.503 ₺" çıkıyordu; doğrusu depodan 1.152 adet TAŞI.
+                        Tersi de var: Ekim'de satan ürün 13 Eylül'de hâlâ 0 hızdadır; o yüzden hız
+                        tabanı da tek başına kullanılmaz.</li>
+                    <li><b>Kaç satırı değiştirdi:</b> bugün FAZLA/SEZONU BİTTİ etiketi alacak
+                        6.016 çeşitte (160.145 adet stok) hız tabanı stoğun yetmeyeceğini
+                        söylüyor — 177.083 adet (ölçüldü 15.09.2026).</li>
                     <li><b>AÇIK</b> = KALAN sezon talebi − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
                     <li><b>SEZONU BİTTİ</b> = geçen yıl kalan dilimde HİÇ satmamış ama stoğu
                         duran ürün. FAZLA'dan ayrı tutuluyor çünkü eylemi farklı: indirimle
@@ -394,6 +450,9 @@
             var (gkb, gks) = _filtre.GecenKalanPencere;
             var (kb, ks) = _filtre.KalanPencere;
             yield return new("gecenkalan", $"Geçen yıl kalan {T(gkb)}–{T(gks)}", true);
+            // İKİ TABAN AYRI KOLON: hangisinin bağladığı görünsün.
+            yield return new("gecentaban", $"Geçen yıl tabanı {T(gkb)}–{T(gks)} × oran", true);
+            yield return new("hiztaban", $"Bu yıl hız tabanı {T(bb)}–{T(bs)} hızı", true);
             yield return new("satilacak", $"KALAN sezon talebi {T(kb)}–{T(ks)}", true);
             yield return new("magaza", $"Mağaza {T(_filtre.Kesim)}", true);
             yield return new("depo", $"Depo {T(_filtre.Kesim)}", true);
@@ -478,6 +537,14 @@
             return Task.CompletedTask;
         return Uygula(_filtre with { Buyume = oran });
     }
+
+    /// <summary>Ölçülen kategori oranından ELLE orana geçer (istisna yolu).
+    /// Başlangıç değeri kasten 1,20 DEĞİL 1,00: elle giren kişi kendi sayısını
+    /// yazsın, hazır bir büyüme varsayımı devralmasın.</summary>
+    private Task ElleBaslat() => Uygula(_filtre with { Buyume = 0m });
+
+    /// <summary>Elle orandan KATEGORİ BAZLI ÖLÇÜLEN orana döner (varsayılan).</summary>
+    private Task OlcumeDon() => Uygula(_filtre with { Buyume = null });
 
     private int PencereGun =>
         _filtre.BuPencere.Son.DayNumber - _filtre.BuPencere.Bas.DayNumber + 1;
