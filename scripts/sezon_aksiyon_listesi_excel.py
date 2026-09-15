@@ -193,16 +193,21 @@ SELECT t.stkAd                                       AS [Ürün],
        --   ÇARPILAN oranın AYNISI olmalı (birim maliyette de aynı ilke).
        CONVERT(decimal(7,4), o.Oran)                 AS [Uygulanan büyüme],
        CONVERT(int, ISNULL(yl.Adet, 0))              AS [Yıllık toplam],
-       -- BOŞ RAF: mağazanın stoğu 0 ama geçen yıl AYNI dilimde orada satmış.
-       --   Toplam stok yeterliyse eylem SİPARİŞ değil TRANSFER'dir.
-       (CASE WHEN t.StokFsm = 0 AND ISNULL(gks.Fsm,0) > 0 THEN 1 ELSE 0 END
-      + CASE WHEN t.StokOzl = 0 AND ISNULL(gks.Ozl,0) > 0 THEN 1 ELSE 0 END
-      + CASE WHEN t.StokIst = 0 AND ISNULL(gks.Ist,0) > 0 THEN 1 ELSE 0 END) AS [Boş raf],
-       CONVERT(int,
-         CASE WHEN t.StokFsm = 0 AND ISNULL(gks.Fsm,0) > 0 THEN CEILING(gks.Fsm * o.Oran) ELSE 0 END
-       + CASE WHEN t.StokOzl = 0 AND ISNULL(gks.Ozl,0) > 0 THEN CEILING(gks.Ozl * o.Oran) ELSE 0 END
-       + CASE WHEN t.StokIst = 0 AND ISNULL(gks.Ist,0) > 0 THEN CEILING(gks.Ist * o.Oran) ELSE 0 END)
-                                                     AS [Transfer adet],
+       -- ── MAĞAZA BAZLI İHTİYAÇ ────────────────────────────────────────────
+       -- GMY 15.09.2026: "ona bakarsan diğerlerine de transfer gerek; 'var' dediğinde
+       --   de 1 var zaten." HAKLI: "stok = 0" ölçütü kabaydı. İhtiyacı 30 olan mağazada
+       --   1 adet olmak ile 0 olmak arasında pratik fark yok.
+       -- ⇒ Her mağaza KENDİ ihtiyacıyla karşılaştırılır: o mağazanın geçen yıl aynı
+       --   dilimde sattığı × oran. Eksikler toplanır; önce eldeki FAZLA + DEPO'dan
+       --   taşınır, ancak kalanı SATIN ALINIR.
+       -- ÖLÇÜLDÜ: eski ölçüt taşınabilecek 113.923 adedin yalnız 13.304'ünü görüyordu.
+       m.IhtF AS [FSM ihtiyaç], m.IhtO AS [Özlüce ihtiyaç], m.IhtI AS [İst.Yolu ihtiyaç],
+       m.Eksik                                       AS [Mağaza eksiği],
+       m.Fazla                                       AS [Mağaza fazlası],
+       CASE WHEN m.Eksik < m.Fazla + t.MerkezStok
+            THEN m.Eksik ELSE m.Fazla + t.MerkezStok END AS [Transfer ham],
+       CASE WHEN m.Eksik > m.Fazla + t.MerkezStok
+            THEN m.Eksik - (m.Fazla + t.MerkezStok) ELSE 0 END AS [Satın al ham],
        t.StokFsm                                     AS [FSM],
        t.StokOzl                                  AS [Özlüce],
        t.StokIst                                     AS [İst.Yolu],
@@ -230,6 +235,17 @@ LEFT JOIN yl ON yl.stkID = t.stkID
 CROSS APPLY (SELECT Oran = CONVERT(decimal(7,4), CASE WHEN ? > 0 THEN ?
                   ELSE ISNULL(CASE WHEN kb.Gecen >= 2000
                        THEN CONVERT(float, kb.Bu) / kb.Gecen END, 1.0) END)) o
+CROSS APPLY (SELECT
+        IhtF = CONVERT(int, CEILING(CASE WHEN ISNULL(gks.Fsm,0) > 0 THEN gks.Fsm * o.Oran ELSE 0 END)),
+        IhtO = CONVERT(int, CEILING(CASE WHEN ISNULL(gks.Ozl,0) > 0 THEN gks.Ozl * o.Oran ELSE 0 END)),
+        IhtI = CONVERT(int, CEILING(CASE WHEN ISNULL(gks.Ist,0) > 0 THEN gks.Ist * o.Oran ELSE 0 END))) m0
+CROSS APPLY (SELECT IhtF = m0.IhtF, IhtO = m0.IhtO, IhtI = m0.IhtI,
+        Eksik = CASE WHEN m0.IhtF > t.StokFsm THEN m0.IhtF - t.StokFsm ELSE 0 END
+              + CASE WHEN m0.IhtO > t.StokOzl THEN m0.IhtO - t.StokOzl ELSE 0 END
+              + CASE WHEN m0.IhtI > t.StokIst THEN m0.IhtI - t.StokIst ELSE 0 END,
+        Fazla = CASE WHEN t.StokFsm > m0.IhtF THEN t.StokFsm - m0.IhtF ELSE 0 END
+              + CASE WHEN t.StokOzl > m0.IhtO THEN t.StokOzl - m0.IhtO ELSE 0 END
+              + CASE WHEN t.StokIst > m0.IhtI THEN t.StokIst - m0.IhtI ELSE 0 END) m
 CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
                         THEN CONVERT(int, CEILING(gk.Adet * o.Oran)) ELSE 0 END,
                     Elde      = t.MagazaStok + t.MerkezStok) s
@@ -238,11 +254,10 @@ CROSS APPLY (SELECT Satilacak = CASE WHEN ISNULL(gk.Adet, 0) > 0
 CROSS APPLY (SELECT Sinif = CASE
         WHEN ISNULL(gk.Adet, 0) <= 0 THEN CASE WHEN t.MagazaStok + t.MerkezStok > 0
                                                THEN 3 ELSE 0 END   -- 3 SEZONU BİTTİ
-        WHEN s.Satilacak > s.Elde THEN 1                           -- 1 AÇIK (satınalma)
-        WHEN (CASE WHEN t.StokFsm = 0 AND ISNULL(gks.Fsm,0) > 0 THEN 1 ELSE 0 END
-            + CASE WHEN t.StokOzl = 0 AND ISNULL(gks.Ozl,0) > 0 THEN 1 ELSE 0 END
-            + CASE WHEN t.StokIst = 0 AND ISNULL(gks.Ist,0) > 0 THEN 1 ELSE 0 END) > 0
-             THEN 4                                                -- 4 TRANSFER
+        -- AÇIK = mağaza eksiği, ELDEKİ fazla + depo ile kapanmıyor → SATIN AL
+        WHEN m.Eksik > m.Fazla + t.MerkezStok THEN 1               -- 1 AÇIK (satınalma)
+        -- Eksik var ama elden kapanıyor → TAŞI, sipariş verme
+        WHEN m.Eksik > 0 THEN 4                                    -- 4 TRANSFER
         WHEN s.Elde > s.Satilacak THEN 2                           -- 2 FAZLA
         ELSE 0 END) g
 WHERE t.Kesim = ? AND t.SezonYil = ?
@@ -288,8 +303,14 @@ DUZEN: list[tuple[str, str]] = [
     ("Yıllık toplam",          "ham"),   # 01.08.<sezon> – 31.07.<sezon+1>, 365 gün (HER ŞEY)
     ("Sezon dışı",             "f"),     # =Yıllık toplam − Geçen sezon TAMAMI (Kas–Tem)
     ("Kalan sezon talebi",     "f"),     # =CEILING(Geçen yıl kalan dönem × (1+büyüme); 1)
-    ("Boş raf",                "ham"),   # kaç mağazanın rafı boş (geçen yıl satmışken)
-    ("Transfer adet",          "ham"),   # o boş raflara taşınacak adet
+    ("FSM ihtiyaç",            "ham"),   # o mağazanın geçen yılki satışı × oran
+    ("Özlüce ihtiyaç",         "ham"),
+    ("İst.Yolu ihtiyaç",       "ham"),
+    ("Mağaza eksiği",          "ham"),   # Σ max(0, ihtiyaç − stok)
+    ("Mağaza fazlası",         "ham"),   # Σ max(0, stok − ihtiyaç)
+    ("Transfer adet",          "f"),     # SADECE Durum=TRANSFER satırında dolu
+    ("Transfer ham",           "ham"),   # GİZLİ
+    ("Satın al ham",           "ham"),   # GİZLİ
     ("FSM",                    "ham"),
     ("Özlüce",                 "ham"),
     ("İst.Yolu",               "ham"),
@@ -335,14 +356,16 @@ MOD_KOLON: dict[str, list[str]] = {
     "acik": KIMLIK + ["Geçen yıl aynı dönem", "Bu yıl 01.08–bugün", "Değişim",
                       "Geçen yıl kalan dönem", "Geçen yıl stoksuz kaldı", "Uygulanan büyüme",
                       "Kalan sezon talebi"] + STOK
-                   + ["Boş raf", "AÇIK", "Satış fiyatı", "Tutar", "Durum"],
+                   + ["Mağaza eksiği", "Mağaza fazlası", "Transfer adet", "AÇIK",
+                      "Satış fiyatı", "Tutar", "Durum"],
     # ERİTME kararı — "Sezon dışı" burada belirleyici
     "fazla": KIMLIK + ["Bu yıl 01.08–bugün", "Yıllık toplam", "Sezon dışı",
                        "Uygulanan büyüme", "Kalan sezon talebi"] + STOK
                     + ["FAZLA", "Birim maliyet", "Tutar", "Durum"],
     # TRANSFER kararı — satınalma DEĞİL, mal zaten elde
     "transfer": KIMLIK + ["Bu yıl 01.08–bugün", "Geçen yıl kalan dönem",
-                          "Boş raf", "Transfer adet"] + STOK
+                          "FSM ihtiyaç", "Özlüce ihtiyaç", "İst.Yolu ihtiyaç",
+                          "Mağaza eksiği", "Mağaza fazlası", "Transfer adet"] + STOK
                        + ["Satış fiyatı", "Durum"],
     # İADE / gelecek sezon kararı
     "bitti": KIMLIK + ["Bu yıl 01.08–bugün", "Geçen yıl kalan dönem", "Yıllık toplam",
@@ -648,8 +671,12 @@ def main() -> int:
         "Kategori büyümesi":    f"Kategori büyümesi\n(ölçülen, 44 gün)",
         "Uygulanan büyüme":     f"Uygulanan büyüme\n(bu satıra)",
         "Kalan sezon talebi":   f"KALAN sezon talebi\n{gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y}",
-        "Boş raf":              f"Boş raf\n(mağaza sayısı)",
-        "Transfer adet":        f"Transfer adet\n{gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y}",
+        "FSM ihtiyaç":          f"FSM ihtiyaç\n(geçen yıl × oran)",
+        "Özlüce ihtiyaç":       f"Özlüce ihtiyaç\n(geçen yıl × oran)",
+        "İst.Yolu ihtiyaç":     f"İst.Yolu ihtiyaç\n(geçen yıl × oran)",
+        "Mağaza eksiği":        f"Mağaza eksiği\n(ihtiyaç − stok)",
+        "Mağaza fazlası":       f"Mağaza fazlası\n(stok − ihtiyaç)",
+        "Transfer adet":        f"TAŞINACAK\n{gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y}",
         "FSM":                  f"FSM\n{kesim:%d.%m.%y}",
         "Özlüce":               f"Özlüce\n{kesim:%d.%m.%y}",
         "İst.Yolu":             f"İst.Yolu\n{kesim:%d.%m.%y}",
@@ -763,7 +790,7 @@ def main() -> int:
                 "Sezon dışı": (f'={K["Yıllık toplam"]}{i}-{K["Geçen sezon TAMAMI"]}{i}'),
                 "Mağaza toplam": f'={K["FSM"]}{i}+{K["Özlüce"]}{i}+{K["İst.Yolu"]}{i}',
                 "Toplam stok":   f'={K["Mağaza toplam"]}{i}+{K["Depo"]}{i}',
-                "AÇIK":          f'=MAX(0,{K["Kalan sezon talebi"]}{i}-{K["Toplam stok"]}{i})',
+                "AÇIK":          f'={K["Satın al ham"]}{i}',
                 "FAZLA":         f'=MAX(0,{K["Toplam stok"]}{i}-{K["Kalan sezon talebi"]}{i})',
                 # AÇIK varsa satış fiyatıyla, FAZLA varsa maliyetle. Maliyet boşsa
                 # BOŞ bırakılır — 0 yazmak "fazlası bedava" demek olurdu.
@@ -781,11 +808,17 @@ def main() -> int:
                 "Durum": (f'=IF({K["Geçen yıl kalan dönem"]}{i}<=0,'
                           f'IF({K["Toplam stok"]}{i}>0,"SEZONU BİTTİ","DENGE"),'
                           f'IF({K["AÇIK"]}{i}>0,"AÇIK",'
-                          f'IF({K["Boş raf"]}{i}>0,"TRANSFER",'
+                          f'IF({K["Mağaza eksiği"]}{i}>0,"TRANSFER",'
                           f'IF({K["FAZLA"]}{i}>0,"FAZLA","DENGE"))))'),
                 "AÇIK ₺":  f'=IF({K["Durum"]}{i}="AÇIK",{K["Tutar"]}{i},0)',
                 "FAZLA ₺": (f'=IF({K["Durum"]}{i}="FAZLA",'
                             f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
+                # ⚠ SADECE TRANSFER SATIRINDA DOLU. Ham adet her satırda hesaplanıyor ama
+                #   AÇIK bir üründe "55 adet taşı" demek YANILTICI olur: taşıyacak mal yok,
+                #   önce satın alınması gerekiyor. GMY 15.09.2026 bu kolonu sorunca görüldü.
+                # Taşınacak miktar HER satırda anlamlı: AÇIK üründe de önce eldeki
+                # taşınır, KALANI sipariş edilir. Sıfırsa boş kalır (taşıyacak mal yok).
+                "Transfer adet": (f'=IF({K["Transfer ham"]}{i}>0,{K["Transfer ham"]}{i},"")'),
                 "Sezonu bitti ₺": (f'=IF({K["Durum"]}{i}="SEZONU BİTTİ",'
                                    f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
             }[ad]
@@ -802,7 +835,7 @@ def main() -> int:
         en_uzun = max((len(p) for p in gor.split("\n")), default=len(ad))
         ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(en_uzun + 2, 11))
     # Pivot yardımcıları HER ZAMAN gizli.
-    gizlenecek = {"AÇIK ₺", "FAZLA ₺", "Sezonu bitti ₺"}
+    gizlenecek = {"AÇIK ₺", "FAZLA ₺", "Sezonu bitti ₺", "Transfer ham", "Satın al ham"}
     # Aksiyon seçiliyse o aksiyonun görmediği kolonlar da gizlenir (SİLİNMEZ).
     if a.durum in MOD_KOLON:
         gorunur = set(MOD_KOLON[a.durum])
@@ -912,16 +945,17 @@ def main() -> int:
                                      * float(r[ix["Uygulanan büyüme"]] or 1)))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
-        bos_raf = r[ix["Boş raf"]] or 0
+        eksik = r[ix["Mağaza eksiği"]] or 0
         bitti = (r[ix["Geçen yıl kalan dönem"]] or 0) <= 0
-        if not bitti and satilacak > elde:
+        al = r[ix["Satın al ham"]] or 0
+        if not bitti and al > 0:
             acik_c += 1
-            acik_a += satilacak - elde
-            acik_tl += (satilacak - elde) * float(r[ix["Satış fiyatı"]] or 0)
-        elif not bitti and bos_raf > 0:
+            acik_a += al
+            acik_tl += al * float(r[ix["Satış fiyatı"]] or 0)
+        elif not bitti and eksik > 0:
             trans_c += 1
-            trans_a += r[ix["Transfer adet"]] or 0
-            trans_tl += (r[ix["Transfer adet"]] or 0) * float(r[ix["Satış fiyatı"]] or 0)
+            trans_a += r[ix["Transfer ham"]] or 0
+            trans_tl += (r[ix["Transfer ham"]] or 0) * float(r[ix["Satış fiyatı"]] or 0)
         elif elde > satilacak:
             m = r[ix["Birim maliyet"]]
             if bitti:

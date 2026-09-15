@@ -42,6 +42,15 @@ public sealed record SezonAksiyonSatir(
     //   değil mi"). Sezonun geçen günleri ZATEN SATILDI; tüm sezon talebini istemek açığı
     //   2,4 KAT şişiriyordu — ölçüldü: 254,7M ₺ → 106,9M ₺.
     int GecenKalan,
+    /// <summary>Geçen yıl KALAN dilimin ay sonlarında mağaza stoğu 0 muydu — talep
+    /// sağdan SANSÜRLÜ demektir, o satırda AÇIK ALT SINIRDIR. Ölçüldü 15.09.2026:
+    /// AÇIK'taki 17.062 ürünün 2.920'si (%17,1) böyle.</summary>
+    bool StoksuzKaldi,
+    /// <summary>Kategorinin ÖLÇÜLEN büyümesi (aynı 44 gün, iki yıl). Taban &lt; 2.000
+    /// adetse NULL — oran oynak olur, uydurulmaz.</summary>
+    decimal? KategoriBuyume,
+    /// <summary>Satıra FİİLEN uygulanan oran. Gizli sabit yok; gösterilen = çarpılan.</summary>
+    decimal UygulananBuyume,
     int Satilacak,          // = CEILING(GecenKalan × (1 + büyüme)) — "kalan sezon talebi"
     int StokFsm,
     int StokOzl,
@@ -49,6 +58,10 @@ public sealed record SezonAksiyonSatir(
     int MagazaStok,
     int MerkezStok,
     int ToplamStok,
+    /// <summary>Stoğu 0 olan ama geçen yıl aynı dilimde satmış mağaza sayısı.
+    /// &gt;0 ise eylem SİPARİŞ değil TRANSFER'dir (mal zaten elde).</summary>
+    int BosRaf,
+    int TransferAdet,
     int Acik,
     int Fazla,
     decimal? AcikTutar,
@@ -84,6 +97,12 @@ public sealed record SezonAksiyonKpi(
     int BittiUrun,
     long BittiAdet,
     decimal BittiTutar,
+    // TRANSFER — toplam stok yeterli ama bir rafın boş olduğu ürünler.
+    // ⚠ FAZLA'yı EZER: raf boşken "erit" demek yanlış eylemdir. Ölçüldü 15.09.2026:
+    //   4.346 ürün · 4.505 boş raf · 4.257.739 ₺ — hiçbir listede görünmüyordu.
+    int TransferUrun,
+    long TransferAdet,
+    decimal TransferTutar,
     int MaliyetiYok);
 
 public sealed record SezonAksiyonOzet(SezonAksiyonKpi Kpi, IReadOnlyList<SezonAksiyonKategori> Kategoriler);
@@ -92,7 +111,11 @@ public sealed record SezonAksiyonOzet(SezonAksiyonKpi Kpi, IReadOnlyList<SezonAk
 public sealed record SezonAksiyonFiltre(
     DateOnly Kesim,
     int SezonYil,
-    decimal Buyume = 0.20m,
+    // ⚠ NULL = KATEGORİ BAZLI ÖLÇÜLÜR (varsayılan). Değer verilirse ELLE düz oran
+    //   uygulanır ve bu ekranda KIRMIZI yazılır.
+    //   satinalma-danisman 15.09.2026: "büyüme alıcının yazacağı bir kutu OLMAZ —
+    //   tek kadran hem AÇIK'ı büyütüp hem FAZLA'yı küçültüyor."
+    decimal? Buyume = null,
     // PENCERE — kullanıcı BU yılınkini seçer; geçen yılınki ay/gün AYNASI olarak
     // TÜRETİLİR. Serbest iki pencere verilseydi 30 güne karşı 60 gün kıyaslanabilir
     // ve SAHTE büyüme üretirdi (hata vermeden). Aynalama bunu yapısal olarak engeller.
@@ -198,8 +221,9 @@ public sealed record SezonAksiyonFiltre(
         {
             $"kesim={Kesim:yyyy-MM-dd}",
             $"sezon={SezonYil}",
-            $"buyume={Buyume.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
         };
+        if (Buyume is { } bo)
+            p.Add($"buyume={bo.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
         if (PencereBas is { } pb) p.Add($"pbas={pb:yyyy-MM-dd}");
         if (PencereSon is { } ps) p.Add($"pson={ps:yyyy-MM-dd}");
         if (!string.IsNullOrWhiteSpace(Durum)) p.Add($"durum={Uri.EscapeDataString(Durum)}");
@@ -234,13 +258,13 @@ public sealed record SezonAksiyonFiltre(
             else atla.Add($"sezon='{sz}' geçersiz, {varsayilanSezon} kullanıldı");
         }
 
-        var buyume = 0.20m;
+        decimal? buyume = null;      // null = kategori bazlı ÖLÇÜM
         if (q.TryGetValue("buyume", out var bs) && !string.IsNullOrWhiteSpace(bs))
         {
             if (decimal.TryParse(bs, System.Globalization.NumberStyles.Float,
                                  System.Globalization.CultureInfo.InvariantCulture, out var b)
                 && b >= BuyumeAlt && b <= BuyumeUst) buyume = b;
-            else atla.Add($"buyume='{bs}' geçersiz (−50% … +300% arası), %20 kullanıldı");
+            else atla.Add($"buyume='{bs}' geçersiz (−50% … +300% arası), ölçüm kullanıldı");
         }
 
         DateOnly? pbas = null, pson = null;
@@ -257,8 +281,8 @@ public sealed record SezonAksiyonFiltre(
         string? durum = null;
         if (q.TryGetValue("durum", out var ds) && !string.IsNullOrWhiteSpace(ds))
         {
-            if (ds is "acik" or "fazla" or "bitti") durum = ds;
-            else atla.Add($"durum='{ds}' tanınmadı (acik|fazla|bitti), süzgeç uygulanmadı");
+            if (ds is "acik" or "fazla" or "bitti" or "transfer") durum = ds;
+            else atla.Add($"durum='{ds}' tanınmadı (acik|fazla|bitti|transfer), süzgeç uygulanmadı");
         }
 
         var azalan = true;
@@ -306,6 +330,8 @@ public static class SezonAksiyonSiralama
             ["gecenayni"] = "ISNULL(gh.Adet, 0)",
             ["yillik"] = "ISNULL(yl.Adet, 0)",
             ["gecenkalan"] = "ISNULL(gk.Adet, 0)",
+            ["bosraf"] = "g.BosRaf",
+            ["transfer"] = "g.TransferAdet",
             ["sezondisi"] = "(ISNULL(yl.Adet, 0) - t.SezonToplam)",
             ["buayni"] = "ISNULL(bh.Adet, 0)",
             // Geçen yıl 0 ise oran YOK — sonsuz büyüme uydurulmaz, en sona düşer.
