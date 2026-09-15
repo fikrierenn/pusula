@@ -519,7 +519,20 @@ def main() -> int:
     ws = wb.active
     ws.title = "LİSTE"
 
-    ust = (f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} (Ağu–Eki) · "
+    # ⚠ SÜZGEÇ DOSYANIN YÜZÜNDE YAZAR. Yazmazsa açan kişi "tamamı mı, süzülmüş mü"
+    #   ayırt edemez — GMY 15.09.2026'da tam bu oldu ("excelde tamamı var").
+    suzgec = []
+    if kategori:
+        suzgec.append(f"KATEGORİ: {kategori}")
+    if a.durum:
+        suzgec.append({"acik": "YALNIZ AÇIK (eksik olanlar)",
+                       "fazla": "YALNIZ FAZLA",
+                       "bitti": "YALNIZ SEZONU BİTTİ"}[a.durum])
+    suzgec_metni = (" ⚠ SÜZÜLMÜŞ — " + " · ".join(suzgec) + " ⚠ · "
+                    if suzgec else "SÜZGEÇ YOK (tüm evren) · ")
+
+    ust = (suzgec_metni
+           + f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} (Ağu–Eki) · "
            f"AYNI PENCERE: geçen {g_bas:%d.%m.%Y}–{g_son:%d.%m.%Y} · "
            f"bu {b_bas:%d.%m.%Y}–{b_son:%d.%m.%Y} ({(b_son - b_bas).days + 1} gün, eşit) · "
            f"YILLIK toplam {y_bas:%d.%m.%Y}–{y_son:%d.%m.%Y} ({(y_son - y_bas).days + 1} gün, "
@@ -544,6 +557,9 @@ def main() -> int:
     bh.number_format = "0%"
     bh.font = Font(bold=True, size=12)
     bh.fill = SARI
+    if suzgec:
+        sh = ws.cell(2, 5, "SÜZÜLMÜŞ RAPOR: " + " · ".join(suzgec))
+        sh.font = Font(bold=True, color="C00000", size=11)
     ws.cell(2, 3, "bu hücreyi değiştir → Kalan sezon talebi, AÇIK, FAZLA ve Tutar yeniden hesaplanır"
             ).font = Font(italic=True, size=9, color="555555")
 
@@ -738,9 +754,12 @@ def main() -> int:
             else:
                 fazla_tl += (elde - satilacak) * float(m)
 
+    # Dosya adı: Türkçe harfler DÜŞÜRÜLMEZ, karşılığına ÇEVRİLİR — "Krtasiye" gibi
+    # okunmaz ad üretmesin (ı ve ş sessizce siliniyordu).
+    TR = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
     ek = ("-" + a.durum if a.durum else "")
     if kategori:
-        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", kategori)
+        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", kategori.translate(TR))
     cikti = a.cikti or os.path.join(
         KOK, "raporlar", f"sezon-aksiyon-listesi-{kesim:%Y%m%d}{ek}.xlsx")
     os.makedirs(os.path.dirname(cikti), exist_ok=True)
