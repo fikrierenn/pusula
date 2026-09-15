@@ -36,7 +36,6 @@ if hasattr(sys.stdout, "buffer"):
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LACI = PatternFill("solid", fgColor="1F3864")
-ACIK = PatternFill("solid", fgColor="D9E2F3")
 
 
 def kosamadi(mesaj: str) -> None:
@@ -85,29 +84,23 @@ YOL = ("STUFF(ISNULL(N' > ' + NULLIF(t.Kategori1, N''), N'')"
 MALIYET_GECERLI = "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)"
 
 SQL = f"""
-SELECT t.Kategori3                                   AS [Kategori],
-       {YOL}                                         AS [Kategori yolu],
-       t.stkAd                                       AS [Ürün],
+SELECT t.stkAd                                       AS [Ürün],
+       t.Kategori3                                   AS [Kategori],
        t.BarkodAna                                   AS [Barkod],
-       t.stkID                                       AS [stkID],
-       t.Yayinevi                                    AS [Yayınevi/Marka],
-       CONVERT(decimal(18,2), t.SatisFiyat)          AS [Satış fiyatı],
        t.SatisToplam                                 AS [365 günde satılan],
        t.SezonToplam                                 AS [Sezonda satılan],
-       CONVERT(decimal(5,2), ?)                      AS [Büyüme],
-       s.Satilacak                                   AS [Satılacak miktar],
-       t.MagazaStok                                  AS [Mağaza stok],
-       t.MerkezStok                                  AS [Depo stok],
+       s.Satilacak                                   AS [Satılacak],
+       t.MagazaStok                                  AS [Mağaza],
+       t.MerkezStok                                  AS [Depo],
        s.Elde                                        AS [Toplam stok],
        CASE WHEN s.Satilacak > s.Elde THEN s.Satilacak - s.Elde ELSE 0 END AS [AÇIK],
        CASE WHEN s.Elde > s.Satilacak THEN s.Elde - s.Satilacak ELSE 0 END AS [FAZLA],
-       CASE WHEN s.Satilacak > s.Elde THEN N'AÇIK — sipariş/transfer'
-            WHEN s.Elde > s.Satilacak THEN N'FAZLA — indirim/iade/transfer'
-            ELSE N'DENGE' END                        AS [Durum],
-       CONVERT(decimal(18,2), CASE WHEN s.Satilacak > s.Elde
-            THEN (s.Satilacak - s.Elde) * t.SatisFiyat END)     AS [AÇIK ₺ (satış fiyatı)],
-       CONVERT(decimal(18,2), CASE WHEN s.Elde > s.Satilacak AND {MALIYET_GECERLI}
-            THEN (s.Elde - s.Satilacak) * t.BirimMaliyet END)   AS [FAZLA ₺ (maliyet)]
+       -- TEK tutar kolonu: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
+       -- İki ayrı kolon vardı; çoğu satırda biri hep boştu ve "toplanabilir" görünüyordu.
+       CONVERT(decimal(18,2), CASE
+            WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiyat
+            WHEN s.Elde > s.Satilacak AND {MALIYET_GECERLI}
+                 THEN (s.Elde - s.Satilacak) * t.BirimMaliyet END)          AS [Tutar]
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
 CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
@@ -121,8 +114,7 @@ ORDER BY CASE WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiy
               ELSE (s.Elde - s.Satilacak) * ISNULL(t.BirimMaliyet, 0) END DESC
 """
 
-PARA = {"Satış fiyatı", "AÇIK ₺ (satış fiyatı)", "FAZLA ₺ (maliyet)"}
-ORAN = {"Büyüme"}
+PARA = {"Tutar"}
 
 
 def ayir(n: float, para: bool = False) -> str:
@@ -157,7 +149,9 @@ def main() -> int:
                 kosamadi("Taban BOS — kesim okunamadi (sessizlik kanit degil)")
             kesim = r[0] if isinstance(r[0], dt.date) else dt.date.fromisoformat(str(r[0])[:10])
 
-        cur.execute(SQL, a.buyume, a.buyume, kesim, a.sezon, yalniz_acik, yalniz_fazla)
+        # ⚠ Büyüme artık SELECT'te kolon DEĞİL (sabit sayı, başlıkta yazıyor) →
+        #   yalnız CROSS APPLY'daki tek ? kaldı. Sıra SQL'deki ? sırasıdır.
+        cur.execute(SQL, a.buyume, kesim, a.sezon, yalniz_acik, yalniz_fazla)
         bas = [d[0] for d in cur.description]
         sat = [list(x) for x in cur.fetchall()]
     finally:
@@ -172,109 +166,49 @@ def main() -> int:
     fazla_c = sum(1 for r in sat if (r[ix["FAZLA"]] or 0) > 0)
     acik_a = sum(int(r[ix["AÇIK"]] or 0) for r in sat)
     fazla_a = sum(int(r[ix["FAZLA"]] or 0) for r in sat)
-    acik_tl = sum(float(r[ix["AÇIK ₺ (satış fiyatı)"]] or 0) for r in sat)
-    fazla_tl = sum(float(r[ix["FAZLA ₺ (maliyet)"]] or 0) for r in sat)
+    acik_tl = sum(float(r[ix["Tutar"]] or 0) for r in sat if (r[ix["AÇIK"]] or 0) > 0)
+    fazla_tl = sum(float(r[ix["Tutar"]] or 0) for r in sat if (r[ix["FAZLA"]] or 0) > 0)
     malsiz = sum(1 for r in sat
-                 if (r[ix["FAZLA"]] or 0) > 0 and r[ix["FAZLA ₺ (maliyet)"]] is None)
+                 if (r[ix["FAZLA"]] or 0) > 0 and r[ix["Tutar"]] is None)
 
+    # ══ TEK SAYFA ═════════════════════════════════════════════════════════════
+    # GMY 15.09.2026: "özete gerek yok". ÖZET sayfası (kutular + kategori tablosu +
+    # 5 madde not) KALDIRILDI. Sınırlar SİLİNMEDİ — başlığın üstünde tek satır kaldı;
+    # dosya elden ele dolaşıyor, rakam bağlamsız okunmasın.
     wb = Workbook()
     ws = wb.active
-    ws.title = "ÖZET"
-    ws.cell(1, 1, "SEZON AKSİYON LİSTESİ").font = Font(bold=True, size=15)
-    ws.cell(2, 1, f"kesim {kesim:%d.%m.%Y} · sezon {a.sezon} · büyüme %{a.buyume * 100:g} "
-                  f"· satılacak = sezonda satılan × {1 + a.buyume:g}"
-            ).font = Font(italic=True, size=9, color="555555")
+    ws.title = "LİSTE"
 
-    kutu = [("Ürün çeşidi", ayir(cesit)),
-            ("AÇIK ürün", ayir(acik_c)),
-            ("AÇIK adet", ayir(acik_a)),
-            ("AÇIK ₺ (satış fiyatı)", ayir(acik_tl, True)),
-            ("FAZLA ürün", ayir(fazla_c)),
-            ("FAZLA adet", ayir(fazla_a)),
-            ("FAZLA ₺ (maliyet)", ayir(fazla_tl, True))]
-    for i, (k, v) in enumerate(kutu, start=4):
-        ws.cell(i, 1, k).font = Font(bold=True, size=11)
-        c = ws.cell(i, 2, v)
-        c.font = Font(bold=True, size=12)
-        c.alignment = Alignment(horizontal="right")
-        c.fill = ACIK
+    ust = (f"Kesim {kesim:%d.%m.%Y} · satılacak = sezonda satılan × {1 + a.buyume:g} "
+           f"(büyüme %{a.buyume * 100:g}) · AÇIK = satılacak − (mağaza+depo), FAZLA = tersi · "
+           f"Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
+           f"Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
+           f"FAZLA tutarı alt sınır ({malsiz} üründe maliyet yok/şüpheli) · depo stoğu WMS'ten")
+    ws.cell(1, 1, ust).font = Font(italic=True, size=9, color="555555")
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(bas))
+    ws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
+    ws.row_dimensions[1].height = 30
 
-    ozet: dict[str, list] = {}
-    for r in sat:
-        k = ozet.setdefault(r[ix["Kategori"]] or "(boş)", [0, 0, 0.0, 0, 0.0])
-        k[0] += 1
-        k[1] += int(r[ix["AÇIK"]] or 0)
-        k[2] += float(r[ix["AÇIK ₺ (satış fiyatı)"]] or 0)
-        k[3] += int(r[ix["FAZLA"]] or 0)
-        k[4] += float(r[ix["FAZLA ₺ (maliyet)"]] or 0)
-    ozet_sat = sorted(([k] + v for k, v in ozet.items()), key=lambda x: -x[3])
-
-    r0 = 4 + len(kutu) + 1
-    ws.cell(r0, 1, "KATEGORİYE GÖRE").font = Font(bold=True, size=12)
-    kb = ["Kategori", "Çeşit", "AÇIK adet", "AÇIK ₺", "FAZLA adet", "FAZLA ₺"]
-    for j, b in enumerate(kb, start=1):
-        h = ws.cell(r0 + 1, j, b)
-        h.font = Font(bold=True, color="FFFFFF")
-        h.fill = LACI
-        h.alignment = Alignment(wrap_text=True, horizontal="center")
-    for i, r in enumerate(ozet_sat, start=r0 + 2):
-        for j, v in enumerate(r, start=1):
-            c = ws.cell(i, j, v)
-            if j in (2, 3, 5):
-                c.number_format = "#,##0"
-            elif j in (4, 6):
-                c.number_format = '#,##0 "₺"'
-
-    r1 = r0 + len(ozet_sat) + 4
-    ws.cell(r1, 1, "NASIL OKUNUR").font = Font(bold=True, size=12)
-    notlar = [
-        ("Satılacak miktar", f"Sezonda satılan × {1 + a.buyume:g} (büyüme %{a.buyume * 100:g}, "
-                             "sabit alındı)."),
-        ("Toplam stok", "Mağaza stok + depo (merkez) stok."),
-        ("AÇIK", "Satılacak miktar − toplam stok. Sipariş ya da transfer gerekir."),
-        ("FAZLA", "Toplam stok − satılacak miktar. İndirim, iade ya da transfer gerekir."),
-        ("Sezonda satılan", f"Geçen sezon (Ağu–Eki {a.sezon}) fiilen satılan adet."),
-        ("365 günde satılan", "Son 365 gün toplam satış — sezona ne kadar bağımlı olduğunu görmek "
-                              "için yanında duruyor."),
-        ("⚠ Açık sipariş düşülmedi", "ERP'de 'kapalı' durumu 24.02.2025'ten beri yazılmıyor; açık "
-                                     "görünen alış siparişlerinin %86,4'ü bir yıldan eski. Bu "
-                                     "yüzden hiçbir sipariş bu listeden düşülmedi."),
-        ("⚠ FAZLA ₺ alt sınır", f"{malsiz} üründe maliyet kaydı yok ya da şüpheli. Adetleri "
-                                "gerçek, ₺ toplamına girmiyor."),
-        ("⚠ Depo stoğu WMS", "Merkez stoğu WMS'ten okunuyor; ERP defteriyle çelişen satırlar "
-                             "olabilir. Fiziksel sayım yapılmadan kesin sayılmaz."),
-        ("⚠ Tek gün", "Kesim fotoğrafı. Stok gün içinde değişir."),
-    ]
-    for i, (k, v) in enumerate(notlar, start=r1 + 1):
-        ws.cell(i, 1, k).font = Font(bold=True, size=10)
-        ws.cell(i, 2, v).alignment = Alignment(wrap_text=True, vertical="top")
-    ws.column_dimensions["A"].width = 24
-    ws.column_dimensions["B"].width = 96
-    for j in range(3, 8):
-        ws.column_dimensions[get_column_letter(j)].width = 16
-
-    ws2 = wb.create_sheet("LİSTE")
     for j, b in enumerate(bas, start=1):
-        h = ws2.cell(1, j, b)
+        h = ws.cell(2, j, b)
         h.font = Font(bold=True, color="FFFFFF", size=10)
         h.fill = LACI
         h.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
-    ws2.row_dimensions[1].height = 32
-    for i, r in enumerate(sat, start=2):
+    ws.row_dimensions[2].height = 30
+
+    for i, r in enumerate(sat, start=3):
         for j, (v, ad) in enumerate(zip(r, bas), start=1):
-            c = ws2.cell(i, j, v)
+            c = ws.cell(i, j, v)
             if ad in PARA:
                 c.number_format = '#,##0 "₺"'
-            elif ad in ORAN:
-                c.number_format = "0.00"
             elif isinstance(v, int):
                 c.number_format = "#,##0"
-    genis = {"Ürün": 42, "Kategori yolu": 38, "Yayınevi/Marka": 18, "Barkod": 15,
-             "Durum": 24, "Kategori": 18}
+
+    genis = {"Ürün": 45, "Kategori": 18, "Barkod": 15}
     for j, b in enumerate(bas, start=1):
-        ws2.column_dimensions[get_column_letter(j)].width = genis.get(b, max(len(b) + 2, 11))
-    ws2.freeze_panes = "D2"
-    ws2.auto_filter.ref = f"A1:{get_column_letter(len(bas))}{len(sat) + 1}"
+        ws.column_dimensions[get_column_letter(j)].width = genis.get(b, max(len(b) + 2, 11))
+    ws.freeze_panes = "D3"
+    ws.auto_filter.ref = f"A2:{get_column_letter(len(bas))}{len(sat) + 2}"
 
     ek = f"-{a.durum}" if a.durum else ""
     cikti = a.cikti or os.path.join(

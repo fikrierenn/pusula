@@ -301,76 +301,55 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
         out var atlanan);
 
     var satirlar = await q.GetTumListeAsync(filtre, ct: ctx.RequestAborted);
-    var liste = satirlar.Select(r => new Dictionary<string, object?>
-    {
-        ["Kategori"]            = r.Kategori3,
-        ["Kategori yolu"]       = r.KategoriYolu,
-        ["Ürün"]                = r.StkAd,
-        ["Barkod"]              = r.Barkod,
-        ["stkID"]               = r.StkId,
-        ["Yayınevi/Marka"]      = r.Yayinevi,
-        ["Satış fiyatı"]        = r.SatisFiyat,
-        ["365 günde satılan"]   = r.SatisToplam,
-        ["Sezonda satılan"]     = r.SezonToplam,
-        ["Büyüme"]              = filtre.Buyume,
-        ["Satılacak miktar"]    = r.Satilacak,
-        ["Mağaza stok"]         = r.MagazaStok,
-        ["Depo stok"]           = r.MerkezStok,
-        ["Toplam stok"]         = r.ToplamStok,
-        ["AÇIK"]                = r.Acik,
-        ["FAZLA"]               = r.Fazla,
-        ["Durum"]               = r.Acik > 0 ? "AÇIK — sipariş/transfer"
-                                : r.Fazla > 0 ? "FAZLA — indirim/iade/transfer" : "DENGE",
-        ["AÇIK ₺ (satış fiyatı)"] = r.AcikTutar,
-        ["FAZLA ₺ (maliyet)"]     = r.FazlaTutar,
-        ["Birim maliyet"]         = r.BirimMaliyet,
-    }).ToList();
 
-    // BİLGİ sayfası — sınırlar dosyanın İÇİNDE gitsin. Excel elden ele dolaşıyor;
-    // ekranda yazan uyarı dosyayla birlikte gitmezse rakam bağlamsız okunur.
-    var bilgi = new List<Dictionary<string, object?>>
+    // ══ TEK SAYFA, 12 KOLON ═══════════════════════════════════════════════════
+    // GMY 15.09.2026: "kafa karıştırıcı, gereksiz ve çok bilgi var" + "özete gerek yok".
+    // ÇIKARILDI: Bilgi sayfası · kategori yolu · stkID · yayınevi · satış fiyatı ·
+    //   büyüme (sabit, üst satırda) · durum (AÇIK/FAZLA kolonlarının tekrarı) ·
+    //   birim maliyet · ayrı AÇIK ₺ / FAZLA ₺ kolonları (biri hep boştu, toplanabilir
+    //   görünüyordu) → tek "Tutar".
+    // Sınırlar SİLİNMEDİ: ilk satırda tek cümle olarak gidiyor (dosya elden ele dolaşıyor).
+    // Kardeş emitter scripts/sezon_aksiyon_listesi_excel.py ile AYNI kolon seti.
+    var ustSatir = $"Kesim {filtre.Kesim:dd.MM.yyyy} · satılacak = sezonda satılan × " +
+        $"{1 + filtre.Buyume:0.##} (büyüme %{filtre.Buyume * 100:0.##}) · " +
+        "AÇIK = satılacak − (mağaza+depo), FAZLA = tersi · Tutar: AÇIK'ta satış fiyatı, " +
+        "FAZLA'da maliyet — ikisi toplanmaz · Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı " +
+        "24.02.2025'ten beri yazılmıyor) · FAZLA tutarı alt sınır · depo stoğu WMS'ten" +
+        (atlanan.Count > 0 ? " · ATLANAN SÜZGEÇ: " + string.Join(" | ", atlanan) : "");
+
+    // MiniExcel başlığı kendi yazar; not satırını ÜSTE koyabilmek için printHeader
+    // KAPATILIR ve satırlar elle kurulur: 1. satır not, 2. satır başlık, 3.+ veri.
+    // Anahtarlar (k01..k12) yalnız hücre KONUMUDUR — görünen ad 2. satırdadır.
+    // ⚠ MiniExcel kolon kümesini İLK satırın anahtarlarından alır. Not satırı tek anahtar
+    //   taşıyınca dosya TEK KOLON çıkıyordu (tablo sessizce kayboldu, hata YOK — ölçüldü
+    //   15.09.2026). Bu yüzden HER satır 12 anahtarın hepsini taşır, boşlar null.
+    const int SezonAksiyonKolonSayisi = 12;
+    static Dictionary<string, object?> Satir(params object?[] h)
     {
-        new() { ["Konu"] = "Kapsam",
-                ["Açıklama"] = $"Kesim {filtre.Kesim:dd.MM.yyyy} · sezon {filtre.SezonYil} · " +
-                               $"büyüme %{filtre.Buyume * 100:0.##}. Geçen sezon (Ağu–Eki) satmış, " +
-                               "defteri güvenilir ürünler (negatif stok / fiyatı 0 olanlar hariç)." },
-        new() { ["Konu"] = "Satılacak miktar",
-                ["Açıklama"] = "Sezonda satılan × (1 + büyüme). Büyüme TEK sayıdır; ürün ya da " +
-                               "kategori bazlı ölçülmüş bir büyüme DEĞİLDİR." },
-        new() { ["Konu"] = "AÇIK / FAZLA",
-                ["Açıklama"] = "AÇIK = satılacak − (mağaza + depo) → sipariş/transfer. " +
-                               "FAZLA = (mağaza + depo) − satılacak → indirim/iade/transfer." },
-        new() { ["Konu"] = "⚠ Açık sipariş düşülmedi",
-                ["Açıklama"] = "ERP'de 'kapalı' durumu (sip.eDurum=2) 24.02.2025'ten beri hiç " +
-                               "yazılmıyor; kapatılmamış alış siparişi adedinin %86,4'ü bir " +
-                               "yıldan eski (ölçüldü 14.09.2026). Netleme yapılsaydı liste " +
-                               "hayalet siparişle yanıltırdı." },
-        new() { ["Konu"] = "⚠ FAZLA ₺ alt sınır",
-                ["Açıklama"] = "Maliyeti yok ya da şüpheli (maliyet > satış fiyatı) satırlar adet " +
-                               "olarak sayılır, paraya girmez." },
-        new() { ["Konu"] = "⚠ AÇIK ₺ ciro, kâr değil",
-                ["Açıklama"] = "Satış fiyatıyla. İkame hesaba katılmadı — müşteri benzerini " +
-                               "alırsa ciro kaçmaz." },
-        new() { ["Konu"] = "⚠ Depo stoğu WMS",
-                ["Açıklama"] = "ERP defteriyle çelişen satırlar olabilir; fiziksel sayım " +
-                               "yapılmadan kesin sayılmaz." },
-        new() { ["Konu"] = "⚠ Alıcı boyutu yok",
-                ["Açıklama"] = "Veride satınalmacı boyutu YOK. Bu liste bir kişiye atıf değildir." },
+        var d = new Dictionary<string, object?>(SezonAksiyonKolonSayisi);
+        for (var i = 0; i < SezonAksiyonKolonSayisi; i++)
+            d[$"k{i:00}"] = i < h.Length ? h[i] : null;
+        return d;
+    }
+
+    var liste = new List<Dictionary<string, object?>>(satirlar.Count + 2)
+    {
+        Satir(ustSatir),
+        Satir("Ürün", "Kategori", "Barkod", "365 günde satılan", "Sezonda satılan",
+              "Satılacak", "Mağaza", "Depo", "Toplam stok", "AÇIK", "FAZLA", "Tutar"),
     };
-    foreach (var a in atlanan)
-        bilgi.Add(new Dictionary<string, object?>
-        {
-            ["Konu"] = "⚠ Atlanan süzgeç",
-            ["Açıklama"] = a,   // sessiz yutma yasak: geçersiz parametre dosyaya yazılır
-        });
+    foreach (var r in satirlar)
+        liste.Add(Satir(
+            r.StkAd, r.Kategori3, r.Barkod, r.SatisToplam, r.SezonToplam, r.Satilacak,
+            r.MagazaStok, r.MerkezStok, r.ToplamStok, r.Acik, r.Fazla,
+            // Tek tutar: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
+            r.Acik > 0 ? r.AcikTutar : r.Fazla > 0 ? r.FazlaTutar : null));
 
     ctx.Response.ContentType = GmDashboard.Data.ExcelExport.ContentType;
     ctx.Response.Headers.ContentDisposition =
         $"attachment; filename=\"sezon-aksiyon-{filtre.Kesim:yyyy-MM-dd}.xlsx\"";
     using var ms = new MemoryStream();
-    await MiniExcel.SaveAsAsync(ms,
-        new Dictionary<string, object> { ["Liste"] = liste, ["Bilgi"] = bilgi },
-        printHeader: true);
+    await MiniExcel.SaveAsAsync(ms, liste, printHeader: false, sheetName: "LİSTE");
     ms.Position = 0;
     await ms.CopyToAsync(ctx.Response.Body);
 });
