@@ -96,23 +96,51 @@
                 <span class="font-bold text-sm">Yönetim Paneli</span>
             </div>
 
-            @* Sidebar: NavRegistry tek-kaynaktan türer, grup başlıklı (plan-12 WS-3) *@
-            <ul class="menu flex-1 px-3 gap-0.5">
+            @*  Sidebar: NavRegistry tek-kaynaktan türer (plan-12 WS-3).
+                KATLANIR GRUPLAR (GMY 15.09.2026: "çok uzun bir menü oldu, ilgili olanları
+                alt menü yapalım"). Önce 24 satır tek başlık altındaydı; şimdi 7 grup ve
+                yalnız BULUNDUĞUN sayfanın grubu açık geliyor.
+                ⚠ <i data-lucide> KOŞULLU render EDİLMİYOR (circuit çökmesi — coding-discipline):
+                  ikonlar her zaman basılıyor, değişen yalnız <details open> özniteliği.       *@
+            <ul class="menu flex-1 px-3 gap-0.5 overflow-y-auto">
+                @foreach (var item in NavRegistry.Kokte)
+                {
+                    <li>
+                        <NavLink href="@item.Href" Match="item.Match" @onclick="CloseDrawer" ActiveClass="active">
+                            <i data-lucide="@item.Icon"></i><span>@item.Label</span>
+                        </NavLink>
+                    </li>
+                }
                 @foreach (var grp in NavRegistry.Sections)
                 {
-                    <li class="menu-title text-neutral-content/50">@grp</li>
-                    @foreach (var item in NavRegistry.Items.Where(i => i.Section == grp))
-                    {
-                        <li>
-                            <NavLink href="@item.Href" Match="item.Match" @onclick="CloseDrawer" ActiveClass="active">
-                                <i data-lucide="@item.Icon"></i><span>@item.Label</span>
-                                @if (item.GorevBadge && _acikGorev > 0)
+                    var grupOgeleri = NavRegistry.Items.Where(i => i.Section == grp).ToList();
+                    var grupAcik = grupOgeleri.Any(AktifMi);
+                    var grupRozet = grupOgeleri.Any(i => i.GorevBadge) ? _acikGorev : 0;
+                    <li>
+                        <details open="@grupAcik">
+                            <summary class="text-neutral-content/70 font-semibold">
+                                <i data-lucide="@NavRegistry.SectionIcon(grp)"></i><span>@grp</span>
+                                @if (grupRozet > 0)
                                 {
-                                    <span class="badge badge-primary badge-sm ml-auto">@_acikGorev</span>
+                                    <span class="badge badge-primary badge-sm ml-auto">@grupRozet</span>
                                 }
-                            </NavLink>
-                        </li>
-                    }
+                            </summary>
+                            <ul>
+                                @foreach (var item in grupOgeleri)
+                                {
+                                    <li>
+                                        <NavLink href="@item.Href" Match="item.Match" @onclick="CloseDrawer" ActiveClass="active">
+                                            <i data-lucide="@item.Icon"></i><span>@item.Label</span>
+                                            @if (item.GorevBadge && _acikGorev > 0)
+                                            {
+                                                <span class="badge badge-primary badge-sm ml-auto">@_acikGorev</span>
+                                            }
+                                        </NavLink>
+                                    </li>
+                                }
+                            </ul>
+                        </details>
+                    </li>
                 }
             </ul>
         </div>
@@ -157,12 +185,37 @@
         catch { _acikGorev = 0; }
         Notif.Changed += OnNotifChanged;
         Perf.Changed += OnNotifChanged;
+        // Sayfa değişince doğru menü grubu açılsın diye yeniden çizilir.
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    /// <summary>
+    /// Bu öğe şu an açık olan sayfa mı — menü grubunun açık gelmesi için.
+    /// NavLink'in kendi "active" mantığının C# karşılığı: kök öğe TAM eşleşme ister,
+    /// diğerleri ÖN EK (ürün drill sayfası da kendi grubunu açık tutsun diye).
+    /// ⚠ Ön ek eşleşmesi SINIR DUYARLI olmalı: "mizan" ile "mizan-dugum" farklı sayfalar;
+    ///   düz StartsWith ikisini de aynı grupta açardı.
+    /// </summary>
+    private bool AktifMi(GmDashboard.Models.NavItem i)
+    {
+        var yol = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/');
+        if (i.Href.Length == 0) return yol.Length == 0;
+        return yol.Equals(i.Href, StringComparison.OrdinalIgnoreCase)
+               || yol.StartsWith(i.Href + "/", StringComparison.OrdinalIgnoreCase);
     }
 
     // Home uyarıları / perf güncellenince footer + zil rozetini tazele.
     private async void OnNotifChanged() => await InvokeAsync(StateHasChanged);
 
-    public void Dispose() { Notif.Changed -= OnNotifChanged; Perf.Changed -= OnNotifChanged; }
+    public void Dispose()
+    {
+        Notif.Changed -= OnNotifChanged;
+        Perf.Changed -= OnNotifChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
 
     // Yükleme süresi tonu: <2sn yeşil, 2-5sn sarı, >5sn kırmızı.
     private string PerfTone => Perf.LastMs < 2000 ? "text-success" : Perf.LastMs < 5000 ? "text-warning" : "text-error";
