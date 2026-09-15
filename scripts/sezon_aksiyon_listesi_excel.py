@@ -86,17 +86,30 @@ MALIYET_GECERLI = "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)"
 
 SQL = f"""
 -- ⚠ TÜRETİLEN KOLONLAR SQL'DE HESAPLANMAZ — Excel'de FORMÜL olarak kurulur
---   (GMY 15.09.2026: "formüllü olsun ne nerden geliyor gözüksün").
---   Buradan yalnız HAM girdiler gelir. Tek istisna: ORDER BY, sıralama için
---   hesabı sunucuda yapar (dosyaya yazılmaz).
+--   (GMY: "formüllü olsun ne nerden geliyor gözüksün"). Buradan yalnız HAM girdiler gelir.
+WITH gh AS (   -- GEÇEN yılın AYNI penceresi (okul açılışından geriye N gün)
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= DATEADD(DAY, -?, ?) AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
+bh AS (        -- BU yılın AYNI penceresi — gün sayısı gh ile BİREBİR aynı
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= DATEADD(DAY, -?, ?) AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+)
 SELECT t.stkAd                                       AS [Ürün],
        t.Kategori3                                   AS [Kategori],
        {YOL}                                         AS [Kategori yolu],
        t.BarkodAna                                   AS [Barkod],
-       t.SatisToplam                                 AS [365 günde satılan],
-       t.SezonToplam                                 AS [Sezonda satılan],
+       CONVERT(int, ISNULL(gh.Adet, 0))              AS [Geçen sezon aynı dönem],
+       CONVERT(int, ISNULL(bh.Adet, 0))              AS [Bu sezon aynı dönem],
+       t.SezonToplam                                 AS [Geçen sezon TAMAMI],
        t.StokFsm                                     AS [FSM],
-       t.StokOzl                                     AS [Özlüce],
+       t.StokOzl                                  AS [Özlüce],
        t.StokIst                                     AS [İst.Yolu],
        t.MerkezStok                                  AS [Depo],
        -- ⚠ 4 HANE: 2 haneye yuvarlayıp sonra çarpınca toplam 313 ₺ sapıyordu
@@ -105,6 +118,8 @@ SELECT t.stkAd                                       AS [Ürün],
        CONVERT(decimal(18,4), CASE WHEN {MALIYET_GECERLI}
             THEN t.BirimMaliyet END)                 AS [Birim maliyet]
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
+LEFT JOIN gh ON gh.stkID = t.stkID
+LEFT JOIN bh ON bh.stkID = t.stkID
 CROSS APPLY (SELECT Satilacak = CONVERT(int, CEILING(t.SezonToplam * (1.0 + ?))),
                     Elde      = t.MagazaStok + t.MerkezStok) s
 WHERE t.Kesim = ? AND t.SezonYil = ?
@@ -122,25 +137,28 @@ ORDER BY CASE WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiy
 # (B2) — değiştirilince tüm liste yeniden hesaplanır.
 #   (ad, tip)  tip: "ham" = SQL kolonu · "f" = Excel formülü
 DUZEN: list[tuple[str, str]] = [
-    ("Ürün",              "ham"),
-    ("Kategori",          "ham"),
-    ("Kategori yolu",     "ham"),
-    ("Barkod",            "ham"),
-    ("365 günde satılan", "ham"),
-    ("Sezonda satılan",   "ham"),
-    ("Satılacak",         "f"),    # =CEILING(Sezonda satılan × (1+büyüme); 1)
-    ("FSM",               "ham"),
-    ("Özlüce",            "ham"),
-    ("İst.Yolu",          "ham"),
-    ("Mağaza toplam",     "f"),    # =FSM+Özlüce+İst.Yolu
-    ("Depo",              "ham"),
-    ("Toplam stok",       "f"),    # =Mağaza toplam+Depo
-    ("AÇIK",              "f"),    # =MAX(0; Satılacak−Toplam stok)
-    ("FAZLA",             "f"),    # =MAX(0; Toplam stok−Satılacak)
-    ("Satış fiyatı",      "ham"),
-    ("Birim maliyet",     "ham"),
-    ("Tutar",             "f"),    # AÇIK varsa ×satış fiyatı, FAZLA varsa ×maliyet
+    ("Ürün",                   "ham"),
+    ("Kategori",               "ham"),
+    ("Kategori yolu",          "ham"),
+    ("Barkod",                 "ham"),
+    ("Geçen sezon aynı dönem", "ham"),   # okula hizalı N gün, GEÇEN yıl
+    ("Bu sezon aynı dönem",    "ham"),   # AYNI N gün, BU yıl
+    ("Değişim",                "f"),     # =Bu/Geçen  (aynı pencere → kıyaslanabilir)
+    ("Geçen sezon TAMAMI",     "ham"),   # Ağu–Eki — "Satılacak"ın tabanı
+    ("Satılacak",              "f"),     # =CEILING(Geçen sezon TAMAMI × (1+büyüme); 1)
+    ("FSM",                    "ham"),
+    ("Özlüce",                 "ham"),
+    ("İst.Yolu",               "ham"),
+    ("Mağaza toplam",          "f"),     # =FSM+Özlüce+İst.Yolu
+    ("Depo",                   "ham"),
+    ("Toplam stok",            "f"),     # =Mağaza toplam+Depo
+    ("AÇIK",                   "f"),     # =MAX(0; Satılacak−Toplam stok)
+    ("FAZLA",                  "f"),     # =MAX(0; Toplam stok−Satılacak)
+    ("Satış fiyatı",           "ham"),
+    ("Birim maliyet",          "ham"),
+    ("Tutar",                  "f"),
 ]
+
 
 PARA = {"Satış fiyatı", "Birim maliyet"}
 
@@ -158,11 +176,27 @@ def main() -> int:
                     help="sezon buyumesi (0.20 = %%20)")
     ap.add_argument("--durum", choices=["acik", "fazla"], default=None,
                     help="yalniz acik ya da yalniz fazla listele")
+    # OKUL AÇILIŞI — arşivden (sorgular/2026-09-08-okul-hizali-ciro-tahmini.sql):
+    # 2024-25 → 09.09.2024 · 2025-26 → 08.09.2025 · 2026-27 → 14.09.2026.
+    # ⚠ TAKVİM GÜNÜYLE hizalamak YANILTIR: açılış kayıyor (6 gün) ve aynı takvim günleri
+    #   farklı sezon evresini ölçer. Ölçüldü 14.09.2026 — Hazırlık Kitapları büyümesi
+    #   takvimle 0,727 ("%27 küçüldü"), okula hizalı 1,104 ("%10 büyüdü"). ZIT sonuç.
+    ap.add_argument("--acilis-bu", default="2026-09-14")
+    ap.add_argument("--acilis-gecen", default="2025-09-08")
+    ap.add_argument("--hizali-gun", type=int, default=44,
+                    help="acilistan geriye kac gun (iki yil icin de AYNI)")
     ap.add_argument("--cikti", default=None)
     a = ap.parse_args()
 
     yalniz_acik = 1 if a.durum == "acik" else 0
     yalniz_fazla = 1 if a.durum == "fazla" else 0
+    try:
+        acilis_bu = dt.date.fromisoformat(a.acilis_bu)
+        acilis_gecen = dt.date.fromisoformat(a.acilis_gecen)
+    except ValueError as ex:
+        kosamadi(f"Gecersiz acilis tarihi: {ex}")
+    if a.hizali_gun < 1:
+        kosamadi("--hizali-gun en az 1 olmali")
 
     env = env_oku(os.path.join(KOK, ".env"))
     cn = baglan(env)
@@ -177,9 +211,12 @@ def main() -> int:
                 kosamadi("Taban BOS — kesim okunamadi (sessizlik kanit degil)")
             kesim = r[0] if isinstance(r[0], dt.date) else dt.date.fromisoformat(str(r[0])[:10])
 
-        # ⚠ Büyüme artık SELECT'te kolon DEĞİL (sabit sayı, başlıkta yazıyor) →
-        #   yalnız CROSS APPLY'daki tek ? kaldı. Sıra SQL'deki ? sırasıdır.
-        cur.execute(SQL, a.buyume, kesim, a.sezon, yalniz_acik, yalniz_fazla)
+        # Sıra SQL'deki ? sırasıdır; biri değişirse ikisi birden değişir.
+        cur.execute(SQL,
+                    a.hizali_gun, acilis_gecen, acilis_gecen,   # gh — GEÇEN yıl
+                    a.hizali_gun, acilis_bu, acilis_bu,         # bh — BU yıl (aynı gün sayısı)
+                    a.buyume,                                   # CROSS APPLY
+                    kesim, a.sezon, yalniz_acik, yalniz_fazla)
         bas = [d[0] for d in cur.description]
         sat = [list(x) for x in cur.fetchall()]
     finally:
@@ -213,6 +250,11 @@ def main() -> int:
     ws.title = "LİSTE"
 
     ust = (f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} · "
+           f"AYNI PENCERE: 'Geçen sezon aynı dönem' {acilis_gecen - dt.timedelta(days=a.hizali_gun):%d.%m.%Y}"
+           f"–{acilis_gecen - dt.timedelta(days=1):%d.%m.%Y} · 'Bu sezon aynı dönem' "
+           f"{acilis_bu - dt.timedelta(days=a.hizali_gun):%d.%m.%Y}–{acilis_bu - dt.timedelta(days=1):%d.%m.%Y} "
+           f"({a.hizali_gun} gün, okul açılışına hizalı — takvim günüyle hizalamak yanıltır, "
+           f"açılış 6 gün kaydı) · "
            "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
            "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
            "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
@@ -252,7 +294,11 @@ def main() -> int:
 
             # ── FORMÜL — kaynağı hücreden okur, sabit gömmez ─────────────────
             f = {
-                "Satılacak":     f'=CEILING({K["Sezonda satılan"]}{i}*(1+$B$2),1)',
+                "Satılacak":     f'=CEILING({K["Geçen sezon TAMAMI"]}{i}*(1+$B$2),1)',
+                # AYNI PENCERE olduğu için bu oran kıyaslanabilir. Geçen yıl 0 ise
+                # bölme yapılmaz (BOŞ) — "sonsuz büyüme" uydurmak olurdu.
+                "Değişim": (f'=IF({K["Geçen sezon aynı dönem"]}{i}>0,'
+                            f'{K["Bu sezon aynı dönem"]}{i}/{K["Geçen sezon aynı dönem"]}{i},"")'),
                 "Mağaza toplam": f'={K["FSM"]}{i}+{K["Özlüce"]}{i}+{K["İst.Yolu"]}{i}',
                 "Toplam stok":   f'={K["Mağaza toplam"]}{i}+{K["Depo"]}{i}',
                 "AÇIK":          f'=MAX(0,{K["Satılacak"]}{i}-{K["Toplam stok"]}{i})',
@@ -265,7 +311,8 @@ def main() -> int:
             }[ad]
             c = ws.cell(i, j, f)
             c.fill = SARI
-            c.number_format = '#,##0.00 "₺"' if ad == "Tutar" else "#,##0"
+            c.number_format = ('#,##0.00 "₺"' if ad == "Tutar"
+                               else "0.00" if ad == "Değişim" else "#,##0")
 
     genis = {"Ürün": 45, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15}
     for j, ad in enumerate(kolonlar, start=1):
@@ -280,7 +327,7 @@ def main() -> int:
     acik_tl = fazla_tl = 0.0
     import math
     for r in sat:
-        satilacak = math.ceil((r[ix["Sezonda satılan"]] or 0) * (1 + a.buyume))
+        satilacak = math.ceil((r[ix["Geçen sezon TAMAMI"]] or 0) * (1 + a.buyume))
         elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
                 + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
         if satilacak > elde:
