@@ -7,15 +7,23 @@ Kullanım:
         --html brief.html \
         --text brief.txt
 
-Credentials .secrets/smtp.json dosyasından okunur:
+Profil seçimi (16.09.2026): Gmail ve kurumsal hesap AYRI profil, --profil ile seçilir.
+    python send_mail.py --profil kurumsal --to ... --subject ... --html ...
+Profil verilmezse .secrets/smtp.json'daki "varsayilan" kullanılır.
+
+.secrets/smtp.json (çok profilli biçim):
     {
-        "user": "fikrieren@gmail.com",
-        "app_password": "16-char-app-password",
-        "smtp_host": "smtp.gmail.com",
-        "smtp_port": 587
+        "varsayilan": "gmail",
+        "profiller": {
+            "gmail":    {"user": "...@gmail.com", "app_password": "...",
+                         "smtp_host": "smtp.gmail.com",  "smtp_port": 587},
+            "kurumsal": {"user": "...@bkmkitap.com", "app_password": "...",
+                         "smtp_host": "mail.bkmkitap.com", "smtp_port": 587}
+        }
     }
 
-App Password: https://myaccount.google.com/apppasswords üzerinden oluşturulur.
+Eski düz biçim (tek hesap) de çalışır — geriye uyumlu.
+Gmail App Password: https://myaccount.google.com/apppasswords
 """
 
 import argparse
@@ -41,14 +49,42 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = REPO_ROOT / ".secrets" / "smtp.json"
 
 
-def load_config(path: Path) -> dict:
+def load_config(path: Path, profil: str | None = None) -> dict:
+    """SMTP ayarını okur.
+
+    İki biçim desteklenir:
+      · ÇOK PROFİLLİ (yeni):  {"varsayilan": "gmail", "profiller": {"gmail": {...},
+        "kurumsal": {...}}}  → `--profil` ile seçilir, verilmezse `varsayilan`.
+      · DÜZ (eski):           {"user": ..., "app_password": ...}
+        Geriye uyumluluk için korunur; `--profil` verilirse hata der.
+
+    Parola ASLA ekrana basılmaz; eksikse yalnız hangi profilde eksik olduğu yazılır.
+    """
     if not path.exists():
         sys.exit(f"Config bulunamadı: {path}")
     with path.open("r", encoding="utf-8") as f:
-        cfg = json.load(f)
+        ham = json.load(f)
+
+    if "profiller" in ham:
+        profiller = ham["profiller"]
+        ad = profil or ham.get("varsayilan")
+        if not ad:
+            sys.exit(f"Config'de 'varsayilan' yok ve --profil verilmedi. "
+                     f"Mevcut profiller: {', '.join(profiller)}")
+        if ad not in profiller:
+            sys.exit(f"'{ad}' profili yok. Mevcut: {', '.join(profiller)}")
+        cfg = dict(profiller[ad])
+        cfg["_profil"] = ad
+    else:
+        if profil:
+            sys.exit(f"Config tek profilli (eski biçim), --profil kullanılamaz: {path}")
+        cfg = dict(ham)
+        cfg["_profil"] = "(tek)"
+
     for key in ("user", "app_password"):
-        if key not in cfg or not cfg[key]:
-            sys.exit(f"Config'de '{key}' eksik: {path}")
+        if not cfg.get(key):
+            sys.exit(f"'{cfg['_profil']}' profilinde '{key}' eksik → {path}\n"
+                     f"Parolayı bu dosyaya elle yazın; script parola sormaz.")
     cfg.setdefault("smtp_host", "smtp.gmail.com")
     cfg.setdefault("smtp_port", 587)
     cfg.setdefault("display_name", cfg["user"])
@@ -126,13 +162,24 @@ def main() -> int:
         help=f"SMTP config JSON yolu (default: {DEFAULT_CONFIG})",
     )
     parser.add_argument(
+        "--profil",
+        default=None,
+        help="SMTP profili: gmail | kurumsal (varsayilan smtp.json'daki 'varsayilan')",
+    )
+    parser.add_argument(
+        "--gorunen-ad",
+        default=None,
+        help="Gönderen GÖRÜNEN ADI (adres DEĞİŞMEZ). Ör: 'BKM Rapor Botu'. "
+             "Profildeki display_name'i yalnız bu çağrı için geçersiz kılar.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Göndermeden önizleme (config + alıcılar ekrana)",
     )
     args = parser.parse_args()
 
-    cfg = load_config(Path(args.config))
+    cfg = load_config(Path(args.config), args.profil)
     html_body = read_file(args.html)
     text_body = read_file(args.text)
 
@@ -142,7 +189,11 @@ def main() -> int:
 
     msg = build_message(
         sender=cfg["user"],
-        display_name=cfg.get("display_name", cfg["user"]),
+        # ⚠ Yalnız GÖRÜNEN AD değişir; From ADRESİ her zaman kimliği doğrulanmış
+        #   hesaptır. Var olmayan bir adresi From'a yazmak (adres sahteciliği)
+        #   BİLEREK desteklenmiyor: sunucu reddeder, geçse bile SPF/DKIM düşer
+        #   ve mail spam'e gider.
+        display_name=args.gorunen_ad or cfg.get("display_name", cfg["user"]),
         recipients=recipients,
         subject=args.subject,
         html_body=html_body,
@@ -154,6 +205,7 @@ def main() -> int:
     all_rcpts = recipients + cc + bcc
 
     if args.dry_run:
+        print(f"[DRY] Profil:  {cfg['_profil']} ({cfg['smtp_host']}:{cfg['smtp_port']})")
         print(f"[DRY] From:    {msg['From']}")
         print(f"[DRY] To:      {msg['To']}")
         if cc:
@@ -182,7 +234,7 @@ def main() -> int:
     except Exception as e:
         sys.exit(f"Gönderim hatası: {type(e).__name__}: {e}")
 
-    print(f"[OK] Mail gonderildi: {', '.join(all_rcpts)}")
+    print(f"[OK] Mail gonderildi ({cfg['_profil']} profili): {', '.join(all_rcpts)}")
     return 0
 
 
