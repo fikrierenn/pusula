@@ -84,39 +84,56 @@ YOL = ("STUFF(ISNULL(N' > ' + NULLIF(t.Kategori1, N''), N'')"
 
 MALIYET_GECERLI = "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)"
 
+# OKUL AÇILIŞI — pencere buna hizalanır, takvime DEĞİL.
+# ÖLÇÜLDÜ 15.09.2026: takvim hizasıyla Kırtasiye sezon tahmini 521.262, açılış
+# hizasıyla 643.912 (%23,5 fark). Sebep: geçen yılın takvim penceresi okul
+# açılışından SONRAKİ 6 günü içeriyor, bu yılınki içermiyor → pay şişiyor.
+OKUL_ACILIS = {
+    2023: dt.date(2023, 9, 11),
+    2024: dt.date(2024, 9, 9),
+    2025: dt.date(2025, 9, 8),
+    2026: dt.date(2026, 9, 14),
+}
+
 SQL = f"""
--- ⚠ TÜRETİLEN KOLONLAR SQL'DE HESAPLANMAZ — Excel'de FORMÜL olarak kurulur
---   (GMY: "formüllü olsun ne nerden geliyor gözüksün"). Buradan yalnız HAM girdiler gelir.
-WITH gh AS (   -- GEÇEN yılın penceresi — BU yılınkinin ay/gün AYNASI
+-- ═══ SEZON PAYI YÖNTEMİ (GMY 15.09.2026) ═══════════════════════════════════
+-- GMY verbatim: "sezonda satılan 3235, 44 günde % kaçı satılmış, o yüzde bizim
+--   için; 17416 adet, kalanı bul" + "depoda o kadar varsa sorun yok yoksa sipariş".
+--
+--   PAY           = geçen yıl OKUL ÖNCESİ penceresi ÷ geçen SEZON TOPLAMI
+--   TOPLAM SEZON  = bu yıl OKUL ÖNCESİ penceresi ÷ PAY
+--   KALAN İHTİYAÇ = TOPLAM SEZON − bu yıl ŞU ANA KADAR satılan
+--   SONUÇ         = kalan ihtiyaç ≤ mağaza + depo ? "sorun yok" : "SİPARİŞ"
+--
+-- ⚠ BÜYÜME PARAMETRESİ YOK. Büyümeyi ürünün bu yılki kendi hacmi taşıyor; pay
+--   yalnız "sezonun neresindeyiz" sorusunu cevaplıyor. Alıcının çevirebileceği
+--   bir kadran kalmadı (satinalma-danisman: "tek kadran, iki savunma" sorunu).
+--
+-- ⚠ PENCERE OKUL AÇILIŞINA HİZALI, takvime değil. ÖLÇÜLDÜ 15.09.2026:
+--   takvim hizasıyla Kırtasiye sezon tahmini 521.262, açılış hizasıyla 643.912
+--   (%23,5 fark). Sebep: 01.08–13.09.2025 penceresi okul açılışından (08.09.2025)
+--   SONRAKİ 6 günü içeriyor, 2026'nınki içermiyor (okul 14.09.2026) → pay şişip
+--   talebi eksik ölçüyordu. Pencereler EŞİT UZUNLUKTA ve açılıştan bir gün önce biter.
+--
+-- ⚠ BACKTEST (ölçüldü 15.09.2026): 2024 payıyla 2025 sezonu tahmin edildi,
+--   gerçekleşenle karşılaştırıldı — Kırtasiye 1.445 çeşit, medyan mutlak hata
+--   %16,3, medyan yanlılık +%2,1 (yansız). ⚠ O yılda okul kayması 1 gündü
+--   (09.09.2024→08.09.2025); bu yıl 6 gün. Backtest bu riski SINAYAMAZ.
+--
+-- ⚠ SANSÜR: geçen sezon stoksuz kalan üründe payda kesilir, pay 1'e yaklaşır,
+--   talep EKSİK ölçülür. ÖLÇÜLDÜ: stoksuz kalanların pay medyanı 0,821 · stoğu
+--   olanların 0,588 (Kırtasiye, 42 vs 3.988 çeşit). Bayrak kolonda GÖRÜNÜR.
+--   Kategori payına düşürme denendi ve backtest'te KÖTÜLEŞTİ (%18,5 → %48,5),
+--   o yüzden UYGULANMADI — örneklem 10 çeşit, açık soru olarak duruyor.
+WITH gp AS (   -- GEÇEN yıl OKUL ÖNCESİ penceresi (pay'ın PAYI)
     SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
     FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
     WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
       AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 ),
-bh AS (        -- BU yılın penceresi — gün sayısı gh ile BİREBİR aynı (aynalama garantisi)
-    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
-    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
-      AND h.ehTrhS >= ? AND h.ehTrhS < ?
-    GROUP BY h.ehstkID
-),
-gk AS (        -- GEÇEN yılın KALAN sezon dilimi: (kesim aynası + 1) – 31.10.<sezon>
-    -- GMY 15.09.2026: "açık sadece sezonu geçirmek için gerekli olan değil mi".
-    -- ⚠ Sezonun geçen günleri ZATEN SATILDI; tüm sezon talebini istemek açığı
-    --   ŞİŞİRİR. Ölçüldü: tüm sezon 254,7M ₺ · kalan sezon 106,9M ₺ → 2,4 KAT.
-    -- Bu yılın kalanı ile geçen yılın kalanı AYNI gün sayısıdır (takvim aynası).
-    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
-    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
-      AND h.ehTrhS >= ? AND h.ehTrhS < ?
-    GROUP BY h.ehstkID
-),
-gks AS (       -- GEÇEN yılın kalan dilimi, MAĞAZA BAZLI — transfer kararı için
-    -- satinalma-danisman 15.09.2026: "AÇIK, satınalma ile transferi karıştırıyor.
-    --   Talep TOPLAM eldeye göre ölçülüyor; mağaza kolonları duruyor ama HESABA
-    --   GİRMİYOR. FSM'de stok var, İst.Yolu'nda yok → tabloda görünmez."
-    -- ⚠ 'Top' AYRILMIŞ SÖZCÜK — alias 'Tum' (ölçüldü: 'Top' takma adı SQL 156 verdi).
+gps AS (       -- aynı pencere, MAĞAZA BAZLI
+    -- ⚠ 'Top' AYRILMIŞ SÖZCÜK, takma ad olamaz (SQL 156) — üç mağaza ayrı kolon.
     SELECT h.ehstkID AS stkID,
            Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
            Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
@@ -126,16 +143,14 @@ gks AS (       -- GEÇEN yılın kalan dilimi, MAĞAZA BAZLI — transfer karar�
       AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 ),
-bhs AS (       -- BU yılın penceresi, MAĞAZA BAZLI — HIZ TABANI
-    -- GMY 15.09.2026 (Mopak A4 vakası): ürün geçen yıl 15 adet satmış, bu yıl aynı
-    --   pencerede 1.791 → değişim 6,18×. Model "FAZLA 4.527 adet / 529.503 ₺" dedi.
-    -- ⚠ ÖLÇÜLDÜ: geçen yılın 15'i TALEP DEĞİL, STOKUN BİTTİĞİ YER. Ay sonu stok
-    --   30.09.25 FSM 5 / Özlüce 10 / İst.Yolu 0 · 31.10.25 3/2/0; ardından Kas-25 →
-    --   Tem-26 arası DOKUZ AY sıfır satış. Sağdan sansür ders kitabı örneği.
-    -- ⚠ Sansür bayrağı bunu YAKALAMADI: ay sonu toplamı 15 ve 5, yani "sıfır değil".
-    -- ⇒ İkinci bir taban: BU yılın gerçekleşen hızı. Sansürsüzdür (bugünün rafı dolu).
-    -- ÖLÇÜLDÜ 15.09.2026: bugün FAZLA/SEZONU BİTTİ etiketi alacak 6.016 çeşitte
-    --   (160.145 adet stok) hız tabanı stoğun YETMEYECEĞİNİ söylüyor — 177.083 adet.
+bp AS (        -- BU yıl OKUL ÖNCESİ penceresi — gp ile EŞİT UZUNLUKTA
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
+bps AS (       -- aynı pencere, MAĞAZA BAZLI
     SELECT h.ehstkID AS stkID,
            Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
            Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
@@ -145,14 +160,27 @@ bhs AS (       -- BU yılın penceresi, MAĞAZA BAZLI — HIZ TABANI
       AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 ),
-sn AS (        -- SANSÜR BAYRAĞI: geçen yıl KALAN dilimin ay sonlarında mağaza stoğu 0 mı?
-    -- satinalma-danisman 15.09.2026: "bugün AÇIK olan ürünler büyük olasılıkla geçen yıl
-    --   da aynı dilimde tükenenler. O zaman gk SAĞDAN SANSÜRLÜDÜR: gerçek talebi değil,
-    --   raf bitene kadarki satışı gösterir. Formül en çok satanları EKSİK sipariş ettirir."
-    -- ÖLÇÜLDÜ 15.09.2026: AÇIK'taki 17.062 ürünün 2.920'si (%17,1) böyle; 977'sinde iki ay
-    --   sonu da sıfır. Bu satırların AÇIK tutarı 5,16M ₺ (toplamın %6,6'sı).
-    -- ⚠ VEKİL SINIRI: AY SONU fotoğrafı. Dilim içinde tükenip sonra dolan ürünü KAÇIRIR →
-    --   2.920 bir ALT SINIRDIR, gerçek sansür daha yaygın olabilir.
+bt AS (        -- BU yıl SEZON BAŞINDAN BUGÜNE — "şu ana kadar satılan"
+    -- ⚠ Tahminden ÇIKARILAN budur, hizalı pencere DEĞİL: tahmin TÜM sezonu
+    --   söyler, ondan sezon başından beri satılan HER ŞEY düşülür.
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
+bts AS (       -- aynı, MAĞAZA BAZLI
+    SELECT h.ehstkID AS stkID,
+           Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
+           Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
+           Ist = -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END)
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
+sn AS (        -- SANSÜR BAYRAĞI: geçen sezonun ay sonlarında mağaza stoğu 0 mıydı
+    -- ⚠ AY SONU fotoğrafı; dilim içinde tükenip dolanı kaçırır → ALT SINIR.
     SELECT b.stkID,
            Eyl = SUM(CASE WHEN b.Donem = ? THEN b.Stok ELSE 0 END),
            Eki = SUM(CASE WHEN b.Donem = ? THEN b.Stok ELSE 0 END)
@@ -160,25 +188,44 @@ sn AS (        -- SANSÜR BAYRAĞI: geçen yıl KALAN dilimin ay sonlarında ma�
     WHERE b.ehMekan IN (1,4477,4478) AND b.Donem IN (?, ?)
     GROUP BY b.stkID
 ),
-kb AS (        -- KATEGORİ BÜYÜMESİ — ÖLÇÜLEN, elle yazılmayan
-    -- satinalma-danisman kararı 15.09.2026: "büyüme alıcının yazacağı bir kutu OLMAZ.
-    --   Tek kadran hem AÇIK'ı büyütüp 'sipariş vermeliyim' dedirtiyor, hem FAZLA'yı
-    --   küçültüp 'fazla stoğum yok' dedirtiyor. Tek parametre, iki savunma."
-    -- ⚠ TABAN EŞİĞİ: geçen yıl 2.000 adedin altındaki kategoride oran oynak
-    --   (Akademi 7.540 adetle 2,255 çıkıyor). Altındakiler GENEL orana düşer.
-    SELECT u.Kategori3 AS Kat,
-           SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN -h.ehAdetN ELSE 0 END) AS Gecen,
-           SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN -h.ehAdetN ELSE 0 END) AS Bu
+kb AS (        -- ALT KATEGORİ (Kat2) PAYI — ürünün kendi ölçümü zayıfsa yedek
+    -- GMY 16.09.2026: "geçen sezon kareli defter A marka, bu sene almadık, B aldık."
+    -- ÖLÇÜLDÜ (Defterler grubu): bu sezonun satışının %16'sı geçen sezon HİÇ
+    --   satmamış üründen geliyor. Dağılım çok eşitsiz — Butik Defterler %46
+    --   (2.040 çeşit satmıştı, bu sezon 1.564, ortak yalnız 1.036), Fihrist %99;
+    --   buna karşılık Çizgili Defter %5, Kareli Defter %4, Defter/Kitap Kabı %0.
+    -- Yani SKU dönen yerde taban ÜRÜNDE değil ALT KATEGORİDE durur. Yedek oran
+    -- Kategori3 yerine Kat2'den alınır: Butik Defter'e Kırtasiye ortalaması
+    -- (0,505) uygulamak, o alt kategorinin kendi eğrisini görmezden gelmekti.
+    SELECT Kat = tt.Kat2,
+           Pencere = SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN -h.ehAdetN ELSE 0 END),
+           Sezon   = SUM(-h.ehAdetN)
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    JOIN DerinSISBkm.bkm.SatisAnaliziTaban tt WITH (NOLOCK)
+         ON tt.stkID = h.ehstkID AND tt.Kesim = ? AND tt.SezonYil = ?
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+      AND tt.Kat2 IS NOT NULL
+    GROUP BY tt.Kat2
+),
+kb3 AS (       -- Kat2 boşsa ANA KATEGORİ (Kategori3) payına düşülür
+    SELECT Kat = u.Kategori3,
+           Pencere = SUM(CASE WHEN h.ehTrhS >= ? AND h.ehTrhS < ? THEN -h.ehAdetN ELSE 0 END),
+           Sezon   = SUM(-h.ehAdetN)
     FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
     JOIN DerinSISBkm.bkm.UrunBilgi u WITH (NOLOCK) ON u.stkID = h.ehstkID
     WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
       AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY u.Kategori3
 ),
-yl AS (        -- YILLIK: sezon yılı 01.08.<sezon> – 31.07.<sezon+1> (365 gün)
-    -- GMY kararı 15.09.2026: "01/08/2025-31/07/2026 arası olsun 365 gün".
-    -- ⚠ Eski "365 günde satılan" [kesim−364, kesim] idi ve geçen sezonun başını
-    --   KAÇIRIYORDU. Bu pencere geçen sezonu (Ağu–Eki) TAM İÇERİR ve bu sezona TAŞMAZ.
+gd AS (        -- GEÇEN yılın SEZON DIŞI dilimi (yalnız "gelecek sezona kalır mı")
+    SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
+    FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+    WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
+      AND h.ehTrhS >= ? AND h.ehTrhS < ?
+    GROUP BY h.ehstkID
+),
+yl AS (        -- YILLIK 365 gün — bağlam, karar vermez
     SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
     FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
     WHERE h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)
@@ -188,138 +235,150 @@ yl AS (        -- YILLIK: sezon yılı 01.08.<sezon> – 31.07.<sezon+1> (365 g�
 SELECT t.stkAd                                       AS [Ürün],
        t.Kategori3                                   AS [Kategori],
        {YOL}                                         AS [Kategori yolu],
-       -- ⚠ stkKod BARKOD DEĞİLDİR (sql-server-conventions) — ikisi ayrı alan.
-       --   Tabanda yalnız BarkodAna var; stkKod ürün master'ından okunur.
-       -- ⚠ Taban kolonu 'Yayinevi' ama kaynağı UrunBilgi.mrkAd = MARKA.
-       t.Yayinevi                                    AS [Marka / Yayınevi],
+       -- Taban kolonunun adi 'Yayinevi' ama kaynagi UrunBilgi.mrkAd, yani MARKA.
+       t.Yayinevi                                    AS [Marka],
+       -- stkKod barkod DEGILDIR; ikisi ayri alandir.
        u.stkKod                                      AS [Stok kodu],
        t.BarkodAna                                   AS [Barkod],
-       CONVERT(int, ISNULL(gh.Adet, 0))              AS [Geçen yıl aynı dönem],
-       CONVERT(int, ISNULL(bh.Adet, 0))              AS [Bu yıl 01.08–bugün],
-       -- SEZON AYLARI AYRI (GMY 15.09.2026: "sezon 8 9 10 ayrı olsun").
-       -- Taban Ay1/Ay2/Ay3 = geçen sezonun Ağu/Eyl/Eki'si; toplamları SezonToplam.
-       t.Ay1                                         AS [Ağustos],
-       t.Ay2                                         AS [Eylül],
-       t.Ay3                                         AS [Ekim],
-       CONVERT(int, ISNULL(gk.Adet, 0))              AS [Geçen yıl kalan dönem],
+       -- ── GECEN SEZONUN OLCUMU (payin paydasi ve payi) ──────────────────
+       t.SezonToplam                                 AS [Gecen sezon toplam satilan],
+       t.SezonFsm                                    AS [Gecen sezon FSM satilan],
+       t.SezonOzl                                    AS [Gecen sezon Ozluce satilan],
+       t.SezonIst                                    AS [Gecen sezon IstYolu satilan],
+       CONVERT(int, ISNULL(gp.Adet, 0))              AS [Gecen sezon okul oncesi satilan],
+       CONVERT(int, ISNULL(gps.Fsm, 0))              AS [Gecen sezon FSM okul oncesi],
+       CONVERT(int, ISNULL(gps.Ozl, 0))              AS [Gecen sezon Ozluce okul oncesi],
+       CONVERT(int, ISNULL(gps.Ist, 0))              AS [Gecen sezon IstYolu okul oncesi],
        CASE WHEN ISNULL(sn.Eyl, 0) <= 0 OR ISNULL(sn.Eki, 0) <= 0
-            THEN N'EVET' ELSE N'' END                AS [Geçen yıl stoksuz kaldı],
-       -- ÖLÇÜLEN kategori büyümesi (taban < 2.000 ise NULL → genel orana düşer)
-       CONVERT(decimal(6,3), CASE WHEN kb.Gecen >= 2000
-            THEN CONVERT(float, kb.Bu) / kb.Gecen END) AS [Kategori büyümesi],
-       -- SATIRA FİİLEN UYGULANAN oran — formül bunu çarpar, gizli sabit YOK.
-       -- ⚠ 4 HANE ve SQL de AYNI yuvarlanmış oranı kullanır: GÖSTERİLEN oran,
-       --   ÇARPILAN oranın AYNISI olmalı (birim maliyette de aynı ilke).
-       CONVERT(decimal(7,4), o.Oran)                 AS [Uygulanan büyüme],
-       CONVERT(int, ISNULL(yl.Adet, 0))              AS [Yıllık toplam],
-       -- ── İKİ TABAN AYRI AYRI GÖRÜNÜR (GMY 15.09.2026) ──────────────────
-       -- Talep tek tabandan değil, İKİSİNİN BÜYÜĞÜNDEN alınır. Hangisinin
-       -- bağladığı kolonda görünsün ki "bu sayı nereden geliyor" sorulmasın.
-       b.GecT                                        AS [Geçen yıl tabanı],
-       b.HizT                                        AS [Bu yıl hız tabanı],
-       -- ── MAĞAZA BAZLI İHTİYAÇ ────────────────────────────────────────────
-       -- GMY 15.09.2026: "ona bakarsan diğerlerine de transfer gerek; 'var' dediğinde
-       --   de 1 var zaten." HAKLI: "stok = 0" ölçütü kabaydı. İhtiyacı 30 olan mağazada
-       --   1 adet olmak ile 0 olmak arasında pratik fark yok.
-       -- ⇒ Her mağaza KENDİ ihtiyacıyla karşılaştırılır: o mağazanın geçen yıl aynı
-       --   dilimde sattığı × oran. Eksikler toplanır; önce eldeki FAZLA + DEPO'dan
-       --   taşınır, ancak kalanı SATIN ALINIR.
-       -- ÖLÇÜLDÜ: eski ölçüt taşınabilecek 113.923 adedin yalnız 13.304'ünü görüyordu.
-       m.IhtF AS [FSM ihtiyaç], m.IhtO AS [Özlüce ihtiyaç], m.IhtI AS [İst.Yolu ihtiyaç],
-       m.Eksik                                       AS [Mağaza eksiği],
-       m.Fazla                                       AS [Mağaza fazlası],
-       CASE WHEN m.Eksik < m.Fazla + t.MerkezStok
-            THEN m.Eksik ELSE m.Fazla + t.MerkezStok END AS [Transfer ham],
-       CASE WHEN m.Eksik > m.Fazla + t.MerkezStok
-            THEN m.Eksik - (m.Fazla + t.MerkezStok) ELSE 0 END AS [Satın al ham],
-       t.StokFsm                                     AS [FSM],
-       t.StokOzl                                  AS [Özlüce],
-       t.StokIst                                     AS [İst.Yolu],
-       t.MerkezStok                                  AS [Depo],
-       -- ⚠ 4 HANE: 2 haneye yuvarlayıp sonra çarpınca toplam 313 ₺ sapıyordu
-       --   (ölçüldü 15.09.2026). Excel'de GÖRÜNEN sayı, çarpılan sayı olmalı.
-       CONVERT(decimal(18,4), t.SatisFiyat)          AS [Satış fiyatı],
+            THEN N'EVET' ELSE N'HAYIR' END           AS [Gecen sezon stogu bitti mi],
+       -- Kategori ortalamasi: urunun kendi olcumu zayifsa formul buna duser.
+       CONVERT(decimal(6,4), ISNULL(
+            CASE WHEN ISNULL(kb.Sezon, 0) > 0 AND CONVERT(float, kb.Pencere) / kb.Sezon
+                      BETWEEN 0.05 AND 1.0
+                 THEN CONVERT(float, kb.Pencere) / kb.Sezon END,
+            CASE WHEN ISNULL(kb3.Sezon, 0) > 0
+                 THEN CONVERT(float, kb3.Pencere) / kb3.Sezon END))
+                                                     AS [Kategori ortalama oran],
+       ISNULL(t.Kat2, t.Kategori3)                   AS [Oranin alindigi alt kategori],
+       -- ── BU SEZONUN OLCUMU ─────────────────────────────────────────────
+       CONVERT(int, ISNULL(bp.Adet, 0))              AS [Bu sezon okul oncesi satilan],
+       CONVERT(int, ISNULL(bps.Fsm, 0))              AS [Bu sezon FSM okul oncesi],
+       CONVERT(int, ISNULL(bps.Ozl, 0))              AS [Bu sezon Ozluce okul oncesi],
+       CONVERT(int, ISNULL(bps.Ist, 0))              AS [Bu sezon IstYolu okul oncesi],
+       CONVERT(int, ISNULL(bt.Adet, 0))              AS [Bu sezon bugune kadar satilan],
+       CONVERT(int, ISNULL(bts.Fsm, 0))              AS [Bu sezon FSM satilan],
+       CONVERT(int, ISNULL(bts.Ozl, 0))              AS [Bu sezon Ozluce satilan],
+       CONVERT(int, ISNULL(bts.Ist, 0))              AS [Bu sezon IstYolu satilan],
+       -- ── STOK ──────────────────────────────────────────────────────────
+       t.StokFsm AS [FSM stok], t.StokOzl AS [Ozluce stok], t.StokIst AS [IstYolu stok],
+       t.MerkezStok                                  AS [Merkez depo stok],
+       t.OdakStok                                    AS [Tedarikcide bulunan],
+       -- ── BAGLAM ────────────────────────────────────────────────────────
+       CONVERT(int, CASE WHEN ISNULL(gd.Adet, 0) > 0 THEN gd.Adet ELSE 0 END)
+                                                     AS [Gecen yil sezon disi satilan],
+       CONVERT(int, ISNULL(yl.Adet, 0))              AS [Gecen yil toplam satilan],
+       -- 4 hane: 2 haneye yuvarlayip carpinca toplam sapiyordu (olculdu).
+       CONVERT(decimal(18,4), t.SatisFiyat)          AS [Satis fiyati],
        CONVERT(decimal(18,4), CASE WHEN {MALIYET_GECERLI}
             THEN t.BirimMaliyet END)                 AS [Birim maliyet]
 FROM DerinSISBkm.bkm.SatisAnaliziTaban t WITH (NOLOCK)
 LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
-LEFT JOIN gh ON gh.stkID = t.stkID
-LEFT JOIN bh ON bh.stkID = t.stkID
-LEFT JOIN gk ON gk.stkID = t.stkID
-LEFT JOIN gks ON gks.stkID = t.stkID
-LEFT JOIN bhs ON bhs.stkID = t.stkID
-LEFT JOIN sn ON sn.stkID = t.stkID
-LEFT JOIN kb ON kb.Kat = t.Kategori3
-LEFT JOIN yl ON yl.stkID = t.stkID
--- ⚠ TABAN KALAN SEZON (gk), TÜM SEZON DEĞİL. Excel formülü zaten gk'dan hesaplıyordu
---   ama BURASI hâlâ t.SezonToplam kullanıyordu → SÜZME ve SIRALAMA eski tabana göre
---   yapılıyordu (düzeltildi 15.09.2026). Değerler doğru, seçim yanlıştı: sessiz sapma.
--- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır.
--- ORAN: ? > 0 ise ELLE verilen düz oran; 0 ise ÖLÇÜLEN kategori büyümesi
--- (kategori tabanı < 2.000 ise 1,0 — büyüme UYDURULMAZ).
-CROSS APPLY (SELECT Oran = CONVERT(decimal(7,4), CASE WHEN ? > 0 THEN ?
-                  ELSE ISNULL(CASE WHEN kb.Gecen >= 2000
-                       THEN CONVERT(float, kb.Bu) / kb.Gecen END, 1.0) END)) o
--- PENCERE GÜN SAYILARI — SQL'de hesaplanmaz, Python'dan gelir (tek kaynak).
-CROSS APPLY (SELECT PenGun = CONVERT(float, ?), KalGun = CONVERT(float, ?)) d
--- İKİ TABAN. (1) GEÇEN YIL tabanı: sansürlü, tükenen üründe ALT SINIR verir.
---            (2) BU YIL HIZ tabanı: bu sezonun gerçekleşen günlük hızı × kalan gün.
--- ⚠ HİÇBİRİ tek başına yeterli değil. Geçen yıl tabanı stoksuz kalmış ürünü
---   küçük gösterir; hız tabanı ise sezonu HENÜZ başlamamış ürünü küçük gösterir
---   (ör. Ekim'de satan ürün 13 Eylül'de hâlâ 0). Bu yüzden BÜYÜĞÜ alınır.
+LEFT JOIN gp  ON gp.stkID  = t.stkID
+LEFT JOIN gps ON gps.stkID = t.stkID
+LEFT JOIN bp  ON bp.stkID  = t.stkID
+LEFT JOIN bps ON bps.stkID = t.stkID
+LEFT JOIN bt  ON bt.stkID  = t.stkID
+LEFT JOIN bts ON bts.stkID = t.stkID
+LEFT JOIN sn  ON sn.stkID  = t.stkID
+LEFT JOIN kb  ON kb.Kat    = t.Kat2
+LEFT JOIN kb3 ON kb3.Kat   = t.Kategori3
+LEFT JOIN gd  ON gd.stkID  = t.stkID
+LEFT JOIN yl  ON yl.stkID  = t.stkID
+-- Asagidaki hesaplar YALNIZ --durum suzgeci icindir. Ekrandaki sayilar Excel
+-- formullerinden gelir; ikisi AYNI zinciri uygular.
+--
+-- ZINCIR SUBE DUZEYINDE KURULUR (GMY 15.09.2026 itirazi uzerine olculdu):
+--   urun duzeyinde bir hesap, sube duzeyinde baska bir hesap vardi ve ikisi
+--   celisiyordu. OLCULDU (Kirtasiye 20.218 cesit): sube eksikleri toplami ile
+--   siparis adedi 4.922 cesitte (%24,3) uyusmuyordu, toplam fark 133.594 adet.
+--   Ayrica sube payi GECEN yildan aliniyordu: bu yilin dagilimiyla medyan
+--   mutlak sapma 0,390 ve urunlerin %53,9'unda EN COK SATAN SUBE degismisti.
+--   Cozum: her sube kendi orani, kendi tahmini, kendi eksigi. Urun toplami
+--   subelerin toplamidir; iki sayi celisemez.
+CROSS APPLY (SELECT Kat = ISNULL(
+        CASE WHEN ISNULL(kb.Sezon, 0) > 0 AND CONVERT(float, kb.Pencere) / kb.Sezon
+                  BETWEEN 0.05 AND 1.0
+             THEN CONVERT(float, kb.Pencere) / kb.Sezon END,
+        CASE WHEN ISNULL(kb3.Sezon, 0) > 0
+             THEN CONVERT(float, kb3.Pencere) / kb3.Sezon END)) k0
+CROSS APPLY (SELECT Kat = ISNULL(CASE WHEN k0.Kat BETWEEN 0.05 AND 1.0
+                                      THEN k0.Kat END, 0.60)) kk
+-- Sube orani: o subenin kendi olcumu zayifsa (30 adet alti ya da 0,05-1,00
+-- disi) kategori ortalamasina duser. Urun orani bir ARA ADIM degildir artik.
 CROSS APPLY (SELECT
-        GecF = CEILING(CASE WHEN ISNULL(gks.Fsm,0) > 0 THEN gks.Fsm * o.Oran ELSE 0 END),
-        GecO = CEILING(CASE WHEN ISNULL(gks.Ozl,0) > 0 THEN gks.Ozl * o.Oran ELSE 0 END),
-        GecI = CEILING(CASE WHEN ISNULL(gks.Ist,0) > 0 THEN gks.Ist * o.Oran ELSE 0 END),
-        HizF = CEILING(CASE WHEN ISNULL(bhs.Fsm,0) > 0 THEN bhs.Fsm / d.PenGun * d.KalGun ELSE 0 END),
-        HizO = CEILING(CASE WHEN ISNULL(bhs.Ozl,0) > 0 THEN bhs.Ozl / d.PenGun * d.KalGun ELSE 0 END),
-        HizI = CEILING(CASE WHEN ISNULL(bhs.Ist,0) > 0 THEN bhs.Ist / d.PenGun * d.KalGun ELSE 0 END),
-        GecT = CONVERT(int, CEILING(CASE WHEN ISNULL(gk.Adet,0) > 0 THEN gk.Adet * o.Oran ELSE 0 END)),
-        HizT = CONVERT(int, CEILING(CASE WHEN ISNULL(bh.Adet,0) > 0 THEN bh.Adet / d.PenGun * d.KalGun ELSE 0 END))) b
+        OrF = CASE WHEN t.SezonFsm >= 30 AND ISNULL(gps.Fsm,0) >= 30
+                    AND CONVERT(float, gps.Fsm) / t.SezonFsm BETWEEN 0.05 AND 1.0
+                   THEN CONVERT(float, gps.Fsm) / t.SezonFsm ELSE kk.Kat END,
+        OrO = CASE WHEN t.SezonOzl >= 30 AND ISNULL(gps.Ozl,0) >= 30
+                    AND CONVERT(float, gps.Ozl) / t.SezonOzl BETWEEN 0.05 AND 1.0
+                   THEN CONVERT(float, gps.Ozl) / t.SezonOzl ELSE kk.Kat END,
+        OrI = CASE WHEN t.SezonIst >= 30 AND ISNULL(gps.Ist,0) >= 30
+                    AND CONVERT(float, gps.Ist) / t.SezonIst BETWEEN 0.05 AND 1.0
+                   THEN CONVERT(float, gps.Ist) / t.SezonIst ELSE kk.Kat END) po
 CROSS APPLY (SELECT
-        IhtF = CONVERT(int, CASE WHEN b.HizF > b.GecF THEN b.HizF ELSE b.GecF END),
-        IhtO = CONVERT(int, CASE WHEN b.HizO > b.GecO THEN b.HizO ELSE b.GecO END),
-        IhtI = CONVERT(int, CASE WHEN b.HizI > b.GecI THEN b.HizI ELSE b.GecI END)) m0
-CROSS APPLY (SELECT IhtF = m0.IhtF, IhtO = m0.IhtO, IhtI = m0.IhtI,
-        Eksik = CASE WHEN m0.IhtF > t.StokFsm THEN m0.IhtF - t.StokFsm ELSE 0 END
-              + CASE WHEN m0.IhtO > t.StokOzl THEN m0.IhtO - t.StokOzl ELSE 0 END
-              + CASE WHEN m0.IhtI > t.StokIst THEN m0.IhtI - t.StokIst ELSE 0 END,
-        Fazla = CASE WHEN t.StokFsm > m0.IhtF THEN t.StokFsm - m0.IhtF ELSE 0 END
-              + CASE WHEN t.StokOzl > m0.IhtO THEN t.StokOzl - m0.IhtO ELSE 0 END
-              + CASE WHEN t.StokIst > m0.IhtI THEN t.StokIst - m0.IhtI ELSE 0 END) m
-CROSS APPLY (SELECT Satilacak = CASE WHEN b.HizT > b.GecT THEN b.HizT ELSE b.GecT END,
-                    Elde      = t.MagazaStok + t.MerkezStok) s
--- SINIF ÖNCELİĞİ: sezonu bitti > açık > TRANSFER > fazla > denge.
--- TRANSFER, FAZLA'yı EZER: toplam fazla ama bir raf boşsa eylem "erit" değil "taşı".
+        TahF = CONVERT(int, CEILING(ISNULL(bps.Fsm,0) / po.OrF)),
+        TahO = CONVERT(int, CEILING(ISNULL(bps.Ozl,0) / po.OrO)),
+        TahI = CONVERT(int, CEILING(ISNULL(bps.Ist,0) / po.OrI))) th
+CROSS APPLY (SELECT
+        KalF = CASE WHEN th.TahF > ISNULL(bts.Fsm,0)
+                    THEN th.TahF - CONVERT(int, ISNULL(bts.Fsm,0)) ELSE 0 END,
+        KalO = CASE WHEN th.TahO > ISNULL(bts.Ozl,0)
+                    THEN th.TahO - CONVERT(int, ISNULL(bts.Ozl,0)) ELSE 0 END,
+        KalI = CASE WHEN th.TahI > ISNULL(bts.Ist,0)
+                    THEN th.TahI - CONVERT(int, ISNULL(bts.Ist,0)) ELSE 0 END) kl
+CROSS APPLY (SELECT
+        Eksik = CASE WHEN kl.KalF > t.StokFsm THEN kl.KalF - t.StokFsm ELSE 0 END
+              + CASE WHEN kl.KalO > t.StokOzl THEN kl.KalO - t.StokOzl ELSE 0 END
+              + CASE WHEN kl.KalI > t.StokIst THEN kl.KalI - t.StokIst ELSE 0 END,
+        Kalan = kl.KalF + kl.KalO + kl.KalI,
+        DisT  = CONVERT(int, CASE WHEN ISNULL(gd.Adet,0) > 0 THEN gd.Adet ELSE 0 END)) s
+CROSS APPLY (SELECT
+        Siparis = CASE WHEN s.Eksik > t.MerkezStok THEN s.Eksik - t.MerkezStok ELSE 0 END,
+        Fazla   = t.MagazaStok + t.MerkezStok - s.Kalan - s.DisT) x
 CROSS APPLY (SELECT Sinif = CASE
-        -- ⚠ HIZ TABANI SEZONU BİTTİ'Yİ EZER: geçen yıl kalan dilimde hiç satmamış
-        --   olabilir ama BU YIL satıyorsa sezonu bitmemiştir. Aksi hâlde bu yılın
-        --   en hızlı yeni ürünü "iade et" kutusuna düşerdi.
-        WHEN ISNULL(gk.Adet, 0) <= 0 AND b.HizT <= 0
-             THEN CASE WHEN t.MagazaStok + t.MerkezStok > 0
-                       THEN 3 ELSE 0 END                            -- 3 SEZONU BİTTİ
-        -- AÇIK = mağaza eksiği, ELDEKİ fazla + depo ile kapanmıyor → SATIN AL
-        WHEN m.Eksik > m.Fazla + t.MerkezStok THEN 1               -- 1 AÇIK (satınalma)
-        -- Eksik var ama elden kapanıyor → TAŞI, sipariş verme
-        WHEN m.Eksik > 0 THEN 4                                    -- 4 TRANSFER
-        WHEN s.Elde > s.Satilacak THEN 2                           -- 2 FAZLA
+        -- OLU STOK: iki sezondur satmiyor ama stogu duruyor. Siparis analizinin
+        -- konusu degil; karar "erit / iade". OLCULDU (Defterler): 3.356 cesit,
+        -- 33.582 adet, 1.012.992 TL maliyet.
+        WHEN t.SezonToplam <= 0 AND ISNULL(bt.Adet, 0) <= 0
+             AND t.MagazaStok + t.MerkezStok > 0 THEN 5   -- olu stok
+        WHEN x.Siparis > 0   THEN 1   -- siparis ver
+        WHEN s.Eksik > 0     THEN 4   -- depodan gonder
+        WHEN x.Fazla > 0     THEN 2   -- fazla var
         ELSE 0 END) g
 WHERE t.Kesim = ? AND t.SezonYil = ?
-  AND t.SezonToplam > 0
+  -- KAPSAM (GMY 16.09.2026 itirazi uzerine genisletildi): eski sart "geçen
+  -- sezon fiilen satmış" idi ve BU SEZON SATAN 1.061 çeşidi dışarıda bırakıyordu
+  -- (Defterler grubunda ölçüldü: 681'i 2026'da açılmış yeni ürün, 380'i eski ama
+  -- geçen sezon satmamış; ikisi birlikte bu sezon 11.852 adet satmış). Onların
+  -- oranı alt kategoriden gelir. Ayrıca iki sezondur satmayan stoklu ürünler de
+  -- girer; onlar ÖLÜ STOK olarak ayrı sınıflanır.
+  AND (t.SezonToplam > 0 OR ISNULL(bt.Adet, 0) > 0
+       OR t.MagazaStok + t.MerkezStok > 0)
+  -- DEFTER GÜVENİLİR: negatif stok fiziksel durum değil, defter hatasıdır.
   AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0
   AND t.SatisFiyat > 0
-  AND (? IS NULL OR t.Kategori3 = ?)       -- kategori süzgeci
-  AND (? = 0 OR g.Sinif = 1)               -- yalnız AÇIK
-  AND (? = 0 OR g.Sinif = 2)               -- yalnız FAZLA
-  AND (? = 0 OR g.Sinif = 3)               -- yalnız SEZONU BİTTİ
-  AND (? = 0 OR g.Sinif = 4)               -- yalnız TRANSFER
--- SIRALAMA MANTIĞI: PARAYA GÖRE, en büyük etkiden başlayarak.
---   AÇIK satırda kaçacak ciro (eksik adet × satış fiyatı) — en çok ciro kaçıran üstte.
---   FAZLA/SEZONU BİTTİ satırda bağlı sermaye (fazla adet × maliyet).
---   İkinci anahtar: aynı tutarda, bu sezon HAREKETLİ olan üstte (talebi kanıtlı).
-ORDER BY CASE WHEN g.Sinif = 1 THEN (s.Satilacak - s.Elde) * t.SatisFiyat
-              ELSE (s.Elde - s.Satilacak) * ISNULL(t.BirimMaliyet, 0) END DESC,
-         ISNULL(bh.Adet, 0) DESC, t.stkID
+  AND (? IS NULL OR t.Kategori3 = ?)
+  -- URUN GRUBU (Kat1): 'Defterler', 'Kalemler ve Yazi Gerecleri' gibi alt kirilim.
+  AND (? IS NULL OR t.Kat1 = ?)
+  AND (? = 0 OR g.Sinif = 1)                -- yalnız SİPARİŞ
+  AND (? = 0 OR g.Sinif = 2)                -- yalnız ERİT
+  AND (? = 0 OR g.Sinif = 4)                -- yalnız TAŞI
+  AND (? = 0 OR g.Sinif = 5)                -- yalnız ÖLÜ STOK
+-- SIRALAMA PARAYA GÖRE: sipariş satırında kaçacak ciro, ötekinde bağlı sermaye.
+ORDER BY CASE WHEN g.Sinif = 1 THEN x.Siparis * t.SatisFiyat
+              WHEN g.Sinif = 2 THEN x.Fazla * ISNULL(t.BirimMaliyet, 0)
+              ELSE 0 END DESC,
+         ISNULL(bt.Adet, 0) DESC, t.stkID
 """
 
 # ── SAYFA DÜZENİ ──────────────────────────────────────────────────────────────
@@ -327,101 +386,127 @@ ORDER BY CASE WHEN g.Sinif = 1 THEN (s.Satilacak - s.Elde) * t.SatisFiyat
 # (B2) — değiştirilince tüm liste yeniden hesaplanır.
 #   (ad, tip)  tip: "ham" = SQL kolonu · "f" = Excel formülü
 DUZEN: list[tuple[str, str]] = [
-    ("Ürün",                   "ham"),
-    ("Kategori",               "ham"),
-    ("Kategori yolu",          "ham"),
-    ("Marka / Yayınevi",       "ham"),
-    ("Stok kodu",              "ham"),
-    ("Barkod",                 "ham"),
-    ("Geçen yıl aynı dönem",   "ham"),   # 01.08 – kesimin ay/günü, GEÇEN yıl
-    ("Bu yıl 01.08–bugün",     "ham"),   # AYNI pencere, BU yıl
-    ("Değişim",                "f"),     # =Bu/Geçen  (aynı pencere → kıyaslanabilir)
-    ("Ağustos",                "ham"),   # geçen sezon
-    ("Eylül",                  "ham"),
-    ("Ekim",                   "ham"),
-    ("Geçen sezon TAMAMI",     "f"),     # =Ağustos+Eylül+Ekim (toplandığı GÖRÜNSÜN)
-    ("Geçen yıl kalan dönem",  "ham"),
-    ("Geçen yıl stoksuz kaldı", "ham"),   # sansür bayrağı → AÇIK ALT SINIR
-    ("Kategori büyümesi",      "ham"),   # ÖLÇÜLEN (taban<2.000 ise boş)
-    ("Uygulanan büyüme",       "ham"),   # satıra fiilen uygulanan oran   # kalan sezon diliminin GEÇEN yılki karşılığı
-    ("Yıllık toplam",          "ham"),   # 01.08.<sezon> – 31.07.<sezon+1>, 365 gün (HER ŞEY)
-    ("Sezon dışı",             "f"),     # =Yıllık toplam − Geçen sezon TAMAMI (Kas–Tem)
-    ("Geçen yıl tabanı",       "ham"),   # kalan dilim x oran  -- SANSÜRLÜ (alt sınır)
-    ("Bu yıl hız tabanı",      "ham"),   # bu yılın günlük hızı x kalan gün -- sansürsüz
-    ("Kalan sezon talebi",     "f"),     # =CEILING(Geçen yıl kalan dönem × (1+büyüme); 1)
-    ("FSM ihtiyaç",            "ham"),   # o mağazanın geçen yılki satışı × oran
-    ("Özlüce ihtiyaç",         "ham"),
-    ("İst.Yolu ihtiyaç",       "ham"),
-    ("Mağaza eksiği",          "ham"),   # Σ max(0, ihtiyaç − stok)
-    ("Mağaza fazlası",         "ham"),   # Σ max(0, stok − ihtiyaç)
-    ("Transfer adet",          "f"),     # SADECE Durum=TRANSFER satırında dolu
-    ("Transfer ham",           "ham"),   # GİZLİ
-    ("Satın al ham",           "ham"),   # GİZLİ
-    ("FSM",                    "ham"),
-    ("Özlüce",                 "ham"),
-    ("İst.Yolu",               "ham"),
-    ("Mağaza toplam",          "f"),     # =FSM+Özlüce+İst.Yolu
-    ("Depo",                   "ham"),
-    ("Toplam stok",            "f"),     # =Mağaza toplam+Depo
-    ("AÇIK",                   "f"),     # =MAX(0; Kalan sezon talebi−Toplam stok)
-    ("FAZLA",                  "f"),     # =MAX(0; Toplam stok−Kalan sezon talebi)
-    ("Satış fiyatı",           "ham"),
-    ("Birim maliyet",          "ham"),
-    ("Tutar",                  "f"),
-    ("Durum",                  "f"),   # pivot bu alanla AÇIK/FAZLA sayabiliyor
-    # ── PİVOT YARDIMCILARI — LİSTE'de GİZLİ. Tek "Tutar" kolonuyla pivot, Durum'u
-    #    kolon alanı yapmak zorunda kalıyordu ve 17 kolona yayılıp okunmaz oluyordu.
-    #    Ayrı iki kolonla pivot düz ve okunur; LİSTE ise tek Tutar ile sade kalıyor.
-    ("AÇIK ₺",                 "f"),
-    ("FAZLA ₺",                "f"),
-    ("Sezonu bitti ₺",         "f"),
+    ("Ürün",                              "ham"),
+    ("Kategori",                          "ham"),
+    ("Kategori yolu",                     "ham"),
+    ("Marka",                             "ham"),
+    ("Stok kodu",                         "ham"),
+    ("Barkod",                            "ham"),
+    # GENEL OLCUM — aciklayici; hesap SUBE duzeyinde yapilir
+    ("Gecen sezon toplam satilan",        "ham"),
+    ("Gecen sezon okul oncesi satilan",   "ham"),
+    ("Kategori ortalama oran",            "ham"),
+    ("Gecen yil toplam satilan",          "ham"),
+    ("Sezon payi",                        "f"),
+    ("Gecen sezon stogu bitti mi",        "ham"),
+    ("Bu sezon okul oncesi satilan",      "ham"),
+    ("Bu sezon bugune kadar satilan",     "ham"),
+    # FSM subesi — kendi orani, kendi tahmini, kendi eksigi
+    ("Gecen sezon FSM satilan",          "ham"),
+    ("Gecen sezon FSM okul oncesi",      "ham"),
+    ("FSM kullanilan oran",              "f"),
+    ("Bu sezon FSM okul oncesi",         "ham"),
+    ("Bu sezon FSM satilan",             "ham"),
+    ("FSM bu sezon toplam satacak",      "f"),
+    ("FSM sezonun kalaninda satacak",    "f"),
+    ("FSM stok",                         "ham"),
+    ("FSM eksik adet",                   "f"),
+    # Ozluce subesi — kendi orani, kendi tahmini, kendi eksigi
+    ("Gecen sezon Ozluce satilan",          "ham"),
+    ("Gecen sezon Ozluce okul oncesi",      "ham"),
+    ("Ozluce kullanilan oran",              "f"),
+    ("Bu sezon Ozluce okul oncesi",         "ham"),
+    ("Bu sezon Ozluce satilan",             "ham"),
+    ("Ozluce bu sezon toplam satacak",      "f"),
+    ("Ozluce sezonun kalaninda satacak",    "f"),
+    ("Ozluce stok",                         "ham"),
+    ("Ozluce eksik adet",                   "f"),
+    # IstYolu subesi — kendi orani, kendi tahmini, kendi eksigi
+    ("Gecen sezon IstYolu satilan",          "ham"),
+    ("Gecen sezon IstYolu okul oncesi",      "ham"),
+    ("IstYolu kullanilan oran",              "f"),
+    ("Bu sezon IstYolu okul oncesi",         "ham"),
+    ("Bu sezon IstYolu satilan",             "ham"),
+    ("IstYolu bu sezon toplam satacak",      "f"),
+    ("IstYolu sezonun kalaninda satacak",    "f"),
+    ("IstYolu stok",                         "ham"),
+    ("IstYolu eksik adet",                   "f"),
+    # TOPLAMLAR — subelerin toplamidir, ayri bir hesap DEGILDIR
+    ("Bu sezon toplam satilacak",         "f"),
+    ("Sezonun kalaninda satilacak",       "f"),
+    ("Subelerde toplam eksik adet",       "f"),
+    ("Magazalarda toplam stok",           "f"),
+    ("Merkez depo stok",                  "ham"),
+    ("Magaza ve depo toplam stok",        "f"),
+    # SONUC
+    ("Durum",                             "f"),
+    ("Siparis verilecek adet",            "f"),
+    ("Siparis nereden karsilanir",        "f"),
+    ("Tedarikcide bulunan",               "ham"),
+    # BAGLAM
+    ("Gecen yil sezon disi satilan",      "ham"),
+    ("Gelecek sezona kalacak",            "f"),
+    # PARA
+    ("Satis fiyati",                      "ham"),
+    ("Birim maliyet",                     "ham"),
+    ("Tutar",                             "f"),
+    ("Siparis tutari",                    "f"),
+    ("Fazla stok tutari",                 "f"),
 ]
 
 
-# ══ AKSİYONA GÖRE GÖRÜNÜR KOLONLAR (satinalma-danisman kararı 15.09.2026) ═══════
-# Danışman: "sorun kolon sayısı değil, tek tabloya ÜÇ AYRI KARARI sığdırmanız.
-#   Rapor aksiyona göre bölünür, her aksiyon yalnız kendi kolonlarını görür."
-#
-# ⚠ KOLON SİLİNMİYOR, GİZLENİYOR. Formüller kolon HARFİNDEN gider; silmek zinciri
-#   kırardı. Gizli kolon Excel'de tek hamlede geri açılır — veri kaybı yok.
-#
-# NEDEN bu ayrım (danışman gerekçesi):
-#   · AÇIK listesi bir SİPARİŞ kararıdır. "Yıllık toplam"/"Sezon dışı" burada işe
-#     yaramaz; karar "kalan sezonda ne kadar lazım" sorusudur.
-#   · FAZLA listesi bir ERİTME kararıdır ve orada "Sezon dışı" KRİTİKTİR: sezon dışı
-#     büyükse mal ölü değil, sezon sonrası satar → indirim yapma. Sıfıra yakınsa kilitli.
-#   · Ağustos/Eylül/Ekim ayrı ayrı hiçbir kararı değiştirmiyor — faz bilgisi zaten
-#     "Geçen yıl kalan" içinde. Ürün profili drill'ine ait, aksiyon listesine değil.
-#   · "Sezon toplam" = "Geçen yıl aynı dönem" + "Geçen yıl kalan"; artık tabanın da
-#     değil → saf tekrar.
-KIMLIK = ["Ürün", "Kategori", "Kategori yolu", "Marka / Yayınevi", "Stok kodu", "Barkod"]
-STOK = ["FSM", "Özlüce", "İst.Yolu", "Mağaza toplam", "Depo", "Toplam stok"]
+# Kolon GIZLENMEZ (GMY 15.09.2026: "alanlari gizleme"). --durum yalnizca
+# SATIR suzer; her dosyada butun kolonlar durur.
+MOD_KOLON: dict[str, list[str]] = {}
 
-MOD_KOLON: dict[str, list[str]] = {
-    # SİPARİŞ kararı
-    "acik": KIMLIK + ["Geçen yıl aynı dönem", "Bu yıl 01.08–bugün", "Değişim",
-                      "Geçen yıl kalan dönem", "Geçen yıl stoksuz kaldı", "Uygulanan büyüme",
-                      "Geçen yıl tabanı", "Bu yıl hız tabanı",
-                      "Kalan sezon talebi"] + STOK
-                   + ["Mağaza eksiği", "Mağaza fazlası", "Transfer adet", "AÇIK",
-                      "Satış fiyatı", "Tutar", "Durum"],
-    # ERİTME kararı — "Sezon dışı" burada belirleyici
-    "fazla": KIMLIK + ["Bu yıl 01.08–bugün", "Yıllık toplam", "Sezon dışı",
-                       "Uygulanan büyüme", "Geçen yıl tabanı", "Bu yıl hız tabanı",
-                       "Kalan sezon talebi"] + STOK
-                    + ["FAZLA", "Birim maliyet", "Tutar", "Durum"],
-    # TRANSFER kararı — satınalma DEĞİL, mal zaten elde
-    "transfer": KIMLIK + ["Bu yıl 01.08–bugün", "Geçen yıl kalan dönem",
-                          "FSM ihtiyaç", "Özlüce ihtiyaç", "İst.Yolu ihtiyaç",
-                          "Mağaza eksiği", "Mağaza fazlası", "Transfer adet"] + STOK
-                       + ["Satış fiyatı", "Durum"],
-    # İADE / gelecek sezon kararı
-    "bitti": KIMLIK + ["Bu yıl 01.08–bugün", "Geçen yıl kalan dönem",
-                       "Bu yıl hız tabanı", "Yıllık toplam", "Sezon dışı"] + STOK
-                    + ["FAZLA", "Birim maliyet", "Tutar", "Durum"],
-}
 
 PARA = {"Satış fiyatı", "Birim maliyet"}
+
+
+def parametre_sirasi_denetle(sql: str, etiketler: list[str]) -> None:
+    """SQL'deki ? sirasi ile verilen etiket sirasini karsilastirir.
+
+    ⚠ NEDEN VAR (15.09.2026, olculdu): `kb` CTE'si SQL'de `gd`/`kd`'den ONCE
+    tanimliydi ama parametreleri SONRA veriliyordu. pyodbc SAYIYI dogrular,
+    SIRAYI dogrulamaz -> hata YOK, rakam YANLIS. Mevsim katsayisi 0,9167
+    cikti (dogrusu 0,5464) ve bu ancak katsayi EKRANA konuldugu icin farkedildi.
+    Kolon gorunur olmasaydi liste sessizce yanlis siparis ettirecekti.
+
+    Etiket = o parametrenin ait oldugu CTE/APPLY adi. SQL'den CTE sirasi ve her
+    CTE'deki ? sayisi cikarilir; etiket listesiyle BIREBIR tutmali.
+    """
+    import re as _re
+    # CTE gövdeleri: "ad AS (" ile baslar, bir sonraki CTE'ye kadar surer.
+    # ⚠ YORUMLARDAKİ SORU İŞARETİ PARAMETRE DEĞİLDİR. Türkçe yorumlar soru cümlesi
+    #   taşıyor ("...mağaza stoğu 0 mı?") ve ham sayım onu parametre sanıyordu —
+    #   kapı ikinci koşuda bunu bildirdi. Yorum karakterleri KONUM KORUNARAK
+    #   boşluğa çevrilir; silinirse ofsetler kayar.
+    temiz = list(sql)
+    for m in _re.finditer(r"--[^\n]*", sql):
+        for k in range(m.start(), m.end()):
+            temiz[k] = " "
+    temiz_sql = "".join(temiz)
+    # ⚠ İLK CTE "WITH gh AS (" olarak yazılır — satır başı deseni onu KAÇIRIR.
+    #   Kapı ilk koşuda tam bu eksiği bildirdi (kırılabilirliği böyle kanıtlandı).
+    bas = [(m.group(1), m.start())
+           for m in _re.finditer(r"^(?:WITH\s+)?(\w+) AS \(", temiz_sql, _re.M)]
+    # ⚠ SON CTE'nin gövdesi dosya sonuna KADAR sürmez: ana SELECT ve CROSS
+    #   APPLY'ların parametrelerini yutardı (ölçüldü: 47 karşı 32). Son CTE
+    #   "\n)\n" ile kapanır — orada durulur.
+    _kapanis = temiz_sql.find("\n)\n", bas[-1][1]) if bas else -1
+    _cte_sonu = _kapanis + 2 if _kapanis >= 0 else len(temiz_sql)
+    beklenen: list[str] = []
+    for i, (ad, konum) in enumerate(bas):
+        son = bas[i + 1][1] if i + 1 < len(bas) else _cte_sonu
+        beklenen += [ad] * temiz_sql.count("?", konum, son)
+    verilen = etiketler[:len(beklenen)]
+    if verilen != beklenen:
+        for i, (b, v) in enumerate(zip(beklenen, verilen)):
+            if b != v:
+                kosamadi(f"Parametre sirasi kaydi: {i + 1}. parametre SQL'de "
+                         f"'{b}' CTE'sine ait, kodda '{v}' etiketli. "
+                         f"SQL sirasi: {' '.join(dict.fromkeys(beklenen))}")
+        kosamadi(f"Parametre sayisi uyusmuyor: SQL {len(beklenen)}, kod {len(verilen)}")
 
 
 def ayir(n: float, para: bool = False) -> str:
@@ -429,7 +514,47 @@ def ayir(n: float, para: bool = False) -> str:
     return f"{s} ₺" if para else s
 
 
-def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
+def satir_sonuc(r, ix):
+    """LISTE formulunun Python karsiligi. Ayni ham kolonlardan, ayni sirayla.
+
+    Bu blok daha once formulu ikinci kez kurmus ve sessizce ayrismisti. Artik
+    girdiler SQL'den gelen HAM kolonlardir; tekrar eden tek sey aritmetiktir.
+    """
+    import math
+    kat = float(r[ix["Kategori ortalama oran"]] or 0)
+    kat = kat if 0.05 <= kat <= 1.0 else 0.6
+    kalan_top = eksik_top = tahmin_top = 0
+    for su in ("FSM", "Ozluce", "IstYolu"):
+        gs = r[ix[f"Gecen sezon {su} satilan"]] or 0
+        go = r[ix[f"Gecen sezon {su} okul oncesi"]] or 0
+        oran = go / gs if gs > 0 else 0.0
+        if not (gs >= 30 and go >= 30 and 0.05 <= oran <= 1.0):
+            oran = kat
+        bo = r[ix[f"Bu sezon {su} okul oncesi"]] or 0
+        tahmin = math.ceil(bo / oran) if oran > 0 else 0
+        kalan = max(0, tahmin - (r[ix[f"Bu sezon {su} satilan"]] or 0))
+        tahmin_top += tahmin
+        kalan_top += kalan
+        eksik_top += max(0, kalan - (r[ix[f"{su} stok"]] or 0))
+    depo = r[ix["Merkez depo stok"]] or 0
+    magaza = sum(r[ix[f"{su} stok"]] or 0 for su in ("FSM", "Ozluce", "IstYolu"))
+    siparis = max(0, eksik_top - depo)
+    fazla = magaza + depo - kalan_top - (r[ix["Gecen yil sezon disi satilan"]] or 0)
+    if ((r[ix["Gecen sezon toplam satilan"]] or 0) <= 0
+            and (r[ix["Bu sezon bugune kadar satilan"]] or 0) <= 0
+            and magaza + depo > 0):
+        return "ÖLÜ STOK", magaza + depo, fazla
+    if siparis > 0:
+        return "SİPARİŞ VER", siparis, fazla
+    if eksik_top > 0:
+        return "DEPODAN GÖNDER", eksik_top, fazla
+    if fazla > 0:
+        return "FAZLA VAR", fazla, fazla
+    return "YETERLİ", 0, fazla
+
+
+def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int,
+              alanlar: list[tuple[str, str, bool]]) -> str:
     """
     MARKA sayfasını GERÇEK PivotTable'a çevirir (Excel COM).
 
@@ -473,7 +598,7 @@ def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
             cache = wb.PivotCaches().Create(SourceType=1, SourceData=kaynak)  # xlDatabase
             pt = cache.CreatePivotTable(TableDestination=pws.Range("A3"),
                                         TableName="MarkaPivot")
-            pt.PivotFields("Marka / Yayınevi").Orientation = 1      # xlRowField
+            pt.PivotFields("Marka").Orientation = 1      # xlRowField
             # ⚠ Durum KOLON ALANI YAPILMADI: 4 değer × 3 durum = 17 kolona yayılıp
             #   okunmaz oluyordu (ölçüldü). Ayrı "AÇIK ₺"/"FAZLA ₺" alanlarıyla düz kalıyor.
             # ⚠ VERİ ALANI ADI, KAYNAK ALAN ADIYLA AYNI OLAMAZ — Excel 0x800A03EC verir
@@ -500,13 +625,12 @@ def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
             tamsayi = f"#{binlik}##0"
             para = f'#{binlik}##0 "₺"'
             cf = pt.AddDataField(pt.PivotFields("Ürün"), "Çeşit", -4112)   # xlCount
-            for alan, ad, bicim in (("AÇIK", "AÇIK adet", tamsayi),
-                                    ("AÇIK ₺", "AÇIK toplam ₺", para),
-                                    ("FAZLA", "FAZLA adet", tamsayi),
-                                    ("FAZLA ₺", "FAZLA toplam ₺", para),
-                                    # ⚠ Ad çakışması BÜYÜK/küçük harfe DUYARSIZ: "SEZONU BİTTİ ₺" ile kaynak
-                                    #   kolon "Sezonu bitti ₺" Excel için AYNI addır → 0x800A03EC.
-                                    ("Sezonu bitti ₺", "SEZONU BİTTİ toplam ₺", para)):
+            # ⚠ PivotFields GÖRÜNEN başlıkla eşleşir, iç anahtarla DEĞİL. Başlıklar
+            #   tarihlendiği/çok satırlı olduğu için iç anahtar geçilirse
+            #   "PivotFields yöntemi başarısız" (0x800A03EC) alınır — ölçüldü 15.09.2026.
+            #   Bu yüzden görünen adlar dışarıdan (GOSTER çözülmüş hâliyle) gelir.
+            for alan, ad, paralimi in alanlar:
+                bicim = para if paralimi else tamsayi
                 f = pt.AddDataField(pt.PivotFields(alan), ad, -4157)  # xlSum
                 # ⚠ BİÇİM İSTEĞE BAĞLI: yerel biçim dizgisi reddedilebiliyor (0x800A03EC).
                 #   Pivot'un KENDİSİ biçimden önemli — biçim tutmazsa pivot yine kurulur,
@@ -520,9 +644,9 @@ def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int) -> str:
             except Exception:
                 bicim_hata.append("Çeşit")
             pt.RowAxisLayout(1)                                       # tablo düzeni
-            # AÇIK tutarına göre büyükten küçüğe — alıcı en büyük açıktan başlasın.
+            # EKSİK tutarına göre büyükten küçüğe — alıcı en büyük açıktan başlasın.
             try:
-                pt.PivotFields("Marka / Yayınevi").AutoSort(2, "AÇIK toplam ₺")  # xlDescending
+                pt.PivotFields("Marka").AutoSort(2, "Siparis tutari TL")  # xlDescending
             except Exception:
                 pass   # sıralama kurulamazsa pivot yine geçerli; alfabetik kalır
             # Kaydedilince yeniden hesapla — büyüme değişirse pivot bayatlamasın.
@@ -566,9 +690,11 @@ def main() -> int:
     #   raporun yüzüne "ELLE GİRİLDİ" diye yazılır (danışman şartı).
     ap.add_argument("--buyume", type=float, default=None,
                     help="ELLE duz buyume (or. 0.20). Verilmezse kategori bazli OLCULUR")
-    ap.add_argument("--durum", choices=["acik", "fazla", "bitti", "transfer"],
-                    default=None,
-                    help="acik(satinalma) / transfer / fazla / bitti")
+    ap.add_argument("--grup", default=None,
+                    help="urun grubu (Kat1), ornek: Defterler")
+    ap.add_argument("--durum", choices=["siparis", "depodan", "fazla", "olu"], default=None,
+                    help="siparis (yeni alim gerekiyor) / depodan (merkez depo karsiliyor) "
+                         "/ fazla (gelecek sezona artik kaliyor)")
     ap.add_argument("--kategori", default=None,
                     help="tek Kategori3 (or. Kirtasiye) — bos ise hepsi")
     # PENCERE — GMY kararı 15.09.2026: "okul açılışına takılma, rapor 01/08'den başlasın,
@@ -588,11 +714,20 @@ def main() -> int:
 
     # SQL'e giden oran: elle verildiyse (1+x), verilmediyse 0 → ölçüm kullanılır.
     buyume_sql = (1.0 + a.buyume) if a.buyume is not None else 0.0
-    yalniz_acik = 1 if a.durum == "acik" else 0
+    # İKİ EKSEN: DURUM (ne durumda) · KAYNAK (nereden çözülür).
+    # satinalma-danisman 15.09.2026: dosya KAYNAĞA göre bölünür, çünkü dosyayı
+    # alan KİŞİ değişiyor (depo/lojistik · satınalmacı-düşük risk · satınalmacı-asıl iş).
+    # ÇAPRAZ EYLEM süzgeçleri (SQL: 1=AL · 2=ERİT · 4=TAŞI · 5=BEKLE)
+    # SQL sinifi: 1 = siparis · 2 = fazla · 4 = depodan gonder
+    yalniz_acik = 1 if a.durum == "siparis" else 0
     yalniz_fazla = 1 if a.durum == "fazla" else 0
-    yalniz_bitti = 1 if a.durum == "bitti" else 0
-    yalniz_transfer = 1 if a.durum == "transfer" else 0
+    yalniz_bitti = 1 if a.durum == "depodan" else 0
+    yalniz_olu = 1 if a.durum == "olu" else 0
+    yalniz_depo = 0
+    yalniz_odak = 0
+    yalniz_ted = 0
     kategori = a.kategori.strip() if a.kategori and a.kategori.strip() else None
+    grup = a.grup.strip() if a.grup and a.grup.strip() else None
     SEZON_BAS_AY, SEZON_SON_AY = 8, 10          # GMY: "sezon 8 9 10 olsun"
 
     env = env_oku(os.path.join(KOK, ".env"))
@@ -634,6 +769,9 @@ def main() -> int:
         #   zaten satıldı; tüm sezonu istemek açığı 2,4 kat şişiriyordu (254,7M → 106,9M ₺).
         sezon_sonu_bu = dt.date(b_son.year, SEZON_SON_AY, 31)
         gk_bas_bu, gk_son_bu = b_son + dt.timedelta(days=1), sezon_sonu_bu
+        # BU YILIN sezon disi penceresi — yalniz BASLIK icin (olcum gecen yildan).
+        gd_bas_bu = dt.date(sezon_sonu_bu.year, 11, 1)
+        gd_son_bu = dt.date(sezon_sonu_bu.year + 1, 7, 31)
         if gk_bas_bu > gk_son_bu:
             kosamadi(f"Sezon bitmis ({b_son} > {sezon_sonu_bu}) — kalan talep yok")
 
@@ -648,17 +786,31 @@ def main() -> int:
 
         # HIZ TABANI için gün sayıları. SQL'de hesaplanmaz — tek kaynak burası.
         # ⚠ Gün sayısı KAPSAYICI (her iki uç dahil): 01.08–13.09 = 44 gün.
-        pencere_gun = (b_son - b_bas).days + 1
-        kalan_gun   = (gk_son_bu - gk_bas_bu).days + 1
-        if pencere_gun <= 0 or kalan_gun <= 0:
-            kosamadi(f"Gun sayisi gecersiz: pencere {pencere_gun}, kalan {kalan_gun}")
-        # SANSÜR bayrağı: geçen yılın KALAN dilimi İÇİNDEKİ ay sonları (ay-sonu snapshot
-        # tablosu yalnız ay sonlarını tutar). Dilim başının ayının sonu + dilim sonunun ayı.
-        def ay_sonu(d: dt.date) -> dt.date:
-            ilk_sonraki = dt.date(d.year + (d.month == 12), (d.month % 12) + 1, 1)
-            return ilk_sonraki - dt.timedelta(days=1)
+        # ── OKUL-HİZALI PENCERELER (pay'ın payı) ────────────────────────
+        # Her iki yıl da "açılıştan bir gün önce" biter ve EŞİT UZUNLUKTADIR.
+        # Uzunluk = iki yılın okul-öncesi gün sayısının KÜÇÜĞÜ.
+        if a.sezon not in OKUL_ACILIS or kesim.year not in OKUL_ACILIS:
+            kosamadi(f"Okul acilis tarihi tanimsiz: {a.sezon} / {kesim.year}")
+        g_acilis, b_acilis = OKUL_ACILIS[a.sezon], OKUL_ACILIS[kesim.year]
+        g_pen_son = g_acilis - dt.timedelta(days=1)
+        b_pen_son = min(kesim, b_acilis - dt.timedelta(days=1))
+        pen_gun = min((g_pen_son - dt.date(a.sezon, 8, 1)).days,
+                      (b_pen_son - dt.date(kesim.year, 8, 1)).days) + 1
+        if pen_gun < 14:
+            kosamadi(f"Okul oncesi pencere cok kisa: {pen_gun} gun")
+        gp_bas = g_pen_son - dt.timedelta(days=pen_gun - 1)
+        bp_bas = b_pen_son - dt.timedelta(days=pen_gun - 1)
+        # SEZON: geçen yılın TAMAMI (pay'ın paydası) + bu yılın şimdiye kadarı
+        gs_bas, gs_son = dt.date(a.sezon, 8, 1), dt.date(a.sezon, 10, 31)
+        bt_bas, bt_son = dt.date(kesim.year, 8, 1), kesim
+        # SEZON DIŞI (yalnız "gelecek sezona kalır mı" sorusu)
+        gd_bas, gd_son = dt.date(a.sezon, 11, 1), dt.date(a.sezon + 1, 7, 31)
 
-        sn_eyl, sn_eki = ay_sonu(gk_bas), ay_sonu(gk_son)
+        # SANSÜR BAYRAĞI: geçen SEZONUN ay sonları (snapshot yalnız ay sonu tutar).
+        # Eylül ve Ekim sonu — sezonun son iki ayı. Ürün o ay sonlarında sıfır
+        # stoktaysa PAY şüphelidir (payda kesilmiş, pay 1'e yaklaşmış).
+        sn_eyl = dt.date(a.sezon, 9, 30)
+        sn_eki = dt.date(a.sezon, 10, 31)
         # ⚠ EŞİT UZUNLUK ZORUNLU: farklı uzunlukta iki pencere SAHTE büyüme üretir ve
         #   hata vermez. Bugün ölçülen 44/45 gün sapmasının sınıfı budur.
         if (b_son - b_bas).days != (g_son - g_bas).days:
@@ -667,21 +819,31 @@ def main() -> int:
 
         # Sıra SQL'deki ? sırasıdır; biri değişirse ikisi birden değişir.
         # ⚠ Üst sınır DIŞLAYICI (son + 1 gün, gece yarısı) — "23:59:59" yazılmaz.
-        cur.execute(SQL,
-                    g_bas, g_son + dt.timedelta(days=1),   # gh — GEÇEN yıl
-                    b_bas, b_son + dt.timedelta(days=1),   # bh — BU yıl
-                    gk_bas, gk_son + dt.timedelta(days=1),  # gk — GEÇEN yılın KALAN dilimi
-                    gk_bas, gk_son + dt.timedelta(days=1),  # gks — aynı dilim, MAĞAZA bazlı
-                    b_bas, b_son + dt.timedelta(days=1),   # bhs — BU yılın penceresi, MAĞAZA bazlı
-                    sn_eyl, sn_eki, sn_eyl, sn_eki,        # sn — sansür bayrağı ay sonları
-                    g_bas, g_son + dt.timedelta(days=1),   # kb — geçen yıl 44 gün
-                    b_bas, b_son + dt.timedelta(days=1),   # kb — bu yıl 44 gün
-                    g_bas, b_son + dt.timedelta(days=1),   # kb — tarama aralığı
-                    y_bas, y_son + dt.timedelta(days=1),   # yl — YILLIK 365 gün
-                    buyume_sql, buyume_sql,                # CROSS APPLY oran (elle / 0=ölçüm)
-                    pencere_gun, kalan_gun,                # CROSS APPLY d — hız tabanı günleri
-                    kesim, a.sezon, kategori, kategori,
-                    yalniz_acik, yalniz_fazla, yalniz_bitti, yalniz_transfer)
+        # ⚠ SIRA = SQL'DEKI CTE SIRASI. Etiketler kapidan gecer (bkz.
+        #   parametre_sirasi_denetle): kayma sessiz degil, KOSAMADI ile patlar.
+        # ⚠ SIRA = SQL'DEKİ CTE SIRASI. Kapıdan geçer (parametre_sirasi_denetle):
+        #   kayma sessiz değil, KOŞAMADI ile patlar.
+        _gun = dt.timedelta(days=1)
+        _p: list[tuple[str, object]] = [
+            ("gp", gp_bas), ("gp", g_pen_son + _gun),
+            ("gps", gp_bas), ("gps", g_pen_son + _gun),
+            ("bp", bp_bas), ("bp", b_pen_son + _gun),
+            ("bps", bp_bas), ("bps", b_pen_son + _gun),
+            ("bt", bt_bas), ("bt", bt_son + _gun),
+            ("bts", bt_bas), ("bts", bt_son + _gun),
+            ("sn", sn_eyl), ("sn", sn_eki), ("sn", sn_eyl), ("sn", sn_eki),
+            ("kb", gp_bas), ("kb", g_pen_son + _gun),
+            ("kb", kesim), ("kb", a.sezon),
+            ("kb", gs_bas), ("kb", gs_son + _gun),
+            ("kb3", gp_bas), ("kb3", g_pen_son + _gun),
+            ("kb3", gs_bas), ("kb3", gs_son + _gun),
+            ("gd", gd_bas), ("gd", gd_son + _gun),
+            ("yl", y_bas), ("yl", y_son + _gun),
+        ]
+        parametre_sirasi_denetle(SQL, [e for e, _ in _p])
+        cur.execute(SQL, *[v for _, v in _p],
+                    kesim, a.sezon, kategori, kategori, grup, grup,
+                    yalniz_acik, yalniz_fazla, yalniz_bitti, yalniz_olu)
         bas = [d[0] for d in cur.description]
         sat = [list(x) for x in cur.fetchall()]
     finally:
@@ -713,36 +875,104 @@ def main() -> int:
     #    karışmasın"). İÇ ANAHTAR değişmez — yalnız GÖRÜNEN ad tarihlenir; formüller
     #    K[anahtar] ile kolon harfinden gider, bu yüzden ad değişimi hiçbir şeyi kırmaz.
     ay_adi = {8: "Ağustos", 9: "Eylül", 10: "Ekim"}
+    # Baslikta satir kirilimi — f-string icinde ters bolu olamaz, sabit kullanilir.
+    NL = chr(10)
     GOSTER = {
-        "Geçen yıl aynı dönem": f"Geçen yıl\n{g_bas:%d.%m.%y}–{g_son:%d.%m.%y}",
-        "Bu yıl 01.08–bugün":   f"Bu yıl\n{b_bas:%d.%m.%y}–{b_son:%d.%m.%y}",
-        "Değişim":              "Değişim\n(bu ÷ geçen)",
-        "Ağustos":              f"{ay_adi[8]} {a.sezon}",
-        "Eylül":                f"{ay_adi[9]} {a.sezon}",
-        "Ekim":                 f"{ay_adi[10]} {a.sezon}",
-        "Geçen sezon TAMAMI":   f"Sezon toplam\n01.08.{a.sezon % 100:02d}–31.10.{a.sezon % 100:02d}",
-        "Yıllık toplam":        f"Yıllık toplam\n{y_bas:%d.%m.%y}–{y_son:%d.%m.%y}",
-        "Sezon dışı":           f"Sezon dışı\n01.11.{a.sezon % 100:02d}–{y_son:%d.%m.%y}",
-        "Geçen yıl kalan dönem": f"Geçen yıl kalan\n{gk_bas:%d.%m.%y}–{gk_son:%d.%m.%y}",
-        "Geçen yıl stoksuz kaldı": f"Geçen yıl stoksuz\n(talep EKSİK ölçüldü)",
-        "Kategori büyümesi":    f"Kategori büyümesi\n(ölçülen, 44 gün)",
-        "Uygulanan büyüme":     f"Uygulanan büyüme\n(bu satıra)",
-        "Geçen yıl tabanı":     f"Geçen yıl tabanı\n{gk_bas:%d.%m.%y}–{gk_son:%d.%m.%y} × oran",
-        "Bu yıl hız tabanı":    f"Bu yıl hız tabanı\n{b_bas:%d.%m.%y}–{b_son:%d.%m.%y} hızı × {kalan_gun} gün",
-        "Kalan sezon talebi":   f"KALAN sezon talebi\n{gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y}",
-        "FSM ihtiyaç":          f"FSM ihtiyaç\n(iki tabanın büyüğü)",
-        "Özlüce ihtiyaç":       f"Özlüce ihtiyaç\n(iki tabanın büyüğü)",
-        "İst.Yolu ihtiyaç":     f"İst.Yolu ihtiyaç\n(iki tabanın büyüğü)",
-        "Mağaza eksiği":        f"Mağaza eksiği\n(ihtiyaç − stok)",
-        "Mağaza fazlası":       f"Mağaza fazlası\n(stok − ihtiyaç)",
-        "Transfer adet":        f"TAŞINACAK\n{gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y}",
-        "FSM":                  f"FSM\n{kesim:%d.%m.%y}",
-        "Özlüce":               f"Özlüce\n{kesim:%d.%m.%y}",
-        "İst.Yolu":             f"İst.Yolu\n{kesim:%d.%m.%y}",
-        "Mağaza toplam":        f"Mağaza toplam\n{kesim:%d.%m.%y}",
-        "Depo":                 f"Depo\n{kesim:%d.%m.%y}",
-        "Toplam stok":          f"Toplam stok\n{kesim:%d.%m.%y}",
-        "Tutar":                "Tutar\n(AÇIK'ta fiyat, FAZLA'da maliyet)",
+        "Gecen sezon toplam satilan":
+            f"Geçen sezon toplam satılan adet{NL}(01.08-31.10.{a.sezon})",
+        "Gecen sezon okul oncesi satilan":
+            f"Geçen sezon okul açılmadan önce satılan adet{NL}({gp_bas:%d.%m.%Y} - {g_pen_son:%d.%m.%Y}, {pen_gun} gün)",
+        "Kategori ortalama oran":
+            f"Kategori ortalaması{NL}(şubenin kendi ölçümü zayıfsa bu oran kullanılır)",
+        "Gecen yil toplam satilan":
+            f"Geçen yıl toplam satılan adet{NL}({y_bas:%d.%m.%Y} - {y_son:%d.%m.%Y})",
+        "Sezon payi":
+            f"Ürünün sezon payı{NL}(geçen sezon satılan / geçen yıl toplam satılan; düşükse ürün sezonluk değildir)",
+        "Gecen sezon stogu bitti mi":
+            f"Geçen sezon stoğu bitmiş miydi{NL}(bittiyse geçen sezon satışı gerçek talebin altındadır)",
+        "Bu sezon okul oncesi satilan":
+            f"Bu sezon okul açılmadan önce satılan adet{NL}({bp_bas:%d.%m.%Y} - {b_pen_son:%d.%m.%Y}, {pen_gun} gün)",
+        "Bu sezon bugune kadar satilan":
+            f"Bu sezon bugüne kadar satılan adet{NL}({bt_bas:%d.%m.%Y} - {bt_son:%d.%m.%Y})",
+        "Bu sezon toplam satilacak":
+            f"Bu sezon toplam kaç adet satılacak{NL}(üç şubenin tahmininin toplamı)",
+        "Sezonun kalaninda satilacak":
+            f"Sezonun kalanında kaç adet satılacak{NL}(üç şubenin kalanının toplamı)",
+        "Subelerde toplam eksik adet":
+            f"Şubelerde toplam eksik adet{NL}(her şubenin kendi eksiğinin toplamı)",
+        "Magazalarda toplam stok": f"Mağazalarda toplam stok{NL}({kesim:%d.%m.%Y})",
+        "Merkez depo stok":  f"Merkez depoda stok{NL}({kesim:%d.%m.%Y})",
+        "Magaza ve depo toplam stok":
+            f"Elimizdeki toplam stok{NL}(mağazalar artı merkez depo, {kesim:%d.%m.%Y})",
+        "Durum":
+            f"Durum{NL}(şube eksikleri merkez depodan karşılanamıyorsa sipariş gerekir)",
+        "Siparis verilecek adet":
+            f"Sipariş verilecek adet{NL}(şubelerde toplam eksik eksi merkez depo stoğu)",
+        "Siparis nereden karsilanir":
+            f"Sipariş nereden karşılanır{NL}(tedarikçide varsa ondan, yoksa yeni alım)",
+        "Tedarikcide bulunan":
+            f"Tedarikçide bulunan adet{NL}(bizim stoğumuz değil, anlık tedarikçi stoğu)",
+        "Gecen yil sezon disi satilan":
+            f"Geçen yıl sezon dışında satılan adet{NL}({gd_bas:%d.%m.%Y} - {gd_son:%d.%m.%Y})",
+        "Gelecek sezona kalacak":
+            f"Gelecek sezona kalacak adet{NL}(elimizdeki eksi sezonun kalanı eksi sezon dışı talep)",
+        "Satis fiyati":  "Satış fiyatı",
+        "Birim maliyet": "Birim maliyet",
+        "Tutar":
+            f"Tutar{NL}(sipariş satırında satış fiyatıyla, fazla satırında maliyetle)",
+        "Siparis tutari":    "Sipariş tutarı",
+        "Fazla stok tutari": "Fazla stok tutarı",
+        "Gecen sezon FSM satilan":
+            f"FSM: geçen sezon satılan adet{NL}(01.08-31.10.{a.sezon})",
+        "Gecen sezon FSM okul oncesi":
+            f"FSM: geçen sezon okul açılmadan önce satılan adet",
+        "FSM kullanilan oran":
+            f"FSM: kullanılan oran{NL}(okul öncesi satılan / sezon toplamı; 30 adedin altındaysa kategori ortalaması)",
+        "Bu sezon FSM okul oncesi":
+            f"FSM: bu sezon okul açılmadan önce satılan adet",
+        "Bu sezon FSM satilan":
+            f"FSM: bu sezon bugüne kadar satılan adet",
+        "FSM bu sezon toplam satacak":
+            f"FSM: bu sezon toplam kaç adet satacak{NL}(okul öncesi satılan / kullanılan oran)",
+        "FSM sezonun kalaninda satacak":
+            f"FSM: sezonun kalanında kaç adet satacak",
+        "FSM stok":  f"FSM: stok{NL}({kesim:%d.%m.%Y})",
+        "FSM eksik adet":
+            f"FSM: eksik adet{NL}(satacağı miktar eksi stoğu)",
+        "Gecen sezon Ozluce satilan":
+            f"Özlüce: geçen sezon satılan adet{NL}(01.08-31.10.{a.sezon})",
+        "Gecen sezon Ozluce okul oncesi":
+            f"Özlüce: geçen sezon okul açılmadan önce satılan adet",
+        "Ozluce kullanilan oran":
+            f"Özlüce: kullanılan oran{NL}(okul öncesi satılan / sezon toplamı; 30 adedin altındaysa kategori ortalaması)",
+        "Bu sezon Ozluce okul oncesi":
+            f"Özlüce: bu sezon okul açılmadan önce satılan adet",
+        "Bu sezon Ozluce satilan":
+            f"Özlüce: bu sezon bugüne kadar satılan adet",
+        "Ozluce bu sezon toplam satacak":
+            f"Özlüce: bu sezon toplam kaç adet satacak{NL}(okul öncesi satılan / kullanılan oran)",
+        "Ozluce sezonun kalaninda satacak":
+            f"Özlüce: sezonun kalanında kaç adet satacak",
+        "Ozluce stok":  f"Özlüce: stok{NL}({kesim:%d.%m.%Y})",
+        "Ozluce eksik adet":
+            f"Özlüce: eksik adet{NL}(satacağı miktar eksi stoğu)",
+        "Gecen sezon IstYolu satilan":
+            f"İstanbul Yolu: geçen sezon satılan adet{NL}(01.08-31.10.{a.sezon})",
+        "Gecen sezon IstYolu okul oncesi":
+            f"İstanbul Yolu: geçen sezon okul açılmadan önce satılan adet",
+        "IstYolu kullanilan oran":
+            f"İstanbul Yolu: kullanılan oran{NL}(okul öncesi satılan / sezon toplamı; 30 adedin altındaysa kategori ortalaması)",
+        "Bu sezon IstYolu okul oncesi":
+            f"İstanbul Yolu: bu sezon okul açılmadan önce satılan adet",
+        "Bu sezon IstYolu satilan":
+            f"İstanbul Yolu: bu sezon bugüne kadar satılan adet",
+        "IstYolu bu sezon toplam satacak":
+            f"İstanbul Yolu: bu sezon toplam kaç adet satacak{NL}(okul öncesi satılan / kullanılan oran)",
+        "IstYolu sezonun kalaninda satacak":
+            f"İstanbul Yolu: sezonun kalanında kaç adet satacak",
+        "IstYolu stok":  f"İstanbul Yolu: stok{NL}({kesim:%d.%m.%Y})",
+        "IstYolu eksik adet":
+            f"İstanbul Yolu: eksik adet{NL}(satacağı miktar eksi stoğu)",
     }
     BAS_SATIR = 4                      # 1 not · 2 büyüme · 3 başlık · 4+ veri
 
@@ -755,10 +985,15 @@ def main() -> int:
     suzgec = []
     if kategori:
         suzgec.append(f"KATEGORİ: {kategori}")
+    if grup:
+        suzgec.append(f"ÜRÜN GRUBU: {grup}")
     if a.durum:
-        suzgec.append({"acik": "YALNIZ AÇIK (eksik olanlar)",
-                       "fazla": "YALNIZ FAZLA",
-                       "bitti": "YALNIZ SEZONU BİTTİ"}[a.durum])
+        suzgec.append({
+            "siparis": "YALNIZ SIPARIS GEREKENLER "
+                       "(subelerin eksigi merkez depodan karsilanamiyor)",
+            "depodan": "YALNIZ MERKEZ DEPODAN GONDERILECEKLER (siparis gerekmiyor)",
+            "fazla": "YALNIZ FAZLA STOK (gelecek sezona artik kaliyor)",
+            "olu": "YALNIZ OLU STOK (iki sezondur satmiyor, stogu duruyor)"}[a.durum])
     suzgec_metni = (" ⚠ SÜZÜLMÜŞ — " + " · ".join(suzgec) + " ⚠ · "
                     if suzgec else "SÜZGEÇ YOK (tüm evren) · ")
     # Gizlenen kolon SESSİZ kalmaz: kaç tane ve nasıl geri açılacağı yazılır.
@@ -826,89 +1061,186 @@ def main() -> int:
 
             # ── FORMÜL — kaynağı hücreden okur, sabit gömmez ─────────────────
             f = {
-                "Geçen sezon TAMAMI": (f'={K["Ağustos"]}{i}+{K["Eylül"]}{i}+{K["Ekim"]}{i}'),
-                # ⚠ AÇIK'ın tabanı TÜM SEZON DEĞİL, KALAN sezondur (GMY 15.09.2026).
-                #   Geçen günlerin malı zaten satıldı; tüm sezonu istemek açığı 2,4 kat şişiriyordu.
-                # ⚠ MAX(0;…) ŞART: geçen yıl kalan dilimde iade satıştan fazlaysa "Geçen yıl
-                #   kalan" NEGATİF olur ve talep eksiye düşerdi. Negatif talep anlamsızdır;
-                #   dahası stoğu SIFIR olan ürünü "fazla" göstererek hayalet üretiyordu
-                #   (ölçüldü 15.09.2026: 27 üründe negatif, 4'ü stoksuz, 29 adet hayalet fazla).
-                # ⚠ ORAN ARTIK SATIRDAN GELİYOR, tek hücreden DEĞİL. Danışman:
-                #   "tek kadran hem AÇIK'ı büyütüp hem FAZLA'yı küçültüyor — bir
-                #   parametre, iki savunma." Oran kategori bazlı ÖLÇÜLDÜ ve kolonda.
-                # ⚠ TEK TABAN YANILTIYORDU (GMY 15.09.2026, Mopak A4 vakası).
-                #   Geçen yıl tabanı sağdan SANSÜRLÜ: ürün geçen yıl tükendiyse
-                #   gözlenen satış talebi değil, rafın bittiği yeri gösterir.
-                #   Bu yıl hız tabanı ise sezonu henüz başlamamış ürünü küçük gösterir.
-                #   ⇒ BÜYÜĞÜ bağlar. İki taban da kolonda; hangisinin bağladığı görünür.
-                "Kalan sezon talebi": (f'=MAX({K["Geçen yıl tabanı"]}{i},'
-                                      f'{K["Bu yıl hız tabanı"]}{i})'),
-                # AYNI PENCERE olduğu için bu oran kıyaslanabilir. Geçen yıl 0 ise
-                # bölme yapılmaz (BOŞ) — "sonsuz büyüme" uydurmak olurdu.
-                "Değişim": (f'=IF({K["Geçen yıl aynı dönem"]}{i}>0,'
-                            f'{K["Bu yıl 01.08–bugün"]}{i}/{K["Geçen yıl aynı dönem"]}{i},"")'),
-                # SEZON DIŞI = yıllık − sezon → Kasım–Temmuz net satışı.
-                # ⚠ EKSİ ÇIKABİLİR ve bu GERÇEKTİR: o aylarda iade satıştan fazlaysa net
-                #   negatiftir (ölçüldü: 85.274 çeşidin 29'u; stkID 1545705 Haz-2026'da
-                #   13 adet iade). Sıfıra kırpılmıyor — kırpmak iadeyi gizlemek olurdu.
-                "Sezon dışı": (f'={K["Yıllık toplam"]}{i}-{K["Geçen sezon TAMAMI"]}{i}'),
-                "Mağaza toplam": f'={K["FSM"]}{i}+{K["Özlüce"]}{i}+{K["İst.Yolu"]}{i}',
-                "Toplam stok":   f'={K["Mağaza toplam"]}{i}+{K["Depo"]}{i}',
-                "AÇIK":          f'={K["Satın al ham"]}{i}',
-                "FAZLA":         f'=MAX(0,{K["Toplam stok"]}{i}-{K["Kalan sezon talebi"]}{i})',
-                # AÇIK varsa satış fiyatıyla, FAZLA varsa maliyetle. Maliyet boşsa
-                # BOŞ bırakılır — 0 yazmak "fazlası bedava" demek olurdu.
-                "Tutar": (f'=IF({K["AÇIK"]}{i}>0,{K["AÇIK"]}{i}*{K["Satış fiyatı"]}{i},'
-                          f'IF(AND({K["FAZLA"]}{i}>0,{K["Birim maliyet"]}{i}<>""),'
-                          f'{K["FAZLA"]}{i}*{K["Birim maliyet"]}{i},""))'),
-                # Metin alan: PivotTable AÇIK/FAZLA ürününü bununla SAYAR (koşullu sayım yok).
-                # ⚠ DÖRT SINIF (GMY 15.09.2026: "kalan sezonda satış olmayanları da ayrı göster").
-                #   Geçen yıl kalan dilimde HİÇ satmamış ürünün bu sezon talebi YOK; stoğu
-                #   "fazla" ama EYLEMİ farklı: indirimle dönmez, iade/gelecek sezon konusudur.
-                #   Ölçüldü: 19.940 çeşit · 215.955 adet · 20,6M ₺ maliyet. FAZLA'nın içindeydi
-                #   ve 128,8M ₺'nin 20,6M'sini tek başına oluşturuyordu.
-                # BEŞ SINIF. TRANSFER, FAZLA'yı EZER: toplam fazla olsa bile bir raf
-                # boşsa eylem "erit" değil "taşı" — sipariş de gerekmez.
-                # ⚠ SEZONU BİTTİ ancak BU YIL DA satmıyorsa. Hız tabanı doluysa
-                #   ürün yaşıyor demektir; "iade et" kutusuna düşmemeli.
-                "Durum": (f'=IF(AND({K["Geçen yıl kalan dönem"]}{i}<=0,'
-                          f'{K["Bu yıl hız tabanı"]}{i}<=0),'
-                          f'IF({K["Toplam stok"]}{i}>0,"SEZONU BİTTİ","DENGE"),'
-                          f'IF({K["AÇIK"]}{i}>0,"AÇIK",'
-                          f'IF({K["Mağaza eksiği"]}{i}>0,"TRANSFER",'
-                          f'IF({K["FAZLA"]}{i}>0,"FAZLA","DENGE"))))'),
-                "AÇIK ₺":  f'=IF({K["Durum"]}{i}="AÇIK",{K["Tutar"]}{i},0)',
-                "FAZLA ₺": (f'=IF({K["Durum"]}{i}="FAZLA",'
-                            f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
-                # ⚠ SADECE TRANSFER SATIRINDA DOLU. Ham adet her satırda hesaplanıyor ama
-                #   AÇIK bir üründe "55 adet taşı" demek YANILTICI olur: taşıyacak mal yok,
-                #   önce satın alınması gerekiyor. GMY 15.09.2026 bu kolonu sorunca görüldü.
-                # Taşınacak miktar HER satırda anlamlı: AÇIK üründe de önce eldeki
-                # taşınır, KALANI sipariş edilir. Sıfırsa boş kalır (taşıyacak mal yok).
-                "Transfer adet": (f'=IF({K["Transfer ham"]}{i}>0,{K["Transfer ham"]}{i},"")'),
-                "Sezonu bitti ₺": (f'=IF({K["Durum"]}{i}="SEZONU BİTTİ",'
-                                   f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
+                # Urunun sezonluk olup olmadigi. Dusukse "sezonun yuzde kaci
+                # okul oncesinde satildi" sorusu o satirda zayif temellidir.
+                # OLCULDU (Kirtasiye): medyan 0,500; %38,7 urunde 0,40 alti ve
+                # siparis tutarinin %28,7'si o urunlerden geliyor.
+                "Sezon payi": (
+                    f'=IF({K["Gecen yil toplam satilan"]}{i}>0,'
+                    f'{K["Gecen sezon toplam satilan"]}{i}'
+                    f'/{K["Gecen yil toplam satilan"]}{i},"")'),
+                # TOPLAMLAR subelerin toplamidir; ayri bir hesap yapilmaz.
+                # Boylece urun satiri ile sube satirlari CELISEMEZ.
+                "Bu sezon toplam satilacak": (
+                    f'={K["FSM bu sezon toplam satacak"]}{i}'
+                    f'+{K["Ozluce bu sezon toplam satacak"]}{i}'
+                    f'+{K["IstYolu bu sezon toplam satacak"]}{i}'),
+                "Sezonun kalaninda satilacak": (
+                    f'={K["FSM sezonun kalaninda satacak"]}{i}'
+                    f'+{K["Ozluce sezonun kalaninda satacak"]}{i}'
+                    f'+{K["IstYolu sezonun kalaninda satacak"]}{i}'),
+                "Subelerde toplam eksik adet": (
+                    f'={K["FSM eksik adet"]}{i}+{K["Ozluce eksik adet"]}{i}'
+                    f'+{K["IstYolu eksik adet"]}{i}'),
+                "Magazalarda toplam stok": (
+                    f'={K["FSM stok"]}{i}+{K["Ozluce stok"]}{i}+{K["IstYolu stok"]}{i}'),
+                "Magaza ve depo toplam stok": (
+                    f'={K["Magazalarda toplam stok"]}{i}+{K["Merkez depo stok"]}{i}'),
+                # Siparis = subelerin toplam eksigi eksi merkez depo stogu.
+                # Once depodan gonderilir, ancak yetmeyen kismi siparis edilir.
+                "Siparis verilecek adet": (
+                    f'=MAX(0,{K["Subelerde toplam eksik adet"]}{i}'
+                    f'-{K["Merkez depo stok"]}{i})'),
+                # OLU STOK once bakilir: iki sezondur satmayan urun "fazla" degil,
+                # olu stoktur ve karari farklidir (erit / iade, siparis konusu degil).
+                "Durum": (
+                    f'=IF(AND({K["Gecen sezon toplam satilan"]}{i}<=0,'
+                    f'{K["Bu sezon bugune kadar satilan"]}{i}<=0,'
+                    f'{K["Magaza ve depo toplam stok"]}{i}>0),"ÖLÜ STOK",'
+                    f'IF({K["Siparis verilecek adet"]}{i}>0,"SİPARİŞ VER",'
+                    f'IF({K["Subelerde toplam eksik adet"]}{i}>0,"DEPODAN GÖNDER",'
+                    f'IF({K["Gelecek sezona kalacak"]}{i}>0,"FAZLA VAR","YETERLİ"))))'),
+                "Siparis nereden karsilanir": (
+                    f'=IF({K["Siparis verilecek adet"]}{i}=0,"",'
+                    f'IF({K["Tedarikcide bulunan"]}{i}'
+                    f'>={K["Siparis verilecek adet"]}{i},'
+                    f'"Tedarikçide var","Yeni alım gerekiyor"))'),
+                # Gelecek sezona kalacak. Eksi olabilir ve sorun degildir:
+                # sezon bittikten sonra yeniden siparis verilebilir.
+                "Gelecek sezona kalacak": (
+                    f'={K["Magaza ve depo toplam stok"]}{i}'
+                    f'-{K["Sezonun kalaninda satilacak"]}{i}'
+                    f'-{K["Gecen yil sezon disi satilan"]}{i}'),
+                # Siparis satirinda satis fiyatiyla, fazla satirinda maliyetle.
+                # Iki tutar farkli tabandadir, TOPLANMAZ.
+                "Tutar": (
+                    f'=IF({K["Siparis verilecek adet"]}{i}>0,'
+                    f'{K["Siparis verilecek adet"]}{i}*{K["Satis fiyati"]}{i},'
+                    f'IF(AND({K["Gelecek sezona kalacak"]}{i}>0,'
+                    f'{K["Birim maliyet"]}{i}<>""),'
+                    f'{K["Gelecek sezona kalacak"]}{i}*{K["Birim maliyet"]}{i},""))'),
+                "Siparis tutari": (
+                    f'=IF({K["Durum"]}{i}="SİPARİŞ VER",{K["Tutar"]}{i},0)'),
+                "Fazla stok tutari": (
+                    f'=IF({K["Durum"]}{i}="FAZLA VAR",'
+                    f'IF({K["Tutar"]}{i}="",0,{K["Tutar"]}{i}),0)'),
+                # FSM: kendi orani, kendi tahmini, kendi eksigi.
+                # ⚠ BOLME AND() ICINE KONMAZ: Excel AND'i KISA DEVRE YAPMAZ,
+                # butun argumanlari hesaplar. Subenin gecen sezon satisi 0 olunca
+                # "okul oncesi / sezon" #DIV/0! veriyor ve TUM ZINCIR patliyordu
+                # (olculdu 16.09.2026: Defterler grubunda 6.605 satir hatali).
+                # Bolme, paydanin >= 30 oldugu IC IF'e tasindi.
+                "FSM kullanilan oran": (
+                    f'=IF(AND({K["Gecen sezon FSM satilan"]}{i}>=30,'
+                    f'{K["Gecen sezon FSM okul oncesi"]}{i}>=30),'
+                    f'IF(AND({K["Gecen sezon FSM okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon FSM satilan"]}{i}>=0.05,'
+                    f'{K["Gecen sezon FSM okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon FSM satilan"]}{i}<=1),'
+                    f'{K["Gecen sezon FSM okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon FSM satilan"]}{i},'
+                    f'IF({K["Kategori ortalama oran"]}{i}>0,'
+                    f'{K["Kategori ortalama oran"]}{i},0.6)),'
+                    f'IF({K["Kategori ortalama oran"]}{i}>0,'
+                    f'{K["Kategori ortalama oran"]}{i},0.6))'),
+                "FSM bu sezon toplam satacak": (
+                    f'=IF({K["FSM kullanilan oran"]}{i}>0,'
+                    f'CEILING({K["Bu sezon FSM okul oncesi"]}{i}'
+                    f'/{K["FSM kullanilan oran"]}{i},1),0)'),
+                "FSM sezonun kalaninda satacak": (
+                    f'=MAX(0,{K["FSM bu sezon toplam satacak"]}{i}'
+                    f'-{K["Bu sezon FSM satilan"]}{i})'),
+                "FSM eksik adet": (
+                    f'=MAX(0,{K["FSM sezonun kalaninda satacak"]}{i}'
+                    f'-{K["FSM stok"]}{i})'),
+                # Ozluce: kendi orani, kendi tahmini, kendi eksigi.
+                # ⚠ BOLME AND() ICINE KONMAZ: Excel AND'i KISA DEVRE YAPMAZ,
+                # butun argumanlari hesaplar. Subenin gecen sezon satisi 0 olunca
+                # "okul oncesi / sezon" #DIV/0! veriyor ve TUM ZINCIR patliyordu
+                # (olculdu 16.09.2026: Defterler grubunda 6.605 satir hatali).
+                # Bolme, paydanin >= 30 oldugu IC IF'e tasindi.
+                "Ozluce kullanilan oran": (
+                    f'=IF(AND({K["Gecen sezon Ozluce satilan"]}{i}>=30,'
+                    f'{K["Gecen sezon Ozluce okul oncesi"]}{i}>=30),'
+                    f'IF(AND({K["Gecen sezon Ozluce okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon Ozluce satilan"]}{i}>=0.05,'
+                    f'{K["Gecen sezon Ozluce okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon Ozluce satilan"]}{i}<=1),'
+                    f'{K["Gecen sezon Ozluce okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon Ozluce satilan"]}{i},'
+                    f'IF({K["Kategori ortalama oran"]}{i}>0,'
+                    f'{K["Kategori ortalama oran"]}{i},0.6)),'
+                    f'IF({K["Kategori ortalama oran"]}{i}>0,'
+                    f'{K["Kategori ortalama oran"]}{i},0.6))'),
+                "Ozluce bu sezon toplam satacak": (
+                    f'=IF({K["Ozluce kullanilan oran"]}{i}>0,'
+                    f'CEILING({K["Bu sezon Ozluce okul oncesi"]}{i}'
+                    f'/{K["Ozluce kullanilan oran"]}{i},1),0)'),
+                "Ozluce sezonun kalaninda satacak": (
+                    f'=MAX(0,{K["Ozluce bu sezon toplam satacak"]}{i}'
+                    f'-{K["Bu sezon Ozluce satilan"]}{i})'),
+                "Ozluce eksik adet": (
+                    f'=MAX(0,{K["Ozluce sezonun kalaninda satacak"]}{i}'
+                    f'-{K["Ozluce stok"]}{i})'),
+                # IstYolu: kendi orani, kendi tahmini, kendi eksigi.
+                # ⚠ BOLME AND() ICINE KONMAZ: Excel AND'i KISA DEVRE YAPMAZ,
+                # butun argumanlari hesaplar. Subenin gecen sezon satisi 0 olunca
+                # "okul oncesi / sezon" #DIV/0! veriyor ve TUM ZINCIR patliyordu
+                # (olculdu 16.09.2026: Defterler grubunda 6.605 satir hatali).
+                # Bolme, paydanin >= 30 oldugu IC IF'e tasindi.
+                "IstYolu kullanilan oran": (
+                    f'=IF(AND({K["Gecen sezon IstYolu satilan"]}{i}>=30,'
+                    f'{K["Gecen sezon IstYolu okul oncesi"]}{i}>=30),'
+                    f'IF(AND({K["Gecen sezon IstYolu okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon IstYolu satilan"]}{i}>=0.05,'
+                    f'{K["Gecen sezon IstYolu okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon IstYolu satilan"]}{i}<=1),'
+                    f'{K["Gecen sezon IstYolu okul oncesi"]}{i}'
+                    f'/{K["Gecen sezon IstYolu satilan"]}{i},'
+                    f'IF({K["Kategori ortalama oran"]}{i}>0,'
+                    f'{K["Kategori ortalama oran"]}{i},0.6)),'
+                    f'IF({K["Kategori ortalama oran"]}{i}>0,'
+                    f'{K["Kategori ortalama oran"]}{i},0.6))'),
+                "IstYolu bu sezon toplam satacak": (
+                    f'=IF({K["IstYolu kullanilan oran"]}{i}>0,'
+                    f'CEILING({K["Bu sezon IstYolu okul oncesi"]}{i}'
+                    f'/{K["IstYolu kullanilan oran"]}{i},1),0)'),
+                "IstYolu sezonun kalaninda satacak": (
+                    f'=MAX(0,{K["IstYolu bu sezon toplam satacak"]}{i}'
+                    f'-{K["Bu sezon IstYolu satilan"]}{i})'),
+                "IstYolu eksik adet": (
+                    f'=MAX(0,{K["IstYolu sezonun kalaninda satacak"]}{i}'
+                    f'-{K["IstYolu stok"]}{i})'),
             }[ad]
             c = ws.cell(i, j, f)
             c.fill = SARI
-            c.number_format = ('#,##0.00 "₺"' if ad in ("Tutar", "AÇIK ₺", "FAZLA ₺",
-                                                                        "Sezonu bitti ₺")
-                               else "0.00" if ad == "Değişim"
-                               else "General" if ad == "Durum" else "#,##0")
+            c.number_format = (
+                '#,##0.00 "₺"' if ad in ("Tutar", "Siparis tutari", "Fazla stok tutari")
+                else "0.000" if "oran" in ad.lower()
+                else "General" if ad in ("Durum", "Siparis nereden karsilanir")
+                else "#,##0")
 
     genis = {"Ürün": 45, "Yıllık toplam": 13, "Sezon dışı": 12, "Durum": 10, "Kategori yolu": 40, "Kategori": 18, "Barkod": 15, "Stok kodu": 13, "Marka / Yayınevi": 22}
     for j, ad in enumerate(kolonlar, start=1):
         gor = GOSTER.get(ad, ad)
         en_uzun = max((len(p) for p in gor.split("\n")), default=len(ad))
         ws.column_dimensions[get_column_letter(j)].width = genis.get(ad, max(en_uzun + 2, 11))
-    # Pivot yardımcıları HER ZAMAN gizli.
-    gizlenecek = {"AÇIK ₺", "FAZLA ₺", "Sezonu bitti ₺", "Transfer ham", "Satın al ham"}
-    # Aksiyon seçiliyse o aksiyonun görmediği kolonlar da gizlenir (SİLİNMEZ).
-    if a.durum in MOD_KOLON:
-        gorunur = set(MOD_KOLON[a.durum])
-        gizlenecek |= {ad for ad, _ in DUZEN if ad not in gorunur}
-    for gizli in gizlenecek:
-        ws.column_dimensions[K[gizli]].hidden = True
+    # GMY 15.09.2026: "alanlari gizleme". Hicbir kolon gizlenmez; --durum
+    # yalnizca SATIR suzer. Okuyan her sayiyi ve her ara adimi gorur.
+    # ── SONUÇ KOLONU RENKLİ (GMY: "en aptal bile anlamalı") ─────────────
+    # ⚠ Koşullu biçimlendirme, sabit renk DEĞİL: kullanıcı büyümeyi/filtreyi
+    #   değiştirip yeniden hesaplarsa renk de kendiliğinden takip eder.
+    from openpyxl.formatting.rule import CellIsRule
+    _son = K["Durum"]
+    _ar = f"{_son}{BAS_SATIR}:{_son}{len(sat) + BAS_SATIR - 1}"
+    for _deger, _zemin, _yazi in (("SİPARİŞ VER", "FFC7CE", "9C0006"),
+                                  ("DEPODAN GÖNDER", "FFEB9C", "9C6500"),
+                                  ("FAZLA VAR", "D9D9D9", "404040"),
+                                  ("YETERLİ", "C6EFCE", "006100")):
+        ws.conditional_formatting.add(_ar, CellIsRule(
+            operator="equal", formula=[f'"{_deger}"'],
+            fill=PatternFill("solid", bgColor=_zemin),
+            font=Font(bold=True, color=_yazi)))
 
     ws.freeze_panes = f"E{BAS_SATIR}"
     ws.auto_filter.ref = f"A3:{get_column_letter(len(kolonlar))}{len(sat) + BAS_SATIR - 1}"
@@ -927,39 +1259,48 @@ def main() -> int:
     mws = wb.create_sheet("MARKA")
 
     marka: dict[str, list] = {}
-    import math as _m
     for r in sat:
-        ad = (r[ix["Marka / Yayınevi"]] or "(marka yok)").strip() or "(marka yok)"
-        satilacak = max(0, _m.ceil((r[ix["Geçen yıl kalan dönem"]] or 0)
-                                   * float(r[ix["Uygulanan büyüme"]] or 1)))
-        elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
-                + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
-        g = marka.setdefault(ad, [0, 0, 0, 0.0, 0, 0, 0.0, 0, 0])
-        g[0] += 1                                   # çeşit
-        if satilacak > elde:
-            g[1] += 1                               # AÇIK ürün
-            g[2] += satilacak - elde                # AÇIK adet
-            g[3] += (satilacak - elde) * float(r[ix["Satış fiyatı"]] or 0)
-        elif elde > satilacak:
-            g[4] += 1                               # FAZLA ürün
-            g[5] += elde - satilacak                # FAZLA adet
-            mal = r[ix["Birim maliyet"]]
+        ad = (r[ix["Marka"]] or "(marka yok)").strip() or "(marka yok)"
+        sonuc, adet, _ = satir_sonuc(r, ix)
+        # [cesit, SIPARIS urun/adet/TL, DEPODAN urun/adet,
+        #  FAZLA urun/adet/TL, OLU STOK urun/adet/TL]
+        # ⚠ FAZLA ile OLU STOK AYRI kovada: ikisinin karari farklidir. Ayni
+        #   kovaya konursa marka ozeti "bu markada 5.000 fazla var" der ve
+        #   fazlanin ne kadari iki sezondur hic satmayan mal, gorunmez.
+        g = marka.setdefault(ad, [0, 0, 0, 0.0, 0, 0, 0, 0, 0.0, 0, 0, 0.0])
+        g[0] += 1
+        mal = r[ix["Birim maliyet"]]
+        if sonuc == "SİPARİŞ VER":
+            g[1] += 1
+            g[2] += adet
+            g[3] += adet * float(r[ix["Satis fiyati"]] or 0)
+        elif sonuc == "DEPODAN GÖNDER":
+            g[4] += 1
+            g[5] += adet
+        elif sonuc == "FAZLA VAR":
+            g[6] += 1
+            g[7] += adet
             if mal is not None:
-                g[6] += (elde - satilacak) * float(mal)
-        g[7] += r[ix["Geçen yıl aynı dönem"]] or 0
-        g[8] += r[ix["Bu yıl 01.08–bugün"]] or 0
+                g[8] += adet * float(mal)
+        elif sonuc == "ÖLÜ STOK":
+            g[9] += 1
+            g[10] += adet
+            if mal is not None:
+                g[11] += adet * float(mal)
 
-    mbas = ["Marka / Yayınevi", "Çeşit", "AÇIK ürün", "AÇIK adet", "AÇIK ₺",
+    mbas = ["Marka", "Çeşit",
+            "SİPARİŞ ürün", "SİPARİŞ adet", "SİPARİŞ ₺",
+            "DEPODAN GÖNDER ürün", "DEPODAN GÖNDER adet",
             "FAZLA ürün", "FAZLA adet", "FAZLA ₺",
-            f"Geçen yıl\n{g_bas:%d.%m.%y}–{g_son:%d.%m.%y}",
-            f"Bu yıl\n{b_bas:%d.%m.%y}–{b_son:%d.%m.%y}", "Değişim"]
+            "ÖLÜ STOK ürün", "ÖLÜ STOK adet", "ÖLÜ STOK ₺"]
 
     mnot = (f"Marka bazlı özet · kesim {kesim:%d.%m.%Y} · oran "
             + ("ELLE %{:g}".format(a.buyume * 100) if a.buyume is not None
                else "KATEGORİ BAZLI ÖLÇÜLDÜ") + " · "
             f"{len(marka):,} marka".replace(",", ".") + " · "
-            "Tutarlar LİSTE ile aynı tabandan: AÇIK satış fiyatıyla, FAZLA maliyetle — "
-            "İKİSİ TOPLANMAZ. Değişim = bu dönem ÷ geçen dönem (aynı pencere).")
+            "AL = raf sezonu çıkarmıyor VE toplam yıl sonuna yetmiyor (satış fiyatı) · "
+            "TAŞI = raf eksik ama DEPODA var, sipariş gerekmiyor · "
+            "ERİT = gelecek sezona artık kalıyor (maliyet). ÜÇ TUTAR TOPLANMAZ.")
     mws.cell(1, 1, mnot).font = Font(italic=True, size=9, color="555555")
     mws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(mbas))
     mws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
@@ -980,20 +1321,14 @@ def main() -> int:
         h.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
     mws.row_dimensions[3].height = 40
 
+    # AL tutarina gore buyukten kucuge — alici en buyuk siparisten baslasin.
     for i, (ad, g) in enumerate(sorted(marka.items(), key=lambda x: -x[1][3]), start=4):
-        # Değişim: geçen dönem 0 ise oran YOK — sonsuz büyüme uydurulmaz.
-        deg = (g[8] / g[7]) if g[7] > 0 else None
-        for j, v in enumerate([ad, g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8], deg],
-                              start=1):
+        for j, v in enumerate([ad] + g, start=1):
             c = mws.cell(i, j, v)
-            if j in (5, 8):
-                c.number_format = '#,##0 "₺"'
-            elif j == 11:
-                c.number_format = "0.00"
-            elif j > 1:
-                c.number_format = "#,##0"
+            c.number_format = ('#,##0 "₺"' if j in (5, 10, 13)
+                               else "#,##0" if j > 1 else "General")
 
-    mgenis = {"Marka / Yayınevi": 34}
+    mgenis = {"Marka": 34}
     for j, b in enumerate(mbas, start=1):
         mws.column_dimensions[get_column_letter(j)].width = mgenis.get(b, max(len(b) + 2, 12))
     mws.freeze_panes = "B4"
@@ -1002,47 +1337,28 @@ def main() -> int:
     # ── Konsol özeti — Excel'in hesaplayacağının AYNISI, Python'da ────────────
     #    (dosyada formül olduğu için openpyxl değer okuyamaz; kontrol burada)
     cesit = len(sat)
-    acik_c = acik_a = fazla_c = fazla_a = malsiz = bitti_c = bitti_a = 0
-    trans_c = trans_a = 0
-    trans_tl = 0.0
-    acik_tl = fazla_tl = bitti_tl = 0.0
-    import math
+    say: dict[str, list] = {e: [0, 0, 0.0] for e in
+                            ("SİPARİŞ VER", "DEPODAN GÖNDER", "FAZLA VAR",
+                             "ÖLÜ STOK", "YETERLİ")}
+    odak_c = ted_c = 0
+    malsiz = 0
     for r in sat:
-        # ⚠ TABANI YENİDEN HESAPLAMA. Bu özet bir KONTROLDÜR; mantığı ikinci kez
-        #   kurarsa iki kopya ayrışır ve ayrıştığı görülmez (emitter-ayrimi.md).
-        #   ÖLÇÜLDÜ 15.09.2026: tam bu oldu — iki tabana geçince SQL "SEZONU BİTTİ
-        #   12.331" derken bu blok hâlâ 17.193 yazıyordu. Artık SQL'in ürettiği
-        #   HAM kolonlar okunuyor, formül tekrarlanmıyor.
-        hiz = r[ix["Bu yıl hız tabanı"]] or 0
-        satilacak = max(r[ix["Geçen yıl tabanı"]] or 0, hiz)
-        elde = ((r[ix["FSM"]] or 0) + (r[ix["Özlüce"]] or 0)
-                + (r[ix["İst.Yolu"]] or 0) + (r[ix["Depo"]] or 0))
-        eksik = r[ix["Mağaza eksiği"]] or 0
-        # Sezonu bitti = geçen yıl kalan dilimde hiç satmamış VE bu yıl da hızı yok.
-        bitti = (r[ix["Geçen yıl kalan dönem"]] or 0) <= 0 and hiz <= 0
-        al = r[ix["Satın al ham"]] or 0
-        if not bitti and al > 0:
-            acik_c += 1
-            acik_a += al
-            acik_tl += al * float(r[ix["Satış fiyatı"]] or 0)
-        elif not bitti and eksik > 0:
-            trans_c += 1
-            trans_a += r[ix["Transfer ham"]] or 0
-            trans_tl += (r[ix["Transfer ham"]] or 0) * float(r[ix["Satış fiyatı"]] or 0)
-        elif elde > satilacak:
-            m = r[ix["Birim maliyet"]]
-            if bitti:
-                bitti_c += 1
-                bitti_a += elde - satilacak
+        sonuc, adet, _ = satir_sonuc(r, ix)
+        g = say[sonuc]
+        g[0] += 1
+        g[1] += adet
+        if sonuc == "SİPARİŞ VER":
+            g[2] += adet * float(r[ix["Satis fiyati"]] or 0)
+            if (r[ix["Tedarikcide bulunan"]] or 0) >= adet:
+                odak_c += 1
             else:
-                fazla_c += 1
-                fazla_a += elde - satilacak
-            if m is None:
+                ted_c += 1
+        elif sonuc in ("FAZLA VAR", "ÖLÜ STOK"):
+            mal = r[ix["Birim maliyet"]]
+            if mal is None:
                 malsiz += 1
-            elif bitti:
-                bitti_tl += (elde - satilacak) * float(m)
             else:
-                fazla_tl += (elde - satilacak) * float(m)
+                g[2] += adet * float(mal)
 
     # Dosya adı: Türkçe harfler DÜŞÜRÜLMEZ, karşılığına ÇEVRİLİR — "Krtasiye" gibi
     # okunmaz ad üretmesin (ı ve ş sessizce siliniyordu).
@@ -1050,22 +1366,41 @@ def main() -> int:
     ek = ("-" + a.durum if a.durum else "")
     if kategori:
         ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", kategori.translate(TR))
+    if grup:
+        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", grup.translate(TR))
     cikti = a.cikti or os.path.join(
         KOK, "raporlar", f"sezon-aksiyon-listesi-{kesim:%Y%m%d}{ek}.xlsx")
     os.makedirs(os.path.dirname(cikti), exist_ok=True)
     wb.save(cikti)
 
     if a.pivot:
-        pivot_durum = pivot_kur(cikti, len(kolonlar), len(sat) + BAS_SATIR - 1)
+        # Pivot alanları GÖRÜNEN başlıkla verilir (GOSTER çözülmüş).
+        # ⚠ PivotFields GÖRÜNEN başlıkla eşleşir, iç anahtarla DEĞİL.
+        # PivotFields GORUNEN baslikla eslesir, ic anahtarla degil.
+        _pv = [(GOSTER.get(k, k), a, p) for k, a, p in (
+            ("Siparis verilecek adet",      "Siparis adet", False),
+            ("Subelerde toplam eksik adet", "Subelerde eksik adet", False),
+            ("Siparis tutari",              "Siparis tutari TL", True),
+            ("Fazla stok tutari",           "Fazla stok tutari TL", True),
+        ) if k in K]
+        pivot_durum = pivot_kur(cikti, len(kolonlar), len(sat) + BAS_SATIR - 1, _pv)
         print(f"  PIVOT: {pivot_durum}")
 
     print(f"YAZILDI: {cikti}")
     print(f"  cesit {ayir(cesit)}")
-    print(f"  ACIK  {ayir(acik_c)} urun · {ayir(acik_a)} adet · {ayir(acik_tl)} TL")
-    print(f"  FAZLA {ayir(fazla_c)} urun · {ayir(fazla_a)} adet · {ayir(fazla_tl)} TL")
-    print(f"  TRANSFER {ayir(trans_c)} urun · {ayir(trans_a)} adet · {ayir(trans_tl)} TL")
-    print(f"  SEZONU BITTI {ayir(bitti_c)} urun · {ayir(bitti_a)} adet · {ayir(bitti_tl)} TL")
-    return 0
+    for e, aciklama in (("SİPARİŞ VER", "sezonun kalani elimizdekini asiyor (satis fiyati)"),
+                        ("DEPODAN GÖNDER", "toplam yetiyor ama bir subenin rafi bos"),
+                        ("FAZLA VAR", "gelecek sezona artik kaliyor (maliyet)"),
+                        ("ÖLÜ STOK", "iki sezondur satmiyor, stogu duruyor (maliyet)"),
+                        ("YETERLİ", "")):
+        g = say[e]
+        tl = f" · {ayir(g[2])} TL" if g[2] else ""
+        ad = f" · {ayir(g[1])} adet" if g[1] else ""
+        print(f"  {e:<16}{ayir(g[0]):>7} urun{ad}{tl}   {aciklama}")
+    print(f"  siparisin ODAK'tan gelebileni {ayir(odak_c)} urun · "
+          f"tedarikciye gidecek {ayir(ted_c)} urun")
+    print(f"  maliyeti yok/supheli (paraya girmeyen): {ayir(malsiz)} cesit")
+
 
 
 if __name__ == "__main__":
