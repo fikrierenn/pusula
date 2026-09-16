@@ -771,6 +771,7 @@ bridges:
       bunun üstünden kurar (satır 49-56). Eşleşme METİN üzerinden ve `RTRIM` + `COLLATE
       Turkish_CI_AS` gerektirir.
     measurement: "2026-09-11 MOTOR ÖLÇÜMÜ: 5 öksüz / **37** (`Per_Grp2 IS NOT NULL` olanlar). Tablo toplamı 38 satır — bir satırda `Per_Grp2` NULL. Yapı: 9 tekil `SubeNo`, 33 tekil `Per_Grp2`."
+    grp2_tek_basina_yetmez: "⚠⚠ ÖLÇÜLDÜ 2026-09-15: `Per_Grp2` TEK BAŞINA ŞUBE AYRACI DEĞİLDİR. Mağaza ile onun kafesi AYNI `Per_Grp2`yi paylaşır ve yalnız `Per_Grp1` ayırır: FSM (SubeNo 2) = MAĞAZALAR/FSM iken FSM KAFE (SubeNo 3) = KAFELER/**FSM**; aynı çakışma İST.YOLU (5/6) ve ÖZLÜCE (7/8) için de var. `Per_Grp2 = 'FSM'` ile süzen sorgu kafe personelini mağazaya YAZAR ve hata vermez. Şube süzgeci HER ZAMAN (`Per_Grp1`, `Per_Grp2`) İKİLİSİ olmalıdır. Kanıt: sorgular/2026-09-15-vardiya-pdks-program-raporu.sql blok K5."
     orphans_expected: "EVET, 5 bölüm: `bkm.SubeListe`de tanımlı ama `TPerTab`ta o bölümde personel yok. Yetki/filtre listesi bu 5 bölümü boş gösterir — bu bir hata değil, kadrosuz bölümdür."
     evidence: "2026-09-11 — OPENQUERY([PDKS]) bkm.SubeListe sayımı + TPerTab'a NOT EXISTS. Kullanım kanıtı: D:/Dev/reporthub/Mosaik/Database/sp_PdksPano.sql satır 49-56."
     last_verified: "2026-09-11"
