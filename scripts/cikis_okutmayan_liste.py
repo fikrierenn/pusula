@@ -502,6 +502,45 @@ def main() -> int:
         else:
             x["Sinif"] = "GELMEDİ (normalde basıyor)"
     sinif_say = collections.Counter(x["Sinif"] for x in gelmeyenler)
+
+    # ── ÖNLEM: SIRADIŞI GÜN KAPISI (16.09.2026) ─────────────────────────────
+    # 15.09'da İST.YOLU'da devamsız 12'ye fırladı (önceki 7 gün 3-5) ve bu
+    # rapora BAKAN biri fark edene kadar sessiz kaldı. Kapı: "GELMEDİ" sayısı
+    # şubenin kendi son-14-gün bandını aşarsa mail başında UYARI çıkar.
+    # ⚠ Eşik veriden türetilir (ortalama + 2 standart sapma), elle yazılmaz;
+    #   ve bu bir ALARM değil BAKMA ÇAĞRISIDIR — sebebi rapor bilmez.
+    uyarilar: list[str] = []
+    try:
+        ref_bas = bas - dt.timedelta(days=14)
+        cn2 = baglan(env)
+        c2 = cn2.cursor()
+        c2.execute(SQL_GELMEYEN.format(bas=ref_bas.strftime("%Y%m%d"),
+                                       bit=(bas - dt.timedelta(days=1)).strftime("%Y%m%d"),
+                                       ref=ref_bas.strftime("%Y%m%d")),
+                   ref_bas, bas - dt.timedelta(days=1))
+        kk = [c[0] for c in c2.description]
+        gecmis = [dict(zip(kk, r)) for r in c2.fetchall()]
+        c2.close(); cn2.close()
+        gun_sube = collections.Counter(
+            (str(x["Sube"]).strip(), str(x["Gun"])) for x in gecmis
+            if x.get("Son30Okutma"))          # yalnız "normalde basan" sayılır
+        import statistics
+        for sb in {o["Sube"] for o in ozet_satir}:
+            seri = [n for (s2, _), n in gun_sube.items() if s2 == sb]
+            bugun = sum(1 for x in gelmeyenler
+                        if str(x["Sube"]).strip() == sb and x["Sinif"].startswith("GELMEDİ"))
+            if len(seri) >= 5:
+                ort = statistics.mean(seri)
+                sap = statistics.pstdev(seri) or 1.0
+                if bugun > ort + 2 * sap and bugun >= 3:
+                    uyarilar.append(
+                        f"{sb}: bugün {bugun} kişi gelmemiş — son 14 günün "
+                        f"ortalaması {ort:.1f}. Sebebi sorulmalı.")
+    except Exception as e:
+        uyarilar.append(f"(sıradışı gün kapısı KOŞAMADI: {type(e).__name__} — "
+                        f"yeşil sayılmaz, elle bakılmalı)")
+    for u in uyarilar:
+        print(f"  ⚠ {u}")
     print(f"\n  VARDİYADA OLUP KART OKUTMAYAN: {len(gelmeyenler)} kişi-gün")
     for k, n in sinif_say.most_common():
         print(f"    {k:40s} {n:3d}")
@@ -595,15 +634,19 @@ def main() -> int:
 
     if a.html:
         with open(a.html, "w", encoding="utf-8") as f:
-            f.write(html_govde(tekil, bas, bit, sube, sube_gun, cikti, ozet_satir, gelmeyenler))
+            f.write(html_govde(tekil, bas, bit, sube, sube_gun, cikti, ozet_satir, gelmeyenler, uyarilar))
         print(f"HTML  : {a.html}")
     return 0
 
 
-def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenler) -> str:
+def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenler, uyarilar) -> str:
     """Mail gövdesi. Ek dosya GÖNDERİLEMİYOR (IMAP save_draft ek desteklemiyor),
     o yüzden liste gövdeye gömülür; Excel yolu ayrıca yazılır."""
     donem = (f"{bas:%d.%m.%Y}" if bas == bit else f"{bas:%d.%m.%Y} – {bit:%d.%m.%Y}")
+    uyari_blok = ("" if not uyarilar else
+        '<div style="background:#FFF3C4;border-left:4px solid #E30622;padding:10px 14px;'
+        'margin:14px 0;font-size:13px"><b>Dikkat çeken gün</b><ul style="margin:6px 0 0 18px">'
+        + "".join(f"<li>{u}</li>" for u in uyarilar) + "</ul></div>")
     st = ("border-collapse:collapse;font:13px/1.45 Segoe UI,Arial,sans-serif;"
           "border:1px solid #d0d0d0")
     th = ("background:#E30622;color:#fff;padding:6px 9px;text-align:left;"
@@ -657,6 +700,7 @@ def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenle
 <p><b>{donem}</b> döneminde kart okutması eksik kalan personel listesi aşağıdadır.
 Toplam <b>{len(tekil)} kişi-gün</b>.</p>
 
+{uyari_blok}
 <h3 style="margin:18px 0 6px">Şube özeti</h3>
 <table style="{st}">
 <tr><th style="{th}">Şube</th><th style="{th}">Vardiyada olması gereken</th>

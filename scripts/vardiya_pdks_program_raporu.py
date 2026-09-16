@@ -69,6 +69,10 @@ BASLIKLAR = [
     "EksikSaat", "FazlaSaat", "İzin Durumu", "Hafta",
     # ── GMY isteği 15.09.2026: "haftalık izin kullanmıyorsa ona mesai vermek gerek"
     "Haftalık Çalışılan Gün", "Hafta Tatili (HFT.İZİN) Gün", "Hafta Tatili Kullanılmadı",
+    # ── ÖNLEM 16.09.2026: "Devamsız" ÜÇ FARKLI ŞEYİ aynı etiketle gösteriyordu.
+    #    Orijinal "Durum" kolonu ARACIN çıktısıyla birebir kalsın diye DOKUNULMADI;
+    #    denetim ayrı kolona yazılır.
+    "Ölçüm Notu",
 ]
 
 TOLERANS_DK = 10
@@ -155,6 +159,25 @@ FROM OPENQUERY([PDKS], '
     FROM TPerInd i
     LEFT JOIN TPerTab p ON p.Per_PersNr = i.PIn_PersNr
     WHERE i.PIn_SteuerNr <> ''''
+') x
+"""
+
+# HAM OKUTMA (TZeiBuf) — "Devamsız" etiketini DENETLEMEK için.
+# ⚠ `TTagZei` giriş+çıkış ÇİFTİ ister; kişi tek okutma yaptıysa orada satır
+#   OLUŞMAZ ve rapor "Devamsız" der. Ham okutmada ise görünür — 15.09'da GÖZDE
+#   EKİM tam bu yüzden yanlış etiketlendi (22:20'de okutması vardı).
+SQL_HAM_OKUTMA = """
+SELECT x.TC COLLATE Turkish_CI_AS AS TC, x.Gun, x.Okutma
+FROM OPENQUERY([PDKS], '
+    SELECT  i.PIn_SteuerNr                        AS TC,
+            CONVERT(char(8), b.ZBu_ErfDatum, 112) AS Gun,
+            COUNT(*)                              AS Okutma
+    FROM        TZeiBuf b
+    INNER JOIN  TPerInd i ON i.PIn_PersNr = b.ZBu_PersNr
+    WHERE   b.ZBu_ErfDatum >= ''{bas}'' AND b.ZBu_ErfDatum <= ''{bit}''
+        AND ISNULL(b.ZBu_Storniert, 0) = 0
+        AND i.PIn_SteuerNr <> ''''
+    GROUP BY i.PIn_SteuerNr, CONVERT(char(8), b.ZBu_ErfDatum, 112)
 ') x
 """
 
@@ -252,7 +275,8 @@ def toleransli_giris(plan_bas: int | None, kart_giris: int) -> int:
     return plan_bas + (fark - TOLERANS_DK if fark > 0 else fark + TOLERANS_DK)
 
 
-def satir_uret(plan: dict, pdks: dict | None, persnr: int | None) -> list:
+def satir_uret(plan: dict, pdks: dict | None, persnr: int | None,
+               ham_okutma: int | None = None) -> list:
     """Bir kişi-gün için A..O kolonlarını üretir. Hiçbir kural burada icat edilmez."""
     izin = bool(plan["Izin"])
     plan_bas = saat_to_dk(plan["Baslama"])
@@ -295,7 +319,27 @@ def satir_uret(plan: dict, pdks: dict | None, persnr: int | None) -> list:
         dk_to_hhmm(kart_g), dk_to_hhmm(kart_c),
         dk_to_hhmm(calisma), dk_to_hhmm(0 if izin else plan_dk),
         durum,
+        olcum_notu(durum, persnr, ham_okutma),
     ]
+
+
+def olcum_notu(durum: str, persnr, ham_okutma: int | None) -> str:
+    """"Devamsız" etiketinin DENETİMİ (16.09.2026 önlemi).
+
+    Bu oturumda iki kez yanıltıcı oldu, ikisi ayrı sebepten:
+      · PDKS'te TC kaydı olmayan kişi (müdür kadrosu) "Devamsız" göründü —
+        aslında ÖLÇÜLEMİYOR.
+      · Tek okutma yapan kişi (GÖZDE EKİM, 22:20) "Devamsız" göründü, çünkü
+        TTagZei giriş+çıkış ÇİFTİ ister ve orada satır oluşmamış.
+    Not AYRI kolona yazılır; "Durum" aracın çıktısıyla birebir kalır.
+    """
+    if durum != "Devamsız":
+        return ""
+    if persnr is None:
+        return "PDKS kaydı yok — ölçülemiyor (devamsız DEĞİL)"
+    if ham_okutma:
+        return f"HAM OKUTMA VAR ({ham_okutma} kez) — giriş/çıkış çifti oluşmamış"
+    return "Ham okutma da yok"
 
 
 def veri_cek(cn, sube: str, bas: dt.date, bit: dt.date) -> list[list]:
@@ -307,6 +351,9 @@ def veri_cek(cn, sube: str, bas: dt.date, bit: dt.date) -> list[list]:
         sys.exit(f"KOŞAMADI: '{sube}' şubesi için {bas}–{bit} aralığında plan satırı YOK.")
 
     # TC → PersNr. Mükerrer TC'de AKTİF kayıt kazanır (ölçüldü, tahmin değil).
+    cur.execute(SQL_HAM_OKUTMA.format(bas=bas.strftime("%Y%m%d"), bit=bit.strftime("%Y%m%d")))
+    ham_okutma = {(str(r[0]).strip(), str(r[1])): int(r[2]) for r in cur.fetchall()}
+
     cur.execute(SQL_TC)
     tc_persnr: dict[str, tuple[int, int]] = {}
     for tc, persnr, aktif in cur.fetchall():
@@ -352,7 +399,8 @@ def veri_cek(cn, sube: str, bas: dt.date, bit: dt.date) -> list[list]:
         # bordroda — hepsi çalışıyor.
         # Bu satırlar ÖNCE rapordan düşürülüyordu; artık düşürülmüyor, aksi
         # halde kadronun bir bölümü sessizce görünmez oluyordu.
-        satirlar.append(satir_uret(p, pk, pn))
+        satirlar.append(satir_uret(
+            p, pk, pn, ham_okutma.get((p["SicilNo"], p["Tarih"].strftime("%Y%m%d")))))
     if eslesmeyen:
         print(f"  ⚠ PDKS'te TC'si HİÇ bulunmayan kişi: {len(eslesmeyen)} "
               f"— bunların günleri 'Devamsız' görünür, gelmedikleri için DEĞİL.")
@@ -399,7 +447,7 @@ def plansiz_satirlar(cur, sube, bas, bit, planli_anahtar, kisi_bilgi) -> list[li
                 "VardiyaTanim": None, "Baslama": None, "Bitis": None,
                 "ToplamCalismaDk": 0, "Izin": 0, "Plansiz": True,
             }
-            ek.append(satir_uret(sahte_plan, d, d["PersNr"]))
+            ek.append(satir_uret(sahte_plan, d, d["PersNr"], None))
     if ek:
         kisi = len({s[1] for s in ek})
         print(f"  + plansız ama kart basmış: {len(ek)} kişi-gün / {kisi} kişi "
@@ -463,7 +511,12 @@ def excel_yaz(satirlar: list[list], cikti: str, net_gereken: dict[str, str]):
 
     son = len(satirlar) + 1          # SUMIFS aralıkları için son satır
     for i, s in enumerate(satirlar, start=2):
-        ws.append(s + [
+        # ⚠ KOLON SIRASI: satir_uret 16 eleman döner (A..O veri + "Ölçüm Notu").
+        #   Ölçüm Notu araç kolonlarının ARASINA giremez, yoksa P'den itibaren
+        #   tüm formüller bir kolon kayar (16.09'da tam bu oldu ve Excel'de
+        #   "Ölçüm Notu" başlığının altında formül metni göründü).
+        #   Doğrusu: ilk 15 veri → formüller → Ölçüm Notu EN SONA.
+        ws.append(s[:15] + [
             f"=IF(M{i}>N{i},0,N{i}-M{i})",                  # P EksikSaat
             f"=IF(M{i}>N{i},M{i}-N{i},0)",                  # Q FazlaSaat
             f"=+I{i}",                                      # R Toleranslı Giriş
@@ -488,6 +541,7 @@ def excel_yaz(satirlar: list[list], cikti: str, net_gereken: dict[str, str]):
             f'=COUNTIFS($B$2:$B${son},$B{i},$AE$2:$AE${son},$AE{i},'
             f'$H$2:$H${son},"HFT.İZİN")',
             f"=IF(AND(AG{i}=0,AF{i}>=7),1,0)",
+            s[15] if len(s) > 15 else "",                   # AI Ölçüm Notu
         ])
 
     for c, w in enumerate([14, 13, 9, 24, 18, 24, 11, 15] + [11] * 11 + [13] * 12, start=1):
