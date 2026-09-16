@@ -111,3 +111,6 @@ briefings/**/*KISILI*.json
 
 # WMS-ERP mutabakat Excel cikitisi — scripts/wms_erp_mutabakat_excel.py ile yeniden uretilir
 WMS-ERP Mutabakat*.xlsx
+
+# Uretilen rapor ciktilari (Excel/HTML) — repoya girmez
+ciktilar/
