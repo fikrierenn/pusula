@@ -45,6 +45,22 @@ En pahalı hata burada. Ölçüm doğru koştu ama süzgeç farklıydı:
 
 Sınama: *"bu ölçümün süzgeci, koddaki süzgecin AYNISI mı?"*
 
+**2b. YoY kıyasta İKİ YILIN METRİĞİ AYNI TANIMLA kurulmalı (14.09.2026, ölçüldü).**
+Kapsam eşitliğinin zaman eksenindeki hâli. Defter stok kontrolünde "kuru giren
+çeşit" iki yıl için farklı tanımla hesaplandı — 2025'e AYNI-yıl sezon talebi,
+2026'ya ÖNCEKİ-yıl talebi bayrağı kondu. Sonuç **"336 → 1.239, 3,7 KAT ARTIŞ"**
+diye alarm verdi. Metrik simetrik hâle getirilince (her iki yıl için önceki-yıl
+bayrağı) oran **%18,7 → %19,5** yani DEĞİŞMEDİ. Rakamların ikisi de doğru
+hesaplanmıştı; kıyaslanamaz olan TANIMDI. Yön bile uydurmaydı.
+
+Sınama: *"bu iki sayı aynı soruya mı cevap veriyor, yoksa iki ayrı soruya mı?"*
+Kıyas tablosunda her kolonun tanımı yazılamıyorsa kıyas kurulmamıştır.
+
+⚠ **Bunu bugün hiçbir denetim yakalamıyor** (`test-discipline.md` § yazılı kural ≠
+uygulanan kural gereği açıkça yazılıyor). Kapı, kıyas tablosunu üreten kodda
+tanımın tek yerden gelmesidir (`emitter-ayrimi.md` § biçim de tek yerde); henüz
+genel bir koşucu yok.
+
 **3. Liste elle yazılmaz.** Kolon listesi `sys.columns`tan, tablo listesi
 `sys.tables`tan, kod kümesi `GROUP BY`dan gelir. Elle yazılan liste eksik olur ve
 eksikliği ancak patlayınca (ya da hiç) görülür. Sema'ya liste değil **kural** yazılır
