@@ -831,5 +831,20 @@
       "grup": null,
       "raporlama_durum": "Hariç"
     }
-  ]
+  ],
+  "mola_arac_tablosu": [
+    {
+      "brut_alt_sinir": "07:30",
+      "mola": "01:00"
+    },
+    {
+      "brut_alt_sinir": "04:30",
+      "mola": "00:45"
+    },
+    {
+      "brut_alt_sinir": "02:30",
+      "mola": "00:15"
+    }
+  ],
+  "_mola_arac_tablosu_not": "ARACIN molasi (Vardiya Yonet programi) -- Excel'in `mola_net_tablosu`undan FARKLIDIR ve fark KASITLIDIR: `Personel Calisma` (O kolonu) bunu kullanir, Excel'in `Mola Saati` (AA) otekini. Iki AYRI olcu. Brut dakikaya gore ilk eslesen satir uygulanir (esikler buyukten kucuge). OLCULDU 2026-09-15, FSM 595 satir. UYARI: 45 dk bandinin ALT siniri (2:30-4:29) veride gozlenmedi -> CIKARIM."
 }

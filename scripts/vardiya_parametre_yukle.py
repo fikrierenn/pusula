@@ -72,7 +72,7 @@ def main() -> int:
     # Yapı denetimi — eksik blok sessizce boş tablo yazmasın. Boş parametre
     # tablosu SP'de "kural yok" demek değil, "ölçemedim" demektir.
     for alan in ("subeler", "calisma_saatleri", "mola_net_tablosu",
-                 "mola_brut_tablosu"):
+                 "mola_brut_tablosu", "mola_arac_tablosu"):
         if not isinstance(cfg.get(alan), list) or not cfg[alan]:
             sys.exit(f"KOŞAMADI: parametre dosyasında '{alan}' eksik veya boş.")
 
@@ -83,7 +83,12 @@ def main() -> int:
     mola = ([("net", dk(k["net_calisma_alt_sinir"]), dk(k["mola"]),
               1 if k.get("brut_ustu") else 0) for k in cfg["mola_net_tablosu"]]
             + [("brut", dk(k["brut_sure"]), dk(k["mola"]), 0)
-               for k in cfg["mola_brut_tablosu"]])
+               for k in cfg["mola_brut_tablosu"]]
+            # ⚠ ÜÇÜNCÜ TABLO: aracın kendi molası. `Personel Çalışma` bunu kullanır,
+            # Excel'in `Mola Saati` ötekini — fark KASITLI, iki ayrı ölçü. SP bu
+            # satırları okur; hardcode edilirse Python ile SP sessizce ayrışır.
+            + [("arac", dk(k["brut_alt_sinir"]), dk(k["mola"]), 0)
+               for k in cfg["mola_arac_tablosu"]])
     # ⚠ `kart_basmayan_gruplar` TABLOYA YAZILMAZ (GMY 17.09.2026). Hiçbir hesapta
     # kullanılmıyor — Excel'de yalnız etiket/süzgeç. Parametre tablosu ancak SP onu
     # OKUYORSA gerekçelidir; okumuyorsa bakım yükünden başka bir şey değildir.

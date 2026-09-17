@@ -165,7 +165,7 @@ CREATE TABLE bkm.Vrd_Mola (
     Ustu            bit           NOT NULL CONSTRAINT DF_VrdMola_Ustu DEFAULT (0),
     YuklemeUtc      datetime2(0)  NOT NULL CONSTRAINT DF_VrdMola_Utc DEFAULT (SYSUTCDATETIME()),
     CONSTRAINT PK_Vrd_Mola PRIMARY KEY CLUSTERED (Tip, AltSinirDk, MolaDk),
-    CONSTRAINT CK_Vrd_Mola_Tip CHECK (Tip IN ('net','brut'))
+    CONSTRAINT CK_Vrd_Mola_Tip CHECK (Tip IN ('net','brut','arac'))
 );
 GO
 
