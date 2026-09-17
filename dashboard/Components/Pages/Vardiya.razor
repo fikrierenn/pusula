@@ -163,26 +163,26 @@ else
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="rounded-xl border border-warning/40 bg-warning/5 p-3">
                     <div class="flex items-baseline justify-between">
-                        <span class="text-xs font-semibold">YÖNETİM KARARI</span>
+                        <span class="text-xs font-semibold">YÖNETİM POLİTİKASI</span>
                         <span class="text-lg font-bold">
                             @VrdBicim.SaatOndalik(_kaynak.YonetimDk)
                             <span class="text-xs font-normal">%@_kaynak.YonetimPay.ToString("N0")</span>
                         </span>
                     </div>
-                    <div class="text-[11px] text-base-content/60 mb-2">mağazanın elinde değil</div>
+                    <div class="text-[11px] text-base-content/60 mb-2">izin iptali · hafta tatili kullandırmama</div>
                     @Satir("İzin günü çalıştırılmış", _kaynak.IzinIptalDk)
                     @Satir("Hafta tatili kullandırılmamış", _kaynak.HaftaTatilDk)
                 </div>
 
                 <div class="rounded-xl border border-info/40 bg-info/5 p-3">
                     <div class="flex items-baseline justify-between">
-                        <span class="text-xs font-semibold">MAĞAZA OPERASYONU</span>
+                        <span class="text-xs font-semibold">OPERASYONEL ZORUNLULUK</span>
                         <span class="text-lg font-bold">
                             @VrdBicim.SaatOndalik(_kaynak.MagazaDk)
                             <span class="text-xs font-normal">%@_kaynak.MagazaPay.ToString("N0")</span>
                         </span>
                     </div>
-                    <div class="text-[11px] text-base-content/60 mb-2">kapanış / hazırlık — elinde</div>
+                    <div class="text-[11px] text-base-content/60 mb-2">kapanış gecikmesi · gün içi yoğunluk</div>
                     @Satir("Plan üstü çalışma", _kaynak.FazlaCalismaDk)
                     @Satir("Plansız çalışma", _kaynak.PlansizDk)
                     <div class="text-[11px] text-base-content/50 mt-2 pt-2 border-t border-base-200">
@@ -219,6 +219,28 @@ else
                     </table>
                 </div>
             }
+
+            @* ÖLÇÜLMÜŞ KANIT — ikinci kutunun "zorunluluk" etiketi iddia değil,
+               ölçüm. Etiket önce "mağazanın elinde" idi; ölçüm onu ÇÜRÜTTÜ. *@
+            <div class="rounded-xl border border-base-200 p-3 mt-3 text-xs">
+                <div class="font-semibold mb-1">Neden "zorunluluk" deniyor — ölçüm</div>
+                <ul class="list-disc ml-4 space-y-1 text-base-content/70">
+                    <li><b>Kapanış anonsu yasak</b> (yönetim kararı): son fiş ortalaması
+                        <b>22:02–22:10</b>, plan bitişi 22:00. Mağaza planlanandan sonra
+                        kapanıyor; personel tercihi değil.</li>
+                    <li><b>Ölçek etkisi:</b> kapanış vardiyasında İst.Yolu günde 33,3 kişi,
+                        ortalama 30 dk gecikme → <b>16 günde 170,1 saat</b>. Kısa gecikme
+                        kişi sayısıyla çarpılır; "15 dakika" önemsiz değildir.</li>
+                    <li><b>Yoğunluk:</b> fiş sayısı ile fazla çalışma korelasyonu
+                        <b>0,76–0,86</b>. Medyan altı → üstü günde fazla mesai
+                        FSM 10,2→23,8 · İst.Yolu 15,8→42,6 · Özlüce 15,8→26,2 saat.</li>
+                </ul>
+                <div class="text-base-content/50 mt-2">
+                    ⚠ Korelasyon nedensellik değil: yoğun gün aynı zamanda sezon günü,
+                    confound giderilmedi. Kafeler · Heykel · Şura · GM bu testin
+                    <b>dışında</b> (POS eşlemesi yok) — "etkisi yok" değil, <b>ölçülmedi</b>.
+                </div>
+            </div>
 
             <div class="text-xs text-base-content/50 mt-3">
                 ⚠ Üç kalem <b>farklı ödenir</b>: fazla çalışma %50 zamlı (m.41) ·
