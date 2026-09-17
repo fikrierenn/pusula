@@ -282,6 +282,23 @@ def zirve_baglan(env: dict[str, str]):
         return None
 
 
+def ayrilmis_mi(cikis, gun) -> bool:
+    """O GÜN itibarıyla işten ayrılmış mı? (bordro çıkış tarihi < o gün)
+
+    Çıkış tarihinin VARLIĞINA bakmak yetmez: 20.09'da ayrılan biri 16.09
+    raporunda hâlâ çalışıyordu. Kıyas tabanı (geçmiş 14 gün) ile bugünün
+    sayısı AYNI ölçütle kurulmalı, yoksa taban şişer ve kapı körelir.
+    """
+    if not cikis:
+        return False
+    try:
+        c = dt.datetime.strptime(str(cikis).strip(), "%d.%m.%Y").date()
+        g = dt.datetime.strptime(str(gun), "%Y%m%d").date()
+    except (ValueError, TypeError):
+        return bool(cikis)      # tarih okunamadıysa eski davranış (muhafazakâr)
+    return c < g
+
+
 def dk(hhmm) -> int | None:
     """'HH:MM' → gün içi dakika."""
     if not hhmm:
@@ -479,15 +496,13 @@ def main() -> int:
         sube_gun[x["Sube"]] += 1
     for o in ozet_satir:
         o["EksikOkutma"] = sube.get(o["Sube"], 0)
-    gelmeyen_sube = collections.Counter(str(x["Sube"]).strip() for x in gelmeyenler)
-    for o in ozet_satir:
-        o["Gelmeyen"] = gelmeyen_sube.get(o["Sube"], 0)
-
     # ── GELMEYENLERİ ÜÇE AYIR (Zirve bordrosuyla) ───────────────────────────
     # Tek "gelmeyen" sayısı üç farklı durumu gizliyordu:
     #   AYRILMIŞ         → Zirve'de çıkış tarihi var; plan temizlenmemiş.
     #   KART BASMIYOR    → çalışıyor ama 30 günde hiç okutması yok (müdür vb).
     #   GELMEDİ          → normalde basıyor, o gün basmamış. Gerçek aday budur.
+    # Sınıflandırma ŞUBE ÖZETİNDEN ÖNCE yapılır: "Gelmeyen" kolonu yalnız
+    # devamsızlık adaylarını saymalı (17.09.2026 — GMY kararı).
     for x in gelmeyenler:
         tc = str(x.get("TC") or "").strip()
         z = zirve.get(tc)
@@ -495,13 +510,27 @@ def main() -> int:
         x["Kadro"] = z["Kadro"] if z else None
         x["Cikis"] = z["Cikis"] if z else None
         son30 = x.get("Son30Okutma")
-        if z and z["Cikis"]:
+        if ayrilmis_mi(z["Cikis"] if z else None, x["Gun"]):
             x["Sinif"] = "AYRILMIŞ (plan temizlenmemiş)"
         elif not son30:
             x["Sinif"] = "KART BASMIYOR (30 günde sıfır okutma)"
         else:
             x["Sinif"] = "GELMEDİ (normalde basıyor)"
     sinif_say = collections.Counter(x["Sinif"] for x in gelmeyenler)
+
+    # ── İŞTEN AYRILANLAR DEVRE DIŞI (17.09.2026 — GMY direktifi) ────────────
+    # Ayrılmış personel vardiya planında duruyor ve her gün "gelmedi" diye
+    # sayılıyordu. Devamsızlık tablosundan ÇIKARILIR — ama SESSİZCE SİLİNMEZ:
+    # ayrı bir "plan temizlenmeli" bloğuna düşer. Silinirse plan hiç
+    # temizlenmez ve şube sayıları sessizce şişmeye devam eder.
+    ayrilmis = [x for x in gelmeyenler if x["Sinif"].startswith("AYRILMIŞ")]
+    gelmeyenler = [x for x in gelmeyenler if not x["Sinif"].startswith("AYRILMIŞ")]
+
+    gelmeyen_sube = collections.Counter(
+        str(x["Sube"]).strip() for x in gelmeyenler
+        if x["Sinif"].startswith("GELMEDİ"))
+    for o in ozet_satir:
+        o["Gelmeyen"] = gelmeyen_sube.get(o["Sube"], 0)
 
     # ── ÖNLEM: SIRADIŞI GÜN KAPISI (16.09.2026) ─────────────────────────────
     # 15.09'da İST.YOLU'da devamsız 12'ye fırladı (önceki 7 gün 3-5) ve bu
@@ -521,9 +550,15 @@ def main() -> int:
         kk = [c[0] for c in c2.description]
         gecmis = [dict(zip(kk, r)) for r in c2.fetchall()]
         c2.close(); cn2.close()
+        # Taban BUGÜNKÜ ÖLÇÜTLE aynı olmalı: "normalde basan" + o gün henüz
+        # ayrılmamış. Ayrılmış kişiyi tabanda sayıp bugün saymamak tabanı
+        # şişirir ve kapıyı körleştirir (asimetrik kıyas).
         gun_sube = collections.Counter(
             (str(x["Sube"]).strip(), str(x["Gun"])) for x in gecmis
-            if x.get("Son30Okutma"))          # yalnız "normalde basan" sayılır
+            if x.get("Son30Okutma")
+            and not ayrilmis_mi(
+                (zirve.get(str(x.get("TC") or "").strip()) or {}).get("Cikis"),
+                x["Gun"]))
         import statistics
         for sb in {o["Sube"] for o in ozet_satir}:
             seri = [n for (s2, _), n in gun_sube.items() if s2 == sb]
@@ -543,7 +578,17 @@ def main() -> int:
         print(f"  ⚠ {u}")
     print(f"\n  VARDİYADA OLUP KART OKUTMAYAN: {len(gelmeyenler)} kişi-gün")
     for k, n in sinif_say.most_common():
+        if k.startswith("AYRILMIŞ"):
+            continue
         print(f"    {k:40s} {n:3d}")
+    if ayrilmis:
+        kisi_ayr = {str(x["Personel"]) for x in ayrilmis}
+        print(f"\n  ⚠ PLAN TEMİZLENMELİ: {len(kisi_ayr)} ayrılmış personel hâlâ "
+              f"vardiya planında ({len(ayrilmis)} kişi-gün) — rapordan çıkarıldı")
+        for x in sorted(ayrilmis, key=lambda x: (str(x["Sube"]), str(x["Personel"]))):
+            c = x.get("Cikis")
+            print(f"    {str(x['Sube']):10s}{str(x['Personel']):26s}"
+                  f"çıkış {c if c else '—'}")
 
     print(f"\n{'ŞUBE':10s}{'GEREKEN':>9s}{'İZİNLİ':>8s}{'GELEN':>7s}"
           f"{'GELMEYEN':>10s}{'EKSİK OKUTMA':>14s}")
@@ -617,8 +662,10 @@ def main() -> int:
                        "Kadro", "Tarih", "Gün", "Vardiya", "Son 30g okutma günü",
                        "Sınıf", "Bordro çıkış"],
                  [12, 26, 24, 24, 12, 12, 11, 15, 19, 34, 13])
-    for x in sorted(gelmeyenler, key=lambda x: (str(x["Sinif"]), str(x["Sube"]),
-                                                str(x["Personel"]))):
+    # Excel TAM kayıttır: ayrılmışlar mailden çıkarıldı ama arşivde kalır.
+    for x in sorted(gelmeyenler + ayrilmis,
+                    key=lambda x: (str(x["Sinif"]), str(x["Sube"]),
+                                   str(x["Personel"]))):
         g = dt.datetime.strptime(str(x["Gun"]), "%Y%m%d").date()
         ws3.append([x["Sube"], x["Personel"], x["Gorev"], x.get("Unvan") or "—",
                     x.get("Kadro") or "—", g.strftime("%d.%m.%Y"),
@@ -634,12 +681,14 @@ def main() -> int:
 
     if a.html:
         with open(a.html, "w", encoding="utf-8") as f:
-            f.write(html_govde(tekil, bas, bit, sube, sube_gun, cikti, ozet_satir, gelmeyenler, uyarilar))
+            f.write(html_govde(tekil, bas, bit, sube, sube_gun, cikti, ozet_satir,
+                               gelmeyenler, uyarilar, ayrilmis))
         print(f"HTML  : {a.html}")
     return 0
 
 
-def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenler, uyarilar) -> str:
+def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenler,
+               uyarilar, ayrilmis=()) -> str:
     """Mail gövdesi. Ek dosya GÖNDERİLEMİYOR (IMAP save_draft ek desteklemiyor),
     o yüzden liste gövdeye gömülür; Excel yolu ayrıca yazılır."""
     donem = (f"{bas:%d.%m.%Y}" if bas == bit else f"{bas:%d.%m.%Y} – {bit:%d.%m.%Y}")
@@ -689,6 +738,25 @@ def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenle
         for x in sorted(gelmeyenler, key=lambda x: (str(x["Sinif"]), str(x["Sube"]),
                                                     str(x["Personel"]))))
 
+    # İşten ayrılmış olup planda duranlar devamsızlık tablosundan çıkarıldı;
+    # burada İK aksiyonu olarak ayrıca listelenir (sessizce düşürülmez).
+    if ayrilmis:
+        kisi_ayr = sorted({(str(x["Sube"]), str(x["Personel"]),
+                            str(x.get("Cikis") or "—")) for x in ayrilmis})
+        ayrilmis_blok = (
+            '<h3 style="margin:18px 0 6px">Plan temizlenmeli — işten ayrılmış '
+            'personel vardiya planında</h3>'
+            f'<p style="margin:0 0 6px;font-size:13px;color:#666">Bu kişiler işten '
+            f'ayrılmış ancak vardiya planından çıkarılmamış. Devamsızlık '
+            f'sayılarına <b>dahil edilmedi</b>. Planın güncellenmesi gerekiyor.</p>'
+            f'<table style="{st}">'
+            f'<tr><th style="{th}">Şube</th><th style="{th}">Personel</th>'
+            f'<th style="{th}">Bordro çıkış tarihi</th></tr>'
+            + "".join("<tr>" + h(s) + h(p) + h(c) + "</tr>" for s, p, c in kisi_ayr)
+            + "</table>")
+    else:
+        ayrilmis_blok = ""
+
     ozet = "".join(
         "<tr>" + h(o["Sube"]) + h(_s(o["Gereken"]), "right")
         + h(_s(o["Izinli"]), "right") + h(o["Gelen"], "right")
@@ -705,7 +773,7 @@ Toplam <b>{len(tekil)} kişi-gün</b>.</p>
 <table style="{st}">
 <tr><th style="{th}">Şube</th><th style="{th}">Vardiyada olması gereken</th>
 <th style="{th}">İzinli</th><th style="{th}">Kart basan</th>
-<th style="{th}">Gelmeyen</th><th style="{th}">Eksik okutma</th></tr>
+<th style="{th}">Gelmedi</th><th style="{th}">Eksik okutma</th></tr>
 {ozet}
 </table>
 
@@ -716,6 +784,8 @@ Toplam <b>{len(tekil)} kişi-gün</b>.</p>
 <th style="{th}">Durum</th></tr>
 {gelmeyen_sat}
 </table>
+
+{ayrilmis_blok}
 
 <h3 style="margin:18px 0 6px">Kart okutması eksik kalanlar (tek okutma)</h3>
 <table style="{st}">
