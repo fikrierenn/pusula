@@ -1,0 +1,835 @@
+{
+  "_aciklama": "BKMKİTAP Eksik ve Fazla Takip Raporu — PARAMETRE/TANIM tablolari. Politika kararidir, veriden turetilemez. Excel sayfalari BU DOSYADAN URETILIR; ters yon YOK (Excel'de elle degistirilen parametre bir sonraki uretimde kaybolur).",
+  "_kaynak": "BKMKİTAP Eksik ve Fazla Takip Raporu.xlsx sayfalarindan tohumlandi (2026-09-17)",
+  "izin_etiketleri": [
+    "HFT.İZİN",
+    "RAPOR",
+    "YILLIK İZİN",
+    "ÜCRETSİZ İZİN",
+    "ÖZEL DURUM"
+  ],
+  "_izin_etiketleri_not": "J (Vardiya Tanim) bu etiketleri tasiyorsa o gun mesai BEKLENMEZ (AD=0). Kume kaynak dosyanin 5.062 satirindan OLCULDU: HFT.IZIN 627 · OZEL DURUM 53 · RAPOR 31 · YILLIK IZIN 10 · UCRETSIZ IZIN 7.",
+  "mola_net_tablosu": [
+    {
+      "net_calisma_alt_sinir": "07:30",
+      "mola": "01:30",
+      "brut_ustu": true
+    },
+    {
+      "net_calisma_alt_sinir": "07:30",
+      "mola": "01:00",
+      "brut_ustu": false
+    },
+    {
+      "net_calisma_alt_sinir": "04:00",
+      "mola": "00:45",
+      "brut_ustu": false
+    },
+    {
+      "net_calisma_alt_sinir": "02:00",
+      "mola": "00:15",
+      "brut_ustu": false
+    }
+  ],
+  "mola_brut_tablosu": [
+    {
+      "brut_sure": "04:15",
+      "mola": "00:15"
+    },
+    {
+      "brut_sure": "07:30",
+      "mola": "00:30"
+    },
+    {
+      "brut_sure": "11:00",
+      "mola": "01:00"
+    }
+  ],
+  "subeler": [
+    {
+      "sube": "GENEL MÜDÜRLÜK",
+      "calisma_saat": "09:00",
+      "grup": "GENEL MÜDÜRLÜK"
+    },
+    {
+      "sube": "FSM",
+      "calisma_saat": "07:30",
+      "grup": "MAĞAZA"
+    },
+    {
+      "sube": "FSM KAFE",
+      "calisma_saat": "07:30",
+      "grup": "KAFE"
+    },
+    {
+      "sube": "HEYKEL",
+      "calisma_saat": "07:30",
+      "grup": "MAĞAZA"
+    },
+    {
+      "sube": "ÖZLÜCE",
+      "calisma_saat": "07:30",
+      "grup": "MAĞAZA"
+    },
+    {
+      "sube": "ÖZLÜCE KAFE",
+      "calisma_saat": "07:30",
+      "grup": "KAFE"
+    },
+    {
+      "sube": "İST. YOLU",
+      "calisma_saat": "07:30",
+      "grup": "MAĞAZA"
+    },
+    {
+      "sube": "İST. YOLU KAFE",
+      "calisma_saat": "07:30",
+      "grup": "KAFE"
+    },
+    {
+      "sube": "ŞURA",
+      "calisma_saat": "07:30",
+      "grup": "MAĞAZA"
+    }
+  ],
+  "_subeler_not": "calisma_saat null birakilirsa vardiya planindan OLCULUR (mod). Dolu ise olcum yerine bu deger kullanilir. grup: AN kolonunun VLOOKUP hedefi.",
+  "calisma_saatleri": [
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "BAKIM ONARIM",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "BİLGİ TEKNOLOJİLERİ",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "DEPO",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "DEPO OPERASYON",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "FİNANS",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "GRAFİK TASARIM",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İÇ DENETİM",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İÇERİK YAZIM",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İDARİ HİZMET",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İDARİ İŞLER VE OPERASYON",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İNSAN KAYNAKLARI",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "KİTAP DIŞI SATIN ALMA ",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "KURUMSAL PAZARLAMA",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "MERKEZ",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "MUHASEBE",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "MÜŞTERİ HİZMETLERİ",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "SATIŞ VE KAMPANYA",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "SOSYAL MEDYA",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "VİDEOGRAPHER",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "Grup Şirketi",
+      "saat": "09:00",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "FSM KAFE",
+      "bolum": "KAFE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "FSM KAFE",
+      "bolum": "KASA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "FSM KAFE",
+      "bolum": "MUTFAK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "İST. YOLU KAFE",
+      "bolum": "KAFE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "İST. YOLU KAFE",
+      "bolum": "KASA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "İST. YOLU KAFE",
+      "bolum": "MUTFAK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "ÖZLÜCE KAFE",
+      "bolum": "İDARİ İŞLER",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "ÖZLÜCE KAFE",
+      "bolum": "KAFE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "ÖZLÜCE KAFE",
+      "bolum": "KASA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "KAFE",
+      "sube": "ÖZLÜCE KAFE",
+      "bolum": "MUTFAK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "AKADEMİ",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "ÇOCUK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "ETKİNLİK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "İDARİ İŞLER",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "KASA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "KIRTASİYE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "KÜLTÜR",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "MAL KABUL",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "OYUNCAK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "YARDIMCI KİTAP",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "AKADEMİ",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "ÇOCUK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "KIRTASİYE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "KÜLTÜR",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "MAL KABUL",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "YARDIMCI KİTAP",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "AKADEMİ",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "ÇOCUK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "ETKİNLİK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "İDARİ İŞLER",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "KASA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "KIRTASİYE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "KIYAFET",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "KÜLTÜR",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "MAL KABUL",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "OYUNCAK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "YARDIMCI KİTAP",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "AKADEMİ",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "ÇOCUK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "ETKİNLİK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "İDARİ İŞLER",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "KASA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "KIRTASİYE",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "KÜLTÜR",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "MAĞAZA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "MAL KABUL",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "OYUNCAK",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": "YARDIMCI KİTAP",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ŞURA",
+      "bolum": "MAĞAZA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ŞURA",
+      "bolum": "ŞURA",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ŞURA",
+      "bolum": "YARDIMCI KİTAP",
+      "saat": "07:30",
+      "not": null
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": null,
+      "saat": "09:00",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "KAFE OPERASYON",
+      "saat": "09:00",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "KİTAP DIŞI SATINALMA",
+      "saat": "09:00",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "MAĞAZALAR SATIŞ OPERASYON",
+      "saat": "09:00",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İCRA KURULU",
+      "saat": "09:00",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "GENEL MÜDÜRLÜK",
+      "sube": "GENEL MÜDÜRLÜK",
+      "bolum": "İK VE İÇ DENETİM",
+      "saat": "09:00",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "KAFE",
+      "sube": "FSM KAFE",
+      "bolum": null,
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "KAFE",
+      "sube": "İST. YOLU KAFE",
+      "bolum": null,
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": null,
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "FSM",
+      "bolum": "MAĞAZA",
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": null,
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "HEYKEL",
+      "bolum": "MAĞAZA",
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ÖZLÜCE",
+      "bolum": null,
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "İST. YOLU",
+      "bolum": "MAĞAZA",
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    },
+    {
+      "grup": "MAĞAZA",
+      "sube": "ŞURA",
+      "bolum": null,
+      "saat": "07:30",
+      "not": "OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı"
+    }
+  ],
+  "_calisma_saatleri_not": "Anahtar grup+sube+bolum (ana sayfa A kolonu). AD 'Olmasi Gereken' ve AI 'Haftalik izin primi' buradan okur. Eksik anahtar uretimde OTOMATIK eklenir ve 'not' alanina damga dusulur — IK gercek saati yazmalidir.",
+  "kart_basmayan_gruplar": [
+    {
+      "ad_soyad": "FARUK BİNGÖLBALİ",
+      "kartvizit_unvani": "Genel Müdür Yardımcısı",
+      "grup": "GMYRD.",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "FİKRİ EREN",
+      "kartvizit_unvani": "Genel Müdür Yardımcısı",
+      "grup": "GMYRD.",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "ERTUNÇ GÜLER",
+      "kartvizit_unvani": "Yönetim Kurulu Başkan Asistanı",
+      "grup": "-",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "UFUK FATİH AYGÜNEŞ",
+      "kartvizit_unvani": "Finans Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "MUHAMMED EMİR KILIÇ",
+      "kartvizit_unvani": "İdari İşler ve Operasyon Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "CEREN BİLMİŞ",
+      "kartvizit_unvani": "İnsan Kaynakları ve İç Denetim Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "MUHAMMED ENES KILIÇ",
+      "kartvizit_unvani": "Kitap Dışı Satınalma Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "ABDURRAHMAN UĞURLU",
+      "kartvizit_unvani": "Mağaza Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "CİHAT BİNGÖLBALİ",
+      "kartvizit_unvani": "Mağaza Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "ERKAL GÜDENLİ",
+      "kartvizit_unvani": "Mağaza Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "RESUL ÇİL",
+      "kartvizit_unvani": "Mağaza Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "GÖKHAN DEMİRCAN",
+      "kartvizit_unvani": "Mağazalar Satış Operasyon Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "İSMAİL ERTEM",
+      "kartvizit_unvani": "Muhasebe Müdürü ve SMMM",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "SELİM YILMAZ",
+      "kartvizit_unvani": "Kafe Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "KEMAL ÇELİKTAŞ",
+      "kartvizit_unvani": "Pazarlama Müdürü",
+      "grup": "Müdür",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "EMRAH ÖZCAN",
+      "kartvizit_unvani": "Mağaza Müdür Yardımcısı",
+      "grup": "M.Yrdm",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "EREN BORAN",
+      "kartvizit_unvani": "Mağaza Müdür Yardımcısı",
+      "grup": "M.Yrdm",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "NECMETTİN ÇELİK",
+      "kartvizit_unvani": "Mağaza Müdür Yardımcısı",
+      "grup": "M.Yrdm",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "ÖMER FARUK KIRMACI",
+      "kartvizit_unvani": "Mağaza Müdür Yardımcısı",
+      "grup": "M.Yrdm",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "RECEP ÖZCAN",
+      "kartvizit_unvani": "Mağaza Müdür Yardımcısı",
+      "grup": "M.Yrdm",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "SIRAÇ YİĞİT",
+      "kartvizit_unvani": "Mağaza Müdür Yardımcısı",
+      "grup": "M.Yrdm",
+      "raporlama_durum": "Hariç"
+    },
+    {
+      "ad_soyad": "KUTBETTİN BİNGÖLBALİ",
+      "kartvizit_unvani": null,
+      "grup": null,
+      "raporlama_durum": "Hariç"
+    }
+  ]
+}

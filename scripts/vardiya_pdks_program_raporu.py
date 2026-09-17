@@ -276,7 +276,7 @@ def toleransli_giris(plan_bas: int | None, kart_giris: int) -> int:
 
 
 def satir_uret(plan: dict, pdks: dict | None, persnr: int | None,
-               ham_okutma: int | None = None) -> list:
+               ham_okutma: int | None = None, genis: bool = False) -> list:
     """Bir kişi-gün için A..O kolonlarını üretir. Hiçbir kural burada icat edilmez."""
     izin = bool(plan["Izin"])
     plan_bas = saat_to_dk(plan["Baslama"])
@@ -290,6 +290,18 @@ def satir_uret(plan: dict, pdks: dict | None, persnr: int | None,
     if varsa:
         giris = toleransli_giris(plan_bas if not izin else 0, kart_g)
         cikis = kart_c                     # çıkışta tolerans YOK (ölçüldü)
+        # ── GÜN DÖNÜMÜ (GMY bildirimi 17.09.2026) ────────────────────────
+        # Gece mesaisine kalan ertesi sabah çıkar. PDKS okutmayı VARDİYANIN
+        # gününe yazar (TLe_Datum aynı kalır, BisZeit 24:00'ı GEÇMEZ, başa
+        # sarar) → ham çıkarma NEGATİF süre verir.
+        # ÖLÇÜLDÜ (31.08–13.09.2026): 9 kişi-gün negatif "Personel Çalışma"
+        # üretiyordu (-14:58'e kadar) ve hiçbiri hata vermiyordu — Eksik Saat
+        # sessizce şişiyordu. Ayrıca planlı gece vardiyası da var
+        # ("23:00-08:30", 24 kişi-gün).
+        # Çözüm: çıkış girişten KÜÇÜKSE ertesi güne aittir, +24 saat.
+        gun_donumu = cikis < giris
+        if gun_donumu:
+            cikis += 24 * 60
         brut = cikis - giris
         calisma = brut - mola_dk(brut)
     else:
@@ -310,20 +322,43 @@ def satir_uret(plan: dict, pdks: dict | None, persnr: int | None,
     else:
         durum = "Normal Çalışma"
 
-    return [
+    satir = [
         plan["SubeAd"], plan["SicilNo"], persnr,
         plan["Personel"], plan["Bolum"], plan["Gorev"],
         plan["Tarih"].strftime("%d.%m.%Y"),
         plan["VardiyaTanim"],
-        dk_to_hhmm(giris), dk_to_hhmm(cikis),
+        # ⚠ GÖSTERİM gün-içi saat olarak kalır (00:30), hesap +24 saatle yapılır.
+        #   "24:30" yazmak aracın çıktısıyla uyuşmazdı ve yöneticiye ham okutmayı
+        #   göstermek doğru; düzeltme "Ölçüm Notu"nda beyan edilir.
+        dk_to_hhmm(giris % (24 * 60) if giris is not None else None),
+        dk_to_hhmm(cikis % (24 * 60) if cikis is not None else None),
         dk_to_hhmm(kart_g), dk_to_hhmm(kart_c),
         dk_to_hhmm(calisma), dk_to_hhmm(0 if izin else plan_dk),
         durum,
-        olcum_notu(durum, persnr, ham_okutma),
+        olcum_notu(durum, persnr, ham_okutma, locals().get("gun_donumu", False),
+                   locals().get("brut")),
     ]
+    if genis:
+        # `Vardiya Yönet Raporu` sayfasının EK kolonları. Ana çıktının 16 kolonu
+        # DEĞİŞMEZ (dogrula() onun üstünde koşuyor); ek bilgi 17. eleman olarak
+        # sözlükle taşınır — kolon kayması olmasın diye araya GİRMEZ.
+        satir.append({
+            "Tarih": plan["Tarih"],
+            "Izin": "İzin" if izin else None,
+            "Baslama": dk_to_hhmm(plan_bas) if not izin else None,
+            "Bitis": dk_to_hhmm(plan_bit) if not izin else None,
+            "GirisFark": (None if (kart_g is None or plan_bas is None or izin)
+                          else plan_bas - kart_g),
+            "CikisFark": (None if (kart_c is None or plan_bit is None or izin)
+                          else kart_c - plan_bit),
+            "KayitSayisi": (pdks or {}).get("KayitSayisi"),
+            "Mazeret": (pdks or {}).get("Mazeret"),
+        })
+    return satir
 
 
-def olcum_notu(durum: str, persnr, ham_okutma: int | None) -> str:
+def olcum_notu(durum: str, persnr, ham_okutma: int | None,
+               gun_donumu: bool = False, brut: int | None = None) -> str:
     """"Devamsız" etiketinin DENETİMİ (16.09.2026 önlemi).
 
     Bu oturumda iki kez yanıltıcı oldu, ikisi ayrı sebepten:
@@ -333,6 +368,15 @@ def olcum_notu(durum: str, persnr, ham_okutma: int | None) -> str:
         TTagZei giriş+çıkış ÇİFTİ ister ve orada satır oluşmamış.
     Not AYRI kolona yazılır; "Durum" aracın çıktısıyla birebir kalır.
     """
+    # GÜN DÖNÜMÜ notu her durumda yazılır — "Devamsız" denetiminden ÖNCE.
+    # Gerekçe: +24 saat düzeltmesi sessiz kalmamalı; ayrıca unutulmuş çıkış
+    # okutması da bu yoldan geçer ve brüt makul olmayan bir değere ulaşır.
+    if gun_donumu:
+        if brut is not None and brut > 16 * 60:
+            return (f"GÜN DÖNÜMÜ — çıkış ertesi gün sayıldı, brüt "
+                    f"{brut // 60:02d}:{brut % 60:02d} ŞÜPHELİ (çıkış okutması "
+                    f"unutulmuş olabilir)")
+        return "GÜN DÖNÜMÜ — çıkış ertesi gün sayıldı"
     if durum != "Devamsız":
         return ""
     if persnr is None:
@@ -342,7 +386,8 @@ def olcum_notu(durum: str, persnr, ham_okutma: int | None) -> str:
     return "Ham okutma da yok"
 
 
-def veri_cek(cn, sube: str, bas: dt.date, bit: dt.date) -> list[list]:
+def veri_cek(cn, sube: str, bas: dt.date, bit: dt.date,
+              genis: bool = False) -> list[list]:
     cur = cn.cursor()
     cur.execute(SQL_PLAN, sube, bas, bit)
     kol = [c[0] for c in cur.description]
@@ -400,18 +445,21 @@ def veri_cek(cn, sube: str, bas: dt.date, bit: dt.date) -> list[list]:
         # Bu satırlar ÖNCE rapordan düşürülüyordu; artık düşürülmüyor, aksi
         # halde kadronun bir bölümü sessizce görünmez oluyordu.
         satirlar.append(satir_uret(
-            p, pk, pn, ham_okutma.get((p["SicilNo"], p["Tarih"].strftime("%Y%m%d")))))
+            p, pk, pn, ham_okutma.get((p["SicilNo"], p["Tarih"].strftime("%Y%m%d"))),
+            genis=genis))
     if eslesmeyen:
         print(f"  ⚠ PDKS'te TC'si HİÇ bulunmayan kişi: {len(eslesmeyen)} "
               f"— bunların günleri 'Devamsız' görünür, gelmedikleri için DEĞİL.")
 
-    satirlar += plansiz_satirlar(cur, sube, bas, bit, planli_anahtar, kisi_bilgi)
+    satirlar += plansiz_satirlar(cur, sube, bas, bit, planli_anahtar,
+                                 kisi_bilgi, genis=genis)
     cur.close()
     satirlar.sort(key=lambda s: (dt.datetime.strptime(s[6], "%d.%m.%Y"), str(s[3] or "")))
     return satirlar
 
 
-def plansiz_satirlar(cur, sube, bas, bit, planli_anahtar, kisi_bilgi) -> list[list]:
+def plansiz_satirlar(cur, sube, bas, bit, planli_anahtar, kisi_bilgi,
+                     genis: bool = False) -> list[list]:
     """Plana işlenmemiş ama kart basmış kişi-günler (kullanıcı isteği 15.09.2026).
 
     Kapsam PDKS tarafından çizilir: Per_Grp1 + Per_Grp2. Şube adı doğrudan OPENQUERY
@@ -447,7 +495,7 @@ def plansiz_satirlar(cur, sube, bas, bit, planli_anahtar, kisi_bilgi) -> list[li
                 "VardiyaTanim": None, "Baslama": None, "Bitis": None,
                 "ToplamCalismaDk": 0, "Izin": 0, "Plansiz": True,
             }
-            ek.append(satir_uret(sahte_plan, d, d["PersNr"], None))
+            ek.append(satir_uret(sahte_plan, d, d["PersNr"], None, genis=genis))
     if ek:
         kisi = len({s[1] for s in ek})
         print(f"  + plansız ama kart basmış: {len(ek)} kişi-gün / {kisi} kişi "
@@ -525,7 +573,8 @@ def excel_yaz(satirlar: list[list], cikti: str, net_gereken: dict[str, str]):
             None,                                           # U Yönetici Onaylı Çıkış (ELLE)
             f'=IF(T{i}=0,R{i},T{i})',                    # V Giriş
             f'=IF(U{i}=0,S{i},U{i})',                    # W Çıkış
-            f"=+W{i}-V{i}",                                 # X Brüt
+            # X Brüt — GÜN DÖNÜMÜ (bkz. satir_uret): çıkış < giriş ise ertesi gün.
+            f"=IF(W{i}<V{i},W{i}+1-V{i},W{i}-V{i})",        # X Brüt
             (f"=IF(X{i}>'Mola Saatleri'!$C$3,'Mola Saatleri'!$B$3,"
              f"IF(X{i}>'Mola Saatleri'!$C$4,'Mola Saatleri'!$B$4,"
              f"IF(X{i}>'Mola Saatleri'!$C$5,'Mola Saatleri'!$B$5,TIME(0,0,0))))"),  # Y Mola

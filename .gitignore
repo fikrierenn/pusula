@@ -114,3 +114,9 @@ WMS-ERP Mutabakat*.xlsx
 
 # Uretilen rapor ciktilari (Excel/HTML) — repoya girmez
 ciktilar/
+
+# Vardiya eksik/fazla takip — üretilen rapor ve kaynak çalışma kitabı (büyük ikili)
+# Parametre (vardiya_parametreleri.json) ve OKUBENI.md git'te KALIR: politika
+# değişikliği diff'te görünmeli. Excel dosyaları veridir, kod değil.
+vardiya/*.xlsx
+/BKMKİTAP Eksik ve Fazla Takip Raporu.xlsx
