@@ -60,6 +60,53 @@ Kaynaklar uygulayıcı blogudur; oran ve kıyaslar **yön göstergesi**dir. Tür
 hukuku (fazla mesai sınırı, vardiya, tatil) kısıtları bu ölçütlerin ÜSTÜNDEDİR ve
 bir planlama önerisi o kısıtlar kontrol edilmeden verilmez.
 
+## Mesai Mevzuat Kapısı (PDKS verisi — eklendi 17.09.2026)
+
+_Kullanıcı kararı: *"bu konular için danışman skiller lazım gibi hem ik hem hukuk hem
+diğer uzmanlık tarafları"*. Yeni skill yaratılmadı; en dar basamak bu bölümdür
+(`footprint-ladder`)._
+
+Vardiya/PDKS verisi (`bkm.Vrd_KisiGun`, `scripts/eksik_fazla_takip_raporu.py`) fazla
+mesai rakamı üretir. **Rakamı üretmek yorumlamak DEĞİLDİR.** Bu bölüm o veriye
+bakarken hangi ölçütün hangi tanımla kurulacağını sabitler.
+
+### Kapılar — tanım ve ölçüm
+
+| Kapı | Doğru tanım | Sert mi |
+|---|---|---|
+| **Günlük 11 saat** | bir günde fiili çalışma > 11 saat | **SERT SINIR** — aşılamaz |
+| **Gece çalışması 7,5 saat** | **20:00–06:00 penceresinde geçen süre** > 7,5 saat | **SERT SINIR** |
+| **Hafta tatili** | 7 günlük dilimde kesintisiz 24 saat dinlenme yoksa | **SERT SINIR** |
+| Haftalık 45 saat üstü | fazla çalışma hacmi | ⚠ **İHLAL DEĞİL** |
+| Yıllık 270 saat fazla çalışma | işçi başına yıllık toplam | sert, ama **yıllıklandırma ÇIKARIMDIR** |
+
+### ⚠ ÜÇ TUZAK — üçü de 17.09.2026'da YAŞANDI, ölçümle yakalandı
+
+**1. Gece çalışmasını "gün dönümü" sanmak.** "Çıkışı ertesi güne sarkan her satır gece
+çalışmasıdır" diye süzülünce **14 gün** ihlal çıktı; doğru pencereyle (20:00–06:00
+kesişimi) gerçek sayı **1 gün**. 14 kat şişik. 13:30–00:30 vardiyasının gece
+penceresinde kalan kısmı 4,5 saattir, 9,97 değil.
+
+**2. "45 saati aştı = ihlal" saymak.** 45 saat normal çalışma sınırıdır; üstü fazla
+çalışmadır ve **meşrudur**. Aynı veride 545 kişi-hafta 45'i aşıyordu — hiçbiri tek
+başına ihlal değil. İhlal yıllık 270 saat, muvafakat ve zamlı ücret tarafındadır.
+
+**3. Bozuk okutmayı gerçek çalışma saymak.** Çıkış okutmasını unutan kişide brüt
+17,5–20,6 saat görünüyordu. Bunlar denetimden **ÇIKARILIR** ve ayrı listelenir; yoksa
+sahte ihlal üretir ve gerçek olanları gürültüye gömer. Ayraç: `OlcumNotu` alanındaki
+"ŞÜPHELİ" damgası (brüt > 16 saat + gün dönümü).
+
+### Kural
+
+- Her bulgu **ölçülmüş sayı + madde referansı** ile verilir; yorum bu skill'de,
+  mevzuat metni `anthropic-skills:turkiye-is-mevzuati`'nde kalır.
+- **Kimse "ihlal" diye etiketlenmez** — "şu ölçütü aşan N gün var, teyit gerekiyor"
+  denir. Kişi bazlı yaptırım önerisi bu skill'in dışındadır (bkz. Sınırlar).
+- Yıllıklandırma yapılan her sayı **ÇIKARIM** etiketi taşır; 17 günlük pencereden
+  yıllık 270 saat ölçülemez.
+- Denetim koşulabilir olmalı: yazılı kural, çiğneyeni yakalayan bir koşum olmadan
+  kural değildir (`test-discipline` § yazılı kural ≠ uygulanan kural).
+
 ## Danışma Modları
 
 - **"Bu analizi tasarla"** → birim (rol/süreç), veri kaynağı, KVKK uygunluğu, confound, karşı-metrik.
@@ -78,5 +125,8 @@ bir planlama önerisi o kısıtlar kontrol edilmeden verilmez.
 - `.claude/skills/operasyon-danisman/SKILL.md` — mağaza/depo işgücü verimi (SPLH). Sınır: o **verimi**, bu **kadroyu ve maliyeti** ölçer.
 - `.claude/skills/bt-risk-danisman/SKILL.md` — sistem/bilgi bağımlılığı (bus-factor'ün teknik yarısı).
 - `.claude/skills/finans-nakit-danisman/SKILL.md` — bordro = nakit takviminin en büyük sabit kalemi.
+- `.claude/skills/is-hukuku-danisman/SKILL.md` — **vaka bazlı hukuki risk** (fesih, dava, uyum). Sınır: bu skill kadroyu ve maliyeti ölçer, o vakanın hukuki riskini değerlendirir.
+- `.claude/skills/isg-uyum/SKILL.md` — 6331 takvim ve belge denetimi.
+- `tools/mesai_mevzuat_kapisi.py` — § Mesai Mevzuat Kapısı'nın koşulabilir hâli.
 - Genel mevzuat: `anthropic-skills:turkiye-is-mevzuati`, `anthropic-skills:insan-kaynaklari` (bu skill BKM bağlamı + sparring ekler, onları tekrarlamaz).
 - `plans/37-patron-sorulari-paneli.md` — 6. departmanın İK sorusu.
