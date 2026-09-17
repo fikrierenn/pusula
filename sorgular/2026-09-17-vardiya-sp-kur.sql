@@ -336,6 +336,101 @@ BEGIN
             ELSE N'' END, N'')
     FROM m;
 
+    -- =====================================================================
+    -- 8) YAYINLANAN RAPORUN ÖLÇÜSÜ — Eksik/Fazla Saat
+    --
+    -- ⚠ TABAN `Vrd_CalismaSaati` POLİTİKA TABLOSUDUR, vardiya planının SÜRESİ
+    --   DEĞİL. İki taban farklı sonuç verir; ÖLÇÜLDÜ (17.09.2026, 6.113 kişi-gün):
+    --   plan tabanı 4.313/4.596 saat · politika tabanı 6.118/5.024 saat.
+    --   Yayınlanan Excel raporu politika tabanını kullanıyor; panel de onu
+    --   kullanmak ZORUNDA, yoksa iki doğruluk kaynağı olur (emitter-ayrimi).
+    --
+    -- ⚠ ÇALIŞMA ÖLÇÜSÜ DE AYRI: Excel kendi mola tablosunu (tip 'excel') kullanır
+    --   ve net 11 saati aşınca 30 dk daha düşer. Aracın ölçüsü (`CalismaDk`)
+    --   DEĞİŞMEDEN durur — ikisi kasıtlı iki ayrı ölçü.
+    -- =====================================================================
+    UPDATE k SET
+        k.GerekenDk = CASE
+            WHEN k.SayimDisi = 1 THEN 0
+            WHEN k.VardiyaTanim IN (N'HFT.İZİN', N'RAPOR', N'YILLIK İZİN',
+                                    N'ÜCRETSİZ İZİN', N'ÖZEL DURUM') THEN 0
+            -- ⚠ POLİTİKADA KARŞILIĞI YOKSA ŞUBE VARSAYILANINA DÜŞ — ama SESSİZCE
+            --   DEĞİL: aşağıda Ölçüm Notu'na damga düşülür. NULL bırakılsaydı o
+            --   satır Eksik/Fazla'ya hiç girmezdi ve rapor sessizce eksik olurdu.
+            --   ÖLÇÜLDÜ (17.09.2026): tek satır (plansız kart basan, bölümsüz)
+            --   18,8 dk fazla mesaiyi düşürüyordu.
+            ELSE ISNULL(cs.CalismaDk, s.CalismaDk) END,
+        k.Net2Dk = CASE WHEN k.BrutDk IS NULL THEN NULL ELSE
+            k.BrutDk - x.molaExcel
+            - CASE WHEN k.BrutDk - x.molaExcel > 11 * 60 THEN 30 ELSE 0 END END
+    FROM        bkm.Vrd_KisiGun k
+    INNER JOIN  bkm.Vrd_Sube s ON s.Sube = k.Sube
+    LEFT  JOIN  bkm.Vrd_CalismaSaati cs
+             ON cs.Grup = s.Grup AND cs.Sube = k.Sube
+            AND cs.BolumAnahtar = ISNULL(k.Bolum, N'')
+    CROSS APPLY (SELECT molaExcel = ISNULL((SELECT TOP 1 v.MolaDk FROM bkm.Vrd_Mola v
+                                            WHERE v.Tip = 'excel' AND v.AltSinirDk < k.BrutDk
+                                            ORDER BY v.AltSinirDk DESC), 0)) x
+    WHERE k.KesimBas = @Bas AND k.KesimBit = @Bit;
+
+    -- HAFTALIK İZİN PRİMİ — haftada 7 gün çalışıp hafta tatili kullanmayana,
+    -- haftanın SON GÜNÜNE (Pazar) yazılır. Sayfadaki ilk satıra yazılırsa ay
+    -- dönümünde primi önceki aya kaçırır (ÖLÇÜLDÜ: 331 kişi-hafta).
+    ;WITH g AS (
+        SELECT SicilNo, hafta = DATEPART(iso_week, Tarih),
+               calisilan = SUM(CASE WHEN Durum IN (N'İzinli', N'Devamsız') THEN 0 ELSE 1 END)
+        FROM bkm.Vrd_KisiGun
+        WHERE KesimBas = @Bas AND KesimBit = @Bit
+        GROUP BY SicilNo, DATEPART(iso_week, Tarih)
+    )
+    -- ⚠ PRİM TUTARI POLİTİKA SAATİDİR, `GerekenDk` DEĞİL. `GerekenDk` izin
+    --   etiketli günde 0'a çekilir; haftanın 7 günü çalışan kişinin Pazar'ı
+    --   çoğu zaman "İzin Günü Çalışılmış"tır (vardiya tanımı HFT.İZİN) ve prim
+    --   sessizce SIFIRLANIR. ÖLÇÜLDÜ: 972 saat çıktı, doğrusu 1.380 saat.
+    UPDATE k SET k.HaftalikPrimDk = cs.CalismaDk
+    FROM bkm.Vrd_KisiGun k
+    INNER JOIN g ON g.SicilNo = k.SicilNo AND g.hafta = DATEPART(iso_week, k.Tarih)
+    INNER JOIN bkm.Vrd_Sube s ON s.Sube = k.Sube
+    LEFT  JOIN bkm.Vrd_CalismaSaati cs
+            ON cs.Grup = s.Grup AND cs.Sube = k.Sube
+           AND cs.BolumAnahtar = ISNULL(k.Bolum, N'')
+    WHERE k.KesimBas = @Bas AND k.KesimBit = @Bit
+      AND k.SayimDisi = 0
+      -- ⚠ PAZAR TESPİTİ `DATEPART(weekday)` İLE YAPILMAZ: sonucu `@@DATEFIRST`'e
+      --   bağlıdır ve oturum diline göre değişir. ÖLÇÜLDÜ: 36. haftanın primi
+      --   (378 saat) sessizce düştü, 37. haftanınki geldi — hata vermeden.
+      --   1900-01-01 Pazartesi'dir; gün farkının 7'ye kalanı 6 ise Pazar.
+      AND DATEDIFF(day, '19000101', k.Tarih) % 7 = 6
+      AND g.calisilan >= 7;
+
+    UPDATE bkm.Vrd_KisiGun SET
+        HaftalikPrimDk = ISNULL(HaftalikPrimDk, 0),
+        EksikDk = CASE WHEN SayimDisi = 1 OR Net2Dk IS NULL OR GerekenDk IS NULL THEN 0
+                       WHEN Net2Dk < GerekenDk THEN GerekenDk - Net2Dk ELSE 0 END,
+        FazlaDk = CASE WHEN SayimDisi = 1 THEN 0 ELSE
+                       CASE WHEN Net2Dk IS NOT NULL AND GerekenDk IS NOT NULL
+                                 AND Net2Dk > GerekenDk THEN Net2Dk - GerekenDk ELSE 0 END
+                       + ISNULL(HaftalikPrimDk, 0) END
+    WHERE KesimBas = @Bas AND KesimBit = @Bit;
+
+    -- İzin satırında Net2Dk yok ama GerekenDk 0 → eksik 0. Çalışmayan (Devamsız)
+    -- satırda Net2Dk NULL ve GerekenDk dolu → EKSİK SAYILMALI (plan vardı, gelmedi).
+    UPDATE bkm.Vrd_KisiGun SET EksikDk = GerekenDk
+    WHERE KesimBas = @Bas AND KesimBit = @Bit
+      AND SayimDisi = 0 AND Net2Dk IS NULL AND ISNULL(GerekenDk, 0) > 0;
+
+    -- Politika boşluğu BEYAN EDİLİR (fallback sessiz kalmaz — error-handling.md).
+    UPDATE k SET k.OlcumNotu =
+        CASE WHEN k.OlcumNotu IS NULL THEN N'' ELSE k.OlcumNotu + N' · ' END
+        + N'ÇALIŞMA SAATİ POLİTİKASINDA KARŞILIĞI YOK — şube varsayılanı kullanıldı'
+    FROM        bkm.Vrd_KisiGun k
+    INNER JOIN  bkm.Vrd_Sube s ON s.Sube = k.Sube
+    LEFT  JOIN  bkm.Vrd_CalismaSaati cs
+             ON cs.Grup = s.Grup AND cs.Sube = k.Sube
+            AND cs.BolumAnahtar = ISNULL(k.Bolum, N'')
+    WHERE k.KesimBas = @Bas AND k.KesimBit = @Bit
+      AND cs.CalismaDk IS NULL AND k.SayimDisi = 0;
+
     IF @Konus = 1
     BEGIN
         SELECT Kesim = CONVERT(char(10), @Bas, 104) + N' – ' + CONVERT(char(10), @Bit, 104),

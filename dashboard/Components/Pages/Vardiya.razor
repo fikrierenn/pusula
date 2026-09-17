@@ -1,0 +1,420 @@
+@page "/vardiya"
+@using GmDashboard.Data
+@using GmDashboard.Models
+@inject VardiyaQueries Q
+@inject Db Db
+@inject ILogger<Vardiya> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Vardiya / Mesai — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">
+        PDKS + vardiya planı · hesap <b>bkm.sp_Vrd_KisiGunDoldur</b> (panel DB) ·
+        süreler dakika tabanlı — gece mesaisi ertesi güne sarkar ·
+        uyum ölçütleri <b>4857</b> (m.63 · m.68 · m.69 · m.46)
+    </div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Vardiya / Mesai</h1>
+</div>
+
+@if (_kesimler is null)
+{
+    <div class="text-sm text-base-content/60">Yükleniyor…</div>
+}
+else if (_kesimler.Count == 0)
+{
+    @* Boş nüfus "sorun yok" DEĞİL "hesap hiç koşmadı" demektir. *@
+    <div class="alert alert-warning">
+        <div>
+            <div class="font-semibold">Hiç kesim yazılmamış</div>
+            <div class="text-xs">
+                <code>bkm.Vrd_KisiGun</code> boş. Bu "mesai sorunu yok" demek DEĞİL,
+                <b>hesap hiç koşmadı</b> demektir. Doldurmak için:
+                <code>EXEC bkm.sp_Vrd_KisiGunDoldur @@Bas='2026-08-31', @@Bit='2026-09-16', @@SayimBas='2026-09-01'</code>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
+        <div class="flex flex-wrap items-end gap-4">
+            <label class="form-control">
+                <span class="label-text text-xs">Kesim</span>
+                <select class="select select-bordered select-sm min-w-[22rem]"
+                        @bind="_kesimSec" @bind:after="Yukle">
+                    @foreach (var k in _kesimler)
+                    {
+                        <option value="@Anahtar(k)">
+                            @k.KesimBas.ToString("dd.MM.yyyy") – @k.KesimBit.ToString("dd.MM.yyyy")
+                            · @k.KisiGun.ToString("N0") kişi-gün
+                            @(k.SayimBas > k.KesimBas ? $" · sayım {k.SayimBas:dd.MM}" : "")
+                        </option>
+                    }
+                </select>
+            </label>
+            <label class="form-control">
+                <span class="label-text text-xs">Şube</span>
+                <select class="select select-bordered select-sm" @bind="_sube" @bind:after="SatirYukle">
+                    <option value="">Tümü</option>
+                    @foreach (var s in _subeler) { <option value="@s.Sube">@s.Sube</option> }
+                </select>
+            </label>
+            <label class="form-control">
+                <span class="label-text text-xs">Personel / TC</span>
+                <input class="input input-bordered input-sm" placeholder="ara…"
+                       @bind="_ara" @bind:after="SatirYukle" />
+            </label>
+            <label class="label cursor-pointer gap-2">
+                <input type="checkbox" class="checkbox checkbox-sm"
+                       @bind="_sadeceSorunlu" @bind:after="SatirYukle" />
+                <span class="label-text text-xs">Yalnız sapma/not taşıyanlar</span>
+            </label>
+        </div>
+    </div>
+
+    @if (_ozet is not null)
+    {
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+            <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
+                <div class="text-xs text-base-content/50">KİŞİ-GÜN</div>
+                <div class="text-2xl font-bold">@_ozet.KisiGun.ToString("N0")</div>
+                <div class="text-xs text-base-content/50">
+                    @_ozet.KisiSay kişi · @_ozet.SubeSay şube
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
+                <div class="text-xs text-base-content/50">EKSİK SAAT</div>
+                <div class="text-2xl font-bold text-error">@VrdBicim.SaatOndalik(_ozet.ToplamEksikDk)</div>
+                <div class="text-xs text-base-content/50">
+                    dönem @VrdBicim.SaatOndalik(_ozet.EksikDk)
+                    + devir @VrdBicim.SaatOndalik(_ozet.DevirEksikDk)
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
+                <div class="text-xs text-base-content/50">FAZLA SAAT</div>
+                <div class="text-2xl font-bold text-success">@VrdBicim.SaatOndalik(_ozet.ToplamFazlaDk)</div>
+                <div class="text-xs text-base-content/50">
+                    dönem @VrdBicim.SaatOndalik(_ozet.FazlaDk)
+                    + devir @VrdBicim.SaatOndalik(_ozet.DevirFazlaDk)
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
+                <div class="text-xs text-base-content/50">GÜN DÖNÜMÜ</div>
+                <div class="text-2xl font-bold text-info">@_ozet.GunDonumu</div>
+                <div class="text-xs text-base-content/50">çıkış ertesi güne sarktı</div>
+            </div>
+            <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
+                <div class="text-xs text-base-content/50">SAYIM DIŞI</div>
+                <div class="text-2xl font-bold">@_ozet.SayimDisi</div>
+                <div class="text-xs text-base-content/50">önceki ay devrinde sayılı</div>
+            </div>
+        </div>
+    }
+
+    @* ── UYUM KARTI ───────────────────────────────────────────────────────
+       Sayılar `tools/mesai_mevzuat_kapisi.py` ile AYNI eşiklerden. Hiçbiri
+       "ihlal" diye ETİKETLENMEZ — teyit edilecek sorulardır. *@
+    @if (_uyum is not null)
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <div class="font-semibold">Mesai mevzuat kapısı</div>
+                    <div class="text-xs text-base-content/50">
+                        4857 sayılı İş Kanunu · aşan gün sayısı — <b>ihlal etiketi değil</b>,
+                        teyit edilecek soru. Yorum: İK + iş hukuku.
+                    </div>
+                </div>
+                @if (_uyum.Supheli > 0)
+                {
+                    <div class="badge badge-warning badge-outline">
+                        @_uyum.Supheli satır denetim dışı
+                    </div>
+                }
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                @KapiKart("Günlük 11 saat", "m.63 / m.41", _uyum.Gunluk11, "gün", true)
+                @KapiKart("Brüt 12 saat", "m.68 — 24 saatte 12 saat dinlenme", _uyum.Brut12, "gün", true)
+                @KapiKart("Gece 7,5 saat", "m.69 — 20:00-06:00 penceresi", _uyum.Gece75, "gün", true)
+                @KapiKart("Hafta tatili yok", "m.46 — alt sınır", _uyum.HaftaTat, "kişi-hafta", true)
+                @KapiKart("Haftalık 45 saat üstü", "İHLAL DEĞİL — fazla çalışma", _uyum.Ustu45, "kişi-hafta", false)
+            </div>
+            <div class="text-xs text-base-content/50 mt-3">
+                ⚠ Yıllık 270 saat sınırı (m.41) bu pencereden <b>ölçülemez</b> —
+                yıllıklandırma çıkarım olur. Yazılı işçi muvafakati (m.41/7) sistemde
+                <b>tutulmuyor</b>, denetlenemiyor.
+            </div>
+        </div>
+    }
+
+    @if (_subeler.Count > 0)
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
+            <div class="font-semibold mb-2">Şube kırılımı</div>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Şube</th><th class="text-right">Kişi</th>
+                            <th class="text-right">Kişi-gün</th>
+                            <th class="text-right">Eksik</th><th class="text-right">Fazla</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in _subeler)
+                        {
+                            <tr>
+                                <td>@s.Sube</td>
+                                <td class="text-right">@s.KisiSay</td>
+                                <td class="text-right">@s.KisiGun.ToString("N0")</td>
+                                <td class="text-right text-error">@VrdBicim.Sure(s.EksikDk)</td>
+                                <td class="text-right text-success">@VrdBicim.Sure(s.FazlaDk)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px]">
+        <div class="flex items-center justify-between mb-2">
+            <div class="font-semibold">Kişi-gün</div>
+            <div class="text-xs text-base-content/50">
+                @(_satirlar?.Count ?? 0) satır@(_satirlar?.Count >= 400 ? " (ilk 400)" : "")
+                · sarı satır = yönetici onayı girilmiş
+            </div>
+        </div>
+        @if (_satirlar is null)
+        {
+            <div class="text-sm text-base-content/60">Yükleniyor…</div>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th><th>Şube</th><th>Personel</th><th>Vardiya</th>
+                            <th>Kart giriş</th><th>Kart çıkış</th>
+                            <th class="text-right">Net</th><th class="text-right">Gereken</th>
+                            <th class="text-right">Fark</th><th>Durum</th><th>Not</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _satirlar)
+                        {
+                            <tr class="@(r.OnayGirisDk is not null || r.OnayCikisDk is not null || r.EkMesaiDk is not null ? "bg-warning/10" : "")">
+                                <td class="whitespace-nowrap">@r.Tarih.ToString("dd.MM.yyyy")</td>
+                                <td class="whitespace-nowrap">@r.Sube</td>
+                                <td class="whitespace-nowrap">@r.Personel</td>
+                                <td class="whitespace-nowrap text-base-content/60">@r.VardiyaTanim</td>
+                                <td>@VrdBicim.Saat(r.KartGirisDk)</td>
+                                <td>@VrdBicim.Saat(r.KartCikisDk)</td>
+                                <td class="text-right">@VrdBicim.Sure(r.Net2Dk)</td>
+                                <td class="text-right text-base-content/60">@VrdBicim.Sure(r.GerekenDk)</td>
+                                <td class="text-right">
+                                    @if (r.EksikDk > 0)   { <span class="text-error">-@VrdBicim.Sure(r.EksikDk)</span> }
+                                    else if (r.FazlaDk > 0) { <span class="text-success">+@VrdBicim.Sure(r.FazlaDk)</span> }
+                                    else if (r.SayimDisi) { <span class="text-base-content/40">devir</span> }
+                                    else { <span class="text-base-content/40">—</span> }
+                                </td>
+                                <td class="whitespace-nowrap">
+                                    <span class="@DurumRenk(r.Durum)">@r.Durum</span>
+                                </td>
+                                <td class="text-xs @(r.Supheli ? "text-warning" : "text-base-content/50")">
+                                    @r.OlcumNotu
+                                </td>
+                                <td>
+                                    <button class="btn btn-ghost btn-xs" @onclick="() => OnayAc(r)">
+                                        Onay
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@* ── YÖNETİCİ ONAYI ── panelin tek yazma yüzeyi. Modal-üstü-modal Blazor'da
+     çalışmaz, o yüzden tek modal (coding-discipline.md). *@
+@if (_onaySatir is not null)
+{
+    <div class="modal modal-open">
+        <div class="modal-box max-w-lg">
+            <h3 class="font-bold text-lg">Yönetici onayı</h3>
+            <div class="text-xs text-base-content/60 mb-3">
+                @_onaySatir.Personel · @_onaySatir.Tarih.ToString("dd.MM.yyyy") · @_onaySatir.Sube
+                <br />
+                Kart: @VrdBicim.Saat(_onaySatir.KartGirisDk) – @VrdBicim.Saat(_onaySatir.KartCikisDk)
+                · hesaplanan çalışma @VrdBicim.Sure(_onaySatir.CalismaDk)
+            </div>
+
+            <div class="alert alert-warning text-xs mb-3">
+                <div>
+                    <b>Gün dönümü artık otomatik.</b> Gece mesaisine kalıp ertesi gün çıkanın
+                    fazla mesaisi zaten hesaplanıyor. <b>Ek mesai alanına telafi yazmayın</b> —
+                    mesai iki kez sayılır. Bu alan yalnız gerçek evden çalışma / ayrıca
+                    onaylanmış ek mesai içindir.
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <label class="form-control">
+                    <span class="label-text text-xs">Onaylı giriş (ss:dd)</span>
+                    <input class="input input-bordered input-sm" placeholder="08:30" @bind="_oGiris" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-xs">Onaylı çıkış (ss:dd)</span>
+                    <input class="input input-bordered input-sm" placeholder="18:30" @bind="_oCikis" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-xs">Ek mesai (ss:dd)</span>
+                    <input class="input input-bordered input-sm" placeholder="00:00" @bind="_oEk" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-xs">Açıklama</span>
+                    <input class="input input-bordered input-sm" @bind="_oAciklama" />
+                </label>
+            </div>
+
+            @if (_onayHata is not null)
+            {
+                <div class="alert alert-error text-xs mt-3"><div>@_onayHata</div></div>
+            }
+
+            <div class="modal-action">
+                <button class="btn btn-ghost btn-sm" @onclick="() => _onaySatir = null">Vazgeç</button>
+                <button class="btn btn-primary btn-sm" @onclick="OnayKaydet" disabled="@_kaydediyor">
+                    Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<VrdKesim>? _kesimler;
+    private IReadOnlyList<VrdSube> _subeler = [];
+    private IReadOnlyList<VrdSatir>? _satirlar;
+    private VrdOzet? _ozet;
+    private VrdUyum? _uyum;
+
+    private string _kesimSec = "";
+    private string _sube = "";
+    private string _ara = "";
+    private bool _sadeceSorunlu;
+
+    private VrdSatir? _onaySatir;
+    private string _oGiris = "", _oCikis = "", _oEk = "", _oAciklama = "";
+    private string? _onayHata;
+    private bool _kaydediyor;
+
+    private static string Anahtar(VrdKesim k) => $"{k.KesimBas:yyyy-MM-dd}|{k.KesimBit:yyyy-MM-dd}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _kesimler = await Q.KesimlerAsync();
+        if (_kesimler.Count > 0)
+        {
+            _kesimSec = Anahtar(_kesimler[0]);
+            await Yukle();
+        }
+    }
+
+    private (DateOnly bas, DateOnly bit)? Secili()
+    {
+        var p = _kesimSec.Split('|');
+        if (p.Length != 2) return null;
+        return (DateOnly.Parse(p[0]), DateOnly.Parse(p[1]));
+    }
+
+    private async Task Yukle()
+    {
+        if (Secili() is not var (bas, bit)) return;
+        _ozet = await Q.OzetAsync(bas, bit);
+        _uyum = await Q.UyumAsync(bas, bit);
+        _subeler = await Q.SubeKirilimAsync(bas, bit);
+        await SatirYukle();
+    }
+
+    private async Task SatirYukle()
+    {
+        if (Secili() is not var (bas, bit)) return;
+        _satirlar = null;
+        StateHasChanged();
+        _satirlar = await Q.SatirlarAsync(bas, bit, _sube, _ara, _sadeceSorunlu);
+    }
+
+    private void OnayAc(VrdSatir r)
+    {
+        _onaySatir = r;
+        _onayHata = null;
+        _oGiris = r.OnayGirisDk is null ? "" : VrdBicim.Saat(r.OnayGirisDk);
+        _oCikis = r.OnayCikisDk is null ? "" : VrdBicim.Saat(r.OnayCikisDk);
+        _oEk = r.EkMesaiDk is null ? "" : VrdBicim.Sure(r.EkMesaiDk);
+        _oAciklama = "";
+    }
+
+    /// <summary>"08:30" → 510. Boş → null. Geçersiz → hata (sessizce 0 sayılmaz).</summary>
+    private static int? Dk(string s, string alan)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var p = s.Trim().Split(':');
+        if (p.Length != 2 || !int.TryParse(p[0], out var sa) || !int.TryParse(p[1], out var dd)
+            || dd is < 0 or > 59 || sa < 0)
+            throw new FormatException($"{alan} 'ss:dd' biçiminde olmalı (girilen: '{s}').");
+        return sa * 60 + dd;
+    }
+
+    private async Task OnayKaydet()
+    {
+        if (_onaySatir is null) return;
+        _kaydediyor = true;
+        _onayHata = null;
+        try
+        {
+            await Q.OnayKaydetAsync(
+                _onaySatir.SicilNo, DateOnly.FromDateTime(_onaySatir.Tarih),
+                Dk(_oGiris, "Onaylı giriş"), Dk(_oCikis, "Onaylı çıkış"),
+                Dk(_oEk, "Ek mesai"), _oAciklama, "panel");
+            _onaySatir = null;
+            await SatirYukle();
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            // Beklenen girdi hatası — kullanıcıya AYNEN gösterilir (iş sonucu, sistem hatası değil).
+            _onayHata = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            // Gerçek hata: detay loga, kullanıcıya generic (security-principles.md).
+            Logger.LogError(ex, "Vardiya onayı kaydedilemedi: {Sicil} {Tarih}",
+                            _onaySatir?.SicilNo, _onaySatir?.Tarih);
+            _onayHata = "Kayıt sırasında beklenmedik bir hata oluştu. Sistem yöneticisine bildirin.";
+        }
+        finally { _kaydediyor = false; }
+    }
+
+    private static string DurumRenk(string d) => d switch
+    {
+        "Normal Çalışma" => "text-success",
+        "Devamsız" => "text-error",
+        "İzinli" => "text-base-content/50",
+        "Vardiya Tanımsız Çalışma" => "text-warning",
+        _ => "",
+    };
+
+    private RenderFragment KapiKart(string ad, string madde, int n, string birim, bool sert) => __builder =>
+    {
+        <div class="rounded-xl border p-3 @(n > 0 && sert ? "border-error/40 bg-error/5" : "border-base-200")">
+            <div class="text-xs text-base-content/50">@ad</div>
+            <div class="text-xl font-bold @(n > 0 && sert ? "text-error" : "")">@n.ToString("N0")</div>
+            <div class="text-[11px] text-base-content/50">@birim · @madde</div>
+        </div>
+    };
+}

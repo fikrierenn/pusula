@@ -41,6 +41,7 @@ public static class NavRegistry
         new NavItem("tahmin", "Hedef Tahmin", "sparkles", Section: "YÖNETİM"),
         new NavItem("operasyon", "Operasyon", "activity", InBottomNav: true, Section: "YÖNETİM"),
         new NavItem("kadro", "Kadro / Sezon Personeli", "users-round", Section: "YÖNETİM"),
+        new NavItem("vardiya", "Vardiya / Mesai", "clock", Section: "YÖNETİM"),
 
         // ── Satış tarafı ───────────────────────────────────────────────────────────
         new NavItem("magazalar", "Mağazalar", "store", Section: "SATIŞ"),

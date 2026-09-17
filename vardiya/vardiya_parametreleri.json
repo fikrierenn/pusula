@@ -846,5 +846,21 @@
       "mola": "00:15"
     }
   ],
-  "_mola_arac_tablosu_not": "ARACIN molasi (Vardiya Yonet programi) -- Excel'in `mola_net_tablosu`undan FARKLIDIR ve fark KASITLIDIR: `Personel Calisma` (O kolonu) bunu kullanir, Excel'in `Mola Saati` (AA) otekini. Iki AYRI olcu. Brut dakikaya gore ilk eslesen satir uygulanir (esikler buyukten kucuge). OLCULDU 2026-09-15, FSM 595 satir. UYARI: 45 dk bandinin ALT siniri (2:30-4:29) veride gozlenmedi -> CIKARIM."
+  "_mola_arac_tablosu_not": "ARACIN molasi (Vardiya Yonet programi) -- Excel'in `mola_net_tablosu`undan FARKLIDIR ve fark KASITLIDIR: `Personel Calisma` (O kolonu) bunu kullanir, Excel'in `Mola Saati` (AA) otekini. Iki AYRI olcu. Brut dakikaya gore ilk eslesen satir uygulanir (esikler buyukten kucuge). OLCULDU 2026-09-15, FSM 595 satir. UYARI: 45 dk bandinin ALT siniri (2:30-4:29) veride gozlenmedi -> CIKARIM.",
+  "mola_excel_tablosu": [
+    {
+      "brut_alt_sinir": "07:30",
+      "mola": "01:00"
+    },
+    {
+      "brut_alt_sinir": "04:00",
+      "mola": "00:30"
+    },
+    {
+      "brut_alt_sinir": "00:00",
+      "mola": "00:15"
+    }
+  ],
+  "_mola_excel_tablosu_not": "EXCEL'in `Mola Saati` (AA) formulunun tablo hali: brut>7:30 -> 60 dk · >4:00 -> 30 dk · >0 -> 15 dk. Esikler AZALAN sirayla ilk eslesen uygulanir. ARACIN molasindan (`mola_arac_tablosu`) FARKLIDIR ve fark KASITLIDIR -- iki ayri olcu. Excel'in Eksik/Fazla Saat'i BU olcuyu kullanir, aracinkini degil.",
+  "_hesap_notu": "EKSIK/FAZLA SAAT TABANI = `calisma_saatleri` (grup x sube x bolum), vardiya planinin SURESI DEGIL. Iki taban farkli sonuc verir (olculdu 17.09.2026: plan tabani 4.313/4.596 saat, politika tabani 6.118/5.024). Yayinlanan rapor politika tabanini kullanir; panel de onu kullanmak ZORUNDA, yoksa iki dogruluk kaynagi olur."
 }

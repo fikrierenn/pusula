@@ -159,13 +159,13 @@ GO
 
 IF OBJECT_ID('bkm.Vrd_Mola') IS NULL
 CREATE TABLE bkm.Vrd_Mola (
-    Tip             varchar(4)    NOT NULL,   -- 'net' | 'brut'
+    Tip             varchar(10)   NOT NULL,   -- 'net' | 'brut' | 'arac' | 'excel'
     AltSinirDk      int           NOT NULL,
     MolaDk          int           NOT NULL,
     Ustu            bit           NOT NULL CONSTRAINT DF_VrdMola_Ustu DEFAULT (0),
     YuklemeUtc      datetime2(0)  NOT NULL CONSTRAINT DF_VrdMola_Utc DEFAULT (SYSUTCDATETIME()),
     CONSTRAINT PK_Vrd_Mola PRIMARY KEY CLUSTERED (Tip, AltSinirDk, MolaDk),
-    CONSTRAINT CK_Vrd_Mola_Tip CHECK (Tip IN ('net','brut','arac'))
+    CONSTRAINT CK_Vrd_Mola_Tip CHECK (Tip IN ('net','brut','arac','excel'))
 );
 GO
 

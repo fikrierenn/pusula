@@ -30,6 +30,7 @@ public static class ServiceRegistration
         s.AddScoped<SinavQueries>();      // plan-35 Sınav Okulları paneli (sezon/ödeme/eksik kalem/attach/iade)
         s.AddScoped<HediyeCekiQueries>(); // plan-36 hediye çeki kârlılık/indirim tavanı (kanal+barem+bonus)
         s.AddScoped<KadroQueries>();      // plan-38 kadro/sezon personeli (Zirve İK, salt-okuma)
+        s.AddScoped<VardiyaQueries>();    // plan-47 vardiya/mesai (panel DB bkm.Vrd_*, tek yazma: Vrd_Onay)
         s.AddScoped<GunKarsilastirQueries>(); // gün karşılaştırma (kasa tarafı) — Mağazalar sayfası
         s.AddScoped<PatronSorulariQueries>(); // plan-37 Faz B patron soruları mini-metrikleri (SQL yok, servis çağırır)
         s.AddMemoryCache();                       // B-168: akran medyanı (PERCENTILE_CONT, ölçüldü 692 ms) kesim içinde sabit → tekrar hesaplanmasın
