@@ -26,6 +26,28 @@ ayrıca parametreli batch ODBC'de `sp_executesql` ile koşuyor ve `#temp` orada 
 
 > **İlke:** `bkm` şeması = Fikri'nin app-owned namespace'i (DerinSIS native `dbo`/`mhs`/`ent` DEĞİL). Yeni app-owned `bkm.*` tablosu yazımı yalnız kullanıcı açık onayıyla + bu kurala eklenerek. DerinSIS native tablo (car/fat/irsHrk/mhsFis…) yazımı MUTLAK YASAK.
 
+## Vardiya Eksik/Fazla — `bkm.Vrd_*` (kullanıcı onayı 17.09.2026)
+
+Kullanıcı direktifi: *"bkm tabloları olarak yapalım bir önek ile de isim türetelim"* +
+*"şimdilik tabloları yerel sql tarafına mı kuralım, dev prod olursa derinsis içine alırız"*.
+
+**ŞU AN YALNIZ DEV.** Nesneler yerel `BkmPanel` (`BT-FIKRI\SQLEXPRESS`) içinde
+`bkm` şemasında kurulur. **Prod'a (`DerinSISBkm`) HİÇBİR ŞEY yazılmaz** — terfi ayrı
+onay ister ve bu bölüm o zaman güncellenir.
+
+Şema ve nesne adları dev ile prod'da BİREBİR AYNI tutulur (`bkm.Vrd_*`), böylece terfi
+bir bağlantı dizesi değişikliği olur, yeniden yazım değil. Panelin `dbo.Panel*` deseni
+bilerek kullanılmadı: kullanılsaydı prod'a geçerken her nesnenin adı değişirdi.
+
+| Nesne | Kim yazar |
+|---|---|
+| `bkm.Vrd_KisiGun` | yalnız `bkm.sp_Vrd_KisiGunDoldur` |
+| `bkm.Vrd_Onay` · `bkm.Vrd_MagazaGeriDonus` | elle / panel (tek yazılan taraf) |
+| `bkm.Vrd_Devir` | ay kapanışında BİR KEZ, sonra dokunulmaz |
+| `bkm.Vrd_Sube` · `Vrd_CalismaSaati` · `Vrd_Mola` · `Vrd_KartBasmayan` | yalnız `--parametre-yukle` (JSON → tablo, TEK YÖN) |
+
+Plan: `plans/47-vardiya-eksik-fazla-sql.md` · DDL: `sorgular/2026-09-17-vardiya-tablo-kur.sql`
+
 ## Sunucu-seviyesi değişiklik: SQL Agent job (kullanıcı onayı 03.09.2026)
 
 Kullanıcı onayı verdi ("sql agent job kur") → `bkm.StokAyBakiyeMekanBazli` tablosunu aylık
