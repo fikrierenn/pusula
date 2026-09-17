@@ -1,6 +1,6 @@
 # 47 — Vardiya Eksik/Fazla Takip: hesabın SQL tarafına taşınması
 
-**Durum:** taslak · **Tier:** 3 · **Tarih:** 17.09.2026
+**Durum:** Faz 1 adım 1-5 TAMAM (parite tuttu) · adım 6-7 açık · **Tier:** 3 · **Tarih:** 17.09.2026
 **Karar sahibi:** Fikri Eren (GMY) — *"bkm tabloları olarak yapalım bir önek ile de isim
 türetelim"* · *"şimdilik tabloları yerel sql tarafına mı kuralım, dev prod olursa
 derinsis içine alırız"*
@@ -121,12 +121,14 @@ KIRMIZI verdiği görülür, sonra geri alınır. Kırılabildiği kanıtlanmam�
 
 ## Adımlar
 
-1. `.claude/rules/erp-write-policy.md` — 8 yeni `bkm.Vrd_*` nesnesi izin listesine,
-   dev/prod ayrımıyla birlikte.
-2. `sorgular/2026-09-17-vardiya-tablo-kur.sql` — idempotent DDL (şema + 8 tablo + index).
-3. Parametre yükleyici: `scripts/eksik_fazla_takip_raporu.py --parametre-yukle`.
-4. `bkm.sp_Vrd_KisiGunDoldur` — hesabın T-SQL karşılığı.
-5. Parite testi + kırılabilirlik kanıtı.
+1. ✅ `.claude/rules/erp-write-policy.md` — izin listesi + dev/prod ayrımı.
+2. ✅ `sorgular/2026-09-17-vardiya-tablo-kur.sql` — idempotent DDL. **7 tablo**
+   kuruldu; `Vrd_KartBasmayan` GMY itirazıyla iptal (hiçbir hesapta kullanılmıyor).
+3. ✅ Parametre yükleyici: `scripts/vardiya_parametre_yukle.py` (JSON → tablo, tek yön).
+   Aracın mola tablosu da parametreye alındı (`mola_arac_tablosu` → `Vrd_Mola` tip `arac`).
+4. ✅ `bkm.sp_Vrd_KisiGunDoldur` — çift atlamalı OPENQUERY, koşum 4,6-5,6 sn.
+5. ✅ `tools/vardiya_parite.py` — **6.113 kişi-gün × 16 hesap kolonu → 0 fark**.
+   Kırılabilirlik kanıtlandı (tolerans 10→5 dk → 9.191 hücre KIRIK → geri alındı).
 6. Excel emitter'ı SP'den okuyacak şekilde çevir (Python hesabı devre dışı, kod DURUR).
 7. Journal + sema kaydı.
 
