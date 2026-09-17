@@ -1,124 +1,150 @@
 namespace GmDashboard.Models;
 
 /// <summary>
-/// SEZON AKSİYON LİSTESİ — sade kohort: "satılacak miktar" ile "elde" karşılaştırılır,
-/// fark AÇIK ya da FAZLA olur. GMY 14.09.2026: <i>"365 günde satılan, sezonda satılan,
-/// sezon büyümesi %20, satılacak miktar, mağaza+depo stok, açık, fazla — daha basit,
-/// satınalma ile paylaşıp aksiyon alınacak liste"</i>.
+/// SEZON SİPARİŞ LİSTESİ — <b>sezon payı</b> yöntemi.
 ///
-/// ⚠ Satış Analizi panelinden AYRI: orada büyüme ürün/kategori bazlı ölçülüyor ve sezon
-/// penceresi hizalanıyor. Burada büyüme TEK SAYI (varsayılan %20) ve kullanıcı değiştirir —
-/// alıcıyla paylaşılacak liste, tartışılacak tek parametresi olsun diye.
-/// Kardeş emitter: <c>scripts/sezon_aksiyon_listesi_excel.py</c> — İŞ MANTIĞI AYNI KALMALI.
+/// GMY 15.09.2026 verbatim: <i>"toplam sezon da satılacak miktarı da yazalım bir yere,
+/// şu ana kadar satılanı çıkartıp ihtiyacı bulalım, depoda o kadar varsa sorun yok
+/// yoksa sipariş lazım"</i> · <i>"sezonda satılan 3235, 44 günde % kaçı satılmış,
+/// o yüzde bizim için; 17416 adet, kalanı bul"</i>.
+///
+/// <code>
+///   ORAN          = geçen sezon OKUL ÖNCESİ satılan ÷ geçen SEZON TOPLAMI
+///   TAHMİN        = bu sezon OKUL ÖNCESİ satılan ÷ ORAN
+///   KALAN İHTİYAÇ = TAHMİN − bu sezon BUGÜNE KADAR satılan
+///   SİPARİŞ       = şubelerin toplam eksiği − merkez depo stoğu
+/// </code>
+///
+/// ⚠ <b>BÜYÜME PARAMETRESİ YOK.</b> Hacmi ürünün bu sezonki kendi satışı taşır; oran
+/// yalnız "sezonun neresindeyiz" sorusunu yanıtlar. Alıcının çevirebileceği kadran
+/// kalmadı (satinalma-danisman 15.09.2026: tek kadran hem AÇIK'ı büyütüp hem FAZLA'yı
+/// siliyordu).
+///
+/// ⚠ <b>ZİNCİR ŞUBE DÜZEYİNDE</b> kurulur; ürün satırı üç şubenin TOPLAMIDIR. Ürün
+/// düzeyinde ayrı hesap YAPILMAZ — ölçüldü 15.09.2026 (Kırtasiye, 20.218 çeşit):
+/// iki ayrı hesap varken şube eksikleri toplamı ile sipariş adedi 4.922 çeşitte
+/// (%24,3) uyuşmuyordu, fark 133.594 adet.
+///
+/// Üç emitter tek çekirdek: bu panel · <c>scripts/sezon_aksiyon_listesi_excel.py</c> ·
+/// <c>sorgular/2026-09-15-sezon-aksiyon-listesi.sql</c> — biri değişirse üçü değişir
+/// (emitter-ayrimi.md).
 /// </summary>
 /// <remarks>
-/// ⚠ Dapper POZİSYONEL record: sıra sözleşmedir. SQL SELECT'e araya kolon eklenip buranın
-/// SONUNA yazılırsa değer SESSİZCE kayar (tipler uyuşuyorsa hata bile vermez).
-/// SQL'de nereye eklendiyse burada AYNI yere eklenir.
+/// ⚠ Dapper POZİSYONEL record: SIRA sözleşmedir, isim değil. SQL SELECT'e araya kolon
+/// eklenip buranın SONUNA yazılırsa değer SESSİZCE kayar (tipler uyuşursa derleyici de
+/// yakalamaz). Kapı: <c>python tools/panel_kolon_denetimi.py</c>.
 /// </remarks>
 public sealed record SezonAksiyonSatir(
     int StkId,
-    string? StkKod,         // ⚠ urn.stkKod — BARKOD DEĞİL (sql-server-conventions);
-    string? Barkod,         //    ikisi ayrı alan, ikisi de listede
+    string? StkKod,          // ⚠ urn.stkKod — BARKOD DEĞİL (sql-server-conventions)
+    string? Barkod,
     string StkAd,
     string? Kategori3,
+    string? Kat1,            // ürün grubu
+    string? Kat2,            // alt kategori — yedek oranın alındığı kırılım
     string? KategoriYolu,
     string? Yayinevi,
-    decimal SatisFiyat,
-    // ── AYNI PENCERE (GMY 15.09.2026: "aynı pencereye getirelim") ──────────────
-    // Eski "365 günde satılan" KALDIRILDI: penceresi [kesim−364, kesim] idi ve
-    // geçen sezonun 1 Ağu–13 Eyl kısmı 365 günden eski olduğu için DIŞINDA kalıyordu.
-    // İki kolon iç içe geçmediği için 365g=33 / sezon=652 gibi satırlar okuyanı
-    // yanıltıyordu (ölçüldü — sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql).
-    int GecenAyni,          // geçen yıl, okul açılışından geriye N gün
-    int BuAyni,             // BU yıl, AYNI N gün — kıyaslanabilir
-    int SezonToplam,        // geçen sezon TAMAMI (Ağu–Eki) — "Satılacak"ın tabanı
-    // YILLIK: 01.08.<sezon> – 31.07.<sezon+1> (365 gün). HER ŞEY dahil.
-    // Sezon dışı = Yillik − SezonToplam (Kas–Tem); EKSİ olabilir (iade fazlası) ve
-    // sıfıra KIRPILMAZ — kırpmak iadeyi gizlemek olurdu (ölçüldü: 29 çeşit).
-    int Yillik,
-    // GEÇEN yılın KALAN sezon dilimi — AÇIK/FAZLA'nın tabanı.
-    // ⚠ TÜM SEZON DEĞİL (GMY 15.09.2026: "açık sadece sezonu geçirmek için gerekli olan
-    //   değil mi"). Sezonun geçen günleri ZATEN SATILDI; tüm sezon talebini istemek açığı
-    //   2,4 KAT şişiriyordu — ölçüldü: 254,7M ₺ → 106,9M ₺.
-    int GecenKalan,
-    /// <summary>Geçen yıl KALAN dilimin ay sonlarında mağaza stoğu 0 muydu — talep
-    /// sağdan SANSÜRLÜ demektir, o satırda AÇIK ALT SINIRDIR. Ölçüldü 15.09.2026:
-    /// AÇIK'taki 17.062 ürünün 2.920'si (%17,1) böyle.</summary>
+    // ── GEÇEN SEZONUN ÖLÇÜMÜ ─────────────────────────────────────────────────
+    // 01.08–31.10.<sezon> · üç şubenin toplamı
+    int SezonToplam,
+    int GecenOkulOncesi,     // oranın PAYI — okul açılışına hizalı pencere
+    /// <summary>Geçen sezonun Eylül/Ekim ay sonlarında şube stoğu 0 mıydı — öyleyse
+    /// gözlenen satış talebin ALTINDADIR (sağdan sansür) ve oran 1'e yaklaşır.
+    /// Ölçüldü (Kırtasiye): stoksuz kalanların oran medyanı 0,821 · stoğu olanların
+    /// 0,588. Bayrak GÖRÜNÜR; düzeltme UYGULANMADI (backtest kötüleşti %18,5 → %48,5).</summary>
     bool StoksuzKaldi,
-    /// <summary>Kategorinin ÖLÇÜLEN büyümesi (aynı 44 gün, iki yıl). Taban &lt; 2.000
-    /// adetse NULL — oran oynak olur, uydurulmaz.</summary>
-    decimal? KategoriBuyume,
-    /// <summary>Satıra FİİLEN uygulanan oran. Gizli sabit yok; gösterilen = çarpılan.</summary>
-    decimal UygulananBuyume,
-    // ── İKİ TABAN (GMY 15.09.2026, Mopak A4 vakası) ───────────────────────────
-    // Talep tek tabandan gelmez. GECEN tabanı sağdan SANSÜRLÜdür: ürün geçen yıl
-    // tükendiyse gözlenen satış talebi değil, rafın bittiği yeri gösterir.
-    // HIZ tabanı bu yılın gerçekleşen günlük hızıdır (sansürsüz) ama sezonu henüz
-    // başlamamış ürünü küçük gösterir. ⇒ Satilacak = ikisinin BÜYÜĞÜ.
-    int GecenTabani,
-    int HizTabani,
-    int Satilacak,          // = MAX(GecenTabani, HizTabani) — "kalan sezon talebi"
-    int StokFsm,
-    int StokOzl,
-    int StokIst,
+    /// <summary>Şubenin kendi ölçümü zayıfsa kullanılan yedek oran (önce Kat2, yoksa
+    /// Kategori3, o da yoksa 0,60). ⚠ 4 haneye YUVARLANMIŞ hâliyle çarpılır —
+    /// gösterilen oran = çarpılan oran (ölçüldü: yuvarlanmazsa Excel ile 3 adet ayrışıyordu).</summary>
+    decimal KatOran,
+    string? OranKirilim,
+    /// <summary>Ürünün sezon payı (sezon ÷ yıllık). Düşükse ürün sezonluk DEĞİLDİR ve
+    /// yöntem o satırda zayıftır — ölçüldü (Kırtasiye): medyan 0,500, %38,7'si 0,40 altı.</summary>
+    decimal? SezonPayi,
+    // ── BU SEZONUN ÖLÇÜMÜ ────────────────────────────────────────────────────
+    int BuOkulOncesi,
+    int BuBugune,            // sezon başından kesime — tahminden ÇIKARILAN
+    // ── ŞUBE ZİNCİRİ (ürün satırı bunların toplamı) ──────────────────────────
+    decimal OranFsm, int TahminFsm, int KalanFsm, int StokFsm, int EksikFsm,
+    decimal OranOzl, int TahminOzl, int KalanOzl, int StokOzl, int EksikOzl,
+    decimal OranIst, int TahminIst, int KalanIst, int StokIst, int EksikIst,
+    // ── TOPLAMLAR ────────────────────────────────────────────────────────────
+    int TahminToplam,
+    int KalanToplam,
+    int EksikToplam,
     int MagazaStok,
     int MerkezStok,
     int ToplamStok,
-    // ── MAĞAZA BAZLI İHTİYAÇ (GMY 15.09.2026: "'var' dediğinde de 1 var zaten") ──
-    // "Stok = 0" ölçütü kabaydı: ihtiyacı 30 olan mağazada 1 adet bulunmak "var"
-    // sayılıyordu. Artık her mağaza KENDİ ihtiyacıyla karşılaştırılır.
-    // ÖLÇÜLDÜ: eski ölçüt taşınabilecek 113.923 adedin yalnız 13.304'ünü görüyordu.
-    int FsmIhtiyac,
-    int OzlIhtiyac,
-    int IstIhtiyac,
-    /// <summary>Σ max(0, mağaza ihtiyacı − mağaza stoğu).</summary>
-    int MagazaEksigi,
-    /// <summary>Σ max(0, mağaza stoğu − mağaza ihtiyacı) — taşınabilir kaynak.</summary>
-    int MagazaFazlasi,
-    /// <summary>min(eksik, fazla + depo) — ÖNCE eldeki taşınır.</summary>
-    int TransferAdet,
-    int Acik,
-    int Fazla,
-    decimal? AcikTutar,
-    decimal? FazlaTutar,
-    decimal? BirimMaliyet);
+    // ── SONUÇ ────────────────────────────────────────────────────────────────
+    /// <summary>1 SİPARİŞ VER · 4 DEPODAN GÖNDER · 2 FAZLA VAR · 5 ÖLÜ STOK · 0 YETERLİ</summary>
+    int Sinif,
+    int Siparis,
+    string? Nereden,
+    int OdakStok,            // tedarikçide bulunan — BİZİM stoğumuz DEĞİL
+    // ── BAĞLAM ───────────────────────────────────────────────────────────────
+    int SezonDisi,           // geçen yıl Kas–Tem — sipariş TETİKLEMEZ
+    int Yillik,
+    int Fazla,               // gelecek sezona kalacak
+    // ── PARA ─────────────────────────────────────────────────────────────────
+    decimal SatisFiyat,
+    decimal? BirimMaliyet,
+    /// <summary>Siparişte satış fiyatıyla (kaçacak CİRO), fazla/ölüde maliyetle
+    /// (bağlı sermaye). ⚠ İKİSİ TOPLANMAZ.</summary>
+    decimal? Tutar)
+{
+    public string DurumAd => SezonAksiyonSinif.Ad(Sinif);
+}
+
+/// <summary>Beş sınıf — tek yerde adlandırılır (ekran · Excel · SQL aynı sözcük).</summary>
+public static class SezonAksiyonSinif
+{
+    public const int Yeterli = 0, Siparis = 1, Fazla = 2, Depodan = 4, Olu = 5;
+
+    public static string Ad(int s) => s switch
+    {
+        Siparis => "SİPARİŞ VER",
+        Depodan => "DEPODAN GÖNDER",
+        Fazla => "FAZLA VAR",
+        Olu => "ÖLÜ STOK",
+        _ => "YETERLİ",
+    };
+
+    /// <summary>URL süzgeç anahtarı → sınıf. Tanınmayan anahtar REDDEDİLİR.</summary>
+    public static int? Anahtardan(string? k) => k switch
+    {
+        "siparis" => Siparis,
+        "depodan" => Depodan,
+        "fazla" => Fazla,
+        "olu" => Olu,
+        _ => null,
+    };
+}
 
 /// <summary>Kategori kırılımı — ÖZET tablosunun satırı.</summary>
 public sealed record SezonAksiyonKategori(
     string Kategori,
     int Cesit,
-    int AcikUrun,
-    long AcikAdet,
-    decimal AcikTutar,
+    int SiparisUrun,
+    long SiparisAdet,
+    decimal SiparisTutar,
     int FazlaUrun,
     long FazlaAdet,
     decimal FazlaTutar);
 
 /// <summary>
-/// KPI — iki kohort ve tabanları. ⚠ AÇIK ₺ SATIŞ fiyatıyla, FAZLA ₺ MALİYETLE ölçülür;
-/// ikisi AYNI TABAN DEĞİLDİR ve TOPLANMAZ. Kartlarda taban etiketi bu yüzden zorunlu.
+/// KPI — beş kohort. ⚠ SİPARİŞ ₺ SATIŞ fiyatıyla, FAZLA/ÖLÜ ₺ MALİYETLE ölçülür;
+/// AYNI TABAN DEĞİLDİR ve TOPLANMAZ. Kartlarda taban etiketi bu yüzden zorunlu.
+/// Siparişteki tutar kaybedilen CİRODUR, kaybedilen KÂR DEĞİL (marj ölçülmedi).
 /// </summary>
 public sealed record SezonAksiyonKpi(
     int Cesit,
-    int AcikUrun,
-    long AcikAdet,
-    decimal AcikTutar,
-    int FazlaUrun,
-    long FazlaAdet,
-    decimal FazlaTutar,
-    // SEZONU BİTTİ — geçen yıl KALAN dilimde hiç satmamış, stoğu duran ürünler.
-    // ⚠ FAZLA'dan AYRI tutulur: eylemi farklı (indirimle dönmez; iade / gelecek sezon).
-    //   Ölçüldü 15.09.2026: 17.197 ürün · 215.984 adet · 20.602.846 ₺ — FAZLA'nın içindeydi.
-    int BittiUrun,
-    long BittiAdet,
-    decimal BittiTutar,
-    // TRANSFER — toplam stok yeterli ama bir rafın boş olduğu ürünler.
-    // ⚠ FAZLA'yı EZER: raf boşken "erit" demek yanlış eylemdir. Ölçüldü 15.09.2026:
-    //   4.346 ürün · 4.505 boş raf · 4.257.739 ₺ — hiçbir listede görünmüyordu.
-    int TransferUrun,
-    long TransferAdet,
-    decimal TransferTutar,
+    int SiparisUrun, long SiparisAdet, decimal SiparisTutar,
+    int DepodanUrun, long DepodanAdet,
+    int FazlaUrun, long FazlaAdet, decimal FazlaTutar,
+    int OluUrun, long OluAdet, decimal OluTutar,
+    int YeterliUrun,
+    /// <summary>Maliyeti yok/şüpheli (TMS 2: 0 &lt; maliyet ≤ satış fiyatı) çeşit —
+    /// adet sayılır, paraya girmez ⇒ fazla ve ölü tutarı ALT SINIRDIR.</summary>
     int MaliyetiYok);
 
 public sealed record SezonAksiyonOzet(SezonAksiyonKpi Kpi, IReadOnlyList<SezonAksiyonKategori> Kategoriler);
@@ -127,108 +153,103 @@ public sealed record SezonAksiyonOzet(SezonAksiyonKpi Kpi, IReadOnlyList<SezonAk
 public sealed record SezonAksiyonFiltre(
     DateOnly Kesim,
     int SezonYil,
-    // ⚠ NULL = KATEGORİ BAZLI ÖLÇÜLÜR (varsayılan). Değer verilirse ELLE düz oran
-    //   uygulanır ve bu ekranda KIRMIZI yazılır.
-    //   satinalma-danisman 15.09.2026: "büyüme alıcının yazacağı bir kutu OLMAZ —
-    //   tek kadran hem AÇIK'ı büyütüp hem FAZLA'yı küçültüyor."
-    decimal? Buyume = null,
-    // PENCERE — kullanıcı BU yılınkini seçer; geçen yılınki ay/gün AYNASI olarak
-    // TÜRETİLİR. Serbest iki pencere verilseydi 30 güne karşı 60 gün kıyaslanabilir
-    // ve SAHTE büyüme üretirdi (hata vermeden). Aynalama bunu yapısal olarak engeller.
-    DateOnly? PencereBas = null,   // null → 1 Ağustos
-    DateOnly? PencereSon = null,   // null → kesim (sezon sonunu aşmaz)
-    string? Durum = null,          // "acik" | "fazla" | null (hepsi)
+    string? Durum = null,          // siparis | depodan | fazla | olu | null
     string? Kategori3 = null,
+    string? Grup = null,           // Kat1 — ürün grubu
     string? Arama = null,
     string Sirala = "tutar",
     bool Azalan = true,
     int Sayfa = 1,
     int SayfaBoyu = 100)
 {
-    public const decimal BuyumeAlt = -0.50m;
-    public const decimal BuyumeUst = 3.00m;
-
     /// <summary>Sezon ayları — GMY kararı 15.09.2026: <i>"sezon 8 9 10 olsun"</i>.</summary>
     public const int SezonBasAy = 8;
-
-    /// <summary>
-    /// KALAN sezon dilimi: kesimin ERTESİ günü – 31.10. AÇIK/FAZLA bunun üzerinden ölçülür.
-    /// Geçen yıl karşılığı ay/gün aynasıdır → gün sayısı eşit.
-    /// </summary>
-    public (DateOnly Bas, DateOnly Son) KalanPencere
-    {
-        get
-        {
-            var (_, bs) = BuPencere;
-            return (bs.AddDays(1), new DateOnly(bs.Year, SezonSonAy, 31));
-        }
-    }
-
-    public (DateOnly Bas, DateOnly Son) GecenKalanPencere
-    {
-        get
-        {
-            var (kb, ks) = KalanPencere;
-            var fark = Kesim.Year - SezonYil;
-            return (Aynala(kb, kb.Year - fark), Aynala(ks, ks.Year - fark));
-        }
-    }
-
-    /// <summary>YILLIK pencere: 01.08.&lt;sezon&gt; – 31.07.&lt;sezon+1&gt; (365 gün).</summary>
-    public (DateOnly Bas, DateOnly Son) YilPencere =>
-        (new DateOnly(SezonYil, SezonBasAy, 1),
-         new DateOnly(SezonYil + 1, SezonBasAy, 1).AddDays(-1));
     public const int SezonSonAy = 10;
 
     /// <summary>
-    /// KARŞILAŞTIRMA PENCERESİ — iki yıl da <b>1 Ağustos'tan</b> başlar ve kesimin
-    /// ay/gününde biter. GMY kararı 15.09.2026: <i>"okul açılışına takılma, rapor 01/08'den
-    /// başlasın, sezon 8 9 10 olsun"</i>.
-    ///
-    /// ⚠ BEYAN: bu TAKVİM hizalamasıdır, okul hizalaması DEĞİL. Okul açılışı yıldan yıla
-    /// kayıyor (08.09.2025 → 14.09.2026, altı gün) ve ölçüldüğünde bu fark bazı kategorilerde
-    /// yönü çevirebiliyor (Hazırlık Kitapları büyümesi takvimle 0,727 · okula hizalı 1,104).
-    /// Karar bilerek takvim yönünde verildi; sayı okunurken bu bilinmeli.
-    /// Kanıt: sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql
-    ///
-    /// Üst sınır sezon sonunu (31 Ekim) AŞMAZ — kesim kasımdaysa pencere sezonda biter.
-    /// İki pencere aynı ay/güne kadar gittiği için uzunlukları EŞİTTİR.
+    /// OKUL AÇILIŞ TARİHLERİ — pencere buna hizalanır, TAKVİME DEĞİL.
+    /// ÖLÇÜLDÜ 15.09.2026: takvim hizasıyla Kırtasiye sezon tahmini 521.262, açılış
+    /// hizasıyla 643.912 — %23,5 fark. Sebep: 01.08–13.09.2025 penceresi açılıştan
+    /// (08.09.2025) SONRAKİ altı günü içeriyor, 2026'nınki içermiyor → oran şişip
+    /// talebi eksik ölçüyordu.
+    /// ⚠ Yeni yıl eklenmezse rapor KOŞMAZ (aşağıda <see cref="AcilisTanimli"/>) —
+    /// sessizce takvime düşmek yanlış rakam üretirdi.
     /// </summary>
-    public (DateOnly Bas, DateOnly Son) BuPencere
+    public static readonly IReadOnlyDictionary<int, DateOnly> OkulAcilis =
+        new Dictionary<int, DateOnly>
+        {
+            [2023] = new(2023, 9, 11),
+            [2024] = new(2024, 9, 9),
+            [2025] = new(2025, 9, 8),
+            [2026] = new(2026, 9, 14),
+        };
+
+    /// <summary>Pencere kurulamıyorsa sorgu ÇALIŞTIRILMAZ; ekran sebebini yazar.</summary>
+    public bool AcilisTanimli =>
+        OkulAcilis.ContainsKey(SezonYil) && OkulAcilis.ContainsKey(Kesim.Year);
+
+    /// <summary>Okul öncesi pencerenin son günü — açılıştan BİR GÜN ÖNCE.</summary>
+    private DateOnly GecenPenSon => OkulAcilis[SezonYil].AddDays(-1);
+
+    private DateOnly BuPenSon
     {
         get
         {
-            var bas = PencereBas ?? new DateOnly(Kesim.Year, SezonBasAy, 1);
-            var son = PencereSon ?? Kesim;
-            var sezonSonu = new DateOnly(son.Year, SezonSonAy, DateTime.DaysInMonth(son.Year, SezonSonAy));
-            if (son > sezonSonu) son = sezonSonu;      // pencere sezon sonunu aşmaz
-            if (son < bas) son = bas;
-            return (bas, son);
+            var acilisOncesi = OkulAcilis[Kesim.Year].AddDays(-1);
+            return Kesim < acilisOncesi ? Kesim : acilisOncesi;
         }
     }
 
-    /// <summary>GEÇEN yıl — bu yılın penceresinin ay/gün AYNASI. Uzunluk eşit kalır.</summary>
-    public (DateOnly Bas, DateOnly Son) GecenPencere
+    /// <summary>
+    /// Pencere uzunluğu — İKİ YIL İÇİN DE AYNI. Her yıl 1 Ağustos'tan açılışın bir gün
+    /// öncesine kadar sayılır; KÜÇÜK olana eşitlenir. Serbest iki pencere verilseydi
+    /// 30 güne karşı 60 gün kıyaslanıp SAHTE oran üretirdi (hata vermeden).
+    /// </summary>
+    public int PencereGun
     {
         get
         {
-            var (bb, bs) = BuPencere;
-            var fark = Kesim.Year - SezonYil;
-            return (Aynala(bb, bb.Year - fark), Aynala(bs, bs.Year - fark));
+            var g = GecenPenSon.DayNumber - new DateOnly(SezonYil, SezonBasAy, 1).DayNumber;
+            var b = BuPenSon.DayNumber - new DateOnly(Kesim.Year, SezonBasAy, 1).DayNumber;
+            return 1 + Math.Min(g, b);
         }
     }
 
-    /// <summary>Ay/günü başka yıla taşı; 29 Şubat gibi olmayan güne düşerse bir gün geri al.</summary>
-    private static DateOnly Aynala(DateOnly d, int yil) =>
-        new(yil, d.Month, Math.Min(d.Day, DateTime.DaysInMonth(yil, d.Month)));
+    /// <summary>Pencere 14 günün altındaysa oran güvenilmez — koşulmaz.</summary>
+    public bool PencereYeterli => AcilisTanimli && PencereGun >= 14;
 
-    /// <summary>İki pencere eşit uzunlukta mı — değilse kıyas SAHTEdir, ekranda söylenir.</summary>
-    public bool PencereEsit =>
-        BuPencere.Son.DayNumber - BuPencere.Bas.DayNumber
-        == GecenPencere.Son.DayNumber - GecenPencere.Bas.DayNumber;
+    public (DateOnly Bas, DateOnly Son) GecenPencere =>
+        (GecenPenSon.AddDays(-(PencereGun - 1)), GecenPenSon);
 
-    /// <summary>Pencere gün sayısı (ekranda yazılır) — iki yıl için de aynı olmalı.</summary>
-    public int PencereGun => BuPencere.Son.DayNumber - BuPencere.Bas.DayNumber + 1;
+    public (DateOnly Bas, DateOnly Son) BuPencere =>
+        (BuPenSon.AddDays(-(PencereGun - 1)), BuPenSon);
+
+    /// <summary>Geçen sezonun TAMAMI — oranın PAYDASI.</summary>
+    public (DateOnly Bas, DateOnly Son) GecenSezon =>
+        (new DateOnly(SezonYil, SezonBasAy, 1), new DateOnly(SezonYil, SezonSonAy, 31));
+
+    /// <summary>
+    /// Bu sezon başından kesime — "şu ana kadar satılan". ⚠ Hizalı pencere DEĞİL:
+    /// tahmin TÜM sezonu söyler, ondan sezon başından beri satılan HER ŞEY düşülür.
+    /// </summary>
+    public (DateOnly Bas, DateOnly Son) BuSezon =>
+        (new DateOnly(Kesim.Year, SezonBasAy, 1), Kesim);
+
+    /// <summary>Geçen yılın SEZON DIŞI dilimi (Kas–Tem) — sipariş TETİKLEMEZ.
+    /// GMY 15.09.2026: <i>"kritik olan bizim için sezonda yoka düşmemek; sezon sonrası
+    /// sipariş verilebilir, sorun değil."</i></summary>
+    public (DateOnly Bas, DateOnly Son) SezonDisi =>
+        (new DateOnly(SezonYil, 11, 1), new DateOnly(SezonYil + 1, 7, 31));
+
+    /// <summary>YILLIK 365 gün: 01.08.&lt;sezon&gt; – 31.07.&lt;sezon+1&gt; — bağlam, karar vermez.</summary>
+    public (DateOnly Bas, DateOnly Son) YilPencere =>
+        (new DateOnly(SezonYil, SezonBasAy, 1),
+         new DateOnly(SezonYil + 1, SezonBasAy, 1).AddDays(-1));
+
+    /// <summary>Sansür bayrağının bakacağı ay sonları (snapshot yalnız ay sonu tutar).</summary>
+    public (DateOnly Eyl, DateOnly Eki) SansurDonem =>
+        (new DateOnly(SezonYil, 9, DateTime.DaysInMonth(SezonYil, 9)),
+         new DateOnly(SezonYil, 10, DateTime.DaysInMonth(SezonYil, 10)));
 
     /// <summary>Sorgu dizesine çevir — Excel bağlantısı ekrandakiyle AYNI kohortu indirir.</summary>
     public string SorguDizesi()
@@ -238,12 +259,9 @@ public sealed record SezonAksiyonFiltre(
             $"kesim={Kesim:yyyy-MM-dd}",
             $"sezon={SezonYil}",
         };
-        if (Buyume is { } bo)
-            p.Add($"buyume={bo.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
-        if (PencereBas is { } pb) p.Add($"pbas={pb:yyyy-MM-dd}");
-        if (PencereSon is { } ps) p.Add($"pson={ps:yyyy-MM-dd}");
         if (!string.IsNullOrWhiteSpace(Durum)) p.Add($"durum={Uri.EscapeDataString(Durum)}");
         if (!string.IsNullOrWhiteSpace(Kategori3)) p.Add($"kategori={Uri.EscapeDataString(Kategori3)}");
+        if (!string.IsNullOrWhiteSpace(Grup)) p.Add($"grup={Uri.EscapeDataString(Grup)}");
         if (!string.IsNullOrWhiteSpace(Arama)) p.Add($"ara={Uri.EscapeDataString(Arama)}");
         p.Add($"sirala={Sirala}");
         p.Add($"azalan={(Azalan ? 1 : 0)}");
@@ -274,31 +292,11 @@ public sealed record SezonAksiyonFiltre(
             else atla.Add($"sezon='{sz}' geçersiz, {varsayilanSezon} kullanıldı");
         }
 
-        decimal? buyume = null;      // null = kategori bazlı ÖLÇÜM
-        if (q.TryGetValue("buyume", out var bs) && !string.IsNullOrWhiteSpace(bs))
-        {
-            if (decimal.TryParse(bs, System.Globalization.NumberStyles.Float,
-                                 System.Globalization.CultureInfo.InvariantCulture, out var b)
-                && b >= BuyumeAlt && b <= BuyumeUst) buyume = b;
-            else atla.Add($"buyume='{bs}' geçersiz (−50% … +300% arası), ölçüm kullanıldı");
-        }
-
-        DateOnly? pbas = null, pson = null;
-        foreach (var (ad, hedef) in new[] { ("pbas", 0), ("pson", 1) })
-        {
-            if (!q.TryGetValue(ad, out var dv) || string.IsNullOrWhiteSpace(dv)) continue;
-            if (DateOnly.TryParse(dv, System.Globalization.CultureInfo.InvariantCulture, out var d))
-            {
-                if (hedef == 0) pbas = d; else pson = d;
-            }
-            else atla.Add($"{ad}='{dv}' okunamadı, varsayılan pencere kullanıldı");
-        }
-
         string? durum = null;
         if (q.TryGetValue("durum", out var ds) && !string.IsNullOrWhiteSpace(ds))
         {
-            if (ds is "acik" or "fazla" or "bitti" or "transfer") durum = ds;
-            else atla.Add($"durum='{ds}' tanınmadı (acik|fazla|bitti|transfer), süzgeç uygulanmadı");
+            if (SezonAksiyonSinif.Anahtardan(ds) is not null) durum = ds;
+            else atla.Add($"durum='{ds}' tanınmadı (siparis|depodan|fazla|olu), süzgeç uygulanmadı");
         }
 
         var azalan = true;
@@ -317,11 +315,9 @@ public sealed record SezonAksiyonFiltre(
         return new SezonAksiyonFiltre(
             Kesim: kesim,
             SezonYil: sezon,
-            Buyume: buyume,
-            PencereBas: pbas,
-            PencereSon: pson,
             Durum: durum,
             Kategori3: string.IsNullOrWhiteSpace(q.GetValueOrDefault("kategori")) ? null : q["kategori"],
+            Grup: string.IsNullOrWhiteSpace(q.GetValueOrDefault("grup")) ? null : q["grup"],
             Arama: string.IsNullOrWhiteSpace(q.GetValueOrDefault("ara")) ? null : q["ara"],
             Sirala: sirala,
             Azalan: azalan);
@@ -337,29 +333,34 @@ public static class SezonAksiyonSiralama
     public static readonly IReadOnlyDictionary<string, string> Harita =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["tutar"] = "CASE WHEN s.Satilacak > s.Elde THEN (s.Satilacak - s.Elde) * t.SatisFiyat "
-                      + "ELSE (s.Elde - s.Satilacak) * ISNULL(t.BirimMaliyet, 0) END",
-            ["acik"] = "CASE WHEN s.Satilacak > s.Elde THEN s.Satilacak - s.Elde ELSE 0 END",
-            ["fazla"] = "CASE WHEN s.Elde > s.Satilacak THEN s.Elde - s.Satilacak ELSE 0 END",
+            // PARA: sipariş satırında kaçacak ciro, ötekinde bağlı sermaye.
+            ["tutar"] = "CASE WHEN x.Siparis > 0 THEN x.Siparis * t.SatisFiyat "
+                      + "WHEN g.Sinif = 2 THEN x.Fazla * ISNULL(t.BirimMaliyet, 0) "
+                      + "WHEN g.Sinif = 5 THEN (t.MagazaStok + t.MerkezStok) * ISNULL(t.BirimMaliyet, 0) "
+                      + "ELSE 0 END",
+            ["siparis"] = "x.Siparis",
+            ["eksik"] = "s.Eksik",
+            ["fazla"] = "x.Fazla",
             ["urun"] = "t.stkAd",
             ["kategori"] = "t.Kategori3",
-            ["gecenayni"] = "ISNULL(gh.Adet, 0)",
-            ["yillik"] = "ISNULL(yl.Adet, 0)",
-            ["gecenkalan"] = "ISNULL(gk.Adet, 0)",
-            ["eksik"] = "m.Eksik",
-            ["transfer"] = "g.TransferAdet",
-            ["sezondisi"] = "(ISNULL(yl.Adet, 0) - t.SezonToplam)",
-            ["buayni"] = "ISNULL(bh.Adet, 0)",
-            // Geçen yıl 0 ise oran YOK — sonsuz büyüme uydurulmaz, en sona düşer.
-            ["degisim"] = "CASE WHEN ISNULL(gh.Adet,0) > 0 THEN CONVERT(float, ISNULL(bh.Adet,0)) / gh.Adet END",
+            ["grup"] = "t.Kat1",
             ["sezon"] = "t.SezonToplam",
-            ["satilacak"] = "s.Satilacak",
-            ["gecentaban"] = "b.GecT",
-            ["hiztaban"] = "b.HizT",
+            ["gecenoncesi"] = "ht.GecTop",
+            ["buoncesi"] = "ht.BuTop",
+            ["bubugune"] = "ht.BugTop",
+            ["tahmin"] = "th.TahF + th.TahO + th.TahI",
+            ["kalan"] = "s.Kalan",
             ["magaza"] = "t.MagazaStok",
             ["depo"] = "t.MerkezStok",
-            ["stok"] = "s.Elde",
+            ["stok"] = "t.MagazaStok + t.MerkezStok",
+            ["odak"] = "t.OdakStok",
+            ["sezondisi"] = "s.DisT",
+            ["yillik"] = "ISNULL(t.YillikAdet, 0)",
+            // Yıllık 0 ise sezon payı YOK — uydurulmaz, en sona düşer.
+            ["sezonpayi"] = "CASE WHEN ISNULL(t.YillikAdet,0) > 0 "
+                          + "THEN CONVERT(float, t.SezonToplam) / t.YillikAdet END",
             ["fiyat"] = "t.SatisFiyat",
+            ["durum"] = "g.Sinif",
         };
 
     public static bool Gecerli(string? anahtar) => anahtar is not null && Harita.ContainsKey(anahtar);

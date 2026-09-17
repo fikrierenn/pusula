@@ -7,37 +7,39 @@
 @inject ILogger<SezonAksiyon> Logger
 @rendermode InteractiveServer
 
-<PageTitle>Sezon Aksiyon Listesi</PageTitle>
+<PageTitle>Sezon Sipariş Listesi</PageTitle>
 
-@*  ══ SEZON AKSİYON LİSTESİ ═════════════════════════════════════════════════════════
+@*  ══ SEZON SİPARİŞ LİSTESİ ═════════════════════════════════════════════════════════
     GMY 14.09.2026: "satınalma ile paylaşıp aksiyon alınacak liste"
-    GMY 15.09.2026: "kafa karıştırıcı sanki gereksiz ve çok bilgi var" → SADELEŞTİRİLDİ.
+    GMY 15.09.2026: "toplam sezon da satılacak miktarı da yazalım bir yere, şu ana kadar
+                     satılanı çıkartıp ihtiyacı bulalım; depoda o kadar varsa sorun yok,
+                     yoksa sipariş lazım"
+
+    YÖNTEM — SEZON PAYI: geçen sezonun yüzde kaçı okul açılmadan önce satılmışsa, bu
+    sezonun okul öncesi satışı o orana bölünür → toplam sezon tahmini; ondan bugüne
+    kadar satılan düşülür → sezonun kalanında satılacak.
 
     NE ÇIKARILDI ve NEDEN (geri eklemeden önce oku):
-      · "Sezon yılı" kutusu — ÖLÇÜLDÜ: her kesimde tek sezon yılı var. Cevabı tek olan
-        soruyu ekrana koymak, kullanıcıya karar yükü bindirmekti. Kesimle birlikte gelir.
-      · Üçüncü KPI kartı ("kapsanan çeşit" + tabanların toplanamayacağı açıklaması) —
-        meta-yorum. Aynı bilgi kartların altındaki tek satırda ve açılır notta duruyor.
-      · Kart içi dört satır açıklama + dip şerit → tek satıra indi (ürün · adet).
-      · Listeden 4 kolon (kategori yolu · barkod · satış fiyatı · durum rozeti) —
-        kategori yolu satırı taşırıyordu, durum rozeti AÇIK/FAZLA kolonlarının tekrarıydı.
-      · Yedi maddelik sınır bloğu → KAPALI açılır kutu. Sınırlar SİLİNMEDİ (silmek
-        yanıltmak olurdu), sadece varsayılan görünümden çıktı.
+      · BÜYÜME KUTUSU — satinalma-danisman 15.09.2026: "tek kadran hem AÇIK'ı büyütüp
+        hem FAZLA'yı küçültüyor; bir parametre, iki savunma." Hacmi artık ürünün bu
+        sezonki KENDİ satışı taşıyor; çevrilecek kadran kalmadı.
+      · PENCERE SEÇİCİ — pencere artık OKUL AÇILIŞINA hizalı ve iki yıl için de eşit
+        uzunlukta türetiliyor. Serbest pencere, takvim hizasına geri dönüş demekti
+        (ölçüldü: tahmin %23,5 düşük çıkıyordu).
+      · "Sezon yılı" kutusu — ÖLÇÜLDÜ: her kesimde tek sezon yılı var; kesimle gelir.
 
-    Excel ikizi: scripts/sezon_aksiyon_listesi_excel.py — İŞ MANTIĞI AYNI.                  *@
+    Üç emitter tek çekirdek: bu sayfa · scripts/sezon_aksiyon_listesi_excel.py ·
+    sorgular/2026-09-15-sezon-aksiyon-listesi.sql — İŞ MANTIĞI AYNI.                       *@
 
-<div class="max-w-[1400px] mx-auto px-3 py-4">
+<div class="max-w-[1500px] mx-auto px-3 py-4">
 
-    <h1 class="text-lg font-semibold m-0">Sezon Aksiyon Listesi</h1>
+    <h1 class="text-lg font-semibold m-0">Sezon Sipariş Listesi</h1>
     <p class="text-xs text-base-content/50 m-0 mt-0.5 mb-3">
-        Geçen yıl @_filtre.GecenPencere.Bas.ToString("dd.MM.yy") – @_filtre.GecenPencere.Son.ToString("dd.MM.yy")
-        · bu yıl @_filtre.BuPencere.Bas.ToString("dd.MM.yy") – @_filtre.BuPencere.Son.ToString("dd.MM.yy")
-        (@PencereGun gün, eşit). Geçen yılın penceresi seçtiğinin <b>ay/gün aynası</b> —
-        uzunluk hep eşit kalır.
-        @if (!_filtre.PencereEsit)
-        {
-            <span class="text-error font-semibold">⚠ Pencereler eşit değil — kıyas geçersiz.</span>
-        }
+        Okul öncesi pencere — geçen sezon
+        @_filtre.GecenPencere.Bas.ToString("dd.MM.yy") – @_filtre.GecenPencere.Son.ToString("dd.MM.yy")
+        · bu sezon
+        @_filtre.BuPencere.Bas.ToString("dd.MM.yy") – @_filtre.BuPencere.Son.ToString("dd.MM.yy")
+        (@_filtre.PencereGun gün, eşit). Pencere <b>okul açılışına</b> hizalı, takvime değil.
     </p>
 
     @* ── SÜZGEÇLER — tek satır ──────────────────────────────────────────────────── *@
@@ -57,50 +59,13 @@
             <span class="text-error text-sm">taban boş</span>
         }
 
-        @*  BÜYÜME ARTIK TEK KADRAN DEĞİL (satinalma-danisman 15.09.2026): "tek kadran
-            hem AÇIK'ı büyütüp hem FAZLA'yı küçültüyor — bir parametre, iki savunma."
-            Varsayılan = KATEGORİ BAZLI ÖLÇÜLEN oran. Elle girmek İSTİSNADIR ve ekranda
-            kırmızı yazar; ölçüme dönmek tek tık.                                       *@
-        <div class="join">
-            <span class="join-item btn btn-sm btn-ghost pointer-events-none text-[11px] font-normal
-                         text-base-content/50">büyüme</span>
-            @if (_filtre.Buyume is { } bo)
-            {
-                <input type="number" step="5" min="-50" max="300"
-                       class="join-item input input-bordered input-sm text-sm w-20 text-error font-semibold"
-                       value="@((bo * 100m).ToString("0.##", _tr))" @onchange="BuyumeDegis" />
-                <span class="join-item btn btn-sm btn-ghost pointer-events-none">%</span>
-                <button class="join-item btn btn-sm btn-ghost text-[11px]" @onclick="OlcumeDon"
-                        title="Kategori bazlı ÖLÇÜLEN orana dön">ölçüme dön</button>
-            }
-            else
-            {
-                <span class="join-item btn btn-sm btn-ghost pointer-events-none text-[11px]
-                             font-normal text-success">kategori bazlı ÖLÇÜLDÜ</span>
-                <button class="join-item btn btn-sm btn-ghost text-[11px]" @onclick="ElleBaslat"
-                        title="Ölçüm yerine düz oran gir">elle gir</button>
-            }
-        </div>
-
-        @* PENCERE — yalnız BU yılınki seçilir; geçen yıl otomatik aynalanır.
-           İki serbest pencere verilseydi 30 güne karşı 60 gün kıyaslanabilir ve
-           SAHTE büyüme üretirdi (hata vermeden). Aynalama bunu yapısal engeller. *@
-        <div class="join">
-            <span class="join-item btn btn-sm btn-ghost pointer-events-none text-[11px] font-normal
-                         text-base-content/50">pencere</span>
-            <input type="date" class="join-item input input-bordered input-sm text-sm"
-                   value="@_filtre.BuPencere.Bas.ToString("yyyy-MM-dd")" @onchange="PencereBasDegis" />
-            <input type="date" class="join-item input input-bordered input-sm text-sm"
-                   value="@_filtre.BuPencere.Son.ToString("yyyy-MM-dd")" @onchange="PencereSonDegis" />
-        </div>
-
         <select class="select select-bordered select-sm text-sm"
                 value="@(_filtre.Durum ?? "")" @onchange="DurumDegis">
-            <option value="">açık + fazla</option>
-            <option value="acik">yalnız AÇIK</option>
-            <option value="fazla">yalnız FAZLA</option>
-            <option value="bitti">yalnız SEZONU BİTTİ</option>
-            <option value="transfer">yalnız TRANSFER (taşı)</option>
+            <option value="">tüm durumlar</option>
+            <option value="siparis">yalnız SİPARİŞ VER</option>
+            <option value="depodan">yalnız DEPODAN GÖNDER</option>
+            <option value="fazla">yalnız FAZLA VAR</option>
+            <option value="olu">yalnız ÖLÜ STOK</option>
         </select>
 
         <select class="select select-bordered select-sm text-sm"
@@ -112,17 +77,62 @@
             }
         </select>
 
+        <select class="select select-bordered select-sm text-sm"
+                value="@(_filtre.Grup ?? "")" @onchange="GrupDegis">
+            <option value="">tüm ürün grupları</option>
+            @foreach (var g in _gruplar)
+            {
+                <option value="@g">@g</option>
+            }
+        </select>
+
         <input type="search" class="input input-bordered input-sm text-sm grow min-w-[10rem]"
-               value="@_filtre.Arama" @onchange="AramaDegis" placeholder="ürün adı veya barkod ara" />
+               value="@_filtre.Arama" @onchange="AramaDegis" placeholder="ürün adı, stok kodu veya barkod ara" />
 
         @if (_filtre.Durum is not null || _filtre.Kategori3 is not null
-             || !string.IsNullOrWhiteSpace(_filtre.Arama))
+             || _filtre.Grup is not null || !string.IsNullOrWhiteSpace(_filtre.Arama))
         {
             <button class="btn btn-sm btn-ghost" @onclick="SuzgecTemizle">temizle</button>
         }
     </div>
 
-    @if (_hata is not null)
+    @*  ⚠ PENCERE KURULAMIYORSA KOŞMAZ. Okul açılış tarihi tanımlı değilse sessizce
+        takvime düşmek yanlış rakam üretirdi — hesap yapılmaz, sebep yazılır.          *@
+    @if (!_filtre.AcilisTanimli)
+    {
+        <div class="alert alert-error text-sm mb-4">
+            <span>
+                ÖLÇÜLEMEDİ — @_filtre.SezonYil veya @_filtre.Kesim.Year yılı için okul açılış
+                tarihi tanımlı değil. Pencere okul açılışına hizalanır; tarih olmadan hesap
+                kurulmaz (takvime düşmek tahmini %23,5 saptırıyordu).
+                Tanım yeri: <code>SezonAksiyonFiltre.OkulAcilis</code>.
+            </span>
+        </div>
+    }
+    else if (!_filtre.PencereYeterli)
+    {
+        <div class="alert alert-error text-sm mb-4">
+            <span>
+                ÖLÇÜLEMEDİ — okul öncesi pencere @_filtre.PencereGun gün; 14 günün altında
+                oran güvenilmez.
+            </span>
+        </div>
+    }
+    @*  ⚠ TABAN KAPISI. Sezon payı girdileri o kesim için yazılmamışsa hesap
+        KURULMAZ. ISNULL(...,0) ile devam etmek her ürünü "talebi yok" gösterir ve
+        ekran sessizce "sipariş yok" der — hata vermeden. *@
+    else if (_tabanEksik is { } te)
+    {
+        <div class="alert alert-error text-sm mb-4">
+            <span>
+                ÖLÇÜLEMEDİ — bu kesimde @te.ToString("N0", _tr) üründe sezon payı girdileri
+                yazılmamış. Taban bu kolonlar eklenmeden doldurulmuş olabilir; Satış Analizi
+                sayfasından kesimi <b>yeniden hazırlayın</b>. Eksik girdiyi sıfır sayıp devam
+                etmek "sipariş yok" diye yanlış rakam üretirdi.
+            </span>
+        </div>
+    }
+    else if (_hata is not null)
     {
         <div class="alert alert-error text-sm mb-4"><span>@_hata</span></div>
     }
@@ -136,19 +146,42 @@
     {
         var k = _ozet.Kpi;
 
-        @* ── İKİ KART ────────────────────────────────────────────────────────────── *@
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        @*  ── DÖRT KART ────────────────────────────────────────────────────────────
+            ⚠ TUTARLAR TOPLANMAZ: sipariş ₺ SATIŞ fiyatıyla (kaçacak ciro), fazla ve
+              ölü ₺ MALİYETLE (bağlı sermaye). Her kartta tabanı yazılı.
+            "DEPODAN GÖNDER" tutarsızdır: mal zaten elimizde, para harcanmıyor —
+              o yüzden o kartta ₺ değil ADET büyük yazar.                              *@
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-2">
 
-            <button type="button" @onclick='() => DurumSec("acik")'
+            <button type="button" @onclick='() => DurumSec("siparis")'
                     class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
                            transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[.98]
-                           @(_filtre.Durum == "acik" ? "border-error" : "hover:border-base-content/20")">
+                           @(_filtre.Durum == "siparis" ? "border-error" : "hover:border-base-content/20")">
                 <span class="block font-extrabold tabular-nums tracking-tight leading-none
-                             text-[30px] text-error">@Tl(k.AcikTutar)</span>
+                             text-[30px] text-error">@Tl(k.SiparisTutar)</span>
                 <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
-                             text-base-content/55">AÇIK — sipariş gerekli</span>
+                             text-base-content/55">SİPARİŞ VER</span>
+                <span class="block text-[10px] text-base-content/35 mt-0.5">
+                    satış fiyatı · kaçacak ciro, kâr değil
+                </span>
                 <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
-                    @Say(k.AcikUrun) ürün · @Say(k.AcikAdet) adet · satış fiyatıyla
+                    @Say(k.SiparisUrun) ürün · @Say(k.SiparisAdet) adet
+                </span>
+            </button>
+
+            <button type="button" @onclick='() => DurumSec("depodan")'
+                    class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
+                           transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[.98]
+                           @(_filtre.Durum == "depodan" ? "border-info" : "hover:border-base-content/20")">
+                <span class="block font-extrabold tabular-nums tracking-tight leading-none
+                             text-[30px] text-info">@Say(k.DepodanAdet)</span>
+                <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
+                             text-base-content/55">DEPODAN GÖNDER</span>
+                <span class="block text-[10px] text-base-content/35 mt-0.5">
+                    adet · mal elimizde, sipariş gerekmiyor
+                </span>
+                <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
+                    @Say(k.DepodanUrun) ürün · rafı boş olan şube var
                 </span>
             </button>
 
@@ -159,47 +192,45 @@
                 <span class="block font-extrabold tabular-nums tracking-tight leading-none
                              text-[30px] text-warning">@Tl(k.FazlaTutar)</span>
                 <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
-                             text-base-content/55">FAZLA — eritmek gerekli</span>
+                             text-base-content/55">FAZLA VAR</span>
+                <span class="block text-[10px] text-base-content/35 mt-0.5">
+                    maliyet · gelecek sezona kalacak
+                </span>
                 <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
-                    @Say(k.FazlaUrun) ürün · @Say(k.FazlaAdet) adet · maliyetle
+                    @Say(k.FazlaUrun) ürün · @Say(k.FazlaAdet) adet
                 </span>
             </button>
 
-            @*  SEZONU BİTTİ — geçen yıl KALAN dilimde HİÇ satmamış, stoğu duran ürünler.
-                GMY 15.09.2026: "kalan sezonda satış olmayanları da ayrı göster".
-                ⚠ FAZLA'dan AYRI: eylemi farklı. Bunlar indirimle dönmez — bu sezon talebi
-                YOK. Konu iade / gelecek sezona saklama. Önce FAZLA'nın içindeydiler ve
-                128,8M ₺'nin 20,6M'sini tek başına oluşturuyorlardı (ölçüldü).                *@
-            <button type="button" @onclick='() => DurumSec("bitti")'
+            @*  ÖLÜ STOK — iki sezondur satmayan ama stoğu duran ürün. FAZLA'dan AYRI:
+                eylemi farklı (indirimle dönmez; iade / elden çıkarma). Önceki modelde
+                FAZLA'nın içindeydi ve tek başına 20,6M ₺ tutuyordu (ölçüldü).           *@
+            <button type="button" @onclick='() => DurumSec("olu")'
                     class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
                            transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[.98]
-                           @(_filtre.Durum == "bitti" ? "border-neutral" : "hover:border-base-content/20")">
+                           @(_filtre.Durum == "olu" ? "border-neutral" : "hover:border-base-content/20")">
                 <span class="block font-extrabold tabular-nums tracking-tight leading-none
-                             text-[30px] text-base-content/70">@Tl(k.BittiTutar)</span>
+                             text-[30px] text-base-content/70">@Tl(k.OluTutar)</span>
                 <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
-                             text-base-content/55">SEZONU BİTTİ — bu sezon satmaz</span>
-                <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
-                    @Say(k.BittiUrun) ürün · @Say(k.BittiAdet) adet · maliyetle
+                             text-base-content/55">ÖLÜ STOK</span>
+                <span class="block text-[10px] text-base-content/35 mt-0.5">
+                    maliyet · iki sezondur satmıyor
                 </span>
-            </button>
-
-            @*  TRANSFER — SATINALMA DEĞİL. Mal zaten elde; bir mağazada eksik, ötekinde
-                ya da depoda fazla. GMY 15.09.2026: "ona bakarsan diğerlerine de transfer
-                yapmak gerek; 'var' dediğinde de 1 var zaten" — "stok = 0" ölçütü kabaydı,
-                taşınabilecek 113.923 adedin yalnız 13.304'ünü görüyordu.                 *@
-            <button type="button" @onclick='() => DurumSec("transfer")'
-                    class="text-left rounded-3xl bg-base-100 border border-base-300 shadow-sm px-5 py-5
-                           transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[.98]
-                           @(_filtre.Durum == "transfer" ? "border-info" : "hover:border-base-content/20")">
-                <span class="block font-extrabold tabular-nums tracking-tight leading-none
-                             text-[30px] text-info">@Tl(k.TransferTutar)</span>
-                <span class="block text-[11px] uppercase tracking-wider font-semibold mt-2
-                             text-base-content/55">TAŞI — sipariş gerekmiyor</span>
                 <span class="block text-[11px] tabular-nums mt-1 text-base-content/45">
-                    @Say(k.TransferUrun) ürün · @Say(k.TransferAdet) adet · satış fiyatıyla
+                    @Say(k.OluUrun) ürün · @Say(k.OluAdet) adet
                 </span>
             </button>
         </div>
+
+        <p class="text-[11px] text-base-content/45 mb-4">
+            @Say(k.Cesit) çeşit tarandı · @Say(k.YeterliUrun)'ünde stok yeterli.
+            @if (k.MaliyetiYok > 0)
+            {
+                <span>
+                    ⚠ @Say(k.MaliyetiYok) üründe maliyet kaydı yok ya da şüpheli — adet sayılır,
+                    paraya girmez: fazla ve ölü stok tutarı <b>alt sınırdır</b>.
+                </span>
+            }
+        </p>
 
         @* ── KATEGORİ ────────────────────────────────────────────────────────────── *@
         <div class="card bg-base-100 border border-base-300 rounded-2xl p-[18px] mb-4">
@@ -209,10 +240,12 @@
                     <thead>
                         <tr class="text-base-content/50">
                             <th>Kategori</th>
-                            <th class="text-right">AÇIK ürün</th>
-                            <th class="text-right">AÇIK ₺</th>
-                            <th class="text-right">FAZLA ürün</th>
-                            <th class="text-right">FAZLA ₺</th>
+                            <th class="text-right">Çeşit</th>
+                            <th class="text-right">Sipariş ürün</th>
+                            <th class="text-right">Sipariş adet</th>
+                            <th class="text-right">Sipariş ₺</th>
+                            <th class="text-right">Fazla ürün</th>
+                            <th class="text-right">Fazla ₺</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -220,8 +253,10 @@
                         {
                             <tr class="hover cursor-pointer" @onclick="() => KategoriSec(c.Kategori)">
                                 <td class="whitespace-nowrap">@c.Kategori</td>
-                                <td class="text-right tabular-nums">@Say(c.AcikUrun)</td>
-                                <td class="text-right tabular-nums text-error">@Tl(c.AcikTutar)</td>
+                                <td class="text-right tabular-nums text-base-content/50">@Say(c.Cesit)</td>
+                                <td class="text-right tabular-nums">@Say(c.SiparisUrun)</td>
+                                <td class="text-right tabular-nums">@Say(c.SiparisAdet)</td>
+                                <td class="text-right tabular-nums text-error">@Tl(c.SiparisTutar)</td>
                                 <td class="text-right tabular-nums">@Say(c.FazlaUrun)</td>
                                 <td class="text-right tabular-nums text-warning">@Tl(c.FazlaTutar)</td>
                             </tr>
@@ -237,7 +272,8 @@
                 <div class="flex items-center gap-2 flex-wrap">
                     <h3 class="text-sm font-semibold m-0">Ürünler</h3>
                     <span class="text-xs text-base-content/50">
-                        @(_liste?.ToplamSatir.ToString("N0", _tr) ?? "…") çeşit
+                        @(_liste?.ToplamSatir.ToString("N0", _tr) ?? "…") çeşit ·
+                        şube şube oran/tahmin ayrıntısı <b>Excel</b>'de
                     </span>
                 </div>
                 @* ⚠ ExcelButton DEĞİL: base64 circuit'ten geçince büyük listede çöküyor
@@ -287,49 +323,41 @@
                             {
                                 <tr class="hover cursor-pointer" @onclick="() => UrunAc(s.StkId)"
                                     title="Ürün detayına git">
-                                    <td class="max-w-[26rem] truncate" title="@s.StkAd">@s.StkAd</td>
+                                    <td class="max-w-[24rem] truncate" title="@s.StkAd">@s.StkAd</td>
                                     <td class="whitespace-nowrap text-base-content/60">@s.Kategori3</td>
-                                    <td class="text-right tabular-nums">@Say(s.GecenAyni)</td>
-                                    @* Bu sezon SIFIR sattıysa kırmızı: "sipariş et" diyen satırın
-                                       aslında talebi olmayabilir. Ölçüldü — AÇIK listesindeki
-                                       10.865 üründe mal RAFTA duruyor ve 44 günde hiç satmamış. *@
-                                    <td class="text-right tabular-nums @(s.BuAyni == 0 && s.GecenAyni > 0 ? "text-error font-semibold" : "")">
-                                        @Say(s.BuAyni)
-                                    </td>
-                                    <td class="text-right tabular-nums @Degisim(s).Renk">@Degisim(s).Metin</td>
+                                    <td class="whitespace-nowrap text-base-content/40">@s.Kat1</td>
                                     <td class="text-right tabular-nums">@Say(s.SezonToplam)</td>
-                                    <td class="text-right tabular-nums">@Say(s.Yillik)</td>
-                                    @* Sezon dışı = yıllık − sezon. EKSİ olabilir (iade fazlası,
-                                       ölçüldü: 29 çeşit) — sıfıra KIRPILMIYOR, kırpmak iadeyi
-                                       gizlemek olurdu. Eksi değer kırmızı gösteriliyor. *@
-                                    <td class="text-right tabular-nums @(s.Yillik - s.SezonToplam < 0 ? "text-error" : "")">
-                                        @Say(s.Yillik - s.SezonToplam)
-                                    </td>
-                                    <td class="text-right tabular-nums">@Say(s.GecenKalan)</td>
-                                    @* Geçen yıl KALAN dilimde stoksuz kaldıysa bu taban
-                                       SANSÜRLÜDÜR — gerçek talebi değil, rafın bittiği yeri
-                                       gösterir. Bayrak varsa uyarı rengi + yıldız. *@
+                                    @*  Geçen sezon stoğu bittiyse gözlenen satış TALEP DEĞİL, rafın
+                                        bittiği yerdir: oran 1'e yaklaşır ve talep EKSİK ölçülür.
+                                        Bayrak GÖRÜNÜR bırakıldı — düzeltme uygulanmadı, backtest
+                                        kötüleşiyordu (%18,5 → %48,5).                              *@
                                     <td class="text-right tabular-nums @(s.StoksuzKaldi ? "text-warning" : "")"
-                                        title="@(s.StoksuzKaldi ? "Geçen yıl bu dilimde stok tükenmiş — taban SANSÜRLÜ, alt sınır" : "")">
-                                        @Say(s.GecenTabani)@(s.StoksuzKaldi ? "*" : "")
+                                        title="@(s.StoksuzKaldi ? "Geçen sezon stok tükenmiş — oran SANSÜRLÜ, talep alt sınır" : "")">
+                                        @Say(s.GecenOkulOncesi)@(s.StoksuzKaldi ? "*" : "")
                                     </td>
-                                    @* Bağlayan taban KOYU: sayının nereden geldiği tek bakışta. *@
-                                    <td class="text-right tabular-nums @(s.HizTabani > s.GecenTabani ? "font-semibold" : "text-base-content/50")">
-                                        @Say(s.HizTabani)
-                                    </td>
-                                    <td class="text-right tabular-nums font-semibold">@Say(s.Satilacak)</td>
+                                    <td class="text-right tabular-nums">@Say(s.BuOkulOncesi)</td>
+                                    <td class="text-right tabular-nums">@Say(s.BuBugune)</td>
+                                    <td class="text-right tabular-nums">@Say(s.TahminToplam)</td>
+                                    <td class="text-right tabular-nums font-semibold">@Say(s.KalanToplam)</td>
                                     <td class="text-right tabular-nums">@Say(s.MagazaStok)</td>
                                     <td class="text-right tabular-nums">@Say(s.MerkezStok)</td>
-                                    <td class="text-right tabular-nums font-semibold">@Say(s.ToplamStok)</td>
-                                    <td class="text-right tabular-nums @(s.Acik > 0 ? "text-error font-semibold" : "text-base-content/25")">
-                                        @(s.Acik > 0 ? Say(s.Acik) : "—")
+                                    @*  Şube şube eksik — hangi rafın boş olduğu ekranda görünsün.
+                                        Tam zincir (oran → tahmin → kalan → stok) Excel'de.         *@
+                                    <td class="text-right tabular-nums text-[11px] whitespace-nowrap
+                                               @(s.EksikToplam > 0 ? "" : "text-base-content/25")">
+                                        @s.EksikFsm / @s.EksikOzl / @s.EksikIst
                                     </td>
-                                    <td class="text-right tabular-nums @(s.Fazla > 0 ? "text-warning font-semibold" : "text-base-content/25")">
-                                        @(s.Fazla > 0 ? Say(s.Fazla) : "—")
+                                    <td class="text-right tabular-nums @(s.EksikToplam > 0 ? "font-semibold" : "text-base-content/25")">
+                                        @(s.EksikToplam > 0 ? Say(s.EksikToplam) : "—")
                                     </td>
-                                    <td class="text-right tabular-nums">
-                                        @(s.Acik > 0 ? Tl(s.AcikTutar) : s.Fazla > 0 ? Tl(s.FazlaTutar) : "—")
+                                    <td class="whitespace-nowrap">
+                                        <span class="badge badge-sm @DurumRenk(s.Sinif)">@s.DurumAd</span>
                                     </td>
+                                    <td class="text-right tabular-nums @(s.Siparis > 0 ? "text-error font-semibold" : "text-base-content/25")">
+                                        @(s.Siparis > 0 ? Say(s.Siparis) : "—")
+                                    </td>
+                                    <td class="whitespace-nowrap text-[11px] text-base-content/50">@s.Nereden</td>
+                                    <td class="text-right tabular-nums">@Tl(s.Tutar)</td>
                                 </tr>
                             }
                         </tbody>
@@ -362,50 +390,57 @@
             </summary>
             <div class="collapse-content text-[11px] leading-relaxed text-base-content/70">
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b>Satılacak</b> = iki tabanın <b>BÜYÜĞÜ</b>.
-                        (1) <i>Geçen yıl tabanı</i> = geçen yılın kalan sezon dilimi ×
-                        @(_filtre.Buyume is { } b2 ? "elle girilen " + (1 + b2).ToString("0.##", _tr)
-                                                   : "kategori bazlı ÖLÇÜLEN oran").
-                        (2) <i>Bu yıl hız tabanı</i> = bu yılın gerçekleşen günlük hızı × kalan gün.
-                        <b>Neden iki taban:</b> geçen yıl tükenen ürünün gözlenen satışı talep değil,
-                        rafın bittiği yerdir. Ölçüldü (Mopak A4 fotokopi kâğıdı): geçen yıl kalan
-                        dilim 15 adet, bu yıl aynı pencerede 1.791 — tek tabanla
-                        "FAZLA 4.527 adet / 529.503 ₺" çıkıyordu; doğrusu depodan 1.152 adet TAŞI.
-                        Tersi de var: Ekim'de satan ürün 13 Eylül'de hâlâ 0 hızdadır; o yüzden hız
-                        tabanı da tek başına kullanılmaz.</li>
-                    <li><b>Kaç satırı değiştirdi:</b> bugün FAZLA/SEZONU BİTTİ etiketi alacak
-                        6.016 çeşitte (160.145 adet stok) hız tabanı stoğun yetmeyeceğini
-                        söylüyor — 177.083 adet (ölçüldü 15.09.2026).</li>
-                    <li><b>AÇIK</b> = KALAN sezon talebi − (mağaza + depo). <b>FAZLA</b> = tersi.</li>
-                    <li><b>SEZONU BİTTİ</b> = geçen yıl kalan dilimde HİÇ satmamış ama stoğu
-                        duran ürün. FAZLA'dan ayrı tutuluyor çünkü eylemi farklı: indirimle
-                        dönmez, bu sezon talebi yok. Ölçüldü: 17.197 ürün · 20,6M ₺ — önce
-                        FAZLA'nın içindeydi.</li>
-                    <li><b>Taban TÜM SEZON DEĞİL, KALAN sezondur.</b> Sezonun geçen günlerinin
-                        malı zaten satıldı; tüm sezon talebini istemek açığı şişiriyordu.
-                        Ölçüldü: tüm sezonla 254,7M ₺, kalan sezonla 106,9M ₺ — 2,4 kat fark.</li>
-                    <li><b>Pencere seçilebilir</b> (varsayılan 1 Ağustos – kesim). Geçen yılın
-                        penceresi seçtiğinin ay/gün aynasıdır, uzunluk hep eşittir. Sezon
-                        Ağustos–Ekim kabul edilir; pencere 31 Ekim'i aşmaz.</li>
-                    <li><b>⚠ Bu bir TAKVİM hizalamasıdır, okul hizalaması değil.</b> Okul açılışı
-                        kayıyor (08.09.2025 → 14.09.2026, altı gün). Ölçüldü: Hazırlık Kitapları
-                        büyümesi takvimle 0,73 ("%27 küçüldü"), okula hizalı 1,10 ("%10 büyüdü") —
-                        aynı veri, zıt sonuç. Takvim yönü bilinçli seçildi.</li>
-                    <li><b>"Bu sezon aynı dönem" 0 ise dikkat:</b> AÇIK listesindeki 10.865
-                        üründe mal RAFTA duruyor ve 44 günde hiç satmamış (40,4M ₺). Orada
-                        eksik olan stok değil, talep — sipariş yanlış eylem olur.</li>
-                    <li><b>İki tutar toplanmaz:</b> AÇIK ₺ satış fiyatıyla, FAZLA ₺ maliyetle.</li>
+                    <li><b>Yöntem — sezon payı.</b> Oran = geçen sezon okul öncesi satılan ÷ geçen
+                        sezon toplamı. Tahmin = bu sezon okul öncesi satılan ÷ oran. Kalan ihtiyaç
+                        = tahmin − bu sezon bugüne kadar satılan. Sipariş = şubelerin toplam eksiği
+                        − merkez depo stoğu.</li>
+                    <li><b>Büyüme parametresi YOK.</b> Hacmi ürünün bu sezonki kendi satışı taşır;
+                        oran yalnız "sezonun neresindeyiz" sorusunu yanıtlar. Önceki modelde tek
+                        bir büyüme kadranı vardı ve aynı hamleyle hem açığı büyütüp hem fazlayı
+                        siliyordu.</li>
+                    <li><b>Hesap şube düzeyinde kurulur</b>, ürün satırı üç şubenin toplamıdır.
+                        Ölçüldü (Kırtasiye, 20.218 çeşit): ürün düzeyinde ayrı hesap varken şube
+                        eksikleri toplamı ile sipariş adedi 4.922 çeşitte uyuşmuyordu, fark
+                        133.594 adet. Ayrıca şube payı geçen yıldan alınınca ürünlerin %53,9'unda
+                        en çok satan şube değişiyordu.</li>
+                    <li><b>Pencere okul açılışına hizalı</b> (11.09.2023 · 09.09.2024 · 08.09.2025 ·
+                        14.09.2026), takvime değil. Ölçüldü: takvim hizasıyla Kırtasiye sezon
+                        tahmini 521.262, açılış hizasıyla 643.912 — %23,5 fark. İki pencere eşit
+                        uzunluktadır ve açılıştan bir gün önce biter.</li>
+                    <li><b>Kullanılan oran satır bazlı.</b> Geçen sezon satışı 30 adedin altındaysa
+                        ürünün kendi ölçümü zayıf sayılır ve alt kategori ortalaması kullanılır
+                        (o da yoksa 0,60). Alt sınır 0,05 / üst sınır 1,00: payda sıfıra
+                        yaklaşırsa bölme tahmini sonsuza götürüyordu.</li>
+                    <li><b>⚠ Sansür.</b> Geçen sezon stoğu bitmiş üründe gözlenen satış gerçek
+                        talebin altındadır; oran 1'e yaklaşır ve talep eksik ölçülür. Ölçüldü
+                        (Kırtasiye): stoksuz kalanların oran medyanı 0,821, stoğu olanların 0,588.
+                        Bayrak listede yıldızla görünür; <b>düzeltme uygulanmadı</b> — kategori
+                        oranına düşürmek backtest'te kötüleştiriyordu (%18,5 → %48,5).</li>
+                    <li><b>Backtest:</b> 2024 oranıyla 2025 sezonu tahmin edildi — Kırtasiye 1.445
+                        çeşit, medyan mutlak hata %16,3, yanlılık +%2,1 (yansız). ⚠ O yıl okul
+                        kayması 1 gündü, bu yıl 6 gün; backtest bu riski sınayamaz.</li>
+                    <li><b>Ürünün sezon payı düşükse yöntem zayıftır</b> — ürün sezonluk değildir.
+                        Ölçüldü (Kırtasiye): medyan 0,500, %38,7'si 0,40 altında ve sipariş
+                        tutarının %28,7'si o ürünlerden geliyor.</li>
+                    <li><b>Sipariş yalnız merkez depodan karşılanamayanı kapsar.</b> Mağazalar
+                        arası aktarma varsayılmaz — GMY: "mağazalar arası değil, depoda veya
+                        ODAK'ta varsa mümkün; diğer türlü hayal."</li>
+                    <li><b>Sezon dışı talep sipariş tetiklemez.</b> GMY: "kritik olan bizim için
+                        sezonda yoka düşmemek; sezon sonrası sipariş verilebilir, sorun değil."</li>
+                    <li><b>İki tutar toplanmaz:</b> sipariş ₺ satış fiyatıyla, fazla/ölü ₺
+                        maliyetle. Siparişteki tutar kaybedilen <b>cirodur</b>, kaybedilen kâr
+                        değil — marj ölçülmedi, ikame hesaba katılmadı.</li>
+                    <li><b>Fazla ve ölü ₺ alt sınırdır</b> — @(k.MaliyetiYok > 0
+                        ? $"{k.MaliyetiYok:N0} üründe" : "bazı ürünlerde") maliyet kaydı yok ya da
+                        şüpheli (maliyet &gt; satış fiyatı); adet sayılır, paraya girmez.</li>
                     <li><b>Açık sipariş düşülmedi.</b> ERP'de "kapalı" durumu 24.02.2025'ten beri
                         yazılmıyor; kapatılmamış alış siparişi adedinin %86,4'ü bir yıldan eski
                         (ölçüldü 14.09.2026). Netleme yapılsaydı liste hayalet siparişle yanıltırdı.</li>
-                    <li><b>FAZLA ₺ alt sınırdır</b> — @(k.MaliyetiYok > 0
-                        ? $"{k.MaliyetiYok:N0} üründe" : "bazı ürünlerde") maliyet kaydı yok ya da
-                        şüpheli (maliyet &gt; satış fiyatı); adet sayılır, paraya girmez.</li>
-                    <li><b>AÇIK ₺ cirodur, kâr değil.</b> İkame hesaba katılmadı.</li>
                     <li><b>Depo stoğu WMS'ten</b> — ERP defteriyle çelişebilir; fiziksel sayım
                         yapılmadan kesin sayılmaz.</li>
                     <li><b>Tek gün fotoğrafı</b> (@_filtre.Kesim.ToString("dd.MM.yyyy")).
-                        Alıcı boyutu veride yok — bu liste bir kişiye atıf değildir.</li>
+                        Alıcı (satınalmacı) boyutu veride yok — bu bir görev listesidir,
+                        kişiye atıf değildir.</li>
                 </ul>
             </div>
         </details>
@@ -419,13 +454,15 @@
         DateOnly.FromDateTime(DateTime.Today.AddDays(-1)), DateTime.Today.Year - 1);
     private IReadOnlyList<(DateOnly Kesim, int SezonYil)> _kesimler = [];
     private IReadOnlyList<string> _kategoriler = [];
+    private IReadOnlyList<string> _gruplar = [];
     private SezonAksiyonOzet? _ozet;
     private SayfaSonucu<SezonAksiyonSatir>? _liste;
     private string? _hata;
+    /// <summary>Sezon payı girdisi eksik satır sayısı — null ise kapı açık.</summary>
+    private int? _tabanEksik;
 
     private sealed record Kolon(string Anahtar, string Baslik, bool Sag);
 
-    /// <summary>Kolon sırası = gövdedeki &lt;td&gt; sırası. Biri değişirse öteki de değişir.</summary>
     /// <summary>
     /// Kolon sırası = gövdedeki &lt;td&gt; sırası. Başlıklar TARİHLİ üretilir
     /// (GMY 15.09.2026: "kolonların içinde tarihler de olsun kafa karışmasın") —
@@ -435,30 +472,26 @@
     {
         get
         {
-            var (gb, gs) = _filtre.GecenPencere;
-            var (bb, bs) = _filtre.BuPencere;
-            var (yb, ys) = _filtre.YilPencere;
+            var (gp, gps) = _filtre.GecenPencere;
+            var (bp, bps) = _filtre.BuPencere;
+            var (bt, bts) = _filtre.BuSezon;
             string T(DateOnly d) => d.ToString("dd.MM.yy");
             yield return new("urun", "Ürün", false);
             yield return new("kategori", "Kategori", false);
-            yield return new("gecenayni", $"Geçen yıl {T(gb)}–{T(gs)}", true);
-            yield return new("buayni", $"Bu yıl {T(bb)}–{T(bs)}", true);
-            yield return new("degisim", "Değişim", true);
-            yield return new("sezon", $"Sezon toplam 01.08–31.10.{_filtre.SezonYil % 100:00}", true);
-            yield return new("yillik", $"Yıllık {T(yb)}–{T(ys)}", true);
-            yield return new("sezondisi", $"Sezon dışı 01.11.{_filtre.SezonYil % 100:00}–{T(ys)}", true);
-            var (gkb, gks) = _filtre.GecenKalanPencere;
-            var (kb, ks) = _filtre.KalanPencere;
-            yield return new("gecenkalan", $"Geçen yıl kalan {T(gkb)}–{T(gks)}", true);
-            // İKİ TABAN AYRI KOLON: hangisinin bağladığı görünsün.
-            yield return new("gecentaban", $"Geçen yıl tabanı {T(gkb)}–{T(gks)} × oran", true);
-            yield return new("hiztaban", $"Bu yıl hız tabanı {T(bb)}–{T(bs)} hızı", true);
-            yield return new("satilacak", $"KALAN sezon talebi {T(kb)}–{T(ks)}", true);
-            yield return new("magaza", $"Mağaza {T(_filtre.Kesim)}", true);
-            yield return new("depo", $"Depo {T(_filtre.Kesim)}", true);
-            yield return new("stok", $"Toplam stok {T(_filtre.Kesim)}", true);
-            yield return new("acik", "AÇIK", true);
-            yield return new("fazla", "FAZLA", true);
+            yield return new("grup", "Ürün grubu", false);
+            yield return new("sezon", $"Geçen sezon toplam 01.08–31.10.{_filtre.SezonYil % 100:00}", true);
+            yield return new("gecenoncesi", $"Geçen sezon okul öncesi {T(gp)}–{T(gps)}", true);
+            yield return new("buoncesi", $"Bu sezon okul öncesi {T(bp)}–{T(bps)}", true);
+            yield return new("bubugune", $"Bu sezon bugüne kadar {T(bt)}–{T(bts)}", true);
+            yield return new("tahmin", "Bu sezon toplam satacak", true);
+            yield return new("kalan", "Sezonun kalanında satacak", true);
+            yield return new("magaza", $"Mağaza stok {T(_filtre.Kesim)}", true);
+            yield return new("depo", $"Depo stok {T(_filtre.Kesim)}", true);
+            yield return new("eksik", "Eksik FSM / Özlüce / İst.Yolu", true);
+            yield return new("eksik", "Toplam eksik", true);
+            yield return new("durum", "Durum", false);
+            yield return new("siparis", "Sipariş adet", true);
+            yield return new("odak", "Nereden", false);
             yield return new("tutar", "₺", true);
         }
     }
@@ -486,32 +519,41 @@
         await Yukle();
     }
 
-    private async Task Yukle(bool kategoriDe = true)
+    private async Task Yukle(bool secenekDe = true)
     {
         _hata = null;
+        _tabanEksik = null;
         _ozet = null;
         _liste = null;
         StateHasChanged();
+        // ⚠ Pencere kurulamıyorsa SORGU ÇALIŞTIRILMAZ. Ekran sebebini yazar; sessizce
+        //   takvime düşmek yanlış rakam üretirdi.
+        if (!_filtre.PencereYeterli) { StateHasChanged(); return; }
         try
         {
+            // ⚠ KAPI ÖNCE: eksik girdiyle koşan sorgu hata vermez, YANLIŞ RAKAM verir.
+            var (hazir, _, eksik) = await Q.SezonPayiHazirAsync(_filtre);
+            _tabanEksik = hazir ? null : eksik;
+            if (!hazir) { StateHasChanged(); return; }
+
             var ozetGorev = Q.GetOzetAsync(_filtre);
             var listeGorev = Q.GetListeAsync(_filtre);
-            if (kategoriDe) _kategoriler = await Q.GetKategorilerAsync(_filtre);
+            if (secenekDe) (_kategoriler, _gruplar) = await Q.GetSecenekleriAsync(_filtre);
             _ozet = await ozetGorev;
             _liste = await listeGorev;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Sezon aksiyon listesi alınamadı ({Filtre})", _filtre);
+            Logger.LogError(ex, "Sezon sipariş listesi alınamadı ({Filtre})", _filtre);
             _hata = "Liste alınamadı. Lütfen sistem yöneticisine bildirin.";
         }
         finally { StateHasChanged(); }
     }
 
-    private Task Uygula(SezonAksiyonFiltre yeni, bool kategoriDe = false)
+    private Task Uygula(SezonAksiyonFiltre yeni, bool secenekDe = false)
     {
         _filtre = yeni with { Sayfa = 1 };
-        return Yukle(kategoriDe);
+        return Yukle(secenekDe);
     }
 
     private Task KesimDegis(ChangeEventArgs e)
@@ -523,41 +565,8 @@
         {
             Kesim = d,
             SezonYil = v.Kesim == default ? _filtre.SezonYil : v.SezonYil,
-        }, kategoriDe: true);
+        }, secenekDe: true);
     }
-
-    private Task BuyumeDegis(ChangeEventArgs e)
-    {
-        // Yüzde girilir, orana çevrilir. Sınır dışı değer SESSİZCE kırpılmaz — yok sayılır.
-        if (!decimal.TryParse(e.Value?.ToString(), NumberStyles.Float, _tr, out var yuzde)
-            && !decimal.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out yuzde))
-            return Task.CompletedTask;
-        var oran = yuzde / 100m;
-        if (oran < SezonAksiyonFiltre.BuyumeAlt || oran > SezonAksiyonFiltre.BuyumeUst)
-            return Task.CompletedTask;
-        return Uygula(_filtre with { Buyume = oran });
-    }
-
-    /// <summary>Ölçülen kategori oranından ELLE orana geçer (istisna yolu).
-    /// Başlangıç değeri kasten 1,20 DEĞİL 1,00: elle giren kişi kendi sayısını
-    /// yazsın, hazır bir büyüme varsayımı devralmasın.</summary>
-    private Task ElleBaslat() => Uygula(_filtre with { Buyume = 0m });
-
-    /// <summary>Elle orandan KATEGORİ BAZLI ÖLÇÜLEN orana döner (varsayılan).</summary>
-    private Task OlcumeDon() => Uygula(_filtre with { Buyume = null });
-
-    private int PencereGun =>
-        _filtre.BuPencere.Son.DayNumber - _filtre.BuPencere.Bas.DayNumber + 1;
-
-    private Task PencereBasDegis(ChangeEventArgs e) =>
-        DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d)
-            ? Uygula(_filtre with { PencereBas = d })
-            : Task.CompletedTask;
-
-    private Task PencereSonDegis(ChangeEventArgs e) =>
-        DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var d)
-            ? Uygula(_filtre with { PencereSon = d })
-            : Task.CompletedTask;
 
     private Task DurumDegis(ChangeEventArgs e)
     {
@@ -568,7 +577,19 @@
     private Task KategoriDegis(ChangeEventArgs e)
     {
         var v = e.Value?.ToString();
-        return Uygula(_filtre with { Kategori3 = string.IsNullOrWhiteSpace(v) ? null : v });
+        // Kategori değişince ürün grubu listesi de daralır → seçenekler yenilenir,
+        // eski grup seçimi bırakılmaz (aksi hâlde boş liste "veri yok" sanılırdı).
+        return Uygula(_filtre with
+        {
+            Kategori3 = string.IsNullOrWhiteSpace(v) ? null : v,
+            Grup = null,
+        }, secenekDe: true);
+    }
+
+    private Task GrupDegis(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        return Uygula(_filtre with { Grup = string.IsNullOrWhiteSpace(v) ? null : v });
     }
 
     private Task AramaDegis(ChangeEventArgs e)
@@ -581,10 +602,15 @@
         Uygula(_filtre with { Durum = _filtre.Durum == durum ? null : durum });
 
     private Task KategoriSec(string kategori) =>
-        Uygula(_filtre with { Kategori3 = _filtre.Kategori3 == kategori ? null : kategori });
+        Uygula(_filtre with
+        {
+            Kategori3 = _filtre.Kategori3 == kategori ? null : kategori,
+            Grup = null,
+        }, secenekDe: true);
 
     private Task SuzgecTemizle() =>
-        Uygula(_filtre with { Durum = null, Kategori3 = null, Arama = null });
+        Uygula(_filtre with { Durum = null, Kategori3 = null, Grup = null, Arama = null },
+               secenekDe: true);
 
     private Task SiralaDegis(string anahtar) => Uygula(_filtre with
     {
@@ -595,24 +621,22 @@
     private Task SayfaDegis(int sayfa)
     {
         _filtre = _filtre with { Sayfa = sayfa };
-        return Yukle(kategoriDe: false);
+        return Yukle(secenekDe: false);
     }
 
     private void UrunAc(int stkId) =>
         Nav.NavigateTo($"/satis-analizi/urun/{stkId}?kesim={_filtre.Kesim:yyyy-MM-dd}"
                        + $"&sezon={_filtre.SezonYil}&geri={Uri.EscapeDataString("/sezon-aksiyon")}");
 
-    /// <summary>
-    /// Değişim = bu dönem ÷ geçen dönem. Geçen yıl 0 ise oran YOK — "sonsuz büyüme"
-    /// uydurmak yerine "—" yazılır (aynı pencere olduğu için oran meşru, taban yoksa değil).
-    /// </summary>
-    private static (string Metin, string Renk) Degisim(SezonAksiyonSatir s)
+    /// <summary>Durum rozeti rengi — anlam sabit (renk-standardi: DaisyUI token).</summary>
+    private static string DurumRenk(int sinif) => sinif switch
     {
-        if (s.GecenAyni <= 0) return ("—", "text-base-content/25");
-        var o = (decimal)s.BuAyni / s.GecenAyni;
-        var renk = o >= 1m ? "text-success" : o >= 0.5m ? "" : "text-error";
-        return (o.ToString("0.00", _tr), renk);
-    }
+        SezonAksiyonSinif.Siparis => "badge-error",
+        SezonAksiyonSinif.Depodan => "badge-info",
+        SezonAksiyonSinif.Fazla => "badge-warning",
+        SezonAksiyonSinif.Olu => "badge-neutral",
+        _ => "badge-ghost",
+    };
 
     private static string Say(long n) => n.ToString("N0", _tr);
 

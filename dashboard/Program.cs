@@ -302,35 +302,40 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
 
     var satirlar = await q.GetTumListeAsync(filtre, ct: ctx.RequestAborted);
 
-    // ══ TEK SAYFA, 12 KOLON ═══════════════════════════════════════════════════
-    // GMY 15.09.2026: "kafa karıştırıcı, gereksiz ve çok bilgi var" + "özete gerek yok".
-    // ÇIKARILDI: Bilgi sayfası · kategori yolu · stkID · yayınevi · satış fiyatı ·
-    //   büyüme (sabit, üst satırda) · durum (AÇIK/FAZLA kolonlarının tekrarı) ·
-    //   birim maliyet · ayrı AÇIK ₺ / FAZLA ₺ kolonları (biri hep boştu, toplanabilir
-    //   görünüyordu) → tek "Tutar".
+    // ══ TEK SAYFA — SEZON PAYI modelinin tam zinciri ═══════════════════════════
+    // GMY 16.09.2026: "alanları gizleme, hücre başlıklarını daha uzun ve anlaşılır yaz".
+    // Ara adımlar SAKLANMAZ: oran → tahmin → kalan → eksik → sipariş zinciri şube şube
+    // görünür, çünkü alıcı sayıya değil ADIMA itiraz eder.
     // Sınırlar SİLİNMEDİ: ilk satırda tek cümle olarak gidiyor (dosya elden ele dolaşıyor).
     // Kardeş emitter scripts/sezon_aksiyon_listesi_excel.py ile AYNI kolon seti.
-    var ustSatir = $"Kesim {filtre.Kesim:dd.MM.yyyy} · satılacak = sezonda satılan × " +
-        $"{1 + filtre.Buyume:0.##} (büyüme %{filtre.Buyume * 100:0.##}) · " +
-        $"AYNI PENCERE: geçen {filtre.GecenPencere.Bas:dd.MM.yyyy}–{filtre.GecenPencere.Son:dd.MM.yyyy} · " +
-        $"bu {filtre.BuPencere.Bas:dd.MM.yyyy}–{filtre.BuPencere.Son:dd.MM.yyyy} ({filtre.PencereGun} gün, " +
-        "1 Ağustos'tan itibaren TAKVİM hizalı; sezon Ağu–Eki. ⚠ Okul açılışı kayıyor " +
-        "(08.09.2025→14.09.2026), takvim hizası bunu görmez) · " +
-        "TALEP = iki tabanın BÜYÜĞÜ: (1) geçen yılın kalan dilimi × oran — geçen yıl " +
-        "tükenen üründe SANSÜRLÜ, alt sınır; (2) bu yılın gerçekleşen günlük hızı × kalan gün · " +
-        "İhtiyaç MAĞAZA BAZLI: eksik önce eldeki fazla + depodan TAŞINIR, ancak kalanı AÇIK · " +
-        "Tutar: AÇIK'ta satış fiyatı, " +
-        "FAZLA'da maliyet — ikisi toplanmaz · Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı " +
-        "24.02.2025'ten beri yazılmıyor) · FAZLA tutarı alt sınır · depo stoğu WMS'ten" +
+    var ustSatir =
+        $"Kesim {filtre.Kesim:dd.MM.yyyy} · sezon {filtre.SezonYil} (Ağu–Eki) · " +
+        "YÖNTEM: geçen sezonun yüzde kaçı okul açılmadan ÖNCE satılmışsa, bu sezonun okul " +
+        "öncesi satışı o orana bölünür → TOPLAM SEZON tahmini; ondan bu sezon bugüne kadar " +
+        "satılan düşülür → sezonun kalanında satılacak. · " +
+        $"OKUL ÖNCESİ PENCERE: geçen sezon {filtre.GecenPencere.Bas:dd.MM.yyyy}–{filtre.GecenPencere.Son:dd.MM.yyyy}, " +
+        $"bu sezon {filtre.BuPencere.Bas:dd.MM.yyyy}–{filtre.BuPencere.Son:dd.MM.yyyy} — {filtre.PencereGun} gün, EŞİT. " +
+        "Pencere OKUL AÇILIŞINA hizalı, takvime DEĞİL (takvim hizasıyla tahmin %23,5 düşük " +
+        "çıkıyordu). · BÜYÜME PARAMETRESİ YOK — hacmi ürünün bu sezonki kendi satışı taşır. · " +
+        "HESAP ŞUBE DÜZEYİNDE kurulur, ürün satırı üç şubenin TOPLAMIDIR. · " +
+        "SİPARİŞ = şubelerin toplam eksiği − merkez depo stoğu; mağazalar arası aktarma " +
+        "varsayılmaz. · Tutar: siparişte satış fiyatı, fazla/ölüde maliyet — İKİSİ TOPLANMAZ; " +
+        "siparişteki tutar kaybedilen CİRODUR, kâr DEĞİL (marj ölçülmedi). · " +
+        "Birim maliyeti olmayan üründe Tutar boş kalır → fazla/ölü tutarı ALT SINIR. · " +
+        "⚠ Geçen sezon stoğu bitmiş üründe gözlenen satış gerçek talebin ALTINDADIR " +
+        "(sağdan sansür) — ayrı kolonda işaretli, düzeltilmedi. · " +
+        "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · " +
+        "depo stoğu WMS'ten · tek gün fotoğrafı · " +
+        "Alıcı boyutu veride YOK — bu bir GÖREV listesidir, kişiye atıf değildir" +
         (atlanan.Count > 0 ? " · ATLANAN SÜZGEÇ: " + string.Join(" | ", atlanan) : "");
 
     // MiniExcel başlığı kendi yazar; not satırını ÜSTE koyabilmek için printHeader
     // KAPATILIR ve satırlar elle kurulur: 1. satır not, 2. satır başlık, 3.+ veri.
-    // Anahtarlar (k01..k12) yalnız hücre KONUMUDUR — görünen ad 2. satırdadır.
+    // Anahtarlar (k00..) yalnız hücre KONUMUDUR — görünen ad 2. satırdadır.
     // ⚠ MiniExcel kolon kümesini İLK satırın anahtarlarından alır. Not satırı tek anahtar
     //   taşıyınca dosya TEK KOLON çıkıyordu (tablo sessizce kayboldu, hata YOK — ölçüldü
-    //   15.09.2026). Bu yüzden HER satır 12 anahtarın hepsini taşır, boşlar null.
-    const int SezonAksiyonKolonSayisi = 28;
+    //   15.09.2026). Bu yüzden HER satır anahtarların hepsini taşır, boşlar null.
+    const int SezonAksiyonKolonSayisi = 46;
     static Dictionary<string, object?> Satir(params object?[] h)
     {
         var d = new Dictionary<string, object?>(SezonAksiyonKolonSayisi);
@@ -339,35 +344,58 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
         return d;
     }
 
+    var pen = $"{filtre.PencereGun} gün";
     var liste = new List<Dictionary<string, object?>>(satirlar.Count + 2)
     {
         Satir(ustSatir),
-        Satir("Ürün", "Kategori", "Kategori yolu", "Marka / Yayınevi", "Stok kodu", "Barkod",
-              $"Geçen yıl {filtre.GecenPencere.Bas:dd.MM.yy}–{filtre.GecenPencere.Son:dd.MM.yy}",
-              $"Bu yıl {filtre.BuPencere.Bas:dd.MM.yy}–{filtre.BuPencere.Son:dd.MM.yy}",
-              "Sezon toplam", $"Yıllık {filtre.YilPencere.Bas:dd.MM.yy}–{filtre.YilPencere.Son:dd.MM.yy}",
-              "Sezon dışı",
-              $"Geçen yıl kalan {filtre.GecenKalanPencere.Bas:dd.MM.yy}–{filtre.GecenKalanPencere.Son:dd.MM.yy}",
-              // İKİ TABAN AYRI KOLON — hangisinin bağladığı dosyada da görünsün.
-              "Geçen yıl tabanı (× oran)",
-              $"Bu yıl hız tabanı ({filtre.PencereGun} gün hızı × kalan gün)",
-              $"KALAN sezon talebi {filtre.KalanPencere.Bas:dd.MM.yy}–{filtre.KalanPencere.Son:dd.MM.yy}", "FSM", "Özlüce", "İst.Yolu", "Mağaza toplam", "Depo",
-              "Toplam stok", "Mağaza eksiği", "TAŞINACAK", "AÇIK", "FAZLA",
-              "Satış fiyatı", "Birim maliyet", "Tutar"),
+        Satir("Ürün", "Kategori", "Ürün grubu", "Alt kategori", "Marka / Yayınevi",
+              "Stok kodu", "Barkod",
+              $"Geçen sezon toplam satılan ({filtre.GecenSezon.Bas:dd.MM.yy}–{filtre.GecenSezon.Son:dd.MM.yy})",
+              $"Geçen sezon okul açılmadan önce satılan ({filtre.GecenPencere.Bas:dd.MM.yy}–{filtre.GecenPencere.Son:dd.MM.yy}, {pen})",
+              "Geçen sezon stoğu bitti mi (bittiyse satış gerçek talebin altında)",
+              "Alt kategori ortalama oranı (şubenin kendi ölçümü zayıfsa bu kullanılır)",
+              "Oranın alındığı kırılım",
+              "Ürünün sezon payı (sezon ÷ yıllık; düşükse ürün sezonluk değil)",
+              $"Bu sezon okul açılmadan önce satılan ({filtre.BuPencere.Bas:dd.MM.yy}–{filtre.BuPencere.Son:dd.MM.yy}, {pen})",
+              $"Bu sezon bugüne kadar satılan ({filtre.BuSezon.Bas:dd.MM.yy}–{filtre.BuSezon.Son:dd.MM.yy})",
+              "FSM: kullanılan oran", "FSM: bu sezon toplam satacak",
+              "FSM: sezonun kalanında satacak", "FSM: stok", "FSM: eksik adet",
+              "Özlüce: kullanılan oran", "Özlüce: bu sezon toplam satacak",
+              "Özlüce: sezonun kalanında satacak", "Özlüce: stok", "Özlüce: eksik adet",
+              "İstanbul Yolu: kullanılan oran", "İstanbul Yolu: bu sezon toplam satacak",
+              "İstanbul Yolu: sezonun kalanında satacak", "İstanbul Yolu: stok",
+              "İstanbul Yolu: eksik adet",
+              "Bu sezon toplam satılacak (üç şubenin toplamı)",
+              "Sezonun kalanında satılacak (üç şubenin toplamı)",
+              "Şubelerde toplam eksik adet",
+              "Mağazalarda toplam stok", $"Merkez depoda stok ({filtre.Kesim:dd.MM.yyyy})",
+              "Mağaza ve depo toplam stok",
+              "Durum (şube eksikleri merkez depodan karşılanamıyorsa sipariş gerekir)",
+              "Sipariş verilecek adet (şubelerde toplam eksik eksi merkez depo stoğu)",
+              "Sipariş nereden karşılanır", "Tedarikçide bulunan adet (bizim stoğumuz değil)",
+              "Geçen yıl sezon dışında satılan (Kas–Tem)", "Geçen yıl toplam satılan (365 gün)",
+              "Gelecek sezona kalacak adet",
+              "Satış fiyatı", "Birim maliyet",
+              "Tutar (siparişte satış fiyatıyla, fazla/ölüde maliyetle)"),
     };
     foreach (var r in satirlar)
         liste.Add(Satir(
-            r.StkAd, r.Kategori3, r.KategoriYolu, r.Yayinevi, r.StkKod, r.Barkod,
-            r.GecenAyni, r.BuAyni, r.SezonToplam, r.Yillik, r.Yillik - r.SezonToplam,
-            r.GecenKalan, r.GecenTabani, r.HizTabani, r.Satilacak,
-            r.StokFsm, r.StokOzl, r.StokIst, r.MagazaStok, r.MerkezStok, r.ToplamStok,
-            r.MagazaEksigi, r.TransferAdet, r.Acik, r.Fazla, r.SatisFiyat, r.BirimMaliyet,
-            // Tek tutar: AÇIK satırda satış fiyatıyla, FAZLA satırda maliyetle.
-            r.Acik > 0 ? r.AcikTutar : r.Fazla > 0 ? r.FazlaTutar : null));
+            r.StkAd, r.Kategori3, r.Kat1, r.Kat2, r.Yayinevi, r.StkKod, r.Barkod,
+            r.SezonToplam, r.GecenOkulOncesi, r.StoksuzKaldi ? "EVET" : "HAYIR",
+            r.KatOran, r.OranKirilim, r.SezonPayi,
+            r.BuOkulOncesi, r.BuBugune,
+            r.OranFsm, r.TahminFsm, r.KalanFsm, r.StokFsm, r.EksikFsm,
+            r.OranOzl, r.TahminOzl, r.KalanOzl, r.StokOzl, r.EksikOzl,
+            r.OranIst, r.TahminIst, r.KalanIst, r.StokIst, r.EksikIst,
+            r.TahminToplam, r.KalanToplam, r.EksikToplam,
+            r.MagazaStok, r.MerkezStok, r.ToplamStok,
+            r.DurumAd, r.Siparis, r.Nereden, r.OdakStok,
+            r.SezonDisi, r.Yillik, r.Fazla,
+            r.SatisFiyat, r.BirimMaliyet, r.Tutar));
 
     ctx.Response.ContentType = GmDashboard.Data.ExcelExport.ContentType;
     ctx.Response.Headers.ContentDisposition =
-        $"attachment; filename=\"sezon-aksiyon-{filtre.Kesim:yyyy-MM-dd}.xlsx\"";
+        $"attachment; filename=\"sezon-siparis-{filtre.Kesim:yyyy-MM-dd}.xlsx\"";
     using var ms = new MemoryStream();
     await MiniExcel.SaveAsAsync(ms, liste, printHeader: false, sheetName: "LİSTE");
     ms.Position = 0;

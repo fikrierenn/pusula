@@ -106,6 +106,65 @@ public sealed class VardiyaQueries(Db db)
     }
 
     /// <summary>
+    /// FAZLA MESAİNİN KAYNAĞI — SP'nin yazdığı kolonlar okunur, türetilmez.
+    /// "Ne kadarı fazla çalışma, ne kadarı izin iptali" (GMY sorusu 17.09.2026).
+    /// </summary>
+    public async Task<VrdFazlaKaynak?> FazlaKaynakAsync(DateOnly bas, DateOnly bit, string? sube)
+    {
+        using var cn = db.OpenPanel();
+        return await cn.QuerySingleOrDefaultAsync<VrdFazlaKaynak>("""
+            SELECT FazlaCalismaDk = SUM(ISNULL(FazlaCalismaDk, 0)),
+                   IzinIptalDk    = SUM(ISNULL(FazlaIzinIptalDk, 0)),
+                   HaftaTatilDk   = SUM(ISNULL(HaftalikPrimDk, 0)),
+                   PlansizDk      = SUM(ISNULL(FazlaPlansizDk, 0)),
+                   CikisSonrasiDk = SUM(ISNULL(CikisSonrasiDk, 0)),
+                   GirisOncesiDk  = SUM(ISNULL(GirisOncesiDk, 0))
+            FROM   bkm.Vrd_KisiGun
+            WHERE  KesimBas = @bas AND KesimBit = @bit
+              AND (@sube IS NULL OR Sube = @sube)
+            """, new
+        {
+            bas = bas.ToDateTime(TimeOnly.MinValue),
+            bit = bit.ToDateTime(TimeOnly.MinValue),
+            sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
+        });
+    }
+
+    /// <summary>
+    /// Kapanış sonrası kalma süre bandı. Uzun kuyruk ayrı bir sorudur: 15 dakikalık
+    /// toplanma ile 2 saati aşan kalma AYNI ŞEY DEĞİLDİR ve aynı aksiyonu almaz.
+    /// </summary>
+    public async Task<IReadOnlyList<VrdKalmaBant>> KalmaBandiAsync(
+        DateOnly bas, DateOnly bit, string? sube)
+    {
+        using var cn = db.OpenPanel();
+        var r = await cn.QueryAsync<VrdKalmaBant>("""
+            SELECT Bant = CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
+                               WHEN CikisSonrasiDk <=  30 THEN N'16–30 dk'
+                               WHEN CikisSonrasiDk <=  60 THEN N'31–60 dk'
+                               WHEN CikisSonrasiDk <= 120 THEN N'1–2 saat'
+                               ELSE N'2 saat üstü' END,
+                   Satir = COUNT(*), Dk = SUM(CikisSonrasiDk)
+            FROM   bkm.Vrd_KisiGun
+            WHERE  KesimBas = @bas AND KesimBit = @bit
+              AND  ISNULL(CikisSonrasiDk, 0) > 0
+              AND (@sube IS NULL OR Sube = @sube)
+            GROUP BY CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
+                          WHEN CikisSonrasiDk <=  30 THEN N'16–30 dk'
+                          WHEN CikisSonrasiDk <=  60 THEN N'31–60 dk'
+                          WHEN CikisSonrasiDk <= 120 THEN N'1–2 saat'
+                          ELSE N'2 saat üstü' END
+            ORDER BY MIN(CikisSonrasiDk)
+            """, new
+        {
+            bas = bas.ToDateTime(TimeOnly.MinValue),
+            bit = bit.ToDateTime(TimeOnly.MinValue),
+            sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
+        });
+        return r.AsList();
+    }
+
+    /// <summary>
     /// MESAİ MEVZUAT KAPISI — `tools/mesai_mevzuat_kapisi.py` ile AYNI eşikler ve
     /// AYNI tanımlar. İki yerde iki farklı sayı çıkarsa biri bayatlamış demektir.
     /// ⚠ Gece süresi 20:00-06:00 kesişimidir; çıkış 1440'ı aşabildiği için pencere

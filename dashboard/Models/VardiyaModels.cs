@@ -25,6 +25,27 @@ public sealed record VrdOzet(
 
 public sealed record VrdDurum(string Durum, int KisiGun);
 
+/// <summary>
+/// Fazla mesainin KAYNAĞI ve KONTROL EDİLEBİLİRLİĞİ (GMY sorusu 17.09.2026).
+/// Tek rakam yönetilemez; kalemler hukuken de ayrıdır (m.41 fazla çalışma ·
+/// m.46 hafta tatili çalışması 1 yevmiye + %50 · izin gününde çalıştırma).
+/// </summary>
+public sealed record VrdFazlaKaynak(
+    int FazlaCalismaDk, int IzinIptalDk, int HaftaTatilDk, int PlansizDk,
+    int CikisSonrasiDk, int GirisOncesiDk)
+{
+    /// <summary>Yönetim kararı — mağazanın elinde DEĞİL (izin iptali · hafta tatili).</summary>
+    public int YonetimDk => IzinIptalDk + HaftaTatilDk;
+    /// <summary>Mağaza operasyonu — kapanış/hazırlık, mağazanın elinde.</summary>
+    public int MagazaDk => FazlaCalismaDk + PlansizDk;
+    public int ToplamDk => YonetimDk + MagazaDk;
+    public double YonetimPay => ToplamDk == 0 ? 0 : 100.0 * YonetimDk / ToplamDk;
+    public double MagazaPay => ToplamDk == 0 ? 0 : 100.0 * MagazaDk / ToplamDk;
+}
+
+/// <summary>Kapanış sonrası kalma süre bandı — asıl aksiyon uzun kuyrukta.</summary>
+public sealed record VrdKalmaBant(string Bant, int Satir, int Dk);
+
 public sealed record VrdSube(string Sube, int KisiGun, int KisiSay, int EksikDk, int FazlaDk);
 
 /// <summary>

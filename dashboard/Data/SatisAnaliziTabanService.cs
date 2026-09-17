@@ -58,6 +58,7 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
             if (durum.Hazir && !zorla) return durum;
 
             var basladi = DateTime.Now;
+            var sp = SezonPayiPencere.Kur(kesim, sezonYil, logger);
             await using var conn = await db.OpenAsync();
             var p = new
             {
@@ -73,6 +74,13 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                 t12b = new DateTime(kesim.Year, kesim.Month, 1).AddMonths(-12),
                 t12s = new DateTime(kesim.Year, kesim.Month, 1),
                 Kategoriler = SatisAnaliziQueries.Kategori3Evreni,
+                // ── SEZON PAYI ZİNCİRİ (16.09.2026) ─────────────────────────────
+                // ⚠ Pencereler BURADA HESAPLANMAZ: tek kaynak SezonAksiyonFiltre.
+                //   İkinci bir kopya, okul açılışı güncellenince sessizce bayatlardı.
+                sp.PencereGecerli,
+                sp.GpBas, sp.GpSonEx, sp.BpBas, sp.BpSonEx, sp.BtBas, sp.BtSonEx,
+                sp.GsBas, sp.GsSonEx, sp.GdBas, sp.GdSonEx, sp.YlBas, sp.YlSonEx,
+                sp.SnEyl, sp.SnEki,
             };
             var cmd = new CommandDefinition(DoldurSql, p, commandTimeout: 900, cancellationToken: ct);
             await conn.ExecuteAsync(cmd);
@@ -337,6 +345,94 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
             FROM DerinSISBkm.dbo.irsHrk g WITH (NOLOCK)
             WHERE g.ehAdetN > 0 AND g.ehMekan IN (1, 4477, 4478)
             GROUP BY g.ehstkID
+        ),
+        -- ══ SEZON PAYI ZİNCİRİNİN HAM GİRDİLERİ (16.09.2026) ═══════════════════
+        -- Panel bunları her istekte sekiz CTE + on LEFT JOIN ile canlı hesaplıyordu;
+        -- ÖLÇÜLDÜ: tüm evrende 36,6 s (CTE'ler 7 s, taban-only aritmetik 2 s — fark
+        -- JOIN zincirinden geliyordu) ve gövde istek başına DÖRT KEZ koşuyordu.
+        -- ⚠ Pencere GEÇERSİZSE (okul açılışı tanımsız / pencere < 14 gün) parametreler
+        --   NULL gelir, CTE'ler boş döner ve on üç kolon NULL kalır. 0 YAZILMAZ:
+        --   0 okuyan panel "sipariş yok" der ve hata vermez.
+        gpn AS (   -- geçen sezon OKUL ÖNCESİ, ŞUBE BAZLI — oranın PAYI
+            -- ⚠ 'Top' AYRILMIŞ SÖZCÜK, takma ad olamaz (SQL 156) — üç şube ayrı kolon.
+            SELECT h.ehstkID AS stkID,
+                   Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
+                   Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
+                   Ist = -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @GpBas AND h.ehTrhS < @GpSonEx
+            GROUP BY h.ehstkID
+        ),
+        bpn AS (   -- bu sezon OKUL ÖNCESİ, ŞUBE BAZLI — gpn ile EŞİT UZUNLUKTA pencere
+            SELECT h.ehstkID AS stkID,
+                   Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
+                   Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
+                   Ist = -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @BpBas AND h.ehTrhS < @BpSonEx
+            GROUP BY h.ehstkID
+        ),
+        btn AS (   -- bu sezon SEZON BAŞINDAN KESİME — tahminden ÇIKARILAN
+            -- ⚠ Hizalı pencere DEĞİL: tahmin TÜM sezonu söyler, ondan sezon başından
+            --   beri satılan HER ŞEY düşülür.
+            SELECT h.ehstkID AS stkID,
+                   Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
+                   Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
+                   Ist = -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @BtBas AND h.ehTrhS < @BtSonEx
+            GROUP BY h.ehstkID
+        ),
+        snb AS (   -- SANSÜR BAYRAĞI — geçen sezonun ay sonlarında şube stoğu 0 mıydı
+            -- ⚠ AY SONU fotoğrafı; dilim içinde tükenip dolanı KAÇIRIR → ALT SINIR.
+            SELECT b.stkID,
+                   Eyl = SUM(CASE WHEN b.Donem = @SnEyl THEN b.Stok ELSE 0 END),
+                   Eki = SUM(CASE WHEN b.Donem = @SnEki THEN b.Stok ELSE 0 END)
+            FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli b WITH (NOLOCK)
+            WHERE b.ehMekan IN (1, 4477, 4478) AND b.Donem IN (@SnEyl, @SnEki)
+            GROUP BY b.stkID
+        ),
+        kbo AS (   -- ALT KATEGORİ (Kat2) ORANI — şubenin kendi ölçümü zayıfsa yedek
+            -- GMY 16.09.2026: "geçen sezon kareli defter A marka, bu sene almadık,
+            -- B aldık." SKU dönen yerde taban ÜRÜNDE değil ALT KATEGORİDE durur.
+            SELECT Kat = k2.Kat2,
+                   Pencere = SUM(CASE WHEN h.ehTrhS >= @GpBas AND h.ehTrhS < @GpSonEx
+                                      THEN -h.ehAdetN ELSE 0 END),
+                   Sezon   = SUM(-h.ehAdetN)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            JOIN kat k2 ON k2.stkID = h.ehstkID
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @GsBas AND h.ehTrhS < @GsSonEx
+              AND k2.Kat2 IS NOT NULL
+            GROUP BY k2.Kat2
+        ),
+        kb3o AS (  -- Kat2 boşsa ANA KATEGORİ (Kategori3) oranına düşülür
+            SELECT Kat = k3.Kategori3,
+                   Pencere = SUM(CASE WHEN h.ehTrhS >= @GpBas AND h.ehTrhS < @GpSonEx
+                                      THEN -h.ehAdetN ELSE 0 END),
+                   Sezon   = SUM(-h.ehAdetN)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            JOIN kat k3 ON k3.stkID = h.ehstkID
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @GsBas AND h.ehTrhS < @GsSonEx
+            GROUP BY k3.Kategori3
+        ),
+        gdn AS (   -- geçen yılın SEZON DIŞI dilimi (Kas–Tem) — SİPARİŞ TETİKLEMEZ
+            SELECT h.ehstkID AS stkID, Adet = -SUM(h.ehAdetN)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @GdBas AND h.ehTrhS < @GdSonEx
+            GROUP BY h.ehstkID
+        ),
+        yln AS (   -- YILLIK 01.08.<sezon>–31.07.<sezon+1> — bağlam, karar vermez
+            SELECT h.ehstkID AS stkID, Adet = -SUM(h.ehAdetN)
+            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
+            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
+              AND h.ehTrhS >= @YlBas AND h.ehTrhS < @YlSonEx
+            GROUP BY h.ehstkID
         )
         INSERT INTO DerinSISBkm.bkm.SatisAnaliziTaban
             (Kesim, SezonYil, stkID, Kategori3, Kategori1, Kat1, Kat2, Kat3, Kat4, BarkodAna, stkAd, Yayinevi, Yazar, SatisFiyat,
@@ -344,7 +440,11 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
              MagazaStok, ToplamStok, SatisToplam, SezonToplam, Tutar, IlkGiris, SonGiris, AcilisTarihi, LeadTime, OdakDurum,
              MerkezCikis, MerkezCikisGun,
              BirimMaliyet, PosAdet, PosNet, PosKdv, PosBrut, SonSatis,
-             SezonFsm, SezonOzl, SezonIst, MaliyetTarih, SatanAy, TalepCV2)
+             SezonFsm, SezonOzl, SezonIst, MaliyetTarih, SatanAy, TalepCV2,
+             OncesiGecenFsm, OncesiGecenOzl, OncesiGecenIst,
+             OncesiBuFsm, OncesiBuOzl, OncesiBuIst,
+             BuguneFsm, BuguneOzl, BuguneIst,
+             SansurluMu, YedekOran, SezonDisiAdet, YillikAdet)
         SELECT @kesim, @sezon, k.stkID, k.Kategori3, k.Kategori1, k.Kat1, k.Kat2, k.Kat3, k.Kat4, k.BarkodAna,
                CAST(k.stkAd AS nvarchar(120)), k.Yayinevi, k.Yazar, k.SatisFiyat,
                CONVERT(int, ISNULL(m.Fsm, 0)), CONVERT(int, ISNULL(m.Ozl, 0)), CONVERT(int, ISNULL(m.Ist, 0)),
@@ -368,7 +468,38 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
                CONVERT(int, ISNULL(z.SezonIst, 0)),
                ml.MaliyetTarih,
                -- Talep deseni ham girdileri (sınıf kodda hesaplanır)
-               td.SatanAy, td.TalepCV2
+               td.SatanAy, td.TalepCV2,
+               -- ── SEZON PAYI ZİNCİRİ (16.09.2026) ─────────────────────────────
+               -- ⚠ HEPSİ @PencereGecerli KAPISINDAN GEÇER. Pencere kurulamadıysa
+               --   NULL yazılır, 0 DEĞİL: 0 okuyan panel "sipariş yok" der ve hata
+               --   vermez — tam olarak sessiz-yanlış-rakam sınıfı.
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(gp2.Fsm, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(gp2.Ozl, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(gp2.Ist, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(bp2.Fsm, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(bp2.Ozl, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(bp2.Ist, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(bt2.Fsm, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(bt2.Ozl, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(bt2.Ist, 0)) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(bit,
+                    CASE WHEN ISNULL(sn2.Eyl, 0) <= 0 OR ISNULL(sn2.Eki, 0) <= 0
+                         THEN 1 ELSE 0 END) END,
+               -- YEDEK ORAN: Kat2 → Kategori3 → 0,60 zinciri ÇÖZÜLMÜŞ hâlde yazılır.
+               -- ⚠ decimal(6,4)'e yuvarlanır ve panelde bu hâliyle çarpılır:
+               --   GÖSTERİLEN oran = ÇARPILAN oran. Tam hassasiyet Excel emitter'ı
+               --   ile ayrışıyordu (ölçüldü: 22.445 ↔ 22.442).
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(decimal(6,4), ISNULL(
+                    CASE WHEN ISNULL(kq.Sezon, 0) > 0
+                          AND CONVERT(float, kq.Pencere) / kq.Sezon BETWEEN 0.05 AND 1.0
+                         THEN CONVERT(float, kq.Pencere) / kq.Sezon END,
+                    CASE WHEN ISNULL(kq3.Sezon, 0) > 0
+                          AND CONVERT(float, kq3.Pencere) / kq3.Sezon BETWEEN 0.05 AND 1.0
+                         THEN CONVERT(float, kq3.Pencere) / kq3.Sezon END)) END,
+               CASE WHEN @PencereGecerli = 1
+                    THEN CONVERT(int, CASE WHEN ISNULL(gd2.Adet, 0) > 0
+                                           THEN gd2.Adet ELSE 0 END) END,
+               CASE WHEN @PencereGecerli = 1 THEN CONVERT(int, ISNULL(yl2.Adet, 0)) END
         FROM kat k
         LEFT JOIN mgz  m ON m.stkID = k.stkID
         LEFT JOIN depo d ON d.stkID = k.stkID
@@ -382,6 +513,14 @@ public sealed class SatisAnaliziTabanService(Db db, ILogger<SatisAnaliziTabanSer
         LEFT JOIN pos  ps ON ps.stkID = k.stkID
         LEFT JOIN sonsat ss ON ss.stkID = k.stkID
         LEFT JOIN tdes td ON td.stkID = k.stkID
+        LEFT JOIN gpn  gp2 ON gp2.stkID = k.stkID
+        LEFT JOIN bpn  bp2 ON bp2.stkID = k.stkID
+        LEFT JOIN btn  bt2 ON bt2.stkID = k.stkID
+        LEFT JOIN snb  sn2 ON sn2.stkID = k.stkID
+        LEFT JOIN kbo  kq  ON kq.Kat    = k.Kat2
+        LEFT JOIN kb3o kq3 ON kq3.Kat   = k.Kategori3
+        LEFT JOIN gdn  gd2 ON gd2.stkID = k.stkID
+        LEFT JOIN yln  yl2 ON yl2.stkID = k.stkID
         WHERE ISNULL(m.Fsm,0) <> 0 OR ISNULL(m.Ozl,0) <> 0 OR ISNULL(m.Ist,0) <> 0 OR ISNULL(d.Merkez,0) <> 0
            OR ISNULL(s.Fsm,0) <> 0 OR ISNULL(s.Ozl,0) <> 0 OR ISNULL(s.Ist,0) <> 0
            OR ISNULL(z.Ay1,0) <> 0 OR ISNULL(z.Ay2,0) <> 0 OR ISNULL(z.Ay3,0) <> 0;

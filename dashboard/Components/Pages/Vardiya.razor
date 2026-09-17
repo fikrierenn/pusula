@@ -55,7 +55,7 @@ else
             </label>
             <label class="form-control">
                 <span class="label-text text-xs">Şube</span>
-                <select class="select select-bordered select-sm" @bind="_sube" @bind:after="SatirYukle">
+                <select class="select select-bordered select-sm" @bind="_sube" @bind:after="SubeDegisti">
                     <option value="">Tümü</option>
                     @foreach (var s in _subeler) { <option value="@s.Sube">@s.Sube</option> }
                 </select>
@@ -144,6 +144,87 @@ else
                 ⚠ Yıllık 270 saat sınırı (m.41) bu pencereden <b>ölçülemez</b> —
                 yıllıklandırma çıkarım olur. Yazılı işçi muvafakati (m.41/7) sistemde
                 <b>tutulmuyor</b>, denetlenemiyor.
+            </div>
+        </div>
+    }
+
+    @* ── FAZLA MESAİNİN KAYNAĞI ──────────────────────────────────────────
+       GMY sorusu: "ne kadarı fazla çalışmadan, ne kadarı izin iptalinden".
+       Tek rakam yönetilemez; üç kalem hukuken de ayrı ödenir. *@
+    @if (_kaynak is not null && _kaynak.ToplamDk > 0)
+    {
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
+            <div class="font-semibold">Fazla mesai nereden geliyor</div>
+            <div class="text-xs text-base-content/50 mb-3">
+                Toplam @VrdBicim.SaatOndalik(_kaynak.ToplamDk) ·
+                dönem içi (devir hariç)@(string.IsNullOrEmpty(_sube) ? "" : $" · {_sube}")
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="rounded-xl border border-warning/40 bg-warning/5 p-3">
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-xs font-semibold">YÖNETİM KARARI</span>
+                        <span class="text-lg font-bold">
+                            @VrdBicim.SaatOndalik(_kaynak.YonetimDk)
+                            <span class="text-xs font-normal">%@_kaynak.YonetimPay.ToString("N0")</span>
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-base-content/60 mb-2">mağazanın elinde değil</div>
+                    @Satir("İzin günü çalıştırılmış", _kaynak.IzinIptalDk)
+                    @Satir("Hafta tatili kullandırılmamış", _kaynak.HaftaTatilDk)
+                </div>
+
+                <div class="rounded-xl border border-info/40 bg-info/5 p-3">
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-xs font-semibold">MAĞAZA OPERASYONU</span>
+                        <span class="text-lg font-bold">
+                            @VrdBicim.SaatOndalik(_kaynak.MagazaDk)
+                            <span class="text-xs font-normal">%@_kaynak.MagazaPay.ToString("N0")</span>
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-base-content/60 mb-2">kapanış / hazırlık — elinde</div>
+                    @Satir("Plan üstü çalışma", _kaynak.FazlaCalismaDk)
+                    @Satir("Plansız çalışma", _kaynak.PlansizDk)
+                    <div class="text-[11px] text-base-content/50 mt-2 pt-2 border-t border-base-200">
+                        uçlara göre: kapanış sonrası kalma
+                        <b>@VrdBicim.SaatOndalik(_kaynak.CikisSonrasiDk)</b> ·
+                        erken başlama <b>@VrdBicim.SaatOndalik(_kaynak.GirisOncesiDk)</b>
+                    </div>
+                </div>
+            </div>
+
+            @if (_bantlar.Count > 0)
+            {
+                <div class="mt-3">
+                    <div class="text-xs font-semibold mb-1">Kapanış sonrası kalma dağılımı</div>
+                    <div class="text-[11px] text-base-content/50 mb-2">
+                        15 dakikalık toplanma ile 2 saati aşan kalma aynı şey değil —
+                        aksiyon uzun kuyrukta.
+                    </div>
+                    <table class="table table-xs">
+                        <thead><tr><th>Süre</th><th class="text-right">Kişi-gün</th>
+                                   <th class="text-right">Saat</th><th class="text-right">Pay</th></tr></thead>
+                        <tbody>
+                            @foreach (var b in _bantlar)
+                            {
+                                var pay = _bantToplam == 0 ? 0 : 100.0 * b.Dk / _bantToplam;
+                                <tr class="@(b.Bant == "2 saat üstü" ? "text-error font-semibold" : "")">
+                                    <td>@b.Bant</td>
+                                    <td class="text-right">@b.Satir.ToString("N0")</td>
+                                    <td class="text-right">@VrdBicim.SaatOndalik(b.Dk)</td>
+                                    <td class="text-right">%@pay.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <div class="text-xs text-base-content/50 mt-3">
+                ⚠ Üç kalem <b>farklı ödenir</b>: fazla çalışma %50 zamlı (m.41) ·
+                hafta tatilinde çalışma 1 yevmiye + %50 (m.46) · izin gününde
+                çalıştırma kullanılmayan iznin akıbetine bağlı. Ödeme bağı bu panelde
+                <b>kurulmuyor</b> — bordroyla karşılaştırılmadı.
             </div>
         </div>
     }
@@ -303,6 +384,9 @@ else
     private IReadOnlyList<VrdSatir>? _satirlar;
     private VrdOzet? _ozet;
     private VrdUyum? _uyum;
+    private VrdFazlaKaynak? _kaynak;
+    private IReadOnlyList<VrdKalmaBant> _bantlar = [];
+    private int _bantToplam;
 
     private string _kesimSec = "";
     private string _sube = "";
@@ -339,6 +423,29 @@ else
         _ozet = await Q.OzetAsync(bas, bit);
         _uyum = await Q.UyumAsync(bas, bit);
         _subeler = await Q.SubeKirilimAsync(bas, bit);
+        await KaynakYukle();
+        await SatirYukle();
+    }
+
+    private async Task KaynakYukle()
+    {
+        if (Secili() is not var (bas, bit)) return;
+        _kaynak = await Q.FazlaKaynakAsync(bas, bit, _sube);
+        _bantlar = await Q.KalmaBandiAsync(bas, bit, _sube);
+        _bantToplam = _bantlar.Sum(b => b.Dk);
+    }
+
+    private RenderFragment Satir(string ad, int dk) => __builder =>
+    {
+        <div class="flex justify-between text-xs py-0.5">
+            <span class="text-base-content/70">@ad</span>
+            <span class="font-semibold">@VrdBicim.SaatOndalik(dk)</span>
+        </div>
+    };
+
+    private async Task SubeDegisti()
+    {
+        await KaynakYukle();
         await SatirYukle();
     }
 

@@ -413,6 +413,45 @@ BEGIN
                        + ISNULL(HaftalikPrimDk, 0) END
     WHERE KesimBas = @Bas AND KesimBit = @Bit;
 
+    -- =====================================================================
+    -- 9) FAZLA MESAİNİN KAYNAĞI — "ne kadarı fazla çalışma, ne kadarı izin
+    --    iptali" (GMY isteği 17.09.2026). Tek rakam yönetilemez: üç kalem
+    --    HUKUKEN DE AYRIDIR (m.41 fazla çalışma · m.46 hafta tatili çalışması
+    --    1 yevmiye + %50 · izin gününde çalıştırma), ödeme biçimleri farklı.
+    --
+    -- ⚠ İZİN GÜNÜNDE `GerekenDk` 0'dır (izin etiketi) → o satırda fazlanın
+    --   TAMAMI izin iptalidir. Kalem sırası bu yüzden önemli: önce izin iptali
+    --   ve plansız ayrılır, "fazla çalışma" ARTAKALANDIR — toplam hep tutar.
+    -- =====================================================================
+    UPDATE bkm.Vrd_KisiGun SET
+        FazlaIzinIptalDk = CASE WHEN SayimDisi = 1 THEN 0
+                                WHEN Izin = 1 AND Net2Dk > 0 THEN Net2Dk ELSE 0 END,
+        FazlaPlansizDk   = CASE WHEN SayimDisi = 1 THEN 0
+                                WHEN Durum = N'Vardiya Tanımsız Çalışma'
+                                     AND Net2Dk > ISNULL(GerekenDk, 0)
+                                THEN Net2Dk - ISNULL(GerekenDk, 0) ELSE 0 END
+    WHERE KesimBas = @Bas AND KesimBit = @Bit;
+
+    UPDATE bkm.Vrd_KisiGun SET
+        FazlaCalismaDk = ISNULL(FazlaDk, 0) - ISNULL(HaftalikPrimDk, 0)
+                       - ISNULL(FazlaIzinIptalDk, 0) - ISNULL(FazlaPlansizDk, 0)
+    WHERE KesimBas = @Bas AND KesimBit = @Bit;
+
+    -- KONTROL EDİLEBİLİRLİK — GMY sorusu 17.09.2026: *"patron sezonda izinleri
+    -- iptal ediyor mecburen, dağılan mağaza gün bitiminde toplanmak için
+    -- çalışmak gerekiyor — ne kadarı mağazanın elinde yapılmış mesai?"*
+    --
+    -- Plan üstü çalışma İKİ UÇTAN doğar ve ikisi AYRI yönetim sorusudur:
+    --   · çıkış plan bitişinden SONRA  → kapanış/toplanma, mağaza operasyonu
+    --   · giriş plan başlangıcından ÖNCE → erken açılış/hazırlık
+    -- Ölçülüp yazılır; yorum panelde değil `ik-danisman`'da.
+    UPDATE bkm.Vrd_KisiGun SET
+        CikisSonrasiDk = CASE WHEN SayimDisi = 0 AND CikisDk > PlanBitisDk
+                              THEN CikisDk - PlanBitisDk ELSE 0 END,
+        GirisOncesiDk  = CASE WHEN SayimDisi = 0 AND GirisDk < PlanBaslamaDk
+                              THEN PlanBaslamaDk - GirisDk ELSE 0 END
+    WHERE KesimBas = @Bas AND KesimBit = @Bit;
+
     -- İzin satırında Net2Dk yok ama GerekenDk 0 → eksik 0. Çalışmayan (Devamsız)
     -- satırda Net2Dk NULL ve GerekenDk dolu → EKSİK SAYILMALI (plan vardı, gelmedi).
     UPDATE bkm.Vrd_KisiGun SET EksikDk = GerekenDk

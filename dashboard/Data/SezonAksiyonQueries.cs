@@ -4,27 +4,33 @@ using GmDashboard.Models;
 namespace GmDashboard.Data;
 
 /// <summary>
-/// SEZON AKSİYON LİSTESİ sorguları — SALT-SELECT (erp-write-policy).
-/// Kaynak: <c>bkm.SatisAnaliziTaban</c> ön-agregası (Satış Analizi paneliyle AYNI taban).
+/// SEZON SİPARİŞ LİSTESİ sorguları — SALT-SELECT (erp-write-policy).
+/// Kaynak: <c>bkm.SatisAnaliziTaban</c> ön-agregası + canlı <c>irsHrk</c> pencereleri.
 ///
-/// HESAP (tek yerde — <see cref="TabanSql"/>):
-///   Satılacak = CEILING(sezonda satılan × (1 + büyüme))
-///   Elde      = mağaza stok + merkez(depo) stok
-///   AÇIK      = Satılacak − Elde   (pozitifse)   → sipariş / transfer
-///   FAZLA     = Elde − Satılacak   (pozitifse)   → indirim / iade / transfer
+/// HESAP (sezon payı — tek yerde, <see cref="GovdeSql"/>):
+///   ORAN    = geçen sezon OKUL ÖNCESİ ÷ geçen SEZON TOPLAMI          (ŞUBE bazlı)
+///   TAHMİN  = bu sezon OKUL ÖNCESİ ÷ ORAN                            (ŞUBE bazlı)
+///   KALAN   = TAHMİN − bu sezon bugüne kadar satılan                 (ŞUBE bazlı)
+///   EKSİK   = Σ max(0, şube kalanı − şube stoğu)
+///   SİPARİŞ = EKSİK − merkez depo stoğu   (mağazalar arası aktarma varsayılmaz)
 ///
 /// ⚠ 3-PARÇALI İSİM ZORUNLU: <c>Db.OpenAsync</c> varsayılan katalog = master (Err 208).
-/// ⚠ Kardeş emitter <c>scripts/sezon_aksiyon_listesi_excel.py</c> ile iş mantığı AYNI —
-///   biri değişirse öteki de değişir (emitter-ayrimi.md).
+/// ⚠ Kardeş emitter'lar: <c>scripts/sezon_aksiyon_listesi_excel.py</c> ve
+///   <c>sorgular/2026-09-15-sezon-aksiyon-listesi.sql</c> — iş mantığı AYNI kalmalı
+///   (emitter-ayrimi.md). ÖLÇÜLDÜ 16.09.2026 (Defterler, 7.784 çeşit):
+///   SİPARİŞ VER 703 / 13.221 adet / 2.077.342 ₺ · DEPODAN GÖNDER 511 / 22.442 ·
+///   FAZLA VAR 2.141 / 270.308 / 10.805.472 ₺ · ÖLÜ STOK 3.599 / 44.515 / 2.643.632 ₺ ·
+///   YETERLİ 830.
 ///
 /// SINIRLAR (ekranda da yazılı — beyan edilmeyen sınır yanıltır):
 ///  · Açık sipariş DÜŞÜLMEZ. ERP'de "kapalı" durumu (<c>sip.eDurum=2</c>) 24.02.2025'ten
-///    beri hiç yazılmıyor; kapatılmamış alış siparişi adedinin %86,4'ü bir yıldan eski
-///    (ölçüldü 14.09.2026, sorgular/2026-09-14-sezon-stok-yaniltici-alti-madde.sql blok 2-3).
-///  · FAZLA ₺ ALT SINIR: maliyeti yok/şüpheli (TMS 2: 0 &lt; maliyet ≤ satış fiyatı) olan
-///    satır adet olarak sayılır, paraya girmez.
-///  · Depo stoğu WMS kaynaklıdır; ERP defteriyle çelişebilir (hayalet stok).
-///  · Tek gün fotoğrafı — stok gün içinde değişir.
+///    beri hiç yazılmıyor; kapatılmamış alış siparişinin %86,4'ü bir yıldan eski.
+///  · SİPARİŞ ₺ satış fiyatıyla, FAZLA/ÖLÜ ₺ maliyetle — TOPLANMAZ. Siparişteki tutar
+///    kaybedilen CİRODUR, kaybedilen KÂR DEĞİL (marj ölçülmedi).
+///  · Maliyeti yok/şüpheli (TMS 2: 0 &lt; maliyet ≤ satış fiyatı) satır adet olarak
+///    sayılır, paraya girmez → fazla/ölü tutarı ALT SINIRDIR.
+///  · Depo stoğu WMS kaynaklı; ERP defteriyle çelişebilir (hayalet stok).
+///  · Alıcı (satınalmacı) boyutu veride YOK — GÖREV listesidir, kişiye atıf değildir.
 /// </summary>
 public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logger)
 {
@@ -32,185 +38,116 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
 
     private const string MaliyetGecerli = "(t.BirimMaliyet > 0 AND t.BirimMaliyet <= t.SatisFiyat)";
 
-    /// <summary>
-    /// FROM + APPLY + WHERE — üç sorgunun (KPI · kategori · liste) ORTAK gövdesi.
-    /// ⚠ Kohort tanımı TEK yerde: KPI ile listenin ayrışması "kart 100 diyor, listede 80 var"
-    /// sınıfı sessiz hatadır.
-    /// </summary>
-    /// <summary>
-    /// AYNI PENCERE — iki yılın satışı BİREBİR aynı uzunlukta ölçülür (GMY 15.09.2026:
-    /// "aynı pencereye getirelim"). Pencere okul açılışına HİZALIDIR; takvim günüyle
-    /// hizalamak yanıltır (açılış 08.09.2025 → 14.09.2026, altı gün kaydı).
-    /// ⚠ Tabanda hazır değil — <c>SatisToplam</c> [kesim−364, kesim] penceresindedir ve
-    /// geçen sezonun başını KAÇIRIR. Bu yüzden iki dar CTE (44'er gün) ile canlı ölçülür.
-    /// </summary>
-    private const string PencereSql = $"""
-        WITH gh AS (
-            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @gBas AND h.ehTrhS < @gSonEx
-            GROUP BY h.ehstkID
-        ),
-        bh AS (
-            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @bBas AND h.ehTrhS < @bSonEx
-            GROUP BY h.ehstkID
-        ),
-        gk AS (   -- GEÇEN yılın KALAN sezon dilimi — AÇIK/FAZLA'nın TABANI
-            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @gkBas AND h.ehTrhS < @gkSonEx
-            GROUP BY h.ehstkID
-        ),
-        gks AS (  -- GEÇEN yılın kalan dilimi, MAĞAZA BAZLI — TRANSFER kararı için
-            -- ⚠ 'Top' ayrılmış sözcük; alias 'Tum' kullanılmaz, üç mağaza ayrı gelir.
-            SELECT h.ehstkID AS stkID,
-                   Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
-                   Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
-                   Ist = -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END)
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @gkBas AND h.ehTrhS < @gkSonEx
-            GROUP BY h.ehstkID
-        ),
-        bhs AS (  -- BU yılın penceresi, MAĞAZA BAZLI — HIZ TABANI
-            -- GMY 15.09.2026 (Mopak A4 vakası): geçen yıl kalan dilimde 15 adet satmış,
-            --   bu yıl aynı pencerede 1.791 (6,18×). Model "FAZLA 4.527 adet / 529.503 ₺"
-            --   dedi. ÖLÇÜLDÜ: geçen yılın 15'i TALEP DEĞİL, STOKUN BİTTİĞİ YER —
-            --   30.09.25 stok FSM 5 / Özlüce 10 / İst.Yolu 0, ardından dokuz ay sıfır.
-            -- ⚠ Sansür bayrağı yakalamadı: ay sonu toplamı 15 ve 5, yani "sıfır değil".
-            -- ⇒ İkinci taban: bu yılın gerçekleşen hızı (sansürsüz, rafı dolu).
-            -- ÖLÇÜLDÜ: bugün FAZLA/BİTTİ etiketi alacak 6.016 çeşitte (160.145 adet)
-            --   hız tabanı stoğun yetmeyeceğini söylüyor — 177.083 adet.
-            SELECT h.ehstkID AS stkID,
-                   Fsm = -SUM(CASE WHEN h.ehMekan = 1    THEN h.ehAdetN ELSE 0 END),
-                   Ozl = -SUM(CASE WHEN h.ehMekan = 4477 THEN h.ehAdetN ELSE 0 END),
-                   Ist = -SUM(CASE WHEN h.ehMekan = 4478 THEN h.ehAdetN ELSE 0 END)
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @bBas AND h.ehTrhS < @bSonEx
-            GROUP BY h.ehstkID
-        ),
-        sn AS (   -- SANSÜR: geçen yıl kalan dilimin AY SONLARINDA mağaza stoğu 0 mıydı
-            -- ⚠ Ay-sonu fotoğrafı; dilim içinde tükenip dolan ürünü KAÇIRIR → ALT SINIR.
-            SELECT b.stkID,
-                   Bas = SUM(CASE WHEN b.Donem = @snBas THEN b.Stok ELSE 0 END),
-                   Son = SUM(CASE WHEN b.Donem = @snSon THEN b.Stok ELSE 0 END)
-            FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli b WITH (NOLOCK)
-            WHERE b.ehMekan IN (1, 4477, 4478) AND b.Donem IN (@snBas, @snSon)
-            GROUP BY b.stkID
-        ),
-        kb AS (   -- KATEGORİ BÜYÜMESİ — ÖLÇÜLEN, elle yazılmayan
-            -- ⚠ Taban < 2.000 adetse oran oynak (Akademi 7.540 adetle 2,255) → NULL,
-            --   sonra 1,0'a düşer. Büyüme UYDURULMAZ.
-            SELECT u.Kategori3 AS Kat,
-                   Gecen = SUM(CASE WHEN h.ehTrhS >= @gBas AND h.ehTrhS < @gSonEx
-                                    THEN -h.ehAdetN ELSE 0 END),
-                   Bu    = SUM(CASE WHEN h.ehTrhS >= @bBas AND h.ehTrhS < @bSonEx
-                                    THEN -h.ehAdetN ELSE 0 END)
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            JOIN DerinSISBkm.bkm.UrunBilgi u WITH (NOLOCK) ON u.stkID = h.ehstkID
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @gBas AND h.ehTrhS < @bSonEx
-            GROUP BY u.Kategori3
-        ),
-        yl AS (   -- YILLIK 365 gün: 01.08.<sezon> – 31.07.<sezon+1>, HER ŞEY dahil
-            SELECT h.ehstkID AS stkID, -SUM(h.ehAdetN) AS Adet
-            FROM DerinSISBkm.dbo.irsHrk h WITH (NOLOCK)
-            WHERE h.ehMekan IN (1, 4477, 4478) AND h.ehTip IN (1, 3, 4, 5, 100, 101)
-              AND h.ehTrhS >= @yBas AND h.ehTrhS < @ySonEx
-            GROUP BY h.ehstkID
-        )
-        """;
+    /// <summary>Üç şubenin satış hareketi — tek yerde (kod kopyalanınca biri bayatlar).</summary>
+    private const string SatisFiltre =
+        "h.ehMekan IN (1,4477,4478) AND h.ehTip IN (1,3,4,5,100,101)";
 
-    private const string TabanSql = $"""
+    /// <summary>
+    /// SEZON PAYI GİRDİLERİ ARTIK TABANDA (16.09.2026).
+    ///
+    /// Önceden bu sınıf sekiz CTE (gp · gps · bps · bt · sn · kb · kb3 · gd · yl) kurup
+    /// tabana ON LEFT JOIN ile bağlıyordu. ÖLÇÜLDÜ (kesim 13.09.2026, tüm evren
+    /// 266.332 çeşit): CTE'ler tek başına ~7 s, taban-only tarama + tüm CROSS APPLY
+    /// aritmetiği ~2 s, ikisi birleşik <b>36,6 s</b> — yani maliyet CTE'lerde değil,
+    /// 266K satırı onlara bağlayan JOIN zincirindeydi. Üstelik gövde istek başına DÖRT
+    /// kez koşuyordu (KPI · kategori · sayım · sayfa).
+    ///
+    /// Girdiler <c>SatisAnaliziTabanService</c> tarafından kesim başına BİR KEZ yazılıyor;
+    /// burada yalnız okunuyor. Pencere tanımı tek kaynakta: <see cref="SezonPayiPencere"/>
+    /// → <see cref="SezonAksiyonFiltre"/>.
+    ///
+    /// ⚠ Kolonlar NULL ise taban o kesim için bu girdiler OLMADAN doldurulmuştur.
+    /// O durumda sorgu KOŞTURULMAZ — <see cref="SezonPayiHazirAsync"/> kapısı ekranı
+    /// KOŞAMADI'ya düşürür. ISNULL(...,0) ile devam etmek "sipariş yok" diye sessiz
+    /// yanlış rakam üretirdi.
+    /// </summary>
+    /// <summary>
+    /// FROM + APPLY + WHERE — KPI · kategori · liste · Excel'in ORTAK gövdesi.
+    /// ⚠ Kohort tanımı TEK yerde: KPI ile listenin ayrışması "kart 100 diyor, listede
+    /// 80 var" sınıfı sessiz hatadır.
+    /// </summary>
+    private const string GovdeSql = $"""
         FROM {Taban} t WITH (NOLOCK)
         -- stkKod tabanda YOK (yalnız BarkodAna var) — ürün master'ından okunur.
         -- ⚠ stkKod BARKOD DEĞİLDİR; eşleşme her zaman stkID üstünden.
         LEFT JOIN DerinSISBkm.dbo.urn u WITH (NOLOCK) ON u.stkID = t.stkID
-        LEFT JOIN gh ON gh.stkID = t.stkID
-        LEFT JOIN bh ON bh.stkID = t.stkID
-        LEFT JOIN gk ON gk.stkID = t.stkID
-        LEFT JOIN gks ON gks.stkID = t.stkID
-        LEFT JOIN bhs ON bhs.stkID = t.stkID
-        LEFT JOIN sn ON sn.stkID = t.stkID
-        LEFT JOIN kb ON kb.Kat = t.Kategori3
-        LEFT JOIN yl ON yl.stkID = t.stkID
-        -- ⚠ TABAN: TÜM SEZON DEĞİL, KALAN SEZON (GMY 15.09.2026). Ölçüldü: tüm sezonla
-        --   AÇIK 254,7M ₺, kalan sezonla 106,9M ₺ — 2,4 kat fark.
-        -- ORAN: @buyume > 0 ise ELLE verilen düz oran; 0 ise ÖLÇÜLEN kategori büyümesi.
-        -- ⚠ 4 HANEYE yuvarlanıp öyle çarpılır: GÖSTERİLEN oran = ÇARPILAN oran.
-        CROSS APPLY (SELECT Oran = CONVERT(decimal(7,4), CASE WHEN @buyume > 0 THEN @buyume
-                         ELSE ISNULL(CASE WHEN kb.Gecen >= 2000
-                              THEN CONVERT(float, kb.Bu) / kb.Gecen END, 1.0) END)) o
-        -- ── MAĞAZA BAZLI İHTİYAÇ ────────────────────────────────────────────────
-        -- Her mağaza KENDİ ihtiyacıyla karşılaştırılır (GMY 15.09.2026). Eksikler
-        -- toplanır; önce eldeki FAZLA + DEPO taşınır, ancak kalanı SATIN ALINIR.
-        -- PENCERE GÜN SAYILARI — C#'tan gelir (tek kaynak, SQL'de hesaplanmaz).
-        CROSS APPLY (SELECT PenGun = CONVERT(float, @pencereGun),
-                            KalGun = CONVERT(float, @kalanGun)) d
-        -- İKİ TABAN: (1) GEÇEN YIL — sansürlü, tükenen üründe ALT SINIR verir.
-        --            (2) BU YIL HIZ — bu sezonun gerçekleşen günlük hızı × kalan gün.
-        -- ⚠ Hiçbiri tek başına yetmez: geçen yıl tabanı stoksuz kalanı küçük gösterir,
-        --   hız tabanı sezonu HENÜZ başlamamışı küçük gösterir. ⇒ BÜYÜĞÜ alınır.
+        -- ⚠ TEK JOIN KALDI (stkKod için). Sekiz CTE + on LEFT JOIN 16.09.2026'da
+        --   tabana taşındı; ölçüm gerekçesi yukarıda.
+        -- Ham girdiler tek yerde adlandırılır — aşağıdaki APPLY'lar bunları kullanır.
         CROSS APPLY (SELECT
-            GecF = CEILING(CASE WHEN ISNULL(gks.Fsm,0) > 0 THEN gks.Fsm * o.Oran ELSE 0 END),
-            GecO = CEILING(CASE WHEN ISNULL(gks.Ozl,0) > 0 THEN gks.Ozl * o.Oran ELSE 0 END),
-            GecI = CEILING(CASE WHEN ISNULL(gks.Ist,0) > 0 THEN gks.Ist * o.Oran ELSE 0 END),
-            HizF = CEILING(CASE WHEN ISNULL(bhs.Fsm,0) > 0 THEN bhs.Fsm / d.PenGun * d.KalGun ELSE 0 END),
-            HizO = CEILING(CASE WHEN ISNULL(bhs.Ozl,0) > 0 THEN bhs.Ozl / d.PenGun * d.KalGun ELSE 0 END),
-            HizI = CEILING(CASE WHEN ISNULL(bhs.Ist,0) > 0 THEN bhs.Ist / d.PenGun * d.KalGun ELSE 0 END),
-            GecT = CONVERT(int, CEILING(CASE WHEN ISNULL(gk.Adet,0) > 0 THEN gk.Adet * o.Oran ELSE 0 END)),
-            HizT = CONVERT(int, CEILING(CASE WHEN ISNULL(bh.Adet,0) > 0 THEN bh.Adet / d.PenGun * d.KalGun ELSE 0 END))) b
+                GecF = CONVERT(int, ISNULL(t.OncesiGecenFsm, 0)),
+                GecO = CONVERT(int, ISNULL(t.OncesiGecenOzl, 0)),
+                GecI = CONVERT(int, ISNULL(t.OncesiGecenIst, 0)),
+                BuF  = CONVERT(int, ISNULL(t.OncesiBuFsm, 0)),
+                BuO  = CONVERT(int, ISNULL(t.OncesiBuOzl, 0)),
+                BuI  = CONVERT(int, ISNULL(t.OncesiBuIst, 0)),
+                BugF = CONVERT(int, ISNULL(t.BuguneFsm, 0)),
+                BugO = CONVERT(int, ISNULL(t.BuguneOzl, 0)),
+                BugI = CONVERT(int, ISNULL(t.BuguneIst, 0))) h
         CROSS APPLY (SELECT
-            IhtF = CONVERT(int, CASE WHEN b.HizF > b.GecF THEN b.HizF ELSE b.GecF END),
-            IhtO = CONVERT(int, CASE WHEN b.HizO > b.GecO THEN b.HizO ELSE b.GecO END),
-            IhtI = CONVERT(int, CASE WHEN b.HizI > b.GecI THEN b.HizI ELSE b.GecI END)) m0
-        CROSS APPLY (SELECT IhtF = m0.IhtF, IhtO = m0.IhtO, IhtI = m0.IhtI,
-            Eksik = CASE WHEN m0.IhtF > t.StokFsm THEN m0.IhtF - t.StokFsm ELSE 0 END
-                  + CASE WHEN m0.IhtO > t.StokOzl THEN m0.IhtO - t.StokOzl ELSE 0 END
-                  + CASE WHEN m0.IhtI > t.StokIst THEN m0.IhtI - t.StokIst ELSE 0 END,
-            Fazla = CASE WHEN t.StokFsm > m0.IhtF THEN t.StokFsm - m0.IhtF ELSE 0 END
-                  + CASE WHEN t.StokOzl > m0.IhtO THEN t.StokOzl - m0.IhtO ELSE 0 END
-                  + CASE WHEN t.StokIst > m0.IhtI THEN t.StokIst - m0.IhtI ELSE 0 END) m
-        -- ⚠ NEGATİF TALEP OLMAZ: gk negatifse (iade > satış) sıfıra kırpılır.
-        CROSS APPLY (SELECT Satilacak = CASE WHEN b.HizT > b.GecT THEN b.HizT ELSE b.GecT END,
-                            Elde      = t.MagazaStok + t.MerkezStok) s
-        -- TAŞINACAK elde+depo ile SINIRLI; kalanı satın alınır.
+                GecTop = h.GecF + h.GecO + h.GecI,
+                BuTop  = h.BuF  + h.BuO  + h.BuI,
+                BugTop = h.BugF + h.BugO + h.BugI) ht
+        -- YEDEK ORAN tabanda ÇÖZÜLMÜŞ (Kat2 → Kategori3); yoksa 0,60.
+        -- ⚠ decimal(6,4) olarak SAKLANIR ve bu hâliyle çarpılır: GÖSTERİLEN oran =
+        --   ÇARPILAN oran. Tam hassasiyet Excel emitter'ı ile ayrışıyordu — ÖLÇÜLDÜ
+        --   16.09.2026: "depodan gönder" adedi SQL'de 22.445, Excel'de 22.442.
+        CROSS APPLY (SELECT Kat = CONVERT(float, ISNULL(t.YedekOran, 0.60))) kk
+        -- ⚠ TABAN EŞİĞİ 30 ADET: 1 adetten 3'e çıkan şube "oranım 0,33" demesin.
+        -- ⚠ ALT SINIR 0,05: payda sıfıra yaklaşırsa bölme tahmini sonsuza götürür.
+        -- ⚠ ÜST SINIR 1,00: oran 1'i geçemez (iade fazlası negatif kalan üretirdi).
         CROSS APPLY (SELECT
-                TransferAdet = CASE WHEN m.Eksik < m.Fazla + t.MerkezStok
-                                    THEN m.Eksik ELSE m.Fazla + t.MerkezStok END,
-                SatinAl      = CASE WHEN m.Eksik > m.Fazla + t.MerkezStok
-                                    THEN m.Eksik - (m.Fazla + t.MerkezStok) ELSE 0 END) r
-        -- SINIF ÖNCELİĞİ: sezonu bitti > açık > TRANSFER > fazla > denge.
-        -- TRANSFER, FAZLA'yı EZER: toplam fazla olsa bile raf boşsa eylem "taşı".
+                OrF = CASE WHEN t.SezonFsm >= 30 AND h.GecF >= 30
+                            AND CONVERT(float, h.GecF) / t.SezonFsm BETWEEN 0.05 AND 1.0
+                           THEN CONVERT(float, h.GecF) / t.SezonFsm ELSE kk.Kat END,
+                OrO = CASE WHEN t.SezonOzl >= 30 AND h.GecO >= 30
+                            AND CONVERT(float, h.GecO) / t.SezonOzl BETWEEN 0.05 AND 1.0
+                           THEN CONVERT(float, h.GecO) / t.SezonOzl ELSE kk.Kat END,
+                OrI = CASE WHEN t.SezonIst >= 30 AND h.GecI >= 30
+                            AND CONVERT(float, h.GecI) / t.SezonIst BETWEEN 0.05 AND 1.0
+                           THEN CONVERT(float, h.GecI) / t.SezonIst ELSE kk.Kat END) po
+        CROSS APPLY (SELECT
+                TahF = CONVERT(int, CEILING(h.BuF / po.OrF)),
+                TahO = CONVERT(int, CEILING(h.BuO / po.OrO)),
+                TahI = CONVERT(int, CEILING(h.BuI / po.OrI))) th
+        -- KALAN = tahmin − şu ana kadar satılan. Eksi olamaz: tahmin aşılmışsa
+        -- "eksi ihtiyaç" değil, ihtiyaç YOK demektir.
+        CROSS APPLY (SELECT
+                KalF = CASE WHEN th.TahF > h.BugF THEN th.TahF - h.BugF ELSE 0 END,
+                KalO = CASE WHEN th.TahO > h.BugO THEN th.TahO - h.BugO ELSE 0 END,
+                KalI = CASE WHEN th.TahI > h.BugI THEN th.TahI - h.BugI ELSE 0 END) kl
+        CROSS APPLY (SELECT
+                Eksik = CASE WHEN kl.KalF > t.StokFsm THEN kl.KalF - t.StokFsm ELSE 0 END
+                      + CASE WHEN kl.KalO > t.StokOzl THEN kl.KalO - t.StokOzl ELSE 0 END
+                      + CASE WHEN kl.KalI > t.StokIst THEN kl.KalI - t.StokIst ELSE 0 END,
+                Kalan = kl.KalF + kl.KalO + kl.KalI,
+                DisT  = CONVERT(int, ISNULL(t.SezonDisiAdet, 0))) s
+        -- SİPARİŞ = şubelerin toplam eksiği − merkez depo. Önce depodan gönderilir,
+        -- ancak yetmeyen kısmı sipariş edilir. GMY: "mağazalar arası değil, depoda
+        -- veya ODAK'ta varsa mümkün; diğer türlü hayal."
+        CROSS APPLY (SELECT
+                Siparis = CASE WHEN s.Eksik > t.MerkezStok THEN s.Eksik - t.MerkezStok ELSE 0 END,
+                Fazla   = t.MagazaStok + t.MerkezStok - s.Kalan - s.DisT) x
         CROSS APPLY (SELECT Sinif = CASE
-                -- ⚠ HIZ TABANI SEZONU BİTTİ'Yİ EZER: geçen yıl kalan dilimde hiç satmamış
-                --   olabilir ama BU YIL satıyorsa sezonu bitmemiştir.
-                WHEN ISNULL(gk.Adet, 0) <= 0 AND b.HizT <= 0
-                     THEN CASE WHEN t.MagazaStok + t.MerkezStok > 0
-                               THEN 3 ELSE 0 END                            -- 3 SEZONU BİTTİ
-                WHEN r.SatinAl > 0 THEN 1                                  -- 1 AÇIK (satın al)
-                WHEN m.Eksik > 0 THEN 4                                    -- 4 TRANSFER (taşı)
-                WHEN s.Elde > s.Satilacak THEN 2                           -- 2 FAZLA
-                ELSE 0 END,
-                TransferAdet = r.TransferAdet, SatinAl = r.SatinAl) g
+                WHEN t.SezonToplam <= 0 AND ht.BugTop <= 0
+                     AND t.MagazaStok + t.MerkezStok > 0 THEN 5   -- ÖLÜ STOK
+                WHEN x.Siparis > 0 THEN 1                         -- SİPARİŞ VER
+                WHEN s.Eksik   > 0 THEN 4                         -- DEPODAN GÖNDER
+                WHEN x.Fazla   > 0 THEN 2                         -- FAZLA VAR
+                ELSE 0 END) g
         WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
-          AND t.SezonToplam > 0
+          -- KAPSAM: "geçen sezon fiilen satmış" şartı KALDIRILDI — bu sezon satan ama
+          -- geçen sezon tabanı olmayan ürünleri dışarıda bırakıyordu. ÖLÇÜLDÜ
+          -- (Defterler): 681'i 2026'da açılmış yeni ürün, 380'i eski ama geçen sezon
+          -- satmamış; ikisi birlikte bu sezon 11.852 adet satmış.
+          AND (t.SezonToplam > 0 OR ht.BugTop > 0
+               OR t.MagazaStok + t.MerkezStok > 0)
+          -- DEFTER GÜVENİLİR: negatif stok fiziksel durum değil, defter hatasıdır.
           AND t.StokFsm >= 0 AND t.StokOzl >= 0 AND t.StokIst >= 0 AND t.MerkezStok >= 0
           AND t.SatisFiyat > 0
-          -- ⚠ DÖRT SINIF (GMY 15.09.2026: "kalan sezonda satış olmayanları da ayrı göster").
-          --   "SEZONU BİTTİ" = geçen yıl KALAN dilimde hiç satmamış + stoğu var. AÇIK'a
-          --   giremez (talebi 0) ve FAZLA'dan AYRI tutulur: eylemi farklı.
-          AND (@yalnizAcik  = 0 OR g.Sinif = 1)
-          AND (@yalnizFazla = 0 OR g.Sinif = 2)
-          AND (@yalnizBitti = 0 OR g.Sinif = 3)
-          AND (@yalnizTransfer = 0 OR g.Sinif = 4)
           AND (@kategori IS NULL OR t.Kategori3 = @kategori)
+          AND (@grup     IS NULL OR t.Kat1      = @grup)
+          AND (@sinif    IS NULL OR g.Sinif     = @sinif)
           AND (@ara IS NULL OR t.stkAd LIKE @araLike OR t.BarkodAna = @ara OR u.stkKod = @ara)
         """;
 
@@ -223,45 +160,20 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
             + ISNULL(N' > ' + NULLIF(t.Kat4, N''), N''), 1, 3, N'')
         """;
 
+    /// <summary>
+    /// Parametreler — YALNIZ süzgeç. Pencere tarihleri BURADA YOK: sezon payı girdileri
+    /// taban dolumunda (<see cref="SezonPayiPencere"/>) hesaplanıp saklanıyor, sorgu
+    /// yalnız okuyor. İkinci bir pencere hesabı, okul açılış tablosu güncellenince
+    /// sessizce bayatlardı.
+    /// </summary>
     private static DynamicParameters P(SezonAksiyonFiltre f)
     {
         var p = new DynamicParameters();
         p.Add("kesim", f.Kesim.ToDateTime(TimeOnly.MinValue));
         p.Add("sezon", f.SezonYil);
-        // ELLE oran verilmişse (1+x); verilmemişse 0 → SQL ölçülen kategori oranını alır.
-        p.Add("buyume", f.Buyume is { } bo ? 1.0m + bo : 0m);
-        var (gb, gsn) = f.GecenPencere;
-        var (bb, bsn) = f.BuPencere;
-        // ⚠⚠ ÜST SINIR DIŞLAYICI (< açılış günü), "<= son gün 23:59:59.9999999" DEĞİL.
-        //   ÖLÇÜLDÜ 15.09.2026: TimeOnly.MaxValue SQL `datetime` kolonuna yazılırken
-        //   BİR SONRAKİ GÜNE YUVARLANIYOR (23:59:59.9999999 → 08.09.2025 00:00:00.000,
-        //   datetime 3,33 ms çözünürlüklü). Sonuç: pencere 44 değil 45 gün oluyordu ve
-        //   okul AÇILIŞ GÜNÜNÜN satışı içeri giriyordu. stkID 486093'te tam 20 adet fark
-        //   (panel 606 / script 586). Ekran "44 gün" yazıp 45 gün ölçüyordu — sessiz sapma.
-        //   Kanıt: sorgular/2026-09-15-ayni-pencere-ve-yanlis-alarm.sql blok 5.
-        p.Add("gBas", gb.ToDateTime(TimeOnly.MinValue));
-        p.Add("gSonEx", gsn.AddDays(1).ToDateTime(TimeOnly.MinValue));
-        p.Add("bBas", bb.ToDateTime(TimeOnly.MinValue));
-        p.Add("bSonEx", bsn.AddDays(1).ToDateTime(TimeOnly.MinValue));
-        var (yb, ysn) = f.YilPencere;
-        var (gkb, gks) = f.GecenKalanPencere;
-        p.Add("gkBas", gkb.ToDateTime(TimeOnly.MinValue));
-        p.Add("gkSonEx", gks.AddDays(1).ToDateTime(TimeOnly.MinValue));
-        // SANSÜR bayrağı: kalan dilimin İÇİNDEKİ ay sonları (snapshot yalnız ay sonu tutar).
-        static DateOnly AySonu(DateOnly d) =>
-            new(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
-        p.Add("snBas", AySonu(gkb).ToDateTime(TimeOnly.MinValue));
-        p.Add("snSon", AySonu(gks).ToDateTime(TimeOnly.MinValue));
-        // HIZ TABANI gün sayıları — KAPSAYICI (iki uç dahil): 01.08–13.09 = 44 gün.
-        p.Add("pencereGun", bsn.DayNumber - bb.DayNumber + 1);
-        p.Add("kalanGun", f.KalanPencere.Son.DayNumber - f.KalanPencere.Bas.DayNumber + 1);
-        p.Add("yBas", yb.ToDateTime(TimeOnly.MinValue));
-        p.Add("ySonEx", ysn.AddDays(1).ToDateTime(TimeOnly.MinValue));
-        p.Add("yalnizAcik", f.Durum == "acik" ? 1 : 0);
-        p.Add("yalnizFazla", f.Durum == "fazla" ? 1 : 0);
-        p.Add("yalnizBitti", f.Durum == "bitti" ? 1 : 0);
-        p.Add("yalnizTransfer", f.Durum == "transfer" ? 1 : 0);
+        p.Add("sinif", SezonAksiyonSinif.Anahtardan(f.Durum));
         p.Add("kategori", string.IsNullOrWhiteSpace(f.Kategori3) ? null : f.Kategori3);
+        p.Add("grup", string.IsNullOrWhiteSpace(f.Grup) ? null : f.Grup);
         var ara = string.IsNullOrWhiteSpace(f.Arama) ? null : f.Arama.Trim();
         p.Add("ara", ara);
         p.Add("araLike", ara is null ? null : "%" + ara + "%");
@@ -269,10 +181,35 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     }
 
     /// <summary>
+    /// TABAN KAPISI — o kesimde sezon payı girdileri yazılmış mı.
+    ///
+    /// ⚠ Taban bu kolonlar EKLENMEDEN önce doldurulmuşsa hepsi NULL olur. ISNULL(...,0)
+    /// ile devam etmek her ürünü "talebi yok" gösterir ve ekran sessizce "sipariş yok"
+    /// der — hata vermez. Bu yüzden eksik satır varsa sorgu KOŞTURULMAZ; ekran taban
+    /// yenilenene kadar KOŞAMADI yazar.
+    /// </summary>
+    public async Task<(bool Hazir, int Toplam, int Eksik)> SezonPayiHazirAsync(
+        SezonAksiyonFiltre f, CancellationToken ct = default)
+    {
+        const string sql = $"""
+            SELECT CONVERT(int, COUNT(*)) AS Toplam,
+                   CONVERT(int, SUM(CASE WHEN t.OncesiGecenFsm IS NULL THEN 1 ELSE 0 END)) AS Eksik
+            FROM {Taban} t WITH (NOLOCK)
+            WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
+            """;
+        await using var conn = await db.OpenAsync();
+        var p = new DynamicParameters();
+        p.Add("kesim", f.Kesim.ToDateTime(TimeOnly.MinValue));
+        p.Add("sezon", f.SezonYil);
+        var r = await conn.QuerySingleAsync<(int Toplam, int Eksik)>(
+            new CommandDefinition(sql, p, commandTimeout: 60, cancellationToken: ct));
+        return (r.Toplam > 0 && r.Eksik == 0, r.Toplam, r.Eksik);
+    }
+
+    /// <summary>
     /// Tabanda hazır kesimler + o kesimin sezon yılı (en yeni önce).
-    /// ⚠ Sezon yılı EKRANDAN SORULMAZ: ölçüldü (15.09.2026) — her kesimde TEK sezon yılı var
-    /// (13.09/11.09/10.09 → hepsi 2025). Kullanıcıya soru sormak, cevabı tek olan bir soruyu
-    /// ekrana koymaktı. Birden çok çıkarsa en yenisi alınır ve kesim listesi bunu gösterir.
+    /// ⚠ Sezon yılı EKRANDAN SORULMAZ: ölçüldü (15.09.2026) — her kesimde TEK sezon
+    /// yılı var. Cevabı tek olan soruyu ekrana koymak, soru sormak değildir.
     /// </summary>
     public async Task<IReadOnlyList<(DateOnly Kesim, int SezonYil)>> GetKesimlerAsync(
         CancellationToken ct = default)
@@ -289,48 +226,58 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         return d.Select(x => (DateOnly.FromDateTime(x.Kesim), x.SezonYil)).ToList();
     }
 
+    /// <summary>
+    /// KPI kolonları — AYRI sabit. ⚠ Kategori bloğuyla aynı metottaki gömülü SELECT
+    /// olarak dursaydı <c>tools/panel_kolon_denetimi.py</c> ikisinin alias'larını
+    /// birleştirip okuyor ve sıra kıyası anlamsızlaşıyordu (ölçüldü 16.09.2026:
+    /// "SQL 21, record 14"). Kapının görebilmesi için blok adlandırıldı.
+    /// SİPARİŞ ₺ SATIŞ fiyatıyla, FAZLA/ÖLÜ ₺ MALİYETLE — ayrı tabanlar, toplanmaz.
+    /// </summary>
+    private const string OzetKolonlarSql = $"""
+            CONVERT(int, COUNT(*))                                                AS Cesit,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 1 THEN 1 ELSE 0 END))         AS SiparisUrun,
+            CONVERT(bigint, SUM(CASE WHEN g.Sinif = 1 THEN x.Siparis ELSE 0 END)) AS SiparisAdet,
+            CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 1
+                 THEN x.Siparis * t.SatisFiyat ELSE 0 END))                       AS SiparisTutar,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 4 THEN 1 ELSE 0 END))         AS DepodanUrun,
+            CONVERT(bigint, SUM(CASE WHEN g.Sinif = 4 THEN s.Eksik ELSE 0 END))   AS DepodanAdet,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 2 THEN 1 ELSE 0 END))         AS FazlaUrun,
+            CONVERT(bigint, SUM(CASE WHEN g.Sinif = 2 THEN x.Fazla ELSE 0 END))   AS FazlaAdet,
+            CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 2 AND {MaliyetGecerli}
+                 THEN x.Fazla * t.BirimMaliyet ELSE 0 END))                       AS FazlaTutar,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 5 THEN 1 ELSE 0 END))         AS OluUrun,
+            CONVERT(bigint, SUM(CASE WHEN g.Sinif = 5
+                 THEN t.MagazaStok + t.MerkezStok ELSE 0 END))                    AS OluAdet,
+            CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 5 AND {MaliyetGecerli}
+                 THEN (t.MagazaStok + t.MerkezStok) * t.BirimMaliyet ELSE 0 END)) AS OluTutar,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 0 THEN 1 ELSE 0 END))         AS YeterliUrun,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif IN (2,5) AND NOT {MaliyetGecerli}
+                                     THEN 1 ELSE 0 END))                          AS MaliyetiYok
+        """;
+
+    /// <summary>Kategori kırılımı kolonları — ÖZET tablosunun satırı.</summary>
+    private const string KategoriKolonlarSql = $"""
+            ISNULL(t.Kategori3, N'(boş)')                                         AS Kategori,
+            CONVERT(int, COUNT(*))                                                AS Cesit,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 1 THEN 1 ELSE 0 END))         AS SiparisUrun,
+            CONVERT(bigint, SUM(CASE WHEN g.Sinif = 1 THEN x.Siparis ELSE 0 END)) AS SiparisAdet,
+            CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 1
+                 THEN x.Siparis * t.SatisFiyat ELSE 0 END))                       AS SiparisTutar,
+            CONVERT(int,    SUM(CASE WHEN g.Sinif = 2 THEN 1 ELSE 0 END))         AS FazlaUrun,
+            CONVERT(bigint, SUM(CASE WHEN g.Sinif = 2 THEN x.Fazla ELSE 0 END))   AS FazlaAdet,
+            CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 2 AND {MaliyetGecerli}
+                 THEN x.Fazla * t.BirimMaliyet ELSE 0 END))                       AS FazlaTutar
+        """;
+
     /// <summary>KPI + kategori kırılımı — tek gidiş dönüş (iki sonuç kümesi).</summary>
     public async Task<SezonAksiyonOzet> GetOzetAsync(SezonAksiyonFiltre f, CancellationToken ct = default)
     {
         var sql = $"""
-            {PencereSql}
-            SELECT CONVERT(int, COUNT(*))                                                  AS Cesit,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 1 THEN 1 ELSE 0 END))            AS AcikUrun,
-                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 1 THEN g.SatinAl ELSE 0 END))  AS AcikAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 1
-                        THEN g.SatinAl * t.SatisFiyat ELSE 0 END))                         AS AcikTutar,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 2 THEN 1 ELSE 0 END))            AS FazlaUrun,
-                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 2
-                                            THEN s.Elde - s.Satilacak ELSE 0 END))         AS FazlaAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 2 AND {MaliyetGecerli}
-                        THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END))          AS FazlaTutar,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 3 THEN 1 ELSE 0 END))            AS BittiUrun,
-                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 3
-                                            THEN s.Elde - s.Satilacak ELSE 0 END))         AS BittiAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 3 AND {MaliyetGecerli}
-                        THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END))          AS BittiTutar,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 4 THEN 1 ELSE 0 END))            AS TransferUrun,
-                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 4
-                                            THEN g.TransferAdet ELSE 0 END))               AS TransferAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 4
-                        THEN g.TransferAdet * t.SatisFiyat ELSE 0 END))                    AS TransferTutar,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif IN (2,3) AND NOT {MaliyetGecerli}
-                                          THEN 1 ELSE 0 END))                              AS MaliyetiYok
-            {TabanSql};
+            SELECT {OzetKolonlarSql}
+            {GovdeSql};
 
-            {PencereSql}
-            SELECT ISNULL(t.Kategori3, N'(boş)')                                           AS Kategori,
-                   CONVERT(int, COUNT(*))                                                  AS Cesit,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 1 THEN 1 ELSE 0 END))            AS AcikUrun,
-                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 1 THEN g.SatinAl ELSE 0 END))  AS AcikAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 1
-                        THEN g.SatinAl * t.SatisFiyat ELSE 0 END))                         AS AcikTutar,
-                   CONVERT(int,  SUM(CASE WHEN g.Sinif = 2 THEN 1 ELSE 0 END))            AS FazlaUrun,
-                   CONVERT(bigint, SUM(CASE WHEN g.Sinif = 2
-                                            THEN s.Elde - s.Satilacak ELSE 0 END))         AS FazlaAdet,
-                   CONVERT(decimal(18,2), SUM(CASE WHEN g.Sinif = 2 AND {MaliyetGecerli}
-                        THEN (s.Elde - s.Satilacak) * t.BirimMaliyet ELSE 0 END))          AS FazlaTutar
-            {TabanSql}
+            SELECT {KategoriKolonlarSql}
+            {GovdeSql}
             GROUP BY t.Kategori3
             ORDER BY 5 DESC;
             """;
@@ -345,73 +292,102 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     }
 
     /// <summary>
-    /// Kategori3 seçenekleri — süzgeç açılırı. Kohort filtresinden BAĞIMSIZ (aksi hâlde
-    /// bir kategoriyi seçince öteki seçenekler kaybolurdu).
+    /// Kategori3 ve ürün grubu (Kat1) seçenekleri — süzgeç açılırları. Kohort
+    /// filtresinden BAĞIMSIZ (aksi hâlde bir kategoriyi seçince ötekiler kaybolurdu).
     /// </summary>
-    public async Task<IReadOnlyList<string>> GetKategorilerAsync(
-        SezonAksiyonFiltre f, CancellationToken ct = default)
+    public async Task<(IReadOnlyList<string> Kategoriler, IReadOnlyList<string> Gruplar)>
+        GetSecenekleriAsync(SezonAksiyonFiltre f, CancellationToken ct = default)
     {
         const string sql = $"""
             SELECT DISTINCT t.Kategori3
             FROM {Taban} t WITH (NOLOCK)
-            WHERE t.Kesim = @kesim AND t.SezonYil = @sezon AND t.SezonToplam > 0
+            WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
               AND t.Kategori3 IS NOT NULL AND t.Kategori3 <> N''
-            ORDER BY t.Kategori3
+            ORDER BY t.Kategori3;
+
+            SELECT DISTINCT t.Kat1
+            FROM {Taban} t WITH (NOLOCK)
+            WHERE t.Kesim = @kesim AND t.SezonYil = @sezon
+              AND t.Kat1 IS NOT NULL AND t.Kat1 <> N''
+              AND (@kategori IS NULL OR t.Kategori3 = @kategori)
+            ORDER BY t.Kat1;
             """;
         await using var conn = await db.OpenAsync();
         var p = new DynamicParameters();
         p.Add("kesim", f.Kesim.ToDateTime(TimeOnly.MinValue));
         p.Add("sezon", f.SezonYil);
-        return (await conn.QueryAsync<string>(
-            new CommandDefinition(sql, p, commandTimeout: 60, cancellationToken: ct))).ToList();
+        p.Add("kategori", string.IsNullOrWhiteSpace(f.Kategori3) ? null : f.Kategori3);
+        await using var g = await conn.QueryMultipleAsync(
+            new CommandDefinition(sql, p, commandTimeout: 60, cancellationToken: ct));
+        var kat = (await g.ReadAsync<string>()).ToList();
+        var grp = (await g.ReadAsync<string>()).ToList();
+        return (kat, grp);
     }
 
     /// <summary>
     /// SELECT kolonları — ekran, sayfalama ve Excel AYNI listeyi kullanır.
     /// ⚠ SIRA = <see cref="SezonAksiyonSatir"/> parametre sırası (Dapper pozisyonel record).
+    ///   Araya kolon eklenirse record'a da AYNI yere eklenir; sona yazmak değeri
+    ///   SESSİZCE kaydırır. Kapı: <c>python tools/panel_kolon_denetimi.py</c>.
     /// </summary>
     private static string KolonlarSql => $"""
-            t.stkID                                   AS StkId,
-            u.stkKod                                  AS StkKod,
-            t.BarkodAna                               AS Barkod,
-            t.stkAd                                   AS StkAd,
-            t.Kategori3                               AS Kategori3,
-            {YolSql}                                  AS KategoriYolu,
-            t.Yayinevi                                AS Yayinevi,
-            CONVERT(decimal(18,2), t.SatisFiyat)      AS SatisFiyat,
-            CONVERT(int, ISNULL(gh.Adet, 0))          AS GecenAyni,
-            CONVERT(int, ISNULL(bh.Adet, 0))          AS BuAyni,
-            t.SezonToplam                             AS SezonToplam,
-            CONVERT(int, ISNULL(yl.Adet, 0))          AS Yillik,
-            CONVERT(int, ISNULL(gk.Adet, 0))          AS GecenKalan,
-            CONVERT(bit, CASE WHEN ISNULL(sn.Bas, 0) <= 0 OR ISNULL(sn.Son, 0) <= 0
-                              THEN 1 ELSE 0 END)        AS StoksuzKaldi,
-            CONVERT(decimal(7,4), CASE WHEN kb.Gecen >= 2000
-                 THEN CONVERT(float, kb.Bu) / kb.Gecen END) AS KategoriBuyume,
-            o.Oran                                    AS UygulananBuyume,
-            -- İKİ TABAN AYRI GÖRÜNÜR: hangisinin bağladığı ekranda okunsun.
-            b.GecT                                    AS GecenTabani,
-            b.HizT                                    AS HizTabani,
-            s.Satilacak                               AS Satilacak,
-            t.StokFsm                                 AS StokFsm,
-            t.StokOzl                                 AS StokOzl,
-            t.StokIst                                 AS StokIst,
-            t.MagazaStok                              AS MagazaStok,
-            t.MerkezStok                              AS MerkezStok,
-            s.Elde                                    AS ToplamStok,
-            m.IhtF                                    AS FsmIhtiyac,
-            m.IhtO                                    AS OzlIhtiyac,
-            m.IhtI                                    AS IstIhtiyac,
-            m.Eksik                                   AS MagazaEksigi,
-            m.Fazla                                   AS MagazaFazlasi,
-            g.TransferAdet                            AS TransferAdet,
-            g.SatinAl                                 AS Acik,
-            CONVERT(int, CASE WHEN s.Elde > s.Satilacak THEN s.Elde - s.Satilacak ELSE 0 END) AS Fazla,
-            CONVERT(decimal(18,2), CASE WHEN s.Satilacak > s.Elde
-                 THEN (s.Satilacak - s.Elde) * t.SatisFiyat END)                              AS AcikTutar,
-            CONVERT(decimal(18,2), CASE WHEN s.Elde > s.Satilacak AND {MaliyetGecerli}
-                 THEN (s.Elde - s.Satilacak) * t.BirimMaliyet END)                            AS FazlaTutar,
-            CONVERT(decimal(18,2), CASE WHEN {MaliyetGecerli} THEN t.BirimMaliyet END)        AS BirimMaliyet
+            t.stkID                                      AS StkId,
+            u.stkKod                                     AS StkKod,
+            t.BarkodAna                                  AS Barkod,
+            t.stkAd                                      AS StkAd,
+            t.Kategori3                                  AS Kategori3,
+            t.Kat1                                       AS Kat1,
+            t.Kat2                                       AS Kat2,
+            {YolSql}                                     AS KategoriYolu,
+            t.Yayinevi                                   AS Yayinevi,
+            t.SezonToplam                                AS SezonToplam,
+            ht.GecTop                                    AS GecenOkulOncesi,
+            ISNULL(t.SansurluMu, CONVERT(bit, 0))        AS StoksuzKaldi,
+            CONVERT(decimal(6,4), kk.Kat)                AS KatOran,
+            ISNULL(t.Kat2, t.Kategori3)                  AS OranKirilim,
+            CONVERT(decimal(6,3), CASE WHEN ISNULL(t.YillikAdet,0) > 0
+                 THEN CONVERT(float, t.SezonToplam) / t.YillikAdet END) AS SezonPayi,
+            ht.BuTop                                     AS BuOkulOncesi,
+            ht.BugTop                                    AS BuBugune,
+            CONVERT(decimal(6,4), po.OrF)                AS OranFsm,
+            th.TahF                                      AS TahminFsm,
+            kl.KalF                                      AS KalanFsm,
+            t.StokFsm                                    AS StokFsm,
+            CONVERT(int, CASE WHEN kl.KalF > t.StokFsm THEN kl.KalF - t.StokFsm ELSE 0 END) AS EksikFsm,
+            CONVERT(decimal(6,4), po.OrO)                AS OranOzl,
+            th.TahO                                      AS TahminOzl,
+            kl.KalO                                      AS KalanOzl,
+            t.StokOzl                                    AS StokOzl,
+            CONVERT(int, CASE WHEN kl.KalO > t.StokOzl THEN kl.KalO - t.StokOzl ELSE 0 END) AS EksikOzl,
+            CONVERT(decimal(6,4), po.OrI)                AS OranIst,
+            th.TahI                                      AS TahminIst,
+            kl.KalI                                      AS KalanIst,
+            t.StokIst                                    AS StokIst,
+            CONVERT(int, CASE WHEN kl.KalI > t.StokIst THEN kl.KalI - t.StokIst ELSE 0 END) AS EksikIst,
+            CONVERT(int, th.TahF + th.TahO + th.TahI)    AS TahminToplam,
+            CONVERT(int, s.Kalan)                        AS KalanToplam,
+            CONVERT(int, s.Eksik)                        AS EksikToplam,
+            t.MagazaStok                                 AS MagazaStok,
+            t.MerkezStok                                 AS MerkezStok,
+            CONVERT(int, t.MagazaStok + t.MerkezStok)    AS ToplamStok,
+            g.Sinif                                      AS Sinif,
+            CONVERT(int, x.Siparis)                      AS Siparis,
+            CASE WHEN x.Siparis = 0 THEN NULL
+                 WHEN t.OdakStok >= x.Siparis THEN N'Tedarikçide var'
+                 ELSE N'Yeni alım gerekiyor' END         AS Nereden,
+            t.OdakStok                                   AS OdakStok,
+            CONVERT(int, s.DisT)                         AS SezonDisi,
+            CONVERT(int, ISNULL(t.YillikAdet, 0))        AS Yillik,
+            CONVERT(int, CASE WHEN x.Fazla > 0 THEN x.Fazla ELSE 0 END) AS Fazla,
+            -- ⚠ 4 HANE: 2 haneye yuvarlayıp çarpınca toplam sapıyordu (ölçüldü).
+            CONVERT(decimal(18,4), t.SatisFiyat)         AS SatisFiyat,
+            CONVERT(decimal(18,4), CASE WHEN {MaliyetGecerli}
+                 THEN t.BirimMaliyet END)                AS BirimMaliyet,
+            CONVERT(decimal(18,2), CASE
+                 WHEN x.Siparis > 0 THEN x.Siparis * t.SatisFiyat
+                 WHEN g.Sinif IN (2,5) AND {MaliyetGecerli}
+                 THEN CASE WHEN g.Sinif = 5 THEN t.MagazaStok + t.MerkezStok
+                           ELSE x.Fazla END * t.BirimMaliyet END) AS Tutar
         """;
 
     public async Task<SayfaSonucu<SezonAksiyonSatir>> GetListeAsync(
@@ -420,13 +396,11 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
         var yon = f.Azalan ? "DESC" : "ASC";
         // ⚠ COUNT(*) OVER () KULLANILMIYOR: Satış Analizi'nde sayfa başına 1,2 s ekliyordu.
         var sql = $"""
-            {PencereSql}
-            SELECT CONVERT(int, COUNT(*)) {TabanSql};
+            SELECT CONVERT(int, COUNT(*)) {GovdeSql};
 
-            {PencereSql}
             SELECT {KolonlarSql}
-            {TabanSql}
-            ORDER BY {SezonAksiyonSiralama.Sql(f.Sirala)} {yon}, t.stkID
+            {GovdeSql}
+            ORDER BY {SezonAksiyonSiralama.Sql(f.Sirala)} {yon}, ht.BugTop DESC, t.stkID
             OFFSET @atla ROWS FETCH NEXT @al ROWS ONLY;
             """;
 
@@ -450,16 +424,16 @@ public sealed class SezonAksiyonQueries(Db db, ILogger<SezonAksiyonQueries> logg
     {
         var yon = f.Azalan ? "DESC" : "ASC";
         var sql = $"""
-            {PencereSql}
             SELECT {KolonlarSql}
-            {TabanSql}
-            ORDER BY {SezonAksiyonSiralama.Sql(f.Sirala)} {yon}, t.stkID
+            {GovdeSql}
+            ORDER BY {SezonAksiyonSiralama.Sql(f.Sirala)} {yon}, ht.BugTop DESC, t.stkID
             """;
         await using var conn = await db.OpenAsync();
         var r = (await conn.QueryAsync<SezonAksiyonSatir>(
             new CommandDefinition(sql, P(f), commandTimeout: 600, cancellationToken: ct))).ToList();
-        logger.LogInformation("Sezon aksiyon Excel: {Satir} satır (kesim {Kesim}, büyüme {B})",
-            r.Count, f.Kesim, f.Buyume);
+        logger.LogInformation(
+            "Sezon sipariş Excel: {Satir} satır (kesim {Kesim}, sezon {Sezon}, pencere {Gun} gün)",
+            r.Count, f.Kesim, f.SezonYil, f.PencereGun);
         return r;
     }
 }
