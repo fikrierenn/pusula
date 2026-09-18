@@ -120,6 +120,15 @@ biri oraya istekten gelen değeri yazar. Ölçüt: *"yanlış bir şube id'si bu
 (Daha sert seçenek: SP `@KullaniciId` alıp şubeyi SQL içinde ACL'den çözer — boğaz veritabanında.
 GMY'nin "hepsi" durumu için ayrı yol gerekir. Karar Adım 4'te.)
 
+### ⚠ "Tüm şubeler" yetkisi ÇEREZDE TAŞINMAZ (Solum emsali, 18.09)
+
+Solum'un `IsCrossCompany` bayrağı bilerek **talepte taşınmıyor**; gerekçesi ölçülü:
+*"bir kez verilen konsolide hakkı oturum boyunca açık kalırdı."*
+
+Aynısı GMY'nin ve İK'nın "tüm şubeler" görüşü için geçerli: kalıcı bir claim/çerez bayrağı
+**değil**, isteğe bağlı ve her seferinde yeniden verilen bir kapsam olmalı. Böylece bir GMY
+oturumu ele geçirilse bile kalıcı bir kapı açılmış olmaz.
+
 ### Roller: kod ROL adı görmez, İZİN görür
 
 Identity rolleri *kim olduğunu* söyler; kod `vardiya.onayla` / `vardiya.tumSubeler` gibi
@@ -134,7 +143,7 @@ değişmez.
 |---|---|
 | `0005_SolumPermissions` | ✅ izin katmanı için. ⚠ `SolumUserCompanyAccess` şube ACL'i DEĞİL — şube ACL'i `Vrd_*` altında bizim |
 | `0025_SolumAuditTrail` | ✅ denetim izi (onay yazması için zaten gerekliydi) |
-| `0015_SolumTimeOffset` | bağımlılık kontrolü sonrası |
+| `0015_SolumTimeOffset` | ❌ **ALINMIYOR — ölçüldü (Solum, 18.09):** yalnız `SolumNotification` + `SolumMailLog`'a dokunuyor, ikisi de `0010`'un tablosu; `0005`/`0025` ile sıfır teması. `0025.At` zaten `DATETIMEOFFSET(7)`. ⚠ Almak zararsız görünür (`IF OBJECT_ID` korumalı) ama **sessiz kusur üretir**: koşmamış betik deftere "uygulandı" yazılır, ileride `0010` alınırsa dönüşüm hiç koşmaz. Bildirim/mail eklenirse sıra `0010` → `0015`, birlikte. |
 | `0010_SolumMessaging` · `0020_SolumSettings` · `0030_SolumAttachments` | ❌ gerekmiyor |
 
 Koşucu `MigrationRunner`; zinciri biz veriyoruz. Betikler idempotent ama kimlik **ad + içerik
