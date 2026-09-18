@@ -9,9 +9,18 @@ using Solum.Identity.DependencyInjection;
 // Kimlik DEPOSU Solum.Identity'den (DapperUserStore); kimlik doğrulama ŞEMASI burada.
 // Solum şema kaydetmez, yalnız depo verir — bu ayrım bilinçli.
 
+// ⚠ Solum.Sql SAĞLAYICIYI KENDİ SEÇMEZ: dialect açıkça kaydedilir. Kaydedilmezse
+//   hata AÇILIŞTA değil İLK SORGUDA gelir ("Baglanti dizesini taniyan dialect yok")
+//   ve sebebi uzak görünür (ölçüldü 19.09.2026 — seed koşumunda çıktı).
+Solum.Sql.SqlServer.SolumSqlServer.Register();
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
+// Geçici şifreyle gelen kullanıcı, şifresini değiştirene kadar başka sayfaya
+// gidemez. FİLTRE olarak kuruldu: tek tek sayfalara kontrol koymak, YENİ eklenen
+// sayfanın unutulmasını sessiz yapardı.
+builder.Services.AddRazorPages()
+    .AddMvcOptions(o => o.Filters.Add<BkmVardiya.Pages.ForcePasswordChangeFilter>());
 
 // Ortak veri katmanı (lib/Bkm.Shared).
 builder.Services.AddSingleton<Db>();
@@ -40,7 +49,11 @@ builder.Services.AddIdentityCore<IdentityUser>(o =>
     o.Password.RequiredLength = 10;
     o.User.RequireUniqueEmail = false;   // e-posta zorunlu değil; giriş kullanıcı adıyla
 })
-.AddRoles<IdentityRole>()
+// ⚠ .AddRoles<IdentityRole>() ÇAĞRILMAZ — Solum.Identity `IUserStore` ve
+//   `IUserRoleStore` verir ama `IRoleStore` VERMEZ. Çağrılırsa uygulama
+//   AÇILIŞTA patlar: "Unable to resolve service for type IRoleStore<IdentityRole>"
+//   (ölçüldü 19.09.2026). Rol tablosu (bkm.Vrd_Roles) SQL ile doldurulur;
+//   kullanıcı-rol ataması UserManager üzerinden çalışır (IUserRoleStore var).
 .AddSignInManager();
 
 // ── Kimlik doğrulama şeması — çerez ───────────────────────────────────────────
@@ -73,6 +86,16 @@ builder.Services.AddScoped<PermissionLoader>();
 
 var app = builder.Build();
 
+// ── Kadro kurulumu:  dotnet run --project vardiya-app -- seed ─────────────────
+// Uygulamayı AYAĞA KALDIRMAZ; kurulumu yapar, çıkış kodunu döndürür ve biter.
+// Çıkış kodu sözleşmesi sqlcli ile aynı: 0 tamam · 1 KIRIK · 2 KOŞAMADI.
+if (args.Contains("seed"))
+{
+    using var kapsam = app.Services.CreateScope();
+    var kayitci = kapsam.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("seed");
+    return await BkmVardiya.Security.Seed.CalistirAsync(kapsam.ServiceProvider, kayitci);
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -88,3 +111,4 @@ app.MapGet("/healthz", () => Results.Ok("ok")).AllowAnonymous();
 app.MapRazorPages();
 
 app.Run();
+return 0;
