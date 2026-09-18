@@ -1,6 +1,6 @@
 # 48 — Vardiya Yönetim Uygulaması (ayrı app + ortak kütüphane)
 
-**Durum:** ONAYLANDI 18.09 · Adım 0-3 ✅ · **Adım 4 sırada (auth + rol + şube sınırı)** · **Tier:** 3 · **Tarih:** 18.09.2026
+**Durum:** ONAYLANDI 18.09 · Adım 0-3 ✅ · Adım 4 **veri tarafı ✅ (19.09)** · uygulama tarafı sırada · **Tier:** 3 · **Tarih:** 18.09.2026
 **Karar sahibi:** Fikri Eren (GMY) — *"vardiya yönetimi için ayrı bir program yapı yazmalıyız"*
 **Önceki plan:** `plans/47-vardiya-eksik-fazla-sql.md` (Faz 1 tamam — `bkm.Vrd_*` + `sp_Vrd_KisiGunDoldur`, parite 0 fark)
 
@@ -128,6 +128,35 @@ Solum'un `IsCrossCompany` bayrağı bilerek **talepte taşınmıyor**; gerekçes
 Aynısı GMY'nin ve İK'nın "tüm şubeler" görüşü için geçerli: kalıcı bir claim/çerez bayrağı
 **değil**, isteğe bağlı ve her seferinde yeniden verilen bir kapsam olmalı. Böylece bir GMY
 oturumu ele geçirilse bile kalıcı bir kapı açılmış olmaz.
+
+### Şube yetkisinin şekli — GMY kararları 19.09
+
+*"sistemden bağımsız olsun, bölge yok, geçmiş önemli"*
+
+| Soru | Karar | Sonucu |
+|---|---|---|
+| Yetki sisteme göre değişir mi | **HAYIR** | ACL `kullanıcı ↔ şube`; `(şube, sistem)` ikilisi YOK |
+| Bölge → şube hiyerarşisi | **YOK** | `Grup` (MAĞAZA/KAFE/GM) bir **tip**, yetkiye bağlanmaz |
+| Geçmiş önemli mi | **EVET** | ACL **zamansal**: `GecerliBas` / `GecerliBit`; silme yok, **kapatma** var |
+
+**Kapsam tarihli, yetki tarihsiz.** `Vrd_SubeKapsami(@KullaniciId, @Tarih)` — ACL o
+tarihte geçerli satırlardan çözülür, ama "tüm şubeler" yetkisi zamansızdır. Gerekçe:
+yetki de tarihlenseydi, o dönemin yetkilisi ayrıldığında geçmiş bir dönem **kimsenin
+göremediği** bir boşluğa düşerdi.
+
+⚠ **YORUM KARARI (ÇIKARIM, ölçüm değil) — beyan edilir:** kapsam kişi-gün satırının
+TARİHİNE göre çözülür. Müdür Ağustos'ta A'daysa B'ye geçtikten sonra da Ağustos'un A
+satırlarını görür; A'nın yeni müdürü önceki dönemi GÖRMEZ; İK/GMY ikisini de görür.
+İstenmezse değişecek tek yer TVF'in `@Tarih` kullanımıdır.
+
+**Benzersiz kısıt zamansallaştı:** `UNIQUE (UserId, Sube) WHERE GecerliBit IS NULL`.
+Koşulsuz hâli kaldırılmak zorundaydı — zamansal modelde aynı çift birden çok kez geçerli
+olabilir (ayrıldı, geri döndü) — ama AÇIK olan yalnız bir tane olmalı, yoksa erişimi
+kaldırma yine yarım kalır (Solum 0005 dersinin zamansal hâli).
+
+**ÖLÇÜLDÜ (19.09, dev):** eski müdür 15.08'de A · 15.09'da B · yeni müdür 15.08'de
+**hiçbir şey** · 15.09'da A · İK 15.08'de 9 şube. **Kırılabilirlik:** `GecerliBit`
+kaldırılınca eski müdürün Eylül kapsamı 1 → **2** şubeye çıktı, geri alındı.
 
 ### Roller: kod ROL adı görmez, İZİN görür
 
