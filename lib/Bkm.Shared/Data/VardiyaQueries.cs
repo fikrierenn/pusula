@@ -62,7 +62,7 @@ public sealed class VardiyaQueries(Db db)
             WHERE   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY KesimBas, KesimBit, SayimBas
             ORDER BY KesimBit DESC, KesimBas DESC
-            """);
+            """, new { userId });
         return r.AsList();
     }
 
@@ -179,6 +179,7 @@ public sealed class VardiyaQueries(Db db)
                    Satir = COUNT(*), Dk = SUM(CikisSonrasiDk)
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
+              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND  ISNULL(CikisSonrasiDk, 0) > 0
               AND (@sube IS NULL OR Sube = @sube)
             GROUP BY CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
