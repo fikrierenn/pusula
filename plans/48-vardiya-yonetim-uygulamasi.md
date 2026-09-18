@@ -1,6 +1,6 @@
 # 48 — Vardiya Yönetim Uygulaması (ayrı app + ortak kütüphane)
 
-**Durum:** ONAYLANDI 18.09 · Adım 0-3 ✅ · Adım 4 **veri tarafı ✅ (19.09)** · uygulama tarafı sırada · **Tier:** 3 · **Tarih:** 18.09.2026
+**Durum:** ONAYLANDI 18.09 · **Adım 0-6 ✅ (19.09)** · Adım 7 (panelin akıbeti) kaldı · **Tier:** 3 · **Tarih:** 18.09.2026
 **Karar sahibi:** Fikri Eren (GMY) — *"vardiya yönetimi için ayrı bir program yapı yazmalıyız"*
 **Önceki plan:** `plans/47-vardiya-eksik-fazla-sql.md` (Faz 1 tamam — `bkm.Vrd_*` + `sp_Vrd_KisiGunDoldur`, parite 0 fark)
 
@@ -297,8 +297,15 @@ anlatırdı.
 4. Auth + rol + şube sınırı — **Solum.Identity** (`DapperUserStore`, kullanıcı adı+şifre;
    cookie şemasını biz kurarız, Solum yalnız depo verir) + `SubeKapsami` boğazı + izin
    katmanı + `_SolumLayout` kabuğunun devreye alınması. Sunucu-taraflı süzgeç ve yetki testi.
-5. Eksik/fazla + mesai raporu ekranı (mevcut sayfadan taşıma).
-6. Onay akışı ekranı + denetim izi (`bkm.Vrd_Onay` üzerine log).
+5. ✅ **TAMAM 19.09** — rapor ekranı taşındı; Solum tasarım sistemi, filtreler
+   query string'te. Sayfa beş partial'a bölündü (357 → 88 satır + en büyüğü 99).
+6. ✅ **TAMAM 19.09** — onay akışı + denetim izi (`bkm.SolumAuditTrail`).
+   **İKİ AYRI KAPI:** `Permissions.Approve` (bu kişi onay yazabilir mi — rol işi)
+   ve şube kapsamı (bu SATIRA yazabilir mi — SQL'de). Biri ötekinin yerini tutmaz:
+   birincisi olmadan GMY de yazardı, ikincisi olmadan müdür başka şubeye yazardı.
+   **İZ İŞLEMLE ATOMİK:** onay ve iz aynı transaction'da; iz yazılamazsa onay da
+   yazılmaz. Kanıtlandı (iz tablosu adı bozuldu → onay tablosuna 0 kayıt).
+   İz eski VE yeni değeri taşır — yalnız yeniyi yazan iz "ne değişti" diyemez.
 7. Panelin vardiya sayfasının akıbeti; nav düzenlemesi.
 8. Parite + yetki testleri, journal + sema kaydı, TODO senkronu.
 

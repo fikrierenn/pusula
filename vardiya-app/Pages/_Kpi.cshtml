@@ -1,0 +1,41 @@
+@model BkmVardiya.Pages.IndexModel
+@using Bkm.Shared.Models
+@* KPI kartlari — Index.cshtml'den ayrildi (file-size-discipline: 357 satir,
+   onay akisi eklenince 450+ olurdu). Parca kendi basina anlam tasir. *@
+
+@if (Model.Summary is not null)
+{
+    <div class="solum-kpi-grid">
+        <div class="solum-kpi">
+            <div class="solum-kpi-label">Kişi-gün</div>
+            <div class="solum-kpi-value">@Model.Summary.PersonDays.ToString("N0")</div>
+            <div class="solum-kpi-hint">@Model.Summary.PersonCount kişi · @Model.Summary.BranchCount şube</div>
+        </div>
+        <div class="solum-kpi solum-kpi-bad">
+            <div class="solum-kpi-label">Eksik saat</div>
+            <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalShortMin)</div>
+            <div class="solum-kpi-hint">
+                dönem @VrdFormat.HoursDecimal(Model.Summary.ShortMin)
+                + devir @VrdFormat.HoursDecimal(Model.Summary.CarryShortMin)
+            </div>
+        </div>
+        <div class="solum-kpi solum-kpi-good">
+            <div class="solum-kpi-label">Fazla saat</div>
+            <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalOvertimeMin)</div>
+            <div class="solum-kpi-hint">
+                dönem @VrdFormat.HoursDecimal(Model.Summary.OvertimeMin)
+                + devir @VrdFormat.HoursDecimal(Model.Summary.CarryOvertimeMin)
+            </div>
+        </div>
+        <div class="solum-kpi">
+            <div class="solum-kpi-label">Gün dönümü</div>
+            <div class="solum-kpi-value">@Model.Summary.DayRollover</div>
+            <div class="solum-kpi-hint">çıkış ertesi güne sarktı</div>
+        </div>
+        <div class="solum-kpi">
+            <div class="solum-kpi-label">Sayım dışı</div>
+            <div class="solum-kpi-value">@Model.Summary.OutOfCount</div>
+            <div class="solum-kpi-hint">önceki ay devrinde sayılı</div>
+        </div>
+    </div>
+}

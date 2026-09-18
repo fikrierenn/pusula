@@ -1,0 +1,31 @@
+@model BkmVardiya.Pages.IndexModel
+@using Bkm.Shared.Models
+@* Sube kirilimi — Index.cshtml'den ayrildi (file-size-discipline: 357 satir,
+   onay akisi eklenince 450+ olurdu). Parca kendi basina anlam tasir. *@
+
+@if (Model.Branches.Count > 0)
+{
+    <section class="solum-card">
+        <div class="solum-card-title">Şube kırılımı</div>
+        <div class="solum-table-wrap">
+            <table class="solum-table">
+                <thead>
+                    <tr><th>Şube</th><th class="solum-num">Kişi</th><th class="solum-num">Kişi-gün</th>
+                        <th class="solum-num">Eksik</th><th class="solum-num">Fazla</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var b in Model.Branches)
+                {
+                    <tr>
+                        <td>@b.Branch</td>
+                        <td class="solum-num">@b.PersonCount</td>
+                        <td class="solum-num">@b.PersonDays.ToString("N0")</td>
+                        <td class="solum-num">@VrdFormat.Duration(b.ShortMin)</td>
+                        <td class="solum-num">@VrdFormat.Duration(b.OvertimeMin)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}

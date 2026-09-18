@@ -1,0 +1,58 @@
+@page
+@model BkmVardiya.Pages.ApprovalModel
+@{
+    ViewData["Title"] = "Yönetici onayı";
+}
+
+<h1>Yönetici onayı</h1>
+<p class="solum-card-sub">
+    Sicil <b>@Model.StaffNo</b> · @Model.Date.ToString("dd.MM.yyyy")
+</p>
+
+@if (Model.Error is not null)
+{
+    <div class="solum-alert solum-alert-bad" role="alert">@Model.Error</div>
+}
+@if (Model.Saved is not null)
+{
+    <div class="solum-alert solum-alert-good" role="alert">@Model.Saved</div>
+}
+
+<section class="solum-card">
+    <form method="post">
+        <input type="hidden" name="StaffNo" value="@Model.StaffNo" />
+        <input type="hidden" name="Date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+        <label class="solum-field">
+            <span>Onaylı giriş</span>
+            <input name="ApprovedIn" value="@Model.ApprovedIn" class="solum-input" placeholder="13:30" />
+        </label>
+        <label class="solum-field">
+            <span>Onaylı çıkış</span>
+            <input name="ApprovedOut" value="@Model.ApprovedOut" class="solum-input" placeholder="22:00" />
+            <small>Gece vardiyasında ertesi güne sarkan çıkış <b>26:00</b> gibi yazılır.</small>
+        </label>
+        <label class="solum-field">
+            <span>Ek mesai</span>
+            <input name="ExtraShift" value="@Model.ExtraShift" class="solum-input" placeholder="01:30" />
+            <small>
+                ⚠ Gün dönümü telafisi <b>YAZILMAZ</b> — gece mesaisi zaten otomatik
+                hesaplanıyor; buraya aynı saat girilirse mesai iki kez sayılır.
+            </small>
+        </label>
+        <label class="solum-field">
+            <span>Açıklama</span>
+            <input name="Note" value="@Model.Note" class="solum-input" placeholder="gerekçe" />
+        </label>
+
+        <div class="solum-actions">
+            <button type="submit" class="solum-btn solum-btn-primary">Kaydet</button>
+            <a href="/" class="solum-btn">Listeye dön</a>
+        </div>
+    </form>
+
+    <div class="solum-card-foot">
+        Dört alanı da boş bırakıp kaydederseniz onay kaydı <b>silinir</b>.
+        Her değişiklik denetim izine yazılır (kim, ne zaman, eski → yeni).
+    </div>
+</section>

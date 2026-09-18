@@ -411,15 +411,37 @@ public sealed class VardiyaQueries(Db db)
             throw new UnauthorizedAccessException(
                 $"Bu kişi-gün kaydı şube kapsamınızda değil (sicil {sicilNo}, {tarih:dd.MM.yyyy}).");
 
+        // ── ÖNCEKİ HÂLİ OKU — iz "ne değişti" diyebilsin ────────────────────
+        //   Yalnız yeni değeri yazan bir iz, denetimde işe yaramaz: "bu saat
+        //   elle mi girildi, neyin yerine girildi" sorusunun cevabı eski değerde.
+        var onceki = await cn.QuerySingleOrDefaultAsync<VrdOnayKayit>("""
+            SELECT OnayliGirisDk, OnayliCikisDk, EkMesaiDk, Aciklama
+            FROM   bkm.Vrd_Onay WHERE SicilNo = @sicilNo AND Tarih = @tarih
+            """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+
+        // ── İŞLEM: onay ve izi BİRLİKTE ya yazılır ya yazılmaz ───────────────
+        //   Ayrı işlem olsaydı "onay var, iz yok" aralığı doğardı — ve o aralık
+        //   tam olarak denetimin sorduğu yerdir.
+        await using var tx = await cn.BeginTransactionAsync();
+
+        var kayitId = $"{sicilNo}|{tarih:yyyy-MM-dd}";
+
         // Üç alan da boşsa kayıt SİLİNİR — "hepsini temizledim" niyetini boş satır
         // olarak saklamak sonraki okumada gereksiz JOIN eşleşmesi üretir.
         if (girisDk is null && cikisDk is null && ekMesaiDk is null && string.IsNullOrWhiteSpace(aciklama))
         {
+            if (onceki is null) { await tx.CommitAsync(); return; }   // zaten yok — iz de yazılmaz
+
             await cn.ExecuteAsync(
                 "DELETE FROM bkm.Vrd_Onay WHERE SicilNo = @sicilNo AND Tarih = @tarih",
-                new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+                new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) }, transaction: tx);
+
+            await AuditTrail.WriteAsync(cn, "Vrd_Onay", kayitId, AuditTrail.Action.Deleted,
+                userId, kaydeden, new { eski = onceki }, tx);
+            await tx.CommitAsync();
             return;
         }
+
         await cn.ExecuteAsync("""
             MERGE bkm.Vrd_Onay AS h
             USING (SELECT @sicilNo AS SicilNo, @tarih AS Tarih) AS k
@@ -437,6 +459,34 @@ public sealed class VardiyaQueries(Db db)
             girisDk, cikisDk, ekMesaiDk,
             aciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
             kaydeden,
-        });
+        }, transaction: tx);
+
+        await AuditTrail.WriteAsync(cn, "Vrd_Onay", kayitId,
+            onceki is null ? AuditTrail.Action.Created : AuditTrail.Action.Updated,
+            userId, kaydeden,
+            new
+            {
+                eski = onceki,
+                yeni = new { OnayliGirisDk = girisDk, OnayliCikisDk = cikisDk, EkMesaiDk = ekMesaiDk, Aciklama = aciklama },
+            }, tx);
+
+        await tx.CommitAsync();
+    }
+
+    /// <summary>Onay kaydının denetim izine yazılan hâli (eski/yeni karşılaştırması).</summary>
+    public sealed record VrdOnayKayit(int? OnayliGirisDk, int? OnayliCikisDk, int? EkMesaiDk, string? Aciklama);
+
+    /// <summary>Tek kişi-günün onay kaydı — onay ekranının açılışında okunur.</summary>
+    public async Task<VrdOnayKayit?> GetApprovalAsync(string userId, string sicilNo, DateOnly tarih)
+    {
+        using var cn = db.OpenPanel();
+        return await cn.QuerySingleOrDefaultAsync<VrdOnayKayit>("""
+            SELECT o.OnayliGirisDk, o.OnayliCikisDk, o.EkMesaiDk, o.Aciklama
+            FROM   bkm.Vrd_Onay o
+            WHERE  o.SicilNo = @sicilNo AND o.Tarih = @tarih
+              AND  EXISTS (SELECT 1 FROM bkm.Vrd_KisiGun k
+                           WHERE k.SicilNo = o.SicilNo AND k.Tarih = o.Tarih
+                             AND k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId)))
+            """, new { userId, sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
     }
 }

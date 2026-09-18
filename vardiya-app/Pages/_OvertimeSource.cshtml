@@ -1,0 +1,99 @@
+@model BkmVardiya.Pages.IndexModel
+@using Bkm.Shared.Models
+@* Fazla mesainin kaynagi + kalma bandi — Index.cshtml'den ayrildi (file-size-discipline: 357 satir,
+   onay akisi eklenince 450+ olurdu). Parca kendi basina anlam tasir. *@
+
+@* ── FAZLA MESAİNİN KAYNAĞI ──────────────────────────────────────────
+   Tek rakam yönetilemez; kalemler hukuken de AYRI ödenir. *@
+@if (Model.OvertimeSource is not null && Model.OvertimeSource.TotalMin > 0)
+{
+    <section class="solum-card">
+        <div class="solum-card-head">
+            <div>
+                <div class="solum-card-title">Fazla mesai nereden geliyor</div>
+                <div class="solum-card-sub">
+                    Toplam @VrdFormat.HoursDecimal(Model.OvertimeSource.TotalMin) · dönem içi (devir hariç)
+                    @(string.IsNullOrEmpty(Model.Branch) ? "" : " · " + Model.Branch)
+                </div>
+            </div>
+        </div>
+
+        <div class="solum-table-wrap">
+            <table class="solum-table">
+                <thead>
+                    <tr><th>Kaynak</th><th>Kalem</th><th class="solum-num">Saat</th><th class="solum-num">Pay</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="2">
+                            <b>Yönetim politikası</b><br />
+                            <small>izin iptali · hafta tatili kullandırmama</small>
+                        </td>
+                        <td>İzin günü çalıştırılmış</td>
+                        <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.LeaveCancelledMin)</td>
+                        <td class="solum-num" rowspan="2">%@Model.OvertimeSource.ManagementShare.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <td>Hafta tatili kullandırılmamış</td>
+                        <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.WeeklyRestMin)</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="2">
+                            <b>Operasyonel zorunluluk</b><br />
+                            <small>kapanış gecikmesi · gün içi yoğunluk</small>
+                        </td>
+                        <td>Plan üstü çalışma</td>
+                        <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.ExtraWorkMin)</td>
+                        <td class="solum-num" rowspan="2">%@Model.OvertimeSource.StoreShare.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <td>Plansız çalışma</td>
+                        <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.UnplannedMin)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="solum-card-sub">
+            Uçlara göre: kapanış sonrası kalma
+            <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.AfterCloseMin)</b> ·
+            erken başlama <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.BeforeOpenMin)</b>
+        </div>
+
+        @if (Model.StayBands.Count > 0)
+        {
+            <div class="solum-card-title">Kapanış sonrası kalma dağılımı</div>
+            <div class="solum-card-sub">
+                15 dakikalık toplanma ile 2 saati aşan kalma aynı şey değil —
+                aksiyon uzun kuyrukta.
+            </div>
+            <div class="solum-table-wrap">
+                <table class="solum-table">
+                    <thead>
+                        <tr><th>Süre</th><th class="solum-num">Kişi-gün</th>
+                            <th class="solum-num">Saat</th><th class="solum-num">Pay</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var b in Model.StayBands)
+                    {
+                        var share = Model.StayBandTotal == 0 ? 0 : 100.0 * b.Minutes / Model.StayBandTotal;
+                        <tr>
+                            <td>@b.Band</td>
+                            <td class="solum-num">@b.DayCount.ToString("N0")</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(b.Minutes)</td>
+                            <td class="solum-num">%@share.ToString("N0")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="solum-card-foot">
+            ⚠ Üç kalem <b>farklı ödenir</b>: fazla çalışma %50 zamlı (m.41) ·
+            hafta tatilinde çalışma 1 yevmiye + %50 (m.46) · izin gününde
+            çalıştırma kullanılmayan iznin akıbetine bağlı. Ödeme bağı bu panelde
+            <b>kurulmuyor</b> — bordroyla karşılaştırılmadı.
+        </div>
+    </section>
+}

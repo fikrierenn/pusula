@@ -1,0 +1,61 @@
+@model BkmVardiya.Pages.IndexModel
+@using Bkm.Shared.Models
+@* Mesai mevzuat kapisi — Index.cshtml'den ayrildi (file-size-discipline: 357 satir,
+   onay akisi eklenince 450+ olurdu). Parca kendi basina anlam tasir. *@
+
+@* ── MEVZUAT KAPISI — hiçbir sayı "ihlal" diye ETİKETLENMEZ ────────────
+   Bunlar teyit edilecek sorulardır; yorum İK + iş hukuku işi. *@
+@if (Model.Compliance is not null)
+{
+    <section class="solum-card">
+        <div class="solum-card-head">
+            <div>
+                <div class="solum-card-title">Mesai mevzuat kapısı</div>
+                <div class="solum-card-sub">
+                    4857 sayılı İş Kanunu · aşan gün sayısı — <b>ihlal etiketi değil</b>,
+                    teyit edilecek soru.
+                </div>
+            </div>
+            @if (Model.Compliance.Suspect > 0)
+            {
+                <span class="solum-badge solum-badge-warn">
+                    @Model.Compliance.Suspect satır denetim dışı
+                </span>
+            }
+        </div>
+
+        <div class="solum-kpi-grid">
+            <div class="solum-kpi @(Model.Compliance.Daily11 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi-label">Günlük 11 saat</div>
+                <div class="solum-kpi-value">@Model.Compliance.Daily11</div>
+                <div class="solum-kpi-hint">m.63 / m.41 · gün</div>
+            </div>
+            <div class="solum-kpi @(Model.Compliance.Gross12 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi-label">Brüt 12 saat</div>
+                <div class="solum-kpi-value">@Model.Compliance.Gross12</div>
+                <div class="solum-kpi-hint">m.68 — 24 saatte 12 saat dinlenme</div>
+            </div>
+            <div class="solum-kpi @(Model.Compliance.Night75 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi-label">Gece 7,5 saat</div>
+                <div class="solum-kpi-value">@Model.Compliance.Night75</div>
+                <div class="solum-kpi-hint">m.69 — 20:00-06:00 penceresi</div>
+            </div>
+            <div class="solum-kpi @(Model.Compliance.NoWeeklyRest > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi-label">Hafta tatili yok</div>
+                <div class="solum-kpi-value">@Model.Compliance.NoWeeklyRest</div>
+                <div class="solum-kpi-hint">m.46 · kişi-hafta</div>
+            </div>
+            <div class="solum-kpi solum-kpi-neutral">
+                <div class="solum-kpi-label">Haftalık 45 saat üstü</div>
+                <div class="solum-kpi-value">@Model.Compliance.Over45</div>
+                <div class="solum-kpi-hint"><b>İHLAL DEĞİL</b> — fazla çalışma · kişi-hafta</div>
+            </div>
+        </div>
+
+        <div class="solum-card-foot">
+            ⚠ Yıllık 270 saat sınırı (m.41) bu pencereden <b>ölçülemez</b> —
+            yıllıklandırma çıkarım olur. Yazılı işçi muvafakati (m.41/7) sistemde
+            <b>tutulmuyor</b>, denetlenemiyor.
+        </div>
+    </section>
+}

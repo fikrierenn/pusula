@@ -1,0 +1,64 @@
+@model BkmVardiya.Pages.IndexModel
+@using Bkm.Shared.Models
+@* Kisi-gun tablosu — Index.cshtml'den ayrildi (file-size-discipline: 357 satir,
+   onay akisi eklenince 450+ olurdu). Parca kendi basina anlam tasir. *@
+
+<section class="solum-card">
+    <div class="solum-card-head">
+        <div class="solum-card-title">Kişi-gün</div>
+        <div class="solum-card-sub">
+            @Model.Rows.Count satır@(Model.Rows.Count >= 400 ? " (ilk 400)" : "")
+        </div>
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="solum-empty">Süzgeçle eşleşen kayıt yok.</div>
+    }
+    else
+    {
+        <div class="solum-table-wrap">
+            <table class="solum-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th><th>Şube</th><th>Personel</th><th>Görev</th>
+                        <th>Vardiya</th><th class="solum-num">Giriş</th><th class="solum-num">Çıkış</th>
+                        <th class="solum-num">Çalışma</th><th class="solum-num">Eksik</th>
+                        <th class="solum-num">Fazla</th><th>Durum</th><th>Not</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td>@r.Date.ToString("dd.MM.yyyy")</td>
+                        <td>@r.Branch</td>
+                        <td>@r.PersonName</td>
+                        <td>@r.JobTitle</td>
+                        <td>@r.ShiftPlan</td>
+                        <td class="solum-num">@VrdFormat.TimeOfDay(r.InMin)</td>
+                        <td class="solum-num">@VrdFormat.TimeOfDay(r.OutMin)</td>
+                        <td class="solum-num">@VrdFormat.Duration(r.WorkMin)</td>
+                        <td class="solum-num">@VrdFormat.Duration(r.ShortMin)</td>
+                        <td class="solum-num">@VrdFormat.Duration(r.OvertimeMin)</td>
+                        <td>@r.Status</td>
+                        <td>
+                            @if (r.Suspect)
+                            {
+                                <span class="solum-badge solum-badge-warn">şüpheli okutma</span>
+                            }
+                            @r.MeasureNote
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="solum-table-note">
+            ⚠ <b>Şüpheli okutma</b> satırları mevzuat sayımının DIŞINDADIR: çıkış
+            okutmasını unutan kişi 17-20 saat çalışmış görünür ve sayıma girerse
+            SAHTE ihlal üretir.
+        </div>
+    }
+</section>
+}
