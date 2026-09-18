@@ -543,3 +543,40 @@ yığılıyorsa o sentineldir — "veri bozuk" deme.
 ⚠ Öksüz sayısı tek başına HATA DEĞİLDİR; hata, kaydın "kalıcı, defalarca doğrulandı"
 (`confidence: 1.0`) demesiyle ölçümün çelişmesidir. Meşru öksüz `sema/bridges.yaml`
 `orphans_expected` alanına yazılır — yazılınca çelişki sayılmaz.
+
+## KAPSAM SÜZGECİ HER ALT-SORGUDA AYRI (19.09.2026 — iki kez ölçüldü)
+
+Yetki kapsamı bir sorguya **bir kez** yazılmakla bitmez. Aynı gün iki sızıntı çıktı
+ve ikincisi birincisinden sinsiydi:
+
+| # | Nerede | Ne oldu |
+|---|---|---|
+| 1 | `GetStayBandsAsync` | Sekiz sorguya elle süzgeç eklendi, **biri atlandı**. Metot `userId` alıyordu ama SQL'inde kapsam YOKTU. |
+| 2 | `GetSummaryAsync` | Kapsam **vardı** — ama devir alt-sorgusunda YOKTU. Bir şube müdürü kendi döneminin **334 saatini** ama tüm şirketin **1.858 saatlik devrini** görüyordu. |
+
+İkincisinin tehlikesi: ekranda **2.192,6 saat** yazıyordu ve *makul görünüyordu*.
+Yanlışlığı ancak kapsamla orantısızlığı fark edilip SQL'e sorulunca çıktı.
+Derleme temiz, sayfa çalışıyor, hiçbir şey uyarmıyor — `olctum-mu-cikardim-mi.md`'nin
+"makul sayı kabul edilir" sınıfının tam örneği.
+
+**Kural:** kapsam gerektiren her tablo referansı — ana sorgu, alt-sorgu, `EXISTS`,
+skaler alt-sorgu — **kendi süzgecini** taşır.
+
+**Koşulabilir kapı:** `python tools/vardiya_kapsam_denetimi.py`
+Kapsamlı tablo referansı sayısı kadar süzgeç var mı diye bakar (ilk hâli yalnız
+"metotta kapsam geçti mi" diye bakıyordu ve ikinci sızıntıyı GÖRMEDİ). Ayrıca
+panelin salt-okuma kaldığını denetler. Çıkış 0/1/2.
+
+⚠ SINIRI: metin denetimi. Süzgecin **doğru kolona** bağlandığını görmez
+(`Sube IN (...)` yerine `Bolum IN (...)` yazılsa geçer).
+
+## T-SQL AYRILMIŞ KELİME ALIAS OLAMAZ (19.09.2026)
+
+`RowCount` ve `Min` alias olarak kullanılınca `Incorrect syntax near the keyword
+'RowCount'` (Hata 156/102) verir. **Derleme temizdir; hata yalnız ÇALIŞMA anında
+çıkar** — C# tarafı alias adını bir dize olarak taşır, derleyici SQL'i bilmez.
+
+DTO alanlarını İngilizce'ye çevirirken çarpıldı. Alias seçerken ayrılmış kelime
+listesine bakılır; şüphedeyse ad değiştirilir (`RowCount` → `DayCount`,
+`Min` → `Minutes`). Köşeli parantezle kaçırmak da mümkün ama okunurluğu düşürür
+ve bir sonraki kopyalamada parantez düşer.

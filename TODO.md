@@ -202,6 +202,29 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### BKM — BIRLESIK ONCELIK SIRASI
 
+#### 🆕 VARDİYA UYGULAMASI (plan 48) — ilk sürüm ✅ 19.09.2026
+> `vardiya-app` (Razor Pages + Solum, port 5120) · `lib/Bkm.Shared` · 17 kullanıcı açık.
+> Adım 0-7 tamam: ortak kütüphane · ayrı app · kimlik/yetki · şube kapsamı (b)-tam ·
+> zamansal ACL · rapor · onay akışı + atomik denetim izi · panel salt-okuma.
+> Kapılar: `vardiya_kapsam_denetimi.py` · `mesai_esik_denetimi.py` · `panel_kolon_denetimi.py`.
+
+- [ ] **V-01 Geçici şifre dosyası SİLİNECEK** — `ciktilar/vardiya-ilk-sifreler-*.txt`
+      İK dağıtımı bitince silinir. Git yoksayıyor ama diskte duruyor.
+- [ ] **V-02 Seed kadro listesi koda gömülü** — `vardiya-app/Security/Seed.cs`. Kadro
+      değişince bayatlar. Doğrusu Zirve'den canlı okumak ama şube adları birebir
+      eşleşmiyor (`GENEL YÖNETİM` ↔ `GENEL MÜDÜRLÜK`) → Solum plan-21 (kanonik birim
+      + eşleme tablosu) bekliyor. O geldiğinde "eksik" vs "kirli" ayrımı da kurulacak.
+- [ ] **V-03 Solum kabuğu devreye alınmadı** — `_SolumLayout` (yan menü, üst çubuk)
+      `IMenuBuilder`/`IPermissionChecker` istiyor; şimdilik sade düzen + `solum.css`.
+- [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.
+      Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
+- [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
+      bırakıldı; plan hâlâ Excel kaynaklı.
+- [ ] **V-06 Kapsam denetimi metin tabanlı** — süzgecin DOĞRU kolona bağlandığını
+      görmüyor (`Sube IN` yerine `Bolum IN` yazılsa geçer). Gerçek kapatma: rol bazlı
+      uçtan uca test (üç rolle giriş → beklenen kapsam).
+
+
 #### 🌅 SABAH (19.06) — kalan iş kürasyonu (18.06 handoff, tüm TODO tarandı)
 > Genius asistanı (B-45) BİTTİ — kalan sadece canlı-test (LLM kotası 19.06 03:00 reset / $10→1000gün) + senin dışa-dönük aksiyonların (etkinlik-Oluştur/mail-Gönder Chrome onay · auth şifre değiştir). Aşağısı pre-existing BKM backlog'undan en değerli/aksiyonel olanlar.
 - [~] **🔥 B-130 Otonom muhasebe app — banka ekstresi satır→cari sınıflandırıcı (plan-27)** — 04.07. AFCP pilotu. Bağımsız `muhasebe/` (Razor Pages+Dapper+Tailwind, **API-yok**, Operax baz). Motor `BankaSiniflandirmaService` (807K `car cTip=122` in-memory index, lexical, **öneri-only salt-okuma**). **Faz-0 kanıt: agree≥%97 & n≥5 → %98.8 auto @ %61 kapsam** (807K holdout). Canlı browser smoke ✅. DerinSIS car→GL boru hattı decrypted çözüldü → sema (`car-karsi-frm`/`frm-mhsent-glhesap`, `car.cFatTip`, `banka_ekstresi_siniflandirma`). Skiller: `afcp-danisman`/`muhasebe-danisman` + 4 Operax mali skill. **✅ 04.07 Oturum-2:** perspektif kilidi (cKod frmTip=5 → %69,6/%99,63, komple Haziran backtest) · **aktif öğrenme** (`bkm.BankaOgrenme` DerinSIS bkm-şema app-owned; onay/düzelt UI; öğrenilen öncelikli; DB-kalıcı canlı doğrulandı) · UI (banka dropdown aktif-119, İstisna cari-arama, Windows auth) · car→GL boru hattı decrypted→sema. **KALAN (Monday):** (1) **F3 ERP-yazma test:** Şule 1 satır girer→yakala→`bkm.sp_BankaEkstresiGir` (car_ekle sarmalar, Fikri oluşturur) aynısını→karşılaştır→car_sil-yanlışsa; insID/evrakNo/gdrMerkez netleştir + `bkm.BankaYazimAudit`. (2) Excel-in (ClosedXML + IBAN→banka auto-seç) ham Haziran. (3) L2 skill/kural (HITL rule induction, düzeltme birikince) + tutar sinyali F1.5 + embedding no-hit F2. (4) SQL keşif arşivle `sorgular/2026-07-04-*.sql` (twin-obligation borcu). erp-write-policy: bkm.BankaOgrenme eklendi; native car F3-test ile açılır. **✅ 04.07 Oturum-3:** yönetici-rapor skill (6 kurumsal format, overclaim-yasak); afcp TEZ 3-katman tek-beyin; gider-anomali (Katman-2) 3 hipotez tarandı→hepsi meşru (0 hata, feature kurulmadı)→radar banka/nakit'e yönlenecek.
