@@ -1,6 +1,6 @@
 # 48 — Vardiya Yönetim Uygulaması (ayrı app + ortak kütüphane)
 
-**Durum:** ONAYLANDI 18.09 · Adım 0 ✅ · Adım 1 ✅ · **Adım 2 ✅** · Adım 3 sırada · **Tier:** 3 · **Tarih:** 18.09.2026
+**Durum:** ONAYLANDI 18.09 · Adım 0-3 ✅ · **Adım 4 sırada (auth + rol + şube sınırı)** · **Tier:** 3 · **Tarih:** 18.09.2026
 **Karar sahibi:** Fikri Eren (GMY) — *"vardiya yönetimi için ayrı bir program yapı yazmalıyız"*
 **Önceki plan:** `plans/47-vardiya-eksik-fazla-sql.md` (Faz 1 tamam — `bkm.Vrd_*` + `sp_Vrd_KisiGunDoldur`, parite 0 fark)
 
@@ -160,7 +160,14 @@ anlatırdı.
    `GmDashboard.Data.Db` yazımı) + kütüphanede eksik iki `using` (Web SDK'nın implicit
    using'i sınıf kütüphanesinde yok). Hepsi **derleme hatası** olarak görüldü — sessiz
    sapma değil. Smoke test AÇIK (panel çalışır durumdaydı, yeniden başlatılmadı).
-3. `vardiya-app` iskeleti: Blazor Server, DaisyUI tema (`renk-standardi.md`), Türkçe UI.
+3. ✅ **TAMAM 18.09** — `vardiya-app` iskeleti: Blazor Server (port **5120**), DaisyUI
+   corporate tema, Türkçe UI, `Bkm.Shared` ProjectReference. Derleme **0 uyarı 0 hata**.
+   **ÖLÇÜLDÜ (smoke):** uygulama ayağa kalktı ve ortak kütüphaneden kesim okudu —
+   31.08-16.09.2026 · sayım başı 01.09 · **6.113 kişi-gün** · 9 şube · yazılma 17.09 20:23.
+   6.113 rakamı plan-47 parite kapısındakiyle AYNI → taşıma veriyi bozmadı.
+   `.claude/launch.json`'a `vardiya-app` profili eklendi.
+   ⚠ Bu iskelette **giriş YOK** — sayfa anonim açılıyor, üstte "Geliştirme — giriş yok"
+   rozeti duruyor. Ağa açılmadan önce Adım 4 kapanmalı.
 4. Auth + rol + şube sınırı; sunucu-taraflı süzgeç ve yetki testi.
 5. Eksik/fazla + mesai raporu ekranı (mevcut sayfadan taşıma).
 6. Onay akışı ekranı + denetim izi (`bkm.Vrd_Onay` üzerine log).

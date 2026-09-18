@@ -24,6 +24,19 @@
       ],
       "port": 5113,
       "autoPort": false
+    },
+    {
+      "name": "vardiya-app",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "vardiya-app",
+        "--urls",
+        "http://0.0.0.0:5120"
+      ],
+      "port": 5120,
+      "autoPort": false
     }
   ]
 }

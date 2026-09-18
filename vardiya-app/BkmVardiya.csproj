@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Vardiya Yönetim Uygulaması — plan 48.
+       GMY panelinden AYRI: kendi portu, kendi auth'u, kendi kullanıcı tablosu.
+       Ortak olan yalnız veri katmanı (lib/Bkm.Shared) ve hesap SP'si. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>BkmVardiya</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <!-- Tailwind/DaisyUI CSS'i .NET build'inden önce derle.
+       node_modules yoksa sessizce geçer; wwwroot/app.css commit'li kalır
+       (dashboard/GmDashboard.csproj ile aynı desen). -->
+  <Target Name="BuildTailwindCss" BeforeTargets="BeforeBuild" Condition="Exists('node_modules')">
+    <Exec Command="npm run build:css" ContinueOnError="true" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\lib\Bkm.Shared\Bkm.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* BKM Vardiya — Tailwind + DaisyUI.
+   Stil markup'ta DaisyUI/Tailwind LITERAL utility; custom kopru class YOK.
+   Renk = DaisyUI semantic token (renk-standardi.md). */
+
+@layer base {
+  body { @apply bg-base-200 text-base-content; font-family: 'Segoe UI', system-ui, sans-serif; }
+}
+
+/* Blazor varsayilan hata / validasyon UI (framework default — korunur) */
+.valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
+.invalid { outline: 1px solid #e50000; }
+.validation-message { color: #e50000; }
