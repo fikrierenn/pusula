@@ -85,18 +85,18 @@ else
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">EKSİK SAAT</div>
-                <div class="text-2xl font-bold text-error">@VrdBicim.SaatOndalik(_ozet.ToplamEksikDk)</div>
+                <div class="text-2xl font-bold text-error">@VrdFormat.HoursDecimal(_ozet.TotalShortMin)</div>
                 <div class="text-xs text-base-content/50">
-                    dönem @VrdBicim.SaatOndalik(_ozet.EksikDk)
-                    + devir @VrdBicim.SaatOndalik(_ozet.DevirEksikDk)
+                    dönem @VrdFormat.HoursDecimal(_ozet.EksikDk)
+                    + devir @VrdFormat.HoursDecimal(_ozet.DevirEksikDk)
                 </div>
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">FAZLA SAAT</div>
-                <div class="text-2xl font-bold text-success">@VrdBicim.SaatOndalik(_ozet.ToplamFazlaDk)</div>
+                <div class="text-2xl font-bold text-success">@VrdFormat.HoursDecimal(_ozet.TotalOvertimeMin)</div>
                 <div class="text-xs text-base-content/50">
-                    dönem @VrdBicim.SaatOndalik(_ozet.FazlaDk)
-                    + devir @VrdBicim.SaatOndalik(_ozet.DevirFazlaDk)
+                    dönem @VrdFormat.HoursDecimal(_ozet.FazlaDk)
+                    + devir @VrdFormat.HoursDecimal(_ozet.DevirFazlaDk)
                 </div>
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
@@ -126,10 +126,10 @@ else
                         teyit edilecek soru. Yorum: İK + iş hukuku.
                     </div>
                 </div>
-                @if (_uyum.Supheli > 0)
+                @if (_uyum.Suspect > 0)
                 {
                     <div class="badge badge-warning badge-outline">
-                        @_uyum.Supheli satır denetim dışı
+                        @_uyum.Suspect satır denetim dışı
                     </div>
                 }
             </div>
@@ -151,12 +151,12 @@ else
     @* ── FAZLA MESAİNİN KAYNAĞI ──────────────────────────────────────────
        GMY sorusu: "ne kadarı fazla çalışmadan, ne kadarı izin iptalinden".
        Tek rakam yönetilemez; üç kalem hukuken de ayrı ödenir. *@
-    @if (_kaynak is not null && _kaynak.ToplamDk > 0)
+    @if (_kaynak is not null && _kaynak.TotalMin > 0)
     {
         <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-[18px] mb-4">
             <div class="font-semibold">Fazla mesai nereden geliyor</div>
             <div class="text-xs text-base-content/50 mb-3">
-                Toplam @VrdBicim.SaatOndalik(_kaynak.ToplamDk) ·
+                Toplam @VrdFormat.HoursDecimal(_kaynak.TotalMin) ·
                 dönem içi (devir hariç)@(string.IsNullOrEmpty(_sube) ? "" : $" · {_sube}")
             </div>
 
@@ -165,8 +165,8 @@ else
                     <div class="flex items-baseline justify-between">
                         <span class="text-xs font-semibold">YÖNETİM POLİTİKASI</span>
                         <span class="text-lg font-bold">
-                            @VrdBicim.SaatOndalik(_kaynak.YonetimDk)
-                            <span class="text-xs font-normal">%@_kaynak.YonetimPay.ToString("N0")</span>
+                            @VrdFormat.HoursDecimal(_kaynak.ManagementMin)
+                            <span class="text-xs font-normal">%@_kaynak.ManagementShare.ToString("N0")</span>
                         </span>
                     </div>
                     <div class="text-[11px] text-base-content/60 mb-2">izin iptali · hafta tatili kullandırmama</div>
@@ -178,8 +178,8 @@ else
                     <div class="flex items-baseline justify-between">
                         <span class="text-xs font-semibold">OPERASYONEL ZORUNLULUK</span>
                         <span class="text-lg font-bold">
-                            @VrdBicim.SaatOndalik(_kaynak.MagazaDk)
-                            <span class="text-xs font-normal">%@_kaynak.MagazaPay.ToString("N0")</span>
+                            @VrdFormat.HoursDecimal(_kaynak.StoreMin)
+                            <span class="text-xs font-normal">%@_kaynak.StoreShare.ToString("N0")</span>
                         </span>
                     </div>
                     <div class="text-[11px] text-base-content/60 mb-2">kapanış gecikmesi · gün içi yoğunluk</div>
@@ -187,8 +187,8 @@ else
                     @Satir("Plansız çalışma", _kaynak.PlansizDk)
                     <div class="text-[11px] text-base-content/50 mt-2 pt-2 border-t border-base-200">
                         uçlara göre: kapanış sonrası kalma
-                        <b>@VrdBicim.SaatOndalik(_kaynak.CikisSonrasiDk)</b> ·
-                        erken başlama <b>@VrdBicim.SaatOndalik(_kaynak.GirisOncesiDk)</b>
+                        <b>@VrdFormat.HoursDecimal(_kaynak.CikisSonrasiDk)</b> ·
+                        erken başlama <b>@VrdFormat.HoursDecimal(_kaynak.GirisOncesiDk)</b>
                     </div>
                 </div>
             </div>
@@ -211,7 +211,7 @@ else
                                 <tr class="@(b.Bant == "2 saat üstü" ? "text-error font-semibold" : "")">
                                     <td>@b.Bant</td>
                                     <td class="text-right">@b.Satir.ToString("N0")</td>
-                                    <td class="text-right">@VrdBicim.SaatOndalik(b.Dk)</td>
+                                    <td class="text-right">@VrdFormat.HoursDecimal(b.Dk)</td>
                                     <td class="text-right">%@pay.ToString("N0")</td>
                                 </tr>
                             }
@@ -271,8 +271,8 @@ else
                                 <td>@s.Sube</td>
                                 <td class="text-right">@s.KisiSay</td>
                                 <td class="text-right">@s.KisiGun.ToString("N0")</td>
-                                <td class="text-right text-error">@VrdBicim.Sure(s.EksikDk)</td>
-                                <td class="text-right text-success">@VrdBicim.Sure(s.FazlaDk)</td>
+                                <td class="text-right text-error">@VrdFormat.Duration(s.EksikDk)</td>
+                                <td class="text-right text-success">@VrdFormat.Duration(s.FazlaDk)</td>
                             </tr>
                         }
                     </tbody>
@@ -313,20 +313,20 @@ else
                                 <td class="whitespace-nowrap">@r.Sube</td>
                                 <td class="whitespace-nowrap">@r.Personel</td>
                                 <td class="whitespace-nowrap text-base-content/60">@r.VardiyaTanim</td>
-                                <td>@VrdBicim.Saat(r.KartGirisDk)</td>
-                                <td>@VrdBicim.Saat(r.KartCikisDk)</td>
-                                <td class="text-right">@VrdBicim.Sure(r.Net2Dk)</td>
-                                <td class="text-right text-base-content/60">@VrdBicim.Sure(r.GerekenDk)</td>
+                                <td>@VrdFormat.TimeOfDay(r.KartGirisDk)</td>
+                                <td>@VrdFormat.TimeOfDay(r.KartCikisDk)</td>
+                                <td class="text-right">@VrdFormat.Duration(r.Net2Dk)</td>
+                                <td class="text-right text-base-content/60">@VrdFormat.Duration(r.GerekenDk)</td>
                                 <td class="text-right">
-                                    @if (r.EksikDk > 0)   { <span class="text-error">-@VrdBicim.Sure(r.EksikDk)</span> }
-                                    else if (r.FazlaDk > 0) { <span class="text-success">+@VrdBicim.Sure(r.FazlaDk)</span> }
+                                    @if (r.EksikDk > 0)   { <span class="text-error">-@VrdFormat.Duration(r.EksikDk)</span> }
+                                    else if (r.FazlaDk > 0) { <span class="text-success">+@VrdFormat.Duration(r.FazlaDk)</span> }
                                     else if (r.SayimDisi) { <span class="text-base-content/40">devir</span> }
                                     else { <span class="text-base-content/40">—</span> }
                                 </td>
                                 <td class="whitespace-nowrap">
                                     <span class="@DurumRenk(r.Durum)">@r.Durum</span>
                                 </td>
-                                <td class="text-xs @(r.Supheli ? "text-warning" : "text-base-content/50")">
+                                <td class="text-xs @(r.Suspect ? "text-warning" : "text-base-content/50")">
                                     @r.OlcumNotu
                                 </td>
                                 <td>
@@ -353,8 +353,8 @@ else
             <div class="text-xs text-base-content/60 mb-3">
                 @_onaySatir.Personel · @_onaySatir.Tarih.ToString("dd.MM.yyyy") · @_onaySatir.Sube
                 <br />
-                Kart: @VrdBicim.Saat(_onaySatir.KartGirisDk) – @VrdBicim.Saat(_onaySatir.KartCikisDk)
-                · hesaplanan çalışma @VrdBicim.Sure(_onaySatir.CalismaDk)
+                Kart: @VrdFormat.TimeOfDay(_onaySatir.KartGirisDk) – @VrdFormat.TimeOfDay(_onaySatir.KartCikisDk)
+                · hesaplanan çalışma @VrdFormat.Duration(_onaySatir.CalismaDk)
             </div>
 
             <div class="alert alert-warning text-xs mb-3">
@@ -401,13 +401,13 @@ else
 }
 
 @code {
-    private IReadOnlyList<VrdKesim>? _kesimler;
-    private IReadOnlyList<VrdSube> _subeler = [];
-    private IReadOnlyList<VrdSatir>? _satirlar;
-    private VrdOzet? _ozet;
-    private VrdUyum? _uyum;
-    private VrdFazlaKaynak? _kaynak;
-    private IReadOnlyList<VrdKalmaBant> _bantlar = [];
+    private IReadOnlyList<VrdCutoff>? _kesimler;
+    private IReadOnlyList<VrdBranch> _subeler = [];
+    private IReadOnlyList<VrdRow>? _satirlar;
+    private VrdSummary? _ozet;
+    private VrdCompliance? _uyum;
+    private VrdOvertimeSource? _kaynak;
+    private IReadOnlyList<VrdStayBand> _bantlar = [];
     private int _bantToplam;
 
     private string _kesimSec = "";
@@ -415,12 +415,12 @@ else
     private string _ara = "";
     private bool _sadeceSorunlu;
 
-    private VrdSatir? _onaySatir;
+    private VrdRow? _onaySatir;
     private string _oGiris = "", _oCikis = "", _oEk = "", _oAciklama = "";
     private string? _onayHata;
     private bool _kaydediyor;
 
-    private static string Anahtar(VrdKesim k) => $"{k.KesimBas:yyyy-MM-dd}|{k.KesimBit:yyyy-MM-dd}";
+    private static string Anahtar(VrdCutoff k) => $"{k.KesimBas:yyyy-MM-dd}|{k.KesimBit:yyyy-MM-dd}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -461,7 +461,7 @@ else
     {
         <div class="flex justify-between text-xs py-0.5">
             <span class="text-base-content/70">@ad</span>
-            <span class="font-semibold">@VrdBicim.SaatOndalik(dk)</span>
+            <span class="font-semibold">@VrdFormat.HoursDecimal(dk)</span>
         </div>
     };
 
@@ -479,13 +479,13 @@ else
         _satirlar = await Q.GetRowsAsync(VrdConstants.PanelUserId, bas, bit, _sube, _ara, _sadeceSorunlu);
     }
 
-    private void OnayAc(VrdSatir r)
+    private void OnayAc(VrdRow r)
     {
         _onaySatir = r;
         _onayHata = null;
-        _oGiris = r.OnayGirisDk is null ? "" : VrdBicim.Saat(r.OnayGirisDk);
-        _oCikis = r.OnayCikisDk is null ? "" : VrdBicim.Saat(r.OnayCikisDk);
-        _oEk = r.EkMesaiDk is null ? "" : VrdBicim.Sure(r.EkMesaiDk);
+        _oGiris = r.OnayGirisDk is null ? "" : VrdFormat.TimeOfDay(r.OnayGirisDk);
+        _oCikis = r.OnayCikisDk is null ? "" : VrdFormat.TimeOfDay(r.OnayCikisDk);
+        _oEk = r.EkMesaiDk is null ? "" : VrdFormat.Duration(r.EkMesaiDk);
         _oAciklama = "";
     }
 

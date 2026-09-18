@@ -1,55 +1,357 @@
 @page
 @model BkmVardiya.Pages.IndexModel
+@using Bkm.Shared.Models
 @{
-    ViewData["Title"] = "Vardiya Yönetimi";
+    ViewData["Title"] = "Vardiya / Mesai";
 }
 
-@* Plan 48 Adım 3 — iskelet doğrulama sayfası.
-   Tek işi KANITLAMAK: ortak kütüphane (lib/Bkm.Shared) bu uygulamadan çalışıyor.
-   Gerçek rapor ekranı Adım 5, onay akışı Adım 6. *@
+@* Plan 48 Adım 5 — rapor ekranı dashboard'dan taşındı.
+   Tasarım sistemi Solum (solum.css); DaisyUI KULLANILMAZ.
+   Metinler Türkçe, kod İngilizce (turkish-ui.md). *@
 
-<h1>Vardiya Yönetimi</h1>
-<p>İskelet sürüm. Giriş Adım 4, rapor ekranı Adım 5, onay akışı Adım 6.</p>
+<h1>Vardiya / Mesai</h1>
+<p class="solum-card-sub">
+    PDKS + vardiya planı · hesap <b>bkm.sp_Vrd_KisiGunDoldur</b> ·
+    süreler dakika tabanlı, gece mesaisi ertesi güne sarkar ·
+    uyum ölçütleri <b>4857</b> (m.63 · m.68 · m.69 · m.46)
+</p>
 
 @if (Model.Error is not null)
 {
-    @* Hata YUTULMAZ — ekranda görünür (error-handling.md: sessiz fallback yok). *@
-    <div role="alert">
-        <strong>Kesimler okunamadı.</strong>
+    <div class="solum-alert solum-alert-bad" role="alert">
+        <strong>Rapor okunamadı.</strong>
         <div>@Model.Error</div>
     </div>
 }
 else if (Model.Cutoffs.Count == 0)
 {
-    <div role="alert">
-        Yazılmış kesim yok — <code>bkm.sp_Vrd_KisiGunDoldur</code> hiç koşmamış.
+    @* Boş nüfus "sorun yok" DEĞİL. İki ayrı sebebi var ve ikisi de sessizce
+       "temiz" görünürdü — ayırt edilebilir yazılıyor. *@
+    <div class="solum-alert solum-alert-warn" role="alert">
+        <strong>Görüntülenecek kesim yok.</strong>
+        <div>
+            Bu <b>“mesai sorunu yok”</b> demek değildir. İki sebebi olabilir:
+            hesap hiç koşmamıştır (<code>bkm.Vrd_KisiGun</code> boş), ya da
+            şube kapsamınız boştur. İkincisi için İnsan Kaynakları ile görüşün.
+        </div>
     </div>
 }
 else
 {
-    <table>
-        <thead>
-            <tr>
-                <th>Kesim başı</th>
-                <th>Kesim sonu</th>
-                <th>Sayım başı</th>
-                <th>Kişi-gün</th>
-                <th>Şube</th>
-                <th>Yazılma</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var k in Model.Cutoffs)
+    <form method="get" class="solum-toolbar">
+        <label class="solum-field">
+            <span>Kesim</span>
+            <select name="Cutoff" class="solum-select" onchange="this.form.submit()">
+                @foreach (var c in Model.Cutoffs)
+                {
+                    var key = BkmVardiya.Pages.IndexModel.CutoffKey(c);
+                    <option value="@key" selected="@(key == Model.Cutoff)">
+                        @c.KesimBas.ToString("dd.MM.yyyy") – @c.KesimBit.ToString("dd.MM.yyyy")
+                        · @c.KisiGun.ToString("N0") kişi-gün
+                    </option>
+                }
+            </select>
+        </label>
+
+        <label class="solum-field">
+            <span>Şube</span>
+            <select name="Branch" class="solum-select" onchange="this.form.submit()">
+                <option value="">Tümü</option>
+                @foreach (var b in Model.Branches)
+                {
+                    <option value="@b.Sube" selected="@(b.Sube == Model.Branch)">@b.Sube</option>
+                }
+            </select>
+        </label>
+
+        <label class="solum-field">
+            <span>Personel / TC</span>
+            <input name="Search" value="@Model.Search" class="solum-input" placeholder="ara…" />
+        </label>
+
+        <label class="solum-field">
+            <span>Süzgeç</span>
+            <span>
+                <input type="checkbox" name="OnlyDeviations" value="true" checked="@Model.OnlyDeviations" />
+                Yalnız sapma/not taşıyanlar
+            </span>
+        </label>
+
+        <button type="submit" class="solum-btn solum-btn-primary">Uygula</button>
+    </form>
+
+    @if (Model.Summary is not null)
+    {
+        <div class="solum-kpi-grid">
+            <div class="solum-kpi">
+                <div class="solum-kpi-label">Kişi-gün</div>
+                <div class="solum-kpi-value">@Model.Summary.KisiGun.ToString("N0")</div>
+                <div class="solum-kpi-hint">@Model.Summary.KisiSay kişi · @Model.Summary.SubeSay şube</div>
+            </div>
+            <div class="solum-kpi solum-kpi-bad">
+                <div class="solum-kpi-label">Eksik saat</div>
+                <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalShortMin)</div>
+                <div class="solum-kpi-hint">
+                    dönem @VrdFormat.HoursDecimal(Model.Summary.EksikDk)
+                    + devir @VrdFormat.HoursDecimal(Model.Summary.DevirEksikDk)
+                </div>
+            </div>
+            <div class="solum-kpi solum-kpi-good">
+                <div class="solum-kpi-label">Fazla saat</div>
+                <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalOvertimeMin)</div>
+                <div class="solum-kpi-hint">
+                    dönem @VrdFormat.HoursDecimal(Model.Summary.FazlaDk)
+                    + devir @VrdFormat.HoursDecimal(Model.Summary.DevirFazlaDk)
+                </div>
+            </div>
+            <div class="solum-kpi">
+                <div class="solum-kpi-label">Gün dönümü</div>
+                <div class="solum-kpi-value">@Model.Summary.GunDonumu</div>
+                <div class="solum-kpi-hint">çıkış ertesi güne sarktı</div>
+            </div>
+            <div class="solum-kpi">
+                <div class="solum-kpi-label">Sayım dışı</div>
+                <div class="solum-kpi-value">@Model.Summary.SayimDisi</div>
+                <div class="solum-kpi-hint">önceki ay devrinde sayılı</div>
+            </div>
+        </div>
+    }
+
+    @* ── MEVZUAT KAPISI — hiçbir sayı "ihlal" diye ETİKETLENMEZ ────────────
+       Bunlar teyit edilecek sorulardır; yorum İK + iş hukuku işi. *@
+    @if (Model.Compliance is not null)
+    {
+        <section class="solum-card">
+            <div class="solum-card-head">
+                <div>
+                    <div class="solum-card-title">Mesai mevzuat kapısı</div>
+                    <div class="solum-card-sub">
+                        4857 sayılı İş Kanunu · aşan gün sayısı — <b>ihlal etiketi değil</b>,
+                        teyit edilecek soru.
+                    </div>
+                </div>
+                @if (Model.Compliance.Supheli > 0)
+                {
+                    <span class="solum-badge solum-badge-warn">
+                        @Model.Compliance.Supheli satır denetim dışı
+                    </span>
+                }
+            </div>
+
+            <div class="solum-kpi-grid">
+                <div class="solum-kpi @(Model.Compliance.Gunluk11 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                    <div class="solum-kpi-label">Günlük 11 saat</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Gunluk11</div>
+                    <div class="solum-kpi-hint">m.63 / m.41 · gün</div>
+                </div>
+                <div class="solum-kpi @(Model.Compliance.Brut12 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                    <div class="solum-kpi-label">Brüt 12 saat</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Brut12</div>
+                    <div class="solum-kpi-hint">m.68 — 24 saatte 12 saat dinlenme</div>
+                </div>
+                <div class="solum-kpi @(Model.Compliance.Gece75 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                    <div class="solum-kpi-label">Gece 7,5 saat</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Gece75</div>
+                    <div class="solum-kpi-hint">m.69 — 20:00-06:00 penceresi</div>
+                </div>
+                <div class="solum-kpi @(Model.Compliance.HaftaTat > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                    <div class="solum-kpi-label">Hafta tatili yok</div>
+                    <div class="solum-kpi-value">@Model.Compliance.HaftaTat</div>
+                    <div class="solum-kpi-hint">m.46 · kişi-hafta</div>
+                </div>
+                <div class="solum-kpi solum-kpi-neutral">
+                    <div class="solum-kpi-label">Haftalık 45 saat üstü</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Ustu45</div>
+                    <div class="solum-kpi-hint"><b>İHLAL DEĞİL</b> — fazla çalışma · kişi-hafta</div>
+                </div>
+            </div>
+
+            <div class="solum-card-foot">
+                ⚠ Yıllık 270 saat sınırı (m.41) bu pencereden <b>ölçülemez</b> —
+                yıllıklandırma çıkarım olur. Yazılı işçi muvafakati (m.41/7) sistemde
+                <b>tutulmuyor</b>, denetlenemiyor.
+            </div>
+        </section>
+    }
+
+    @* ── FAZLA MESAİNİN KAYNAĞI ──────────────────────────────────────────
+       Tek rakam yönetilemez; kalemler hukuken de AYRI ödenir. *@
+    @if (Model.OvertimeSource is not null && Model.OvertimeSource.TotalMin > 0)
+    {
+        <section class="solum-card">
+            <div class="solum-card-head">
+                <div>
+                    <div class="solum-card-title">Fazla mesai nereden geliyor</div>
+                    <div class="solum-card-sub">
+                        Toplam @VrdFormat.HoursDecimal(Model.OvertimeSource.TotalMin) · dönem içi (devir hariç)
+                        @(string.IsNullOrEmpty(Model.Branch) ? "" : " · " + Model.Branch)
+                    </div>
+                </div>
+            </div>
+
+            <div class="solum-table-wrap">
+                <table class="solum-table">
+                    <thead>
+                        <tr><th>Kaynak</th><th>Kalem</th><th class="solum-num">Saat</th><th class="solum-num">Pay</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="2">
+                                <b>Yönetim politikası</b><br />
+                                <small>izin iptali · hafta tatili kullandırmama</small>
+                            </td>
+                            <td>İzin günü çalıştırılmış</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.IzinIptalDk)</td>
+                            <td class="solum-num" rowspan="2">%@Model.OvertimeSource.ManagementShare.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td>Hafta tatili kullandırılmamış</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.HaftaTatilDk)</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="2">
+                                <b>Operasyonel zorunluluk</b><br />
+                                <small>kapanış gecikmesi · gün içi yoğunluk</small>
+                            </td>
+                            <td>Plan üstü çalışma</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.FazlaCalismaDk)</td>
+                            <td class="solum-num" rowspan="2">%@Model.OvertimeSource.StoreShare.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td>Plansız çalışma</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.PlansizDk)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="solum-card-sub">
+                Uçlara göre: kapanış sonrası kalma
+                <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.CikisSonrasiDk)</b> ·
+                erken başlama <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.GirisOncesiDk)</b>
+            </div>
+
+            @if (Model.StayBands.Count > 0)
+            {
+                <div class="solum-card-title">Kapanış sonrası kalma dağılımı</div>
+                <div class="solum-card-sub">
+                    15 dakikalık toplanma ile 2 saati aşan kalma aynı şey değil —
+                    aksiyon uzun kuyrukta.
+                </div>
+                <div class="solum-table-wrap">
+                    <table class="solum-table">
+                        <thead>
+                            <tr><th>Süre</th><th class="solum-num">Kişi-gün</th>
+                                <th class="solum-num">Saat</th><th class="solum-num">Pay</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var b in Model.StayBands)
+                        {
+                            var share = Model.StayBandTotal == 0 ? 0 : 100.0 * b.Dk / Model.StayBandTotal;
+                            <tr>
+                                <td>@b.Bant</td>
+                                <td class="solum-num">@b.Satir.ToString("N0")</td>
+                                <td class="solum-num">@VrdFormat.HoursDecimal(b.Dk)</td>
+                                <td class="solum-num">%@share.ToString("N0")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <div class="solum-card-foot">
+                ⚠ Üç kalem <b>farklı ödenir</b>: fazla çalışma %50 zamlı (m.41) ·
+                hafta tatilinde çalışma 1 yevmiye + %50 (m.46) · izin gününde
+                çalıştırma kullanılmayan iznin akıbetine bağlı. Ödeme bağı bu panelde
+                <b>kurulmuyor</b> — bordroyla karşılaştırılmadı.
+            </div>
+        </section>
+    }
+
+    @if (Model.Branches.Count > 0)
+    {
+        <section class="solum-card">
+            <div class="solum-card-title">Şube kırılımı</div>
+            <div class="solum-table-wrap">
+                <table class="solum-table">
+                    <thead>
+                        <tr><th>Şube</th><th class="solum-num">Kişi</th><th class="solum-num">Kişi-gün</th>
+                            <th class="solum-num">Eksik</th><th class="solum-num">Fazla</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var b in Model.Branches)
+                    {
+                        <tr>
+                            <td>@b.Sube</td>
+                            <td class="solum-num">@b.KisiSay</td>
+                            <td class="solum-num">@b.KisiGun.ToString("N0")</td>
+                            <td class="solum-num">@VrdFormat.Duration(b.EksikDk)</td>
+                            <td class="solum-num">@VrdFormat.Duration(b.FazlaDk)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+
+    <section class="solum-card">
+        <div class="solum-card-head">
+            <div class="solum-card-title">Kişi-gün</div>
+            <div class="solum-card-sub">
+                @Model.Rows.Count satır@(Model.Rows.Count >= 400 ? " (ilk 400)" : "")
+            </div>
+        </div>
+
+        @if (Model.Rows.Count == 0)
         {
-            <tr>
-                <td>@k.KesimBas.ToString("dd.MM.yyyy")</td>
-                <td>@k.KesimBit.ToString("dd.MM.yyyy")</td>
-                <td>@k.SayimBas.ToString("dd.MM.yyyy")</td>
-                <td>@k.KisiGun.ToString("N0")</td>
-                <td>@k.SubeSay</td>
-                <td>@k.Yazilma.ToString("dd.MM.yyyy HH:mm")</td>
-            </tr>
+            <div class="solum-empty">Süzgeçle eşleşen kayıt yok.</div>
         }
-        </tbody>
-    </table>
+        else
+        {
+            <div class="solum-table-wrap">
+                <table class="solum-table">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th><th>Şube</th><th>Personel</th><th>Görev</th>
+                            <th>Vardiya</th><th class="solum-num">Giriş</th><th class="solum-num">Çıkış</th>
+                            <th class="solum-num">Çalışma</th><th class="solum-num">Eksik</th>
+                            <th class="solum-num">Fazla</th><th>Durum</th><th>Not</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td>@r.Tarih.ToString("dd.MM.yyyy")</td>
+                            <td>@r.Sube</td>
+                            <td>@r.Personel</td>
+                            <td>@r.Gorev</td>
+                            <td>@r.VardiyaTanim</td>
+                            <td class="solum-num">@VrdFormat.TimeOfDay(r.GirisDk)</td>
+                            <td class="solum-num">@VrdFormat.TimeOfDay(r.CikisDk)</td>
+                            <td class="solum-num">@VrdFormat.Duration(r.CalismaDk)</td>
+                            <td class="solum-num">@VrdFormat.Duration(r.EksikDk)</td>
+                            <td class="solum-num">@VrdFormat.Duration(r.FazlaDk)</td>
+                            <td>@r.Durum</td>
+                            <td>
+                                @if (r.Suspect)
+                                {
+                                    <span class="solum-badge solum-badge-warn">şüpheli okutma</span>
+                                }
+                                @r.OlcumNotu
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="solum-table-note">
+                ⚠ <b>Şüpheli okutma</b> satırları mevzuat sayımının DIŞINDADIR: çıkış
+                okutmasını unutan kişi 17-20 saat çalışmış görünür ve sayıma girerse
+                SAHTE ihlal üretir.
+            </div>
+        }
+    </section>
 }

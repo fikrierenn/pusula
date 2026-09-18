@@ -105,7 +105,7 @@ CIFTLER = [
         "SezonAksiyonKpi",
         12,   # bugün 14 alan; genel 20'lik sınır bu kayıt için haksız KOŞAMADI veriyordu
     ),
-    # ⚠ EKLENDİ 19.09.2026 — `VrdSatir` **27 alanlı** pozisyonel record ve bu denetim
+    # ⚠ EKLENDİ 19.09.2026 — `VrdRow` **27 alanlı** pozisyonel record ve bu denetim
     # onu HİÇ görmüyordu. Record'un kendi içinde tehlikeyi anlatan bir yorum vardı
     # ("SIRA SÖZLEŞMEDİR") ama yorum kapı değildir: kuralı çiğneyeni kimse görmüyordu
     # (`test-discipline.md` § yazılı kural ≠ uygulanan kural).
@@ -113,9 +113,9 @@ CIFTLER = [
     (
         "Vardiya — kişi-gün satırı",
         "lib/Bkm.Shared/Data/VardiyaQueries.cs",
-        "public async Task<IReadOnlyList<VrdSatir>> GetRowsAsync",
+        "public async Task<IReadOnlyList<VrdRow>> GetRowsAsync",
         "lib/Bkm.Shared/Models/VardiyaModels.cs",
-        "VrdSatir",
+        "VrdRow",
     ),
 ]
 
@@ -275,7 +275,7 @@ def sql_aliaslari(metin: str, baslangic: str) -> tuple[list[str], int]:
     aliaslar = re.findall(r"\bAS\s+([A-Za-z_][A-Za-z0-9_]*)", sql)
 
     # ⚠ GENİŞLETME 19.09.2026 — `AS` KULLANMAYAN SQL tamamen görünmezdi.
-    #   `VrdSatir` (27 alan) eklenince ölçüldü: o sorguda 0 alias bulundu ve çift
+    #   `VrdRow` (27 alan) eklenince ölçüldü: o sorguda 0 alias bulundu ve çift
     #   "KOŞAMADI" verdi. Sorgu `k.Sube` (düz kolon) ve `Ad = ifade` biçimlerini
     #   kullanıyor; ikisi de meşru T-SQL ve ikisi de kolon ADINI taşıyor.
     #   `AS` bulunamazsa SELECT…FROM aralığı virgülle bölünüp ad çıkarılır.

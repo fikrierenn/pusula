@@ -50,10 +50,10 @@ public sealed class VardiyaQueries(Db db)
     //   kim sorumluydu" ayrı bir sorudur ve `Vrd_KullaniciSubeGecmis_vw`de durur.
 
     /// <summary>Yazılabilir kesimler (en yeni önce). Boşsa SP hiç koşmamıştır.</summary>
-    public async Task<IReadOnlyList<VrdKesim>> GetCutoffsAsync(string userId)
+    public async Task<IReadOnlyList<VrdCutoff>> GetCutoffsAsync(string userId)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdKesim>("""
+        var r = await cn.QueryAsync<VrdCutoff>("""
             SELECT  KesimBas, KesimBit, SayimBas,
                     KisiGun  = COUNT(*),
                     SubeSay  = COUNT(DISTINCT Sube),
@@ -71,10 +71,10 @@ public sealed class VardiyaQueries(Db db)
     /// Eksik/Fazla burada TÜRETİLİR (plan süresi vs gerçekleşen) — SP'nin yazdığı
     /// alanlardan, yeni bir iş kuralı EKLENMEZ.
     /// </summary>
-    public async Task<VrdOzet?> GetSummaryAsync(string userId, DateOnly bas, DateOnly bit)
+    public async Task<VrdSummary?> GetSummaryAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
-        return await cn.QuerySingleOrDefaultAsync<VrdOzet>("""
+        return await cn.QuerySingleOrDefaultAsync<VrdSummary>("""
             SELECT
                 KisiGun   = COUNT(*),
                 SubeSay   = COUNT(DISTINCT Sube),
@@ -105,10 +105,10 @@ public sealed class VardiyaQueries(Db db)
         });
     }
 
-    public async Task<IReadOnlyList<VrdDurum>> GetStatusBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
+    public async Task<IReadOnlyList<VrdStatus>> GetStatusBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdDurum>("""
+        var r = await cn.QueryAsync<VrdStatus>("""
             SELECT Durum, KisiGun = COUNT(*)
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
@@ -118,10 +118,10 @@ public sealed class VardiyaQueries(Db db)
         return r.AsList();
     }
 
-    public async Task<IReadOnlyList<VrdSube>> GetBranchBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
+    public async Task<IReadOnlyList<VrdBranch>> GetBranchBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdSube>("""
+        var r = await cn.QueryAsync<VrdBranch>("""
             SELECT  Sube,
                     KisiGun = COUNT(*),
                     KisiSay = COUNT(DISTINCT NULLIF(SicilNo, '')),
@@ -139,10 +139,10 @@ public sealed class VardiyaQueries(Db db)
     /// FAZLA MESAİNİN KAYNAĞI — SP'nin yazdığı kolonlar okunur, türetilmez.
     /// "Ne kadarı fazla çalışma, ne kadarı izin iptali" (GMY sorusu 17.09.2026).
     /// </summary>
-    public async Task<VrdFazlaKaynak?> GetOvertimeSourceAsync(string userId, DateOnly bas, DateOnly bit, string? sube)
+    public async Task<VrdOvertimeSource?> GetOvertimeSourceAsync(string userId, DateOnly bas, DateOnly bit, string? sube)
     {
         using var cn = db.OpenPanel();
-        return await cn.QuerySingleOrDefaultAsync<VrdFazlaKaynak>("""
+        return await cn.QuerySingleOrDefaultAsync<VrdOvertimeSource>("""
             SELECT FazlaCalismaDk = SUM(ISNULL(FazlaCalismaDk, 0)),
                    IzinIptalDk    = SUM(ISNULL(FazlaIzinIptalDk, 0)),
                    HaftaTatilDk   = SUM(ISNULL(HaftalikPrimDk, 0)),
@@ -166,11 +166,11 @@ public sealed class VardiyaQueries(Db db)
     /// Kapanış sonrası kalma süre bandı. Uzun kuyruk ayrı bir sorudur: 15 dakikalık
     /// toplanma ile 2 saati aşan kalma AYNI ŞEY DEĞİLDİR ve aynı aksiyonu almaz.
     /// </summary>
-    public async Task<IReadOnlyList<VrdKalmaBant>> GetStayBandsAsync(
+    public async Task<IReadOnlyList<VrdStayBand>> GetStayBandsAsync(
         string userId, DateOnly bas, DateOnly bit, string? sube)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdKalmaBant>("""
+        var r = await cn.QueryAsync<VrdStayBand>("""
             SELECT Bant = CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
                                WHEN CikisSonrasiDk <=  30 THEN N'16–30 dk'
                                WHEN CikisSonrasiDk <=  60 THEN N'31–60 dk'
@@ -204,7 +204,7 @@ public sealed class VardiyaQueries(Db db)
     ///   iki gün için taranır.
     /// ⚠ ŞÜPHELİ satırlar denetim DIŞI.
     /// </summary>
-    public async Task<VrdUyum?> GetComplianceAsync(string userId, DateOnly bas, DateOnly bit)
+    public async Task<VrdCompliance?> GetComplianceAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         // ⚠ CTE MATERYALİZE EDİLMEZ — beş referans beş yeniden tarama demekti ve
@@ -223,7 +223,7 @@ public sealed class VardiyaQueries(Db db)
         //   `IX_Vrd_KisiGun_Kesim`te YOK. `IX_Vrd_KisiGun_KesimUyum` bunun için
         //   var (24 kesim taklidi, 146.712 satır: 89,6 → 22,9 ms). DDL:
         //   sorgular/2026-09-17-vardiya-tablo-kur.sql
-        return await cn.QuerySingleOrDefaultAsync<VrdUyum>("""
+        return await cn.QuerySingleOrDefaultAsync<VrdCompliance>("""
             SELECT SicilNo, Tarih, CalismaDk, GirisDk, CikisDk, Izin,
                    -- gece = [giriş,çıkış] ∩ 20:00–06:00; çıkış 1440'ı aşabildiği
                    -- için pencere iki gün için toplanır (m.69).
@@ -280,11 +280,11 @@ public sealed class VardiyaQueries(Db db)
     /// Kişi-gün listesi. <paramref name="sadeceSorunlu"/> → yalnız eksik/fazla saat
     /// doğuran, ölçüm notu taşıyan veya devamsız satırlar.
     /// </summary>
-    public async Task<IReadOnlyList<VrdSatir>> GetRowsAsync(
+    public async Task<IReadOnlyList<VrdRow>> GetRowsAsync(
         string userId, DateOnly bas, DateOnly bit, string? sube, string? ara, bool sadeceSorunlu, int limit = 400)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdSatir>("""
+        var r = await cn.QueryAsync<VrdRow>("""
             SELECT TOP (@limit)
                    k.Sube, k.SicilNo, k.Personel, k.Bolum, k.Gorev, k.Tarih,
                    k.VardiyaTanim, k.KartGirisDk, k.KartCikisDk, k.GirisDk, k.CikisDk,
