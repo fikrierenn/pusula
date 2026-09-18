@@ -16,7 +16,7 @@ namespace Bkm.Shared.Data;
 /// • <b>Süreler DAKİKA</b> (int). Gece mesaisinde çıkış ertesi güne sarkar (&gt;1440);
 ///   <c>time</c> tipi bunu tutamaz. Biçimleme ekranda yapılır.
 /// • <b>SayimDisi satırlar toplama GİRMEZ.</b> Dönem başındaki gün önceki ayın
-///   devrinde sayılıdır; satır raporda DURUR (hafta bütünlüğü için) ama eksik/fazla
+///   devrinde sayılıdır; satır raporda DURUR (hafta bütünlüğü için) ama missing/fazla
 ///   hesabına katılmaz.
 /// • <b>ŞÜPHELİ okutma denetim DIŞI.</b> Çıkış okutmasını unutan kişi 17-20 saat
 ///   çalışmış görünür; uyum sayımına girerse SAHTE ihlal üretir ve gerçeği gürültüye
@@ -38,7 +38,7 @@ public sealed class VardiyaQueries(Db db)
     // 18.09): "bu yoldan geçen değerlerden hangisi bir YETKİ KARARIDIR?" → SIFIR.
     // Yani yanlış bir şube id'si "geçemez" değil, GEÇİRİLECEK YER YOKTUR.
     //
-    // ⚠ `sube` parametresi bir YETKİ DEĞİL, GÖRÜNTÜ FİLTRESİDİR: kapsam İÇİNDE
+    // ⚠ `branch` parametresi bir YETKİ DEĞİL, GÖRÜNTÜ FİLTRESİDİR: kapsam İÇİNDE
     //   daraltır. Uydurulmuş bir değer kesişimde düşer, kapsamı genişletemez.
     //
     // ⚠ YAZMA da kapılı (SaveApprovalAsync): okuma süzgeci yazma yolunu korumaz,
@@ -46,10 +46,10 @@ public sealed class VardiyaQueries(Db db)
     //
     // ⚠ KAPSAM BUGÜNKÜ ACL'DEN çözülür, satırın tarihinden DEĞİL (19.09 düzeltmesi,
     //   GMY itirazı): bugün bir şubeden sorumluysan o şubenin TÜM geçmişini
-    //   görürsün — yoksa yeni atanan müdür kıyas ve tahmin yapamazdı. "O tarihte
+    //   görürsün — yoksa created atanan müdür kıyas ve tahmin yapamazdı. "O tarihte
     //   kim sorumluydu" ayrı bir sorudur ve `Vrd_KullaniciSubeGecmis_vw`de durur.
 
-    /// <summary>Yazılabilir kesimler (en yeni önce). Boşsa SP hiç koşmamıştır.</summary>
+    /// <summary>Yazılabilir kesimler (en created önce). Boşsa SP hiç koşmamıştır.</summary>
     public async Task<IReadOnlyList<VrdCutoff>> GetCutoffsAsync(string userId)
     {
         using var cn = db.OpenPanel();
@@ -69,9 +69,9 @@ public sealed class VardiyaQueries(Db db)
     }
 
     /// <summary>
-    /// Kesim özeti: eksik/fazla saat + durum kırılımı.
+    /// Kesim özeti: missing/fazla saat + durum kırılımı.
     /// Eksik/Fazla burada TÜRETİLİR (plan süresi vs gerçekleşen) — SP'nin yazdığı
-    /// alanlardan, yeni bir iş kuralı EKLENMEZ.
+    /// alanlardan, created bir iş kuralı EKLENMEZ.
     /// </summary>
     public async Task<VrdSummary?> GetSummaryAsync(string userId, DateOnly bas, DateOnly bit)
     {
@@ -147,7 +147,7 @@ public sealed class VardiyaQueries(Db db)
     /// FAZLA MESAİNİN KAYNAĞI — SP'nin yazdığı kolonlar okunur, türetilmez.
     /// "Ne kadarı fazla çalışma, ne kadarı izin iptali" (GMY sorusu 17.09.2026).
     /// </summary>
-    public async Task<VrdOvertimeSource?> GetOvertimeSourceAsync(string userId, DateOnly bas, DateOnly bit, string? sube)
+    public async Task<VrdOvertimeSource?> GetOvertimeSourceAsync(string userId, DateOnly bas, DateOnly bit, string? branch)
     {
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdOvertimeSource>("""
@@ -166,7 +166,7 @@ public sealed class VardiyaQueries(Db db)
             userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
-            sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
+            branch = string.IsNullOrWhiteSpace(branch) ? null : branch,
         });
     }
 
@@ -175,7 +175,7 @@ public sealed class VardiyaQueries(Db db)
     /// toplanma ile 2 saati aşan kalma AYNI ŞEY DEĞİLDİR ve aynı aksiyonu almaz.
     /// </summary>
     public async Task<IReadOnlyList<VrdStayBand>> GetStayBandsAsync(
-        string userId, DateOnly bas, DateOnly bit, string? sube)
+        string userId, DateOnly bas, DateOnly bit, string? branch)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdStayBand>("""
@@ -201,7 +201,7 @@ public sealed class VardiyaQueries(Db db)
             userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
-            sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
+            branch = string.IsNullOrWhiteSpace(branch) ? null : branch,
         });
         return r.AsList();
     }
@@ -218,7 +218,7 @@ public sealed class VardiyaQueries(Db db)
         using var cn = db.OpenPanel();
         // ⚠ CTE MATERYALİZE EDİLMEZ — beş referans beş yeniden tarama demekti ve
         //   `geceDk` içindeki VALUES alt-sorgusu satır başına koşuyordu.
-        //   ÖLÇÜLDÜ (18.09.2026, 6.113 satır): 43,2 sn → komut zaman aşımı, sayfa
+        //   ÖLÇÜLDÜ (18.09.2026, 6.113 satır): 43,2 sn → komut zaman aşımı, page
         //   500 veriyordu. #temp'e tek geçiş + aritmetik kesişim: **0,30 sn**,
         //   aynı sonuç (93 · 93 · 1 · 124 · 544 · 2). 144 kat.
         //
@@ -286,11 +286,11 @@ public sealed class VardiyaQueries(Db db)
     }
 
     /// <summary>
-    /// Kişi-gün listesi. <paramref name="sadeceSorunlu"/> → yalnız eksik/fazla saat
+    /// Kişi-gün listesi. <paramref name="sadeceSorunlu"/> → yalnız missing/fazla saat
     /// doğuran, ölçüm notu taşıyan veya devamsız satırlar.
     /// </summary>
     public async Task<IReadOnlyList<VrdRow>> GetRowsAsync(
-        string userId, DateOnly bas, DateOnly bit, string? sube, string? ara, bool sadeceSorunlu, int limit = 400)
+        string userId, DateOnly bas, DateOnly bit, string? branch, string? ara, bool sadeceSorunlu, int limit = 400)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdRow>("""
@@ -346,7 +346,7 @@ public sealed class VardiyaQueries(Db db)
             userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
-            sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
+            branch = string.IsNullOrWhiteSpace(branch) ? null : branch,
             ara = string.IsNullOrWhiteSpace(ara) ? null : LikeKacir(ara.Trim()),
             sadeceSorunlu = sadeceSorunlu ? 1 : 0,
             limit,
@@ -368,26 +368,26 @@ public sealed class VardiyaQueries(Db db)
     ///
     /// Hedef <c>BkmPanel</c> (app-local), ERP DEĞİL — <c>erp-write-policy.md</c>
     /// kapsamında bir ERP yazması değildir. Bu veri hiçbir sorgudan çıkmaz; bugüne
-    /// kadar Excel hücresinde yaşıyordu ve dosya yenilenince kayboluyordu. Tablonun
+    /// kadar Excel hücresinde yaşıyordu ve file yenilenince kayboluyordu. Tablonun
     /// gerçek gerekçesi budur.
     ///
-    /// ⚠ <c>EkMesaiDk</c>'ya GÜN DÖNÜMÜ TELAFİSİ YAZILMAZ — gece mesaisi artık
+    /// ⚠ <c>ExtraShiftMin</c>'ya GÜN DÖNÜMÜ TELAFİSİ YAZILMAZ — gece mesaisi artık
     ///   otomatik hesaplanıyor; buraya aynı saat girilirse mesai İKİ KEZ sayılır.
     ///   ÖLÇÜLDÜ (17.09.2026): eski Excel'de elle doldurulan 11 satırın 9'u tam
     ///   olarak bu telafiydi. DB tarafında ayrıca CHECK var (0-1440).
     /// </summary>
     public async Task SaveApprovalAsync(string userId, string sicilNo, DateOnly tarih,
-        int? girisDk, int? cikisDk, int? ekMesaiDk, string? aciklama, string kaydeden)
+        int? inMin, int? outMin, int? extraShiftMin, string? aciklama, string savedBy)
     {
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("userId boş olamaz — şube kapsamı çözülemez.", nameof(userId));
         if (string.IsNullOrWhiteSpace(sicilNo))
             throw new ArgumentException("SicilNo boş olamaz — kişi-gün kimliği kurulamaz.", nameof(sicilNo));
-        foreach (var (ad, v) in new[] { ("Giriş", girisDk), ("Çıkış", cikisDk) })
+        foreach (var (ad, v) in new[] { ("Giriş", inMin), ("Çıkış", outMin) })
             if (v is < 0 or > 2880)
                 throw new ArgumentOutOfRangeException(ad, $"{ad} dakikası 0-2880 dışında: {v}");
-        if (ekMesaiDk is < 0 or > 1440)
-            throw new ArgumentOutOfRangeException(nameof(ekMesaiDk), "Ek mesai 0-1440 dakika dışında.");
+        if (extraShiftMin is < 0 or > 1440)
+            throw new ArgumentOutOfRangeException(nameof(extraShiftMin), "Ek mesai 0-1440 dakika dışında.");
 
         using var cn = db.OpenPanel();
 
@@ -412,9 +412,9 @@ public sealed class VardiyaQueries(Db db)
                 $"Bu kişi-gün kaydı şube kapsamınızda değil (sicil {sicilNo}, {tarih:dd.MM.yyyy}).");
 
         // ── ÖNCEKİ HÂLİ OKU — iz "ne değişti" diyebilsin ────────────────────
-        //   Yalnız yeni değeri yazan bir iz, denetimde işe yaramaz: "bu saat
+        //   Yalnız created değeri yazan bir iz, denetimde işe yaramaz: "bu saat
         //   elle mi girildi, neyin yerine girildi" sorusunun cevabı eski değerde.
-        var onceki = await cn.QuerySingleOrDefaultAsync<VrdOnayKayit>("""
+        var onceki = await cn.QuerySingleOrDefaultAsync<VrdApprovalRecord>("""
             SELECT OnayliGirisDk, OnayliCikisDk, EkMesaiDk, Aciklama
             FROM   bkm.Vrd_Onay WHERE SicilNo = @sicilNo AND Tarih = @tarih
             """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
@@ -428,7 +428,7 @@ public sealed class VardiyaQueries(Db db)
 
         // Üç alan da boşsa kayıt SİLİNİR — "hepsini temizledim" niyetini boş satır
         // olarak saklamak sonraki okumada gereksiz JOIN eşleşmesi üretir.
-        if (girisDk is null && cikisDk is null && ekMesaiDk is null && string.IsNullOrWhiteSpace(aciklama))
+        if (inMin is null && outMin is null && extraShiftMin is null && string.IsNullOrWhiteSpace(aciklama))
         {
             if (onceki is null) { await tx.CommitAsync(); return; }   // zaten yok — iz de yazılmaz
 
@@ -437,7 +437,7 @@ public sealed class VardiyaQueries(Db db)
                 new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) }, transaction: tx);
 
             await AuditTrail.WriteAsync(cn, "Vrd_Onay", kayitId, AuditTrail.Action.Deleted,
-                userId, kaydeden, new { eski = onceki }, tx);
+                userId, savedBy, new { eski = onceki }, tx);
             await tx.CommitAsync();
             return;
         }
@@ -456,31 +456,31 @@ public sealed class VardiyaQueries(Db db)
             """, new
         {
             sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue),
-            girisDk, cikisDk, ekMesaiDk,
+            inMin, outMin, extraShiftMin,
             aciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
-            kaydeden,
+            savedBy,
         }, transaction: tx);
 
         await AuditTrail.WriteAsync(cn, "Vrd_Onay", kayitId,
             onceki is null ? AuditTrail.Action.Created : AuditTrail.Action.Updated,
-            userId, kaydeden,
+            userId, savedBy,
             new
             {
                 eski = onceki,
-                yeni = new { OnayliGirisDk = girisDk, OnayliCikisDk = cikisDk, EkMesaiDk = ekMesaiDk, Aciklama = aciklama },
+                created = new { ApprovedInMin = inMin, ApprovedOutMin = outMin, ExtraShiftMin = extraShiftMin, Note = aciklama },
             }, tx);
 
         await tx.CommitAsync();
     }
 
-    /// <summary>Onay kaydının denetim izine yazılan hâli (eski/yeni karşılaştırması).</summary>
-    public sealed record VrdOnayKayit(int? OnayliGirisDk, int? OnayliCikisDk, int? EkMesaiDk, string? Aciklama);
+    /// <summary>Onay kaydının denetim izine yazılan hâli (eski/created karşılaştırması).</summary>
+    public sealed record VrdApprovalRecord(int? ApprovedInMin, int? ApprovedOutMin, int? ExtraShiftMin, string? Note);
 
     /// <summary>Tek kişi-günün onay kaydı — onay ekranının açılışında okunur.</summary>
-    public async Task<VrdOnayKayit?> GetApprovalAsync(string userId, string sicilNo, DateOnly tarih)
+    public async Task<VrdApprovalRecord?> GetApprovalAsync(string userId, string sicilNo, DateOnly tarih)
     {
         using var cn = db.OpenPanel();
-        return await cn.QuerySingleOrDefaultAsync<VrdOnayKayit>("""
+        return await cn.QuerySingleOrDefaultAsync<VrdApprovalRecord>("""
             SELECT o.OnayliGirisDk, o.OnayliCikisDk, o.EkMesaiDk, o.Aciklama
             FROM   bkm.Vrd_Onay o
             WHERE  o.SicilNo = @sicilNo AND o.Tarih = @tarih

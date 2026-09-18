@@ -1,0 +1,995 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Solum.Identity</name>
+    </assembly>
+    <members>
+        <member name="T:Solum.Identity.ClaimsPrincipalCurrentUser">
+             <summary>
+             <see cref="T:Solum.Abstractions.ICurrentUser"/>'in <see cref="T:System.Security.Claims.ClaimsPrincipal"/> uzerinden uygulanmasi.
+             <c>Solum.Audit</c> bunu tuketir ve <c>Solum.Identity</c>'yi hic tanimaz.
+            
+             NEDEN ClaimsPrincipal, NEDEN IHttpContextAccessor DEGIL:
+             <c>IHttpContextAccessor</c> kullanmak bu pakete
+             <c>Microsoft.AspNetCore.Http.Abstractions</c> bagimliligi ekler ve paketi
+             web'e baglar — arka plan isleyicisi de kimlik deposunu kullanabilmeli.
+             <see cref="T:System.Security.Claims.ClaimsPrincipal"/> temel kitaplikta oldugu icin ek bagimlilik
+             getirmiyor. Principal'i nereden alacagi TUKETICININ karari:
+            
+             <code>
+             // Web uygulamasinda (wiring — sablona ait, kutuphaneye degil)
+             services.AddHttpContextAccessor();
+             services.AddScoped&lt;ICurrentUser&gt;(sp =&gt; new ClaimsPrincipalCurrentUser(
+                 sp.GetRequiredService&lt;IHttpContextAccessor&gt;().HttpContext?.User));
+             </code>
+            
+             Bu, "davranis paket, kurulum sablon" sinirinin somut uygulamasidir.
+             </summary>
+             <param name="principal">Istegin kimligi; kimlik yoksa null gecilebilir.</param>
+        </member>
+        <member name="M:Solum.Identity.ClaimsPrincipalCurrentUser.#ctor(System.Security.Claims.ClaimsPrincipal)">
+             <summary>
+             <see cref="T:Solum.Abstractions.ICurrentUser"/>'in <see cref="T:System.Security.Claims.ClaimsPrincipal"/> uzerinden uygulanmasi.
+             <c>Solum.Audit</c> bunu tuketir ve <c>Solum.Identity</c>'yi hic tanimaz.
+            
+             NEDEN ClaimsPrincipal, NEDEN IHttpContextAccessor DEGIL:
+             <c>IHttpContextAccessor</c> kullanmak bu pakete
+             <c>Microsoft.AspNetCore.Http.Abstractions</c> bagimliligi ekler ve paketi
+             web'e baglar — arka plan isleyicisi de kimlik deposunu kullanabilmeli.
+             <see cref="T:System.Security.Claims.ClaimsPrincipal"/> temel kitaplikta oldugu icin ek bagimlilik
+             getirmiyor. Principal'i nereden alacagi TUKETICININ karari:
+            
+             <code>
+             // Web uygulamasinda (wiring — sablona ait, kutuphaneye degil)
+             services.AddHttpContextAccessor();
+             services.AddScoped&lt;ICurrentUser&gt;(sp =&gt; new ClaimsPrincipalCurrentUser(
+                 sp.GetRequiredService&lt;IHttpContextAccessor&gt;().HttpContext?.User));
+             </code>
+            
+             Bu, "davranis paket, kurulum sablon" sinirinin somut uygulamasidir.
+             </summary>
+             <param name="principal">Istegin kimligi; kimlik yoksa null gecilebilir.</param>
+        </member>
+        <member name="P:Solum.Identity.ClaimsPrincipalCurrentUser.UserId">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.ClaimsPrincipalCurrentUser.UserName">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.ClaimsPrincipalCurrentUser.IsAuthenticated">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Identity.DapperUserStore`1">
+            <summary>
+            Kullanici claim'lerinin depolanmasi. Ayri tabloda durdugu icin dogrudan yazilir.
+            </summary>
+             <summary>
+             ASP.NET Core Identity'nin kullanici deposunun Dapper uzerinde uygulanmasi.
+             EF Core gerektirmez.
+            
+             SORUMLULUK SINIRI — bu sinif YALNIZ DEPOLAMA yapar:
+               Microsoft'ta kalir: sifre hash'leme ve dogrulama, hesap kilitleme politikasi,
+               guvenlik damgasi dogrulamasi, claim uretimi, cookie kimlik dogrulama.
+               Burada olan: satirlari okumak ve yazmak.
+             Bu ayrim bilincli. Elle yazilan her kimlik parcasi ayri bir hata yuzeyidir;
+             portfoyde bunun ornegi var (88 satirlik el yapimi AuthService).
+            
+             SQL'in tamami <see cref="T:Solum.Identity.Sql.ISolumIdentitySql"/>'den gelir — govde tek, sema ve
+             erisim bicimi (inline / stored procedure) tuketiciye ait.
+            
+             PARAMETRELER ACIK GECILIR, kullanici nesnesi dogrudan Dapper'a verilmez.
+             Sebep: <c>CommandType.StoredProcedure</c> modunda Dapper nesnenin BUTUN
+             ozelliklerini parametre olarak gonderir; SP imzasi bunlarla birebir tutmak
+             zorunda kalirdi. Acik anonim nesne, iki modda da AYNI parametre kumesini
+             gonderir.
+             </summary>
+             <remarks>
+             <b>GENERIC — VE BU ONCE BOYLE DEGILDI (BULGU 4).</b>
+            
+             Onceki hal <c>IdentityUser</c>a CIVILIYDI ve <c>sealed</c>di. ASP.NET Core
+             Identity'nin belgelenmis ve baskin deseni ise
+             <c>class ApplicationUser : IdentityUser</c> ile kolon eklemektir. O
+             tuketici icin uc yol da KAPALIYDI:
+            
+             <list type="bullet">
+             <item>depoyu KULLANAMAZ — <c>IUserStore&lt;ApplicationUser&gt;</c> gerekiyor</item>
+             <item>turetip DUZELTEMEZ — <c>sealed</c></item>
+             <item>DI de yardim etmez — yalniz <c>IUserStore&lt;IdentityUser&gt;</c> kayitliydi</item>
+             </list>
+            
+             Yani ezme merdiveninde HICBIR basamak acik degildi ve
+             <c>kutuphane-disiplini.md</c> §4'un *"tek parca sunmak, tuketiciyi bizim
+             kararimiza mahkum eder"* cumlesi en sert bicimde gerceklesiyordu: ilk
+             gercek Identity tuketicisi 0.1.0'a bakar, kendi <c>ApplicationUser</c>ini
+             gorur ve paketi HIC ALMAZDI. <c>CLAUDE.md</c>nin birinci riski
+             *"tuketicisiz cati"* — bu, onun Identity'deki somut hali.
+            
+             <c>sealed</c> KORUNDU: generic olmak ihtiyaci karsiladi, turetme gerekmiyor.
+            
+             <c>new()</c> KISITI SART: Dapper satirlari nesneye eslerken parametresiz
+             kurucu ister.
+             </remarks>
+             <typeparam name="TUser">
+             Kullanici tipi. <c>IdentityUser</c> ya da ondan tureyen kendi tipiniz.
+             </typeparam>
+             <summary>
+             Hesap kilitleme depolamasi.
+            
+             DIKKAT — bu uyeler KALICI YAZMA YAPMAZ, yalniz nesneyi degistirir.
+             Kalici hale getirmek <c>UserManager</c>'in isidir; her basarisiz giristen
+             sonra <c>UpdateAsync</c> cagrilir. Microsoft'un EF
+             deposu da ayni sekilde davranir. Burada dogrudan UPDATE atmak, UserManager'in
+             ardindan gelen guncellemesiyle cakisir ve iyimser eszamanlilik damgasini
+             gereksiz yere tuketir.
+            
+             Kilitleme POLITIKASI (kac denemede, ne kadar sure) burada degil,
+             <c>IdentityOptions.Lockout</c> altindadir — Microsoft'ta kalir.
+             </summary>
+             <summary>
+             Rol uyeligi depolamasi. Kilitleme/iki-faktorun aksine bunlar AYRI tablolarda
+             durur, dolayisiyla dogrudan yazilir — <c>UpdateAsync</c> bunlari tasimaz.
+            
+             NORMALIZASYON: <c>UserManager</c> rol adini cagirmadan once normalize eder
+             (varsayilan <c>UpperInvariantLookupNormalizer</c>). Buradaki ek
+             <c>ToUpperInvariant()</c> savunmacidir: varsayilan kurulumda etkisizdir, ama
+             deposu dogrudan cagiran kod ham ad gecerse kurtarir.
+             OZEL bir <c>ILookupNormalizer</c> kullaniliyorsa bu satir KALDIRILMALIDIR —
+             aksi halde normalize edilmis ad ikinci kez buyuk harfe cevrilir.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetClaimsAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.AddClaimsAsync(`0,System.Collections.Generic.IEnumerable{System.Security.Claims.Claim},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.ReplaceClaimAsync(`0,System.Security.Claims.Claim,System.Security.Claims.Claim,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.RemoveClaimsAsync(`0,System.Collections.Generic.IEnumerable{System.Security.Claims.Claim},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetUsersForClaimAsync(System.Security.Claims.Claim,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Identity.DapperUserStore`1.ClaimRow">
+            <summary>Claim tablosundan okunan ham satir.</summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.#ctor(Solum.Identity.Sql.ISolumIdentitySql,Solum.Sql.ISqlParameterNames,Microsoft.Extensions.Options.IOptions{Solum.Identity.SolumIdentityOptions})">
+             <summary>
+             ASP.NET Core Identity'nin kullanici deposunun Dapper uzerinde uygulanmasi.
+             EF Core gerektirmez.
+            
+             SORUMLULUK SINIRI — bu sinif YALNIZ DEPOLAMA yapar:
+               Microsoft'ta kalir: sifre hash'leme ve dogrulama, hesap kilitleme politikasi,
+               guvenlik damgasi dogrulamasi, claim uretimi, cookie kimlik dogrulama.
+               Burada olan: satirlari okumak ve yazmak.
+             Bu ayrim bilincli. Elle yazilan her kimlik parcasi ayri bir hata yuzeyidir;
+             portfoyde bunun ornegi var (88 satirlik el yapimi AuthService).
+            
+             SQL'in tamami <see cref="T:Solum.Identity.Sql.ISolumIdentitySql"/>'den gelir — govde tek, sema ve
+             erisim bicimi (inline / stored procedure) tuketiciye ait.
+            
+             PARAMETRELER ACIK GECILIR, kullanici nesnesi dogrudan Dapper'a verilmez.
+             Sebep: <c>CommandType.StoredProcedure</c> modunda Dapper nesnenin BUTUN
+             ozelliklerini parametre olarak gonderir; SP imzasi bunlarla birebir tutmak
+             zorunda kalirdi. Acik anonim nesne, iki modda da AYNI parametre kumesini
+             gonderir.
+             </summary>
+             <remarks>
+             <b>GENERIC — VE BU ONCE BOYLE DEGILDI (BULGU 4).</b>
+            
+             Onceki hal <c>IdentityUser</c>a CIVILIYDI ve <c>sealed</c>di. ASP.NET Core
+             Identity'nin belgelenmis ve baskin deseni ise
+             <c>class ApplicationUser : IdentityUser</c> ile kolon eklemektir. O
+             tuketici icin uc yol da KAPALIYDI:
+            
+             <list type="bullet">
+             <item>depoyu KULLANAMAZ — <c>IUserStore&lt;ApplicationUser&gt;</c> gerekiyor</item>
+             <item>turetip DUZELTEMEZ — <c>sealed</c></item>
+             <item>DI de yardim etmez — yalniz <c>IUserStore&lt;IdentityUser&gt;</c> kayitliydi</item>
+             </list>
+            
+             Yani ezme merdiveninde HICBIR basamak acik degildi ve
+             <c>kutuphane-disiplini.md</c> §4'un *"tek parca sunmak, tuketiciyi bizim
+             kararimiza mahkum eder"* cumlesi en sert bicimde gerceklesiyordu: ilk
+             gercek Identity tuketicisi 0.1.0'a bakar, kendi <c>ApplicationUser</c>ini
+             gorur ve paketi HIC ALMAZDI. <c>CLAUDE.md</c>nin birinci riski
+             *"tuketicisiz cati"* — bu, onun Identity'deki somut hali.
+            
+             <c>sealed</c> KORUNDU: generic olmak ihtiyaci karsiladi, turetme gerekmiyor.
+            
+             <c>new()</c> KISITI SART: Dapper satirlari nesneye eslerken parametresiz
+             kurucu ister.
+             </remarks>
+             <typeparam name="TUser">
+             Kullanici tipi. <c>IdentityUser</c> ya da ondan tureyen kendi tipiniz.
+             </typeparam>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.OpenConnectionAsync(System.Threading.CancellationToken)">
+            <summary>Baglanti acar. Dialect kayitli degilse acik hata verir.</summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.Command(Solum.Sql.SqlCommandSpec,Dapper.DynamicParameters,System.Threading.CancellationToken)">
+             <summary>
+             Komut tanimini Dapper'in anlayacagi bicime cevirir — tur dahil.
+            
+             <b>⚠️ PARAMETRE TIPI <c>DynamicParameters</c> OLMAK ZORUNDA —
+             <c>object?</c> OLAMAZ. Bu tek satir yuzunden `Solum.Identity`
+             HIC CALISMIYORDU.</b>
+            
+             Olculdu 2026-09-19, UCUNCU TUKETICI tarafindan, ilk gercek
+             kullanimda:
+            
+             <code>
+             SqlException: Must declare the scalar variable "@Name".
+             Hata Numarasi: 137
+             </code>
+            
+             <b>KOK SEBEP — C# asiri yukleme kurali:</b> kullanici tanimli
+             ortuk donusum, hedef tip <c>object</c> oldugunda <b>UYGULANMAZ</b>;
+             derleyici standart referans donusumunu secer. Yani
+             <c>ParameterSet</c>in <c>implicit operator DynamicParameters</c>u
+             <b>HIC tetiklenmiyordu</b> ve Dapper'a <c>ParameterSet</c>
+             NESNESI gidiyordu.
+            
+             Dapper bilmedigi bir tipi POCO sanip <b>public OZELLIKLERINDEN</b>
+             parametre cikarir. <c>ParameterSet</c>in public uyeleri
+             <c>Add</c>, <c>Build</c> ve donusum operatoru — <b>ozellik YOK</b>.
+             Sonuc: <b>sifir parametre baglanir</b>, SQL <c>@Name</c>i tanimsiz
+             gorur.
+            
+             <b>VE DERLEYICI UYARI BILE VERMEZ:</b> <c>object?</c> her seyi
+             kabul eder. Sozdizimsel gecerli, derleme temiz, calisma aninda
+             tamamen kirik — <c>0025_SolumAuditTrail.sql</c> ile AYNI SINIF,
+             ayni gun, ayni tuketici tarafindan bulundu.
+            
+             <b>NEDEN BU ONARIM, cagri yerlerinde <c>.Build()</c> DEGIL:</b>
+             18 cagri yeri var ve birinde unutmak ayni hatayi <b>sessizce</b>
+             geri getirirdi. Tip sistemi donusumu <b>zorluyor</b> — unutulabilir
+             adim birakmiyoruz (<c>sinif-kapatma.md</c> §4: bogazi bul, dikkate
+             dayanma).
+            
+             <b>KAPI:</b> <c>CommandSignatureTests</c> — imza yansimayla
+             olculuyor; <c>object</c>e genisletilirse KIRMIZI.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.Params">
+            <summary>Kanonik adlarla parametre toplayan bos bir kume acar.</summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.Guard(`0,System.Threading.CancellationToken)">
+            <summary>Her genel uyenin basindaki ortak kapi.</summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.ToParameters(`0,System.String)">
+            <summary>
+            Kullanicinin tum kolonlarini KANONIK adlarla parametreye cevirir.
+            Gercek parametre adi <see cref="T:Solum.Sql.ISqlParameterNames"/> tarafindan belirlenir.
+            </summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetUserIdAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetUserNameAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetUserNameAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetNormalizedUserNameAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetNormalizedUserNameAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.CreateAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.UpdateAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.DeleteAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.FindByIdAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.FindByNameAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetPasswordHashAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetPasswordHashAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.HasPasswordAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetEmailAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetEmailAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetEmailConfirmedAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetEmailConfirmedAsync(`0,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.FindByEmailAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetNormalizedEmailAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetNormalizedEmailAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetSecurityStampAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetSecurityStampAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetTwoFactorEnabledAsync(`0,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetTwoFactorEnabledAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.Dispose">
+            <summary>
+            Tutulan kaynak yok — baglantilar cagri basina acilip kapaniyor.
+            Arayuz gerektirdigi icin var.
+            </summary>
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetLockoutEndDateAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetLockoutEndDateAsync(`0,System.Nullable{System.DateTimeOffset},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.IncrementAccessFailedCountAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.ResetAccessFailedCountAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetAccessFailedCountAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetLockoutEnabledAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.SetLockoutEnabledAsync(`0,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.AddToRoleAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.RemoveFromRoleAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetRolesAsync(`0,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.IsInRoleAsync(`0,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Identity.DapperUserStore`1.GetUsersInRoleAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions">
+             <summary>
+             Kimlik deposunun servis kaydi.
+            
+             NAMESPACE BILINCLI SECILDI. Kutuphane yazarlari icin yaygin aliskanlik
+             uzantilari <c>Microsoft.Extensions.DependencyInjection</c> altina koymaktir;
+             Microsoft'un kendi kutuphane yazarlari kilavuzu bunu ONERMEZ — kendi
+             namespace'ini kirletmek, IntelliSense'i tuketici icin gurultuye bogar ve ad
+             cakismasi riskini artirir. Bu yuzden kayit acikca
+             <c>using Solum.Identity.DependencyInjection;</c> ister.
+             </summary>
+        </member>
+        <member name="F:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.DefaultConfigSection">
+            <summary>Varsayilan yapilandirma bolumu adi.</summary>
+        </member>
+        <member name="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+             <summary>
+             Dapper tabanli kullanici deposunu kaydeder.
+            
+             Kaydedilenler:
+               <c>SolumIdentityOptions</c> — yapilandirmadan baglanir, veri
+                 ek aciklamalari dogrulanir ve dogrulama UYGULAMA ACILISINDA calisir
+                 (ilk istekte degil) — eksik baglanti dizesi uretimde ilk kullanicinin
+                 degil, dagitimin hatasi olsun diye.
+               <c>ISolumIdentitySql</c> — varsayilan T-SQL uretici.
+               <c>IUserStore&lt;IdentityUser&gt;</c> — Dapper deposu.
+            
+             Hepsi <c>TryAdd</c> ile kaydedilir: tuketici kendi uygulamasini BU
+             cagridan ONCE kaydettiyse onunki gecerli kalir. <c>Add</c> kullanilsaydi
+             kutuphane tuketicinin secimini sessizce ezerdi.
+            
+             ON KOSUL: bir SQL dialect'i kayitli olmali —
+             <c>SolumSqlServer.Register()</c> ya da <c>SolumPostgres.Register()</c>.
+             Kayitli degilse hata ilk veri erisiminde, ne yapilacagini soyleyen bir
+             mesajla gelir.
+             </summary>
+             <param name="services">Servis koleksiyonu.</param>
+        </member>
+        <member name="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores``1(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)">
+             <summary>
+             <see cref="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores(Microsoft.Extensions.DependencyInjection.IServiceCollection)"/> ile ayni, ama
+             yapilandirma bolumu adi verilerek.
+            
+             PARAMETRE ISTEGE BAGLI DEGIL, AYRI ASIRI YUKLEME. Varsayilan degerli tek
+             bir metot daha kisa olurdu ama <c>Action</c> alan kardesiyle ayni
+             parametre sayisinda kalirdi; ileride bir parametre eklemek cagri
+             yerlerinde sessiz cozum degisikligi uretirdi. Analizor (RS0027) bunu
+             yakaladi ve tasarim duzeltildi.
+             </summary>
+             <param name="services">Servis koleksiyonu.</param>
+             <param name="configSection">Yapilandirma bolumu yolu.</param>
+        </member>
+        <member name="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores``1(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Solum.Identity.SolumIdentityOptions})">
+            <summary>
+            Yapilandirma dosyasi yerine kod icinde ayarlamak icin.
+            Test ve konsol uygulamalarinda yapilandirma altyapisi kurmadan
+            kullanilabilsin diye var.
+            </summary>
+        </member>
+        <member name="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)">
+             <summary>
+             <c>IdentityUser</c> icin kolaylik — <c>AddSolumIdentityStores&lt;IdentityUser&gt;</c>.
+            
+             NEDEN VAR: depo BULGU 4 ile generic oldu (`ApplicationUser` kullanan
+             tuketici onceki halde paketi HIC ALAMIYORDU). Ama tuketicilerin cogu
+             duz <c>IdentityUser</c> kullaniyor ve onlara tip parametresi yazdirmak
+             bir bedel olurdu.
+            
+             Bu bir EKLEME, kirici degil: generic surum de duruyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Solum.Identity.SolumIdentityOptions})">
+            <inheritdoc cref="M:Solum.Identity.DependencyInjection.SolumIdentityServiceCollectionExtensions.AddSolumIdentityStores(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)"/>
+        </member>
+        <member name="T:Solum.Identity.Scope.SolumClaims">
+            <summary>Kapsam bilgisinin tasindigi talep adlari.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.SolumClaims.Tenant">
+            <summary>Aktif kiraci anahtari.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.SolumClaims.TenantSchema">
+            <summary>Aktif kiracinin veritabani semasi.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.SolumClaims.Company">
+            <summary>Aktif sirket.</summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.ClaimsPrincipalCurrentTenant">
+             <summary>
+             Aktif kiraciyi oturum talebinden okur.
+            
+             NEDEN TALEP (claim) — VE NEDEN GUVENLI:
+             Talepler imzali cerezde tasinir; kullanici iceriklerini degistiremez.
+             Ama bu guvence TEK BASINA YETMEZ: talep bir kez yanlis degerle
+             YAZILIRSA, imza o yanlis degeri sadakatle korur.
+            
+             Bu yuzden kural sudur: kapsam talebi YALNIZ dogrulanmis bir yoldan
+             yazilir (<see cref="T:Solum.Identity.Scope.TenantSelectionService"/>). Dogrudan talep yazan
+             baska bir yol acilirsa, izolasyonun tamami o yola baglanmis olur.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.ClaimsPrincipalCurrentTenant.#ctor(System.Security.Claims.ClaimsPrincipal)">
+             <summary>
+             Aktif kiraciyi oturum talebinden okur.
+            
+             NEDEN TALEP (claim) — VE NEDEN GUVENLI:
+             Talepler imzali cerezde tasinir; kullanici iceriklerini degistiremez.
+             Ama bu guvence TEK BASINA YETMEZ: talep bir kez yanlis degerle
+             YAZILIRSA, imza o yanlis degeri sadakatle korur.
+            
+             Bu yuzden kural sudur: kapsam talebi YALNIZ dogrulanmis bir yoldan
+             yazilir (<see cref="T:Solum.Identity.Scope.TenantSelectionService"/>). Dogrudan talep yazan
+             baska bir yol acilirsa, izolasyonun tamami o yola baglanmis olur.
+             </summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.ClaimsPrincipalCurrentTenant.TenantKey">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Scope.ClaimsPrincipalCurrentTenant.Schema">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Scope.ClaimsPrincipalCurrentTenant.HasTenant">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Identity.Scope.ClaimsPrincipalCurrentCompany">
+             <summary>
+             Aktif sirketi oturum talebinden okur.
+            
+             SIRKETLER-ARASI BAYRAGI TALEPTE TASINMAZ. Talepte tasinsaydi, bir kez
+             verilen konsolide gorme hakki oturum boyunca acik kalirdi ve o oturumdaki
+             HER sorgu — ilgisiz ekranlar dahil — suzgecsiz kosardi. Bunun yerine deger
+             <see cref="T:Solum.Abstractions.ICrossCompanyScope"/> uzerinden, yalniz acilan blok boyunca
+             gelir. Kapsam verilmemisse sirket suzmesi hicbir zaman kalkmaz.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.ClaimsPrincipalCurrentCompany.#ctor(System.Security.Claims.ClaimsPrincipal,Solum.Abstractions.ICrossCompanyScope)">
+             <summary>
+             Kurar. Kapsam ACIKCA verilir — varsayilani YOK.
+             </summary>
+             <param name="principal">Oturum sahibi.</param>
+             <param name="crossCompany">
+             Sirketler-arasi kapsam. <c>null</c> gecerli bir secim ama SESSIZ
+             olmamali: bu durumda <see cref="T:Solum.Abstractions.ICrossCompanyScope"/> ETKISIZDIR ve
+             konsolide okuma hicbir zaman acilmaz.
+             </param>
+             <remarks>
+             TEK ARGUMANLI KURUCU KALDIRILDI — bulgu H-13 (`BULGULAR-2026-08-25`,
+             durumu ACIK'ti).
+            
+             O kurucu kapsami sessizce <c>null</c> yapiyordu; belgesi bunu yaziyordu
+             ama SONUC sessizdi: tuketici <c>ICrossCompanyScope</c> kaydeder, kapsam
+             acar, izin verilir, <c>IsOpen</c> true olur — ve suzgec KALKMAZ.
+             Konsolide rapor EKSIK satirla doner, hicbir yerde hata yok.
+            
+             Ayni kusuru 2026-08-29'da `FixedCompany`de TEKRAR yaptim ve bagimsiz
+             denetim KRITIK olarak buldu. `sinif-kapatma.md` §1'in sordugu soru tam
+             buydu — *"ayni karar baska nerede uygulanmis"* — ve sinif ACIKKEN ikinci
+             ornek eklendi. Simdi ikisi birlikte kapaniyor: iki tipte de kapsam
+             ACIKCA verilir, yani <c>null</c> gecmek CAGRI YERINDE gorunur.
+            
+             `PublicAPI.Shipped.txt` sekiz pakette bos oldugu icin bugun bedelsiz.
+             </remarks>
+        </member>
+        <member name="P:Solum.Identity.Scope.ClaimsPrincipalCurrentCompany.CompanyId">
+             <summary>
+             Aktif sirket kimligi. Talep yoksa, cozulemezse ya da POZITIF DEGILSE
+             <c>null</c>.
+            
+             SIFIR VE NEGATIF YOK SAYILIR — bulgu H-12'nin bir yarisi.
+            
+             `solum-kiracilik` §4: *"Bozuk sirket talebi sessizce SIFIR olmaz, YOK
+             olur — sifir GECERLI BIR SIRKET GIBI gorunurdu."* Onceki hal
+             <c>int.TryParse</c> sonucunu oldugu gibi aliyordu ve
+             <c>int.TryParse("0")</c> BASARILIDIR: <c>CompanyId = 0</c> olur, hicbir
+             satira uymaz, kullanici bos liste gorur ve *"kayit yok"* sanir.
+            
+             `FixedCompany` sifiri KURULUMDA reddediyor; burada talep calisma aninda
+             geldigi icin reddetmek 500 uretirdi — YOK saymak dogru karsilik.
+            
+             SINIR — VE BU KAPANMADI: deger <c>null</c> oldugunda suzgec sabit-yanlis
+             hale geliyor ve sonuc SESSIZCE bos. O, bulgu S-3/K5 (TABLO) ve
+             `SolumDbContext` sozlesmesine ait ayri bir karar; `docs/ODAK.md` PARK'ta.
+             Bu satir yalniz "yanlis sirket" yolunu kapatiyor, "sirket yok" yolunu
+             DEGIL.
+             </summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.ClaimsPrincipalCurrentCompany.IsCrossCompany">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Identity.Scope.TenantOption">
+            <summary>Bir kiracinin secicide gosterilen hali.</summary>
+            <param name="Key">Kiraci anahtari.</param>
+            <param name="Schema">Veritabani semasi.</param>
+            <param name="DisplayName">Kullaniciya gosterilen ad.</param>
+        </member>
+        <member name="M:Solum.Identity.Scope.TenantOption.#ctor(System.String,System.String,System.String)">
+            <summary>Bir kiracinin secicide gosterilen hali.</summary>
+            <param name="Key">Kiraci anahtari.</param>
+            <param name="Schema">Veritabani semasi.</param>
+            <param name="DisplayName">Kullaniciya gosterilen ad.</param>
+        </member>
+        <member name="P:Solum.Identity.Scope.TenantOption.Key">
+            <summary>Kiraci anahtari.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.TenantOption.Schema">
+            <summary>Veritabani semasi.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.TenantOption.DisplayName">
+            <summary>Kullaniciya gosterilen ad.</summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.SignInScopeOutcome">
+            <summary>Girisin ardindan ne yapilacagi.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.SignInScopeOutcome.NoTenant">
+             <summary>
+             Kullanicinin erisebilecegi hicbir kiraci yok.
+            
+             BOS BIR EKRANA DUSURULMEZ, acikca reddedilir: "hesabin var ama hicbir
+             yere bagli degil" durumu kullanici icin anlasilmaz bir bosluktur ve
+             yonetici mudahalesi gerektirir.
+             </summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.SignInScopeOutcome.SingleTenant">
+            <summary>Tek kiraci var — secim sorulmadan uygulanir.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.SignInScopeOutcome.MultipleTenants">
+            <summary>Birden cok kiraci var — secim sorulur.</summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.SignInScopeResult">
+            <summary>Giris sonrasi kapsam durumu.</summary>
+            <param name="Outcome">Ne yapilacagi.</param>
+            <param name="Tenants">Erisilebilir kiracilar.</param>
+        </member>
+        <member name="M:Solum.Identity.Scope.SignInScopeResult.#ctor(Solum.Identity.Scope.SignInScopeOutcome,System.Collections.Generic.IReadOnlyList{Solum.Identity.Scope.TenantOption})">
+            <summary>Giris sonrasi kapsam durumu.</summary>
+            <param name="Outcome">Ne yapilacagi.</param>
+            <param name="Tenants">Erisilebilir kiracilar.</param>
+        </member>
+        <member name="P:Solum.Identity.Scope.SignInScopeResult.Outcome">
+            <summary>Ne yapilacagi.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.SignInScopeResult.Tenants">
+            <summary>Erisilebilir kiracilar.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.SignInScopeResult.Single">
+            <summary>Tek kiraci varsa o; yoksa null.</summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.ITenantDirectory">
+            <summary>Kiraci listesini ve gorunen adlarini veren kaynak.</summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.ITenantDirectory.ListForUserAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Kullanicinin erisebilecegi kiracilar.</summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.ITenantDirectory.FindAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Tek bir kiracinin bilgisi; yoksa null.</summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.ScopeDenial">
+             <summary>
+             Kapsam talebi uretiminin SONUCU — ve NEDENI.
+            
+             NEDEN AYRI BIR TIP (on-dondurma incelemesi, BULGU 5): onceki imza
+             <c>Task&lt;IReadOnlyList&lt;Claim&gt;?&gt;</c> donuyordu ve UC ayri durum ayni
+             <c>null</c>a cokuyordu:
+            
+             <list type="table">
+             <item><term>Kullanici yetkili degil</term><description>guvenlik olayi</description></item>
+             <item><term>Kiraci kaydi silinmis</term><description>yonetici mudahalesi</description></item>
+             <item><term>Erisim deposu KAYDEDILMEMIS</term><description>dagitim hatasi</description></item>
+             </list>
+            
+             Ucuncusu en pahaliydi: tuketici <c>IUserTenantAccessStore</c> kaydini
+             atlar, kurulum SESSIZ gecer, uygulama acilir, ve kiraci seciciye giren HER
+             kullanici *"yetkiniz yok"* gorur. Tuketici izin verilerini, rolleri,
+             talepleri saatlerce arar — eksik olan BIR DI SATIRIDIR ve bunu soyleyen
+             hicbir sey yoktur.
+            
+             O ucuncu durum artik IMKANSIZ: <c>EfScopeAccessChecker</c> depoyu ZORUNLU
+             aliyor, yani kayit eksikse KURULUMDA patlar
+             (<c>kutuphane-disiplini.md</c> §5: *"eksik yapilandirmayi varsayilanla
+             doldurmak -> kurulumda hata ver"*).
+            
+             Kalan iki durum ayri ayri bildiriliyor: biri guvenlik olayi, oteki veri
+             tutarsizligi — ve tuketici ikisine ayni tepkiyi vermez.
+            
+             Bu sinifin kendi ozeti *"BU SINIF IZOLASYONUN KILIT TASIDIR"* diyor;
+             kilit tasinin neden reddettigini soylememesi kabul edilemezdi.
+             </summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.ScopeDenial.None">
+            <summary>Talep uretildi.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.ScopeDenial.NotAuthorized">
+            <summary>Kullanici bu kapsama yetkili DEGIL — guvenlik olayi.</summary>
+        </member>
+        <member name="F:Solum.Identity.Scope.ScopeDenial.TenantMissing">
+            <summary>
+            Erisim kaydi var ama KIRACI KAYDI YOK. Sema bilinmedigi icin devam
+            edilemez; yonetici mudahalesi ya da veri tutarsizligi.
+            </summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.ScopeClaimResult">
+            <summary>Kapsam talebi sonucu.</summary>
+            <param name="Claims">Uretilen talepler; reddedildiyse <c>null</c>.</param>
+            <param name="Denial">Red nedeni; uretildiyse <see cref="F:Solum.Identity.Scope.ScopeDenial.None"/>.</param>
+        </member>
+        <member name="M:Solum.Identity.Scope.ScopeClaimResult.#ctor(System.Collections.Generic.IReadOnlyList{System.Security.Claims.Claim},Solum.Identity.Scope.ScopeDenial)">
+            <summary>Kapsam talebi sonucu.</summary>
+            <param name="Claims">Uretilen talepler; reddedildiyse <c>null</c>.</param>
+            <param name="Denial">Red nedeni; uretildiyse <see cref="F:Solum.Identity.Scope.ScopeDenial.None"/>.</param>
+        </member>
+        <member name="P:Solum.Identity.Scope.ScopeClaimResult.Claims">
+            <summary>Uretilen talepler; reddedildiyse <c>null</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.ScopeClaimResult.Denial">
+            <summary>Red nedeni; uretildiyse <see cref="F:Solum.Identity.Scope.ScopeDenial.None"/>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.ScopeClaimResult.Granted">
+            <summary>Talep uretildi mi.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.ScopeClaimResult.NotAuthorized">
+            <summary>Yetkisiz.</summary>
+        </member>
+        <member name="P:Solum.Identity.Scope.ScopeClaimResult.TenantMissing">
+            <summary>Kiraci kaydi yok.</summary>
+        </member>
+        <member name="T:Solum.Identity.Scope.TenantSelectionService">
+             <summary>
+             Giris sonrasi kiraci/sirket secimi.
+            
+             SIRA ONEMLI VE DEGISTIRILEMEZ: GIRIS -> KIRACI -> SIRKET.
+             Kimlik kiraciustu bir yerde yasar; kullanici hangi kiraciya girecegini
+             kimligi DOGRULANDIKTAN SONRA secer. Tersi mumkun degil: kiraci secilmeden
+             hangi kullanici deposuna bakilacagi bilinemez.
+            
+             BU SINIF IZOLASYONUN KILIT TASIDIR.
+             Sema secimi ve satir suzmesi "aktif kiraci/sirket neyse onu kullan" der.
+             Bu sinif "aktif degeri ancak HAK ETTIGIN seye cevirebilirsin" der.
+             Ikincisi olmadan birincisi DEKORATIFTIR — kullanici degeri serbestce
+             degistirebiliyorsa butun mekanizma onun sectigine hizmet eder.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.TenantSelectionService.#ctor(Solum.Identity.Scope.ITenantDirectory,Solum.Core.Permissions.IScopeAccessChecker)">
+             <summary>
+             Giris sonrasi kiraci/sirket secimi.
+            
+             SIRA ONEMLI VE DEGISTIRILEMEZ: GIRIS -> KIRACI -> SIRKET.
+             Kimlik kiraciustu bir yerde yasar; kullanici hangi kiraciya girecegini
+             kimligi DOGRULANDIKTAN SONRA secer. Tersi mumkun degil: kiraci secilmeden
+             hangi kullanici deposuna bakilacagi bilinemez.
+            
+             BU SINIF IZOLASYONUN KILIT TASIDIR.
+             Sema secimi ve satir suzmesi "aktif kiraci/sirket neyse onu kullan" der.
+             Bu sinif "aktif degeri ancak HAK ETTIGIN seye cevirebilirsin" der.
+             Ikincisi olmadan birincisi DEKORATIFTIR — kullanici degeri serbestce
+             degistirebiliyorsa butun mekanizma onun sectigine hizmet eder.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.TenantSelectionService.ResolveAfterSignInAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Giris basarili olduktan sonra ne yapilacagini soyler.
+            </summary>
+        </member>
+        <member name="M:Solum.Identity.Scope.TenantSelectionService.BuildTenantClaimsAsync(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Kiraci secimini DOGRULAR ve talepleri uretir.
+            
+             Secicide gosterilen listeyi sinirlamak YETMEZ — istek elle de
+             gonderilebilir. Bu yuzden erisim burada, sunucuda, yeniden sorulur.
+             </summary>
+             <returns>
+             Talepler VE red nedeni. Onceki imza <c>null</c> donuyordu ve UC ayri
+             durum (yetkisiz · kiraci kaydi yok · erisim deposu kaydedilmemis) ayni
+             <c>null</c>a cokuyordu — bkz. <see cref="T:Solum.Identity.Scope.ScopeClaimResult"/>.
+             </returns>
+        </member>
+        <member name="M:Solum.Identity.Scope.TenantSelectionService.BuildCompanyClaimAsync(System.Int32,System.Threading.CancellationToken)">
+             <summary>
+             Sirket secimini DOGRULAR ve talebi uretir.
+            
+             Kiraci secilmeden cagrilmamalidir: sirket erisimi kiracinin semasinda
+             tutulur, kiraci yoksa bakilacak yer de yoktur.
+             </summary>
+             <returns>Yetkiliyse eklenecek talep; degilse <c>null</c>.</returns>
+        </member>
+        <member name="M:Solum.Identity.Scope.TenantSelectionService.WithoutScopeClaims(System.Collections.Generic.IEnumerable{System.Security.Claims.Claim})">
+             <summary>
+             Mevcut taleplerden kapsam taleplerini AYIKLAR.
+            
+             Kiraci degistirirken sart: eski kiracinin talebi kalirsa iki farkli
+             kiraci talebi tasiyan bir kimlik olusur ve hangisinin okunacagi
+             talep sirasina kalir — sessiz ve tekrar uretilemez bir hata.
+             </summary>
+        </member>
+        <member name="T:Solum.Identity.SolumIdentityOptions">
+             <summary>
+             Kimlik deposunun yapilandirmasi.
+            
+             Vakalarin cogunda yalniz tablo oneki ve sema farklidir; bu iki alan
+             doldurularak varsayilan SQL uretici kullanilir. Sema tamamen farkliysa ya
+             da stored procedure zorunluysa <see cref="T:Solum.Identity.Sql.ISolumIdentitySql"/>
+             uygulanir ve buradaki alanlar yok sayilir.
+             </summary>
+        </member>
+        <member name="P:Solum.Identity.SolumIdentityOptions.TablePrefix">
+            <summary>
+            Tablo oneki. Varsayilan "AspNet" — ASP.NET Core Identity'nin standart
+            tablo adlarini uretir (AspNetUsers, AspNetRoles, AspNetUserRoles,
+            AspNetUserClaims).
+            </summary>
+        </member>
+        <member name="P:Solum.Identity.SolumIdentityOptions.Schema">
+            <summary>Sema adi. Bos ise saglayicinin varsayilani kullanilir.</summary>
+        </member>
+        <member name="P:Solum.Identity.SolumIdentityOptions.ConnectionString">
+            <summary>
+            Baglanti dizesi. Bos birakilirsa cagiran kendi baglanti fabrikasini
+            kaydetmis olmalidir.
+            </summary>
+        </member>
+        <member name="T:Solum.Identity.Sql.ISolumIdentitySql">
+             <summary>
+             Kimlik deposunun calistiracagi komutlarin sozlesmesi.
+            
+             NEDEN SQL GOVDEDEN AYRILDI — iki ayri sebep var, ikincisi daha zorlayici:
+            
+             1. TABLO ADLARI degisir. Bir projede "AspNetUsers", digerinde "auth.Users".
+            
+             2. SOZDIZIMI degisir, ve bu tasinabilirligi tek basina bitirir. Kaynak
+                uygulamadaki iki ornek T-SQL'e ozgudur ve Postgres'te derlenmez bile:
+            
+                  DELETE ur FROM AspNetUserRoles ur JOIN AspNetRoles r ON ...
+                  IF NOT EXISTS (SELECT 1 FROM ...) INSERT INTO ...
+            
+                Yalniz tablo adini parametrelemek bu iki ifadeyi kurtarmaz.
+            
+             3. ERISIM BICIMI degisir. Bu portfoyde iki mimari bir arada yasiyor:
+                Operax inline SQL yaziyor; BkmArgus'un mimari kurali web katmaninda
+                inline SQL'i YASAKLIYOR ve her erisimi stored procedure'e zorluyor.
+                Bu yuzden komutlar <see cref="T:Solum.Sql.SqlCommandSpec"/> dondurur — metin ve TUR
+                birlikte. Ayni govde iki mimariye de hizmet eder.
+            
+             Parametre adlari SABIT'tir; uygulayan bunlari degistiremez. Govde bu adlarla
+             deger baglar. Her uyenin dokumaninda beklenen parametreler yazilidir.
+             </summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.CreateUser">
+            <summary>Yeni kullanici ekler. Parametre: IdentityUser'in tum alanlari.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.UpdateUser">
+             <summary>
+             Kullaniciyi gunceller. Parametreler: IdentityUser alanlari + <c>OldStamp</c>.
+            
+             UYGULAYAN DIKKAT: iyimser eszamanlilik burada saglanir. Kosul
+             <c>WHERE Id = @Id AND (ConcurrencyStamp = @OldStamp OR @OldStamp IS NULL)</c>
+             bicimindedir; etkilenen satir 0 ise govde ConcurrencyFailure doner.
+             Bu kosulu dusuren bir uygulama, kayip guncelleme (lost update) uretir.
+             </summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.DeleteUser">
+            <summary>Kullaniciyi siler. Parametre: <c>Id</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.FindUserById">
+            <summary>Id ile bulur. Parametre: <c>Id</c>. Kolonlar ACIKCA yazilmali.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.FindUserByNormalizedName">
+            <summary>Normalize kullanici adiyla bulur. Parametre: <c>Name</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.FindUserByNormalizedEmail">
+            <summary>Normalize e-posta ile bulur. Parametre: <c>Email</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.FindRoleIdByNormalizedName">
+            <summary>Normalize rol adindan rol Id'si. Parametre: <c>Name</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.AddUserToRole">
+            <summary>
+            Kullaniciyi role ekler. Parametreler: <c>UserId</c>, <c>RoleId</c>.
+            Mukerrer kayit uretmemeli (uygulayan kendi sozdizimini secer).
+            </summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.RemoveUserFromRole">
+            <summary>Kullaniciyi rolden cikarir. Parametreler: <c>UserId</c>, <c>Name</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.GetUserRoles">
+            <summary>Kullanicinin rol adlari. Parametre: <c>UserId</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.IsUserInRole">
+            <summary>Kullanici rolde mi (0/1 doner). Parametreler: <c>UserId</c>, <c>Name</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.GetUsersInRole">
+            <summary>Roldeki kullanicilar. Parametre: <c>Name</c>. Kolonlar ACIKCA yazilmali.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.GetUserClaims">
+            <summary>Kullanicinin claim'leri (ClaimType, ClaimValue). Parametre: <c>UserId</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.AddUserClaim">
+            <summary>Claim ekler. Parametreler: <c>UserId</c>, <c>Type</c>, <c>Value</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.ReplaceUserClaim">
+            <summary>
+            Claim degistirir. Parametreler:
+            <c>UserId</c>, <c>OldType</c>, <c>OldValue</c>, <c>NewType</c>, <c>NewValue</c>.
+            </summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.RemoveUserClaim">
+            <summary>Claim siler. Parametreler: <c>UserId</c>, <c>Type</c>, <c>Value</c>.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.ISolumIdentitySql.GetUsersForClaim">
+            <summary>Belirli claim'e sahip kullanicilar. Parametreler: <c>Type</c>, <c>Value</c>.</summary>
+        </member>
+        <member name="T:Solum.Identity.Sql.ParameterSet">
+             <summary>
+             Kanonik adlarla parametre toplar; disariya gonderirken adlari
+             <see cref="T:Solum.Sql.ISqlParameterNames"/> uzerinden cevirir.
+            
+             Govde her zaman KANONIK adi kullanir (<c>"Id"</c>, <c>"OldStamp"</c>);
+             veritabanina hangi adin gittigini tuketici belirler. Boylece ayni govde
+             hem <c>@Id</c> hem <c>@KullaniciId</c> bekleyen bir semaya hizmet eder.
+            
+             Anonim nesne yerine bunun kullanilmasinin ikinci bir faydasi da var:
+             <c>CommandType.StoredProcedure</c> modunda Dapper anonim nesnenin BUTUN
+             ozelliklerini gonderir; burada yalniz acikca eklenenler gider.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Sql.ParameterSet.#ctor(Solum.Sql.ISqlParameterNames)">
+             <summary>
+             Kanonik adlarla parametre toplar; disariya gonderirken adlari
+             <see cref="T:Solum.Sql.ISqlParameterNames"/> uzerinden cevirir.
+            
+             Govde her zaman KANONIK adi kullanir (<c>"Id"</c>, <c>"OldStamp"</c>);
+             veritabanina hangi adin gittigini tuketici belirler. Boylece ayni govde
+             hem <c>@Id</c> hem <c>@KullaniciId</c> bekleyen bir semaya hizmet eder.
+            
+             Anonim nesne yerine bunun kullanilmasinin ikinci bir faydasi da var:
+             <c>CommandType.StoredProcedure</c> modunda Dapper anonim nesnenin BUTUN
+             ozelliklerini gonderir; burada yalniz acikca eklenenler gider.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Sql.ParameterSet.Add(System.String,System.Object)">
+            <summary>Kanonik adla bir parametre ekler.</summary>
+        </member>
+        <member name="M:Solum.Identity.Sql.ParameterSet.Build">
+            <summary>Dapper'a verilecek parametre nesnesi.</summary>
+        </member>
+        <member name="M:Solum.Identity.Sql.ParameterSet.op_Implicit(Solum.Identity.Sql.ParameterSet)~Dapper.DynamicParameters">
+            <summary>Tek satirlik kullanim icin ortuk donusum.</summary>
+        </member>
+        <member name="T:Solum.Identity.Sql.SqlServerIdentitySql">
+             <summary>
+             ASP.NET Core Identity'nin standart tablo duzeni icin T-SQL uretir.
+            
+             Tablo adlari <see cref="P:Solum.Identity.SolumIdentityOptions.TablePrefix"/> ve
+             <see cref="P:Solum.Identity.SolumIdentityOptions.Schema"/>'dan uretilir; varsayilanlarla
+             AspNetUsers / AspNetRoles / AspNetUserRoles / AspNetUserClaims cikar.
+            
+             KOLONLAR ACIKCA YAZILIR. Kaynak uygulamada dort sorgu <c>SELECT *</c>
+             kullaniyordu; bu, tabloya sonradan eklenen bir kolonun sessizce ag trafigine
+             binmesine ve kolon sirasi degistiginde eslesmenin bozulmasina yol acar.
+             </summary>
+        </member>
+        <member name="M:Solum.Identity.Sql.SqlServerIdentitySql.#ctor(Microsoft.Extensions.Options.IOptions{Solum.Identity.SolumIdentityOptions})">
+            <summary>Secenekleri okuyup tablo adlarini bir kez uretir.</summary>
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.CreateUser">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.UpdateUser">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.DeleteUser">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.FindUserById">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.FindUserByNormalizedName">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.FindUserByNormalizedEmail">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.FindRoleIdByNormalizedName">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.AddUserToRole">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.RemoveUserFromRole">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.GetUserRoles">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.IsUserInRole">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.GetUsersInRole">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.GetUserClaims">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.AddUserClaim">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.ReplaceUserClaim">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.RemoveUserClaim">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Identity.Sql.SqlServerIdentitySql.GetUsersForClaim">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>

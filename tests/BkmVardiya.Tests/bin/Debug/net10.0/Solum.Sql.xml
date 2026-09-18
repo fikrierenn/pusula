@@ -1,0 +1,1585 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Solum.Sql</name>
+    </assembly>
+    <members>
+        <member name="T:Solum.Sql.IAppLockScope">
+             <summary>
+             Kilit adinin KAPSAM parcasini veren dikis — kiraci, ortam, ne olacagi
+             TUKETICININ karari.
+            
+             <b>NEDEN BIR DIKIS, NEDEN <c>ICurrentTenant</c> DEGIL.</b>
+             <c>Solum.Sql</c>'in paket bagimliligi <b>SIFIR</b> ve bu csproj'da yazili
+             bir karar (*"Bu paket her yerden referans verilebilir olmali"*). Yani
+             <c>Solum.Abstractions</c>'taki <c>ICurrentTenant</c> buraya <b>enjekte
+             edilemez</b>. Uc yol denendi, ikisi dustu: <c>Abstractions</c> referansi
+             (yazili karari bozar) · sarmalayici <c>Solum.Web</c>'de (Web,
+             <c>Solum.Sql</c>'i referans etmiyor ve bir uygulama kilidi <b>UI degil</b>).
+            
+             <b>EMSALI DEPODA ZATEN YAZILI:</b> <c>ISqlParameterNames</c> —
+             *"govde kanonik adla calisir, disari ne gidecegine tuketici karar
+             verir."* Burada ters yonde ayni desen: <b>deger</b> tuketiciden,
+             <b>sekil</b> kutuphaneden.
+            
+             <b>VE ADIN URETIMI KUTUPHANEDE OLMAK ZORUNDA — bu bir DANISMA SONUCU,
+             on kararim CURUTULDU.</b> Plan 19'un ilk hali *"kutuphane kiraciyi adin
+             icine koymaz, XML doc soyler"* diyordu. <c>solum-kiracilik</c> §3
+             reddetti: *"Onbellek anahtarinda kiraci yok -> ikinci kiraci BIRINCININ
+             VERISINI alir. Koruma: ANAHTAR URETIMI KUTUPHANEYE AIT OLMALI."*
+            
+             Bir kilit adi, bir onbellek anahtariyla <b>yapisal olarak ayni sey</b> ve
+             basarisizliklari da ayni sinifta — <b>SESSIZ</b>. Prefiksi unutan
+             tuketicide <c>"etl"</c> adi butun kiracilari birbirine kilitler; yanlis
+             ureten tuketicide bir kiracinin isi otekinin kilidini *"benim degil"*
+             sanip <b>gecer</b>. On kararim bir DOKUMANTASYON cozumuydu ve bu depoda
+             o daha once yetmedi.
+             </summary>
+        </member>
+        <member name="P:Solum.Sql.IAppLockScope.Current">
+             <summary>
+             Su andaki kapsam — genelde kiraci kimligi.
+            
+             <c>null</c> ise <see cref="M:Solum.Sql.IAppLock.AcquireAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> <b>FIRLATIR</b>,
+             sessizce global kilide DUSMEZ. <c>solum-kiracilik</c> §4: *"Bozuk
+             sirket talebi sessizce sifir olmaz, YOK olur"* — sifir gecerli bir
+             sirket gibi gorunurdu; bos kapsam da gecerli bir kilit gibi gorunurdu.
+            
+             Kiracilar-arasi mesru bir kilit gerekiyorsa
+             <see cref="M:Solum.Sql.IAppLock.AcquireGlobalAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> <b>acikca</b> cagrilir.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.IAppLockLease">
+             <summary>
+             Bir uygulama kilidinin TUTAMACI — <c>await using</c> ile birakilir.
+            
+             <b>ALINAMAMA SESSIZ DEGIL:</b> <see cref="P:Solum.Sql.IAppLockLease.Acquired"/> <c>false</c> ise
+             <see cref="P:Solum.Sql.IAppLockLease.DeniedReason"/> <b>DOLU</b>dur.
+             <c>kutuphane-disiplini.md</c> §5 *"basarisizligi yalniz `false` ile
+             bildirmek"*i yasakliyor — bir <c>bool</c> donduren API, cagiraninin
+             kullaniciya ne soyleyecegini bilmesine izin vermez.
+            
+             <b>ALINMAMIS BIR TUTAMAC DA GUVENLE BIRAKILIR</b> (islemsiz). Aksi halde
+             desen *"once kontrol et, sonra sar"* diye ikiye bolunurdu ve ikinci adimi
+             atlayan cagiran sessizce KILITSIZ calisirdi.
+             </summary>
+        </member>
+        <member name="P:Solum.Sql.IAppLockLease.Acquired">
+            <summary>Kilit alindi mi.</summary>
+        </member>
+        <member name="P:Solum.Sql.IAppLockLease.Name">
+            <summary>
+            Kilidin TAM adi — kapsam on eki DAHIL. Teshis icin: bir cakisma
+            bildirildiginde hangi adin cakistigini bilmek gerekir.
+            </summary>
+        </member>
+        <member name="P:Solum.Sql.IAppLockLease.DeniedReason">
+            <summary>
+            <see cref="P:Solum.Sql.IAppLockLease.Acquired"/> <c>false</c> ise SEBEP; aksi halde <c>null</c>.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.IAppLock">
+             <summary>
+             OTURUM KAPSAMLI UYGULAMA KILIDI — alinir ve <b>ACIKCA</b> birakilir.
+            
+             <b>NEDEN VAR: bir tuketici kilidi ALDI, HIC BIRAKMADI ve YALAN bir hata
+             mesaji uretti.</b> Olcum es oturumdan (<c>bel-2b</c>, 2026-09-03), dort
+             kosum:
+            
+             <list type="number">
+             <item><c>KILL &lt;spid&gt;</c> -> kilit dustu. <b>Ama yetersiz olcum:</b>
+               <c>KILL</c> bir SUNUCU sonlandirmasidir; gercek cokuste kimse
+               veritabanina haber vermez.</item>
+             <item><c>Stop-Process -Force</c> (gercek cokus) -> 0,6 sn'de dustu.
+               <b>Iddianin bu yarisi DOGRU.</b></item>
+             <item><c>Close()</c> -> <b>KILIT DUSMEDI.</b></item>
+             <item>O baglanti yeniden alininca -> dustu
+               (<c>sp_reset_connection</c>).</item>
+             </list>
+            
+             Ucuncusu iddianin yarisini yikti: .NET'te <c>Close()</c> baglantiyi
+             <b>kapatmaz, HAVUZA IADE eder</b>; sifirlama ancak baglanti <b>yeniden
+             alindiginda</b> kosar. Yani <c>await using</c> biten bir kilit, kimsenin
+             sahiplenmedigi bir havuz baglantisinda <b>ASILI</b> kalir.
+            
+             <b>GORUNMEZ OLMASININ SEBEBI HAVUZUN LIFO OLMASI.</b> Sirali akista kusur
+             hic gorunmedi (0/40) cunku en son iade edilen baglanti ilk geri alinir ve
+             sifirlama kilidi dusurur. Ama panel bir <b>web</b> uygulamasi: kilitten
+             sonra biten her sayfa istegi kilitli baglantiyi yiginda <b>asagi iter</b>
+             — ve o sira kurulunca sonuc belirlenimci olur. <b>20 turun 20'sinde</b>
+             siradaki is *"Baska bir islem zaten calisiyor"* diye reddedildi —
+             <b>calisan hicbir islem yokken.</b>
+            
+             Sinif bu deponun en pahalisi: <b>yanlis olan sonuc degil SEBEP ATFI.</b>
+             Yanlis bir sebep, sebepsizlikten kotudur cunku kimse ona bakip
+             suphelenmez.
+            
+             ---
+            
+             <b>KOSUCU BU SOZLESMEYI BILMIYOR — bilincli.</b>
+             <c>MigrationRunner</c> imzasi <c>PublicAPI.Shipped.txt</c>te DONMUS;
+             zorunlu ya da istege bagli bir kurucu parametresi eklemek <b>kirici</b>
+             olurdu. Kilidi <b>cagiran</b> sarar. <c>solum-migration</c> danismasinda
+             alinan karar; ayrintisi <c>plans/19</c>.
+            
+             <b>DURUST SINIR — <c>await using</c> ZORUNLU KILINAMIYOR.</b>
+             <c>_ = lock.AcquireAsync(...)</c> derleyiciyi susturur. Itiraz gercek ama
+             <b>yetersiz</b>: ayni sey <c>DbConnection</c>, <c>DbTransaction</c>,
+             <c>IServiceScope</c> ve <c>FileStream</c> icin de dogru — .NET'in tamami
+             bu sozlesmeyi tasiyor. Kutuphane tarafinda kapi <b>yazilamiyor</b> ve
+             gerekce *"unuttum"* degil <b>olculemez</b>: *"bu tipe hangi yollar var"*
+             sorusu cagri grafigi analizidir.
+            
+             <b>ON EKLEME RISK SINIFINI DUSURUYOR:</b> kapsam on eki varsa sizmis bir
+             kilit <b>yalniz kendi kiracisini</b> engeller -> <b>kullanilabilirlik</b>
+             sorunu. On ekleme olmasaydi bir kiracinin sizan kilidi <b>otekini</b>
+             engellerdi -> <b>izolasyon</b> bulgusu.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.IAppLock.AcquireAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)">
+            <summary>
+            KAPSAMLI kilit alir — ad <c>"&lt;kapsam&gt;:&lt;resource&gt;"</c>
+            olarak <b>kutuphanede</b> kurulur.
+            </summary>
+            <param name="resource">
+            Neyin kilitlendigi — ornek <c>"etl"</c>. Kapsam on eki cagiran
+            tarafindan YAZILMAZ.
+            </param>
+            <param name="timeout">
+            Bekleme suresi. <see cref="F:System.TimeSpan.Zero"/> = hic bekleme.
+            </param>
+            <param name="ct">Iptal.</param>
+            <exception cref="T:System.InvalidOperationException">
+            <see cref="P:Solum.Sql.IAppLockScope.Current"/> bos — kapsam baglanmamis. Sessizce
+            global kilide DUSULMEZ.
+            </exception>
+            <exception cref="T:System.ArgumentException">
+            <paramref name="resource"/> bos, cok uzun ya da ayrac tasiyor;
+            ya da <paramref name="timeout"/> negatif.
+            </exception>
+        </member>
+        <member name="M:Solum.Sql.IAppLock.AcquireGlobalAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)">
+             <summary>
+             KAPSAMSIZ (kiracilar-arasi) kilit alir — ad on ek ALMAZ.
+            
+             <b>AYRI METOT, BAYRAK DEGIL — gerekcesi olculu.</b> Bir
+             <c>bool scoped = true</c> parametresi, <c>false</c> gecen cagriyi
+             otekilerden <b>ayirt edilemez</b> yapardi; ayri metot cagri yerinde
+             <b>gorunur ve greplenebilir</b>. Ve *"yalnizca belge"* bu depoda daha
+             once yetmedi.
+            
+             Mesru kullanim: kiracilar-arasi bakim, sema saglama, ORTAK migration
+             zinciri (<c>solum-migration</c> §5 birinci faz). Kiraci verisine
+             dokunan bir is icin <see cref="M:Solum.Sql.IAppLock.AcquireAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> kullanilir.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.AppLockName">
+            <summary>
+            Kilit adi kurallari — <b>uretim kutuphanede</b> oldugu icin burada.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.AppLockName.Separator">
+             <summary>
+             Kapsam ile kaynak arasindaki ayrac.
+            
+             Kapsam ya da kaynak bu karakteri TASIYAMAZ ve sebebi somut:
+             <c>"a:b"</c> kapsaminin <c>"x"</c> kaynagi ile <c>"a"</c> kapsaminin
+             <c>"b:x"</c> kaynagi <b>ayni adi</b> uretirdi — iki farkli kiracinin
+             kilidi CAKISIRDI ve bunu soyleyen hicbir sey olmazdi.
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.AppLockName.MaxLength">
+             <summary>
+             Ad icin ust sinir.
+            
+             <c>sp_getapplock @Resource</c> <c>nvarchar(255)</c>. Postgres tarafi
+             adi bir <c>bigint</c>e ozetliyor, yani orada boyle bir sinir yok —
+             ama <b>KUCUK olan sinir baglayicidir</b>, aksi halde ayni cagri bir
+             lehcede calisir otekinde patlardi.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.AppLockName.Compose(System.String,System.String)">
+            <summary>
+            Kapsam ve kaynagi TAM ada cevirir; kurallari <b>burada</b> zorlar.
+            </summary>
+            <param name="scope">
+            Kapsam. <c>null</c> ise on ek YOK (global kilit). Bos ya da
+            bosluk-yalniz olmasi <b>reddedilir</b>.
+            </param>
+            <param name="resource">Kaynak adi.</param>
+            <exception cref="T:System.ArgumentException">Bos, ayracli ya da cok uzun.</exception>
+        </member>
+        <member name="T:Solum.Sql.DeniedAppLockLease">
+             <summary>
+             Alinmamis tutamac — <c>await using</c> ile guvenle birakilir (islemsiz).
+            
+             Lehce uygulamalarinin ortak ihtiyaci oldugu icin burada duruyor;
+             her lehcede yeniden yazilmasi <c>Ayni_is_iki_yerde_YAZILMIYOR</c>
+             kapisinin kovaladigi sey.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.DeniedAppLockLease.#ctor(System.String,System.String)">
+            <summary>Ad ve sebeple kurar.</summary>
+            <param name="name">Denenen TAM ad.</param>
+            <param name="reason">Neden alinamadi — BOS OLAMAZ.</param>
+        </member>
+        <member name="P:Solum.Sql.DeniedAppLockLease.Acquired">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Sql.DeniedAppLockLease.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Sql.DeniedAppLockLease.DeniedReason">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.DeniedAppLockLease.DisposeAsync">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.FixedAppLockScope">
+             <summary>
+             SABIT kapsam — <see cref="T:Solum.Sql.IAppLockScope"/>in varsayilan uygulamasi.
+            
+             <b>NEDEN VAR: `ContractDefaultGateTests` bloklyordu ve HAKLIYDI.</b>
+             `kutuphane-disiplini.md` §4: *"Her yetenek iki parca: ARAYUZ (sozlesme) +
+             VARSAYILAN UYGULAMA. Tek parca sunmak, tuketiciyi bizim kararimiza mahkum
+             eder."* Kapi bunu mekanik olarak zorluyor ve ilk yazimda bu tip YOKTU.
+            
+             <b>EMSAL: `Solum.Abstractions`taki `FixedTenant` / `FixedCompany` /
+             `FixedUser`.</b> Ayni desen, ayni sebep — tek kiracili bir tuketici ya da
+             bir test, kapsami bir kez verip gecmek ister.
+            
+             <b>ve `null` KABUL EDILIYOR — bilincli.</b> Kapsamsiz bir kurulum mesru:
+             yalniz <see cref="M:Solum.Sql.IAppLock.AcquireGlobalAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> kullanan bir arac
+             (sema saglama, kiracilar-arasi bakim) icin dogru olan bu. O durumda
+             <see cref="M:Solum.Sql.IAppLock.AcquireAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> FIRLATIR ve mesaji ne yapilacagini
+             soyler — yani sessiz degil.
+             </summary>
+             <param name="scope">
+             Sabit kapsam. <c>null</c> = kapsamsiz kurulum.
+             </param>
+        </member>
+        <member name="M:Solum.Sql.FixedAppLockScope.#ctor(System.String)">
+             <summary>
+             SABIT kapsam — <see cref="T:Solum.Sql.IAppLockScope"/>in varsayilan uygulamasi.
+            
+             <b>NEDEN VAR: `ContractDefaultGateTests` bloklyordu ve HAKLIYDI.</b>
+             `kutuphane-disiplini.md` §4: *"Her yetenek iki parca: ARAYUZ (sozlesme) +
+             VARSAYILAN UYGULAMA. Tek parca sunmak, tuketiciyi bizim kararimiza mahkum
+             eder."* Kapi bunu mekanik olarak zorluyor ve ilk yazimda bu tip YOKTU.
+            
+             <b>EMSAL: `Solum.Abstractions`taki `FixedTenant` / `FixedCompany` /
+             `FixedUser`.</b> Ayni desen, ayni sebep — tek kiracili bir tuketici ya da
+             bir test, kapsami bir kez verip gecmek ister.
+            
+             <b>ve `null` KABUL EDILIYOR — bilincli.</b> Kapsamsiz bir kurulum mesru:
+             yalniz <see cref="M:Solum.Sql.IAppLock.AcquireGlobalAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> kullanan bir arac
+             (sema saglama, kiracilar-arasi bakim) icin dogru olan bu. O durumda
+             <see cref="M:Solum.Sql.IAppLock.AcquireAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)"/> FIRLATIR ve mesaji ne yapilacagini
+             soyler — yani sessiz degil.
+             </summary>
+             <param name="scope">
+             Sabit kapsam. <c>null</c> = kapsamsiz kurulum.
+             </param>
+        </member>
+        <member name="P:Solum.Sql.FixedAppLockScope.Current">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.ConnectionResolver">
+             <summary>
+             Baglanti dizesinden acik baglanti uretir.
+            
+             KAPSAM BILINCLI OLARAK DAR: kaynak surumde (sqlcli) bu sinif ayni zamanda
+             <c>sqlcli.json</c> dosyasini arayip profil cozuyordu. Profil kesfi bir
+             UYGULAMA kaygisidir — hangi dosyanin nerede aranacagi, hangi profilin
+             varsayilan oldugu her uygulamada farklidir. Kutuphaneye tasinsaydi
+             Microsoft.Extensions.Configuration bagimliligi da beraberinde gelirdi ve
+             Solum.Sql'in "hicbir sey suruklemez" ozelligi kaybolurdu.
+            
+             Kutuphanenin isi: dizeyi al, dogru dialect'i bul, ac, hazirla.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.ConnectionResolver.OpenAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Baglantiyi acar ve dialect'in oturum hazirligini calistirir.
+            Dialect baglanti dizesinden bulunur; belirsizse hata verir
+            (bkz. <see cref="M:Solum.Sql.SqlDialects.Resolve(System.String)"/>).
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.ConnectionResolver.OpenWithAsync(Solum.Sql.ISqlDialect,System.String,System.Threading.CancellationToken)">
+             <summary>
+             Dialect'i acikca vererek acar. Baglanti dizeleri ortustugunde
+             (Oracle ve SQL Server'in ikisi de "Data Source=" kullanir) tercih
+             edilen yol budur.
+            
+             AD NEDEN FARKLI: iki asiri yuklemenin ikisinde de istege bagli
+             CancellationToken olsaydi RS0026 kurali ihlal edilirdi — ileride bir
+             parametre eklendiginde cagri yeri sessizce baska asiri yuklemeye
+             kayabilir. Analizor bunu ilk derlemede yakaladi.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.ConnectionResolver.MaskPassword(System.String)">
+            <summary>
+            Baglanti dizesindeki parolayi maskeler. Log ve hata mesajlarinda
+            dizenin gorunmesi gerektiginde KULLANILMALIDIR.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.ISqlDialect">
+             <summary>
+             Bir veritabani saglayicisinin, saglayiciya ozel davranisini tasiyan sozlesme.
+            
+             Bu arayuz <c>Solum.Sql</c> icinde durur ama uygulamalari AYRI paketlerdedir
+             (bugun <c>Solum.Sql.SqlServer</c> ve <c>Solum.Sql.Postgres</c>).
+             Sebep: Postgres kullanan Npgsql'i yuklesin, yalniz SQL Server kullanan
+             yuklemesin. Tek pakette toplansaydi herkes butun suruculeri tasirdi.
+            
+             <b>"bugun" SOZCUGU BILINCLI</b> — onceki hal <c>Solum.Sql.Oracle</c>'i da
+             sayiyordu ve OYLE BIR PAKET YOK (olculdu 2026-09-03, plan 19 Adim 0:
+             dort yerde aniliyordu). Var olmayan bir paketi saymak, tuketiciye
+             kurulamayacak bir sey soylemektir; ucuncu bir lehce eklendigi gun bu
+             liste ONUNLA BIRLIKTE buyur.
+             </summary>
+        </member>
+        <member name="P:Solum.Sql.ISqlDialect.Key">
+            <summary>Kisa saglayici anahtari: "sqlserver", "postgres", "oracle".</summary>
+        </member>
+        <member name="P:Solum.Sql.ISqlDialect.Name">
+            <summary>Insana gorunen ad.</summary>
+        </member>
+        <member name="P:Solum.Sql.ISqlDialect.SupportsDiagnostics">
+            <summary>
+            Performans/tani ozellikleri (DMV, explain, kill) destekleniyor mu.
+            Her saglayicida karsiligi yok; olmayanlar false doner ve cagiran
+            ozelligi gizler — sessizce yanlis sonuc uretmek yerine.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.CanHandle(System.String)">
+             <summary>
+             Bu dialect verilen baglanti dizesini tanir mi.
+            
+             DIKKAT: baglanti dizeleri ORTUSUR. Oracle ve SQL Server'in ikisi de
+             "Data Source=" kullanir. Bu yuzden tanima "aksi halde X" seklinde
+             KURULMAMALIDIR; her dialect kendi imzasini acikca aramalidir.
+             Emin olamayan false donmeli, cagiran da acik secim istemelidir.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.Create(System.String)">
+            <summary>Acilmamis baglanti uretir.</summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.InitializeAsync(System.Data.Common.DbConnection,System.Threading.CancellationToken)">
+            <summary>Baglanti acildiktan sonra calisan oturum hazirligi (varsa).</summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.SplitBatches(System.String)">
+            <summary>
+            Script'i calistirilabilir parcalara boler.
+            SQL Server "GO", Oracle PL/SQL blogu icin "/" kullanir — ayrac
+            saglayiciya ozeldir, cagiran bilmemelidir.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.IsIdempotentWarning(System.Data.Common.DbException)">
+            <summary>
+            Bu hata "zaten var / zaten yok" turunden, idempotent calistirmada
+            yok sayilabilir bir uyari mi.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.ErrorCode(System.Data.Common.DbException)">
+             <summary>
+             Saglayiciya ozel hata kodunu metin olarak dondurur.
+            
+             <b>TANINMAYAN BIR <c>DbException</c> ICIN BOS DIZE DONER</b> — ve bu
+             sozlesme sonradan yazildi, cunku ihlal ediliyordu.
+            
+             OLCULDU 2026-09-03 (plan 19 Adim 1): iki lehcenin IKISI de
+             <c>"?"</c> donduruyordu. Bu bir SIHIRLI DEGERDIR ve tehlikesi
+             <c>SqlErrorTranslator</c>in kendi dogrulamasindan KACIYOR olmasi:
+             kurucu BOS anahtari reddediyor (*"bos anahtarli bir kayit HER
+             taninmayan hatayi eslerdi"*) ama <c>"?"</c> bos DEGIL. Haritaya
+             <c>"?"</c> koyan biri tam o tuzaga duser ve kurucu YAKALAMAZ.
+            
+             Ve sozlesme zaten BOS DONDUGUNU SOYLUYORDU: bu davranisi sinayan
+             testin belgesi *"`ErrorCode` taninmayan bir istisnada bos donebilir"*
+             diyordu. Yani iddia yaziliydi, uygulama onu karsilamiyordu ve hicbir
+             sey hata vermiyordu — ayni gun olculen 52 bayat iddiayla ayni sinif.
+            
+             BOS DIZE DOGRU DEGER cunku <c>SqlErrorTranslator</c> bos anahtari
+             REDDEDIYOR: yani bos bir kod HICBIR girdiyle eslesemez ve sonuc
+             zorunlu olarak <see cref="P:Solum.Sql.SqlErrorTranslation.None"/> olur — cagiran
+             kendi genel hata yoluna duser. Sihirli deger yerine SESSIZLIGI OLMAYAN
+             bir yol.
+            
+             Uygulayan bir lehce icin: kendi istisna tipin degilse
+             <c>string.Empty</c> don, bir yer tutucu URETME.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.LimitRows(System.String,System.Int32)">
+            <summary>Bir SELECT'i n satirla sinirlar (saglayici sozdizimi).</summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlDialect.SplitTableName(System.String)">
+             <summary>
+             "sema.tablo" metnini parcalar.
+            
+             DIKKAT: Oracle tirnaksiz tanimlayicilari BUYUK harfe katlar. Bu yuzden
+             ayirma islemi saglayiciya birakilmistir — cagiran tarafta yapilan
+             duz bir Split('.') Oracle'da sessizce yanlis eslesir.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.Migrations.MigrationScript">
+             <summary>
+             Calistirilacak bir migration betigi.
+            
+             KIMLIK ADI DEGIL, AD + OZET. Ad tek basina yeterli olsaydi, uygulanmis bir
+             betigin sonradan degistirilmesi FARK EDILMEZDI: veritabani ile betik
+             zinciri sessizce ayrisirdi ve temiz kurulumda baska bir sema olusurdu.
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.Migrations.MigrationScript.NoTransactionMarker">
+             <summary>
+             Betigin transaction DISINDA kosmasini isteyen isaret.
+            
+             Betigin ilk satirlarina yazilir:  <c>-- solum:no-transaction</c>
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationScript.#ctor(System.String,System.String,System.Boolean)">
+            <summary>Betigi olusturur ve ozetini hesaplar.</summary>
+            <param name="name">Siralamayi belirleyen ad — genelde numarali dosya adi.</param>
+            <param name="content">Betik metni.</param>
+            <param name="runsInTransaction">
+            Betik transaction icinde kossun mu. Varsayilan evet.
+            Bkz. <see cref="P:Solum.Sql.Migrations.MigrationScript.RunsInTransaction"/> — kapatmanin BEDELI vardir.
+            </param>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationScript.RunsInTransaction">
+             <summary>
+             Betik transaction icinde mi kosuyor.
+            
+             NEDEN KAPATILABILIR OLMAK ZORUNDA: bazi veritabani ifadeleri kullanici
+             transaction'i icinde CALISMAZ — veritabani seviyesi degisiklikler, tam
+             metin dizin islemleri, bazi toplu islemler. Ayrica bazi ifadeler
+             batch'in ILK ifadesi olmak zorundadir. Kacis yolu olmayan bir kosucu,
+             bu betiklerde er gec carpardi ve tek care kosucuyu atlamak olurdu.
+            
+             BEDELI ACIKTIR: transaction disinda kosan betikte, betigin calismasi
+             ile kaydinin yazilmasi ATOMIK DEGILDIR. Arada bir kesinti olursa betik
+             KOSMUS ama KAYDEDILMEMIS olabilir. Kosucu bu durumu ayri bir hata
+             nedeniyle bildirir (<see cref="F:Solum.Sql.Migrations.MigrationFailureReason.JournalWriteFailed"/>);
+             sessizce gecmez, cunku insanin elle uzlastirmasi gerekir.
+            
+             Bu yuzden varsayilan EVET'tir ve kapatmak ACIK bir karardir.
+             </summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationScript.Name">
+            <summary>Betik adi.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationScript.Content">
+            <summary>Betik metni.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationScript.Hash">
+            <summary>Icerik ozeti (SHA-256, onaltilik).</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationScript.FromFile(System.String)">
+            <summary>
+            Dosyadan okur. Ad olarak dosya adi kullanilir.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationScript.FromDirectory(System.String,System.String)">
+             <summary>
+             Klasordeki betikleri ADA GORE SIRALI okur.
+            
+             Siralama <see cref="P:System.StringComparer.Ordinal"/> ile yapilir; kulture gore
+             siralama makineden makineye DEGISIR ve migration sirasi degisirse
+             sonuc sema farki olur.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationScript.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.Migrations.MigrationEntry">
+            <summary>Bir betigin uygulanma kaydi.</summary>
+            <param name="Name">Betik adi.</param>
+            <param name="Hash">Uygulandigi andaki icerik ozeti.</param>
+            <param name="AppliedAt">Uygulanma ani.</param>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationEntry.#ctor(System.String,System.String,System.DateTimeOffset)">
+            <summary>Bir betigin uygulanma kaydi.</summary>
+            <param name="Name">Betik adi.</param>
+            <param name="Hash">Uygulandigi andaki icerik ozeti.</param>
+            <param name="AppliedAt">Uygulanma ani.</param>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationEntry.Name">
+            <summary>Betik adi.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationEntry.Hash">
+            <summary>Uygulandigi andaki icerik ozeti.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationEntry.AppliedAt">
+            <summary>Uygulanma ani.</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationEntry.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.Migrations.MigrationResult">
+            <summary>Migration kosumunun sonucu.</summary>
+            <param name="Succeeded">Tumu basarili mi.</param>
+            <param name="Applied">Bu kosumda uygulanan betikler.</param>
+            <param name="AlreadyApplied">Daha once uygulanmis, atlanan betikler.</param>
+            <param name="Failure">Basarisizlik varsa ayrintisi.</param>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationResult.#ctor(System.Boolean,System.Collections.Generic.IReadOnlyList{System.String},System.Collections.Generic.IReadOnlyList{System.String},Solum.Sql.Migrations.MigrationFailure)">
+            <summary>Migration kosumunun sonucu.</summary>
+            <param name="Succeeded">Tumu basarili mi.</param>
+            <param name="Applied">Bu kosumda uygulanan betikler.</param>
+            <param name="AlreadyApplied">Daha once uygulanmis, atlanan betikler.</param>
+            <param name="Failure">Basarisizlik varsa ayrintisi.</param>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationResult.Succeeded">
+            <summary>Tumu basarili mi.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationResult.Applied">
+            <summary>Bu kosumda uygulanan betikler.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationResult.AlreadyApplied">
+            <summary>Daha once uygulanmis, atlanan betikler.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationResult.Failure">
+            <summary>Basarisizlik varsa ayrintisi.</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationResult.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.Migrations.MigrationFailure">
+            <summary>Basarisizligin ayrintisi.</summary>
+            <param name="ScriptName">Hangi betikte durdu.</param>
+            <param name="Reason">Neden.</param>
+            <param name="Message">Ayrinti.</param>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationFailure.#ctor(System.String,Solum.Sql.Migrations.MigrationFailureReason,System.String)">
+            <summary>Basarisizligin ayrintisi.</summary>
+            <param name="ScriptName">Hangi betikte durdu.</param>
+            <param name="Reason">Neden.</param>
+            <param name="Message">Ayrinti.</param>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationFailure.ScriptName">
+            <summary>Hangi betikte durdu.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationFailure.Reason">
+            <summary>Neden.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationFailure.Message">
+            <summary>Ayrinti.</summary>
+        </member>
+        <member name="P:Solum.Sql.Migrations.MigrationFailure.Entry">
+             <summary>
+             Kayit defterindeki mevcut girdi — varsa.
+            
+             <see cref="F:Solum.Sql.Migrations.MigrationFailureReason.ContentChanged"/> durumunda dolu
+             gelir ve betigin NE ZAMAN uygulandigini tasir. Operator hangi
+             surumden beri ayristigini bilmeden dogru duzeltmeyi secemez;
+             mesajdaki tarih buradan gelir.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationFailure.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.Migrations.MigrationFailureReason">
+            <summary>Basarisizlik nedeni.</summary>
+        </member>
+        <member name="F:Solum.Sql.Migrations.MigrationFailureReason.ExecutionError">
+            <summary>Betik calistirilirken veritabani hatasi.</summary>
+        </member>
+        <member name="F:Solum.Sql.Migrations.MigrationFailureReason.ContentChanged">
+             <summary>
+             Uygulanmis bir betigin icerigi DEGISMIS.
+            
+             Bu sessizce atlanmaz: veritabani ile betik zinciri ayrisir ve temiz
+             kurulumda BASKA bir sema olusur. Duzeltme yeni numarali bir betikle
+             yapilir, eskisi degistirilerek degil.
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.Migrations.MigrationFailureReason.JournalWriteFailed">
+             <summary>
+             Betik BASARIYLA KOSTU ama kaydi yazilamadi.
+            
+             Yalniz transaction disinda kosan betiklerde olabilir. Bu durum sessizce
+             gecilemez: bir sonraki kosum betigi TEKRAR calistirir ve idempotent
+             olmayan bir betikte bu veri bozulmasi demektir. Insanin kaydi elle
+             uzlastirmasi gerekir — hata mesaji betigin adini ve ozetini verir.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.Migrations.IMigrationJournalSql">
+            <summary>
+            Migration kayit tablosunun SQL'i. Sema adi ve tablo adi tuketiciye ait
+            olabilsin, saglayici farki gizlensin diye ayri bir sozlesme.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.IMigrationJournalSql.EnsureSchema(System.String)">
+            <summary>Sema yoksa olusturur. Parametre: yok (sema ada gomulu).</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.IMigrationJournalSql.EnsureTable(System.String)">
+            <summary>Kayit tablosu yoksa olusturur.</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.IMigrationJournalSql.SelectApplied(System.String)">
+            <summary>Uygulanmis betikleri okur: Name, Hash, AppliedAt.</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.IMigrationJournalSql.InsertEntry(System.String)">
+            <summary>Kayit ekler. Parametreler: <c>Name</c>, <c>Hash</c>, <c>AppliedAt</c>.</summary>
+        </member>
+        <member name="T:Solum.Sql.Migrations.MigrationRunner">
+             <summary>
+             Migration zincirini calistirir ve neyin kostugunu KAYDEDER.
+            
+             TEMEL DEGISMEZ — betigin calismasi ile kaydinin yazilmasi ATOMIKTIR.
+             Ikisi ayri islemlerde olsaydi "kostu ama kaydedilmedi" durumu dogar ve bir
+             sonraki kosum ayni betigi TEKRAR calistirirdi. Idempotent olmayan bir
+             betikte bu, veri bozulmasi demektir.
+            
+             IKI FAZLI KULLANIM — cok kiracili kurulumda:
+               1) Ortak (kiraciustu) zincir, ortak semada bir kez.
+               2) Kiraci zinciri, HER kiraci semasinda ayri ayri.
+             Bu ayrim, ayni modeli isleten olgun sistemlerde de boyledir
+             (bkz. docs/referans-tarama.html §01).
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.Migrations.MigrationRunner.SchemaToken">
+            <summary>
+            Betiklerde bu belirtec, hedef sema adiyla degistirilir.
+            Kiraci semasi calisma aninda belli oldugu icin betik onu yazamaz.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationRunner.ValidateSchema(System.String)">
+            <summary>Sema adini dogrular; gecersizse hata verir.</summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationRunner.RunAsync(System.Data.Common.DbConnection,Solum.Sql.ISqlDialect,Solum.Sql.Migrations.IMigrationJournalSql,System.String,System.Collections.Generic.IReadOnlyList{Solum.Sql.Migrations.MigrationScript},System.Func{System.DateTimeOffset},System.Threading.CancellationToken)">
+             <summary>
+             Zinciri calistirir.
+            
+             Uygulanmis betikler ATLANIR; icerigi degismis olan bir betik ise
+             atlanmaz, HATA verir (<see cref="F:Solum.Sql.Migrations.MigrationFailureReason.ContentChanged"/>).
+             </summary>
+             <param name="connection">Acik baglanti.</param>
+             <param name="dialect">Saglayici davranisi — betigi parcalara boler.</param>
+             <param name="journalSql">Kayit tablosunun SQL'i.</param>
+             <param name="schema">Hedef sema.</param>
+             <param name="scripts">Sirali betikler.</param>
+             <param name="clock">
+             Kayit defteri damgasinin kaynagi. <c>null</c> ise
+             <c>DateTimeOffset.Now</c>.
+            
+             BIR DELEGE, BIR BAGIMLILIK DEGILDIR: <c>Solum.Sql</c> bilincli olarak
+             sifir bagimlilik tasiyor ve <c>IClock</c>u GOREMEZ. Onceki hal
+             <c>DateTime.Now</c>u DOGRUDAN cagiriyordu, yani uc ayri zaman
+             kaynagindan ucuncusuydu (plan 11). <c>IClock</c> baglamak isteyen
+             <c>clock: () =&gt; saat.Now</c> gecer.
+             </param>
+             <param name="ct">Iptal belirteci.</param>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationRunner.ApplyAsync(System.Data.Common.DbConnection,Solum.Sql.ISqlDialect,Solum.Sql.Migrations.IMigrationJournalSql,System.String,Solum.Sql.Migrations.MigrationScript,System.Func{System.DateTimeOffset},System.Threading.CancellationToken)">
+             <summary>
+             Tek betigi uygular.
+            
+             VARSAYILAN YOL: betik ve kaydi AYNI ISLEMDE yazilir. Bu, kosucunun
+             temel degismezidir.
+            
+             KACIS YOLU: betik <see cref="P:Solum.Sql.Migrations.MigrationScript.RunsInTransaction"/> ile
+             transaction disina cikarilmissa atomiklik KAYBOLUR ve bu acikca
+             bildirilir — sessizce gecilmez.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationRunner.ApplyWithoutTransactionAsync(System.Data.Common.DbConnection,Solum.Sql.ISqlDialect,Solum.Sql.Migrations.IMigrationJournalSql,System.String,Solum.Sql.Migrations.MigrationScript,System.String,System.Func{System.DateTimeOffset},System.Threading.CancellationToken)">
+            <summary>
+            Transaction disinda kosar. Atomiklik YOKTUR ve bu, hata nedeniyle
+            acikca bildirilir.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationRunner.ReadJournalAsync(System.Data.Common.DbConnection,System.String,System.Threading.CancellationToken)">
+             <summary>
+             Kayit defterini okur.
+            
+             KOLON ADIYLA OKUNUR, ORDINAL ILE DEGIL. Onceki hali
+             <c>reader.GetString(0)</c> / <c>GetString(1)</c> idi ve sozlesme
+             kolon SIRASINI vaat etmiyordu — yalniz adlandiriyordu. Olculdu
+             (2026-08-25): sozlesmenin yazdigi her seye uyan ama
+             <c>SELECT Hash, Name, AppliedAt</c> yazan bir tuketici uygulamasiyla
+             ad ve ozet YER DEGISTIRIYOR, kimlik karsilastirmasi anlamsizlasiyor
+             ve <see cref="F:Solum.Sql.Migrations.MigrationFailureReason.ContentChanged"/> kapisi hic
+             devreye girmiyordu. Idempotent olmayan bir betik uc kosumda uc kez
+             uygulandi ve UCU DE "basarili" raporlandi.
+            
+             AD TEKILLIGI BURADA ZORLANIR. Sozlesme <c>Name</c> uzerinde kisit
+             vaat etmiyor; kisit yoksa kayit defteri ayni betigi iki kez tasir.
+             Tekrar eden ad, kisitin yoklugunun DOGRUDAN kanitidir ve ilk kosumda
+             yakalanir. DDL metnini ayristirip "PK var mi" demek yerine bu
+             secildi: her saglayici PK'yi baska yazar ve dogrulama TEK YERDE
+             olmali (solum-migration §3).
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Migrations.MigrationRunner.Ordinal(System.Data.Common.DbDataReader,System.String)">
+             <summary>
+             Kolonun sirasini ADINDAN bulur.
+            
+             ISTISNA YAKALAMAK YERINE KOLON ADLARI TARANIYOR. Ilk yazimda
+             <c>reader.GetOrdinal</c> cagrilip <c>IndexOutOfRangeException</c>
+             yakalaniyordu; SQLite <c>ArgumentOutOfRangeException</c> atiyor ve
+             catch FAZLA DAR kaliyordu — yani saglayiciya gore istisna tipi
+             tahmin etmek gerekiyordu. Ad taramasi saglayicidan BAGIMSIZ ve
+             tahmin gerektirmiyor.
+            
+             Eksik kolonda anlasilir hata verir. Onceki hali ordinal okudugu icin
+             yanlis kolon adi ham bir dizin hatasi uretiyordu ve sebebi
+             gorunmuyordu; daha kotusu, kolon SAYISI dogru ama SIRASI yanlissa
+             HICBIR hata cikmiyordu.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.ScriptResult">
+            <summary>Bir script calistirmasinin sonucu.</summary>
+            <param name="Succeeded">Basarisiz batch yok mu.</param>
+            <param name="Ok">Sorunsuz calisan batch sayisi.</param>
+            <param name="Warnings">Idempotent uyari sayilan batch'ler (zaten var / zaten yok).</param>
+            <param name="Failures">Basarisiz batch'ler.</param>
+        </member>
+        <member name="M:Solum.Sql.ScriptResult.#ctor(System.Boolean,System.Int32,System.Collections.Generic.IReadOnlyList{Solum.Sql.BatchIssue},System.Collections.Generic.IReadOnlyList{Solum.Sql.BatchIssue})">
+            <summary>Bir script calistirmasinin sonucu.</summary>
+            <param name="Succeeded">Basarisiz batch yok mu.</param>
+            <param name="Ok">Sorunsuz calisan batch sayisi.</param>
+            <param name="Warnings">Idempotent uyari sayilan batch'ler (zaten var / zaten yok).</param>
+            <param name="Failures">Basarisiz batch'ler.</param>
+        </member>
+        <member name="P:Solum.Sql.ScriptResult.Succeeded">
+            <summary>Basarisiz batch yok mu.</summary>
+        </member>
+        <member name="P:Solum.Sql.ScriptResult.Ok">
+            <summary>Sorunsuz calisan batch sayisi.</summary>
+        </member>
+        <member name="P:Solum.Sql.ScriptResult.Warnings">
+            <summary>Idempotent uyari sayilan batch'ler (zaten var / zaten yok).</summary>
+        </member>
+        <member name="P:Solum.Sql.ScriptResult.Failures">
+            <summary>Basarisiz batch'ler.</summary>
+        </member>
+        <member name="P:Solum.Sql.ScriptResult.Total">
+            <summary>Toplam islenen batch sayisi.</summary>
+        </member>
+        <member name="T:Solum.Sql.BatchIssue">
+            <summary>Bir batch'te olusan sorun.</summary>
+            <param name="BatchNumber">Kacinci batch (1'den baslar).</param>
+            <param name="ErrorCode">Saglayiciya ozel hata kodu.</param>
+            <param name="Message">Hata mesaji.</param>
+            <param name="Snippet">Batch'in ilk satirlari — hangi ifadenin patladigini gormek icin.</param>
+        </member>
+        <member name="M:Solum.Sql.BatchIssue.#ctor(System.Int32,System.String,System.String,System.String)">
+            <summary>Bir batch'te olusan sorun.</summary>
+            <param name="BatchNumber">Kacinci batch (1'den baslar).</param>
+            <param name="ErrorCode">Saglayiciya ozel hata kodu.</param>
+            <param name="Message">Hata mesaji.</param>
+            <param name="Snippet">Batch'in ilk satirlari — hangi ifadenin patladigini gormek icin.</param>
+        </member>
+        <member name="P:Solum.Sql.BatchIssue.BatchNumber">
+            <summary>Kacinci batch (1'den baslar).</summary>
+        </member>
+        <member name="P:Solum.Sql.BatchIssue.ErrorCode">
+            <summary>Saglayiciya ozel hata kodu.</summary>
+        </member>
+        <member name="P:Solum.Sql.BatchIssue.Message">
+            <summary>Hata mesaji.</summary>
+        </member>
+        <member name="P:Solum.Sql.BatchIssue.Snippet">
+            <summary>Batch'in ilk satirlari — hangi ifadenin patladigini gormek icin.</summary>
+        </member>
+        <member name="T:Solum.Sql.SqlCommandSpec">
+             <summary>
+             Calistirilacak bir komutun tanimi: metni ve TURU.
+            
+             NEDEN AYRI BIR TIP: bu portfoyde iki mimari bir arada yasiyor.
+             Operax kimlik sorgularini inline SQL ile yaziyor; BkmArgus'un
+             <c>architecture.md §2</c> kurali web katmaninda inline SQL'i YASAKLIYOR ve
+             her erisimi stored procedure'e zorluyor. Ikisi de mesru; ikisi de ayni
+             kutuphaneyi kullanabilmeli.
+            
+             Komut metnini <c>string</c> olarak tasimak bu secimi kutuphaneye gomer:
+             govde ya inline yazar ya EXEC eder, biri disarida kalir. Metni TURUYLE
+             birlikte tasimak secimi CAGIRANA birakir — govde tek kalir.
+            
+             <code>
+             // Operax: inline
+             new SqlCommandSpec("SELECT Id, UserName FROM AspNetUsers WHERE Id = @Id")
+            
+             // BkmArgus: SP-first
+             SqlCommandSpec.StoredProcedure("auth.sp_User_FindById")
+             </code>
+             </summary>
+             <param name="Text">SQL metni ya da stored procedure adi.</param>
+             <param name="Type">Metnin nasil yorumlanacagi.</param>
+        </member>
+        <member name="M:Solum.Sql.SqlCommandSpec.#ctor(System.String,System.Data.CommandType)">
+             <summary>
+             Calistirilacak bir komutun tanimi: metni ve TURU.
+            
+             NEDEN AYRI BIR TIP: bu portfoyde iki mimari bir arada yasiyor.
+             Operax kimlik sorgularini inline SQL ile yaziyor; BkmArgus'un
+             <c>architecture.md §2</c> kurali web katmaninda inline SQL'i YASAKLIYOR ve
+             her erisimi stored procedure'e zorluyor. Ikisi de mesru; ikisi de ayni
+             kutuphaneyi kullanabilmeli.
+            
+             Komut metnini <c>string</c> olarak tasimak bu secimi kutuphaneye gomer:
+             govde ya inline yazar ya EXEC eder, biri disarida kalir. Metni TURUYLE
+             birlikte tasimak secimi CAGIRANA birakir — govde tek kalir.
+            
+             <code>
+             // Operax: inline
+             new SqlCommandSpec("SELECT Id, UserName FROM AspNetUsers WHERE Id = @Id")
+            
+             // BkmArgus: SP-first
+             SqlCommandSpec.StoredProcedure("auth.sp_User_FindById")
+             </code>
+             </summary>
+             <param name="Text">SQL metni ya da stored procedure adi.</param>
+             <param name="Type">Metnin nasil yorumlanacagi.</param>
+        </member>
+        <member name="P:Solum.Sql.SqlCommandSpec.Text">
+            <summary>SQL metni ya da stored procedure adi.</summary>
+        </member>
+        <member name="P:Solum.Sql.SqlCommandSpec.Type">
+            <summary>Metnin nasil yorumlanacagi.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlCommandSpec.Sql(System.String)">
+            <summary>Inline SQL.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlCommandSpec.StoredProcedure(System.String)">
+            <summary>Stored procedure — ad, sema dahil ("auth.sp_User_FindById").</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlCommandSpec.op_Implicit(System.String)~Solum.Sql.SqlCommandSpec">
+            <summary>Duz metinden inline SQL'e ortuk donusum — cagri yerini sadelestirir.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlCommandSpec.CreateOn(System.Data.Common.DbConnection)">
+            <summary>Bu tanimdan calistirilabilir bir komut uretir.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlCommandSpec.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.SqlDialects">
+             <summary>
+             Kayitli dialect'lerin defteri.
+            
+             NEDEN DEFTER GEREKIYOR: dialect uygulamalari ayri paketlerde
+             (bugun <c>Solum.Sql.SqlServer</c> ve <c>.Postgres</c> — <c>.Oracle</c>
+             SAYILIYORDU ama yok, plan 19 Adim 0). Cekirdek
+             paket onlari tanimadigi icin <c>new PostgresDialect()</c> diyemez —
+             saglayici paketi referans edilmemis olabilir. Bu yuzden saglayici
+             paketleri kendilerini KAYIT ETTIRIR.
+            
+             Kayit ACIKTIR, otomatik degil. ModuleInitializer ile kendiliginden kayit
+             cazip gorunuyor ama sessiz bir tuzagi var: assembly'ye ait hicbir tipe
+             dokunulmazsa assembly hic YUKLENMEZ ve initializer calismaz. Referans
+             verilmis ama "calismayan" bir saglayici, hata ayiklamasi en zor
+             durumlardan biridir. Acik kayit bir satir maliyetle bunu imkansiz kilar.
+             </summary>
+        </member>
+        <member name="P:Solum.Sql.SqlDialects.Registered">
+            <summary>Kayitli dialect'ler (anahtara gore).</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlDialects.Register(Solum.Sql.ISqlDialect)">
+            <summary>
+            Bir dialect kaydeder. Ayni anahtar tekrar kaydedilirse sonuncusu gecerlidir —
+            tuketicinin varsayilani degistirebilmesi icin bilincli.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlDialects.ByKey(System.String)">
+            <summary>Anahtarla dogrudan secim ("sqlserver", "postgres", "oracle").</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlDialects.Resolve(System.String)">
+             <summary>
+             Baglanti dizesinden dialect bulur.
+            
+             TEK dialect sahiplenirse onu doner. Hicbiri ya da BIRDEN COK sahiplenirse
+             HATA verir — "aksi halde SQL Server" gibi bir varsayilan YOKTUR.
+            
+             Gerekce: Oracle ve SQL Server baglanti dizeleri "Data Source=" ile
+             ortusur. Varsayilana dusen bir tespit, Oracle dizesini sessizce SQL
+             Server'a yollar ve hata surucude, anlasilmaz bicimde patlar. Belirsizlikte
+             susmak yerine sormak yeglenir.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlDialects.Clear">
+             <summary>
+             Test izolasyonu icin — <c>internal</c>, VE ONCEDEN GENELDI.
+            
+             Bagimsiz denetim (D2 on-dondurma incelemesi, BULGU 9) iki sorunu birden
+             gosterdi:
+            
+             1. `kutuphane-disiplini.md` §1 IHLALI. Belgesi *"uretim kodunda
+                cagrilmaz"* diyen bir uye GENEL olmamali — soz, kodun kendisiyle
+                celisiyordu. Ve olculdu: tek cagiran `tests/`, `src`'de 0.
+            
+             2. PAYLASILAN KURESEL DURUM. <c>Registry</c> `static`. Genel oldugu
+                surece HERHANGI BIR tuketici kutuphanesi, ayni surecteki BUTUN
+                oteki tuketicilerin dialect kaydini silebilirdi. Belirti:
+                `Resolve` *"Baglanti dizesini taniyan dialect yok"* der ve sebep
+                HIC ANLASILMAZ.
+            
+             `InternalsVisibleTo` cozumu bu depoda KURULU BIR DESEN: uc kardes paket
+             (`EntityFrameworkCore`, `Identity`, `Web`) onu zaten kullaniyor. Yani
+             "fazla bedel" itirazi burada da gecersizdi.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlErrorKind">
+             <summary>
+             Bir veritabani hatasinin TURU — lehceden bagimsiz.
+            
+             <b>NEDEN TUR, NEDEN METIN DEGIL.</b> Tuketici olctu (`bel-2b`,
+             2026-09-03): <b>15 sayfa / 16 yerde</b> ham <c>SqlException.Message</c>
+             dogrudan ekrana gidiyordu ve kullanici
+             <c>Invalid object name 'dbo.stock_moves'.</c> goruyordu.
+            
+             Cozum bir hazir MESAJ listesi DEGIL, bir hazir KOD listesi. Ayrimi
+             tuketicinin kendi cumlesi koydu:
+            
+             <i>"Mesajin METNI bize ait (bizim ekran dilimiz), KOD LISTESI size."</i>
+            
+             Kod listesi <b>lehce bilgisi</b>: <c>SqlException.Number</c>,
+             <c>PostgresException.SqlState</c>. Bir ERP'de, bir egitim platformunda,
+             bir denetim platformunda AYNI kalir. Metin ise urun kararidir —
+             tuketicinin ekran dili, uslubu, hatta hangi hatayi kullaniciya HIC
+             gostermeyecegi.
+            
+             Ve ikinci bir sebep OLCULDU: bu paketin ekran metni tasimasi, ayni gun
+             kapatilan bir sinifi YENIDEN ACARDI. <c>Solum.Web</c>de butun ekran
+             cumleleri TEK dosyaya (<c>SolumUiText</c>) tasindi ve Turkce-karakter
+             kapisi <b>yalniz o dosyayi</b> muaf tutuyor —
+             <c>Assert.Single</c> ile olculuyor. Metin tasiyan bir hata haritasi
+             IKINCI ekran-metni dosyasi olurdu.
+            
+             <b><c>Unknown = 0</c> BILINCLI ve emsali var:</b> <c>ChartKind</c> ayni
+             karari tasiyor. Sifir varsayilani, "atanmamis" durumu bir GECERLI turmus
+             gibi gostermez; dogrulama onu reddedebilir. Yeni uye <b>SONA</b> eklenir.
+            
+             <b>KAPSAM DURUSTCE DAR:</b> bu liste "her SQL hatasi" degil, tuketicinin
+             olctugu ve <b>kullaniciya soylenmeye deger</b> olanlar. Kisitlama ihlali
+             (<c>UNIQUE</c>, <c>FK</c>) ve deger kirpilmasi BILEREK YOK: onlar bir
+             ALANA baglanir ve <c>SqlErrorTranslation.Field</c> ile tasinir, yani
+             tuketicinin kendi haritasina ait. Buradaki yedi tur <b>alana
+             baglanamayan</b> altyapi hatalari.
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.Unknown">
+            <summary>
+            Atanmamis. Bir haritada gorunmesi KURULUMDA reddedilir.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.Timeout">
+            <summary>
+            Komut zaman asimina ugradi. Genelde ISTEMCI tarafli bir sinir —
+            sunucu hala calisiyor olabilir.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.Deadlock">
+            <summary>
+            Kilit cakismasi; islem KURBAN secildi. <b>Tekrar denemek mesru</b> —
+            bu turu ayirmanin asil degeri o.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.MissingObject">
+            <summary>
+            Tablo, gorunum ya da yordam YOK. Neredeyse her zaman bir DAGITIM
+            sorunu: sema betigi kosmamis ya da ad degismis.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.MissingColumn">
+            <summary>
+            Kolon YOK. <see cref="F:Solum.Sql.SqlErrorKind.MissingObject"/>ten ayri, cunku teshisi farkli:
+            nesne var ama SEMASI beklenenden eski.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.LoginFailed">
+            <summary>
+            Kimlik dogrulama basarisiz — kullanici/sifre ya da yetki.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.DatabaseUnavailable">
+            <summary>
+            Veritabani acilamadi: yok, cevrimdisi ya da erisim yok.
+            <see cref="F:Solum.Sql.SqlErrorKind.LoginFailed"/>ten AYRI tutuldu cunku eylem farkli —
+            biri kimlik bilgisi, oteki dagitim/durum sorunu.
+            </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlErrorKind.Unreachable">
+            <summary>
+            Sunucuya hic ulasilamadi — ag, ad cozumleme, port.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlErrorMap">
+             <summary>
+             KOD LISTESI + METIN LISTESI -> <c>SqlErrorTranslator</c> haritasi.
+            
+             Ikisini AYRI tutup burada birlestirmenin sebebi <see cref="T:Solum.Sql.SqlErrorKind"/>
+             belgesinde: kod lehceye, metin tuketiciye ait.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlErrorMap.From(System.Collections.Generic.IReadOnlyDictionary{System.String,Solum.Sql.SqlErrorKind},System.Collections.Generic.IReadOnlyDictionary{Solum.Sql.SqlErrorKind,Solum.Sql.SqlErrorTranslation})">
+             <summary>
+             Lehce kod sozlugunu tuketicinin metinleriyle birlestirir.
+            
+             <b>EKSIK METIN KURULUMDA HATA VERIR — sessizce atlanmaz.</b>
+             <c>kutuphane-disiplini.md</c> §5: *"Eksik yapilandirmayi varsayilanla
+             doldurmak -> Kurulumda hata ver."* Atlanmis bir tur, o kodu
+             <b>cevrilemez</b> yapardi ve sonuc tam olarak ISTEK-16'nin onlemek
+             icin var oldugu sey olurdu: ekranda ham SQL metni, ve kimse fark
+             etmez.
+            
+             <b>SONUCU DURUSTCE YAZILI:</b> ileride <c>Common</c>a yeni bir kod
+             (yeni bir tur ile) eklenirse, metnini vermeyen tuketici
+             <b>KURULUMDA</b> hata alir. Bu bilincli — alternatifi sessizce
+             cevrilmeyen bir koddur, yani onarmak icin var oldugumuz kusurun
+             kendisi. Gurultulu bir yukseltme, sessiz bir gerilemeden iyidir.
+             </summary>
+             <param name="codes">Lehce kod sozlugu — ornek <c>SqlServerErrorCodes.Common</c>.</param>
+             <param name="texts">Tur -> kullaniciya gosterilecek ceviri.</param>
+             <exception cref="T:System.ArgumentException">
+             <paramref name="codes"/> icinde <see cref="F:Solum.Sql.SqlErrorKind.Unknown"/> var,
+             ya da bir tur icin <paramref name="texts"/> eksik.
+             </exception>
+        </member>
+        <member name="T:Solum.Sql.SqlErrorTranslation">
+            <summary>
+            Bir veritabani hatasinin KULLANICIYA gosterilecek hali.
+            </summary>
+            <param name="Message">
+            Kullaniciya gosterilecek metin. <c>null</c> ise ceviri YOK ve cagiran
+            istisnayi kendi genel hata yoluna birakir.
+            </param>
+            <param name="Field">
+            Hata bir ALANA baglanabiliyorsa alan adi — <c>ModelState</c> anahtari.
+            <c>null</c> ise alan-disi hata (<c>&lt;solum-errors /&gt;</c> ile
+            gosterilir).
+            </param>
+        </member>
+        <member name="M:Solum.Sql.SqlErrorTranslation.#ctor(System.String,System.String)">
+            <summary>
+            Bir veritabani hatasinin KULLANICIYA gosterilecek hali.
+            </summary>
+            <param name="Message">
+            Kullaniciya gosterilecek metin. <c>null</c> ise ceviri YOK ve cagiran
+            istisnayi kendi genel hata yoluna birakir.
+            </param>
+            <param name="Field">
+            Hata bir ALANA baglanabiliyorsa alan adi — <c>ModelState</c> anahtari.
+            <c>null</c> ise alan-disi hata (<c>&lt;solum-errors /&gt;</c> ile
+            gosterilir).
+            </param>
+        </member>
+        <member name="P:Solum.Sql.SqlErrorTranslation.Message">
+            <summary>
+            Kullaniciya gosterilecek metin. <c>null</c> ise ceviri YOK ve cagiran
+            istisnayi kendi genel hata yoluna birakir.
+            </summary>
+        </member>
+        <member name="P:Solum.Sql.SqlErrorTranslation.Field">
+            <summary>
+            Hata bir ALANA baglanabiliyorsa alan adi — <c>ModelState</c> anahtari.
+            <c>null</c> ise alan-disi hata (<c>&lt;solum-errors /&gt;</c> ile
+            gosterilir).
+            </summary>
+        </member>
+        <member name="P:Solum.Sql.SqlErrorTranslation.None">
+            <summary>Ceviri yok — cagiran genel hata yolunu kullanir.</summary>
+        </member>
+        <member name="P:Solum.Sql.SqlErrorTranslation.Translated">
+            <summary>Ceviri var mi.</summary>
+        </member>
+        <member name="T:Solum.Sql.ISqlErrorTranslator">
+             <summary>
+             Veritabani hatasini kullanici mesajina ceviren sozlesme.
+            
+             NEDEN VAR — olculmus bir bosluk: <c>ISqlDialect.ErrorCode</c> hata kodunu
+             ZATEN veriyor ama onu bir KULLANICI MESAJINA ceviren hicbir sey yoktu.
+             Sonuc: bir sakli yordamin <c>RAISERROR</c> ile bildirdigi is kurali
+             (*"bu evrak kapali bir donemde"*) tuketicinin genel hata yoluna dusuyor
+             ve kullanici *"beklenmeyen bir hata"* goruyor — oysa yordam SEBEBI
+             soylemisti.
+            
+             <b>CEVIRI KOD UZERINDEN YAPILIR, METIN UZERINDEN DEGIL — ve bu bir
+             TAVSIYE degil, OLCULMUS bir ders.</b> `kanit-disiplini.md` ornek 2:
+            
+             <i>"Denetci bir sakli yordamin DOSYASINDA Ingilizce hata mesaji gordu;
+             esleme ona gore yazildi. Sonra CALISTIRILDI: canli yordam Turkce
+             diyordu. Dosya ile veritabani ayrismisti ve esleme canlida HIC
+             TUTMADI."</i>
+            
+             Yani metne bakan bir esleme, dagitim ile depo ayristigi anda SESSIZCE
+             hicbir seyi cevirmez — ve kimse fark etmez cunku sonuc yalnizca "genel
+             hata" olur. Kod ise yordamin sozlesmesidir.
+            
+             <b>SESSIZCE YUTMUYOR:</b> ceviri bulunamazsa
+             <see cref="P:Solum.Sql.SqlErrorTranslation.None"/> doner ve cagiran istisnayi KENDI
+             yoluna birakir. Ceviri yoksa "her sey yolunda" demek,
+             <c>kutuphane-disiplini.md</c> §5'in tam ihlali olurdu.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlErrorTranslator.Translate(System.Data.Common.DbException)">
+            <summary>
+            Hatayi cevirir; ceviri yoksa <see cref="P:Solum.Sql.SqlErrorTranslation.None"/>.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlErrorTranslator">
+             <summary>
+             KOD -> MESAJ sozlugunden okuyan varsayilan ceviri.
+            
+             <c>kutuphane-disiplini.md</c> §4: her yetenek arayuz + varsayilan
+             uygulama. Tek parca sunmak tuketiciyi bizim kararimiza mahkum eder.
+            
+             Kodlar <see cref="M:Solum.Sql.ISqlDialect.ErrorCode(System.Data.Common.DbException)"/> ile uretiliyor, yani saglayici
+             farki BURAYA sizmiyor: SQL Server <c>50001</c>, Postgres <c>P0001</c>
+             derse ikisi de ayni sozlukte ayri anahtar olur ve tuketici hangi
+             saglayiciyla kostugunu bilmek zorunda kalmaz.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlErrorTranslator.#ctor(Solum.Sql.ISqlDialect,System.Collections.Generic.IReadOnlyDictionary{System.String,Solum.Sql.SqlErrorTranslation})">
+            <summary>Haritayi ve lehceyi alir.</summary>
+            <param name="dialect">Hata kodunu ureten lehce.</param>
+            <param name="map">KOD -> ceviri. Anahtar karsilastirmasi <c>Ordinal</c>.</param>
+        </member>
+        <member name="M:Solum.Sql.SqlErrorTranslator.Translate(System.Data.Common.DbException)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.SqlExecutor">
+             <summary>
+             Script ve komut calistirici.
+            
+             KONSOLA YAZMAZ. Kaynak surumu (sqlcli) her batch sonucunu dogrudan
+             AnsiConsole'a basiyordu; bu, veri erisimini sunum katmanina bagliyor ve
+             kutuphaneyi yalnizca konsol uygulamalarinda kullanilabilir kiliyordu.
+             Burada sonuc <see cref="T:Solum.Sql.ScriptResult"/> olarak DONER; nasil gosterilecegi
+             cagiranin karari.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlExecutor.RunScriptAsync(System.String,System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Bir SQL script'ini batch'lere bolerek calistirir.
+            </summary>
+            <param name="connectionString">Baglanti dizesi.</param>
+            <param name="script">Script metni.</param>
+            <param name="tolerant">
+            true ise hata alan batch'te durmaz, kaydeder ve devam eder. Idempotent
+            migration'larda ("zaten var") istenen davranis budur.
+            </param>
+            <param name="ct">Iptal jetonu.</param>
+        </member>
+        <member name="M:Solum.Sql.SqlExecutor.ExecuteAsync(System.String,Solum.Sql.SqlCommandSpec,System.Threading.CancellationToken)">
+            <summary>
+            Tek bir komut calistirir ve etkilenen satir sayisini doner.
+            Komut inline SQL ya da stored procedure olabilir (<see cref="T:Solum.Sql.SqlCommandSpec"/>).
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlExecutor.QueryAsync(System.String,Solum.Sql.SqlCommandSpec,System.Threading.CancellationToken)">
+            <summary>
+            Sorgu calistirir ve okuyucuyu doner. Baglantiyi okuyucu kapatir
+            (<see cref="F:System.Data.CommandBehavior.CloseConnection"/>), boylece
+            cagiran tek bir using ile hem okuyucuyu hem baglantiyi birakir.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.ISqlParameterNames">
+             <summary>
+             Kanonik parametre adini, tuketicinin veritabaninda gercekten kullandigi ada
+             cevirir.
+            
+             NEDEN VAR: bir sozlesme kutuphanesi, tuketicinin veritabani ADLANDIRMA
+             DILINI dayatmamalidir. Ilk tasarimda parametre adlari sozlesmeye gomulmustu
+             (<c>@Id</c>, <c>@Name</c>, <c>@OldStamp</c>); bu, sakli yordam kullanan her
+             tuketiciyi Ingilizce parametre adina mahkum ediyordu. Oysa parametre adi
+             veritabaninin sozlesmesidir ve o sozlesme projeye aittir — Turkce de
+             olabilir, baska bir duzen de.
+            
+             Bu, kutuphanenin kendi ilkesinin uygulanmasidir: MEKANIZMA tasinabilir
+             kalir, ESLEME disaridan gelir. Govde kanonik adla calisir; disariya ne
+             gonderilecegini tuketici soyler.
+            
+             <code>
+             // Ingilizce duzen — varsayilan, eslemeye gerek yok
+             SqlParameterNames.Default
+            
+             // Turkce duzen — YALNIZ farkli olanlar yazilir
+             new SqlParameterNames(new Dictionary&lt;string, string&gt;
+             {
+                 ["Id"]       = "KullaniciId",
+                 ["Name"]     = "Ad",
+                 ["OldStamp"] = "EskiDamga",
+             })
+             </code>
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.ISqlParameterNames.Resolve(System.String)">
+            <summary>
+            Kanonik adi gercek parametre adina cevirir. Eslemede karsiligi yoksa
+            kanonik ad aynen doner — kismi esleme mumkundur, tuketici yalniz
+            farkli olanlari yazar.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlParameterNames">
+            <summary>
+            <see cref="T:Solum.Sql.ISqlParameterNames"/>'in sozluk tabanli uygulamasi.
+            Esleme buyuk/kucuk harf duyarsizdir.
+            </summary>
+        </member>
+        <member name="P:Solum.Sql.SqlParameterNames.Default">
+            <summary>Esleme yapmayan uygulama — kanonik ad neyse o gider.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlParameterNames.#ctor">
+            <summary>Esleme olmadan kurar.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlParameterNames.#ctor(System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+            <summary>Kismi esleme ile kurar; yazilmayan adlar aynen gecer.</summary>
+            <param name="overrides">Kanonik ad -> gercek parametre adi.</param>
+        </member>
+        <member name="M:Solum.Sql.SqlParameterNames.Resolve(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.SqlReader">
+             <summary>
+             <see cref="T:System.Data.Common.DbDataReader"/> icin GUVENLI alan okuyucular.
+            
+             <b>BU BIR NESNE ESLEYICISI DEGIL — ve bu ayrim yazili bir karara
+             dayaniyor.</b> <c>Solum.Sql.csproj</c> sunu diyor: *"Dapper -> nesne
+             eslemesi TUKETICININ karari (isteyen ustunde Dapper kullanir)."* O karar
+             duruyor; burada eklenen sey esleme degil, ham okuyucunun KESKIN
+             KENARLARININ korunmasi.
+            
+             <b>UC SESSIZ/KOTU-TESHIS YOLU KAPANIYOR</b> ve ucu de ham
+             <c>DbDataReader</c> ile elle yazan her tuketicinin karsilastigi seyler:
+            
+             <list type="number">
+             <item><b>Kolon adi yazim hatasi.</b> <c>GetOrdinal("Tutarr")</c>
+               <c>IndexOutOfRangeException</c> firlatir ve mesaji <b>hangi kolonun</b>
+               arandigini SOYLEMEZ. Burada mesaj hem aranani hem MEVCUT KOLON
+               LISTESINI tasiyor.</item>
+             <item><b><c>DBNull</c>.</b> <c>GetString</c> null bir kolonda firlatir;
+               tuketici <c>IsDBNull</c> kontrolunu bir kolonda unutur ve hata
+               <b>yalniz o null satirda</b> uretimde cikar. Burada iki ayri metot var:
+               <c>…OrNull</c> ve <c>Required…</c> — hangisini istedigini SOYLEMEK
+               zorundasin.</item>
+             <item><b>Tip uyusmazligi.</b> <c>GetInt32</c> bir <c>bigint</c> kolonda
+               <c>InvalidCastException</c> firlatir ve mesaj kolon adini TASIMAZ.</item>
+             </list>
+            
+             <b><c>Required…</c> BOS DEGERDE VARSAYILANA DUSMUYOR.</b> Null bir para
+             kolonunu <c>0</c> olarak dondurmek bu deponun en pahali hata sinifi:
+             ekranda makul bir sayi gorunur ve kimse supheye dusmez. O yuzden
+             <c>Required…</c> FIRLATIR ve <c>…OrNull</c> nullable doner; ucuncu bir
+             "sessizce varsayilan" yolu YOK.
+            
+             SAYI VE TARIH DEGISMEZ KULTURLE okunuyor — saglayici zaten tipli deger
+             dondurdugu icin donusum gerekmiyor, ama metinden okuma yollarinda
+             (<see cref="M:Solum.Sql.SqlReader.DecimalFromString(System.Data.Common.DbDataReader,System.String)"/>) bu sart: <c>1,5</c> bir kulturde 1.5,
+             otekinde 15 demek.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.Ordinal(System.Data.Common.DbDataReader,System.String)">
+             <summary>
+             Kolonun sira numarasi — BULUNAMAZSA MEVCUT KOLONLARI SOYLEYEREK
+             firlatir.
+            
+             Cercevenin kendi hatasi (<c>IndexOutOfRangeException</c>) hangi kolonun
+             arandigini SOYLEMEZ; bir sakli yordamin kolonu yeniden adlandirildiginda
+             teshis dakikalar aliyor.
+             </summary>
+             <exception cref="T:System.InvalidOperationException">Kolon yok.</exception>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.HasColumn(System.Data.Common.DbDataReader,System.String)">
+            <summary>Kolon var mi — yordam surumleri arasinda gecis icin.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.StringOrNull(System.Data.Common.DbDataReader,System.String)">
+            <summary>Metin ya da <c>null</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.Int32OrNull(System.Data.Common.DbDataReader,System.String)">
+            <summary>Tam sayi ya da <c>null</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.Int64OrNull(System.Data.Common.DbDataReader,System.String)">
+            <summary>Uzun tam sayi ya da <c>null</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.DecimalOrNull(System.Data.Common.DbDataReader,System.String)">
+            <summary>Ondalik ya da <c>null</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.BooleanOrNull(System.Data.Common.DbDataReader,System.String)">
+            <summary>Mantiksal ya da <c>null</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.DateTimeOffsetOrNull(System.Data.Common.DbDataReader,System.String)">
+             <summary>
+             Zaman damgasi ya da <c>null</c>.
+            
+             <c>DateTimeOffset</c> — <c>DateTime</c> DEGIL. Sebep D8'de olculdu:
+             offset tasimayan bir deger, UTC mi yerel mi oldugunu SOYLEMEZ ve yaz
+             saati geri alindiginda ayni yerel saat iki kez yasanir; hangi olcumun
+             once oldugu KURTARILAMAZ.
+            
+             Saglayici <c>DateTime</c> donduruyorsa (SQL Server <c>datetime2</c>)
+             cagiran <see cref="M:Solum.Sql.SqlReader.Int64OrNull(System.Data.Common.DbDataReader,System.String)"/> gibi ham yol yerine kendi
+             donusumunu yazmali — biz OFFSET UYDURMUYORUZ.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.GuidOrNull(System.Data.Common.DbDataReader,System.String)">
+            <summary>Kimlik ya da <c>null</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredString(System.Data.Common.DbDataReader,System.String)">
+            <summary>Metin — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredInt32(System.Data.Common.DbDataReader,System.String)">
+            <summary>Tam sayi — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredInt64(System.Data.Common.DbDataReader,System.String)">
+            <summary>Uzun tam sayi — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredDecimal(System.Data.Common.DbDataReader,System.String)">
+            <summary>Ondalik — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredBoolean(System.Data.Common.DbDataReader,System.String)">
+            <summary>Mantiksal — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredDateTimeOffset(System.Data.Common.DbDataReader,System.String)">
+            <summary>Zaman damgasi — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.RequiredGuid(System.Data.Common.DbDataReader,System.String)">
+            <summary>Kimlik — <c>null</c> ise FIRLATIR.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.DecimalFromString(System.Data.Common.DbDataReader,System.String)">
+             <summary>
+             METIN kolonundan ondalik — DEGISMEZ KULTURLE.
+            
+             NEDEN VAR: eski yordamlar sayilari <c>NVARCHAR</c> dondurebiliyor ve
+             <c>decimal.Parse</c>in varsayilani MAKINENIN kulturu. `1.5` bir
+             kulturde 1,5 otekinde 15 demek — ve fark SESSIZ: iki deger de gecerli
+             bir sayi.
+             </summary>
+             <exception cref="T:System.InvalidOperationException">Metin sayi degil.</exception>
+        </member>
+        <member name="M:Solum.Sql.SqlReader.TypeMismatch(System.Data.Common.DbDataReader,System.String,System.Int32,System.Type,System.Exception)">
+             <summary>
+             TIP UYUSMAZLIGI — cercevenin mesaji kolon adini TASIMAZ.
+            
+             <c>GetInt32</c> bir <c>bigint</c> kolonda *"Specified cast is not
+             valid"* der ve hangi kolon oldugunu SOYLEMEZ. Yirmi kolonlu bir
+             sonucta bu, tek tek deneme demek.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlSearchPattern">
+             <summary>
+             <c>LIKE</c> aramasi icin desen ureticisi — <b>cagiran KACIS KARAKTERI YAZMAZ</b>.
+            
+             <b>NEDEN VAR — tuketicide OLCULDU (Belinza, 2026-08-28 ve 30):</b> ayni
+             kacis IKI ZIT sekilde yanlis yazilabiliyor ve dogru yazim DIZE TURUNE gore
+             TERSINE donuyor:
+            
+             <list type="table">
+               <item>
+                 <term>Normal dize</term>
+                 <description><c>ESCAPE '\'</c> yazildi. C# <c>\'</c> dizisini TEK
+                 TIRNAK KACISI okuyor, SQL'e giden metin <c>ESCAPE ''</c> — kacis
+                 karakteri BOS DIZE. Sonuc: <c>%</c> arayan kullanici BUTUN kayitlari
+                 aliyor. <b>Hata yok, yanlis sonuc var</b> ve 13 yerde iki gun
+                 durdu.</description>
+               </item>
+               <item>
+                 <term>Ham dize</term>
+                 <description>Ham dizede kacis ISLEMEZ; <c>ESCAPE '\\'</c> yazmak SQL'e
+                 IKI ters bolu gonderir -> "gecersiz kacis karakteri" hatasi.</description>
+               </item>
+             </list>
+            
+             Yani kural dize turune gore tersine donuyor ve tuketicinin koruma testi
+             bu yuzden YANLIS ALARM verdi — normal-dize kuralini ham dizeye
+             uyguluyordu. Kendi ifadeleri: *"Cagiran hic kacis karakteri yazmasin."*
+            
+             <b>COZUM DESEN URETIMI DEGIL, KACIS KARARININ KALDIRILMASI.</b> Bu tip
+             hem deseni hem <c>ESCAPE</c> bildirimini uretir; cagiran ikisini de
+             yazmaz, yani yanlis yazamaz. <c>sinif-kapatma.md</c> §4: *"Bir garantiyi
+             yalniz bir uygulamaya koymak, onu sozlesme degil TESADUF yapar."*
+            
+             <b>SOLUM'DA BU BOSLUK OLCULDU:</b> <c>grep -rn "ESCAPE\|LIKE " src</c> ->
+             SIFIR. Yani kutuphane bu sorunu hic ele almamisti.
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlSearchPattern.EscapeChar">
+             <summary>
+             Kacis karakteri — <c>\</c>.
+            
+             SABIT VE TEK. Secilebilir olsaydi cagiran yine bir karakter YAZMAK
+             zorunda kalirdi ve tuzak geri gelirdi.
+             </summary>
+        </member>
+        <member name="F:Solum.Sql.SqlSearchPattern.EscapeClause">
+             <summary>
+             SQL'e YAZILACAK <c>ESCAPE</c> yan tumcesi: <c>ESCAPE '\'</c>.
+            
+             <b>BU SABIT NORMAL BIR C# DIZESIDIR</b> ve icindeki <c>\\</c> tek bir
+             ters boluye cozulur — yani SQL'e giden metin tam olarak
+             <c>ESCAPE '\'</c>. Ham dizeye kopyalanirsa BOZULUR; o yuzden
+             kopyalanmasin, <b>bu sabit kullanilsin</b>.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlSearchPattern.Contains(System.String)">
+             <summary>
+             Kullanici girdisini <c>LIKE</c> deseni yapar: <c>%girdi%</c>.
+            
+             Girdideki <c>%</c>, <c>_</c> ve <c>\</c> KACIRILIR — yani kullanicinin
+             yazdigi <c>%</c> bir joker degil, ARANAN karakterdir.
+            
+             <b>SIRA ONEMLI:</b> once <c>\</c>, sonra jokerler. Ters sirada
+             eklenen kacis karakterlerinin kendisi bir kez daha kacirilir ve desen
+             bozulur.
+            
+             <c>null</c> ya da bosluk-yalniz girdi <c>null</c> doner: cagiran o
+             durumda <c>LIKE</c> yan tumcesini HIC EKLEMEMELIDIR. <c>'%%'</c>
+             donmek "her sey" demek olurdu ve bu, bos aramayi sessizce
+             "suzgec yok"a cevirmek — ama cagiran suzdugunu sanmaya devam ederdi.
+             </summary>
+             <param name="input">Kullanicinin yazdigi arama metni.</param>
+             <returns>Desen, ya da girdi bossa <c>null</c>.</returns>
+        </member>
+        <member name="M:Solum.Sql.SqlSearchPattern.StartsWith(System.String)">
+            <summary>Girdiyle BASLAYAN kayitlar: <c>girdi%</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlSearchPattern.EndsWith(System.String)">
+            <summary>Girdiyle BITEN kayitlar: <c>%girdi</c>.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlSearchPattern.Exact(System.String)">
+             <summary>
+             Joker olmadan, yalniz KACIRILMIS girdi.
+            
+             Tam esitlik icin <c>LIKE</c> kullanmak gerektiginde (ornegin
+             buyuk/kucuk harf duyarsiz karsilastirma harmanlamasi icin) lazim.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlSearchPattern.Escape(System.String)">
+             <summary>
+             Joker karakterleri kacirir.
+            
+             Kacirilan uc karakter: <c>\</c> (kacis karakterinin KENDISI),
+             <c>%</c> ve <c>_</c>.
+            
+             <c>[</c> KACIRILMIYOR ve bu bilincli bir SINIR: SQL Server
+             <c>[abc]</c> kume sozdizimini destekler, PostgreSQL ve SQLite
+             DESTEKLEMEZ. Kacirmak SQL Server'da dogru, otekilerde ARANAN metni
+             bozardi — cunku orada <c>[</c> siradan bir karakter ve
+             <c>\[</c> yazmak onu bulunamaz yapar.
+            
+             Yani bu tip lehce-tarafsiz kalabilmek icin ORTAK kumeyle sinirli.
+             SQL Server'da kume sozdizimini de kapatmak isteyen tuketici kendi
+             sarmalayicisini yazar; sessizce yanlis yapmaktansa acikca eksik.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.Tenancy.MigrationPlan">
+             <summary>
+             Migration zincirinin iki yarisi.
+            
+             AYRIM YAPILANDIRMADIR, KOD DEGIL. Hangi tablonun ortak semada hangisinin
+             kiraci semasinda duracagi kodun icine gomulmez; acik bir listede yasar.
+             Aksi halde bir tablonun yanlis tarafta durdugu ancak ikinci kiracida
+             anlasilir — ve o noktada tasima pahalidir.
+             </summary>
+             <param name="Shared">
+             Kiraciustu betikler. Kullanici kimligi, kiraci listesi, kullanici-kiraci
+             erisimi — kiracilari KAPSAYAN veri. Bir kez, ortak semada.
+             </param>
+             <param name="PerTenant">
+             Kiraciya ait betikler. Roller, izin atamalari, is verisi. HER kiraci
+             semasinda ayri ayri.
+             </param>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.MigrationPlan.#ctor(System.Collections.Generic.IReadOnlyList{Solum.Sql.Migrations.MigrationScript},System.Collections.Generic.IReadOnlyList{Solum.Sql.Migrations.MigrationScript})">
+             <summary>
+             Migration zincirinin iki yarisi.
+            
+             AYRIM YAPILANDIRMADIR, KOD DEGIL. Hangi tablonun ortak semada hangisinin
+             kiraci semasinda duracagi kodun icine gomulmez; acik bir listede yasar.
+             Aksi halde bir tablonun yanlis tarafta durdugu ancak ikinci kiracida
+             anlasilir — ve o noktada tasima pahalidir.
+             </summary>
+             <param name="Shared">
+             Kiraciustu betikler. Kullanici kimligi, kiraci listesi, kullanici-kiraci
+             erisimi — kiracilari KAPSAYAN veri. Bir kez, ortak semada.
+             </param>
+             <param name="PerTenant">
+             Kiraciya ait betikler. Roller, izin atamalari, is verisi. HER kiraci
+             semasinda ayri ayri.
+             </param>
+        </member>
+        <member name="P:Solum.Sql.Tenancy.MigrationPlan.Shared">
+            <summary>
+            Kiraciustu betikler. Kullanici kimligi, kiraci listesi, kullanici-kiraci
+            erisimi — kiracilari KAPSAYAN veri. Bir kez, ortak semada.
+            </summary>
+        </member>
+        <member name="P:Solum.Sql.Tenancy.MigrationPlan.PerTenant">
+            <summary>
+            Kiraciya ait betikler. Roller, izin atamalari, is verisi. HER kiraci
+            semasinda ayri ayri.
+            </summary>
+        </member>
+        <member name="T:Solum.Sql.Tenancy.ProvisionResult">
+            <summary>Bir kiracinin saglama sonucu.</summary>
+            <param name="TenantKey">Kiraci anahtari.</param>
+            <param name="Schema">Olusturulan/guncellenen sema.</param>
+            <param name="Migration">Migration sonucu.</param>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.ProvisionResult.#ctor(System.String,System.String,Solum.Sql.Migrations.MigrationResult)">
+            <summary>Bir kiracinin saglama sonucu.</summary>
+            <param name="TenantKey">Kiraci anahtari.</param>
+            <param name="Schema">Olusturulan/guncellenen sema.</param>
+            <param name="Migration">Migration sonucu.</param>
+        </member>
+        <member name="P:Solum.Sql.Tenancy.ProvisionResult.TenantKey">
+            <summary>Kiraci anahtari.</summary>
+        </member>
+        <member name="P:Solum.Sql.Tenancy.ProvisionResult.Schema">
+            <summary>Olusturulan/guncellenen sema.</summary>
+        </member>
+        <member name="P:Solum.Sql.Tenancy.ProvisionResult.Migration">
+            <summary>Migration sonucu.</summary>
+        </member>
+        <member name="P:Solum.Sql.Tenancy.ProvisionResult.Succeeded">
+            <summary>Basarili mi.</summary>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.ProvisionResult.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.Tenancy.ITenantProvisioner">
+            <summary>Kiraci saglama.</summary>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.ITenantProvisioner.ProvisionSharedAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Ortak semayi kurar/gunceller. Kiraci acmadan ONCE bir kez.</summary>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.ITenantProvisioner.ProvisionTenantAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Bir kiraciyi kurar ya da gunceller.
+            IDEMPOTENT: var olan kiraci uzerinde tekrar calistirilabilir.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.ITenantProvisioner.ProvisionAllAsync(System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Threading.CancellationToken)">
+            <summary>Birden cok kiraciyi gunceller — surum yukseltmesinde.</summary>
+        </member>
+        <member name="T:Solum.Sql.Tenancy.TenantProvisioner">
+             <summary>
+             Migration zincirini calistirarak kiraci acan/guncelleyen saglayici.
+            
+             NEDEN OTOMATIK OLMAK ZORUNDA: "yeni kiraci = sema yarat + butun zinciri o
+             semada kostur" adimi elle yapilirsa IKINCI kiracida bir betik unutulur ve
+             o kiraci digerlerinden farkli bir semayla yasamaya baslar. Fark, aylar
+             sonra tek bir kiracida patlayan bir hatayla ortaya cikar.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.TenantProvisioner.#ctor(System.String,Solum.Sql.ISqlDialect,Solum.Sql.Migrations.IMigrationJournalSql,Solum.Sql.Tenancy.MigrationPlan,System.Func{System.DateTimeOffset})">
+             <summary>
+             Migration zincirini calistirarak kiraci acan/guncelleyen saglayici.
+            
+             NEDEN OTOMATIK OLMAK ZORUNDA: "yeni kiraci = sema yarat + butun zinciri o
+             semada kostur" adimi elle yapilirsa IKINCI kiracida bir betik unutulur ve
+             o kiraci digerlerinden farkli bir semayla yasamaya baslar. Fark, aylar
+             sonra tek bir kiracida patlayan bir hatayla ortaya cikar.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.Tenancy.TenantProvisioner.ProvisionSharedAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.Tenancy.TenantProvisioner.ProvisionTenantAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.Tenancy.TenantProvisioner.ProvisionAllAsync(System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>

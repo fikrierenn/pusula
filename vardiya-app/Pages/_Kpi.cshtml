@@ -8,12 +8,12 @@
     <div class="solum-kpi-grid">
         <div class="solum-kpi">
             <div class="solum-kpi-label">Kişi-gün</div>
-            <div class="solum-kpi-value">@Model.Summary.PersonDays.ToString("N0")</div>
+            <div class="solum-kpi-value" data-test="kisi-gun">@Model.Summary.PersonDays.ToString("N0")</div>
             <div class="solum-kpi-hint">@Model.Summary.PersonCount kişi · @Model.Summary.BranchCount şube</div>
         </div>
         <div class="solum-kpi solum-kpi-bad">
             <div class="solum-kpi-label">Eksik saat</div>
-            <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalShortMin)</div>
+            <div class="solum-kpi-value" data-test="eksik-toplam">@VrdFormat.HoursDecimal(Model.Summary.TotalShortMin)</div>
             <div class="solum-kpi-hint">
                 dönem @VrdFormat.HoursDecimal(Model.Summary.ShortMin)
                 + devir @VrdFormat.HoursDecimal(Model.Summary.CarryShortMin)

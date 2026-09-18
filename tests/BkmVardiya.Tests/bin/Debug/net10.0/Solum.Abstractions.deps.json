@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "Solum.Abstractions/0.7.0": {
+        "runtime": {
+          "Solum.Abstractions.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Solum.Abstractions/0.7.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

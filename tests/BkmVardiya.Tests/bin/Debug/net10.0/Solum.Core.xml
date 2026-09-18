@@ -1,0 +1,3339 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Solum.Core</name>
+    </assembly>
+    <members>
+        <member name="T:Solum.Core.Auditing.AuditAction">
+            <summary>Denetim izine yazilan islem.</summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.AuditAction.Created">
+            <summary>Kayit olusturuldu.</summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.AuditAction.Updated">
+            <summary>Kayit guncellendi.</summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.AuditAction.Deleted">
+             <summary>
+             Kayit YUMUSAK silindi.
+            
+             SERT SILME BU LISTEDE YOK ve bu bilincli: <c>ISoftDelete</c> tasimayan
+             bir varlik gercekten silinirse denetim izi de anlamsizlasir — hangi
+             kaydin izi oldugu artik dogrulanamaz. Sert silme <c>IAppendOnly</c>
+             varliklarda ZATEN yasak; otekilerde tuketicinin karari ve o kararin
+             izini biz tasiyamayiz.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Auditing.AuditFieldDecision">
+             <summary>
+             Bir alanin denetim izine NASIL girecegi.
+            
+             UC SECENEK VAR VE ORTADAKI EN ONEMLISI: bir alanin <b>degistigi</b> denetim
+             bilgisidir, <b>degeri</b> ise kisisel veri olabilir. Ikisini ayirmayan bir
+             tasarim ya izi yararsiz yapar (hicbir sey kaydetme) ya da kisisel veriyi
+             bir daha silinemeyen bir deftere yazar (<c>IAppendOnly</c>).
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.AuditFieldDecision.Record">
+            <summary>Eski ve yeni DEGER kaydedilir.</summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.AuditFieldDecision.Mask">
+             <summary>
+             Alanin DEGISTIGI kaydedilir, DEGERLERI kaydedilmez.
+            
+             Kisisel veri, parola, jeton icin varsayilan karar. Denetim izi *"kim
+             neyi ne zaman degistirdi"* sorusuna cevap verir; deger o cevabin
+             zorunlu parcasi DEGIL.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.AuditFieldDecision.Skip">
+             <summary>
+             Alan denetim izine HIC girmez.
+            
+             Gurultu alanlari icin: <c>UpdatedAt</c>, <c>ConcurrencyStamp</c>.
+             Bunlar her guncellemede degisir ve izde yalniz yer kaplar.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Auditing.IAuditFieldPolicy">
+             <summary>
+             Hangi alanin denetim izine nasil girecegini soyleyen sozlesme.
+            
+             <b>NEDEN ZORUNLU BIR SOZLESME, NEDEN "her seyi kaydet" DEGIL:</b> denetim
+             izi <c>IAppendOnly</c>dir — yazilan satir SILINEMEZ. Yani bir parolayi ya
+             da kimlik numarasini oraya yazmak, onu bir daha kaldirilamayacak bir yere
+             yazmak demektir. KVKK silme talebi geldiginde o satirlar duruyor olur.
+            
+             Ve tersi de yanlis: hicbir deger kaydetmeyen bir iz *"bir sey degisti"*
+             der ve neyin ne oldugunu SOYLEMEZ — denetimin sorusuna cevap vermez.
+            
+             O yuzden karar ALAN BASINA veriliyor ve varsayilan
+             <see cref="T:Solum.Core.Auditing.DefaultAuditFieldPolicy"/> **maskelemeye egilimli**: tanidigi
+             hassas ad desenlerinde <see cref="F:Solum.Core.Auditing.AuditFieldDecision.Mask"/> doner.
+             Tanimadigini kaydeder — cunku tanimadigi bir alani maskelemek, izi sessizce
+             yararsiz yapardi ve bunu kimse fark etmezdi.
+            
+             <b>Bu asimetri bilincli ve durustce yaziliyor:</b> yanlis pozitif
+             (gereksiz maskeleme) izi zayiflatir; yanlis negatif (maskelenmeyen kisisel
+             veri) silinemez bir kayda yazar. Ikisi esit degil — ama varsayilan bir
+             desen listesi ASLA tam olamaz, o yuzden tuketici kendi politikasini
+             yazmali ve `BASLARKEN` bunu ZORUNLU adim olarak soyluyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Auditing.IAuditFieldPolicy.Decide(System.String,System.String)">
+            <summary>
+            Bu alan denetim izine nasil girsin.
+            </summary>
+            <param name="entityName">Varlik tipi adi.</param>
+            <param name="propertyName">Alan adi.</param>
+        </member>
+        <member name="T:Solum.Core.Auditing.DefaultAuditFieldPolicy">
+             <summary>
+             Varsayilan politika — HASSAS AD DESENLERINI maskeler, gurultuyu atlar.
+            
+             <c>kutuphane-disiplini.md</c> §4: her yetenek arayuz + varsayilan uygulama.
+             Ama bu varsayilan bir GUVENCE DEGIL, bir BASLANGIC: desen listesi asla tam
+             olamaz ve tuketici kendi politikasini yazmak zorunda.
+            
+             KARSILASTIRMA <c>OrdinalIgnoreCase</c> ve ALT DIZGI: <c>Password</c>
+             deseni <c>PasswordHash</c>, <c>NewPassword</c>, <c>passwordSalt</c> hepsini
+             yakalar. Tam eslesme olsaydi bir on-ek/son-ek varyanti SESSIZCE gecerdi —
+             ve bu, bu depodaki kara-liste dersinin ta kendisi
+             (<c>isimlendirme.md</c>: *"bir kara liste eksik olabilir ve eksikligi
+             GORUNMEZ"*).
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.DefaultAuditFieldPolicy.Sensitive">
+             <summary>
+             Maskelenen ad desenleri — ALT DIZGI olarak araniyor.
+            
+             Liste kisa ve bilinen en pahali sinifla sinirli. Uzatmak yanlis bir
+             guven verirdi: *"Solum kisisel veriyi zaten maskeliyor"* diye dusunen
+             tuketici kendi politikasini yazmazdi.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Auditing.DefaultAuditFieldPolicy.Noise">
+             <summary>
+             Denetim izine girmeyen GURULTU alanlari.
+            
+             Bunlar HER guncellemede degisir; izde yalniz yer kaplar ve gercek
+             degisimi GORUNMEZ yapar — yirmi satirlik bir izde on sekizi
+             <c>UpdatedAt</c> olurdu.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Auditing.DefaultAuditFieldPolicy.Decide(System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Auditing.AuditFieldChange">
+            <summary>
+            Denetim izine yazilacak TEK ALAN degisimi.
+            </summary>
+            <param name="Property">Alan adi.</param>
+            <param name="OldValue">
+            Eski deger — maskelendiyse <c>null</c>. <see cref="P:Solum.Core.Auditing.AuditFieldChange.Masked"/> ile ayirt
+            edilir: <c>null</c> "deger yoktu" da olabilir.
+            </param>
+            <param name="NewValue">Yeni deger — maskelendiyse <c>null</c>.</param>
+            <param name="Masked">Deger MASKELENDI mi.</param>
+        </member>
+        <member name="M:Solum.Core.Auditing.AuditFieldChange.#ctor(System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Denetim izine yazilacak TEK ALAN degisimi.
+            </summary>
+            <param name="Property">Alan adi.</param>
+            <param name="OldValue">
+            Eski deger — maskelendiyse <c>null</c>. <see cref="P:Solum.Core.Auditing.AuditFieldChange.Masked"/> ile ayirt
+            edilir: <c>null</c> "deger yoktu" da olabilir.
+            </param>
+            <param name="NewValue">Yeni deger — maskelendiyse <c>null</c>.</param>
+            <param name="Masked">Deger MASKELENDI mi.</param>
+        </member>
+        <member name="P:Solum.Core.Auditing.AuditFieldChange.Property">
+            <summary>Alan adi.</summary>
+        </member>
+        <member name="P:Solum.Core.Auditing.AuditFieldChange.OldValue">
+            <summary>
+            Eski deger — maskelendiyse <c>null</c>. <see cref="P:Solum.Core.Auditing.AuditFieldChange.Masked"/> ile ayirt
+            edilir: <c>null</c> "deger yoktu" da olabilir.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Auditing.AuditFieldChange.NewValue">
+            <summary>Yeni deger — maskelendiyse <c>null</c>.</summary>
+        </member>
+        <member name="P:Solum.Core.Auditing.AuditFieldChange.Masked">
+            <summary>Deger MASKELENDI mi.</summary>
+        </member>
+        <member name="M:Solum.Core.Auditing.AuditFieldChange.MaskedChange(System.String)">
+             <summary>
+             Maskelenmis degisim — DEGER TASIMAZ ama DEGISTIGINI soyler.
+            
+             <c>Masked</c> bayragi SART: <c>OldValue</c> ve <c>NewValue</c> ikisi de
+             <c>null</c> oldugunda "deger yoktu" ile "deger gizlendi" ayirt
+             edilemezdi — ve ilki bir olgu, ikincisi bir KARAR. Denetim izini okuyan
+             kisi ikisini karistirirsa yanlis sonuc cikarir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Crud.CrudOperation">
+            <summary>Hangi islem yapiliyor. Yetki ve kanca noktalari bunu alir.</summary>
+        </member>
+        <member name="F:Solum.Core.Crud.CrudOperation.Read">
+            <summary>Tek kayit okuma.</summary>
+        </member>
+        <member name="F:Solum.Core.Crud.CrudOperation.List">
+            <summary>Liste okuma.</summary>
+        </member>
+        <member name="F:Solum.Core.Crud.CrudOperation.Create">
+            <summary>Yeni kayit.</summary>
+        </member>
+        <member name="F:Solum.Core.Crud.CrudOperation.Update">
+            <summary>Guncelleme.</summary>
+        </member>
+        <member name="F:Solum.Core.Crud.CrudOperation.Delete">
+            <summary>Silme.</summary>
+        </member>
+        <member name="T:Solum.Core.Crud.CrudListRequest">
+             <summary>
+             Liste istegi.
+            
+             SAYFA BOYUTU SINIRLI OLMAK ZORUNDA: sinirsiz sayfa boyutu, tek bir istekle
+             butun tabloyu bellege cekmeye izin verir. Sinir servis tarafinda uygulanir,
+             cagirana guvenilmez.
+             </summary>
+             <param name="Page">1'den baslar.</param>
+             <param name="PageSize">Servisteki ust sinira kirpilir.</param>
+             <param name="Search">Arama terimi; anlami turetilen servise aittir.</param>
+             <param name="Sort">Siralama anahtari; turetilen servis tanir.</param>
+             <param name="SortDescending">Azalan siralama.</param>
+        </member>
+        <member name="M:Solum.Core.Crud.CrudListRequest.#ctor(System.Int32,System.Int32,System.String,System.String,System.Boolean)">
+             <summary>
+             Liste istegi.
+            
+             SAYFA BOYUTU SINIRLI OLMAK ZORUNDA: sinirsiz sayfa boyutu, tek bir istekle
+             butun tabloyu bellege cekmeye izin verir. Sinir servis tarafinda uygulanir,
+             cagirana guvenilmez.
+             </summary>
+             <param name="Page">1'den baslar.</param>
+             <param name="PageSize">Servisteki ust sinira kirpilir.</param>
+             <param name="Search">Arama terimi; anlami turetilen servise aittir.</param>
+             <param name="Sort">Siralama anahtari; turetilen servis tanir.</param>
+             <param name="SortDescending">Azalan siralama.</param>
+        </member>
+        <member name="P:Solum.Core.Crud.CrudListRequest.Page">
+            <summary>1'den baslar.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.CrudListRequest.PageSize">
+            <summary>Servisteki ust sinira kirpilir.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.CrudListRequest.Search">
+            <summary>Arama terimi; anlami turetilen servise aittir.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.CrudListRequest.Sort">
+            <summary>Siralama anahtari; turetilen servis tanir.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.CrudListRequest.SortDescending">
+            <summary>Azalan siralama.</summary>
+        </member>
+        <member name="T:Solum.Core.Crud.SortDecision">
+             <summary>
+             UYGULANAN siralama — ISTENEN degil.
+            
+             NEDEN AYRI BIR TIP: bagimsiz on-dondurma incelemesi olctu (BULGU 2) ki
+             tablo basligindaki siralama oku ISTEKTEN cizilliyordu:
+            
+             <code>
+             // TableRenderer — ONCEKI hal
+             var aktif = model.Sort == col.SortKey;                    // ISTEK
+             var ok = !aktif ? "" : model.SortDescending ? " v" : " ^";
+             </code>
+            
+             Ve <c>CrudService.ApplySort</c> varsayilani <c>sort</c> parametresini HIC
+             OKUMUYOR — her zaman anahtara gore siralar. Yani <c>sortKey: "amount"</c>
+             yazip <c>ApplySort</c>u ezmeyen tuketicide kullanici "Tutar"a tiklar, veri
+             ID'ye gore gelir, baslikta OK GORUNUR ve kullanici en ust satiri "en kucuk
+             tutar" diye okur — sonra KARAR VERIR.
+            
+             `kanit-disiplini.md` dorduncu sorusu: ok, verinin DESTEKLEMEDIGI bir
+             iddiaydi. `docs/ODAK.md` onarimi adiyla yazmisti ve KOD YAZILMAMISTI.
+            
+             BOGAZ OLMASI SART: bunu istege bagli bir ozellik yapmak, ureticinin
+             ATLAYABILDIGI bir garanti demek olurdu. `sinif-kapatma.md`: *"bir garantiyi
+             yalniz bir uygulamaya koymak, onu sozlesme degil TESADUF yapar."*
+             </summary>
+             <param name="Key">
+             Uygulanan siralama anahtari. <c>null</c> ise ISTEK UYGULANMADI — ok
+             cizilmez. Bu, "siralama yok" degil "istedigin siralama yapilmadi" demek.
+             </param>
+             <param name="Descending">Azalan mi.</param>
+        </member>
+        <member name="M:Solum.Core.Crud.SortDecision.#ctor(System.String,System.Boolean)">
+             <summary>
+             UYGULANAN siralama — ISTENEN degil.
+            
+             NEDEN AYRI BIR TIP: bagimsiz on-dondurma incelemesi olctu (BULGU 2) ki
+             tablo basligindaki siralama oku ISTEKTEN cizilliyordu:
+            
+             <code>
+             // TableRenderer — ONCEKI hal
+             var aktif = model.Sort == col.SortKey;                    // ISTEK
+             var ok = !aktif ? "" : model.SortDescending ? " v" : " ^";
+             </code>
+            
+             Ve <c>CrudService.ApplySort</c> varsayilani <c>sort</c> parametresini HIC
+             OKUMUYOR — her zaman anahtara gore siralar. Yani <c>sortKey: "amount"</c>
+             yazip <c>ApplySort</c>u ezmeyen tuketicide kullanici "Tutar"a tiklar, veri
+             ID'ye gore gelir, baslikta OK GORUNUR ve kullanici en ust satiri "en kucuk
+             tutar" diye okur — sonra KARAR VERIR.
+            
+             `kanit-disiplini.md` dorduncu sorusu: ok, verinin DESTEKLEMEDIGI bir
+             iddiaydi. `docs/ODAK.md` onarimi adiyla yazmisti ve KOD YAZILMAMISTI.
+            
+             BOGAZ OLMASI SART: bunu istege bagli bir ozellik yapmak, ureticinin
+             ATLAYABILDIGI bir garanti demek olurdu. `sinif-kapatma.md`: *"bir garantiyi
+             yalniz bir uygulamaya koymak, onu sozlesme degil TESADUF yapar."*
+             </summary>
+             <param name="Key">
+             Uygulanan siralama anahtari. <c>null</c> ise ISTEK UYGULANMADI — ok
+             cizilmez. Bu, "siralama yok" degil "istedigin siralama yapilmadi" demek.
+             </param>
+             <param name="Descending">Azalan mi.</param>
+        </member>
+        <member name="P:Solum.Core.Crud.SortDecision.Key">
+            <summary>
+            Uygulanan siralama anahtari. <c>null</c> ise ISTEK UYGULANMADI — ok
+            cizilmez. Bu, "siralama yok" degil "istedigin siralama yapilmadi" demek.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Crud.SortDecision.Descending">
+            <summary>Azalan mi.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.SortDecision.None">
+            <summary>Istenen siralama UYGULANMADI.</summary>
+        </member>
+        <member name="T:Solum.Core.Crud.PagedResult`1">
+             <summary>
+             Sayfalanmis sonuc.
+            
+             BUTUN LISTE CIZIMININ GECTIGI TEK NOKTA — yani bogaz (`sinif-kapatma.md`
+             4. soru). Bagimsiz denetim UC olculmus bulgunun buradan girdigini gosterdi
+             ve degismezler bu yuzden var.
+            
+             NEDEN POZISYONEL RECORD DEGIL — bu depoda IKI KEZ olculdu:
+             record'un kopya kurucusu (<c>with</c>) ne alan baslaticilarini ne de
+             birincil kurucu govdesini KOSAR. Yani pozisyonel bir record'da kurucuya
+             konan her degismez <c>with</c> yolundan ATLANIR
+             (`sinif-kapatma.md` ornek 7 ve pano bulgusu C1).
+            
+             Ozellikler <c>init</c> DEGIL, salt-okunur: <c>with { TotalCount = 0 }</c>
+             artik DERLENMIYOR (CS8852). Degismez atlanamaz hale geldi — dogrulama
+             hilesiyle degil, DILLE.
+            
+             UC KATMAN, ucu de olculdu:
+             <list type="number">
+             <item>DIL — cagri yerinde <c>with { TotalCount = 0 }</c> CS8852 verir.</item>
+             <item>GENEL API COZUMLEYICISI — birisi <c>init</c> geri eklerse
+               <c>RS0016</c> ("TotalCount.init tanimlanan genel API'nin parcasi degil")
+               derlemeyi kirar. Yani gevsetme SESSIZ olamaz: `PublicAPI.Unshipped.txt`
+               satiri eklenmek zorunda ve o satir denetimde GORUNUR.</item>
+             <item>KAPI — <c>PagedResultTests.Ozelliklerin_YAZICISI_YOK</c> yansimayla
+               yazici arar; ilk iki katman bir sekilde asilirsa kirmizi doner.</item>
+             </list>
+            
+             Bedeli olculdu: <c>with</c> kullanimi SIFIR, desen ayristirma SIFIR,
+             10 cagri yeri, `PublicAPI.Shipped.txt` sekiz pakette BOS.
+            
+             AYRICA UC ARDISIK <c>int</c>: <c>new PagedResult&lt;T&gt;(items, page,
+             pageSize, total)</c> diye YANLIS SIRAYLA yazmak eskiden sessizce
+             derleniyordu (sonuc: <c>TotalCount=1</c> -> tablo cizilir, pager cizilmez).
+             Degismezler bu karisiklarin cogunu da yakalar.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.Items">
+            <summary>Bu sayfadaki kayitlar.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.TotalCount">
+            <summary>Suzgecten gecen TOPLAM kayit sayisi — bu sayfadaki degil.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.Page">
+            <summary>Donen sayfa. 1 tabanli.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.PageSize">
+            <summary>Uygulanan sayfa boyutu.</summary>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.Sort">
+            <summary>
+            UYGULANAN siralama. Ok BUNDAN cizilir, istekten DEGIL (BULGU 2).
+            </summary>
+        </member>
+        <member name="M:Solum.Core.Crud.PagedResult`1.#ctor(System.Collections.Generic.IReadOnlyList{`0},System.Int32,System.Int32,System.Int32,Solum.Core.Crud.SortDecision)">
+             <summary>
+             Sayfalanmis sonuc kurar. CELISKILI durum REDDEDILIR.
+            
+             `solum-veri` §1'in ilkesi: *"celiskili varlik model kurulurken
+             reddedilir"* ve *"bu, verinin kaybolmasindan kotudur: sistem tutarli
+             GORUNUR."* Ayni karar burada.
+             </summary>
+             <remarks>
+             PARAMETRE ADLARI BUYUK HARFLE BASLIYOR ve bu BILINCLI: pozisyonel
+             record'un urettigi adlar bunlardi. Kucuk harfe cevirmek ADLANDIRILMIS
+             ARGUMAN kullanan her cagri yerini kirardi — ve bu depoda o kullanim
+             yayginlastirilmis bir SAVUNMA: uc ardisik <c>int</c> tasiyan bir
+             kurucuda <c>TotalCount: 1</c> yazmak, sirayi karistirmayi imkansiz
+             kiliyor. Iki tuketici bugun bu bicimde cagiriyor.
+            
+             `PublicAPI.Shipped.txt` bos oldugu icin degistirmek FORMEN bedava
+             olurdu; ama gercek tuketici BUGUN var. "Bedava" olan seyi kirmak da
+             bir maliyet.
+             </remarks>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.PageCount">
+             <summary>
+             Toplam sayfa sayisi.
+            
+             <c>PageSize &lt;= 0</c> dali KALDIRILDI: kurucu artik o durumu
+             reddediyor, yani dal olu koddu. Olu savunma kodu birakmak, o durumun
+             ERISILEBILIR oldugunu ima eder ve sonraki okuyucuyu yanlis yonlendirir.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Crud.PagedResult`1.IsPageOutOfRange">
+             <summary>
+             ARALIK DISI SAYFA: kayit VAR ama bu sayfada satir YOK.
+            
+             GECERLI bir durumdur, reddedilmiyor — <c>?page=999</c> yazan bir
+             kullanici ya da son sayfadan sonra silinen kayitlar bunu meshru olarak
+             uretir; reddetmek adres cubugundaki bir yaziyi 500'e cevirirdi.
+            
+             Ama SESSIZ de kalamaz. Olculdu (denetci S-1): uretici bos-durumu
+             <c>TotalCount == 0</c> ile kararlastiriyordu, yani bu durumda BOS
+             DURUM CIZILMIYORDU; ve sayfa penceresi bos kume dondugu icin
+             SAYFALAYICI da cizilmiyordu. Sonuc: baslik satiri var, satir yok,
+             mesaj yok, **geri donus yolu bile yok**.
+            
+             Karar burada TEK YERDE: uretici bunu okuyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Crud.PagedResult`1.Empty(System.Int32,System.Int32)">
+            <summary>Bos sonuc.</summary>
+            <summary>
+            Bos sonuc. Siralama UYGULANMADI (`SortDecision.None`) — bos kumede
+            siralama iddiasi anlamsizdir ve ok cizilmemeli.
+            </summary>
+        </member>
+        <member name="T:Solum.Core.Entities.Entity`1">
+            <summary>Sade varlik tabani.</summary>
+            <typeparam name="TKey">Anahtar tipi.</typeparam>
+        </member>
+        <member name="P:Solum.Core.Entities.Entity`1.Id">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Entities.AuditedEntity`1">
+             <summary>
+             Olusturulma ve degistirilme izi tasiyan varlik tabani.
+            
+             ALANLAR ELLE DOLDURULMAZ. Kaydetme sirasinda otomatik doldurulur; elle
+             doldurulan denetim alani, unutulan denetim alanidir.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Entities.AuditedEntity`1.CreatedAt">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Entities.AuditedEntity`1.CreatedBy">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Entities.AuditedEntity`1.UpdatedAt">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Entities.AuditedEntity`1.UpdatedBy">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Entities.FullAuditedEntity`1">
+            <summary>
+            Tam denetim izi: olusturma, degistirme, yumusak silme ve eszamanlilik damgasi.
+            Cogu is varliginin tabani budur.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Entities.FullAuditedEntity`1.IsDeleted">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Entities.FullAuditedEntity`1.DeletedAt">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Entities.FullAuditedEntity`1.DeletedBy">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Entities.FullAuditedEntity`1.ConcurrencyStamp">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Entities.IAppendOnly">
+             <summary>
+             Bu varlik SILINEMEZ. Defter (ledger) satirlari, denetim kayitlari ve
+             hareket kayitlari boyledir.
+            
+             NEDEN AYRI BIR ISARET GEREKIYOR — kacinilan somut hata:
+            
+             <see cref="T:Solum.Core.Entities.FullAuditedEntity`1"/> her varliga yumusak silme veriyor ve
+             kaydetme kurallari silmeyi otomatik olarak yumusak silmeye ceviriyor.
+             Ayrica okuma suzgeci <c>IsDeleted</c> satirlarini gizliyor.
+            
+             Bir defter satiri o tabana oturtulursa: birisi kaydi "siler", satir
+             tabloda DURUR ama butun bakiye sorgularindan DUSER. Ne hata verir, ne
+             denetim izinde gorunur — bakiye sessizce yanlislanir. Muhasebede bu, bir
+             verinin kaybolmasindan daha kotudur: sistem tutarli GORUNUR.
+            
+             Dogrusu: defter satiri silinmez, TERS KAYIT yazilir. Bu arayuz o kurali
+             veritabani katmaninda zorlar — silme denemesi HATA verir.
+            
+             <see cref="T:Solum.Core.Entities.ISoftDelete"/> ile BIRLIKTE kullanilmaz; ikisi celisir ve
+             kaydetme kurallari bunu hata olarak bildirir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Entities.IEntity`1">
+            <summary>Birincil anahtari olan varlik.</summary>
+            <typeparam name="TKey">Anahtar tipi.</typeparam>
+        </member>
+        <member name="P:Solum.Core.Entities.IEntity`1.Id">
+            <summary>Birincil anahtar.</summary>
+        </member>
+        <member name="T:Solum.Core.Entities.ICompanyScoped">
+             <summary>
+             Sirket kapsamli varlik. Bu arayuzu tasiyan her varlik, okumada OTOMATIK
+             suzulur ve yazmada sirket degeri OTOMATIK doldurulur.
+            
+             Arayuzu tasimamak bilincli bir karardir: kiraci genelinde ortak olan
+             tanimlar (sehir listesi gibi) kapsam disidir. Yanlislikla tasimamak ise
+             sizintidir — bu yuzden yeni varlik eklerken karar acikca verilmelidir.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Entities.ICompanyScoped.CompanyId">
+            <summary>Kaydin ait oldugu sirket.</summary>
+        </member>
+        <member name="T:Solum.Core.Entities.ISoftDelete">
+            <summary>Silinmeden pasife cekilen varlik. Okumada otomatik suzulur.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.ISoftDelete.IsDeleted">
+            <summary>Kayit silinmis sayiliyor mu.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.ISoftDelete.DeletedAt">
+            <summary>Silinme ani.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.ISoftDelete.DeletedBy">
+            <summary>Silen kullanici.</summary>
+        </member>
+        <member name="T:Solum.Core.Entities.ICreationAudited">
+            <summary>Olusturulma izi tasiyan varlik. Alanlar otomatik doldurulur.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.ICreationAudited.CreatedAt">
+            <summary>Olusturulma ani.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.ICreationAudited.CreatedBy">
+            <summary>Olusturan kullanici.</summary>
+        </member>
+        <member name="T:Solum.Core.Entities.IModificationAudited">
+            <summary>Degistirilme izi tasiyan varlik. Alanlar otomatik doldurulur.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.IModificationAudited.UpdatedAt">
+            <summary>Son degistirilme ani.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.IModificationAudited.UpdatedBy">
+            <summary>Son degistiren kullanici.</summary>
+        </member>
+        <member name="T:Solum.Core.Entities.IHasConcurrencyStamp">
+            <summary>Iyimser eszamanlilik damgasi tasiyan varlik.</summary>
+        </member>
+        <member name="P:Solum.Core.Entities.IHasConcurrencyStamp.ConcurrencyStamp">
+            <summary>Her guncellemede degisen damga.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.IHasExtraFields">
+             <summary>
+             Bu varlik, cekirdek semaya dokunmadan eklenen ek alanlar tasiyabilir.
+            
+             NEDEN SIMDI ACILIYOR — ozellik henuz yazilmadi.
+             Ek alan, form ve liste katmanina SIKI BAGLIDIR. Genisleme noktasi
+             sonradan acilirsa, o gune kadar yazilmis her tanim ekrani ve her servis
+             bu noktayi bilmeden calismis olur; eklemek geriye donuk dokunmak demektir.
+             Bugun bir arayuz koymak neredeyse bedava; sonradan koymak degil.
+            
+             UC KURALI HENUZ GECMEDI (iki urunde var) — bu yuzden DEPOLAMA ve EKRAN
+             yazilmiyor. Yalniz sozlesme ve kanca noktasi var.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.IHasExtraFields.ExtraFields">
+            <summary>
+            Ek alan degerlerinin saklandigi ham metin. Bicimi (JSON, baska bir
+            sey) katkida bulunana aittir; cekirdek yorumlamaz.
+            </summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.ExtraFieldType">
+            <summary>Ek alanin tipi.</summary>
+        </member>
+        <member name="F:Solum.Core.Extensibility.ExtraFieldType.Text">
+            <summary>Serbest metin.</summary>
+        </member>
+        <member name="F:Solum.Core.Extensibility.ExtraFieldType.Number">
+            <summary>Ondalik sayi.</summary>
+        </member>
+        <member name="F:Solum.Core.Extensibility.ExtraFieldType.Date">
+            <summary>Tarih.</summary>
+        </member>
+        <member name="F:Solum.Core.Extensibility.ExtraFieldType.Boolean">
+            <summary>Evet/hayir.</summary>
+        </member>
+        <member name="F:Solum.Core.Extensibility.ExtraFieldType.Select">
+            <summary>Belirli secenekler arasindan secim.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.ExtraFieldDefinition">
+            <summary>Bir ek alanin tanimi.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.Name">
+            <summary>Alan adi — saklamada anahtar olarak kullanilir.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.Label">
+            <summary>Kullaniciya gosterilen etiket.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.Type">
+            <summary>Alan tipi.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.IsRequired">
+            <summary>Bos gecilebilir mi.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.Order">
+            <summary>Gosterim sirasi.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.Options">
+            <summary><see cref="F:Solum.Core.Extensibility.ExtraFieldType.Select"/> icin secenekler.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldDefinition.MaxLength">
+            <summary>
+            Metin alani icin ust sinir.
+            SINIRSIZ BIRAKILMAZ: ust siniri olmayan bir metin alani, saklandigi
+            bloguyla birlikte satir boyutunu sisirir ve bunu kimse fark etmez.
+            Bu alan, portfoyde bir uygulamada acik kalmis oldugu icin sozlesmeye
+            bastan konuldu.
+            </summary>
+        </member>
+        <member name="M:Solum.Core.Extensibility.ExtraFieldDefinition.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Extensibility.ExtraFieldWriteResult">
+            <summary>Ek alanlarin yazma sonucu.</summary>
+            <param name="Value">Varliga yazilacak ham metin.</param>
+            <param name="Errors">Alan bazli dogrulama hatalari.</param>
+        </member>
+        <member name="M:Solum.Core.Extensibility.ExtraFieldWriteResult.#ctor(System.String,System.Collections.Generic.IReadOnlyList{Solum.Core.Extensibility.ExtraFieldError})">
+            <summary>Ek alanlarin yazma sonucu.</summary>
+            <param name="Value">Varliga yazilacak ham metin.</param>
+            <param name="Errors">Alan bazli dogrulama hatalari.</param>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldWriteResult.Value">
+            <summary>Varliga yazilacak ham metin.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldWriteResult.Errors">
+            <summary>Alan bazli dogrulama hatalari.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldWriteResult.IsValid">
+            <summary>Hata yoksa dogru.</summary>
+        </member>
+        <member name="M:Solum.Core.Extensibility.ExtraFieldWriteResult.Ok(System.String)">
+            <summary>Hatasiz sonuc.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.ExtraFieldError">
+            <summary>Bir alanin dogrulama hatasi.</summary>
+            <param name="FieldName">Alan adi.</param>
+            <param name="Message">Kullaniciya gosterilecek mesaj.</param>
+        </member>
+        <member name="M:Solum.Core.Extensibility.ExtraFieldError.#ctor(System.String,System.String)">
+            <summary>Bir alanin dogrulama hatasi.</summary>
+            <param name="FieldName">Alan adi.</param>
+            <param name="Message">Kullaniciya gosterilecek mesaj.</param>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldError.FieldName">
+            <summary>Alan adi.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldError.Message">
+            <summary>Kullaniciya gosterilecek mesaj.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.ExtraFieldReadResult">
+             <summary>
+             Okuma sonucu — degerler VE icerigin BOZUK olup olmadigi.
+            
+             NEDEN AYRI BIR TIP: <c>Read</c> once ham
+             <c>IReadOnlyDictionary&lt;string, string?&gt;</c> donuyordu ve arayuzun kendi
+             belgesi *"bozuk icerik ekrani kirmamali — BOS SOZLUK donup uyari
+             loglanmali"*  diyordu. Yani sozlesme, uygulayiciya
+             `kutuphane-disiplini.md` §5 ihlali YAPTIRIYORDU: basarisizligi yalniz bos
+             bir degerle bildirmek.
+            
+             SESSIZ VERI KAYBI YOLU (bagimsiz on-dondurma incelemesi, BULGU 1):
+             bozuk bir `ExtraFields` JSON'u -> form BOS acilir (hata yok, uyari yok) ->
+             kullanici doldurur -> `ApplyExtraFieldsAsync` `ExtraFields`i YENI degerle
+             EZER -> bozuk icerikteki eski alanlar GERI DONULEMEZ bicimde gider.
+             Kullanici *"alanlar bostu, doldurdum"* der; kimse kaybi gormez.
+            
+             <c>IsCorrupt</c> cagirana KARAR VERME SANSI veriyor: salt-okunur goster,
+             uyar, ya da yazmayi reddet. Bos sozluk bu ucunu de imkansiz kiliyordu —
+             "alan yok" ile "alanlar okunamadi" ayirt edilemiyordu.
+             </summary>
+             <param name="Values">Okunan degerler; bozuklukta bos.</param>
+             <param name="IsCorrupt">
+             Saklanan icerik ayristirilamadi. <c>true</c> iken <see cref="P:Solum.Core.Extensibility.ExtraFieldReadResult.Values"/> BOS
+             olmak zorunda degildir — kismi okuma da mumkundur ve o zaman ikisi birden
+             dolu gelir.
+             </param>
+        </member>
+        <member name="M:Solum.Core.Extensibility.ExtraFieldReadResult.#ctor(System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Boolean)">
+             <summary>
+             Okuma sonucu — degerler VE icerigin BOZUK olup olmadigi.
+            
+             NEDEN AYRI BIR TIP: <c>Read</c> once ham
+             <c>IReadOnlyDictionary&lt;string, string?&gt;</c> donuyordu ve arayuzun kendi
+             belgesi *"bozuk icerik ekrani kirmamali — BOS SOZLUK donup uyari
+             loglanmali"*  diyordu. Yani sozlesme, uygulayiciya
+             `kutuphane-disiplini.md` §5 ihlali YAPTIRIYORDU: basarisizligi yalniz bos
+             bir degerle bildirmek.
+            
+             SESSIZ VERI KAYBI YOLU (bagimsiz on-dondurma incelemesi, BULGU 1):
+             bozuk bir `ExtraFields` JSON'u -> form BOS acilir (hata yok, uyari yok) ->
+             kullanici doldurur -> `ApplyExtraFieldsAsync` `ExtraFields`i YENI degerle
+             EZER -> bozuk icerikteki eski alanlar GERI DONULEMEZ bicimde gider.
+             Kullanici *"alanlar bostu, doldurdum"* der; kimse kaybi gormez.
+            
+             <c>IsCorrupt</c> cagirana KARAR VERME SANSI veriyor: salt-okunur goster,
+             uyar, ya da yazmayi reddet. Bos sozluk bu ucunu de imkansiz kiliyordu —
+             "alan yok" ile "alanlar okunamadi" ayirt edilemiyordu.
+             </summary>
+             <param name="Values">Okunan degerler; bozuklukta bos.</param>
+             <param name="IsCorrupt">
+             Saklanan icerik ayristirilamadi. <c>true</c> iken <see cref="P:Solum.Core.Extensibility.ExtraFieldReadResult.Values"/> BOS
+             olmak zorunda degildir — kismi okuma da mumkundur ve o zaman ikisi birden
+             dolu gelir.
+             </param>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldReadResult.Values">
+            <summary>Okunan degerler; bozuklukta bos.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldReadResult.IsCorrupt">
+            <summary>
+            Saklanan icerik ayristirilamadi. <c>true</c> iken <see cref="P:Solum.Core.Extensibility.ExtraFieldReadResult.Values"/> BOS
+            olmak zorunda degildir — kismi okuma da mumkundur ve o zaman ikisi birden
+            dolu gelir.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldReadResult.Empty">
+            <summary>Bos ve SAGLAM — ek alan tanimi olmayan varlik.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.ExtraFieldReadResult.Corrupt">
+            <summary>Icerik ayristirilamadi.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.IExtraFieldContributor">
+             <summary>
+             Ek alanlari saglayan katki.
+            
+             TASARIM KARARI — <see cref="M:Solum.Core.Extensibility.IExtraFieldContributor.Write(System.String,System.Collections.Generic.IReadOnlyList{Solum.Core.Extensibility.ExtraFieldDefinition},System.Func{System.String,System.String})"/> gonderilen degerleri KOLEKSIYON
+             OLARAK ALMAZ, bir ARAMA islevi alir.
+            
+             Sebep, portfoyde kanitlanmis bir desenin API'ye gomulmesi: guvenli olan,
+             gelen anahtarlari dolasip elemek DEGIL, TANIMLARI dolasip her tanim icin
+             gelen veriden o alani ISTEMEKTIR. Filtreleme "gordum, eledim" der; bu
+             "hic bakmadim" der — ve eleme kurali unutulabilirken bakmama yapisaldir.
+            
+             Arama islevi, uygulayanin gonderilen anahtarlari SAYMASINI IMKANSIZ kilar.
+             Yani guvenli desen, API'nin izin verdigi TEK desendir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Extensibility.IExtraFieldContributor.GetDefinitionsAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Bu varlik turu icin tanimli ek alanlar.</summary>
+        </member>
+        <member name="M:Solum.Core.Extensibility.IExtraFieldContributor.Read(System.String,System.Collections.Generic.IReadOnlyList{Solum.Core.Extensibility.ExtraFieldDefinition},System.String)">
+             <summary>
+             Saklanan ham metni okunabilir degerlere cevirir.
+            
+             <b>TANIMLARI ALIYOR — VE BU ONCE BOYLE DEGILDI.</b>
+            
+             Bagimsiz on-dondurma incelemesi (BULGU 1) asimetriyi olctu:
+            
+             <code>
+             Write(entityName, DEFINITIONS, submitted) -> ExtraFieldWriteResult (Errors VAR)
+             Read (entityName, stored)                 -> ham sozluk            (hata kanali YOK)
+             </code>
+            
+             Ve kanit CAGRI YERINDE duruyordu:
+            
+             <code>
+             // CrudService.ReadExtraFieldsAsync — ONCEKI hal
+             _ = await ExtraFields.GetDefinitionsAsync(ExtraFieldEntityName, ct);  // SONUC ATILIYOR
+             return ExtraFields.Read(ExtraFieldEntityName, kaynak.ExtraFields);    // tanimlar gecilemiyor
+             </code>
+            
+             Cagri yeri tanimlari CEKIP ATIYORDU, cunku `Read` onlari alamiyordu —
+             imzanin eksik oldugunun kodla yazilmis itirafi.
+            
+             Bu tipin ozeti (yukarida) guvenligin TANIMLARI DOLASMAKTAN geldigini
+             soyluyor ve *"guvenli desen, API'nin izin verdigi TEK desendir"* diyor.
+             O cumle `Write` icin dogruydu, `Read` icin IMKANSIZDI.
+            
+             Bozuk icerik ekrani kirmamali — ama SESSIZ de kalmamali:
+             <see cref="P:Solum.Core.Extensibility.ExtraFieldReadResult.IsCorrupt"/>.
+             </summary>
+             <param name="entityName">Varlik turu.</param>
+             <param name="definitions">Okunacak tanimlar — SADECE bunlar.</param>
+             <param name="stored">Saklanan ham metin.</param>
+        </member>
+        <member name="M:Solum.Core.Extensibility.IExtraFieldContributor.Write(System.String,System.Collections.Generic.IReadOnlyList{Solum.Core.Extensibility.ExtraFieldDefinition},System.Func{System.String,System.String})">
+            <summary>
+            Gonderilen degerleri dogrular ve saklanacak metni uretir.
+            </summary>
+            <param name="entityName">Varlik turu.</param>
+            <param name="definitions">Islenecek tanimlar — SADECE bunlar.</param>
+            <param name="submitted">
+            Alan adindan gonderilen degere ARAMA. Koleksiyon degildir; uygulayan
+            gonderilen anahtarlari SAYAMAZ, yalniz sorabilir.
+            </param>
+        </member>
+        <member name="T:Solum.Core.Extensibility.RecordRef">
+             <summary>
+             Olaylarin etrafinda toplandigi KAYIT.
+            
+             Kimlik <c>string</c> — cunku tuketicinin anahtar tipi bilinmiyor
+             (<c>int</c>, <c>long</c>, <c>Guid</c>, bilesik). Kutuphane onu
+             AYRISTIRMAZ; kaynaga oldugu gibi verir ve kaynak kendi tipini bilir.
+             </summary>
+             <param name="EntityName">
+             Varlik turu — <c>IExtraFieldContributor</c> ile AYNI kavram ve AYNI
+             bicimde: tuketicinin verdigi ad, kutuphanenin urettigi degil.
+             </param>
+             <param name="RecordId">Kaydin kimligi, metin olarak.</param>
+             <remarks>
+             <b>KIRACI TASIMAZ — onbellek anahtarina KIRACIYI SEN EKLERSIN.</b>
+            
+             Bagimsiz denetim uyardi (bulgu P-C1): <c>("Order","42")</c> HER
+             kiracinin semasinda vardir. Uygulama-genelinde bir onbellek bu tipi
+             tek basina anahtar yaparsa anahtarlar kiracilar arasi CAKISIR ve A
+             kiracisinin karari B kiracisina uygulanir — HATA VERMEDEN.
+            
+             Bugun sizinti yok (ne onbellek ne kaynak kurali motoru var); bu satir
+             gelmeden ONCE burada duruyor. `solum-kiracilik` §3: *"onbellek
+             anahtarinda kiraci yok -> ikinci kiraci birincinin verisini alir,
+             sorgu bile calismaz."*
+             </remarks>
+        </member>
+        <member name="M:Solum.Core.Extensibility.RecordRef.#ctor(System.String,System.String)">
+             <summary>
+             Olaylarin etrafinda toplandigi KAYIT.
+            
+             Kimlik <c>string</c> — cunku tuketicinin anahtar tipi bilinmiyor
+             (<c>int</c>, <c>long</c>, <c>Guid</c>, bilesik). Kutuphane onu
+             AYRISTIRMAZ; kaynaga oldugu gibi verir ve kaynak kendi tipini bilir.
+             </summary>
+             <param name="EntityName">
+             Varlik turu — <c>IExtraFieldContributor</c> ile AYNI kavram ve AYNI
+             bicimde: tuketicinin verdigi ad, kutuphanenin urettigi degil.
+             </param>
+             <param name="RecordId">Kaydin kimligi, metin olarak.</param>
+             <remarks>
+             <b>KIRACI TASIMAZ — onbellek anahtarina KIRACIYI SEN EKLERSIN.</b>
+            
+             Bagimsiz denetim uyardi (bulgu P-C1): <c>("Order","42")</c> HER
+             kiracinin semasinda vardir. Uygulama-genelinde bir onbellek bu tipi
+             tek basina anahtar yaparsa anahtarlar kiracilar arasi CAKISIR ve A
+             kiracisinin karari B kiracisina uygulanir — HATA VERMEDEN.
+            
+             Bugun sizinti yok (ne onbellek ne kaynak kurali motoru var); bu satir
+             gelmeden ONCE burada duruyor. `solum-kiracilik` §3: *"onbellek
+             anahtarinda kiraci yok -> ikinci kiraci birincinin verisini alir,
+             sorgu bile calismaz."*
+             </remarks>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordRef.EntityName">
+            <summary>
+            Varlik turu — <c>IExtraFieldContributor</c> ile AYNI kavram ve AYNI
+            bicimde: tuketicinin verdigi ad, kutuphanenin urettigi degil.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordRef.RecordId">
+            <summary>Kaydin kimligi, metin olarak.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.RecordEvent">
+             <summary>
+             Bir kaydin etrafindaki tek olay.
+            
+             <b>KUTUPHANE BUNU CIZMEZ.</b> Sekil var, uretici YOK — ve bu, ozelligin
+             degil NOKTANIN acildiginin isareti.
+             </summary>
+             <param name="OccurredAt">Olay zamani.</param>
+             <param name="SourceKey">Hangi kaynaktan geldigi (<see cref="P:Solum.Core.Extensibility.INotificationSource.Key"/>).</param>
+             <param name="Title">Kisa baslik.</param>
+             <param name="Body">Govde; bos olabilir.</param>
+             <param name="ActorName">Olayi yapan kisi; sistem olayinda bos.</param>
+        </member>
+        <member name="M:Solum.Core.Extensibility.RecordEvent.#ctor(System.DateTimeOffset,System.String,System.String,System.String,System.String)">
+             <summary>
+             Bir kaydin etrafindaki tek olay.
+            
+             <b>KUTUPHANE BUNU CIZMEZ.</b> Sekil var, uretici YOK — ve bu, ozelligin
+             degil NOKTANIN acildiginin isareti.
+             </summary>
+             <param name="OccurredAt">Olay zamani.</param>
+             <param name="SourceKey">Hangi kaynaktan geldigi (<see cref="P:Solum.Core.Extensibility.INotificationSource.Key"/>).</param>
+             <param name="Title">Kisa baslik.</param>
+             <param name="Body">Govde; bos olabilir.</param>
+             <param name="ActorName">Olayi yapan kisi; sistem olayinda bos.</param>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordEvent.OccurredAt">
+            <summary>Olay zamani.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordEvent.SourceKey">
+            <summary>Hangi kaynaktan geldigi (<see cref="P:Solum.Core.Extensibility.INotificationSource.Key"/>).</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordEvent.Title">
+            <summary>Kisa baslik.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordEvent.Body">
+            <summary>Govde; bos olabilir.</summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.RecordEvent.ActorName">
+            <summary>Olayi yapan kisi; sistem olayinda bos.</summary>
+        </member>
+        <member name="T:Solum.Core.Extensibility.INotificationSource">
+             <summary>
+             Bir kaydin etrafindaki olaylari besleyen KAYNAK — chatter icin acilan
+             GENISLEME NOKTASI.
+            
+             <b>OZELLIK DEGIL NOKTA.</b> <c>docs/OLCEK.md</c> §4 olctu: Odoo tarzi
+             chatter ekrani UC URUNDEN SIFIRINDA var. <c>kutuphane-disiplini.md</c> §3:
+             *"Iki urunden genelleme, ucuncu urunun ihtiyacini TAHMIN etmektir."*
+             Sifirdan genelleme ise genelleme bile degil, TASARIMDIR.
+            
+             <c>solum-danismani</c> §5 bu durumun ne yapilacagini yaziyor: *"Ozelligi
+             yazma, GENISLEME NOKTASINI ac. Nokta sonradan acilirsa, o gune kadar
+             yazilmis her sey onu bilmeden calismis olur."*
+            
+             Yani bu dosya bilincli olarak EKSIK: sozlesme + toplayici var, EKRAN YOK.
+             Tuketici kendi chatter'ini Solum'u DEGISTIRMEDEN kurar; ucuncu urun
+             geldiginde nokta zaten yerinde olur ve ozellik ondan sonra yazilir.
+            
+             <b>BU TIP BIR GENEL DEPO KATMANINA DONUSMEMELI.</b> Ayni risk
+             <c>IAppNotifier</c> ozetinde de yazili: uye eklemek yeni bir uc kural
+             esigi olcumu gerektirir. Bugun TEK uye var ve o da yalniz OKUR — yazma
+             yolu YOK, cunku olaylari kim ureteceginin cevabi tuketicide.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Extensibility.INotificationSource.Key">
+             <summary>
+             Bu kaynagin adi — olaylarda tasinir ve tuketici gruplamak/suzmek icin
+             kullanir.
+            
+             AYNI ANAHTARLA IKI KAYNAK KAYITLIYSA
+             <see cref="T:Solum.Core.Extensibility.RecordTimeline"/> KURULUMDA HATA VERIR: iki kaynak ayni ad
+             altinda birikirse tuketicinin suzgeci sessizce YANLIS kumeyi secer.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Extensibility.INotificationSource.GetEventsAsync(Solum.Core.Extensibility.RecordRef,System.Int32,System.Threading.CancellationToken)">
+             <summary>
+             Kaydin etrafindaki olaylar, YENIDEN ESKIYE.
+            
+             <b>SIRA SOZLESMEDE</b> cunku toplayici birlestirirken ona guveniyor.
+             Siralamayan bir kaynak, birlesik zaman cizgisini sessizce karistirir.
+            
+             <b>KIRACI/SIRKET KAPSAMI UYGULAYANIN ISI.</b> Ve bu bir uyaridir,
+             bir dilek degil: <c>solum-kiracilik</c> §3'te olculmus tuzak —
+             arka plan isinde ya da yanlis kurulmus bir kapsamda bu cagri BOS ya
+             da YANLIS kume dondurur ve HATA VERMEZ. Kaynak kendi sorgusunu aktif
+             kapsamla suzmek zorunda.
+             </summary>
+             <param name="record">Kayit.</param>
+             <param name="take">En fazla kac olay. 1-200.</param>
+             <param name="ct">Iptal.</param>
+        </member>
+        <member name="T:Solum.Core.Extensibility.RecordTimeline">
+             <summary>
+             Kayitli butun <see cref="T:Solum.Core.Extensibility.INotificationSource"/>'lari birlestiren toplayici.
+            
+             <b>CIZMEZ.</b> Bu tip bir zaman cizgisi DONDURUR; nasil gorunecegine
+             tuketici karar verir. Ozellik degil nokta acildiginin sinavi tam bu:
+             pakette hicbir chatter GORUNUMU yok.
+            
+             <b>NEDEN VAR — birlestirme BEDAVA DEGIL.</b> Sozlesme tek basina
+             birakilsaydi her tuketici birlestirmeyi kendi yazardi ve icinde OLCULMUS
+             bir tuzak var: <c>CrudService</c> karari — *"siralama varsayilani ANAHTARA
+             gore; deterministik sira olmadan sayfalar arasi kayit TEKRARLANIR."*
+             Ayni zaman damgasini tasiyan iki olayin sirasi kaynak kaydinin sirasina
+             kalirdi ve o sira DI kayit sirasidir — yani gorunmez bir sekilde degisir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Extensibility.RecordTimeline.#ctor(System.Collections.Generic.IEnumerable{Solum.Core.Extensibility.INotificationSource})">
+            <summary>Toplayiciyi kurar.</summary>
+            <param name="sources">Kayitli kaynaklar.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="sources"/> null.</exception>
+            <exception cref="T:System.ArgumentException">
+            Iki kaynak ayni <see cref="P:Solum.Core.Extensibility.INotificationSource.Key"/> degerini tasiyor,
+            ya da bir anahtar bos.
+            </exception>
+        </member>
+        <member name="M:Solum.Core.Extensibility.RecordTimeline.GetAsync(Solum.Core.Extensibility.RecordRef,System.Int32,System.Threading.CancellationToken)">
+             <summary>
+             Butun kaynaklardan olaylari toplar, YENIDEN ESKIYE siralar.
+            
+             <b>HER KAYNAKTAN <paramref name="take"/> KADAR ISTENIR, SONRA
+             KIRPILIR.</b> Kaynak basina bolmek (ornegin 3 kaynak icin 10/3)
+             YANLIS olurdu: olaylarin cogu tek kaynaktaysa oteki kaynaklarin bos
+             kotasi bosa gider ve zaman cizgisi eksik cikar.
+            
+             <b>BIR KAYNAK FIRLATIRSA YUTULMAZ.</b> Ucu de olculdu:
+             <list type="bullet">
+               <item>Yutmak: zaman cizgisi SESSIZCE eksik olur ve kullanici
+                     gecmisin tamamini gordugunu sanar — <c>solum-veri</c> §1'in
+                     *"sistem tutarli GORUNUR"* maddesinin ayni sekli.</item>
+               <item>Bos donmek: ayni sey, bir kat daha kotu.</item>
+               <item>Firlatmak: dogru, ama mesaj HANGI kaynagin dustugunu
+                     soylemek zorunda — yoksa tuketici uc kaynak arasinda arar.</item>
+             </list>
+             </summary>
+             <param name="record">Kayit.</param>
+             <param name="take">En fazla kac olay. 1-200.</param>
+             <param name="ct">Iptal.</param>
+             <exception cref="T:System.ArgumentOutOfRangeException"><paramref name="take"/> 1-200 disinda.</exception>
+             <exception cref="T:System.InvalidOperationException">Bir kaynak firlatti.</exception>
+        </member>
+        <member name="T:Solum.Core.Files.ISolumFileStore">
+             <summary>
+             Kiraci ayrimli dosya deposu.
+            
+             <b>HICBIR METOT YOL PARAMETRESI ALMIYOR — ve bu, tasarimin merkezi.</b>
+             `docs/DIS-DEGERLENDIRME-2026-08-30.md` A10: *"Guvenli desen, API'nin izin
+             verdigi TEK desen olsun."* Bir yol parametresi olsaydi yanlis kullanim
+             IFADE EDILEBILIR olurdu ve onu engellemek icin bir dogrulama yazmak
+             gerekirdi; dogrulama bir gun gevser, imkansizlik gevsemez.
+            
+             Kiraci koku disaridan verilmiyor, <c>ICurrentTenant</c>'tan okunuyor.
+             Cagiran *"hangi kiracinin dosyasi"* sorusuna cevap VEREMEZ — yani yanlis
+             cevap da veremez.
+            
+             <b>Kiraci siniri = KOK KLASOR secimi, sirket siniri = SATIR suzmesi.</b>
+             `solum-kiracilik` §1'in birebir aynisi, cunku risk de ayni: tek mekanizmaya
+             baglanirsa kiraci ICI konsolidasyon icin acilan kapi MUSTERILER ARASI
+             kapiya donusur. Sirket klasorde GORUNMEZ; ek kaydinda <c>CompanyId</c>
+             olarak durur.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.ISolumFileStore.SaveAsync(System.String,System.IO.Stream,System.Threading.CancellationToken)">
+             <summary>
+             Icerigi saklar ve URETILEN depolama anahtarini doner.
+            
+             <b>ANAHTAR TUKETICIDEN GELMEZ</b> (<see cref="M:Solum.Core.Files.SolumFileKey.Create(System.String)"/>).
+             Kullanicinin verdigi ad yalniz ustveridir ve bu depo onu HIC GORMEZ —
+             ad ile anahtar arasindaki bagi <c>SolumAttachment</c> kaydi tutar.
+            
+             <b>BOYUT KOPYALARKEN SAYILIYOR.</b> <c>stream.Length</c> okumak uc
+             durumda yanlis: sikistirilmis istek govdesi, ilerlemeyen
+             (<c>CanSeek == false</c>) akis, ve YALAN SOYLEYEN
+             <c>Content-Length</c>. Siniri onceden sormak, 5 GB'i diske indirdikten
+             sonra reddetmek olurdu.
+            
+             Sinir asilirsa <b>yazilan kisim SILINIR</b> ve istisna firlar. Kismi
+             dosyayi birakmak, A5'in kendi deligini acardi: sahipsiz dosya
+             (hicbir kaydi olmayan, hicbir denetimin gostermedigi, KVKK silmesinin
+             kapsamadigi baytlar).
+             </summary>
+             <param name="extension">
+             <see cref="M:Solum.Core.Files.SolumFileRules.Check(System.String,System.Int64)"/>'ten gelen normalize uzanti.
+             </param>
+             <param name="content">Okunacak akis. Konumu geri alinmaz.</param>
+             <param name="cancellationToken">Iptal.</param>
+             <returns>Uretilen depolama anahtari.</returns>
+        </member>
+        <member name="M:Solum.Core.Files.ISolumFileStore.OpenAsync(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Icerigi okumak icin acar.
+            
+             <b>KAYIT VAR AMA BAYT YOKSA HATA — bos akis DEGIL.</b>
+             `kutuphane-disiplini.md` §5. Bos akis inen kullanici *"belge bos"* der,
+             0 baytlik bir PDF acilmaz ve suclu BELGE gorunur. Kaydi olup bayti
+             olmayan bir ek bir VERI KAYBIDIR ve oyle soylenir.
+             </summary>
+             <exception cref="T:System.IO.FileNotFoundException">Baytlar diskte yok.</exception>
+        </member>
+        <member name="M:Solum.Core.Files.ISolumFileStore.DeleteAsync(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Baytlari siler.
+            
+             <b>ZATEN YOKSA BASARILI SAYILIR ve bu bilincli.</b> Bu metodun
+             sozlesmesi *"silme islemi yap"* degil *"baytlar artik yok"*. Sozlesme
+             boyle olmak zorunda, cunku silme sirasi <b>bayt -> satir</b>
+             (`plans/15` K5) ve bir cokme sonrasi TEKRAR DENENIYOR: ikinci deneme
+             "dosya yok" diye patlarsa satir sonsuza kadar silinemezdi.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.ISolumFileStore.ExistsAsync(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Baytlar diskte var mi.
+            
+             Kirik bagi (kaydi olan, bayti olmayan ek) ARAMAK icin. Okuma yolunda
+             bunu cagirip sonra <see cref="M:Solum.Core.Files.ISolumFileStore.OpenAsync(System.String,System.Threading.CancellationToken)"/> yapmak YARIS DURUMUDUR;
+             okuma dogrudan <see cref="M:Solum.Core.Files.ISolumFileStore.OpenAsync(System.String,System.Threading.CancellationToken)"/> ile yapilir ve istisna
+             yakalanir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Files.ISolumFileScanner">
+             <summary>
+             Yuklenen icerigi saklamadan ONCE denetleyen kanca — <b>uygulamasi YOK</b>.
+            
+             `kutuphane-disiplini.md` §3 (uc kural esigi) ve §2 (bagimlilik asgari):
+             virus taramasi bir DIS SERVISTIR ve onun istemcisini kutuphaneye koymak
+             hem bagimlilik hem yapilandirma borcu getirirdi.
+            
+             Kanca burada duruyor cunku BOGAZ burada. Tuketici tarama isterse
+             <see cref="T:Solum.Core.Files.ISolumFileStore"/>'u sarmalamak yerine bunu kaydeder ve
+             kararin nerede verildigi tek yerde kalir.
+            
+             <b>Kayitli uygulama yoksa tarama YAPILMAZ ve bu SESSIZ DEGIL:</b>
+             `BASLARKEN` bunu acikca yaziyor. Bir varsayilan "her seyi temiz say"
+             uygulamasi koymak, `kutuphane-disiplini.md` §5'in *"eksik yapilandirmayi
+             varsayilanla doldurmak"* yasagi olurdu.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.ISolumFileScanner.ScanAsync(System.IO.Stream,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Icerigi tarar. Temiz degilse <b>istisna firlatir</b> — <c>false</c>
+            donmez (`kutuphane-disiplini.md` §5: *"basarisizligi yalniz `false`
+            ile bildirmek"* yasak).
+            </summary>
+            <param name="content">
+            Okunabilir akis. Uygulama okuduktan sonra konumu BASA ALMALI, yoksa
+            saklama bos dosya yazar.
+            </param>
+            <param name="extension">Normalize uzanti.</param>
+            <param name="cancellationToken">Iptal.</param>
+        </member>
+        <member name="T:Solum.Core.Files.LocalDiskFileStore">
+             <summary>
+             <see cref="T:Solum.Core.Files.ISolumFileStore"/>'un YEREL DISK uygulamasi.
+            
+             <b>COK KUTULU (multi-instance) DAGITIMDA YANLISTIR</b> ve bunu soyleyen
+             tek yer burasi ile kurulum uyarisidir. Iki web kutusu, iki ayri disk ->
+             yukleme birinde, indirme otekinde, sonuc *"dosya bulunamadi"* ve kimse
+             sebebini bulamaz. Kok bir paylasima (UNC) bakiyorsa sorun yok; yerel bir
+             klasore bakiyorsa <c>AddSolumLocalDiskFiles</c> kurulumda UYARI BASAR.
+            
+             <b>BULUT SAGLAYICI YOK ve gerekcesi olculmus:</b> uc kural esigi
+             (`kutuphane-disiplini.md` §3) — bugun tuketici sayisi 2 ve ikisi de yerel
+             disk. Sozlesme yaziliyor, ikinci uygulama TUKETICI geldiginde.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.#ctor(Solum.Abstractions.ICurrentTenant,Solum.Core.Files.SolumFileRules,System.String,Solum.Core.Files.ISolumFileScanner)">
+            <summary>Depoyu kurar.</summary>
+            <param name="tenant">
+            Kiraci baglami. <b>Kok buradan gelir, cagirandan DEGIL</b> — cagiran
+            hangi kiracinin klasoru oldugunu soyleyemez, yani yanlis da soyleyemez.
+            </param>
+            <param name="rules">Boyut ve tur kurallari.</param>
+            <param name="root">Butun kiracilarin ustundeki kok klasor.</param>
+            <param name="scanner">Istege bagli tarayici; yoksa tarama yapilmaz.</param>
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.SaveAsync(System.String,System.IO.Stream,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.OpenAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.DeleteAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.ExistsAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.CopyLimitedAsync(System.IO.Stream,System.IO.Stream,System.Threading.CancellationToken)">
+             <summary>
+             Siniri ASARKEN duran kopyalama.
+            
+             <c>Stream.CopyToAsync</c> kullanilmiyor cunku o kac bayt aktigini
+             SOYLEMEZ ve sinir ancak dosya tamamen yazildiktan sonra olculebilirdi.
+             Sayac burada, kopyanin ICINDE.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.LocalDiskFileStore.TryDelete(System.String)">
+             <summary>
+             Temizlik silmesi — <b>asil istisnayi GIZLEMEZ</b>.
+            
+             Genis <c>catch</c> bilincli: buraya girildiginde ZATEN bir istisna
+             yolda ve onun yerine bir temizlik hatasi firlatmak, tuketiciye YANLIS
+             sebebi gosterirdi.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Files.SolumFileKey">
+             <summary>
+             Dosya saklamanin BOGAZI — kiraci koku ve depolama anahtari YALNIZ buradan
+             cozulur.
+            
+             <b>NEDEN TEK GECIS:</b> `sinif-kapatma.md` dorduncu sorusu *"kontrol dogru
+             katmanda mi?"* — olculmus sekiz ihlalin ikisi (ornek 6 ve 8) tam bu soruda
+             kaldi. Dosya tarafinda bedeli daha agir: veritabani sizintisinda bir SORGU
+             calisir ve suzgeci KODDA GORUNUR. Dosya sizintisinda calisan sey
+             birlestirilmis bir METINDIR ve orada suzgec diye bakilacak bir yer yok.
+            
+             <b>IKI BAGIMSIZ GUVENCE var ve ikincisi sart:</b>
+             <list type="number">
+             <item><b>GIRDI kontrolu</b> — kiraci anahtari ve depolama anahtari bicim
+               olarak dogrulanir.</item>
+             <item><b>SONUC kontrolu</b> — birlestirilen yolun <c>GetFullPath</c>
+               sonrasi HALA kiraci kokunun altinda oldugu olculur.</item>
+             </list>
+            
+             Ikincisi neden ayri: `kanit-disiplini.md` dorduncu sorusu *"olctugum sey
+             iddiamin kaniti mi?"* — girdiyi olcmek CIKTININ kaniti degil. Bicim
+             dogrulamasi bir gun gevserse (yeni bir karakter izin verilirse, bir desen
+             bozulursa) sonuc kontrolu ayakta kalir.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileKey.TenantShape">
+             <summary>
+             Kiraci anahtarinin klasor adi olarak KABUL EDILEN bicimi.
+            
+             KUCUK HARF ZORUNLU ve bu, planin en keskin karari
+             (`plans/15-dosya-ve-ek-yonetimi.md` K2) ile ayni sinif: Windows dosya
+             sistemi harf duyarsiz, Linux duyarli. <c>Musteri</c> ve <c>musteri</c>
+             IKI KIRACI ama TEK KLASOR olur — hicbir hata vermeden.
+            
+             Sessizce kucuk harfe cevirmek cakismayi ONLEMEZ, URETIR. Reddetmek
+             onler.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileKey.KeyShape">
+             <summary>
+             Depolama anahtarinin KABUL EDILEN bicimi — 32 onaltilik + nokta +
+             kisa uzanti.
+            
+             <b>AYIRICI KARAKTER YOK ve bu bilincli:</b> desen hicbir <c>/</c>,
+             <c>\</c>, <c>:</c> ya da <c>.</c> dizisine izin vermedigi icin
+             <c>..\..\web.config</c> sinifindaki her girdi ANAHTAR OLAMAZ. Yani
+             yol kacisi bir dogrulamayla engellenmiyor, IFADE EDILEMEZ hale
+             geliyor — `IExtraFieldContributor` deseninin ta kendisi
+             (*"guvenli desen, API'nin izin verdigi TEK desen olsun"*).
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileKey.ReservedNames">
+             <summary>
+             Windows'ta AYRILMIS aygit adlari — uzantiyla da ayrilmis sayilirlar
+             (<c>CON.txt</c> hala <c>CON</c>).
+            
+             Bir kiraci anahtari boyle olursa klasor OLUSTURULAMAZ ve hata mesaji
+             *"erisim reddedildi"* olur — sebebi soylemez. Burada reddedilmesi,
+             sebebin soylenmesi demek.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileKey.Create(System.String)">
+             <summary>
+             Yeni depolama anahtari uretir — <b>tuketicinin verdigi ADI KULLANMAZ</b>.
+            
+             Dort olculebilir sebep (`plans/15` K3):
+             <list type="number">
+             <item><b>Cakisma:</b> iki kullanici <c>fatura.pdf</c> yukler; ikincisi
+               birincisini EZER.</item>
+             <item><b>Yol kacisi:</b> <c>..\..\web.config</c> bir dosya ADIDIR.</item>
+             <item><b>Harf duyarliligi:</b> <c>Fatura.pdf</c> ve <c>fatura.pdf</c>
+               Windows'ta TEK dosya, Linux'ta IKI — hangisinin silindigi belirsiz
+               kalir.</item>
+             <item><b>Kisisel veri:</b> <c>ahmet-yilmaz-saglik-raporu.pdf</c> adinin
+               KENDISI kisisel veri; diskte durursa KVKK silme talebi onu
+               KAPSAMAZ.</item>
+             </list>
+            
+             <b>VERSION 4 (rastgele) GUID kullaniliyor ve V7 BILINCLI OLARAK
+             REDDEDILDI</b> — ilk yazim v7 diyordu, gerekce *"zaman siralidir, dizin
+             indeksi parcalanmaz"*di ve <b>bu gerekce PARCALAMA ile CELISIYOR</b>.
+            
+             <see cref="M:Solum.Core.Files.SolumFileKey.Resolve(System.String,System.String,System.String)"/> parcalama kovasini anahtarin ILK IKI KARAKTERINDEN
+             turetiyor. V7'nin ilk baytlari ZAMAN DAMGASIDIR: ayni zaman
+             penceresindeki butun yuklemeler AYNI KOVAYA duser. Yani v7, tam olarak
+             onlemek icin secildigi seyi uretirdi — 256 kovanin biri dolar, otekiler
+             bos kalir.
+            
+             V4 rastgeledir, yani kovalara duzgun dagilir. Ve v7'nin ikinci bir
+             bedeli daha vardi: zaman damgasi dosya adinda GORUNUR olurdu.
+            
+             (Ikincil sebep: <c>Guid.CreateVersion7</c> .NET 9+; bu paket net8.0'i da
+             hedefliyor. Ama karar bundan ONCE verildi — iki kod yolu yazmak yerine
+             olcum karari verdi.)
+             </summary>
+             <param name="extension">
+             Nokta ile baslayan, kucuk harf, ak listeden gecmis uzanti
+             (<see cref="T:Solum.Core.Files.SolumFileRules"/>). Bicim burada TEKRAR olculuyor —
+             cagiranin dogruladigina guvenmek, bu sinifin tek gecis olma iddiasini
+             bosa cikarirdi.
+             </param>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileKey.ValidateTenant(System.String)">
+             <summary>
+             Kiraci anahtarini klasor adi olarak dogrular — <b>gecmezse HATA</b>.
+            
+             Temizlemez, kirpmaz, karma almaz. Gerekcesi `plans/15` K2:
+            
+             <code>
+             "musteri-a"  ->  "musteria"
+             "musteri/a"  ->  "musteria"      &lt;- AYNI KLASOR
+             </code>
+            
+             Iki farkli kiraci ayni koke duser; hicbir hata, hicbir kayit, ve iki
+             musterinin dosyalari IC ICE. `solum-migration` §3'un sema adi beyaz
+             listesiyle ayni sinif — ama oradaki sonuc komut enjeksiyonu, buradaki
+             sonuc DOGRUDAN SIZINTI.
+            
+             <b>Karma (hash) neden degil:</b> <c>SHA256(TenantKey)</c> cakismayi
+             cozer ama klasoru OKUNAMAZ yapar. Bir sizinti suphesinde ilk yapilan
+             sey diske bakmaktir ve <c>a3f9…</c> hangi musteri oldugunu soylemez.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileKey.Resolve(System.String,System.String,System.String)">
+             <summary>
+             Kiraci koku + depolama anahtari -> MUTLAK YOL. Tek gecis.
+            
+             <b>PARCALAMA (sharding) ANAHTARDAN TURETILIYOR, anahtarda TASINMIYOR.</b>
+             Yol <c>{kok}/{kiraci}/{ilk-iki-karakter}/{anahtar}</c> oluyor. Sebep:
+             tek bir klasorde milyonlarca dosya NTFS dizin indeksini yavaslatiyor,
+             ama parcayi ANAHTARA yazsaydik anahtar bir AYIRICI tasimak zorunda
+             kalirdi — ve <see cref="F:Solum.Core.Files.SolumFileKey.KeyShape"/>'in *"hicbir ayirici yok"*
+             guvencesi duserdi. Turetmek ikisini birden veriyor.
+             </summary>
+             <exception cref="T:System.ArgumentException">Anahtar bicimi gecersiz.</exception>
+             <exception cref="T:System.InvalidOperationException">
+             Kiraci anahtari gecersiz, ya da <b>sonuc kokun altinda degil</b>.
+             </exception>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileKey.EnsureUnderRoot(System.String,System.String)">
+             <summary>
+             IKINCI, BAGIMSIZ GUVENCE — girdi kontrolu degil SONUC kontrolu.
+            
+             <b>BU KONTROL BUGUN UCTAN UCA ULASILAMAZ ve bu durustce yaziliyor.</b>
+             <see cref="M:Solum.Core.Files.SolumFileKey.Resolve(System.String,System.String,System.String)"/>'a dusen bir anahtar zaten <see cref="F:Solum.Core.Files.SolumFileKey.KeyShape"/>'ten
+             geciyor; o desen HICBIR ayirici karaktere izin vermiyor, yani
+             birlestirilen yol kokun disina CIKAMAZ. Yol kacisi bataryasinin
+             hicbir girdisi buraya kadar gelmiyor.
+            
+             <b>Yine de duruyor VE `internal` olarak dogrudan sinaniyor.</b> Sebep
+             `kanit-disiplini.md`: girdiyi olcmek CIKTININ kaniti degil. Bicim
+             dogrulamasi bir gun gevserse (yeni bir karakter izin verilir, parcalama
+             degisir, desen bozulur) ayakta kalan tek sey bu olur.
+            
+             <c>sinif-kapatma.md</c> *"kapi yazdim, gecti -> gecmesi calistigini
+             gostermez"* diyor. Bir kapinin uctan uca ulasilamaz olmasi onu
+             sinanamaz yapmiyor — mekanizma ayri sinaniyor, ve ENTEGRASYONUN
+             ulasilamaz oldugu BURADA yazili.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileKey.ResolveTenantRoot(System.String,System.String)">
+             <summary>
+             Bir kiracinin kok klasoru — silme ve sayim islemleri icin.
+            
+             Ayri metot cunku <see cref="M:Solum.Core.Files.SolumFileKey.Resolve(System.String,System.String,System.String)"/> bir ANAHTAR istiyor; kiraci
+             kokunu anahtarsiz isteyen cagiran (ornek: kiraci silme) aksi halde
+             yolu KENDI birlestirirdi ve bogaz delinirdi.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Files.SolumFileRejection">
+            <summary>Bir dosyanin neden KABUL EDILMEDIGI.</summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.None">
+            <summary>Kabul edildi.</summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.ExtensionNotAllowed">
+            <summary>Uzanti AK LISTEDE yok.</summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.TooLarge">
+            <summary>Bildirilen boyut sinirin uzerinde.</summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.SizeUnknown">
+            <summary>Boyut BILDIRILMEDI ya da negatif.</summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.NameInvalid">
+             <summary>
+             Ad denetim karakteri, yol ayiricisi ya da tirnak tasiyor.
+            
+             Bunlar gercek bir dosya seciciden GELMEZ; hazirlanmis bir istekten
+             gelir. Ve ad geri servis edilirken <c>Content-Disposition</c> basligina
+             yaziliyor — bir <c>\r\n</c> orada BASLIK ENJEKSIYONU olur.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.NameTooLong">
+            <summary>Ad cok uzun.</summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRejection.EmptyFile">
+             <summary>
+             Bildirilen boyut sifir.
+            
+             `docs/DEVIR-A5.md` ADIM B karari: bos bir yukleme, kullanicinin
+             yukledigini SANDIGI ama yuklenemeyen bir dosyadir — sessiz kabul
+             bunu gizler. SONA eklendi (K13, A4'teki `AuditAction` karariyla
+             ayni gerekce): mevcut degerlerin sayisal karsiligi degismesin.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Files.SolumFileCheck">
+             <summary>
+             Bir dosyanin kabul edilip edilmedigi — VE nedeni.
+            
+             <b>NEDEN SONUC, NEDEN ISTISNA DEGIL:</b> boyut ve tur ihlali KULLANICI
+             GIRDISIDIR, program hatasi degil. Web tarafi bunu bir dogrulama mesajina
+             cevirmek zorunda; istisna yakalamak zorunda kalmasi, `<solum-errors />`
+             yolunu (plan 13/14) bosa cikarirdi.
+            
+             Ama kopyalama SIRASINDA sinir asilirsa o ISTISNADIR ve oyle kalir: o
+             noktada bildirilen boyut YALAN soylemis olur, yani kullanici girdisi degil
+             protokol ihlalidir (<see cref="M:Solum.Core.Files.ISolumFileStore.SaveAsync(System.String,System.IO.Stream,System.Threading.CancellationToken)"/>).
+             </summary>
+             <param name="Reason">Ret sebebi; kabulde <see cref="F:Solum.Core.Files.SolumFileRejection.None"/>.</param>
+             <param name="Message">Kullaniciya gosterilebilir aciklama; kabulde <c>null</c>.</param>
+             <param name="Extension">
+             Normalize edilmis uzanti (kucuk harf, nokta ile) — <b>yalniz kabulde dolu</b>.
+             </param>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileCheck.#ctor(Solum.Core.Files.SolumFileRejection,System.String,System.String)">
+             <summary>
+             Bir dosyanin kabul edilip edilmedigi — VE nedeni.
+            
+             <b>NEDEN SONUC, NEDEN ISTISNA DEGIL:</b> boyut ve tur ihlali KULLANICI
+             GIRDISIDIR, program hatasi degil. Web tarafi bunu bir dogrulama mesajina
+             cevirmek zorunda; istisna yakalamak zorunda kalmasi, `<solum-errors />`
+             yolunu (plan 13/14) bosa cikarirdi.
+            
+             Ama kopyalama SIRASINDA sinir asilirsa o ISTISNADIR ve oyle kalir: o
+             noktada bildirilen boyut YALAN soylemis olur, yani kullanici girdisi degil
+             protokol ihlalidir (<see cref="M:Solum.Core.Files.ISolumFileStore.SaveAsync(System.String,System.IO.Stream,System.Threading.CancellationToken)"/>).
+             </summary>
+             <param name="Reason">Ret sebebi; kabulde <see cref="F:Solum.Core.Files.SolumFileRejection.None"/>.</param>
+             <param name="Message">Kullaniciya gosterilebilir aciklama; kabulde <c>null</c>.</param>
+             <param name="Extension">
+             Normalize edilmis uzanti (kucuk harf, nokta ile) — <b>yalniz kabulde dolu</b>.
+             </param>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileCheck.Reason">
+            <summary>Ret sebebi; kabulde <see cref="F:Solum.Core.Files.SolumFileRejection.None"/>.</summary>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileCheck.Message">
+            <summary>Kullaniciya gosterilebilir aciklama; kabulde <c>null</c>.</summary>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileCheck.Extension">
+            <summary>
+            Normalize edilmis uzanti (kucuk harf, nokta ile) — <b>yalniz kabulde dolu</b>.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileCheck.Accepted">
+            <summary>Kabul edildi mi.</summary>
+        </member>
+        <member name="T:Solum.Core.Files.SolumFileRules">
+             <summary>
+             Dosya kabul kurallari — AK LISTE ve boyut siniri.
+            
+             <b>KARA LISTE REDDEDILDI.</b> Gerekce bu deponun olctugu cumle
+             (`isimlendirme.md`): *"bir kara liste eksik olabilir ve eksikligi
+             GORUNMEZ."* Dosya tarafinda eksik kalanlar somut ve hepsi tarayicida
+             CALISIR: <c>.svg</c> (icinde <c>&lt;script&gt;</c>), <c>.html</c>,
+             <c>.xhtml</c>, <c>.htm</c>, <c>.mhtml</c>, <c>.svgz</c>, cift uzanti
+             (<c>x.pdf.html</c>), ve Windows'ta nokta ile biten ad.
+            
+             <b>VE AK LISTE YETMEZ.</b> `kanit-disiplini.md` dorduncu sorusu
+             *"olctugum sey iddiamin kaniti mi?"*:
+            
+             <list type="bullet">
+             <item>Olctugum: uzanti <c>.pdf</c>.</item>
+             <item>Iddia edebilecegim: *"tuketici bunu PDF olarak bildirdi"*.</item>
+             <item>Iddia EDEMEYECEGIM: *"icerik PDF"*.</item>
+             </list>
+            
+             Bir HTML dosyasi <c>fatura.pdf</c> adiyla yuklenebilir. O yuzden ikinci
+             savunma SERVIS EDEN taraftadir (`SolumFileDownload` — <c>nosniff</c> +
+             <c>attachment</c> + ak listeden gelen tip). Ak liste tek basina bir
+             icerik guvencesi DEGILDIR ve oyle sunulmuyor.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Files.SolumFileRules.BadNameChars">
+             <summary>
+             Denetim karakteri, yol ayiricisi, tirnak, iki nokta, joker.
+            
+             <c>\r</c> ve <c>\n</c> ozellikle onemli: ad geri servis edilirken
+             <c>Content-Disposition</c> basligina giriyor.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileRules.Default">
+             <summary>
+             Varsayilan kurallar — <b>10 MB</b> ve <b>kucuk bir ak liste</b>.
+            
+             <c>kutuphane-disiplini.md</c> §4: her yetenek arayuz + varsayilan.
+             Ama liste BILINCLI OLARAK KISA tutuldu: uzun bir varsayilan liste
+             *"Solum zaten dusunmus"* izlenimi verir ve tuketici kendi listesini
+             yazmaz. Kisa liste, karari tuketiciye GERI verir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileRules.#ctor(System.Int64,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+            <summary>Kurallari kurar.</summary>
+            <param name="maxBytes">En buyuk dosya boyutu; pozitif olmali.</param>
+            <param name="allowed">
+            Uzanti (nokta ile, kucuk harf) -> icerik tipi. Bos olamaz — bos bir ak
+            liste her dosyayi reddederdi ve tuketici sebebini aramakla vakit
+            kaybederdi (`kutuphane-disiplini.md` §5: eksik yapilandirmayi
+            varsayilanla doldurmak yerine KURULUMDA hata ver).
+            </param>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileRules.MaxBytes">
+            <summary>En buyuk dosya boyutu (bayt).</summary>
+        </member>
+        <member name="P:Solum.Core.Files.SolumFileRules.AllowedExtensions">
+            <summary>Kabul edilen uzantilar.</summary>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileRules.ContentTypeFor(System.String)">
+             <summary>
+             Uzantinin ak listedeki icerik tipi.
+            
+             <b>Tip ISTEKTEN alinmiyor</b> — tarayicinin gonderdigi
+             <c>Content-Type</c> saldirgan tarafindan secilebilir ve
+             <c>text/html</c> yazan bir yukleme, indirmede betik olarak
+             calisirdi.
+             </summary>
+             <exception cref="T:System.ArgumentException">Uzanti ak listede yok.</exception>
+        </member>
+        <member name="M:Solum.Core.Files.SolumFileRules.Check(System.String,System.Int64)">
+             <summary>
+             Yuklemeyi SAKLAMADAN ONCE denetler.
+            
+             <paramref name="declaredLength"/> negatifse
+             <see cref="F:Solum.Core.Files.SolumFileRejection.SizeUnknown"/> doner — bilinmeyen boyut
+             SESSIZCE kabul edilmiyor. Kabul edilseydi sinir yalniz kopyalama
+             sirasinda ogrenilir ve o an kullaniciya gosterilecek bir dogrulama
+             mesaji degil bir istisna olurdu.
+             </summary>
+             <param name="originalName">Kullanicinin verdigi ad — yalniz USTVERI.</param>
+             <param name="declaredLength">Bildirilen boyut (bayt).</param>
+        </member>
+        <member name="T:Solum.Core.Jobs.ChannelJobQueue">
+             <summary>
+             <see cref="T:Solum.Core.Jobs.ISolumJobQueue"/> varsayilani — surec ici, sinirli kapasiteli.
+            
+             <b>SINIRLI KAPASITE BILINCLI.</b> Sinirsiz bir kanal, kosucu yavas
+             kaldiginda bellegi sessizce doldurur ve surec OOM ile olur — hicbir
+             gunluk satiri sebebi soylemez. Sinir dolunca ne olacagi
+             <see cref="P:Solum.Core.Jobs.SolumJobOptions.FullMode"/> ile SECILIYOR ve varsayilani
+             HATA: <c>kutuphane-disiplini.md</c> §5 *"degeri sessizce kirpmak"*
+             yasagi, kuyrukta *"isi sessizce atmak"* olarak okunur.
+            
+             <b>SUREC ICI OLDUGU ACIKCA YAZILI.</b> Surec olurse kuyruktaki isler
+             KAYBOLUR. Kalici kuyruk (veritabani/broker) tuketicinin karari ve
+             <c>kutuphane-disiplini.md</c> §3 uc kural esigini gectiginde paketlenir —
+             bugun 1/5. Sozlesme (<see cref="T:Solum.Core.Jobs.ISolumJobQueue"/>) o gun degismeden
+             kalir; degisen yalniz uygulama olur.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.ChannelJobQueue.#ctor(Solum.Core.Jobs.SolumJobOptions,Solum.Abstractions.ICurrentTenant,Solum.Abstractions.ICurrentCompany,Solum.Abstractions.ICurrentUser)">
+            <summary>Kapasite ve dolu-kuyruk davranisi <paramref name="options"/>'tan.</summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.ChannelJobQueue.Enqueue(System.String,System.Func{System.IServiceProvider,System.Threading.CancellationToken,System.Threading.Tasks.Task})">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Jobs.ChannelJobQueue.ReadAllAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Jobs.ChannelJobQueue.Complete">
+            <summary>Yazmayi kapatir — kosucu kalanlari bosaltip durur.</summary>
+        </member>
+        <member name="T:Solum.Core.Jobs.SolumJobOptions">
+            <summary>Kuyruk ayarlari.</summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.SolumJobOptions.Capacity">
+             <summary>
+             Bekleyen is siniri. Varsayilan <b>1000</b>.
+            
+             Sinirsiz DEGIL ve gerekcesi yukarida: sinirsiz kanal, kosucu yavas
+             kaldiginda sureci OOM ile oldurur ve sebebini soyleyen hicbir kayit
+             olmaz.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.SolumJobOptions.FullMode">
+             <summary>
+             Kuyruk dolunca ne olur. Varsayilan
+             <see cref="F:System.Threading.Channels.BoundedChannelFullMode.Wait"/> DEGIL,
+             <see cref="F:System.Threading.Channels.BoundedChannelFullMode.DropWrite"/> DE DEGIL.
+            
+             Varsayilan `Wait`: `TryWrite` dolu kuyrukta `false` doner ve
+             <see cref="M:Solum.Core.Jobs.ChannelJobQueue.Enqueue(System.String,System.Func{System.IServiceProvider,System.Threading.CancellationToken,System.Threading.Tasks.Task})"/> FIRLATIR. Yani cagiran ogrenir.
+            
+             `DropWrite`/`DropOldest` SESSIZCE is atardi — bu deponun en pahali
+             hata sinifi. Tuketici bilerek secebilir ama varsayilan olarak
+             gelmez.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Jobs.SolumJob">
+             <summary>
+             Kuyruga konmus bir is.
+            
+             <b>BAGLAM ISIN ICINDE, YANINDA DEGIL.</b> Ilk tasarimda baglam ayri bir
+             parametreydi; o hal "baglami vermeyi unutmak"i MUMKUN kiliyordu. Burada
+             baglam kaydin bir alani ve <see cref="T:Solum.Core.Jobs.ISolumJobQueue"/> onu KENDISI
+             dolduruyor — cagiran gecemez, unutamaz.
+            
+             ACIK KURUCU, pozisyonel record DEGIL: gerekcesi
+             <see cref="T:Solum.Abstractions.SolumWorkContext"/> belgesinde — <c>with</c> ifadesi
+             baslaticilari kosturmaz, yani dogrulama atlanabilirdi.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.SolumJob.#ctor(System.String,Solum.Abstractions.SolumWorkContext,System.Func{System.IServiceProvider,System.Threading.CancellationToken,System.Threading.Tasks.Task})">
+            <summary>Adsiz, baglamsiz ve govdesiz is REDDEDILIYOR.</summary>
+            <param name="name">
+            Gunluge ve hata kaydina yazilan ad. Zorunlu: adsiz bir is basarisiz
+            oldugunda kaydin hangi ise ait oldugu bilinemez.
+            </param>
+            <param name="context">
+            Kuyruga konarken YAKALANMIS kapsam. Kosucu isi bu baglamin icinde
+            calistirir.
+            </param>
+            <param name="work">
+            Yapilacak is. Kendi <c>IServiceProvider</c> KAPSAMINI alir — istek
+            kapsami o noktada KAPANMIS olur ve oradan cozulmus bir servisi
+            kullanmak bosaltilmis bir nesneye dokunmakti.
+            </param>
+        </member>
+        <member name="P:Solum.Core.Jobs.SolumJob.Name">
+            <summary>Gunluge yazilan is adi.</summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.SolumJob.Context">
+            <summary>Kuyruga konarken yakalanmis kapsam.</summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.SolumJob.Work">
+            <summary>Yapilacak is.</summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.SolumJob.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Jobs.ISolumJobQueue">
+             <summary>
+             Isi ISTEK DISINA tasiyan kuyruk.
+            
+             NEDEN VAR — ve olculmus gerekce: <c>src</c> altinda hicbir is/kuyruk
+             sozlesmesi YOKTU (olculdu 2026-08-31). Yani posta gonderimi gibi uzun
+             isler ISTEK IS PARCACIGINDA bekliyordu ve bir SMTP zaman asimi kullaniciya
+             donen yaniti geciktiriyor.
+            
+             <b>Dis degerlendirmenin *"SmtpMailSender.SendAsync bugun SENKRON"*
+             iddiasi OLCULDU ve YANLIS cikti</b> — o metot gercekten
+             <c>await istemci.SendMailAsync(...)</c> yapiyor
+             (<c>SmtpMailSender.cs:72</c>). Kusur "senkron kod" degil <b>istek icinde
+             yapilan is</b>. Ayrim onemli cunku ikisi farkli onarima gider ve
+             `kanit-disiplini.md` dorduncu sorusu tam bunu soruyor: olctugum sey ile
+             iddia ettigim sey ayni sey mi?
+            
+             <b>ASIL RISK KIRACI SIZINTISI, GECIKME DEGIL.</b> `solum-kiracilik` §3:
+             arka plan isinde istek baglami yoktur, kapsam bos ya da <b>YANLIS</b>
+             olur. Bu yuzden kuyruk baglami OPSIYONEL BIRAKMIYOR — kendisi yakaliyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.ISolumJobQueue.Enqueue(System.String,System.Func{System.IServiceProvider,System.Threading.CancellationToken,System.Threading.Tasks.Task})">
+             <summary>
+             Isi kuyruga koyar ve HEMEN doner.
+            
+             Baglam CAGRI ANINDA yakalanir, kosum aninda degil: kosum aninda istek
+             kapsami kapanmis olur ve <c>ICurrentTenant</c> ya bos ya BASKA bir
+             istegin degerini tasiyor olurdu.
+             </summary>
+             <param name="name">Gunluge yazilacak is adi.</param>
+             <param name="work">Yapilacak is; kendi servis kapsamini alir.</param>
+             <exception cref="T:System.InvalidOperationException">Kuyruk dolu ya da kapatilmis.</exception>
+        </member>
+        <member name="T:Solum.Core.Jobs.ISolumJobReader">
+             <summary>
+             Kuyrugun KOSUCU tarafi — kosucu uygulamalari bunu okur.
+            
+             AYRI ARAYUZ: tuketici <see cref="T:Solum.Core.Jobs.ISolumJobQueue"/>'yu enjekte eder ve
+             okuma yuzunu GORMEMELI. Tek arayuz olsaydi bir sayfa modeli kuyruktan is
+             CEKEBILIRDI ve o is bir daha kosmazdi — sessiz kayip.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.ISolumJobReader.ReadAllAsync(System.Threading.CancellationToken)">
+            <summary>Sirada bekleyen isleri verir; yoksa bekler.</summary>
+        </member>
+        <member name="T:Solum.Core.Jobs.WorkContextTenant">
+             <summary>
+             Arka planda kosarken <see cref="T:Solum.Abstractions.ICurrentTenant"/>'i ISIN baglamindan
+             okuyan sarmalayici.
+            
+             <b>NEDEN SARMALAYICI, NEDEN AYRI KAYIT DEGIL.</b> Isi kosturan kapsam,
+             tuketicinin kaydettigi <c>ICurrentTenant</c>'i cozer — ve o kayit
+             genellikle <c>HttpContext</c>'e ya da bir taleple dolu bir tekil nesneye
+             baglidir. Arka planda ikisi de yanlis:
+            
+             <list type="bullet">
+             <item><c>HttpContext</c> yok -&gt; kapsam BOS (is patlar; gurultulu, iyi)</item>
+             <item>Tekil nesne bir onceki istegin degerini tasiyor -&gt; kapsam
+               <b>YANLIS</b> (is BASKA KIRACININ semasina yazar; SESSIZ)</item>
+             </list>
+            
+             Ikinci satir bu deponun *"kiraci siniri = sozlesme ihlali"* sinifidir.
+            
+             Sarmalayici sunu yapiyor: <see cref="T:Solum.Abstractions.ISolumWorkContextAccessor"/> bir
+             baglam BILDIRIYORSA onu doner, aksi halde ICTEKI uygulamaya devreder.
+             Yani istekte davranis DEGISMIYOR, yalniz arka planda dogru cevap
+             veriliyor. `solum-danismani` §3 ezme merdiveni 3. basamak — sozlesme
+             degistirme; govde akmaya devam ediyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.WorkContextTenant.#ctor(Solum.Abstractions.ISolumWorkContextAccessor,Solum.Abstractions.ICurrentTenant)">
+             <summary>
+             Arka planda kosarken <see cref="T:Solum.Abstractions.ICurrentTenant"/>'i ISIN baglamindan
+             okuyan sarmalayici.
+            
+             <b>NEDEN SARMALAYICI, NEDEN AYRI KAYIT DEGIL.</b> Isi kosturan kapsam,
+             tuketicinin kaydettigi <c>ICurrentTenant</c>'i cozer — ve o kayit
+             genellikle <c>HttpContext</c>'e ya da bir taleple dolu bir tekil nesneye
+             baglidir. Arka planda ikisi de yanlis:
+            
+             <list type="bullet">
+             <item><c>HttpContext</c> yok -&gt; kapsam BOS (is patlar; gurultulu, iyi)</item>
+             <item>Tekil nesne bir onceki istegin degerini tasiyor -&gt; kapsam
+               <b>YANLIS</b> (is BASKA KIRACININ semasina yazar; SESSIZ)</item>
+             </list>
+            
+             Ikinci satir bu deponun *"kiraci siniri = sozlesme ihlali"* sinifidir.
+            
+             Sarmalayici sunu yapiyor: <see cref="T:Solum.Abstractions.ISolumWorkContextAccessor"/> bir
+             baglam BILDIRIYORSA onu doner, aksi halde ICTEKI uygulamaya devreder.
+             Yani istekte davranis DEGISMIYOR, yalniz arka planda dogru cevap
+             veriliyor. `solum-danismani` §3 ezme merdiveni 3. basamak — sozlesme
+             degistirme; govde akmaya devam ediyor.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextTenant.TenantKey">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextTenant.Schema">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextTenant.HasTenant">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Jobs.WorkContextCompany">
+             <summary>
+             Arka planda <see cref="T:Solum.Abstractions.ICurrentCompany"/>'yi isin baglamindan okur.
+            
+             <c>IsCrossCompany</c> ARKA PLANDA HER ZAMAN <c>false</c>. Gerekce
+             <see cref="T:Solum.Abstractions.SolumWorkContext"/> belgesinde: bayrak bilerek tasinmiyor.
+             Buradaki karsiligi sert — bir is saatler sonra kosabilir ve o bayragin
+             hala acik olmasi, konsolide okuma hakkinin sureye yayilmasi demekti.
+             Konsolide okuma gereken is onu KENDI icinde, acikca acar.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.WorkContextCompany.#ctor(Solum.Abstractions.ISolumWorkContextAccessor,Solum.Abstractions.ICurrentCompany)">
+             <summary>
+             Arka planda <see cref="T:Solum.Abstractions.ICurrentCompany"/>'yi isin baglamindan okur.
+            
+             <c>IsCrossCompany</c> ARKA PLANDA HER ZAMAN <c>false</c>. Gerekce
+             <see cref="T:Solum.Abstractions.SolumWorkContext"/> belgesinde: bayrak bilerek tasinmiyor.
+             Buradaki karsiligi sert — bir is saatler sonra kosabilir ve o bayragin
+             hala acik olmasi, konsolide okuma hakkinin sureye yayilmasi demekti.
+             Konsolide okuma gereken is onu KENDI icinde, acikca acar.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextCompany.CompanyId">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextCompany.IsCrossCompany">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Jobs.WorkContextUser">
+             <summary>
+             Arka planda <see cref="T:Solum.Abstractions.ICurrentUser"/>'i isin baglamindan okur.
+            
+             <c>IsAuthenticated</c> ARKA PLANDA <c>UserId</c>'nin varligina bakar —
+             isi KUYRUGA KOYAN kullanici. Denetim alanlari (`AuditedEntity`) bu degeri
+             okuyor; bos kalsa arka planda yazilan her kayit KIMSIZ olurdu ve
+             `solum-veri` §2 *"elle doldurulan denetim alani, er gec doldurulmayan
+             denetim alanidir"* diyor — burada tersi: OTOMATIK doldurulan alanin
+             KAYNAGININ dogru olmasi gerekiyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Jobs.WorkContextUser.#ctor(Solum.Abstractions.ISolumWorkContextAccessor,Solum.Abstractions.ICurrentUser)">
+             <summary>
+             Arka planda <see cref="T:Solum.Abstractions.ICurrentUser"/>'i isin baglamindan okur.
+            
+             <c>IsAuthenticated</c> ARKA PLANDA <c>UserId</c>'nin varligina bakar —
+             isi KUYRUGA KOYAN kullanici. Denetim alanlari (`AuditedEntity`) bu degeri
+             okuyor; bos kalsa arka planda yazilan her kayit KIMSIZ olurdu ve
+             `solum-veri` §2 *"elle doldurulan denetim alani, er gec doldurulmayan
+             denetim alanidir"* diyor — burada tersi: OTOMATIK doldurulan alanin
+             KAYNAGININ dogru olmasi gerekiyor.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextUser.UserId">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextUser.UserName">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Jobs.WorkContextUser.IsAuthenticated">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Messaging.InMemoryAppNotifier">
+             <summary>
+             Bellekte tutan bildirim uygulamasi — <b>sozlesmenin varsayilani</b>.
+            
+             NEDEN VAR — kapinin bulgusu (2026-08-29). `IAppNotifier` once
+             varsayilansiz yazildi ve `ContractDefaultGateTests` bunu YAKALADI:
+             `kutuphane-disiplini.md` §4 *"Her yetenek iki parca: arayuz + varsayilan
+             uygulama. Tek parca sunmak, tuketiciyi bizim kararimiza mahkum eder."*
+            
+             Ve mahkumiyetin somut hali olculmustu: Faz C'de `IPermissionChecker`in
+             tek uygulamasi EF'teydi ve EF almayan tuketici kabuk parcasini HIC
+             kullanamadi. Ayni tuzak burada tekrarlanmasin diye varsayilan `Core`da ve
+             hicbir sey gerektirmiyor.
+            
+             KAPSAM — <b>kalici DEGIL</b>. Surec yeniden baslayinca her sey gider.
+             Dogru kullanimlar: test · tek surecli arac · gelistirme. Kalici depo
+             isteyen `Solum.EntityFrameworkCore` uygulamasini alir ya da kendi yazar.
+            
+             <b>SIRKET KAPSAMI UYGULANIYOR</b> — ve ilk yazim bunu ATLAMIS,
+             gerekcesi de YANLISTI. Iki bagimsiz denetim ayri ayri buldu (BULGU 4 / B9).
+            
+             Ilk yazim soyle diyordu: *"bellekteki bir liste icin sirket izolasyonu
+             ANLAMSIZDIR (tek surec, tek bellek)"*. Bu yanlis: <b>tek surecli bir web
+             uygulamasi coklu sirkete hizmet eder</b> — "tek bellek" izolasyonu
+             gereksiz kilmaz, tam tersine yalniz orada UYGULANABILIR kilar. Ustelik
+             metnin kendisi iki satir sonra kendini yalanliyordu (*"cok sirketli bir
+             kurulumda sirketler arasi gorunur"*).
+            
+             Ve asil sorun sekildeydi: <see cref="M:Solum.Core.Messaging.IAppNotifier.GetUnreadCountAsync(System.String,System.Threading.CancellationToken)"/>in
+             SOZLESME BELGESI *"AKTIF SIRKET KAPSAMINDA hesaplanir"* diyor. O vaat
+             UYE dokumantasyonunda, yani HER uygulama icin baglayici. Sevk edilen tek
+             uygulama onu tutmuyorsa bu bir "bilinen sinir" degil, SOZLESME IHLALIDIR.
+            
+             <see cref="T:Solum.Abstractions.ICurrentCompany"/> KURUCUDA ve VARSAYILANI YOK — karar cagri
+             yerinde YAZILI olsun. <c>null</c> gecmek gecerli (sirket kavrami olmayan
+             uygulama) ama o zaman kapsam KOSMAZ ve bunu yazan kisi bilir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.#ctor(Solum.Abstractions.IClock,Solum.Abstractions.ICurrentCompany)">
+             <summary>Saat ve sirket baglamiyla kurar.</summary>
+             <param name="clock">
+             Zaman kaynagi. Sistem saati DOGRUDAN cagrilmiyor: oyle olsaydi
+             "eskiyen bildirim" davranisi SINANAMAZDI.
+            
+             (Bu satir <c>DateTimeOffset.UtcNow</c> diyordu ve HIC dogru
+             olmamisti — portfoy karari yerel saat. Bagimsiz denetim yakaladi.)
+             </param>
+             <param name="company">
+             Aktif sirket. Verilirse kapsam UYGULANIR: yazmada sirket damgalanir,
+             okumada suzulur.
+            
+             <c>null</c> gecmek gecerli — sirket kavrami olmayan bir uygulamada
+             (tek sirketli arac, test) dogru olan budur. Ama SONUCU YAZILI OLMALI:
+             o zaman butun bildirimler ortak havuzdadir.
+            
+             VARSAYILANI YOK, cunku bu bir IZOLASYON karari ve sessizce atlanan
+             bir izolasyon, atlanmamis gibi gorunur. Ayni gerekce
+             <c>FixedPermissionChecker</c>in <c>user</c> parametresinde de var.
+             </param>
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.CreateAsync(Solum.Core.Messaging.NotificationRequest,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.GetUnreadCountAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.GetRecentAsync(System.String,System.Int32,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.MarkAsReadAsync(System.String,System.Int64,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.ReadScope(Solum.Core.Messaging.InMemoryAppNotifier.Entry)">
+             <summary>
+             Entry AKTIF SIRKETE ait mi — <b>EF suzgeciyle AYNI anlam</b>.
+            
+             EF tarafinda suzgec: <c>IsCrossCompany || e.CompanyId == CurrentCompanyId</c>
+            
+             ILK YAZIM UC YERDE AYRISIYORDU ve bagimsiz izolasyon denetimi ucunu de
+             olctu (S-3):
+            
+             | Durum | EF | Bellek (ONCE) | Yon |
+             |---|---|---|---|
+             | `CompanyId = null`, okuma | 0 kayit | **2 kayit** | SIZINTI |
+             | `IsCrossCompany = true` | 2 kayit | 1 kayit | Gizleme |
+             | `CompanyId = null`, yazma | firlatir | sessizce yazdi | SESSIZ KAYIP |
+            
+             Birincisi en agiri: eski desen
+             <c>_sirket?.CompanyId is not { } aktif || ...</c> idi ve `_sirket`
+             VERILMIS ama `CompanyId` NULL oldugunda (arka plan isi, kimlik
+             dogrulanmamis istek, bozuk sirket talebi) desen eslesmiyor, `true`
+             donuyor ve HER SEY gorunuyordu. Bu, `null` gecmeyi SECEN cagiranin
+             karari degildi — nesneyi VEREN cagiranin da basina geliyordu.
+            
+             Yazma tarafi artik firlattigi icin `CompanyId` null olan bir kayit
+             (sirket baglami verilmisken) OLUSAMAZ; okuma da EF ile ayni sonucu
+             verir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.WriteScope(Solum.Core.Messaging.InMemoryAppNotifier.Entry)">
+             <summary>
+             Entry AKTIF SIRKETE ait mi — <b>YAZMA yolu icin</b>.
+            
+             <see cref="M:Solum.Core.Messaging.InMemoryAppNotifier.ReadScope(Solum.Core.Messaging.InMemoryAppNotifier.Entry)"/>den TEK farki: <c>IsCrossCompany</c>yi ONURLANDIRMAZ.
+            
+             NEDEN AYRI — ve bunu PAYLASILAN SOZLESME TESTI buldu, yazildigi anda
+             (2026-08-29). EF tarafinda ayni karar S-2 olarak verilmisti: konsolide
+             OKUMA mesru, konsolide YAZMA degil. `ICrossCompanyScope` "konsolide
+             rapor" icin tasarlandi ve izin adi bile `CrossCompanyRead`.
+            
+             Bellek uygulamasi tek bir yuklem kullaniyordu, yani kapsam acikken
+             `MarkAllAsRead` BASKA SIRKETIN bildirimini de isaretliyordu — EF'te
+             kapatilan acigin bellek tarafindaki hali.
+            
+             Paylasilan test olmasaydi bu ayrisma GORULMEZDI: her uygulamanin kendi
+             test dosyasi kendi senaryolarini yaziyordu.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.InMemoryAppNotifier.MarkAllAsReadAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Messaging.LoggingMailSender">
+             <summary>
+             Her gonderimi <see cref="T:Solum.Core.Messaging.IMailLogStore"/>'a yazan sarmalayici — BOGAZ.
+            
+             <b>NEDEN DEKORATOR, NEDEN <c>SmtpMailSender</c>'IN ICINDE DEGIL:</b>
+             kayit BUTUN gondericileri kapsamali. Kontrol <c>SmtpMailSender</c>'a
+             konsaydi <see cref="T:Solum.Core.Messaging.NullMailSender"/> ve tuketicinin kendi uygulamasi iz
+             birakmazdi. <c>sinif-kapatma.md</c> §4: *"Bir garantiyi yalniz bir
+             uygulamaya koymak, onu sozlesme degil TESADUF yapar. Butun yollarin
+             gectigi BOGAZI bul."*
+            
+             Ayni dosyada olculmus alti ornekten ikisi (6 ve 8) tam bu hatayi
+             yapmisti: kontrol ureticiye kondu, elle model kuran yol korunmadi.
+            
+             <b>NEDEN BU PAKETTE:</b> yalniz iki sozlesmeye bagli — <see cref="T:Solum.Core.Messaging.IMailSender"/>
+             ve <see cref="T:Solum.Core.Messaging.IMailLogStore"/>. <c>DbContext</c> bilmiyor, o yuzden EF
+             paketine inmesi gerekmiyor. Depo uygulamasi orada, karar burada.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.LoggingMailSender.#ctor(Solum.Core.Messaging.IMailSender,Solum.Core.Messaging.IMailLogStore)">
+            <summary>Sarmalayiciyi kurar.</summary>
+            <param name="inner">Gercek gonderici.</param>
+            <param name="store">Deneme kayitlarinin yazilacagi depo.</param>
+            <exception cref="T:System.ArgumentNullException">Bagimliliklardan biri null.</exception>
+        </member>
+        <member name="M:Solum.Core.Messaging.LoggingMailSender.SendAsync(Solum.Core.Messaging.MailRequest,System.Threading.CancellationToken)">
+             <summary>
+             Maili gonderir, sonucu gunluge yazar, sonucu doner.
+            
+             <b>SIRA: ONCE GONDER, SONRA YAZ.</b> Tersi olsaydi gonderim iptal
+             edilse bile "gonderildi" satiri kalirdi.
+            
+             <b>BASARISIZ GONDERIM DE YAZILIR</b> — asil sebep zaten bu. Plan 08'in
+             dogdugu TABLO bulgusu: bir tuketici urununde gonderilemeyen mail
+             SESSIZDI ve IZ DE YOKTU.
+            
+             <b>GUNLUK YAZILAMAZSA FIRLATIR.</b> Ucuncu bir secenek yok ve ucu de
+             olculdu:
+             <list type="bullet">
+               <item>Yutmak: planin dogdugu bulgunun ta kendisi — iz yok, kimse bilmiyor.</item>
+               <item>Sonucu <c>Sent=false</c> yapmak: YALAN. Mail cikti.</item>
+               <item>Firlatmak: dogru, ama mesaj mailin GITTIGINI soylemek zorunda —
+                     yoksa cagiran yeniden dener ve ikinci mail gider.</item>
+             </list>
+             </summary>
+             <exception cref="T:System.ArgumentNullException"><paramref name="message"/> null.</exception>
+             <exception cref="T:Solum.Core.Messaging.MailLogWriteException">
+             Gonderim tamamlandi ama gunluk yazilamadi.
+             </exception>
+        </member>
+        <member name="T:Solum.Core.Messaging.MailLogWriteException">
+             <summary>
+             Gonderim TAMAMLANDI ama gunluk yazilamadi.
+            
+             Ayri bir tip, cunku cagiranin bunu gonderim hatasindan AYIRT ETMESI
+             sart: gonderim hatasinda yeniden denemek dogru, burada YANLIS —
+             ikinci mail gider.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailLogWriteException.#ctor(Solum.Core.Messaging.MailResult,System.Exception)">
+            <summary>Istisnayi kurar.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogWriteException.Result">
+            <summary>
+            Gonderimin GERCEK sonucu — gunluk yazilamadi diye degismedi.
+            </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.MailRequest">
+             <summary>
+             Gonderilecek mail.
+            
+             ADI <c>MailMessage</c> DEGIL — bagimsiz denetim buldu (BULGU 9) ve olctu:
+             <c>System.Net.Mail.MailMessage</c> ile carpisiyordu ve
+             <c>using System.Net.Mail;</c> tasiyan bir dosyada
+             <c>new MailMessage(...)</c> yazmak <b>CS0104 belirsiz basvuru</b> veriyordu.
+             Gurultulu bir hata (sessiz degil) ama tam HEDEF GOCTE patliyor: mevcut
+             <c>SmtpEmailService</c>ini Solum'a cevirecek tuketici o using'i zaten
+             tasiyor. <c>MailRequest</c>/<see cref="T:Solum.Core.Messaging.MailResult"/> ayrica
+             <c>NotificationRequest</c> ile simetrik.
+            
+             SEKIL BILINCLI OLARAK DAR: alici, konu, govde. Sablon motoru, ek dosya,
+             CC/BCC ve oncelik YOK — hicbiri uc kural esigini gecmedi ve her biri ya
+             bagimlilik ya alan karari getirir (<c>kutuphane-disiplini.md</c> §2/§3).
+             Ihtiyaci olan tuketici <see cref="T:Solum.Core.Messaging.IMailSender"/>i sarar.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Messaging.MailRequest.MaxBodyLength">
+            <summary>Icerigin en fazla uzunlugu.</summary>
+            <remarks>
+            SINIR SOZLESMEDE ve varsayilani var — <c>solum-veri</c> §4:
+            *"Sinirsiz metin, saklandigi blokla satir boyutunu sisirir ve kimse
+            fark etmez."* Mail govdesi bir gun bir denetim tablosuna yazilacak;
+            sinir orada degil BURADA olmali, cunku burasi butun yollarin gectigi
+            yer.
+            </remarks>
+        </member>
+        <member name="F:Solum.Core.Messaging.MailRequest.MaxSubjectLength">
+            <summary>Konu satirinin en fazla uzunlugu.</summary>
+        </member>
+        <member name="F:Solum.Core.Messaging.MailRequest.MaxKindLength">
+            <summary><see cref="P:Solum.Core.Messaging.MailRequest.Kind"/> icin sinir — sema kolonuyla AYNI.</summary>
+        </member>
+        <member name="F:Solum.Core.Messaging.MailRequest.MaxCorrelationIdLength">
+            <summary><see cref="P:Solum.Core.Messaging.MailRequest.CorrelationId"/> icin sinir — sema kolonuyla AYNI.</summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailRequest.#ctor(System.String,System.String,System.String,System.Boolean,System.String,System.String)">
+            <summary>Maili kurar.</summary>
+            <param name="to">Alici adresi — <b>TEK</b> adres.</param>
+            <param name="subject">Konu.</param>
+            <param name="body">Govde.</param>
+            <param name="isHtml">Govde HTML mi.</param>
+            <param name="kind">
+            Tuketicinin kendi siniflandirmasi, ornegin <c>"password-reset"</c>.
+            Gonderime etki ETMEZ; yalniz gunluge yazilir.
+            </param>
+            <param name="correlationId">
+            Ayni MANTIKSAL maili birbirine baglayan anahtar. Yeniden deneme yeni
+            bir kayittir; bu deger onlari birbirine baglar ve <c>Attempt</c>
+            bundan TURETILIR.
+            </param>
+            <exception cref="T:System.ArgumentException">
+            Alan bos, sinir asilmis, adres bicimi gecersiz ya da BIRDEN COK adres.
+            </exception>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailRequest.To">
+            <summary>Alici adresi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailRequest.Subject">
+            <summary>Konu.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailRequest.Body">
+            <summary>Govde.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailRequest.IsHtml">
+            <summary>Govde HTML mi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailRequest.Kind">
+             <summary>
+             Tuketicinin kendi siniflandirmasi — <c>"password-reset"</c>,
+             <c>"invoice"</c> gibi. Gonderime ETKI ETMEZ.
+            
+             NEDEN ISTEKTE, GUNLUKTE DEGIL: gunluk kolonu (<c>SolumMailLog.Kind</c>)
+             zaten vardi ve KIMSE DOLDURAMIYORDU — cunku bu bilgi yalniz cagiranda
+             var ve sozlesmede tasinmiyordu. Doldurulamayan bir kolon, semada duran
+             bir YALANDIR.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailRequest.CorrelationId">
+             <summary>
+             Ayni MANTIKSAL maili birbirine baglayan anahtar; tuketici uretir.
+            
+             Yeniden deneme DEGISMEZLIKLE CELISMIYOR cunku yeni bir satirdir
+             (<c>solum-veri</c> §1: *"Duzeltme silmeyle degil, YENI KAYITLA"*).
+             Bu deger o satirlari birbirine baglar; kacinci deneme oldugu buradan
+             TURETILIR, cagirandan alinmaz.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailRequest.Optional(System.String,System.String,System.Int32)">
+             <summary>
+             Istege bagli metin: bos/bosluk-yalniz ise <c>null</c>, doluysa
+             kirpilmis ve UZUNLUGU DENETLENMIS.
+            
+             SESSIZCE KIRPMIYOR (<c>kutuphane-disiplini.md</c> §5 *"Degeri sessizce
+             kirpmak -> Sinir asilinca hata"*): sinir asilirsa firlatir. Sebep bu
+             alanlarin isine bagli — <c>CorrelationId</c> kirpilirsa iki AYRI mail
+             zinciri ayni anahtara duser ve "kac kez denedik" sorusu yanlis cevap
+             verir. Yanlis cevap, cevapsizliktan kotudur.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailRequest.SingleAddress(System.String)">
+             <summary>
+             TEK GECERLI ADRES — ve bu, olculmus bir SESSIZ SIZINTI yolunu kapatiyor.
+            
+             BAGIMSIZ DENETIM OLCTU (BULGU 2, sahte SMTP sunucusu): ilk yazim yalniz
+             bos/uzunluk kontrolu yapiyordu. <c>System.Net.Mail.MailMessage(from, to, …)</c>
+             ise VIRGULLE AYRILMIS LISTE kabul ediyor:
+            
+             <code>
+             to = "alici@ornek.test,ikinci@ornek.test, ucuncu@ornek.test"
+               -> RCPT TO:&lt;alici@ornek.test&gt;
+                  RCPT TO:&lt;ikinci@ornek.test&gt;
+                  RCPT TO:&lt;ucuncu@ornek.test&gt;
+                  sonuc: Sent=True
+             </code>
+            
+             Sozlesme *"Alici adresi"* (TEKIL) diyor, uc kisiye gitti ve
+             <c>MailResult.Ok()</c> dondu. Sahada: kullanici girdisinden gelen bir
+             e-posta alani (<c>"a@x, saldirgan@y"</c>) parola sifirlama ya da rapor
+             mailini FAZLADAN ALICIYA tasir — ne cagiran ne kullanici gorur.
+            
+             <c>MailAddress</c> ile dogrulaniyor ve virgul/noktali virgul ACIKCA
+             reddediliyor: <c>MailAddress</c> tek basina *"a@x, b@y"*i goruntu-adi
+             olarak ayristirabiliyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailRequest.NoLineBreaks(System.String,System.String)">
+             <summary>
+             SATIR SONU REDDEDILIYOR — baslik enjeksiyonu (SMTP header injection).
+            
+             Bagimsiz denetim olctu (BULGU 3): <c>subject = "Konu\r\nBcc: kurban@…"</c>
+             gonderimde <c>ArgumentException</c> firlatiyordu — yani hem sozlesme
+             sozu bozuluyor hem de kontrol YANLIS KATMANDA duruyordu. Artik burada.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailRequest.Required(System.String,System.String,System.Int32,System.String)">
+             <summary>
+             Bos/bosluk-yalniz REDDEDILIR ve SINIR ASIMI DA REDDEDILIR — kirpilmaz.
+            
+             <c>kutuphane-disiplini.md</c> §5: *"Degeri sessizce kirpmak"* yasak.
+             Kirpilan bir mail govdesi GONDERILIR ve eksik oldugu ANLASILMAZ —
+             cumlenin ortasinda biter.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.MailResult">
+             <summary>
+             Gonderim sonucu — <b>basarisizlik NEDEN tasir</b>.
+            
+             BU TIPIN VARLIK SEBEBI OLCULMUS BIR TABLO BULGUSU (plan 08, 2026-08-29):
+            
+             Iki tuketici urunu <c>IEmailService</c>i BIREBIR ayni yazmis (uc uye, ayni
+             imzalar, ayni yerlesim, ikisinde de <c>SmtpEmailService</c>). Tek fark
+             donus tipi — ve <b>DikkatIQ <c>Task</c> donduruyor</b>. Yani orada
+             gonderilemeyen mail SESSIZ: cagiran basarili sanir, kullanici mailin
+             gelmedigini gunler sonra fark eder ve o noktada iz de yoktur.
+            
+             <c>kutuphane-disiplini.md</c> §5: *"Basarisizligi yalniz `false` ile
+             bildirmek"* yasak, *"neden tasiyan sonuc ya da hata"* dogru. Burada
+             `false` bile yetmiyordu — hic donus yoktu.
+            
+             SINIR — ve bagimsiz denetim bunu OLCEREK yazdirdi (B6): bu tip nedeni
+             TASIR ama cagiranin sonucu YOK SAYMASINI engelleyemez.
+             <c>await sender.SendAsync(m);</c> sifir uyariyla derleniyor. Yani
+             <b>sonucu okumayan bir cagiran, DikkatIQ'nun sessizligini geri getirir
+             ve bunu imza engelleyemez.</b> <see cref="M:Solum.Core.Messaging.MailResult.EnsureSent"/> gurultulu yolu
+             tek satir yapar; secim gorunur olur.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailResult.Sent">
+            <summary>Gonderildi mi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailResult.Reason">
+            <summary>
+            Basarisizlik nedeni — insan okuyacak. <see cref="P:Solum.Core.Messaging.MailResult.Sent"/> ise <c>null</c>.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailResult.Error">
+             <summary>
+             Ozgun istisna, varsa. Yutulmuyor: cagiran gunluge yazabilsin.
+            
+             SAKLANIYOR AMA FIRLATILMIYOR — ve bu bir karar. Gonderim
+             basarisizligi cogu zaman GECICIDIR (SMTP mesgul, ag koptu) ve
+             cagiranin akisini durdurmasi gerekmez. Ama kaybolmasi da gerekmez.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailResult.Ok">
+            <summary>Basarili sonuc.</summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailResult.Fail(System.String,System.Exception)">
+             <summary>
+             Basarisiz sonuc — NEDEN ZORUNLU.
+            
+             Parametresiz bir <c>Fail()</c> asiri yuklemesi BILEREK YOK: neden
+             tasimayan bir basarisizlik, `false` donmekten farksizdir ve bu tipin
+             varlik sebebini ortadan kaldirirdi.
+             </summary>
+             <exception cref="T:System.ArgumentException">Neden bos.</exception>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailResult.EnsureSent">
+             <summary>
+             Basarisizsa FIRLATIR — firlatma semantigi isteyen cagiran icin.
+            
+             NEDEN VAR — bagimsiz denetimin durust gozlemi: <see cref="T:Solum.Core.Messaging.MailResult"/>
+             nedeni TASIYOR ama cagiranin sonucu YOK SAYMASINI engelleyen hicbir sey
+             yok, ve C#'ta bagimliliksiz bir zorlama da yok
+             (<c>MustUseReturnValue</c> bir JetBrains ozniteligi —
+             <c>kutuphane-disiplini.md</c> §2 bagimlilik almayi yasakliyor).
+            
+             Yani bu bir SINIR ve gizlenmiyor: <b>sonucu okumayan bir cagiran,
+             DikkatIQ'nun sessizligini geri getirir ve bunu imza engelleyemez.</b>
+             Bu metot secimi GORUNUR kiliyor — tek satirla firlatma istenebilir.
+             </summary>
+             <exception cref="T:System.InvalidOperationException">Gonderim basarisiz.</exception>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailResult.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Messaging.IMailSender">
+             <summary>
+             Mail gonderir.
+            
+             TEK GONDERIM SOZLESMESIDIR. Kuyruk, yeniden deneme ve toplu gonderim
+             KAPSAM DISI — bunlar zamanlama ve dayaniklilik kararlaridir, tuketicinin
+             altyapisina baglidir. Isteyen bu sozlesmeyi SARAR; kutuphane onun yerine
+             karar vermez.
+            
+             Yabanci bir tuketici bunu garip bulabilir (plan 08, Outsider mercegi) —
+             o yuzden burada aciken yaziyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.IMailSender.SendAsync(Solum.Core.Messaging.MailRequest,System.Threading.CancellationToken)">
+             <summary>
+             Maili gonderir.
+            
+             <b>GECERLI BIR <see cref="T:Solum.Core.Messaging.MailRequest"/> ICIN FIRLATMAZ, SONUC DONER.</b>
+            
+             CUMLE DARALTILDI — bagimsiz denetim olctu (BULGU 3). Onceki hal
+             kosulsuz *"firlatmaz"* diyordu ve YANLISTI: bicimi bozuk bir adres ya
+             da satir sonu tasiyan bir konu, uygulamanin icinde
+             <c>FormatException</c>/<c>ArgumentException</c> firlatiyordu.
+            
+             Onarim iki katmanli: o girdiler artik <see cref="T:Solum.Core.Messaging.MailRequest"/>
+             KURUCUSUNDA reddediliyor (bogaz), ve cumle ancak gecerli bir istek
+             icin soz veriyor. Yani soz, tutulabilecek kadar dar.
+            
+             Gonderim basarisizligi bir program hatasi degil bir CALISMA ANI
+             olayidir; cagiranin akisini durdurmak yerine karari ona birakiyoruz.
+             Ama sessiz de kalmiyor: <see cref="P:Solum.Core.Messaging.MailResult.Reason"/> her zaman dolu.
+             Firlatma isteyen <see cref="M:Solum.Core.Messaging.MailResult.EnsureSent"/> cagirir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.MailLogRecord">
+             <summary>
+             Bir gonderim DENEMESININ kaydi — depoya yazilacak sekil.
+            
+             NEDEN AYRI BIR SEKIL, <c>SolumMailLog</c> DEGIL: o varlik
+             <c>Solum.EntityFrameworkCore</c>'da yasiyor ve bu paket oraya referans
+             VERMEZ (yon tersi). Sozlesme burada, EF uygulamasi orada —
+             <c>kutuphane-disiplini.md</c> §4.
+            
+             <b>GOVDE TASIMIYOR</b> ve bu bilincli bir sinir: govde satir boyutunu
+             sisirir (<c>solum-veri</c> §4) ve icerik sirkete ozel veri tasiyabilir.
+             Govde isteyen tuketici kendi tablosunu yazar.
+            
+             <b><c>Attempt</c> DA TASIMIYOR</b> — o depoda TURETILIR. Cagirandan
+             alinsaydi yanlis verilebilirdi ve <c>CLAUDE.md</c>: *"Bayat sayi,
+             sayisizliktan kotudur: insan ona guvenir ve karar verir."*
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.MailLogRecord.#ctor(Solum.Core.Messaging.MailRequest,Solum.Core.Messaging.MailResult)">
+            <summary>Kaydi kurar.</summary>
+            <exception cref="T:System.ArgumentNullException"><paramref name="request"/> null.</exception>
+            <exception cref="T:System.ArgumentNullException"><paramref name="result"/> null.</exception>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogRecord.To">
+            <summary>Alici adresi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogRecord.Subject">
+            <summary>Konu.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogRecord.Sent">
+            <summary>Gonderildi mi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogRecord.Reason">
+             <summary>
+             Basarisizlik nedeni; <see cref="P:Solum.Core.Messaging.MailLogRecord.Sent"/> ise <c>null</c>.
+            
+             <b>ISTISNANIN KENDISI DEGIL, BIZIM BICIMLEDIGIMIZ METIN.</b>
+             <see cref="P:Solum.Core.Messaging.MailResult.Error"/> bilerek okunmuyor: yigin izi ve ic
+             tipler bir denetim tablosuna girmemeli. <c>MailResult.Reason</c>
+             sunucu ve baglanti noktasini tasiyor, ki bir OPERATORUN ihtiyaci
+             olan sey odur.
+            
+             <b>BU ALAN EKRANA CIPLAK BASILMAZ.</b> Kullanicinin istedigi
+             "Odoo'daki gibi" ekran bu tabloyu gosterecek; SMTP sunucusunun ham
+             mesaji son kullaniciya ic yapi sizdirir (<c>solum-arayuz</c> §4).
+             Bu satiri cizen yuzey onu IZNE baglamak zorunda.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogRecord.Kind">
+            <summary>Tuketicinin siniflandirmasi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.MailLogRecord.CorrelationId">
+            <summary>Ayni mantiksal maili baglayan anahtar.</summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.IMailLogStore">
+             <summary>
+             Gonderim denemelerini saklayan depo.
+            
+             <b>VARSAYILAN UYGULAMASI <c>Solum.EntityFrameworkCore</c>'DA</b>
+             (<c>EfMailLogStore</c>) — cunku yazma bir <c>DbContext</c> gerektiriyor ve
+             bu paketin EF bagimliligi yok. Sozlesme + varsayilan ayrimi
+             (<c>kutuphane-disiplini.md</c> §4) burada paket sinirindan geciyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.IMailLogStore.WriteAsync(Solum.Core.Messaging.MailLogRecord,System.Threading.CancellationToken)">
+             <summary>
+             Denemeyi yazar.
+            
+             <b>CAGIRANIN ISLEMINE KATILMAMALI.</b> Mail GERCEKTEN cikti; cagiran
+             kendi islemini geri alirsa iz de silinirse, plan 08'in dogdugu bulgu
+             aynen geri gelir — gonderilemeyen (ya da gonderilen) mailin izi yok.
+             Uygulayan bunu saglamak zorunda; <c>EfMailLogStore</c> ayri bir
+             baglam ornegi kullaniyor.
+            
+             <b>BASARISIZLIGI YUTMAZ.</b> Yazamiyorsa FIRLATIR ve mesaji mailin
+             gonderilmis oldugunu ACIKCA soyler — yoksa cagiran "gonderilmedi"
+             sanip yeniden dener ve ikinci mail gider.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.NotificationItem">
+             <summary>
+             Bir uygulama-ici bildirim — OKUMA bicimi.
+            
+             Kutuphane bunu <b>cizmez</b>, yalnizca tasir. Cizim tuketicinin ya da
+             kabuk parcasinin isi.
+             </summary>
+             <param name="Id">Bildirim kimligi.</param>
+             <param name="Title">Baslik.</param>
+             <param name="Message">Govde. Bos olabilir.</param>
+             <param name="TargetUrl">Tiklaninca gidilecek adres. Bos olabilir.</param>
+             <param name="Kind">Tuketicinin kendi siniflandirmasi (ornegin "approval").</param>
+             <param name="CreatedAt">Olusturulma zamani.</param>
+             <param name="IsRead">Okundu mu.</param>
+        </member>
+        <member name="M:Solum.Core.Messaging.NotificationItem.#ctor(System.Int64,System.String,System.String,System.String,System.String,System.DateTimeOffset,System.Boolean)">
+             <summary>
+             Bir uygulama-ici bildirim — OKUMA bicimi.
+            
+             Kutuphane bunu <b>cizmez</b>, yalnizca tasir. Cizim tuketicinin ya da
+             kabuk parcasinin isi.
+             </summary>
+             <param name="Id">Bildirim kimligi.</param>
+             <param name="Title">Baslik.</param>
+             <param name="Message">Govde. Bos olabilir.</param>
+             <param name="TargetUrl">Tiklaninca gidilecek adres. Bos olabilir.</param>
+             <param name="Kind">Tuketicinin kendi siniflandirmasi (ornegin "approval").</param>
+             <param name="CreatedAt">Olusturulma zamani.</param>
+             <param name="IsRead">Okundu mu.</param>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.Id">
+            <summary>Bildirim kimligi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.Title">
+            <summary>Baslik.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.Message">
+            <summary>Govde. Bos olabilir.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.TargetUrl">
+            <summary>Tiklaninca gidilecek adres. Bos olabilir.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.Kind">
+            <summary>Tuketicinin kendi siniflandirmasi (ornegin "approval").</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.CreatedAt">
+            <summary>Olusturulma zamani.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationItem.IsRead">
+            <summary>Okundu mu.</summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.IAppNotifier">
+             <summary>
+             Uygulama-ici bildirim yazma ve okuma.
+            
+             SOZLESME BES UYEYLE SINIRLI — ve bu bir SINIR, eksiklik degil.
+             Plan 08 riski: bu tip bir GENEL DEPO katmanina donusebilir ve Solum'un
+             *"`IRepository` yok"* karari asinir. Genisletme talebi yeni bir uc kural
+             esigi olcumu gerektirir.
+            
+             SIRKET KAPSAMI UYGULAMADA, SOZLESMEDE DEGIL. Bildirim <c>ICompanyScoped</c>
+             tasiyor (plan 08, `solum-kiracilik` danismasi) ama <c>CompanyId</c> bu
+             sozlesmede HIC gorunmuyor: <c>solum-veri</c> §2 *"MapToEntity icinde
+             atanmaz: Id, CompanyId, denetim alanlari"* diyor ve elle doldurulan bir
+             kapsam alani, er gec doldurulmayan bir kapsam alanidir.
+            
+             BUNUN BEDELI VAR ve yazili: arka plan isinin istek baglami YOKTUR
+             (`solum-kiracilik` §3, olculmus tuzak). Bildirim ureten bir arka plan
+             isi, sirket baglamini ACIKCA kurmak zorunda; kurmazsa yazma HATA VERIR.
+             Bu bilincli — sessizce sirketsiz bir satir yazmak, o satiri hicbir
+             sirkette gorunmez yapardi.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.IAppNotifier.CreateAsync(Solum.Core.Messaging.NotificationRequest,System.Threading.CancellationToken)">
+            <summary>
+            Bildirim olusturur ve kimligini doner.
+            </summary>
+            <exception cref="T:System.ArgumentException">Zorunlu alan bos.</exception>
+        </member>
+        <member name="M:Solum.Core.Messaging.IAppNotifier.GetUnreadCountAsync(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Kullanicinin okunmamis bildirim sayisi.
+            
+             AKTIF SIRKET KAPSAMINDA hesaplanir. Kiraci genelinde sayilsaydi rozet
+             listede GORUNMEYEN kayitlari sayardi — kullanici "3" gorup listeyi
+             acinca 1 bulurdu ve bu, hicbir hata vermeyen bir tutarsizlik olurdu.
+            
+             ROZET TOPLAMDIR, LISTE SAYFADIR — ve ikisi KASTEN ayri. Bagimsiz
+             denetim olctu (B10): 250 okunmamis varken
+             <see cref="M:Solum.Core.Messaging.IAppNotifier.GetRecentAsync(System.String,System.Int32,System.Boolean,System.Threading.CancellationToken)"/> en fazla 200 dondurur. Bu bir kusur
+             DEGIL (biri toplam, oteki pencere) ama tuketici bunu bilmezse
+             kullaniciya "200+" diyemez — o yuzden burada yazili.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.IAppNotifier.GetRecentAsync(System.String,System.Int32,System.Boolean,System.Threading.CancellationToken)">
+            <summary>Kullanicinin son bildirimleri, yeniden eskiye.</summary>
+            <param name="userId">Kullanici.</param>
+            <param name="take">En fazla kac kayit. 1-200.</param>
+            <param name="unreadOnly">Yalniz okunmamislar.</param>
+            <param name="ct">Iptal.</param>
+        </member>
+        <member name="M:Solum.Core.Messaging.IAppNotifier.MarkAsReadAsync(System.String,System.Int64,System.Threading.CancellationToken)">
+             <summary>
+             Tek bildirimi okundu isaretler.
+            
+             <b><c>false</c> = BU CAGRI HICBIR SEY DEGISTIRMEDI.</b> Uc hal:
+             kayit YOK · kayit BASKASININ · kayit ZATEN OKUNMUS. Es zamanli
+             cagrilarda YALNIZ BIRI <c>true</c> alir.
+            
+             UC HALIN DE YAZILMASI bagimsiz denetimin bulgusu (BULGU 6 / B7): ilk
+             yazim yalniz IKISINI sayiyordu ve "zaten okunmus" hali sadece bir
+             UYGULAMANIN testinde duruyordu. Sozlesme dokumantasyonu iki
+             uygulamanin TEK ortak kaynagi; adim 8'de yazilacak EF uygulamasi bu
+             hal icin <c>true</c> donerse ikisi ayrisir ve fark yalniz es zamanli
+             ya da ikinci tiklamada gorunur — yani sahada, sessizce.
+            
+             SINIR — ve gizlenmiyor: <c>false</c> uc hali AYIRT ETMIYOR, oysa biri
+             (BASKASININ) bir YETKISIZLIK sinyali. <c>kutuphane-disiplini.md</c> §5
+             *"yetkisizlikte bos liste donmek"*i yasakliyor ve bu onun `bool`
+             kiligi. Zenginlestirmek (`MarkResult`) mumkun ve `docs/ODAK.md`
+             PARK'ta; bugun yapilmadi cunku ikinci uygulama (EF) henuz yok ve
+             sozlesme sekli iki uygulamayla birlikte kararlasmali.
+            
+             <b>`userId` ZORUNLU ve bu YAPISAL bir karar.</b> Olculdu (plan 08):
+             bir tuketici urununde imza <c>MarkAsReadAsync(Guid notificationId)</c>
+             — sahiplik almiyordu, yani herhangi bir cagiran BASKASININ bildirimini
+             okundu isaretleyebiliyordu. Sahipsiz bir asiri yukleme burada
+             BILEREK YOK; olsaydi kural bir gun yine atlanirdi.
+            
+             <b>`bool` DONER ve bu da yapisal.</b> Ayni urunde metot kayit
+             bulunamayinca sessizce <c>return</c> ediyordu — cagiran
+             "isaretledim" ile "bulamadim"i AYIRT EDEMIYORDU.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.IAppNotifier.MarkAllAsReadAsync(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Kullanicinin okunmamis bildirimlerini okundu isaretler ve KAC TANE
+             oldugunu doner.
+            
+             Sayi doner cunku <c>void</c> "hicbiri yoktu" ile "hepsi isaretlendi"yi
+             ayirt edilemez yapardi.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.NotificationRequest">
+             <summary>
+             Bildirim olusturma istegi.
+            
+             NEDEN AYRI TIP — olculmus bir sekil sorunu (plan 08): bir tuketici
+             urununde <c>CreateAsync</c> <b>dokuz</b> konumsal parametre aliyordu.
+             Dokuz parametrenin besi <c>string?</c> ve iki tanesi yan yana; yanlis
+             sirayla yazmak SESSIZCE derlenir. `PagedResult`ta ayni sinif olculmustu
+             (uc ardisik <c>int</c>) ve orada da acik kurucuya cevrilmisti.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Messaging.NotificationRequest.MaxTitleLength">
+            <summary>Baslik icin en fazla uzunluk.</summary>
+        </member>
+        <member name="F:Solum.Core.Messaging.NotificationRequest.MaxMessageLength">
+            <summary>Govde icin en fazla uzunluk.</summary>
+        </member>
+        <member name="F:Solum.Core.Messaging.NotificationRequest.MaxUrlLength">
+            <summary>Adres icin en fazla uzunluk.</summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.NotificationRequest.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>Istegi kurar.</summary>
+            <param name="userId">Bildirimi alacak kullanici.</param>
+            <param name="title">Baslik.</param>
+            <param name="message">Govde. Istege bagli.</param>
+            <param name="targetUrl">Hedef adres. Istege bagli.</param>
+            <param name="kind">Tuketicinin kendi siniflandirmasi. Istege bagli.</param>
+            <exception cref="T:System.ArgumentException">Zorunlu alan bos ya da sinir asilmis.</exception>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationRequest.UserId">
+            <summary>Bildirimi alacak kullanici.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationRequest.Title">
+            <summary>Baslik.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationRequest.Message">
+            <summary>Govde.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationRequest.TargetUrl">
+            <summary>Hedef adres.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NotificationRequest.Kind">
+            <summary>Tuketicinin kendi siniflandirmasi.</summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.NotificationRequest.WithinLimit(System.String,System.String,System.Int32)">
+            <summary>
+            SINIR ASIMI KIRPILMIYOR. Kirpilan bir baslik LISTEDE DOGRU GORUNUR
+            ama anlamini kaybeder — ve kimse fark etmez.
+            </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.NullMailSender">
+             <summary>
+             Hicbir yere gondermeyen gonderici — gelistirme ve test icin.
+            
+             <b>SESSIZCE YUTMAZ.</b> Gonderdigi her maili <see cref="P:Solum.Core.Messaging.NullMailSender.Sent"/> icinde
+             OKUNABILIR tutar. Bu ayrim bu deponun kovaladigi hata sinifinin ta
+             kendisi: "hicbir sey yapmayan" bir uygulama ile "yaptigini soylemeyen"
+             bir uygulama ayni SEY DEGILDIR.
+            
+             NEDEN VAR — testler icin gercek SMTP gerekmesin diye. Ama daha onemlisi:
+             <c>IMailSender</c> uygulamasi olmayan bir tuketici, mail gonderen kodu
+             HIC SINAYAMAZDI. Bu tip o yolu acar ve gonderilenleri IDDIA EDILEBILIR
+             yapar.
+            
+             <b>URETIMDE KULLANILMAZ</b> ve bunu kendisi soylemez — bir kutuphane
+             tuketicinin yapilandirmasini denetleyemez. Ama adi soyluyor.
+            
+             SINIR — SINIRSIZ BUYUR. Kuyruk hic bosaltilmiyor; uzun omurlu bir
+             gelistirme surecinde her mail (govde basina 64 KB'a kadar) bellekte
+             kalir. Bagimsiz denetim bunu kayda gecirdi (B12). <see cref="M:Solum.Core.Messaging.NullMailSender.Clear"/>
+             cagirmak cagiranin isi. Es zamanlilik acisindan temiz: 
+             <c>ConcurrentQueue.ToArray</c> tutarli bir anlik goruntu verir ve
+             <see cref="M:Solum.Core.Messaging.NullMailSender.Clear"/> is parcacigi guvenlidir.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.NullMailSender.Sent">
+            <summary>Bu ornek uzerinden gonderilen mailler, sirayla.</summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.NullMailSender.Clear">
+            <summary>Kayitlari temizler.</summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.NullMailSender.SendAsync(Solum.Core.Messaging.MailRequest,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Messaging.SmtpMailSender">
+             <summary>
+             SMTP ile gonderen varsayilan uygulama.
+            
+             NEDEN <c>Solum.Core</c>DA — ve bu olculmus bir dersin sonucu.
+             Faz C'de (2026-08-29) <c>IPermissionChecker</c>in TEK uygulamasi
+             <c>Solum.EntityFrameworkCore</c>daydi ve EF almayan ikinci tuketici kabuk
+             parcasini HIC kullanamadi. Ayni hatayi tekrarlamamak icin varsayilan
+             gonderici EF'e degil Core'a kondu: mail gondermek icin EF gerekmez.
+            
+             NEDEN BAGIMLILIK YOK — <c>System.Net.Mail.SmtpClient</c> BCL'de.
+             OLCULDU (2026-08-29): bu deponun <c>TreatWarningsAsErrors=true</c>
+             ayarinda UYARISIZ derleniyor, yani sifir bagimlilikla varsayilan mumkun
+             (<c>kutuphane-disiplini.md</c> §2).
+            
+             SINIR — <c>SmtpClient</c> modern SMTP'nin tamamini kapsamaz (OAuth2,
+             bazi TLS bicimleri). Ihtiyaci olan tuketici <see cref="T:Solum.Core.Messaging.IMailSender"/>i
+             kendi kutuphanesiyle uygular; sozlesme + varsayilan deseninin amaci
+             zaten bu (<c>kutuphane-disiplini.md</c> §4).
+            
+             SINIR — her gonderimde YENI <c>SmtpClient</c> kuruluyor, baglanti havuzu
+             yok. Tek-gonderim sozlesmesiyle tutarli; toplu gonderim isteyen kendi
+             uygulamasini yazar.
+            
+             SINIR — <c>Date</c> BASLIGI <c>IClock</c>U ATLIYOR. Bagimsiz denetim
+             telden olctu (B12): <c>Date: 29 Aug 2026 21:02:10 +0300</c> damgasini
+             <c>System.Net.Mail</c> SISTEM saatinden uretiyor. Yani sabit saatle
+             gonderim damgasi sinanamaz. <c>InMemoryAppNotifier</c>da saat titizlikle
+             soyutlanmisken burada degil — <c>SmtpClient</c> o basligi disaridan
+             almiyor.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.SmtpMailSender.#ctor(Solum.Core.Messaging.SmtpMailOptions)">
+            <summary>Ayarlarla kurar.</summary>
+            <exception cref="T:System.ArgumentNullException">Ayarlar yok.</exception>
+        </member>
+        <member name="M:Solum.Core.Messaging.SmtpMailSender.SendAsync(Solum.Core.Messaging.MailRequest,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Messaging.SmtpMailSender.IsSendFailure(System.Exception)">
+             <summary>
+             Bu istisna bir GONDERIM basarisizligi mi.
+            
+             BAGIMSIZ DENETIM OLCTU (BULGU 3) ve iki sonuc verdi:
+            
+             KACMAYANLAR (endise DOGRULANMADI, sorun yok): <c>SocketException</c> ve
+             bozuk TLS el sikismasi — ikisi de <c>SmtpException</c>a sarilip
+             yakalaniyor.
+            
+             KACANLAR (gercek kusurdu): <c>FormatException</c> ve
+             <c>ArgumentException</c> — <c>new System.Net.Mail.MailMessage(...)</c>
+             satirindan geliyordu. Bozuk adres, bozuk <c>From</c>, satir sonu
+             tasiyan konu. Onarim IKI katmanli oldu:
+            
+               1. Girdi <see cref="T:Solum.Core.Messaging.MailRequest"/> KURUCUSUNDA reddediliyor (bogaz)
+               2. <see cref="P:Solum.Core.Messaging.SmtpMailOptions.From"/> kurulumda dogrulaniyor
+            
+             Yani bu ikisi artik buraya ULASMAMALI. Ulasirsa YAKALANMIYOR ve
+             bilerek: o bir programlama hatasidir, gonderim hatasi degil —
+             ve sessizce "mail gonderilemedi" diye raporlanmasi, kusuru GIZLERDI.
+            
+             DOGRULANMADI: <c>AuthenticationException</c>in HICBIR yoldan kacmadigi
+             iddia edilemiyor. Olculen yol bozuk STARTTLS el sikismasiydi; gecersiz
+             sertifika ve sunucu tarafli AUTH reddi yollari OLCULMEDI.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Messaging.SmtpMailOptions">
+             <summary>
+             SMTP ayarlari.
+            
+             <b>KURUCUDAN GELIR, <c>IConfiguration</c>DAN DEGIL.</b> Kutuphane
+             tuketicinin yapilandirma duzenini VARSAYAMAZ — anahtar adi, bolum adi ve
+             gizli deger kaynagi onun karari. Burada bir bolum adi gomseydik, farkli
+             duzen kullanan tuketici bunu ezmek icin dosya golgelemek zorunda kalirdi
+             (merdivenin 5. basamagi, guncelleme almaz).
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Messaging.SmtpMailOptions.#ctor(System.String,System.String,System.Int32,System.Boolean,System.String,System.String,System.Int32,System.Boolean)">
+            <summary>Ayarlari kurar.</summary>
+            <param name="host">SMTP sunucusu.</param>
+            <param name="from">Gonderen adresi — TEK, ham adres.</param>
+            <param name="port">Kapi. Varsayilan 587 (gonderim, STARTTLS).</param>
+            <param name="useSsl">TLS/SSL kullanilsin mi. Varsayilan <c>true</c>.</param>
+            <param name="userName">Kullanici adi. <c>null</c> ise kimlik dogrulama yok.</param>
+            <param name="password">Parola.</param>
+            <param name="timeoutMs">Gonderim zaman asimi (ms). Varsayilan 30 sn.</param>
+            <param name="allowPlaintextCredentials">
+            Kimlik bilgisini SIFRESIZ kanalda gondermeye ACIKCA izin verir.
+            Varsayilani <c>false</c> ve oyle kalmali; bak <see cref="T:Solum.Core.Messaging.SmtpMailOptions"/>.
+            </param>
+            <exception cref="T:System.ArgumentException">
+            Sunucu/gonderen bos ya da bicimi bozuk; kimlik bilgisi sifresiz kanalda.
+            </exception>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.Host">
+            <summary>SMTP sunucusu.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.From">
+            <summary>Gonderen adresi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.Port">
+            <summary>Kapi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.UseSsl">
+            <summary>TLS/SSL kullanilsin mi.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.UserName">
+            <summary>Kullanici adi. <c>null</c> ise kimlik dogrulama yok.</summary>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.Password">
+            <summary>Parola.</summary>
+            <remarks>
+            SINIR: genel bir getter. Bu nesneyi bir tanilama ekranina ya da JSON'a
+            serilestiren tuketici parolayi SIZDIRIR. BCL emsali var
+            (<c>NetworkCredential.Password</c>) ve gizli deger tipi almak
+            bagimlilik demek; ama sinir burada YAZILI olmali.
+            </remarks>
+        </member>
+        <member name="P:Solum.Core.Messaging.SmtpMailOptions.TimeoutMs">
+            <summary>Gonderim zaman asimi (ms).</summary>
+            <remarks>
+            NEDEN VAR — bagimsiz denetim olctu (BULGU 11): baglantiyi kabul edip
+            hic cevap vermeyen bir sunucuda cagri <b>62,7 saniye</b> sonra dondu.
+            Sonsuz asilma yok (iyi haber) ama <c>ct</c> gecmeyen bir istek is
+            parcacigi bir dakika park ediyordu.
+            </remarks>
+        </member>
+        <member name="M:Solum.Core.Messaging.SmtpMailOptions.SenderAddress(System.String)">
+             <summary>
+             GONDEREN ADRESI KURULUMDA DOGRULANIYOR.
+            
+             Bagimsiz denetim buldu (BULGU 3): bu tipin kendi iddiasi *"eksik
+             yapilandirma KURULUMDA patlar"* idi, ama bicimi bozuk bir
+             <c>From</c> kurulumdan GECIYOR ve ILK GONDERIMDE patliyordu —
+             yani iddia kendi dosyasinda tutulmuyordu.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.CrossCompanyScope">
+             <summary>
+             <see cref="T:Solum.Abstractions.ICrossCompanyScope"/> varsayilan uygulamasi.
+            
+             DURUM ORNEKTE DEGIL, AKISTA (<see cref="T:System.Threading.AsyncLocal`1"/>). Bu tek karar
+             olculmus uc sorunu birden kapatti:
+            
+             1. SAYAC ATOMIK DEGILDI. Onceki hali `private int _depth` idi ve
+                `_depth++` / `Math.Max(0, _depth - 1)` oku-degistir-yaz islemleriydi.
+                Servis istek basina kaydedildigi icin o istekteki BUTUN esszamanli
+                akislar ayni ornegi paylasiyordu; olculdu (8 gorev x 500 ac/birak):
+                butun tutamaklar birakildiktan sonra kapsam ACIK kaliyordu (5/5) ve
+                dis blok elde tutulurken sayac 0'a DUSUYORDU (4/5). Iki yon de sessiz:
+                biri fazla satir, oteki konsolide raporda eksik satir.
+                Akis-yerel sayacta paylasilan durum YOK — yarisacak bir sey de yok.
+            
+             2. OMUR TUZAGI. Onceki hali "ISTEK BASINA (scoped) kaydedilir; tekil
+                kaydedilirse bir istekte acilan kapsam BASKA isteklerde de acik kalir"
+                diye uyariyordu ve bu uyariyi zorlayan hicbir sey yoktu. Durum artik
+                ornekte olmadigi icin TEKIL KAYIT DA GUVENLI; tuzak ortadan kalkti.
+            
+             3. KAPATMAYI CAGIRAN UNUTABILIYORDU. `try/finally` artik burada;
+                ayrinti <see cref="T:Solum.Abstractions.ICrossCompanyScope"/> uzerinde.
+            
+             PAYLASILAN STATIK ALAN, PAYLASILAN DURUM DEGILDIR: <c>AsyncLocal</c>
+             degeri yurutme baglami basinadir. Iki farkli istek ayni statik alani
+             okur ama farkli degerleri gorur.
+            
+             EZILEBILIR — ama guvenli kisim degil. <see cref="M:Solum.Core.Permissions.CrossCompanyScope.OnScopeOpenedAsync(System.Threading.CancellationToken)"/>
+             ezilerek kapsam acilisi denetim izine yazilabilir; bugun sirket
+             izolasyonunu kaldiran bir olayin hicbir kaydi tutulmuyor.
+             <c>finally</c> ezilemeyen sarmalayicida kalir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.CrossCompanyScope.#ctor(Solum.Core.Permissions.IPermissionChecker)">
+             <summary>
+             <see cref="T:Solum.Abstractions.ICrossCompanyScope"/> varsayilan uygulamasi.
+            
+             DURUM ORNEKTE DEGIL, AKISTA (<see cref="T:System.Threading.AsyncLocal`1"/>). Bu tek karar
+             olculmus uc sorunu birden kapatti:
+            
+             1. SAYAC ATOMIK DEGILDI. Onceki hali `private int _depth` idi ve
+                `_depth++` / `Math.Max(0, _depth - 1)` oku-degistir-yaz islemleriydi.
+                Servis istek basina kaydedildigi icin o istekteki BUTUN esszamanli
+                akislar ayni ornegi paylasiyordu; olculdu (8 gorev x 500 ac/birak):
+                butun tutamaklar birakildiktan sonra kapsam ACIK kaliyordu (5/5) ve
+                dis blok elde tutulurken sayac 0'a DUSUYORDU (4/5). Iki yon de sessiz:
+                biri fazla satir, oteki konsolide raporda eksik satir.
+                Akis-yerel sayacta paylasilan durum YOK — yarisacak bir sey de yok.
+            
+             2. OMUR TUZAGI. Onceki hali "ISTEK BASINA (scoped) kaydedilir; tekil
+                kaydedilirse bir istekte acilan kapsam BASKA isteklerde de acik kalir"
+                diye uyariyordu ve bu uyariyi zorlayan hicbir sey yoktu. Durum artik
+                ornekte olmadigi icin TEKIL KAYIT DA GUVENLI; tuzak ortadan kalkti.
+            
+             3. KAPATMAYI CAGIRAN UNUTABILIYORDU. `try/finally` artik burada;
+                ayrinti <see cref="T:Solum.Abstractions.ICrossCompanyScope"/> uzerinde.
+            
+             PAYLASILAN STATIK ALAN, PAYLASILAN DURUM DEGILDIR: <c>AsyncLocal</c>
+             degeri yurutme baglami basinadir. Iki farkli istek ayni statik alani
+             okur ama farkli degerleri gorur.
+            
+             EZILEBILIR — ama guvenli kisim degil. <see cref="M:Solum.Core.Permissions.CrossCompanyScope.OnScopeOpenedAsync(System.Threading.CancellationToken)"/>
+             ezilerek kapsam acilisi denetim izine yazilabilir; bugun sirket
+             izolasyonunu kaldiran bir olayin hicbir kaydi tutulmuyor.
+             <c>finally</c> ezilemeyen sarmalayicida kalir.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Permissions.CrossCompanyScope.Depth">
+             <summary>
+             Ic ice acilma derinligi — AKIS basina.
+            
+             <c>static</c> olmasi paylasim DEGILDIR: her yurutme baglami kendi
+             degerini gorur. Ornek alani olsaydi ayni istekteki paralel akislar
+             onu paylasir ve yarisirdi (yukarida, madde 1).
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.CrossCompanyScope.IsOpen">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Permissions.CrossCompanyScope.RunAsync``1(System.Func{System.Threading.Tasks.Task{``0}},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Permissions.CrossCompanyScope.OnScopeOpenedAsync(System.Threading.CancellationToken)">
+             <summary>
+             Kapsam acildiktan hemen SONRA, govde calismadan ONCE cagrilir.
+            
+             NEDEN VAR: sirket izolasyonunu kaldiran bir olayin bugun hicbir kaydi
+             tutulmuyor. Denetim izi yazmak isteyen tuketici bu metodu ezer —
+             sinifin tamamini yeniden yazmasi gerekmez (degistirme merdiveni
+             4. basamak). Yetki kontrolu ve <c>finally</c> ezilemeyen kisimda
+             kalir.
+             </summary>
+             <param name="ct">Iptal belirteci.</param>
+        </member>
+        <member name="T:Solum.Core.Permissions.FixedPermissionChecker">
+             <summary>
+             Izin kumesi KURULUMDA sabitlenen denetleyici.
+            
+             NEDEN VAR — olculmus bir tuketici tikanmasi (plan 07 Faz C):
+            
+             <code>
+             _SolumSidebar  ->  IMenuBuilder  ->  MenuBuilder  ->  IPermissionChecker
+             </code>
+            
+             <c>IPermissionChecker</c>in TEK uygulamasi <c>EfPermissionChecker</c>ydi ve o
+             <c>Solum.EntityFrameworkCore</c>da duruyor. Ikinci tuketicinin referanslari
+             olculdu:
+            
+             <code>
+             Solum.Abstractions · Solum.Sql · Solum.Sql.SqlServer · Solum.Web
+             </code>
+            
+             EF YOK. Yani kabuk parcasi (yan menu) o tuketici icin ERISILEMEZDI ve
+             kendisi kabugu elle ciziyordu.
+            
+             BU, §4 KAPISININ BILINEN ACIGININ CANLI ORNEGI: kapi bir uygulamayi `src/`
+             HERHANGI BIR YERINDE kabul ediyor. Ama tuketicinin REFERANS VERMEDIGI bir
+             pakette duran "varsayilan", o tuketici icin varsayilan DEGILDIR. Bagimsiz
+             denetim bunu ongordu; burada gerceklesti.
+            
+             AILE TUTARLILIGI: <c>FixedTenant</c> / <c>FixedCompany</c> / <c>FixedUser</c>
+             ile ayni sekil — deger KURULUMDA beyan edilir, kutuphane hicbir sey
+             UYDURMAZ. "Hepsine izin ver" gibi bir varsayilan YOK: oyle bir tip bir gun
+             cok kullanicili bir uygulamada kaydedilir ve kimse fark etmez.
+            
+             KAPSAM — bu tip TEK KULLANICILI baglam icindir. Cok kullanicili bir
+             uygulamada butun kullanicilar ayni izin kumesini alir; o durumda
+             <c>EfPermissionChecker</c> (rol ve kullanici bazli atamalar) ya da kendi
+             uygulamaniz kullanilir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.FixedPermissionChecker.#ctor(Solum.Core.Permissions.IPermissionDefinitionManager,Solum.Abstractions.ICurrentUser,System.String[])">
+             <summary>Verilen izin kumesiyle kurar.</summary>
+             <param name="definitions">
+             Izin agaci. Verilirse SORULAN AD DOGRULANIR — tanimsiz ad hata verir.
+            
+             <c>null</c> gecmek gecerli ama SONUCU YAZILI OLMALI: dogrulama yapilmaz,
+             yani yazim hatasi "yetkin yok" olarak doner ve bir GUVENLIK KURALI gibi
+             gorunur. `PermissionDefinitionManager`in kendi yorumu bunu aciken
+             soyluyor: *"tanimsiz bir izin adi kontrol edilirse sonuc 'yetkin yok'
+             olur ve bu bir YAZIM HATASINI guvenlik kurali gibi gosterir."*
+            
+             VARSAYILANI YOK — cagiran kararini YAZMAK zorunda. Ayni gerekce
+             <c>FixedCompany</c>nin kapsam parametresinde de var: sessizce atlanan
+             bir garanti, atlanmamis gibi gorunur.
+             </param>
+             <param name="granted">Verilen izinler. Bos kume gecerli: hicbir izin yok.</param>
+             <param name="user">
+             Aktif kullanici. Verilirse KIMLIK DOGRULAMA KAPISI calisir: dogrulanmamis
+             bir istek hicbir izin ALMAZ.
+            
+             <c>null</c> gecmek gecerli — kullanici kavrami olmayan bir uygulamada
+             (arka plan isi, konsol) dogru olan budur. Ama SONUCU YAZILI OLMALI:
+             o zaman HER cagri beyan edilen kumeyi alir.
+            
+             VARSAYILANI YOK, cunku bu bir GUVENLIK KAPISI ve sessizce atlanan bir
+             kapi, atlanmamis gibi gorunur.
+             </param>
+        </member>
+        <member name="M:Solum.Core.Permissions.FixedPermissionChecker.IsGrantedAsync(System.String,System.Nullable{Solum.Core.Extensibility.RecordRef},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Permissions.IUserTenantAccessStore">
+             <summary>
+             Kullanicinin hangi kiracilara erisebilecegi.
+            
+             NEDEN AYRI BIR SOZLESME: bu soru KIRACIUSTUDUR. Kiraci verisi kiracinin
+             semasinda durur; ama "bu kullanici hangi kiracilara girebilir" sorusu
+             hicbir kiracinin semasinda cevaplanamaz — cevap butun kiracilari kapsar.
+            
+             Bu yuzden uygulamasi bu pakette DEGILDIR: kiraciustu verinin nerede
+             duracagi (ortak sema, ayri veritabani, dizin servisi) tuketicinin
+             kararidir ve o karar verilmeden buraya bir uygulama yazmak, yanlis bir
+             varsayimi kutuphaneye gomerdi.
+            
+             BOSLUK ACIKCA ISARETLIDIR: bu arayuzun uygulamasi olmadan kiraci
+             degistirme kontrolu CALISMAZ ve
+             <see cref="M:Solum.Core.Permissions.IScopeAccessChecker.CanAccessTenantAsync(System.String,System.Threading.CancellationToken)"/> reddeder.
+             Sessizce izin vermek yerine reddetmek bilincli — guvenlik kontrolunun
+             eksik uygulamasi, kontrolun olmamasindan tehlikelidir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.IUserTenantAccessStore.HasAccessAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>Kullanici bu kiraciya erisebilir mi.</summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.PermissionDefinition">
+             <summary>
+             Bir izin tanimi. Agac olusturur: "Reference" -> "Reference.Location" ->
+             "Reference.Location.Update".
+            
+             TANIM ile ATAMA farkli seylerdir ve farkli yerlerde yasarlar:
+               TANIM  -> KODDA. Sabit olarak yazilir, yazim hatasi DERLENMEZ.
+               ATAMA  -> VERITABANINDA. Kiraci basina, rol ya da kullanici bazinda.
+             Ikisi karistirilirsa ya izinler yonetilemez olur ya da yazim hatasi
+             calisma aninda sessizce "yetkin yok"a doner.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinition.Name">
+            <summary>Benzersiz ad, nokta ile ayrilmis.</summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinition.DisplayName">
+            <summary>Kullaniciya gosterilen ad.</summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinition.Parent">
+            <summary>Ust izin; kok ise null.</summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinition.Children">
+            <summary>Alt izinler.</summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.PermissionDefinition.AddChild(System.String,System.String)">
+            <summary>Alt izin ekler.</summary>
+            <param name="name">Ust adin altina eklenecek parca — tam ad degil.</param>
+            <param name="displayName">Kullaniciya gosterilen ad.</param>
+        </member>
+        <member name="M:Solum.Core.Permissions.PermissionDefinition.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Permissions.PermissionDefinitionContext">
+            <summary>
+            Izin agacinin kuruldugu baglam. Her modul kendi izinlerini burada bildirir.
+            </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.PermissionDefinitionContext.AddGroup(System.String,System.String)">
+            <summary>Kok izin grubu ekler.</summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinitionContext.Roots">
+            <summary>Tanimlanan kok gruplar.</summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.IPermissionDefinitionProvider">
+            <summary>
+            Modullerin izinlerini bildirdigi sozlesme. Her modul kendi saglayicisini
+            yazar; boylece izin listesi tek bir merkezi dosyada birikmez.
+            </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.IPermissionDefinitionProvider.Define(Solum.Core.Permissions.PermissionDefinitionContext)">
+            <summary>Bu modulun izinlerini agaca ekler.</summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.IPermissionDefinitionManager">
+            <summary>
+            Butun saglayicilardan toplanan izin agaci.
+            </summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.IPermissionDefinitionManager.All">
+            <summary>Duz liste — ad ile arama icin.</summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.IPermissionDefinitionManager.Roots">
+            <summary>Agac koku — yonetim ekrani icin.</summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.IPermissionDefinitionManager.Get(System.String)">
+             <summary>
+             Adin TANIMLI oldugunu dogrular.
+            
+             Bu kontrol kritik: tanimsiz bir izin adi kontrol edilirse sonuc "yetkin
+             yok" olur ve bu bir YAZIM HATASINI guvenlik kurali gibi gosterir.
+             Tanimsiz ad sorulursa hata verilir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.IPermissionChecker">
+            <summary>Bir iznin verilip verilmedigini soyler.</summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.IPermissionChecker.IsGrantedAsync(System.String,System.Nullable{Solum.Core.Extensibility.RecordRef},System.Threading.CancellationToken)">
+             <summary>
+             Aktif kullanici ve aktif kiraci icin izin verili mi.
+            
+             <paramref name="resource"/> <c>null</c> ise soru AD SEVIYESINDEDIR
+             ("siparis gorebilir mi"). Dolu ise TEK KAYIT sorusudur ("BU siparisi
+             gorebilir mi").
+            
+             LISTE SUZMEK ICIN KULLANILMAZ — ve bu sekille de engelleniyor: bu
+             arayuz bir <c>IQueryable</c> gormez, alamaz, donduremez.
+            
+             Satir basina cagirip yetkisizleri listeden dusurmek, sayfalayiciyi
+             YALANCI yapar: "25 kayit" yazar, 18 satir gorunur ve kullanici eksigi
+             GOREMEZ. Bu deponun yasadigi olay bu sinifta: `?page=3` her zaman
+             1. sayfayi getiriyordu — 5.280 kayit, 212 sayfa, erisilebilen 25; iki
+             gun acik kaldi ve 363 birim testin hicbiri gormedi.
+            
+             SUZME BIR SORGU ISIDIR. Bu arayuz suzmez, CEVAPLAR.
+            
+             ISTEGE BAGLI PARAMETRE DEGIL, bilerek: arayuzde varsayilan deger
+             STATIK TIPTEN okunur, yani ayni nesne <c>IPermissionChecker</c>
+             uzerinden baska, somut tip uzerinden baska davranabilirdi. Kaynagi
+             olmayan cagri <c>null</c> YAZAR — gorunur ve aranabilir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.IScopeAccessChecker">
+             <summary>
+             Kiraci ve sirket degistirme yetkisi.
+            
+             KATMAN 02'NIN GUVENLIK ON KOSULU BUDUR. Izolasyon "claim neyse onu suz"
+             der; bu arayuz "claim'i ancak hak ettigin degere cevirebilirsin" der.
+             Ikincisi olmadan birincisi DEKORATIFTIR: kullanici aktif kiraci degerini
+             serbestce degistirebiliyorsa, butun sema ve suzgec mekanizmasi onun
+             sectigi degere hizmet eder.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.IScopeAccessChecker.CanAccessTenantAsync(System.String,System.Threading.CancellationToken)">
+            <summary>Kullanici bu kiraciya gecebilir mi.</summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.IScopeAccessChecker.CanAccessCompanyAsync(System.Int32,System.Threading.CancellationToken)">
+            <summary>Kullanici aktif kiraci icinde bu sirkete gecebilir mi.</summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.PermissionDeniedException">
+             <summary>
+             Yetkisiz islem. Cagiran bunu 403'e cevirir.
+            
+             Istisna olmasi bilincli: yetkisizlik beklenen bir IS SONUCU degil, bir
+             KURAL IHLALIDIR. Sonuc nesnesiyle dondurulseydi cagiran onu kontrol etmeyi
+             unutabilir ve islem yetkisiz halde devam edebilirdi.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.PermissionDeniedException.#ctor(System.String)">
+             <summary>
+             Yetkisiz islem. Cagiran bunu 403'e cevirir.
+            
+             Istisna olmasi bilincli: yetkisizlik beklenen bir IS SONUCU degil, bir
+             KURAL IHLALIDIR. Sonuc nesnesiyle dondurulseydi cagiran onu kontrol etmeyi
+             unutabilir ve islem yetkisiz halde devam edebilirdi.
+             </summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDeniedException.PermissionName">
+            <summary>Reddedilen izin adi.</summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.SolumPermissions">
+            <summary>Ozel izin sabitleri.</summary>
+        </member>
+        <member name="F:Solum.Core.Permissions.SolumPermissions.None">
+             <summary>
+             "Bu servis izin kontrolu yapmaz" demenin ACIK yolu.
+            
+             Neden bos birakmak yerine adlandirilmis bir sabit: izin kontrolunun
+             olmamasi bir KARAR olmali, bir UNUTMA degil. Kodda bu sabiti gormek,
+             birinin bilerek boyle sectigini soyler.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Permissions.SolumPermissions.CrossCompanyRead">
+             <summary>
+             Kiraci ICINDE sirket suzmesini kaldirma hakki — konsolide rapor.
+            
+             Ayri bir izin olmasinin sebebi: bir sirketin verisini gormek ile TUM
+             sirketleri birlikte gormek ayri yetkilerdir. Ikincisi genelde yalniz
+             mali islerde ve ust yonetimde olur.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Permissions.PermissionDefinitionManager">
+             <summary>
+             Butun saglayicilardan izin agacini toplar ve duzlestirir.
+            
+             Agac bir kez kurulur ve degismez: izin TANIMLARI koddadir, calisma
+             zamaninda degismez. Degisen sey ATAMALARDIR ve onlar veritabanindadir.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.PermissionDefinitionManager.#ctor(System.Collections.Generic.IEnumerable{Solum.Core.Permissions.IPermissionDefinitionProvider})">
+            <summary>Saglayicilari calistirip agaci kurar.</summary>
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinitionManager.All">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Core.Permissions.PermissionDefinitionManager.Roots">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Permissions.PermissionDefinitionManager.Get(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Permissions.SolumPermissionDefinitionProvider">
+             <summary>
+             Solum'un KENDI izinlerini bildirir.
+            
+             NEDEN VAR — olculmus bir §4 ihlali, ve `IClock`inkiyle AYNI sinif.
+            
+             <see cref="F:Solum.Core.Permissions.SolumPermissions.CrossCompanyRead"/> sabiti kutuphanede TANIMLI
+             ama onu BILDIREN hicbir saglayici yoktu (olculdu: `src/` altinda
+             <see cref="T:Solum.Core.Permissions.IPermissionDefinitionProvider"/>in sifir uygulamasi).
+             Sonuc, kutudan ciktigi gibi:
+            
+             <code>
+             CrossCompanyScope.RunAsync
+               -> EfPermissionChecker.IsGrantedAsync
+                 -> PermissionDefinitionManager.Get("Solum.CrossCompanyRead")
+                   -> InvalidOperationException: 'Solum.CrossCompanyRead' izni tanimli degil.
+             </code>
+            
+             Yani kutuphanenin KENDI yetenegi, tuketici kutuphanenin KENDI iznini elle
+             bildirmeden calismiyordu. `kutuphane-disiplini.md` §4: *"Tek parca sunmak,
+             tuketiciyi bizim kararimiza mahkum eder."*
+            
+             Bagimsiz izolasyon denetimi buldu (YUKSEK-3) ve dogru teshis koydu: yeni
+             §4 kapisi bunu GORMUYORDU, cunku yalniz `Solum.Abstractions` tariyordu.
+             Kapi `src/` genisletildi ve bu tip o genisletmenin ilk bulgusu.
+            
+             GURULTULU HATA IYIYDI, ama yanlis yerdeydi: `Get` tanimsiz adi hata olarak
+             bildiriyor ve bu DOGRU karar (yazim hatasi guvenlik kurali gibi
+             gorunmemeli). Kusur, tuketicinin hicbir sey yanlis yapmadan o hatayi
+             almasiydi.
+            
+             KAYIT TUKETICININ: bu tip DI'a kendiliginden girmez. `Solum.Core`un
+             `IServiceCollection` bagimliligi yok ve olmayacak. Tuketici kaydeder:
+             <code>
+             services.AddSingleton&lt;IPermissionDefinitionProvider, SolumPermissionDefinitionProvider&gt;();
+             </code>
+             `BASLARKEN` §4 bunu yaziyor.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Permissions.SolumPermissionDefinitionProvider.GroupName">
+            <summary>Kutuphanenin izin grubunun adi.</summary>
+        </member>
+        <member name="M:Solum.Core.Permissions.SolumPermissionDefinitionProvider.Define(Solum.Core.Permissions.PermissionDefinitionContext)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Settings.SettingScope">
+             <summary>
+             Bir ayarin hangi kapsamlarda ATANABILECEGI.
+            
+             NEDEN BAYRAK: bir ayar birden cok kapsamda atanabilir ama HEPSINDE degil.
+             SMTP sunucusu kiraciya gore degisir, kullaniciya gore DEGISMEZ — ve
+             kullanici basina SMTP atamasina izin vermek, bir kullanicinin kendi posta
+             sunucusunu tanimlamasi demekti.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SettingScope.None">
+            <summary>Yalniz koddaki varsayilan — hicbir yerde atanamaz.</summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SettingScope.Tenant">
+            <summary>Kiraci basina atanabilir.</summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SettingScope.Company">
+            <summary>Sirket basina atanabilir.</summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SettingScope.User">
+            <summary>Kullanici basina atanabilir.</summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SettingScope.All">
+            <summary>Ucu birden.</summary>
+        </member>
+        <member name="T:Solum.Core.Settings.SettingDefinition">
+             <summary>
+             Bir ayarin TANIMI — kodda yasar, degeri veritabaninda.
+            
+             AYRIMIN SEBEBI IZIN SISTEMIYLE AYNI: tanim kodun bir parcasidir (bir
+             yazim hatasi DERLEME ya da KURULUM hatasi olmali), atama veridir. Tanimi
+             veritabanina koymak, bir ayar adini degistirmeyi sessiz bir kayba
+             cevirirdi — eski ada yapilmis butun atamalar YETIM kalir ve kimse fark
+             etmez.
+            
+             <b>VARSAYILAN KODDA ZORUNLU.</b> "Varsayilani yok, veritabanindan gelir"
+             diyen bir ayar, temiz kurulumda <c>null</c> uretir ve tuketici onu
+             "ayarlanmamis" ile "bos ayarlanmis" arasinda AYIRT EDEMEZ.
+             <c>kutuphane-disiplini.md</c> §5: eksik yapilandirmayi varsayilanla
+             doldurmak yasak — burada tersi geciyor cunku varsayilan TANIMIN parcasi,
+             eksik yapilandirmanin ortusu degil.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingDefinition.#ctor(System.String,System.String,Solum.Core.Settings.SettingScope,System.String,System.Boolean)">
+            <summary>Tanimi kurar ve DOGRULAR.</summary>
+            <param name="name">Nokta ile ayrilmis ad (`Solum.Mail.Host`).</param>
+            <param name="defaultValue">Koddaki varsayilan. <c>null</c> OLABILIR ama bilincli olmali.</param>
+            <param name="scopes">Hangi kapsamlarda atanabilir.</param>
+            <param name="displayName">Yonetim ekraninda gorunen ad.</param>
+            <param name="isSecret">
+            Deger gizli mi (parola, jeton). Gizli ayarlar yonetim ekraninda
+            MASKELENIR ve gunluge YAZILMAZ.
+            </param>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinition.Name">
+            <summary>Ayar adi.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinition.DefaultValue">
+            <summary>Koddaki varsayilan.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinition.Scopes">
+            <summary>Atanabilir kapsamlar.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinition.DisplayName">
+            <summary>Yonetim ekraninda gorunen ad.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinition.IsSecret">
+            <summary>Gizli mi — maskelenir, gunluge yazilmaz.</summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingDefinition.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Settings.ISettingDefinitionProvider">
+             <summary>
+             Ayar tanimlarini bildiren saglayici — her modul kendi tanimlarini yazar.
+            
+             Izin sistemindeki <c>IPermissionDefinitionProvider</c> ile AYNI desen ve
+             bu bilincli: tuketici iki ayri mekanizma ogrenmesin.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingDefinitionProvider.Define(Solum.Core.Settings.SettingDefinitionContext)">
+            <summary>Tanimlari ekler.</summary>
+        </member>
+        <member name="T:Solum.Core.Settings.SettingDefinitionContext">
+            <summary>Tanim toplama baglami.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinitionContext.Definitions">
+            <summary>Toplanan tanimlar.</summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingDefinitionContext.Add(Solum.Core.Settings.SettingDefinition)">
+             <summary>
+             Tanim ekler. AYNI AD IKINCI KEZ eklenirse HATA.
+            
+             Sessizce ezmek, iki modulden hangisinin kazandigini KAYIT SIRASINA
+             birakirdi — ve kayit sirasi bir yapilandirma detayi, sozlesme degil.
+             Izin sistemindeki `Duplicate_definition_is_rejected` karariyla ayni.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingDefinitionContext.Add(System.String,System.String,Solum.Core.Settings.SettingScope,System.String,System.Boolean)">
+            <summary>Kisayol — tanimi yerinde kurar.</summary>
+        </member>
+        <member name="T:Solum.Core.Settings.ISettingDefinitionManager">
+            <summary>Tanim fihristi.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.ISettingDefinitionManager.All">
+            <summary>Butun tanimlar.</summary>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingDefinitionManager.Get(System.String)">
+             <summary>
+             Tanimi getirir. TANIMSIZ AD HATA VERIR, <c>null</c> DONMEZ.
+            
+             Izin sistemindeki ayni karar: bir yazim hatasini "ayarlanmamis" diye
+             dondurmek, hatayi yapilandirma eksigi gibi gosterip saatlerce aratir.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Settings.ISettingStore">
+             <summary>
+             Atanmis ayar degerlerinin HAM deposu.
+            
+             COZUMLEME BURADA DEGIL: bu arayuz yalniz "su kapsamda su ad icin ne
+             yazilmis" sorusuna cevap verir. Kapsam siralamasi
+             <see cref="T:Solum.Core.Settings.ISettingManager"/> isidir ve TEK YERDE durur — iki yerde
+             olsaydi biri gevser ve hangisinin kazandigi cagri yoluna kalirdi.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingStore.GetAsync(System.String,Solum.Core.Settings.SettingScope,System.String,System.Threading.CancellationToken)">
+             <summary>
+             Bir kapsamdaki degeri okur; atama yoksa <c>null</c>.
+            
+             <c>null</c> BURADA MESRU ve "atama yok" demek — cozumleyici bir sonraki
+             kapsama gecer. Ayarin DEGERI olarak <c>null</c> ile "atama yok"
+             ayrimini tasiyamiyoruz ve bu sinir <see cref="T:Solum.Core.Settings.ISettingManager"/>
+             belgesinde yazili.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingStore.SetAsync(System.String,Solum.Core.Settings.SettingScope,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>Degeri yazar; <paramref name="value"/> <c>null</c> ise atamayi SILER.</summary>
+        </member>
+        <member name="T:Solum.Core.Settings.ISettingManager">
+             <summary>
+             Ayar okuma — KAPSAM SIRALAMASINI uygulayan tek yer.
+            
+             SIRA: <b>kullanici -&gt; sirket -&gt; kiraci -&gt; koddaki varsayilan.</b>
+             En OZEL kazanir. Bu sira bir tercih degil: bir kullanici kendi dil
+             tercihini kiracinin varsayilanina EZDIREMEZ olmali, tersi degil.
+            
+             <b>ATANABILIR OLMAYAN KAPSAM HIC SORULMUYOR.</b> Tanim
+             <c>SettingScope.Tenant</c> diyorsa kullanici ve sirket kapsamlari
+             ATLANIYOR — depoda oyle bir satir varsa (elle girilmis, eski bir surumden
+             kalmis) o satir YOK SAYILIR. Sorulup yok sayilmasi ile hic sorulmamasi
+             arasindaki fark, `solum-danismani` §4'un olculmus dersi: *"gelen
+             anahtarlari dolasma; TANIMLARI dolas ve her tanim icin o alani iste.
+             Eleme kurali unutulabilir; bakmama YAPISALDIR."*
+            
+             <b>NULL SINIRI DURUSTCE ACIK:</b> depo <c>null</c> dondugunde bu "atama
+             yok" demektir, "deger bos atandi" demek DEGIL. Yani bir ayari bilerek
+             bos yapmak ile hic atamamak AYIRT EDILEMIYOR. Bugun bunun bir tuketici
+             sonucu olculmedi; olculdugunde depoya bir "atandi" bayragi eklenir ve
+             sozlesme degismez.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingManager.GetAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Cozumlenmis deger.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Ayar tanimli degil.</exception>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingManager.GetAsync``1(System.String,System.Threading.CancellationToken)">
+             <summary>
+             Cozumlenmis degeri <typeparamref name="T"/> olarak verir.
+            
+             DONUSUM BASARISIZ OLURSA HATA — varsayilana SESSIZCE dusmez. Bir
+             yonetici <c>PageSize</c>'a "yirmi" yazdiysa ekran 20 gostermemeli;
+             yazdiginin islenmedigini OGRENMELI.
+             </summary>
+             <exception cref="T:System.InvalidOperationException">
+             Ayar tanimli degil ya da deger <typeparamref name="T"/>'ye cevrilemedi.
+             </exception>
+        </member>
+        <member name="M:Solum.Core.Settings.ISettingManager.SetAsync(System.String,Solum.Core.Settings.SettingScope,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Bir kapsama deger atar.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">
+            Ayar tanimli degil, ya da bu kapsamda ATANAMAZ.
+            </exception>
+        </member>
+        <member name="T:Solum.Core.Settings.SettingDefinitionManager">
+            <summary>Tanim fihristi varsayilani.</summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingDefinitionManager.#ctor(System.Collections.Generic.IEnumerable{Solum.Core.Settings.ISettingDefinitionProvider})">
+            <summary>Saglayicilari gezip tanimlari toplar.</summary>
+        </member>
+        <member name="P:Solum.Core.Settings.SettingDefinitionManager.All">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Settings.SettingDefinitionManager.Get(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Settings.SettingManager">
+             <summary>
+             Ayar cozumleyicisi — KAPSAM SIRALAMASININ tek yeri.
+            
+             SIRA: kullanici -&gt; sirket -&gt; kiraci -&gt; koddaki varsayilan.
+             Gerekcesi <see cref="T:Solum.Core.Settings.ISettingManager"/> belgesinde.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingManager.#ctor(Solum.Core.Settings.ISettingDefinitionManager,Solum.Core.Settings.ISettingStore,Solum.Abstractions.ICurrentTenant,Solum.Abstractions.ICurrentCompany,Solum.Abstractions.ICurrentUser)">
+             <summary>
+             Ayar cozumleyicisi — KAPSAM SIRALAMASININ tek yeri.
+            
+             SIRA: kullanici -&gt; sirket -&gt; kiraci -&gt; koddaki varsayilan.
+             Gerekcesi <see cref="T:Solum.Core.Settings.ISettingManager"/> belgesinde.
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SettingManager.GetAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Settings.SettingManager.GetAsync``1(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Core.Settings.SettingManager.SetAsync(System.String,Solum.Core.Settings.SettingScope,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Core.Settings.SolumSettings">
+            <summary>Solum'un KENDI ayar adlari.</summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SolumSettings.ListPageSize">
+             <summary>
+             Liste sayfalarinin varsayilan sayfa boyutu.
+            
+             <c>ListPageModel</c> bugun bunu KODDA sabit tutuyor. Ayar olarak
+             bildirilmesi, tuketicinin onu kiraci/sirket/kullanici basina
+             degistirebilmesi demek — ve sayfa boyutu tam boyle bir sey: bir
+             kiraci 20 ister, oteki 100.
+             </summary>
+        </member>
+        <member name="F:Solum.Core.Settings.SolumSettings.ListMaxPageSize">
+             <summary>
+             Sayfa boyutunun UST SINIRI.
+            
+             AYRI BIR AYAR ve gerekcesi olculmus: <c>CrudService</c> sayfa boyutunu
+             KIRPIYOR (`solum-veri` §3). Sinirin kendisi bir ayar olmazsa tuketici
+             onu degistirmek icin kodu ezmek zorunda kalir; ayar olursa
+             `?pageSize=100000` ile bir kullanicinin butun tabloyu cekmesi de
+             KIRACI BASINA sinirlanabilir.
+            
+             KULLANICI KAPSAMINDA ATANAMAZ: kullanicinin kendi ust sinirini
+             belirlemesi, sinirin kendisini anlamsiz kilardi.
+             </summary>
+        </member>
+        <member name="T:Solum.Core.Settings.SolumSettingDefinitionProvider">
+             <summary>
+             Solum'un KENDI ayarlarini bildirir.
+            
+             NEDEN VAR — <c>kutuphane-disiplini.md</c> §4 ("sozlesme + varsayilan") ve
+             bu kapinin ZORLADIGI bir sey: `Her_sozlesmenin_VARSAYILAN_uygulamasi_VAR`
+             testi <see cref="T:Solum.Core.Settings.ISettingDefinitionProvider"/> icin sifir uygulama gordu
+             ve KIRMIZI dondu.
+            
+             Kapi hakliydi ve sinif <c>SolumPermissionDefinitionProvider</c> ile
+             AYNI: kutuphane bir sozlesme tanimlayip hicbir uygulama sunmazsa, tuketici
+             en basit senaryoda bile kendi uygulamasini yazmak zorunda kalir. Izin
+             tarafinda bunun bedeli olculmustu — kutuphanenin KENDI yetenegi
+             (<c>CrossCompanyScope</c>), tuketici kutuphanenin KENDI iznini elle
+             bildirmeden calismiyordu.
+            
+             KAYIT TUKETICININ: bu tip DI'a kendiliginden girmez. <c>Solum.Core</c>un
+             <c>IServiceCollection</c> bagimliligi yok ve olmayacak.
+             <code>
+             services.AddSingleton&lt;ISettingDefinitionProvider, SolumSettingDefinitionProvider&gt;();
+             </code>
+             </summary>
+        </member>
+        <member name="M:Solum.Core.Settings.SolumSettingDefinitionProvider.Define(Solum.Core.Settings.SettingDefinitionContext)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>

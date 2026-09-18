@@ -28,11 +28,11 @@ public sealed class ChangePasswordModel(
     public bool Forced { get; private set; }
 
     public void OnGet() =>
-        Forced = User.HasClaim(c => c.Type == Seed.SifreDegistirClaim);
+        Forced = User.HasClaim(c => c.Type == Seed.MustChangePasswordClaim);
 
     public async Task<IActionResult> OnPostAsync()
     {
-        Forced = User.HasClaim(c => c.Type == Seed.SifreDegistirClaim);
+        Forced = User.HasClaim(c => c.Type == Seed.MustChangePasswordClaim);
 
         if (NewPassword != NewPasswordAgain)
         {
@@ -58,7 +58,7 @@ public sealed class ChangePasswordModel(
 
         // Zorunluluk claim'i düşer — hem DB'den hem oturumdan.
         foreach (var c in await userManager.GetClaimsAsync(user))
-            if (c.Type == Seed.SifreDegistirClaim)
+            if (c.Type == Seed.MustChangePasswordClaim)
                 await userManager.RemoveClaimAsync(user, c);
 
         var claims = await permissionLoader.LoadAsync(user.Id);
@@ -79,7 +79,7 @@ public sealed class ChangePasswordModel(
 /// </summary>
 public sealed class ForcePasswordChangeFilter : Microsoft.AspNetCore.Mvc.Filters.IAsyncPageFilter
 {
-    private static readonly string[] Muaf =
+    private static readonly string[] Exempt =
         ["/ChangePassword", "/Logout", "/Login", "/AccessDenied", "/Error"];
 
     public Task OnPageHandlerSelectionAsync(Microsoft.AspNetCore.Mvc.Filters.PageHandlerSelectedContext c)
@@ -90,11 +90,11 @@ public sealed class ForcePasswordChangeFilter : Microsoft.AspNetCore.Mvc.Filters
         Microsoft.AspNetCore.Mvc.Filters.PageHandlerExecutionDelegate next)
     {
         var user = context.HttpContext.User;
-        var sayfa = (context.ActionDescriptor.ViewEnginePath ?? "").TrimEnd('/');
+        var page = (context.ActionDescriptor.ViewEnginePath ?? "").TrimEnd('/');
 
         if (user.Identity?.IsAuthenticated == true
-            && user.HasClaim(c => c.Type == Seed.SifreDegistirClaim)
-            && !Muaf.Contains(sayfa, StringComparer.OrdinalIgnoreCase))
+            && user.HasClaim(c => c.Type == Seed.MustChangePasswordClaim)
+            && !Exempt.Contains(page, StringComparer.OrdinalIgnoreCase))
         {
             context.Result = new RedirectToPageResult("/ChangePassword");
             return;

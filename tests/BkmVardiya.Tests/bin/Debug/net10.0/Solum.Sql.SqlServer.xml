@@ -1,0 +1,253 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Solum.Sql.SqlServer</name>
+    </assembly>
+    <members>
+        <member name="T:Solum.Sql.SqlServer.Migrations.SqlServerMigrationJournalSql">
+             <summary>
+             Migration kayit tablosunun SQL Server karsiligi.
+            
+             SOZLESMENIN IKI BAGLAYICI SARTI BURADA KARSILANIYOR:
+             - <c>SelectApplied</c> kolonlari <c>Name</c>, <c>Hash</c>, <c>AppliedAt</c>
+               ADLARIYLA donduruyor. Kosucu ada gore okur; sira serbest, ADLAR degil.
+             - <c>EnsureTable</c> <c>Name</c> uzerine PRIMARY KEY koyuyor. Kisit
+               olmadan ayni betik iki kez kaydedilebilir ve kimlik karsilastirmasi
+               anlamsizlasir; kosucu tekrar eden ad gorurse HATA verir.
+            
+             Kendi uygulamasini yazan tuketici bu iki sarti da karsilamak zorundadir.
+             Postgres karsiligi henuz YOK (borc B3) — yani Postgres tuketicisi bunu
+             elden yazmak durumunda ve bu iki sart onun icin ozellikle onemli.
+            
+             Sema adi SQL'e METIN olarak giriyor cunku tanimlayici parametre olamaz;
+             bu yuzden cagiran taraf <see cref="M:Solum.Sql.Migrations.MigrationRunner.ValidateSchema(System.String)"/> ile
+             dogrulamak ZORUNDADIR. Bu sinif kendi basina dogrulamaz — dogrulamayi iki
+             yere koymak, birinin gevsemesine davettir; tek yer kosucudur.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.Migrations.SqlServerMigrationJournalSql.#ctor(System.String)">
+             <summary>
+             Migration kayit tablosunun SQL Server karsiligi.
+            
+             SOZLESMENIN IKI BAGLAYICI SARTI BURADA KARSILANIYOR:
+             - <c>SelectApplied</c> kolonlari <c>Name</c>, <c>Hash</c>, <c>AppliedAt</c>
+               ADLARIYLA donduruyor. Kosucu ada gore okur; sira serbest, ADLAR degil.
+             - <c>EnsureTable</c> <c>Name</c> uzerine PRIMARY KEY koyuyor. Kisit
+               olmadan ayni betik iki kez kaydedilebilir ve kimlik karsilastirmasi
+               anlamsizlasir; kosucu tekrar eden ad gorurse HATA verir.
+            
+             Kendi uygulamasini yazan tuketici bu iki sarti da karsilamak zorundadir.
+             Postgres karsiligi henuz YOK (borc B3) — yani Postgres tuketicisi bunu
+             elden yazmak durumunda ve bu iki sart onun icin ozellikle onemli.
+            
+             Sema adi SQL'e METIN olarak giriyor cunku tanimlayici parametre olamaz;
+             bu yuzden cagiran taraf <see cref="M:Solum.Sql.Migrations.MigrationRunner.ValidateSchema(System.String)"/> ile
+             dogrulamak ZORUNDADIR. Bu sinif kendi basina dogrulamaz — dogrulamayi iki
+             yere koymak, birinin gevsemesine davettir; tek yer kosucudur.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.Migrations.SqlServerMigrationJournalSql.EnsureSchema(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.Migrations.SqlServerMigrationJournalSql.EnsureTable(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.Migrations.SqlServerMigrationJournalSql.SelectApplied(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.Migrations.SqlServerMigrationJournalSql.InsertEntry(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.SqlServer.SqlServerAppLock">
+             <summary>
+             <c>sp_getapplock</c> / <c>sp_releaseapplock</c> ile oturum kapsamli kilit.
+            
+             <b>KILIT ACIKCA BIRAKILIYOR — ve BU, TIPIN VAR OLMA SEBEBI.</b>
+             Es oturum olctu (<c>bel-2b</c>, 2026-09-03): .NET'te <c>Close()</c>
+             baglantiyi <b>kapatmaz, HAVUZA IADE eder</b>; <c>sp_reset_connection</c>
+             ancak baglanti <b>yeniden alindiginda</b> kosar. Yani yalniz baglantiyi
+             birakmak kilidi <b>DUSURMEZ</b>: kilit kimsenin sahiplenmedigi bir havuz
+             baglantisinda <b>ASILI</b> kalir ve siradaki is *"baska bir islem
+             calisiyor"* yalanini gorur.
+            
+             O yuzden <see cref="M:Solum.Sql.SqlServer.SqlServerAppLock.AcquiredLease.DisposeAsync"/> <b>once
+             <c>sp_releaseapplock</c> cagirir</b>, sonra baglantiyi birakir. Sira
+             tersine cevrilse tip hicbir ise yaramazdi.
+            
+             <b><c>@LockOwner='Session'</c> — ve <c>'Transaction'</c> DEGIL.</b>
+             <c>solum-migration</c> §1 *"betigin calismasi ile kaydinin yazilmasi ayni
+             islemdedir"* diyor; bir migration <b>kosumu</b> cok betikli, yani <b>cok
+             islemli</b>. <c>'Transaction'</c> kilidi betikler ARASINDA birakirdi ve
+             ikinci bir kosucu araya girebilirdi. <c>Session</c> sahipli kilit o
+             islemlere <b>katilmaz</b> — §1'in degismezini ne bozar ne tasir.
+            
+             <b>DOGRULANMADI — ve engeli somut.</b> Bu depoda calisan bir SQL Server
+             yok. Olculebilen olculdu: ad uretimi, kapsam zorunlulugu, red sebebinin
+             dolulugu, tutamacin iki kez birakilabilmesi. <b>Olculemeyen:</b>
+             <c>sp_getapplock</c>'un gercek donus kodlari ve havuz LIFO davranisi.
+             <c>kanit-disiplini.md</c> bir isaretin yaninda iki sey daha istiyor:
+             <b>engel</b> (canli sunucu) ve <b>borc kaydi</b> (<c>plans/19</c> Done
+             criteria + <c>docs/ODAK.md</c> PARK; tetikleyici: tuketicinin uctan uca
+             smoke'u).
+            
+             <b>VE TUKETICI BIR OLCUM DUZENEGI UYARISI VERDI</b> — testte havuzun LIFO
+             olmasi kusuru GORUNMEZ yapiyor: iki baglantiyi kapanmadan once acmak
+             <b>YETMIYOR</b> (yine 0/40), kilidi yiginda <b>asagi itmek</b> gerekiyor.
+             Ayrinti <c>plans/19</c> risk tablosunda.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.#ctor(System.String,Solum.Sql.IAppLockScope)">
+            <summary>
+            Baglanti dizesi ve kapsam dikisiyle kurar.
+            </summary>
+            <param name="connectionString">Kilidin alinacagi veritabani.</param>
+            <param name="scope">
+            Kapsam kaynagi — genelde <c>ICurrentTenant.Id</c>'ye baglanir.
+            <b>Zorunlu:</b> <c>null</c> gecmek, kapsamsiz kilidi VARSAYILAN
+            yapardi ve <c>solum-kiracilik</c> §3'un istedigi *"anahtar uretimi
+            kutuphanede"* garantisi kaybolurdu.
+            </param>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.AcquireAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.AcquireGlobalAsync(System.String,System.TimeSpan,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.CallAsync(System.Data.Common.DbConnection,System.String,System.String,System.TimeSpan,System.Threading.CancellationToken)">
+             <summary>
+             <c>sp_getapplock</c> / <c>sp_releaseapplock</c> cagrisi.
+            
+             AD PARAMETRE OLARAK GIDIYOR, metin olarak GOMULMUYOR — kapsam bir
+             kiraci kimliginden geliyor ve `solum-migration` §3'un uyardigi
+             komut enjeksiyonu tam bu yolda dogar.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.Reason(System.Int32,System.String,System.TimeSpan)">
+            <summary>Donus kodunu OKUNUR bir sebebe cevirir.</summary>
+        </member>
+        <member name="T:Solum.Sql.SqlServer.SqlServerAppLock.AcquiredLease">
+            <summary>
+            ALINMIS kilit — baglantiyi TUTAR ve birakirken ONCE kilidi dusurur.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.AcquiredLease.#ctor(System.Data.Common.DbConnection,System.String)">
+            <summary>
+            ALINMIS kilit — baglantiyi TUTAR ve birakirken ONCE kilidi dusurur.
+            </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerAppLock.AcquiredLease.DisposeAsync">
+             <summary>
+             ONCE `sp_releaseapplock`, SONRA baglanti.
+            
+             SIRA HAYATI: baglantiyi once birakmak onu HAVUZA IADE eder ve kilit
+             asili kalir -- tipin onarmak icin var oldugu kusurun ta kendisi.
+            
+             IKI KEZ BIRAKMA GUVENLI: `_conn` null'a cekiliyor. `await using`
+             ile try/finally birlikte kullanan bir cagiran iki kez birakabilir
+             ve ikinci cagri `sp_releaseapplock`u TEKRAR calistirsa hata
+             dondururdu (kilit artik onun degil).
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlServer.SqlServerDialect">
+            <summary>SQL Server dialect'i. Kaynak: sqlcli Core/Dialects.cs (yurutme uyeleri).</summary>
+        </member>
+        <member name="F:Solum.Sql.SqlServer.SqlServerDialect.DialectKey">
+            <summary>Kayit ve secim anahtari.</summary>
+        </member>
+        <member name="P:Solum.Sql.SqlServer.SqlServerDialect.Key">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Sql.SqlServer.SqlServerDialect.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:Solum.Sql.SqlServer.SqlServerDialect.SupportsDiagnostics">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.CanHandle(System.String)">
+             <summary>
+             SQL Server baglanti dizesini tanir.
+            
+             "Data Source=" TEK BASINA yeterli DEGILDIR — Oracle da ayni anahtari
+             kullanir. Bu yuzden SQL Server'a ozgu anahtarlardan biri aranir.
+             Belirsizse false doner ve cagirandan acik secim istenir; sessizce
+             sahiplenmek Oracle dizelerini buraya cekerdi.
+             </summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.Create(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.InitializeAsync(System.Data.Common.DbConnection,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.SplitBatches(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.IsIdempotentWarning(System.Data.Common.DbException)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.ErrorCode(System.Data.Common.DbException)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.LimitRows(System.String,System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SqlServerDialect.SplitTableName(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:Solum.Sql.SqlServer.SolumSqlServer">
+            <summary>Kayit yardimcisi.</summary>
+        </member>
+        <member name="M:Solum.Sql.SqlServer.SolumSqlServer.Register">
+             <summary>
+             SQL Server dialect'ini kaydeder. Uygulama acilisinda bir kez cagrilir.
+            
+             Kayit ACIKTIR: ModuleInitializer ile otomatik kayit, assembly hic
+             yuklenmezse sessizce calismaz ve "referans verdim ama tanimiyor"
+             turunden hata ayiklamasi zor bir duruma yol acar.
+             </summary>
+        </member>
+        <member name="T:Solum.Sql.SqlServer.SqlServerErrorCodes">
+             <summary>
+             SQL SERVER HATA KODLARI -> <see cref="T:Solum.Sql.SqlErrorKind"/>.
+            
+             Kaynak: tuketici olcumu (`bel-2b`, 2026-09-03). Kendi ifadeleri:
+            
+             <i>"Her tuketici ayni listeyi yeniden kesfeder ve bir kodu KACIRMAK
+             SESSIZDIR — harita eslesmezse `None` doner, ekran yine ham metin
+             gosterir ve kimse fark etmez."</i>
+            
+             Anahtarlar <c>SqlException.Number</c>'in <c>InvariantCulture</c> metin
+             hali — <see cref="M:Solum.Sql.SqlServer.SqlServerDialect.ErrorCode(System.Data.Common.DbException)"/> tam bunu donduruyor.
+            
+             <b>BASLANGIC NOKTASI, TAM LISTE DEGIL.</b> Tuketici uzerine kendi
+             kodlarini ekler (ozellikle <c>RAISERROR</c> ile bildirilen is kurallari,
+             genelde 50000+). Buradaki liste <b>alana baglanamayan</b> altyapi
+             hatalari; kisitlama ihlali gibi bir ALANA baglananlar tuketicinin kendi
+             haritasina ait (<c>SqlErrorTranslation.Field</c>).
+             </summary>
+        </member>
+        <member name="P:Solum.Sql.SqlServer.SqlServerErrorCodes.Common">
+             <summary>
+             Sik karsilasilan altyapi hatalari.
+            
+             <c>-2</c> ISTEMCI TARAFLI ve bu ayrim onemli: <c>SqlClient</c> komut
+             zaman asiminda bu sayiyi uretir, sunucu bir sey bildirmemistir. Yani
+             sunucu hala calisiyor olabilir ve tekrar denemek makuldur.
+            
+             <c>53</c> / <c>40</c> / <c>10060</c> / <c>10061</c> DORDU DE
+             "ulasilamadi" ailesinden ve tuketici ilk ikisini olctu; son ikisi
+             (WinSock zaman asimi / reddedilen baglanti) ayni sinifin standart
+             uyeleri ve <b>DOGRULANMADI</b> — canli bir kopuk baglantiyla
+             olculmedi, ad ve anlamlari <c>Microsoft.Data.SqlClient</c>
+             belgesinden alindi.
+            
+             <c>4060</c> ILE <c>18456</c> AYRI TUTULDU ve gerekcesi EYLEM: biri
+             kimlik bilgisi sorunu (<c>LoginFailed</c>), oteki veritabaninin
+             yok/cevrimdisi/erisimsiz olmasi (<c>DatabaseUnavailable</c>).
+             Birlestirilse tuketici kullaniciya hangi cumleyi soyleyecegini
+             bilemezdi — ve iki cumle gercekten farklidir.
+             </summary>
+        </member>
+    </members>
+</doc>

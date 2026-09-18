@@ -20,7 +20,7 @@ namespace BkmVardiya.Security;
 ///   yazılır. Claim standart <c>Vrd_UserClaims</c> tablosunda durur — IdentityUser'ı
 ///   genişletmeye gerek yok (Solum'un DapperUserStore'u standart kolonları yazar).
 /// • İZİN ROLE BAĞLANIR, kullanıcıya değil: <c>SolumPermissionGrant</c>
-///   (ProviderName='Role'). Kişi rol değiştirince izinleri kendiliğinden değişir.
+///   (ProviderName='Role'). Kişi role değiştirince izinleri kendiliğinden değişir.
 /// • İDEMPOTENT: var olan kullanıcıya DOKUNMAZ — şifresini sıfırlamaz, rolünü
 ///   bozmaz. Yeniden koşmak güvenli.
 ///
@@ -34,46 +34,46 @@ namespace BkmVardiya.Security;
 /// </summary>
 public static class Seed
 {
-    public const string RolGmy = "GMY";
-    public const string RolIk = "IK";
-    public const string RolSubeSorumlusu = "SubeSorumlusu";
+    public const string RoleGmy = "GMY";
+    public const string RoleHr = "IK";
+    public const string RoleBranchManager = "SubeSorumlusu";
 
     /// <summary>İlk girişte şifre değiştirme zorunluluğu — claim tipi.</summary>
-    public const string SifreDegistirClaim = "vardiya.sifreDegistir";
+    public const string MustChangePasswordClaim = "vardiya.sifreDegistir";
 
-    private static readonly (string Rol, string[] Izinler)[] RolIzinleri =
+    private static readonly (string Role, string[] PermissionNames)[] RolePermissions =
     [
         // GMY salt-okuma + denetim: onay YAZMAZ (plan 48 yetki matrisi).
-        (RolGmy, [Permissions.AllBranches]),
-        (RolIk, [Permissions.AllBranches, Permissions.Approve, Permissions.ManageStaff]),
+        (RoleGmy, [Permissions.AllBranches]),
+        (RoleHr, [Permissions.AllBranches, Permissions.Approve, Permissions.ManageStaff]),
         // Şube sorumlusu "tüm şubeler" ALMAZ — kapsamı ACL satırlarından gelir.
-        (RolSubeSorumlusu, [Permissions.Approve]),
+        (RoleBranchManager, [Permissions.Approve]),
     ];
 
-    /// <summary>Ad Soyad · rol · şubeler (şube sorumlusu değilse boş).</summary>
-    private static readonly (string AdSoyad, string Rol, string[] Subeler)[] Kadro =
+    /// <summary>Ad Soyad · role · şubeler (şube sorumlusu değilse boş).</summary>
+    private static readonly (string FullName, string Role, string[] Branches)[] Staff =
     [
-        ("FİKRİ EREN",          RolGmy, []),
-        ("FARUK BİNGÖLBALİ",    RolGmy, []),
+        ("FİKRİ EREN",          RoleGmy, []),
+        ("FARUK BİNGÖLBALİ",    RoleGmy, []),
 
-        ("CEREN BİLMİŞ",        RolIk,  []),
-        ("ESRA YENER",          RolIk,  []),
-        ("SERPİL YAĞLI",        RolIk,  []),
+        ("CEREN BİLMİŞ",        RoleHr,  []),
+        ("ESRA YENER",          RoleHr,  []),
+        ("SERPİL YAĞLI",        RoleHr,  []),
 
-        ("RESUL ÇİL",           RolSubeSorumlusu, ["FSM"]),
-        ("NECMETTİN ÇELİK",     RolSubeSorumlusu, ["FSM"]),
-        ("ERKAL GÜDENLİ",       RolSubeSorumlusu, ["İST. YOLU"]),
-        ("ÖMER FARUK KIRMACI",  RolSubeSorumlusu, ["İST. YOLU"]),
-        ("EREN BORAN",          RolSubeSorumlusu, ["İST. YOLU"]),
-        ("ABDURRAHMAN UĞURLU",  RolSubeSorumlusu, ["ÖZLÜCE"]),
-        ("AYDIN ÖZCAN",         RolSubeSorumlusu, ["ÖZLÜCE"]),
-        ("SIRAÇ YİĞİT",         RolSubeSorumlusu, ["ÖZLÜCE"]),
-        ("CİHAT BİNGÖLBALİ",    RolSubeSorumlusu, ["ŞURA"]),
-        ("EMRAH ÖZCAN",         RolSubeSorumlusu, ["ŞURA"]),
-        ("RECEP ÖZCAN",         RolSubeSorumlusu, ["HEYKEL"]),
+        ("RESUL ÇİL",           RoleBranchManager, ["FSM"]),
+        ("NECMETTİN ÇELİK",     RoleBranchManager, ["FSM"]),
+        ("ERKAL GÜDENLİ",       RoleBranchManager, ["İST. YOLU"]),
+        ("ÖMER FARUK KIRMACI",  RoleBranchManager, ["İST. YOLU"]),
+        ("EREN BORAN",          RoleBranchManager, ["İST. YOLU"]),
+        ("ABDURRAHMAN UĞURLU",  RoleBranchManager, ["ÖZLÜCE"]),
+        ("AYDIN ÖZCAN",         RoleBranchManager, ["ÖZLÜCE"]),
+        ("SIRAÇ YİĞİT",         RoleBranchManager, ["ÖZLÜCE"]),
+        ("CİHAT BİNGÖLBALİ",    RoleBranchManager, ["ŞURA"]),
+        ("EMRAH ÖZCAN",         RoleBranchManager, ["ŞURA"]),
+        ("RECEP ÖZCAN",         RoleBranchManager, ["HEYKEL"]),
         // Kafeler müdürü ÜÇ şubeden sorumlu — ACL'nin çok-a-çok olmasının
         // ilk gerçek kullanımı (Solum'un 18.09'da uyardığı şekil).
-        ("MURAT SADIK ERBAŞ",   RolSubeSorumlusu, ["FSM KAFE", "İST. YOLU KAFE", "ÖZLÜCE KAFE"]),
+        ("MURAT SADIK ERBAŞ",   RoleBranchManager, ["FSM KAFE", "İST. YOLU KAFE", "ÖZLÜCE KAFE"]),
     ];
 
     public static async Task<int> CalistirAsync(IServiceProvider sp, ILogger logger)
@@ -85,102 +85,102 @@ public static class Seed
 
         // Şube adları DB'de gerçekten var mı? Yoksa ACL'nin FK'sı patlar — ama
         // hata mesajı "FK ihlali" olur ve sebebi görünmez. Önce açıkça ölç.
-        var gecerliSubeler = (await cn.QueryAsync<string>("SELECT Sube FROM bkm.Vrd_Sube")).ToHashSet();
-        var eksik = Kadro.SelectMany(k => k.Subeler).Distinct()
-                         .Where(s => !gecerliSubeler.Contains(s)).ToList();
-        if (eksik.Count > 0)
+        var validBranches = (await cn.QueryAsync<string>("SELECT Sube FROM bkm.Vrd_Sube")).ToHashSet();
+        var missing = Staff.SelectMany(k => k.Branches).Distinct()
+                         .Where(s => !validBranches.Contains(s)).ToList();
+        if (missing.Count > 0)
         {
             logger.LogError("Kadro listesinde bkm.Vrd_Sube'de OLMAYAN şube(ler) var: {Subeler}. "
                           + "Seed durduruldu — yanlış şube adı kapsamı SESSİZCE boşaltırdı.",
-                            string.Join(", ", eksik));
+                            string.Join(", ", missing));
             return 2;   // KOŞAMADI
         }
 
         // ── Roller ────────────────────────────────────────────────────────────
         // ⚠ RoleManager KULLANILMIYOR: Solum.Identity `IRoleStore` vermiyor
-        //   (yalnız IUserStore + IUserRoleStore). Rol satırı doğrudan yazılır;
-        //   kullanıcı-rol ataması yine UserManager üzerinden gider.
-        foreach (var (rol, _) in RolIzinleri)
+        //   (yalnız IUserStore + IUserRoleStore). Role satırı doğrudan yazılır;
+        //   kullanıcı-role ataması yine UserManager üzerinden gider.
+        foreach (var (role, _) in RolePermissions)
             await cn.ExecuteAsync("""
                 IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_Roles WHERE NormalizedName = @norm)
                 INSERT INTO bkm.Vrd_Roles (Id, Name, NormalizedName, ConcurrencyStamp)
                 VALUES (@id, @rol, @norm, NEWID());
-                """, new { id = Guid.NewGuid().ToString(), rol, norm = rol.ToUpperInvariant() });
+                """, new { id = Guid.NewGuid().ToString(), role, norm = role.ToUpperInvariant() });
 
-        // ── Rol → izin ────────────────────────────────────────────────────────
-        foreach (var (rol, izinler) in RolIzinleri)
-            foreach (var izin in izinler)
+        // ── Role → permission ────────────────────────────────────────────────────────
+        foreach (var (role, permissionNames) in RolePermissions)
+            foreach (var permission in permissionNames)
                 await cn.ExecuteAsync("""
                     IF NOT EXISTS (SELECT 1 FROM bkm.SolumPermissionGrant
                                    WHERE ProviderName=N'Role' AND ProviderKey=@rol AND PermissionName=@izin)
                     INSERT INTO bkm.SolumPermissionGrant (ProviderName, ProviderKey, PermissionName)
                     VALUES (N'Role', @rol, @izin);
-                    """, new { rol, izin });
+                    """, new { role, permission });
 
         // ── Kullanıcılar ──────────────────────────────────────────────────────
-        var sifreler = new List<string>();
-        int yeni = 0, atlanan = 0;
+        var passwords = new List<string>();
+        int created = 0, skipped = 0;
 
-        foreach (var (adSoyad, rol, subeler) in Kadro)
+        foreach (var (fullName, role, branches) in Staff)
         {
-            var kullaniciAdi = KullaniciAdiUret(adSoyad);
-            var mevcut = await userManager.FindByNameAsync(kullaniciAdi);
-            if (mevcut is not null)
+            var userName = BuildUserName(fullName);
+            var existing = await userManager.FindByNameAsync(userName);
+            if (existing is not null)
             {
-                atlanan++;
+                skipped++;
                 continue;   // ⚠ DOKUNMA: şifre sıfırlamak sessiz bir kilitleme olurdu.
             }
 
-            var gecici = GeciciSifreUret();
-            var kullanici = new IdentityUser { UserName = kullaniciAdi, LockoutEnabled = true };
-            var sonuc = await userManager.CreateAsync(kullanici, gecici);
-            if (!sonuc.Succeeded)
+            var tempPassword = GenerateTempPassword();
+            var user = new IdentityUser { UserName = userName, LockoutEnabled = true };
+            var result = await userManager.CreateAsync(user, tempPassword);
+            if (!result.Succeeded)
             {
-                logger.LogError("Kullanıcı kurulamadı {Ad}: {Hata}", kullaniciAdi,
-                                string.Join("; ", sonuc.Errors.Select(e => e.Description)));
+                logger.LogError("Kullanıcı kurulamadı {Ad}: {Hata}", userName,
+                                string.Join("; ", result.Errors.Select(e => e.Description)));
                 return 1;
             }
 
-            await userManager.AddToRoleAsync(kullanici, rol);
-            await userManager.AddClaimAsync(kullanici,
-                new System.Security.Claims.Claim(SifreDegistirClaim, "1"));
+            await userManager.AddToRoleAsync(user, role);
+            await userManager.AddClaimAsync(user,
+                new System.Security.Claims.Claim(MustChangePasswordClaim, "1"));
 
-            foreach (var sube in subeler)
+            foreach (var branch in branches)
                 await cn.ExecuteAsync("""
                     IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_KullaniciSube
                                    WHERE UserId=@id AND Sube=@sube AND GecerliBit IS NULL)
                     INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId)
                     VALUES (@id, @sube, N'seed');
-                    """, new { id = kullanici.Id, sube });
+                    """, new { id = user.Id, branch });
 
-            sifreler.Add($"{kullaniciAdi}\t{gecici}\t{adSoyad}\t{rol}\t{string.Join(" | ", subeler)}");
-            yeni++;
+            passwords.Add($"{userName}\t{tempPassword}\t{fullName}\t{role}\t{string.Join(" | ", branches)}");
+            created++;
         }
 
         // ── Geçici şifreler: ciktilar/ altına (git yoksayar) ──────────────────
-        if (sifreler.Count > 0)
+        if (passwords.Count > 0)
         {
-            var klasor = Path.Combine(Directory.GetCurrentDirectory(), "..", "ciktilar");
-            Directory.CreateDirectory(klasor);
-            var dosya = Path.Combine(klasor, $"vardiya-ilk-sifreler-{DateTime.Now:yyyyMMdd-HHmm}.txt");
-            await File.WriteAllTextAsync(dosya,
+            var folder = Path.Combine(Directory.GetCurrentDirectory(), "..", "ciktilar");
+            Directory.CreateDirectory(folder);
+            var file = Path.Combine(folder, $"vardiya-ilk-sifreler-{DateTime.Now:yyyyMMdd-HHmm}.txt");
+            await File.WriteAllTextAsync(file,
                 "# BKM Vardiya — ilk giriş şifreleri\r\n"
               + "# Bu dosya git'e GİRMEZ (ciktilar/ yoksayılı). Dağıtım sonrası SİLİN.\r\n"
               + "# Kullanıcı ilk girişte şifresini DEĞİŞTİRMEK ZORUNDA.\r\n"
               + "# kullanıcı adı\tgeçici şifre\tad soyad\trol\tşubeler\r\n"
-              + string.Join("\r\n", sifreler) + "\r\n", Encoding.UTF8);
+              + string.Join("\r\n", passwords) + "\r\n", Encoding.UTF8);
             // ⚠ Dosya YOLU loglanır, İÇERİĞİ loglanmaz.
-            logger.LogInformation("Geçici şifreler yazıldı: {Dosya}", dosya);
+            logger.LogInformation("Geçici şifreler yazıldı: {Dosya}", file);
         }
 
         logger.LogInformation("Seed tamam — {Yeni} yeni kullanıcı, {Atlanan} mevcut (dokunulmadı), "
-                            + "{Rol} rol.", yeni, atlanan, RolIzinleri.Length);
+                            + "{Rol} rol.", created, skipped, RolePermissions.Length);
         return 0;
     }
 
     /// <summary>"FİKRİ EREN" → "fikri.eren". Türkçe harfler ASCII'ye çevrilir —
     /// kullanıcı adı teknik bir alandır, UI metni değil.</summary>
-    public static string KullaniciAdiUret(string adSoyad)
+    public static string BuildUserName(string adSoyad)
     {
         var s = adSoyad.Trim().ToLower(new CultureInfo("tr-TR"));
         var sb = new StringBuilder();
@@ -195,7 +195,7 @@ public static class Seed
     }
 
     /// <summary>Kriptografik rastgele geçici şifre (Identity kuralı: en az 10 karakter).</summary>
-    private static string GeciciSifreUret()
+    private static string GenerateTempPassword()
     {
         // Karışması kolay karakterler (0/O, 1/l/I) BİLEREK yok — şifre elle yazılacak.
         const string harf = "abcdefghjkmnpqrstuvwxyz";

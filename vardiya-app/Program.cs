@@ -112,3 +112,8 @@ app.MapRazorPages();
 
 app.Run();
 return 0;
+
+
+// WebApplicationFactory<Program> icin gorunur olmali — top-level statements'in
+// urettigi Program sinifi varsayilan olarak internal'dir (plan 48 V-06 testi).
+public partial class Program { }

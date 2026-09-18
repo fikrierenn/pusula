@@ -135,6 +135,27 @@ if echo "$staged" | grep -qE 'VrdSabit|mesai_mevzuat_kapisi|VardiyaQueries'; the
   fi
 fi
 
+
+# ── TURKCE TANIMLAYICI KAPISI (kod Ingilizce, UI/yorum Turkce) ───────────────
+# Tetik: vardiya-app / lib / tests altinda staged .cs veya .cshtml varsa.
+# NEDEN: 19.09.2026'da GMY DORT KEZ ayni seyi soylemek zorunda kaldi ("hala
+# turkce isim kullaniyorsun"). Kural yaziliydi ve okunmustu; cigneyeni goren
+# yoktu. Ayrinti: tools/turkce_tanimlayici_denetimi.py basligi (yakalama sozlesmesi).
+if echo "$staged" | grep -qE '^(vardiya-app|lib/Bkm\.Shared|tests)/.*\.(cs|cshtml)$'; then
+  if command -v python >/dev/null 2>&1 && [ -f tools/turkce_tanimlayici_denetimi.py ]; then
+    if ! tr_out=$(python tools/turkce_tanimlayici_denetimi.py 2>&1); then
+      echo "=== TURKCE TANIMLAYICI: BLOKLANDI ===" >&2
+      echo "$tr_out" | grep -E '^(KIRIK|KOSAMADI)| satir ' >&2
+      echo "" >&2
+      echo "Kod Ingilizce olmali (turkish-ui.md). Yorum ve UI metni Turkce KALIR." >&2
+      echo "Gecici bypass: CLAUDE_PRECOMMIT_SKIP=1 git commit ..." >&2
+      exit 2
+    fi
+  else
+    warn_issues+=("turkce tanimlayici denetimi KOSMADI - sessizlik kanit degil")
+  fi
+fi
+
 # UYARILAR (bloklamaz)
 if [ ${#warn_issues[@]} -gt 0 ]; then
   echo "=== PRE-COMMIT UYARI (bloklamaz) ===" >&2
