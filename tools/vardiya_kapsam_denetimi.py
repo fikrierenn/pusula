@@ -80,8 +80,29 @@ if denetlenen == 0:
     print("KOŞAMADI  `userId` alan hiçbir metot bulunamadı — imza değişmiş olabilir")
     sys.exit(2)
 
+# ── PANEL SALT-OKUMA (plan 48 Adım 7, GMY kararı 19.09) ──────────────────────
+# GMY panelinde vardiya sayfası SALT-OKUMA özettir. Yazma yolu oraya geri
+# konulursa ÜÇ kapı birden atlanmış olur: rol yetkisi · şube kapsamı · denetim izi.
+# Panel tek kullanıcılıdır ve üçü de orada YOK.
+PANEL_SAYFA = Path(__file__).resolve().parent.parent / "dashboard/Components/Pages/Vardiya.razor"
+YASAK = ["SaveApprovalAsync", "OnayKaydet"]
+
+if PANEL_SAYFA.exists():
+    panel = io.open(PANEL_SAYFA, encoding="utf-8").read()
+    bulunan = [y for y in YASAK if y in panel]
+    if bulunan:
+        kirik.append("panel-yazma")
+        print()
+        print(f"KIRIK panel SALT-OKUMA olmalı ama yazma yolu var: {', '.join(bulunan)} "
+              f"→ rol yetkisi + şube kapsamı + denetim izi ATLANIR (üçü de panelde yok).")
+    else:
+        print("OK    panel salt-okuma (dashboard/Vardiya.razor'da yazma yolu yok)")
+else:
+    print("KOŞAMADI  panel sayfası bulunamadı — taşındıysa bu denetim güncellenmeli")
+    sys.exit(2)
+
 print()
 if kirik:
-    print(f"KIRIK · {len(kirik)} sorguda kapsam eksik")
+    print(f"KIRIK · {len(kirik)} bulgu")
     sys.exit(1)
-print(f"Denetim geçti · {denetlenen} sorgunun hepsinde kapsam süzgeci var")
+print(f"Denetim geçti · {denetlenen} sorguda kapsam süzgeci + panel salt-okuma")

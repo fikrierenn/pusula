@@ -1,6 +1,6 @@
 # 48 — Vardiya Yönetim Uygulaması (ayrı app + ortak kütüphane)
 
-**Durum:** ONAYLANDI 18.09 · **Adım 0-6 ✅ (19.09)** · Adım 7 (panelin akıbeti) kaldı · **Tier:** 3 · **Tarih:** 18.09.2026
+**Durum:** ONAYLANDI 18.09 · **Adım 0-7 ✅ — ilk sürüm TAMAM (19.09)** · **Tier:** 3 · **Tarih:** 18.09.2026
 **Karar sahibi:** Fikri Eren (GMY) — *"vardiya yönetimi için ayrı bir program yapı yazmalıyız"*
 **Önceki plan:** `plans/47-vardiya-eksik-fazla-sql.md` (Faz 1 tamam — `bkm.Vrd_*` + `sp_Vrd_KisiGunDoldur`, parite 0 fark)
 
@@ -258,7 +258,7 @@ anlatırdı.
 
 ## Bitiş ölçütü (Definition of Done)
 
-1. `dotnet build` yeşil — dashboard + yeni app + lib.
+1. ✅ `dotnet build` yeşil — dashboard + yeni app + lib.
 2. **Parite:** yeni app'in eksik/fazla raporu ile mevcut panel raporu aynı kesimde
    **birebir aynı** (0 fark). Ortak kütüphane doğru çıkarıldıysa bu tanım gereği tutmalı —
    tutmuyorsa çıkarma sırasında mantık sızmış demektir.
@@ -306,7 +306,13 @@ anlatırdı.
    **İZ İŞLEMLE ATOMİK:** onay ve iz aynı transaction'da; iz yazılamazsa onay da
    yazılmaz. Kanıtlandı (iz tablosu adı bozuldu → onay tablosuna 0 kayıt).
    İz eski VE yeni değeri taşır — yalnız yeniyi yazan iz "ne değişti" diyemez.
-7. Panelin vardiya sayfasının akıbeti; nav düzenlemesi.
+7. ✅ **TAMAM 19.09** — GMY kararı: *"panelde salt-okuma özet kalsın"*.
+   Panelin yazma yolu SÖKÜLDÜ (onay düğmesi + modal + kaydet metodu; 549 → 462
+   satır) ve üstüne vardiya uygulamasına yönlendirme kondu. Gerekçe koda yazıldı:
+   panel tek kullanıcılıdır — rol yetkisi, şube kapsamı ve denetim izi orada YOK;
+   bir "onay" düğmesi geri konulursa **üç kapı birden** atlanmış olur.
+   **Kapı:** `vardiya_kapsam_denetimi.py` artık panelde `SaveApprovalAsync`
+   görürse KIRIK verir (kırılabilirliği kanıtlandı).
 8. Parite + yetki testleri, journal + sema kaydı, TODO senkronu.
 
 ## Geri alma

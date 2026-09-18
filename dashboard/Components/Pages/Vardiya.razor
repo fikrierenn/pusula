@@ -15,6 +15,14 @@
         uyum ölçütleri <b>4857</b> (m.63 · m.68 · m.69 · m.46)
     </div>
     <h1 class="text-2xl font-bold tracking-tight m-0">Vardiya / Mesai</h1>
+    <div class="alert alert-info mt-2 text-xs">
+        <div>
+            <b>Bu sayfa salt-okuma özettir.</b> Yönetici onayı, şube bazlı yetki ve
+            denetim izi <b>Vardiya uygulamasındadır</b>
+            (<a class="link" href="http://localhost:5120/" target="_blank">vardiya-app</a>).
+            Buradaki rakamlar aynı kaynaktan (<code>bkm.Vrd_KisiGun</code>) okunur.
+        </div>
+    </div>
 </div>
 
 @if (_kesimler is null)
@@ -286,7 +294,7 @@ else
             <div class="font-semibold">Kişi-gün</div>
             <div class="text-xs text-base-content/50">
                 @(_satirlar?.Count ?? 0) satır@(_satirlar?.Count >= 400 ? " (ilk 400)" : "")
-                · sarı satır = yönetici onayı girilmiş
+                · sarı satır = yönetici onayı girilmiş (onay girişi Vardiya uygulamasında)
             </div>
         </div>
         @if (_satirlar is null)
@@ -329,11 +337,6 @@ else
                                 <td class="text-xs @(r.Suspect ? "text-warning" : "text-base-content/50")">
                                     @r.MeasureNote
                                 </td>
-                                <td>
-                                    <button class="btn btn-ghost btn-xs" @onclick="() => OnayAc(r)">
-                                        Onay
-                                    </button>
-                                </td>
                             </tr>
                         }
                     </tbody>
@@ -343,62 +346,14 @@ else
     </div>
 }
 
-@* ── YÖNETİCİ ONAYI ── panelin tek yazma yüzeyi. Modal-üstü-modal Blazor'da
-     çalışmaz, o yüzden tek modal (coding-discipline.md). *@
-@if (_onaySatir is not null)
-{
-    <div class="modal modal-open">
-        <div class="modal-box max-w-lg">
-            <h3 class="font-bold text-lg">Yönetici onayı</h3>
-            <div class="text-xs text-base-content/60 mb-3">
-                @_onaySatir.PersonName · @_onaySatir.Date.ToString("dd.MM.yyyy") · @_onaySatir.Branch
-                <br />
-                Kart: @VrdFormat.TimeOfDay(_onaySatir.CardInMin) – @VrdFormat.TimeOfDay(_onaySatir.CardOutMin)
-                · hesaplanan çalışma @VrdFormat.Duration(_onaySatir.WorkMin)
-            </div>
-
-            <div class="alert alert-warning text-xs mb-3">
-                <div>
-                    <b>Gün dönümü artık otomatik.</b> Gece mesaisine kalıp ertesi gün çıkanın
-                    fazla mesaisi zaten hesaplanıyor. <b>Ek mesai alanına telafi yazmayın</b> —
-                    mesai iki kez sayılır. Bu alan yalnız gerçek evden çalışma / ayrıca
-                    onaylanmış ek mesai içindir.
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <label class="form-control">
-                    <span class="label-text text-xs">Onaylı giriş (ss:dd)</span>
-                    <input class="input input-bordered input-sm" placeholder="08:30" @bind="_oGiris" />
-                </label>
-                <label class="form-control">
-                    <span class="label-text text-xs">Onaylı çıkış (ss:dd)</span>
-                    <input class="input input-bordered input-sm" placeholder="18:30" @bind="_oCikis" />
-                </label>
-                <label class="form-control">
-                    <span class="label-text text-xs">Ek mesai (ss:dd)</span>
-                    <input class="input input-bordered input-sm" placeholder="00:00" @bind="_oEk" />
-                </label>
-                <label class="form-control">
-                    <span class="label-text text-xs">Açıklama</span>
-                    <input class="input input-bordered input-sm" @bind="_oAciklama" />
-                </label>
-            </div>
-
-            @if (_onayHata is not null)
-            {
-                <div class="alert alert-error text-xs mt-3"><div>@_onayHata</div></div>
-            }
-
-            <div class="modal-action">
-                <button class="btn btn-ghost btn-sm" @onclick="() => _onaySatir = null">Vazgeç</button>
-                <button class="btn btn-primary btn-sm" @onclick="OnayKaydet" disabled="@_kaydediyor">
-                    Kaydet
-                </button>
-            </div>
-        </div>
-    </div>
-}
+@* ── ONAY YAZMA BURADA DEĞİL ────────────────────────────────────────────
+   Plan 48 Adım 7 (GMY kararı 19.09.2026): panel SALT-OKUMA özet olarak kalıyor.
+   Yönetici onayı ayrı uygulamada (vardiya-app, port 5120) çünkü orada:
+     · rol ve şube kapsamı var (bu panelde YOK — tek kullanıcılı GMY aracı),
+     · her yazma denetim izine gidiyor (bkm.SolumAuditTrail),
+     · onay yetkisi ayrı bir izin (GMY'nin kendisinde YOK — salt-okuma rolü).
+   Buraya bir "onay" düğmesi geri konulursa bu üç kapının ÜÇÜ DE atlanmış olur.
+*@
 
 @code {
     private IReadOnlyList<VrdCutoff>? _kesimler;
@@ -414,10 +369,7 @@ else
     private string _sube = "";
     private string _ara = "";
     private bool _sadeceSorunlu;
-
-    private VrdRow? _onaySatir;
     private string _oGiris = "", _oCikis = "", _oEk = "", _oAciklama = "";
-    private string? _onayHata;
     private bool _kaydediyor;
 
     private static string Anahtar(VrdCutoff k) => $"{k.CutoffFrom:yyyy-MM-dd}|{k.CutoffTo:yyyy-MM-dd}";
@@ -479,16 +431,6 @@ else
         _satirlar = await Q.GetRowsAsync(VrdConstants.PanelUserId, bas, bit, _sube, _ara, _sadeceSorunlu);
     }
 
-    private void OnayAc(VrdRow r)
-    {
-        _onaySatir = r;
-        _onayHata = null;
-        _oGiris = r.ApprovedInMin is null ? "" : VrdFormat.TimeOfDay(r.ApprovedInMin);
-        _oCikis = r.ApprovedOutMin is null ? "" : VrdFormat.TimeOfDay(r.ApprovedOutMin);
-        _oEk = r.ExtraShiftMin is null ? "" : VrdFormat.Duration(r.ExtraShiftMin);
-        _oAciklama = "";
-    }
-
     /// <summary>"08:30" → 510. Boş → null. Geçersiz → hata (sessizce 0 sayılmaz).</summary>
     private static int? Dk(string s, string alan)
     {
@@ -498,35 +440,6 @@ else
             || dd is < 0 or > 59 || sa < 0)
             throw new FormatException($"{alan} 'ss:dd' biçiminde olmalı (girilen: '{s}').");
         return sa * 60 + dd;
-    }
-
-    private async Task OnayKaydet()
-    {
-        if (_onaySatir is null) return;
-        _kaydediyor = true;
-        _onayHata = null;
-        try
-        {
-            await Q.SaveApprovalAsync(VrdConstants.PanelUserId, 
-                _onaySatir.StaffNo, DateOnly.FromDateTime(_onaySatir.Date),
-                Dk(_oGiris, "Onaylı giriş"), Dk(_oCikis, "Onaylı çıkış"),
-                Dk(_oEk, "Ek mesai"), _oAciklama, "panel");
-            _onaySatir = null;
-            await SatirYukle();
-        }
-        catch (Exception ex) when (ex is FormatException or ArgumentException)
-        {
-            // Beklenen girdi hatası — kullanıcıya AYNEN gösterilir (iş sonucu, sistem hatası değil).
-            _onayHata = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            // Gerçek hata: detay loga, kullanıcıya generic (security-principles.md).
-            Logger.LogError(ex, "Vardiya onayı kaydedilemedi: {Sicil} {Tarih}",
-                            _onaySatir?.StaffNo, _onaySatir?.Date);
-            _onayHata = "Kayıt sırasında beklenmedik bir hata oluştu. Sistem yöneticisine bildirin.";
-        }
-        finally { _kaydediyor = false; }
     }
 
     private static string DurumRenk(string d) => d switch
