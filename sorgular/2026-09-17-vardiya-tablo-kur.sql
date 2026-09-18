@@ -69,6 +69,23 @@ CREATE INDEX IX_Vrd_KisiGun_Kisi
     ON bkm.Vrd_KisiGun (SicilNo, Tarih) INCLUDE (KesimBas, KesimBit);
 GO
 
+/* MEVZUAT KAPISI (UyumAsync) KAPSAYAN İNDEKSİ.
+   Kapı bir kesimin TAMAMINI tarar ve GirisDk/CikisDk/Izin/OlcumNotu ister —
+   bunlar _Kesim indeksinde YOK, yani her satır için anahtar arama (key lookup)
+   doğuyordu. Dar bir (KesimBas,KesimBit) indeksi bunu ÇÖZMEZ, KÖTÜLEŞTİRİR.
+
+   ÖLÇÜLDÜ (18.09.2026) — 24 kesimlik ölçek taklidi, 146.712 satır, medyan 8 koşum:
+     indekssiz (yığın tarama) ....  89,6 ms
+     dar (KesimBas,KesimBit) ..... 111,9 ms   ← anahtar arama yüzünden DAHA YAVAŞ
+     kapsayan (bu indeks) ........  22,9 ms   ← 3,9 kat
+   Bugünkü tek kesimde (6.113 satır) fark ölçüm gürültüsü içinde (46,3 → 44,0 ms);
+   indeks kesim sayısı arttıkça kazandırır, bugün zarar vermiyor. Boyut 376 KB. */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_Vrd_KisiGun_KesimUyum')
+CREATE INDEX IX_Vrd_KisiGun_KesimUyum
+    ON bkm.Vrd_KisiGun (KesimBas, KesimBit)
+    INCLUDE (SicilNo, Tarih, CalismaDk, GirisDk, CikisDk, Izin, OlcumNotu);
+GO
+
 /* --------------------------------------------------------- ELLE GİRİLEN ----
    Hiçbir sorgudan çıkmaz. Bugün Excel hücresinde yaşıyor ve dosya yenilenince
    kayboluyor — tablonun gerçek gerekçesi budur.

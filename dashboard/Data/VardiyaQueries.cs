@@ -179,6 +179,17 @@ public sealed class VardiyaQueries(Db db)
         //   ÖLÇÜLDÜ (18.09.2026, 6.113 satır): 43,2 sn → komut zaman aşımı, sayfa
         //   500 veriyordu. #temp'e tek geçiş + aritmetik kesişim: **0,30 sn**,
         //   aynı sonuç (93 · 93 · 1 · 124 · 544 · 2). 144 kat.
+        //
+        // ⚠ #o'ya İNDEKS EKLENMEDİ — DENENDİ, YAVAŞLATTI.
+        //   `CREATE CLUSTERED INDEX (supheli, SicilNo, Tarih)` ölçüldü (6 koşum):
+        //   medyan 81 ms → 104-117 ms. 6.113 satırda sıralama maliyeti tarama
+        //   kazancını aşıyor. Hızı veren indeks DEĞİL, tek geçişti.
+        //
+        //   İndeksin gerçekten kazandırdığı yer KAYNAK TABLO: kapı bir kesimin
+        //   tamamını tarar ve GirisDk/CikisDk/Izin/OlcumNotu ister; bunlar
+        //   `IX_Vrd_KisiGun_Kesim`te YOK. `IX_Vrd_KisiGun_KesimUyum` bunun için
+        //   var (24 kesim taklidi, 146.712 satır: 89,6 → 22,9 ms). DDL:
+        //   sorgular/2026-09-17-vardiya-tablo-kur.sql
         return await cn.QuerySingleOrDefaultAsync<VrdUyum>("""
             SELECT SicilNo, Tarih, CalismaDk, GirisDk, CikisDk, Izin,
                    -- gece = [giriş,çıkış] ∩ 20:00–06:00; çıkış 1440'ı aşabildiği
