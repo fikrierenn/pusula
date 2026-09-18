@@ -174,44 +174,46 @@ public sealed class VardiyaQueries(Db db)
     public async Task<VrdUyum?> UyumAsync(DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
+        // ⚠ CTE MATERYALİZE EDİLMEZ — beş referans beş yeniden tarama demekti ve
+        //   `geceDk` içindeki VALUES alt-sorgusu satır başına koşuyordu.
+        //   ÖLÇÜLDÜ (18.09.2026, 6.113 satır): 43,2 sn → komut zaman aşımı, sayfa
+        //   500 veriyordu. #temp'e tek geçiş + aritmetik kesişim: **0,30 sn**,
+        //   aynı sonuç (93 · 93 · 1 · 124 · 544 · 2). 144 kat.
         return await cn.QuerySingleOrDefaultAsync<VrdUyum>("""
-            WITH o AS (
-                SELECT SicilNo, Tarih, CalismaDk, GirisDk, CikisDk, Izin,
-                       geceDk =
-                           CASE WHEN GirisDk IS NULL OR CikisDk IS NULL OR CikisDk <= GirisDk THEN 0
-                           ELSE
-                             (SELECT SUM(k.pay) FROM (VALUES
-                                (CASE WHEN (CASE WHEN CikisDk <  1800 THEN CikisDk ELSE 1800 END)
-                                         - (CASE WHEN GirisDk > 1200 THEN GirisDk ELSE 1200 END) > 0
-                                      THEN (CASE WHEN CikisDk <  1800 THEN CikisDk ELSE 1800 END)
-                                         - (CASE WHEN GirisDk > 1200 THEN GirisDk ELSE 1200 END) ELSE 0 END),
-                                (CASE WHEN (CASE WHEN CikisDk <  3240 THEN CikisDk ELSE 3240 END)
-                                         - (CASE WHEN GirisDk > 2640 THEN GirisDk ELSE 2640 END) > 0
-                                      THEN (CASE WHEN CikisDk <  3240 THEN CikisDk ELSE 3240 END)
-                                         - (CASE WHEN GirisDk > 2640 THEN GirisDk ELSE 2640 END) ELSE 0 END)
-                             ) AS k(pay))
-                           END
-                FROM bkm.Vrd_KisiGun
-                WHERE KesimBas = @bas AND KesimBit = @bit
-                  AND (OlcumNotu IS NULL OR OlcumNotu NOT LIKE N'%ŞÜPHELİ%')
-            ), hf AS (
-                SELECT SicilNo, hafta = DATEPART(iso_week, Tarih),
-                       gun = COUNT(DISTINCT Tarih),
-                       dinlenme = SUM(CASE WHEN Izin = 1 OR ISNULL(CalismaDk, 0) = 0 THEN 1 ELSE 0 END),
-                       toplamDk = SUM(ISNULL(CalismaDk, 0))
-                FROM o GROUP BY SicilNo, DATEPART(iso_week, Tarih)
-            )
+            SELECT SicilNo, Tarih, CalismaDk, GirisDk, CikisDk, Izin,
+                   -- gece = [giriş,çıkış] ∩ 20:00–06:00; çıkış 1440'ı aşabildiği
+                   -- için pencere iki gün için toplanır (m.69).
+                   geceDk = CASE WHEN GirisDk IS NULL OR CikisDk IS NULL
+                                      OR CikisDk <= GirisDk THEN 0 ELSE
+                       CASE WHEN (CASE WHEN CikisDk < 1800 THEN CikisDk ELSE 1800 END)
+                               - (CASE WHEN GirisDk > 1200 THEN GirisDk ELSE 1200 END) > 0
+                            THEN (CASE WHEN CikisDk < 1800 THEN CikisDk ELSE 1800 END)
+                               - (CASE WHEN GirisDk > 1200 THEN GirisDk ELSE 1200 END) ELSE 0 END
+                     + CASE WHEN (CASE WHEN CikisDk < 3240 THEN CikisDk ELSE 3240 END)
+                               - (CASE WHEN GirisDk > 2640 THEN GirisDk ELSE 2640 END) > 0
+                            THEN (CASE WHEN CikisDk < 3240 THEN CikisDk ELSE 3240 END)
+                               - (CASE WHEN GirisDk > 2640 THEN GirisDk ELSE 2640 END) ELSE 0 END
+                   END,
+                   supheli = CASE WHEN OlcumNotu LIKE N'%ŞÜPHELİ%' THEN 1 ELSE 0 END
+            INTO   #o
+            FROM   bkm.Vrd_KisiGun
+            WHERE  KesimBas = @bas AND KesimBit = @bit;
+
+            WITH hf AS (
+              SELECT SicilNo, hafta = DATEPART(iso_week, Tarih),
+                     gun = COUNT(DISTINCT Tarih),
+                     dinlenme = SUM(CASE WHEN Izin = 1 OR ISNULL(CalismaDk,0) = 0 THEN 1 ELSE 0 END),
+                     toplamDk = SUM(ISNULL(CalismaDk,0))
+              FROM #o WHERE supheli = 0
+              GROUP BY SicilNo, DATEPART(iso_week, Tarih))
             SELECT
-                Gunluk11  = (SELECT COUNT(*) FROM o WHERE ISNULL(CalismaDk,0) > 660),
-                Brut12    = (SELECT COUNT(*) FROM o
-                             WHERE GirisDk IS NOT NULL AND CikisDk IS NOT NULL
-                               AND CikisDk - GirisDk > 720),
-                Gece75    = (SELECT COUNT(*) FROM o WHERE geceDk > 450),
-                HaftaTat  = (SELECT COUNT(*) FROM hf WHERE gun >= 7 AND dinlenme = 0),
-                Ustu45    = (SELECT COUNT(*) FROM hf WHERE toplamDk > 2700),
-                Supheli   = (SELECT COUNT(*) FROM bkm.Vrd_KisiGun
-                             WHERE KesimBas = @bas AND KesimBit = @bit
-                               AND OlcumNotu LIKE N'%ŞÜPHELİ%')
+              Gunluk11 = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND ISNULL(CalismaDk,0) > 660),
+              Brut12   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND GirisDk IS NOT NULL
+                                                    AND CikisDk IS NOT NULL AND CikisDk-GirisDk > 720),
+              Gece75   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND geceDk > 450),
+              HaftaTat = (SELECT COUNT(*) FROM hf WHERE gun >= 7 AND dinlenme = 0),
+              Ustu45   = (SELECT COUNT(*) FROM hf WHERE toplamDk > 2700),
+              Supheli  = (SELECT COUNT(*) FROM #o WHERE supheli = 1);
             """, new { bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
     }
 
