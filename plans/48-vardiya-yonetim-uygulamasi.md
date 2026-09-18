@@ -142,7 +142,7 @@ değişmez.
 | Betik | Alınıyor mu |
 |---|---|
 | `0005_SolumPermissions` | ✅ izin katmanı için. ⚠ `SolumUserCompanyAccess` şube ACL'i DEĞİL — şube ACL'i `Vrd_*` altında bizim |
-| `0025_SolumAuditTrail` | ✅ denetim izi (onay yazması için zaten gerekliydi) |
+| `0025_SolumAuditTrail` | ✅ **KURULDU 19.09** — ilk koşumda patladı (`Changes NVARCHAR(8000)`, T-SQL sınırı 4000, Hata 2717); betik **hiçbir SQL Server'da koşmamıştı**, üçüncü tüketici olarak ilk koşan biz olduk. Solum `NVARCHAR(MAX)` ile onardı (`38dcfe3`) ve şema kapısına tip-sınırı iddiası ekledi. Bizde yamalanmadı, onarılmış sürüm koşuldu. |
 | `0015_SolumTimeOffset` | ❌ **ALINMIYOR — ölçüldü (Solum, 18.09):** yalnız `SolumNotification` + `SolumMailLog`'a dokunuyor, ikisi de `0010`'un tablosu; `0005`/`0025` ile sıfır teması. `0025.At` zaten `DATETIMEOFFSET(7)`. ⚠ Almak zararsız görünür (`IF OBJECT_ID` korumalı) ama **sessiz kusur üretir**: koşmamış betik deftere "uygulandı" yazılır, ileride `0010` alınırsa dönüşüm hiç koşmaz. Bildirim/mail eklenirse sıra `0010` → `0015`, birlikte. |
 | `0010_SolumMessaging` · `0020_SolumSettings` · `0030_SolumAttachments` | ❌ gerekmiyor |
 
