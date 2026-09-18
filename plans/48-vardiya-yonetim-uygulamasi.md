@@ -139,15 +139,36 @@ oturumu ele geçirilse bile kalıcı bir kapı açılmış olmaz.
 | Bölge → şube hiyerarşisi | **YOK** | `Grup` (MAĞAZA/KAFE/GM) bir **tip**, yetkiye bağlanmaz |
 | Geçmiş önemli mi | **EVET** | ACL **zamansal**: `GecerliBas` / `GecerliBit`; silme yok, **kapatma** var |
 
-**Kapsam tarihli, yetki tarihsiz.** `Vrd_SubeKapsami(@KullaniciId, @Tarih)` — ACL o
-tarihte geçerli satırlardan çözülür, ama "tüm şubeler" yetkisi zamansızdır. Gerekçe:
-yetki de tarihlenseydi, o dönemin yetkilisi ayrıldığında geçmiş bir dönem **kimsenin
-göremediği** bir boşluğa düşerdi.
+**Yetki bugünkü, geçmiş denetimde.** `Vrd_SubeKapsami(@KullaniciId)` bugün geçerli ACL
+satırlarından çözülür; "tüm şubeler" yetkisi de zamansızdır. (İlk tasarımdaki *"kapsam
+tarihli"* fikri aynı gün çürütüldü — aşağıda.)
 
-⚠ **YORUM KARARI (ÇIKARIM, ölçüm değil) — beyan edilir:** kapsam kişi-gün satırının
-TARİHİNE göre çözülür. Müdür Ağustos'ta A'daysa B'ye geçtikten sonra da Ağustos'un A
-satırlarını görür; A'nın yeni müdürü önceki dönemi GÖRMEZ; İK/GMY ikisini de görür.
-İstenmezse değişecek tek yer TVF'in `@Tarih` kullanımıdır.
+### ⚠ AYNI GÜN DÜZELTİLDİ — kapsam BUGÜNKÜ ACL'den çözülür
+
+İlk sürüm kapsamı kişi-gün satırının **tarihine** bağlıyordu. GMY itirazı bunu çürüttü:
+
+> *"ama eski müdür verileri görmezse nasıl karşılaştırma tahmin vs yapacak"*
+
+A şubesine **yeni atanan** müdür, kendinden önceki dönemi göremiyordu — yani kendi
+şubesinin geçmişini. Geçen yılla kıyas, trend ve tahmin bunsuz yapılamaz.
+
+**Hata sınıfı: iki ayrı soruyu tek mekanizmaya bağlamak.**
+
+| Soru | Cevap nereden |
+|---|---|
+| **Görme yetkisi** — "bugün hangi şubeden sorumluyum" | BUGÜNKÜ ACL → o şubenin **tüm geçmişi** |
+| **Denetim** — "o tarihte kim sorumluydu" | zamansal ACL + `Vrd_KullaniciSubeGecmis_vw` |
+
+Zamansal ACL **yanlış değildi ve kaldı** — yalnız amacı düzeltildi: geçmişi **saklar**,
+yetkiyi **kesmez**. `Vrd_SubeKapsami` `@Tarih` parametresini bıraktı.
+
+**Davranış (beyan edilir):** A'nın yeni müdürü A'nın TÜM geçmişini görür ✔ · B'ye geçen
+eski müdür A'yı artık görmez (kendi dönemi dahil — sorumluluk bitti, kaydı denetimde
+duruyor) · İK/GMY her şeyi görür.
+
+**ÖLÇÜLDÜ (19.09, düzeltme sonrası):** yeni müdür → FSM (geçmişiyle) · eski müdür → yalnız
+ŞURA · İK → 9 · kimliksiz → 0 · denetim view'i "eski müdür 15.08'de A'dan sorumluydu"
+sorusuna hâlâ **1 satır** dönüyor (geçmiş korundu).
 
 **Benzersiz kısıt zamansallaştı:** `UNIQUE (UserId, Sube) WHERE GecerliBit IS NULL`.
 Koşulsuz hâli kaldırılmak zorundaydı — zamansal modelde aynı çift birden çok kez geçerli
