@@ -119,4 +119,6 @@ ciktilar/
 # Parametre (vardiya_parametreleri.json) ve OKUBENI.md git'te KALIR: politika
 # değişikliği diff'te görünmeli. Excel dosyaları veridir, kod değil.
 vardiya/*.xlsx
+# .xls (eski format) da veridir — PDKS/Gecoweb çıktıları bu uzantıyla geliyor (18.09.2026).
+vardiya/*.xls
 /BKMKİTAP Eksik ve Fazla Takip Raporu.xlsx
