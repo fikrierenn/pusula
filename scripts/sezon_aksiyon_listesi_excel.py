@@ -232,8 +232,11 @@ yl AS (        -- YILLIK 365 gün — bağlam, karar vermez
       AND h.ehTrhS >= ? AND h.ehTrhS < ?
     GROUP BY h.ehstkID
 )
-SELECT t.stkAd                                       AS [Ürün],
+SELECT t.stkID                                       AS [stkID],
+       t.stkAd                                       AS [Ürün],
        t.Kategori3                                   AS [Kategori],
+       ISNULL(t.Kat1, N'')                           AS [Ürün grubu],
+       ISNULL(t.Kat2, N'')                           AS [Alt kategori],
        {YOL}                                         AS [Kategori yolu],
        -- Taban kolonunun adi 'Yayinevi' ama kaynagi UrunBilgi.mrkAd, yani MARKA.
        t.Yayinevi                                    AS [Marka],
@@ -311,8 +314,12 @@ CROSS APPLY (SELECT Kat = ISNULL(
              THEN CONVERT(float, kb.Pencere) / kb.Sezon END,
         CASE WHEN ISNULL(kb3.Sezon, 0) > 0
              THEN CONVERT(float, kb3.Pencere) / kb3.Sezon END)) k0
-CROSS APPLY (SELECT Kat = ISNULL(CASE WHEN k0.Kat BETWEEN 0.05 AND 1.0
-                                      THEN k0.Kat END, 0.60)) kk
+-- ⚠ 4 HANEYE YUVARLANIP OYLE CARPILIR: bu oran Excel'e decimal(6,4) olarak
+-- yaziliyor ve orada 4 haneyle carpiliyor. SQL tam hassasiyetle carparsa
+-- --durum suzgeci ile ekranda gorunen sinif AYRISIR (olculdu 16.09.2026:
+-- Defterler'de "depodan gonder" adedi SQL 22.445, Excel 22.442).
+CROSS APPLY (SELECT Kat = CONVERT(float, CONVERT(decimal(6,4),
+        ISNULL(CASE WHEN k0.Kat BETWEEN 0.05 AND 1.0 THEN k0.Kat END, 0.60)))) kk
 -- Sube orani: o subenin kendi olcumu zayifsa (30 adet alti ya da 0,05-1,00
 -- disi) kategori ortalamasina duser. Urun orani bir ARA ADIM degildir artik.
 CROSS APPLY (SELECT
@@ -386,9 +393,12 @@ ORDER BY CASE WHEN g.Sinif = 1 THEN x.Siparis * t.SatisFiyat
 # (B2) — değiştirilince tüm liste yeniden hesaplanır.
 #   (ad, tip)  tip: "ham" = SQL kolonu · "f" = Excel formülü
 DUZEN: list[tuple[str, str]] = [
+    ("stkID",                             "ham"),
     ("Ürün",                              "ham"),
     ("Kategori",                          "ham"),
     ("Kategori yolu",                     "ham"),
+    ("Ürün grubu",                        "ham"),
+    ("Alt kategori",                      "ham"),
     ("Marka",                             "ham"),
     ("Stok kodu",                         "ham"),
     ("Barkod",                            "ham"),
@@ -514,13 +524,14 @@ def ayir(n: float, para: bool = False) -> str:
     return f"{s} ₺" if para else s
 
 
-def satir_sonuc(r, ix):
+def satir_sonuc(r, ix, zincir: dict | None = None):
     """LISTE formulunun Python karsiligi. Ayni ham kolonlardan, ayni sirayla.
 
     Bu blok daha once formulu ikinci kez kurmus ve sessizce ayrismisti. Artik
     girdiler SQL'den gelen HAM kolonlardir; tekrar eden tek sey aritmetiktir.
     """
     import math
+    zincir = {} if zincir is None else zincir
     kat = float(r[ix["Kategori ortalama oran"]] or 0)
     kat = kat if 0.05 <= kat <= 1.0 else 0.6
     kalan_top = eksik_top = tahmin_top = 0
@@ -533,12 +544,20 @@ def satir_sonuc(r, ix):
         bo = r[ix[f"Bu sezon {su} okul oncesi"]] or 0
         tahmin = math.ceil(bo / oran) if oran > 0 else 0
         kalan = max(0, tahmin - (r[ix[f"Bu sezon {su} satilan"]] or 0))
+        eksik = max(0, kalan - (r[ix[f"{su} stok"]] or 0))
         tahmin_top += tahmin
         kalan_top += kalan
-        eksik_top += max(0, kalan - (r[ix[f"{su} stok"]] or 0))
+        eksik_top += eksik
+        zincir[su] = {"oran": oran, "tahmin": tahmin, "kalan": kalan,
+                      "stok": r[ix[f"{su} stok"]] or 0, "eksik": eksik}
     depo = r[ix["Merkez depo stok"]] or 0
     magaza = sum(r[ix[f"{su} stok"]] or 0 for su in ("FSM", "Ozluce", "IstYolu"))
     siparis = max(0, eksik_top - depo)
+    # ⚠ ARA ADIMLAR DA BURADAN DAGITILIR. Sade rapor bunlari kendi basina yeniden
+    #   kurmaya kalkarsa formul ikinci kez yazilmis olur ve sessizce ayrisir —
+    #   bu dosyada bir kez yasandi (konsol ozeti 12.331 derken SQL 17.193 diyordu).
+    zincir.update(tahmin=tahmin_top, kalan=kalan_top, eksik=eksik_top,
+                  magaza=magaza, depo=depo, siparis=siparis)
     fazla = magaza + depo - kalan_top - (r[ix["Gecen yil sezon disi satilan"]] or 0)
     if ((r[ix["Gecen sezon toplam satilan"]] or 0) <= 0
             and (r[ix["Bu sezon bugune kadar satilan"]] or 0) <= 0
@@ -682,6 +701,664 @@ def pivot_kur(yol: str, kolon_sayisi: int, son_satir: int,
         pythoncom.CoUninitialize()
 
 
+# ══ HAM SAYFA DUZENI ═══════════════════════════════════════════════════════
+# GMY 16.09.2026: "her seyi ham veri olarak sayfalara alsak, formuller ile
+# birlestirsek". Ayni SQL, ayni pencere, ayni kapi — yalniz YERLESIM farkli.
+#
+# ⚠ HESAP sayfasi ham sayfalara INDEX/MATCH ile baglanir, satir sirasina
+#   GUVENMEZ. Dogrudan hucre referansi (ayni satir) daha hizli olurdu ama
+#   kullanici bir ham sayfayi SIRALAYINCA sessizce yanlis satiri okurdu.
+#   MATCH kolonlari GORUNUR birakildi: "bu deger hangi satirdan geldi"
+#   sorusu tiklayarak yanitlanir.
+HAM_SAYFA: dict[str, list[str]] = {
+    "1 URUNLER": ["Ürün", "Kategori", "Ürün grubu", "Alt kategori", "Marka",
+                  "Stok kodu", "Barkod", "Kategori ortalama oran",
+                  "Oranin alindigi alt kategori", "Satis fiyati", "Birim maliyet",
+                  "Tedarikcide bulunan"],
+    "2 GECEN SEZON": ["Gecen sezon toplam satilan", "Gecen sezon okul oncesi satilan",
+                      "Gecen sezon FSM satilan", "Gecen sezon FSM okul oncesi",
+                      "Gecen sezon Ozluce satilan", "Gecen sezon Ozluce okul oncesi",
+                      "Gecen sezon IstYolu satilan", "Gecen sezon IstYolu okul oncesi",
+                      "Gecen sezon stogu bitti mi", "Gecen yil sezon disi satilan",
+                      "Gecen yil toplam satilan"],
+    "3 BU SEZON": ["Bu sezon okul oncesi satilan", "Bu sezon bugune kadar satilan",
+                   "Bu sezon FSM okul oncesi", "Bu sezon FSM satilan",
+                   "Bu sezon Ozluce okul oncesi", "Bu sezon Ozluce satilan",
+                   "Bu sezon IstYolu okul oncesi", "Bu sezon IstYolu satilan"],
+    "4 STOKLAR": ["FSM stok", "Ozluce stok", "IstYolu stok", "Merkez depo stok"],
+}
+
+
+def ham_sayfa_yaz(wb, sat, ix, GOSTER, LACI, SARI, kesim, not_satiri, sube_ad):
+    """Ham sayfalar + HESAP sayfasi. wb'nin ilk sayfasi HESAP olur."""
+    from openpyxl.utils import get_column_letter as L
+
+    hs = wb.active
+    hs.title = "HESAP"
+    sayfalar = {}
+    # ── Ham sayfalar: ilk kolon stkID, sonra o kaynagin kolonlari ────────
+    for ad, kolonlar in HAM_SAYFA.items():
+        w = wb.create_sheet(ad)
+        w.cell(1, 1, f"HAM VERİ — {ad}. Bu sayfa hesap YAPMAZ, yalnız ölçümü "
+                     f"taşır. HESAP sayfası buraya stkID ile bağlanır; "
+                     f"SIRALAMA DEĞİŞTİRİLSE BİLE doğru satırı bulur.")
+        w.cell(1, 1).font = Font(italic=True, size=9, color="555555")
+        w.merge_cells(start_row=1, start_column=1, end_row=1,
+                      end_column=len(kolonlar) + 1)
+        # Ham sayfada baslik = IC ANAHTAR. GOSTER tek-sayfa duzenine ait
+        # uzun basliklari tasir; burada kaynak adinin sade hali okunur.
+        basliklar = ["stkID"] + list(kolonlar)
+        for j, b in enumerate(basliklar, start=1):
+            c = w.cell(2, j, b)
+            c.font = Font(bold=True, color="FFFFFF", size=10)
+            c.fill = LACI
+            c.alignment = Alignment(wrap_text=True, vertical="center",
+                                    horizontal="center")
+        w.row_dimensions[2].height = 42
+        for i, r in enumerate(sat, start=3):
+            w.cell(i, 1, r[ix["stkID"]])
+            for j, k in enumerate(kolonlar, start=2):
+                v = r[ix[k]]
+                c = w.cell(i, j, v)
+                if isinstance(v, (int, float)):
+                    c.number_format = ('#,##0.0000' if k in ("Satis fiyati",
+                                                             "Birim maliyet")
+                                       else "#,##0")
+        w.freeze_panes = "B3"
+        w.auto_filter.ref = f"A2:{L(len(basliklar))}{len(sat) + 2}"
+        w.column_dimensions["A"].width = 10
+        for j, k in enumerate(kolonlar, start=2):
+            w.column_dimensions[L(j)].width = min(
+                34, max(12, max(len(p) for p in basliklar[j - 1].split("\n")) + 2))
+        sayfalar[ad] = (w, basliklar)
+    return hs, sayfalar
+
+
+def hesap_sayfasi_yaz(hs, sat, ix, kesim, not_satiri, LACI, SARI):
+    """HESAP sayfasi — tek bir HAM kolon (stkID) disinda HER SEY FORMUL.
+
+    Her deger ham sayfadan INDEX/MATCH ile gelir. "Bu sayi nereden geliyor"
+    sorusu hucreye tiklanarak yanitlanir; ara adim gizlenmez.
+    ⚠ MATCH kolonlari GORUNUR birakildi. Dogrudan satir referansi daha hizli
+      olurdu ama kullanici bir ham sayfayi siralayinca SESSIZCE yanlis satiri
+      okurdu; MATCH siralama degisse de dogru satiri bulur.
+    """
+    from openpyxl.utils import get_column_letter as L
+
+    # Ham sayfadaki alanin kolon harfi (A = stkID, sonrasi HAM_SAYFA sirasi)
+    def hk(sayfa, alan):
+        return f"'{sayfa}'!${L(HAM_SAYFA[sayfa].index(alan) + 2)}"
+
+    SUBE = (("FSM", "FSM"), ("Ozluce", "Özlüce"), ("IstYolu", "İstanbul Yolu"))
+    NL = chr(10)
+
+    # (ic anahtar, gorunen baslik) — sira EKRANDA soldan saga okunacak sira
+    kol: list[tuple[str, str]] = [
+        ("stkID", "stkID" + NL + "(tek ham kolon)"),
+        ("sU", "Satır no" + NL + "1 ÜRÜNLER"),
+        ("sG", "Satır no" + NL + "2 GEÇEN SEZON"),
+        ("sB", "Satır no" + NL + "3 BU SEZON"),
+        ("sS", "Satır no" + NL + "4 STOKLAR"),
+        ("urun", "Ürün"),
+        ("kategori", "Kategori"),
+        ("altkat", "Alt kategori"),
+        ("marka", "Marka"),
+        ("katoran", "Alt kategori ortalama oranı" + NL
+                    + "(şubenin kendi ölçümü zayıfsa bu kullanılır)"),
+        ("sansur", "Geçen sezon stoğu bitmiş miydi" + NL
+                   + "(bittiyse geçen sezon satışı gerçek talebin altındadır)"),
+    ]
+    for su, ad in SUBE:
+        kol += [
+            (f"{su}_gs", f"{ad}: geçen sezon satılan"),
+            (f"{su}_go", f"{ad}: geçen sezon okul açılmadan önce satılan"),
+            (f"{su}_oran", f"{ad}: kullanılan oran" + NL
+                           + "(okul öncesi / sezon toplamı; 30 adedin altındaysa "
+                             "alt kategori ortalaması)"),
+            (f"{su}_bo", f"{ad}: bu sezon okul açılmadan önce satılan"),
+            (f"{su}_bs", f"{ad}: bu sezon bugüne kadar satılan"),
+            (f"{su}_tah", f"{ad}: bu sezon toplam kaç adet satacak" + NL
+                          + "(okul öncesi satılan / kullanılan oran)"),
+            (f"{su}_kal", f"{ad}: sezonun kalanında kaç adet satacak"),
+            (f"{su}_stok", f"{ad}: stok ({kesim:%d.%m.%Y})"),
+            (f"{su}_eks", f"{ad}: eksik adet" + NL + "(satacağı miktar eksi stoğu)"),
+        ]
+    kol += [
+        ("tahtop", "Bu sezon toplam satılacak" + NL + "(üç şubenin toplamı)"),
+        ("kalantop", "Sezonun kalanında satılacak" + NL + "(üç şubenin toplamı)"),
+        ("eksiktop", "Şubelerde toplam eksik adet"),
+        ("magstok", "Mağazalarda toplam stok"),
+        ("depo", f"Merkez depoda stok ({kesim:%d.%m.%Y})"),
+        ("eldetop", "Elimizdeki toplam stok" + NL + "(mağazalar artı merkez depo)"),
+        ("durum", "Durum" + NL
+                  + "(şube eksikleri merkez depodan karşılanamıyorsa sipariş gerekir)"),
+        ("siparis", "Sipariş verilecek adet" + NL
+                    + "(şubelerde toplam eksik eksi merkez depo stoğu)"),
+        ("nereden", "Sipariş nereden karşılanır"),
+        ("odak", "Tedarikçide bulunan adet" + NL + "(bizim stoğumuz değil)"),
+        ("disi", "Geçen yıl sezon dışında satılan"),
+        ("gelecek", "Gelecek sezona kalacak adet" + NL
+                    + "(elimizdeki eksi sezonun kalanı eksi sezon dışı talep)"),
+        ("fiyat", "Satış fiyatı"),
+        ("maliyet", "Birim maliyet"),
+        ("tutar", "Tutar" + NL
+                  + "(sipariş satırında satış fiyatıyla, fazlada maliyetle)"),
+    ]
+    K = {a: L(j) for j, (a, _) in enumerate(kol, start=1)}
+
+    hs.cell(1, 1, not_satiri).font = Font(italic=True, size=9, color="555555")
+    hs.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(kol))
+    hs.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
+    hs.row_dimensions[1].height = 46
+    for j, (_, b) in enumerate(kol, start=1):
+        c = hs.cell(2, j, b)
+        c.font = Font(bold=True, color="FFFFFF", size=10)
+        c.fill = LACI
+        c.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
+    hs.row_dimensions[2].height = 60
+
+    U, G, B, S = "1 URUNLER", "2 GECEN SEZON", "3 BU SEZON", "4 STOKLAR"
+    for n, r in enumerate(sat, start=3):
+        hs.cell(n, 1, r[ix["stkID"]])
+        f: dict[str, str] = {
+            "sU": f'=MATCH($A{n},\'{U}\'!$A:$A,0)',
+            "sG": f'=MATCH($A{n},\'{G}\'!$A:$A,0)',
+            "sB": f'=MATCH($A{n},\'{B}\'!$A:$A,0)',
+            "sS": f'=MATCH($A{n},\'{S}\'!$A:$A,0)',
+            "urun": f'=INDEX({hk(U,"Ürün")}:${hk(U,"Ürün")[-1]},${K["sU"]}{n})',
+        }
+        # INDEX yardimcisi: ham sayfadan tek kolon cek
+        def al(sayfa, alan, satir_kol):
+            h = hk(sayfa, alan)
+            harf = h.split("$")[1]
+            return f"=INDEX('{sayfa}'!${harf}:${harf},${satir_kol}{n})"
+
+        f["urun"] = al(U, "Ürün", K["sU"])
+        f["kategori"] = al(U, "Kategori", K["sU"])
+        f["altkat"] = al(U, "Alt kategori", K["sU"])
+        f["marka"] = al(U, "Marka", K["sU"])
+        f["fiyat"] = al(U, "Satis fiyati", K["sU"])
+        f["maliyet"] = al(U, "Birim maliyet", K["sU"])
+        f["odak"] = al(U, "Tedarikcide bulunan", K["sU"])
+        f["sansur"] = al(G, "Gecen sezon stogu bitti mi", K["sG"])
+        f["disi"] = al(G, "Gecen yil sezon disi satilan", K["sG"])
+        f["depo"] = al(S, "Merkez depo stok", K["sS"])
+        # Alt kategori orani ham sayfada yok; urun satirindan gelir (SQL kolonu)
+        f["katoran"] = al(U, "Kategori ortalama oran", K["sU"])
+        for su, _ in SUBE:
+            f[f"{su}_gs"] = al(G, f"Gecen sezon {su} satilan", K["sG"])
+            f[f"{su}_go"] = al(G, f"Gecen sezon {su} okul oncesi", K["sG"])
+            f[f"{su}_bo"] = al(B, f"Bu sezon {su} okul oncesi", K["sB"])
+            f[f"{su}_bs"] = al(B, f"Bu sezon {su} satilan", K["sB"])
+            f[f"{su}_stok"] = al(S, f"{su} stok", K["sS"])
+            gs_, go_ = f"{K[su+'_gs']}{n}", f"{K[su+'_go']}{n}"
+            kt = f"{K['katoran']}{n}"
+            # ⚠ BOLME AND() ICINE KONMAZ: Excel AND'i kisa devre yapmaz,
+            #   paydasi 0 olan satirda #DIV/0! verip TUM zinciri patlatir
+            #   (olculdu 16.09.2026: 6.605 satir).
+            f[f"{su}_oran"] = (f'=IF(AND({gs_}>=30,{go_}>=30),'
+                               f'IF(AND({go_}/{gs_}>=0.05,{go_}/{gs_}<=1),'
+                               f'{go_}/{gs_},IF({kt}>0,{kt},0.6)),'
+                               f'IF({kt}>0,{kt},0.6))')
+            f[f"{su}_tah"] = (f'=IF({K[su+"_oran"]}{n}>0,'
+                              f'CEILING({K[su+"_bo"]}{n}/{K[su+"_oran"]}{n},1),0)')
+            f[f"{su}_kal"] = (f'=MAX(0,{K[su+"_tah"]}{n}-{K[su+"_bs"]}{n})')
+            f[f"{su}_eks"] = (f'=MAX(0,{K[su+"_kal"]}{n}-{K[su+"_stok"]}{n})')
+        tf, to, ti = K["FSM_tah"], K["Ozluce_tah"], K["IstYolu_tah"]
+        kf, ko, ki = K["FSM_kal"], K["Ozluce_kal"], K["IstYolu_kal"]
+        ef, eo, ei = K["FSM_eks"], K["Ozluce_eks"], K["IstYolu_eks"]
+        sf, so, si = K["FSM_stok"], K["Ozluce_stok"], K["IstYolu_stok"]
+        f["tahtop"] = f"={tf}{n}+{to}{n}+{ti}{n}"
+        f["kalantop"] = f"={kf}{n}+{ko}{n}+{ki}{n}"
+        f["eksiktop"] = f"={ef}{n}+{eo}{n}+{ei}{n}"
+        f["magstok"] = f"={sf}{n}+{so}{n}+{si}{n}"
+        f["eldetop"] = f'={K["magstok"]}{n}+{K["depo"]}{n}'
+        f["siparis"] = f'=MAX(0,{K["eksiktop"]}{n}-{K["depo"]}{n})'
+        f["gelecek"] = (f'={K["eldetop"]}{n}-{K["kalantop"]}{n}-{K["disi"]}{n}')
+        # OLU STOK once bakilir: iki sezondur satmayan urun "fazla" degildir.
+        f["durum"] = (f'=IF(AND({K["FSM_gs"]}{n}+{K["Ozluce_gs"]}{n}'
+                      f'+{K["IstYolu_gs"]}{n}<=0,'
+                      f'{K["FSM_bs"]}{n}+{K["Ozluce_bs"]}{n}+{K["IstYolu_bs"]}{n}<=0,'
+                      f'{K["eldetop"]}{n}>0),"ÖLÜ STOK",'
+                      f'IF({K["siparis"]}{n}>0,"SİPARİŞ VER",'
+                      f'IF({K["eksiktop"]}{n}>0,"DEPODAN GÖNDER",'
+                      f'IF({K["gelecek"]}{n}>0,"FAZLA VAR","YETERLİ"))))')
+        f["nereden"] = (f'=IF({K["siparis"]}{n}=0,"",'
+                        f'IF({K["odak"]}{n}>={K["siparis"]}{n},'
+                        f'"Tedarikçide var","Yeni alım gerekiyor"))')
+        f["tutar"] = (f'=IF({K["siparis"]}{n}>0,{K["siparis"]}{n}*{K["fiyat"]}{n},'
+                      f'IF(AND({K["gelecek"]}{n}>0,{K["maliyet"]}{n}<>""),'
+                      f'{K["gelecek"]}{n}*{K["maliyet"]}{n},""))')
+        for j, (a, _) in enumerate(kol, start=1):
+            if a == "stkID":
+                continue
+            c = hs.cell(n, j, f[a])
+            c.fill = SARI
+            c.number_format = (
+                '#,##0.00 "₺"' if a == "tutar"
+                else '#,##0.0000' if a in ("fiyat", "maliyet")
+                else "0.000" if a.endswith("_oran") or a == "katoran"
+                else "General" if a in ("urun", "kategori", "altkat", "marka",
+                                        "durum", "nereden", "sansur")
+                else "#,##0")
+
+    hs.freeze_panes = f"F3"
+    hs.auto_filter.ref = f"A2:{L(len(kol))}{len(sat) + 2}"
+    hs.column_dimensions["A"].width = 10
+    for j, (_, b) in enumerate(kol, start=1):
+        if j == 1:
+            continue
+        hs.column_dimensions[L(j)].width = min(
+            30, max(11, max(len(p) for p in b.split(NL)) + 2))
+    hs.column_dimensions[K["urun"]].width = 44
+    # Durum kolonu renkli — kural bagli, sayi degisirse renk de degisir.
+    from openpyxl.formatting.rule import CellIsRule
+    ar = f'{K["durum"]}3:{K["durum"]}{len(sat) + 2}'
+    for deger, zemin, yazi in (("SİPARİŞ VER", "FFC7CE", "9C0006"),
+                               ("DEPODAN GÖNDER", "FFEB9C", "9C6500"),
+                               ("FAZLA VAR", "D9D9D9", "404040"),
+                               ("ÖLÜ STOK", "F2DCDB", "843C0C"),
+                               ("YETERLİ", "C6EFCE", "006100")):
+        hs.conditional_formatting.add(ar, CellIsRule(
+            operator="equal", formula=[f'"{deger}"'],
+            fill=PatternFill("solid", bgColor=zemin),
+            font=Font(bold=True, color=yazi)))
+
+
+def cikti_yolu(a, kesim, kategori, grup) -> str:
+    """Dosya adi — iki emitter de (LISTE / HAM+HESAP) ayni adi uretir."""
+    # Turkce harfler DUSURULMEZ, karsiligina CEVRILIR ("Krtasiye" olmasin).
+    TR = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+    ek = ("-" + a.durum if a.durum else "")
+    if kategori:
+        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", kategori.translate(TR))
+    if grup:
+        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", grup.translate(TR))
+    if getattr(a, "sade", False):
+        ek += "-sade"
+    if getattr(a, "ham_sayfa", False):
+        ek += "-ham"
+    return a.cikti or os.path.join(
+        KOK, "raporlar", f"sezon-aksiyon-listesi-{kesim:%Y%m%d}{ek}.xlsx")
+
+
+def ozet_bas(cikti, sat, ix) -> None:
+    """Konsol ozeti — dosyada FORMUL oldugu icin openpyxl deger okuyamaz.
+
+    ⚠ Formulu ikinci kez KURMAZ: satir_sonuc() tek kaynaktir. Daha once bu
+      blok kendi hesabini yapmis ve SQL'den sessizce ayrismisti (12.331 vs
+      17.193). Iki emitter de ayni fonksiyonu cagirir.
+    """
+    say: dict[str, list] = {e: [0, 0, 0.0] for e in
+                            ("SİPARİŞ VER", "DEPODAN GÖNDER", "FAZLA VAR",
+                             "ÖLÜ STOK", "YETERLİ")}
+    odak_c = ted_c = malsiz = 0
+    for r in sat:
+        sonuc, adet, _ = satir_sonuc(r, ix)
+        g = say[sonuc]
+        g[0] += 1
+        g[1] += adet
+        if sonuc == "SİPARİŞ VER":
+            g[2] += adet * float(r[ix["Satis fiyati"]] or 0)
+            if (r[ix["Tedarikcide bulunan"]] or 0) >= adet:
+                odak_c += 1
+            else:
+                ted_c += 1
+        elif sonuc in ("FAZLA VAR", "ÖLÜ STOK"):
+            mal = r[ix["Birim maliyet"]]
+            if mal is None:
+                malsiz += 1
+            else:
+                g[2] += adet * float(mal)
+
+    print(f"YAZILDI: {cikti}")
+    print(f"  cesit {ayir(len(sat))}")
+    for e, aciklama in (
+            ("SİPARİŞ VER", "sezonun kalani elimizdekini asiyor (satis fiyati)"),
+            ("DEPODAN GÖNDER", "toplam yetiyor ama bir subenin rafi bos"),
+            ("FAZLA VAR", "gelecek sezona artik kaliyor (maliyet)"),
+            ("ÖLÜ STOK", "iki sezondur satmiyor, stogu duruyor (maliyet)"),
+            ("YETERLİ", "")):
+        g = say[e]
+        tl = f" · {ayir(g[2])} TL" if g[2] else ""
+        ad = f" · {ayir(g[1])} adet" if g[1] else ""
+        print(f"  {e:<16}{ayir(g[0]):>7} urun{ad}{tl}   {aciklama}")
+    print(f"  siparisin ODAK'tan gelebileni {ayir(odak_c)} urun · "
+          f"tedarikciye gidecek {ayir(ted_c)} urun")
+    print(f"  maliyeti yok/supheli (paraya girmeyen): {ayir(malsiz)} cesit")
+
+
+# ══ SADE RAPOR ═════════════════════════════════════════════════════════════
+# GMY 16.09.2026: "herkesin anlayacagi, tartismaya mahal birakmayacak bir rapor".
+#
+# ⚠ TASARIM KARARI — NEDEN BOYLE:
+#   Elli kolonluk bir tablo "tartismaya kapali" DEGILDIR: alici hangi adima
+#   itiraz edecegini bulamaz, bulamayinca tumune itiraz eder. Bu sayfada
+#   once KARAR (ne yapmali, kac adet, kac lira), sonra tek cumlede GEREKCE,
+#   en sonda gerekcenin her adimi ayri kolonda durur. Itiraz eden kisi
+#   cumleyi okur, itiraz ettigi sayiyi ayni satirda bulur.
+#
+# ⚠ BU SAYFA BASKA SAYFAYA REFERANS VERMEZ. Ham degerler burada durur, cunku
+#   INDEX/MATCH ile baska sayfaya baglamak kullanicinin bir sayfayi
+#   siralamasiyla sessizce yanlis satiri okuyabilir. Sadelik = tek sayfada
+#   kendi kendine yeten satir.
+#
+# ⚠ "Bu sezon toplam satacagi" SUBE TOPLAMIDIR. Urun duzeyinde
+#   (okul oncesi / pay) diye YENIDEN KURULAMAZ — sube sube hesaplanip
+#   toplandigi icin iki sonuc birbirini tutmaz. Cumlede bu ACIKCA yaziyor;
+#   sube kirilimi "SUBE HESABI" sayfasinda.
+SADE_KOLON: list[tuple[str, str, str]] = [
+    # (ic anahtar, gorunen baslik, tip: ham | f)
+    ("urun",    "Ürün", "ham"),
+    ("grup",    "Ürün grubu", "ham"),
+    ("marka",   "Marka", "ham"),
+    ("durum",   "NE YAPMALI", "f"),
+    ("adet",    "KAÇ ADET — eyleme konu miktar", "f"),
+    ("tutar",   "TUTARI — o miktarın parası" + chr(10) + "(siparişte satış fiyatı, fazla/ölüde maliyet)", "f"),
+    ("nereden", "NEREDEN GELİR", "f"),
+    ("neden",   "NEDEN — hesabın tamamı tek cümlede", "f"),
+    ("gs",      "Geçen sezon kaç adet sattı", "ham"),
+    ("go",      "Bunun kaçı okul açılmadan önce satıldı", "ham"),
+    ("pay",     "Okul açılmadan önce satılan pay", "f"),
+    ("bo",      "Bu sezon okul açılmadan önce kaç sattı", "ham"),
+    ("tah",     "Bu sezon toplam kaç satacak", "ham"),
+    ("bug",     "Bu sezon bugüne kadar kaç sattı", "ham"),
+    ("kal",     "Sezonun kalanında kaç satacak", "ham"),
+    ("eksF",    "FSM'de eksik", "ham"),
+    ("eksO",    "Özlüce'de eksik", "ham"),
+    ("eksI",    "İstanbul Yolu'nda eksik", "ham"),
+    ("eks",     "Üç şubede toplam eksik", "f"),
+    ("mag",     "Mağazalardaki stok", "ham"),
+    ("depo",    "Merkez depodaki stok", "ham"),
+    ("fazla",   "Gelecek sezona kalacak", "ham"),
+]
+
+
+def sade_sayfa_yaz(wb, sat, ix, kesim, not_satiri, LACI, SARI):
+    """KARAR ONDE rapor sayfasi. Karar kolonlari FORMUL — tiklayinca hesap gorunur."""
+    from openpyxl.utils import get_column_letter as L
+    from openpyxl.formatting.rule import CellIsRule
+
+    ws = wb.active
+    ws.title = "NE YAPMALI"
+    K = {a: L(j) for j, (a, _, _) in enumerate(SADE_KOLON, start=1)}
+
+    ws.cell(1, 1, not_satiri).font = Font(italic=True, size=9, color="555555")
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(SADE_KOLON))
+    ws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
+    ws.row_dimensions[1].height = 54
+
+    # Iki blok basligi: okuyan kisi nerede karar, nerede ispat oldugunu gorsun.
+    for sut, bas, metin in ((1, 8, "KARAR — alıcının yapacağı iş"),
+                            (9, len(SADE_KOLON), "İSPAT — kararın her adımı, sırayla")):
+        c = ws.cell(2, sut, metin)
+        c.font = Font(bold=True, size=10, color="FFFFFF")
+        c.fill = LACI
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        ws.merge_cells(start_row=2, start_column=sut, end_row=2, end_column=bas)
+
+    for j, (_, baslik, _) in enumerate(SADE_KOLON, start=1):
+        c = ws.cell(3, j, baslik)
+        c.font = Font(bold=True, color="FFFFFF", size=10)
+        c.fill = LACI
+        c.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
+    ws.row_dimensions[3].height = 44
+
+    for n, r in enumerate(sat, start=4):
+        d: dict[str, object] = {
+            "urun": r[ix["Ürün"]],
+            "grup": r[ix["Ürün grubu"]],
+            "marka": r[ix["Marka"]],
+            "gs": r[ix["Gecen sezon toplam satilan"]],
+            "go": r[ix["Gecen sezon okul oncesi satilan"]],
+            "bo": r[ix["Bu sezon okul oncesi satilan"]],
+            "bug": r[ix["Bu sezon bugune kadar satilan"]],
+        }
+        # ⚠ ZINCIR TEK KAYNAKTAN: satir_sonuc() hesabin sahibidir, burada YENIDEN
+        #   KURULMAZ. Konsol ozeti, LISTE sayfasi ve bu sayfa ayni fonksiyonu
+        #   cagirir → ayrismalari imkansiz. (Bu dosyada bir kez ayrismisti:
+        #   ozet 12.331 derken SQL 17.193 diyordu.)
+        z: dict = {}
+        _, _, fazla_v = satir_sonuc(r, ix, z)
+        d["tah"], d["kal"] = z["tahmin"], z["kalan"]
+        d["mag"], d["depo"] = z["magaza"], z["depo"]
+        d["eksF"] = z["FSM"]["eksik"]
+        d["eksO"] = z["Ozluce"]["eksik"]
+        d["eksI"] = z["IstYolu"]["eksik"]
+        d["fazla"] = fazla_v
+
+        C = {a: f"{K[a]}{n}" for a in K}
+        say = '"#,##0"'
+        # Kalan ihtiyac elde kalmayan urunlerde eksi cikar; rapor 0 gosterir ama
+        # "gelecek sezona kalacak" kolonu eksiyi SAKLAMAZ (fazla yoksa eksi yazar).
+        d["pay"] = f'=IF({C["gs"]}>0,{C["go"]}/{C["gs"]},"")'
+        d["eks"] = f'={C["eksF"]}+{C["eksO"]}+{C["eksI"]}'
+        # ⚠ DURUM, "adet" hucresine BAGLANAMAZ: adet de duruma bakacagi icin
+        #   Excel DAIRESEL REFERANS verir. Siparis miktari burada ACIKCA
+        #   yeniden yazilir; adet kolonu ondan SONRA duruma gore doldurulur.
+        sip_ifade = f'MAX(0,{C["eks"]}-{C["depo"]})'
+        # ⚠ OLU STOK once bakilir: iki sezondur satmayan urun "fazla" degildir.
+        d["durum"] = (
+            f'=IF(AND({C["gs"]}<=0,{C["bug"]}<=0,{C["mag"]}+{C["depo"]}>0),"ÖLÜ STOK",'
+            f'IF({sip_ifade}>0,"SİPARİŞ VER",'
+            f'IF({C["eks"]}>0,"DEPODAN GÖNDER",'
+            f'IF({C["fazla"]}>0,"FAZLA VAR","YETERLİ"))))')
+        # ── KAÇ ADET: HER DURUMDA o durumun eylem miktari ────────────────────
+        # ⚠ Once yalniz SIPARIS adedini gosteriyordu; fazla/olu satirinda 0
+        #   yaziyor ama yanindaki TUTARI 205.680 ₺ diyordu ve satir CELISKILI
+        #   okunuyordu (GMY 17.09.2026 tam bu satiri gosterdi).
+        d["adet"] = (
+            f'=IF({C["durum"]}="SİPARİŞ VER",{sip_ifade},'
+            f'IF({C["durum"]}="DEPODAN GÖNDER",{C["eks"]},'
+            f'IF({C["durum"]}="FAZLA VAR",{C["fazla"]},'
+            f'IF({C["durum"]}="ÖLÜ STOK",{C["mag"]}+{C["depo"]},0))))')
+        d["nereden"] = (
+            f'=IF({C["durum"]}<>"SİPARİŞ VER","",'
+            f'IF({r[ix["Tedarikcide bulunan"]] or 0}>={sip_ifade},'
+            f'"Tedarikçide hazır var","Tedarikçiye sipariş açılacak"))')
+        fiy = float(r[ix["Satis fiyati"]] or 0)
+        mal = r[ix["Birim maliyet"]]
+        # ⚠ Siparis TL satis fiyatiyla (kacacak ciro), fazla/olu TL maliyetle
+        #   (bagli sermaye). IKISI TOPLANMAZ — ust notta da yaziyor.
+        # ⚠ TUTARI YALNIZ UC DURUMDA DOLAR:
+        #     SİPARİŞ VER → siparis adedi × SATIŞ FİYATI  (kaçacak ciro)
+        #     FAZLA VAR   → fazla adet   × MALİYET        (bağlı sermaye)
+        #     ÖLÜ STOK    → eldeki tüm stok × MALİYET     (bağlı sermaye)
+        #   DEPODAN GÖNDER ve YETERLİ satirinda BOS kalir. Ilk surumde "depodan
+        #   gonder" satirlarina da fazla-maliyeti yaziliyordu ve 135.861 ₺ gibi
+        #   bir rakam "gonderilecek mal"in yanina dusuyordu — okuyan kisi onu
+        #   harcama sanirdi. Mal zaten elimizde; orada para HAREKET ETMIYOR.
+        # ⚠ IKI TABAN TOPLANMAZ: siparis TL satis fiyatiyla, oteki ikisi maliyetle.
+        if mal is None:
+            # Maliyet yoksa fazla/olu TL YAZILMAZ (0 yazmak "bedava" demek olurdu);
+            # satir adet olarak sayilir, paraya girmez → toplam ALT SINIRDIR.
+            d["tutar"] = f'=IF({C["durum"]}="SİPARİŞ VER",{C["adet"]}*{fiy},"")'
+        else:
+            # TUTARI = KAÇ ADET × (siparişte satış fiyatı, fazla/ölüde maliyet).
+            # Iki kolon artik AYNI miktari anlatiyor → satir celismiyor.
+            d["tutar"] = (
+                f'=IF({C["durum"]}="SİPARİŞ VER",{C["adet"]}*{fiy},'
+                f'IF(OR({C["durum"]}="FAZLA VAR",{C["durum"]}="ÖLÜ STOK"),'
+                f'{C["adet"]}*{float(mal)},""))')
+        # ── NEDEN: hesabin tamami, insan cumlesi, FORMULLE kurulu ────────────
+        #    Rakamlar HUCRELERDEN gelir → bir hucre degisirse cumle de degisir.
+        #    Cumle ile tablo boylece AYRISAMAZ (iki ayri dogruluk kaynagi olmaz).
+        #
+        # ⚠ TEXT(x,"#,##0") KULLANILMAZ. Format kodu YERELLESTIRILMEZ ama yerel
+        #   ayara gore YORUMLANIR: Turkce Excel'de virgul ONDALIK ayiricidir, o
+        #   yuzden "#,##0" bir ondalik basamak demek olur ve 1.953 sayisi
+        #   "1953,0" diye yazilir (olculdu 17.09.2026, ilk surumde tam bu oldu).
+        #   FIXED(x,0) format kodu istemez, binligi yerel ayardan koyar → dogru.
+        # ⚠ Yuzde "%31" diye yazilir, "31%" diye degil (Turkce yazim).
+        def F(h):
+            return f'FIXED({h},0)'
+
+        olu = (f'AND({C["gs"]}<=0,{C["bug"]}<=0,{C["mag"]}+{C["depo"]}>0)')
+        # ÖLÜ STOK'un cumlesi AYRIDIR: "sezonun tamaminda 0 satar" demek anlamsiz
+        # ve okuyani "model bozuk" dedirtir. Orada soylenecek sey bellidir.
+        olu_cumle = (
+            f'"İki sezondur satmadı: geçen sezon "&{F(C["gs"])}&", bu sezon "'
+            f'&{F(C["bug"])}&" adet. Buna rağmen mağazalarda "&{F(C["mag"])}'
+            f'&", merkez depoda "&{F(C["depo"])}&" adet duruyor "'
+            f'&"(toplam "&{F(C["mag"] + "+" + C["depo"])}&" adet). '
+            f'Bu bir sipariş konusu değil; eritme ya da iade konusudur."')
+        # Geçen sezon hic satmamis urunde oran URUNUN KENDISINDEN gelemez; alt
+        # kategori ortalamasi kullanilir ve bunu SOYLEMEK gerekir, gizlemek degil.
+        bas_cumle = (
+            f'IF({C["gs"]}>0,'
+            f'"Geçen sezon "&{F(C["gs"])}&" adet sattı; bunun "&{F(C["go"])}'
+            f'&" adedi (%"&{F(C["pay"] + "*100")}&") okul açılmadan önceydi. ",'
+            f'"Geçen sezon hiç satmadı; bu yüzden oran ürünün kendisinden değil, '
+            f'alt kategori ortalamasından alındı. ")')
+        # ⚠ "gelecek sezona kalır" YETMEZ — hatta YANILTIR. GMY 17.09.2026 bir
+        #   satiri gosterdi: urun bu sezon 6 adet satacak, elde 5.150 adet var
+        #   ve cumle "5.142 adet gelecek sezona kalir" diyordu. Okuyan kisi
+        #   malin gelecek sezon satilacagini sanir. Dogru soru "kac sezonluk":
+        #   5.150 / 6 = 858 sezon. O sayi yaziinca tartisma biter.
+        # ⚠ Tahmin 0 ise bolme YAPILMAZ (#DIV/0! ve "sonsuz sezon" sacmaligi).
+        kac_sezon = (
+            f'IF({C["tah"]}>0,'
+            f'"; elde "&{F(C["mag"] + "+" + C["depo"])}&" adet var, bu sezon "'
+            f'&{F(C["tah"])}&" satacak → yaklaşık "'
+            f'&{F("(" + C["mag"] + "+" + C["depo"] + ")/" + C["tah"])}'
+            f'&" sezonluk stok.",'
+            f'"; elde "&{F(C["mag"] + "+" + C["depo"])}'
+            f'&" adet var ama bu sezon hiç satmayacak.")')
+        son_cumle = (
+            f'IF({C["durum"]}="SİPARİŞ VER",{F(C["adet"])}&" adet SİPARİŞ EDİLECEK.",'
+            f'IF({C["durum"]}="DEPODAN GÖNDER",'
+            f'"eksik depodan karşılanır, sipariş gerekmez.",'
+            f'IF({C["durum"]}="FAZLA VAR","sipariş gerekmiyor"&{kac_sezon}'
+            f'&" Bu bir eritme/iade konusudur.","stok yeterli.")))')
+        d["neden"] = (
+            f'=IF({olu},{olu_cumle},'
+            f'{bas_cumle}&'
+            f'"Bu sezon okul açılmadan önce "&{F(C["bo"])}&" sattı; aynı oranla '
+            f'sezonun tamamında "&{F(C["tah"])}&" satar '
+            f'(hesap üç şube için AYRI yapıldı, bu rakam onların toplamıdır). '
+            f'Bugüne kadar "&{F(C["bug"])}&" sattı, demek sezonun kalanında "'
+            f'&{F(C["kal"])}&" satacak. Mağazalarda "&{F(C["mag"])}'
+            f'&" adet var, "&{F(C["eks"])}&" adet eksik. Merkez depoda "'
+            f'&{F(C["depo"])}&" adet var → "&{son_cumle})')
+
+        for j, (a, _, tip) in enumerate(SADE_KOLON, start=1):
+            c = ws.cell(n, j, d[a])
+            if tip == "f":
+                c.fill = SARI
+            c.number_format = (
+                '#,##0.00 "₺"' if a == "tutar"
+                else "0%" if a == "pay"
+                else "General" if a in ("urun", "grup", "marka", "durum",
+                                        "nereden", "neden")
+                else "#,##0")
+            if a == "neden":
+                c.alignment = Alignment(wrap_text=True, vertical="top")
+                # ⚠ Satir yuksekligi ELLE verilir. Verilmezse Excel wrap'li uzun
+                #   metne gore otomatik buyutur ve 7.800 satirlik liste taranamaz
+                #   hale gelir; verilirse cumle 3-4 satirda okunur.
+                ws.row_dimensions[n].height = 58
+            if a in ("durum", "adet", "tutar"):
+                c.font = Font(bold=True)
+
+    ws.freeze_panes = "B4"
+    ws.auto_filter.ref = f"A3:{L(len(SADE_KOLON))}{len(sat) + 3}"
+    genis = {"urun": 46, "grup": 20, "marka": 18, "durum": 16, "adet": 11,
+             "tutar": 15, "nereden": 22, "neden": 112, "pay": 12}
+    for j, (a, baslik, _) in enumerate(SADE_KOLON, start=1):
+        ws.column_dimensions[L(j)].width = genis.get(
+            a, min(26, max(12, len(baslik) // 2 + 6)))
+    ar = f'{K["durum"]}4:{K["durum"]}{len(sat) + 3}'
+    for deger, zemin, yazi in (("SİPARİŞ VER", "FFC7CE", "9C0006"),
+                               ("DEPODAN GÖNDER", "FFEB9C", "9C6500"),
+                               ("FAZLA VAR", "D9D9D9", "404040"),
+                               ("ÖLÜ STOK", "F2DCDB", "843C0C"),
+                               ("YETERLİ", "C6EFCE", "006100")):
+        ws.conditional_formatting.add(ar, CellIsRule(
+            operator="equal", formula=[f'"{deger}"'],
+            fill=PatternFill("solid", bgColor=zemin),
+            font=Font(bold=True, color=yazi)))
+    return ws
+
+
+def sube_sayfasi_yaz(wb, sat, ix, kesim, LACI):
+    """SUBE HESABI — 'toplam nereden geldi' sorusunun tek yeri."""
+    from openpyxl.utils import get_column_letter as L
+
+    w = wb.create_sheet("ŞUBE HESABI")
+    w.cell(1, 1, "Yandaki sayfadaki 'bu sezon toplam satacak' ve 'eksik' rakamları "
+                 "ŞUBE ŞUBE hesaplanıp toplanır — bu sayfa o hesabın açık hâli. "
+                 "Ürün düzeyinde yeniden hesaplanırsa TUTMAZ: bir şubenin fazlası "
+                 "ötekinin açığını gizler.")
+    w.cell(1, 1).font = Font(italic=True, size=9, color="555555")
+    SUBE = (("FSM", "FSM"), ("Ozluce", "Özlüce"), ("IstYolu", "İstanbul Yolu"))
+    bas = ["Ürün"]
+    for _, ad in SUBE:
+        bas += [f"{ad}: kullanılan oran", f"{ad}: bu sezon toplam satacak",
+                f"{ad}: sezonun kalanında satacak", f"{ad}: stok", f"{ad}: eksik"]
+    w.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(bas))
+    for j, b in enumerate(bas, start=1):
+        c = w.cell(2, j, b)
+        c.font = Font(bold=True, color="FFFFFF", size=10)
+        c.fill = LACI
+        c.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
+    w.row_dimensions[2].height = 40
+    for n, r in enumerate(sat, start=3):
+        w.cell(n, 1, r[ix["Ürün"]])
+        j = 2
+        z: dict = {}
+        satir_sonuc(r, ix, z)          # ⚠ hesabin sahibi tek fonksiyon
+        for su, _ in SUBE:
+            g = z[su]
+            for v, fmt in ((g["oran"], "0.000"), (g["tahmin"], "#,##0"),
+                           (g["kalan"], "#,##0"), (g["stok"], "#,##0"),
+                           (g["eksik"], "#,##0")):
+                c = w.cell(n, j, v)
+                c.number_format = fmt
+                j += 1
+    w.freeze_panes = "B3"
+    w.auto_filter.ref = f"A2:{L(len(bas))}{len(sat) + 2}"
+    w.column_dimensions["A"].width = 46
+    for j in range(2, len(bas) + 1):
+        w.column_dimensions[L(j)].width = 15
+    return w
+
+
+def ham_sayfa_yaz_ek(wb, sat, ix, GOSTER, LACI):
+    """SADE raporun ucuncu sayfasi: SQL ne dondurduyse aynen.
+
+    ⚠ Rapor bu sayfaya REFERANS VERMEZ; burasi yalniz "ham hâli de dursun"
+      diyen icin. Referans verilseydi bir siralama sessizce yanlis satiri
+      okuturdu.
+    """
+    from openpyxl.utils import get_column_letter as L
+
+    w = wb.create_sheet("HAM VERİ")
+    w.cell(1, 1, "SQL ne döndürdüyse aynen — rapor sayfaları bu sayfaya bağlı "
+                 "DEĞİLDİR, burası yalnız denetim içindir.")
+    w.cell(1, 1).font = Font(italic=True, size=9, color="555555")
+    kolonlar = [ad for ad, _ in DUZEN if ad in ix]
+    w.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(kolonlar))
+    for j, ad in enumerate(kolonlar, start=1):
+        c = w.cell(2, j, GOSTER.get(ad, ad).replace(chr(10), " · "))
+        c.font = Font(bold=True, color="FFFFFF", size=9)
+        c.fill = LACI
+        c.alignment = Alignment(wrap_text=True, vertical="center")
+    w.row_dimensions[2].height = 40
+    for n, r in enumerate(sat, start=3):
+        for j, ad in enumerate(kolonlar, start=1):
+            v = r[ix[ad]]
+            c = w.cell(n, j, v)
+            if isinstance(v, (int, float)):
+                c.number_format = ("#,##0.0000" if ad in ("Satis fiyati", "Birim maliyet")
+                                   else "#,##0")
+    w.freeze_panes = "B3"
+    w.auto_filter.ref = f"A2:{L(len(kolonlar))}{len(sat) + 2}"
+    for j in range(1, len(kolonlar) + 1):
+        w.column_dimensions[L(j)].width = 16
+    w.column_dimensions["A"].width = 44
+    return w
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--kesim", default=None)
@@ -690,6 +1367,12 @@ def main() -> int:
     #   raporun yüzüne "ELLE GİRİLDİ" diye yazılır (danışman şartı).
     ap.add_argument("--buyume", type=float, default=None,
                     help="ELLE duz buyume (or. 0.20). Verilmezse kategori bazli OLCULUR")
+    ap.add_argument("--sade", action="store_true",
+                    help="KARAR ONDE rapor: 8 karar kolonu + 'NEDEN' cumlesi + "
+                         "hesabin acik hali. Satinalmaciya giden surum.")
+    ap.add_argument("--ham-sayfa", action="store_true",
+                    help="ham veriyi kaynagina gore ayri sayfalara yazar, HESAP "
+                         "sayfasi INDEX/MATCH ile birlestirir (izlenebilirlik)")
     ap.add_argument("--grup", default=None,
                     help="urun grubu (Kat1), ornek: Defterler")
     ap.add_argument("--durum", choices=["siparis", "depodan", "fazla", "olu"], default=None,
@@ -1005,41 +1688,89 @@ def main() -> int:
 
     ust = (suzgec_metni + gizli_not
            + f"Kesim {kesim:%d.%m.%Y} · sezon {a.sezon} (Ağu–Eki) · "
-           f"AYNI PENCERE: geçen {g_bas:%d.%m.%Y}–{g_son:%d.%m.%Y} · "
-           f"bu {b_bas:%d.%m.%Y}–{b_son:%d.%m.%Y} ({(b_son - b_bas).days + 1} gün, eşit) · "
-           f"YILLIK toplam {y_bas:%d.%m.%Y}–{y_son:%d.%m.%Y} ({(y_son - y_bas).days + 1} gün, "
-           "HER ŞEY dahil) · Sezon dışı = yıllık − sezon (Kas–Tem; iade fazlaysa EKSİ olur, "
-           "29 çeşitte öyle) · "
-           f"KALAN SEZON {gk_bas_bu:%d.%m.%y}–{gk_son_bu:%d.%m.%y} (geçen yıl karşılığı {gk_bas:%d.%m.%y}–{gk_son:%d.%m.%y}) — AÇIK/FAZLA bunun üzerinden; sezonun GEÇEN günleri zaten satıldı · "
-           "DURUM dört sınıf: AÇIK · FAZLA · SEZONU BİTTİ (geçen yıl kalan dilimde hiç satmamış → bu sezon talebi yok) · DENGE · "
-           "SARI kolonlar FORMÜLDÜR (hücreye tıkla, hesabı gör) · "
-           "Tutar: AÇIK'ta satış fiyatı, FAZLA'da maliyet — ikisi toplanmaz · "
-           "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri yazılmıyor) · "
-           "Birim maliyeti olmayan üründe Tutar boş kalır (para ALT SINIR) · "
-           "depo stoğu WMS'ten · tek gün fotoğrafı · "
-           "⚠ TAKVİM hizası — okul açılışı kayıyor (08.09.2025→14.09.2026), bu pencere onu görmez")
+           "YÖNTEM: geçen sezonun yüzde kaçı okul açılmadan ÖNCE satılmışsa, bu "
+           "sezonun okul öncesi satışı o orana bölünür → TOPLAM SEZON tahmini; "
+           "ondan bu sezon bugüne kadar satılan düşülür → sezonun kalanında "
+           "satılacak. · "
+           f"OKUL ÖNCESİ PENCERE: geçen sezon {gp_bas:%d.%m.%Y}–{g_pen_son:%d.%m.%Y}, "
+           f"bu sezon {bp_bas:%d.%m.%Y}–{b_pen_son:%d.%m.%Y} — {pen_gun} gün, EŞİT. "
+           f"Pencere OKUL AÇILIŞINA hizalı ({OKUL_ACILIS[a.sezon]:%d.%m.%Y} → "
+           f"{OKUL_ACILIS[kesim.year]:%d.%m.%Y}), takvime DEĞİL. · "
+           "BÜYÜME PARAMETRESİ YOK — hacmi ürünün bu sezonki KENDİ satışı taşır. · "
+           "HESAP ŞUBE DÜZEYİNDE kurulur, ürün satırı üç şubenin TOPLAMIDIR "
+           "(ürün düzeyinde kurulunca bir şubenin fazlası ötekinin açığını "
+           "gizliyordu). · "
+           "SİPARİŞ = şubelerin toplam eksiği − merkez depo stoğu; mağazalar "
+           "arası aktarma varsayılmaz. · "
+           "DURUM beş sınıf: SİPARİŞ VER · DEPODAN GÖNDER (toplam yetiyor, bir "
+           "şubenin rafı boş) · FAZLA VAR · ÖLÜ STOK (iki sezondur satmıyor, "
+           "stoğu duruyor) · YETERLİ · "
+           "Kullanılan oran satır bazlı: geçen sezon satışı 30 adedin altındaysa "
+           "ürünün kendi ölçümü zayıf sayılır, ALT KATEGORİ ortalaması kullanılır "
+           "(o da yoksa 0,60). · "
+           "SARI hücreler FORMÜLDÜR (tıkla, hesabı gör) · "
+           "Tutar: siparişte satış fiyatı, fazlada maliyet — İKİSİ TOPLANMAZ; "
+           "siparişteki tutar kaybedilen CİRODUR, kâr DEĞİL (marj ölçülmedi) · "
+           "Birim maliyeti olmayan üründe Tutar boş kalır → fazla/ölü tutarı ALT SINIR · "
+           "⚠ Geçen sezon stoğu bitmiş üründe gözlenen satış gerçek talebin "
+           "ALTINDADIR (sağdan sansür) — ayrı kolonda işaretli, düzeltilmedi · "
+           "Açık sipariş DÜŞÜLMEDİ (ERP'de kapatma alanı 24.02.2025'ten beri "
+           "yazılmıyor) · depo stoğu WMS'ten · tek gün fotoğrafı · "
+           "Alıcı boyutu veride YOK — bu bir GÖREV listesidir, kişiye atıf değildir")
+    # ── --sade: KARAR ONDE rapor ─────────────────────────────────────────
+    #   GMY 16.09.2026: "herkesin anlayacagi, tartismaya mahal birakmayacak".
+    #   AYNI SQL, AYNI hesap — degisen yalniz NE'nin ONCE gosterildigi.
+    if a.sade:
+        ham_not = ust.replace(gizli_not, "") if gizli_not else ust
+        sade_sayfa_yaz(wb, sat, ix, kesim, ham_not, LACI, SARI)
+        sube_sayfasi_yaz(wb, sat, ix, kesim, LACI)
+        ham_sayfa_yaz_ek(wb, sat, ix, GOSTER, LACI)
+        if a.pivot:
+            print("  PIVOT: ATLANDI — pivot LISTE kolonlarina bagli, "
+                  "--sade duzeninde o sayfa yok")
+        cikti = cikti_yolu(a, kesim, kategori, grup)
+        os.makedirs(os.path.dirname(cikti), exist_ok=True)
+        wb.save(cikti)
+        ozet_bas(cikti, sat, ix)
+        return 0
+
+    # ── --ham-sayfa: AYNI SQL, AYNI hesap, farkli YERLESIM ───────────────
+    #   GMY 16.09.2026: "her seyi ham veri olarak sayfalara alsak, formuller
+    #   ile birlestirsek". HESAP sayfasinda tek ham kolon stkID'dir; geri
+    #   kalan her hucre ham sayfalara INDEX/MATCH ile baglidir.
+    if a.ham_sayfa:
+        # Gizli-kolon notu LISTE duzenine aitti; HESAP'ta kolon gizlenmiyor.
+        ham_not = ust.replace(gizli_not, "") if gizli_not else ust
+        hs, _ = ham_sayfa_yaz(wb, sat, ix, GOSTER, LACI, SARI, kesim, ham_not, None)
+        hesap_sayfasi_yaz(hs, sat, ix, kesim, ham_not, LACI, SARI)
+        if a.pivot:
+            print("  PIVOT: ATLANDI — pivot LISTE kolonlarina bagli, "
+                  "--ham-sayfa duzeninde o sayfa yok")
+        cikti = cikti_yolu(a, kesim, kategori, grup)
+        os.makedirs(os.path.dirname(cikti), exist_ok=True)
+        wb.save(cikti)
+        ozet_bas(cikti, sat, ix)
+        return 0
+
     ws.cell(1, 1, ust).font = Font(italic=True, size=9, color="555555")
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(kolonlar))
     ws.cell(1, 1).alignment = Alignment(wrap_text=True, vertical="center")
     ws.row_dimensions[1].height = 32
 
-    # ── BÜYÜME: tek hücre, tüm sayfanın girdisi ──────────────────────────────
-    # ⚠ TEK BÜYÜME KADRANI KALDIRILDI (danışman kararı 15.09.2026). Oran artık her
-    #   satırda "Uygulanan büyüme" kolonunda ve kategori bazlı ÖLÇÜLDÜ. Tek kutu,
-    #   alıcının aynı hamleyle hem siparişi haklı çıkarıp hem fazlasını silmesine
-    #   izin veriyordu.
-    ws.cell(2, 1, "Büyüme:").font = Font(bold=True, size=10)
-    bh = ws.cell(2, 2, ("ELLE GİRİLDİ %{:g}".format(a.buyume * 100)
-                        if a.buyume is not None
-                        else "KATEGORİ BAZLI ÖLÇÜLDÜ (aynı 44 gün, iki yıl)"))
-    bh.font = Font(bold=True, size=11, color=("C00000" if a.buyume is not None else "1F3864"))
-    bh.fill = SARI
+    # ── 2. SATIR: YÖNTEM ÖZETİ ("büyüme kutusu" 16.09.2026'da KALDIRILDI) ─
+    # Tek büyüme kadranı, alıcının aynı hamleyle hem siparişi haklı çıkarıp hem
+    # fazlasını silmesine izin veriyordu. Yeni modelde oran ürünün kendi geçen
+    # sezon eğrisinden gelir; elle girilecek bir parametre YOK.
+    ws.cell(2, 1, "Hesap:").font = Font(bold=True, size=10)
+    hh = ws.cell(2, 2, "bu sezon okul öncesi satılan ÷ (geçen sezon okul öncesi "
+                       "÷ geçen sezon toplamı) = bu sezon toplam satacağı; "
+                       "eksi bugüne kadar satılan = sezonun kalanında satacağı; "
+                       "eksi stoğu = eksik adet")
+    hh.font = Font(bold=True, size=10, color="1F3864")
+    hh.fill = SARI
     if suzgec:
-        sh = ws.cell(2, 5, "SÜZÜLMÜŞ RAPOR: " + " · ".join(suzgec))
+        sh = ws.cell(2, 12, "SÜZÜLMÜŞ RAPOR: " + " · ".join(suzgec))
         sh.font = Font(bold=True, color="C00000", size=11)
-    ws.cell(2, 4, "oran satır bazlı: 'Uygulanan büyüme' kolonunu değiştir → o satırın "
-                  "talebi, AÇIK/FAZLA ve Tutar yeniden hesaplanır"
-            ).font = Font(italic=True, size=9, color="555555")
 
     for j, ad in enumerate(kolonlar, start=1):
         h = ws.cell(3, j, GOSTER.get(ad, ad))
@@ -1334,73 +2065,23 @@ def main() -> int:
     mws.freeze_panes = "B4"
     mws.auto_filter.ref = f"A3:{get_column_letter(len(mbas))}{len(marka) + 3}"
 
-    # ── Konsol özeti — Excel'in hesaplayacağının AYNISI, Python'da ────────────
-    #    (dosyada formül olduğu için openpyxl değer okuyamaz; kontrol burada)
-    cesit = len(sat)
-    say: dict[str, list] = {e: [0, 0, 0.0] for e in
-                            ("SİPARİŞ VER", "DEPODAN GÖNDER", "FAZLA VAR",
-                             "ÖLÜ STOK", "YETERLİ")}
-    odak_c = ted_c = 0
-    malsiz = 0
-    for r in sat:
-        sonuc, adet, _ = satir_sonuc(r, ix)
-        g = say[sonuc]
-        g[0] += 1
-        g[1] += adet
-        if sonuc == "SİPARİŞ VER":
-            g[2] += adet * float(r[ix["Satis fiyati"]] or 0)
-            if (r[ix["Tedarikcide bulunan"]] or 0) >= adet:
-                odak_c += 1
-            else:
-                ted_c += 1
-        elif sonuc in ("FAZLA VAR", "ÖLÜ STOK"):
-            mal = r[ix["Birim maliyet"]]
-            if mal is None:
-                malsiz += 1
-            else:
-                g[2] += adet * float(mal)
-
-    # Dosya adı: Türkçe harfler DÜŞÜRÜLMEZ, karşılığına ÇEVRİLİR — "Krtasiye" gibi
-    # okunmaz ad üretmesin (ı ve ş sessizce siliniyordu).
-    TR = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-    ek = ("-" + a.durum if a.durum else "")
-    if kategori:
-        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", kategori.translate(TR))
-    if grup:
-        ek += "-" + re.sub(r"[^A-Za-z0-9]+", "", grup.translate(TR))
-    cikti = a.cikti or os.path.join(
-        KOK, "raporlar", f"sezon-aksiyon-listesi-{kesim:%Y%m%d}{ek}.xlsx")
+    cikti = cikti_yolu(a, kesim, kategori, grup)
     os.makedirs(os.path.dirname(cikti), exist_ok=True)
     wb.save(cikti)
 
     if a.pivot:
-        # Pivot alanları GÖRÜNEN başlıkla verilir (GOSTER çözülmüş).
-        # ⚠ PivotFields GÖRÜNEN başlıkla eşleşir, iç anahtarla DEĞİL.
-        # PivotFields GORUNEN baslikla eslesir, ic anahtarla degil.
-        _pv = [(GOSTER.get(k, k), a, p) for k, a, p in (
+        # Pivot alanlari GORUNEN baslikla verilir (GOSTER cozulmus).
+        # ⚠ PivotFields GORUNEN baslikla eslesir, ic anahtarla DEGIL.
+        _pv = [(GOSTER.get(k, k), b, p) for k, b, p in (
             ("Siparis verilecek adet",      "Siparis adet", False),
             ("Subelerde toplam eksik adet", "Subelerde eksik adet", False),
             ("Siparis tutari",              "Siparis tutari TL", True),
             ("Fazla stok tutari",           "Fazla stok tutari TL", True),
         ) if k in K]
-        pivot_durum = pivot_kur(cikti, len(kolonlar), len(sat) + BAS_SATIR - 1, _pv)
-        print(f"  PIVOT: {pivot_durum}")
+        print(f"  PIVOT: {pivot_kur(cikti, len(kolonlar), len(sat) + BAS_SATIR - 1, _pv)}")
 
-    print(f"YAZILDI: {cikti}")
-    print(f"  cesit {ayir(cesit)}")
-    for e, aciklama in (("SİPARİŞ VER", "sezonun kalani elimizdekini asiyor (satis fiyati)"),
-                        ("DEPODAN GÖNDER", "toplam yetiyor ama bir subenin rafi bos"),
-                        ("FAZLA VAR", "gelecek sezona artik kaliyor (maliyet)"),
-                        ("ÖLÜ STOK", "iki sezondur satmiyor, stogu duruyor (maliyet)"),
-                        ("YETERLİ", "")):
-        g = say[e]
-        tl = f" · {ayir(g[2])} TL" if g[2] else ""
-        ad = f" · {ayir(g[1])} adet" if g[1] else ""
-        print(f"  {e:<16}{ayir(g[0]):>7} urun{ad}{tl}   {aciklama}")
-    print(f"  siparisin ODAK'tan gelebileni {ayir(odak_c)} urun · "
-          f"tedarikciye gidecek {ayir(ted_c)} urun")
-    print(f"  maliyeti yok/supheli (paraya girmeyen): {ayir(malsiz)} cesit")
-
+    ozet_bas(cikti, sat, ix)
+    return 0
 
 
 if __name__ == "__main__":

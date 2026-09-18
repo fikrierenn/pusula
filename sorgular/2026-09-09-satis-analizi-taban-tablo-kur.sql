@@ -301,3 +301,82 @@ IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SatanAy') IS NULL
 IF COL_LENGTH('bkm.SatisAnaliziTaban', 'TalepCV2') IS NULL
     ALTER TABLE bkm.SatisAnaliziTaban ADD TalepCV2 decimal(10,3) NULL;
 GO
+
+/* ── 16.09.2026 — SEZON PAYI ZİNCİRİNİN HAM GİRDİLERİ (/sezon-aksiyon) ──────────
+   NEDEN: sezon sipariş paneli bu girdileri her istekte SEKİZ CTE + ON LEFT JOIN
+   ile canlı hesaplıyordu. ÖLÇÜLDÜ 16.09.2026 (kesim 13.09, tüm evren 266.332 çeşit):
+     · sekiz pencere CTE'si ayrı ayrı ......................  ~7 s
+     · taban-only tarama + tüm CROSS APPLY aritmetiği ......  ~2 s
+     · ikisi birleşik (panelin koştuğu hâli) ............... 36,6 s
+   Yani maliyet CTE'lerde DEĞİL, 266K satırı onlara bağlayan JOIN zincirindeydi;
+   üstelik gövde KPI + kategori + sayım + sayfa için DÖRT KEZ koşuyordu.
+   Girdiler tabana yazılınca zincir tamamen kalkar.
+
+   ⚠ NULL BIRAKILIR, "DEFAULT 0" KONULMAZ. Eski kesimlerde 0 okunursa panel
+   "sipariş yok" der ve HATA VERMEZ — tam olarak sessiz-yanlış-rakam sınıfı.
+   NULL = "bu kesim için hesaplanmadı"; panel NULL görünce KOŞAMADI yazar.
+
+   ⚠ PENCERE OKUL AÇILIŞINA HİZALI (takvime değil) ve kesim başına sabittir; bu
+   yüzden (Kesim, SezonYil, stkID) anahtarlı tabanda saklanması tutarlıdır.
+   Açılış tarihleri TEK KAYNAK: GmDashboard.Models.SezonAksiyonFiltre.OkulAcilis. */
+
+-- Geçen sezon OKUL ÖNCESİ satılan, ŞUBE BAZLI — oranın PAYI
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'OncesiGecenFsm') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD OncesiGecenFsm int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'OncesiGecenOzl') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD OncesiGecenOzl int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'OncesiGecenIst') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD OncesiGecenIst int NULL;
+GO
+
+-- Bu sezon OKUL ÖNCESİ satılan, ŞUBE BAZLI — tahminin girdisi (EŞİT uzunlukta pencere)
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'OncesiBuFsm') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD OncesiBuFsm int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'OncesiBuOzl') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD OncesiBuOzl int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'OncesiBuIst') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD OncesiBuIst int NULL;
+GO
+
+-- Bu sezon SEZON BAŞINDAN KESİME satılan, ŞUBE BAZLI — tahminden ÇIKARILAN
+-- ⚠ Hizalı pencere DEĞİL: tahmin TÜM sezonu söyler, ondan sezon başından beri
+--   satılan HER ŞEY düşülür.
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'BuguneFsm') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD BuguneFsm int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'BuguneOzl') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD BuguneOzl int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'BuguneIst') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD BuguneIst int NULL;
+GO
+
+/* SANSÜR BAYRAĞI — geçen sezonun Eylül/Ekim ay sonlarında şube stoğu 0 mıydı.
+   Öyleyse gözlenen satış TALEP DEĞİL, rafın bittiği yerdir: oran 1'e yaklaşır ve
+   talep EKSİK ölçülür. Ölçüldü (Kırtasiye): stoksuz kalanların oran medyanı 0,821,
+   stoğu olanların 0,588. ⚠ AY SONU fotoğrafı — dilim içinde tükenip dolanı KAÇIRIR,
+   yani ALT SINIRDIR. Düzeltme UYGULANMADI (kategori oranına düşürmek backtest'i
+   %18,5 → %48,5 kötüleştirdi); bayrak yalnız GÖRÜNÜR. */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SansurluMu') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SansurluMu bit NULL;
+GO
+
+/* YEDEK ORAN — şubenin kendi ölçümü zayıfsa (geçen sezon < 30 adet) kullanılan oran.
+   Zincir ÇÖZÜLMÜŞ hâlde yazılır: önce Kat2 (alt kategori), yoksa Kategori3, o da
+   yoksa 0,60. GMY 16.09.2026: "geçen sezon kareli defter A marka, bu sene almadık,
+   B aldık" — SKU dönen yerde taban üründe değil alt kategoride durur; ölçüldü
+   (Defterler): bu sezon satışının %16'sı geçen sezon hiç satmamış üründen, Butik
+   Defterler'de %46.
+   ⚠ decimal(6,4): GÖSTERİLEN oran = ÇARPILAN oran. Tam hassasiyetle çarpılırsa
+   Excel emitter'ı ile ayrışır — ölçüldü, "depodan gönder" 22.445 ↔ 22.442. */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'YedekOran') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD YedekOran decimal(6,4) NULL;
+GO
+
+/* SEZON DIŞI (geçen yıl Kas–Tem) — yalnız "gelecek sezona kalır mı" sorusuna girer,
+   SİPARİŞ TETİKLEMEZ. GMY 15.09.2026: "kritik olan bizim için sezonda yoka
+   düşmemek; sezon sonrası sipariş verilebilir, sorun değil."
+   YILLIK (01.08.<sezon> – 31.07.<sezon+1>) — bağlam; ürünün sezon payının paydası. */
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'SezonDisiAdet') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD SezonDisiAdet int NULL;
+IF COL_LENGTH('bkm.SatisAnaliziTaban', 'YillikAdet') IS NULL
+    ALTER TABLE bkm.SatisAnaliziTaban ADD YillikAdet int NULL;
+GO

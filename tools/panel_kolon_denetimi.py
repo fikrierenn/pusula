@@ -58,7 +58,11 @@ sys.stderr.reconfigure(encoding="utf-8")
 KOK = Path(__file__).resolve().parent.parent
 
 # ── Denetlenecek pozisyonel kayıt ↔ SQL çiftleri ────────────────────────────────
-# (etiket, sql_dosyasi, sql_baslangic_imi, record_dosyasi, record_adi)
+# (etiket, sql_dosyasi, sql_baslangic_imi, record_dosyasi, record_adi[, asgari])
+# ⚠ `asgari` isteğe bağlı — vacuous-pass muhafızının O ÇİFT İÇİN alt sınırı.
+#   Verilmezse ASGARI_ALIAS kullanılır. Küçük ama meşru kayıtlar (ör. 14 alanlı KPI)
+#   genel sınırın altında kalıp haksız yere "KOŞAMADI" veriyordu; sınırı çifte
+#   bağlamak muhafızı gevşetmez, doğru yere koyar.
 CIFTLER = [
     (
         "Özet KPI satırı",
@@ -81,6 +85,25 @@ CIFTLER = [
         "private const string ListeKolonlarSql",
         "dashboard/Models/SatisAnaliziModels.cs",
         "SatisAnaliziSatir",
+    ),
+    # ⚠ EKLENDİ 16.09.2026 — sezon sipariş listesi paneli sezon payı modeline
+    # taşınırken 46 kolonluk POZİSYONEL record kuruldu ve bu denetim onu HİÇ
+    # görmüyordu. O büyüklükte bir kayıtta araya kolon eklemek en olası hatadır
+    # ve tipler uyuşursa derleyici de build de sessiz kalır.
+    (
+        "Sezon sipariş — ürün satırı",
+        "dashboard/Data/SezonAksiyonQueries.cs",
+        "private static string KolonlarSql",
+        "dashboard/Models/SezonAksiyonModels.cs",
+        "SezonAksiyonSatir",
+    ),
+    (
+        "Sezon sipariş — KPI satırı",
+        "dashboard/Data/SezonAksiyonQueries.cs",
+        "private const string OzetKolonlarSql",
+        "dashboard/Models/SezonAksiyonModels.cs",
+        "SezonAksiyonKpi",
+        12,   # bugün 14 alan; genel 20'lik sınır bu kayıt için haksız KOŞAMADI veriyordu
     ),
 ]
 
@@ -157,6 +180,18 @@ def _bildirim_govdesi(metin: str, im: str) -> str:
         ham.append(satir)
         if satir.count('\"\"\"') % 2 == 1:      # blok açıldı ya da kapandı
             blok_icinde = not blok_icinde
+            # ⚠ KAPANIŞ SATIRINDAKİ `;` DEYİM SONUDUR (16.09.2026'da ölçüldü).
+            # Eskiden bu satır koşulsuz `continue` ediyordu; gövdesi TEK raw-string
+            # olan bir sabitte (`= $\"\"\"…\n        \"\"\";`) deyim sonu hiç görülmüyor
+            # ve gövde SONRAKİ bildirimlere taşıyordu. Somut: SezonAksiyonQueries'te
+            # OzetKolonlarSql 14 alias yerine 30 alias okundu (KategoriKolonlarSql iki
+            # kez yutuldu) → kapı KIRIK dedi ama sebep koddaki sıra değil, kendi
+            # çözümleyicisiydi. Yanlış yere bakan kapı, bakmayan kapı kadar zararlı.
+            if not blok_icinde:
+                kalan = satir.rsplit('\"\"\"', 1)[1]
+                kalan = re.sub(r'"(?:[^"\\]|\\.)*"', "·", kalan).split("//", 1)[0]
+                if ";" in kalan:
+                    break
             continue
         if blok_icinde:
             continue
@@ -260,17 +295,19 @@ print("═" * 74)
 print("A) DAPPER POZİSYONEL SIRA — SQL alias sırası ↔ record parametre sırası")
 print("═" * 74)
 
-for etiket, sql_dosya, im, rec_dosya, rec_ad in CIFTLER:
+for _cift in CIFTLER:
+    etiket, sql_dosya, im, rec_dosya, rec_ad = _cift[:5]
+    asgari = _cift[5] if len(_cift) > 5 else ASGARI_ALIAS
     aliaslar, _ = sql_aliaslari(oku(sql_dosya), im)
     params = record_parametreleri(oku(rec_dosya), rec_ad)
     # Vacuous pass muhafızı — boş küme ile kıyas YEŞİL SAYILMAZ
-    if len(aliaslar) < ASGARI_ALIAS:
+    if len(aliaslar) < asgari:
         kosamadi(f"{etiket}: SQL'de yalnız {len(aliaslar)} alias bulundu (asgari "
-                 f"{ASGARI_ALIAS}). Sözdizimi değişmiş ya da SQL başka yere taşınmış "
+                 f"{asgari}). Sözdizimi değişmiş ya da SQL başka yere taşınmış "
                  f"olabilir — boş kıyas yapıp 'geçti' demek yerine durduruldu.")
-    if len(params) < ASGARI_ALIAS:
+    if len(params) < asgari:
         kosamadi(f"{etiket}: record'da yalnız {len(params)} parametre bulundu (asgari "
-                 f"{ASGARI_ALIAS}). Record adı/sözdizimi değişmiş olabilir.")
+                 f"{asgari}). Record adı/sözdizimi değişmiş olabilir.")
     # Yalnız İKİ TARAFTA DA olan adları kıyasla; alias'sız kolonlar atlanır
     ortak_sql = [a for a in aliaslar if a in params]
     ortak_rec = [p for p in params if p in aliaslar]
