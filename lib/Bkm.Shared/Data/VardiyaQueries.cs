@@ -29,8 +29,28 @@ namespace Bkm.Shared.Data;
 /// </summary>
 public sealed class VardiyaQueries(Db db)
 {
+    // ═══ ŞUBE KAPSAMI SÖZLEŞMESİ — plan 48 Adım 4, GMY kararı "b-tam yap" ═══
+    //
+    // HER metot `userId` alır ve kapsam VERİTABANINDA çözülür:
+    //     Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
+    //
+    // Şube kimliği ve "tüm şubeler" yetkisi UYGULAMADAN GEÇMEZ. Ölçüt (Solum,
+    // 18.09): "bu yoldan geçen değerlerden hangisi bir YETKİ KARARIDIR?" → SIFIR.
+    // Yani yanlış bir şube id'si "geçemez" değil, GEÇİRİLECEK YER YOKTUR.
+    //
+    // ⚠ `sube` parametresi bir YETKİ DEĞİL, GÖRÜNTÜ FİLTRESİDİR: kapsam İÇİNDE
+    //   daraltır. Uydurulmuş bir değer kesişimde düşer, kapsamı genişletemez.
+    //
+    // ⚠ YAZMA da kapılı (SaveApprovalAsync): okuma süzgeci yazma yolunu korumaz,
+    //   çünkü SicilNo+Tarih elle de gelebilir.
+    //
+    // ⚠ KAPSAM BUGÜNKÜ ACL'DEN çözülür, satırın tarihinden DEĞİL (19.09 düzeltmesi,
+    //   GMY itirazı): bugün bir şubeden sorumluysan o şubenin TÜM geçmişini
+    //   görürsün — yoksa yeni atanan müdür kıyas ve tahmin yapamazdı. "O tarihte
+    //   kim sorumluydu" ayrı bir sorudur ve `Vrd_KullaniciSubeGecmis_vw`de durur.
+
     /// <summary>Yazılabilir kesimler (en yeni önce). Boşsa SP hiç koşmamıştır.</summary>
-    public async Task<IReadOnlyList<VrdKesim>> GetCutoffsAsync()
+    public async Task<IReadOnlyList<VrdKesim>> GetCutoffsAsync(string userId)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdKesim>("""
@@ -39,6 +59,7 @@ public sealed class VardiyaQueries(Db db)
                     SubeSay  = COUNT(DISTINCT Sube),
                     Yazilma  = MAX(YazilmaUtc)
             FROM    bkm.Vrd_KisiGun
+            WHERE   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY KesimBas, KesimBit, SayimBas
             ORDER BY KesimBit DESC, KesimBas DESC
             """);
@@ -50,7 +71,7 @@ public sealed class VardiyaQueries(Db db)
     /// Eksik/Fazla burada TÜRETİLİR (plan süresi vs gerçekleşen) — SP'nin yazdığı
     /// alanlardan, yeni bir iş kuralı EKLENMEZ.
     /// </summary>
-    public async Task<VrdOzet?> GetSummaryAsync(DateOnly bas, DateOnly bit)
+    public async Task<VrdOzet?> GetSummaryAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdOzet>("""
@@ -74,27 +95,30 @@ public sealed class VardiyaQueries(Db db)
                 DevirFazlaDk = (SELECT ISNULL(SUM(FazlaDk), 0) FROM bkm.Vrd_Devir)
             FROM bkm.Vrd_KisiGun
             WHERE KesimBas = @bas AND KesimBit = @bit
+              AND Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             """, new
         {
+            userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
             supheli = VrdConstants.SuspectPattern,
         });
     }
 
-    public async Task<IReadOnlyList<VrdDurum>> GetStatusBreakdownAsync(DateOnly bas, DateOnly bit)
+    public async Task<IReadOnlyList<VrdDurum>> GetStatusBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdDurum>("""
             SELECT Durum, KisiGun = COUNT(*)
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
+              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY Durum ORDER BY COUNT(*) DESC
-            """, new { bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
+            """, new { userId, bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
         return r.AsList();
     }
 
-    public async Task<IReadOnlyList<VrdSube>> GetBranchBreakdownAsync(DateOnly bas, DateOnly bit)
+    public async Task<IReadOnlyList<VrdSube>> GetBranchBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdSube>("""
@@ -105,8 +129,9 @@ public sealed class VardiyaQueries(Db db)
                     FazlaDk = SUM(ISNULL(FazlaDk, 0))
             FROM    bkm.Vrd_KisiGun
             WHERE   KesimBas = @bas AND KesimBit = @bit
+              AND   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY Sube ORDER BY Sube
-            """, new { bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
+            """, new { userId, bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
         return r.AsList();
     }
 
@@ -114,7 +139,7 @@ public sealed class VardiyaQueries(Db db)
     /// FAZLA MESAİNİN KAYNAĞI — SP'nin yazdığı kolonlar okunur, türetilmez.
     /// "Ne kadarı fazla çalışma, ne kadarı izin iptali" (GMY sorusu 17.09.2026).
     /// </summary>
-    public async Task<VrdFazlaKaynak?> GetOvertimeSourceAsync(DateOnly bas, DateOnly bit, string? sube)
+    public async Task<VrdFazlaKaynak?> GetOvertimeSourceAsync(string userId, DateOnly bas, DateOnly bit, string? sube)
     {
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdFazlaKaynak>("""
@@ -126,9 +151,11 @@ public sealed class VardiyaQueries(Db db)
                    GirisOncesiDk  = SUM(ISNULL(GirisOncesiDk, 0))
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
+              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND (@sube IS NULL OR Sube = @sube)
             """, new
         {
+            userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
             sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
@@ -140,7 +167,7 @@ public sealed class VardiyaQueries(Db db)
     /// toplanma ile 2 saati aşan kalma AYNI ŞEY DEĞİLDİR ve aynı aksiyonu almaz.
     /// </summary>
     public async Task<IReadOnlyList<VrdKalmaBant>> GetStayBandsAsync(
-        DateOnly bas, DateOnly bit, string? sube)
+        string userId, DateOnly bas, DateOnly bit, string? sube)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdKalmaBant>("""
@@ -162,6 +189,7 @@ public sealed class VardiyaQueries(Db db)
             ORDER BY MIN(CikisSonrasiDk)
             """, new
         {
+            userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
             sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
@@ -176,7 +204,7 @@ public sealed class VardiyaQueries(Db db)
     ///   iki gün için taranır.
     /// ⚠ ŞÜPHELİ satırlar denetim DIŞI.
     /// </summary>
-    public async Task<VrdUyum?> GetComplianceAsync(DateOnly bas, DateOnly bit)
+    public async Task<VrdUyum?> GetComplianceAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         // ⚠ CTE MATERYALİZE EDİLMEZ — beş referans beş yeniden tarama demekti ve
@@ -213,7 +241,8 @@ public sealed class VardiyaQueries(Db db)
                    supheli = CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END
             INTO   #o
             FROM   bkm.Vrd_KisiGun
-            WHERE  KesimBas = @bas AND KesimBit = @bit;
+            WHERE  KesimBas = @bas AND KesimBit = @bit
+              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId));
 
             WITH hf AS (
               SELECT SicilNo, hafta = DATEPART(iso_week, Tarih),
@@ -232,6 +261,7 @@ public sealed class VardiyaQueries(Db db)
               Supheli  = (SELECT COUNT(*) FROM #o WHERE supheli = 1);
             """, new
         {
+            userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
             supheli = VrdConstants.SuspectPattern,
@@ -251,7 +281,7 @@ public sealed class VardiyaQueries(Db db)
     /// doğuran, ölçüm notu taşıyan veya devamsız satırlar.
     /// </summary>
     public async Task<IReadOnlyList<VrdSatir>> GetRowsAsync(
-        DateOnly bas, DateOnly bit, string? sube, string? ara, bool sadeceSorunlu, int limit = 400)
+        string userId, DateOnly bas, DateOnly bit, string? sube, string? ara, bool sadeceSorunlu, int limit = 400)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdSatir>("""
@@ -267,6 +297,7 @@ public sealed class VardiyaQueries(Db db)
             FROM        bkm.Vrd_KisiGun k
             LEFT  JOIN  bkm.Vrd_Onay   o ON o.SicilNo = k.SicilNo AND o.Tarih = k.Tarih
             WHERE  k.KesimBas = @bas AND k.KesimBit = @bit
+              AND  k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND (@sube IS NULL OR k.Sube = @sube)
               -- ⚠ ESCAPE ZORUNLU: kullanıcı '%' ya da '_' yazarsa süzgeç sessizce
               --   genişlerdi (injection değil ama YANLIŞ SONUÇ). Kaçış C# tarafında.
@@ -284,6 +315,7 @@ public sealed class VardiyaQueries(Db db)
             ORDER BY k.Tarih DESC, k.Sube, k.Personel
             """, new
         {
+            userId,
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
             sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
@@ -316,9 +348,11 @@ public sealed class VardiyaQueries(Db db)
     ///   ÖLÇÜLDÜ (17.09.2026): eski Excel'de elle doldurulan 11 satırın 9'u tam
     ///   olarak bu telafiydi. DB tarafında ayrıca CHECK var (0-1440).
     /// </summary>
-    public async Task SaveApprovalAsync(string sicilNo, DateOnly tarih,
+    public async Task SaveApprovalAsync(string userId, string sicilNo, DateOnly tarih,
         int? girisDk, int? cikisDk, int? ekMesaiDk, string? aciklama, string kaydeden)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("userId boş olamaz — şube kapsamı çözülemez.", nameof(userId));
         if (string.IsNullOrWhiteSpace(sicilNo))
             throw new ArgumentException("SicilNo boş olamaz — kişi-gün kimliği kurulamaz.", nameof(sicilNo));
         foreach (var (ad, v) in new[] { ("Giriş", girisDk), ("Çıkış", cikisDk) })
@@ -328,6 +362,27 @@ public sealed class VardiyaQueries(Db db)
             throw new ArgumentOutOfRangeException(nameof(ekMesaiDk), "Ek mesai 0-1440 dakika dışında.");
 
         using var cn = db.OpenPanel();
+
+        // ⚠ YAZMA TARAFI KAPSAM KAPISI — okuma süzgeci burada YETMEZ.
+        //   Okuma sorguları kapsam dışını göstermiyor ama yazma yolu SicilNo+Tarih
+        //   ile çağrılıyor; bu değerler ekrandan değil elle de gelebilir. Kapı
+        //   olmasaydı bir müdür, görmediği bir şubenin satırına onay yazabilirdi.
+        //   Kapsam yine SQL'de çözülüyor — uygulama şube kimliği taşımıyor ((b)-tam).
+        //
+        //   SESSİZ BAŞARISIZLIK OLMAZ: eşleşme yoksa MERGE'ün hiçbir şey yapmasını
+        //   beklemek yerine AÇIKÇA fırlatılır. "Kaydettim" deyip yazmamak, yanlış
+        //   şubeye yazmaktan daha kötüdür — kimse fark etmez.
+        var kapsamda = await cn.ExecuteScalarAsync<int>("""
+            SELECT COUNT(*)
+            FROM   bkm.Vrd_KisiGun k
+            WHERE  k.SicilNo = @sicilNo AND k.Tarih = @tarih
+              AND  k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
+            """, new { userId, sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+
+        if (kapsamda == 0)
+            throw new UnauthorizedAccessException(
+                $"Bu kişi-gün kaydı şube kapsamınızda değil (sicil {sicilNo}, {tarih:dd.MM.yyyy}).");
+
         // Üç alan da boşsa kayıt SİLİNİR — "hepsini temizledim" niyetini boş satır
         // olarak saklamak sonraki okumada gereksiz JOIN eşleşmesi üretir.
         if (girisDk is null && cikisDk is null && ekMesaiDk is null && string.IsNullOrWhiteSpace(aciklama))

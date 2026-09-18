@@ -424,7 +424,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _kesimler = await Q.GetCutoffsAsync();
+        _kesimler = await Q.GetCutoffsAsync(VrdConstants.PanelUserId);
         if (_kesimler.Count > 0)
         {
             _kesimSec = Anahtar(_kesimler[0]);
@@ -442,9 +442,9 @@ else
     private async Task Yukle()
     {
         if (Secili() is not var (bas, bit)) return;
-        _ozet = await Q.GetSummaryAsync(bas, bit);
-        _uyum = await Q.GetComplianceAsync(bas, bit);
-        _subeler = await Q.GetBranchBreakdownAsync(bas, bit);
+        _ozet = await Q.GetSummaryAsync(VrdConstants.PanelUserId, bas, bit);
+        _uyum = await Q.GetComplianceAsync(VrdConstants.PanelUserId, bas, bit);
+        _subeler = await Q.GetBranchBreakdownAsync(VrdConstants.PanelUserId, bas, bit);
         await KaynakYukle();
         await SatirYukle();
     }
@@ -452,8 +452,8 @@ else
     private async Task KaynakYukle()
     {
         if (Secili() is not var (bas, bit)) return;
-        _kaynak = await Q.GetOvertimeSourceAsync(bas, bit, _sube);
-        _bantlar = await Q.GetStayBandsAsync(bas, bit, _sube);
+        _kaynak = await Q.GetOvertimeSourceAsync(VrdConstants.PanelUserId, bas, bit, _sube);
+        _bantlar = await Q.GetStayBandsAsync(VrdConstants.PanelUserId, bas, bit, _sube);
         _bantToplam = _bantlar.Sum(b => b.Dk);
     }
 
@@ -476,7 +476,7 @@ else
         if (Secili() is not var (bas, bit)) return;
         _satirlar = null;
         StateHasChanged();
-        _satirlar = await Q.GetRowsAsync(bas, bit, _sube, _ara, _sadeceSorunlu);
+        _satirlar = await Q.GetRowsAsync(VrdConstants.PanelUserId, bas, bit, _sube, _ara, _sadeceSorunlu);
     }
 
     private void OnayAc(VrdSatir r)
@@ -507,7 +507,7 @@ else
         _onayHata = null;
         try
         {
-            await Q.SaveApprovalAsync(
+            await Q.SaveApprovalAsync(VrdConstants.PanelUserId, 
                 _onaySatir.SicilNo, DateOnly.FromDateTime(_onaySatir.Tarih),
                 Dk(_oGiris, "Onaylı giriş"), Dk(_oCikis, "Onaylı çıkış"),
                 Dk(_oEk, "Ek mesai"), _oAciklama, "panel");

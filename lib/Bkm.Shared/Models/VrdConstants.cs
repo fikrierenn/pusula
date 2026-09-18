@@ -19,6 +19,20 @@ public static class VrdConstants
 
     /// <summary>Aynı ayracın SQL <c>LIKE</c> deseni. Sorgulara PARAMETRE olarak geçer.</summary>
     public const string SuspectPattern = "%ŞÜPHELİ%";
+
+    /// <summary>
+    /// GMY panelinin (dashboard) şube kapsamı kimliği.
+    ///
+    /// Panel TEK KULLANICILI bir GMY aracı ve kendi kimlik doğrulamasını yapıyor
+    /// (<c>dbo.PanelKullanici</c>); vardiya kadrosunda bir karşılığı YOK. Kapsam
+    /// çözücü bir kimlik istediği için panel bu sabiti geçer ve yetkisi
+    /// VERİTABANINDA tanımlıdır:
+    ///     bkm.SolumPermissionGrant ('User', 'gm-panel', 'vardiya.tumSubeler')
+    ///
+    /// ⚠ Yetki BURADA DEĞİL, DB'de. Sabit kaldırılırsa panel kapsamı BOŞALIR
+    ///   (fail-closed) — sessizce genişlemez. Yetki satırı silinirse de aynı.
+    /// </summary>
+    public const string PanelUserId = "gm-panel";
 }
 
 /// <summary>

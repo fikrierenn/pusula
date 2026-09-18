@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Bkm.Shared.Data;
 using Bkm.Shared.Models;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,7 +14,7 @@ public sealed class IndexModel(VardiyaQueries queries, ILogger<IndexModel> logge
     {
         try
         {
-            Cutoffs = await queries.GetCutoffsAsync();
+            Cutoffs = await queries.GetCutoffsAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "");
         }
         catch (Exception ex)
         {

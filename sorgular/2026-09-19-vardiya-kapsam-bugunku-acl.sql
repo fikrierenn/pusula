@@ -86,3 +86,17 @@ GO
        AND  (g.GecerliBit IS NULL OR g.GecerliBit >= @onayTarihi);
    -- satır YOKSA: onay, sorumlu olmadığı bir dönem için verilmiş.
 */
+
+/* ── GMY PANELİ KİMLİĞİ (dashboard) ────────────────────────────────────────
+   Panel tek-kullanıcılı bir GMY aracı; kendi kimlik doğrulamasını yapıyor
+   (dbo.PanelKullanici) ve vardiya kadrosunda karşılığı YOK. Kapsam çözücü bir
+   kimlik istediği için sabit bir kimlik geçiyor (VrdConstants.PanelUserId) ve
+   yetkisi BURADA tanımlı — kodda değil.
+
+   ⚠ Bu satır silinirse panel kapsamı BOŞALIR (fail-closed), sessizce genişlemez. */
+IF NOT EXISTS (SELECT 1 FROM bkm.SolumPermissionGrant
+               WHERE ProviderName = N'User' AND ProviderKey = N'gm-panel'
+                 AND PermissionName = N'vardiya.tumSubeler')
+INSERT INTO bkm.SolumPermissionGrant (ProviderName, ProviderKey, PermissionName)
+VALUES (N'User', N'gm-panel', N'vardiya.tumSubeler');
+GO
