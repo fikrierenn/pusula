@@ -45,6 +45,16 @@ bilerek kullanılmadı: kullanılsaydı prod'a geçerken her nesnenin adı deği
 | `bkm.Vrd_Onay` · `bkm.Vrd_MagazaGeriDonus` | elle / panel (tek yazılan taraf) |
 | `bkm.Vrd_Devir` | ay kapanışında BİR KEZ, sonra dokunulmaz |
 | `bkm.Vrd_Sube` · `Vrd_CalismaSaati` · `Vrd_Mola` · `Vrd_KartBasmayan` | yalnız `--parametre-yukle` (JSON → tablo, TEK YÖN) |
+| `bkm.Vrd_Users` · `Vrd_Roles` · `Vrd_UserRoles` · `Vrd_UserClaims` | yalnız vardiya uygulaması (Solum.Identity `DapperUserStore`) |
+| `bkm.Vrd_KullaniciSube` | şube ACL'i — yalnız İK rolü, uygulama üstünden |
+| `bkm.SolumPermissionGrant` · `bkm.SolumUserCompanyAccess` · `bkm.SolumAuditTrail` | Solum şema betikleri (0005 + 0025) kurar; izin/denetim yazması uygulamadan |
+
+**Vardiya kimlik/yetki nesneleri (plan 48 Adım 4, 18.09.2026 — DEV):** kimlik tabloları
+Solum.Identity'nin beklediği ASP.NET Identity düzeninde, şema `bkm` + önek `Vrd_`.
+Şube kapsamı `bkm.Vrd_SubeKapsami` TVF'i ile **veritabanında** çözülür (GMY kararı
+*"b-tam yap"*): çağıran yalnız `@KullaniciId` verir, şube kimliği ve "tüm şubeler"
+yetkisi uygulamadan geçmez. DDL: `sorgular/2026-09-18-vardiya-auth-tablo-kur.sql`.
+⚠ Solum betiklerinden **yalnız 0005 + 0025** alınır; `0015` ölçümle elendi (bkz. plan 48).
 
 Plan: `plans/47-vardiya-eksik-fazla-sql.md` · DDL: `sorgular/2026-09-17-vardiya-tablo-kur.sql`
 
