@@ -1,0 +1,55 @@
+@page
+@model BkmVardiya.Pages.IndexModel
+@{
+    ViewData["Title"] = "Vardiya Yönetimi";
+}
+
+@* Plan 48 Adım 3 — iskelet doğrulama sayfası.
+   Tek işi KANITLAMAK: ortak kütüphane (lib/Bkm.Shared) bu uygulamadan çalışıyor.
+   Gerçek rapor ekranı Adım 5, onay akışı Adım 6. *@
+
+<h1>Vardiya Yönetimi</h1>
+<p>İskelet sürüm. Giriş Adım 4, rapor ekranı Adım 5, onay akışı Adım 6.</p>
+
+@if (Model.Hata is not null)
+{
+    @* Hata YUTULMAZ — ekranda görünür (error-handling.md: sessiz fallback yok). *@
+    <div role="alert">
+        <strong>Kesimler okunamadı.</strong>
+        <div>@Model.Hata</div>
+    </div>
+}
+else if (Model.Kesimler.Count == 0)
+{
+    <div role="alert">
+        Yazılmış kesim yok — <code>bkm.sp_Vrd_KisiGunDoldur</code> hiç koşmamış.
+    </div>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Kesim başı</th>
+                <th>Kesim sonu</th>
+                <th>Sayım başı</th>
+                <th>Kişi-gün</th>
+                <th>Şube</th>
+                <th>Yazılma</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var k in Model.Kesimler)
+        {
+            <tr>
+                <td>@k.KesimBas.ToString("dd.MM.yyyy")</td>
+                <td>@k.KesimBit.ToString("dd.MM.yyyy")</td>
+                <td>@k.SayimBas.ToString("dd.MM.yyyy")</td>
+                <td>@k.KisiGun.ToString("N0")</td>
+                <td>@k.SubeSay</td>
+                <td>@k.Yazilma.ToString("dd.MM.yyyy HH:mm")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

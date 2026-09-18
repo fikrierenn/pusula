@@ -64,13 +64,12 @@ bu yük ertelendi, **kaldırılmadı** — Faz 2'nin ön şartıdır.
 *"domain hesabı yok"* → Windows/Negotiate (muhasebe app deseni) **kullanılamaz**. Kullanıcı
 adı + şifre gerekir.
 
-- Panelin `AuthService` deseni aynen izlenir: **PBKDF2-SHA256 100k**, salt kolonu,
-  başarısız sayaç + kilit SQL tarafında, şifre koda/env'e plain GİRMEZ.
-- Kod **kopyalanmaz**: `AuthService` ortak kütüphaneye çıkarılıp iki app tarafından
-  kullanılabilir mi, yoksa vardiya app'i kendi kopyasını mı taşır → Adım 4'te karara bağlanır.
-  Varsayılan tercih: **ortak kütüphaneye al** (`emitter-ayrimi.md` tek-kaynak ilkesi), ama
-  **kullanıcı TABLOLARI ayrı kalır** (`PanelKullanici` ≠ `Vrd_Kullanici`) — panelin tek-kullanıcı
-  hesabı ile vardiya kadrosu karışmaz.
+- ⭐ **Kendi `AuthService`'imiz YAZILMAYACAK** (18.09 kararı): Solum.Identity'nin
+  `DapperUserStore`'u kullanılır — kullanıcı adı + şifre, kilit/başarısız sayaç, claim, rol.
+  Panelin `AuthService`'i kopyalanmaz ve ortak kütüphaneye de taşınmaz.
+- **Cookie şemasını uygulama kurar** — Solum kimlik doğrulama şeması kaydetmez, yalnız depo verir.
+- **Kullanıcı tabloları panelden ayrı** (`PanelKullanici` ≠ Solum kullanıcı tabloları) —
+  panelin tek-kullanıcı hesabı ile vardiya kadrosu karışmaz.
 - İlk şifre dağıtımı: ~10-15 hesap (personel rolü kapalı olduğu için). İK'nın hesap açıp
   ilk şifreyi verdiği, kullanıcının ilk girişte değiştirdiği akış — ilk girişte değişim ZORUNLU.
 - **Şifre sıfırlama** İK rolünde; sıfırlama denetim izine yazılır.
@@ -81,11 +80,73 @@ Repoda **ayrı app deseni zaten kurulu** (ÖLÇÜLDÜ): `dashboard/GmDashboard.c
 `asistan/BkmAsistan.csproj`, `muhasebe/Muhasebe.csproj` — üçü ayrı web app.
 
 ```
-vardiya-app/BkmVardiya.csproj      ← Blazor Server, kendi portu, kendi auth'u (Adım 3)
+vardiya-app/BkmVardiya.csproj      ← ✅ KURULDU — Razor Pages + Solum, port 5120 (Adım 3)
 lib/Bkm.Shared/Bkm.Shared.csproj   ← ✅ KURULDU (Adım 2) — ortak sınıf kütüphanesi
    Data/Db.cs · Data/SqlErrorClassifier.cs · Data/VardiyaQueries.cs · Models/VardiyaModels.cs
 dashboard/GmDashboard.csproj       ← ✅ ProjectReference + GlobalUsings.cs
 ```
+
+## Solum — kimlik/yetki/arayüz omurgası (GMY kararı 18.09: *"solum framework var onu kullansana"*)
+
+`D:\Dev\Solum` — kendi ortak katmanımız: kimlik, yetki, çok kiracılılık, denetim izi,
+CRUD ve Razor arayüz kabuğu. Sekiz paket, sürüm 0.7.0.
+
+**Uygulama Razor Pages'e çevrildi.** Ölçüldü: `Solum.Web` bir Razor Pages/MVC kütüphanesi
+(`AddRazorSupportForMvc`, içerik `.cshtml`); `src/` altında `.razor` **0**, `ComponentBase` **0**.
+Blazor'da kabuk/menü/CRUD temeli kullanılamaz. GMY kararı: *"razor yap ne olacak zaten bir şey
+yapmadık"* — Adım 3'ün Blazor iskeleti atıldı (bir saatlik iş), Razor Pages kuruldu.
+Tailwind/DaisyUI da kaldırıldı: Solum kendi tasarım sistemini getiriyor (`solum.css`),
+iki tasarım sistemi bir arada tutulmaz — bu uygulama `renk-standardi.md`'nin DaisyUI
+kuralının DIŞINDADIR.
+
+### ⭐ ŞUBE, Solum'un `ICurrentCompany`'si DEĞİLDİR (Solum ekibi, 18.09)
+
+Şubeyi Solum'un "şirket" kapsamına oturtmak ilk bakışta bedava görünüyor (otomatik süzme +
+otomatik doldurma) ama **reddedildi**, iki gerekçeyle:
+
+1. `ICurrentCompany`'nin yanında `IsCrossCompany` bayrağı var ve o bayrak konsolide rapor
+   için **meşru olarak açılır**. GMY'nin "bütün şubeleri gör" ihtiyacı onu açtırırdı — ve o
+   bayrak aynı zamanda **tüzel kişilik** sınırını açan bayraktır. BKM ikinci bir şirket
+   kurduğu gün, şube için açılmış kapı şirketler arası açılmış olurdu.
+2. `ICompanyScoped`'un getirisi **EF makinesidir** (sorgu süzgeci + `SaveChanges` kuralları).
+   Biz Dapper + SP kullanıyoruz → **bedeli var, getirisi sıfır**.
+
+⇒ Şube kolonu `Vrd_*` tablolarında **kendi adıyla** durur: `SubeId`, `CompanyId` değil.
+
+**Şube boğazı (Adım 4'te kurulacak):** `@SubeId` değerini hiçbir sayfa üretmez. Tek bir
+`SubeKapsami` servisi claim'den okur, ACL'ye karşı doğrular, SP çağrısı parametreyi
+**yalnız oradan** alır. Sayfa "hangi şube" parametresi **alamaz** — alabiliyorsa bir gün
+biri oraya istekten gelen değeri yazar. Ölçüt: *"yanlış bir şube id'si bu yoldan geçebilir mi?"*
+(Daha sert seçenek: SP `@KullaniciId` alıp şubeyi SQL içinde ACL'den çözer — boğaz veritabanında.
+GMY'nin "hepsi" durumu için ayrı yol gerekir. Karar Adım 4'te.)
+
+### Roller: kod ROL adı görmez, İZİN görür
+
+Identity rolleri *kim olduğunu* söyler; kod `vardiya.onayla` / `vardiya.tumSubeler` gibi
+**izinleri** kontrol eder. `if (rol == "IK")` yazılmaz — dördüncü rol geldiği gün o
+karşılaştırmaların hepsini bulmak gerekir ve biri kaçar. İzin→rol eşlemesi başta kodda sabit
+bir sözlük olabilir; `SolumPermissionGrant` tablosu sonra devreye alınırsa çağrı yerleri
+değişmez.
+
+### Alınan Solum betikleri (hepsi DEĞİL)
+
+| Betik | Alınıyor mu |
+|---|---|
+| `0005_SolumPermissions` | ✅ izin katmanı için. ⚠ `SolumUserCompanyAccess` şube ACL'i DEĞİL — şube ACL'i `Vrd_*` altında bizim |
+| `0025_SolumAuditTrail` | ✅ denetim izi (onay yazması için zaten gerekliydi) |
+| `0015_SolumTimeOffset` | bağımlılık kontrolü sonrası |
+| `0010_SolumMessaging` · `0020_SolumSettings` · `0030_SolumAttachments` | ❌ gerekmiyor |
+
+Koşucu `MigrationRunner`; zinciri biz veriyoruz. Betikler idempotent ama kimlik **ad + içerik
+özeti** — atlanan betik sonradan eklenebilir, **düzenlenen** betik hata verir (doğrusu budur).
+
+### Bağlama yöntemi: `ProjectReference`
+
+Solum ekibinin önerisi ve mevcut iki tüketicinin yaptığı: restore yok, ara durum görünür,
+kırıcı dokunuş öncesi tüketiciye haber veriliyor. Yerel NuGet beslemesi de makineye bağlı
+olduğu için üstünlüğü yoktu. (Genel bir NuGet feed'i Solum'un açık borcu.)
+⭐ `Solum.Identity` fiilen **donmuş** (180 shipped / 1 unshipped üye) — en çok dayandığımız
+paket en kararlısı. `Solum.Web` en oynak (248 unshipped) ama ondan yalnız kabuk alıyoruz.
 
 **Ad `BkmVardiya.Core` değil `Bkm.Shared` oldu:** taşınan `Db` vardiyaya özgü değil —
 Joker, Zirve ve panel bağlantılarını da taşıyor. Vardiya adını vermek kapsamı yanlış
@@ -160,15 +221,23 @@ anlatırdı.
    `GmDashboard.Data.Db` yazımı) + kütüphanede eksik iki `using` (Web SDK'nın implicit
    using'i sınıf kütüphanesinde yok). Hepsi **derleme hatası** olarak görüldü — sessiz
    sapma değil. Smoke test AÇIK (panel çalışır durumdaydı, yeniden başlatılmadı).
-3. ✅ **TAMAM 18.09** — `vardiya-app` iskeleti: Blazor Server (port **5120**), DaisyUI
+3. ✅ **TAMAM 18.09** (sonra Razor Pages'e çevrildi — 3b) — `vardiya-app` iskeleti:
+   ~~Blazor Server~~ (port **5120**), ~~DaisyUI~~
    corporate tema, Türkçe UI, `Bkm.Shared` ProjectReference. Derleme **0 uyarı 0 hata**.
    **ÖLÇÜLDÜ (smoke):** uygulama ayağa kalktı ve ortak kütüphaneden kesim okudu —
    31.08-16.09.2026 · sayım başı 01.09 · **6.113 kişi-gün** · 9 şube · yazılma 17.09 20:23.
    6.113 rakamı plan-47 parite kapısındakiyle AYNI → taşıma veriyi bozmadı.
    `.claude/launch.json`'a `vardiya-app` profili eklendi.
+   **3b ✅ Razor Pages dönüşümü (aynı gün):** Solum kararı gelince Blazor iskeleti atıldı,
+   Razor Pages + Solum `ProjectReference` kuruldu, Tailwind/DaisyUI kaldırıldı.
+   Derleme 0 uyarı 0 hata; smoke AYNI veriyi verdi (6.113 kişi-gün / 9 şube) ve
+   `solum.css` yükleniyor. Solum kabuğu (`_SolumLayout`) henüz KULLANILMIYOR:
+   `IMenuBuilder`/`IPermissionChecker`/`ICurrentUser` auth'a bağlı → Adım 4.
    ⚠ Bu iskelette **giriş YOK** — sayfa anonim açılıyor, üstte "Geliştirme — giriş yok"
-   rozeti duruyor. Ağa açılmadan önce Adım 4 kapanmalı.
-4. Auth + rol + şube sınırı; sunucu-taraflı süzgeç ve yetki testi.
+   yazıyor. Ağa açılmadan önce Adım 4 kapanmalı.
+4. Auth + rol + şube sınırı — **Solum.Identity** (`DapperUserStore`, kullanıcı adı+şifre;
+   cookie şemasını biz kurarız, Solum yalnız depo verir) + `SubeKapsami` boğazı + izin
+   katmanı + `_SolumLayout` kabuğunun devreye alınması. Sunucu-taraflı süzgeç ve yetki testi.
 5. Eksik/fazla + mesai raporu ekranı (mevcut sayfadan taşıma).
 6. Onay akışı ekranı + denetim izi (`bkm.Vrd_Onay` üzerine log).
 7. Panelin vardiya sayfasının akıbeti; nav düzenlemesi.

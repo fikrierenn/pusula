@@ -1,13 +1,12 @@
 using Bkm.Shared.Data;
-using BkmVardiya.Components;
 
 // Vardiya Yönetim Uygulaması — plan 48 Adım 3 (iskelet).
+// Razor Pages: arayüz omurgası Solum (D:\Dev\Solum), tasarım sistemi solum.css.
 // Auth + rol + şube sınırı Adım 4'te gelir; şu an anonim ve SALT-OKUMA.
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorPages();
 
 // Ortak veri katmanı (lib/Bkm.Shared). Db singleton — dashboard'daki kayıt deseniyle aynı.
 builder.Services.AddSingleton<Db>();
@@ -17,17 +16,14 @@ var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseExceptionHandler("/Hata");
     app.UseHsts();
 }
 
 app.UseStaticFiles();
-app.UseAntiforgery();
+app.UseRouting();
 
-// Circuit koptuğunda istemcinin sunucunun döndüğünü anlaması için (dashboard deseni).
 app.MapGet("/healthz", () => Results.Ok("ok"));
-
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorPages();
 
 app.Run();

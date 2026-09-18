@@ -1,0 +1,31 @@
+@*
+    Geçici düzen — plan 48 Adım 3.
+
+    Solum'un kendi kabuğu (`_SolumLayout`: yan menü, üst çubuk, bildirim şeridi)
+    `IMenuBuilder` + `IPermissionChecker` + `ICurrentUser` ister; bunlar auth ile
+    birlikte Adım 4'te kurulacak. O zamana kadar aynı TASARIM SİSTEMİ kullanılıyor
+    (`solum.css` doğrudan paketten) ama kabuk sade tutuluyor.
+
+    DaisyUI/Tailwind bilerek YOK: iki tasarım sistemi bir arada tutulmaz.
+*@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — BKM Vardiya</title>
+    <link rel="stylesheet" href="~/_content/Solum.Web/solum.css" />
+</head>
+<body>
+<div class="solum-shell">
+    <main class="solum-main">
+        <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+            <strong>BKM Vardiya</strong>
+            <span>Geliştirme — giriş yok</span>
+        </header>
+        @RenderBody()
+    </main>
+</div>
+<script src="~/_content/Solum.Web/solum.js"></script>
+</body>
+</html>
