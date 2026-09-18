@@ -95,7 +95,11 @@ done
 # Tetik GENIS: 'SatisAnalizi' ile baslayan her dosya. Eski desen
 # (Queries|Models|Hucre|Tablo) SatisAnaliziTabanService.cs ve SatisAnalizi.razor'u
 # KACIRIYORDU -> tabana kolon eklenen commit denetimsiz geciyordu (10.09.2026 bulgusu).
-if echo "$staged" | grep -qE 'SatisAnalizi'; then
+# GENISLETILDI 19.09.2026: 'Vardiya|Vrd' eklendi. VrdSatir 27 alanli pozisyonel
+# record ve denetim cifti 19.09'da eklendi; tetik yalniz 'SatisAnalizi' kalsaydi
+# vardiya dosyasina kolon eklenen commit denetimsiz gecerdi -- kapinin kendisi
+# kurulu ama CAGRILMIYOR olurdu (test-discipline: yazili kural != uygulanan kural).
+if echo "$staged" | grep -qE 'SatisAnalizi|Vardiya|Vrd'; then
   if command -v python >/dev/null 2>&1 && [ -f tools/panel_kolon_denetimi.py ]; then
     if ! kolon_out=$(python tools/panel_kolon_denetimi.py 2>&1); then
       echo "=== PANEL KOLON DENETIMI: BLOKLANDI ===" >&2
@@ -108,6 +112,26 @@ if echo "$staged" | grep -qE 'SatisAnalizi'; then
     fi
   else
     warn_issues+=("panel kolon denetimi KOSMADI (python ya da script yok) - sessizlik kanit degil")
+  fi
+fi
+
+# ── MESAI ESIGI CATALLANMA DENETIMI (C# <-> Python) ──────────────────────────
+# Tetik: mesai esigi tasiyan iki kaynaktan biri staged ise. Ayni esikler iki dilde
+# iki kopya halinde yasiyor; kod bir yorumla "ayni olmali" diyordu ama yorum kapi
+# degildir. Sapma SESSIZDIR: panel ile Python kapisi farkli sayi uretir ve ikisi de
+# kendi icinde tutarli gorunur. Ayrinti: tools/mesai_esik_denetimi.py basligi.
+if echo "$staged" | grep -qE 'VrdSabit|mesai_mevzuat_kapisi|VardiyaQueries'; then
+  if command -v python >/dev/null 2>&1 && [ -f tools/mesai_esik_denetimi.py ]; then
+    if ! esik_out=$(python tools/mesai_esik_denetimi.py 2>&1); then
+      echo "=== MESAI ESIGI DENETIMI: BLOKLANDI ===" >&2
+      echo "$esik_out" | grep -E '^(KIRIK|KOSAMADI)' >&2
+      echo "" >&2
+      echo "Mevzuat esigi C# ve Python arasinda catallanmis: biri bayatlamis." >&2
+      echo "Gecici bypass: CLAUDE_PRECOMMIT_SKIP=1 git commit ..." >&2
+      exit 2
+    fi
+  else
+    warn_issues+=("mesai esik denetimi KOSMADI (python ya da script yok) - sessizlik kanit degil")
   fi
 fi
 

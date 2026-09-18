@@ -66,7 +66,7 @@ public sealed class VardiyaQueries(Db db)
                 FazlaDk   = SUM(ISNULL(FazlaDk, 0)),
                 SayimDisi = SUM(CONVERT(int, SayimDisi)),
                 GunDonumu = SUM(CONVERT(int, GunDonumu)),
-                Supheli   = SUM(CASE WHEN OlcumNotu LIKE N'%ŞÜPHELİ%' THEN 1 ELSE 0 END),
+                Supheli   = SUM(CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END),
                 -- ⚠ DEVİR BAKİYESİ AYRI TABLODA ama yayınlanan raporun TOPLAMINA
                 --   GİRER. Panel yalnız dönemi gösterirse Excel'le 1.858/201 saat
                 --   sapar ve iki farklı toplam ortaya çıkar (ölçüldü 17.09.2026).
@@ -74,7 +74,12 @@ public sealed class VardiyaQueries(Db db)
                 DevirFazlaDk = (SELECT ISNULL(SUM(FazlaDk), 0) FROM bkm.Vrd_Devir)
             FROM bkm.Vrd_KisiGun
             WHERE KesimBas = @bas AND KesimBit = @bit
-            """, new { bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
+            """, new
+        {
+            bas = bas.ToDateTime(TimeOnly.MinValue),
+            bit = bit.ToDateTime(TimeOnly.MinValue),
+            supheli = VrdSabit.SupheliDesen,
+        });
     }
 
     public async Task<IReadOnlyList<VrdDurum>> DurumKirilimAsync(DateOnly bas, DateOnly bit)
@@ -196,16 +201,16 @@ public sealed class VardiyaQueries(Db db)
                    -- için pencere iki gün için toplanır (m.69).
                    geceDk = CASE WHEN GirisDk IS NULL OR CikisDk IS NULL
                                       OR CikisDk <= GirisDk THEN 0 ELSE
-                       CASE WHEN (CASE WHEN CikisDk < 1800 THEN CikisDk ELSE 1800 END)
-                               - (CASE WHEN GirisDk > 1200 THEN GirisDk ELSE 1200 END) > 0
-                            THEN (CASE WHEN CikisDk < 1800 THEN CikisDk ELSE 1800 END)
-                               - (CASE WHEN GirisDk > 1200 THEN GirisDk ELSE 1200 END) ELSE 0 END
-                     + CASE WHEN (CASE WHEN CikisDk < 3240 THEN CikisDk ELSE 3240 END)
-                               - (CASE WHEN GirisDk > 2640 THEN GirisDk ELSE 2640 END) > 0
-                            THEN (CASE WHEN CikisDk < 3240 THEN CikisDk ELSE 3240 END)
-                               - (CASE WHEN GirisDk > 2640 THEN GirisDk ELSE 2640 END) ELSE 0 END
+                       CASE WHEN (CASE WHEN CikisDk < @geceBit THEN CikisDk ELSE @geceBit END)
+                               - (CASE WHEN GirisDk > @geceBas THEN GirisDk ELSE @geceBas END) > 0
+                            THEN (CASE WHEN CikisDk < @geceBit THEN CikisDk ELSE @geceBit END)
+                               - (CASE WHEN GirisDk > @geceBas THEN GirisDk ELSE @geceBas END) ELSE 0 END
+                     + CASE WHEN (CASE WHEN CikisDk < @geceBit2 THEN CikisDk ELSE @geceBit2 END)
+                               - (CASE WHEN GirisDk > @geceBas2 THEN GirisDk ELSE @geceBas2 END) > 0
+                            THEN (CASE WHEN CikisDk < @geceBit2 THEN CikisDk ELSE @geceBit2 END)
+                               - (CASE WHEN GirisDk > @geceBas2 THEN GirisDk ELSE @geceBas2 END) ELSE 0 END
                    END,
-                   supheli = CASE WHEN OlcumNotu LIKE N'%ŞÜPHELİ%' THEN 1 ELSE 0 END
+                   supheli = CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END
             INTO   #o
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit;
@@ -218,14 +223,27 @@ public sealed class VardiyaQueries(Db db)
               FROM #o WHERE supheli = 0
               GROUP BY SicilNo, DATEPART(iso_week, Tarih))
             SELECT
-              Gunluk11 = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND ISNULL(CalismaDk,0) > 660),
+              Gunluk11 = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND ISNULL(CalismaDk,0) > @gunlukTavan),
               Brut12   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND GirisDk IS NOT NULL
-                                                    AND CikisDk IS NOT NULL AND CikisDk-GirisDk > 720),
-              Gece75   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND geceDk > 450),
+                                                    AND CikisDk IS NOT NULL AND CikisDk-GirisDk > @brutTavan),
+              Gece75   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND geceDk > @geceTavan),
               HaftaTat = (SELECT COUNT(*) FROM hf WHERE gun >= 7 AND dinlenme = 0),
-              Ustu45   = (SELECT COUNT(*) FROM hf WHERE toplamDk > 2700),
+              Ustu45   = (SELECT COUNT(*) FROM hf WHERE toplamDk > @haftalikNormal),
               Supheli  = (SELECT COUNT(*) FROM #o WHERE supheli = 1);
-            """, new { bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
+            """, new
+        {
+            bas = bas.ToDateTime(TimeOnly.MinValue),
+            bit = bit.ToDateTime(TimeOnly.MinValue),
+            supheli = VrdSabit.SupheliDesen,
+            // ⚠ Eşikler GÖMÜLÜ SAYI DEĞİL — tek kaynak MesaiEsik, Python karşılığıyla
+            //   tools/mesai_esik_denetimi.py karşılaştırıyor.
+            geceBas = MesaiEsik.GeceBasDk, geceBit = MesaiEsik.GeceBitDk,
+            geceBas2 = MesaiEsik.GeceBasDk2, geceBit2 = MesaiEsik.GeceBitDk2,
+            gunlukTavan = MesaiEsik.GunlukTavanDk,
+            brutTavan = MesaiEsik.GunlukBrutTavanDk,
+            geceTavan = MesaiEsik.GeceTavanDk,
+            haftalikNormal = MesaiEsik.HaftalikNormalDk,
+        });
     }
 
     /// <summary>
@@ -236,7 +254,7 @@ public sealed class VardiyaQueries(Db db)
         DateOnly bas, DateOnly bit, string? sube, string? ara, bool sadeceSorunlu, int limit = 400)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdSatir>($"""
+        var r = await cn.QueryAsync<VrdSatir>("""
             SELECT TOP (@limit)
                    k.Sube, k.SicilNo, k.Personel, k.Bolum, k.Gorev, k.Tarih,
                    k.VardiyaTanim, k.KartGirisDk, k.KartCikisDk, k.GirisDk, k.CikisDk,
@@ -250,23 +268,40 @@ public sealed class VardiyaQueries(Db db)
             LEFT  JOIN  bkm.Vrd_Onay   o ON o.SicilNo = k.SicilNo AND o.Tarih = k.Tarih
             WHERE  k.KesimBas = @bas AND k.KesimBit = @bit
               AND (@sube IS NULL OR k.Sube = @sube)
-              AND (@ara  IS NULL OR k.Personel LIKE '%' + @ara + '%' OR k.SicilNo LIKE @ara + '%')
-              {(sadeceSorunlu ? """
-                AND (k.OlcumNotu IS NOT NULL
-                     OR k.Durum IN (N'Devamsız', N'Vardiya Tanımsız Çalışma')
-                     OR (k.SayimDisi = 0 AND k.CalismaDk <> k.PlanCalismaDk))
-              """ : "")}
+              -- ⚠ ESCAPE ZORUNLU: kullanıcı '%' ya da '_' yazarsa süzgeç sessizce
+              --   genişlerdi (injection değil ama YANLIŞ SONUÇ). Kaçış C# tarafında.
+              AND (@ara  IS NULL OR k.Personel LIKE '%' + @ara + '%' ESCAPE '\'
+                                 OR k.SicilNo  LIKE @ara + '%'       ESCAPE '\')
+              -- ⚠ KOŞUL PARAMETRELİ, string birleştirme DEĞİL. Eski hâli enterpolasyonlu
+              --   raw string ile kuruluyordu; bugün güvenliydi (yalnız bool'a bağlı
+              --   sabit metin) ama
+              --   kalıp riskliydi: oraya bir gün parametre olmayan bir değer girerse
+              --   sessizce injection olurdu (security-principles.md).
+              AND (@sadeceSorunlu = 0
+                   OR k.OlcumNotu IS NOT NULL
+                   OR k.Durum IN (N'Devamsız', N'Vardiya Tanımsız Çalışma')
+                   OR (k.SayimDisi = 0 AND k.CalismaDk <> k.PlanCalismaDk))
             ORDER BY k.Tarih DESC, k.Sube, k.Personel
             """, new
         {
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
             sube = string.IsNullOrWhiteSpace(sube) ? null : sube,
-            ara = string.IsNullOrWhiteSpace(ara) ? null : ara.Trim(),
+            ara = string.IsNullOrWhiteSpace(ara) ? null : LikeKacir(ara.Trim()),
+            sadeceSorunlu = sadeceSorunlu ? 1 : 0,
             limit,
         });
         return r.AsList();
     }
+
+    /// <summary>
+    /// SQL <c>LIKE</c> joker karakterlerini kaçırır. Kaçırılmazsa kullanıcının yazdığı
+    /// <c>%</c> süzgeci sessizce genişletir; <c>[</c> ise karakter kümesi açar ve arama
+    /// beklenmedik sonuç verir. Injection DEĞİL (sorgu parametreli) ama YANLIŞ SONUÇ.
+    /// Kaçış karakteri sorguda <c>ESCAPE '\'</c> ile bildirilir.
+    /// </summary>
+    private static string LikeKacir(string s) =>
+        s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
 
     /// <summary>
     /// YÖNETİCİ ONAYI — panelin TEK yazma noktası.

@@ -105,6 +105,18 @@ CIFTLER = [
         "SezonAksiyonKpi",
         12,   # bugün 14 alan; genel 20'lik sınır bu kayıt için haksız KOŞAMADI veriyordu
     ),
+    # ⚠ EKLENDİ 19.09.2026 — `VrdSatir` **27 alanlı** pozisyonel record ve bu denetim
+    # onu HİÇ görmüyordu. Record'un kendi içinde tehlikeyi anlatan bir yorum vardı
+    # ("SIRA SÖZLEŞMEDİR") ama yorum kapı değildir: kuralı çiğneyeni kimse görmüyordu
+    # (`test-discipline.md` § yazılı kural ≠ uygulanan kural).
+    # Dosya lib/'e taşındı (plan 48 Adım 2) — yol oradan verilir.
+    (
+        "Vardiya — kişi-gün satırı",
+        "lib/Bkm.Shared/Data/VardiyaQueries.cs",
+        "public async Task<IReadOnlyList<VrdSatir>> SatirlarAsync",
+        "lib/Bkm.Shared/Models/VardiyaModels.cs",
+        "VrdSatir",
+    ),
 ]
 
 # ── Anahtar kümesi çiftleri (kolon tanımı ↔ değer eşlemesi) ────────────────────
@@ -261,7 +273,62 @@ def sql_aliaslari(metin: str, baslangic: str) -> tuple[list[str], int]:
                 if not x.strip().startswith("--") and not x.strip().startswith("//")]
     sql = "\n".join(satirlar)
     aliaslar = re.findall(r"\bAS\s+([A-Za-z_][A-Za-z0-9_]*)", sql)
+
+    # ⚠ GENİŞLETME 19.09.2026 — `AS` KULLANMAYAN SQL tamamen görünmezdi.
+    #   `VrdSatir` (27 alan) eklenince ölçüldü: o sorguda 0 alias bulundu ve çift
+    #   "KOŞAMADI" verdi. Sorgu `k.Sube` (düz kolon) ve `Ad = ifade` biçimlerini
+    #   kullanıyor; ikisi de meşru T-SQL ve ikisi de kolon ADINI taşıyor.
+    #   `AS` bulunamazsa SELECT…FROM aralığı virgülle bölünüp ad çıkarılır.
+    #   Karmaşık ifadeler (CASE, fonksiyon çağrısı) ATLANIR — atlanan oranı zaten
+    #   ayrıca denetleniyor, yani körlük sessiz kalmaz.
+    if not aliaslar:
+        aliaslar = _select_kolon_adlari(sql)
     return aliaslar, sql.count("\n")
+
+
+def _select_kolon_adlari(sql: str) -> list[str]:
+    """`AS` içermeyen SELECT listesinden kolon adlarını SIRAYLA çıkar.
+
+    Üç biçim tanınır — gerisi bilerek atlanır:
+        Ad = ifade      → Ad      (T-SQL kolon takma adı)
+        tablo.Kolon     → Kolon
+        Kolon           → Kolon
+    """
+    m = re.search(r"\bSELECT\b(.*?)\bFROM\b", sql, re.S | re.I)
+    if not m:
+        return []
+    govde = m.group(1)
+    govde = re.sub(r"^\s*TOP\s*\([^)]*\)", "", govde, flags=re.I)
+
+    adlar: list[str] = []
+    derinlik = 0
+    parca = ""
+    for ch in govde:                       # virgülle böl AMA parantez içindekileri sayma
+        if ch == "(":
+            derinlik += 1
+        elif ch == ")":
+            derinlik -= 1
+        if ch == "," and derinlik == 0:
+            adlar.append(parca)
+            parca = ""
+        else:
+            parca += ch
+    adlar.append(parca)
+
+    cikti: list[str] = []
+    for ham in adlar:
+        p = ham.strip()
+        if not p:
+            continue
+        esit = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=", p)
+        if esit:
+            cikti.append(esit.group(1))
+            continue
+        duz = re.match(r"^(?:[A-Za-z_][A-Za-z0-9_]*\.)?([A-Za-z_][A-Za-z0-9_]*)\s*$", p)
+        if duz:
+            cikti.append(duz.group(1))
+        # karmaşık ifade → atla (atlanan oranı ayrıca denetleniyor)
+    return cikti
 
 
 def record_parametreleri(metin: str, ad: str) -> list[str]:
