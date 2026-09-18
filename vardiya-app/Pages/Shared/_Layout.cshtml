@@ -21,7 +21,14 @@
     <main class="solum-main">
         <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
             <strong>BKM Vardiya</strong>
-            <span>Geliştirme — giriş yok</span>
+            @if (User?.Identity?.IsAuthenticated == true)
+            {
+                <span>@User.Identity.Name <a href="/Logout">Çıkış</a></span>
+            }
+            else
+            {
+                <a href="/Login">Giriş</a>
+            }
         </header>
         @RenderBody()
     </main>

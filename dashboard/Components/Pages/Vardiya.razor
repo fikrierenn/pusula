@@ -424,7 +424,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _kesimler = await Q.KesimlerAsync();
+        _kesimler = await Q.GetCutoffsAsync();
         if (_kesimler.Count > 0)
         {
             _kesimSec = Anahtar(_kesimler[0]);
@@ -442,9 +442,9 @@ else
     private async Task Yukle()
     {
         if (Secili() is not var (bas, bit)) return;
-        _ozet = await Q.OzetAsync(bas, bit);
-        _uyum = await Q.UyumAsync(bas, bit);
-        _subeler = await Q.SubeKirilimAsync(bas, bit);
+        _ozet = await Q.GetSummaryAsync(bas, bit);
+        _uyum = await Q.GetComplianceAsync(bas, bit);
+        _subeler = await Q.GetBranchBreakdownAsync(bas, bit);
         await KaynakYukle();
         await SatirYukle();
     }
@@ -452,8 +452,8 @@ else
     private async Task KaynakYukle()
     {
         if (Secili() is not var (bas, bit)) return;
-        _kaynak = await Q.FazlaKaynakAsync(bas, bit, _sube);
-        _bantlar = await Q.KalmaBandiAsync(bas, bit, _sube);
+        _kaynak = await Q.GetOvertimeSourceAsync(bas, bit, _sube);
+        _bantlar = await Q.GetStayBandsAsync(bas, bit, _sube);
         _bantToplam = _bantlar.Sum(b => b.Dk);
     }
 
@@ -476,7 +476,7 @@ else
         if (Secili() is not var (bas, bit)) return;
         _satirlar = null;
         StateHasChanged();
-        _satirlar = await Q.SatirlarAsync(bas, bit, _sube, _ara, _sadeceSorunlu);
+        _satirlar = await Q.GetRowsAsync(bas, bit, _sube, _ara, _sadeceSorunlu);
     }
 
     private void OnayAc(VrdSatir r)
@@ -507,7 +507,7 @@ else
         _onayHata = null;
         try
         {
-            await Q.OnayKaydetAsync(
+            await Q.SaveApprovalAsync(
                 _onaySatir.SicilNo, DateOnly.FromDateTime(_onaySatir.Tarih),
                 Dk(_oGiris, "Onaylı giriş"), Dk(_oCikis, "Onaylı çıkış"),
                 Dk(_oEk, "Ek mesai"), _oAciklama, "panel");

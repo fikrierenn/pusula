@@ -15,7 +15,7 @@ kuralı çiğneyeni bugün kim görür? Cevap "hiç kimse" ise kural yoktur.
 Bu kapı o boşluğu kapatır: iki taraftaki adları ve değerleri karşılaştırır.
 
 Kaynaklar:
-    C#     lib/Bkm.Shared/Models/VrdSabit.cs   (static class MesaiEsik)
+    C#     lib/Bkm.Shared/Models/VrdConstants.cs   (static class WorkTimeLimit)
     Python tools/mesai_mevzuat_kapisi.py       (modül düzeyi sabitler)
 
 Kullanım:
@@ -42,17 +42,17 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 KOK = Path(__file__).resolve().parent.parent
-CS = KOK / "lib" / "Bkm.Shared" / "Models" / "VrdSabit.cs"
+CS = KOK / "lib" / "Bkm.Shared" / "Models" / "VrdConstants.cs"
 PY = KOK / "tools" / "mesai_mevzuat_kapisi.py"
 
 # C# adı → Python adı. İkisi de değişebilir; eşleme burada TEK YERDE.
 ESLEME = {
-    "GunlukTavanDk":     "GUNLUK_TAVAN_DK",
-    "GunlukBrutTavanDk": "GUNLUK_BRUT_TAVAN_DK",
-    "GeceTavanDk":       "GECE_TAVAN_DK",
-    "GeceBasDk":         "GECE_BAS_DK",
-    "GeceBitDk":         "GECE_BIT_DK",
-    "HaftalikNormalDk":  "HAFTALIK_NORMAL_DK",
+    "DailyCapMin":      "GUNLUK_TAVAN_DK",
+    "DailyGrossCapMin": "GUNLUK_BRUT_TAVAN_DK",
+    "NightCapMin":       "GECE_TAVAN_DK",
+    "NightStartMin":     "GECE_BAS_DK",
+    "NightEndMin":       "GECE_BIT_DK",
+    "WeeklyNormalMin":  "HAFTALIK_NORMAL_DK",
 }
 
 
@@ -81,9 +81,9 @@ def hesapla(ifade: str) -> int | None:
 
 
 def cs_sabitleri(metin: str) -> dict[str, int]:
-    govde = metin.split("class MesaiEsik", 1)
+    govde = metin.split("class WorkTimeLimit", 1)
     if len(govde) < 2:
-        kosamadi("C# tarafında `class MesaiEsik` bulunamadı")
+        kosamadi("C# tarafında `class WorkTimeLimit` bulunamadı")
     sonuc: dict[str, int] = {}
     for ad, ifade in re.findall(r"public const int\s+(\w+)\s*=\s*([^;]+);", govde[1]):
         ifade = ifade.strip()
@@ -127,7 +127,7 @@ print("═" * 74)
 kirik: list[str] = []
 for cs_ad, py_ad in ESLEME.items():
     if cs_ad not in cs:
-        kosamadi(f"C# sabiti okunamadı: MesaiEsik.{cs_ad} (sözdizimi değişmiş olabilir)")
+        kosamadi(f"C# sabiti okunamadı: WorkTimeLimit.{cs_ad} (sözdizimi değişmiş olabilir)")
     if py_ad not in py:
         kosamadi(f"Python sabiti okunamadı: {py_ad} (sözdizimi değişmiş olabilir)")
     if cs[cs_ad] != py[py_ad]:
@@ -137,7 +137,7 @@ for cs_ad, py_ad in ESLEME.items():
         print(f"OK    {cs_ad} = {cs[cs_ad]} dk  ({py_ad})")
 
 # Türetilmiş ikinci gün penceresi: kendi içinde tutarlı mı (C# tek kaynak)
-for tur, taban in (("GeceBasDk2", "GeceBasDk"), ("GeceBitDk2", "GeceBitDk")):
+for tur, taban in (("NightStartMin2", "NightStartMin"), ("NightEndMin2", "NightEndMin")):
     if tur in cs and taban in cs and cs[tur] != cs[taban] + 1440:
         kirik.append(tur)
         print(f"KIRIK {tur}={cs[tur]} ≠ {taban}+1440={cs[taban] + 1440}")

@@ -7,7 +7,7 @@ namespace Bkm.Shared.Data;
 /// Vardiya / Mesai paneli — plan-47 Faz 2. Kaynak <b>panel DB</b> (<c>Db.OpenPanel</c>,
 /// yerel <c>BkmPanel</c>), ERP DEĞİL. Tablolar <c>bkm.Vrd_*</c>; hesap
 /// <c>bkm.sp_Vrd_KisiGunDoldur</c> tarafından yazılır — bu sınıf SALT-OKUR
-/// (tek istisna <see cref="OnayKaydetAsync"/>, aşağıda gerekçesi var).
+/// (tek istisna <see cref="SaveApprovalAsync"/>, aşağıda gerekçesi var).
 ///
 /// Bu sınıf bir EMITTER'dır: hesap ÇOĞALTILMAZ (emitter-ayrimi.md). Eksik/fazla
 /// saat, mola, gün dönümü, durum kodu — hepsi SP'de üretilmiştir.
@@ -30,7 +30,7 @@ namespace Bkm.Shared.Data;
 public sealed class VardiyaQueries(Db db)
 {
     /// <summary>Yazılabilir kesimler (en yeni önce). Boşsa SP hiç koşmamıştır.</summary>
-    public async Task<IReadOnlyList<VrdKesim>> KesimlerAsync()
+    public async Task<IReadOnlyList<VrdKesim>> GetCutoffsAsync()
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdKesim>("""
@@ -50,7 +50,7 @@ public sealed class VardiyaQueries(Db db)
     /// Eksik/Fazla burada TÜRETİLİR (plan süresi vs gerçekleşen) — SP'nin yazdığı
     /// alanlardan, yeni bir iş kuralı EKLENMEZ.
     /// </summary>
-    public async Task<VrdOzet?> OzetAsync(DateOnly bas, DateOnly bit)
+    public async Task<VrdOzet?> GetSummaryAsync(DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdOzet>("""
@@ -78,11 +78,11 @@ public sealed class VardiyaQueries(Db db)
         {
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
-            supheli = VrdSabit.SupheliDesen,
+            supheli = VrdConstants.SuspectPattern,
         });
     }
 
-    public async Task<IReadOnlyList<VrdDurum>> DurumKirilimAsync(DateOnly bas, DateOnly bit)
+    public async Task<IReadOnlyList<VrdDurum>> GetStatusBreakdownAsync(DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdDurum>("""
@@ -94,7 +94,7 @@ public sealed class VardiyaQueries(Db db)
         return r.AsList();
     }
 
-    public async Task<IReadOnlyList<VrdSube>> SubeKirilimAsync(DateOnly bas, DateOnly bit)
+    public async Task<IReadOnlyList<VrdSube>> GetBranchBreakdownAsync(DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdSube>("""
@@ -114,7 +114,7 @@ public sealed class VardiyaQueries(Db db)
     /// FAZLA MESAİNİN KAYNAĞI — SP'nin yazdığı kolonlar okunur, türetilmez.
     /// "Ne kadarı fazla çalışma, ne kadarı izin iptali" (GMY sorusu 17.09.2026).
     /// </summary>
-    public async Task<VrdFazlaKaynak?> FazlaKaynakAsync(DateOnly bas, DateOnly bit, string? sube)
+    public async Task<VrdFazlaKaynak?> GetOvertimeSourceAsync(DateOnly bas, DateOnly bit, string? sube)
     {
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdFazlaKaynak>("""
@@ -139,7 +139,7 @@ public sealed class VardiyaQueries(Db db)
     /// Kapanış sonrası kalma süre bandı. Uzun kuyruk ayrı bir sorudur: 15 dakikalık
     /// toplanma ile 2 saati aşan kalma AYNI ŞEY DEĞİLDİR ve aynı aksiyonu almaz.
     /// </summary>
-    public async Task<IReadOnlyList<VrdKalmaBant>> KalmaBandiAsync(
+    public async Task<IReadOnlyList<VrdKalmaBant>> GetStayBandsAsync(
         DateOnly bas, DateOnly bit, string? sube)
     {
         using var cn = db.OpenPanel();
@@ -176,7 +176,7 @@ public sealed class VardiyaQueries(Db db)
     ///   iki gün için taranır.
     /// ⚠ ŞÜPHELİ satırlar denetim DIŞI.
     /// </summary>
-    public async Task<VrdUyum?> UyumAsync(DateOnly bas, DateOnly bit)
+    public async Task<VrdUyum?> GetComplianceAsync(DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
         // ⚠ CTE MATERYALİZE EDİLMEZ — beş referans beş yeniden tarama demekti ve
@@ -234,15 +234,15 @@ public sealed class VardiyaQueries(Db db)
         {
             bas = bas.ToDateTime(TimeOnly.MinValue),
             bit = bit.ToDateTime(TimeOnly.MinValue),
-            supheli = VrdSabit.SupheliDesen,
+            supheli = VrdConstants.SuspectPattern,
             // ⚠ Eşikler GÖMÜLÜ SAYI DEĞİL — tek kaynak MesaiEsik, Python karşılığıyla
             //   tools/mesai_esik_denetimi.py karşılaştırıyor.
-            geceBas = MesaiEsik.GeceBasDk, geceBit = MesaiEsik.GeceBitDk,
-            geceBas2 = MesaiEsik.GeceBasDk2, geceBit2 = MesaiEsik.GeceBitDk2,
-            gunlukTavan = MesaiEsik.GunlukTavanDk,
-            brutTavan = MesaiEsik.GunlukBrutTavanDk,
-            geceTavan = MesaiEsik.GeceTavanDk,
-            haftalikNormal = MesaiEsik.HaftalikNormalDk,
+            geceBas = WorkTimeLimit.NightStartMin, geceBit = WorkTimeLimit.NightEndMin,
+            geceBas2 = WorkTimeLimit.NightStartMin2, geceBit2 = WorkTimeLimit.NightEndMin2,
+            gunlukTavan = WorkTimeLimit.DailyCapMin,
+            brutTavan = WorkTimeLimit.DailyGrossCapMin,
+            geceTavan = WorkTimeLimit.NightCapMin,
+            haftalikNormal = WorkTimeLimit.WeeklyNormalMin,
         });
     }
 
@@ -250,7 +250,7 @@ public sealed class VardiyaQueries(Db db)
     /// Kişi-gün listesi. <paramref name="sadeceSorunlu"/> → yalnız eksik/fazla saat
     /// doğuran, ölçüm notu taşıyan veya devamsız satırlar.
     /// </summary>
-    public async Task<IReadOnlyList<VrdSatir>> SatirlarAsync(
+    public async Task<IReadOnlyList<VrdSatir>> GetRowsAsync(
         DateOnly bas, DateOnly bit, string? sube, string? ara, bool sadeceSorunlu, int limit = 400)
     {
         using var cn = db.OpenPanel();
@@ -316,7 +316,7 @@ public sealed class VardiyaQueries(Db db)
     ///   ÖLÇÜLDÜ (17.09.2026): eski Excel'de elle doldurulan 11 satırın 9'u tam
     ///   olarak bu telafiydi. DB tarafında ayrıca CHECK var (0-1440).
     /// </summary>
-    public async Task OnayKaydetAsync(string sicilNo, DateOnly tarih,
+    public async Task SaveApprovalAsync(string sicilNo, DateOnly tarih,
         int? girisDk, int? cikisDk, int? ekMesaiDk, string? aciklama, string kaydeden)
     {
         if (string.IsNullOrWhiteSpace(sicilNo))

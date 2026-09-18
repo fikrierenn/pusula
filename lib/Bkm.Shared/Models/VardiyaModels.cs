@@ -3,6 +3,17 @@ namespace Bkm.Shared.Models;
 /// <summary>
 /// Vardiya / Mesai paneli kayıtları (plan-47 Faz 2).
 ///
+/// ⚠ ALAN ADLARI TÜRKÇE — BİLİNÇLİ İSTİSNA (19.09.2026).
+///   `turkish-ui.md` "kod İngilizce" der ve sınıf/metot/parametre adları buna
+///   uyduruldu. DTO ALANLARI uymaz ve sebebi mekanik: bunlar `bkm.Vrd_KisiGun`
+///   kolonlarının BİREBİR yansımasıdır (`Sube`, `SicilNo`, `EksikDk`…). Kolonlar
+///   DerinSIS mirası + plan-47 tablolarıdır, Türkçedir ve DEĞİŞTİRİLEMEZ:
+///   `sp_Vrd_KisiGunDoldur`, yayınlanan Excel ve plan-47 parite kapısı onlara bağlı.
+///   Alanı İngilizce yapmak SQL'de 27 takma ad gerektirirdi — kazanç yok, iki
+///   sözlük arasında çeviri katmanı riski var.
+///   ⇒ Kural "SQL kolonları İngilizce" maddesinde zaten ihlal hâlinde ve bu ihlal
+///   devralınmıştır; DTO'yu kolona hizalı tutmak ihlali BÜYÜTMEZ, görünür kılar.
+///
 /// ⚠ SÜRELER DAKİKA (int), <c>TimeSpan</c> değil: gece mesaisinde çıkış ertesi güne
 ///   sarkar (&gt;1440) ve saat tipleri bunu tutamaz. Biçimleme <see cref="VrdBicim"/>.
 /// ⚠ Dapper POZİSYONEL record'da SIRA sözleşmedir: SQL'e araya kolon eklenirse
@@ -68,7 +79,7 @@ public sealed record VrdSatir(
     string Durum, bool GunDonumu, bool SayimDisi, string? OlcumNotu,
     int? OnayGirisDk, int? OnayCikisDk, int? EkMesaiDk)
 {
-    public bool Supheli => OlcumNotu?.Contains("ŞÜPHELİ") == true;
+    public bool Supheli => OlcumNotu?.Contains(VrdConstants.SuspectText) == true;
 }
 
 /// <summary>Süre biçimleme — dakika tabanı tek yerde.</summary>

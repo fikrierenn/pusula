@@ -113,7 +113,7 @@ CIFTLER = [
     (
         "Vardiya — kişi-gün satırı",
         "lib/Bkm.Shared/Data/VardiyaQueries.cs",
-        "public async Task<IReadOnlyList<VrdSatir>> SatirlarAsync",
+        "public async Task<IReadOnlyList<VrdSatir>> GetRowsAsync",
         "lib/Bkm.Shared/Models/VardiyaModels.cs",
         "VrdSatir",
     ),

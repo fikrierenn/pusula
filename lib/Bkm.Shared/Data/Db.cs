@@ -131,6 +131,17 @@ public sealed class Db
     public bool PanelEnabled => _panelConnStr is not null;
 
     /// <summary>
+    /// Panel DB bağlantı dizesi — Solum.Identity <c>SolumIdentityOptions</c> için.
+    /// Solum kendi bağlantısını açar (Dapper), bizim fabrikamızı kullanmaz; o yüzden
+    /// dizenin kendisi gerekiyor.
+    /// ⚠ Yalnız yapılandırma anında okunur. Loglanmaz, ekrana basılmaz, dışarı verilmez
+    /// (<c>security-principles.md</c>: sır tek kaynakta, .env).
+    /// </summary>
+    public string PanelConnectionString =>
+        _panelConnStr ?? throw new InvalidOperationException(
+            ".env PANEL_DB_HOST yok — panel DB yapılandırılmamış; kimlik deposu kurulamaz.");
+
+    /// <summary>
     /// Her çağrıda yeni açık bağlantı (Dapper using ile kapatır).
     /// DMY, bağlantı dizesindeki <c>Current Language=Turkish</c> ile LOGIN'de sağlanır —
     /// ayrıca <c>SET DATEFORMAT</c> komutu GÖNDERİLMEZ (B-168: gereksiz round-trip'ti).

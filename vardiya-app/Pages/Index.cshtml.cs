@@ -4,22 +4,22 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace BkmVardiya.Pages;
 
-public sealed class IndexModel(VardiyaQueries sorgu, ILogger<IndexModel> logger) : PageModel
+public sealed class IndexModel(VardiyaQueries queries, ILogger<IndexModel> logger) : PageModel
 {
-    public IReadOnlyList<VrdKesim> Kesimler { get; private set; } = [];
-    public string? Hata { get; private set; }
+    public IReadOnlyList<VrdKesim> Cutoffs { get; private set; } = [];
+    public string? Error { get; private set; }
 
     public async Task OnGetAsync()
     {
         try
         {
-            Kesimler = await sorgu.KesimlerAsync();
+            Cutoffs = await queries.GetCutoffsAsync();
         }
         catch (Exception ex)
         {
             // Hata yutulmuyor: loglanır VE ekranda görünür (error-handling.md).
             logger.LogError(ex, "Vardiya kesimleri okunamadı");
-            Hata = ex.Message;
+            Error = ex.Message;
         }
     }
 }

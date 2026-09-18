@@ -1,0 +1,27 @@
+@page
+@model BkmVardiya.Pages.LoginModel
+@{
+    ViewData["Title"] = "Giriş";
+    Layout = "_Layout";
+}
+
+<h1>Giriş</h1>
+
+@if (Model.Error is not null)
+{
+    @* Mesaj BİLEREK GENEL: "kullanıcı yok" ile "şifre yanlış" ayrımı, geçerli
+       kullanıcı adlarını dışarıya sayar (security-principles.md). *@
+    <div role="alert"><strong>@Model.Error</strong></div>
+}
+
+<form method="post">
+    <div>
+        <label for="ad">Kullanıcı adı</label>
+        <input id="ad" name="UserName" value="@Model.UserName" autocomplete="username" required autofocus />
+    </div>
+    <div>
+        <label for="sifre">Şifre</label>
+        <input id="sifre" name="Password" type="password" autocomplete="current-password" required />
+    </div>
+    <button type="submit">Giriş yap</button>
+</form>
