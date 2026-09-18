@@ -1,6 +1,6 @@
 # 48 — Vardiya Yönetim Uygulaması (ayrı app + ortak kütüphane)
 
-**Durum:** TASLAK — onay bekliyor · **Tier:** 3 · **Tarih:** 18.09.2026
+**Durum:** ONAYLANDI 18.09 · Adım 0 ✅ · Adım 1 ✅ · **Adım 2 ✅** · Adım 3 sırada · **Tier:** 3 · **Tarih:** 18.09.2026
 **Karar sahibi:** Fikri Eren (GMY) — *"vardiya yönetimi için ayrı bir program yapı yazmalıyız"*
 **Önceki plan:** `plans/47-vardiya-eksik-fazla-sql.md` (Faz 1 tamam — `bkm.Vrd_*` + `sp_Vrd_KisiGunDoldur`, parite 0 fark)
 
@@ -81,11 +81,15 @@ Repoda **ayrı app deseni zaten kurulu** (ÖLÇÜLDÜ): `dashboard/GmDashboard.c
 `asistan/BkmAsistan.csproj`, `muhasebe/Muhasebe.csproj` — üçü ayrı web app.
 
 ```
-vardiya-app/BkmVardiya.csproj      ← YENİ: Blazor Server, kendi portu, kendi auth'u
-lib/BkmVardiya.Core.csproj         ← YENİ: ortak sınıf kütüphanesi
-   Db.cs · VrdModels · VardiyaQueries · MevzuatKapisi
-dashboard/GmDashboard.csproj       ← lib'e ProjectReference (kendi kopyası SİLİNİR)
+vardiya-app/BkmVardiya.csproj      ← Blazor Server, kendi portu, kendi auth'u (Adım 3)
+lib/Bkm.Shared/Bkm.Shared.csproj   ← ✅ KURULDU (Adım 2) — ortak sınıf kütüphanesi
+   Data/Db.cs · Data/SqlErrorClassifier.cs · Data/VardiyaQueries.cs · Models/VardiyaModels.cs
+dashboard/GmDashboard.csproj       ← ✅ ProjectReference + GlobalUsings.cs
 ```
+
+**Ad `BkmVardiya.Core` değil `Bkm.Shared` oldu:** taşınan `Db` vardiyaya özgü değil —
+Joker, Zirve ve panel bağlantılarını da taşıyor. Vardiya adını vermek kapsamı yanlış
+anlatırdı.
 
 - **Veri tabanı ortak:** `bkm.Vrd_*` (şimdi dev `BkmPanel`, terfide `DerinSISBkm` — plan-47).
   İki uygulama aynı tabloyu okur; yazan taraf yalnız vardiya app'i olur.
@@ -148,9 +152,14 @@ dashboard/GmDashboard.csproj       ← lib'e ProjectReference (kendi kopyası S�
 
 0. **Commit-split** — 19 uncommitted dosya (15 eşiği aşıldı, `commit-discipline.md`).
 1. ✅ Auth yöntemi + personel rolü kapsamı kararı (18.09).
-2. `lib/BkmVardiya.Core` kurulumu; `Db` + `VrdModels` + `VardiyaQueries` taşınır,
-   dashboard `ProjectReference` ile aynı sınıfları kullanır. **Davranış değişmez** —
-   panel sayfası aynı çalışır (build + smoke kanıt).
+2. ✅ **TAMAM 18.09** — `lib/Bkm.Shared` kuruldu; dört dosya `git mv` ile taşındı
+   (geçmiş korundu): `Db` · `SqlErrorClassifier` · `VardiyaQueries` · `VardiyaModels`.
+   Namespace `Bkm.Shared.Data` / `Bkm.Shared.Models`; dashboard'a `GlobalUsings.cs`
+   eklendi → **çağıran 47 dosyaya dokunulmadı**. Derleme yeşil.
+   **ÖLÇÜLDÜ:** taşıma sonrası kırılan yer yalnız 2 satır (`Program.cs`, tam nitelikli
+   `GmDashboard.Data.Db` yazımı) + kütüphanede eksik iki `using` (Web SDK'nın implicit
+   using'i sınıf kütüphanesinde yok). Hepsi **derleme hatası** olarak görüldü — sessiz
+   sapma değil. Smoke test AÇIK (panel çalışır durumdaydı, yeniden başlatılmadı).
 3. `vardiya-app` iskeleti: Blazor Server, DaisyUI tema (`renk-standardi.md`), Türkçe UI.
 4. Auth + rol + şube sınırı; sunucu-taraflı süzgeç ve yetki testi.
 5. Eksik/fazla + mesai raporu ekranı (mevcut sayfadan taşıma).

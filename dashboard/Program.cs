@@ -51,8 +51,8 @@ var app = builder.Build();
 
 // Lokasyon (şube/depo mekanID) posMagaza'dan dinamik yükle — hardcode yerine (startup, bir kez). Hata → fallback.
 await GmDashboard.Data.LokasyonConfig.InitAsync(
-    app.Services.GetRequiredService<GmDashboard.Data.Db>(),
-    app.Services.GetRequiredService<ILogger<GmDashboard.Data.Db>>());
+    app.Services.GetRequiredService<Bkm.Shared.Data.Db>(),
+    app.Services.GetRequiredService<ILogger<Bkm.Shared.Data.Db>>());
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

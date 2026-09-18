@@ -1,7 +1,7 @@
 using Dapper;
-using GmDashboard.Models;
+using Bkm.Shared.Models;
 
-namespace GmDashboard.Data;
+namespace Bkm.Shared.Data;
 
 /// <summary>
 /// Vardiya / Mesai paneli — plan-47 Faz 2. Kaynak <b>panel DB</b> (<c>Db.OpenPanel</c>,

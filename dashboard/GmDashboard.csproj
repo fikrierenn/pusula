@@ -19,6 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Ortak altyapi kutuphanesi (plan 48 Adim 2) — Db/SqlErrorClassifier/VardiyaQueries.
+         Vardiya uygulamasi da ayni projeye referans verir; kod cogaltilmaz. -->
+    <ProjectReference Include="..\lib\Bkm.Shared\Bkm.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Blazor-ApexCharts" Version="6.1.0" />
     <PackageReference Include="Dapper" Version="2.1.79" />
     <PackageReference Include="Google.Apis.Auth" Version="1.75.0" />

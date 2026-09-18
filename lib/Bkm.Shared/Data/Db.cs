@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
 
-namespace GmDashboard.Data;
+namespace Bkm.Shared.Data;
 
 /// <summary>
 /// Dapper bağlantı fabrikası. Secret tek kaynaktan: repo kökü .env (Python gm_dashboard.py ile aynı).

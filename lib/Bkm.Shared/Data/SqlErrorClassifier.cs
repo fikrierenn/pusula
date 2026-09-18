@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 
-namespace GmDashboard.Data;
+namespace Bkm.Shared.Data;
 
 /// <summary>
 /// Merkezi SQL hata sınıflandırıcı (plan-12 WS-5 — Hermes error_classifier uyarlaması).

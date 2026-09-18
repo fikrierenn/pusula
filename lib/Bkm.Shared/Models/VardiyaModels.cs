@@ -1,4 +1,4 @@
-namespace GmDashboard.Models;
+namespace Bkm.Shared.Models;
 
 /// <summary>
 /// Vardiya / Mesai paneli kayıtları (plan-47 Faz 2).

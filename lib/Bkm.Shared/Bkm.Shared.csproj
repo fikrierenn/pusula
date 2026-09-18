@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ortak altyapı: birden çok BKM uygulamasının paylaştığı bağlantı fabrikası,
+       SQL hata sınıflandırıcı ve vardiya okuma yüzü (plan 48 Adım 2).
+       Hesap BURADA DEĞİL — bkm.sp_Vrd_KisiGunDoldur içinde (emitter-ayrimi.md).
+       Auth BURADA DEĞİL — her uygulama kendi kullanıcı tablosunu taşır. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Bkm.Shared</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Sürümler dashboard/GmDashboard.csproj ile AYNI tutulur; ayrışırsa
+         NU1605 downgrade uyarısı çıkar (sessiz değil). -->
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
