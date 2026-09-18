@@ -33,10 +33,10 @@ public sealed class IndexModel(VardiyaQueries queries, ILogger<IndexModel> logge
     public IReadOnlyList<VrdRow> Rows { get; private set; } = [];
     public string? Error { get; private set; }
 
-    public int StayBandTotal => StayBands.Sum(b => b.Dk);
+    public int StayBandTotal => StayBands.Sum(b => b.Minutes);
 
     public static string CutoffKey(VrdCutoff c) =>
-        $"{c.KesimBas:yyyy-MM-dd}|{c.KesimBit:yyyy-MM-dd}";
+        $"{c.CutoffFrom:yyyy-MM-dd}|{c.CutoffTo:yyyy-MM-dd}";
 
     public async Task OnGetAsync()
     {
@@ -52,8 +52,8 @@ public sealed class IndexModel(VardiyaQueries queries, ILogger<IndexModel> logge
             SelectedCutoff = Cutoffs.FirstOrDefault(c => CutoffKey(c) == Cutoff) ?? Cutoffs[0];
             Cutoff = CutoffKey(SelectedCutoff);
 
-            var from = DateOnly.FromDateTime(SelectedCutoff.KesimBas);
-            var to = DateOnly.FromDateTime(SelectedCutoff.KesimBit);
+            var from = DateOnly.FromDateTime(SelectedCutoff.CutoffFrom);
+            var to = DateOnly.FromDateTime(SelectedCutoff.CutoffTo);
             var branch = string.IsNullOrWhiteSpace(Branch) ? null : Branch;
 
             Summary = await queries.GetSummaryAsync(userId, from, to);

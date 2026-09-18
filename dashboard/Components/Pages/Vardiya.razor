@@ -46,9 +46,9 @@ else
                     @foreach (var k in _kesimler)
                     {
                         <option value="@Anahtar(k)">
-                            @k.KesimBas.ToString("dd.MM.yyyy") – @k.KesimBit.ToString("dd.MM.yyyy")
-                            · @k.KisiGun.ToString("N0") kişi-gün
-                            @(k.SayimBas > k.KesimBas ? $" · sayım {k.SayimBas:dd.MM}" : "")
+                            @k.CutoffFrom.ToString("dd.MM.yyyy") – @k.CutoffTo.ToString("dd.MM.yyyy")
+                            · @k.PersonDays.ToString("N0") kişi-gün
+                            @(k.CountFrom > k.CutoffFrom ? $" · sayım {k.CountFrom:dd.MM}" : "")
                         </option>
                     }
                 </select>
@@ -57,7 +57,7 @@ else
                 <span class="label-text text-xs">Şube</span>
                 <select class="select select-bordered select-sm" @bind="_sube" @bind:after="SubeDegisti">
                     <option value="">Tümü</option>
-                    @foreach (var s in _subeler) { <option value="@s.Sube">@s.Sube</option> }
+                    @foreach (var s in _subeler) { <option value="@s.Branch">@s.Branch</option> }
                 </select>
             </label>
             <label class="form-control">
@@ -78,35 +78,35 @@ else
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">KİŞİ-GÜN</div>
-                <div class="text-2xl font-bold">@_ozet.KisiGun.ToString("N0")</div>
+                <div class="text-2xl font-bold">@_ozet.PersonDays.ToString("N0")</div>
                 <div class="text-xs text-base-content/50">
-                    @_ozet.KisiSay kişi · @_ozet.SubeSay şube
+                    @_ozet.PersonCount kişi · @_ozet.BranchCount şube
                 </div>
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">EKSİK SAAT</div>
                 <div class="text-2xl font-bold text-error">@VrdFormat.HoursDecimal(_ozet.TotalShortMin)</div>
                 <div class="text-xs text-base-content/50">
-                    dönem @VrdFormat.HoursDecimal(_ozet.EksikDk)
-                    + devir @VrdFormat.HoursDecimal(_ozet.DevirEksikDk)
+                    dönem @VrdFormat.HoursDecimal(_ozet.ShortMin)
+                    + devir @VrdFormat.HoursDecimal(_ozet.CarryShortMin)
                 </div>
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">FAZLA SAAT</div>
                 <div class="text-2xl font-bold text-success">@VrdFormat.HoursDecimal(_ozet.TotalOvertimeMin)</div>
                 <div class="text-xs text-base-content/50">
-                    dönem @VrdFormat.HoursDecimal(_ozet.FazlaDk)
-                    + devir @VrdFormat.HoursDecimal(_ozet.DevirFazlaDk)
+                    dönem @VrdFormat.HoursDecimal(_ozet.OvertimeMin)
+                    + devir @VrdFormat.HoursDecimal(_ozet.CarryOvertimeMin)
                 </div>
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">GÜN DÖNÜMÜ</div>
-                <div class="text-2xl font-bold text-info">@_ozet.GunDonumu</div>
+                <div class="text-2xl font-bold text-info">@_ozet.DayRollover</div>
                 <div class="text-xs text-base-content/50">çıkış ertesi güne sarktı</div>
             </div>
             <div class="card bg-base-100 border border-base-200 rounded-2xl p-4">
                 <div class="text-xs text-base-content/50">SAYIM DIŞI</div>
-                <div class="text-2xl font-bold">@_ozet.SayimDisi</div>
+                <div class="text-2xl font-bold">@_ozet.OutOfCount</div>
                 <div class="text-xs text-base-content/50">önceki ay devrinde sayılı</div>
             </div>
         </div>
@@ -134,11 +134,11 @@ else
                 }
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                @KapiKart("Günlük 11 saat", "m.63 / m.41", _uyum.Gunluk11, "gün", true)
-                @KapiKart("Brüt 12 saat", "m.68 — 24 saatte 12 saat dinlenme", _uyum.Brut12, "gün", true)
-                @KapiKart("Gece 7,5 saat", "m.69 — 20:00-06:00 penceresi", _uyum.Gece75, "gün", true)
-                @KapiKart("Hafta tatili yok", "m.46 — alt sınır", _uyum.HaftaTat, "kişi-hafta", true)
-                @KapiKart("Haftalık 45 saat üstü", "İHLAL DEĞİL — fazla çalışma", _uyum.Ustu45, "kişi-hafta", false)
+                @KapiKart("Günlük 11 saat", "m.63 / m.41", _uyum.Daily11, "gün", true)
+                @KapiKart("Brüt 12 saat", "m.68 — 24 saatte 12 saat dinlenme", _uyum.Gross12, "gün", true)
+                @KapiKart("Gece 7,5 saat", "m.69 — 20:00-06:00 penceresi", _uyum.Night75, "gün", true)
+                @KapiKart("Hafta tatili yok", "m.46 — alt sınır", _uyum.NoWeeklyRest, "kişi-hafta", true)
+                @KapiKart("Haftalık 45 saat üstü", "İHLAL DEĞİL — fazla çalışma", _uyum.Over45, "kişi-hafta", false)
             </div>
             <div class="text-xs text-base-content/50 mt-3">
                 ⚠ Yıllık 270 saat sınırı (m.41) bu pencereden <b>ölçülemez</b> —
@@ -170,8 +170,8 @@ else
                         </span>
                     </div>
                     <div class="text-[11px] text-base-content/60 mb-2">izin iptali · hafta tatili kullandırmama</div>
-                    @Satir("İzin günü çalıştırılmış", _kaynak.IzinIptalDk)
-                    @Satir("Hafta tatili kullandırılmamış", _kaynak.HaftaTatilDk)
+                    @Satir("İzin günü çalıştırılmış", _kaynak.LeaveCancelledMin)
+                    @Satir("Hafta tatili kullandırılmamış", _kaynak.WeeklyRestMin)
                 </div>
 
                 <div class="rounded-xl border border-info/40 bg-info/5 p-3">
@@ -183,12 +183,12 @@ else
                         </span>
                     </div>
                     <div class="text-[11px] text-base-content/60 mb-2">kapanış gecikmesi · gün içi yoğunluk</div>
-                    @Satir("Plan üstü çalışma", _kaynak.FazlaCalismaDk)
-                    @Satir("Plansız çalışma", _kaynak.PlansizDk)
+                    @Satir("Plan üstü çalışma", _kaynak.ExtraWorkMin)
+                    @Satir("Plansız çalışma", _kaynak.UnplannedMin)
                     <div class="text-[11px] text-base-content/50 mt-2 pt-2 border-t border-base-200">
                         uçlara göre: kapanış sonrası kalma
-                        <b>@VrdFormat.HoursDecimal(_kaynak.CikisSonrasiDk)</b> ·
-                        erken başlama <b>@VrdFormat.HoursDecimal(_kaynak.GirisOncesiDk)</b>
+                        <b>@VrdFormat.HoursDecimal(_kaynak.AfterCloseMin)</b> ·
+                        erken başlama <b>@VrdFormat.HoursDecimal(_kaynak.BeforeOpenMin)</b>
                     </div>
                 </div>
             </div>
@@ -207,11 +207,11 @@ else
                         <tbody>
                             @foreach (var b in _bantlar)
                             {
-                                var pay = _bantToplam == 0 ? 0 : 100.0 * b.Dk / _bantToplam;
-                                <tr class="@(b.Bant == "2 saat üstü" ? "text-error font-semibold" : "")">
-                                    <td>@b.Bant</td>
-                                    <td class="text-right">@b.Satir.ToString("N0")</td>
-                                    <td class="text-right">@VrdFormat.HoursDecimal(b.Dk)</td>
+                                var pay = _bantToplam == 0 ? 0 : 100.0 * b.Minutes / _bantToplam;
+                                <tr class="@(b.Band == "2 saat üstü" ? "text-error font-semibold" : "")">
+                                    <td>@b.Band</td>
+                                    <td class="text-right">@b.DayCount.ToString("N0")</td>
+                                    <td class="text-right">@VrdFormat.HoursDecimal(b.Minutes)</td>
                                     <td class="text-right">%@pay.ToString("N0")</td>
                                 </tr>
                             }
@@ -268,11 +268,11 @@ else
                         @foreach (var s in _subeler)
                         {
                             <tr>
-                                <td>@s.Sube</td>
-                                <td class="text-right">@s.KisiSay</td>
-                                <td class="text-right">@s.KisiGun.ToString("N0")</td>
-                                <td class="text-right text-error">@VrdFormat.Duration(s.EksikDk)</td>
-                                <td class="text-right text-success">@VrdFormat.Duration(s.FazlaDk)</td>
+                                <td>@s.Branch</td>
+                                <td class="text-right">@s.PersonCount</td>
+                                <td class="text-right">@s.PersonDays.ToString("N0")</td>
+                                <td class="text-right text-error">@VrdFormat.Duration(s.ShortMin)</td>
+                                <td class="text-right text-success">@VrdFormat.Duration(s.OvertimeMin)</td>
                             </tr>
                         }
                     </tbody>
@@ -308,26 +308,26 @@ else
                     <tbody>
                         @foreach (var r in _satirlar)
                         {
-                            <tr class="@(r.OnayGirisDk is not null || r.OnayCikisDk is not null || r.EkMesaiDk is not null ? "bg-warning/10" : "")">
-                                <td class="whitespace-nowrap">@r.Tarih.ToString("dd.MM.yyyy")</td>
-                                <td class="whitespace-nowrap">@r.Sube</td>
-                                <td class="whitespace-nowrap">@r.Personel</td>
-                                <td class="whitespace-nowrap text-base-content/60">@r.VardiyaTanim</td>
-                                <td>@VrdFormat.TimeOfDay(r.KartGirisDk)</td>
-                                <td>@VrdFormat.TimeOfDay(r.KartCikisDk)</td>
-                                <td class="text-right">@VrdFormat.Duration(r.Net2Dk)</td>
-                                <td class="text-right text-base-content/60">@VrdFormat.Duration(r.GerekenDk)</td>
+                            <tr class="@(r.ApprovedInMin is not null || r.ApprovedOutMin is not null || r.ExtraShiftMin is not null ? "bg-warning/10" : "")">
+                                <td class="whitespace-nowrap">@r.Date.ToString("dd.MM.yyyy")</td>
+                                <td class="whitespace-nowrap">@r.Branch</td>
+                                <td class="whitespace-nowrap">@r.PersonName</td>
+                                <td class="whitespace-nowrap text-base-content/60">@r.ShiftPlan</td>
+                                <td>@VrdFormat.TimeOfDay(r.CardInMin)</td>
+                                <td>@VrdFormat.TimeOfDay(r.CardOutMin)</td>
+                                <td class="text-right">@VrdFormat.Duration(r.Net2Min)</td>
+                                <td class="text-right text-base-content/60">@VrdFormat.Duration(r.RequiredMin)</td>
                                 <td class="text-right">
-                                    @if (r.EksikDk > 0)   { <span class="text-error">-@VrdFormat.Duration(r.EksikDk)</span> }
-                                    else if (r.FazlaDk > 0) { <span class="text-success">+@VrdFormat.Duration(r.FazlaDk)</span> }
-                                    else if (r.SayimDisi) { <span class="text-base-content/40">devir</span> }
+                                    @if (r.ShortMin > 0)   { <span class="text-error">-@VrdFormat.Duration(r.ShortMin)</span> }
+                                    else if (r.OvertimeMin > 0) { <span class="text-success">+@VrdFormat.Duration(r.OvertimeMin)</span> }
+                                    else if (r.OutOfCount) { <span class="text-base-content/40">devir</span> }
                                     else { <span class="text-base-content/40">—</span> }
                                 </td>
                                 <td class="whitespace-nowrap">
-                                    <span class="@DurumRenk(r.Durum)">@r.Durum</span>
+                                    <span class="@DurumRenk(r.Status)">@r.Status</span>
                                 </td>
                                 <td class="text-xs @(r.Suspect ? "text-warning" : "text-base-content/50")">
-                                    @r.OlcumNotu
+                                    @r.MeasureNote
                                 </td>
                                 <td>
                                     <button class="btn btn-ghost btn-xs" @onclick="() => OnayAc(r)">
@@ -351,10 +351,10 @@ else
         <div class="modal-box max-w-lg">
             <h3 class="font-bold text-lg">Yönetici onayı</h3>
             <div class="text-xs text-base-content/60 mb-3">
-                @_onaySatir.Personel · @_onaySatir.Tarih.ToString("dd.MM.yyyy") · @_onaySatir.Sube
+                @_onaySatir.PersonName · @_onaySatir.Date.ToString("dd.MM.yyyy") · @_onaySatir.Branch
                 <br />
-                Kart: @VrdFormat.TimeOfDay(_onaySatir.KartGirisDk) – @VrdFormat.TimeOfDay(_onaySatir.KartCikisDk)
-                · hesaplanan çalışma @VrdFormat.Duration(_onaySatir.CalismaDk)
+                Kart: @VrdFormat.TimeOfDay(_onaySatir.CardInMin) – @VrdFormat.TimeOfDay(_onaySatir.CardOutMin)
+                · hesaplanan çalışma @VrdFormat.Duration(_onaySatir.WorkMin)
             </div>
 
             <div class="alert alert-warning text-xs mb-3">
@@ -420,7 +420,7 @@ else
     private string? _onayHata;
     private bool _kaydediyor;
 
-    private static string Anahtar(VrdCutoff k) => $"{k.KesimBas:yyyy-MM-dd}|{k.KesimBit:yyyy-MM-dd}";
+    private static string Anahtar(VrdCutoff k) => $"{k.CutoffFrom:yyyy-MM-dd}|{k.CutoffTo:yyyy-MM-dd}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -454,7 +454,7 @@ else
         if (Secili() is not var (bas, bit)) return;
         _kaynak = await Q.GetOvertimeSourceAsync(VrdConstants.PanelUserId, bas, bit, _sube);
         _bantlar = await Q.GetStayBandsAsync(VrdConstants.PanelUserId, bas, bit, _sube);
-        _bantToplam = _bantlar.Sum(b => b.Dk);
+        _bantToplam = _bantlar.Sum(b => b.Minutes);
     }
 
     private RenderFragment Satir(string ad, int dk) => __builder =>
@@ -483,9 +483,9 @@ else
     {
         _onaySatir = r;
         _onayHata = null;
-        _oGiris = r.OnayGirisDk is null ? "" : VrdFormat.TimeOfDay(r.OnayGirisDk);
-        _oCikis = r.OnayCikisDk is null ? "" : VrdFormat.TimeOfDay(r.OnayCikisDk);
-        _oEk = r.EkMesaiDk is null ? "" : VrdFormat.Duration(r.EkMesaiDk);
+        _oGiris = r.ApprovedInMin is null ? "" : VrdFormat.TimeOfDay(r.ApprovedInMin);
+        _oCikis = r.ApprovedOutMin is null ? "" : VrdFormat.TimeOfDay(r.ApprovedOutMin);
+        _oEk = r.ExtraShiftMin is null ? "" : VrdFormat.Duration(r.ExtraShiftMin);
         _oAciklama = "";
     }
 
@@ -508,7 +508,7 @@ else
         try
         {
             await Q.SaveApprovalAsync(VrdConstants.PanelUserId, 
-                _onaySatir.SicilNo, DateOnly.FromDateTime(_onaySatir.Tarih),
+                _onaySatir.StaffNo, DateOnly.FromDateTime(_onaySatir.Date),
                 Dk(_oGiris, "Onaylı giriş"), Dk(_oCikis, "Onaylı çıkış"),
                 Dk(_oEk, "Ek mesai"), _oAciklama, "panel");
             _onaySatir = null;
@@ -523,7 +523,7 @@ else
         {
             // Gerçek hata: detay loga, kullanıcıya generic (security-principles.md).
             Logger.LogError(ex, "Vardiya onayı kaydedilemedi: {Sicil} {Tarih}",
-                            _onaySatir?.SicilNo, _onaySatir?.Tarih);
+                            _onaySatir?.StaffNo, _onaySatir?.Date);
             _onayHata = "Kayıt sırasında beklenmedik bir hata oluştu. Sistem yöneticisine bildirin.";
         }
         finally { _kaydediyor = false; }

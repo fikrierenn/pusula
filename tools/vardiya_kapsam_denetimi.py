@@ -26,6 +26,14 @@ sys.stderr.reconfigure(encoding="utf-8")
 KAYNAK = Path(__file__).resolve().parent.parent / "lib/Bkm.Shared/Data/VardiyaQueries.cs"
 KAPSAM_IMI = "Vrd_SubeKapsami"
 
+# Kapsam suzgeci istemesi ZORUNLU olan tablolar. Bir sorguda kapsamin BIR KEZ
+# yazilmis olmasi yetmez: her alt-sorgu kendi suzgecini ister.
+# ⚠ Bu liste 19.09.2026'da bir OLCUMDEN dogdu: Vrd_Devir alt-sorgusu suzgecsizdi
+#   ve bir sube muduru kendi doneminin 334 saatini ama TUM SIRKETIN 1.858 saatlik
+#   devrini goruyordu. Kapi o gun yalniz "metotta kapsam gecti mi" diye bakiyordu
+#   ve bunu GORMEDI.
+KAPSAMLI_TABLOLAR = ["bkm.Vrd_KisiGun", "bkm.Vrd_Devir"]
+
 if not KAYNAK.exists():
     print(f"KOŞAMADI  kaynak yok: {KAYNAK}")
     sys.exit(2)
@@ -58,7 +66,15 @@ for i, m in enumerate(basliklar):
         print(f"KIRIK {ad}: SQL'de @userId var ama parametre nesnesinde userId YOK — "
               f"çalışma anında 'Must declare the scalar variable @userId'.")
     else:
-        print(f"OK    {ad}")
+        # Her kapsamli tablo referansi kadar kapsam suzgeci var mi?
+        gereken = sum(govde.count(t) for t in KAPSAMLI_TABLOLAR)
+        var = govde.count(KAPSAM_IMI)
+        if gereken > var:
+            kirik.append(ad)
+            print(f"KIRIK {ad}: {gereken} kapsamli tablo referansi var ama yalniz {var} "
+                  f"kapsam suzgeci — bir alt-sorgu suzgecsiz kalmis (kapsam DISI veri doner).")
+        else:
+            print(f"OK    {ad}  ({var} suzgec / {gereken} tablo referansi)")
 
 if denetlenen == 0:
     print("KOŞAMADI  `userId` alan hiçbir metot bulunamadı — imza değişmiş olabilir")

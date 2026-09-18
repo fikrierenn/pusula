@@ -54,10 +54,12 @@ public sealed class VardiyaQueries(Db db)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdCutoff>("""
-            SELECT  KesimBas, KesimBit, SayimBas,
-                    KisiGun  = COUNT(*),
-                    SubeSay  = COUNT(DISTINCT Sube),
-                    Yazilma  = MAX(YazilmaUtc)
+            SELECT  CutoffFrom  = KesimBas,
+                    CutoffTo    = KesimBit,
+                    CountFrom   = SayimBas,
+                    PersonDays  = COUNT(*),
+                    BranchCount = COUNT(DISTINCT Sube),
+                    WrittenAt   = MAX(YazilmaUtc)
             FROM    bkm.Vrd_KisiGun
             WHERE   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY KesimBas, KesimBit, SayimBas
@@ -76,23 +78,29 @@ public sealed class VardiyaQueries(Db db)
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdSummary>("""
             SELECT
-                KisiGun   = COUNT(*),
-                SubeSay   = COUNT(DISTINCT Sube),
-                KisiSay   = COUNT(DISTINCT NULLIF(SicilNo, '')),
+                PersonDays  = COUNT(*),
+                BranchCount = COUNT(DISTINCT Sube),
+                PersonCount = COUNT(DISTINCT NULLIF(SicilNo, '')),
                 -- ⚠ SP'nin yazdığı kolonlar OKUNUR, burada YENİDEN HESAPLANMAZ.
                 --   Taban `Vrd_CalismaSaati` politika tablosudur; vardiya planının
                 --   süresiyle hesaplanırsa yayınlanan Excel'den SAPAR (ölçüldü:
                 --   plan tabanı 4.313/4.596 saat vs politika tabanı 6.118/5.024).
-                EksikDk   = SUM(ISNULL(EksikDk, 0)),
-                FazlaDk   = SUM(ISNULL(FazlaDk, 0)),
-                SayimDisi = SUM(CONVERT(int, SayimDisi)),
-                GunDonumu = SUM(CONVERT(int, GunDonumu)),
-                Supheli   = SUM(CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END),
+                ShortMin    = SUM(ISNULL(EksikDk, 0)),
+                OvertimeMin = SUM(ISNULL(FazlaDk, 0)),
+                OutOfCount  = SUM(CONVERT(int, SayimDisi)),
+                DayRollover = SUM(CONVERT(int, GunDonumu)),
+                Suspect     = SUM(CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END),
                 -- ⚠ DEVİR BAKİYESİ AYRI TABLODA ama yayınlanan raporun TOPLAMINA
                 --   GİRER. Panel yalnız dönemi gösterirse Excel'le 1.858/201 saat
                 --   sapar ve iki farklı toplam ortaya çıkar (ölçüldü 17.09.2026).
-                DevirEksikDk = (SELECT ISNULL(SUM(EksikDk), 0) FROM bkm.Vrd_Devir),
-                DevirFazlaDk = (SELECT ISNULL(SUM(FazlaDk), 0) FROM bkm.Vrd_Devir)
+                -- ⚠ DEVİR DE KAPSAMLI OLMALI (19.09.2026 ölçümü): süzgeçsiz hâlinde
+                --   bir şube müdürü kendi döneminin 334 saatini ama TÜM ŞİRKETİN
+                --   1.858 saatlik devrini görüyordu. Kapsam bir sorguda BİR KEZ
+                --   yazılmakla bitmiyor; her alt-sorgu kendi süzgecini ister.
+                CarryShortMin    = (SELECT ISNULL(SUM(EksikDk), 0) FROM bkm.Vrd_Devir
+                                    WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))),
+                CarryOvertimeMin = (SELECT ISNULL(SUM(FazlaDk), 0) FROM bkm.Vrd_Devir
+                                    WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId)))
             FROM bkm.Vrd_KisiGun
             WHERE KesimBas = @bas AND KesimBit = @bit
               AND Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
@@ -109,7 +117,7 @@ public sealed class VardiyaQueries(Db db)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdStatus>("""
-            SELECT Durum, KisiGun = COUNT(*)
+            SELECT Status = Durum, PersonDays = COUNT(*)
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
               AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
@@ -122,11 +130,11 @@ public sealed class VardiyaQueries(Db db)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdBranch>("""
-            SELECT  Sube,
-                    KisiGun = COUNT(*),
-                    KisiSay = COUNT(DISTINCT NULLIF(SicilNo, '')),
-                    EksikDk = SUM(ISNULL(EksikDk, 0)),
-                    FazlaDk = SUM(ISNULL(FazlaDk, 0))
+            SELECT  Branch      = Sube,
+                    PersonDays  = COUNT(*),
+                    PersonCount = COUNT(DISTINCT NULLIF(SicilNo, '')),
+                    ShortMin    = SUM(ISNULL(EksikDk, 0)),
+                    OvertimeMin = SUM(ISNULL(FazlaDk, 0))
             FROM    bkm.Vrd_KisiGun
             WHERE   KesimBas = @bas AND KesimBit = @bit
               AND   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
@@ -143,12 +151,12 @@ public sealed class VardiyaQueries(Db db)
     {
         using var cn = db.OpenPanel();
         return await cn.QuerySingleOrDefaultAsync<VrdOvertimeSource>("""
-            SELECT FazlaCalismaDk = SUM(ISNULL(FazlaCalismaDk, 0)),
-                   IzinIptalDk    = SUM(ISNULL(FazlaIzinIptalDk, 0)),
-                   HaftaTatilDk   = SUM(ISNULL(HaftalikPrimDk, 0)),
-                   PlansizDk      = SUM(ISNULL(FazlaPlansizDk, 0)),
-                   CikisSonrasiDk = SUM(ISNULL(CikisSonrasiDk, 0)),
-                   GirisOncesiDk  = SUM(ISNULL(GirisOncesiDk, 0))
+            SELECT ExtraWorkMin      = SUM(ISNULL(FazlaCalismaDk, 0)),
+                   LeaveCancelledMin = SUM(ISNULL(FazlaIzinIptalDk, 0)),
+                   WeeklyRestMin     = SUM(ISNULL(HaftalikPrimDk, 0)),
+                   UnplannedMin      = SUM(ISNULL(FazlaPlansizDk, 0)),
+                   AfterCloseMin     = SUM(ISNULL(CikisSonrasiDk, 0)),
+                   BeforeOpenMin     = SUM(ISNULL(GirisOncesiDk, 0))
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
               AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
@@ -171,12 +179,12 @@ public sealed class VardiyaQueries(Db db)
     {
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdStayBand>("""
-            SELECT Bant = CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
+            SELECT Band = CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
                                WHEN CikisSonrasiDk <=  30 THEN N'16–30 dk'
                                WHEN CikisSonrasiDk <=  60 THEN N'31–60 dk'
                                WHEN CikisSonrasiDk <= 120 THEN N'1–2 saat'
                                ELSE N'2 saat üstü' END,
-                   Satir = COUNT(*), Dk = SUM(CikisSonrasiDk)
+                   DayCount = COUNT(*), Minutes = SUM(CikisSonrasiDk)
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
               AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
@@ -253,13 +261,13 @@ public sealed class VardiyaQueries(Db db)
               FROM #o WHERE supheli = 0
               GROUP BY SicilNo, DATEPART(iso_week, Tarih))
             SELECT
-              Gunluk11 = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND ISNULL(CalismaDk,0) > @gunlukTavan),
-              Brut12   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND GirisDk IS NOT NULL
-                                                    AND CikisDk IS NOT NULL AND CikisDk-GirisDk > @brutTavan),
-              Gece75   = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND geceDk > @geceTavan),
-              HaftaTat = (SELECT COUNT(*) FROM hf WHERE gun >= 7 AND dinlenme = 0),
-              Ustu45   = (SELECT COUNT(*) FROM hf WHERE toplamDk > @haftalikNormal),
-              Supheli  = (SELECT COUNT(*) FROM #o WHERE supheli = 1);
+              Daily11      = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND ISNULL(CalismaDk,0) > @gunlukTavan),
+              Gross12      = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND GirisDk IS NOT NULL
+                                                        AND CikisDk IS NOT NULL AND CikisDk-GirisDk > @brutTavan),
+              Night75      = (SELECT COUNT(*) FROM #o WHERE supheli=0 AND geceDk > @geceTavan),
+              NoWeeklyRest = (SELECT COUNT(*) FROM hf WHERE gun >= 7 AND dinlenme = 0),
+              Over45       = (SELECT COUNT(*) FROM hf WHERE toplamDk > @haftalikNormal),
+              Suspect      = (SELECT COUNT(*) FROM #o WHERE supheli = 1);
             """, new
         {
             userId,
@@ -287,14 +295,33 @@ public sealed class VardiyaQueries(Db db)
         using var cn = db.OpenPanel();
         var r = await cn.QueryAsync<VrdRow>("""
             SELECT TOP (@limit)
-                   k.Sube, k.SicilNo, k.Personel, k.Bolum, k.Gorev, k.Tarih,
-                   k.VardiyaTanim, k.KartGirisDk, k.KartCikisDk, k.GirisDk, k.CikisDk,
-                   k.BrutDk, k.MolaDk, k.CalismaDk, k.PlanCalismaDk,
-                   k.GerekenDk, k.Net2Dk, k.HaftalikPrimDk,
-                   k.EksikDk, k.FazlaDk, k.Durum,
-                   k.GunDonumu, k.SayimDisi, k.OlcumNotu,
-                   OnayGirisDk = o.OnayliGirisDk, OnayCikisDk = o.OnayliCikisDk,
-                   EkMesaiDk   = o.EkMesaiDk
+                   Branch           = k.Sube,
+                   StaffNo          = k.SicilNo,
+                   PersonName       = k.Personel,
+                   Department       = k.Bolum,
+                   JobTitle         = k.Gorev,
+                   Date             = k.Tarih,
+                   ShiftPlan        = k.VardiyaTanim,
+                   CardInMin        = k.KartGirisDk,
+                   CardOutMin       = k.KartCikisDk,
+                   InMin            = k.GirisDk,
+                   OutMin           = k.CikisDk,
+                   GrossMin         = k.BrutDk,
+                   BreakMin         = k.MolaDk,
+                   WorkMin          = k.CalismaDk,
+                   PlanWorkMin      = k.PlanCalismaDk,
+                   RequiredMin      = k.GerekenDk,
+                   Net2Min          = k.Net2Dk,
+                   WeeklyPremiumMin = k.HaftalikPrimDk,
+                   ShortMin         = k.EksikDk,
+                   OvertimeMin      = k.FazlaDk,
+                   Status           = k.Durum,
+                   DayRollover      = k.GunDonumu,
+                   OutOfCount       = k.SayimDisi,
+                   MeasureNote      = k.OlcumNotu,
+                   ApprovedInMin    = o.OnayliGirisDk,
+                   ApprovedOutMin   = o.OnayliCikisDk,
+                   ExtraShiftMin    = o.EkMesaiDk
             FROM        bkm.Vrd_KisiGun k
             LEFT  JOIN  bkm.Vrd_Onay   o ON o.SicilNo = k.SicilNo AND o.Tarih = k.Tarih
             WHERE  k.KesimBas = @bas AND k.KesimBit = @bit

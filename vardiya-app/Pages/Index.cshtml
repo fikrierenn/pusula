@@ -46,8 +46,8 @@ else
                 {
                     var key = BkmVardiya.Pages.IndexModel.CutoffKey(c);
                     <option value="@key" selected="@(key == Model.Cutoff)">
-                        @c.KesimBas.ToString("dd.MM.yyyy") – @c.KesimBit.ToString("dd.MM.yyyy")
-                        · @c.KisiGun.ToString("N0") kişi-gün
+                        @c.CutoffFrom.ToString("dd.MM.yyyy") – @c.CutoffTo.ToString("dd.MM.yyyy")
+                        · @c.PersonDays.ToString("N0") kişi-gün
                     </option>
                 }
             </select>
@@ -59,7 +59,7 @@ else
                 <option value="">Tümü</option>
                 @foreach (var b in Model.Branches)
                 {
-                    <option value="@b.Sube" selected="@(b.Sube == Model.Branch)">@b.Sube</option>
+                    <option value="@b.Branch" selected="@(b.Branch == Model.Branch)">@b.Branch</option>
                 }
             </select>
         </label>
@@ -85,33 +85,33 @@ else
         <div class="solum-kpi-grid">
             <div class="solum-kpi">
                 <div class="solum-kpi-label">Kişi-gün</div>
-                <div class="solum-kpi-value">@Model.Summary.KisiGun.ToString("N0")</div>
-                <div class="solum-kpi-hint">@Model.Summary.KisiSay kişi · @Model.Summary.SubeSay şube</div>
+                <div class="solum-kpi-value">@Model.Summary.PersonDays.ToString("N0")</div>
+                <div class="solum-kpi-hint">@Model.Summary.PersonCount kişi · @Model.Summary.BranchCount şube</div>
             </div>
             <div class="solum-kpi solum-kpi-bad">
                 <div class="solum-kpi-label">Eksik saat</div>
                 <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalShortMin)</div>
                 <div class="solum-kpi-hint">
-                    dönem @VrdFormat.HoursDecimal(Model.Summary.EksikDk)
-                    + devir @VrdFormat.HoursDecimal(Model.Summary.DevirEksikDk)
+                    dönem @VrdFormat.HoursDecimal(Model.Summary.ShortMin)
+                    + devir @VrdFormat.HoursDecimal(Model.Summary.CarryShortMin)
                 </div>
             </div>
             <div class="solum-kpi solum-kpi-good">
                 <div class="solum-kpi-label">Fazla saat</div>
                 <div class="solum-kpi-value">@VrdFormat.HoursDecimal(Model.Summary.TotalOvertimeMin)</div>
                 <div class="solum-kpi-hint">
-                    dönem @VrdFormat.HoursDecimal(Model.Summary.FazlaDk)
-                    + devir @VrdFormat.HoursDecimal(Model.Summary.DevirFazlaDk)
+                    dönem @VrdFormat.HoursDecimal(Model.Summary.OvertimeMin)
+                    + devir @VrdFormat.HoursDecimal(Model.Summary.CarryOvertimeMin)
                 </div>
             </div>
             <div class="solum-kpi">
                 <div class="solum-kpi-label">Gün dönümü</div>
-                <div class="solum-kpi-value">@Model.Summary.GunDonumu</div>
+                <div class="solum-kpi-value">@Model.Summary.DayRollover</div>
                 <div class="solum-kpi-hint">çıkış ertesi güne sarktı</div>
             </div>
             <div class="solum-kpi">
                 <div class="solum-kpi-label">Sayım dışı</div>
-                <div class="solum-kpi-value">@Model.Summary.SayimDisi</div>
+                <div class="solum-kpi-value">@Model.Summary.OutOfCount</div>
                 <div class="solum-kpi-hint">önceki ay devrinde sayılı</div>
             </div>
         </div>
@@ -130,38 +130,38 @@ else
                         teyit edilecek soru.
                     </div>
                 </div>
-                @if (Model.Compliance.Supheli > 0)
+                @if (Model.Compliance.Suspect > 0)
                 {
                     <span class="solum-badge solum-badge-warn">
-                        @Model.Compliance.Supheli satır denetim dışı
+                        @Model.Compliance.Suspect satır denetim dışı
                     </span>
                 }
             </div>
 
             <div class="solum-kpi-grid">
-                <div class="solum-kpi @(Model.Compliance.Gunluk11 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi @(Model.Compliance.Daily11 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
                     <div class="solum-kpi-label">Günlük 11 saat</div>
-                    <div class="solum-kpi-value">@Model.Compliance.Gunluk11</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Daily11</div>
                     <div class="solum-kpi-hint">m.63 / m.41 · gün</div>
                 </div>
-                <div class="solum-kpi @(Model.Compliance.Brut12 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi @(Model.Compliance.Gross12 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
                     <div class="solum-kpi-label">Brüt 12 saat</div>
-                    <div class="solum-kpi-value">@Model.Compliance.Brut12</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Gross12</div>
                     <div class="solum-kpi-hint">m.68 — 24 saatte 12 saat dinlenme</div>
                 </div>
-                <div class="solum-kpi @(Model.Compliance.Gece75 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi @(Model.Compliance.Night75 > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
                     <div class="solum-kpi-label">Gece 7,5 saat</div>
-                    <div class="solum-kpi-value">@Model.Compliance.Gece75</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Night75</div>
                     <div class="solum-kpi-hint">m.69 — 20:00-06:00 penceresi</div>
                 </div>
-                <div class="solum-kpi @(Model.Compliance.HaftaTat > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
+                <div class="solum-kpi @(Model.Compliance.NoWeeklyRest > 0 ? "solum-kpi-bad" : "solum-kpi-good")">
                     <div class="solum-kpi-label">Hafta tatili yok</div>
-                    <div class="solum-kpi-value">@Model.Compliance.HaftaTat</div>
+                    <div class="solum-kpi-value">@Model.Compliance.NoWeeklyRest</div>
                     <div class="solum-kpi-hint">m.46 · kişi-hafta</div>
                 </div>
                 <div class="solum-kpi solum-kpi-neutral">
                     <div class="solum-kpi-label">Haftalık 45 saat üstü</div>
-                    <div class="solum-kpi-value">@Model.Compliance.Ustu45</div>
+                    <div class="solum-kpi-value">@Model.Compliance.Over45</div>
                     <div class="solum-kpi-hint"><b>İHLAL DEĞİL</b> — fazla çalışma · kişi-hafta</div>
                 </div>
             </div>
@@ -201,12 +201,12 @@ else
                                 <small>izin iptali · hafta tatili kullandırmama</small>
                             </td>
                             <td>İzin günü çalıştırılmış</td>
-                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.IzinIptalDk)</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.LeaveCancelledMin)</td>
                             <td class="solum-num" rowspan="2">%@Model.OvertimeSource.ManagementShare.ToString("N0")</td>
                         </tr>
                         <tr>
                             <td>Hafta tatili kullandırılmamış</td>
-                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.HaftaTatilDk)</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.WeeklyRestMin)</td>
                         </tr>
                         <tr>
                             <td rowspan="2">
@@ -214,12 +214,12 @@ else
                                 <small>kapanış gecikmesi · gün içi yoğunluk</small>
                             </td>
                             <td>Plan üstü çalışma</td>
-                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.FazlaCalismaDk)</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.ExtraWorkMin)</td>
                             <td class="solum-num" rowspan="2">%@Model.OvertimeSource.StoreShare.ToString("N0")</td>
                         </tr>
                         <tr>
                             <td>Plansız çalışma</td>
-                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.PlansizDk)</td>
+                            <td class="solum-num">@VrdFormat.HoursDecimal(Model.OvertimeSource.UnplannedMin)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -227,8 +227,8 @@ else
 
             <div class="solum-card-sub">
                 Uçlara göre: kapanış sonrası kalma
-                <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.CikisSonrasiDk)</b> ·
-                erken başlama <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.GirisOncesiDk)</b>
+                <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.AfterCloseMin)</b> ·
+                erken başlama <b>@VrdFormat.HoursDecimal(Model.OvertimeSource.BeforeOpenMin)</b>
             </div>
 
             @if (Model.StayBands.Count > 0)
@@ -247,11 +247,11 @@ else
                         <tbody>
                         @foreach (var b in Model.StayBands)
                         {
-                            var share = Model.StayBandTotal == 0 ? 0 : 100.0 * b.Dk / Model.StayBandTotal;
+                            var share = Model.StayBandTotal == 0 ? 0 : 100.0 * b.Minutes / Model.StayBandTotal;
                             <tr>
-                                <td>@b.Bant</td>
-                                <td class="solum-num">@b.Satir.ToString("N0")</td>
-                                <td class="solum-num">@VrdFormat.HoursDecimal(b.Dk)</td>
+                                <td>@b.Band</td>
+                                <td class="solum-num">@b.DayCount.ToString("N0")</td>
+                                <td class="solum-num">@VrdFormat.HoursDecimal(b.Minutes)</td>
                                 <td class="solum-num">%@share.ToString("N0")</td>
                             </tr>
                         }
@@ -283,11 +283,11 @@ else
                     @foreach (var b in Model.Branches)
                     {
                         <tr>
-                            <td>@b.Sube</td>
-                            <td class="solum-num">@b.KisiSay</td>
-                            <td class="solum-num">@b.KisiGun.ToString("N0")</td>
-                            <td class="solum-num">@VrdFormat.Duration(b.EksikDk)</td>
-                            <td class="solum-num">@VrdFormat.Duration(b.FazlaDk)</td>
+                            <td>@b.Branch</td>
+                            <td class="solum-num">@b.PersonCount</td>
+                            <td class="solum-num">@b.PersonDays.ToString("N0")</td>
+                            <td class="solum-num">@VrdFormat.Duration(b.ShortMin)</td>
+                            <td class="solum-num">@VrdFormat.Duration(b.OvertimeMin)</td>
                         </tr>
                     }
                     </tbody>
@@ -324,23 +324,23 @@ else
                     @foreach (var r in Model.Rows)
                     {
                         <tr>
-                            <td>@r.Tarih.ToString("dd.MM.yyyy")</td>
-                            <td>@r.Sube</td>
-                            <td>@r.Personel</td>
-                            <td>@r.Gorev</td>
-                            <td>@r.VardiyaTanim</td>
-                            <td class="solum-num">@VrdFormat.TimeOfDay(r.GirisDk)</td>
-                            <td class="solum-num">@VrdFormat.TimeOfDay(r.CikisDk)</td>
-                            <td class="solum-num">@VrdFormat.Duration(r.CalismaDk)</td>
-                            <td class="solum-num">@VrdFormat.Duration(r.EksikDk)</td>
-                            <td class="solum-num">@VrdFormat.Duration(r.FazlaDk)</td>
-                            <td>@r.Durum</td>
+                            <td>@r.Date.ToString("dd.MM.yyyy")</td>
+                            <td>@r.Branch</td>
+                            <td>@r.PersonName</td>
+                            <td>@r.JobTitle</td>
+                            <td>@r.ShiftPlan</td>
+                            <td class="solum-num">@VrdFormat.TimeOfDay(r.InMin)</td>
+                            <td class="solum-num">@VrdFormat.TimeOfDay(r.OutMin)</td>
+                            <td class="solum-num">@VrdFormat.Duration(r.WorkMin)</td>
+                            <td class="solum-num">@VrdFormat.Duration(r.ShortMin)</td>
+                            <td class="solum-num">@VrdFormat.Duration(r.OvertimeMin)</td>
+                            <td>@r.Status</td>
                             <td>
                                 @if (r.Suspect)
                                 {
                                     <span class="solum-badge solum-badge-warn">şüpheli okutma</span>
                                 }
-                                @r.OlcumNotu
+                                @r.MeasureNote
                             </td>
                         </tr>
                     }

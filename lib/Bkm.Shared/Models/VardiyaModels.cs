@@ -6,7 +6,7 @@ namespace Bkm.Shared.Models;
 /// ⚠ ALAN ADLARI TÜRKÇE — BİLİNÇLİ İSTİSNA (19.09.2026).
 ///   `turkish-ui.md` "kod İngilizce" der ve sınıf/metot/parametre adları buna
 ///   uyduruldu. DTO ALANLARI uymaz ve sebebi mekanik: bunlar `bkm.Vrd_KisiGun`
-///   kolonlarının BİREBİR yansımasıdır (`Sube`, `SicilNo`, `EksikDk`…). Kolonlar
+///   kolonlarının BİREBİR yansımasıdır (`Branch`, `StaffNo`, `ShortMin`…). Kolonlar
 ///   DerinSIS mirası + plan-47 tablolarıdır, Türkçedir ve DEĞİŞTİRİLEMEZ:
 ///   `sp_Vrd_KisiGunDoldur`, yayınlanan Excel ve plan-47 parite kapısı onlara bağlı.
 ///   Alanı İngilizce yapmak SQL'de 27 takma ad gerektirirdi — kazanç yok, iki
@@ -21,20 +21,20 @@ namespace Bkm.Shared.Models;
 ///   (`sql-server-conventions.md`).
 /// </summary>
 public sealed record VrdCutoff(
-    DateTime KesimBas, DateTime KesimBit, DateTime SayimBas,
-    int KisiGun, int SubeSay, DateTime Yazilma);
+    DateTime CutoffFrom, DateTime CutoffTo, DateTime CountFrom,
+    int PersonDays, int BranchCount, DateTime WrittenAt);
 
 public sealed record VrdSummary(
-    int KisiGun, int SubeSay, int KisiSay,
-    int EksikDk, int FazlaDk, int SayimDisi, int GunDonumu, int Supheli,
-    int DevirEksikDk, int DevirFazlaDk)
+    int PersonDays, int BranchCount, int PersonCount,
+    int ShortMin, int OvertimeMin, int OutOfCount, int DayRollover, int Suspect,
+    int CarryShortMin, int CarryOvertimeMin)
 {
     /// <summary>Yayınlanan raporun toplamı = dönem + önceki ay devri.</summary>
-    public int TotalShortMin => EksikDk + DevirEksikDk;
-    public int TotalOvertimeMin => FazlaDk + DevirFazlaDk;
+    public int TotalShortMin => ShortMin + CarryShortMin;
+    public int TotalOvertimeMin => OvertimeMin + CarryOvertimeMin;
 }
 
-public sealed record VrdStatus(string Durum, int KisiGun);
+public sealed record VrdStatus(string Status, int PersonDays);
 
 /// <summary>
 /// Fazla mesainin KAYNAĞI ve KONTROL EDİLEBİLİRLİĞİ (GMY sorusu 17.09.2026).
@@ -42,44 +42,44 @@ public sealed record VrdStatus(string Durum, int KisiGun);
 /// m.46 hafta tatili çalışması 1 yevmiye + %50 · izin gününde çalıştırma).
 /// </summary>
 public sealed record VrdOvertimeSource(
-    int FazlaCalismaDk, int IzinIptalDk, int HaftaTatilDk, int PlansizDk,
-    int CikisSonrasiDk, int GirisOncesiDk)
+    int ExtraWorkMin, int LeaveCancelledMin, int WeeklyRestMin, int UnplannedMin,
+    int AfterCloseMin, int BeforeOpenMin)
 {
     /// <summary>Yönetim kararı — mağazanın elinde DEĞİL (izin iptali · hafta tatili).</summary>
-    public int ManagementMin => IzinIptalDk + HaftaTatilDk;
+    public int ManagementMin => LeaveCancelledMin + WeeklyRestMin;
     /// <summary>Mağaza operasyonu — kapanış/hazırlık, mağazanın elinde.</summary>
-    public int StoreMin => FazlaCalismaDk + PlansizDk;
+    public int StoreMin => ExtraWorkMin + UnplannedMin;
     public int TotalMin => ManagementMin + StoreMin;
     public double ManagementShare => TotalMin == 0 ? 0 : 100.0 * ManagementMin / TotalMin;
     public double StoreShare => TotalMin == 0 ? 0 : 100.0 * StoreMin / TotalMin;
 }
 
 /// <summary>Kapanış sonrası kalma süre bandı — asıl aksiyon uzun kuyrukta.</summary>
-public sealed record VrdStayBand(string Bant, int Satir, int Dk);
+public sealed record VrdStayBand(string Band, int DayCount, int Minutes);
 
-public sealed record VrdBranch(string Sube, int KisiGun, int KisiSay, int EksikDk, int FazlaDk);
+public sealed record VrdBranch(string Branch, int PersonDays, int PersonCount, int ShortMin, int OvertimeMin);
 
 /// <summary>
 /// Mesai mevzuat kapısı sayıları — `tools/mesai_mevzuat_kapisi.py` ile AYNI eşikler.
-/// <b>Ustu45 İHLAL DEĞİLDİR</b>: haftalık 45 saat normal çalışma sınırıdır, üstü fazla
+/// <b>Over45 İHLAL DEĞİLDİR</b>: haftalık 45 saat normal çalışma sınırıdır, üstü fazla
 /// çalışmadır ve meşrudur. Sert sınır yıllık 270 saat + yazılı muvafakat (m.41/7).
 /// </summary>
 public sealed record VrdCompliance(
-    int Gunluk11, int Brut12, int Gece75, int HaftaTat, int Ustu45, int Supheli);
+    int Daily11, int Gross12, int Night75, int NoWeeklyRest, int Over45, int Suspect);
 
 public sealed record VrdRow(
-    string Sube, string SicilNo, string? Personel, string? Bolum, string? Gorev,
-    DateTime Tarih, string? VardiyaTanim,
-    int? KartGirisDk, int? KartCikisDk, int? GirisDk, int? CikisDk,
-    int? BrutDk, int? MolaDk, int? CalismaDk, int PlanCalismaDk,
+    string Branch, string StaffNo, string? PersonName, string? Department, string? JobTitle,
+    DateTime Date, string? ShiftPlan,
+    int? CardInMin, int? CardOutMin, int? InMin, int? OutMin,
+    int? GrossMin, int? BreakMin, int? WorkMin, int PlanWorkMin,
     // ⚠ SIRA SÖZLEŞMEDİR (Dapper pozisyonel record): SQL'e araya kolon eklenirse
     //   buraya da AYNI yere eklenir. Aşağıdaki dördü SP'nin yazdığı YAYIN ölçüsü —
-    //   `CalismaDk`/`PlanCalismaDk` aracın ölçüsü, ikisi kasıtlı farklı.
-    int? GerekenDk, int? Net2Dk, int? HaftalikPrimDk, int? EksikDk, int? FazlaDk,
-    string Durum, bool GunDonumu, bool SayimDisi, string? OlcumNotu,
-    int? OnayGirisDk, int? OnayCikisDk, int? EkMesaiDk)
+    //   `WorkMin`/`PlanWorkMin` aracın ölçüsü, ikisi kasıtlı farklı.
+    int? RequiredMin, int? Net2Min, int? WeeklyPremiumMin, int? ShortMin, int? OvertimeMin,
+    string Status, bool DayRollover, bool OutOfCount, string? MeasureNote,
+    int? ApprovedInMin, int? ApprovedOutMin, int? ExtraShiftMin)
 {
-    public bool Suspect => OlcumNotu?.Contains(VrdConstants.SuspectText) == true;
+    public bool Suspect => MeasureNote?.Contains(VrdConstants.SuspectText) == true;
 }
 
 /// <summary>Süre biçimleme — dakika tabanı tek yerde.</summary>
