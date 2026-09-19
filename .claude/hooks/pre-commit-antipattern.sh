@@ -136,6 +136,28 @@ if echo "$staged" | grep -qE 'VrdSabit|mesai_mevzuat_kapisi|VardiyaQueries'; the
 fi
 
 
+# ── TODO KAPISI (madde sessizce kaybolmasin) ─────────────────────────────────
+# NEDEN: 19.09.2026'da TODO duzenlemesi V-02..V-05'i BIRLIKTE SILDI ve hicbir sey
+# uyarmadi. Silinen madde ekranda YOKTUR, yani "yapilmis" gibi gorunur; acik borc
+# kapanmis borctan ayirt edilemez hale gelir. Iki commit sonra "V-05 yap" denince
+# madde BULUNAMADI. Ayrinti: tools/todo_denetimi.py basligi (yakalama sozlesmesi).
+#
+# TETIK GENIS: TODO.md staged ISE degil, HER commit'te kosar -- cunku madde kaybi
+# TODO.md'yi degistiren commit'te olur ve o commit zaten TODO.md'yi stage ediyordur;
+# ama bir birlestirme/kismi stage durumunda kayip baska bir commit'e sizabilir.
+if command -v python >/dev/null 2>&1 && [ -f tools/todo_denetimi.py ]; then
+  if ! todo_out=$(python tools/todo_denetimi.py 2>&1); then
+    echo "=== TODO KAPISI: BLOKLANDI ===" >&2
+    echo "$todo_out" | grep -E '^(KIRIK|KOSAMADI|KOŞAMADI)' >&2
+    echo "" >&2
+    echo "Madde SILINMEZ: bittiyse [x], gereksizse ARSIV'e tasinir." >&2
+    echo "Gecici bypass: CLAUDE_PRECOMMIT_SKIP=1 git commit ..." >&2
+    exit 2
+  fi
+else
+  warn_issues+=("TODO kapisi KOSMADI (python ya da script yok) - sessizlik kanit degil")
+fi
+
 # ── TURKCE TANIMLAYICI KAPISI (kod Ingilizce, UI/yorum Turkce) ───────────────
 # Tetik: vardiya-app / lib / tests altinda staged .cs veya .cshtml varsa.
 # NEDEN: 19.09.2026'da GMY DORT KEZ ayni seyi soylemek zorunda kaldi ("hala

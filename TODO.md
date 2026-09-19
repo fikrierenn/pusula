@@ -232,6 +232,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
       bırakıldı; plan hâlâ Excel kaynaklı.
 
+- [ ] **V-16 TODO'da 6 MÜKERRER kimlik** (19.09, `todo_denetimi.py` ilk koşumunda bulundu)
+      `B-06 · B-12 · B-98 · B-110 · B-111 · B-172` iki yerde birden yazılı (ör. B-06:
+      satır 540 ve 697 aynı iş). Kapı bugün TAVAN ile geçiriyor (6); artış kırar.
+      Temizlenince tavan düşürülecek. ⚠ Mükerrer kimlik sinsi: biri kapatılınca öteki
+      açık kalır ve "hâlâ yapılmamış" görünür — ya da tersi.
+
 - [ ] **V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı** (19.09) — kırmızı kip
       geri alındıktan hemen sonraki koşumda 1 test kırmızı döndü; ardından **10 koşum
       üst üste yeşil** ve hata ÜRETİLEMEDİ. En olası sebep: derleme çıktısının test
