@@ -229,11 +229,15 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Ölçüm `SolumShellTests`: kabuk + marka + menü + çıkış adresi, ayrıca `solum.css` 200.
 - [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.
       Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
-- [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — plan 49 ONAYLANDI, 5/6 adım
-      bitti (`5dcc4b7` şema · `9c47882` okuma+yazma · `36e42d2` ekran+testler).
-      Kalan: **mevzuat kapısının düzeltilmiş izni okuması** (`mesai_mevzuat_kapisi.py`
-      bugün hâlâ ham `Izin` kolonuna bakıyor) + ölçülen 172 günün ekranda "tanım eksik"
-      diye işaretlenmesi. ⚠ Ayrıca S2 kararının parametre işi (`V-17`) İK'yı bekliyor.
+- [x] ~~**V-05 Vardiya planı girişi + izin günü tanımı**~~ — ✅ KAPANDI 19.09 (plan 49,
+      altı adım: `5dcc4b7` şema+view · `9c47882` okuma+yazma · `36e42d2` ekran+testler ·
+      `6e59acd` izin günü tabanı · `77d5c6a` deploy sapması kapısı · `d15f0a3` mevzuat
+      kapısı). GMY kararları: düzeltilmiş taban hesaba girer · ofis kadrosu politika
+      tablosundan (V-17) · izin işareti PDKS'yi ezmez.
+      Ölçüm: düzeltme yokken tüm rakamlar geçiş öncesiyle **birebir aynı** (mevzuat
+      kapısı 93/1/93/124/544), düzeltme yazılınca yansıyor (781 → 782 izinli gün).
+      ⚠ Kalan uçlar ayrı maddelerde: V-17 (politika parametresi) · V-18 (itiraz ekranı) ·
+      V-20 (kesim/devir ekseni test edilmedi).
 - [ ] **V-18 "Aslında izinli değildi" itirazının EKRANI yok** (19.09, plan 49) —
       `Vrd_PlanDuzeltme.IzinliMi = 0` yazılabiliyor ve view onu doğru yorumluyor
       (taban uygulanır), ama arayüzde yalnız "izinliydi" kutusu var; sıfır yazmanın
