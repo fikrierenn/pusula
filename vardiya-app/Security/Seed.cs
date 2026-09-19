@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Data;
+using System.Data.Common;
 using Bkm.Shared.Data;
 using Microsoft.AspNetCore.Identity;
 
@@ -228,12 +228,29 @@ public static class Seed
     ///   verme değil: "kime hangi şube verildi, kim verdi" bugün yalnız
     ///   <c>VerenId</c> kadarıyla biliniyor.
     /// </summary>
-    public static Task<int> GrantBranchAsync(IDbConnection cn, string userId, string branch, string grantedBy)
-        => AuthSql.ExecuteAsync(cn, """
+    public static async Task<bool> GrantBranchAsync(
+        DbConnection cn, string userId, string branch, string grantedBy)
+    {
+        // ⚠ YETKİ VERME + İZ AYNI İŞLEMDE (V-12). Ayrı olsaydı "şube verildi ama izi
+        //   yok" aralığı doğardı ve o aralık tam olarak denetimin sorduğu yerdir —
+        //   onay yazmasında aynı gerekçeyle işlem kullanılıyor.
+        await using var tx = await cn.BeginTransactionAsync();
+
+        var affected = await AuthSql.ExecuteAsync(cn, """
             IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_KullaniciSube
                            WHERE UserId=@id AND Sube=@sube AND GecerliBit IS NULL)
             INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId)
             VALUES (@id, @sube, @veren);
-            """, new SqlParams().Add("id", userId).Add("sube", branch).Add("veren", grantedBy));
+            """, new SqlParams().Add("id", userId).Add("sube", branch).Add("veren", grantedBy), tx);
 
+        // İZ YALNIZ GERÇEKTEN YAZILDIYSA. İdempotent ikinci çağrı bir OLAY DEĞİLDİR;
+        // izi olayla doldurmak denetimi gürültüye boğar ve gerçek yetki verme kaybolur.
+        if (affected > 0)
+            await AuditTrail.WriteAsync(cn, "Vrd_KullaniciSube", $"{userId}|{branch}",
+                AuditTrail.Action.Created, grantedBy, grantedBy,
+                new { Added = new { UserId = userId, Branch = branch, GrantedBy = grantedBy } }, tx);
+
+        await tx.CommitAsync();
+        return affected > 0;
+    }
 }

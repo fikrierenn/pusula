@@ -109,6 +109,11 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
         WHERE  UserId IN (SELECT Id FROM bkm.Vrd_Users WHERE UserName LIKE '{Prefix}%');
 
         DELETE FROM bkm.Vrd_Users WHERE UserName LIKE '{Prefix}%';
+
+        -- Denetim izi de temizlenir: yetki verme artik iz yaziyor (V-12) ve
+        -- test artiklari gercek izin arasinda birikirse denetim okunmaz olur.
+        DELETE FROM bkm.SolumAuditTrail
+        WHERE  EntityName = N'Vrd_KullaniciSube' AND UserName LIKE '{Prefix}%';
         """);
 
     public new async Task DisposeAsync()

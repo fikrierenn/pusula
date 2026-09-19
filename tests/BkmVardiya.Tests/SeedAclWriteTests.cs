@@ -59,6 +59,16 @@ public class SeedAclWriteTests(VardiyaAppFactory factory)
             WHERE  UserId = @id AND GecerliBit IS NULL
             """, new SqlParams().Add("id", factory.ManagerId));
         Assert.Contains(otherBranch, branches);
+
+        // DENETİM İZİ (V-12): yetki verme bir OLAYDIR ve izi olmadan
+        // "kime hangi şube verildi, kim verdi" sorusunun cevabı yoktur.
+        // ⚠ İZ TAM BİR KEZ: idempotent ikinci çağrı olay değildir. İki satır
+        //   çıkarsa iz gürültüye boğulur ve gerçek yetki verme kaybolur.
+        var trail = await AuthSql.QueryAsync<int>(cn, """
+            SELECT COUNT(*) FROM bkm.SolumAuditTrail
+            WHERE  EntityName = N'Vrd_KullaniciSube' AND RecordId = @kayit
+            """, new SqlParams().Add("kayit", $"{factory.ManagerId}|{otherBranch}"));
+        Assert.Equal(1, trail.Single());
     }
 
     private static async Task<int> CountAsync(System.Data.IDbConnection cn, string userId)
