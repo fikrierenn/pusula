@@ -240,6 +240,24 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       yolu SQL. Test bunu SQL ile kuruyor. ⚠ Kaynak izinli derken insan itiraz
       edemiyorsa, S3'ün "iki taraf da görünsün" kararı yarım kalır.
 
+- [ ] **V-19 Türkçe kapısının KARA LİSTE yarısı** (19.09, Solum'un ayrımı) — kapı iki
+      yarılı: Türkçe HARF taraması kapalı küme (kaçış yok), **ASCII'ye çevrilmiş kelime
+      taraması ise kara liste** ve eksikliği **görünmez**. ⚠ Kapının kendi yükseltme
+      tetiği **zaten ateşlendi**: 19.09 ikinci turunda 14 kelime listeye eklendi çünkü
+      kaçmışlardı. Yani borç bugün açık. Aday çözüm: sözlük tabanlı (TDK listesi) ya da
+      "İngilizce sözlükte olmayan tanımlayıcı" yaklaşımı — ikisi de ölçülmedi.
+      **Ölçmeyi engelleyen:** sözlük dosyası + yanlış alarm oranının bilinmemesi.
+      **Tetikleyici:** üçüncü kez listede olmayan bir kelimeden ihlal gelmesi.
+
+- [ ] **V-20 Vardiya testleri TEK KESİM üzerinde koşuyor (adım ekseni kör)** (19.09,
+      Solum'un sekizinci tuzağının ikinci ekseni) — fikstür tek kesim seçiyor; **kesim
+      değişimi ve devir taşıma hiç test edilmedi**. `GetSummaryAsync` devri ayrı tablodan
+      topluyor (`Vrd_Devir`) ve o yol yalnız ay kapanışında yazılıyor.
+      **Ölçmeyi engelleyen:** ikinci bir kesim üretmek `sp_Vrd_KisiGunDoldur` koşumu ister
+      (dev veride tek kesim var).
+      **Tetikleyici:** ilk gerçek ay kapanışı — devir yazıldığı gün bu test yazılmadan
+      kapanış YAPILMAZ.
+
 - [ ] **V-17 GM bölümleri için çalışma süresi parametresi** (19.09, plan 49 kararı S2)
       `Vrd_CalismaSaati`'nde 15 satır `OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı`
       notu taşıyor. GM ofis kadrosunun 70 günlük "vardiya tanımsız" kısmı bu satırlar

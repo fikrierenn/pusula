@@ -36,6 +36,27 @@ _Her projede aynen uygulanır. `paths:` yok — compact sonrası survive._
 
 Gerekirse sor: "Bu komutu çalıştırmam emin misin? Mevcut N dosya değişikliği kaybolacak."
 
+### KIRMIZI KİP GERİ ALMA — yasak liste NİYETE bakmaz (19.09.2026, ölçüldü)
+
+Bir kapının kırılabilirliğini kanıtlamak iki adımdır: **sabotaj** ve **geri alma**.
+Sabotajı dikkatle kuruyoruz; geri almayı **refleksle** yapıyoruz — ve yasak komut
+oraya sızıyor.
+
+**Vaka:** boş bir kırmızı-kip commit'i geri alırken `git reset --hard HEAD~1`
+çalıştırıldı ve çalışma dizinindeki **commit edilmemiş bir düzeltme** de silindi.
+Dosya scratchpad'deki betikten yeniden üretildi — kayıp olmadı ama "olmadı" bir
+tedbir değildir. Doğrusu `git reset --soft HEAD~1` ya da `git revert`ti.
+
+> Yasak listesi, komutun hangi **niyetle** yazıldığına bakmaz. "Zararlı komut
+> çalıştırmıyorum, bir kırmızı kip geri alıyorum" cümlesi o listeyi geçersiz kılmaz.
+
+**Geri alma çek-listesi:**
+1. Sabotaj İZİ hâlâ duruyor mu? (duruyorsa geri alma koşmamıştır — yeşil kalan bir
+   kırmızı kip "test kör" demek DEĞİLDİR, önce sabotajın uygulandığını ölç)
+2. Geri alma yolu `--hard` / `checkout -- .` İÇERMİYOR.
+3. Çalışma dizininde commit edilmemiş iş var mı? Varsa önce onu ayır.
+4. Takımın TAMAMI yeniden koşturuldu mu (yalnız sabote edilen test değil).
+
 ## Commit-Split Pattern
 
 Uncommitted > 15 olunca:

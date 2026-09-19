@@ -26,6 +26,16 @@ BİLİNEN ATLATMA:
 YÜKSELTME YOLU:
   • İhlal ikinci kez listede olmayan bir kelimeden gelirse, liste yaklaşımı
     terk edilip sözlük tabanlı bir çözüm (TDK kelime listesi) tartışılır.
+  ⚠ BU TETİK ZATEN ATEŞLENDİ (19.09, aynı gün): ikinci turda 14 kelime listeye
+    EKLENDİ çünkü kaçmışlardı. Yani yükseltme borcu bugün AÇIK — kapatılmadı,
+    V-19 olarak yazıldı.
+
+KAPININ İKİ YARISI AYNI GÜVENDE DEĞİL (Solum'un ayrımı, 19.09):
+  • Türkçe HARF taraması (`ıİşŞğĞüÜöÖçÇ`) — kapalı küme, kaçış YOK.
+  • ASCII'ye çevrilmiş Türkçe kelime taraması — KARA LİSTE, yani eksikliği
+    GÖRÜNMEZ. Yanlış alarm görülür ve düzeltilir; yanlış negatif sessizce
+    yeşil durur. Bu kapının riski o ikinci yarıdadır ve listenin uzunluğu
+    bir güvence DEĞİLDİR.
 ═══════════════════════════════════════════════════════════════════════════════
 
 NEDEN VAR: 19.09.2026 oturumunda GMY **dört kez** aynı şeyi söylemek zorunda
