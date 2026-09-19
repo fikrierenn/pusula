@@ -47,7 +47,14 @@ MADDE = re.compile(r"^\s*- \[([ xX])\]\s*(.*)$")
 # ⚠ PARANTEZLİ EK KİMLİĞİN PARÇASIDIR: `B-172` ile `B-172(c2)` AYRI maddelerdir.
 #   İlk yazımda parantez atılıyordu ve ikisi MÜKERRER görünüyordu — yani kapı,
 #   olmayan bir kusuru bildiriyordu (yanlış alarm, gerçek dup'ları gölgeler).
-KIMLIK = re.compile(r"\*\*~{0,2}\s*([A-Z]{1,4}-[A-Za-z0-9]{1,8}(?:-\d{1,3})?(?:\([A-Za-z0-9]{1,4}\))?)\b")
+# UYARI  BESINCI KALIBRASYON (19.09): desen `B-98-gen` ve `B-172(c2)` kimliklerini
+#   KISALTIYORDU (`B-98` / `B-172`) ve onlari asil maddelerin MUKERRERI gibi
+#   gosteriyordu. Sebep: ek parcalar OPSIYONELDI ve `\b` onlardan ONCE de
+#   eslesiyordu — yani desen "en kisa kabul edilebilir" kimligi aliyordu.
+#   Cozum: ekleri tekrarli yapip ARDINDAN gelen `-` ya da `(` varsa eslesmeyi
+#   REDDETMEK. Yanlis pozitif gurultusu boylece VERIDEN degil DESENDEN cikti.
+KIMLIK = re.compile(
+    r"\*\*~{0,2}\s*([A-Z]{1,4}-[A-Za-z0-9]{1,8}(?:-[A-Za-z0-9]{1,6})*(?:\([A-Za-z0-9]{1,4}\))?)(?![-(\w])")
 
 # Arsiv bolumundeki maddeler kimlik istemez (tarihsel kayit).
 ARSIV_BASLIK = re.compile(r"^#+\s*(Arşiv|ARŞİV|Archive)", re.M)
@@ -56,8 +63,10 @@ ARSIV_BASLIK = re.compile(r"^#+\s*(Arşiv|ARŞİV|Archive)", re.M)
 # depoda eski kimliksiz maddeler var; ama SAYI ARTARSA kapi kirmiziya doner.
 # Tavan bir hedef degil, bir TABAN: yeni kimliksiz madde eklenmesin diye.
 KIMLIKSIZ_TAVAN = 10
-# Mukerrer kimlik tabani — 19.09.2026 olcumu. Bunlar GERCEK dup borcu.
-MUKERRER_TAVAN = 6
+# Mukerrer kimlik tabani. 19.09'da 6 olcuLDU, ayni gun SIFIRA indi (V-16):
+# ikisi DESEN KUSURUYDU (`B-98-gen` / `B-172(c2)` kisaltiliyordu), dordu GERCEKTI
+# ve birlestirildi. Tavan artik 0 — yeni mukerrer kimlik KIRAR.
+MUKERRER_TAVAN = 0
 
 
 def maddeleri_cikar(metin: str) -> tuple[dict[str, bool], list[str], list[str]]:

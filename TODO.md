@@ -283,12 +283,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       düzeltilince kapanır. ⚠ Tablo yalnız `--parametre-yukle` ile yazılır (JSON → tablo,
       TEK YÖN) — yani uygulama yazması değil, **İK parametre kararı**.
 
-- [ ] **V-16 TODO'da 6 MÜKERRER kimlik** (19.09, `todo_denetimi.py` ilk koşumunda bulundu)
-      `B-06 · B-12 · B-98 · B-110 · B-111 · B-172` iki yerde birden yazılı (ör. B-06:
-      satır 540 ve 697 aynı iş). Kapı bugün TAVAN ile geçiriyor (6); artış kırar.
-      Temizlenince tavan düşürülecek. ⚠ Mükerrer kimlik sinsi: biri kapatılınca öteki
-      açık kalır ve "hâlâ yapılmamış" görünür — ya da tersi.
-
+- [x] ~~**V-16 TODO'da 6 MÜKERRER kimlik**~~ — ✅ KAPANDI 19.09. Ölçünce **ikisi kusur
+      değildi**: `B-98-gen` ve `B-172(c2)` ayrı maddeler, kapının kimlik deseni onları
+      kısaltıp asıl maddenin mükerreri gibi gösteriyordu (beşinci kalibrasyon).
+      Kalan **dördü gerçekti** ve birleştirildi: `B-06` ve `B-12` iki bölümde yazılıydı;
+      `B-110`/`B-111`'in ikinci kopyaları zaten metninde **"dup"** diyordu ama hiç
+      birleştirilmemişti. Kimlik sayısı 239 → 239 (kayıp yok), mükerrer 6 → **0**.
+      Tavan 0'a indi: yeni mükerrer artık **kırar** (kırmızı kiple doğrulandı).
 - [x] ~~**V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı**~~ — ✅ KAPANDI 19.09
       (commit `36e42d2`). Tahminle bulunamadı; hata mesajına **kanıt** eklendi (üretilen
       şifre + sayfa uyarısı) ve ikinci koşumda yakalandı: şifre `Nr2&#x2B;6QQb2BWt` —
@@ -594,8 +595,6 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ✅ **B-127 FSM Trafik & Kasiyer + PDKS saatlik personel** — 29-30.06 sayfa (commit 0448dae/bd7942e/a604b53/6f42597: kapı×POS heatmap+KPI+personel tablosu). **01.07 PDKS eklendi:** `GetPdksPersonelAsync` GecoTime `OPENQUERY([PDKS])` TTagZei×TPerTab, saatlik headcount 3-kural (span MIN-MAX / çıkış-dakika dahil / opdays payda — sema `pdks_saatlik_personel`). 4-bant heatmap → tek "Personel–Trafik Uyumu" karne haritası (renk=mismatch ±0.15, opaklık=yoğunluk) + veri-tablosu modal grid. Başlık FSM'den mağaza-genel "Trafik & Kasiyer"e çevrildi (diğer mağazalar gelecek). SQL arşiv `sorgular/2026-06-30-pdks-saatlik-personel.sql` + `2026-07-01-trafik-birlesik-grid.sql` (üretim + analiz izi).
 - [~] **B-128 Muhasebe Kontrol — CAR evrak drill'i eksikti + SP çift-sayım keşfi** — 01.07. (a) `EvrakAc` sadece MHS/FAT işliyordu, CAR listede çıkıp tıklanınca hiç açılmıyordu → `MuhasebeQueries.GetCariMhsFisAsync` (car.cMhsFisID→mhsFisBaslik köprü) + `/yevmiye-fis`'e yönlendirme + Kapanış kolonu (drill listesi) + kırmızı "Ay Kapanışı" (evrak sayfaları, query-param taşınır). cMhsFisID=0 olan hareketlerde (elden teslim/nakit) drill hedefi yok — normal. Tarayıcıda canlı doğrulandı (computer-use screenshot). (b) **KEŞİF: SP çift-sayım** — `sp_KapanisMudahaleKontrol_v2` HEPSI modunda aynı yevmiye fişi hem CAR hem MHS satırı olarak bağımsız flag'leniyor → Mayıs'26 kapanışta **36 mükerrer** doğrulandı. Fix kaynağa yazıldı (`sorgular/2026-06-22-muhasebe-kontrol-v2.sql`, MHS INSERT'e guard) — CAR kanonik kalır. **KALAN: Fikri review + redeploy** (SP objesi ERP-yazma politikası dışında, ben deploy etmem).
 - [x] ✅ **B-129 Modal genişlik — tüm modallarda sessiz bug** — 01.07. `Modal.razor` Size prop (sm/lg/xl) hiçbir zaman görsel etki yapmıyordu: DaisyUI `sm:modal-middle` kuralı (`.sm\:modal-middle :where(.modal-box){max-width:32rem}`) Tailwind çıktısında utility class'lardan SONRA geliyor (responsive varyantlar dosya sonuna toplanır) → eşit specificity'de o kazanıyordu, Size sessizce hiçe sayılıyordu. Fix: `MaxWidthCls` artık `!` (important) prefix kullanıyor (`!max-w-2xl` vb.) + yeni `Size="full"` (`!max-w-none`, cap yok — geniş grid modalleri için). Muhasebe detay modalı `Size="full"`'a geçti. Tarayıcıda canlı doğrulandı — 10 kolonlu tablo artık scroll'suz tek ekranda.
-- [ ] **B-06** CampaignId=NULL **389,4M ₺** indirim kaynak araştırması (Session-2'den açık — MCP keşfi).
-- [ ] **B-12/B-13** e-ticaret keşif SQL'lerini `sorgular/`'a arşivle (ikiz-yükümlülük borcu).
 - [ ] **TEMİZLİK:** B-NEW-00..06 (Mayıs kampanya) **stale → `## Arşiv`'e taşı** (Nisan'dan beri aktif Faz'da, bitmedi).
 > Diğer açık: Faz-2 veri (B-08/09/10/11/14), otomasyon (B-21/32 mail-scheduler, B-05, B-23a-d), ertelenen (B-93/94/95 bilinçli), ayrı-repo (MCP M-0x → `D:\Dev\sqlserver-mcp`), ayrı-proje (YonetIQ Y-0x başlamadı). Tam liste aşağıda.
 
@@ -751,7 +750,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-04** `scripts/register-scheduled-task.ps1` çalıştır → Task Scheduler kaydı (her Pazartesi 09:00). **Tek görev mimarisi:** 14.05.2026'da `send_brief.bat` v5 self-healing yapıldı (brief.html yoksa `generate_brief.py` ile kendisi üretir → eski generator/sender yarış koşulu bitti, 11.05'te bu yüzden mail gitmemişti). `register-brief-generator-task.ps1` deprecated edildi (artık sadece eski `BKM-Brief-Generator` görevini kaldırıyor); `register-scheduled-task.ps1` çalıştırıldığında o eski görevi de otomatik temizler. **Kullanıcı sadece `register-scheduled-task.ps1`'i çalıştıracak.**
 - [ ] **B-20** Pazartesi maili **fikri.eren@bkmkitap.com**'a SPAM'a düşüyor olabilir (4 kez gönderildi 20.04'te, kullanıcı "gelmedi" dedi). Kontrol: BKM webmail spam klasörü. Çözüm: BKM whitelist veya SPF/DKIM doğrulama veya gönderici adresini `fikrieren@gmail.com`'dan BKM SMTP'sine değiştirmek. **(YENİ)**
 - [ ] **B-05** SsmsExcelExporter build & test (`dotnet publish -c Release -r win-x64`) — Ctrl+Shift+E + Ctrl+Shift+W çalışmalı.
-- [ ] **B-06** `CampaignId = NULL` 389,4M ₺ indirim kaynak araştırması (Session 2'den beri açık).
+- [ ] **B-06** `CampaignId = NULL` **389,4M ₺** indirim kaynak araştırması (Session 2'den beri açık;
+      MCP keşfiyle bulundu). ⚠ 19.09: bu madde İKİ yerde yazılıydı, birleştirildi (V-16).
 - [x] ~~**B-07** Ürün bazlı maliyet/marj analizi — 3Al2Öde'nin gerçek kârlılık etkisi.~~ — ✅ 07.05.2026: `sorgular/04-karzarar/2026-05-07-gunluk-kar-zarar-maliyet-karsilastirma.sql` üretildi (plan: `plans/04-gunluk-kar-zarar-maliyet-karsilastirma.md`). Kitap kategorisinde günlük P/L, Maliyet = `fatAyr.ehTutarN / ABS(ehAdetN)`. **Kritik bulgu:** DerinSIS alış faturasında `ehAdet/ehAdetN` NEGATİF, `ehMaliyet` kolonu BOŞ — `ehTutarN/ABS(ehAdetN)` doğru formül. `irsHrk.ehMlyt` ve `fatAyr.ehMaliyet` BKM'de aktif kullanılmıyor. **06.05.2026 testi:** Net 544K ₺, Marj %22.5, Çocuk Kitabı %8 dikkat çekici (3al2öde etkisi).
 - [x] ~~**B-23** Plan 04 v2 mağaza kırılımı~~ — ✅ 07.05.2026: `sorgular/04-karzarar/2026-05-07-gunluk-kar-zarar-irshrk-magazali.sql` üretildi. Satış kaynağı **irsHrk** (ehTip 1/4/100 satış, 3/5/101 iade), mağaza ID 1=FSM/4477=Özlüce/4478=İst.Yolu, 4 result-set (mağaza×kategori, genel, top 200 ürün, doğrulama). 06.05.2026 testi: FSM 255K marj %44, Özlüce 361K %43, İst.Yolu 77K %45 — toplam 693K marj (%44). Kalan v3 işleri: (a) JOKER e-ticaret, (b) önceki fatura snapshot, (c) eDvzKur çevrim, (d) stored procedure'a sarma. — bunlar **B-23a/b/c/d** olarak ayrı.
 - [ ] **B-23a** v3: JOKER e-ticaret kanalı entegrasyonu (linked server ODAKJOKER.JOKER, J_ORDERS+J_ORDER_ITEMS).
@@ -789,11 +789,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-09** Sales → fat/irsHrk bağlantısı (LinkedDocumentNo / ClosureNo / TransferHistory).
 - [ ] **B-10** `bkm.HareketKanal_vw` view tasarımı — Sınav vs Perakende ayrımı.
 - [ ] **B-11** 2026 yıllık tahmin (Sınav / Retail ayrıştırılmış).
-- [ ] **B-12** H15 e-ticaret sorgularının arşivlenmesi (`sorgular/YYYY-MM-DD-*.sql`).
+- [ ] **B-12** H15 e-ticaret sorgularının arşivlenmesi (`sorgular/YYYY-MM-DD-*.sql`) —
+      ikiz-yükümlülük borcu (`semantic-layer.md`). ⚠ 19.09: `B-12/B-13` diye birleşik yazılmış
+      ikinci bir satır vardı, birleştirildi (V-16). B-13 kendi maddesinde duruyor.
 - [ ] **B-13** Önceki oturum e-ticaret trend raporu SQL'leri arşive: haftalık ciro/adet, günlük nabız, Top 20 organik, kanal kırılımı, kategori, yayınevi Top 15, sipariş durum, Echo of Silence forensic, YoY 2025, J_ITEMSBARCODE keşif.
 - [ ] **B-14** Grok sinyallerini iç satış verisiyle cross-check (önceki sorgular 30s timeout — başlık-bazlı küçük sorgulara böl).
-- [x] ✅ **B-110** ⭐ Tedarikçi/Yayınevi Performans — **KAPANDI 22.06** (plan-24, dup: bkz satır 167). Envanter scorecard kartı: marka net ciro + iade oranı + stok devir hızı + sipariş-kes sinyali. `GetTedarikciPerformansAsync` (derived-table JOIN), `TedarikciPerfRow`, sema `marka_devir`, SQL arşiv `2026-06-22-tedarikci-performans.sql`. Canlı: Faber-Castell 0,46× sermaye tuzağı.
-- [x] ✅ **B-111** WMS Bekleyen Sipariş Doluluk — **KAPANDI 22.06** (dup: SABAH satırıyla aynı, bkz satır 159). Çözüm: TEMİZ yol J_ORDERS e-tic aşama split (`EticQueries.GetBekleyenDurumAsync`), DerinSIS `emirAyr` KİRLİ olduğu için kullanılmadı (18.06 keşif `sorgular/2026-06-18-wms-bekleyen-kesif.sql`). Operasyon mini-kart, build yeşil. Canlı: toplanma 2/hazırlanan 4.283/temin 6.185.
 - [~] **B-112** Dashboard hızlı kazanımlar — **3/4 İŞLENDİ 22.06** (dup: SABAH satırıyla aynı, bkz satır 160). (a) ödeme grubu+Δ · (b) iade sebebi `RefundReasons.Type=0` · (c) indirim kaynağı `SPC.Source` → Operasyon, dönem-duyarlı, `RefQueries.Operasyon.cs`. (d) kasa saatleri = zaten vardı (Saat Bazlı Yoğunluk) → atlandı. Build yeşil.
 
 - [~] **B-113** UI checklist temizlik (asistan-ui §5.5, 35 ihlal — YÜKSEK yok). ✅ 17.06 DÜZELTİLDİ: Türkçe (Error/NotFound/ReconnectModal + error-boundary::after) · **Emoji→Lucide** (Asistan 4 buton, Modal ✕, MainLayout, Home/Magazalar/Sadakat link-ikon, Operasyon badge) · **focus-visible global CSS** (app.tailwind.css `*:focus-visible` → tüm input+tıklanabilir). **KALAN:** (b) Hardcode hex 11 adet ApexCharts.Blazor C# option (AppMultiLine/Stacked/Bar/Area eksen #94a3b8 + grid + Magazalar Colors + App theme-color) — render-time C# nesne, CSS-var geçilemez → JS interop gerektirir (OnAfterRender renk-set). Eksen gri nötr/marka değil, düşük görsel etki. Ayrı iş.
