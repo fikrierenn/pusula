@@ -46,12 +46,14 @@ SORGULAR = KOK / "lib/Bkm.Shared/Data/VardiyaQueries.cs"
 PANEL_SAYFA = KOK / "dashboard/Components/Pages/Vardiya.razor"
 
 # Kapsam suzgeci istemesi ZORUNLU tablolar — bunlara erisim yalniz bogazdan.
-# ⚠ PLAN 49 (V-05) ile IKI AD DAHA: duzeltme tablosu kisi-gun kimligiyle yazilir ve
-#   duzeltilmis view kisi-gun verisi dondurur — ikisi de KAPSAM tasir. Listeye
-#   ONCEDEN eklendi: kullanim geldiginde kapi zaten bekliyor olsun, sonradan
-#   "eklemeyi unutma" konvansiyonuna guvenmeyelim.
-KAPSAMLI_TABLOLAR = ["bkm.Vrd_KisiGun", "bkm.Vrd_Devir",
-                     "bkm.Vrd_PlanDuzeltme", "bkm.Vrd_KisiGunDuzeltilmis_vw"]
+# ⚠ PLAN 49 (V-05): duzeltilmis VIEW listeye girdi — kisi-gun verisi donduruyor,
+#   yani kapsam tasir. `Vrd_PlanDuzeltme` ise GIRMEDI ve bu bir OLCUMLE duzeltildi:
+#   once "ne olur ne olmaz" diye eklenmisti, kapi da yazma yolunu KIRIK verdi.
+#   Dogrusu `Vrd_Onay` ile ayni sinif — tablo kapsam TASIMAZ, kimligi SicilNo+Tarih'tir
+#   ve kapsami ona `PersonDays` uzerinden yazilan muhafiz baglar. Kapsamli saymak,
+#   kapsamsiz bir tabloya kapsam suzgeci arattirirdi: kapi yesil kalmak icin anlamsiz
+#   bir suzgec yazmaya zorlardi.
+KAPSAMLI_TABLOLAR = ["bkm.Vrd_KisiGun", "bkm.Vrd_Devir", "bkm.Vrd_KisiGunDuzeltilmis_vw"]
 
 # URETIM kokleri. `tests/` BILEREK DISARIDA: test kapsamsiz nufusu olcmek
 # ZORUNDADIR (olcemezse sizintinin varligini da yoklugunu da kanitlayamaz).

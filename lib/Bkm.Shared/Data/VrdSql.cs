@@ -48,9 +48,14 @@ public static class VrdSql
     /// <summary>
     /// KAPSAMLI kişi-gün kaynağı. <c>FROM {VrdSql.PersonDays} k</c> biçiminde kullanılır;
     /// takma ad ZORUNLUDUR (türetilmiş tablo).
+    ///
+    /// ⚠ KAYNAK ARTIK VIEW (plan 49 / V-05): <c>bkm.Vrd_KisiGunDuzeltilmis_vw</c>
+    ///   ölçülen kişi-günü insan düzeltmesiyle birleştirir. Ham tabloya dönülürse
+    ///   düzeltmeler SESSİZCE görünmez olur — rakam değişmez, yalnız düzeltme yok
+    ///   sayılır. Düzeltme yokken view ham tabloyla BİREBİR aynıdır (mutabakat 0/0).
     /// </summary>
     public const string PersonDays = """
-        (SELECT * FROM bkm.Vrd_KisiGun
+        (SELECT * FROM bkm.Vrd_KisiGunDuzeltilmis_vw
           WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId)))
         """;
 

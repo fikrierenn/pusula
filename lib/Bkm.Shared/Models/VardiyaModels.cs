@@ -26,7 +26,11 @@ public sealed record VrdCutoff(
 
 public sealed record VrdSummary(
     int PersonDays, int BranchCount, int PersonCount,
-    int ShortMin, int OvertimeMin, int OutOfCount, int DayRollover, int Suspect,
+    // ⚠ SIRA SÖZLEŞMEDİR (Dapper pozisyonel record): `CorrectedDays` SQL'de
+    //   `OvertimeMin`den HEMEN SONRA geliyor ve burada da öyle duruyor. Sona
+    //   eklenseydi tipler uyuştuğu için DEĞERLER SESSİZCE KAYARDI.
+    int ShortMin, int OvertimeMin, int CorrectedDays,
+    int OutOfCount, int DayRollover, int Suspect,
     int CarryShortMin, int CarryOvertimeMin)
 {
     /// <summary>Yayınlanan raporun toplamı = dönem + önceki ay devri.</summary>

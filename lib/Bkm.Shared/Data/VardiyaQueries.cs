@@ -83,8 +83,11 @@ public sealed class VardiyaQueries(Db db)
                 --   Taban `Vrd_CalismaSaati` politika tablosudur; vardiya planının
                 --   süresiyle hesaplanırsa yayınlanan Excel'den SAPAR (ölçüldü:
                 --   plan tabanı 4.313/4.596 saat vs politika tabanı 6.118/5.024).
-                ShortMin    = SUM(ISNULL(EksikDk, 0)),
-                OvertimeMin = SUM(ISNULL(FazlaDk, 0)),
+                -- ⚠ ETKİN değerler (plan 49): düzeltme varsa onun tabanıyla, yoksa
+                --   SP'nin yazdığıyla. Düzeltme yokken ikisi AYNI sayıdır.
+                ShortMin    = SUM(ISNULL(EtkinEksikDk, 0)),
+                OvertimeMin = SUM(ISNULL(EtkinFazlaDk, 0)),
+                CorrectedDays = SUM(CASE WHEN DuzeltildiMi = 1 THEN 1 ELSE 0 END),
                 OutOfCount  = SUM(CONVERT(int, SayimDisi)),
                 DayRollover = SUM(CONVERT(int, GunDonumu)),
                 Suspect     = SUM(CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END),
@@ -121,8 +124,8 @@ public sealed class VardiyaQueries(Db db)
             SELECT  Branch      = Sube,
                     PersonDays  = COUNT(*),
                     PersonCount = COUNT(DISTINCT NULLIF(SicilNo, '')),
-                    ShortMin    = SUM(ISNULL(EksikDk, 0)),
-                    OvertimeMin = SUM(ISNULL(FazlaDk, 0))
+                    ShortMin    = SUM(ISNULL(EtkinEksikDk, 0)),
+                    OvertimeMin = SUM(ISNULL(EtkinFazlaDk, 0))
             FROM    {VrdSql.PersonDays} k
             WHERE   KesimBas = @bas AND KesimBit = @bit
             GROUP BY Sube ORDER BY Sube
@@ -268,7 +271,7 @@ public sealed class VardiyaQueries(Db db)
                    Department       = k.Bolum,
                    JobTitle         = k.Gorev,
                    Date             = k.Tarih,
-                   ShiftPlan        = k.VardiyaTanim,
+                   ShiftPlan        = k.EtkinVardiyaTanim,
                    CardInMin        = k.KartGirisDk,
                    CardOutMin       = k.KartCikisDk,
                    InMin            = k.GirisDk,
@@ -277,11 +280,11 @@ public sealed class VardiyaQueries(Db db)
                    BreakMin         = k.MolaDk,
                    WorkMin          = k.CalismaDk,
                    PlanWorkMin      = k.PlanCalismaDk,
-                   RequiredMin      = k.GerekenDk,
+                   RequiredMin      = k.EtkinGerekenDk,
                    Net2Min          = k.Net2Dk,
                    WeeklyPremiumMin = k.HaftalikPrimDk,
-                   ShortMin         = k.EksikDk,
-                   OvertimeMin      = k.FazlaDk,
+                   ShortMin         = k.EtkinEksikDk,
+                   OvertimeMin      = k.EtkinFazlaDk,
                    Status           = k.Durum,
                    DayRollover      = k.GunDonumu,
                    OutOfCount       = k.SayimDisi,
@@ -321,6 +324,136 @@ public sealed class VardiyaQueries(Db db)
     /// </summary>
     private static string LikeKacir(string s) =>
         s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
+
+    /// <summary>
+    /// PLAN DÜZELTME — eksik vardiya tanımını ve izin gününü düzeltir (plan 49 / V-05).
+    ///
+    /// NEDEN AYRI TABLO: <c>Vrd_KisiGun</c> yalnız <c>sp_Vrd_KisiGunDoldur</c>
+    /// tarafından yazılır. Uygulama oraya yazsaydı SP'nin bir sonraki koşumu
+    /// düzeltmeyi SESSİZCE ezerdi. Ölçülen (SP) ile düzeltilen (insan) ayrı durur,
+    /// okuma anında <c>Vrd_KisiGunDuzeltilmis_vw</c> ile birleşir.
+    ///
+    /// ⚠ DÜZELTME HESABI DEĞİŞTİRİR (GMY kararı S1): düzeltilmiş süre eksik/fazlanın
+    ///   TABANI olur. Yani bu bir not değil, bir RAKAM değişikliğidir — ekran
+    ///   "düzeltilmiş" saymasını göstermek ZORUNDA, yoksa iki farklı toplam doğar.
+    ///
+    /// ⚠ İZİN İŞARETİ PDKS'Yİ EZMEZ (karar S3): kaynaktaki <c>Izin</c> durur,
+    ///   buradaki işaret onun yanına yazılır.
+    ///
+    /// ⚠ YAZMA TARAFI KAPSAM KAPISI — okuma süzgeci burada YETMEZ: SicilNo+Tarih elle
+    ///   de gelebilir. Kapı olmasaydı bir müdür görmediği şubenin gününü düzeltebilirdi.
+    ///   Sessiz başarısızlık yok: eşleşme yoksa AÇIKÇA fırlatılır.
+    /// </summary>
+    public async Task SavePlanCorrectionAsync(
+        string userId, string sicilNo, DateOnly tarih,
+        string? shiftPlan, int? planStartMin, int? planEndMin, int? planWorkMin,
+        bool? onLeave, string? aciklama, string savedBy)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("userId boş olamaz — şube kapsamı çözülemez.", nameof(userId));
+        if (string.IsNullOrWhiteSpace(sicilNo))
+            throw new ArgumentException("SicilNo boş olamaz — kişi-gün kimliği kurulamaz.", nameof(sicilNo));
+
+        // DB'deki CHECK kısıtlarının ikizi — ama burada da var, çünkü kullanıcıya
+        // "kısıt ihlali" değil SEBEBİ söylenmeli. DB tarafı son savunma, bu ilk.
+        if ((planStartMin is null) != (planEndMin is null))
+            throw new ArgumentException(
+                "Başlama ve bitiş İKİSİ BİRDEN verilir ya da hiçbiri — yarım plan bir vardiya tanımlamaz.");
+        if (planStartMin is not null && planEndMin <= planStartMin)
+            throw new ArgumentException("Bitiş, başlamadan sonra olmalı (sıfır süreli vardiya bir tanım değil).");
+        foreach (var (ad, v) in new[] { ("Başlama", planStartMin), ("Bitiş", planEndMin) })
+            if (v is < 0 or > 2880)
+                throw new ArgumentOutOfRangeException(ad, $"{ad} dakikası 0-2880 dışında: {v}");
+        if (planWorkMin is < 0 or > 1440)
+            throw new ArgumentOutOfRangeException(nameof(planWorkMin), "Plan süresi 0-1440 dakika dışında.");
+
+        using var cn = db.OpenPanel();
+
+        var kapsamda = await VrdSql.ExecuteScalarAsync<int>(cn, $"""
+            SELECT COUNT(*)
+            FROM   {VrdSql.PersonDays} k
+            WHERE  k.SicilNo = @sicilNo AND k.Tarih = @tarih
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih));
+
+        if (kapsamda == 0)
+            throw new UnauthorizedAccessException(
+                $"Bu kişi-gün kaydı şube kapsamınızda değil (sicil {sicilNo}, {tarih:dd.MM.yyyy}).");
+
+        var onceki = await VrdSql.QuerySingleOrDefaultAsync<VrdPlanCorrection>(cn, """
+            SELECT ShiftPlan    = VardiyaTanim,  PlanStartMin = PlanBaslamaDk,
+                   PlanEndMin   = PlanBitisDk,   PlanWorkMin  = PlanCalismaDk,
+                   OnLeave      = IzinliMi,      Note         = Aciklama
+            FROM   bkm.Vrd_PlanDuzeltme WHERE SicilNo = @sicilNo AND Tarih = @tarih
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih));
+
+        await using var tx = await cn.BeginTransactionAsync();
+        var kayitId = $"{sicilNo}|{tarih:yyyy-MM-dd}";
+
+        var bosaltiliyor = shiftPlan is null && planStartMin is null && planWorkMin is null
+                        && onLeave is null && string.IsNullOrWhiteSpace(aciklama);
+
+        if (bosaltiliyor)
+        {
+            // Hepsi boşsa kayıt SİLİNİR — boş bir düzeltme satırı okumada gereksiz
+            // eşleşme üretir ve "düzeltildi" işaretini YALANCI yapar.
+            if (onceki is null) { await tx.CommitAsync(); return; }
+
+            await VrdSql.ExecuteAsync(cn,
+                "DELETE FROM bkm.Vrd_PlanDuzeltme WHERE SicilNo = @sicilNo AND Tarih = @tarih",
+                VrdParams.For(userId).StaffDay(sicilNo, tarih), tx);
+
+            await AuditTrail.WriteAsync(cn, "Vrd_PlanDuzeltme", kayitId, AuditTrail.Action.Deleted,
+                userId, savedBy, new { Old = onceki }, tx);
+            await tx.CommitAsync();
+            return;
+        }
+
+        await VrdSql.ExecuteAsync(cn, """
+            MERGE bkm.Vrd_PlanDuzeltme AS h
+            USING (SELECT @sicilNo AS SicilNo, @tarih AS Tarih) AS k
+               ON h.SicilNo = k.SicilNo AND h.Tarih = k.Tarih
+            WHEN MATCHED THEN UPDATE SET
+                 VardiyaTanim = @vardiyaTanim, PlanBaslamaDk = @baslamaDk,
+                 PlanBitisDk = @bitisDk, PlanCalismaDk = @calismaDk,
+                 IzinliMi = @izinliMi, Aciklama = @aciklama,
+                 Kaydeden = @kaydeden, KayitUtc = SYSUTCDATETIME()
+            WHEN NOT MATCHED THEN INSERT
+                 (SicilNo, Tarih, VardiyaTanim, PlanBaslamaDk, PlanBitisDk,
+                  PlanCalismaDk, IzinliMi, Aciklama, Kaydeden)
+                 VALUES (@sicilNo, @tarih, @vardiyaTanim, @baslamaDk, @bitisDk,
+                         @calismaDk, @izinliMi, @aciklama, @kaydeden);
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih)
+                          .Add("vardiyaTanim", string.IsNullOrWhiteSpace(shiftPlan) ? null : shiftPlan.Trim())
+                          .Add("baslamaDk", planStartMin)
+                          .Add("bitisDk", planEndMin)
+                          .Add("calismaDk", planWorkMin)
+                          .Add("izinliMi", onLeave)
+                          .Add("aciklama", string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim())
+                          .Add("kaydeden", savedBy), tx);
+
+        await AuditTrail.WriteAsync(cn, "Vrd_PlanDuzeltme", kayitId,
+            onceki is null ? AuditTrail.Action.Created : AuditTrail.Action.Updated,
+            userId, savedBy,
+            new
+            {
+                Old = onceki,
+                New = new
+                {
+                    ShiftPlan = shiftPlan, PlanStartMin = planStartMin, PlanEndMin = planEndMin,
+                    PlanWorkMin = planWorkMin, OnLeave = onLeave, Note = aciklama,
+                },
+            }, tx);
+
+        await tx.CommitAsync();
+    }
+
+    /// <summary>Plan düzeltmesinin denetim izine yazılan hâli (eski/yeni karşılaştırması).</summary>
+    /// ⚠ ALAN ADLARI İNGİLİZCE, SQL'de ALIAS ile eşleniyor (kolon adları Türkçe:
+    ///   `VardiyaTanim` vb.). Sıra SQL'deki sırayla AYNI — Dapper pozisyonel record'da
+    ///   sırayı sözleşme sayar.
+    public sealed record VrdPlanCorrection(
+        string? ShiftPlan, int? PlanStartMin, int? PlanEndMin,
+        int? PlanWorkMin, bool? OnLeave, string? Note);
 
     /// <summary>
     /// YÖNETİCİ ONAYI — panelin TEK yazma noktası.
