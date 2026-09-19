@@ -240,6 +240,20 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       yolu SQL. Test bunu SQL ile kuruyor. ⚠ Kaynak izinli derken insan itiraz
       edemiyorsa, S3'ün "iki taraf da görünsün" kararı yarım kalır.
 
+- [ ] **V-21 "Tetikleyici ATEŞLEDİ mi" mekanik olarak sorulamıyor** (19.09, Solum'un
+      ölçümünden doğdu) — TODO'da tetikleyici YAZILIYOR ama ateşleyip ateşlemediğine
+      **hiçbir şey bakmıyor**. Solum kendi tahtasında ölçtü: iki tetik ateşlemiş, biri
+      **11 gündür** bekliyor ve fark edilmesi tesadüftü.
+      ⚠ Bizde ölçmeyi denedim ve **ölçüm kendi tuzağına düştü**: tarih arayan tarama
+      7 madde buldu ama çoğu **tetik tarihi değil ÖLÇÜM DAMGASI** (K-29'daki 2025-12-31
+      bir tetik değil). Yani bugün cevap "hayır, mekanik olarak sorulamıyor" —
+      tetikler serbest metin.
+      **Gereken:** makine-okunur biçim (ör. `TETİK(2026-10-01)` / `TETİK(koşul: ilk ay
+      kapanışı)`). Koşul-tabanlı olanlar taranamaz; kapsam yalnız tarihli olanlar.
+      ⚠ Bilinen ateşlemiş tetik: **V-19** (Türkçe kapısının kendi yükseltme tetiği,
+      19.09'da ikinci kez ateşledi — elle görüldü, kapı değil insan yakaladı).
+      **Tetikleyici:** ikinci kez elle fark edilen ateşlemiş tetik.
+
 - [ ] **V-19 Türkçe kapısının KARA LİSTE yarısı** (19.09, Solum'un ayrımı) — kapı iki
       yarılı: Türkçe HARF taraması kapalı küme (kaçış yok), **ASCII'ye çevrilmiş kelime
       taraması ise kara liste** ve eksikliği **görünmez**. ⚠ Kapının kendi yükseltme
