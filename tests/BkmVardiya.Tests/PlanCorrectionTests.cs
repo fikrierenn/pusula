@@ -116,7 +116,12 @@ public sealed class PlanCorrectionTests(VardiyaAppFactory factory)
             Assert.Equal(0, await EffectiveShortAsync(cn, staffNo, date));
 
             // 2) "Aslında izinli değildi" itirazı — ŞİMDİ taban uygulanır.
-            await MarkNotOnLeaveAsync(cn, staffNo, date);
+            // ⚠ ARTIK SQL ARKA KAPISI DEĞİL (V-18): itiraz uygulamanın kendi
+            //   yolundan yazılıyor. Önce SQL ile yazılıyordu ve o hâliyle test,
+            //   ÜRÜNÜN YAPAMADIĞI bir şeyi ölçüyordu.
+            await queries.SavePlanCorrectionAsync(factory.ManagerId, staffNo, date,
+                null, null, null, planWorkMin: 480, onLeave: false, aciklama: "itiraz",
+                savedBy: SavedBy);
 
             Assert.Equal(480, await EffectiveBaseAsync(cn, staffNo, date));
         }
@@ -216,13 +221,6 @@ public sealed class PlanCorrectionTests(VardiyaAppFactory factory)
         return r is null ? null : (r.Value.Item1, DateOnly.FromDateTime(r.Value.Item2));
     }
 
-    /// <summary>"Aslında izinli değildi" itirazı. Uygulamada henüz ekranı yok (V-18).</summary>
-    private static Task MarkNotOnLeaveAsync(System.Data.IDbConnection cn, string sicilNo, DateOnly tarih) =>
-        Dapper.SqlMapper.ExecuteAsync(cn, """
-            UPDATE bkm.Vrd_PlanDuzeltme SET IzinliMi = 0
-            WHERE  SicilNo = @sicilNo AND Tarih = @tarih
-            """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
-
     private static Task<int> EffectiveBaseAsync(System.Data.IDbConnection cn, string sicilNo, DateOnly tarih) =>
         Dapper.SqlMapper.ExecuteScalarAsync<int>(cn, """
             SELECT ISNULL(EtkinGerekenDk, 0) FROM bkm.Vrd_KisiGunDuzeltilmis_vw
@@ -234,4 +232,67 @@ public sealed class PlanCorrectionTests(VardiyaAppFactory factory)
             SELECT ISNULL(EtkinEksikDk, 0) FROM bkm.Vrd_KisiGunDuzeltilmis_vw
             WHERE  SicilNo = @sicilNo AND Tarih = @tarih
             """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+
+    /// <summary>
+    /// EKRAN YOLU (V-18) — "izinli DEĞİLDİ" itirazı formdan yazılabiliyor mu?
+    ///
+    /// ⚠ NEDEN AYRI TEST: servis metodu `bool?` alıyordu ve itirazı ZATEN
+    ///   destekliyordu; eksik olan EKRANDI (onay kutusu iki durum taşıyor, üçüncüsü
+    ///   yok). Yani servis testi yeşilken kullanıcı o işi YAPAMIYORDU — "ürün
+    ///   çalışıyor" ile "kullanıcı yapabiliyor" aynı şey değil.
+    /// </summary>
+    [Fact]
+    public async Task Dispute_can_be_written_from_the_screen()
+    {
+        using var scope = factory.Services.CreateScope();
+        var queries = scope.ServiceProvider.GetRequiredService<VardiyaQueries>();
+        var db = scope.ServiceProvider.GetRequiredService<Db>();
+        using var cn = db.OpenPanel();
+
+        var gun = await PickLeaveDayAsync(cn, factory.ManagerBranch);
+        Assert.True(gun is not null, "İzinli gün YOK — ekran testi ölçemez (KOŞAMADI).");
+        var (staffNo, date) = gun!.Value;
+
+        var client = factory.CreateClient(new() { AllowAutoRedirect = true });
+        var loginPage = await (await client.GetAsync("/Login")).Content.ReadAsStringAsync();
+        var loginToken = System.Text.RegularExpressions.Regex.Match(loginPage,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)").Groups[1].Value;
+        await client.PostAsync("/Login", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["UserName"] = factory.ManagerName,
+            ["Password"] = VardiyaAppFactory.Password,
+            ["__RequestVerificationToken"] = loginToken,
+        }));
+
+        var url = $"/Approval?StaffNo={Uri.EscapeDataString(staffNo)}&Date={date:yyyy-MM-dd}";
+        var form = await (await client.GetAsync(url)).Content.ReadAsStringAsync();
+        Assert.Contains("OnLeaveChoice", form);   // üç durumlu seçim EKRANDA mı
+
+        var token = System.Text.RegularExpressions.Regex.Match(form,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)").Groups[1].Value;
+
+        try
+        {
+            await client.PostAsync(url + "&handler=Plan", new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["StaffNo"] = staffNo,
+                    ["Date"] = date.ToString("yyyy-MM-dd"),
+                    ["PlanWork"] = "08:00",
+                    ["OnLeaveChoice"] = "0",          // itiraz
+                    ["PlanNote"] = "ekran testi",
+                    ["__RequestVerificationToken"] = token,
+                }));
+
+            var kayit = await queries.GetPlanCorrectionAsync(factory.ManagerId, staffNo, date);
+            Assert.NotNull(kayit);
+            Assert.False(kayit!.OnLeave);            // null DEĞİL, false — itiraz yazıldı
+            Assert.Equal(480, await EffectiveBaseAsync(cn, staffNo, date));
+        }
+        finally
+        {
+            await queries.SavePlanCorrectionAsync(factory.ManagerId, staffNo, date,
+                null, null, null, null, null, null, SavedBy);
+        }
+    }
 }

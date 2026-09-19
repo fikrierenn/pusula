@@ -40,7 +40,13 @@ public sealed class ApprovalModel(VardiyaQueries queries, ILogger<ApprovalModel>
     [BindProperty] public string? PlanStart { get; set; }
     [BindProperty] public string? PlanEnd { get; set; }
     [BindProperty] public string? PlanWork { get; set; }
-    [BindProperty] public bool OnLeave { get; set; }
+    /// <summary>
+    /// İzin durumu — ÜÇ DURUMLU (V-18). Onay kutusu iki durum taşıyabiliyordu ve
+    /// "bu konuda bir şey söylemedim" ile "izinli DEĞİLDİ" ayrımı kayboluyordu:
+    /// kutu boşsa niyet okunamıyordu. Değerler: "" (susuyorum) · "1" (izinliydi) ·
+    /// "0" (izinli DEĞİLDİ — kaynağa İTİRAZ).
+    /// </summary>
+    [BindProperty] public string? OnLeaveChoice { get; set; }
     [BindProperty] public string? PlanNote { get; set; }
 
     public string? Error { get; private set; }
@@ -68,7 +74,12 @@ public sealed class ApprovalModel(VardiyaQueries queries, ILogger<ApprovalModel>
             PlanStart = MinutesToText(correction.PlanStartMin);
             PlanEnd = MinutesToText(correction.PlanEndMin);
             PlanWork = MinutesToText(correction.PlanWorkMin);
-            OnLeave = correction.OnLeave == true;
+            OnLeaveChoice = correction.OnLeave switch
+            {
+                true => "1",
+                false => "0",
+                null => "",
+            };
             PlanNote = correction.Note;
         }
         return Page();
@@ -96,11 +107,17 @@ public sealed class ApprovalModel(VardiyaQueries queries, ILogger<ApprovalModel>
 
         try
         {
-            // ⚠ `OnLeave` bool (checkbox) ama tabloda bool? — işaretli DEĞİLSE
-            //   "izinli değil" demek İSTEMİYORUZ, "bu konuda bir şey söylemedim"
-            //   demek istiyoruz. false yazmak PDKS'nin izin kaydını görsel olarak
-            //   çürütürdü (karar S3: kaynak ezilmez).
-            bool? onLeave = OnLeave ? true : null;
+            // ⚠ ÜÇ DURUM, iki değil (V-18): "susuyorum" (null) kaynağı olduğu gibi
+            //   bırakır; "izinliydi" (true) tabanı sıfırlar; "izinli DEĞİLDİ" (false)
+            //   kaynağa AÇIK İTİRAZDIR ve düzeltilmiş süreyi uygulatır.
+            //   Önceki hâl onay kutusuydu: boş kutu hem "söylemedim" hem "değildi"
+            //   anlamına geliyordu ve itiraz yalnız SQL'den yazılabiliyordu.
+            bool? onLeave = OnLeaveChoice switch
+            {
+                "1" => true,
+                "0" => false,
+                _ => null,
+            };
 
             await queries.SavePlanCorrectionAsync(userId, StaffNo, Date,
                 ShiftPlan, startMin, endMin, workMin, onLeave, PlanNote, savedBy);

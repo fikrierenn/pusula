@@ -73,6 +73,14 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
             "INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId) VALUES (@id, @sube, @veren)",
             new { id = ManagerId, sube = ManagerBranch, veren = Stamp });
 
+        // Müdür ONAY yetkisi taşır — gerçek şube sorumlusu rolünün karşılığı.
+        // Olmadan plan düzeltme EKRANI (V-18) test edilemezdi: sayfa
+        // [Authorize(Policy = Approve)] taşıyor ve müdür 403 alırdı.
+        await cn.ExecuteAsync("""
+            INSERT INTO bkm.SolumPermissionGrant (ProviderName, ProviderKey, PermissionName)
+            VALUES (N'User', @id, N'vardiya.onayla')
+            """, new { id = ManagerId });
+
         // İK iki yetki taşır: tüm şubeleri GÖRME ve kadro yönetimi (şifre sıfırlama).
         // İkincisi olmadan V-01'in kilidini açan yol test edilemezdi.
         await cn.ExecuteAsync("""

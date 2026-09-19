@@ -95,12 +95,24 @@
                 süre geçerli kalır.
             </small>
         </label>
-        <label class="solum-field solum-field-inline">
-            <input type="checkbox" name="OnLeave" value="true" @(Model.OnLeave ? "checked" : "") />
-            <span>Bu gün izinliydi</span>
+        <label class="solum-field">
+            <span>İzin durumu</span>
+            <select name="OnLeaveChoice" class="solum-input">
+                <option value="" selected="@(string.IsNullOrEmpty(Model.OnLeaveChoice))">
+                    — bir şey söylemiyorum (kaynak geçerli)
+                </option>
+                <option value="1" selected="@(Model.OnLeaveChoice == "1")">
+                    Bu gün izinliydi
+                </option>
+                <option value="0" selected="@(Model.OnLeaveChoice == "0")">
+                    Bu gün izinli DEĞİLDİ (kaynağa itiraz)
+                </option>
+            </select>
             <small>
-                İşaretlenirse günün tabanı <b>sıfırlanır</b>. PDKS'den gelen izin bilgisi
-                <b>silinmez</b> — ikisi yan yana durur, çelişirse ikisi de görünür.
+                <b>İzinliydi</b> → günün tabanı sıfırlanır.
+                <b>İzinli değildi</b> → kaynak izinli dese bile girdiğiniz süre uygulanır.
+                Her iki hâlde de PDKS'den gelen izin bilgisi <b>silinmez</b>; ikisi yan yana
+                durur ve çelişirse ikisi de görünür.
             </small>
         </label>
         <label class="solum-field">

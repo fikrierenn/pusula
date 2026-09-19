@@ -238,12 +238,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       kapısı 93/1/93/124/544), düzeltme yazılınca yansıyor (781 → 782 izinli gün).
       ⚠ Kalan uçlar ayrı maddelerde: V-17 (politika parametresi) · V-18 (itiraz ekranı) ·
       V-20 (kesim/devir ekseni test edilmedi).
-- [ ] **V-18 "Aslında izinli değildi" itirazının EKRANI yok** (19.09, plan 49) —
-      `Vrd_PlanDuzeltme.IzinliMi = 0` yazılabiliyor ve view onu doğru yorumluyor
-      (taban uygulanır), ama arayüzde yalnız "izinliydi" kutusu var; sıfır yazmanın
-      yolu SQL. Test bunu SQL ile kuruyor. ⚠ Kaynak izinli derken insan itiraz
-      edemiyorsa, S3'ün "iki taraf da görünsün" kararı yarım kalır.
-
+- [x] ~~**V-18 "Aslında izinli değildi" itirazının EKRANI yok**~~ — ✅ KAPANDI 19.09.
+      Onay kutusu (iki durum) → **üç durumlu seçim**: "bir şey söylemiyorum" (kaynak
+      geçerli) · "izinliydi" · "izinli DEĞİLDİ (kaynağa itiraz)". Kutu boşken niyet
+      okunamıyordu — "söylemedim" ile "değildi" aynı görünüyordu.
+      ⚠ Testteki **SQL arka kapısı kaldırıldı**: itiraz artık uygulamanın kendi
+      yolundan yazılıyor. Eski hâliyle test, **ürünün yapamadığı** bir şeyi ölçüyordu.
+      Ekran yolu için ayrı uçtan uca test (form → POST → DB) + kırmızı kip.
 - [ ] **V-21 "Tetikleyici ATEŞLEDİ mi" mekanik olarak sorulamıyor** (19.09, Solum'un
       ölçümünden doğdu) — TODO'da tetikleyici YAZILIYOR ama ateşleyip ateşlemediğine
       **hiçbir şey bakmıyor**. Solum kendi tahtasında ölçtü: iki tetik ateşlemiş, biri
