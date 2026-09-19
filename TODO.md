@@ -208,37 +208,19 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 > zamansal ACL · rapor · onay akışı + atomik denetim izi · panel salt-okuma.
 > Kapılar: `vardiya_kapsam_denetimi.py` · `mesai_esik_denetimi.py` · `panel_kolon_denetimi.py`.
 
-- [ ] **V-01 Geçici şifre dosyası SİLİNECEK — ⚠ KARAR BEKLİYOR (19.09 ölçümü)**
-      `ciktilar/vardiya-ilk-sifreler-20260919-0119.txt` (git yoksayıyor, 1.308 bayt).
-      **ÖLÇÜLDÜ:** 17 kullanıcının **13'ünde** hâlâ `vardiya.sifreDegistir` claim'i var —
-      yalnız 4 kişi şifresini değiştirmiş. Şimdi silinirse o 13 kişinin geçici şifresi
-      **kurtarılamaz**: seed mevcut kullanıcıya dokunmuyor ve uygulamada **şifre sıfırlama
-      yolu YOK**. Seçenekler: (a) dağıtım bitince sil · (b) önce İK'ya şifre sıfırlama
-      ekle (`vardiya.kadroYonet`) sonra sil · (c) şimdi sil, 13 kişi için kilitlenmeyi kabul et.
-- [x] ~~**V-02 Seed kadro listesi koda gömülü**~~ — ✅ KAPANDI 19.09 (commit `aebd3da`).
-      Kadro `ciktilar/vardiya-kadro.json`'dan okunuyor (git yoksayar; `VARDIYA_KADRO` ile
-      yol verilebilir). Dosya yok/bozuk/boş ya da rol tanınmıyorsa **çıkış 2 (KOŞAMADI)**.
-      Gerçek koşum: 17 kişi okundu, 0 yeni / 17 mevcut. ⚠ "Zirve'den canlı oku" borcu
-      **tek başına kapanamaz** (ölçüldü): bordro kişiyi ve lokasyonu biliyor ama **rolü
-      bilmiyor** — "kim şube sorumlusudur" bir uygulama kararı. Kapanan şey listenin
-      koddan çıkması; canlı okuma + şube eşlemesi ayrı iş (Solum plan-21).
-- [x] ~~**V-03 Solum kabuğu devreye alınmadı**~~ — ✅ KAPANDI 19.09 (commit `00a837c`).
-      `_SolumLayout` devrede; altı adaptör bağlandı (kullanıcı · şirket · kiracı · izin ·
-      menü · saat). `AddSolumSingleTenant` **kullanılmadı**: sabit `userId` alıyor, 17
-      gerçek kullanıcıda denetim izine yanlış kimlik yazardı. Anonim sayfalar kabuk dışında.
-      Ölçüm `SolumShellTests`: kabuk + marka + menü + çıkış adresi, ayrıca `solum.css` 200.
-- [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.
-      Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
-- [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
-      bırakıldı; plan hâlâ Excel kaynaklı.
-- [x] ~~**V-06 Kapsam denetimi metin tabanlı**~~ — ✅ KAPANDI 19.09 (commit `8fd07b3`).
-      Uçtan uca test koştu: `tests/BkmVardiya.Tests/BranchScopeTests.cs` **3/3 yeşil**,
-      kırılabilirliği kanıtlandı (kapsam süzgeci bilerek devre dışı → müdür tüm şirketi
-      gördü → kırmızı → geri alındı). Koşturunca **ürün kusuru** çıktı: SQL `@sube`
-      isterken C# `branch` gönderiyordu → üç sorgu (`GetOvertimeSource`/`GetStayBands`/
-      `GetRows`) şube süzgeci seçilince patlıyordu. Derleme temiz, dört kapı da kör.
-      ⚠ Metin denetiminin sınırı (`Sube IN` ↔ `Bolum IN`) **hâlâ duruyor** — uçtan uca
-      test onu da örtüyor ama yalnız test edilen üç rol için.
+- [ ] **V-01 Geçici şifre dosyası SİLİNECEK — kilit AÇILDI, silme kararı GMY'de**
+      `ciktilar/vardiya-ilk-sifreler-20260919-0119.txt` hâlâ duruyor (git yoksayıyor).
+      ✅ **Engel kalktı 19.09 (commit `8de4be2`)**: İK artık uygulamadan şifre
+      sıfırlayabiliyor (`/ResetPassword`, `vardiya.kadroYonet`), yani dosya **tek
+      kurtarma aracı olmaktan çıktı**. Ölçüm: 17 kullanıcının 13'ü hâlâ geçici şifreyle.
+      Kalan iş tek satır: dosyayı sil. Silinince bu madde kapanır.
+
+- [ ] **V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı** (19.09) — kırmızı kip
+      geri alındıktan hemen sonraki koşumda 1 test kırmızı döndü; ardından **10 koşum
+      üst üste yeşil** ve hata ÜRETİLEMEDİ. En olası sebep: derleme çıktısının test
+      koşucusuyla yarışı (revert edilen ikili hâlâ yüklüyken koşum). ⚠ "Geçti" diye
+      kapatılmıyor: bir daha görülürse koşum günlüğü saklanacak ve sınıf adı
+      kaydedilecek. Flaky bir test, testsizlikten kötüdür — insan bakmamayı öğrenir.
 
 - [ ] **V-07 Orantısızlık sezgisi MEKANİKLEŞMEDİ** (19.09, Solum S3) — ikinci kapsam
       sızıntısını bulan şey insan sezgisiydi ("2.192,6 saat makul ama kapsamla
