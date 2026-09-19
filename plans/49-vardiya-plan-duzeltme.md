@@ -3,7 +3,7 @@
 **Tarih:** 2026-09-19
 **Proje:** `bkm`
 **Yazan:** Fikri / Claude
-**Durum:** `Taslak` — onay bekliyor
+**Durum:** `Onaylandı` (GMY, 19.09.2026) — üç açık soru cevaplandı, §8'e bakınız
 
 ---
 
@@ -118,11 +118,24 @@ revert'i yeter. `Vrd_KisiGun`'a dokunulmadığı için ölçülen veri etkilenme
 5. **Testler** — dört iddia, dördü de kırmızı kiple.
 6. **Kapılar** — kapsam denetimi + mevzuat kapısı güncellenir.
 
-## 8. Açık sorular (onay öncesi)
+## 8. Kararlar (GMY, 19.09.2026)
 
-- **S1.** Düzeltme eksik/fazla hesabını DEĞİŞTİRSİN mi, yoksa yalnız NOT olarak mı
-  dursun? (Değiştirirse yayınlanan Excel'den sapar; sapma bilinçli olmalı.)
-- **S2.** 172 günün 70'i Genel Müdürlük ofis kadrosu. Bunlar için tek tek düzeltme mi,
-  yoksa `Vrd_CalismaSaati`'ne bölüm bazlı kalıcı tanım mı? İkincisi daha az emek ama
-  politika tablosunu değiştirir (İK kararı).
-- **S3.** İzin günü işareti PDKS'deki `Izin` alanını mı ezecek, yoksa ayrı mı duracak?
+- **S1 → DÜZELTİLMİŞ TABAN HESABA GİRER.** Düzeltilen vardiya tanımı eksik/fazla
+  hesabının tabanı olur. ⚠ Bu, yayınlanan Excel'den **bilinçli sapma** demektir:
+  ekranda "düzeltilmiş" işareti ve düzeltme sayısı KPI'ı ZORUNLU, yoksa iki farklı
+  toplam ortaya çıkar ve hangisinin doğru olduğu bilinmez.
+- **S2 → OFİS KADROSU POLİTİKA TABLOSUNDAN ÇÖZÜLÜR.** 70 günlük Genel Müdürlük
+  kısmı tek tek düzeltilmeyecek; `Vrd_CalismaSaati`'ne **bölüm bazlı** kalıcı tanım
+  girilecek. ⚠ O tablo yalnız `--parametre-yukle` ile yazılıyor (JSON → tablo, TEK
+  YÖN); yani bu bir İK parametre işidir, uygulama yazması değil. Kişi-gün düzeltme
+  ekranının nüfusu böylece 172 → **~102 güne** iner.
+- **S3 → İZİN İŞARETİ PDKS'Yİ EZMEZ, YANINDA DURUR.** Kaynağın dediği ile insanın
+  dediği yan yana görünür; çeliştiklerinde ikisi de okunabilir. Gerekçe: "kaynak ne
+  diyordu" sorusu denetimde cevaplanabilir kalmalı.
+
+## 9. Karardan doğan ek iş
+
+- **Politika tablosu girdisi (S2):** GM bölümlerinin çalışma süresi İK'dan alınacak;
+  bugün otomatik eklenmiş satırlar `OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı`
+  notunu taşıyor. Bu, plan 47'nin açık borcu ve burada kapanmıyor — **ölçülüp TODO'ya
+  yazılıyor**.

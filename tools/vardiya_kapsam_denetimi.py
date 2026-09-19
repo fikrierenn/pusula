@@ -46,7 +46,12 @@ SORGULAR = KOK / "lib/Bkm.Shared/Data/VardiyaQueries.cs"
 PANEL_SAYFA = KOK / "dashboard/Components/Pages/Vardiya.razor"
 
 # Kapsam suzgeci istemesi ZORUNLU tablolar — bunlara erisim yalniz bogazdan.
-KAPSAMLI_TABLOLAR = ["bkm.Vrd_KisiGun", "bkm.Vrd_Devir"]
+# ⚠ PLAN 49 (V-05) ile IKI AD DAHA: duzeltme tablosu kisi-gun kimligiyle yazilir ve
+#   duzeltilmis view kisi-gun verisi dondurur — ikisi de KAPSAM tasir. Listeye
+#   ONCEDEN eklendi: kullanim geldiginde kapi zaten bekliyor olsun, sonradan
+#   "eklemeyi unutma" konvansiyonuna guvenmeyelim.
+KAPSAMLI_TABLOLAR = ["bkm.Vrd_KisiGun", "bkm.Vrd_Devir",
+                     "bkm.Vrd_PlanDuzeltme", "bkm.Vrd_KisiGunDuzeltilmis_vw"]
 
 # URETIM kokleri. `tests/` BILEREK DISARIDA: test kapsamsiz nufusu olcmek
 # ZORUNDADIR (olcemezse sizintinin varligini da yoklugunu da kanitlayamaz).
