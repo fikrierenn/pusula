@@ -252,11 +252,23 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       kullanıldı, (c) **yasak listesi sessizce ölebiliyor** (yanlış sembol adı → analizör
       hiçbir şey demiyor) → kapıya dördüncü denetim eklendi, kırmızı kiple doğrulandı.
 
-- [ ] **V-11 Boğaz kapsamı `vardiya-app`e genişletilsin mi?** (19.09, açık soru) — orada
-      Dapper kimlik/seed için kullanılıyor ve kapsamlı tablo okumuyor; bugün yasak YOK.
-      Yeni bir sayfa panel DB'den kendi sorgusunu yazarsa boğaz-tekeli denetimi tabloyu
-      yakalar ama **ham SQL'i değil**. Ölçülmedi: genişletmenin maliyeti (kimlik
-      sorgularına kaç muafiyet gerekir) bilinmiyor.
+- [x] ~~**V-11 Boğaz kapsamı `vardiya-app`e genişletilsin mi?**~~ — ✅ KAPANDI 19.09
+      (commit `2c07557`). Ölçüldü: 5 Dapper çağrısı / 2 dosya, hepsi kimlik-ACL.
+      **Ölçüm "riski düşük" varsayımını çürüttü:** `Seed`in ACL yazması SQL `@sube`
+      isterken C# `branch` gönderiyordu — **beşinci ad kayması**, şube ataması sessizce
+      kırıkmış (seed yeniden adlandırmadan önce koşmuştu, bir daha koşturulmadı).
+      `AuthSql` boğazı + `SqlContract` ortak çekirdeği kuruldu, ban ondan SONRA kondu.
+
+- [ ] **V-12 ACL yazması DENETİM İZSİZ** (19.09, V-11 ölçümünden doğdu) — `Vrd_KullaniciSube`,
+      `Vrd_Roles`, `SolumPermissionGrant` yazmaları `AuditTrail`e HİÇ yazmıyor; onay
+      yazması yazıyor. Yani "kime hangi şube verildi, kim verdi" sorusunun cevabı yok.
+      Bugün tek yazan `Seed` (`VerenId='seed'`), ama İK rolü uygulamadan ACL vermeye
+      başladığında bu boşluk denetlenemez hâle gelir.
+
+- [ ] **V-13 Seed ACL yazması yeniden KOŞTURULMADI** (19.09) — beşinci ad kayması
+      düzeltildi ama seed o düzeltmeyle tekrar çalıştırılmadı; mevcut 17 kullanıcının
+      şube atamaları yeniden-adlandırma öncesi koşumdan geliyor. DB'deki ACL satırları
+      **doğrulanmalı** (`bkm.Vrd_KullaniciSube` beklenen kadro ile karşılaştırılacak).
 
 - [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
       yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
