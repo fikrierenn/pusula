@@ -32,6 +32,17 @@ public sealed class ApprovalModel(VardiyaQueries queries, ILogger<ApprovalModel>
     [BindProperty] public string? ExtraShift { get; set; }
     [BindProperty] public string? Note { get; set; }
 
+    // ── PLAN DÜZELTME (plan 49 / V-05) ───────────────────────────────────────
+    // Onayla AYNI SAYFADA ama AYRI FORM: iki ayrı soru, iki ayrı kayıt.
+    // Tek formda olsalardı onayı kaydetmek düzeltmeyi de yazardı (ya da tersi) ve
+    // denetim izinde "ne değişti" karışırdı.
+    [BindProperty] public string? ShiftPlan { get; set; }
+    [BindProperty] public string? PlanStart { get; set; }
+    [BindProperty] public string? PlanEnd { get; set; }
+    [BindProperty] public string? PlanWork { get; set; }
+    [BindProperty] public bool OnLeave { get; set; }
+    [BindProperty] public string? PlanNote { get; set; }
+
     public string? Error { get; private set; }
     public string? Saved { get; private set; }
 
@@ -48,6 +59,70 @@ public sealed class ApprovalModel(VardiyaQueries queries, ILogger<ApprovalModel>
             ApprovedOut = MinutesToText(existing.ApprovedOutMin);
             ExtraShift = MinutesToText(existing.ExtraShiftMin);
             Note = existing.Note;
+        }
+
+        var correction = await queries.GetPlanCorrectionAsync(userId, StaffNo, Date);
+        if (correction is not null)
+        {
+            ShiftPlan = correction.ShiftPlan;
+            PlanStart = MinutesToText(correction.PlanStartMin);
+            PlanEnd = MinutesToText(correction.PlanEndMin);
+            PlanWork = MinutesToText(correction.PlanWorkMin);
+            OnLeave = correction.OnLeave == true;
+            PlanNote = correction.Note;
+        }
+        return Page();
+    }
+
+    /// <summary>
+    /// PLAN DÜZELTME KAYDI — onaydan AYRI işleyici (`?handler=Plan`).
+    ///
+    /// ⚠ BU BİR NOT DEĞİL, RAKAM DEĞİŞİKLİĞİDİR (GMY kararı S1): düzeltilmiş süre
+    ///   eksik/fazlanın tabanı olur ve yayınlanan Excel'den BİLİNÇLİ sapma üretir.
+    ///   Ekran bunu açıkça yazar; sessiz bir düzeltme iki farklı toplam doğururdu.
+    /// </summary>
+    public async Task<IActionResult> OnPostPlanAsync()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var savedBy = User.Identity?.Name ?? userId;
+
+        if (!TextToMinutes(PlanStart, out var startMin) ||
+            !TextToMinutes(PlanEnd, out var endMin) ||
+            !TextToMinutes(PlanWork, out var workMin))
+        {
+            Error = "Saat biçimi geçersiz. SS:DD yazın (örnek 09:00). Gece vardiyasında 26:00 geçerlidir.";
+            return Page();
+        }
+
+        try
+        {
+            // ⚠ `OnLeave` bool (checkbox) ama tabloda bool? — işaretli DEĞİLSE
+            //   "izinli değil" demek İSTEMİYORUZ, "bu konuda bir şey söylemedim"
+            //   demek istiyoruz. false yazmak PDKS'nin izin kaydını görsel olarak
+            //   çürütürdü (karar S3: kaynak ezilmez).
+            bool? onLeave = OnLeave ? true : null;
+
+            await queries.SavePlanCorrectionAsync(userId, StaffNo, Date,
+                ShiftPlan, startMin, endMin, workMin, onLeave, PlanNote, savedBy);
+
+            logger.LogInformation("Plan düzeltme kaydedildi: {Sicil} {Tarih} — {Kim}",
+                                  StaffNo, Date, savedBy);
+            Saved = "Plan düzeltmesi kaydedildi. Eksik/fazla hesabı bu tabana göre yenilendi.";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Kapsam dışı plan düzeltme denemesi: {Kim} → {Sicil} {Tarih}",
+                              savedBy, StaffNo, Date);
+            Error = "Bu kayıt şube kapsamınızda değil.";
+        }
+        catch (ArgumentException ex)
+        {
+            Error = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Plan düzeltme kaydedilemedi: {Sicil} {Tarih}", StaffNo, Date);
+            Error = "Kayıt sırasında beklenmedik bir hata oluştu.";
         }
         return Page();
     }

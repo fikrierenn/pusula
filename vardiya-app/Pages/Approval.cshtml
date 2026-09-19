@@ -56,3 +56,65 @@
         Her değişiklik denetim izine yazılır (kim, ne zaman, eski → yeni).
     </div>
 </section>
+
+<section class="solum-card">
+    <h2>Plan düzeltme</h2>
+    <p class="solum-card-sub">
+        Vardiya tanımı eksik olan günlerde hesap <b>şube varsayılanına</b> düşer.
+        Buradan o günün gerçek tanımını girersiniz.
+    </p>
+
+    <div class="solum-alert solum-alert-warn" role="note">
+        ⚠ Bu bir not değil, <b>rakam değişikliğidir</b>: girilen süre eksik/fazla
+        hesabının tabanı olur ve yayınlanan Excel'den <b>bilinçli olarak</b> sapar.
+        Düzeltilen gün sayısı rapor özetinde ayrıca gösterilir.
+    </div>
+
+    <form method="post" asp-page-handler="Plan">
+        <input type="hidden" name="StaffNo" value="@Model.StaffNo" />
+        <input type="hidden" name="Date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+        <label class="solum-field">
+            <span>Vardiya tanımı</span>
+            <input name="ShiftPlan" value="@Model.ShiftPlan" class="solum-input" placeholder="09:00-18:00 OFİS" />
+        </label>
+        <label class="solum-field">
+            <span>Plan başlama</span>
+            <input name="PlanStart" value="@Model.PlanStart" class="solum-input" placeholder="09:00" />
+        </label>
+        <label class="solum-field">
+            <span>Plan bitiş</span>
+            <input name="PlanEnd" value="@Model.PlanEnd" class="solum-input" placeholder="18:00" />
+            <small>Başlama ve bitiş <b>ikisi birden</b> girilir ya da ikisi de boş bırakılır.</small>
+        </label>
+        <label class="solum-field">
+            <span>Plan çalışma süresi</span>
+            <input name="PlanWork" value="@Model.PlanWork" class="solum-input" placeholder="08:00" />
+            <small>
+                Eksik/fazlanın <b>tabanı</b> budur. Boş bırakılırsa politika tablosundaki
+                süre geçerli kalır.
+            </small>
+        </label>
+        <label class="solum-field solum-field-inline">
+            <input type="checkbox" name="OnLeave" value="true" @(Model.OnLeave ? "checked" : "") />
+            <span>Bu gün izinliydi</span>
+            <small>
+                İşaretlenirse günün tabanı <b>sıfırlanır</b>. PDKS'den gelen izin bilgisi
+                <b>silinmez</b> — ikisi yan yana durur, çelişirse ikisi de görünür.
+            </small>
+        </label>
+        <label class="solum-field">
+            <span>Açıklama</span>
+            <input name="PlanNote" value="@Model.PlanNote" class="solum-input" placeholder="neden düzeltildi" />
+        </label>
+
+        <div class="solum-actions">
+            <button type="submit" class="solum-btn solum-btn-primary">Düzeltmeyi kaydet</button>
+        </div>
+    </form>
+
+    <div class="solum-card-foot">
+        Tüm alanları boş bırakıp kaydederseniz düzeltme <b>silinir</b> ve hesap
+        kaynağın değerine döner. Her değişiklik denetim izine yazılır.
+    </div>
+</section>

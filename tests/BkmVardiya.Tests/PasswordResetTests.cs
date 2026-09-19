@@ -46,7 +46,18 @@ public sealed class PasswordResetTests(VardiyaAppFactory factory)
                 ["__RequestVerificationToken"] = token,
             }))).Content.ReadAsStringAsync();
 
-        var newPassword = Regex.Match(page, "<code[^>]*>([^<]+)</code>").Groups[1].Value.Trim();
+        // ⚠ TUTAMAK `data-test` — ilk yazımda "sayfadaki İLK <code>" alınıyordu ve
+        //   test ARA SIRA kırmızı dönüyordu (V-15'te "üretilemeyen kırmızı" diye
+        //   kaydedilen flake BUYDU). Kabuk/uyarı metni bir <code> içerirse yanlış
+        //   dizge şifre sanılıyor, giriş başarısız oluyor ve hata "şifre çalışmadı"
+        //   gibi okunuyordu — yani testin ölçtüğü şey değil, ÖLÇÜM ARACI bozuktu.
+        // ⚠ HTML ÇÖZÜMÜ ZORUNLU — ve bunu ÖLÇEREK öğrendik (V-15 flake'inin gerçek
+        //   sebebi buydu): şifre havuzunda `+` var ve Razor onu `&#x2B;` diye
+        //   kodluyor. Çözülmeden denenince giriş başarısız oluyor, hata "şifre
+        //   çalışmadı" gibi okunuyordu — oysa ÜRÜN doğru, ÖLÇÜM ARACI yanlıştı.
+        //   Kırmızı ARA SIRA çıkıyordu çünkü her şifrede `+` olmuyor.
+        var newPassword = System.Net.WebUtility.HtmlDecode(
+            Regex.Match(page, "data-test=\"temp-password\"[^>]*>([^<]+)<").Groups[1].Value).Trim();
         Assert.False(string.IsNullOrWhiteSpace(newPassword),
             "Geçici şifre ekranda GÖSTERİLMEDİ — İK sıfırlamayı iletemez, yol işe yaramaz.");
 
@@ -63,7 +74,18 @@ public sealed class PasswordResetTests(VardiyaAppFactory factory)
                 ["Password"] = newPassword,
                 ["__RequestVerificationToken"] = loginToken,
             }));
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);   // giriş başarılı → yönlendirme
+        // ⚠ KANIT TOPLA: bu iddia ARA SIRA kırmızı dönüyordu ve sebebi tahminle
+        //   bulunamadı. Hata mesajı artık ÜRETİLEN ŞİFREYİ ve sayfanın hata metnini
+        //   taşıyor — "flaky" demek yerine ölçebilmek için.
+        if (login.StatusCode != HttpStatusCode.Redirect)
+        {
+            var govde = await login.Content.ReadAsStringAsync();
+            var hataMetni = Regex.Match(govde, "role=\"alert\"[^>]*>(.*?)<", RegexOptions.Singleline)
+                                 .Groups[1].Value.Trim();
+            Assert.Fail($"Giriş yönlendirme vermedi ({login.StatusCode}). " +
+                        $"Şifre uzunluğu {newPassword.Length}, şifre: <{newPassword}>. " +
+                        $"Sayfa uyarısı: <{hataMetni}>");
+        }
 
         // ── ve ilk girişte DEĞİŞTİRMEYE zorlanıyor mu ────────────────────────
         var afterLogin = await targetClient.GetAsync("/");

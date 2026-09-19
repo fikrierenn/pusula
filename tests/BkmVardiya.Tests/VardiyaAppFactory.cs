@@ -116,6 +116,14 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
         -- test artiklari gercek izin arasinda birikirse denetim okunmaz olur.
         DELETE FROM bkm.SolumAuditTrail
         WHERE  EntityName = N'Vrd_KullaniciSube' AND UserName LIKE '{Prefix}%';
+
+        -- PLAN DUZELTME ARTIGI (V-05): duzeltme GERCEK kisi-gune yazilir, yani
+        -- artik kalirsa gercek raporu degistirir -- en tehlikeli test artigi budur.
+        -- Testin kendi `finally`si de siliyor; bu IKINCI katman, cunku surec cokerse
+        -- `finally` kosmaz.
+        DELETE FROM bkm.Vrd_PlanDuzeltme WHERE Kaydeden LIKE '{Prefix}%';
+        DELETE FROM bkm.SolumAuditTrail
+        WHERE  EntityName = N'Vrd_PlanDuzeltme' AND UserName LIKE '{Prefix}%';
         """);
 
     public new async Task DisposeAsync()

@@ -326,6 +326,28 @@ public sealed class VardiyaQueries(Db db)
         s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
 
     /// <summary>
+    /// Tek kişi-günün plan düzeltmesi — düzeltme ekranının açılışında okunur.
+    ///
+    /// ⚠ KAPSAM KAPISI OKUMADA DA VAR: düzeltme tablosu kapsam taşımaz (kimliği
+    ///   SicilNo+Tarih), o yüzden kapsam ona kişi-gün üzerinden EXISTS ile bağlanır.
+    ///   Olmasaydı bir müdür, adresi elle yazarak başka şubenin düzeltmesini OKUYABİLİRDİ.
+    /// </summary>
+    public async Task<VrdPlanCorrection?> GetPlanCorrectionAsync(
+        string userId, string sicilNo, DateOnly tarih)
+    {
+        using var cn = db.OpenPanel();
+        return await VrdSql.QuerySingleOrDefaultAsync<VrdPlanCorrection>(cn, $"""
+            SELECT ShiftPlan    = d.VardiyaTanim,  PlanStartMin = d.PlanBaslamaDk,
+                   PlanEndMin   = d.PlanBitisDk,   PlanWorkMin  = d.PlanCalismaDk,
+                   OnLeave      = d.IzinliMi,      Note         = d.Aciklama
+            FROM   bkm.Vrd_PlanDuzeltme d
+            WHERE  d.SicilNo = @sicilNo AND d.Tarih = @tarih
+              AND  EXISTS (SELECT 1 FROM {VrdSql.PersonDays} k
+                           WHERE k.SicilNo = d.SicilNo AND k.Tarih = d.Tarih)
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih));
+    }
+
+    /// <summary>
     /// PLAN DÜZELTME — eksik vardiya tanımını ve izin gününü düzeltir (plan 49 / V-05).
     ///
     /// NEDEN AYRI TABLO: <c>Vrd_KisiGun</c> yalnız <c>sp_Vrd_KisiGunDoldur</c>
