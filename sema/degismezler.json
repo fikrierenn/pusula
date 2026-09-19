@@ -698,6 +698,19 @@
       "verified": "2026-09-14 → 0. eDurum dağılımı (eTip 0+3): 0 → 1.634 belge / 6.264.737 adet · 1 → 38.290 / 16.942.872 · 2 → 5.334 / 663.778 (MAX eTarih 24.02.2025). Kırılabilirliği kanıtlandı: tarih '20240224'e çekilince 17 ihlal döndü, geri alındı.",
       "population": "SELECT COUNT(*) FROM dbo.sip WITH(NOLOCK) WHERE eTip IN (0,3) AND eDurum = 2",
       "korur": []
+    },
+    {
+      "id": "vardiya-duzeltme-yokken-view-sp-ile-ayni",
+      "db": "BkmPanel",
+      "question": "Düzeltmesi OLMAYAN kişi-günlerde `Vrd_KisiGunDuzeltilmis_vw` eksik/fazlası SP'nin yazdığıyla birebir aynı mı?",
+      "why": "Plan 49'da view'ın eksik/fazla formülü ÖNCE SP'den kopyalanmıştı ve AYRIŞTI: mutabakat 82.800 dk fark verdi (SP'nin FazlaDk'ı izin gününde hafta tatili primini de içeriyor ve formül dört ayrı UPDATE bloğuna yayılmış). Delta yaklaşımına geçilince fark 0'a indi. Bu kayıt o kararı KOŞULABİLİR yapar: biri view'ı 'sadeleştirip' formülü yeniden yazarsa panel bir rakam, yayınlanan Excel başka bir rakam gösterir ve fark SESSİZDİR.\n⚠ BOŞ KÜME TUZAĞINA DÜŞMEZ: iddia yalnız düzeltmesi OLMAYAN satırlar için kurulur ve o nüfus bugün 6.113 satırın tamamıdır. Düzeltme yazıldıkça nüfus küçülür ama sıfırlanmaz (düzeltme istisna, kural değil); sıfırlanırsa `population` sorgusu 0 döner ve koşucu KOŞAMADI der.",
+      "sql": "SELECT COUNT(*) FROM bkm.Vrd_KisiGunDuzeltilmis_vw v WHERE v.DuzeltildiMi = 0 AND (ISNULL(v.EtkinEksikDk,0) <> ISNULL(v.EksikDk,0) OR ISNULL(v.EtkinFazlaDk,0) <> ISNULL(v.FazlaDk,0))",
+      "population": "SELECT COUNT(*) FROM bkm.Vrd_KisiGunDuzeltilmis_vw WHERE DuzeltildiMi = 0",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-19 → 0 (nüfus 6.113). Kırılabilirliği plan 49'da ölçüldü: formül kopyalama hâlinde 82.800 dk fark.",
+      "korur": [],
+      "server": "panel"
     }
   ]
 }

@@ -100,6 +100,11 @@ SUNUCULAR = {
     "erp": ("MSSQL_HOST", "MSSQL_USER", "MSSQL_PASSWORD", "MSSQL_DATABASE"),
     "zirve": ("ZIRVE_HOST", "ZIRVE_USER", "ZIRVE_PASSWORD", "ZIRVE_DATABASE"),
     "joker": ("JOKER_HOST", "JOKER_USER", "JOKER_PASSWORD", "JOKER_DATABASE"),
+    # Panel (BkmPanel, yerel SQLEXPRESS) — vardiya nesneleri burada.
+    # ⚠ KIMLIK DOGRULAMA FARKLI: bu sunucuya Windows kimligiyle baglaniyoruz
+    #   (`PANEL_DB_TRUSTED`), kullanici/sifre YOK. Otekiler gibi UID/PWD denenirse
+    #   baglanti kurulmaz ve olcum "kosamadi" verir — sessizce bos donmez.
+    "panel": ("PANEL_DB_HOST", "PANEL_DB_USER", "PANEL_DB_PASSWORD", "PANEL_DB_NAME"),
 }
 
 
@@ -115,7 +120,8 @@ def get_db_config(sunucu="erp"):
         return dict(server=host,
                     user=os.environ.get(u, "sa"),
                     password=os.environ.get(p, ""),
-                    database=os.environ.get(d, "master"))
+                    database=os.environ.get(d, "master"),
+                    trusted=os.environ.get(h.replace("_HOST", "_TRUSTED"), "").lower() == "true")
     if sunucu == "erp":
         cfg = REPO / ".secrets" / "db.json"
         if cfg.exists():
@@ -148,10 +154,14 @@ def ac_baglanti(cfg, db):
     sunucu_adi = cfg["server"]
     if "\\" in sunucu_adi:
         import pyodbc
+        # Windows kimligi (panel) ile SQL kimligi (erp/zirve) AYRI yollar. Sifre
+        # yoksa UID/PWD gondermek baglantiyi kirar; `Trusted_Connection` gerekir.
+        kimlik = ("Trusted_Connection=yes"
+                  if cfg.get("trusted") or not cfg.get("password")
+                  else "UID=%s;PWD=%s" % (cfg["user"], cfg["password"]))
         return pyodbc.connect(
-            "Driver={ODBC Driver 18 for SQL Server};Server=%s;Database=%s;UID=%s;PWD=%s;"
-            "TrustServerCertificate=yes;Timeout=30"
-            % (sunucu_adi, db, cfg["user"], cfg["password"]), timeout=30)
+            "Driver={ODBC Driver 18 for SQL Server};Server=%s;Database=%s;%s;"
+            "TrustServerCertificate=yes;Timeout=30" % (sunucu_adi, db, kimlik), timeout=30)
     try:
         import pymssql
     except ImportError:

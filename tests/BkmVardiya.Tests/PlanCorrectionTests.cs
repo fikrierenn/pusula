@@ -84,6 +84,50 @@ public sealed class PlanCorrectionTests(VardiyaAppFactory factory)
     }
 
     /// <summary>
+    /// İZİN GÜNÜ — düzeltme süresi tabanı DEĞİŞTİRMEZ; ancak "aslında izinli değildi"
+    /// denirse değiştirir.
+    ///
+    /// ⚠ BU TESTİN SEBEBİ BİR ÖLÇÜM: ilk hâlde view izinli güne yazılan süreyi tabana
+    ///   alıyordu ve kişi İZİNDEYKEN 8 saat EKSİK görünüyordu. Delta aritmetiği
+    ///   doğruydu, ANLAMI yanlıştı. Tek NORMAL gün üzerinde test edildiği için
+    ///   görünmemişti — Solum'un "çok adımlı mantığı tek şekilli fikstürle ölçemezsin"
+    ///   uyarısının bizdeki karşılığı.
+    /// </summary>
+    [Fact]
+    public async Task Leave_day_base_is_untouched_unless_explicitly_disputed()
+    {
+        using var scope = factory.Services.CreateScope();
+        var queries = scope.ServiceProvider.GetRequiredService<VardiyaQueries>();
+        var db = scope.ServiceProvider.GetRequiredService<Db>();
+        using var cn = db.OpenPanel();
+
+        var gun = await PickLeaveDayAsync(cn, factory.ManagerBranch);
+        Assert.True(gun is not null,
+            "Müdürün kapsamında tabanı 0 olan izinli gün YOK — bu test ölçemez (KOŞAMADI).");
+        var (staffNo, date) = gun!.Value;
+
+        try
+        {
+            // 1) İzinli güne süre yazılır — taban DEĞİŞMEMELİ.
+            await queries.SavePlanCorrectionAsync(factory.ManagerId, staffNo, date,
+                null, null, null, planWorkMin: 480, onLeave: null, aciklama: "test", savedBy: SavedBy);
+
+            Assert.Equal(0, await EffectiveBaseAsync(cn, staffNo, date));
+            Assert.Equal(0, await EffectiveShortAsync(cn, staffNo, date));
+
+            // 2) "Aslında izinli değildi" itirazı — ŞİMDİ taban uygulanır.
+            await MarkNotOnLeaveAsync(cn, staffNo, date);
+
+            Assert.Equal(480, await EffectiveBaseAsync(cn, staffNo, date));
+        }
+        finally
+        {
+            await queries.SavePlanCorrectionAsync(factory.ManagerId, staffNo, date,
+                null, null, null, null, null, null, SavedBy);
+        }
+    }
+
+    /// <summary>
     /// Kapsam dışı bir kişi-güne düzeltme YAZILAMAZ. Okuma süzgeci bunu korumaz:
     /// sicil ve tarih elle de gönderilebilir.
     /// </summary>
@@ -156,4 +200,38 @@ public sealed class PlanCorrectionTests(VardiyaAppFactory factory)
             SELECT COUNT(*) FROM bkm.SolumAuditTrail
             WHERE  EntityName = N'Vrd_PlanDuzeltme' AND RecordId = @kayitId
             """, new { kayitId });
+
+    private static async Task<(string, DateOnly)?> PickLeaveDayAsync(
+        System.Data.IDbConnection cn, string branch)
+    {
+        var r = await Dapper.SqlMapper.QuerySingleOrDefaultAsync<(string, DateTime)?>(cn, """
+            SELECT TOP 1 SicilNo, Tarih
+            FROM   bkm.Vrd_KisiGun
+            WHERE  Sube = @branch AND Izin = 1 AND ISNULL(GerekenDk, 0) = 0 AND SayimDisi = 0
+              AND  NOT EXISTS (SELECT 1 FROM bkm.Vrd_PlanDuzeltme d
+                               WHERE d.SicilNo = bkm.Vrd_KisiGun.SicilNo
+                                 AND d.Tarih   = bkm.Vrd_KisiGun.Tarih)
+            ORDER BY Tarih DESC
+            """, new { branch });
+        return r is null ? null : (r.Value.Item1, DateOnly.FromDateTime(r.Value.Item2));
+    }
+
+    /// <summary>"Aslında izinli değildi" itirazı. Uygulamada henüz ekranı yok (V-18).</summary>
+    private static Task MarkNotOnLeaveAsync(System.Data.IDbConnection cn, string sicilNo, DateOnly tarih) =>
+        Dapper.SqlMapper.ExecuteAsync(cn, """
+            UPDATE bkm.Vrd_PlanDuzeltme SET IzinliMi = 0
+            WHERE  SicilNo = @sicilNo AND Tarih = @tarih
+            """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+
+    private static Task<int> EffectiveBaseAsync(System.Data.IDbConnection cn, string sicilNo, DateOnly tarih) =>
+        Dapper.SqlMapper.ExecuteScalarAsync<int>(cn, """
+            SELECT ISNULL(EtkinGerekenDk, 0) FROM bkm.Vrd_KisiGunDuzeltilmis_vw
+            WHERE  SicilNo = @sicilNo AND Tarih = @tarih
+            """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+
+    private static Task<int> EffectiveShortAsync(System.Data.IDbConnection cn, string sicilNo, DateOnly tarih) =>
+        Dapper.SqlMapper.ExecuteScalarAsync<int>(cn, """
+            SELECT ISNULL(EtkinEksikDk, 0) FROM bkm.Vrd_KisiGunDuzeltilmis_vw
+            WHERE  SicilNo = @sicilNo AND Tarih = @tarih
+            """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
 }

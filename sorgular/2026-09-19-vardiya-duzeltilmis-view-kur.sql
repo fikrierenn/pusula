@@ -41,10 +41,24 @@ SELECT
     -- ── ETKİN DEĞERLER — düzeltme varsa o, yoksa kaynağın değeri ─────────────
     EtkinVardiyaTanim = ISNULL(d.VardiyaTanim, k.VardiyaTanim),
 
-    -- Etkin taban: izin düzeltmesi varsa 0 (izinli günün tabanı yoktur),
-    -- yoksa düzeltilmiş süre, o da yoksa SP'nin yazdığı `GerekenDk`.
+    -- Etkin taban, ÜÇ dallı — ikinci dal bir ÖLÇÜMDEN doğdu (19.09):
+    --   1) düzeltme "izinli" diyorsa taban 0 (izinli günün tabanı yoktur),
+    --   2) KAYNAK izinli ve düzeltme bu konuda SUSUYORSA taban DEĞİŞMEZ,
+    --   3) aksi hâlde düzeltilmiş süre, o da yoksa SP'nin yazdığı `GerekenDk`.
+    --
+    -- ⚠ İKİNCİ DAL OLMADAN NE OLUYORDU (ölçüldü, geri alınabilir işlemde):
+    --   izinli bir güne süre yazılınca `EtkinEksikDk` 0 → 480 oluyordu; yani
+    --   kişi İZİNDEYKEN 8 saat EKSİK görünüyordu. Delta aritmetiği doğruydu,
+    --   ANLAMI yanlıştı — Solum'un "çok adımlı mantığı tek satırlık fikstürle
+    --   ölçemezsin" uyarısının bizdeki karşılığı: tek NORMAL gün üzerinde
+    --   test edildiği için görünmüyordu.
+    --
+    -- ⚠ "Aslında izinli DEĞİLDİ" demek hâlâ mümkün: `IzinliMi = 0` yazılırsa
+    --   üçüncü dala düşer ve süre uygulanır. Yani kaynak EZİLMİYOR, ama
+    --   bilinçli bir itiraz yazılabiliyor (karar S3).
     EtkinGerekenDk = CASE
         WHEN d.IzinliMi = 1 THEN 0
+        WHEN k.Izin = 1 AND d.IzinliMi IS NULL THEN ISNULL(k.GerekenDk, 0)
         ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END,
 
     -- ── ETKİN EKSİK/FAZLA — SP'NİN DEĞERİNE TABAN FARKI UYGULANIR ──────────
@@ -63,19 +77,27 @@ SELECT
     -- (vardiya tanımı hafta tatili primini değiştirmez).
     EtkinEksikDk = CASE WHEN k.SayimDisi = 1 THEN 0 ELSE
         CASE WHEN ISNULL(k.EksikDk, 0)
-                + (CASE WHEN d.IzinliMi = 1 THEN 0 ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
+                + (CASE WHEN d.IzinliMi = 1 THEN 0
+                            WHEN k.Izin = 1 AND d.IzinliMi IS NULL THEN ISNULL(k.GerekenDk, 0)
+                            ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
                    - ISNULL(k.GerekenDk, 0)) > 0
              THEN ISNULL(k.EksikDk, 0)
-                + (CASE WHEN d.IzinliMi = 1 THEN 0 ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
+                + (CASE WHEN d.IzinliMi = 1 THEN 0
+                            WHEN k.Izin = 1 AND d.IzinliMi IS NULL THEN ISNULL(k.GerekenDk, 0)
+                            ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
                    - ISNULL(k.GerekenDk, 0))
              ELSE 0 END END,
 
     EtkinFazlaDk = CASE WHEN k.SayimDisi = 1 THEN 0 ELSE
         CASE WHEN ISNULL(k.FazlaDk, 0)
-                - (CASE WHEN d.IzinliMi = 1 THEN 0 ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
+                - (CASE WHEN d.IzinliMi = 1 THEN 0
+                            WHEN k.Izin = 1 AND d.IzinliMi IS NULL THEN ISNULL(k.GerekenDk, 0)
+                            ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
                    - ISNULL(k.GerekenDk, 0)) > 0
              THEN ISNULL(k.FazlaDk, 0)
-                - (CASE WHEN d.IzinliMi = 1 THEN 0 ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
+                - (CASE WHEN d.IzinliMi = 1 THEN 0
+                            WHEN k.Izin = 1 AND d.IzinliMi IS NULL THEN ISNULL(k.GerekenDk, 0)
+                            ELSE ISNULL(d.PlanCalismaDk, k.GerekenDk) END
                    - ISNULL(k.GerekenDk, 0))
              ELSE 0 END END
 

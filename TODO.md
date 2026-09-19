@@ -234,6 +234,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Kalan: **mevzuat kapısının düzeltilmiş izni okuması** (`mesai_mevzuat_kapisi.py`
       bugün hâlâ ham `Izin` kolonuna bakıyor) + ölçülen 172 günün ekranda "tanım eksik"
       diye işaretlenmesi. ⚠ Ayrıca S2 kararının parametre işi (`V-17`) İK'yı bekliyor.
+- [ ] **V-18 "Aslında izinli değildi" itirazının EKRANI yok** (19.09, plan 49) —
+      `Vrd_PlanDuzeltme.IzinliMi = 0` yazılabiliyor ve view onu doğru yorumluyor
+      (taban uygulanır), ama arayüzde yalnız "izinliydi" kutusu var; sıfır yazmanın
+      yolu SQL. Test bunu SQL ile kuruyor. ⚠ Kaynak izinli derken insan itiraz
+      edemiyorsa, S3'ün "iki taraf da görünsün" kararı yarım kalır.
+
 - [ ] **V-17 GM bölümleri için çalışma süresi parametresi** (19.09, plan 49 kararı S2)
       `Vrd_CalismaSaati`'nde 15 satır `OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı`
       notu taşıyor. GM ofis kadrosunun 70 günlük "vardiya tanımsız" kısmı bu satırlar
