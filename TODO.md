@@ -208,14 +208,25 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 > zamansal ACL · rapor · onay akışı + atomik denetim izi · panel salt-okuma.
 > Kapılar: `vardiya_kapsam_denetimi.py` · `mesai_esik_denetimi.py` · `panel_kolon_denetimi.py`.
 
-- [ ] **V-01 Geçici şifre dosyası SİLİNECEK** — `ciktilar/vardiya-ilk-sifreler-*.txt`
-      İK dağıtımı bitince silinir. Git yoksayıyor ama diskte duruyor.
-- [ ] **V-02 Seed kadro listesi koda gömülü** — `vardiya-app/Security/Seed.cs`. Kadro
-      değişince bayatlar. Doğrusu Zirve'den canlı okumak ama şube adları birebir
-      eşleşmiyor (`GENEL YÖNETİM` ↔ `GENEL MÜDÜRLÜK`) → Solum plan-21 (kanonik birim
-      + eşleme tablosu) bekliyor. O geldiğinde "eksik" vs "kirli" ayrımı da kurulacak.
-- [ ] **V-03 Solum kabuğu devreye alınmadı** — `_SolumLayout` (yan menü, üst çubuk)
-      `IMenuBuilder`/`IPermissionChecker` istiyor; şimdilik sade düzen + `solum.css`.
+- [ ] **V-01 Geçici şifre dosyası SİLİNECEK — ⚠ KARAR BEKLİYOR (19.09 ölçümü)**
+      `ciktilar/vardiya-ilk-sifreler-20260919-0119.txt` (git yoksayıyor, 1.308 bayt).
+      **ÖLÇÜLDÜ:** 17 kullanıcının **13'ünde** hâlâ `vardiya.sifreDegistir` claim'i var —
+      yalnız 4 kişi şifresini değiştirmiş. Şimdi silinirse o 13 kişinin geçici şifresi
+      **kurtarılamaz**: seed mevcut kullanıcıya dokunmuyor ve uygulamada **şifre sıfırlama
+      yolu YOK**. Seçenekler: (a) dağıtım bitince sil · (b) önce İK'ya şifre sıfırlama
+      ekle (`vardiya.kadroYonet`) sonra sil · (c) şimdi sil, 13 kişi için kilitlenmeyi kabul et.
+- [x] ~~**V-02 Seed kadro listesi koda gömülü**~~ — ✅ KAPANDI 19.09 (commit `aebd3da`).
+      Kadro `ciktilar/vardiya-kadro.json`'dan okunuyor (git yoksayar; `VARDIYA_KADRO` ile
+      yol verilebilir). Dosya yok/bozuk/boş ya da rol tanınmıyorsa **çıkış 2 (KOŞAMADI)**.
+      Gerçek koşum: 17 kişi okundu, 0 yeni / 17 mevcut. ⚠ "Zirve'den canlı oku" borcu
+      **tek başına kapanamaz** (ölçüldü): bordro kişiyi ve lokasyonu biliyor ama **rolü
+      bilmiyor** — "kim şube sorumlusudur" bir uygulama kararı. Kapanan şey listenin
+      koddan çıkması; canlı okuma + şube eşlemesi ayrı iş (Solum plan-21).
+- [x] ~~**V-03 Solum kabuğu devreye alınmadı**~~ — ✅ KAPANDI 19.09 (commit `00a837c`).
+      `_SolumLayout` devrede; altı adaptör bağlandı (kullanıcı · şirket · kiracı · izin ·
+      menü · saat). `AddSolumSingleTenant` **kullanılmadı**: sabit `userId` alıyor, 17
+      gerçek kullanıcıda denetim izine yanlış kimlik yazardı. Anonim sayfalar kabuk dışında.
+      Ölçüm `SolumShellTests`: kabuk + marka + menü + çıkış adresi, ayrıca `solum.css` 200.
 - [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.
       Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
 - [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
