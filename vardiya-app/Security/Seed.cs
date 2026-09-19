@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Data;
 using Bkm.Shared.Data;
 using Microsoft.AspNetCore.Identity;
 
@@ -147,16 +148,7 @@ public static class Seed
                 new System.Security.Claims.Claim(MustChangePasswordClaim, "1"));
 
             foreach (var branch in branches)
-                // ⚠ BURASI BEŞİNCİ AD KAYMASIYDI: SQL `@sube` istiyordu, anonim nesne
-                //   `branch` gönderiyordu (Türkçe→İngilizce yeniden adlandırmanın
-                //   ardından). Seed o yeniden adlandırmadan ÖNCE koşmuştu, bir daha
-                //   koşturulmadığı için ACL yazması SESSİZCE kırık kaldı.
-                await AuthSql.ExecuteAsync(cn, """
-                    IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_KullaniciSube
-                                   WHERE UserId=@id AND Sube=@sube AND GecerliBit IS NULL)
-                    INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId)
-                    VALUES (@id, @sube, N'seed');
-                    """, new SqlParams().Add("id", user.Id).Add("sube", branch));
+                await GrantBranchAsync(cn, user.Id, branch, "seed");
 
             passwords.Add($"{userName}\t{tempPassword}\t{fullName}\t{role}\t{string.Join(" | ", branches)}");
             created++;
@@ -218,4 +210,30 @@ public static class Seed
             sb.Append(havuz[RandomNumberGenerator.GetInt32(havuz.Length)]);
         return sb.ToString();
     }
+
+    /// <summary>
+    /// ŞUBE YETKİSİ VER — <c>bkm.Vrd_KullaniciSube</c>'ye yazan TEK üretim yolu.
+    ///
+    /// ⚠ NEDEN AYRI METOT (V-13): bu SQL seed'in içine gömülüyken beşinci ad kayması
+    ///   burada oldu (SQL <c>@sube</c>, C# <c>branch</c>) ve HİÇBİR ŞEY yakalamadı —
+    ///   çünkü seed yeniden adlandırmadan ÖNCE koşmuştu ve bir daha koşturulmadı.
+    ///   Gömülü hâlinde test edilemiyordu: seed mevcut kullanıcıyı atlıyor, yani
+    ///   yeniden koşturmak bu satırı ÇALIŞTIRMIYOR bile. Ayrı metot olunca
+    ///   <c>SeedAclWriteTests</c> onu gerçek veritabanına karşı koşturabiliyor.
+    ///
+    /// ⚠ İDEMPOTENT: aynı şube ikinci kez verilirse yeni satır AÇILMAZ. Zamansal ACL
+    ///   (<c>GecerliBit IS NULL</c> = yürürlükte) mükerrer satırla bozulurdu.
+    ///
+    /// ⚠ DENETİM İZİ YOK — bilinçli değil, BORÇ (V-12). Onay yazması izli, yetki
+    ///   verme değil: "kime hangi şube verildi, kim verdi" bugün yalnız
+    ///   <c>VerenId</c> kadarıyla biliniyor.
+    /// </summary>
+    public static Task<int> GrantBranchAsync(IDbConnection cn, string userId, string branch, string grantedBy)
+        => AuthSql.ExecuteAsync(cn, """
+            IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_KullaniciSube
+                           WHERE UserId=@id AND Sube=@sube AND GecerliBit IS NULL)
+            INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId)
+            VALUES (@id, @sube, @veren);
+            """, new SqlParams().Add("id", userId).Add("sube", branch).Add("veren", grantedBy));
+
 }

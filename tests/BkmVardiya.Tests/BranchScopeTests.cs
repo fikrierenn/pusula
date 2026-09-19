@@ -40,7 +40,8 @@ namespace BkmVardiya.Tests;
 ///     ikisi birlikte gerekiyor.
 /// ═════════════════════════════════════════════════════════════════════════════
 /// </summary>
-public sealed class BranchScopeTests(VardiyaAppFactory factory) : IClassFixture<VardiyaAppFactory>
+[Collection(VardiyaDbCollection.Name)]
+public sealed class BranchScopeTests(VardiyaAppFactory factory)
 {
     /// <summary>
     /// ÖN KOŞULLAR — yorum değil, <c>Assert</c>. Nüfus yetersizse bu test
