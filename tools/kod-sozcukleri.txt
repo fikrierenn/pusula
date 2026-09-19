@@ -250,3 +250,62 @@ write
 writes
 written
 zirve
+
+# ── DASHBOARD'IN INGILIZCE SOZCUKLERI (V-23, 19.09) ─────────────────────────
+# Kapi dashboard'a acilinca 2.431 "bulgu" cikti ve OLCUNCE cogunun TURKCE OLMADIGI
+# gorundu: ak listede olmayan INGILIZCE sozcuklerdi. Yani sayinin buyuklugu borcun
+# buyuklugu DEGILDI — dagarcik eksikligiydi.
+alerts
+available
+back
+context
+excel
+export
+fallback
+forecast
+google
+groq
+guard
+html
+item
+last
+llm
+match
+ms
+nav
+node
+notif
+pareto
+perf
+provider
+registry
+risk
+service
+setup
+weights
+win
+zai
+
+# ── ALAN TERIMLERI — cevrilmez (GMY karari 19.09) ───────────────────────────
+# Bunlar muhasebe/perakende ALAN DILI; Ingilizceye cevirmek kodu isin dilinden
+# uzaklastirir ve anlam kaybettirir (`cari`, `mizan`, `barem` bire bir karsiligi
+# olmayan terimler). `Vardiya`/`Vrd`/`Bkm` ile AYNI sinif: alan adi, uydurma degil.
+# ⚠ SINIR: bu liste GENEL Turkce sozcukleri KAPSAMAZ. `detay` · `filtre` · `tablo` ·
+#   `satir` · `olustur` gibi karsiligi tam olanlar BORC olarak duruyor (V-23 kalani)
+#   ve ak listeye EKLENMEDI — yoksa kapi kendi amacini bosaltirdi.
+barem
+cari
+ceki
+donemler
+finans
+fiyat
+gelir
+gider
+hediye
+hesap
+kanal
+mizan
+sadakat
+satinalma
+sezon
+sinav
