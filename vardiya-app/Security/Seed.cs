@@ -87,7 +87,7 @@ public static class Seed
         return null;
     }
 
-    public static async Task<int> CalistirAsync(IServiceProvider sp, ILogger logger)
+    public static async Task<int> RunAsync(IServiceProvider sp, ILogger logger)
     {
         var userManager = sp.GetRequiredService<UserManager<IdentityUser>>();
         var db = sp.GetRequiredService<Db>();

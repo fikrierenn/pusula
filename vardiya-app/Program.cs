@@ -115,7 +115,7 @@ if (args.Contains("seed"))
 {
     using var kapsam = app.Services.CreateScope();
     var kayitci = kapsam.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("seed");
-    return await BkmVardiya.Security.Seed.CalistirAsync(kapsam.ServiceProvider, kayitci);
+    return await BkmVardiya.Security.Seed.RunAsync(kapsam.ServiceProvider, kayitci);
 }
 
 if (!app.Environment.IsDevelopment())

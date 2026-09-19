@@ -258,15 +258,15 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       **TETİK(2026-09-26)** — tarihli, yani bu kapı ARTIK kendisi hatırlatıyor;
       önceki vade 10 gün gecikmişti ve onu hook'un uyarı satırı yakalamıştı, kapı değil.
 
-- [ ] **V-19 Türkçe kapısının KARA LİSTE yarısı** (19.09, Solum'un ayrımı) — kapı iki
-      yarılı: Türkçe HARF taraması kapalı küme (kaçış yok), **ASCII'ye çevrilmiş kelime
-      taraması ise kara liste** ve eksikliği **görünmez**. ⚠ Kapının kendi yükseltme
-      tetiği **zaten ateşlendi**: 19.09 ikinci turunda 14 kelime listeye eklendi çünkü
-      kaçmışlardı. Yani borç bugün açık. Aday çözüm: sözlük tabanlı (TDK listesi) ya da
-      "İngilizce sözlükte olmayan tanımlayıcı" yaklaşımı — ikisi de ölçülmedi.
-      **Ölçmeyi engelleyen:** sözlük dosyası + yanlış alarm oranının bilinmemesi.
-      **TETİK(koşul: üçüncü kez listede olmayan bir kelimeden ihlal gelmesi)**
-
+- [x] ~~**V-19 Türkçe kapısının KARA LİSTE yarısı**~~ — ✅ KAPANDI 19.09. Kara listenin
+      YANINA **ak liste** kondu (`tools/kod-sozcukleri.txt`, 236 sözcük): bildirilen her
+      adın her sözcüğü dağarcıkta olmak zorunda; olmayan sözcük KIRIK verir ve iki
+      seçenek sunar (İngilizceyse bir satır ekle, Türkçeyse çevir).
+      ⚠ **Kurulurken İKİ KAÇAK buldu**: `LikeKacir` ve `CalistirAsync` aylardır koddaydı
+      ve kara liste onları HİÇ görmüyordu → `EscapeLike` / `RunAsync`. Yani "kara
+      listenin eksikliği görünmez" bir teori değil, bu depoda **ölçülmüş olgu**.
+      Kırmızı kip üç kez: kara listede olmayan Türkçe ad (`Dukkan…`) → KIRIK · ak liste
+      dosyası silindi → **KOŞAMADI** (sessizce kara listeye düşmek yasak) · geri alındı.
 - [ ] **V-20 Vardiya testleri TEK KESİM üzerinde koşuyor (adım ekseni kör)** (19.09,
       Solum'un sekizinci tuzağının ikinci ekseni) — fikstür tek kesim seçiyor; **kesim
       değişimi ve devir taşıma hiç test edilmedi**. `GetSummaryAsync` devri ayrı tablodan

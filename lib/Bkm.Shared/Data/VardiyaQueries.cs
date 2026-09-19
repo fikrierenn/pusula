@@ -311,7 +311,7 @@ public sealed class VardiyaQueries(Db db)
                    OR (k.SayimDisi = 0 AND k.CalismaDk <> k.PlanCalismaDk))
             ORDER BY k.Tarih DESC, k.Sube, k.Personel
             """, VrdParams.For(userId).Cutoff(bas, bit).Branch(branch)
-                          .Add("ara", string.IsNullOrWhiteSpace(ara) ? null : LikeKacir(ara.Trim()))
+                          .Add("ara", string.IsNullOrWhiteSpace(ara) ? null : EscapeLike(ara.Trim()))
                           .Add("sadeceSorunlu", sadeceSorunlu ? 1 : 0)
                           .Add("limit", limit));
     }
@@ -322,7 +322,7 @@ public sealed class VardiyaQueries(Db db)
     /// beklenmedik sonuç verir. Injection DEĞİL (sorgu parametreli) ama YANLIŞ SONUÇ.
     /// Kaçış karakteri sorguda <c>ESCAPE '\'</c> ile bildirilir.
     /// </summary>
-    private static string LikeKacir(string s) =>
+    private static string EscapeLike(string s) =>
         s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
 
     /// <summary>

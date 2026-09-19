@@ -24,18 +24,24 @@ BİLİNEN ATLATMA:
   • Türkçe kelimeyi kısaltmak (`Sb` = şube).
 
 YÜKSELTME YOLU:
-  • İhlal ikinci kez listede olmayan bir kelimeden gelirse, liste yaklaşımı
-    terk edilip sözlük tabanlı bir çözüm (TDK kelime listesi) tartışılır.
-  ⚠ BU TETİK ZATEN ATEŞLENDİ (19.09, aynı gün): ikinci turda 14 kelime listeye
-    EKLENDİ çünkü kaçmışlardı. Yani yükseltme borcu bugün AÇIK — kapatılmadı,
-    V-19 olarak yazıldı.
+  ✅ YAPILDI (V-19, 19.09): kara listenin YANINA ak liste kondu
+    (`tools/kod-sozcukleri.txt`, 236 sözcük). Bildirilen her adın her sözcüğü
+    dağarcıkta olmak zorunda; olmayan sözcük KIRIK verir ve iki seçenek sunar —
+    İngilizceyse dosyaya BİR SATIR ekle, Türkçeyse ÇEVİR.
+  ⚠ AK LİSTE KURULURKEN İKİ KAÇAK BULDU: `LikeKacir` ve `CalistirAsync` aylardır
+    koddaydı; kara listede o kelimeler olmadığı için kapı onları HİÇ görmemişti
+    (`EscapeLike` / `RunAsync` yapıldı). Yani "kara listenin eksikliği görünmez"
+    bir teori değil, bu depoda ÖLÇÜLMÜŞ bir olgudur.
 
-KAPININ İKİ YARISI AYNI GÜVENDE DEĞİL (Solum'un ayrımı, 19.09):
+KAPININ ÜÇ KATMANI (Solum'un ayrımı + V-19):
   • Türkçe HARF taraması (`ıİşŞğĞüÜöÖçÇ`) — kapalı küme, kaçış YOK.
-  • ASCII'ye çevrilmiş Türkçe kelime taraması — KARA LİSTE, yani eksikliği
-    GÖRÜNMEZ. Yanlış alarm görülür ve düzeltilir; yanlış negatif sessizce
-    yeşil durur. Bu kapının riski o ikinci yarıdadır ve listenin uzunluğu
-    bir güvence DEĞİLDİR.
+  • ASCII'ye çevrilmiş Türkçe KELİME listesi — kara liste; hızlı ve açık mesaj
+    verir ama eksikliği GÖRÜNMEZ, tek başına GÜVENCE DEĞİLDİR.
+  • AK LİSTE (V-19) — bildirilen adlardaki her sözcük dağarcıkta mı? Eksikliği
+    İNSANA SORAR: yanlış pozitifin bedeli bir satır, yanlış negatifin bedeli
+    görünmeyen bir ihlal.
+  ⚠ Ak liste dosyası okunamazsa kapı KOŞAMADI der — sessizce kara listeye düşmek
+    YASAK, çünkü o hâlde kapı çalışıyor GÖRÜNÜR.
 ═══════════════════════════════════════════════════════════════════════════════
 
 NEDEN VAR: 19.09.2026 oturumunda GMY **dört kez** aynı şeyi söylemek zorunda
@@ -83,6 +89,46 @@ TURKCE_KELIMELER = [
     "Yukleyici", "Bicim", "Sabit", "Kur", "Uret", "Cevir", "Hazirla",
 ]
 TURKCE_HARF = "ıİşŞğĞüÜöÖçÇ"
+
+# ── AK LİSTE (V-19) — kapının ÜÇÜNCÜ yarısı ─────────────────────────────────
+# Kara liste "şu kelimeler yasak" der ve eksikliği GÖRÜNMEZ. Ak liste "yalnız bu
+# sözcükler serbest" der ve eksikliği HER YENİ SÖZCÜKTE İNSANA SORAR.
+#
+# ⚠ KURULURKEN İKİ KAÇAK BULDU: `LikeKacir` ve `CalistirAsync` aylardır koddaydı,
+#   kara listede o kelimeler olmadığı için kapı onları HİÇ görmemişti.
+SOZLUK_DOSYASI = Path(__file__).resolve().parent / "kod-sozcukleri.txt"
+
+# Yalnız BİLDİRİM yerleri taranır (tip · metot · özellik adı). Kullanım yerleri
+# değil: aynı adı iki kez bildirmiyoruz ve kullanım taraması dış kütüphane adlarını
+# (Dapper, Identity) da çekerdi — dağarcık şişer, kapı gürültülenir.
+BILDIRIM_DESENLERI = [
+    re.compile(r"\b(?:class|record|struct|interface|enum)\s+(\w+)"),
+    re.compile(r"\b(?:public|private|internal|protected)\s+"
+               r"(?:static\s+|async\s+|sealed\s+|override\s+|new\s+)*"
+               r"[\w<>?,\[\]\.]+\s+(\w+)\s*[\(\{=;]"),
+]
+SOZCUK_PARCA = re.compile(r"[A-ZÇĞİÖŞÜ][a-zçğıöşü0-9]*|[a-zçğıöşü0-9]+")
+
+# C# anahtar sözcükleri dağarcığa girmez.
+CS_ANAHTAR = set("""abstract as async await base bool break byte case catch char checked class
+const continue decimal default delegate do double else enum event explicit extern false finally
+fixed float for foreach get goto if implicit in int interface internal is lock long namespace new
+null object operator out override params private protected public readonly ref return sbyte sealed
+set short sizeof stackalloc static string struct switch this throw true try typeof uint ulong
+unchecked unsafe ushort using var virtual void volatile while record init with when and or not
+nameof value global file required scoped""".split())
+
+
+def dagarcigi_yukle():
+    """Ak liste. Dosya yoksa KOŞAMADI — sessizce kara listeye düşmek YASAK."""
+    if not SOZLUK_DOSYASI.exists():
+        return None
+    sozcukler = set()
+    for satir in io.open(SOZLUK_DOSYASI, encoding="utf-8"):
+        satir = satir.strip()
+        if satir and not satir.startswith("#"):
+            sozcukler.add(satir.lower())
+    return sozcukler or None
 
 # Kod dışı bırakılacaklar: yorum + dize
 # SATIR YORUMU icin `[^\n]*` kullanilir, `.*$` DEGIL.
@@ -162,6 +208,40 @@ def ihlaller(yol: Path) -> list[tuple[int, str, str]]:
     return bulgular
 
 
+def bilinmeyen_sozcukler(yol: Path, dagarcik: set) -> list:
+    """Ak liste denetimi: bildirilen adlardaki sozcukler dagarcikta var mi?
+
+    UYARI  KARA LISTEDEN FARKI BU: kara liste "su kelime yasak" der ve listede
+      olmayan Turkce kelimeyi HIC gormez. Ak liste "bu sozcugu tanimiyorum" der —
+      yani eksikligi INSANA SORAR. Yanlis pozitifin bedeli bir satir eklemek,
+      yanlis negatifin bedeli gorunmeyen bir ihlal.
+    """
+    if yol.suffix.lower() != ".cs":
+        return []   # Razor'da bildirim yok; markup adlarini taramak gurultu uretir
+    ham = io.open(yol, encoding="utf-8-sig", errors="replace").read()
+    temiz = kod_kismi(ham, razor=False)
+    satirlar = ham.splitlines()
+
+    bulgular = []
+    gorulen = set()
+    for desen in BILDIRIM_DESENLERI:
+        for m in desen.finditer(temiz):
+            ad = m.group(1)
+            if ad in CS_ANAHTAR:
+                continue
+            satir_no = temiz[:m.start()].count(chr(10)) + 1
+            for w in SOZCUK_PARCA.findall(ad):
+                wl = w.lower()
+                if len(wl) < 2 or wl.isdigit() or wl in CS_ANAHTAR or wl in dagarcik:
+                    continue
+                if wl in gorulen:
+                    continue
+                gorulen.add(wl)
+                metin = satirlar[satir_no - 1].strip()[:90] if satir_no <= len(satirlar) else ""
+                bulgular.append((satir_no, metin, "ak listede YOK: '%s' (ad: %s)" % (w, ad)))
+    return bulgular
+
+
 hedefler: list[Path] = []
 if len(sys.argv) > 1:
     hedefler = [Path(a) for a in sys.argv[1:] if Path(a).exists()]
@@ -179,9 +259,15 @@ print("═" * 74)
 print("TÜRKÇE TANIMLAYICI DENETİMİ — kod İngilizce, UI/yorum Türkçe")
 print("═" * 74)
 
+DAGARCIK = dagarcigi_yukle()
+if DAGARCIK is None:
+    print("KOSAMADI  ak liste okunamadi (tools/kod-sozcukleri.txt) — kapinin ikinci "
+          "yarisi CALISMIYOR demektir; sessizce kara listeye dusmek YASAK")
+    sys.exit(2)
+
 toplam = 0
 for p in sorted(hedefler):
-    b = ihlaller(p)
+    b = ihlaller(p) + bilinmeyen_sozcukler(p, DAGARCIK)
     if b:
         toplam += len(b)
         print(f"\nKIRIK {_gosterim(p)}")
@@ -194,7 +280,9 @@ for p in sorted(hedefler):
 
 print()
 if toplam:
-    print(f"KIRIK · {toplam} Türkçe tanımlayıcı. Kod İngilizce olmalı (turkish-ui.md);")
-    print("        yorum ve UI metni Türkçe KALIR — bu kapı onlara dokunmaz.")
+    print(f"KIRIK · {toplam} bulgu. Kod İngilizce olmalı (turkish-ui.md); yorum ve UI")
+    print("        metni Türkçe KALIR — bu kapı onlara dokunmaz.")
+    print("        'ak listede YOK' bulgusu iki seçenek sunar: sözcük İngilizceyse")
+    print("        tools/kod-sozcukleri.txt'e BİR SATIR ekle, Türkçeyse ÇEVİR.")
     sys.exit(1)
-print(f"Denetim geçti · {len(hedefler)} dosyada Türkçe tanımlayıcı yok")
+print(f"Denetim geçti · {len(hedefler)} dosya · ak liste {len(DAGARCIK)} sözcük")
