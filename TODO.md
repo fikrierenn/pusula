@@ -235,6 +235,15 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       toplamıyla otomatik karşılaştıran hiçbir şey yok. Sınıf yazılı
       (`olctum-mu-cikardim-mi.md` § makul sayı kabul edilir), mekanik karşılığı yok.
 
+- [ ] **V-09 Kapsam BOĞAZI — süzgeci unutmayı İMKÂNSIZ kıl** (19.09, Solum araştırması)
+      Bugünkü kapı metin sayıyor; süzgeci yazmayı **unutabilirsin**. Yapısal çözüm: ham
+      `bkm.Vrd_KisiGun` adını yazan hiçbir yol kalmasın — kapsamlı tabloya erişen tek yol
+      `@userId` alıp TVF birleşimini kendi kuran metot olsun (alt-sorgu da otomatik
+      kapsanır). Altına `BannedApiAnalyzers` (RS0030) konabilir: Dapper çağrısı boğaz
+      sınıfı dışında **derlenmesin**. ⚠ Ölçülmüş sınır: ne yasak listesi ne mimari testi
+      (ArchUnitNET/NetArchTest) **birlikte-bulunmayı** ifade edemez — onu yalnız yapı çözer.
+      Elenenler: Testcontainers (sorunu Docker'a taşıyor) · NetArchTest (2021'den yayınsız).
+
 - [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
       yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
       (43 ihlal orada temizlenmedi, hiç bakılmadı). Genişletme maliyeti ölçülmedi.
