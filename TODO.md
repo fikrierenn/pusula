@@ -235,14 +235,20 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       toplamıyla otomatik karşılaştıran hiçbir şey yok. Sınıf yazılı
       (`olctum-mu-cikardim-mi.md` § makul sayı kabul edilir), mekanik karşılığı yok.
 
-- [ ] **V-09 Kapsam BOĞAZI — süzgeci unutmayı İMKÂNSIZ kıl** (19.09, Solum araştırması)
-      Bugünkü kapı metin sayıyor; süzgeci yazmayı **unutabilirsin**. Yapısal çözüm: ham
-      `bkm.Vrd_KisiGun` adını yazan hiçbir yol kalmasın — kapsamlı tabloya erişen tek yol
-      `@userId` alıp TVF birleşimini kendi kuran metot olsun (alt-sorgu da otomatik
-      kapsanır). Altına `BannedApiAnalyzers` (RS0030) konabilir: Dapper çağrısı boğaz
-      sınıfı dışında **derlenmesin**. ⚠ Ölçülmüş sınır: ne yasak listesi ne mimari testi
-      (ArchUnitNET/NetArchTest) **birlikte-bulunmayı** ifade edemez — onu yalnız yapı çözer.
-      Elenenler: Testcontainers (sorunu Docker'a taşıyor) · NetArchTest (2021'den yayınsız).
+- [x] ~~**V-09 Kapsam BOĞAZI**~~ — ✅ KAPANDI 19.09 (commit `a2157c4`). `VrdSql.PersonDays`/
+      `Carryover` süzgeci kaynağın İÇİNE aldı (alt-sorgu otomatik kapsanır); `VrdParams`
+      parametre adını tek yere indirdi; her çağrıda SQL `@token` kümesi ↔ parametre kümesi
+      iki yönlü karşılaştırılıyor. Kapı yeniden yazıldı (metin saymıyor, yapıyı koruyor),
+      kırmızı kip **üç kez** koşuldu. Kurulurken **dördüncü ad kayması** bulundu:
+      `SaveApprovalAsync` (`@girisDk` ↔ `inMin`) — onay YAZMA yolu hiç çalışmıyormuş.
+      ⚠ AÇIK: bu bir TİP değil, boğazdır — C# geçmeye zorlamıyor; iki bilinen atlatma
+      yazılı ve kapı yakalıyor. Yükseltme yolu V-10.
+
+- [ ] **V-10 `BannedApiAnalyzers` ile boğazı DERLEYİCİYE zorlat** (19.09) — Dapper çağrısı
+      `VrdSql` dışında derlenmesin. Ön koşulu artık var (boğaz kuruldu). ⚠ Solum'un
+      19.09 vakası uyarı: `BannedSymbols.txt` yorum satırı DESTEKLEMİYOR — bare `#`
+      satırları yinelenen boş sembol sayılıp RS0031 veriyor ve `TreatWarningsAsErrors`
+      ile tüm depoyu derlenmez yapıyor. Gerekçe dosyanın içine değil yanına yazılacak.
 
 - [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
       yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
