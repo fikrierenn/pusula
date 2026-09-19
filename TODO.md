@@ -245,19 +245,18 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       ⚠ Testteki **SQL arka kapısı kaldırıldı**: itiraz artık uygulamanın kendi
       yolundan yazılıyor. Eski hâliyle test, **ürünün yapamadığı** bir şeyi ölçüyordu.
       Ekran yolu için ayrı uçtan uca test (form → POST → DB) + kırmızı kip.
-- [ ] **V-21 "Tetikleyici ATEŞLEDİ mi" mekanik olarak sorulamıyor** (19.09, Solum'un
-      ölçümünden doğdu) — TODO'da tetikleyici YAZILIYOR ama ateşleyip ateşlemediğine
-      **hiçbir şey bakmıyor**. Solum kendi tahtasında ölçtü: iki tetik ateşlemiş, biri
-      **11 gündür** bekliyor ve fark edilmesi tesadüftü.
-      ⚠ Bizde ölçmeyi denedim ve **ölçüm kendi tuzağına düştü**: tarih arayan tarama
-      7 madde buldu ama çoğu **tetik tarihi değil ÖLÇÜM DAMGASI** (K-29'daki 2025-12-31
-      bir tetik değil). Yani bugün cevap "hayır, mekanik olarak sorulamıyor" —
-      tetikler serbest metin.
-      **Gereken:** makine-okunur biçim (ör. `TETİK(2026-10-01)` / `TETİK(koşul: ilk ay
-      kapanışı)`). Koşul-tabanlı olanlar taranamaz; kapsam yalnız tarihli olanlar.
-      ⚠ Bilinen ateşlemiş tetik: **V-19** (Türkçe kapısının kendi yükseltme tetiği,
-      19.09'da ikinci kez ateşledi — elle görüldü, kapı değil insan yakaladı).
-      **Tetikleyici:** ikinci kez elle fark edilen ateşlemiş tetik.
+- [x] ~~**V-21 "Tetikleyici ATEŞLEDİ mi" mekanik olarak sorulamıyor**~~ — ✅ KAPANDI 19.09.
+      Biçim geldi: **`TETİK(2026-10-01)`** (tarihli, mekanik sorulabilir) ·
+      **`TETİK(koşul: …)`** (koşullu, sorulamaz ama SAYILIR). Kapıya beşinci denetim
+      eklendi: ateşlemiş **tarihli** tetik + madde hâlâ açıksa **KIRIK**.
+      ⚠ SINIR GÖRÜNÜR YAZILIYOR: bugün 5 koşullu tetik mekanik olarak sorulamıyor ve
+      **104 açık madde tetiksiz** — yani kapı borçların yalnız küçük bir kısmını
+      izliyor. Görünmeyen bir sınır, olmayan bir sınır gibi davranır.
+      Kırmızı kip: tarih geçmişe çekildi → "tetik ATEŞLEDİ, 18 gün önce" → geri alındı.
+- [ ] **V-22 Curator-check vadesi** — sema/TODO yaşam-döngüsü taraması (≥7 gün).
+      Son tam tarama 2026-09-09, hafif tarama 19.09'da handoff'ta yapıldı.
+      **TETİK(2026-09-26)** — tarihli, yani bu kapı ARTIK kendisi hatırlatıyor;
+      önceki vade 10 gün gecikmişti ve onu hook'un uyarı satırı yakalamıştı, kapı değil.
 
 - [ ] **V-19 Türkçe kapısının KARA LİSTE yarısı** (19.09, Solum'un ayrımı) — kapı iki
       yarılı: Türkçe HARF taraması kapalı küme (kaçış yok), **ASCII'ye çevrilmiş kelime
@@ -266,7 +265,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       kaçmışlardı. Yani borç bugün açık. Aday çözüm: sözlük tabanlı (TDK listesi) ya da
       "İngilizce sözlükte olmayan tanımlayıcı" yaklaşımı — ikisi de ölçülmedi.
       **Ölçmeyi engelleyen:** sözlük dosyası + yanlış alarm oranının bilinmemesi.
-      **Tetikleyici:** üçüncü kez listede olmayan bir kelimeden ihlal gelmesi.
+      **TETİK(koşul: üçüncü kez listede olmayan bir kelimeden ihlal gelmesi)**
 
 - [ ] **V-20 Vardiya testleri TEK KESİM üzerinde koşuyor (adım ekseni kör)** (19.09,
       Solum'un sekizinci tuzağının ikinci ekseni) — fikstür tek kesim seçiyor; **kesim
@@ -274,7 +273,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       topluyor (`Vrd_Devir`) ve o yol yalnız ay kapanışında yazılıyor.
       **Ölçmeyi engelleyen:** ikinci bir kesim üretmek `sp_Vrd_KisiGunDoldur` koşumu ister
       (dev veride tek kesim var).
-      **Tetikleyici:** ilk gerçek ay kapanışı — devir yazıldığı gün bu test yazılmadan
+      **TETİK(koşul: ilk gerçek ay kapanışı)** — devir yazıldığı gün bu test yazılmadan
       kapanış YAPILMAZ.
 
 - [ ] **V-17 GM bölümleri için çalışma süresi parametresi** (19.09, plan 49 kararı S2)
@@ -283,6 +282,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       düzeltilince kapanır. ⚠ Tablo yalnız `--parametre-yukle` ile yazılır (JSON → tablo,
       TEK YÖN) — yani uygulama yazması değil, **İK parametre kararı**.
 
+      **TETİK(koşul: İK bölüm bazlı çalışma sürelerini verdiğinde)**
 - [x] ~~**V-16 TODO'da 6 MÜKERRER kimlik**~~ — ✅ KAPANDI 19.09. Ölçünce **ikisi kusur
       değildi**: `B-98-gen` ve `B-172(c2)` ayrı maddeler, kapının kimlik deseni onları
       kısaltıp asıl maddenin mükerreri gibi gösteriyordu (beşinci kalibrasyon).

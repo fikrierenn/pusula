@@ -16,7 +16,8 @@ NEDEN VAR (19.09.2026, ÖLÇÜLDÜ — kendi hatam):
 YAKALAMA SÖZLEŞMESİ
   YAKALAR        : bir önceki sürümde VAR olan madde kimliğinin KAYBOLMASI ·
                    mükerrer kimlik · commit'te "kapandı" denen ama TODO'da hâlâ
-                   `[ ]` duran madde (done-but-open)
+                   `[ ]` duran madde (done-but-open) · ATEŞLEMİŞ ama açık duran
+                   tarihli tetikleyici (V-21)
   YAKALAMAZ      : maddenin METNİNİN sessizce değişmesi (kimlik duruyorsa sessiz) ·
                    yanlış kapatma (madde `[x]` ama iş bitmemiş) — onu ancak insan bilir
   BİLİNEN ATLATMA: kimliksiz yazılmış yeni madde — kapı onu SAYAR ama KIRIK saymaz
@@ -27,7 +28,7 @@ YAKALAMA SÖZLEŞMESİ
 Çıkış: 0 geçti · 1 KIRIK · 2 KOŞAMADI
 """
 from __future__ import annotations
-import io, re, subprocess, sys
+import datetime, io, re, subprocess, sys
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -67,6 +68,21 @@ KIMLIKSIZ_TAVAN = 10
 # ikisi DESEN KUSURUYDU (`B-98-gen` / `B-172(c2)` kisaltiliyordu), dordu GERCEKTI
 # ve birlestirildi. Tavan artik 0 — yeni mukerrer kimlik KIRAR.
 MUKERRER_TAVAN = 0
+
+# TETIKLEYICI BICIMI — V-21. Bir borcun "ne zaman is olur" kosulu SERBEST METIN
+# oldugu surece ATESLEYIP ATESLEMEDIGI sorulamaz.
+#
+# ⚠ BU EKSIKLIK OLCULDU (19.09): Solum kendi tahtasinda iki ATESLEMIS tetik buldu,
+#   biri 11 gunluktu ve fark edilmesi TESADUFTU. Bizde de denedim; tarih arayan
+#   naif tarama 7 madde buldu ama cogu TETIK TARIHI DEGIL OLCUM DAMGASIYDI — yani
+#   olcum kendi tuzagina dustu. Sebep: tetik ile tarih ayirt edilemiyordu.
+#
+# Bicim:  TETIK(2026-10-01)            -> tarihli, MEKANIK olarak sorulabilir
+#         TETIK(kosul: ilk ay kapanisi) -> kosullu, mekanik olarak SORULAMAZ
+# Ikincisi kirik saymaz ama SAYILIR ve yazdirilir: "kac borcun tetigi olculemiyor"
+# gorunur kalsin diye. Gorunmeyen bir sinir, olmayan bir sinir gibi davranir.
+TETIK = re.compile(r"TET[İI]K\(([^)]{1,80})\)")
+BUGUN = datetime.date.today()
 
 
 def maddeleri_cikar(metin: str) -> tuple[dict[str, bool], list[str], list[str]]:
@@ -200,7 +216,45 @@ if len(kimliksiz) > KIMLIKSIZ_TAVAN:
 else:
     print(f"OK     kimliksiz madde {len(kimliksiz)} ≤ tavan {KIMLIKSIZ_TAVAN} (eski borç)")
 
-# ── 4. DONE-BUT-OPEN (commit-discipline S1'in mekanik hâli) ─────────────────
+# ── 4. TETİKLEYİCİ ATEŞLEDİ Mİ (V-21) ───────────────────────────────────────
+# Açık maddelerin tetikleri: tarihli olan geçmişte kaldıysa o borç ARTIK İŞTİR.
+# Koşullu olanlar sayılır ama kırık saymaz — mekanik olarak sorulamazlar ve bu
+# SINIR GÖRÜNÜR kalmalı.
+atesleyen, kosullu, tetiksiz_acik = [], 0, 0
+for madde in re.split(r"\n(?=- \[)", TODO.read_text(encoding="utf-8")):
+    if not madde.startswith("- [ ]"):
+        continue
+    k = KIMLIK.search(madde)
+    kid = k.group(1) if k else "?"
+    tetikler = TETIK.findall(madde)
+    if not tetikler:
+        tetiksiz_acik += 1
+        continue
+    for t in tetikler:
+        m = re.match(r"\s*(\d{4})-(\d{2})-(\d{2})\s*$", t)
+        if not m:
+            kosullu += 1
+            continue
+        try:
+            tarih = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            kosullu += 1
+            continue
+        if tarih <= BUGUN:
+            atesleyen.append((kid, tarih.isoformat(), (BUGUN - tarih).days))
+
+if atesleyen:
+    kirik.append("tetik-atesledi")
+    for kid, tarih, yas in sorted(atesleyen, key=lambda x: -x[2]):
+        print(f"KIRIK  tetik ATEŞLEDİ ve madde hâlâ açık: {kid} — {tarih} ({yas} gün önce)")
+    print("       Ya işi yap, ya tetiği YENİ bir tarihe çek (gerekçesiyle). Ateşlemiş "
+          "bir tetiği görmezden gelmek, tetiği hiç yazmamakla aynı.")
+else:
+    print(f"OK     ateşlemiş tarihli tetik yok "
+          f"({kosullu} koşullu tetik MEKANİK olarak sorulamaz · "
+          f"{tetiksiz_acik} açık madde tetiksiz)")
+
+# ── 5. DONE-BUT-OPEN (commit-discipline S1'in mekanik hâli) ─────────────────
 denen = kapatildigi_soylenen()
 acik_ama_kapandi_denen = sorted(k for k in denen if simdi.get(k) is False)
 if acik_ama_kapandi_denen:
