@@ -55,11 +55,41 @@ PANEL_SAYFA = KOK / "dashboard/Components/Pages/Vardiya.razor"
 #   bir suzgec yazmaya zorlardi.
 KAPSAMLI_TABLOLAR = ["bkm.Vrd_KisiGun", "bkm.Vrd_Devir", "bkm.Vrd_KisiGunDuzeltilmis_vw"]
 
-# URETIM kokleri. `tests/` BILEREK DISARIDA: test kapsamsiz nufusu olcmek
-# ZORUNDADIR (olcemezse sizintinin varligini da yoklugunu da kanitlayamaz).
-# Muafiyet bir bosluk degil, testin ISIDIR — ve yalniz burada yazili oldugu icin
-# gorunurdur.
-URETIM_KOKLERI = ["lib/Bkm.Shared", "vardiya-app", "dashboard"]
+# URETIM KOKLERI ARTIK KESFEDILIYOR, ELLE YAZILMIYOR (19.09, Solum'un uyarisi).
+#
+# ⚠ ONCEKI HALI BIR FOTOGRAFTI: `["lib/Bkm.Shared", "vardiya-app", "dashboard"]`.
+#   O liste yazildigi gun dogruydu; DORDUNCU bir uygulama vardiya tablosuna
+#   dokunmaya baslasa kapi onu HIC TARAMAZDI ve sessizce yesil kalirdi.
+#   Solum'un ayni gun yasadigi vaka: bir plan "sifir tuketici bu metodu eziyor"
+#   diye olcmus, o gun IKI tuketici varmis, bugun UC — olcum bayatlamis.
+#   Sinif: "giris kosulu bir kez olculurse KOSUL DEGIL FOTOGRAFTIR" ve bunun
+#   NUFUS tarafi ("nufus buyur mu") hic sorulmamisti.
+#
+# ⚠ BUGUN OLCULDU: taranmayan projelerin (asistan · muhasebe · dashboardv2 ·
+#   RaporApp · SsmsExcelExporter · diskscan) HICBIRI vardiya tablosuna ya da panel
+#   veritabanina dokunmuyor. Yani RISK YOK degil, NUFUS YOK — ve nufus buyudugu an
+#   kapi artik kendiliginden gorur.
+#
+# `tests/` BILEREK DISARIDA: test kapsamsiz nufusu olcmek ZORUNDADIR (olcemezse
+# sizintinin varligini da yoklugunu da kanitlayamaz). Muafiyet bir bosluk degil,
+# testin ISIDIR — ve yalniz burada yazili oldugu icin gorunurdur.
+TEST_KOKU = "tests"
+
+
+def uretim_koklerini_kesfet() -> list[str]:
+    """Depodaki her .csproj dizini bir uretim kokudur (tests/ haric)."""
+    kokler = set()
+    for proj in KOK.rglob("*.csproj"):
+        if any(p in ("bin", "obj", "node_modules", ".claude") for p in proj.parts):
+            continue
+        rel = proj.parent.relative_to(KOK).as_posix()
+        if rel == TEST_KOKU or rel.startswith(TEST_KOKU + "/"):
+            continue
+        kokler.add(rel)
+    return sorted(kokler)
+
+
+URETIM_KOKLERI = uretim_koklerini_kesfet()
 
 kirik: list[str] = []
 
@@ -92,6 +122,11 @@ if not BOGAZ.exists():
     print(f"KOŞAMADI  boğaz dosyası yok: {BOGAZ}")
     sys.exit(2)
 
+if not URETIM_KOKLERI:
+    print("KOŞAMADI  hiç üretim projesi bulunamadı — keşif boş döndü, bu kapı "
+          "hiçbir dosya taramıyor demektir (yeşil DEĞİL)")
+    sys.exit(2)
+
 bogaz_metni = sql_baglami(io.open(BOGAZ, encoding="utf-8").read())
 bogazda = sum(len(sql_kullanimi(bogaz_metni, t)) for t in KAPSAMLI_TABLOLAR)
 if bogazda == 0:
@@ -120,8 +155,8 @@ if disarida:
         print(f"KIRIK boğaz DIŞI kapsamlı tablo kullanımı: {yol} → `{kullanim}` "
               f"— süzgeç unutulabilir hâle geldi. VrdSql.PersonDays/Carryover kullan.")
 else:
-    print(f"OK    boğaz tekeli ({taranan} üretim dosyası tarandı, "
-          f"kapsamlı tabloya erişen tek yer VrdSql.cs)")
+    print(f"OK    boğaz tekeli ({taranan} üretim dosyası / {len(URETIM_KOKLERI)} proje "
+          f"tarandı, kapsamlı tabloya erişen tek yer VrdSql.cs)")
 
 # ── 2. BOĞAZ ATLANMIYOR MU (doğrudan Dapper) ─────────────────────────────────
 if not SORGULAR.exists():
