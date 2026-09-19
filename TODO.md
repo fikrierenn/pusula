@@ -229,8 +229,16 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Ölçüm `SolumShellTests`: kabuk + marka + menü + çıkış adresi, ayrıca `solum.css` 200.
 - [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.
       Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
-- [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
-      bırakıldı; plan hâlâ Excel kaynaklı.
+- [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — plan 49 ONAYLANDI, 5/6 adım
+      bitti (`5dcc4b7` şema · `9c47882` okuma+yazma · `36e42d2` ekran+testler).
+      Kalan: **mevzuat kapısının düzeltilmiş izni okuması** (`mesai_mevzuat_kapisi.py`
+      bugün hâlâ ham `Izin` kolonuna bakıyor) + ölçülen 172 günün ekranda "tanım eksik"
+      diye işaretlenmesi. ⚠ Ayrıca S2 kararının parametre işi (`V-17`) İK'yı bekliyor.
+- [ ] **V-17 GM bölümleri için çalışma süresi parametresi** (19.09, plan 49 kararı S2)
+      `Vrd_CalismaSaati`'nde 15 satır `OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı`
+      notu taşıyor. GM ofis kadrosunun 70 günlük "vardiya tanımsız" kısmı bu satırlar
+      düzeltilince kapanır. ⚠ Tablo yalnız `--parametre-yukle` ile yazılır (JSON → tablo,
+      TEK YÖN) — yani uygulama yazması değil, **İK parametre kararı**.
 
 - [ ] **V-16 TODO'da 6 MÜKERRER kimlik** (19.09, `todo_denetimi.py` ilk koşumunda bulundu)
       `B-06 · B-12 · B-98 · B-110 · B-111 · B-172` iki yerde birden yazılı (ör. B-06:
@@ -238,13 +246,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Temizlenince tavan düşürülecek. ⚠ Mükerrer kimlik sinsi: biri kapatılınca öteki
       açık kalır ve "hâlâ yapılmamış" görünür — ya da tersi.
 
-- [ ] **V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı** (19.09) — kırmızı kip
-      geri alındıktan hemen sonraki koşumda 1 test kırmızı döndü; ardından **10 koşum
-      üst üste yeşil** ve hata ÜRETİLEMEDİ. En olası sebep: derleme çıktısının test
-      koşucusuyla yarışı (revert edilen ikili hâlâ yüklüyken koşum). ⚠ "Geçti" diye
-      kapatılmıyor: bir daha görülürse koşum günlüğü saklanacak ve sınıf adı
-      kaydedilecek. Flaky bir test, testsizlikten kötüdür — insan bakmamayı öğrenir.
-
+- [x] ~~**V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı**~~ — ✅ KAPANDI 19.09
+      (commit `36e42d2`). Tahminle bulunamadı; hata mesajına **kanıt** eklendi (üretilen
+      şifre + sayfa uyarısı) ve ikinci koşumda yakalandı: şifre `Nr2&#x2B;6QQb2BWt` —
+      havuzda `+` var, Razor onu `&#x2B;` diye **kodluyor**, test kodlanmış dizgeyi
+      deniyordu. **Ürün doğruydu, ölçüm aracı yanlıştı**; kırmızı ara sıra çıkıyordu
+      çünkü her şifrede `+` olmuyor. `WebUtility.HtmlDecode` + `data-test` tutamağı.
+      5 koşum üst üste yeşil (önce 3'te 1 kırmızı).
 - [ ] **V-07 Orantısızlık sezgisi MEKANİKLEŞMEDİ** (19.09, Solum S3) — ikinci kapsam
       sızıntısını bulan şey insan sezgisiydi ("2.192,6 saat makul ama kapsamla
       orantısız"). Bugün ekranda gösterilen toplamı, o ekranın **kapsam kümesinin**
