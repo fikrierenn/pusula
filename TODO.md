@@ -244,14 +244,19 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       ⚠ AÇIK: bu bir TİP değil, boğazdır — C# geçmeye zorlamıyor; iki bilinen atlatma
       yazılı ve kapı yakalıyor. Yükseltme yolu V-10.
 
-- [ ] **V-10 `BannedApiAnalyzers` ile boğazı DERLEYİCİYE zorlat** (19.09) — Dapper çağrısı
-      `VrdSql` dışında derlenmesin. Ön koşulu artık var (boğaz kuruldu). ⚠ Solum'un
-      19.09 vakası uyarı: `BannedSymbols.txt` **hiçbir yorum biçimini** desteklemiyor.
-      İlk teşhisim "bare `#` satırları" idi; Solum ölçtü — `# ---` de kırıyor. Her yorum
-      satırı yinelenen boş sembol sayılıp RS0031 veriyor ve `TreatWarningsAsErrors` ile
-      tüm depoyu derlenmez yapıyor. ⇒ Dosyada YALNIZ girdi durur; gerekçe
-      `.editorconfig` + `Directory.Packages.props` tarafına yazılır. `NoWarn`a RS0031
-      EKLENMEZ (kapının kendi gerçek bulgusunu da susturur).
+- [x] ~~**V-10 `BannedApiAnalyzers` ile boğazı DERLEYİCİYE zorlat**~~ — ✅ KAPANDI 19.09
+      (commit `704c508`). Dapper çağrısı `VrdSql` dışında **derlenmiyor** (RS0030).
+      Muafiyet iki dosya: `VrdSql.cs` + `AuditTrail.cs`. Kapsam bilinçli dar:
+      yalnız `lib/Bkm.Shared`. Üç ölçüm: (a) boğazı atlayan çağrı derlemeyi durdurdu,
+      (b) şiddet `WarningsAsErrors` ile verilemiyor — muafiyetleri eziyor, `.editorconfig`
+      kullanıldı, (c) **yasak listesi sessizce ölebiliyor** (yanlış sembol adı → analizör
+      hiçbir şey demiyor) → kapıya dördüncü denetim eklendi, kırmızı kiple doğrulandı.
+
+- [ ] **V-11 Boğaz kapsamı `vardiya-app`e genişletilsin mi?** (19.09, açık soru) — orada
+      Dapper kimlik/seed için kullanılıyor ve kapsamlı tablo okumuyor; bugün yasak YOK.
+      Yeni bir sayfa panel DB'den kendi sorgusunu yazarsa boğaz-tekeli denetimi tabloyu
+      yakalar ama **ham SQL'i değil**. Ölçülmedi: genişletmenin maliyeti (kimlik
+      sorgularına kaç muafiyet gerekir) bilinmiyor.
 
 - [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
       yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
