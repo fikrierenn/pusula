@@ -244,8 +244,13 @@ public static class Seed
         return sb.ToString();
     }
 
-    /// <summary>Kriptografik rastgele geçici şifre (Identity kuralı: en az 10 karakter).</summary>
-    private static string GenerateTempPassword()
+    /// <summary>
+    /// Kriptografik rastgele geçici şifre (Identity kuralı: en az 10 karakter).
+    ///
+    /// ⚠ İK ŞİFRE SIFIRLAMA da bunu kullanır (V-01): iki ayrı üretici olsaydı biri
+    ///   zayıflatılır ve fark edilmezdi — şifre gücü gözle okunmaz.
+    /// </summary>
+    public static string GenerateTempPassword()
     {
         // Karışması kolay karakterler (0/O, 1/l/I) BİLEREK yok — şifre elle yazılacak.
         const string harf = "abcdefghjkmnpqrstuvwxyz";

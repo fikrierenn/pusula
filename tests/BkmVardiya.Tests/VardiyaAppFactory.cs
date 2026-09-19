@@ -73,9 +73,11 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
             "INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId) VALUES (@id, @sube, @veren)",
             new { id = ManagerId, sube = ManagerBranch, veren = Stamp });
 
+        // İK iki yetki taşır: tüm şubeleri GÖRME ve kadro yönetimi (şifre sıfırlama).
+        // İkincisi olmadan V-01'in kilidini açan yol test edilemezdi.
         await cn.ExecuteAsync("""
             INSERT INTO bkm.SolumPermissionGrant (ProviderName, ProviderKey, PermissionName)
-            VALUES (N'User', @id, N'vardiya.tumSubeler')
+            VALUES (N'User', @id, N'vardiya.tumSubeler'), (N'User', @id, N'vardiya.kadroYonet')
             """, new { id = HrId });
     }
 

@@ -96,5 +96,14 @@ public sealed class VardiyaMenu : IMenuContributor
     {
         context.Add(new MenuItem("vardiya.rapor", "Mesai Raporu") { Url = "/" });
         context.Add(new MenuItem("vardiya.sifre", "Şifre Değiştir") { Url = "/ChangePassword" });
+
+        // ⚠ YALNIZ İK GÖRÜR — ama bu GÖRÜNÜRLÜK, güvenlik değil. Sayfanın kendisi
+        //   [Authorize(Policy = ManageStaff)] taşıyor; adresi elle yazan biri menüden
+        //   geçmez, oradan geçemez.
+        context.Add(new MenuItem("vardiya.sifreSifirla", "Şifre Sıfırla (İK)")
+        {
+            Url = "/ResetPassword",
+            RequiredPermission = Permissions.ManageStaff,
+        });
     }
 }

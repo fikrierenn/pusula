@@ -80,6 +80,11 @@ builder.Services.AddAuthorization(o =>
     //   görmez. Dördüncü rol geldiğinde `if (rol == "IK")` avına çıkılmaz.
     o.AddPolicy(Permissions.AllBranches, p => p.RequireClaim(Permissions.ClaimType, Permissions.AllBranches));
     o.AddPolicy(Permissions.Approve, p => p.RequireClaim(Permissions.ClaimType, Permissions.Approve));
+    // ⚠ V-01: ŞİFRE SIFIRLAMA yetkisi. Politika KAYDEDİLMEZSE `[Authorize(Policy=...)]`
+    //   sayfayı HERKESE KAPATIR ve sebebi "yetkin yok" gibi okunur — yani eksik kayıt,
+    //   yanlış teşhise yol açar (ölçüldü 19.09: İK formu göremedi, sebebi yetki değil
+    //   kayıtsız politikaydı).
+    o.AddPolicy(Permissions.ManageStaff, p => p.RequireClaim(Permissions.ClaimType, Permissions.ManageStaff));
 });
 
 builder.Services.AddScoped<PermissionLoader>();
