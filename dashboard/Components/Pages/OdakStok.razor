@@ -95,7 +95,7 @@ else if (_kpi is not null)
     <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Marka / Yayınevi Özeti <span class="text-xs text-base-content/50">— devir = yıllık şube satış / ODAK stok</span></div>
-            <ExcelButton FileName="@MarkaDosya" SayfaAd="Marka Ozet" Rows="OzetExcel" />
+            <ExcelButton FileName="@MarkaDosya" SheetName="Marka Ozet" Rows="OzetExcel" />
         </div>
         @if (_ozetLoading)
         {
@@ -137,7 +137,7 @@ else if (_kpi is not null)
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Ürün Dökümü</div>
             <div class="flex items-center gap-2">
-                <ExcelButton FileName="@UrunDosya" SayfaAd="Urun Dokum" Rows="UrunExcel" />
+                <ExcelButton FileName="@UrunDosya" SheetName="Urun Dokum" Rows="UrunExcel" />
                 @if (_urunSayfa is not null) { <Sayfalama Toplam="_urunSayfa.ToplamSatir" Sayfa="_urunPage" Boyut="PageSize" OnDegis="UrunSayfaGit" /> }
             </div>
         </div>
@@ -206,7 +206,7 @@ else if (_kpi is not null)
                 <div class="text-[11px] text-base-content/50">ODAK stoğu yüksek (≥6 ay) veya satışsız olduğu HALDE son 1 yılda ≥2 farklı cariden alım yapılmış ürünler.</div>
             </div>
             <div class="flex items-center gap-2">
-                <ExcelButton FileName="@UsulsuzDosya" SayfaAd="Usulsuz" Rows="UsulsuzExcel" />
+                <ExcelButton FileName="@UsulsuzDosya" SheetName="Usulsuz" Rows="UsulsuzExcel" />
                 @if (_usulsuzSayfa is not null) { <Sayfalama Toplam="_usulsuzSayfa.ToplamSatir" Sayfa="_usulsuzPage" Boyut="PageSize" OnDegis="UsulsuzSayfaGit" /> }
             </div>
         </div>

@@ -62,7 +62,7 @@
 
     @if (!_loading && _gruplar.Count > 0)
     {
-        <ExcelButton FileName="gider-merkezi-mizan" SayfaAd="GiderMizan" Rows="ExcelRows" />
+        <ExcelButton FileName="gider-merkezi-mizan" SheetName="GiderMizan" Rows="ExcelRows" />
         <span class="text-sm text-base-content/60 ml-auto">Toplam gider: <span class="font-bold text-error">@Tl(_genelToplam)</span></span>
     }
 </div>

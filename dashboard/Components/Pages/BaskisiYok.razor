@@ -97,7 +97,7 @@ else
     <div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Gün Özeti <span class="text-xs text-base-content/50">— @_ozet.Count gün</span></div>
-            <ExcelButton FileName="baskisi-yok-ozet" SayfaAd="Ozet" Rows="OzetExcel" />
+            <ExcelButton FileName="baskisi-yok-ozet" SheetName="Ozet" Rows="OzetExcel" />
         </div>
         <div class="overflow-x-auto">
             <table class="table table-xs">
@@ -135,7 +135,7 @@ else
     <div class="bg-base-100 border border-base-300 rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Ürün Detayı <span class="text-xs text-base-content/50">— @_detay.Count satır</span></div>
-            <ExcelButton FileName="baskisi-yok-detay" SayfaAd="Detay" Rows="DetayExcel" />
+            <ExcelButton FileName="baskisi-yok-detay" SheetName="Detay" Rows="DetayExcel" />
         </div>
         <div class="overflow-x-auto">
             <table class="table table-xs">
@@ -167,7 +167,7 @@ else
     <div class="bg-base-100 border border-base-300 rounded-lg p-3 mt-4">
         <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-semibold">Ürün Grubu Dağılımı <span class="text-xs text-base-content/50">— @_grup.Count grup</span></div>
-            <ExcelButton FileName="baskisi-yok-grup" SayfaAd="Grup" Rows="GrupExcel" />
+            <ExcelButton FileName="baskisi-yok-grup" SheetName="Grup" Rows="GrupExcel" />
         </div>
         <div class="overflow-x-auto">
             <table class="table table-xs">

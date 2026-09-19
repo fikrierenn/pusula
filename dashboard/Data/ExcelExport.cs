@@ -11,7 +11,7 @@ public static class ExcelExport
     public const string ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     /// <summary>Satır listesi (her satır: başlık→değer sözlüğü) → xlsx byte[].</summary>
-    public static byte[] Olustur(IEnumerable<IDictionary<string, object?>> satirlar, string sayfaAd = "Rapor")
+    public static byte[] Create(IEnumerable<IDictionary<string, object?>> satirlar, string sayfaAd = "Rapor")
     {
         var liste = satirlar as ICollection<IDictionary<string, object?>> ?? satirlar.ToList();
         using var ms = new MemoryStream();

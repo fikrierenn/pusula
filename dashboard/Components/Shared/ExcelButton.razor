@@ -4,8 +4,8 @@
 @inject IJSRuntime JS
 @inject ILogger<ExcelButton> Logger
 
-<button class="btn btn-sm btn-outline gap-1" @onclick="Aktar" disabled="@(_calisiyor || Rows is null)" title="Excel'e aktar">
-    @if (_calisiyor) { <span class="loading loading-spinner loading-xs"></span> }
+<button class="btn btn-sm btn-outline gap-1" @onclick="Export" disabled="@(_busy || Rows is null)" title="Excel'e aktar">
+    @if (_busy) { <span class="loading loading-spinner loading-xs"></span> }
     else { <i data-lucide="file-down" class="w-4 h-4"></i> }
     @Label
 </button>
@@ -13,24 +13,24 @@
 @code {
     [Parameter] public string FileName { get; set; } = "rapor";
     [Parameter] public string Label { get; set; } = "Excel";
-    [Parameter] public string SayfaAd { get; set; } = "Rapor";
+    [Parameter] public string SheetName { get; set; } = "Rapor";
     [Parameter] public Func<Task<IEnumerable<IDictionary<string, object?>>>>? Rows { get; set; }
 
-    private bool _calisiyor;
+    private bool _busy;
 
-    private async Task Aktar()
+    private async Task Export()
     {
         if (Rows is null) return;
-        _calisiyor = true;
+        _busy = true;
         try
         {
             var data = await Rows();
-            var bytes = ExcelExport.Olustur(data, SayfaAd);
+            var bytes = ExcelExport.Create(data, SheetName);
             var b64 = Convert.ToBase64String(bytes);
-            var ad = $"{FileName}-{DateTime.Today:yyyy-MM-dd}.xlsx";
-            await JS.InvokeVoidAsync("bkmDownload", ad, b64, ExcelExport.ContentType);
+            var name = $"{FileName}-{DateTime.Today:yyyy-MM-dd}.xlsx";
+            await JS.InvokeVoidAsync("bkmDownload", name, b64, ExcelExport.ContentType);
         }
         catch (Exception ex) { Logger.LogError(ex, "Excel export hatası ({File})", FileName); }
-        finally { _calisiyor = false; }
+        finally { _busy = false; }
     }
 }

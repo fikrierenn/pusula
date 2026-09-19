@@ -22,7 +22,7 @@
     <input class="input input-bordered input-sm w-64" placeholder="Cari kod / ad ara…" @bind="_ara" @bind:after="Yukle" />
     <button class="btn btn-sm btn-primary" @onclick="Yukle">Ara</button>
     @if (_ara != "") { <button class="btn btn-sm btn-ghost" @onclick="AramaTemizle">✕</button> }
-    <ExcelButton FileName="cari-risk" SayfaAd="Cari Risk" Rows="ExcelSatirlar" />
+    <ExcelButton FileName="cari-risk" SheetName="Cari Risk" Rows="ExcelSatirlar" />
     <span class="text-[11px] text-base-content/50">@(_ara == "" ? $"En yüksek mutlak bakiyeli ilk {_son} kayıt" : $"Aramada tüm eşleşmeler ({_rows.Count})")</span>
 </div>
 
