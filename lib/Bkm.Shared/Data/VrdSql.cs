@@ -62,10 +62,21 @@ public static class VrdSql
     /// <summary>
     /// KAPSAMLI devir kaynağı. Devir ay kapanışında bir kez yazılır ama yayınlanan
     /// raporun TOPLAMINA girer — kapsamsız hâli ikinci sızıntıyı doğurmuştu.
+    ///
+    /// ⚠ İKİNCİ EKSEN: <c>@donem</c> (V-20, 19.09.2026). Kapsam süzgeci EKLENMİŞTİ ama
+    ///   DÖNEM süzgeci yoktu: <see cref="Vrd_Devir"/> dönem bazlıdır ve süzgeçsiz hâl
+    ///   HER dönemi toplar. Dev veride tek dönem olduğu için görünmüyordu — bir kesim
+    ///   ve bir dönem varken yanlış kod da doğru sayıyı verir.
+    ///   ÖLÇÜLDÜ (simülasyon, sıfır yazma): GENEL MÜDÜRLÜK'e ikinci bir dönem
+    ///   eklenince devir eksiği <b>69.563 → 119.563 dk</b> (+50.000) sızıyor;
+    ///   dönem süzgeciyle 69.563'te kalıyor.
+    ///   Sınıf: `olctum-mu-cikardim-mi.md` § NÜFUS SIFIRSA "GEÇTİ" DEĞİL "BAKAMADIM" —
+    ///   burada nüfus sıfır değil ama EKSENİ TEK: tek dönem, ayrımı göstermez.
     /// </summary>
     public const string Carryover = """
         (SELECT * FROM bkm.Vrd_Devir
-          WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId)))
+          WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
+            AND Donem = @donem)
         """;
 
     // `bkm.Vrd_Onay` BİLEREK boğazda değil: kapsam taşımaz, kimliği SicilNo+Tarih'tir
@@ -125,6 +136,16 @@ public sealed class VrdParams : SqlParams
     }
 
     /// <summary>
+    /// Devir dönemi → <c>@donem</c> (<c>'YYYY-MM'</c>). Kesimden TÜRETİLİR,
+    /// çağıran uydurmaz — türetme tek yerde: <see cref="VrdPeriod.CarryFor"/>.
+    /// </summary>
+    public VrdParams CarryPeriod(string donem)
+    {
+        Add("donem", donem);
+        return this;
+    }
+
+    /// <summary>
     /// Görüntü filtresi → <c>@branch</c>. YETKİ DEĞİLDİR: kapsam İÇİNDE daraltır,
     /// uydurulmuş değer kesişimde düşer. Boş/boşluk → NULL (süzgeç kapalı).
     /// </summary>
@@ -148,4 +169,24 @@ public sealed class VrdParams : SqlParams
         base.Add(name, value);
         return this;
     }
+}
+
+
+/// <summary>
+/// Kesim ↔ devir dönemi eşlemesi. <b>TEK YER</b>: kural değişirse burada değişir.
+///
+/// ⚠ BU BİR ÇIKARIMDIR, ÖLÇÜM DEĞİL (19.09.2026). Dev veride tek kesim ve tek dönem
+///   var (kesim 31.08→16.09, sayım başı 01.09, devir dönemi <c>2026-08</c>), yani
+///   <b>n = 1</b>. Üç aday kuralın ÜÇÜ de bu tek noktaya uyuyor:
+///     (a) KesimBas'ın ayı · (b) SayimBas'ın BİR ÖNCEKİ ayı · (c) KesimBit'in bir önceki ayı.
+///   (b) seçildi çünkü anlamı taşıyan tek kural o: devir, SAYILAN ayın öncesinde
+///   KAPANAN ayın bakiyesidir. (a) yalnız KesimBas ayın son günü olduğu için tutuyor;
+///   sayım başıyla kesim başı aynı güne gelirse (a) kendi ayını gösterir ve YANLIŞ olur.
+///   ⚠ İkinci gerçek kesim yazıldığında bu eşleme ÖLÇÜLMELİ — TODO V-20.
+/// </summary>
+public static class VrdPeriod
+{
+    /// <param name="countFrom">Kesimin sayım başlangıcı (<c>Vrd_KisiGun.SayimBas</c>).</param>
+    public static string CarryFor(DateOnly countFrom)
+        => countFrom.AddMonths(-1).ToString("yyyy-MM");
 }

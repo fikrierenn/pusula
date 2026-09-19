@@ -130,6 +130,12 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
         -- Testin kendi `finally`si de siliyor; bu IKINCI katman, cunku surec cokerse
         -- `finally` kosmaz.
         DELETE FROM bkm.Vrd_PlanDuzeltme WHERE Kaydeden LIKE '{Prefix}%';
+
+        -- DEVIR SONDASI (V-20): kesim/donem ekseni testi Vrd_Devir'e SENTETIK bir
+        -- donem yazar. Artik kalirsa gercek devir toplamini SISIRIR ve panelde
+        -- "devir" rakami sessizce yanlis cikar. Testin kendi `finally`si de siler;
+        -- bu IKINCI katman. Gercek donemlere DOKUNULMAZ: yalniz `zz_test_` sicil.
+        DELETE FROM bkm.Vrd_Devir WHERE SicilNo LIKE '{Prefix}%';
         DELETE FROM bkm.SolumAuditTrail
         WHERE  EntityName = N'Vrd_PlanDuzeltme' AND UserName LIKE '{Prefix}%';
         """);

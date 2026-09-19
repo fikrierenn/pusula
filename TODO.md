@@ -271,10 +271,23 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Solum'un sekizinci tuzağının ikinci ekseni) — fikstür tek kesim seçiyor; **kesim
       değişimi ve devir taşıma hiç test edilmedi**. `GetSummaryAsync` devri ayrı tablodan
       topluyor (`Vrd_Devir`) ve o yol yalnız ay kapanışında yazılıyor.
-      **Ölçmeyi engelleyen:** ikinci bir kesim üretmek `sp_Vrd_KisiGunDoldur` koşumu ister
-      (dev veride tek kesim var).
-      **TETİK(koşul: ilk gerçek ay kapanışı)** — devir yazıldığı gün bu test yazılmadan
-      kapanış YAPILMAZ.
+      ⚠⚠ **19.09 — ENGEL YANLIŞ YERE BAKIYORDU, KUSUR ÖLÇÜLDÜ.** "İkinci kesim
+      üretmek gerekir" doğruydu ama kusur kesimde değil **DEVİRDE**: `GetSummaryAsync`'in
+      devir alt-sorgusunda **`Donem` yüklemi yoktu** ve `Vrd_Devir` dönem bazlı.
+      Simülasyonla ölçüldü (sıfır yazma): ikinci dönem eklenince devir eksiği
+      **69.563 → 119.563 dk**; süzgeçle 69.563'te kalıyor. Dev veride tek dönem olduğu
+      için 22 testin hiçbiri göremiyordu — **tek nüfuslu eksen kapıyı sınamaz**.
+      **Düzeltildi:** `VrdSql.Carryover` → `AND Donem = @donem` (süzgeç kaynağın İÇİNDE) ·
+      `VrdParams.CarryPeriod` · `VrdPeriod.CarryFor` (eşleme tek yerde) ·
+      `VrdSummary.CarryPeriod` KPI'da yazılı · test `CutoffCarryoverTests` ikinci dönemi
+      kendisi üretiyor. Test yazma koşulları `erp-write-policy.md`'ye işlendi.
+      ⚠ **EŞLEME BİR ÇIKARIM (n=1):** üç aday kural da tek veri noktasına uyuyor;
+      "sayım ayının bir öncesi" anlamı taşıdığı için seçildi. İkinci gerçek kesimde
+      ÖLÇÜLECEK.
+      🔴 **KIRMIZI KİP KOŞMADI — madde AÇIK.** Solum.Web 0.8.0 kırıcı sürümü sürerken
+      "build denemeyin" dendi; `dotnet test` ProjectReference'la ona bağlı. Testin
+      kırmızı verdiği ölçülmedi → kırılabilirliği kanıtlanmamış test, test değildir.
+      **TETİK(koşul: Solum "KIRICI BITTI" der demez `dotnet test` + kırmızı kip)**
 
 - [ ] **V-17 GM bölümleri için çalışma süresi parametresi** (19.09, plan 49 kararı S2)
       `Vrd_CalismaSaati`'nde 15 satır `OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı`

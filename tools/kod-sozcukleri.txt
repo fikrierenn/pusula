@@ -316,3 +316,16 @@ sinav
 busy
 label
 sheet
+
+# ── V-20 KESIM/DEVIR EKSENI (19.09) ─────────────────────────────────────────
+# Ingilizce, borc degil. `carryover` = devir bakiyesi (muhasebe terimi,
+# Ingilizcesi tam karsilik) · `period` = donem.
+carryover
+period
+another
+does
+into
+leak
+month
+periods
+before

@@ -43,7 +43,7 @@ bilerek kullanılmadı: kullanılsaydı prod'a geçerken her nesnenin adı deği
 |---|---|
 | `bkm.Vrd_KisiGun` | yalnız `bkm.sp_Vrd_KisiGunDoldur` |
 | `bkm.Vrd_Onay` · `bkm.Vrd_MagazaGeriDonus` | elle / panel (tek yazılan taraf) |
-| `bkm.Vrd_Devir` | ay kapanışında BİR KEZ, sonra dokunulmaz |
+| `bkm.Vrd_Devir` | ay kapanışında BİR KEZ, sonra dokunulmaz · **+ testler**: yalnız `Donem='1900-01'` + `zz_test_` sicil (aşağı bak) |
 | `bkm.Vrd_Sube` · `Vrd_CalismaSaati` · `Vrd_Mola` · `Vrd_KartBasmayan` | yalnız `--parametre-yukle` (JSON → tablo, TEK YÖN) |
 | `bkm.Vrd_Users` · `Vrd_Roles` · `Vrd_UserRoles` · `Vrd_UserClaims` | yalnız vardiya uygulaması (Solum.Identity `DapperUserStore`) |
 | `bkm.Vrd_KullaniciSube` | şube ACL'i — yalnız İK rolü, uygulama üstünden |
@@ -55,6 +55,23 @@ Solum.Identity'nin beklediği ASP.NET Identity düzeninde, şema `bkm` + önek `
 *"b-tam yap"*): çağıran yalnız `@KullaniciId` verir, şube kimliği ve "tüm şubeler"
 yetkisi uygulamadan geçmez. DDL: `sorgular/2026-09-18-vardiya-auth-tablo-kur.sql`.
 ⚠ Solum betiklerinden **yalnız 0005 + 0025** alınır; `0015` ölçümle elendi (bkz. plan 48).
+
+### Test yazması — `Vrd_PlanDuzeltme` ve `Vrd_Devir` (DEV, 19.09.2026)
+
+Otomatik testler bu iki tabloya **yazar**, çünkü kusur ancak veri varken görünür.
+Koşullar (üçü birden, yoksa test yazmaz):
+
+1. **Yalnız DEV** — `BkmPanel` (`BT-FIKRI\SQLEXPRESS`). Prod'a yazma yok.
+2. **Ayrılmış ad uzayı** — `zz_test_` önekli sicil/kaydeden; `Vrd_Devir` için ayrıca
+   gerçek hiçbir kapanışa denk gelmeyen dönem (`1900-01`). PK çakışmaz, **dondurulmuş
+   gerçek dönem silinmez, değiştirilmez**.
+3. **Çift temizlik** — testin kendi `finally`si + fikstürün baştan/sondan süpürmesi.
+   Tek katman yetmez: süreç çökerse `finally` koşmaz ve artık kalan bir devir satırı
+   panelde **gerçek devir toplamını şişirir**.
+
+Gerekçe: V-20 kusuru (devir alt-sorgusunda dönem süzgeci yok) dev veride tek dönem
+olduğu için hiçbir testte görünmüyordu. "Gerçek kapanışı bekleyelim" bir ölçüm değil,
+bir ertelemedir — ikinci dönemi test kendisi üretir.
 
 Plan: `plans/47-vardiya-eksik-fazla-sql.md` · DDL: `sorgular/2026-09-17-vardiya-tablo-kur.sql`
 

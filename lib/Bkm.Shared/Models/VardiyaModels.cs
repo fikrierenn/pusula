@@ -31,7 +31,7 @@ public sealed record VrdSummary(
     //   eklenseydi tipler uyuştuğu için DEĞERLER SESSİZCE KAYARDI.
     int ShortMin, int OvertimeMin, int CorrectedDays,
     int OutOfCount, int DayRollover, int Suspect,
-    int CarryShortMin, int CarryOvertimeMin)
+    int CarryShortMin, int CarryOvertimeMin, string CarryPeriod)
 {
     /// <summary>Yayınlanan raporun toplamı = dönem + önceki ay devri.</summary>
     public int TotalShortMin => ShortMin + CarryShortMin;

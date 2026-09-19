@@ -74,6 +74,21 @@ public sealed class VardiyaQueries(Db db)
     public async Task<VrdSummary?> GetSummaryAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
+
+        // Devir dönemi KESİMDEN türetilir (V-20). Sayım başı kesimin KENDİ satırından
+        // okunur — çağıran uydurmasın diye — ve kapsamlı kaynaktan gelir, yani
+        // yetkisiz bir kesimin dönemi de sızmaz.
+        var countFrom = await VrdSql.ExecuteScalarAsync<DateTime?>(cn, $"""
+            SELECT MIN(SayimBas) FROM {VrdSql.PersonDays} k
+            WHERE  KesimBas = @bas AND KesimBit = @bit
+            """, VrdParams.For(userId).Cutoff(bas, bit));
+
+        // Kesim kapsamda yoksa özet de yok: devri "0" diye göstermek, devir OLMADIĞI
+        // anlamına gelirdi — oysa doğru cevap "bu kesimi göremezsin".
+        if (countFrom is null) return null;
+
+        var carryPeriod = VrdPeriod.CarryFor(DateOnly.FromDateTime(countFrom.Value));
+
         return await VrdSql.QuerySingleOrDefaultAsync<VrdSummary>(cn, $"""
             SELECT
                 PersonDays  = COUNT(*),
@@ -99,10 +114,14 @@ public sealed class VardiyaQueries(Db db)
                 --   1.858 saatlik devrini görüyordu. Kapsam bir sorguda BİR KEZ
                 --   yazılmakla bitmiyor; her alt-sorgu kendi süzgecini ister.
                 CarryShortMin    = (SELECT ISNULL(SUM(EksikDk), 0) FROM {VrdSql.Carryover} d),
-                CarryOvertimeMin = (SELECT ISNULL(SUM(FazlaDk), 0) FROM {VrdSql.Carryover} d2)
+                CarryOvertimeMin = (SELECT ISNULL(SUM(FazlaDk), 0) FROM {VrdSql.Carryover} d2),
+                -- Devrin HANGİ dönemden geldiği ekranda yazılır: rakamın yanında
+                -- kaynağı olmazsa yanlış dönem gösterildiğinde kimse fark etmez.
+                CarryPeriod      = @donem
             FROM {VrdSql.PersonDays} k
             WHERE KesimBas = @bas AND KesimBit = @bit
             """, VrdParams.For(userId).Cutoff(bas, bit)
+                          .CarryPeriod(carryPeriod)
                           .Add("supheli", VrdConstants.SuspectPattern));
     }
 
