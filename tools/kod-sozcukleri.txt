@@ -309,3 +309,10 @@ sadakat
 satinalma
 sezon
 sinav
+
+# ── RAZOR `@code` GÖVDESİ AÇILINCA ÇIKANLAR (V-23, 19.09) ───────────────────
+# Kapı .razor dosyalarının @code bloğunu HİÇ görmüyordu; açılınca ak liste
+# eksikliği de görünür oldu. Aşağıdakiler İngilizce, borç DEĞİL.
+busy
+label
+sheet

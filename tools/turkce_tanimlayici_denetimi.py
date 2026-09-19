@@ -40,6 +40,11 @@ KAPININ ÜÇ KATMANI (Solum'un ayrımı + V-19):
   • AK LİSTE (V-19) — bildirilen adlardaki her sözcük dağarcıkta mı? Eksikliği
     İNSANA SORAR: yanlış pozitifin bedeli bir satır, yanlış negatifin bedeli
     görünmeyen bir ihlal.
+  ⚠ KÖR NOKTA KAPANDI (19.09): `.razor` uzantısı ne süpürmede vardı ne de
+    razor sayılıyordu. Dashboard'ın 61 UI dosyası HİÇ bakılmamıştı; elle
+    verilse C# gibi işlenip UI metnine Türkçe-harf taraması uygulanırdı.
+    "dashboard taranıyor" cümlesi doğruydu, KAPSAMI yanlıştı — uzantı listesi
+    bir yerden türetilmiyordu, elle yazılmıştı.
   ⚠ Ak liste dosyası okunamazsa kapı KOŞAMADI der — sessizce kara listeye düşmek
     YASAK, çünkü o hâlde kapı çalışıyor GÖRÜNÜR.
 ═══════════════════════════════════════════════════════════════════════════════
@@ -188,6 +193,58 @@ def _satir_koru(m: re.Match) -> str:
 RAZOR_IFADE = re.compile(r"@[A-Za-z_][\w.]*(?:\([^)]*\))?")
 
 
+KOD_BLOK_BAS = re.compile(r"@(?:code|functions)\s*\{")
+
+
+def _kod_blok_satirlari(metin: str) -> set:
+    """`@code { … }` / `@functions { … }` gövdesinin 1-tabanlı satır numaraları.
+
+    ⚠ BU BLOK 19.09'A KADAR HİÇ DENETLENMEDİ. `RAZOR_IFADE` deseni `@code`i
+      tek sözcük olarak eşleyip GÖVDEYİ atıyordu; dashboard'ın .razor
+      dosyalarında ise C#'ın TAMAMI orada durur. Yani kapı ".razor taranıyor"
+      derken yalnız markup'taki `@Ifade` referanslarını görüyordu — bildirimleri
+      DEĞİL. Kırmızı kip koşulmasaydı görülmezdi: `private int SatirSayisi`
+      eklendi, kapı YEŞİL kaldı.
+      Sınıf: `test-discipline.md` § YAZILI KURAL ≠ UYGULANAN KURAL.
+
+    Süslü parantez sayımı yorum/dize AYIKLANDIKTAN sonra yapılır — yoksa
+    bir dizedeki `}` bloğu erken kapatır.
+    """
+    satirlar = set()
+    for m in KOD_BLOK_BAS.finditer(metin):
+        i = m.end() - 1
+        derinlik = 0
+        while i < len(metin):
+            if metin[i] == "{":
+                derinlik += 1
+            elif metin[i] == "}":
+                derinlik -= 1
+                if derinlik == 0:
+                    break
+            i += 1
+        bas = metin.count(chr(10), 0, m.start()) + 1
+        son = metin.count(chr(10), 0, min(i, len(metin) - 1)) + 1
+        satirlar.update(range(bas, son + 1))
+    return satirlar
+
+
+def soyutla(metin: str, razor: bool):
+    """(temiz metin, @code gövde satırları) döner.
+
+    Razor'da iki AYRI bölge vardır ve aynı muameleyi göremezler:
+      • markup  — UI metni Türkçe OLMALI; yalnız `@Ifade` referansları koddur.
+      • @code   — düpedüz C#; harf taraması dahil TAM denetim görür.
+    """
+    metin = YORUM.sub(_satir_koru, metin)
+    metin = DIZE.sub(_satir_koru, metin)
+    if not razor:
+        return metin, set()
+    kod_satir = _kod_blok_satirlari(metin)
+    return chr(10).join(
+        satir if i in kod_satir else " ".join(RAZOR_IFADE.findall(satir))
+        for i, satir in enumerate(metin.splitlines(), 1)), kod_satir
+
+
 def kod_kismi(metin: str, razor: bool) -> str:
     """Kod DIŞINI çıkar. Razor'da tersi: yalnız `@` ifadelerini TUT."""
     metin = YORUM.sub(_satir_koru, metin)
@@ -202,7 +259,7 @@ def ihlaller(yol: Path) -> list[tuple[int, str, str]]:
     # ⚠ Razor'da TÜRKÇE HARF denetimi YAPILMAZ: UI metni Türkçe harf doludur ve
     #   kalan HTML parçalarını koddan ayırmak güvenilir değil. Razor'da yalnız
     #   KELİME listesi aranır (tanımlayıcı adları). C#'ta ikisi de aranır.
-    razor = yol.suffix.lower() == ".cshtml"
+    razor = yol.suffix.lower() in (".cshtml", ".razor")
     ham = io.open(yol, encoding="utf-8-sig", errors="replace").read()
     bulgular: list[tuple[int, str, str]] = []
 
@@ -214,11 +271,14 @@ def ihlaller(yol: Path) -> list[tuple[int, str, str]]:
             break
 
     satirlar = ham.splitlines()
-    temiz = kod_kismi(ham, razor).splitlines()
+    temiz_metin, kod_satir = soyutla(ham, razor)
+    temiz = temiz_metin.splitlines()
     for i, satir in enumerate(temiz, 1):
         if not satir.strip():
             continue
-        for ch in ("" if razor else satir):
+        # Harf taraması: C# dosyasının tamamında, razor'da YALNIZ @code gövdesinde
+        # (markup'ta Türkçe harf UI metnidir, ihlal değil).
+        for ch in (satir if (not razor or i in kod_satir) else ""):
             if ch in TURKCE_HARF:
                 bulgular.append((i, satirlar[i - 1].strip()[:90], f"tanımlayıcıda Türkçe harf '{ch}'"))
                 break
@@ -242,10 +302,16 @@ def bilinmeyen_sozcukler(yol: Path, dagarcik: set) -> list:
       yani eksikligi INSANA SORAR. Yanlis pozitifin bedeli bir satir eklemek,
       yanlis negatifin bedeli gorunmeyen bir ihlal.
     """
-    if yol.suffix.lower() != ".cs":
-        return []   # Razor'da bildirim yok; markup adlarini taramak gurultu uretir
+    uzanti = yol.suffix.lower()
+    if uzanti not in (".cs", ".razor"):
+        return []   # .cshtml'de bildirim yok; markup adlarini taramak gurultu uretir
     ham = io.open(yol, encoding="utf-8-sig", errors="replace").read()
-    temiz = kod_kismi(ham, razor=False)
+    temiz, kod_satir = soyutla(ham, razor=(uzanti == ".razor"))
+    if uzanti == ".razor":
+        # Ak liste yalniz @code GOVDESINE bakar: markup'ta bildirim yoktur ve
+        # `@Ifade` referanslarini bildirim sanmak gurultu uretir.
+        temiz = chr(10).join(satir if i in kod_satir else ""
+                             for i, satir in enumerate(temiz.splitlines(), 1))
     satirlar = ham.splitlines()
 
     bulgular = []
@@ -273,7 +339,7 @@ if len(sys.argv) > 1:
     hedefler = [Path(a) for a in sys.argv[1:] if Path(a).exists()]
 else:
     for k in KAPSAM:
-        for uzanti in ("*.cs", "*.cshtml"):
+        for uzanti in ("*.cs", "*.cshtml", "*.razor"):
             hedefler += [p for p in (KOK / k).rglob(uzanti)
                          if "obj" not in p.parts and "bin" not in p.parts]
 
