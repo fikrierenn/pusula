@@ -99,7 +99,7 @@ def kapatildigi_soylenen(n: int = 10) -> set[str]:
       ANILMASI kapandığı anlamına GELMEZ. Ölçüt daraltıldı: ya `Closes:` fragmanı,
       ya da kimliğin AYNI SATIRINDA bir kapanış sözcüğü.
     """
-    r = subprocess.run(["git", "log", f"-{n}", "--format=%s%n%b%n--"],
+    r = subprocess.run(["git", "log", f"-{n}", "--format=KONU:%s%n%b%n--"],
                        cwd=KOK, capture_output=True)
     if r.returncode != 0:
         return set()
@@ -110,6 +110,19 @@ def kapatildigi_soylenen(n: int = 10) -> set[str]:
     for satir in r.stdout.decode("utf-8", "replace").splitlines():
         if satir.strip().lower().startswith("closes:"):
             bulunan.update(kimlik.findall(satir))
+            continue
+        # UYARI  GOVDE METNI KAPANIS BEYANI DEGILDIR (dorduncu kalibrasyon, 19.09).
+        #   Kapi kendi commit'imi yakaladi: `Kirmizi kip: bos commit
+        #   "test: V-17 KAPANDI" -> kapi V-17'yi YAKALADI` cumlesi bir DENEYIN
+        #   ANLATIMIYDI, bir kapanis iddiasi degil. Govde serbest metindir ve
+        #   kapanis sozcuklerini ALINTILAR.
+        #   Olcut daraltildi: kapanis sozcugu yalniz KONU satirinda sayilir; govdede
+        #   yalniz ACIK `Closes:` fragmani gecerli.
+        #   TAKAS ACIK YAZILIYOR (Solum'un asimetrisi): bu degisiklik bir YANLIS
+        #   ALARMI kaldiriyor ama bir YANLIS NEGATIF acabilir — kapanisi yalniz
+        #   govdede anan bir commit artik goruluemez. Panzehir `Closes:` fragmani ve
+        #   o BILINCLI bir eylem; gorunmez bir kayip degil.
+        if not satir.startswith("KONU:"):
             continue
         # UYARI  SATIR DEGIL PARCA: olcut once SATIR duzeyindeydi ve YANLIS ALARM
         #   verdi -- `docs: V-15 kapandi - V-05 5/6 adim - V-17 acildi` satirinda uc
