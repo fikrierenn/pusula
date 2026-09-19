@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""MESAİ MEVZUAT KAPISI — `bkm.Vrd_KisiGun` üzerinde koşan denetim.
+"""MESAİ MEVZUAT KAPISI — `bkm.Vrd_KisiGunDuzeltilmis_vw` üzerinde koşan denetim.
 
 `.claude/skills/ik-danisman/SKILL.md` § Mesai Mevzuat Kapısı'nın koşulabilir hâli.
 Yazılı kural, çiğneyeni yakalayan bir koşum olmadan kural değildir
@@ -108,17 +108,30 @@ def main() -> int:
         if a.kesim_bit:
             bit = dt.datetime.strptime(a.kesim_bit, "%d.%m.%Y").date()
         else:
-            cur.execute("SELECT MAX(KesimBit) FROM bkm.Vrd_KisiGun")
+            cur.execute("SELECT MAX(KesimBit) FROM bkm.Vrd_KisiGunDuzeltilmis_vw")
             bit = cur.fetchone()[0]
         if bit is None:
-            print("KOŞAMADI: bkm.Vrd_KisiGun BOŞ — hiçbir kesim yazılmamış. "
+            print("KOŞAMADI: bkm.Vrd_KisiGunDuzeltilmis_vw BOŞ — hiçbir kesim yazılmamış. "
                   "Boş nüfus 'ihlal yok' demek DEĞİLDİR.")
             return 2
 
+        # ⚠ KAYNAK VIEW (plan 49 / V-05): kapı DÜZELTİLMİŞ veriyi okur.
+        #   Ham tabloyu okusaydı, bir müdürün "bu gün aslında izinliydi" düzeltmesi
+        #   uyum sayımına HİÇ girmezdi ve kapı SAHTE ihlal üretirdi — tam da bu
+        #   dosyanın baştan beri kaçındığı sınıf (şüpheli okutma denetim dışı).
+        #
+        # ⚠ `Izin` YERİNE ETKİN İZİN: kaynağın dediği duruyor (karar S3, ezilmiyor)
+        #   ama uyum sayımı insanın düzeltmesini görmek zorunda. İkisi ÇELİŞİRSE
+        #   düzeltme kazanır — çünkü mevzuat sorusu "kaynak ne diyordu" değil,
+        #   "bu kişi o gün fiilen izinli miydi".
         cur.execute("""
-            SELECT Personel, SicilNo, Sube, Tarih, VardiyaTanim,
-                   CalismaDk, GirisDk, CikisDk, Izin, Durum, OlcumNotu
-            FROM   bkm.Vrd_KisiGun
+            SELECT Personel, SicilNo, Sube, Tarih,
+                   VardiyaTanim = EtkinVardiyaTanim,
+                   CalismaDk, GirisDk, CikisDk,
+                   Izin = CASE WHEN DuzeltmeIzinliMi IS NOT NULL
+                               THEN DuzeltmeIzinliMi ELSE Izin END,
+                   Durum, OlcumNotu
+            FROM   bkm.Vrd_KisiGunDuzeltilmis_vw
             WHERE  KesimBit = ?""", bit)
         satir = cur.fetchall()
         cur.close()
