@@ -160,7 +160,7 @@ public sealed class VardiyaQueries(Db db)
             FROM   bkm.Vrd_KisiGun
             WHERE  KesimBas = @bas AND KesimBit = @bit
               AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
-              AND (@sube IS NULL OR Sube = @sube)
+              AND (@branch IS NULL OR Sube = @branch)
             """, new
         {
             userId,
@@ -189,7 +189,7 @@ public sealed class VardiyaQueries(Db db)
             WHERE  KesimBas = @bas AND KesimBit = @bit
               AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND  ISNULL(CikisSonrasiDk, 0) > 0
-              AND (@sube IS NULL OR Sube = @sube)
+              AND (@branch IS NULL OR Sube = @branch)
             GROUP BY CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
                           WHEN CikisSonrasiDk <=  30 THEN N'16–30 dk'
                           WHEN CikisSonrasiDk <=  60 THEN N'31–60 dk'
@@ -326,7 +326,7 @@ public sealed class VardiyaQueries(Db db)
             LEFT  JOIN  bkm.Vrd_Onay   o ON o.SicilNo = k.SicilNo AND o.Tarih = k.Tarih
             WHERE  k.KesimBas = @bas AND k.KesimBit = @bit
               AND  k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
-              AND (@sube IS NULL OR k.Sube = @sube)
+              AND (@branch IS NULL OR k.Sube = @branch)
               -- ⚠ ESCAPE ZORUNLU: kullanıcı '%' ya da '_' yazarsa süzgeç sessizce
               --   genişlerdi (injection değil ama YANLIŞ SONUÇ). Kaçış C# tarafında.
               AND (@ara  IS NULL OR k.Personel LIKE '%' + @ara + '%' ESCAPE '\'

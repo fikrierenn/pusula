@@ -142,6 +142,10 @@ public sealed class BranchScopeTests(VardiyaAppFactory factory) : IClassFixture<
         {
             ["UserName"] = userName,
             ["Password"] = VardiyaAppFactory.Password,
+            // ⚠ Token KAZINMAKLA bitmiyor — gövdeye de konur. Konmayınca ASP.NET
+            //   400 döner ve hata "giriş başarısız" gibi okunur: kapsam testi
+            //   kapsamı hiç ölçmeden kırmızı verir (yanlış teşhis).
+            ["__RequestVerificationToken"] = token,
         }));
         Assert.True(loginResponse.IsSuccessStatusCode, $"Giriş başarısız: {userName}");
 
