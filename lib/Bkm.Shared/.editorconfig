@@ -1,0 +1,38 @@
+# YASAK API — plan 48 / V-10. Siddet ve muafiyetler BURADA.
+#
+# ⚠ Gerekce BURADA, `BannedSymbols.txt` icinde DEGIL: o dosya yorum satirini
+#   TANIMIYOR. Her satir bir GIRDI olarak ayristiriliyor. OLCULDU (19.09.2026,
+#   bu depoda):
+#     - AYNI yorum satiri iki kez  -> RS0031 "birden cok kez listelenmis" (Solum'un
+#       vakasi: once bare `#`, sonra `# ---` denendi; ikisi de TEKRARLANDIGI icin kirdi)
+#     - FARKLI yorum satirlari     -> hicbir hata YOK, satirlar SESSIZCE yok sayilir
+#   Ikincisi daha tehlikeli: dosya "aciklamali" gorunur, girdi sanilan satir
+#   hicbir seyi yasaklamaz.
+#
+# ⚠ SIDDET MSBuild `WarningsAsErrors` ile DEGIL, burada veriliyor. Denendi ve
+#   OLCULDU (19.09): `WarningsAsErrors`taki RS0030 derleyici duzeyinde
+#   uygulaniyor ve `.editorconfig` muafiyetlerini EZIYOR — bogazin KENDISI bile
+#   derlenemiyordu. Yani kapi kurulmus ama gecilecek kapi kalmamisti.
+root = false
+
+[*.cs]
+# Ihlal UYARI degil HATA: uyari olsaydi bogaz bir tavsiye olurdu.
+dotnet_diagnostic.RS0030.severity = error
+
+[*]
+# Liste dosyasinin KENDISI bozuksa da hata — bozuk bir liste sessizce hicbir
+# seyi korumaz (Solum'un 19.09 vakasi tam buydu).
+dotnet_diagnostic.RS0031.severity = error
+
+# ── MUAFIYETLER (dosya bazinda, KISA tutulur) ────────────────────────────────
+# Uzayan muafiyet listesi kapiyi sessizce bosaltir.
+
+# BOGAZIN KENDISI: Dapper'i cagirmasi gereken TEK yer.
+[VrdSql.cs]
+dotnet_diagnostic.RS0030.severity = none
+
+# DENETIM IZI YAZICISI: kapsamli tablo okumaz, `bkm.SolumAuditTrail`e yazar.
+# Bogazdan gecirmek anlamsiz olurdu — orada kapsam diye bir sey yok.
+# ⚠ Bu muafiyet bir BORCTUR: AuditTrail buyurse kendi bogazini ister.
+[AuditTrail.cs]
+dotnet_diagnostic.RS0030.severity = none

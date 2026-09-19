@@ -1,0 +1,1 @@
+T:Dapper.SqlMapper;Vardiya sorgusu VrdSql bogazindan gecer (V-10). Kapsam suzgeci ve parametre adi dogrulamasi orada yasar.

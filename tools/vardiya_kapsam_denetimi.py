@@ -25,8 +25,11 @@ YAKALAMA SÖZLEŞMESİ
                    uçtan uca test (`tests/BkmVardiya.Tests`) ile korunuyor
   BİLİNEN ATLATMA: yeni bir dosyada yeni bir bağlantı açıp ham SQL yazmak —
                    TARANAN KÖKLER listesi genişletilmezse görünmez
-  YÜKSELTME YOLU : `BannedApiAnalyzers` ile Dapper çağrısını `VrdSql` dışında
-                   DERLENMEZ yapmak (boğaz kurulduğu için artık ön koşulu var)
+  YÜKSELTME YOLU : ✅ YAPILDI (V-10) — `BannedApiAnalyzers` Dapper çağrısını `VrdSql`
+                   dışında DERLENMEZ yapıyor. Bu kapı artık onun da AYAKTA olduğunu
+                   denetler: yasak listesi silinir ya da sembol adı yanlış yazılırsa
+                   ban SESSİZCE ölür (ölçüldü 19.09: yanlış sembol adıyla derleme
+                   GEÇTİ, hiçbir uyarı çıkmadı)
 
 Çıkış: 0 geçti · 1 KIRIK · 2 KOŞAMADI
 """
@@ -155,7 +158,35 @@ if denetlenen == 0:
     print("KOŞAMADI  `userId` alan hiçbir metot bulunamadı — imza değişmiş olabilir")
     sys.exit(2)
 
-# ── 4. PANEL SALT-OKUMA (plan 48 Adım 7, GMY kararı 19.09) ───────────────────
+# ── 4. YASAK LİSTESİ AYAKTA MI (V-10'un sessiz ölümü) ────────────────────────
+# ÖLÇÜLDÜ (19.09.2026): `BannedSymbols.txt` içindeki sembol adı YANLIŞ yazılırsa
+# analizör hiçbir şey demez — ban ölür, derleme geçer, kimse fark etmez. Dosyanın
+# silinmesi de aynı sonucu verir. Yani V-10 bir kapıdır ve onun da bir kapısı gerekir.
+YASAK_LISTESI = KOK / "lib/Bkm.Shared/BannedSymbols.txt"
+BEKLENEN_GIRDI = "T:Dapper.SqlMapper;"
+
+if not YASAK_LISTESI.exists():
+    kirik.append("yasak-listesi-yok")
+    print(f"KIRIK yasak listesi YOK: {YASAK_LISTESI.relative_to(KOK).as_posix()} — "
+          f"V-10 bandı ölmüş, Dapper çağrısı boğaz dışında yeniden DERLENİR.")
+else:
+    liste = io.open(YASAK_LISTESI, encoding="utf-8").read()
+    if BEKLENEN_GIRDI not in liste:
+        kirik.append("yasak-listesi-bozuk")
+        print(f"KIRIK yasak listesinde `{BEKLENEN_GIRDI}` girdisi YOK — sembol adı "
+              f"değişmiş ya da silinmiş olabilir; ban SESSİZCE ölür (uyarı çıkmaz).")
+    else:
+        # Yorum satırı tuzağı: aynı satır iki kez -> RS0031; farklı satırlar ->
+        # sessizce yok sayılır ve dosya "açıklamalı" görünür (ölçüldü).
+        yorumlu = [l for l in liste.splitlines() if l.strip() and ";" not in l]
+        if yorumlu:
+            kirik.append("yasak-listesi-yorum")
+            print(f"KIRIK yasak listesinde girdi olmayan {len(yorumlu)} satır var — "
+                  f"bu dosya yorum TANIMAZ; gerekçe `.editorconfig`e yazılır.")
+        else:
+            print("OK    yasak listesi ayakta (V-10 bandı: Dapper boğaz dışında derlenmez)")
+
+# ── 5. PANEL SALT-OKUMA (plan 48 Adım 7, GMY kararı 19.09) ───────────────────
 # GMY panelinde vardiya sayfası SALT-OKUMA özettir. Yazma yolu oraya geri
 # konulursa ÜÇ kapı birden atlanmış olur: rol yetkisi · şube kapsamı · denetim izi.
 YASAK = ["SaveApprovalAsync", "OnayKaydet"]

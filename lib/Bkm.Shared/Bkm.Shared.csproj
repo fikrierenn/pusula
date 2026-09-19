@@ -14,6 +14,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- DAPPER BOĞAZI DERLEYİCİYE ZORLATILIR (plan 48 / V-10).
+         Yapı (VrdSql) V-09'da kuruldu ama C# ondan geçmeye ZORLAMIYORDU:
+         biri doğrudan `cn.QueryAsync` yazabilirdi ve yalnız bir metin kapısı
+         görürdü. Bu paket onu DERLEME HATASINA çevirir.
+         Muafiyetler `.editorconfig`te (VrdSql.cs + AuditTrail.cs), gerekçeleriyle.
+         ⚠ KAPSAM: yalnız bu proje. `vardiya-app`in Dapper kullanımı kimlik/seed
+           tarafındadır, kapsamlı tablo okumaz — oraya ban konmadı ve bu bilinçli. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Sürümler dashboard/GmDashboard.csproj ile AYNI tutulur; ayrışırsa
          NU1605 downgrade uyarısı çıkar (sessiz değil). -->
     <PackageReference Include="Dapper" Version="2.1.79" />
