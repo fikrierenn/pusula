@@ -208,12 +208,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 > zamansal ACL · rapor · onay akışı + atomik denetim izi · panel salt-okuma.
 > Kapılar: `vardiya_kapsam_denetimi.py` · `mesai_esik_denetimi.py` · `panel_kolon_denetimi.py`.
 
-- [ ] **V-01 Geçici şifre dosyası SİLİNECEK — kilit AÇILDI, silme kararı GMY'de**
-      `ciktilar/vardiya-ilk-sifreler-20260919-0119.txt` hâlâ duruyor (git yoksayıyor).
-      ✅ **Engel kalktı 19.09 (commit `8de4be2`)**: İK artık uygulamadan şifre
-      sıfırlayabiliyor (`/ResetPassword`, `vardiya.kadroYonet`), yani dosya **tek
-      kurtarma aracı olmaktan çıktı**. Ölçüm: 17 kullanıcının 13'ü hâlâ geçici şifreyle.
-      Kalan iş tek satır: dosyayı sil. Silinince bu madde kapanır.
+- [x] ~~**V-01 Geçici şifre dosyası SİLİNECEK**~~ — ✅ KAPANDI 19.09.
+      `ciktilar/vardiya-ilk-sifreler-20260919-0119.txt` **GMY onayıyla silindi** (1.308 bayt).
+      Silme ancak kurtarma yolu kurulduktan SONRA güvenliydi: İK şifre sıfırlama
+      (`/ResetPassword`, commit `8de4be2`). Ölçümde 13 kullanıcı hâlâ geçici şifreyleydi;
+      kurtarma yolu olmasaydı silme onları kilitlerdi. ⚠ Geçici şifresini kaybeden
+      kişi artık İK'ya gider — dosyaya değil.
 
 - [ ] **V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı** (19.09) — kırmızı kip
       geri alındıktan hemen sonraki koşumda 1 test kırmızı döndü; ardından **10 koşum
