@@ -108,8 +108,18 @@ def kapatildigi_soylenen(n: int = 10) -> set[str]:
     kimlik = re.compile(r"\b([A-Z]{1,4}-[A-Za-z0-9]{1,8})\b")
     bulunan: set[str] = set()
     for satir in r.stdout.decode("utf-8", "replace").splitlines():
-        if satir.strip().lower().startswith("closes:") or kapanis.search(satir):
+        if satir.strip().lower().startswith("closes:"):
             bulunan.update(kimlik.findall(satir))
+            continue
+        # UYARI  SATIR DEGIL PARCA: olcut once SATIR duzeyindeydi ve YANLIS ALARM
+        #   verdi -- `docs: V-15 kapandi - V-05 5/6 adim - V-17 acildi` satirinda uc
+        #   kimlik var ama yalniz BIRI kapaniyor. Satiri ayraclardan bolup her parcayi
+        #   ayri degerlendirmek, kapanis sozcugunu DOGRU kimlige bagliyor.
+        #   (Bu kapinin UCUNCU kalibrasyon duzeltmesi; her biri bir yanlis alarmdan
+        #   dogdu ve gurultulu kapi, kapatilan kapidir.)
+        for parca in re.split(r"[\u00b7;]", satir):
+            if kapanis.search(parca):
+                bulunan.update(kimlik.findall(parca))
     return bulunan
 
 
