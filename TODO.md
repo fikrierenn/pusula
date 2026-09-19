@@ -215,6 +215,23 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       kurtarma yolu olmasaydı silme onları kilitlerdi. ⚠ Geçici şifresini kaybeden
       kişi artık İK'ya gider — dosyaya değil.
 
+- [x] ~~**V-02 Seed kadro listesi koda gömülü**~~ — ✅ KAPANDI 19.09 (commit `aebd3da`).
+      Kadro `ciktilar/vardiya-kadro.json`'dan okunuyor (git yoksayar; `VARDIYA_KADRO` ile
+      yol verilebilir). Dosya yok/bozuk/boş ya da rol tanınmıyorsa **çıkış 2 (KOŞAMADI)**.
+      Gerçek koşum: 17 kişi okundu, 0 yeni / 17 mevcut. ⚠ "Zirve'den canlı oku" borcu
+      **tek başına kapanamaz** (ölçüldü): bordro kişiyi ve lokasyonu biliyor ama **rolü
+      bilmiyor** — "kim şube sorumlusudur" bir uygulama kararı. Kapanan şey listenin
+      koddan çıkması; canlı okuma + şube eşlemesi ayrı iş (Solum plan-21).
+- [x] ~~**V-03 Solum kabuğu devreye alınmadı**~~ — ✅ KAPANDI 19.09 (commit `00a837c`).
+      `_SolumLayout` devrede; altı adaptör bağlandı (kullanıcı · şirket · kiracı · izin ·
+      menü · saat). `AddSolumSingleTenant` **kullanılmadı**: sabit `userId` alıyor, 17
+      gerçek kullanıcıda denetim izine yanlış kimlik yazardı. Anonim sayfalar kabuk dışında.
+      Ölçüm `SolumShellTests`: kabuk + marka + menü + çıkış adresi, ayrıca `solum.css` 200.
+- [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.
+      Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
+- [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
+      bırakıldı; plan hâlâ Excel kaynaklı.
+
 - [ ] **V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı** (19.09) — kırmızı kip
       geri alındıktan hemen sonraki koşumda 1 test kırmızı döndü; ardından **10 koşum
       üst üste yeşil** ve hata ÜRETİLEMEDİ. En olası sebep: derleme çıktısının test
@@ -252,12 +269,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       kırıkmış (seed yeniden adlandırmadan önce koşmuştu, bir daha koşturulmadı).
       `AuthSql` boğazı + `SqlContract` ortak çekirdeği kuruldu, ban ondan SONRA kondu.
 
-- [ ] **V-12 ACL yazması DENETİM İZSİZ** (19.09, V-11 ölçümünden doğdu) — `Vrd_KullaniciSube`,
-      `Vrd_Roles`, `SolumPermissionGrant` yazmaları `AuditTrail`e HİÇ yazmıyor; onay
-      yazması yazıyor. Yani "kime hangi şube verildi, kim verdi" sorusunun cevabı yok.
-      Bugün tek yazan `Seed` (`VerenId='seed'`), ama İK rolü uygulamadan ACL vermeye
-      başladığında bu boşluk denetlenemez hâle gelir.
-
+- [x] ~~**V-12 ACL yazması DENETİM İZSİZ**~~ — ✅ KAPANDI 19.09 (commit `1dddaf2`).
+      `Seed.GrantBranchAsync` grant + izi **aynı işlemde** yazıyor; iz yalnız gerçekten
+      yazıldıysa düşüyor (idempotent ikinci çağrı olay değildir). Kırmızı kip: iz
+      kapatıldı → test KIRIK. ⚠ Rol/izin yazmaları (`Vrd_Roles`, `SolumPermissionGrant`)
+      hâlâ izsiz — bugün tek yazan seed, İK arayüzden vermeye başlarsa bu da gerekir.
 - [x] ~~**V-13 Seed ACL yazması yeniden KOŞTURULMADI**~~ — ✅ KAPANDI 19.09 (commit `f59b784`).
       ⚠ "Seed'i tekrar çalıştır" bir doğrulama DEĞİLDİ: seed mevcut kullanıcıyı atlıyor,
       yani yeniden koşmak ACL satırını çalıştırmıyor bile. Yazma yolu tek metoda çıkarıldı
