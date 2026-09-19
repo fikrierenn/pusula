@@ -84,6 +84,23 @@ builder.Services.AddAuthorization(o =>
 
 builder.Services.AddScoped<PermissionLoader>();
 
+// ── SOLUM KABUĞU (V-03) ───────────────────────────────────────────────────────
+// Kabuk üç şey soruyor: kullanıcı kim · şirket ne · izni var mı. Üçü de BİZİM
+// kimlik modelimize bağlanıyor (Security/SolumShell.cs).
+//
+// ⚠ AddSolumSingleTenant KULLANILMADI: o kurulum userId'yi SABİT alıyor (tek
+//   kullanıcılı panel deseni). Burada 17 gerçek kullanıcı var; sabit kimlik denetim
+//   izine ve izin kontrolüne YANLIŞ kullanıcıyı yazardı — sessizce.
+builder.Services.AddHttpContextAccessor();
+// Saat: Solum kabuğu IClock istiyor (denetim/bildirim zaman damgaları).
+builder.Services.AddSingleton<Solum.Abstractions.IClock, Solum.Abstractions.SystemClock>();
+builder.Services.AddSingleton<Solum.Abstractions.ICurrentTenant, SingleTenant>();
+builder.Services.AddScoped<Solum.Abstractions.ICurrentUser, HttpCurrentUser>();
+builder.Services.AddSingleton<Solum.Abstractions.ICurrentCompany, SingleCompany>();
+builder.Services.AddScoped<Solum.Core.Permissions.IPermissionChecker, ClaimsPermissionChecker>();
+builder.Services.AddScoped<Solum.Web.Menu.IMenuContributor, VardiyaMenu>();
+Solum.Web.DependencyInjection.SolumWebServiceCollectionExtensions.AddSolumWeb(builder.Services);
+
 var app = builder.Build();
 
 // ── Kadro kurulumu:  dotnet run --project vardiya-app -- seed ─────────────────

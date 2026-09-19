@@ -1,3 +1,13 @@
 @{
-    Layout = "_Layout";
+    // SOLUM KABUĞU (V-03). Kendi `_Layout`umuz DURUYOR ve giriş/çıkış/hata sayfaları
+    // onu açıkça seçiyor: o sayfalar kimlik DOĞRULANMADAN çizilir, kabuk ise menüyü
+    // izinlerden kurar ve kullanıcı adını ister — anonim bir istekte boş bir kabuk
+    // çizmek, kullanıcıya "giriş yaptım" yanılsaması verirdi.
+    Layout = "_SolumLayout";
+
+    // Kabuk bu iki değeri TÜKETİCİDEN ister; vermezsek marka "Solum" yazar ve
+    // çıkış düğmesi HİÇ ÇİZİLMEZ (Solum'un kendi kararı: çalışmayan bir çıkış
+    // düğmesi, düğmesizlikten kötüdür).
+    ViewData["SolumBrand"] = "BKM Vardiya";
+    ViewData["SolumLogoutUrl"] = "/Logout";
 }
