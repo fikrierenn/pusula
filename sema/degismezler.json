@@ -711,6 +711,18 @@
       "verified": "2026-09-19 → 0 (nüfus 6.113). Kırılabilirliği plan 49'da ölçüldü: formül kopyalama hâlinde 82.800 dk fark.",
       "korur": [],
       "server": "panel"
+    },
+    {
+      "id": "vardiya-view-izin-dali-kurulu",
+      "server": "panel",
+      "db": "BkmPanel",
+      "question": "Kurulu `Vrd_KisiGunDuzeltilmis_vw` içinde izin dalı (kaynak izinliyse taban değişmez) GERÇEKTEN duruyor mu?",
+      "why": "İki ayrı gerçeği birden korur.\n(1) DEPLOY SAPMASI: view'ı `sqlcli script` ile ELLE kuruyoruz. Dosya güncellenip betik koşturulmazsa depo doğru, veritabanı ESKİ kalır ve fark SESSİZDİR — panel eski mantıkla çalışır, kod incelemesi doğru görünür.\n(2) SABOTAJIN UYGULANDIĞININ KANITI (Solum'un sorusu 19.09): kırmızı kip koşarken 'dalı çıkardım' demek yetmez; dalın kurulu tanımdan GERÇEKTEN kalktığını ayrı bir sorgu söylemeli. Aksi hâlde yeşil kalan bir sabotajı 'test kör' diye okuruz — oysa sabotaj hiç uygulanmamış olabilir.\n⚠ Bu METİN denetimidir: dalın DOĞRU davrandığını değil, VAR olduğunu ölçer. Davranışı `PlanCorrectionTests.Leave_day_base_is_untouched_unless_explicitly_disputed` ölçüyor; ikisi ayrı katman.",
+      "sql": "SELECT COUNT(*) FROM sys.sql_modules m WHERE m.object_id = OBJECT_ID('bkm.Vrd_KisiGunDuzeltilmis_vw') AND m.definition LIKE '%Izin = 1 AND d.IzinliMi IS NULL%'",
+      "comparison": "eq",
+      "expected": 1,
+      "verified": "2026-09-19 → 1. Kırılabilirliği ölçüldü: dal view'dan çıkarılıp betik koşturulunca 0 döndü.",
+      "korur": []
     }
   ]
 }
