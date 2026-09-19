@@ -246,9 +246,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 - [ ] **V-10 `BannedApiAnalyzers` ile boğazı DERLEYİCİYE zorlat** (19.09) — Dapper çağrısı
       `VrdSql` dışında derlenmesin. Ön koşulu artık var (boğaz kuruldu). ⚠ Solum'un
-      19.09 vakası uyarı: `BannedSymbols.txt` yorum satırı DESTEKLEMİYOR — bare `#`
-      satırları yinelenen boş sembol sayılıp RS0031 veriyor ve `TreatWarningsAsErrors`
-      ile tüm depoyu derlenmez yapıyor. Gerekçe dosyanın içine değil yanına yazılacak.
+      19.09 vakası uyarı: `BannedSymbols.txt` **hiçbir yorum biçimini** desteklemiyor.
+      İlk teşhisim "bare `#` satırları" idi; Solum ölçtü — `# ---` de kırıyor. Her yorum
+      satırı yinelenen boş sembol sayılıp RS0031 veriyor ve `TreatWarningsAsErrors` ile
+      tüm depoyu derlenmez yapıyor. ⇒ Dosyada YALNIZ girdi durur; gerekçe
+      `.editorconfig` + `Directory.Packages.props` tarafına yazılır. `NoWarn`a RS0031
+      EKLENMEZ (kapının kendi gerçek bulgusunu da susturur).
 
 - [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
       yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
