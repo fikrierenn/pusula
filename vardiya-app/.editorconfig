@@ -1,0 +1,19 @@
+# YASAK API — plan 48 / V-11. Siddet ve muafiyet BURADA.
+#
+# ⚠ `BannedSymbols.txt` yorum TANIMAZ (olculdu 19.09.2026): AYNI yorum satiri iki kez
+#   RS0031 verir; FARKLI yorum satirlari ise SESSIZCE yok sayilir. Ikincisi daha
+#   tehlikeli — dosya aciklamali gorunur ama o satirlar hicbir seyi yasaklamaz.
+#
+# ⚠ SIDDET MSBuild `WarningsAsErrors` ile VERILMEZ (olculdu): derleyici duzeyindeki
+#   RS0030 `.editorconfig` muafiyetlerini EZIYOR ve bogazin KENDISI derlenemiyor.
+root = false
+
+[*.cs]
+dotnet_diagnostic.RS0030.severity = error
+
+[*]
+dotnet_diagnostic.RS0031.severity = error
+
+# TEK MUAFIYET: bogazin kendisi. Kimlik/ACL SQL'i buradan gecer.
+[AuthSql.cs]
+dotnet_diagnostic.RS0030.severity = none

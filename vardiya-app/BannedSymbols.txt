@@ -1,0 +1,1 @@
+T:Dapper.SqlMapper;Kimlik/ACL sorgusu AuthSql bogazindan gecer (V-11). Parametre adi dogrulamasi orada yasar.

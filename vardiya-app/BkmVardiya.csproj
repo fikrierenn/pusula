@@ -14,6 +14,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- KIMLIK/ACL BOGAZI DERLEYICIYE ZORLATILIR (plan 48 / V-11).
+         Olculdu: bu uygulamada 5 Dapper cagrisi / 2 dosya vardi ve hepsi kimlik-ACL
+         (Vrd_Roles · Vrd_UserRoles · Vrd_KullaniciSube · Vrd_Sube · SolumPermissionGrant).
+         "Riski dusuk" sanilan bu taraf, olculunce BESINCI parametre-adi kaymasini
+         tasiyordu: Seed'in ACL yazmasi calismiyordu.
+         Muafiyet TEK dosya: Security/AuthSql.cs (.editorconfig).
+         ⚠ Yasak, VAR OLAN bogazi zorunlu kilar — yoktan bogaz yaratmaz (Solum'un on kosulu). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\lib\Bkm.Shared\Bkm.Shared.csproj" />
   </ItemGroup>
 

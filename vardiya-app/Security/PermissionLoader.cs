@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Bkm.Shared.Data;
-using Dapper;
 
 namespace BkmVardiya.Security;
 
@@ -27,7 +26,7 @@ public sealed class PermissionLoader(Db db)
     public async Task<IReadOnlyList<Claim>> LoadAsync(string userId)
     {
         using var cn = db.OpenPanel();
-        var permissions = await cn.QueryAsync<string>("""
+        var permissions = await AuthSql.QueryAsync<string>(cn, """
             SELECT DISTINCT g.PermissionName
             FROM   bkm.SolumPermissionGrant g
             WHERE (g.ProviderName = N'User' AND g.ProviderKey = @userId)
@@ -36,7 +35,7 @@ public sealed class PermissionLoader(Db db)
                      FROM   bkm.Vrd_UserRoles ur
                      JOIN   bkm.Vrd_Roles     r ON r.Id = ur.RoleId
                      WHERE  ur.UserId = @userId AND r.Name = g.ProviderKey))
-            """, new { userId });
+            """, new SqlParams().Add("userId", userId));
 
         return permissions.Select(p => new Claim(Permissions.ClaimType, p)).ToList();
     }

@@ -92,7 +92,11 @@ public class VrdSqlContractTests
     /// <summary>Doğrulama, bağlantıya hiç gitmeden çalışır — sahte bağlantı yeter.</summary>
     private sealed class FakeConnection : System.Data.IDbConnection
     {
+        // CS8769: arayuz setter'i null kabul ediyor, bizimki gormezden geliyor.
+        // Sahte baglanti hicbir sey saklamaz — uyari bastiriliyor, davranis yok.
+#pragma warning disable CS8769
         string System.Data.IDbConnection.ConnectionString { get => ""; set { } }
+#pragma warning restore CS8769
         public int ConnectionTimeout => 0;
         public string Database => "";
         public System.Data.ConnectionState State => System.Data.ConnectionState.Closed;

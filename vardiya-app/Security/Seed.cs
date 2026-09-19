@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Bkm.Shared.Data;
-using Dapper;
 using Microsoft.AspNetCore.Identity;
 
 namespace BkmVardiya.Security;
@@ -85,7 +84,7 @@ public static class Seed
 
         // Şube adları DB'de gerçekten var mı? Yoksa ACL'nin FK'sı patlar — ama
         // hata mesajı "FK ihlali" olur ve sebebi görünmez. Önce açıkça ölç.
-        var validBranches = (await cn.QueryAsync<string>("SELECT Sube FROM bkm.Vrd_Sube")).ToHashSet();
+        var validBranches = (await AuthSql.QueryAsync<string>(cn, "SELECT Sube FROM bkm.Vrd_Sube")).ToHashSet();
         var missing = Staff.SelectMany(k => k.Branches).Distinct()
                          .Where(s => !validBranches.Contains(s)).ToList();
         if (missing.Count > 0)
@@ -101,21 +100,23 @@ public static class Seed
         //   (yalnız IUserStore + IUserRoleStore). Role satırı doğrudan yazılır;
         //   kullanıcı-role ataması yine UserManager üzerinden gider.
         foreach (var (role, _) in RolePermissions)
-            await cn.ExecuteAsync("""
+            await AuthSql.ExecuteAsync(cn, """
                 IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_Roles WHERE NormalizedName = @norm)
                 INSERT INTO bkm.Vrd_Roles (Id, Name, NormalizedName, ConcurrencyStamp)
                 VALUES (@id, @rol, @norm, NEWID());
-                """, new { id = Guid.NewGuid().ToString(), role, norm = role.ToUpperInvariant() });
+                """, new SqlParams().Add("id", Guid.NewGuid().ToString())
+                                    .Add("rol", role)
+                                    .Add("norm", role.ToUpperInvariant()));
 
         // ── Role → permission ────────────────────────────────────────────────────────
         foreach (var (role, permissionNames) in RolePermissions)
             foreach (var permission in permissionNames)
-                await cn.ExecuteAsync("""
+                await AuthSql.ExecuteAsync(cn, """
                     IF NOT EXISTS (SELECT 1 FROM bkm.SolumPermissionGrant
                                    WHERE ProviderName=N'Role' AND ProviderKey=@rol AND PermissionName=@izin)
                     INSERT INTO bkm.SolumPermissionGrant (ProviderName, ProviderKey, PermissionName)
                     VALUES (N'Role', @rol, @izin);
-                    """, new { role, permission });
+                    """, new SqlParams().Add("rol", role).Add("izin", permission));
 
         // ── Kullanıcılar ──────────────────────────────────────────────────────
         var passwords = new List<string>();
@@ -146,12 +147,16 @@ public static class Seed
                 new System.Security.Claims.Claim(MustChangePasswordClaim, "1"));
 
             foreach (var branch in branches)
-                await cn.ExecuteAsync("""
+                // ⚠ BURASI BEŞİNCİ AD KAYMASIYDI: SQL `@sube` istiyordu, anonim nesne
+                //   `branch` gönderiyordu (Türkçe→İngilizce yeniden adlandırmanın
+                //   ardından). Seed o yeniden adlandırmadan ÖNCE koşmuştu, bir daha
+                //   koşturulmadığı için ACL yazması SESSİZCE kırık kaldı.
+                await AuthSql.ExecuteAsync(cn, """
                     IF NOT EXISTS (SELECT 1 FROM bkm.Vrd_KullaniciSube
                                    WHERE UserId=@id AND Sube=@sube AND GecerliBit IS NULL)
                     INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId)
                     VALUES (@id, @sube, N'seed');
-                    """, new { id = user.Id, branch });
+                    """, new SqlParams().Add("id", user.Id).Add("sube", branch));
 
             passwords.Add($"{userName}\t{tempPassword}\t{fullName}\t{role}\t{string.Join(" | ", branches)}");
             created++;

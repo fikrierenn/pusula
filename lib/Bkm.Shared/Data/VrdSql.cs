@@ -67,40 +67,11 @@ public static class VrdSql
     // ve kapsamı ona `PersonDays` üstünden EXISTS/guard ile bağlanır. Kapsamsız bir
     // tabloyu boğaza koymak, boğazın ne için olduğunu bulanıklaştırırdı.
 
-    // @@ROWCOUNT gibi çift-at'lı sistem değişkenleri parametre DEĞİLDİR; desen
-    // tek '@' ile başlayanı alır ve öncesinde '@' olmamasını şart koşar.
-    private static readonly Regex Token = new(@"(?<!@)@([A-Za-z_][A-Za-z0-9_]*)",
-        RegexOptions.Compiled);
-
-    /// <summary>
-    /// SQL'deki <c>@token</c> kümesi ile verilen parametre kümesini KARŞILAŞTIRIR.
-    /// İki yönlü: eksik parametre çalışma anında <c>Must declare the scalar variable</c>
-    /// verirdi (dört kez oldu), fazla parametre ise SQL'in o değeri hiç kullanmadığını
-    /// yani süzgecin sessizce düştüğünü gösterir.
-    /// </summary>
+    // ⚠ Parametre doğrulaması burada DEĞİL: `SqlContract.Verify` ortak çekirdek
+    //   (aynı kusur kimlik/ACL tarafında da çıktı — V-11). İki kopya olsaydı biri
+    //   bayatlardı ve bayatlayan taraf sessizce koruma bırakırdı.
     private static string Verify(string sql, VrdParams p)
-    {
-        var used = Token.Matches(sql).Select(m => m.Groups[1].Value)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var given = p.Names.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var missing = used.Except(given).OrderBy(x => x).ToList();
-        // `userId` kapsam çapasıdır ve HER çağrıda bulunur; kapsam taşımayan bir
-        // sorguda (ör. Vrd_Onay okuması) SQL'de geçmemesi kusur değildir. Diğer
-        // her ad için "verilmiş ama SQL'de yok" bir bulgudur: süzgeç sessizce düşmüş
-        // ya da SQL'deki adı ayrılmış demektir.
-        var unused = given.Except(used).Where(n => !n.Equals("userId", StringComparison.OrdinalIgnoreCase))
-                          .OrderBy(x => x).ToList();
-
-        if (missing.Count > 0 || unused.Count > 0)
-            throw new InvalidOperationException(
-                "VARDİYA SORGU BOĞAZI — parametre kümesi SQL ile uyuşmuyor. " +
-                (missing.Count > 0 ? $"SQL'de var, verilmemiş: {string.Join(", ", missing)}. " : "") +
-                (unused.Count > 0 ? $"Verilmiş, SQL'de yok: {string.Join(", ", unused)}. " : "") +
-                "Ad yalnız VrdParams'ta yazılır; SQL metnindeki adı da oradan kopyala.");
-
-        return sql;
-    }
+        => SqlContract.Verify(sql, p.Names, anchor: "userId");
 
     public static async Task<IReadOnlyList<T>> QueryAsync<T>(
         IDbConnection cn, string sql, VrdParams p, IDbTransaction? tx = null)
@@ -120,37 +91,31 @@ public static class VrdSql
 }
 
 /// <summary>
-/// Vardiya sorgularının parametre kümesi. <b>Ad burada BİR KEZ yazılır.</b>
-///
-/// ⚠ Anonim nesne (<c>new { userId, bas, bit }</c>) KULLANILMAZ: orada parametre adı
-///   yerel değişkenin adıdır, dolayısıyla bir yeniden adlandırma SQL'deki adı sessizce
-///   ayırır. Dört kez bu oldu. Burada ad bir dizgedir ve değişken adından bağımsızdır.
+/// Vardiya sorgularının parametre kümesi — <see cref="SqlParams"/> üstüne kapsam
+/// çapası ekler. <b>Ad burada BİR KEZ yazılır</b> (anonim nesne kullanılmaz: orada ad
+/// yerel değişkenin adıdır ve yeniden adlandırma onu sessizce ayırır — beş kez oldu).
 ///
 /// ⚠ <see cref="For"/> <c>userId</c>'yi ZORUNLU alır: kapsamlı kaynaklar
 ///   (<see cref="VrdSql.PersonDays"/>) <c>@userId</c> ister, yani parametresiz bir
 ///   kapsam sorgusu kurulamaz.
 /// </summary>
-public sealed class VrdParams
+public sealed class VrdParams : SqlParams
 {
-    private readonly Dictionary<string, object?> values = new(StringComparer.OrdinalIgnoreCase);
-
     private VrdParams(string userId)
     {
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("userId boş olamaz — şube kapsamı çözülemez.", nameof(userId));
-        values["userId"] = userId;
+        Add("userId", userId);
     }
 
     /// <summary>Kapsam sahibi. Her vardiya sorgusu buradan başlar.</summary>
     public static VrdParams For(string userId) => new(userId);
 
-    public IEnumerable<string> Names => values.Keys;
-
     /// <summary>Kesim aralığı → <c>@bas</c> / <c>@bit</c>.</summary>
     public VrdParams Cutoff(DateOnly bas, DateOnly bit)
     {
-        values["bas"] = bas.ToDateTime(TimeOnly.MinValue);
-        values["bit"] = bit.ToDateTime(TimeOnly.MinValue);
+        Add("bas", bas.ToDateTime(TimeOnly.MinValue));
+        Add("bit", bit.ToDateTime(TimeOnly.MinValue));
         return this;
     }
 
@@ -160,29 +125,22 @@ public sealed class VrdParams
     /// </summary>
     public VrdParams Branch(string? branch)
     {
-        values["branch"] = string.IsNullOrWhiteSpace(branch) ? null : branch;
+        Add("branch", string.IsNullOrWhiteSpace(branch) ? null : branch);
         return this;
     }
 
     /// <summary>Kişi-gün kimliği → <c>@sicilNo</c> / <c>@tarih</c>.</summary>
     public VrdParams StaffDay(string sicilNo, DateOnly tarih)
     {
-        values["sicilNo"] = sicilNo;
-        values["tarih"] = tarih.ToDateTime(TimeOnly.MinValue);
+        Add("sicilNo", sicilNo);
+        Add("tarih", tarih.ToDateTime(TimeOnly.MinValue));
         return this;
     }
 
     /// <summary>Adı üstünde: serbest parametre. Ad DİZGE olarak verilir.</summary>
-    public VrdParams Add(string name, object? value)
+    public new VrdParams Add(string name, object? value)
     {
-        values[name] = value;
+        base.Add(name, value);
         return this;
-    }
-
-    public DynamicParameters Build()
-    {
-        var p = new DynamicParameters();
-        foreach (var (k, v) in values) p.Add(k, v);
-        return p;
     }
 }

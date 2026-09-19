@@ -162,29 +162,37 @@ if denetlenen == 0:
 # ÖLÇÜLDÜ (19.09.2026): `BannedSymbols.txt` içindeki sembol adı YANLIŞ yazılırsa
 # analizör hiçbir şey demez — ban ölür, derleme geçer, kimse fark etmez. Dosyanın
 # silinmesi de aynı sonucu verir. Yani V-10 bir kapıdır ve onun da bir kapısı gerekir.
-YASAK_LISTESI = KOK / "lib/Bkm.Shared/BannedSymbols.txt"
+# V-11'den beri IKI liste var: kapsamli sorgular (lib) ve kimlik/ACL (vardiya-app).
+YASAK_LISTELERI = ["lib/Bkm.Shared/BannedSymbols.txt", "vardiya-app/BannedSymbols.txt"]
 BEKLENEN_GIRDI = "T:Dapper.SqlMapper;"
 
-if not YASAK_LISTESI.exists():
-    kirik.append("yasak-listesi-yok")
-    print(f"KIRIK yasak listesi YOK: {YASAK_LISTESI.relative_to(KOK).as_posix()} — "
-          f"V-10 bandı ölmüş, Dapper çağrısı boğaz dışında yeniden DERLENİR.")
-else:
-    liste = io.open(YASAK_LISTESI, encoding="utf-8").read()
+for rel in YASAK_LISTELERI:
+    yol = KOK / rel
+    if not yol.exists():
+        kirik.append(f"yasak-listesi-yok:{rel}")
+        print(f"KIRIK yasak listesi YOK: {rel} — ban ölmüş, Dapper çağrısı boğaz "
+              f"dışında yeniden DERLENİR.")
+        continue
+    liste = io.open(yol, encoding="utf-8").read()
     if BEKLENEN_GIRDI not in liste:
-        kirik.append("yasak-listesi-bozuk")
-        print(f"KIRIK yasak listesinde `{BEKLENEN_GIRDI}` girdisi YOK — sembol adı "
-              f"değişmiş ya da silinmiş olabilir; ban SESSİZCE ölür (uyarı çıkmaz).")
+        kirik.append(f"yasak-listesi-bozuk:{rel}")
+        print(f"KIRIK {rel}: `{BEKLENEN_GIRDI}` girdisi YOK — sembol adı değişmiş ya da "
+              f"silinmiş olabilir; ban SESSİZCE ölür (analizör uyarmaz).")
+        continue
+    # Yorum satırı tuzağı: aynı satır iki kez -> RS0031; farklı satırlar ->
+    # SESSİZCE yok sayılır ve dosya "açıklamalı" görünür (ölçüldü).
+    yorumlu = [l for l in liste.splitlines() if l.strip() and ";" not in l]
+    if yorumlu:
+        kirik.append(f"yasak-listesi-yorum:{rel}")
+        print(f"KIRIK {rel}: girdi olmayan {len(yorumlu)} satır var — bu dosya yorum "
+              f"TANIMAZ; gerekçe `.editorconfig`e yazılır.")
     else:
-        # Yorum satırı tuzağı: aynı satır iki kez -> RS0031; farklı satırlar ->
-        # sessizce yok sayılır ve dosya "açıklamalı" görünür (ölçüldü).
-        yorumlu = [l for l in liste.splitlines() if l.strip() and ";" not in l]
-        if yorumlu:
-            kirik.append("yasak-listesi-yorum")
-            print(f"KIRIK yasak listesinde girdi olmayan {len(yorumlu)} satır var — "
-                  f"bu dosya yorum TANIMAZ; gerekçe `.editorconfig`e yazılır.")
-        else:
-            print("OK    yasak listesi ayakta (V-10 bandı: Dapper boğaz dışında derlenmez)")
+        print(f"OK    yasak listesi ayakta: {rel}")
+
+# ⚠ BU DENETIM METINDIR ve sembolun GERCEK bir tipe cozuldugunu GORMEZ. Onu
+#   `tests/BkmVardiya.Tests/BanListLivenessTests.cs` yansimayla olcuyor (Solum'un
+#   ayni gun odeyerek ogrendigi ders). Ikisi ayri katman: bu ucuz ve pre-commit'te,
+#   oteki kesin ve test kosumunda.
 
 # ── 5. PANEL SALT-OKUMA (plan 48 Adım 7, GMY kararı 19.09) ───────────────────
 # GMY panelinde vardiya sayfası SALT-OKUMA özettir. Yazma yolu oraya geri
