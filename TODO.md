@@ -220,9 +220,24 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
 - [ ] **V-05 Vardiya planı girişi + izin günü tanımı** — ilk sürüm kapsamı dışında
       bırakıldı; plan hâlâ Excel kaynaklı.
-- [ ] **V-06 Kapsam denetimi metin tabanlı** — süzgecin DOĞRU kolona bağlandığını
-      görmüyor (`Sube IN` yerine `Bolum IN` yazılsa geçer). Gerçek kapatma: rol bazlı
-      uçtan uca test (üç rolle giriş → beklenen kapsam).
+- [x] ~~**V-06 Kapsam denetimi metin tabanlı**~~ — ✅ KAPANDI 19.09 (commit `8fd07b3`).
+      Uçtan uca test koştu: `tests/BkmVardiya.Tests/BranchScopeTests.cs` **3/3 yeşil**,
+      kırılabilirliği kanıtlandı (kapsam süzgeci bilerek devre dışı → müdür tüm şirketi
+      gördü → kırmızı → geri alındı). Koşturunca **ürün kusuru** çıktı: SQL `@sube`
+      isterken C# `branch` gönderiyordu → üç sorgu (`GetOvertimeSource`/`GetStayBands`/
+      `GetRows`) şube süzgeci seçilince patlıyordu. Derleme temiz, dört kapı da kör.
+      ⚠ Metin denetiminin sınırı (`Sube IN` ↔ `Bolum IN`) **hâlâ duruyor** — uçtan uca
+      test onu da örtüyor ama yalnız test edilen üç rol için.
+
+- [ ] **V-07 Orantısızlık sezgisi MEKANİKLEŞMEDİ** (19.09, Solum S3) — ikinci kapsam
+      sızıntısını bulan şey insan sezgisiydi ("2.192,6 saat makul ama kapsamla
+      orantısız"). Bugün ekranda gösterilen toplamı, o ekranın **kapsam kümesinin**
+      toplamıyla otomatik karşılaştıran hiçbir şey yok. Sınıf yazılı
+      (`olctum-mu-cikardim-mi.md` § makul sayı kabul edilir), mekanik karşılığı yok.
+
+- [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
+      yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
+      (43 ihlal orada temizlenmedi, hiç bakılmadı). Genişletme maliyeti ölçülmedi.
 
 
 #### 🌅 SABAH (19.06) — kalan iş kürasyonu (18.06 handoff, tüm TODO tarandı)
