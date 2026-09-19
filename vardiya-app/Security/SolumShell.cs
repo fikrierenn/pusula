@@ -2,6 +2,7 @@ using Solum.Abstractions;
 using Solum.Core.Extensibility;
 using Solum.Core.Permissions;
 using Solum.Web.Menu;
+using Solum.Web.Components;
 
 namespace BkmVardiya.Security;
 
@@ -90,19 +91,26 @@ public sealed class ClaimsPermissionChecker(IHttpContextAccessor accessor) : IPe
 ///   (<c>/Approval?sicil=…&amp;tarih=…</c>), yani bağlamsız bir menü girişi boş sayfa
 ///   açardı.
 /// </summary>
+// ⚠ SafeUrl GEÇİŞİ (Solum.Web 0.8.0, 20.09.2026): `MenuItem.Url` artık `string?`
+//   değil `SafeUrl?`. Burada `Create` kullanılıyor, `TryCreate` DEĞİL — çünkü üç
+//   adres de KAYNAK KODDA SABİT. Sabit bir adres bozuksa bu bir veri sorunu değil
+//   bir KOD hatasıdır ve derlemede/ilk açılışta patlaması DOĞRUDUR; sessizce
+//   düşürülüp menüden bir madde eksilmesi yanlış olurdu.
+//   Veritabanından/yapılandırmadan gelen bir adres olsaydı `TryCreate` + log
+//   gerekirdi (Solum'un uyarısı).
 public sealed class VardiyaMenu : IMenuContributor
 {
     public void Contribute(MenuBuilderContext context)
     {
-        context.Add(new MenuItem("vardiya.rapor", "Mesai Raporu") { Url = "/" });
-        context.Add(new MenuItem("vardiya.sifre", "Şifre Değiştir") { Url = "/ChangePassword" });
+        context.Add(new MenuItem("vardiya.rapor", "Mesai Raporu") { Url = SafeUrl.Create("/") });
+        context.Add(new MenuItem("vardiya.sifre", "Şifre Değiştir") { Url = SafeUrl.Create("/ChangePassword") });
 
         // ⚠ YALNIZ İK GÖRÜR — ama bu GÖRÜNÜRLÜK, güvenlik değil. Sayfanın kendisi
         //   [Authorize(Policy = ManageStaff)] taşıyor; adresi elle yazan biri menüden
         //   geçmez, oradan geçemez.
         context.Add(new MenuItem("vardiya.sifreSifirla", "Şifre Sıfırla (İK)")
         {
-            Url = "/ResetPassword",
+            Url = SafeUrl.Create("/ResetPassword"),
             RequiredPermission = Permissions.ManageStaff,
         });
     }

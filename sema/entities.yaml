@@ -2931,6 +2931,21 @@ entities:
     confidence: 0.95
     evidence: "2026-08-18 — kolonlar canlı sys.columns ile doğrulandı (12 kolon); kısmi-dağıtım filtresi + recency gate + kayıp formülü üretim scriptinden okundu. Canlı satır sayısı doğrulanmadı (ERP erişimi düştü)."
     last_verified: "2026-08-18"
+  bkm.Vrd_Devir:
+    type: table
+    sunucu: panel
+    db: BkmPanel
+    pk: "(Donem, SicilNo)"
+    key: [Donem, SicilNo, Sube, Personel, Bolum, Gorev, EksikDk, FazlaDk, DondurmaUtc]
+    grain: "DÖNEM (ay, char(7) 'YYYY-MM') × KİŞİ — kesim değil, AY."
+    semantik: "Ay kapanışında DONDURULAN eksik/fazla bakiyesi. Yayınlanan raporun TOPLAMINA girer: panel yalnız dönemi gösterirse Excel'le sapar. Dondurulma gerekçesi PDKS'in geriye dönük değişmesi — bkz. `geriye_donuk_duzeltme`."
+    tuzaklar: "(1) **GRAIN DÖNEM, SORGU KESİM — ikisi aynı şey DEĞİL.** Kişi-gün tablosu kesim bazlı (`KesimBas/KesimBit`), devir AY bazlı. Bir kesim özetine devir eklerken DÖNEM SÜZGECİ ZORUNLU; yoksa tablodaki HER dönem toplanır. ÖLÇÜLDÜ 19.09.2026: süzgeçsiz hâlde ikinci bir dönem devir eksiğini 69.563 → 119.563 dk'ya çıkarıyor. Dev veride tek dönem olduğu için 22 test yeşil kalıyordu — **tek nüfuslu eksen kapıyı sınamaz**. (2) `Sube` NULL tanımlı; kapsam süzgeci `Sube IN (...)` biçiminde olduğu için NULL bir satır SESSİZCE düşer. Bugün 0 (ölçüldü) — değişmez `vardiya-devir-sube-null-yok` bunu koruyor. (3) Kapsamlı okuma YALNIZ `VrdSql.Carryover` boğazından; ham tablo adını başka dosyada yazmak `tools/vardiya_kapsam_denetimi.py` ile yakalanır."
+    kesim_donem_eslemesi: "⚠ **ÇIKARIM, ÖLÇÜM DEĞİL — n = 1.** Kod `VrdPeriod.CarryFor` ile 'sayım ayının bir öncesi' kuralını kullanıyor. Dev veride tek kesim (31.08→16.09, SayimBas 01.09) ve tek dönem (2026-08) var; üç aday kural da (KesimBas'ın ayı / SayimBas'ın bir öncesi / KesimBit'in bir öncesi) AYNI sonucu veriyor, yani AYIRT EDİLEMİYOR. (b) seçildi çünkü anlamı taşıyan tek kural o: devir, sayılan ayın öncesinde KAPANAN ayın bakiyesidir. (a) yalnız KesimBas ayın son günü olduğu için tutuyor. **İkinci gerçek kesim yazıldığında ölçülecek — TODO V-20.**"
+    yazan: "YALNIZ ay kapanışı (`scripts/vardiya_sql.py devir_yaz`; dolu dönemin üzerine yazmaz, `--devir-tazele` ister). Dönem adı kaynak Excel'in SAYFA ADINDAN çözülür ('Ağustos.2026'), kesimden türetilmez. + testler: yalnız `Donem='1900-01'` + `zz_test_` sicil (erp-write-policy)."
+    confidence: 0.9
+    evidence: "2026-09-19 — canlı BkmPanel: 186 satır / 8 şube / TEK dönem 2026-08 (EksikDk 111.491 · FazlaDk 12.089); Sube NULL 0. DDL `sorgular/2026-09-17-vardiya-tablo-kur.sql`. Sızıntı ölçümü (simülasyon, sıfır yazma): `sorgular/2026-09-19-vardiya-devir-donem-sizintisi.sql` blok 3."
+    last_verified: "2026-09-19"
+    ttl_days: 90
   # --- CANLI ŞEMA DOĞRULAMA DAMGASI (curator A10 / TODO B-152) ---
   _sema_dogrulama_2026_08_18:
     status: superseded

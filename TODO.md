@@ -267,7 +267,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       listenin eksikliği görünmez" bir teori değil, bu depoda **ölçülmüş olgu**.
       Kırmızı kip üç kez: kara listede olmayan Türkçe ad (`Dukkan…`) → KIRIK · ak liste
       dosyası silindi → **KOŞAMADI** (sessizce kara listeye düşmek yasak) · geri alındı.
-- [ ] **V-20 Vardiya testleri TEK KESİM üzerinde koşuyor (adım ekseni kör)** (19.09,
+- [x] ~~**V-20 Vardiya testleri TEK KESİM üzerinde koşuyor (adım ekseni kör)**~~ ✅ KAPANDI 20.09 (19.09,
       Solum'un sekizinci tuzağının ikinci ekseni) — fikstür tek kesim seçiyor; **kesim
       değişimi ve devir taşıma hiç test edilmedi**. `GetSummaryAsync` devri ayrı tablodan
       topluyor (`Vrd_Devir`) ve o yol yalnız ay kapanışında yazılıyor.
@@ -284,10 +284,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       ⚠ **EŞLEME BİR ÇIKARIM (n=1):** üç aday kural da tek veri noktasına uyuyor;
       "sayım ayının bir öncesi" anlamı taşıdığı için seçildi. İkinci gerçek kesimde
       ÖLÇÜLECEK.
-      🔴 **KIRMIZI KİP KOŞMADI — madde AÇIK.** Solum.Web 0.8.0 kırıcı sürümü sürerken
-      "build denemeyin" dendi; `dotnet test` ProjectReference'la ona bağlı. Testin
-      kırmızı verdiği ölçülmedi → kırılabilirliği kanıtlanmamış test, test değildir.
-      **TETİK(koşul: Solum "KIRICI BITTI" der demez `dotnet test` + kırmızı kip)**
+      ✅ **KIRMIZI KİP KOŞTU — 20.09, KAPANDI.** Solum "KIRICI BITTI" dedi, derleme
+      açıldı. Sabotaj: dönem yüklemi etkisizleştirildi (`AND (@donem IS NOT NULL OR
+      1=1)` — parametre DURUYOR, yani SQL sözleşmesi geçiyor, kusur yalnız yüklemde).
+      Sonuç **26 testten YALNIZ yeni test düştü** (25 yeşil) → test doğru şeyi
+      ölçüyor, komşu testleri de bozan bir sabotaj değil. Geri alındı (`--hard`
+      KULLANILMADI, dosya yedeği), 26/26 yeşil.
 
 - [ ] **V-17 GM bölümleri için çalışma süresi parametresi** (19.09, plan 49 kararı S2)
       `Vrd_CalismaSaati`'nde 15 satır `OTOMATİK EKLENDİ — şube varsayılanı, İK onaylamalı`
