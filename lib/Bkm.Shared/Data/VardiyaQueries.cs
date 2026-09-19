@@ -53,19 +53,17 @@ public sealed class VardiyaQueries(Db db)
     public async Task<IReadOnlyList<VrdCutoff>> GetCutoffsAsync(string userId)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdCutoff>("""
+        return await VrdSql.QueryAsync<VrdCutoff>(cn, $"""
             SELECT  CutoffFrom  = KesimBas,
                     CutoffTo    = KesimBit,
                     CountFrom   = SayimBas,
                     PersonDays  = COUNT(*),
                     BranchCount = COUNT(DISTINCT Sube),
                     WrittenAt   = MAX(YazilmaUtc)
-            FROM    bkm.Vrd_KisiGun
-            WHERE   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
+            FROM    {VrdSql.PersonDays} k
             GROUP BY KesimBas, KesimBit, SayimBas
             ORDER BY KesimBit DESC, KesimBas DESC
-            """, new { userId });
-        return r.AsList();
+            """, VrdParams.For(userId));
     }
 
     /// <summary>
@@ -76,7 +74,7 @@ public sealed class VardiyaQueries(Db db)
     public async Task<VrdSummary?> GetSummaryAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
-        return await cn.QuerySingleOrDefaultAsync<VrdSummary>("""
+        return await VrdSql.QuerySingleOrDefaultAsync<VrdSummary>(cn, $"""
             SELECT
                 PersonDays  = COUNT(*),
                 BranchCount = COUNT(DISTINCT Sube),
@@ -97,50 +95,38 @@ public sealed class VardiyaQueries(Db db)
                 --   bir şube müdürü kendi döneminin 334 saatini ama TÜM ŞİRKETİN
                 --   1.858 saatlik devrini görüyordu. Kapsam bir sorguda BİR KEZ
                 --   yazılmakla bitmiyor; her alt-sorgu kendi süzgecini ister.
-                CarryShortMin    = (SELECT ISNULL(SUM(EksikDk), 0) FROM bkm.Vrd_Devir
-                                    WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))),
-                CarryOvertimeMin = (SELECT ISNULL(SUM(FazlaDk), 0) FROM bkm.Vrd_Devir
-                                    WHERE Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId)))
-            FROM bkm.Vrd_KisiGun
+                CarryShortMin    = (SELECT ISNULL(SUM(EksikDk), 0) FROM {VrdSql.Carryover} d),
+                CarryOvertimeMin = (SELECT ISNULL(SUM(FazlaDk), 0) FROM {VrdSql.Carryover} d2)
+            FROM {VrdSql.PersonDays} k
             WHERE KesimBas = @bas AND KesimBit = @bit
-              AND Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
-            """, new
-        {
-            userId,
-            bas = bas.ToDateTime(TimeOnly.MinValue),
-            bit = bit.ToDateTime(TimeOnly.MinValue),
-            supheli = VrdConstants.SuspectPattern,
-        });
+            """, VrdParams.For(userId).Cutoff(bas, bit)
+                          .Add("supheli", VrdConstants.SuspectPattern));
     }
 
     public async Task<IReadOnlyList<VrdStatus>> GetStatusBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdStatus>("""
+        return await VrdSql.QueryAsync<VrdStatus>(cn, $"""
             SELECT Status = Durum, PersonDays = COUNT(*)
-            FROM   bkm.Vrd_KisiGun
+            FROM   {VrdSql.PersonDays} k
             WHERE  KesimBas = @bas AND KesimBit = @bit
-              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY Durum ORDER BY COUNT(*) DESC
-            """, new { userId, bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
-        return r.AsList();
+            """, VrdParams.For(userId).Cutoff(bas, bit));
     }
 
     public async Task<IReadOnlyList<VrdBranch>> GetBranchBreakdownAsync(string userId, DateOnly bas, DateOnly bit)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdBranch>("""
+        return await VrdSql.QueryAsync<VrdBranch>(cn, $"""
             SELECT  Branch      = Sube,
                     PersonDays  = COUNT(*),
                     PersonCount = COUNT(DISTINCT NULLIF(SicilNo, '')),
                     ShortMin    = SUM(ISNULL(EksikDk, 0)),
                     OvertimeMin = SUM(ISNULL(FazlaDk, 0))
-            FROM    bkm.Vrd_KisiGun
+            FROM    {VrdSql.PersonDays} k
             WHERE   KesimBas = @bas AND KesimBit = @bit
-              AND   Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
             GROUP BY Sube ORDER BY Sube
-            """, new { userId, bas = bas.ToDateTime(TimeOnly.MinValue), bit = bit.ToDateTime(TimeOnly.MinValue) });
-        return r.AsList();
+            """, VrdParams.For(userId).Cutoff(bas, bit));
     }
 
     /// <summary>
@@ -150,24 +136,17 @@ public sealed class VardiyaQueries(Db db)
     public async Task<VrdOvertimeSource?> GetOvertimeSourceAsync(string userId, DateOnly bas, DateOnly bit, string? branch)
     {
         using var cn = db.OpenPanel();
-        return await cn.QuerySingleOrDefaultAsync<VrdOvertimeSource>("""
+        return await VrdSql.QuerySingleOrDefaultAsync<VrdOvertimeSource>(cn, $"""
             SELECT ExtraWorkMin      = SUM(ISNULL(FazlaCalismaDk, 0)),
                    LeaveCancelledMin = SUM(ISNULL(FazlaIzinIptalDk, 0)),
                    WeeklyRestMin     = SUM(ISNULL(HaftalikPrimDk, 0)),
                    UnplannedMin      = SUM(ISNULL(FazlaPlansizDk, 0)),
                    AfterCloseMin     = SUM(ISNULL(CikisSonrasiDk, 0)),
                    BeforeOpenMin     = SUM(ISNULL(GirisOncesiDk, 0))
-            FROM   bkm.Vrd_KisiGun
+            FROM   {VrdSql.PersonDays} k
             WHERE  KesimBas = @bas AND KesimBit = @bit
-              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND (@branch IS NULL OR Sube = @branch)
-            """, new
-        {
-            userId,
-            bas = bas.ToDateTime(TimeOnly.MinValue),
-            bit = bit.ToDateTime(TimeOnly.MinValue),
-            branch = string.IsNullOrWhiteSpace(branch) ? null : branch,
-        });
+            """, VrdParams.For(userId).Cutoff(bas, bit).Branch(branch));
     }
 
     /// <summary>
@@ -178,16 +157,15 @@ public sealed class VardiyaQueries(Db db)
         string userId, DateOnly bas, DateOnly bit, string? branch)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdStayBand>("""
+        return await VrdSql.QueryAsync<VrdStayBand>(cn, $"""
             SELECT Band = CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
                                WHEN CikisSonrasiDk <=  30 THEN N'16–30 dk'
                                WHEN CikisSonrasiDk <=  60 THEN N'31–60 dk'
                                WHEN CikisSonrasiDk <= 120 THEN N'1–2 saat'
                                ELSE N'2 saat üstü' END,
                    DayCount = COUNT(*), Minutes = SUM(CikisSonrasiDk)
-            FROM   bkm.Vrd_KisiGun
+            FROM   {VrdSql.PersonDays} k
             WHERE  KesimBas = @bas AND KesimBit = @bit
-              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND  ISNULL(CikisSonrasiDk, 0) > 0
               AND (@branch IS NULL OR Sube = @branch)
             GROUP BY CASE WHEN CikisSonrasiDk <=  15 THEN N'≤ 15 dk'
@@ -196,14 +174,7 @@ public sealed class VardiyaQueries(Db db)
                           WHEN CikisSonrasiDk <= 120 THEN N'1–2 saat'
                           ELSE N'2 saat üstü' END
             ORDER BY MIN(CikisSonrasiDk)
-            """, new
-        {
-            userId,
-            bas = bas.ToDateTime(TimeOnly.MinValue),
-            bit = bit.ToDateTime(TimeOnly.MinValue),
-            branch = string.IsNullOrWhiteSpace(branch) ? null : branch,
-        });
-        return r.AsList();
+            """, VrdParams.For(userId).Cutoff(bas, bit).Branch(branch));
     }
 
     /// <summary>
@@ -232,7 +203,7 @@ public sealed class VardiyaQueries(Db db)
         //   `IX_Vrd_KisiGun_Kesim`te YOK. `IX_Vrd_KisiGun_KesimUyum` bunun için
         //   var (24 kesim taklidi, 146.712 satır: 89,6 → 22,9 ms). DDL:
         //   sorgular/2026-09-17-vardiya-tablo-kur.sql
-        return await cn.QuerySingleOrDefaultAsync<VrdCompliance>("""
+        return await VrdSql.QuerySingleOrDefaultAsync<VrdCompliance>(cn, $"""
             SELECT SicilNo, Tarih, CalismaDk, GirisDk, CikisDk, Izin,
                    -- gece = [giriş,çıkış] ∩ 20:00–06:00; çıkış 1440'ı aşabildiği
                    -- için pencere iki gün için toplanır (m.69).
@@ -249,9 +220,8 @@ public sealed class VardiyaQueries(Db db)
                    END,
                    supheli = CASE WHEN OlcumNotu LIKE @supheli THEN 1 ELSE 0 END
             INTO   #o
-            FROM   bkm.Vrd_KisiGun
-            WHERE  KesimBas = @bas AND KesimBit = @bit
-              AND  Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId));
+            FROM   {VrdSql.PersonDays} k
+            WHERE  KesimBas = @bas AND KesimBit = @bit;
 
             WITH hf AS (
               SELECT SicilNo, hafta = DATEPART(iso_week, Tarih),
@@ -268,21 +238,18 @@ public sealed class VardiyaQueries(Db db)
               NoWeeklyRest = (SELECT COUNT(*) FROM hf WHERE gun >= 7 AND dinlenme = 0),
               Over45       = (SELECT COUNT(*) FROM hf WHERE toplamDk > @haftalikNormal),
               Suspect      = (SELECT COUNT(*) FROM #o WHERE supheli = 1);
-            """, new
-        {
-            userId,
-            bas = bas.ToDateTime(TimeOnly.MinValue),
-            bit = bit.ToDateTime(TimeOnly.MinValue),
-            supheli = VrdConstants.SuspectPattern,
-            // ⚠ Eşikler GÖMÜLÜ SAYI DEĞİL — tek kaynak MesaiEsik, Python karşılığıyla
-            //   tools/mesai_esik_denetimi.py karşılaştırıyor.
-            geceBas = WorkTimeLimit.NightStartMin, geceBit = WorkTimeLimit.NightEndMin,
-            geceBas2 = WorkTimeLimit.NightStartMin2, geceBit2 = WorkTimeLimit.NightEndMin2,
-            gunlukTavan = WorkTimeLimit.DailyCapMin,
-            brutTavan = WorkTimeLimit.DailyGrossCapMin,
-            geceTavan = WorkTimeLimit.NightCapMin,
-            haftalikNormal = WorkTimeLimit.WeeklyNormalMin,
-        });
+            """, VrdParams.For(userId).Cutoff(bas, bit)
+                          .Add("supheli", VrdConstants.SuspectPattern)
+                          // ⚠ Eşikler GÖMÜLÜ SAYI DEĞİL — tek kaynak WorkTimeLimit, Python
+                          //   karşılığıyla tools/mesai_esik_denetimi.py karşılaştırıyor.
+                          .Add("geceBas", WorkTimeLimit.NightStartMin)
+                          .Add("geceBit", WorkTimeLimit.NightEndMin)
+                          .Add("geceBas2", WorkTimeLimit.NightStartMin2)
+                          .Add("geceBit2", WorkTimeLimit.NightEndMin2)
+                          .Add("gunlukTavan", WorkTimeLimit.DailyCapMin)
+                          .Add("brutTavan", WorkTimeLimit.DailyGrossCapMin)
+                          .Add("geceTavan", WorkTimeLimit.NightCapMin)
+                          .Add("haftalikNormal", WorkTimeLimit.WeeklyNormalMin));
     }
 
     /// <summary>
@@ -293,7 +260,7 @@ public sealed class VardiyaQueries(Db db)
         string userId, DateOnly bas, DateOnly bit, string? branch, string? ara, bool sadeceSorunlu, int limit = 400)
     {
         using var cn = db.OpenPanel();
-        var r = await cn.QueryAsync<VrdRow>("""
+        return await VrdSql.QueryAsync<VrdRow>(cn, $"""
             SELECT TOP (@limit)
                    Branch           = k.Sube,
                    StaffNo          = k.SicilNo,
@@ -322,10 +289,9 @@ public sealed class VardiyaQueries(Db db)
                    ApprovedInMin    = o.OnayliGirisDk,
                    ApprovedOutMin   = o.OnayliCikisDk,
                    ExtraShiftMin    = o.EkMesaiDk
-            FROM        bkm.Vrd_KisiGun k
+            FROM        {VrdSql.PersonDays} k
             LEFT  JOIN  bkm.Vrd_Onay   o ON o.SicilNo = k.SicilNo AND o.Tarih = k.Tarih
             WHERE  k.KesimBas = @bas AND k.KesimBit = @bit
-              AND  k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
               AND (@branch IS NULL OR k.Sube = @branch)
               -- ⚠ ESCAPE ZORUNLU: kullanıcı '%' ya da '_' yazarsa süzgeç sessizce
               --   genişlerdi (injection değil ama YANLIŞ SONUÇ). Kaçış C# tarafında.
@@ -341,17 +307,10 @@ public sealed class VardiyaQueries(Db db)
                    OR k.Durum IN (N'Devamsız', N'Vardiya Tanımsız Çalışma')
                    OR (k.SayimDisi = 0 AND k.CalismaDk <> k.PlanCalismaDk))
             ORDER BY k.Tarih DESC, k.Sube, k.Personel
-            """, new
-        {
-            userId,
-            bas = bas.ToDateTime(TimeOnly.MinValue),
-            bit = bit.ToDateTime(TimeOnly.MinValue),
-            branch = string.IsNullOrWhiteSpace(branch) ? null : branch,
-            ara = string.IsNullOrWhiteSpace(ara) ? null : LikeKacir(ara.Trim()),
-            sadeceSorunlu = sadeceSorunlu ? 1 : 0,
-            limit,
-        });
-        return r.AsList();
+            """, VrdParams.For(userId).Cutoff(bas, bit).Branch(branch)
+                          .Add("ara", string.IsNullOrWhiteSpace(ara) ? null : LikeKacir(ara.Trim()))
+                          .Add("sadeceSorunlu", sadeceSorunlu ? 1 : 0)
+                          .Add("limit", limit));
     }
 
     /// <summary>
@@ -400,12 +359,11 @@ public sealed class VardiyaQueries(Db db)
         //   SESSİZ BAŞARISIZLIK OLMAZ: eşleşme yoksa MERGE'ün hiçbir şey yapmasını
         //   beklemek yerine AÇIKÇA fırlatılır. "Kaydettim" deyip yazmamak, yanlış
         //   şubeye yazmaktan daha kötüdür — kimse fark etmez.
-        var kapsamda = await cn.ExecuteScalarAsync<int>("""
+        var kapsamda = await VrdSql.ExecuteScalarAsync<int>(cn, $"""
             SELECT COUNT(*)
-            FROM   bkm.Vrd_KisiGun k
+            FROM   {VrdSql.PersonDays} k
             WHERE  k.SicilNo = @sicilNo AND k.Tarih = @tarih
-              AND  k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId))
-            """, new { userId, sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih));
 
         if (kapsamda == 0)
             throw new UnauthorizedAccessException(
@@ -414,10 +372,10 @@ public sealed class VardiyaQueries(Db db)
         // ── ÖNCEKİ HÂLİ OKU — iz "ne değişti" diyebilsin ────────────────────
         //   Yalnız created değeri yazan bir iz, denetimde işe yaramaz: "bu saat
         //   elle mi girildi, neyin yerine girildi" sorusunun cevabı eski değerde.
-        var onceki = await cn.QuerySingleOrDefaultAsync<VrdApprovalRecord>("""
+        var onceki = await VrdSql.QuerySingleOrDefaultAsync<VrdApprovalRecord>(cn, """
             SELECT OnayliGirisDk, OnayliCikisDk, EkMesaiDk, Aciklama
             FROM   bkm.Vrd_Onay WHERE SicilNo = @sicilNo AND Tarih = @tarih
-            """, new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih));
 
         // ── İŞLEM: onay ve izi BİRLİKTE ya yazılır ya yazılmaz ───────────────
         //   Ayrı işlem olsaydı "onay var, iz yok" aralığı doğardı — ve o aralık
@@ -432,9 +390,9 @@ public sealed class VardiyaQueries(Db db)
         {
             if (onceki is null) { await tx.CommitAsync(); return; }   // zaten yok — iz de yazılmaz
 
-            await cn.ExecuteAsync(
+            await VrdSql.ExecuteAsync(cn,
                 "DELETE FROM bkm.Vrd_Onay WHERE SicilNo = @sicilNo AND Tarih = @tarih",
-                new { sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) }, transaction: tx);
+                VrdParams.For(userId).StaffDay(sicilNo, tarih), tx);
 
             await AuditTrail.WriteAsync(cn, "Vrd_Onay", kayitId, AuditTrail.Action.Deleted,
                 userId, savedBy, new { eski = onceki }, tx);
@@ -442,7 +400,7 @@ public sealed class VardiyaQueries(Db db)
             return;
         }
 
-        await cn.ExecuteAsync("""
+        await VrdSql.ExecuteAsync(cn, """
             MERGE bkm.Vrd_Onay AS h
             USING (SELECT @sicilNo AS SicilNo, @tarih AS Tarih) AS k
                ON h.SicilNo = k.SicilNo AND h.Tarih = k.Tarih
@@ -453,13 +411,17 @@ public sealed class VardiyaQueries(Db db)
             WHEN NOT MATCHED THEN INSERT
                  (SicilNo, Tarih, OnayliGirisDk, OnayliCikisDk, EkMesaiDk, Aciklama, Kaydeden)
                  VALUES (@sicilNo, @tarih, @girisDk, @cikisDk, @ekMesaiDk, @aciklama, @kaydeden);
-            """, new
-        {
-            sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue),
-            inMin, outMin, extraShiftMin,
-            aciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
-            savedBy,
-        }, transaction: tx);
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih)
+                          // ⚠ SQL'deki adlar @girisDk/@cikisDk/@ekMesaiDk/@kaydeden.
+                          //   Anonim nesne kullanıldığında adlar yerel değişkenlerden
+                          //   (inMin/outMin/extraShiftMin/savedBy) geliyordu ve
+                          //   HİÇBİRİ EŞLEŞMİYORDU — onay kaydetme yolu çalışmıyordu
+                          //   (19.09 bulgusu, boğaz kurulurken çıktı).
+                          .Add("girisDk", inMin)
+                          .Add("cikisDk", outMin)
+                          .Add("ekMesaiDk", extraShiftMin)
+                          .Add("aciklama", string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim())
+                          .Add("kaydeden", savedBy), tx);
 
         await AuditTrail.WriteAsync(cn, "Vrd_Onay", kayitId,
             onceki is null ? AuditTrail.Action.Created : AuditTrail.Action.Updated,
@@ -480,13 +442,12 @@ public sealed class VardiyaQueries(Db db)
     public async Task<VrdApprovalRecord?> GetApprovalAsync(string userId, string sicilNo, DateOnly tarih)
     {
         using var cn = db.OpenPanel();
-        return await cn.QuerySingleOrDefaultAsync<VrdApprovalRecord>("""
+        return await VrdSql.QuerySingleOrDefaultAsync<VrdApprovalRecord>(cn, $"""
             SELECT o.OnayliGirisDk, o.OnayliCikisDk, o.EkMesaiDk, o.Aciklama
             FROM   bkm.Vrd_Onay o
             WHERE  o.SicilNo = @sicilNo AND o.Tarih = @tarih
-              AND  EXISTS (SELECT 1 FROM bkm.Vrd_KisiGun k
-                           WHERE k.SicilNo = o.SicilNo AND k.Tarih = o.Tarih
-                             AND k.Sube IN (SELECT Sube FROM bkm.Vrd_SubeKapsami(@userId)))
-            """, new { userId, sicilNo, tarih = tarih.ToDateTime(TimeOnly.MinValue) });
+              AND  EXISTS (SELECT 1 FROM {VrdSql.PersonDays} k
+                           WHERE k.SicilNo = o.SicilNo AND k.Tarih = o.Tarih)
+            """, VrdParams.For(userId).StaffDay(sicilNo, tarih));
     }
 }
