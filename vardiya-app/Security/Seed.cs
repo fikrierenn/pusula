@@ -50,43 +50,96 @@ public static class Seed
         (RoleBranchManager, [Permissions.Approve]),
     ];
 
-    /// <summary>Ad Soyad · role · şubeler (şube sorumlusu değilse boş).</summary>
-    private static readonly (string FullName, string Role, string[] Branches)[] Staff =
-    [
-        ("FİKRİ EREN",          RoleGmy, []),
-        ("FARUK BİNGÖLBALİ",    RoleGmy, []),
+    /// <summary>Kadro kaydı — dosyadan okunur (V-02).</summary>
+    private sealed record StaffMember(string FullName, string Role, string[] Branches);
 
-        ("CEREN BİLMİŞ",        RoleHr,  []),
-        ("ESRA YENER",          RoleHr,  []),
-        ("SERPİL YAĞLI",        RoleHr,  []),
+    private sealed record StaffFile(StaffMember[] Staff);
 
-        ("RESUL ÇİL",           RoleBranchManager, ["FSM"]),
-        ("NECMETTİN ÇELİK",     RoleBranchManager, ["FSM"]),
-        ("ERKAL GÜDENLİ",       RoleBranchManager, ["İST. YOLU"]),
-        ("ÖMER FARUK KIRMACI",  RoleBranchManager, ["İST. YOLU"]),
-        ("EREN BORAN",          RoleBranchManager, ["İST. YOLU"]),
-        ("ABDURRAHMAN UĞURLU",  RoleBranchManager, ["ÖZLÜCE"]),
-        ("AYDIN ÖZCAN",         RoleBranchManager, ["ÖZLÜCE"]),
-        ("SIRAÇ YİĞİT",         RoleBranchManager, ["ÖZLÜCE"]),
-        ("CİHAT BİNGÖLBALİ",    RoleBranchManager, ["ŞURA"]),
-        ("EMRAH ÖZCAN",         RoleBranchManager, ["ŞURA"]),
-        ("RECEP ÖZCAN",         RoleBranchManager, ["HEYKEL"]),
-        // Kafeler müdürü ÜÇ şubeden sorumlu — ACL'nin çok-a-çok olmasının
-        // ilk gerçek kullanımı (Solum'un 18.09'da uyardığı şekil).
-        ("MURAT SADIK ERBAŞ",   RoleBranchManager, ["FSM KAFE", "İST. YOLU KAFE", "ÖZLÜCE KAFE"]),
-    ];
+    /// <summary>
+    /// KADRO DOSYADAN OKUNUR — koda GÖMÜLÜ DEĞİL (V-02).
+    ///
+    /// ⚠ NEDEN ZİRVE'DEN CANLI DEĞİL: ölçüldü (19.09.2026) — bordro sistemi kişiyi ve
+    ///   lokasyonu biliyor ama <b>ROLÜ bilmiyor</b>. "Kim şube sorumlusudur, kim İK'dır"
+    ///   bir UYGULAMA kararıdır, bordro gerçeği değil. Ayrıca şube adları birebir
+    ///   eşleşmiyor (GENEL YÖNETİM ↔ GENEL MÜDÜRLÜK). Yani "canlı oku" borcu tek başına
+    ///   kapanamaz; kapanan şey listenin KODDAN çıkmasıdır.
+    ///
+    /// ⚠ NEDEN <c>ciktilar/</c>: git yoksayar. Kadro listesi personel verisidir
+    ///   (ad soyad + rol + şube) ve depoda durmasının bir gerekçesi yok.
+    ///
+    /// ⚠ DOSYA YOKSA SEED KOŞMAZ (çıkış 2 = KOŞAMADI). Boş kadroyla "başarıyla" koşmak,
+    ///   hiç koşmamaktan kötüdür: kimse kurulmaz ve kimse fark etmez.
+    /// </summary>
+    private static string? FindStaffFile()
+    {
+        var fromEnv = Environment.GetEnvironmentVariable("VARDIYA_KADRO");
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+            return File.Exists(fromEnv) ? fromEnv : null;
+
+        // Çalışma dizini uygulamaya göre değişir (vardiya-app/ ya da depo kökü);
+        // yukarı doğru dört seviye aranır.
+        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+        for (var i = 0; i < 4 && dir is not null; i++, dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "ciktilar", "vardiya-kadro.json");
+            if (File.Exists(candidate)) return candidate;
+        }
+        return null;
+    }
 
     public static async Task<int> CalistirAsync(IServiceProvider sp, ILogger logger)
     {
         var userManager = sp.GetRequiredService<UserManager<IdentityUser>>();
         var db = sp.GetRequiredService<Db>();
 
+        var staffPath = FindStaffFile();
+        if (staffPath is null)
+        {
+            logger.LogError(
+                "Kadro dosyası bulunamadı (ciktilar/vardiya-kadro.json ya da VARDIYA_KADRO). "
+              + "Seed KOŞMADI — boş kadroyla 'başarıyla' koşmak kimseyi kurmaz ve kimse fark etmez.");
+            return 2;   // KOŞAMADI
+        }
+
+        StaffMember[] staff;
+        try
+        {
+            var okunan = System.Text.Json.JsonSerializer.Deserialize<StaffFile>(
+                File.ReadAllText(staffPath),
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            staff = okunan?.Staff ?? [];
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            logger.LogError(ex, "Kadro dosyası okunamadı: {Yol}", staffPath);
+            return 2;
+        }
+
+        if (staff.Length == 0)
+        {
+            logger.LogError("Kadro dosyası BOŞ: {Yol} — seed koşmadı.", staffPath);
+            return 2;
+        }
+
+        // Rol adı dosyadan geliyor; tanınmayan rol SESSİZCE atlanmaz.
+        var knownRoles = RolePermissions.Select(r => r.Role).ToHashSet(StringComparer.Ordinal);
+        var unknownRoles = staff.Select(k => k.Role).Distinct()
+                                .Where(r => !knownRoles.Contains(r)).ToList();
+        if (unknownRoles.Count > 0)
+        {
+            logger.LogError("Kadro dosyasında TANINMAYAN rol(ler): {Roller}. Bilinen: {Bilinen}.",
+                            string.Join(", ", unknownRoles), string.Join(", ", knownRoles));
+            return 2;
+        }
+
+        logger.LogInformation("Kadro dosyası: {Yol} · {Sayi} kişi", staffPath, staff.Length);
+
         using var cn = db.OpenPanel();
 
         // Şube adları DB'de gerçekten var mı? Yoksa ACL'nin FK'sı patlar — ama
         // hata mesajı "FK ihlali" olur ve sebebi görünmez. Önce açıkça ölç.
         var validBranches = (await AuthSql.QueryAsync<string>(cn, "SELECT Sube FROM bkm.Vrd_Sube")).ToHashSet();
-        var missing = Staff.SelectMany(k => k.Branches).Distinct()
+        var missing = staff.SelectMany(k => k.Branches).Distinct()
                          .Where(s => !validBranches.Contains(s)).ToList();
         if (missing.Count > 0)
         {
@@ -123,7 +176,7 @@ public static class Seed
         var passwords = new List<string>();
         int created = 0, skipped = 0;
 
-        foreach (var (fullName, role, branches) in Staff)
+        foreach (var (fullName, role, branches) in staff)
         {
             var userName = BuildUserName(fullName);
             var existing = await userManager.FindByNameAsync(userName);
