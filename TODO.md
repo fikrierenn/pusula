@@ -265,10 +265,22 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Bugün tek yazan `Seed` (`VerenId='seed'`), ama İK rolü uygulamadan ACL vermeye
       başladığında bu boşluk denetlenemez hâle gelir.
 
-- [ ] **V-13 Seed ACL yazması yeniden KOŞTURULMADI** (19.09) — beşinci ad kayması
-      düzeltildi ama seed o düzeltmeyle tekrar çalıştırılmadı; mevcut 17 kullanıcının
-      şube atamaları yeniden-adlandırma öncesi koşumdan geliyor. DB'deki ACL satırları
-      **doğrulanmalı** (`bkm.Vrd_KullaniciSube` beklenen kadro ile karşılaştırılacak).
+- [x] ~~**V-13 Seed ACL yazması yeniden KOŞTURULMADI**~~ — ✅ KAPANDI 19.09 (commit `f59b784`).
+      ⚠ "Seed'i tekrar çalıştır" bir doğrulama DEĞİLDİ: seed mevcut kullanıcıyı atlıyor,
+      yani yeniden koşmak ACL satırını çalıştırmıyor bile. Yazma yolu tek metoda çıkarıldı
+      (`Seed.GrantBranchAsync`) ve **gerçek DB'ye karşı** koşturuldu (`SeedAclWriteTests`:
+      yazıyor · idempotent · doğru şube). Kırmızı kip: ad kayması geri konunca test KIRMIZI.
+      **Mevcut veri ölçüldü ve SAĞLAM**: 14 ACL satırı / 12 kullanıcı, kafe müdürü 3 şube —
+      beklenen kadroyla birebir. Kusur yeniden adlandırmayla koşumdan SONRA girmişti.
+
+- [ ] **V-14 Test fikstürü PAYLAŞILAN DB'de yarış taşıyordu** (19.09, V-13 koşarken çıktı —
+      kapatıldı ama sınıfı açık) — iki test sınıfı ayrı fikstür örneğiyle paralel koşuyordu
+      ve açılış temizliği `zz_test_` önekli her şeyi sildiği için biri ötekinin
+      kullanıcılarını koşum ortasında siliyordu. Belirti yanıltıcıydı: kapsam testi
+      "KPI bulunamadı" diye, **kapsamla ilgisi olmayan** bir sebeple kırmızı veriyordu.
+      Bugünkü çözüm `VardiyaDbCollection` (tek fikstür, sıralı). ⚠ AÇIK KALAN: yeni bir DB
+      testi sınıfı koleksiyona EKLENMEYİ unutursa yarış geri gelir ve bunu **hiçbir şey
+      yakalamıyor**.
 
 - [ ] **V-08 Türkçe tanımlayıcı kapısı — kapsam dar** (19.09) — `tools/turkce_tanimlayici_denetimi.py`
       yalnız `vardiya-app/ · lib/Bkm.Shared/ · tests/` tarıyor; `dashboard/` **dışarıda**
