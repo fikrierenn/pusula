@@ -69,7 +69,18 @@ KOK = Path(__file__).resolve().parent.parent
 # Yeni yazılan kod. Eski dashboard/scripts kapsam DIŞI — oradaki Türkçe adlar
 # devralınmış borçtur ve bu kapı onları toptan kırmızıya çevirseydi kapı
 # KAPATILIRDI (kimse 500 ihlalli bir kapıyı açık tutmaz).
-KAPSAM = ["vardiya-app", "lib/Bkm.Shared", "tests"]
+# ⚠ KAPSAM GENISLEDI (V-08, 19.09): `dashboard` da tarnaiyor. Ama TEMIZ DEGIL —
+#   olculdu: 85 dosyada 2.431 bulgu. Iki secenek vardi ve ikisi de kotuydu:
+#     (a) kapsama alma  -> dashboard KOR kalir (bugune kadarki hal)
+#     (b) kapsama al ve bloklama -> 2.431 hatayla kapi ILK GUN KAPATILIR
+#   Ucuncu yol secildi: CIRCIR. Her dosyanin bugunku sayisi TAVAN
+#   (`tools/turkce-taban.json`). ARTIS kirar, azalis "tabani guncelle" der,
+#   YENI dosya temiz olmak zorunda (taban 0).
+#   Yani borc DONDURULUYOR, gizlenmiyor: sayisi dosyada YAZILI ve her kosumda
+#   ekrana basiliyor.
+KAPSAM = ["vardiya-app", "lib/Bkm.Shared", "tests", "dashboard"]
+TABAN_DOSYASI = Path(__file__).resolve().parent / "turkce-taban.json"
+TABANLI_KOKLER = ("dashboard",)   # circir yalniz burada; otekiler SIFIR tolerans
 
 TURKCE_KELIMELER = [
     "Sube", "Mudur", "Kisi", "Gun", "Tarih", "Onay", "Sifre", "Kullanici",
@@ -117,6 +128,21 @@ null object operator out override params private protected public readonly ref r
 set short sizeof stackalloc static string struct switch this throw true try typeof uint ulong
 unchecked unsafe ushort using var virtual void volatile while record init with when and or not
 nameof value global file required scoped""".split())
+
+
+def taban_yukle() -> dict:
+    """Circir tabani: {dosya yolu -> izin verilen bulgu sayisi}.
+
+    ⚠ Dosya YOKSA kapi KOSAMADI demez, TABANSIZ calisir (yani sifir tolerans) —
+      cunku tabanin yoklugu kapiyi GEVSETMEZ, SIKISTIRIR. Guvenli yon budur.
+    """
+    if not TABAN_DOSYASI.exists():
+        return {}
+    try:
+        import json
+        return json.loads(io.open(TABAN_DOSYASI, encoding="utf-8").read()).get("dosyalar", {})
+    except (ValueError, OSError):
+        return {}
 
 
 def dagarcigi_yukle():
@@ -265,18 +291,38 @@ if DAGARCIK is None:
           "yarisi CALISMIYOR demektir; sessizce kara listeye dusmek YASAK")
     sys.exit(2)
 
+TABAN = taban_yukle()
+
+
+def tabanli_mi(yol: Path) -> bool:
+    rel = yol.relative_to(KOK).as_posix() if str(yol).startswith(str(KOK)) else yol.as_posix()
+    return rel.startswith(TABANLI_KOKLER)
+
+
 toplam = 0
+dondurulan = 0      # tabanin ALTINDA ya da ESIT kalan (borc, yeni ihlal degil)
+gevseyen = []       # taban DUSMUS: tabani sikistirma firsati
 for p in sorted(hedefler):
     b = ihlaller(p) + bilinmeyen_sozcukler(p, DAGARCIK)
-    if b:
-        toplam += len(b)
-        print(f"\nKIRIK {_gosterim(p)}")
-        for satir, metin, sebep in b[:6]:
-            print(f"   satır {satir:>4}: {sebep}")
-            if metin:
-                print(f"              {metin}")
-        if len(b) > 6:
-            print(f"   … {len(b) - 6} bulgu daha")
+    rel = p.relative_to(KOK).as_posix() if str(p).startswith(str(KOK)) else p.as_posix()
+    izin = TABAN.get(rel, 0) if tabanli_mi(p) else 0
+
+    if len(b) <= izin:
+        # Taban ALTINDA ya da esit — bu bir BORC, yeni ihlal degil.
+        dondurulan += len(b)
+        if len(b) < izin:
+            gevseyen.append((rel, izin, len(b)))
+        continue
+
+    asim = b[izin:] if izin else b
+    toplam += len(asim)
+    print(f"\nKIRIK {_gosterim(p)}" + (f"  (taban {izin}, şimdi {len(b)})" if izin else ""))
+    for satir, metin, sebep in asim[:6]:
+        print(f"   satır {satir:>4}: {sebep}")
+        if metin:
+            print(f"              {metin}")
+    if len(asim) > 6:
+        print(f"   … {len(asim) - 6} bulgu daha")
 
 print()
 if toplam:
@@ -285,4 +331,10 @@ if toplam:
     print("        'ak listede YOK' bulgusu iki seçenek sunar: sözcük İngilizceyse")
     print("        tools/kod-sozcukleri.txt'e BİR SATIR ekle, Türkçeyse ÇEVİR.")
     sys.exit(1)
-print(f"Denetim geçti · {len(hedefler)} dosya · ak liste {len(DAGARCIK)} sözcük")
+if gevseyen:
+    print(f"BİLGİ  {len(gevseyen)} dosya tabanının ALTINDA — tabanı SIKIŞTIR "
+          f"(tools/turkce-taban.json). Çırcır ancak sıkıştırılırsa ilerler.")
+    for rel, izin, simdi in gevseyen[:5]:
+        print(f"       · {rel}: {izin} → {simdi}")
+print(f"Denetim geçti · {len(hedefler)} dosya · ak liste {len(DAGARCIK)} sözcük · "
+      f"dondurulmuş borç {dondurulan} bulgu ({len(TABAN)} dosya)")
