@@ -74,6 +74,29 @@ Her sunumda üç aday: (a) bilgi taşımayan gündem/ajanda slaytı, (b) aynı �
 ikinci kez söyleyen slayt, (c) sunanı rahatlatan ama dinleyiciye bir şey
 katmayan metodoloji slaytı.
 
+### 7. İNFOGRAFİK KALİTESİ (GMY direktifi 20.09: *"infografik kullanımı iyi derecede olmalı"*)
+
+Kurul grafiğin TİPİNİ seçmez (`dataviz`) ama şunları SORAR:
+
+| Soru | Kötü işaret |
+|---|---|
+| Her sayı bir **görsel biçim** buldu mu? | Slaytta sayı var ama kart içinde düz metin — infografik değil, kutu |
+| Görsel **oranı** taşıyor mu? | %15,6'yı tek satırlık şerit olarak çizmek (blok olarak okunmaz) |
+| Kaç farklı görsel dil var? | 15 slaytta 9 çeşit grafik = dağınık; 2 çeşit = monoton |
+| Grafik **kendi başına** okunuyor mu? | Başlığı okumadan anlaşılmıyorsa görsel değil süs |
+| Eksen/ölçek dürüst mü? | Kesik eksen, orantısız daire, 3B — `dataviz` yasaklıyor |
+| Renk **anlam** taşıyor mu? | Kırmızı hem "kötü" hem "marka" ise okuyucu ayırt edemez |
+| Kişi/gün/saat sayısı **nokta ızgara** olabilir mi? | 223 kişiyi "223" diye yazmak, 223 nokta çizmekten zayıftır |
+
+⚠ **Ölçülmüş vaka (20.09):** 559/3.589 (%15,6) waffle ızgarada SATIR-öncelikli
+doldurulunca ince bir şerit gibi okundu; SÜTUN-öncelikli doldurulunca solda
+belirgin bir blok oldu. **Aynı veri, aynı grafik, farklı doldurma yönü — biri
+mesajı taşıdı öteki taşımadı.**
+
+⚠ Infografik bolluğu ≠ kalite. Her slayta grafik koymak da bir hata:
+**metin slaydı da bir tasarım kararıdır** (bölüm ayracı, tek cümlelik vurgu).
+Ölçüt: "bu görsel, aynı yeri kaplayan bir cümleden DAHA MI hızlı anlatıyor?"
+
 ## BKM'de ÖLÇÜLMÜŞ VAKALAR (bu skill onlardan doğdu)
 
 **1. Veri dökümü ≠ sunum (20.09, vardiya sunumu V2 → V3).**
