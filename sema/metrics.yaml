@@ -761,6 +761,7 @@ metrics:
     evidence: "2026-06-17 — dashboard build yeşil, OluStokSql OUTER APPLY fat5 eklendi"
 
   net_ciro:
+    last_verified: "2026-09-12"
     evidence: >-
       2026-09-12 FORMÜL KOŞTURULDU VE BAĞIMSIZ KAYNAKLA MUTABAKAT YAPILDI
       (Ağustos 2026, KDV hariç, 3 POS mağazası):
@@ -791,6 +792,7 @@ metrics:
     note: "ehTutarN KDV hariç, = ehTutar-ehIndirim. Tüm tutarlar KDV hariç."
 
   encore_ciro:
+    last_verified: "2026-09-11"
     evidence: "2026-09-11 — Sales fisi 1333910/1333912 uzerinde KDV kimligi dogrulandi (GrossTotal / 1,20 = VatTotal farki, birebir). Taban: vat_incl."
     measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `Sales.GrossTotal` KDV DAHİLDİR. Kanıt — fiş 1333910: GrossTotal 2.789,00 · DiscountTotal 0 · VatTotal 464,83; 2.789 ÷ 1,20 = 2.324,17 ve 2.789 − 2.324,17 = 464,83 (birebir). Fiş 1333912: 187,00 − 13,80 = 173,20 = kalem toplamı; 173,20 ÷ 1,20 = 144,33, KDV 28,87 ✓. `SalesProducts.TotalPrice` de KDV dahil (kalem toplamı = GrossTotal − DiscountTotal). ⚠ BU METRİK KDV DAHİL ÖLÇER — KDV-hariç net ciro isteniyorsa `GrossTotal − DiscountTotal − VatTotal`. `birim_maliyet`/`fifo_birim_maliyet` KDV HARİÇ olduğu için bu metrikle doğrudan marj hesaplanamaz (bkz. metrics:marj_kdv_tabani)."
     type: simple
@@ -805,6 +807,7 @@ metrics:
     compat110: "STRING_AGG/TRIM/IIF/TRY_CONVERT YOK"
 
   depo_hareket_kategori:    # 10.06 — merkez depo (mekan 12) hareket sınıflaması
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: simple
@@ -824,6 +827,7 @@ metrics:
     deger_2026_ocamay: {Mal Kabul: 1923096, Heykel: 330663, İade Kabul: 61330, GENEL Giriş: 330593, Mağaza Sevk: 1412174, İade-GENEL Sevk: 136055}
 
   depo_isgucu:              # gerçek operatör verimi
+    last_verified: "2026-09-12"
     evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/depo_isgucu_raporu.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: simple
     unit: count
@@ -838,6 +842,7 @@ metrics:
     applied_in: scripts/depo_isgucu_raporu.py
 
   birim_maliyet:            # 15.06 — KANONİK maliyet sistemi (TEK KAYNAK, her yerde bu)
+    last_verified: "2026-09-11"
     measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı, YALNIZ ana yol): MLYT = `SUM(fatAyr.ehTutarN)/SUM(ehAdetN)` ve `ehTutarN` KDV HARİÇtir (codes:irsHrk.ehTip, işlem-seviye kanıt). Fallback yollarının tabanı ölçülemedi — ORT_ALIS'ta bayatlık sinyali KDV sinyalini bastırıyor (aşağıya bak). `basis: vat_excl` ANA YOL için geçerlidir."
     ORT_ALIS_CURUDU: "2026-09-11 — kayıttaki `DIKKAT` alanı 'stok kolonları BAYAT ama ORT_ALIS maliyet OK' diyordu; ÖLÇÜM BUNU ÇÜRÜTTÜ. (1) Kapsam: `Aktarim.dbo.BKM_STOKLAR_MALIYETLI` 359.161 satır / 321.283 ürün ve **MAX(STKID) = 485.140**, oysa `urn` 1.740.224'e kadar gidiyor → tabloda yeni ürün YOK. (2) Seviye: 12 üründe ORT_ALIS / (son 90 günün KDV-hariç fatura birimi) oranı **0,07-0,27** çıktı (ör. stkID 195: 19,20 ₺ vs 279,00 ₺). (3) Join doğrulandı — `m.STKID = urn.stkID` ürün adları BİREBİR eşleşiyor, yanlış köprü değil. ÇIKARIM (ölçüm değil): oran KDV ilişkisi (1,00 ya da 0,833) DEĞİL, eski fiyat seviyesi; snapshot yıllar öncesinden. ⚠ SONUÇ: MLYT bulunamayıp ORT_ALIS'a düşen ürünlerde maliyet MERTEBE OLARAK düşük çıkar → ölü stok değeri ve marj yanlış. AÇIK: kaç üründe fiilen bu fallback'e düşülüyor ÖLÇÜLMEDİ; etkinin büyüklüğü bilinmiyor."
     evidence_status: pending
@@ -861,6 +866,7 @@ metrics:
     evidence: "15.06 — job msdb.sysjobsteps'ten okundu; Kitap (Kategori3='Kitap') 97.962 SKU = 65,8M kilitli, S90=0 ölü 72.904 SKU = 30,4M."
 
   envanter_exclusions:      # stok/envanter raporlarında ZORUNLU dışlamalar
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
@@ -868,29 +874,35 @@ metrics:
     basis: none
     additivity: none
     sinav_okullari:
+      last_verified: "2026-06-08"
       filter: "urnKtgr2ID=19 HARİÇ"
       neden: "paket-koduyla-giriş / parça-koduyla-çıkış → İst.Yolu'nda sahte ÜstFiyat −190M, Ort.Maliyet +149M"
       evidence: "08.06"
     dergi:
+      last_verified: "2026-06-08"
       filter: "stok raporlarında (E1/E4-E8) Dergi HARİÇ — satış raporları (G4/A5/A6) etkilenmez"
       neden: "süreli yayın; devir 8,5x / stockout %23 = gürültü, stok takibi anlamsız"
       evidence: "08.06 — kullanıcı kararı"
     sahaf:
+      last_verified: "2026-06-13"
       filter: "stok/stockout raporlarında (E8) Sahaf HARİÇ — urn.stkAd NOT LIKE N'SHF-%'"
       neden: "ikinci el tekil kopya; satıldı=devamı yok, reorder edilemez → kalıcı stoksuz, stockout sinyalini şişirir (Dergi gibi)"
       evidence: "13.06 — kullanıcı kararı + drill-down: Kitap stockout ham %5,3 → sahaf-hariç %2,6. 644 stoksuzun 342'si (%53) sahaf (SHF-)."
     sinav_okullari_SATIS:   # 25.08.2026 — kardeş kural: yukarıdaki sinav_okullari yalnız STOK/ENVANTER içindi
+      last_verified: "2026-08-25"
       filter: "ÇOK-SATAN / bulunurluk / stockout / raf-performans analizlerinde de HARİÇ: bkm.UrunBilgi.KatAna LIKE N'Sınav Okul%' VEYA Kategori3=N'Sınav Okulları'"
       neden: "Bunlar EĞİTİM HİZMETİ/ABONELİK PAKETİ SKU'su (ör. '<n>. SINIF SÜRELİ YAYIN 2026', birim ~40-45K ₺) — raf stoğu YOK, olması da beklenmez. Bulunurluk metriğinde 12/12 ay 'kuru' görünüp OOS oranını sahte şişirirler; ciro sıralamasının tamamını kaplayıp gerçek raf ürününü listeden atarlar."
       buyukluk: "≈%40 şube cirosu (322M ₺ / 803M ₺ · 54 SKU) — mertebe, ölçüm 2026-08-25 (son 12 ay)"
       evidence: "2026-08-25 — irsHrk ehTip 4/100/5/101 şube (1/4477/4478) son12: ham top-20 cironun 19'u Süreli Yayın paketi; hepsi stok 0 + kuru 12/12 ay. sorgular/2026-08-25-cok-satan-50-stok-bulunurluk.sql blok 2."
     poset_ambalaj:
+      last_verified: "2026-08-25"
       filter: "ADET-bazlı çok-satan/rotasyon sıralamasında HARİÇ — stkAd LIKE N'%Poşet%' AND Kategori3=N'Genel'"
       neden: "ambalaj/sarf, satılan ürün değil. ~465K adet/yıl ile adet sıralamasının ilk 6'sının 4'ünü kaplar, cirosu 0,3M ₺ (birim ~0,65 ₺). Ciro sıralamasını bozmaz, ADET sıralamasını tamamen bozar."
       kardes_tuzak: "'Karne Hediyesi' 16.842 adet / 168 ₺ ciro (birim 0,01 ₺) = promosyon/bedelsiz kalem POS'ta satış gibi kaydediliyor → adet sıralaması ciro filtresi olmadan kullanılamaz."
       evidence: "2026-08-25 — aynı koşu, adet DESC ham liste."
 
   eticaret_net:             # haftalık brief + G7 net tanımı
+    last_verified: "2026-09-12"
     evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/generate_brief.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `J_ORDERS.TOTALPRICE` KDV DAHİLDİR. İki adımda ölçüldü — (1) kalem kimliği: TOTALPRICE = SUM(QUANTITY×SELLINGPRICE) + CARGOPRICE + SERVICEPRICE, 4 siparişte kuruşu kuruşuna (ör. ORDERID 110016494: 831,40 + 89,90 + 0 = 921,30); (2) kalem tabanı: `SELLINGPRICE = SELLINGPRICEWITHOUTVAT + VATPRICE` birebir tutuyor (VAT 10 ve 20 örneklerinde). ⚠ POS `encore_ciro` de KDV DAHİL olduğu için ikisi AYNI tabanda — doğrudan kıyaslanabilir (kayıttaki 'birebir kıyaslanamaz' uyarısı KARGO/kapsam farkı yüzündendir, KDV yüzünden değil). KDV-hariç e-ticaret cirosu isteniyorsa kalem düzeyindeki `SELLINGPRICEWITHOUTVAT` kullanılır."
     kolon_tuzagi: "⚠ `J_ORDERS.PRICEWITHVAT` ÖLÜ KOLON: 4.704.735 siparişin **TAMAMINDA 0** (ölçüldü 2026-09-11). `J_ORDERS.PRICEWITHOUTVAT` ise adına rağmen TOTALPRICE'ın KDV-hariç hâli DEĞİL — 4.382 siparişte TOTALPRICE'tan BÜYÜK çıkıyor; anlamı DOĞRULANMADI. KDV-hariç tutar için başlık kolonlarına GÜVENME, kalem düzeyine in (`J_ORDER_DETAILS.SELLINGPRICEWITHOUTVAT`)."
@@ -905,6 +917,7 @@ metrics:
     applied_in: "scripts/generate_brief.py SQL_ETICARET (v1.1.0)"
 
   cod_ekonomi:              # kapıda ödeme
+    last_verified: "2026-09-12"
     evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/kapida_odeme_analiz.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     measurement: "2026-09-11 — `CARGOPRICE` ve `SERVICEPRICE` müşteriden tahsil edilen tutarlardır ve KDV DAHİL `TOTALPRICE` kimliğinin İÇİNDE yer alırlar (TOTALPRICE = kalem + CARGOPRICE + SERVICEPRICE, ölçüldü; bkz. metrics:eticaret_net). Bu yüzden taban KDV DAHİL. ⚠ ÇIKARIM SINIRI: kargo/hizmet bedelinin KDV oranı AYRICA ölçülmedi (JOKER başlıkta kargo için ayrı KDV kolonu yok); 'KDV dahil' olduğu kimlikten geliyor, oranı değil. İade maliyeti 2×CARGOPRICE hesabı da aynı tabanda."
     type: derived
@@ -940,6 +953,7 @@ metrics:
     last_verified: 2026-07-30
 
   depo_stok_dagilim:        # WMS depo stok kovaları (12.06 — gerçek prod sorgu)
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — ISARETCI REPO DISINA BAKIYOR: kayit ['DURUM.sql'] gibi dosya adlari gosteriyor; bunlar D:/Belgelerim/sql altindaki (repo disi, surumlenmemis) dosyalardir. Kirik DEGIL ama DOGRULANAMAZ. Cozum: dosya repoya sorgular/ altina arsivlenmeli (semantic-layer § ikiz yukumluluk)."
     type: simple
@@ -987,6 +1001,7 @@ metrics:
     last_verified: 2026-06-18
 
   cari_firma_stok_hareket:  # firma bazlı stok + 3 ay alış/satış (cari özet)
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — ISARETCI REPO DISINA BAKIYOR: kayit ['DURUM.sql'] gibi dosya adlari gosteriyor; bunlar D:/Belgelerim/sql altindaki (repo disi, surumlenmemis) dosyalardir. Kirik DEGIL ama DOGRULANAMAZ. Cozum: dosya repoya sorgular/ altina arsivlenmeli (semantic-layer § ikiz yukumluluk)."
     measurement: "2026-09-11 — kayıt AYNI RAPORDA iki farklı tabanda para kolonu taşıyor. KOLON HARİTASI: (a) 3 aylık alış/satış pivotu → `irsHrk.ehTutarN` = **KDV HARİÇ** (codes:irsHrk.ehTip § kdv); (b) cari bakiye → `bakiye_vw` fatura toplamlarından gelir = **KDV DAHİL** (fatura tutarı müşteriye kesilen tutardır); (c) stok adetleri para DEĞİL. ⚠ KUSUR RAPORUN KENDİSİNDE DEĞİL: iki kolonu yan yana göstermek meşru. KUSUR bunları TOPLAMAK ya da 'bakiye / 3 aylık satış' gibi BÖLMEKtir — oran KDV oranı kadar sapar. Sözleşmeye bu vaka için `basis: mixed` değeri eklendi (2026-09-11)."
@@ -1003,6 +1018,7 @@ metrics:
     applied_in: "CARİ ÖZET DURUM.sql"
 
   upt_sepet_adedi:          # UPT = unit per transaction (sepet derinliği) — 12.06 doğrulandı
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: ratio
@@ -1017,6 +1033,7 @@ metrics:
     applied_in: "dashboard MagazaQueries.GetDetayAsync · gm-rapor G1"
 
   kampanya_indirim_orani:   # 12.06 — kampanya yükü / efektif indirim
+    last_verified: "2026-09-12"
     evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/build_3al2ode_belge_excel.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: ratio
     unit: ratio
@@ -1031,6 +1048,7 @@ metrics:
     applied_in: "MagazaQueries.GetDetayAsync kampSql/kampFisSql · scripts/build_3al2ode_belge_excel.py · gm-rapor M2"
 
   stockout_sku:             # 13.06 — SKU-bazlı stockout SİNYAL KALİTESİ (MIMBAL pilot bulgusu)
+    last_verified: "2026-06-13"
     type: ratio
     unit: ratio
     basis: none
@@ -1049,6 +1067,7 @@ metrics:
     applied_in: "gm-rapor E8 + MIMBAL docs/pilot/examples/2026-06-13-attention-list.md"
 
   il_teslimat_perf:         # 13.06 — B-41 il bazlı kargo teslimat hızı
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — ISARETCI REPO DISINA BAKIYOR: kayit ['PERFORMANSLARI.sql'] gibi dosya adlari gosteriyor; bunlar D:/Belgelerim/sql altindaki (repo disi, surumlenmemis) dosyalardir. Kirik DEGIL ama DOGRULANAMAZ. Cozum: dosya repoya sorgular/ altina arsivlenmeli (semantic-layer § ikiz yukumluluk)."
     type: simple
@@ -1064,6 +1083,7 @@ metrics:
     applied_in: "dashboard EticQueries.GetIlTeslimatAsync/GetAyKargoAsync/GetKargoPerfAsync (CikisIsGunu+TatilApply) · KARGO İL TESLİMAT PERFORMANSLARI.sql"
 
   encore_irshrk_mutabakat:   # 14.06 — EncoreMerkez ↔ irsHrk ciro mutabakatı (FSM 13.06 işlem-seviye KESİN)
+    last_verified: "2026-06-16"
     type: rule
     unit: none
     basis: none
@@ -1078,6 +1098,7 @@ metrics:
     applied_in: "Queries.cs katSql/skatSql · MagazaQueries.cs · RefQueries.GetUrunlerAsync"
 
   tum_ciro_kdv_kargo_haric:   # 16.06 — KULLANICI DİREKTİFİ: tüm dashboard/rapor ciro KDV-hariç + kargo-hariç (plan-16)
+    last_verified: "2026-09-12"
     evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (dashboard/Data/SadakatQueries.cs (ad esleismesi)). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: simple
     unit: TL
@@ -1111,6 +1132,7 @@ metrics:
     ocak_2026: "Gelir 72.35M · SMM 46.71M · Brüt 25.64M · Marj %35.4 (yeni master, rev2 ile birebir). Top: Kırtasiye %43, Oyuncak %38, Akademi %38, Kitap %33, Çocuk %32, Hazırlık %29."
     last_verified: 2026-06-19
   fifo_birim_maliyet:
+    last_verified: "2026-09-11"
     evidence: "2026-09-11 — FifoKatman ALIS katmani ile 30 gun icindeki alis faturasi birimi (fatAyr ehTutarN/ehAdetN, KDV haric) 8 uruncte oran 1,0000. Taban: vat_excl."
     measurement: "2026-09-11 ÖLÇÜLDÜ (KDV tabanı): `FifoKatman.BirimMaliyet` (KaynakTip='ALIS') ile aynı ürünün 30 gün içindeki alış faturası birimi (`SUM(fatAyr.ehTutarN)/SUM(ehAdetN)`, KDV HARİÇ olduğu codes:irsHrk.ehTip'te kanıtlı) karşılaştırıldı: 8 üründe oran **tam 1,0000**. Yani FIFO katman maliyeti KDV HARİÇtir, KDV eklenmemiş."
     type: ratio
@@ -1121,6 +1143,7 @@ metrics:
       eldeki stok = SUM(KalanMiktar×BirimMaliyet)/SUM(KalanMiktar) FROM FifoKatman WHERE StkId=@x AND
       KalanMiktar>0
   fifo_acilis_stok:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
@@ -1144,6 +1167,7 @@ metrics:
     sonalis_dersi: "Salt kategori-imput gerçek ürünleri (SonAlis>0 ama kategori-dışı) yanlış devre-dışı yapıyordu → SonAlis tier eklendi → yanlış-dışlama=0. SonAlis=0 = non-inventory ayracı."
     last_verified: 2026-06-19
   fifo_fiyat_0_olamaz:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
@@ -1155,6 +1179,7 @@ metrics:
       COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0 → 0 dönmeli. + katmansız açılış stok (devre-dışı
       hariç) = 0.
   fifo_non_inventory:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 OLCULDU: bu kayit HICBIR uygulama dosyasina isaret etmiyor — ne arsiv SQL, ne dashboard kodu. Yani \"bu metrik nerede hesaplaniyor\" sorusunun cevabi sema'da YOK. Kanit uydurulmadi. Olcum genelde de ayni: 127 metrigin 107'si isaretcisiz (2026-09-12). Cozum tek tek: metrigi hesaplayan sorgu sorgular/ altina arsivlenir ve `applied_in` ona baglanir."
     type: rule
@@ -1214,6 +1239,7 @@ metrics:
     last_verified: 2026-06-23
 
   reorder_oneri_motoru:
+    last_verified: "2026-07-30"
     type: rule
     unit: none
     basis: none

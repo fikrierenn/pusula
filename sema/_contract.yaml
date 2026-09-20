@@ -36,7 +36,14 @@ common:
   conditional_required:
     last_verified:
       type: tarih               # YYYY-MM-DD
-      level: uyari            # F2 sonrası kirik
+      # KADEMELİ SIKILAŞTIRMA TAMAMLANDI (V-22 curator, 2026-09-20): uyari -> kirik.
+      # Gerekçe: `last_verified` TAŞIMAYAN kayıt HİÇ BAYATLAMAZ — TTL'i başlatan tarih
+      # yoktur, dolayısıyla decay onu ne bugün ne bir yıl sonra görür. Kural yazılıydı
+      # ama 59 kayıt için KOŞMUYORDU (`test-discipline.md` § yazılı kural != uygulanan
+      # kural). 20.09'da 59'unun tamamı CANLI ÖLÇÜMLE damgalandı (tarih uydurulmadı:
+      # ya kaydın kendi kanıt tarihinden türetildi ya o gün yeniden ölçüldü), sonra bu
+      # seviye yükseltildi. Sıra önemliydi — önce yükseltilseydi kapı ilk gün kapanırdı.
+      level: kirik
       exempt_condition: "confidence == 1.0"
       description: "Kaydın canlı sorguyla EN SON teyit tarihi. evidence=ilk keşif, bu=son teyit."
     evidence:

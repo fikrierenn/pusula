@@ -361,11 +361,13 @@ codes:
     confidence: 1.0
     last_verified: "2026-09-11"
   depo.paletTip:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: {0: PALET, 1: KASA, 2: ROT, 3: ÇIKIŞ KASASI}
 
   encore.Sales.DocumentsTypeId:   # POS belge tipi — rapor filtresi IN (1,2,3,6,7,8)
+    last_verified: "2026-09-12"
     evidence: "2026-09-12 CANLI GROUP BY: sema 6 kod belgeliyor, canlida 6 kod KULLANILIYOR. SEMADA OLMAYAN canli kod: YOK (kume bu yonden KAPALI). DIKKAT: bu olcum kumenin KAPALILIGINI gosterir, kodlarin ANLAMINI degil. Arsiv: sorgular/2026-09-12-sema-kod-kumesi-canli-kiyas.sql"
     values:
       1: Fiş
@@ -377,6 +379,7 @@ codes:
     note: "SUM'da iade sign'lı düşülür; AVG'da iade hariç (DocumentsTypeId<>3)."
 
   encore.SalesProducts.BarcodeNo_1001:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: {"1001": "GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ"}
@@ -395,6 +398,7 @@ codes:
     last_verified: '2026-09-03'
     evidence: "2026-09-03 — sqlcli: GROUP BY o.PAYDEFREF (tüm zaman). Üç kod, belgelenenle birebir."
   joker.J_ORDER_CARGO_STATUS: # CARGODELIVERYSTATUS
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
@@ -446,6 +450,7 @@ codes:
     last_verified: 2026-06-15   # 15.06 J_ORDER_STATUS full scan + Mayıs GROUP BY (ttl 180g → 2026-12)
     evidence: "11.06 net-iptal düzeltme + 15.06 J_ORDER_STATUS full scan/Mayıs dağılım. Tek kaynak (curator 17.06 dup birleşti)."
   joker.J_ORDERS.APPLICATION:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values: ["Mobil Uygulama (Android)", "Mobil Uygulama (iOS)", "Mobil Site", "Web Sitesi"]
@@ -474,6 +479,7 @@ codes:
     last_verified: "2026-09-12"
 
   joker.J_ORDER_DETAILS.STATUS:   # detay satır: 2xxx=Sipariş detay, 4xxx=Odak detay (kod ailesi yukarıda)
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi
@@ -559,6 +565,7 @@ codes:
     evidence: "2026-09-11 — posMagaza × mekan_vw karşılaştırması (12 vs 11 satır) + irsHrk'da kullanılan 10 mekanID'nin view'de olup olmadığı ölçüldü. ⚠ view TANIMI okunamadı (sys.sql_modules.definition NULL) → süzgecin `mekanTip IN (0,1)` olduğu ÇIKARIMdır, ölçüm değil; ölçülen şey SONUÇtur."
     last_verified: "2026-09-11"
   frmID_onemli:
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
@@ -571,6 +578,7 @@ codes:
       60400: Heykel Transfer
 
   encore_odeme_grup:        # 12.06 — PaymentTypes.Name → ödeme üst-grubu (dashboard ödeme paneli)
+    last_verified: "2026-09-12"
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     values:
@@ -597,6 +605,7 @@ codes:
     note: "FSM 01-12 Haz para üstü hariç: Kredi/Banka %74,7 · Nakit %24,4 · İade Çeki %0,7 · Hediye Çeki %0,1. HALK BANKASI POS hakim (%68,8 kart içi). SalesPayments.IsChangeAmount=0 (para üstü hariç) ZORUNLU."
 
   encore.SalesProductCampaigns.Source:   # indirim KAYNAK sınıflandırıcısı (16.06.2026 keşif)
+    last_verified: "2026-06-16"
     values:
       0: "Kampanya (adlı — CampaignId+CampaignName dolu; 3Al2Öde vb.)"
       1: "Manuel indirim (adsız — CampaignId NULL, CampaignName boş; POS'ta sebep seçilir ama YAZILMAZ)"
@@ -667,7 +676,7 @@ codes:
       FIYAT_YOK: "hiçbir kaynak fiyat yok (GARANTİ sonrası → devre-dışı veya imput)"
     note: "log/audit; çözülen 'TAMAMLANDI' tipleri maliyet ATANMIŞ (tahmini)"
     last_verified: 2026-06-19
-  BKMMaliyet.FifoCikisDetay.HareketTipi: {evidence_status: pending, evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti.", values: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}}
+  BKMMaliyet.FifoCikisDetay.HareketTipi: {evidence_status: pending, evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti.", values: {SATIS: "satış çıkışı (gelir+SMM)", IADE: "iade (stok geri)"}, last_verified: "2026-09-12"}
   # DerinSIS irs/irsHrk eTip (FIFO kullanımı): alış 0,2,10,3,6,102,103 · satış 1,4,5,100,101 (100=POS satış dominant) · iade 3,5,101
 
   # === MUHASEBE / GL (22.06 keşif — B-117) ===
