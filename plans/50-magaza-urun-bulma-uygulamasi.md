@@ -259,6 +259,26 @@ Dostoyevski'yi Fyodor'a yazar. Öneri gösterilir, seçim kullanıcınındır (�
 **v1'de YAZMA HİÇ YOK.** §4.3'teki iki app-owned tablo da v1'den çıktı — hiçbir tablo
 oluşturulmuyor, ERP salt-okuma. Bu, Faz 0'daki onay yükünü de kaldırır.
 
+### 4.1b v1.1 — GMY istekleri (21.09.2026, sıraya alındı)
+
+**(a) Merkez kullanıcısı için şube değiştirme.** Bugün mekan hesaba/cihaza SABİT bağlı ve
+istemciden değiştirilemez — mağaza personeli için doğru karar (§ "Mağaza seçimi"), ama merkez
+kullanıcısı üç mağazayı da görmek zorunda. Yapılacak: kullanıcı/cihaz kaydına **"tüm şubeler"
+yetkisi** (vardiya uygulamasındaki `Vrd_SubeKapsami` deseni), yetkili ise üst bardaki mekan
+rozeti **seçiciye** dönüşür.
+⚠ Kapsam sunucuda çözülür, istemciden gelen mekan parametresi KABUL EDİLMEZ — aksi hâlde
+sıradan personel de tarayıcıdan başka şubeyi açabilir (`sql-server-conventions.md`
+§ KAPSAM SÜZGECİ HER ALT-SORGUDA AYRI, iki kez ölçülmüş sızıntı).
+
+**(b) Rafı okutunca o rafın TÜM içeriği.** Yetkili kullanıcı raf etiketini okutur, o rafta
+adresli ürünlerin listesi gelir (stok + kapak + ad). İki işi birden çözer: raf doğrulama
+("bu rafta ne olmalı") ve ada/depo içeriğini görme.
+⇒ **Sorgu hazır, keşfedilmeyecek:** `Bkm-Toolbox/Core/Get/Terminal/UrunRafBilgi.cs` →
+`UrunYukleRafNo(rafNo)` tam bunu yapıyor (raf → ürün + stok + barkod listesi). Port edilirken
+iki düzeltme: parametreli yazım ve merkez depo WMS (§2.2b'deki iki kusur).
+⚠ Yetki sorusu: bu ekran **herkese açık mı, yalnız yetkiliye mi**? Raf içeriği stok listesi
+demek; kararı GMY verecek.
+
 ### 4.2 v2 (mockup'ta çizili, kapsam dışı)
 
 **Reyon görevlerim** (raflanmamış kitap kuyruğu) · **Rafı doğrula** (rafta okutarak) ·
