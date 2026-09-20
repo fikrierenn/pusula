@@ -897,3 +897,59 @@ bridges:
     orphans_expected: "EVET, TAMAMI TEK SINIF: 2.981 NULL-anahtarlı çöp satır — tablonun DÖRTTE BİRİ (%24,0). Oran perkbil'dekinin üç katı; aynı tuzak, daha büyük. `WHERE Personelno IS NOT NULL AND Yil IS NOT NULL` zorunlu."
     evidence: "2026-09-12 — sqlcli --profile zirve; NOT EXISTS sayımı ile NULL-anahtar sayımının birebir eşitliği. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 13/16."
     last_verified: "2026-09-12"
+
+  # ---- MAĞAZA RAF HARİTASI (keşif 2026-09-20, plan-50) -------------------
+  - id: rafurun-raf-composite
+    from: "ryn.rafUrun.rafUrnID + ryn.rafUrun.rafUrnGrpID"
+    to: "ryn.raf.rafID + ryn.raf.rafRafGrpID"
+    tip: "composite (İKİ kolon birden)"
+    note: >-
+      ⚠ TEK KOLONLA BAĞLANMAZ. `rafUrnID` bir identity PK değil, RAF referansıdır
+      (478.209 satırda yalnız 18.855 tekil değer). Yalnız `rafUrnGrpID = rafgrpID`
+      ile bağlamak 478.209 satır verir = **2.338 satır FAZLA** (öksüz raf referansı);
+      doğru sayı 475.871 ve `bkm.SUBE_RAF_LISTE` ile birebir aynıdır.
+      Kanonik yol zaten view'dır — elle join yazmak yerine view kullan.
+    measurement: "2026-09-20 — composite join 475.871 = view 475.871; grp-only 478.209."
+    evidence: "2026-09-20 — sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 2; bkm.UrunRafla gövdesi aynı çift-kolon bağını kullanıyor."
+    confidence: 1.0
+    last_verified: "2026-09-20"
+
+  - id: sayimraflari-urun
+    from: "bkm.SayimRaflari.StokId"
+    to: "dbo.urn.stkID"
+    note: >-
+      Ürün konumunun kanonik köprüsü. `MekanId` = `dbo.posMagaza.mekanID` (= `dbo.frm.frmID`).
+      Raf adını insan-okunur adrese çevirmek için `bkm.SUBE_RAFLARI`'na
+      `(mekan, rafAD)` ile bağlanır — UPPER karşılaştırma (`UrunRafla` öyle yapıyor).
+      ⚠ Bir (mekan, ürün) çifti BİRDEN ÇOK satır taşıyabilir (ada / mağaza deposu / stant) —
+      DISTINCT atmak konum kaybettirir; fan-out sayımlarda dikkat.
+    measurement: "2026-09-20 — 487.092 satır; çok konumlu ürün Özlüce 5.725 · İst.Yolu 2.777 · FSM 1.226."
+    evidence: "2026-09-20 — sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 7/7b."
+    confidence: 0.9
+    last_verified: "2026-09-20"
+
+  - id: ryn-kat-mekan
+    from: "ryn.kat.katMekan"
+    to: "dbo.posMagaza.mekanID"
+    note: >-
+      Raf hiyerarşisinin mağazaya bağlandığı yer. `ryn.kat` 16 satır ve 12 mekan taşıyor,
+      ama ürün ataması YALNIZ 3 mağazada var (1 · 4477 · 4478). HEYKEL ve merkez depo (12)
+      `ryn`de ya hiç yok ya boş — "harita var mı" sorusu mekan bazında sorulur.
+    measurement: "2026-09-20 — kat 16 satır / 12 ayrı katMekan; ürün ataması olan mekan 3."
+    evidence: "2026-09-20 — sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 3."
+    confidence: 0.95
+    last_verified: "2026-09-20"
+
+  - id: urunbilgi-yazarid-urn-kod5id
+    from: "bkm.UrunBilgi.YazarId"
+    to: "dbo.urn.kod5ID"
+    note: >-
+      Yazar köprüsü. BKM'nin kendi el terminali uygulaması (`BKmTerminal/FrmYazarListele.cs`,
+      `D:\Dev\Bkm-Toolbox`) bir yazarın kitaplarını `WHERE u.kod5ID = @yazarId` ile buluyor —
+      yani `urn.kod5ID` yazar kimliğini taşıyor ve `bkm.UrunBilgi.YazarId` onun aynası.
+      ⚠ YazarId KİŞİ KİMLİĞİ DEĞİL, YAZIM kimliğidir: aynı kişi birden çok YazarId'de
+      olabilir (Dostoyevski 4 ayrı id). Arama tasarımında kümeleme gerekir —
+      `entities.yaml: yazar_adi_dagilimi`.
+    evidence: "2026-09-20 — Bkm-Toolbox kaynak okuması (FrmYazarListele.YazarRafYuukle). Canlı satır sayımıyla AYRICA doğrulanmadı."
+    confidence: 0.7
+    last_verified: "2026-09-20"

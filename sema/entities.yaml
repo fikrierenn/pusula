@@ -3795,3 +3795,190 @@ entities:
     evidence: "2026-09-12 — sqlcli --profile zirve, üretilmiş 8.343 karakterlik tarama sorgusu. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 20."
     confidence: 1.0
     last_verified: "2026-09-12"
+
+  # ---- MAĞAZA RAF HARİTASI (keşif 2026-09-20, plan-50) -------------------
+  ryn_semasi_magaza_yerlesimi:
+    type: schema
+    note: >-
+      MAĞAZA FİZİKSEL YERLEŞİM ŞEMASI. Hiyerarşi:
+      `ryn.kat` (katMekan = mekanID!) → `ryn.alan` (alanKatID) → `ryn.reyon`
+      (reyonAlanID; reyonX/reyonY KOORDİNAT taşır, kroki çizmeye açık) →
+      `ryn.rafGrp` (rafgrpReyonID) → `ryn.raf` (rafRafGrpID; genişlik/yükseklik/
+      derinlik/yerden yükseklik/göz hizası/rafOnyuzAdet) → `ryn.rafUrun` (ürün ataması).
+      Yalnız 3 mağaza dolu (1 FSM · 4477 Özlüce · 4478 İst.Yolu); HEYKEL ve merkez depo YOK.
+      `reyonTnm` / `reyonKtgr` / `urunPlan` tabloları BOŞ.
+    measurement: "2026-09-20 — rafUrun 478.209 · raf 23.327 · rafGrp 1.385 · reyon 576 · alan 40 · kat 16. Raf başına ort. ürün 22,7-29,9 (gerçek fiziksel granülarite)."
+    evidence: "2026-09-20 — sys.tables + dm_db_partition_stats + join sayımları. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 1-3, 6."
+    confidence: 0.95
+    last_verified: "2026-09-20"
+
+  bkm.SUBE_RAFLARI:
+    type: view
+    key: [mekan, katAD, katID, alanAD, alanID, reyonAD, reyonID, rafgrpAD, rafgrpID, rafID, rafAD, CokluRaf]
+    grain: "raf (hücre) — ürün YOK"
+    note: >-
+      RAF MASTER view'ı — `ryn` hiyerarşisinin düzleştirilmiş hâli. Bir raf adının
+      (`rafAD`) hangi kat/alan/reyona ait olduğunu verir. **`CokluRaf`** (= `raf.rafOnyuzAdet`)
+      o rafın ÇOKLU yerleşime açık olup olmadığını söyler ve `bkm.UrunRafla` davranışını belirler.
+      Uygulamada raf adını insan-okunur adrese çevirmek için KANONİK kaynak.
+    measurement: "2026-09-20 — 23.327 raf; CokluRaf>0 olan 3.641 (%15,6)."
+    evidence: "2026-09-20 — sqlcli; sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql."
+    confidence: 0.95
+    last_verified: "2026-09-20"
+
+  bkm.SUBE_RAF_LISTE:
+    type: view
+    key: [mekan, katAD, alanAD, reyonAD, rafgrpAD, rafID, rafAD, stkId, RafSira, CokluRaf]
+    grain: "raf × ürün — AMA ürün başına mağazada TEK satır"
+    note: >-
+      Raf + ürün ataması. Join `ryn.kat→alan→reyon→rafGrp→raf→rafUrun`, bağ **ÇİFT kolonlu**:
+      `rafUrun.rafUrnID = raf.rafID` **VE** `rafUrun.rafUrnGrpID = rafGrp.rafgrpID`.
+      ⚠ `rafUrnID` identity PK DEĞİL, raf referansıdır (yalnız 18.855 tekil değer).
+      Tek kolonla (`rafUrnGrpID` = `rafgrpID`) bağlamak **478.209** satır verir — 2.338 FAZLA.
+      ⚠⚠ **ÇOKLU KONUM BURADA YOKTUR.** `bkm.UrunRafla` her raflamada o mekandaki TÜM
+      `ryn.rafUrun` satırlarını siler, tek satır yazar. Ada / mağaza deposu / stant konumları
+      yalnız `bkm.SayimRaflari`'nda yaşar. Bu view'ı tek kaynak sanan sorgu onları
+      SESSİZCE düşürür.
+    measurement: "2026-09-20 — 475.871 satır · 235.009 tekil stkId · urn'e öksüz 24. Mekan: FSM 170.062 · Özlüce 163.811 · İst.Yolu 141.996."
+    evidence: "2026-09-20 — composite join sayımı view satırıyla birebir. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 2."
+    confidence: 1.0
+    last_verified: "2026-09-20"
+
+  bkm.SayimRaflari:
+    type: table
+    pk: Id
+    key: [Id, StokId, RafAd, MekanId]
+    grain: "ürün × raf adı × mekan — ÇOKLU KONUM TAŞIR"
+    note: >-
+      ⭐ **ÜRÜN KONUMUNUN KANONİK KAYNAĞI** (uygulama buradan okur, SUBE_RAF_LISTE'den değil).
+      Bir ürün mağazada birden çok yerde durabilir: çok satanlar **adası** (`ADA-*`, `KLADA-*`,
+      `CO-ADA*`), **mağaza deposu / hazırlık** (`HZDP*`, `HZDPB*`, `HZM*`, `HZA*`, `HZCP*`),
+      **stant** (`STA-*`, `STD-*`, `VIP-*`). `bkm.UrunRafla`: rafın `CokluRaf=0` ise eski satırı
+      siler-yazar, `CokluRaf<>0` ise EKLER → çoklu konum böyle doğar.
+      ⚠ ADET konum bazında AYRIŞMAZ — ERP mağaza için tek toplam tutar; "adada kaç tane"
+      bu veriyle cevaplanamaz.
+    measurement: "2026-09-20 — 487.092 satır. Çok konumlu ürün: Özlüce 5.725 (en fazla 20 konum) · İst.Yolu 2.777 (8) · FSM 1.226 (5)."
+    evidence: "2026-09-20 — GROUP BY MekanId,StokId konum sayımı + ikinci-konum raf adı dağılımı. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 7/7b."
+    confidence: 0.95
+    last_verified: "2026-09-20"
+
+  bkm.SayimLog:
+    type: table
+    pk: SayimLogId
+    key: [SayimLogId, LogDate, MekanId, RafNo, Tip, StokId]
+    grain: "raflama/sayım hareketi"
+    note: >-
+      RAF BAKIMININ TARİH İZİ — `ryn.*` hiçbir tarih kolonu taşımadığı için tazelik YALNIZ
+      buradan ölçülür. `Tip=6` = raflama (`bkm.UrunRafla` yazar). Diğer tipler ölçüldü ama
+      anlamları HENÜZ ÇÖZÜLMEDİ (5 ve 2 en yoğun).
+      ⚠ **KULLANICI KOLONU YOK** → kişi bazlı raflama performansı bu veriyle çıkarılamaz.
+      Bakımın canlı olduğunun kanıtı: ölçüm anında (20.09.2026 15:10) hâlâ yazılıyordu.
+    measurement: "2026-09-20 — Tip 5: 5.387.956 · Tip 2: 4.877.262 · Tip 6 (raflama): 2.666.492 · Tip 9: 212.966 · Tip 1: 176.480 · diğer <80K. İlk kayıt 30.10.2023. Son 30 günde Tip=6: FSM 19.190 / İst.Yolu 16.876 / Özlüce 13.435, 31 günün 31'inde işlem."
+    evidence: "2026-09-20 — GROUP BY Tip + son 30 gün mekan kırılımı. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 9."
+    confidence: 0.9
+    last_verified: "2026-09-20"
+
+  bkm_raflama_sp_seti:
+    type: procedure_set
+    note: >-
+      HAZIR RAFLAMA API'Sİ — yeni uygulama bunu YENİDEN KURMAZ.
+      `bkm.UrunRafla(@MekanId,@RafAd,@StkId)` · `UrunRafCikar` · `UrunRafBosalt` ·
+      `UrunTasi` · `UrunTumUrunleriCikar` · `SayimRafAktar` · `SayimRafGuncelle` ·
+      `RaflanmamisDuzenle` + view `SayimRafBirlestirme`.
+      ⭐ **SAHİPLİK: bu SP'ler ve `bkm.SayimLog` BKM'nin KENDİ sayım programına aittir**
+      (GMY bildirimi 2026-09-20), DerinBilgi/DerinSIS ürünü DEĞİL. Kaynak kodu `D:\Dev`
+      altında yok. ⇒ Karşı taraf üçüncü parti değil, aynı kurumun yazılımı; entegrasyon
+      teknik olarak mümkün, ama tek-yazıcı disiplini korunmalı.
+      `UrunRafla` gövdesi: raf `bkm.SUBE_RAFLARI`'nda yoksa `THROW 51000 '<raf> nolu raf
+      tanımlı değil'`; sonra TRANSACTION içinde ryn.rafUrun temizle+ekle, SayimRaflari'nı
+      CokluRaf'a göre güncelle, SayimLog'a Tip=6 yaz; hata → ROLLBACK + `SELECT -1`.
+      ⚠ Bu SP'ler ERP native `ryn.*`'a YAZAR — panelden çağırmak `erp-write-policy` kapsamındadır,
+      ayrı onay ister.
+    evidence: "2026-09-20 — sys.sql_modules taraması + UrunRafla tam gövde okuması. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 8."
+    confidence: 0.95
+    last_verified: "2026-09-20"
+
+  ent.tsoft_urun:
+    type: table
+    key: [ImageUrl, "gorsel-1..5", urun_gorsel_tarih, api_gorsel_durum]
+    note: >-
+      T-Soft e-ticaret ürün aynası — **ürün görselinin kaynağı**. `ImageUrl` dosya ADIDIR
+      (`zygmunt-bauman-sosyolojisi-12653447-76-K.jpg`), tam URL değil → CDN tabanı gerekir.
+      ⚠ Kapsam e-ticarete açılmış ürünler (441K); ürün master'ı (~850K) ile farkı ve mağaza
+      stoğuna göre kapsaması ÖLÇÜLMEDİ.
+      ⚠ `web.urnWeb` tablosu BOŞ (0 satır) — görsel için kullanılmaz.
+    measurement: "2026-09-20 — 441.163 satır, ImageUrl dolu 441.097 (%99,98)."
+    evidence: "2026-09-20 — sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 10."
+    confidence: 0.9
+    last_verified: "2026-09-20"
+
+  # ---- MAĞAZA APP: KATEGORİ KURALI + ARAMA (keşif 2026-09-20, plan-50) ----
+  raf_kurali_yalniz_kitap:
+    type: business_rule
+    note: >-
+      ⭐ **RAF ADRESİ YALNIZ KİTAPTA VARDIR** (GMY kuralı 2026-09-20, ölçümle doğrulandı).
+      Kırtasiye, oyuncak, hediyelik, elektronik, süpermarket ürünleri RAFLANMAZ — bunlarda
+      raf adresinin olmaması bir EKSİK DEĞİL, kuraldır.
+      ⚠⚠ **KAPSAMA ORANI KATEGORİ AYRILMADAN HESAPLANMAZ.** Tüm stoğu tek payda yapan
+      hesap "%74-81 kapsama" der ve bir VERİ BAKIM KRİZİ uydurur; doğru payda (kitap) ile
+      oran **%99,0-99,4**'tür. Bu hata 2026-09-20'de yapıldı ve plan-50'nin ilk sürümünün
+      risk tablosunu tümden yanlış kurdu.
+      Aynı tuzak "yeni üründe kapsama düşük" bulgusunu da üretmişti: karma paydada %65,4,
+      yalnız kitapta **%96,7**.
+    measurement: >-
+      2026-09-20 (stoktaki çeşit) — KİTAP: FSM 122.500/123.545 %99,2 · Özlüce %99,0 ·
+      İst.Yolu %99,4. KİTAP DIŞI: %21,6 / %20,3 / %35,6. Kategori kırılımı (FSM):
+      Edebiyat %100,0 · Çocuk %97,8 · Kırtasiye %0,6 (32.368'de 205) · Hobi-Oyuncak %11,8 ·
+      Hediyelik %0,2 · Elektronik/Süpermarket %0,0. Gerçek eksik FSM'de 1.045 kitap.
+    evidence: "2026-09-20 — sorgular/2026-09-20-magaza-app-kategori-ve-arama.sql blok 2-3b. Çapraz doğrulama: SayimLog'a göre 'hiç raflanmamış' 41.921 ≈ karma paydadaki açık."
+    confidence: 0.95
+    last_verified: "2026-09-20"
+
+  yazar_adi_dagilimi:
+    type: data_quality
+    note: >-
+      `bkm.UrunBilgi.Yazar` **serbest metin ve dağınık** — aynı kişi birden çok yazımda ve
+      birden çok `YazarId`'de olabilir. Arama tasarımında bu varsayılmalıdır.
+      ⚠ **SOYAD KİMLİK DEĞİL, ADAY ÜRETİR:** aynı soyadı taşıyan farklı kişiler var
+      (Fyodor / Anna Grigoriyevna / Aimee Dostoyevski). Otomatik birleştirme YANLIŞ sonuç
+      verir; öneri gösterilip seçim kullanıcıya bırakılır.
+      Büyük/küçük harf ve noktalama sorunun küçük kısmı: basit normalizasyon 173.055 yazımın
+      yalnız 586'sını birleştiriyor.
+    measurement: >-
+      2026-09-20 — 173.055 farklı yazım · basit normalizasyon sonrası 172.470 (−586) ·
+      soyad tokenıyla 59.201 küme (%66 birleşme), 1.381 kümenin soyadı <3 harf.
+      Vaka: Fyodor Mihayloviç Dostoyevski 900 kitap · Fyodor Mihailoviç 3 · Fyodor Dostoyevski 2 ·
+      Fyodor Dostoyevsky 2 — dördü AYRI YazarId; ayrıca Anna Grigoriyevna 4, Aimee 1 (başka kişiler).
+    evidence: "2026-09-20 — sorgular/2026-09-20-magaza-app-kategori-ve-arama.sql blok 6/6b/6c."
+    confidence: 0.9
+    last_verified: "2026-09-20"
+
+  ryn_reyon_koordinat_bos:
+    type: negative_finding
+    note: >-
+      `ryn.reyon.reyonX` / `reyonY` / `reyonEbat` kolonları MEVCUT ama **tamamen BOŞ** —
+      mağaza krokisi/harita çizimi bu veriyle YAPILAMAZ.
+      ⚠ Ders: "kolon var" ≠ "veri var". 2026-09-20'de önce "koordinat taşıyor, kroki çizmeye
+      açık" diye yazıldı (ÇIKARIM), sonra ölçüm çürüttü.
+      Aynı sınıf ikinci bulgu: `SUBE_RAF_LISTE.RafSira` fiziksel raf sırası DEĞİL, ekleme
+      sayacıdır (çöp rafta 3.976'ya çıkıyor) — "sıradaki N. kitap" diye gösterilemez.
+    measurement: "2026-09-20 — 576 reyonun 576'sında reyonX=reyonY=0 ve reyonEbat=0 (6 mekan, tamamı)."
+    evidence: "2026-09-20 — sorgular/2026-09-20-magaza-app-kategori-ve-arama.sql blok 5/5b."
+    confidence: 1.0
+    last_verified: "2026-09-20"
+
+  erp_istemci_takimi:
+    type: environment
+    note: >-
+      ERP'ye bağlanan istemciler DerinBilgi'nin thick-client takımıdır ve çoğu **`SRVTERM`
+      terminal sunucusu** üzerinden koşar: `DerinSis` · `UrunAnaliz` · `Irsaliye` ·
+      `DepoPaletTanim` · **`UrunSorgulama`** · `Siparis` · **`DerinUs`** (el terminali) ·
+      `DepoEmir` · `MagazaKasa` · `CiroAnaliz` · `DerinHQ.Hub.Client` (NCRSERVER, DerinCrm).
+      ⇒ **Ürün sorgulama bugün zaten var** ama masaüstünde; mobil/raf-önü kullanım yok.
+      El terminali verisi `drs.derinus1/2/3` (5,99M + 1,59M + 0,73M satır).
+      ⚠ `bkm.SayimLog`'a hangi istemcinin yazdığı **ÖLÇÜLMEDİ** — oturum listesi yalnız
+      "kim bağlı" der.
+    measurement: "2026-09-20 15:20 — sys.dm_exec_sessions: DerinSis 56 (DERINSISAPP) + 46 (SRVTERM) · UrunAnaliz 34 · Irsaliye 20 · DepoPaletTanim 19 · UrunSorgulama 8 + 4 · Siparis 9 · DerinUs 9 + 1 · DerinHQ.Hub.Client 7."
+    evidence: "2026-09-20 — sorgular/2026-09-20-magaza-app-kategori-ve-arama.sql blok 1."
+    confidence: 0.85
+    last_verified: "2026-09-20"
