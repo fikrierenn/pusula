@@ -177,7 +177,7 @@ def satir(sl, x, y, w, h, hucreler, kalin=False, zemin=None):
 
 # ══════════════════ 1 · KAPAK ══════════════════
 s = add("Başlık Slaydı")
-setph(s, 0, "Bir haftanın hikâyesi")
+setph(s, 0, "Görmediğimiz günü yönetemeyiz")
 setph(s, 1, "Vardiya takibi neden önemli   ·   31 Ağustos – 16 Eylül 2026 · dört mağaza · 223 kişi")
 
 # ══════════════════ 2 · BİR KİŞİNİN HAFTASI (timeline) ══════════════════
@@ -214,12 +214,42 @@ for i, (ad, pb, pt, g, c, fz) in enumerate(gunler):
 tb(s, 2.45, 6.02, 9.2, 0.3,
    [("Açık gri: planlı vardiya (çoğu gün 13:30–22:00).  Koyu gri: plan içi.  Kırmızı: planın dışı.",
      9, False, MGREY)])
-tb(s, 2.25, 6.35, 10.45, 0.45,
-   [("Salı günü fazlası 4 dakika. Günlük düzen yerinde — eksik olan yedinci gün.",
+tb(s, 2.45, 6.30, 9.2, 0.26,
+   [("Bu hafta uç bir örnek değil: 13:30–22:00 kapanış vardiyası dört mağazanın "
+     "en yaygın vardiyası (%34,9).", 9.5, False, MGREY)])
+tb(s, 2.25, 6.58, 10.45, 0.42,
+   [("Bu haftayı konuşabiliyoruz, çünkü yedi günün yedisi de okutulmuş.",
      14.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
 sig(s)
 
-# ══════════════════ 3 · BU TEK KİŞİ DEĞİL (dot grid) ══════════════════
+# ══════════════════ 3 · GÖRÜNMEYEN YARI ══════════════════
+s = add("Yalnızca Başlık"); setph(s, 0, "Ama çoğu günü konuşamıyoruz")
+SATIR2, KOL2, D2, B2 = 10, 12, 0.33, 0.45   # 120 kare = her kare ~30 kisi-gun
+kirmizi = round(120 * 559 / 3589)
+for c in range(KOL2):                        # SUTUN-ONCELIKLI: blok solda toplanir
+    for r in range(SATIR2):
+        i = c * SATIR2 + r
+        rrect(s, 0.75 + c * B2, 1.6 + r * B2, D2, D2, RED if i < kirmizi else PALE, rad=False)
+tb(s, 2.25, 6.35, 10.45, 0.4,
+   [("Her kare ≈ 30 kişi-gün. Kırmızı olanlarda giriş de çıkış da okutulmamış.", 11, False, GREY)],
+   anchor=MSO_ANCHOR.MIDDLE)
+card(s, 6.4, 1.55, 6.3, 1.6, RED)
+tb(s, 6.65, 1.75, 5.8, 0.7, [("559 gün", 30, True, RED)])
+tb(s, 6.65, 2.45, 5.8, 0.55, [("3.589 günün içinde okutmasız", 12, False, GREY)])
+tb(s, 6.4, 3.35, 6.3, 2.4,
+   [("Okutma olmayan gün, sonradan doldurulamaz.", 15, True, DRED),
+    ("Kart kaydı işçinin imzası sayılır. O gün okutulmadıysa, ne kadar çalışıldığını "
+     "sonradan kimse kanıtlayamaz — ne şirket, ne çalışan.", 12.5, False, INK)], sp=1.2)
+rrect(s, 6.4, 5.15, 6.3, 0.85, LGREY, RED, lw=2)
+tb(s, 6.65, 5.15, 5.8, 0.85,
+   [("97 günde hiç PDKS kaydı yok, 186 günde ham okutma bile yok.", 12, True, DRED)],
+   anchor=MSO_ANCHOR.MIDDLE)
+tb(s, 6.4, 4.42, 6.3, 0.6,
+   [("Bundan sonraki hiçbir rakam bu 559 günü içermiyor —", 12.5, True, DRED),
+    ("ne fazla mesai, ne yedinci gün. Onlar ölçülemeyen kısım.", 12.5, False, INK)], sp=1.15)
+sig(s)
+
+# ══════════════════ 4 · BU TEK KİŞİ DEĞİL (dot grid) ══════════════════
 s = add("Yalnızca Başlık"); setph(s, 0, "Yedinci gün kimde yok?")
 # 223 nokta · 109'u kirmizi (bir hafta hic izin kullanmamis)
 KOL, D, BOS = 25, 0.17, 0.235
@@ -242,7 +272,7 @@ tb(s, 2.25, 6.3, 10.45, 0.5,
    anchor=MSO_ANCHOR.MIDDLE)
 sig(s)
 
-# ══════════════════ 4 · AKŞAMLAR ══════════════════
+# ══════════════════ 5 · AKŞAMLAR ══════════════════
 s = add("Yalnızca Başlık"); setph(s, 0, "Akşamlar nereye gidiyor?")
 cd = CategoryChartData()
 cd.categories = ["15 dk'ya kadar", "16–30 dk", "31–60 dk", "1–2 saat", "2 saatten fazla"]
@@ -254,34 +284,27 @@ bc.series[0].format.fill.solid(); bc.series[0].format.fill.fore_color.rgb = RED
 card(s, 8.4, 1.5, 4.3, 1.75, RED)
 tb(s, 8.65, 1.68, 3.8, 0.7, [("151", 36, True, RED)])
 tb(s, 8.65, 2.38, 3.8, 0.75, [("akşam, biri iki saatten fazla kaldı", 12, False, GREY)], sp=1.1)
-card(s, 8.4, 3.4, 4.3, 1.75, RGBColor(0x4A, 0x4A, 0x4A))
-tb(s, 8.65, 3.58, 3.8, 0.7, [("573", 36, True, CHAR)])
-tb(s, 8.65, 4.28, 3.8, 0.75, [("saat — sadece o akşamlarda", 12, False, GREY)], sp=1.1)
-tb(s, 0.6, 5.55, 12.1, 0.95,
-   [("Çıkıştan sonra toplam 1.346 saat, girişten önce 631 saat.", 14, True, DRED),
-    ("Hiçbiri planlanmadı. Çoğu konuşulmadı bile — ama kart kaydında duruyor.", 13, False, INK)], sp=1.2)
-sig(s)
-
-# ══════════════════ 5 · İYİ GÜN YOK (ısı şeridi) ══════════════════
-s = add("Yalnızca Başlık"); setph(s, 0, "İyi bir gün yok")
-oran = [40, 37, 41, 42, 39, 40, 43, 35, 34, 38, 43, 42, 38, 41, 42, 45, 45]
-etiket = ["31.08", "01.09", "02.09", "03.09", "04.09", "05.09", "06.09", "07.09", "08.09",
-          "09.09", "10.09", "11.09", "12.09", "13.09", "14.09", "15.09", "16.09"]
-GW = 0.69
-for i, (o, e) in enumerate(zip(oran, etiket)):
-    x = 0.62 + i * GW
-    t = (o - 33) / 13.0                       # 34→45 arasi tonlama
-    col = RGBColor(0xE3, int(0x06 + (1 - t) * 0x90), int(0x22 + (1 - t) * 0x70))
-    rrect(s, x, 1.7, GW - 0.08, 1.5, col, rad=False)
-    tb(s, x, 2.05, GW - 0.08, 0.5, [("%%%d" % o, 13, True, WHITE)], align=PP_ALIGN.CENTER)
-    tb(s, x, 3.25, GW - 0.08, 0.3, [(e, 8.5, False, GREY)], align=PP_ALIGN.CENTER)
-tb(s, 0.62, 3.75, 12.1, 0.6,
-   [("Her karede o günün sapma oranı: plana uymayan kişi-günlerin payı.", 12, False, GREY)])
-rrect(s, 0.6, 4.4, 12.1, 1.5, LGREY, RED, lw=2)
-tb(s, 1.0, 4.4, 11.3, 1.5,
-   [("17 günün 17'sinde de sapma var. En iyi gün %34, en kötü gün %45.", 17, True, DRED),
-    ("Yani bu bir “kötü hafta” değil. Böyle çalışıyoruz.", 14, False, INK)],
-   anchor=MSO_ANCHOR.MIDDLE, sp=1.25)
+# ASIMETRI: vardiyanin iki ucu ayni degil — 631 sa once, 1.346 sa sonra.
+# Ayni olcege cizilir (kesik eksen yok): en genis cubuk = 1.346 sa.
+ASX, ASW = 8.65, 3.8
+tb(s, ASX, 3.45, ASW, 0.3, [("Vardiyanın iki ucu", 12, True, CHAR)])
+for j, (et, sa, rk) in enumerate([("Girişten önce", 631, RGBColor(0x8C, 0x8C, 0x8C)),
+                                  ("Çıkıştan sonra", 1346, RED)]):
+    yy = 3.82 + j * 0.78
+    tb(s, ASX, yy, ASW, 0.26, [(et, 10, False, GREY)])
+    p = sa / 1346.0
+    rrect(s, ASX, yy + 0.26, ASW * p, 0.3, rk, rad=False)
+    et2 = "%s sa" % "{:,}".format(sa).replace(",", ".")
+    if p > 0.8:                       # cubuk kutuyu doldurdu -> etiket ICERIDE, beyaz
+        tb(s, ASX, yy + 0.26, ASW - 0.12, 0.3, [(et2, 10.5, True, WHITE)],
+           align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
+    else:                             # cubugun hemen ucunda, koyu
+        tb(s, ASX + ASW * p + 0.08, yy + 0.26, 1.1, 0.3, [(et2, 10.5, True, CHAR)],
+           anchor=MSO_ANCHOR.MIDDLE)
+tb(s, 0.6, 5.62, 12.1, 0.85,
+   [("Çıkıştan sonraki saat, girişten öncekinin iki katından fazla.", 14, True, DRED),
+    ("Kapanış saati mağazaya göre değişiyor — bu farkın ne kadarı yapısal, henüz ölçmedik.",
+     12.5, False, INK)], sp=1.2)
 sig(s)
 
 # ══════════════════ 6 · BÖLÜM — SEBEP ══════════════════
@@ -308,35 +331,11 @@ tb(s, 1.0, 5.7, 11.3, 0.8,
    anchor=MSO_ANCHOR.MIDDLE)
 sig(s)
 
-# ══════════════════ 8 · GÖRÜNMEYEN YARI ══════════════════
-s = add("Yalnızca Başlık"); setph(s, 0, "Bir de göremediğimiz günler var")
-SATIR2, KOL2, D2, B2 = 10, 12, 0.33, 0.45   # 120 kare = her kare ~30 kisi-gun
-kirmizi = round(120 * 559 / 3589)
-for c in range(KOL2):                        # SUTUN-ONCELIKLI: blok solda toplanir
-    for r in range(SATIR2):
-        i = c * SATIR2 + r
-        rrect(s, 0.75 + c * B2, 1.6 + r * B2, D2, D2, RED if i < kirmizi else PALE, rad=False)
-tb(s, 2.25, 6.35, 10.45, 0.4,
-   [("Her kare ≈ 30 kişi-gün. Kırmızı olanlarda giriş de çıkış da okutulmamış.", 11, False, GREY)],
-   anchor=MSO_ANCHOR.MIDDLE)
-card(s, 6.4, 1.55, 6.3, 1.6, RED)
-tb(s, 6.65, 1.75, 5.8, 0.7, [("559 gün", 30, True, RED)])
-tb(s, 6.65, 2.45, 5.8, 0.55, [("3.589 günün içinde okutmasız", 12, False, GREY)])
-tb(s, 6.4, 3.35, 6.3, 2.4,
-   [("Okutma olmayan gün, sonradan doldurulamaz.", 15, True, DRED),
-    ("Kart kaydı işçinin imzası sayılır. O gün okutulmadıysa, ne kadar çalışıldığını "
-     "sonradan kimse kanıtlayamaz — ne şirket, ne çalışan.", 12.5, False, INK)], sp=1.2)
-rrect(s, 6.4, 5.2, 6.3, 0.8, LGREY, RED, lw=2)
-tb(s, 6.65, 5.2, 5.8, 0.8,
-   [("97 günde hiç PDKS kaydı yok, 186 günde ham okutma bile yok.", 12, True, DRED)],
-   anchor=MSO_ANCHOR.MIDDLE)
-sig(s)
-
-# ══════════════════ 9 · BÖLÜM — SİSTEM ══════════════════
+# ══════════════════ 8 · BÖLÜM — SİSTEM ══════════════════
 s = add("Bölüm Üst Bilgisi"); setph(s, 0, "Artık canlı görüyoruz")
 setph(s, 1, "Mail ile takip bitti")
 
-# ══════════════════ 10 · MAİL vs CANLI ══════════════════
+# ══════════════════ 9 · MAİL vs CANLI ══════════════════
 s = add("Yalnızca Başlık"); setph(s, 0, "Fark hız değil, zamanında olmak")
 card(s, 0.6, 1.5, 5.9, 2.6, RGBColor(0x8C, 0x8C, 0x8C))
 tb(s, 0.9, 1.7, 5.4, 0.35, [("ESKİ · MAİL", 11, True, GREY)])
@@ -361,7 +360,7 @@ tb(s, 1.0, 5.75, 11.3, 0.7,
    anchor=MSO_ANCHOR.MIDDLE)
 sig(s)
 
-# ══════════════════ 11 · EKRAN 1 ══════════════════
+# ══════════════════ 10 · EKRAN 1 ══════════════════
 s = add("Yalnızca Başlık"); setph(s, 0, "Müdürün gördüğü ekran")
 ty = ekran(s, 0.6, 1.45, 8.3, 4.5, "bkm vardiya  ·  Mesai Raporu")
 rrect(s, 0.6, ty, 8.3, 0.52, RED, rad=False)
@@ -399,7 +398,7 @@ for i, (h, d, col) in enumerate([("KENDİ MAĞAZASI", "Başka mağaza görünmez
 tb(s, 0.6, 6.05, 12.1, 0.4, [("Temsilî ekrandır; isimler kısaltılmıştır.", 10, False, MGREY)])
 sig(s)
 
-# ══════════════════ 12 · EKRAN 2 ══════════════════
+# ══════════════════ 11 · EKRAN 2 ══════════════════
 s = add("Yalnızca Başlık"); setph(s, 0, "Onay ve itiraz aynı yerde")
 ty = ekran(s, 0.6, 1.45, 7.2, 4.55, "bkm vardiya  ·  Gün Detayı  ·  13.09.2026")
 tb(s, 0.8, ty + 0.12, 6.8, 0.4, [("A. Y****   ·   13 Eylül 2026 Pazar  ·  bu haftanın 7. çalışma günü", 12, True, CHAR)])
@@ -434,32 +433,7 @@ tb(s, 8.35, 5.65, 4.1, 0.3, [("Mail zincirinde bu yoktu.", 10.5, True, DRED)])
 tb(s, 0.6, 6.05, 12.1, 0.4, [("Temsilî ekrandır; isimler kısaltılmıştır.", 10, False, MGREY)])
 sig(s)
 
-# ══════════════════ 13 · ARKA PLANDAKİ RİSK ══════════════════
-s = add("Yalnızca Başlık"); setph(s, 0, "Bir de arka planda bunlar var")
-card(s, 0.6, 1.5, 5.9, 2.0, RED)
-tb(s, 0.9, 1.7, 5.4, 0.35, [("ÖDENEN", 11, True, RED)])
-tb(s, 0.9, 2.05, 5.4, 0.7, [("570 bin ₺", 30, True, CHAR)])
-tb(s, 0.9, 2.78, 5.4, 0.6, [("17 günde, dört mağazada fazla mesai. Saat başı 211 ₺ — Ağustos "
-                             "bordrosunun şirket ortalaması.", 11, False, GREY)], sp=1.1)
-card(s, 6.8, 1.5, 5.9, 2.0, RGBColor(0x8C, 0x8C, 0x8C))
-tb(s, 7.1, 1.7, 5.4, 0.35, [("ÖDENEBİLECEK", 11, True, GREY)])
-tb(s, 7.1, 2.05, 5.4, 0.7, [("4.815 ₺ / kişi", 26, True, CHAR)])
-tb(s, 7.1, 2.78, 5.4, 0.6, [("Fazla çalışma onayı ve kaydı gösterilemeyen her işçi için "
-                             "idari para cezası.", 11, False, GREY)], sp=1.1)
-rows = [("Kayıt istendiğinde bulunamazsa", "2026 cezası"),
-        ("Çalışma sürelerine aykırılık", "26.620 ₺"),
-        ("Ara dinlenme verilmemesi", "26.620 ₺"),
-        ("Özlük dosyası eksikliği", "26.620 ₺"),
-        ("Ücret hesap pusulası", "9.944 ₺")]
-tablo(s, rows, 0.6, 3.75, 12.1, 1.9, [8.6, 3.5], fs=12)
-rrect(s, 0.6, 5.8, 12.1, 0.75, LGREY, RED, lw=2)
-tb(s, 1.0, 5.8, 11.3, 0.75,
-   [("Bunlar kesinleşmiş değil, olabilecek tutarlar. ", 13, True, DRED),
-    ("Kaydı olan hiçbir satır burada açılmaz.", 13, False, INK)],
-   anchor=MSO_ANCHOR.MIDDLE)
-sig(s)
-
-# ══════════════════ 14 · ÜÇ RİCA ══════════════════
+# ══════════════════ 12 · ÜÇ RİCA ══════════════════
 s = add("Yalnızca Başlık"); setph(s, 0, "Sizden istediğimiz üç şey")
 rica = [("zap", "1 · Herkes kart okutsun — her giriş, her çıkış",
          "Okutma yoksa o gün kanıtlanamıyor. 17 günde 559 gün okutmasız geçti."),
@@ -473,15 +447,42 @@ for i, (ic, h, d) in enumerate(rica):
     tb(s, 1.85, y + 0.16, 10.5, 0.42, [(h, 15.5, True, CHAR)])
     tb(s, 1.85, y + 0.62, 10.5, 0.5, [(d, 12, False, GREY)])
 rrect(s, 0.6, 5.7, 12.1, 0.75, LGREY, RED, lw=2)
-tb(s, 1.0, 5.7, 11.3, 0.75,
+tb(s, 1.0, 5.66, 11.3, 0.5,
    [("Rapor yazmanızı, form doldurmanızı istemiyoruz. Üçü de zaten yaptığınız işin parçası.",
      13.5, True, DRED)], anchor=MSO_ANCHOR.MIDDLE)
+tb(s, 1.0, 6.10, 11.3, 0.36,
+   [("Yedinci günün kadro tarafı bizde. Planı birlikte bakacağız.", 12.5, False, INK)],
+   align=PP_ALIGN.CENTER)
 sig(s)
 
-# ══════════════════ 15 · KAPANIŞ ══════════════════
+# ══════════════════ 13 · ÖLÇÜM NOKTASI (kurul ekseni 4 — V3'te YOKTU) ══════════════════
+s = add("Yalnızca Başlık"); setph(s, 0, "17 gün sonra aynı üç rakama bakacağız")
+hedef = [("559", "okutmasız gün", "?"), ("137", "yedi günlük hafta", "?"),
+         ("258", "bekleyen istisna", "?")]
+for i, (bugun, ad, hd) in enumerate(hedef):
+    x = 0.6 + i * 4.12
+    card(s, x, 1.6, 3.85, 3.0, SET[i])
+    tb(s, x + 0.28, 1.78, 3.3, 0.32, [("BUGÜN", 10, True, GREY)])
+    tb(s, x + 0.28, 2.08, 3.3, 0.72, [(bugun, 40, True, RED)])
+    tb(s, x + 0.28, 2.85, 3.3, 0.34, [(ad, 12, False, GREY)])
+    rrect(s, x + 0.28, 3.28, 3.3, 0.02, PALE, rad=False)
+    tb(s, x + 0.28, 3.42, 3.3, 0.3, [("HEDEF", 10, True, GREY)])
+    tb(s, x + 0.28, 3.68, 3.3, 0.62, [(hd, 34, True, MGREY)])
+    tb(s, x + 0.28, 4.22, 3.3, 0.3, [("bugün birlikte koyacağız", 10, False, GREY)])
+tb(s, 0.6, 4.78, 12.1, 0.4,
+   [("Ölçüm penceresi: 17 Eylül – 3 Ekim 2026  ·  aynı dört mağaza, aynı sorgu.",
+     13, False, INK)])
+rrect(s, 0.6, 5.35, 12.1, 1.15, LGREY, RED, lw=2)
+tb(s, 1.0, 5.35, 11.3, 1.15,
+   [("Rakamlar panelden okunur, kimse rapor hazırlamaz.", 14, True, DRED),
+    ("Üçü de düşmezse sebebi birlikte ararız — mağazayı değil, planı konuşuruz.",
+     12.5, False, INK)], sp=1.2, anchor=MSO_ANCHOR.MIDDLE)
+sig(s)
+
+# ══════════════════ 14 · KAPANIŞ ══════════════════
 s = add("Başlık Slaydı")
-setph(s, 0, "Ölçtüğümüz şey saat değil — insanın yorgunluğu.")
-setph(s, 1, "Görünürse yönetilir   ·   31 Ağustos – 16 Eylül 2026 ölçümü   ·   © BKM Kitap 2026")
+setph(s, 0, "Görmediğimiz günü yönetemeyiz.")
+setph(s, 1, "Okutma görünürlüktür   ·   31 Ağustos – 16 Eylül 2026 ölçümü   ·   © BKM Kitap 2026")
 
 pr.save(OUT)
 print("KAYDEDILDI:", OUT, "| slayt:", len(pr.slides._sldIdLst))
