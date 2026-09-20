@@ -227,8 +227,19 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       menü · saat). `AddSolumSingleTenant` **kullanılmadı**: sabit `userId` alıyor, 17
       gerçek kullanıcıda denetim izine yanlış kimlik yazardı. Anonim sayfalar kabuk dışında.
       Ölçüm `SolumShellTests`: kabuk + marka + menü + çıkış adresi, ayrıca `solum.css` 200.
-- [ ] **V-04 Personel rolü (Faz 2)** — şemada tanımlı, hiçbir hesaba atanmadı.  ⟨eklendi 19.09.2026⟩
-      Açılırsa KVKK aydınlatma + 362 hesap yönetimi gelir.
+- [ ] **V-04 Personel rolü (Faz 2)** — 📋 **PLAN YAZILDI 20.09: `plans/51-personel-rolu.md`**,
+      GMY onayı bekliyor (Tier 3: yeni kapsam ekseni + güvenlik sınırı + KVKK).  ⟨eklendi 19.09.2026⟩
+      ⚠⚠ **PLAN 48'İN İDDİASI YANLIŞ ÇIKTI (ölçüldü 20.09).** Plan 48 satır 51-52
+      *"rol şemada tanımlı kalır, Faz 2'de açmak yeni yapı değil, yalnız hesap açmak olur"*
+      diyordu. Üç parçası da tutmuyor:
+      · `bkm.Vrd_Roles` **3 satır** (GMY · IK · SubeSorumlusu) — **Personel YOK**
+      · Kapsam yalnız ŞUBE ekseninde (`Vrd_SubeKapsami`); **sicil ekseni hiç yok**
+      · `bkm.Vrd_Users` düz Identity — **`SicilNo` kolonu yok**, kullanıcı↔personel bağı YOK
+      Bugün Personel hesabı açılsa kapsam BOŞ küme döner → kişi hiçbir şey görmez, sessizce.
+      ⚠ Nüfus da bayatmış: madde "362" diyordu, **ölçüm 380** tekil sicil (bu kesimde çalışmış;
+      kadro değil, ayrılan da içinde — gerçek liste İK'dan).
+      **GMY kararı bekleyen üç soru** (planın sonunda): personel neyi görsün · itirazı kendisi
+      yazabilsin mi (⚠ onaysız yazma = tek taraflı kayıt değiştirme) · 380 hesabı kim açacak.
 - [x] ~~**V-05 Vardiya planı girişi + izin günü tanımı**~~ — ✅ KAPANDI 19.09 (plan 49,
       altı adım: `5dcc4b7` şema+view · `9c47882` okuma+yazma · `36e42d2` ekran+testler ·
       `6e59acd` izin günü tabanı · `77d5c6a` deploy sapması kapısı · `d15f0a3` mevzuat
@@ -253,7 +264,15 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       **104 açık madde tetiksiz** — yani kapı borçların yalnız küçük bir kısmını
       izliyor. Görünmeyen bir sınır, olmayan bir sınır gibi davranır.
       Kırmızı kip: tarih geçmişe çekildi → "tetik ATEŞLEDİ, 18 gün önce" → geri alındı.
-- [ ] **V-22 Curator-check vadesi** — sema/TODO yaşam-döngüsü taraması (≥7 gün).  ⟨eklendi 19.09.2026⟩
+- [x] ~~**V-22 Curator-check vadesi**~~ ✅ KAPANDI 20.09 (commit `3b808d2`). Dry-run
+      `docs/curator/REPORT-2026-09-20.md`; GMY "hepsini yap" → altı aksiyonun altısı uygulandı.
+      **Bulgu: "stale 0" iyi haber değilmiş** — süresi dolmuş kayıt yoktu ama **59 kayıtta
+      `last_verified` yoktu** ve o alan olmadan kayıt HİÇ bayatlamaz. 59'unun tamamı damgalandı
+      (40'ı kendi kanıt tarihinden, 11'i bugün canlı doğrulanarak, 8 köprü canlı ölçülerek).
+      `_contract.yaml` `last_verified` kuralı **uyari → kirik**; kırmızı kip koştu (çıkış 1 → 0).
+      4 köprünün confidence'ı ölçümle güncellendi (3'ü yükseldi, `emirayr-emir` 0.90→0.85).
+      71 tarihsiz TODO maddesine `git blame` ile GERÇEK eklenme tarihi yazıldı.
+      ⚠ SINIR: `last_verified` artık zorunlu ama DOĞRU olduğunu hiçbir şey denetlemiyor.
       Son tam tarama 2026-09-09, hafif tarama 19.09'da handoff'ta yapıldı.
       **TETİK(2026-09-26)** — tarihli, yani bu kapı ARTIK kendisi hatırlatıyor;
       önceki vade 10 gün gecikmişti ve onu hook'un uyarı satırı yakalamıştı, kapı değil.
