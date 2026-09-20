@@ -1,7 +1,7 @@
 # Plan 50 — Mağaza Ürün Bulma / Raf Adresi Uygulaması (BKM Mağaza)
 
 **Tier:** 3 · **Tarih:** 20.09.2026 · **Talep:** GMY (Fikri Eren) · **Karar:** BYOD — herkes kendi telefonu → PWA
-**Danışman:** `operasyon-danisman` kurulu · **Kod:** `D:\Devkm-magaza` (ayrı depo, 21.09) · **Mockup:** `bkm-bkm-magaza/mockup/` (11 ekran) · `https://claude.ai/artifact/Jph1MioGGAtazwM6w5LRMP`
+**Danışman:** `operasyon-danisman` kurulu · **Kod:** `D:/Dev/bkm-magaza` (ayrı depo, 21.09) · **Mockup:** `bkm-magaza/mockup/` (11 ekran) · `https://claude.ai/artifact/Jph1MioGGAtazwM6w5LRMP`
 **Arşiv SQL:** `sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql` · `sorgular/2026-09-20-magaza-app-kategori-ve-arama.sql`
 
 > **Bu plan bir kez baştan yazıldı.** İlk sürümdeki "kapsama %74-81, yeni üründe %65" tablosu
