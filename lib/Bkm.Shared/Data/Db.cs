@@ -206,13 +206,26 @@ public sealed class Db
 
     private static Dictionary<string, string> LoadEnv()
     {
+        // BKM_ENV_DOSYA: .env BAŞKA bir depodayken yol geçişi (bkm-magaza, 21.09.2026).
+        // Sır ikinci bir dosyaya KOPYALANMAZ — tek kimlik yolu ilkesi (sql-server-conventions
+        // § dört sözleşme). Tanımlı değilse eski davranış: yukarı doğru .env ara.
+        var disaridan = Environment.GetEnvironmentVariable("BKM_ENV_DOSYA");
+        if (!string.IsNullOrWhiteSpace(disaridan) && File.Exists(disaridan))
+            return Ayristir(disaridan);
+
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, ".env")))
             dir = dir.Parent;
         var path = dir is null ? null : Path.Combine(dir.FullName, ".env");
 
+        return path is null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                            : Ayristir(path);
+    }
+
+    private static Dictionary<string, string> Ayristir(string path)
+    {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (path is null || !File.Exists(path)) return map;
+        if (!File.Exists(path)) return map;
         foreach (var raw in File.ReadAllLines(path))
         {
             var line = raw.Trim();
