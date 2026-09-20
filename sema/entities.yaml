@@ -2931,6 +2931,20 @@ entities:
     confidence: 0.95
     evidence: "2026-08-18 — kolonlar canlı sys.columns ile doğrulandı (12 kolon); kısmi-dağıtım filtresi + recency gate + kayıp formülü üretim scriptinden okundu. Canlı satır sayısı doğrulanmadı (ERP erişimi düştü)."
     last_verified: "2026-08-18"
+  bkm.Vrd_KisiGun:
+    type: table
+    sunucu: panel
+    db: BkmPanel
+    pk: "(Id) — iş anahtarı (KesimBas, KesimBit, SicilNo, Tarih)"
+    grain: "KESİM × KİŞİ × GÜN. Devir tablosu AY bazlıdır — ikisi karıştırılmaz (bkz. bkm.Vrd_Devir)."
+    kolonlar: "VardiyaTanim · PlanBaslamaDk · PlanBitisDk · PlanCalismaDk · GerekenDk · KartGirisDk/KartCikisDk (ham) · GirisDk/CikisDk (işlenmiş) · BrutDk · MolaDk · CalismaDk · Durum · Izin · GunDonumu · SayimDisi · OlcumNotu · EksikDk · FazlaDk + dört fazla kalemi (FazlaCalismaDk · FazlaIzinIptalDk · HaftalikPrimDk · FazlaPlansizDk) · CikisSonrasiDk · GirisOncesiDk"
+    tuzaklar: "(1) **PLAN GÜNE GÖRE DEĞİŞİR — tek bir 'mesai bitişi' YOKTUR.** Plan `PlanBaslamaDk`/`PlanBitisDk`/`VardiyaTanim`'dan OKUNUR. Mağazada baskın vardiya KAPANIŞ vardiyasıdır; ofis saati (09:00-17:30) mağaza günlerinin küçük bir dilimidir. Analizde/sunumda sabit bir bitiş saati VARSAYMAK yanlış rakam üretir (20.09.2026'da yapıldı: '18:00' varsayıldı, GMY yakaladı). (2) **BOZUK OKUTMA SÜREYİ GEÇERSİZ KILAR, DEVAMI DEĞİL.** Ayraç `OlcumNotu LIKE '%ŞÜPHELİ%' OR CalismaDk > 720`; çıkış okutmayı unutan kişide brüt 20+ saat çıkar. Bu kayıt SÜRE hesabından elenir — ama kişinin o gün İŞTE OLDUĞUNU çürütmez, yani 'kaç gün çalışıldı' sayımından elenmez. İkisini karıştırmak 140 haftalık bir bulguyu 0'a düşürüyordu (yanlış filtre: satırı silince hafta 7 günün altına iniyor). (3) `HaftalikPrimDk` FazlaDk'nın İÇİNDEDİR — dört fazla kalemi toplamı FazlaDk'ya birebir eşittir; ayrıca eklenirse çift sayılır. (4) `Durum` GÜN düzeyindedir: 7 gün üst üste çalışan biri yedi günde de 'Normal Çalışma' damgası alır — hafta düzeyindeki kural (m.46 hafta tatili) gün durumundan GÖRÜNMEZ, ayrıca hesaplanır."
+    olcum_notlari: "`OlcumNotu` boş değilse ölçümün niteliğini söyler: 'Ham okutma da yok' · 'PDKS kaydı yok — ölçülemiyor (devamsız DEĞİL)' · 'HAM OKUTMA VAR (n kez) — giriş/çıkış çifti oluşmamış' · 'GÜN DÖNÜMÜ — çıkış ertesi gün sayıldı' · '… ŞÜPHELİ (çıkış okutması unutulmuş olabilir)'. Bu alan bir DURUM değil, ölçümün güvenilirlik etiketidir."
+    yazan: "YALNIZ `bkm.sp_Vrd_KisiGunDoldur` (erp-write-policy). Okuma tarafı kapsamlı view üstünden: `bkm.Vrd_KisiGunDuzeltilmis_vw` + `VrdSql.PersonDays` boğazı."
+    confidence: 0.9
+    evidence: "2026-09-20 — kesim 31.08-16.09.2026, 4 mağaza (FSM/ÖZLÜCE/İST.YOLU/HEYKEL): 223 kişi · 3.589 kişi-gün · 17 farklı gün. Vardiya dağılımı ölçüldü (baskın 13:30-22:00 = %34,9; ortalama çalışma HER vardiyada 7,6-8,2 saat). Okutma ya tam var ya hiç yok — tek taraflı eksik gün 0/3.589. Dört fazla kalemi = FazlaDk (161.908 dk, birebir). Arşiv: sorgular/2026-09-20-vardiya-magaza-ritmi-ve-yedinci-gun.sql"
+    last_verified: "2026-09-20"
+    ttl_days: 90
   bkm.Vrd_Devir:
     type: table
     sunucu: panel

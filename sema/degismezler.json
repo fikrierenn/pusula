@@ -723,6 +723,19 @@
       "expected": 1,
       "verified": "2026-09-19 → 1. Kırılabilirliği ölçüldü: dal view'dan çıkarılıp betik koşturulunca 0 döndü.",
       "korur": []
+    },
+    {
+      "id": "vardiya-fazla-dort-kalem-toplami",
+      "db": "BkmPanel",
+      "question": "FazlaDk, dört fazla kaleminin (fazla çalışma + izin iptali + hafta tatili primi + plansız) toplamına birebir eşit mi?",
+      "why": "Sunum ve rapor bu dört kalemi AYRI AYRI gösteriyor ve toplamlarının FazlaDk'ya eşit olduğunu varsayıyor. Eşit olmazsa iki sonuçtan biri doğar: (a) kırılım toplamı tutmaz ve okuyan 'eksik kalem var mı' diye sorar, (b) daha kötüsü, biri `HaftalikPrimDk`'yı FazlaDk'nın DIŞINDA sanıp ayrıca eklerse hafta tatili primi ÇİFT SAYILIR — 4 mağazada 1.050 saat, yani toplam fazla mesainin %39'u kadar bir şişme.\n⚠ Bu bir ÖLÇÜM değil KİMLİKTİR: SP'nin FazlaDk'yı nasıl böldüğüne dair sözleşme. SP'nin dört UPDATE bloğundan biri değişirse sessizce bozulur.",
+      "sql": "SELECT COUNT(*) FROM bkm.Vrd_KisiGun WHERE ISNULL(FazlaDk,0) <> ISNULL(FazlaCalismaDk,0) + ISNULL(FazlaIzinIptalDk,0) + ISNULL(HaftalikPrimDk,0) + ISNULL(FazlaPlansizDk,0)",
+      "population": "SELECT COUNT(*) FROM bkm.Vrd_KisiGun WHERE ISNULL(FazlaDk,0) > 0",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-09-20 → 0. Dört mağazada toplam 161.908 dk her iki yoldan da aynı (1.367,1 + 1.050,0 + 250,0 + 31,4 = 2.698,5 saat).",
+      "korur": [],
+      "server": "panel"
     }
   ]
 }
