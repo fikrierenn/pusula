@@ -312,11 +312,28 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       deniyordu. **Ürün doğruydu, ölçüm aracı yanlıştı**; kırmızı ara sıra çıkıyordu
       çünkü her şifrede `+` olmuyor. `WebUtility.HtmlDecode` + `data-test` tutamağı.
       5 koşum üst üste yeşil (önce 3'te 1 kırmızı).
-- [ ] **V-07 Orantısızlık sezgisi MEKANİKLEŞMEDİ** (19.09, Solum S3) — ikinci kapsam
-      sızıntısını bulan şey insan sezgisiydi ("2.192,6 saat makul ama kapsamla
-      orantısız"). Bugün ekranda gösterilen toplamı, o ekranın **kapsam kümesinin**
-      toplamıyla otomatik karşılaştıran hiçbir şey yok. Sınıf yazılı
-      (`olctum-mu-cikardim-mi.md` § makul sayı kabul edilir), mekanik karşılığı yok.
+- [x] ~~**V-07 Orantısızlık sezgisi MEKANİKLEŞMEDİ**~~ ✅ KAPANDI 20.09 (19.09, Solum S3).
+      Mekanik karşılık: **TÜMLEYEN MÜDÜR** — fikstüre üçüncü bir kullanıcı eklendi
+      (ACL = müdürün şubesi HARİÇ tüm şubeler). Her okuma metodu için tek iddia:
+      `f(müdür) + f(tümleyen) == f(İK)`. Süzgeç düşerse ikisi de tam nüfusu döner,
+      toplam 2×İK olur → sızıntı METRİKTEN BAĞIMSIZ, aritmetik çelişkiye dönüşür.
+      Kazanç: **metrik başına "beklenen değer" yazılmaz** — yeni okuma metodu
+      eklenince üç satırla kapı genişler, kimsenin doğru sayıyı bilmesi gerekmez.
+      `tests/BkmVardiya.Tests/ScopeAdditivityTests.cs` — 14 yüzey
+      (cutoffs · summary×5 · status · branch×2 · overtime · stay×2 · compliance · rows)
+      + tek-kayıt yüzeyleri (onay/düzeltme kapsam dışı sicili reddediyor).
+      **Kırmızı kip koştu:** sabotaj bilerek ESKİ testin göremediği yere kondu
+      (`VrdSql.Carryover`'dan kapsam süzgeci kaldırıldı, dönem süzgeci bırakıldı →
+      SQL sözleşmesi geçiyor). Çıktı: *"CarryShortMin: müdür 111491 + tümleyen 111491
+      = 222982, İK 111491 … Müdür = İK → kapsam süzgeci bu metotta DÜŞMÜŞ."*
+      YALNIZ o metrik düştü, diğer 13 yüzey bölünmeye devam etti — kapı keskin.
+      Geri alındı, **29/29 yeşil**.
+      ⚠ ÖN KOŞUL ASSERT'e çevrildi: toplanabilirlik ancak kişi/kişi-hafta şubeye
+      bölünmüyorsa geçerli (ölçüldü: 0/380 ve 0). Bozulursa test "SIZINTI" değil
+      **BAKAMADIM** der.
+      ⚠ YAKALAMAZ: kapsamın DOĞRU olduğunu (yalnız BÖLÜNDÜĞÜNÜ). Yanlış kolona
+      bağlanma herkese boş küme döndürürse `0+0==0` sağlanır ve bu test yeşil kalır —
+      o sınıf `BranchScopeTests`'in işi. Dört kapının ayrımı test başlığında yazılı.
 
 - [x] ~~**V-09 Kapsam BOĞAZI**~~ — ✅ KAPANDI 19.09 (commit `a2157c4`). `VrdSql.PersonDays`/
       `Carryover` süzgeci kaynağın İÇİNE aldı (alt-sorgu otomatik kapsanır); `VrdParams`

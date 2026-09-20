@@ -39,6 +39,20 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
 
     public string ManagerName => Stamp + "_mudur";
     public string HrName => Stamp + "_ik";
+
+    /// <summary>
+    /// TÜMLEYEN MÜDÜR (V-07) — ACL'i müdürün şubesi HARİÇ tüm şubeler.
+    ///
+    /// Neden var: kapsam testleri "müdür &lt; İK" diye kurulunca YALNIZ o metrikte
+    /// sızıntıyı görür. Tümleyen üçüncü bir kullanıcı eklenince her okuma metodu
+    /// için TOPLANABİLİRLİK sınanabilir: <c>f(müdür) + f(tümleyen) == f(İK)</c>.
+    /// Bir metotta süzgeç düşerse İKİSİ de tam nüfusu döner ve toplam 2×İK olur —
+    /// yani sızıntı, metrik ne olursa olsun, ARİTMETİK olarak görünür.
+    /// Bunun değeri: metrik başına ayrı "beklenen değer" YAZILMAZ, dolayısıyla
+    /// yeni bir okuma metodu eklendiğinde kapı kendiliğinden genişler.
+    /// </summary>
+    public string ComplementName => Stamp + "_tumleyen";
+    public string ComplementId { get; private set; } = "";
     public const string Password = "ZzTest!2026#scope";
 
     public string ManagerId { get; private set; } = "";
@@ -67,11 +81,19 @@ public sealed class VardiyaAppFactory : WebApplicationFactory<Program>, IAsyncLi
 
         ManagerId = await CreateUserAsync(userManager, ManagerName);
         HrId = await CreateUserAsync(userManager, HrName);
+        ComplementId = await CreateUserAsync(userManager, ComplementName);
 
         // Müdür: TEK şube, ACL'den. İK: "tüm şubeler" YETKİSİ, ACL satırı YOK.
         await cn.ExecuteAsync(
             "INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId) VALUES (@id, @sube, @veren)",
             new { id = ManagerId, sube = ManagerBranch, veren = Stamp });
+
+        // TÜMLEYEN: müdürün şubesi HARİÇ tüm şubeler — ACL satırlarıyla, "tüm şubeler"
+        // YETKİSİYLE DEĞİL. İkisi farklı yoldan çözülür ve testin ölçtüğü şey ACL yolu.
+        await cn.ExecuteAsync("""
+            INSERT INTO bkm.Vrd_KullaniciSube (UserId, Sube, VerenId)
+            SELECT DISTINCT @id, Sube, @veren FROM bkm.Vrd_KisiGun WHERE Sube <> @haric
+            """, new { id = ComplementId, veren = Stamp, haric = ManagerBranch });
 
         // Müdür ONAY yetkisi taşır — gerçek şube sorumlusu rolünün karşılığı.
         // Olmadan plan düzeltme EKRANI (V-18) test edilemezdi: sayfa
