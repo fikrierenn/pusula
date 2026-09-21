@@ -208,6 +208,76 @@ def veri_cek(cn, bas: dt.date, bit: dt.date, sube: str | None,
     return cikti
 
 
+def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str):
+    """PDKS'in HİÇ gün üretmediği tarihlere boş satır ekler (GMY 21.09.2026:
+    "boşsa bile günler olmalı").
+
+    ⚠ NEDEN GEREKLİ: rapor `TTagMoS`ten sürülüyor. O tabloda satır yoksa gün
+      raporda HİÇ GÖRÜNMÜYOR — ne devamsız, ne çalışma, ne eksik/fazla.
+      Sessizce yok oluyor. Okutmasız gün en azından görünüyordu; bu görünmüyordu.
+      ÖLÇÜLDÜ 21.09.2026 (31.08-20.09): 1 kişi / 5 gün (PersNr 2005, 04-06 ve
+      12-13 Eylül). Küçük ama sessiz.
+
+    SINIRLAR — uydurma satır üretmemek için:
+      · BAŞLANGIÇ = kişinin penceredeki İLK günü. Öncesi doldurulmaz; o kişi
+        henüz sistemde yoktu (işe giriş sınırı, boşluk değil).
+      · BİTİŞ = pencere sonu; AMA ayrılan kişide (ölçüt: ZeitAktiv=0 +
+        AuswNr=PersNr) son okutma günü. Aksi hâlde `--ayrilanlar haric`
+        süzgecinin attığı hayalet günleri geri koyardık.
+      · Eklenen satır `Mazeret` sütununda **KAYIT YOK** taşır — boş bırakılsaydı
+        gerçek boş kayıttan ayırt edilemezdi (ölçüm ile üretim karışmasın).
+    """
+    if not satirlar:
+        return satirlar, 0
+
+    kisiler = sorted({r[0] for r in satirlar})
+    # Ayrılan + son okutma — hayalet gün geri gelmesin diye (tek ek sorgu).
+    b8, t8 = bas.strftime("%Y%m%d"), bit.strftime("%Y%m%d")
+    ic = f"""
+        SELECT  p.Per_PersNr,
+                ayrilan = CASE WHEN p.Per_ZeitAktiv = 0
+                            AND LTRIM(RTRIM(ISNULL(p.Per_AuswNr,'')))
+                              = CONVERT(varchar, p.Per_PersNr) THEN 1 ELSE 0 END,
+                son_okutma = (SELECT MAX(l.TLe_Datum) FROM TTagLes l
+                              WHERE l.TLe_PersNr = p.Per_PersNr
+                                AND l.TLe_VonZeit IS NOT NULL
+                                AND l.TLe_Datum >= '{b8}' AND l.TLe_Datum <= '{t8}')
+        FROM    TPerTab p
+    """
+    _, roster = cift_atlama(cn, ic)
+    bilgi = {}
+    for r in roster:
+        so = r[2]
+        bilgi[int(r[0])] = (int(r[1] or 0),
+                            so.date() if isinstance(so, dt.datetime) else so)
+
+    # Kişi başına: var olan günler + kimlik/grup alanları (ilk satırdan kopyalanır)
+    var = {}
+    kimlik = {}
+    for r in satirlar:
+        var.setdefault(r[0], set()).add(r[9])
+        kimlik.setdefault(r[0], r[1:9])
+
+    eklenen = []
+    for pn in kisiler:
+        gunler = var[pn]
+        basla = min(gunler)                         # işe giriş sınırı
+        ayrilan, son_ok = bilgi.get(pn, (0, None))
+        dur = bit
+        if ayrilanlar == "haric" and ayrilan:
+            dur = son_ok if son_ok else max(gunler)
+        g = basla
+        while g <= dur:
+            if g not in gunler:
+                eklenen.append([pn, *kimlik[pn], g, "", "", "", "KAYIT YOK", ""])
+            g += dt.timedelta(days=1)
+
+    if eklenen:
+        satirlar = satirlar + eklenen
+        satirlar.sort(key=lambda x: (x[9], x[5], x[0]))
+    return satirlar, len(eklenen)
+
+
 def excel_yaz(satirlar, yol: Path):
     wb = Workbook()
     ws = wb.active
@@ -278,6 +348,11 @@ def main() -> int:
     ap.add_argument("--ayrilanlar", choices=("dahil", "haric"), default="dahil",
                     help="dahil = PDKS kaynağıyla birebir (varsayılan) · "
                          "haric = pasif VE dönemde hiç okutması olmayan personeli çıkar")
+    ap.add_argument("--bos-gunler", choices=("dahil", "haric"), default="dahil",
+                    dest="bos_gunler",
+                    help="dahil (varsayılan) = PDKS'in hiç gün üretmediği tarihe "
+                         "BOŞ satır ekle, Mazeret='KAYIT YOK' · "
+                         "haric = ham PDKS (gün atlar)")
     a = ap.parse_args()
 
     if a.tarih:
@@ -291,8 +366,12 @@ def main() -> int:
 
     cn = pyodbc.connect(PANEL)
     cn.timeout = 300
+    eklenen = 0
     try:
         satirlar = veri_cek(cn, bas, bit, a.sube, a.ayrilanlar)
+        if a.bos_gunler == "dahil":
+            satirlar, eklenen = bos_gunleri_doldur(cn, satirlar, bas, bit,
+                                                   a.ayrilanlar)
     finally:
         cn.close()
 
@@ -307,6 +386,9 @@ def main() -> int:
     print(f"[OK] {yol}")
     print(f"     {len(satirlar)} satır · {kisi} kişi · {gun} gün"
           f"{' · ' + a.sube if a.sube else ' · tüm şubeler'}")
+    if a.bos_gunler == "dahil":
+        print(f"     PDKS'te kaydı olmayan gün: {eklenen} satır eklendi "
+              f"(Mazeret='KAYIT YOK')")
 
     if a.karsilastir:
         karsilastir(satirlar, Path(a.karsilastir))
