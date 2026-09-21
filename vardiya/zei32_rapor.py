@@ -224,8 +224,16 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
       · BİTİŞ = pencere sonu; AMA ayrılan kişide (ölçüt: ZeitAktiv=0 +
         AuswNr=PersNr) son okutma günü. Aksi hâlde `--ayrilanlar haric`
         süzgecinin attığı hayalet günleri geri koyardık.
-      · Eklenen satır `Mazeret` sütununda **KAYIT YOK** taşır — boş bırakılsaydı
+      · Eklenen satır `Mazeret` sütununda SEBEBİNİ taşır — boş bırakılsaydı
         gerçek boş kayıttan ayırt edilemezdi (ölçüm ile üretim karışmasın).
+        İKİ SEBEP AYRI ETİKETLENİR, çünkü biri kusur biri karar:
+          · **TAKİP PASİF** — `Per_ZeitAktiv = 0`, zaman takibi BİLEREK kapatılmış
+            (GMY teyidi 21.09.2026: "kemal ocak zaman takip pasife çektik ondan").
+            Gün yokluğu BEKLENEN; kişi çalışıyor olabilir, sadece kart basmıyor.
+            ⚠ Bu alan "çalışıyor mu" demez — script başındaki uyarı ile aynı ölçüt.
+          · **KAYIT YOK** — takip AÇIK (`ZeitAktiv = 1`) ama gün yine de üretilmemiş.
+            Açıklaması olmayan tek sınıf budur; incelenmesi gereken de budur.
+        İkisi tek etikete indirilirse karar kusur gibi okunur ve tersi de olur.
     """
     if not satirlar:
         return satirlar, 0
@@ -241,7 +249,8 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
                 son_okutma = (SELECT MAX(l.TLe_Datum) FROM TTagLes l
                               WHERE l.TLe_PersNr = p.Per_PersNr
                                 AND l.TLe_VonZeit IS NOT NULL
-                                AND l.TLe_Datum >= '{b8}' AND l.TLe_Datum <= '{t8}')
+                                AND l.TLe_Datum >= '{b8}' AND l.TLe_Datum <= '{t8}'),
+                zeit_aktiv = ISNULL(p.Per_ZeitAktiv, 0)
         FROM    TPerTab p
     """
     _, roster = cift_atlama(cn, ic)
@@ -249,7 +258,8 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
     for r in roster:
         so = r[2]
         bilgi[int(r[0])] = (int(r[1] or 0),
-                            so.date() if isinstance(so, dt.datetime) else so)
+                            so.date() if isinstance(so, dt.datetime) else so,
+                            int(r[3] or 0))
 
     # Kişi başına: var olan günler + kimlik/grup alanları (ilk satırdan kopyalanır)
     var = {}
@@ -262,14 +272,15 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
     for pn in kisiler:
         gunler = var[pn]
         basla = min(gunler)                         # işe giriş sınırı
-        ayrilan, son_ok = bilgi.get(pn, (0, None))
+        ayrilan, son_ok, zeit = bilgi.get(pn, (0, None, 1))
+        etiket = "KAYIT YOK" if zeit else "TAKİP PASİF"
         dur = bit
         if ayrilanlar == "haric" and ayrilan:
             dur = son_ok if son_ok else max(gunler)
         g = basla
         while g <= dur:
             if g not in gunler:
-                eklenen.append([pn, *kimlik[pn], g, "", "", "", "KAYIT YOK", ""])
+                eklenen.append([pn, *kimlik[pn], g, "", "", "", etiket, ""])
             g += dt.timedelta(days=1)
 
     if eklenen:
@@ -387,8 +398,11 @@ def main() -> int:
     print(f"     {len(satirlar)} satır · {kisi} kişi · {gun} gün"
           f"{' · ' + a.sube if a.sube else ' · tüm şubeler'}")
     if a.bos_gunler == "dahil":
-        print(f"     PDKS'te kaydı olmayan gün: {eklenen} satır eklendi "
-              f"(Mazeret='KAYIT YOK')")
+        ky = sum(1 for r in satirlar if r[13] == "KAYIT YOK")
+        tp = sum(1 for r in satirlar if r[13] == "TAKİP PASİF")
+        print(f"     PDKS'te günü olmayan tarihler dolduruldu: {eklenen} satır")
+        print(f"       · KAYIT YOK   {ky:4d} — takip AÇIK, gün yine de yok (İNCELE)")
+        print(f"       · TAKİP PASİF {tp:4d} — zaman takibi kapatılmış (beklenen)")
 
     if a.karsilastir:
         karsilastir(satirlar, Path(a.karsilastir))
