@@ -13,6 +13,19 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-09-22 — PDKS raporu: sessiz kesinti teşhisi + şube×gün matrisi + ayrılmış kapısı (1 commit)
+- **Görev iki gün tetiklenmedi, sebep ÖLÇÜLDÜ** (`list_task_runs`): 18.09 koşumu hâlâ
+  `running` (oturum sohbete çevrilmişti) → 19 ve 21.09 tetiklemeleri kayıt bırakmadan
+  düştü. Makine-kapalı savı elendi: 21.09'da `haftalik-portal-tarama` koştu.
+- **Telafi maili** 18–21.09 gönderildi (774 kişi-gün · eksik okutma 28 · gelmedi 29).
+- **`a5a7ab5`** şube × gün matrisi (grain SQL'de şube×gün, şube özeti Python'da toplanır
+  — ikinci sorgu yok) + "vardiyada olup okutmayan" tablosuna Tarih kolonu. Matris
+  toplamları şube özetiyle birebir (ölçüldü). **Şura'da 20-21.09 planı hiç girilmemiş**
+  (gereken 0 · kart basan 14) — %25,9 eksik-okutma oranının 13'ü oradan, devamsızlık değil.
+- **Ayrılmış personel kapısı iki sessiz açık kapatıldı:** Zirve okunamazsa rapor artık
+  `KOŞAMADI` ile durur (önceden ayrılmışlar sessizce "GELMEDİ" olup mail gidiyordu) ·
+  bordroda bulunamayan TC ayrı sınıfa alındı (ölçüldü: bu dönemde 0 kişi).
+
 ### 2026-09-12 — B-172 kapanışı · toplantı hazırlığı · gün-içi ciro paneli (10 commit)
 - **B-172(c) eşiğe iş modeli ayağı** (`a9f67e5`): ölçüt iki ayaklı (2× sezon VE 5× ikmal kapağı).
   Kat 5 veriden değil devir hedefinden. Sezon ekseni yanlış pozitif üretiyormuş (4.904 çeşit,
@@ -201,6 +214,27 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ## Devam Eden (aktif)
 
 ### BKM — BIRLESIK ONCELIK SIRASI
+
+#### 🔔 PDKS GÜNLÜK RAPOR (zamanlanmış görev)
+
+- [ ] **B-181 Zamanlanmış görev koşumunun gerçekten çalıştığı DOĞRULANACAK** — 22.09.
+      18.09 koşumu sohbete çevrildiği için oturum `running` kaldı ve 19+21.09
+      tetiklemeleri **kayıt bırakmadan** düştü (ölçüldü: `list_task_runs` →
+      `totalRuns` 3'te sabit; aynı gün `haftalik-portal-tarama` koştuğu için
+      makine-kapalı savı elendi). Oturum arşivlendikten sonra **ilk koşum ölçülecek**:
+      `totalRuns` 3 → 4 olmalı. "Kapattım, herhâlde çalışır" bir ölçüm değildir.
+      ⚠ Kalıcı önlem: görev oturumunu sohbete çevirme — soru için yeni sekme aç.
+      Bunu bugün hiçbir kapı yakalamıyor (mail gelmeyince fark ediliyor).
+
+- [ ] **B-182 Şura vardiya planı boşluğu — kapı yok** — 22.09. Şube × gün matrisi
+      20-21.09'da Şura'da **gereken 0 · kart basan 14** gösterdi: plan hiç girilmemiş,
+      bu yüzden o günkü herkes "eksik okutma" sayıldı (%25,9 oranın 13 kişi-günü).
+      Rapor durumu artık GÖSTERİYOR ama **uyarı üretmiyor**. (a) İK/şubeye sorulacak:
+      plan neden girilmemiş? (b) "gereken 0 ama kart basan > 0" durumu mail başındaki
+      uyarı bloğuna eklenecek mi — karar bekliyor.
+      ⚠ Ayrılışın Zirve'ye GEÇ girilmesi ayrı bir kör nokta: 20.09'da ayrılan biri
+      bordro 25.09'da işlenirse aradaki günlerde "GELMEDİ" görünür. Kod tarafında
+      çözümü yok, İK sürecine bağlı.
 
 #### 🆕 VARDİYA UYGULAMASI (plan 48) — ilk sürüm ✅ 19.09.2026
 > `vardiya-app` (Razor Pages + Solum, port 5120) · `lib/Bkm.Shared` · 17 kullanıcı açık.
