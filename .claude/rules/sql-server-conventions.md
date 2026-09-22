@@ -327,6 +327,21 @@ Profiller: `erp` (DerinSISBkm) · `encore` (EncoreMerkez) · `zirve` (BKM_GENEL)
 | **`--param ad[:tip]=deger`** | `--param bas:date=2026-09-01` · `--param kod:str=20260901` | String birleştirme yok (injection + tarih tuzağı). **`dd.MM.yyyy` REDDEDİLİR** (gün/ay belirsiz) — ISO yaz ya da `:str` + `CONVERT(...,104)` |
 | **`--timeout` / `--retry`** | `--timeout 60 --retry 2` | Yalnız geçici hatada (10053/10060/-2/1205) sınırlı ve **görünür** yeniden deneme; kalıcı hata (207) denenmez |
 
+⚠⚠ **PROFİLLER ÇALIŞMA DİZİNİNE BAĞLI — başka depodan çağrı SESSİZCE GEÇER**
+(ölçüldü 22.09.2026). `sqlcli.json` pusula deposunun kökünde; oturum başka bir depoya
+(ör. `D:\Devkm-magaza`) taşındığında `--profile panel` çağrısı
+**"HATA: Bağlantı bilgisi bulunamadı"** deyip çıkar. Tehlike sorgunun patlaması değil —
+patlaması iyidir; tehlike **çıktıyı yönlendirmişseniz** (`>/dev/null`, `2>&1 | tail`)
+komutun hiç koşmadığını fark etmemeniz. O gün bir temizlik `DELETE`'i böyle koşmadı ve
+test artığı veritabanında kaldı; ancak elle kontrol edince görüldü.
+
+**Kural:** başka depodan DB işi yapılacaksa ya `cd /d/Dev/pusula` ile çağır, ya da
+`--conn` ile açık bağlantı dizesi ver. **Yazma/temizlik komutlarının çıktısını ASLA
+yönlendirme** — dönen satır sayısını gör.
+
+Bu, `olctum-mu-cikardim-mi.md` § "Sessizlik kanıt değil"in araç düzeyindeki hâlidir:
+bir komutun BOŞ dönmesi ile HİÇ KOŞMAMASI ekranda aynı görünür.
+
 ⚠ **`--max-rows` varsayılanı 1000 ve SESSİZ keser** (server-side TOP wrap; uyarı satırı yok).
 Toplu çekimde (kişi-gün, segment, saat×mağaza matrisi) 1000'e dayanırsan eksik veriyi TAM sanırsın —
 04.09 vardiya çekiminde tam bu oldu: 1.217 satırlık sonuç 1.000'de kesildi, son gün hiç görünmedi.
