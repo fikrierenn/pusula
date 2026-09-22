@@ -156,6 +156,7 @@ WHERE   g.VardiyaId <> 0
 # ⚠ Kapsam MAĞAZALAR — kafeler ve Genel Müdürlük bu raporun dışında.
 SQL_OZET_PLAN = """
 SELECT  m.Grp2 COLLATE Turkish_CI_AS AS Sube,
+        CONVERT(char(8), DATEADD(day, g.ofs, v.Tarih), 112) AS Gun,
         COUNT(*)                                        AS PlanliKisi,
         SUM(CASE WHEN vz.Izin = 1 THEN 1 ELSE 0 END)    AS Izinli,
         SUM(CASE WHEN vz.Izin = 0 THEN 1 ELSE 0 END)    AS Gereken
@@ -177,7 +178,9 @@ INNER JOIN  (SELECT x.SubeAd COLLATE Turkish_CI_AS AS SubeAd,
 WHERE   g.VardiyaId <> 0
     AND DATEADD(day, g.ofs, v.Tarih) >= ? AND DATEADD(day, g.ofs, v.Tarih) <= ?
     AND vd.Gorev NOT LIKE '%MÜDÜR%'      -- GMY 16.09: müdür/müdür yrd. RAPORA GİRMEZ
-GROUP BY m.Grp2
+-- Grain ŞUBE × GÜN. Şube toplamı Python'da bu satırlardan toplanır (aditif) —
+-- iki ayrı sorgu yazılmaz, tek çekirdek (emitter-ayrimi.md).
+GROUP BY m.Grp2, DATEADD(day, g.ofs, v.Tarih)
 """
 
 
@@ -362,8 +365,15 @@ def main() -> int:
 
         cur.execute(SQL_OZET_PLAN, bas, bit)
         kolo = [c[0] for c in cur.description]
-        ozet_plan = {str(d["Sube"]).strip(): d
-                     for d in (dict(zip(kolo, r)) for r in cur.fetchall())}
+        plan_gun = [dict(zip(kolo, r)) for r in cur.fetchall()]
+        # Sorgu grain'i ŞUBE × GÜN; şube özeti buradan TOPLANIR (ikinci sorgu yok).
+        ozet_plan: dict[str, dict] = {}
+        for d in plan_gun:
+            sb = str(d["Sube"]).strip()
+            t = ozet_plan.setdefault(sb, {"Sube": sb, "PlanliKisi": 0,
+                                          "Izinli": 0, "Gereken": 0})
+            for k in ("PlanliKisi", "Izinli", "Gereken"):
+                t[k] += int(d[k] or 0)
         cur.close()
     finally:
         cn.close()
@@ -503,6 +513,15 @@ def main() -> int:
     #   GELMEDİ          → normalde basıyor, o gün basmamış. Gerçek aday budur.
     # Sınıflandırma ŞUBE ÖZETİNDEN ÖNCE yapılır: "Gelmeyen" kolonu yalnız
     # devamsızlık adaylarını saymalı (17.09.2026 — GMY kararı).
+    # ⚠⚠ ZİRVE YOKSA RAPOR ÜRETİLMEZ (22.09.2026 — GMY: "çıkışı yapılanların kart
+    #    basmasını bekleme, yoksa yalancı çoban durumuna düşer").
+    #    Zirve bağlanamazsa `zirve` boş kalır, `ayrilmis_mi` herkese False döner ve
+    #    AYRILMIŞ personel sessizce "GELMEDİ" diye raporlanır — rapor yine de
+    #    gider, kimse farkı göremez. Boş nüfus "ihlal yok" değil "bakamadım"dır.
+    if not zirve:
+        sys.exit("KOŞAMADI: Zirve bordrosu okunamadı — işten ayrılmış personel "
+                 "ayıklanamaz, rapor GÜVENİLİR DEĞİL. Mail atılmadı.")
+
     for x in gelmeyenler:
         tc = str(x.get("TC") or "").strip()
         z = zirve.get(tc)
@@ -510,7 +529,12 @@ def main() -> int:
         x["Kadro"] = z["Kadro"] if z else None
         x["Cikis"] = z["Cikis"] if z else None
         son30 = x.get("Son30Okutma")
-        if ayrilmis_mi(z["Cikis"] if z else None, x["Gun"]):
+        if z is None:
+            # Bordroda karşılığı yok → çalışıyor mu AYRILMIŞ mı BİLİNMİYOR.
+            # "GELMEDİ" demek burada bir ÇIKARIM olurdu; ayrı sınıf, devamsızlık
+            # sayısına girmez.
+            x["Sinif"] = "BORDRODA BULUNAMADI (teyit gerek)"
+        elif ayrilmis_mi(z["Cikis"], x["Gun"]):
             x["Sinif"] = "AYRILMIŞ (plan temizlenmemiş)"
         elif not son30:
             x["Sinif"] = "KART BASMIYOR (30 günde sıfır okutma)"
@@ -531,6 +555,31 @@ def main() -> int:
         if x["Sinif"].startswith("GELMEDİ"))
     for o in ozet_satir:
         o["Gelmeyen"] = gelmeyen_sube.get(o["Sube"], 0)
+
+    # ── ŞUBE × GÜN MATRİSİ (GMY isteği 22.09.2026) ──────────────────────────
+    # Çok günlük (telafi) raporda şube özeti günleri topluyordu; ŞURA'da
+    # "gereken 28 / kart basan 58" gibi tuhaflıklar hangi günden geldiği
+    # görünmediği için okunamıyordu.
+    # ⚠ Hücre tanımları ŞUBE ÖZETİYLE AYNI KAYNAKTAN sayılır (ayrı bir tanım
+    #   yazılmaz): Gereken = plan_gun · Gelen = ham okutma · Gelmedi = yalnız
+    #   "GELMEDİ" sınıfı (ayrılmış ve kart basmayan hariç) · Eksik = tek okutma.
+    #   Satır toplamları şube özetiyle birebir tutmalı.
+    m_ger = {(str(d["Sube"]).strip(), str(d["Gun"])): int(d["Gereken"] or 0)
+             for d in plan_gun}
+    m_gelen = collections.Counter(
+        (str(x["Sube"]).strip(), str(x["Gun"])) for x in satir)
+    m_gelmedi = collections.Counter(
+        (str(x["Sube"]).strip(), str(x["Gun"])) for x in gelmeyenler
+        if x["Sinif"].startswith("GELMEDİ"))
+    m_eksik = collections.Counter(
+        (str(s["Sube"]).strip(), str(s["Gun"])) for s in tekil)
+    matris_gunler = sorted({g for _, g in
+                            set(m_ger) | set(m_gelen) | set(m_gelmedi) | set(m_eksik)})
+    matris_subeler = sorted({s for s, _ in
+                             set(m_ger) | set(m_gelen) | set(m_gelmedi) | set(m_eksik)})
+    matris = {"gunler": matris_gunler, "subeler": matris_subeler,
+              "ger": m_ger, "gelen": m_gelen, "gelmedi": m_gelmedi,
+              "eksik": m_eksik}
 
     # ── ÖNLEM: SIRADIŞI GÜN KAPISI (16.09.2026) ─────────────────────────────
     # 15.09'da İST.YOLU'da devamsız 12'ye fırladı (önceki 7 gün 3-5) ve bu
@@ -682,13 +731,13 @@ def main() -> int:
     if a.html:
         with open(a.html, "w", encoding="utf-8") as f:
             f.write(html_govde(tekil, bas, bit, sube, sube_gun, cikti, ozet_satir,
-                               gelmeyenler, uyarilar, ayrilmis))
+                               gelmeyenler, uyarilar, ayrilmis, matris))
         print(f"HTML  : {a.html}")
     return 0
 
 
 def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenler,
-               uyarilar, ayrilmis=()) -> str:
+               uyarilar, ayrilmis=(), matris=None) -> str:
     """Mail gövdesi. Ek dosya GÖNDERİLEMİYOR (IMAP save_draft ek desteklemiyor),
     o yüzden liste gövdeye gömülür; Excel yolu ayrıca yazılır."""
     donem = (f"{bas:%d.%m.%Y}" if bas == bit else f"{bas:%d.%m.%Y} – {bit:%d.%m.%Y}")
@@ -729,13 +778,21 @@ def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenle
             + h("" if sapma is None else f"{sapma:+d} dk", "right")
             + "</tr>")
 
+    # Tarih kolonu ZORUNLU: çok günlük (telafi) raporda hangi gün gelinmediği
+    # görünmüyordu — 22.09.2026 GMY bildirdi ("toplu mail gelince hangi gün
+    # olduğu belirsiz"). Tek günlük raporda da gün adı bilgi taşır (Cuma/Pazar).
+    def _gun_hucre(x):
+        g = dt.datetime.strptime(str(x["Gun"]), "%Y%m%d").date()
+        return h(f"{g:%d.%m.%Y} {GUN_AD[g.weekday()]}")
+
     gelmeyen_sat = "".join(
-        "<tr>" + h(x["Sube"]) + h(x["Personel"])
+        "<tr>" + h(x["Sube"]) + _gun_hucre(x) + h(x["Personel"])
         + h(x.get("Unvan") or x.get("Gorev") or "—")
         + h(x["VardiyaTanim"])
         + h(x.get("Son30Okutma") or 0, "right")
         + h(x["Sinif"], kalin=x["Sinif"].startswith("GELMEDİ")) + "</tr>"
-        for x in sorted(gelmeyenler, key=lambda x: (str(x["Sinif"]), str(x["Sube"]),
+        for x in sorted(gelmeyenler, key=lambda x: (str(x["Sinif"]), str(x["Gun"]),
+                                                    str(x["Sube"]),
                                                     str(x["Personel"]))))
 
     # İşten ayrılmış olup planda duranlar devamsızlık tablosundan çıkarıldı;
@@ -757,6 +814,46 @@ def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenle
     else:
         ayrilmis_blok = ""
 
+    # Çok günlük (telafi) raporda şube özeti günleri topluyor; hangi günün ağır
+    # olduğu kaybolur. Gün kırılımı yalnız bas != bit iken gösterilir — iki sayı
+    # da eldeki listelerden türer, yeni sorgu yok.
+    if bas != bit and matris:
+        gunler, subeler = matris["gunler"], matris["subeler"]
+        bas_hucre = "".join(
+            f'<th style="{th}">'
+            f'{dt.datetime.strptime(g, "%Y%m%d").date():%d.%m}<br>'
+            f'<span style="font-weight:400;font-size:11px">'
+            f'{GUN_AD[dt.datetime.strptime(g, "%Y%m%d").date().weekday()]}</span></th>'
+            for g in gunler)
+        mat_sat = []
+        for sb in subeler:
+            hc = []
+            for g in gunler:
+                k = (sb, g)
+                gm = matris["gelmedi"].get(k, 0)
+                ek = matris["eksik"].get(k, 0)
+                ger = matris["ger"].get(k, 0)
+                gel = matris["gelen"].get(k, 0)
+                # Gelmedi kalın (ana sinyal); altına plan/basan küçük gri —
+                # "gereken 28 / basan 58" gibi plan-gerçek sapması gün bazında
+                # görünsün diye.
+                hc.append(
+                    f'<td style="{td};text-align:center">'
+                    f'<span style="font-weight:700">{gm}</span>'
+                    f'<span style="color:#888"> / {ek}</span><br>'
+                    f'<span style="font-size:11px;color:#999">{ger}·{gel}</span></td>')
+            mat_sat.append("<tr>" + h(sb, kalin=True) + "".join(hc) + "</tr>")
+        gun_blok = (
+            '<h3 style="margin:18px 0 6px">Şube × gün</h3>'
+            f'<p style="margin:0 0 6px;font-size:12px;color:#666">Hücre: '
+            f'<b>gelmedi</b> / eksik okutma &nbsp;·&nbsp; alt satır: '
+            f'vardiyada olması gereken · kart basan</p>'
+            f'<table style="{st}">'
+            f'<tr><th style="{th}">Şube</th>{bas_hucre}</tr>'
+            + "".join(mat_sat) + "</table>")
+    else:
+        gun_blok = ""
+
     ozet = "".join(
         "<tr>" + h(o["Sube"]) + h(_s(o["Gereken"]), "right")
         + h(_s(o["Izinli"]), "right") + h(o["Gelen"], "right")
@@ -769,6 +866,7 @@ def html_govde(tekil, bas, bit, sube, sube_gun, xlsx_yol, ozet_satir, gelmeyenle
 Toplam <b>{len(tekil)} kişi-gün</b>.</p>
 
 {uyari_blok}
+{gun_blok}
 <h3 style="margin:18px 0 6px">Şube özeti</h3>
 <table style="{st}">
 <tr><th style="{th}">Şube</th><th style="{th}">Vardiyada olması gereken</th>
@@ -779,7 +877,8 @@ Toplam <b>{len(tekil)} kişi-gün</b>.</p>
 
 <h3 style="margin:18px 0 6px">Vardiyada olup kart okutmayan</h3>
 <table style="{st}">
-<tr><th style="{th}">Şube</th><th style="{th}">Personel</th><th style="{th}">Ünvan</th>
+<tr><th style="{th}">Şube</th><th style="{th}">Tarih</th><th style="{th}">Personel</th>
+<th style="{th}">Ünvan</th>
 <th style="{th}">Vardiya</th><th style="{th}">Son 30g okutma</th>
 <th style="{th}">Durum</th></tr>
 {gelmeyen_sat}
