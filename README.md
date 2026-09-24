@@ -1,7 +1,7 @@
 # pusula — BKM Kitap'ın veri gerçeği
 
-**Pusula. BKM Kitap'ın veri ve analitik çalışma alanı: ERP (DerinSIS). POS (Encore). İK (Zirve). e-ticaret ve panel verisinin
-ölçülmüş tek tanımı.** Bir rapor. bir kapı. bir uygulama "bu kolon ne?" diye sorduğunda cevap buradadır — tahminle değil. canlıya karşı
+**Pusula, BKM Kitap'ın veri ve analitik çalışma alanı: ERP (DerinSIS), POS (Encore), İK (Zirve), e-ticaret ve panel verisinin
+ölçülmüş tek tanımı.** Bir rapor, bir kapı, bir uygulama "bu kolon ne?" diye sorduğunda cevap buradadır — tahminle değil, canlıya karşı
 ölçülmüş ve tarihli.
 
 *1073 commit · 2026-04-27'den beri · `sema/` 10.202 satır YAML · 158 sorgu · 40 plan.*
