@@ -154,9 +154,23 @@ codes:
       Yüzde etiketlerinin altında kalması beklenir: etiket kampanya ÜYELİĞİDİR,
       her satışta tetiklendiği anlamına gelmez (3 AL 2 ÖDE yalnız 3 adet alınınca).
       Kapı: değişmez `reyon-kod4-etiketi-kasada-gerceklesiyor`.
-    evidence: "2026-09-12 — lookup örneklemi + urn GROUP BY + urnkod4log'un 2026-05-06/12 günlerinin hedef-kod dökümü (%50 INDIRIM 611.150 · 3 AL 2 ÖDE 412.689). Kart alan adı + kasa gerçekleşmesi: 46 tanım, öksüz kod4ID 0, 838.301 ürün. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql · sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql"
+      ⭐ **KASA KAMPANYASI İLE EŞLEŞME (ölçüldü 2026-09-21):** POS tarafında karşılığı
+      `EncoreMerkez.dbo.Campaign` **Id=1 '3AL2ÖDE'** (`BuyNPayN_1ConditionNum=3` /
+      `PayNum=2`). ⚠⚠ **`IsActive=0` VE KAMPANYALI SON SATIŞ KALEMİ 06.02.2026** —
+      497.099 kalemin tamamı 11.07.2025–06.02.2026 arasında. Yani **kasada 3AL2ÖDE
+      Şubat 2026'dan beri KOŞMUYOR, ama ürün kartında 430.749 ürün hâlâ '3 AL 2 ÖDE'
+      etiketli.** Etiketi "şu an geçerli kampanya" sanan her analiz yanılır; etiket
+      kampanya ÜYELİĞİDİR, kampanyanın AÇIK olduğunu göstermez.
+      · Ürün kapsamı Encore'da TUTULMUYOR: `CampaignProduct` yalnız 136 satır ve
+        `CampaignId=1` için **hiç satırı yok** → kapsam ERP kartından gelir.
+      · Etiket↔kasa tutarlılığı: Oca–Şub 2026 penceresinde `CampaignId=1` kalemlerinin
+        **17/17'si** `kod4Ad='3 AL 2 ÖDE'`. ⚠ NÜFUS KÜÇÜK (17) — "eşleşme doğrulandı"
+        demek için yetersiz, yalnız çelişki YOK.
+      · Marka bazlı flag arayan için: `urnMrk.mrkUcalikiOde` **tamamen NULL** (10.306/
+        10.306) — marka tanımı ürün kartından türetilir (bkz. `entities:dbo.urnMrk`).
+    evidence: "2026-09-12 — lookup örneklemi + urn GROUP BY + urnkod4log'un 2026-05-06/12 günlerinin hedef-kod dökümü (%50 INDIRIM 611.150 · 3 AL 2 ÖDE 412.689). Kart alan adı + kasa gerçekleşmesi: 46 tanım, öksüz kod4ID 0, 838.301 ürün. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql · sorgular/2026-09-12-reyon-kampanya-magaza-marji.sql · 2026-09-21 — Campaign Id=1 satırı + SalesProductCampaigns tarih aralığı (497.099 kalem, 2025-07-11..2026-02-06) + kod4 çapraz eşleme 17/17: sorgular/2026-09-21-marka-3al2ode-karisik-tanim.sql"
     confidence: 0.9
-    last_verified: "2026-09-12"
+    last_verified: "2026-09-21"
 
   urn.kod5ID:
     lookup: dbo.urnkod5

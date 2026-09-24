@@ -338,3 +338,9 @@ surfaces
 reject
 outsider
 complement
+Blanked
+Deleted
+Stop
+Retention
+Timer
+Actor

@@ -741,10 +741,17 @@ entities:
       `dbo.frmMrk` (firma↔marka, 162.690 satır) ile birlikte "hangi tedarikçi hangi
       markayı veriyor" sorusunu yanıtlar; frmMrk'te 10.150 ayrı marka geçiyor, yani
       markaların **%98,5'inin en az bir tedarikçisi var**.
-    measurement: "2026-09-12 — 10.300 satır · 8 kolon · PK mrkID. frmMrk'te geçen tekil marka: 10.150."
-    evidence: "2026-09-12 — satır/PK + frmMrk çapraz sayımı. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
+      ⚠ **`mrkUcalikiOde` KOLONU VAR AMA TAMAMEN BOŞ** (ölçüldü 2026-09-21:
+      10.306 markanın **10.306'sı NULL**, tek dolu satır yok). Adı "3 al 1 öde/
+      üç-al-iki-öde" çağrıştırdığı için marka bazlı kampanya flag'i sanılabilir;
+      **değildir, kullanılmıyor.** "Bu marka 3 AL 2 ÖDE'de tanımlı mı" sorusu
+      ürün kartından (`urn.kod4ID=1`) TÜRETİLİR — kısmen dolu bile değil, bu yüzden
+      "güncel değil" değil "hiç yazılmamış" durumudur.
+      Aynı şekilde `mrkPiyasaMarjOndeger` dolu (4.840 marka) — o kullanılıyor.
+    measurement: "2026-09-12 — 10.300 satır · 8 kolon · PK mrkID. frmMrk'te geçen tekil marka: 10.150. 2026-09-21 — satır 10.306; mrkUcalikiOde GROUP BY: tek grup NULL / 10.306."
+    evidence: "2026-09-12 — satır/PK + frmMrk çapraz sayımı. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql · 2026-09-21 mrkUcalikiOde GROUP BY: sorgular/2026-09-21-marka-3al2ode-karisik-tanim.sql blok 0b"
     confidence: 0.85
-    last_verified: "2026-09-12"
+    last_verified: "2026-09-21"
   mhs.mhsEntUrn:
     type: table
     pk: [mhsEntUrnID]
@@ -3906,11 +3913,63 @@ entities:
       (`zygmunt-bauman-sosyolojisi-12653447-76-K.jpg`), tam URL değil → CDN tabanı gerekir.
       ⚠ Kapsam e-ticarete açılmış ürünler (441K); ürün master'ı (~850K) ile farkı ve mağaza
       stoğuna göre kapsaması ÖLÇÜLMEDİ.
-      ⚠ `web.urnWeb` tablosu BOŞ (0 satır) — görsel için kullanılmaz.
+      ⚠⚠ **DÜZELTİLDİ 2026-09-21 — burada 'web.urnWeb BOŞ (0 satır), görsel için
+      kullanılmaz' YAZIYORDU ve YANLIŞTI.** İddia doğru tabloya değil, aynı adlı ama
+      BAŞKA VERİTABANINDAKİ tabloya bakmış: `DerinSISBkm.web.urnWeb` gerçekten **0**,
+      ama `DerinSISBkm**Web**.web.urnWeb` **752.498 satır** (ölçüldü 2026-09-21).
+      Bu kayıt yüzünden mağaza uygulaması kapak için CDN'i birincil seçmişti; oysa
+      DB kapsaması daha geniş (bkz. `gorsel_kaynak_kapsamasi`). Tek harflik veritabanı
+      adı farkı, bir kaynağın 'yok' sayılmasına yol açtı.
     measurement: "2026-09-20 — 441.163 satır, ImageUrl dolu 441.097 (%99,98)."
     evidence: "2026-09-20 — sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 10."
     confidence: 0.9
     last_verified: "2026-09-20"
+
+  DerinSISBkmWeb.web.urnWeb:
+    type: table
+    key: [urnWebID, urnWebBilgiID, urnWebOnce, urnWebResim]
+    grain: "ürün × görsel (bir ürünün birden çok görseli olabilir)"
+    note: >-
+      **Ürün görselinin BLOB deposu** — kapak ve ek görseller burada, JPEG olarak
+      (ort. ~19 KB). Ürün bağı `urnWebBilgiID = urn.stkID`.
+      ⚠ Veritabanı adı **`DerinSISBkmWeb`** (sonda `Web`), `DerinSISBkm` DEĞİL. Aynı adlı
+      `DerinSISBkm.web.urnWeb` tablosu BOŞTUR; karıştırılırsa kaynak "yok" sanılır
+      (2026-09-20'de tam bu oldu, bkz. `ent.tsoft_urun` notu).
+
+      ⭐⭐ **`urnWebOnce` BİR BAYRAK DEĞİL, SIRA NUMARASIDIR.** Dağılım ölçüldü:
+      `1`→717.058 · `0`→30.656 · `2`→2.840 · `3`→1.377 · `4`→396 … `20`→1.
+      İKİ KONVANSİYON BİR ARADA yaşıyor: tek görselli ürünlerin çoğu 1'den, çok
+      görselliler 0'dan başlıyor. ⇒ Kapak = **`ORDER BY urnWebOnce, urnWebID`** (ARTAN);
+      eşitlikte `urnWebID` (ekleme sırası) belirler.
+      ⚠ `urnBrkd.urnBrkdOnce=0` deseninden ÇIKARIM YAPMA — o bir bayrak, bu bir sıra.
+      ⚠ `DESC` yazmak **sessiz yanlış görsel** üretir: dönen şey geçerli bir JPEG olduğu
+      için ekranda "resim var" görünür, yalnız kapak yerine son görsel gelir. Ölçülen
+      örnek stkID 1738434 (Stanley termos): `Once=0` temiz ürün fotoğrafı, `Once=3` üstü
+      yazılı tanıtım görseli. Mağaza uygulaması bu hatayı 2026-09-21'e kadar taşıdı.
+    measurement: >-
+      2026-09-21 — 752.498 satır. Görseli dolu: 714.691 ürün / 752.499 görsel.
+      Çoklu: 692.846 ürün tek görselli, **21.845 ürün 2+** (59.653 görsel, en çok 18).
+    evidence: "2026-09-21 — sorgular/2026-09-21-urun-gorsel-kaynak-ve-siralama.sql"
+    confidence: 0.95
+    last_verified: "2026-09-21"
+
+  gorsel_kaynak_kapsamasi:
+    type: measurement
+    grain: "ürün görseli — iki kaynağın kapsama karşılaştırması"
+    note: >-
+      İki kaynak var ve **DB daha geniş kapsıyor**:
+      `DerinSISBkmWeb.web.urnWeb` (BLOB) **714.691 ürün** ·
+      `ent.tsoft_urun.ImageUrl` (T-Soft CDN) **441.215 ürün** → DB **%62 fazla**.
+      CDN yalnız e-ticarete açılmış ürünleri kapsar; mağazadaki eski baskılarda dosya yok.
+      ⇒ Mağaza/perakende bağlamında **BLOB birincil, CDN yedek** (plan-50, 2026-09-21).
+      ⚠ İkinci gerekçe bağımsız: CDN **internet ister**, mağaza ağı yerel. İnternet
+      kapalıyken kapaklar sessizce boş kalır ve uygulamanın geri kalanı çalıştığı için
+      arıza gibi görünmez — "bu kitabın resmi yok" gibi görünür.
+      ⚠ CDN **hotlink korumalı** → `<img referrerpolicy="no-referrer">` şart
+      (bkz. `bridges.yaml: tsoft-urun-gorsel`).
+    evidence: "2026-09-21 — sorgular/2026-09-21-urun-gorsel-kaynak-ve-siralama.sql blok 1-2."
+    confidence: 0.95
+    last_verified: "2026-09-21"
 
   # ---- MAĞAZA APP: KATEGORİ KURALI + ARAMA (keşif 2026-09-20, plan-50) ----
   raf_kurali_yalniz_kitap:

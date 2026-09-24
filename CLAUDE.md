@@ -1,5 +1,11 @@
 # CLAUDE.md — Pusula (BKM Kitap Analitik Çalışma Alanı)
 
+<!-- merkez-bildirimi -->
+> ⚠ **KURALLAR ARTIK MERKEZDE.** Kopyalamak yerine işaret ediyoruz.
+> Oturum başında oku: [`.claude/MERKEZ-BILDIRIMI.md`](.claude/MERKEZ-BILDIRIMI.md)
+> Kanonik kurallar: `../claude-context-template/templates/.claude/rules/_universal/`
+<!-- /merkez-bildirimi -->
+
 > Kısa iskelet. Detaylar [`docs/00-INDEX.md`](docs/00-INDEX.md) altındadır. **İlk adım:** `docs/00-INDEX.md` → ilgili konu dosyası.
 
 **Son güncelleme:** 11 Haziran 2026 · **Repo:** `D:\Dev\pusula` (eski adı sqlserver-mcp-server)

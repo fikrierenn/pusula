@@ -152,6 +152,13 @@ def veri_cek(cn, bas: dt.date, bit: dt.date, sube: str | None,
     #
     # `haric` davranışı: 0 okutmalı çıkmışlar TAMAMEN düşer; dönem içinde
     # çıkanların yalnız SON OKUTMASINDAN SONRAKİ hayalet günleri düşer.
+    # ⚠ KART-NO KURALI YALNIZ BAŞINA YETMİYOR (ölçüldü 21.09.2026, GMY bildirdi:
+    #   "GÖRKEM YEMENİCİOĞLU işten ayrılmış"). O kişide Per_AuswNr = 0006553136,
+    #   PersNr 129 ile eşitlenmemiş → ölçüt kaçırıyordu ve 21 gün DESIZ olarak
+    #   raporda duruyordu. Son okutması 10.08.2025 — 13 ay önce.
+    #   İKİNCİ ÖLÇÜT (yanlış-negatifi kapatır): takip kapalı + PDKS'te son okutması
+    #   pencere BAŞLAMADAN önce. "Hiç okutması yok" bu ölçüte GİRMEZ: yeni açılmış
+    #   ama kart basmayan kişi (PersNr 3473, Zirve'de aktif) elenmesin diye.
     ayrilan_suz = ""
     if ayrilanlar == "haric":
         ayrilan_suz = f"""
@@ -161,7 +168,11 @@ def veri_cek(cn, bas: dt.date, bit: dt.date, sube: str | None,
                     (SELECT MAX(l3.TLe_Datum) FROM TTagLes l3
                      WHERE l3.TLe_PersNr = p.Per_PersNr
                        AND l3.TLe_Datum >= '{b8}' AND l3.TLe_Datum <= '{t8}'
-                       AND l3.TLe_VonZeit IS NOT NULL), '17530101') )"""
+                       AND l3.TLe_VonZeit IS NOT NULL), '17530101') )
+        AND NOT ( p.Per_ZeitAktiv = 0
+              AND (SELECT MAX(l4.TLe_Datum) FROM TTagLes l4
+                   WHERE l4.TLe_PersNr = p.Per_PersNr
+                     AND l4.TLe_VonZeit IS NOT NULL) < '{b8}' )"""
 
     ic = f"""
         SELECT  p.Per_PersNr, p.Per_Vorname, p.Per_Name,
@@ -219,11 +230,9 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
       12-13 Eylül). Küçük ama sessiz.
 
     SINIRLAR — uydurma satır üretmemek için:
-      · BAŞLANGIÇ = kişinin penceredeki İLK günü. Öncesi doldurulmaz; o kişi
-        henüz sistemde yoktu (işe giriş sınırı, boşluk değil).
-      · BİTİŞ = pencere sonu; AMA ayrılan kişide (ölçüt: ZeitAktiv=0 +
-        AuswNr=PersNr) son okutma günü. Aksi hâlde `--ayrilanlar haric`
-        süzgecinin attığı hayalet günleri geri koyardık.
+      · TARİHLER TAM (GMY 21.09.2026: "tarihler tam olacak şekilde oluştur").
+        Dosyada kalan HER kişi pencerenin TAMAMINI taşır — atlanan tarih yok.
+        Sebep gizlenmez, `Mazeret` sütununda ETİKETLENİR (aşağı bak).
       · Eklenen satır `Mazeret` sütununda SEBEBİNİ taşır — boş bırakılsaydı
         gerçek boş kayıttan ayırt edilemezdi (ölçüm ile üretim karışmasın).
         İKİ SEBEP AYRI ETİKETLENİR, çünkü biri kusur biri karar:
@@ -233,6 +242,12 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
             ⚠ Bu alan "çalışıyor mu" demez — script başındaki uyarı ile aynı ölçüt.
           · **KAYIT YOK** — takip AÇIK (`ZeitAktiv = 1`) ama gün yine de üretilmemiş.
             Açıklaması olmayan tek sınıf budur; incelenmesi gereken de budur.
+          · **İŞTEN AYRILDI** — ayrılma ölçütüne uyan kişinin son okutmasından
+            SONRAKİ günler. Satır duruyor (tarih atlamasın) ama çalışma sayılmaz.
+          · **KAYITTAN ÖNCE** — kişinin PDKS'teki İLK gününden ÖNCEKİ tarihler.
+            Ay ortasında işe girenin öncesi kusur DEĞİLDİR. Ayrılmasaydı bu
+            günler "KAYIT YOK" damgası alır ve incelenecekler listesini şişirirdi
+            (ölçüldü: 277 → 15; %95'i bu sınıftı).
         İkisi tek etikete indirilirse karar kusur gibi okunur ve tersi de olur.
     """
     if not satirlar:
@@ -271,16 +286,22 @@ def bos_gunleri_doldur(cn, satirlar, bas: dt.date, bit: dt.date, ayrilanlar: str
     eklenen = []
     for pn in kisiler:
         gunler = var[pn]
-        basla = min(gunler)                         # işe giriş sınırı
+        basla = bas                                 # TARİHLER TAM — pencere başı
+        ilk_kayit = min(gunler)                     # kişinin PDKS'teki ilk günü
         ayrilan, son_ok, zeit = bilgi.get(pn, (0, None, 1))
-        etiket = "KAYIT YOK" if zeit else "TAKİP PASİF"
-        dur = bit
-        if ayrilanlar == "haric" and ayrilan:
-            dur = son_ok if son_ok else max(gunler)
+        temel = "KAYIT YOK" if zeit else "TAKİP PASİF"
+        # Ayrılanda son okutmadan SONRASI ayrı etiket — tarih durur, iş sayılmaz.
+        kesim = son_ok if (ayrilanlar == "haric" and ayrilan and son_ok) else None
         g = basla
-        while g <= dur:
+        while g <= bit:
             if g not in gunler:
-                eklenen.append([pn, *kimlik[pn], g, "", "", "", etiket, ""])
+                if g < ilk_kayit:
+                    et = "KAYITTAN ÖNCE"
+                elif kesim and g > kesim:
+                    et = "İŞTEN AYRILDI"
+                else:
+                    et = temel
+                eklenen.append([pn, *kimlik[pn], g, "", "", "", et, ""])
             g += dt.timedelta(days=1)
 
     if eklenen:
@@ -398,11 +419,20 @@ def main() -> int:
     print(f"     {len(satirlar)} satır · {kisi} kişi · {gun} gün"
           f"{' · ' + a.sube if a.sube else ' · tüm şubeler'}")
     if a.bos_gunler == "dahil":
-        ky = sum(1 for r in satirlar if r[13] == "KAYIT YOK")
-        tp = sum(1 for r in satirlar if r[13] == "TAKİP PASİF")
-        print(f"     PDKS'te günü olmayan tarihler dolduruldu: {eklenen} satır")
-        print(f"       · KAYIT YOK   {ky:4d} — takip AÇIK, gün yine de yok (İNCELE)")
-        print(f"       · TAKİP PASİF {tp:4d} — zaman takibi kapatılmış (beklenen)")
+        for et, aciklama in [("KAYIT YOK", "takip AÇIK, gün yine de yok (İNCELE)"),
+                             ("TAKİP PASİF", "zaman takibi kapatılmış (beklenen)"),
+                             ("İŞTEN AYRILDI", "son okutmadan sonrası"),
+                             ("KAYITTAN ÖNCE", "kişinin ilk PDKS gününden önce")]:
+            print("       · %-14s %4d — %s"
+                  % (et, sum(1 for r in satirlar if r[13] == et), aciklama))
+        # TARİHLER TAM doğrulaması — sessiz kalmasın, ÖLÇ.
+        say = {}
+        for r in satirlar:
+            say[r[0]] = say.get(r[0], 0) + 1
+        bek = (bit - bas).days + 1
+        eksik = {k: v for k, v in say.items() if v != bek}
+        print(f"     TARİH BÜTÜNLÜĞÜ: beklenen {bek} gün/kişi · "
+              + ("TAMAM" if not eksik else f"EKSİK {len(eksik)} kişi: {eksik}"))
 
     if a.karsilastir:
         karsilastir(satirlar, Path(a.karsilastir))
