@@ -99,7 +99,7 @@ sınıftır (sunucu-seviyesi obje) ve **ayrıca onay ister**; bu onay TEK bu job
 |---|---|---|
 | `Db.OpenAsync()` | 192.168.40.201 — **DerinSISBkm / EncoreMerkez / BKM (ERP)** | **SALT-OKUMA** — istisna yalnız app-owned `bkm.Fin_AyKapanis` + `bkm.BankaOgrenme` (INSERT/UPDATE/DELETE). Başka tablo / native tablo yazımı YASAK. |
 | `Db.OpenJokerAsync()` | 192.168.40.70 — **JOKER e-ticaret** | **SALT-OKUMA** — istisna yok. |
-| `Db.OpenPanel()` / `OpenPanelAsync()` | localhost — **BkmPanel (app-local)** | Yazma SERBEST ama yalnız `dbo.Panel*` kendi tabloları (auth/görev/bellek/tahmin/takvim/içkart). Bu panelin kendi durum deposu, ERP değil. |
+| `Db.OpenPanel()` / `OpenPanelAsync()` | localhost — **BkmPanel (app-local)** | Yazma SERBEST ama yalnız `dbo.Panel*` kendi tabloları (auth/görev/bellek/tahmin/takvim/içkart). Bu panelin kendi durum deposu, ERP değil. bkm-magaza'nın kendi tabloları: `dbo.PanelStoreUser · PanelStoreDevice · PanelStoreSetupCode · PanelStoreAuditLog` (24.09.2026, `PanelMagaza*` yerine; mekân `LocationKey` = sema/locations.yaml). |
 
 ## Neden
 
