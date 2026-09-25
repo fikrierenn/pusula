@@ -12,10 +12,15 @@
 #
 # ALANLAR: id (kebab, İngilizce, değişmez) · name (görünen ad, Türkçe) · kind: store|cafe|headquarters|depot ·
 #   parent (kafe → bağlı mağaza; yalnız gösterim/gruplama, YETKİ değil) · active · stock_source: derinsis|wms|none
-#   (none = "bu mekân için yerel stok tutulmuyor"; boş ≠ sıfır) · keys: {derinsis_mekan, zirve_lokasyon, zirve_altlokasyon, ad_ou, erp12}
+#   (none = "bu mekân için yerel stok tutulmuyor"; boş ≠ sıfır) · keys: {derinsis_mekan, zirve_lokasyon, zirve_altlokasyon, zirve, ad_ou, erp12}
 #   Bir sistem karşılığı yoksa anahtar YAZILMAZ (NULL değil, yok).
+#   zirve = "Lokasyon/AltLokasyon" BİLEŞİK anahtar (25.09.2026, kimlik sözleşmesi T5): AltLokasyon TEK BAŞINA belirsiz —
+#   ölçülen 12 aktif değerde HEYKEL hem MAĞAZALAR hem GENEL MÜDÜRLÜK altında var (plan 50 §4.1d). Zirve köprüsü kişiyi
+#   `Lokasyon + '/' + AltLokasyon` ile çözer (IUnitMap.Resolve("zirve", …): tam eşleşme + Trim, büyük harf Türkçe, yazım Zirve'deki
+#   gibi). zirve_lokasyon/zirve_altlokasyon parçaları KALIR (dashboard süzgeci `Lokasyon LIKE 'MA%'`); bileşik anahtar parçalarla
+#   tutmazsa LocationCatalog yüklemede FIRLATIR — iki gerçek doğmaz.
 version: 1
-updated: 2026-09-24
+updated: 2026-09-25
 
 locations:
   - id: fsm
@@ -23,28 +28,28 @@ locations:
     kind: store
     active: true
     stock_source: derinsis
-    keys: { derinsis_mekan: 1, zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "FSM", ad_ou: "OU=FSM" }
+    keys: { derinsis_mekan: 1, zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "FSM", zirve: "MAĞAZALAR/FSM", ad_ou: "OU=FSM" }
     note: "posMagaza 1 / M01; Zirve aktif 46 (24.09)"
   - id: ozluce
     name: Özlüce
     kind: store
     active: true
     stock_source: derinsis
-    keys: { derinsis_mekan: 4477, zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "ÖZLÜCE" }
+    keys: { derinsis_mekan: 4477, zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "ÖZLÜCE", zirve: "MAĞAZALAR/ÖZLÜCE" }
     note: "posMagaza 4477 / M02; Zirve aktif 57"
   - id: istyolu
     name: İstanbul Yolu
     kind: store
     active: true
     stock_source: derinsis
-    keys: { derinsis_mekan: 4478, zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "İST. YOLU" }
+    keys: { derinsis_mekan: 4478, zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "İST. YOLU", zirve: "MAĞAZALAR/İST. YOLU" }
     note: "posMagaza 4478 / M03; Zirve aktif 50"
   - id: heykel
     name: Heykel
     kind: store
     active: true
     stock_source: none
-    keys: { zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "HEYKEL", ad_ou: "OU=Heykel" }
+    keys: { zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "HEYKEL", zirve: "MAĞAZALAR/HEYKEL", ad_ou: "OU=Heykel" }
     note: >-
       ERP'de MAĞAZA mekânı yok (60398 HEYKEL TRANSFER = transfer deposu, GMY 24.09 — bu yüzden derinsis_mekan YAZILMADI).
       Zirve aktif 39+1 (BURSA_KÜLTÜR_MERKEZİ) + 1 (ASİYE); AD OU=Heykel 22 aktif hesap. Ana veri ERP'ye girince derinsis_mekan eklenir,
@@ -54,7 +59,7 @@ locations:
     kind: store
     active: true
     stock_source: none
-    keys: { zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "ŞURA" }
+    keys: { zirve_lokasyon: "MAĞAZALAR", zirve_altlokasyon: "ŞURA", zirve: "MAĞAZALAR/ŞURA" }
     note: "ERP'de yok; Zirve aktif 18 (ASİYE_BİNGÖLBALI). GMY 24.09: mağaza."
   - id: fsm-cafe
     name: FSM Kafe
@@ -62,7 +67,7 @@ locations:
     parent: fsm
     active: true
     stock_source: none
-    keys: { zirve_lokasyon: "KAFELER", zirve_altlokasyon: "FSM KAFE" }
+    keys: { zirve_lokasyon: "KAFELER", zirve_altlokasyon: "FSM KAFE", zirve: "KAFELER/FSM KAFE" }
     note: "Zirve aktif 17; kafe personeli mağaza uygulamasını KULLANMAZ (ERP12 kafe sistemi)"
   - id: ozluce-cafe
     name: Özlüce Kafe
@@ -70,7 +75,7 @@ locations:
     parent: ozluce
     active: true
     stock_source: none
-    keys: { zirve_lokasyon: "KAFELER", zirve_altlokasyon: "ÖZLÜCE KAFE" }
+    keys: { zirve_lokasyon: "KAFELER", zirve_altlokasyon: "ÖZLÜCE KAFE", zirve: "KAFELER/ÖZLÜCE KAFE" }
     note: "Zirve aktif 23"
   - id: istyolu-cafe
     name: İstanbul Yolu Kafe
@@ -78,21 +83,21 @@ locations:
     parent: istyolu
     active: true
     stock_source: none
-    keys: { zirve_lokasyon: "KAFELER", zirve_altlokasyon: "İST. YOLU KAFE" }
+    keys: { zirve_lokasyon: "KAFELER", zirve_altlokasyon: "İST. YOLU KAFE", zirve: "KAFELER/İST. YOLU KAFE" }
     note: "Zirve aktif 18"
   - id: headquarters
     name: Merkez Ofis
     kind: headquarters
     active: true
     stock_source: none
-    keys: { derinsis_mekan: 14, zirve_lokasyon: "GENEL MÜDÜRLÜK", zirve_altlokasyon: "GENEL YÖNETİM", ad_ou: "OU=MerkezIdari" }
+    keys: { derinsis_mekan: 14, zirve_lokasyon: "GENEL MÜDÜRLÜK", zirve_altlokasyon: "GENEL YÖNETİM", zirve: "GENEL MÜDÜRLÜK/GENEL YÖNETİM", ad_ou: "OU=MerkezIdari" }
     note: "posMagaza 14 mekanTip 2; Zirve aktif 50; AD 52 kişi. Merkez kullanıcısı = tüm aktif mağazalar kapsamı (IUnitScope.SeesAllUnits)"
   - id: central-depot
     name: Merkez Depo
     kind: depot
     active: true
     stock_source: wms
-    keys: { zirve_lokasyon: "GENEL MÜDÜRLÜK", zirve_altlokasyon: "MERKEZ DEPO" }
+    keys: { zirve_lokasyon: "GENEL MÜDÜRLÜK", zirve_altlokasyon: "MERKEZ DEPO", zirve: "GENEL MÜDÜRLÜK/MERKEZ DEPO" }
     note: "Zirve aktif 15; stok WMS (depo.stok_adres_palet_vw). ERP mekân anahtarı ölçülmedi — yazılmadı."
   - id: eticaret
     name: E-ticaret
