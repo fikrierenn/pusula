@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "mcp__sqlserver__sql_search_columns",
+      "mcp__sqlserver__sql_browse_schema",
+      "mcp__sqlserver__sql_describe_table",
+      "mcp__sqlserver__sql_query",
+      "Bash(dotnet --version)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet new *)",
+      "Bash(rm -f Data/WeatherForecast.cs Data/WeatherForecastService.cs Pages/Counter.razor Pages/FetchData.razor Shared/SurveyPrompt.razor)",
+      "Bash(rm -f \"D:/Dev/pusula/dashboard/Data/BankaSiniflandirmaService.cs\")",
+      "Bash(cd \"D:/Dev/operax\" 2>&1 && echo \"=== TOP LEVEL ===\" && ls -la 2>&1 | head -40 && echo \"=== SLN/CSPROJ ===\" && find . -maxdepth 3 \\\\\\( -name \"*.sln\" -o -name \"*.csproj\" \\\\\\) -not -path \"*/obj/*\" -not -path \"*/bin/*\" 2>&1 | head -40)",
+      "PowerShell(head -20)",
+      "Bash(rm -rf Pages)",
+      "Bash(dotnet build *)",
+      "Skill(session-handoff)",
+      "Skill(session-handoff:*)",
+      "Bash(grep -vE \"warning|Restore|Determining|Build succeeded|Elapsed|->|^\\\\s*$\")",
+      "Bash(dotnet add *)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "PowerShell(taskkill /F /IM dotnet.exe 2>$null)",
+      "PowerShell('killed')"
+    ]
+  }
+}
