@@ -159,6 +159,22 @@ def veri_cek(cn, bas: dt.date, bit: dt.date, sube: str | None,
     #   İKİNCİ ÖLÇÜT (yanlış-negatifi kapatır): takip kapalı + PDKS'te son okutması
     #   pencere BAŞLAMADAN önce. "Hiç okutması yok" bu ölçüte GİRMEZ: yeni açılmış
     #   ama kart basmayan kişi (PersNr 3473, Zirve'de aktif) elenmesin diye.
+    #
+    # ⚠⚠ ÜÇ-DEĞERLİ MANTIK TUZAĞI — `ISNULL` ŞART (ÖLÇÜLDÜ 28.09.2026).
+    #   Bu ölçüt ilk yazıldığında `ISNULL` YOKTU ve YUKARIDAKİ YORUMUN TERSİNİ
+    #   yapıyordu. Hiç okutması olmayan kişide `MAX(...)` NULL döner:
+    #       NULL < '20260901'        → UNKNOWN
+    #       ZeitAktiv=0 AND UNKNOWN  → UNKNOWN
+    #       NOT UNKNOWN              → UNKNOWN  →  WHERE satırı ELER
+    #   Yani yorumun "elenmesin diye" dediği kişi tam da eleniyordu — ve yorumda
+    #   örnek olarak verilen KİŞİNİN KENDİSİ (3473 KEMAL OCAK, İST.YOLU) her
+    #   `--ayrilanlar haric` çıktısından sessizce düşüyordu. Hata vermedi,
+    #   rakam yanlış oldu. Etkilenen nüfus ölçüldü: 01-16.09 penceresinde
+    #   TEK kişi (3473), 16 satır.
+    #   Yakalayan: reporthub SP'si ile parite kapısı (`zei32_sp_parite.py`).
+    #   SP aynı kuralı `IS NOT NULL` ile açıkça yazdığı için ayrışma görüldü.
+    #   DERS: `NOT (... AND <NULL olabilen karşılaştırma>)` deseni sessizce
+    #   satır eler. Karşılaştırmanın NULL tarafı her zaman ISNULL ile sabitlenir.
     ayrilan_suz = ""
     if ayrilanlar == "haric":
         ayrilan_suz = f"""
@@ -170,9 +186,9 @@ def veri_cek(cn, bas: dt.date, bit: dt.date, sube: str | None,
                        AND l3.TLe_Datum >= '{b8}' AND l3.TLe_Datum <= '{t8}'
                        AND l3.TLe_VonZeit IS NOT NULL), '17530101') )
         AND NOT ( p.Per_ZeitAktiv = 0
-              AND (SELECT MAX(l4.TLe_Datum) FROM TTagLes l4
-                   WHERE l4.TLe_PersNr = p.Per_PersNr
-                     AND l4.TLe_VonZeit IS NOT NULL) < '{b8}' )"""
+              AND ISNULL((SELECT MAX(l4.TLe_Datum) FROM TTagLes l4
+                          WHERE l4.TLe_PersNr = p.Per_PersNr
+                            AND l4.TLe_VonZeit IS NOT NULL), '99991231') < '{b8}' )"""
 
     ic = f"""
         SELECT  p.Per_PersNr, p.Per_Vorname, p.Per_Name,

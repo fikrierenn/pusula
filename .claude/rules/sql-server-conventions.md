@@ -595,3 +595,43 @@ DTO alanlarını İngilizce'ye çevirirken çarpıldı. Alias seçerken ayrılm�
 listesine bakılır; şüphedeyse ad değiştirilir (`RowCount` → `DayCount`,
 `Min` → `Minutes`). Köşeli parantezle kaçırmak da mümkün ama okunurluğu düşürür
 ve bir sonraki kopyalamada parantez düşer.
+
+## `NOT (... AND <NULL olabilen karşılaştırma>)` SESSİZCE SATIR ELER (28.09.2026)
+
+Üç-değerli mantık. `NULL < '20260901'` → **UNKNOWN**; `X AND UNKNOWN` → UNKNOWN;
+`NOT UNKNOWN` → **UNKNOWN**. `WHERE` yalnız TRUE'yu geçirir ⇒ **satır düşer.**
+
+Tehlike, yanlış satırın düşmesi değil — **niyetin tam tersinin olması ve hiçbir
+şeyin uyarmaması**. Hata yok, sayı yanlış.
+
+**Ölçülmüş vaka:** `zei32_rapor.py` ayrılan-personel süzgecinin ikinci kolu:
+```sql
+AND NOT ( p.Per_ZeitAktiv = 0
+      AND (SELECT MAX(l.TLe_Datum) FROM TTagLes l WHERE ...) < '{bas}' )
+```
+Yorumu *"hiç okutması olmayan kişi ELENMESİN diye"* diyordu ve örnek olarak
+PersNr 3473'ü veriyordu. `MAX` o kişide NULL dönüyor ⇒ tam o kişi eleniyordu.
+Yedi gün boyunca verilen her `--ayrilanlar haric` Excel'inde KEMAL OCAK yoktu.
+Etkilenen nüfus ölçüldü: **tek kişi** (dar olması tesadüf, kural değil).
+
+**Doğrusu — karşılaştırmanın NULL tarafı sabitlenir:**
+```sql
+AND NOT ( p.Per_ZeitAktiv = 0
+      AND ISNULL((SELECT MAX(...)), '99991231') < '{bas}' )
+```
+Sentinel yön bilinçli seçilir: burada "hiç okutma yok" → **elenmesin** isteniyor,
+o yüzden uzak gelecek. Ters istense `'17530101'` yazılır.
+
+**Sınama:** `NOT (...)` içindeki her karşılaştırma için sor —
+*"bu ifadenin bir tarafı NULL olabilir mi?"* Olabiliyorsa `ISNULL` ile sabitle
+ya da `IS NULL` dalını AÇIKÇA yaz. `IS NOT NULL` ile ayrı koşul da olur:
+SP portu bunu `r.SonOkutmaHep IS NOT NULL AND r.SonOkutmaHep < @Bas` diye yazdığı
+için DOĞRUydu ve **Python'daki hatayı o ortaya çıkardı** (parite kapısı).
+
+**Kardeş tuzak:** `IS NOT NULL` DerinSIS'te sıfır-sentinel'i elemez
+(bkz. § SIFIR SENTINEL). İkisi birlikte okunur: biri NULL'un varlığını, diğeri
+NULL yerine `0` konduğunu anlatır.
+
+⚠ **Bunu bugün hiçbir statik denetim yakalamıyor.** Yakalayan tek şey iki
+bağımsız uygulamayı karşılaştıran parite kapısıydı (`vardiya/zei32_sp_parite.py`).
+Tek kaynak olsaydı hata görünmezdi.
