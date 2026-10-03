@@ -79,3 +79,10 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 01:41 · T-010: orta (ertelendi → T-019): A2 'bağımsız kanıt' değil kaynak içi kimlik (kalem↔başlık aynı Encore satışı) — yeniden etiketlenir; ERP posOzetUrun.satIndirim büyüklük sınırı A3 olarak eklenebilir (FSM −%1,4 · Özlüce −%1,8 · İst.Yolu −%9,9; kapsam farkı, kuruş kimliği değil)
 - 04.10 01:41 · T-010: dusuk (ertelendi): UPT tip-1 daraltma ve iade Discount/Vat ara ölçümleri başlıkta, blok olarak yok
 - 04.10 01:41 · T-010: tamam (85dadfb..0eada09, inceleme temiz, 1 düzeltme turu, 1 orta+1 düşük ertelendi). T-047 kapsamı: IsValid=1 + TotalDiscount→−DistributedAmount
+- 04.10 01:41 · Commit: 39702ee chore(T-010): defter + sema adayı
+- 04.10 01:46 · Commit: 2c2b1a0 chore(bkm): T-011 kanonik H07 marj ve ABC (T-011)
+- 04.10 01:47 · T-011: kapılar STATIC ✓ (0 hata, 22 W = panel gövdesindeki NOLOCK, K8)
+- 04.10 01:53 · T-011: orta (ertelendi → T-019): başlıktaki A−C gerekçesi yanlış (sql-inceleyici ölçtü: fark ERP'de elle girilmiş eTip 4 (gKisi≠31) − eTip 5; FSM 0,46 TL, Özlüce 1,05 TL kalan; İst.Yolu 19.09↔21.09 tarih kayması) — gün×mağaza bloğu eklenir; depo 'adet 0' yalnız irsAyr.ehAdetN için (ehAdet ve irsHrk −327.868 dolu); blokta olmayan rakamlar için D/M/B-NEG/B-1001 blokları; ABC fark (b) bugün 0
+- 04.10 01:53 · T-011: dusuk (ertelendi): A1 etiketi 100+4−5 (101 çıkarılmamış); B1 ORDER BY eşitlik; N'de nüfus 0 koşulu
+- 04.10 01:53 · T-049: KARAR bekliyor — panel marjı maliyetsiz ürün cirosunu düşürüyor (3 mağaza 260,1M; 254,3M'si Sınav Okulları 31 ürün). Kontrat 'Ciro'da kalır' harfiyen uygulanırsa Sınav marjı ~%100 olur. Öneri: ciro maliyetli/maliyetsiz ikiye ayrılır, marj % yalnız maliyetli ciro üzerinden, maliyet kapsaması ayrı kolon
+- 04.10 01:53 · T-011: tamam (39702ee..2c2b1a0, inceleme temiz, 2 orta+3 düşük ertelendi, 1 Yüksek T-049 kontratına KARAR)
