@@ -44,3 +44,9 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 00:35 · Karar: kanonik .sql dosyalarında SSMS için DECLARE + GO kalır; T-021 KanonikSorgu.Oku blok metninden GO satırlarını ve DECLARE @Bas/@Bit ön ekini ayıklayıp parametreyi Dapper ile verir, salt-okuma kapısı yalnız ayıklanmış SELECT/WITH metnini görür — dosyalar SSMS'te koşulabilir kalsın — yanlışsa T-021 ayıklayıcısı bir blokta parametreyi kaçırır; kanonik test KOŞAMADI verir (sessiz değil)
 - 04.10 00:35 · T-005: dusuk (ertelendi): başlıktaki ~5,14M kalem indirimi rakamı komutsuz atıf; GO/DECLARE ayıklama T-021'e (Karar kayıtlı); kısmi iade 114 belge / 140.159,90 brüt (B2'nin %0,16) ölçüldü, başlığa eklenmedi
 - 04.10 00:35 · T-005: tamam (e1a0a78..86de34d, inceleme temiz, 1 düzeltme turu, 1 ertelendi). T-019 kapı önerisi: B2 = satış tarafı fiş-tekil 18.579.831,46 − C iade indirimi 323.221,53
+- 04.10 00:55 · Commit: 0e3347c chore(bkm): T-006 kanonik H02 win-back (T-006)
+- 04.10 00:56 · T-006: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:01 · Karar: H02 ToplCiro penceresi [@Bugun-365, @Bugun) kalır (görev metni + kontrat böyle); T-033 panel düzeltmesi aynı pencereyi kullanır — son 90 gündeki iade eski alışın cirosundan düşülmeli, eşik net harcamaya bakar — yanlışsa 04.10'da 10 müşteri listeden düşer
+- 04.10 01:01 · T-006: orta (ertelendi → T-033 özetine): (1) ToplCiro pencere farkı başlıkta yok (10 müşteri); (2) elle iç kart listesi kanonikte yok — T-033 testi @IcIds'i iki tarafa da verir; (3) SonSatis datetime gün başı, kontrat date — T-033 DateOnly'ye çevirir; (4) 'Önce' eşdeğer biçimle ölçüldü (ÇIKARIM etiketi eksik); panel SQL commandTimeout 30 sn vs ham 500 sn
+- 04.10 01:01 · T-006: dusuk (ertelendi): başlıkta Sonra/Bağımsız satırları iki kez; N bloğu Aday CTE kopyası
+- 04.10 01:01 · T-006: tamam (47e7030..0e3347c, inceleme temiz, 4 orta+2 düşük ertelendi)
