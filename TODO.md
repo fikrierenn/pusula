@@ -13,6 +13,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-10-03 — ODAK ürün hattı keşfi + SP kusurları + düzeltme kodu (5 commit)
+- 74 modül okundu; zincir: dış yükleyici → `OdakUrunGuncellemeEslestir` · job `odakUrunAktar_job` → `odakFiyatAktarim` + `tsofturunaktarim` · stok 5 dk KITAPSEPETI.
+- 15 ölçülmüş kusur (SP + satır); en kritik: fiyat döngüsü (10.108 ürün/saat) + 220 bayrağı deliği → B-183..B-197.
+- Düzeltme kodu 17 blok, 17/17 derlendi, etki ölçüldü (`sorgular/2026-10-03-odak-duzeltme-onerileri.sql`).
+- Word + Claude Docs brief, sema (8 entity, 6 köprü, 3 kod, 3 metrik, kusur kaydı), curator dry-run.
+
 ### 2026-09-22 — PDKS raporu: sessiz kesinti teşhisi + şube×gün matrisi + ayrılmış kapısı (1 commit)
 - **Görev iki gün tetiklenmedi, sebep ÖLÇÜLDÜ** (`list_task_runs`): 18.09 koşumu hâlâ
   `running` (oturum sohbete çevrilmişti) → 19 ve 21.09 tetiklemeleri kayıt bırakmadan
