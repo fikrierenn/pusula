@@ -17,11 +17,16 @@ Formül kolonları (Excel'de canlı, script her koşuda aralığı yeniden yazar
 Kaynak (sema canonical — ilk wide SQL ile aynı):
   ŞUBE satış  = dbo.irs_vw NET (eTip 1,4,3,5,100,101; -1*SUM(ehAdet); eDurum=1 veya eTip 100/101)
   E-TİC satış = OPENQUERY(ODAKJOKER) J_ITEMS.DERINSIS_ID=stkID (STATUS NOT IN 2004,2005,2010)
-  DEPO stok   = depo.stok_adres_palet_vw RAF(0)+GR(1)  ·  MAĞAZA stok = stokSon_vw
+  DEPO stok   = depo.stok_adres_palet_vw RAF(0)+GR(1) — ANLIK (WMS geçmiş tutmaz; GMY 03.10: "wms anlık olmalı")
+  MAĞAZA stok = dbo.irsHrk defteri, ehAltDepo=0, raporun SON AYININ son günü itibarıyla
+                (ölçüm 03.10.2026: irsHrk bugüne kadar ≈ stokSon_vw, mekan başına fark ≤3 adet)
 Türkçe varchar → pyodbc (ODBC Driver 18, CP1254 doğru decode).
-Kullanım: python scripts/stok_satis_aylik_wide.py [YYYYMM_bas]   (varsayılan 202301)
+Kullanım: python scripts/stok_satis_aylik_wide.py [YYYYMM_bas] [--ay=YYYY-MM]
+  YYYYMM_bas varsayılan 202301 · --ay = raporun son ayı (varsayılan: geçen ay). Örn. --ay=2026-09
+Ay sonu: ayın ilk günlerinde koş → raporlar/ay-sonu-stok-satis/stok-satis-sube-detayli-YYYY-MM.xlsx
+         (GM dashboard /ay-sonu-stok sayfası listeler). Stok = koşu anı → ay kapanır kapanmaz koş.
 """
-import os, sys, re, datetime
+import os, sys, re, datetime, shutil
 import pyodbc
 import openpyxl
 from openpyxl.styles import Font, PatternFill
@@ -30,6 +35,9 @@ from openpyxl.utils import get_column_letter
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 MALIYET = "--maliyet" in sys.argv          # temmuz birebir = maliyetsiz (varsayılan); --maliyet → 4 ek kolon
 BAS = ARGS[0] if ARGS else "202301"
+AY = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--ay=")), None)
+if AY is not None and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", AY):
+    sys.exit("--ay biçimi YYYY-MM olmalı (örn. --ay=2026-09)")
 
 # --- .env (sır runtime okunur, literal gömülmez) ---
 ENV = {}
@@ -51,6 +59,11 @@ cn.timeout = 1800
 by, bm = int(BAS[:4]), int(BAS[4:6])
 today = datetime.date.today()
 end_excl = today.year * 100 + today.month           # bu ayın 1'i (üst sınır, hariç)
+if AY is not None:                                  # seçilen ayın ERTESİ ayının 1'i
+    ay_y, ay_m = int(AY[:4]), int(AY[5:7])
+    end_excl = (ay_y + 1) * 100 + 1 if ay_m == 12 else ay_y * 100 + ay_m + 1
+    if end_excl > today.year * 100 + today.month:
+        sys.exit(f"--ay={AY} henüz kapanmadı (tam-olmayan ay üretilmez)")
 months, y, mo = [], by, bm
 while y * 100 + mo < end_excl:
     months.append(f"{y:04d}-{mo:02d}")
@@ -113,8 +126,8 @@ if MALIYET:
             nd += 1
     print(f"  {nd} ürün devirden maliyetli (fatura yok) · toplam maliyetli {len(maliyet)}", flush=True)
 
-# --- STOK: depo (WMS hücre RAF+GR) + mağaza (stokSon_vw) ---
-print("Stok çekiliyor (depo=WMS RAF+GR · mağaza=stokSon_vw)...", flush=True)
+# --- STOK: depo (WMS hücre RAF+GR, ANLIK) + mağaza (irsHrk, ay sonu itibarıyla) ---
+print(f"Stok çekiliyor (depo=WMS anlık · mağaza=irsHrk < {T2})...", flush=True)
 depo = {}    # stkID -> adet
 cur.execute("""
     SELECT stkID, SUM(Stok) FROM depo.stok_adres_palet_vw WITH(NOLOCK)
@@ -123,8 +136,9 @@ for sid, st in cur.fetchall():
     depo[sid] = int(st or 0)
 mstok = {}   # stkID -> {mekan: adet}
 cur.execute("""
-    SELECT ehstkID, ehMekan, SUM(stok) FROM stokSon_vw WITH(NOLOCK)
-    WHERE ehMekan IN (1,4477,4478) GROUP BY ehstkID, ehMekan""")
+    SELECT ehstkID, ehMekan, SUM(ehAdetN) FROM dbo.irsHrk WITH(NOLOCK)
+    WHERE ehMekan IN (1,4477,4478) AND ehAltDepo = 0 AND ehTrhS < ?
+    GROUP BY ehstkID, ehMekan""", T2)
 for sid, mk, st in cur.fetchall():
     mstok.setdefault(sid, {})[mk] = int(st or 0)
 
@@ -273,8 +287,17 @@ ws.auto_filter.ref = f"A1:{get_column_letter(len(HEAD))}{len(order) + 1}"   # ba
 
 suf = "-maliyetli" if MALIYET else ""
 out = os.path.join(os.path.dirname(__file__), "..", "raporlar",
-                   f"stok-satis-aylik-wide{suf}-{today.strftime('%Y%m%d')}.xlsx")
+                   f"stok-satis-aylik-wide{suf}-{months[-1]}-{today.strftime('%Y%m%d')}.xlsx")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 wb.save(out)
 print(f"BITTI · {len(order)} satır × {len(HEAD)} kolon · son-12 aralık {RANGES}", flush=True)
 print(" -> " + os.path.abspath(out), flush=True)
+
+# Ay sonu ARŞİVİ — GM dashboard "Ay Sonu Stok-Satış" sayfası buradan ay seçtirip indirir.
+# Ad = raporun SON AYI (bugün 03.10 koşulursa 2026-09). Maliyetli varyant arşive girmez (birebir format değil).
+if not MALIYET:
+    arsiv = os.path.join(os.path.dirname(__file__), "..", "raporlar", "ay-sonu-stok-satis")
+    os.makedirs(arsiv, exist_ok=True)
+    hedef = os.path.join(arsiv, f"stok-satis-sube-detayli-{months[-1]}.xlsx")
+    shutil.copyfile(out, hedef)
+    print(" -> arşiv: " + os.path.abspath(hedef), flush=True)

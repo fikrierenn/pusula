@@ -50,6 +50,7 @@ public static class ServiceRegistration
         s.AddSingleton<TakvimService>();       // tatil API cache + okul JSON plan-14
         s.AddSingleton<IcKartService>();       // elle işaretli iç/mağaza kartları plan-16
         s.AddSingleton<AyarService>();         // iş eşiği ayarları (PanelAyar) — devir/stockout/risk/hariç-marka
+        s.AddSingleton<AySonuStokUretici>();   // ay sonu stok-satış raporu üretimi (python script, tek seferde bir)
         s.AddScoped<ForecastOkuService>();     // forecast çıktısı okur plan-15
         s.AddScoped<ForecastService>();        // forecast tetikler (python run.py) B-109
         s.AddScoped<NotifState>();             // bildirim merkezi (Home üretir, MainLayout okur)

@@ -403,6 +403,17 @@ var sezonAksiyonExcel = app.MapGet("/api/sezon-aksiyon-excel", async (
 });
 if (korumaGerekli) sezonAksiyonExcel.RequireAuthorization();
 
+// Ay sonu Stok-Satış raporu (arşivden, ~60MB) — dosya akışla verilir; SignalR/base64'e sokulmaz.
+var aySonuStok = app.MapGet("/api/ay-sonu-stok-satis/{ay}", (string ay, IWebHostEnvironment env) =>
+{
+    var yol = GmDashboard.Data.AySonuStokArsiv.Bul(env.ContentRootPath, ay);
+    return yol is null
+        ? Results.NotFound($"{ay} ayına ait rapor arşivde yok.")
+        : Results.File(yol, GmDashboard.Data.AySonuStokArsiv.ContentType,
+                       GmDashboard.Data.AySonuStokArsiv.IndirmeAdi(ay), enableRangeProcessing: true);
+});
+if (korumaGerekli) aySonuStok.RequireAuthorization();
+
 app.MapGet("/api/olustok-excel", async (RefQueries ref_, HttpContext ctx) =>
 {
     var rows = await ref_.GetOluStokTumAsync();

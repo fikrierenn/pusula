@@ -60,6 +60,7 @@ public static class NavRegistry
         new NavItem("sezon-aksiyon", "Sezon Aksiyon", "list-checks", Section: "STOK & SATINALMA"),
         new NavItem("envanter", "Envanter", "package", InBottomNav: true, Section: "STOK & SATINALMA"),
         new NavItem("stok-hareket", "Stok Hareket", "history", Section: "STOK & SATINALMA"),
+        new NavItem("ay-sonu-stok", "Ay Sonu Stok-Satış", "sheet", Section: "STOK & SATINALMA"),
         new NavItem("odak-stok", "ODAK Stok", "warehouse", Section: "STOK & SATINALMA"),
         new NavItem("bulunurluk", "Bulunurluk", "scan-barcode", Section: "STOK & SATINALMA"),
         new NavItem("baskisi-yok", "Baskısı Yok", "printer", Section: "STOK & SATINALMA"),

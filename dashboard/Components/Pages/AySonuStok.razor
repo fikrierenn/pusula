@@ -1,0 +1,139 @@
+@page "/ay-sonu-stok"
+@using GmDashboard.Data
+@implements IDisposable
+@inject IWebHostEnvironment Env
+@inject AySonuStokUretici Uretici
+@rendermode InteractiveServer
+
+<PageTitle>Ay Sonu Stok-Satış — BKM GM</PageTitle>
+
+<div class="mb-4">
+    <div class="text-xs text-base-content/50">Kırtasiye · Oyuncak · Hediyelik — şube detaylı, formüllü</div>
+    <h1 class="text-2xl font-bold tracking-tight m-0">Ay Sonu Stok ve Satış Raporu</h1>
+</div>
+
+@* ── Üret: seçilen ay için sıfırdan ── *@
+<div class="bg-base-100 border border-base-300 rounded-lg p-3 mb-4">
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-base-content/50">Ay</span>
+        <select class="select select-bordered select-sm" @bind="_secili" disabled="@Uretici.Calisiyor">
+            @foreach (var ay in _aylar)
+            {
+                <option value="@ay">@AySonuStokArsiv.AyAdi(ay)@(ArsivdeVar(ay) ? " ✓" : "")</option>
+            }
+        </select>
+        <button class="btn btn-sm btn-primary gap-1" @onclick="Uret" disabled="@Uretici.Calisiyor">
+            @if (Uretici.Calisiyor) { <span class="loading loading-spinner loading-xs"></span> }
+            else { <span class="inline-flex"><i data-lucide="play" class="w-4 h-4"></i></span> }
+            Üret
+        </button>
+        @if (!Uretici.Calisiyor && ArsivdeVar(_secili))
+        {
+            <a class="btn btn-sm btn-outline gap-1" href="@($"/api/ay-sonu-stok-satis/{_secili}")" download>
+                <span class="inline-flex"><i data-lucide="file-down" class="w-4 h-4"></i></span> İndir
+            </a>
+            <span class="text-xs text-base-content/50">Arşivde var — Üret yeniden oluşturur.</span>
+        }
+    </div>
+
+    @if (_hata is not null)
+    {
+        <div class="alert alert-warning text-sm mt-3"><span>@_hata</span></div>
+    }
+
+    @if (Uretici.Ay is not null)
+    {
+        var log = Uretici.Log;
+        <div class="mt-3 text-sm">
+            @if (Uretici.Calisiyor)
+            {
+                <span class="font-semibold">@AySonuStokArsiv.AyAdi(Uretici.Ay) üretiliyor</span>
+                <span class="text-base-content/50"> · @Sure() · genelde ~10 dk, sayfadan çıkabilirsiniz</span>
+            }
+            else if (Uretici.Basarili == true)
+            {
+                <span class="text-success font-semibold">@AySonuStokArsiv.AyAdi(Uretici.Ay) hazır.</span>
+                <a class="link link-primary ml-2" href="@($"/api/ay-sonu-stok-satis/{Uretici.Ay}")" download>İndir</a>
+            }
+            else if (Uretici.Basarili == false)
+            {
+                <span class="text-error font-semibold">@AySonuStokArsiv.AyAdi(Uretici.Ay) üretilemedi.</span>
+            }
+        </div>
+        @if (log.Count > 0)
+        {
+            <pre class="bg-base-200 rounded p-2 mt-2 text-[11px] leading-snug max-h-48 overflow-auto whitespace-pre-wrap">@string.Join("\n", log)</pre>
+        }
+    }
+</div>
+
+@* ── Arşiv ── *@
+@if (_kayitlar.Count > 0)
+{
+    <div class="bg-base-100 border border-base-300 rounded-lg overflow-x-auto">
+        <table class="table table-sm">
+            <thead>
+                <tr><th>Arşiv</th><th>Üretim</th><th class="text-right">Boyut</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var k in _kayitlar)
+                {
+                    <tr>
+                        <td class="font-semibold">@k.AyAdi</td>
+                        <td>@k.Uretim.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td class="text-right">@Mb(k.Boyut)</td>
+                        <td class="text-right">
+                            <a class="btn btn-xs btn-ghost gap-1" href="@($"/api/ay-sonu-stok-satis/{k.Ay}")" download>
+                                <span class="inline-flex"><i data-lucide="file-down" class="w-3.5 h-3.5"></i></span> İndir
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="text-base-content/50 text-[11px] mt-3 leading-relaxed">
+    Satış: 2023-01'den seçilen aya kadar ay ay — FSM · Özlüce · İst.Yolu (irs_vw net) + E-ticaret (JOKER).
+    Mağaza stoğu: seçilen ayın <b>son günü</b> itibarıyla (irsHrk defteri). Depo stoğu: WMS <b>anlık</b> (RAF+GR; geçmişi tutulmaz).
+    Ürün adı/fiyat/kategori: güncel kart. "Son 1 yıl Satış" ve "Stok Dönüş Hızı" Excel formülüdür.
+</div>
+
+@code {
+    private IReadOnlyList<string> _aylar = [];
+    private IReadOnlyList<AySonuStokArsiv.Kayit> _kayitlar = [];
+    private string _secili = "";
+    private string? _hata;
+    private bool? _sonDurum;
+
+    protected override void OnInitialized()
+    {
+        _aylar = AySonuStokArsiv.KapanmisAylar();
+        _secili = Uretici.Calisiyor && Uretici.Ay is not null ? Uretici.Ay : _aylar[0];
+        Yenile();
+        Uretici.Degisti += Degisti;
+    }
+
+    private void Yenile() => _kayitlar = AySonuStokArsiv.Listele(Env.ContentRootPath);
+
+    private bool ArsivdeVar(string ay) => _kayitlar.Any(k => k.Ay == ay);
+
+    private void Uret()
+    {
+        _hata = Uretici.Baslat(_secili);
+    }
+
+    private void Degisti()
+    {
+        // Bitişte arşiv listesini tazele (yeni dosya görünsün)
+        if (_sonDurum != Uretici.Basarili) { _sonDurum = Uretici.Basarili; Yenile(); }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string Sure() => Uretici.Baslangic is { } b ? $"{(DateTime.Now - b):mm\\:ss}" : "";
+
+    private static string Mb(long bayt) => $"{bayt / 1024d / 1024d:N1} MB";
+
+    public void Dispose() => Uretici.Degisti -= Degisti;
+}
