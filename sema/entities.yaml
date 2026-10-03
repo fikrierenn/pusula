@@ -53,6 +53,13 @@ entities:
       (2026-01..09, Eylül dahil) ⇒ çağıran taraf `@cikis=0` geçiyor. Guard etkisiz.
       ✅ ÇAĞIRAN ÖLÇÜLDÜ (2026-10-03): `ent.odakUrunAktar`ın son satırı `EXEC ent.odakFiyatAktarim 0`;
         o da SQL job `odakUrunAktar_job` (saatlik 08:30-23:01) adım 1. ~75 sn/koşum.
+      ⛔ DÖNGÜ ÖLÇÜLDÜ (2026-10-03): ikinci blok (satır 63-84, "marka iskonto değişenler") son 9525
+        alış fInd1'i marka iskontosuyla kıyaslıyor; 228'li üründe alış satırı yazılmadığı için (satır 130-131)
+        fark kapanmıyor → 10.108 ürün HER SAAT yeniden belgeleniyor (30g 4.560.438 satır, saatte ~10.465);
+        satır 73 "önceki fiyat"ı etiket−0,01 yazıyor (4.630.424 sahte satır). fytOzl toplam 159,3M.
+      ⛔ 220 BAYRAĞI DELİK (2026-10-03): ub220 süzgeci yalnız birinci blokta (53-55); ikinci blok 220'li
+        15 üründe elle fiyatı ODAK etiketiyle ezdi (ör. 1677679 elle 800 → 864).
+      ⚠ satır 49 `urnFrm Etkin=1` → satış satırı firma başı çoğalıyor (aynı ürün-gün 323.590).
       ✅ SONUÇ ÖLÇÜLDÜ (2026-10-03): bayraksız tekil üründe `urn.fiyatS = odak_urun_tam.etiket_fiyat`
         **645.914/645.914**; 220-bayraklı 501 üründen 401'i farklı; çift stkID'lerde MAX(−0,01).
 

@@ -268,3 +268,55 @@ UNION ALL SELECT 'ca_fatura_kasimdan_once', COUNT(*) FROM DerinSISBkm.bkm.OdakIa
  ek: irsaliye KDV (9525, eTip 1, 30 gün, iskontolu+KDV'li 797) → iskonto sonrası 719, yalnız öncesi 0
  ek: OdakStokDegisenStok_Log 94.739.458 (12.09: 92.392.737)
 */
+
+/* ══ EK — SORUNLARIN DERİN İNCELEMESİ (2026-10-03, ikinci tur) ═══════════════
+   Satır numaraları sys.sql_modules tanımına göre. */
+
+/* ── E1) odakFiyatAktarim satır 63-84 + 130-131: 228'li üründe her saat fiyat satırı ──
+   30g: satış satırı 4.702.211 · sahte önceki (etiket-0,01) 4.630.424 · distinct ürün 36.497
+   228=True 10.108 ürün → 4.560.438 satır (ürün başı 451, 30 günün 29'u) · bugün saatte ~10.465 satır */
+WITH r AS (SELECT f.fStkID, COUNT(*) satir, COUNT(DISTINCT b.feTarihA) gun
+           FROM DerinSISBkm.dbo.fytOzl f JOIN DerinSISBkm.dbo.fytB b ON b.feID=f.fhID
+           WHERE b.feNot LIKE '%Odak2 Ent' AND b.feTarihA>=DATEADD(DAY,-30,GETDATE())
+             AND f.fTur=0 AND f.oncekiFiyat=f.sonrakiFiyat-0.01 GROUP BY f.fStkID)
+SELECT CASE WHEN x228.bVeriID IS NOT NULL THEN '228_True' ELSE '228_yok' END b228,
+       COUNT(*) urun, SUM(r.satir) satir, AVG(r.satir) ort_satir, AVG(r.gun) ort_gun
+FROM r LEFT JOIN DerinSISBkm.dbo.urnBilgi x228 ON x228.bVeriID=r.fStkID AND x228.bBilgiID=228 AND x228.bDeger='True'
+GROUP BY CASE WHEN x228.bVeriID IS NOT NULL THEN '228_True' ELSE '228_yok' END;
+
+SELECT CONVERT(varchar(13),b.gTarih,120) saat, COUNT(*) satir
+FROM DerinSISBkm.dbo.fytOzl f JOIN DerinSISBkm.dbo.fytB b ON b.feID=f.fhID
+WHERE b.feNot LIKE '%Odak2 Ent' AND b.feTarihA>=CAST(GETDATE() AS date)
+GROUP BY CONVERT(varchar(13),b.gTarih,120) ORDER BY 1;
+
+/* ── E2) 220 bayrağı ikinci blokta yok: elle fiyat eziliyor (15 ürün, 3.037 satır/30g) ── */
+WITH r AS (SELECT DISTINCT f.fStkID FROM DerinSISBkm.dbo.fytOzl f JOIN DerinSISBkm.dbo.fytB b ON b.feID=f.fhID
+           JOIN DerinSISBkm.dbo.urnBilgi x ON x.bVeriID=f.fStkID AND x.bBilgiID=220 AND x.bDeger='True'
+           WHERE b.feNot LIKE '%Odak2 Ent' AND b.feTarihA>=DATEADD(DAY,-30,GETDATE()) AND f.fTur=0)
+SELECT u.stkID, u.fiyatS,
+  (SELECT TOP 1 CONVERT(varchar(10),b.feTarihA,104)+' '+b.feNot+' '+CONVERT(varchar,f.sonrakiFiyat)
+   FROM DerinSISBkm.dbo.fytOzl f JOIN DerinSISBkm.dbo.fytB b ON b.feID=f.fhID
+   WHERE f.fStkID=u.stkID AND f.fTur=0 AND b.feNot NOT LIKE '%Odak2 Ent' ORDER BY f.fID DESC) son_elle
+FROM r JOIN DerinSISBkm.dbo.urn u ON u.stkID=r.fStkID;
+-- 1677679: elle 800 (03.10.2026) → bugün 864 = ODAK etiketi · 251314: elle 200 → 112,90
+
+/* ── E3) satır 49 urnFrm fan-out: aynı ürün-gün çok satış satırı 323.590 ── */
+
+/* ── E4) tsofturunaktarim 11-12 / 15-21: ERP'de kapalı ama web'de aktif 130/130 ODAK satışta ── */
+SELECT COUNT(DISTINCT u.stkID) FROM DerinSISBkm.dbo.urn u JOIN DerinSISBkm.dbo.urnBrkd b ON b.urnBrkdStkID=u.stkID
+JOIN BKMDATA.ent.odak_urun_tam o ON o.barkod=b.urnBarkod WHERE u.urnDurum=0 AND u.kod1ID=1 AND o.satis_durum=1;
+
+/* ── E5) odakUrunAktar 879: kısa ad global — 842.648/842.648 = ilk 29 karakter (194.128 ODAK dışı) ── */
+SELECT COUNT(*) toplam, SUM(CASE WHEN stkAdKisa=SUBSTRING(stkAd,0,30) THEN 1 ELSE 0 END) esit FROM DerinSISBkm.dbo.urn;
+
+/* ── E6) odakUrunAktar 178-181: her koşumda güncellemeye giren ürün 25.480 ── */
+SELECT COUNT(*) FROM DerinSISBkm.dbo.urn u WHERE EXISTS(SELECT 1 FROM DerinSISBkm.dbo.urnFrm f
+  WHERE f.urnFrmStkID=u.stkID AND f.urnFrmEsas=0 AND f.urnFrmFirmaID<>u.stkFirma);
+
+/* ── E7) Eslestir 34 (stkKod join) — bayat görsel: stkKod<>barkod 1.761/23.446 · eşit 183/623.357 ── */
+SELECT CASE WHEN u.stkKod=o.barkod THEN 'esit' ELSE 'farkli' END grp, COUNT(*) urun,
+       SUM(CASE WHEN w.kt IS NOT NULL AND o.gorsel_guncelleme_tarih>DATEADD(MINUTE,1,w.kt) THEN 1 ELSE 0 END) bayat
+FROM BKMDATA.ent.odak_urun_tam o JOIN DerinSISBkm.dbo.urnBrkd b ON b.urnBarkod=o.barkod
+JOIN DerinSISBkm.dbo.urn u ON u.stkID=b.urnBrkdStkID
+LEFT JOIN (SELECT urnWebBilgiID, MAX(urnWebkTarih) kt FROM DerinSISBkmWeb.web.urnWeb GROUP BY urnWebBilgiID) w ON w.urnWebBilgiID=u.stkID
+WHERE o.SilinecekUrun=0 GROUP BY CASE WHEN u.stkKod=o.barkod THEN 'esit' ELSE 'farkli' END;

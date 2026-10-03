@@ -131,23 +131,31 @@ KITAPSEPETI son 24 saat değişimleri → `stok_aktarim_odak` → `odak_depo_Sto
 
 ---
 
-## 4. Sorunlar — hepsi ölçüldü
+## 4. Sorunlar — hepsi ölçüldü (ikinci tur, SP + satır)
 
-| # | Sorun | Kanıt | Etki |
-|---|---|---|---|
-| **S-1** | **"Ürün Web Adı" (10) eklenmiyor.** Ekleme bloğu boş satırın `bDeger`'ini karşılaştırıyor; NULL ile karşılaştırma hiçbir zaman doğru olmuyor. | Blok aynen koşturuldu: **0 satır**; karşılaştırma çıkarılınca 599.370. Bağlı 646.764 üründen **599.333'ünde** 10 yok. | Site adı `stkAd`'a düşüyor (`tsofturunaktarim`). Bunun sonucu: 100 karakterden uzun 1.389 ad kesik, marka önekli olması gereken kategoride (`001007002`) 1.316 ürün öneksiz, 364 ürünün tırnakları silinmiş. |
-| **S-2** | **Basım yılı / basım sayısı / sayfa sayısı güncellemesi `stkKod = barkod` ile bağlanıyor** (barkod köprüsü yerine). | Sapma **yalnız** stkKod≠barkod grubunda: 23.230 üründe yıl **2.360**, basım sayısı **115**, sayfa **60**. stkKod=barkod grubunda (623.185 ürün) üçü de **0**. | Önceden açılmış ya da ikinci barkodlu ürünlerde künye bayat (örnek: ODAK 2023, ERP 2021). |
-| **S-3** | **Bazı öznitelikler yalnız eklenir, hiç güncellenmez:** boy (102), alt başlık (177), açıklama (175), web adı (10). | Boy farkı **5.392** (her iki grupta), alt başlık **4.578**. Açıklamada 292.562 fark var, ama çoğu HTML karakter kodlaması farkı (`&ccedil;` ↔ `ç`); gerçek içerik değişimi bu yöntemle **ayrılamadı**. | ODAK'ta düzeltilen bilgi ERP'ye ve siteye geçmiyor. En (101) ve ağırlık (106) güncel: fark 0. |
-| **S-4** | **Aynı stkID'ye bağlı iki ODAK ürününden biri silinmiş, biri aktifse durum her saat iki kez yazılıyor.** `odakUrunAktar` 0 yapıyor, aynı job'ın 2. adımı `tsofturunaktarim` 1 yapıyor. | Silinecek/yalnız-mağaza satırı olup aktif kalan **141 ürünün 141'i** çift ve hepsinin aktif bir ikinci satırı var. Saatlik gidip gelme kod sırasından türetildi — ÇIKARIM, log'da gözlenmedi. | 140'ının bir satırı ODAK'ta **"Yasaklı"** statüde. Ürün aktif kalıyor çünkü ikinci barkodu satışta. Elle bakılmalı. |
-| **S-5** | **Tarih metni `'2025-11-01'`** (`bkm.OdakIadeIrsaliyeleriFaturalasmamis`). | Türkçe oturumda **11.01.2025** okunuyor (test edildi). | Görünüm bugün **0 satır** döndürüyor, şu an etkisi yok. Ama süzgeç 10 ay geniş. |
-| **S-6** | **Mağaza fiyat değişimi log'da web değişimi gibi görünüyor.** Mağaza SP'si değişen kayıtta `Tip` yazmıyor, varsayılan **0** (web). | `DEFAULT ((0))` ölçüldü. | `odak_urun_log`'dan "mağaza fiyatı ne zaman değişti" sorusu cevaplanamaz. |
-| **S-7** | **`bkm.OneriSiparisOdakKullanici.OdakSifre`** — 8 satırın 7'sinde dolu. | Sayıldı, değer bilinçli olarak okunmadı. Düz metin mi şifreli mi **bakılmadı**. | Düz metinse ERP'yi okuyan herkes ODAK hesaplarına erişir. Güvenlik kontrolü gerekli. |
-| **S-8** | **`OdakStokDegisenStok_Log` sınırsız büyüyor.** | 12.09: 92.392.737 → 03.10: 94.739.458 = **21 günde +2,35M** (günde ~112 bin). Silme yok. | Disk ve 5 dakikalık job süresi yavaş yavaş artar. |
-| **S-9** | **Tedarikçi alanı gerçek tedarikçiyi göstermiyor.** Her ürüne 56 ve 9525 ekleniyor, `stkFirma` 679.076 üründe 9525. | Bölüm 3.2/5. | `urnFrm` / `stkFirma` ile "hangi tedarikçiden" analizi yanıltıcı. Tedarikçi alıştan (`irs.eFirma`) okunmalı. |
-| **S-10** | **Elle yazılmış sabitler:** barkod `9786257283298` stoktan hariç (7 adet), 3 barkod açılıştan hariç, kişi 137, firma 56/9525, kategori 43/35, pazaryeri 2, iskonto eşiği 13, KITAPSEPETI IP'si. | Kod. | Gerekçesi kodda yok. Değişince sessizce eskir. |
-| **S-11** | **ODAK→merkez depo transfer hattı ölü.** | `OdakIrsaliyeBaslik` son aktarım 27.03.2024; 3 başlık `9999-12` tarihli ve aktarılmamış. `ODAK_DEPO_TRANSFER` 3 günlük plan önbelleğinde yok. | Ölü kod + 1,83M satırlık kullanılmayan tablo. |
-| **S-12** | **`ent.OdakUrunMaliyet` 40 stkID'de birden çok satır döndürüyor.** | Ölçüldü. | Bu görünüme stkID ile bağlanan sorgu o ürünlerde satırı çoğaltır (rakip fiyat görünümleri). |
-| **S-13** | **Kaynak kod sürüm kontrolünde görünmüyor ve bugün iki SP değişti.** | `modify_date` 03.10.2026. | Neyin değiştiği izlenemiyor. ÇIKARIM: repo yok (ölçülmedi). |
+Satır numaraları `sys.sql_modules` tanımına göre. Ayrıntı (kod alıntısı, kanıt, öneri): `docs/13-odak-entegrasyon-brief.docx` §7. Kanıt SQL: arşiv dosyası "EK" bölümü.
+
+| # | Önem | Sorun | Nerede | Kanıt |
+|---|---|---|---|---|
+| S-1 | Yüksek | 228'li ürüne her saat fiyat belgesi (döngü), "önceki fiyat" sahte | `odakFiyatAktarim` 63–84, 73, 130–131 | 30g 4.702.211 satış satırı / 36.497 ürün; 4.630.424 sahte önceki; 228'li 10.108 ürün → 4.560.438 satır; saatte ~10.465 |
+| S-2 | Yüksek | 220 "Fiyat Güncellenmesin" ikinci blokta yok → elle fiyat eziliyor | `odakFiyatAktarim` 53–55 vs 63–84 | 15 ürün, 3.037 satır; 1677679 elle 800 → 864 |
+| S-3 | Orta | Satış satırı ürün başı değil firma başı | `odakFiyatAktarim` 49 | aynı ürün-gün çok satır 323.590 |
+| S-4 | Orta | Ürün Web Adı (10) eklenmiyor | `odakUrunAktar` 212–219 | blok 0 satır; 599.333 üründe yok |
+| S-5 | Orta | Basım yılı/sayısı/sayfa `stkKod=barkod` ile | `odakUrunAktar` 389–391, 424–426, 449–451 | stkKod≠barkod 23.230'da 2.360/115/60, diğer grupta 0 |
+| S-6 | Orta | Boy/alt başlık/açıklama yalnız INSERT | `odakUrunAktar` 538, 195, 255 (273 kapalı) | boy 5.392, alt başlık 4.578 |
+| S-7 | Orta | ERP'de kapalı ürün web'de aktif | `tsofturunaktarim` 11–12 → 15–21 | 130/130 ODAK satışta |
+| S-8 | Orta | Çift ürün durum çakışması | `odakUrunAktar` 882–887 ↔ `tsofturunaktarim` 15–21 | 141/141; 140'ı Yasaklı |
+| S-9 | Orta | Görsel yenilenmiyor | `OdakUrunGuncellemeEslestir` 30–37 (34), `odakUrunAktar` 815–823 | bayat: farklı grup 1.761/23.446, eşit 183/623.357 |
+| S-10 | Orta | Kısa ad TÜM ürünlerde ezilir (29 karakter) | `odakUrunAktar` 879 | 842.648/842.648; 194.128 ODAK dışı |
+| S-11 | Orta | Her ürüne 56 + 9525 tedarikçi | `odakUrunAktar` 145–151 | 9525: 808.775, 56: 810.054 |
+| S-12 | Düşük | stkFirma her saat yeniden yazılıyor | `odakUrunAktar` 178–181 | 25.480 ürün her koşumda |
+| S-13 | Düşük | Mağaza log'unda Tip yok (DEFAULT 0) | `OdakUrunGuncellemeMagazaEslestir` 16 | DEFAULT ((0)) |
+| S-14 | Düşük | Stok log sınırsız | `OdakDegisenStokGuncelle` 58–63 | 21 günde +2,35M (94,7M) |
+| S-15 | Düşük | Maliyet view çok satır + FLOAT | `ent.OdakUrunMaliyet` 5 | 40 stkID çoklu |
+
+Kural riski (ölçülemedi): `odakUrunAktar` 890–898 pasif ürünü (ODAK KDV 0 + stok ≥1) Tükendi'ye çeviriyor; elle pasif ayırt edilmiyor.
+
+İrsaliye kapsamındaki bulgular (ürün brief'inden çıkarıldı, kayıt için): `bkm.OdakIadeIrsaliyeleriFaturalasmamis` `'2025-11-01'` → Türkçe oturumda 11.01.2025 (bugün 0 satır) · `OdakIrsaliyeBaslik` son aktarım 27.03.2024 · `OneriSiparisOdakKullanici.OdakSifre` 7/8 dolu.
 
 ### Şüphelenildi, ölçüldü, **elendi**
 - `OdakUrunMaliyet`'te tam sayı bölmesi → `discount` decimal(9,2), bölme doğru.
