@@ -1,19 +1,49 @@
 {
-  "_aciklama": "SQL denetçi (sql_denetle.py) ve roller hedef DB bilgisini buradan okur. Dosya başında `-- ork:hedef-db <anahtar>` yönergesi. Bilinmeyen DB = compat 110 varsayılır. /tanit gerçek değerleri önerir. 'test: true' olan veritabanlarına sqlcmd ile yazma komut korumasına takılmaz; diğerleri kullanıcı onayı ister.",
+  "_aciklama": "SQL denetçi (sql_denetle.py) ve roller hedef DB bilgisini buradan okur. Dosya başında `-- ork:hedef-db <anahtar>` yönergesi. Bilinmeyen DB = compat 110 varsayılır. 'test: true' olan veritabanlarına sqlcmd ile yazma komut korumasına takılmaz; diğerleri kullanıcı onayı ister. Değerler /tanit ölçümü (sys.databases, 03.10.2026).",
+  "DerinSISBkm": {
+    "compat": 150,
+    "collation": "Turkish_CI_AS",
+    "sunucu": "192.168.40.201",
+    "not": "ERP. Salt-okuma; yazma yalnız erp-write-policy.md izin listesindeki bkm.* tablolarına."
+  },
   "EncoreMerkez": {
     "compat": 110,
     "collation": "Turkish_CI_AS",
-    "not": "Kaynak: sql-server-uzmani skill'i (compat 110). Collation /tanit ile doğrulanacak."
+    "sunucu": "192.168.40.201",
+    "not": "POS. STRING_AGG/TRIM/IIF/TRY_CONVERT yok. SalesProducts için IsValid=1 zorunlu."
+  },
+  "BKM": { "compat": 150, "collation": "Turkish_CI_AS", "sunucu": "192.168.40.201" },
+  "BKMDATA": { "compat": 150, "collation": "Turkish_CI_AS", "sunucu": "192.168.40.201" },
+  "DerinCrm": { "compat": 150, "collation": "Turkish_CI_AS", "sunucu": "192.168.40.201" },
+  "INTER_BOS": {
+    "compat": 150,
+    "collation": "Turkish_CI_AS",
+    "sunucu": "192.168.40.201",
+    "not": "Eski kasa (EncoreMerkez öncesi). HAREKET.Tip IN ('SAT','IPT') süzgeci zorunlu."
   },
   "ODAKJOKER": {
-    "compat": 110,
+    "compat": 150,
+    "collation": "Turkish_CI_AS",
     "linked_server": true,
     "tarih_bicimi": "ISO_YYYYMMDD",
-    "not": "Linked server. Compat seviyesi doğrulanmadı (VARSAYILAN en kısıtlı)."
+    "not": "Linked server; JOKER 192.168.40.70. Önceki 110 varsayımı ölçümle düzeltildi."
+  },
+  "JOKER": { "compat": 150, "collation": "Turkish_CI_AS", "sunucu": "192.168.40.70", "tarih_bicimi": "ISO_YYYYMMDD" },
+  "BKM_GENEL": {
+    "compat": 100,
+    "collation": "Turkish_CI_AS",
+    "sunucu": "Zirve (sqlcli --profile zirve)",
+    "not": "Bordro/İK. SQL Server 2014 (12.0.6179.1)."
+  },
+  "BkmPanel": {
+    "compat": 160,
+    "collation": "Turkish_CI_AS",
+    "sunucu": "localhost (SANAL-FIKRI, varsayılan örnek — yerel geliştirme)",
+    "not": "Panelin kendi dbo.Panel* tabloları; dashboard servisleri tablolarını ilk açılışta kendisi kurar. 03.10.2026'da yalnız bkm-magaza tabloları vardı."
   },
   "OrkestraTest": {
     "compat": 150,
     "test": true,
-    "not": "VARSAYILAN test veritabanı adı — tSQLt ve entegrasyon testleri; yazma serbest. Gerçek adı acik-kararlar T2."
+    "not": "VARSAYILAN test veritabanı adı — tSQLt ve entegrasyon testleri; yazma serbest. Gerçek adı açık karar."
   }
 }
