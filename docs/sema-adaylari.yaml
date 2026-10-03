@@ -11,3 +11,13 @@ adaylar:
     ogren: "KOŞAMADI — sema aracı yok"
     ilgili: []
     durum: bekliyor
+  - id: aday-20261004-002
+    hedef: bridges
+    gercek: "EncoreMerkez.SalesProductCampaigns: satır indirimi = −DistributedAmount; TotalDiscount (SalesId,CampaignId) grubuna çoğaltılmış toplamdır, SUM edilmez. Kimlik Σ −DistributedAmount(IsValid=1 kalem) = Σ Sales.DiscountTotal"
+    confidence: 0.95
+    evidence: "T-010 sql-inceleyici 04.10.2026: İst.Yolu Eylül tip 1/2/6/7/8 Σ Sales.DiscountTotal = Σ −SalesProductCampaigns.DistributedAmount (sp.IsValid=1) fark 0; aynı kümede Σ −TotalDiscount 327,8M (~13 kat)"
+    kaynak_proje: "pusula"
+    tarih: 2026-10-04
+    ogren: "KOŞAMADI — sema aracı yok"
+    ilgili: []
+    durum: bekliyor

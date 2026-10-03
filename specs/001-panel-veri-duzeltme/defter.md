@@ -68,3 +68,14 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 01:24 · T-009: orta (ertelendi → T-019): başlıkta 571 farkı açıklaması ve çalıştırılabilir Önce blokları (Home, Trafik) eksik; B NetCiro toleransı panel ↔ kanonik ancak aynı @Bugun üst sınırı + boş PanelIcKart ile tutar (panel GETDATE() açık uç) → T-04x düzeltmesi TimeProvider @Bugun alır
 - 04.10 01:24 · T-009: dusuk (ertelendi): c.Name NULL koruması (bugün 0 satır); 'elle liste etkisi N'de' cümlesi yanlış (yalnız isim+telefon); Dondurma hash'i H02'den kopya
 - 04.10 01:24 · T-009: tamam (aeb706f..c9d3eac, inceleme temiz, 2 orta+3 düşük ertelendi)
+- 04.10 01:24 · Commit: 85dadfb chore(T-009): defter + AC-5.1 önce referansı düzeltmesi
+- 04.10 01:30 · Commit: 9acd013 chore(bkm): T-010 kanonik H06 mağaza detay (T-010)
+- 04.10 01:31 · T-010: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:34 · T-010: inceleme r0 — sql-inceleyici KRİTİK (doğrulama kimliğiyle): SPC.TotalDiscount satır indirimi değil, (SalesId,CampaignId) grubuna çoğaltılmış; satıra dağıtılmış indirim spc.DistributedAmount (negatif). Kimlik: Σ −DistributedAmount (IsValid=1) = Σ Sales.DiscountTotal kuruşu kuruşuna. İst.Yolu Eylül panel kampanya indirimi ~328M, gerçek ~25,2M (~13 kat). Yüksek: ONCE blokları çalıştırılmadı
+- 04.10 01:34 · Karar: H06 kampanya indirimi kolonu TotalDiscount → DistributedAmount (işaret −); T-047 (H6 panel düzeltmesi) özetine 'IsValid=1 ekle' yanında 'TotalDiscount yerine −DistributedAmount' taşınır; spec AC-6.1/6.2 metni değişmez (davranış: indirim doğru tutar) — kanıt: kalem dağılımı başlık DiscountTotal ile kuruşu kuruşuna — yanlışsa panel indirimi yanlış kolondan kalır; T-047 kanonik testi kimlikle bunu yakalar
+- 04.10 01:39 · Commit: 0eada09 fix(bkm): T-010 kampanya indirimi DistributedAmount + ONCE blokları (T-010)
+- 04.10 01:39 · T-010: düzeltme turu 1/5 (5 giderildi; 9acd013..0eada09), STATIC ✓. A2 kimliği 13/13 satırda fark 0
+- 04.10 01:41 · T-010: yeniden inceleme r1 (sql) Geçer — r0 Kritik/Yüksek/Düşük + gorev-inceleyici 3 Orta kapandı; gorev-inceleyici r0 zaten Onaylandı (yalnız Orta), ayrı yeniden inceleme gerekmedi
+- 04.10 01:41 · T-010: orta (ertelendi → T-019): A2 'bağımsız kanıt' değil kaynak içi kimlik (kalem↔başlık aynı Encore satışı) — yeniden etiketlenir; ERP posOzetUrun.satIndirim büyüklük sınırı A3 olarak eklenebilir (FSM −%1,4 · Özlüce −%1,8 · İst.Yolu −%9,9; kapsam farkı, kuruş kimliği değil)
+- 04.10 01:41 · T-010: dusuk (ertelendi): UPT tip-1 daraltma ve iade Discount/Vat ara ölçümleri başlıkta, blok olarak yok
+- 04.10 01:41 · T-010: tamam (85dadfb..0eada09, inceleme temiz, 1 düzeltme turu, 1 orta+1 düşük ertelendi). T-047 kapsamı: IsValid=1 + TotalDiscount→−DistributedAmount
