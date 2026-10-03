@@ -1,7 +1,7 @@
 # BKM Semantik Katman — ENTITY (tablo/view) SÖZLÜĞÜ
 # Omurga tablolar + bu oturum keşfedilen WMS. Tam liste: sorgular/SEMANTIK_KATMAN.md §2.
 version: 1
-updated: 2026-09-18
+updated: 2026-10-03
 
 databases:
   DerinSISBkm: {role: "ERP+WMS+muhasebe", semalar: [dbo, bkm, depo, ent, mhs, earsv, edftr, web, b2b, "sil(KULLANMA)"], tarih: "DMY — CONVERT(date,'dd.MM.yyyy',104)"}
@@ -51,7 +51,10 @@ entities:
       `if @cikis = 1 return 0` — yani parametresiz çağrılırsa HİÇBİR ŞEY YAPMAZ.
       ÖLÇÜLDÜ: `fytB`de `feNot LIKE '%Odak2 Ent%'` belgeleri her ay 1.506-3.539
       (2026-01..09, Eylül dahil) ⇒ çağıran taraf `@cikis=0` geçiyor. Guard etkisiz.
-      ⚠ Çağıranın kim olduğu (job/başka SP) ÖLÇÜLMEDİ — açık soru.
+      ✅ ÇAĞIRAN ÖLÇÜLDÜ (2026-10-03): `ent.odakUrunAktar`ın son satırı `EXEC ent.odakFiyatAktarim 0`;
+        o da SQL job `odakUrunAktar_job` (saatlik 08:30-23:01) adım 1. ~75 sn/koşum.
+      ✅ SONUÇ ÖLÇÜLDÜ (2026-10-03): bayraksız tekil üründe `urn.fiyatS = odak_urun_tam.etiket_fiyat`
+        **645.914/645.914**; 220-bayraklı 501 üründen 401'i farklı; çift stkID'lerde MAX(−0,01).
 
       **İKİ ELLE HARİÇ TUTMA BAYRAĞI** (`dbo.urnBilgi`, `bDeger='True'`):
         `bBilgiID = 220` → **781 ürün**: fiyat değişim kümesinden TAMAMEN çıkarılır.
@@ -85,7 +88,7 @@ entities:
     measurement: "2026-09-12 — SP tanımı okundu (7.334 karakter, şifresiz). fytB 'Odak2 Ent' aylık belge: 2026-01 2.559 · 02 3.450 · 03 3.272 · 04 3.292 · 05 2.424 · 06 3.026 · 07 3.075 · 08 3.539 · 09 1.506. urnBilgi 220=True 781 · 228=True 114.967. Dört kovalı tazelik ölçümü yukarıda."
     evidence: "2026-09-12 — sys.sql_modules okundu + fytB aylık sayım + urnBilgi bayrak sayımı + bayrak×ODAK-varlığı×maliyet-tazeliği çapraz ölçümü. Arşiv: sorgular/2026-09-12-odak-fiyat-urun-otomasyonu.sql"
     confidence: 0.9
-    last_verified: "2026-09-12"
+    last_verified: "2026-10-03"
   odak_alt_sistemi_yuzeyi:
     type: measurement
     grain: "ODAK entegrasyonu — iki veritabanına yayılmış 60+ nesne (2026-09-12)"
@@ -101,21 +104,54 @@ entities:
 
       **ŞİFRESİZ VE YENİ OTOMASYON SP'LERİ** (hepsi okunabilir):
         `ent.odakUrunAktar`                    — 2026-09-09 (ÜRÜN AKTARIMI)
-        `bkm.OdakUrunlerineGoreTsoftUrunAc`    — 2026-08-31 (OTOMATİK ÜRÜN AÇMA)
+        `bkm.OdakUrunlerineGoreTsoftUrunAc`    — 2026-08-31 (⚠ ADI YANILTIR: ürün AÇMAZ —
+                                                 T-Soft bayrakları + 169 + kod1ID 2→1; düzeltme 2026-10-03)
         `ent.OdakUrunGuncellemeEslestir`       — 2026-07-22
         `ent.odakFiyatAktarim`                 — 2026-05-22 (ayrı kayıt)
         `bkm.OdakSatisIrsaliyeFiyatOlustur`    — 2026-02-24
         `bkm.OdakTukendileriTukendiYap`        — 2025-06-18
         `bkm.OdaktaDatasiOlupMarjiSorunluUrunler` (VIEW) — 2025-09-02
-      ⚠ Bu SP'lerin İÇERİĞİ HENÜZ OKUNMADI (yalnız `odakFiyatAktarim` okundu).
-        Özellikle otomatik ÜRÜN AÇMA ve `MarjiSorunluUrunler` view'ı doğrudan
-        fiyat/marj işini ilgilendiriyor — sıradaki keşif adayı.
+      ✅ 2026-10-03: TÜM SP/view içerikleri okundu (74 modül) → kurallar
+        `odak_urun_hatti_kurallari` kaydında, tam rapor `docs/13-odak-urun-hatti.md`.
+        Asıl ürün açıcı `ent.odakUrunAktar` (43K karakter).
       ⚠ `BKMDATA.ent.OdakUrunMaliyet` (VIEW) — rakip fiyat motorunun maliyet girdisi,
         643.951 satır.
     measurement: "2026-09-12 — iki DB'de 'odak' adlı 60+ nesne tarandı (tip · satır · son değişim · IsEncrypted). Kritik SP'lerin tamamı IsEncrypted=0."
     evidence: "2026-09-12 — sys.objects + partitions + OBJECTPROPERTY taraması. Arşiv: sorgular/2026-09-12-odak-fiyat-urun-otomasyonu.sql"
     confidence: 0.85
-    last_verified: "2026-09-12"
+    last_verified: "2026-10-03"
+  odak_urun_hatti_kurallari:
+    type: measurement
+    uses: [entities:BKMDATA.ent.odak_urun_tam, entities:BKMDATA.dbo.stok_aktarim_odak, bridges:odak-tam-barkod-urnbrkd]
+    grain: "ODAK → ERP ürün/fiyat/öznitelik/stok/durum hattının iş kuralları (2026-10-03, 74 modül okundu)"
+    note: >-
+      **ZİNCİR (ÖLÇÜLDÜ, msdb + dm_exec_procedure_stats + OdakDataProcedureRunTime):**
+      dış yükleyici (job DEĞİL, modül DEĞİL) saatlik `BKMDATA.ent.odak_urun_temp` →
+      `ent.OdakUrunGuncellemeEslestir` (+`MagazaEslestir`) → `ent.odak_urun_tam`;
+      job `odakUrunAktar_job` saatlik 08:30-23:01: `ent.odakUrunAktar 0` (sonunda
+      `odakFiyatAktarim 0`) + `ent.tsofturunaktarim 0`; job `OdakDegisenStokGuncelle`
+      5 dk: KITAPSEPETI (192.168.40.171) log → `stok_aktarim_odak` → `ent.odak_depo_Stok`.
+      Köprü HER YERDE `odak.barkod = urnBrkd.urnBarkod` (+ `urn.stkKod = barkod` bazı bloklarda — tuzak).
+      **KURALLAR:** ürün açılır = barkod ERP'de yok + silinecek değil · `stkKod=barkod`, `ugKisi=137`,
+      açılış tarihi = `urn.gTarih` (**`kTarih` DEĞİŞİM tarihidir**, açılış sayımında kullanma) ·
+      açılışta 169 "Stok Kontrolü Yok"=True · marka/yazar ERP'de ODAK'a göre düzeltilir ·
+      43/35 dışı HER ürüne `urnFrm` 56 + 9525 eklenir ⇒ `stkFirma`/`urnFrm` GERÇEK TEDARİKÇİ DEĞİL
+      (9525: 679.076 / 842.648 ürün) · fiyat = MAX(web, mağaza) · bir stkID çok ODAK ürününe
+      bağlıysa (`bkm.CiftUrunlerMaxFyat`, 350) öznitelik yazılmaz, fiyat MAX ·
+      `kod1ID` dört SP'den yazılır (odakUrunAktar, tsofturunaktarim, OdakUrunlerineGoreTsoftUrunAc,
+      OdakTukendileriTukendiYap) · ODAK statü kodları `BKMDATA.dbo.OdakUrunDurumStatus` (lookup).
+      **ÖLÇÜLMÜŞ KUSURLAR:** (1) urnBilgi 10 ekleme bloğu ÖLÜ (aynen koşum 0 satır; 599.333 üründe yok)
+      · (2) 191/192/193 güncellemesi `stkKod=barkod` ile → sapma yalnız stkKod≠barkod grubunda
+      (yıl 2.360, basım 115, sayfa 60; diğer grupta 0) · (3) 102/175/177/10 yalnız INSERT, güncellenmez
+      (boy 5.392, alt başlık 4.578 fark) · (4) 141 çift ürün her saat kod1 0↔1 (iki SP çakışır; gidip
+      gelme ÇIKARIM) · (5) mağaza değişim log'u `Tip` DEFAULT 0 ile web gibi yazılır ·
+      (6) `OdakStokDegisenStok_Log` sınırsız: 21 günde +2,35M.
+      **STOK MUTABAKATI (ÖLÇÜLDÜ):** `stok_aktarim_odak` 7.591.652 − ERP'de olmayan barkod 2.469 − elle
+      hariç `9786257283298` 7 = `odak_depo_Stok` 7.589.176 (birebir).
+    measurement: "2026-10-03 — 74 modül tanımı okundu; msdb job/takvim; plan önbelleği koşum sayıları; 20 ölçüm sorgusu (bkz. arşiv)."
+    evidence: "2026-10-03 — Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.9
+    last_verified: "2026-10-03"
   rakip_fiyat_motoru_korlesmis:
     type: measurement
     grain: "Rakip fiyat izleme + otomatik yeniden fiyatlama zinciri (2026-09-12)"
@@ -2953,7 +2989,8 @@ entities:
     kolonlar: "VardiyaTanim · PlanBaslamaDk · PlanBitisDk · PlanCalismaDk · GerekenDk · KartGirisDk/KartCikisDk (ham) · GirisDk/CikisDk (işlenmiş) · BrutDk · MolaDk · CalismaDk · Durum · Izin · GunDonumu · SayimDisi · OlcumNotu · EksikDk · FazlaDk + dört fazla kalemi (FazlaCalismaDk · FazlaIzinIptalDk · HaftalikPrimDk · FazlaPlansizDk) · CikisSonrasiDk · GirisOncesiDk"
     tuzaklar: "(1) **PLAN GÜNE GÖRE DEĞİŞİR — tek bir 'mesai bitişi' YOKTUR.** Plan `PlanBaslamaDk`/`PlanBitisDk`/`VardiyaTanim`'dan OKUNUR. Mağazada baskın vardiya KAPANIŞ vardiyasıdır; ofis saati (09:00-17:30) mağaza günlerinin küçük bir dilimidir. Analizde/sunumda sabit bir bitiş saati VARSAYMAK yanlış rakam üretir (20.09.2026'da yapıldı: '18:00' varsayıldı, GMY yakaladı). (2) **BOZUK OKUTMA SÜREYİ GEÇERSİZ KILAR, DEVAMI DEĞİL.** Ayraç `OlcumNotu LIKE '%ŞÜPHELİ%' OR CalismaDk > 720`; çıkış okutmayı unutan kişide brüt 20+ saat çıkar. Bu kayıt SÜRE hesabından elenir — ama kişinin o gün İŞTE OLDUĞUNU çürütmez, yani 'kaç gün çalışıldı' sayımından elenmez. İkisini karıştırmak 140 haftalık bir bulguyu 0'a düşürüyordu (yanlış filtre: satırı silince hafta 7 günün altına iniyor). (3) `HaftalikPrimDk` FazlaDk'nın İÇİNDEDİR — dört fazla kalemi toplamı FazlaDk'ya birebir eşittir; ayrıca eklenirse çift sayılır. (4) `Durum` GÜN düzeyindedir: 7 gün üst üste çalışan biri yedi günde de 'Normal Çalışma' damgası alır — hafta düzeyindeki kural (m.46 hafta tatili) gün durumundan GÖRÜNMEZ, ayrıca hesaplanır."
     olcum_notlari: "`OlcumNotu` boş değilse ölçümün niteliğini söyler: 'Ham okutma da yok' · 'PDKS kaydı yok — ölçülemiyor (devamsız DEĞİL)' · 'HAM OKUTMA VAR (n kez) — giriş/çıkış çifti oluşmamış' · 'GÜN DÖNÜMÜ — çıkış ertesi gün sayıldı' · '… ŞÜPHELİ (çıkış okutması unutulmuş olabilir)'. Bu alan bir DURUM değil, ölçümün güvenilirlik etiketidir."
-    yazan: "YALNIZ `bkm.sp_Vrd_KisiGunDoldur` (erp-write-policy). Okuma tarafı kapsamlı view üstünden: `bkm.Vrd_KisiGunDuzeltilmis_vw` + `VrdSql.PersonDays` boğazı."
+    details:
+      yazan: "YALNIZ `bkm.sp_Vrd_KisiGunDoldur` (erp-write-policy). Okuma tarafı kapsamlı view üstünden: `bkm.Vrd_KisiGunDuzeltilmis_vw` + `VrdSql.PersonDays` boğazı."
     confidence: 0.9
     evidence: "2026-09-20 — kesim 31.08-16.09.2026, 4 mağaza (FSM/ÖZLÜCE/İST.YOLU/HEYKEL): 223 kişi · 3.589 kişi-gün · 17 farklı gün. Vardiya dağılımı ölçüldü (baskın 13:30-22:00 = %34,9; ortalama çalışma HER vardiyada 7,6-8,2 saat). Okutma ya tam var ya hiç yok — tek taraflı eksik gün 0/3.589. Dört fazla kalemi = FazlaDk (161.908 dk, birebir). Arşiv: sorgular/2026-09-20-vardiya-magaza-ritmi-ve-yedinci-gun.sql"
     last_verified: "2026-09-20"
@@ -2968,7 +3005,8 @@ entities:
     semantik: "Ay kapanışında DONDURULAN eksik/fazla bakiyesi. Yayınlanan raporun TOPLAMINA girer: panel yalnız dönemi gösterirse Excel'le sapar. Dondurulma gerekçesi PDKS'in geriye dönük değişmesi — bkz. `geriye_donuk_duzeltme`."
     tuzaklar: "(1) **GRAIN DÖNEM, SORGU KESİM — ikisi aynı şey DEĞİL.** Kişi-gün tablosu kesim bazlı (`KesimBas/KesimBit`), devir AY bazlı. Bir kesim özetine devir eklerken DÖNEM SÜZGECİ ZORUNLU; yoksa tablodaki HER dönem toplanır. ÖLÇÜLDÜ 19.09.2026: süzgeçsiz hâlde ikinci bir dönem devir eksiğini 69.563 → 119.563 dk'ya çıkarıyor. Dev veride tek dönem olduğu için 22 test yeşil kalıyordu — **tek nüfuslu eksen kapıyı sınamaz**. (2) `Sube` NULL tanımlı; kapsam süzgeci `Sube IN (...)` biçiminde olduğu için NULL bir satır SESSİZCE düşer. Bugün 0 (ölçüldü) — değişmez `vardiya-devir-sube-null-yok` bunu koruyor. (3) Kapsamlı okuma YALNIZ `VrdSql.Carryover` boğazından; ham tablo adını başka dosyada yazmak `tools/vardiya_kapsam_denetimi.py` ile yakalanır."
     kesim_donem_eslemesi: "⚠ **ÇIKARIM, ÖLÇÜM DEĞİL — n = 1.** Kod `VrdPeriod.CarryFor` ile 'sayım ayının bir öncesi' kuralını kullanıyor. Dev veride tek kesim (31.08→16.09, SayimBas 01.09) ve tek dönem (2026-08) var; üç aday kural da (KesimBas'ın ayı / SayimBas'ın bir öncesi / KesimBit'in bir öncesi) AYNI sonucu veriyor, yani AYIRT EDİLEMİYOR. (b) seçildi çünkü anlamı taşıyan tek kural o: devir, sayılan ayın öncesinde KAPANAN ayın bakiyesidir. (a) yalnız KesimBas ayın son günü olduğu için tutuyor. **İkinci gerçek kesim yazıldığında ölçülecek — TODO V-20.**"
-    yazan: "YALNIZ ay kapanışı (`scripts/vardiya_sql.py devir_yaz`; dolu dönemin üzerine yazmaz, `--devir-tazele` ister). Dönem adı kaynak Excel'in SAYFA ADINDAN çözülür ('Ağustos.2026'), kesimden türetilmez. + testler: yalnız `Donem='1900-01'` + `zz_test_` sicil (erp-write-policy)."
+    details:
+      yazan: "YALNIZ ay kapanışı (`scripts/vardiya_sql.py devir_yaz`; dolu dönemin üzerine yazmaz, `--devir-tazele` ister). Dönem adı kaynak Excel'in SAYFA ADINDAN çözülür ('Ağustos.2026'), kesimden türetilmez. + testler: yalnız `Donem='1900-01'` + `zz_test_` sicil (erp-write-policy)."
     confidence: 0.9
     evidence: "2026-09-19 — canlı BkmPanel: 186 satır / 8 şube / TEK dönem 2026-08 (EksikDk 111.491 · FazlaDk 12.089); Sube NULL 0. DDL `sorgular/2026-09-17-vardiya-tablo-kur.sql`. Sızıntı ölçümü (simülasyon, sıfır yazma): `sorgular/2026-09-19-vardiya-devir-donem-sizintisi.sql` blok 3."
     last_verified: "2026-09-19"
@@ -3348,12 +3386,126 @@ entities:
 
   BKMDATA.ent.odak_urun_tam:
     type: table
-    tip_duzeltme: "2026-09-11 canli sys.objects.type_desc ile CELISIYORDU (sema ile canli TERS takilmis); katalogdan duzeltildi. view mi tablo mu ayrimi onemli: view her zaman taze, tablo yenilenmesi gereken snapshot."
-    key: [urun_id, barkod, etiket_fiyat, KDV, marka_id, marka_ad, satis_durum, on_siparis, kategori_id_1..5, SadeceMagaza, SilinecekUrun]
-    note: "**ODAK katalog verisi (tam)** — 644.638 satır. `urun_id` = `OdakUrunDurum.ProductCode`; `barkod` DerinSIS'e köprü (bkz. BKMDATA.dbo.OdakUrunDurum). Kitap meta verisi zengin (basım tarihi/sayısı, sayfa, cilt tipi, kağıt cinsi, çevirmen, editör, çıkış tarihi) + 5 seviyeli kategori ağacı + `SadeceMagaza` / `SilinecekUrun` bayrakları + `on_siparis`/`on_siparis_tarih`. `etiket_fiyat` + `KDV` ODAK tarafının fiyatı (BKM `UrunBilgi.SatisFiyat` ile AYNI DEĞİL, karıştırma)."
-    confidence: 0.85
-    last_verified: "2026-09-08"
-    evidence: "Kullanıcı kolon dökümü + satır sayımı 08.09.2026 (644.638). Kolon anlamları henüz tek tek doğrulanmadı."
+    uses: [bridges:odak-tam-barkod-urnbrkd]
+    grain: "ODAK web katalog ürünü (urun_id) — 648.888 satır (2026-10-03)"
+    pk: [urun_id]
+    key: [urun_id, barkod, etiket_fiyat, KDV, marka_id, group_id, satis_durum, SadeceMagaza, SilinecekUrun, DefaultCategory]
+    details:
+      yazan: "BKMDATA.ent.OdakUrunGuncellemeEslestir (+MagazaEslestir) — dış yükleyici saatlik çağırır (job/modül değil)"
+    note: >-
+      **ODAK web kataloğunun tam kopyası; ERP ürün açma/fiyat/öznitelik motorlarının TEK girdisi.**
+      ERP köprüsü `barkod = urnBrkd.urnBarkod` (bridges: odak-tam-barkod-urnbrkd). `urun_id` tekil.
+      KONTROL ALANLARI: `satis_durum` 1/0 (ODAK'ta satışta) · `SilinecekUrun` 1 = `odak_silinen_urunler`de ·
+      `SadeceMagaza` 1 = yalnız mağaza kataloğunda · `etiket_fiyat` KDV dahil satış fiyatı, decimal(9,2) ·
+      `KDV` ORAN (0/10/20, kod DEĞİL) · `DefaultCategory` = dolu en derin default_kat_id (7→1).
+      KURAL: `etiket_fiyat` = MAX(web, mağaza) — mağaza SP'si düşük web fiyatını yükseltir
+      (2026-10-03: 648.875 üründe iki fiyat EŞİT). `sayfa_sayisi` 1-2 → NULL yapılır.
+      `dtarih` her satırda NULL (kullanılmıyor). `urun_aciklama` nvarchar(max), HTML taşır.
+    measurement: "2026-10-03 — satış 345.425 · satış dışı 303.463 · SadeceMagaza 7.278 · Silinecek 2.084 · KDV 0: 623.790 / 20: 17.833 / 10: 7.265 · aynı barkod çok urun_id: 36 · barkodu ERP'de yok: 1."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.95
+    last_verified: "2026-10-03"
+
+  BKMDATA.ent.odak_urun_magaza_tam:
+    type: table
+    grain: "ODAK mağaza katalog ürünü (urun_id) — 648.875 satır"
+    pk: [urun_id]
+    details:
+      yazan: "BKMDATA.ent.OdakUrunGuncellemeMagazaEslestir"
+    note: >-
+      `odak_urun_tam` ile AYNI kolonlar. Yeni satır `SadeceMagaza=1` ile eklenir (bayrak bu tabloda
+      sabit 1). Tam'da olmayan mağaza ürünü web tablosuna da eklenir; web'den silinen ürünün
+      ad/barkod/fiyat/KDV/marka bilgisi buradan alınır. Fiyat kuralı: bkz. odak_urun_tam.
+    measurement: "2026-10-03 — 648.875 satır; tam'da olmayan 0, mağazada olmayan tam satırı 13."
+    confidence: 0.9
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.ent.odak_urun_temp:
+    type: table
+    grain: "son saatte değişen ODAK web ürünü (ara alan)"
+    details:
+      yazan: "dış yükleyici (SQL job/modül DEĞİL — msdb ve sys.sql_modules taraması 0)"
+    note: >-
+      Eşitleme SP'sinin girdisi. Kardeşi `odak_urun_magaza_temp`. ⚠ `odak_urun_gecici` (490.000) ve
+      `odak_urun_magaza_gecici` (9.000) bugün yazılıyor ama HİÇBİR SQL modülü okumuyor — amacı açık soru.
+    measurement: "2026-10-03 — 2.505 satır (magaza_temp 93)."
+    confidence: 0.8
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.ent.odak_urun_log:
+    type: table
+    grain: "ürün × değişiklik anı (yeni ürün / fiyat / satış durumu)"
+    key: [urun_id, satis_durum, etiket_fiyat, LogTarih, Tip]
+    note: >-
+      ODAK fiyat ve satış durumu GEÇMİŞİ. `Tip` 0=web 1=mağaza ⚠ ama mağaza SP'si DEĞİŞEN kayıtta Tip
+      yazmıyor → DEFAULT ((0)) ⇒ mağaza fiyat değişimi web değişimi gibi görünür; Tip=1 yalnız yeni
+      mağaza ürünü. Günlük hacim 89-38.385 satır (son 7 gün; 01.10.2026 tepe).
+    measurement: "2026-10-03 — 5.693.275 satır; son 7 günde yalnız Tip 0/1."
+    confidence: 0.9
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.ent.odak_marka:
+    type: table
+    grain: "ODAK marka ağacı düğümü — 17.118 satır"
+    key: [id, parent_id, name, discount, group_id]
+    details:
+      yazan: "BKMDATA.ent.OdakMarkaAktar (odak_marka_temp'ten; çağıran bilinmiyor)"
+    note: >-
+      `discount` decimal(9,2) = **ODAK ALIŞ İSKONTOSU (%)**. Ürüne bağ `(group_id, marka_id) =
+      (group_id, parent_id)`. Kullananlar: `ent.OdakUrunMaliyet`, `odakFiyatAktarim` (9525 için fInd1),
+      `odakUrunAktar` (piyasaMarj). Kök: parent_id=0 (`dbo.OdakMarkaKirilim`).
+    measurement: "2026-10-03 — 17.118 satır, discount>13 olan 6.545; tam'da markası eşleşmeyen ürün 283."
+    confidence: 0.9
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.dbo.OdakUrunDurum:
+    type: table
+    grain: "ODAK ürün satış statüsü (ProductCode = urun_id, varchar) — 650.421 satır"
+    key: [ProductCode, saleStatus, leadTime]
+    note: "Statü kodları `BKMDATA.dbo.OdakUrunDurumStatus` (codes: odak.saleStatus). ProductCode tekil; tam'daki her ürünün karşılığı var."
+    measurement: "2026-10-03 — 650.421 satır, tekrar 0, tam'dan öksüz 0."
+    confidence: 0.95
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.dbo.stok_aktarim_odak:
+    type: table
+    grain: "ODAK depo stoğu, ODAK ürünü bazında (stokkodu = urun_id) — 501.438 satır"
+    key: [stokkodu, barkod, bakiye]
+    details:
+      yazan: "BKMDATA.dbo.OdakDegisenStokGuncelle — job, 5 dakikada bir, KITAPSEPETI.KITAPSEPETI.dbo.OdakStokDegisenStok_Log son 24 saat"
+    note: >-
+      `ent.odak_depo_Stok`un kaynağı: barkod → urnBrkd → stkID toplamı, `9786257283298` elle hariç.
+      MUTABAKAT (ölçüldü): 7.591.652 − barkodu ERP'de olmayan 2.469 (508 satır) − hariç barkod 7
+      = odak_depo_Stok 7.589.176. Negatif bakiye yok.
+    measurement: "2026-10-03 — 501.438 satır; stokkodu tam'da olmayan 257."
+    confidence: 0.95
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.dbo.OdakStokDegisenStok_Log:
+    type: table
+    grain: "5 dakikalık stok değişim kaydı — SINIRSIZ büyür"
+    note: "Silme/arşiv yok. 12.09: 92.392.737 → 03.10: 94.739.458 (21 günde +2,35M, ~112 bin/gün)."
+    confidence: 0.95
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+
+  BKMDATA.dbo.TSOFTProduct:
+    type: table
+    grain: "T-Soft sitesindeki ürün (ProductCode tekil) — 602.015 satır"
+    key: [ProductCode, Stock, IsActive, SellingPriceVatIncludedNoDiscount, SellingPriceVatIncluded, HasImages]
+    note: >-
+      **Sitenin aynası** (dış yükleyici). `ProductCode = ent.tsoft_urun.urun_kodu = urn.stkKod`.
+      ODAK SP'leri siteyle farkı buradan görüp `tsoft_urun.api_*_durum` bayraklarını açar.
+    measurement: "2026-10-03 — 602.015 satır, ProductCode tekrar 0."
+    confidence: 0.9
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
 
   BKMDATA.ent.OdakSatisDurumlari:
     type: view
@@ -3371,7 +3523,8 @@ entities:
     role: "Satış Analizi panelinin ön-agrega tabanı (app-owned; erp-write-policy izin listesinde)"
     grain: "Kesim × SezonYil × stkID — kesim başına ~275.059 satır"
     pk: "(Kesim, SezonYil, stkID)"
-    yazan: "dashboard SatisAnaliziTabanService (DELETE o kesim + INSERT…SELECT). Son 3 kesim tutulur."
+    details:
+      yazan: "dashboard SatisAnaliziTabanService (DELETE o kesim + INSERT…SELECT). Son 3 kesim tutulur."
     neden: >-
       CTE ile her istekte yeniden hesaplanıyordu. ÖLÇÜLDÜ: sayfa çevirme 5,31-5,44 s → 15-27 ms,
       KPI+kırılım 3,15-3,76 s → 54 ms, arama 5,8 s → 16 ms. #temp YETMEZ: temp tablo bağlantı
@@ -3912,7 +4065,13 @@ entities:
 
   ent.tsoft_urun:
     type: table
-    key: [ImageUrl, "gorsel-1..5", urun_gorsel_tarih, api_gorsel_durum]
+    key: [stkid, urun_kodu, ImageUrl, "gorsel-1..5", urun_gorsel_tarih, api_kayit_durum, api_gorsel_durum, api_stok_durum, api_fiyat_durum]
+    details:
+      odak_notu_2026_10_03: >-
+        `urun_kodu = urn.stkKod` (446.272/446.272) · `stkid` öksüz 0 · `urun_kodu` TSOFTProduct'ta olmayan 365.
+        Gönderim bayrakları `api_*_durum` → codes: tsoft_urun.api_durum. Bayrağı açanlar: tsofturunaktarim,
+        OdakDegisenStokGuncelle, OdakUrunlerineGoreTsoftUrunAc, OdakStoklariniSiteyeBas, job
+        JOKER_IPTAL_STOKKODLARI. Gönderimi SQL dışı bir uygulama yapar.
     note: >-
       T-Soft e-ticaret ürün aynası — **ürün görselinin kaynağı**. `ImageUrl` dosya ADIDIR
       (`zygmunt-bauman-sosyolojisi-12653447-76-K.jpg`), tam URL değil → CDN tabanı gerekir.

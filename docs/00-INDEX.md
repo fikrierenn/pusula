@@ -30,6 +30,7 @@
 | [`08-pos-encore.md`](08-pos-encore.md) | EncoreMerkez POS — kampanya, 3al2öde, sepet, Stores mapping, compat 110 uyarısı | POS/kampanya sorgusu |
 | [`09-raporlar-ve-skills.md`](09-raporlar-ve-skills.md) | Tüm rapor çıktıları + skill dosyaları haritası | Rapor/skill ararken |
 | [`12-depo-wms.md`](12-depo-wms.md) | Merkez depo / WMS (`depo.emir`/`emirAyr`/`paletIcHrk`, emTip görevler, eTip hareket, işgücü/verim) | Depo işgücü / sevk / mal kabul / verim |
+| [`13-odak-urun-hatti.md`](13-odak-urun-hatti.md) | ODAK ürün açma / fiyat / öznitelik / stok / web durumu hattı (`odak_urun_tam`, `odakUrunAktar`, `odakFiyatAktarim`, job zinciri, ölçülmüş kusurlar) | ODAK, otomatik ürün açma, fiyat aktarımı, künye eşitleme |
 
 ---
 

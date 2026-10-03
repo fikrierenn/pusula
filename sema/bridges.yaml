@@ -3,7 +3,7 @@
 # Continuous-learning: yeni köprü öğrenilince buraya atomic ekle (id+confidence+evidence+date).
 # İnsan özeti: sorgular/SEMANTIK_KATMAN.md (bundan türetilir).
 version: 1
-updated: 2026-08-20
+updated: 2026-10-03
 
 bridges:
   - id: urn-kdv-oran
@@ -953,3 +953,65 @@ bridges:
     evidence: "2026-09-20 — Bkm-Toolbox kaynak okuması (FrmYazarListele.YazarRafYuukle). Canlı satır sayımıyla AYRICA doğrulanmadı."
     confidence: 0.7
     last_verified: "2026-09-20"
+
+  # --- ODAK katalog / stok hattı (2026-10-03) ---
+  - id: odak-tam-barkod-urnbrkd
+    from: "BKMDATA.ent.odak_urun_tam.barkod"
+    to: "DerinSISBkm.dbo.urnBrkd.urnBarkod"
+    scope: cross-db
+    confidence: 0.95
+    note: >-
+      ODAK → ERP TEK köprü (tüm ODAK SP'leri). urnBarkod tekil ⇒ sağ uçta fan-out yok; ama bir stkID'nin birden çok barkodu birden çok ODAK ürününe denk gelebilir: 350 stkID (`bkm.CiftUrunlerMaxFyat`) — stkID'de GROUP BY gerekir. ⚠ TUZAK: bazı SP blokları `urn.stkKod = odak.barkod` kullanır — ODAK'ın açtığı üründe doğru, 23.230 eski/çok-barkodlu üründe YANLIŞ.
+    measurement: "2026-10-03 — öksüz 1 / 648.888; urnBarkod tekrar 0."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+  - id: odak-tam-urunid-odakurundurum
+    from: "BKMDATA.ent.odak_urun_tam.urun_id"
+    to: "BKMDATA.dbo.OdakUrunDurum.ProductCode"
+    scope: bkmdata
+    confidence: 0.95
+    note: >-
+      int ↔ varchar: `ProductCode = CONVERT(varchar(50), urun_id)`. Statü → codes: odak.saleStatus.
+    measurement: "2026-10-03 — öksüz 0 / 648.888; ProductCode tekrar 0."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+  - id: odak-tam-marka
+    from: "BKMDATA.ent.odak_urun_tam.(group_id, marka_id)"
+    to: "BKMDATA.ent.odak_marka.(group_id, parent_id)"
+    scope: bkmdata
+    confidence: 0.9
+    note: >-
+      İki kolonlu bağ. Alış iskontosu (discount) buradan. INNER JOIN 283 ürünü düşürür (ent.OdakUrunMaliyet'ten eksik kalırlar).
+    measurement: "2026-10-03 — eşleşmeyen 283 / 648.888."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+  - id: odak-stok-stokkodu-urunid
+    from: "BKMDATA.dbo.stok_aktarim_odak.stokkodu"
+    to: "BKMDATA.ent.odak_urun_tam.urun_id"
+    scope: bkmdata
+    confidence: 0.9
+    note: >-
+      Stok satırı ODAK ürününe urun_id ile, ERP'ye `barkod → urnBrkd` ile bağlanır (ent.odak_depo_Stok böyle kurulur).
+    measurement: "2026-10-03 — öksüz 257 / 501.449."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+  - id: urnbilgi174-odak-urunid
+    from: "DerinSISBkm.dbo.urnBilgi.bDeger (bBilgiID=174)"
+    to: "BKMDATA.ent.odak_urun_tam.urun_id"
+    scope: cross-db
+    confidence: 0.9
+    note: >-
+      ERP ürününde saklı ODAK Ürün ID. Çift ürünlere yazılmaz. Öksüz = ODAK'tan çıkmış ürün.
+    measurement: "2026-10-03 — öksüz 815 / 651.547."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"
+  - id: tsoft-urun-kodu-stkkod
+    from: "DerinSISBkm.ent.tsoft_urun.urun_kodu"
+    to: "BKMDATA.dbo.TSOFTProduct.ProductCode"
+    scope: cross-db
+    confidence: 0.95
+    note: >-
+      `urun_kodu = urn.stkKod` (446.272/446.272 eşit) ⇒ site ürün kodu ERP stkKod; `stkid` = urn.stkID (öksüz 0).
+    measurement: "2026-10-03 — TSOFTProduct'ta olmayan 365 / 446.272."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    last_verified: "2026-10-03"

@@ -1,11 +1,21 @@
 # BKM Semantik Katman — KOD/ENUM SÖZLÜĞÜ (lookup değerleri)
 # Canlı doğrulanmış. Yeni kod öğrenilince ekle.
 version: 1
-updated: 2026-08-20
+updated: 2026-10-03
 
 codes:
   urnBilgi.bBilgiID:
     lookup: dbo.urnBilgiTnm
+    details:
+      odak_davranisi_2026_10_03: >-
+        ODAK'ın (`ent.odakUrunAktar`) yazdığı öznitelikler (ÖLÇÜLDÜ): EKLE+GÜNCELLE: 176 Orijinal Başlık ·
+        181 Editör · 183 Çevirmen · 184/198 Ön sipariş · 185 Cep boy · 189 Kağıt · 190 Cilt · 101 En ·
+        106 Ağırlık · 191/192/193 Sayfa/Basım sayısı/Basım yılı (⚠ güncelleme `stkKod=barkod` ile:
+        stkKod≠barkod 23.230 üründe yıl 2.360, basım 115, sayfa 60 bayat). YALNIZ EKLE: 102 Boy (5.392 fark) ·
+        175 Açıklama · 177 Alt başlık (4.578 fark). ÖLÜ: 10 Ürün Web Adı — ekleme koşulu NULL ile
+        karşılaştırıyor, blok 0 satır; 599.333 üründe yok, site adı stkAd'a düşer. AÇILIŞTA 169 Stok Kontrolü
+        Yok = True, sonra ODAK satış durumuna eşitlenir. 174 Odak Ürün ID, 200 Odak Durum. Çift ürünlere
+        (350) hiçbiri yazılmaz.
     join: "JOIN dbo.urnBilgiTnm t ON t.BilgiID = urnBilgi.bBilgiID → t.BilgiAd · grup için JOIN dbo.urnBilgiGrp g ON g.grupID = t.bilgiGrup → g.grupAd"
     kume_kaynagi: "dbo.urnBilgiTnm — 68 tanım, lookup'tan CANLI okunur. Liste sema'ya YAZILMAZ; aşağıdakiler yalnız İŞ KURALI taşıyan seçkidir."
     closed_set: true
@@ -76,6 +86,42 @@ codes:
     evidence: "2026-09-12 — lookup dökümü + urn GROUP BY. Arşiv: sorgular/2026-09-12-urn-taksonomi-modul2.sql"
     confidence: 0.95
     last_verified: "2026-09-12"
+
+  odak.saleStatus:
+    lookup: BKMDATA.dbo.OdakUrunDurumStatus
+    join: "JOIN BKMDATA.dbo.OdakUrunDurumStatus st ON st.saleStatusId = OdakUrunDurum.saleStatus → st.Aciklama, st.SatisDurum"
+    values: {1: "Satışta (SatisDurum 1)", 2: "Tükendi (0)", 3: "Yeni baskıya hazırlanıyor (0)", 4: "Liste dışı / telif bitti (0)", 5: "Yasaklı ürün (-1)", 6: "Eski baskı (0)"}
+    details:
+      kume_kaynagi: "6 kod, lookup'tan okundu."
+    closed_set: true
+    note: >-
+      `SatisDurum` türetilmiş sınıf: 1 satılır · 0 stokla kısıtlı satış · -1 satılamaz.
+      `bkm.OdakTukendileriTukendiYap` SatisDurum=0 → `urn.kod1ID=2` yapar.
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.95
+    last_verified: "2026-10-03"
+
+  urn.kod1ID.odak_yazicilari:
+    lookup: dbo.urnKod1
+    note: >-
+      `urn.kod1ID` ODAK hattında DÖRT SP tarafından yazılır: odakUrunAktar (silinecek/yalnız-mağaza → 0;
+      pasif + ODAK KDV 0 + ODAK stok ≥1 → 2; açılışta SadeceMagaza→0, satis_durum 0→2, 1→1) ·
+      tsofturunaktarim (urnDurum=0 → 0; ODAK satışta + 0/2 → 1) · OdakUrunlerineGoreTsoftUrunAc
+      (ODAK satışta + 2 → 1) · OdakTukendileriTukendiYap (statü 0 → 2).
+      ÖLÇÜLDÜ: 141 çift ürün (silinmiş + aktif ODAK satırı) aktif kalıyor; 140'ının silinen tarafı Yasaklı.
+      Saatlik 0↔1 gidip gelme ÇIKARIM (kod sırası).
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.85
+    last_verified: "2026-10-03"
+
+  tsoft_urun.api_durum:
+    values: {1: "gönder", 2: "gönderme / iptal (iki tarafta pasif)", 3: "yeniden oluştur (görsel)"}
+    closed_set: false
+    status: pending
+    note: "api_kayit_durum / api_gorsel_durum / api_stok_durum / api_fiyat_durum. Lookup YOK — anlamlar SP kod yorumlarından (ÇIKARIM). Gönderimi yapan uygulama görülmedi."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.6
+    last_verified: "2026-10-03"
 
   urn.kod2ID:
     lookup: dbo.urnkod2

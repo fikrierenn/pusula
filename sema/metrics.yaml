@@ -1,9 +1,40 @@
 # BKM Semantik Katman — METRİKLER / TÜRETİLMİŞ İŞ MANTIĞI
 # İş kategorileri, formüller, hesap modelleri. Köprü+kod referanslı.
 version: 1
-updated: 2026-08-06
+updated: 2026-10-03
 
 metrics:
+  odak_maliyet:
+    title: "ODAK'tan alış maliyeti tahmini (ent.OdakUrunMaliyet)"
+    rule: "etiket_fiyat × (100 − odak_marka.discount) / 100   (KDV dahil etiket üzerinden)"
+    note: >-
+      `discount` decimal → tam sayı bölmesi YOK (ölçüldü). View FLOAT'a çevirir. ⚠ 40 stkID'de birden çok
+      satır döner (çok barkod) → stkID ile join'de satır çoğalır; GROUP BY stkID kullan. INNER JOIN
+      odak_marka 283 ürünü düşürür. Rakip fiyat görünümlerinin (RakipFiyatAnaliz*) girdisi.
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.9
+    last_verified: "2026-10-03"
+
+  odak_piyasa_marj_acilis:
+    title: "ODAK'ın açtığı üründe urn.piyasaMarj (web indirim oranı) ilk değeri"
+    rule: >-
+      marka grubu 3 VE tanımlı mrkPiyasaMarjOndeger 0-99 → o değer; mrkPiyasaMarjOndeger = 100 → 0;
+      değilse discount > 13 ise discount − 13, aksi 0.
+    note: "Yalnız AÇILIŞTA uygulanır (odakUrunAktar). 13 eşiği kodda sabit, gerekçesi yazılı değil."
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.9
+    last_verified: "2026-10-03"
+
+  odak_satis_fiyati_kurali:
+    title: "ERP satış fiyatı (urn.fiyatS) ODAK etiket fiyatına eşitlenir"
+    rule: "fiyatS := odak_urun_tam.etiket_fiyat  (çift stkID'de MAX, bir dalda −0,01; 220=True ise dokunulmaz)"
+    note: >-
+      Motor `ent.odakFiyatAktarim` (entities: odak_fiyat_aktarim_motoru), saatlik. ÖLÇÜLDÜ: bayraksız
+      tekil 645.914/645.914 eşit; 220 bayraklı 501'in 401'i farklı. Etiket fiyatı = MAX(web, mağaza).
+    evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
+    confidence: 0.95
+    last_verified: "2026-10-03"
+
   bayram_gun_agirligi:
     tanim: "Dini bayram günlerinin perakende günlük cirosuna etkisi — ÖLÇÜLDÜ"
     formul: >-

@@ -236,6 +236,19 @@ irsHrk.ehTutarN = irsAyr.ehTutar − irsAyr.ehIndirim
 | `dbo.ozl_jokersatissiparisianlik_vw` | Anlık |
 | `dbo.ozl_jokersatissiparisi_tumu` | Tümü |
 
+#### I.1. ODAK katalog / fiyat / stok hattı (2026-10-03 — tam rapor `docs/13-odak-urun-hatti.md`)
+
+| Köprü / kod | Kural |
+|---|---|
+| `BKMDATA.ent.odak_urun_tam.barkod = urnBrkd.urnBarkod` | ODAK → ERP tek köprü (öksüz 1/648.888). `urn.stkKod = barkod` KULLANMA (23.230 üründe yanlış) |
+| `odak_urun_tam.urun_id = OdakUrunDurum.ProductCode` (varchar) | Statü: 1 Satışta · 2/3/4/6 stokla kısıtlı · 5 Yasaklı |
+| `(group_id, marka_id) = odak_marka.(group_id, parent_id)` | `discount` = ODAK alış iskontosu (%) |
+| `stok_aktarim_odak.stokkodu = urun_id` | → `ent.odak_depo_Stok` (stkID toplamı), 5 dk |
+| `urnBilgi 174 = urun_id` | ERP ürününde saklı ODAK Ürün ID |
+| `tsoft_urun.urun_kodu = urn.stkKod = TSOFTProduct.ProductCode` | Site köprüsü; `api_*_durum` 1 = gönder |
+| ERP satış fiyatı | `urn.fiyatS = etiket_fiyat` (MAX web/mağaza; çift stkID MAX; 220=True hariç) |
+| Açılan ürün | `ugKisi=137`, açılış tarihi `gTarih` (`kTarih` değişiklik tarihi) |
+
 ### J. Envanter / Maliyet
 
 | Tablo | Amaç |
