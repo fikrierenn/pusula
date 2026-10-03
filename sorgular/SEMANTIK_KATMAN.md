@@ -248,6 +248,7 @@ irsHrk.ehTutarN = irsAyr.ehTutar − irsAyr.ehIndirim
 | `tsoft_urun.urun_kodu = urn.stkKod = TSOFTProduct.ProductCode` | Site köprüsü; `api_*_durum` 1 = gönder |
 | ERP satış fiyatı | `urn.fiyatS = etiket_fiyat` (MAX web/mağaza; çift stkID MAX; 220=True hariç) |
 | Açılan ürün | `ugKisi=137`, açılış tarihi `gTarih` (`kTarih` değişiklik tarihi) |
+| ⚠ SP kusurları + düzeltmeler | 15 kusur (SP + satır + önerilen kod + etki) → `sema/entities.yaml: odak_sp_kusur_ve_duzeltmeleri`, kod `sorgular/2026-10-03-odak-duzeltme-onerileri.sql`. Fiyat analizinde `fytOzl` 'Odak2 Ent' satırlarının ~%98'i değişim DEĞİL |
 
 ### J. Envanter / Maliyet
 

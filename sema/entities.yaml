@@ -127,6 +127,142 @@ entities:
     evidence: "2026-09-12 — sys.objects + partitions + OBJECTPROPERTY taraması. Arşiv: sorgular/2026-09-12-odak-fiyat-urun-otomasyonu.sql"
     confidence: 0.85
     last_verified: "2026-10-03"
+  odak_sp_kusur_ve_duzeltmeleri:
+    type: measurement
+    uses: [entities:odak_urun_hatti_kurallari, entities:odak_fiyat_aktarim_motoru, entities:BKMDATA.ent.odak_urun_tam]
+    grain: "ODAK ürün hattı SP kusurları + önerilen düzeltmeler (15 kusur, 17 kod bloğu) — 2026-10-03"
+    note: >-
+      ⚠ SP'ler ERP/BKMDATA'da; düzeltmeler bu depodan UYGULANMAZ (erp-write-policy), SP sahibine
+      iletilir. Bir sorgu bu SP'lerin ürettiği veriyi okurken aşağıdaki kusurları hesaba katmalı:
+      `fytOzl` "Odak2 Ent" satırlarının ~%98'i fiyat değişimi DEĞİL (S-1/S-3) — fiyat değişim
+      analizinde `oncekiFiyat = sonrakiFiyat - 0.01` satırları ve aynı ürün-gün tekrarları elenmeli;
+      urnBilgi 10/102/177/191-193 ODAK'tan bayat olabilir (S-4..S-6); `stkFirma`/`urnFrm` gerçek
+      tedarikçi değil (S-11/S-12). Düzeltme uygulandığında kayıt `etki` sayısıyla yeniden ölçülüp
+      güncellenir; kapanan kusur silinmez, `durum: uygulandı <tarih>` eklenir.
+    details:
+      S-1:
+        onem: "Yüksek"
+        sp: "ent.odakFiyatAktarim"
+        satir: "63-84, 73, 130-131"
+        kusur: "228'li üründe alış satırı yazılmadığı için iskonto farkı kapanmıyor → 10.108 ürün her saat yeniden belgeleniyor; önceki fiyat etiket-0,01 (sahte)"
+        duzeltme: "ikinci bloğa ub220 + ub228 süzgeci, SilinecekUrun=0, etiket<999999; önceki fiyat u.fiyatS"
+        etki: "aday 13.671 → 553"
+        todo: "B-183"
+      S-2:
+        onem: "Yüksek"
+        sp: "ent.odakFiyatAktarim"
+        satir: "53-55 vs 63-84"
+        kusur: "220 süzgeci yalnız birinci blokta; elle fiyat eziliyor (15 ürün)"
+        duzeltme: "S-1 bloğundaki ub220 süzgeci"
+        etki: "220'li ürün aday 0"
+        todo: "B-184"
+      S-3:
+        onem: "Orta"
+        sp: "ent.odakFiyatAktarim"
+        satir: "49, 132-140"
+        kusur: "satış satırı ürünün her etkin tedarikçisi için ve fiyat değişmese de yazılıyor (aynı ürün-gün 323.590)"
+        duzeltme: "satış satırı ROW_NUMBER ile ürün başı bir kez (9525 tercihli) ve yalnız fiyatS<>etiket"
+        etki: "temp'e bağlı, önceden sayılamadı"
+        todo: "B-183"
+      S-4:
+        onem: "Orta"
+        sp: "ent.odakUrunAktar"
+        satir: "212-219"
+        kusur: "Ürün Web Adı (10) eklemesi NULL kıyası yüzünden 0 satır"
+        duzeltme: "satır 219 silinir, çift ürün süzgeci eklenir"
+        etki: "599.096 satır eklenir"
+        todo: "B-186"
+      S-5:
+        onem: "Orta"
+        sp: "ent.odakUrunAktar"
+        satir: "389-391, 424-426, 449-451"
+        kusur: "191/192/193 güncellemesi barkod=stkKod ile"
+        duzeltme: "urnBrkd üzerinden birleşim"
+        etki: "2.360 / 115 / 62 (bulguyla birebir)"
+        todo: "B-187"
+      S-6:
+        onem: "Orta"
+        sp: "ent.odakUrunAktar"
+        satir: "538, 195, 255 (273 kapalı)"
+        kusur: "102 Boy / 177 Alt başlık / 175 Açıklama yalnız INSERT"
+        duzeltme: "102 ve 177 için 'farklıysa güncelle' bloğu (sayısal kıyas); 175 için önce HTML-entity biçim kararı"
+        etki: "5.392 / 1.297"
+        todo: "B-188"
+      S-7:
+        onem: "Orta"
+        sp: "ent.tsofturunaktarim"
+        satir: "11-12 → 15-21"
+        kusur: "ERP'de kapalı (urnDurum=0) ürün ODAK satıştaysa yeniden aktif"
+        duzeltme: "satır 21'e AND u.urnDurum = 1"
+        etki: "130 ürün pasife düşer"
+        todo: "B-185"
+      S-8:
+        onem: "Orta"
+        sp: "ent.odakUrunAktar ↔ ent.tsofturunaktarim"
+        satir: "882-887 ↔ 15-21"
+        kusur: "çift üründe silinen kayıt pasif, satıştaki kayıt aktif yazıyor (aynı job)"
+        duzeltme: "satışta ikinci kaydı olan ürünü pasife çekme (NOT EXISTS); yasaklı için iş kararı"
+        etki: "354 → 213 (141 korunur)"
+        todo: "B-189"
+      S-9:
+        onem: "Orta"
+        sp: "BKMDATA.ent.OdakUrunGuncellemeEslestir"
+        satir: "30-37 (34)"
+        kusur: "görsel silme u.stkKod=odak.barkod"
+        duzeltme: "urnBrkd üzerinden"
+        etki: "hedef 1.761 bayat görsel"
+        todo: "B-190"
+      S-10:
+        onem: "Orta"
+        sp: "ent.odakUrunAktar"
+        satir: "879"
+        kusur: "kısa ad TÜM ürünlerde her saat, SUBSTRING(x,0,30)=29 karakter"
+        duzeltme: "WHERE ugKisi=137 + SUBSTRING(x,1,30)"
+        etki: "kapsam 842.648 → 288.466; ilk koşum 114.487"
+        todo: "B-191"
+      S-11:
+        onem: "Orta"
+        sp: "ent.odakUrunAktar"
+        satir: "145-151"
+        kusur: "kategori 43/35 dışı HER ürüne 56 + 9525 tedarikçi"
+        duzeltme: "EXISTS ile yalnız ODAK ürünü (ileriye dönük)"
+        etki: "bugün 0 yeni bağ"
+        todo: "B-192"
+      S-12:
+        onem: "Düşük"
+        sp: "ent.odakUrunAktar"
+        satir: "178-181"
+        kusur: "çok urnFrmEsas=0 kaydı olan 25.480 ürün her saat güncellenir, seçim belirsiz"
+        duzeltme: "MIN(urnFrmFirmaID) ile belirli seçim"
+        etki: "ilk koşum 12.778"
+        todo: "B-193"
+      S-13:
+        onem: "Düşük"
+        sp: "BKMDATA.ent.OdakUrunGuncellemeMagazaEslestir"
+        satir: "16"
+        kusur: "değişiklik log'unda Tip yok → DEFAULT 0 (web)"
+        duzeltme: "Tip kolonu + 1"
+        etki: "önceden sayılamaz"
+        todo: "B-194"
+      S-14:
+        onem: "Düşük"
+        sp: "BKMDATA.dbo.OdakDegisenStokGuncelle"
+        satir: "58-63"
+        kusur: "OdakStokDegisenStok_Log silinmiyor"
+        duzeltme: "DELETE TOP(50000) ... LogDate < 90 gün (süre iş kararı)"
+        etki: "86.018.556 eski satır, ~6 günde"
+        todo: "B-195"
+      S-15:
+        onem: "Düşük"
+        sp: "BKMDATA.ent.OdakUrunMaliyet"
+        satir: "5"
+        kusur: "barkod düzeyi gruplama (40 stkID çok satır) + FLOAT"
+        duzeltme: "GROUP BY stkID + DECIMAL(18,4)"
+        etki: "647.529 → 647.486"
+        todo: "B-196"
+    evidence: "2026-10-03 — kusurlar canlı ölçüldü; düzeltmeler sys.dm_exec_describe_first_result_set ile 17/17 derlendi (kırılabilirlik: bozuk kolon → 207), etki SELECT karşılığıyla ölçüldü. Kod: sorgular/2026-10-03-odak-duzeltme-onerileri.sql · Rapor: docs/13-odak-entegrasyon-brief.docx §7 · TODO B-183..B-197"
+    confidence: 0.9
+    last_verified: "2026-10-03"
   odak_urun_hatti_kurallari:
     type: measurement
     uses: [entities:BKMDATA.ent.odak_urun_tam, entities:BKMDATA.dbo.stok_aktarim_odak, bridges:odak-tam-barkod-urnbrkd]
