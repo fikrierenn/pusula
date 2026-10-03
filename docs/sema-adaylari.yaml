@@ -1,0 +1,13 @@
+# Sema adayları — bu projede bulunan, sema sahibinin (BKM: pusula, sema-ogren) değerlendireceği gerçekler.
+# Orkestra dış sema'ya yazmaz (tek yazar). Sahip aldığında: durum: alindi (sema id) ya da reddedildi (neden).
+adaylar:
+  - id: aday-20261003-001
+    hedef: bridges
+    gercek: "bridges:hedef-kategori ürün tarafı urn.urnKtgrID2 değil urn.urnKtgr2ID olmalı (BKMDATA.dbo.Hedef.ktgId = urn.urnKtgr2ID)"
+    confidence: 0.95
+    evidence: "T-004 sorgular/2026-10-panel-veri-duzeltme/H13-hedef-tabani-olcum.sql; urn.urnKtgrID2=0 olan ürün 657.949/842.652 (%78); panel urn.urnKtgr2ID kullanıyor (sql-inceleyici r0 teyit, 03.10.2026)"
+    kaynak_proje: "pusula"
+    tarih: 2026-10-03
+    ogren: "KOŞAMADI — sema aracı yok"
+    ilgili: []
+    durum: bekliyor

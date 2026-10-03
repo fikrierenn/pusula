@@ -21,3 +21,15 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 03.10 23:43 · T-003: KARAR bekliyor değil, TAKVİM bekliyor — en erken 10.10.2026 23:42 (Koşu 1 + 7 gün)
 - 03.10 23:44 · T-002: dusuk (ertelendi): başlıkta 'Aynı kaynak — neden'/'Başka ne olabilir' satırları yok; DECLARE'li dosya sq.sh'te literal koşuldu; A/B ayrı tarih değişkenleri — T-003 özetine taşındı
 - 03.10 23:44 · T-002: tamam (ea58d7c..53dd9b2, inceleme temiz, 1 ertelendi)
+- 03.10 23:50 · Commit: 86993cc chore(bkm): T-004 hedef tabanı ölçümü (T-004)
+- 03.10 23:51 · T-004: kapılar STATIC ✓ (0 bulgu)
+- 03.10 23:53 · T-004: inceleme r0 — gorev-inceleyici Düzeltme gerekli (2 Yüksek: öneri belgesindeki istatistikler arşivsiz [sql-inceleyici de aynı, doğrulandı: dosyada blok B yok]; 'itiraz yoksa uygulanır' varsayılanı yok), sql-inceleyici Geçer (Orta: düşük güçlü test, eşli Kitap/Kırtasiye kıyası önerisi)
+- 03.10 23:53 · Karar: T-004 düzeltmesine eşli Kitap(%0)/Kırtasiye(%20) mağaza×ay kıyası (Tem-2025..Eyl-2026) eklenir; veri tek bandı (1,00 ya da 1,20) gösterirse o 'itiraz yoksa 09.10.2026'da uygulanır' varsayılanı olur, göstermezse belge açıkça 'varsayılan yok, not durur' der — AC-13.4 notu her iki durumda teyide kadar kalır — yanlışsa hedef kıyası yanlış tabanla yapılır (GMY itiraz penceresiyle sınırlı)
+- 04.10 00:01 · Commit: 16d0181 fix(bkm): T-004 arşiv + eşli KDV testi (T-004)
+- 04.10 00:02 · T-004: düzeltme turu 1/5 (7 giderildi; 86993cc..16d0181), STATIC ✓
+- 04.10 00:02 · Karar: T-004 bootstrap aralığı yerine SQL'de medyan/çeyrek + binom işaret testi kabul — sql-yazar sorgular/ altına .py yazamıyor (yazma politikası) ve eşli test 37/45 tek yönlü p=7,7e-6 ile kararı zaten veriyor — yanlışsa aralık tahmini eksik kalır, karar değişmez
+- 04.10 00:04 · T-004: yeniden inceleme r1 — Y-1 ADDRESSED, Y-2 KISMEN (mağaza medyanları + p arşivsiz), yeni Orta 4 (bağımsızlık iddiası, alternatif açıklama, E kısmi ay, Kalem kopyası); düzeltme turu 2 gönderildi
+- 04.10 00:07 · Commit: 186daa0 fix(bkm): T-004 belge kanıt bağları (T-004)
+- 04.10 00:08 · T-004: düzeltme turu 2/5 (6 giderildi; 16d0181..186daa0), STATIC ✓
+- 04.10 00:09 · T-004: dusuk (ertelendi): MAXRECURSION 100 sınırı (n=45), Kalem notu INNER/LEFT JOIN farkını anmıyor, SQL çıktısında mağaza adı yok
+- 04.10 00:09 · T-004: tamam (d83f324..186daa0, inceleme temiz, 2 düzeltme turu, 1 ertelendi). Öneri: kategori bazlı, Sınav dahil, KDV hariç; itiraz yoksa 09.10.2026
