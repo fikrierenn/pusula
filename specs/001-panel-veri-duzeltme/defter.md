@@ -50,3 +50,8 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 01:01 · T-006: orta (ertelendi → T-033 özetine): (1) ToplCiro pencere farkı başlıkta yok (10 müşteri); (2) elle iç kart listesi kanonikte yok — T-033 testi @IcIds'i iki tarafa da verir; (3) SonSatis datetime gün başı, kontrat date — T-033 DateOnly'ye çevirir; (4) 'Önce' eşdeğer biçimle ölçüldü (ÇIKARIM etiketi eksik); panel SQL commandTimeout 30 sn vs ham 500 sn
 - 04.10 01:01 · T-006: dusuk (ertelendi): başlıkta Sonra/Bağımsız satırları iki kez; N bloğu Aday CTE kopyası
 - 04.10 01:01 · T-006: tamam (47e7030..0e3347c, inceleme temiz, 4 orta+2 düşük ertelendi)
+- 04.10 01:04 · Commit: cf0f280 chore(bkm): T-007 kanonik H03 tedarikçi depo (T-007)
+- 04.10 01:05 · T-007: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:05 · Karar: T-007 WMS 3.621.587 ile T-001 G 2.830.868 çelişki değil — G 'SatisAnaliziTaban son kesimindeki aynı stkID kümesi' ile sınırlıydı (T-001 özeti blok G), H03 tüm WMS — yanlışsa T-019 bağımsız denetimde iki ölçüm aynı kapsamda yeniden koşulur
+- 04.10 01:07 · T-007: dusuk (ertelendi): blok C açıklaması 'kategori çeşit ekranı' diyor ama o ekran MAX(Donem) ay sonu + çeşit sayısı (Y-DEPO sonrası geçerli); ONCE+D marka başına ±1 kesme farkı; T-001 G kapsam notu başlıkta yok
+- 04.10 01:07 · T-007: tamam (918562d..cf0f280, inceleme temiz, 3 düşük ertelendi). Test notu: panel StokAdet = D + A birebir (WMS tam sayı)
