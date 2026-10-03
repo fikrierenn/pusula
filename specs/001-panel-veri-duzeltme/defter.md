@@ -62,3 +62,9 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 01:17 · T-008: orta (ertelendi → T-019): başlıkta 'panel NULL kategoriyi düşürüyor' gerekçesi ölçümle çürük (fark tamamen STATUS); A↔B kapısı yalnız fan-out kontrolü, STATUS listesini bağımsız sınamıyor — T-019'da adı düzeltilir ve tümleyen kolu (süzgeçsiz − dışlanan kodlar = B) eklenir; AC-4.2 sipariş birebirliği yalnız B'den okunur
 - 04.10 01:17 · T-008: dusuk (ertelendi): odak başlığı 'B = A toplamı' yanlış (B ≥ A); değişken adları @BasIso2/3; dosyada olmayan başvuru; DECLARE yorum içinde
 - 04.10 01:17 · T-008: tamam (1103192..8304554, inceleme temiz, 2 orta+1 düşük ertelendi)
+- 04.10 01:21 · Commit: c9d3eac chore(bkm): T-009 kanonik H05 fiş ve iade (T-009)
+- 04.10 01:22 · T-009: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:24 · Karar: spec AC-5.1 'önce' referansı 44.776 → 44.205 (%4,5) düzeltildi — 44.776 hiç panel değeri değildi (1001 dışlamasız tip sayımı, 571 fark = 1001'li iade); sql-inceleyici tip×1001 ölçümüyle kanıtladı — yanlışsa yalnız tarihsel 'önce' notu etkilenir, AC'nin eşitlik kapısı değişmez
+- 04.10 01:24 · T-009: orta (ertelendi → T-019): başlıkta 571 farkı açıklaması ve çalıştırılabilir Önce blokları (Home, Trafik) eksik; B NetCiro toleransı panel ↔ kanonik ancak aynı @Bugun üst sınırı + boş PanelIcKart ile tutar (panel GETDATE() açık uç) → T-04x düzeltmesi TimeProvider @Bugun alır
+- 04.10 01:24 · T-009: dusuk (ertelendi): c.Name NULL koruması (bugün 0 satır); 'elle liste etkisi N'de' cümlesi yanlış (yalnız isim+telefon); Dondurma hash'i H02'den kopya
+- 04.10 01:24 · T-009: tamam (aeb706f..c9d3eac, inceleme temiz, 2 orta+3 düşük ertelendi)
