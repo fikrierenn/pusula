@@ -215,6 +215,45 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### BKM — BIRLESIK ONCELIK SIRASI
 
+#### 🛠 ODAK ÜRÜN HATTI — SP DÜZELTMELERİ (keşif 03.10.2026)
+
+> Bulgular: `docs/13-odak-entegrasyon-brief.docx` §7 · `docs/13-odak-urun-hatti.md` §4.
+> Önerilen kod (17 blok, derleme kontrolünden geçti, ÇALIŞTIRILMADI): `sorgular/2026-10-03-odak-duzeltme-onerileri.sql`.
+> ⚠ SP'ler ERP/BKMDATA'da — bu depodan uygulanmaz (`erp-write-policy`). Her madde SP sahibine
+> iletilecek; uygulandıktan sonra "ETKİ" satırındaki sayıyla yeniden ölçülerek kapatılır.
+
+- [ ] **B-183 [Yüksek] `ent.odakFiyatAktarim` satır 63–84 saatlik fiyat döngüsü (S-1)** — 03.10.
+      228'li 10.108 ürün her saat yeniden belgeleniyor (30g 4,56M satır, "önceki fiyat" etiket−0,01).
+      Öneri: ikinci bloğa 220 + 228 + Silinecek + 999999 süzgeci, önceki fiyat `u.fiyatS`; satış satırı
+      yalnız fiyat değişince ve ürün başı bir kez (S-3, satır 132–140). Etki: aday 13.671 → 553.
+      Kapanış ölçümü: bugünkü saatlik ~10.465 satır → birkaç yüz.
+- [ ] **B-184 [Yüksek] 220 "Odak Fiyat Güncellenmesin" bayrağı delik (S-2)** — 03.10.
+      `odakFiyatAktarim` süzgeç yalnız 53–55'te; 15 üründe elle fiyat ezildi (1677679: 800 → 864,
+      251314: 200 → 112,90). B-183 kodu bunu da kapatıyor; ayrıca 15 ürünün fiyatı elle düzeltilmeli.
+- [ ] **B-185 [Orta] `ent.tsofturunaktarim` satır 15–21: ERP'de kapalı ürün web'de aktif (S-7)** — 03.10.
+      130 ürün. Öneri: `AND u.urnDurum = 1`.
+- [ ] **B-186 [Orta] `ent.odakUrunAktar` satır 212–219: Ürün Web Adı (10) hiç eklenmiyor (S-4)** — 03.10.
+      599.096 ürün. Öneri: satır 219 silinip çift ürün süzgeci.
+- [ ] **B-187 [Orta] `ent.odakUrunAktar` 389–391 / 424–426 / 449–451: künye `stkKod=barkod` (S-5)** — 03.10.
+      Öneri: `urnBrkd` birleşimi. Etki 2.360 / 115 / 62 (bulguyla birebir).
+- [ ] **B-188 [Orta] Boy (102) ve alt başlık (177) güncellenmiyor (S-6)** — 03.10. Etki 5.392 / 1.297.
+      Açıklama (175) için önce HTML-entity biçim kararı gerekli.
+- [ ] **B-189 [Orta] Çift ürün web durumu çakışması (S-8)** — 03.10. `odakUrunAktar` 882–887 ↔
+      `tsofturunaktarim` 15–21. 141 ürün; 140'ı ODAK'ta "Yasaklı" → İŞ KARARI: yasaklı barkodlu ürün aktif mi kalsın?
+- [ ] **B-190 [Orta] `OdakUrunGuncellemeEslestir` satır 34: görsel silme `stkKod=barkod` (S-9)** — 03.10. 1.761 bayat görsel.
+- [ ] **B-191 [Orta] `odakUrunAktar` satır 879: kısa ad TÜM ürünlerde, 29 karakter (S-10)** — 03.10.
+      842.648 ürün (194.128 ODAK dışı). Öneri: `ugKisi=137` + `SUBSTRING(...,1,30)`; ilk koşum 114.487 değişir.
+- [ ] **B-192 [Orta] Her ürüne 56 + 9525 tedarikçi (S-11) — karar** — 03.10. `odakUrunAktar` 145–151.
+      Bağın amacı netleşmeli; öneri yalnız ileriye dönük (mevcut 808K bağ silinmez).
+- [ ] **B-193 [Düşük] `odakUrunAktar` 178–181: stkFirma 25.480 üründe her saat (S-12)** — 03.10.
+      Öneri: MIN(firma) ile belirli seçim; ilk koşum 12.778 değişir.
+- [ ] **B-194 [Düşük] `OdakUrunGuncellemeMagazaEslestir` satır 16: log Tip yok (S-13)** — 03.10.
+- [ ] **B-195 [Düşük] `OdakStokDegisenStok_Log` sınırsız (S-14)** — 03.10. 90 günden eski 86,0M satır;
+      saklama süresi iş kararı, öneri TOP(50000) parça silme.
+- [ ] **B-196 [Düşük] `ent.OdakUrunMaliyet` stkID başı çok satır + FLOAT (S-15)** — 03.10. 40 stkID.
+- [ ] **B-197 [Açık soru] ODAK dış yükleyicisi ve job dışı SP çağıranları kim?** — 03.10.
+      `odak_urun_temp` dolduran uygulama, 54 parametresiz `odakUrunAktar` çağrısı, 03.10'da değişen iki SP.
+
 #### 🔔 PDKS GÜNLÜK RAPOR (zamanlanmış görev)
 
 - [ ] **B-181 Zamanlanmış görev koşumunun gerçekten çalıştığı DOĞRULANACAK** — 22.09.
