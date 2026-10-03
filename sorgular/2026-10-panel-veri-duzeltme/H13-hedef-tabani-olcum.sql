@@ -28,7 +28,10 @@
    Koşu 1   : 03.10.2026 (sqlcli, erp profili, --read-only). Satır sayıları: A 125 · B 12 · C 9 · D 45 çift · E 9 çift.
               A↔C iç tutarlılık: 3 mağaza hedef 833.862.171 ve gerçekleşen KDV hariç 859.242.353 iki blokta aynı.
               D (Tem-2025..Eyl-2026): çift oranı KDV hariç medyan 0,977 [Q1 0,914 · Q3 1,032 · en küçük 0,747 · en büyük 1,657];
-              beklenen (hedef KDV dahil olsaydı) çift medyanı 1,17; 45 çiftin 37'si 1,00 tarafında. E (9 çift): medyan 1,085, 4/9 hariç tarafında.
+              beklenen (hedef KDV dahil olsaydı) çift medyanı 1,17; 45 çiftin 37'si 1,00 tarafında. Mağaza medyanları (15'er çift): FSM 0,955 · Özlüce 0,994 · İst.Yolu 0,893.
+              Binom p (tek yönlü, 37/45): 0,000007687; çiftler tam bağımsız değil (aynı mağazanın ardışık ayları).
+              E (9 çift): medyan 1,085, 4/9 hariç tarafında; kısmi taban (Tem-2025) 3 çift medyan 1,008, tam taban 6 çift medyan 1,123.
+   Kalem CTE: A–E bloklarında aynıdır (D/E yalnız Kitap-Kırtasiye süzgeci ekler); değişirse hepsi birlikte değişir.
    Bloklar  : A ay×kategori · B kategori×6 ay (KDV grubu, eşik, grup medyanı) · C mekân · D Kitap/Kırtasiye mağaza×ay eşli · E hedef 2026 / gerçek 2025
 */
 
@@ -377,7 +380,7 @@ Cift AS (
     SELECT
         kr.ay_bas,
         kr.mekan_id,
-        CASE WHEN kr.ay_bas = CONVERT(DATE, '01.07.2025', 104) THEN 'kismi' ELSE 'tam' END AS ay_durumu,   -- DMY
+        CASE WHEN kr.ay_bas = @DBas THEN 'kismi' ELSE 'tam' END AS ay_durumu,
         kr.hedef AS hedef_kirtasiye,
         kr.gercek_haric AS gercek_haric_kirtasiye,
         kr.gercek_dahil AS gercek_dahil_kirtasiye,
@@ -393,6 +396,37 @@ Cift AS (
             AND kt.mekan_id = kr.mekan_id
             AND kt.ktg_id = 15
     WHERE kr.ktg_id = 12
+),
+
+Sayim AS (
+    SELECT
+        COUNT(*) AS n,
+        SUM(CASE WHEN c.cift_orani_haric < SQRT(c.beklenen_dahil_hedef) THEN 1 ELSE 0 END) AS k
+    FROM Cift AS c
+),
+
+Terim AS (
+    SELECT
+        0 AS i,
+        CAST(1 AS DECIMAL(38, 0)) AS binom_kat,
+        sy.n,
+        sy.k
+    FROM Sayim AS sy
+    UNION ALL
+    SELECT
+        te.i + 1,
+        CAST(te.binom_kat * (te.n - te.i) / (te.i + 1) AS DECIMAL(38, 0)),
+        te.n,
+        te.k
+    FROM Terim AS te
+    WHERE te.i < te.n
+),
+
+BinomP AS (
+    -- Tek yönlü binom kuyruğu: P(X >= k), X ~ Binom(n, 0,5). Çiftler tam bağımsız değil (aynı mağazanın ardışık ayları), p yalnız yaklaşık güçtür.
+    -- ork:izin RUN-005 olasılık, para değil
+    SELECT CAST(SUM(CASE WHEN te.i >= te.k THEN te.binom_kat ELSE 0 END) AS FLOAT(53)) / POWER(CAST(2 AS FLOAT(53)), MAX(te.n)) AS kuyruk_p
+    FROM Terim AS te
 )
 
 SELECT
@@ -421,8 +455,12 @@ SELECT
     CAST(MIN(c.cift_orani_dahil) OVER () AS DECIMAL(9, 4)) AS en_kucuk_dahil,
     CAST(MAX(c.cift_orani_dahil) OVER () AS DECIMAL(9, 4)) AS en_buyuk_dahil,
     CAST(COUNT(*) OVER (PARTITION BY c.ay_durumu) AS INT) AS durum_cift_sayisi,
-    CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY c.cift_orani_haric) OVER (PARTITION BY c.ay_durumu) AS DECIMAL(9, 4)) AS durum_medyan_haric
+    CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY c.cift_orani_haric) OVER (PARTITION BY c.ay_durumu) AS DECIMAL(9, 4)) AS durum_medyan_haric,
+    CAST(COUNT(*) OVER (PARTITION BY c.mekan_id) AS INT) AS magaza_cift_sayisi,
+    CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY c.cift_orani_haric) OVER (PARTITION BY c.mekan_id) AS DECIMAL(9, 4)) AS magaza_medyan_haric,
+    CAST(bp.kuyruk_p AS DECIMAL(18, 9)) AS binom_p_tek_yonlu
 FROM Cift AS c
+    CROSS JOIN BinomP AS bp
 ORDER BY c.ay_bas, c.mekan_id;
 /* tsqllint-enable non-sargable */
 
@@ -506,13 +544,14 @@ Eslesen AS (
     WHERE hd.hedef > 0
         AND g.gercek_haric > 0
         AND g.gercek_dahil > 0
-        AND hd.ay_bas >= CONVERT(DATE, '01.07.2026', 104)   -- DMY
+        AND hd.ay_bas >= DATEADD(YEAR, 1, @DBas)
 ),
 
 Cift AS (
     SELECT
         kr.ay_bas,
         kr.mekan_id,
+        CASE WHEN kr.ay_bas = DATEADD(YEAR, 1, @DBas) THEN 'kismi_taban' ELSE 'tam' END AS taban_durumu,
         kr.hedef_2026 AS hedef_kirtasiye,
         kt.hedef_2026 AS hedef_kitap,
         kr.gercek_haric_2025 AS gercek25_haric_kirtasiye,
@@ -531,6 +570,7 @@ Cift AS (
 SELECT
     c.ay_bas,
     c.mekan_id,
+    c.taban_durumu,
     CAST(c.hedef_kirtasiye AS DECIMAL(18, 0)) AS hedef_kirtasiye,
     CAST(c.gercek25_haric_kirtasiye AS DECIMAL(18, 0)) AS gercek25_haric_kirtasiye,
     CAST(c.hedef_kitap AS DECIMAL(18, 0)) AS hedef_kitap,
@@ -541,6 +581,8 @@ SELECT
     CASE WHEN c.cift_orani_haric < SQRT(c.beklenen_dahil_hedef) THEN 1 ELSE 0 END AS haric_tarafinda,
     SUM(CASE WHEN c.cift_orani_haric < SQRT(c.beklenen_dahil_hedef) THEN 1 ELSE 0 END) OVER () AS haric_tarafinda_toplam,
     CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY c.beklenen_dahil_hedef) OVER () AS DECIMAL(9, 4)) AS medyan_beklenen_dahil_hedef,
+    CAST(COUNT(*) OVER (PARTITION BY c.taban_durumu) AS INT) AS taban_cift_sayisi,
+    CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY c.cift_orani_haric) OVER (PARTITION BY c.taban_durumu) AS DECIMAL(9, 4)) AS taban_medyan_haric,
     CAST(COUNT(*) OVER () AS INT) AS cift_sayisi,
     CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY c.cift_orani_haric) OVER () AS DECIMAL(9, 4)) AS medyan_haric,
     CAST(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY c.cift_orani_haric) OVER () AS DECIMAL(9, 4)) AS ceyrek1_haric,
