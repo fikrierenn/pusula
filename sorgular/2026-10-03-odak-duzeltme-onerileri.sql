@@ -313,3 +313,79 @@ JOIN DerinSISBkm.dbo.urnBrkd AS ub ON ub.urnBarkod = ou.barkod
 JOIN BKMDATA.ent.odak_urun AS o    ON o.urun_id = ou.urun_id
 GROUP BY ub.urnBrkdStkID;                                               -- DÜZELTME: stkID başına tek satır
 -- <<<
+
+
+/* ============================================================================
+   PERFORMANS ÖNERİLERİ (P-blokları) — ölçüm: salt-okuma zamanlama (pyodbc), oturuma
+   özel #temp (ERP tablosuna yazma yok). Maliyet kaynağı: sys.dm_exec_query_stats.
+   odakUrunAktar_job 03.10.2026: 15 koşum, ort. 217 sn, en uzun 295 sn (günde 54 dk).
+   ============================================================================ */
+
+/* ETKİ (ölçüldü): tek öznitelik bloğu bugünkü biçimde 6,47 sn; ortak eşleme bir kez 9,06 sn, sonra aynı blok 0,75 sn. odakUrunAktar'da bu biçimde ~25 blok var (plan önbelleğine göre ~115 sn/koşum); toplam ~115 → ~30 sn ÇIKARIM (blok başı ölçüldü, toplam hesaplandı). */
+-- >>> P-1 db=DerinSISBkm
+-- odakUrunAktar başında BİR KEZ: ODAK → ERP eşlemesi, çift ürünler dışarıda
+IF OBJECT_ID('tempdb..#bagli') IS NOT NULL DROP TABLE #bagli;
+SELECT bar.urnBrkdStkID stkID, odak.urun_id, odak.barkod, odak.SilinecekUrun, odak.cilt_tipi, odak.kagit_cinsi,
+       odak.agirlik, odak.en, odak.boy, odak.sayfa_sayisi, odak.basim_sayisi, odak.basim_tarihi_yil,
+       odak.cep_boy, odak.cevirmen, odak.editor, odak.urun_orijinal_baslik, odak.urun_alt_baslik,
+       odak.on_siparis, odak.on_siparis_tarih
+INTO #bagli
+FROM urnBrkd bar
+JOIN BKMDATA.ent.odak_urun_tam odak ON odak.barkod = bar.urnBarkod;
+DELETE b FROM #bagli b WHERE b.stkID IN (SELECT stkID FROM #bagli GROUP BY stkID HAVING COUNT(*) > 1);  -- eski çift ürün alt sorgusu her blokta yeniden hesaplanıyordu
+CREATE UNIQUE CLUSTERED INDEX ix_bagli ON #bagli (stkID);
+-- Her öznitelik bloğu bundan sonra bu kalıpla (örnek: 190 Cilt tipi, satır 582):
+UPDATE ub SET ub.bDeger = k.cilt_tipi
+FROM #bagli k
+JOIN urnBilgi ub WITH (ROWLOCK) ON ub.bVeriID = k.stkID AND ub.bBilgiID = 190
+WHERE k.SilinecekUrun = 0 AND ub.bDeger <> k.cilt_tipi;
+-- <<<
+
+/* ETKİ (ölçüldü): ayrı tarama 4,94 sn ve bugün 0 satır buluyor; tırnak temizliği ad güncellemesine taşınınca bu tarama kalkar. Yan etki: her saat ~371 ürünün adı önce tırnaklı yazılıp sonra temizleniyordu, o da biter. */
+-- >>> P-2 db=DerinSISBkm
+-- odakUrunAktar satır 205-209 YERİNE (satır 902-905'teki iki tam-tablo REPLACE taraması silinir)
+UPDATE urn SET urn.stkAd = REPLACE(REPLACE(LTRIM(RTRIM(SUBSTRING(CONVERT(varchar(100), odak.urun_ad), 1, 100))), NCHAR(8221), ' '), NCHAR(8220), ' ')
+FROM urn WITH (ROWLOCK)
+JOIN urnBrkd AS bar WITH (NOLOCK) ON bar.urnBrkdStkID = urn.stkID
+INNER JOIN BKMDATA.ent.odak_urun_tam odak WITH (NOLOCK) ON odak.barkod = bar.urnBarkod
+WHERE urn.stkAd <> REPLACE(REPLACE(LTRIM(RTRIM(SUBSTRING(CONVERT(varchar(100), odak.urun_ad), 1, 100))), NCHAR(8221), ' '), NCHAR(8220), ' ');
+-- <<<
+
+/* ETKİ (ölçüldü): son alış satırını bulan seçim bugün 19,3-20,3 sn; mevcut IDC_FYT_OZL_20221103 index'iyle 9,05 sn. ⚠ BİREBİR AYNI DEĞİL: sıralama fTarihSon yerine fTarih → 17 üründe farklı "son alış" satırı seçiliyor; fTip index'te olmadığı için süzgeç düşüyor (9525 alış satırlarında fTip<>1 olan 3 satır). İş kararı. Kabul edilmezse aynı sonuç için yeni index gerekir: (fFrmID, fTur, fTip, fStkID, fTarihSon) INCLUDE (fInd1) — fytOzl'de zaten 20 index var, etkisi ölçülemedi (DDL yasak). Ürün başına TOP 1 arayan "ilk akla gelen" biçim 1.210 sn sürdü — KULLANILMAMALI. */
+-- >>> P-3 db=DerinSISBkm
+WITH son AS (
+    SELECT a.fStkID, a.fInd1, ROW_NUMBER() OVER (PARTITION BY a.fStkID ORDER BY a.fTarih DESC, a.fID DESC) sno
+    FROM fytOzl a WITH (NOLOCK, INDEX(IDC_FYT_OZL_20221103))
+    WHERE a.fFrmID = 9525 AND a.fTur = 1
+)
+SELECT ub.urnBrkdStkID, ISNULL(son.fInd1, 0) fInd1, mar.discount
+FROM urnBrkd ub WITH (NOLOCK)
+JOIN BKMDATA.ent.odak_urun_tam odak WITH (NOLOCK) ON odak.barkod = ub.urnBarkod AND odak.SilinecekUrun = 0 AND odak.etiket_fiyat < 999999
+JOIN BKMDATA.ent.odak_marka mar WITH (NOLOCK) ON mar.group_id = odak.group_id AND mar.parent_id = odak.marka_id
+LEFT JOIN son ON son.fStkID = ub.urnBrkdStkID AND son.sno = 1
+WHERE ISNULL(son.fInd1, 0) <> ISNULL(mar.discount, 0)
+  AND NOT EXISTS (SELECT 1 FROM urnBilgi x WITH (NOLOCK)
+                  WHERE x.bVeriID = ub.urnBrkdStkID AND x.bBilgiID IN (220, 228) AND x.bDeger = 'True');
+-- <<<
+
+/* ETKİ (ölçüldü): yerel log'da son 24 saati bulmak 1,88 sn (Id dışında index yok, 94,7M satır); son Id ile sınırlamak 0,05 sn. Satır 11'deki ifade koşum başına ~7,6 sn (stok job'unun %80'i); uzak sunucu payı ayrıca ölçülemedi. */
+-- >>> P-4 db=DerinSISBkm
+-- BKMDATA.dbo.OdakDegisenStokGuncelle satır 11-20 YERİNE
+DECLARE @sonId int = (SELECT MAX(Id) FROM BKMDATA.dbo.OdakStokDegisenStok_Log);
+INSERT INTO BKMDATA.dbo.OdakStokDegisenStok
+SELECT kitap.ProductCode, kitap.StokMiktar, kitap.InsertDate, odak.barkod
+FROM KITAPSEPETI.KITAPSEPETI.dbo.OdakStokDegisenStok_Log kitap
+JOIN BKMDATA.ent.odak_urun_tam AS odak ON odak.urun_id = kitap.ProductCode
+LEFT JOIN (SELECT ProductCode, InsertDate FROM BKMDATA.dbo.OdakStokDegisenStok_Log
+           WHERE Id > @sonId - 300000) ist                        -- yalnız son ~2,5 günlük yerel kayıt (Id aralığı, clustered seek)
+       ON ist.ProductCode = kitap.ProductCode AND ist.InsertDate = kitap.InsertDate
+WHERE kitap.InsertDate > GETDATE() - 1 AND ist.ProductCode IS NULL;
+-- <<<
+
+/* ETKİ (ölçüldü): açıklama karşılaştırması koşum başı 12,2-14,5 sn ve bugün 1-4 satır buluyor. Açıklamayı ODAK güncellemiyor (S-6); değişiklik yalnız yeni ürün ya da elle düzeltmeyle gelir → saatlik değil günlük yeter. Öneri: ent.tsofturunaktarim satır 177-182 bloğu, her gece 23:00'te koşan ent.tsofturunaktarim_gunluk'a (job DerinSis_Ozet adım 14) taşınır; kod aynen kalır. Günde ~15 × 13 sn ≈ 3 dk kazanç (hesap). */
+-- >>> P-5 db=DerinSISBkm
+UPDATE tu SET urun_aciklama = ISNULL(ub175.bDeger, ''), api_kayit_durum = 1, api_kayıt_tarih = GETDATE()
+FROM ent.tsoft_urun tu WITH (ROWLOCK)
+JOIN urnBilgi ub175 WITH (NOLOCK) ON ub175.bBilgiID = 175 AND ub175.bVeriID = tu.stkid
+WHERE ISNULL(tu.urun_aciklama, '') <> ub175.bDeger;
+-- <<<

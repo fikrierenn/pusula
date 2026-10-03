@@ -140,6 +140,14 @@ entities:
       tedarikçi değil (S-11/S-12). Düzeltme uygulandığında kayıt `etki` sayısıyla yeniden ölçülüp
       güncellenir; kapanan kusur silinmez, `durum: uygulandı <tarih>` eklenir.
     details:
+      performans_2026_10_03: >-
+        odakUrunAktar_job ort. 217 sn (max 295), günde 54 dk (msdb, 03.10). Pahalı ifadeler (dm_exec_query_stats):
+        odakFiyatAktarim 117 fytOzl INSERT 27 sn (fytOzl 20 index) · 63 son alış ROW_NUMBER 24 sn (fTarihSon index'te
+        yok) · tsofturunaktarim 177 açıklama kıyası 14,5 sn · OdakDegisenStokGuncelle 11 → 7,6 sn (log'da yalnız Id
+        index) · odakUrunAktar öznitelik blokları her biri 3,6-6,5 sn (eşleme + çift alt sorgusu her blokta yeniden).
+        Ölçülmüş öneriler P-1..P-5 (düzeltme dosyası): ortak #eşleme blok 6,47→0,75 sn · fiyat seçimi mevcut
+        IDC_FYT_OZL_20221103 ile 19,3→9,05 sn AMA fTarih sırası 17 üründe farklı satır seçer · stok yerel 1,88→0,05 sn.
+        ⚠ ÜRÜN BAŞI TOP 1 APPLY 1.210 sn — KULLANMA. TODO B-201. Belge: docs/13-odak-performans.docx.
       S-1:
         onem: "Yüksek"
         sp: "ent.odakFiyatAktarim"

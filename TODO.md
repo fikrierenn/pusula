@@ -277,6 +277,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-196 [Düşük] `ent.OdakUrunMaliyet` stkID başı çok satır + FLOAT (S-15)** — 03.10. 40 stkID.
 - [ ] **B-197 [Açık soru] ODAK dış yükleyicisi ve job dışı SP çağıranları kim?** — 03.10.
       `odak_urun_temp` dolduran uygulama, 54 parametresiz `odakUrunAktar` çağrısı, 03.10'da değişen iki SP.
+- [ ] **B-201 [Performans] ODAK saatlik job ~217 sn → hedef ~80-100 sn** — 03.10. Ölçüm: `odakUrunAktar_job`
+      15 koşum ort. 217 sn (en uzun 295) = günde 54 dk. Öneriler `sorgular/2026-10-03-odak-duzeltme-onerileri.sql`
+      P-1..P-5 (5/5 derlendi): P-1 ortak eşleme (blok 6,47 → 0,75 sn) · P-2 tırnak taraması kalkar (4,94 sn) ·
+      P-3 fiyat seçimi 19,3 → 9,05 sn ⚠ 17 üründe farklı sonuç = iş kararı · P-4 stok yerel kısım 1,88 → 0,05 sn ·
+      P-5 açıklama kıyası (13 sn × 15) gece job'una. S-1/S-12/S-14 düzeltmeleri de süreyi düşürüyor. Belge: `docs/13-odak-performans.docx`.
+      ⚠ REDDEDİLDİ: ürün başı TOP 1 fiyat araması 1.210 sn (60 kat yavaş). Kapanış = job süresi yeniden ölçülür.
 
 #### 🔔 PDKS GÜNLÜK RAPOR (zamanlanmış görev)
 

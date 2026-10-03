@@ -157,6 +157,14 @@ Kural riski (ölçülemedi): `odakUrunAktar` 890–898 pasif ürünü (ODAK KDV 
 
 İrsaliye kapsamındaki bulgular (ürün brief'inden çıkarıldı, kayıt için): `bkm.OdakIadeIrsaliyeleriFaturalasmamis` `'2025-11-01'` → Türkçe oturumda 11.01.2025 (bugün 0 satır) · `OdakIrsaliyeBaslik` son aktarım 27.03.2024 · `OneriSiparisOdakKullanici.OdakSifre` 7/8 dolu.
 
+### Performans (03.10.2026 — ayrıntı: `docs/13-odak-performans.docx`, kod: düzeltme dosyası P-1..P-5)
+
+`odakUrunAktar_job` ort. 217 sn (en uzun 295), günde 54 dk. En pahalı ifadeler (koşum başı): `odakFiyatAktarim` 117 fytOzl
+yazımı 27 sn (S-1 döngüsü, 20 index) · 63 son alış seçimi 24 sn · `tsofturunaktarim` 177 açıklama kıyası 14,5 sn ·
+stok 11 → 7,6 sn · `odakUrunAktar` ~25 öznitelik bloğu her biri 3,6-6,5 sn. Ölçülen öneriler: ortak eşleme blok başı
+6,47 → 0,75 sn · fiyat seçimi mevcut index'le 19,3 → 9,05 sn (17 üründe farklı sonuç) · stok yerel 1,88 → 0,05 sn.
+Reddedilen: ürün başı TOP 1 = 1.210 sn. TODO B-201.
+
 ### Şüphelenildi, ölçüldü, **elendi**
 - `OdakUrunMaliyet`'te tam sayı bölmesi → `discount` decimal(9,2), bölme doğru.
 - En (101) güncellemesindeki garip `UPDATE urnBilgi` yazımı başka öznitelikleri bozuyor mu → en/ağırlık farkı 0, bozulma yok.
