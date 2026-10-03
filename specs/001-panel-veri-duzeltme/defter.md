@@ -33,3 +33,14 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 00:08 · T-004: düzeltme turu 2/5 (6 giderildi; 16d0181..186daa0), STATIC ✓
 - 04.10 00:09 · T-004: dusuk (ertelendi): MAXRECURSION 100 sınırı (n=45), Kalem notu INNER/LEFT JOIN farkını anmıyor, SQL çıktısında mağaza adı yok
 - 04.10 00:09 · T-004: tamam (d83f324..186daa0, inceleme temiz, 2 düzeltme turu, 1 ertelendi). Öneri: kategori bazlı, Sınav dahil, KDV hariç; itiraz yoksa 09.10.2026
+- 04.10 00:09 · Commit: e1a0a78 chore(T-004): defter + sema adayı
+- 04.10 00:23 · Commit: c8d2d63 chore(bkm): T-005 kanonik H01 kumbara/manuel (T-005)
+- 04.10 00:24 · T-005: kapılar STATIC ✓ (0 bulgu)
+- 04.10 00:28 · T-005: inceleme r0 — iki inceleyici Düzeltme gerekli; Yüksek doğrulandı (sql-inceleyici ölçümü: 2026 iade belgelerinde CampaignId IS NULL SPC satırı 0; LinkedDocumentId>0 ile Eylül 3 mağaza 496 iade / 4.520.582,40 brüt / 323.221,53 indirim, Kumbara kaynaklı 0)
+- 04.10 00:28 · Karar: H01 iade kümesi kaynak fişin (LinkedDocumentId>0) manuel sebebinden kurulur ve iade KENDİ tarihine negatif yazılır — paneldeki tüm ciro iadeleri DocumentsTypeId=3 ile kendi tarihinde düşüyor, tutarlılık — yanlışsa ay sınırındaki 54 iade (kaynağı önceki ay) bir ay kayar
+- 04.10 00:28 · Karar: AC-1.2 'Indirim' spec tanımı (fiş başına başlık DiscountTotal) korunur; kanonik başlıkta adı 'manuel sebepli fişlerin toplam indirimi' diye yazılır, ekran etiketi 003'te — spec açıkça bu tanımı istiyor — yanlışsa 003'te GMY 'manuel indirim' sanıp 18,6M görür (kalem bazlı 5,1M); 003 spec'ine soru olarak taşınacak
+- 04.10 00:34 · Commit: 86de34d fix(bkm): T-005 iade kümesi kaynak fişten (T-005)
+- 04.10 00:34 · T-005: düzeltme turu 1/5 (5 giderildi; c8d2d63..86de34d), STATIC ✓. Yeni blok B2 (Magaza, Indirim) — T-019/T-023 KanonikSorgu.Oku B2'yi tanımalı
+- 04.10 00:35 · Karar: kanonik .sql dosyalarında SSMS için DECLARE + GO kalır; T-021 KanonikSorgu.Oku blok metninden GO satırlarını ve DECLARE @Bas/@Bit ön ekini ayıklayıp parametreyi Dapper ile verir, salt-okuma kapısı yalnız ayıklanmış SELECT/WITH metnini görür — dosyalar SSMS'te koşulabilir kalsın — yanlışsa T-021 ayıklayıcısı bir blokta parametreyi kaçırır; kanonik test KOŞAMADI verir (sessiz değil)
+- 04.10 00:35 · T-005: dusuk (ertelendi): başlıktaki ~5,14M kalem indirimi rakamı komutsuz atıf; GO/DECLARE ayıklama T-021'e (Karar kayıtlı); kısmi iade 114 belge / 140.159,90 brüt (B2'nin %0,16) ölçüldü, başlığa eklenmedi
+- 04.10 00:35 · T-005: tamam (e1a0a78..86de34d, inceleme temiz, 1 düzeltme turu, 1 ertelendi). T-019 kapı önerisi: B2 = satış tarafı fiş-tekil 18.579.831,46 − C iade indirimi 323.221,53
