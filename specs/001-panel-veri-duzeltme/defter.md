@@ -16,3 +16,8 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 03.10 23:41 · T-001: orta (ertelendi): G 'tamamen zaman kayması' hükmü büyüklükçe ölçülmedi (mekanizma + zaman damgası var) — T-012 (H08 kanonik) özetine taşınacak
 - 03.10 23:41 · T-001: dusuk (ertelendi): H bloğunda negatif DonemId (-8..-7) anlamı açıklanmadı — T-013 özetine not
 - 03.10 23:41 · T-001: tamam (c223b41..a7449e0, inceleme temiz, 3 ertelendi)
+- 03.10 23:42 · Commit: 53dd9b2 chore(bkm): T-002 e-tic kayma ölçümü koşu 1 (T-002)
+- 03.10 23:43 · T-002: kapılar STATIC ✓ (0 bulgu)
+- 03.10 23:43 · T-003: KARAR bekliyor değil, TAKVİM bekliyor — en erken 10.10.2026 23:42 (Koşu 1 + 7 gün)
+- 03.10 23:44 · T-002: dusuk (ertelendi): başlıkta 'Aynı kaynak — neden'/'Başka ne olabilir' satırları yok; DECLARE'li dosya sq.sh'te literal koşuldu; A/B ayrı tarih değişkenleri — T-003 özetine taşındı
+- 03.10 23:44 · T-002: tamam (ea58d7c..53dd9b2, inceleme temiz, 1 ertelendi)
