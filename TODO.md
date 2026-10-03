@@ -13,6 +13,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ## Yapılanlar
 
+### 2026-10-03 Oturum 2 — Ay sonu Stok-Satış raporu: Eylül + panelden üretim (commit f135ece)
+- Eylül raporu üretildi (90.362 satır × 194 kolon) → `raporlar/ay-sonu-stok-satis/stok-satis-sube-detayli-2026-09.xlsx`.
+- `stok_satis_aylik_wide.py --ay=YYYY-MM`: mağaza stoğu irsHrk ay sonu itibarıyla, depo WMS anlık (GMY kararı).
+- Ağustos yeniden üretilip teslim edilen dosyayla hücre hücre kıyaslandı: başlık birebir, farklar yalnız sonradan değişen veri.
+- Panel `/ay-sonu-stok`: ay seç → Üret (python arka planda, canlı log) → İndir; arşiv listesi. Release + panel yeniden başlatıldı.
+
 ### 2026-10-03 — ODAK ürün hattı keşfi + SP kusurları + düzeltme kodu (5 commit)
 - 74 modül okundu; zincir: dış yükleyici → `OdakUrunGuncellemeEslestir` · job `odakUrunAktar_job` → `odakFiyatAktarim` + `tsofturunaktarim` · stok 5 dk KITAPSEPETI.
 - 15 ölçülmüş kusur (SP + satır); en kritik: fiyat döngüsü (10.108 ürün/saat) + 220 bayrağı deliği → B-183..B-197.
@@ -220,6 +226,18 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ## Devam Eden (aktif)
 
 ### BKM — BIRLESIK ONCELIK SIRASI
+
+#### 📦 AY SONU STOK-SATIŞ RAPORU (03.10.2026 — panel `/ay-sonu-stok`, commit f135ece)
+
+- [ ] **B-198 Ekim raporunu 01.11'de üret — ilk "ay kapanır kapanmaz" koşum** — 03.10.
+      Mağaza stoğu defterden ay sonuna göre kurulduğu için gecikme önemsiz; ama depo WMS ANLIK —
+      ay kapanır kapanmaz üretilmezse depo kolonu sonraki günlerin stoğunu gösterir. İstenirse
+      ayın 1'i için zamanlanmış görev (ayrı onay).
+- [ ] **B-199 Eski ayı yeniden üretmede ürün kartı GÜNCEL gelir — panelde uyarı yeterli mi?** — 03.10.
+      Ölçüldü (Ağustos yeniden üretimi): ~514 ad, 268 fiyat, 78 kategori farkı; kartın geçmişi yok.
+      Arşivdeki teslim edilmiş dosya korunur; "Üret" onun üzerine yazar. Karar: eski ay için Üret kilitlensin mi?
+- [ ] **B-200 Üretim süresi göstergesi yalnız log satırında güncelleniyor** — 03.10. Uzun SQL adımında
+      (~5 dk) süre donuk görünür. `AySonuStok.razor` — düşük öncelik, istenirse 5 sn'lik zamanlayıcı.
 
 #### 🛠 ODAK ÜRÜN HATTI — SP DÜZELTMELERİ (keşif 03.10.2026)
 
