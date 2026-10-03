@@ -17,7 +17,7 @@
 2. **Envanter soruşturması** (S3): İst.Yolu −54M TL → [`docs/06-envanter-bulgular.md`](docs/06-envanter-bulgular.md)
 3. **E-ticaret + Kanal köprüsü** (S3–S4): JOKER H15, Mobil App, Grok, Sınav/Retail → [`docs/05-eticaret-joker.md`](docs/05-eticaret-joker.md) · [`docs/04-kanal-koprusu.md`](docs/04-kanal-koprusu.md)
 
-Kronolojik günlük: [`SESSION_LOG.md`](SESSION_LOG.md)
+Kronolojik günlük: [`docs/journal/bkm/`](docs/journal/bkm/)
 
 ---
 
@@ -33,6 +33,7 @@ Kronolojik günlük: [`SESSION_LOG.md`](SESSION_LOG.md)
 > **MCP server kodu ayrıldı (10.06):** `src/`+`dist/` dondurulmuş — geliştirme artık `D:\Dev\sqlserver-mcp`'de (kendi CLAUDE.md'si var). Config geçişine kadar buradaki `dist/` canlı çalışır (TODO M-01). Bu repo = BKM analitik çalışma alanı.
 
 İki paralel MCP — detay [`docs/01-baglanti.md`](docs/01-baglanti.md):
+
 - `mcp__sqlserver__*` → 192.168.40.201 (DerinSISBkm, BKM, EncoreMerkez, +linked ODAKJOKER)
 - `mcp__sqlserver-express__*` → 192.168.40.66\SQLEXPRESS
 
@@ -118,6 +119,7 @@ Bu 4 adım sessizce yapılır. Cevap bu okumalara dayanır, hafızaya değil. De
 ### Oturum Sonu Ritüeli
 
 Kullanıcı "iyi geceler" / "/handoff" / "kaydet ve kapat" derse → `session-handoff` skill devreye girer:
+
 - `docs/journal/<proje>/YYYY-MM-DD.md`'ye append.
 - `TODO.md` senkronu (tamamlananları işaretle, yeni keşfedilen işleri ekle).
 - Journal + TODO **otomatik commit** (sadece bu iki dosya).
@@ -158,3 +160,16 @@ Kullanıcı "iyi geceler" / "/handoff" / "kaydet ve kapat" derse → `session-ha
 - `docs/CONTEXT_MANAGEMENT.md` — Bağlam yönetimi anayasası (8 ilke).
 - `docs/journal/README.md` — Multi-project journal yapısı.
 - `TODO.md` — Faz yapılı, proje başlıklı backlog.
+
+## Orkestra
+
+Bu projede yazılım üretimi Orkestra ile yürür (Claude Code eklentisi `orkestra@orkestra`). Orkestra'nın yeri `ORKESTRA_HOME`,
+tanımsızsa bu deponun kardeşi `../orkestra`. Eklenti kaydı makineye özgüdür, git dışı `.claude/settings.local.json`'dadır:
+yeni makinede bir kez `ork.cmd proje-kur .` (var olan dosyalara dokunmaz, eklentiyi bağlar).
+
+- Akış: `/tanit` (ilk iş) → `/spec` → `/plan` → `/gorevler` → `/uygula` → `/kabul-testi` → `/surum`. Küçük iş: `/hata`, `/refactor`. Durum: `/durum`.
+- Rol ajanları eklentide **`orkestra:` önekiyle** çağrılır: skill'de `sql-yazar` yazıyorsa alt ajan tipi `orkestra:sql-yazar`'dır.
+- Deterministik kapılar: `ork.cmd kapilar --staged` (Windows) / `./ork kapilar --staged`. Araç durumu: `ork doktor`.
+- Günlük: karar (gerekçesiyle), ölçüm (kanıtıyla), reddedilen/işe yaramayan yol, kritik bilgi, açık soru ve belirleyici kullanıcı sözü **oluştuğu anda** `ork not <tür> "…"` ile `docs/journal/` altına yazılır; sohbet ve ara durum yazılmaz. Sıkıştırma öncesi ham döküm `.orkestra/gunluk-ham/` (git dışı). Oturum sonu `/devir`. Görev defteri git'te (`specs/NNN-ad/defter.md`, `ork defter`). Kip: `config/orkestra.json` → `gunluk`.
+- Projeye özel bilgi: `docs/proje/` (`/tanit` yazar), veritabanları ve compat seviyeleri `config/veritabanlari.json`.
+- SQL runtime kuralları, test-önce ve merge insan kararı ilkeleri Orkestra anayasasındandır; proje kuralı çelişirse `/adr` ile kayda geçirin.
