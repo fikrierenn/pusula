@@ -55,3 +55,10 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 01:05 · Karar: T-007 WMS 3.621.587 ile T-001 G 2.830.868 çelişki değil — G 'SatisAnaliziTaban son kesimindeki aynı stkID kümesi' ile sınırlıydı (T-001 özeti blok G), H03 tüm WMS — yanlışsa T-019 bağımsız denetimde iki ölçüm aynı kapsamda yeniden koşulur
 - 04.10 01:07 · T-007: dusuk (ertelendi): blok C açıklaması 'kategori çeşit ekranı' diyor ama o ekran MAX(Donem) ay sonu + çeşit sayısı (Y-DEPO sonrası geçerli); ONCE+D marka başına ±1 kesme farkı; T-001 G kapsam notu başlıkta yok
 - 04.10 01:07 · T-007: tamam (918562d..cf0f280, inceleme temiz, 3 düşük ertelendi). Test notu: panel StokAdet = D + A birebir (WMS tam sayı)
+- 04.10 01:13 · Commit: 8304554 chore(bkm): T-008 kanonik H04 e-tic kategori + ODAK talep (T-008)
+- 04.10 01:13 · T-008: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:17 · Karar: H04 'kategorisi bilinmeyen' = NULL (bugün 0 satır) ∪ gerçek LOGOGRUP değeri 'Tanımsız' (1.282 sip / 470.969,58 TL); kanonik A ham kolonu taşır, 'Tanımsız' kategori olarak kalır, test Σ(tüm satırlar)=B kurar — ekranda 'Tanımsız' zaten kategori adı, davranış değişmez — yanlışsa T-037 testi NULL kovasını boş bulur (kırmızı değil, Σ eşitliği yine kurulur)
+- 04.10 01:17 · Karar: türemiş sipariş (J_ORDERS.BASEORDERID, Eylül net ~73.622,93 TL ≈ %0,06) 001 kapsamı dışında; KR-2 ile birlikte 003 spec'ine açık soru — anlamı (bedelsiz yeniden gönderim mi, ek tahsilat mı) ölçülmedi ve hem panel hem kanonik aynı şiştiği için H4 eşitliğini bozmuyor — yanlışsa e-tic ciro %0,06 şişik kalır
+- 04.10 01:17 · T-008: orta (ertelendi → T-019): başlıkta 'panel NULL kategoriyi düşürüyor' gerekçesi ölçümle çürük (fark tamamen STATUS); A↔B kapısı yalnız fan-out kontrolü, STATUS listesini bağımsız sınamıyor — T-019'da adı düzeltilir ve tümleyen kolu (süzgeçsiz − dışlanan kodlar = B) eklenir; AC-4.2 sipariş birebirliği yalnız B'den okunur
+- 04.10 01:17 · T-008: dusuk (ertelendi): odak başlığı 'B = A toplamı' yanlış (B ≥ A); değişken adları @BasIso2/3; dosyada olmayan başvuru; DECLARE yorum içinde
+- 04.10 01:17 · T-008: tamam (1103192..8304554, inceleme temiz, 2 orta+1 düşük ertelendi)
