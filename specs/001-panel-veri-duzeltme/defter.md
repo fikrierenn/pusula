@@ -94,3 +94,18 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 17:35 · T-012: orta (ertelendi → T-019): ONCE_CESIT panel çıktısı değil girdi kümesi (panel kategori süzgeciyle 25.084, blok 25.190); K taban dışı 380 ürün / 790.689 adet raporlamıyor (canlı merkezin ~%22) — başlık (4) düzeltilir, taban-dışı satırı eklenir; A CAST int kesmesi (alan 0+1'de kesirli satır 0 ölçüldü)
 - 04.10 17:35 · T-012: dusuk (ertelendi): @Donem datetime (kolon date) + olmayan dönem denemesi ay başı (30.09 olmalı); K 'Kesim' referans an değil, kurulma anı kaydı yok
 - 04.10 17:35 · T-012: tamam (bd02553..2e7b302, inceleme temiz, 2 orta+2 düşük ertelendi)
+- 04.10 17:38 · Karar: (GMY yetkisiyle 'sen ölç ve karar ver') bağımsız [SQL] [P] görevleri 3'lü dalgalarla paralel yazdırılır, yazarlar commit ETMEZ, denetleyici kapı sonrası sırayla commit eder; iki inceleyici korunur — ölçüm: yazar 170–1177 sn (darboğaz), gorev-inceleyici 40–75 sn, sql-inceleyici 50–336 sn paralel; Kritik/Yüksek'lerin çoğu sql-inceleyiciden, T-004'teki 2 Yüksek yalnız gorev-inceleyiciden — yanlışsa paralel yazarlar aynı dosyaya dokunur (dosya kümeleri ayrık, risk düşük) ya da commit sırası karışır
+- 04.10 17:39 · T-014: kapılar STATIC ✓ (0 bulgu); denetleyici commit (paralel dalga)
+- 04.10 17:40 · Not: paralel dalgada yazarlar commit etmediği için commit kapısının tsqllint/sqlfluff kolları yazar tarafında koşmuyordu; T-014 commit'i kapıda kaldı (G-SQL-AYRISTIR, G-SQL-BICIM). Önlem: dalga yazarları bitirmeden ./ork sql <dosya> koşar; denetleyici G-STATIC'i ./ork sql ile koşar
+- 04.10 17:41 · T-014: kapılar ./ork sql 3/3 ✓; denetleyici commit (paralel dalga)
+- 04.10 17:41 · Commit: f68be88 chore(bkm): T-014 kanonik H10 ürün kodu dönüşümü (T-014)
+- 04.10 17:42 · T-015: kapılar ./ork sql 3/3 ✓; denetleyici commit
+- 04.10 17:42 · Commit: 30f80bd chore(bkm): T-015 kanonik H12 mizan nakit/çek/KDV (T-015)
+- 04.10 17:43 · T-014: inceleme r0 — gorev-inceleyici Onaylandı (Orta: NOT(...) deseni, ONCE taşma iddiası etiketi); sql-inceleyici YÜKSEK (ölçüldü): Turkish_CI_AS altında [0-9] aralığı ², １, ٣ ile eşleşir, CONVERT(int,N'²') patlar — güvenli ifade COLLATE Latin1_General_BIN2 ile yazılmalı; düzeltme turu 1 gönderildi
+- 04.10 17:43 · Karar: ürün kodu → stkID kuralı ikili collation'a sabitlenir (Kod COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN 1..9); T-058 panel düzeltmesi aynı kuralı kullanır, H10 VALUES'e ², １２, ٣ (NULL) eklenir — bugün Products.Code'da böyle kayıt 0 (ölçüldü) ama tek kayıt ekranı çökertir — yanlışsa kural fazla katı olur (ASCII dışı rakamlı geçerli kod yok)
+- 04.10 17:43 · T-013: kapılar ./ork sql 3/3 ✓; denetleyici commit
+- 04.10 17:44 · Commit: a3e085a chore(bkm): T-013 kanonik H09 Sınav ödeme (T-013)
+- 04.10 17:45 · T-014: düzeltme turu 1/5 (4 giderildi), ./ork sql 3/3 ✓
+- 04.10 17:45 · Commit: 29a0a1d fix(bkm): T-014 ürün kodu kuralı ikili collation (T-014)
+- 04.10 17:46 · T-014: dusuk (ertelendi): başlık 'Bloklar' satırında B'nin Satir kolonu yok; B SUM boş tabloda NULL (Satir kolonu ayırıyor)
+- 04.10 17:46 · T-014: tamam (bc98d56..29a0a1d, inceleme temiz, 1 düzeltme turu, 1 düşük ertelendi). T-058 kuralı: COLLATE Latin1_General_BIN2
