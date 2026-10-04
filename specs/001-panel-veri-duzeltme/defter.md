@@ -109,3 +109,6 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 17:45 · Commit: 29a0a1d fix(bkm): T-014 ürün kodu kuralı ikili collation (T-014)
 - 04.10 17:46 · T-014: dusuk (ertelendi): başlık 'Bloklar' satırında B'nin Satir kolonu yok; B SUM boş tabloda NULL (Satir kolonu ayırıyor)
 - 04.10 17:46 · T-014: tamam (bc98d56..29a0a1d, inceleme temiz, 1 düzeltme turu, 1 düşük ertelendi). T-058 kuralı: COLLATE Latin1_General_BIN2
+- 04.10 17:46 · T-015: orta (ertelendi → T-019/T-062): 101 Alınan Çek 381,56M yalnız defterden (tek alt hesap 101.10.001 Portföydeki Çekler; çek modülüyle mutabakat yok — ÇIKARIM portföyde); KDV formülü 391−191−190 yalnız devreden durumunu modelliyor, ödenecek KDV ayında 360 alt hesabı eklenmeli; ONCE 391/191 ayrı ayrı 0 iddiası (sql-inceleyici doğruladı: her ay mahsupla sıfırlanıyor)
+- 04.10 17:46 · T-015: dusuk (ertelendi): açılış fişi tutarları başlıkta yok; '(3) 101 negatif olabilir' yanlış (verilen çek 103, ters satır 0); kapanış süzgeci açık yılda sınanmadı; D tek yönlü LEFT JOIN
+- 04.10 17:46 · T-015: tamam (bc98d56..30f80bd, inceleme temiz, 2 orta+4 düşük ertelendi). Panel Nakit 470,61M = 89,05M nakit + 381,56M alınan çek
