@@ -47,7 +47,7 @@ Kronolojik günlük: [`docs/journal/bkm/`](docs/journal/bkm/)
 - EncoreMerkez compat 110: `STRING_AGG`, `TRIM`, `IIF`, `TRY_CONVERT` **yok**
 - **EncoreMerkez SalesProducts:** her zaman `WHERE IsValid = 1` filtresi kullan
 - **LineCount KULLANMA** → `CROSS APPLY (SELECT COUNT(*) FROM SalesProducts WHERE SalesId=s.Id AND IsValid=1)`
-- **İndirim toplamı:** sadece `DiscountTotalDirect` kullan (`DiscountTotalCampaign` alt kümesidir, toplarsan çift sayarsın)
+- **İndirim toplamı:** kalemde `DiscountTotalDirect + DiscountTotalIndirect`, başlıkta `Sales.DiscountTotal` (`DiscountTotalCampaign` Direct'in alt kümesidir, toplarsan çift sayarsın). Ayrıntı: `.claude/rules/sql-server-conventions.md` § İndirim Kolonları
 - **Belge filtresi:** `DocumentsTypeId IN (1, 2, 3, 6, 7, 8)` — İade (3) negatif sign ile düşülür
   - 1=Fiş, 2=Fatura, 3=İade(-), 6=Personel Fiş, 7=Personel Fatura, 8=Sınav Okulları
   - SUM'larda: `CASE WHEN s.DocumentsTypeId=3 THEN -s.GrossTotal ELSE s.GrossTotal END`
