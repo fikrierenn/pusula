@@ -4,10 +4,11 @@
    AC       : AC-1.1, AC-1.2, AC-1.3 · Spec 001 · H01
    Dönem    : 01.09.2026 – 30.09.2026 (bitiş hariç 01.10.2026)
    Tolerans : Σ Brut ve Σ Indirim ≤ 1,00 TL; fiş sayısı birebir
-   Önce     : RefQueries.GetKumbaraAsync/GetManuelIndirimAsync SQL'i, Eylül 2026, 3 mağaza (sqlcli, 04.10.2026, ayrı 'önce' koşusu):
+   Önce     : RefQueries.GetKumbaraAsync/GetManuelIndirimAsync SQL'i, Eylül 2026, 3 mağaza (sqlcli, 04.10.2026, ayrı 'önce' koşusu).
+              Dosya dışı: T-005 ölçümü (defter, 04.10.2026); panel SQL'i bu dosyada yok, blok olarak yeniden koşulamaz:
               Kumbara Brut 6.106.723,80 · Kumbara Indirim 237.219,16 · Kumbara fiş 7 · manuel Indirim (Type=1, tüm sebepler) 519.987.913,87
    Sonra    : yok (düzeltme T-0xx sonrası ölçülür)
-   Bağımsız : (04.10.2026, sqlcli encore profili, --read-only)
+   Bağımsız : (04.10.2026, sqlcli encore profili, --read-only; A–C bu dosyadaki bloklardır, yöntem bağımsız, kaynak aynı)
               A  : Σ Brut 223.717,80 (İst.Yolu 216.357,00 · Özlüce 7.360,80 · FSM satırı yok)
               B  : Kumbara Σ Indirim 10.546,86 · manuel sebepler (Sebep <> Kumbara) Σ Indirim 19.891.253,40 (34 satır, (sebep, fiş) tekil)
               B2 : manuel fiş tekil Σ Indirim 18.256.609,93 (3 satır; Kumbara dahil; iade negatif)
@@ -21,7 +22,10 @@
               görünür; manuel karşılaştırması B'de Sebep <> N'Kumbara satırlarıyla yapılır, Kumbara ayrı satırdır, ikisi toplanmaz.
               (3) 1001 geri dönüşüm satırları iade belgelerinde yoğun (T-001); bu bağ kampanya kalemine dayandığı için 1001 dışlaması yok.
               (4) AC-1.2 tanımı: fiş başına başlık DiscountTotal = manuel sebepli fişlerin TOPLAM indirimi; kalem bazlı manuel
-              indirim DEĞİL (Eylül kalem DiscountTotalDirect toplamı yaklaşık 5,14M, ölçüm inceleyiciden).
+              indirim DEĞİL. Kalem indirimi = DiscountTotalDirect + DiscountTotalIndirect (T-017); Eylül, 3 mağaza, iade negatif
+              (blok K, 04.10.2026, 134.314 fiş): Direct 40.779.006,66 + Indirect 10.853.128,37 = 51.632.135,03 = başlık DiscountTotal
+              toplamı 51.632.135,03 (K'da ayrıca hesaplanır; kaynak içi kimlik, bağımsız kanıt değil).
+              Eski '~5,14M Direct' atfı geçersiz (kaynağı yoktu) ve kaldırıldı.
    İade     : iade belgesi kendi manuel bağını taşımaz (2026'da DocumentsTypeId=3 belgelerinde CampaignId IS NULL satır 0). İade kümesi
               kaynak fişten kurulur: r.DocumentsTypeId = 3 AND r.LinkedDocumentId > 0 ve kaynak fişte (sp.SalesId = r.LinkedDocumentId,
               IsValid = 1) CampaignId IS NULL satırı + RefundReasons.Type = 1 (Kumbara için Id = 17). İade KENDİ tarihine (r.[Date])
@@ -37,6 +41,7 @@
    Komut    : sqlcli --param ISO tarih ister; bloklar GO'suz ve DECLARE'siz, literal tarihle koşuldu (SSMS DECLARE + GO esas).
    Bloklar  : A Kumbara brüt (Magaza, Brut) · B sebep indirimi (Sebep, Magaza, Indirim) · B2 manuel fiş tekil (Magaza, Indirim)
               · C manuel kaynaklı iade (Magaza, IadeliFis, IadeBrut, IadeIndirim; mutlak değer). A/B/B2 içinde iade zaten negatif.
+              · K kalem indirimi Direct + Indirect ve başlık toplamı (KalemDirect, KalemIndirect, BaslikIndirim, Fis; tek satır)
    AC-1.3   : nüfus 496 (manuel), 0 (Kumbara)
 */
 
@@ -250,3 +255,44 @@ FROM IadeFis AS i
         ON mg.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS AND mg.mekanID IN (1, 4477, 4478)
 GROUP BY st.Name
 ORDER BY st.Name;
+GO
+
+-- blok: K  (kalem indirimi Direct + Indirect = başlık DiscountTotal mı? iade negatif; 3 mağaza, bütün belge tipleri 1,2,3,6,7,8)
+DECLARE @Bas datetime = CONVERT(datetime, '01.09.2026', 104);  -- DMY
+DECLARE @Bit datetime = CONVERT(datetime, '01.10.2026', 104);  -- DMY
+
+WITH Fis AS (
+    SELECT
+        s.Id AS fis_id,
+        s.DocumentsTypeId,
+        s.DiscountTotal
+    FROM EncoreMerkez.dbo.Sales AS s
+        INNER JOIN EncoreMerkez.dbo.Pos AS ps
+            ON s.PosId = ps.Id
+        INNER JOIN EncoreMerkez.dbo.Stores AS st
+            ON ps.StoreId = st.Id
+        INNER JOIN DerinSISBkm.dbo.posMagaza AS mg
+            ON mg.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS AND mg.mekanID IN (1, 4477, 4478)
+    WHERE
+        s.[Date] >= @Bas AND s.[Date] < @Bit
+        AND s.DocumentsTypeId IN (1, 2, 3, 6, 7, 8)
+),
+
+Kalem AS (
+    SELECT
+        sp.SalesId AS fis_id,
+        SUM(sp.DiscountTotalDirect) AS direct_toplam,
+        SUM(sp.DiscountTotalIndirect) AS indirect_toplam
+    FROM EncoreMerkez.dbo.SalesProducts AS sp
+    WHERE sp.IsValid = 1
+    GROUP BY sp.SalesId
+)
+
+SELECT
+    COUNT(*) AS Fis,
+    SUM(CASE WHEN f.DocumentsTypeId = 3 THEN -ISNULL(k.direct_toplam, 0) ELSE ISNULL(k.direct_toplam, 0) END) AS KalemDirect,
+    SUM(CASE WHEN f.DocumentsTypeId = 3 THEN -ISNULL(k.indirect_toplam, 0) ELSE ISNULL(k.indirect_toplam, 0) END) AS KalemIndirect,
+    SUM(CASE WHEN f.DocumentsTypeId = 3 THEN -f.DiscountTotal ELSE f.DiscountTotal END) AS BaslikIndirim
+FROM Fis AS f
+    LEFT JOIN Kalem AS k
+        ON f.fis_id = k.fis_id;

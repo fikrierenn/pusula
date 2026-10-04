@@ -13,6 +13,7 @@
    Dondurma : c223b41
    Hedef-db (blok bazlı): A, B, C, E, F, F2 EncoreMerkez (A, C, F, F2 DerinSISBkm.posMagaza köprüsü) · D, I JOKER (doğrudan,
               bash tools/sq.sh --joker) · G, J, J2 DerinSISBkm · H BKM + EncoreMerkez
+   Bölünme  : bloklar G, H, H2, I, J, J2 → 00-taban-olcumu-ek.sql (sqlfluff 20 KB sınırı); sonuç özetleri bu başlıkta kalır.
    SSMS     : DECLARE @BasTarih date = CONVERT(DATE, '01.09.2026', 104), @BitTarih date = CONVERT(DATE, '01.10.2026', 104);
 
    SONUÇLAR (satır sayısı = bloğun döndürdüğü satır)
@@ -26,10 +27,14 @@
                   B (barkod 1001, IsValid'e bakmaz) = 1.853 belge; yalnız A'da 36, yalnız B'de 0, ikisinde 1.853.
                   IsValid = 1 eklenince sonuç değişmedi (düzeltme turu 1, yeniden koşuldu). Sonuç: eşdeğer değil (36/1.889 belge).
                   36 belgenin sebebi "583160'ı 1001'siz taşıyor" DEĞİL: sebep kodu 12 başka ürün satırlarına girilmiş.
+                  Blok C2 (04.10.2026 22:20) ayrıştırır: 36 belge · 168 satır · 160 farklı barkod, HEPSİ RefundReasonId = 12 +
+                  583160 dışı ürün; 583160 kodlu satır bu 36'da yok. KR-4 tüketen görev (T-009) için kollar: B kolu 1001 barkodu,
+                  A'nın fazlası sebep kodu 12'nin başka ürün satırlarına girilmesi.
                   Panelin A tanımı 1001 tanımından fazla dışlıyor; B'yi kapsadığı için daha güvenli sayılmaz (KR-4 girdisi).
    D  (1 satır)   KR-2 (JOKER, Eylül 2026, başlık STATUS NOT IN 1001,1006,1007,3000,4000): 113.710 sipariş; satır STATUS 2004/2005/2010
                   tutarı 1.648.346,07 TL, adet 5.939, tüm satır netinin %1,35'i (tüm satır net 121.911.116,36 TL).
-                  %1,35 > %0,5 → KR-2 ayrı karar gerekir.
+                  %1,35 > %0,5 → KR-2 ayrı karar gerekir. Karar (denetleyici): satır iptali ciroya UYGULANMAZ, yalnız ODAK talebine
+                  uygulanır (H04-odak-talep.sql); ana ciro bu yüzden satır iptalini içerir, ODAK talebi içermez.
                   Referans 121.955.096,47 TL ile fark −43.980,11 TL tanım farkı DEĞİL: panel eticSql (dashboard/Data/Queries.cs:53-59)
                   D ile aynı tanım ve bugün 113.710 sipariş / 121.911.116,36 TL verir. Denetleyici ölçümü: 02.10'dan bu yana
                   21 sipariş durum değiştirdi → kapalı Eylül e-tic neti hâlâ kayıyor (R2 girdisi).
@@ -42,11 +47,18 @@
    G  (1 satır)   SatisAnaliziTaban son Kesim = 15.09.2026 (276.378 ürün); tablodaki tek zaman damgası MAX(Uretim) = 16.09.2026 16:48:38
                   (ÇIKARIM: üretim zamanı). Merkez depo kolonu (MerkezStok) toplamı 3.098.445; canlı WMS (alan 0+1, aynı stkID
                   kümesi, 03.10.2026 23:39) 2.830.868. Fark −267.577 adet (−%8,64). MerkezStok üretim anında canlı WMS'ten dolar
-                  (SatisAnaliziTabanService.cs:171-176): fark tamamen zaman kayması, veri hatası değil. Ürün başına tek satır
+                  (SatisAnaliziTabanService.cs:171-176): fark ZAMAN KAYMASI olarak YORUMLANIR (ÇIKARIM: mekanizma kod okumasından
+                  ve zaman damgasından; farkın büyüklüğü zaman içindeki depo hareketlerine ayrıştırılmadı, H08 kanonik ölçümü
+                  T-012 kapsamında); veri hatası aranmadı, kanıtı yok. Ürün başına tek satır
                   (SezonYil tek değer 2025, satır = ürün sayısı).
    H  (1 satır)   BKM.snv, dönem Eylül 2026 tarihli siparişlerden seçilir (DonemId sabiti yok): 5.401 sipariş, 3 farklı DonemId
-                  (en küçük −8, en büyük 8). Kalemsiz (SiparisDetay'siz) sipariş = 0, net KDV hariç 0,00 TL.
+                  (en küçük −8, en büyük 8). DonemId −8: 5 sipariş (02.09–13.09.2026), BKM.snv.Donem'de karşılığı yok (tabloda
+                  1, 4, 5, 6, 7, 8 var); anlamı BİLİNMİYOR (ÇIKARIM: dönem 8'in işaretli/ters kaydı olabilir; dönem JOIN'i ile
+                  düşer, T-013 dönem türetmesi bunu hesaba katmalı). Dağılım (04.10.2026 22:20): −8 = 5 · 7 = 1 · 8 = 5.395.
+                  Kalemsiz (SiparisDetay'siz) sipariş = 0, net KDV hariç 0,00 TL.
                   H9: kalemsiz durumu gerekmiyor (nüfus 5.401 > 0; boş küme değil).
+   H2 (1 satır)   H'nin InvoiceNo ↔ Sales.DocumentNo birleşmesi (COLLATE ile): Eylül Sınav siparişlerinde 5.545 fatura numarası, 5.545'i
+                  Encore'de eşleşir, çok belgeli fatura numarası 0 (en çok 1). DocumentNo genel olarak tekil değildir; bu ay fan-out yok.
    I  (1 satır)   JOKER SELECT 1 AS Bagli = 1 (bash tools/sq.sh --joker); doğrudan bağlantı çalışıyor.
    J  (1 + 4 satır) StokAyBakiyeMekanBazli, ehMekan = 12: yalnız Kaynak = 'WMS', tek Donem 31.08.2026 (25.190 satır, 4.249.866 adet).
                   Son 6 dönem penceresinde başka dönem yok. Kaynak = 'irsHrk' yalnız mekân 1, 4477, 4478 (64 dönem, 31.05.2021–31.08.2026);
@@ -170,6 +182,61 @@ SELECT
         )
     ) AS ikisinde;
 
+-- blok: C2
+DECLARE @BasTarih DATE = CONVERT(DATE, '01.09.2026', 104), @BitTarih DATE = CONVERT(DATE, '01.10.2026', 104);
+-- C'nin yalnız-A belgeleri (36): hangi koşul onları A'ya sokuyor, hangi barkodlu satırlar taşıyor (KR-4 ayrıştırma)
+WITH Kume AS (
+    SELECT s.Id AS satis_id
+    FROM EncoreMerkez.dbo.Sales AS s
+        INNER JOIN EncoreMerkez.dbo.Pos AS p
+            ON s.PosId = p.Id
+        INNER JOIN EncoreMerkez.dbo.Stores AS st
+            ON p.StoreId = st.Id
+        INNER JOIN DerinSISBkm.dbo.posMagaza AS mg
+            ON mg.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
+    WHERE
+        mg.mekanID IN (1, 4477, 4478)
+        AND s.[Date] >= @BasTarih
+        AND s.[Date] < @BitTarih
+),
+
+KumeB AS (
+    SELECT DISTINCT sp.SalesId AS satis_id
+    FROM EncoreMerkez.dbo.SalesProducts AS sp
+        INNER JOIN Kume AS k
+            ON sp.SalesId = k.satis_id
+    WHERE sp.BarcodeNo = '1001'
+)
+
+SELECT
+    CASE
+        WHEN sp.RefundReasonId = 12 AND pr.Code = '583160' THEN 'sebep_12_ve_kod_583160'
+        WHEN sp.RefundReasonId = 12 THEN 'sebep_12_baska_urun'
+        ELSE 'kod_583160_sebepsiz'
+    END AS kol_adi,
+    COUNT(DISTINCT sp.SalesId) AS belge,
+    COUNT(*) AS satir,
+    COUNT(DISTINCT sp.BarcodeNo) AS farkli_barkod
+FROM EncoreMerkez.dbo.SalesProducts AS sp
+    INNER JOIN Kume AS k
+        ON sp.SalesId = k.satis_id
+    INNER JOIN EncoreMerkez.dbo.Products AS pr
+        ON sp.ProductsId = pr.Id
+WHERE
+    sp.IsValid = 1
+    AND (sp.RefundReasonId = 12 OR pr.Code = '583160')
+    AND NOT EXISTS (
+        SELECT 1 FROM KumeB AS b
+        WHERE b.satis_id = sp.SalesId
+    )
+GROUP BY
+    CASE
+        WHEN sp.RefundReasonId = 12 AND pr.Code = '583160' THEN 'sebep_12_ve_kod_583160'
+        WHEN sp.RefundReasonId = 12 THEN 'sebep_12_baska_urun'
+        ELSE 'kod_583160_sebepsiz'
+    END
+ORDER BY kol_adi;
+
 -- blok: D
 -- ork:hedef-db JOKER
 -- JOKER doğrudan bağlantı (ODAKJOKER değil); tarih ISO
@@ -287,139 +354,3 @@ WHERE
     AND i.[Date] < @BitTarih
 GROUP BY mg.mekanID
 ORDER BY mg.mekanID ASC;
-
--- blok: G
-WITH Son AS (
-    SELECT MAX(t.Kesim) AS kesim
-    FROM DerinSISBkm.bkm.SatisAnaliziTaban AS t
-),
-
-Taban AS   -- anahtar (Kesim, SezonYil, stkID): ürün başına tek değer için MAX
-(
-    SELECT
-        t.stkID,
-        MAX(t.MerkezStok) AS merkez_stok
-    FROM DerinSISBkm.bkm.SatisAnaliziTaban AS t
-        INNER JOIN Son AS sn
-            ON t.Kesim = sn.kesim
-    GROUP BY t.stkID
-),
-
-Canli AS (
-    SELECT
-        w.stkID,
-        SUM(w.Stok) AS stok
-    FROM DerinSISBkm.depo.stok_adres_palet_vw AS w
-    WHERE w.adrsAlanTipID IN (0, 1)
-    GROUP BY w.stkID
-)
-
-SELECT
-    (SELECT sn.kesim FROM Son AS sn) AS kesim_tarihi,
-    (
-        SELECT MAX(t2.Uretim)
-        FROM DerinSISBkm.bkm.SatisAnaliziTaban AS t2
-            INNER JOIN Son AS sn2
-                ON t2.Kesim = sn2.kesim
-    ) AS taban_uretim_zamani,   -- tablodaki tek zaman damgası (Uretim); MerkezStok üretim anında canlı WMS'ten dolar
-    GETDATE() AS sorgu_zamani,
-    (SELECT COUNT(*) FROM Taban) AS urun_sayisi,
-    SUM(tbn.merkez_stok) AS taban_merkez_adet,
-    SUM(ISNULL(c.stok, 0)) AS canli_wms_adet,
-    SUM(ISNULL(c.stok, 0)) - SUM(tbn.merkez_stok) AS fark_adet,
-    100.0 * (SUM(ISNULL(c.stok, 0)) - SUM(tbn.merkez_stok)) / NULLIF(SUM(tbn.merkez_stok), 0) AS fark_yuzde
-FROM Taban AS tbn
-    LEFT JOIN Canli AS c
-        ON tbn.stkID = c.stkID;
-
--- blok: H
-DECLARE @BasTarih DATE = CONVERT(DATE, '01.09.2026', 104), @BitTarih DATE = CONVERT(DATE, '01.10.2026', 104);   -- dönem sipariş tarihinden
-WITH Siparis AS (
-    SELECT
-        sip.SiparisId,
-        sip.SiparisKod
-    FROM BKM.snv.Siparis AS sip
-    WHERE
-        sip.Tarih >= @BasTarih
-        AND sip.Tarih < @BitTarih
-        AND NOT EXISTS (
-            SELECT 1 FROM BKM.snv.SiparisDetay AS sd
-            WHERE sd.SiparisId = sip.SiparisId
-        )
-),
-
-Fis AS (
-    SELECT DISTINCT
-        si.SiparisKod,
-        s.Id AS satis_id,
-        s.DocumentsTypeId,
-        s.GrossTotal,
-        s.DiscountTotal,
-        s.VatTotal
-    FROM Siparis AS si
-        INNER JOIN BKM.snv.SinavSiparisFisEncore AS fe
-            ON si.SiparisKod = fe.SiparisKod
-        INNER JOIN EncoreMerkez.dbo.Sales AS s
-            ON fe.InvoiceNo = s.DocumentNo
-)
-
-SELECT
-    (
-        SELECT COUNT(*) FROM BKM.snv.Siparis AS x
-        WHERE x.Tarih >= @BasTarih AND x.Tarih < @BitTarih
-    ) AS eylul_siparis,
-    (
-        SELECT COUNT(DISTINCT x.DonemId) FROM BKM.snv.Siparis AS x
-        WHERE x.Tarih >= @BasTarih AND x.Tarih < @BitTarih
-    ) AS donem_sayisi,
-    (
-        SELECT MIN(x.DonemId) FROM BKM.snv.Siparis AS x
-        WHERE x.Tarih >= @BasTarih AND x.Tarih < @BitTarih
-    ) AS min_donem_id,
-    (
-        SELECT MAX(x.DonemId) FROM BKM.snv.Siparis AS x
-        WHERE x.Tarih >= @BasTarih AND x.Tarih < @BitTarih
-    ) AS maks_donem_id,
-    (SELECT COUNT(*) FROM Siparis) AS kalemsiz_siparis,
-    (SELECT COUNT(DISTINCT f2.SiparisKod) FROM Fis AS f2) AS fisli_kalemsiz_siparis,
-    ISNULL(SUM(CASE
-        WHEN f.DocumentsTypeId = 3
-            THEN -(f.GrossTotal - f.DiscountTotal - f.VatTotal)
-        ELSE (f.GrossTotal - f.DiscountTotal - f.VatTotal)
-    END), 0) AS kalemsiz_net_kdv_haric
-FROM Fis AS f;
-
--- blok: I
--- JOKER doğrudan bağlantı testi: bash tools/sq.sh --joker "SELECT 1 AS Bagli"
-SELECT 1 AS Bagli;
-
--- blok: J
-DECLARE
-    @SonDonemAltSinir DATE
-    = (
-        SELECT DATEADD(MONTH, -6, MAX(x.Donem))
-        FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli AS x
-        WHERE x.ehMekan = 12
-    );
-SELECT TOP (12)
-    b.Donem AS donem_tarihi,
-    b.Kaynak AS kaynak_adi,
-    COUNT(*) AS satir,
-    SUM(CONVERT(BIGINT, b.Stok)) AS stok_toplam
-FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli AS b
-WHERE
-    b.ehMekan = 12
-    AND b.Donem >= @SonDonemAltSinir
-GROUP BY b.Donem, b.Kaynak
-ORDER BY b.Donem DESC, b.Kaynak ASC;
-
--- blok: J2
-SELECT
-    b.Kaynak AS kaynak_adi,
-    b.ehMekan AS mekan_id,
-    COUNT(DISTINCT b.Donem) AS donem_sayisi,
-    MIN(b.Donem) AS ilk_donem,
-    MAX(b.Donem) AS son_donem
-FROM DerinSISBkm.bkm.StokAyBakiyeMekanBazli AS b
-GROUP BY b.Kaynak, b.ehMekan
-ORDER BY b.Kaynak, b.ehMekan;
