@@ -10,7 +10,7 @@ adaylar:
     tarih: 2026-10-03
     ogren: "KOŞAMADI — sema aracı yok"
     ilgili: []
-    durum: bekliyor
+    durum: "alindi (bridges:hedef-kategori, 2026-10-04)"
   - id: aday-20261004-002
     hedef: bridges
     gercek: "EncoreMerkez.SalesProductCampaigns: satır indirimi = −DistributedAmount; TotalDiscount (SalesId,CampaignId) grubuna çoğaltılmış toplamdır, SUM edilmez. Kimlik Σ −DistributedAmount(IsValid=1 kalem) = Σ Sales.DiscountTotal"
@@ -20,7 +20,7 @@ adaylar:
     tarih: 2026-10-04
     ogren: "KOŞAMADI — sema aracı yok"
     ilgili: []
-    durum: bekliyor
+    durum: "alindi (bridges:encore-kampanya-kalem + salescampaign-sales + metrics:kampanya_indirim_orani + codes:encore.SalesProductCampaigns.Source + entities:EncoreMerkez.dbo.SalesProductCampaigns, 2026-10-04) — işaret düzeltmesi: DistributedAmount = TotalDiscount AYNI işaretle 228.297 satır, ters işaretle 20"
   - id: aday-20261004-003
     hedef: metrics
     gercek: "EncoreMerkez.SalesProducts kalem indirimi = DiscountTotalDirect + DiscountTotalIndirect (Indirect = belge düzeyi indirimin kaleme dağıtılmış payı); DiscountTotalCampaign ⊆ Direct, toplanmaz. Başlık Sales.DiscountTotal = Σ kalem (Direct+Indirect). sql-server-conventions 'DiscountTotalDirect = TOPLAM' kuralı kalem düzeyinde yanlış"
@@ -30,4 +30,4 @@ adaylar:
     tarih: 2026-10-04
     ogren: "KOŞAMADI — sema aracı yok"
     ilgili: []
-    durum: bekliyor
+    durum: "alindi (entities:EncoreMerkez.dbo.SalesProducts + .TUTAR_SEMANTIGI, 2026-10-04; hedef metrics değil entities; kural dosyası commit bacdf48)"

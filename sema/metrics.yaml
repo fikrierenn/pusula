@@ -1033,13 +1033,14 @@ metrics:
     applied_in: "dashboard MagazaQueries.GetDetayAsync · gm-rapor G1"
 
   kampanya_indirim_orani:   # 12.06 — kampanya yükü / efektif indirim
-    last_verified: "2026-09-12"
+    last_verified: "2026-10-04"
     evidence: "2026-09-12 ISARETCI DOGRULAMASI: kaydin gosterdigi uygulama dosyalarinin 1 tanesi de REPODA MEVCUT (scripts/build_3al2ode_belge_excel.py). DIKKAT: bu ISARETCININ COZULDUGUNU gosterir, FORMULUN DOGRU oldugunu DEGIL — metrigin dogrulugu ancak formul kosturulup sonuc mutabakati yapilarak olculur ve bu YAPILMADI. Arsiv: sorgular/2026-09-12-sema-metrik-isaretci-denetimi.sql"
     type: ratio
     unit: ratio
     basis: none
     additivity: none
-    formula: "indirim_orani = SUM(-spc.TotalDiscount) / (SUM(sp.TotalPrice) + SUM(-spc.TotalDiscount))"
+    formula: "indirim_orani = SUM(-spc.DistributedAmount) / (SUM(sp.TotalPrice) + SUM(-spc.DistributedAmount))   -- sp.IsValid=1; brüt satır başı 1× (fan-out)"
+    duzeltme: "2026-10-04 (spec 001 T-010/T-074): önceki formül SUM(-spc.TotalDiscount) kullanıyordu — TotalDiscount (SalesId, CampaignId) grubuna çoğaltılmış toplamdır, SUM edilmez. İst.Yolu Eylül 2026 indirimi 327,8M yerine 25,24M; oran ~13 kat şişikti. Kimlik Σ −DistributedAmount (IsValid=1) = Σ Sales.DiscountTotal (H06-magaza.sql blok A2, 13/13 fark 0). Haziran 2026 FSM ölçümü (aşağıda) eski formülle alınmıştır — yeniden ölçülmeli."
     rule: "Brüt = kampanyalı kalemlerin net satışı (TotalPrice indirimli) + indirim. Oran = indirim/brüt."
     kopru: "bridges.yaml encore_kampanya_kalem (spc.SalesId+ProductSequence=sp.Sequence)"
     measurement: "FSM 01-12 Haz: 3AL2ÖDE %25,7 · SABİT FİYAT %40 · YÜZDESEL %41,5 · genel TOPLAM %31,3 (brüt 3,52M / indirim 1,10M / 6.050 fiş)"
@@ -3224,7 +3225,15 @@ metrics:
       perakende ~1,5-2M olduğu için devasa sapma.
       Mağaza dışı Sınav iadesi ölçüldü: Özlüce 06.09 −2.651 ₺ · 12.09 −1.247 ₺.
     evidence: "sorgular/2026-09-12-kasa-erp-tazelik-ve-iade-kanali.sql · scripts/hafta_sonu_magaza_ciro_excel.py"
-    last_verified: "2026-09-12"
+    last_verified: "2026-10-04"
+    istisna_ana_sayfa: >-
+      2026-10-04 (spec 001 H13, GMY onaylı varsayım 03.10.2026: "Perakende + Sınav = bugünkü
+      mağaza neti"): ANA SAYFA mağaza kartında kaynağı çözülemeyen iade PERAKENDE satırında
+      kalır, ayrı bir bilgi kolonuyla (NetKaynagiYok) gösterilir. Kanal ANALİZİ kuralı (ayrı
+      "kaynağı yok" kalemi) DEĞİŞMEZ; istisna yalnız mağaza toplamının bölüntüsü içindir.
+      Eylül 2026 (1001 hariç): FSM 15 belge / −10.782,27 · Özlüce 43 / −32.366,36 ·
+      İst.Yolu 41 / −75.330,41. Aynı-mağaza Sınav kuralı uygulanır (FSM/Özlüce Sınav neti 0).
+      Kanıt: sorgular/2026-10-panel-veri-duzeltme/H13-sinav-net.sql blok A ve K.
     note: >-
       ⚠ MATERYALİTE BELGE SAYISIYLA DEĞİL TUTARLA OKUNUR. Bu bulgudan önce "iadenin yarısı
       çözülemiyor" denmişti (belge sayısı: 77/171) ve YANILTICIYDI — TUTARIN %96,3'ü çözülüyor,
@@ -3484,3 +3493,25 @@ metrics:
     evidence: "2026-06-19 — FIFO üretim master doğrulaması (asıl proje D:/Dev/fifo). Taban ölçümü 2026-09-11."
     last_verified: "2026-09-11"
     ttl_days: 180
+
+  fis_kanonik:
+    title: "FIS_KANONIK — perakende fiş sayısı (her ekranda aynı tanım)"
+    type: simple
+    unit: count
+    basis: none
+    additivity: full
+    grain: belge
+    rule: >-
+      Fiş = EncoreMerkez `Sales.DocumentsTypeId = 1` VE belgede `SalesProducts.BarcodeNo = '1001'`
+      (geri dönüşüm) satırı YOK. 1001 tespiti belge düzeyindedir ve `IsValid`'e BAKMAZ (geçersiz
+      1001 satırı da belgeyi dışlar). İade AYRI bir sayıdır: tip 3, aynı 1001 dışlamasıyla; fiş
+      sayısından düşülmez, eklenmez. Fatura (2), personel (6, 7), Sınav (8) fiş sayılmaz.
+    measurement: >-
+      2026-10-04 Eylül 2026: fiş FSM 42.774 · Özlüce 47.782 · İst.Yolu 31.488; iade 947 · 1.167 ·
+      990 (1001 dahil 1.518 · 1.926 · 1.512). Panelin eski tanımları: Ana sayfa 42.311 (iade
+      düşülüyordu), Trafik 44.205 (iade fiş sayılıyordu); 02.10 notundaki 44.776 1001 dışlamasız
+      tip sayımıydı, panel değeri değil.
+    evidence: "sorgular/2026-10-panel-veri-duzeltme/H05-fis.sql blok A/C/ONCE/N; 00-taban-olcumu.sql blok A. GMY onayı 03.10.2026 (spec 001 KR-1, AC-5.x)."
+    uses: [codes:encore.SalesProducts.BarcodeNo_1001]
+    confidence: 0.95
+    last_verified: "2026-10-04"
