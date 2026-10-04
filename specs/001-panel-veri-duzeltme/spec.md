@@ -1,6 +1,7 @@
 # Özellik 001: Panel veri düzeltmeleri
 
 **Durum:** Onaylandı (03.10.2026) · **Oluşturma:** 03.10.2026 · **Boy:** Büyük
+**Değişiklik notu:** 04.10.2026 GMY kararıyla H7 güncellendi (maliyetli / maliyetsiz ciro ayrımı, marj paydası, maliyeti bilinen ciro yüzdesi).
 **Girdi (kullanıcı isteği):** "pusula içindeki gm dashboardı orkestrayı kullanarak elden geçir tamamen mobil app olarak şekilde güncelle raporları ekranları rapor verilerini kontrol et yenilerini eklemelisin gerekli danışmanları ekleyerek onlara danış"
 Kullanıcı kararı (03.10.2026): iş dört spec'e bölündü. Bu spec yalnız **rapor verilerini kontrol et** kısmını kapsar. 002 (mobil ekranlar) bu spec bitmeden başlamaz.
 
@@ -77,12 +78,17 @@ GMY olarak mağaza detay sayfasında kampanya yükünü, iade tutarını ve kale
 - **AC-6.3:** Verildiğinde aynı mağaza ve dönem, Yapıldığında iade tutarı Ana sayfa mağaza kartında ve mağaza detay sayfasında gösterildiğinde, O zaman iki değer KDV hariç, indirim düşülmüş tabanda ve birbirine 1,00 TL toleransla eşittir; iade oranı da bu tabandan hesaplanır.
 - **AC-6.4:** Verildiğinde Eylül 2026 ve İstanbul Yolu mağazası, Yapıldığında UPT hesaplandığında, O zaman kalem ve fiş sayısı yalnız H5'teki kanonik fiş tanımına giren belgelerden alınır; Sınav Okulları ve fatura belgeleri payı ve paydayı etkilemez. Saat × gün ısı haritası aynı tanımı kullanır.
 
-### H7 — Kategori marjı ve ABC sınıflaması iadeyi düşer (P2)
-GMY olarak kategori brüt marjını ve ABC ürün sınıflamasını iadeler düşülmüş satışla görmek istiyorum, böylece iade edilen ürün A sınıfında, toptan depo sevki perakende marjında görünmez.
-**Bağımsız test:** Eylül 2026 kategori cirosu ve SMM'si, kanonik şube cirosu tanımıyla karşılaştırılır.
+### H7 — Kategori marjı ve ABC sınıflaması iadeyi düşer, maliyeti bilinmeyen ciroyu ayrı gösterir (P2)
+GMY olarak kategori brüt marjını ve ABC ürün sınıflamasını iadeler düşülmüş satışla görmek istiyorum, böylece iade edilen ürün A sınıfında, toptan depo sevki perakende marjında görünmez. Maliyeti kayıtlı olmayan satışın cirosunu da ayrı görmek istiyorum, böylece ne ciroyu kaybederim ne de marjı şişik okurum.
+GMY kararı (04.10.2026): kategori marjında ciro iki kolondur: **maliyetli ciro** ve **maliyetsiz ciro**. Marj yüzdesi yalnız maliyetli ciro üzerinden hesaplanır. Ek kolon: **maliyeti bilinen ciro yüzdesi**. Gerekçe (ölçüm, T-011): bugün maliyetsiz ürün cirosu tamamen düşüyor (Eylül 2026, üç mağaza: 260,1 milyon TL; bunun 254,3 milyon TL'si Sınav Okulları'nın 31 ürünü). Bu ciro marj paydasına konsaydı Sınav marjı %100'e yakın görünürdü.
+**Bağımsız test:** Eylül 2026 kategori cirosu (maliyetli + maliyetsiz) ve satılan malın maliyeti, kanonik şube cirosu tanımıyla karşılaştırılır.
 **Kabul kriterleri:**
 - **AC-7.1:** Verildiğinde Eylül 2026, Yapıldığında kategori marjı hesaplandığında, O zaman ciro ve satılan malın maliyeti iade hareketleri düşülmüş olarak, yalnız üç mağazanın perakende satışından gelir; merkez deponun toptan sevki girmez.
-- **AC-7.2:** Verildiğinde Eylül 2026, Yapıldığında kategori cirolarının toplamı alındığında, O zaman toplam, üç mağaza için kanonik şube cirosuna (satış − iade, mağaza satışı dahil) 1,00 TL toleransla eşittir.
+- **AC-7.2:** Verildiğinde Eylül 2026 ve her kategori, Yapıldığında kategori marjı tablosu gösterildiğinde, O zaman "Maliyetli ciro" ve "Maliyetsiz ciro" ayrı kolonlarda görünür ve Maliyetli ciro + Maliyetsiz ciro = toplam kategori cirosu eşitliği 1,00 TL toleransla sağlanır.
+- **AC-7.2a:** Verildiğinde Eylül 2026, Yapıldığında tüm kategorilerin toplam kategori cirosu (maliyetli + maliyetsiz) toplandığında, O zaman sonuç üç mağaza için kanonik şube cirosuna (satış − iade, mağaza satışı dahil) 1,00 TL toleransla eşittir; maliyeti kayıtlı olmayan satışların cirosu toplamdan düşmez.
+- **AC-7.2b:** Verildiğinde Eylül 2026, Yapıldığında tüm kategorilerin maliyetsiz cirosu toplandığında, O zaman sonuç, satılan malın maliyeti kayıtlı olmayan satışların bağımsız hesaplanan cirosuna 1,00 TL toleransla eşittir (T-011 ölçümü: yaklaşık 260,1 milyon TL).
+- **AC-7.2c:** Verildiğinde bir kategori, Yapıldığında marj yüzdesi hesaplandığında, O zaman marj % = (Maliyetli ciro − satılan malın maliyeti) ÷ Maliyetli ciro × 100'dür; maliyetsiz ciro paydaya ve paya girmez. Maliyetli cirosu 0 olan kategoride marj yüzdesi "—" gösterilir, %0 ya da %100 gösterilmez.
+- **AC-7.2d:** Verildiğinde bir kategori, Yapıldığında "Maliyeti bilinen ciro %" kolonu gösterildiğinde, O zaman değer Maliyetli ciro ÷ (Maliyetli ciro + Maliyetsiz ciro) × 100'dür, 0 ile 100 arasındadır ve toplam cirosu 0 olan kategoride "—" gösterilir.
 - **AC-7.3:** Verildiğinde dönemde iadesi olan bir ürün, Yapıldığında ABC sınıflaması hesaplandığında, O zaman ürünün sınıflama cirosu iadesi düşülmüş tutardır ve bağımsız hesaplanan değere 1,00 TL toleransla eşittir.
 
 ### H8 — Merkez depo stoğu bugün için canlı, geçmiş için tarihli (P2)
@@ -170,6 +176,7 @@ Tek başına değer üretmeyen, aynı turda kapanacak düzeltmeler. Her biri ken
 - **FR-005:** Sistem "fiş" sayısını tek bir tanımla hesaplamak ve bu tanımı her ekranda kullanmak ZORUNDADIR: yalnız perakende satış fişi, geri dönüşüm (1001) fişi hariç; iade ayrı sayı olarak gösterilir (H5, H6).
 - **FR-006:** Sistem aynı tabloda ya da kartta gösterilen brüt, indirim, net ve iade tutarlarını tek KDV tabanında hesaplamak ZORUNDADIR (H6, D-4).
 - **FR-007:** Sistem satış tutarı ve adet toplamlarında iadeyi düşmek, iptal edilmiş kalemi saymamak ZORUNDADIR (H6, H7, D-1).
+- **FR-017:** Sistem kategori marjında maliyeti kayıtlı olmayan satışların cirosunu düşürmeden "maliyetsiz ciro" olarak ayrı göstermek, marj yüzdesini yalnız maliyetli ciro üzerinden hesaplamak ve maliyeti bilinen ciro yüzdesini göstermek ZORUNDADIR (H7; GMY kararı 04.10.2026).
 - **FR-008:** Sistem geçmiş ay merkez depo bakiyesini ay sonu görüntüsünden okumak ve görüntünün tarihini değerin yanında göstermek ZORUNDADIR (H8).
 - **FR-009:** Sistem bir faturanın tutarını, kaç siparişe bağlı olursa olsun, toplamda bir kez saymak ZORUNDADIR (H9).
 - **FR-010:** Sistem dokunulan ekranlarda hata metnini kullanıcıya göstermemek, Türkçe açıklayıcı mesaj göstermek ve teknik ayrıntıyı günlüğe yazmak ZORUNDADIR (H10).
@@ -197,6 +204,7 @@ Yetki modeli değişmiyor (tek kullanıcı).
 - **E-ticaret siparişi ve sipariş satırı:** her biri iptal/iade durumu taşır.
 - **Merkez depo stoğu:** WMS satılabilir stok (canlı ya da ay sonu görüntüsü, tarihli).
 - **Şube cirosu:** üç mağazanın satış − iade (mağaza satışı dahil) net tutarı, KDV hariç.
+- **Maliyetli ciro / maliyetsiz ciro:** satılan malın maliyeti kayıtlı olan ve olmayan satışların cirosu; ikisinin toplamı kategori cirosudur.
 - **Kanıt kaydı:** düzeltme, dönem, önce değeri, sonra değeri, bağımsız değer, sorgu.
 
 ## Veri kaynağı ve ortam

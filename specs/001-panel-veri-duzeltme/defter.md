@@ -86,3 +86,6 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 01:53 · T-011: dusuk (ertelendi): A1 etiketi 100+4−5 (101 çıkarılmamış); B1 ORDER BY eşitlik; N'de nüfus 0 koşulu
 - 04.10 01:53 · T-049: KARAR bekliyor — panel marjı maliyetsiz ürün cirosunu düşürüyor (3 mağaza 260,1M; 254,3M'si Sınav Okulları 31 ürün). Kontrat 'Ciro'da kalır' harfiyen uygulanırsa Sınav marjı ~%100 olur. Öneri: ciro maliyetli/maliyetsiz ikiye ayrılır, marj % yalnız maliyetli ciro üzerinden, maliyet kapsaması ayrı kolon
 - 04.10 01:53 · T-011: tamam (39702ee..2c2b1a0, inceleme temiz, 2 orta+3 düşük ertelendi, 1 Yüksek T-049 kontratına KARAR)
+- 04.10 17:29 · Karar: (GMY 04.10.2026) kategori marjında ciro iki kolon (maliyetli + maliyetsiz), marj % yalnız maliyetli ciro üzerinden, ek kolon 'maliyeti bilinen ciro %'; T-049/T-050 bu kararla, spec AC-7 analistçe güncelleniyor — maliyetsiz ciroyu payda'ya katmak Sınav marjını ~%100 gösterir, düşürmek 254M Sınav cirosunu gizler — yanlışsa marj ekranında iki ek kolon gereksiz yer kaplar
+- 04.10 17:32 · Not: spec H7 GMY kararıyla güncellendi (AC-7.2 değişti, AC-7.2a–7.2d + FR-017 yeni; 53 AC). T-049/T-050 özetlerine bu AC'ler eklenecek; tasks.md AC kapsama tablosu T-049'dan önce planlayıcıya güncelletilecek
+- 04.10 17:32 · T-012: kapılar STATIC ✓
