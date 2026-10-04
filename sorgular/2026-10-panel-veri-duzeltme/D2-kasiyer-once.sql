@@ -9,7 +9,7 @@
               ONCE-SAAT (saatSql, 1001 DAHİL) 14 saat · Fiş 124.402 · Net 469.631.399
               ONCE-KAT (katSql, 1001 kalem düzeyi) 18 kategori · Σ Ciro 469.924.828
    Sonra    : yok
-   Bağımsız : D2-kasiyer.sql blokları A, M, S, B (aynı dönem)
+   Kıyas    : kanonik karşılık D2-kasiyer.sql blokları A, M, S, B (aynı dönem, aynı Encore kaynağı; kaynak içi, bağımsız DEĞİL)
    Aynı kaynak — neden: panel gövdeleri aynen; kanonik karşılığı D2-kasiyer.sql'dedir.
    Başka ne olabilir: bkz. D2-kasiyer.sql başlığı.
    Dondurma : 01b8381

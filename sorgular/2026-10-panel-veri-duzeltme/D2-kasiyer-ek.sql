@@ -6,7 +6,8 @@
    Tolerans : birebir (sayım) · ≤ 1,00 TL (tutar)
    Önce     : panel kasSql İst.Yolu 13 satır; panel katSql mağaza netinden 13.755,81 TL eksik (D2-kasiyer-once.sql, D2-kasiyer.sql B)
    Sonra    : yok
-   Bağımsız : U: İst.Yolu'nda UsersId 68 (29 belge) + 70 (4.870) ve 9 (108) + 10 (35) aynı adı taşır (1001 hariç belge sayısı).
+   Ölçüm    : (kaynak içi, bağımsız DEĞİL)
+              U: İst.Yolu'nda UsersId 68 (29 belge) + 70 (4.870) ve 9 (108) + 10 (35) aynı adı taşır (1001 hariç belge sayısı).
               Y: kategoriye bağlanmayan tek ürün Products.Id 800625 / Code 1670694, 81 kalem, 13.755,81 TL (= B Σ).
    Aynı kaynak — neden: kasiyer ve kalem düzeyi yalnız Encore'da var; ERP'de karşılığı yok.
    Başka ne olabilir: Y'de ürün urn'de var ama urnKtgr2'siz olabilirdi; blok urn+urnKtgr2 birlikte aradığı için ikisini ayırmaz.

@@ -24,6 +24,11 @@
               küçültüyor, açan ERP'nin kasadan fazla olmasıdır.)
               Kaynak (dosya dışı: defter.md T-011 sql-inceleyici ölçümü, ertelendi → T-019; bu dosyada ölçülmedi — ÇIKARIM):
               ERP'de elle girilmiş eTip 4 − eTip 5; İst.Yolu'nda 19.09 ↔ 21.09 tarih kayması.
+   Taban 1  : AC-13.3 DEĞERLENDİRME tabanı = panel ↔ ERP: panel (Encore, 1001 HARİÇ, ONCE) − kanonik (irsHrk) = −611.747,17 =
+              −%0,130 (kanonik'e göre; ONCE ve A toplamlarından). AC-13.3 bu tabanda okunur.
+   Taban 2  : AYNI kapsam (Encore başlık neti 1001 DAHİL, blok C ↔ kanonik, blok M): kanonik − Encore = +918.931,27 =
+              +%0,196 (Encore'a göre); yalnız kasa ↔ ERP farkını gösterir, AC değerlendirmesi buradan yapılmaz.
+              İki taban aynı kanonik toplamı kullanır; fark 1001 belgelerinin (307.184,10) dışlanıp dışlanmamasındandır.
    Nüfus    : (blok N, 04.10.2026) irsHrk kanonik satır 409.979 · Encore mağaza neti belgesi (tip 1,2,3,6,7,8, tüm mağaza) 134.314.
               Nüfus > 0; 0 olsaydı sonuç 'bakamadım' okunurdu.
    Aynı kaynak — neden: Panel (Encore) ile kanonik (irsHrk) farklı sistemlerdir: kasa ve ERP. İki kaynak bağımsızdır; ERP kasadan
@@ -31,8 +36,9 @@
               aynı sorgudur (tanım kimliği, ayrı kanıt değil).
    Başka ne olabilir: (1) Fark gün içi aktarım değil: kapalı günlerde kasa ve ERP kuruşu kuruşuna tutar,
               aktarım saatliktir (sql-server-conventions § KASA → ERP AKTARIMI); Eylül kapalı. (2) Fark KDV tabanı
-              değil: iki taraf da KDV hariç; iade tarafı
-              ehTip 101 = Encore tip 3 (1001 dahil) üç mağazada birebir (A1 101 satırı = H06 C1). (3) Fark satış tarafında;
+              değil: iki taraf da KDV hariç. Satış tarafı blok P (ölçüldü 04.10.2026): ERP ehTip 100 ↔ POS özet satTutar ÷ (1 + KDV oranı)
+              farkı +31,09 · −5,48 · +23,24 TL (satır yuvarlaması; 45,1M · 58,0M · 319,7M üzerinde). İade tarafı ehTip 101 = Encore
+              tip 3 (1001 dahil) üç mağazada birebir (dosya dışı: H06-magaza.sql blok C1; A1 101 satırı ile aynı). (3) Fark satış tarafında;
               kaynağı (elle girilmiş eTip 4/5) bu dosyada ölçülmedi — T-011 bulgusudur, ÇIKARIM olarak taşınır. (4) Kasa mutabakatında
               100−101 tek başına yetmez, eTip 4 eklenmeli (sema codes/metrics MEKAN_CIRO_MUTABAKAT_FORMULU): kanonik formül Sınav
               faturasını da taşır, panel Net tip 8'i içerir; iki taraf aynı kapsamda.
@@ -43,7 +49,7 @@
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit literalle değiştirilerek
               koşuldu (SSMS DECLARE + GO esas); hepsi --profile encore (DerinSISBkm üç parçalı ad), --max-rows 1000.
    Bloklar  : A kanonik şube cirosu · A1 mağaza × tip kırılımı · C Encore başlık neti (1001 dahil/hariç) · M kanonik − Encore
-              mutabakatı · ONCE panel gövdesi · N nüfus. Boş nüfus 'bakamadım'dır, 'temiz' değil.
+              mutabakatı · P KDV tabanı (POS özet ↔ irsHrk 100) · ONCE panel gövdesi · N nüfus. Boş nüfus 'bakamadım'dır, 'temiz' değil.
 */
 
 -- blok: A  (kanonik şube cirosu: irsHrk 100 − 101 + 4 − 5, üç mağaza, ehAltDepo = 0, ehTutarN; mağaza başına)
@@ -191,6 +197,49 @@ FROM Erp AS e2
     INNER JOIN Enc AS n2
         ON e2.mekan_id = n2.mekan_id
 ORDER BY MekanId;
+GO
+
+-- blok: P  (KDV tabanı kanıtı, satış tarafı: POS özet satTutar ÷ (1 + KDV oranı) ↔ irsHrk ehTip 100 ehTutarN; mağaza başına)
+-- posKDV oran değil KDV KODU: oran urnKDV.kdvYuzde'den (sql-server-conventions § POS ÖZET ↔ STOK DEFTERİ)
+DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
+
+WITH Pos AS (
+    SELECT
+        po.posMekan AS mekan_id,
+        SUM(po.satTutar / (1 + kd.kdvYuzde / 100.0)) AS pos_haric
+    FROM DerinSISBkm.dbo.posOzetUrun AS po
+        INNER JOIN DerinSISBkm.dbo.urnKDV AS kd
+            ON po.posKDV = kd.kdvID
+    WHERE
+        po.posMekan IN (1, 4477, 4478)
+        AND po.posTarih >= @Bas
+        AND po.posTarih < @Bit
+    GROUP BY po.posMekan
+),
+
+Erp AS (
+    SELECT
+        h.ehMekan AS mekan_id,
+        SUM(h.ehTutarN) AS erp_100
+    FROM DerinSISBkm.dbo.irsHrk AS h
+    WHERE
+        h.ehTip = 100
+        AND h.ehMekan IN (1, 4477, 4478)
+        AND h.ehAltDepo = 0
+        AND h.ehTrhS >= @Bas
+        AND h.ehTrhS < @Bit
+    GROUP BY h.ehMekan
+)
+
+SELECT
+    e.mekan_id AS MekanId,
+    CONVERT(DECIMAL(18, 2), pp.pos_haric) AS PosKdvHaric,
+    CONVERT(DECIMAL(18, 2), e.erp_100) AS ErpEhTip100,
+    CONVERT(DECIMAL(18, 2), pp.pos_haric - e.erp_100) AS Fark
+FROM Erp AS e
+    INNER JOIN Pos AS pp
+        ON e.mekan_id = pp.mekan_id
+ORDER BY e.mekan_id;
 GO
 
 -- noqa: disable=all

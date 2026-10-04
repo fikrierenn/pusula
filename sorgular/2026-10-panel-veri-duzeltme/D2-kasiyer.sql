@@ -9,7 +9,10 @@
               ONCE-KAS (1001 DAHİL, ad bazlı) Σ Net: 44.564.381 (8 satır) · 57.704.918 (14) · 367.362.101 (13)
               ONCE-SAAT: 14 saat · Fiş 124.402 · Net 469.631.399 · ONCE-KAT: 18 kategori · Σ Ciro 469.924.828
    Sonra    : yok (düzeltme T-0xx sonrası ölçülür)
-   Bağımsız : (04.10.2026) A Σ kasiyer net: FSM 44.666.847,33 (8 kasiyer) · Özlüce 57.819.343,91 (14) · İst.Yolu 367.452.392,84 (15)
+   Bağımsız : (04.10.2026) M2 ERP (100 − 101 + 4 − 5): 44.780.931,51 · 57.869.853,03 · 367.899.546,71 (Encore'dan +%0,26 · +%0,09 · +%0,12);
+              ERP ayrı sistemdir (kasadan saatlik aktarım); tanım farkı var, eşitlik KANITI DEĞİL, fark bu dosyada açıklanmadı.
+   Kaynak içi kimlik (bağımsız DEĞİL, aynı Encore Sales başlığı): (04.10.2026)
+              A Σ kasiyer net: FSM 44.666.847,33 (8 kasiyer) · Özlüce 57.819.343,91 (14) · İst.Yolu 367.452.392,84 (15).
               M mağaza neti: üç mağazada A ile birebir (fark 0,00); Σ 469.938.584,08.
               S saat: 14 saat · Fiş 126.253 · Net 469.938.584,08 (= M toplamı).
               K kapsam dışı belge yok: Eylül 134.314 belgenin tamamı üç mağazaya bağlı (N ile aynı).
@@ -17,7 +20,11 @@
                 (Σ −307.184,10); 1001 kalemi 573 · 760 · 536; 1001 dışı geçerli kalem 0 · 0 · 0.
               B kategori karması: BaşlıkNet = KalemNet (fark 0,00, üç mağaza); KategoriKapsamNet 44.664.857,36 · 57.808.407,22
                 · 367.451.563,69 (Σ 469.924.828,27); kategoriye girmeyen kalem 1.989,97 · 10.936,69 · 829,15 (Σ 13.755,81).
-              M2 ERP (100 − 101 + 4 − 5): 44.780.931,51 · 57.869.853,03 · 367.899.546,71 (Encore'dan +%0,26 · +%0,09 · +%0,12).
+   Taban 1  : AC değerlendirme tabanı = panel ↔ ERP: panel mağaza neti (Encore, 1001 HARİÇ, ONCE-MAG = M) ↔ ERP M2:
+              ERP − panel +114.084,18 · +50.509,12 · +447.153,87 (Encore'a göre +%0,26 · +%0,09 · +%0,12).
+   Taban 2  : AYNI kapsam: Encore 1001 DAHİL (M + G: 44.564.381,60 · 57.704.918,42 · 367.362.099,96) ↔ ERP M2:
+              ERP − Encore +216.549,91 · +164.934,61 · +537.446,75 (Encore'a göre +%0,49 · +%0,29 · +%0,15); yalnız kasa ↔ ERP
+              farkını gösterir, AC buradan değerlendirilmez. İki taban arasındaki fark 1001 fişlerinin işaretli netidir (G).
    Fark     : (Önce − Bağımsız, ölçüldü 04.10.2026)
               Kasiyer: panel − kanonik = −102.466 · −114.426 · −90.292 (yuvarlama dahil) = G'deki 1001 fişlerinin işaretli neti.
               Saat: Net −307.185 (= G Σ −307.184,10), Fiş −1.851 (1.853 fişin 1.852'si iade).
@@ -27,8 +34,10 @@
               Panel ad bazlı gruplayıp 15 kimliği 13 satıra indirir (belge sayıları 1001 hariç; panelde 1001 dahil).
               Test notu: A ↔ M yapı gereği 0,00 (kaynak içi, kanıt DEĞİL); ayırt edici olan ONCE-KAS ↔ kanonik sapmasıdır.
    Aynı kaynak — neden: Kasiyer ve kalem düzeyi yalnız Encore'da var; ERP'de POS özet belgedir. Σ kasiyer = Σ mağaza aynı
-              Sales başlığından kurulur (kaynak içi, bağımsız DEĞİL): sınadığı kapsam eşitliğidir. Bağımsız yön: kalem toplamı
-              (blok B) ve ERP defteri (blok M2; tanım farkı var, eşitlik KANITI DEĞİL).
+              Sales başlığından kurulur (kaynak içi, bağımsız DEĞİL): sınadığı kapsam eşitliğidir. Kalem toplamı (blok B) da
+              kaynak içi kimliktir. Bağımsız yön yalnız ERP defteri (blok M2; tanım farkı var, eşitlik KANITI DEĞİL).
+   Fiş tanımı: blok S Fiş = tip 1,2,3,6,7,8 işaretli (iade −1), 1001 hariç (Home biçimi); bu H05-fis.sql fişi DEĞİLDİR
+              (H05: yalnız tip 1, 1001 yok; iade ayrı). 126.253 ile H05 sayıları karşılaştırılmaz.
    Başka ne olabilir: (1) Mağaza yolu (s.StoresId ↔ Pos.StoreId): K Net'i 44.564.381,60 = ONCE-KAS 44.564.381, yol aynı.
               (2) İade formülü (panel ABS(Discount)): aynı net ifadesi 1001 dahil kümede panelle aynı, etki yok.
               (3) Mağaza kümesi dışı belge: K'da 0. (4) Kasiyer satırı 13 ↔ 15: ad çakışması, U'da ölçüldü.

@@ -9,7 +9,7 @@
                 / 237.404,58 · 51.169,48 · 170.723,30 · 15.511,80 / 410.245,74 · 69.907,01 · 302.988,35 · 37.350,38
                 / 928.662,36 · 184.975,10 · 666.507,84 · 77.179,42
    Sonra    : yok
-   Bağımsız : D4-hediye-ceki.sql blok A (aynı dönem)
+   Kıyas    : kanonik karşılık D4-hediye-ceki.sql blok A (aynı dönem, aynı Encore kaynağı; kaynak içi)
    Aynı kaynak — neden: panel gövdesi aynen; kanonik karşılığı D4-hediye-ceki.sql'dedir.
    Başka ne olabilir: bkz. D4-hediye-ceki.sql başlığı.
    Dondurma : 01b8381

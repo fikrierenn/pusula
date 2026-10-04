@@ -34,6 +34,10 @@
               (LinkedDocumentId = 0) perakendede kalır (onaylı varsayım); Sınav'dan gelmiş olabilir, kanıtlanmadı; payı K
               NetKaynagiYok'ta bilgi olarak görünür. (3) Bağlı satış Eylül dışı olabilir; iade KENDİ tarihine yazılır (KR).
               (4) Başka mağazadaki Sınav belgesine bağlı iade (4 / 1.821,10, T-001 F2) perakendede kalır.
+   Sema çelişkisi: sema metrics:iade_kanal_atamasi "kaynağı ÇÖZÜLEMEYEN iade hiçbir kanaldan düşülmez, ayrı kalemde gösterilir"
+              der. Bu dosya kaynağı çözülemeyen iadeyi (LinkedDocumentId = 0) perakende içinde bırakır; payı NetKaynagiYok
+              bilgi kolonunda ayrı görünür (blok K). Bu GMY onaylı varsayımdır (T-019 ortak özeti): Sınav'dan gelmiş olabilir,
+              kanıtlanmadı. Sema güncellemesi bu görevin dışındadır (denetleyici / ork sema-aday).
    Kapsam   : Mağaza = Pos → Stores → posMagaza. Sınav = DocumentsTypeId 8, artı DocumentsTypeId 3 ve LinkedDocumentId > 0
               ve bağlı belge tipi 8 ve aynı mağaza (o.StoresId = s.StoresId; iade negatif).
               Net = GrossTotal − DiscountTotal − VatTotal (KDV hariç). 1001 barkodlu

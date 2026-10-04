@@ -4,6 +4,9 @@
    AC       : D-4 · Spec 001 · FR-006 · KR-4 (geri dönüşüm tanımı farkı ayrı satırda)
    Dönem    : @Bas = 01.09.2026, @Bit = 01.10.2026 (bitiş hariç)
    Tolerans : tutar ≤ 1,00 TL (K: başlık ↔ kalem indirimi; panel Net ↔ NetKdvDahil farkı = KDV)
+   Karar    : KDV TABANI: barem tablosunda Brüt, İndirim ve Net aynı KDV DAHİL tabanda gösterilir (TotalPrice bazlı, blok A);
+              panelin bugünkü KDV HARİÇ Net'i (TotalPrice − VatTotal) ayrı "KDV hariç" kolon olarak kalır (spec D-4 · FR-006 ·
+              tasks T-072). Tek tabanda "Brüt − İndirim = Net" tutar; karışık tabanda fark KDV'dir (ONCE ↔ A, Fark satırı).
    Önce     : (04.10.2026, sqlcli encore profili, --read-only; panel GetBaremKalemAsync gövdesi aynen, dilim bazlı dış toplam)
               ONCE (Brut · Indirim · Net KDV HARİÇ · Brut − Indirim − Net):
                 Dilim 2: 4.096,40 · 839,80 · 2.991,56 · 265,04
@@ -14,7 +17,8 @@
               Dilim 1 (≤ 100 TL) satırı yok (panelde de kanonikte de; blok D: ≤ 100 TL çek tahsilatlı fiş 0, en küçük çek 200,00).
               Σ (Brut − Indirim − Net) = 134.756,74 (hepsi > 1 TL).
    Sonra    : yok (düzeltme T-0xx sonrası ölçülür)
-   Bağımsız : (04.10.2026) A (Brut · Indirim · NetKdvDahil; Brut = TotalPrice + Direct + Indirect, Indirim = Direct + Indirect):
+   Kanonik  : (04.10.2026; kaynak içi) A (Brut · Indirim · NetKdvDahil;
+              Brut = TotalPrice + Direct + Indirect, Indirim = Direct + Indirect):
                 2: 4.096,40 · 839,80 · 3.256,60 / 3: 81.609,84 · 15.866,59 · 65.743,25 / 4: 237.422,58 · 51.187,48 · 186.235,10
                 / 5: 412.457,74 · 72.119,01 · 340.338,73 / 6: 928.741,96 · 185.054,70 · 743.687,26 (NetKdvDahil Σ 1.339.260,94).
               A'daki Brut − Indirim − NetKdvDahil = 0,00 kolonu TANIM GEREĞİ (kanıt DEĞİL). Ayırt edici kimlik: panel Net
@@ -22,8 +26,9 @@
                 (Σ 134.756,74).
               K kimlik (Eylül, IsValid = 1 kalem, belge tipi × çek ödemeli, 10 satır): Σ başlık DiscountTotal = Σ kalem (Direct +
                 Indirect), IndirimFarki 0,00 her satırda; Σ (GrossTotal − DiscountTotal) = Σ TotalPrice, NetFarki 0,00 her satırda.
-              Σ Direct + Σ Indirect = Σ DiscountTotal (Eylül: 42.886.966,22 + 10.853.128,37 = 53.740.094,59; koordinatör ölçümü, K bunu
-                tip bazında doğrular). "DiscountTotalDirect = TOPLAM" kuralı kalem düzeyinde yanlış (ölçüldü): toplam = Direct + Indirect.
+              Σ Direct + Σ Indirect = Σ DiscountTotal (Eylül, K'nın KalemDirect ve KalemIndirect kolonlarının toplamı:
+                42.886.966,22 + 10.853.128,37 = 53.740.094,59 = Σ BaslikIndirim; tip ve çek ödemesi bazında 10 satır).
+                "DiscountTotalDirect = TOPLAM" kuralı kalem düzeyinde yanlış (ölçüldü): toplam = Direct + Indirect.
               B KR-4 etkisi: kanonik 1001 fiş dışlaması ↔ panel kalem dışlaması, her dilimde Fark 0,00; yalnız-birinde-dışlanan fiş 0 · 0.
                 Eylül çek nüfusunda 0; genel 36 belge farkı (T-001 C) kapsam dışı.
               E kategori dışlaması: UrunBilgi.KatAna ↔ urnKtgr2.ktgrAd aynı küme (50 kalem, 85.500,00 TL; çapraz satır yok).
@@ -49,12 +54,14 @@
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit literalle değiştirilerek
               --profile encore ile koşuldu (SSMS DECLARE + GO esas). --max-rows 1000.
    Bloklar  : A dilim × Brut/Indirim/NetKdvDahil (arayüz) · B geri dönüşüm tanımı etkisi (kanonik 1001 ↔ panel kalem dışlaması)
-              · E kategori dışlaması eşdeğerliği (UrunBilgi.KatAna ↔ urnKtgr2) · K kimlik: kalem ↔ başlık (tip bazlı)
+              · E kategori dışlaması eşdeğerliği (UrunBilgi.KatAna ↔ urnKtgr2) · K kimlik: kalem ↔ başlık (tip bazlı;
+              KalemDirect ve KalemIndirect ayrı kolon)
               · D dilim 1 ölçümü
               · N nüfus · ONCE (panel gövdesi): D4-hediye-ceki-once.sql. Boş nüfus 'bakamadım'dır, 'temiz' değil.
 */
 
 -- blok: A  (dilim × Brut, Indirim, NetKdvDahil; kanonik; aynı KDV tabanı)
+-- KDV tabanı KARARI (başlık, Karar satırı): üç kolon da KDV DAHİL (TotalPrice bazlı); KDV hariç net bu blokta yok.
 /* tsqllint-disable non-sargable */
 DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
 
@@ -277,6 +284,8 @@ DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, 
 WITH Kalem AS (
     SELECT
         sp.SalesId,
+        SUM(sp.DiscountTotalDirect) AS kalem_direct,
+        SUM(sp.DiscountTotalIndirect) AS kalem_indirect,
         SUM(sp.DiscountTotalDirect + sp.DiscountTotalIndirect) AS kalem_indirim,
         SUM(sp.TotalPrice) AS kalem_net
     FROM EncoreMerkez.dbo.SalesProducts AS sp
@@ -307,6 +316,8 @@ SELECT
     s.DocumentsTypeId AS BelgeTipi,
     COUNT(*) AS Belge,
     CONVERT(DECIMAL(18, 2), SUM(s.DiscountTotal)) AS BaslikIndirim,
+    CONVERT(DECIMAL(18, 2), SUM(ISNULL(k.kalem_direct, 0))) AS KalemDirect,
+    CONVERT(DECIMAL(18, 2), SUM(ISNULL(k.kalem_indirect, 0))) AS KalemIndirect,
     CONVERT(DECIMAL(18, 2), SUM(ISNULL(k.kalem_indirim, 0))) AS KalemIndirim,
     CONVERT(DECIMAL(18, 2), SUM(s.DiscountTotal) - SUM(ISNULL(k.kalem_indirim, 0))) AS IndirimFarki,
     CONVERT(DECIMAL(18, 2), SUM(s.GrossTotal - s.DiscountTotal)) AS BaslikNetKdvDahil,
