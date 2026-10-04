@@ -89,3 +89,8 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 17:29 · Karar: (GMY 04.10.2026) kategori marjında ciro iki kolon (maliyetli + maliyetsiz), marj % yalnız maliyetli ciro üzerinden, ek kolon 'maliyeti bilinen ciro %'; T-049/T-050 bu kararla, spec AC-7 analistçe güncelleniyor — maliyetsiz ciroyu payda'ya katmak Sınav marjını ~%100 gösterir, düşürmek 254M Sınav cirosunu gizler — yanlışsa marj ekranında iki ek kolon gereksiz yer kaplar
 - 04.10 17:32 · Not: spec H7 GMY kararıyla güncellendi (AC-7.2 değişti, AC-7.2a–7.2d + FR-017 yeni; 53 AC). T-049/T-050 özetlerine bu AC'ler eklenecek; tasks.md AC kapsama tablosu T-049'dan önce planlayıcıya güncelletilecek
 - 04.10 17:32 · T-012: kapılar STATIC ✓
+- 04.10 17:32 · Commit: 2e7b302 chore(bkm): T-012 kanonik H08 merkez depo (T-012)
+- 04.10 17:32 · Commit: e0c589f docs(bkm): spec 001 H7 GMY marj kararı (AC-7.2a–d, FR-017)
+- 04.10 17:35 · T-012: orta (ertelendi → T-019): ONCE_CESIT panel çıktısı değil girdi kümesi (panel kategori süzgeciyle 25.084, blok 25.190); K taban dışı 380 ürün / 790.689 adet raporlamıyor (canlı merkezin ~%22) — başlık (4) düzeltilir, taban-dışı satırı eklenir; A CAST int kesmesi (alan 0+1'de kesirli satır 0 ölçüldü)
+- 04.10 17:35 · T-012: dusuk (ertelendi): @Donem datetime (kolon date) + olmayan dönem denemesi ay başı (30.09 olmalı); K 'Kesim' referans an değil, kurulma anı kaydı yok
+- 04.10 17:35 · T-012: tamam (bd02553..2e7b302, inceleme temiz, 2 orta+2 düşük ertelendi)
