@@ -129,3 +129,6 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 17:58 · Commit: 0a830d0 test(bkm): T-020 eski formüllerin dondurulmuş kopyası (T-020)
 - 04.10 17:59 · T-020: orta/dusuk (ertelendi): noqa/tsqllint-disable dosya sonuna kadar açık; başlık yorumları ASCII Türkçe; ölçüm literal ikameyle (T-024 parametreli doğrular). Not: sql-inceleyici çağrılmadı — içerik panel SQL'inin birebir kopyası (mantık yazımı yok), birebirlik denetleyici + gorev-inceleyici ile iki kez doğrulandı
 - 04.10 17:59 · T-020: tamam (9253773..0a830d0, inceleme temiz, 2 bakım notu ertelendi)
+- 04.10 18:01 · T-016: düzeltme turu 1/5 (4 giderildi), ./ork sql 3/3 ✓
+- 04.10 18:01 · Commit: f0be20b fix(bkm): T-016 Sınav iadesi aynı mağaza kuralı + 3 satır A (T-016)
+- 04.10 18:02 · T-016: tamam (9253773..f0be20b, inceleme temiz, 1 düzeltme turu). T-040/T-045 referansı: A 3 satır (FSM 0,00 · Özlüce 0,00 · İst.Yolu 325.059.112,77), Perakende+Sınav = panel Net fark 0,00
