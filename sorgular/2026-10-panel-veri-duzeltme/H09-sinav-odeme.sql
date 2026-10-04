@@ -4,19 +4,34 @@
    AC       : AC-9.1, AC-9.2 · Spec 001 · H09
    Dönem    : @Bas = 01.09.2026; @DonemId = snv.Donem'de IslemBaslamaTarih <= @Bas olan en yeni dönem (canlı türetilir; 04.10.2026 → 8)
    Tolerans : sayı birebir; tutar ≤ 1 TL
+   Pencere  : dönem 8'in TAMAMI, Eylül değil: dönem başı 16.07.2026, siparişler 22.07.2026 → koşu günü (04.10.2026).
+              Dönem açık; her gün değişir, aşağıdaki sayılar 04.10.2026 koşusuna aittir.
+   Dönem türetme: @DonemId A, B, C, D, ONCE-KPI, ONCE-KART, N, IADE-KAYNAK, IADE-AY bloklarında (dokuz yerde) AYNI metinle türetilir.
+   Kanal kuralı : sema metrics:iade_kanal_atamasi (GMY 12.09.2026): Sınav iadesi yalnız orijinal fatura aynı mağazadaysa
+              Sınav'dan düşer → A ve C'de IadeFatura'da i.StoresId = o.StoresId. Panel KPI bu kuralı uygulamaz.
    Önce     : (04.10.2026, sqlcli erp profili, --read-only; panel SinavQueries.cs :174 kart ve :132 KPI gövdeleri aynen, @donemId = 8)
               ONCE-KPI (GetSezonKpiAsync): satış fişi 7.564 · iade fişi 234 · NetKdvHaric 448.183.744,55
               ONCE-KART (GetOdemeDurumAsync) NetKdvHaric: TAM_ODENDI 380.958.595,30 · KISMI_ODENDI 67.132.549,93 · HIC_ODENMEDI 247.718,37
                 Σ kart = 448.338.863,60 (6.384 + 1.062 + 36 = 7.482 sipariş)
               Kart − KPI = +155.119,05 (tolerans 1 TL aşıldı)
    Sonra    : yok (düzeltme T-055 sonrası ölçülür)
-   Bağımsız : (04.10.2026) A kanonik net 448.183.744,55 (7.564 satış + 234 iade faturası = 7.798) = ONCE-KPI birebir.
-              C kalem düzeyi (SalesProducts IsValid = 1, TotalPrice − VatTotal) 448.183.744,55 = A.
-              Fark kaynağı: kart iadeyi FE kaydından alıyor (145 iade satırı, 6.399.378,40);
-              KPI iadeyi LinkedDocumentId bağından alıyor (234 iade, 6.554.497,45); fark 155.119,05 = kart − KPI.
-   Nüfus    : (blok N, 04.10.2026) dönem 8: 7.482 sipariş · 7.709 FE satırı · 7.709 tekil fatura; kalemsiz fişli sipariş 0.
-              B CokSiparisliFatura = 0 (dönem 8 ve tüm dönemler): fan-out yok, D FazlaSayilanNet 0,00.
-              Eylül tarihli siparişler 3 DonemId'de: 8 → 5.395 · 7 → 1 · −8 → 5; snv.Donem'de yalnız 8 tanımlı.
+   Bağımsız : (04.10.2026) A kanonik net 448.186.779,02 (7.564 satış + 227 iade faturası = 7.791), kanal kuralı uygulanmış.
+              A − ONCE-KPI = +3.034,47 = kanal kuralının dışarıda bıraktığı 7 iade (IADE-KAYNAK: 2 + 5 farklı mağaza,
+              1.037,28 + 1.997,19). C kalem düzeyi (SalesProducts IsValid = 1, TotalPrice − VatTotal) 448.186.779,02 = A.
+              Kart − A = 152.084,58; toplam kart − KPI = 155.119,05 = 152.084,58 + 3.034,47.
+              IADE-KAYNAK (LinkedDocumentId bağlı 234 iade; FE'de kayıtlı × aynı mağaza):
+                FE var · aynı mağaza 143 / 6.398.341,12 · FE var · farklı mağaza 2 / 1.037,28
+                FE yok · aynı mağaza 84 / 153.121,86 · FE yok · farklı mağaza 5 / 1.997,19
+              Kart iadeyi FE kaydından aldığı için FE'de olmayan 89 iadeyi düşmez. FE'de kayıtlı 145 iade 6.399.378,40
+              (= 6.398.341,12 + 1.037,28); KPI'ın 234 iadesi 6.554.497,45; fark 155.119,05 = FE'de olmayan 89 iade
+              (153.121,86 + 1.997,19).
+              IADE-AY (ay × mağaza, kanal kuralı öncesi 234 iade): Eylül M03 182 iade / 5.290.096,33 = T-001 F ile aynı;
+                Temmuz 1 · Ağustos 42 · Eylül 186 (M01 1 · M02 3 · M03 182) · Ekim 5; toplam 234.
+   Nüfus    : (blok N, 04.10.2026) dönem 8: 7.482 sipariş · 7.709 FE satırı · 7.709 tekil fatura ·
+              FE ⋈ Sales 7.709 satır / 7.709 tekil fatura (çoğalma yok); kalemsiz fişli sipariş 0.
+              B CokSiparisliFatura = 0; BT dönemsiz (tüm dönemler) = 0; D FazlaSayilanNet 0,00: fan-out yok.
+              DONEM bloğu (Eylül tarihli siparişler): DonemId 8 → 5.395 (01.09–30.09) · 7 → 1 (08.09) · −8 → 5 (02.09–13.09);
+              snv.Donem'de 1, 4, 5, 6, 7, 8 tanımlı; −8 tanımsız.
               Negatif DonemId (−8: 39 sipariş, 17.07–13.09.2026, hiçbiri fişli; −7: 36 sipariş, 2'si fişli) snv.Donem'de karşılığı yok;
               anlamı veriden çıkarılamadı, açık soru. Kart ve KPI @DonemId = 8 ile bunları zaten dışlar.
    Aynı kaynak — neden: A, ONCE-KPI ile AYNI kaynaktan (FE + Sales + LinkedDocumentId) kurulur;
@@ -24,21 +39,18 @@
               Bağımsız yan: C kalem düzeyi (SalesProducts) başlıktan ayrı tablo;
               iade tarafında FE ↔ LinkedDocumentId karşılaştırması.
               Encore dışı bağımsız kaynak yok (ERP'de Sınav faturası günlük özet belgedir).
-   Başka ne olabilir: (1) Fan-out (fatura birden çok siparişe bağlı): ölçüldü, 0; fark bundan değil.
-              (2) Kalemsiz sipariş (K.Kalem > 0 dışlaması): ölçüldü, 0.
-              (3) FE'de aynı fatura çift satır: 7.709 satır = 7.709 tekil fatura.
-              (4) FE iade kaydı eksik (sema: FE kısmi iadeleri kaydetmiyor): ölçüldü,
-              145 FE iade satırı ↔ 234 bağlı iade; tutar farkı = farkın tamamı.
+   Başka ne olabilir: (1) Fan-out: ölçüldü, 0. (2) Kalemsiz sipariş: ölçüldü, 0.
+              (3) FE'de çift fatura satırı: 7.709 satır = 7.709 tekil fatura.
+              (4) FE iade kaydı eksik (sema: FE kısmi iadeleri kaydetmiyor): ölçüldü, farkın tamamı bu.
               (5) Dönem süzgeci: kart ve KPI aynı.
    Kapsam   : Satış faturası = FE'ye bağlı Sales, DocumentsTypeId <> 3;
               iade = LinkedDocumentId > 0 ile Sınav faturasına (tip 8) bağlı tip 3.
               Net = GrossTotal − DiscountTotal − VatTotal (KDV hariç); iade negatif.
    Dondurma : bc98d56
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  (@DonemId blok içinde türetilir)
-   Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@DonemId
-              literalle değiştirilerek koşuldu (--profile erp, --max-rows 100000).
-   Bloklar  : A kanonik net · B çok siparişli fatura · C kalem kontrolü · D fan-out tutarı
-              · ONCE-KPI · ONCE-KART (panel gövdeleri) · N nüfus.
+   Komut    : sqlcli DECLARE kabul etmez; bloklar DECLARE'siz, literalle koşuldu (--profile erp, --read-only).
+   Bloklar  : A kanonik net · B çok siparişli fatura · BT B'nin dönemsiz karşılığı · C kalem kontrolü · D fan-out tutarı
+              · IADE-KAYNAK · IADE-AY · DONEM · ONCE-KPI · ONCE-KART (panel gövdeleri) · N nüfus.
               Boş nüfus 'bakamadım'dır, 'temiz' değil.
 */
 
@@ -81,6 +93,7 @@ IadeFatura AS (
     WHERE
         i.DocumentsTypeId = 3
         AND i.LinkedDocumentId > 0
+        AND i.StoresId = o.StoresId   -- kanal kuralı: iade yalnız orijinal fatura aynı mağazadaysa Sınav'dan düşer
 ),
 
 Fatura AS (
@@ -170,6 +183,7 @@ IadeFatura AS (
     WHERE
         i.DocumentsTypeId = 3
         AND i.LinkedDocumentId > 0
+        AND i.StoresId = o.StoresId   -- kanal kuralı (A ile aynı)
 ),
 
 Fatura AS (
@@ -228,7 +242,12 @@ GO
 -- noqa: disable=all
 -- blok: ONCE-KPI  (panel GetSezonKpiAsync gövdesi aynen; @donemId → @DonemId; yalnız Fis, Iade ve NetKdvHaric)
 DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  -- DMY
-DECLARE @DonemId INT = (SELECT TOP (1) d.DonemId FROM BKM.snv.Donem AS d WHERE d.IslemBaslamaTarih <= @Bas ORDER BY d.IslemBaslamaTarih DESC);
+DECLARE @DonemId INT = (
+    SELECT TOP (1) d.DonemId
+    FROM BKM.snv.Donem AS d
+    WHERE d.IslemBaslamaTarih <= @Bas
+    ORDER BY d.IslemBaslamaTarih DESC
+);
 
 WITH Fis AS (
     SELECT DISTINCT S.Id, S.GrossTotal, S.DiscountTotal, S.VatTotal
@@ -256,7 +275,12 @@ GO
 
 -- blok: ONCE-KART  (panel GetOdemeDurumAsync iç sorgusu aynen; yalnız Durum, Siparis, NetKdvHaric)
 DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  -- DMY
-DECLARE @DonemId INT = (SELECT TOP (1) d.DonemId FROM BKM.snv.Donem AS d WHERE d.IslemBaslamaTarih <= @Bas ORDER BY d.IslemBaslamaTarih DESC);
+DECLARE @DonemId INT = (
+    SELECT TOP (1) d.DonemId
+    FROM BKM.snv.Donem AS d
+    WHERE d.IslemBaslamaTarih <= @Bas
+    ORDER BY d.IslemBaslamaTarih DESC
+);
 
 SELECT T.Durum, COUNT(*) AS Siparis, SUM(T.Kalem) AS Kalem, CONVERT(decimal(18,2), ISNULL(SUM(T.NetKdvHaric),0)) AS NetKdvHaric
 FROM (
@@ -298,13 +322,158 @@ WITH Detayli AS (
 
 SELECT
     COUNT(DISTINCT sip.SiparisKod) AS siparis_sayisi,
+    MIN(sip.Tarih) AS ilk_siparis_tarihi,
+    MAX(sip.Tarih) AS son_siparis_tarihi,
     COUNT(fe.SiparisKod) AS fe_satiri,
     COUNT(DISTINCT fe.InvoiceNo) AS tekil_fatura,
+    COUNT(s.Id) AS fe_sales_satiri,
+    COUNT(DISTINCT s.Id) AS fe_sales_tekil_fatura,
     COUNT(DISTINCT CASE WHEN sd.SiparisId IS NULL THEN fe.SiparisKod END) AS kalemsiz_fisli_siparis
 FROM BKM.snv.Siparis AS sip
     LEFT JOIN BKM.snv.SinavSiparisFisEncore AS fe
         ON sip.SiparisKod = fe.SiparisKod
+    LEFT JOIN EncoreMerkez.dbo.Sales AS s
+        ON fe.InvoiceNo COLLATE Turkish_CI_AS = s.DocumentNo COLLATE Turkish_CI_AS
     LEFT JOIN Detayli AS sd
         ON sip.SiparisId = sd.SiparisId
 WHERE sip.DonemId = @DonemId;
+GO
+
+-- blok: BT  (B'nin dönemsiz karşılığı: tüm dönemlerde birden çok siparişe bağlı satış faturası)
+SELECT COUNT(*) AS CokSiparisliFaturaTumDonem
+FROM (
+    SELECT s.Id
+    FROM BKM.snv.SinavSiparisFisEncore AS fe
+        INNER JOIN EncoreMerkez.dbo.Sales AS s
+            ON fe.InvoiceNo COLLATE Turkish_CI_AS = s.DocumentNo COLLATE Turkish_CI_AS
+    WHERE s.DocumentsTypeId <> 3
+    GROUP BY s.Id
+    HAVING COUNT(DISTINCT fe.SiparisKod) > 1
+) AS x;
+GO
+
+-- blok: IADE-KAYNAK  (dönem iadeleri: LinkedDocumentId bağlı × FE'de kayıtlı mı × aynı mağaza mı; adet ve net KDV hariç, pozitif)
+DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  -- DMY
+DECLARE @DonemId INT = (
+    SELECT TOP (1) d.DonemId
+    FROM BKM.snv.Donem AS d
+    WHERE d.IslemBaslamaTarih <= @Bas
+    ORDER BY d.IslemBaslamaTarih DESC
+);
+
+WITH Siparis AS (
+    SELECT sip.SiparisKod
+    FROM BKM.snv.Siparis AS sip
+    WHERE sip.DonemId = @DonemId
+),
+
+Bagli AS (
+    SELECT DISTINCT
+        i.Id,
+        i.DocumentNo,
+        CASE WHEN i.StoresId = o.StoresId THEN 1 ELSE 0 END AS ayni_magaza,
+        i.GrossTotal - i.DiscountTotal - i.VatTotal AS net_kdv_haric
+    FROM EncoreMerkez.dbo.Sales AS i
+        INNER JOIN EncoreMerkez.dbo.Sales AS o
+            ON
+                i.LinkedDocumentId = o.Id
+                AND o.DocumentsTypeId = 8
+        INNER JOIN BKM.snv.SinavSiparisFisEncore AS feo
+            ON feo.InvoiceNo COLLATE Turkish_CI_AS = o.DocumentNo COLLATE Turkish_CI_AS
+        INNER JOIN Siparis AS si
+            ON feo.SiparisKod = si.SiparisKod
+    WHERE
+        i.DocumentsTypeId = 3
+        AND i.LinkedDocumentId > 0
+),
+
+FeIade AS (
+    SELECT DISTINCT fe.InvoiceNo
+    FROM BKM.snv.SinavSiparisFisEncore AS fe
+        INNER JOIN Siparis AS si
+            ON fe.SiparisKod = si.SiparisKod
+)
+
+SELECT
+    CASE WHEN fi.InvoiceNo IS NULL THEN 0 ELSE 1 END AS fe_de_kayitli,
+    b.ayni_magaza,
+    COUNT(*) AS iade_adet,
+    CONVERT(DECIMAL(18, 2), SUM(b.net_kdv_haric)) AS net_kdv_haric
+FROM Bagli AS b
+    LEFT JOIN FeIade AS fi
+        ON b.DocumentNo COLLATE Turkish_CI_AS = fi.InvoiceNo COLLATE Turkish_CI_AS
+GROUP BY
+    CASE WHEN fi.InvoiceNo IS NULL THEN 0 ELSE 1 END,
+    b.ayni_magaza
+ORDER BY fe_de_kayitli DESC, b.ayni_magaza DESC;
+GO
+
+-- blok: IADE-AY  (dönem iadeleri ay × mağaza; LinkedDocumentId bağlı, kanal kuralı öncesi tümü; pozitif net KDV hariç)
+DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  -- DMY
+DECLARE @DonemId INT = (
+    SELECT TOP (1) d.DonemId
+    FROM BKM.snv.Donem AS d
+    WHERE d.IslemBaslamaTarih <= @Bas
+    ORDER BY d.IslemBaslamaTarih DESC
+);
+
+WITH Siparis AS (
+    SELECT sip.SiparisKod
+    FROM BKM.snv.Siparis AS sip
+    WHERE sip.DonemId = @DonemId
+),
+
+Bagli AS (
+    SELECT DISTINCT
+        i.Id,
+        i.StoresId,
+        YEAR(i.[Date]) AS yil,
+        MONTH(i.[Date]) AS ay,
+        i.GrossTotal - i.DiscountTotal - i.VatTotal AS net_kdv_haric
+    FROM EncoreMerkez.dbo.Sales AS i
+        INNER JOIN EncoreMerkez.dbo.Sales AS o
+            ON
+                i.LinkedDocumentId = o.Id
+                AND o.DocumentsTypeId = 8
+        INNER JOIN BKM.snv.SinavSiparisFisEncore AS feo
+            ON feo.InvoiceNo COLLATE Turkish_CI_AS = o.DocumentNo COLLATE Turkish_CI_AS
+        INNER JOIN Siparis AS si
+            ON feo.SiparisKod = si.SiparisKod
+    WHERE
+        i.DocumentsTypeId = 3
+        AND i.LinkedDocumentId > 0
+)
+
+SELECT
+    b.yil,
+    b.ay,
+    st.Code AS magaza_kodu,
+    COUNT(*) AS iade_adet,
+    CONVERT(DECIMAL(18, 2), SUM(b.net_kdv_haric)) AS net_kdv_haric
+FROM Bagli AS b
+    INNER JOIN EncoreMerkez.dbo.Stores AS st
+        ON b.StoresId = st.Id
+GROUP BY b.yil, b.ay, st.Code
+ORDER BY b.yil, b.ay, st.Code;
+GO
+
+-- blok: DONEM  (Eylül tarihli siparişlerin DonemId dağılımı; snv.Donem'de karşılığı olmayan = negatif dönemler)
+DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
+
+SELECT
+    sip.DonemId,
+    CASE WHEN d.DonemId IS NULL THEN 0 ELSE 1 END AS snv_donem_var,
+    COUNT(*) AS siparis_sayisi,
+    MIN(sip.Tarih) AS ilk_tarih,
+    MAX(sip.Tarih) AS son_tarih
+FROM BKM.snv.Siparis AS sip
+    LEFT JOIN BKM.snv.Donem AS d
+        ON sip.DonemId = d.DonemId
+WHERE
+    sip.Tarih >= @Bas
+    AND sip.Tarih < @Bit
+GROUP BY
+    sip.DonemId,
+    CASE WHEN d.DonemId IS NULL THEN 0 ELSE 1 END
+ORDER BY sip.DonemId DESC;
 GO
