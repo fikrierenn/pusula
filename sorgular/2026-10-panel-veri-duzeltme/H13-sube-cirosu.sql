@@ -22,17 +22,20 @@
               başlığından +307.184,10 yukarı çeker (469.938.584,08 − 469.631.399,98). Panel − kanonik = 307.184,10 − 918.931,27
               = −611.747,17. (02.10 notundaki "fark geri dönüşüm fişlerinin dışlanmasından" ifadesi eksikti: dışlama farkı
               küçültüyor, açan ERP'nin kasadan fazla olmasıdır.)
-              Açıklama (T-011, dosya dışı: T-011 raporu): ERP'de elle girilmiş eTip 4 − eTip 5 (gKisi ≠ 31); FSM ve Özlüce'de
-              ~1 TL içinde kapanıyor, İst.Yolu'nda 19.09 ↔ 21.09 tarih kayması.
+              Kaynak (dosya dışı: defter.md T-011 sql-inceleyici ölçümü, ertelendi → T-019; bu dosyada ölçülmedi — ÇIKARIM):
+              ERP'de elle girilmiş eTip 4 − eTip 5; İst.Yolu'nda 19.09 ↔ 21.09 tarih kayması.
    Nüfus    : (blok N, 04.10.2026) irsHrk kanonik satır 409.979 · Encore mağaza neti belgesi (tip 1,2,3,6,7,8, tüm mağaza) 134.314.
               Nüfus > 0; 0 olsaydı sonuç 'bakamadım' okunurdu.
    Aynı kaynak — neden: Panel (Encore) ile kanonik (irsHrk) farklı sistemlerdir: kasa ve ERP. İki kaynak bağımsızdır; ERP kasadan
               saatlik aktarımla beslenir (sql-server-conventions § KASA → ERP AKTARIMI), Eylül kapalıdır. Kanonik tanım H07 A ile
               aynı sorgudur (tanım kimliği, ayrı kanıt değil).
-   Başka ne olabilir: (1) Fark gün içi aktarım değil: Eylül kapalı. (2) Fark KDV tabanı değil: iki taraf da KDV hariç; iade tarafı
+   Başka ne olabilir: (1) Fark gün içi aktarım değil: kapalı günlerde kasa ve ERP kuruşu kuruşuna tutar,
+              aktarım saatliktir (sql-server-conventions § KASA → ERP AKTARIMI); Eylül kapalı. (2) Fark KDV tabanı
+              değil: iki taraf da KDV hariç; iade tarafı
               ehTip 101 = Encore tip 3 (1001 dahil) üç mağazada birebir (A1 101 satırı = H06 C1). (3) Fark satış tarafında;
-              kaynağı (elle girilmiş eTip 4/5) bu dosyada ölçülmedi — T-011 bulgusudur, ÇIKARIM olarak taşınır. (4) AC-13.3 toplama
-              Sınav dahil olmalı: panel Net Sınav'ı içerir (tip 8 kapsamda).
+              kaynağı (elle girilmiş eTip 4/5) bu dosyada ölçülmedi — T-011 bulgusudur, ÇIKARIM olarak taşınır. (4) Kasa mutabakatında
+              100−101 tek başına yetmez, eTip 4 eklenmeli (sema codes/metrics MEKAN_CIRO_MUTABAKAT_FORMULU): kanonik formül Sınav
+              faturasını da taşır, panel Net tip 8'i içerir; iki taraf aynı kapsamda.
    Kapsam   : A = irsHrk ehTip 100 − 101 + 4 − 5, ehMekan IN (1,4477,4478), ehAltDepo = 0, ehTutarN (KDV hariç). C ve ONCE =
               Encore Sales tip 1,2,3,6,7,8, iade negatif, GrossTotal − DiscountTotal − VatTotal; ONCE 1001 barkodlu belge hariç.
    Dondurma : 01b8381
