@@ -10,7 +10,7 @@ databases:
     compat:
       sql_compat_level: 110
       unavailable: [STRING_AGG, TRIM, IIF, TRY_CONVERT]
-      alternatives: {STRING_AGG: "STUFF + FOR XML PATH", TRIM: "LTRIM(RTRIM())", IIF: "CASE WHEN", TRY_CONVERT: "ISNUMERIC + CONVERT"}
+      alternatives: {STRING_AGG: "STUFF + FOR XML PATH", TRIM: "LTRIM(RTRIM())", IIF: "CASE WHEN", TRY_CONVERT: "CASE WHEN <kolon> COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN BETWEEN 1 AND 9 THEN CONVERT(int, ...) END (ISNUMERIC yetmez — 2026-10-04)"}
   DerinCrm: {evidence_status: pending, role: "yeni sadakat CRM (müşteri adı)"}
   ODAKJOKER.JOKER: {role: "e-ticaret (linked server)", tarih: "YYYYMMDD ISO — DMY burada SESSİZ HATA"}
   BKMDATA: {role: "Hedef tablosu + veri ambarı"}

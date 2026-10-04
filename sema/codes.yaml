@@ -495,8 +495,8 @@ codes:
     last_verified: "2026-09-12"
 
   joker.J_ORDER_DETAILS.STATUS:   # detay satır: 2xxx=Sipariş detay, 4xxx=Odak detay (kod ailesi yukarıda)
-    last_verified: "2026-10-04"
-    ciro_karari: "GMY kararı KR-2 (03.10.2026, spec 001): satır iptali/iadesi (2004/2005/2010) e-ticaret CİROSUNA bu spec'te uygulanmaz — ciro sipariş başlığı kuralıyla kalır; satır kuralı yalnız ODAK talep adedine uygulanır. Ciroya uygulama kararı spec 003'te. Eylül 2026 etkisi 1.648.346,07 TL / 5.939 adet = net cironun %1,35'i (sorgular/2026-10-panel-veri-duzeltme/00-taban-olcumu.sql blok D; H04-odak-talep.sql). Aşağıdaki 'rapor bunları saymalı' notu iptal ANALİZİ içindir."
+    last_verified: "2026-09-12"
+    ciro_karari: "[eklendi 2026-10-04; kod kümesi yeniden doğrulanmadı] GMY kararı KR-2 (03.10.2026, spec 001): satır iptali/iadesi (2004/2005/2010) e-ticaret CİROSUNA bu spec'te uygulanmaz — ciro sipariş başlığı kuralıyla kalır; satır kuralı yalnız ODAK talep adedine uygulanır. Ciroya uygulama kararı spec 003'te. Eylül 2026 etkisi 1.648.346,07 TL / 5.939 adet = net cironun %1,35'i (sorgular/2026-10-panel-veri-duzeltme/00-taban-olcumu.sql blok D; H04-odak-talep.sql). Aşağıdaki 'rapor bunları saymalı' notu iptal ANALİZİ içindir."
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi

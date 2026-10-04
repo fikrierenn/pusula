@@ -183,14 +183,14 @@ bridges:
   - id: products-code-stkid
     last_verified: "2026-10-04"
     donusum_kurali: "2026-10-04 ÖLÇÜLDÜ (spec 001 T-014, sorgular/2026-10-panel-veri-duzeltme/H10-urun-kodu.sql): `ISNUMERIC(p.Code)=1` koruması YETMEZ — '2147483648' ISNUMERIC=1 döner ve CONVERT(int) taşar; '-5', ' 123' de geçer. Turkish_CI_AS altında `[0-9]` aralığı ², １ (tam genişlik), ٣ ile eşleşir ve CONVERT 'Conversion failed' ile patlar. Doğru koruma: `CASE WHEN p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 THEN CONVERT(int, p.Code) END` (CONVERT yalnız THEN dalında). Bugün bozuk kod 0 (değişmez encore-products-code-sayisal)."
-    measurement: "2026-10-04 — canlı ürün 819.730 (silinmiş/pasif hariç), eşleşen 818.389 (%99,84), öksüz 1.341; yeni kurala uymayan kod 0. ⟵ 2026-09-20 DÜZELTME — 11.09'daki 'iddia bayatlamış, %96,20'ye düştü' sonucu EKSİK ÖLÇÜMDÜ: silinmiş ürünler sayıma katılmıştı. Bugün 871.570 Products satırının 838.505'i eşleşiyor (%96,2) AMA eşleşmeyen 33.065'in 31.727'si SİLİNMİŞ/PASİF (IsDeleted=1 & IsActive=0). CANLI ürünlerde eşleşme 838.505/839.843 = %99,84 · öksüz 1.338. Köprü BAYATLAMADI; kapsam silinmişleri elemeli. ⟵ ÖNCEKİ ÖLÇÜM: 2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 33.064 / 869.904 (%3,80) → eşleşme %96,20. ⚠ KAYIT 09.06'da '%99,98 eşleşme (798.349/798.527)' diyordu; evren 798K→870K büyürken öksüz de büyümüş. İDDİA BAYATLAMIŞ — ölçüm 3 ayda %99,98'den %96,20'ye düştü."
+    measurement: "2026-10-04 — canlı ürün 819.730 (silinmiş/pasif hariç), eşleşen 818.389 (%99,84), öksüz 1.341; yeni kurala uymayan kod 0 (sorgular/2026-10-04-sema-kanit-t074.sql blok B). ⟵ 2026-09-20 DÜZELTME — 11.09'daki 'iddia bayatlamış, %96,20'ye düştü' sonucu EKSİK ÖLÇÜMDÜ: silinmiş ürünler sayıma katılmıştı. Bugün 871.570 Products satırının 838.505'i eşleşiyor (%96,2) AMA eşleşmeyen 33.065'in 31.727'si SİLİNMİŞ/PASİF (IsDeleted=1 & IsActive=0). CANLI ürünlerde eşleşme 838.505/839.843 = %99,84 · öksüz 1.338. Köprü BAYATLAMADI; kapsam silinmişleri elemeli. ⟵ ÖNCEKİ ÖLÇÜM: 2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 33.064 / 869.904 (%3,80) → eşleşme %96,20. ⚠ KAYIT 09.06'da '%99,98 eşleşme (798.349/798.527)' diyordu; evren 798K→870K büyürken öksüz de büyümüş. İDDİA BAYATLAMIŞ — ölçüm 3 ayda %99,98'den %96,20'ye düştü."
     orphans_expected: "KISMEN — EncoreMerkez ürün kartı DerinSIS'te karşılığı olmadan açılabiliyor (33.064 kart). Kategori/marka analizinde bu kartlar INNER JOIN'de DÜŞER; ciro eksik görünür. Oran sabit değil, büyüyor: yeniden ölçmeden 'neredeyse tam eşleşiyor' denmemeli."
     from: EncoreMerkez.dbo.Products.Code
     to: DerinSISBkm.dbo.urn.stkID
     join_type: INNER
     join_sql: "u.stkID = CASE WHEN p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 THEN CONVERT(int, p.Code) END"
     guard: "p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9"      # compat 110 — TRY_CONVERT yok; ISNUMERIC yetmez (bkz. donusum_kurali)
-    match: "%99.98 (798.349/798.527)"
+    match: "%99,84 canlı ürün (818.389/819.730, 2026-10-04) — ⟵ eski: %99.98 (798.349/798.527, 09.06)"
     scope: cross-db
     confidence: 0.99
     note: "Code stkKod DEĞİL (~%9), barkod hiç değil. POS per-fiş/per-mağaza → doğru kategori/marka."
@@ -392,7 +392,8 @@ bridges:
     note: "Hedef kategori köprüsü = KTGR2 seviyesi. Gerçekleşen net'i kategoriye bağlamak için urn.urnKtgr2ID = urnKtgr2.ktgrID (⚠ urnKtgrID2 DEĞİL — o kolon ürünlerin %78'inde 0; düzeltildi 2026-10-04). ktgId örnek: 15=Kitap, 8=Hazırlık Kitapları, 12=Kırtasiye, 2=Çocuk Kitabı. M1 hedef/gerçekleşen raporu."
     evidence: "2026-06-12 — MCP: Hedef yil=2026 ay=6 mekanId=1 → urnKtgr2 join Kitap/Hazırlık/Kırtasiye/Çocuk; ay hedefi SUM(hedef) FSM 14,25M doğrulandı."
   - id: salescampaign-sales
-    last_verified: "2026-10-04"
+    last_verified: "2026-09-20"
+    not_tarihi: "2026-10-04 — yalnız note alanına TotalDiscount düzeltmesi eklendi; öksüz ölçümü 2026-09-20'den."
     measurement: "2026-09-20 — 3.173.629 kampanya satırının TAMAMI Sales.Id ile eşleşti, öksüz 0 (%100). confidence 0.95 -> 0.99. ⟵ ÖNCEKİ ÖLÇÜM: 2026-09-11 ÖKSÜZ ÖLÇÜMÜ (sema kopru): 0 / 2.972.580 — öksüz YOK. Soldaki NULL-olmayan her değerin sağda karşılığı var. Bu bir ÖLÇÜMDÜR, iddia değil; yeniden koşturulabilir (`sema kopru`)."
     from: EncoreMerkez.dbo.SalesProductCampaigns.SalesId
     to: EncoreMerkez.dbo.Sales.Id
@@ -480,9 +481,9 @@ bridges:
     confidence: 0.97
     note: |
       Kampanya indirim oranı köprüsü (12.06). join: sp.SalesId=spc.SalesId AND sp.Sequence=spc.ProductSequence AND sp.IsValid=1.
-      Grain=kampanyalı kalem. 3AL2ÖDE oran %25,7 doğrulandı. Satır indirimi = −spc.DistributedAmount (negatif saklı; brüt DEĞİL); brüt=sp.TotalPrice(net)+indirim.
+      Grain=kampanyalı kalem. 3AL2ÖDE oran %25,7 (12.06, ESKİ TotalDiscount formülüyle ölçüldü — geçersiz, yeniden ölçülmeli). Satır indirimi = −spc.DistributedAmount (negatif saklı; brüt DEĞİL); brüt=sp.TotalPrice(net)+indirim.
       ⚠ DÜZELTME 2026-10-04 (spec 001 T-010/T-074): önceki "DistributedAmount = -TotalDiscount" eşitliği YANLIŞTI. Eylül 2026 547.423 satırda
-      DistributedAmount = TotalDiscount (aynı işaret) 228.297 satır, = −TotalDiscount yalnız 20 satır. TotalDiscount (SalesId, CampaignId)
+      DistributedAmount = TotalDiscount (aynı işaret) 228.297 satır, = −TotalDiscount (sıfır olmayan) 0 satır, eşit değil 319.126 (sorgular/2026-10-04-sema-kanit-t074.sql blok A). TotalDiscount (SalesId, CampaignId)
       grubuna çoğaltılmış toplamdır, SUM EDİLMEZ (İst.Yolu Eylül 327,8M ↔ doğru 25,24M, ~13 kat). Kimlik: Σ −DistributedAmount (sp.IsValid=1)
       = Σ Sales.DiscountTotal — mağaza×belge tipi 13/13 satırda fark 0 (FSM 11.565.743,16 · Özlüce 15.881.640,16 · İst.Yolu 25.238.731,49;
       H06-magaza.sql blok A2). Kalem toplam indirimi ayrıca SalesProducts'ta Direct + Indirect (entities SalesProducts).

@@ -20,7 +20,7 @@ adaylar:
     tarih: 2026-10-04
     ogren: "KOŞAMADI — sema aracı yok"
     ilgili: []
-    durum: "alindi (bridges:encore-kampanya-kalem + salescampaign-sales + metrics:kampanya_indirim_orani + codes:encore.SalesProductCampaigns.Source + entities:EncoreMerkez.dbo.SalesProductCampaigns, 2026-10-04) — işaret düzeltmesi: DistributedAmount = TotalDiscount AYNI işaretle 228.297 satır, ters işaretle 20"
+    durum: "alindi (bridges:encore-kampanya-kalem + salescampaign-sales + metrics:kampanya_indirim_orani + codes:encore.SalesProductCampaigns.Source + entities:EncoreMerkez.dbo.SalesProductCampaigns, 2026-10-04) — işaret düzeltmesi: DistributedAmount = TotalDiscount AYNI işaretle 228.297 satır, ters işaretle (sıfır olmayan) 0, eşit değil 319.126 — sorgular/2026-10-04-sema-kanit-t074.sql blok A"
   - id: aday-20261004-003
     hedef: metrics
     gercek: "EncoreMerkez.SalesProducts kalem indirimi = DiscountTotalDirect + DiscountTotalIndirect (Indirect = belge düzeyi indirimin kaleme dağıtılmış payı); DiscountTotalCampaign ⊆ Direct, toplanmaz. Başlık Sales.DiscountTotal = Σ kalem (Direct+Indirect). sql-server-conventions 'DiscountTotalDirect = TOPLAM' kuralı kalem düzeyinde yanlış"

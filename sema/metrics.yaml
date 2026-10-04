@@ -802,7 +802,7 @@ metrics:
     source: EncoreMerkez.dbo.Sales
     filters: ["SalesProducts WHERE IsValid=1", "DocumentsTypeId IN (1,2,3,6,7,8)"]
     iade_sign: "CASE WHEN DocumentsTypeId=3 THEN -GrossTotal ELSE GrossTotal END"
-    indirim: "DiscountTotalDirect (sadece bu; Campaign alt küme, toplama çift sayar)"
+    indirim: "Kalem: DiscountTotalDirect + DiscountTotalIndirect; başlık: Sales.DiscountTotal (Campaign ⊆ Direct, toplanmaz). ⚠ Önceki ifade 'DiscountTotalDirect (sadece bu)' YANLIŞTI — düzeltildi 2026-10-04, bkz. entities:EncoreMerkez.dbo.SalesProducts (Eylül 2026 Indirect 10,85M, %98 Sınav)."
     linecount: "KULLANMA → CROSS APPLY COUNT(*) FROM SalesProducts WHERE SalesId=s.Id AND IsValid=1"
     compat110: "STRING_AGG/TRIM/IIF/TRY_CONVERT YOK"
 
@@ -1043,7 +1043,7 @@ metrics:
     duzeltme: "2026-10-04 (spec 001 T-010/T-074): önceki formül SUM(-spc.TotalDiscount) kullanıyordu — TotalDiscount (SalesId, CampaignId) grubuna çoğaltılmış toplamdır, SUM edilmez. İst.Yolu Eylül 2026 indirimi 327,8M yerine 25,24M; oran ~13 kat şişikti. Kimlik Σ −DistributedAmount (IsValid=1) = Σ Sales.DiscountTotal (H06-magaza.sql blok A2, 13/13 fark 0). Haziran 2026 FSM ölçümü (aşağıda) eski formülle alınmıştır — yeniden ölçülmeli."
     rule: "Brüt = kampanyalı kalemlerin net satışı (TotalPrice indirimli) + indirim. Oran = indirim/brüt."
     kopru: "bridges.yaml encore_kampanya_kalem (spc.SalesId+ProductSequence=sp.Sequence)"
-    measurement: "FSM 01-12 Haz: 3AL2ÖDE %25,7 · SABİT FİYAT %40 · YÜZDESEL %41,5 · genel TOPLAM %31,3 (brüt 3,52M / indirim 1,10M / 6.050 fiş)"
+    measurement: "FSM 01-12 Haz: 3AL2ÖDE %25,7 (ESKİ FORMÜLLE — geçersiz, yeniden ölçülmeli) · SABİT FİYAT %40 · YÜZDESEL %41,5 · genel TOPLAM %31,3 (brüt 3,52M / indirim 1,10M / 6.050 fiş)"
     note: "3al2öde teorik %33 ama karışık fiyatta en ucuz bedava → ~%25-26 efektif. Dashboard /magaza/{id} kampanya panelinde."
     kritik: "İKİ ZORUNLU FİLTRE (13.06 fiş-detay kontrolünde bulundu): (1) spc indirimi MUTLAKA SalesProducts IsValid=1 köprüsüyle al — IsValid=0 iptal kalemler indirimi şişirir, DiscountTotal'dan fazla çıkar, 'Diğer indirim' negatife düşer. (2) Sales.DocumentsTypeId IN (1,2,6,7,8) — iade (3) belgesi indirim sign'ı ters, dahil edilirse Diğer şişer. Belge listesinde Diğer = DiscountTotal − 3al2öde; iade+IsValid filtresi şart."
     applied_in: "MagazaQueries.GetDetayAsync kampSql/kampFisSql · scripts/build_3al2ode_belge_excel.py · gm-rapor M2"
@@ -3513,5 +3513,7 @@ metrics:
       tip sayımıydı, panel değeri değil.
     evidence: "sorgular/2026-10-panel-veri-duzeltme/H05-fis.sql blok A/C/ONCE/N; 00-taban-olcumu.sql blok A. GMY onayı 03.10.2026 (spec 001 KR-1, AC-5.x)."
     uses: [codes:encore.SalesProducts.BarcodeNo_1001]
+    applied_in: "spec 001 T-025/T-028 FisTanimi (dashboard/Data/Tanimlar) — uygulanınca işaretçi güncellenir"
     confidence: 0.95
     last_verified: "2026-10-04"
+    ttl_days: 90

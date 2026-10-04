@@ -204,7 +204,7 @@
       ],
       "question": "Products.Code = urn.stkID köprüsü hâlâ ürünlerin ezici çoğunluğunu eşliyor mu?",
       "why": "POS satışını DerinSIS kategorisine bağlayan tek köprü. Çökerse kategori ciro raporu sessizce boşalır (stkKod=barkod vakasının aynısı: Oyuncak cirosu 700K görünüp gerçeğin 10,96M olması).",
-      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products p WITH(NOLOCK) WHERE ISNUMERIC(p.Code)=1 AND CONVERT(int,p.Code) IN (SELECT stkID FROM dbo.urn)",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products p WITH(NOLOCK) WHERE p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 AND CASE WHEN p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 THEN CONVERT(int,p.Code) END IN (SELECT stkID FROM dbo.urn)",
       "comparison": "min",
       "expected": 800000,
       "verified": "2026-09-03"
