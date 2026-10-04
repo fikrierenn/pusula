@@ -12,7 +12,7 @@
    Kıyas    : kanonik karşılık D4-hediye-ceki.sql blok A (aynı dönem, aynı Encore kaynağı; kaynak içi)
    Aynı kaynak — neden: panel gövdesi aynen; kanonik karşılığı D4-hediye-ceki.sql'dedir.
    Başka ne olabilir: bkz. D4-hediye-ceki.sql başlığı.
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; DECLARE'siz, literalle, --profile encore.
    Bloklar  : ONCE (HediyeCekiQueries.cs :128 gövdesi, biçim kurallarından muaf).

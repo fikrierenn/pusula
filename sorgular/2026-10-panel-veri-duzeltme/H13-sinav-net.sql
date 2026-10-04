@@ -42,7 +42,7 @@
               ve bağlı belge tipi 8 ve aynı mağaza (o.StoresId = s.StoresId; iade negatif).
               Net = GrossTotal − DiscountTotal − VatTotal (KDV hariç). 1001 barkodlu
               belge (kalem IsValid'e bakmaz) hariç. Mekan = iadenin kendi mekânı.
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit literalle değiştirilerek
               koşuldu (SSMS DECLARE + GO esas); hepsi --profile encore, --max-rows 1000.

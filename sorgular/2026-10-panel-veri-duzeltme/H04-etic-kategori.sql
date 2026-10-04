@@ -44,7 +44,7 @@
                      Akademi 10.368.573,83 · Kırtasiye 2.572.666,98
               ONCE : 12 satır; Σ net_ciro = 126.328.958,17 TL (02.10 referansı 126.329.033,57; −75,40 TL kayma)
                      Önce − Sonra = 4.417.841,81 TL (panelin fazla saydığı iptal/iade sipariş cirosu)
-   Dondurma : 1103192
+   Dondurma : 18c2ce0
    SSMS     : her blok kendi @BasIso.. VARCHAR(8) tarih bildirimini taşır ('20260901' / '20261001', ISO, JOKER).
               Bloklar GO ile ayrılır. sq.sh DECLARE koşmaz: koşuda @BasIso/@BitIso literal yazılır.
    Komut    : bash tools/sq.sh --joker --max-rows 100000 "<tek blok, literal tarihli>" (depo kökünden).

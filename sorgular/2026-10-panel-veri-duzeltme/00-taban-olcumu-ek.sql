@@ -7,7 +7,7 @@
    Tolerans : birebir (sayım) · ≤ 1,00 TL (tutar)
    Atıf     : 00-taban-olcumu.sql (blok A–F2 ve tüm sonuç satırları; G, H, H2, I, J, J2 sonuçları orada, bu bloklardan üretildi)
    Hedef-db (blok bazlı): G, J, J2 DerinSISBkm · H, H2 BKM + EncoreMerkez (3 parçalı adlar) · I JOKER (bash tools/sq.sh --joker)
-   Dondurma : c223b41 (ana dosya ile aynı)
+   Dondurma : 18c2ce0
 */
 
 -- blok: G

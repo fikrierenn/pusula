@@ -52,7 +52,7 @@
               (4) DistributedAmount işareti negatif (A2 kimliğiyle doğrulandı).
    Kapsam   : Mağaza = Pos -> Stores -> posMagaza. İade = tip 3, 1001 hariç (KR-1); tutar Gross − Discount − Vat.
               Fiş (UPT) = tip 1, 1001 hariç. Kampanya kalemi = (SalesId, ProductSequence = Sequence).
-   Dondurma : 47e7030
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz, @Bas/@Bit/@MekanId literal; C2 --profile erp, diğerleri encore.
    Bloklar  : A iptal kalem kampanya indirimi · A2 mağaza × tip kampanya ↔ başlık indirimi · B kampanyalı kalem net (KDV dahil)

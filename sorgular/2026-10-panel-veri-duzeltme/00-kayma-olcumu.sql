@@ -17,7 +17,7 @@
               sipariş dönem dışına kayar; bu blokta ORDERDATE yeniden yazımı ayrıca izlenmez (ÇIKARIM: yazılmıyor).
               (3) A tarih değişkenleri @BasIso/@BitIso, B ise @BasIso2/@BitIso2: iki bloğun dönemi aynıdır (aynı literal).
               Koşu: bloklar tarih literal'i ile sq.sh'ten koşuldu (sq.sh DECLARE taşımaz); SSMS'te bloklar kendi DECLARE'iyle çalışır.
-   Dondurma : ea58d7c
+   Dondurma : 18c2ce0
    SSMS     : JOKER tarihi ISO yyyyMMdd string; bloklar kendi @BasIso/@BitIso bildirimini taşır (aşağıda).
 
    Koşu 1: 03.10.2026 23:42 · Sip=113.710 · Ciro=121.911.116,36

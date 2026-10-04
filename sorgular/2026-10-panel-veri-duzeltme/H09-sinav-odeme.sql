@@ -49,7 +49,7 @@
    Kapsam   : Satış faturası = FE'ye bağlı Sales, DocumentsTypeId <> 3;
               iade = LinkedDocumentId > 0 ile Sınav faturasına (tip 8) bağlı tip 3.
               Net = GrossTotal − DiscountTotal − VatTotal (KDV hariç); iade negatif.
-   Dondurma : bc98d56
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  (@DonemId blok içinde türetilir)
    Komut    : sqlcli DECLARE kabul etmez; bloklar DECLARE'siz, literalle koşuldu (--profile erp, --read-only).
    Bloklar  : A kanonik net · B çok siparişli fatura · C kalem kontrolü · D fan-out tutarı · IADE-KAYNAK

@@ -36,7 +36,7 @@
               (COLLATE), mekanID IN (1,4477,4478); posMagaza'da bu üç mekân için mekanKod tekil (3 satır, 3 tekil kod, Stores'ta
               3 eşleşme; fan-out yok); kalem SalesProducts.IsValid = 1;
               Brut = Sales.GrossTotal, Indirim = Sales.DiscountTotal (başlıktan bir kez).
-   Dondurma : e1a0a78
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas datetime = CONVERT(datetime, '01.09.2026', 104), @Bit datetime = CONVERT(datetime, '01.10.2026', 104);
    Komut    : sqlcli --param ISO tarih ister; bloklar GO'suz ve DECLARE'siz, literal tarihle koşuldu (SSMS DECLARE + GO esas).
    Bloklar  : A Kumbara brüt (Magaza, Brut) · B sebep indirimi (Sebep, Magaza, Indirim) · B2 manuel fiş tekil (Magaza, Indirim)

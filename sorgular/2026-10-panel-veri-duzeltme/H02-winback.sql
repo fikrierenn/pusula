@@ -42,7 +42,7 @@
               Etki ölçümü (isim+telefon kuralıyla dışlanan müşteri) blok N'de ayrı sütundadır.
    Kapsam   : Satış fişi = Sales.DocumentsTypeId = 1; müşteri = Sales.CustomersId > 0; ToplCiro DocumentsTypeId IN (1,3),
               net = GrossTotal − DiscountTotal − VatTotal (KDV hariç), iade (3) negatif; Frq >= 3 ve ToplCiro >= 500.
-   Dondurma : 47e7030
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bugun datetime = CONVERT(datetime, '04.10.2026', 104);
    Komut    : sqlcli --param ISO tarih ister; bloklar GO'suz ve DECLARE'siz, literal tarihle koşuldu (SSMS DECLARE + GO esas).
    Not      : iç kart süzgeci NOT (... NULL olabilir ...) değil, pozitif ISNULL biçimindedir (c.Name NULL ise satır düşmez; bugün 0).

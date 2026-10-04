@@ -12,7 +12,7 @@
    Kıyas    : kanonik karşılık D2-kasiyer.sql blokları A, M, S, B (aynı dönem, aynı Encore kaynağı; kaynak içi, bağımsız DEĞİL)
    Aynı kaynak — neden: panel gövdeleri aynen; kanonik karşılığı D2-kasiyer.sql'dedir.
    Başka ne olabilir: bkz. D2-kasiyer.sql başlığı.
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; DECLARE'siz, literalle, --profile encore.
    Bloklar  : ONCE-MAG (Queries.cs :25) · ONCE-KAS (:155) · ONCE-SAAT (:145) · ONCE-KAT (:130); panel gövdeleri, biçim kurallarından muaf.

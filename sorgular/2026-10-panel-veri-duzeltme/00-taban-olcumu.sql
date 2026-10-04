@@ -10,7 +10,7 @@
    Sonra    : —
    Bağımsız : aşağıdaki blok sonuçları
    Ölçüm    : 03.10.2026 · sqlcli --profile erp --read-only (D: tools/sq.sh --joker) · salt-okuma
-   Dondurma : c223b41
+   Dondurma : 18c2ce0
    Hedef-db (blok bazlı): A, B, C, E, F, F2 EncoreMerkez (A, C, F, F2 DerinSISBkm.posMagaza köprüsü) · D, I JOKER (doğrudan,
               bash tools/sq.sh --joker) · G, J, J2 DerinSISBkm · H BKM + EncoreMerkez
    Bölünme  : bloklar G, H, H2, I, J, J2 → 00-taban-olcumu-ek.sql (sqlfluff 20 KB sınırı); sonuç özetleri bu başlıkta kalır.

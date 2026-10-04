@@ -44,7 +44,7 @@
               (5) Kategori eksiği: tek ürün, Y'de ölçüldü. (6) M2 farkının kaynağı ölçülmedi; ERP eşitliği iddia edilmez.
    Kapsam   : Mağaza = Pos -> Stores -> posMagaza (1, 4477, 4478). Belge tipi 1,2,3,6,7,8; iade negatif. Net = GrossTotal −
               DiscountTotal − VatTotal (KDV hariç). 1001 fişi bütünüyle dışarıda (KR-1). Kasiyer = Sales.UsersId (ad yok).
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; DECLARE'siz, literalle, --profile encore.
    Bloklar  : A kasiyer neti (MekanId, KasiyerNet) · M mağaza neti · M2 ERP · B kategori karması · K kapsam dışı belge

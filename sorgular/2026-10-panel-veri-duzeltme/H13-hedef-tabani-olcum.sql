@@ -14,7 +14,7 @@
    Başka ne olabilir: (1) Hedef KDV'siz kurulmuş ama iade/indirim farkı oranı oynatıyor olabilir; (2) kategori hedefi geçen yıl
               cirosundan türetilmişse oran KDV'den bağımsız sapar (kardeş dosyada blok E bunu sınar); (3) Sınav hedefi ürün bazlı
               olduğundan mağaza kapsamı farkı oranı bozabilir. Ölçüm bunları ayırmaz, yalnız gösterir.
-   Dondurma : d83f324
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas date = CONVERT(date, '01.04.2026', 104), @Bit date = CONVERT(date, '01.10.2026', 104);
    Komut    : her blok ayrı koşulur; sqlcli --param ISO tarih ister (DMY reddeder), bu yüzden SSMS DECLARE'i esas alınır;
               04.10.2026 koşusunda @Bas/@Bit literalle değiştirildi, --profile encore, --timeout 600, --max-rows 1000.

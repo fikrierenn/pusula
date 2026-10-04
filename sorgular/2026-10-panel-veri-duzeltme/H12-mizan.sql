@@ -35,7 +35,7 @@
               Haziran ay hareketi 101'de alacak ağırlıklı (−26.900.000,00) olabilir, kümülatif bakiye değil.
               (4) Blok D iki yönlü (FULL OUTER JOIN): yalnız görünümde olan hesap da fark olarak çıkar.
    Kapsam   : fisSirketID = @SirketId; ay aralığı @AyBas..@Ay; "Kapanış" bilanço fişi hariç.
-   Dondurma : bc98d56
+   Dondurma : 18c2ce0
    SSMS     : her blok kendi DECLARE'ini taşır, GO ile ayrılır.
    Komut    : sqlcli query --profile erp --read-only --max-rows 100000 "<tek blok>" (depo kökünden).
    Bloklar  : A (Nakit) · B (AlinanCek) · C (KdvNet) · D (kaynak içi kimlik) · E (nüfus) · ONCE (panel gövdesi)

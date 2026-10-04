@@ -12,7 +12,7 @@
    Başka ne olabilir: (1) Kategori hedefi geçen yıl cirosundan türetilmişse oran KDV'den bağımsız sapar (E bunu sınar);
               (2) Kitap/Kırtasiye ürün karması oranı 1,20'den uzaklaştırır (beklenen_dahil_hedef çiftin kendi gerçekleşenlerinden
               ölçülür); (3) Tem-2025 kısmi ay (kismi / kismi_taban ayrı gruptur).
-   Dondurma : (denetleyici yazar; H13-hedef-tabani-olcum.sql'den bölündü)
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @DBas date = CONVERT(date, '01.07.2025', 104), @DBit date = CONVERT(date, '01.10.2026', 104);
    Komut    : her blok ayrı koşulur (D/E 120 sn üstü sürer: --timeout 600); sqlcli DMY reddeder, bu yüzden SSMS DECLARE esas;
               04.10.2026 koşusunda literal, --profile encore, --max-rows 1000.

@@ -59,7 +59,7 @@
               (4) Smm Eylül için muhasebe açık dönem nedeniyle değişebilir; A, B, C etkilenmez.
    Kapsam   : A = irsHrk ehTip 100 − 101 + 4 − 5, üç mağaza, ehAltDepo = 0, ehTutarN. B = Encore kalem net (TotalPrice − VatTotal,
               KDV hariç), ürün bazlı, iade negatif, HAVING SUM > 0, 1001 hariç (panel ABC :118 ile aynı kural).
-   Dondurma : 39702ee
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz, @Bas/@Bit literal; A, A1 --profile erp; B, C, B1 encore.
    Bloklar  : A kanonik şube cirosu · A1 mağaza × tip kırılımı · B pozitif net ürün cirolarının toplamı · B1 sınıf bazlı bağımsız ABC

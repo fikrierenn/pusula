@@ -49,7 +49,7 @@
               Dilim = fişteki toplam çek tahsilatı: ≤100 · ≤250 · ≤500 · ≤1000 · ≤2500 · üstü (1..6).
               Taban: Indirim = Direct + Indirect, Brut = TotalPrice + Indirim, NetKdvDahil = TotalPrice (KDV DAHİL).
               Ürün kodu T-014 kuralı (yalnız rakam, 1-9 hane).
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit literalle değiştirilerek
               --profile encore ile koşuldu (SSMS DECLARE + GO esas). --max-rows 1000.

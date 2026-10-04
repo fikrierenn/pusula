@@ -44,7 +44,7 @@
               faturasını da taşır, panel Net tip 8'i içerir; iki taraf aynı kapsamda.
    Kapsam   : A = irsHrk ehTip 100 − 101 + 4 − 5, ehMekan IN (1,4477,4478), ehAltDepo = 0, ehTutarN (KDV hariç). C ve ONCE =
               Encore Sales tip 1,2,3,6,7,8, iade negatif, GrossTotal − DiscountTotal − VatTotal; ONCE 1001 barkodlu belge hariç.
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit literalle değiştirilerek
               koşuldu (SSMS DECLARE + GO esas); hepsi --profile encore (DerinSISBkm üç parçalı ad), --max-rows 1000.

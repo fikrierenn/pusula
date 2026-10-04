@@ -27,7 +27,7 @@
               görüntüsünde alan 2 (çıkış) yok, canlı tarafta da alan 0+1; tanımlar aynı. (4) Taban farkı
               (blok K) yalnız zaman kaymasından değil, taban kümesi dışı ürünlerden de gelebilir (K_DISI: 380 ürün, K'ya girmez).
    Kapsam   : A = adrsAlanTipID IN (0,1); B/C = Kaynak='WMS' AND ehMekan=12 AND Donem=@Donem, MAX(Donem) yedeği yok.
-   Dondurma : bd02553
+   Dondurma : 18c2ce0
    SSMS     : her blok kendi DECLARE'ini taşır, GO ile ayrılır.
    Komut    : sqlcli query --profile erp --read-only --max-rows 100000 "<tek blok>" (depo kökünden).
    Bloklar  : A (StkId, Merkez) · B (StkId, Merkez) @Donem · C (GoruntuVar) @Donem

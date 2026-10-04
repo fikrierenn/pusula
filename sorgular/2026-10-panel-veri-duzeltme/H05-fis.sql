@@ -48,7 +48,7 @@
               etkisi blok N'de ayrı sütunda sayılır.
    Kapsam   : Fiş = Sales.DocumentsTypeId = 1 ve belgede BarcodeNo = '1001' satırı yok. İade = DocumentsTypeId = 3 ve 1001 satırı yok.
               Kartlı = CustomersId > 0 ve CardNumber <> ''. Fatura (2), personel (6, 7), Sınav (8) fiş sayılmaz.
-   Dondurma : 47e7030
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;
               DECLARE @Bugun DATE = CONVERT(DATE, '04.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, literal tarihle koşuldu (SSMS DECLARE + GO esas).

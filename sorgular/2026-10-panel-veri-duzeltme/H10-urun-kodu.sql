@@ -24,7 +24,7 @@
               değerlendirilmemesi bu SQL Server sürümünde ÖLÇÜLDÜ; resmi bir garanti değildir (derleyici
               ifade sırasını değiştirebilir). Kural bu yüzden CONVERT'i yalnız CASE'in THEN dalına koyar.
    Kapsam   : A/ONCE sabit kodlar; B = EncoreMerkez.dbo.Products tüm satırlar (IsValid kolonu yok).
-   Dondurma : bc98d56
+   Dondurma : 18c2ce0
    SSMS     : her blok kendi DECLARE'ini taşır, GO ile ayrılır.
    Komut    : sqlcli query --profile encore --read-only --max-rows 100000 "<tek blok>" (depo kökünden).
    Bloklar  : A (Kod, Beklenen, Sonuc, Eslesti) · B (Satir, SayisalOlmayan; boş tabloda SayisalOlmayan 0, NULL değil)

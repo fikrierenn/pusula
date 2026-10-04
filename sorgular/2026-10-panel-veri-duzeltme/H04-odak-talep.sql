@@ -32,7 +32,7 @@
               ONCE : 70.393 ürün · Σ adet = 548.515 (panel mantığı)
               Kapı : B − A = 5.939 = satır iptali 2004 (2.940) + 2005 (2.520) + 2010 (479) ✓ (blok C ile yeniden koşulur)
                      ONCE − B = 16.784 = başlık iptal/iade siparişlerinin adedi (blok D)
-   Dondurma : 1103192
+   Dondurma : 18c2ce0
    SSMS     : her blok kendi @BasIso VARCHAR(8) = '20260901', @BitIso VARCHAR(8) = '20261001' bildirimini taşır (ISO, JOKER).
               Bloklar GO ile ayrılır. sq.sh DECLARE koşmaz: koşuda tarihler literal yazılır.
    Komut    : bash tools/sq.sh --joker --max-rows 100000 "<tek blok, literal tarihli>" (depo kökünden).

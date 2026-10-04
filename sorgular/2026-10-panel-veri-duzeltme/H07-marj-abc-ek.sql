@@ -36,7 +36,7 @@
    Başka ne olabilir: (1) A − C farkı tek mekanizmadan gelmeyebilir (fatura çift kaydı, tarih kayması, personel fişi);
               mekanizma kanıtlanmadı, ÇIKARIM. (2) Maliyetsiz satırlar yeni ürün olabilir.
    Kapsam   : A = irsHrk ehTip 100 − 101 + 4 − 5, ehAltDepo = 0, ehTutarN; Encore = Sales net (Gross − Discount − Vat), iade negatif.
-   Dondurma : (denetleyici ekler)
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; literal tarihle koşuldu; hepsi --profile erp (aynı sunucuda Encore da okunur).
    Bloklar  : GUN gün × mağaza A − C · KISI eTip 4/5 kullanıcı kırılımı · D merkez depo adet · M 3 mağaza ciro

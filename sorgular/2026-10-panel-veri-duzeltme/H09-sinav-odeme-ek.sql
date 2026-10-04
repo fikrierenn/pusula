@@ -29,7 +29,7 @@
    Başka ne olabilir: (1) Aralık dışı sipariş, dönem sınırının sipariş tarihinden farklı tanımlandığını gösterir. (2) Negatif DonemId
               testten kalma olabilir.
    Kapsam   : iade = LinkedDocumentId > 0 ile Sınav faturasına (tip 8) bağlı tip 3; net KDV hariç, pozitif.
-   Dondurma : (denetleyici ekler)
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104);  (@DonemId blok içinde türetilir)
    Komut    : sqlcli DECLARE kabul etmez; bloklar DECLARE'siz, literalle koşuldu (--profile erp, --read-only).
    Bloklar  : BT · IADE-AY · DONEM · DONEM_ARALIK

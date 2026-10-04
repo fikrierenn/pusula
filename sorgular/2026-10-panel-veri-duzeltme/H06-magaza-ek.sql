@@ -25,7 +25,7 @@
    Başka ne olabilir: (1) A1 Indirect 0 ise Direct + Indirect ayrımı bu dönemde sonucu değiştirmez; başka dönemde Indirect
               dolu olabilir, kapı o yüzden iki kolonu birlikte toplar. (2) A3 farkı kapsamdan (Sınav, fatura, personel) gelebilir.
    Kapsam   : Mağaza = Pos -> Stores -> posMagaza. İade 1001 hariç (KR-1).
-   Dondurma : (denetleyici ekler)
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; literal tarihle koşuldu. A3 --profile erp, diğerleri --profile encore.
    Bloklar  : A1 iptal kalem Direct/Indirect · A3 ERP indirim büyüklüğü · IADE_ARA iade brüt/indirim/KDV · UPT_T1 (panel gövdesi, tip 1)

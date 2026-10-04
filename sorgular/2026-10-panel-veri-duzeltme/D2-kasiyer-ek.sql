@@ -11,7 +11,7 @@
               Y: kategoriye bağlanmayan tek ürün Products.Id 800625 / Code 1670694, 81 kalem, 13.755,81 TL (= B Σ).
    Aynı kaynak — neden: kasiyer ve kalem düzeyi yalnız Encore'da var; ERP'de karşılığı yok.
    Başka ne olabilir: Y'de ürün urn'de var ama urnKtgr2'siz olabilirdi; blok urn+urnKtgr2 birlikte aradığı için ikisini ayırmaz.
-   Dondurma : 01b8381
+   Dondurma : 18c2ce0
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; DECLARE'siz, literalle, --profile encore.
    Bloklar  : U ad çakışması · Y kategoriye bağlanmayan ürün.

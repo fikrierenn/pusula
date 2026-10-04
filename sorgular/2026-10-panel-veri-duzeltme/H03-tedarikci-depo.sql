@@ -36,7 +36,7 @@
               toplamdan marka başına ±1 farklı olabilir (D: 3.690.345,86 kesmesiz, 3.690.341 kesmeli).
    Kapsam   : depo = stok_adres_palet_vw, adrsAlanTipID IN (0,1); marka = urn.urnMrkID (ürün stkID üstünden,
               stkKod değil); urn'de soft-delete kolonu yok (IsValid/urnSil yok, ölçüldü); mağaza = ehMekan IN (1,4477,4478).
-   Dondurma : 918562d
+   Dondurma : 18c2ce0
    SSMS     : tarih parametresi yok; bloklar canlı ve DECLARE'siz, GO ile ayrılır.
    Komut    : sqlcli query --profile erp --read-only --max-rows 100000 "<tek blok>" (depo kökünden).
    Bloklar  : A (MrkId, DepoStok) · B (DepoToplam) · C (StkId, DepoStok) ilk 20 ürün · D (MrkId, MagazaStok)
