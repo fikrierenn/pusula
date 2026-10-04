@@ -4,12 +4,10 @@
    AC       : D-2 · Spec 001 · KR-1 (1001 fiş dışlaması) · FR-006
    Dönem    : @Bas = 01.09.2026, @Bit = 01.10.2026 (bitiş hariç)
    Tolerans : ≤ 1,00 TL (Σ kasiyer net = Σ mağaza net)
-   Önce     : (04.10.2026, sqlcli encore; panel Queries.cs :25 :130 :145 :155 gövdeleri aynen, dış toplamla)
-              ONCE-MAG (storeSql, 1001 hariç) Net: FSM 44.666.847,33 · Özlüce 57.819.343,91 · İst.Yolu 367.452.392,84
-              ONCE-KAS (kasSql, 1001 DAHİL, ad bazlı, kasiyer başına decimal(18,0)) Σ Net:
-                FSM 44.564.381 (8 satır) · Özlüce 57.704.918 (14) · İst.Yolu 367.362.101 (13)
-              ONCE-SAAT (saatSql, 1001 DAHİL) 14 saat · Fiş 124.402 · Net 469.631.399
-              ONCE-KAT (katSql, 1001 kalem düzeyi) 18 kategori · Σ Ciro 469.924.828
+   Önce     : (04.10.2026; panel gövdeleri D2-kasiyer-once.sql dosyasında, sqlfluff 20.000 bayt sınırı için ayrıldı)
+              ONCE-MAG Net: FSM 44.666.847,33 · Özlüce 57.819.343,91 · İst.Yolu 367.452.392,84
+              ONCE-KAS (1001 DAHİL, ad bazlı) Σ Net: 44.564.381 (8 satır) · 57.704.918 (14) · 367.362.101 (13)
+              ONCE-SAAT: 14 saat · Fiş 124.402 · Net 469.631.399 · ONCE-KAT: 18 kategori · Σ Ciro 469.924.828
    Sonra    : yok (düzeltme T-0xx sonrası ölçülür)
    Bağımsız : (04.10.2026) A Σ kasiyer net: FSM 44.666.847,33 (8 kasiyer) · Özlüce 57.819.343,91 (14) · İst.Yolu 367.452.392,84 (15)
               M mağaza neti: üç mağazada A ile birebir (fark 0,00); Σ 469.938.584,08.
@@ -23,22 +21,26 @@
    Fark     : (Önce − Bağımsız, ölçüldü 04.10.2026)
               Kasiyer: panel − kanonik = −102.466 · −114.426 · −90.292 (yuvarlama dahil) = G'deki 1001 fişlerinin işaretli neti.
               Saat: Net −307.185 (= G Σ −307.184,10), Fiş −1.851 (1.853 fişin 1.852'si iade).
-              Kategori: panel Σ 469.924.828 = B KategoriKapsamNet Σ (fark 0,27); mağaza netinden 13.755,81 TL eksik
-              (kategoriye bağlanmayan kalem; nedeni ölçülmedi).
+              Kategori: panel Σ 469.924.828 = B KategoriKapsamNet Σ (fark 0,27); mağaza netinden 13.755,81 TL eksik.
+              Y (ölçüldü): eksik tek ürün, Products.Id 800625 / Code 1670694 (81 kalem, 13.755,81 TL); urn/urnKtgr2'de eşleşmesi yok.
+              U (ölçüldü): İst.Yolu'nda aynı adı taşıyan UsersId çiftleri: 68 (29 belge) + 70 (4.870); 9 (108) + 10 (35).
+              Panel ad bazlı gruplayıp 15 kimliği 13 satıra indirir (belge sayıları 1001 hariç; panelde 1001 dahil).
+              Test notu: A ↔ M yapı gereği 0,00 (kaynak içi, kanıt DEĞİL); ayırt edici olan ONCE-KAS ↔ kanonik sapmasıdır.
    Aynı kaynak — neden: Kasiyer ve kalem düzeyi yalnız Encore'da var; ERP'de POS özet belgedir. Σ kasiyer = Σ mağaza aynı
               Sales başlığından kurulur (kaynak içi, bağımsız DEĞİL): sınadığı kapsam eşitliğidir. Bağımsız yön: kalem toplamı
               (blok B) ve ERP defteri (blok M2; tanım farkı var, eşitlik KANITI DEĞİL).
    Başka ne olabilir: (1) Mağaza yolu (s.StoresId ↔ Pos.StoreId): K Net'i 44.564.381,60 = ONCE-KAS 44.564.381, yol aynı.
               (2) İade formülü (panel ABS(Discount)): aynı net ifadesi 1001 dahil kümede panelle aynı, etki yok.
-              (3) Mağaza kümesi dışı belge: K'da 0. (4) Kasiyer satırı panelde 13, kanonikte 15 (İst.Yolu): panel ad bazlı,
-              kanonik UsersId; nedeni ölçülmedi. (5) M2 farkının kaynağı ölçülmedi.
+              (3) Mağaza kümesi dışı belge: K'da 0. (4) Kasiyer satırı 13 ↔ 15: ad çakışması, U'da ölçüldü.
+              (5) Kategori eksiği: tek ürün, Y'de ölçüldü. (6) M2 farkının kaynağı ölçülmedi; ERP eşitliği iddia edilmez.
    Kapsam   : Mağaza = Pos -> Stores -> posMagaza (1, 4477, 4478). Belge tipi 1,2,3,6,7,8; iade negatif. Net = GrossTotal −
               DiscountTotal − VatTotal (KDV hariç). 1001 fişi bütünüyle dışarıda (KR-1). Kasiyer = Sales.UsersId (ad yok).
    Dondurma : 01b8381
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; DECLARE'siz, literalle, --profile encore.
    Bloklar  : A kasiyer neti (MekanId, KasiyerNet) · M mağaza neti · M2 ERP · B kategori karması · K kapsam dışı belge
-              · G 1001 fişleri · S saat · ONCE-MAG/KAS/SAAT/KAT (panel gövdeleri) · N nüfus. Boş nüfus 'bakamadım'dır.
+              · G 1001 fişleri · S saat · N nüfus. U (ad çakışması) ve Y (kategoriye bağlanmayan ürün): D2-kasiyer-ek.sql;
+              ONCE blokları: D2-kasiyer-once.sql. Boş nüfus 'bakamadım'dır.
 */
 
 -- blok: A  (kasiyer neti mağazaya toplanmış; arayüz (MekanId, KasiyerNet))
@@ -354,74 +356,6 @@ SELECT
     CONVERT(DECIMAL(18, 2), SUM(sa.net)) AS Net
 FROM Saatler AS sa;
 GO
-
--- noqa: disable=all
-/* tsqllint-disable */
--- blok: ONCE-MAG  (panel storeSql Queries.cs :25 aynen; @start → @Bas, @end → @Bit; panel gövdesi, biçim kurallarından muaf)
-DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
-
-SELECT MG.mekanID AS MekanId,
-       SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
-       SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
-       SUM(CASE WHEN s.DocumentsTypeId=3 THEN (s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE 0 END) AS Iade
-FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
-JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
-LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@Bas AND s.Date<@Bit
-GROUP BY MG.mekanID;
-GO
-
--- blok: ONCE-KAS  (panel kasSql Queries.cs :155 aynen, Magaza bazında dış toplam; kasiyer × mağaza gövde aynen)
-DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
-
-SELECT x.Magaza, COUNT(*) AS KasiyerSatiri, SUM(x.Net) AS Net
-FROM (
-    SELECT CAST(st.Name AS nvarchar(30)) AS Magaza, CAST(ISNULL(u.Name,'?') AS nvarchar(30)) AS Ad, COUNT(*) AS Fis,
-           CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -(s.GrossTotal-ABS(s.DiscountTotal)-s.VatTotal) ELSE s.GrossTotal-s.DiscountTotal-s.VatTotal END) AS decimal(18,0)) AS Net,
-           SUM(CASE WHEN s.DocumentsTypeId=3 THEN 1 ELSE 0 END) AS Iade
-    FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-    JOIN EncoreMerkez.dbo.Stores st ON st.Id=s.StoresId
-    LEFT JOIN EncoreMerkez.dbo.Users u ON u.Id=s.UsersId
-    WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=@Bas AND s.Date<@Bit
-    GROUP BY CAST(st.Name AS nvarchar(30)), CAST(ISNULL(u.Name,'?') AS nvarchar(30))
-) x
-GROUP BY x.Magaza
-ORDER BY x.Magaza;
-GO
-
--- blok: ONCE-SAAT  (panel saatSql Queries.cs :145 aynen, dış toplam; mağaza boyutu yok)
-DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
-
-SELECT COUNT(*) AS SaatSayisi, SUM(x.Fis) AS Fis, SUM(x.Net) AS Net
-FROM (
-    SELECT DATEPART(HOUR,s.Date) AS Saat, SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
-           CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS decimal(18,0)) AS Net
-    FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-    WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND s.Date>=@Bas AND s.Date<@Bit
-    GROUP BY DATEPART(HOUR,s.Date)
-) x;
-GO
-
--- blok: ONCE-KAT  (panel katSql Queries.cs :130 aynen, dış toplam; mağaza boyutu yok)
-DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
-
-SELECT COUNT(*) AS KategoriSayisi, SUM(x.Ciro) AS Ciro
-FROM (
-    SELECT CAST(ktg.ktgrAd AS nvarchar(50)) AS Ad,
-           CAST(SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(sp.TotalPrice-sp.VatTotal)) AS decimal(18,0)) AS Ciro
-    FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-    JOIN EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) ON sp.SalesId=s.Id AND sp.IsValid=1 AND sp.BarcodeNo<>'1001'
-    JOIN EncoreMerkez.dbo.Products pr WITH(NOLOCK) ON pr.Id=sp.ProductsId
-    JOIN DerinSISBkm.dbo.urn u WITH(NOLOCK) ON u.stkID=CONVERT(int,pr.Code)
-    JOIN DerinSISBkm.dbo.urnKtgr2 ktg WITH(NOLOCK) ON ktg.ktgrID=u.urnKtgr2ID
-    WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND ISNUMERIC(pr.Code)=1 AND s.Date>=@Bas AND s.Date<@Bit
-    GROUP BY CAST(ktg.ktgrAd AS nvarchar(50))
-) x;
-GO
-/* tsqllint-enable */
--- noqa: enable=all
 
 -- blok: N  (nüfus: tek satır; Eylül 2026)
 DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);  -- DMY
