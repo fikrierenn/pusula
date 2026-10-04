@@ -736,6 +736,57 @@
       "verified": "2026-09-20 → 0. Dört mağazada toplam 161.908 dk her iki yoldan da aynı (1.367,1 + 1.050,0 + 250,0 + 31,4 = 2.698,5 saat).",
       "korur": [],
       "server": "panel"
+    },
+    {
+      "id": "encore-kalem-salesid-sequence-tekil",
+      "db": "DerinSISBkm",
+      "question": "Son 90 günde EncoreMerkez.SalesProducts içinde (SalesId, Sequence) çifti tekil mi?",
+      "why": "Kampanya bağı `SalesProductCampaigns.ProductSequence = SalesProducts.Sequence` ile kaleme bağlanır ve 1:1 olmalıdır. Aynı belgede aynı Sequence iki kez geçerse kampanya indirimi kalemlere ÇOĞALARAK dağılır — hata vermez, indirim şişer. (spec 001 T-001 blok E: 1.768.128 kalem, tekrar 0.)",
+      "sql": "SELECT COUNT(*) FROM (SELECT sp.SalesId, sp.[Sequence] FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE s.[Date] >= DATEADD(DAY,-90,CONVERT(date,GETDATE())) GROUP BY sp.SalesId, sp.[Sequence] HAVING COUNT(*) > 1) t",
+      "population": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE s.[Date] >= DATEADD(DAY,-90,CONVERT(date,GETDATE()))",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-10-04 → 0 tekrarlı çift; nüfus (son 90 gün kalem) 1.823.499. Kırılabilirliği ölçüldü (2026-10-04): beklenen 0→-1 yapılınca çıkış 1 (KIRIK), geri alındı → çıkış 0.",
+      "server": "erp"
+    },
+    {
+      "id": "encore-products-code-sayisal",
+      "db": "DerinSISBkm",
+      "protects": [
+        "pos-urun-kategori-koprusu"
+      ],
+      "question": "EncoreMerkez.Products.Code her kayıtta 1-9 haneli, yalnız rakamdan oluşan bir değer mi?",
+      "why": "POS → DerinSIS ürün köprüsü `urn.stkID = CONVERT(int, Products.Code)` ile kurulur (compat 110, TRY_CONVERT yok). Sayısal olmayan ya da int'e sığmayan tek kod CONVERT'i patlatır ve ekranı çökertir. (spec 001 H10-urun-kodu.sql blok B: 874.730 / 0.) BIN2 collation: Turkish_CI_AS altında [^0-9] aralığı güvenilir değil.",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products WITH(NOLOCK) WHERE Code IS NULL OR NOT (Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(Code) BETWEEN 1 AND 9)",
+      "population": "SELECT COUNT(*) FROM EncoreMerkez.dbo.Products WITH(NOLOCK)",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-10-04 → 0 bozuk; nüfus 874.730. Kırılabilirliği ölçüldü (2026-10-04): beklenen 0→-1 yapılınca çıkış 1 (KIRIK), geri alındı → çıkış 0.",
+      "server": "erp"
+    },
+    {
+      "id": "geri-donusum-1001-satis-fisinde-gecerli-yok",
+      "db": "DerinSISBkm",
+      "question": "Satış fişlerinde (DocumentsTypeId=1) geçerli (IsValid=1) BarcodeNo='1001' satırı sayısı 2026-10-04 tabanını aşmadı mı?",
+      "why": "Kanonik fiş tanımı 1001 taşıyan belgeyi BELGE düzeyinde dışlar. Satış fişinde geçerli 1001 artarsa dışlama satış fişi sayısını sessizce azaltır; fiş sayısı tanımı yeniden ölçülmeli. ⚠ Taban tavanıdır (max), sıfır değil: aşılınca ÖLÇ, sonra tanımı ya da bu değeri güncelle.",
+      "sql": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id = sp.SalesId WHERE sp.BarcodeNo = '1001' AND sp.IsValid = 1 AND s.DocumentsTypeId = 1",
+      "population": "SELECT COUNT(*) FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK) WHERE sp.BarcodeNo = '1001'",
+      "comparison": "max",
+      "expected": 19,
+      "verified": "2026-10-04 → 19 geçerli satır / 19 belge; 1001 taşıyan satış fişi 62 (43'ünde 1001 geçersiz); nüfus (tüm 1001 satırı) 15.634. Kırılabilirliği ölçüldü (2026-10-04): beklenen max 19→18 yapılınca çıkış 1 (KIRIK), geri alındı → çıkış 0.",
+      "server": "erp"
+    },
+    {
+      "id": "wms-alan-tipi-kumesi-kapali",
+      "db": "DerinSISBkm",
+      "question": "WMS'te stok taşıyan alan tipleri hâlâ {0 RAF, 1 GİRİŞ, 2 ÇIKIŞ} içinde mi ve bu üç kod lookup'ta duruyor mu?",
+      "why": "Merkez depo stoğu `depo.stok_adres_palet_vw` üstünden alan 0+1 okunur (2 hariç). View alan tipini SÜZMEZ; stok 3-6 tipli adrese taşınırsa hiçbir depo raporu saymaz. ⚠ Lookup kümesi {0,1,2} DEĞİL (ölçüldü 2026-10-04): `depo.adresAlanTip` 0-6 yedi kod taşır, `depo.adres`'te tip 5 (3 adres) ve 6 (1 adres) tanımlı; bu yüzden değişmez STOK TAŞIYAN tiplerin kapalılığını ölçer. SQL = (0,1,2 dışı tipte stok satırı) + (lookup'ta eksik 0/1/2 kodu).",
+      "sql": "SELECT (SELECT COUNT(*) FROM depo.stok_adres_palet_vw WHERE adrsAlanTipID NOT IN (0,1,2)) + (3 - (SELECT COUNT(DISTINCT alanTipID) FROM depo.adresAlanTip WHERE alanTipID IN (0,1,2)))",
+      "population": "SELECT COUNT(*) FROM depo.stok_adres_palet_vw",
+      "comparison": "eq",
+      "expected": 0,
+      "verified": "2026-10-04 → 0. Stok satırı tip 0=24.578 / 1=869 / 2=26.554, başka tip yok; lookup 0-6. Kırılabilirliği ölçüldü (2026-10-04): beklenen 0→-1 yapılınca çıkış 1 (KIRIK), geri alındı → çıkış 0.",
+      "server": "erp"
     }
   ]
 }
