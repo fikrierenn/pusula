@@ -21,3 +21,13 @@ adaylar:
     ogren: "KOŞAMADI — sema aracı yok"
     ilgili: []
     durum: bekliyor
+  - id: aday-20261004-003
+    hedef: metrics
+    gercek: "EncoreMerkez.SalesProducts kalem indirimi = DiscountTotalDirect + DiscountTotalIndirect (Indirect = belge düzeyi indirimin kaleme dağıtılmış payı); DiscountTotalCampaign ⊆ Direct, toplanmaz. Başlık Sales.DiscountTotal = Σ kalem (Direct+Indirect). sql-server-conventions 'DiscountTotalDirect = TOPLAM' kuralı kalem düzeyinde yanlış"
+    confidence: 0.95
+    evidence: "T-017 sql-inceleyici 04.10.2026, Eylül 2026 tip 1,2,3,6,7,8 IsValid=1: Σ DiscountTotalDirect 42.886.966,22 + Σ DiscountTotalIndirect 10.853.128,37 = 53.740.094,59 = Σ Sales.DiscountTotal (fark 0,00); Indirect'in %98'i Sınav (tip 8)"
+    kaynak_proje: "pusula"
+    tarih: 2026-10-04
+    ogren: "KOŞAMADI — sema aracı yok"
+    ilgili: []
+    durum: bekliyor

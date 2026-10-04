@@ -132,3 +132,11 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 18:01 · T-016: düzeltme turu 1/5 (4 giderildi), ./ork sql 3/3 ✓
 - 04.10 18:01 · Commit: f0be20b fix(bkm): T-016 Sınav iadesi aynı mağaza kuralı + 3 satır A (T-016)
 - 04.10 18:02 · T-016: tamam (9253773..f0be20b, inceleme temiz, 1 düzeltme turu). T-040/T-045 referansı: A 3 satır (FSM 0,00 · Özlüce 0,00 · İst.Yolu 325.059.112,77), Perakende+Sınav = panel Net fark 0,00
+- 04.10 18:15 · T-017: kapılar ./ork sql 3/3 ✓ (D2 19.989 B, sqlfluff sınırının altında); denetleyici commit
+- 04.10 18:15 · Commit: 4fc3c09 chore(bkm): T-017 kanonik D-2 kasiyer + D-4 hediye çeki (T-017)
+- 04.10 18:21 · T-017: inceleme r0 — iki inceleyici Düzeltme gerekli. sql-inceleyici YÜKSEK (ölçüldü): kalem toplam indirimi = DiscountTotalDirect + DiscountTotalIndirect (Eylül Indirect 10.853.128,37, %98 Sınav); proje kuralı 'Direct = TOPLAM' yanlış; panel Indirect'i hiç kullanmıyor (HediyeCeki, RefQueries, SatisAnalizi*, AsistanService, SatisAnaliziUrun.razor)
+- 04.10 18:21 · Karar: kural düzeltmesi (sql-server-conventions § İndirim Kolonları + CLAUDE.md satırı) bu görevde yapılmaz — kural dosyası rol yazma alanı dışında ve CLAUDE.md değişikliği GMY onayı ister; sema adayı bırakıldı (aday-…), T-074 (sema kural kayıtları) kapsamına eklenir, CLAUDE.md satırı bitiş kapısında GMY'ye sorulur; D4 kanonik ve T-0xx hediye çeki düzeltmesi Direct+Indirect kullanır — yanlışsa Indirect kullanmayan diğer panel sorguları (SatisAnalizi*) 001 dışında eksik indirimle kalır (açık soru olarak kaydedildi)
+- 04.10 18:31 · T-017: düzeltme turu 1/5 (5 giderildi), ./ork sql 3/3 ✓, 5 dosya hepsi <20.000 B (ONCE ve ek bloklar ayrı dosyalara bölündü)
+- 04.10 18:31 · Commit: 37ce75c fix(bkm): T-017 kalem indirimi Direct+Indirect, ölçülen nedenler, dosya bölme (T-017)
+- 04.10 18:32 · T-017: dusuk (ertelendi): D4 başlığındaki Direct/Indirect ayrı toplamları blokta yok (K'ya iki kolon); panel HediyeCekiQueries.cs:53,:170 Hc alt sorgusu tarih süzgeçsiz tüm SalesPayments'ı tarıyor — D-4 panel düzeltme görevinin özetine 'Hc'ye Sales JOIN + [Date] süzgeci' eklenecek
+- 04.10 18:32 · T-017: tamam (01b8381..37ce75c, inceleme temiz, 1 düzeltme turu, 2 düşük ertelendi). Kanonik F0 sorguları (T-005..T-017) tamam; T-018 GMY Excel bekliyor; sıradaki T-019
