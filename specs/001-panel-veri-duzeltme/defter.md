@@ -140,3 +140,16 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 18:31 · Commit: 37ce75c fix(bkm): T-017 kalem indirimi Direct+Indirect, ölçülen nedenler, dosya bölme (T-017)
 - 04.10 18:32 · T-017: dusuk (ertelendi): D4 başlığındaki Direct/Indirect ayrı toplamları blokta yok (K'ya iki kolon); panel HediyeCekiQueries.cs:53,:170 Hc alt sorgusu tarih süzgeçsiz tüm SalesPayments'ı tarıyor — D-4 panel düzeltme görevinin özetine 'Hc'ye Sales JOIN + [Date] süzgeci' eklenecek
 - 04.10 18:32 · T-017: tamam (01b8381..37ce75c, inceleme temiz, 1 düzeltme turu, 2 düşük ertelendi). Kanonik F0 sorguları (T-005..T-017) tamam; T-018 GMY Excel bekliyor; sıradaki T-019
+- 04.10 18:32 · Commit: 5dc3b9d chore(T-017): defter + sema adayı
+- 04.10 21:56 · T-019: bağımsız denetim (sql-denetci, dashboard görmeden) — 22 dosyada klasik veri ihlali 0; 4 E (kural/sema katmanı), 18 W (SQL etiket/tutarlılık). Rapor .orkestra/calisma/001-panel-veri-duzeltme/T-019-sql-denetci-rapor.md
+- 04.10 21:56 · Karar: T-019 E-01..E-04 (sql-server-conventions, CLAUDE.md, sema bridges/entities) bu görevde düzeltilmez — kural/sema dosyaları sql-yazar alanı dışında ve CLAUDE.md GMY onayı ister; T-074 (sema kayıtları) kapsamına eklenir, kural+CLAUDE.md satırı bitiş kapısında GMY'ye — kanonik dosyalar zaten doğru tanımı kullanıyor — yanlışsa T-074'e kadar sema okuyan yeni sorgular eski hatalı tanımı alır
+- 04.10 21:56 · Karar: W-01 AC-13.3 panel toplamı ↔ kanonik ERP şube cirosu (spec metni) olarak kalır; başlık iki tabanı da yazar (1001 hariç −%0,130 AC değerlendirmesi, aynı taban +%0,196 bilgi) — AC panel ekranındaki değeri sınar, ekran 1001 hariç — yanlışsa 1001 politikası değişince AC sebepsiz kırılır (başlıktaki iki taban satırı bunu görünür kılar). W-02/W-03 sema notları T-074'te karar kayıtlarına bağlanır (H13 kaynağı yok = perakende, KR-2 ciroya uygulanmaz)
+- 04.10 21:59 · T-018: KARAR bekliyor — ERP/WMS yalnız masaüstü (web ekranı yok, GMY 04.10); seçenek: GMY üç rakamı elle okuyup yazar ya da üçüncü ölçüm atlanır (R3 gevşer). Diğer görevler beklemeden devam
+- 04.10 22:11 · T-019: g1 düzeltmesi commit (8 dosya, hepsi <20 KB, ./ork sql 3/3)
+- 04.10 22:11 · Commit: f21603a fix(bkm): T-019 g1 bağımsız denetim bulguları + ertelenen başlık düzeltmeleri (T-019)
+- 04.10 22:21 · T-019: g3 düzeltmesi commit (9 dosya <20 KB; H13-hedef bölündü, gerçek lint ilk koşuda 140+ bulgu düzeltildi, sonuçlar birebir aynı; W-17 KDV tabanı P bloğuyla ÖLÇÜLDÜ)
+- 04.10 22:21 · Commit: 380f011 fix(bkm): T-019 g3 bağımsız denetim bulguları + H13-hedef bölme (T-019)
+- 04.10 22:23 · Commit: 992e0f8 fix(bkm): T-019 g2 bağımsız denetim bulguları + ertelenen başlık düzeltmeleri (T-019)
+- 04.10 22:23 · Commit: 18c2ce0 db(T-019): kanonik sorguları dondur
+- 04.10 22:27 · Commit: 396fd30 db(T-019): dondurma hash'ini başlıklara yaz
+- 04.10 22:27 · T-019: tamam (f21603a, 380f011, 992e0f8 düzeltmeler; 18c2ce0 dondurma; 396fd30 başlık hash'i). 27 kanonik dosya, hepsi <20 KB, ./ork sql 3/3. Bağımsız denetim E 0 (SQL'de); 4 E kural/sema → T-074 + GMY. Ek dosyalar: 00-taban-ek, H06-ek, H07-ek, H09-ek, H13-hedef-ek, D2-once/ek, D4-once — T-023 KanonikSorgu.Oku dosya adlarını bunlarla eşlemeli
