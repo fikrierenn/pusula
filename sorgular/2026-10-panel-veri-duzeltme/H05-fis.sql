@@ -5,17 +5,27 @@
    Dönem    : A ve C: @Bas = 01.09.2026, @Bit = 01.10.2026 (bitiş hariç), FSM (mekanID 1); D: aynı dönem, 3 mağaza
               B: son 12 ay, @Bugun = 04.10.2026 (gün başı; bugün dahil değil)
    Tolerans : sayı birebir; B'de NetCiro (belge tipi 1 ve 3) panelle ≤ 1 TL
-   Önce     : (04.10.2026, sqlcli encore profili, --read-only; dönem Eylül 2026, FSM)
-              Home (Queries.cs GetPeriodAsync storeSql) Fis = SUM(iade ? -1 : 1), tipler 1,2,3,6,7,8, 1001 hariç: 42.311
+   Önce     : (04.10.2026, sqlcli encore profili, --read-only; dönem Eylül 2026, FSM). Panel sorgu metinleri (dashboard/) bu
+              görevde açılmaz; aşağıdaki sayılar blok ONCE'ın panel kurallarına EŞDEĞER biçimidir (tip kümesi, işaret, 1001
+              dışlaması), panelin kendi SQL'i değildir. Panel SQL'inin birebir koşumu: dosya dışı: T-009 ölçümü.
+              Home (GetPeriodAsync storeSql) Fis = SUM(iade ? -1 : 1), tipler 1,2,3,6,7,8, 1001 hariç: ONCE home_esdeger_fis 42.311
                 -> 42.774 (satış) + 244 (fatura) + 232 (personel fiş) + 8 (personel fatura) - 947 (iade) = 42.311; iade eksi sayılıyor
-              Trafik (TrafikQueries.cs satır 32, 71, 168) Fis = COUNT(*), aynı tipler: 44.205
+                (kırılım bloğu: ONCE_TIP)
+              Trafik (TrafikQueries) Fis = COUNT(*), aynı tipler: ONCE trafik_esdeger_fis 44.205
                 -> 42.774 + 244 + 947 + 232 + 8 = 44.205; iade artı sayılıyor
-              Home ile Trafik farkı 1.894 = 2 x 947 (iade işareti). 02.10 referansı Trafik 44.776 bu koşuda yeniden üretilemedi
-              (571 fazla; sebep bu dosyada ölçülmedi, Eylül verisi sonradan değişmiş olabilir)
+              Home ile Trafik farkı 1.894 = 2 x 947 (iade işareti).
+              02.10 referansı Trafik 44.776 = ONCE trafik_1001_dahil 44.776 (1001 dışlaması OLMADAN, aynı tipler); fark 571 = ONCE
+              bin_bir_belge,
+              hepsi iade (bin_bir_iade 571 = FSM 1.518 - 947). ÇIKARIM: 02.10 sürümü 1001'i dışlamıyordu (sayısal olarak birebir tutuyor,
+              o günkü kaynak koşulmadı).
               GetKartliAsync (SadakatQueries.cs): yalnız tip 1 ve 3 sayıyor, 1001 dışlaması yok; COUNT(*) iadeyi de fiş sayıyor
-              (tip 1 ve 3 belge sayısı 639.664 + 472.023 = 1.111.687; kanonik fiş toplamı aşağıda)
+              (tip 1 ve 3 belge sayısı, iç kart sonrası: N 1.163.756 - 52.069 = 1.111.687; kanonik fiş toplamı B FisSayisi: aşağıda)
               İade (AC-5.4): Home Iade kolonu tutardır (sayı değil); 1001 hariç iade belgesi sayısı Home sorgusundan 947
    Sonra    : yok (düzeltme T-041..T-047 sonrası ölçülür)
+   Fiş tanımı: bu dosyada Fiş = tip 1 ve 1001 yok (iade ayrı: IadeSayisi). Kardeş dosyalarda aynı ad başka şey sayar:
+              D2-kasiyer.sql blok S Fiş = tip 1,2,3,6,7,8 işaretli (iade -1), 1001 hariç (Home biçimi: ONCE home_esdeger_fis);
+              H02-winback.sql Frq = müşteri başına tip 1 belge sayısı, 1001 süzülmez (iade ve diğer tipler sayılmaz).
+              Sayılar farklı tanımlara cevap verir; aralarında kıyas kurulmaz.
    Bağımsız : (04.10.2026) A: FSM 42.774 · Özlüce 47.782 · İst.Yolu 31.488
               C: FSM 947 · Özlüce 1.167 · İst.Yolu 990 (1001 dahil iade 1.518 · 1.926 · 1.512)
               B: kartlı 629.063 fiş, 457.409.931,69 TL · kartsız 453.132 fiş, 265.904.702,52 TL (NetCiro tip 1 ve 3, 1001 dahil)
@@ -42,10 +52,80 @@
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;
               DECLARE @Bugun DATE = CONVERT(DATE, '04.10.2026', 104);
    Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, literal tarihle koşuldu (SSMS DECLARE + GO esas).
-   Bloklar  : A fiş sayısı (Fis) · B kartlı/kartsız (Tip, FisSayisi, NetCiro) · C iade sayısı (IadeSayisi)
+   Bloklar  : ONCE panel eşdeğeri (home/trafik fiş sayısı) · ONCE_TIP tip kırılımı · A fiş sayısı (Fis)
+              · B kartlı/kartsız (Tip, FisSayisi, NetCiro) · C iade sayısı (IadeSayisi)
               · D iade tanım kolları (kanıt) · N nüfus (tek satır)
               Boş nüfus 'bakamadım'dır, 'temiz' değil; blok N her koşuda beklenen büyüklükte dönmelidir.
 */
+
+-- blok: ONCE  (panel kurallarına eşdeğer Home/Trafik fiş sayısı; FSM, Eylül; panelin kendi SQL'i değil, dosya dışı: T-009 ölçümü)
+DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;  -- DMY
+
+WITH Gd AS (
+    SELECT DISTINCT sp.SalesId
+    FROM EncoreMerkez.dbo.SalesProducts AS sp   -- 1001 tespiti IsValid'e bakmaz (plan K-B)
+    WHERE sp.BarcodeNo = '1001'
+),
+
+Belge AS (
+    SELECT
+        s.DocumentsTypeId AS tip,
+        CASE WHEN gd.SalesId IS NULL THEN 0 ELSE 1 END AS bin_bir
+    FROM EncoreMerkez.dbo.Sales AS s
+        INNER JOIN EncoreMerkez.dbo.Pos AS p
+            ON s.PosId = p.Id
+        INNER JOIN EncoreMerkez.dbo.Stores AS st
+            ON p.StoreId = st.Id
+        INNER JOIN DerinSISBkm.dbo.posMagaza AS mg
+            ON st.Code COLLATE Turkish_CI_AS = mg.mekanKod COLLATE Turkish_CI_AS
+        LEFT JOIN Gd AS gd
+            ON s.Id = gd.SalesId
+    WHERE
+        mg.mekanID = @MekanId
+        AND s.DocumentsTypeId IN (1, 2, 3, 6, 7, 8)
+        AND s.[Date] >= @Bas
+        AND s.[Date] < @Bit
+)
+
+SELECT
+    SUM(CASE WHEN b.bin_bir = 0 THEN CASE WHEN b.tip = 3 THEN -1 ELSE 1 END ELSE 0 END) AS home_esdeger_fis,
+    SUM(CASE WHEN b.bin_bir = 0 THEN 1 ELSE 0 END) AS trafik_esdeger_fis,
+    COUNT(*) AS trafik_1001_dahil,
+    SUM(b.bin_bir) AS bin_bir_belge,
+    SUM(CASE WHEN b.bin_bir = 1 AND b.tip = 3 THEN 1 ELSE 0 END) AS bin_bir_iade
+FROM Belge AS b;
+GO
+
+-- blok: ONCE_TIP  (belge tipi kırılımı; FSM, Eylül; 1001'li ve 1001'siz)
+DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;  -- DMY
+
+WITH Gd AS (
+    SELECT DISTINCT sp.SalesId
+    FROM EncoreMerkez.dbo.SalesProducts AS sp   -- 1001 tespiti IsValid'e bakmaz (plan K-B)
+    WHERE sp.BarcodeNo = '1001'
+)
+
+SELECT
+    s.DocumentsTypeId AS Tip,
+    COUNT(*) AS Belge,
+    COUNT(gd.SalesId) AS Bin1001Li
+FROM EncoreMerkez.dbo.Sales AS s
+    INNER JOIN EncoreMerkez.dbo.Pos AS p
+        ON s.PosId = p.Id
+    INNER JOIN EncoreMerkez.dbo.Stores AS st
+        ON p.StoreId = st.Id
+    INNER JOIN DerinSISBkm.dbo.posMagaza AS mg
+        ON st.Code COLLATE Turkish_CI_AS = mg.mekanKod COLLATE Turkish_CI_AS
+    LEFT JOIN Gd AS gd
+        ON s.Id = gd.SalesId
+WHERE
+    mg.mekanID = @MekanId
+    AND s.DocumentsTypeId IN (1, 2, 3, 6, 7, 8)
+    AND s.[Date] >= @Bas
+    AND s.[Date] < @Bit
+GROUP BY s.DocumentsTypeId
+ORDER BY s.DocumentsTypeId;
+GO
 
 -- blok: A  (kanonik fiş sayısı; @MekanId = 1 FSM)
 DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;  -- DMY
@@ -105,8 +185,8 @@ WHERE
     AND (
         c.Id IS NULL
         OR (
-            c.Name NOT LIKE N'%Mağaza%' COLLATE Turkish_CI_AS
-            AND c.Name NOT LIKE N'%Kumbara%' COLLATE Turkish_CI_AS
+            ISNULL(c.Name, '') NOT LIKE N'%Mağaza%' COLLATE Turkish_CI_AS   -- NULL ad dışlanmaz (NOT LIKE UNKNOWN tuzağı)
+            AND ISNULL(c.Name, '') NOT LIKE N'%Kumbara%' COLLATE Turkish_CI_AS
             AND ISNULL(c.PhoneNumber, '') NOT LIKE '599%'
             AND ISNULL(c.PhoneNumber, '') NOT LIKE '699%'
         )

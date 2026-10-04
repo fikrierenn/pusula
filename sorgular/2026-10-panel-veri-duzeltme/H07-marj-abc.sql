@@ -7,9 +7,9 @@
    UYARI    : muhasebe açık dönem — maliyet (ehMaliyet) Eylül için değişebilir; ciro kasa tabanlı.
               Bu dosyanın ciro blokları (A, B, C) maliyetten bağımsızdır; Smm yalnız ONCE-MARJ bloklarında vardır.
    Tolerans : tutar ≤ 1 TL
-   Önce     : (04.10.2026, sqlcli erp profili, --read-only; panel SQL'i RefQueries.Envanter.cs :446 GetMarjAsync ve RefQueries.cs
-              :115 tAbc
-              gövdeleri aynen, tek fark: son 30 gün / geçen ay yerine @Bas, @Bit; bloklar ONCE-MARJ, ONCE-MARJ-3, ONCE-MARJ-FSM, ONCE-ABC)
+   Önce     : (04.10.2026, erp profili, --read-only; panel gövdeleri RefQueries.Envanter.cs :446 GetMarjAsync ve RefQueries.cs :115
+              tAbc, dosya dışı: T-011 ölçümü; tek fark: son 30 gün / geçen ay yerine @Bas, @Bit; bloklar ONCE-MARJ, ONCE-MARJ-3,
+              ONCE-MARJ-FSM, ONCE-ABC)
               ONCE-MARJ (panel eMekan 12,1,4478,4477; 17 kategori): Ciro 299.654.877,95 · Smm 111.202.823,89 · görüntü süzgeci
               (%5-95) sonrası Ciro 234.422.407,20
               ONCE-MARJ-3 (merkez depo çıkınca; 3 mağaza): Ciro 219.445.530,95 · Smm 111.202.823,89 (depo ile AYNI) · görüntü
@@ -31,40 +31,40 @@
                 = Σ kalem net (TotalPrice − VatTotal; 1001 dahil, HAVING'siz) 469.631.399,98 (kaynak içi kimlik; fark 0,00)
               A ↔ Encore mutabakatı: A − C = +918.931,27 (%0,20). İade tarafı birebir: ehTip 101 = Encore tip 3 (1.097.636,30 ·
                 1.287.609,19 · 6.325.338,18). Fark satış tarafında: ERP − Encore FSM +216.549,91 · Özlüce +164.934,61 · İst.Yolu
-                +537.446,75.
+                +537.446,75 (mağaza × gün ve eTip 4/5 kullanıcı kırılımı: H07-marj-abc-ek.sql GUN, KISI).
    Fark     : (Önce − Bağımsız, ölçüldü 04.10.2026)
               Marj ciro: panel 299,65M (merkez depo dahil) ↔ A 470,55M. İki ayrı sapma: (1) merkez depo toptanı panelde var:
-                irsAyr mekan 12, eTip 1: 4.959 satır, 82.609.479,97 ciro, adet toplamı 0 (4.959 satırın 4.959'u ehAdetN = 0) →
-                depo ciroyu şişirir, Smm'ye katkısı 0,00 (ONCE-MARJ ve ONCE-MARJ-3 Smm aynı). (2) maliyeti bilinmeyen ürün satırı
-                WHERE COALESCE(...) IS NOT NULL ile ciro dahil düşüyor: 3 mağaza irsAyr cirosu 479,57M iken panel 219,45M (%45,8).
-                İade yok: panel yalnız eTip 1,4,100 (iade 5, 101 hiç girmez; Eylül iade 8,70M).
-              ABC: panel 478.341.805 ↔ B 469.956.103,68; fark 8.385.701,32 = (a) panel iadeyi düşmüyor (iade ≈ 8,7M) + (b) panel
-                mağaza süzgeci yok + (c) HAVING'in iade sonrası negatif kalanlar. Sınıf ürün sayısı 1.162/10.826/46.836 ↔
+                irsAyr mekan 12, eTip 1: 4.959 satır, 82.609.479,97 ciro, irsAyr.ehAdetN toplamı 0 (4.959/4.959; irsAyr.ehAdet ve
+                irsHrk.ehAdetN −327.868 dolu; ek dosya D, D_HRK) → depo ciroyu şişirir, Smm'ye katkısı 0,00 (ONCE-MARJ ve ONCE-MARJ-3 Smm
+                aynı). (2) maliyeti bilinmeyen ürün satırı WHERE COALESCE(...) IS NOT NULL ile ciro dahil düşüyor: 3 mağaza irsAyr
+                cirosu 479,57M iken panel 219,45M (%45,8; ek dosya M).
+                İade yok: panel yalnız eTip 1,4,100 (iade 5, 101 hiç girmez; Eylül iade net 8,40M, ek dosya B_NEG).
+              ABC: panel 478.341.805 ↔ B 469.956.103,68; fark 8.385.701,47 (ek dosya ABC_FARK) = (a) panel iadeyi düşmüyor
+                8.403.221,07 + (b) mağaza süzgeci etkisi 0,00 (bugün) + (c) HAVING −17.519,60. Sınıf ürün sayısı 1.162/10.826/46.836 ↔
                 1.151/10.805/46.644.
               B ↔ C: B − C = +324.703,70 = +307.184,10 (1001 dışlaması; 1001 kalemlerinin net toplamı −307.184,10) + 17.519,60
-                (iade sonrası net ≤ 0 kalan ürünler HAVING'le atılır).
+                (iade sonrası net ≤ 0 kalan 344 ürün HAVING'le atılır; ek dosya B_NEG).
    Nüfus    : (blok N, 04.10.2026) irsHrk kanonik satır 409.979 · irsHrk 101 satırı 11.586 · merkez depo toptan belgesi (irs eTip
               1, eMekan 12)
               215 · Encore iade belgesi 4.956 · Encore iade kalemi (IsValid 1) 14.965. B ürün nüfusu 58.600.
    Aynı kaynak — neden: A ve panel marjı aynı kaynaktan (irsHrk / irs, DerinSISBkm) kurulur; bu yüzden A panelin 'bağımsız' kanıtı DEĞİL,
               tanım kimliğidir. Bağımsız taraf Encore'dır (B, C): A ↔ C mutabakatı kaynaklar arası ölçülmüş tek kıyas.
               B ile C aynı Encore kalemlerinden kurulur: B ↔ C 'kaynak içi' kimliktir, bağımsız DEĞİL.
-   Başka ne olabilir: (1) A − C = +918.931 farkı gün içi aktarım değil: Eylül kapalı. Kapalı günlerde birebir beklenirdi (T-001
-              02.10); iade
-              birebir, fark satış tarafında → ÇIKARIM: eTip 4 (mağaza satışı) ve Sınav faturaları ERP'de fazla; kanıtlanmadı, açık soru.
+   Başka ne olabilir: (1) A − C = +918.931 farkı gün içi aktarım değil: Eylül kapalı. İade birebir, fark satış tarafında. ERP'de eTip 4
+              ve 5
+              belgelerinin tamamı elle girilmiş (gKisi ≠ 31; 31 yalnız 100/101); ERP 100 − 101 Encore'nin altında, elle 4 − 5 farkı
+              kapatıp aşıyor (ek dosya GUN, KISI). Mekanizma (fatura çift kaydı, tarih kayması) kanıtlanmadı: ÇIKARIM, açık soru.
               (2) Marj ciro/Smm tabanı: panel ehTutar − ehIndirim (irsAyr, KDV durumu ölçülmedi), A ehTutarN (KDV hariç); iki
               tanım aynı soruya cevap vermeyebilir. (3) ABC panel iadeyi hiç düşmüyor; B iadeyi negatif sayar ve 1001'i dışlar.
               (4) Smm Eylül için muhasebe açık dönem nedeniyle değişebilir; A, B, C etkilenmez.
    Kapsam   : A = irsHrk ehTip 100 − 101 + 4 − 5, üç mağaza, ehAltDepo = 0, ehTutarN. B = Encore kalem net (TotalPrice − VatTotal,
-              KDV hariç), ürün bazlı, iade negatif, HAVING SUM > 0, 1001 hariç. ABC panelin (RefQueries.cs :118) 1001 hariç
-              kuralını korur.
+              KDV hariç), ürün bazlı, iade negatif, HAVING SUM > 0, 1001 hariç (panel ABC :118 ile aynı kural).
    Dondurma : 39702ee
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104);
-   Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit literalle değiştirilerek
-              koşuldu (SSMS DECLARE + GO esas); A, A1 --profile erp; B, C, B1 --profile encore; --max-rows 1000.
+   Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz, @Bas/@Bit literal; A, A1 --profile erp; B, C, B1 encore.
    Bloklar  : A kanonik şube cirosu · A1 mağaza × tip kırılımı · B pozitif net ürün cirolarının toplamı · B1 sınıf bazlı bağımsız ABC
-              · C Encore başlık neti (A ↔ Encore mutabakatı) · ONCE-MARJ, ONCE-MARJ-3, ONCE-MARJ-FSM (panel marjı) · ONCE-ABC
-              (panel ABC) · N nüfus.
+              · C Encore başlık neti (A ↔ Encore mutabakatı) · ONCE-MARJ, ONCE-MARJ-3, ONCE-MARJ-FSM (panel marjı)
+              · ONCE-ABC (panel ABC) · N nüfus. Ara ölçümler (GUN, KISI, D, M, B_NEG, ABC_FARK): H07-marj-abc-ek.sql.
               Boş nüfus 'bakamadım'dır, 'temiz' değil.
 */
 
@@ -170,7 +170,7 @@ WITH Urun AS (
 Kumulatif AS (
     SELECT
         u.net,
-        100.0 * SUM(u.net) OVER (ORDER BY u.net DESC ROWS UNBOUNDED PRECEDING) / SUM(u.net) OVER () AS kp
+        100.0 * SUM(u.net) OVER (ORDER BY u.net DESC, u.ProductsId ASC ROWS UNBOUNDED PRECEDING) / SUM(u.net) OVER () AS kp
     FROM Urun AS u
 )
 

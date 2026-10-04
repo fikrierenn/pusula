@@ -17,7 +17,7 @@
               kaynak dışı kanıt değildir. Blok B ayrı bir ölçümdür (Products tablo taraması).
    Aynı kaynak — neden: A ve ONCE aynı sabit kodları kullanır; bilerek: aynı girdide eski ve yeni ifadeyi
               yan yana göstermek için. B gerçek veriyi taradığı için ayrı kaynaktır.
-   Başka ne olabilir: (1) B = 0 (02.10.2026 özet, 04.10.2026 yeniden ölçüldü): bugünkü veride bozuk kod yok;
+   Başka ne olabilir: (1) B Satir 874.730 · SayisalOlmayan 0 (02.10.2026 özet, 04.10.2026 yeniden ölçüldü): bugünkü veride bozuk kod yok;
               çökme riski gelecekteki bir kayıttan gelir. (2) ' 123' için CONVERT(int) hata vermez (123 döner);
               NULL beklenmesi kuralın katı olmasından kaynaklanır. (3) LEN sondaki boşluğu saymaz; '123 ' kodu
               NOT LIKE '%[^0-9]%' ile elenir. (4) CASE içinde LIKE ve LEN koşulu yanlışsa CONVERT'in
@@ -27,7 +27,8 @@
    Dondurma : bc98d56
    SSMS     : her blok kendi DECLARE'ini taşır, GO ile ayrılır.
    Komut    : sqlcli query --profile encore --read-only --max-rows 100000 "<tek blok>" (depo kökünden).
-   Bloklar  : A (Kod, Beklenen, Sonuc, Eslesti) · B (SayisalOlmayan) · ONCE (Kod, IsNumeric, TasmaVar)
+   Bloklar  : A (Kod, Beklenen, Sonuc, Eslesti) · B (Satir, SayisalOlmayan; boş tabloda SayisalOlmayan 0, NULL değil)
+              · ONCE (Kod, IsNumeric, TasmaVar)
               · ONCE_UNICODE (Kod, EskiKuralGecer, YeniKuralGecer)
    AC-10.3  : A on bir satır ve hepsinde Eslesti = 1; B değeri başlıkta.
 */
@@ -81,12 +82,12 @@ GO
 /* tsqllint-disable non-sargable */
 SELECT
     COUNT(*) AS Satir,
-    SUM(
+    ISNULL(SUM(
         CASE
             WHEN p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 THEN 0
             ELSE 1
         END
-    ) AS SayisalOlmayan
+    ), 0) AS SayisalOlmayan
 FROM EncoreMerkez.dbo.Products AS p;
 /* tsqllint-enable non-sargable */
 GO
@@ -97,9 +98,10 @@ SELECT
     v.Kod,
     ISNUMERIC(v.Kod) AS [IsNumeric],
     CASE
-        WHEN ISNUMERIC(v.Kod) = 1 AND ABS(CONVERT(decimal(38, 0), v.Kod)) > 2147483647 THEN 1
+        WHEN ISNUMERIC(v.Kod) = 1
+            THEN CASE WHEN ABS(CONVERT(decimal(38, 0), v.Kod)) > 2147483647 THEN 1 ELSE 0 END
         ELSE 0
-    END AS TasmaVar
+    END AS TasmaVar   -- CONVERT yalnız iç CASE'in koşulunda, ISNUMERIC = 1 dalında (AND kısa devresi garanti değil)
 FROM (
     VALUES
     (N'123'),

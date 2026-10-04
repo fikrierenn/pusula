@@ -21,14 +21,25 @@
    Aynı kaynak — neden: evet. Panel de kanonik sorgu da DerinSISBkm.mhs fiş satırlarını okur;
               muhasebe mizanının başka bir bağımsız kaynağı yok. Bağımsızlık yalnız yazım yolundan
               gelir (hesap kodu LEFT(…,3), mutlak tutar + fisBA işareti, tarih aralığı, ağaç yok).
-   Başka ne olabilir: (1) Kapanış fişi: açık yılda yok (blok E kapanis_satiri 0); varsa hariç tutulur (panel gibi).
-              (2) 391 ve 191 aylık devirle sıfırlanıyor (bakiye 0,00); KDV pozisyonu 190'da birikiyor. (3) 101 bakiyesi negatif olabilir
-              (verilen çek ters yön); işaret blok B'de borç-pozitif okunur.
+   Açılış fişi: şirket 6 fisAd = 'Açılış' (blok ACILIS, 01.01.2026): 100 359.055,89 · 101 215.546.624,25 · 102 14.772.861,52 ·
+              108 9.003.159,84 · 190 4.851.259,87 (391 ve 191 açılışta yok); hepsi A, B, C kümülatif sonuçlarına dahildir.
+   101 Alınan Çek: 381.560.000,00 yalnız DEFTERDEN (blok ALT101: tek alt hesap 101.10.001 Portföydeki Çekler, 1.469 satır, 764 borç ·
+              705 alacak). Çek modülüyle mutabakat bu dosyada YOK; portföyde bu kadar çek olduğu ÇIKARIM, ölçülmedi.
+   KDV formülü: 391 − 191 − 190 yalnız devreden KDV durumunu modelliyor (blok KDV_AY: 391 ve 191 her ay borç = alacak, ayrı ayrı
+              mahsupla sıfırlanıyor; 190'da 56.060.357,14 birikmiş). Ödenecek KDV çıkan ayda tutar 360 hesabında olur ve bu formüle
+              girmez; Haziran 360 alt hesapları blok KDV360'ta (KDV'ye ait yalnız tevkifat −89.552,61).
+   Başka ne olabilir: (1) Kapanış fişi: açık yılda yok (şirket 6 fisAd 'Kapanış' 0; blok E kapanis_satiri 0). Kapalı yılda sınandı
+              (blok KAPANIS_2025, şirket 5: kapanış satırları 100 · 101 · 102 · 108 · 190 için dahil bakiye 0,00, hariç bakiye sıfırdan
+              farklı, yani süzgeç gerekli ve çalışıyor). (2) 391 ve 191 aylık devirle sıfırlanıyor; KDV pozisyonu 190'da birikiyor.
+              (3) 101 bakiyesi Ocak-Haziran her ayda pozitif; verilen çek 103 hesabındadır (bakiye negatif) ve bu dosyada okunmaz.
+              Haziran ay hareketi 101'de alacak ağırlıklı (−26.900.000,00) olabilir, kümülatif bakiye değil.
+              (4) Blok D iki yönlü (FULL OUTER JOIN): yalnız görünümde olan hesap da fark olarak çıkar.
    Kapsam   : fisSirketID = @SirketId; ay aralığı @AyBas..@Ay; "Kapanış" bilanço fişi hariç.
    Dondurma : bc98d56
    SSMS     : her blok kendi DECLARE'ini taşır, GO ile ayrılır.
    Komut    : sqlcli query --profile erp --read-only --max-rows 100000 "<tek blok>" (depo kökünden).
    Bloklar  : A (Nakit) · B (AlinanCek) · C (KdvNet) · D (kaynak içi kimlik) · E (nüfus) · ONCE (panel gövdesi)
+              · ACILIS · ALT101 · KDV_AY · KDV360 · KAPANIS_2025
    AC-12.x  : nüfus E: her hesap grubunda satır > 0 (0 ise KOŞAMADI).
 */
 
@@ -140,14 +151,14 @@ GorunumCTE AS (
 )
 
 SELECT
-    fc.ana_hesap,
+    ISNULL(fc.ana_hesap, gc.ana_hesap) AS ana_hesap,
     CAST(fc.fis_bakiye AS decimal(18, 2)) AS fis_bakiye,
     CAST(gc.gorunum_bakiye AS decimal(18, 2)) AS gorunum_bakiye,
-    CAST(ISNULL(gc.gorunum_bakiye, 0) - fc.fis_bakiye AS decimal(18, 2)) AS fark
+    CAST(ISNULL(gc.gorunum_bakiye, 0) - ISNULL(fc.fis_bakiye, 0) AS decimal(18, 2)) AS fark
 FROM FisCTE AS fc
-    LEFT JOIN GorunumCTE AS gc
+    FULL OUTER JOIN GorunumCTE AS gc
         ON fc.ana_hesap = gc.ana_hesap
-ORDER BY fc.ana_hesap;
+ORDER BY ISNULL(fc.ana_hesap, gc.ana_hesap);
 GO
 
 -- blok: E  (nüfus: hesap grubu başına fiş satırı + Kapanış fişi sayısı)
@@ -218,3 +229,153 @@ SELECT
     END) AS decimal(18, 2)) AS KdvNetPanel,
     CAST(SUM(CASE WHEN u.ana = '190' THEN u.bakiye ELSE 0 END) AS decimal(18, 2)) AS Panel190
 FROM UcHane AS u;
+GO
+
+-- blok: ACILIS  (açılış fişi tutarları: şirket 6 yılbaşı, ana hesap başına borç − alacak; kümülatif sonuca dahildir)
+SET NOCOUNT ON;
+DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
+SELECT
+    LEFT(h.hspKod, 3) AS ana_hesap,
+    COUNT(*) AS satir_sayisi,
+    CAST(SUM(CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END) AS decimal(18, 2)) AS acilis_bakiye
+FROM DerinSISBkm.mhs.mhsFis AS f
+    INNER JOIN DerinSISBkm.mhs.mhsHsp AS h
+        ON
+            f.fisHspID = h.hspID
+            AND f.fisSirketID = h.hspSirketID
+    INNER JOIN DerinSISBkm.mhs.mhsFisBaslik AS k
+        ON
+            f.fisID = k.fisbID
+            AND f.fisSirketID = k.fisbSirketID
+WHERE
+    f.fisSirketID = @SirketId
+    AND k.fisAd = N'Açılış'
+    AND f.fisTarih >= DATEFROMPARTS(@SirketId + 2020, @AyBas, 1)
+    AND f.fisTarih < DATEADD(MONTH, 1, DATEFROMPARTS(@SirketId + 2020, @Ay, 1))
+    AND LEFT(h.hspKod, 3) IN ('100', '101', '102', '108', '190', '191', '391')
+GROUP BY LEFT(h.hspKod, 3)
+ORDER BY LEFT(h.hspKod, 3);
+GO
+
+-- blok: ALT101  (101 alt hesap kırılımı: tek alt hesap mı; borç ve alacak satırı; çek modülü ile mutabakat yok)
+SET NOCOUNT ON;
+DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
+SELECT
+    h.hspKod AS hesap_kodu,
+    COUNT(*) AS satir_sayisi,
+    SUM(CASE WHEN f.fisBA = 1 THEN 1 ELSE 0 END) AS borc_satiri,
+    SUM(CASE WHEN f.fisBA = 0 THEN 1 ELSE 0 END) AS alacak_satiri,
+    CAST(SUM(CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END) AS decimal(18, 2)) AS bakiye
+FROM DerinSISBkm.mhs.mhsFis AS f
+    INNER JOIN DerinSISBkm.mhs.mhsHsp AS h
+        ON
+            f.fisHspID = h.hspID
+            AND f.fisSirketID = h.hspSirketID
+WHERE
+    f.fisSirketID = @SirketId
+    AND f.fisTarih >= DATEFROMPARTS(@SirketId + 2020, @AyBas, 1)
+    AND f.fisTarih < DATEADD(MONTH, 1, DATEFROMPARTS(@SirketId + 2020, @Ay, 1))
+    AND LEFT(h.hspKod, 3) IN ('101', '103')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM DerinSISBkm.mhs.mhsFisBaslik AS k
+        WHERE
+            k.fisbID = f.fisID
+            AND k.fisbSirketID = f.fisSirketID
+            AND k.fisAd = N'Kapanış'
+    )
+GROUP BY h.hspKod
+ORDER BY h.hspKod;
+GO
+
+-- blok: KDV_AY  (190, 191, 391 ay ay borç ve alacak: 391 ve 191 ayrı ayrı mahsupla sıfırlanıyor mu)
+SET NOCOUNT ON;
+DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
+SELECT
+    LEFT(h.hspKod, 3) AS ana_hesap,
+    MONTH(f.fisTarih) AS ay,
+    CAST(SUM(CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE 0 END) AS decimal(18, 2)) AS borc,
+    CAST(SUM(CASE WHEN f.fisBA = 0 THEN ABS(f.fisTutar) ELSE 0 END) AS decimal(18, 2)) AS alacak
+FROM DerinSISBkm.mhs.mhsFis AS f
+    INNER JOIN DerinSISBkm.mhs.mhsHsp AS h
+        ON
+            f.fisHspID = h.hspID
+            AND f.fisSirketID = h.hspSirketID
+WHERE
+    f.fisSirketID = @SirketId
+    AND f.fisTarih >= DATEFROMPARTS(@SirketId + 2020, @AyBas, 1)
+    AND f.fisTarih < DATEADD(MONTH, 1, DATEFROMPARTS(@SirketId + 2020, @Ay, 1))
+    AND LEFT(h.hspKod, 3) IN ('190', '191', '391')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM DerinSISBkm.mhs.mhsFisBaslik AS k
+        WHERE
+            k.fisbID = f.fisID
+            AND k.fisbSirketID = f.fisSirketID
+            AND k.fisAd = N'Kapanış'
+    )
+GROUP BY LEFT(h.hspKod, 3), MONTH(f.fisTarih)
+ORDER BY LEFT(h.hspKod, 3), MONTH(f.fisTarih);
+GO
+
+-- blok: KDV360  (360 alt hesaplar: ödenecek KDV bu formüle girmiyor; hangi alt hesaplar var, bakiyeleri)
+SET NOCOUNT ON;
+DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
+SELECT
+    h.hspKod AS hesap_kodu,
+    COUNT(*) AS satir_sayisi,
+    CAST(SUM(CASE WHEN f.fisBA = 0 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END) AS decimal(18, 2)) AS alacak_bakiyesi
+FROM DerinSISBkm.mhs.mhsFis AS f
+    INNER JOIN DerinSISBkm.mhs.mhsHsp AS h
+        ON
+            f.fisHspID = h.hspID
+            AND f.fisSirketID = h.hspSirketID
+WHERE
+    f.fisSirketID = @SirketId
+    AND f.fisTarih >= DATEFROMPARTS(@SirketId + 2020, @AyBas, 1)
+    AND f.fisTarih < DATEADD(MONTH, 1, DATEFROMPARTS(@SirketId + 2020, @Ay, 1))
+    AND LEFT(h.hspKod, 3) = '360'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM DerinSISBkm.mhs.mhsFisBaslik AS k
+        WHERE
+            k.fisbID = f.fisID
+            AND k.fisbSirketID = f.fisSirketID
+            AND k.fisAd = N'Kapanış'
+    )
+GROUP BY h.hspKod
+ORDER BY h.hspKod;
+GO
+
+-- blok: KAPANIS_2025  (kapanış süzgeci kapalı yılda sınanır: şirket 5 = 2025, Ocak-Aralık; kapanış satırı, dışlanınca bakiye)
+SET NOCOUNT ON;
+DECLARE @SirketId int = 5, @Ay int = 12, @AyBas int = 1;
+SELECT
+    LEFT(h.hspKod, 3) AS ana_hesap,
+    COUNT(*) AS satir_sayisi,
+    SUM(CASE WHEN k.fisbID IS NOT NULL THEN 1 ELSE 0 END) AS kapanis_satiri,
+    CAST(SUM(
+        CASE
+            WHEN k.fisbID IS NULL THEN (CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END)
+            ELSE 0
+        END
+    ) AS decimal(18, 2)) AS kapanis_haric_bakiye,
+    CAST(SUM(CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END) AS decimal(18, 2)) AS kapanis_dahil_bakiye
+FROM DerinSISBkm.mhs.mhsFis AS f
+    INNER JOIN DerinSISBkm.mhs.mhsHsp AS h
+        ON
+            f.fisHspID = h.hspID
+            AND f.fisSirketID = h.hspSirketID
+    LEFT JOIN DerinSISBkm.mhs.mhsFisBaslik AS k
+        ON
+            f.fisID = k.fisbID
+            AND f.fisSirketID = k.fisbSirketID
+            AND k.fisAd = N'Kapanış'
+WHERE
+    f.fisSirketID = @SirketId
+    AND f.fisTarih >= DATEFROMPARTS(@SirketId + 2020, @AyBas, 1)
+    AND f.fisTarih < DATEADD(MONTH, 1, DATEFROMPARTS(@SirketId + 2020, @Ay, 1))
+    AND LEFT(h.hspKod, 3) IN ('100', '101', '102', '108', '190', '191', '391')
+GROUP BY LEFT(h.hspKod, 3)
+ORDER BY LEFT(h.hspKod, 3);
+GO

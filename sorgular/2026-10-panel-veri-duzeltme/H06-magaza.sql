@@ -4,8 +4,8 @@
    AC       : AC-6.1, AC-6.2, AC-6.3, AC-6.4 · Spec 001 · H06 · KR-1 (1001 iade ve fiş dışlaması)
    Dönem    : @Bas = 01.09.2026, @Bit = 01.10.2026 (bitiş hariç); @MekanId 1 FSM · 4477 Özlüce · 4478 İst.Yolu
    Tolerans : sayı birebir; tutar ≤ 1 TL
-   Önce     : (04.10.2026, sqlcli encore profili, --read-only; panel SQL'i MagazaQueries.cs :41 :58 :96 gövdeleri aynen,
-              bloklar ONCE-IADE, ONCE-UPT, ONCE-KAMP, FSM; diğer iki mağaza aynı gövdeyle @MekanId değiştirilerek)
+   Önce     : (04.10.2026, encore profili, --read-only; panel gövdeleri dosya dışı: T-010 ölçümü, MagazaQueries.cs :41 :58 :96;
+              bloklar ONCE-IADE, ONCE-UPT, ONCE-KAMP, FSM; diğer mağazalar @MekanId değiştirilerek)
               ONCE-IADE (kpiSql :41, GrossTotal, KDV dahil, indirim düşülmemiş; 1001 hariç):
                 FSM 1.330.198,93 · Özlüce 1.536.627,53 · İst.Yolu 6.841.660,75
               ONCE-UPT (uptSql :58, tipler 1,2,6,7,8; pay SUM(Amount), payda DISTINCT fiş):
@@ -14,52 +14,52 @@
                 İndirim 12.605.327,63 · 16.302.187,31 · 328.136.559,76
                 Brüt 35.871.177,32 · 47.920.498,87 · 609.633.923,26
                 net (Ad bazlı toplam) 23.265.849,69 · 31.618.311,56 · 281.497.363,50
-   Sonra    : yok (düzeltme T-041..T-047 sonrası ölçülür)
+   Sonra    : yok (T-041..T-047 sonrası)
    Bağımsız : (04.10.2026) kampanya indirimi = −SalesProductCampaigns.DistributedAmount (satıra dağıtılmış, negatif işaretli);
               TotalDiscount (SalesId, CampaignId) grubuna çoğaltılmış toplamdır, KULLANILMAZ.
               A IptalKalemKampanyaIndirim: FSM 207.266,13 · Özlüce 299.018,54 · İst.Yolu 318.323,12
-                (= Σ sp.DiscountTotalDirect iptal kalemde, üç mağazada birebir)
+                (= Σ (DiscountTotalDirect + DiscountTotalIndirect) iptal kalemde, üç mağazada birebir; Indirect bu dönemde 0: ek dosya A1)
               A2 geçerli kalem kampanya indirimi (mağaza × tip) Σ: FSM 11.565.743,16 · Özlüce 15.881.640,16 · İst.Yolu 25.238.731,49
-              A2 KİMLİK KAPISI: KampanyaIndirim = BaslikIndirim (Σ Sales.DiscountTotal), her mağaza × tip satırında fark 0,00
-                (13 satırın 13'ü). Fark ≠ 0 ise A2 kırıktır.
+              A2 KAYNAK İÇİ KİMLİK (bağımsız kanıt değil): KampanyaIndirim = BaslikIndirim (Σ Sales.DiscountTotal), her mağaza × tip
+                satırında fark 0,00 (13/13); ikisi de aynı Encore satışından gelir. Fark ≠ 0 ise A2 kırıktır.
+              A3 (ek dosya, ERP posOzetUrun.satIndirim, bağımsız kaynak, yalnız büyüklük sınırı): A2'ye göre −%1,4 · −%1,8 · −%9,9;
+                kuruş kimliği değil, kapsam farkı.
               B KampanyaliKalemNetKdvDahil: FSM 23.259.498,10 · Özlüce 31.613.583,78 · İst.Yolu 277.588.171,79
               C IadeKdvHaric (1001 hariç, indirim düşülmüş): FSM 995.170,57 · Özlüce 1.173.183,70 · İst.Yolu 6.234.866,80
               D (Kalem / Fis; tip 1, 1001 hariç): FSM 283.227 / 42.774 (UPT 6,62) · Özlüce 382.775 / 47.782 (UPT 8,01)
                 · İst.Yolu 274.007 / 31.488 (UPT 8,70). Fis H05 blok A ile aynı.
-              İade kimliği (1001 DAHİL): C1 Encore iade KDV hariç = C2 irsHrk ehTip 101 (ehAltDepo 0):
+              İade kimliği (1001 DAHİL): C1 Encore iade KDV hariç = C2 irsHrk ehTip 101:
                 1.097.636,30 · 1.287.609,19 · 6.325.338,18; fark 0,00 üç mağazada.
    Fark     : (Önce − Bağımsız, ölçüldü 04.10.2026)
               İndirim: panel 12,6M / 16,3M / 328,1M ↔ A2 11,57M / 15,88M / 25,24M. Panel TotalDiscount toplar (çoğaltılmış),
-                IsValid süzgeci yok; İst.Yolu'nda ~13 kat.
-              Net: panel Ad bazlı net − blok B = +6.351,59 · +4.727,78 · +3.909.191,71 = Σ TotalPrice × (kalemin farklı
-                kampanya adı sayısı − 1); aynı kalem her kampanyada bir kez sayılıyor.
+                IsValid süzgeci yok.
+              Net: panel Ad bazlı net − blok B = +6.351,59 · +4.727,78 · +3.909.191,71 = Σ TotalPrice × (kampanya adı sayısı − 1);
+                aynı kalem her kampanyada bir kez sayılıyor.
               UPT: tip 1'e daraltılmış panel UPT'si (kalem düzeyi 1001) 6,62 · 8,01 · 8,70 = D; panel tipleriyle fiş düzeyi
                 1001 dışlaması 6,70 · 8,17 · 12,03 = panel. Fark tamamen tip kümesinden (fatura, personel, Sınav); 1001 etkisi 0.
-              İade: panel GrossTotal 1.330.198,93 − DiscountTotal 286.552,88 − VatTotal 48.475,48 = C 995.170,57 (FSM).
-                Fark tamamen tabandan (indirim ve KDV); 1001 ve tip etkisi 0 (ikisi de tip 3, 1001 hariç).
+              İade: panel GrossTotal 1.330.198,93 − İndirim 286.552,88 − KDV 48.475,48 = C 995.170,57 (FSM; ek dosya IADE_ARA).
+                Fark tamamen tabandan; 1001 ve tip etkisi 0.
    Nüfus    : (blok N, 04.10.2026) Eylül tüm mağaza: iptal kalem (tip 1,2,6,7,8) 16.692 · SPC satırı 542.136 · iade belgesi 4.956
               · satış fişi (tip 1) 122.045 · irsHrk 101 satırı (3 mağaza) 11.586.
-              T-001 E (03.10): son 90 günde (SalesId, Sequence) tekrarlı kalem çifti 0.
-   Aynı kaynak — neden: Kampanya ve kalem düzeyi yalnız Encore'da var; ERP'de POS özet belgedir. İade için ERP bağımsız
-              kaynaktır (C1 ↔ C2). İndirim için bağımsız kanıt: kalem kaynağı (DistributedAmount) ↔ başlık kaynağı
-              (Sales.DiscountTotal), blok A2 kimliği. Yöntem bağımsız: panelin LEFT JOIN spb yerine DISTINCT SalesId anti-join;
-              UPT'de fiş kümesi önce kurulur.
-   Başka ne olabilir: (1) TotalDiscount yerine DistributedAmount: ölçüldü, iptal kalemde Σ DistributedAmount = Σ DiscountTotalDirect;
-              TotalDiscount aynı kalemi kampanya sayısı kadar çoğaltıyor (ilk A değeri 175.375,56 yanlıştı). (2) A ve B belge kapsamı
-              panelle aynı (1,2,6,7,8) ve 1001 dışlamaz; 1001 yalnız iade ve UPT'de dışlanır. (3) D Fis kalemi olmayan fişi de sayar,
-              H05 ile aynı. (4) DistributedAmount işareti negatif varsayıldı, ölçümle doğrulandı (−Σ = +başlık indirimi, A2 kimliği);
-              TotalDiscount işareti de negatif (panel −TotalDiscount kullanıyor). (5) Gd (1001 tespiti) dönem Sales kümesine bağlı;
-              tüm geçmiş taranmaz.
-   Kapsam   : Mağaza = Pos -> Stores -> posMagaza. İade = DocumentsTypeId 3, 1001 barkodlu belge hariç (KR-1);
-              tutar GrossTotal − DiscountTotal − VatTotal. Fiş (UPT) = DocumentsTypeId 1, 1001 hariç.
-              Kampanya kalemi = (SalesId, ProductSequence = Sequence).
+              T-001 E (03.10): son 90 günde tekrarlı (SalesId, Sequence) kalem çifti 0.
+   Aynı kaynak — neden: Kampanya ve kalem düzeyi yalnız Encore'da var; ERP'de POS özet belgedir. İade için ERP bağımsız kaynak (C1 ↔ C2).
+              İndirim için bağımsız kanıt yalnız A3 (ERP, büyüklük sınırı); A2'de kalem
+              (DistributedAmount) ↔ başlık (Sales.DiscountTotal) aynı Encore satışıdır, kaynak içi kimliktir.
+              Yöntem: panelin LEFT JOIN spb yerine DISTINCT SalesId anti-join; UPT'de fiş kümesi önce.
+   Başka ne olabilir: (1) TotalDiscount yerine DistributedAmount: ölçüldü, iptal kalemde Σ DistributedAmount = Σ (Direct + Indirect);
+              TotalDiscount aynı kalemi kampanya sayısı kadar çoğaltıyor. (2) A ve B belge kapsamı
+              panelle aynı (1,2,6,7,8), 1001 dışlamaz; 1001 yalnız iade ve UPT'de dışlanır. (3) D Fis kalemsiz fişi de sayar (H05 gibi).
+              (4) DistributedAmount işareti negatif (A2 kimliğiyle doğrulandı).
+   Kapsam   : Mağaza = Pos -> Stores -> posMagaza. İade = tip 3, 1001 hariç (KR-1); tutar Gross − Discount − Vat.
+              Fiş (UPT) = tip 1, 1001 hariç. Kampanya kalemi = (SalesId, ProductSequence = Sequence).
    Dondurma : 47e7030
    SSMS     : DECLARE @Bas DATE = CONVERT(DATE, '01.09.2026', 104), @Bit DATE = CONVERT(DATE, '01.10.2026', 104), @MekanId INT = 1;
-   Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz ve DECLARE'siz, @Bas/@Bit/@MekanId literalle değiştirilerek
-              koşuldu (SSMS DECLARE + GO esas); C2 --profile erp, diğerleri --profile encore, --max-rows 1000.
+   Komut    : sqlcli --read-only DECLARE kabul etmez; bloklar GO'suz, @Bas/@Bit/@MekanId literal; C2 --profile erp, diğerleri encore.
    Bloklar  : A iptal kalem kampanya indirimi · A2 mağaza × tip kampanya ↔ başlık indirimi · B kampanyalı kalem net (KDV dahil)
               · C iade KDV hariç · C1 kontrol Encore 1001 dahil · C2 kontrol ERP irsHrk 101 · D UPT (Kalem, Fis)
               · ONCE-IADE · ONCE-UPT · ONCE-KAMP (panel gövdeleri) · N nüfus.
+              Ara ölçümler (A1 iptal kalem Direct/Indirect · A3 ERP indirim · IADE_ARA Brüt/İndirim/KDV · UPT_T1) ayrı dosyada:
+              H06-magaza-ek.sql (20 KB sınırı).
               Boş nüfus 'bakamadım'dır, 'temiz' değil.
 */
 
