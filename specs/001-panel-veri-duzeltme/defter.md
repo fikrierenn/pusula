@@ -170,3 +170,4 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 04.10 23:13 · Commit: 52d73a9 feat(bkm): T-074 sema kural kayıtları ve ölçülen düzeltmeler (T-074)
 - 04.10 23:27 · Commit: 27136c0 fix(bkm): T-074 inceleme düzeltmeleri — çelişen kural satırı, kanıt arşivi (T-074)
 - 04.10 23:27 · T-074: tamam (52d73a9 + 27136c0; ana oturum yazdı, GMY onayı; inceleme r0 Düzeltme gerekli → r1 tüm bulgular giderildi). sema_denetim KIRIK 0; pos-urun-koprusu-eslesme ve katalog dumanı BIN2 kuralıyla OK. dusuk (ertelendi): fis_kanonik applied_in henüz var olmayan Tanimlar/ klasörünü gösteriyor (T-028'de güncellenir)
+- 04.10 23:28 · T-049: karar verildi (GMY 04.10.2026: ciro iki parça + maliyet kapsaması; spec AC-7.2a–d) — KARAR bekliyor değil, sırası gelince uygulanır
