@@ -31,8 +31,9 @@ ayrıca parametreli batch ODBC'de `sp_executesql` ile koşuyor ve `#temp` orada 
 Kullanıcı direktifi: *"bkm tabloları olarak yapalım bir önek ile de isim türetelim"* +
 *"şimdilik tabloları yerel sql tarafına mı kuralım, dev prod olursa derinsis içine alırız"*.
 
-**ŞU AN YALNIZ DEV.** Nesneler yerel `BkmPanel` (`BT-FIKRI\SQLEXPRESS`) içinde
-`bkm` şemasında kurulur. **Prod'a (`DerinSISBkm`) HİÇBİR ŞEY yazılmaz** — terfi ayrı
+**ŞU AN YALNIZ DEV.** Nesneler yerel `BkmPanel` (`SANAL-FIKRI`, varsayılan örnek `localhost`) içinde
+`bkm` şemasında kurulur. 05.10.2026'da BT-FIKRI\SQLEXPRESS'ten taşındı (yedek → `BkmPanel_BT` →
+`sorgular/2026-10-05-bkmpanel-bt-birlestir.sql`; 27 tablonun satır/kolon/indeks/FK sayısı birebir). **Prod'a (`DerinSISBkm`) HİÇBİR ŞEY yazılmaz** — terfi ayrı
 onay ister ve bu bölüm o zaman güncellenir.
 
 Şema ve nesne adları dev ile prod'da BİREBİR AYNI tutulur (`bkm.Vrd_*`), böylece terfi
@@ -61,7 +62,7 @@ yetkisi uygulamadan geçmez. DDL: `sorgular/2026-09-18-vardiya-auth-tablo-kur.sq
 Otomatik testler bu iki tabloya **yazar**, çünkü kusur ancak veri varken görünür.
 Koşullar (üçü birden, yoksa test yazmaz):
 
-1. **Yalnız DEV** — `BkmPanel` (`BT-FIKRI\SQLEXPRESS`). Prod'a yazma yok.
+1. **Yalnız DEV** — `BkmPanel` (`SANAL-FIKRI`, `localhost`). Prod'a yazma yok.
 2. **Ayrılmış ad uzayı** — `zz_test_` önekli sicil/kaydeden; `Vrd_Devir` için ayrıca
    gerçek hiçbir kapanışa denk gelmeyen dönem (`1900-01`). PK çakışmaz, **dondurulmuş
    gerçek dönem silinmez, değiştirilmez**.
