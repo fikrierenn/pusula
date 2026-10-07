@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Panel veri düzeltme (spec 001) test projesi: salt-okuma kapısı, kanonik sorgu dosyaları, canlı ERP yardımcıları.
+       Altyapı kodu lib/Bkm.TestAltyapi'dedir (tests/** altına üretim kodu yazılmaz).
+       ⚠ ATLAMA YOK: canlı ortam yoksa test KOŞAMADI ile KIRMIZI döner; sessiz yeşil yok. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>GmDashboard.Tests</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\lib\Bkm.TestAltyapi\Bkm.TestAltyapi.csproj" />
+  </ItemGroup>
+
+  <!-- Kanonik sorgular, koruma girdileri ve kırmızı-kip sahte dosyaları çıktıya kopyalanır (K-karar-4). -->
+  <ItemGroup>
+    <None Include="..\..\sorgular\2026-10-panel-veri-duzeltme\*.sql" LinkBase="Kanonik" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Koruma\Eski\*.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Altyapi\Sahte\*.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
