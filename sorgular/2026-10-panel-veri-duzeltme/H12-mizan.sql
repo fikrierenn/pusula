@@ -41,10 +41,10 @@
    Bloklar  : A (Nakit) · B (AlinanCek) · C (KdvNet) · D (kaynak içi kimlik) · E (nüfus) · ONCE (panel gövdesi)
               · ACILIS · ALT101 · KDV_AY · KDV360 · KAPANIS_2025
    AC-12.x  : nüfus E: her hesap grubunda satır > 0 (0 ise KOŞAMADI).
+   Değişiklik: 08.10.2026 — 11 SET NOCOUNT kaldırıldı (T-021: salt-okuma kapısı SET'i reddeder).
 */
 
 -- blok: A  (Nakit = borç bakiyesi 100 + 102 + 108)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT CAST(SUM(CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END) AS decimal(18, 2)) AS Nakit
 FROM DerinSISBkm.mhs.mhsFis AS f
@@ -68,7 +68,6 @@ WHERE
 GO
 
 -- blok: B  (AlinanCek = borç bakiyesi 101)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT CAST(SUM(CASE WHEN f.fisBA = 1 THEN ABS(f.fisTutar) ELSE -ABS(f.fisTutar) END) AS decimal(18, 2)) AS AlinanCek
 FROM DerinSISBkm.mhs.mhsFis AS f
@@ -92,7 +91,6 @@ WHERE
 GO
 
 -- blok: C  (KdvNet = 391 alacak bakiyesi − 191 borç bakiyesi − 190 borç bakiyesi)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT CAST(SUM(CASE WHEN f.fisBA = 1 THEN -ABS(f.fisTutar) ELSE ABS(f.fisTutar) END) AS decimal(18, 2)) AS KdvNet
 -- 391 alacak bakiyesi (alacak − borç) ile 191/190 borç bakiyesinin (borç − alacak) çıkarılması:
@@ -118,7 +116,6 @@ WHERE
 GO
 
 -- blok: D  (kaynak içi kimlik: mhsMizan_vw ↔ fiş satırı; ikisi de mhsFis'ten türer, bağımsız değil)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 WITH FisCTE AS (
     SELECT
@@ -162,7 +159,6 @@ ORDER BY ISNULL(fc.ana_hesap, gc.ana_hesap);
 GO
 
 -- blok: E  (nüfus: hesap grubu başına fiş satırı + Kapanış fişi sayısı)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT
     LEFT(h.hspKod, 3) AS ana_hesap,
@@ -188,7 +184,6 @@ ORDER BY LEFT(h.hspKod, 3);
 GO
 
 -- blok: ONCE  (panel gövdesi aynen: MizanQueries.GetSonucAsync leaf sorgusu + 3 haneli toplama + OzetHesapla)
-SET NOCOUNT ON;
 DECLARE @sirketId int = 6, @ay int = 6, @ayBas int = 1;
 WITH Leaf AS (
     SELECT
@@ -232,7 +227,6 @@ FROM UcHane AS u;
 GO
 
 -- blok: ACILIS  (açılış fişi tutarları: şirket 6 yılbaşı, ana hesap başına borç − alacak; kümülatif sonuca dahildir)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT
     LEFT(h.hspKod, 3) AS ana_hesap,
@@ -258,7 +252,6 @@ ORDER BY LEFT(h.hspKod, 3);
 GO
 
 -- blok: ALT101  (101 alt hesap kırılımı: tek alt hesap mı; borç ve alacak satırı; çek modülü ile mutabakat yok)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT
     h.hspKod AS hesap_kodu,
@@ -289,7 +282,6 @@ ORDER BY h.hspKod;
 GO
 
 -- blok: KDV_AY  (190, 191, 391 ay ay borç ve alacak: 391 ve 191 ayrı ayrı mahsupla sıfırlanıyor mu)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT
     LEFT(h.hspKod, 3) AS ana_hesap,
@@ -319,7 +311,6 @@ ORDER BY LEFT(h.hspKod, 3), MONTH(f.fisTarih);
 GO
 
 -- blok: KDV360  (360 alt hesaplar: ödenecek KDV bu formüle girmiyor; hangi alt hesaplar var, bakiyeleri)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 6, @Ay int = 6, @AyBas int = 1;
 SELECT
     h.hspKod AS hesap_kodu,
@@ -348,7 +339,6 @@ ORDER BY h.hspKod;
 GO
 
 -- blok: KAPANIS_2025  (kapanış süzgeci kapalı yılda sınanır: şirket 5 = 2025, Ocak-Aralık; kapanış satırı, dışlanınca bakiye)
-SET NOCOUNT ON;
 DECLARE @SirketId int = 5, @Ay int = 12, @AyBas int = 1;
 SELECT
     LEFT(h.hspKod, 3) AS ana_hesap,
