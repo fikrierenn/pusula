@@ -1,6 +1,7 @@
 <Project>
 
-  <!-- Yalnız bu klasör için merkezi paket sürümü; kök Directory.Packages.props bilerek yok (K6).
+  <!-- Yalnız bu klasör için merkezi paket sürümü (K-r1-7). Satır içi sürüm commit kapısı G-STATIC-CS'de (PKG-001)
+       reddedilir; kök Directory.Packages.props ise dashboard'u NU1504 ile kırar (K6). Bu yerel dosya dashboard'u etkilemez.
        Sürümler tests/BkmVardiya.Tests ile aynı. -->
 
   <PropertyGroup>
