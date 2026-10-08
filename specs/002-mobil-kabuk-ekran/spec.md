@@ -1,6 +1,6 @@
 # Özellik 002: Telefon kabuğu ve ekranlar
 
-**Durum:** Onaylandı (08.10.2026 — GMY "speci ölç ve karar ver"; denetleyici ölçümü: 70 AC biçimi tam, açık işaret 0, sınıflar 5/12/17/5 tarama ile birebir, doküman kapıları 4/4) · **Oluşturma:** 06.10.2026 · **Boy:** Büyük
+**Durum:** Onaylandı (08.10.2026) · Değişiklik 1: 08.10.2026 — Cari/Risk 001 ek maddesine bağlandı, kart 3/kıyas günü netleşti (GMY kararı) · **Oluşturma:** 06.10.2026 · **Boy:** Büyük
 **Girdi (kullanıcı isteği):** "pusula içindeki gm dahboardı orkestrayı kullanarak elden geçir tamamen mobil app olarak şekilde güncelle raporları ekranları rapor verilerini kontrol et yenilerini eklemelisin gerekli danışmanları ekleyerek onlara danış" (02.10.2026)
 Kullanıcı kararı (03.10.2026): iş dört spec'e bölündü. Bu spec **telefon kabuğu ve ekranları** kapsar. 001 rakamları düzeltir, 003 yeni raporları ekler, 004 sunucu ve dışarıdan erişimi kurar.
 Kaynaklar: `.orkestra/calisma/002-mobil-kabuk-ekran/spec-notlari.md` (kararlar), `ekran-oncelik.md` (uzman ekran taraması, 05.10.2026), `.orkestra/calisma/gm-mobil-plan-taslak.md`.
@@ -39,7 +39,8 @@ Bir ekran telefona, aşağıdaki 001 maddelerinin **hepsi** 001 kabul testinden 
 | Operasyon | H1, H10 (AC-10.1) |
 | Vardiya | H10 (AC-10.1) |
 | Mizan | H12 |
-| Cari/Risk, Görevler, Asistan, Muhasebe, Gelir tablosu | yok — ilk telefon sürümünde açılır |
+| Cari/Risk | 001 ek maddesi: Cari/Risk tam toplam ve alıcı/satıcı ayrımı |
+| Görevler, Asistan, Muhasebe, Gelir tablosu | yok — ilk telefon sürümünde açılır |
 
 Bugün ekranındaki kartların bağımlılığı, kaynak ekranınınkidir (bkz. H4).
 
@@ -69,7 +70,7 @@ GMY olarak paneli telefonun ana ekranına uygulama gibi eklemek ve beş sekmeyle
 - **AC-1.3:** Verildiğinde yuvarlak ya da başka biçimde simge kırpan bir telefon, Yapıldığında simge ana ekranda görüntülendiğinde, O zaman simgenin içindeki işaret kırpılmadan bütün görünür.
 - **AC-1.4:** Verildiğinde telefon görünümünde herhangi bir ekran, Yapıldığında ekran açıldığında, O zaman ekranın altında soldan sağa **Bugün · Satış · Finans · Asistan · Diğer** sekmeleri görünür ve etkin sekme ayırt edilir.
 - **AC-1.5:** Verildiğinde telefonda uzun bir ekran, Yapıldığında sayfa aşağı kaydırıldığında, O zaman alt menü ekranın altında kalır ve içerik alt menünün arkasında kaybolmaz; son satır alt menünün üstünde okunur.
-- **AC-1.6:** Verildiğinde telefonda herhangi bir ekran, Yapıldığında Finans sekmesinden Cari/Risk ya da Asistan sekmesinden Görevler açıldığında, O zaman hedef ekrana en fazla iki dokunuşla ulaşılır.
+- **AC-1.6:** Verildiğinde telefonda herhangi bir ekran, Yapıldığında Finans sekmesinden Cari/Risk (001 Cari/Risk ek maddesi kapandıktan sonra) ya da Asistan sekmesinden Görevler açıldığında, O zaman hedef ekrana en fazla iki dokunuşla ulaşılır.
 - **AC-1.7:** Verildiğinde geciken en az bir görev, Yapıldığında telefonda alt menü görüntülendiğinde, O zaman **Asistan** sekmesinde geciken görev sayısını gösteren bir rozet görünür; geciken görev yoksa rozet görünmez.
 - **AC-1.8:** Verildiğinde masaüstü görünümü, Yapıldığında herhangi bir ekran açıldığında, O zaman alt menü görünmez ve masaüstü menüsü bugünkü gruplarıyla durur; X sınıfı ekranlar menüde yer almaz.
 - **AC-1.9:** Verildiğinde oturum açılmamış ya da süresi dolmuş, Yapıldığında uygulama simgeden açıldığında, O zaman giriş sayfası açılır, hiçbir rakam görünmez; giriş başarılı olunca telefonun açılış ekranı açılır (bkz. FR-003).
@@ -80,7 +81,8 @@ GMY olarak paneli telefonun ana ekranına uygulama gibi eklemek ve beş sekmeyle
 GMY olarak vadesi geçen alacakları, görevlerimi ve asistanı telefonda masaüstündeki kadar eksiksiz kullanmak istiyorum, böylece bu günlük işler için bilgisayara dönmem.
 **Bağımsız test:** Üç ekran telefon görünümünde açılır; göstergeler masaüstüyle karşılaştırılır, görev ve asistan işlemleri telefondan yapılır.
 **Kabul kriterleri:**
-- **AC-2.1:** Verildiğinde telefonda Cari/Risk ekranı, Yapıldığında ekran açıldığında, O zaman en üstte vadesi geçen alacak tutarı ve kredi limitini aşan cari sayısı görünür; vadesi geçen tutar 0'dan büyükse kırmızı, limit aşan cari varsa sayı sarı gösterilir.
+- **AC-2.1:** Verildiğinde 001'in Cari/Risk ek maddesi kabul testinden geçmiş ve telefonda Cari/Risk ekranı, Yapıldığında ekran açıldığında, O zaman en üstte alıcıların vadesi geçen alacak toplamı (bütün cariler, ilk N kayıt değil) ve kredi limitini aşan cari sayısı görünür; vadesi geçen tutar 0'dan büyükse kırmızı, limit aşan cari varsa sayı sarı gösterilir.
+- **AC-2.1a:** Verildiğinde 001'in Cari/Risk ek maddesi kabul testinden geçmemiş, Yapıldığında telefonda Finans sekmesi açıldığında, O zaman Cari/Risk bağlantısı görünmez (AC-0.1).
 - **AC-2.2:** Verildiğinde telefonda Cari/Risk listesi, Yapıldığında liste görüntülendiğinde, O zaman her cari tek bir kart olarak cari adı ve net bakiyeyle görünür; kartın öteki alanları karta dokununca açılır ve masaüstündeki alanların tamamını içerir.
 - **AC-2.3:** Verildiğinde telefonda Görevler ekranı, Yapıldığında ekran açıldığında, O zaman açık görev sayısı ve geciken görev sayısı en üstte görünür; geciken görevler kırmızı rozetle işaretlidir.
 - **AC-2.4:** Verildiğinde masaüstünde yapılabilen görev işlemleri (ekleme, tamamlama, silme), Yapıldığında aynı işlemler telefonda yapıldığında, O zaman sonuç masaüstündekiyle aynıdır ve silme bir onay sorusundan sonra gerçekleşir.
@@ -109,9 +111,9 @@ Kullanıcı kararı (05.10.2026): Sabah ekranı Ana sayfaya birleşir. Üstte d�
 | 1 | Dünkü ciro | Ana sayfa | H5, H13, D-2, H10 (AC-10.3) |
 | 1a | Sınav iade oranı | Sınav Okulları | H9 + Temmuz–Ekim |
 | 2 | Ay hedefi ve ay sonu tahmini | Ana sayfa + Tahmin | H13, D-5 |
-| 3 | Bugünün uyarıları | Sabah | H10 (AC-10.1) |
+| 3 | Bugünün uyarıları | Ana sayfa uyarı kuralları (Sabah bölümünde) | H10 (AC-10.1) + kart 1 koşulları |
 | 4 | E-ticaret bekleyen sipariş | E-ticaret | H4, D-3 |
-| 5 | Vadesi geçen alacak | Cari/Risk | yok |
+| 5 | Vadesi geçen alacak | Cari/Risk | 001 ek maddesi (Cari/Risk) |
 | 6 | Nakit ve en düşük hafta | — | spec 003 tamamlanınca |
 | 7 | Açık görevler | Görevler | yok |
 | 8 | Personel çalışma süresi uyumu | Vardiya | H10 (AC-10.1) |
@@ -124,16 +126,16 @@ Kullanıcı kararı (05.10.2026): Sabah ekranı Ana sayfaya birleşir. Üstte d�
 - **AC-4.5:** Verildiğinde tarih Temmuz–Ekim arasında ve 001 H9 kapanmış, Yapıldığında Bugün ekranı açıldığında, O zaman kart 1'in altında Sınav Okulları iade oranı görünür; oran %3 ya da üstündeyse kırmızıdır. Kasım–Haziran arasında bu satır görünmez.
 - **AC-4.6:** Verildiğinde içinde bulunulan ay, Yapıldığında kart 2 görüntülendiğinde, O zaman gerçekleşen, hedef, gerçekleşme yüzdesi, ay sonu tahmini ve tahmin aralığı görünür; gerçekleşme %95 ve üstü yeşil, %85 ile %95 arası sarı, %85 altı kırmızıdır.
 - **AC-4.7:** Verildiğinde hedef tabanı GMY tarafından henüz teyit edilmemiş, Yapıldığında kart 2 görüntülendiğinde, O zaman kartta "Hedef tabanı teyit bekliyor" notu görünür (001 AC-13.4).
-- **AC-4.8:** Verildiğinde Sabah ekranının bugün koştuğu kontroller ve hiçbiri uyarı üretmemiş, Yapıldığında kart 3 görüntülendiğinde, O zaman kart "N kontrol koştu, 0 uyarı" der; N koşan kontrol sayısıdır.
+- **AC-4.8:** Verildiğinde kart 3'ün dün için koştuğu kontroller (mağaza cirosu −%10 ya da daha kötü; iade oranı %2'nin üstü) ve hiçbiri uyarı üretmemiş, Yapıldığında kart 3 görüntülendiğinde, O zaman kart "N kontrol koştu, 0 uyarı" der; N koşan kontrol sayısıdır.
 - **AC-4.9:** Verildiğinde kontrollerden en az biri koşamamış, Yapıldığında kart 3 görüntülendiğinde, O zaman koşamayan kontrol sayısı ve adı ayrı satırda yazılır; koşamayan kontrol "0 uyarı" sayısına katılmaz ve kart yeşil gösterilmez.
 - **AC-4.10:** Verildiğinde kargoya çıkmamış e-ticaret siparişleri, Yapıldığında kart 4 görüntülendiğinde, O zaman bekleyen sipariş sayısı ve 4 gün ve üstü bekleyen sayısı görünür; 2–3 gün bekleyen varsa sarı, 4 gün ve üstü bekleyen varsa kırmızıdır.
-- **AC-4.11:** Verildiğinde vadesi geçen alacaklar, Yapıldığında kart 5 görüntülendiğinde, O zaman tutar ve limit aşan cari sayısı Cari/Risk ekranındaki değerle (AC-2.1) aynıdır ve aynı renk kuralını izler.
+- **AC-4.11:** Verildiğinde 001'in Cari/Risk ek maddesi kabul testinden geçmiş ve vadesi geçen alacaklar, Yapıldığında kart 5 görüntülendiğinde, O zaman tutar ve limit aşan cari sayısı Cari/Risk ekranındaki değerle (AC-2.1) aynıdır ve aynı renk kuralını izler.
 - **AC-4.12:** Verildiğinde açık ve geciken görevler, Yapıldığında kart 7 görüntülendiğinde, O zaman açık ve geciken görev sayısı görünür; geciken sayısı 0'dan büyükse kırmızıdır.
 - **AC-4.13:** Verildiğinde dinlenme ve gece çalışma süresi sınırlarını aşan vardiya kayıtları, Yapıldığında kart 8 görüntülendiğinde, O zaman aşım sayısı mağaza bazında görünür, hiçbir çalışanın adı ya da sicili yazmaz; aşım sayısı 0'dan büyükse sarıdır.
 - **AC-4.14:** Verildiğinde spec 003 nakit raporu teslim edilmemiş, Yapıldığında Bugün ekranı açıldığında, O zaman kart 6 görünmez.
 - **AC-4.15:** Verildiğinde Bugün ekranındaki bir kart, Yapıldığında karta dokunulduğunda, O zaman kartın kaynak ekranı açılır.
 - **AC-4.16:** Verildiğinde Sabah ekranının eski adresi, Yapıldığında bu adres telefonda ya da masaüstünde açıldığında, O zaman Bugün ekranı açılır.
-- **AC-4.17:** Verildiğinde 001 maddelerinin hiçbiri kabul testinden geçmemiş (ilk telefon sürümü), Yapıldığında GMY telefonda giriş yaptığında, O zaman Bugün ekranı açılır ve yalnız kart 5 ile kart 7 görünür; alt bölümde hedef kartı ve dönem görünümü yer almaz.
+- **AC-4.17:** Verildiğinde 001 maddelerinin ve 001 Cari/Risk ek maddesinin hiçbiri kabul testinden geçmemiş (ilk telefon sürümü), Yapıldığında GMY telefonda giriş yaptığında, O zaman Bugün ekranı açılır ve yalnız kart 7 görünür; alt bölümde hedef kartı ve dönem görünümü yer almaz.
 
 ### H5 — Satış ekranları telefonda özet verir (P2)
 GMY olarak mağaza, e-ticaret, Sınav Okulları, kategori ve tahmin ekranlarının özetini telefonda görmek istiyorum, böylece haftalık satış durumunu yolda da izlerim.
@@ -183,7 +185,7 @@ GMY olarak eski yer imlerim ve bağlantılarım bozulmadan birleşen ekranlara u
 ## Fonksiyonel gereksinimler
 - **FR-001:** Sistem telefona ana ekran simgesiyle kurulabilmek ve simgeden adres çubuksuz, tam ekran açılmak ZORUNDADIR (H1).
 - **FR-002:** Sistem telefon görünümünde beş sekmeli alt menü (Bugün · Satış · Finans · Asistan · Diğer) sunmak, masaüstünde bugünkü menüyü korumak ZORUNDADIR (H1).
-- **FR-003:** Sistem telefonda girişten sonra açılış ekranı olarak Bugün ekranını açmak ZORUNDADIR. İlk telefon sürümünde de Bugün açılır ve yalnız 001'den bağımsız kartları (5 vadesi geçen alacak, 7 açık görevler) gösterir; öteki kartlar bağlı 001 maddeleri kapandıkça eklenir (karar 07.10.2026; bkz. AC-4.17).
+- **FR-003:** Sistem telefonda girişten sonra açılış ekranı olarak Bugün ekranını açmak ZORUNDADIR. İlk telefon sürümünde de Bugün açılır ve yalnız 001'den bağımsız kartı (7 açık görevler) gösterir; öteki kartlar bağlı 001 maddeleri kapandıkça eklenir (karar 07.10.2026, güncelleme 08.10.2026; bkz. AC-4.17).
 - **FR-003a:** Sistem C sınıfı ekranlarda telefonda yatay sayfa taşması üretmemek ZORUNDADIR; geniş tablo kendi kutusu içinde kayabilir (AC-6.2).
 - **FR-003b:** Sistem Ayarlar ve Eşikler ekranlarını telefonda yalnız okunur açmak ZORUNDADIR (AC-6.6).
 - **FR-004:** Sistem 001 bağımlılığı olan bir ekranı ya da kartı, bağlı 001 maddelerinin hepsi kabul testinden geçene kadar telefon menüsünde ve Bugün ekranında göstermemek ZORUNDADIR (AC-0.1, AC-4.2).
@@ -224,7 +226,7 @@ Yetki modeli değişmiyor (tek kullanıcı).
 - **SC-001a:** 375×812 telefon görünümünde 17 C sınıfı ekranın hiçbirinde yatay sayfa kaydırması yoktur (02.10.2026'da 15'inde vardı).
 - **SC-002:** A ve B ekranlarında 44×44 px'ten küçük dokunulabilir öğe sayısı 0'dır.
 - **SC-003:** Panel en az bir Android ve bir iOS telefonda ana ekrana kurulur ve simgeden tam ekran açılır.
-- **SC-004:** Telefonda açılış ekranından Cari/Risk, Görevler ve Asistan'a en fazla iki dokunuşla ulaşılır (bugün üç).
+- **SC-004:** Telefonda açılış ekranından Görevler ve Asistan'a, 001 Cari/Risk ek maddesi kapandıktan sonra Cari/Risk'e en fazla iki dokunuşla ulaşılır (bugün üç).
 - **SC-005:** Telefonda gösterilen her gösterge, masaüstündeki aynı göstergeyle aynı dönem için birebir aynıdır (örnekleme: her açık ekrandan en az bir gösterge).
 - **SC-006:** 001 maddesi kapanmamış ekranların telefon menüsünde görünme sayısı 0'dır.
 - **SC-007:** Birleşen beş ekranın eski adreslerinin beşi de hedef ekrana gider.
@@ -250,9 +252,9 @@ Yetki modeli değişmiyor (tek kullanıcı).
 - Telefon kabul testi dikey 375×812 görünümde yapılır; ayrıca kullanıcı kendi telefonunda dener.
 - Kurulum testi geçici bir güvenli bağlantı üzerinden yapılır (05.10.2026 denemesindeki gibi); kalıcı erişim 004'tedir.
 - Kart 1 eşik sınırları: −%5 sarıya, −%10 kırmızıya dahildir; −%5'ten iyi değişim renksizdir.
-- Okul dönemine göre eşleşen geçen yıl günü, panelin bugün kullandığı okul dönemi eşleşmesiyle aynı kuralla bulunur.
+- Okul dönemine göre eşleşen geçen yıl günü: Temmuz–Ekim arasında okul açılış tarihleri farkı kadar geri (2026 için 371 gün), öteki aylarda 364 gün geri (aynı hafta günü). (Kanıt: `arastirma.md` § 7.)
 - Kart 1 ve kart 2'deki ciro tabanı Ana sayfadakiyle aynıdır (001 H13, D-5 dipnotuyla).
-- Kart 3, Sabah ekranının bugün koştuğu kontrolleri taşır; yeni kontrol türleri 003 ile eklenir.
+- Kart 3, Ana sayfanın bugünkü iki uyarı kuralını (mağaza cirosu −%10 ya da daha kötü; iade oranı %2'nin üstü) dün için koşar; yeni kontrol türleri 003 ile eklenir.
 - Kart 8 uyum sınırları Vardiya ekranının bugün kullandığı sınırlardır (11 saat, 12 saat dinlenme, gece 7,5 saat).
 - Envanter telefon özetindeki üç gösterge ölü stok, aşırı stok ve stokta yokluktur (uzman: "telefona 3 sayı"); plan aşamasında teyit edilir.
 - Muhasebe kartındaki "kontrol bulgusu", Muhasebe ekranının bugün listelediği ay kapanışı kontrol kalemleridir.
