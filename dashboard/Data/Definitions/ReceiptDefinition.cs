@@ -15,18 +15,21 @@ public static class ReceiptDefinition
 
     public const string ExcludeRecyclingCondition = "gd.SalesId IS NULL";
 
+    private const string ExcludeRecyclingJoinTemplate = "LEFT JOIN (SELECT DISTINCT gd0.SalesId FROM EncoreMerkez.dbo.SalesProducts gd0 WITH(NOLOCK) WHERE gd0.BarcodeNo = '1001') gd ON gd.SalesId = {sales}.Id";
+
+    // The sales parameter is a code-internal alias (such as "s"); user input never reaches the SQL fragment.
     public static string ExcludeRecyclingJoin(string sales)
     {
-        throw new NotImplementedException();
+        return ExcludeRecyclingJoinTemplate.Replace("{sales}", sales, StringComparison.Ordinal);
     }
 
     public static string NetExVat(string sales)
     {
-        throw new NotImplementedException();
+        return $"(CASE WHEN {sales}.DocumentsTypeId = 3 THEN -1 ELSE 1 END * ({sales}.GrossTotal - {sales}.DiscountTotal - {sales}.VatTotal))";
     }
 
     public static string ReturnExVat(string sales)
     {
-        throw new NotImplementedException();
+        return $"(CASE WHEN {sales}.DocumentsTypeId = 3 THEN {sales}.GrossTotal - {sales}.DiscountTotal - {sales}.VatTotal ELSE 0 END)";
     }
 }

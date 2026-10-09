@@ -1,4 +1,5 @@
 using Dapper;
+using GmDashboard.Data.Definitions;
 using GmDashboard.Models;
 
 namespace GmDashboard.Data;
@@ -11,6 +12,22 @@ public sealed class Queries(Db db)
 {
     static readonly Dictionary<int, string> Mekan = new() { [1] = "FSM", [4477] = "Özlüce", [4478] = "İst.Yolu" };
 
+    // Mağaza (EncoreMerkez Sales → posMagaza; geri dönüşüm fişi BarcodeNo='1001' hariç)
+    // Net = KDV-HARİÇ (plan-16): Sales.GrossTotal−DiscountTotal−VatTotal (header VAT = satır TP−VatTotal toplamı, kuruşu kuruşuna doğrulandı 16.06).
+    static readonly string s_storeSql = $"""
+        SELECT MG.mekanID AS MekanId,
+               SUM({ReceiptDefinition.NetExVat("s")}) AS Net,
+               SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
+               SUM({ReceiptDefinition.ReturnExVat("s")}) AS Iade
+        FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+        JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+        JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+        JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
+        {ReceiptDefinition.ExcludeRecyclingJoin("s")}
+        WHERE s.DocumentsTypeId IN ({ReceiptDefinition.StoreDocumentTypes}) AND {ReceiptDefinition.ExcludeRecyclingCondition} AND s.Date>=@start AND s.Date<@end
+        GROUP BY MG.mekanID;
+        """;
+
     /// <summary>Dönem özeti: mağaza net/fiş/iade + e-ticaret net + hedef gerçekleşme.</summary>
     /// <param name="prevStart">Geçen-dönem (WoW) penceresi başı. null → hemen önceki eş-uzunluk.</param>
     /// <param name="prevEnd">Geçen-dönem penceresi sonu (exclusive). null → start.</param>
@@ -22,20 +39,7 @@ public sealed class Queries(Db db)
 
         // Mağaza (EncoreMerkez Sales → posMagaza; geri dönüşüm fişi BarcodeNo='1001' hariç)
         // Net = KDV-HARİÇ (plan-16): Sales.GrossTotal−DiscountTotal−VatTotal (header VAT = satır TP−VatTotal toplamı, kuruşu kuruşuna doğrulandı 16.06).
-        const string storeSql = """
-            SELECT MG.mekanID AS MekanId,
-                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
-                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
-                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN (s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE 0 END) AS Iade
-            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
-            JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
-            LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@start AND s.Date<@end
-            GROUP BY MG.mekanID;
-            """;
-        var stores = (await conn.QueryAsync<StoreRow>(storeSql,
+        var stores = (await conn.QueryAsync<StoreRow>(s_storeSql,
             new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) })).ToList();
 
         // Geçen dönem penceresi — hero + mağaza WoW trendi. Aylık → geçen ayın aynı günleri (Home verir);
@@ -43,7 +47,7 @@ public sealed class Queries(Db db)
         int len = endExcl.DayNumber - start.DayNumber;
         var pStart = prevStart ?? start.AddDays(-len);
         var pEnd = prevEnd ?? start;
-        var prevStores = (await conn.QueryAsync<StoreRow>(storeSql,
+        var prevStores = (await conn.QueryAsync<StoreRow>(s_storeSql,
             new { start = pStart.ToDateTime(TimeOnly.MinValue), end = pEnd.ToDateTime(TimeOnly.MinValue) })).ToList();
         var prevNetMap = prevStores.ToDictionary(s => s.MekanId, s => s.Net);
 
