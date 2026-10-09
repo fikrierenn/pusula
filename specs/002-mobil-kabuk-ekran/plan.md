@@ -1,6 +1,6 @@
 # Plan 002: Telefon kabuğu ve ekranlar
 
-**Durum:** Taslak (onay bekliyor) · **Spec:** `specs/002-mobil-kabuk-ekran/spec.md` (Onaylandı 08.10.2026) · **Tarih:** 08.10.2026
+**Durum:** Onaylandı (09.10.2026 — GMY; risk ŞART ve KVKK şartları işlendi) · **Spec:** `specs/002-mobil-kabuk-ekran/spec.md` (Onaylandı 08.10.2026) · **Tarih:** 08.10.2026
 **Kardeş spec:** 001 (`specs/001-panel-veri-duzeltme/`, uygulamada; F0 tamam, F1 T-021'de) · **Seçilen yaklaşım:** C — tek kaynak, ekran genişliğine göre düzen + telefona kurulan web uygulaması (PWA). A (ayrı native uygulama) ve B (ayrı `/m` rota seti) 02–03.10.2026'da reddedildi (`.orkestra/calisma/gm-mobil-plan-taslak.md` §3).
 
 ## Özet
