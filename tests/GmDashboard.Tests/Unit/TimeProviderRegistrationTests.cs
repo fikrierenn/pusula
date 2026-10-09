@@ -19,7 +19,7 @@ public class TimeProviderRegistrationTests
     }
 
     [Fact]
-    public void AddBkmVeri_Registers_ExactlyOneTimeProvider()
+    public void DataRegistration_Registers_ExactlyOneTimeProvider()
     {
         // Arrange
         ServiceCollection services = BuildServices();
@@ -32,7 +32,7 @@ public class TimeProviderRegistrationTests
     }
 
     [Fact]
-    public void AddBkmVeri_TimeProvider_IsSingletonInstanceOfSystem()
+    public void DataRegistration_TimeProvider_IsSingletonInstanceOfSystem()
     {
         // Arrange
         ServiceDescriptor descriptor = BuildServices().Single(d => d.ServiceType == typeof(TimeProvider));
@@ -43,7 +43,7 @@ public class TimeProviderRegistrationTests
     }
 
     [Fact]
-    public void AddBkmVeri_GetRequiredTimeProvider_ReturnsSystem()
+    public void DataRegistration_GetRequiredTimeProvider_ReturnsSystem()
     {
         // Arrange
         using ServiceProvider provider = BuildServices().BuildServiceProvider();
@@ -56,7 +56,7 @@ public class TimeProviderRegistrationTests
     }
 
     [Fact]
-    public void AddBkmVeri_TwoScopes_ShareSameTimeProvider()
+    public void DataRegistration_TwoScopes_ShareSameTimeProvider()
     {
         // Arrange
         using ServiceProvider provider = BuildServices().BuildServiceProvider();
@@ -72,7 +72,7 @@ public class TimeProviderRegistrationTests
     }
 
     [Fact]
-    public void AddBkmVeri_FakeRegisteredAfter_WinsAndSystemRegistrationRemains()
+    public void DataRegistration_FakeRegisteredAfter_WinsAndSystemRegistrationRemains()
     {
         // Arrange
         ServiceCollection services = BuildServices();
@@ -90,7 +90,7 @@ public class TimeProviderRegistrationTests
 
     // Karakterizasyon (K5): AddSingleton kullanıldığı için AddBkmVeri ÖNCEDEN kayıtlı sahteyi ezer.
     [Fact]
-    public void AddBkmVeri_FakeRegisteredBefore_IsOverriddenBySystem()
+    public void DataRegistration_FakeRegisteredBefore_IsOverriddenBySystem()
     {
         // Arrange
         ServiceCollection services = new();
@@ -107,7 +107,7 @@ public class TimeProviderRegistrationTests
     }
 
     [Fact]
-    public void AddBkmVeri_ResolvedTimeProvider_ReportsRealClock()
+    public void DataRegistration_ResolvedTimeProvider_ReportsRealClock()
     {
         // Arrange
         using ServiceProvider provider = BuildServices().BuildServiceProvider();

@@ -210,7 +210,7 @@ public class CorrectionNotesTests
     }
 
     [Fact]
-    public void NoteText_UnderEnUs_DoesNotChangeThreadCulture()
+    public void NoteText_UnderAmericanEnglishCulture_DoesNotChangeThreadCulture()
     {
         // Arrange
         CultureInfo original = CultureInfo.CurrentCulture;
