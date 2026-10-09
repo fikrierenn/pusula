@@ -17,7 +17,7 @@ public class H08PurchasingTests
     private sealed record WarehouseRow(int StkId, int Merkez);
 
     [Fact]
-    public async Task GetUrunOzetAsync_Today_CentralStockEqualsLiveWms()
+    public async Task ProductSummary_Today_CentralStockEqualsLiveWms()
     {
         // Arrange
         string sql = CanonicalQuery.Read(CanonicalFile, "A");
