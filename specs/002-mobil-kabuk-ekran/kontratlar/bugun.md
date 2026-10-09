@@ -10,8 +10,8 @@ Spec: H4 (AC-4.1–4.17), FR-003, FR-005, FR-008, FR-009, sınır durumlar · Pl
 <h1>Bugün</h1>  (+ "dd.MM.yyyy dddd" tarih; kartlar "dün"ü gösterir)
 ÜST BÖLÜM   kart şeridi, sıra 1 · 1a · 3 · 4 · 5 · 7 · 8   (görünme koşulu sağlanmayan kart ÇİZİLMEZ, boş kutu yok)
 ALT BÖLÜM   kart 2
-            <div class="@TelefonKapisi.TelefondaGizle("ekran:bugun-donem")"> <Home /> </div>          (bugünkü Ana sayfa içeriği)
-            <div class="@TelefonKapisi.TelefondaGizle("ekran:bugun-donem")"> Sabah brifingi (açılır bölüm) </div>   (Dalga 2)
+            @if (Gorunum == Masaustu || TelefonKapisi.Acik("ekran:bugun-donem")) { <Home /> }   (bugünkü Ana sayfa içeriği; telefonda kapı kapalıyken çizilmez, sorgusu koşmaz)
+            @if (Gorunum == Masaustu || TelefonKapisi.Acik("ekran:bugun-donem")) { Sabah brifingi }   (açılır bölüm, Dalga 2)
 ```
 
 - Kart şeridi telefonda tek sütun, masaüstünde ızgara (UI kararı 2). Kartlar masaüstünde de kapıya uyar.

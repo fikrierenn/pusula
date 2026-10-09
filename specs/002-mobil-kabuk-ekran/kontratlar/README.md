@@ -22,7 +22,7 @@ SP, API ucu ve 5xxxx hata kodu yok. HTTP tarafında tek değişiklikler: eski ad
 | AC-0.6, SC-002 | Ortak bileşenler, sayfalar | Dokunma ölçümü (olcum) · `TiklanabilirOge_*` (ekranlar) | 1–2 |
 | AC-0.7 | Sayfalar | İpucu ölçümü (olcum) | 1–2 |
 | AC-0.8 | `app.tailwind.css`, sayfalar | 16 px ölçümü (olcum) | 1 |
-| AC-0.9, 5.8 | `hidden lg:block` deseni | `BEkrani_1280_BolumEksiksiz`, masaüstü önce/sonra (ekranlar) | 1–2 |
+| AC-0.9, 5.8 | `GorunumSaglayici` + çizim kuralı (plan K2) | `BEkrani_1280_BolumEksiksiz`, masaüstü önce/sonra (ekranlar) | 1–2 |
 | AC-0.10 | Sayfalar, `KullaniciMesajlari` (001) | `HataMetni_*`, `Ekran_VeriKaynagiYok_GenelMesaj` (ekranlar) | 1–2 |
 | AC-1.1–1.3, SC-003 | Manifest, ikonlar, `App.razor` | `Manifest_KurulumAlanlariTam` + cihazda elle (kabuk, olcum § 7) | 1 |
 | AC-1.4–1.8, SC-004 | `MainLayout`, `NavRegistry`, `MobilSekmePaneli`, `GorevService.Ozet` | `AltMenu_*`, `Hedef_BugundenIkiDokunusta`, `Rozet_*`, `NavRegistry_*`, `GorevOzet_*` (kabuk) | 1 |

@@ -11,6 +11,9 @@ Araç: Microsoft.Playwright (.NET), `Channel = "chrome"` (kurulu Chrome; tarayı
 - Sunucuya ulaşılamazsa test **KOŞAMADI** mesajıyla kırmızı döner (atlama yok).
 - Veriler canlıdır (ERP salt-okuma). Mesai içinde koşabilir; tek tur ~40 sayfa açılışı, kanonik testler kadar ağır değildir (ÇIKARIM, ilk koşuda süre ölçülüp rapora yazılır).
 - Commit kapısına bağlanmaz (sunucu ister); dalga sonunda ve kabul testinde koşulur.
+- **Production turu (risk taraması R5):** `PANEL_URL` yayın çıktısını da gösterebilir. Dalga 1 bitiş ölçütü: `dotnet publish -c Release` çıktısı `ASPNETCORE_ENVIRONMENT=Production` ile localhost'ta başlatılır; kabuk testleri (manifest, SW, `no-store`, oturumsuz → `/login`, çevrimdışı) ve oturum açılarak taşma/dokunma turu bu örneğe karşı da bir kez koşar. Test kullanıcısının parolası `.env`'den okunur, koda yazılmaz. Production örneği hiçbir tünele bağlanmaz (plan K6).
+- **Çıktılar (KVKK K6):** ekran görüntüsü, trace ve video yalnız hata anında ve yalnız `tests/GmDashboard.Tests/Mobil/cikti/` altına yazılır; klasör `.gitignore`'dadır; çıktılar commit edilmez, rapora kişisel veri kopyalanmaz.
+- **Sorgu ölçümü (risk taraması R7):** Bugün telefon görünümünde açılırken açılış başına SQL çağrı sayısı ve açılış süresi ölçülür (sunucu günlüğü); masaüstüne özgü bölümlerin sorgusu telefonda **0** olmalıdır. Sonuç Dalga 1 raporuna yazılır.
 
 ## 2. Görünümler
 
@@ -45,6 +48,10 @@ Sayfa açılır; şu üçü birlikte sağlanınca ölçülür: (1) `h1` görün�
 | Yalnız fareyle görülen bilgi | Görünür her `[title]` öğesinin `title` metni `document.body.innerText` içinde geçer | ihlal 0 | AC-0.7 |
 | Giriş yakınlaşması | Görünür `input, select, textarea` için `getComputedStyle(el).fontSize` | ≥ 16 px | AC-0.8 |
 | Alt menü örtmesi | Sayfa sonundayken `main` son çocuğunun alt kenarı ≤ `.btm-nav` üst kenarı | — | AC-1.5 |
+| Dışa aktarma | Telefon görünümünde dışa aktarma düğmesi (işaretleyici `data-disa-aktarma`) DOM'da yok | 0 | KVKK K5 |
+| Kişisel veri akışı | Vardiya: `innerHTML` + SignalR çerçeveleri (ayrıntı `ekranlar.md` § Testler) | 0 | FR-009 |
+| Kişisel veri ekranı koruması (Dalga 1) | Kapısı kapalı `/musteri`, `/trafik`, `/sadakat` telefon görünümünde doğrudan açılır: "Bu ekran masaüstünde açılır." notu var; `innerHTML` ve SignalR çerçevelerinde `LiveDb` ile alınan örnek açık ad/telefon yok. **Kırılabilirlik:** `MainLayout` koruması geçici olarak devre dışı bırakılır → test kırmızı → elle geri alınır | açık değer 0 | KVKK K4, K11 |
+| Maske (Dalga 3 kapı açma görevinde, commit'ten önce) | Müşteri, Sadakat, Trafik telefon görünümünde açılır, sonuna kadar kaydırılır, bir satıra dokunulup ayrıntı açılır. `document.documentElement.innerHTML` **ve** Playwright `page.WebSocket` ile yakalanan bütün SignalR çerçeveleri, aynı dönemden `LiveDb` ile alınan örnek değerler için taranır: bir müşterinin açık adı, telefonunun son 7 rakamı, kart numarasının ilk 8 karakteri; Trafik için bir kasiyerin açık adı. Değerler test çıktısına yazılmaz (yalnız bulundu/bulunmadı). Örnek bulunamazsa KOŞAMADI. **Kırılabilirlik:** telefon görünümünde bir hücre geçici olarak açık değerle çizilir → test kırmızı görülür → elle geri alınır | açık değer 0 | KVKK K4, K11 |
 | Kapı | Satış/Finans/Diğer panelleri açılır; panelde görünen bağlantılar = `NavRegistry` öğeleri ∩ `TelefonKapisi.Acik` (test aynı kodu çağırarak beklenen kümeyi kurar) | fark 0 | AC-0.1, 0.2, SC-006 |
 
 İhlal raporu: ekran, kural, öğe (etiket adı + ilk 40 karakter metin + boyut). Kişisel veri yazılmaz.
