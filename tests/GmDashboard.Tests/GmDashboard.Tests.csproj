@@ -34,6 +34,7 @@
     <None Include="..\..\sorgular\2026-10-panel-veri-duzeltme\*.sql" LinkBase="Kanonik" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Koruma\Eski\*.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Altyapi\Sahte\*.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Kanonik\_test-fikstur.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
