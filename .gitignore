@@ -125,3 +125,9 @@ vardiya/*.xls
 /BKMKİTAP Eksik ve Fazla Takip Raporu.xlsx
 # Orkestra çalışma alanı (defterler, raporlar, test kilitleri)
 .orkestra/
+
+# Test altyapısı ve test projesi derleme çıktıları (spec 001 T-021)
+lib/Bkm.TestAltyapi/bin/
+lib/Bkm.TestAltyapi/obj/
+tests/GmDashboard.Tests/bin/
+tests/GmDashboard.Tests/obj/
