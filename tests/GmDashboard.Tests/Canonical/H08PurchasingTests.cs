@@ -1,6 +1,5 @@
 using Bkm.TestAltyapi;
 using GmDashboard.Data;
-using GmDashboard.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GmDashboard.Tests.Canonical;
@@ -29,7 +28,7 @@ public class H08PurchasingTests
         SatinalmaQueries queries = new(LiveDb.PanelDb(), NullLogger<SatinalmaQueries>.Instance, null!);
 
         // Act
-        SatinalmaUrunOzet?[] summaries = await Task.WhenAll(sample.Select(row => queries.GetUrunOzetAsync(row.StkId)));
+        var summaries = await Task.WhenAll(sample.Select(row => queries.GetUrunOzetAsync(row.StkId)));
 
         // Assert
         Assert.All(summaries, summary => Assert.NotNull(summary));
