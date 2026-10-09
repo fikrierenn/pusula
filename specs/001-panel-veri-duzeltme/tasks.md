@@ -1189,6 +1189,7 @@ Her görevin gereksinimine örtük olarak dahildir.
 | T-085 [NET] | 002 Dalga 1 master'a girdikten sonra (merge insan kararı) | T-084 |
 | T-084 [UI] | T-083 + T-085 + T-029 + T-030 + T-031 sonrası | T-079, T-080 (öneri: bu iki görev T-084'ten sonra koşar) |
 | T-086 [DOC] | T-080 SC raporu + `/kabul-testi` hükmü sonrası | 002 Dalga 3 (kapı açma) |
+| T-087 [NET] | T-029 (TimeProvider kaydı) ve T-024 sonrası; T-026 kısım 2 ve T-037'den önce | T-026 (kısım 2), T-037 |
 
 T-079 ve T-080'in "Bağımlılık" satırları bu görevleri saymıyor. Görev metinleri değiştirilmedi; uygulayıcı T-079 ve T-080'i T-084 bittikten sonra başlatır.
 
@@ -1396,3 +1397,59 @@ T-079 ve T-080'in "Bağımlılık" satırları bu görevleri saymıyor. Görev m
 - [ ] 002 kapı testi: `dotnet test tests/GmDashboard.Tests --filter "FullyQualifiedName~KapananMaddeler_HepsiKabulSonucundaTuttu"` yeşil (o an `KapananMaddeler` boşsa bunu raporda yaz: test bu dosyayı henüz bir anahtar için sınamadı).
 - [ ] Kapı: `dokuman_denetle.py` hook temiz.
 **Kabul:** 21 satır; dört test yeşil + kırmızı kip kanıtı; GMY onay satırı dolu.
+
+### T-087 [NET] EticQueries borç temizliği — TimeProvider ve güvenli sorgu (rakamı değiştirmeyen)
+**Bağımlılık:** T-029 (`TimeProvider` DI kaydı), T-023 (`FakeClock`, `SourceFile`), T-024 (koruma testi) · **Test seviyesi:** tam · **AC:** SC-006; global kısıtlar R1 (salt-okuma, FR-015) ve K1 (C# kuralları: `DateTime.Now` yasak, SQL parçası yalnız sabit metin)
+**Kaynak:** defter 09.10 14:31 kararları ve T-026 yazar raporu. `dashboard/Data/EticQueries.cs` bu görevden önce 9 CS-009 + 1 DAT-001 + 1 SEC-002 taşıyor; dosya bazlı G-STATIC-CS ve G-SEC-SAST dosyaya her dokunuşta kırmızı. T-026 kısım 2 bu yüzden ertelendi; yaması `.orkestra/calisma/001-panel-veri-duzeltme/T-026-eticqueries.patch` (5 yer).
+**Not (sıra — diğer görev satırları değiştirilmedi):**
+- **T-026 kısım 2** (EticQueries.cs'teki 5 `STATUS NOT IN (1001,1006,1007,3000,4000)` yeri) ve **T-037** (`GetEticKategoriAsync`, `GetEticKategoriUrunAsync`, `GetEticKategoriYilAsync`) bu görevden SONRA koşar. İkisinin "Bağımlılık" satırına **T-087** eklenmelidir; spec sahibi uygular.
+- **T-037 ile örtüşme:** T-037'nin "kurucuya `TimeProvider`" ve "`GetEticKategoriYilAsync` içinde `DateTime.Today` → `TimeProvider.GetLocalNow()`" maddeleri bu görevde yapılır. T-037 o iki maddeyi yeniden yapmaz; yalnız kalan kapsamını (sipariş durum süzgeci, `Kategori = NULL` satırı, `ct`) uygular.
+- **T-026 kısım 2 yaması** bu görevin ekleyeceği `using` ve kurucu satırları yüzünden satır kaymasıyla uygulanmayabilir. O durumda yama içeriği elle yeniden uygulanır (5 yer: sınıf yorumu satırı, `GetKargoPerfAsync`, `GetKargoGunAsync`, `GetAyKargoAsync`, `GetGunKargoAsync` sorguları); içerik değişmez.
+**Dosyalar:**
+- Oluştur: `dashboard/Data/Definitions/EcommerceCalendar.cs`
+- Değiştir: `dashboard/Data/EticQueries.cs` (kurucu, `TatilValuesAsync`, `TatilApply`, `GetAyKargoAsync`, `GetEticKategoriYilAsync`; başka sorgu metnine dokunulmaz)
+- Test: `tests/GmDashboard.Tests/Unit/EticQueriesDebtTests.cs`
+**Arayüzler:**
+- Tüketir: `s.AddSingleton(TimeProvider.System);` (`dashboard/ServiceRegistration.cs`, `AddBkmVeri` içinde, T-029); `FakeClock(DateTimeOffset now)` (`lib/Bkm.TestAltyapi/FakeClock.cs`, yerel saat dilimi UTC); `SourceFile.Read(string repoRelativePath, string? startDirectory = null)` (T-023)
+- Üretir:
+  - `public sealed class EticQueries(Db db, TimeProvider time)` — `AddScoped<EticQueries>()` kaydı değişmez; public metot imzaları değişmez.
+  - `namespace GmDashboard.Data.Definitions; public static class EcommerceCalendar` ile:
+    - `public static DateOnly Today(TimeProvider time)` → `DateOnly.FromDateTime(time.GetLocalNow().DateTime)`
+    - `public static (DateOnly Start, DateOnly EndExclusive) HolidayScan(DateOnly today)` → `(today.AddMonths(-18), today)`
+    - `public static (DateOnly Start, DateOnly EndExclusive) MonthlyTrend(DateOnly today)` → `end = new DateOnly(today.Year, today.Month, 1)`, `(end.AddMonths(-12), end)`
+    - `public static (DateOnly Start, DateOnly EndExclusive) YearToDate(DateOnly today)` → `(new DateOnly(today.Year, 1, 1), today.AddDays(1))`
+    - `public static string HolidayValues(IReadOnlyCollection<DateOnly> holidays)` → her gün için `(CONVERT(date,'yyyyMMdd'))`, virgülle birleşik; boşsa `(CONVERT(date,'19000101'))`
+    - `public static string HolidayApply(string holidayValues)` → `CROSS APPLY (SELECT COUNT(*) T FROM (VALUES <holidayValues>) H(d) WHERE H.d>o.ORDERDATE AND H.d<=o.SENDDATE AND DATEPART(WEEKDAY,H.d) NOT IN (1,7)) ta`
+**Gereksinimler (tam değerlerle):**
+- **CS-009 (9 yer):** `EticQueries.cs` içindeki bütün `DateTime.Today` ve `DateTime.UtcNow` kullanımları kalkar. Ölçüldü (09.10.2026, `Grep`): dosyada `DateTime.Now` yok; bugünkü satırlar 35, 39, 56 (`UtcNow`) ve 40, 41, 131, 132, 288, 289 (`Today`) — defter ve kapı çıktısı bu 9 satırı bir fazla numaralıyor (36, 40, 41, 42, 57, 132, 133, 289, 290). Hedef satır numarası değil, içeriktir.
+  - `TatilValuesAsync`: önbellek süresi `(time.GetUtcNow().UtcDateTime - _tatilCacheZaman).TotalHours < 6` (iki yerde); `_tatilCacheZaman = time.GetUtcNow().UtcDateTime`; tarama aralığı `var (bas, son) = EcommerceCalendar.HolidayScan(EcommerceCalendar.Today(time));`.
+  - `GetAyKargoAsync`: `var (ayBas, ayBitis) = EcommerceCalendar.MonthlyTrend(EcommerceCalendar.Today(time));`.
+  - `GetEticKategoriYilAsync`: `var (yilBas, yarin) = EcommerceCalendar.YearToDate(EcommerceCalendar.Today(time));`.
+  - Tarih anlamı aynı: yerel gün. Üretimde `TimeProvider.System.LocalTimeZone` = `TimeZoneInfo.Local`, yani eski `DateTime.Today` ile aynı gün.
+  - Statik önbellek (`_tatilCache`, `_tatilCacheZaman`, `_tatilLock`) static kalır (tatil günleri istekten bağımsız, `AddScoped` ömrüne taşınmaz).
+- **SEC-002 (44-47 civarı, `QueryAsync<DateTime>` + dize birleştirme):** sorgu metni tek `const string CalisilanGunSql = """ SELECT CONVERT(date,o.SENDDATE) d FROM dbo.J_ORDERS o WHERE o.SENDDATE>=@bas AND o.SENDDATE<@son GROUP BY CONVERT(date,o.SENDDATE) HAVING COUNT(*)>=@esik """;` olur (metin birebir aynı, `+` birleştirmesi yok); çağrı `conn.QueryAsync<DateTime>(CalisilanGunSql, new { bas = bas.ToString("yyyyMMdd"), son = son.ToString("yyyyMMdd"), esik = CalismaEsigi })`; parametreler aynı kalır.
+- **DAT-001 (62-64, `TatilApply` içinde tatil `VALUES` interpolasyonu):** sabit-metin + `Replace` deseni. `EcommerceCalendar` içinde `private const string HolidayApplyTemplate` (`@@VALUES@@` yer tutuculu) ve `private const string HolidayRowTemplate = "(CONVERT(date,'@@DAY@@'))"`; `HolidayRowTemplate.Replace("@@DAY@@", day.ToString("yyyyMMdd", CultureInfo.InvariantCulture))`, `HolidayApplyTemplate.Replace("@@VALUES@@", holidayValues)`. Yer tutucuya giren tek değer `DateOnly`'den `yyyyMMdd` biçimiyle üretilen metindir; kullanıcı girdisi SQL'e girmez. `EticQueries.TatilApply` bir satırlık `EcommerceCalendar.HolidayApply(tatilValues)` çağrısına iner (dört çağıran satıra dokunulmaz); `TatilValuesAsync` satır metnini `EcommerceCalendar.HolidayValues(tatiller)` ile kurar (`$"(CONVERT(date,'{d:yyyyMMdd}'))"` ve `"(CONVERT(date,'19000101'))"` satırları kalkar).
+- **Davranış aynı:** üretilen SQL metni, `HolidayApply` ve `HolidayValues` çıktıları eski metinle karakter karakter aynıdır (testler bunu sabitler). Public metot imzaları değişmez; `CancellationToken` ekleme bu görevin kapsamı değildir (gövdesi yalnız tarih satırlarında değişen iki metotta ve dört `TatilApply` çağıranında davranış-aynı sınırını ve beş çağıran dosyayı aşar; `ct` T-037 ve sonraki dokunuşlara kalır — K1 `ct` maddesinden bilinçli istisna, gerekçesi bu satır).
+- Başka sorgu metni, `STATUS NOT IN (...)` listeleri, yorum satırları, `WITH(NOLOCK)` ve tablo takma adları değişmez (K8; T-026 kısım 2 listeleri ayrı görevdir).
+- Yeni tanımlayıcılar İngilizce, Türkçe karakter yok.
+**Adımlar:**
+- [ ] Ön koşullar (çıktıları rapora): `git status --porcelain dashboard/Data/EticQueries.cs` boş (dosya HEAD'de, yama dışarıda); `ServiceRegistration.cs` içinde `AddSingleton(TimeProvider.System)` tam bir satır; `./ork cs dashboard/Data/EticQueries.cs` taban çıktısı (beklenen: 9 CS-009, 1 DAT-001, 1 SEC-002).
+- [ ] İskelet (dotnet-yazar): `EcommerceCalendar` imzaları + `NotImplementedException`; `EticQueries` kurucusuna `TimeProvider time` (gövdeye dokunmadan); `dotnet build dashboard/GmDashboard.csproj` 0 hata.
+- [ ] Senaryo matrisi (test-tasarimci) · kırmızı testler (test-yazar), birim, `Tur` yok, hepsi `[Trait("AC","SC-006")]`, `Unit/EticQueriesDebtTests.cs`:
+  - `Today_FakeClockLateEvening_ReturnsSameDay`: `FakeClock(2026-10-09 23:30 +00:00)` → `2026-10-09`.
+  - `Today_FakeClockAfterMidnight_ReturnsNextDay`: `FakeClock(2026-10-10 00:30 +00:00)` → `2026-10-10` (önceki gün dönmez).
+  - `HolidayScan_GivenDay_ReturnsEighteenMonthWindow` (teori): `2026-10-09 → (2025-04-09, 2026-10-09)` · `2026-03-31 → (2024-09-30, 2026-03-31)` · `2026-01-01 → (2024-07-01, 2026-01-01)`.
+  - `MonthlyTrend_GivenDay_ReturnsThirteenMonthWindow` (teori): `2026-10-09 → (2025-10-01, 2026-10-01)` · `2026-01-01 → (2025-01-01, 2026-01-01)` · `2026-12-31 → (2025-12-01, 2026-12-01)`.
+  - `YearToDate_GivenDay_ReturnsJanuaryToTomorrow` (teori): `2026-10-09 → (2026-01-01, 2026-10-10)` · `2026-12-31 → (2026-01-01, 2027-01-01)` · `2024-02-29 → (2024-01-01, 2024-03-01)`.
+  - `HolidayValues_TwoDays_ListsConvertRows`: `[2026-10-29, 2026-10-30]` → `(CONVERT(date,'20261029')),(CONVERT(date,'20261030'))`.
+  - `HolidayValues_Empty_ReturnsGuardRow`: boş → `(CONVERT(date,'19000101'))`.
+  - `HolidayApply_OneRow_MatchesPreviousText`: `HolidayApply("(CONVERT(date,'20261029'))")` = `CROSS APPLY (SELECT COUNT(*) T FROM (VALUES (CONVERT(date,'20261029'))) H(d) WHERE H.d>o.ORDERDATE AND H.d<=o.SENDDATE AND DATEPART(WEEKDAY,H.d) NOT IN (1,7)) ta`.
+  - `HolidayApply_OneRow_LeavesNoPlaceholder` (ne olmamalı): çıktıda `@@` yok.
+  - `EticQueries_Source_HasNoDirectClockCalls` (teori, `SourceFile.Read("dashboard/Data/EticQueries.cs")`): `DateTime.Now`, `DateTime.Today`, `DateTime.UtcNow` üçü de geçmez.
+  - `EticQueries_Source_TakesTimeProviderInConstructor`: metin `public sealed class EticQueries(Db db, TimeProvider time)` içerir.
+  - `EticQueries_Source_BuildsNoHolidaySqlByConcatenation`: `Regex.IsMatch(kaynak, @"QueryAsync<DateTime>\(\s*""")` false (sorgu sabitten gelir); `$"CROSS APPLY` geçmez; `$"(CONVERT(date,'{` geçmez.
+  - Kırmızı doğru sebepten: `NotImplementedException` ya da iddia hatası (derleme hatası kırmızı sayılmaz).
+- [ ] Uygulama (dotnet-yazar) · yeni İngilizce sözcükler için ak liste önerisi rapora (denetleyici toplu ekler, `tools/kod-sozcukleri.txt` yazara kapalı).
+- [ ] Kırmızı kip: `EticQueries.cs`'e geçici bir `DateTime.Today` geri yazılır → `EticQueries_Source_HasNoDirectClockCalls` kırmızı → elle geri yazılır (`--hard` yok) → yeşil.
+- [ ] Kapılar: `dotnet build dashboard/GmDashboard.csproj` (0 hata, uyarı sayısı görev öncesinden fazla değil) · `dotnet build tests/GmDashboard.Tests/GmDashboard.Tests.csproj -warnaserror` · `dotnet test tests/GmDashboard.Tests --filter "Tur!=Kanonik&Tur!=Koruma"` · `./ork cs dashboard/Data/EticQueries.cs` ve `./ork cs dashboard/Data/Definitions/EcommerceCalendar.cs` 0 bulgu · G-SEC-SAST iki dosyada geçer · `python tools/panel_kolon_denetimi.py` (0) · `python tools/turkce_tanimlayici_denetimi.py` (0) · **T-024 koruma testi yeşil** (canlı; 19:00 sonrası ya da hafta sonu, R4).
+**Kabul:** birim testleri yeşil + kırmızı kip kanıtı; `./ork cs` ve SAST iki dosyada 0 bulgu; T-024 koruma yeşil (rakam değişmedi); commit tipi `refactor`, gövdede "davranış aynı, `DateTime.Today`/`UtcNow` → `TimeProvider`".
