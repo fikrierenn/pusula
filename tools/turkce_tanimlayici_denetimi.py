@@ -283,15 +283,52 @@ def ihlaller(yol: Path) -> list[tuple[int, str, str]]:
                 bulgular.append((i, satirlar[i - 1].strip()[:90], f"tanımlayıcıda Türkçe harf '{ch}'"))
                 break
         else:
+            bulundu = None
             for k in TURKCE_KELIMELER:
-                if re.search(rf"\b\w*{k}\w*\b", satir):
-                    eslesen = re.search(rf"\b\w*{k}\w*\b", satir).group(0)
+                for m in re.finditer(rf"\b\w*{k}\w*\b", satir):
+                    eslesen = m.group(0)
                     # `Vardiya`/`Vrd`/`Bkm` domain adları serbest
                     if eslesen in ("Vardiya", "Vrd", "Bkm"):
                         continue
-                    bulgular.append((i, satirlar[i - 1].strip()[:90], f"Türkçe tanımlayıcı: {eslesen}"))
+                    # GMY kararı 09.10.2026: tabanlı kök DIŞINDAKİ dosyalarda (testler),
+                    # dashboard'da zaten BİLDİRİLMİŞ bir ada yapılan çağrı bulgu değil.
+                    # Bildirimin kendisi dashboard tarafında tabanla denetlenir.
+                    # ⚠ BİLİNEN SINIR (ölçüldü 09.10): küçük harfle başlayan yerel
+                    #   değişken (`var urunSayisi = …`) ne kara listeye (büyük harf arar)
+                    #   ne ak listeye (yalnız bildirim) takılır. Bu açık muafiyetten ÖNCE
+                    #   de vardı — aynı satırdaki API adı onu örtüyordu.
+                    if not tabanli_mi(yol) and eslesen in mevcut_api():
+                        continue
+                    bulundu = eslesen
                     break
+                if bulundu:
+                    break
+            if bulundu:
+                bulgular.append((i, satirlar[i - 1].strip()[:90], f"Türkçe tanımlayıcı: {bulundu}"))
     return bulgular
+
+
+_MEVCUT_API: set | None = None
+
+
+def mevcut_api() -> set:
+    """Tabanlı köklerde (dashboard) BİLDİRİLMİŞ adlar — testlerin çağırdığı mevcut API.
+
+    Yalnız bildirim desenleriyle toplanır; kullanım yerleri değil (kara liste bir adı
+    bildirildiği yerde yakalar, çağrı yerinde değil)."""
+    global _MEVCUT_API
+    if _MEVCUT_API is None:
+        adlar: set = set()
+        for k in TABANLI_KOKLER:
+            for uzanti in ("*.cs", "*.razor"):
+                for p in (KOK / k).rglob(uzanti):
+                    if "obj" in p.parts or "bin" in p.parts:
+                        continue
+                    metin = io.open(p, encoding="utf-8-sig", errors="replace").read()
+                    for desen in BILDIRIM_DESENLERI:
+                        adlar.update(desen.findall(metin))
+        _MEVCUT_API = adlar
+    return _MEVCUT_API
 
 
 def bilinmeyen_sozcukler(yol: Path, dagarcik: set) -> list:
