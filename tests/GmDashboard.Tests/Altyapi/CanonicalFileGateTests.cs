@@ -6,6 +6,7 @@ namespace GmDashboard.Tests.Altyapi;
 // Birim testidir (DB yok): `Tur` Trait'i bilerek yok (K-karar-5), mesai içi komutta görünür.
 [Trait("AC", "FR-015")]
 [Trait("AC", "R1")]
+[Collection(GmDashboard.Tests.Infrastructure.CanonicalFolderCollection.Name)]
 public class CanonicalFileGateTests
 {
     public static IEnumerable<object[]> AllBlocks()

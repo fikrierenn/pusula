@@ -35,8 +35,17 @@ internal sealed class TempCanonicalFile : IDisposable
     }
 }
 
+// Kanonik/ klasörünü hem geçici dosya yazan CanonicalQueryTests hem klasörü numaralandıran CanonicalFileGateTests kullanır;
+// aynı koleksiyonda sırayla koşarlar (kapı testi geçici dosyaları görmemeli değil, aynı anda koşmamalı).
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class CanonicalFolderCollection
+{
+    public const string Name = "CanonicalFolder";
+}
+
 // Kanonik blok okuyucu (T-023): blok sınırı, başlık, hata yolları. Birim testidir (DB yok); Trait'siz.
 // R1 kapısından geçemeyecek fikstürler (boş/yinelenen blok) dosyada değil, geçici dosya olarak yazılır.
+[Collection(CanonicalFolderCollection.Name)]
 public class CanonicalQueryTests : IDisposable
 {
     private const string Fixture = "_test-fikstur.sql";
