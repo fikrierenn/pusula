@@ -1171,3 +1171,228 @@ Her görevin gereksinimine örtük olarak dahildir.
 - [ ] Test (test-yazar, ayrı commit): `YayinTarihleri_Hepsi_AyniVeMinValueDegil` → kırmızı.
 - [ ] Tek satır değişikliği → yeşil.
 **Kabul:** test yeşil; commit diff'i tek satır.
+
+# Ek görevler — 002 planından (09.10.2026)
+
+> Kaynak: `specs/002-mobil-kabuk-ekran/plan.md` § "001'e eklenecek görevler" (G-1, G-2, G-3) ve `specs/002-mobil-kabuk-ekran/arastirma.md` § 8. GMY kararları: Cari/Risk "önce düzelt, sonra telefona" (08.10.2026); 002 Dalga 1 001'i beklemez (08.10.2026, K10).
+> Yukarıdaki T-001…T-081 değiştirilmedi. Bu görevlerin istediği spec ve kontrat metinleri her görevin **Spec değişikliği gerekli** / **Kontrat değişikliği gerekli** notunda tam metin olarak durur; spec sahibi uygular.
+
+**Test altyapısı adları (gerçek imzalar, `lib/Bkm.TestAltyapi`, T-021 düzeltme turu K-r1-6):** T-021…T-023 metnindeki Türkçe adların yerine şunlar geçerlidir:
+`LiveDb.PanelDb()` · `LiveDb.QueryAsync<T>(DbTarget target, string sql, object? param = null, CancellationToken ct = default)` · `LiveDb.ScalarAsync<T>(DbTarget target, string sql, object? param = null, CancellationToken ct = default)` · `DbTarget.Erp` / `DbTarget.Joker` · `ReadOnlyGate.Check(string sql)` · `CanonicalQuery.Read(string file, string? block = null)` · `Tolerance.Amount` (1,00) · `Tolerance.AmountEqual(decimal panel, decimal canonical, string label)` · `Population.AtLeast(int n, string reason)` · `FakeClock(DateTimeOffset now)` · `SourceFile.Read(string repoRelativePath, string? startDirectory = null)`.
+
+**Sıra ve bağımlılık özeti:**
+
+| Görev | Ne zaman başlar | Neyi bekletir |
+|---|---|---|
+| T-082 [SQL] | Hemen (T-001'den bağımsız) | T-083 |
+| T-083 [NET] | T-082 dondurulduktan ve T-023 uygulandıktan sonra | T-084 |
+| T-085 [NET] | 002 Dalga 1 master'a girdikten sonra (merge insan kararı) | T-084 |
+| T-084 [UI] | T-083 + T-085 + T-029 + T-030 + T-031 sonrası | T-079, T-080 (öneri: bu iki görev T-084'ten sonra koşar) |
+| T-086 [DOC] | T-080 SC raporu + `/kabul-testi` hükmü sonrası | 002 Dalga 3 (kapı açma) |
+
+T-079 ve T-080'in "Bağımlılık" satırları bu görevleri saymıyor. Görev metinleri değiştirilmedi; uygulayıcı T-079 ve T-080'i T-084 bittikten sonra başlatır.
+
+**AC kapsama (ek):**
+
+| AC (öneri, bkz. T-082 notu) | Görev(ler) |
+|---|---|
+| AC-15.1 | T-082, T-083, T-084 |
+| AC-15.2 | T-083, T-084 |
+| AC-15.3 | T-082, T-083, T-084 |
+| FR-018 (öneri) | T-083, T-084 |
+| AC-0.1 (yeni anahtar `cari-risk.ozet`) | T-084 |
+| FR-012 (H15 önce/sonra/bağımsız) | T-082 |
+| FR-014 (sema adayı) | T-082 |
+| 002 R3 (kabul sonucu git'te) | T-086 |
+| 002 K10 (master'ı alma) | T-085 |
+
+**İnceleme odağı (ek):**
+1. **İlk N sınırının toplama geri sızması:** toplam sorgusuna `TOP (200)` ya da `ORDER BY … OFFSET` eklenirse beklenen: satıcı borcu kanoniğe eşit değil, kırmızı. Test: T-083 `GetCariRiskOzetAsync_Bugun_AliciVeSaticiTumKayitlaraEsit` (kırmızı kip bu ifadeyle kanıtlanır).
+2. **Nüfus eski sınırın altına düşerse:** iki grup da 200 kayıt ya da altındaysa ilk-N hatası ölçülemez; beklenen: yeşil değil `KOŞAMADI`. Test: T-083 `GetCariRiskOzetAsync_GrupKayitSayisi_EskiSinirdanBuyukVeBirebir`.
+3. **Razor'da listeden toplama:** `_rows.Sum(` ya da `_rows.Count(r => r.Limit` ifadesi Cari/Risk sayfasına geri gelirse beklenen kırmızı. Test: T-084 `CariRisk_Kaynak_OzetCekirdektenGelirListedenToplanmaz`.
+4. **Merge sonrası çift `TimeProvider` kaydı:** 001 ve 002 aynı satırı farklı konumlara eklediyse git çakışma vermez, satır iki kez kalır; beklenen kırmızı. Test: T-085 `ServiceRegistration_TimeProvider_TekKayit`.
+5. **Kanıtsız ya da git dışı kanıtla "tuttu":** `Kanıt` hücresi boş ya da `.orkestra/` ile başlayan satır; beklenen kırmızı. Test: T-086 `KabulSonucu_Satir_KanitDoluVeGitIcinde` (teori).
+
+### T-082 [SQL] Kanonik sorgu H15 — Cari/Risk tam toplam, alıcı ve satıcı ayrı (G-1)
+**Bağımlılık:** yok (T-001'den bağımsız; T-019 dondurmasına girmez, kendi dondurmasını yapar) · **Test seviyesi:** yok (gerekçe: kanonik sorgu testin kendisidir; doğruluğu bu görevdeki bağımsız `sql-denetci` incelemesiyle sınanır) · **AC:** AC-15.1, AC-15.3 (öneri), FR-012, FR-014
+**Dosyalar:**
+- Oluştur: `sorgular/2026-10-panel-veri-duzeltme/H15-cari-risk.sql`
+- Oluştur: `sorgular/2026-10-08-cari-risk-kapsam.sql` (ölçüm arşivi, `semantic-layer.md` § ikiz yükümlülük)
+- Oluştur/değiştir: `docs/sema-adaylari.yaml` (`ork sema-aday` çıktısı)
+**Arayüzler:**
+- Tüketir: —
+- Üretir: `H15-cari-risk.sql` blok `A` → `(Grup varchar(3), Kayit int, VadesiGecen decimal(18,2), LimitAsan int, LimitTanimli int)`, parametresiz, tam iki satır (`'120'`, `'320'`); blok `B` → `(Grup varchar(3), LimitTanimliFrm int)`; blok `C` → `(DisKayit int, DisVadesiGecen decimal(18,2))`. Başlıkta `Dondurma: <hash>`.
+**Gereksinimler (tam değerlerle):**
+- Hedef `-- ork:hedef-db DerinSISBkm`, `-- ork:compat 150`. Başlık şablonu `kontratlar/kanonik-sorgular.md`; örnek biçim `H12-mizan.sql` (Soru, AC, Dönem, Tolerans, Önce, Sonra, Bağımsız, Aynı kaynak — neden, Başka ne olabilir, Kapsam, Dondurma, SSMS, Komut).
+- Köprü sema'dan: `bridges.yaml: bakiyevdgg-frm` → `DerinSISBkm.dbo.bakiyeVDGG_vw.cKod = DerinSISBkm.dbo.frm.frmID`. Kolonlar: `bakiye` (net bakiye), `GecenB` (vadesi geçen), `frm.frmKod`, `frm.frmBakiyeLimit`.
+- Nüfus (A ve C): `ABS(b.bakiye) > 0`. Grup = `LEFT(fr.frmKod, 3)`; A yalnız `fr.frmKod LIKE '120%'` (alıcı) ve `LIKE '320%'` (satıcı).
+- Blok A, grup başına: `Kayit = COUNT(*)`; `VadesiGecen = SUM(CAST(b.GecenB AS decimal(18,2)))` — **TOP, ROW_NUMBER, sıralama yok**; `LimitAsan = SUM(CASE WHEN ISNULL(fr.frmBakiyeLimit, 0) > 0 AND ABS(b.bakiye) > fr.frmBakiyeLimit THEN 1 ELSE 0 END)`; `LimitTanimli = SUM(CASE WHEN ISNULL(fr.frmBakiyeLimit, 0) > 0 THEN 1 ELSE 0 END)`. İşaret görünümdeki gibi kalır (satıcı vadesi geçen negatif gelir; çevirme panelin işidir).
+- Blok B (AC-15.3 kanıtı, bakiyeden bağımsız): `DerinSISBkm.dbo.frm` içinde `frmKod LIKE '120%'` ve `LIKE '320%'` gruplarında `ISNULL(frmBakiyeLimit, 0) > 0` olan kayıt sayısı. Sonuç başlığa yazılır; 0 ise başlığa "Limit tanımlı cari yok — ekranda 'Limit tanımlı değil' notu beklenir."
+- Blok C (kapsam beyanı): bakiyesi sıfırdan farklı olup `120`/`320` dışında kalan cari sayısı ve vadesi geçen toplamı ("Hepsi" sekmesinin fazlası). Yorum yapılmaz, yalnız sayı.
+- Kanonik sorgu panel SQL'inden kopyalanmaz; `dashboard/` açılmaz. Başlıkta zorunlu satırlar:
+  - `Aynı kaynak — neden: evet. Vadesi geçen yaşlandırması yalnız ERP'nin bakiyeVDGG_vw görünümünde var; bağımsız ikinci kaynak yok. Bağımsızlık yazım yolundan: sınırsız grup toplamı, sıralama yok.`
+  - `Başka ne olabilir:` en az üç madde — (1) ekranın amacı bilerek satıcı borcu olabilirdi; GMY kararı 08.10.2026 ikisini ayrı gösterir. (2) Alıcı toplamının içeriği (grup içi cariler) ölçülmedi; ÇIKARIM yapılmaz. (3) Görünüm her çağrıda bütün cari hareketini toplar; panel ve kanonik aynı dakika içinde okunur.
+- `Önce:` satırı `sorgular/2026-10-08-cari-risk-kapsam.sql` ile bu görev gününde yeniden koşulan değerdir; 08.10.2026 referansı da yazılır: alıcı 284 kayıt, tümü 1.229.462.178,38 / ilk 200 1.229.471.096,77; satıcı 300 kayıt, tümü −72.794.717,37 / ilk 200 −147.310.896,38 (ekran varsayılanı); limit aşan iki grupta 0.
+- `Dönem:` "Bugün (canlı görünüm, tarih parametresi yok). Kıyas aynı dakika içinde." `Tolerans:` "Tutar ≤ 1,00 TL; sayılar birebir."
+- `sorgular/2026-10-08-cari-risk-kapsam.sql`: `arastirma.md` § 8'deki sorgu **birebir**; başlık: soru, hedef DB, 08.10.2026 bulgu tablosu, "H15 Önce değerinin kaynağı".
+- Sema adayı (yazma değil, aday): `python ../orkestra/ci/ork.py sema-aday "Cari/Risk vadesi geçen alacak = 120 grubu bütün carilerin GecenB toplamı; vadesi geçen borç = 320 grubu, işaret çevrilmiş; ilk N kayıttan toplanmaz" --tur metrik --kanit "sorgular/2026-10-panel-veri-duzeltme/H15-cari-risk.sql; <koşu günü> alıcı <n> kayıt, satıcı <n> kayıt" --guven 0.9`.
+- Dondurma: `sql-denetci`'ye yalnız `sorgular/2026-10-panel-veri-duzeltme/H15-cari-risk.sql`, `.claude/rules/sql-server-conventions.md`, `sema/` verilir (`dashboard/` verilmez). Bulgu düzeltilir; sonra `db(T-082): H15 kanonik sorguyu dondur` ve ardından `db(T-082): dondurma hash'ini başlığa yaz`.
+**Adımlar:**
+- [ ] Önce ölçümü: `sqlcli query --profile erp --read-only --max-rows 100000 "<2026-10-08-cari-risk-kapsam.sql gövdesi>"` (depo kökünden); dönen 2 satır başlığa.
+- [ ] A, B, C bloklarını yaz; her birini aynı komutla koş; satır sayıları beklenenle (A: 2, B: 2, C: 1) karşılaştırılır.
+- [ ] Kapı: `python ../orkestra/dist/orkestra/hooks/sql_denetle.py sorgular/2026-10-panel-veri-duzeltme/H15-cari-risk.sql` ve aynısı `sorgular/2026-10-08-cari-risk-kapsam.sql` için (E bulgusu 0).
+- [ ] `dotnet test tests/GmDashboard.Tests --filter "FullyQualifiedName~CanonicalFileGate"` — yeni dosyanın her bloğu salt-okuma kapısından geçer.
+- [ ] Bağımsız denetim → dondurma → hash commit'i. Sema adayı.
+**Kabul:** iki dosya koşar; başlıkta Önce, Bağımsız, B sonucu ve `Dondurma:` dolu; E bulgusu 0; kapı testi yeşil.
+**Spec değişikliği gerekli (spec sahibi uygular; tam metin önerisi):**
+- `spec.md` § Kullanıcı hikâyeleri, H14'ten sonra:
+  > ### H15 — Cari/Risk özeti bütün carilerden, alacak ve borç ayrı (P2)
+  > Ek madde, GMY kararı 08.10.2026 ("önce düzelt, sonra telefona"). Telefon kapısı anahtarı `001:cari-risk` (spec 002).
+  > GMY olarak Cari/Risk ekranında vadesi geçen alacağı ve borcu bütün carilerden hesaplanmış, alıcı ve satıcı için ayrı görmek istiyorum, böylece ilk 200 kaydın toplamını gerçek toplam sanmam.
+  > **Bağımsız test:** Ekrandaki özet değerler, aynı dakika içinde bütün alıcı ve satıcı carilerinden bağımsız hesaplanan toplamla karşılaştırılır.
+  > **Kabul kriterleri:**
+  > - **AC-15.1:** Verildiğinde alıcı ve satıcı carilerinin bugünkü bakiyeleri, Yapıldığında Cari/Risk ekranı açıldığında, O zaman "Vadesi geçen alacak" bütün alıcı carilerinden, "Vadesi geçen borç" bütün satıcı carilerinden hesaplanmış görünür ve her biri bağımsız hesaplanan toplama 1,00 TL toleransla eşittir.
+  > - **AC-15.2:** Verildiğinde Cari/Risk listesi en yüksek bakiyeli ilk N kayıtla sınırlı, Yapıldığında sekme ya da arama değiştirildiğinde, O zaman özet göstergeler değişmez ve hiçbir özet gösterge yalnız listedeki kayıtlardan hesaplanmaz; bugünkü "Toplam Net Bakiye" kartı kalkar.
+  > - **AC-15.3:** Verildiğinde alıcı ve satıcı carileri, Yapıldığında Cari/Risk ekranı açıldığında, O zaman "Limit aşan cari" bütün bu carilerden sayılır ve bağımsız sayımla birebir aynıdır; kredi limiti tanımlı hiçbir cari yoksa sayının altında "Limit tanımlı değil" notu görünür.
+  > Telefondaki "Vadesi geçen alacak" kartının bu değerle aynı olması spec 002 AC-4.11'de doğrulanır.
+- `spec.md` § Fonksiyonel gereksinimler, FR-017'den sonra:
+  > - **FR-018:** Sistem Cari/Risk özet göstergelerini (vadesi geçen alacak, vadesi geçen borç, limit aşan cari) listenin kayıt sınırından bağımsız olarak bütün alıcı ve satıcı carilerinden hesaplamak ve alacak ile borcu ayrı göstermek ZORUNDADIR (H15; GMY kararı 08.10.2026).
+- `spec.md` SC-002: "(H1–H9 ve D-1–D-5 için %100)" → "(H1–H9, H15 ve D-1–D-5 için %100)".
+- **Karar gerekir (GMY):** AC-15.2'deki "Toplam Net Bakiye kartı kalkar" bir öneridir. Seçenek: kart kalır ama değeri de bütün carilerden hesaplanır (o zaman çekirdeğe iki tutar daha eklenir). Karar gelmeden T-084 başlamaz.
+**Kontrat değişikliği gerekli:** `kontratlar/kanonik-sorgular.md` tablosuna satırlar:
+> | AC-15.1 | `H15-cari-risk.sql` blok A | — (canlı) | `FinansQueries.GetCariRiskOzetAsync()` | `VadesiGecenAlacak` = A(120).`VadesiGecen`; `VadesiGecenBorc` = −A(320).`VadesiGecen`; ≤ 1 TL; aynı dakika | `GetCariRiskOzetAsync_Bugun_AliciVeSaticiTumKayitlaraEsit` |
+> | AC-15.3 | aynı, blok A (+ B kanıt) | — | aynı | `LimitAsanCari` = A(120)+A(320) `LimitAsan`; `LimitTanimliCari` = A `LimitTanimli` toplamı; birebir | `GetCariRiskOzetAsync_Bugun_LimitSayilariBirebir` |
+
+### T-083 [NET] H15 Cari/Risk özet çekirdeği (G-1)
+**Bağımlılık:** T-082 (dondurulmuş), T-023 (yardımcıların gövdeleri) · **Test seviyesi:** tam · **AC:** AC-15.1, AC-15.2 (çekirdek), AC-15.3, FR-018
+**Dosyalar:**
+- Değiştir: `dashboard/Data/FinansQueries.cs` (yeni metot; `GetCariRiskAsync` değişmez)
+- Oluştur: `dashboard/Models/CariRiskOzet.cs` (002'nin dokunabileceği `MuhasebeModels.cs`'e eklenmez)
+- Oluştur: `dashboard/Data/Tanimlar/CariRiskTanimlari.cs`
+- Test: `tests/GmDashboard.Tests/Kanonik/H15Tests.cs`
+**Arayüzler:**
+- Tüketir: `H15-cari-risk.sql` blok `A` → `(Grup varchar(3), Kayit int, VadesiGecen decimal(18,2), LimitAsan int, LimitTanimli int)` (T-082); `LiveDb.PanelDb()`, `LiveDb.QueryAsync<T>`, `CanonicalQuery.Read`, `Tolerance.AmountEqual`, `Population.AtLeast`; `FinansQueries(Db db)`
+- Üretir:
+  - `namespace GmDashboard.Models; public sealed record CariRiskOzet(decimal VadesiGecenAlacak, decimal VadesiGecenBorc, int LimitAsanCari, int LimitTanimliCari, int AliciKayit, int SaticiKayit);`
+  - `public async Task<CariRiskOzet> GetCariRiskOzetAsync(CancellationToken ct = default)` (`FinansQueries` içinde)
+  - `namespace GmDashboard.Data.Tanimlar; public static class CariRiskTanimlari { public const string LimitTanimliDegil = "Limit tanımlı değil"; public const string OzetDipnotu = "Özet bütün alıcı ve satıcı carilerinden hesaplanır. Liste en yüksek bakiyeli kayıtları gösterir."; }`
+**Gereksinimler (tam değerlerle):**
+- Tek `SELECT`, `new CommandDefinition(sql, cancellationToken: ct)`, 3 parçalı adlar, `TOP`/`ORDER BY` yok. Kaynak `DerinSISBkm.dbo.bakiyeVDGG_vw b JOIN DerinSISBkm.dbo.frm fr ON fr.frmID = b.cKod`, süzgeç `ABS(b.bakiye) > 0 AND (fr.frmKod LIKE '120%' OR fr.frmKod LIKE '320%')`.
+- Kolonlar, kayıttaki sırayla (Dapper konumsal; `panel_kolon_denetimi.py` 0):
+  1. `VadesiGecenAlacak = CAST(ISNULL(SUM(CASE WHEN fr.frmKod LIKE '120%' THEN b.GecenB END), 0) AS decimal(18,2))`
+  2. `VadesiGecenBorc = CAST(-ISNULL(SUM(CASE WHEN fr.frmKod LIKE '320%' THEN b.GecenB END), 0) AS decimal(18,2))` — borç pozitif yazılır (satıcıya ödenmesi geçmiş tutar)
+  3. `LimitAsanCari = SUM(CASE WHEN ISNULL(fr.frmBakiyeLimit, 0) > 0 AND ABS(b.bakiye) > fr.frmBakiyeLimit THEN 1 ELSE 0 END)`
+  4. `LimitTanimliCari = SUM(CASE WHEN ISNULL(fr.frmBakiyeLimit, 0) > 0 THEN 1 ELSE 0 END)`
+  5. `AliciKayit = SUM(CASE WHEN fr.frmKod LIKE '120%' THEN 1 ELSE 0 END)`
+  6. `SaticiKayit = SUM(CASE WHEN fr.frmKod LIKE '320%' THEN 1 ELSE 0 END)`
+- Metot sekme ya da arama parametresi almaz (AC-15.2: özet listeden bağımsız). İstisna yakalanmaz; çağıran ekran yakalar.
+- `CariRiskTanimlari` metinleri `sunum-dili.md` sınırında (cümle ≤ 15 kelime, en fazla 2 cümle); Razor'da tekrar yazılmaz.
+**Adımlar:**
+- [ ] İskelet (dotnet-yazar): kayıt, sabitler, metot gövdesi `throw new NotImplementedException()`; `dotnet build dashboard/GmDashboard.csproj` 0 hata.
+- [ ] Senaryo matrisi (test-tasarimci) · kırmızı testler (test-yazar), hepsi `[Trait("Tur","Kanonik")]`, `[Trait("Hikaye","H15")]`:
+  - `GetCariRiskOzetAsync_Bugun_AliciVeSaticiTumKayitlaraEsit` (`AC-15.1`): blok A `CanonicalQuery.Read("H15-cari-risk.sql", "A")` ile `LiveDb.QueryAsync<H15Grup>(DbTarget.Erp, …)`; panel `new FinansQueries(LiveDb.PanelDb()).GetCariRiskOzetAsync()`; ardışık okunur. `Tolerance.AmountEqual(panel.VadesiGecenAlacak, a120.VadesiGecen, "vadesi geçen alacak")`, `Tolerance.AmountEqual(panel.VadesiGecenBorc, -a320.VadesiGecen, "vadesi geçen borç")`. Test içi kayıt `private sealed record H15Grup(string Grup, int Kayit, decimal VadesiGecen, int LimitAsan, int LimitTanimli);`, satır seçimi `Single(r => r.Grup == "120")`.
+  - `GetCariRiskOzetAsync_GrupKayitSayisi_EskiSinirdanBuyukVeBirebir` (`AC-15.1`): `Population.AtLeast(Math.Max(a120.Kayit, a320.Kayit) - 200, "iki grup da 200 kayıt ya da altında; ilk-N hatası ayırt edilemez")`; `Assert.Equal(a120.Kayit, panel.AliciKayit)`, `Assert.Equal(a320.Kayit, panel.SaticiKayit)`.
+  - `GetCariRiskOzetAsync_Bugun_LimitSayilariBirebir` (`AC-15.3`): `panel.LimitAsanCari == a120.LimitAsan + a320.LimitAsan`; `panel.LimitTanimliCari == a120.LimitTanimli + a320.LimitTanimli`.
+- [ ] Uygulama · koşu (19:00–08:00 ya da hafta sonu): `dotnet test tests/GmDashboard.Tests --filter "Tur=Kanonik&Hikaye=H15"`.
+- [ ] Kırmızı kip: toplam sorgusuna geçici `TOP (200)` + `ORDER BY ABS(b.bakiye) DESC` alt sorgusu eklenir → ilk test kırmızı görülür → elle geri yazılır (`--hard` yok) → üç test yeşil.
+- [ ] Kapılar: `dotnet build dashboard/GmDashboard.csproj` · `dotnet build tests/GmDashboard.Tests/GmDashboard.Tests.csproj -warnaserror` · birim komutu · `python tools/panel_kolon_denetimi.py` (0) · `python tools/turkce_tanimlayici_denetimi.py` (yeni dosyalarda 0).
+**Kabul:** üç kanonik test yeşil; kırmızı kip kanıtı raporda (komut, kırmızı çıktı, geri yazma, yeniden yeşil); kapılar temiz.
+
+### T-084 [UI] H15 Cari/Risk özet kartları (G-1)
+**Bağımlılık:** T-083, T-085 (Cari/Risk sayfası 002 Dalga 1 sürümüyle 001 dalında olmalı; 002 bu dosyanın sahibidir), T-029, T-030, T-031 · T-082 notundaki GMY kararı ("Toplam Net Bakiye" kartı) · ekran sözleşmesine satırın eklenmesi (aşağıda) · **Test seviyesi:** hafif · **AC:** AC-15.1, AC-15.2, AC-15.3 (gösterim), AC-0.1, FR-010
+**Dosyalar:**
+- Değiştir: `dashboard/Components/Pages/CariRisk.razor`
+- Değiştir: `dashboard/Data/Tanimlar/DuzeltmeNotlari.cs` (sözlüğe `cari-risk.ozet` anahtarı, değeri ortak `Yayin` sabiti)
+- Değiştir (yalnız sabit sayı taşıyorsa): `tests/GmDashboard.Tests/Birim/DuzeltmeNotlariTests.cs`
+- Değiştir: `dashboard/wwwroot/app.css` (yalnız `npm run build:css` çıktısı değiştiyse; `dashboard/` içinde)
+- Test: `tests/GmDashboard.Tests/Ekran/H15EkranTests.cs`
+**Arayüzler:**
+- Tüketir: `Task<CariRiskOzet> GetCariRiskOzetAsync(CancellationToken ct = default)`, `CariRiskOzet(decimal VadesiGecenAlacak, decimal VadesiGecenBorc, int LimitAsanCari, int LimitTanimliCari, int AliciKayit, int SaticiKayit)`, `CariRiskTanimlari.LimitTanimliDegil`, `CariRiskTanimlari.OzetDipnotu` (T-083); `<DuzeltmeNotu Anahtar="…" />` (T-030); `KullaniciMesajlari.VeriAlinamadi` (T-031 / 002 ON-1); `SourceFile.Read`
+- Üretir: sayfa kaynak metni sözleşmesi (testlerde); `DuzeltmeNotlari.YayinTarihleri["cari-risk.ozet"]`
+**Gereksinimler (tam değerlerle):**
+- Özet `_ozet` (`CariRiskOzet?`) ayrı durumdur: ilk açılışta liste ile paralel yüklenir (`Task.WhenAll`), sekme ve arama değişince **yeniden yüklenmez**. Yüklenene kadar kart değerleri `…` gösterir (sabit `span`, Lucide yok).
+- Kart ızgarası (yerleşim aynı, dört kart; 002 sonrası satır numaraları değişir — `_rows.Sum(r => r.VadesiGecen)` ve `_rows.Count(r => r.Limit > 0 …)` ifadelerini taşıyan kartlar hedeftir):
+  1. "Listedeki kayıt" — `_rows.Count` (liste sayısı; özet değil).
+  2. "Vadesi geçen alacak", alt satır "Alıcılar (120), tümü" — `_ozet.VadesiGecenAlacak`; `> 0` ise `text-error`.
+  3. "Vadesi geçen borç", alt satır "Satıcılar (320), tümü" — `_ozet.VadesiGecenBorc`; `> 0` ise `text-warning`. (GMY kararı "Toplam Net Bakiye kartı kalır" derse bu kart beşinci olur; görev metni karar sonrası güncellenir.)
+  4. "Limit aşan cari" — `_ozet.LimitAsanCari`; `> 0` ise `text-warning`; `_ozet.LimitTanimliCari == 0` ise altında `text-xs text-base-content/50` ile `CariRiskTanimlari.LimitTanimliDegil`.
+- Kartların yanında `<DuzeltmeNotu Anahtar="cari-risk.ozet" />`; mevcut dipnotun altına `CariRiskTanimlari.OzetDipnotu`.
+- Hata: özet ya da liste yüklenemezse ekranda `KullaniciMesajlari.VeriAlinamadi`, günlüğe `Logger.LogError(ex, "Cari risk özeti yüklenemedi")`. Merge sonrası sayfada `ex.Message` kaldıysa kaldırılır; 002 zaten kaldırdıysa o satıra dokunulmaz.
+- Kart etiketleri cümle düzeninde, ≤ 15 kelime; renkler DaisyUI token'ı. 002'nin telefon düzeni sınıflarına (`lg:` kırılma noktası, `Gorunum`) dokunulmaz.
+- `DuzeltmeNotlari`: yeni anahtar 21'inci olur. T-029 testi sözlüğü ekran sözleşmesiyle karşılaştırıyorsa değişmez; sabit `20` taşıyorsa `21` yapılır ve test adı `YayinTarihleri_Anahtarlar_EkranSozlesmesiyleAyni` olur (ayrı commit `test(T-084): düzeltme notu anahtar sayısını 21 yap`). T-079 küme eşitliğine bakar; metnindeki "(20)" bilgi amaçlıdır.
+**Adımlar:**
+- [ ] Testler (test-yazar, kaynak metin, `SourceFile.Read("dashboard/Components/Pages/CariRisk.razor")`):
+  - `CariRisk_Kaynak_OzetCekirdektenGelirListedenToplanmaz`: `GetCariRiskOzetAsync` geçer; `_rows.Sum(` geçmez; `_rows.Count(r => r.Limit` geçmez.
+  - `CariRisk_Kaynak_DuzeltmeNotuVeMetinlerSabitten`: `<DuzeltmeNotu Anahtar="cari-risk.ozet" />`, `CariRiskTanimlari.LimitTanimliDegil`, `CariRiskTanimlari.OzetDipnotu`, `KullaniciMesajlari.VeriAlinamadi` geçer; `ex.Message` geçmez.
+- [ ] Uygulama · `npm run build:css` (`dashboard/` içinde; `node_modules` yoksa atlanır, raporda yazılır) · derleme.
+- [ ] Kırmızı kip: Vadesi geçen kartına geçici `_rows.Sum(r => r.VadesiGecen)` geri yazılır → ilk test kırmızı → elle geri alınır → yeşil.
+- [ ] Elle kontrol (masaüstü): sekme Satıcılar → Alıcılar → Hepsi ve arama "a" sırasında özet kartları değişmiyor; ekran görüntüsü commit edilmez, yalnız gözlem raporda.
+- [ ] Kapılar: derleme · birim komutu · `python tools/turkce_tanimlayici_denetimi.py` · T-079 testi bu görevden sonra koşarsa yeşil.
+**Kabul:** iki test yeşil + kırmızı kip kanıtı; elle kontrol notu raporda.
+**Kontrat değişikliği gerekli:** `kontratlar/ekranlar.md` § 1 tablosuna satır:
+> | `cari-risk.ozet` | `/cari-risk` | Vadesi geçen alacak, vadesi geçen borç, limit aşan cari | H15 |
+
+§ 2'ye bölüm:
+> ### Cari/Risk (`/cari-risk`)
+> - Özet kartları bütün alıcı ve satıcı carilerinden: "Vadesi geçen alacak", "Vadesi geçen borç", "Limit aşan cari". Liste en yüksek bakiyeli kayıtlarla sınırlı kalır, özeti etkilemez (H15).
+> - Limit tanımlı cari yoksa "Limit tanımlı değil" notu.
+
+### T-085 [NET] Master'ı alma ve T-029/T-031 uyarlaması (G-3, K10)
+**Bağımlılık:** 002 Dalga 1'in master'a merge edilmesi (insan kararı; ON-1 commit'i master'da olmalı: `git log master --oneline -- dashboard/Data/Tanimlar/KullaniciMesajlari.cs` en az bir satır döner, dönmezse görev başlamaz) · `git status --porcelain` boş · **Test seviyesi:** hafif · **AC:** AC-10.1 (metin sözleşmesi), AC-0.1 (DI), 002 K10
+**Dosyalar:**
+- Değiştir (merge çakışması çıkarsa): `dashboard/ServiceRegistration.cs`, `dashboard/Data/Tanimlar/KullaniciMesajlari.cs`, `dashboard/Components/Pages/Home.razor`, `dashboard/wwwroot/app.css`, `tests/GmDashboard.Tests/GmDashboard.Tests.csproj`, `tests/GmDashboard.Tests/Directory.Packages.props`, `Pusula.sln`
+- Test: `tests/GmDashboard.Tests/Birim/OrtakTanimMergeTests.cs`
+**Arayüzler:**
+- Tüketir: master'daki 002 ON-1 içeriği — `s.AddSingleton(TimeProvider.System);` (`AddBkmVeri` içinde) ve `KullaniciMesajlari` (T-031 "Üretir" satırındaki dört sabit, birebir); `kontratlar/ekranlar.md` § 3 tablosu; `SourceFile.Read`
+- Üretir: 001 dalında merge commit'i `chore(T-085): master'ı al (002 Dalga 1)`; T-029 ve T-031'in kalan kapsamı (aşağıda); iki birim testi
+**Gereksinimler (tam değerlerle):**
+- Yol: 001 dalında `git merge master` (yerel `master`, 002 Dalga 1 merge'ünü içerir). Yeniden tabanlama, `--hard`, `checkout -- .` yok. Merge commit'i insan onayıyla atılır (denetleyici GMY'ye çakışma listesini gösterir).
+- Çakışma kuralı: 001 tarafında çözülür, **002'nin satırları korunur**.
+  - `ServiceRegistration.cs`: `TimeProvider` satırı tek kalır.
+  - `KullaniciMesajlari.cs` (iki dal da eklediyse add/add): içerik T-031 sözleşmesiyle birebirse master sürümü alınır. Metin farklıysa iki spec çelişiyor demektir → görev `NEEDS_CONTEXT` döner, elle seçim yapılmaz.
+  - `Home.razor`: 002'nin `@page` satırı korunur, 001'in gövde değişiklikleri (T-045, T-046, T-069) korunur.
+  - `app.css`: master sürümü alınır, sonra `dashboard/` içinde `npm run build:css` ile yeniden üretilir.
+  - Test projesi (`GmDashboard.Tests.csproj`, yerel `Directory.Packages.props`, `Pusula.sln`): 002 kendi testleri için projeyi ya da paket satırını eklediyse iki tarafın birleşimi alınır (001 paketleri + `Microsoft.Playwright`); aynı paketin iki farklı sürümü varsa `NEEDS_CONTEXT`.
+- T-029 ve T-031'in kapsamı merge anına göre:
+  - **T-029/T-031 henüz yapılmadıysa:** T-031 "dosya zaten var; içerik sözleşmeyle aynı mı" doğrulamasına iner (aşağıdaki test + `turkce_tanimlayici_denetimi.py`); T-029 yalnız `DuzeltmeNotlari` ve testlerine iner, `ServiceRegistration.cs`'e dokunmaz.
+  - **Yapıldıysa:** satırlar birebir aynıysa çakışma yoktur; aşağıdaki testler yine koşar.
+- Testler (birim, `Tur` yok):
+  - `ServiceRegistration_TimeProvider_TekKayit`: `Regex.Matches(SourceFile.Read("dashboard/ServiceRegistration.cs"), @"AddSingleton\(TimeProvider\.System\)").Count == 1`.
+  - `KullaniciMesajlari_Metin_EkranSozlesmesiyleAyni` (teori, `MemberData` = dört sabit adı ve değeri): `kontratlar/ekranlar.md` § 3 tablosundaki aynı adlı satırın metni sabite birebir eşit.
+**Adımlar:**
+- [ ] Ön koşul komutları; çıktıları rapora.
+- [ ] `git merge master`; `git diff --name-only --diff-filter=U` ile çakışan dosya listesi rapora.
+- [ ] Çakışmaları kurala göre çöz · `npm run build:css` · `dotnet build dashboard/GmDashboard.csproj` 0 hata.
+- [ ] Testleri yaz (test-yazar) · koş · kırmızı kip: `ServiceRegistration.cs`'e geçici ikinci `s.AddSingleton(TimeProvider.System);` → kırmızı → elle sil → yeşil.
+- [ ] Tam birim koşusu: `dotnet test tests/GmDashboard.Tests --filter "Tur!=Kanonik&Tur!=Koruma"` (002'nin birim testleri dahil yeşil; `Tur=Mobil` bu görevde koşulmaz).
+- [ ] Defter: `ork not karar` ile T-029/T-031'in hangi duruma indiği.
+**Kabul:** merge commit'i 001 dalında; çakışma listesi ve çözümü raporda; iki test yeşil + kırmızı kip kanıtı; birim takımı yeşil.
+
+### T-086 [DOC] 001 kabul sonucu dosyası (G-2, 002 risk R3)
+**Bağımlılık:** T-080 (SC raporu, "saptı" kalmamış), 001 `/kabul-testi` hükmü, T-084, T-085 (002'nin kapı testi depoda olsun diye) · **Test seviyesi:** hafif · **AC:** 002 R3; 002 `kontratlar/telefon-kapisi.md` § 4
+**Etiket gerekçesi:** dosyayı denetleyici yazar, içerik belgedir ([DOC]). Biçim testi test-yazar adımıdır (T-081'deki gibi ayrı commit).
+**Dosyalar:**
+- Oluştur: `specs/001-panel-veri-duzeltme/kabul-sonucu.md`
+- Test: `tests/GmDashboard.Tests/Birim/KabulSonucuTests.cs`
+**Arayüzler:**
+- Tüketir: `.orkestra/calisma/001-panel-veri-duzeltme/sc-raporu.md` (T-080), `docs/journal/bkm/<kapanış günü>.md` (T-080), madde anahtarları `specs/002-mobil-kabuk-ekran/kontratlar/telefon-kapisi.md` § 2
+- Üretir: tablo `| Madde | Sonuç | Tarih | Kanıt |` — 002'nin `KapananMaddeler_HepsiKabulSonucundaTuttu` testi bu dosyayı okur
+**Gereksinimler (tam değerlerle):**
+- Dosya başı: `# 001 kabul sonucu` ve altında `> GMY onayı: <gg.aa.yyyy> · kayıt: docs/journal/bkm/<yyyy-MM-dd>.md` (onay `ork not karar` ile journal'a yazılmış olmalı).
+- Tam 21 satır, bu sırayla: `001:H1` … `001:H9`, `001:H10.1` (AC-10.1, AC-10.2), `001:H10.3` (AC-10.3), `001:H11` … `001:H14`, `001:D-1` … `001:D-5`, `001:cari-risk` (H15).
+- `Sonuç` ∈ {`tuttu`, `saptı`, `koşamadı`, `karar bekliyor`}. `tuttu` yalnız maddenin bütün AC'leri SC raporunda "tuttu" ise. Örnek: H13 hedef tabanı teyit edilmediyse `karar bekliyor`.
+- `Tarih` gg.aa.yyyy (hükmün günü).
+- `Kanıt` her satırda dolu; ilk belirteci şunlardan biri: (a) maddeyi kapatan son NET/UI görev commit'inin kısa hash'i (7–40 onaltılık karakter, depoda var), (b) depoda var olan dosya yolu (ör. kanonik `.sql` dosyası ya da kapanış journal'ı). `.orkestra/` ile başlayan yol tek başına kanıt değildir (git dışı). İlk belirteçten sonra ` · ` ile AC listesi ve test adı yazılır: `a1b2c3d · AC-12.1–12.3 GEÇTİ (MizanOzet_KapanmisAy_HesapKumelerineEsit)`.
+- `yazim-metin` kuralları; kişisel veri yok.
+- Testler (birim, test-yazar):
+  - `KabulSonucu_Maddeler_SozlesmeKumesiyleAyni`: dosyadaki `Madde` kümesi = testte açıkça yazılmış 21 anahtar; fark iki yönlü yazılır.
+  - `KabulSonucu_Satir_KanitDoluVeGitIcinde` (teori, `MemberData` = satırlar): `Sonuç` geçerli kümede; `Kanıt` boş değil; ilk belirteç `.orkestra/` ile başlamaz.
+  - `KabulSonucu_HashKanit_DepodaVar` (teori, `MemberData` = ilk belirteci `^[0-9a-f]{7,40}$` olan satırlar): `git cat-file -e <hash>^{commit}` çıkış 0 (depo kökünde, `SourceFile` ile bulunan `Pusula.sln` klasörü).
+  - `KabulSonucu_YolKanit_DepodaVar` (teori, `MemberData` = öteki satırlar): `File.Exists(<depo kökü>/<yol>)`.
+**Adımlar:**
+- [ ] Testler (ayrı commit `test(T-086): kabul sonucu biçim testleri`) → dosya yokken kırmızı.
+- [ ] Dosyayı yaz · testler yeşil.
+- [ ] Kırmızı kip: bir satırın `Kanıt` hücresi boşaltılır → kırmızı → elle geri yazılır → yeşil.
+- [ ] 002 kapı testi: `dotnet test tests/GmDashboard.Tests --filter "FullyQualifiedName~KapananMaddeler_HepsiKabulSonucundaTuttu"` yeşil (o an `KapananMaddeler` boşsa bunu raporda yaz: test bu dosyayı henüz bir anahtar için sınamadı).
+- [ ] Kapı: `dokuman_denetle.py` hook temiz.
+**Kabul:** 21 satır; dört test yeşil + kırmızı kip kanıtı; GMY onay satırı dolu.
