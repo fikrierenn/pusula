@@ -21,7 +21,7 @@ public class GuardTests
     [Trait("Tur", "Canli")]
     [Trait("Tur", "Koruma")]
     [Trait("AC", "001-SC-006")]
-    public async Task Guard_September2026_OldAndNewFormulaEqual()
+    public async Task Guard_September_2026_OldAndNewFormulaEqual()
     {
         // Arrange
         DateOnly start = new(2026, 9, 1);
