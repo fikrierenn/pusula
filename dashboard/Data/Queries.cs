@@ -54,9 +54,9 @@ public sealed class Queries(Db db)
         // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — DİREKT JOKER (B-74).
         // Ciro = KDV+KARGO-HARİÇ (plan-16): satır SELLINGPRICEWITHOUTVAT (kargo order-başlığı CARGOPRICE'ta, satırda yok).
         // Eski TOTALPRICE (KDV+kargo dahil) KULLANILMIYOR. Direkt bağlantıda detay CROSS APPLY hızlı (linked değil).
-        const string eticSql = """
-            SELECT SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
+        var eticSql = $"""
+            SELECT SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
             FROM dbo.J_ORDERS o
             CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net
                          FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
@@ -114,12 +114,12 @@ public sealed class Queries(Db db)
         }
 
         // E-ticaret kanal kırılımı (donut) — DİREKT JOKER, Ciro KDV+kargo-hariç (SELLINGPRICEWITHOUTVAT). plan-16.
-        const string eticKanalSql = """
+        var eticKanalSql = $"""
             SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')
                         THEN o.APPLICATION ELSE 'Diğer' END AS Ad,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Ipt,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
+                   SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS IN ({EcommerceStatus.OrderCancelReturn}) THEN 1 ELSE 0 END) AS Ipt,
+                   SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
             FROM dbo.J_ORDERS o
             CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
@@ -171,22 +171,22 @@ public sealed class Queries(Db db)
             .OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
 
         // E-ticaret kargo firma dağılımı (net sipariş, JOKER J_CARGO) — DİREKT JOKER (linked server kaldırıldı, M-12)
-        const string kargoSql = """
+        var kargoSql = $"""
             SELECT ISNULL(c.CNAME,'(bilinmiyor)') AS Ad, COUNT(*) AS Adet
             FROM dbo.J_ORDERS o
             LEFT JOIN dbo.J_CARGO c ON c.ID=o.CARGOREF
-            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
+            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn})
             GROUP BY ISNULL(c.CNAME,'(bilinmiyor)');
             """;
         var kargo = (await jconn.QueryAsync<NameCount>(kargoSql, new { giso, g2iso }))
             .OrderByDescending(k => k.Adet).ToList();
 
         // E-ticaret il dağılımı (teslimat DCITY, top 12) — DİREKT JOKER (M-12)
-        const string ilSql = """
+        var ilSql = $"""
             SELECT ISNULL(d.DCITY,'(bilinmiyor)') AS Ad, COUNT(*) AS Adet
             FROM dbo.J_ORDERS o
             LEFT JOIN dbo.J_ORDER_DELIVERY_ADDRESS d ON d.LOGICALREF=o.DELIVERYREF
-            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
+            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn})
             GROUP BY ISNULL(d.DCITY,'(bilinmiyor)');
             """;
         var il = (await jconn.QueryAsync<NameCount>(ilSql, new { giso, g2iso }))
