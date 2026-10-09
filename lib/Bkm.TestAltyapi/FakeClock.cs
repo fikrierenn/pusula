@@ -3,7 +3,7 @@ namespace Bkm.TestAltyapi;
 /// <summary>Sabit anı döndüren sahte saat.</summary>
 public sealed class FakeClock(DateTimeOffset now) : TimeProvider
 {
-    private readonly DateTimeOffset _now = now;
+    private readonly DateTimeOffset _now = now.ToUniversalTime();
 
     /// <inheritdoc />
     public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
@@ -11,6 +11,6 @@ public sealed class FakeClock(DateTimeOffset now) : TimeProvider
     /// <inheritdoc />
     public override DateTimeOffset GetUtcNow()
     {
-        throw new NotImplementedException();
+        return _now;
     }
 }
