@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Bu klasör merkezi paket yönetiminin (kök Directory.Packages.props) DIŞINDA — 17.10.2026.
+       Muhasebe kökten farklı sürümler kullanıyor (Dapper 2.1.66, Microsoft.Data.SqlClient 6.0.1);
+       kök sürüme geçmek SqlClient'ta ana sürüm atlaması, yani davranış değişikliği olur.
+       Sürümler bu yüzden Muhasebe.csproj'de kalır. Birleştirme ayrı iş; o yapılınca bu dosya silinir. -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>

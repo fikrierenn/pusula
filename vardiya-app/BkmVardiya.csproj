@@ -21,7 +21,7 @@
          tasiyordu: Seed'in ACL yazmasi calismiyordu.
          Muafiyet TEK dosya: Security/AuthSql.cs (.editorconfig).
          ⚠ Yasak, VAR OLAN bogazi zorunlu kilar — yoktan bogaz yaratmaz (Solum'un on kosulu). -->
-    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
