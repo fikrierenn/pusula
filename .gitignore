@@ -1,6 +1,11 @@
 node_modules/
 dist/
 .env
+# .env kopyaları (yedek, tarihli) sır taşır; yalnız örnek dosya takipli (18.10.2026)
+.env.*
+!.env.example
+# Derleme ara çıktısı hiçbir projede takip edilmez (18.10.2026)
+obj/
 *.js.map
 
 # Secrets (SMTP credentials, API keys)
