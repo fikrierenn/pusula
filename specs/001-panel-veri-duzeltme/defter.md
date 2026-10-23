@@ -298,3 +298,6 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 23.10 09:30 · Commit: 9c5a85d feat(shared): .env anahtarı aynı adlı ortam değişkeniyle ezilebilir (ikinci makine PANEL_DB_HOST)
 - 23.10 09:30 · Commit: 8d83121 docs(kural): erp-write-policy — bkm-magaza tanım ve ayar tabloları (PanelStoreFindingType, PanelSetting, PanelPurchaseRejectReason; GMY 18.10 / 20.10.2026)
 - 23.10 09:30 · Commit: 5269485 docs(kural): erp-write-policy — bkm-magaza spec 009 tabloları (PanelPerson, PanelPersonSyncRun, PanelStoreSetupWave + kolonlar), Zirve 7 alan salt okuma
+- 23.10 10:05 · Commit: 1a66832 docs(bkm): günlükler 09/15/23.10 + orkestra günlüğü + 001 defter (BT-FIKRI eşitlemesi dahil)
+- 23.10 10:05 · Commit: 9282e17 docs(bkm): BT-FIKRI 09-15.10 işleri — sema, maaş/stok-satış scriptleri, Kültür norm slaytı
+- 23.10 10:05 · Commit: bd5a534 feat(bkm): talep tahmini ve ens kalibrasyon araçları (BT-FIKRI 12-14.10)
