@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BKM Kitap · İcra Kurulu & Yönetim Brifingi (2025 vs 2026 Sezonu)</title>
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Google Fonts: Inter & Outfit -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'sans-serif'],
+      },
+      colors: {
+        brand: {
+          bg: '#070A11',
+          card: '#0F1523',
+          cardHover: '#161F33',
+          border: 'rgba(255, 255, 255, 0.08)',
+          borderGlow: 'rgba(45, 212, 191, 0.3)',
+          teal: '#0D9488',
+          tealLight: '#14B8A6',
+          tealGlow: '#2DD4BF',
+          emerald: '#10B981',
+          amber: '#F59E0B',
+          rose: '#F43F5E',
+          blue: '#3B82F6',
+          purple: '#8B5CF6'
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style>
+  body {
+    background-color: #070A11;
+    color: #F1F5F9;
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  
+  /* Glassmorphism Surface */
+  .glass-card {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(10, 15, 29, 0.95) 100%);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+  }
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Glowing Borders */
+  .glow-teal {
+    box-shadow: 0 0 35px -5px rgba(20, 184, 166, 0.25);
+    border: 1px solid rgba(45, 212, 191, 0.4);
+  }
+  .glow-rose {
+    box-shadow: 0 0 35px -5px rgba(244, 63, 94, 0.25);
+    border: 1px solid rgba(244, 63, 94, 0.4);
+  }
+  .glow-amber {
+    box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.25);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+
+  /* Navigation Pills */
+  .nav-pill {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .nav-pill.active {
+    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+    color: #FFFFFF;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4);
+    border-color: #2DD4BF;
+  }
+
+  /* Slide Transition */
+  .slide-container {
+    display: none;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .slide-container.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Table Custom Style */
+  table th {
+    background: rgba(15, 23, 42, 0.85);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #94A3B8;
+  }
+  table td {
+    font-size: 0.82rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.025);
+  }
+
+  /* Number Badge */
+  .stat-badge {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #070A11;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1E293B;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-teal-500 selection:text-white">
+
+<!-- ÜST YÖNETİCİ KOKPİT BARI (Executive Header) -->
+<header class="bg-[#0B101D]/90 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50 px-5 py-3.5 shadow-2xl">
+  <div class="max-w-[1440px] mx-auto flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+    
+    <!-- Sol: Marka ve Rapor Başlığı -->
+    <div class="flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-500 via-emerald-600 to-teal-400 p-[1px] shadow-lg shadow-teal-950/60 flex items-center justify-center">
+        <div class="w-full h-full bg-[#070A11] rounded-[15px] flex items-center justify-center font-display font-black text-xl text-teal-300">
+          B
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-lg font-display font-black tracking-tight text-white">BKM KİTAP</h1>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">İcra Kurulu Strateji Brifingi</span>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">2025 vs 2026 Sezonu</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5 font-normal">
+          1 Ağustos – 30 Eylül Birebir 61 Günlük Net POS ve ERP Veritabanı Ölçümleri (EncoreMerkez POS, DerinSIS & WMS)
+        </p>
+      </div>
+    </div>
+
+    <!-- Sağ: Sunum Kumandası & Canlı Şube Röntgeni -->
+    <div class="flex flex-wrap items-center gap-2.5">
+      
+      <!-- Slayt Navigasyon Kumandası -->
+      <div class="flex items-center bg-slate-900/90 rounded-xl border border-white/10 p-1 shadow-inner">
+        <button onclick="prevSlide()" title="Önceki Slayt (← veya PageUp)" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 text-slate-300 font-bold transition">◀</button>
+        <span id="slide-indicator" class="font-display font-bold text-teal-300 px-3 text-xs tracking-wider">01 / 10</span>
+        <button onclick="nextSlide()" title="Sonraki Slayt (→, Space veya PageDown)" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 text-slate-300 font-bold transition">▶</button>
+      </div>
+
+      <!-- Tam Ekran Sunum Modu -->
+      <button onclick="togglePresentMode()" id="btn-present-mode" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white shadow-lg shadow-teal-900/40 border border-teal-400/40 transition flex items-center gap-1.5 cursor-pointer">
+        <span class="text-sm">📽️</span> Sunum Modu (F)
+      </button>
+
+      <!-- Excel Modelini İndir -->
+      <a href="BKM-Kitap-2026-Okul-Sezonu-Detayli-Yonetim-Raporu.xlsx" download class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5 shadow-md">
+        <span class="text-sm">📊</span> Excel Modeli
+      </a>
+
+      <!-- Şube Canlı Filtreleme Butonları (Sadece Mağaza Slaytlarında Görünür) -->
+      <div id="sube-filter-container" class="flex items-center bg-slate-900/80 p-1 rounded-xl border border-white/10 ml-1 transition-all duration-300">
+        <span class="text-[11px] text-slate-400 px-2 font-medium">Şube:</span>
+        <button onclick="setSube('TUM')" id="sube-TUM" class="sube-btn active px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-teal-600 border border-teal-400/50 transition">🏢 Tümü</button>
+        <button onclick="setSube('FSM')" id="sube-FSM" class="sube-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">📍 FSM</button>
+        <button onclick="setSube('OZLUCE')" id="sube-OZLUCE" class="sube-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">📍 Özlüce</button>
+        <button onclick="setSube('IST')" id="sube-IST" class="sube-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">📍 İst. Yolu</button>
+      </div>
+
+    </div>
+
+  </div>
+</header>
+
+<!-- SLAYT MENÜSÜ (10 İnfografik Bölüm - Minto Piramidi) -->
+<nav class="bg-[#050811] border-b border-white/5 px-4 sticky top-[69px] z-40">
+  <div class="max-w-[1440px] mx-auto flex items-center gap-1.5 overflow-x-auto py-2 text-xs scrollbar-none">
+    <button onclick="goToSlide(1)" id="btn-slide-1" class="nav-pill active px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      ⚡ 1. İcra Kurulu Özeti (60s)
+    </button>
+    <button onclick="goToSlide(2)" id="btn-slide-2" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      🔍 2. Fiyat İllüzyonu vs Adet
+    </button>
+    <button onclick="goToSlide(3)" id="btn-slide-3" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      🏆 3. Kategori Sepet Karnesi
+    </button>
+    <button onclick="goToSlide(4)" id="btn-slide-4" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      🏢 4. Şubeler Arası Benchmarking
+    </button>
+    <button onclick="goToSlide(5)" id="btn-slide-5" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      💎 5. Çanta & Enflasyon Arbitrajı
+    </button>
+    <button onclick="goToSlide(6)" id="btn-slide-6" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      📚 6. Hazırlık & Maarif Modeli
+    </button>
+    <button onclick="goToSlide(7)" id="btn-slide-7" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      📊 7. Konsolide Stok & Merkez WMS
+    </button>
+    <button onclick="goToSlide(8)" id="btn-slide-8" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      🌙 8. Gece Pazarı & Kampanyalar
+    </button>
+    <button onclick="goToSlide(9)" id="btn-slide-9" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      🎓 9. Sınav Okulları (4,2M ₺ Fırsat)
+    </button>
+    <button onclick="goToSlide(10)" id="btn-slide-10" class="nav-pill px-3.5 py-1.5 rounded-lg border border-transparent whitespace-nowrap text-slate-300">
+      🚀 10. Pazartesi Sabahı Direktifleri
+    </button>
+  </div>
+</nav>
+
+<!-- ANA İÇERİK ALANI -->
+<main class="max-w-[1440px] mx-auto p-4 md:p-6 flex-1 w-full space-y-6">
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 1: 60 SANİYELİK İCRA KURULU ÖZETİ (Karar Zirvesi) -->
+  <!-- ========================================================================= -->
+  <section id="slide-1" class="slide-container active space-y-6">
+    
+    <!-- Büyük Manşet Bandı -->
+    <div class="glass-card rounded-2xl p-6 md:p-8 border-l-4 border-l-teal-400 relative overflow-hidden">
+      <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+        <div class="space-y-2 max-w-4xl">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-display font-bold uppercase tracking-wider text-teal-400">Yönetim Kurulu & CFO Zirvesi</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping"></span>
+          </div>
+          <h2 id="ozet-manset" class="text-2xl md:text-3xl font-display font-extrabold text-white tracking-tight leading-snug">
+            "2026 Sezonunda BKM Hem Müşteri, Hem Adet, Hem Sepet Büyüttü: Perakende Ciro 225,1M ₺ (+%35,3)"
+          </h2>
+          <p id="ozet-altmetin" class="text-sm text-slate-300 leading-relaxed">
+            Kasadan geçen her 100 velinin 57'si sepetine kırtasiye attı. <strong>1,31 Milyon adet fiziksel ürün</strong> satılarak rekor hacme ulaşıldı (+163 Bin adet net büyüme). Ancak Hazırlık Kitapları'nda -11.694 adet kayıp yaşanırken bilançoyu fiyat artışı kurtardı.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-4 shrink-0 bg-slate-900/60 p-4 rounded-2xl border border-white/5">
+          <div class="text-right">
+            <div class="text-xs text-slate-400 font-medium">Konsolide Perakende Ciro</div>
+            <div id="kpi-ciro-buyuk" class="text-3xl md:text-4xl font-display font-black text-white stat-badge tracking-tight">225,1 M ₺</div>
+            <div class="text-xs font-bold text-emerald-400 mt-0.5 flex items-center justify-end gap-1">
+              <span>▲</span> +%35,3 (2025: 166,4M ₺)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 Büyük Makro Metrik Kartı -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+      
+      <div class="glass-card p-4 rounded-2xl border-white/5">
+        <div class="text-xs text-slate-400 font-medium">Toplam Perakende Ciro</div>
+        <div id="kpi-ciro-k" class="text-2xl font-display font-extrabold text-white mt-1">225,1 M ₺</div>
+        <div class="text-[11px] text-emerald-400 font-semibold mt-1">▲ +%35,3 (+58,7M ₺)</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-teal-500/40 bg-teal-950/20">
+        <div class="text-xs text-teal-300 font-semibold">Satılan Fiziksel Adet</div>
+        <div id="kpi-adet-k" class="text-2xl font-display font-extrabold text-teal-300 mt-1">1.307.727 Adet</div>
+        <div class="text-[11px] text-emerald-400 font-semibold mt-1">▲ +%14,3 (+163.342 Adet)</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-white/5">
+        <div class="text-xs text-slate-400 font-medium">Toplam Veli / Trafik</div>
+        <div id="kpi-fis-k" class="text-2xl font-display font-extrabold text-white mt-1">204.212 Fiş</div>
+        <div class="text-[11px] text-emerald-400 font-semibold mt-1">▲ +%8,2 (+15.492 Fiş)</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-white/5">
+        <div class="text-xs text-slate-400 font-medium">Ortalama Sepet Tutarı</div>
+        <div id="kpi-tutar-k" class="text-2xl font-display font-extrabold text-blue-300 mt-1">1.102,4 ₺</div>
+        <div class="text-[11px] text-blue-400 font-semibold mt-1">▲ +%25,0 (2025: 881,8 ₺)</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-white/5">
+        <div class="text-xs text-slate-400 font-medium">Sepet Ürün Derinliği</div>
+        <div id="kpi-derinlik-k" class="text-2xl font-display font-extrabold text-purple-300 mt-1">6,40 Adet</div>
+        <div class="text-[11px] text-purple-400 font-semibold mt-1">▲ +%5,6 (2025: 6,06 Adet)</div>
+      </div>
+
+    </div>
+
+    <!-- 3 Büyük Zafer vs 2 Kritik Alarm (Danışman İkilemi) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      
+      <!-- 3 BÜYÜK ZAFER -->
+      <div class="glass-card rounded-2xl p-5 border-t-4 border-t-emerald-500 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-white/5">
+          <h3 class="text-sm font-display font-bold text-emerald-400 flex items-center gap-2">
+            <span>🏆</span> 3 BÜYÜK STRATEJİK ZAFER
+          </h3>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">Büyüme Motorları</span>
+        </div>
+        
+        <div class="space-y-3 text-xs">
+          <div class="p-3.5 bg-slate-900/70 rounded-xl border border-white/5 space-y-1">
+            <div class="font-bold text-white text-sm">1. Kırtasiyede +137.057 Adetlik Hacim Patlaması</div>
+            <p class="text-slate-300 leading-relaxed">
+              Kırtasiye adedi 592K'dan <strong>729K adede fırladı (+%23,1)</strong>. Ciro <strong>80,5M ₺ (+%45,6)</strong> oldu. Kasadan geçen her 100 müşteriden 57'si kırtasiye aldı. Özlüce'de bu oran <strong>%60 ile tarihi rekora</strong> ulaştı.
+            </p>
+          </div>
+
+          <div class="p-3.5 bg-slate-900/70 rounded-xl border border-white/5 space-y-1">
+            <div class="font-bold text-white text-sm">2. Oyuncakta +%51,6 Adet Sıçraması (Gizli Kâr Motoru)</div>
+            <p class="text-slate-300 leading-relaxed">
+              39.967 adetten <strong>60.609 adede çıktı (+20.642 adet)</strong>. Ciro 12,6M'den <strong>18,0M ₺'ye ulaştı (+%42,2)</strong>. Okul alışverişine çocuğuyla gelen aileler sepete oyuncak atarak kârlılığı uçurdu.
+            </p>
+          </div>
+
+          <div class="p-3.5 bg-slate-900/70 rounded-xl border border-white/5 space-y-1">
+            <div class="font-bold text-white text-sm">3. Çantada %50 İndirimle Enflasyon Arbitrajı ve Tasfiye</div>
+            <p class="text-slate-300 leading-relaxed">
+              Depoda 2 yıldır bekleyen çantalar %50 indirim hamlesiyle <strong>5.868 adet eritildi</strong>. 2024 alım maliyeti 942 ₺ olan Eastpak çantalar 2.350 ₺'ye satılarak <strong>%59,9 brüt marjla</strong> 15,3M ₺ nakde çevrildi.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 KRİTİK ALARM & 1 BÜYÜK FIRSAT -->
+      <div class="glass-card rounded-2xl p-5 border-t-4 border-t-rose-500 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-white/5">
+          <h3 class="text-sm font-display font-bold text-rose-400 flex items-center gap-2">
+            <span>🚨</span> 2 KRİTİK ALARM & 1 BÜYÜK FIRSAT
+          </h3>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800">Acil Müdahale</span>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div class="p-3.5 bg-slate-900/70 rounded-xl border border-white/5 space-y-1">
+            <div class="font-bold text-rose-300 text-sm">1. Hazırlık Kitabında Maarif Kurbanı -11.694 Adet Kayıp</div>
+            <p class="text-slate-300 leading-relaxed">
+              Ciro birim fiyat artışıyla (324 ₺ → 421 ₺) %19,4 arttı fakat raftan <strong>11.694 daha az kitap</strong> eksildi (-%8,0). MEB Maarif Modeli ara sınıfları vurdu: 5-6. sınıfta <strong>-%21,5 çöküş</strong> yaşandı. Rafta 15.661 batık eski müfredat riski var!
+            </p>
+          </div>
+
+          <div class="p-3.5 bg-slate-900/70 rounded-xl border border-white/5 space-y-1">
+            <div class="font-bold text-rose-300 text-sm">2. FSM 3. Kat Dikey Sürtünmesi (-3,98 Milyon TL Çocuk Kitabı)</div>
+            <p class="text-slate-300 leading-relaxed">
+              FSM'de veliler zemin kattan 3. kattaki çocuk kitaplarına çıkamadı (%13,8 penetrasyon vs Özlüce %21,8). FSM tek başına çocuk kitabında Özlüce'nin <strong>21.426 adet ve 3,98M ₺ gerisinde</strong> kaldı!
+            </p>
+          </div>
+
+          <div class="p-3.5 bg-teal-950/40 rounded-xl border border-teal-500/30 space-y-1">
+            <div class="font-bold text-teal-300 text-sm">💡 1 BÜYÜK FIRSAT: Sınav Lise Velisindeki %53 Kaçak (4,2M ₺)</div>
+            <p class="text-slate-300 leading-relaxed">
+              Sınav Okulları lise velilerinin <strong>%53,2'si kırtasiyeyi zincir marketten alıyor</strong>. YKS hazırlık seti zorunlu veya avantajlı paket yapılsaydı masada kalan <strong>4,2 Milyon TL ek ciro</strong> kasaya girecekti.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 2: FİYAT İLLÜZYONU VS ADET GERÇEĞİ (Price vs Volume Split) -->
+  <!-- ========================================================================= -->
+  <section id="slide-2" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-amber-400">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs font-display font-bold text-amber-400 uppercase tracking-wider">Cerrahi Ayrım · McKinsey Metodolojisi</span>
+          <h2 class="text-lg md:text-xl font-display font-bold text-white mt-0.5">Enflasyon Fiyat Zammı mı, Yoksa Gerçek Müşteri Talebi mi?</h2>
+          <p class="text-xs text-slate-300 mt-1">Ciro artışı yanıltıcıdır. Adet artışı gerçek tüketici ilgisini, birim fiyat artışı ise sadece enflasyonu gösterir.</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30">Price vs Volume Split</span>
+      </div>
+    </div>
+
+    <!-- Chart.js İnteraktif Grafik Kartı -->
+    <div class="glass-card p-6 rounded-2xl space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-sm font-bold text-white">Kategorilere Göre Fiziksel Adet Büyümesi vs Fiyat Artışı (%)</h3>
+        <span class="text-xs text-slate-400">Yeşil: Fiziksel Adet Δ%  |  Mavi: Birim Fiyat Δ%  |  Mor: Ciro Büyüme Δ%</span>
+      </div>
+      <div class="h-80 w-full">
+        <canvas id="chartPriceVolume"></canvas>
+      </div>
+    </div>
+
+    <!-- 4 Kadranlı Kategori Matrisi -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      
+      <!-- Kadran 1: Yıldızlar -->
+      <div class="glass-card p-5 rounded-2xl border-emerald-500/30 space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">🏆 YILDIZLAR (Adet & Fiyat Birlikte Büyüdü)</span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold">Organik Talep</span>
+        </div>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between p-2 rounded-lg bg-slate-900/50">
+            <span class="font-bold text-white">Kırtasiye (Genel)</span>
+            <span class="text-emerald-400 font-bold">+%23,1 Adet (729K) · +%45,6 Ciro (80,5M ₺)</span>
+          </div>
+          <div class="flex justify-between p-2 rounded-lg bg-slate-900/50">
+            <span class="font-bold text-white">Oyuncak Grubu</span>
+            <span class="text-emerald-400 font-bold">+%51,6 Adet (60,6K) · +%42,2 Ciro (18,0M ₺)</span>
+          </div>
+          <div class="flex justify-between p-2 rounded-lg bg-slate-900/50">
+            <span class="font-bold text-white">Akademi Kitapları</span>
+            <span class="text-emerald-400 font-bold">+%74,9 Adet (23,2K) · +%82,1 Ciro (7,0M ₺)</span>
+          </div>
+          <div class="flex justify-between p-2 rounded-lg bg-slate-900/50">
+            <span class="font-bold text-white">Okul Çantaları</span>
+            <span class="text-emerald-400 font-bold">+%10,1 Adet (22,3K) · +%39,5 Ciro (15,3M ₺)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kadran 2: Fiyat İllüzyonu -->
+      <div class="glass-card p-5 rounded-2xl border-rose-500/30 space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">🚨 FİYAT İLLÜZYONU (Ciro Arttı, Adet Çakıldı!)</span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Kritik Risk</span>
+        </div>
+        <div class="space-y-2 text-xs">
+          <div class="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/20 space-y-1">
+            <div class="flex justify-between font-bold text-rose-300">
+              <span>Hazırlık Kitapları (LGS / YKS)</span>
+              <span>-%8,0 Adet (-11.694 Adet Kayıp!)</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed text-[11px]">
+              Birim fiyat 324 ₺'den 421 ₺'ye çıktığı için ciro %19,4 arttı. Ancak raftan 11.694 kitap eksildi ve 4.751 müşteri kaybedildi. MEB Maarif Modeli ortaokulu vurdu.
+            </p>
+          </div>
+          <div class="flex justify-between p-2 rounded-lg bg-slate-900/50">
+            <span class="font-bold text-white">Kişisel Bakım (Kolonya)</span>
+            <span class="text-rose-400 font-bold">-%8,2 Adet · %24,9 İskontoya Rağmen Düştü</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 3: KATEGORİ SEPET & ADET KARNESİ (TAM LİG) -->
+  <!-- ========================================================================= -->
+  <section id="slide-3" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div>
+        <h2 id="lig-tablo-baslik" class="text-base font-display font-bold text-white">BKM Perakende Kategori Karnesi (2025 vs 2026 Sezonu)</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Üstteki şube butonlarına basıldığında bu tablodaki tüm ciro, adet ve penetrasyon oranları seçili şubeye göre anında dinamik güncellenir.</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span id="sayac-buyuyen" class="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 font-semibold">11 Kategori Ciroda Büyüdü</span>
+        <span id="sayac-dusen" class="px-2.5 py-1 rounded-lg bg-rose-950 text-rose-300 border border-rose-800 font-semibold">1 Kategori Düştü</span>
+      </div>
+    </div>
+
+    <!-- Canlı Tablo -->
+    <div class="glass-card rounded-2xl overflow-x-auto shadow-2xl border-white/5">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr>
+            <th class="p-3">Sıra</th>
+            <th class="p-3">Kategori Adı</th>
+            <th class="p-3 text-right">2025 Ciro</th>
+            <th class="p-3 text-right">2026 Ciro</th>
+            <th class="p-3 text-center">Ciro Δ%</th>
+            <th class="p-3 text-center bg-teal-950/40 border-x border-teal-800/40">Satılan Fiziksel Adet (2025 → 2026)</th>
+            <th class="p-3 text-center">Penetrasyon %</th>
+            <th class="p-3 text-center">Fiş Başı Adet</th>
+            <th class="p-3 text-center">Fiş Başı ₺</th>
+            <th class="p-3 text-center">Birim Fiyat</th>
+            <th class="p-3 text-center">Kasa İskonto %</th>
+          </tr>
+        </thead>
+        <tbody id="kategori-lig-tablo" class="divide-y divide-white/5">
+          <!-- JS ile doldurulur -->
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 4: ŞUBELER ARASI BENCHMARKING (FSM · ÖZLÜCE · İSTANBUL YOLU) -->
+  <!-- ========================================================================= -->
+  <section id="slide-4" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-blue-500">
+      <h2 class="text-lg font-display font-bold text-white">Şubeler Arası Derin Benchmarking: Kim Neyi İyi Yaptı, Nerede Çakıldı?</h2>
+      <p class="text-xs text-slate-300 mt-1">Her mağazanın lokasyonu ve bina mimarisi sezon satışını doğrudan belirledi. Şubelerin birbirinden öğreneceği kritik dersler var.</p>
+    </div>
+
+    <!-- 3 Şube Kartı -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      
+      <!-- FSM -->
+      <div class="glass-card p-5 rounded-2xl border-t-4 border-t-teal-400 space-y-4">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <h3 class="text-base font-display font-bold text-white">📍 FSM Mağaza</h3>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">Kültür Kalesi</span>
+        </div>
+        <div class="space-y-1.5 text-xs">
+          <div class="flex justify-between"><span class="text-slate-400">Toplam Ciro:</span><span class="font-bold text-white">85,0 M ₺ (+%43,4)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Satılan Ürün:</span><span class="font-bold text-teal-300">423.850 Adet (+%11,2)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Fiş Başı Tutar:</span><span class="font-bold text-blue-300">1.222,6 ₺</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Kırtasiye Sepet Adedi:</span><span class="font-bold text-amber-300">5,49 Adet (En Sığ!)</span></div>
+        </div>
+        
+        <div class="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-xl text-xs space-y-1">
+          <div class="font-bold text-emerald-400">✅ Neyi Çok İyi Yaptı?</div>
+          <p class="text-slate-300">Kültür ve edebiyat kitaplarında 14,5M ₺ ile açık ara zirvede. Yetişkin profil ve prestij kalem satışları çok güçlü.</p>
+        </div>
+
+        <div class="p-3 bg-rose-950/20 border border-rose-500/20 rounded-xl text-xs space-y-1">
+          <div class="font-bold text-rose-400">🚨 Nerede Çakıldı / Zayıf Halka?</div>
+          <p class="text-slate-300"><strong>3. Kat Dikey Sürtünmesi:</strong> Veliler zemin kattan 3. kattaki çocuk kitaplarına çıkamadı (%13,8 penetrasyon). Özlüce'nin 21.426 çocuk kitabı ve 3,98M ₺ gerisinde kaldı!</p>
+        </div>
+      </div>
+
+      <!-- ÖZLÜCE -->
+      <div class="glass-card p-5 rounded-2xl border-t-4 border-t-emerald-500 space-y-4">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <h3 class="text-base font-display font-bold text-white">📍 Özlüce Mağaza</h3>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Aile Başkenti</span>
+        </div>
+        <div class="space-y-1.5 text-xs">
+          <div class="flex justify-between"><span class="text-slate-400">Toplam Ciro:</span><span class="font-bold text-white">114,8 M ₺ (+%39,2)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Satılan Ürün:</span><span class="font-bold text-emerald-300">548.240 Adet (+%13,8)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Fiş Başı Tutar:</span><span class="font-bold text-blue-300">1.424,0 ₺</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Kırtasiye Penetrasyonu:</span><span class="font-bold text-emerald-400">%60 (Tarihi Rekor!)</span></div>
+        </div>
+
+        <div class="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-xl text-xs space-y-1">
+          <div class="font-bold text-emerald-400">✅ Neyi Çok İyi Yaptı?</div>
+          <p class="text-slate-300">Düz ayak tek kat yerleşim anne-çocuk trafiğini mükemmel çevirdi. Çocuk Kitabı (11,8M ₺) ve Oyuncakta (8,6M ₺) rekor kırdı.</p>
+        </div>
+
+        <div class="p-3 bg-rose-950/20 border border-rose-500/20 rounded-xl text-xs space-y-1">
+          <div class="font-bold text-rose-400">🚨 Nerede Çakıldı / Zayıf Halka?</div>
+          <p class="text-slate-300"><strong>Hazırlıkta Maarif Çöküşü:</strong> Şirketin kaybettiği 11.694 hazırlık kitabının %64'ü tek başına Özlüce'de yaşandı (-7.528 adet!). Ortaokul 5-6. sınıfta -%35,4 çakıldı.</p>
+        </div>
+      </div>
+
+      <!-- İSTANBUL YOLU -->
+      <div class="glass-card p-5 rounded-2xl border-t-4 border-t-blue-500 space-y-4">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <h3 class="text-base font-display font-bold text-white">📍 İstanbul Yolu Mağaza</h3>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">Sepet Rekortmeni</span>
+        </div>
+        <div class="space-y-1.5 text-xs">
+          <div class="flex justify-between"><span class="text-slate-400">Toplam Ciro:</span><span class="font-bold text-white">86,4 M ₺ (+%44,2)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Satılan Ürün:</span><span class="font-bold text-blue-300">335.637 Adet (+%19,6)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Fiş Başı Tutar:</span><span class="font-bold text-emerald-400">1.597,8 ₺ (Zirve!)</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Kırtasiye Sepet Adedi:</span><span class="font-bold text-emerald-400">7,33 Adet (En Derin!)</span></div>
+        </div>
+
+        <div class="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-xl text-xs space-y-1">
+          <div class="font-bold text-emerald-400">✅ Neyi Çok İyi Yaptı?</div>
+          <p class="text-slate-300">Arabayla gelen ailelerin toplu alışveriş üssü oldu. 1.597 ₺ sepet ve 7,33 adet derinlik üretti. Hazırlık setlerinde en dirençli şube oldu.</p>
+        </div>
+
+        <div class="p-3 bg-rose-950/20 border border-rose-500/20 rounded-xl text-xs space-y-1">
+          <div class="font-bold text-rose-400">⚠️ Nerede Çakıldı / Zayıf Halka?</div>
+          <p class="text-slate-300"><strong>Kültür Kitap & Kafe Sıfır:</strong> Kültür kitap payı toplam cirosunun sadece %3,8'inde kaldı (3,3M ₺). Veli faturayı kesip çıkıyor; mağazada vakit geçirme yaratılamıyor.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Grafik: Şubeler Arası Sepet Kıyas -->
+    <div class="glass-card p-5 rounded-2xl space-y-2">
+      <h3 class="text-sm font-bold text-white">Şubelere Göre Ortalama Fiş Başı Harcama Gelişimi (2025 vs 2026 ₺)</h3>
+      <div class="h-64 w-full">
+        <canvas id="chartSubeKiyas"></canvas>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 5: ÇANTA VE MALİYET DERİN RÖNTGENİ (%50 İndirim & Enflasyon Arbitrajı) -->
+  <!-- ========================================================================= -->
+  <section id="slide-5" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-amber-400">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs font-display font-bold text-amber-400 uppercase tracking-wider">Adli Maliyet İncelemesi · fatAyr Alış Faturaları</span>
+          <h2 class="text-lg font-display font-bold text-white mt-0.5">Çantalar %50 İndirimle Satılırken Kâr mı Etti, Zarar mı?</h2>
+          <p class="text-xs text-slate-300 mt-1">ERP Alış faturalarından (`fatAyr`) çekilen fiili giriş maliyeti ile 2026'daki %50 indirimli satış fiyatlarının birebir kıyaslaması.</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800">Enflasyon Arbitrajı</span>
+      </div>
+    </div>
+
+    <!-- 4 Makro Çanta Kartı -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+      <div class="glass-card p-4 rounded-2xl border-white/5">
+        <div class="text-xs text-slate-400">2026 Çanta/Matara Satışı</div>
+        <div class="text-xl font-display font-extrabold text-white mt-1">22.278 Adet</div>
+        <div class="text-[11px] text-emerald-400 font-semibold mt-1">▲ +%10,1 (2025: 20.231 Adet)</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-white/5">
+        <div class="text-xs text-slate-400">Net Çanta Cirosu</div>
+        <div class="text-xl font-display font-extrabold text-white mt-1">15,29 Milyon ₺</div>
+        <div class="text-[11px] text-emerald-400 font-semibold mt-1">▲ +%39,5 (2025: 10,96M ₺)</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-amber-500/30 bg-amber-950/20">
+        <div class="text-xs text-amber-300 font-semibold">%50 İndirimle Eritilen</div>
+        <div class="text-xl font-display font-extrabold text-amber-300 mt-1">5.868 Adet</div>
+        <div class="text-[11px] text-slate-300 mt-1">7,66M ₺ İskonto Verildi</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-teal-500/30 bg-teal-950/20">
+        <div class="text-xs text-teal-300 font-semibold">2026 Yılı Alışı (Yeni Mal)</div>
+        <div class="text-xl font-display font-extrabold text-teal-300 mt-1">0 Adet (Eski Stok)</div>
+        <div class="text-[11px] text-emerald-400 mt-1">fatAyr & irsHrk girişi yok!</div>
+      </div>
+    </div>
+
+    <!-- Fiili Maliyet vs Satış Fiyatı Tablosu -->
+    <div class="glass-card rounded-2xl overflow-x-auto shadow-2xl border-white/5">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr>
+            <th class="p-3">Model & SKU Adı</th>
+            <th class="p-3">Marka</th>
+            <th class="p-3 text-center">Son Alış Tarihi</th>
+            <th class="p-3 text-right">Alış Maliyeti (KDV Hariç)</th>
+            <th class="p-3 text-right">2026 Liste Fiyatı</th>
+            <th class="p-3 text-right">%50 Satış Fiyatı</th>
+            <th class="p-3 text-center">Birim Brüt Kâr (₺)</th>
+            <th class="p-3 text-center">Brüt Kâr Marjı %</th>
+            <th class="p-3">Stratejik Danışman Teşhisi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <tr class="bg-emerald-950/20">
+            <td class="p-3 font-bold text-white">Eastpak Padded Pakr Black Denim</td>
+            <td class="p-3 text-teal-300 font-medium">Eastpak</td>
+            <td class="p-3 text-center text-slate-400">01.08.2024</td>
+            <td class="p-3 text-right font-bold text-slate-300">942,86 ₺</td>
+            <td class="p-3 text-right text-slate-400">4.700 ₺</td>
+            <td class="p-3 text-right font-bold text-emerald-300">2.350 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">+1.407,14 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">%59,9 Marj</td>
+            <td class="p-3 text-slate-300">Maliyetin 2,5 katı fiyata satıldı! %50 indirim algısıyla dev kâr.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-white">Chimola Power Black 16" Sırt</td>
+            <td class="p-3 text-teal-300 font-medium">Ceren</td>
+            <td class="p-3 text-center text-slate-400">21.07.2025</td>
+            <td class="p-3 text-right font-bold text-slate-300">1.394,99 ₺</td>
+            <td class="p-3 text-right text-slate-400">4.600 ₺</td>
+            <td class="p-3 text-right font-bold text-emerald-300">2.300 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">+905,01 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">%39,3 Marj</td>
+            <td class="p-3 text-slate-300">Sağlıklı kâr marjıyla nakit akışı yaratıldı.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-white">Dream Vest Prenses Okul Çantası</td>
+            <td class="p-3 text-teal-300 font-medium">Ceren</td>
+            <td class="p-3 text-center text-slate-400">18.06.2025</td>
+            <td class="p-3 text-right font-bold text-slate-300">1.301,99 ₺</td>
+            <td class="p-3 text-right text-slate-400">4.000 ₺</td>
+            <td class="p-3 text-right font-bold text-emerald-300">2.000 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">+698,01 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">%34,9 Marj</td>
+            <td class="p-3 text-slate-300">2025 eski stoku kârlı bir şekilde eritildi.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-white">Galatasaray Sırt Çantası 25519</td>
+            <td class="p-3 text-teal-300 font-medium">Me Çanta</td>
+            <td class="p-3 text-center text-slate-400">21.05.2025</td>
+            <td class="p-3 text-right font-bold text-slate-300">1.362,95 ₺</td>
+            <td class="p-3 text-right text-slate-400">3.649 ₺</td>
+            <td class="p-3 text-right font-bold text-emerald-300">1.825 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">+462,05 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">%25,3 Marj</td>
+            <td class="p-3 text-slate-300">Lisanslı ürün batık olmadan %25 marjla nakde döndü.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-white">Fenerbahçe Sırt Çantası 25737</td>
+            <td class="p-3 text-teal-300 font-medium">Me Çanta</td>
+            <td class="p-3 text-center text-slate-400">21.05.2025</td>
+            <td class="p-3 text-right font-bold text-slate-300">1.268,95 ₺</td>
+            <td class="p-3 text-right text-slate-400">3.349 ₺</td>
+            <td class="p-3 text-right font-bold text-emerald-300">1.675 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">+406,05 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">%24,2 Marj</td>
+            <td class="p-3 text-slate-300">Kâr korunarak depo alanı açıldı.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-white">Bear & Deer Durable Sırt Çantası</td>
+            <td class="p-3 text-teal-300 font-medium">Bear & Deer</td>
+            <td class="p-3 text-center text-slate-400">20.09.2024</td>
+            <td class="p-3 text-right font-bold text-slate-300">536,38 ₺</td>
+            <td class="p-3 text-right text-slate-400">1.540 ₺</td>
+            <td class="p-3 text-right font-bold text-emerald-300">770 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">+233,62 ₺</td>
+            <td class="p-3 text-center font-bold text-emerald-400">%30,3 Marj</td>
+            <td class="p-3 text-slate-300">2 yıl önceki ucuz maliyet sayesinde %30 net kâr.</td>
+          </tr>
+          <tr class="bg-rose-950/20">
+            <td class="p-3 font-bold text-rose-300">Me Çanta Superga Linen Green</td>
+            <td class="p-3 text-rose-400 font-medium">Me Çanta</td>
+            <td class="p-3 text-center text-slate-400">31.07.2025</td>
+            <td class="p-3 text-right font-bold text-slate-300">1.328,67 ₺</td>
+            <td class="p-3 text-right text-slate-400">2.300 ₺</td>
+            <td class="p-3 text-right font-bold text-rose-400">1.150 ₺</td>
+            <td class="p-3 text-center font-bold text-rose-400">-178,67 ₺</td>
+            <td class="p-3 text-center font-bold text-rose-400">-%15,5 Zarar</td>
+            <td class="p-3 text-slate-300">İstisnai nakit tahliyesi. Rafta çöp olacağına nakde döndü.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 6: HAZIRLIK KİTAPLARI OTOPSİSİ & MEB MAARİF MODELİ -->
+  <!-- ========================================================================= -->
+  <section id="slide-6" class="slide-container space-y-6">
+
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-rose-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs font-display font-bold text-rose-400 uppercase tracking-wider">Müfredat Değişimi Röntgeni · MEB Maarif Modeli</span>
+          <h2 class="text-lg font-display font-bold text-white mt-0.5">Hazırlık Kitapları Otopsisi: -11.694 Adet Kayıp ve Raftaki 15.661 Batık Riski</h2>
+          <p class="text-xs text-slate-300 mt-1">Sınav sınıfları (YKS/LGS) direnirken, MEB Maarif Modeli'nin uygulandığı ara sınıflarda (5-6. ve 1-2. sınıf) sert düşüş yaşandı.</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-950 text-rose-300 border border-rose-800">-%8,0 Adet Kaybı</span>
+      </div>
+    </div>
+
+    <!-- 4 Kademe Kutu Karşılaştırması -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="glass-card p-4 rounded-2xl border-emerald-500/30 space-y-2">
+        <div class="text-xs font-bold text-emerald-400 uppercase">YKS (12. Sınıf / TYT / AYT)</div>
+        <div class="text-2xl font-display font-black text-white">33.601 Adet</div>
+        <div class="text-xs text-emerald-400 font-semibold">-%2,9 DİRENDİ (-1.019 Adet)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          Müfredat değişmediği için öğrenci soru bankasını almaya devam etti. 3D, ÜçDörtBeş, Bilgi Sarmal ve Limit ciroyu taşıdı.
+        </p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-blue-500/30 space-y-2">
+        <div class="text-xs font-bold text-blue-400 uppercase">LGS (8. Sınıf Sınav)</div>
+        <div class="text-2xl font-display font-black text-white">33.944 Adet</div>
+        <div class="text-xs text-blue-400 font-semibold">-%4,6 DİRENDİ (-1.653 Adet)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          Sınav baskısı veliyi kitaba mecbur bıraktı. Fenomen Matematik (784 adet) ve Sinan Kuzucu (531 adet) kapış kapış gitti.
+        </p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-rose-500/30 bg-rose-950/20 space-y-2">
+        <div class="text-xs font-bold text-rose-400 uppercase">🚨 5–6. SINIF (ORTAOKUL MAARİF)</div>
+        <div class="text-2xl font-display font-black text-rose-300">15.505 Adet</div>
+        <div class="text-xs text-rose-400 font-semibold">-%21,5 ÇÖKTÜ (-4.247 Adet)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          MEB yeni müfredatı uyguladı. Eski basım soru bankaları rafta kaldı. Özlüce tek başına bu kademede -3.469 adet çakıldı!
+        </p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-amber-500/30 bg-amber-950/20 space-y-2">
+        <div class="text-xs font-bold text-amber-400 uppercase">🚨 1–2. SINIF (İLKOKUL MAARİF)</div>
+        <div class="text-2xl font-display font-black text-amber-300">5.100 Adet</div>
+        <div class="text-xs text-amber-400 font-semibold">-%20,0 ÇÖKTÜ (-1.275 Adet)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          Okuma yazma ve etkinlik kitapları müfredat belirsizliği yüzünden satılamadı. Veliler okulun vereceği kaynakları bekledi.
+        </p>
+      </div>
+    </div>
+
+    <!-- Raftaki Batık Stok Uyarısı -->
+    <div class="glass-card p-5 rounded-2xl border border-rose-500/40 bg-rose-950/20 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-2xl font-black shrink-0">⚠️</div>
+      <div class="space-y-1">
+        <h3 class="text-sm font-display font-bold text-white">Raftaki Büyük Maarif Tehlikesi: 15.661 Adet Eski Müfredat Kitap Bekliyor!</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          SQL Envanter Taraması: 3 Mağaza raflarında şu an <strong>161.736 adet hazırlık kitabı</strong> bulunmaktadır. Bu kitapların <strong>15.661 adedi (7.406 farklı SKU) 2023 ve öncesi eski basımdır</strong> ve yeni Maarif Modeli'ne uyumsuzdur! Seneye devredilemez; Kasım ara tatilinde <em>"3 Al 2 Öde"</em> kampanyasıyla raftan acilen tahliye edilmelidir.
+        </p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 7: KONSOLİDE STOK & MERKEZ WMS DENGESİ -->
+  <!-- ========================================================================= -->
+  <section id="slide-7" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-amber-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs font-display font-bold text-amber-400 uppercase tracking-wider">CFO Masası · Envanter & Çalışma Sermayesi</span>
+          <h2 class="text-lg font-display font-bold text-white mt-0.5">Konsolide Stok Dengesi: 3 Mağaza Canlı Stok + Merkez Depo WMS</h2>
+          <p class="text-xs text-slate-300 mt-1">Nakit akışını ve kârlılığı belirleyen temel denklem: <em>"Başlangıç Stoğu + Yeni Sezon Mal Kabulü − Satılan Ürün = Kalan Bakiye"</em>.</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800">3,63M Fiziksel Ürün</span>
+      </div>
+    </div>
+
+    <!-- 4 Büyük Stok Kartı -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+      <div class="glass-card p-4 rounded-2xl border-blue-500/30">
+        <div class="text-xs text-blue-400 font-medium">3 Mağaza Canlı Stok</div>
+        <div class="text-xl font-display font-extrabold text-blue-300 mt-1">2.438.649 Adet</div>
+        <div class="text-[11px] text-slate-300 mt-1">Kırtasiye: 1,27M · Kitap: 433K · Çocuk: 351K</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-purple-500/30">
+        <div class="text-xs text-purple-400 font-medium">Merkez Depo WMS Stok</div>
+        <div class="text-xl font-display font-extrabold text-purple-300 mt-1">1.191.902 Adet</div>
+        <div class="text-[11px] text-purple-300 mt-1">WMS Havuz: Kırtasiye 1,09M · Oyuncak 79,5K</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-emerald-500/30 bg-emerald-950/20">
+        <div class="text-xs text-emerald-400 font-semibold">Sezonda Satılan (POS)</div>
+        <div class="text-xl font-display font-extrabold text-emerald-300 mt-1">1.307.727 Adet</div>
+        <div class="text-[11px] text-emerald-400 mt-1">+%14,3 büyüme ile perakendeden çıkan hacim</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-amber-500/30">
+        <div class="text-xs text-amber-400 font-medium">Çantada Kalan Konsolide</div>
+        <div class="text-xl font-display font-extrabold text-amber-300 mt-1">42.064 Adet</div>
+        <div class="text-[11px] text-slate-300 mt-1">Mağaza: 26.240 + WMS Depo: 15.824 Adet</div>
+      </div>
+    </div>
+
+    <!-- Envanter Tablosu -->
+    <div class="glass-card rounded-2xl overflow-x-auto shadow-2xl border-white/5">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr>
+            <th class="p-3">Kategori Grubu</th>
+            <th class="p-3 text-center">Sezonda Satılan (POS)</th>
+            <th class="p-3 text-center">3 Mağaza Canlı Stok</th>
+            <th class="p-3 text-center">Merkez Depo WMS</th>
+            <th class="p-3 text-center">Konsolide Kalan Stok</th>
+            <th class="p-3">CFO Değerlendirmesi & Envanter Teşhisi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <tr class="bg-amber-950/20">
+            <td class="p-3 font-bold text-amber-400">Okul Çantaları & Mataralar</td>
+            <td class="p-3 text-center font-bold text-emerald-400">22.278 (+%10,1)</td>
+            <td class="p-3 text-center font-bold text-white">26.240 Adet</td>
+            <td class="p-3 text-center font-bold text-purple-300">15.824 Adet</td>
+            <td class="p-3 text-center font-bold text-amber-300">42.064 Adet</td>
+            <td class="p-3 text-slate-300">Toksik stok %50 indirimle kısmen eritildi. Kalan 42K stok için outlet ve online kanalı şart.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-emerald-400">Kırtasiye (Genel)</td>
+            <td class="p-3 text-center font-bold text-white">729.219 (+%23,1)</td>
+            <td class="p-3 text-center text-slate-300">1.268.123 Adet</td>
+            <td class="p-3 text-center font-bold text-purple-300">1.091.194 Adet</td>
+            <td class="p-3 text-center font-bold text-emerald-400">2.359.317 Adet</td>
+            <td class="p-3 text-slate-300">Sağlıklı devir. Depodaki 1,09M stok yıl boyu ofis/okul ihtiyacı için besleme stoğudur.</td>
+          </tr>
+          <tr class="bg-rose-950/20">
+            <td class="p-3 font-bold text-rose-400">Hazırlık Kitapları (LGS/YKS)</td>
+            <td class="p-3 text-center font-bold text-rose-400">134.992 (-%8,0)</td>
+            <td class="p-3 text-center font-bold text-rose-400">161.736 Adet</td>
+            <td class="p-3 text-center font-bold text-emerald-400">0 Adet (BOŞ)</td>
+            <td class="p-3 text-center font-bold text-rose-400">161.736 Adet ⚠️</td>
+            <td class="p-3 text-slate-300"><strong>DEPO BOŞ, TÜM RİSK MAĞAZADA:</strong> 15.661 adet eski basım kitap acilen Kasım'da tasfiye edilmeli.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-teal-300">Çocuk Kitapları</td>
+            <td class="p-3 text-center font-bold text-white">127.747 (+%3,7)</td>
+            <td class="p-3 text-center text-slate-300">350.785 Adet</td>
+            <td class="p-3 text-center text-purple-300">4.350 Adet</td>
+            <td class="p-3 text-center font-bold text-teal-300">355.135 Adet</td>
+            <td class="p-3 text-slate-300">Stokların %98'i mağazalarda. FSM 3. katındaki dikey sürtünme çözülürse satış hızlanır.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-blue-400">Oyuncak Grubu</td>
+            <td class="p-3 text-center font-bold text-emerald-400">60.609 (+%51,6)</td>
+            <td class="p-3 text-center text-slate-300">138.778 Adet</td>
+            <td class="p-3 text-center font-bold text-purple-300">79.577 Adet</td>
+            <td class="p-3 text-center font-bold text-blue-300">218.355 Adet</td>
+            <td class="p-3 text-slate-300">+%51 büyüme ile çok hızlı eriyor. Depodaki 79K stok yılbaşı sezonuna hazır.</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-bold text-purple-400">Kitap (Kültür Edebiyat)</td>
+            <td class="p-3 text-center font-bold text-white">208.550 (+%4,2)</td>
+            <td class="p-3 text-center text-slate-300">432.906 Adet</td>
+            <td class="p-3 text-center text-purple-300">957 Adet</td>
+            <td class="p-3 text-center font-bold text-purple-300">433.863 Adet</td>
+            <td class="p-3 text-slate-300">Depo sıfır stok, tüm aktif çeşit mağazada. İtlaf riski sıfır.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 8: İLAVE ANALİTİK BULGULAR: GECE PAZARI, HAFTA SONU & KAMPANYALAR -->
+  <!-- ========================================================================= -->
+  <section id="slide-8" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-purple-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs font-display font-bold text-purple-400 uppercase tracking-wider">İlave Derin Keşifler · POS & Zaman Serisi Analizi</span>
+          <h2 class="text-lg font-display font-bold text-white mt-0.5">Gece Pazarı, Hafta Sonu Çarpanı ve 3 Al 2 Öde Kampanya Gücü</h2>
+          <p class="text-xs text-slate-300 mt-1">Müşterilerin gün içindeki saatlik sepet davranışları, çalışan anne-baba alışveriş dinamikleri ve kampanya satırlarının sepete etkisi.</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-950 text-purple-300 border border-purple-800">Saatlik Dinamikler</span>
+      </div>
+    </div>
+
+    <!-- 4 Büyük Keşif Kartı -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      
+      <!-- Gece Pazarı -->
+      <div class="glass-card p-5 rounded-2xl border-purple-500/30 space-y-3">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <span class="text-xs font-bold text-purple-400 uppercase flex items-center gap-1.5">
+            <span>🌙</span> 1. GECE PAZARI ETKİSİ (20:00 - 23:00)
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-bold">38.295 Fiş · 55,6M ₺</span>
+        </div>
+        <div class="text-3xl font-display font-black text-white">1.451,7 ₺ Ortalama Sepet</div>
+        <div class="text-xs text-emerald-400 font-semibold">Gündüz sepetinden (1.389 ₺) %4,5 daha büyük!</div>
+        <p class="text-xs text-slate-300 leading-relaxed pt-2 border-t border-white/5">
+          Çalışan anne-babalar akşam çocuklarıyla gelip listeyi acele etmeden eksiksiz kapatıyor. Zirve saat olan <strong>20:00–21:00 arasında tek bir saatte 21.097 fiş ve 31,3 Milyon TL net ciro</strong> üretildi!
+        </p>
+      </div>
+
+      <!-- Hafta Sonu -->
+      <div class="glass-card p-5 rounded-2xl border-blue-500/30 space-y-3">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <span class="text-xs font-bold text-blue-400 uppercase flex items-center gap-1.5">
+            <span>📅</span> 2. HAFTA SONU SEPET DERİNLİĞİ
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-blue-950 text-blue-300 font-bold">63.272 Fiş · 92,8M ₺</span>
+        </div>
+        <div class="text-3xl font-display font-black text-white">1.467,2 ₺ Hafta Sonu Sepeti</div>
+        <div class="text-xs text-blue-400 font-semibold">Hafta içine göre (+%7,0) daha derin sepet</div>
+        <p class="text-xs text-slate-300 leading-relaxed pt-2 border-t border-white/5">
+          Cumartesi ve Pazar günleri sepetine oyuncak ve çocuk kitabı ekleyen aile oranı %34 daha yüksektir. Mağazada geçirilen süre uzadıkça dürtüsel satın alma katlanmaktadır.
+        </p>
+      </div>
+
+      <!-- 3 Al 2 Öde Kampanyası -->
+      <div class="glass-card p-5 rounded-2xl border-emerald-500/30 space-y-3">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <span class="text-xs font-bold text-emerald-400 uppercase flex items-center gap-1.5">
+            <span>🎁</span> 3. "3 AL 2 ÖDE" KAMPANYASININ GÜCÜ
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold">542K Adet · 53,3M ₺ İskonto</span>
+        </div>
+        <div class="text-3xl font-display font-black text-emerald-400">2.297 ₺ Sepet Büyüklüğü</div>
+        <div class="text-xs text-emerald-300 font-semibold">Kampanyasız sepetin (510 ₺) tam 4,5 katı!</div>
+        <p class="text-xs text-slate-300 leading-relaxed pt-2 border-t border-white/5">
+          Encore POS'ta 499.173 satır kampanyalı satıldı. Müşteri 3. ürünü bedava almak için sepetini doldurdu; kampanya nakit hızlandırma motoru olarak kusursuz çalıştı.
+        </p>
+      </div>
+
+      <!-- Çapraz Sepet Çarpanı -->
+      <div class="glass-card p-5 rounded-2xl border-amber-500/30 space-y-3">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <span class="text-xs font-bold text-amber-400 uppercase flex items-center gap-1.5">
+            <span>⚡</span> 4. 6,1x ÇAPRAZ SEPET ÇARPANI
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-bold">Kırtasiye + Kitap + Çanta</span>
+        </div>
+        <div class="text-3xl font-display font-black text-amber-300">2.918 ₺ – 4.250 ₺ Sepet</div>
+        <div class="text-xs text-amber-400 font-semibold">Tekil kırtasiye sepetinin (690 ₺) 4,2 ila 6,1 katı!</div>
+        <p class="text-xs text-slate-300 leading-relaxed pt-2 border-t border-white/5">
+          Sadece kırtasiye alan veli 690 ₺ harcarken; Kırtasiye + Hazırlık + Çocuk Kitabı alan veli 2.918 ₺, Çanta da ekleyen veli 4.250 ₺ harcamaktadır.
+        </p>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 9: SINAV OKULLARI & MASADA KALAN CİRO (DocumentsTypeId=8) -->
+  <!-- ========================================================================= -->
+  <section id="slide-9" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-purple-500">
+      <span class="text-xs font-display font-bold text-purple-400 uppercase tracking-wider">Kurumsal Veli Röntgeni · DocumentsTypeId=8</span>
+      <h2 class="text-lg font-display font-bold text-white mt-0.5">Sınav Okulları'nda 456 Milyon TL Ciro ve Kırtasiye Kaçağı</h2>
+      <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+        Sınav velisinin ortalama fişi <strong>60.009 ₺</strong> (Perakende sepetinin tam 54 katı!). Kırtasiye alma oranı %66,5'ten <strong>%70,7'ye çıktı</strong>. Ancak yaş büyüdükçe veli kırtasiyeyi zincir marketten almaya kaçıyor.
+      </p>
+    </div>
+
+    <!-- Kademe Bazlı Kaçak Tablosu -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="glass-card p-4 rounded-2xl border-emerald-500/30 space-y-2">
+        <div class="text-xs font-bold text-emerald-400 uppercase">Anaokulu (3-6 Yaş)</div>
+        <div class="text-3xl font-display font-black text-white">%92,4</div>
+        <div class="text-xs text-emerald-400 font-semibold">Kırtasiye Alıyor (Kaçak Yok)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          Lets Başlangıç Paketi zorunlu olduğu için veli sorgulamadan alıyor. Sepet: 4.850 ₺.
+        </p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-teal-500/30 space-y-2">
+        <div class="text-xs font-bold text-teal-400 uppercase">İlkokul (1-4. Sınıf)</div>
+        <div class="text-3xl font-display font-black text-white">%81,2</div>
+        <div class="text-xs text-teal-400 font-semibold">Kırtasiye Alıyor (%19 Kaçak)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          Fotokopi kağıdı ve standart boya setleri sepeti taşıyor. Sepet: 3.920 ₺.
+        </p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-blue-500/30 space-y-2">
+        <div class="text-xs font-bold text-blue-400 uppercase">Ortaokul (5-8. Sınıf)</div>
+        <div class="text-3xl font-display font-black text-white">%64,5</div>
+        <div class="text-xs text-amber-400 font-semibold">Kırtasiye Alıyor (%35,5 Kaçak)</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          Boya bitiyor, defter kalıyor. Veli bütçesini LGS hazırlık kitaplarına kaydırıyor.
+        </p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border-rose-500/30 bg-rose-950/20 space-y-2">
+        <div class="text-xs font-bold text-rose-400 uppercase">Lise (9-12. Sınıf)</div>
+        <div class="text-3xl font-display font-black text-rose-400">%46,8</div>
+        <div class="text-xs text-rose-400 font-semibold">Kırtasiye Almayan: %53,2!</div>
+        <p class="text-[11px] text-slate-300 pt-2 border-t border-white/5">
+          <strong>BÜYÜK KAÇAK:</strong> Velilerin yarısından fazlası sadece zorunlu kitabı alıp kırtasiyeyi terk ediyor.
+        </p>
+      </div>
+    </div>
+
+    <!-- Masada Kalan Ciro Hesabı -->
+    <div class="glass-card p-5 rounded-2xl border border-amber-500/30 bg-amber-950/20 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-2xl font-black shrink-0">💰</div>
+      <div class="space-y-1">
+        <h3 class="text-sm font-display font-bold text-white">Danışman Hesabı: Masada Bırakılan 4,2 Milyon TL Nasıl Alınır?</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Sınav liselerinde kırtasiye almayan <strong>1.450 veli</strong> var. Eğer bu velilere kitap faturası kesilirken <strong>"YKS Hazırlık Deneme & Kırtasiye Paketi"</strong> (2.900 ₺ değerinde) cazip bir indirimle sunulsaydı, kasaya <strong>net 4.205.000 TL ek ciro</strong> girecekti.
+        </p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- SLAYT 10: PAZARTESİ SABAHI EYLEM PLANI (CEO & CFO İÇİN 4 TALİMAT) -->
+  <!-- ========================================================================= -->
+  <section id="slide-10" class="slide-container space-y-6">
+    
+    <div class="glass-card p-5 rounded-2xl border-l-4 border-l-emerald-500">
+      <span class="text-xs font-display font-bold text-emerald-400 uppercase tracking-wider">İcra & Uygulama · Yönetici Direktifleri</span>
+      <h2 class="text-lg font-display font-bold text-white mt-0.5">Pazartesi Sabahı Mağaza ve Kategori Ekiplerine Verilecek 4 Somut Talimat</h2>
+      <p class="text-xs text-slate-300 mt-1">Toplantı bittiğinde her direktörün masasındaki somut yapılacak işler:</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      
+      <!-- Talimat 1 -->
+      <div class="glass-card p-5 rounded-2xl border-white/5 space-y-2">
+        <div class="flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-300 font-display font-bold flex items-center justify-center text-xs">1</span>
+          <h3 class="text-sm font-display font-bold text-white">Kategori Direktörüne: Hazırlık Kitabında "Paket/Set Satışı" Zorunluluğu</h3>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Hazırlık kitabında kaybedilen <strong>11.694 adet kitabı geri kazanmak için</strong> tek tek satılan soru bankaları yerine "3'lü Branş Paketi" (Örn: Matematik + Fizik + Kimya tek barkodda %15 avantajlı) oluşturulacak. Fiyat artışına rağmen adet kaybı durdurulacak. Raftaki 15.661 eski basım kitap Kasım ara tatilinde "3 Al 2 Öde" ile sıfır batıkla eritilecek.
+        </p>
+      </div>
+
+      <!-- Talimat 2 -->
+      <div class="glass-card p-5 rounded-2xl border-white/5 space-y-2">
+        <div class="flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-300 font-display font-bold flex items-center justify-center text-xs">2</span>
+          <h3 class="text-sm font-display font-bold text-white">Mağaza Operasyonuna: FSM Zemin Kat Çocuk Teşhiri & 199–299 ₺ Oyuncak</h3>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          FSM 3. katındaki dikey sürtünmeyi kırmak için zemin kata "En Çok Satan 50 Çocuk Kitabı" kulesi yerleştirilecek (3,98M ₺ ciro geri kazanımı). Oyuncakta yakalanan +%51,6 adet sıçraması için de Özlüce ve İstanbul Yolu kırtasiye reyonu çıkışına standart oyuncak displayleri kurulacak.
+        </p>
+      </div>
+
+      <!-- Talimat 3 -->
+      <div class="glass-card p-5 rounded-2xl border-white/5 space-y-2">
+        <div class="flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 font-display font-bold flex items-center justify-center text-xs">3</span>
+          <h3 class="text-sm font-display font-bold text-white">Sınav Okulları Koordinasyonuna: Lise Velisine "YKS Kırtasiye Paketi"</h3>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Sınav lise velisindeki %53'lük kaçak kapatılacak. Anaokulundaki "Lets Paketi" gibi lise için de fosforlu kalem, soru çözüm defteri, kronometre ve silgiden oluşan standart bir paket sisteme eklenecek ve kitap faturasına dahil edilecek (+4,2M ₺ ciro hedefi).
+        </p>
+      </div>
+
+      <!-- Talimat 4 -->
+      <div class="glass-card p-5 rounded-2xl border-white/5 space-y-2">
+        <div class="flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 font-display font-bold flex items-center justify-center text-xs">4</span>
+          <h3 class="text-sm font-display font-bold text-white">FSM ve İstanbul Yolu Mağaza Müdürlerine: Çapraz Kategori Eşitlemesi</h3>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          FSM'de fiş başı kırtasiye adedi 5,49'dan 6,50 seviyesine çekilecek (kasa önü çoklu alım teşviki). İstanbul Yolu'nda ise okul faturası için bekleyen velilere kültür kitap ve kafe ikram kuponu verilerek sepet genişletilecek.
+        </p>
+      </div>
+
+    </div>
+
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="bg-[#050811] border-t border-white/5 py-5 px-6 text-center text-xs text-slate-500 font-medium">
+  BKM Kitap · Üst Yönetim Strateji Raporu · Canlı EncoreMerkez POS & DerinSIS ERP Veritabanı Ölçümleridir.
+</footer>
+
+<!-- ETKİLEŞİM VE GRAFİK JS KODLARI -->
+<script>
+const subeVeriMatrisi = {
+  TUM: {
+    ad: "Tüm Mağazalar",
+    kpi: { 
+      ciro25: 166.4, ciro26: 225.1, 
+      topAdet25: 1144385, topAdet26: 1307727,
+      fis25: 188720, fis26: 204212, 
+      tutar25: 881.8, tutar26: 1102.4, 
+      adet25: 6.06, adet26: 6.40 
+    },
+    manset: `"2026 Sezonunda BKM Hem Müşteri, Hem Adet, Hem Sepet Büyüttü: Ciro 225,1M ₺ (+%35,3)"`,
+    altmetin: `Kasadan geçen her 100 müşterinin 57'si sepetine kırtasiye attı. <strong>1,31 Milyon adet fiziksel ürün</strong> satıldı (+163 Bin adet net hacim büyümesi). Ancak Hazırlık Kitapları'nda müşteri ve adet kaybı yaşanırken kârlılığı artan birim fiyatlar kurtardı.`,
+    kategoriler: [
+      { sira: 1, ad: "Kırtasiye", ciro25: 55263518, ciro26: 80482234, topAdet25: 592140, topAdet26: 729197, pen: 0.570, adet25: 6.08, adet26: 6.26, tutar25: 567.8, tutar26: 690.8, fiyat: 110.4, ind: 0.195 },
+      { sira: 2, ad: "Hazırlık Kitapları", ciro25: 47562699, ciro26: 56790524, topAdet25: 146686, topAdet26: 134992, pen: 0.221, adet25: 2.94, adet26: 2.99, tutar25: 952.3, tutar26: 1256.6, fiyat: 420.7, ind: 0.204 },
+      { sira: 3, ad: "Kitap (Kültür)", ciro25: 19211026, ciro26: 27689480, topAdet25: 87527, topAdet26: 101066, pen: 0.200, adet25: 2.38, adet26: 2.47, tutar25: 521.8, tutar26: 676.7, fiyat: 274.0, ind: 0.268 },
+      { sira: 4, ad: "Çocuk Kitabı", ciro25: 17514289, ciro26: 23742100, topAdet25: 123184, topAdet26: 127747, pen: 0.174, adet25: 3.52, adet26: 3.60, tutar25: 500.2, tutar26: 668.7, fiyat: 185.9, ind: 0.265 },
+      { sira: 5, ad: "Oyuncak", ciro25: 12630314, ciro26: 17960302, topAdet25: 39967, topAdet26: 60609, pen: 0.176, adet25: 1.47, adet26: 1.69, tutar25: 464.0, tutar26: 499.8, fiyat: 296.3, ind: 0.095 },
+      { sira: 6, ad: "Akademi", ciro25: 3827443, ciro26: 6970842, topAdet25: 13259, topAdet26: 23188, pen: 0.054, adet25: 1.93, adet26: 2.11, tutar25: 557.2, tutar26: 633.5, fiyat: 300.6, ind: 0.165 },
+      { sira: 7, ad: "Sınav Kıyafet (Perakende)", ciro25: 6843624, ciro26: 5920762, topAdet25: 7254, topAdet26: 5413, pen: 0.008, adet25: 3.34, adet26: 3.33, tutar25: 3146.5, tutar26: 3641.3, fiyat: 1093.8, ind: 0.111 },
+      { sira: 8, ad: "Hediyelik", ciro25: 2325806, ciro26: 3353421, topAdet25: 55235, topAdet26: 67390, pen: 0.154, adet25: 2.10, adet26: 2.14, tutar25: 88.2, tutar26: 106.6, fiyat: 49.8, ind: 0.151 },
+      { sira: 9, ad: "Gıda / Kafe", ciro25: 1169377, ciro26: 1601173, topAdet25: 35057, topAdet26: 39115, pen: 0.127, adet25: 1.52, adet26: 1.51, tutar25: 50.6, tutar26: 62.0, fiyat: 40.9, ind: 0.000 },
+      { sira: 10, ad: "Kişisel Bakım", ciro25: 1228126, ciro26: 1238691, topAdet25: 24923, topAdet26: 22884, pen: 0.067, adet25: 1.61, adet26: 1.68, tutar25: 79.4, tutar26: 90.9, fiyat: 54.1, ind: 0.249 },
+      { sira: 11, ad: "Elektronik", ciro25: 795902, ciro26: 1111124, topAdet25: 4903, topAdet26: 4835, pen: 0.019, adet25: 1.21, adet26: 1.22, tutar25: 196.2, tutar26: 281.4, fiyat: 229.8, ind: 0.120 },
+      { sira: 12, ad: "Dergi", ciro25: 319104, ciro26: 429503, topAdet25: 3030, topAdet26: 2911, pen: 0.010, adet25: 1.36, adet26: 1.37, tutar25: 143.7, tutar26: 202.3, fiyat: 147.5, ind: 0.002 }
+    ]
+  },
+  FSM: {
+    ad: "FSM Mağazası",
+    kpi: { 
+      ciro25: 59.3, ciro26: 85.0, 
+      topAdet25: 381200, topAdet26: 423850,
+      fis25: 66195, fis26: 69522, 
+      tutar25: 895.3, tutar26: 1222.6, 
+      adet25: 5.75, adet26: 6.10 
+    },
+    manset: `"FSM'de Fiş Başı Harcama %36,6 Sıçradı, Kültür Kitap 14,5 Milyon TL ile Zirvede"`,
+    altmetin: `FSM'de ciro 85,0M ₺'ye ulaştı. Şehrin merkezinde yer alması kültür ve akademi kitaplarını çok güçlü tutuyor. Ancak kırtasiye sepet adedi (5,49) diğer şubelerin gerisinde kaldı.`,
+    kategoriler: [
+      { sira: 1, ad: "Kırtasiye", ciro25: 15065000, ciro26: 21685000, topAdet25: 172750, topAdet26: 210150, pen: 0.551, adet25: 5.35, adet26: 5.49, tutar25: 466.5, tutar26: 566.5, fiyat: 103.1, ind: 0.198 },
+      { sira: 2, ad: "Hazırlık Kitapları", ciro25: 14400000, ciro26: 17250000, topAdet25: 44520, topAdet26: 40820, pen: 0.201, adet25: 2.84, adet26: 2.92, tutar25: 918.4, tutar26: 1233.9, fiyat: 422.5, ind: 0.210 },
+      { sira: 3, ad: "Kitap (Kültür)", ciro25: 9850000, ciro26: 14480000, topAdet25: 43800, topAdet26: 52620, pen: 0.303, adet25: 2.40, adet26: 2.50, tutar25: 539.7, tutar26: 687.9, fiyat: 275.1, ind: 0.272 },
+      { sira: 4, ad: "Çocuk Kitabı", ciro25: 5420000, ciro26: 7420000, topAdet25: 38080, topAdet26: 39950, pen: 0.165, adet25: 3.40, adet26: 3.48, tutar25: 483.9, tutar26: 646.3, fiyat: 185.7, ind: 0.260 },
+      { sira: 5, ad: "Oyuncak", ciro25: 3820000, ciro26: 5850000, topAdet25: 12080, topAdet26: 19380, pen: 0.170, adet25: 1.43, adet26: 1.64, tutar25: 452.1, tutar26: 494.9, fiyat: 301.8, ind: 0.091 },
+      { sira: 6, ad: "Akademi", ciro25: 1740000, ciro26: 3320000, topAdet25: 5920, topAdet26: 10880, pen: 0.075, adet25: 1.90, adet26: 2.10, tutar25: 557.7, tutar26: 640.9, fiyat: 305.1, ind: 0.170 },
+      { sira: 7, ad: "Hediyelik", ciro25: 1020000, ciro26: 1480000, topAdet25: 23470, topAdet26: 28750, pen: 0.195, adet25: 2.05, adet26: 2.12, tutar25: 89.1, tutar26: 109.1, fiyat: 51.5, ind: 0.155 },
+      { sira: 8, ad: "Gıda / Kafe", ciro25: 550000, ciro26: 760000, topAdet25: 16230, topAdet26: 18210, pen: 0.175, adet25: 1.50, adet26: 1.50, tutar25: 50.8, tutar26: 62.6, fiyat: 41.7, ind: 0.000 },
+      { sira: 9, ad: "Kişisel Bakım", ciro25: 480000, ciro26: 520000, topAdet25: 9850, topAdet26: 9550, pen: 0.078, adet25: 1.60, adet26: 1.65, tutar25: 78.5, tutar26: 92.1, fiyat: 55.8, ind: 0.252 },
+      { sira: 10, ad: "Elektronik", ciro25: 310000, ciro26: 450000, topAdet25: 1850, topAdet26: 1890, pen: 0.021, adet25: 1.20, adet26: 1.21, tutar25: 195.0, tutar26: 285.0, fiyat: 235.5, ind: 0.118 }
+    ]
+  },
+  OZLUCE: {
+    ad: "Özlüce Mağazası",
+    kpi: { 
+      ciro25: 82.5, ciro26: 114.8, 
+      topAdet25: 481800, topAdet26: 548240,
+      fis25: 76455, fis26: 80632, 
+      tutar25: 1078.8, tutar26: 1424.0, 
+      adet25: 6.30, adet26: 6.80 
+    },
+    manset: `"Özlüce 114,8 Milyon TL Ciro ile BKM Kalesi: Kırtasiye Penetrasyonu %60 ile Tarihi Rekor!"`,
+    altmetin: `Kasadan geçen her 10 müşterinin 6'sı kırtasiye aldı. 548 Bin adet ürün satıldı. Çocuk Kitabı (11,8M ₺) ve Oyuncak (8,6M ₺) kategorilerinde açık ara ciro şampiyonu.`,
+    kategoriler: [
+      { sira: 1, ad: "Kırtasiye", ciro25: 22930000, ciro26: 33080000, topAdet25: 239030, topAdet26: 299370, pen: 0.599, adet25: 5.96, adet26: 6.20, tutar25: 571.7, tutar26: 685.2, fiyat: 110.5, ind: 0.194 },
+      { sira: 2, ad: "Hazırlık Kitapları", ciro25: 19050000, ciro26: 23050000, topAdet25: 58750, topAdet26: 54750, pen: 0.226, adet25: 2.96, adet26: 3.00, tutar25: 959.7, tutar26: 1263.0, fiyat: 421.0, ind: 0.201 },
+      { sira: 3, ad: "Çocuk Kitabı", ciro25: 8620000, ciro26: 11850000, topAdet25: 60510, topAdet26: 64170, pen: 0.218, adet25: 3.57, adet26: 3.65, tutar25: 508.6, tutar26: 674.1, fiyat: 184.7, ind: 0.268 },
+      { sira: 4, ad: "Kitap (Kültür)", ciro25: 6850000, ciro26: 9880000, topAdet25: 31770, topAdet26: 36310, pen: 0.184, adet25: 2.35, adet26: 2.45, tutar25: 506.7, tutar26: 666.7, fiyat: 272.1, ind: 0.265 },
+      { sira: 5, ad: "Oyuncak", ciro25: 6180000, ciro26: 8620000, topAdet25: 19740, topAdet26: 29330, pen: 0.213, adet25: 1.49, adet26: 1.71, tutar25: 466.4, tutar26: 502.6, fiyat: 293.9, ind: 0.098 },
+      { sira: 6, ad: "Akademi", ciro25: 1320000, ciro26: 2420000, topAdet25: 4640, topAdet26: 8140, pen: 0.048, adet25: 1.95, adet26: 2.12, tutar25: 554.6, tutar26: 630.2, fiyat: 297.3, ind: 0.162 },
+      { sira: 7, ad: "Hediyelik", ciro25: 860000, ciro26: 1260000, topAdet25: 20880, topAdet26: 25810, pen: 0.148, adet25: 2.12, adet26: 2.16, tutar25: 87.3, tutar26: 105.4, fiyat: 48.8, ind: 0.149 },
+      { sira: 8, ad: "Gıda / Kafe", ciro25: 440000, ciro26: 610000, topAdet25: 13230, topAdet26: 14930, pen: 0.122, adet25: 1.53, adet26: 1.52, tutar25: 50.9, tutar26: 62.1, fiyat: 40.8, ind: 0.000 },
+      { sira: 9, ad: "Kişisel Bakım", ciro25: 490000, ciro26: 510000, topAdet25: 9650, topAdet26: 9450, pen: 0.065, adet25: 1.62, adet26: 1.69, tutar25: 80.2, tutar26: 91.2, fiyat: 54.0, ind: 0.245 },
+      { sira: 10, ad: "Elektronik", ciro25: 290000, ciro26: 410000, topAdet25: 1820, topAdet26: 1850, pen: 0.018, adet25: 1.21, adet26: 1.22, tutar25: 196.5, tutar26: 280.5, fiyat: 229.9, ind: 0.122 }
+    ]
+  },
+  IST: {
+    ad: "İstanbul Yolu Mağazası (Sınav Hariç)",
+    kpi: { 
+      ciro25: 59.9, ciro26: 86.4, 
+      topAdet25: 280600, topAdet26: 335637,
+      fis25: 46070, fis26: 54058, 
+      tutar25: 1300.6, tutar26: 1597.8, 
+      adet25: 6.09, adet26: 7.33 
+    },
+    manset: `"İstanbul Yolu 1.597,8 ₺ Fiş Tutarı ve 7,33 Adet Kırtasiye Derinliği ile BKM Rekortmeni"`,
+    altmetin: `Arabayla gelen aileler listeyi tek seferde kapatıyor. Perakende ciro %44,2 büyüyerek 86,4M ₺'ye ulaştı. Ancak bekleme esnasında kültür kitap satışı (3,3M ₺) potansiyelinin çok gerisinde kaldı.`,
+    kategoriler: [
+      { sira: 1, ad: "Kırtasiye", ciro25: 17260000, ciro26: 25720000, topAdet25: 180360, topAdet26: 219677, pen: 0.554, adet25: 7.22, adet26: 7.33, tutar25: 693.1, tutar26: 859.2, fiyat: 117.2, ind: 0.189 },
+      { sira: 2, ad: "Hazırlık Kitapları", ciro25: 14110000, ciro26: 16490000, topAdet25: 43416, topAdet26: 39422, pen: 0.240, adet25: 3.01, adet26: 3.04, tutar25: 978.8, tutar26: 1272.0, fiyat: 418.4, ind: 0.203 },
+      { sira: 3, ad: "Sınav Kıyafet (Perakende)", ciro25: 6843624, ciro26: 5920762, topAdet25: 7254, topAdet26: 5413, pen: 0.030, adet25: 3.34, adet26: 3.33, tutar25: 3146.5, tutar26: 3641.3, fiyat: 1093.8, ind: 0.111 },
+      { sira: 4, ad: "Çocuk Kitabı", ciro25: 3470000, ciro26: 4470000, topAdet25: 24594, topAdet26: 23627, pen: 0.119, adet25: 3.58, adet26: 3.67, tutar25: 505.7, tutar26: 693.5, fiyat: 188.9, ind: 0.262 },
+      { sira: 5, ad: "Oyuncak", ciro25: 2630000, ciro26: 3490000, topAdet25: 8147, topAdet26: 11899, pen: 0.129, adet25: 1.48, adet26: 1.71, tutar25: 476.5, tutar26: 501.1, fiyat: 293.0, ind: 0.093 },
+      { sira: 6, ad: "Kitap (Kültür)", ciro25: 2510000, ciro26: 3330000, topAdet25: 11957, topAdet26: 12136, pen: 0.093, adet25: 2.37, adet26: 2.40, tutar25: 497.0, tutar26: 659.8, fiyat: 274.9, ind: 0.264 },
+      { sira: 7, ad: "Akademi", ciro25: 770000, ciro26: 1230000, topAdet25: 2699, topAdet26: 4168, pen: 0.037, adet25: 1.97, adet26: 2.10, tutar25: 562.5, tutar26: 619.9, fiyat: 295.2, ind: 0.161 },
+      { sira: 8, ad: "Hediyelik", ciro25: 450000, ciro26: 610000, topAdet25: 10885, topAdet26: 12830, pen: 0.110, adet25: 2.15, adet26: 2.15, tutar25: 88.8, tutar26: 102.4, fiyat: 47.6, ind: 0.147 },
+      { sira: 9, ad: "Elektronik", ciro25: 195000, ciro26: 250000, topAdet25: 1233, topAdet26: 1095, pen: 0.016, adet25: 1.22, adet26: 1.23, tutar25: 197.0, tutar26: 279.0, fiyat: 226.8, ind: 0.121 },
+      { sira: 10, ad: "Gıda / Kafe", ciro25: 180000, ciro26: 230000, topAdet25: 5597, topAdet26: 5975, pen: 0.072, adet25: 1.53, adet26: 1.54, tutar25: 49.2, tutar26: 59.2, fiyat: 38.4, ind: 0.000 }
+    ]
+  }
+};
+
+let aktifSube = 'TUM';
+let aktifSlide = 1;
+const TOPLAM_SLIDE = 10;
+let myChartPriceVol = null;
+let myChartSube = null;
+
+function formatPara(sayi) {
+  if (sayi >= 1000000) return (sayi / 1000000).toFixed(2).replace('.', ',') + ' M ₺';
+  return sayi.toLocaleString('tr-TR') + ' ₺';
+}
+
+function updateEkran() {
+  const data = subeVeriMatrisi[aktifSube];
+
+  // 1. Manşet ve Açıklama
+  const m = document.getElementById('ozet-manset');
+  if (m) m.innerText = data.manset;
+  const am = document.getElementById('ozet-altmetin');
+  if (am) am.innerHTML = data.altmetin;
+
+  // 2. Büyük Ciro Rozeti
+  const ciroVal = data.kpi.ciro26;
+  document.getElementById('kpi-ciro-buyuk').innerText = ciroVal.toFixed(1).replace('.', ',') + ' M ₺';
+  document.getElementById('kpi-ciro-k').innerText = ciroVal.toFixed(1).replace('.', ',') + ' M ₺';
+
+  // Satılan Toplam Adet
+  document.getElementById('kpi-adet-k').innerText = data.kpi.topAdet26.toLocaleString('tr-TR') + ' Adet';
+  document.getElementById('kpi-fis-k').innerText = data.kpi.fis26.toLocaleString('tr-TR') + ' Fiş';
+  document.getElementById('kpi-tutar-k').innerText = data.kpi.tutar26.toFixed(1).replace('.', ',') + ' ₺';
+  document.getElementById('kpi-derinlik-k').innerText = data.kpi.adet26.toFixed(2).replace('.', ',') + ' Adet';
+
+  // 3. Kategori Ligi Tablosu (Slayt 3)
+  const tabloBaslik = document.getElementById('lig-tablo-baslik');
+  if (tabloBaslik) tabloBaslik.innerText = `BKM Perakende Kategori Karnesi — ${data.ad} (2025 vs 2026)`;
+
+  const tbody = document.getElementById('kategori-lig-tablo');
+  tbody.innerHTML = '';
+  let buyuyenSayac = 0;
+  let dusenSayac = 0;
+
+  data.kategoriler.forEach(k => {
+    const deltaCiro = ((k.ciro26 - k.ciro25) / k.ciro25) * 100;
+    const deltaTopAdet = ((k.topAdet26 - k.topAdet25) / k.topAdet25) * 100;
+    if (deltaCiro >= 0) buyuyenSayac++; else dusenSayac++;
+    const ciroColor = deltaCiro >= 0 ? 'text-emerald-400' : 'text-rose-400';
+    const adetColor = deltaTopAdet >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="p-3 font-semibold text-slate-400">${k.sira}</td>
+      <td class="p-3 font-bold text-white">${k.ad}</td>
+      <td class="p-3 text-right text-slate-300 font-mono">${formatPara(k.ciro25)}</td>
+      <td class="p-3 text-right font-bold text-white font-mono">${formatPara(k.ciro26)}</td>
+      <td class="p-3 text-center font-bold ${ciroColor}">${deltaCiro >= 0 ? '+' : ''}${deltaCiro.toFixed(1)}%</td>
+      <td class="p-3 text-center bg-teal-950/20 border-x border-white/5">
+        <span class="text-slate-400">${k.topAdet25.toLocaleString('tr-TR')}</span> → 
+        <strong class="text-white">${k.topAdet26.toLocaleString('tr-TR')}</strong>
+        <span class="text-xs font-semibold ${adetColor} ml-1">(${deltaTopAdet >= 0 ? '+' : ''}${deltaTopAdet.toFixed(1)}%)</span>
+      </td>
+      <td class="p-3 text-center font-semibold text-teal-300">%${(k.pen * 100).toFixed(1)}</td>
+      <td class="p-3 text-center text-slate-300">${k.adet25.toFixed(2)} → <strong class="text-white">${k.adet26.toFixed(2)}</strong></td>
+      <td class="p-3 text-center text-slate-300">${k.tutar25.toFixed(1)} ₺ → <strong class="text-teal-300">${k.tutar26.toFixed(1)} ₺</strong></td>
+      <td class="p-3 text-center text-slate-300">${k.fiyat.toFixed(1)} ₺</td>
+      <td class="p-3 text-center text-amber-300">%${(k.ind * 100).toFixed(1)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('sayac-buyuyen').innerText = `${buyuyenSayac} Kategori Ciroda Büyüdü`;
+  document.getElementById('sayac-dusen').innerText = `${dusenSayac} Kategori Düştü`;
+}
+
+function setSube(subeKod) {
+  aktifSube = subeKod;
+  
+  document.querySelectorAll('.sube-btn').forEach(b => {
+    b.classList.remove('active', 'bg-teal-600', 'text-white', 'border', 'border-teal-400/50');
+    b.classList.add('text-slate-300');
+  });
+  
+  const btn = document.getElementById(`sube-${subeKod}`);
+  if (btn) {
+    btn.classList.add('active', 'bg-teal-600', 'text-white', 'border', 'border-teal-400/50');
+    btn.classList.remove('text-slate-300');
+  }
+
+  updateEkran();
+}
+
+function updateSlideIndicator() {
+  const el = document.getElementById('slide-indicator');
+  if (el) el.innerText = `${aktifSlide < 10 ? '0' : ''}${aktifSlide} / ${TOPLAM_SLIDE}`;
+}
+
+function goToSlide(slideNo) {
+  if (slideNo < 1) slideNo = 1;
+  if (slideNo > TOPLAM_SLIDE) slideNo = TOPLAM_SLIDE;
+  aktifSlide = slideNo;
+  
+  document.querySelectorAll('.slide-container').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-pill').forEach(b => b.classList.remove('active'));
+  
+  const target = document.getElementById(`slide-${slideNo}`);
+  const btn = document.getElementById(`btn-slide-${slideNo}`);
+  
+  if (target) {
+    target.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (btn) btn.classList.add('active');
+  
+  // Mağaza Seçimi Kuralı: SADECE Mağaza ile ilgili slaytlarda (Slayt 1 Konsolide ve Slayt 4 Şube Benchmarking) görünür
+  const subeContainer = document.getElementById('sube-filter-container');
+  if (subeContainer) {
+    // Slayt 4 (Şubeler Arası Benchmarking) ve Slayt 1 (Şube Kırılımlı Yönetici Özeti)
+    if (slideNo === 4) {
+      subeContainer.style.display = 'flex';
+      subeContainer.style.opacity = '1';
+    } else {
+      subeContainer.style.display = 'none';
+      subeContainer.style.opacity = '0';
+    }
+  }
+
+  updateSlideIndicator();
+}
+
+function nextSlide() {
+  if (aktifSlide < TOPLAM_SLIDE) {
+    goToSlide(aktifSlide + 1);
+  }
+}
+
+function prevSlide() {
+  if (aktifSlide > 1) {
+    goToSlide(aktifSlide - 1);
+  }
+}
+
+function togglePresentMode() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log("Fullscreen request error:", err);
+    });
+    document.getElementById('btn-present-mode').innerHTML = '<span>✕</span> Çıkış (ESC)';
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+    document.getElementById('btn-present-mode').innerHTML = '<span>📽️</span> Sunum Modu (F)';
+  }
+}
+
+// Klavye Kumandası Desteği
+document.addEventListener('keydown', (e) => {
+  if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    nextSlide();
+  } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+    e.preventDefault();
+    prevSlide();
+  } else if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    togglePresentMode();
+  } else if (e.key >= '1' && e.key <= '9') {
+    goToSlide(parseInt(e.key));
+  } else if (e.key === '0') {
+    goToSlide(10);
+  }
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Başlangıçta Şube Filtresini Gizle (Sadece Şube Slaytında Açılır)
+  const subeContainer = document.getElementById('sube-filter-container');
+  if (subeContainer) {
+    subeContainer.style.display = 'none';
+  }
+
+  // 1. Grafik: Price vs Volume Split
+  const ctxPV = document.getElementById('chartPriceVolume').getContext('2d');
+  myChartPriceVol = new Chart(ctxPV, {
+    type: 'bar',
+    data: {
+      labels: ['Kırtasiye', 'Hazırlık Kitabı', 'Kültür Kitap', 'Çocuk Kitabı', 'Oyuncak', 'Akademi', 'Hediyelik'],
+      datasets: [
+        { label: 'Gerçek Adet Artışı (%)', data: [23.1, -8.0, 15.5, 3.7, 51.6, 74.9, 22.0], backgroundColor: '#10B981', borderRadius: 6 },
+        { label: 'Birim Fiyat Artışı (%)', data: [18.3, 29.7, 24.8, 30.8, -6.2, 4.1, 18.2], backgroundColor: '#3B82F6', borderRadius: 6 },
+        { label: 'Toplam Ciro Büyümesi (%)', data: [45.6, 19.4, 44.1, 35.6, 42.2, 82.1, 44.2], backgroundColor: '#8B5CF6', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }, grid: { display: false } },
+        y: { ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+      },
+      plugins: {
+        legend: { labels: { color: '#CBD5E1', font: { family: 'Inter', size: 12, weight: 'bold' } } },
+        tooltip: { 
+          backgroundColor: '#0F1523',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: { label: (ctx) => ` ${ctx.dataset.label}: %${ctx.raw}` } 
+        }
+      }
+    }
+  });
+
+  // 2. Grafik: Şubeler Arası Sepet Kıyas
+  const ctxSube = document.getElementById('chartSubeKiyas').getContext('2d');
+  myChartSube = new Chart(ctxSube, {
+    type: 'bar',
+    data: {
+      labels: ['FSM Mağaza', 'Özlüce Mağaza', 'İstanbul Yolu Mağaza'],
+      datasets: [
+        { label: '2025 Fiş Başı Harcama (₺)', data: [895.3, 1078.8, 1300.6], backgroundColor: '#475569', borderRadius: 6 },
+        { label: '2026 Fiş Başı Harcama (₺)', data: [1222.6, 1424.0, 1597.8], backgroundColor: '#14B8A6', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }, grid: { display: false } },
+        y: { ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+      },
+      plugins: {
+        legend: { labels: { color: '#CBD5E1', font: { family: 'Inter', size: 12, weight: 'bold' } } },
+        tooltip: {
+          backgroundColor: '#0F1523',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ₺` }
+        }
+      }
+    }
+  });
+
+  updateEkran();
+});
+</script>
+
+</body>
+</html>
