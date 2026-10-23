@@ -291,3 +291,10 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 09.10 20:01 · T-024: tamam (canlı koruma 09.10 19:59: Guard_September_2026_OldAndNewFormulaEqual yeşil 28 s; kırmızı kip magaza-net-eski.sql IN(1,2,3,6,7) → İst.Yolu kırmızı, fark 330.349.209,10; elle geri yazıldı, git diff tests/ boş, yeniden yeşil 24 s; koşu T-025 + T-026 bölüm 1 uygulanmış HEAD 31fb438 üzerinde)
 - 09.10 20:01 · T-025: tamam (koruma koşusu yeşil 09.10 19:59 — rakam değişmedi, inceleme önceden temiz)
 - 09.10 20:02 · T-027: KOŞAMADI (09.10 20:05 değişiklik öncesi canlı koşu) — SALT-OKUMA KAPISI 'birden çok ifade': CanonicalQuery.Read blok A'ya sonraki 'GO' satırını da katıyor (H08-merkez-depo.sql:45-46 ';' + 'GO'), ReadOnlyGate ';' sonrası GO'yu ikinci ifade sayıyor. Kusur T-023 altyapısında (kilitli). KARAR bekliyor — öneri: CanonicalQuery.Read blok sonundaki tek başına 'GO' satırlarını atsın (T-023 düzeltme turu, test-önce: GO'lu blok testi), kilit yenileme GMY onayıyla; T-027 uygulaması o zamana kadar bekler
+- 23.10 09:30 · Commit: b755bcc kural(erp-write-policy): bkm-magaza yazılabilir alanına 003 mağaza listesi ve 006 yetki tabloları (GMY 17.10.2026)
+- 23.10 09:30 · Commit: 264f365 chore(paket): merkezi paket yönetimi (kök Directory.Packages.props) + Pkcs 10.0.13
+- 23.10 09:30 · Commit: 19c4147 chore: .env kopyaları ve obj/ git dışı; SsmsExcelExporter/obj takipten çıktı
+- 23.10 09:30 · Commit: 1d8ee60 docs(kural): bkm-magaza 006 D2 tespit/karar tabloları BkmPanel yazma listesine (GMY 19.10.2026)
+- 23.10 09:30 · Commit: 9c5a85d feat(shared): .env anahtarı aynı adlı ortam değişkeniyle ezilebilir (ikinci makine PANEL_DB_HOST)
+- 23.10 09:30 · Commit: 8d83121 docs(kural): erp-write-policy — bkm-magaza tanım ve ayar tabloları (PanelStoreFindingType, PanelSetting, PanelPurchaseRejectReason; GMY 18.10 / 20.10.2026)
+- 23.10 09:30 · Commit: 5269485 docs(kural): erp-write-policy — bkm-magaza spec 009 tabloları (PanelPerson, PanelPersonSyncRun, PanelStoreSetupWave + kolonlar), Zirve 7 alan salt okuma
