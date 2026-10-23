@@ -136,3 +136,6 @@ lib/Bkm.TestAltyapi/bin/
 lib/Bkm.TestAltyapi/obj/
 tests/GmDashboard.Tests/bin/
 tests/GmDashboard.Tests/obj/
+
+# Müdür/personel maaş verisi (kişisel veri, KVKK) — git dışı
+briefings/**/mudur-maas*.json

@@ -128,6 +128,22 @@ cur.execute("""
 for sid, mk, st in cur.fetchall():
     mstok.setdefault(sid, {})[mk] = int(st or 0)
 
+# --- SON ALIŞ (depoya giriş): merkez depo (mekan 12) ehTip=0 'Alış' son tarihi ---
+#     ehTip=0 = tedarikçiden mal kabul/alış (canlı doğrulandı 2026-10-12; mekan 12'de
+#     ehTip=13 "Depo→Mağaza"=ÇIKIŞ, mal kabul DEĞİL). Rapor ayı sonuna kadar (ehTrhS < T2).
+print("Son alış (depoya giriş) tarihi çekiliyor (irsHrk ehTip=0, mekan 12)...", flush=True)
+songiris = {}   # stkID -> datetime.date
+cur.execute("""
+    SELECT h.ehstkID, CONVERT(date, MAX(h.ehTrhS))
+    FROM dbo.irsHrk h WITH(NOLOCK)
+    JOIN bkm.UrunBilgi u WITH(NOLOCK) ON u.stkID = h.ehstkID AND u.Kat3ID IN (10,12,16)
+    WHERE h.ehTip = 0 AND h.ehMekan = 12 AND h.ehTrhS < ?
+    GROUP BY h.ehstkID""", T2)
+for sid, trh in cur.fetchall():
+    if trh is not None:
+        songiris[sid] = trh
+print(f"  {len(songiris)} ürün depoya alış tarihli", flush=True)
+
 # --- SATIŞ: ŞUBE (irs_vw net) — stkID × kanal × ay ---
 print("Şube satış çekiliyor (irs_vw net)...", flush=True)
 sales = {}   # (stkID, "FSM"/"OZL"/"IST"/"ETIC") -> {ay: adet}
@@ -188,6 +204,7 @@ if MALIYET:
 HEAD += ["Toplam Etiket Değeri"]
 if MALIYET:
     HEAD += ["Toplam Maliyet Değeri"]
+HEAD += ["Depoya Son Giriş (Alış)", "Son Girişten Bu Yana (gün)"]
 HEAD += ["depo_stok", "FSM_stok", "OZL_stok", "IST_stok", "Toplam Stok", "Son 1 yıl Satış", "Stok Dönüş Hızı"]
 for ch in CHANNELS:
     HEAD += [f"{ch}_{m}" for m in months]
@@ -205,6 +222,8 @@ def block_last12(ch):                       # kanalın son-12-ay aralığı (har
     lo = start + max(0, nm - 12)            # son 12 ay (az ay varsa tümü)
     return get_column_letter(lo), get_column_letter(end)
 RANGES = [block_last12(ch) for ch in CHANNELS]
+# "Kaç gün önce" referansı = rapor ayının SON günü (arşiv tutarlı; today'e bağlı değil)
+ref_date = datetime.date(end_excl // 100, end_excl % 100, 1) - datetime.timedelta(days=1)
 
 # --- Görsel biçim (temmuz dosyasıyla eşleşen renk bantları + sayı formatı) ---
 F_DEGER = PatternFill("solid", fgColor="D9D9D9")   # gri  — tutar/değer kolonları
@@ -219,7 +238,7 @@ FILL = {"Toplam Etiket Değeri": F_DEGER, "Toplam Maliyet Değeri": F_DEGER,
 _METIN = {"stkID", "BarkodAna", "stkAd", "mrkAd", "Kategori3", "Maliyet Kaynak"}
 def nfmt(h):
     if h == "Stok Dönüş Hızı": return "#,##0.00"
-    if h == "Son Alış Tarihi": return "dd.mm.yyyy"
+    if h == "Depoya Son Giriş (Alış)": return "dd.mm.yyyy"
     if h in _METIN: return None
     return "#,##0"                                  # tutar/stok/satış/fiyat → binlik ayraç
 NF = {h: nfmt(h) for h in HEAD}
@@ -248,6 +267,8 @@ for r, sid in enumerate(order, start=2):
     row += [f"={UF}{r}*{TS}{r}"]                        # Toplam Etiket Değeri = ÜstFiyat×ToplamStok
     if MALIYET:
         row += [f"={SM}{r}*{TS}{r}"]                    # Toplam Maliyet Değeri = SonAlış×ToplamStok
+    sa = songiris.get(sid)                              # depoya son alış (ehTrhS = stok efektif giriş günü)
+    row += [sa, (ref_date - sa).days if sa else None]  # tarih + rapor ayı sonundan kaç gün önce
     row += [depo.get(sid, 0),                           # depo
             d.get(1, 0), d.get(4477, 0), d.get(4478, 0),  # FSM/OZL/IST stok
             f"=SUM({DEPO}{r}:{IST}{r})",                # Toplam Stok

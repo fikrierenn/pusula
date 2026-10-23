@@ -246,6 +246,7 @@ codes:
     lookup: dbo.irsTip_vw
     irs_eTip_ayni: "irs.eTip (belge başlık) AYNI lookup (irsTip_vw) — aynı kodlar. 17.06 201-doğrulama: eTip 1=Satış (7.9M), 0=Alış (29.6M), 100=POS Satış. ⚠️ DENETİM TUZAĞI: irs.eTip=1'i 'alış' SANMA — 1=Satış. (sql-denetci 17.06 GetMarjAsync'i bu yüzden yanlış KIRMIZI işaretledi → eTip IN(1,4,100) hepsi SATIŞ, doğru.)"
     adet_isareti: "17.06 201-kanıt: Alış (ehTip 0, +Yerel Alım 10) ehAdetN POZİTİF (giriş); Satış (1,4,100) NEGATİF (çıkış). irsHrk + fatAyr aynı. ehTutarN daima pozitif. (Eski ADR-004 'ehTip=1 alış/negatif' TERSTİ → sql-server-conventions.md 17.06 düzeltildi.)"
+    yon_mekan_bagimli: "⚠ TRANSFER tiplerinde (13 Depo→Mağaza · 9 Mağaza→Depo · 8/11 Depo-Depo) adet YÖNÜ hareketin MEKANINA bağlı — aynı ehTip bir mekanda giriş, karşı mekanda çıkış. ÖLÇÜLDÜ 2026-10-12: ehTip=13 MEKAN 12'de (merkez depo) ÇIKIŞ (ehAdetN<0, depodan mağazaya sevk); mağaza tarafında AYNI 13 giriş=mal kabul (satır 299'daki FSM notu bu bağlam). 'Depoya giriş/kabul' için mekan 12'de doğru tip = 0 Alış (+ 9 iade, 16 stok ekle, 88 diğer giriş, 3 satış iade); 13 giriş DEĞİLDİR. Arşiv: sorgular/2026-10-12-irs-tarih-kolonlari-anlami.sql"
     satis_gross: [1, 4, 100]
     iade: [3, 5, 101]
     net_ciro: "SUM(gross) - SUM(iade); ehTutarN daima pozitif"
