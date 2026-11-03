@@ -292,6 +292,7 @@ codes:
     lookup: dbo.irsTip_vw
     irs_eTip_ayni: "irs.eTip (belge başlık) AYNI lookup (irsTip_vw) — aynı kodlar. 17.06 201-doğrulama: eTip 1=Satış (7.9M), 0=Alış (29.6M), 100=POS Satış. ⚠️ DENETİM TUZAĞI: irs.eTip=1'i 'alış' SANMA — 1=Satış. (sql-denetci 17.06 GetMarjAsync'i bu yüzden yanlış KIRMIZI işaretledi → eTip IN(1,4,100) hepsi SATIŞ, doğru.)"
     adet_isareti: "17.06 201-kanıt: Alış (ehTip 0, +Yerel Alım 10) ehAdetN POZİTİF (giriş); Satış (1,4,100) NEGATİF (çıkış). irsHrk + fatAyr aynı. ehTutarN daima pozitif. (Eski ADR-004 'ehTip=1 alış/negatif' TERSTİ → sql-server-conventions.md 17.06 düzeltildi.)"
+    yon_mekan_bagimli: "⚠ TRANSFER tiplerinde (13 Depo→Mağaza · 9 Mağaza→Depo · 8/11 Depo-Depo) adet YÖNÜ hareketin MEKANINA bağlı — aynı ehTip bir mekanda giriş, karşı mekanda çıkış. ÖLÇÜLDÜ 2026-10-12: ehTip=13 MEKAN 12'de (merkez depo) ÇIKIŞ (ehAdetN<0, depodan mağazaya sevk); mağaza tarafında AYNI 13 giriş=mal kabul (satır 299'daki FSM notu bu bağlam). 'Depoya giriş/kabul' için mekan 12'de doğru tip = 0 Alış (+ 9 iade, 16 stok ekle, 88 diğer giriş, 3 satış iade); 13 giriş DEĞİLDİR. Arşiv: sorgular/2026-10-12-irs-tarih-kolonlari-anlami.sql"
     satis_gross: [1, 4, 100]
     iade: [3, 5, 101]
     net_ciro: "SUM(gross) - SUM(iade); ehTutarN daima pozitif"
@@ -355,6 +356,14 @@ codes:
       saymak sahaf alımını yanlış sınıflar. Ciro filtreleri etkilenmez (88/89 satış değil);
       etkilenen: satınalma/maliyet analizleri `ehTip IN (0,10)` kullandığı için sahaf girişi
       DIŞARIDA kalır (TODO K-32). Arşiv: sorgular/2026-09-03-irstip-88-89-diger-giris-cikis.sql"
+    alis_kanali_depo_vs_magaza: "**ALIŞ İKİ KANAL: 0 (çoğu merkez depo-12) + 10 Yerel Alım (çoğu MAĞAZAYA
+      DİREKT).** ÖLÇÜLDÜ 2026 (ehTrhS>=2026-01-01): ehTip=0 mekan12 = 4.520.336 ad · ehTip=10 mağaza
+      (4478=1.461.544 · 4477=1.139.904 · 1=794.537) = ~3,4M ad mağazaya direkt (depoya uğramaz).
+      ⚠ FIFO/parti havuzu yalnız `ehTip=0 AND ehMekan=12` alırsa yerel-alımlı ürünlerin partisi HİÇ
+      görünmez (Son Parti/En Eski Kalan/Taze parti boş). DOĞRU parti havuzu = `ehTip IN (0,10)` TÜM mekan
+      + `GROUP BY ehstkID, CONVERT(date,ehTrhS)` (aynı gün tüm kanal tek parti). Örnek kaçan: 1667706
+      Key Chain yerel 39.986 ad, depo-alışı 0. Tek-parti/yalnız-depo ürün (1697900) etkilenmez.
+      Uygulandı: scripts/satinalma_toplanti_analiz.py. Arşiv: sorgular/2026-11-03-yerel-alim-ehtip10-kanal.sql"
     kume_kaynagi: "dbo.irsTip_vw (34 kod) — LİSTE ELLE YAZILMAZ, lookup'tan okunur. Canlı veri bunun 26'sını kullanıyor (ölçüm 2026-09-03); kullanılmayanlar silinmedi, 'canlıda yok' diye işaretli. ⚠ irs.eTip (başlık) ile irsHrk.ehTip (satır) AYNI kümedir (ölçüldü: iki taraf da tam aynı 26 kod). ⚠ fatTip/sipTip AYRI kümelerdir — aynı sayı farklı şey demek (ör. 100 yalnız irs tarafında var). Koruma: degismezler.json → irs-tip-kodlari-lookupta."
     last_verified: '2026-09-03'
   fat.eTip:            # dbo.fatTip_vw — fat SADECE faturalar (perakende kasa YOK → irsHrk 100)
