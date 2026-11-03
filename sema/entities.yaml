@@ -1834,13 +1834,13 @@ entities:
     grain: "birleşik hareket (ehID+ehstkID+ehTip)"
     note: "ciro/stok ana kaynağı"
     columns:
-      ehTrhS: {label: "İş tarihi", description: "Stok/ciro DAIMA bu tarih (=irs.eTarihS). hrkTarih=audit log."}
+      ehTrhS: {label: "İş tarihi", description: "Stok/ciro DAIMA bu tarih = STOK EFEKTİF (malın stoğa/depoya işlendiği gün) = irs.eTarihS (ÖLÇÜLDÜ 2026-10-12: ehTip=0 mekan 12, 11.740 hareket → ehTrhS=eTarihS %100; ehTrhS=eTarih(irsaliye belge) yalnız %77,9). İrsaliyenin KENDİ belge tarihi irs.eTarih'tir, ehTrhS DEĞİL. hrkTarih=kayıt anı (audit, timestamp). 'Depoya son giriş/kabul' = MAX(ehTrhS) ehTip=0 ehMekan=12. Arşiv: sorgular/2026-10-12-irs-tarih-kolonlari-anlami.sql"}
       ehTip: {label: "Hareket tipi", description: "1/4/100=satış, 3/5/101=iade → codes.yaml"}
       ehAdetN: {label: "Adet (net)", description: "Çıkışta NEGATİF (satış/iade)"}
       ehTutarN: {label: "Tutar KDV hariç", description: "= ehTutar−ehIndirim. DAIMA POZİTİF — iade sign'ı CASE ile çevir"}
       ehAltDepo: {label: "Alt depo", description: "ehAltDepo=0 filtresi ZORUNLU (raporlarda)"}
     last_verified: "2026-08-18"   # canlı şema doğrulaması (varlık + pk/key kolon) 2026-08-18
-  dbo.irs: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 47 kolon · 7.113.101 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "36 dosyada geciyor (ornek: sorgular/04-karzarar/2026-05-07-karzarar-hizli-v4.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v5-tempindex.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v6-prefilter.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık", last_verified: "2026-08-18"}
+  dbo.irs: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde tablo MEVCUT · 47 kolon · 7.113.101 satir · kayittaki 5 pk/key kolonunun 5 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "36 dosyada geciyor (ornek: sorgular/04-karzarar/2026-05-07-karzarar-hizli-v4.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v5-tempindex.sql · sorgular/04-karzarar/2026-05-07-karzarar-hizli-v6-prefilter.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: table, pk: eID, key: [eNo, eMekan, eFirma, eTip, eTarihS, eGC], note: "evrak başlık (irsaliye). irsHrk.ehID=irs.eID. TARİH KOLONLARI (ÖLÇÜLDÜ 2026-10-12, sorgular/2026-10-12-irs-tarih-kolonlari-anlami.sql): eTarih=İRSALİYENİN KENDİ belge tarihi (tedarikçi belgesi üstündeki; mal yolda olabilir) · eTarihS=STOK EFEKTİF tarihi (stoğa işlendiği gün)=irsHrk.ehTrhS %100 · kTarih/gTarih/oTarih=kaydın sisteme girildiği an (timestamp; %56,6'sı belge gününden farklı) · eTarihV=vade. 'Depoya kabul günü' = eTarihS(=ehTrhS), eTarih DEĞİL.", last_verified: "2026-10-12"}
   dbo.mekan_vw: {evidence: "2026-09-12 CANLI DOGRULAMA (sys.columns + sys.dm_db_partition_stats): DerinSISBkm icinde view MEVCUT · 3 kolon · satir sayisi partition-stats'ta YOK (view) · kayittaki 3 pk/key kolonunun 3 tanesi de canlida VAR. Arsiv: sorgular/2026-09-12-sema-cekirdek-kanit-dogrulama.sql", applied_in: "6 dosyada geciyor (ornek: sorgular/2026-06-bayram-izin-analiz.sql · sorgular/2026-08-17-sirket-donem-point-kontrol.sql · sorgular/2026-08-18-alici-boyutu-ve-iade-kurali-kesif.sql). DIKKAT: bu ERISIMDIR, DOGRULUK DEGIL — yanlis bir sorgu da o tabloyu kullanir. Kanit `evidence` alanindadir.", type: view, key: [mekanID, mekanAd, mekanTip], last_verified: "2026-08-18"}
 
   # POS
@@ -2510,6 +2510,7 @@ entities:
     desiz_tuzagi: "⚠ **DESIZ ('DEVAMSIZ') devamsızlık oranı olarak RAPORLANMAZ.** 29.08-04.09.2026 ölçümü: 217 kişi-günün 178'i TagMod='SABIT' (03:00-03:01 kukla pencere = saat takibi olmayan kadro), 22'si 818, 14'ü TagMod'suz; **G1-G4 vardiyalı personelde SIFIR**. Yani kod, kart basmayan kadroyu otomatik 'devamsız' işaretliyor. Ham oran alınırsa Özlüce %25,7 çıkar ve YANLIŞ olur."
     sabit_modeli: "TagMod SABIT/SBT9 penceresi 03:00-03:01 (kukla) → plan eğrisine KATILMAZ, ayrı sayılır. Fiili kişi-saatin yalnız %1,5'i bunlarda (7.204 kişi-saatin 107'si) → plan↔fiili kıyası güvenli."
     magaza_ayraci: "Per_Grp1 LIKE 'MA%LAR' (MAĞAZALAR) + LTRIM(RTRIM(Per_Grp2)) IN ('FSM','ÖZLÜCE','İST.YOLU'). KAFELER ayrı Per_Grp1. Per_Grp2'de HEYKEL/ŞURA da var (POS'ta karşılığı yok). Per_Grp2 sondaki boşlukla gelir → LTRIM/RTRIM zorunlu."
+    bolum_gorev_alanlari: "ÖLÇÜLDÜ 2026-10-15: `Per_Grp3` = reyon/bölüm (KÜLTÜR, KIRTASİYE, YARDIMCI KİTAP, ÇOCUK, AKADEMİ, KASA, MAL KABUL, OYUNCAK, İDARİ İŞLER…), `Per_Grp4` = görev (REYON ŞEFİ / SATIŞ DANIŞMANI). PDKS `Per_Grp3` ↔ Zirve `vw_PersonelDepartman.Departman` aynı sözlüğü taşır: Eylül 2026 Kültür okutan 22 kişinin 22si Zirvede de Departman=KÜLTÜR ve aynı şube (ad-soyad eşleşmesi). Değerler BUGÜNKÜ atamadır — ay içinde bölüm değiştiren kişi bugünkü bölümünde sayılır. Kanıt: sorgular/2026-10-15-pdks-kultur-bolum-kadro.sql blok 1-2 + 6."
     vardiya_katalogu: "Kalıcı olan MODEL YAPISI (kodlar değişebilir, liste değil kural): mağaza vardiyaları iki ana dalga = sabah (G1 09:00-17:30, G2 10:00-18:30) + akşam (G3 13:30-22:00, G4 14:30-23:00); ofis/yönetici 9 saatlik tek dalga (818/830-1/919). HER modelin molası TEK ve SABİT bir saate çakılı (G3→17:00, G2→13:00, G4→18:00) — kademeli mola YOK. Güncel pencereler TTagMod'dan CANLI okunur."
     gecoweb_rapor_omurgasi: "⭐⭐ **PDKS'in `Gecoweb`/`zei32` giriş-çıkış raporunun OMURGASI `TTagMoS`'tur — `TTagZei` DEĞİL.** ÖLÇÜLDÜ 2026-09-18 (31.08-30.09.2026): `TTagMoS` **8.507 satır / 409 tekil kişi**, kaynak dosya da **8.507 satır / 409 kişi** — birebir. `TTagZei` aynı pencerede 8.448 kişi-gün / 406 kişi verir ve ÜÇ KİŞİYİ KAÇIRIR (3176 TALHA KABAKÇI · 3381 ELİF MARANGOZ · 3471 HAMZA ÖNER): personel kartı açılmış ama hiç zaman kaydı oluşmamış: `TTagZei`de satırları yok, `TTagMoS`ta var. Kişi-gün omurgası gereken her raporda `TTagMoS` kullanılır; `TTagZei` yalnız SEGMENT detayı içindir."
     gecoweb_rapor_kolon_kaynaklari: "⭐ Rapor ÜRETİLEBİLİR — kolon kaynakları ÖLÇÜLDÜ (2026-09-18, 5.605 kişi-gün, **5.601 tam = %99,93**): Sicil/Ad/Soyad/Grup0-5 → `TPerTab` · Tarih → `TMS_Datum` · **Gün Modeli → `TMS_TagMod`** (%100) · **Mazeret → `TMS_LetzteAbwArt`** (%100) · Giriş → `MIN(TTagLes.TLe_VonZeit)` (%100) · Çıkış → `MAX(TTagLes.TLe_BisZeit)` · Bürüt Süre → giriş→çıkış ARALIĞI (saat.dakika, ondalık DEĞİL). Kalan 4 satır kural hatası değil VERİ KAYMASI: üçü kaynağın alındığı gün (18.09) sonrasında basılan kart, biri sonradan düzeltilen kayıt. Üretici `vardiya/zei32_rapor.py` · parite kapısı `vardiya/zei32_parite.py` (çıkış 0/1/2)."
@@ -2868,7 +2869,9 @@ entities:
     firma_kapsami: "⚠ `vw_PuanBil.Personelno` FIRMA SONEKLI string ('1108-BKM') -> vw_PersonelDepartman ile DOGRUDAN join edilir ve UC TUZEL KISILIGI birden kapsar. Ham `dbo.puanbil.Personelno` INT'tir ve yalniz BKM_GENEL'dir (firma-arasi numara cakismasi tuzagi orada gecerli). Join `ON p.Personelno = b.Personelno` 1:1 olculdu (satir = kisi-ay, fan-out YOK; 2026-09-03: 5 magaza Oca-Tem 2025=1054, 2026=1143 satir). **KORUMA:** `degismezler.json` -> `puanbil-kisi-ay-tekilligi` (mukerrer bordro satiri VEYA personelin ikinci departman kaydi maliyeti iki katina cikarir) + `maliyet-kolonlari-duruyor` (Bt/Isskk/Iisk)."
     bordro_gecikmesi: "⚠⚠ PENCERE TUZAGI: cari ayin bordrosu KOSMADAN once o ay kismi gorunur -> maliyet %80+ eksik cikar. Olculen vaka 2026-09-03: Agustos-2026 = 31 kisi, Temmuz-2026 = 256 kisi. Kural: kiyas penceresi SON TAM BORDRO AYINA kadar alinir; tespit = o yilin en yuksek ay kisi sayisinin %60 altina dusen ilk ay. Iki yil AYNI pencerede kiyaslanir."
     sube_atfi_kisiti: "Sube kirilimi vw_PersonelDepartman'in BUGUNKU `AltLokasyon`'una gore yapilir (bordro ayindaki sube DEGIL — view snapshot). Toplamlar dogru, sube dagilimi yer degistiren personelde kayar."
-    kvkk: "Kisi bazli ucret/maliyet OZEL nitelikli degil ama kisisel veridir -> rapora yalniz sube/kapsam duzeyinde TOPLULASTIRILMIS girer (ik-danisman SKILL §2)."
+    kvkk: "Kisi bazli ucret/maliyet OZEL nitelikli degil ama kisisel veridir -> rapora yalniz sube/kapsam duzeyinde TOPLULASTIRILMIS girer (ik-danisman SKILL §2). ⚠ ISTISNA: GMY'nin kendi IK operasyonu icin istedigi isimli bordro/ucret listesi (ornek: 2026-10-09 mudur maas listesi) bu kisitin disindadir — kisit ANALITIK rapora/sunuma girer, operasyonel IK ciktisina degil. Dosya adi/konumu paylasim niyetini belli etmeli."
+    sak_avans_kesinti: "⚠ `Sak` = AVANS / KESINTI (net odenenden dusulur). Kimlik: `Netu ≈ CariAylikNet − Sak (+ kucuk ek odeme)`. ÖLÇÜLDÜ 2026-10-09 Eylul bordrosunda: Faruk Bingolbali 75.000 − 3.383 = 71.617 TAM TUTTU. **KULLANICI TEYIDI (09.10.2026): Ismail Ertem (890-BKM) YILLIK IZNE cikti, izin ucreti PESIN odendi** -> Sak 76.666,67 = 100.000/30×23, tam 23 gunluk ucret; `Calismagunu` 6 / `Primgunu` 30 ile tutarli (yillik izin prim gunu SAYILIR). SONUC: **`Netu`yu 'maas' diye raporlamak YANLIS** — izin avansi alan kisi dusuk maasli gorunur (Ertem: gercek 100.000, Netu 25.787 = 4 kat sapma). Ucret sorusunun cevabi `vw_PersonelDepartman.Ucret` (cari sozlesme neti); `Netu` yalnizca 'o ay banka hesabina ne gecti' sorusudur. Avans/kesinti kalemi raporda AYRI KOLON olarak gosterilir, yoksa fark aciklanamaz."
+    ek_odeme_deseni: "Eylul-2026 mudur kadrosunda `Netu − (CariAylikNet − Sak)` farki 14 kiside TAM +2.000,00 ₺ (sabit), kalanlarda 490,60 / 2.453,61 / 3.031,10 / 3.197,26 / 3.325,09 / 5.000,00; Murat Sadik Erbas −4.799,91 (Primgunu 28, eksik gun). ⚠ Bu +2.000 sabitinin NE OLDUGU (yemek/yol yardimi? AGI?) OLCULMEDI — IK'ya sorulacak. CIKARIM yapilmadi, kalem adlandirilmadi."
     confidence: 0.9
     last_verified: "2026-09-03"
     ttl_days: 365
@@ -3729,8 +3732,19 @@ entities:
     isim_tuzagi: >-
       ⚠ Kolon adı TÜRKÇE İ ile: `piİlkID`. ASCII `piIlkID` yazımı Err 207 "Geçersiz sütun adı"
       verir (2026-09-09'da bu hataya düşüldü).
-    evidence: "2026-09-09 — stkID 235636 ve 248104 üzerinde yön kanıtı + kod kümesi sayımı."
-    last_verified: "2026-09-09"
+    geri_gitme: >-
+      DÖNEM BAŞI STOK geri-gitme (ölçüldü 2026-11-03): `piAdet` ZATEN İŞARETLİ (pGC=0 giriş →+,
+      pGC=1 çıkış →−), yani `SUM(piAdet)` = NET. İç palet transferleri net'te BİRBİRİNİ GÖTÜRÜR:
+      tüm-zaman gross giriş 55,1M / çıkış 53,8M iken net yalnız 1,34M → net = yalnız SINIR-GEÇEN
+      (mal kabul − sevk). ⚠ SIFIRDAN BAŞLAMAZ: tüm-zaman net 1,34M ≠ WMS anlık 4,07M (loglama
+      öncesi açılış ~2,7M) → sıfırdan toplanmaz, yalnız KISA PENCERE geri-gitmede geçerli.
+      Formül: `WMS_T1 = depo.stok_adres_palet_vw anlık − SUM(piAdet WHERE pikTarih>=T1)`.
+      Sanity 01.08→03.11: 4.067.522 − (−1.060.897) = 5.128.419 (depo küçülmüş, net 1,06M sevk).
+      Mağaza karşılığı irsHrk ile: `stokSon_vw − SUM(ehAdetN WHERE ehTrhS>=T1)`, 2026-07-31
+      snapshot'a ~%1 yakın. Kullanım: scripts/odak_hesapsorma_analiz.py.
+      Arşiv: sorgular/2026-11-03-donem-basi-stok-geri-gitme.sql.
+    evidence: "2026-09-09 — stkID 235636 ve 248104 üzerinde yön kanıtı + kod kümesi sayımı. 2026-11-03 — geri-gitme yöntemi + piAdet işaret kanıtı."
+    last_verified: "2026-11-03"
 
   DerinSISBkm.depo.stok_adres_palet_vw:
     type: view
@@ -4157,8 +4171,9 @@ entities:
       SESSİZCE düşürür.
     measurement: "2026-09-20 — 475.871 satır · 235.009 tekil stkId · urn'e öksüz 24. Mekan: FSM 170.062 · Özlüce 163.811 · İst.Yolu 141.996."
     evidence: "2026-09-20 — composite join sayımı view satırıyla birebir. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 2."
+    alan_bolum_ve_kultur_kitap: "ÖLÇÜLDÜ 2026-10-15: `alanAD` = mağaza BÖLÜMÜ (KÜLTÜR/AKADEMİ/ÇOCUK/HAZIRLIK/KIRTASİYE/OYUNCAK…), PDKS `Per_Grp3` ile aynı sözlük. Kültür rafındaki ürünlerin %92-97'si `bkm.UrunBilgi.Kategori3='Kitap'`. Bölüm bazlı konum sayımı için bu view DEĞİL `bkm.SayimRaflari` + (mekan, rafAD) → ryn.* eşlemesi kullanılır (eşleşmeyen 2 satır; ölçüldü). ⚠ reyon tanım iriliği mağazaya göre değişir (Özlüce Kültür 27 reyon/2.814 dolu raf, İst.Yolu 52/2.706) → reyon sayısı mağazalar arası kıyas ölçüsü değil. Kanıt: sorgular/2026-10-15-pdks-kultur-bolum-kadro.sql blok 7-11."
     confidence: 1.0
-    last_verified: "2026-09-20"
+    last_verified: "2026-10-15"
 
   bkm.SayimRaflari:
     type: table
@@ -4189,6 +4204,7 @@ entities:
       anlamları HENÜZ ÇÖZÜLMEDİ (5 ve 2 en yoğun).
       ⚠ **KULLANICI KOLONU YOK** → kişi bazlı raflama performansı bu veriyle çıkarılamaz.
       Bakımın canlı olduğunun kanıtı: ölçüm anında (20.09.2026 15:10) hâlâ yazılıyordu.
+    rafno_doluluk: "ÖLÇÜLDÜ 2026-10-15 (İst.Yolu, 15.07–14.10.2026): `RafNo` Tip 6/1/3/4/10'da HER satırda dolu; Tip 5 ve 8'de HİÇ dolu değil; Tip 2'de %1,6. ⇒ raf/kat/bölüm bazlı iş yükü yalnız Tip 6 (raflama) ile kurulabilir. `RafNo` = `ryn.raf.rafAD` metni; (MekanId, RafNo) → ryn.* ile kat/alan bulunur (eşleşmeyen İst.Yolu'nda 1.623/~400K). Kanıt: sorgular/2026-10-15-pdks-kultur-bolum-kadro.sql blok 19-20."
     measurement: "2026-09-20 — Tip 5: 5.387.956 · Tip 2: 4.877.262 · Tip 6 (raflama): 2.666.492 · Tip 9: 212.966 · Tip 1: 176.480 · diğer <80K. İlk kayıt 30.10.2023. Son 30 günde Tip=6: FSM 19.190 / İst.Yolu 16.876 / Özlüce 13.435, 31 günün 31'inde işlem."
     evidence: "2026-09-20 — GROUP BY Tip + son 30 gün mekan kırılımı. Arşiv: sorgular/2026-09-20-ryn-raf-haritasi-kesif.sql blok 9."
     confidence: 0.9
