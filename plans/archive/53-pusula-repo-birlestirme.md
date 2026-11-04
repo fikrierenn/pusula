@@ -3,7 +3,17 @@
 **Tarih:** 2026-11-04
 **Proje:** `bkm`
 **Yazan:** Claude (oturum `f7e36e39`)
-**Durum:** `Onaylandı` (2026-11-04) — F0 uygulamada
+**Durum:** `Tamamlandı` (2026-11-04)
+
+> **SONUÇ (04.11.2026):** Method pivot — manuel dosya-port yerine GERÇEK git merge (fetch
+> sonrası ortak ata `640b016` bulundu; X 128 commit, D 18 commit). `merge/x-unify` branch'te
+> birleştirildi: 2 çatışma (TODO + journal 10-09) + 1 sema çatışması (bridges union) elle
+> çözüldü; X'in 39 uncommitted'i portlandı (çöp hariç), H08 test fix ile **646/646 yeşil**;
+> B-ID üç-seri çakışması çözüldü (GM→B-202..210, Bursa→B-211..221). Build: dashboard 0/0;
+> sln yalnız harici Solum Pkcs açığına takılı (pre-existing, ayrı task). sema 63/64 (1 kırık
+> = WMS snapshot bayat, pre-existing B-206). master **FF** ile ilerletildi (tarihçe korundu,
+> squash YOK). X `git bundle` → `D:\Dev\_arsiv\pusula-x-arsiv-2026-11-04.bundle` (41M, verify OK),
+> X emekli. Artık tek repo = `D:\Dev\pusula`.
 
 ---
 
