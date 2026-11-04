@@ -3,6 +3,7 @@
 Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular ilgili `docs/journal/<proje>/`'a taşınır.
 
 > **Format:**
+>
 > - Her ana başlık bir proje (`### BKM`, `### MCP Server (kod)`, `### CrossProject`).
 > - Proje altında **BIRLESIK ONCELIK SIRASI** — Faz 0 (bugün), Faz 1 (bu hafta), Faz 2 (bu ay), Faz 3 (çeyrek).
 > - Madde başında **kısa ID**: `B-NN` (BKM), `M-NN` (MCP), `C-NN` (CrossProject), `Y-NN` (YonetIQ). Commit mesajlarında ve journal'da referans.
@@ -12,6 +13,15 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ---
 
 ## Yapılanlar
+
+### 2026-10-05 — GM dashboard mobil: Orkestra spec 001 F0 ölçümleri (60+ commit, 02–05.10)
+
+- Orkestra bağlandı, /tanit, 4 spec'e bölündü; spec 001 → plan → 81 görev, 20'si tamam.
+- 27 kanonik doğrulama sorgusu (dondurma `18c2ce0`); panelde ölçülen hatalar: kampanya indirimi
+  İst.Yolu 328,1M ↔ 25,24M, manuel indirim 520M ↔ 20,2M, win-back %44 aktif, Mizan nakit çek karışık.
+- Kural düzeltildi (`bacdf48`): kalem indirimi = DiscountTotalDirect + DiscountTotalIndirect.
+- T-074 sema kayıtları + T-075 dört değişmez (`52d73a9`, `27136c0`, `45b109c`).
+- Bekleyen: T-021 SAST paketi (B-183), journal `docs/journal/bkm/2026-10-05.md`.
 
 ### 2026-10-03 Oturum 2 — Ay sonu Stok-Satış raporu: Eylül + panelden üretim (commit f135ece)
 - Eylül raporu üretildi (90.362 satır × 194 kolon) → `raporlar/ay-sonu-stok-satis/stok-satis-sube-detayli-2026-09.xlsx`.
@@ -26,6 +36,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - Word + Claude Docs brief, sema (8 entity, 6 köprü, 3 kod, 3 metrik, kusur kaydı), curator dry-run.
 
 ### 2026-09-22 — PDKS raporu: sessiz kesinti teşhisi + şube×gün matrisi + ayrılmış kapısı (1 commit)
+
 - **Görev iki gün tetiklenmedi, sebep ÖLÇÜLDÜ** (`list_task_runs`): 18.09 koşumu hâlâ
   `running` (oturum sohbete çevrilmişti) → 19 ve 21.09 tetiklemeleri kayıt bırakmadan
   düştü. Makine-kapalı savı elendi: 21.09'da `haftalik-portal-tarama` koştu.
@@ -39,6 +50,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   bordroda bulunamayan TC ayrı sınıfa alındı (ölçüldü: bu dönemde 0 kişi).
 
 ### 2026-09-12 — B-172 kapanışı · toplantı hazırlığı · gün-içi ciro paneli (10 commit)
+
 - **B-172(c) eşiğe iş modeli ayağı** (`a9f67e5`): ölçüt iki ayaklı (2× sezon VE 5× ikmal kapağı).
   Kat 5 veriden değil devir hedefinden. Sezon ekseni yanlış pozitif üretiyormuş (4.904 çeşit,
   medyan devir 2,25 ↔ temiz grup 2,40). Panelde 40.017 → 37.103 çeşit, 83,3M → 74,7M ₺.
@@ -54,6 +66,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   aktarım** sema'ya işlendi (`aac41e3`, 52. değişmez).
 
 ### 2026-09-09 — Satış Analizi paneli + ürün drill (plan-42, 3 commit + uncommitted)
+
 - **Panel canlı:** `/satis-analizi` — 46 MB elle Excel raporunun (273.515 ürün × 26 kolon) yerine ön-agrega `bkm.SatisAnaliziTaban` (kesim başına 275.059 satır, 6 index, son 3 kesim tutulur). Sayfa 17 ms · KPI 196 ms · arama 346 ms. Kullanıcı seçmeli 31 kolon (tercih `dbo.PanelKolonTercih`, düşen anahtar UI'da görünür).
 - **Ürün drill** (`/satis-analizi/urun/{stkId}`, modal DEĞİL — ayrı sayfa): sipariş kararı + görsel · stok nerede · aylık satış/alış (AYRI ölçek) · **mağaza stoğu çizgisi** · giriş maliyeti + **iki yönlü marj** · **sezon ayrımlı tükenme** · yaş/tazelik.
 - **KDV tabanı ölçüldü:** `urn.fiyatS` KDV **DAHİL** (POS iç-yüzde kimliği 89.888/89.888) · `fatAyr.ehTutarN` KDV **HARİÇ** · oran `urn.KDVs` → `kdvYuzde_vw` (29.912/29.912, 0 sapma). Marj artık iki tarafı KDV-hariç tabanda; brüt marj (satış üzerinden) + markup (maliyet üzerinden).
@@ -61,6 +74,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - **ODAK köprüsü düzeltildi:** `ProductCode = stkID` sahte köprüydü (511.040 eşleşme sayısal tesadüf) → doğru zincir `ProductCode → odak_urun_tam.urun_id → barkod → urnBrkd.urnBrkdStkID` (644.107, %99,9). leadTime ort. 5,03 gün → aşırı stok + ODAK'ta var kesişimi 131,4M ₺.
 
 ### 2026-08-18 — Hesap-sorma derinleşmesi + kanal kırılması keşfi + Belinza temizliği (15 commit)
+
 - **Serve Deep vakası:** Tem'26 tek evrak 007287 (Promarka, 50 SKU, 985.090 ₺) ama küme 2026'da 5 ayda 4,86M ₺. HP 8 varyantı: 8 evrak/3 tedarikçi, 5.064 adet, satış çökerken sipariş büyüdü → ~1,06M ₺ donmuş.
 - **KANAL KIRILMASI (kök sebep, GMY teyidi):** 06.01.2025 e-ticaret faturalama Point'e devredildi → fat satış faturası 122.145→104/ay, mhsFisBaslik 251.813→7.123. **Analitik pencere başı 01.02.2025** (Ocak hibrit ay). Kırılma %94,5 KİTAP'ta; dashboard sayısal katmanı MUAF (pencere denetimi). Etkilenen: B-117 GL forensic → B-141.
 - **İLİŞKİLİ TARAF:** frm 9525 ODAK-POINT = alımın ~%40'ı (2025: 307,7M ₺). Fiyat kıyasında ayrı kova.
@@ -70,12 +84,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - Detay: `docs/journal/bkm/2026-08-18.md`.
 
 ### 2026-08-14 — Satınalma model rafinasyonu + Bulunurluk (OSA) sistemi (~20 commit)
+
 - **Satınalma modeli** (3-emitter dashboard+DINAMIK+Python): sabit çoklu-sezon (dbd41e5) · büyüme şeffaflık (7eb99b9) · şube-sezon paneli+yıl-etiket (98aa4a9/707ffb2) · çifte-düşüş cezası kaldırıldı (de637f9) · **RETAIL-MOMENTUM floor** (89c7b24, bulk-vs-retail: matara/ajanda vakaları) · TOPTAN-KANAL rozeti+evrak-drill (d9b4aa0/6d33883, İst.Yolu=Sınav Okulları) · SatinRetailCap parametrik.
 - **Bulunurluk plan-33** (Tier-3, YENİ): OSA sayfası `/bulunurluk` (B-133/134/135, c7daa0f) · pre-agg `bkm.BulunurlukOzet/Kayip` (29d3030) · recency fix (a7aa864) · dense `StokAyBakiyeMekanBazli` bounded explicit-0 nightly-safe (a80bc39, kullanıcı çalıştırdı, 29M). Faz0: %37 kısmi-dağıtım, ~263K kayıp-adet.
 - sema: bulunurluk_osa + retail_momentum_floor (metrics) · StokAyBakiyeMekanBazli (entities) · irshrk-irs köprüsü (bridges). erp-write-policy: 3 yeni bkm.* tablo.
 - Detay: journal `docs/journal/bkm/2026-08-14.md`.
 
 ### 2026-06-26/27 — Baskısı Yok kapsamlı iyileştirme + ODAK Stok KPI + sema borçları
+
 - **Baskısı Yok (B-126 uzantı + sema):** iptal-0 bug fix (`WHERE B.QUANTITY>0`) + AppKpiCarousel KPI + grup dağılımı + saat×gün heatmap (B-55 deseni) + gecikme kova grafiği + saat/haftanın-günü grafikler + _pColor köprüsü + varsayılan Son 7 gün + SQL arşiv. BASKISIYOK sema entity + 3 bridge yazıldı (B-126 TAMAMEN KAPALI).
 - **ODAK Stok (B-123 uzantı):** KPI şeridi AppKpiCarousel (Çeşit/Bağlı Sermaye/Ölü Stok/Ort.Ay-Kapsam) + Aşırı Stok Top-10 kart (warning border) + marka özeti Stok ₺ kolonu.
 - **E-ticaret:** sipariş saat yoğunluğu grafiği (`GetSiparisSaatAsync`).
@@ -84,27 +100,32 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - 10 commit (49495cf → da842e7). Uncommitted: `.gitignore` + `raporlar/` + `make-dashboard-cert.sh`.
 
 ### 2026-06-22 — Operasyon hızlı kazanım kartları (B-112 3/4 + B-111) + TODO dedup
+
 - **B-112** (6df2a39): Operasyon'a 3 kart — ödeme grubu+Δ (nakit-stres) / iade sebebi (RefundReasons.Type=0) / indirim kaynağı (SPC.Source). (d) kasa saatleri zaten vardı. Yeni `RefQueries.Operasyon.cs` partial + 3 record. Dönem-duyarlı.
 - **B-111** (5884ac6): WMS bekleyen doluluk kartı — TEMİZ J_ORDERS aşama split (`GetBekleyenDurumAsync`), emirAyr kirli kullanılmadı. Canlı toplanma 2/hazırlanan 4.283/temin 6.185.
 - **TODO dedup** (95ffc0f): B-111/B-112 Faz-2 asılları done-but-open düzeltildi (SABAH kopyalarıyla senkron).
 - Build yeşil, sorgular MCP-doğrulandı. Render login-gated (kullanıcı görsel onay). Detay: `docs/journal/bkm/2026-06-22.md`.
 
 ### 2026-06-19 — FIFO üretim tek-master (0→canlı) + uçtan-uca Ocak doğrulama (cross-repo: D:\Dev\fifo = ASIL PROJE)
+
 - **B-116 master ÜRETİLDİ+DOĞRULANDI** (commit bekliyor; ID düzeltme: eski B-113=UI-checklist çakışması → B-116): `fifo/v2-production/00_V2_MASTER_FULL.sql` (build-master.sh) — portable, $(ErpDb)/$(MaliyetDb), curated 16SP/11view/15tbl/seed. Boş BKMMaliyet_Test'e deploy+açılış+aylık+ortalama 0 hata, maliyetsiz=0, **Ocak Brüt 25,65M/%35,4 = rev2 birebir**.
 - FIFO SP fix: açılış irsHrk-kümülatif (geçmiş-doğru, anlık-stok bug), GARANTİ final-tier (SonAlış→kategori-imput→devre-dışı, **1-TL sabit kaldırıldı**), 04 dryrun kolon-fix.
 - **Repo ayrımı netleşti: FIFO=asıl proje, pusula=sadece sema** (kullanıcı). Tam kayıt FIFO memory'de (session_log + CLAUDE.md SON DURUM #8). Detay: `docs/journal/bkm/2026-06-19.md`.
 - Yarına: FIFO commit · sızan gerçek-gider stkID-curated devre-dışı · prod cutover (201 kapalı) · **plan-23 Faz-1 sema (pusula, B-114) hâlâ açık**.
 
 ### 2026-06-18 Oturum 4 — FIFO maliyet katmanı bütünlük + Ocak K/Z + üretim-master planı (cross-repo: D:\Dev\fifo)
+
 - **FIFO bütünlük (fifo repo):** maliyetsiz katman/çıkış → 0; 13 reprice + 619 katmansız stok katmanlandı (fytOzl/kategori-imput/devre-dışı). SP 0-fiyat guard (14_V2) + `fifo-domain §6` "FİYAT 0 OLAMAZ". Commit fifo `f474830`+`742847f`. Ocak marj rev2 birebir (brüt 25.58M/%35.4).
 - **Ocak Kategori3 K/Z Excel** (bkm.UrunBilgi.Kategori3=urnKtgr2, 18 kat) + negatif-marj 34 hata-şüphe Excel → `fifo/raporlar/`.
 - **Üretim tek-master planı:** `fifo/docs/PLAN-uretim-master-deploy.md` (Tier-3, GO verildi, S1'den başlanacak). + `plans/23-fifo-maliyet-sema-entegrasyon.md` (pusula sema tarafı).
 - **/learn:** TVF-per-row-timeout → restrict-then-rownumber (`sql-server-conventions.md`); sqlcli json-capture (`fifo-domain §5`). Detay: journal Oturum 4.
 
 ### 2026-06-18 Oturum 2 — Genius asistanı: Faz-1+UI redesign+Faz-2 Gmail/Takvim+OpenRouter+plan-22 öğrenen katman (~35 commit)
+
 - B-45 devasa: chat UI redesign + LLM-yönetimli tek akış (niyet-heuristik kaldırıldı) + Faz-2 Google OAuth/Takvim/Gmail (onay-kapılı) + OpenRouter→Gemini→Groq zinciri + plan-22 Hermes-uyarlı bellek (PanelAsistanBellek + bellek_yaz/gecmis_ara) + görev SonTarih + **Genius ismi + lambadan-cin maskotu** + 99-komut repertuar + markdown render. Hepsi build-yeşil + büyük kısmı canlı-doğrulandı. Sonunda free LLM kotası dolunca (OpenRouter 50/gün) test durdu → 19.06 03:00 reset / $10. Detay: `docs/journal/bkm/2026-06-18.md` Oturum 2.
 
 ### 2026-06-17 Oturum 2 — Ölü stok maliyet/filtre + Stok Hareket sayfası (defter)
+
 - **B-104** ölü stok maliyet zinciri: son 5 alış faturası (`fatAyr` eTip=0) → `ORT_ALIS` → `fiyatS × kategori AVG(ORT_ALIS/fiyatS)` imputation (sıfır-maliyetli ürünler kategori marjıyla fiyatlanır)
 - **B-105** ölü stok kirli kayıt filtresi: `urnTip=0` (gider/hizmet kalemi hariç) + `KARGO`/`Zkargo` kategori + stkID 81809 (İskonto ve Fiyat Farkı). sema entities/codes/metrics + SEMANTIK_KATMAN güncel
 - **B-106** yeni **Stok Hareket sayfası** (`/stok-hareket`, NavRegistry): ürün ara (barkod/kod exact + ad LIKE, debounce as-you-type, barkod tek-sonuç otomatik) → defter. TEK birleşik liste, tarih sıralı, Devir açılış satırı + global yürüyen Kalan, Firma/Evrak kolonları, Giriş/Çıkış renk. 3 şube + 12 depo. Barkod arama 5.8s→0.14s (stkID IN alt-sorgu)
@@ -112,6 +133,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - Build yeşil, sorgular MCP'de doğrulandı. **Kod commit BEKLİYOR.**
 
 ### 2026-06-16 Oturum 6 — Kumbara keşfi + iç-kart tek filtre (plan-18) + müşteri raporları FİŞ bazlı (CFO direktifi)
+
 - **B-96** müşteri kazanım/kart stat smoke ✅ · **Kumbara = RefundReasons Id=17 indirim tipi** keşfi (işlem-bağı kullanıcıda, 17.06)
 - **plan-18** iç-kart tek kanonik filtre (`IcKartFiltre.Sql`/`SqlCols`) → 9 müşteri sorgusu; isim+tel(599/699)+elle liste tek tanım (B-100)
 - **/sadakat LLM yorumu** (B-101) · **kartlı/kartsız FİŞ düzeltme** 5.627→529.428 kartsız fiş (B-102) · ParetoRow bigint fix
@@ -119,6 +141,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - Build yeşil, /musteri + /sadakat canlı doğrulandı. Kod commit BEKLİYOR (3 bucket).
 
 ### 2026-06-16 Oturum 5 — plan 13→17 + tahmin motoru + KDV-hariç + fiş drill (~30 commit)
+
 - **plan-13** Genel Bakış redesign ✅ · **plan-14** tahmin ay-seçimi+kayıt+MAPE+takvim etmenleri ✅
 - **plan-15** Python tahmin motoru + öğrenen katman ✅ (`scripts/forecast/` 6 modül, 6 model ensemble, backtest MAPE %7,5, ForecastOkuService + dashboard, run_forecast.bat + schtasks 10:00)
 - **plan-16** tüm dashboard KDV+kargo-hariç ✅ (28 sorgu, headline -%7-9, sema 14.06 KDV-dahil kararı süperseded)
@@ -127,6 +150,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - müşteri kazanım+kart stat (build yeşil, **smoke bekliyor**)
 
 ### 2026-06-16 — E-ticaret direkt JOKER + perf + recovery + B-48 (6 commit)
+
 - E-ticaret 10 sorgu linked ODAKJOKER → **192.168.40.70 DİREKT** (Db.OpenJokerAsync, .env JOKER_HOST). Kategori `J_ITEMS.DERINSIS_LOGOGRUP`=Kategori3 grain (0.6s vs 4.1s). Kategori→ürün drill + kategori yıl trendi yığılmış grafik (AppStackedBarChart) + il akordiyon. commit b792f4e.
 - Kampanya brüt **spc fan-out fix** (N indirim satırı/ürün → brüt şişiyordu) + **GetDetay 7 sorgu paralel** (B-49 ikinci tur ~3.4s→1.2s). commit 609f3dd.
 - **Telefon circuit auto-recovery** (/healthz poll + sunucu dönünce reload). commit 689e348.
@@ -134,9 +158,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - Context7 MCP kuruldu (.mcp.json, untracked — restart+onay bekliyor). Genel Bakış redesign kararları alındı (B-75).
 
 ### 2026-06-15 Oturum 3 — Sayfa yükleme süresi göstergesi
+
 - `PerfState` scoped servis + MainLayout footer rozeti (⏱ sayfa+süre, <2sn yeşil/2-5sn sarı/>5sn kırmızı) + 8 sayfa wiring. commit e3360a3. **Smoke test bekliyor.** Mobil header rozeti açık soru.
 
 ### 2026-06-15 — Kanonik maliyet + WMS depo + ölü stok raporu + perf (~22 commit)
+
 - **Tek maliyet sistemi:** gece job `MaliyetRaporu-Ceren` şelalesi keşfi (son 5 alış faturası → ORT_ALIS → sonraki) → `sema/metrics.yaml:birim_maliyet`. GetMarj fatAyr-AVG → kanonik (Kitap %30,6).
 - **Kanonik depo = WMS palet** (`depo.paletUrnTnm`, 4,38M) — `stokSonAltDepo` mekan=12 (2,14M) EKSİK. `sema/bridges.yaml:wms-depo-stok`. GetUrunler drill depo'su WMS'e geçti.
 - **Ölü stok ürün raporu (E4):** `scripts/olu_stok_excel.py` (`--kategori`/`--sadece-olu`) — ürün-grain, job şelalesi + canlı stok. Kitap 98K SKU=65,9M, ölü 30,4M. KATALOG.md E4.
@@ -145,6 +171,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - ⚠️ İşe yaramayan: `BKM_STOKLAR_MALIYETLI` stok kolonları BAYAT (sadece ORT_ALIS) · `irsHrk.ehMlyt` çöp.
 
 ### 2026-06-14 Oturum 5 — Mockup özellikleri + AI/LLM + Tahmin + Faz 1 (~40 commit)
+
 - AI Günün Özeti → yerel LLM (qwen2.5-3b, işaret-inversiyon fix) · bildirim merkezi global bar (NotifState + App.razor global rendermode) · ürün drill kaç-gün-yeter 30/90/360g + stok dağılımı 5-konum (FSM/Özlüce/İst.Yolu/Depo12/ODAK) · modal tek-seviye+44px✕ · dokunma geri bildirimi.
 - 2 skill: dashboard-icerik (ekle) + dashboard-oneri (öner). Tarama → plan-10 (B-53..B-72, 3 faz).
 - **Faz 1 TAMAM:** B-54 pace-line · B-53 mağaza trend · B-73 Hedef Tahmin (YoY×ivme) + /tahmin sayfası · B-56 COD il · B-57 kasiyer delta · B-55 saat×gün heatmap.
@@ -152,18 +179,21 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - B-58/B-65 → Faz 3 /sadakat'a taşındı. Sırada: Faz 2 veya Faz 3 (derin CRM sadakat — kullanıcı isteği).
 
 ### 2026-06-14 — B-41 kargo çekirdek + grafik UX + PWA/mobil app
+
 - B-41 çekirdek: il teslimat (takvim+iş günü) · aylık çıkış + gün drill · COD iade maliyeti. Çıkış İŞ GÜNÜ (4,14→2,79g) + **veriden otomatik tatil** (resmi+dini+grev, API/hardcode reddedildi). queries.yaml+sema.
 - Grafik UX: chartjs-plugin-datalabels (donut % / bar değer), oran hover-hint, mobil tooltip intersect:false, '4.2B'→'4.215' fix.
 - **PWA + mobil app**: manifest/ikon/SW + alt tab-bar (btm-nav lg:hidden, masaüstü bozulmaz) + LAN HTTPS (mkcert 192.168.1.61:5443).
 - ⚠️ Açık: mobil HTTPS drill çalışmıyor (güvensiz cert→SignalR yok) → B-47. 18 commit.
 
 ### 2026-06-13 — Dashboard DaisyUI literal + mağaza detay (B-40) + kampanya derinlemesine
+
 - Tüm 7 sayfa DaisyUI/Tailwind literal (custom köprü sıfır), drill modal DaisyUI native, renk standardı kuralı, panel tarih etiketleri.
 - B-40 mağaza detay `/magaza/{id}`: KPI+UPT+ödeme grup(banka drill)+kampanya(grup drill)+kategori. 13 commit (9eeb470→1f2142a).
 - **Kampanya fiş-detay doğrulama → 2 gerçek hata fix**: 3al2öde indirimi IsValid=1 köprüsü + DocType IN(1,2,6,7,8) zorunlu (iptal kalem/iade Diğer'i şişiriyordu). Dashboard=MCP birebir.
 - `scripts/build_3al2ode_belge_excel.py` (belge listesi Excel). sema: UPT, encore-kampanya-kalem, encore_odeme_grup, kampanya IsValid+iade kritik kuralı.
 
 ### 2026-06-08/09 — Oturum 3: Kapı sayıcı + işgücü + GM Dashboard
+
 - ✅ Kapı sayıcı (FSM) → dönüşüm %51, işgücü üçgeni (trafik×PDKS×dönüşüm), yatırım gerekçesi (~3M ₺ fırsat). `scripts/kapi_sayici_analiz.py`, `isgucu_trafik_ucgen.py`, pitch raporu.
 - ✅ E5 GMROI doğrulandı (karzarar pymssql).
 - ✅ **GM Dashboard** `scripts/gm_dashboard.py` — tek sayfa, dönem seçici, her panelde drill (ürün embed, müşteri/sipariş --serve), lokasyon çoklu-seçim, terim sözlüğü, ciro-vs-envanter scatter. Canlı server.
@@ -171,6 +201,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - 10 commit. Detay: `docs/journal/bkm/2026-06-08.md` (Oturum 3).
 
 ### 2026-06-08 — GM rapor sistemi (günlük pano G0-G7 + envanter E1-E6 + ABC + skill)
+
 - ✅ **Günlük pano G0-G7** kuruldu, tümü MCP-doğrulandı (07.06.2026). Birleşik toplam, GM panosu (UPT/WoW/YoY/MTD), ödeme, iade, kategori, saat, anomali, e-ticaret. Harita: `sorgular/INDEX.md`.
 - ✅ **Envanter verim E1-E6** (Plan 05 tamamlandı): snapshot + devir hızı + sell-through (adet bazlı, COGS gerekmez) + E5 GMROI (SSMS, karzarar). Sınav Okulları hayalet tüm raporlardan dışlandı.
 - ✅ **ABC analizi (A5)** Pareto 80/20: A %25 SKU→%80 ciro, C %40 SKU→%5.
@@ -180,6 +211,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - 22 commit. Detay: `docs/journal/bkm/2026-06-08.md`.
 
 ### 2026-04-27 — Oturum 3: MCP CWD bug + Mayıs %50 kampanya scope (handoff)
+
 - ⚠️ **MCP CWD bug** tespit: `claude_desktop_config.json`'da `cwd` yok → dotenv `.env` bulamıyor → `localhost:1433` fallback.
 - ✅ Config-level fix dosyaları yazıldı: `claude_desktop_config.FIXED.json`, `fix-mcp-config.ps1`, `fix-mcp-config.bat`.
 - ⏳ **Pending kullanıcıdan:** Claude Desktop tam restart (sistem tepsisi → Quit → tekrar aç).
@@ -189,6 +221,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - ✅ **PortalHUB MCP eklendi** (Oturum 3 ek): `src/services/database.ts` named instance desteği + `claude_desktop_config.FIXED.json`'a `portalhub` MCP entry + `D:\Dev\reporthub` trusted folder. Deploy için: `npm run build` → `fix-mcp-config.bat` → Claude Desktop restart.
 
 ### 2026-04-27 — Oturum 2: B-01/03/04 + 3 commit + handoff
+
 - ✅ İlk 3 commit atıldı: `7fed866 feat(mcp)`, `7f90d3b chore(crossproject)`, `4c61365 docs(bkm)` — 261 dosya total.
 - ✅ **B-01** `scripts/send_mail.py` UnicodeEncodeError fix (UTF-8 stdout + `✓` → `[OK]`).
 - ✅ **B-03** `send_brief.bat` dinamik tarih (her hafta Pazartesi'sini PowerShell ile hesaplıyor).
@@ -198,18 +231,21 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - Detay: `docs/journal/_crossproject/2026-04-27.md` (Oturum 2 bölümü).
 
 ### 2026-04-27 — Oturum 1: atlasops session/memory yapısı adaptasyonu (crossproject)
+
 - Multi-project iskelet kuruldu (`.claude/` + `docs/journal/<proje>/` + handoff skill + hooks).
 - SESSION_LOG.md tarihli journal'lara parçalandı (6 dosya), orijinal arşive taşındı.
 - TODO.md (bu dosya) Faz yapısıyla başlatıldı.
 - Detay: `docs/journal/_crossproject/2026-04-27.md`.
 
 ### 2026-04-21 — Session 5 devam (bkm)
+
 - SsmsExcelExporter (C# WinForms + ClosedXML, 2 hotkey) yazıldı.
 - Nisan 2026 3Al2Öde HTML kampanya raporu üretildi.
 - Briefing mail otomasyonunun ilk kurulumu (`scripts/send_mail.py`, `send_brief.bat`).
 - Detay: `docs/journal/bkm/2026-04-21.md`.
 
 ### 2026-04-20 — Session 5 başlangıç (bkm)
+
 - IsValid keşfi + 7 SQL düzeltmesi.
 - İndirim kolon ilişkisi çözüldü (DiscountTotalDirect).
 - 3 mağaza × 3 grupta doğrulama formülleri.
@@ -218,6 +254,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ---
 
 ### 2026-06-12 — Blazor GM Dashboard sıfırdan + e-ticaret status FIX + rapor skill L/M/K
+
 - Blazor Server + Dapper dashboard 5 sayfa (Genel Bakış/E-ticaret/Operasyon/Envanter/Müşteri), tüm panel Python birebir, drill modal + Chart.js. (~30 commit)
 - **KRİTİK FIX (712f440):** e-ticaret NET status filtresi yanlıştı (%70 eksik). 3004/3006 normal aşama, iade DEĞİL. Doğru: NOT IN (1001,1006,1007,3000,4000). Dashboard+brief+Python+sema düzeltildi.
 - gm-rapor skill L/M/K modları (kargo/bekleyen/hedef/kampanya/kafe) + sema 4 yeni köprü.
@@ -226,6 +263,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ## Devam Eden (aktif)
 
 ### BKM — BIRLESIK ONCELIK SIRASI
+
+> ⚠ **ID ÇAKIŞMASI (plan 53 birleştirme, 04.11.2026):** Aşağıdaki iki blok B-183..B-201
+> numaralarını FARKLI işler için kullanıyor (ODAK SP fix / ay-sonu stok ↔ GM dashboard mobil
+> orkestra). F3-uzlaştırmada yeniden numaralandırılacak. Şimdilik ikisi de korundu.
 
 #### 📦 AY SONU STOK-SATIŞ RAPORU (03.10.2026 — panel `/ay-sonu-stok`, commit f135ece)
 
@@ -284,6 +325,26 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       P-5 açıklama kıyası (13 sn × 15) gece job'una. S-1/S-12/S-14 düzeltmeleri de süreyi düşürüyor. Belge: `docs/13-odak-performans.docx`.
       ⚠ REDDEDİLDİ: ürün başı TOP 1 fiyat araması 1.210 sn (60 kat yavaş). Kapanış = job süresi yeniden ölçülür.
 
+#### 📱 GM DASHBOARD MOBİL — Orkestra spec 001-004 (dal `ork/001-panel-veri-duzeltme`)
+
+- [ ] **B-183 Spec 001 /uygula devam — T-021 Orkestra SAST paketini bekliyor** — 05.10.
+      20/81 görev tamam (defter: `specs/001-panel-veri-duzeltme/defter.md`). T-021 iskeleti
+      (`lib/Bkm.TestAltyapi/*` + `Pusula.sln`) stage'de, G-SEC-SAST (semgrep socketpair) yüzünden
+      commit edilemedi. Paket gelince kur → `/orkestra:uygula 001`. `--no-verify` YOK.
+- [ ] **B-184 T-003 e-tic kayma 2. ölçüm** — en erken 10.10.2026 23:42.
+- [ ] **B-185 T-018 üçüncü ölçüm kararı** — GMY üç rakamı ERP masaüstünden okur ya da atlanır.
+- [ ] **B-186 `.env` PANEL_DB_HOST=localhost** — BkmPanel bu makinede varsayılan örnekte
+      (`localhost`, ölçüldü 05.10: bağlantı OK), `localhost\SQLEXPRESS` yok. `.env` elle
+      güncellenecek; sonra `python tools/sema_degismez.py` tam koşu.
+- [ ] **B-187 Eylül WMS snapshot job'u** — `stok-snapshot-tazeligi` değişmezi KIRIK (51 gün).
+      Job kurulmadı (erp-write-policy § SQL Agent job); SSMS'te elle kurulum ya da onay.
+- [ ] **B-188 Panelde Indirect'i atlayan indirim sorguları + 9 yerde ISNUMERIC(Code)** — spec 001
+      F2 görevlerine bağlanacak (HediyeCeki/Ref/SatisAnalizi*/Queries/MagazaQueries).
+- [ ] **B-189 Spec 003 girdileri** — e-tic türemiş sipariş (BASEORDERID) çift sayım · 101 Alınan Çek
+      381,6M portföy mutabakatı · Kumbara düzeltilmiş gösterim · stok kavramı.
+- [ ] **B-190 Değişmez koşucusu `population` alanını okumuyor** — tam koşuda nüfus kapısı yok.
+- [ ] **B-191 Spec 002 (mobil kabuk) · 004 (BT-FIKRI HTTPS + servis)** — 001 bitince.
+
 #### 🔔 PDKS GÜNLÜK RAPOR (zamanlanmış görev)
 
 - [ ] **B-181 Zamanlanmış görev koşumunun gerçekten çalıştığı DOĞRULANACAK** — 22.09.
@@ -306,16 +367,17 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       çözümü yok, İK sürecine bağlı.
 
 #### 🆕 VARDİYA UYGULAMASI (plan 48) — ilk sürüm ✅ 19.09.2026
+>
 > `vardiya-app` (Razor Pages + Solum, port 5120) · `lib/Bkm.Shared` · 17 kullanıcı açık.
 > Adım 0-7 tamam: ortak kütüphane · ayrı app · kimlik/yetki · şube kapsamı (b)-tam ·
 > zamansal ACL · rapor · onay akışı + atomik denetim izi · panel salt-okuma.
 > Kapılar: `vardiya_kapsam_denetimi.py` · `mesai_esik_denetimi.py` · `panel_kolon_denetimi.py`.
 
-- [x] ~~**V-01 Geçici şifre dosyası SİLİNECEK**~~ — ✅ KAPANDI 19.09.
+- [x] ~~**V-01 Geçici parola dosyası SİLİNECEK**~~ — ✅ KAPANDI 19.09.
       `ciktilar/vardiya-ilk-sifreler-20260919-0119.txt` **GMY onayıyla silindi** (1.308 bayt).
-      Silme ancak kurtarma yolu kurulduktan SONRA güvenliydi: İK şifre sıfırlama
-      (`/ResetPassword`, commit `8de4be2`). Ölçümde 13 kullanıcı hâlâ geçici şifreyleydi;
-      kurtarma yolu olmasaydı silme onları kilitlerdi. ⚠ Geçici şifresini kaybeden
+      Silme ancak kurtarma yolu kurulduktan SONRA güvenliydi: İK parola sıfırlama
+      (`/ResetPassword`, commit `8de4be2`). Ölçümde 13 kullanıcı hâlâ geçici parolayleydi;
+      kurtarma yolu olmasaydı silme onları kilitlerdi. ⚠ Geçici parolasini kaybeden
       kişi artık İK'ya gider — dosyaya değil.
 
 - [x] ~~**V-02 Seed kadro listesi koda gömülü**~~ — ✅ KAPANDI 19.09 (commit `aebd3da`).
@@ -429,10 +491,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
       Tavan 0'a indi: yeni mükerrer artık **kırar** (kırmızı kiple doğrulandı).
 - [x] ~~**V-15 Test takımında GÖZLENEN ama ÜRETİLEMEYEN kırmızı**~~ — ✅ KAPANDI 19.09
       (commit `36e42d2`). Tahminle bulunamadı; hata mesajına **kanıt** eklendi (üretilen
-      şifre + sayfa uyarısı) ve ikinci koşumda yakalandı: şifre `Nr2&#x2B;6QQb2BWt` —
+      parola + sayfa uyarısı) ve ikinci koşumda yakalandı: parola `Nr2&#x2B;6QQb2BWt` —
       havuzda `+` var, Razor onu `&#x2B;` diye **kodluyor**, test kodlanmış dizgeyi
       deniyordu. **Ürün doğruydu, ölçüm aracı yanlıştı**; kırmızı ara sıra çıkıyordu
-      çünkü her şifrede `+` olmuyor. `WebUtility.HtmlDecode` + `data-test` tutamağı.
+      çünkü her parolade `+` olmuyor. `WebUtility.HtmlDecode` + `data-test` tutamağı.
       5 koşum üst üste yeşil (önce 3'te 1 kırmızı).
 - [x] ~~**V-07 Orantısızlık sezgisi MEKANİKLEŞMEDİ**~~ ✅ KAPANDI 20.09 (19.09, Solum S3).
       Mekanik karşılık: **TÜMLEYEN MÜDÜR** — fikstüre üçüncü bir kullanıcı eklendi
@@ -770,10 +832,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [~] **B-128 Muhasebe Kontrol — CAR evrak drill'i eksikti + SP çift-sayım keşfi** — 01.07. (a) `EvrakAc` sadece MHS/FAT işliyordu, CAR listede çıkıp tıklanınca hiç açılmıyordu → `MuhasebeQueries.GetCariMhsFisAsync` (car.cMhsFisID→mhsFisBaslik köprü) + `/yevmiye-fis`'e yönlendirme + Kapanış kolonu (drill listesi) + kırmızı "Ay Kapanışı" (evrak sayfaları, query-param taşınır). cMhsFisID=0 olan hareketlerde (elden teslim/nakit) drill hedefi yok — normal. Tarayıcıda canlı doğrulandı (computer-use screenshot). (b) **KEŞİF: SP çift-sayım** — `sp_KapanisMudahaleKontrol_v2` HEPSI modunda aynı yevmiye fişi hem CAR hem MHS satırı olarak bağımsız flag'leniyor → Mayıs'26 kapanışta **36 mükerrer** doğrulandı. Fix kaynağa yazıldı (`sorgular/2026-06-22-muhasebe-kontrol-v2.sql`, MHS INSERT'e guard) — CAR kanonik kalır. **KALAN: Fikri review + redeploy** (SP objesi ERP-yazma politikası dışında, ben deploy etmem).
 - [x] ✅ **B-129 Modal genişlik — tüm modallarda sessiz bug** — 01.07. `Modal.razor` Size prop (sm/lg/xl) hiçbir zaman görsel etki yapmıyordu: DaisyUI `sm:modal-middle` kuralı (`.sm\:modal-middle :where(.modal-box){max-width:32rem}`) Tailwind çıktısında utility class'lardan SONRA geliyor (responsive varyantlar dosya sonuna toplanır) → eşit specificity'de o kazanıyordu, Size sessizce hiçe sayılıyordu. Fix: `MaxWidthCls` artık `!` (important) prefix kullanıyor (`!max-w-2xl` vb.) + yeni `Size="full"` (`!max-w-none`, cap yok — geniş grid modalleri için). Muhasebe detay modalı `Size="full"`'a geçti. Tarayıcıda canlı doğrulandı — 10 kolonlu tablo artık scroll'suz tek ekranda.
 - [x] ~~**TEMİZLİK:** B-NEW-00..06 (Mayıs kampanya) stale → `## Arşiv`'e taşı~~ ✅ KAPANDI 20.09 (curator V-22). Ölçüldü: iş ZATEN yapılmış — TODO'da `### Mayıs %50 kitap kampanyası tahmini (B-NEW-00..06) — arşiv 17.06` başlığı duruyor. Madde 95 gündür done-but-`[ ]` olarak bekliyormuş; bu tam da `commit-discipline` S1'in önlemeye çalıştığı birikim.  ⟨eklendi 18.06.2026⟩
+
 > Diğer açık: Faz-2 veri (B-08/09/10/11/14), otomasyon (B-21/32 mail-scheduler, B-05, B-23a-d), ertelenen (B-93/94/95 bilinçli), ayrı-repo (MCP M-0x → `D:\Dev\sqlserver-mcp`), ayrı-proje (YonetIQ Y-0x başlamadı). Tam liste aşağıda.
 
 #### 🌅 SABAH HIZLI KAZANIMLAR (17.06 handoff — curated, açık backlog'dan ~30dk-1sa'lik işler)
+>
 > Önce bunları hızlıca temizle (düşük efor/risk, bağımsız), sonra büyük iş (Kumbara/B-91/B-81).
+
 - [x] ✅ **HK-0 🥇 İLK İŞ: tüm açık TODO tara + iş listesi + TODO-DİSİPLİNİ SERTLEŞTİR** (18.06) (kullanıcı direktifi 17.06) — (1) TODO.md TÜM açık `[ ]` maddeleri tara (todo-verification: file:line ile canlı doğrula, stale [x]-değil-aslında-açık + atlanmış olanları yakala), (2) öncelikli **iş listesi** çıkar (efor/değer/bağımlılık). (3) **TODO-yönetimi için skill GEREKİYOR mu** değerlendir: `plan-tracker` (TodoWrite↔TODO sync) + `consolidate-sema` (stale budama) VAR — "tüm açık tara + öncelikli iş listesi" işini KAPSIYOR mu? Boşluk → **`yetenek-uret`** ile `todo-tara` skill forge (footprint: önce mevcut genişlet).
   **🔴 TODO-DİSİPLİN PROBLEMİ (17.06 gözlem — sertleştir):** done-but-`[ ]` birikiyor (C-11/C-01-05 yapıldı, açık kalmış), stale-irrelevant arşivlenmiyor (B-NEW Mayıs-kampanya Nisan'dan beri aktif Faz'daydı), dup'lar (B-90↔M-13, C-07↔B-19, B-NEW-00 iki yerde). **Curator MANUEL koşunca yakalandı → mekanik değil, kök sorun bu.** Sertleştirme planı (yarın uygula):
   - **S1 Commit→TODO ZORUNLU:** bir maddeyi kapatan commit → AYNI anda `[x]` + hash. `commit-discipline.md` + `todo-verification.md`'ye sert kural; ihlal = stale birikir.
@@ -787,9 +852,11 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ✅ **HK-4 B-89 ApexCharts var(--p)** (18.06, commit f97a780) (~30dk) — hardcode hex → CSS-var (context7 doğruladı `colors:['var(--p)']` çalışıyor). `AppAreaChart`/`AppBarChart` default `#4063e6`, axis renkleri → DaisyUI token. renk-standardi uyumu.
 - [x] ✅ **HK-5 C-13 .gitignore build artifact** (18.06, commit 38f65d8) (~10dk) — `sorgular/03-kampanya/RaporApp/bin|obj`, `*.dll/*.exe/*.pdb` → .gitignore + `git rm --cached`.
 - [x] ✅ **HK-6 B-16 Express amacı** (18.06) — PDKS sunucusu (personel devam). B-17 ALLOWED_DATABASES daraltma kararı açık kalıyor (düşük öncelik).
+
 > Not — **B-82** (kasiyer ABS formül): `Queries.cs:157` kasSql doğrulandı (zaten -VatTotal vardı, false-positive); `:349` GetKasiyerDelta asimetri DÜZELTİLDİ (17.06). Kalan: iade-branch `ABS(DiscountTotal)` tutarlılığı — düşük öncelik, MCP mutabakatıyla doğrula.
 
 #### Faz 0 — Yarın (Blazor dashboard devam — 12.06 oturumundan)
+
 - [x] ✅ **B-96 müşteri kazanım/kart stat SMOKE** — KAPALI 16.06. /musteri runtime doğrulandı: kazanım area chart SVG çiziliyor (Haz 2026 ~8.381 yeni · 13 ay 223.896), kart oranı bar (ÖZLÜCE %68,4 · FSM %51,8 · İst.Yolu %53,0 · Toplam %58,7), AppSozluk (Home) native details kapalı-başlar/açılır. Konsol hatası yok. (plan-17, cf9e7ab)
 - [x] **B-97** ✅ 17.06.2026 (commit 39b7449) — LokasyonConfig.cs merkezi sabit (Subeler/SubelerVeDepo) + Queries.cs·RefQueries.cs·RefQueries.Envanter.cs 9 SQL noktası + olu_stok_excel.py + forecast/data.py güncellendi. UI toggle (5-lokasyon) → ayrı TODO.
 - [x] **B-98** ✅ 17.06 Kumbara indirim — köprü doğrulandı (SPC.CampaignVersion=RefundReasons.Id, CampaignId IS NULL, Id=17). GetKumbaraAsync + KumbaraAyRow + /operasyon Mağaza×Ay tablosu (lazy arka plan, %30+ kırmızı). sema güncellendi. SQL arşivlendi. (commit aff2091)
@@ -801,23 +868,30 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ✅ **B-101 /sadakat LLM yorumu** — KAPALI 16.06. `LlmService.SadakatYorumUret` (GunOzeti deseni: veri özeti→akıcı Türkçe yorum+aksiyon, uydurma-yok kuralı) + Sadakat.razor koyu yorum kartı (arka plan çağrı, spinner, `RendererInfo.IsInteractive` guard → prerender çift-inference engeli). Pipeline doğrulandı (model yüklendi+üretiyor); CPU-sandbox'ta yavaş, kullanıcı makinesinde Home özeti gibi. Pareto: ilk %10 müşteri = ciro %71,5 (konsantrasyon riski).
 
 #### Çatı self-development (17.06 — "Hermes gibi kendini geliştirsin")
+
 - [x] ✅ **H-12 yetenek-uret meta-skill** — KAPALI 17.06. `.claude/skills/yetenek-uret/SKILL.md`: skill/agent/hook/rule SİSTEMATİK üret + mevcut GÜNCELLE. footprint-ladder rung seçimi → tip-bazlı scaffold (skill frontmatter / agent model-tier+rol / hook BKM-adapte+settings-wire / rule core-etiket) → kayıt → test → onay. İNSAN-TETİKLİ (otonom daemon DEĞİL — plan-12 §5; Claude çağrı-bağımlı). Döngü: `/learn` (çıkarım) + yetenek-uret (üret/güncelle) + `consolidate-sema` (bakım). git-revert'lenebilir.
+
 > NOT: Tam otonom self-modification REDDEDİLDİ (tehlikeli + Claude çağrı-bağımlı + BKM daemon yok). "Self-improving" = insan-onaylı üçlü döngü.
 
 #### Hermes disiplin aktivasyonu (16.06 — "katı disiplin, mekanik enforcement")
+>
 > plan-12 7/7 WS yapıldı ama çoğu PASİF (ben-uygular). Mekanikleştirildi:
-- [x] ✅ **H-09 disiplin hook'ları aktif** — KAPALI 16.06. (1) `session-start.sh` journal-path bug FIX (`docs/journal/bkm/` — eskiden flat→README; curator-check de bundan görünmüyordu) + curator-due (≥7g) kontrolü + her-oturum disiplin yüzeyi (commit-eşik/keşif-SQL-arşiv/fiş-bazlı/footprint). (2) `pre-commit-antipattern.sh` BKM-adapte (BLOK=şifre/ex.Message/bare-except/async-void; UYAR=print/DateTime — CLI script print'i bloklamaz) + settings.json PreToolUse(Bash) **wire** (dormant'tı). Test: git-commit-dışı/staged-yok → exit 0.
+
+- [x] ✅ **H-09 disiplin hook'ları aktif** — KAPALI 16.06. (1) `session-start.sh` journal-path bug FIX (`docs/journal/bkm/` — eskiden flat→README; curator-check de bundan görünmüyordu) + curator-due (≥7g) kontrolü + her-oturum disiplin yüzeyi (commit-eşik/keşif-SQL-arşiv/fiş-bazlı/footprint). (2) `pre-commit-antipattern.sh` BKM-adapte (BLOK=parola/ex.Message/bare-except/async-void; UYAR=print/DateTime — CLI script print'i bloklamaz) + settings.json PreToolUse(Bash) **wire** (dormant'tı). Test: git-commit-dışı/staged-yok → exit 0.
 - [ ] **H-10 (ERTELE — bilinçli) WS-2 faz-2 fiziksel rule taşıma** — on-demand rule'ları `topic/` + `paths:`/skill-inject → gerçek token tasarrufu. RİSK: compact-survival (rule post-/compact düşer → sessiz konvansiyon kaybı = BKM'nin EN korktuğu sessiz-yanlış-rakam). Tek-kullanıcıda token ağrı değil → değer<risk. plan-12 §4 test-gate'li. Hook'lar zaten disiplini aktifledi → faz-2 GEREKMİYOR. Açılırsa: ayrı plan + compact-smoke şart.  ⟨eklendi 17.06.2026⟩
 - [ ] **H-11 (ERTELE) WS-1 telemetri sidecar** — sema/skill kullanım sayacı. plan-12 reddi: tek-kullanıcıda over-engineering, manuel yargı yeter.  ⟨eklendi 17.06.2026⟩
 
 #### Mimari / kod-bütünlüğü debt (16.06 full-scan — 4 ajan + roslyn deneme + file-size)
+>
 > Build 0/0, gerçek antipattern/circular yok, SQL-Razor temiz ayrık. Aşağıdakiler debt (compiler hatası değil). roslyn MCP init olmadı (repo'da .sln yok — navigator başka solution'a bağlı).
+
 - [~] **M-10 DRY (kısmi — bilinçli)** — ✅ `LlmService` 3× inference bloğu → `Infer(prompt,maxTokens,temp)` helper (45 satır deduplike, 17.06). ⏸️ Mekan dict (1 satır×2, isim değişmez) · `Q<T>` lambda (1 satır×2) · `LoadEnv()` (dedup = yeni dosya ya LlmService→Db tuhaf coupling) → **BIRAKILDI**: trivial/stabil dup'ın dedup maliyeti > faydası (footprint-ladder/simplicity-first). Divergence riski ~sıfır.
 - [x] ✅ **M-11 GetRfmGecisAsync hard-coded tarih → kayan pencere** — KAPALI 17.06. `DECLARE @bugun/@anchor1=bugün-3ay` + `DATEADD(MONTH,...)` → seg1=[bugün-15ay..bugün-3ay], seg2=[bugün-12ay..bugün]. Her gün otomatik güncel. UI başlık+dipnot dinamik. Build yeşil, MCP sliding-window sane (6→6 122K, 2-Sadık→Şampiyon 2571).
 - [x] ✅ **M-12 kargo/il linked-server → direkt JOKER** — KAPALI 16.06. `Queries.cs:169-189` kargoSql/ilSql `ODAKJOKER.*` 4-part + ana `conn` → `dbo.*` 2-part + `jconn` (zaten açık, satır 61). JOKER linked server kaldırılmıştı (kullanıcı) — bunlar straggler'dı. Build yeşil.
 - [~] **M-13 file-size split (kısmi)** — ✅ RefQueries.cs 638→**334** + `RefQueries.Envanter.cs` 314 (partial class, envanter/ürün/ops/marj; DI+çağıran değişmez, build yeşil) 17.06. ⏸️ Home.razor 566 + Tahmin.razor 504 → code-behind GEÇERSİZ (`@code` içinde markup RenderFragment → düz .cs derlenmez). **Sub-component extraction** gerek (markup chunk'ı child .razor'a) — dedike Tier-3, dikkatli. (300+ debt: Queries 472, Eticaret 411, Magaza 377, EticQueries 318, Musteri 304; generate_brief.py 678.)
 
 #### RFM / Müşteri tarafı — eklenecekler backlog (16.06 not, B-96 smoke sonrası)
+
 - [x] **R-1 Ay-seçimli kazanım drill** ✅ 17.06.2026 (commit 72c8163) — AppAreaChart OnDataPointSelection + GetKazanimDetayAsync + Musteri.razor inline detay panel.
 - [x] **R-2 Kart oranı dönem seçimi** ✅ 17.06.2026 (commit 46995b7) — 7g/30g/90g pill + GetKartOranAsync + dinamik _kartData.
 - [x] **R-3 E-ticaret kazanım** ✅ 17.06.2026 (commit f580478) — GetKazanimEtAsync (JOKER J_ORDERS ilk sipariş 13ay) + Musteri.razor ET kart (info renk, bağımsız evren notu).
@@ -828,7 +902,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] **R-8 Müşteri fiş drill polish** ✅ 17.06.2026 (commit 2c913dc) — FisRow.IndirimTutar (YK SQL), iade/indirim rozeti (badge, iade kırmızı). ET durum + geri-nav: mevcut yeterli, ertelendi.
 - [~] **B-40** Mağaza detay sayfası `/magaza/{id}` — ✅ panel + drill commit 13.06 (de4f214…1f2142a). Ödeme üst-grup+banka drill · kampanya 3al2öde-ayrı/Diğer-toplu drill · UPT · iade · kategori→ürün. IsValid+iade fix doğrulandı (dashboard=MCP). **Kalan:** dönüşüm (G8 kapı sayıcı CSV — FSM-only, Özlüce/İst.Yolu sayıcı bekliyor).
 - [~] **B-41** JOKER kargo SQL — ✅ ÇEKİRDEK 14.06 (18 commit): il teslimat (takvim+iş günü) · aylık çıkış trendi + gün drill · COD iade maliyeti. **İş günü** çıkış (takvim 4,14→2,79g) + **veriden otomatik tatil** (resmi+dini+grev, sıfır bakım). queries.yaml+sema. **Kalan:** #5-7 (günlük detay→ay-drill ile karşılandı · v2 · çıkış-teslim→il'de var) düşük değer. Kargo kar/zarar YAPILMAZ (KargoMaliyetiniHesapla remote çağrılamaz).
-- [~] **B-47 ⚡ DRILL MOBİL — ÇÖZÜM: HTTP-only (17.06 karar)** — mkcert cert Android'de güvenilmiyor → HTTPS'te wss/SignalR kurulmuyor → drill ölü. **Karar: HTTPS/PWA-cert derdini BIRAK, telefon HTTP kullansın.** Telefon (aynı Wi-Fi) → **http://192.168.1.45:5112** → `ws://` SignalR kurulur, drill çalışır. Altyapı HAZIR: 0.0.0.0:5112 dinliyor + firewall "BKM Dashboard 5112" allow + auth cookie SameAsRequest HTTP destekli. Kod değişikliği GEREKMEZ. ⚠️ PWA "ana ekrana ekle"/standalone HTTPS ister → tarayıcı modu (kabul, tek-kullanıcı LAN). Tünel/Tailscale reddedildi/gereksiz. **TELEFON TESTİ kullanıcıda → çalışırsa [x].** (CF tunnel + Let's Encrypt seçenekleri arşiv: PWA-install şart olursa Tailscale.)
+- [~] **B-47 ⚡ DRILL MOBİL — ÇÖZÜM: HTTP-only (17.06 karar)** — mkcert cert Android'de güvenilmiyor → HTTPS'te wss/SignalR kurulmuyor → drill ölü. **Karar: HTTPS/PWA-cert derdini BIRAK, telefon HTTP kullansın.** Telefon (aynı Wi-Fi) → **<http://192.168.1.45:5112>** → `ws://` SignalR kurulur, drill çalışır. Altyapı HAZIR: 0.0.0.0:5112 dinliyor + firewall "BKM Dashboard 5112" allow + auth cookie SameAsRequest HTTP destekli. Kod değişikliği GEREKMEZ. ⚠️ PWA "ana ekrana ekle"/standalone HTTPS ister → tarayıcı modu (kabul, tek-kullanıcı LAN). Tünel/Tailscale reddedildi/gereksiz. **TELEFON TESTİ kullanıcıda → çalışırsa [x].** (CF tunnel + Let's Encrypt seçenekleri arşiv: PWA-install şart olursa Tailscale.)
 - [x] ~~**B-48** Mağaza kartı nav `<a href>` SSR-güvenli~~ — ✅ 16.06 commit 8928ddc. Mağaza kartları + Tahmin + "incele" `@onclick NavigateTo` → gerçek `<a href>` (SignalR'sız çalışır, mobil "açılmıyor" kökü). Modal'lar (TOPLAM/E-tic kategori) interaktivite-bağlı kaldı → B-47. Kart birleştirme tam çözümü → **B-75 redesign**.
 - [x] ~~**B-49** Mağaza detay PERF (paralel)~~ — ✅ 14.06 (649e346 sayfa-seviyesi WhenAll) **+ 16.06 commit 609f3dd** (GetDetayAsync İÇİ 7 sorgu hâlâ sıralıydı ~3.4s → her biri kendi bağlantısı + WhenAll → **~1.2s**). Rakam birebir aynı.
 - [x] ~~**B-74 ⚡ PERF progressive-load**~~ — ✅ tamamlandı. Envanter ✅ 15.06. Eticaret ✅ 16.06 commit b792f4e (10 sorgu .70 DİREKT + LOGOGRUP 4.1s→0.6s). **16.06 Envanter darboğazı çözüldü (13.4s→1.2s algılanan):** (1) GetInventoryAsync 5 sorgu tek bağlantıda sıralıydı → her biri kendi bağlantısı + Task.WhenAll (B-49 deseni), WhenAll grubu **1.1s**; (2) GetMarjAsync (~9s maliyet şelalesi) `await` ile prerender'ı blokluyordu → `[StreamRendering]` eklendi, sayfa 1.2s'te stream'lenir, marj sonradan (mobil HTTP'de de, SignalR'sız). **Hipotez çürütüldü (todo-verification):** RfmGecis 494ms (ağır değil) + Stockout pre-agg 1092ms vs CROSS APPLY 1021ms (kazanç yok) → ikisi de DEĞİŞTİRİLMEDİ, gereksiz churn engellendi. Rakamlar birebir (11 kategori, stockout MCP eşleşti). **Kalan:** Sadakat 2.2s (kabul edilebilir, dokunulmadı).
@@ -836,21 +910,25 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-76 sema kaydı**~~ — ✅ 16.06 `sema/bridges.yaml`: joker-direct-conn (.70 OpenJokerAsync), items-logogrup-kategori3 (`J_ITEMS.DERINSIS_LOGOGRUP`=Kategori3 metin, cross-server hop yok), encore-kampanya-kalem fan-out gotcha (spc N satır/ürün → SUM(sp.TotalPrice) N× şişer; indirim spc'den doğru, brüt/net ayrı CTE). + SEMANTIK_KATMAN.md insan senkron. YAML geçerli (32 köprü).
 
 #### 🔁 Plan-12 Hermes Adaptasyon — KALAN WS (16.06, `plans/12-hermes-adaptasyon.md`)
+>
 > ✅ Yapılan: WS-1 (78c9060 sema/TODO yaşam-döngüsü), WS-4+WS-6 (86d903e agent rol + handoff anchor). Kalan workstream'ler her biri ayrı mini-onay (§10):
+
 - [x] ~~**B-77** WS-2 NarrowWaist~~ — ✅ 16.06 commit 72d3f62. footprint-ladder.md + 7 rule on-demand etiketi + asistan-ui/dashboard-icerik skill referans + CLAUDE.md tier notu. Compact-survival korundu (paths: yok). Faz-2 fiziksel taşıma → B-93.
 - [x] ~~**B-78** WS-5 ErrorClass~~ — ✅ 16.06. SqlErrorClassifier.cs (transient/fatal, 18456 auth-fatal) + Db.cs OpenWithRetryAsync (max-2 backoff, loglu, mevcut timeout birleşik) + _errors.py (pymssql is_transient+connect_with_retry) + generate_brief.py bağlandı + error-handling.md sınıflandırıcı bölümü. Build yeşil, Python OK, smoke 200. silent-failure-hunter auth-fatal yanlışsınıflama bulgusu düzeltildi. (send_mail SMTP=DB değil → kapsam dışı.)
 - [x] ~~**B-79** WS-3 Registry-nav~~ — ✅ 16.06. `dashboard/Models/NavRegistry.cs` (NavItem record + Items + BottomNav/Sections) → MainLayout sidebar+btm-nav `@foreach` türetir. Yeni sayfa = tek satır, orphan riski yok (B-75 kökü). Build yeşil, smoke: sidebar 11 + btm-nav 5 + 2 grup, görsel birebir. (Razor `section` rezerve → `grp`.)
 - [x] ~~**B-80** WS-7~~ — ✅ 16.06. test-discipline.md davranışsal-kontrat bölümü (snapshot/change-detector reddet → ilişki-invariant; BKM rapor: net=brüt−indirim). **Plan-12 TAMAMLANDI (7/7 WS).**
 
 #### 🔬 Sistem Denetimi Bulguları (16.06, 4-ajan + Context7) — KOD DÜZELTME BEKLİYOR
+>
 > Denetim raporu journal 16.06 Oturum. Güvenlik TEMİZ (injection/secret/XSS yok). Aşağısı açık:
+
 - [x] ✅ 18.06 **B-81 🔴 KRİTİK iade-netleme** — irsHrk sorgularına `ehTip IN(3,5,101)` iade dalı eklendi: `RefQueries.cs` devir-Sat + marka-Ciro/Adet; `RefQueries.Envanter.cs` envanter-ciro + marka-rotasyon SatisAdet/SatisCiro. GetUrunlerAsync zaten doğruydu (EncoreMerkez DocType=3 sign). Stockout filtresi değişmedi (SKU-listesi, ciro değil). Mayıs doğrulama: iade/satış %4.22 (ehTip 101 only). Build OK.
 - [x] ✅ 18.06 **B-82** ORTA — Kasiyer ABS(DiscountTotal) doğrulandı: iade satırında DiscountTotal POZİTİF → ABS zararsız, formül doğru. Yan bulgu: Queries.cs + MagazaQueries.cs'de IIF → CASE WHEN compat-110 fix uygulandı (14 adet).
-- [x] ✅ 18.06 **B-83** ORTA — exception sızıntısı `_error = ex.Message` → Logger.LogError + generic mesaj. 10 sayfa, 17 lokasyon. ILogger<T> inject eklendi.
+- [x] ✅ 18.06 **B-83** ORTA — exception sızıntısı `_error = ex.Message` → Logger.LogError + generic mesaj. 10 sayfa, 17 lokasyon. `ILogger<T>` inject eklendi.
 - [x] ✅ **B-109** forecast portaldan tetikleme + çıktı DB'ye — KAPALI 17.06. (a) `ForecastService` Process `python run.py` (cwd scripts/forecast, 10dk, exit/stderr loglu) → /tahmin "Tahmini Çalıştır" butonu. (b) **Çıktı JSON yerine `BkmPanel.dbo.PanelForecast`** (Ad PK + JSON nvarchar(max)): Python run.py pyodbc ile yazar (Windows auth, ODBC18), C# ForecastOkuService Dapper okur. API YOK — ortak DB. Python KALDI (statsforecast C# yok). Round-trip doğrulandı (pyodbc yaz + C# build). Tam run gerçek ortam (201 DB).
 - [x] ✅ **B-108** takvim TAM DB → `BkmPanel` TEK tablo — KAPALI 17.06. `PanelTakvim(Id,Bas,Son,Ad,Tip,YarimGun)` — tatil/sınav tek-gün (Bas=Son), okul dönem aralık (Bas<Son), Tip ayırır (Ulusal/DiniBayram/Sinav/OkulAcik). PanelOkulDonem AYRI TABLO KALDIRILDI (gereksizdi, tek tabloda Bas/Son ile çözüldü). okul-takvimi.json → seed-if-empty (2 dönem+4 sınav doğrulandı). Dapper global `DateOnlyTypeHandler`. ⚠️ tatil boş başlar → /tahmin "Yenile" ile API'den dolar.
 - [x] ✅ **B-107** app-state → localhost Express `BkmPanel` taşıma — KAPALI 17.06. JSON/SQLite dosya-state DB'ye: `IcKartService` (ic-kartlar.json→PanelIcKart), `TahminKayitService` (tahmin-kayitlari.json→PanelTahminKayit), `GorevService` (asistan.db SQLite→PanelGorev). Db.OpenPanel() senkron; servisler ctor'da ensure-table + PanelEnabled guard. Microsoft.Data.Sqlite paketi kaldırıldı. Forecast (Python çıktı cache) + Takvim (API cache) BIRAKILDI — cache, yeniden üretilir. Migration yok (Release temiz, tek-kullanıcı yeniden girer). Smoke: PanelGorev+PanelKullanici oluştu, / 200.
-- [x] ✅ **B-84** basit auth — KAPALI 17.06 (plan-19). Cookie auth + global FallbackPolicy, şifre localhost `BkmPanel.dbo.PanelKullanici` (PBKDF2-SHA256 100k, sayaç/kilit SQL). İlk açılış `/setup` şifre belirleme, `/login` + `/auth/*` minimal API (Blazor-dışı, SignIn HttpContext). allow-list: login/setup/healthz/ca.crt/static. MainLayout çıkış butonu. Smoke: setup→cookie→yanlış-hata→doğru-Set-Cookie→healthz anonim doğrulandı. **Commit BEKLİYOR.**
+- [x] ✅ **B-84** basit auth — KAPALI 17.06 (plan-19). Cookie auth + global FallbackPolicy, parola localhost `BkmPanel.dbo.PanelKullanici` (PBKDF2-SHA256 100k, sayaç/kilit SQL). İlk açılış `/setup` parola belirleme, `/login` + `/auth/*` minimal API (Blazor-dışı, SignIn HttpContext). allow-list: login/setup/healthz/ca.crt/static. MainLayout çıkış butonu. Smoke: setup→cookie→yanlış-hata→doğru-Set-Cookie→healthz anonim doğrulandı. **Commit BEKLİYOR.**
 - [x] ~~**B-85** boş catch loglama~~ — ✅ 16.06. RefQueries SPLH + Envanter marj → `ILogger.LogWarning` (RefQueries'e ILogger inject, Envanter'a @inject). Operasyon WMS iç-catch ölüydü (WhenAll await sonrası ulaşılmaz) → kaldırıldı. Build yeşil.
 - [x] ✅ **B-86** → HK-3 ile kapandı (18.06, commit 752ab3b).
 - [x] ~~**B-87** ölü kod~~ — ✅ 16.06. Operasyon `_pColor` field + ölü OnAfterRender theme bloğu + Gorevler `OncSinif()` silindi. Build yeşil. (todo-verification: ikisi de grep ile doğrulandı.)
@@ -864,6 +942,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   **YOL 2 — `PersistentComponentState` (DOĞRU, context7 örneği `blazor/state-management/prerendered-state-persistence.md`):** her sayfa: `@inject PersistentComponentState State` + `@implements IDisposable` + OnInit'te `if(!State.TryTakeFromJson<T>(key, out var restored)){ fetch } else { use restored }` + **sonda** `persistingSubscription = State.RegisterOnPersisting(Persist)` (race önler) + `Persist(){ State.PersistAsJson(key, data) }` + `Dispose(){ persistingSubscription.Dispose() }`. Prerender KORUNUR (mobil SSR içerik görür) + çift-fetch gider. DB 2×→1×.
 
 #### ⏸️ Ertelenenler / Kısayollar (16.06 — normale çevrilecek, ATLANMAYACAK)
+
 - [x] **B-92** ✅ 17.06.2026 (commit 4cbcbd0) — /toplam Online sekmesi: EticQueries.GetEticKategoriAsync (LOGOGRUP) lazy yük + kategori drill GetEticKategoriUrunAsync; dönem değişince cache temizle.
 - [ ] **B-93** plan-12 WS-2 **faz-2** — konu-bazlı rule'ları fiziksel `.claude/rules/topic/` dizine taşı + skill-inject (gerçek system-prompt token düşüşü). **compact-survival smoke ZORUNLU** geçmeden yapma.  ⟨eklendi 16.06.2026⟩
 - [ ] **B-94** plan-12 WS-1 **telemetri** — sema/skill kullanım sayacı (`.usage.json` sidecar). Şimdilik manuel yargı; veri-temelli stale tespiti istenirse.  ⟨eklendi 16.06.2026⟩
@@ -872,9 +951,10 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-51 ⚡ APP DİLİ → WEB/BLAZOR UYARLAMA**~~ — ✅ 14.06 (cbefab3→0d2c0bc, ~24 commit). TÜM dashboard mobil-app dili: gradient hero CAROUSEL (AppKpiCarousel) + ikon-kart mağaza (trend WoW) + segment pill (AppPeriodPills) + fintech sparkline + **HTML progress (AppRankBars)** + accordion grid (AppDataTable). plan-08 (ApexCharts pilot → kullanıcı beğenmedi → HTML progress PİVOT) + plan-09 (5 iş: paralel/grid-oran/E-tic carousel/filtre/irsHrk). **irsHrk KDV mutabakatı:** fark %100=KDV(EncoreMerkez dahil/irsHrk hariç)+iade → drill EncoreMerkez net KDV-dahil (kart=drill), sema yazıldı. Shared: AppArea/Bar/RankBars/DataTable/KpiCarousel/PeriodPills.
 - [x] ~~**B-52** Home TOPLAM/E-tic kategori modalları `<table>` → AppDataTable~~ — ✅ 14.06 commit 2e9dc88 (+ b42b60f Görevler/Asistan, + ef8e85e tap-feedback). Dashboard'da artık HİÇ `<table>` yok. Bu oturum ayrıca: AI Günün Özeti→yerel LLM (e68cf77), bildirim merkezi global bar (3077378), ürün drill kaç-gün-yeter 30/90/360g + stok dağılımı FSM/Özlüce/İst.Yolu/Depo/ODAK (507b8fa/958e0bc/6da84fa), modal kapatma UX (1b956c2). Skill: dashboard-icerik (75bd9b7) + dashboard-oneri (9a71835).
 
-#### Dashboard İçerik Backlog — dashboard-oneri taraması (14.06). Seçilince `dashboard-icerik` ile uygula.
+#### Dashboard İçerik Backlog — dashboard-oneri taraması (14.06). Seçilince `dashboard-icerik` ile uygula
 
 **🔥 Hızlı kazanım (S — mevcut sorgu varyasyonu, yeni tablo/köprü yok):**
+
 - [x] ~~**B-53** Mağaza detay 30-gün ciro trendi~~ — ✅ 14.06 commit 1719bb9. MagazaQueries.GetTrendAsync (mekanID filtreli) + AppAreaChart. Özlüce 13.06=967.304 doğrulandı.
 - [x] ~~**B-54** Hedef pace-line~~ — ✅ 14.06 commit 7befb53. Dikey çizgi=bugün beklenen %(gün/ay), geride/önde rozet, haftalıkta da hedef. Gün 14/30→%47.
 - [x] ~~**B-73** Hedef Tahmin kartı (CFO yöntemi: YoY taban × MoM ivme)~~ — ✅ 14.06 commit e390c27. irsHrk net (tam geçmiş), GetTahminAsync + saf-C# Forecast.Hesapla. Geçen yıl aynı ay × son-3-ay YoY ivmesi + senaryo bandı ±σ + MTD pace. Haziran 51,34M (=30,98M×1,657) doğrulandı. Sınav sezonu YoY tabanda korunur. Yöntem hafızada [[bkm-hedef-tahmin-yontemi]].
@@ -884,6 +964,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] **B-58** Tekrar satın-alma oranı (Frq>1 payı) ✅ 35d6195 — %40.1 KPI /sadakat carousel
 
 **Orta (M — yeni sorgu/cross-db join):**
+
 - [x] ~~**B-59**~~ ✅ 15.06 commit 3c8d32b — JOKER DERINSIS_ID→urnKtgr2 kategori mix, AppRankBars (Eticaret)
 - [x] ~~**B-60**~~ ✅ 15.06 commit 7daf10f — depo.emirAyr toplama verimi, 14g trend + bugün KPI (Operasyon)
 - [x] ~~**B-61**~~ ✅ 15.06 commit d2d829f — fatAyr OUTER APPLY brüt marj %, NOLOCK, Envanter sayfası
@@ -891,11 +972,14 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] **B-63** Marka alış-vs-satış dengesi (rotasyon matrisi) ✅ ebfbed9 — Top30 AppDataTable + birikim/erime badge (Envanter)
 
 **Düşük:**
+
 - [x] **B-64** E-ticaret sipariş durumu huni ✅ 1c1b162 — J_ORDERS.STATUS 6 aşama + badge (Eticaret)
 - [x] **B-65** ✅ 17.06 Müşteri kayıp/risk segmenti 3-ay trendi — SegmentTrendiRow + GetSegmentTrendiAsync (ykSql 3× t0/t30/t60) + /sadakat kart (Risk/Kayıp kırmızı, delta yön-duyarlı). (commit 8dac591)
 
 #### 🎯 Müşteri Sadakat Derinleştirme (kullanıcı isteği 14.06 — derin CRM/sadakat). [TIER 3 plan-first — yeni "Sadakat" sayfası olabilir]
+>
 > Veri tabanı: EncoreMerkez `Sales.CustomersId` + `DerinCrm.Customer` (Name/PhoneNumber/CardNumber) · e-tic `J_ORDER_CLIENTS.CUSTOMERREF` · mevcut RFM (C1-rfm). Tek köprü çözüldü (`DerinCrm.Customer.Id = Sales.CustomersId`).
+
 - [~] **B-66** → R-4 ile aynı (dup). R-4 takip eder.
 - [x] **B-67** RFM segment geçiş matrisi ✅ 10b6121 — iyileşme/kötüleşme badge + geçiş tablosu (/sadakat)
 - [x] **B-68** Win-back / reaktivasyon listesi ✅ 46089e4 — Top200 aksiyon listesi /sadakat sayfası
@@ -908,8 +992,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-46** `tools/diskscan` native disk tarayıcı~~ — ✅ 13.06 commit 16f0caf. (1) optimize rebuild (42→37 sn), (2) .gitignore+kaynak commit, (3) C tarandı → cache D'ye yönlendirildi (npm/pip/yarn) + ~8,3 GB temizlendi (C 16→27,7 GB boş). D: 5,3→124 GB. MFT makine policy ile kapalı (err 50/1300) — dir-walk tavanı.
 
 #### Faz 0 — Bugün (blocker'ları kaldır — 1-3 saat)
+
 - [x] ~~**B-01** `scripts/send_mail.py` UnicodeEncodeError düzelt~~ — ✅ `[OK]` + `sys.stdout.reconfigure(encoding="utf-8")`. Gmail "Sent" doğrulaması: kullanıcı kontrol edecek (geçen hafta 20.04 11:19 mail muhtemelen gitti — hata print'teydi).
-- [x] ~~**B-02** Bu Pazartesi (27.04.2026) `briefings/2026-04-27/brief.html` + `brief.txt` üret~~ — ✅ 28 Nis Salı sabahı **retroaktif** üretildi (SQL bağlantısı dünden geri geldi, MCP CWD fix uygulandı). Mail gönderildi (fikrieren@gmail.com + fikri.eren@bkmkitap.com), kullanıcı "ok geldi" onayladı. Brief: H17 Net 13,27M / WoW −%1,5 / 23 Nis Çocuk Bayramı patlama (3,4M tek gün) → 1 May Emek Bayramı sinyali.
+- [x] ~~**B-02** Bu Pazartesi (27.04.2026) `briefings/2026-04-27/brief.html` + `brief.txt` üret~~ — ✅ 28 Nis Salı sabahı **retroaktif** üretildi (SQL bağlantısı dünden geri geldi, MCP CWD fix uygulandı). Mail gönderildi (<fikrieren@gmail.com> + <fikri.eren@bkmkitap.com>), kullanıcı "ok geldi" onayladı. Brief: H17 Net 13,27M / WoW −%1,5 / 23 Nis Çocuk Bayramı patlama (3,4M tek gün) → 1 May Emek Bayramı sinyali.
 - [ ] **B-21** Sonraki Pazartesi brief Task Scheduler ile otomatik tetikleme. ~~JOKER e-ticaret~~ ✅ 11.06 (B-29, commit 739ad0a). Kalan: kitapsepeti + Heykel + kafeler dahil edilmeli + scheduler kaydı (B-04).
 - [~] **B-22** FSM kapı sayıcı entegrasyonu — **(2) SQL tabloya yükleme ✅ KAPALI 24.07.2026** — `bkm.MusteriSayi` (MekanId, Tarih, MusteriSayi) API ile otomatik besleniyor, saatlik grain, dashboard `TrafikQueries.cs`/`/trafik` sayfası zaten bundan okuyor (sema/entities.yaml doğrulandı). `sayiyo/*.xlsx` + `scripts/donusum_orani.py`/`sayiyo_excel.py` akışı **legacy** (API'den önce elle-yükleme) — güncel kod bunları kullanmıyor. **KALAN:** (1) Özlüce + İst.Yolu sayıcı kurulumu yok, (3) saat bazlı kırılım (heatmap `/trafik`'te zaten var, brief'e KPI kolonu eklenmedi). **(GÜNCEL 24.07)**
 - [x] ~~**B-03** `send_brief.bat` tarih güncelle~~ — ✅ DİNAMİK yapıldı, her Pazartesi'yi otomatik hesaplıyor (PowerShell `(Get-Date).AddDays(...)`). Bir daha güncelleme gerekmez.
@@ -918,11 +1003,13 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] ~~**B-37** stkID düzeltmesi rapor dosyalarına~~ — ✅ 09.06 G4-kategori-magaza.sql + A6-marka-yayinevi.sql + generate_brief.py SQL_CATEGORY/TOTAL → Products.Code=urn.stkID köprüsü. G4 doğrulandı (Oyuncak 07.06 3,5k→491k, 140× düzelme).
 
 #### Faz 0.5 — Mayıs %50 kitap kampanyası tahmini
+>
 > ⤵️ **ARŞİVLENDİ (17.06 curator)** — kampanya penceresi geçti (Nisan-Mayıs 2025/26). Detay `## Arşiv`'de. Geçerliliği geri gelirse (yeni kampanya) aktif Faz'a alınır + RESUME `docs/journal/bkm/2026-04-27.md`.
 
 #### Faz 1 — Bu hafta (yüksek öncelik — ~5 gün)
+
 - [ ] **B-04** `scripts/register-scheduled-task.ps1` çalıştır → Task Scheduler kaydı (her Pazartesi 09:00). **Tek görev mimarisi:** 14.05.2026'da `send_brief.bat` v5 self-healing yapıldı (brief.html yoksa `generate_brief.py` ile kendisi üretir → eski generator/sender yarış koşulu bitti, 11.05'te bu yüzden mail gitmemişti). `register-brief-generator-task.ps1` deprecated edildi (artık sadece eski `BKM-Brief-Generator` görevini kaldırıyor); `register-scheduled-task.ps1` çalıştırıldığında o eski görevi de otomatik temizler. **Kullanıcı sadece `register-scheduled-task.ps1`'i çalıştıracak.**
-- [ ] **B-20** Pazartesi maili **fikri.eren@bkmkitap.com**'a SPAM'a düşüyor olabilir (4 kez gönderildi 20.04'te, kullanıcı "gelmedi" dedi). Kontrol: BKM webmail spam klasörü. Çözüm: BKM whitelist veya SPF/DKIM doğrulama veya gönderici adresini `fikrieren@gmail.com`'dan BKM SMTP'sine değiştirmek. **(YENİ)**
+- [ ] **B-20** Pazartesi maili **<fikri.eren@bkmkitap.com>**'a SPAM'a düşüyor olabilir (4 kez gönderildi 20.04'te, kullanıcı "gelmedi" dedi). Kontrol: BKM webmail spam klasörü. Çözüm: BKM whitelist veya SPF/DKIM doğrulama veya gönderici adresini `fikrieren@gmail.com`'dan BKM SMTP'sine değiştirmek. **(YENİ)**
 - [ ] **B-05** SsmsExcelExporter build & test (`dotnet publish -c Release -r win-x64`) — Ctrl+Shift+E + Ctrl+Shift+W çalışmalı.  ⟨eklendi 27.04.2026⟩
 - [ ] **B-06** `CampaignId = NULL` **389,4M ₺** indirim kaynak araştırması (Session 2'den beri açık;  ⟨eklendi 19.09.2026⟩
       MCP keşfiyle bulundu). ⚠ 19.09: bu madde İKİ yerde yazılıydı, birleştirildi (V-16).
@@ -938,7 +1025,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **B-27** G1 panosu (`10_00_gunluk-gm-panosu.sql`) 12 sn sürüyor — UPT için fiş-başı CROSS APPLY ağır. Günlük otomatik mail'e bağlanırsa UPT'yi ön-hesaplı/materialized tut. **(YENİ)**  ⟨eklendi 08.06.2026⟩
 
 #### Faz 2 — Bu ay (orta öncelik — ~10 gün)
-- [ ] **B-169** **Merkez depo WMS ↔ ERP defter eşitlemesi** — plan: `plans/43-wms-erp-defter-esitleme.md` (Tier 3, BEKLEMEDE, 09.09.2026). Mekanizma çözümlemesi + ölçüm BİTTİ, uygulama yapılmadı; hiçbir tabloya yazılmadı (kullanıcı kısıtı: _"aman tablolara dokunma sakın"_).
+
+- [ ] **B-169** **Merkez depo WMS ↔ ERP defter eşitlemesi** — plan: `plans/43-wms-erp-defter-esitleme.md` (Tier 3, BEKLEMEDE, 09.09.2026). Mekanizma çözümlemesi + ölçüm BİTTİ, uygulama yapılmadı; hiçbir tabloya yazılmadı (kullanıcı kısıtı: *"aman tablolara dokunma sakın"*).
   - **KARAR (kullanıcı 09.09):** WMS'e DOKUNULMAZ — WMS toplamı ↔ ERP defteri karşılaştırılır, fark **± sayım evrakı** olarak ERP'ye yazılır. Üretici (salt-okuma, EXEC metnini basar): `sorgular/2026-09-09-wms-erp-sayim-evraki-URET.sql`.
   - **KAPSAM DÜZELTİLDİ:** mutabakat kapsamı RAF+GİRİŞ **değil, TÜM ALANLAR** (ÇIKIŞ dahil — mal sevke ayrılmış ama hâlâ defterde). Mutabık ürün 409.229 → **417.812**; ÇIKIŞ dahil olunca 9.820 ürün kazanılıyor, 1.237 kaybediliyor (8× asimetri → tesadüf elendi). Uyumsuz çeşit **17.027 → 8.476**. ⚠ Panel stoğu (0,1) ile defter mutabakatı (0,1,2) karıştırılmaz. `ehAltDepo` mekan 12'de tek değer 0 → süzgeç gereksiz.
   - **EVREN DÜZELTİLDİ — `urnTip=0` guard'ı YETMİYOR:** farkın **%96'sı 5 hizmet/sarf kalemiydi** (144860 KARGO GELİRİ −2.798.582 · 583160 Geri Dönüşüm Kağıt +1.764.200 · 144963 KAPIDA ÖDEME −1.194.588 · 436306 KOMİSYON −207.999 · 1543633 TANIMSIZ ÜRÜN %20 +37.504) — hiçbiri WMS'te yok, düzeltilmez, evrenden çıkarılır. Süzgeç `bkm.UrunBilgi.Kategori3 NOT IN ('KARGO','Genel','Tanımsız','Zkargo')`. ⚠ KARGO GELİRİ'nin urnTip=0, satisTur=0, urnKtgrID=10 ("Çocuk Kitapları" — veri kiri).
@@ -950,7 +1038,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
   - **Doğru araç ikili:** (1) fiziki sayım = `WMS-GunlukSayimEmiri` job'ının `sayilcaklar` CTE'sine üçüncü kol (öneri: `sorgular/2026-09-09-wms-erp-fark-sayim-emri-ONERI.sql`); (2) defter düzeltmesi = **`bkm.SayimIrsaliyeBaslikOlustur` + `bkm.SayimIrsaliyeSatirEkle`** — WMS'e dokunmaz, `eTip=99`, tutarı `bkm.UrunMaliyet` ile kendisi hesaplar, `@onay=1` (anında işler).
   - **Kapılar/tuzaklar:** `adresSnl.adrs3=0` olan 3.224 raf adresi sayım emrinden düşüyor · barkodsuz 3 çeşit · `emPaletID=217542` ve terminal kullanıcı listesi SP'de GÖMÜLÜ · `@EmNo='GUN'+yyMMdd` tekil değil · `emSonPozID` = **stkID** (pozisyon değil) · `dbo.irs_ekle`/`irsSatir_ekle`/`irsSatirHrk_ekle` **ŞİFRELİ** (son mil okunamadı).
   - **Karar bekleyen (kullanıcı/muhasebe):** stok değeri değişimi kabul mü · 3.011 ERP-negatif ürün nasıl kapanacak · WMS'te kaydı olmayan 9.230 çeşit/1.997.663 adet sayılamıyor, defter düzeltmesi onayı · maliyetsiz ürünler 0 ₺ girsin mi · job mu elle dilim dilim mi (job kurulumu AYRI onay ister).
-  - **EŞİTLEME TUTTU — problem SIZINTI (kullanıcı: _"wms ile aynı yapmıştım stokları"_, doğrulandı):** 2026'da hiç hareket görmemiş 6.182 çeşidin **6.181'i hâlâ mutabık (%99,98)**; hareket görenlerde %71,86. 2026 delta farkı mevcut farkı birebir açıklıyor (ERP-eksik: ERP Δ +161.327 vs WMS Δ +306.224 → fark +151.670). Yani tarihsel kir değil, **süregelen sızıntı**.
+  - **EŞİTLEME TUTTU — problem SIZINTI (kullanıcı: *"wms ile aynı yapmıştım stokları"*, doğrulandı):** 2026'da hiç hareket görmemiş 6.182 çeşidin **6.181'i hâlâ mutabık (%99,98)**; hareket görenlerde %71,86. 2026 delta farkı mevcut farkı birebir açıklıyor (ERP-eksik: ERP Δ +161.327 vs WMS Δ +306.224 → fark +151.670). Yani tarihsel kir değil, **süregelen sızıntı**.
   - **Sızıntı kanalları (ölçüldü):** (1) `paletIcHrk.pHrkTip=0` KULLANICI/manuel baskın (belgeli +745.077 · belgesiz −357.759 · sayım −81.094 = net +306.224; `pHrkTip=1` EMİR net 0) · (2) `ehTip=2` **Alış İade %84,65 uyumsuz**, baskın yön ERP-fazla 1.748 çeşit/21.602 adet = ERP-fazla farkının %51'i · (3) onaysız irsaliye katkı (onaysızda geçen 1.881 çeşidin %44,28'i uyumsuz, taban %28) — **onay job'ı yalnız eTip IN (16,90,99) işliyor, `eTip 13` onaysız kalıyor** (1.974 satır / +52.989 adet).
   - **İKİ AYRI İŞ:** **(A)** yeniden eşitleme ~194K adet / ~55K ₺ — ucuz, tek seferlik · **(B) sızıntıyı kapatmak** — asıl iş. B olmadan A sayacı sıfırlamaktan ibaret (Ara-2025: 302.859 → 37, dokuz ayda → 2.545). B için öneri: onay zincirinde eTip 13 boşluğu · alış-iade WMS↔ERP eşleşme zorunluluğu · periyodik fark izleme + eşik uyarısı.
   - **Sıra:** fiziki sayım ÖNCE, defter düzeltmesi SONRA. İlk dilim ≤200 çeşit, en yüksek **maliyetli** tutardan.
@@ -973,7 +1061,8 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [~] **B-113** UI checklist temizlik (asistan-ui §5.5, 35 ihlal — YÜKSEK yok). ✅ 17.06 DÜZELTİLDİ: Türkçe (Error/NotFound/ReconnectModal + error-boundary::after) · **Emoji→Lucide** (Asistan 4 buton, Modal ✕, MainLayout, Home/Magazalar/Sadakat link-ikon, Operasyon badge) · **focus-visible global CSS** (app.tailwind.css `*:focus-visible` → tüm input+tıklanabilir). **KALAN:** (b) Hardcode hex 11 adet ApexCharts.Blazor C# option (AppMultiLine/Stacked/Bar/Area eksen #94a3b8 + grid + Magazalar Colors + App theme-color) — render-time C# nesne, CSS-var geçilemez → JS interop gerektirir (OnAfterRender renk-set). Eksen gri nötr/marka değil, düşük görsel etki. Ayrı iş.
 
 #### Faz 3 — Çeyrek (düşük öncelik / temizlik — ~15 gün)
-- [~] **B-45 ⭐ DEVAM — BKM-Asistan PWA-içi** (plan-20, Faz-1 başladı 18.06). LLM=**Gemini Flash + Groq fallback** (Anthropic değil — kullanıcı kararı). ✅ Faz-1 LLM katmanı commit (9783efd): `ILlmProvider` agnostik + GeminiProvider(REST)+GroqProvider(OpenAI-uyumlu)+FallbackLlmProvider + SaltOkumaGuard. ✅ Araçlar+loop **build YEŞİL + commit (2766100, 18.06)**: AsistanAraclar.cs (sql_sorgu salt-okuma+PII maske / sema_oku / ornek_sql_bul golden-record / gorev_*), AsistanService.cs (tool-use loop + sema-kurallı sistem-prompt), Program.cs (DI). **YARINA:** ~~(1) build doğrula+commit ✅~~ · ~~(2) Asistan.razor veri-sorgu modu ✅ (184c72a — Veri Sor kartı + cevap balonu + araç izi)~~ · ~~(3) Gemini çok-model rotasyon ✅ (2e9cbf1, GEMINI_MODELS liste → 429/503 sıradaki model → Groq)~~ · ~~(4) canlı test ✅ "dün ciro?" → 1.278.364,92 ₺ (MCP ile mutabık); araç izi sql_sorgu→sema_oku→sql_sorgu~~. ✅ **UI yeniden tasarım (chat, 18.06)**: tek sohbet kutusu + niyet ayrımı (soru→veri / not→taslak) + DaisyUI chat balonları + taslak kartı (Kaydet/Ata/Düzelt onaylı) + hızlı-öneri çipleri + açık görev listesi. ✅ **Not→görev bulut LLM**: TaslakUretAsync Gemini→Groq→yerel qwen (en son fallback). ✅ **Niyet heuristiği KALDIRILDI → LLM-yönetimli tek akış (18.06, kullanıcı kararı)**: tüm mesajlar SorAsync; LLM niyeti+bağlamı yönetir (takip "evet/güncelle" kopmaz), iş/not→`gorev_taslak_oner` (onaya sunar, otomatik kaydetmez), tarih yoksa son-30-gün varsay. Heuristik "mısın→not" + "evet→Özlüce few-shot sızması" bug'larını çözdü. **Odak kararı: SQL/veri-sorgu İKİNCİL** (kullanıcı "şu an önemli değil") — görev/not asistanı + temiz konuşma birincil. Kalan: (a) **unified akış CANLI test** (quota tükendiği için ertelendi — kotalar dönünce: not→taslak→onay, takip bağlamı, güvenlik yazma-reddi) · (b) GeminiProvider defansif/rotasyon (9bbfaae) canlı doğrula · (c) öğrenen katman (PanelAsistanBellek — kalıcı tercih "varsayılan 30 gün" hatırlama). Plan-20 master. ✅ **Faz-2 Gmail+Takvim TAMAM (plan-21, 18.06)**: Google OAuth (`21b11c7`) + takvim/mail araçları + onay kartları (`130c9b3`) + Meet/davetli/online-yüzyüze/tarih (`a2e9949`/`eed78be`/`886e5db`). Canlı: bağlandı, etkinlik-öner+onay-kartı (auto-exec YOK), inbox-özet gerçek. Dış-aksiyon (oluştur/gönder) = kullanıcı onayı. ✅ **OpenRouter LLM zinciri (`6370877`)**: OpenRouter→Gemini→Groq, iç-model rotasyon. ✅ **plan-22 öğrenen katman TAMAM (Hermes-uyarlı)**: PanelAsistanBellek (`73c87f6`) + bellek_yaz/gecmis_ara + Snapshot-FROZEN + GuvenlikTara; görev SonTarih (`f170f3f`); **Genius ismi+lambadan-cin maskotu** (`5964999`); 99-komut repertuar (`ab77724`). Canlı: bellek_yaz→DB, tercih yeni-konuşmada uygulandı. **KALAN (kota tükendi, 19.06 03:00 reset / $10→1000gün):** (a) canlı-test: gecmis_ara + no-auto-compact + güvenlik-reddi + due-date uçtan-uca + pano-AI derin-özet + markdown + SQL-kalite (qwen3-coder) · (b) **sen:** Faz-2 etkinlik-Oluştur+mail-Gönder Chrome'da onayla, auth-şifre değiştir · (c) free-SQL yetersizse $10 kredi/Gemini-paid kararı · (d) plan-22 Adım-8 (ops: "Bellek olarak sakla" butonu + consolidate-sema bellek-curator) · (e) LlmService/LLamaSharp tam-kaldırma. Faz-3 ajanda + WhatsApp-bildirim backlog.
+
+- [~] **B-45 ⭐ DEVAM — BKM-Asistan PWA-içi** (plan-20, Faz-1 başladı 18.06). LLM=**Gemini Flash + Groq fallback** (Anthropic değil — kullanıcı kararı). ✅ Faz-1 LLM katmanı commit (9783efd): `ILlmProvider` agnostik + GeminiProvider(REST)+GroqProvider(OpenAI-uyumlu)+FallbackLlmProvider + SaltOkumaGuard. ✅ Araçlar+loop **build YEŞİL + commit (2766100, 18.06)**: AsistanAraclar.cs (sql_sorgu salt-okuma+PII maske / sema_oku / ornek_sql_bul golden-record / gorev_*), AsistanService.cs (tool-use loop + sema-kurallı sistem-prompt), Program.cs (DI). **YARINA:** ~~(1) build doğrula+commit ✅~~ · ~~(2) Asistan.razor veri-sorgu modu ✅ (184c72a — Veri Sor kartı + cevap balonu + araç izi)~~ · ~~(3) Gemini çok-model rotasyon ✅ (2e9cbf1, GEMINI_MODELS liste → 429/503 sıradaki model → Groq)~~ · ~~(4) canlı test ✅ "dün ciro?" → 1.278.364,92 ₺ (MCP ile mutabık); araç izi sql_sorgu→sema_oku→sql_sorgu~~. ✅ **UI yeniden tasarım (chat, 18.06)**: tek sohbet kutusu + niyet ayrımı (soru→veri / not→taslak) + DaisyUI chat balonları + taslak kartı (Kaydet/Ata/Düzelt onaylı) + hızlı-öneri çipleri + açık görev listesi. ✅ **Not→görev bulut LLM**: TaslakUretAsync Gemini→Groq→yerel qwen (en son fallback). ✅ **Niyet heuristiği KALDIRILDI → LLM-yönetimli tek akış (18.06, kullanıcı kararı)**: tüm mesajlar SorAsync; LLM niyeti+bağlamı yönetir (takip "evet/güncelle" kopmaz), iş/not→`gorev_taslak_oner` (onaya sunar, otomatik kaydetmez), tarih yoksa son-30-gün varsay. Heuristik "mısın→not" + "evet→Özlüce few-shot sızması" bug'larını çözdü. **Odak kararı: SQL/veri-sorgu İKİNCİL** (kullanıcı "şu an önemli değil") — görev/not asistanı + temiz konuşma birincil. Kalan: (a) **unified akış CANLI test** (quota tükendiği için ertelendi — kotalar dönünce: not→taslak→onay, takip bağlamı, güvenlik yazma-reddi) · (b) GeminiProvider defansif/rotasyon (9bbfaae) canlı doğrula · (c) öğrenen katman (PanelAsistanBellek — kalıcı tercih "varsayılan 30 gün" hatırlama). Plan-20 master. ✅ **Faz-2 Gmail+Takvim TAMAM (plan-21, 18.06)**: Google OAuth (`21b11c7`) + takvim/mail araçları + onay kartları (`130c9b3`) + Meet/davetli/online-yüzyüze/tarih (`a2e9949`/`eed78be`/`886e5db`). Canlı: bağlandı, etkinlik-öner+onay-kartı (auto-exec YOK), inbox-özet gerçek. Dış-aksiyon (oluştur/gönder) = kullanıcı onayı. ✅ **OpenRouter LLM zinciri (`6370877`)**: OpenRouter→Gemini→Groq, iç-model rotasyon. ✅ **plan-22 öğrenen katman TAMAM (Hermes-uyarlı)**: PanelAsistanBellek (`73c87f6`) + bellek_yaz/gecmis_ara + Snapshot-FROZEN + GuvenlikTara; görev SonTarih (`f170f3f`); **Genius ismi+lambadan-cin maskotu** (`5964999`); 99-komut repertuar (`ab77724`). Canlı: bellek_yaz→DB, tercih yeni-konuşmada uygulandı. **KALAN (kota tükendi, 19.06 03:00 reset / $10→1000gün):** (a) canlı-test: gecmis_ara + no-auto-compact + güvenlik-reddi + due-date uçtan-uca + pano-AI derin-özet + markdown + SQL-kalite (qwen3-coder) · (b) **sen:** Faz-2 etkinlik-Oluştur+mail-Gönder Chrome'da onayla, auth-parola değiştir · (c) free-SQL yetersizse $10 kredi/Gemini-paid kararı · (d) plan-22 Adım-8 (ops: "Bellek olarak sakla" butonu + consolidate-sema bellek-curator) · (e) LlmService/LLamaSharp tam-kaldırma. Faz-3 ajanda + WhatsApp-bildirim backlog.
 - [ ] **B-31** [TIER 3 plan-first] GM rapor dosyalarını (12 dosya, 7 klasör) `sorgular/gm-rapor/` altına taşı — skill/katalog/plan/INDEX referansları güncellenmeli. Şimdilik `sorgular/INDEX.md` tek-harita yeterli. **(YENİ)**  ⟨eklendi 08.06.2026⟩
 - [ ] **B-32** [TIER 3 plan-first] Günlük otomatik mail (G0-G7) — generate_brief gibi günlük pano, Task Scheduler 08:30. B-27 (UPT performans) önce çözülmeli. **(YENİ)**  ⟨eklendi 08.06.2026⟩
 - [ ] **B-15** `BKM-Mobil-App-Baremli-Sorgular.sql` (eski J_CLCARD versiyonu) deprecated → kaldır.  ⟨eklendi 27.04.2026⟩
@@ -985,30 +1074,37 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ### MCP Server (kod) — BIRLESIK ONCELIK SIRASI
 
 #### Faz 0 — Bugün
+
 - [/] **M-01** ⚡ **Config geçişi + Pusula rename — restart bekliyor (11.06):** Config'ler GÜNCELLENDİ: desktop config 3 server → `D:\Dev\sqlserver-mcp\dist\index.js` (env'ler korundu, yedek: `.bak-rename`); `.claude.json` proje anahtarları → `D:\Dev\pusula`; repo-içi 14 dosya path'i + package.json name=pusula; memory dizini kopyalandı (`D--Dev-pusula`). **KULLANICI YAPACAK:** (1) Claude'u tamamen kapat, (2) PowerShell: `Rename-Item D:\Dev\sqlserver-mcp-server pusula`, (3) Claude'u `D:\Dev\pusula`'da aç. **Restart sonrası ilk iş:** `SELECT @@SERVERNAME` smoke (3 server) → OK ise bu repodan `src/`+`dist/`+`node_modules/`+`tsconfig.json` sil (package.json kalsın, isim taşıyor).
 - [ ] **M-01b** Yeni repo'ya GitHub remote + push. Açık işler artık orada: `D:\Dev\sqlserver-mcp\TODO.md` (CTE wrap fix M-04, ORDER BY M-05, test kapsamı M-03). C-NEW-01 (CWD fix) da oraya taşındı sayılır — yeni repo'da yapılacak.  ⟨eklendi 11.06.2026⟩
 
 #### Faz 1 — Bu hafta
+
 - [ ] **C-NEW-01** ⚡ Kalıcı CWD fix: `src/index.ts` line 1 `import "dotenv/config"` → absolute-path dotenv load (`fileURLToPath(import.meta.url)` ile `__dirname`'den `.env` yükle). Sonra `npm run build` + restart + test (config'den cwd/env çıkarıp). Başarılıysa `fix-mcp-config.{ps1,bat,FIXED.json}` arşivlenebilir.  ⟨eklendi 27.04.2026⟩
 - [x] ~~**M-NEW-02** Named instance desteği~~ — ✅ `src/services/database.ts` patch'lendi: `MSSQL_HOST="HOST\\INSTANCE"` formatı parse + `instanceName` kullanılıyor + port instance varsa skip. Backward compatible. **Deploy:** `npm run build` gerekiyor.
 
 #### Faz 2 — Bu ay
-- [ ] **M-NEW-03** Plaintext password risk: `claude_desktop_config.FIXED.json` ve `fix-mcp-config.ps1` repo'da plaintext SA şifre içeriyor. `.gitignore`'a al veya `*.example.*` template versiyonu yap.  ⟨eklendi 27.04.2026⟩
 
-#### Faz 1 — Bu hafta
+- [ ] **M-NEW-03** Plaintext password risk: `claude_desktop_config.FIXED.json` ve `fix-mcp-config.ps1` repo'da plaintext SA parola içeriyor. `.gitignore`'a al veya `*.example.*` template versiyonu yap.  ⟨eklendi 27.04.2026⟩
+
+#### Faz 1 — Bu hafta (ek)
+
 - [ ] **M-02** `src/tools/sp.ts` ve `src/tools/diagnostics.ts` üzerinde herhangi bir bug tespit edilmedi — gözden geçirme + test.  ⟨eklendi 27.04.2026⟩
 
-#### Faz 2 — Bu ay
+#### Faz 2 — Bu ay (ek)
+
 - [ ] **M-03** `sql_query` timeout iyileştirmesi — büyük result set'lerde stream/pagination.  ⟨eklendi 27.04.2026⟩
 - [ ] **M-04** HTTP transport stabilitesi (Cowork/Workspace bağlantısı için cloudflared kalıcı tunnel).  ⟨eklendi 27.04.2026⟩
 
 #### Faz 3 — Çeyrek
+
 - [ ] **M-05** `MAX_ROWS` env var dinamik — sorgu bazında override.  ⟨eklendi 27.04.2026⟩
 - [ ] **M-06** Yeni discovery tool: `sql_table_dependencies` (ilişkili tabloları otomatik çıkar).  ⟨eklendi 27.04.2026⟩
 
 ### CrossProject — BIRLESIK ONCELIK SIRASI
 
 #### Faz 1.5 — Semantik katman + ECC entegrasyon backlog (10.06 araştırma çıktısı)
+
 - [x] **SK-01** `sema/` structured katman kuruldu (entities/bridges/codes/metrics/queries.yaml) + `sema-ogren` skill + `semantic-layer.md` rule. ✅ 10.06
 - [x] **SK-02** queries.yaml golden-SQL kataloğu (8 doğrulanmış sorgu) + compat blok + ai_hints + kolon description (irsHrk). ✅ 10.06
 - [ ] **SK-03** entities.yaml kalan kritik tablolara kolon `description` (Sales, J_ORDERS, emirAyr) — Wren MDL pattern.  ⟨eklendi 11.06.2026⟩
@@ -1023,13 +1119,16 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [x] **ECC-06** session-handoff'a "İşe YARAMAYANLAR" bölümü. ✅ 10.06
 
 #### Faz 0 — Bugün
+
 - [x] ~~**C-01..C-05** atlasops session/memory kurulum~~ — ✅ TAMAM (27.04, Oturum 1). `.claude/` (rules+skills+hooks+agents) mevcut, CLAUDE.md § Session & Memory var, SESSION_LOG arşivlendi, hook'lar çalışıyor (session-start + handoff + pre-commit), ilk commit atıldı. Stale-open kalmıştı (curator yakaladı 17.06).
 
 #### Faz 1 — Bu hafta
+
 - [ ] **C-06** Template (D:\Dev\claude-context-template) güncelle: atlasops'taki güncel session-handoff SKILL.md'yi merge et.  ⟨eklendi 27.04.2026⟩
 - [x] ~~**C-07** ADR-001 yaz~~ — ✅ B-19 ile yapıldı (`docs/ADR/001-multi-project-journal.md`). Duplicate madde.
 
 #### Faz 2 — Bu ay
+
 - [ ] **C-08** Mevcut `docs/01-baglanti.md` ... `09-raporlar-ve-skills.md` BKM odaklı — `docs/projects/bkm/` altına taşı (büyük refactor, ayrı PR).  ⟨eklendi 27.04.2026⟩
 - [ ] **C-09** `claude-context-template` `bootstrap.sh`'a multi-project flag ekle (`--multi-project bkm,yonetiq`).  ⟨eklendi 18.08.2026⟩
 
@@ -1043,6 +1142,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 ## Yapılacaklar (genel backlog — temalı)
 
 ### Disiplin
+
 - [ ] **C-10** Aylık `/consolidate-memory` çağrısı — eski journal'ları arşive taşı (3 ay sonra).  ⟨eklendi 27.04.2026⟩
 - [x] ~~**C-11** `pre-commit-antipattern.sh` hook ekle~~ — ✅ 17.06 wire edildi (H-09: settings.json PreToolUse(Bash) + BKM-adapte blok/uyar). Commit 7fc5a36.
 - [ ] **C-13** Build artifact'ları `.gitignore`'a taşı: `sorgular/03-kampanya/RaporApp/bin/Release/`, `obj/Release/`, `*.dll`, `*.exe`, `*.pdb`. 3. commit'te yığıldı (220 dosyanın çoğu bunlar). `git rm --cached -r ...` + yeni commit.  ⟨eklendi 27.04.2026⟩
@@ -1053,6 +1153,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 - [ ] **C-18** Handoff skill plan tamamlanma kontrolü — done criteria check edildi mi, plan archive'a taşınıyor mu. **(YENİ)**  ⟨eklendi 27.04.2026⟩
 
 ### Dokümantasyon
+
 - [ ] **C-12** README.md'ye multi-project yapı eklemesi (mevcut sadece MCP server kurulum).  ⟨eklendi 27.04.2026⟩
 
 ---
@@ -1062,7 +1163,9 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 > Tamamlanmamış ama artık geçersiz/ertelenmiş maddeler (plan-12 WS-1 state-machine). **Silinmez** — git history korur + buraya taşınır. Geçerliliği geri gelirse aktif Faz'a alınır. Taşıma: `session-handoff` curator-check işaretler → kullanıcı onayı → buraya.
 
 ### Mayıs %50 kitap kampanyası tahmini (B-NEW-00..06) — arşiv 17.06
+>
 > Sebep: kampanya penceresi geçti (Nisan-Mayıs 2025/26, şu an Haziran). Tam plan/RESUME: `docs/journal/bkm/2026-04-27.md`. Yeni kampanya gelirse aktif Faz'a geri al.
+
 - [ ] **B-NEW-00** (restart sonrası) SQL bağlantı testi `SELECT @@SERVERNAME, GETDATE()`.  ⟨eklendi 17.06.2026⟩
 - [ ] **B-NEW-01** Şema keşfi: `urnKtgr2.ktgrAd` LIKE 'KITAP%' + EncoreMerkez Sales/SalesProducts/Products + Products↔urn köprüsü.  ⟨eklendi 17.06.2026⟩
 - [ ] **B-NEW-02** Geçmiş veri 3 dönem (May25/Apr25/Apr26 prorate), IsValid=1, DocType IN(1,2,3,6,7,8), CampaignId NULL/NOT NULL ayrı.  ⟨eklendi 17.06.2026⟩
@@ -1229,11 +1332,11 @@ yerleşim ihlali yok ✓ · 17 slayt PowerPoint COM ile PNG export edilip gözle
   **`--param ad[:tip]=deger`** (str/int/dec/date/datetime/bool/guid; tarih TAHMİN EDİLMEZ,
   `dd.MM.yyyy` reddedilir — ölçülen vaka: `20260901` tam sayıya düşünce datetime karşılaştırması
   patlıyordu) · **`--timeout` / `--retry`** (yalnız geçici hata 10053/10060/-2/1205, sınırlı ve
-  görünür) · **`${ENV}` genişletmesi** (şifre `sqlcli.json`'da durmaz; karşılığı yoksa hata verir) ·
+  görünür) · **`${ENV}` genişletmesi** (parola `sqlcli.json`'da durmaz; karşılığı yoksa hata verir) ·
   **UTF-8 çıktı** (konsol cp857 yazıyordu, belgeye aktarılan Türkçe bozuluyordu).
   Depo **git altına alındı** — `.git` yoktu, v2.1 çok-sağlayıcı işi de commit'siz duruyordu:
   `68e02d5` taban + `50ad562` v2.2. Build 0 hata/0 uyarı, global tool 2.2.0, altı yol canlı test
-  edildi (ERP + Zirve). Pusula tarafı (commit `13f8993`): `sqlcli.json` 4 profil (şifresiz →
+  edildi (ERP + Zirve). Pusula tarafı (commit `13f8993`): `sqlcli.json` 4 profil (parolasiz →
   gitignore'dan çıkarıldı, commit'lenir) · `tools/sq.sh` kodlama-esnek (UTF-8 dene → cp857) ·
   kural `sql-server-conventions.md § SORGU ARACI` yetenek tablosuyla güncellendi.
   ⚠ Kalan: `tools/sema_degismez.py` hâlâ kendi Python koşucusu — 28 değişmez `sqlcli assert`e

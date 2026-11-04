@@ -448,9 +448,11 @@ codes:
     note: "SUM'da iade sign'lı düşülür; AVG'da iade hariç (DocumentsTypeId<>3)."
 
   encore.SalesProducts.BarcodeNo_1001:
-    last_verified: "2026-09-12"
-    evidence_status: pending
-    evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
+    last_verified: "2026-10-04"
+    evidence: "2026-10-04 (spec 001) — sorgular/2026-10-panel-veri-duzeltme/00-taban-olcumu.sql blok A/B/C/C2 ve H05-fis.sql blok D: tüm zaman 1001 satırı 15.423 iade belgesi + 62 satış fişi (geçerli 1001 satırı 19; değişmez geri-donusum-1001-satis-fisinde-gecerli-yok), 1 fatura, 2 personel belgesi. Eylül 2026 FSM iade 1.518 belgenin 571'i 1001'li."
+    tespit_kurali: "1001 tespiti belge düzeyindedir ve IsValid'e BAKMAZ (geçersiz 1001 satırı da belgeyi dışlar). Kanonik fiş/iade tanımı: metrics:fis_kanonik."
+    iki_tanim_esdeger_degil: "Panelin HediyeCekiQueries geri dönüşüm tanımı (SalesProducts.RefundReasonId = 12 VEYA Products.Code = '583160', IsValid=1) ile 1001 barkod tanımı EŞDEĞER DEĞİL: Eylül 2026 3 mağaza A 1.889 / B (1001) 1.853 belge; yalnız A'da 36, yalnız B'de 0 (583160 olan her belgede 1001 de var). 36 belgenin sebebi: sebep kodu 12 başka ürün satırlarına girilmiş (168 satır / 160 farklı barkod) — panel tanımı fazla dışlıyor. Kanonik dışlama 1001'dir (GMY KR-1, 03.10.2026)."
+    uses: [metrics:fis_kanonik]
     values: {"1001": "GERİ DÖNÜŞÜM satırı — ciro/kategori raporlarında HARİÇ"}
     note: "Tek sihirli değer (kod kümesi değil, ayrıklama kuralı): `sp.BarcodeNo<>'1001'`. Fiş-düzeyi dışlama: LEFT JOIN spb ON BarcodeNo='1001' … WHERE spb.Id IS NULL."
 
@@ -549,6 +551,7 @@ codes:
 
   joker.J_ORDER_DETAILS.STATUS:   # detay satır: 2xxx=Sipariş detay, 4xxx=Odak detay (kod ailesi yukarıda)
     last_verified: "2026-09-12"
+    ciro_karari: "[eklendi 2026-10-04; kod kümesi yeniden doğrulanmadı] GMY kararı KR-2 (03.10.2026, spec 001): satır iptali/iadesi (2004/2005/2010) e-ticaret CİROSUNA bu spec'te uygulanmaz — ciro sipariş başlığı kuralıyla kalır; satır kuralı yalnız ODAK talep adedine uygulanır. Ciroya uygulama kararı spec 003'te. Eylül 2026 etkisi 1.648.346,07 TL / 5.939 adet = net cironun %1,35'i (sorgular/2026-10-panel-veri-duzeltme/00-taban-olcumu.sql blok D; H04-odak-talep.sql). Aşağıdaki 'rapor bunları saymalı' notu iptal ANALİZİ içindir."
     evidence_status: pending
     evidence: "2026-09-12 — KANIT URETILEMEDI: kaynak kolon belirsiz ya da erisilemeyen katalogda (JOKER linked server / BKMMaliyet / turetilmis grup). Uydurulmadi, BEYAN edildi. Yontem belli: canli GROUP BY ile sema `values` kumesi karsilastirilir — bu oturumda 7 kod kumesinde uygulandi ve IKISINDE DRIFT cikti."
     bekleyen_toplama: [2000, 2002, 2003, 2007]   # WMS raflama bekleyen filtresi
@@ -680,7 +683,7 @@ codes:
       1: "Manuel indirim (adsız — CampaignId NULL, CampaignName boş; POS'ta sebep seçilir ama YAZILMAZ)"
       2: "Legacy/otomatik indirim (adsız — çoğu eski veri; tüm-zaman −374,7M ama 2026 sadece −6,2M)"
       3: "Kupon (adlı + CouponNo; küçük hacim −2,2M)"
-    indirim_kolonu: "TotalDiscount (negatif). spc bir ürün satırına N indirim üretebilir → brüt için sp.TotalPrice DISTINCT al, indirim spc'den SUM."
+    indirim_kolonu: "Satır indirimi = −DistributedAmount (negatif saklı). ⚠ DÜZELTME 2026-10-04: önceki not 'TotalDiscount, indirim spc'den SUM' diyordu — TotalDiscount (SalesId, CampaignId) grubuna çoğaltılmış toplamdır, SUM edilmez (İst.Yolu Eylül 2026 327,8M ↔ doğru 25,24M; bridges:encore-kampanya-kalem). spc bir ürün satırına N indirim üretebilir → brüt için sp.TotalPrice DISTINCT al."
     all_time_dagilim: "0: −147,6M / 1: −18,8M / 2: −374,7M / 3: −2,2M"
     dagilim_2026: "0 (kampanya): −74,3M %83 · 1 (manuel): −8,6M %10 · 2 (legacy): −6,2M %7 · 3: yok (1 Oca–16 Haz)"
     confidence: 0.95

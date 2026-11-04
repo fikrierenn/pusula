@@ -1,6 +1,11 @@
 node_modules/
 dist/
 .env
+# .env kopyaları (yedek, tarihli) sır taşır; yalnız örnek dosya takipli (18.10.2026)
+.env.*
+!.env.example
+# Derleme ara çıktısı hiçbir projede takip edilmez (18.10.2026)
+obj/
 *.js.map
 
 # Secrets (SMTP credentials, API keys)
@@ -123,3 +128,14 @@ vardiya/*.xlsx
 # .xls (eski format) da veridir — PDKS/Gecoweb çıktıları bu uzantıyla geliyor (18.09.2026).
 vardiya/*.xls
 /BKMKİTAP Eksik ve Fazla Takip Raporu.xlsx
+# Orkestra çalışma alanı (defterler, raporlar, test kilitleri)
+.orkestra/
+
+# Test altyapısı ve test projesi derleme çıktıları (spec 001 T-021)
+lib/Bkm.TestAltyapi/bin/
+lib/Bkm.TestAltyapi/obj/
+tests/GmDashboard.Tests/bin/
+tests/GmDashboard.Tests/obj/
+
+# Müdür/personel maaş verisi (kişisel veri, KVKK) — git dışı
+briefings/**/mudur-maas*.json

@@ -50,13 +50,13 @@ queries:
       FROM EncoreMerkez.dbo.SalesProducts sp WITH(NOLOCK)
       JOIN EncoreMerkez.dbo.Sales s WITH(NOLOCK) ON s.Id=sp.SalesId
       JOIN EncoreMerkez.dbo.Products p WITH(NOLOCK) ON p.Id=sp.ProductsId
-      JOIN DerinSISBkm.bkm.Urunbilgi ub ON ub.stkID = CONVERT(int, p.Code)
+      JOIN DerinSISBkm.bkm.Urunbilgi ub ON ub.stkID = CASE WHEN p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 THEN CONVERT(int, p.Code) END
       WHERE sp.IsValid=1 AND s.DocumentsTypeId IN (1,2,3,6,7,8)
-        AND ISNUMERIC(p.Code)=1
+        AND p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9
         AND s.Date >= CONVERT(date,'01.06.2026',104)
       GROUP BY ub.KatAna
-    last_verified: 2026-09-03
-    note: "compat 110: TRY_CONVERT yok → ISNUMERIC guard. Oyuncak ciro 700K→10,96M bu köprüyle düzeldi."
+    last_verified: 2026-10-04
+    note: "compat 110: TRY_CONVERT yok → BIN2 + LEN 1..9 koruması (ISNUMERIC yetmez, 2026-10-04 bridges:products-code-stkid donusum_kurali). Oyuncak ciro 700K→10,96M bu köprüyle düzeldi."
 
   - id: eticaret-marka-satis
     uses: [bridges:orderdetails-items, bridges:orderdetails-orders]

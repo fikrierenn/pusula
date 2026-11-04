@@ -211,7 +211,7 @@ public sealed class Db
         // § dört sözleşme). Tanımlı değilse eski davranış: yukarı doğru .env ara.
         var disaridan = Environment.GetEnvironmentVariable("BKM_ENV_DOSYA");
         if (!string.IsNullOrWhiteSpace(disaridan) && File.Exists(disaridan))
-            return Ayristir(disaridan);
+            return OrtamlaEz(Ayristir(disaridan));
 
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, ".env")))
@@ -219,7 +219,20 @@ public sealed class Db
         var path = dir is null ? null : Path.Combine(dir.FullName, ".env");
 
         return path is null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                            : Ayristir(path);
+                            : OrtamlaEz(Ayristir(path));
+    }
+
+    // .env'deki bir anahtar, AYNI ADLI süreç ortam değişkeni tanımlıysa onunla ezilir (yalnız dosyada olan anahtar).
+    // Neden (19.10.2026): ikinci makine aynı .env'i paylaşımdan okurken PANEL_DB_HOST=localhost o makinenin
+    // kendisini gösteriyordu; sır kopyalanmadan yalnız sunucu adı ezilir (PANEL_DB_HOST=SANAL-FIKRI).
+    private static Dictionary<string, string> OrtamlaEz(Dictionary<string, string> map)
+    {
+        foreach (var key in map.Keys.ToList())
+        {
+            var value = Environment.GetEnvironmentVariable(key);
+            if (!string.IsNullOrWhiteSpace(value)) map[key] = value.Trim();
+        }
+        return map;
     }
 
     private static Dictionary<string, string> Ayristir(string path)

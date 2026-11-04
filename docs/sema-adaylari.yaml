@@ -1,0 +1,33 @@
+# Sema adayları — bu projede bulunan, sema sahibinin (BKM: pusula, sema-ogren) değerlendireceği gerçekler.
+# Orkestra dış sema'ya yazmaz (tek yazar). Sahip aldığında: durum: alindi (sema id) ya da reddedildi (neden).
+adaylar:
+  - id: aday-20261003-001
+    hedef: bridges
+    gercek: "bridges:hedef-kategori ürün tarafı urn.urnKtgrID2 değil urn.urnKtgr2ID olmalı (BKMDATA.dbo.Hedef.ktgId = urn.urnKtgr2ID)"
+    confidence: 0.95
+    evidence: "T-004 sorgular/2026-10-panel-veri-duzeltme/H13-hedef-tabani-olcum.sql; urn.urnKtgrID2=0 olan ürün 657.949/842.652 (%78); panel urn.urnKtgr2ID kullanıyor (sql-inceleyici r0 teyit, 03.10.2026)"
+    kaynak_proje: "pusula"
+    tarih: 2026-10-03
+    ogren: "KOŞAMADI — sema aracı yok"
+    ilgili: []
+    durum: "alindi (bridges:hedef-kategori, 2026-10-04)"
+  - id: aday-20261004-002
+    hedef: bridges
+    gercek: "EncoreMerkez.SalesProductCampaigns: satır indirimi = −DistributedAmount; TotalDiscount (SalesId,CampaignId) grubuna çoğaltılmış toplamdır, SUM edilmez. Kimlik Σ −DistributedAmount(IsValid=1 kalem) = Σ Sales.DiscountTotal"
+    confidence: 0.95
+    evidence: "T-010 sql-inceleyici 04.10.2026: İst.Yolu Eylül tip 1/2/6/7/8 Σ Sales.DiscountTotal = Σ −SalesProductCampaigns.DistributedAmount (sp.IsValid=1) fark 0; aynı kümede Σ −TotalDiscount 327,8M (~13 kat)"
+    kaynak_proje: "pusula"
+    tarih: 2026-10-04
+    ogren: "KOŞAMADI — sema aracı yok"
+    ilgili: []
+    durum: "alindi (bridges:encore-kampanya-kalem + salescampaign-sales + metrics:kampanya_indirim_orani + codes:encore.SalesProductCampaigns.Source + entities:EncoreMerkez.dbo.SalesProductCampaigns, 2026-10-04) — işaret düzeltmesi: DistributedAmount = TotalDiscount AYNI işaretle 228.297 satır, ters işaretle (sıfır olmayan) 0, eşit değil 319.126 — sorgular/2026-10-04-sema-kanit-t074.sql blok A"
+  - id: aday-20261004-003
+    hedef: metrics
+    gercek: "EncoreMerkez.SalesProducts kalem indirimi = DiscountTotalDirect + DiscountTotalIndirect (Indirect = belge düzeyi indirimin kaleme dağıtılmış payı); DiscountTotalCampaign ⊆ Direct, toplanmaz. Başlık Sales.DiscountTotal = Σ kalem (Direct+Indirect). sql-server-conventions 'DiscountTotalDirect = TOPLAM' kuralı kalem düzeyinde yanlış"
+    confidence: 0.95
+    evidence: "T-017 sql-inceleyici 04.10.2026, Eylül 2026 tip 1,2,3,6,7,8 IsValid=1: Σ DiscountTotalDirect 42.886.966,22 + Σ DiscountTotalIndirect 10.853.128,37 = 53.740.094,59 = Σ Sales.DiscountTotal (fark 0,00); Indirect'in %98'i Sınav (tip 8)"
+    kaynak_proje: "pusula"
+    tarih: 2026-10-04
+    ogren: "KOŞAMADI — sema aracı yok"
+    ilgili: []
+    durum: "alindi (entities:EncoreMerkez.dbo.SalesProducts + .TUTAR_SEMANTIGI, 2026-10-04; hedef metrics değil entities; kural dosyası commit bacdf48)"

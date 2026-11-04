@@ -31,8 +31,9 @@ ayrıca parametreli batch ODBC'de `sp_executesql` ile koşuyor ve `#temp` orada 
 Kullanıcı direktifi: *"bkm tabloları olarak yapalım bir önek ile de isim türetelim"* +
 *"şimdilik tabloları yerel sql tarafına mı kuralım, dev prod olursa derinsis içine alırız"*.
 
-**ŞU AN YALNIZ DEV.** Nesneler yerel `BkmPanel` (`BT-FIKRI\SQLEXPRESS`) içinde
-`bkm` şemasında kurulur. **Prod'a (`DerinSISBkm`) HİÇBİR ŞEY yazılmaz** — terfi ayrı
+**ŞU AN YALNIZ DEV.** Nesneler yerel `BkmPanel` (`SANAL-FIKRI`, varsayılan örnek `localhost`) içinde
+`bkm` şemasında kurulur. 05.10.2026'da BT-FIKRI\SQLEXPRESS'ten taşındı (yedek → `BkmPanel_BT` →
+`sorgular/2026-10-05-bkmpanel-bt-birlestir.sql`; 27 tablonun satır/kolon/indeks/FK sayısı birebir). **Prod'a (`DerinSISBkm`) HİÇBİR ŞEY yazılmaz** — terfi ayrı
 onay ister ve bu bölüm o zaman güncellenir.
 
 Şema ve nesne adları dev ile prod'da BİREBİR AYNI tutulur (`bkm.Vrd_*`), böylece terfi
@@ -61,7 +62,7 @@ yetkisi uygulamadan geçmez. DDL: `sorgular/2026-09-18-vardiya-auth-tablo-kur.sq
 Otomatik testler bu iki tabloya **yazar**, çünkü kusur ancak veri varken görünür.
 Koşullar (üçü birden, yoksa test yazmaz):
 
-1. **Yalnız DEV** — `BkmPanel` (`BT-FIKRI\SQLEXPRESS`). Prod'a yazma yok.
+1. **Yalnız DEV** — `BkmPanel` (`SANAL-FIKRI`, `localhost`). Prod'a yazma yok.
 2. **Ayrılmış ad uzayı** — `zz_test_` önekli sicil/kaydeden; `Vrd_Devir` için ayrıca
    gerçek hiçbir kapanışa denk gelmeyen dönem (`1900-01`). PK çakışmaz, **dondurulmuş
    gerçek dönem silinmez, değiştirilmez**.
@@ -99,7 +100,7 @@ sınıftır (sunucu-seviyesi obje) ve **ayrıca onay ister**; bu onay TEK bu job
 |---|---|---|
 | `Db.OpenAsync()` | 192.168.40.201 — **DerinSISBkm / EncoreMerkez / BKM (ERP)** | **SALT-OKUMA** — istisna yalnız app-owned `bkm.Fin_AyKapanis` + `bkm.BankaOgrenme` (INSERT/UPDATE/DELETE). Başka tablo / native tablo yazımı YASAK. |
 | `Db.OpenJokerAsync()` | 192.168.40.70 — **JOKER e-ticaret** | **SALT-OKUMA** — istisna yok. |
-| `Db.OpenPanel()` / `OpenPanelAsync()` | localhost — **BkmPanel (app-local)** | Yazma SERBEST ama yalnız `dbo.Panel*` kendi tabloları (auth/görev/bellek/tahmin/takvim/içkart). Bu panelin kendi durum deposu, ERP değil. bkm-magaza'nın kendi tabloları: `dbo.PanelStoreUser · PanelStoreDevice · PanelStoreSetupCode · PanelStoreAuditLog` (24.09.2026, `PanelMagaza*` yerine; mekân `LocationKey` = sema/locations.yaml) **+ satınalma bağlantı tabloları (plan 51, GMY onayı 28.09.2026 bekliyor): `dbo.PanelPurchaseCommitment · PanelPurchaseCommitmentLine · PanelPurchaseCommitmentDelivery · PanelPurchaseProductStats` + `PanelStoreDevice.Capabilities` kolonu** (DDL: bkm-magaza `sorgular/2026-09-28-purchasing-schema-install.sql`; ERP kimliği + ad kopyası taşır, ERP'ye tetikleme YOK — K1). |
+| `Db.OpenPanel()` / `OpenPanelAsync()` | localhost — **BkmPanel (app-local)** | Yazma SERBEST ama yalnız `dbo.Panel*` kendi tabloları (auth/görev/bellek/tahmin/takvim/içkart). Bu panelin kendi durum deposu, ERP değil. bkm-magaza'nın kendi tabloları: `dbo.PanelStoreUser · PanelStoreDevice · PanelStoreSetupCode · PanelStoreAuditLog` (24.09.2026, `PanelMagaza*` yerine; mekân `LocationKey` = sema/locations.yaml) **+ satınalma bağlantı tabloları (plan 51, GMY onayı 28.09.2026 bekliyor): `dbo.PanelPurchaseCommitment · PanelPurchaseCommitmentLine · PanelPurchaseCommitmentDelivery · PanelPurchaseProductStats` + `PanelStoreDevice.Capabilities` kolonu** (DDL: bkm-magaza `sorgular/2026-09-28-purchasing-schema-install.sql`; ERP kimliği + ad kopyası taşır, ERP'ye tetikleme YOK — K1) **+ mağaza listesi (spec 003, plan 09.10, GMY 17.10.2026): `dbo.PanelPurchaseStoreList · PanelPurchaseStoreListLine · PanelPurchaseStoreListOrder` + `PanelPurchaseCommitment.SourceStoreListId · SourceKind` kolonları** **+ yetki (spec 006, ADR-0003, GMY 17.10.2026): `dbo.PanelStoreAccessGrant` + `PanelStoreDevice.PackageGrantedBy · PackageGrantedAt · RegistrationKey` kolonları** **+ tespit/karar (spec 006 D2, GMY 19.10.2026): `dbo.PanelStoreFinding · PanelStoreFindingDecision · PanelStoreFindingPhoto · PanelStoreFindingEditHistory · PanelStoreTransferRequest · PanelStoreRetentionSummary`** (canlı kurulum ayrı GMY onayıyla) **+ tanım ve ayarlar (spec 006 H14 + spec 007): `dbo.PanelStoreFindingType` (GMY 20.10.2026, 5130'a kuruldu) · `dbo.PanelSetting` (GMY 18.10.2026) · `dbo.PanelPurchaseRejectReason` (GMY 20.10.2026)** **+ talep türü (spec 006 Rev 8, GMY 23.10.2026 şema onayı; 24.10.2026 5130'a kuruldu, COPY_ONLY yedekli): `dbo.PanelStoreTransferRequestType` + `PanelStoreTransferRequest.Note · TargetLocationKey · Direction` kolonları (`RequestType` nvarchar(32), `Quantity` NULL)** **+ toplu kurulum ve Zirve dar okuma (spec 009, GMY 23.10.2026): `dbo.PanelPerson · PanelPersonSyncRun · PanelStoreSetupWave` + `PanelStoreSetupCode` ve `PanelStoreDevice` ek kolonları; Zirve (`BKM_GENEL`) SALT OKUMA, yalnız 7 alan** (tek kurulum: bkm-magaza `sorgular/2026-09-24-store-schema-install.sql`). |
 
 ## Neden
 

@@ -1,0 +1,303 @@
+# Defter — 001-panel-veri-duzeltme
+
+Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.claude/hooks/ledger.py`
+
+- 03.10 23:22 · Commit: d5cf345 chore(bkm): Orkestra bağlantısı (proje-kur)
+- 03.10 23:23 · Commit: c223b41 docs(bkm): Orkestra /tanit + spec/plan/görevler 001 (panel veri düzeltmeleri)
+- 03.10 23:23 · Ön tarama: dosya/arayüz çiftleri ve AC kapsamı gorevler-rapor.md + gorev-taramasi.md'de; 49/49 AC bağlı, çelişki yok. C1–C5 GMY onaylı (03.10). Commit başlığı <tip>(bkm): … (T-0NN).
+- 03.10 23:33 · Commit: a2bc444 chore(bkm): T-001 taban ölçümü (T-001)
+- 03.10 23:34 · T-001: kapılar STATIC ✓ (sql_denetle 0 bulgu; test seviyesi yok — salt-okuma ölçüm)
+- 03.10 23:34 · Karar: KR-2 ölçümü %1,35 (>%0,5) çıktı ama GMY'nin onaylı KR-2 kararı korunur (ciroda sipariş kuralı, satır iptal kuralı ciroya 003'te) — karar ölçümden önce büyüklük bilinmeden verildi, GMY'ye bitiş kapısında rakamla bildirilecek — yanlışsa e-tic ana ciro 003'e kadar ~%1,35 (Eylül 1,65M TL) şişik kalır
+- 03.10 23:34 · Karar: T-001 J bloğunda 'altı yer' yerine beş okuma yeri bulundu; görev metni sayım hatası, beş yer kabul — tasks.md liste beşini sayıyor zaten — yanlışsa altıncı yer H8 kapsamı dışında kalır, T-051..053 sırasında grep ile yeniden taranır
+- 03.10 23:38 · T-001: inceleme r0 — gorev-inceleyici Düzeltme gerekli (1 Yüksek: KumeA IsValid asimetrisi, doğrulandı HediyeCekiQueries GeriDonusumHaric IsValid=1 join'e ekleniyor), sql-inceleyici Onaylandı (3 Orta yorum düzeltmesi: D kayma, C sebep, G zaman); düzeltme turu 1 gönderildi
+- 03.10 23:40 · Commit: a7449e0 fix(bkm): T-001 başlık düzeltmeleri (T-001)
+- 03.10 23:40 · T-001: düzeltme turu 1/5 (7 giderildi, 0 açık; a2bc444..a7449e0), STATIC ✓
+- 03.10 23:41 · T-001: orta (ertelendi): C başlığındaki '36 belgenin sebebi kod 12 başka ürün satırında' cümlesi sql-inceleyici r0'da ölçüldü ama ayrıştırma SQL'i arşivde yok — KR-4 tüketen görevin (T-009) özetine 'kollara ayrıştırma bloğu ekle' notu taşınacak
+- 03.10 23:41 · T-001: orta (ertelendi): G 'tamamen zaman kayması' hükmü büyüklükçe ölçülmedi (mekanizma + zaman damgası var) — T-012 (H08 kanonik) özetine taşınacak
+- 03.10 23:41 · T-001: dusuk (ertelendi): H bloğunda negatif DonemId (-8..-7) anlamı açıklanmadı — T-013 özetine not
+- 03.10 23:41 · T-001: tamam (c223b41..a7449e0, inceleme temiz, 3 ertelendi)
+- 03.10 23:42 · Commit: 53dd9b2 chore(bkm): T-002 e-tic kayma ölçümü koşu 1 (T-002)
+- 03.10 23:43 · T-002: kapılar STATIC ✓ (0 bulgu)
+- 03.10 23:43 · T-003: KARAR bekliyor değil, TAKVİM bekliyor — en erken 10.10.2026 23:42 (Koşu 1 + 7 gün)
+- 03.10 23:44 · T-002: dusuk (ertelendi): başlıkta 'Aynı kaynak — neden'/'Başka ne olabilir' satırları yok; DECLARE'li dosya sq.sh'te literal koşuldu; A/B ayrı tarih değişkenleri — T-003 özetine taşındı
+- 03.10 23:44 · T-002: tamam (ea58d7c..53dd9b2, inceleme temiz, 1 ertelendi)
+- 03.10 23:50 · Commit: 86993cc chore(bkm): T-004 hedef tabanı ölçümü (T-004)
+- 03.10 23:51 · T-004: kapılar STATIC ✓ (0 bulgu)
+- 03.10 23:53 · T-004: inceleme r0 — gorev-inceleyici Düzeltme gerekli (2 Yüksek: öneri belgesindeki istatistikler arşivsiz [sql-inceleyici de aynı, doğrulandı: dosyada blok B yok]; 'itiraz yoksa uygulanır' varsayılanı yok), sql-inceleyici Geçer (Orta: düşük güçlü test, eşli Kitap/Kırtasiye kıyası önerisi)
+- 03.10 23:53 · Karar: T-004 düzeltmesine eşli Kitap(%0)/Kırtasiye(%20) mağaza×ay kıyası (Tem-2025..Eyl-2026) eklenir; veri tek bandı (1,00 ya da 1,20) gösterirse o 'itiraz yoksa 09.10.2026'da uygulanır' varsayılanı olur, göstermezse belge açıkça 'varsayılan yok, not durur' der — AC-13.4 notu her iki durumda teyide kadar kalır — yanlışsa hedef kıyası yanlış tabanla yapılır (GMY itiraz penceresiyle sınırlı)
+- 04.10 00:01 · Commit: 16d0181 fix(bkm): T-004 arşiv + eşli KDV testi (T-004)
+- 04.10 00:02 · T-004: düzeltme turu 1/5 (7 giderildi; 86993cc..16d0181), STATIC ✓
+- 04.10 00:02 · Karar: T-004 bootstrap aralığı yerine SQL'de medyan/çeyrek + binom işaret testi kabul — sql-yazar sorgular/ altına .py yazamıyor (yazma politikası) ve eşli test 37/45 tek yönlü p=7,7e-6 ile kararı zaten veriyor — yanlışsa aralık tahmini eksik kalır, karar değişmez
+- 04.10 00:04 · T-004: yeniden inceleme r1 — Y-1 ADDRESSED, Y-2 KISMEN (mağaza medyanları + p arşivsiz), yeni Orta 4 (bağımsızlık iddiası, alternatif açıklama, E kısmi ay, Kalem kopyası); düzeltme turu 2 gönderildi
+- 04.10 00:07 · Commit: 186daa0 fix(bkm): T-004 belge kanıt bağları (T-004)
+- 04.10 00:08 · T-004: düzeltme turu 2/5 (6 giderildi; 16d0181..186daa0), STATIC ✓
+- 04.10 00:09 · T-004: dusuk (ertelendi): MAXRECURSION 100 sınırı (n=45), Kalem notu INNER/LEFT JOIN farkını anmıyor, SQL çıktısında mağaza adı yok
+- 04.10 00:09 · T-004: tamam (d83f324..186daa0, inceleme temiz, 2 düzeltme turu, 1 ertelendi). Öneri: kategori bazlı, Sınav dahil, KDV hariç; itiraz yoksa 09.10.2026
+- 04.10 00:09 · Commit: e1a0a78 chore(T-004): defter + sema adayı
+- 04.10 00:23 · Commit: c8d2d63 chore(bkm): T-005 kanonik H01 kumbara/manuel (T-005)
+- 04.10 00:24 · T-005: kapılar STATIC ✓ (0 bulgu)
+- 04.10 00:28 · T-005: inceleme r0 — iki inceleyici Düzeltme gerekli; Yüksek doğrulandı (sql-inceleyici ölçümü: 2026 iade belgelerinde CampaignId IS NULL SPC satırı 0; LinkedDocumentId>0 ile Eylül 3 mağaza 496 iade / 4.520.582,40 brüt / 323.221,53 indirim, Kumbara kaynaklı 0)
+- 04.10 00:28 · Karar: H01 iade kümesi kaynak fişin (LinkedDocumentId>0) manuel sebebinden kurulur ve iade KENDİ tarihine negatif yazılır — paneldeki tüm ciro iadeleri DocumentsTypeId=3 ile kendi tarihinde düşüyor, tutarlılık — yanlışsa ay sınırındaki 54 iade (kaynağı önceki ay) bir ay kayar
+- 04.10 00:28 · Karar: AC-1.2 'Indirim' spec tanımı (fiş başına başlık DiscountTotal) korunur; kanonik başlıkta adı 'manuel sebepli fişlerin toplam indirimi' diye yazılır, ekran etiketi 003'te — spec açıkça bu tanımı istiyor — yanlışsa 003'te GMY 'manuel indirim' sanıp 18,6M görür (kalem bazlı 5,1M); 003 spec'ine soru olarak taşınacak
+- 04.10 00:34 · Commit: 86de34d fix(bkm): T-005 iade kümesi kaynak fişten (T-005)
+- 04.10 00:34 · T-005: düzeltme turu 1/5 (5 giderildi; c8d2d63..86de34d), STATIC ✓. Yeni blok B2 (Magaza, Indirim) — T-019/T-023 KanonikSorgu.Oku B2'yi tanımalı
+- 04.10 00:35 · Karar: kanonik .sql dosyalarında SSMS için DECLARE + GO kalır; T-021 KanonikSorgu.Oku blok metninden GO satırlarını ve DECLARE @Bas/@Bit ön ekini ayıklayıp parametreyi Dapper ile verir, salt-okuma kapısı yalnız ayıklanmış SELECT/WITH metnini görür — dosyalar SSMS'te koşulabilir kalsın — yanlışsa T-021 ayıklayıcısı bir blokta parametreyi kaçırır; kanonik test KOŞAMADI verir (sessiz değil)
+- 04.10 00:35 · T-005: dusuk (ertelendi): başlıktaki ~5,14M kalem indirimi rakamı komutsuz atıf; GO/DECLARE ayıklama T-021'e (Karar kayıtlı); kısmi iade 114 belge / 140.159,90 brüt (B2'nin %0,16) ölçüldü, başlığa eklenmedi
+- 04.10 00:35 · T-005: tamam (e1a0a78..86de34d, inceleme temiz, 1 düzeltme turu, 1 ertelendi). T-019 kapı önerisi: B2 = satış tarafı fiş-tekil 18.579.831,46 − C iade indirimi 323.221,53
+- 04.10 00:55 · Commit: 0e3347c chore(bkm): T-006 kanonik H02 win-back (T-006)
+- 04.10 00:56 · T-006: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:01 · Karar: H02 ToplCiro penceresi [@Bugun-365, @Bugun) kalır (görev metni + kontrat böyle); T-033 panel düzeltmesi aynı pencereyi kullanır — son 90 gündeki iade eski alışın cirosundan düşülmeli, eşik net harcamaya bakar — yanlışsa 04.10'da 10 müşteri listeden düşer
+- 04.10 01:01 · T-006: orta (ertelendi → T-033 özetine): (1) ToplCiro pencere farkı başlıkta yok (10 müşteri); (2) elle iç kart listesi kanonikte yok — T-033 testi @IcIds'i iki tarafa da verir; (3) SonSatis datetime gün başı, kontrat date — T-033 DateOnly'ye çevirir; (4) 'Önce' eşdeğer biçimle ölçüldü (ÇIKARIM etiketi eksik); panel SQL commandTimeout 30 sn vs ham 500 sn
+- 04.10 01:01 · T-006: dusuk (ertelendi): başlıkta Sonra/Bağımsız satırları iki kez; N bloğu Aday CTE kopyası
+- 04.10 01:01 · T-006: tamam (47e7030..0e3347c, inceleme temiz, 4 orta+2 düşük ertelendi)
+- 04.10 01:04 · Commit: cf0f280 chore(bkm): T-007 kanonik H03 tedarikçi depo (T-007)
+- 04.10 01:05 · T-007: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:05 · Karar: T-007 WMS 3.621.587 ile T-001 G 2.830.868 çelişki değil — G 'SatisAnaliziTaban son kesimindeki aynı stkID kümesi' ile sınırlıydı (T-001 özeti blok G), H03 tüm WMS — yanlışsa T-019 bağımsız denetimde iki ölçüm aynı kapsamda yeniden koşulur
+- 04.10 01:07 · T-007: dusuk (ertelendi): blok C açıklaması 'kategori çeşit ekranı' diyor ama o ekran MAX(Donem) ay sonu + çeşit sayısı (Y-DEPO sonrası geçerli); ONCE+D marka başına ±1 kesme farkı; T-001 G kapsam notu başlıkta yok
+- 04.10 01:07 · T-007: tamam (918562d..cf0f280, inceleme temiz, 3 düşük ertelendi). Test notu: panel StokAdet = D + A birebir (WMS tam sayı)
+- 04.10 01:13 · Commit: 8304554 chore(bkm): T-008 kanonik H04 e-tic kategori + ODAK talep (T-008)
+- 04.10 01:13 · T-008: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:17 · Karar: H04 'kategorisi bilinmeyen' = NULL (bugün 0 satır) ∪ gerçek LOGOGRUP değeri 'Tanımsız' (1.282 sip / 470.969,58 TL); kanonik A ham kolonu taşır, 'Tanımsız' kategori olarak kalır, test Σ(tüm satırlar)=B kurar — ekranda 'Tanımsız' zaten kategori adı, davranış değişmez — yanlışsa T-037 testi NULL kovasını boş bulur (kırmızı değil, Σ eşitliği yine kurulur)
+- 04.10 01:17 · Karar: türemiş sipariş (J_ORDERS.BASEORDERID, Eylül net ~73.622,93 TL ≈ %0,06) 001 kapsamı dışında; KR-2 ile birlikte 003 spec'ine açık soru — anlamı (bedelsiz yeniden gönderim mi, ek tahsilat mı) ölçülmedi ve hem panel hem kanonik aynı şiştiği için H4 eşitliğini bozmuyor — yanlışsa e-tic ciro %0,06 şişik kalır
+- 04.10 01:17 · T-008: orta (ertelendi → T-019): başlıkta 'panel NULL kategoriyi düşürüyor' gerekçesi ölçümle çürük (fark tamamen STATUS); A↔B kapısı yalnız fan-out kontrolü, STATUS listesini bağımsız sınamıyor — T-019'da adı düzeltilir ve tümleyen kolu (süzgeçsiz − dışlanan kodlar = B) eklenir; AC-4.2 sipariş birebirliği yalnız B'den okunur
+- 04.10 01:17 · T-008: dusuk (ertelendi): odak başlığı 'B = A toplamı' yanlış (B ≥ A); değişken adları @BasIso2/3; dosyada olmayan başvuru; DECLARE yorum içinde
+- 04.10 01:17 · T-008: tamam (1103192..8304554, inceleme temiz, 2 orta+1 düşük ertelendi)
+- 04.10 01:21 · Commit: c9d3eac chore(bkm): T-009 kanonik H05 fiş ve iade (T-009)
+- 04.10 01:22 · T-009: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:24 · Karar: spec AC-5.1 'önce' referansı 44.776 → 44.205 (%4,5) düzeltildi — 44.776 hiç panel değeri değildi (1001 dışlamasız tip sayımı, 571 fark = 1001'li iade); sql-inceleyici tip×1001 ölçümüyle kanıtladı — yanlışsa yalnız tarihsel 'önce' notu etkilenir, AC'nin eşitlik kapısı değişmez
+- 04.10 01:24 · T-009: orta (ertelendi → T-019): başlıkta 571 farkı açıklaması ve çalıştırılabilir Önce blokları (Home, Trafik) eksik; B NetCiro toleransı panel ↔ kanonik ancak aynı @Bugun üst sınırı + boş PanelIcKart ile tutar (panel GETDATE() açık uç) → T-04x düzeltmesi TimeProvider @Bugun alır
+- 04.10 01:24 · T-009: dusuk (ertelendi): c.Name NULL koruması (bugün 0 satır); 'elle liste etkisi N'de' cümlesi yanlış (yalnız isim+telefon); Dondurma hash'i H02'den kopya
+- 04.10 01:24 · T-009: tamam (aeb706f..c9d3eac, inceleme temiz, 2 orta+3 düşük ertelendi)
+- 04.10 01:24 · Commit: 85dadfb chore(T-009): defter + AC-5.1 önce referansı düzeltmesi
+- 04.10 01:30 · Commit: 9acd013 chore(bkm): T-010 kanonik H06 mağaza detay (T-010)
+- 04.10 01:31 · T-010: kapılar STATIC ✓ (0 bulgu)
+- 04.10 01:34 · T-010: inceleme r0 — sql-inceleyici KRİTİK (doğrulama kimliğiyle): SPC.TotalDiscount satır indirimi değil, (SalesId,CampaignId) grubuna çoğaltılmış; satıra dağıtılmış indirim spc.DistributedAmount (negatif). Kimlik: Σ −DistributedAmount (IsValid=1) = Σ Sales.DiscountTotal kuruşu kuruşuna. İst.Yolu Eylül panel kampanya indirimi ~328M, gerçek ~25,2M (~13 kat). Yüksek: ONCE blokları çalıştırılmadı
+- 04.10 01:34 · Karar: H06 kampanya indirimi kolonu TotalDiscount → DistributedAmount (işaret −); T-047 (H6 panel düzeltmesi) özetine 'IsValid=1 ekle' yanında 'TotalDiscount yerine −DistributedAmount' taşınır; spec AC-6.1/6.2 metni değişmez (davranış: indirim doğru tutar) — kanıt: kalem dağılımı başlık DiscountTotal ile kuruşu kuruşuna — yanlışsa panel indirimi yanlış kolondan kalır; T-047 kanonik testi kimlikle bunu yakalar
+- 04.10 01:39 · Commit: 0eada09 fix(bkm): T-010 kampanya indirimi DistributedAmount + ONCE blokları (T-010)
+- 04.10 01:39 · T-010: düzeltme turu 1/5 (5 giderildi; 9acd013..0eada09), STATIC ✓. A2 kimliği 13/13 satırda fark 0
+- 04.10 01:41 · T-010: yeniden inceleme r1 (sql) Geçer — r0 Kritik/Yüksek/Düşük + gorev-inceleyici 3 Orta kapandı; gorev-inceleyici r0 zaten Onaylandı (yalnız Orta), ayrı yeniden inceleme gerekmedi
+- 04.10 01:41 · T-010: orta (ertelendi → T-019): A2 'bağımsız kanıt' değil kaynak içi kimlik (kalem↔başlık aynı Encore satışı) — yeniden etiketlenir; ERP posOzetUrun.satIndirim büyüklük sınırı A3 olarak eklenebilir (FSM −%1,4 · Özlüce −%1,8 · İst.Yolu −%9,9; kapsam farkı, kuruş kimliği değil)
+- 04.10 01:41 · T-010: dusuk (ertelendi): UPT tip-1 daraltma ve iade Discount/Vat ara ölçümleri başlıkta, blok olarak yok
+- 04.10 01:41 · T-010: tamam (85dadfb..0eada09, inceleme temiz, 1 düzeltme turu, 1 orta+1 düşük ertelendi). T-047 kapsamı: IsValid=1 + TotalDiscount→−DistributedAmount
+- 04.10 01:41 · Commit: 39702ee chore(T-010): defter + sema adayı
+- 04.10 01:46 · Commit: 2c2b1a0 chore(bkm): T-011 kanonik H07 marj ve ABC (T-011)
+- 04.10 01:47 · T-011: kapılar STATIC ✓ (0 hata, 22 W = panel gövdesindeki NOLOCK, K8)
+- 04.10 01:53 · T-011: orta (ertelendi → T-019): başlıktaki A−C gerekçesi yanlış (sql-inceleyici ölçtü: fark ERP'de elle girilmiş eTip 4 (gKisi≠31) − eTip 5; FSM 0,46 TL, Özlüce 1,05 TL kalan; İst.Yolu 19.09↔21.09 tarih kayması) — gün×mağaza bloğu eklenir; depo 'adet 0' yalnız irsAyr.ehAdetN için (ehAdet ve irsHrk −327.868 dolu); blokta olmayan rakamlar için D/M/B-NEG/B-1001 blokları; ABC fark (b) bugün 0
+- 04.10 01:53 · T-011: dusuk (ertelendi): A1 etiketi 100+4−5 (101 çıkarılmamış); B1 ORDER BY eşitlik; N'de nüfus 0 koşulu
+- 04.10 01:53 · T-049: KARAR bekliyor — panel marjı maliyetsiz ürün cirosunu düşürüyor (3 mağaza 260,1M; 254,3M'si Sınav Okulları 31 ürün). Kontrat 'Ciro'da kalır' harfiyen uygulanırsa Sınav marjı ~%100 olur. Öneri: ciro maliyetli/maliyetsiz ikiye ayrılır, marj % yalnız maliyetli ciro üzerinden, maliyet kapsaması ayrı kolon
+- 04.10 01:53 · T-011: tamam (39702ee..2c2b1a0, inceleme temiz, 2 orta+3 düşük ertelendi, 1 Yüksek T-049 kontratına KARAR)
+- 04.10 17:29 · Karar: (GMY 04.10.2026) kategori marjında ciro iki kolon (maliyetli + maliyetsiz), marj % yalnız maliyetli ciro üzerinden, ek kolon 'maliyeti bilinen ciro %'; T-049/T-050 bu kararla, spec AC-7 analistçe güncelleniyor — maliyetsiz ciroyu payda'ya katmak Sınav marjını ~%100 gösterir, düşürmek 254M Sınav cirosunu gizler — yanlışsa marj ekranında iki ek kolon gereksiz yer kaplar
+- 04.10 17:32 · Not: spec H7 GMY kararıyla güncellendi (AC-7.2 değişti, AC-7.2a–7.2d + FR-017 yeni; 53 AC). T-049/T-050 özetlerine bu AC'ler eklenecek; tasks.md AC kapsama tablosu T-049'dan önce planlayıcıya güncelletilecek
+- 04.10 17:32 · T-012: kapılar STATIC ✓
+- 04.10 17:32 · Commit: 2e7b302 chore(bkm): T-012 kanonik H08 merkez depo (T-012)
+- 04.10 17:32 · Commit: e0c589f docs(bkm): spec 001 H7 GMY marj kararı (AC-7.2a–d, FR-017)
+- 04.10 17:35 · T-012: orta (ertelendi → T-019): ONCE_CESIT panel çıktısı değil girdi kümesi (panel kategori süzgeciyle 25.084, blok 25.190); K taban dışı 380 ürün / 790.689 adet raporlamıyor (canlı merkezin ~%22) — başlık (4) düzeltilir, taban-dışı satırı eklenir; A CAST int kesmesi (alan 0+1'de kesirli satır 0 ölçüldü)
+- 04.10 17:35 · T-012: dusuk (ertelendi): @Donem datetime (kolon date) + olmayan dönem denemesi ay başı (30.09 olmalı); K 'Kesim' referans an değil, kurulma anı kaydı yok
+- 04.10 17:35 · T-012: tamam (bd02553..2e7b302, inceleme temiz, 2 orta+2 düşük ertelendi)
+- 04.10 17:38 · Karar: (GMY yetkisiyle 'sen ölç ve karar ver') bağımsız [SQL] [P] görevleri 3'lü dalgalarla paralel yazdırılır, yazarlar commit ETMEZ, denetleyici kapı sonrası sırayla commit eder; iki inceleyici korunur — ölçüm: yazar 170–1177 sn (darboğaz), gorev-inceleyici 40–75 sn, sql-inceleyici 50–336 sn paralel; Kritik/Yüksek'lerin çoğu sql-inceleyiciden, T-004'teki 2 Yüksek yalnız gorev-inceleyiciden — yanlışsa paralel yazarlar aynı dosyaya dokunur (dosya kümeleri ayrık, risk düşük) ya da commit sırası karışır
+- 04.10 17:39 · T-014: kapılar STATIC ✓ (0 bulgu); denetleyici commit (paralel dalga)
+- 04.10 17:40 · Not: paralel dalgada yazarlar commit etmediği için commit kapısının tsqllint/sqlfluff kolları yazar tarafında koşmuyordu; T-014 commit'i kapıda kaldı (G-SQL-AYRISTIR, G-SQL-BICIM). Önlem: dalga yazarları bitirmeden ./ork sql <dosya> koşar; denetleyici G-STATIC'i ./ork sql ile koşar
+- 04.10 17:41 · T-014: kapılar ./ork sql 3/3 ✓; denetleyici commit (paralel dalga)
+- 04.10 17:41 · Commit: f68be88 chore(bkm): T-014 kanonik H10 ürün kodu dönüşümü (T-014)
+- 04.10 17:42 · T-015: kapılar ./ork sql 3/3 ✓; denetleyici commit
+- 04.10 17:42 · Commit: 30f80bd chore(bkm): T-015 kanonik H12 mizan nakit/çek/KDV (T-015)
+- 04.10 17:43 · T-014: inceleme r0 — gorev-inceleyici Onaylandı (Orta: NOT(...) deseni, ONCE taşma iddiası etiketi); sql-inceleyici YÜKSEK (ölçüldü): Turkish_CI_AS altında [0-9] aralığı ², １, ٣ ile eşleşir, CONVERT(int,N'²') patlar — güvenli ifade COLLATE Latin1_General_BIN2 ile yazılmalı; düzeltme turu 1 gönderildi
+- 04.10 17:43 · Karar: ürün kodu → stkID kuralı ikili collation'a sabitlenir (Kod COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN 1..9); T-058 panel düzeltmesi aynı kuralı kullanır, H10 VALUES'e ², １２, ٣ (NULL) eklenir — bugün Products.Code'da böyle kayıt 0 (ölçüldü) ama tek kayıt ekranı çökertir — yanlışsa kural fazla katı olur (ASCII dışı rakamlı geçerli kod yok)
+- 04.10 17:43 · T-013: kapılar ./ork sql 3/3 ✓; denetleyici commit
+- 04.10 17:44 · Commit: a3e085a chore(bkm): T-013 kanonik H09 Sınav ödeme (T-013)
+- 04.10 17:45 · T-014: düzeltme turu 1/5 (4 giderildi), ./ork sql 3/3 ✓
+- 04.10 17:45 · Commit: 29a0a1d fix(bkm): T-014 ürün kodu kuralı ikili collation (T-014)
+- 04.10 17:46 · T-014: dusuk (ertelendi): başlık 'Bloklar' satırında B'nin Satir kolonu yok; B SUM boş tabloda NULL (Satir kolonu ayırıyor)
+- 04.10 17:46 · T-014: tamam (bc98d56..29a0a1d, inceleme temiz, 1 düzeltme turu, 1 düşük ertelendi). T-058 kuralı: COLLATE Latin1_General_BIN2
+- 04.10 17:46 · T-015: orta (ertelendi → T-019/T-062): 101 Alınan Çek 381,56M yalnız defterden (tek alt hesap 101.10.001 Portföydeki Çekler; çek modülüyle mutabakat yok — ÇIKARIM portföyde); KDV formülü 391−191−190 yalnız devreden durumunu modelliyor, ödenecek KDV ayında 360 alt hesabı eklenmeli; ONCE 391/191 ayrı ayrı 0 iddiası (sql-inceleyici doğruladı: her ay mahsupla sıfırlanıyor)
+- 04.10 17:46 · T-015: dusuk (ertelendi): açılış fişi tutarları başlıkta yok; '(3) 101 negatif olabilir' yanlış (verilen çek 103, ters satır 0); kapanış süzgeci açık yılda sınanmadı; D tek yönlü LEFT JOIN
+- 04.10 17:46 · T-015: tamam (bc98d56..30f80bd, inceleme temiz, 2 orta+4 düşük ertelendi). Panel Nakit 470,61M = 89,05M nakit + 381,56M alınan çek
+- 04.10 17:47 · T-013: inceleme r0 — gorev-inceleyici Düzeltme gerekli (Yüksek: başlık sayıları bloksuz); sql-inceleyici Geçer (Orta: kanal kuralı; ölçtü: kart−KPI 155.119,05 = FE'de kaydı olmayan 89 bağlı iade, doğru kaynak LinkedDocumentId)
+- 04.10 17:47 · Karar: H09/H13 Sınav iadesi yalnız orijinal fatura AYNI mağazadaysa Sınav'dan düşülür (sema metrics:iade_kanal_atamasi, GMY kararı 12.09.2026) — mevcut GMY kararı, İnsan onayı 4'ü daraltır, yeniden sorulmaz — yanlışsa başka mağazada kesilen 7 Sınav iadesi (3.034,47 TL, dönem 8) perakendeden düşer
+- 04.10 17:51 · Not: G-SQL-BICIM 20 KB üstü dosyada KOŞAMADI ama GEÇTİ basıyor (sqlfluff large_file_skip). Etkilenen: H13-hedef-tabani-olcum.sql (T-004, 28.494 B) — biçim kapısı bu dosyada hiç koşmadı. Düzeltme Orkestra çekirdeğinde (ci/kapilar.py atlamayı KOŞAMADI saymalı) — bu depodan yapılmaz, kullanıcıya bildirildi; T-019'da H13-hedef dosyası bölünerek ya da sqlfluff large_file_skip_byte_limit=0 ile elle koşulur
+- 04.10 17:51 · T-013: düzeltme turu 1/5 (4 giderildi), ./ork sql 3/3 ✓
+- 04.10 17:51 · Commit: 2f7dae8 fix(bkm): T-013 iade kaynağı + kanal kuralı + kanıt blokları (T-013)
+- 04.10 17:52 · Karar: T-055 kart ve KPI birlikte kanal kuralına (aynı mağaza Sınav iadesi) geçer; AC-9.1 kart = KPI = kanonik A (448.186.779,02, dönem 8, 04.10) — tek kural iki ekranda — yanlışsa KPI 3.034,47 TL farklı kalır ve AC-9.1 testi kırmızı verir (sessiz değil)
+- 04.10 17:52 · T-013: orta/dusuk (ertelendi → T-019/T-055): dönem türetmesi bitiş koşulsuz (DONEM bloğu ölçüyor); A beş kolon döndürür (T-055 kayıt sırası); başlık Soru satırı KPI eşitliğinden kanal kuralına güncellenecek; dosya 19.880 B, sqlfluff sınırına yakın
+- 04.10 17:52 · T-013: tamam (bc98d56..2f7dae8, inceleme temiz, 1 düzeltme turu, 2 orta+2 düşük ertelendi)
+- 04.10 17:53 · T-016: kapılar ./ork sql 3/3 ✓; denetleyici commit. Not: yazar kanal kuralı kararından (T-013) önce başladı — FSM −190,83 / Özlüce −1.630,27 Sınav neti başka mağazada kesilen Sınav iadesi; incelemede kontrol edilecek
+- 04.10 17:53 · Commit: 9253773 chore(bkm): T-016 kanonik H13 Sınav neti + şube cirosu (T-016)
+- 04.10 17:54 · Karar: H13'te kaynağı çözülemeyen iade (LinkedDocumentId=0, 563 / 165.801,79) ve Sınav dışı belgeye bağlı iade perakende satırında kalır — spec onaylı varsayımı 'Perakende + Sınav = bugünkü mağaza neti' (GMY 03.10) bunu gerektiriyor; sema metrics:iade_kanal_atamasi 'ayrı kalem' diyor ama o kural kanal analizi içindir, ana sayfa toplamı değil — yanlışsa perakende ~1M TL (Eylül, 3 mağaza) iade fazla düşer; 003 kanal katkı raporunda ayrı kalem olarak ele alınır
+- 04.10 17:56 · T-016: inceleme r0 — iki inceleyici Yüksek (aynı): Sınav neti aynı-mağaza kuralını uygulamıyor (ölçüldü: FSM 1/190,83, Özlüce 3/1.630,27 başka mağaza; Sales.StoresId = Pos.StoreId 134.314/134.314); düzeltme turu 1. Karar: A 3 satır döndürür (posMagaza'dan sürülür, Sınav satışı olmayan mağaza 0,00) — test sözleşmesi sabit 3 satır — yanlışsa tüketen test satır sayısında kırılır (sessiz değil)
+- 04.10 17:56 · Karar: T-020 [SQL] etiketli ama dosyaları tests/** altında (yazma politikası: yalnız test rolleri) → test-yazar'a verilir — sql-yazar hook ile reddedilir; içerik panel SQL'inin birebir kopyası, mantık yazımı yok — yanlışsa rol yetkisi fazla geniş görünür, içerik incelemesi sql-inceleyici ile yapılır
+- 04.10 17:58 · T-020: kapılar ./ork sql 3/3 ✓; denetleyici birebirlik denetimi (kaynak 11+6 satır, eşleşmeyen 0); Eylül değerleri T-016/T-002 ile aynı
+- 04.10 17:58 · Commit: 0a830d0 test(bkm): T-020 eski formüllerin dondurulmuş kopyası (T-020)
+- 04.10 17:59 · T-020: orta/dusuk (ertelendi): noqa/tsqllint-disable dosya sonuna kadar açık; başlık yorumları ASCII Türkçe; ölçüm literal ikameyle (T-024 parametreli doğrular). Not: sql-inceleyici çağrılmadı — içerik panel SQL'inin birebir kopyası (mantık yazımı yok), birebirlik denetleyici + gorev-inceleyici ile iki kez doğrulandı
+- 04.10 17:59 · T-020: tamam (9253773..0a830d0, inceleme temiz, 2 bakım notu ertelendi)
+- 04.10 18:01 · T-016: düzeltme turu 1/5 (4 giderildi), ./ork sql 3/3 ✓
+- 04.10 18:01 · Commit: f0be20b fix(bkm): T-016 Sınav iadesi aynı mağaza kuralı + 3 satır A (T-016)
+- 04.10 18:02 · T-016: tamam (9253773..f0be20b, inceleme temiz, 1 düzeltme turu). T-040/T-045 referansı: A 3 satır (FSM 0,00 · Özlüce 0,00 · İst.Yolu 325.059.112,77), Perakende+Sınav = panel Net fark 0,00
+- 04.10 18:15 · T-017: kapılar ./ork sql 3/3 ✓ (D2 19.989 B, sqlfluff sınırının altında); denetleyici commit
+- 04.10 18:15 · Commit: 4fc3c09 chore(bkm): T-017 kanonik D-2 kasiyer + D-4 hediye çeki (T-017)
+- 04.10 18:21 · T-017: inceleme r0 — iki inceleyici Düzeltme gerekli. sql-inceleyici YÜKSEK (ölçüldü): kalem toplam indirimi = DiscountTotalDirect + DiscountTotalIndirect (Eylül Indirect 10.853.128,37, %98 Sınav); proje kuralı 'Direct = TOPLAM' yanlış; panel Indirect'i hiç kullanmıyor (HediyeCeki, RefQueries, SatisAnalizi*, AsistanService, SatisAnaliziUrun.razor)
+- 04.10 18:21 · Karar: kural düzeltmesi (sql-server-conventions § İndirim Kolonları + CLAUDE.md satırı) bu görevde yapılmaz — kural dosyası rol yazma alanı dışında ve CLAUDE.md değişikliği GMY onayı ister; sema adayı bırakıldı (aday-…), T-074 (sema kural kayıtları) kapsamına eklenir, CLAUDE.md satırı bitiş kapısında GMY'ye sorulur; D4 kanonik ve T-0xx hediye çeki düzeltmesi Direct+Indirect kullanır — yanlışsa Indirect kullanmayan diğer panel sorguları (SatisAnalizi*) 001 dışında eksik indirimle kalır (açık soru olarak kaydedildi)
+- 04.10 18:31 · T-017: düzeltme turu 1/5 (5 giderildi), ./ork sql 3/3 ✓, 5 dosya hepsi <20.000 B (ONCE ve ek bloklar ayrı dosyalara bölündü)
+- 04.10 18:31 · Commit: 37ce75c fix(bkm): T-017 kalem indirimi Direct+Indirect, ölçülen nedenler, dosya bölme (T-017)
+- 04.10 18:32 · T-017: dusuk (ertelendi): D4 başlığındaki Direct/Indirect ayrı toplamları blokta yok (K'ya iki kolon); panel HediyeCekiQueries.cs:53,:170 Hc alt sorgusu tarih süzgeçsiz tüm SalesPayments'ı tarıyor — D-4 panel düzeltme görevinin özetine 'Hc'ye Sales JOIN + [Date] süzgeci' eklenecek
+- 04.10 18:32 · T-017: tamam (01b8381..37ce75c, inceleme temiz, 1 düzeltme turu, 2 düşük ertelendi). Kanonik F0 sorguları (T-005..T-017) tamam; T-018 GMY Excel bekliyor; sıradaki T-019
+- 04.10 18:32 · Commit: 5dc3b9d chore(T-017): defter + sema adayı
+- 04.10 21:56 · T-019: bağımsız denetim (sql-denetci, dashboard görmeden) — 22 dosyada klasik veri ihlali 0; 4 E (kural/sema katmanı), 18 W (SQL etiket/tutarlılık). Rapor .orkestra/calisma/001-panel-veri-duzeltme/T-019-sql-denetci-rapor.md
+- 04.10 21:56 · Karar: T-019 E-01..E-04 (sql-server-conventions, CLAUDE.md, sema bridges/entities) bu görevde düzeltilmez — kural/sema dosyaları sql-yazar alanı dışında ve CLAUDE.md GMY onayı ister; T-074 (sema kayıtları) kapsamına eklenir, kural+CLAUDE.md satırı bitiş kapısında GMY'ye — kanonik dosyalar zaten doğru tanımı kullanıyor — yanlışsa T-074'e kadar sema okuyan yeni sorgular eski hatalı tanımı alır
+- 04.10 21:56 · Karar: W-01 AC-13.3 panel toplamı ↔ kanonik ERP şube cirosu (spec metni) olarak kalır; başlık iki tabanı da yazar (1001 hariç −%0,130 AC değerlendirmesi, aynı taban +%0,196 bilgi) — AC panel ekranındaki değeri sınar, ekran 1001 hariç — yanlışsa 1001 politikası değişince AC sebepsiz kırılır (başlıktaki iki taban satırı bunu görünür kılar). W-02/W-03 sema notları T-074'te karar kayıtlarına bağlanır (H13 kaynağı yok = perakende, KR-2 ciroya uygulanmaz)
+- 04.10 21:59 · T-018: KARAR bekliyor — ERP/WMS yalnız masaüstü (web ekranı yok, GMY 04.10); seçenek: GMY üç rakamı elle okuyup yazar ya da üçüncü ölçüm atlanır (R3 gevşer). Diğer görevler beklemeden devam
+- 04.10 22:11 · T-019: g1 düzeltmesi commit (8 dosya, hepsi <20 KB, ./ork sql 3/3)
+- 04.10 22:11 · Commit: f21603a fix(bkm): T-019 g1 bağımsız denetim bulguları + ertelenen başlık düzeltmeleri (T-019)
+- 04.10 22:21 · T-019: g3 düzeltmesi commit (9 dosya <20 KB; H13-hedef bölündü, gerçek lint ilk koşuda 140+ bulgu düzeltildi, sonuçlar birebir aynı; W-17 KDV tabanı P bloğuyla ÖLÇÜLDÜ)
+- 04.10 22:21 · Commit: 380f011 fix(bkm): T-019 g3 bağımsız denetim bulguları + H13-hedef bölme (T-019)
+- 04.10 22:23 · Commit: 992e0f8 fix(bkm): T-019 g2 bağımsız denetim bulguları + ertelenen başlık düzeltmeleri (T-019)
+- 04.10 22:23 · Commit: 18c2ce0 db(T-019): kanonik sorguları dondur
+- 04.10 22:27 · Commit: 396fd30 db(T-019): dondurma hash'ini başlıklara yaz
+- 04.10 22:27 · T-019: tamam (f21603a, 380f011, 992e0f8 düzeltmeler; 18c2ce0 dondurma; 396fd30 başlık hash'i). 27 kanonik dosya, hepsi <20 KB, ./ork sql 3/3. Bağımsız denetim E 0 (SQL'de); 4 E kural/sema → T-074 + GMY. Ek dosyalar: 00-taban-ek, H06-ek, H07-ek, H09-ek, H13-hedef-ek, D2-once/ek, D4-once — T-023 KanonikSorgu.Oku dosya adlarını bunlarla eşlemeli
+- 04.10 22:30 · Karar: T-021 altyapı sınıfları (SaltOkumaKapisi, CanliDb ve sonraki T-022/T-023 altyapısı) tests/** yerine yeni sınıf kütüphanesi lib/Bkm.TestAltyapi/ (net10.0, ref Bkm.Shared + Dapper + xunit.assert 2.9.2) içine; dotnet-yazar yazar, sln'e ekler. tests/GmDashboard.Tests.csproj ve test dosyaları test-yazar'ın; csproj lib/Bkm.TestAltyapi'ye ProjectReference verir — Orkestra yazma politikası tests/**'u test rollerine ayırıyor, uygulama kodunu test rolüne yazdırmak rol ayrımını bozar, hook değiştirilmez — yanlışsa ek bir proje bakım yükü (tek kütüphane, küçük)
+- 04.10 22:35 · Karar: PKG-001 için kök Directory.Packages.props EKLENMEZ (K6: dashboard build'i NU1504 ile kırıyordu); yalnız yeni projelerin klasörüne yerel Directory.Packages.props (lib/Bkm.TestAltyapi/, tests/GmDashboard.Tests/) — MSBuild en yakın üst dosyayı aldığı için yalnız o projeleri etkiler, dashboard ve Bkm.Shared değişmez — yanlışsa iki yerel props dosyası eşitlenmezse sürüm kayması (yalnız test projeleri)
+- 04.10 22:35 · T-021: KARAR bekliyor — G-SEC-SAST bu makinede KOŞAMIYOR: semgrep 1.178.0 Windows'ta 'Unix_error: Invalid argument socketpair' ile düşüyor (sandbox içinde ve dışında, Orkestra deposunda da). Kapı bunu KALDI basıyor; her C# commit'i kilitli. --no-verify yasak. GMY'ye soruldu
+- 04.10 22:37 · T-021: iskelet hazır, stage'de (lib/Bkm.TestAltyapi: csproj, yerel Directory.Packages.props, SaltOkumaKapisi.cs, CanliDb.cs + Pusula.sln). G-STATIC-CS ✓, G-SLOP ✓, build -warnaserror 0/0, dashboard build 0 hata. Commit G-SEC-SAST (semgrep socketpair) yüzünden bekliyor — GMY WSL kurulumu ya da SAST muafiyeti kararı. Not: lib/Bkm.TestAltyapi/bin,obj untracked — .gitignore kapsamı commit'te düzeltilecek
+- 04.10 22:38 · Karar: T-074/T-075 Orkestra yazar rolüne verilemez — yazma politikasında sema/*.yaml ve sema/degismezler.json hiçbir role açık değil; Orkestra tasarımı gereği sema'nın sahibi pusula'nın kendi sema-ogren akışı (kullanim.md: 'Sahibi (pusula'da sema-ogren)'). Bu yüzden pusula'nın sema-ogren / değişmez desenini izleyen genel ajan yazar, denetleyici kapı (sema_degismez.py, sema_denetim.py) ve inceleme koşar. T-074 kapsamına T-019 E-02/E-03/E-04 sema düzeltmeleri ve W-02/W-03 karar notları eklenir; E-01 (sql-server-conventions + CLAUDE.md) GMY onayına kalır. T-028 bağımlılığı sema metni için gerekmez (kod referansı yazılmaz) — yanlışsa sema kaydı Tanimlar/ kod adını sonradan eklemek için T-028'de küçük güncelleme gerekir
+- 04.10 22:43 · Karar: (GMY onayı 04.10.2026, birebir: 'Evet, bu koşulla onaylıyorum') C# commit'lerinde YALNIZ G-SEC-SAST 'socketpair' araç arızası kaldığında ve diğer tüm kapılar geçtiğinde --no-verify ile commit; her atlayış deftere 'SAST-ATLANDI: <hash>' satırıyla; semgrep çalışınca tüm aralık geriye dönük taranır; final incelemede guvenlik-denetci elle tarar — semgrep 1.178.0 Windows'ta socketpair ile düşüyor, WSL2 sanallaştırma kapalı VM'de çalışmıyor — yanlışsa SAST'ın yakalayacağı bir açık aralıkta kalır (geriye dönük tarama ve elle denetim kapatır)
+- 04.10 22:45 · T-074: KARAR bekliyor — Orkestra yazma politikası sema/*.yaml ve docs/sema-adaylari.yaml'ı hiçbir ajana açmıyor (general-purpose da reddedildi). Hazır düzenlemeler ajan raporunda (fis_kanonik, iade_kanal notu, kampanya_indirim_orani formülü, hedef-kategori, encore-kampanya-kalem, products-code-stkid, salescampaign-sales, codes 1001/J_ORDER_DETAILS/Source, entities SalesProducts + TUTAR_SEMANTIGI + SalesProductCampaigns, aday durumları). Düzeltme: aday-002 eşitliği AYNI işaretli (DistributedAmount = TotalDiscount 228.297 satır, ters işaretli 20) — sonuç değişmez
+- 04.10 22:45 · T-075: KARAR bekliyor — sema/degismezler.json da yazılamadı; dört kayıt scratchpad'de hazır (ölçüm: tekil çift 0 / nüfus 1.823.499; bozuk kod 0 / 874.730; geçerli 1001 satış satırı 19 (tahmin 15 değil) / 15.634; WMS stok 0,1,2 dışında 0 — lookup 7 kod taşıyor, değişmez 'stok yalnız 0/1/2 alanlarında' olarak kuruldu). Ek: tools/sema_degismez.py population alanını okumuyor (nüfus-sıfır kuralı uygulanmıyor); koşucu bu makinede pymssql yok diye KOŞAMADI (çıkış 2)
+- 04.10 22:58 · Karar: (GMY 04.10.2026 birebir: 'sema'yı sen yaz, pymssql kur, kuralı düzelt') T-074/T-075 sema yazımı ana oturumda (denetleyici) yapılır — Orkestra yazma politikası sema'yı ajanlara kapalı tutuyor, sahibi pusula; .claude/rules/sql-server-conventions.md § İndirim Kolonları + CLAUDE.md satırı 'kalem indirimi = Direct + Indirect' olarak düzeltilir; pymssql kurulur — kanıt T-017/T-019 ölçümleri — yanlışsa denetleyici yazımı inceleyiciden kaçar: her sema/kural değişikliği gorev-inceleyici ile ayrıca incelenir
+- 04.10 23:05 · Commit: 45b109c feat(bkm): T-075 dört yeni sema değişmezi (T-075)
+- 04.10 23:05 · T-075: tamam (45b109c; ana oturum yazdı, GMY onayı). Dört değişmez yeşil, dördü de kırmızı kipte KIRIK görüldü ve geri alındı. inceleme: gorev-inceleyici'ye gönderilecek (denetleyici yazımı)
+- 04.10 23:07 · Commit: bacdf48 docs(bkm): indirim kuralı Direct+Indirect, ürün kodu koruması ikili collation
+- 04.10 23:08 · T-075: inceleme Onaylandı; orta (ertelendi): geri-donusum-1001 population yalnız BarcodeNo='1001' satırını sayıyor, Sales JOIN + DocumentsTypeId=1 kapsamını ölçmüyor. T-075: tamam (45b109c)
+- 04.10 23:08 · Not: kural düzeltmesi commit bacdf48 (sql-server-conventions § İndirim Kolonları + Products.Code BIN2 koruması, CLAUDE.md satırı) — T-019 E-01 kapandı (GMY onayı)
+- 04.10 23:13 · Commit: 52d73a9 feat(bkm): T-074 sema kural kayıtları ve ölçülen düzeltmeler (T-074)
+- 04.10 23:27 · Commit: 27136c0 fix(bkm): T-074 inceleme düzeltmeleri — çelişen kural satırı, kanıt arşivi (T-074)
+- 04.10 23:27 · T-074: tamam (52d73a9 + 27136c0; ana oturum yazdı, GMY onayı; inceleme r0 Düzeltme gerekli → r1 tüm bulgular giderildi). sema_denetim KIRIK 0; pos-urun-koprusu-eslesme ve katalog dumanı BIN2 kuralıyla OK. dusuk (ertelendi): fis_kanonik applied_in henüz var olmayan Tanimlar/ klasörünü gösteriyor (T-028'de güncellenir)
+- 04.10 23:28 · T-049: karar verildi (GMY 04.10.2026: ciro iki parça + maliyet kapsaması; spec AC-7.2a–d) — KARAR bekliyor değil, sırası gelince uygulanır
+- 05.10 22:43 · Not: Orkestra bildirimi (05.10): semgrep düzeltmesi specs/008 main'e alınıyor (proje içi .orkestra/tmp, araç hatası KOŞAMADI, PartialParsing commit'i durdurmaz); yeni paket kullanıcı onayıyla kurulacak. Uyarı: dashboard/Data'da 33 SAST bulgusu (63 dosya) — dokunulan dosyalarda G-SEC-SAST KALDI olabilir; --no-verify YOK, bulgu kaydedilip Orkestra'ya bildirilir (taban çizgisi specs/009). T-021 bu pakete kadar bekler
+- 05.10 22:50 · Commit: 71e2c38 docs: 2026-10-05 handoff + TODO sync
+- 07.10 23:57 · Commit: f384487 chore(bkm): BkmPanel dev konumu SANAL-FIKRI; panel-yayin launch profili
+- 08.10 00:13 · Commit: cd07fc1 docs(bkm): spec 002 mobil kabuk ve ekranlar onaylandı
+- 08.10 00:15 · T-021: iskelet commit edildi (4f5f0de); SAST kilidi Orkestra 98cb094 ile kalktı, kapılar 4/4. Sıradaki: test hattı (senaryolar hazır)
+- 08.10 00:15 · Commit: 4f5f0de feat(bkm): T-021 test altyapısı iskeleti — SaltOkumaKapisi, CanliDb (T-021)
+- 08.10 00:20 · Karar: T-021 senaryolarındaki 15 açık madde denetleyici kararıyla kapandı (T-021-kararlar.md); K-4 kırmızı kip Altyapi/Sahte taranır, K-9 OPENQUERY dizesindeki yazma kelimesi RET, K-13 TekDeger 0 satır KOŞAMADI — test altyapısının iç davranışı, kullanıcıya görünür sonucu yok; ölçüm: kanonik/eski SQL'de OPENQUERY ve ;WITH 0 — yanlışsa maliyeti: meşru bir gelecekteki OPENQUERY sorgusu kapıdan reddedilir, kural gevşetilir
+- 08.10 00:36 · Commit: d4ccc25 test(bkm): T-021 salt-okuma kapısı kırmızı testleri (T-021)
+- 08.10 00:38 · T-021: test kırmızı (4f5f0de..d4ccc25), kilit: 6 dosya — 338 test (birim 323, canlı 15), 336 kırmızı NotImplementedException/beklenen istisna yok, 2 yeşil (nüfus koruması, ExecuteAsync yok); derleme 0/0
+- 08.10 00:44 · Commit: 58bc7e2 feat(bkm): T-021 salt-okuma kapısı ve CanliDb uygulaması (T-021)
+- 08.10 00:47 · Karar: H12-mizan.sql'deki 11 'SET NOCOUNT ON;' satırı kaldırılır, kapı ve kilitli testler değişmez — tek SET içeren kanonik dosya; NOCOUNT yalnız satır sayısı mesajını bastırır, sonuç kümesi aynı (geçici tablo yok); kilit açmaktan daha az riskli — yanlışsa maliyeti: SSMS'te 'N satır etkilendi' mesajları görünür, sonuç değişmez
+- 08.10 00:49 · Commit: 1eceb6c fix(bkm): H12 kanonik dosyadan SET NOCOUNT kaldırıldı (T-021)
+- 08.10 00:57 · T-021: kapılar FROZEN ✓ STATIC ✓ GREEN ✓ (birim 323/323, canlı 15/15 mesai dışı); kırmızı kip kanıtlandı (zz-kirmizi-kip.sql → 'yasak kelime: UPDATE', 1 kırmızı, geri alındı 323/323); düzeltme turu 1: H12 SET NOCOUNT (1eceb6c)
+- 08.10 10:22 · T-021: düzeltme turu 2/5 açıldı — inceleme r0 Düzeltme gerekli + güvenlik r0 Düzeltme gerekli; denetleyici sondası: 10 atlatma girdisinin 10'u kapıdan GEÇİYOR (COMMIT, ROLLBACK, DISABLE TRIGGER, WRITETEXT, iç içe/EXEC'siz OPENQUERY, WAITFOR+kilit, NEXT VALUE FOR, CR yorum, ;'siz DECLARE); bulgular T-021-duzeltme-r1.md
+- 08.10 10:22 · Karar: K-karar-9 ve K-karar-10 değişti — OPENQUERY ve kilit ipuçları tümden yasak, yasak liste ifade başlatan kelimelerle genişler — ölçüm: iç içe OPENQUERY ve WAITFOR+TABLOCKX kapıdan geçiyordu, kanonik/eski dosyalarda OPENQUERY 0 — yanlışsa maliyeti: gelecekteki meşru OPENQUERY/MERGE JOIN sorgusu reddedilir, kural gevşetilir
+- 08.10 10:22 · Karar: T-021 API İngilizceye çevrilir (ReadOnlyGate, LiveDb, DbTarget …; eşleme T-021-duzeltme-r1.md K-r1-6) — global kısıt 'turkce_tanimlayici_denetimi yeni dosyada 0 bulgu' onaylı plan sözleşmesindeki Türkçe adlarla çelişiyordu, kapı kazanır; tüketici görevler (T-022+) henüz yok — yanlışsa maliyeti: tasks.md'deki eski adlar her görev özetinde gerçek imzayla düzeltilir
+- 08.10 10:22 · Karar: yerel Directory.Packages.props kalır (K6 istisnası) — G-STATIC-CS PKG-001 satır içi sürümü reddediyor, yerel props dashboard'u etkilemiyor (build 0/0) — yanlışsa maliyeti: iki props dosyasının sürümleri elle eş tutulur
+- 08.10 10:37 · Commit: 1fc7f3f test(T-021): düzeltme turu 2 — İngilizce API adları, G1–G10 ve K-r1 testleri
+- 08.10 10:39 · T-021: düzeltme turu 2 test tarafı 1fc7f3f — 59 yeni kırmızı (G1-G10, K-r1-1/2, kaynak-metin), canlı 15→18; kilit yenilendi (6 dosya, İngilizce adlar)
+- 08.10 10:41 · Karar: T-021 test kilidi 1fc7f3f ile yenilendi, GMY onayladı (08.10) — düzeltme turu 2 testleri bilerek yeniden yazdı; ölçüm: eski 131 girdinin 130'u korunuyor, tek düşen kilit-ipucu GEÇER beklentisi K-r1-1 ile RET'e çevrildi — yanlışsa maliyeti: kilit d4ccc25'e döner, tur yeniden yapılır
+- 08.10 10:46 · Commit: bb0d1ec fix(bkm): T-021 kapı atlatmaları kapatıldı, API İngilizce (T-021)
+- 08.10 10:46 · Commit: 4724232 chore(bkm): kod sözcük ak listesi (T-021)
+- 08.10 10:48 · T-021: kilitten silinmiş eski 4 test adı çıkarıldı (kilitle ekler, silmez); onaylı yenilemenin tamamlanması — kilit 6 dosya, dogrula geçti
+- 08.10 10:49 · T-021: düzeltme turu 2/5 (r1) — G1-G10 10/10 RET (denetleyici sondası), birim 390/390, tanımlayıcı 0, kilit ✓; bb0d1ec + 4724232 + 1fc7f3f; açık: lib props yorumu (yazma alanı), canlı 18 test mesai sonrası
+- 08.10 10:51 · T-021: görev inceleme r1 Onaylandı — r0'ın 9 bulgusu ADDRESSED, 1 düşük (kaynak-metin testi uygulamaya kilitli) kabul
+- 08.10 10:51 · T-021: orta (ertelendi): @@TRANCOUNT 'işlem kapandı' dalı bugünkü kapıyla canlıda tetiklenemez, yalnız kaynak-metin testiyle sınanıyor
+- 08.10 10:51 · T-021: dusuk (ertelendi): ScalarAsync Convert.ChangeType kullanıyor, Dapper TypeHandler (DateOnly) devre dışı — DateOnly tek değer gerekirse T-022+ özetine taşınır; çıplak SAVE/SEND/ENABLE/DISABLE/BEGIN adlı kolon yanlış pozitif (güvenli yön)
+- 08.10 10:51 · T-021: dusuk (ertelendi): ASCII dışı büyük harfli anahtar kelime (İNSERT, U+0130) kapıda katlanmıyor; sunucunun bunu anahtar kelime sayıp saymadığı TEST EDİLMEDİ — öneri: ASCII dışı harfli kelime RET + negatif test
+- 08.10 10:52 · T-021: tamam (4f5f0de..4724232, inceleme r1 Onaylandı + güvenlik r1 Onaylandı, 2 tur; G1-G10 10/10 RET; birim 390/390; canlı 18 test mesai sonrası koşulacak; ertelenen: TRANCOUNT dalı canlıda sınanamaz, ScalarAsync DateOnly, Unicode anahtar kelime, lib props yorumu)
+- 08.10 10:55 · T-022: başladı — özet T-022-ozet.md (altyapı lib/Bkm.TestAltyapi'de, İngilizce adlar, dashboard ref + Mvc.Testing 10.0.0 K-r1-8; tuzak: BKM_ENV_DOSYA dosyası yoksa Db gerçek .env'e düşer, Db.cs:212-214)
+- 08.10 10:57 · Karar: T-022 ErrorScreenFactory (WebApplicationFactory<Program>) test projesine taşınır (test-yazar), Mvc.Testing 10.0.0 + dashboard ProjectReference tests/GmDashboard.Tests'e; lib/Bkm.TestAltyapi'de yalnız ErrorScreenEnvironment, ErrorScreenCollection, LogEntry, MemoryLoggerProvider — dotnet-yazar *.props yazamıyor (Orkestra yazma politikası), fabrika ince bir fikstür — yanlışsa maliyeti: fabrika başka test projesinde gerekirse lib'e taşınır
+- 08.10 10:58 · Commit: 605739c feat(bkm): T-022 hata ekranı yalıtımı iskeleti (T-022)
+- 08.10 10:58 · T-022: iskelet 605739c (lib: ErrorScreenEnvironment, LogEntry, MemoryLoggerProvider; build 0/0, tanımlayıcı 0)
+- 08.10 10:58 · Karar: ErrorScreenCollection da test projesine (test-yazar) — CollectionDefinition xunit.core ister, lib'de yalnız xunit.assert var; yeni paket eklemek yerine fikstür test projesinde — yanlışsa maliyeti: başka test projesi aynı koleksiyonu isterse kopyalanır
+- 08.10 11:00 · Karar: T-022 senaryolarındaki 9 madde kapandı (T-022-kararlar.md); K4 LogEntry'ye Timestamp SONA eklenir (AC-10.2 'zaman' şartı), K6 ölçüldü (Db yalnız BKM_ENV_DOSYA okur, Db.cs:207-233), K9 LiveDb ters testi yazılmaz — test altyapısı iç davranışı — yanlışsa maliyeti: LogEntry imzası T-023+ özetlerinde düzeltilir
+- 08.10 11:01 · Commit: 2c0c4d4 feat(bkm): T-022 iskelet imzaları — LogEntry zaman damgası (T-022)
+- 08.10 11:02 · Commit: 531d260 docs(bkm): spec 002 değişiklik 1 + plan 002 taslağı + ADR-007 (Playwright, önerildi)
+- 08.10 11:33 · Commit: 908360e test(bkm): T-022 hata ekranı yalıtımı kırmızı testleri (T-022)
+- 08.10 11:36 · T-022: test kırmızı (2c0c4d4..908360e), kilit: +8 dosya (toplam 12) — 61 yeni test, 58 kırmızı NotImplementedException/beklenen istisna yok, 3 yeşil kanarya (S25-S27); T-021 390 yeşil; tanımlayıcı kapısı 128 eksik İngilizce sözcük (uygulama adımında eklenecek)
+- 08.10 11:40 · Commit: c50034c feat(bkm): T-022 hata ekranı yalıtımı uygulaması (T-022)
+- 08.10 11:40 · Commit: a753fda chore(bkm): kod sözcük ak listesi (T-022)
+- 08.10 11:53 · T-022: kapılar FROZEN ✓ STATIC ✓ GREEN ✓ (451/451, ErrorScreen 9/9, tanımlayıcı 0); kırmızı kip: yanlış yol → 37 kırmızı, mesaj yolu gösterdi, geri alındı 451/451; c50034c + a753fda
+- 08.10 11:58 · T-022: inceleme r0 Onaylandı (Kritik/Yüksek yok)
+- 08.10 11:58 · T-022: orta (ertelendi): O-1 LlmService.LoadEnv BKM_ENV_DOSYA'ya bakmadan gerçek .env okuyor (LlmService.cs:188-204) — ölçüldü: DI'da yok (Program.cs:45), dashboard'da tek .env okuyucu, bugün etkisiz; ölü kod, silme GMY kararı
+- 08.10 11:58 · T-022: orta (ertelendi): O-2 DeleteFailed okunmuyor/testsiz (silme hatası dalı koşmuyor); O-3 iki fabrika testi ~23 sn (127.0.0.1:1 ConnectTimeout, gerçek sunucuya gitmiyor); O-4 EnvironmentLifecycleTests.cs 359 satır; dusuk: D-1 paralel kanarya sızıntıyı göremez, D-2 Request_AnyScreen yalnız negatif assert, D-3 AssertIsolated fırlatırsa taban fabrika Dispose edilmez
+- 08.10 11:58 · T-022: tamam (605739c..a753fda, inceleme temiz, ertelenen: O-1..O-4, D-1..D-3)
+- 08.10 12:01 · Karar: T-023 senaryolarındaki 12 madde kapandı (T-023-kararlar.md); K-11 SourceFile.Read(path, string? startDirectory = null) imza eki — test altyapısı iç davranışı — yanlışsa maliyeti: imza T-024+ özetlerinde düzeltilir
+- 08.10 12:05 · Commit: c6f9438 feat(bkm): T-023 ortak test yardımcıları iskeleti (T-023)
+- 09.10 09:27 · Commit: 3f633ae chore(bkm): test projeleri derleme çıktısı gitignore
+- 09.10 09:31 · Commit: 827a298 docs(bkm): spec 002 değişiklik 2-3 + plan 002 güncelleme 2-5
+- 09.10 09:33 · Commit: 58181bf docs(bkm): plan 002 onaylandı (GMY 09.10)
+- 09.10 09:45 · Karar: T-084 'Toplam Net Bakiye' kartı kalır, değeri bütün carilerden hesaplanır (ilk 200 değil) — GMY 08.10 'önce düzelt, sonra telefona' ilkesiyle tutarlı; kaldırmak bilgi kaybı — yanlışsa maliyeti: kart sonradan kaldırılır
+- 09.10 09:45 · Not: T-082..T-086 eklendi (002 planı G-1/G-2/G-3); T-079 ve T-080 T-084'ten sonra koşar (bağımlılık satırları güncellenmedi, sıra tablosu ek bölümde); T-085 002 Dalga 1 master'a girdikten sonra
+- 09.10 09:46 · Commit: 92a6fdf docs(bkm): spec 001'e T-082..T-086 (Cari/Risk düzeltmesi, master alma, kabul sonucu)
+- 09.10 10:12 · Commit: 9ace089 test(bkm): T-023 ortak test yardımcıları kırmızı testleri (T-023)
+- 09.10 10:23 · Karar: CanonicalQuery blok adı '-- blok:' sonrası ilk sözcük (gerçek dosyalarda açıklama satır sonunda, ör. H06 '-- blok: A (iptal…)'); klasör yolu FileNotFoundException — yazar önerisi, ölçüme dayalı — yanlışsa maliyeti: test fikstürü değişir
+- 09.10 10:23 · T-023: test kırmızı (c6f9438..9ace089), kilit +5 dosya (csproj yenilendi) — 79 yeni test, 77 kırmızı NotImplementedException/beklenen istisna yok, 2 yeşil (sabitler, UTC); ne-olmamalı %62; 451 eski yeşil; tanımlayıcı kapısı 23 eksik İngilizce sözcük (uygulamada eklenecek)
+- 09.10 10:34 · Commit: 2c90441 chore(bkm): kod sözcük ak listesi (T-023)
+- 09.10 10:40 · Commit: 68c266a feat(bkm): T-023 ortak test yardımcıları uygulaması (T-023)
+- 09.10 10:53 · Commit: 3f65da0 test(bkm): T-023 kanonik klasör yarışı — koleksiyon (T-023)
+- 09.10 11:56 · Karar: T-023 kilit yenilendi (CanonicalFileGateTests, CanonicalQueryTests — 3f65da0, +10 satır, beklenti değişmedi), GMY onayladı (09.10) — Kanonik/ klasör yarışı (aralıklı FileNotFoundException _gecici-*.sql), iki sınıf CanonicalFolder koleksiyonunda; 5 ardışık koşu 535/535 — yanlışsa maliyeti: kilit 9ace089'a döner
+- 09.10 11:58 · T-023: dusuk (ertelendi): test koşusunun hemen ardından sessiz derleme aralıklı '6 Hata' veriyor, yeniden koşuda 0 — ÇIKARIM: kalan testhost süreci DLL kilidi (ErrorScreen WebApplicationFactory), ölçülmedi
+- 09.10 12:02 · T-023: kapılar FROZEN ✓ STATIC ✓ GREEN ✓ (535/535 x5, tanımlayıcı 0); kırmızı kip: tolerans +0,01 ve blok sınırı kaydırma → 8 kırmızı, geri alındı 535/535; düzeltme turu 1 (Kanonik/ yarışı, koleksiyon) 3f65da0; 68c266a + 2c90441
+- 09.10 12:03 · T-023: inceleme r0 Onaylandı (Kritik/Yüksek yok)
+- 09.10 12:03 · T-023: orta (ertelendi): çöken koşudan kalan _gecici-*.sql kapı testi keşfine girebilir (öneri: keşifte _gecici- atla); _test-fikstur.sql Kanonik/ çıktısında — T-024+ 'her kanonik dosyanın testi var mı' numaralandırması '_' önekini atlamalı (T-024 özetine taşınır)
+- 09.10 12:03 · T-023: dusuk (ertelendi): '-- blok:' gövdedeki yorum/dize içinde de blok sayılıyor (CanonicalQuery.cs:65); blok işaretsiz dosyada ilk /* */ başlık sanılıyor (95-109); OrdinalIgnoreCase yol karşılaştırması Linux'ta gevşek
+- 09.10 12:03 · T-023: tamam (c6f9438..3f65da0, inceleme temiz, 1 düzeltme turu, ertelenen 2 orta + 3 düşük)
+- 09.10 12:09 · Commit: ae9b1f0 test(bkm): T-024 eski/yeni formül koruma testi (T-024)
+- 09.10 12:09 · T-024: test yazıldı ae9b1f0 (Guard_September2026_OldAndNewFormulaEqual, Trait Tur=Canli+Koruma; --list-tests: birim süzgecinde YOK, Koruma'da VAR; birim 535/535); canlı koşu + kırmızı kip 19:00 sonrası bekliyor
+- 09.10 12:10 · Commit: e71cba6 chore(bkm): kod sözcük ak listesi (T-024)
+- 09.10 12:12 · Commit: 9e6a21b test(bkm): T-024 test adı (T-024)
+- 09.10 12:13 · T-024: test adı Guard_September_2026_… (9e6a21b), tanımlayıcı 0; düzeltme: '6 Hata' kaynağı dashboard'un 6 mevcut uyarısı (warnaserror) — 001 F2 dokunduğunda temizlenmeli ya da test build'i dashboard uyarılarını ayırmalı (açık)
+- 09.10 13:39 · Karar: 001 yeni tanım sınıfları İngilizce ad + klasör dashboard/Data/Definitions (namespace GmDashboard.Data.Definitions); T-025 eşlemesi: FisTanimi→ReceiptDefinition (StoreDocumentTypes="1,2,3,6,7,8", SalesReceipt=1, Return=3, ExamSchools=8, ExcludeRecyclingJoin(string sales), ExcludeRecyclingCondition, NetExVat(string sales), ReturnExVat(string sales)); sonraki tanım sınıfları (EticDurum, KullaniciMesajlari→UserMessages, StokGostergeTanimlari, DuzeltmeNotlari, HedefTabani) görev özetinde aynı kuralla eşlenir — tanımlayıcı kapısı dashboard'da yeni dosyaya taban 0 (tools/turkce-taban.json); 002 T-001 de aynı klasörü kullanmalı — yanlışsa maliyeti: klasör/namespace adı sonradan taşınır
+- 09.10 13:46 · Commit: 6f6ef01 feat(bkm): T-025 fiş tanımı iskeleti (T-025)
+- 09.10 14:03 · Karar: tools/kod-sozcukleri.txt — geriye dönük 299 sözcük (T-021..T-024) ve T-025'in 6 sözcüğü GMY onaylı (09.10 'İkisini de onaylıyorum'); bundan sonra her görevde yazar sözcükleri gerekçeyle listeler, denetleyici toplu sorar, onaydan sonra kendisi ekler — dosya kapı ak listesi, hiçbir yazar rolüne açık değil (Orkestra 09.10) — yanlışsa maliyeti: yanlış eklenen sözcük kapıda yanlış negatif
+- 09.10 14:09 · Karar: ak liste için GMY genel onayı (09.10) — standart İngilizce teknik sözcükleri denetleyici ekler ve her görev sonunda deftere listeler; Türkçe ya da şüpheli sözcük gelirse GMY'ye sorulur. T-025: alias, condition, exclude, join, receipt, recycling, ex, vat, exact, hold — yanlışsa maliyeti: genel onay geri alınır, liste gözden geçirilir
+- 09.10 14:09 · Commit: f57855e chore(bkm): kod-sozcukleri — T-025 (GMY onaylı)
+- 09.10 14:10 · T-025: test kırmızı (6f6ef01..8275721), kilit +1 — 7 test, 6 kırmızı NotImplementedException, 1 yeşil (sabitler iskelette gerçek)
+- 09.10 14:10 · Commit: 8275721 test(bkm): T-025 fiş tanımı testi (T-025)
+- 09.10 14:14 · Commit: 745181a refactor(bkm): T-025 fiş tanımı çıkarımı (T-025)
+- 09.10 14:18 · T-025: kapılar FROZEN ✓ STATIC ✓ GREEN ✓ (birim 542/542, kolon 0, tanımlayıcı 0); 745181a; koruma testi 19:07'de
+- 09.10 14:19 · T-025: inceleme r0 Onaylandı (Kritik/Yüksek yok; eski spb anti-join ↔ yeni gd DISTINCT anlamca eşit, Fis değişmedi)
+- 09.10 14:19 · Karar: ReceiptDefinition alt sorgusundaki yeni WITH(NOLOCK) kalır — K8 'eklenmez' kuralına plan kaynaklı istisna (tasks.md T-025 metni gd0'ı NOLOCK'lu istiyor, dış sorgu zaten NOLOCK) — yanlışsa maliyeti: yazma anındaki 1001 kalemi bir fişi geçici dışlayabilir, etkisi küçük
+- 09.10 14:19 · T-025: dusuk (ertelendi): Queries.cs:12-13 ve 40-41 yinelenen yorum, Queries.cs:46 ve TrafikQueries.cs:9 yorumda eski ad storeSql; ExactText testleri biçim kilitliyor (bilinçli). Ak liste T-025: alias, condition, exclude, join, receipt, recycling, ex, vat, exact, hold. KAPANIŞ 19:07 koruma koşusuna bağlı
+- 09.10 14:21 · Commit: c908700 feat(bkm): T-026 e-ticaret durum tanımı iskeleti (T-026)
+- 09.10 14:26 · T-026: test kırmızı (c908700..dd81f45), kilit +1 — 4 test kırmızı (iskelet sabitleri boş; sema listeleriyle eşitlik + biçim); ak liste: cancel, codes, preparation, stages, warehouse, comma, separated, parse (genel onay); test adlarında Sema/Odak → Registry/Warehouse
+- 09.10 14:26 · Commit: ed8484b chore(bkm): kod-sozcukleri — T-026 (GMY genel onayı)
+- 09.10 14:26 · Commit: dd81f45 test(bkm): T-026 durum listesi sema eşitliği (T-026)
+- 09.10 14:30 · Commit: 1957c59 docs(bkm): spec 002 görev listesi (75 görev, 3 dalga)
+- 09.10 14:31 · Karar: T-026 bölünür — Queries.cs (7 yer) + EcommerceStatus.cs şimdi; EticQueries.cs (5 yer) yama olarak saklanır (.orkestra/calisma/001-panel-veri-duzeltme/T-026-eticqueries.patch), dosya HEAD'e döner — EticQueries.cs'te bu görevden önce var olan 9 CS-009 DateTime.Now (36,40,41,42,57,132,133,289,290) + 1 DAT-001 (64, TatilApply) dosya bazlı G-STATIC-CS'i kırıyor; DateTime.Now→TimeProvider davranış değişikliği, refactor görevine katılamaz — yanlışsa maliyeti: liste 5 yerde bir süre daha elle yazılı kalır
+- 09.10 14:31 · Karar: yeni görev T-087 [NET] EticQueries TimeProvider + TatilApply DAT-001 — T-029'dan sonra, T-026 kalanından ve EticQueries'e dokunan H4 görevinden önce; tasks.md'ye planlayıcı ekleyecek — dosya bazlı kapı her dokunuşta bu borcu çıkarıyor
+- 09.10 14:34 · Commit: 7f4a588 refactor(bkm): T-026 e-ticaret durum listesi — Queries.cs (T-026, kısım 1)
+- 09.10 14:35 · T-026: kısım 1 7f4a588 (EcommerceStatus + Queries.cs 7 yer; kapılar 4/4, birim 546/546, kolon 0, tanımlayıcı 0); kısım 2 (EticQueries.cs 5 yer) T-087'den sonra, yama T-026-eticqueries.patch (67 satır)
+- 09.10 14:36 · T-026: kısım 1 inceleme r0 Onaylandı (Kritik/Yüksek/Orta yok; Queries.cs:121 STATUS IN korundu; sema testi KOŞAMADI ile patlıyor); dusuk (ertelendi): biçim testi zayıf, 3004/3006 testi sema ile örtüşüyor. Kapanış: kısım 2 (T-087 sonrası) + koruma
+- 09.10 14:39 · Karar: T-087'de K1 CancellationToken maddesi istisna — davranış-aynı refactor sınırı; ct T-037 ve sonrasına kalır — yanlışsa maliyeti: EticQueries metotları bir görev daha ct'siz kalır
+- 09.10 14:39 · Commit: a8e30d9 docs(bkm): spec 001'e T-087 (EticQueries borç temizliği)
+- 09.10 14:40 · Commit: d403bb7 feat(bkm): T-029 düzeltme notları iskeleti (T-029)
+- 09.10 14:41 · Karar: T-029 private alan adı s_published (proje kuralı s_camelCase, cs_denetle) — özetteki 'Published' adı yalnız anlam; T-081 bu alanı değiştirecek — yanlışsa maliyeti: T-081 özetinde ad düzeltilir
+- 09.10 14:42 · Karar: T-029 senaryolarındaki 6 madde kapandı (T-029-kararlar.md); K1 anahtarlı NoteText T-081'e kadar her anahtarda null (etiketli), K4 'bugün' Türkiye yerel günü tüketen görevlerde — test altyapısı/iç davranış — yanlışsa maliyeti: T-081'de testler güncellenir
+- 09.10 14:48 · Not: 19:07 canlı koşu listesi — (1) T-024 Koruma yeşil + kırmızı kip; (2) T-025 ve T-026 k1 için aynı Koruma koşusu; (3) T-027 H08 karakterizasyon testi DEĞİŞİKLİKTEN ÖNCE (Tur=Canli, FullyQualifiedName~H08Purchasing) — sonra T-027 uygulaması ve yeniden koşu
+- 09.10 14:52 · Commit: 257528e test(bkm): T-029 düzeltme notları kırmızı testleri (T-029)
+- 09.10 14:57 · Commit: 0f28cb4 test(bkm): T-027 merkez depo karakterizasyon testi (T-027)
+- 09.10 14:58 · Commit: 039c04b test(bkm): T-029 test adları (T-029)
+- 09.10 14:59 · T-029: test kırmızı (d403bb7..039c04b), kilit +3 — 80 test, hepsi eksik davranıştan kırmızı (70 NotImplemented, 3 TimeProvider kayıtsız, 7 kayıt/alan beklentisi); ak liste 52 İngilizce sözcük (genel onay); test adlarından Veri/En/Us çıkarıldı
+- 09.10 14:59 · Commit: 7496952 chore(bkm): kod-sozcukleri — T-029 (GMY genel onayı)
+- 09.10 15:00 · Commit: 79afddd test(bkm): T-027 test adı (T-027)
+- 09.10 15:03 · Commit: dcf068a feat(bkm): T-029 düzeltme notları ve TimeProvider kaydı (T-029)
+- 09.10 15:03 · Commit: 48e143a test(bkm): T-027 tür adı (T-027)
+- 09.10 15:09 · Karar: ad kapısı testlerde mevcut dashboard API çağrısını muaf tutar (GMY 09.10 'Mevcut API çağrıları muaf') — kanıt: geçici dosyada GetUrunOzetAsync atlandı, UrunListesi yakalandı; bilinen sınır: küçük harfli Türkçe yerel değişken kapıya takılmaz (önceden de vardı, API adı örtüyordu) — yanlışsa maliyeti: kapı test dosyasında bir Türkçe çağrıyı gözden kaçırır
+- 09.10 15:09 · Commit: 13f47c8 chore(bkm): ad kapısı — testlerde mevcut API çağrısı muaf (GMY 09.10)
+- 09.10 15:10 · T-027: karakterizasyon testi 0f28cb4+79afddd+48e143a (ProductSummary_Today_CentralStockEqualsLiveWms, Tur=Canli; birim süzgecinde yok), kilit +1; ön koşu 19:07'de, uygulama sonra
+- 09.10 15:10 · T-029: kapılar FROZEN ✓ STATIC ✓ GREEN ✓ (626/626, kolon 0, TimeProvider tek kayıt); dcf068a
+- 09.10 15:16 · Commit: 31fb438 docs(bkm): GM dashboard soru setleri — e-ticaret ve gelecek vizyonu (spec 003 girdisi)
+- 09.10 15:27 · T-029: kırmızı kip — pencere 31 gün + bir anahtar tek sabitten kopuk → 8 kırmızı, geri alındı 626/626, diff boş
+- 09.10 15:28 · T-029: inceleme r0 Onaylandı (Kritik/Yüksek yok)
+- 09.10 15:28 · T-029: orta (ertelendi → T-081 kabulüne bağlı): statik başlatma sırası hatası MinValue ile ayırt edilemez; T-081 sabiti değiştirince 20 anahtarın hepsi not metni üretmeli (T-081 kabul testi). dusuk: anahtarlı NoteText olumlu yolu T-081'e kadar sınanmıyor (K1); public üyelerde XML summary yok; 'Hesap düzeltildi' kodda gömülü (proje stili); kültür testi düşük değerli
+- 09.10 15:28 · T-029: tamam (d403bb7..dcf068a, inceleme temiz, ertelenen 1 orta → T-081 + 4 düşük). Ak liste T-029: 52 sözcük + notes
+- 09.10 20:01 · T-024: tamam (canlı koruma 09.10 19:59: Guard_September_2026_OldAndNewFormulaEqual yeşil 28 s; kırmızı kip magaza-net-eski.sql IN(1,2,3,6,7) → İst.Yolu kırmızı, fark 330.349.209,10; elle geri yazıldı, git diff tests/ boş, yeniden yeşil 24 s; koşu T-025 + T-026 bölüm 1 uygulanmış HEAD 31fb438 üzerinde)
+- 09.10 20:01 · T-025: tamam (koruma koşusu yeşil 09.10 19:59 — rakam değişmedi, inceleme önceden temiz)
+- 09.10 20:02 · T-027: KOŞAMADI (09.10 20:05 değişiklik öncesi canlı koşu) — SALT-OKUMA KAPISI 'birden çok ifade': CanonicalQuery.Read blok A'ya sonraki 'GO' satırını da katıyor (H08-merkez-depo.sql:45-46 ';' + 'GO'), ReadOnlyGate ';' sonrası GO'yu ikinci ifade sayıyor. Kusur T-023 altyapısında (kilitli). KARAR bekliyor — öneri: CanonicalQuery.Read blok sonundaki tek başına 'GO' satırlarını atsın (T-023 düzeltme turu, test-önce: GO'lu blok testi), kilit yenileme GMY onayıyla; T-027 uygulaması o zamana kadar bekler
+- 23.10 09:30 · Commit: b755bcc kural(erp-write-policy): bkm-magaza yazılabilir alanına 003 mağaza listesi ve 006 yetki tabloları (GMY 17.10.2026)
+- 23.10 09:30 · Commit: 264f365 chore(paket): merkezi paket yönetimi (kök Directory.Packages.props) + Pkcs 10.0.13
+- 23.10 09:30 · Commit: 19c4147 chore: .env kopyaları ve obj/ git dışı; SsmsExcelExporter/obj takipten çıktı
+- 23.10 09:30 · Commit: 1d8ee60 docs(kural): bkm-magaza 006 D2 tespit/karar tabloları BkmPanel yazma listesine (GMY 19.10.2026)
+- 23.10 09:30 · Commit: 9c5a85d feat(shared): .env anahtarı aynı adlı ortam değişkeniyle ezilebilir (ikinci makine PANEL_DB_HOST)
+- 23.10 09:30 · Commit: 8d83121 docs(kural): erp-write-policy — bkm-magaza tanım ve ayar tabloları (PanelStoreFindingType, PanelSetting, PanelPurchaseRejectReason; GMY 18.10 / 20.10.2026)
+- 23.10 09:30 · Commit: 5269485 docs(kural): erp-write-policy — bkm-magaza spec 009 tabloları (PanelPerson, PanelPersonSyncRun, PanelStoreSetupWave + kolonlar), Zirve 7 alan salt okuma
+- 23.10 10:05 · Commit: 1a66832 docs(bkm): günlükler 09/15/23.10 + orkestra günlüğü + 001 defter (BT-FIKRI eşitlemesi dahil)
+- 23.10 10:05 · Commit: 9282e17 docs(bkm): BT-FIKRI 09-15.10 işleri — sema, maaş/stok-satış scriptleri, Kültür norm slaytı
+- 23.10 10:05 · Commit: bd5a534 feat(bkm): talep tahmini ve ens kalibrasyon araçları (BT-FIKRI 12-14.10)

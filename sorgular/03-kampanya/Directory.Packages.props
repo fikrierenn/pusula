@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- Bu klasör merkezi paket yönetiminin (kök Directory.Packages.props) DIŞINDA — 17.10.2026.
+       RaporApp ve SsmsExcelExporter kökten farklı sürümler kullanıyor (ClosedXML 0.104.2,
+       Microsoft.Data.SqlClient 5.2.2); kök sürüme geçmek SqlClient'ta ana sürüm atlaması, yani
+       davranış değişikliği olur. Sürümler bu yüzden csproj'lerde kalır. Birleştirme ayrı iş;
+       o yapılınca bu dosya silinir. -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>

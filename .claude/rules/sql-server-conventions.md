@@ -27,7 +27,8 @@ _BKM Kitap projesinde T-SQL yazımı için kalıcı kurallar._
 ### EncoreMerkez ↔ DerinSIS KÖPRÜSÜ = Products.Code (09.06 keşif — KESİN)
 
 - **`EncoreMerkez.Products.Code` (int) = `DerinSIS.urn.stkID`** — %99,98 eşleşme (798.349/798.527). `Code` stkKod DEĞİL (%9), barkod hiç değil.
-- **Doğru POS join:** `SalesProducts.ProductsId → Products.Id`, sonra `urn.stkID = CONVERT(int, Products.Code)` (EncoreMerkez compat 110 → `TRY_CONVERT` yok; `ISNUMERIC(p.Code)=1` guard + `CONVERT(int,p.Code)`).
+- **Doğru POS join:** `SalesProducts.ProductsId → Products.Id`, sonra `urn.stkID = CONVERT(int, Products.Code)` (EncoreMerkez compat 110 → `TRY_CONVERT` yok). Koruma: `CASE WHEN p.Code COLLATE Latin1_General_BIN2 NOT LIKE '%[^0-9]%' AND LEN(p.Code) BETWEEN 1 AND 9 THEN CONVERT(int, p.Code) END` — CONVERT yalnız THEN dalında.
+  - ⚠ **`ISNUMERIC(p.Code)=1` YETMEZ (ölçüldü 04.10.2026):** `'2147483648'`, `'-5'`, `' 123'` ISNUMERIC=1 döner; ilki CONVERT(int)'i taşırır. Ayrıca Turkish_CI_AS altında `[0-9]` aralığı `²`, `１` (tam genişlik), `٣` ile eşleşir ve `CONVERT` "Conversion failed" ile patlar — bu yüzden ikili collation şart. Bugün Products'ta bozuk kod 0 (değişmez `encore-products-code-sayisal`), kural gelecekteki tek kaydın ekranı çökertmesini önler. Kanıt: `sorgular/2026-10-panel-veri-duzeltme/H10-urun-kodu.sql`.
 - Bu, EncoreMerkez POS verisini (per-mağaza, per-fiş) **doğru kategori/marka**ya bağlar — barkod join'in kaçırdığını çözer (Oyuncak ciro 700K→10,96M doğrulandı 09.06).
 - Saf DerinSIS analizlerde hâlâ `irsHrk.ehstkID=urn.stkID` en temiz; POS-özel (EncoreMerkez Sales/SalesProducts) gerekince Products.Code köprüsünü kullan.
 
@@ -55,9 +56,11 @@ Alternatifler: `STUFF + FOR XML PATH`, `LTRIM(RTRIM(...))`, `CASE WHEN`, `CONVER
 
 ## İndirim Kolonları
 
-- `DiscountTotalDirect` = TOPLAM.
-- `DiscountTotalCampaign` = alt küme.
-- Sadece Direct kullan.
+- **Kalem toplam indirimi = `DiscountTotalDirect + DiscountTotalIndirect`.** `Indirect`, belge düzeyinde verilen indirimin (çoğu Sınav kurum iskontosu) kaleme dağıtılmış payıdır.
+- `DiscountTotalCampaign` ⊆ `DiscountTotalDirect` — toplanmaz (çift sayım).
+- Başlıkta toplam indirim `Sales.DiscountTotal`. Kimlik: Σ başlık `DiscountTotal` = Σ kalem (`Direct + Indirect`, `IsValid = 1`).
+- Kampanya satır indirimi `SalesProductCampaigns`'ten alınacaksa `−DistributedAmount` (negatif saklı). `TotalDiscount` (SalesId, CampaignId) grubuna çoğaltılmış toplamdır, **SUM edilmez** (İst.Yolu Eylül 2026: 327,8M yerine 25,24M).
+- ⚠ **Bu bölüm önce "`DiscountTotalDirect` = TOPLAM, sadece Direct kullan" diyordu — kalem düzeyinde YANLIŞTI** (düzeltildi 04.10.2026, ölçüldü). Eylül 2026 (tip 1,2,3,6,7,8, `IsValid = 1`): Direct 42.886.966,22 + Indirect 10.853.128,37 = 53.740.094,59 = Σ `Sales.DiscountTotal` (fark 0,00); Indirect'in %98'i Sınav (tip 8). Kural Sınav indirimini ~%85 eksik ölçtürüyordu. Kanıt: `sorgular/2026-10-panel-veri-duzeltme/D4-hediye-ceki.sql` blok K, `H06-magaza.sql` blok A2 (spec 001).
 
 ## Belge Filtresi
 

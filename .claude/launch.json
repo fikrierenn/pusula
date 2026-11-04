@@ -26,6 +26,35 @@
       "autoPort": false
     },
     {
+      "name": "blazor-dash-prod",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "dashboard",
+        "--no-launch-profile",
+        "-e",
+        "ASPNETCORE_ENVIRONMENT=Production",
+        "--",
+        "--urls",
+        "http://127.0.0.1:5114",
+        "--Kestrel:Certificates:Default:Path=",
+        "--Kestrel:Certificates:Default:KeyPath="
+      ],
+      "port": 5114,
+      "autoPort": false
+    },
+    {
+      "name": "panel-yayin",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set ASPNETCORE_ENVIRONMENT=Production&& set BKM_ENV_DOSYA=C:\\dev\\pusula\\.env&& dotnet C:\\Temp\\panel-yayin\\GmDashboard.dll --contentRoot C:\\Temp\\panel-yayin --urls http://127.0.0.1:5114 --Kestrel:Certificates:Default:Path= --Kestrel:Certificates:Default:KeyPath="
+      ],
+      "port": 5114,
+      "autoPort": false
+    },
+    {
       "name": "vardiya-app",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": [

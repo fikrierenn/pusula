@@ -1,4 +1,5 @@
 using Dapper;
+using GmDashboard.Data.Definitions;
 using GmDashboard.Models;
 
 namespace GmDashboard.Data;
@@ -11,6 +12,22 @@ public sealed class Queries(Db db)
 {
     static readonly Dictionary<int, string> Mekan = new() { [1] = "FSM", [4477] = "Özlüce", [4478] = "İst.Yolu" };
 
+    // Mağaza (EncoreMerkez Sales → posMagaza; geri dönüşüm fişi BarcodeNo='1001' hariç)
+    // Net = KDV-HARİÇ (plan-16): Sales.GrossTotal−DiscountTotal−VatTotal (header VAT = satır TP−VatTotal toplamı, kuruşu kuruşuna doğrulandı 16.06).
+    static readonly string s_storeSql = $"""
+        SELECT MG.mekanID AS MekanId,
+               SUM({ReceiptDefinition.NetExVat("s")}) AS Net,
+               SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
+               SUM({ReceiptDefinition.ReturnExVat("s")}) AS Iade
+        FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
+        JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
+        JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
+        JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
+        {ReceiptDefinition.ExcludeRecyclingJoin("s")}
+        WHERE s.DocumentsTypeId IN ({ReceiptDefinition.StoreDocumentTypes}) AND {ReceiptDefinition.ExcludeRecyclingCondition} AND s.Date>=@start AND s.Date<@end
+        GROUP BY MG.mekanID;
+        """;
+
     /// <summary>Dönem özeti: mağaza net/fiş/iade + e-ticaret net + hedef gerçekleşme.</summary>
     /// <param name="prevStart">Geçen-dönem (WoW) penceresi başı. null → hemen önceki eş-uzunluk.</param>
     /// <param name="prevEnd">Geçen-dönem penceresi sonu (exclusive). null → start.</param>
@@ -22,20 +39,7 @@ public sealed class Queries(Db db)
 
         // Mağaza (EncoreMerkez Sales → posMagaza; geri dönüşüm fişi BarcodeNo='1001' hariç)
         // Net = KDV-HARİÇ (plan-16): Sales.GrossTotal−DiscountTotal−VatTotal (header VAT = satır TP−VatTotal toplamı, kuruşu kuruşuna doğrulandı 16.06).
-        const string storeSql = """
-            SELECT MG.mekanID AS MekanId,
-                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END*(s.GrossTotal-s.DiscountTotal-s.VatTotal)) AS Net,
-                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN -1 ELSE 1 END) AS Fis,
-                   SUM(CASE WHEN s.DocumentsTypeId=3 THEN (s.GrossTotal-s.DiscountTotal-s.VatTotal) ELSE 0 END) AS Iade
-            FROM EncoreMerkez.dbo.Sales s WITH(NOLOCK)
-            JOIN EncoreMerkez.dbo.Pos p ON p.Id=s.PosId
-            JOIN EncoreMerkez.dbo.Stores st ON st.Id=p.StoreId
-            JOIN DerinSISBkm.dbo.posMagaza MG ON MG.mekanKod COLLATE Turkish_CI_AS = st.Code COLLATE Turkish_CI_AS
-            LEFT JOIN EncoreMerkez.dbo.SalesProducts spb ON spb.SalesId=s.Id AND spb.BarcodeNo='1001'
-            WHERE s.DocumentsTypeId IN (1,2,3,6,7,8) AND spb.Id IS NULL AND s.Date>=@start AND s.Date<@end
-            GROUP BY MG.mekanID;
-            """;
-        var stores = (await conn.QueryAsync<StoreRow>(storeSql,
+        var stores = (await conn.QueryAsync<StoreRow>(s_storeSql,
             new { start = start.ToDateTime(TimeOnly.MinValue), end = endExcl.ToDateTime(TimeOnly.MinValue) })).ToList();
 
         // Geçen dönem penceresi — hero + mağaza WoW trendi. Aylık → geçen ayın aynı günleri (Home verir);
@@ -43,16 +47,16 @@ public sealed class Queries(Db db)
         int len = endExcl.DayNumber - start.DayNumber;
         var pStart = prevStart ?? start.AddDays(-len);
         var pEnd = prevEnd ?? start;
-        var prevStores = (await conn.QueryAsync<StoreRow>(storeSql,
+        var prevStores = (await conn.QueryAsync<StoreRow>(s_storeSql,
             new { start = pStart.ToDateTime(TimeOnly.MinValue), end = pEnd.ToDateTime(TimeOnly.MinValue) })).ToList();
         var prevNetMap = prevStores.ToDictionary(s => s.MekanId, s => s.Net);
 
         // E-ticaret NET (iptal 1001/3000/4000 + iade 1006 + kayıp 1007 HARİÇ; 3004/3006 NORMAL aşama) — DİREKT JOKER (B-74).
         // Ciro = KDV+KARGO-HARİÇ (plan-16): satır SELLINGPRICEWITHOUTVAT (kargo order-başlığı CARGOPRICE'ta, satırda yok).
         // Eski TOTALPRICE (KDV+kargo dahil) KULLANILMIYOR. Direkt bağlantıda detay CROSS APPLY hızlı (linked değil).
-        const string eticSql = """
-            SELECT SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
+        var eticSql = $"""
+            SELECT SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
             FROM dbo.J_ORDERS o
             CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net
                          FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
@@ -110,12 +114,12 @@ public sealed class Queries(Db db)
         }
 
         // E-ticaret kanal kırılımı (donut) — DİREKT JOKER, Ciro KDV+kargo-hariç (SELLINGPRICEWITHOUTVAT). plan-16.
-        const string eticKanalSql = """
+        var eticKanalSql = $"""
             SELECT CASE WHEN o.APPLICATION IN ('Mobil Uygulama (Android)','Mobil Uygulama (iOS)','Mobil Site','Web Sitesi')
                         THEN o.APPLICATION ELSE 'Diğer' END AS Ad,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Sip,
-                   SUM(CASE WHEN o.STATUS IN (1001,1006,1007,3000,4000) THEN 1 ELSE 0 END) AS Ipt,
-                   SUM(CASE WHEN o.STATUS NOT IN (1001,1006,1007,3000,4000) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
+                   SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN 1 ELSE 0 END) AS Sip,
+                   SUM(CASE WHEN o.STATUS IN ({EcommerceStatus.OrderCancelReturn}) THEN 1 ELSE 0 END) AS Ipt,
+                   SUM(CASE WHEN o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn}) THEN ISNULL(det.net,0) ELSE 0 END) AS Ciro
             FROM dbo.J_ORDERS o
             CROSS APPLY (SELECT SUM(d.QUANTITY*d.SELLINGPRICEWITHOUTVAT) AS net FROM dbo.J_ORDER_DETAILS d WHERE d.ORDERREF=o.ORDERID) det
             WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso
@@ -167,22 +171,22 @@ public sealed class Queries(Db db)
             .OrderBy(k => k.Magaza).ThenByDescending(k => k.Net).ToList();
 
         // E-ticaret kargo firma dağılımı (net sipariş, JOKER J_CARGO) — DİREKT JOKER (linked server kaldırıldı, M-12)
-        const string kargoSql = """
+        var kargoSql = $"""
             SELECT ISNULL(c.CNAME,'(bilinmiyor)') AS Ad, COUNT(*) AS Adet
             FROM dbo.J_ORDERS o
             LEFT JOIN dbo.J_CARGO c ON c.ID=o.CARGOREF
-            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
+            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn})
             GROUP BY ISNULL(c.CNAME,'(bilinmiyor)');
             """;
         var kargo = (await jconn.QueryAsync<NameCount>(kargoSql, new { giso, g2iso }))
             .OrderByDescending(k => k.Adet).ToList();
 
         // E-ticaret il dağılımı (teslimat DCITY, top 12) — DİREKT JOKER (M-12)
-        const string ilSql = """
+        var ilSql = $"""
             SELECT ISNULL(d.DCITY,'(bilinmiyor)') AS Ad, COUNT(*) AS Adet
             FROM dbo.J_ORDERS o
             LEFT JOIN dbo.J_ORDER_DELIVERY_ADDRESS d ON d.LOGICALREF=o.DELIVERYREF
-            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN (1001,1006,1007,3000,4000)
+            WHERE o.ORDERDATE>=@giso AND o.ORDERDATE<@g2iso AND o.STATUS NOT IN ({EcommerceStatus.OrderCancelReturn})
             GROUP BY ISNULL(d.DCITY,'(bilinmiyor)');
             """;
         var il = (await jconn.QueryAsync<NameCount>(ilSql, new { giso, g2iso }))

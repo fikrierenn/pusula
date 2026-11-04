@@ -13,6 +13,7 @@ public static class ServiceRegistration
     public static IServiceCollection AddBkmVeri(this IServiceCollection s)
     {
         s.AddSingleton<Db>();
+        s.AddSingleton(TimeProvider.System);
         s.AddScoped<Queries>();
         s.AddScoped<MagazaQueries>();
         s.AddScoped<RefQueries>();

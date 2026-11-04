@@ -12,7 +12,7 @@
 #
 # ALANLAR: id (kebab, İngilizce, değişmez) · name (görünen ad, Türkçe) · kind: store|cafe|headquarters|depot ·
 #   parent (kafe → bağlı mağaza; yalnız gösterim/gruplama, YETKİ değil) · active · stock_source: derinsis|wms|none
-#   (none = "bu mekân için yerel stok tutulmuyor"; boş ≠ sıfır) · keys: {derinsis_mekan, zirve_lokasyon, zirve_altlokasyon, zirve, ad_ou, erp12}
+#   (none = "bu mekân için yerel stok tutulmuyor"; boş ≠ sıfır) · keys: {derinsis_mekan, derinsis_hareket_mekan (irsHrk ehMekan; stok defteri DEĞİL), zirve_lokasyon, zirve_altlokasyon, zirve, ad_ou, erp12}
 #   Bir sistem karşılığı yoksa anahtar YAZILMAZ (NULL değil, yok).
 #   zirve = "Lokasyon/AltLokasyon" BİLEŞİK anahtar (25.09.2026, kimlik sözleşmesi T5): AltLokasyon TEK BAŞINA belirsiz —
 #   ölçülen 12 aktif değerde HEYKEL hem MAĞAZALAR hem GENEL MÜDÜRLÜK altında var (plan 50 §4.1d). Zirve köprüsü kişiyi
@@ -97,8 +97,8 @@ locations:
     kind: depot
     active: true
     stock_source: wms
-    keys: { zirve_lokasyon: "GENEL MÜDÜRLÜK", zirve_altlokasyon: "MERKEZ DEPO", zirve: "GENEL MÜDÜRLÜK/MERKEZ DEPO" }
-    note: "Zirve aktif 15; stok WMS (depo.stok_adres_palet_vw). ERP mekân anahtarı ölçülmedi — yazılmadı."
+    keys: { zirve_lokasyon: "GENEL MÜDÜRLÜK", zirve_altlokasyon: "MERKEZ DEPO", zirve: "GENEL MÜDÜRLÜK/MERKEZ DEPO", derinsis_hareket_mekan: 12 }
+    note: "Zirve aktif 15; stok WMS (depo.stok_adres_palet_vw). derinsis_mekan BİLEREK YOK: ERP defteri (stokSonAltDepo_vw mekan 12) depo stoğu için okunmaz (bkm-magaza kural 4). derinsis_hareket_mekan 12 yalnız irsHrk HAREKET okumaları içindir (depoya ilk/son giriş, GMY 23.10.2026; ölçüm codes.yaml ornek_degerler 12 = Ana/Merkez Depo, bridges.yaml depo ehMekan=12)."
   - id: eticaret
     name: E-ticaret
     kind: store
