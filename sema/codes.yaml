@@ -977,3 +977,42 @@ codes:
     evidence: "2026-09-12 — sqlcli --profile zirve: GROUP BY Firma (iki view) + sys.databases dökümü + BKM_2026 erişim reddi. Arşiv: sorgular/2026-09-12-zirve-sema-yuzey-fk.sql blok 0/1/9."
     confidence: 0.95
     last_verified: "2026-09-12"
+
+  kibobkm.tumbelgeler.belgekod:
+    lookup: "YOK — islemtipleri tek satır (0 GENEL). Adlar tumbelgeler.aciklama ve tstockfiss.aciklama'dan okundu."
+    closed_set: false
+    values:
+      1: "Satış Faturası (cari borç)"
+      2: "Alış İade Faturası (cari borç) — ⚠ FİYAT FARKI faturaları da bu kodla kesilir ('…NOLU FATURAYA İSTİNADEN KESİLEN FARK FATURASI'); stok çıkışı olan satır iade, olmayan fark"
+      3: "Alış Faturası (cari alacak) — ⚠ BKM'den gelen HER belge buraya girer: satış (eTip 1), mağaza satış (4), alış iade (2), hizmet (6), gider (7), fiyat farkı (8), iade fark (10). Tip ayrımı DerinSIS tarafında fat.eTip ile yapılır"
+      4: "Satış İade Faturası"
+      9: "Banka giden (EFT)"
+      10: "Banka gelen"
+      11: "Borç Devir"
+      19: "Ödeme (banka)"
+      20: "Tahsilat (cari hesaptan)"
+      21: "Çek Çıkış Belgesi"
+      22: "Çek Giriş Belgesi"
+      23: "Senet Çıkış Belgesi"
+      24: "Senet Giriş Belgesi"
+      27: "Perakende satış fişi (stok çıkışı) — aynası 106"
+      46: "Virman (borç) — aynası 47"
+      67: "Çek Çıkış İade"
+      99: "Perakende iade (stok girişi) — aynası 107"
+      106: "27'nin kasa aynası (aynı adet/tutar) — SAYILMAZ"
+      107: "99'un kasa aynası — SAYILMAZ"
+      150: "Alış fatura ödeme-kapatma"
+      152: "Tahsilat (gelen EFT)"
+    details:
+      stok_fisi_kodlari: "stokinout'ta tumbelgeler başlığı olmayan kodlar: 17 giriş (belgetip 1/2) · 18 çıkış (belgetip 7/10) · 104 'Stok Sayım-G' · 105 sayım çıkış · 6 'Stok Giriş İade Fişi'. 17/18'in alt anlamı TEYİT BEKLİYOR."
+    note: "Kod kümesi 2025+ dağılımdan okundu; eski yıllarda (25, 26, 88, 163 …) başka kodlar var — kapalı küme DEĞİL."
+    evidence: "2026-10-23 — tumbelgeler GROUP BY belgekod + MAX(aciklama) (2025+); tstockfiss GROUP BY belgekod; DerinSIS fat.eNo ile ters eşleme (2026: belgekod 3 → eTip 1:401 · 2:69 · 4:93 · 6:178 · 7:7 · 8:34 · 10:85 · 0:4; belgekod 2 → eTip 0:19 · 3:6). Arşiv: sorgular/2026-10-23-bursa-kultur-iade-zinciri.sql blok 7-8."
+    confidence: 0.85
+    last_verified: "2026-10-23"
+
+  kibobkm.ambar.kod:
+    values: {0: MERKEZ, 1: "BKM ALTIPARMAK", 2: "ŞURA", 3: "DEPO", 4: "FSM"}
+    note: "⚠ Tanım var ama 2025+ stokinout'un tamamı ambar 0 — fiilen tek ambar. tstockloc'ta 1-4 için küçük kalıntı bakiyeler var."
+    evidence: "2026-10-23 — SELECT * FROM ambar; stokinout GROUP BY ambar_kod (2025+)."
+    confidence: 0.9
+    last_verified: "2026-10-23"

@@ -17,6 +17,7 @@ databases:
   BKMMaliyet: {role: "maliyet/marj"}
   BKM_GENEL: {role: "Zirve ERP — BORDRO/PERSONEL/SGK (ayrı sunucu; MCP: zirve). DerinSIS'ten AYRI sistem. Personel görev-ünvan otoritesi (perbilgi.Gorevi serbest metin)."}
   Mosaik: {role: "Mosaik portal (reporthub, .NET modüler; MCP: portalhub) DB — SOP/Kvkk/Forms/Circular + görev-tanımı modülü (planlı). ReportHUB DB DEĞİL (o recovery_pending/eski). Doküman/versiyon/onay/workflow + AppModules kayıt + ModuleRoleAccess yetki + AuditLog + Kvkk envanteri."}
+  "[192.168.40.140].kibobkm": {role: "BURSA KÜLTÜR MERKEZİ canlı KIBO işletme programı (fatura/cari/stok/perakende). DerinSIS 201den linked server [192.168.40.140] ile SALT OKUMA. tfirma.firma_name=bkmnet. Ayrıntı: entities kibobkm.dbo.* + kibo_sunucu_haritasi", tarih: "datetime; uzak sorguda YYYYMMDD literal güvenli"}
 
 ai_hints:   # sorgu üretirken her zaman geçerli
   - "yyyy-MM-dd tarih formatı HİÇBİR yerde kullanılmaz."
@@ -3361,6 +3362,30 @@ entities:
     last_verified: "2026-09-12"
     evidence: "2026-08-25 canlı — sorgular/2026-08-25-hediye-ceki-karlilik-indirim.sql blok 13 (tip kıyası Oca-2026 + yıl kıyası 2023-2026 + satır detayı); hediye çeki kanalında fatAyr 6.000 ₺ vs irsHrk 323.550 ₺ uyuşmazlığından çıktı. Alış iskontosu/kademe ölçümü 2026-09-12: sorgular/2026-09-12-alis-iskontosu-sifir-fatura-kontrolu.sql"
 
+  DerinSISBkm.dbo.fatSatirKDVBelgeSonu_guncelle:
+    type: sp
+    grain: "fatura (@eID) × KDV oranı — fatAyr satır KDV'sinin belge sonu yuvarlama düzeltmesi"
+    note: >-
+      DerinSIS native SP, `WITH ENCRYPTION` (2024-03-19). Gövde 2026-11-03'te GMY onayıyla
+      `sqlcli ddl` (DAC) ile okundu; satıcı kodu depoya kopyalanmadı.
+      **İŞLEV:** her `ehKDV` grubu için
+      `fark = CAST(SUM(ehTutarKDV) AS decimal(9,2)) − CAST(SUM((ehTutar−ehIndirim)×kdvYuzde/100) AS decimal(9,2))`
+      hesaplar ve farkı o grubun `MAX(ehSira)` satırının `ehTutarKDV`sinden düşer.
+      Taban `ehTutarN` DEĞİL, `ehTutar − ehIndirim` (eTip 4'te ikisi ayrışır). Yeniden
+      çalıştırılınca sonuç değişmez. Yalnız `fatAyr` + `urnKDV` okur/yazar.
+      **ÇAĞIRANLAR (13):** `sip_Faturala`, `fatIrsden_ekle`, `fat_iffKontrol`,
+      `fat_fytKontrol*` (4), `eftr.fatIsle_*` (5), şifresiz tek çağıran `bkm.sip_faturala_tarih`.
+      ⚠ **TEVKİFATI BİLMEZ:** `ehTutarKDVtvkft` hesaba girmez; tevkifat ayrıldıktan sonra
+      çağrılırsa tevkifat tutarını son satırın KDV'sine ekler. Ölçüm: eTip 7 tevkifatlı
+      faturalarda bu olmamış (ÇIKARIM: ya çağrılmıyor ya bölmeden önce çağrılıyor).
+      ⚠ **decimal(9,2) TAŞMASI:** tek oranlı KDV toplamı 9.999.999,99'u aşan faturada
+      aritmetik taşma (8115) verir, çağıran faturalama düşer. Bu büyüklükte fatura defterde var.
+      ⇒ Satıcıya iletilecek bulgu; native SP olduğu için biz değiştirmeyiz (erp-write-policy).
+    measurement: "2026-11-03 — son 30 gün 83.670 satır: eTip 0'da farklı 95 satırın 81'i son sırada, max 0,11 ₺; eTip 4 tabanıyla max 0,04 ₺; eTip 7 büyük farklar = ehTutarKDVtvkft. decimal(9,2) üstü 2 grup (ANZ2026000000062 12,09M · ANZ2026000000064 15,21M KDV, 08.05.2026). urnKDV eşleşmeyen ehKDV 0. Bugün 52 çağrı."
+    evidence: "2026-11-03 — sqlcli ddl çözümü + sys.sql_expression_dependencies + fatAyr ölçümü. Arşiv: sorgular/2026-11-03-fatsatirkdv-belgesonu-inceleme.sql"
+    confidence: 0.95
+    last_verified: "2026-11-03"
+
   EncoreMerkez.dbo.RefundReasons:
     type: table
     pk: Id
@@ -4374,3 +4399,88 @@ entities:
     evidence: "2026-09-20 — sorgular/2026-09-20-magaza-app-kategori-ve-arama.sql blok 1."
     confidence: 0.85
     last_verified: "2026-09-20"
+
+  kibo_sunucu_haritasi:
+    type: rule
+    uses: [entities:kibobkm.dbo.tumbelgeler, entities:kibobkm.dbo.stokinout]
+    note: >-
+      Bursa Kültür Merkezi (DerinSIS frmID 56/38093) KIBO programını kullanır. CANLI veritabanı
+      **`[192.168.40.140].kibobkm`** (tfirma.firma_name='bkmnet'). Aynı sunucuda arşiv kopyalar
+      `kibobkm0609` · `kibobkm2014` · `kibobkm2017` ve Logo `GOPLUS*` veritabanları var —
+      **GOPLUS KULLANILMIYOR** (kullanıcı 23.10.2026). DerinSIS 201'de bu sunucuya iki linked server
+      adı gider: `[192.168.40.140]` ve `LOGO` (katalog GOPLUS_2020) — KIBO için `[192.168.40.140]` kullan.
+      ⚠ İKİ YANILTICI KOPYA: (a) 201'deki `KIBO` veritabanı yalnız ürün ana verisi tutar
+      (Stok/Barkodlar/Yazar/Marka/Raf/Kategori) — fatura/cari YOK. (b) `SURA.kibobkm`
+      (192.168.40.164) **ŞURA** firmasınındır (tfirma.firma_name='ŞURA'), Bursa Kültür DEĞİL;
+      kullanıcı: "ara bağlantı katman tabloları, iptal".
+      `bkm.HeykelSatisKibo` (DerinSISBkm, 9.553 satır) günlük KATEGORİ satış özeti — fatura değil.
+      KIBO içinde BKM'nin beslediği tablolar var: `DerinsisBarkodKategori` (barkod → DerinSIS kategori 1-3),
+      `BkmKategori`, `BKMUrunListesiEtiket`, `BkmFiyatGorLog` — senkronu kimin yaptığı ÖLÇÜLMEDİ.
+    evidence: "2026-10-23 — [192.168.40.140].master.sys.databases dökümü; tfirma (140 → bkmnet, SURA → ŞURA); 201 KIBO tablo listesi (6 dolu tablo, hepsi ana veri); kibobkm sys.tables/sys.columns. Arşiv: sorgular/2026-10-23-bursa-kultur-iade-zinciri.sql blok 7."
+    confidence: 0.95
+    last_verified: "2026-10-23"
+
+  kibobkm.dbo.tumbelgeler:
+    type: table
+    pk: [belgeno, belgekod]
+    grain: "belge başlığı — [192.168.40.140].kibobkm.dbo.tumbelgeler"
+    uses: [bridges:fat-eno-kibo-fattakipno, codes:kibobkm.tumbelgeler.belgekod]
+    note: >-
+      KIBO'nun TÜM belgelerinin başlığı (5,58M satır): fatura, kasa, banka, çek/senet, perakende fiş.
+      `belgekod` belge tipidir (codes: kibobkm.tumbelgeler.belgekod). `lngcarikod` → `cari.skod`.
+      `fattakipno` = `einvoice_id` = e-fatura numarası → DerinSIS köprüsü
+      (bridges: fat-eno-kibo-fattakipno). `aciklama` belge tipinin adını ya da serbest notu taşır.
+      Perakende (27) ile kasa aynası (106) aynı adet/tutarla çift yazılır, `relbelgeno` 106→27 bağlar;
+      aynı desen 99↔107, 46↔47. ⚠ Fatura↔iade bağı için `relbelgeno` KULLANILMIYOR
+      (stokinout.rel_belgeno 2024+ hiç dolu değil).
+    measurement: "2026-10-23 — 2025+ belgekod dağılımı: 3 → 9.487 · 1 → 3.143 · 2 → 402 · 27/106 → 630.769 · 99/107 → 538."
+    evidence: "2026-10-23 — GROUP BY belgekod + MAX(aciklama); relbelgeno GROUP BY. Arşiv: sorgular/2026-10-23-bursa-kultur-iade-zinciri.sql blok 7."
+    confidence: 0.9
+    last_verified: "2026-10-23"
+
+  kibobkm.dbo.stokinout:
+    type: table
+    grain: "stok hareket satırı (12,3M) — [192.168.40.140].kibobkm.dbo.stokinout; (belge_kod, belge_no) → tumbelgeler (belgekod, belgeno)"
+    uses: [bridges:urnbrkd-kibo-stokkod, entities:kibobkm.dbo.tumbelgeler]
+    note: >-
+      `stok_kod` = ürünün KIBO kodu = barkod (2026 fatura satırlarında `stok.kod` ile 241.781/241.782,
+      `stok.barkod` ile %99,95). `stok_no` → `stok.stokno`. Miktar `in_miktar` (giriş) / `out_miktar` (çıkış),
+      tutar `net_tutar`. ⚠ Satırdaki `lngcarikod` çoğunlukla 0 → **cari BAŞLIKTAN alınır**.
+      ⚠ `ambar_kod` 2025+ hareketlerin TAMAMINDA 0 (MERKEZ) — mağaza ayrımı bu kolonla yapılamaz.
+      ⚠ Perakende (27) `net_tutar`'da barkodun fiyat alanına okutulduğu uç satırlar var
+      (ör. 9.786.256.856.158 TL; 2024'te 11, 2025'te 2 satır) — tutar toplarken > 1.000.000 satır elenir.
+    measurement: "2026-10-23 — 2025+ stok etkisi: belge_kod 3 giriş 8,09M adet · 1 çıkış 4,31M · 2 çıkış 221K · 27 çıkış 2,43M · 99 giriş 1.604 · 17 giriş 3.804 · 18 çıkış 93.061 · 104/105 sayım. Perakende net (uç satırsız) 2024 141,1M · 2025 171,2M · 2026 170,0M TL."
+    evidence: "2026-10-23 — GROUP BY belge_kod, belgetip; stok_kod vs stok.kod/barkod eşitlik sayımı; TOP 5 net_tutar DESC. Arşiv blok 7."
+    confidence: 0.9
+    last_verified: "2026-10-23"
+
+  kibo_stok_bakiyesi_guvenilmez:
+    type: measurement
+    uses: [entities:kibobkm.dbo.stokinout]
+    details:
+      tablolar: "[192.168.40.140].kibobkm.dbo.tstockloc (stck_ambar_stok) · dbo.stok (smiktar)"
+    note: >-
+      Anlık stok `tstockloc.stck_ambar_stok` (ambar bazında) ve `stok.smiktar` (toplam) — ikisi tutarlı
+      ve stokinout giriş−çıkış ile birebir (Tuval Boyama Seti −12.667 = 943 − 13.610).
+      ⚠⚠ **KIBO STOĞU BURSA KÜLTÜR'ÜN FİİLİ STOĞU DEĞİL:** 547.785 ürünün **119.112'si eksi**
+      (toplam −9,93M adet). Tedarikçiden alışların önemli kısmı KIBO'ya girilmiyor; örnek: Tuval Boyama
+      Seti'nin KIBO'da HİÇ tedarikçi alışı yok ama BKM'ye 13.365 adet satılmış. ⇒ "Bursa Kültür'de kalan
+      stok" KIBO'dan OKUNAMAZ; yalnız "KIBO kaydına göre" diye etiketlenir. Alışın nereye girildiği AÇIK SORU
+      (GOPLUS kullanılmıyor — kullanıcı).
+    measurement: "2026-10-23 — stok: 547.785 ürün, smiktar<0 119.112 (−9.933.417 adet), >0 toplam 30.137.701 adet. tstockloc ambar 0 negatif 119.948."
+    evidence: "2026-10-23 — COUNT/SUM stok.smiktar; tstockloc stokno 738141/557315 ambar dökümü. Arşiv blok 7."
+    confidence: 0.9
+    last_verified: "2026-10-23"
+
+  kibobkm.dbo.cari:
+    type: table
+    pk: [skod]
+    grain: "cari kart — [192.168.40.140].kibobkm.dbo.cari"
+    uses: [bridges:frm-kibo-cari-bkm]
+    note: >-
+      BKM'nin KIBO'daki carisi **skod 1417** ('FSM BKM', VKN 1270120858, aktif=1); eski kart **1412**
+      ('B.K.M. YAZI BASIN', aktif=0) 2019-2021 hareketleri taşır. Firma adı `firma` kolonunda
+      (`ad`/`soyad` kişi kartı için). Diğer grup şirketi: 4295 POİNT İNTERNET (ODAK-POINT).
+    evidence: "2026-10-23 — cari WHERE ad/firma LIKE '%BKM%'; 1417'nin 2024+ belge dağılımı."
+    confidence: 0.95
+    last_verified: "2026-10-23"

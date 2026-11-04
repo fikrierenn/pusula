@@ -3548,3 +3548,38 @@ metrics:
     confidence: 0.95
     last_verified: "2026-10-04"
     ttl_days: 90
+
+  bursa_kultur_iade_zinciri:
+    title: "Bursa Kültür iade zinciri — bizim iademiz → KIBO girişi → tedarikçiye ilk iade"
+    note: >-
+      BKM'nin Bursa Kültür'e kestiği alış iade faturasının (DerinSIS `fat.eTip=2`, `eFirma=56`)
+      Bursa Kültür tarafında (KIBO) asıl tedarikçiye iade edilip edilmediğinin ürün ürün izi.
+    details:
+      kurallar: >-
+        (1) TETİK BİZİM İADEMİZ (kullanıcı 23.10.2026: "bizim iademiz ile başlayacak kontrol tetikleme bizden olacak").
+        (2) KIBO girişi = `tumbelgeler.fattakipno = fat.eNo` (belgekod 3) + aynı barkodun satırı.
+        (3) Tedarikçi iadesi = fatura tarihinden SONRAKİ İLK `belgekod=2` belgesi, cari ∉ (1417, 1412);
+            adet o belgedeki o barkodun `out_miktar` toplamı (kullanıcı: "fatura tarihinden sonraki ilk iade olmalı").
+            KIBO iadesi bizim numaramızı TAŞIYAMAZ (kullanıcı) → eşleşme ürün + tarih.
+        (4) Aynı ilk iade birden çok faturamıza düşerse adet TARİH SIRASIYLA paylaştırılır, iki kez sayılmaz
+            (kullanıcı kararı 23.10.2026 — panelde uygulanacak; toplu sorguda henüz YOK).
+        (5) Yan göstergeler (iadeden sonra): BKM'ye geri satış (belgekod 1, cari 1417/1412) · başkasına satış ·
+            perakende (27; 106 sayılmaz).
+        (6) Durum: KIBO'ya girilmemiş · giriş adedi farklı · tedarikçiye iade edildi · kısmen · BKM'ye geri satıldı · Bursa Kültür'de.
+        ⚠ "Bursa Kültür'de kalan stok" KIBO bakiyesinden OKUNAMAZ (entities: kibo_stok_bakiyesi_guvenilmez).
+        ⚠ belgekod 2 fiyat farkı faturalarını da taşır — stok çıkışı (out_miktar>0) olan satır iade sayılır.
+      ornekler: >-
+        IEF2026000002413 (17.10.2026, 12 LGS Türkçe) → KIBO birebir, iade yok, perakende satılıyor.
+        IEF2026000000176 (17.01.2026, 315 Tuval Boyama Seti) → 10.02.2026 BEF2026000000127 ile AYNI 315 adet BKM'ye geri satıldı.
+        IFF2026000000010 (eTip 10 İade Fark Faturası) KIBO'da 120 adet STOK GİRİŞLİ alış olarak işlendi.
+        IEF2025000000680 (17.06.2025, 36 ürün 15.000 adet) → 36/36 birebir, KARGI BASIM'a iade 0.
+        IEF2025000000526 + 0535 (aynı gün) → 13.05.2025 tek OMTEKS iadesi ikisini birlikte karşılıyor.
+    measurement: >-
+      2026-10-23 (01.01.2024 → bugün, 110 fatura / 479 satır): Bursa Kültür'de (iade yok) 395 satır 200.356 adet 2,84M TL ·
+      BKM'ye geri satıldı 52 / 54.267 / 0,59M · giriş adedi farklı 8 / 671 / 0,14M · tedarikçiye iade 13 / 5.207 / 0,12M ·
+      KIBO'ya girilmemiş 9 / 26 / 0,01M · kısmen 2 / 8 / 0,00M. (Paylaştırma uygulanmadan — iade tarafı üst sınır.)
+    source: "sorgular/2026-10-23-bursa-kultur-iade-zinciri-toplu.sql (çekirdek) · tek fatura kanıtları sorgular/2026-10-23-bursa-kultur-iade-zinciri.sql"
+    uses: [bridges:fat-eno-kibo-fattakipno, bridges:urnbrkd-kibo-stokkod, codes:kibobkm.tumbelgeler.belgekod]
+    evidence: "2026-10-23 — toplu sorgu koşumu (pyodbc, 110 fatura ~10 sn) + tek fatura izleri IEF2026000002413 / IEF2026000000176 / IEF2025000000680; arşiv sorgular/2026-10-23-bursa-kultur-iade-zinciri*.sql"
+    confidence: 0.85
+    last_verified: "2026-10-23"

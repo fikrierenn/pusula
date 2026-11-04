@@ -1022,3 +1022,43 @@ bridges:
     measurement: "2026-10-03 — TSOFTProduct'ta olmayan 365 / 446.272."
     evidence: "2026-10-03 — canlı ölçüm. Arşiv: sorgular/2026-10-03-odak-urun-hatti.sql · Rapor: docs/13-odak-urun-hatti.md"
     last_verified: "2026-10-03"
+
+  # --- Bursa Kültür (KIBO) iade zinciri (2026-10-23) ---
+  - id: fat-eno-kibo-fattakipno
+    from: dbo.fat.eNo
+    to: "[192.168.40.140].kibobkm.dbo.tumbelgeler.fattakipno"
+    scope: cross-server
+    confidence: 0.95
+    note: >-
+      BKM ↔ Bursa Kültür (KIBO) fatura köprüsü: DerinSIS e-fatura numarası KIBO'da `fattakipno`
+      (= `einvoice_id`) olarak durur. İki yön de tutar. ⚠ Eşlerken DerinSIS tarafında `eFirma = 56`
+      ŞART — numara başka firmanın faturasıyla çakışabiliyor (2026 belgekod 3 eşleşmesinde eFirma 63412 çıktı).
+      `COLLATE Turkish_CI_AS` gerekir. Cross-server OUTER APPLY 120 sn'yi aştı → uzak tarafı LİTERAL
+      numara listesiyle (dinamik SQL) çek, yerelde eşle (110 fatura ~10 sn).
+    measurement: >-
+      2026-10-23 — bizim alış iade (eTip=2, eFirma=56) → KIBO: 2024 13/13 · 2025 25/25 · 2026 69/72
+      (eksik 3'ü 22.10.2026'da kesilenler). Ters yön 2026 (KIBO cari 1417): belgekod 1 633/648 ·
+      2 25/25 · 3 871/873 DerinSIS'te bulundu.
+    evidence: "2026-10-23 — sorgular/2026-10-23-bursa-kultur-iade-zinciri.sql blok 2/8 + toplu sorgu."
+    last_verified: "2026-10-23"
+
+  - id: urnbrkd-kibo-stokkod
+    from: dbo.urnBrkd.urnBarkod
+    to: "[192.168.40.140].kibobkm.dbo.stokinout.stok_kod"
+    scope: cross-server
+    confidence: 0.95
+    note: >-
+      Ürün köprüsü = barkod. DerinSIS tarafında `urnBrkdOnce = 0` (birincil barkod) → `urnBrkdStkID = urn.stkID`.
+      KIBO'da `stok_kod` = `stok.kod`; KIBO'da ürün başına fiilen tek barkod (kbbars 538.803 satır / 538.511 stok).
+    measurement: "2026-10-23 — 2026'da BKM kaynaklı KIBO alış satırlarındaki 7.734 farklı barkodun 7.679'u (%99,3) Once=0 barkodla, 43'ü yalnız ek barkodla eşleşti; 12'si eşleşmedi."
+    evidence: "2026-10-23 — #kb (KIBO distinct stok_kod) LEFT JOIN urnBrkd. Arşiv blok 8."
+    last_verified: "2026-10-23"
+
+  - id: frm-kibo-cari-bkm
+    from: dbo.frm.frmID
+    to: "[192.168.40.140].kibobkm.dbo.cari.skod"
+    scope: cross-server
+    confidence: 0.95
+    note: "Sabit eşleme, kolon bağı yok: DerinSIS frmID 56 (Bursa Kültür) karşısında KIBO'da BKM = cari 1417 (eski 1412). VKN 1270120858 ve 1417 belgelerinin fat.eNo eşleşmesiyle doğrulandı."
+    evidence: "2026-10-23 — cari dökümü + 1417 belgelerinin fat.eNo ile eşleşmesi."
+    last_verified: "2026-10-23"

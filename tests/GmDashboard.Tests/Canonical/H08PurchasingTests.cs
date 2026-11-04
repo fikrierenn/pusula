@@ -19,7 +19,8 @@ public class H08PurchasingTests
     public async Task ProductSummary_Today_CentralStockEqualsLiveWms()
     {
         // Arrange
-        string sql = CanonicalQuery.Read(CanonicalFile, "A");
+        // Okuyucu GO'yu ham döner (T-023 sözleşmesi); canlıya gitmeden kapı testiyle aynı ayıklama uygulanır.
+        string sql = Altyapi.CanonicalBlockReader.Clean(CanonicalQuery.Read(CanonicalFile, "A"));
         IReadOnlyList<WarehouseRow> live = await LiveDb.QueryAsync<WarehouseRow>(DbTarget.Erp, sql);
         WarehouseRow[] sample = live.Where(row => row.Merkez > 0).Take(SampleSize).ToArray();
         Population.AtLeast(sample.Length, "canlı WMS alan 0+1'de stoğu olan ürün yok");

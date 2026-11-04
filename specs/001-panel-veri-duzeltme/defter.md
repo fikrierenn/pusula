@@ -301,3 +301,11 @@ Görevler: `specs/001-panel-veri-duzeltme/tasks.md` · biçim ve kurallar: `.cla
 - 23.10 10:05 · Commit: 1a66832 docs(bkm): günlükler 09/15/23.10 + orkestra günlüğü + 001 defter (BT-FIKRI eşitlemesi dahil)
 - 23.10 10:05 · Commit: 9282e17 docs(bkm): BT-FIKRI 09-15.10 işleri — sema, maaş/stok-satış scriptleri, Kültür norm slaytı
 - 23.10 10:05 · Commit: bd5a534 feat(bkm): talep tahmini ve ens kalibrasyon araçları (BT-FIKRI 12-14.10)
+- 23.10 22:19 · Commit: d78ccb9 sema(locations): merkez depoya derinsis_hareket_mekan 12 — yalnız irsHrk hareket okumaları (depoya ilk/son giriş, GMY 23.10.2026); derinsis_mekan bilerek yok (depo stoğu WMS)
+- 23.10 22:25 · Commit: f383f3b feat(bkm): kırtasiye sepet büyüklüğü Excel raporu scripti
+- 23.10 22:25 · Commit: 887e943 feat(bkm): stok ve fiyat denetim araçları (tools)
+- 23.10 22:25 · Commit: 7bfe55d feat(bkm): bkm-cockpit web iskeleti ve yapılandırma
+- 23.10 22:25 · Commit: a680cd7 feat(bkm): bkm-cockpit arayüz kodu ve veri
+- 23.10 22:25 · Commit: 87dfcdd feat(bkm): web/server.py yerel sunucu
+- 23.10 22:25 · Commit: 6a0ca25 docs(bkm): Gemini Enterprise ön bilgi notu güncellemesi (1 Ekim)
+- 23.10 22:35 · T-027: ön koşu YEŞİL (canlı, 908 ms, örneklem dolu). Kök sebep düzeltmesi T-023'te DEĞİL testte yapıldı: CanonicalQuery.Read GO'yu ham döndürür (kilitli sözleşme `CanonicalQuery_Read_KeepsGoAndDeclareRaw`); H08PurchasingTests artık kapı testiyle aynı ayıklamayı kullanıyor (`CanonicalBlockReader.Clean(CanonicalQuery.Read(...))`). Test dosyası kilitli → commit'ten önce `test_kilidi.py kilitle` ile kilit yenilenmeli (GMY onayı 23.10 "sıradan devam"). Sıradaki: uygulama (CentralWarehouseStock.LiveCte, T-027-ozet.md) → canlı yeniden koşu (19:00 sonrası) → commit

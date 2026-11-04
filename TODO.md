@@ -264,9 +264,12 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 ### BKM — BIRLESIK ONCELIK SIRASI
 
-> ⚠ **ID ÇAKIŞMASI (plan 53 birleştirme, 04.11.2026):** Aşağıdaki iki blok B-183..B-201
-> numaralarını FARKLI işler için kullanıyor (ODAK SP fix / ay-sonu stok ↔ GM dashboard mobil
-> orkestra). F3-uzlaştırmada yeniden numaralandırılacak. Şimdilik ikisi de korundu.
+> ℹ **ID EŞLEME (plan 53 birleştirme, 04.11.2026):** Üç B-serisi çakışıyordu; D'nin ODAK/ay-sonu
+> serisi (B-183..B-201) korundu, iki X serisi D-maksimumu üstüne kaydırıldı:
+> **GM dashboard orkestra** eski B-183..B-191 → **yeni B-202..B-210**;
+> **Bursa Kültür iade** eski B-192..B-202 → **yeni B-211..B-221**.
+> Journal 2026-10-09 (GM) ve plan 52 (Bursa) ESKİ numaraları anar — journal değişmez tarihli
+> kayıt olduğu için düzeltilmedi; bu eşleme köprüdür.
 
 #### 📦 AY SONU STOK-SATIŞ RAPORU (03.10.2026 — panel `/ay-sonu-stok`, commit f135ece)
 
@@ -327,23 +330,41 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 #### 📱 GM DASHBOARD MOBİL — Orkestra spec 001-004 (dal `ork/001-panel-veri-duzeltme`)
 
-- [ ] **B-183 Spec 001 /uygula devam — T-021 Orkestra SAST paketini bekliyor** — 05.10.
+> Eski B-183..B-191 → yeni B-202..B-210 (plan 53 birleştirme eşlemesi). Journal 2026-10-09 eski numaraları anar.
+
+- [ ] **B-202 Spec 001 /uygula devam — T-021 Orkestra SAST paketini bekliyor** — 05.10.
       20/81 görev tamam (defter: `specs/001-panel-veri-duzeltme/defter.md`). T-021 iskeleti
       (`lib/Bkm.TestAltyapi/*` + `Pusula.sln`) stage'de, G-SEC-SAST (semgrep socketpair) yüzünden
       commit edilemedi. Paket gelince kur → `/orkestra:uygula 001`. `--no-verify` YOK.
-- [ ] **B-184 T-003 e-tic kayma 2. ölçüm** — en erken 10.10.2026 23:42.
-- [ ] **B-185 T-018 üçüncü ölçüm kararı** — GMY üç rakamı ERP masaüstünden okur ya da atlanır.
-- [ ] **B-186 `.env` PANEL_DB_HOST=localhost** — BkmPanel bu makinede varsayılan örnekte
+- [ ] **B-203 T-003 e-tic kayma 2. ölçüm** — en erken 10.10.2026 23:42.
+- [ ] **B-204 T-018 üçüncü ölçüm kararı** — GMY üç rakamı ERP masaüstünden okur ya da atlanır.
+- [ ] **B-205 `.env` PANEL_DB_HOST=localhost** — BkmPanel bu makinede varsayılan örnekte
       (`localhost`, ölçüldü 05.10: bağlantı OK), `localhost\SQLEXPRESS` yok. `.env` elle
       güncellenecek; sonra `python tools/sema_degismez.py` tam koşu.
-- [ ] **B-187 Eylül WMS snapshot job'u** — `stok-snapshot-tazeligi` değişmezi KIRIK (51 gün).
+- [ ] **B-206 Eylül WMS snapshot job'u** — `stok-snapshot-tazeligi` değişmezi KIRIK (51 gün).
       Job kurulmadı (erp-write-policy § SQL Agent job); SSMS'te elle kurulum ya da onay.
-- [ ] **B-188 Panelde Indirect'i atlayan indirim sorguları + 9 yerde ISNUMERIC(Code)** — spec 001
+- [ ] **B-207 Panelde Indirect'i atlayan indirim sorguları + 9 yerde ISNUMERIC(Code)** — spec 001
       F2 görevlerine bağlanacak (HediyeCeki/Ref/SatisAnalizi*/Queries/MagazaQueries).
-- [ ] **B-189 Spec 003 girdileri** — e-tic türemiş sipariş (BASEORDERID) çift sayım · 101 Alınan Çek
+- [ ] **B-208 Spec 003 girdileri** — e-tic türemiş sipariş (BASEORDERID) çift sayım · 101 Alınan Çek
       381,6M portföy mutabakatı · Kumbara düzeltilmiş gösterim · stok kavramı.
-- [ ] **B-190 Değişmez koşucusu `population` alanını okumuyor** — tam koşuda nüfus kapısı yok.
-- [ ] **B-191 Spec 002 (mobil kabuk) · 004 (BT-FIKRI HTTPS + servis)** — 001 bitince.
+- [ ] **B-209 Değişmez koşucusu `population` alanını okumuyor** — tam koşuda nüfus kapısı yok.
+- [ ] **B-210 Spec 002 (mobil kabuk) · 004 (BT-FIKRI HTTPS + servis)** — 001 bitince.
+
+#### 🔁 BURSA KÜLTÜR İADE ZİNCİRİ — plan 52 (`plans/52-bursa-kultur-iade-takip.md`, Taslak)
+
+> Eski B-192..B-202 → yeni B-211..B-221 (plan 53 birleştirme eşlemesi). Plan 52 metni eski numaraları anar.
+
+- [ ] **B-211 Commit-split (önkoşul)** — 23.10. 35 commit edilmemiş dosya; kullanıcı onayladı, commit-splitter çağrısı kesildi. < 15 olmadan B-212 yok.
+- [ ] **B-212 Ön ölçüm: dashboard kimliğiyle `[192.168.40.140].kibobkm` erişimi + süre** — linked server login eşlemesi.
+- [ ] **B-213 Çekirdek: ilk-iade paylaştırmalı (tarih sırası) sorgu + `BursaIadeQueries`** — arşiv `sorgular/2026-10-23-bursa-kultur-iade-zinciri-toplu.sql` aynı mantığa çekilir.
+- [ ] **B-214 Testler önce** — altın vakalar (IEF2026000002413 · IEF2026000000176 · IEF2025000000680 · 526+535 OMTEKS) + davranış kontratları.
+- [ ] **B-215 Liste ekranı `/bursa-iade`** (FİNANS) — KPI + filtre + fatura tablosu + Excel.
+- [ ] **B-216 Fatura drill `/bursa-iade/fatura`** — ürün ürün karşılaştırma.
+- [ ] **B-217 Ürün drill `/bursa-iade/urun`** — KIBO zaman çizelgesi + DerinSIS yan yana, KIBO stok uyarısı.
+- [ ] **B-218 Menü + DI + Excel endpoint + kolon denetimi + build/test/smoke.**
+- [ ] **B-219 Sema `applied_in` + journal + plan arşivi.**
+- [ ] **B-220 (ops.) Muhasebe/Kontrol sayfasına özet kart.**
+- [ ] **B-221 Açık sorular S1-S6 (plan 52 §10)** — Bursa Kültür tedarikçi alışları KIBO'da yok (119.112 ürün eksi stok) · Tuval 315 adet iade→24 gün sonra geri alış · IFF stok girişi · KIBO 17/18 kodu · 12 eşleşmeyen barkod · 22.10 iadeleri KIBO'da mı.
 
 #### 🔔 PDKS GÜNLÜK RAPOR (zamanlanmış görev)
 
@@ -1178,7 +1199,7 @@ Aktif yapılacaklar ve backlog. Bu dosya 400 satırı aşarsa tarihli konular il
 
 - [x] **K-01 KAPANDI — kayıt hatası YOK, kişi çalışmaya devam ediyor** ✅ 03.09.2026 (kullanıcı: "k-35 devam ediyor kontrol ettirdim") — Şura'daki 2025 girişli sezonluk personelin çıkışı işlenmemiş DEĞİL; fiilen çalışıyor. **Sezonluk 62 ve 5 mağaza 211 DOĞRU**, düzeltme gerekmiyor. Ders: 375 günlük kıdem tek başına 'çıkış işlenmemiş' kanıtı değildi — iki oturum boyunca ÇIKARIM ölçüm gibi taşındı ve desteye dipnot olarak girdi. Dipnot `scripts/sunum_slayt_maliyet.py`'de düzeltildi (yeni metin: 62'nin 61'i bu yıl, 1'i geçen yıl girişli ve çalışmaya devam ediyor — İK teyidi).
 - [ ] **K-02 Heykel sezonluk alım açığı** — 02.09. Norm 20, alınan 13 (−7), aktif 9. Alım en geç Heykel'de başladı (10.08; 14.08'e kadar 2 kişi) ve ayrılma oranı en yüksek (3/13 = %23). Sebep (aday bulunamadı / onay / ihtiyaç görülmedi) veriyle ayrılamıyor — operasyonla konuşulacak.
-- [ ] **K-03 Heykel/Şura POS raporlama kör noktası** — 02.09. İkisi ayrı tüzel kişilik (Bursa Kültür Merkezi / Asiye Bingölbalı) ve DerinSIS eTip 100'de satışları YOK → iş hacmi, kişi başı verimlilik ve "norm gerçekten gerekli mi" soruları o iki mağaza için ölçülemiyor. Çözüm seçenekleri: (a) o firmaların POS'unu DerinSIS'e bağlamak, (b) ayrı kaynaktan aylık özet almak.
+- [ ] **K-03 Heykel/Şura POS raporlama kör noktası** — 02.09. ⭐ 23.10 ÇIKARIM (teyit bekliyor): Bursa Kültür perakendesi `[192.168.40.140].kibobkm` belgekod 27 fişlerinde (2025 net 171,2M TL, ölçüldü); bunun Heykel mağazası olduğu ÖLÇÜLMEDİ (ambar hep 0) — sema `entities: kibobkm.dbo.stokinout`. İkisi ayrı tüzel kişilik (Bursa Kültür Merkezi / Asiye Bingölbalı) ve DerinSIS eTip 100'de satışları YOK → iş hacmi, kişi başı verimlilik ve "norm gerçekten gerekli mi" soruları o iki mağaza için ölçülemiyor. Çözüm seçenekleri: (a) o firmaların POS'unu DerinSIS'e bağlamak, (b) ayrı kaynaktan aylık özet almak.
 - [x] **K-04 Üç denetim ajanı bulgularının işlenmesi** ✅ 03.09.2026 (commit c884efb + 0eca76c kritik, eb96f7f orta/düşük) — python-reviewer · silent-failure-hunter · sql-denetci bulguları işlendi; kalan tek madde dosya-boyutu borcu (K-20).
 - [ ] **K-05 Sezonluk tutunma aksiyonu** — 02.09. Kadrolu alımın 14 gün tutunması %95,7 → %75,0 (32 alımdan 10'u ayrıldı). En bozuk: Özlüce, Heykel, Merkez Depo. Aksiyon: ilk hafta karşılama protokolü + İdari İşler ücret–vardiya revizyonu. Ölçüt: gelecek sezon Eylül öncesi kayıp %20 → %12.
 

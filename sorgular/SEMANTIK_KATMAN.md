@@ -17,7 +17,7 @@
 | BKMMaliyet | Maliyet hesaplama |
 | BkmKargo | Kargo entegrasyonu |
 | ENTEGRATION | Sistem entegrasyon staging |
-| KIBO | Bilinmiyor (gerekirse araştırılır) |
+| KIBO (201) | Yalnız ürün ana verisi (Stok/Barkod/Yazar). **Bursa Kültür canlı KIBO = `[192.168.40.140].kibobkm`** (fatura/cari/stok/perakende) — sema `entities: kibo_*`, köprü `fat-eno-kibo-fattakipno` (fat.eNo = tumbelgeler.fattakipno), ürün = barkod. ⚠ `SURA.kibobkm` Şura firmasıdır; KIBO stok bakiyesi güvenilmez (119K ürün eksi). |
 | **Joker** (Linked Server: `odakjoker`) | Ayrı DB — DerinSIS içinde değil. 4-part naming ile erişilir: `odakjoker.[dbname].dbo.[table]` |
 
 > **WMS:** AYRI DB DEĞİL — DerinSISBkm içinde `depo.*` şemasında.
