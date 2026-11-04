@@ -182,9 +182,28 @@ def durum(u):
     b = []
     if u.get("yeni"): b.append("Yeni ürün")
     if u.get("gun") is not None and u["gun"] < 90: b.append("Taze parti")
-    if asiri_alim(u): b.append("Aşırı Alım")
+    if asiri_alim(u): b.append("İzle: dağıtılmamış")
     if u.get("mevsim"): b.append("Mevsimsel")
     return ", ".join(b)
+
+def triyaj(u):
+    """Tek aksiyon etiketi — mevcut eşikler (ACIL/YAKIN/ASIRI_AY) + satış trendi. Yeni eşik icat YOK.
+    WOS (kaç ay yeter) × trend quadrant'ı; nedensel değil, operasyonel yön."""
+    hz = u.get("hiz") or 0; ts = u.get("tstok") or 0
+    if ts <= 0:
+        return "Stok yok"
+    if hz <= 0:
+        if asiri_alim(u): return "Taze — satış başlamadı (izle)"
+        return "Yeni/taze — bekle" if u.get("yeni") else "Ölü — 12 ay satış yok"
+    ay = ts / hz
+    d = degisim(u)                               # son 3 ay vs önceki 3 ay
+    if ay > ASIRI_AY:
+        return "Birikiyor — taze, izle" if asiri_alim(u) else "Birikiyor — alımı durdur"
+    if ay < ACIL_AY:
+        return "İnce — stockout riski"
+    if d is not None and d <= -0.30 and ay > YAKIN_AY:
+        return "Yavaşlıyor — izle"
+    return "Sağlıklı"
 
 # ================= ÇIKTI (hesaplamalar Excel FORMÜLÜ — canlı) =================
 wbo = openpyxl.Workbook()
@@ -226,7 +245,7 @@ MAG = [("FSM", "fsm", INT, 7), ("OZL", "ozl", INT, 7), ("IST", "ist", INT, 7),
 SATIS = [("Son 12 Ay", "son12", INT, 9), ("Son 3 Ay", "son3", INT, 8), ("Önceki 3 Ay", "onc3", INT, 10),
          ("Aylık Hız", F(lambda r, C: f"=MAX({C['Son 12 Ay']}{r}/12,{C['Son 3 Ay']}{r}/3)"), AY, 9),
          ("Değişim %", F(lambda r, C: f"=IF({C['Önceki 3 Ay']}{r}>0,({C['Son 3 Ay']}{r}-{C['Önceki 3 Ay']}{r})/{C['Önceki 3 Ay']}{r},\"\")"), PCT, 10),
-         ("Durum", durum, None, 17)]
+         ("Durum", durum, None, 17), ("Triyaj", triyaj, None, 22)]
 BATCH = [("Son Parti Tarihi", "songiris", DT, 14), ("Son Parti Adet", "son_parti", INT, 12),
          ("En Eski Kalan Parti", "eski_kalan", DT, 15), ("En Eski Kalan (gün)", "eski_gun", INT, 13)]
 AYYETER = ("Kaç Ay Yeter", F(lambda r, C: f"=IF({C['Aylık Hız']}{r}>0,{C['Toplam Stok']}{r}/{C['Aylık Hız']}{r},\"\")"), AY, 11)
@@ -258,11 +277,17 @@ sheet("Siparis Onerisi",
 # --- 2 AŞIRI STOK (mağaza + depo; merkez depo yalnız mağazaya hizmet eder) ---
 asiri = []
 for u in urunler:
-    if u["hiz"] <= 0 or u["yeni"] or u["tstok"] <= 0:
+    if u["tstok"] <= 0 or u["yeni"]:
         continue
-    ayk = u["tstok"] / u["hiz"]
-    if ayk <= ASIRI_AY:
-        continue
+    over = asiri_alim(u)                       # taze büyük alım (hız=0 olsa da aşırı)
+    if u["hiz"] <= 0:
+        if not over:                           # satış yok + aşırı-alım değil → aşırı değil
+            continue
+        ayk = None
+    else:
+        ayk = u["tstok"] / u["hiz"]
+        if ayk <= ASIRI_AY and not over:
+            continue
     u2 = dict(u); u2["ayk"] = ayk
     u2["fazla_adet"] = max(0, round(u["tstok"] - ASIRI_NORM_AY * u["hiz"]))
     u2["fazla_deger"] = u2["fazla_adet"] * u["uf"]
@@ -275,11 +300,12 @@ sheet("Asiri Stok",
        ("Fazla Etiket Değeri", F(lambda r, C: f"={C['Fazla Adet']}{r}*{C['Üst Fiyat']}{r}"), TL, 16)] + BATCH,
       asiri)
 
-# --- 3 ÖLÜ STOK (mağaza + depo) ---
-olu = [u for u in urunler if u["son12"] <= 0 and u["tstok"] > 0 and not u["yeni"]]
+# --- 3 ÖLÜ STOK (mağaza + depo) — eldeki stok ESKİ olmalı; taze alım (en eski kalan <90 gün) ÖLÜ değil ---
+olu = [u for u in urunler if u["son12"] <= 0 and u["tstok"] > 0 and not u["yeni"]
+       and not (u["eski_gun"] is not None and u["eski_gun"] < 90)]
 olu.sort(key=lambda u: -u["etiket"])
 sheet("Olu Stok",
-      BASE + MAG + [ETIKET, ("Durum", durum, None, 17)] + BATCH,
+      BASE + MAG + [ETIKET, ("Durum", durum, None, 17), ("Triyaj", triyaj, None, 22)] + BATCH,
       olu)
 
 # --- 4 DEPODA VAR - ŞUBEDE YOK/AZ (TRANSFER) ---

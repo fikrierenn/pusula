@@ -79,6 +79,40 @@ MFP/OTB/GMROI çerçeveleri ağırlıkla **uygulayıcı ve yazılım sağlayıc�
 (hakemli literatür değil); FVA ve bullwhip akademiktir. Formülleri BKM verisine
 uygulamadan önce tanımların (indirim, dönem-sonu stok) bizdeki karşılığı doğrulanır.
 
+## Genişletme — araştırma 2026-11-03 (standart üçlünün ötesi)
+
+_Web taraması + kardeş danışman kesişimi. GitHub'da hazır "alıcı hesap-sorma" prompt'u YOK
+(en yakın: DSPy tedarikçi-seçim agent'ı — alakasız). Aşağısı alanın yerleşik çerçeveleri; ölçümle
+çatışırsa ölçüm kazanır._
+
+### ⭐ Tedarikçi karnesi — OTIF / fill-rate (ARZ tarafı — alıcıyı AKLAYAN eksen)
+Accountability yalnız alıcıda değil: **sipariş edilenin ne kadarı tam + zamanında geldi?**
+OTIF (on-time-in-full) = zamanında VE tam; fill-rate = gelen adet / sipariş adet. Düşük OTIF →
+stockout alıcının DEĞİL **tedarikçinin** kusuru. Bu, adil-atıf confound'unu (§2 kontrol-edilebilirlik)
+VERİYLE ayırır — "baskısı yok / eksik geldi" bahanesi ölçülür hâle gelir.
+- BKM bağ: yayınevi/ODAK fill-rate = sipariş (`OneriSiparisTalep`) vs mal kabul (`irsHrk` ehTip 0/10).
+  **ODAK `Neden=246` eksik-gönderim** zaten bunun bir ölçümü (hesap-sorma raporunda ayrı kolon).
+- ⚠ Chargeback (karneye bağlı ceza kesintisi) ABD perakende sözleşmesi deseni; **Türkiye/kitapta YOK**
+  → ceza değil SİNYAL. Eşik (ör. %95 OTIF) satıcı-blogu benchmark'ı, STANDART değil. Kaynak hakemli değil.
+
+### Weeks of Supply + ÜÇLÜ triyaj (tek metrik yanıltır)
+WOS = stok ÷ haftalık satış ("kaç ay yeter"in haftalık ikizi). Tek başına okunmaz:
+**sell-through + GMROI + WOS** birlikte triyaj. Biri yüksek biri düşükse karar yanlış çıkar
+(ör. yüksek sell-through + düşük GMROI = ucuz-satış/marj kaybı; düşük WOS + düşük sell-through = taze ama ölü).
+
+### Sansürlü talep — "az aldı/stockout" cezasında kayıp ALT SINIRDIR (akademik)
+Stockout gününde satış KESİLİR (sağdan sansür); geçen yıl satışını talep vekili yapmak kaybı
+**alt sınırdan** verir. Düzeltme: lost-sales indicator veya data-driven censored newsvendor
+(Sachs & Minner 2014). ⇒ Bir alıcıya "az aldın, satış kaçtı" derken kayıp **"en az X"** yazılır,
+nokta değer değil. (`olctum-mu-cikardim-mi.md` § eşik türetme + `talep-tahmin-danisman` ile hizalı.)
+
+### SKU rasyonalizasyonu — velocity-only kesme YASAK (adil-atıf ikizi)
+Yavaş SKU'yu "ölü/kötü alım" saymadan ÖNCE ROL kontrolü: (a) sepet-çıpası mı, (b) sınav/ders
+**zorunlu bulundurma** mı, (c) konsinye/iade-haklı mı, (d) kategori-itibarı mı. BKM: ders/sınav
+kitabı düşük devirli diye kesilemez (zorunlu); iade-haklı yayınevi SKU'su yüksek iade ≠ kötü karar.
+Kademeli kes, velocity+contribution birlikte. ⚠ "C sınıfı %5 değer", "GMROI≥3,2", "taşıma %20-30"
+rakamları satıcı-blogu/kaynaksız → BKM verisiyle doğrulanmadan kullanılmaz.
+
 ## Danışma Modları
 
 - **"Bu analizi tasarla"** → metrik + eşik + kime/nasıl atfedilir + confound elemesi + kanıt + perverse-incentive + karşı-metrik. Fact-force: alıcı boyutu var mı önce sor.
@@ -98,6 +132,9 @@ uygulamadan önce tanımların (indirim, dönem-sonu stok) bizdeki karşılığ�
 - `.claude/skills/yonetici-rapor/SKILL.md` — overclaim-yasak omurga (bu skill accountability'ye uyarlar); atıf belgesi.
 - `.claude/skills/muhasebe-denetci/SKILL.md` — GL forensic (alış-tarafı anomali kesişince).
 - `.claude/skills/afcp-danisman/SKILL.md` — kardeş danışman deseni (finans-strateji; bu = satınalma-ops).
+- `.claude/skills/talep-tahmin-danisman/SKILL.md` — TALEP tarafı (alım kararının girdisi; sansürlü talep/kayıp satış burada derinleşir).
+- `.claude/skills/operasyon-danisman/SKILL.md` — lojistik/fire/depo verimi (OTIF mal-kabul + bullwhip merkez depo şişmesi kesişir).
+- `.claude/skills/butce-danisman/SKILL.md` — OTB alım bütçesi (ciro hedefi → alım bütçesi dönüşümü).
 - `sema/metrics.yaml` — birim_maliyet, olu_stok_maliyet_zinciri, net_ciro (alış ehTip=0, fatAyr, frm tedarikçi köprüleri).
 - `sema/entities.yaml` — dbo.irsHrk (alış/satış), dbo.frm (tedarikçi), bkm.UrunBilgi (ürün master).
 - `docs/journal/bkm/` — danışma kararları handoff'a not.
