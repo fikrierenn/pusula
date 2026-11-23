@@ -139,3 +139,6 @@ tests/GmDashboard.Tests/obj/
 
 # Müdür/personel maaş verisi (kişisel veri, KVKK) — git dışı
 briefings/**/mudur-maas*.json
+
+# egitim-gundem-tara eşzamanlılık kilidi (koşu sırasında oluşur, sonunda silinir) — git dışı
+docs/egitim-gundem/.tarama.lock
